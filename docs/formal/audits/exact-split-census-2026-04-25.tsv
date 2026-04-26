@@ -1,0 +1,151 @@
+Once/CCC/Machine/IR/RecTrace.agda:386.3-21	  alg-tree alg-trace = flat alg-trace	when checking the definition of alg-tree
+Once/CCC/Machine/SMCore.agda:1034.3-15	  ... | just _ = exec-tree-trace tR s alloc	when checking the definition of
+Once/CCC/Machine/SMCore.agda:351.3-18	  ... | _ | _ = mem f' k'	when checking the definition of
+Once/CCC/Machine/SMCore.agda:414.3-21	  ... | yes _ | no _ = refl	when checking the definition of
+Once/CCC/Machine/SMCore.agda:93.1-21	  ... | yes _ | no o≢o = no (λ { refl → o≢o refl })	when checking the definition of Once.CCC.Machine.SMCore.with-80
+Once/CCC/Machine/SMPrimitives.agda:231.1-20	  instr-writes-slot _ = nothing	when checking the definition of instr-writes-slot
+Once/CCC/Machine/SMPrimitives.agda:238.1-19	  instr-reads-slot _ = nothing	when checking the definition of instr-reads-slot
+Once/CCC/Machine/SMPrimitives.agda:258.1-22	  instr-writes-heap _ s = nothing	when checking the definition of instr-writes-heap
+Once/CCC/Machine/SMPrimitives.agda:308.1-22	  InstrPreservesFrame _ = ⊤	when checking the definition of InstrPreservesFrame
+Once/CCC/Machine/SMPrimitives.agda:713.1-20	  InstrWritesToHeap _ = ⊥	when checking the definition of InstrWritesToHeap
+Once/CCC/Machine/SMPrimitives.agda:721.1-26	  TraceNoHeapWrites (_ ∷ t) = TraceNoHeapWrites t	when checking the definition of TraceNoHeapWrites
+Once/CCC/Machine/WriteOps.agda:43.3-21	  ... | yes _ | no _ = refl	when checking the definition of
+Once/CCC/Target/X86-64/DirectSimulation.agda:118.3-23	  ... | yes _ | no k≢k = no (λ { refl → k≢k refl })	when checking the definition of
+Once/CCC/Target/X86-64/DirectSimulation.agda:216.3-18	  exec-x86 _ xs _ = xs	when checking the definition of exec-x86
+Once/CCC/Target/X86-64/Syntax.agda:203.1-8	  ... | _ = 0	when checking the definition of
+Once/CCC/Target/X86-64/Syntax.agda:205.1-23	  instr-consumed-slots _ = 0	when checking the definition of instr-consumed-slots
+Once/Grammar/Convert.agda:101.1-18	  ... | _ | _ = nothing	when checking the definition of Once.Grammar.Convert.with-166
+Once/Grammar/Convert.agda:65.1-18	  ... | _ | _ = nothing	when checking the definition of Once.Grammar.Convert.with-14
+Once/Grammar/Convert.agda:68.1-18	  ... | _ | _ = nothing	when checking the definition of Once.Grammar.Convert.with-38
+Once/Grammar/Convert.agda:71.1-18	  ... | _ | _ = nothing	when checking the definition of Once.Grammar.Convert.with-58
+Once/Grammar/Convert.agda:74.1-18	  ... | _ | _ = nothing	when checking the definition of Once.Grammar.Convert.with-78
+Once/Grammar/Convert.agda:92.1-18	  ... | _ | _ = nothing	when checking the definition of Once.Grammar.Convert.with-102
+Once/Grammar/Convert.agda:95.1-18	  ... | _ | _ = nothing	when checking the definition of Once.Grammar.Convert.with-126
+Once/Grammar/Convert.agda:98.1-18	  ... | _ | _ = nothing	when checking the definition of Once.Grammar.Convert.with-146
+Once/Grammar/ExprBridge.agda:525.3-565.45	  complete-cmpWFraw (pcm-lt dL dR) (acc rec)	when checking the definition of complete-cmpWFraw
+Once/Optimize.agda:105.1-106.34	  ... | _ | no neq | _ = no (λ { refl → neq refl })	when checking the definition of Once.Optimize.with-210
+Once/Optimize.agda:218.1-24	  ... | _ | no neq = no (λ { refl → neq refl })	when checking the definition of Once.Optimize.with-414
+Once/Optimize.agda:226.1-24	  ... | _ | no neq = no (λ { refl → neq refl })	when checking the definition of Once.Optimize.with-474
+Once/Optimize.agda:427.1-25	  ... | _ | no nq = no (λ { refl → nq refl })	when checking the definition of Once.Optimize.with-826
+Once/Optimize.agda:434.1-435.34	  ... | _ | no nq | _ = no (λ { refl → nq refl })	when checking the definition of Once.Optimize.with-886
+Once/Optimize.agda:452.1-23	  ... | _ | no nq = no (λ { refl → nq refl })	when checking the definition of Once.Optimize.with-998
+Once/Optimize.agda:461.1-23	  ... | _ | no nm = no (λ { refl → nm refl })	when checking the definition of Once.Optimize.with-1042
+Once/Optimize.agda:534.1-29	  ... | _ | no nq = no (λ { refl → nq refl })	when checking the definition of Once.Optimize.with-1954
+Once/Optimize.agda:549.1-29	  ... | _ | no nq = no (λ { refl → nq refl })	when checking the definition of Once.Optimize.with-2246
+Once/Optimize.agda:566.1-10	  is-Void _ = false	when checking the definition of is-Void
+Once/Optimize.agda:586.1-13	  isUnitType _ = false	when checking the definition of isUnitType
+Once/Optimize.agda:590.1-13	  isVoidType _ = false	when checking the definition of isVoidType
+Once/Optimize.agda:595.1-10	  is-fst? _ = false	when checking the definition of is-fst?
+Once/Optimize.agda:600.1-10	  is-snd? _ = false	when checking the definition of is-snd?
+Once/Optimize.agda:605.1-15	  is-terminal? _ = false	when checking the definition of is-terminal?
+Once/Optimize.agda:622.1-15	  wants-coprod _ = false	when checking the definition of wants-coprod
+Once/Optimize.agda:702.1-18	  pairView-gen {A} f eq = is-other-pair (subst (IR A) eq f)	when checking the definition of pairView-gen
+Once/Optimize.agda:712.1-20	  coprodView-gen {D} f eq = is-other-coprod (subst (IR D) eq f)	when checking the definition of coprodView-gen
+Once/Optimize.agda:726.1-19	  composeFirstView g = cf-other g	when checking the definition of composeFirstView
+Once/Optimize.agda:731.1-20	  composeSecondView f = cs-other f	when checking the definition of composeSecondView
+Once/Optimize.agda:736.1-13	  fstSndView f = fsv-other f	when checking the definition of fstSndView
+Once/Optimize.agda:741.1-13	  inlInrView f = iiv-other f	when checking the definition of inlInrView
+Once/Optimize.agda:789.1-12	  ... | _ | _ = ⟨ f , g ⟩ Stack	when checking the definition of Once.Optimize.with-2946
+Once/Optimize.agda:79.1-23	  ... | _ | no neq = no (λ { refl → neq refl })	when checking the definition of Once.Optimize.with-38
+Once/Optimize.agda:797.1-12	  ... | _ | _ = case f g	when checking the definition of Once.Optimize.with-2970
+Once/Optimize.agda:92.1-23	  ... | _ | no neq = no (λ { refl → neq refl })	when checking the definition of Once.Optimize.with-118
+Once/Parser.agda:169.3-16	  go (_ ∷ rest) = go rest	when checking the definition of go
+Once/Parser.agda:265.3-24	  go (_ ∷ rest) pending = go rest pending	when checking the definition of go
+Once/Parser.agda:99.1-14	  allTrailing _ = false	when checking the definition of allTrailing
+Once/Parser/Core.agda:118.3-19	  matchToken _ _ _ = nothing	when checking the definition of matchToken
+Once/Parser/Core.agda:128.3-10	  check _ = nothing	when checking the definition of check
+Once/Parser/Core.agda:134.3-4	  .extendedlambda0 _ = nothing	when checking the definition of .extendedlambda0
+Once/Parser/Core.agda:154.1-24	  skipNewlines (t ∷ rest) = just ([] , t ∷ rest)	when checking the definition of skipNewlines
+Once/Parser/Expr.agda:402.1-13	  letView toks = let-other toks	when checking the definition of letView
+Once/Parser/Expr.agda:428.1-12	  rbView toks = rb-other toks	when checking the definition of rbView
+Once/Parser/Expr.agda:485.1-12	  dbView toks = db-other toks	when checking the definition of dbView
+Once/Parser/Expr.agda:512.1-12	  doView toks = do-other toks	when checking the definition of doView
+Once/Parser/ExprRelation.agda:100.1-15	  NotDot (_ ∷ _) = ⊤	when checking the definition of NotDot
+Once/Parser/ExprRelation.agda:107.1-15	  NotAdd (_ ∷ _) = ⊤	when checking the definition of NotAdd
+Once/Parser/ExprRelation.agda:115.1-15	  NotMul (_ ∷ _) = ⊤	when checking the definition of NotMul
+Once/Parser/ExprRelation.agda:126.1-15	  NotCmp (_ ∷ _) = ⊤	when checking the definition of NotCmp
+Once/Parser/Lexer.agda:148.1-24	  collectStringB (c ∷ cs)	when checking the definition of collectStringB
+Once/Parser/Lexer.agda:241.1-295.31	  tokenize-WF ('\n' ∷ cs) (acc rec)	when checking the definition of tokenize-WF
+Once/Parser/Module.agda:49.1-30	  ... | just (ty , rest' , bnd)	when checking the definition of Once.Parser.Module.with-104
+Once/Parser/Module.agda:52.1-49	  parseDeclB (TWord w ∷ rest) | no _ | no _ | no _	when checking the definition of Once.Parser.Module.with-74
+Once/Parser/Module.agda:57.1-13	  parseDeclB _ = nothing	when checking the definition of parseDeclB
+Once/Parser/Module/Alloc.agda:27.1-14	  parseAllocB _ = nothing	when checking the definition of parseAllocB
+Once/Parser/Module/Core.agda:120.1-11	  anyWordB _ = nothing	when checking the definition of anyWordB
+Once/Parser/Module/DeclTail.agda:31.1-19	  goTypeAliasB _ _ _ = nothing	when checking the definition of goTypeAliasB
+Once/Parser/Module/DeclTail.agda:53.1-40	  parseSignatureB toks | just (_ , _ , _) = nothing	when checking the definition of
+Once/Parser/Module/FunDef/Body.agda:26.1-22	  parseFunBodyB _ _ _ _ = nothing	when checking the definition of parseFunBodyB
+Once/Parser/Module/FunDef/OpDecl.agda:27.1-26	  tryOpDeclAfterB name toks	when checking the definition of tryOpDeclAfterB
+Once/Parser/Module/FunDef/Params.agda:34.1-18	  parseParamsB toks = [] , toks , ≤-refl	when checking the definition of parseParamsB
+Once/Parser/Module/Import.agda:27.1-62	  parseModulePath-WFB toks (acc rec) | just (name , rest , bnd)	when checking the definition of Once.Parser.Module.Import.with-16
+Once/Parser/Module/Import.agda:50.1-28	  parseImportAliasB path toks	when checking the definition of parseImportAliasB
+Once/Parser/Module/OpName.agda:58.1-18	  parseOpCharsB _ _ = nothing	when checking the definition of parseOpCharsB
+Once/Parser/Module/OpName.agda:71.1-21	  parseOperatorNameB _ = nothing	when checking the definition of parseOperatorNameB
+Once/Parser/Module/Resolve.agda:105.5-22	  showPath (x ∷ xs) = x ++ "." ++ showPath xs	when checking the definition of showPath
+Once/Parser/Module/Resolve.agda:110.1-31	  resolveDecls modMap (d ∷ rest)	when checking the definition of resolveDecls
+Once/Parser/Module/Resolve.agda:82.1-37	  signaturesWithOwner owner (_ ∷ rest)	when checking the definition of signaturesWithOwner
+Once/Parser/PolyType.agda:105.1-26	  parsePolyArrowTail A toks = just (A , toks)	when checking the definition of parsePolyArrowTail
+Once/Parser/PolyType.agda:115.1-24	  parsePolySumTail A toks = just (A , toks)	when checking the definition of parsePolySumTail
+Once/Parser/PolyType.agda:125.1-25	  parsePolyProdTail A toks = just (A , toks)	when checking the definition of parsePolyProdTail
+Once/Parser/PolyType.agda:164.1-13	  ... | just _ = nothing	when checking the definition of Once.Parser.PolyType.with-382
+Once/Parser/Type.agda:428.1-430.48	  parseArrowTailWF left (TCaret1 ∷ _) _ = nothing	when checking the definition of parseArrowTailWF
+Once/Parser/TypeRelation.agda:42.1-16	  NotStar (_ ∷ _) = ⊤	when checking the definition of NotStar
+Once/Parser/TypeRelation.agda:50.1-20	  NotStarPlus (_ ∷ _) = ⊤	when checking the definition of NotStarPlus
+Once/Parser/TypeRelation.agda:61.1-24	  NotArrowOrGrade (_ ∷ _) = ⊤	when checking the definition of NotArrowOrGrade
+Once/Parser/TypeRelation.agda:74.1-16	  NotCont (_ ∷ _) = ⊤	when checking the definition of NotCont
+Once/Type.agda:114.1-11	  _ ≤q _ = false	when checking the definition of _≤q_
+Once/Type.agda:185.1-23	  ... | _ | no ¬p = no (λ { refl → ¬p refl })	when checking the definition of Once.Type.with-88
+Once/Type.agda:511.3-20	  ... | _ | _ = inj₂ tt	when checking the definition of Once.Type.with-456
+Once/Type.agda:514.3-20	  ... | _ | _ = inj₂ tt	when checking the definition of Once.Type.with-476
+Once/Type.agda:521.3-20	  ... | _ | _ = inj₂ tt	when checking the definition of Once.Type.with-496
+Once/Type.agda:524.3-20	  ... | _ | _ = inj₂ tt	when checking the definition of Once.Type.with-516
+Once/Type.agda:527.3-20	  ... | _ | _ = inj₂ tt	when checking the definition of Once.Type.with-536
+Once/Type.agda:530.3-20	  ... | _ | _ = inj₂ tt	when checking the definition of Once.Type.with-556
+Once/Type.agda:583.1-22	  quantityEqBool _ _ = false	when checking the definition of quantityEqBool
+Once/Type.agda:588.1-20	  purityEqBool _ _ = false	when checking the definition of purityEqBool
+Once/Type.agda:604.3-17	  typeEqBool _ _ = false	when checking the definition of typeEqBool
+Once/Type.agda:611.3-20	  functorEqBool _ _ = false	when checking the definition of functorEqBool
+Once/Type.agda:62.1-64.13	  _ *q Zero = Zero	when checking the definition of _*q_
+Once/Type.agda:681.3-23	  instantiateAcc _ _ _ = nothing	when checking the definition of instantiateAcc
+Once/Type.agda:692.3-27	  instantiateFunctor _ _ _ = nothing	when checking the definition of instantiateFunctor
+Once/Type.agda:709.3-19	  ... | _ | _ = nothing	when checking the definition of Once.Type.with-1096
+Once/Type.agda:712.3-19	  ... | _ | _ = nothing	when checking the definition of Once.Type.with-1122
+Once/Type.agda:715.3-19	  ... | _ | _ = nothing	when checking the definition of Once.Type.with-1150
+Once/Type.agda:718.3-19	  ... | _ | _ = nothing	when checking the definition of Once.Type.with-1180
+Once/Type.agda:733.3-19	  ... | _ | _ = nothing	when checking the definition of Once.Type.with-1260
+Once/Type.agda:736.3-19	  ... | _ | _ = nothing	when checking the definition of Once.Type.with-1286
+Once/Type.agda:752.1-24	  schemaArrowCodomain _ _ = nothing	when checking the definition of schemaArrowCodomain
+Once/TypeCheck/Elaborate.agda:1022.3-26	  ... | success _ _ _ _ _ = failure FstNeedsPair	when checking the definition of Once.TypeCheck.Elaborate.with-2030
+Once/TypeCheck/Elaborate.agda:1028.3-26	  ... | success _ _ _ _ _ = failure SndNeedsPair	when checking the definition of Once.TypeCheck.Elaborate.with-2072
+Once/TypeCheck/Elaborate.agda:1043.3-26	  ... | success _ _ _ _ _ = failure ArrNeedsFunction	when checking the definition of Once.TypeCheck.Elaborate.with-2148
+Once/TypeCheck/Elaborate.agda:1067.3-63	  inferElab ctx (RApp .(RVar _) _) | ahv-apply | success _ _ _ _ _	when checking the definition of Once.TypeCheck.Elaborate.with-2200
+Once/TypeCheck/Elaborate.agda:1111.3-62	  inferElab ctx (RDestruct _ _ _ _ _) | success _ _ _ _ _	when checking the definition of Once.TypeCheck.Elaborate.with-2746
+Once/TypeCheck/Elaborate.agda:1130.7-16	  mkArith _ = SExpr.add	when checking the definition of mkArith
+Once/TypeCheck/Elaborate.agda:1139.7-14	  mkCmp _ = SExpr.lt	when checking the definition of mkCmp
+Once/TypeCheck/Elaborate.agda:1145.3-26	  ... | success _ _ _ _ _ = failure NegationNotInt	when checking the definition of Once.TypeCheck.Elaborate.with-3154
+Once/TypeCheck/Elaborate.agda:1162.3-1295.20	  checkElab ctx (RLam _ _) _ = failure LambdaRequiresFunctionType	when checking the definition of checkElab
+Once/TypeCheck/Elaborate.agda:116.3-18	  ... | _ | no ¬q = no (λ { refl → ¬q refl })	when checking the definition of Once.TypeCheck.Elaborate.with-134
+Once/TypeCheck/Elaborate.agda:120.3-18	  ... | _ | no ¬q = no (λ { refl → ¬q refl })	when checking the definition of Once.TypeCheck.Elaborate.with-178
+Once/TypeCheck/Elaborate.agda:124.3-125.22	  ... | _ | no ¬k | _ = no (λ { refl → ¬k refl })	when checking the definition of Once.TypeCheck.Elaborate.with-226
+Once/TypeCheck/Elaborate.agda:1256.3-70	  checkElab ctx (RApp .(RVar _) arg) T | ahv-arr | _ ⇒[ _ ] _	when checking the definition of Once.TypeCheck.Elaborate.with-3946
+Once/TypeCheck/Elaborate.agda:1344.3-48	  checkElab-RVar ctx _ _ | bbc-id | failure err = failure err	when checking the definition of Once.TypeCheck.Elaborate.with-4380
+Once/TypeCheck/Elaborate.agda:1353.3-49	  checkElab-RVar ctx _ _ | bbc-fst | failure err = failure err	when checking the definition of Once.TypeCheck.Elaborate.with-4460
+Once/TypeCheck/Elaborate.agda:1362.3-49	  checkElab-RVar ctx _ _ | bbc-snd | failure err = failure err	when checking the definition of Once.TypeCheck.Elaborate.with-4546
+Once/TypeCheck/Elaborate.agda:1370.3-54	  checkElab-RVar ctx _ _ | bbc-terminal | failure err = failure err	when checking the definition of Once.TypeCheck.Elaborate.with-4632
+Once/TypeCheck/Elaborate.agda:1378.3-53	  checkElab-RVar ctx _ _ | bbc-initial | failure err = failure err	when checking the definition of Once.TypeCheck.Elaborate.with-4694
+Once/TypeCheck/Elaborate.agda:1387.3-49	  checkElab-RVar ctx _ _ | bbc-inl | failure err = failure err	when checking the definition of Once.TypeCheck.Elaborate.with-4756
+Once/TypeCheck/Elaborate.agda:1396.3-49	  checkElab-RVar ctx _ _ | bbc-inr | failure err = failure err	when checking the definition of Once.TypeCheck.Elaborate.with-4842
+Once/TypeCheck/Elaborate.agda:1404.3-14	  ... | _ | _ = failure (BuiltinTypeMismatch "arr")	when checking the definition of Once.TypeCheck.Elaborate.with-4988
+Once/TypeCheck/Elaborate.agda:1405.3-49	  checkElab-RVar ctx _ _ | bbc-arr | failure err = failure err	when checking the definition of Once.TypeCheck.Elaborate.with-4928
+Once/TypeCheck/Elaborate.agda:1426.3-20	  checkPair _ _ _ _ = failure (BuiltinTypeMismatch "pair")	when checking the definition of checkPair
+Once/TypeCheck/Elaborate.agda:1468.3-164	  checkCompose _ (RApp (RVar "compose") _) _	when checking the definition of Once.TypeCheck.Elaborate.with-5130
+Once/TypeCheck/Elaborate.agda:1471.3-23	  checkCompose _ _ _ _ = failure (BuiltinTypeMismatch "compose")	when checking the definition of checkCompose
+Once/TypeCheck/Elaborate.agda:1480.3-19	  checkCurry _ _ _ = failure (BuiltinTypeMismatch "curry")	when checking the definition of checkCurry
+Once/TypeCheck/Elaborate.agda:1744.1-17	  ... | .nothing | refl | .nothing | refl | _ | no ¬eq	when checking the definition of Once.TypeCheck.Elaborate.with-6350
+Once/TypeCheck/Elaborate.agda:523.5-27	  go other args = mkSpine other args	when checking the definition of go
+Once/TypeCheck/Elaborate.agda:716.1-717.18	  classifyAppHead (RApp _ _) = nothing	when checking the definition of classifyAppHead
+Once/TypeCheck/Elaborate.agda:770.1-35	  classifyAppHeadView (RApp _ _) = ahv-other	when checking the definition of classifyAppHeadView
+Once/TypeCheck/Elaborate.agda:86.3-18	  ... | _ | no ¬q = no (λ { refl → ¬q refl })	when checking the definition of Once.TypeCheck.Elaborate.with-46
+Once/TypeCheck/Elaborate.agda:886.1-890.18	  composeArgB ctx (RVar name) A	when checking the definition of composeArgB
+Once/TypeCheck/Elaborate.agda:90.3-18	  ... | _ | no ¬q = no (λ { refl → ¬q refl })	when checking the definition of Once.TypeCheck.Elaborate.with-90
+Once/TypeCheck/Raw.agda:136.1-17	  isComparisonOp _ = false	when checking the definition of isComparisonOp
+Once/TypeCheck/Raw.agda:145.1-17	  isArithmeticOp _ = false	when checking the definition of isArithmeticOp

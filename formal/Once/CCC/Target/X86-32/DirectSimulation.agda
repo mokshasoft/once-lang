@@ -35,8 +35,9 @@ open import Once.CCC.Target.X86-32.Syntax
   using (Reg; eax; ebx; ecx; edx; esi; edi; ebp; esp; Program; slot-size; slots)
   renaming (Instr to X86Instr)
 open import Once.CCC.Target.X86-32.Syntax
-  using (mov; lea; push; pop; add; sub; call; ret; nop; ud2;
-         Operand; reg; imm; mem; Mem; base; base+disp)
+  using (mov; lea; push; pop; add; sub; cmp; test; jmp; jne; je; call; ret;
+         nop; ud2; label;
+         Operand; reg; imm; mem; Mem; base; base+disp; label-rel)
 open import Once.CCC.Target.X86-32.AbstractToX86-32
   using (compile-abstract; compile-trace; slot-to-disp)
 open import Once.CCC.IR using (IR)
@@ -112,17 +113,29 @@ module Simulation {FS : FrameSemantics} where
   disp-to-slot : ℕ → ℕ
   disp-to-slot d = d / slot-size
 
-  -- Decidable equality for ValueLocation (needed for memory operations)
+  -- Decidable equality for ValueLocation. Helpers take inner Dec
+  -- results explicitly to avoid `with`-blocks (case-tree artifacts
+  -- under --exact-split).
+
+  ≟L-OnStack-aux : ∀ {f1 f2 k1 k2}
+                 → Dec (f1 ≡ f2) → Dec (k1 ≡ k2)
+                 → Dec (OnStack {FS} f1 k1 ≡ OnStack {FS} f2 k2)
+  ≟L-OnStack-aux (yes refl) (yes refl) = yes refl
+  ≟L-OnStack-aux (yes refl) (no k≢k)   = no λ { refl → k≢k refl }
+  ≟L-OnStack-aux (no f≢f)   (yes _)    = no λ { refl → f≢f refl }
+  ≟L-OnStack-aux (no f≢f)   (no _)     = no λ { refl → f≢f refl }
+
+  ≟L-OnHeap-aux : ∀ {hl1 hl2}
+                → Dec (hl1 ≡ hl2)
+                → Dec (OnHeap {FS} hl1 ≡ OnHeap {FS} hl2)
+  ≟L-OnHeap-aux (yes refl) = yes refl
+  ≟L-OnHeap-aux (no neq)   = no λ { refl → neq refl }
+
   _≟L_ : (l1 l2 : ValueLocation FS) → Dec (l1 ≡ l2)
-  OnStack f1 k1 ≟L OnStack f2 k2 with f1 ≟F f2 | k1 ≟ k2
-  ... | yes refl | yes refl = yes refl
-  ... | yes _ | no k≢k = no λ { refl → k≢k refl }
-  ... | no f≢f | _ = no λ { refl → f≢f refl }
-  OnStack _ _ ≟L OnHeap _ = no λ ()
-  OnHeap _ ≟L OnStack _ _ = no λ ()
-  OnHeap hl1 ≟L OnHeap hl2 with hl1 ≟HL hl2
-  ... | yes refl = yes refl
-  ... | no neq = no λ { refl → neq refl }
+  OnStack f1 k1 ≟L OnStack f2 k2 = ≟L-OnStack-aux (f1 ≟F f2) (k1 ≟ k2)
+  OnStack _ _   ≟L OnHeap _      = no λ ()
+  OnHeap _      ≟L OnStack _ _   = no λ ()
+  OnHeap hl1    ≟L OnHeap hl2    = ≟L-OnHeap-aux (hl1 ≟HL hl2)
 
   -- Helper: write to memory (functional update)
   writeX86Mem : (ValueLocation FS → Maybe (ValueLocation FS)) →
@@ -148,6 +161,19 @@ module Simulation {FS : FrameSemantics} where
   exec-x86-load-ecx-with-value : Maybe (ValueLocation FS) → X86State → X86State
   exec-x86-load-ecx-with-value (just v) xs = record xs { ecx-val = v }
   exec-x86-load-ecx-with-value nothing xs = record xs { x86-halted = true }
+
+  ----------------------------------------------------------------------
+  -- Plan 0.9 Phase B: postulates for unmodeled instruction shapes.
+  -- See X86-64.DirectSimulation for full rationale.
+  ----------------------------------------------------------------------
+
+  postulate
+    exec-x86-mov-other  : Operand → Operand → X86State → X86State
+    exec-x86-lea-other  : Reg → Mem → X86State → X86State
+    exec-x86-add-other  : Operand → Operand → X86State → X86State
+    exec-x86-sub-other  : Operand → Operand → X86State → X86State
+    exec-x86-push-other : Operand → X86State → X86State
+    exec-x86-pop-other  : Reg → X86State → X86State
 
   exec-x86 : X86Instr → X86State → Frame → X86State
 
@@ -214,7 +240,33 @@ module Simulation {FS : FrameSemantics} where
   exec-x86 ret xs _ = xs
   exec-x86 nop xs _ = xs
   exec-x86 ud2 xs _ = record xs { x86-halted = true }
-  exec-x86 _ xs _ = xs
+
+  ----------------------------------------------------------------------
+  -- Plan 0.9 Phase B: per-Instr-constructor exhaustiveness.
+  -- Catch-all bodies for shape-rich constructors route through named
+  -- postulates above instead of silent identity.
+  ----------------------------------------------------------------------
+
+  {-# CATCHALL #-}
+  exec-x86 (mov dst src) xs _ = exec-x86-mov-other dst src xs
+  {-# CATCHALL #-}
+  exec-x86 (lea r m)     xs _ = exec-x86-lea-other r m xs
+  {-# CATCHALL #-}
+  exec-x86 (add d s)     xs _ = exec-x86-add-other d s xs
+  {-# CATCHALL #-}
+  exec-x86 (sub d s)     xs _ = exec-x86-sub-other d s xs
+  {-# CATCHALL #-}
+  exec-x86 (push op)     xs _ = exec-x86-push-other op xs
+  {-# CATCHALL #-}
+  exec-x86 (pop r)       xs _ = exec-x86-pop-other r xs
+
+  -- Constructors not enumerated above; identity is honest here.
+  exec-x86 (cmp _ _)  xs _ = xs
+  exec-x86 (test _ _) xs _ = xs
+  exec-x86 (jmp _)    xs _ = xs
+  exec-x86 (jne _)    xs _ = xs
+  exec-x86 (je _)     xs _ = xs
+  exec-x86 (label _)  xs _ = xs
 
   -- Mutually recursive: exec-prog and exec-prog-step
   -- exec-prog-step takes halted flag as explicit parameter (principled pattern)

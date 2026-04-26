@@ -36,7 +36,8 @@ open import Once.CCC.Target.RiscV64.Syntax
   using (Reg; ra; sp; fp; a0; t0; s1; Program; slot-size; slots)
   renaming (Instr to RV64Instr; zero to reg-zero)
 open import Once.CCC.Target.RiscV64.Syntax
-  using (ld; sd; addi; mv; jalr; ret; nop; unimp)
+  using (ld; sd; add; sub; addi; li; auipc; mv; beq; bne; jal; jalr;
+         j; ret; call; nop; unimp; label)
 open import Once.CCC.Target.RiscV64.AbstractToRiscV
   using (compile-abstract; compile-trace; slot-to-disp)
 open import Once.CCC.IR using (IR)
@@ -117,17 +118,29 @@ module Simulation {FS : FrameSemantics} where
   imm-to-ℕ (+ n) = n
   imm-to-ℕ -[1+ n ] = suc n
 
-  -- Decidable equality for ValueLocation (needed for memory operations)
+  -- Decidable equality for ValueLocation. Helpers take inner Dec
+  -- results explicitly to avoid `with`-blocks (case-tree artifacts
+  -- under --exact-split).
+
+  ≟L-OnStack-aux : ∀ {f1 f2 k1 k2}
+                 → Dec (f1 ≡ f2) → Dec (k1 ≡ k2)
+                 → Dec (OnStack {FS} f1 k1 ≡ OnStack {FS} f2 k2)
+  ≟L-OnStack-aux (yes refl) (yes refl) = yes refl
+  ≟L-OnStack-aux (yes refl) (no k≢k)   = no λ { refl → k≢k refl }
+  ≟L-OnStack-aux (no f≢f)   (yes _)    = no λ { refl → f≢f refl }
+  ≟L-OnStack-aux (no f≢f)   (no _)     = no λ { refl → f≢f refl }
+
+  ≟L-OnHeap-aux : ∀ {hl1 hl2}
+                → Dec (hl1 ≡ hl2)
+                → Dec (OnHeap {FS} hl1 ≡ OnHeap {FS} hl2)
+  ≟L-OnHeap-aux (yes refl) = yes refl
+  ≟L-OnHeap-aux (no neq)   = no λ { refl → neq refl }
+
   _≟L_ : (l1 l2 : ValueLocation FS) → Dec (l1 ≡ l2)
-  OnStack f1 k1 ≟L OnStack f2 k2 with f1 ≟F f2 | k1 ≟ k2
-  ... | yes refl | yes refl = yes refl
-  ... | yes _ | no k≢k = no λ { refl → k≢k refl }
-  ... | no f≢f | _ = no λ { refl → f≢f refl }
-  OnStack _ _ ≟L OnHeap _ = no λ ()
-  OnHeap _ ≟L OnStack _ _ = no λ ()
-  OnHeap hl1 ≟L OnHeap hl2 with hl1 ≟HL hl2
-  ... | yes refl = yes refl
-  ... | no neq = no λ { refl → neq refl }
+  OnStack f1 k1 ≟L OnStack f2 k2 = ≟L-OnStack-aux (f1 ≟F f2) (k1 ≟ k2)
+  OnStack _ _   ≟L OnHeap _      = no λ ()
+  OnHeap _      ≟L OnStack _ _   = no λ ()
+  OnHeap hl1    ≟L OnHeap hl2    = ≟L-OnHeap-aux (hl1 ≟HL hl2)
 
   -- Helper: write to memory (functional update)
   writeRV64Mem : (ValueLocation FS → Maybe (ValueLocation FS)) →
@@ -153,6 +166,18 @@ module Simulation {FS : FrameSemantics} where
   exec-rv64-load-t0-with-value : Maybe (ValueLocation FS) → RV64State → RV64State
   exec-rv64-load-t0-with-value (just v) rs = record rs { t0-val = v }
   exec-rv64-load-t0-with-value nothing rs = record rs { rv64-halted = true }
+
+  ----------------------------------------------------------------------
+  -- Plan 0.9 Phase B: postulates for unmodeled instruction shapes.
+  -- See X86-64.DirectSimulation for full rationale.
+  ----------------------------------------------------------------------
+
+  postulate
+    exec-rv64-ld-other   : Reg → Reg → ℕ → RV64State → RV64State
+    exec-rv64-sd-other   : Reg → Reg → ℕ → RV64State → RV64State
+    exec-rv64-addi-other : Reg → Reg → ℤ → RV64State → RV64State
+    exec-rv64-mv-other   : Reg → Reg → RV64State → RV64State
+    exec-rv64-jalr-other : Reg → Reg → ℕ → RV64State → RV64State
 
   exec-rv64 : RV64Instr → RV64State → Frame → RV64State
 
@@ -218,7 +243,37 @@ module Simulation {FS : FrameSemantics} where
   exec-rv64 ret rs _ = rs
   exec-rv64 nop rs _ = rs
   exec-rv64 unimp rs _ = record rs { rv64-halted = true }
-  exec-rv64 _ rs _ = rs
+
+  ----------------------------------------------------------------------
+  -- Plan 0.9 Phase B: per-Instr-constructor exhaustiveness.
+  -- Catch-all bodies for shape-rich constructors route through named
+  -- postulates above instead of silent identity.
+  ----------------------------------------------------------------------
+
+  {-# CATCHALL #-}
+  exec-rv64 (ld d s o)   rs _ = exec-rv64-ld-other d s o rs
+  {-# CATCHALL #-}
+  exec-rv64 (sd s d o)   rs _ = exec-rv64-sd-other s d o rs
+  {-# CATCHALL #-}
+  exec-rv64 (addi d s i) rs _ = exec-rv64-addi-other d s i rs
+  {-# CATCHALL #-}
+  exec-rv64 (mv d s)     rs _ = exec-rv64-mv-other d s rs
+  {-# CATCHALL #-}
+  exec-rv64 (jalr d s o) rs _ = exec-rv64-jalr-other d s o rs
+
+  -- Constructors not enumerated above (no overlap, no CATCHALL):
+  -- identity for arithmetic/branch/jump instructions whose effects
+  -- aren't modeled at the per-instr level.
+  exec-rv64 (add _ _ _) rs _ = rs
+  exec-rv64 (sub _ _ _) rs _ = rs
+  exec-rv64 (li _ _)    rs _ = rs
+  exec-rv64 (auipc _ _) rs _ = rs
+  exec-rv64 (beq _ _ _) rs _ = rs
+  exec-rv64 (bne _ _ _) rs _ = rs
+  exec-rv64 (jal _ _)   rs _ = rs
+  exec-rv64 (j _)       rs _ = rs
+  exec-rv64 (call _)    rs _ = rs
+  exec-rv64 (label _)   rs _ = rs
 
   -- Mutually recursive: exec-prog and exec-prog-step
   exec-prog : Program → RV64State → Frame → RV64State

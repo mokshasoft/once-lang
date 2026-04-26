@@ -52,6 +52,44 @@ Heap  ≟AllocMode Heap  = yes refl
 -- | Functor equality (forward declared, defined after Type equality)
 _≟Functor_ : (F G : Functor) → Dec (F ≡ G)
 
+-- Helpers for ≟Type's matching-constructor cases.
+-- Take inner Dec results explicitly to avoid `with`-blocks
+-- (case-tree artifacts under --exact-split).
+
+≟Type-*-aux : ∀ {A B C D} → Dec (A ≡ C) → Dec (B ≡ D)
+            → Dec ((A * B) ≡ (C * D))
+≟Type-*-aux (yes refl) (yes refl) = yes refl
+≟Type-*-aux (yes refl) (no neq)   = no (λ { refl → neq refl })
+≟Type-*-aux (no neq)   (yes _)    = no (λ { refl → neq refl })
+≟Type-*-aux (no neq)   (no _)     = no (λ { refl → neq refl })
+
+≟Type-+-aux : ∀ {A B C D} → Dec (A ≡ C) → Dec (B ≡ D)
+            → Dec ((A + B) ≡ (C + D))
+≟Type-+-aux (yes refl) (yes refl) = yes refl
+≟Type-+-aux (yes refl) (no neq)   = no (λ { refl → neq refl })
+≟Type-+-aux (no neq)   (yes _)    = no (λ { refl → neq refl })
+≟Type-+-aux (no neq)   (no _)     = no (λ { refl → neq refl })
+
+≟Type-⇒-aux : ∀ {A B C D q q'}
+            → Dec (A ≡ C) → Dec (q ≡ q') → Dec (B ≡ D)
+            → Dec ((A ⇒[ q ] B) ≡ (C ⇒[ q' ] D))
+≟Type-⇒-aux (yes refl) (yes refl) (yes refl) = yes refl
+≟Type-⇒-aux (yes refl) (yes refl) (no neq)   = no (λ { refl → neq refl })
+≟Type-⇒-aux (yes refl) (no neq)   (yes _)    = no (λ { refl → neq refl })
+≟Type-⇒-aux (yes refl) (no neq)   (no _)     = no (λ { refl → neq refl })
+≟Type-⇒-aux (no neq)   (yes _)    (yes _)    = no (λ { refl → neq refl })
+≟Type-⇒-aux (no neq)   (yes _)    (no _)     = no (λ { refl → neq refl })
+≟Type-⇒-aux (no neq)   (no _)     (yes _)    = no (λ { refl → neq refl })
+≟Type-⇒-aux (no neq)   (no _)     (no _)     = no (λ { refl → neq refl })
+
+≟Type-μ-aux : ∀ {F G} → Dec (F ≡ G) → Dec (μ-type F ≡ μ-type G)
+≟Type-μ-aux (yes refl) = yes refl
+≟Type-μ-aux (no neq)   = no (λ { refl → neq refl })
+
+≟Type-ν-aux : ∀ {F G} → Dec (F ≡ G) → Dec (ν-type F ≡ ν-type G)
+≟Type-ν-aux (yes refl) = yes refl
+≟Type-ν-aux (no neq)   = no (λ { refl → neq refl })
+
 _≟Type_ : (A B : Type) → Dec (A ≡ B)
 Unit ≟Type Unit = yes refl
 Unit ≟Type Void = no (λ ())
@@ -73,10 +111,7 @@ Void ≟Type Str = no (λ ())
 Void ≟Type Buffer = no (λ ())
 (A * B) ≟Type Unit = no (λ ())
 (A * B) ≟Type Void = no (λ ())
-(A * B) ≟Type (C * D) with A ≟Type C | B ≟Type D
-... | yes refl | yes refl = yes refl
-... | no neq  | _        = no (λ { refl → neq refl })
-... | _       | no neq   = no (λ { refl → neq refl })
+(A * B) ≟Type (C * D) = ≟Type-*-aux (A ≟Type C) (B ≟Type D)
 (A * B) ≟Type (_ + _) = no (λ ())
 (A * B) ≟Type (_ ⇒[ _ ] _) = no (λ ())
 (A * B) ≟Type Int = no (λ ())
@@ -86,10 +121,7 @@ Void ≟Type Buffer = no (λ ())
 (A + B) ≟Type Unit = no (λ ())
 (A + B) ≟Type Void = no (λ ())
 (A + B) ≟Type (_ * _) = no (λ ())
-(A + B) ≟Type (C + D) with A ≟Type C | B ≟Type D
-... | yes refl | yes refl = yes refl
-... | no neq  | _        = no (λ { refl → neq refl })
-... | _       | no neq   = no (λ { refl → neq refl })
+(A + B) ≟Type (C + D) = ≟Type-+-aux (A ≟Type C) (B ≟Type D)
 (A + B) ≟Type (_ ⇒[ _ ] _) = no (λ ())
 (A + B) ≟Type Int = no (λ ())
 (A + B) ≟Type Float = no (λ ())
@@ -99,11 +131,7 @@ Void ≟Type Buffer = no (λ ())
 (A ⇒[ q ] B) ≟Type Void = no (λ ())
 (A ⇒[ q ] B) ≟Type (_ * _) = no (λ ())
 (A ⇒[ q ] B) ≟Type (_ + _) = no (λ ())
-(A ⇒[ q ] B) ≟Type (C ⇒[ q' ] D) with A ≟Type C | q ≟k q' | B ≟Type D
-... | yes refl | yes refl | yes refl = yes refl
-... | no neq  | _        | _         = no (λ { refl → neq refl })
-... | _       | no neq   | _         = no (λ { refl → neq refl })
-... | _       | _        | no neq    = no (λ { refl → neq refl })
+(A ⇒[ q ] B) ≟Type (C ⇒[ q' ] D) = ≟Type-⇒-aux (A ≟Type C) (q ≟k q') (B ≟Type D)
 (A ⇒[ q ] B) ≟Type Int = no (λ ())
 (A ⇒[ q ] B) ≟Type Float = no (λ ())
 (A ⇒[ q ] B) ≟Type Str = no (λ ())
@@ -152,9 +180,7 @@ Buffer ≟Type Buffer = yes refl
 (μ-type F) ≟Type (_ * _) = no (λ ())
 (μ-type F) ≟Type (_ + _) = no (λ ())
 (μ-type F) ≟Type (_ ⇒[ _ ] _) = no (λ ())
-(μ-type F) ≟Type (μ-type G) with F ≟Functor G
-... | yes refl = yes refl
-... | no neq   = no (λ { refl → neq refl })
+(μ-type F) ≟Type (μ-type G) = ≟Type-μ-aux (F ≟Functor G)
 (μ-type F) ≟Type (ν-type _) = no (λ ())
 (μ-type F) ≟Type Int = no (λ ())
 (μ-type F) ≟Type Float = no (λ ())
@@ -167,9 +193,7 @@ Buffer ≟Type Buffer = yes refl
 (ν-type F) ≟Type (_ + _) = no (λ ())
 (ν-type F) ≟Type (_ ⇒[ _ ] _) = no (λ ())
 (ν-type F) ≟Type (μ-type _) = no (λ ())
-(ν-type F) ≟Type (ν-type G) with F ≟Functor G
-... | yes refl = yes refl
-... | no neq   = no (λ { refl → neq refl })
+(ν-type F) ≟Type (ν-type G) = ≟Type-ν-aux (F ≟Functor G)
 (ν-type F) ≟Type Int = no (λ ())
 (ν-type F) ≟Type Float = no (λ ())
 (ν-type F) ≟Type Str = no (λ ())
@@ -200,9 +224,29 @@ Buffer ≟Type (ν-type _) = no (λ ())
 -- Functor equality implementation
 ------------------------------------------------------------------------
 
-K A ≟Functor K B with A ≟Type B
-... | yes refl = yes refl
-... | no neq   = no (λ { refl → neq refl })
+-- Helpers for ≟Functor's matching-constructor cases.
+
+≟Functor-K-aux : ∀ {A B} → Dec (A ≡ B) → Dec (K A ≡ K B)
+≟Functor-K-aux (yes refl) = yes refl
+≟Functor-K-aux (no neq)   = no (λ { refl → neq refl })
+
+≟Functor-⊕-aux : ∀ {F₁ F₂ G₁ G₂}
+               → Dec (F₁ ≡ G₁) → Dec (F₂ ≡ G₂)
+               → Dec ((F₁ ⊕ F₂) ≡ (G₁ ⊕ G₂))
+≟Functor-⊕-aux (yes refl) (yes refl) = yes refl
+≟Functor-⊕-aux (yes refl) (no neq)   = no (λ { refl → neq refl })
+≟Functor-⊕-aux (no neq)   (yes _)    = no (λ { refl → neq refl })
+≟Functor-⊕-aux (no neq)   (no _)     = no (λ { refl → neq refl })
+
+≟Functor-⊗-aux : ∀ {F₁ F₂ G₁ G₂}
+               → Dec (F₁ ≡ G₁) → Dec (F₂ ≡ G₂)
+               → Dec ((F₁ ⊗ F₂) ≡ (G₁ ⊗ G₂))
+≟Functor-⊗-aux (yes refl) (yes refl) = yes refl
+≟Functor-⊗-aux (yes refl) (no neq)   = no (λ { refl → neq refl })
+≟Functor-⊗-aux (no neq)   (yes _)    = no (λ { refl → neq refl })
+≟Functor-⊗-aux (no neq)   (no _)     = no (λ { refl → neq refl })
+
+K A ≟Functor K B = ≟Functor-K-aux (A ≟Type B)
 K _ ≟Functor Id = no (λ ())
 K _ ≟Functor (_ ⊕ _) = no (λ ())
 K _ ≟Functor (_ ⊗ _) = no (λ ())
@@ -212,18 +256,12 @@ Id ≟Functor (_ ⊕ _) = no (λ ())
 Id ≟Functor (_ ⊗ _) = no (λ ())
 (F₁ ⊕ F₂) ≟Functor K _ = no (λ ())
 (F₁ ⊕ F₂) ≟Functor Id = no (λ ())
-(F₁ ⊕ F₂) ≟Functor (G₁ ⊕ G₂) with F₁ ≟Functor G₁ | F₂ ≟Functor G₂
-... | yes refl | yes refl = yes refl
-... | no neq   | _        = no (λ { refl → neq refl })
-... | _        | no neq   = no (λ { refl → neq refl })
+(F₁ ⊕ F₂) ≟Functor (G₁ ⊕ G₂) = ≟Functor-⊕-aux (F₁ ≟Functor G₁) (F₂ ≟Functor G₂)
 (F₁ ⊕ F₂) ≟Functor (_ ⊗ _) = no (λ ())
 (F₁ ⊗ F₂) ≟Functor K _ = no (λ ())
 (F₁ ⊗ F₂) ≟Functor Id = no (λ ())
 (F₁ ⊗ F₂) ≟Functor (_ ⊕ _) = no (λ ())
-(F₁ ⊗ F₂) ≟Functor (G₁ ⊗ G₂) with F₁ ≟Functor G₁ | F₂ ≟Functor G₂
-... | yes refl | yes refl = yes refl
-... | no neq   | _        = no (λ { refl → neq refl })
-... | _        | no neq   = no (λ { refl → neq refl })
+(F₁ ⊗ F₂) ≟Functor (G₁ ⊗ G₂) = ≟Functor-⊗-aux (F₁ ≟Functor G₁) (F₂ ≟Functor G₂)
 
 ------------------------------------------------------------------------
 -- IR equality (needed for eta uniqueness laws)
@@ -393,9 +431,15 @@ cross-no {f = f} {g = g} hneq eqA eqB = head-mismatch-abs f g hneq eqA eqB
           → (eqA : A ≡ A') (eqB : B ≡ B')
           → Dec (f ≡ subst₂-IR (sym eqA) (sym eqB) g)
 
-≟IRH f g eqA eqB with ir-head f ≟IRHead ir-head g
-... | yes heq = ≟IRH-diag f g heq eqA eqB
-... | no  hne = no (cross-no hne eqA eqB)
+-- Helper: dispatch ≟IRH on the head-equality decision (no-with form).
+≟IRH-aux : ∀ {A B A' B'} (f : IR A B) (g : IR A' B')
+         → Dec (ir-head f ≡ ir-head g)
+         → (eqA : A ≡ A') (eqB : B ≡ B')
+         → Dec (f ≡ subst₂-IR (sym eqA) (sym eqB) g)
+≟IRH-aux f g (yes heq) eqA eqB = ≟IRH-diag f g heq eqA eqB
+≟IRH-aux f g (no hne)  eqA eqB = no (cross-no hne eqA eqB)
+
+≟IRH f g eqA eqB = ≟IRH-aux f g (ir-head f ≟IRHead ir-head g) eqA eqB
 
 _≟IR_ : ∀ {A B} → (f g : IR A B) → Dec (f ≡ g)
 f ≟IR g = ≟IRH f g refl refl
@@ -411,6 +455,87 @@ f ≟IR g = ≟IRH f g refl refl
 ν-inj refl = refl
 
 -- ═══════════════════════════════════════════════════════════════════════
+-- Diagonal-case helpers (avoid nested with-blocks under --exact-split).
+-- Each helper takes the relevant sub-Dec results explicitly and is
+-- exhaustively pattern-matched.
+-- ═══════════════════════════════════════════════════════════════════════
+
+≟IRH-∘-inner : ∀ {A B D} (g₁ g₂ : IR B D) (f₁ f₂ : IR A B)
+             → Dec (g₁ ≡ g₂) → Dec (f₁ ≡ f₂)
+             → Dec (g₁ ∘ f₁ ≡ g₂ ∘ f₂)
+≟IRH-∘-inner g₁ g₂ f₁ f₂ (yes refl) (yes refl) = yes refl
+≟IRH-∘-inner g₁ g₂ f₁ f₂ (yes refl) (no nq)    = no (λ { refl → nq refl })
+≟IRH-∘-inner g₁ g₂ f₁ f₂ (no np)    (yes _)    = no (λ { refl → np refl })
+≟IRH-∘-inner g₁ g₂ f₁ f₂ (no np)    (no _)     = no (λ { refl → np refl })
+
+≟IRH-∘-aux : ∀ {A B B' D}
+           → (g₁ : IR B D) (f₁ : IR A B)
+           → (g₂ : IR B' D) (f₂ : IR A B')
+           → Dec (B ≡ B')
+           → Dec (g₁ ∘ f₁ ≡ g₂ ∘ f₂)
+≟IRH-∘-aux g₁ f₁ g₂ f₂ (no neq)   = no (λ { refl → neq refl })
+≟IRH-∘-aux g₁ f₁ g₂ f₂ (yes refl) =
+  ≟IRH-∘-inner g₁ g₂ f₁ f₂ (≟IRH g₁ g₂ refl refl) (≟IRH f₁ f₂ refl refl)
+
+≟IRH-⟨,⟩-aux : ∀ {A B C} (f₁ f₂ : IR A B) (g₁ g₂ : IR A C) (m₁ m₂ : AllocMode)
+             → Dec (f₁ ≡ f₂) → Dec (g₁ ≡ g₂) → Dec (m₁ ≡ m₂)
+             → Dec (⟨ f₁ , g₁ ⟩ m₁ ≡ ⟨ f₂ , g₂ ⟩ m₂)
+≟IRH-⟨,⟩-aux f₁ f₂ g₁ g₂ m₁ m₂ (yes refl) (yes refl) (yes refl) = yes refl
+≟IRH-⟨,⟩-aux f₁ f₂ g₁ g₂ m₁ m₂ (yes refl) (yes refl) (no nm)    = no (λ { refl → nm refl })
+≟IRH-⟨,⟩-aux f₁ f₂ g₁ g₂ m₁ m₂ (yes refl) (no nq)    (yes _)    = no (λ { refl → nq refl })
+≟IRH-⟨,⟩-aux f₁ f₂ g₁ g₂ m₁ m₂ (yes refl) (no nq)    (no _)     = no (λ { refl → nq refl })
+≟IRH-⟨,⟩-aux f₁ f₂ g₁ g₂ m₁ m₂ (no np)    (yes _)    (yes _)    = no (λ { refl → np refl })
+≟IRH-⟨,⟩-aux f₁ f₂ g₁ g₂ m₁ m₂ (no np)    (yes _)    (no _)     = no (λ { refl → np refl })
+≟IRH-⟨,⟩-aux f₁ f₂ g₁ g₂ m₁ m₂ (no np)    (no _)     (yes _)    = no (λ { refl → np refl })
+≟IRH-⟨,⟩-aux f₁ f₂ g₁ g₂ m₁ m₂ (no np)    (no _)     (no _)     = no (λ { refl → np refl })
+
+≟IRH-case-aux : ∀ {A B C} (f₁ f₂ : IR A C) (g₁ g₂ : IR B C)
+              → Dec (f₁ ≡ f₂) → Dec (g₁ ≡ g₂)
+              → Dec (case f₁ g₁ ≡ case f₂ g₂)
+≟IRH-case-aux f₁ f₂ g₁ g₂ (yes refl) (yes refl) = yes refl
+≟IRH-case-aux f₁ f₂ g₁ g₂ (yes refl) (no nq)    = no (λ { refl → nq refl })
+≟IRH-case-aux f₁ f₂ g₁ g₂ (no np)    (yes _)    = no (λ { refl → np refl })
+≟IRH-case-aux f₁ f₂ g₁ g₂ (no np)    (no _)     = no (λ { refl → np refl })
+
+≟IRH-curry-aux : ∀ {A B C k} (f₁ f₂ : IR (A * B) C) (m₁ m₂ : AllocMode)
+               → Dec (f₁ ≡ f₂) → Dec (m₁ ≡ m₂)
+               → Dec (curry {A} {B} {C} {k} f₁ m₁ ≡ curry f₂ m₂)
+≟IRH-curry-aux f₁ f₂ m₁ m₂ (yes refl) (yes refl) = yes refl
+≟IRH-curry-aux f₁ f₂ m₁ m₂ (yes refl) (no nm)    = no (λ { refl → nm refl })
+≟IRH-curry-aux f₁ f₂ m₁ m₂ (no np)    (yes _)    = no (λ { refl → np refl })
+≟IRH-curry-aux f₁ f₂ m₁ m₂ (no np)    (no _)     = no (λ { refl → np refl })
+
+-- Hylo helper: takes both alg and coalg Dec results; uses rewrite
+-- on WellFormedF-irrelevant for the matched-functor case.
+≟IRH-Hylo-inner : ∀ {F G B}
+                → (wfF₁ wfF₂ : _) (wfG₁ wfG₂ : _)
+                → (alg₁ alg₂ : IR (⟦ F ⟧T B) B)
+                → (coalg₁ coalg₂ : IR (μ-type G) (⟦ F ⟧T (μ-type G)))
+                → Dec (alg₁ ≡ alg₂) → Dec (coalg₁ ≡ coalg₂)
+                → Dec (Hylo {F} {G} wfF₁ wfG₁ alg₁ coalg₁
+                       ≡ Hylo wfF₂ wfG₂ alg₂ coalg₂)
+≟IRH-Hylo-inner wfF₁ wfF₂ wfG₁ wfG₂ alg₁ alg₂ coalg₁ coalg₂ (yes refl) (yes refl)
+  rewrite WellFormedF-irrelevant wfF₁ wfF₂
+        | WellFormedF-irrelevant wfG₁ wfG₂ = yes refl
+≟IRH-Hylo-inner _ _ _ _ _ _ _ _ (yes refl) (no nq) = no (λ { refl → nq refl })
+≟IRH-Hylo-inner _ _ _ _ _ _ _ _ (no np)    (yes _) = no (λ { refl → np refl })
+≟IRH-Hylo-inner _ _ _ _ _ _ _ _ (no np)    (no _)  = no (λ { refl → np refl })
+
+≟IRH-Fuse-inner : ∀ {F G B}
+                → (wfF₁ wfF₂ : _) (wfG₁ wfG₂ : _)
+                → (alg₁ alg₂ : IR (⟦ F ⟧T B) B)
+                → (tr₁ tr₂ : IR (⟦ G ⟧T (μ-type G)) (⟦ F ⟧T (μ-type G)))
+                → Dec (alg₁ ≡ alg₂) → Dec (tr₁ ≡ tr₂)
+                → Dec (Fuse {F} {G} wfF₁ wfG₁ alg₁ tr₁
+                       ≡ Fuse wfF₂ wfG₂ alg₂ tr₂)
+≟IRH-Fuse-inner wfF₁ wfF₂ wfG₁ wfG₂ alg₁ alg₂ tr₁ tr₂ (yes refl) (yes refl)
+  rewrite WellFormedF-irrelevant wfF₁ wfF₂
+        | WellFormedF-irrelevant wfG₁ wfG₂ = yes refl
+≟IRH-Fuse-inner _ _ _ _ _ _ _ _ (yes refl) (no nq) = no (λ { refl → nq refl })
+≟IRH-Fuse-inner _ _ _ _ _ _ _ _ (no np)    (yes _) = no (λ { refl → np refl })
+≟IRH-Fuse-inner _ _ _ _ _ _ _ _ (no np)    (no _)  = no (λ { refl → np refl })
+
+-- ═══════════════════════════════════════════════════════════════════════
 -- Diagonal (same-constructor) cases
 -- ═══════════════════════════════════════════════════════════════════════
 
@@ -418,21 +543,13 @@ f ≟IR g = ≟IRH f g refl refl
 ≟IRH-diag id id _ refl refl = yes refl
 
 -- _∘_: compare the intermediate (middle) type first, then sub-IRs
-≟IRH-diag (_∘_ {_} {B} g₁ f₁) (_∘_ {_} {B'} g₂ f₂) _ refl refl
-  with B ≟Type B'
-... | no neq = no (λ { refl → neq refl })
-... | yes refl with ≟IRH g₁ g₂ refl refl | ≟IRH f₁ f₂ refl refl
-...   | yes refl | yes refl = yes refl
-...   | no np    | _        = no (λ { refl → np refl })
-...   | _        | no nq    = no (λ { refl → nq refl })
+≟IRH-diag (_∘_ {_} {B} g₁ f₁) (_∘_ {_} {B'} g₂ f₂) _ refl refl =
+  ≟IRH-∘-aux g₁ f₁ g₂ f₂ (B ≟Type B')
 
 -- ⟨_,_⟩: B * C equality refl-unifies both component types
-≟IRH-diag (⟨ f₁ , g₁ ⟩ m₁) (⟨ f₂ , g₂ ⟩ m₂) _ refl refl
-  with ≟IRH f₁ f₂ refl refl | ≟IRH g₁ g₂ refl refl | m₁ ≟AllocMode m₂
-... | yes refl | yes refl | yes refl = yes refl
-... | no np    | _        | _        = no (λ { refl → np refl })
-... | _        | no nq    | _        = no (λ { refl → nq refl })
-... | _        | _        | no nm    = no (λ { refl → nm refl })
+≟IRH-diag (⟨ f₁ , g₁ ⟩ m₁) (⟨ f₂ , g₂ ⟩ m₂) _ refl refl =
+  ≟IRH-⟨,⟩-aux f₁ f₂ g₁ g₂ m₁ m₂
+    (≟IRH f₁ f₂ refl refl) (≟IRH g₁ g₂ refl refl) (m₁ ≟AllocMode m₂)
 
 ≟IRH-diag fst fst _ refl refl = yes refl
 ≟IRH-diag snd snd _ refl refl = yes refl
@@ -445,20 +562,14 @@ f ≟IR g = ≟IRH f g refl refl
 ... | yes refl = yes refl
 ... | no nm    = no (λ { refl → nm refl })
 
-≟IRH-diag (case f₁ g₁) (case f₂ g₂) _ refl refl
-  with ≟IRH f₁ f₂ refl refl | ≟IRH g₁ g₂ refl refl
-... | yes refl | yes refl = yes refl
-... | no np    | _        = no (λ { refl → np refl })
-... | _        | no nq    = no (λ { refl → nq refl })
+≟IRH-diag (case f₁ g₁) (case f₂ g₂) _ refl refl =
+  ≟IRH-case-aux f₁ f₂ g₁ g₂ (≟IRH f₁ f₂ refl refl) (≟IRH g₁ g₂ refl refl)
 
 ≟IRH-diag terminal terminal _ refl refl = yes refl
 ≟IRH-diag initial initial _ refl refl = yes refl
 
-≟IRH-diag (curry f₁ m₁) (curry f₂ m₂) _ refl refl
-  with ≟IRH f₁ f₂ refl refl | m₁ ≟AllocMode m₂
-... | yes refl | yes refl = yes refl
-... | no np    | _        = no (λ { refl → np refl })
-... | _        | no nm    = no (λ { refl → nm refl })
+≟IRH-diag (curry f₁ m₁) (curry f₂ m₂) _ refl refl =
+  ≟IRH-curry-aux f₁ f₂ m₁ m₂ (≟IRH f₁ f₂ refl refl) (m₁ ≟AllocMode m₂)
 
 ≟IRH-diag apply apply _ refl refl = yes refl
 ≟IRH-diag arr arr _ refl refl = yes refl
@@ -519,6 +630,9 @@ f ≟IR g = ≟IRH f g refl refl
 
 -- Hylo: eqA : μ-type G ≡ μ-type G', eqB : B ≡ B'.
 -- F is internal to the alg's type; require F ≟ F' separately.
+-- Outer with-blocks on the Functor decisions remain (no warning —
+-- exhaustive on Dec). The inner sub-IR with-block is extracted into
+-- ≟IRH-Hylo-inner above.
 ≟IRH-diag (Hylo {F} {G} wfF₁ wfG₁ alg₁ coalg₁)
      (Hylo {F'} {G'} wfF₂ wfG₂ alg₂ coalg₂) _ eqA eqB
   with G ≟Functor G'
@@ -526,12 +640,9 @@ f ≟IR g = ≟IRH f g refl refl
 ... | yes refl with eqA | eqB
 ...   | refl | refl with F ≟Functor F'
 ...     | no fne  = no (λ { refl → fne refl })
-...     | yes refl with ≟IRH alg₁ alg₂ refl refl | ≟IRH coalg₁ coalg₂ refl refl
-...       | yes refl | yes refl
-              rewrite WellFormedF-irrelevant wfF₁ wfF₂
-                    | WellFormedF-irrelevant wfG₁ wfG₂ = yes refl
-...       | no np    | _        = no (λ { refl → np refl })
-...       | _        | no nq    = no (λ { refl → nq refl })
+...     | yes refl =
+            ≟IRH-Hylo-inner wfF₁ wfF₂ wfG₁ wfG₂ alg₁ alg₂ coalg₁ coalg₂
+              (≟IRH alg₁ alg₂ refl refl) (≟IRH coalg₁ coalg₂ refl refl)
 
 -- Fuse: similar shape to Hylo
 ≟IRH-diag (Fuse {F} {G} wfF₁ wfG₁ alg₁ tr₁)
@@ -541,12 +652,9 @@ f ≟IR g = ≟IRH f g refl refl
 ... | yes refl with eqA | eqB
 ...   | refl | refl with F ≟Functor F'
 ...     | no fne = no (λ { refl → fne refl })
-...     | yes refl with ≟IRH alg₁ alg₂ refl refl | ≟IRH tr₁ tr₂ refl refl
-...       | yes refl | yes refl
-              rewrite WellFormedF-irrelevant wfF₁ wfF₂
-                    | WellFormedF-irrelevant wfG₁ wfG₂ = yes refl
-...       | no np    | _        = no (λ { refl → np refl })
-...       | _        | no nq    = no (λ { refl → nq refl })
+...     | yes refl =
+            ≟IRH-Fuse-inner wfF₁ wfF₂ wfG₁ wfG₂ alg₁ alg₂ tr₁ tr₂
+              (≟IRH alg₁ alg₂ refl refl) (≟IRH tr₁ tr₂ refl refl)
 
 ≟IRH-diag (free-heap h₁) (free-heap h₂) _ refl refl with h₁ ≟H h₂
 ... | yes refl = yes refl
@@ -560,10 +668,24 @@ f ≟IR g = ≟IRH f g refl refl
 -- Helper: Check for Void types (enables dead code elimination)
 ------------------------------------------------------------------------
 
+-- Decidable-to-Bool conversion (avoids importing Relation.Nullary.Decidable).
+dec-to-bool : ∀ {ℓ} {P : Set ℓ} → Dec P → Bool
+dec-to-bool (yes _) = true
+dec-to-bool (no _)  = false
+
 -- | Check if a type is Void
 is-Void : Type → Bool
-is-Void Void = true
-is-Void _ = false
+is-Void Unit         = false
+is-Void Void         = true
+is-Void (_ * _)      = false
+is-Void (_ + _)      = false
+is-Void (_ ⇒[ _ ] _) = false
+is-Void (μ-type _)   = false
+is-Void (ν-type _)   = false
+is-Void Int          = false
+is-Void Float        = false
+is-Void Str          = false
+is-Void Buffer       = false
 
 ------------------------------------------------------------------------
 -- Optimizer: Composition Rules
@@ -582,27 +704,41 @@ is-Void _ = false
 
 -- Type predicates for type-directed optimization
 isUnitType : Type → Bool
-isUnitType Unit = true
-isUnitType _ = false
+isUnitType Unit         = true
+isUnitType Void         = false
+isUnitType (_ * _)      = false
+isUnitType (_ + _)      = false
+isUnitType (_ ⇒[ _ ] _) = false
+isUnitType (μ-type _)   = false
+isUnitType (ν-type _)   = false
+isUnitType Int          = false
+isUnitType Float        = false
+isUnitType Str          = false
+isUnitType Buffer       = false
 
 isVoidType : Type → Bool
-isVoidType Void = true
-isVoidType _ = false
+isVoidType Unit         = false
+isVoidType Void         = true
+isVoidType (_ * _)      = false
+isVoidType (_ + _)      = false
+isVoidType (_ ⇒[ _ ] _) = false
+isVoidType (μ-type _)   = false
+isVoidType (ν-type _)   = false
+isVoidType Int          = false
+isVoidType Float        = false
+isVoidType Str          = false
+isVoidType Buffer       = false
 
--- Check if f is fst (for pattern matching)
-is-fst? : ∀ {A B} → IR A B → Bool
-is-fst? fst = true
-is-fst? _ = false
+-- IR predicates: use ir-head head-discriminator + decidable IRHead equality
+-- to avoid enumerating all 24 IR constructors per predicate.
+is-fst?      : ∀ {A B} → IR A B → Bool
+is-fst?      f = dec-to-bool (ir-head f ≟IRHead h-fst)
 
--- Check if f is snd (for pattern matching)
-is-snd? : ∀ {A B} → IR A B → Bool
-is-snd? snd = true
-is-snd? _ = false
+is-snd?      : ∀ {A B} → IR A B → Bool
+is-snd?      f = dec-to-bool (ir-head f ≟IRHead h-snd)
 
--- Check if f is terminal (for pattern matching)
 is-terminal? : ∀ {A B} → IR A B → Bool
-is-terminal? terminal = true
-is-terminal? _ = false
+is-terminal? f = dec-to-bool (ir-head f ≟IRHead h-terminal)
 
 -- | Safe to distribute pairs: eta case OR terminal case
 --   f : IR C A, g : IR C B (components of a pair)
@@ -617,9 +753,9 @@ safe-pair-distrib f g =
 
 -- | Does f "want" a coproduct on its right? (i.e., can f ∘ inl/inr reduce?)
 wants-coprod : ∀ {A B} → IR A B → Bool
-wants-coprod (case _ _) = true
-wants-coprod terminal = true
-wants-coprod _ = false
+wants-coprod f =
+  dec-to-bool (ir-head f ≟IRHead h-case) ∨
+  dec-to-bool (ir-head f ≟IRHead h-terminal)
 
 -- OCP-0003: wants-unfold/wants-fold removed. Use Cata/Ana instead.
 
@@ -699,7 +835,29 @@ data InlInrView : ∀ {A B : Type} → IR A B → Set where
 pairView-gen : ∀ {A B'} (f : IR A B') → ∀ {B C} → (eq : B' ≡ B * C)
              → PairView {A} {B} {C} (subst (IR A) eq f)
 pairView-gen (⟨ f , g ⟩ m) refl = is-pair f g m
-pairView-gen f eq = is-other-pair (subst (IR _) eq f)
+pairView-gen id              eq = is-other-pair (subst (IR _) eq id)
+pairView-gen (f ∘ g)         eq = is-other-pair (subst (IR _) eq (f ∘ g))
+pairView-gen fst             eq = is-other-pair (subst (IR _) eq fst)
+pairView-gen snd             eq = is-other-pair (subst (IR _) eq snd)
+pairView-gen (inl m)         eq = is-other-pair (subst (IR _) eq (inl m))
+pairView-gen (inr m)         eq = is-other-pair (subst (IR _) eq (inr m))
+pairView-gen (case f g)      eq = is-other-pair (subst (IR _) eq (case f g))
+pairView-gen terminal        eq = is-other-pair (subst (IR _) eq terminal)
+pairView-gen initial         eq = is-other-pair (subst (IR _) eq initial)
+pairView-gen (curry f m)     eq = is-other-pair (subst (IR _) eq (curry f m))
+pairView-gen apply           eq = is-other-pair (subst (IR _) eq apply)
+pairView-gen arr             eq = is-other-pair (subst (IR _) eq arr)
+pairView-gen (In wf m)       eq = is-other-pair (subst (IR _) eq (In wf m))
+pairView-gen (out-μ wf)      eq = is-other-pair (subst (IR _) eq (out-μ wf))
+pairView-gen (Cata wf alg)   eq = is-other-pair (subst (IR _) eq (Cata wf alg))
+pairView-gen (Para wf alg)   eq = is-other-pair (subst (IR _) eq (Para wf alg))
+pairView-gen (Out wf)        eq = is-other-pair (subst (IR _) eq (Out wf))
+pairView-gen (in-ν wf m)     eq = is-other-pair (subst (IR _) eq (in-ν wf m))
+pairView-gen (Ana wf coalg)  eq = is-other-pair (subst (IR _) eq (Ana wf coalg))
+pairView-gen (Hylo wfF wfG alg coalg) eq = is-other-pair (subst (IR _) eq (Hylo wfF wfG alg coalg))
+pairView-gen (Fuse wfF wfG alg tr)    eq = is-other-pair (subst (IR _) eq (Fuse wfF wfG alg tr))
+pairView-gen (free-heap h)   eq = is-other-pair (subst (IR _) eq (free-heap h))
+pairView-gen (SigOp si)      eq = is-other-pair (subst (IR _) eq (SigOp si))
 
 pairView : ∀ {A B C} → (f : IR A (B * C)) → PairView f
 pairView f = pairView-gen f refl
@@ -709,7 +867,28 @@ coprodView-gen : ∀ {D B'} (f : IR D B') → ∀ {A B} → (eq : B' ≡ A + B)
                → CoprodView {A} {B} {D} (subst (IR D) eq f)
 coprodView-gen (inl m) refl = is-inl m
 coprodView-gen (inr m) refl = is-inr m
-coprodView-gen f eq = is-other-coprod (subst (IR _) eq f)
+coprodView-gen id              eq = is-other-coprod (subst (IR _) eq id)
+coprodView-gen (f ∘ g)         eq = is-other-coprod (subst (IR _) eq (f ∘ g))
+coprodView-gen (⟨ f , g ⟩ m)   eq = is-other-coprod (subst (IR _) eq (⟨ f , g ⟩ m))
+coprodView-gen fst             eq = is-other-coprod (subst (IR _) eq fst)
+coprodView-gen snd             eq = is-other-coprod (subst (IR _) eq snd)
+coprodView-gen (case f g)      eq = is-other-coprod (subst (IR _) eq (case f g))
+coprodView-gen terminal        eq = is-other-coprod (subst (IR _) eq terminal)
+coprodView-gen initial         eq = is-other-coprod (subst (IR _) eq initial)
+coprodView-gen (curry f m)     eq = is-other-coprod (subst (IR _) eq (curry f m))
+coprodView-gen apply           eq = is-other-coprod (subst (IR _) eq apply)
+coprodView-gen arr             eq = is-other-coprod (subst (IR _) eq arr)
+coprodView-gen (In wf m)       eq = is-other-coprod (subst (IR _) eq (In wf m))
+coprodView-gen (out-μ wf)      eq = is-other-coprod (subst (IR _) eq (out-μ wf))
+coprodView-gen (Cata wf alg)   eq = is-other-coprod (subst (IR _) eq (Cata wf alg))
+coprodView-gen (Para wf alg)   eq = is-other-coprod (subst (IR _) eq (Para wf alg))
+coprodView-gen (Out wf)        eq = is-other-coprod (subst (IR _) eq (Out wf))
+coprodView-gen (in-ν wf m)     eq = is-other-coprod (subst (IR _) eq (in-ν wf m))
+coprodView-gen (Ana wf coalg)  eq = is-other-coprod (subst (IR _) eq (Ana wf coalg))
+coprodView-gen (Hylo wfF wfG alg coalg) eq = is-other-coprod (subst (IR _) eq (Hylo wfF wfG alg coalg))
+coprodView-gen (Fuse wfF wfG alg tr)    eq = is-other-coprod (subst (IR _) eq (Fuse wfF wfG alg tr))
+coprodView-gen (free-heap h)   eq = is-other-coprod (subst (IR _) eq (free-heap h))
+coprodView-gen (SigOp si)      eq = is-other-coprod (subst (IR _) eq (SigOp si))
 
 coprodView : ∀ {A B D} → (f : IR D (A + B)) → CoprodView f
 coprodView f = coprodView-gen f refl
@@ -717,28 +896,113 @@ coprodView f = coprodView-gen f refl
 -- ComposeFirstView: fully generic source and target. Specific cases
 -- first, then catch-all; new IR constructors cost 0 lines per view
 -- (plan 0.5 Phase A / F2).
+-- View enumerations: every IR constructor handled explicitly. Specials
+-- get their dedicated view tag; everything else returns the "-other" tag.
+-- Adding a new IR constructor costs 4 lines (one per view).
+
 composeFirstView : ∀ {B C} → (g : IR B C) → ComposeFirstView g
-composeFirstView id = cf-id
-composeFirstView terminal = cf-terminal
-composeFirstView fst = cf-fst
-composeFirstView snd = cf-snd
-composeFirstView (case h k) = cf-case h k
-composeFirstView g = cf-other g
+composeFirstView id              = cf-id
+composeFirstView terminal        = cf-terminal
+composeFirstView fst             = cf-fst
+composeFirstView snd             = cf-snd
+composeFirstView (case h k)      = cf-case h k
+composeFirstView (g ∘ h)         = cf-other (g ∘ h)
+composeFirstView (⟨ f , g ⟩ m)   = cf-other (⟨ f , g ⟩ m)
+composeFirstView (inl m)         = cf-other (inl m)
+composeFirstView (inr m)         = cf-other (inr m)
+composeFirstView initial         = cf-other initial
+composeFirstView (curry f m)     = cf-other (curry f m)
+composeFirstView apply           = cf-other apply
+composeFirstView arr             = cf-other arr
+composeFirstView (In wf m)       = cf-other (In wf m)
+composeFirstView (out-μ wf)      = cf-other (out-μ wf)
+composeFirstView (Cata wf alg)   = cf-other (Cata wf alg)
+composeFirstView (Para wf alg)   = cf-other (Para wf alg)
+composeFirstView (Out wf)        = cf-other (Out wf)
+composeFirstView (in-ν wf m)     = cf-other (in-ν wf m)
+composeFirstView (Ana wf coalg)  = cf-other (Ana wf coalg)
+composeFirstView (Hylo wfF wfG alg coalg) = cf-other (Hylo wfF wfG alg coalg)
+composeFirstView (Fuse wfF wfG alg tr)    = cf-other (Fuse wfF wfG alg tr)
+composeFirstView (free-heap h)   = cf-other (free-heap h)
+composeFirstView (SigOp si)      = cf-other (SigOp si)
 
 composeSecondView : ∀ {A B} → (f : IR A B) → ComposeSecondView f
-composeSecondView id = cs-id
-composeSecondView initial = cs-initial
-composeSecondView f = cs-other f
+composeSecondView id             = cs-id
+composeSecondView initial        = cs-initial
+composeSecondView (f ∘ g)        = cs-other (f ∘ g)
+composeSecondView (⟨ f , g ⟩ m)  = cs-other (⟨ f , g ⟩ m)
+composeSecondView fst            = cs-other fst
+composeSecondView snd            = cs-other snd
+composeSecondView (inl m)        = cs-other (inl m)
+composeSecondView (inr m)        = cs-other (inr m)
+composeSecondView (case f g)     = cs-other (case f g)
+composeSecondView terminal       = cs-other terminal
+composeSecondView (curry f m)    = cs-other (curry f m)
+composeSecondView apply          = cs-other apply
+composeSecondView arr            = cs-other arr
+composeSecondView (In wf m)      = cs-other (In wf m)
+composeSecondView (out-μ wf)     = cs-other (out-μ wf)
+composeSecondView (Cata wf alg)  = cs-other (Cata wf alg)
+composeSecondView (Para wf alg)  = cs-other (Para wf alg)
+composeSecondView (Out wf)       = cs-other (Out wf)
+composeSecondView (in-ν wf m)    = cs-other (in-ν wf m)
+composeSecondView (Ana wf coalg) = cs-other (Ana wf coalg)
+composeSecondView (Hylo wfF wfG alg coalg) = cs-other (Hylo wfF wfG alg coalg)
+composeSecondView (Fuse wfF wfG alg tr)    = cs-other (Fuse wfF wfG alg tr)
+composeSecondView (free-heap h)  = cs-other (free-heap h)
+composeSecondView (SigOp si)     = cs-other (SigOp si)
 
 fstSndView : ∀ {A B} → (f : IR A B) → FstSndView f
-fstSndView fst = fsv-fst
-fstSndView snd = fsv-snd
-fstSndView f = fsv-other f
+fstSndView fst             = fsv-fst
+fstSndView snd             = fsv-snd
+fstSndView id              = fsv-other id
+fstSndView (f ∘ g)         = fsv-other (f ∘ g)
+fstSndView (⟨ f , g ⟩ m)   = fsv-other (⟨ f , g ⟩ m)
+fstSndView (inl m)         = fsv-other (inl m)
+fstSndView (inr m)         = fsv-other (inr m)
+fstSndView (case f g)      = fsv-other (case f g)
+fstSndView terminal        = fsv-other terminal
+fstSndView initial         = fsv-other initial
+fstSndView (curry f m)     = fsv-other (curry f m)
+fstSndView apply           = fsv-other apply
+fstSndView arr             = fsv-other arr
+fstSndView (In wf m)       = fsv-other (In wf m)
+fstSndView (out-μ wf)      = fsv-other (out-μ wf)
+fstSndView (Cata wf alg)   = fsv-other (Cata wf alg)
+fstSndView (Para wf alg)   = fsv-other (Para wf alg)
+fstSndView (Out wf)        = fsv-other (Out wf)
+fstSndView (in-ν wf m)     = fsv-other (in-ν wf m)
+fstSndView (Ana wf coalg)  = fsv-other (Ana wf coalg)
+fstSndView (Hylo wfF wfG alg coalg) = fsv-other (Hylo wfF wfG alg coalg)
+fstSndView (Fuse wfF wfG alg tr)    = fsv-other (Fuse wfF wfG alg tr)
+fstSndView (free-heap h)   = fsv-other (free-heap h)
+fstSndView (SigOp si)      = fsv-other (SigOp si)
 
 inlInrView : ∀ {A B} → (f : IR A B) → InlInrView f
-inlInrView (inl m) = iiv-inl m
-inlInrView (inr m) = iiv-inr m
-inlInrView f = iiv-other f
+inlInrView (inl m)         = iiv-inl m
+inlInrView (inr m)         = iiv-inr m
+inlInrView id              = iiv-other id
+inlInrView (f ∘ g)         = iiv-other (f ∘ g)
+inlInrView (⟨ f , g ⟩ m)   = iiv-other (⟨ f , g ⟩ m)
+inlInrView fst             = iiv-other fst
+inlInrView snd             = iiv-other snd
+inlInrView (case f g)      = iiv-other (case f g)
+inlInrView terminal        = iiv-other terminal
+inlInrView initial         = iiv-other initial
+inlInrView (curry f m)     = iiv-other (curry f m)
+inlInrView apply           = iiv-other apply
+inlInrView arr             = iiv-other arr
+inlInrView (In wf m)       = iiv-other (In wf m)
+inlInrView (out-μ wf)      = iiv-other (out-μ wf)
+inlInrView (Cata wf alg)   = iiv-other (Cata wf alg)
+inlInrView (Para wf alg)   = iiv-other (Para wf alg)
+inlInrView (Out wf)        = iiv-other (Out wf)
+inlInrView (in-ν wf m)     = iiv-other (in-ν wf m)
+inlInrView (Ana wf coalg)  = iiv-other (Ana wf coalg)
+inlInrView (Hylo wfF wfG alg coalg) = iiv-other (Hylo wfF wfG alg coalg)
+inlInrView (Fuse wfF wfG alg tr)    = iiv-other (Fuse wfF wfG alg tr)
+inlInrView (free-heap h)   = iiv-other (free-heap h)
+inlInrView (SigOp si)      = iiv-other (SigOp si)
 
 -- Helper: beta reduction for fst ∘ f (verified given view)
 optimize-fst : ∀ {A B C} → IR A (B * C) → IR A B
@@ -782,19 +1046,37 @@ optimize-compose g f with composeFirstView g
 
 -- | Optimize pair construction
 --   ⟨ fst , snd ⟩ = id (eta)
---   ⟨ fst ∘ h , snd ∘ h ⟩ = h (uniqueness)
+optimize-pair-aux : ∀ {A B C} (f : IR C A) (g : IR C B)
+                  → FstSndView f → FstSndView g → IR C (A * B)
+optimize-pair-aux f g fsv-fst       fsv-snd       = id
+optimize-pair-aux f g fsv-fst       fsv-fst       = ⟨ f , g ⟩ Stack
+optimize-pair-aux f g fsv-fst       (fsv-other _) = ⟨ f , g ⟩ Stack
+optimize-pair-aux f g fsv-snd       fsv-fst       = ⟨ f , g ⟩ Stack
+optimize-pair-aux f g fsv-snd       fsv-snd       = ⟨ f , g ⟩ Stack
+optimize-pair-aux f g fsv-snd       (fsv-other _) = ⟨ f , g ⟩ Stack
+optimize-pair-aux f g (fsv-other _) fsv-fst       = ⟨ f , g ⟩ Stack
+optimize-pair-aux f g (fsv-other _) fsv-snd       = ⟨ f , g ⟩ Stack
+optimize-pair-aux f g (fsv-other _) (fsv-other _) = ⟨ f , g ⟩ Stack
+
 optimize-pair : ∀ {A B C} → IR C A → IR C B → IR C (A * B)
-optimize-pair f g with fstSndView f | fstSndView g
-... | fsv-fst | fsv-snd = id                          -- eta: C = A * B, so id : IR C C
-... | _ | _ = ⟨ f , g ⟩ Stack                         -- default (use Stack allocation)
+optimize-pair f g = optimize-pair-aux f g (fstSndView f) (fstSndView g)
 
 -- | Optimize case construction
 --   [ inl , inr ] = id (eta)
---   [ h ∘ inl , h ∘ inr ] = h (uniqueness)
+optimize-case-aux : ∀ {A B C} (f : IR A C) (g : IR B C)
+                  → InlInrView f → InlInrView g → IR (A + B) C
+optimize-case-aux f g (iiv-inl _)   (iiv-inr _)   = id
+optimize-case-aux f g (iiv-inl _)   (iiv-inl _)   = case f g
+optimize-case-aux f g (iiv-inl _)   (iiv-other _) = case f g
+optimize-case-aux f g (iiv-inr _)   (iiv-inl _)   = case f g
+optimize-case-aux f g (iiv-inr _)   (iiv-inr _)   = case f g
+optimize-case-aux f g (iiv-inr _)   (iiv-other _) = case f g
+optimize-case-aux f g (iiv-other _) (iiv-inl _)   = case f g
+optimize-case-aux f g (iiv-other _) (iiv-inr _)   = case f g
+optimize-case-aux f g (iiv-other _) (iiv-other _) = case f g
+
 optimize-case : ∀ {A B C} → IR A C → IR B C → IR (A + B) C
-optimize-case f g with inlInrView f | inlInrView g
-... | iiv-inl _ | iiv-inr _ = id                      -- eta: C = A + B, so id : IR C C
-... | _ | _ = case f g                                -- default
+optimize-case f g = optimize-case-aux f g (inlInrView f) (inlInrView g)
 
 ------------------------------------------------------------------------
 -- Full Recursive Optimization
