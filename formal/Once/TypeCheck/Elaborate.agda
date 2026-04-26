@@ -760,8 +760,31 @@ classifyAppHead (Raw.RApp (Raw.RVar x) _) with StrProp._≟_ x "pair"
 ... | no  _ with StrProp._≟_ x "compose"
 ...   | yes _ = just pba-compose-applied
 ...   | no  _ = nothing
-classifyAppHead (Raw.RApp _ _) = nothing
-classifyAppHead _ = nothing
+-- RApp with non-RVar head: not a builtin reference.
+classifyAppHead (Raw.RApp (Raw.RApp _ _) _)         = nothing
+classifyAppHead (Raw.RApp (Raw.RQualified _ _) _)   = nothing
+classifyAppHead (Raw.RApp (Raw.RLam _ _) _)         = nothing
+classifyAppHead (Raw.RApp (Raw.RLet _ _ _) _)       = nothing
+classifyAppHead (Raw.RApp (Raw.RPair _ _) _)        = nothing
+classifyAppHead (Raw.RApp (Raw.RDestruct _ _ _ _ _) _) = nothing
+classifyAppHead (Raw.RApp Raw.RUnit _)              = nothing
+classifyAppHead (Raw.RApp (Raw.RInt _) _)           = nothing
+classifyAppHead (Raw.RApp (Raw.RStringLit _) _)     = nothing
+classifyAppHead (Raw.RApp (Raw.RAnnot _ _) _)       = nothing
+classifyAppHead (Raw.RApp (Raw.RBinOp _ _ _) _)     = nothing
+classifyAppHead (Raw.RApp (Raw.RUnaryOp _ _) _)     = nothing
+-- Non-RApp / non-RVar heads.
+classifyAppHead (Raw.RQualified _ _)      = nothing
+classifyAppHead (Raw.RLam _ _)            = nothing
+classifyAppHead (Raw.RLet _ _ _)          = nothing
+classifyAppHead (Raw.RPair _ _)           = nothing
+classifyAppHead (Raw.RDestruct _ _ _ _ _) = nothing
+classifyAppHead Raw.RUnit                 = nothing
+classifyAppHead (Raw.RInt _)              = nothing
+classifyAppHead (Raw.RStringLit _)        = nothing
+classifyAppHead (Raw.RAnnot _ _)          = nothing
+classifyAppHead (Raw.RBinOp _ _ _)        = nothing
+classifyAppHead (Raw.RUnaryOp _ _)        = nothing
 
 -- | View-type classification of an application head. Each constructor
 -- fixes the head's concrete RawExpr shape via an index, so pattern-
@@ -814,7 +837,19 @@ classifyAppHeadView (Raw.RApp (Raw.RVar x) _) with StrProp._≟_ x "pair"
 ... | no  _    with StrProp._≟_ x "compose"
 ...   | yes refl = ahv-compose-applied
 ...   | no  _    = ahv-other
-classifyAppHeadView (Raw.RApp _ _)            = ahv-other
+-- RApp with non-RVar head: ahv-other.
+classifyAppHeadView (Raw.RApp (Raw.RApp _ _) _)         = ahv-other
+classifyAppHeadView (Raw.RApp (Raw.RQualified _ _) _)   = ahv-other
+classifyAppHeadView (Raw.RApp (Raw.RLam _ _) _)         = ahv-other
+classifyAppHeadView (Raw.RApp (Raw.RLet _ _ _) _)       = ahv-other
+classifyAppHeadView (Raw.RApp (Raw.RPair _ _) _)        = ahv-other
+classifyAppHeadView (Raw.RApp (Raw.RDestruct _ _ _ _ _) _) = ahv-other
+classifyAppHeadView (Raw.RApp Raw.RUnit _)              = ahv-other
+classifyAppHeadView (Raw.RApp (Raw.RInt _) _)           = ahv-other
+classifyAppHeadView (Raw.RApp (Raw.RStringLit _) _)     = ahv-other
+classifyAppHeadView (Raw.RApp (Raw.RAnnot _ _) _)       = ahv-other
+classifyAppHeadView (Raw.RApp (Raw.RBinOp _ _ _) _)     = ahv-other
+classifyAppHeadView (Raw.RApp (Raw.RUnaryOp _ _) _)     = ahv-other
 classifyAppHeadView (Raw.RQualified _ _)      = ahv-other
 classifyAppHeadView (Raw.RLam _ _)            = ahv-other
 classifyAppHeadView (Raw.RLet _ _ _)          = ahv-other
