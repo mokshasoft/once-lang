@@ -92,8 +92,22 @@ module X86-64 where
   compile : ∀ {A B} → IR A B → Program
   compile = compile-ir
 
-  -- Correctness theorem (entry point for dead code analysis)
+  -- Correctness theorem (entry point for dead code analysis).
+  -- Plan 0.10: this is the verified-path theorem (about D.run-wf).
+  -- The new extracted-path theorem lives in `compile-correct-extracted`
+  -- below, which says the same thing about `compile-trace ∘ ir-to-trace`
+  -- (the function we'll switch the extractor to in Phase C).
   compile-correct = Correct.compile-correct
+
+  -- Plan 0.10 Phase A: theorem about the EXTRACTED compile.
+  -- Currently two named postulates fill the gap; Phases D and E
+  -- discharge them. See `Once.CCC.Target.X86-64.CompileCorrect`.
+  open import Once.CCC.Target.X86-64.CompileCorrect as CC
+  module CompileCorrect-X86-64 =
+    CC.Correctness {FS} (RuntimeContract.program-bound runtime)
+
+  compile-correct-extracted = CompileCorrect-X86-64.compile-correct
+  compile-extracted          = CompileCorrect-X86-64.compile
 
 ------------------------------------------------------------------------
 ------------------------------------------------------------------------
