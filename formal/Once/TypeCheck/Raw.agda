@@ -127,13 +127,17 @@ open import Data.Bool using (Bool; true; false)
 -- | Is this a comparison operator?
 -- Comparison operators return Bool (encoded as Unit + Unit)
 isComparisonOp : BinOp → Bool
-isComparisonOp OpLt = true
-isComparisonOp OpLe = true
-isComparisonOp OpGt = true
-isComparisonOp OpGe = true
-isComparisonOp OpEq = true
-isComparisonOp OpNe = true
-isComparisonOp _    = false
+isComparisonOp OpLt  = true
+isComparisonOp OpLe  = true
+isComparisonOp OpGt  = true
+isComparisonOp OpGe  = true
+isComparisonOp OpEq  = true
+isComparisonOp OpNe  = true
+isComparisonOp OpAdd = false
+isComparisonOp OpSub = false
+isComparisonOp OpMul = false
+isComparisonOp OpDiv = false
+isComparisonOp OpMod = false
 
 -- | Is this an arithmetic operator?
 isArithmeticOp : BinOp → Bool
@@ -142,4 +146,9 @@ isArithmeticOp OpSub = true
 isArithmeticOp OpMul = true
 isArithmeticOp OpDiv = true
 isArithmeticOp OpMod = true
-isArithmeticOp _     = false
+isArithmeticOp OpLt  = false
+isArithmeticOp OpLe  = false
+isArithmeticOp OpGt  = false
+isArithmeticOp OpGe  = false
+isArithmeticOp OpEq  = false
+isArithmeticOp OpNe  = false
