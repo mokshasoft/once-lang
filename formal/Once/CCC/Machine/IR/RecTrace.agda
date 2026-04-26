@@ -382,8 +382,8 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
   -- | Tree-based algebra application
   -- In full implementation, this embeds the Dispatcher-generated IR trace
   alg-tree : AbstractTrace → TreeTrace
-  alg-tree [] = ε
-  alg-tree alg-trace = flat alg-trace
+  alg-tree []         = ε
+  alg-tree (i ∷ rest) = flat (i ∷ rest)
 
   -- | Mutual recursion for tree-based cata trace building
   --

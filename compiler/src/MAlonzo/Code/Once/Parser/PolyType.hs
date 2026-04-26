@@ -121,7 +121,7 @@ d_parsePolyAtomImpl_30 v0
                                         MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                         (coe
                                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                           (coe MAlonzo.Code.Once.Type.C_PUnit_266) (coe v2)))
+                                           (coe MAlonzo.Code.Once.Type.C_PUnit_248) (coe v2)))
                               else coe
                                      seq (coe v6)
                                      (let v7
@@ -146,7 +146,7 @@ d_parsePolyAtomImpl_30 v0
                                                             (coe
                                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                (coe
-                                                                  MAlonzo.Code.Once.Type.C_PVoid_268)
+                                                                  MAlonzo.Code.Once.Type.C_PVoid_250)
                                                                (coe v2)))
                                                   else coe
                                                          seq (coe v9)
@@ -176,7 +176,7 @@ d_parsePolyAtomImpl_30 v0
                                                                                 (coe
                                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                    (coe
-                                                                                      MAlonzo.Code.Once.Type.C_PInt_282)
+                                                                                      MAlonzo.Code.Once.Type.C_PInt_264)
                                                                                    (coe v2)))
                                                                       else coe
                                                                              seq (coe v12)
@@ -209,7 +209,7 @@ d_parsePolyAtomImpl_30 v0
                                                                                                     (coe
                                                                                                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                        (coe
-                                                                                                          MAlonzo.Code.Once.Type.C_PFloat_284)
+                                                                                                          MAlonzo.Code.Once.Type.C_PFloat_266)
                                                                                                        (coe
                                                                                                           v2)))
                                                                                           else coe
@@ -248,7 +248,7 @@ d_parsePolyAtomImpl_30 v0
                                                                                                                         (coe
                                                                                                                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                            (coe
-                                                                                                                              MAlonzo.Code.Once.Type.C_PBuffer_288)
+                                                                                                                              MAlonzo.Code.Once.Type.C_PBuffer_270)
                                                                                                                            (coe
                                                                                                                               v2)))
                                                                                                               else coe
@@ -287,7 +287,7 @@ d_parsePolyAtomImpl_30 v0
                                                                                                                                             (coe
                                                                                                                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                                                (coe
-                                                                                                                                                  MAlonzo.Code.Once.Type.C_PStr_286)
+                                                                                                                                                  MAlonzo.Code.Once.Type.C_PStr_268)
                                                                                                                                                (coe
                                                                                                                                                   v2)))
                                                                                                                                   else coe
@@ -348,7 +348,7 @@ d_parsePolyAtomImpl_30 v0
                                                                                                                                                                                                   (coe
                                                                                                                                                                                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                                                                                                      (coe
-                                                                                                                                                                                                        MAlonzo.Code.Once.Type.C_PEff_276
+                                                                                                                                                                                                        MAlonzo.Code.Once.Type.C_PEff_258
                                                                                                                                                                                                         (coe
                                                                                                                                                                                                            v27)
                                                                                                                                                                                                         (coe
@@ -412,9 +412,9 @@ d_parsePolyAtomImpl_30 v0
                                                                                                                                                                                                      (coe
                                                                                                                                                                                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                                                                                                         (coe
-                                                                                                                                                                                                           MAlonzo.Code.Once.Type.C_PEff_276
+                                                                                                                                                                                                           MAlonzo.Code.Once.Type.C_PEff_258
                                                                                                                                                                                                            (coe
-                                                                                                                                                                                                              MAlonzo.Code.Once.Type.C_PUnit_266)
+                                                                                                                                                                                                              MAlonzo.Code.Once.Type.C_PUnit_248)
                                                                                                                                                                                                            (coe
                                                                                                                                                                                                               v30))
                                                                                                                                                                                                         (coe
@@ -451,7 +451,7 @@ d_parsePolyAtomImpl_30 v0
                                                                                                                                                                                                         (coe
                                                                                                                                                                                                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                                                                                                            (coe
-                                                                                                                                                                                                              MAlonzo.Code.Once.Type.C_PTVar_290
+                                                                                                                                                                                                              MAlonzo.Code.Once.Type.C_PTVar_272
                                                                                                                                                                                                               (coe
                                                                                                                                                                                                                  v3))
                                                                                                                                                                                                            (coe
@@ -780,7 +780,7 @@ d_parsePolyAtomImpl_30 v0
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Parser.PolyType.parsePolyArrowTail
 d_parsePolyArrowTail_32 ::
-  MAlonzo.Code.Once.Type.T_PolyType_256 ->
+  MAlonzo.Code.Once.Type.T_PolyType_238 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_parsePolyArrowTail_32 v0 v1
@@ -811,7 +811,7 @@ d_parsePolyArrowTail_32 v0 v1
                                                          (coe
                                                             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                             (coe
-                                                               MAlonzo.Code.Once.Type.C__P'8658''91'_'93'__274
+                                                               MAlonzo.Code.Once.Type.C__P'8658''91'_'93'__256
                                                                (coe v0)
                                                                (coe
                                                                   MAlonzo.Code.Once.Type.C_Many_10)
@@ -831,7 +831,7 @@ d_parsePolyArrowTail_32 v0 v1
                                                (coe
                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                   (coe
-                                                     MAlonzo.Code.Once.Type.C__P'8658''91'_'93'__274
+                                                     MAlonzo.Code.Once.Type.C__P'8658''91'_'93'__256
                                                      (coe v0) (coe MAlonzo.Code.Once.Type.C_Many_10)
                                                      (coe v7))
                                                   (coe v8))
@@ -863,7 +863,7 @@ d_parsePolyArrowTail_32 v0 v1
                                                                        (coe
                                                                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                           (coe
-                                                                             MAlonzo.Code.Once.Type.C__P'8658''91'_'93'__274
+                                                                             MAlonzo.Code.Once.Type.C__P'8658''91'_'93'__256
                                                                              (coe v0)
                                                                              (coe
                                                                                 MAlonzo.Code.Once.Type.C_One_8)
@@ -884,7 +884,7 @@ d_parsePolyArrowTail_32 v0 v1
                                                              (coe
                                                                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                 (coe
-                                                                   MAlonzo.Code.Once.Type.C__P'8658''91'_'93'__274
+                                                                   MAlonzo.Code.Once.Type.C__P'8658''91'_'93'__256
                                                                    (coe v0)
                                                                    (coe
                                                                       MAlonzo.Code.Once.Type.C_One_8)
@@ -921,7 +921,7 @@ d_parsePolyArrowTail_32 v0 v1
                                                                        (coe
                                                                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                           (coe
-                                                                             MAlonzo.Code.Once.Type.C__P'8658''91'_'93'__274
+                                                                             MAlonzo.Code.Once.Type.C__P'8658''91'_'93'__256
                                                                              (coe v0)
                                                                              (coe
                                                                                 MAlonzo.Code.Once.Type.C_Zero_6)
@@ -942,7 +942,7 @@ d_parsePolyArrowTail_32 v0 v1
                                                              (coe
                                                                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                 (coe
-                                                                   MAlonzo.Code.Once.Type.C__P'8658''91'_'93'__274
+                                                                   MAlonzo.Code.Once.Type.C__P'8658''91'_'93'__256
                                                                    (coe v0)
                                                                    (coe
                                                                       MAlonzo.Code.Once.Type.C_Zero_6)
@@ -979,7 +979,7 @@ d_parsePolyArrowTail_32 v0 v1
                                                                        (coe
                                                                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                           (coe
-                                                                             MAlonzo.Code.Once.Type.C__P'8658''91'_'93'__274
+                                                                             MAlonzo.Code.Once.Type.C__P'8658''91'_'93'__256
                                                                              (coe v0)
                                                                              (coe
                                                                                 MAlonzo.Code.Once.Type.C_Many_10)
@@ -1000,7 +1000,7 @@ d_parsePolyArrowTail_32 v0 v1
                                                              (coe
                                                                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                 (coe
-                                                                   MAlonzo.Code.Once.Type.C__P'8658''91'_'93'__274
+                                                                   MAlonzo.Code.Once.Type.C__P'8658''91'_'93'__256
                                                                    (coe v0)
                                                                    (coe
                                                                       MAlonzo.Code.Once.Type.C_Many_10)
@@ -1017,7 +1017,7 @@ d_parsePolyArrowTail_32 v0 v1
          _ -> coe v2)
 -- Once.Parser.PolyType.parsePolySumTail
 d_parsePolySumTail_34 ::
-  MAlonzo.Code.Once.Type.T_PolyType_256 ->
+  MAlonzo.Code.Once.Type.T_PolyType_238 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_parsePolySumTail_34 v0 v1
@@ -1039,7 +1039,7 @@ d_parsePolySumTail_34 v0 v1
                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v7 v8
                                    -> coe
                                         d_parsePolySumTail_34
-                                        (coe MAlonzo.Code.Once.Type.C__P'43'__272 (coe v0) (coe v7))
+                                        (coe MAlonzo.Code.Once.Type.C__P'43'__254 (coe v0) (coe v7))
                                         (coe v8)
                                  _ -> MAlonzo.RTE.mazUnreachableError
                           MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v5
@@ -1048,7 +1048,7 @@ d_parsePolySumTail_34 v0 v1
          _ -> coe v2)
 -- Once.Parser.PolyType.parsePolyProdTail
 d_parsePolyProdTail_36 ::
-  MAlonzo.Code.Once.Type.T_PolyType_256 ->
+  MAlonzo.Code.Once.Type.T_PolyType_238 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_parsePolyProdTail_36 v0 v1
@@ -1070,7 +1070,7 @@ d_parsePolyProdTail_36 v0 v1
                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v7 v8
                                    -> coe
                                         d_parsePolyProdTail_36
-                                        (coe MAlonzo.Code.Once.Type.C__P'42'__270 (coe v0) (coe v7))
+                                        (coe MAlonzo.Code.Once.Type.C__P'42'__252 (coe v0) (coe v7))
                                         (coe v8)
                                  _ -> MAlonzo.RTE.mazUnreachableError
                           MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v5

@@ -24,8 +24,8 @@ import qualified MAlonzo.Code.Once.Type
 -- Once.Target.Target
 d_Target_4 = ()
 data T_Target_4
-  = C_constructor_30 (MAlonzo.Code.Once.Type.T_Type_126 ->
-                      MAlonzo.Code.Once.Type.T_Type_126 ->
+  = C_constructor_30 (MAlonzo.Code.Once.Type.T_Type_108 ->
+                      MAlonzo.Code.Once.Type.T_Type_108 ->
                       MAlonzo.Code.Once.CCC.IR.T_IR_12 ->
                       MAlonzo.Code.Agda.Builtin.String.T_String_6)
                      MAlonzo.Code.Agda.Builtin.String.T_String_6
@@ -35,8 +35,8 @@ data T_Target_4
 -- Once.Target.Target.irToAsm
 d_irToAsm_22 ::
   T_Target_4 ->
-  MAlonzo.Code.Once.Type.T_Type_126 ->
-  MAlonzo.Code.Once.Type.T_Type_126 ->
+  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.CCC.IR.T_IR_12 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
 d_irToAsm_22 v0

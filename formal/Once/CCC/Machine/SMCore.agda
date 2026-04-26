@@ -86,12 +86,19 @@ record HeapLocation : Set where
 
 open HeapLocation public
 
--- Decidable equality for HeapLocation
+-- Decidable equality for HeapLocation. Inner Dec results are
+-- explicitly enumerated via a top-level helper to avoid the with-
+-- block case-tree artifact under --exact-split.
+≟HL-aux : ∀ {r₁ r₂ o₁ o₂}
+        → Dec (r₁ ≡ r₂) → Dec (o₁ ≡ o₂)
+        → Dec (heap-loc r₁ o₁ ≡ heap-loc r₂ o₂)
+≟HL-aux (yes refl) (yes refl) = yes refl
+≟HL-aux (yes refl) (no o≢o)   = no λ { refl → o≢o refl }
+≟HL-aux (no r≢r)   (yes _)    = no λ { refl → r≢r refl }
+≟HL-aux (no r≢r)   (no _)     = no λ { refl → r≢r refl }
+
 _≟HL_ : (hl₁ hl₂ : HeapLocation) → Dec (hl₁ ≡ hl₂)
-heap-loc r₁ o₁ ≟HL heap-loc r₂ o₂ with r₁ ≟H r₂ | o₁ ≟ o₂
-... | yes refl | yes refl = yes refl
-... | yes _ | no o≢o = no λ { refl → o≢o refl }
-... | no r≢r | _ = no λ { refl → r≢r refl }
+heap-loc r₁ o₁ ≟HL heap-loc r₂ o₂ = ≟HL-aux (r₁ ≟H r₂) (o₁ ≟ o₂)
 
 -- Convert HeapLocation to HeapRef (for frontier checks)
 hl-ref : HeapLocation → HeapRef
@@ -344,11 +351,23 @@ module MemOps {FS : FrameSemantics} where
   ... | just hl' = just (OnHeap hl')
   ... | nothing  = nothing
 
-  -- | Write a Location to stack memory
+  -- | Write a Location to stack memory.
+  -- Order of clauses preserves definitional equalities for the (no _)
+  -- frame-mismatch case (load-bearing for `writeLoc-preserves-other`):
+  -- the no-frame-match branch is a single clause that returns `old`
+  -- regardless of the slot decision, so `writeStackMem-aux (no _) _ old _`
+  -- reduces by `refl` without case-splitting the second arg.
+  writeStackMem-aux : ∀ {f f' : Frame} {k k' : Slot}
+                    → Dec (f ≡ f') → Dec (k ≡ k')
+                    → Maybe (ValueLocation FS)  -- existing value at (f',k')
+                    → ValueLocation FS           -- new value
+                    → Maybe (ValueLocation FS)
+  writeStackMem-aux (no _)  _       old _ = old
+  writeStackMem-aux (yes _) (yes _) _   v = just v
+  writeStackMem-aux (yes _) (no _)  old _ = old
+
   writeStackMem : StackMem FS → Frame → Slot → ValueLocation FS → StackMem FS
-  writeStackMem mem f k v f' k' with f ≟F f' | k ≟ k'
-  ... | yes _ | yes _ = just v
-  ... | _     | _     = mem f' k'
+  writeStackMem mem f k v f' k' = writeStackMem-aux (f ≟F f') (k ≟ k') (mem f' k') v
 
   -- | Write a HeapLocation to heap memory (enforces heap-only invariant)
   writeHeapMem : HeapMem → HeapLocation → HeapLocation → HeapMem
@@ -401,18 +420,26 @@ module MemOps {FS : FrameSemantics} where
   writeLoc-regs-commute s f k v r = refl
 
   -- writeLoc preserves other locations (reading from a different location)
-  -- Key lemma for frame-independence proofs
+  -- Key lemma for frame-independence proofs.
+  -- Inner-with logic extracted to a helper to keep the proof CATCHALL-free.
+  writeLoc-preserves-other-stack-aux : ∀ {f1 f2 : Frame} {k1 k2 : Slot}
+    (s : LocState FS) (v : ValueLocation FS)
+    (df : Dec (f1 ≡ f2)) (dk : Dec (k1 ≡ k2))
+    → OnStack {FS} f1 k1 ≢ OnStack {FS} f2 k2
+    → writeStackMem-aux df dk (stackMem s f2 k2) v ≡ stackMem s f2 k2
+  writeLoc-preserves-other-stack-aux s v (yes refl) (yes refl) neq = ⊥-elim (neq refl)
+    where open import Data.Empty using (⊥-elim)
+  writeLoc-preserves-other-stack-aux s v (yes refl) (no _)     _   = refl
+  writeLoc-preserves-other-stack-aux s v (no _)     (yes refl) _   = refl
+  writeLoc-preserves-other-stack-aux s v (no _)     (no _)     _   = refl
+
   writeLoc-preserves-other : ∀ (s : LocState FS) (loc1 loc2 : ValueLocation FS)
     (v : ValueLocation FS) →
     loc1 ≢ loc2 →
     readLoc (writeLoc s loc1 v) loc2 ≡ readLoc s loc2
   -- Writing to stack, reading from different stack location
-  writeLoc-preserves-other s (OnStack f1 k1) (OnStack f2 k2) v neq
-    with f1 ≟F f2 | k1 ≟ k2
-  ... | yes refl | yes refl = ⊥-elim (neq refl)
-    where open import Data.Empty using (⊥-elim)
-  ... | yes _ | no _ = refl
-  ... | no _ | _ = refl
+  writeLoc-preserves-other s (OnStack f1 k1) (OnStack f2 k2) v neq =
+    writeLoc-preserves-other-stack-aux s v (f1 ≟F f2) (k1 ≟ k2) neq
   -- Writing to stack, reading from heap (disjoint)
   writeLoc-preserves-other s (OnStack f k) (OnHeap hl) v _ = refl
   -- Writing to heap, reading from stack (disjoint)
@@ -1029,9 +1056,9 @@ module AbstractExec {FS : FrameSemantics} where
   exec-tree-trace (branch slot tL tR) s alloc with halted s
   ... | true = s , alloc
   ... | false with getTag s alloc slot
-  ... | nothing = exec-tree-trace tL s alloc  -- Default to left if uninitialized
-  ... | just 0 = exec-tree-trace tL s alloc   -- inj₁
-  ... | just _ = exec-tree-trace tR s alloc   -- inj₂
+  ... | nothing      = exec-tree-trace tL s alloc  -- Default to left if uninitialized
+  ... | just 0       = exec-tree-trace tL s alloc  -- inj₁
+  ... | just (suc _) = exec-tree-trace tR s alloc  -- inj₂
 
   -- Recursive call: execute sub-trace
   -- In abstract model, this is just trace execution (no stack frame push)

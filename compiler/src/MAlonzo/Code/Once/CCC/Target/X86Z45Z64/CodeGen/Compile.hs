@@ -729,8 +729,8 @@ d_compile'45'sigOp'45'length_134 ::
 d_compile'45'sigOp'45'length_134 = erased
 -- Once.CCC.Target.X86-64.CodeGen.Compile.compile-length
 d_compile'45'length_158 ::
-  MAlonzo.Code.Once.Type.T_Type_126 ->
-  MAlonzo.Code.Once.Type.T_Type_126 ->
+  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.CCC.IR.T_IR_12 -> Integer
 d_compile'45'length_158 v0 v1 v2
   = case coe v2 of
@@ -747,7 +747,7 @@ d_compile'45'length_158 v0 v1 v2
              (coe d_compile'45'length_158 (coe v4) (coe v1) (coe v6))
       MAlonzo.Code.Once.CCC.IR.C_'10216'_'44'_'10217'_32 v6 v7 v8
         -> case coe v1 of
-             MAlonzo.Code.Once.Type.C__'42'__140 v9 v10
+             MAlonzo.Code.Once.Type.C__'42'__122 v9 v10
                -> coe
                     addInt
                     (coe
@@ -772,7 +772,7 @@ d_compile'45'length_158 v0 v1 v2
       MAlonzo.Code.Once.CCC.IR.C_inr_56 v5 -> coe (1 :: Integer)
       MAlonzo.Code.Once.CCC.IR.C_case_64 v6 v7
         -> case coe v0 of
-             MAlonzo.Code.Once.Type.C__'43'__142 v8 v9
+             MAlonzo.Code.Once.Type.C__'43'__124 v8 v9
                -> coe
                     addInt (coe d_compile'45'length_158 (coe v8) (coe v1) (coe v6))
                     (coe d_compile'45'length_158 (coe v9) (coe v1) (coe v7))
@@ -783,7 +783,7 @@ d_compile'45'length_158 v0 v1 v2
       MAlonzo.Code.Once.CCC.IR.C_initial_72 -> coe (1 :: Integer)
       MAlonzo.Code.Once.CCC.IR.C_curry_82 v7 v8
         -> case coe v1 of
-             MAlonzo.Code.Once.Type.C__'8658''91'_'93'__144 v9 v10 v11
+             MAlonzo.Code.Once.Type.C__'8658''91'_'93'__126 v9 v10 v11
                -> coe
                     addInt
                     (coe
@@ -793,7 +793,7 @@ d_compile'45'length_158 v0 v1 v2
                           d_curry'45'thunk'45'setup_42))
                     (coe
                        d_compile'45'length_158
-                       (coe MAlonzo.Code.Once.Type.C__'42'__140 (coe v0) (coe v9))
+                       (coe MAlonzo.Code.Once.Type.C__'42'__122 (coe v0) (coe v9))
                        (coe v11) (coe v7))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.CCC.IR.C_apply_90
@@ -821,8 +821,8 @@ d_compile'45'length_158 v0 v1 v2
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Target.X86-64.CodeGen.Compile.compile-ir'
 d_compile'45'ir''_180 ::
-  MAlonzo.Code.Once.Type.T_Type_126 ->
-  MAlonzo.Code.Once.Type.T_Type_126 ->
+  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Type.T_Type_108 ->
   Integer ->
   MAlonzo.Code.Once.CCC.IR.T_IR_12 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
@@ -861,7 +861,7 @@ d_compile'45'ir''_180 v0 v1 v2 v3
                    (coe v7)))
       MAlonzo.Code.Once.CCC.IR.C_'10216'_'44'_'10217'_32 v7 v8 v9
         -> case coe v1 of
-             MAlonzo.Code.Once.Type.C__'42'__140 v10 v11
+             MAlonzo.Code.Once.Type.C__'42'__122 v10 v11
                -> coe
                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                     (coe
@@ -923,7 +923,7 @@ d_compile'45'ir''_180 v0 v1 v2 v3
              (coe v2)
       MAlonzo.Code.Once.CCC.IR.C_case_64 v7 v8
         -> case coe v0 of
-             MAlonzo.Code.Once.Type.C__'43'__142 v9 v10
+             MAlonzo.Code.Once.Type.C__'43'__124 v9 v10
                -> coe
                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                     (coe
@@ -962,7 +962,7 @@ d_compile'45'ir''_180 v0 v1 v2 v3
              (coe v2)
       MAlonzo.Code.Once.CCC.IR.C_curry_82 v8 v9
         -> case coe v1 of
-             MAlonzo.Code.Once.Type.C__'8658''91'_'93'__144 v10 v11 v12
+             MAlonzo.Code.Once.Type.C__'8658''91'_'93'__126 v10 v11 v12
                -> coe
                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                     (coe
@@ -977,14 +977,14 @@ d_compile'45'ir''_180 v0 v1 v2 v3
                                 MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                                 (coe
                                    d_compile'45'ir''_180
-                                   (coe MAlonzo.Code.Once.Type.C__'42'__140 (coe v0) (coe v10))
+                                   (coe MAlonzo.Code.Once.Type.C__'42'__122 (coe v0) (coe v10))
                                    (coe v12) (coe addInt (coe (2 :: Integer)) (coe v2)) (coe v8)))
                              (coe d_curry'45'thunk'45'cleanup''_38 (coe v2)))))
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                        (coe
                           d_compile'45'ir''_180
-                          (coe MAlonzo.Code.Once.Type.C__'42'__140 (coe v0) (coe v10))
+                          (coe MAlonzo.Code.Once.Type.C__'42'__122 (coe v0) (coe v10))
                           (coe v12) (coe addInt (coe (2 :: Integer)) (coe v2)) (coe v8)))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.CCC.IR.C_apply_90
@@ -1065,8 +1065,8 @@ d_compile'45'ir''_180 v0 v1 v2 v3
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Target.X86-64.CodeGen.Compile.compile-ir
 d_compile'45'ir_280 ::
-  MAlonzo.Code.Once.Type.T_Type_126 ->
-  MAlonzo.Code.Once.Type.T_Type_126 ->
+  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.CCC.IR.T_IR_12 ->
   [MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.T_Instr_60]
 d_compile'45'ir_280 v0 v1 v2
@@ -1077,16 +1077,16 @@ d_compile'45'ir_280 v0 v1 v2
          (coe v2))
 -- Once.CCC.Target.X86-64.CodeGen.Compile.compile-ir'-length
 d_compile'45'ir'''45'length_292 ::
-  MAlonzo.Code.Once.Type.T_Type_126 ->
-  MAlonzo.Code.Once.Type.T_Type_126 ->
+  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Type.T_Type_108 ->
   Integer ->
   MAlonzo.Code.Once.CCC.IR.T_IR_12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_compile'45'ir'''45'length_292 = erased
 -- Once.CCC.Target.X86-64.CodeGen.Compile.compile-ir-length
 d_compile'45'ir'45'length_492 ::
-  MAlonzo.Code.Once.Type.T_Type_126 ->
-  MAlonzo.Code.Once.Type.T_Type_126 ->
+  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.CCC.IR.T_IR_12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_compile'45'ir'45'length_492 = erased

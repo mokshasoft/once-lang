@@ -226,16 +226,49 @@ module MemoryOps {FS : FrameSemantics} where
 
 -- What slot does this instruction write to? (store-at-slot, worklist-push)
 instr-writes-slot : AbstractInstr → Maybe ℕ
-instr-writes-slot (store-at-slot k) = just k
-instr-writes-slot (worklist-push k) = just k  -- OCP-0003: worklist push writes to slot
-instr-writes-slot _ = nothing
+instr-writes-slot (store-at-slot k)      = just k
+instr-writes-slot (worklist-push k)      = just k  -- OCP-0003
+instr-writes-slot mov-to-output          = nothing
+instr-writes-slot mov-to-input           = nothing
+instr-writes-slot load-indirect          = nothing
+instr-writes-slot load-indirect-suc      = nothing
+instr-writes-slot (load-from-slot _)     = nothing
+instr-writes-slot store-indirect         = nothing
+instr-writes-slot store-indirect-suc     = nothing
+instr-writes-slot (lea-slot _)           = nothing
+instr-writes-slot (restore-input _)      = nothing
+instr-writes-slot (instr-alloc-stack _)  = nothing
+instr-writes-slot (instr-dealloc-stack _) = nothing
+instr-writes-slot (instr-reclaim-to _)   = nothing
+instr-writes-slot (instr-push-frame _)   = nothing
+instr-writes-slot instr-pop-frame        = nothing
+instr-writes-slot instr-call-closure     = nothing
+instr-writes-slot (worklist-init _)      = nothing
+instr-writes-slot (worklist-pop _)       = nothing
+instr-writes-slot (worklist-check _)     = nothing
 
 -- What slot does this instruction read from? (load-from-slot, restore-input, worklist-pop)
 instr-reads-slot : AbstractInstr → Maybe ℕ
-instr-reads-slot (load-from-slot k) = just k
-instr-reads-slot (restore-input k) = just k
-instr-reads-slot (worklist-pop k) = just k  -- OCP-0003: worklist pop reads from slot
-instr-reads-slot _ = nothing
+instr-reads-slot (load-from-slot k)      = just k
+instr-reads-slot (restore-input k)       = just k
+instr-reads-slot (worklist-pop k)        = just k  -- OCP-0003
+instr-reads-slot mov-to-output           = nothing
+instr-reads-slot mov-to-input            = nothing
+instr-reads-slot load-indirect           = nothing
+instr-reads-slot load-indirect-suc       = nothing
+instr-reads-slot (store-at-slot _)       = nothing
+instr-reads-slot store-indirect          = nothing
+instr-reads-slot store-indirect-suc      = nothing
+instr-reads-slot (lea-slot _)            = nothing
+instr-reads-slot (instr-alloc-stack _)   = nothing
+instr-reads-slot (instr-dealloc-stack _) = nothing
+instr-reads-slot (instr-reclaim-to _)    = nothing
+instr-reads-slot (instr-push-frame _)    = nothing
+instr-reads-slot instr-pop-frame         = nothing
+instr-reads-slot instr-call-closure      = nothing
+instr-reads-slot (worklist-init _)       = nothing
+instr-reads-slot (worklist-push _)       = nothing
+instr-reads-slot (worklist-check _)      = nothing
 
 ------------------------------------------------------------------------
 -- Positive Heap Write Characterization
@@ -248,14 +281,36 @@ instr-reads-slot _ = nothing
 -- What heap location does this instruction write to?
 -- Returns nothing if instruction doesn't write to heap.
 -- Returns nothing if writing to stack (not a heap write).
+-- Helpers (no with-block) for the indirect-store cases.
+instr-writes-heap-indirect-aux : ValueLocation FS → Maybe HeapLocation
+instr-writes-heap-indirect-aux (OnHeap hl)    = just hl
+instr-writes-heap-indirect-aux (OnStack _ _)  = nothing
+
+instr-writes-heap-indirect-suc-aux : ValueLocation FS → Maybe HeapLocation
+instr-writes-heap-indirect-suc-aux (OnHeap hl)    = just (sucHL hl)
+instr-writes-heap-indirect-suc-aux (OnStack _ _)  = nothing
+
 instr-writes-heap : AbstractInstr → LocState FS → Maybe HeapLocation
-instr-writes-heap store-indirect s with readReg (regs s) Input
-... | OnHeap hl = just hl
-... | OnStack _ _ = nothing  -- writing to stack, not heap
-instr-writes-heap store-indirect-suc s with readReg (regs s) Input
-... | OnHeap hl = just (sucHL hl)
-... | OnStack _ _ = nothing  -- writing to stack, not heap
-instr-writes-heap _ s = nothing  -- all other instructions don't write to heap
+instr-writes-heap store-indirect          s = instr-writes-heap-indirect-aux (readReg (regs s) Input)
+instr-writes-heap store-indirect-suc      s = instr-writes-heap-indirect-suc-aux (readReg (regs s) Input)
+instr-writes-heap mov-to-output           _ = nothing
+instr-writes-heap mov-to-input            _ = nothing
+instr-writes-heap load-indirect           _ = nothing
+instr-writes-heap load-indirect-suc       _ = nothing
+instr-writes-heap (load-from-slot _)      _ = nothing
+instr-writes-heap (store-at-slot _)       _ = nothing
+instr-writes-heap (lea-slot _)            _ = nothing
+instr-writes-heap (restore-input _)       _ = nothing
+instr-writes-heap (instr-alloc-stack _)   _ = nothing
+instr-writes-heap (instr-dealloc-stack _) _ = nothing
+instr-writes-heap (instr-reclaim-to _)    _ = nothing
+instr-writes-heap (instr-push-frame _)    _ = nothing
+instr-writes-heap instr-pop-frame         _ = nothing
+instr-writes-heap instr-call-closure      _ = nothing
+instr-writes-heap (worklist-init _)       _ = nothing
+instr-writes-heap (worklist-push _)       _ = nothing
+instr-writes-heap (worklist-pop _)        _ = nothing
+instr-writes-heap (worklist-check _)      _ = nothing
 
 -- Positive predicate: HeapLocation is in some region of the ownership set
 data InSomeRegion : HeapLocation → HeapOwnership → Set where
@@ -303,9 +358,26 @@ data InstrNoHeapWrite : AbstractInstr → Set where
 InstrPreservesFrame : AbstractInstr → Set
 InstrPreservesFrame (instr-push-frame _) = ⊥
   where open import Data.Empty using (⊥)
-InstrPreservesFrame instr-pop-frame = ⊥
+InstrPreservesFrame instr-pop-frame      = ⊥
   where open import Data.Empty using (⊥)
-InstrPreservesFrame _ = ⊤
+InstrPreservesFrame mov-to-output          = ⊤
+InstrPreservesFrame mov-to-input           = ⊤
+InstrPreservesFrame load-indirect          = ⊤
+InstrPreservesFrame load-indirect-suc      = ⊤
+InstrPreservesFrame (load-from-slot _)     = ⊤
+InstrPreservesFrame (store-at-slot _)      = ⊤
+InstrPreservesFrame store-indirect         = ⊤
+InstrPreservesFrame store-indirect-suc     = ⊤
+InstrPreservesFrame (lea-slot _)           = ⊤
+InstrPreservesFrame (restore-input _)      = ⊤
+InstrPreservesFrame (instr-alloc-stack _)  = ⊤
+InstrPreservesFrame (instr-dealloc-stack _) = ⊤
+InstrPreservesFrame (instr-reclaim-to _)   = ⊤
+InstrPreservesFrame instr-call-closure     = ⊤
+InstrPreservesFrame (worklist-init _)      = ⊤
+InstrPreservesFrame (worklist-push _)      = ⊤
+InstrPreservesFrame (worklist-pop _)       = ⊤
+InstrPreservesFrame (worklist-check _)     = ⊤
 
 -- What memory location does this instruction read?
 -- Returns nothing if instruction doesn't read memory.
@@ -708,17 +780,51 @@ module TraceHeapOwnership {FS : FrameSemantics} where
 
 -- Helper: check if instruction writes to heap (syntactic)
 InstrWritesToHeap : AbstractInstr → Set
-InstrWritesToHeap store-indirect = ⊤
-InstrWritesToHeap store-indirect-suc = ⊤
-InstrWritesToHeap _ = ⊥
+InstrWritesToHeap store-indirect           = ⊤
+InstrWritesToHeap store-indirect-suc       = ⊤
+InstrWritesToHeap mov-to-output            = ⊥
+InstrWritesToHeap mov-to-input             = ⊥
+InstrWritesToHeap load-indirect            = ⊥
+InstrWritesToHeap load-indirect-suc        = ⊥
+InstrWritesToHeap (load-from-slot _)       = ⊥
+InstrWritesToHeap (store-at-slot _)        = ⊥
+InstrWritesToHeap (lea-slot _)             = ⊥
+InstrWritesToHeap (restore-input _)        = ⊥
+InstrWritesToHeap (instr-alloc-stack _)    = ⊥
+InstrWritesToHeap (instr-dealloc-stack _)  = ⊥
+InstrWritesToHeap (instr-reclaim-to _)     = ⊥
+InstrWritesToHeap (instr-push-frame _)     = ⊥
+InstrWritesToHeap instr-pop-frame          = ⊥
+InstrWritesToHeap instr-call-closure       = ⊥
+InstrWritesToHeap (worklist-init _)        = ⊥
+InstrWritesToHeap (worklist-push _)        = ⊥
+InstrWritesToHeap (worklist-pop _)         = ⊥
+InstrWritesToHeap (worklist-check _)       = ⊥
 
 -- Helper: trace contains no heap-writing instructions (syntactic)
 -- This is useful for constructing TraceWritesWithinOwned [] proofs
 TraceNoHeapWrites : AbstractTrace → Set
-TraceNoHeapWrites [] = ⊤
-TraceNoHeapWrites (store-indirect ∷ t) = ⊥
-TraceNoHeapWrites (store-indirect-suc ∷ t) = ⊥
-TraceNoHeapWrites (_ ∷ t) = TraceNoHeapWrites t
+TraceNoHeapWrites []                              = ⊤
+TraceNoHeapWrites (store-indirect ∷ _)            = ⊥
+TraceNoHeapWrites (store-indirect-suc ∷ _)        = ⊥
+TraceNoHeapWrites (mov-to-output ∷ t)             = TraceNoHeapWrites t
+TraceNoHeapWrites (mov-to-input ∷ t)              = TraceNoHeapWrites t
+TraceNoHeapWrites (load-indirect ∷ t)             = TraceNoHeapWrites t
+TraceNoHeapWrites (load-indirect-suc ∷ t)         = TraceNoHeapWrites t
+TraceNoHeapWrites (load-from-slot _ ∷ t)          = TraceNoHeapWrites t
+TraceNoHeapWrites (store-at-slot _ ∷ t)           = TraceNoHeapWrites t
+TraceNoHeapWrites (lea-slot _ ∷ t)                = TraceNoHeapWrites t
+TraceNoHeapWrites (restore-input _ ∷ t)           = TraceNoHeapWrites t
+TraceNoHeapWrites (instr-alloc-stack _ ∷ t)       = TraceNoHeapWrites t
+TraceNoHeapWrites (instr-dealloc-stack _ ∷ t)     = TraceNoHeapWrites t
+TraceNoHeapWrites (instr-reclaim-to _ ∷ t)        = TraceNoHeapWrites t
+TraceNoHeapWrites (instr-push-frame _ ∷ t)        = TraceNoHeapWrites t
+TraceNoHeapWrites (instr-pop-frame ∷ t)           = TraceNoHeapWrites t
+TraceNoHeapWrites (instr-call-closure ∷ t)        = TraceNoHeapWrites t
+TraceNoHeapWrites (worklist-init _ ∷ t)           = TraceNoHeapWrites t
+TraceNoHeapWrites (worklist-push _ ∷ t)           = TraceNoHeapWrites t
+TraceNoHeapWrites (worklist-pop _ ∷ t)            = TraceNoHeapWrites t
+TraceNoHeapWrites (worklist-check _ ∷ t)          = TraceNoHeapWrites t
 
 -- All instructions in trace preserve frame
 TracePreservesFrame : AbstractTrace → Set

@@ -40,8 +40,9 @@ module WriteWithDisjoint {FS : FrameSemantics} where
   write-preserves-disjoint s (OnStack f k) val (OnStack f' k') neq
     with _≟F_ f f' | Data.Nat._≟_ k k'
   ... | yes refl | yes refl = ⊥-elim (neq refl)
-  ... | yes _ | no _ = refl
-  ... | no _ | _ = refl
+  ... | yes refl | no _    = refl
+  ... | no _    | yes refl = refl
+  ... | no _    | no _     = refl
   write-preserves-disjoint s (OnStack _ _) val (OnHeap _) neq = refl
   write-preserves-disjoint s (OnHeap _) (OnStack _ _) (OnStack _ _) neq = refl  -- Invalid write (no-op)
   write-preserves-disjoint s (OnHeap _) (OnStack _ _) (OnHeap _) neq = refl     -- Invalid write (no-op)
