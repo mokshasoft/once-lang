@@ -50,7 +50,7 @@ open import Once.CCC.IR using (IR; AllocMode)
 open import Once.CCC.Eval using (eval)
 open import Once.CCC.IR.Size using (ir-size)
 open import Once.CCC.IR.Stack using (ir-stack-requirement)
-open import Once.CCC.Machine.Allocation using (AllocState; next-slot; current-frame; frame-capacity; module FrontierInvariant)
+open import Once.CCC.Machine.Allocation using (AllocState; next-slot; current-frame; module FrontierInvariant)
 
 -- Import the RuntimeContract
 open import Once.CCC.Target.RiscV64.RuntimeContract using (RuntimeContract; FrameOps)
@@ -145,13 +145,13 @@ module Correctness
     -- Machine is ready to execute (caller must establish)
     halted s ≡ false →
     readReg (regs s) Input ≡ input-loc →
-    next-slot alloc +ℕ ir-stack-requirement ir ≤ frame-capacity alloc →
+    -- Phase 3: capacity parameter removed (unbounded stack model)
     -- ...then output represents (eval ir x)
     ∃[ mOut ] ∃[ result-loc ] ∃[ s' ] ∃[ alloc' ]
       Represents mOut alloc' (eval ir x) result-loc s'
-  compile-correct ir mIn x input-loc s alloc repr before ir<bound not-halted rdi-eq capacity-ok =
+  compile-correct ir mIn x input-loc s alloc repr before ir<bound not-halted rdi-eq =
     let (mOut , result) = D.run-wf mIn ir ir<bound x input-loc s alloc
-          repr before not-halted rdi-eq capacity-ok
+          repr before not-halted rdi-eq
     in mOut
      , CWF.IRResultAWF.result-loc result
      , CWF.IRResultAWF.final-state result

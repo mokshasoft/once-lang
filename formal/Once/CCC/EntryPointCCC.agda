@@ -154,6 +154,14 @@ module X86-32 where
   -- Correctness theorem (entry point for dead code analysis)
   compile-correct = Correct.compile-correct
 
+  -- Plan 0.10: theorem about the EXTRACTED compile (per-arch mirror).
+  open import Once.CCC.Target.X86-32.CompileCorrect as CC
+  module CompileCorrect-X86-32 =
+    CC.Correctness {FS} (RuntimeContract.program-bound runtime)
+
+  compile-correct-extracted = CompileCorrect-X86-32.compile-correct
+  compile-extracted          = CompileCorrect-X86-32.compile
+
 ------------------------------------------------------------------------
 ------------------------------------------------------------------------
 -- RISC-V 64 TARGET
@@ -198,6 +206,14 @@ module RiscV64 where
 
   -- Correctness theorem (entry point for dead code analysis)
   compile-correct = Correct.compile-correct
+
+  -- Plan 0.10: theorem about the EXTRACTED compile (per-arch mirror).
+  open import Once.CCC.Target.RiscV64.CompileCorrect as CC
+  module CompileCorrect-RiscV64 =
+    CC.Correctness {FS} (RuntimeContract.program-bound runtime)
+
+  compile-correct-extracted = CompileCorrect-RiscV64.compile-correct
+  compile-extracted          = CompileCorrect-RiscV64.compile
 
 ------------------------------------------------------------------------
 -- UNIFIED EXPORTS
