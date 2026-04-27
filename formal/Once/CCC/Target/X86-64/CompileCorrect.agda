@@ -72,7 +72,7 @@ module Correctness {FS : FrameSemantics} (program-bound : ℕ) where
 
   open import Once.CCC.Target.X86-64.AbstractToX86 using (compile-trace)
   open import Once.CCC.Target.X86-64.DirectSimulation using (module Simulation)
-  open Simulation {FS} using (X86State; Corresponds; exec-prog)
+  open Simulation {FS} using (X86State; Corresponds; exec-prog; trace-sim)
 
   open import Once.CCC.Machine.ClosureWellFormed
   open ClosureWellFormedDef {FS} program-bound using (ValidAtWF)
@@ -124,22 +124,37 @@ module Correctness {FS : FrameSemantics} (program-bound : ℕ) where
   -- abstract machine. This is the per-arch correctness — the
   -- DirectSimulation work.
   --
-  -- Discharged in Phase D (plan 0.10) by induction over `AbstractTrace`,
-  -- delegating to the per-AbstractInstr simulations already in
-  -- `DirectSimulation.exec-x86` (themselves made honest by Plan 0.9
-  -- Phase B which closed the silent catch-all `exec-x86 _ xs _ = xs`).
-  postulate
-    compile-trace-correct :
-      ∀ (trace : AbstractTrace)
-        (s : LocState FS) (alloc : AllocState {FS})
-        (xs : X86State) (frame : Frame FS) →
-      Corresponds s xs alloc →
-      halted s ≡ false →
-      let abs-result = exec-trace trace s alloc
-          abs-final-s = proj₁ abs-result
-          abs-final-alloc = proj₂ abs-result
-          arch-final-xs = exec-prog (compile-trace trace) xs frame
-      in Corresponds abs-final-s arch-final-xs abs-final-alloc
+  -- Phase D (plan 0.10) DISCHARGES this by direct delegation to
+  -- `Simulation.trace-sim`, which is already proven by induction over
+  -- `AbstractTrace`, delegating to the per-AbstractInstr `instr-sim`
+  -- (themselves made honest by Plan 0.9 Phase B which closed the silent
+  -- catch-all `exec-x86 _ xs _ = xs`).
+  --
+  -- The `frame` argument to `exec-prog` is fixed to `current-frame
+  -- alloc`: this is the only frame for which `Corresponds` (which
+  -- couples xs to alloc via `frame-eq`) makes sense. The earlier
+  -- arbitrary-frame postulate had no chance of being true.
+  --
+  -- Residual trusted base inside `trace-sim`: the syscall semantics of
+  -- `instr-sigop` are still modeled by `PO.!!` in
+  -- `DirectSimulation.instr-sim (instr-sigop _)`. Discharging this
+  -- requires modeling syscall effects on the abstract machine
+  -- (currently `exec-abstract (instr-sigop _) = no-op`, which doesn't
+  -- match the real `syscall` x86 instruction setting `x86-halted = true`).
+  -- Tracked separately as part of trusted base; see
+  -- `docs/compiler/trusted-base.md` (Phase F).
+  compile-trace-correct :
+    ∀ (trace : AbstractTrace)
+      (s : LocState FS) (alloc : AllocState {FS})
+      (xs : X86State) →
+    Corresponds s xs alloc →
+    let abs-result = exec-trace trace s alloc
+        abs-final-s = proj₁ abs-result
+        abs-final-alloc = proj₂ abs-result
+        arch-final-xs = exec-prog (compile-trace trace) xs (current-frame alloc)
+    in Corresponds abs-final-s arch-final-xs abs-final-alloc
+  compile-trace-correct trace s alloc xs corr =
+    trace-sim trace s xs alloc corr
 
   ----------------------------------------------------------------------
   -- THE GRAND THEOREM (derived).
@@ -162,7 +177,7 @@ module Correctness {FS : FrameSemantics} (program-bound : ℕ) where
     ∀ {A B} (ir : IR A B)
       (mIn : AllocMode) (x : ⟦ A ⟧) (input-loc : ValueLocation FS)
       (s : LocState FS) (alloc : AllocState {FS})
-      (xs : X86State) (frame : Frame FS) →
+      (xs : X86State) →
     Corresponds s xs alloc →
     ValidAtWF mIn alloc x input-loc s →
     BeforeFrontier alloc input-loc →
@@ -172,19 +187,18 @@ module Correctness {FS : FrameSemantics} (program-bound : ℕ) where
         abs-result = exec-trace trace s alloc
         abs-final-s = proj₁ abs-result
         abs-final-alloc = proj₂ abs-result
-        arch-final-xs = exec-prog (compile-trace trace) xs frame
+        arch-final-xs = exec-prog (compile-trace trace) xs (current-frame alloc)
     in -- The arch state corresponds to an abstract state that...
        Corresponds abs-final-s arch-final-xs abs-final-alloc
        ×
        -- ...represents (eval ir x).
        (∃[ mOut ] ∃[ result-loc ]
           ValidAtWF mOut abs-final-alloc (eval ir x) result-loc abs-final-s)
-  compile-correct ir mIn x input-loc s alloc xs frame
+  compile-correct ir mIn x input-loc s alloc xs
                   corr valid before not-halted rdi-eq =
     let semantic-side =
           ir-to-trace-correct ir mIn x input-loc s alloc
             valid before not-halted rdi-eq
         machine-side =
-          compile-trace-correct (ir-to-trace ir) s alloc xs frame
-            corr not-halted
+          compile-trace-correct (ir-to-trace ir) s alloc xs corr
     in machine-side , semantic-side
