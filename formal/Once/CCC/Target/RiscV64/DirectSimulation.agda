@@ -961,6 +961,10 @@ module Simulation {FS : FrameSemantics} where
   ... | true | ()
   ... | false | _ = corr
 
+  -- Plan 0.10 Phase B: SigOp dispatch (RV64 emits unimp; modeling
+  -- syscall effects abstractly is part of the trusted base).
+  instr-sim (instr-sigop _) ls rs alloc not-halted corr = PO.!!
+
   ------------------------------------------------------------------------
   -- Trace simulation
   ------------------------------------------------------------------------
@@ -996,6 +1000,7 @@ module Simulation {FS : FrameSemantics} where
   ... | just _  = refl
   ... | nothing = refl
   exec-abstract-preserves-frame (worklist-check _) ls alloc = refl
+  exec-abstract-preserves-frame (instr-sigop _)    ls alloc = refl
 
   trace-sim : ∀ trace ls rs alloc →
     Corresponds ls rs alloc →

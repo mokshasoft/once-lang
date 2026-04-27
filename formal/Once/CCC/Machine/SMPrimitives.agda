@@ -246,6 +246,7 @@ instr-writes-slot instr-call-closure     = nothing
 instr-writes-slot (worklist-init _)      = nothing
 instr-writes-slot (worklist-pop _)       = nothing
 instr-writes-slot (worklist-check _)     = nothing
+instr-writes-slot (instr-sigop _)        = nothing
 
 -- What slot does this instruction read from? (load-from-slot, restore-input, worklist-pop)
 instr-reads-slot : AbstractInstr → Maybe ℕ
@@ -269,6 +270,7 @@ instr-reads-slot instr-call-closure      = nothing
 instr-reads-slot (worklist-init _)       = nothing
 instr-reads-slot (worklist-push _)       = nothing
 instr-reads-slot (worklist-check _)      = nothing
+instr-reads-slot (instr-sigop _)         = nothing
 
 ------------------------------------------------------------------------
 -- Positive Heap Write Characterization
@@ -311,6 +313,7 @@ instr-writes-heap (worklist-init _)       _ = nothing
 instr-writes-heap (worklist-push _)       _ = nothing
 instr-writes-heap (worklist-pop _)        _ = nothing
 instr-writes-heap (worklist-check _)      _ = nothing
+instr-writes-heap (instr-sigop _)         _ = nothing
 
 -- Positive predicate: HeapLocation is in some region of the ownership set
 data InSomeRegion : HeapLocation → HeapOwnership → Set where
@@ -353,6 +356,8 @@ data InstrNoHeapWrite : AbstractInstr → Set where
   nhw-worklist-push      : ∀ {slot} → InstrNoHeapWrite (worklist-push slot)
   nhw-worklist-pop       : ∀ {slot} → InstrNoHeapWrite (worklist-pop slot)
   nhw-worklist-check     : ∀ {slot} → InstrNoHeapWrite (worklist-check slot)
+  -- Plan 0.10 Phase B
+  nhw-instr-sigop        : ∀ {name} → InstrNoHeapWrite (instr-sigop name)
 
 -- Instruction preserves frame (doesn't push/pop frame)
 InstrPreservesFrame : AbstractInstr → Set
@@ -378,6 +383,7 @@ InstrPreservesFrame (worklist-init _)      = ⊤
 InstrPreservesFrame (worklist-push _)      = ⊤
 InstrPreservesFrame (worklist-pop _)       = ⊤
 InstrPreservesFrame (worklist-check _)     = ⊤
+InstrPreservesFrame (instr-sigop _)        = ⊤
 
 -- What memory location does this instruction read?
 -- Returns nothing if instruction doesn't read memory.
@@ -403,6 +409,7 @@ instr-reads-mem (worklist-init k) s alloc = nothing      -- no-op
 instr-reads-mem (worklist-push k) s alloc = nothing      -- reads register, not memory
 instr-reads-mem (worklist-pop k) s alloc = just (OnStack (current-frame alloc) k)
 instr-reads-mem (worklist-check k) s alloc = nothing     -- no-op
+instr-reads-mem (instr-sigop _)    s alloc = nothing     -- no-op
 
 -- What memory location does this instruction write?
 -- Returns nothing if instruction doesn't write memory.
@@ -428,6 +435,7 @@ instr-writes-mem (worklist-init k) s alloc = nothing     -- no-op
 instr-writes-mem (worklist-push k) s alloc = just (OnStack (current-frame alloc) k)
 instr-writes-mem (worklist-pop k) s alloc = nothing      -- writes register, not memory
 instr-writes-mem (worklist-check k) s alloc = nothing    -- no-op
+instr-writes-mem (instr-sigop _)    s alloc = nothing    -- no-op
 
 ------------------------------------------------------------------------
 -- Level 4: Instruction Primitives
@@ -514,6 +522,7 @@ module InstrPrimitives {FS : FrameSemantics} where
   ... | just _  = refl
   ... | nothing = refl
   exec-abstract-preserves-frame (worklist-check slot) s alloc = refl
+  exec-abstract-preserves-frame (instr-sigop _)       s alloc = refl
 
   -- (E) HEAP PRESERVATION
   -- Instructions that don't write to heap preserve heapMem
@@ -557,6 +566,7 @@ module InstrPrimitives {FS : FrameSemantics} where
   ... | just _  = refl
   ... | nothing = refl
   exec-abstract-preserves-heapMem (worklist-check slot) s alloc nhw-worklist-check = refl
+  exec-abstract-preserves-heapMem (instr-sigop _)       s alloc nhw-instr-sigop    = refl
 
   ------------------------------------------------------------------------
   -- (E2) STACK SLOT PRESERVATION - instruction level
@@ -609,6 +619,7 @@ module InstrPrimitives {FS : FrameSemantics} where
   ... | just _  = refl
   ... | nothing = refl
   exec-abstract-preserves-stack-slot (worklist-check _) s alloc f slot _ _ = refl
+  exec-abstract-preserves-stack-slot (instr-sigop _)    s alloc f slot _ _ = refl
 
   -- store-at-slot k preserves slot j when j < k (positive ordering)
   store-at-slot-preserves-below : ∀ (j k : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
@@ -693,6 +704,7 @@ module InstrPrimitives {FS : FrameSemantics} where
   ... | just _ | nothing | ()
   ... | nothing | just _ | ()
   exec-abstract-same-frame (worklist-check slot) s alloc₁ alloc₂ _ = refl
+  exec-abstract-same-frame (instr-sigop _)       s alloc₁ alloc₂ _ = refl
 
 ------------------------------------------------------------------------
 -- Level 5: Trace Primitives
@@ -800,6 +812,7 @@ InstrWritesToHeap (worklist-init _)        = ⊥
 InstrWritesToHeap (worklist-push _)        = ⊥
 InstrWritesToHeap (worklist-pop _)         = ⊥
 InstrWritesToHeap (worklist-check _)       = ⊥
+InstrWritesToHeap (instr-sigop _)          = ⊥
 
 -- Helper: trace contains no heap-writing instructions (syntactic)
 -- This is useful for constructing TraceWritesWithinOwned [] proofs
@@ -825,6 +838,7 @@ TraceNoHeapWrites (worklist-init _ ∷ t)           = TraceNoHeapWrites t
 TraceNoHeapWrites (worklist-push _ ∷ t)           = TraceNoHeapWrites t
 TraceNoHeapWrites (worklist-pop _ ∷ t)            = TraceNoHeapWrites t
 TraceNoHeapWrites (worklist-check _ ∷ t)          = TraceNoHeapWrites t
+TraceNoHeapWrites (instr-sigop _ ∷ t)             = TraceNoHeapWrites t
 
 -- All instructions in trace preserve frame
 TracePreservesFrame : AbstractTrace → Set
@@ -870,6 +884,7 @@ trace-no-heap-writes-append (worklist-init _ ∷ t1) t2 tn1 tn2 = trace-no-heap-
 trace-no-heap-writes-append (worklist-push _ ∷ t1) t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
 trace-no-heap-writes-append (worklist-pop _ ∷ t1) t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
 trace-no-heap-writes-append (worklist-check _ ∷ t1) t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
+trace-no-heap-writes-append (instr-sigop _ ∷ t1)    t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
 
 -- Append preserves TraceWritesAbove
 trace-writes-above-append : ∀ n t1 t2 →
@@ -1038,6 +1053,7 @@ module TracePrimitives {FS : FrameSemantics} where
     tnhw-head (worklist-push _) _ _ = nhw-worklist-push
     tnhw-head (worklist-pop _) _ _ = nhw-worklist-pop
     tnhw-head (worklist-check _) _ _ = nhw-worklist-check
+    tnhw-head (instr-sigop _)    _ _ = nhw-instr-sigop
 
     -- Helper: extract TraceNoHeapWrites for tail
     tnhw-tail : ∀ (i : AbstractInstr) (rest : AbstractTrace) →
@@ -1061,6 +1077,7 @@ module TracePrimitives {FS : FrameSemantics} where
     tnhw-tail (worklist-push _) rest tnhw = tnhw
     tnhw-tail (worklist-pop _) rest tnhw = tnhw
     tnhw-tail (worklist-check _) rest tnhw = tnhw
+    tnhw-tail (instr-sigop _)    rest tnhw = tnhw
 
   -- (A1) Current frame slot below write bound is preserved
   -- If trace writes above n (at slots ≥ n), then slot < n is preserved
@@ -1147,6 +1164,8 @@ module TracePrimitives {FS : FrameSemantics} where
       exec-trace-preserves-slot-below-nonwrite (worklist-pop k) rest s alloc n slot twa tnhw slot<n nhw-worklist-pop refl
     exec-trace-preserves-slot-below (worklist-check k ∷ rest) s alloc n slot twa tnhw slot<n =
       exec-trace-preserves-slot-below-nonwrite (worklist-check k) rest s alloc n slot twa tnhw slot<n nhw-worklist-check refl
+    exec-trace-preserves-slot-below (instr-sigop nm ∷ rest)   s alloc n slot twa tnhw slot<n =
+      exec-trace-preserves-slot-below-nonwrite (instr-sigop nm) rest s alloc n slot twa tnhw slot<n nhw-instr-sigop    refl
 
     -- Helper for non-writing instructions
     exec-trace-preserves-slot-below-nonwrite : ∀ (i : AbstractInstr) (rest : AbstractTrace)
@@ -1260,6 +1279,8 @@ module TracePrimitives {FS : FrameSemantics} where
       exec-trace-preserves-slot-above-nonwrite (worklist-pop k) rest s alloc m slot twb tnhw m≤slot nhw-worklist-pop refl
     exec-trace-preserves-slot-above (worklist-check k ∷ rest) s alloc m slot twb tnhw m≤slot =
       exec-trace-preserves-slot-above-nonwrite (worklist-check k) rest s alloc m slot twb tnhw m≤slot nhw-worklist-check refl
+    exec-trace-preserves-slot-above (instr-sigop nm ∷ rest)   s alloc m slot twb tnhw m≤slot =
+      exec-trace-preserves-slot-above-nonwrite (instr-sigop nm) rest s alloc m slot twb tnhw m≤slot nhw-instr-sigop    refl
 
     -- Helper for non-writing instructions
     exec-trace-preserves-slot-above-nonwrite : ∀ (i : AbstractInstr) (rest : AbstractTrace)
@@ -1362,6 +1383,8 @@ module TracePrimitives {FS : FrameSemantics} where
       exec-trace-preserves-ancestor-nonwrite (worklist-pop k) rest s alloc f slot cf≺f tnhw nhw-worklist-pop refl
     exec-trace-preserves-ancestor (worklist-check k ∷ rest) s alloc f slot cf≺f tnhw =
       exec-trace-preserves-ancestor-nonwrite (worklist-check k) rest s alloc f slot cf≺f tnhw nhw-worklist-check refl
+    exec-trace-preserves-ancestor (instr-sigop nm ∷ rest)   s alloc f slot cf≺f tnhw =
+      exec-trace-preserves-ancestor-nonwrite (instr-sigop nm) rest s alloc f slot cf≺f tnhw nhw-instr-sigop    refl
 
     -- Helper for non-writing instructions in ancestor preservation
     exec-trace-preserves-ancestor-nonwrite : ∀ (i : AbstractInstr) (rest : AbstractTrace)
@@ -1626,6 +1649,7 @@ module TracePrimitives {FS : FrameSemantics} where
   exec-abstract-preserves-halted (worklist-pop slot) s alloc h-eq iph-worklist-pop =
     load-from-slot-preserves-halted slot s alloc h-eq  -- same as load-from-slot
   exec-abstract-preserves-halted (worklist-check slot) s alloc h-eq _ = h-eq
+  exec-abstract-preserves-halted (instr-sigop _)       s alloc h-eq _ = h-eq
 
   -- TracePreservesHalted: predicate on trace that all instructions preserve halted
   data TracePreservesHaltedP : AbstractTrace → Set where
@@ -2903,6 +2927,7 @@ module RecSchemeSemantics {FS : FrameSemantics} where
   ... | just v = refl
   ... | nothing = refl
   exec-abstract-preserves-heap-ref (worklist-check _) s alloc = refl
+  exec-abstract-preserves-heap-ref (instr-sigop _)    s alloc = refl
 
   -- exec-trace preserves next-heap-ref
   exec-trace-preserves-heap-ref : ∀ (t : AbstractTrace) (s : LocState FS) (alloc : AllocState {FS}) →

@@ -54,7 +54,7 @@ open import Once.CCC.Machine.SMCore
          instr-alloc-stack; instr-dealloc-stack;
          instr-push-frame; instr-pop-frame; instr-call-closure;
          worklist-init; worklist-push; worklist-pop; worklist-check;
-         instr-reclaim-to)
+         instr-reclaim-to; instr-sigop)
 
 ------------------------------------------------------------------------
 -- Slot to displacement conversion
@@ -206,6 +206,11 @@ compile-abstract (worklist-check n) = []
 -- instr-reclaim-to: set next-slot to n (allocation bookkeeping only)
 -- RV64: (empty - pure AllocState update, no machine effect)
 compile-abstract (instr-reclaim-to n) = []
+
+-- Plan 0.10 Phase B: SigOp dispatch.
+-- RV64 SigOp lowering is not yet implemented; emit unimp trap so the
+-- gap is visible at runtime instead of silently producing nothing.
+compile-abstract (instr-sigop _) = unimp ∷ []
 
 ------------------------------------------------------------------------
 -- Trace compilation: compile a whole trace to RISC-V

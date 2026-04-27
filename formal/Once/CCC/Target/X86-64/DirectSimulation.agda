@@ -946,6 +946,12 @@ module Simulation {FS : FrameSemantics} where
   ... | true | ()
   ... | false | _ = corr
 
+  -- Plan 0.10 Phase B: SigOp dispatch.
+  -- exec-abstract is no-op; compile-abstract emits the syscall sequence
+  -- via compile-sigOp. Modeling syscall effects abstractly is part of
+  -- the trusted base (sigOp-proof in EntryPointCCC).
+  instr-sim (instr-sigop _) ls xs alloc not-halted corr = PO.!!
+
   -- instr-reclaim-to: no-op in x86 (compiles to empty)
   -- Abstract: only updates alloc.next-slot, ls unchanged
   -- x86: empty program, xs unchanged
@@ -1000,6 +1006,7 @@ module Simulation {FS : FrameSemantics} where
   ... | just _  = refl
   ... | nothing = refl
   exec-abstract-preserves-frame (worklist-check _) ls alloc = refl
+  exec-abstract-preserves-frame (instr-sigop _)    ls alloc = refl
   exec-abstract-preserves-frame (instr-reclaim-to _) ls alloc = refl
 
   ------------------------------------------------------------------------

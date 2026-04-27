@@ -32,6 +32,7 @@ open import Function using (_∘_)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.List using (List; []; _∷_; _++_)
+open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; cong; cong₂; sym; trans; subst; inspect; [_])
 open import Relation.Nullary using (Dec; yes; no)
 
@@ -687,6 +688,18 @@ data AbstractInstr : Set where
   worklist-pop   : Slot → AbstractInstr  -- count--, Output := top item
   worklist-check : Slot → AbstractInstr  -- Output := 1 if empty, 0 if not
 
+  -- Plan 0.10 Phase B: SigOp dispatch.
+  --
+  -- Carries the SigOpInfo's name; per-arch compile-abstract decodes
+  -- the name (e.g., "exit", "lit.int.<N>") and emits the appropriate
+  -- instruction sequence. The abstract semantics treats this as an
+  -- opaque effect — modeling SigOps requires per-arch syscall ABIs
+  -- which are part of the trusted base (RuntimeContract / sigOp-proof).
+  --
+  -- The String argument is `SigOpInfo.name`; carried by value so the
+  -- abstract trace is self-contained and arch-independent.
+  instr-sigop : String → AbstractInstr
+
 -- | A trace is a sequence of abstract instructions
 AbstractTrace : Set
 AbstractTrace = List AbstractInstr
@@ -971,6 +984,14 @@ module AbstractExec {FS : FrameSemantics} where
   -- worklist-check: Set Output based on worklist empty status
   -- Abstract: no-op (Star proofs handle termination structurally)
   exec-abstract (worklist-check slot) s alloc = s , alloc
+
+  -- Plan 0.10 Phase B: SigOp dispatch.
+  -- Abstract: no-op. Real semantics depends on the syscall ABI and is
+  -- delegated to the per-arch sigOp-proof in `EntryPointCCC` (part of
+  -- the trusted base — see `docs/compiler/trusted-base.md`).
+  -- SigOps that terminate (e.g. `exit`) effectively halt; modeling
+  -- that is future work.
+  exec-abstract (instr-sigop _) s alloc = s , alloc
 
   -- | Execute a trace (sequence of abstract instructions)
   exec-trace : AbstractTrace → LocState FS → AllocState {FS} →

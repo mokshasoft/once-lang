@@ -16,6 +16,9 @@ module Once.CCC.Target.X86-64.AbstractToX86 where
 open import Data.Nat using (ℕ) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
 open import Data.List using (List; []; _∷_; _++_)
 
+-- Plan 0.10 Phase B: SigOp dispatch.
+import Once.CCC.Target.X86-64.CodeGen.Compile as CompileX86-64
+
 -- Import X86 syntax
 open import Once.CCC.Target.X86-64.Syntax
   using (Reg; rax; rbx; rcx; rdx; rdi; rsi; rbp; rsp; r8; r9; r10; r11; r12; r13; r14; r15;
@@ -33,7 +36,7 @@ open import Once.CCC.Machine.SMCore
          instr-alloc-stack; instr-dealloc-stack;
          instr-push-frame; instr-pop-frame; instr-call-closure;
          worklist-init; worklist-push; worklist-pop; worklist-check;
-         instr-reclaim-to)
+         instr-reclaim-to; instr-sigop)
 
 ------------------------------------------------------------------------
 -- Slot to displacement conversion
@@ -162,6 +165,11 @@ compile-abstract (worklist-check n) = []
 -- instr-reclaim-to: set next-slot to n (allocation bookkeeping only)
 -- x86: (empty - pure AllocState update, no machine effect)
 compile-abstract (instr-reclaim-to n) = []
+
+-- Plan 0.10 Phase B: SigOp dispatch.
+-- Delegates to the existing per-name handler in CodeGen/Compile.
+compile-abstract (instr-sigop nm) =
+  CompileX86-64.compile-sigOp nm
 
 ------------------------------------------------------------------------
 -- Trace compilation: compile a whole trace to x86
