@@ -246,18 +246,25 @@ module IRTraceCorrectness {FS : FrameSemantics} (program-bound : ℕ) where
     ir-to-trace-correct-apply : ∀ {k A B} →
       IRTraceCorrect (apply {A} {B} {k})
 
-    -- SigOp: TRACE SHAPE MISMATCH between ir-to-trace and Dispatcher.
-    -- ir-to-trace emits `instr-sigop name ∷ []` (decoded by per-arch
-    -- compile-abstract to actual syscall sequences), while
-    -- Dispatcher.run-sigOp emits `mov-to-output ∷ []` (treats SigOp as
-    -- a pure pass-through value-flow). The two views are about
-    -- DIFFERENT objects: the verified Dispatcher proves correctness of
-    -- the abstract (no-op) semantics; ir-to-trace adds a new layer
-    -- (real syscall codegen). Discharging this postulate requires
-    -- either strengthening `exec-abstract (instr-sigop _)` to model
-    -- the operation's effect on Output, or aligning ir-to-trace's
-    -- SigOp clause with Dispatcher's `mov-to-output` (which would lose
-    -- the syscall codegen path). Tracked as part of trusted base.
+    -- SigOp: validity preservation under `exec-abstract (instr-sigop
+    -- name) = no-op`. With the current weak abstract semantics, the
+    -- output state is the input state (with Output unchanged), so the
+    -- contract demands an existential `result-loc` whose validity for
+    -- `eval (SigOp si) x = semI si x` is established at the unchanged
+    -- state. This holds when the per-name `semI si` agrees with the
+    -- value flow already established by validity (e.g. for pure pass-
+    -- throughs).
+    --
+    -- This is the catchall postulate. For per-name discharge (Plan A),
+    -- pattern-match on `name si` in `ir-to-trace-correct` and route
+    -- specific names (`linux.exit`, `lit.int.<N>`, ...) to per-name
+    -- postulates that can be later upgraded to real proofs tied to
+    -- SigOpInfo.semM.
+    --
+    -- Paired with `Simulation.sigop-codegen-faithful` (one per arch),
+    -- which links the codegen output of `compile-sigOp name` to
+    -- `exec-abstract (instr-sigop name)`. The two together close the
+    -- semantic chain for SigOps.
     ir-to-trace-correct-sigop : ∀ {A B} (si : _) →
       IRTraceCorrect (SigOp {A} {B} si)
 

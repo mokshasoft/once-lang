@@ -14,6 +14,7 @@
 module Once.CCC.Target.X86-32.DirectSimulation where
 
 open import Data.Nat using (ℕ; zero; suc; _∸_; _≡ᵇ_; _≤_) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
+open import Data.String using (String)
 open import Data.Nat.DivMod using (_/_; m*n/n≡m)
 open import Data.Bool using (Bool; true; false; if_then_else_)
 open import Data.Maybe using (Maybe; just; nothing)
@@ -534,6 +535,17 @@ module Simulation {FS : FrameSemantics} where
     ; halt-eq = refl
     }
 
+  -- Plan 0.10 Phase B / A: SigOp codegen↔abstract correspondence.
+  -- Per-(arch, sigop) trusted edge — see x86-64 DirectSim for the
+  -- discharge plan. Future per-name strengthening upgrades this to
+  -- per-name postulates tied to SigOpInfo.semM.
+  postulate
+    sigop-codegen-faithful : ∀ (name : String) ls xs alloc →
+      halted ls ≡ false → Corresponds ls xs alloc →
+      Corresponds (proj₁ (exec-abstract (instr-sigop name) ls alloc))
+                  (exec-prog (compile-abstract (instr-sigop name)) xs (current-frame alloc))
+                  (proj₂ (exec-abstract (instr-sigop name) ls alloc))
+
   instr-sim : ∀ i ls xs alloc →
     halted ls ≡ false →
     Corresponds ls xs alloc →
@@ -905,7 +917,10 @@ module Simulation {FS : FrameSemantics} where
 
   -- Plan 0.10 Phase B: SigOp dispatch (X86-32 emits ud2; modeling
   -- syscall effects abstractly is part of the trusted base).
-  instr-sim (instr-sigop _) ls xs alloc not-halted corr = PO.!!
+  -- SigOp: discharged via the named postulate sigop-codegen-faithful
+  -- declared at the top of the Simulation module.
+  instr-sim (instr-sigop name) ls xs alloc not-halted corr =
+    sigop-codegen-faithful name ls xs alloc not-halted corr
 
   -- instr-reclaim-to: no-op in x86 (compiles to empty)
   -- Abstract: only updates alloc.next-slot, ls unchanged

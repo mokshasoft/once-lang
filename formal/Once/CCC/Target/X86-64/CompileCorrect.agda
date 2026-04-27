@@ -84,12 +84,13 @@ module Correctness {FS : FrameSemantics} (program-bound : ℕ) where
   -- compile-trace-correct: the arch-side half. Discharged via
   -- `Simulation.trace-sim` (Phase D).
   --
-  -- Residual trusted base inside `trace-sim`: the syscall semantics of
-  -- `instr-sigop` are still modeled by `PO.!!` in
-  -- `DirectSimulation.instr-sim (instr-sigop _)`. Discharging this
-  -- requires modeling syscall effects on the abstract machine
-  -- (currently `exec-abstract (instr-sigop _) = no-op`, which doesn't
-  -- match the real `syscall` x86 instruction setting `x86-halted = true`).
+  -- Residual trusted base inside `trace-sim`: the SigOp codegen↔abstract
+  -- correspondence is now a NAMED postulate
+  -- `Simulation.sigop-codegen-faithful : ∀ name → ...` rather than an
+  -- anonymous `PO.!!`. Per-(arch, sigop) discharge is now possible by
+  -- splitting this into `sigop-codegen-faithful-exit`,
+  -- `sigop-codegen-faithful-lit-int`, etc., each tied to a stronger
+  -- abstract semantics for that name. See `docs/compiler/trusted-base.md`.
   ----------------------------------------------------------------------
 
   compile-trace-correct :

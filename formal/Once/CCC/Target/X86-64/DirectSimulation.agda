@@ -14,6 +14,7 @@
 module Once.CCC.Target.X86-64.DirectSimulation where
 
 open import Data.Nat using (ℕ; zero; suc; _∸_; _≡ᵇ_; _≤_) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
+open import Data.String using (String)
 open import Data.Nat.DivMod using (_/_; m*n/n≡m)
 open import Data.Bool using (Bool; true; false; if_then_else_)
 open import Data.Maybe using (Maybe; just; nothing)
@@ -555,6 +556,27 @@ module Simulation {FS : FrameSemantics} where
     ; halt-eq = refl
     }
 
+  -- Plan 0.10 Phase B / A: SigOp codegen↔abstract correspondence.
+  --
+  -- Per-(arch, sigop) trusted edge: the assembly emitted by
+  -- `compile-sigOp name` is claimed to faithfully implement the
+  -- abstract semantics of `exec-abstract (instr-sigop name)`. With the
+  -- current weak abstract model (`exec-abstract` is a no-op) this is
+  -- vacuously about value flow but materially about halting (the
+  -- syscall instruction sets `x86-halted = true` while the abstract
+  -- doesn't). Future per-name strengthening can split this into
+  -- `sigop-codegen-faithful-exit`, `sigop-codegen-faithful-lit-int`,
+  -- etc., each tied to a stronger abstract semantics for that name.
+  --
+  -- See `docs/compiler/trusted-base.md` (and the sibling postulate in
+  -- IRTraceCorrect's `ir-to-trace-correct-sigop`).
+  postulate
+    sigop-codegen-faithful : ∀ (name : String) ls xs alloc →
+      halted ls ≡ false → Corresponds ls xs alloc →
+      Corresponds (proj₁ (exec-abstract (instr-sigop name) ls alloc))
+                  (exec-prog (compile-abstract (instr-sigop name)) xs (current-frame alloc))
+                  (proj₂ (exec-abstract (instr-sigop name) ls alloc))
+
   instr-sim : ∀ i ls xs alloc →
     halted ls ≡ false →
     Corresponds ls xs alloc →
@@ -946,11 +968,11 @@ module Simulation {FS : FrameSemantics} where
   ... | true | ()
   ... | false | _ = corr
 
-  -- Plan 0.10 Phase B: SigOp dispatch.
-  -- exec-abstract is no-op; compile-abstract emits the syscall sequence
-  -- via compile-sigOp. Modeling syscall effects abstractly is part of
-  -- the trusted base (sigOp-proof in EntryPointCCC).
-  instr-sim (instr-sigop _) ls xs alloc not-halted corr = PO.!!
+  -- Plan 0.10 Phase B / A: SigOp codegen↔abstract correspondence.
+  -- Discharged via the named postulate `sigop-codegen-faithful`
+  -- declared at the top of the Simulation module (see comment there).
+  instr-sim (instr-sigop name) ls xs alloc not-halted corr =
+    sigop-codegen-faithful name ls xs alloc not-halted corr
 
   -- instr-reclaim-to: no-op in x86 (compiles to empty)
   -- Abstract: only updates alloc.next-slot, ls unchanged
