@@ -39,6 +39,13 @@ open import Relation.Nullary using (Dec; yes; no)
 -- Import FrameSemantics for Frame type
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 
+-- Import SigOpInfo so `instr-sigop` carries its full self-describing
+-- info (name + semI + semM), not just the name. This unlocks per-name
+-- discharge of `ir-to-trace-correct-sigop` and per-(arch, name)
+-- discharge of `sigop-codegen-faithful`.
+open import Once.Type using (Type)
+open import Once.CCC.SigOp.Info using (SigOpInfo)
+
 private
   -- Helper: just is injective (private to avoid name clashes)
   just-injective : ∀ {A : Set} {x y : A} → just x ≡ just y → x ≡ y
@@ -688,17 +695,18 @@ data AbstractInstr : Set where
   worklist-pop   : Slot → AbstractInstr  -- count--, Output := top item
   worklist-check : Slot → AbstractInstr  -- Output := 1 if empty, 0 if not
 
-  -- Plan 0.10 Phase B: SigOp dispatch.
+  -- Plan 0.10 Phase B / Phase A step 1: SigOp dispatch.
   --
-  -- Carries the SigOpInfo's name; per-arch compile-abstract decodes
-  -- the name (e.g., "exit", "lit.int.<N>") and emits the appropriate
-  -- instruction sequence. The abstract semantics treats this as an
-  -- opaque effect — modeling SigOps requires per-arch syscall ABIs
-  -- which are part of the trusted base (RuntimeContract / sigOp-proof).
+  -- Carries the SigOpInfo (name + semI + semM). Per-arch
+  -- compile-abstract uses `name si` to decide what assembly to emit
+  -- (e.g., "exit" → mov $60, %rax; syscall). The proof layer can
+  -- consult `semI si` / `semM si` for per-name discharge of
+  -- `sigop-codegen-faithful` and `ir-to-trace-correct-sigop` — see
+  -- `Once.CCC.SigOp.Info` for the spec layer.
   --
-  -- The String argument is `SigOpInfo.name`; carried by value so the
-  -- abstract trace is self-contained and arch-independent.
-  instr-sigop : String → AbstractInstr
+  -- Type indices A, B are implicit and recoverable when needed by
+  -- pattern-matching on `instr-sigop {A} {B} si`.
+  instr-sigop : ∀ {A B : Type} → SigOpInfo A B → AbstractInstr
 
 -- | A trace is a sequence of abstract instructions
 AbstractTrace : Set

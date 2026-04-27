@@ -15,6 +15,7 @@ module Once.CCC.Target.RiscV64.DirectSimulation where
 
 open import Data.Nat using (ℕ; zero; suc; _∸_; _≡ᵇ_; _≤_) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
 open import Data.String using (String)
+import Once.CCC.SigOp.Info
 open import Data.Nat.DivMod using (_/_; m*n/n≡m)
 open import Data.Integer using (ℤ; +_; -[1+_]; ∣_∣)
 open import Data.Bool using (Bool; true; false; if_then_else_)
@@ -570,11 +571,11 @@ module Simulation {FS : FrameSemantics} where
   -- discharge plan. Future per-name strengthening upgrades this to
   -- per-name postulates tied to SigOpInfo.semM.
   postulate
-    sigop-codegen-faithful : ∀ (name : String) ls rs alloc →
+    sigop-codegen-faithful : ∀ {A B} (si : Once.CCC.SigOp.Info.SigOpInfo A B) ls rs alloc →
       halted ls ≡ false → Corresponds ls rs alloc →
-      Corresponds (proj₁ (exec-abstract (instr-sigop name) ls alloc))
-                  (exec-prog (compile-abstract (instr-sigop name)) rs (current-frame alloc))
-                  (proj₂ (exec-abstract (instr-sigop name) ls alloc))
+      Corresponds (proj₁ (exec-abstract (instr-sigop si) ls alloc))
+                  (exec-prog (compile-abstract (instr-sigop si)) rs (current-frame alloc))
+                  (proj₂ (exec-abstract (instr-sigop si) ls alloc))
 
   instr-sim : ∀ i ls rs alloc →
     halted ls ≡ false →
@@ -973,8 +974,8 @@ module Simulation {FS : FrameSemantics} where
   -- syscall effects abstractly is part of the trusted base).
   -- SigOp: discharged via the named postulate sigop-codegen-faithful
   -- declared at the top of the Simulation module.
-  instr-sim (instr-sigop name) ls rs alloc not-halted corr =
-    sigop-codegen-faithful name ls rs alloc not-halted corr
+  instr-sim (instr-sigop si) ls rs alloc not-halted corr =
+    sigop-codegen-faithful si ls rs alloc not-halted corr
 
   -- instr-reclaim-to: no-op in rv64 (compiles to empty)
   -- Abstract: only updates alloc.next-slot, ls unchanged

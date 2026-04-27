@@ -191,7 +191,7 @@ ir-to-trace' n apply =
 -- SigOp — per-name dispatch handled by per-arch compile-abstract.
 -- ────────────────────────────────────────────────────────────────────
 
-ir-to-trace' n (SigOp si) = n , (instr-sigop (name si) ∷ [])
+ir-to-trace' n (SigOp si) = n , (instr-sigop si ∷ [])
 
 -- ────────────────────────────────────────────────────────────────────
 -- Stubbed — emit `[]`. Not needed for Layer 0; future work.

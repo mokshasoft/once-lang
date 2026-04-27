@@ -29,6 +29,7 @@ open import Once.CCC.Target.X86-64.Syntax
 
 -- Import AbstractInstr from SMCore
 open import Once.CCC.Machine.SMCore
+open import Once.CCC.SigOp.Info using (SigOpInfo)
   using (AbstractInstr; AbstractTrace; Slot;
          mov-to-output; mov-to-input; load-indirect; load-indirect-suc;
          load-from-slot; store-at-slot; store-indirect; store-indirect-suc;
@@ -168,8 +169,8 @@ compile-abstract (instr-reclaim-to n) = []
 
 -- Plan 0.10 Phase B: SigOp dispatch.
 -- Delegates to the existing per-name handler in CodeGen/Compile.
-compile-abstract (instr-sigop nm) =
-  CompileX86-64.compile-sigOp nm
+compile-abstract (instr-sigop si) =
+  CompileX86-64.compile-sigOp (SigOpInfo.name si)
 
 ------------------------------------------------------------------------
 -- Trace compilation: compile a whole trace to x86

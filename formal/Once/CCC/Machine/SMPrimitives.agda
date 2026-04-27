@@ -45,6 +45,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym
 open import Relation.Nullary using (¬_; Dec; yes; no)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics; module FrameSemantics)
+open import Once.CCC.SigOp.Info using (SigOpInfo)
 open import Once.CCC.Machine.SMCore public
 
 ------------------------------------------------------------------------
@@ -357,7 +358,7 @@ data InstrNoHeapWrite : AbstractInstr → Set where
   nhw-worklist-pop       : ∀ {slot} → InstrNoHeapWrite (worklist-pop slot)
   nhw-worklist-check     : ∀ {slot} → InstrNoHeapWrite (worklist-check slot)
   -- Plan 0.10 Phase B
-  nhw-instr-sigop        : ∀ {name} → InstrNoHeapWrite (instr-sigop name)
+  nhw-instr-sigop        : ∀ {A B} {si : SigOpInfo A B} → InstrNoHeapWrite (instr-sigop si)
 
 -- Instruction preserves frame (doesn't push/pop frame)
 InstrPreservesFrame : AbstractInstr → Set
