@@ -211,7 +211,11 @@ ir-to-trace' n (Ana _ _)      = n , []
 ir-to-trace' n (Hylo _ _ _ _) = n , []
 ir-to-trace' n (Fuse _ _ _ _) = n , []
 
-ir-to-trace' n (free-heap _)  = n , []
+-- free-heap is semantically a no-op (returns its input unchanged).
+-- run-free-heap emits `mov-to-output ∷ []` to copy Input → Output as
+-- the identity behavior; we mirror that exactly so trace correctness
+-- discharges via the same transport-trivial pattern as id/arr.
+ir-to-trace' n (free-heap _)  = n , (mov-to-output ∷ [])
 
 ------------------------------------------------------------------------
 -- Public wrapper: starts at frontier 0, returns just the trace.

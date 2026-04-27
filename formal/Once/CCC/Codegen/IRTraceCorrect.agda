@@ -195,15 +195,19 @@ module IRTraceCorrectness {FS : FrameSemantics} (program-bound : ℕ) where
          (IRResultAWF.result-loc r) s alloc
          not-halted refl (IRResultAWF.result-valid-wf r)
 
+  ir-to-trace-correct-free-heap : (ref : _) → IRTraceCorrect (free-heap ref)
+  ir-to-trace-correct-free-heap ref mIn x input-loc s alloc valid before not-halted rdi-eq =
+    let r = run-free-heap ref x input-loc s alloc valid before not-halted rdi-eq
+    in mIn , IRResultAWF.result-loc r ,
+       transport-trivial mov-to-output (free-heap ref) x
+         (IRResultAWF.result-loc r) s alloc
+         not-halted refl (IRResultAWF.result-valid-wf r)
+
   ----------------------------------------------------------------------
   -- Postulated per-IR cases. Audit handles for future discharges.
   ----------------------------------------------------------------------
 
   postulate
-    -- free-heap: ir-to-trace stubs to []; needs a different transport
-    -- (empty-trace identity).
-    ir-to-trace-correct-free-heap : (ref : _) → IRTraceCorrect (free-heap ref)
-
     -- Compose: structural IH. Trace = ft ++ mov-to-input ∷ gt where
     -- ft = ir-to-trace f, but gt = ir-to-trace' n1 g (slot-shifted),
     -- so IH on g doesn't directly apply unless g is frontier-invariant.
@@ -223,9 +227,18 @@ module IRTraceCorrectness {FS : FrameSemantics} (program-bound : ℕ) where
     ir-to-trace-correct-apply : ∀ {k A B} →
       IRTraceCorrect (apply {A} {B} {k})
 
-    -- SigOp: depends on RuntimeContract.sigOp-proof, which is per-arch
-    -- runtime-contract scope. Discharge requires expanding this module
-    -- to take RuntimeContract / sigOp-proof as parameters.
+    -- SigOp: TRACE SHAPE MISMATCH between ir-to-trace and Dispatcher.
+    -- ir-to-trace emits `instr-sigop name ∷ []` (decoded by per-arch
+    -- compile-abstract to actual syscall sequences), while
+    -- Dispatcher.run-sigOp emits `mov-to-output ∷ []` (treats SigOp as
+    -- a pure pass-through value-flow). The two views are about
+    -- DIFFERENT objects: the verified Dispatcher proves correctness of
+    -- the abstract (no-op) semantics; ir-to-trace adds a new layer
+    -- (real syscall codegen). Discharging this postulate requires
+    -- either strengthening `exec-abstract (instr-sigop _)` to model
+    -- the operation's effect on Output, or aligning ir-to-trace's
+    -- SigOp clause with Dispatcher's `mov-to-output` (which would lose
+    -- the syscall codegen path). Tracked as part of trusted base.
     ir-to-trace-correct-sigop : ∀ {A B} (si : _) →
       IRTraceCorrect (SigOp {A} {B} si)
 
