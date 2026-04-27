@@ -15,8 +15,15 @@ open import Data.String using (String; _++_)
 open import Once.Target using (Target)
 open import Once.CCC.IR using (IR)
 
--- x86-64 code generation and emission
-open import Once.CCC.Target.X86-64.CodeGen.Compile using (compile-ir)
+-- x86-64 code generation and emission. Plan 0.10 Phase C: switched
+-- from the bespoke direct-compile-ir path to the verified abstract-
+-- trace pipeline (IR → AbstractTrace → x86-64 Program). The new path
+-- has a real correctness theorem in
+-- `Once.CCC.Target.X86-64.CompileCorrect.compile-correct`; the old
+-- compile-ir is retained for now as a reference but no longer
+-- extracted.
+open import Once.CCC.Codegen.IRToTrace using (ir-to-trace)
+open import Once.CCC.Target.X86-64.AbstractToX86 using (compile-trace)
 open import Once.CCC.Target.X86-64.Emit using (programToText)
 
 ------------------------------------------------------------------------
@@ -41,7 +48,7 @@ x86-64-functionEpilogue = "    ret\n\n"
 ------------------------------------------------------------------------
 
 x86-64-irToAsm : ∀ {A B} → IR A B → String
-x86-64-irToAsm ir = programToText (compile-ir ir)
+x86-64-irToAsm ir = programToText (compile-trace (ir-to-trace ir))
 
 ------------------------------------------------------------------------
 -- Target Instance

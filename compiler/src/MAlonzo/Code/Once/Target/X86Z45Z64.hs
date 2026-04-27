@@ -19,8 +19,9 @@ import qualified MAlonzo.RTE
 import qualified Data.Text
 import qualified MAlonzo.Code.Agda.Builtin.String
 import qualified MAlonzo.Code.Data.String.Base
+import qualified MAlonzo.Code.Once.CCC.Codegen.IRToTrace
 import qualified MAlonzo.Code.Once.CCC.IR
-import qualified MAlonzo.Code.Once.CCC.Target.X86Z45Z64.CodeGen.Compile
+import qualified MAlonzo.Code.Once.CCC.Target.X86Z45Z64.AbstractToX86
 import qualified MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Emit
 import qualified MAlonzo.Code.Once.Target
 import qualified MAlonzo.Code.Once.Type
@@ -65,16 +66,25 @@ d_x86'45'64'45'irToAsm_18 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.CCC.IR.T_IR_12 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
-d_x86'45'64'45'irToAsm_18 v0 v1 v2
+d_x86'45'64'45'irToAsm_18 ~v0 v1 v2
+  = du_x86'45'64'45'irToAsm_18 v1 v2
+du_x86'45'64'45'irToAsm_18 ::
+  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.CCC.IR.T_IR_12 ->
+  MAlonzo.Code.Agda.Builtin.String.T_String_6
+du_x86'45'64'45'irToAsm_18 v0 v1
   = coe
       MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Emit.d_programToText_82
-      (MAlonzo.Code.Once.CCC.Target.X86Z45Z64.CodeGen.Compile.d_compile'45'ir_280
-         (coe v0) (coe v1) (coe v2))
+      (MAlonzo.Code.Once.CCC.Target.X86Z45Z64.AbstractToX86.d_compile'45'trace_42
+         (coe
+            MAlonzo.Code.Once.CCC.Codegen.IRToTrace.du_ir'45'to'45'trace_106
+            (coe v0) (coe v1)))
 -- Once.Target.X86-64.x86-64
 d_x86'45'64_22 :: MAlonzo.Code.Once.Target.T_Target_4
 d_x86'45'64_22
   = coe
       MAlonzo.Code.Once.Target.C_constructor_30
-      (coe d_x86'45'64'45'irToAsm_18) (coe d_x86'45'64'45'asmHeader_6)
+      (\ v0 v1 v2 -> coe du_x86'45'64'45'irToAsm_18 v1 v2)
+      (coe d_x86'45'64'45'asmHeader_6)
       (coe d_x86'45'64'45'functionPrologue_8)
       (coe d_x86'45'64'45'functionEpilogue_12)

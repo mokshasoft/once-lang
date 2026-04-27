@@ -66,23 +66,24 @@ d_riscv64'45'irToAsm_18 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.CCC.IR.T_IR_12 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
-d_riscv64'45'irToAsm_18 ~v0 ~v1 v2 = du_riscv64'45'irToAsm_18 v2
+d_riscv64'45'irToAsm_18 ~v0 v1 v2 = du_riscv64'45'irToAsm_18 v1 v2
 du_riscv64'45'irToAsm_18 ::
+  MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.CCC.IR.T_IR_12 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
-du_riscv64'45'irToAsm_18 v0
+du_riscv64'45'irToAsm_18 v0 v1
   = coe
       MAlonzo.Code.Once.CCC.Target.RiscV64.Emit.d_programToText_88
       (MAlonzo.Code.Once.CCC.Target.RiscV64.AbstractToRiscV.d_compile'45'trace_48
          (coe
-            MAlonzo.Code.Once.CCC.Codegen.IRToTrace.du_ir'45'to'45'trace_12
-            (coe v0)))
+            MAlonzo.Code.Once.CCC.Codegen.IRToTrace.du_ir'45'to'45'trace_106
+            (coe v0) (coe v1)))
 -- Once.Target.RiscV64.riscv64
 d_riscv64_22 :: MAlonzo.Code.Once.Target.T_Target_4
 d_riscv64_22
   = coe
       MAlonzo.Code.Once.Target.C_constructor_30
-      (\ v0 v1 v2 -> coe du_riscv64'45'irToAsm_18 v2)
+      (\ v0 v1 v2 -> coe du_riscv64'45'irToAsm_18 v1 v2)
       (coe d_riscv64'45'asmHeader_6)
       (coe d_riscv64'45'functionPrologue_8)
       (coe d_riscv64'45'functionEpilogue_12)
