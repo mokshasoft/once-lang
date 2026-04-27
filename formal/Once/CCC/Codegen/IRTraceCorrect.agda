@@ -99,7 +99,7 @@ module IRTraceCorrectness {FS : FrameSemantics} (program-bound : ℕ) where
 
   import Once.CCC.Machine.IR.SumRecWF as SumRecWFModule
   open SumRecWFModule.SumRecWFImpl {FS} program-bound
-    using (run-initial)
+    using (run-initial; run-out-μ; run-Out)
 
   ----------------------------------------------------------------------
   -- Theorem signature, factored out so per-IR cases can refer to it.
@@ -203,6 +203,25 @@ module IRTraceCorrectness {FS : FrameSemantics} (program-bound : ℕ) where
          (IRResultAWF.result-loc r) s alloc
          not-halted refl (IRResultAWF.result-valid-wf r)
 
+  -- out-μ / Out: μ/ν Lambek inverses, semantically the identity. run-X
+  -- emits `mov-to-output ∷ []`; ir-to-trace mirrors. Same shape as
+  -- id/arr/free-heap discharges.
+  ir-to-trace-correct-out-μ : ∀ {F} (wf : _) → IRTraceCorrect (out-μ {F} wf)
+  ir-to-trace-correct-out-μ {F} wf mIn x input-loc s alloc valid before not-halted rdi-eq =
+    let r = run-out-μ wf mIn x input-loc s alloc valid before not-halted rdi-eq
+    in _ , IRResultAWF.result-loc r ,
+       transport-trivial mov-to-output (out-μ wf) x
+         (IRResultAWF.result-loc r) s alloc
+         not-halted refl (IRResultAWF.result-valid-wf r)
+
+  ir-to-trace-correct-Out : ∀ {F} (wf : _) → IRTraceCorrect (Out {F} wf)
+  ir-to-trace-correct-Out {F} wf mIn x input-loc s alloc valid before not-halted rdi-eq =
+    let r = run-Out wf mIn x input-loc s alloc valid before not-halted rdi-eq
+    in _ , IRResultAWF.result-loc r ,
+       transport-trivial mov-to-output (Out wf) x
+         (IRResultAWF.result-loc r) s alloc
+         not-halted refl (IRResultAWF.result-valid-wf r)
+
   ----------------------------------------------------------------------
   -- Postulated per-IR cases. Audit handles for future discharges.
   ----------------------------------------------------------------------
@@ -264,7 +283,10 @@ module IRTraceCorrectness {FS : FrameSemantics} (program-bound : ℕ) where
   ir-to-trace-correct (curry f m)   = ir-to-trace-correct-curry f m
   ir-to-trace-correct apply         = ir-to-trace-correct-apply
   ir-to-trace-correct (SigOp si)    = ir-to-trace-correct-sigop si
-  -- All other IR ctors (sums, recursion schemes) — Layer 0 doesn't use
-  -- them. Routed through the named catchall postulate.
+  ir-to-trace-correct (out-μ wf)    = ir-to-trace-correct-out-μ wf
+  ir-to-trace-correct (Out wf)      = ir-to-trace-correct-Out wf
+  -- All remaining IR ctors (sums, allocating recursion schemes,
+  -- transformations) — Layer 0 doesn't use them. Routed through the
+  -- named catchall postulate.
   {-# CATCHALL #-}
   ir-to-trace-correct ir            = ir-to-trace-correct-non-layer0 ir

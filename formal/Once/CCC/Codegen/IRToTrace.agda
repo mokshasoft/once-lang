@@ -202,10 +202,13 @@ ir-to-trace' n (inr _)       = n , []
 ir-to-trace' n (case _ _)    = n , []
 
 ir-to-trace' n (In _ _)       = n , []
-ir-to-trace' n (out-μ _)      = n , []
+-- out-μ and Out: ν/μ Lambek inverses; semantically Output := Input.
+-- run-X uses `mov-to-output ∷ []`; mirror it so the discharge falls
+-- out via the same `transport-trivial` pattern as id/arr/free-heap.
+ir-to-trace' n (out-μ _)      = n , (mov-to-output ∷ [])
 ir-to-trace' n (Cata _ _)     = n , []
 ir-to-trace' n (Para _ _)     = n , []
-ir-to-trace' n (Out _)        = n , []
+ir-to-trace' n (Out _)        = n , (mov-to-output ∷ [])
 ir-to-trace' n (in-ν _ _)     = n , []
 ir-to-trace' n (Ana _ _)      = n , []
 ir-to-trace' n (Hylo _ _ _ _) = n , []
