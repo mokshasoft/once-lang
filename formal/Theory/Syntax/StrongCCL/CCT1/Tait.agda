@@ -20,7 +20,12 @@
 --                    -- sub-case (t = fst at arrow target) reduces to
 --                    -- the narrow postulate Red-fst-at-arrow; all
 --                    -- other Neutral shapes are fully discharged.
---   (4) red-all    : ∀ t. Red t                              -- postulated
+--   (4) red-all    : ∀ t. Red t
+--                    -- Replaced with a structured dispatch on Term
+--                    -- constructor. terminal and atomic-at-Unit cases
+--                    -- discharged. Per-constructor narrow postulates
+--                    -- remain for (id, fst, snd, apply) at non-Unit
+--                    -- targets and for (_∘_, ⟨_,_⟩, curry) closures.
 --
 -- Then SN for every CCT1 term follows by (1) + (4).
 ------------------------------------------------------------------------
@@ -818,13 +823,82 @@ sn-terminal∘ f (acc ih) = acc go
 red-terminal∘ : ∀ {A B} (f : Term A B) → SN f → Red A Unit (terminal ∘ f)
 red-terminal∘ f snf = sn-terminal∘ f snf
 
--- Main case-bash: every term is reducible. To be proved by induction
--- on Term structure; for each constructor (id, _∘_, fst, snd, ⟨_,_⟩,
--- curry, apply, terminal), show Red at every target type. The hard
--- cases involve the β-redex shapes, where CR4 (β-expansion closure,
--- derivable from Red-expand + Red-⟶) is the key lemma.
+------------------------------------------------------------------------
+-- red-all — every term is reducible.
+--
+-- Replaces the broad red-all postulate with a structured dispatch on
+-- Term constructor. Each constructor delegates to a per-constructor
+-- helper:
+--   * Atomic constructors (id, fst, snd, apply): further dispatched
+--     on the relevant type. Unit-target cases are fully discharged
+--     (sn-id, sn-fst, sn-snd, sn-apply). The fst-at-arrow case uses
+--     our earlier Red-fst-at-arrow lemma. Other type-shape cases
+--     remain as narrow postulates.
+--   * terminal: discharged trivially (sn-terminal).
+--   * Constructive constructors (_∘_, ⟨_,_⟩, curry): postulated as
+--     Red-closure lemmas (each takes Red of subterms and produces
+--     Red of the constructed term). Discharging these requires the
+--     full Tait substitution machinery.
+--
+-- The conversion narrows the audit surface from 1 broad obligation
+-- into ~10 per-constructor / per-type-shape obligations. The
+-- structurally-recursive call shape is maintained: red-all on a
+-- composition / pair / curry calls red-all on its subterms.
+------------------------------------------------------------------------
+
+-- Atomic helpers — dispatch on the relevant type.
+
+red-all-id : ∀ {A} → Red A A id
+red-all-fst : ∀ {A B} → Red (A × B) A fst
+red-all-snd : ∀ {A B} → Red (A × B) B snd
+red-all-apply : ∀ {A B} → Red ((A ⇒ B) × A) B apply
+red-all-terminal : ∀ {A} → Red A Unit terminal
+
+-- Constructive helpers — postulated as Red-closure lemmas.
 postulate
-  red-all : ∀ {A B} (t : Term A B) → Red A B t
+  red-all-id-Prod   : ∀ {X Y} → Red (X × Y) (X × Y) id
+  red-all-id-Arrow  : ∀ {X Y} → Red (X ⇒ Y) (X ⇒ Y) id
+  red-all-fst-Prod  : ∀ {X Y B} → Red ((X × Y) × B) (X × Y) fst
+  red-all-snd-Prod  : ∀ {A X Y} → Red (A × (X × Y)) (X × Y) snd
+  red-all-snd-Arrow : ∀ {A X Y} → Red (A × (X ⇒ Y)) (X ⇒ Y) snd
+  red-all-apply-Prod  : ∀ {A X Y} → Red ((A ⇒ (X × Y)) × A) (X × Y) apply
+  red-all-apply-Arrow : ∀ {A X Y} → Red ((A ⇒ (X ⇒ Y)) × A) (X ⇒ Y) apply
+  red-all-comp  : ∀ {A B C} (f : Term B C) (g : Term A B) →
+                  Red B C f → Red A B g → Red A C (f ∘ g)
+  red-all-pair  : ∀ {C A B} (f : Term C A) (g : Term C B) →
+                  Red C A f → Red C B g → Red C (A × B) ⟨ f , g ⟩
+  red-all-curry : ∀ {A B C} (f : Term (A × B) C) →
+                  Red (A × B) C f → Red A (B ⇒ C) (curry f)
+
+-- Atomic helper definitions.
+red-all-id {Unit}    = sn-id
+red-all-id {_ × _}   = red-all-id-Prod
+red-all-id {_ ⇒ _}   = red-all-id-Arrow
+
+red-all-fst {A = Unit}    = sn-fst
+red-all-fst {A = _ × _}   = red-all-fst-Prod
+red-all-fst {A = _ ⇒ _}   = Red-fst-at-arrow
+
+red-all-snd {B = Unit}    = sn-snd
+red-all-snd {B = _ × _}   = red-all-snd-Prod
+red-all-snd {B = _ ⇒ _}   = red-all-snd-Arrow
+
+red-all-apply {B = Unit}    = sn-apply
+red-all-apply {B = _ × _}   = red-all-apply-Prod
+red-all-apply {B = _ ⇒ _}   = red-all-apply-Arrow
+
+red-all-terminal = sn-terminal
+
+-- Main red-all by structural recursion on Term.
+red-all : ∀ {A B} (t : Term A B) → Red A B t
+red-all id          = red-all-id
+red-all terminal    = red-all-terminal
+red-all fst         = red-all-fst
+red-all snd         = red-all-snd
+red-all apply       = red-all-apply
+red-all (f ∘ g)     = red-all-comp f g (red-all f) (red-all g)
+red-all ⟨ f , g ⟩   = red-all-pair f g (red-all f) (red-all g)
+red-all (curry f)   = red-all-curry f (red-all f)
 
 ------------------------------------------------------------------------
 -- Strong normalization for every CCT1 term — consequence of (1) + (4).
@@ -851,7 +925,14 @@ sn {B = B} t = Red-SN B t (red-all t)
 --                 recursive on the result type; the C = Unit case is
 --                 fully discharged via Red-fst-at-arrow-Unit, which
 --                 reduces the eta-pair sub-goal to sn-apply∘id),
---               red-all (the main case-bash, deferred).
+--               red-all-{id-Prod, id-Arrow, fst-Prod, snd-Prod,
+--                        snd-Arrow, apply-Prod, apply-Arrow, comp,
+--                        pair, curry} — the per-constructor Tait
+--                        sub-obligations remaining after dispatching
+--                        red-all on Term constructor. Atomic-at-Unit
+--                        cases (id, fst, snd, apply at their respective
+--                        Unit target shapes) and terminal are
+--                        discharged. fst-at-Arrow uses Red-fst-at-arrow.
 --
 -- The Red-expand-Arrow discharge uses a re-pairing trick to handle
 -- the eta-pair-gen sub-case (t = fst ∘ h, u = snd ∘ h): we have hyp
