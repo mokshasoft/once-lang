@@ -846,13 +846,18 @@ red-terminal∘ f snf = sn-terminal∘ f snf
 -- composition / pair / curry calls red-all on its subterms.
 ------------------------------------------------------------------------
 
--- Atomic helpers — dispatch on the relevant type.
+-- Forward declarations.
+
+red-all : ∀ {A B} (t : Term A B) → Red A B t
 
 red-all-id : ∀ {A} → Red A A id
 red-all-fst : ∀ {A B} → Red (A × B) A fst
 red-all-snd : ∀ {A B} → Red (A × B) B snd
 red-all-apply : ∀ {A B} → Red ((A ⇒ B) × A) B apply
 red-all-terminal : ∀ {A} → Red A Unit terminal
+
+red-all-comp : ∀ {A B C} (f : Term B C) (g : Term A B) →
+               Red B C f → Red A B g → Red A C (f ∘ g)
 
 -- Constructive helpers — postulated as Red-closure lemmas.
 postulate
@@ -863,12 +868,47 @@ postulate
   red-all-snd-Arrow : ∀ {A X Y} → Red (A × (X ⇒ Y)) (X ⇒ Y) snd
   red-all-apply-Prod  : ∀ {A X Y} → Red ((A ⇒ (X × Y)) × A) (X × Y) apply
   red-all-apply-Arrow : ∀ {A X Y} → Red ((A ⇒ (X ⇒ Y)) × A) (X ⇒ Y) apply
-  red-all-comp  : ∀ {A B C} (f : Term B C) (g : Term A B) →
-                  Red B C f → Red A B g → Red A C (f ∘ g)
   red-all-pair  : ∀ {C A B} (f : Term C A) (g : Term C B) →
                   Red C A f → Red C B g → Red C (A × B) ⟨ f , g ⟩
   red-all-curry : ∀ {A B C} (f : Term (A × B) C) →
                   Red (A × B) C f → Red A (B ⇒ C) (curry f)
+  -- red-all-comp sub-cases requiring β-expansion at the composition root:
+  red-all-comp-Id    : ∀ {A B} (g : Term A B) → Red A B g → Red A B (id ∘ g)
+  red-all-comp-Comp  : ∀ {A B B' C}
+                       (f₁ : Term B' C) (f₂ : Term B B') (g : Term A B) →
+                       Red B' C f₁ → Red B B' f₂ → Red A B g →
+                       Red A C ((f₁ ∘ f₂) ∘ g)
+  red-all-comp-Pair  : ∀ {A B C₁ C₂}
+                       (f₁ : Term B C₁) (f₂ : Term B C₂) (g : Term A B) →
+                       Red B C₁ f₁ → Red B C₂ f₂ → Red A B g →
+                       Red A (C₁ × C₂) (⟨ f₁ , f₂ ⟩ ∘ g)
+  red-all-comp-Curry : ∀ {A B C₁ C₂}
+                       (f' : Term (B × C₁) C₂) (g : Term A B) →
+                       Red (B × C₁) C₂ f' → Red A B g →
+                       Red A (C₁ ⇒ C₂) ((curry f') ∘ g)
+
+-- red-all-comp dispatched on f's shape:
+--   * f = terminal:    sn-terminal∘ (target Unit, SN suffices).
+--   * f = fst:         proj₁ rg (Red of fst ∘ g IS the first component
+--                      of Red of g at product type).
+--   * f = snd:         proj₂ rg analogously.
+--   * f = apply:       re-pairing trick. Red of g at product gives Red
+--                      of (fst ∘ g) at arrow type and Red of (snd ∘ g);
+--                      apply the functional to (snd ∘ g) → Red of
+--                      (apply ∘ ⟨fst ∘ g, snd ∘ g⟩); forward-step via
+--                      eta-pair-gen + ∘-congʳ → Red of (apply ∘ g).
+--   * Other f shapes:  per-shape postulate (β-expansion required).
+red-all-comp id           g rf rg = red-all-comp-Id g rg
+red-all-comp (f₁ ∘ f₂)    g rf rg = red-all-comp-Comp f₁ f₂ g (red-all f₁) (red-all f₂) rg
+red-all-comp terminal     g rf rg = sn-terminal∘ g (Red-SN _ g rg)
+red-all-comp fst          g rf rg = proj₁ rg
+red-all-comp snd          g rf rg = proj₂ rg
+red-all-comp ⟨ f₁ , f₂ ⟩  g rf rg = red-all-comp-Pair f₁ f₂ g (red-all f₁) (red-all f₂) rg
+red-all-comp (curry f')   g rf rg = red-all-comp-Curry f' g (red-all f') rg
+red-all-comp apply        g rf rg =
+  Red-⟶ _
+    (proj₂ (proj₁ rg) (snd ∘ g) (proj₂ rg))
+    (βη-Closure.∘-congʳ (βη-Closure.base (s-rule eta-pair-gen)))
 
 -- Atomic helper definitions.
 red-all-id {Unit}    = sn-id
@@ -890,7 +930,6 @@ red-all-apply {B = _ ⇒ _}   = red-all-apply-Arrow
 red-all-terminal = sn-terminal
 
 -- Main red-all by structural recursion on Term.
-red-all : ∀ {A B} (t : Term A B) → Red A B t
 red-all id          = red-all-id
 red-all terminal    = red-all-terminal
 red-all fst         = red-all-fst
@@ -926,13 +965,18 @@ sn {B = B} t = Red-SN B t (red-all t)
 --                 fully discharged via Red-fst-at-arrow-Unit, which
 --                 reduces the eta-pair sub-goal to sn-apply∘id),
 --               red-all-{id-Prod, id-Arrow, fst-Prod, snd-Prod,
---                        snd-Arrow, apply-Prod, apply-Arrow, comp,
---                        pair, curry} — the per-constructor Tait
---                        sub-obligations remaining after dispatching
---                        red-all on Term constructor. Atomic-at-Unit
---                        cases (id, fst, snd, apply at their respective
---                        Unit target shapes) and terminal are
---                        discharged. fst-at-Arrow uses Red-fst-at-arrow.
+--                        snd-Arrow, apply-Prod, apply-Arrow, pair,
+--                        curry, comp-Id, comp-Comp, comp-Pair,
+--                        comp-Curry} — the per-constructor / per-shape
+--                        Tait sub-obligations remaining after
+--                        dispatching red-all and red-all-comp.
+--                        Discharged atomic-at-Unit cases (id, fst,
+--                        snd, apply at their respective Unit target
+--                        shapes), terminal, fst-at-Arrow (via
+--                        Red-fst-at-arrow), red-all-comp at f ∈
+--                        {terminal, fst, snd, apply} (proj₁/₂ of
+--                        product Red, sn-terminal∘, eta-pair-gen
+--                        re-pairing trick).
 --
 -- The Red-expand-Arrow discharge uses a re-pairing trick to handle
 -- the eta-pair-gen sub-case (t = fst ∘ h, u = snd ∘ h): we have hyp
