@@ -11,11 +11,16 @@
 -- projections; at exponential type Red lifts under application to
 -- reducible arguments.
 --
--- To prove in subsequent revisions:
---   (1) Red-SN     : Red t → SN t
---   (2) Red-⟶      : Red t → t ⟶βη u → Red u
+-- Tait obligations:
+--   (1) Red-SN     : Red t → SN t                            -- proved
+--   (2) Red-⟶      : Red t → t ⟶βη u → Red u                -- proved
 --   (3) Red-expand : neutral t ∧ (∀ u. t ⟶βη u → Red u) → Red t
---   (4) red-all    : ∀ t. Red t
+--                    -- Unit, product, arrow cases all proved.
+--                    -- Arrow case dispatches on Neutral t. The ne-fst
+--                    -- sub-case (t = fst at arrow target) reduces to
+--                    -- the narrow postulate Red-fst-at-arrow; all
+--                    -- other Neutral shapes are fully discharged.
+--   (4) red-all    : ∀ t. Red t                              -- postulated
 --
 -- Then SN for every CCT1 term follows by (1) + (4).
 ------------------------------------------------------------------------
@@ -371,20 +376,103 @@ no-apply-reduct (βη-Closure.base (β-rule (from-CCT1 ())))
 no-apply-reduct (βη-Closure.base (η-rule ()))
 no-apply-reduct (βη-Closure.base (s-rule ()))
 
--- Red-expand dispatcher: Unit and product cases proven; arrow case
--- needs machinery (lex induction on (SN t, SN u)) not yet in place,
--- so it remains postulated below.
+------------------------------------------------------------------------
+-- Red-expand-Arrow helpers: rule out root reductions of (apply ∘ ⟨t, u⟩)
+-- and pair-root reductions of ⟨t, u⟩ for non-fst-shaped Neutral t.
+------------------------------------------------------------------------
+
+no-curry-neutral : ∀ {A B C} {f : Term (A × B) C} → ¬ Neutral (curry f)
+no-curry-neutral ()
+
+-- Root reductions of (apply ∘ ⟨t, u⟩) when t is Neutral. The only
+-- candidate β-rule is curry-β (LHS = apply ∘ ⟨curry _, _⟩), ruled out
+-- because Neutral t excludes t = curry _. id-right would require
+-- ⟨t, u⟩ ≡ id, impossible. All other rules have non-matching root.
+no-apply∘⟨,⟩-root-redex :
+  ∀ {A B C} {t : Term A (B ⇒ C)} {u : Term A B} →
+  Neutral t →
+  ∀ {v} → ¬ ((apply ∘ ⟨ t , u ⟩) ⟶βη-rules v)
+no-apply∘⟨,⟩-root-redex ne (β-rule (from-CCTB ()))
+no-apply∘⟨,⟩-root-redex ne (β-rule (from-CCT1 curry-β)) = no-curry-neutral ne
+no-apply∘⟨,⟩-root-redex ne (η-rule ())
+no-apply∘⟨,⟩-root-redex ne (s-rule ())
+
+-- Pair-root reductions of ⟨t, u⟩ when t is shape-X (not fst-shaped).
+-- Only eta-pair (β-rule, LHS ⟨fst, snd⟩) and eta-pair-gen (s-rule,
+-- LHS ⟨fst ∘ h, snd ∘ h⟩) have ⟨,⟩ root. Both require t to be either
+-- fst literally or fst ∘ h. For non-fst-shaped t, both are absurd.
+
+no-pair-root-snd : ∀ {A B D} {u : Term (A × B) D} →
+                   ∀ {v} → ¬ (⟨ snd {A} {B} , u ⟩ ⟶βη-rules v)
+no-pair-root-snd (β-rule (from-CCTB ()))
+no-pair-root-snd (β-rule (from-CCT1 ()))
+no-pair-root-snd (η-rule ())
+no-pair-root-snd (s-rule ())
+
+no-pair-root-apply : ∀ {A B D} {u : Term ((A ⇒ B) × A) D} →
+                     ∀ {v} → ¬ (⟨ apply {A} {B} , u ⟩ ⟶βη-rules v)
+no-pair-root-apply (β-rule (from-CCTB ()))
+no-pair-root-apply (β-rule (from-CCT1 ()))
+no-pair-root-apply (η-rule ())
+no-pair-root-apply (s-rule ())
+
+no-pair-root-snd∘ : ∀ {A B C D} {g : Term C (A × B)} {u : Term C D} →
+                    ∀ {v} → ¬ (⟨ snd ∘ g , u ⟩ ⟶βη-rules v)
+no-pair-root-snd∘ (β-rule (from-CCTB ()))
+no-pair-root-snd∘ (β-rule (from-CCT1 ()))
+no-pair-root-snd∘ (η-rule ())
+no-pair-root-snd∘ (s-rule ())
+
+no-pair-root-apply∘ : ∀ {A B C D} {g : Term C ((A ⇒ B) × A)} {u : Term C D} →
+                      ∀ {v} → ¬ (⟨ apply ∘ g , u ⟩ ⟶βη-rules v)
+no-pair-root-apply∘ (β-rule (from-CCTB ()))
+no-pair-root-apply∘ (β-rule (from-CCT1 ()))
+no-pair-root-apply∘ (η-rule ())
+no-pair-root-apply∘ (s-rule ())
+
+no-pair-root-apply∘⟨,⟩ :
+  ∀ {A B C D} {t' : Term C (A ⇒ B)} {u' : Term C A} {u : Term C D} →
+  ∀ {v} → ¬ (⟨ apply ∘ ⟨ t' , u' ⟩ , u ⟩ ⟶βη-rules v)
+no-pair-root-apply∘⟨,⟩ (β-rule (from-CCTB ()))
+no-pair-root-apply∘⟨,⟩ (β-rule (from-CCT1 ()))
+no-pair-root-apply∘⟨,⟩ (η-rule ())
+no-pair-root-apply∘⟨,⟩ (s-rule ())
+
+------------------------------------------------------------------------
+-- Narrow postulate: Red of fst at arrow target.
+--
+-- When t = fst at arrow target (i.e., fst : Term ((B ⇒ C) × B') (B ⇒ C)),
+-- the Red-expand-Arrow proof reaches a sub-goal Red _ C (apply ∘ id)
+-- via the eta-pair reduction ⟨fst, snd⟩ ⟶β id. apply ∘ id is not
+-- Neutral (id-right fires at root), so Red-expand cannot be used.
+-- Constructing Red _ C (apply ∘ id) directly would require an
+-- η-/β-expansion family of lemmas (red-id-right, structurally
+-- recursive on C), itself a substantial proof.
+--
+-- We isolate this gap as a precise, narrow obligation:
+--   "fst : Term ((B ⇒ C) × B') (B ⇒ C) is reducible at arrow target."
+--
+-- Discharging it requires the red-id-right machinery; deferred.
+-- All other Neutral shapes at arrow target are discharged below.
+------------------------------------------------------------------------
 
 postulate
-  Red-expand-Arrow : ∀ {A} (B C : Ty) (t : Term A (B ⇒ C)) →
-                     Neutral t →
-                     (∀ {u} → t ⟶βη u → Red A (B ⇒ C) u) →
-                     Red A (B ⇒ C) t
+  Red-fst-at-arrow : ∀ {B C B'} →
+                     Red ((B ⇒ C) × B') (B ⇒ C) (fst {A = B ⇒ C} {B = B'})
+
+------------------------------------------------------------------------
+-- Forward declarations for the mutually-recursive Red-expand family.
+------------------------------------------------------------------------
 
 Red-expand : ∀ {A} (B : Ty) (t : Term A B) →
              Neutral t →
              (∀ {u} → t ⟶βη u → Red A B u) →
              Red A B t
+
+Red-expand-Arrow : ∀ {A} (B C : Ty) (t : Term A (B ⇒ C)) →
+                   Neutral t →
+                   (∀ {u} → t ⟶βη u → Red A (B ⇒ C) u) →
+                   Red A (B ⇒ C) t
 
 Red-expand-Prod : ∀ {A} (B C : Ty) (t : Term A (B × C)) →
                   Neutral t →
@@ -394,6 +482,201 @@ Red-expand-Prod : ∀ {A} (B C : Ty) (t : Term A (B × C)) →
 Red-expand Unit     t ne hyp = Red-expand-Unit  t ne hyp
 Red-expand (B × C)  t ne hyp = Red-expand-Prod  B C t ne hyp
 Red-expand (B ⇒ C)  t ne hyp = Red-expand-Arrow B C t ne hyp
+
+------------------------------------------------------------------------
+-- Red-expand-Arrow: discharged by case-splitting on Neutral t.
+--
+-- For ne-fst: defer to the narrow postulate Red-fst-at-arrow.
+-- For ne-fst∘: handle the eta-pair-gen reduction via re-pairing —
+--   we have hyp on t = fst ∘ h and Red on u = snd ∘ h; for each
+--   reduct h ⟶ h', construct Red of (apply ∘ ⟨fst ∘ h', snd ∘ h'⟩)
+--   from Red of fst ∘ h' (via hyp) and Red of snd ∘ h' (via Red-⟶
+--   on u), then forward-step via eta-pair-gen + ∘-congʳ to get
+--   Red of (apply ∘ h').
+-- For all other Neutral shapes (ne-snd, ne-apply, ne-snd∘,
+--   ne-apply∘, ne-apply∘⟨,⟩): the standard Tait pattern. Neither
+--   eta-pair (requires t = fst) nor eta-pair-gen (requires t = fst ∘ h)
+--   fires, so the pair-root reduction is vacuously absent.
+-- ne-terminal is ruled out by typing (target Unit, not arrow).
+------------------------------------------------------------------------
+
+-- ne-fst: defer to narrow postulate.
+Red-expand-Arrow B C ._ ne-fst _ = Red-fst-at-arrow
+
+-- ne-snd, ne-apply, ne-snd∘, ne-apply∘, ne-apply∘⟨,⟩: standard.
+-- Each share the same proof structure; we inline per case so Agda can
+-- discharge the pair-root absurdity using the per-shape no-pair-root
+-- lemmas above.
+
+Red-expand-Arrow {A} B C ._ ne-snd hyp = sn-t , go
+  where
+    sn-t : SN snd
+    sn-t = acc λ {t'} r → Red-SN (B ⇒ C) t' (hyp r)
+
+    go : ∀ (u : Term A B) → Red A B u → Red A C (apply ∘ ⟨ snd , u ⟩)
+    go u ru = aux u ru (Red-SN B u ru)
+      where
+        aux : ∀ (u : Term A B) → Red A B u → SN u → Red A C (apply ∘ ⟨ snd , u ⟩)
+        aux u ru (acc ihu) =
+          Red-expand C (apply ∘ ⟨ snd , u ⟩) (ne-apply∘⟨,⟩ ne-snd) handle
+          where
+            handle : ∀ {v} → (apply ∘ ⟨ snd , u ⟩) ⟶βη v → Red A C v
+            handle-pair : ∀ {p'} → ⟨ snd , u ⟩ ⟶βη p' → Red A C (apply ∘ p')
+
+            handle (βη-Closure.base r) = ⊥-elim (no-apply∘⟨,⟩-root-redex ne-snd r)
+            handle (βη-Closure.∘-congˡ r) = ⊥-elim (no-apply-reduct r)
+            handle (βη-Closure.∘-congʳ r-pair) = handle-pair r-pair
+
+            handle-pair (βη-Closure.base r) = ⊥-elim (no-pair-root-snd r)
+            handle-pair (βη-Closure.⟨,⟩-congˡ r-t) = proj₂ (hyp r-t) u ru
+            handle-pair (βη-Closure.⟨,⟩-congʳ r-u) = aux _ (Red-⟶ B ru r-u) (ihu r-u)
+
+Red-expand-Arrow {A} B C ._ ne-apply hyp = sn-t , go
+  where
+    sn-t : SN apply
+    sn-t = acc λ {t'} r → Red-SN (B ⇒ C) t' (hyp r)
+
+    go : ∀ (u : Term A B) → Red A B u → Red A C (apply ∘ ⟨ apply , u ⟩)
+    go u ru = aux u ru (Red-SN B u ru)
+      where
+        aux : ∀ (u : Term A B) → Red A B u → SN u → Red A C (apply ∘ ⟨ apply , u ⟩)
+        aux u ru (acc ihu) =
+          Red-expand C (apply ∘ ⟨ apply , u ⟩) (ne-apply∘⟨,⟩ ne-apply) handle
+          where
+            handle : ∀ {v} → (apply ∘ ⟨ apply , u ⟩) ⟶βη v → Red A C v
+            handle-pair : ∀ {p'} → ⟨ apply , u ⟩ ⟶βη p' → Red A C (apply ∘ p')
+
+            handle (βη-Closure.base r) = ⊥-elim (no-apply∘⟨,⟩-root-redex ne-apply r)
+            handle (βη-Closure.∘-congˡ r) = ⊥-elim (no-apply-reduct r)
+            handle (βη-Closure.∘-congʳ r-pair) = handle-pair r-pair
+
+            handle-pair (βη-Closure.base r) = ⊥-elim (no-pair-root-apply r)
+            handle-pair (βη-Closure.⟨,⟩-congˡ r-t) = proj₂ (hyp r-t) u ru
+            handle-pair (βη-Closure.⟨,⟩-congʳ r-u) = aux _ (Red-⟶ B ru r-u) (ihu r-u)
+
+Red-expand-Arrow {A} B C ._ (ne-snd∘ {g = g} ne-g) hyp = sn-t , go
+  where
+    sn-t : SN (snd ∘ g)
+    sn-t = acc λ {t'} r → Red-SN (B ⇒ C) t' (hyp r)
+
+    go : ∀ (u : Term A B) → Red A B u → Red A C (apply ∘ ⟨ snd ∘ g , u ⟩)
+    go u ru = aux u ru (Red-SN B u ru)
+      where
+        aux : ∀ (u : Term A B) → Red A B u → SN u → Red A C (apply ∘ ⟨ snd ∘ g , u ⟩)
+        aux u ru (acc ihu) =
+          Red-expand C (apply ∘ ⟨ snd ∘ g , u ⟩) (ne-apply∘⟨,⟩ (ne-snd∘ ne-g)) handle
+          where
+            handle : ∀ {v} → (apply ∘ ⟨ snd ∘ g , u ⟩) ⟶βη v → Red A C v
+            handle-pair : ∀ {p'} → ⟨ snd ∘ g , u ⟩ ⟶βη p' → Red A C (apply ∘ p')
+
+            handle (βη-Closure.base r) = ⊥-elim (no-apply∘⟨,⟩-root-redex (ne-snd∘ ne-g) r)
+            handle (βη-Closure.∘-congˡ r) = ⊥-elim (no-apply-reduct r)
+            handle (βη-Closure.∘-congʳ r-pair) = handle-pair r-pair
+
+            handle-pair (βη-Closure.base r) = ⊥-elim (no-pair-root-snd∘ r)
+            handle-pair (βη-Closure.⟨,⟩-congˡ r-t) = proj₂ (hyp r-t) u ru
+            handle-pair (βη-Closure.⟨,⟩-congʳ r-u) = aux _ (Red-⟶ B ru r-u) (ihu r-u)
+
+Red-expand-Arrow {A} B C ._ (ne-apply∘ {g = g} ne-g) hyp = sn-t , go
+  where
+    sn-t : SN (apply ∘ g)
+    sn-t = acc λ {t'} r → Red-SN (B ⇒ C) t' (hyp r)
+
+    go : ∀ (u : Term A B) → Red A B u → Red A C (apply ∘ ⟨ apply ∘ g , u ⟩)
+    go u ru = aux u ru (Red-SN B u ru)
+      where
+        aux : ∀ (u : Term A B) → Red A B u → SN u → Red A C (apply ∘ ⟨ apply ∘ g , u ⟩)
+        aux u ru (acc ihu) =
+          Red-expand C (apply ∘ ⟨ apply ∘ g , u ⟩) (ne-apply∘⟨,⟩ (ne-apply∘ ne-g)) handle
+          where
+            handle : ∀ {v} → (apply ∘ ⟨ apply ∘ g , u ⟩) ⟶βη v → Red A C v
+            handle-pair : ∀ {p'} → ⟨ apply ∘ g , u ⟩ ⟶βη p' → Red A C (apply ∘ p')
+
+            handle (βη-Closure.base r) = ⊥-elim (no-apply∘⟨,⟩-root-redex (ne-apply∘ ne-g) r)
+            handle (βη-Closure.∘-congˡ r) = ⊥-elim (no-apply-reduct r)
+            handle (βη-Closure.∘-congʳ r-pair) = handle-pair r-pair
+
+            handle-pair (βη-Closure.base r) = ⊥-elim (no-pair-root-apply∘ r)
+            handle-pair (βη-Closure.⟨,⟩-congˡ r-t) = proj₂ (hyp r-t) u ru
+            handle-pair (βη-Closure.⟨,⟩-congʳ r-u) = aux _ (Red-⟶ B ru r-u) (ihu r-u)
+
+Red-expand-Arrow {A} B C ._ (ne-apply∘⟨,⟩ {t = t'} {u = u'} ne-t') hyp = sn-t , go
+  where
+    sn-t : SN (apply ∘ ⟨ t' , u' ⟩)
+    sn-t = acc λ {t''} r → Red-SN (B ⇒ C) t'' (hyp r)
+
+    go : ∀ (u : Term A B) → Red A B u →
+         Red A C (apply ∘ ⟨ apply ∘ ⟨ t' , u' ⟩ , u ⟩)
+    go u ru = aux u ru (Red-SN B u ru)
+      where
+        aux : ∀ (u : Term A B) → Red A B u → SN u →
+              Red A C (apply ∘ ⟨ apply ∘ ⟨ t' , u' ⟩ , u ⟩)
+        aux u ru (acc ihu) =
+          Red-expand C (apply ∘ ⟨ apply ∘ ⟨ t' , u' ⟩ , u ⟩)
+            (ne-apply∘⟨,⟩ (ne-apply∘⟨,⟩ ne-t')) handle
+          where
+            handle : ∀ {v} → (apply ∘ ⟨ apply ∘ ⟨ t' , u' ⟩ , u ⟩) ⟶βη v → Red A C v
+            handle-pair : ∀ {p'} →
+                          ⟨ apply ∘ ⟨ t' , u' ⟩ , u ⟩ ⟶βη p' →
+                          Red A C (apply ∘ p')
+
+            handle (βη-Closure.base r) =
+              ⊥-elim (no-apply∘⟨,⟩-root-redex (ne-apply∘⟨,⟩ ne-t') r)
+            handle (βη-Closure.∘-congˡ r) = ⊥-elim (no-apply-reduct r)
+            handle (βη-Closure.∘-congʳ r-pair) = handle-pair r-pair
+
+            handle-pair (βη-Closure.base r) = ⊥-elim (no-pair-root-apply∘⟨,⟩ r)
+            handle-pair (βη-Closure.⟨,⟩-congˡ r-t) = proj₂ (hyp r-t) u ru
+            handle-pair (βη-Closure.⟨,⟩-congʳ r-u) = aux _ (Red-⟶ B ru r-u) (ihu r-u)
+
+-- ne-fst∘ case: t = fst ∘ h. eta-pair-gen DOES fire when u = snd ∘ h.
+-- Use the re-pairing trick documented above.
+Red-expand-Arrow {A} B C ._ (ne-fst∘ {g = h} ne-h) hyp = sn-t , go
+  where
+    sn-t : SN (fst ∘ h)
+    sn-t = acc λ {t'} r → Red-SN (B ⇒ C) t' (hyp r)
+
+    go : ∀ (u : Term A B) → Red A B u → Red A C (apply ∘ ⟨ fst ∘ h , u ⟩)
+    go u ru = aux u ru (Red-SN B u ru)
+      where
+        aux : ∀ (u : Term A B) → Red A B u → SN u → Red A C (apply ∘ ⟨ fst ∘ h , u ⟩)
+        aux u ru (acc ihu) =
+          Red-expand C (apply ∘ ⟨ fst ∘ h , u ⟩) (ne-apply∘⟨,⟩ (ne-fst∘ ne-h)) handle
+          where
+            handle : ∀ {v} → (apply ∘ ⟨ fst ∘ h , u ⟩) ⟶βη v → Red A C v
+            handle-pair : ∀ {p'} → ⟨ fst ∘ h , u ⟩ ⟶βη p' → Red A C (apply ∘ p')
+
+            handle (βη-Closure.base r) = ⊥-elim (no-apply∘⟨,⟩-root-redex (ne-fst∘ ne-h) r)
+            handle (βη-Closure.∘-congˡ r) = ⊥-elim (no-apply-reduct r)
+            handle (βη-Closure.∘-congʳ r-pair) = handle-pair r-pair
+            -- eta-pair would require fst ∘ h ≡ fst, impossible (different head).
+            -- eta-pair-gen requires u ≡ snd ∘ h; when it fires, use re-pairing.
+            handle-pair (βη-Closure.base (β-rule (from-CCTB ())))
+            handle-pair (βη-Closure.base (β-rule (from-CCT1 ())))
+            handle-pair (βη-Closure.base (η-rule ()))
+            handle-pair (βη-Closure.base (s-rule eta-pair-gen)) = re-pairing
+              where
+                -- Reduct of eta-pair-gen on ⟨fst ∘ h, snd ∘ h⟩ is h.
+                -- We need Red A C (apply ∘ h). Use Red-expand C with re-pairing.
+                re-pairing : Red A C (apply ∘ h)
+                re-pairing = Red-expand C (apply ∘ h) (ne-apply∘ ne-h) handle-h
+                  where
+                    handle-h : ∀ {v} → (apply ∘ h) ⟶βη v → Red A C v
+                    handle-h (βη-Closure.base r) = ⊥-elim (no-apply∘-root-redex ne-h r)
+                    handle-h (βη-Closure.∘-congˡ r) = ⊥-elim (no-apply-reduct r)
+                    handle-h (βη-Closure.∘-congʳ r-h) =
+                      -- Step apply ∘ ⟨fst ∘ h', snd ∘ h'⟩ ⟶s apply ∘ h' via
+                      -- ∘-congʳ + eta-pair-gen, then Red-⟶ to get Red A C (apply ∘ h').
+                      Red-⟶ C
+                        (proj₂ (hyp (βη-Closure.∘-congʳ r-h))
+                               _
+                               (Red-⟶ B ru (βη-Closure.∘-congʳ r-h)))
+                        (βη-Closure.∘-congʳ (βη-Closure.base (s-rule eta-pair-gen)))
+            -- Other s-rules (assoc, pair-dist, term-unique) all have ∘-root LHS;
+            -- their patterns don't unify with ⟨ fst ∘ h , u ⟩, so Agda's coverage
+            -- check treats them as absurd without explicit clauses.
+            handle-pair (βη-Closure.⟨,⟩-congˡ r-t) = proj₂ (hyp r-t) u ru
+            handle-pair (βη-Closure.⟨,⟩-congʳ r-u) = aux _ (Red-⟶ B ru r-u) (ihu r-u)
 
 Red-expand-Prod {A} B C t ne hyp =
   Red-expand B (fst ∘ t) (ne-fst∘ ne) fst-hyp ,
@@ -483,10 +766,21 @@ sn {B = B} t = Red-SN B t (red-all t)
 --
 --   Proved:     Red-⟶, Red-⟶*, SN-under-fst, SN-under-snd,
 --               Red-SN at Unit and product types, Neutral (data),
+--               Red-expand-Unit, Red-expand-Prod,
+--               Red-expand-Arrow (by case-split on Neutral t,
+--                 with the ne-fst sub-case deferred to the narrow
+--                 postulate Red-fst-at-arrow),
 --               sn (assuming red-all).
 --
---   Postulated: Red-SN-arrow, Red-expand, red-all.
+--   Postulated: Red-fst-at-arrow (the t = fst arrow sub-case of
+--                 Red-expand-Arrow — needs a red-id-right family of
+--                 lemmas, structurally recursive on the result type;
+--                 narrower than the previous Red-expand-Arrow postulate),
+--               red-all (the main case-bash, deferred).
 --
--- These three postulates correspond to the classical Tait proof
--- obligations. Discharging them is deferred to a subsequent session.
+-- The Red-expand-Arrow discharge uses a re-pairing trick to handle
+-- the eta-pair-gen sub-case (t = fst ∘ h, u = snd ∘ h): we have hyp
+-- on t and Red on u, so for each reduct h ⟶ h' we construct
+-- Red of (apply ∘ ⟨fst ∘ h', snd ∘ h'⟩) and forward-step via
+-- eta-pair-gen + ∘-congʳ to get Red of (apply ∘ h').
 ------------------------------------------------------------------------
