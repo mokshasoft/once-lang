@@ -29,8 +29,14 @@
 --                                            ir-to-trace's static `n`
 --                                            and run-X's `next-slot
 --                                            alloc`)
---   SigOp                                 — POSTULATED (delegated to
---                                            RuntimeContract.sigOp-proof)
+--   SigOp                                 — DERIVED from
+--                                            `exec-sigop-respects-semM`
+--                                            (Plan 0.11 task A); the
+--                                            remaining trusted-base
+--                                            axiom is the value-flow
+--                                            obligation pinning
+--                                            `result-loc = exec-sigop-
+--                                            output si s`.
 --   free-heap                             — POSTULATED (empty-trace
 --                                            transport)
 --   inl, inr, case, In, out-μ, Cata,
