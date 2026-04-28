@@ -879,6 +879,34 @@ module AbstractExec {FS : FrameSemantics} where
   exec-restore-input-nothing _ _ = refl
 
   ------------------------------------------------------------------------
+  -- Plan 0.11 Task A — SigOp trusted-base axioms
+  --
+  -- The abstract semantics of `instr-sigop si` is structured around
+  -- two named axioms. Per-(arch, name) discharge replaces these with
+  -- per-name implementations (e.g. `linux.exit` halts; `lit.int.<N>`
+  -- writes a constant). Until then they are trusted-base entries —
+  -- visible to `make postulates-grep` and live in the same place as
+  -- the other CCC-layer axioms.
+  --
+  -- Note: by structuring the abstract semantics this way (only Output
+  -- and halted may change), the relaxed CCC discipline contract holds
+  -- *definitionally* for `instr-sigop si`: frame, alloc, memory,
+  -- Input register, and stackSlot are all unchanged by the body of
+  -- `exec-abstract (instr-sigop si)` below.
+  ------------------------------------------------------------------------
+
+  postulate
+    -- The new value-location placed in Output after the SigOp runs.
+    -- For `lit.int.<N>` this would be a location encoding N; for
+    -- `linux.exit` it is irrelevant (the machine halts).
+    exec-sigop-output : ∀ {A B} → SigOpInfo A B → LocState FS →
+                        ValueLocation FS
+
+    -- Whether the SigOp halts. `linux.exit` returns `true`; pure
+    -- SigOps return `false`.
+    exec-sigop-halts  : ∀ {A B} → SigOpInfo A B → LocState FS → Bool
+
+  ------------------------------------------------------------------------
   -- Main exec-abstract definition
   ------------------------------------------------------------------------
 
@@ -993,29 +1021,35 @@ module AbstractExec {FS : FrameSemantics} where
   -- Abstract: no-op (Star proofs handle termination structurally)
   exec-abstract (worklist-check slot) s alloc = s , alloc
 
-  -- Plan 0.10 Phase B: SigOp dispatch.
-  -- Abstract: no-op. Real semantics depends on the syscall ABI and is
-  -- delegated to the per-arch sigOp-proof in `EntryPointCCC` (part of
-  -- the trusted base — see `docs/compiler/trusted-base.md`).
-  -- SigOps that terminate (e.g. `exit`) effectively halt; modeling
-  -- that is future work.
+  -- Plan 0.10 Phase B / 0.11 Task A: SigOp dispatch.
   --
-  -- KNOWN LEAK (Plan 0.11 wildcard-payload audit, 2026-04-28).
-  -- The bound name `si` carries `name`, `semI`, `semM` — semantically
-  -- meaningful — but this body discards them and returns identity.
-  -- Discharging this leak requires either:
-  --   (1) modeling per-name effects via a named postulate
-  --       `exec-sigop : SigOpInfo A B → LocState FS → AllocState {FS}
-  --        → LocState FS × AllocState {FS}` (Plan 0.10 Phase E
-  --       direction), OR
-  --   (2) extending the abstract machine to track values so `semM si`
-  --       can compute Output's content directly (architectural).
-  -- Until then, every downstream proof obligation about
-  -- `exec-abstract (instr-sigop si)` cannot mention `si` non-trivially
-  -- because the body doesn't depend on it. The name is preserved here
-  -- (rather than `_`) to make the leak greppable and to surface as an
-  -- UnusedVariable warning under stricter flags.
-  exec-abstract (instr-sigop si) s alloc = s , alloc
+  -- The abstract semantics of `instr-sigop si` is **structured**: it
+  -- may write a new value-location to Output and may halt the
+  -- machine, but it leaves everything else (frame, alloc, memory,
+  -- Input register, stackSlot) unchanged. The two postulates below
+  -- (`exec-sigop-output` and `exec-sigop-halts`) are the trusted-
+  -- base axioms describing what a SigOp does at the abstract level.
+  -- Per-name discharge of these axioms (e.g. `linux.exit` halts;
+  -- `lit.int.<N>` doesn't halt and produces a constant) is downstream
+  -- work — see Plan 0.11 task A and Plan 0.10 Phase E.
+  --
+  -- This shape encodes the relaxed CCC contract structurally:
+  --   - frame-eq, slot-stable, mem-preserved, heap-monotone hold
+  --     by definitional reduction (alloc and memory unchanged);
+  --   - regs-only-output and Input-preservation hold via
+  --     writeReg-preserves;
+  --   - halted may flip false → true (halting SigOps) or stay false
+  --     (pure SigOps) — `exec-sigop-halts` is the per-(arch, name)
+  --     discharge target.
+  --
+  -- Replacing the older identity body `exec-abstract (instr-sigop si)
+  -- s alloc = s , alloc` is the Plan-0.11 task-A move that surfaces
+  -- the silent wildcard-payload leak as named, audit-visible
+  -- postulates.
+  exec-abstract (instr-sigop si) s alloc =
+    record s { regs   = writeReg (regs s) Output (exec-sigop-output si s)
+             ; halted = exec-sigop-halts si s }
+    , alloc
 
   -- | Execute a trace (sequence of abstract instructions)
   exec-trace : AbstractTrace → LocState FS → AllocState {FS} →

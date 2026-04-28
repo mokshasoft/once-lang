@@ -1650,7 +1650,14 @@ module TracePrimitives {FS : FrameSemantics} where
   exec-abstract-preserves-halted (worklist-pop slot) s alloc h-eq iph-worklist-pop =
     load-from-slot-preserves-halted slot s alloc h-eq  -- same as load-from-slot
   exec-abstract-preserves-halted (worklist-check slot) s alloc h-eq _ = h-eq
-  exec-abstract-preserves-halted (instr-sigop _)       s alloc h-eq _ = h-eq
+  -- Plan 0.11 Task A: SigOp may halt (e.g. linux.exit), so it is NOT
+  -- a member of InstrPreservesHalted. The case is unreachable —
+  -- there is no `iph-instr-sigop` constructor — so we use the absurd
+  -- pattern. (Previously this clause returned `h-eq` defensively;
+  -- with the strengthened `exec-abstract (instr-sigop si)` body
+  -- consulting `exec-sigop-halts si`, that defensive return no
+  -- longer typechecks anyway.)
+  exec-abstract-preserves-halted (instr-sigop _)       s alloc h-eq ()
 
   -- TracePreservesHalted: predicate on trace that all instructions preserve halted
   data TracePreservesHaltedP : AbstractTrace → Set where
