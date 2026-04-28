@@ -80,6 +80,8 @@ module IRTraceCorrectness {FS : FrameSemantics} (program-bound : ℕ) where
   open Once.CCC.Machine.SMCore.MemOps {FS}
   open Once.CCC.Machine.SMCore.ExecFinal {FS}
   open Once.CCC.Machine.SMCore.AbstractExec {FS}
+  open import Once.CCC.SigOp.Info using (SigOpInfo; semM)
+  open import Once.CCC.Machine.SMCore using (mkLocState; stackMem; heapMem; writeReg; Output; instr-sigop)
 
   open import Once.CCC.Machine.ClosureWellFormed
   open ClosureWellFormedDef {FS} program-bound
@@ -246,32 +248,78 @@ module IRTraceCorrectness {FS : FrameSemantics} (program-bound : ℕ) where
     ir-to-trace-correct-apply : ∀ {k A B} →
       IRTraceCorrect (apply {A} {B} {k})
 
-    -- SigOp: validity preservation under `exec-abstract (instr-sigop
-    -- name) = no-op`. With the current weak abstract semantics, the
-    -- output state is the input state (with Output unchanged), so the
-    -- contract demands an existential `result-loc` whose validity for
-    -- `eval (SigOp si) x = semI si x` is established at the unchanged
-    -- state. This holds when the per-name `semI si` agrees with the
-    -- value flow already established by validity (e.g. for pure pass-
-    -- throughs).
+    -- Plan 0.11 Task A — SigOp value-flow trusted-base axiom.
     --
-    -- This is the catchall postulate. For per-name discharge (Plan A),
-    -- pattern-match on `name si` in `ir-to-trace-correct` and route
-    -- specific names (`linux.exit`, `lit.int.<N>`, ...) to per-name
-    -- postulates that can be later upgraded to real proofs tied to
-    -- SigOpInfo.semM.
+    -- After Plan 0.11 task A's structuring of `exec-abstract
+    -- (instr-sigop si)` (now consults `exec-sigop-output` and
+    -- `exec-sigop-halts`), the post-state `final-s` is definitionally
+    --   record s { regs   = writeReg (regs s) Output (exec-sigop-output si s)
+    --            ; halted = exec-sigop-halts si s }
+    -- and `final-alloc = alloc`.
+    --
+    -- The remaining trusted-base obligation is: at this `final-s`,
+    -- the location `exec-sigop-output si s` is `ValidAtWF` for
+    -- `semM si x` at some output mode. Per-name discharge replaces
+    -- this with per-(name) lemmas tied to `SigOpInfo.semM`.
+    --
+    -- This axiom is more constrained than the older
+    -- `ir-to-trace-correct-sigop` postulate: it pre-commits the
+    -- `result-loc` to `exec-sigop-output si s` instead of leaving it
+    -- existential. That makes per-name discharge tractable — the
+    -- per-name implementor only needs to prove validity for one
+    -- specific location, not invent one.
     --
     -- Paired with `Simulation.sigop-codegen-faithful` (one per arch),
     -- which links the codegen output of `compile-sigOp name` to
-    -- `exec-abstract (instr-sigop name)`. The two together close the
+    -- `exec-abstract (instr-sigop si)`. The two together close the
     -- semantic chain for SigOps.
-    ir-to-trace-correct-sigop : ∀ {A B} (si : _) →
-      IRTraceCorrect (SigOp {A} {B} si)
+    exec-sigop-respects-semM :
+      ∀ {A B} (si : SigOpInfo A B)
+        (mIn : AllocMode) (x : ⟦ A ⟧) (input-loc : ValueLocation FS)
+        (s : LocState FS) (alloc : AllocState {FS}) →
+      ValidAtWF mIn alloc x input-loc s →
+      BeforeFrontier alloc input-loc →
+      halted s ≡ false →
+      readReg (regs s) Input ≡ input-loc →
+      ∃[ mOut ]
+        ValidAtWF mOut alloc (semM si x)
+          (exec-sigop-output si s)
+          (mkLocState (writeReg (regs s) Output (exec-sigop-output si s))
+                      (stackMem s) (heapMem s)
+                      (exec-sigop-halts si s))
 
     -- Sums and recursion schemes (Layer 0 doesn't use; ir-to-trace
     -- stubs all to []). Catchall named postulate; should be split
     -- per-IR when Layer 1+ work begins.
     ir-to-trace-correct-non-layer0 : ∀ {A B} (ir : IR A B) → IRTraceCorrect ir
+
+  ----------------------------------------------------------------------
+  -- Plan 0.11 Task A — DERIVED from `exec-sigop-respects-semM`.
+  --
+  -- This was previously the postulate `ir-to-trace-correct-sigop`.
+  -- Now it is a real derivation: given the trusted-base axiom about
+  -- the post-state's Output validity, the IRTraceCorrect obligation
+  -- follows by pinning `result-loc = exec-sigop-output si s` and
+  -- transporting the validity through `exec-trace`'s definitional
+  -- reduction on a single-instruction trace.
+  ----------------------------------------------------------------------
+
+  ir-to-trace-correct-sigop : ∀ {A B} (si : SigOpInfo A B) →
+    IRTraceCorrect (SigOp {A} {B} si)
+  ir-to-trace-correct-sigop si mIn x input-loc s alloc valid before not-halted rdi-eq =
+    let
+      (mOut , v) = exec-sigop-respects-semM si mIn x input-loc s alloc
+                     valid before not-halted rdi-eq
+      -- exec-trace (instr-sigop si ∷ []) s alloc reduces to
+      -- exec-abstract (instr-sigop si) s alloc when not halted.
+      trace-eq : exec-trace (instr-sigop si ∷ []) s alloc
+               ≡ exec-abstract (instr-sigop si) s alloc
+      trace-eq = exec-trace-single (instr-sigop si) s alloc not-halted
+    in mOut , exec-sigop-output si s ,
+       subst (λ result → ValidAtWF mOut (proj₂ result) (semM si x)
+                                   (exec-sigop-output si s) (proj₁ result))
+             (sym trace-eq)
+             v
 
   ----------------------------------------------------------------------
   -- Aggregate `ir-to-trace-correct` dispatching on IR.
