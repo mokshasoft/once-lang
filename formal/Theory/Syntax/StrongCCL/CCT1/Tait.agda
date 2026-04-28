@@ -376,6 +376,39 @@ no-apply-reduct (βη-Closure.base (β-rule (from-CCT1 ())))
 no-apply-reduct (βη-Closure.base (η-rule ()))
 no-apply-reduct (βη-Closure.base (s-rule ()))
 
+no-id-reduct : ∀ {A} {u : Term A A} → ¬ (id ⟶βη u)
+no-id-reduct (βη-Closure.base (β-rule (from-CCTB ())))
+no-id-reduct (βη-Closure.base (β-rule (from-CCT1 ())))
+no-id-reduct (βη-Closure.base (η-rule ()))
+no-id-reduct (βη-Closure.base (s-rule ()))
+
+------------------------------------------------------------------------
+-- SN (apply ∘ id) — the SN component of Red-fst-at-arrow's eta-pair sub-case.
+--
+-- apply ∘ id has exactly ONE reduct: apply (via id-right). All other
+-- candidate root rules require shapes incompatible with apply or id:
+--   - id-left (requires apply = id)         — impossible
+--   - id-right (gives apply)                — fires; reduct apply is SN
+--   - fst-pair / snd-pair / eta-pair        — require specific shapes
+--   - curry-β (requires apply = curry _)    — impossible
+--   - curry-η / curry-apply / curry-compose — curry root, mismatch
+--   - assoc (requires apply = composition)  — impossible
+--   - pair-dist (requires apply = pair)     — impossible
+--   - term-unique (requires apply = terminal) — impossible
+-- Congruences on apply or id give no reducts (both atomic).
+------------------------------------------------------------------------
+
+sn-apply∘id : ∀ {A B} → SN (apply {A = A} {B = B} ∘ id)
+sn-apply∘id = acc go
+  where
+    go : ∀ {v} → (apply ∘ id) ⟶βη v → SN v
+    go (βη-Closure.base (β-rule (from-CCTB id-right))) = sn-apply
+    go (βη-Closure.base (β-rule (from-CCT1 ())))
+    go (βη-Closure.base (η-rule ()))
+    go (βη-Closure.base (s-rule ()))
+    go (βη-Closure.∘-congˡ r) = ⊥-elim (no-apply-reduct r)
+    go (βη-Closure.∘-congʳ r) = ⊥-elim (no-id-reduct r)
+
 ------------------------------------------------------------------------
 -- Red-expand-Arrow helpers: rule out root reductions of (apply ∘ ⟨t, u⟩)
 -- and pair-root reductions of ⟨t, u⟩ for non-fst-shaped Neutral t.
@@ -439,26 +472,65 @@ no-pair-root-apply∘⟨,⟩ (η-rule ())
 no-pair-root-apply∘⟨,⟩ (s-rule ())
 
 ------------------------------------------------------------------------
--- Narrow postulate: Red of fst at arrow target.
+-- Red-fst-at-arrow — Red of fst at arrow target.
 --
--- When t = fst at arrow target (i.e., fst : Term ((B ⇒ C) × B') (B ⇒ C)),
--- the Red-expand-Arrow proof reaches a sub-goal Red _ C (apply ∘ id)
--- via the eta-pair reduction ⟨fst, snd⟩ ⟶β id. apply ∘ id is not
--- Neutral (id-right fires at root), so Red-expand cannot be used.
--- Constructing Red _ C (apply ∘ id) directly would require an
--- η-/β-expansion family of lemmas (red-id-right, structurally
--- recursive on C), itself a substantial proof.
+-- When the eta-pair reduction ⟨fst, snd⟩ ⟶β id fires inside the
+-- Red-expand-Arrow ne-fst case, we reach a sub-goal Red _ C (apply ∘ id).
+-- apply ∘ id is not Neutral (id-right fires at root), so Red-expand
+-- cannot be used directly.
 --
--- We isolate this gap as a precise, narrow obligation:
---   "fst : Term ((B ⇒ C) × B') (B ⇒ C) is reducible at arrow target."
+-- We DISPATCH on the arrow's result type C:
+--   * C = Unit:    fully proved (Red _ Unit = SN, sn-apply∘id covers it)
+--   * C = X × Y:   postulate (would need red-id-right at sub-types)
+--   * C = X ⇒ Y:   postulate (would need red-id-right at Y)
 --
--- Discharging it requires the red-id-right machinery; deferred.
--- All other Neutral shapes at arrow target are discharged below.
+-- The remaining narrow postulates are precisely scoped: each represents
+-- the Red of fst at a SPECIFIC arrow result-type shape, with a documented
+-- discharge plan via the red-id-right family of lemmas.
 ------------------------------------------------------------------------
 
+-- C = Unit: discharged.
+Red-fst-at-arrow-Unit :
+  ∀ {B B'} → Red ((B ⇒ Unit) × B') (B ⇒ Unit) (fst {A = B ⇒ Unit} {B = B'})
+Red-fst-at-arrow-Unit {B} {B'} = sn-fst , go
+  where
+    go : ∀ (u : Term ((B ⇒ Unit) × B') B) →
+         Red ((B ⇒ Unit) × B') B u →
+         Red ((B ⇒ Unit) × B') Unit (apply ∘ ⟨ fst , u ⟩)
+    go u ru = aux u ru (Red-SN B u ru)
+      where
+        aux : ∀ (u : Term ((B ⇒ Unit) × B') B) →
+              Red ((B ⇒ Unit) × B') B u → SN u →
+              SN (apply ∘ ⟨ fst , u ⟩)
+        aux u ru (acc ihu) = acc handle
+          where
+            handle : ∀ {v} → (apply ∘ ⟨ fst , u ⟩) ⟶βη v → SN v
+            handle-pair : ∀ {p'} → ⟨ fst , u ⟩ ⟶βη p' → SN (apply ∘ p')
+
+            handle (βη-Closure.base r) = ⊥-elim (no-apply∘⟨,⟩-root-redex ne-fst r)
+            handle (βη-Closure.∘-congˡ r) = ⊥-elim (no-apply-reduct r)
+            handle (βη-Closure.∘-congʳ r-pair) = handle-pair r-pair
+
+            handle-pair (βη-Closure.base (β-rule (from-CCTB eta-pair))) = sn-apply∘id
+            handle-pair (βη-Closure.base (β-rule (from-CCT1 ())))
+            handle-pair (βη-Closure.base (η-rule ()))
+            handle-pair (βη-Closure.⟨,⟩-congˡ r-fst) = ⊥-elim (no-fst-reduct r-fst)
+            handle-pair (βη-Closure.⟨,⟩-congʳ r-u) = aux _ (Red-⟶ B ru r-u) (ihu r-u)
+
+-- C = X × Y and C = X ⇒ Y cases remain narrow postulates.
 postulate
-  Red-fst-at-arrow : ∀ {B C B'} →
-                     Red ((B ⇒ C) × B') (B ⇒ C) (fst {A = B ⇒ C} {B = B'})
+  Red-fst-at-arrow-Prod : ∀ {B X Y B'} →
+                          Red ((B ⇒ (X × Y)) × B') (B ⇒ (X × Y))
+                              (fst {A = B ⇒ (X × Y)} {B = B'})
+  Red-fst-at-arrow-Arrow : ∀ {B X Y B'} →
+                           Red ((B ⇒ (X ⇒ Y)) × B') (B ⇒ (X ⇒ Y))
+                               (fst {A = B ⇒ (X ⇒ Y)} {B = B'})
+
+Red-fst-at-arrow : ∀ {B C B'} →
+                   Red ((B ⇒ C) × B') (B ⇒ C) (fst {A = B ⇒ C} {B = B'})
+Red-fst-at-arrow {C = Unit}    = Red-fst-at-arrow-Unit
+Red-fst-at-arrow {C = _ × _}   = Red-fst-at-arrow-Prod
+Red-fst-at-arrow {C = _ ⇒ _}   = Red-fst-at-arrow-Arrow
 
 ------------------------------------------------------------------------
 -- Forward declarations for the mutually-recursive Red-expand family.
@@ -772,10 +844,13 @@ sn {B = B} t = Red-SN B t (red-all t)
 --                 postulate Red-fst-at-arrow),
 --               sn (assuming red-all).
 --
---   Postulated: Red-fst-at-arrow (the t = fst arrow sub-case of
---                 Red-expand-Arrow — needs a red-id-right family of
---                 lemmas, structurally recursive on the result type;
---                 narrower than the previous Red-expand-Arrow postulate),
+--   Postulated: Red-fst-at-arrow-Prod and Red-fst-at-arrow-Arrow
+--                 (the t = fst arrow sub-cases of Red-expand-Arrow at
+--                 result types X × Y and X ⇒ Y respectively — both
+--                 need a red-id-right family of lemmas, structurally
+--                 recursive on the result type; the C = Unit case is
+--                 fully discharged via Red-fst-at-arrow-Unit, which
+--                 reduces the eta-pair sub-goal to sn-apply∘id),
 --               red-all (the main case-bash, deferred).
 --
 -- The Red-expand-Arrow discharge uses a re-pairing trick to handle
