@@ -22,9 +22,11 @@ in `docs/compiler/decision-log.md` for durable records of landed work.
 │   └── 0.4-frontend-completeness-and-bridges (planning)
 │       └── 0.4.2-end-to-end-connector (planning)
 │
-└── 0.6-user-polymorphism-and-strict-parser (planning — Section A landed 2026-04-20)
-    ├── 0.6.1-phase-c-design (design)
-    └── 0.7-parser-strictness-relational (planning)
+├── 0.6-user-polymorphism-and-strict-parser (planning — Section A landed 2026-04-20)
+│   ├── 0.6.1-phase-c-design (design)
+│   └── 0.7-parser-strictness-relational (planning)
+│
+└── 0.11-parameterized-trusted-base (design — `--safe` proof modules + TrustedBase parameter; orthogonal to 0.10)
 ```
 
 ## Status Summary
@@ -45,6 +47,7 @@ in `docs/compiler/decision-log.md` for durable records of landed work.
 | `0.6.1-phase-c-design` | design | Phase C design + classifier migration |
 | `0.7-parser-strictness-relational` | planning | Relational parser + proofs |
 | `0.9-exhaustive-semantics` | partial | `--exact-split` enabled; bug-hiding class closed in `exec-x86` (Phase B) and `instr-consumed-slots` (Phase D). 17 CATCHALLs in DirectSim route to named postulates. ~85 safe-class warnings remain as discipline backlog. **D049** in decision log. Error promotion deferred until backlog clears. |
+| `0.11-parameterized-trusted-base` | design | Make all proof modules `--safe` by parameterizing them over a single `TrustedBase` module. Closes the "is this theorem axiom-free?" audit question structurally. Orthogonal to 0.10. |
 
 ## Recently Closed (in git history + decision log)
 
