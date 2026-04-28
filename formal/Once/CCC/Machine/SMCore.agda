@@ -999,7 +999,23 @@ module AbstractExec {FS : FrameSemantics} where
   -- the trusted base — see `docs/compiler/trusted-base.md`).
   -- SigOps that terminate (e.g. `exit`) effectively halt; modeling
   -- that is future work.
-  exec-abstract (instr-sigop _) s alloc = s , alloc
+  --
+  -- KNOWN LEAK (Plan 0.11 wildcard-payload audit, 2026-04-28).
+  -- The bound name `si` carries `name`, `semI`, `semM` — semantically
+  -- meaningful — but this body discards them and returns identity.
+  -- Discharging this leak requires either:
+  --   (1) modeling per-name effects via a named postulate
+  --       `exec-sigop : SigOpInfo A B → LocState FS → AllocState {FS}
+  --        → LocState FS × AllocState {FS}` (Plan 0.10 Phase E
+  --       direction), OR
+  --   (2) extending the abstract machine to track values so `semM si`
+  --       can compute Output's content directly (architectural).
+  -- Until then, every downstream proof obligation about
+  -- `exec-abstract (instr-sigop si)` cannot mention `si` non-trivially
+  -- because the body doesn't depend on it. The name is preserved here
+  -- (rather than `_`) to make the leak greppable and to surface as an
+  -- UnusedVariable warning under stricter flags.
+  exec-abstract (instr-sigop si) s alloc = s , alloc
 
   -- | Execute a trace (sequence of abstract instructions)
   exec-trace : AbstractTrace → LocState FS → AllocState {FS} →
