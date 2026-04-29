@@ -63,6 +63,13 @@ x86-64-functionEpilogue = "    ret\n\n"
 x86-64-irToAsm : ∀ {A B} → IR A B → String
 x86-64-irToAsm ir = programToText (compile-trace (ir-to-trace ir))
 
+-- | Plan 0.2.4.2 Phase B: emit closure-body labels for an IR.
+-- Empty until Phase C wires `ir-to-trace` to also collect body
+-- traces for each `curry` occurrence. The skeleton is here so
+-- `compileFunWithTarget` works unchanged once Phase C lands.
+x86-64-irToBodies : ∀ {A B} → IR A B → String
+x86-64-irToBodies _ = ""
+
 ------------------------------------------------------------------------
 -- Target Instance
 ------------------------------------------------------------------------
@@ -70,6 +77,7 @@ x86-64-irToAsm ir = programToText (compile-trace (ir-to-trace ir))
 x86-64 : Target
 x86-64 = record
   { irToAsm          = x86-64-irToAsm
+  ; irToBodies       = x86-64-irToBodies
   ; asmHeader        = x86-64-asmHeader
   ; functionPrologue = x86-64-functionPrologue
   ; functionEpilogue = x86-64-functionEpilogue

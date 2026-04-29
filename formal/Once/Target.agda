@@ -22,6 +22,12 @@ record Target : Set where
   field
     -- | Compile IR to assembly text (function body only)
     irToAsm : ∀ {A B} → IR A B → String
+    -- | Plan 0.2.4.2 Phase B: assembly text for closure-body labels
+    -- (`.L_thunk_<n>:` blocks) emitted AFTER the parent's `ret`.
+    -- Empty string for IRs containing no `curry` (most non-effectful
+    -- code). Two-pass codegen separates this from `irToAsm` so the
+    -- parent's ret comes between them.
+    irToBodies : ∀ {A B} → IR A B → String
     -- | Assembly file header (e.g., ".section .text")
     asmHeader : String
     -- | Generate function prologue (label, .globl directive)

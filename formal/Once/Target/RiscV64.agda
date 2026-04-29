@@ -43,6 +43,10 @@ riscv64-functionPrologue fname =
   ".globl " ++ once-symbol fname ++ "\n" ++
   once-symbol fname ++ ":\n"
 
+-- | Plan 0.2.4.2 Phase B: closure-body emission stub.
+riscv64-irToBodies : ∀ {A B} → IR A B → String
+riscv64-irToBodies _ = ""
+
 riscv64-functionEpilogue : String
 riscv64-functionEpilogue = "    ret\n\n"
 
@@ -60,6 +64,7 @@ riscv64-irToAsm ir = programToText (compile-trace (ir-to-trace ir))
 riscv64 : Target
 riscv64 = record
   { irToAsm          = riscv64-irToAsm
+  ; irToBodies       = riscv64-irToBodies
   ; asmHeader        = riscv64-asmHeader
   ; functionPrologue = riscv64-functionPrologue
   ; functionEpilogue = riscv64-functionEpilogue

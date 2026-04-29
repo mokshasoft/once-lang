@@ -288,13 +288,19 @@ archTarget riscv64 = RiscV64-Target.riscv64
 -- statically linked at build time by the driver. Emitting a body
 -- here would produce a recursive `once_<name>: ...; call once_<name>;
 -- ret` stub.
+--
+-- Plan 0.2.4.2 Phase B: closure-body labels (`.L_thunk_<n>:`) are
+-- emitted via `irToBodies` AFTER the parent's `ret` (epilogue). The
+-- parent's fall-through stops at `ret`; bodies are reachable only
+-- via `lea label(%rip)` from the parent's curry trace.
 compileFunWithTarget : Target → CompiledFun → String
 compileFunWithTarget target cf with cfIsPrimitive cf
 ... | true  = ""  -- primitive: external symbol, no body
 ... | false =
   functionPrologue target (cfName cf) ++
   irToAsm target (cfIR cf) ++
-  functionEpilogue target
+  functionEpilogue target ++
+  irToBodies target (cfIR cf)
 
 -- | Compile all functions to assembly using a target
 compileAllWithTarget : Target → List CompiledFun → String

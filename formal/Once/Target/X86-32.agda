@@ -43,6 +43,10 @@ x86-32-functionPrologue fname =
   ".globl " ++ once-symbol fname ++ "\n" ++
   once-symbol fname ++ ":\n"
 
+-- | Plan 0.2.4.2 Phase B: closure-body emission stub.
+x86-32-irToBodies : ∀ {A B} → IR A B → String
+x86-32-irToBodies _ = ""
+
 x86-32-functionEpilogue : String
 x86-32-functionEpilogue = "    ret\n\n"
 
@@ -60,6 +64,7 @@ x86-32-irToAsm ir = programToText (compile-trace (ir-to-trace ir))
 x86-32 : Target
 x86-32 = record
   { irToAsm          = x86-32-irToAsm
+  ; irToBodies       = x86-32-irToBodies
   ; asmHeader        = x86-32-asmHeader
   ; functionPrologue = x86-32-functionPrologue
   ; functionEpilogue = x86-32-functionEpilogue
