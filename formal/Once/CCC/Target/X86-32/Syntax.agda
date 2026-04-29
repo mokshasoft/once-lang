@@ -19,6 +19,7 @@ module Once.CCC.Target.X86-32.Syntax where
 open import Data.Nat using (ℕ; _+_; _*_)
 open import Data.Integer using (ℤ)
 open import Data.List using (List)
+open import Data.String using (String)
 
 ------------------------------------------------------------------------
 -- Registers
@@ -112,6 +113,8 @@ data Instr : Set where
   jne   : ℕ → Instr                   -- jne offset
   je    : ℕ → Instr                   -- je offset
   call  : Operand → Instr             -- call target
+  -- Plan 0.11: SigOp call by symbolic name. Linker resolves the name.
+  call-sym : String → Instr
   ret   : Instr                       -- ret
 
   -- Special

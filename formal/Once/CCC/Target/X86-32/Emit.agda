@@ -69,6 +69,7 @@ showInstr (je n)         = "    je .L"  ++ showNat n
 showInstr (call (reg r)) = "    call *" ++ showReg r
 showInstr (call (mem m)) = "    call *" ++ showMem m
 showInstr (call (imm n)) = "    call "  ++ showNat n
+showInstr (call-sym name) = "    call " ++ name
 showInstr ret            = "    ret"
 showInstr (push (reg r)) = "    pushl " ++ showReg r
 showInstr (push (mem m)) = "    pushl " ++ showMem m

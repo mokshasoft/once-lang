@@ -37,7 +37,7 @@ open import Once.CCC.Target.X86-32.Syntax
   using (Reg; eax; ebx; ecx; edx; esi; edi; ebp; esp; Program; slot-size; slots)
   renaming (Instr to X86Instr)
 open import Once.CCC.Target.X86-32.Syntax
-  using (mov; lea; push; pop; add; sub; cmp; test; jmp; jne; je; call; ret;
+  using (mov; lea; push; pop; add; sub; cmp; test; jmp; jne; je; call; call-sym; ret;
          nop; ud2; label;
          Operand; reg; imm; mem; Mem; base; base+disp; label-rel)
 open import Once.CCC.Target.X86-32.AbstractToX86-32
@@ -175,6 +175,11 @@ module Simulation {FS : FrameSemantics} where
     exec-x86-push-other : Operand → X86State → X86State
     exec-x86-pop-other  : Reg → X86State → X86State
 
+    -- Plan 0.11: SigOp call by symbolic name. Two trusted-base
+    -- postulates per arch: rax/eax and halted after the call.
+    exec-x86-call-sym-rax    : String → X86State → ValueLocation FS
+    exec-x86-call-sym-halted : String → X86State → Bool
+
   exec-x86 : X86Instr → X86State → Frame → X86State
 
   -- mov-to-output: mov eax, ecx → eax' = ecx
@@ -237,6 +242,12 @@ module Simulation {FS : FrameSemantics} where
 
   -- Control flow (no-ops at abstract level)
   exec-x86 (call _) xs _ = xs
+  -- Plan 0.11: SigOp call. Mirrors abstract instr-sigop's structure:
+  -- eax (Output) and x86-halted may change via opaque postulates;
+  -- everything else preserved.
+  exec-x86 (call-sym name) xs _ =
+    record xs { eax-val    = exec-x86-call-sym-rax name xs
+              ; x86-halted = exec-x86-call-sym-halted name xs }
   exec-x86 ret xs _ = xs
   exec-x86 nop xs _ = xs
   exec-x86 ud2 xs _ = record xs { x86-halted = true }

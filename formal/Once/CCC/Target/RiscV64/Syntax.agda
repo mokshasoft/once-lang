@@ -18,6 +18,7 @@ module Once.CCC.Target.RiscV64.Syntax where
 open import Data.Nat using (ℕ; zero; suc) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
 open import Data.Integer using (ℤ)
 open import Data.List using (List; []; _∷_; foldr)
+open import Data.String using (String)
 
 ------------------------------------------------------------------------
 -- Registers
@@ -131,6 +132,8 @@ data Instr : Set where
   j      : ℕ → Instr                  -- j offset (jal zero, offset)
   ret    : Instr                      -- ret (jalr zero, ra, 0)
   call   : ℕ → Instr                  -- call offset (auipc + jalr)
+  -- Plan 0.11: SigOp call by symbolic name. Linker resolves the name.
+  call-sym : String → Instr
 
   -- Special
   nop    : Instr                      -- nop (addi zero, zero, 0)
@@ -218,6 +221,7 @@ instr-consumed-slots (jalr _ _ _)    = 0
 instr-consumed-slots (j _)           = 0
 instr-consumed-slots ret             = 0
 instr-consumed-slots (call _)        = 0
+instr-consumed-slots (call-sym _)    = 0   -- same as call
 instr-consumed-slots nop             = 0
 instr-consumed-slots unimp           = 0
 instr-consumed-slots (label _)       = 0

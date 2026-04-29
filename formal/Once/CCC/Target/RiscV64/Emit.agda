@@ -67,6 +67,7 @@ showInstr (jalr rd rs o)      = "    jalr "  ++ showReg rd ++ ", " ++ showReg rs
 showInstr (j    o)            = "    j .L"   ++ showNat o
 showInstr ret                 = "    ret"
 showInstr (call o)            = "    call "  ++ showNat o
+showInstr (call-sym name)     = "    call "  ++ name
 showInstr nop                 = "    nop"
 showInstr unimp               = "    unimp"
 showInstr (label n)           = ".L" ++ showNat n ++ ":"

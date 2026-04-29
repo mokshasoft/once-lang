@@ -39,7 +39,7 @@ open import Once.CCC.Target.RiscV64.Syntax
   renaming (Instr to RV64Instr; zero to reg-zero)
 open import Once.CCC.Target.RiscV64.Syntax
   using (ld; sd; add; sub; addi; li; auipc; mv; beq; bne; jal; jalr;
-         j; ret; call; nop; unimp; label)
+         j; ret; call; call-sym; nop; unimp; label)
 open import Once.CCC.Target.RiscV64.AbstractToRiscV
   using (compile-abstract; compile-trace; slot-to-disp)
 open import Once.CCC.IR using (IR)
@@ -179,6 +179,11 @@ module Simulation {FS : FrameSemantics} where
     exec-rv64-mv-other   : Reg → Reg → RV64State → RV64State
     exec-rv64-jalr-other : Reg → Reg → ℕ → RV64State → RV64State
 
+    -- Plan 0.11: SigOp call by symbolic name. Two trusted-base
+    -- postulates: a0 (Output) and halted after the call.
+    exec-rv64-call-sym-a0     : String → RV64State → ValueLocation FS
+    exec-rv64-call-sym-halted : String → RV64State → Bool
+
   exec-rv64 : RV64Instr → RV64State → Frame → RV64State
 
   -- load-indirect: ld a0, 0(t0) → a0' = *t0
@@ -273,6 +278,12 @@ module Simulation {FS : FrameSemantics} where
   exec-rv64 (jal _ _)   rs _ = rs
   exec-rv64 (j _)       rs _ = rs
   exec-rv64 (call _)    rs _ = rs
+  -- Plan 0.11: SigOp call. Mirrors abstract instr-sigop's structure:
+  -- a0 (Output) and rv64-halted may change via opaque postulates;
+  -- everything else preserved.
+  exec-rv64 (call-sym name) rs _ =
+    record rs { a0-val      = exec-rv64-call-sym-a0 name rs
+              ; rv64-halted = exec-rv64-call-sym-halted name rs }
   exec-rv64 (label _)   rs _ = rs
 
   -- Mutually recursive: exec-prog and exec-prog-step

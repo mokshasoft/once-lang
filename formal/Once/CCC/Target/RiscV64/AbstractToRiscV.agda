@@ -42,8 +42,9 @@ open import Once.CCC.Target.RiscV64.Syntax
   using (Reg; zero; ra; sp; fp; a0; a1; a2; a3; a4; a5; a6; a7;
          s1; s2; s3; s4; t0; t1; t2; t3; t4;
          Instr; ld; sd; add; sub; addi; li; auipc; mv;
-         beq; bne; jal; jalr; j; ret; call; nop; unimp; label;
+         beq; bne; jal; jalr; j; ret; call; call-sym; nop; unimp; label;
          Program; slot-size; slots)
+open import Once.CCC.SigOp.Info using (SigOpInfo)
 
 -- Import AbstractInstr from SMCore
 open import Once.CCC.Machine.SMCore
@@ -207,10 +208,10 @@ compile-abstract (worklist-check n) = []
 -- RV64: (empty - pure AllocState update, no machine effect)
 compile-abstract (instr-reclaim-to n) = []
 
--- Plan 0.10 Phase B: SigOp dispatch.
--- RV64 SigOp lowering is not yet implemented; emit unimp trap so the
--- gap is visible at runtime instead of silently producing nothing.
-compile-abstract (instr-sigop _) = unimp ∷ []
+-- Plan 0.11: name-agnostic SigOp codegen.
+-- Emit a single symbolic call; linker resolves the name at build time
+-- to the externally-defined function body. CCC stays name-agnostic.
+compile-abstract (instr-sigop si) = call-sym (SigOpInfo.name si) ∷ []
 
 ------------------------------------------------------------------------
 -- Trace compilation: compile a whole trace to RISC-V
