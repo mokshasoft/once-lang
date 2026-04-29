@@ -67,7 +67,7 @@ open import Once.CCC.IR using (IR;
   id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal; initial;
   curry; apply; arr;
   In; out-μ; Cata; Para; Out; in-ν; Ana; Hylo; Fuse;
-  free-heap; SigOp)
+  free-heap; SigOp; const)
 
 open import Once.CCC.Machine.SMCore
   using (AbstractInstr; AbstractTrace;
@@ -77,7 +77,7 @@ open import Once.CCC.Machine.SMCore
          lea-slot; restore-input;
          instr-alloc-stack; instr-dealloc-stack; instr-reclaim-to;
          instr-push-frame; instr-pop-frame; instr-call-closure;
-         instr-sigop)
+         instr-sigop; instr-load-const)
 
 ------------------------------------------------------------------------
 -- IR → AbstractTrace, state-passing
@@ -192,6 +192,9 @@ ir-to-trace' n apply =
 -- ────────────────────────────────────────────────────────────────────
 
 ir-to-trace' n (SigOp si) = n , (instr-sigop si ∷ [])
+
+-- Plan 0.11: const literal — emit a single load-const abstract instr.
+ir-to-trace' n (const p _ vM) = n , (instr-load-const p vM ∷ [])
 
 -- ────────────────────────────────────────────────────────────────────
 -- Stubbed — emit `[]`. Not needed for Layer 0; future work.

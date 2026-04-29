@@ -50,6 +50,7 @@ ir-size (Fuse _ _ alg transform) = 2 +ℕ ir-size alg +ℕ ir-size transform
 -- Other
 ir-size (free-heap _) = 1
 ir-size (SigOp _) = 1
+ir-size (const _ _ _) = 1
 
 ------------------------------------------------------------------------
 -- Size Bound Lemmas

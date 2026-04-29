@@ -392,6 +392,17 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
     run-ir-wf mIn (free-heap ref) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ =
       mIn , run-free-heap ref x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
 
+    -- Plan 0.11: const literal. The dispatcher needs an
+    -- IRResultAWF for `const p vI vM`. Postulated for now —
+    -- per-primitive-type discharge produces concrete IRResultAWFs
+    -- (similar in shape to SimpleWFImpl's run-X). Audit-visible
+    -- trusted-base entry until then.
+    run-ir-wf mIn (const p vI vM) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ =
+      mIn , run-const-postulate
+      where
+        postulate
+          run-const-postulate : IRResultAWF mIn (const p vI vM) x s alloc
+
     --------------------------------------------------------------------------
     -- OCP-0003: Recursion Schemes
     --

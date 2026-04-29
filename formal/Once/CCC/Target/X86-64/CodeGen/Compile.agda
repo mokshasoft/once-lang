@@ -223,6 +223,46 @@ compile-sigOp-length : ∀ (name : String) → length (compile-sigOp name) ≡ c
 compile-sigOp-length _ = refl
 
 ------------------------------------------------------------------------
+-- Plan 0.11: const literal codegen.
+--
+-- Per-primitive-type codegen for the `const` IR ctor. The IsPrimitive
+-- evidence dispatches; each primitive emits the appropriate immediate-
+-- load instruction. CCC IR is type-agnostic (uses `IsPrimitive` as
+-- abstraction); the per-arch backend necessarily knows specific
+-- primitive types because it has to emit specific machine
+-- instructions for each.
+------------------------------------------------------------------------
+
+open import Once.Type using (IsPrimitive; is-unit; is-int; is-float; is-str; is-buffer)
+import Once.Semantics.Core as SC
+
+compile-const : ∀ {A} → IsPrimitive A → SC.⟦_⟧ ℕ A → Program
+-- Unit: no-op (Unit value is unobservable; Output unchanged or zero)
+compile-const is-unit  _ = []
+-- Int: load immediate into rax
+compile-const is-int   n = mov (reg rax) (imm n) ∷ []
+-- Float, Str, Buffer: not yet implemented for x86-64 codegen.
+-- Trap so the gap is visible at runtime instead of silent.
+compile-const is-float _ = ud2 ∷ []
+compile-const is-str   _ = ud2 ∷ []
+compile-const is-buffer _ = ud2 ∷ []
+
+compile-const-size : ∀ {A} → IsPrimitive A → ℕ
+compile-const-size is-unit  = 0
+compile-const-size is-int   = 1
+compile-const-size is-float = 1
+compile-const-size is-str   = 1
+compile-const-size is-buffer = 1
+
+compile-const-length : ∀ {A} (p : IsPrimitive A) (v : SC.⟦_⟧ ℕ A) →
+                        length (compile-const p v) ≡ compile-const-size p
+compile-const-length is-unit  _ = refl
+compile-const-length is-int   _ = refl
+compile-const-length is-float _ = refl
+compile-const-length is-str   _ = refl
+compile-const-length is-buffer _ = refl
+
+------------------------------------------------------------------------
 -- Code generation
 ------------------------------------------------------------------------
 
@@ -255,6 +295,7 @@ compile-length (Hylo _ _ _ _) = 1  -- placeholder: fused loop (ud2)
 compile-length (Fuse _ _ _ _) = 1  -- placeholder: μ-anchored fusion (ud2)
 compile-length (free-heap _) = 0  -- no-op at codegen level (runtime handles actual free)
 compile-length (SigOp si) = compile-sigOp-size (SigOpInfo.name si)
+compile-length (const p _ _) = compile-const-size p
 compile-length arr = length id-instrs  -- arr is identity at runtime (Eff = Arrow)
 
 -- | Generate x86 code for IR with label counter
@@ -309,6 +350,7 @@ compile-ir' n (Hylo _ _ _ _) = ud2 ∷ [] , n
 compile-ir' n (Fuse _ _ _ _) = ud2 ∷ [] , n
 compile-ir' n (free-heap _) = [] , n
 compile-ir' n (SigOp si) = compile-sigOp (SigOpInfo.name si) , n
+compile-ir' n (const p _ vM) = compile-const p vM , n
 compile-ir' n arr = id-instrs , n
 
 -- | Public interface: compile IR starting with label counter 0
@@ -429,6 +471,7 @@ compile-ir'-length n (Hylo _ _ _ _) = refl
 compile-ir'-length n (Fuse _ _ _ _) = refl
 compile-ir'-length n (free-heap _) = refl
 compile-ir'-length n (SigOp si) = compile-sigOp-length (SigOpInfo.name si)
+compile-ir'-length n (const p _ vM) = compile-const-length p vM
 compile-ir'-length n arr = refl
 
 -- | Public interface: proof that compile-ir produces code of the expected length

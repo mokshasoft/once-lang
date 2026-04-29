@@ -15,6 +15,7 @@ module Once.CCC.Target.X86-64.DirectSimulation where
 
 open import Data.Nat using (ℕ; zero; suc; _∸_; _≡ᵇ_; _≤_) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
 open import Data.String using (String)
+open import Once.Type using (IsPrimitive)
 import Once.CCC.SigOp.Info
 open import Data.Nat.DivMod using (_/_; m*n/n≡m)
 open import Data.Bool using (Bool; true; false; if_then_else_)
@@ -594,6 +595,19 @@ module Simulation {FS : FrameSemantics} where
                   (exec-prog (compile-abstract (instr-sigop si)) xs (current-frame alloc))
                   (proj₂ (exec-abstract (instr-sigop si) ls alloc))
 
+    -- Plan 0.11: const literal codegen↔abstract correspondence.
+    -- Per-primitive immediate load. Trusted-base axiom: the encoding
+    -- in `compile-const p v` (e.g. `mov $N, %rax`) matches what
+    -- `exec-abstract (instr-load-const p v)` says (write
+    -- `encode-const p v` to Output). Per-primitive discharge can
+    -- replace this with concrete proofs per IsPrimitive case.
+    load-const-codegen-faithful :
+      ∀ {A} (p : IsPrimitive A) (v : ⟦ A ⟧) ls xs alloc →
+      halted ls ≡ false → Corresponds ls xs alloc →
+      Corresponds (proj₁ (exec-abstract (instr-load-const p v) ls alloc))
+                  (exec-prog (compile-abstract (instr-load-const p v)) xs (current-frame alloc))
+                  (proj₂ (exec-abstract (instr-load-const p v) ls alloc))
+
   instr-sim : ∀ i ls xs alloc →
     halted ls ≡ false →
     Corresponds ls xs alloc →
@@ -991,6 +1005,10 @@ module Simulation {FS : FrameSemantics} where
   instr-sim (instr-sigop si) ls xs alloc not-halted corr =
     sigop-codegen-faithful si ls xs alloc not-halted corr
 
+  -- Plan 0.11: const codegen↔abstract correspondence via named postulate.
+  instr-sim (instr-load-const p v) ls xs alloc not-halted corr =
+    load-const-codegen-faithful p v ls xs alloc not-halted corr
+
   -- instr-reclaim-to: no-op in x86 (compiles to empty)
   -- Abstract: only updates alloc.next-slot, ls unchanged
   -- x86: empty program, xs unchanged
@@ -1046,6 +1064,7 @@ module Simulation {FS : FrameSemantics} where
   ... | nothing = refl
   exec-abstract-preserves-frame (worklist-check _) ls alloc = refl
   exec-abstract-preserves-frame (instr-sigop _)    ls alloc = refl
+  exec-abstract-preserves-frame (instr-load-const _ _) ls alloc = refl
   exec-abstract-preserves-frame (instr-reclaim-to _) ls alloc = refl
 
   ------------------------------------------------------------------------

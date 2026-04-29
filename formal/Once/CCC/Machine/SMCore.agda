@@ -43,7 +43,8 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 -- info (name + semI + semM), not just the name. This unlocks per-name
 -- discharge of `ir-to-trace-correct-sigop` and per-(arch, name)
 -- discharge of `sigop-codegen-faithful`.
-open import Once.Type using (Type)
+open import Once.Type using (Type; IsPrimitive)
+open import Once.Semantics.Machine using (⟦_⟧)
 open import Once.CCC.SigOp.Info using (SigOpInfo)
 
 private
@@ -708,6 +709,17 @@ data AbstractInstr : Set where
   -- pattern-matching on `instr-sigop {A} {B} si`.
   instr-sigop : ∀ {A B : Type} → SigOpInfo A B → AbstractInstr
 
+  -- Plan 0.11: Load a primitive-typed constant into Output.
+  --
+  -- Carries the `IsPrimitive` evidence and the machine-level value
+  -- `v : ⟦ A ⟧`. Per-arch `compile-abstract` pattern-matches on the
+  -- evidence to emit the right load instruction (`mov $N, %rax` for
+  -- Int, label load for Str, etc.). CCC stays
+  -- specific-primitive-type-agnostic; the per-arch backend
+  -- necessarily knows specific primitives because it has to emit
+  -- specific machine instructions.
+  instr-load-const : ∀ {A : Type} → IsPrimitive A → ⟦ A ⟧ → AbstractInstr
+
 -- | A trace is a sequence of abstract instructions
 AbstractTrace : Set
 AbstractTrace = List AbstractInstr
@@ -906,6 +918,12 @@ module AbstractExec {FS : FrameSemantics} where
     -- SigOps return `false`.
     exec-sigop-halts  : ∀ {A B} → SigOpInfo A B → LocState FS → Bool
 
+    -- Plan 0.11: encode a primitive-typed value into a ValueLocation.
+    -- Per-arch backends instantiate this consistently with how
+    -- compile-abstract emits the load (e.g., x86 `mov $N, %rax`).
+    -- The IsPrimitive evidence dispatches per primitive type.
+    encode-const : ∀ {A} → IsPrimitive A → ⟦ A ⟧ → ValueLocation FS
+
   ------------------------------------------------------------------------
   -- Main exec-abstract definition
   ------------------------------------------------------------------------
@@ -1050,6 +1068,16 @@ module AbstractExec {FS : FrameSemantics} where
     record s { regs   = writeReg (regs s) Output (exec-sigop-output si s)
              ; halted = exec-sigop-halts si s }
     , alloc
+
+  -- Plan 0.11: load a primitive constant into Output.
+  --
+  -- The `encode-const isPrim v` postulate produces the location
+  -- representing `v`. This is the abstract counterpart to per-arch
+  -- immediate-load codegen. State change is exactly the Output
+  -- register write — same shape as `mov-to-output`, but the value
+  -- comes from `encode-const` rather than from Input.
+  exec-abstract (instr-load-const isPrim v) s alloc =
+    record s { regs = writeReg (regs s) Output (encode-const isPrim v) } , alloc
 
   -- | Execute a trace (sequence of abstract instructions)
   exec-trace : AbstractTrace → LocState FS → AllocState {FS} →

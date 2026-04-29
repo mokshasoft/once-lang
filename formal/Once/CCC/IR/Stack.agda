@@ -126,6 +126,7 @@ ir-stack-requirement (Fuse _ _ alg transform) = ir-stack-requirement alg +ℕ ir
 -- Other
 ir-stack-requirement (free-heap _) = 0
 ir-stack-requirement (SigOp _) = 0  -- Primitives manage own stack
+ir-stack-requirement (const _ _ _) = 0  -- Pure register write, no stack
 
 ------------------------------------------------------------------------
 -- Scratch Requirement (alias for stack requirement)

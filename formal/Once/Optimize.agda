@@ -293,7 +293,7 @@ data IRHead : Set where
   h-id h-∘ h-⟨,⟩ h-fst h-snd h-inl h-inr h-case
     h-terminal h-initial h-curry h-apply h-arr
     h-In h-out-μ h-Cata h-Para h-Out h-in-ν h-Ana h-Hylo h-Fuse
-    h-free-heap h-SigOp : IRHead
+    h-free-heap h-SigOp h-const : IRHead
 
 -- Decidable equality for IRHead via tag-to-ℕ conversion. Plan 0.5 Phase B
 -- / F1. Uses stdlib's `Data.Nat._≟_` for the actual comparison;
@@ -325,6 +325,7 @@ headTag h-Hylo      = 21
 headTag h-Fuse      = 22
 headTag h-free-heap = 23
 headTag h-SigOp      = 24
+headTag h-const      = 25
 
 -- Injectivity: if tags agree, the constructors agree. 24 diagonals;
 -- off-diagonal cases are automatically covered by Agda because their
@@ -354,6 +355,7 @@ headTag-inj h-Hylo      h-Hylo      _ = refl
 headTag-inj h-Fuse      h-Fuse      _ = refl
 headTag-inj h-free-heap h-free-heap _ = refl
 headTag-inj h-SigOp      h-SigOp      _ = refl
+headTag-inj h-const      h-const      _ = refl
 
 _≟IRHead_ : (h₁ h₂ : IRHead) → Dec (h₁ ≡ h₂)
 h₁ ≟IRHead h₂ with headTag h₁ Data.Nat.Properties.≟ headTag h₂
@@ -385,6 +387,7 @@ ir-head (Hylo _ _ _ _) = h-Hylo
 ir-head (Fuse _ _ _ _) = h-Fuse
 ir-head (free-heap _) = h-free-heap
 ir-head (SigOp _) = h-SigOp
+ir-head (const _ _ _) = h-const
 
 -- subst₂ for IR.
 subst₂-IR : ∀ {A B A' B'} → A ≡ A' → B ≡ B' → IR A B → IR A' B'
@@ -664,6 +667,22 @@ f ≟IR g = ≟IRH f g refl refl
 ... | yes refl = yes refl
 ... | no ne    = no (λ { refl → ne refl })
 
+-- Plan 0.11: const ctor decidable equality.
+-- Postulated for now — proper discharge requires decidable equality
+-- on IsPrimitive + per-primitive-type decidable equality on the
+-- proof-level and machine-level values. Tractable but adds scope.
+-- Trusted-base entry until then.
+≟IRH-diag (const p₁ vI₁ vM₁) (const p₂ vI₂ vM₂) _ refl refl =
+  ≟const-irrelevant p₁ p₂ vI₁ vI₂ vM₁ vM₂
+  where
+    open import Data.Integer using (ℤ)
+    open import Data.Nat using (ℕ)
+    import Once.Semantics.Core ℤ as I
+    import Once.Semantics.Core ℕ as M
+    postulate
+      ≟const-irrelevant : ∀ (q₁ q₂ : IsPrimitive _) (uI₁ uI₂ : I.⟦ _ ⟧) (uM₁ uM₂ : M.⟦ _ ⟧) →
+                          Dec (const q₁ uI₁ uM₁ ≡ const q₂ uI₂ uM₂)
+
 ------------------------------------------------------------------------
 -- Helper: Check for Void types (enables dead code elimination)
 ------------------------------------------------------------------------
@@ -858,6 +877,7 @@ pairView-gen (Hylo wfF wfG alg coalg) eq = is-other-pair (subst (IR _) eq (Hylo 
 pairView-gen (Fuse wfF wfG alg tr)    eq = is-other-pair (subst (IR _) eq (Fuse wfF wfG alg tr))
 pairView-gen (free-heap h)   eq = is-other-pair (subst (IR _) eq (free-heap h))
 pairView-gen (SigOp si)      eq = is-other-pair (subst (IR _) eq (SigOp si))
+pairView-gen (const p vI vM) eq = is-other-pair (subst (IR _) eq (const p vI vM))
 
 pairView : ∀ {A B C} → (f : IR A (B * C)) → PairView f
 pairView f = pairView-gen f refl
@@ -889,6 +909,7 @@ coprodView-gen (Hylo wfF wfG alg coalg) eq = is-other-coprod (subst (IR _) eq (H
 coprodView-gen (Fuse wfF wfG alg tr)    eq = is-other-coprod (subst (IR _) eq (Fuse wfF wfG alg tr))
 coprodView-gen (free-heap h)   eq = is-other-coprod (subst (IR _) eq (free-heap h))
 coprodView-gen (SigOp si)      eq = is-other-coprod (subst (IR _) eq (SigOp si))
+coprodView-gen (const p vI vM) eq = is-other-coprod (subst (IR _) eq (const p vI vM))
 
 coprodView : ∀ {A B D} → (f : IR D (A + B)) → CoprodView f
 coprodView f = coprodView-gen f refl
@@ -925,6 +946,7 @@ composeFirstView (Hylo wfF wfG alg coalg) = cf-other (Hylo wfF wfG alg coalg)
 composeFirstView (Fuse wfF wfG alg tr)    = cf-other (Fuse wfF wfG alg tr)
 composeFirstView (free-heap h)   = cf-other (free-heap h)
 composeFirstView (SigOp si)      = cf-other (SigOp si)
+composeFirstView (const p vI vM) = cf-other (const p vI vM)
 
 composeSecondView : ∀ {A B} → (f : IR A B) → ComposeSecondView f
 composeSecondView id             = cs-id
@@ -951,6 +973,7 @@ composeSecondView (Hylo wfF wfG alg coalg) = cs-other (Hylo wfF wfG alg coalg)
 composeSecondView (Fuse wfF wfG alg tr)    = cs-other (Fuse wfF wfG alg tr)
 composeSecondView (free-heap h)  = cs-other (free-heap h)
 composeSecondView (SigOp si)     = cs-other (SigOp si)
+composeSecondView (const p vI vM) = cs-other (const p vI vM)
 
 fstSndView : ∀ {A B} → (f : IR A B) → FstSndView f
 fstSndView fst             = fsv-fst
@@ -977,6 +1000,7 @@ fstSndView (Hylo wfF wfG alg coalg) = fsv-other (Hylo wfF wfG alg coalg)
 fstSndView (Fuse wfF wfG alg tr)    = fsv-other (Fuse wfF wfG alg tr)
 fstSndView (free-heap h)   = fsv-other (free-heap h)
 fstSndView (SigOp si)      = fsv-other (SigOp si)
+fstSndView (const p vI vM) = fsv-other (const p vI vM)
 
 inlInrView : ∀ {A B} → (f : IR A B) → InlInrView f
 inlInrView (inl m)         = iiv-inl m
@@ -1003,6 +1027,7 @@ inlInrView (Hylo wfF wfG alg coalg) = iiv-other (Hylo wfF wfG alg coalg)
 inlInrView (Fuse wfF wfG alg tr)    = iiv-other (Fuse wfF wfG alg tr)
 inlInrView (free-heap h)   = iiv-other (free-heap h)
 inlInrView (SigOp si)      = iiv-other (SigOp si)
+inlInrView (const p vI vM) = iiv-other (const p vI vM)
 
 -- Helper: beta reduction for fst ∘ f (verified given view)
 optimize-fst : ∀ {A B C} → IR A (B * C) → IR A B
@@ -1121,6 +1146,8 @@ mutual
   optimize-once-structural (SigOp {A} n) with A ≟Type Void
   ... | yes refl = initial
   ... | no _     = SigOp n
+  -- | const is opaque (constant value of a primitive type, not optimized)
+  optimize-once-structural (const p vI vM) = const p vI vM
   -- | free-heap is opaque (no optimization)
   optimize-once-structural (free-heap h) = free-heap h
   -- | OCP-0003 recursion schemes: optimize algebras/coalgebras

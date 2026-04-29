@@ -183,6 +183,9 @@ fusion-once arr = arr
 -- Primitives: opaque, pass through
 fusion-once (SigOp name) = SigOp name
 
+-- const literal: opaque, pass through
+fusion-once (const p vI vM) = const p vI vM
+
 -- free-heap: opaque, pass through
 fusion-once (free-heap h) = free-heap h
 

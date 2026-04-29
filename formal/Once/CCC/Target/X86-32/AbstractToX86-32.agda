@@ -46,7 +46,7 @@ open import Once.CCC.Machine.SMCore
          instr-alloc-stack; instr-dealloc-stack;
          instr-push-frame; instr-pop-frame; instr-call-closure;
          worklist-init; worklist-push; worklist-pop; worklist-check;
-         instr-reclaim-to; instr-sigop)
+         instr-reclaim-to; instr-sigop; instr-load-const)
 
 ------------------------------------------------------------------------
 -- Slot to displacement conversion
@@ -185,6 +185,9 @@ compile-abstract (instr-reclaim-to n) = []
 -- Emit a single symbolic call; linker resolves the name at build time
 -- to the externally-defined function body. CCC stays name-agnostic.
 compile-abstract (instr-sigop si) = call-sym (SigOpInfo.name si) ∷ []
+-- Plan 0.11: const literal. X86-32 stub (full per-primitive codegen
+-- not yet implemented for X86-32). Trap so the gap is visible.
+compile-abstract (instr-load-const _ _) = ud2 ∷ []
 
 ------------------------------------------------------------------------
 -- Trace compilation: compile a whole trace to x86-32

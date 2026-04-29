@@ -110,6 +110,10 @@ eval′ arr f             = f
 -- Memory management (no-op in semantics)
 eval′ (free-heap _) x   = x
 
+-- Constants: this is the proof-level semantics (Core ℤ); use the
+-- proof-level value carried by the `const` ctor.
+eval′ (const _ vI _) _  = vI
+
 -- Signature operations: the `SigOpInfo` carries the semantic
 -- function (`semI` for the frontend-level semantics used here).
 eval′ (SigOp si) x      = semI si x

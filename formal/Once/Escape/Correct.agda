@@ -146,6 +146,7 @@ escape-once-correct (curry {k = k} f m) x =
 escape-once-correct apply x = refl
 escape-once-correct arr x = refl
 escape-once-correct (SigOp n) x = refl
+escape-once-correct (const _ _ _) x = refl
 escape-once-correct (free-heap h) x = refl
 escape-once-correct (In wf m) x = refl
 escape-once-correct (out-μ wf) x = refl

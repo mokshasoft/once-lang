@@ -247,6 +247,8 @@ mutual
   optimize-once-structural-correct (SigOp {A} n) x with A ≟Type Void
   ... | yes refl = ⊥-elim x
   ... | no _ = refl
+  -- const is opaque (no optimization), so structural identity holds.
+  optimize-once-structural-correct (const _ _ _) x = refl
   optimize-once-structural-correct (free-heap h) x = refl
   optimize-once-structural-correct (In wf m) x = refl
   optimize-once-structural-correct (out-μ wf) x = refl

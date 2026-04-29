@@ -34,6 +34,15 @@ open import Once.Functor.Translate using (WellFormedF)
 -- HeapRef for free-heap
 open import Once.CCC.Machine.SMCore using (HeapRef)
 
+-- Eval semantics universes — `const` carries values at BOTH levels,
+-- mirroring `SigOpInfo`'s `semI` + `semM` pattern. The proof-level
+-- value (signed integers, etc.) is used by `Once.Semantics.IR.eval′`;
+-- the machine-level value (unsigned, etc.) by `Once.CCC.Eval.eval`.
+open import Data.Integer using (ℤ)
+open import Data.Nat using (ℕ)
+import Once.Semantics.Core ℤ as I
+import Once.Semantics.Core ℕ as M
+
 -- SigOpInfo: the descriptor carried by every signature operation.
 open import Once.CCC.SigOp.Info public using (SigOpInfo; mk-info; name; semI; semM)
 
@@ -188,6 +197,30 @@ data IR : Type → Type → Set where
   -- Explicit heap deallocation
   -- Added by escape analysis when heap values can be freed.
   free-heap : HeapRef → IR Unit Unit
+
+  -- Constant / global element of a primitive type.
+  --
+  -- Categorically: a morphism 1 → A picking out the value `v ∈ A`.
+  -- In any concrete CCC, every element corresponds to such a global
+  -- element; this ctor names the syntactic form.
+  --
+  -- Restricted to types `A` for which `IsPrimitive A` is inhabited
+  -- (Unit, Int, Float, Str, Buffer — see `Once.Type.IsPrimitive`).
+  -- This restriction prevents nonsense like `const … (λ x → x)`
+  -- (function-typed constants are not compilable). Compound
+  -- constants are built structurally via `⟨_,_⟩`, `inl`, `inr`
+  -- composed with primitive `const`s.
+  --
+  -- CCC's IR mentions `IsPrimitive` (an abstraction over "the user's
+  -- primitive type set"); it does NOT mention any specific primitive
+  -- type by name. Adding a new primitive = extending `IsPrimitive`
+  -- in `Once.Type`; no IR change.
+  --
+  -- Carries values at BOTH semantic levels (proof-level `I.⟦A⟧` with
+  -- Int ≡ ℤ, machine-level `M.⟦A⟧` with Int ≡ ℕ), mirroring
+  -- `SigOpInfo.semI` / `semM`. CCC doesn't define a conversion;
+  -- the user supplies both.
+  const : ∀ {A} → IsPrimitive A → I.⟦ A ⟧ → M.⟦ A ⟧ → IR Unit A
 
   -- Signature operations (opaque escape hatch).
   -- Carries a `SigOpInfo` (name + sem at both levels) so the IR

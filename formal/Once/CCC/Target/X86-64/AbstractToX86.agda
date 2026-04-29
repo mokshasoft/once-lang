@@ -172,6 +172,11 @@ compile-abstract (instr-reclaim-to n) = []
 compile-abstract (instr-sigop si) =
   CompileX86-64.compile-sigOp (SigOpInfo.name si)
 
+-- Plan 0.11: const literal codegen (per-primitive immediate load).
+-- Delegates to the per-primitive helper in CodeGen/Compile.
+compile-abstract (instr-load-const p v) =
+  CompileX86-64.compile-const p v
+
 ------------------------------------------------------------------------
 -- Trace compilation: compile a whole trace to x86
 ------------------------------------------------------------------------
