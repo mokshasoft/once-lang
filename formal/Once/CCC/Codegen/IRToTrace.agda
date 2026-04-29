@@ -83,30 +83,46 @@ open import Once.CCC.Machine.SMCore
 -- IR → AbstractTrace, state-passing
 ------------------------------------------------------------------------
 
--- | State-passing form. The `ℕ` is the slot frontier on entry; the
--- result is `(frontier-after , trace)`.
-ir-to-trace' : ∀ {A B} → ℕ → IR A B → ℕ × AbstractTrace
+-- | State-passing form. Plan 0.2.4.2 Phase C: extended to also
+-- thread a label counter and accumulate closure-body traces.
+--
+-- Inputs:
+--   slot-frontier — current next-available stack slot
+--   label-counter — current next-available .L_thunk_<n> index
+--   IR
+--
+-- Output (4-tuple):
+--   slot-frontier-after — slots used by this IR's main trace
+--   label-counter-after — labels used by this IR + nested bodies
+--   main-trace          — the trace executed in the parent function
+--   body-traces         — `(label, body-trace)` pairs for each
+--                         curry encountered (this IR + nested)
+--
+-- The `curry` clause is the only one that allocates a new label.
+-- Other clauses thread the counter and accumulate body lists.
+ir-to-trace' : ∀ {A B} → ℕ → ℕ → IR A B
+              → ℕ × ℕ × AbstractTrace × List (ℕ × AbstractTrace)
 
 -- ────────────────────────────────────────────────────────────────────
 -- Trivial morphisms (no slots needed; mirror SimpleWF.run-*-trace).
 -- ────────────────────────────────────────────────────────────────────
 
-ir-to-trace' n id        = n , (mov-to-output ∷ [])
-ir-to-trace' n fst       = n , (load-indirect ∷ [])
-ir-to-trace' n snd       = n , (load-indirect-suc ∷ [])
-ir-to-trace' n terminal  = n , (mov-to-output ∷ [])
-ir-to-trace' n initial   = n , (mov-to-output ∷ [])
-ir-to-trace' n arr       = n , (mov-to-output ∷ [])
+ir-to-trace' n l id        = n , l , (mov-to-output ∷ []) , []
+ir-to-trace' n l fst       = n , l , (load-indirect ∷ []) , []
+ir-to-trace' n l snd       = n , l , (load-indirect-suc ∷ []) , []
+ir-to-trace' n l terminal  = n , l , (mov-to-output ∷ []) , []
+ir-to-trace' n l initial   = n , l , (mov-to-output ∷ []) , []
+ir-to-trace' n l arr       = n , l , (mov-to-output ∷ []) , []
 
 -- ────────────────────────────────────────────────────────────────────
 -- Compose: thread output of f into input of g via the abstract bridge.
 -- Mirror ComposeWF.compose-trace = f-trace ++ mov-to-input ∷ g-trace.
 -- ────────────────────────────────────────────────────────────────────
 
-ir-to-trace' n (g ∘ f)   =
-  let (n1 , ft) = ir-to-trace' n  f
-      (n2 , gt) = ir-to-trace' n1 g
-  in n2 , (ft ++ mov-to-input ∷ gt)
+ir-to-trace' n l (g ∘ f)   =
+  let (n1 , l1 , ft , fb) = ir-to-trace' n  l  f
+      (n2 , l2 , gt , gb) = ir-to-trace' n1 l1 g
+  in n2 , l2 , (ft ++ mov-to-input ∷ gt) , (fb ++ gb)
 
 -- ────────────────────────────────────────────────────────────────────
 -- ⟨ f , g ⟩ — pair construction.
@@ -122,19 +138,20 @@ ir-to-trace' n (g ∘ f)   =
 --     store-at-slot snd-slot ∷ lea-slot fst-slot ∷ []
 -- ────────────────────────────────────────────────────────────────────
 
-ir-to-trace' n (⟨ f , g ⟩ _) =
+ir-to-trace' n l (⟨ f , g ⟩ _) =
   let backup-slot = n
       fst-slot    = suc backup-slot
       snd-slot    = suc fst-slot
       f-start     = suc snd-slot
-      (n1 , ft)   = ir-to-trace' f-start f
-      (n2 , gt)   = ir-to-trace' n1      g
-  in n2 ,
+      (n1 , l1 , ft , fb) = ir-to-trace' f-start l  f
+      (n2 , l2 , gt , gb) = ir-to-trace' n1 l1 g
+  in n2 , l2 ,
      (mov-to-output ∷ store-at-slot backup-slot ∷
       ft ++
       store-at-slot fst-slot ∷ restore-input backup-slot ∷
       gt ++
-      store-at-slot snd-slot ∷ lea-slot fst-slot ∷ [])
+      store-at-slot snd-slot ∷ lea-slot fst-slot ∷ []) ,
+     (fb ++ gb)
 
 -- ────────────────────────────────────────────────────────────────────
 -- curry — closure construction.
@@ -152,15 +169,42 @@ ir-to-trace' n (⟨ f , g ⟩ _) =
 -- the apply site.
 -- ────────────────────────────────────────────────────────────────────
 
-ir-to-trace' n (curry _ _) =
-  let closure-slot = n
+-- Plan 0.2.4.2 Phase C: closure construction with REAL code-pointer.
+--
+-- 1. Allocate a fresh body label `this-label = l` (the input
+--    counter); bump the counter to `l+1`.
+-- 2. Recursively process the body's IR with a fresh slot frame
+--    (slot = 0, since the body has its own SysV stack frame —
+--    Plan 0.2.4.2 D2). The body may itself contain more curries
+--    contributing their bodies; we collect them.
+-- 3. Emit the closure-record construction at parent's slots
+--    `[closure-slot, suc closure-slot]`. Both Stack and Heap
+--    AllocMode use parent's slots in this phase; Phase D will
+--    migrate Heap to a static `.bss` bump pool.
+-- 4. The crucial fix vs. the old emission: instead of
+--    `lea-slot (suc closure-slot)` (which gives the slot's own
+--    address), emit `instr-load-code-addr this-label` which
+--    per-arch lowers to `lea .L_thunk_<this-label>(%rip), %rax`
+--    (the body's actual code address).
+--
+-- The `_` for AllocMode is intentional in this phase — Stack and
+-- Heap diverge only at the record-allocation step, which is still
+-- "use parent's slots" for both. Phase D adds the divergence.
+ir-to-trace' n l (curry body _) =
+  let this-label = l
+      l1         = suc l
+      -- Body uses fresh slot frame (own SysV frame at runtime, D2)
+      -- and shares the global label counter.
+      (_ , l2 , body-trace , body-bodies) = ir-to-trace' 0 l1 body
+      closure-slot = n
       next        = suc (suc closure-slot)
-  in next ,
-     (mov-to-output ∷
-      store-at-slot closure-slot ∷
-      lea-slot (suc closure-slot) ∷
-      store-at-slot (suc closure-slot) ∷
-      lea-slot closure-slot ∷ [])
+      this-trace  = mov-to-output ∷
+                    store-at-slot closure-slot ∷
+                    instr-load-code-addr this-label ∷
+                    store-at-slot (suc closure-slot) ∷
+                    lea-slot closure-slot ∷ []
+      all-bodies  = (this-label , body-trace) ∷ body-bodies
+  in next , l2 , this-trace , all-bodies
 
 -- ────────────────────────────────────────────────────────────────────
 -- apply — runtime closure call.
@@ -174,9 +218,9 @@ ir-to-trace' n (curry _ _) =
 -- knows the calling convention).
 -- ────────────────────────────────────────────────────────────────────
 
-ir-to-trace' n apply =
+ir-to-trace' n l apply =
   let pair-slot = n
-  in (suc (suc pair-slot)) ,
+  in (suc (suc pair-slot)) , l ,
      (load-indirect-suc ∷
       store-at-slot (suc pair-slot) ∷
       load-indirect ∷
@@ -185,47 +229,63 @@ ir-to-trace' n apply =
       store-at-slot pair-slot ∷
       lea-slot pair-slot ∷
       mov-to-input ∷
-      instr-call-closure ∷ [])
+      instr-call-closure ∷ []) ,
+     []
 
 -- ────────────────────────────────────────────────────────────────────
 -- SigOp — per-name dispatch handled by per-arch compile-abstract.
 -- ────────────────────────────────────────────────────────────────────
 
-ir-to-trace' n (SigOp si) = n , (instr-sigop si ∷ [])
+ir-to-trace' n l (SigOp si) = n , l , (instr-sigop si ∷ []) , []
 
 -- Plan 0.11: const literal — emit a single load-const abstract instr.
-ir-to-trace' n (const p _ vM) = n , (instr-load-const p vM ∷ [])
+ir-to-trace' n l (const p _ vM) = n , l , (instr-load-const p vM ∷ []) , []
 
 -- ────────────────────────────────────────────────────────────────────
 -- Stubbed — emit `[]`. Not needed for Layer 0; future work.
 -- ────────────────────────────────────────────────────────────────────
 
-ir-to-trace' n (inl _)       = n , []
-ir-to-trace' n (inr _)       = n , []
-ir-to-trace' n (case _ _)    = n , []
+ir-to-trace' n l (inl _)       = n , l , [] , []
+ir-to-trace' n l (inr _)       = n , l , [] , []
+ir-to-trace' n l (case _ _)    = n , l , [] , []
 
-ir-to-trace' n (In _ _)       = n , []
+ir-to-trace' n l (In _ _)       = n , l , [] , []
 -- out-μ and Out: ν/μ Lambek inverses; semantically Output := Input.
 -- run-X uses `mov-to-output ∷ []`; mirror it so the discharge falls
 -- out via the same `transport-trivial` pattern as id/arr/free-heap.
-ir-to-trace' n (out-μ _)      = n , (mov-to-output ∷ [])
-ir-to-trace' n (Cata _ _)     = n , []
-ir-to-trace' n (Para _ _)     = n , []
-ir-to-trace' n (Out _)        = n , (mov-to-output ∷ [])
-ir-to-trace' n (in-ν _ _)     = n , []
-ir-to-trace' n (Ana _ _)      = n , []
-ir-to-trace' n (Hylo _ _ _ _) = n , []
-ir-to-trace' n (Fuse _ _ _ _) = n , []
+ir-to-trace' n l (out-μ _)      = n , l , (mov-to-output ∷ []) , []
+ir-to-trace' n l (Cata _ _)     = n , l , [] , []
+ir-to-trace' n l (Para _ _)     = n , l , [] , []
+ir-to-trace' n l (Out _)        = n , l , (mov-to-output ∷ []) , []
+ir-to-trace' n l (in-ν _ _)     = n , l , [] , []
+ir-to-trace' n l (Ana _ _)      = n , l , [] , []
+ir-to-trace' n l (Hylo _ _ _ _) = n , l , [] , []
+ir-to-trace' n l (Fuse _ _ _ _) = n , l , [] , []
 
 -- free-heap is semantically a no-op (returns its input unchanged).
 -- run-free-heap emits `mov-to-output ∷ []` to copy Input → Output as
 -- the identity behavior; we mirror that exactly so trace correctness
 -- discharges via the same transport-trivial pattern as id/arr.
-ir-to-trace' n (free-heap _)  = n , (mov-to-output ∷ [])
+ir-to-trace' n l (free-heap _)  = n , l , (mov-to-output ∷ []) , []
 
 ------------------------------------------------------------------------
 -- Public wrapper: starts at frontier 0, returns just the trace.
 ------------------------------------------------------------------------
 
+-- | Plan 0.2.4.2 Phase C: helpers to project main trace / bodies
+-- from `ir-to-trace'`'s 4-tuple result.
+private
+  proj-trace : ℕ × ℕ × AbstractTrace × List (ℕ × AbstractTrace) → AbstractTrace
+  proj-trace (_ , _ , t , _) = t
+
+  proj-bodies : ℕ × ℕ × AbstractTrace × List (ℕ × AbstractTrace) → List (ℕ × AbstractTrace)
+  proj-bodies (_ , _ , _ , bs) = bs
+
 ir-to-trace : ∀ {A B} → IR A B → AbstractTrace
-ir-to-trace ir = proj₂ (ir-to-trace' 0 ir)
+ir-to-trace ir = proj-trace (ir-to-trace' 0 0 ir)
+
+-- | Plan 0.2.4.2 Phase C: closure-body traces collected for an IR.
+-- Each `(label, body-trace)` pair becomes a `.L_thunk_<label>:` block
+-- in the parent function's emitted assembly, after the parent's `ret`.
+ir-to-bodies : ∀ {A B} → IR A B → List (ℕ × AbstractTrace)
+ir-to-bodies ir = proj-bodies (ir-to-trace' 0 0 ir)

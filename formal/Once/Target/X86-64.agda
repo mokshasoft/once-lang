@@ -11,6 +11,10 @@
 module Once.Target.X86-64 where
 
 open import Data.String using (String; _++_)
+open import Data.Nat using (ℕ)
+open import Data.Nat.Show using () renaming (show to showNat)
+open import Data.List using (List; []; _∷_; foldr)
+open import Data.Product using (_×_; _,_)
 
 open import Once.Target using (Target)
 open import Once.Target.Symbol using (once-symbol)
@@ -23,7 +27,8 @@ open import Once.CCC.IR using (IR)
 -- `Once.CCC.Target.X86-64.CompileCorrect.compile-correct`; the old
 -- compile-ir is retained for now as a reference but no longer
 -- extracted.
-open import Once.CCC.Codegen.IRToTrace using (ir-to-trace)
+open import Once.CCC.Codegen.IRToTrace using (ir-to-trace; ir-to-bodies)
+open import Once.CCC.Machine.SMCore using (AbstractTrace)
 open import Once.CCC.Target.X86-64.AbstractToX86 using (compile-trace)
 open import Once.CCC.Target.X86-64.Emit using (programToText)
 
@@ -63,12 +68,31 @@ x86-64-functionEpilogue = "    ret\n\n"
 x86-64-irToAsm : ∀ {A B} → IR A B → String
 x86-64-irToAsm ir = programToText (compile-trace (ir-to-trace ir))
 
--- | Plan 0.2.4.2 Phase B: emit closure-body labels for an IR.
--- Empty until Phase C wires `ir-to-trace` to also collect body
--- traces for each `curry` occurrence. The skeleton is here so
--- `compileFunWithTarget` works unchanged once Phase C lands.
+-- | Plan 0.2.4.2 Phase C: emit closure-body labels for an IR.
+-- For each `(label, body-trace)` pair from `ir-to-bodies`, emit:
+--
+--   .L_thunk_<label>:
+--       push %rbp                ; standard SysV prologue (D2)
+--       mov %rsp, %rbp
+--       <body-trace compiled to x86>
+--       leave                    ; standard SysV epilogue
+--       ret
+--
+-- Bodies come AFTER the parent's `ret` (function epilogue). Reachable
+-- only via `lea .L_thunk_<n>(%rip), %rax` from the parent's curry
+-- trace.
+emit-thunk-body : (ℕ × AbstractTrace) → String
+emit-thunk-body (n , body-trace) =
+  ".L_thunk_" ++ showNat n ++ ":\n" ++
+  "    pushq %rbp\n" ++
+  "    movq %rsp, %rbp\n" ++
+  programToText (compile-trace body-trace) ++
+  "    leave\n" ++
+  "    ret\n\n"
+
 x86-64-irToBodies : ∀ {A B} → IR A B → String
-x86-64-irToBodies _ = ""
+x86-64-irToBodies ir =
+  foldr (λ b acc → emit-thunk-body b ++ acc) "" (ir-to-bodies ir)
 
 ------------------------------------------------------------------------
 -- Target Instance
