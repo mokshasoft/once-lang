@@ -1071,9 +1071,16 @@ mutual
   ...     | just ty = success ty _ (Surface.sigOp x) 0 (NamedCtx.freshCounter ctx)
   ...     | nothing = failure (UnboundVariable x)
 
-  -- Qualified name: look up as "alias.name"
+  -- Qualified name: look up as "alias.name", but emit the SigOp
+  -- with the BARE name. The alias is purely for typechecker
+  -- disambiguation; the assembly symbol convention (Plan 0.11) maps
+  -- `signature exit` → `once_exit` regardless of how it was
+  -- qualified (`exit` or `exit@S`). Two imports with conflicting
+  -- bare names will collide at link time — that's a real ambiguity
+  -- the user must resolve explicitly. For now, no two Layer 0
+  -- imports collide.
   inferElab ctx (Raw.RQualified name alias) with lookupImport (NamedCtx.imports ctx) (alias ++ "." ++ name)
-  ... | just ty = success ty _ (Surface.sigOp (alias ++ "." ++ name)) 0 (NamedCtx.freshCounter ctx)
+  ... | just ty = success ty _ (Surface.sigOp name) 0 (NamedCtx.freshCounter ctx)
   ... | nothing = failure (UnboundQualified name alias)
 
   -- Lambda without annotation: rejected in infer mode

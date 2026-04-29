@@ -178,6 +178,14 @@ record FunInfo : Set where
     funType  : Type
     funAlloc : Maybe AllocStrategy
     funBody  : RawExpr
+    -- | Plan 0.11: `true` for signatures (external declarations
+    -- whose implementations live in `Strata/Interpretations/<…>.<arch>`
+    -- as `once_<name>` symbols), `false` for user-defined function
+    -- definitions. Primitives are typechecked + tracked in FunCtx
+    -- (so user code can reference them), but their function body
+    -- is NOT emitted at codegen time — that would produce a
+    -- recursive `once_<name>: ...; call once_<name>; ret` stub.
+    funIsPrimitive : Bool
 
 -- | Polymorphic counterpart of `FunInfo`. User-declared definitions
 -- whose signature carries `TVar`s flow through this record and are
@@ -238,9 +246,9 @@ extractFunctions aliases (mkModule ds) = go ds nothing
   go (DTypeSig name ty ∷ rest) _ with isGround ty
   ... | inj₁ g  = go rest (just (name , inj₁ (expandAliases aliases (extractGround ty g))))
   ... | inj₂ _  = go rest (just (name , inj₂ ty))
-  -- DFunDef with matching ground sig → FunInfo
+  -- DFunDef with matching ground sig → FunInfo (user-defined; not primitive)
   go (DFunDef name alloc body ∷ rest) (just (sigName , inj₁ gty)) with sigName ≟ name
-  ... | yes _ = consFun (go rest nothing) (mkFunInfo name gty alloc body)
+  ... | yes _ = consFun (go rest nothing) (mkFunInfo name gty alloc body false)
   ... | no  _ = go rest nothing
   -- DFunDef with matching polymorphic sig → PolyFunInfo
   go (DFunDef name alloc body ∷ rest) (just (sigName , inj₂ pty)) with sigName ≟ name
@@ -256,12 +264,12 @@ extractFunctions aliases (mkModule ds) = go ds nothing
   -- `projectSig`.
   go (DSignature name nothing ty ∷ rest) _ with projectSig aliases name ty
   ... | inj₁ err  = inj₁ err
-  ... | inj₂ gty  = consFun (go rest nothing) (mkFunInfo name gty nothing (RVar name))
+  ... | inj₂ gty  = consFun (go rest nothing) (mkFunInfo name gty nothing (RVar name) true)
   go (DSignature name (just owner) ty ∷ rest) _ with projectSig aliases (owner ++ "." ++ name) ty
   ... | inj₁ err  = inj₁ err
   ... | inj₂ gty  =
            let qname = owner ++ "." ++ name
-           in consFun (go rest nothing) (mkFunInfo qname gty nothing (RVar qname))
+           in consFun (go rest nothing) (mkFunInfo qname gty nothing (RVar qname) true)
   go (_ ∷ rest) pending = go rest pending
 
 -- Plan 0.6.2: `inlineAll`, `inlineAllWithPoly`, `polySeedDefs` all

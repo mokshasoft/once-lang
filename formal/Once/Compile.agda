@@ -156,6 +156,11 @@ record CompiledFun : Set where
     cfName : String
     cfType : Type
     cfIR   : IR Unit cfType
+    -- | Plan 0.11: `true` for primitives (signatures whose
+    -- implementation is provided externally via
+    -- `Strata/Interpretations/<…>.<arch>` files). Their function
+    -- body is NOT emitted at codegen time.
+    cfIsPrimitive : Bool
 
 open CompiledFun
 
@@ -184,7 +189,7 @@ compileAllFuns doOpt funs polys = go funs emptyFunCtx
     ... | inj₁ err = inj₁ err
     ... | inj₂ ir with go rest (extendFunCtx ctx (funName fi) (funType fi))
     ...   | inj₁ err = inj₁ err
-    ...   | inj₂ compiled = inj₂ (mkCompiledFun (funName fi) (funType fi) ir ∷ compiled)
+    ...   | inj₂ compiled = inj₂ (mkCompiledFun (funName fi) (funType fi) ir (funIsPrimitive fi) ∷ compiled)
 
 -- | Compile source text to list of compiled functions
 -- Returns: Left error | Right list of (name, type, IR)
@@ -277,9 +282,16 @@ archTarget x86-64  = X86-64-Target.x86-64
 archTarget x86-32  = X86-32-Target.x86-32
 archTarget riscv64 = RiscV64-Target.riscv64
 
--- | Compile a single function's IR to assembly using a target
+-- | Compile a single function's IR to assembly using a target.
+-- Plan 0.11: primitives (signatures) emit nothing — their bodies
+-- live in `Strata/Interpretations/<…>.<arch>` files and are
+-- statically linked at build time by the driver. Emitting a body
+-- here would produce a recursive `once_<name>: ...; call once_<name>;
+-- ret` stub.
 compileFunWithTarget : Target → CompiledFun → String
-compileFunWithTarget target cf =
+compileFunWithTarget target cf with cfIsPrimitive cf
+... | true  = ""  -- primitive: external symbol, no body
+... | false =
   functionPrologue target (cfName cf) ++
   irToAsm target (cfIR cf) ++
   functionEpilogue target

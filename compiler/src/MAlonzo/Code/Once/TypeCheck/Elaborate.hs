@@ -3817,13 +3817,7 @@ d_inferElab_1784 v0 v1
                        (coe
                           MAlonzo.Code.Once.Surface.Syntax.d_zeroUsage_60
                           (coe d_size_424 (coe v0)))
-                       (coe
-                          MAlonzo.Code.Once.Surface.Syntax.C_sigOp_494
-                          (coe
-                             MAlonzo.Code.Data.String.Base.d__'43''43'__20 v3
-                             (coe
-                                MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                                ("." :: Data.Text.Text) v2)))
+                       (coe MAlonzo.Code.Once.Surface.Syntax.C_sigOp_494 v2)
                        (coe (0 :: Integer)) (coe d_freshCounter_430 (coe v0))
                 MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                   -> coe
