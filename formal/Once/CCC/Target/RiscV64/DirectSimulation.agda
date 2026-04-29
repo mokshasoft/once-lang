@@ -261,6 +261,11 @@ module Simulation {FS : FrameSemantics} where
   exec-rv64 (sd s d o)   rs _ = exec-rv64-sd-other s d o rs
   {-# CATCHALL #-}
   exec-rv64 (addi d s i) rs _ = exec-rv64-addi-other d s i rs
+  -- Plan 0.2.4.2 Phase D follow-up: save closure register. s1 isn't
+  -- tracked in RV64State, so this is a no-op on tracked state. Sits
+  -- before the catch-all so save-closure-reg's simulation reduces.
+  exec-rv64 (mv s1 t0) rs _ = rs
+
   {-# CATCHALL #-}
   exec-rv64 (mv d s)     rs _ = exec-rv64-mv-other d s rs
   {-# CATCHALL #-}
@@ -599,11 +604,8 @@ module Simulation {FS : FrameSemantics} where
       Corresponds (proj₁ (exec-abstract (instr-load-code-addr n) ls alloc))
                   (exec-prog (compile-abstract (instr-load-code-addr n)) rs (current-frame alloc))
                   (proj₂ (exec-abstract (instr-load-code-addr n) ls alloc))
-    save-closure-reg-codegen-faithful-rv : ∀ ls rs alloc →
-      halted ls ≡ false → Corresponds ls rs alloc →
-      Corresponds (proj₁ (exec-abstract instr-save-closure-reg ls alloc))
-                  (exec-prog (compile-abstract instr-save-closure-reg) rs (current-frame alloc))
-                  (proj₂ (exec-abstract instr-save-closure-reg ls alloc))
+    -- (formerly save-closure-reg-codegen-faithful-rv — now discharged
+    -- in instr-sim, since s1 isn't tracked by Corresponds.)
 
   instr-sim : ∀ i ls rs alloc →
     halted ls ≡ false →
@@ -1010,8 +1012,10 @@ module Simulation {FS : FrameSemantics} where
     load-const-codegen-faithful-rv p v ls rs alloc not-halted corr
   instr-sim (instr-load-code-addr n) ls rs alloc not-halted corr =
     load-code-addr-codegen-faithful-rv n ls rs alloc not-halted corr
-  instr-sim instr-save-closure-reg ls rs alloc not-halted corr =
-    save-closure-reg-codegen-faithful-rv ls rs alloc not-halted corr
+  instr-sim instr-save-closure-reg ls rs alloc not-halted corr
+    with rv64-halted rs | rs-not-halted ls rs alloc not-halted corr
+  ... | true  | ()
+  ... | false | _ = corr
 
   -- instr-reclaim-to: no-op in rv64 (compiles to empty)
   -- Abstract: only updates alloc.next-slot, ls unchanged

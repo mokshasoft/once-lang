@@ -219,8 +219,11 @@ compile-abstract (instr-sigop si) = call-sym (once-symbol (SigOpInfo.name si)) �
 compile-abstract (instr-load-const _ _) = unimp ∷ []
 -- Plan 0.2.4.2: closure-body code-addr load. RV64 stub.
 compile-abstract (instr-load-code-addr _) = unimp ∷ []
--- Plan 0.2.4.2: save closure-register. RV64 stub.
-compile-abstract instr-save-closure-reg = unimp ∷ []
+-- Plan 0.2.4.2: save closure-register. On RV64 the closure pointer
+-- lives in s1; Input is in t0. Move t0 into s1 so the subsequent
+-- `ld t0, 8(s1); jalr ra, t0, 0` resolves correctly.
+compile-abstract instr-save-closure-reg =
+  mv s1 t0 ∷ []
 
 ------------------------------------------------------------------------
 -- Trace compilation: compile a whole trace to RISC-V

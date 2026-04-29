@@ -258,6 +258,11 @@ module Simulation {FS : FrameSemantics} where
   -- postulates above instead of silent identity.
   ----------------------------------------------------------------------
 
+  -- Plan 0.2.4.2 Phase D follow-up: save closure register. ebx isn't
+  -- tracked in X86State, so this is a no-op on tracked state. Sits
+  -- before the catch-all so save-closure-reg's simulation reduces.
+  exec-x86 (mov (reg ebx) (reg ecx)) xs _ = xs
+
   {-# CATCHALL #-}
   exec-x86 (mov dst src) xs _ = exec-x86-mov-other dst src xs
   {-# CATCHALL #-}
@@ -571,11 +576,8 @@ module Simulation {FS : FrameSemantics} where
       Corresponds (proj₁ (exec-abstract (instr-load-code-addr n) ls alloc))
                   (exec-prog (compile-abstract (instr-load-code-addr n)) xs (current-frame alloc))
                   (proj₂ (exec-abstract (instr-load-code-addr n) ls alloc))
-    save-closure-reg-codegen-faithful-32 : ∀ ls xs alloc →
-      halted ls ≡ false → Corresponds ls xs alloc →
-      Corresponds (proj₁ (exec-abstract instr-save-closure-reg ls alloc))
-                  (exec-prog (compile-abstract instr-save-closure-reg) xs (current-frame alloc))
-                  (proj₂ (exec-abstract instr-save-closure-reg ls alloc))
+    -- (formerly save-closure-reg-codegen-faithful-32 — now discharged
+    -- in instr-sim, since ebx isn't tracked by Corresponds.)
 
   instr-sim : ∀ i ls xs alloc →
     halted ls ≡ false →
@@ -958,8 +960,10 @@ module Simulation {FS : FrameSemantics} where
     load-const-codegen-faithful-32 p v ls xs alloc not-halted corr
   instr-sim (instr-load-code-addr n) ls xs alloc not-halted corr =
     load-code-addr-codegen-faithful-32 n ls xs alloc not-halted corr
-  instr-sim instr-save-closure-reg ls xs alloc not-halted corr =
-    save-closure-reg-codegen-faithful-32 ls xs alloc not-halted corr
+  instr-sim instr-save-closure-reg ls xs alloc not-halted corr
+    with x86-halted xs | xs-not-halted ls xs alloc not-halted corr
+  ... | true  | ()
+  ... | false | _ = corr
 
   -- instr-reclaim-to: no-op in x86 (compiles to empty)
   -- Abstract: only updates alloc.next-slot, ls unchanged

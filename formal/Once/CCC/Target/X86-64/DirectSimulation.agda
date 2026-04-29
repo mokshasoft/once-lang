@@ -279,6 +279,14 @@ module Simulation {FS : FrameSemantics} where
   -- of silent identity. CATCHALL stays on the dispatch clauses.
   ----------------------------------------------------------------------
 
+  -- Plan 0.2.4.2 Phase D follow-up: save closure register is a real
+  -- machine effect (sets %r12), but %r12 is not part of `X86State` —
+  -- it's purely a per-arch calling-convention concern. So at the
+  -- simulation level it's an honest no-op on the tracked state, and
+  -- this clause sits BEFORE the catch-all so the proof of
+  -- `save-closure-reg-codegen-faithful` can reduce to `corr`.
+  exec-x86 (mov (reg r12) (reg rdi)) xs _ = xs
+
   {-# CATCHALL #-}
   exec-x86 (mov dst src) xs _ = exec-x86-mov-other dst src xs
   {-# CATCHALL #-}
@@ -620,16 +628,10 @@ module Simulation {FS : FrameSemantics} where
                   (exec-prog (compile-abstract (instr-load-code-addr n)) xs (current-frame alloc))
                   (proj₂ (exec-abstract (instr-load-code-addr n) ls alloc))
 
-    -- Plan 0.2.4.2 Phase D follow-up: save-closure-reg correspondence.
-    -- The abstract instr is identity; the x86 lowering writes %r12,
-    -- a register the Corresponds relation does not currently track.
-    -- Trusted-base axiom: the lowering preserves all tracked state.
-    save-closure-reg-codegen-faithful :
-      ∀ ls xs alloc →
-      halted ls ≡ false → Corresponds ls xs alloc →
-      Corresponds (proj₁ (exec-abstract instr-save-closure-reg ls alloc))
-                  (exec-prog (compile-abstract instr-save-closure-reg) xs (current-frame alloc))
-                  (proj₂ (exec-abstract instr-save-closure-reg ls alloc))
+    -- (formerly save-closure-reg-codegen-faithful — now discharged
+    -- as a proof in instr-sim, since %r12 isn't tracked by
+    -- Corresponds and the dedicated `exec-x86 (mov r12 rdi) = xs`
+    -- clause makes the simulation step honest no-op.)
 
   instr-sim : ∀ i ls xs alloc →
     halted ls ≡ false →
@@ -1037,8 +1039,14 @@ module Simulation {FS : FrameSemantics} where
     load-code-addr-codegen-faithful n ls xs alloc not-halted corr
 
   -- Plan 0.2.4.2 Phase D follow-up: save-closure-reg correspondence.
-  instr-sim instr-save-closure-reg ls xs alloc not-halted corr =
-    save-closure-reg-codegen-faithful ls xs alloc not-halted corr
+  -- abstract: (ls, alloc) unchanged.
+  -- x86: `mov r12, rdi` reduces to `xs` (specific clause above the
+  --      catch-all). %r12 isn't part of X86State, so the move is a
+  --      no-op on tracked state. Hence corr is preserved as-is.
+  instr-sim instr-save-closure-reg ls xs alloc not-halted corr
+    with x86-halted xs | xs-not-halted ls xs alloc not-halted corr
+  ... | true  | ()
+  ... | false | _ = corr
 
   -- instr-reclaim-to: no-op in x86 (compiles to empty)
   -- Abstract: only updates alloc.next-slot, ls unchanged

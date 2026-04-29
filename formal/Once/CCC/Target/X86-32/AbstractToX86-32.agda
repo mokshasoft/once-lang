@@ -192,8 +192,11 @@ compile-abstract (instr-sigop si) = call-sym (once-symbol (SigOpInfo.name si)) �
 compile-abstract (instr-load-const _ _) = ud2 ∷ []
 -- Plan 0.2.4.2: closure-body code-addr load. X86-32 stub.
 compile-abstract (instr-load-code-addr _) = ud2 ∷ []
--- Plan 0.2.4.2: save closure-register. X86-32 stub.
-compile-abstract instr-save-closure-reg = ud2 ∷ []
+-- Plan 0.2.4.2: save closure-register. On x86-32 the closure pointer
+-- lives in ebx (mirror of x86-64's r12); Input is in ecx. Move ecx
+-- into ebx so the subsequent `call [ebx + 4]` resolves correctly.
+compile-abstract instr-save-closure-reg =
+  mov (reg ebx) (reg ecx) ∷ []
 
 ------------------------------------------------------------------------
 -- Trace compilation: compile a whole trace to x86-32
