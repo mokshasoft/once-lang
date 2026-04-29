@@ -96,27 +96,47 @@ d_x86'45'64'45'asmHeader_6
                                                          ("    movq %rax, %r12\n" :: Data.Text.Text)
                                                          (coe
                                                             MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                                                            ("    xorq %rdi, %rdi\n"
+                                                            ("    movq 0(%r12), %rax\n"
                                                              ::
                                                              Data.Text.Text)
                                                             (coe
                                                                MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                                                               ("    callq *0x8(%r12)\n"
+                                                               ("    movq %rax, 16(%rbp)\n"
                                                                 ::
                                                                 Data.Text.Text)
                                                                (coe
                                                                   MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                                                                  ("    movq $60, %rax\n"
+                                                                  ("    xorq %rax, %rax\n"
                                                                    ::
                                                                    Data.Text.Text)
                                                                   (coe
                                                                      MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                                                                     ("    xorq %rdi, %rdi\n"
+                                                                     ("    movq %rax, 24(%rbp)\n"
                                                                       ::
                                                                       Data.Text.Text)
-                                                                     ("    syscall\n\n"
-                                                                      ::
-                                                                      Data.Text.Text))))))))))))))))))))))
+                                                                     (coe
+                                                                        MAlonzo.Code.Data.String.Base.d__'43''43'__20
+                                                                        ("    leaq 16(%rbp), %rdi\n"
+                                                                         ::
+                                                                         Data.Text.Text)
+                                                                        (coe
+                                                                           MAlonzo.Code.Data.String.Base.d__'43''43'__20
+                                                                           ("    callq *0x8(%r12)\n"
+                                                                            ::
+                                                                            Data.Text.Text)
+                                                                           (coe
+                                                                              MAlonzo.Code.Data.String.Base.d__'43''43'__20
+                                                                              ("    movq $60, %rax\n"
+                                                                               ::
+                                                                               Data.Text.Text)
+                                                                              (coe
+                                                                                 MAlonzo.Code.Data.String.Base.d__'43''43'__20
+                                                                                 ("    xorq %rdi, %rdi\n"
+                                                                                  ::
+                                                                                  Data.Text.Text)
+                                                                                 ("    syscall\n\n"
+                                                                                  ::
+                                                                                  Data.Text.Text))))))))))))))))))))))))))
 -- Once.Target.X86-64.x86-64-functionPrologue
 d_x86'45'64'45'functionPrologue_8 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->

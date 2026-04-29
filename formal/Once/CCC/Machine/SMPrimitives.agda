@@ -251,6 +251,7 @@ instr-writes-slot (worklist-check _)     = nothing
 instr-writes-slot (instr-sigop _)        = nothing
 instr-writes-slot (instr-load-const _ _) = nothing
 instr-writes-slot (instr-load-code-addr _) = nothing
+instr-writes-slot instr-save-closure-reg   = nothing
 
 -- What slot does this instruction read from? (load-from-slot, restore-input, worklist-pop)
 instr-reads-slot : AbstractInstr → Maybe ℕ
@@ -277,6 +278,7 @@ instr-reads-slot (worklist-check _)      = nothing
 instr-reads-slot (instr-sigop _)         = nothing
 instr-reads-slot (instr-load-const _ _)  = nothing
 instr-reads-slot (instr-load-code-addr _) = nothing
+instr-reads-slot instr-save-closure-reg   = nothing
 
 ------------------------------------------------------------------------
 -- Positive Heap Write Characterization
@@ -322,6 +324,7 @@ instr-writes-heap (worklist-check _)      _ = nothing
 instr-writes-heap (instr-sigop _)         _ = nothing
 instr-writes-heap (instr-load-const _ _)  _ = nothing
 instr-writes-heap (instr-load-code-addr _) _ = nothing
+instr-writes-heap instr-save-closure-reg   _ = nothing
 
 -- Positive predicate: HeapLocation is in some region of the ownership set
 data InSomeRegion : HeapLocation → HeapOwnership → Set where
@@ -371,6 +374,7 @@ data InstrNoHeapWrite : AbstractInstr → Set where
                            InstrNoHeapWrite (instr-load-const p v)
   -- Plan 0.2.4.2 Phase A: code-addr load only writes Output register
   nhw-instr-load-code-addr : ∀ {n} → InstrNoHeapWrite (instr-load-code-addr n)
+  nhw-instr-save-closure-reg : InstrNoHeapWrite instr-save-closure-reg
 
 -- Instruction preserves frame (doesn't push/pop frame)
 InstrPreservesFrame : AbstractInstr → Set
@@ -399,6 +403,7 @@ InstrPreservesFrame (worklist-check _)     = ⊤
 InstrPreservesFrame (instr-sigop _)        = ⊤
 InstrPreservesFrame (instr-load-const _ _) = ⊤
 InstrPreservesFrame (instr-load-code-addr _) = ⊤
+InstrPreservesFrame instr-save-closure-reg   = ⊤
 
 -- What memory location does this instruction read?
 -- Returns nothing if instruction doesn't read memory.
@@ -427,6 +432,7 @@ instr-reads-mem (worklist-check k) s alloc = nothing     -- no-op
 instr-reads-mem (instr-sigop _)    s alloc = nothing     -- no-op
 instr-reads-mem (instr-load-const _ _) s alloc = nothing -- no-op (only writes Output)
 instr-reads-mem (instr-load-code-addr _) s alloc = nothing -- no-op (only writes Output)
+instr-reads-mem instr-save-closure-reg   s alloc = nothing -- no-op
 
 -- What memory location does this instruction write?
 -- Returns nothing if instruction doesn't write memory.
@@ -455,6 +461,7 @@ instr-writes-mem (worklist-check k) s alloc = nothing    -- no-op
 instr-writes-mem (instr-sigop _)    s alloc = nothing    -- no-op
 instr-writes-mem (instr-load-const _ _) s alloc = nothing -- no-op
 instr-writes-mem (instr-load-code-addr _) s alloc = nothing -- no-op
+instr-writes-mem instr-save-closure-reg   s alloc = nothing -- no-op
 
 ------------------------------------------------------------------------
 -- Level 4: Instruction Primitives
@@ -544,6 +551,7 @@ module InstrPrimitives {FS : FrameSemantics} where
   exec-abstract-preserves-frame (instr-sigop _)       s alloc = refl
   exec-abstract-preserves-frame (instr-load-const _ _) s alloc = refl
   exec-abstract-preserves-frame (instr-load-code-addr _) s alloc = refl
+  exec-abstract-preserves-frame instr-save-closure-reg   s alloc = refl
 
   -- (E) HEAP PRESERVATION
   -- Instructions that don't write to heap preserve heapMem
@@ -590,6 +598,7 @@ module InstrPrimitives {FS : FrameSemantics} where
   exec-abstract-preserves-heapMem (instr-sigop _)       s alloc nhw-instr-sigop    = refl
   exec-abstract-preserves-heapMem (instr-load-const _ _) s alloc nhw-instr-load-const = refl
   exec-abstract-preserves-heapMem (instr-load-code-addr _) s alloc nhw-instr-load-code-addr = refl
+  exec-abstract-preserves-heapMem instr-save-closure-reg   s alloc nhw-instr-save-closure-reg = refl
 
   ------------------------------------------------------------------------
   -- (E2) STACK SLOT PRESERVATION - instruction level
@@ -645,6 +654,7 @@ module InstrPrimitives {FS : FrameSemantics} where
   exec-abstract-preserves-stack-slot (instr-sigop _)    s alloc f slot _ _ = refl
   exec-abstract-preserves-stack-slot (instr-load-const _ _) s alloc f slot _ _ = refl
   exec-abstract-preserves-stack-slot (instr-load-code-addr _) s alloc f slot _ _ = refl
+  exec-abstract-preserves-stack-slot instr-save-closure-reg   s alloc f slot _ _ = refl
 
   -- store-at-slot k preserves slot j when j < k (positive ordering)
   store-at-slot-preserves-below : ∀ (j k : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
@@ -732,6 +742,7 @@ module InstrPrimitives {FS : FrameSemantics} where
   exec-abstract-same-frame (instr-sigop _)       s alloc₁ alloc₂ _ = refl
   exec-abstract-same-frame (instr-load-const _ _) s alloc₁ alloc₂ _ = refl
   exec-abstract-same-frame (instr-load-code-addr _) s alloc₁ alloc₂ _ = refl
+  exec-abstract-same-frame instr-save-closure-reg   s alloc₁ alloc₂ _ = refl
 
 ------------------------------------------------------------------------
 -- Level 5: Trace Primitives
@@ -842,6 +853,7 @@ InstrWritesToHeap (worklist-check _)       = ⊥
 InstrWritesToHeap (instr-sigop _)          = ⊥
 InstrWritesToHeap (instr-load-const _ _)   = ⊥
 InstrWritesToHeap (instr-load-code-addr _) = ⊥
+InstrWritesToHeap instr-save-closure-reg   = ⊥
 
 -- Helper: trace contains no heap-writing instructions (syntactic)
 -- This is useful for constructing TraceWritesWithinOwned [] proofs
@@ -870,6 +882,7 @@ TraceNoHeapWrites (worklist-check _ ∷ t)          = TraceNoHeapWrites t
 TraceNoHeapWrites (instr-sigop _ ∷ t)             = TraceNoHeapWrites t
 TraceNoHeapWrites (instr-load-const _ _ ∷ t)      = TraceNoHeapWrites t
 TraceNoHeapWrites (instr-load-code-addr _ ∷ t)    = TraceNoHeapWrites t
+TraceNoHeapWrites (instr-save-closure-reg ∷ t)    = TraceNoHeapWrites t
 
 -- All instructions in trace preserve frame
 TracePreservesFrame : AbstractTrace → Set
@@ -918,6 +931,7 @@ trace-no-heap-writes-append (worklist-check _ ∷ t1) t2 tn1 tn2 = trace-no-heap
 trace-no-heap-writes-append (instr-sigop _ ∷ t1)    t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
 trace-no-heap-writes-append (instr-load-const _ _ ∷ t1) t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
 trace-no-heap-writes-append (instr-load-code-addr _ ∷ t1) t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
+trace-no-heap-writes-append (instr-save-closure-reg ∷ t1) t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
 
 -- Append preserves TraceWritesAbove
 trace-writes-above-append : ∀ n t1 t2 →
@@ -1089,6 +1103,7 @@ module TracePrimitives {FS : FrameSemantics} where
     tnhw-head (instr-sigop _)    _ _ = nhw-instr-sigop
     tnhw-head (instr-load-const _ _) _ _ = nhw-instr-load-const
     tnhw-head (instr-load-code-addr _) _ _ = nhw-instr-load-code-addr
+    tnhw-head instr-save-closure-reg   _ _ = nhw-instr-save-closure-reg
 
     -- Helper: extract TraceNoHeapWrites for tail
     tnhw-tail : ∀ (i : AbstractInstr) (rest : AbstractTrace) →
@@ -1115,6 +1130,7 @@ module TracePrimitives {FS : FrameSemantics} where
     tnhw-tail (instr-sigop _)    rest tnhw = tnhw
     tnhw-tail (instr-load-const _ _) rest tnhw = tnhw
     tnhw-tail (instr-load-code-addr _) rest tnhw = tnhw
+    tnhw-tail instr-save-closure-reg   rest tnhw = tnhw
 
   -- (A1) Current frame slot below write bound is preserved
   -- If trace writes above n (at slots ≥ n), then slot < n is preserved
@@ -1207,6 +1223,8 @@ module TracePrimitives {FS : FrameSemantics} where
       exec-trace-preserves-slot-below-nonwrite (instr-load-const p v) rest s alloc n slot twa tnhw slot<n nhw-instr-load-const refl
     exec-trace-preserves-slot-below (instr-load-code-addr k ∷ rest) s alloc n slot twa tnhw slot<n =
       exec-trace-preserves-slot-below-nonwrite (instr-load-code-addr k) rest s alloc n slot twa tnhw slot<n nhw-instr-load-code-addr refl
+    exec-trace-preserves-slot-below (instr-save-closure-reg ∷ rest) s alloc n slot twa tnhw slot<n =
+      exec-trace-preserves-slot-below-nonwrite instr-save-closure-reg rest s alloc n slot twa tnhw slot<n nhw-instr-save-closure-reg refl
 
     -- Helper for non-writing instructions
     exec-trace-preserves-slot-below-nonwrite : ∀ (i : AbstractInstr) (rest : AbstractTrace)
@@ -1326,6 +1344,8 @@ module TracePrimitives {FS : FrameSemantics} where
       exec-trace-preserves-slot-above-nonwrite (instr-load-const p v) rest s alloc m slot twb tnhw m≤slot nhw-instr-load-const refl
     exec-trace-preserves-slot-above (instr-load-code-addr k ∷ rest) s alloc m slot twb tnhw m≤slot =
       exec-trace-preserves-slot-above-nonwrite (instr-load-code-addr k) rest s alloc m slot twb tnhw m≤slot nhw-instr-load-code-addr refl
+    exec-trace-preserves-slot-above (instr-save-closure-reg ∷ rest) s alloc m slot twb tnhw m≤slot =
+      exec-trace-preserves-slot-above-nonwrite instr-save-closure-reg rest s alloc m slot twb tnhw m≤slot nhw-instr-save-closure-reg refl
 
     -- Helper for non-writing instructions
     exec-trace-preserves-slot-above-nonwrite : ∀ (i : AbstractInstr) (rest : AbstractTrace)
@@ -1434,6 +1454,8 @@ module TracePrimitives {FS : FrameSemantics} where
       exec-trace-preserves-ancestor-nonwrite (instr-load-const p v) rest s alloc f slot cf≺f tnhw nhw-instr-load-const refl
     exec-trace-preserves-ancestor (instr-load-code-addr k ∷ rest) s alloc f slot cf≺f tnhw =
       exec-trace-preserves-ancestor-nonwrite (instr-load-code-addr k) rest s alloc f slot cf≺f tnhw nhw-instr-load-code-addr refl
+    exec-trace-preserves-ancestor (instr-save-closure-reg ∷ rest) s alloc f slot cf≺f tnhw =
+      exec-trace-preserves-ancestor-nonwrite instr-save-closure-reg rest s alloc f slot cf≺f tnhw nhw-instr-save-closure-reg refl
 
     -- Helper for non-writing instructions in ancestor preservation
     exec-trace-preserves-ancestor-nonwrite : ∀ (i : AbstractInstr) (rest : AbstractTrace)
@@ -2986,6 +3008,7 @@ module RecSchemeSemantics {FS : FrameSemantics} where
   exec-abstract-preserves-heap-ref (instr-sigop _)    s alloc = refl
   exec-abstract-preserves-heap-ref (instr-load-const _ _) s alloc = refl
   exec-abstract-preserves-heap-ref (instr-load-code-addr _) s alloc = refl
+  exec-abstract-preserves-heap-ref instr-save-closure-reg   s alloc = refl
 
   -- exec-trace preserves next-heap-ref
   exec-trace-preserves-heap-ref : ∀ (t : AbstractTrace) (s : LocState FS) (alloc : AllocState {FS}) →

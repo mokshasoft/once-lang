@@ -77,7 +77,8 @@ open import Once.CCC.Machine.SMCore
          lea-slot; restore-input;
          instr-alloc-stack; instr-dealloc-stack; instr-reclaim-to;
          instr-push-frame; instr-pop-frame; instr-call-closure;
-         instr-sigop; instr-load-const; instr-load-code-addr)
+         instr-sigop; instr-load-const; instr-load-code-addr;
+         instr-save-closure-reg)
 
 ------------------------------------------------------------------------
 -- IR → AbstractTrace, state-passing
@@ -225,6 +226,9 @@ ir-to-trace' n l apply =
       store-at-slot (suc pair-slot) ∷
       load-indirect ∷
       mov-to-input ∷
+      -- Save closure ptr (now in Input) to closure-register so the
+      -- subsequent indirect call (`call *0x8(%r12)`) has a target.
+      instr-save-closure-reg ∷
       load-indirect ∷
       store-at-slot pair-slot ∷
       lea-slot pair-slot ∷

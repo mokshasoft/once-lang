@@ -727,9 +727,21 @@ data AbstractInstr : Set where
   --
   -- Per-arch `compile-abstract` lowers this to a label-relative
   -- address load (`lea .L_thunk_<n>(%rip), %rax` on x86-64).
+  --
+  -- Plan 0.2.4.2 Phase D follow-up: capture the current Input
+  -- register into the closure-register convention slot (e.g.
+  -- `%r12` on x86-64). Used in `apply`'s setup trace to keep the
+  -- closure pointer alive across pair-construction so that
+  -- `instr-call-closure` (lowered to `call *0x8(%r12)`) has a
+  -- valid target.
+  --
+  -- Abstract semantics: identity. We don't model the closure
+  -- register separately at the abstract level — it's purely a
+  -- per-arch calling-convention concern.
   -- Used by `curry`'s codegen to set up the closure record's
   -- code-pointer slot.
   instr-load-code-addr : ℕ → AbstractInstr
+  instr-save-closure-reg : AbstractInstr
 
 -- | A trace is a sequence of abstract instructions
 AbstractTrace : Set
@@ -1103,6 +1115,11 @@ module AbstractExec {FS : FrameSemantics} where
   -- (a primitive value).
   exec-abstract (instr-load-code-addr n) s alloc =
     record s { regs = writeReg (regs s) Output (encode-code-addr n) } , alloc
+
+  -- Plan 0.2.4.2 Phase D follow-up: save Input to closure register.
+  -- Identity at the abstract level — the closure register is purely
+  -- a per-arch concern.
+  exec-abstract instr-save-closure-reg s alloc = s , alloc
 
   -- | Execute a trace (sequence of abstract instructions)
   exec-trace : AbstractTrace → LocState FS → AllocState {FS} →

@@ -60,10 +60,16 @@ x86-64-asmHeader =
   --      Unit`, which elaborates to a closure constructor; main
   --      returns a closure pointer in %rax (or has already exited
   --      via a syscall, in which case the rest is unreachable).
-  --   5. Applies the returned closure to () per Plan 0.2.4.2 D8:
-  --      r12 = closure ptr, rdi = () (Unit), call [r12+8] = body.
+  --   5. Applies the returned closure to () per Plan 0.2.4.2 D8.
+  --      The closure body expects rdi = pointer to a freshly-built
+  --      (env, arg) pair on the parent's stack frame (this is what
+  --      `apply`'s trace constructs). At top-level we manually build
+  --      that pair: env is closure[0], arg is () = 0. We place it
+  --      at scratch slots 2,3 of the parent frame (slots 0,1 hold
+  --      the closure record itself).
+  --   6. r12 = closure ptr, rdi = &(env,()), call [r12+8] = body.
   --      The body is the actual effectful sequence (e.g. exit 42).
-  --   6. If the body returns normally (most Layer 0 programs call
+  --   7. If the body returns normally (most Layer 0 programs call
   --      exit themselves), fall through to sys_exit(0).
   ".globl _start\n" ++
   "_start:\n" ++
@@ -72,10 +78,15 @@ x86-64-asmHeader =
   "    movq %rsp, %rbp\n" ++
   "    subq $4096, %rsp\n" ++
   "    call once_main\n" ++
-  -- main returned a closure pointer in %rax. Apply it to () per D8.
-  "    movq %rax, %r12\n" ++   -- r12 = closure ptr
-  "    xorq %rdi, %rdi\n" ++   -- rdi = () (Unit arg)
-  "    callq *0x8(%r12)\n" ++  -- call [r12+8] = body
+  -- main returned a closure pointer in %rax. Set up r12 + (env,())
+  -- pair and call the body per D8 calling convention.
+  "    movq %rax, %r12\n" ++         -- r12 = closure ptr
+  "    movq 0(%r12), %rax\n" ++      -- rax = closure[0] = env
+  "    movq %rax, 16(%rbp)\n" ++     -- pair[0] = env
+  "    xorq %rax, %rax\n" ++         -- rax = 0
+  "    movq %rax, 24(%rbp)\n" ++     -- pair[1] = () = 0
+  "    leaq 16(%rbp), %rdi\n" ++     -- rdi = &pair
+  "    callq *0x8(%r12)\n" ++        -- call [r12+8] = body
   -- If body returned normally, exit cleanly.
   "    movq $60, %rax\n" ++
   "    xorq %rdi, %rdi\n" ++

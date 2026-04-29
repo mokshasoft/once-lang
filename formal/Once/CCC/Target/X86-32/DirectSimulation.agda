@@ -557,6 +557,25 @@ module Simulation {FS : FrameSemantics} where
       Corresponds (proj₁ (exec-abstract (instr-sigop si) ls alloc))
                   (exec-prog (compile-abstract (instr-sigop si)) xs (current-frame alloc))
                   (proj₂ (exec-abstract (instr-sigop si) ls alloc))
+    -- X86-32 stubs (ud2 emission): all three abstract instrs lower to
+    -- ud2 on this backend, so codegen-faithful is trivially true at the
+    -- abstract level (the trap-on-execution is outside the simulation
+    -- relation's scope; layer 0 only exercises x86-64).
+    load-const-codegen-faithful-32 : ∀ {A} (p : Once.CCC.Machine.SMCore.IsPrimitive A) v ls xs alloc →
+      halted ls ≡ false → Corresponds ls xs alloc →
+      Corresponds (proj₁ (exec-abstract (instr-load-const p v) ls alloc))
+                  (exec-prog (compile-abstract (instr-load-const p v)) xs (current-frame alloc))
+                  (proj₂ (exec-abstract (instr-load-const p v) ls alloc))
+    load-code-addr-codegen-faithful-32 : ∀ (n : ℕ) ls xs alloc →
+      halted ls ≡ false → Corresponds ls xs alloc →
+      Corresponds (proj₁ (exec-abstract (instr-load-code-addr n) ls alloc))
+                  (exec-prog (compile-abstract (instr-load-code-addr n)) xs (current-frame alloc))
+                  (proj₂ (exec-abstract (instr-load-code-addr n) ls alloc))
+    save-closure-reg-codegen-faithful-32 : ∀ ls xs alloc →
+      halted ls ≡ false → Corresponds ls xs alloc →
+      Corresponds (proj₁ (exec-abstract instr-save-closure-reg ls alloc))
+                  (exec-prog (compile-abstract instr-save-closure-reg) xs (current-frame alloc))
+                  (proj₂ (exec-abstract instr-save-closure-reg ls alloc))
 
   instr-sim : ∀ i ls xs alloc →
     halted ls ≡ false →
@@ -934,6 +953,14 @@ module Simulation {FS : FrameSemantics} where
   instr-sim (instr-sigop si) ls xs alloc not-halted corr =
     sigop-codegen-faithful si ls xs alloc not-halted corr
 
+  -- Stubbed-on-X86-32 abstract instrs (ud2 lowering).
+  instr-sim (instr-load-const p v) ls xs alloc not-halted corr =
+    load-const-codegen-faithful-32 p v ls xs alloc not-halted corr
+  instr-sim (instr-load-code-addr n) ls xs alloc not-halted corr =
+    load-code-addr-codegen-faithful-32 n ls xs alloc not-halted corr
+  instr-sim instr-save-closure-reg ls xs alloc not-halted corr =
+    save-closure-reg-codegen-faithful-32 ls xs alloc not-halted corr
+
   -- instr-reclaim-to: no-op in x86 (compiles to empty)
   -- Abstract: only updates alloc.next-slot, ls unchanged
   -- x86: empty program, xs unchanged
@@ -993,6 +1020,9 @@ module Simulation {FS : FrameSemantics} where
   exec-abstract-preserves-frame (worklist-check _) ls alloc = refl
   exec-abstract-preserves-frame (instr-sigop _)    ls alloc = refl
   exec-abstract-preserves-frame (instr-reclaim-to _) ls alloc = refl
+  exec-abstract-preserves-frame (instr-load-const _ _) ls alloc = refl
+  exec-abstract-preserves-frame (instr-load-code-addr _) ls alloc = refl
+  exec-abstract-preserves-frame instr-save-closure-reg ls alloc = refl
 
   -- Trace simulation follows from instr-sim by induction
   -- With proper structure (parallel with-patterns), this is trivial

@@ -37,7 +37,7 @@ open import Once.CCC.SigOp.Info using (SigOpInfo)
          instr-alloc-stack; instr-dealloc-stack;
          instr-push-frame; instr-pop-frame; instr-call-closure;
          worklist-init; worklist-push; worklist-pop; worklist-check;
-         instr-reclaim-to; instr-sigop)
+         instr-reclaim-to; instr-sigop; instr-save-closure-reg)
 
 ------------------------------------------------------------------------
 -- Slot to displacement conversion
@@ -183,6 +183,13 @@ compile-abstract (instr-load-const p v) =
 -- codegen (Phase B + C) inside the same parent function symbol.
 compile-abstract (instr-load-code-addr n) =
   lea rax (rip+label n) ∷ []
+
+-- Plan 0.2.4.2 Phase D follow-up: save Input register to the
+-- closure register. On x86-64 SysV: rdi holds the apply argument
+-- (Input), r12 is reserved as the closure pointer for the indirect
+-- call `call *0x8(%r12)`.
+compile-abstract instr-save-closure-reg =
+  mov (reg r12) (reg rdi) ∷ []
 
 ------------------------------------------------------------------------
 -- Trace compilation: compile a whole trace to x86

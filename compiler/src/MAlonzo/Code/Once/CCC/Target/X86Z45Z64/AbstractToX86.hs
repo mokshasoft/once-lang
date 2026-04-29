@@ -320,6 +320,18 @@ d_compile'45'abstract_14 v0
                    MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_rip'43'label_52
                    (coe v1)))
              (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
+      MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'save'45'closure'45'reg_1564
+        -> coe
+             MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
+             (coe
+                MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mov_64
+                (coe
+                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_56
+                   (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_r12_36))
+                (coe
+                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_56
+                   (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_rdi_22)))
+             (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Target.X86-64.AbstractToX86.compile-trace
 d_compile'45'trace_48 ::

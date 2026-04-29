@@ -620,6 +620,17 @@ module Simulation {FS : FrameSemantics} where
                   (exec-prog (compile-abstract (instr-load-code-addr n)) xs (current-frame alloc))
                   (proj₂ (exec-abstract (instr-load-code-addr n) ls alloc))
 
+    -- Plan 0.2.4.2 Phase D follow-up: save-closure-reg correspondence.
+    -- The abstract instr is identity; the x86 lowering writes %r12,
+    -- a register the Corresponds relation does not currently track.
+    -- Trusted-base axiom: the lowering preserves all tracked state.
+    save-closure-reg-codegen-faithful :
+      ∀ ls xs alloc →
+      halted ls ≡ false → Corresponds ls xs alloc →
+      Corresponds (proj₁ (exec-abstract instr-save-closure-reg ls alloc))
+                  (exec-prog (compile-abstract instr-save-closure-reg) xs (current-frame alloc))
+                  (proj₂ (exec-abstract instr-save-closure-reg ls alloc))
+
   instr-sim : ∀ i ls xs alloc →
     halted ls ≡ false →
     Corresponds ls xs alloc →
@@ -1025,6 +1036,10 @@ module Simulation {FS : FrameSemantics} where
   instr-sim (instr-load-code-addr n) ls xs alloc not-halted corr =
     load-code-addr-codegen-faithful n ls xs alloc not-halted corr
 
+  -- Plan 0.2.4.2 Phase D follow-up: save-closure-reg correspondence.
+  instr-sim instr-save-closure-reg ls xs alloc not-halted corr =
+    save-closure-reg-codegen-faithful ls xs alloc not-halted corr
+
   -- instr-reclaim-to: no-op in x86 (compiles to empty)
   -- Abstract: only updates alloc.next-slot, ls unchanged
   -- x86: empty program, xs unchanged
@@ -1082,6 +1097,7 @@ module Simulation {FS : FrameSemantics} where
   exec-abstract-preserves-frame (instr-sigop _)    ls alloc = refl
   exec-abstract-preserves-frame (instr-load-const _ _) ls alloc = refl
   exec-abstract-preserves-frame (instr-load-code-addr _) ls alloc = refl
+  exec-abstract-preserves-frame instr-save-closure-reg ls alloc = refl
   exec-abstract-preserves-frame (instr-reclaim-to _) ls alloc = refl
 
   ------------------------------------------------------------------------

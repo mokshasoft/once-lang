@@ -587,6 +587,23 @@ module Simulation {FS : FrameSemantics} where
       Corresponds (proj₁ (exec-abstract (instr-sigop si) ls alloc))
                   (exec-prog (compile-abstract (instr-sigop si)) rs (current-frame alloc))
                   (proj₂ (exec-abstract (instr-sigop si) ls alloc))
+    -- RV64 stubs (unimp emission): all three abstract instrs lower
+    -- to unimp on this backend; layer 0 doesn't exercise RV64.
+    load-const-codegen-faithful-rv : ∀ {A} (p : Once.CCC.Machine.SMCore.IsPrimitive A) v ls rs alloc →
+      halted ls ≡ false → Corresponds ls rs alloc →
+      Corresponds (proj₁ (exec-abstract (instr-load-const p v) ls alloc))
+                  (exec-prog (compile-abstract (instr-load-const p v)) rs (current-frame alloc))
+                  (proj₂ (exec-abstract (instr-load-const p v) ls alloc))
+    load-code-addr-codegen-faithful-rv : ∀ (n : ℕ) ls rs alloc →
+      halted ls ≡ false → Corresponds ls rs alloc →
+      Corresponds (proj₁ (exec-abstract (instr-load-code-addr n) ls alloc))
+                  (exec-prog (compile-abstract (instr-load-code-addr n)) rs (current-frame alloc))
+                  (proj₂ (exec-abstract (instr-load-code-addr n) ls alloc))
+    save-closure-reg-codegen-faithful-rv : ∀ ls rs alloc →
+      halted ls ≡ false → Corresponds ls rs alloc →
+      Corresponds (proj₁ (exec-abstract instr-save-closure-reg ls alloc))
+                  (exec-prog (compile-abstract instr-save-closure-reg) rs (current-frame alloc))
+                  (proj₂ (exec-abstract instr-save-closure-reg ls alloc))
 
   instr-sim : ∀ i ls rs alloc →
     halted ls ≡ false →
@@ -988,6 +1005,14 @@ module Simulation {FS : FrameSemantics} where
   instr-sim (instr-sigop si) ls rs alloc not-halted corr =
     sigop-codegen-faithful si ls rs alloc not-halted corr
 
+  -- Stubbed-on-RV64 abstract instrs (unimp lowering).
+  instr-sim (instr-load-const p v) ls rs alloc not-halted corr =
+    load-const-codegen-faithful-rv p v ls rs alloc not-halted corr
+  instr-sim (instr-load-code-addr n) ls rs alloc not-halted corr =
+    load-code-addr-codegen-faithful-rv n ls rs alloc not-halted corr
+  instr-sim instr-save-closure-reg ls rs alloc not-halted corr =
+    save-closure-reg-codegen-faithful-rv ls rs alloc not-halted corr
+
   -- instr-reclaim-to: no-op in rv64 (compiles to empty)
   -- Abstract: only updates alloc.next-slot, ls unchanged
   -- rv64: empty program, rs unchanged
@@ -1042,6 +1067,9 @@ module Simulation {FS : FrameSemantics} where
   exec-abstract-preserves-frame (worklist-check _) ls alloc = refl
   exec-abstract-preserves-frame (instr-sigop _)    ls alloc = refl
   exec-abstract-preserves-frame (instr-reclaim-to _) ls alloc = refl
+  exec-abstract-preserves-frame (instr-load-const _ _) ls alloc = refl
+  exec-abstract-preserves-frame (instr-load-code-addr _) ls alloc = refl
+  exec-abstract-preserves-frame instr-save-closure-reg ls alloc = refl
 
   trace-sim : ∀ trace ls rs alloc →
     Corresponds ls rs alloc →
