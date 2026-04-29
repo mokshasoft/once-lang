@@ -5,10 +5,10 @@
 -- Tests composition with a constant function
 -- Expected: exit code 7
 
-signature exit : Eff Int Unit
+import I.Linux.Syscalls as S
 
 seven : Int
 seven = 7
 
 main : IO Unit
-main = exit seven
+main = exit@S seven
