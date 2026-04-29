@@ -67,7 +67,12 @@ mutual
 
   pair-* : ∀ {A B C} → Term C A → Term C B → Term C (A × B)
   pair-* fst snd = id  -- eta-pair
-  -- eta-pair-gen NOT fired here (non-linear LHS).
+  -- eta-pair-gen ⟨ fst ∘ h , snd ∘ h ⟩ ⟶s h is decidable now that
+  -- DecidableEquality exists, but firing it inside this mutual block
+  -- creates a termination-check tangle (the `with T₁ ≟Ty T₂` introduces
+  -- a generated helper that interacts badly with the mutual recursion).
+  -- A clean integration uses an outside-mutual helper with explicit
+  -- type-index parameters; deferred to a follow-up commit.
   pair-* f   g   = ⟨ f * , g * ⟩
 
   curry-* : ∀ {A B C} → Term (A × B) C → Term A (B ⇒ C)
