@@ -88,6 +88,8 @@ showInstr (call (mem m)) =
   "    call *" ++ showMem m
 showInstr (call (imm n)) =
   "    call " ++ showNat n
+showInstr (call-sym name) =
+  "    call " ++ name
 showInstr ret =
   "    ret"
 showInstr (push (reg r)) =

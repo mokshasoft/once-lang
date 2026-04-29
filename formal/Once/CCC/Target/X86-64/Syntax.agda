@@ -15,6 +15,7 @@ module Once.CCC.Target.X86-64.Syntax where
 open import Data.Nat using (ℕ; zero; suc) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
 open import Data.Fin using (Fin)
 open import Data.List using (List; []; _∷_; foldr)
+open import Data.String using (String)
 
 ------------------------------------------------------------------------
 -- Registers
@@ -118,6 +119,13 @@ data Instr : Set where
   je     : ℕ → Instr                    -- je label (jump if equal/zero)
   jne    : ℕ → Instr                    -- jne label (jump if not equal/not zero)
   call   : Operand → Instr              -- call target (direct or indirect)
+  -- Plan 0.11: SigOp call by symbolic name. The argument is a
+  -- relocation symbol resolved by the linker — typically the SigOpInfo's
+  -- `name` (e.g. "linux.exit", "arith.add.int"). CCC does not inspect
+  -- the string; emit treats it as a label, simulation treats it as an
+  -- opaque calling-convention transition (see `exec-x86 (call-sym _)`
+  -- in DirectSimulation).
+  call-sym : String → Instr
   ret    : Instr                        -- ret (return from function)
 
   -- Stack operations
@@ -229,6 +237,7 @@ instr-consumed-slots : Instr → ℕ
 instr-consumed-slots (push _)         = 1                  -- push allocates 1 slot
 instr-consumed-slots (sub (reg r) o)  = sub-rsp-consumed r o
 instr-consumed-slots (call _)         = 1                  -- call pushes return address
+instr-consumed-slots (call-sym _)     = 1                  -- same as call (pushes return address)
 -- `sub` with non-register destination: not a stack op.
 instr-consumed-slots (sub (mem _) _)  = 0
 instr-consumed-slots (sub (imm _) _)  = 0

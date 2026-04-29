@@ -31,7 +31,7 @@ open import Once.CCC.Target.X86-64.Syntax
   using (Reg; rax; rbx; rcx; rdx; rdi; rsi; rbp; rsp; r8; r9; r10; r11; r12; r13; r14; r15;
          Mem; base; base+disp; rip+disp;
          Operand; reg; mem; imm;
-         Instr; mov; lea; add; sub; cmp; push; pop; call; ret; jmp; jne; label; ud2;
+         Instr; mov; lea; add; sub; cmp; push; pop; call; call-sym; ret; jmp; jne; label; ud2;
          syscall;
          Program; slot-size; slots)
 
@@ -187,75 +187,40 @@ apply-instrs =
   pop r15 ∷ []                          -- restore r15
 
 ------------------------------------------------------------------------
--- SigOp dispatch (plan 0.2.4.1 Phase C + D)
+-- SigOp dispatch (Plan 0.11 — name-agnostic codegen)
 --
--- The codegen inspects the SigOpInfo's `name` and emits target-specific
--- instructions for recognized families:
---   "lit.int.<N>"   → mov $N, %rax            (integer literal)
---   "exit"          → mov $60, %rax ; syscall (Linux exit)
--- Everything else   → ud2                      (unrecognized)
+-- A SigOp represents an externally-defined function call by name. CCC
+-- emits a single `call <name>` instruction; the linker resolves the
+-- symbol to an actual implementation provided by the runtime
+-- (Linux libs for `linux.exit`, ArithCompiler for `arith.add.int`,
+-- user libraries for user-imported names, …).
 --
--- Negative literals are handled via name prefix "lit.int.-"; for
--- Phase C we parse the decimal suffix as a natural number. Proper
--- negative handling is 0.2.4.2's work.
+-- Previously this function pattern-matched on `name` to inline
+-- specific implementations (`mov $60, %rax; syscall` for "exit",
+-- `mov $N, %rax` for "lit.int.<N>"). That violated layering: CCC was
+-- inlining knowledge about Linux syscalls and integer-literal
+-- encodings. Now CCC stays name-agnostic; per-name implementation is
+-- the runtime's job.
+--
+-- Things that ARE CCC primitives (not external function calls) —
+-- e.g. integer literals, basic arithmetic — should not be SigOps;
+-- they belong as dedicated IR constructors. See task #9 and Plan
+-- 0.11 follow-up.
 ------------------------------------------------------------------------
 
-open import Relation.Nullary using (yes; no)
-
--- Check if the char list starts with the given prefix (exact match on chars).
--- Returns `just rest` if matched, `nothing` otherwise.
-strip-chars : L.List Char → L.List Char → Maybe (L.List Char)
-strip-chars []       cs       = just cs
-strip-chars (_ ∷ _)  []       = nothing
-strip-chars (p ∷ ps) (c ∷ cs) with p Char.≟ c
-... | yes _ = strip-chars ps cs
-... | no  _ = nothing
-
--- `"lit.int."` as a char list — precomputed prefix to match against
--- SigOp names from the IntLit family.
-lit-int-prefix : L.List Char
-lit-int-prefix = toList "lit.int."
-
--- | Parse a SigOp name of the form `"lit.int.<N>"` where N is a
--- non-negative integer (ℕ). Returns the numeric value on match.
--- Negative literals (`"lit.int.-N"`) are not yet handled.
-parse-lit-int : String → Maybe ℕ
-parse-lit-int name with strip-chars lit-int-prefix (toList name)
-... | just rest = NatShow.readMaybe 10 (fromList rest)
-... | nothing   = nothing
-
--- | Linux x86-64 `exit` syscall sequence.
--- Convention on entry: exit code is in %rdi (Once's Input register,
--- which happens to match the Linux syscall first-argument register).
--- Emit: mov $60, %rax ; syscall
--- The process exits; the instructions below `syscall` are unreachable.
-exit-instrs : Program
-exit-instrs = mov (reg rax) (imm 60) ∷ syscall ∷ []
-
--- | Generate instructions for a SigOp given its name. Recognized
--- names/families emit concrete instructions; unrecognized names keep
--- the `ud2` trap (codegen failure is deferred to run-time SIGILL).
+-- | Generate instructions for a SigOp: a single symbolic call. The
+-- linker resolves the symbol at build time. CCC does not inspect
+-- the string.
 compile-sigOp : String → Program
-compile-sigOp name with name StrProp.≟ "exit"
-... | yes _ = exit-instrs
-... | no  _ with parse-lit-int name
-...   | just v  = mov (reg rax) (imm v) ∷ []
-...   | nothing = ud2 ∷ []
+compile-sigOp name = call-sym name ∷ []
 
--- | Codegen-size for each recognized SigOp family.
--- Kept in lock-step with `compile-sigOp` — see `compile-sigOp-length`.
+-- | Codegen-size: always 1 instruction (the call).
 compile-sigOp-size : String → ℕ
-compile-sigOp-size name with name StrProp.≟ "exit"
-... | yes _ = 2
-... | no  _ = 1
+compile-sigOp-size _ = 1
 
 -- | `compile-sigOp` always emits `compile-sigOp-size name` instructions.
 compile-sigOp-length : ∀ (name : String) → length (compile-sigOp name) ≡ compile-sigOp-size name
-compile-sigOp-length name with name StrProp.≟ "exit"
-... | yes _ = refl
-... | no  _ with parse-lit-int name
-...   | just _  = refl
-...   | nothing = refl
+compile-sigOp-length _ = refl
 
 ------------------------------------------------------------------------
 -- Code generation

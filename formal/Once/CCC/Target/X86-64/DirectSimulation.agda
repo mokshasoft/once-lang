@@ -38,7 +38,7 @@ open import Once.CCC.Target.X86-64.Syntax
          Program; slot-size; slots)
   renaming (Instr to X86Instr)
 open import Once.CCC.Target.X86-64.Syntax
-  using (mov; lea; push; pop; add; sub; cmp; test; jmp; je; jne; call; ret;
+  using (mov; lea; push; pop; add; sub; cmp; test; jmp; je; jne; call; call-sym; ret;
          nop; ud2; syscall; label;
          Operand; reg; mem; imm; Mem; base; base+disp; rip+disp)
 open import Once.CCC.Target.X86-64.AbstractToX86
@@ -189,6 +189,15 @@ module Simulation {FS : FrameSemantics} where
     -- pop: shapes other than (pop rbp).
     exec-x86-pop-other  : Reg → X86State → X86State
 
+    -- Plan 0.11: SigOp call by symbolic name. The runtime body for
+    -- `<name>` is opaque from CCC's view; modeling it requires two
+    -- trusted-base postulates per arch — `rax-val` and `x86-halted`
+    -- after the call. The relationship to the abstract semantics
+    -- (`exec-sigop-output` / `exec-sigop-halts`) is captured in
+    -- `sigop-codegen-faithful` (already named, audit-visible).
+    exec-x86-call-sym-rax    : String → X86State → ValueLocation FS
+    exec-x86-call-sym-halted : String → X86State → Bool
+
   exec-x86 : X86Instr → X86State → Frame → X86State
 
   -- mov-to-output: mov rax, rdi → rax' = rdi
@@ -251,6 +260,13 @@ module Simulation {FS : FrameSemantics} where
 
   -- Control flow (no-ops at abstract level)
   exec-x86 (call _) xs _ = xs
+  -- Plan 0.11: SigOp call. Mirrors the abstract instr-sigop's
+  -- structure: rax and x86-halted may change per opaque postulates;
+  -- everything else preserved (function-call ABI is callee-saves
+  -- aside from rax — and in CCC's model, only rax is "result").
+  exec-x86 (call-sym name) xs _ =
+    record xs { rax-val    = exec-x86-call-sym-rax name xs
+              ; x86-halted = exec-x86-call-sym-halted name xs }
   exec-x86 ret xs _ = xs
   exec-x86 nop xs _ = xs
   exec-x86 ud2 xs _ = record xs { x86-halted = true }
