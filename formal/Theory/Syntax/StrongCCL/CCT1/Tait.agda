@@ -415,6 +415,85 @@ sn-apply∘id = acc go
     go (βη-Closure.∘-congʳ r) = ⊥-elim (no-id-reduct r)
 
 ------------------------------------------------------------------------
+-- sn-∘-id — SN of (f ∘ id) given SN f. Foundational SN claim.
+--
+-- Reductions of (f ∘ id) include id-right (gives f, SN by hypothesis)
+-- and ∘-congˡ on f (recurse on Acc), but ALSO structural-rule reducts
+-- when f has a specific shape:
+--   - f = id        : id-left fires, gives id (SN).
+--   - f = h₁ ∘ h₂   : assoc fires, gives h₁ ∘ (h₂ ∘ id) — NEW SHAPE.
+--   - f = ⟨h₁, h₂⟩  : pair-dist fires, gives ⟨h₁ ∘ id, h₂ ∘ id⟩.
+--   - f = terminal  : term-unique fires, gives terminal.
+-- The assoc reduct creates a structurally different shape that escapes
+-- a clean structural recursion: the "id" migrates inward and the
+-- subsequent recursion would need to handle compositions of arbitrary
+-- shape composed with id-bearing tails. Discharging this requires
+-- either a Newman-style equivalence-class SN argument or a refined
+-- well-founded recursion on a composite measure (lex on SN f and the
+-- depth of id from outside in). Both are substantial standalone
+-- proofs; we leave sn-∘-id as a NARROW FOUNDATIONAL POSTULATE.
+--
+-- Several downstream postulates (Red-fst-at-arrow-Prod / -Arrow,
+-- red-all-id-Prod) collapse onto this single postulate via red-id-right.
+------------------------------------------------------------------------
+
+postulate
+  sn-∘-id : ∀ {A B} (f : Term A B) → SN f → SN (f ∘ id)
+
+------------------------------------------------------------------------
+-- red-id-right — Red is closed under post-composition with id.
+--
+-- Structural recursion on the result type B:
+--
+--   * B = Unit    : Red _ Unit = SN, fall back to sn-∘-id.
+--
+--   * B = X × Y   : Red at product = (Red of fst-projection,
+--                                     Red of snd-projection).
+--                   Recurse via red-id-right at sub-types X and Y on
+--                   (fst ∘ f) and (snd ∘ f); apply Red-⟶ with the
+--                   assoc step ((proj ∘ f) ∘ id) ⟶s proj ∘ (f ∘ id)
+--                   to land at the goal.
+--
+--   * B = X ⇒ Y   : Red at arrow = (SN, functional).
+--                   SN component: sn-∘-id.
+--                   Functional: take any Red u, get Red of
+--                   (apply ∘ ⟨f, u⟩) from f's functional. Recurse via
+--                   red-id-right at smaller type Y to get Red of
+--                   ((apply ∘ ⟨f, u⟩) ∘ id). Then forward-step the
+--                   3-step chain (assoc + pair-dist + id-right under
+--                   congs) to land at apply ∘ ⟨f ∘ id, u⟩.
+--
+-- Termination: structural on B (X, Y are sub-types of X × Y / X ⇒ Y).
+------------------------------------------------------------------------
+
+red-id-right : ∀ (B : Ty) {A} (f : Term A B) → Red A B f → Red A B (f ∘ id)
+
+red-id-right Unit f rf = sn-∘-id f rf
+
+red-id-right (B' × C) {A} f rf =
+  Red-⟶ B' (red-id-right B' (fst ∘ f) (proj₁ rf))
+            (βη-Closure.base (s-rule assoc)) ,
+  Red-⟶ C  (red-id-right C  (snd ∘ f) (proj₂ rf))
+            (βη-Closure.base (s-rule assoc))
+
+red-id-right (B' ⇒ C) {A} f (sn-f , fn-f) =
+  sn-∘-id f sn-f , go
+  where
+    go : ∀ (u : Term A B') → Red A B' u → Red A C (apply ∘ ⟨ f ∘ id , u ⟩)
+    go u ru = Red-⟶* C (red-id-right C (apply ∘ ⟨ f , u ⟩) (fn-f u ru)) chain
+      where
+        step1 : ((apply ∘ ⟨ f , u ⟩) ∘ id) ⟶βη (apply ∘ (⟨ f , u ⟩ ∘ id))
+        step1 = βη-Closure.base (s-rule assoc)
+        step2 : (apply ∘ (⟨ f , u ⟩ ∘ id)) ⟶βη (apply ∘ ⟨ f ∘ id , u ∘ id ⟩)
+        step2 = βη-Closure.∘-congʳ (βη-Closure.base (s-rule pair-dist))
+        step3 : (apply ∘ ⟨ f ∘ id , u ∘ id ⟩) ⟶βη (apply ∘ ⟨ f ∘ id , u ⟩)
+        step3 = βη-Closure.∘-congʳ
+                  (βη-Closure.⟨,⟩-congʳ
+                    (βη-Closure.base (β-rule (from-CCTB id-right))))
+        chain : ((apply ∘ ⟨ f , u ⟩) ∘ id) ⟶βη* (apply ∘ ⟨ f ∘ id , u ⟩)
+        chain = step1 ∷ (step2 ∷ (step3 ∷ done))
+
+------------------------------------------------------------------------
 -- Red-expand-Arrow helpers: rule out root reductions of (apply ∘ ⟨t, u⟩)
 -- and pair-root reductions of ⟨t, u⟩ for non-fst-shaped Neutral t.
 ------------------------------------------------------------------------
@@ -523,6 +602,21 @@ Red-fst-at-arrow-Unit {B} {B'} = sn-fst , go
             handle-pair (βη-Closure.⟨,⟩-congʳ r-u) = aux _ (Red-⟶ B ru r-u) (ihu r-u)
 
 -- C = X × Y and C = X ⇒ Y cases remain narrow postulates.
+--
+-- These ARE in principle dischargeable via red-id-right, by constructing
+-- Red _ C (apply ∘ id) from Red-expand C apply + red-id-right C apply.
+-- BUT this creates a termination-checking cycle:
+--
+--   Red-expand-Arrow B C → Red-fst-at-arrow {C}
+--                       → Red-fst-at-arrow-Prod / -Arrow
+--                       → Red-expand at C (NOT structurally smaller)
+--                       → ... eventual decrease via Red-expand-Prod / Arrow
+--
+-- Agda's termination check doesn't trace the eventual decrease through
+-- the mutual cycle. Discharging these would require either a refactor
+-- of the Red-expand mutual block to make decrease explicit, or a
+-- {-# TERMINATING #-} pragma (which is itself a footgun we are
+-- auditing against). Left as narrow postulates.
 postulate
   Red-fst-at-arrow-Prod : ∀ {B X Y B'} →
                           Red ((B ⇒ (X × Y)) × B') (B ⇒ (X × Y))
@@ -861,7 +955,6 @@ red-all-comp : ∀ {A B C} (f : Term B C) (g : Term A B) →
 
 -- Constructive helpers — postulated as Red-closure lemmas.
 postulate
-  red-all-id-Prod   : ∀ {X Y} → Red (X × Y) (X × Y) id
   red-all-id-Arrow  : ∀ {X Y} → Red (X ⇒ Y) (X ⇒ Y) id
   red-all-fst-Prod  : ∀ {X Y B} → Red ((X × Y) × B) (X × Y) fst
   red-all-snd-Prod  : ∀ {A X Y} → Red (A × (X × Y)) (X × Y) snd
@@ -886,6 +979,20 @@ postulate
                        (f' : Term (B × C₁) C₂) (g : Term A B) →
                        Red (B × C₁) C₂ f' → Red A B g →
                        Red A (C₁ ⇒ C₂) ((curry f') ∘ g)
+
+------------------------------------------------------------------------
+-- red-all-id-Prod — discharged via red-id-right.
+--
+-- Red of id at product type (X × Y) decomposes (by Red's definition at
+-- product type) into (Red _ X (fst ∘ id), Red _ Y (snd ∘ id)). For each
+-- component, red-id-right at the sub-type gives Red _ X (fst ∘ id) from
+-- Red _ X fst (= red-all-fst at X) and analogously for snd.
+------------------------------------------------------------------------
+
+red-all-id-Prod : ∀ {X Y} → Red (X × Y) (X × Y) id
+red-all-id-Prod {X} {Y} =
+  red-id-right X fst (red-all-fst {A = X} {B = Y}) ,
+  red-id-right Y snd (red-all-snd {A = X} {B = Y})
 
 -- red-all-comp dispatched on f's shape:
 --   * f = terminal:    sn-terminal∘ (target Unit, SN suffices).
@@ -957,14 +1064,20 @@ sn {B = B} t = Red-SN B t (red-all t)
 --                 postulate Red-fst-at-arrow),
 --               sn (assuming red-all).
 --
---   Postulated: Red-fst-at-arrow-Prod and Red-fst-at-arrow-Arrow
---                 (the t = fst arrow sub-cases of Red-expand-Arrow at
---                 result types X × Y and X ⇒ Y respectively — both
---                 need a red-id-right family of lemmas, structurally
---                 recursive on the result type; the C = Unit case is
---                 fully discharged via Red-fst-at-arrow-Unit, which
---                 reduces the eta-pair sub-goal to sn-apply∘id),
---               red-all-{id-Prod, id-Arrow, fst-Prod, snd-Prod,
+--   Postulated: sn-∘-id (foundational SN claim: SN (f ∘ id) given SN f,
+--                 the assoc-reduct in the composition case eludes a
+--                 clean structural recursion; would need Newman-style
+--                 βη-equivalence-class SN argument or refined
+--                 well-founded recursion on a composite measure),
+--               Red-fst-at-arrow-Prod and Red-fst-at-arrow-Arrow
+--                 (left postulated due to a termination cycle:
+--                 Red-expand-Arrow → Red-fst-at-arrow → -Prod / -Arrow
+--                 → Red-expand at the same type level, with eventual
+--                 decrease only after a further hop; Agda's
+--                 termination check doesn't trace through. The C = Unit
+--                 case is fully discharged via Red-fst-at-arrow-Unit,
+--                 which reduces the eta-pair sub-goal to sn-apply∘id),
+--               red-all-{id-Arrow, fst-Prod, snd-Prod,
 --                        snd-Arrow, apply-Prod, apply-Arrow, pair,
 --                        curry, comp-Id, comp-Comp, comp-Pair,
 --                        comp-Curry} — the per-constructor / per-shape
@@ -973,10 +1086,17 @@ sn {B = B} t = Red-SN B t (red-all t)
 --                        Discharged atomic-at-Unit cases (id, fst,
 --                        snd, apply at their respective Unit target
 --                        shapes), terminal, fst-at-Arrow (via
---                        Red-fst-at-arrow), red-all-comp at f ∈
---                        {terminal, fst, snd, apply} (proj₁/₂ of
---                        product Red, sn-terminal∘, eta-pair-gen
---                        re-pairing trick).
+--                        Red-fst-at-arrow), red-all-id-Prod (via
+--                        red-id-right + red-all-fst / -snd), and
+--                        red-all-comp at f ∈ {terminal, fst, snd, apply}
+--                        (proj₁/₂ of product Red, sn-terminal∘,
+--                        eta-pair-gen re-pairing trick).
+--
+-- The newly-proven theorem red-id-right (Red is closed under
+-- post-composition with id) is structurally recursive on B (Unit /
+-- product / arrow). Unit case bottoms out in sn-∘-id; product case
+-- recurses via assoc + Red-⟶ on sub-types; arrow case recurses to
+-- sub-type Y via a 3-step chain (assoc + pair-dist + id-right).
 --
 -- The Red-expand-Arrow discharge uses a re-pairing trick to handle
 -- the eta-pair-gen sub-case (t = fst ∘ h, u = snd ∘ h): we have hyp
