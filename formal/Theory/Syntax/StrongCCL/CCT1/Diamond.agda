@@ -67,12 +67,21 @@ mutual
 
   pair-* : ∀ {A B C} → Term C A → Term C B → Term C (A × B)
   pair-* fst snd = id  -- eta-pair
-  -- eta-pair-gen ⟨ fst ∘ h , snd ∘ h ⟩ ⟶s h is decidable now that
-  -- DecidableEquality exists, but firing it inside this mutual block
-  -- creates a termination-check tangle (the `with T₁ ≟Ty T₂` introduces
-  -- a generated helper that interacts badly with the mutual recursion).
-  -- A clean integration uses an outside-mutual helper with explicit
-  -- type-index parameters; deferred to a follow-up commit.
+  -- eta-pair-gen ⟨ fst ∘ h , snd ∘ h ⟩ ⟶s h: tried with the
+  -- DecidableEquality lemmas via Dec-as-arg helpers (no `with` clause
+  -- in the mutual block), but Agda's termination check still flags
+  -- the recursive `compose-* fst h₁` call inside the Dec helper as
+  -- non-decreasing — the chain pair-* → pair-eta-gen-Ty-dec →
+  -- compose-* loses h₁'s structural-subterm relationship with the
+  -- pair-* input across the helper boundary.
+  --
+  -- Closing this needs either:
+  --   (a) sized types or an explicit Acc-on-term-size argument
+  --       through the mutual block (substantial refactor);
+  --   (b) parametrising the helper with _* and compose-* as
+  --       higher-order arguments (clean conceptually but breaks
+  --       Agda's first-order termination heuristic).
+  -- Both are their own focused projects.  Integration deferred.
   pair-* f   g   = ⟨ f * , g * ⟩
 
   curry-* : ∀ {A B C} → Term (A × B) C → Term A (B ⇒ C)
