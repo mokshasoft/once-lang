@@ -74,3 +74,185 @@ mutual
   curry-* apply                              = id    -- curry-apply
   curry-* (apply ∘ ⟨ h ∘ fst , snd ⟩)        = h *   -- curry-η
   curry-* f                                  = curry (f *)
+
+------------------------------------------------------------------------
+-- Lemma 1: t ⟹ t*
+--
+-- Each term reduces in parallel to its complete development. Mutually
+-- recursive: top-level dispatch + per-shape helpers for compositions,
+-- pairs, and curries.
+------------------------------------------------------------------------
+
+⟹-to-*      : ∀ {A B} (t : Term A B) → t ⟹ t *
+compose-⟹-* : ∀ {A B C} (f : Term B C) (g : Term A B) →
+               (f ∘ g) ⟹ compose-* f g
+pair-⟹-*    : ∀ {A B C} (f : Term C A) (g : Term C B) →
+               ⟨ f , g ⟩ ⟹ pair-* f g
+curry-⟹-*   : ∀ {A B C} (f : Term (A × B) C) →
+               curry f ⟹ curry-* f
+
+⟹-to-* id          = ⟹-id
+⟹-to-* terminal    = ⟹-terminal
+⟹-to-* fst         = ⟹-fst
+⟹-to-* snd         = ⟹-snd
+⟹-to-* apply       = ⟹-apply
+⟹-to-* (f ∘ g)     = compose-⟹-* f g
+⟹-to-* ⟨ f , g ⟩   = pair-⟹-* f g
+⟹-to-* (curry f)   = curry-⟹-* f
+
+------------------------------------------------------------------------
+-- compose-⟹-* — enumerated to disambiguate compose-*'s overlapping
+-- patterns (specifically, the `f id` clause for id-right vs the η/s
+-- rules for non-id RHS).
+------------------------------------------------------------------------
+
+-- LHS = id: id-left fires for any RHS.
+compose-⟹-* id g = ⟹-id-left (⟹-to-* g)
+
+-- LHS = fst: fst-pair (RHS=⟨,⟩), id-right (RHS=id), catch-all otherwise.
+-- fst : Term (A × B) A, so RHS target must be product (A × B).
+-- terminal/curry impossible (Unit/arrow ≠ product).
+compose-⟹-* fst ⟨ h , k ⟩ = ⟹-fst-β (⟹-to-* h) (⟹-to-* k)
+compose-⟹-* fst id        = ⟹-id-right ⟹-fst
+compose-⟹-* fst fst       = ⟹-∘ ⟹-fst ⟹-fst
+compose-⟹-* fst snd       = ⟹-∘ ⟹-fst ⟹-snd
+compose-⟹-* fst apply     = ⟹-∘ ⟹-fst ⟹-apply
+compose-⟹-* fst (h ∘ k)   = ⟹-∘ ⟹-fst (compose-⟹-* h k)
+
+-- LHS = snd: symmetric to fst.
+compose-⟹-* snd ⟨ h , k ⟩ = ⟹-snd-β (⟹-to-* h) (⟹-to-* k)
+compose-⟹-* snd id        = ⟹-id-right ⟹-snd
+compose-⟹-* snd fst       = ⟹-∘ ⟹-snd ⟹-fst
+compose-⟹-* snd snd       = ⟹-∘ ⟹-snd ⟹-snd
+compose-⟹-* snd apply     = ⟹-∘ ⟹-snd ⟹-apply
+compose-⟹-* snd (h ∘ k)   = ⟹-∘ ⟹-snd (compose-⟹-* h k)
+
+-- LHS = apply: curry-β (RHS=⟨curry _, _⟩), id-right (RHS=id), catch-all.
+-- apply : Term ((A ⇒ B) × A) B, so RHS target must be product
+-- ((A ⇒ B) × A). For ⟨h, k⟩ at this position, h target = A ⇒ B (arrow);
+-- ⟨,⟩, terminal at h-position type-impossible.
+compose-⟹-* apply ⟨ curry h , k ⟩ = ⟹-curry-β (⟹-to-* h) (⟹-to-* k)
+compose-⟹-* apply id              = ⟹-id-right ⟹-apply
+compose-⟹-* apply fst             = ⟹-∘ ⟹-apply ⟹-fst
+compose-⟹-* apply snd             = ⟹-∘ ⟹-apply ⟹-snd
+compose-⟹-* apply apply           = ⟹-∘ ⟹-apply ⟹-apply
+compose-⟹-* apply (h ∘ k)         = ⟹-∘ ⟹-apply (compose-⟹-* h k)
+compose-⟹-* apply ⟨ id , k ⟩      = ⟹-∘ ⟹-apply (pair-⟹-* id k)
+compose-⟹-* apply ⟨ fst , k ⟩     = ⟹-∘ ⟹-apply (pair-⟹-* fst k)
+compose-⟹-* apply ⟨ snd , k ⟩     = ⟹-∘ ⟹-apply (pair-⟹-* snd k)
+compose-⟹-* apply ⟨ apply , k ⟩   = ⟹-∘ ⟹-apply (pair-⟹-* apply k)
+compose-⟹-* apply ⟨ (h ∘ j) , k ⟩ = ⟹-∘ ⟹-apply (pair-⟹-* (h ∘ j) k)
+
+-- LHS = terminal: term-unique fires for non-id RHS, id-right for id.
+compose-⟹-* terminal id           = ⟹-id-right ⟹-terminal
+compose-⟹-* terminal fst          = ⟹-term-unique
+compose-⟹-* terminal snd          = ⟹-term-unique
+compose-⟹-* terminal terminal     = ⟹-term-unique
+compose-⟹-* terminal apply        = ⟹-term-unique
+compose-⟹-* terminal (h ∘ k)      = ⟹-term-unique
+compose-⟹-* terminal ⟨ h , k ⟩    = ⟹-term-unique
+compose-⟹-* terminal (curry h)    = ⟹-term-unique
+
+-- LHS = (h ∘ k): id-right for RHS=id, assoc otherwise.
+compose-⟹-* (h ∘ k) id           = ⟹-id-right (compose-⟹-* h k)
+compose-⟹-* (h ∘ k) terminal     = ⟹-assoc (⟹-to-* h) (⟹-to-* k) ⟹-terminal
+compose-⟹-* (h ∘ k) fst          = ⟹-assoc (⟹-to-* h) (⟹-to-* k) ⟹-fst
+compose-⟹-* (h ∘ k) snd          = ⟹-assoc (⟹-to-* h) (⟹-to-* k) ⟹-snd
+compose-⟹-* (h ∘ k) apply        = ⟹-assoc (⟹-to-* h) (⟹-to-* k) ⟹-apply
+compose-⟹-* (h ∘ k) (h' ∘ k')    = ⟹-assoc (⟹-to-* h) (⟹-to-* k) (compose-⟹-* h' k')
+compose-⟹-* (h ∘ k) ⟨ h' , k' ⟩  = ⟹-assoc (⟹-to-* h) (⟹-to-* k) (pair-⟹-* h' k')
+compose-⟹-* (h ∘ k) (curry h')   = ⟹-assoc (⟹-to-* h) (⟹-to-* k) (curry-⟹-* h')
+
+-- LHS = ⟨h, k⟩: id-right for RHS=id, pair-dist otherwise.
+compose-⟹-* ⟨ h , k ⟩ id           = ⟹-id-right (pair-⟹-* h k)
+compose-⟹-* ⟨ h , k ⟩ terminal     = ⟹-pair-dist (⟹-to-* h) (⟹-to-* k) ⟹-terminal
+compose-⟹-* ⟨ h , k ⟩ fst          = ⟹-pair-dist (⟹-to-* h) (⟹-to-* k) ⟹-fst
+compose-⟹-* ⟨ h , k ⟩ snd          = ⟹-pair-dist (⟹-to-* h) (⟹-to-* k) ⟹-snd
+compose-⟹-* ⟨ h , k ⟩ apply        = ⟹-pair-dist (⟹-to-* h) (⟹-to-* k) ⟹-apply
+compose-⟹-* ⟨ h , k ⟩ (h' ∘ k')    = ⟹-pair-dist (⟹-to-* h) (⟹-to-* k) (compose-⟹-* h' k')
+compose-⟹-* ⟨ h , k ⟩ ⟨ h' , k' ⟩  = ⟹-pair-dist (⟹-to-* h) (⟹-to-* k) (pair-⟹-* h' k')
+compose-⟹-* ⟨ h , k ⟩ (curry h')   = ⟹-pair-dist (⟹-to-* h) (⟹-to-* k) (curry-⟹-* h')
+
+-- LHS = curry h: id-right for RHS=id, curry-compose otherwise.
+compose-⟹-* (curry h) id           = ⟹-id-right (curry-⟹-* h)
+compose-⟹-* (curry h) terminal     = ⟹-curry-compose (⟹-to-* h) ⟹-terminal
+compose-⟹-* (curry h) fst          = ⟹-curry-compose (⟹-to-* h) ⟹-fst
+compose-⟹-* (curry h) snd          = ⟹-curry-compose (⟹-to-* h) ⟹-snd
+compose-⟹-* (curry h) apply        = ⟹-curry-compose (⟹-to-* h) ⟹-apply
+compose-⟹-* (curry h) (h' ∘ k')    = ⟹-curry-compose (⟹-to-* h) (compose-⟹-* h' k')
+compose-⟹-* (curry h) ⟨ h' , k' ⟩  = ⟹-curry-compose (⟹-to-* h) (pair-⟹-* h' k')
+compose-⟹-* (curry h) (curry h')   = ⟹-curry-compose (⟹-to-* h) (curry-⟹-* h')
+
+------------------------------------------------------------------------
+-- pair-⟹-* — enumerate (LHS, RHS) for the pair-* dispatch.
+-- eta-pair fires only at (fst, snd); other shapes use catch-all.
+------------------------------------------------------------------------
+
+pair-⟹-* fst snd        = ⟹-eta-pair
+pair-⟹-* fst id         = ⟹-⟨,⟩ ⟹-fst ⟹-id
+pair-⟹-* fst fst        = ⟹-⟨,⟩ ⟹-fst ⟹-fst
+pair-⟹-* fst terminal   = ⟹-⟨,⟩ ⟹-fst ⟹-terminal
+pair-⟹-* fst apply      = ⟹-⟨,⟩ ⟹-fst ⟹-apply
+pair-⟹-* fst (h ∘ k)    = ⟹-⟨,⟩ ⟹-fst (compose-⟹-* h k)
+pair-⟹-* fst ⟨ h , k ⟩  = ⟹-⟨,⟩ ⟹-fst (pair-⟹-* h k)
+pair-⟹-* fst (curry h)  = ⟹-⟨,⟩ ⟹-fst (curry-⟹-* h)
+
+pair-⟹-* id        g = ⟹-⟨,⟩ ⟹-id (⟹-to-* g)
+pair-⟹-* terminal  g = ⟹-⟨,⟩ ⟹-terminal (⟹-to-* g)
+pair-⟹-* snd       g = ⟹-⟨,⟩ ⟹-snd (⟹-to-* g)
+pair-⟹-* apply     g = ⟹-⟨,⟩ ⟹-apply (⟹-to-* g)
+pair-⟹-* (h ∘ k)   g = ⟹-⟨,⟩ (compose-⟹-* h k) (⟹-to-* g)
+pair-⟹-* ⟨ h , k ⟩ g = ⟹-⟨,⟩ (pair-⟹-* h k) (⟹-to-* g)
+pair-⟹-* (curry h) g = ⟹-⟨,⟩ (curry-⟹-* h) (⟹-to-* g)
+
+------------------------------------------------------------------------
+-- curry-⟹-* — enumerate the curry argument shapes.
+-- curry-apply fires for f=apply, curry-η for f=apply ∘ ⟨h ∘ fst, snd⟩.
+-- All other shapes use the structural curry-cong.
+------------------------------------------------------------------------
+
+curry-⟹-* apply                            = ⟹-curry-apply
+curry-⟹-* (apply ∘ ⟨ h ∘ fst , snd ⟩)      = ⟹-curry-η (⟹-to-* h)
+-- Atomic non-apply.
+curry-⟹-* id                                = ⟹-curry ⟹-id
+curry-⟹-* terminal                          = ⟹-curry ⟹-terminal
+curry-⟹-* fst                               = ⟹-curry ⟹-fst
+curry-⟹-* snd                               = ⟹-curry ⟹-snd
+curry-⟹-* (curry h)                         = ⟹-curry (curry-⟹-* h)
+-- Pair (curry of a pair: target product, valid).
+curry-⟹-* ⟨ h , k ⟩                         = ⟹-curry (pair-⟹-* h k)
+-- Compositions with non-apply head.
+curry-⟹-* (id ∘ k)                          = ⟹-curry (compose-⟹-* id k)
+curry-⟹-* (terminal ∘ k)                    = ⟹-curry (compose-⟹-* terminal k)
+curry-⟹-* (fst ∘ k)                         = ⟹-curry (compose-⟹-* fst k)
+curry-⟹-* (snd ∘ k)                         = ⟹-curry (compose-⟹-* snd k)
+curry-⟹-* ((h ∘ j) ∘ k)                     = ⟹-curry (compose-⟹-* (h ∘ j) k)
+curry-⟹-* (⟨ h , j ⟩ ∘ k)                   = ⟹-curry (compose-⟹-* ⟨ h , j ⟩ k)
+curry-⟹-* (curry h ∘ k)                     = ⟹-curry (compose-⟹-* (curry h) k)
+-- apply ∘ k where k is not the curry-η pair shape.
+curry-⟹-* (apply ∘ id)                      = ⟹-curry (compose-⟹-* apply id)
+curry-⟹-* (apply ∘ fst)                     = ⟹-curry (compose-⟹-* apply fst)
+curry-⟹-* (apply ∘ snd)                     = ⟹-curry (compose-⟹-* apply snd)
+curry-⟹-* (apply ∘ apply)                   = ⟹-curry (compose-⟹-* apply apply)
+curry-⟹-* (apply ∘ (j ∘ k))                 = ⟹-curry (compose-⟹-* apply (j ∘ k))
+-- apply ∘ ⟨ left , right ⟩ — sub-enumerate left.
+curry-⟹-* (apply ∘ ⟨ fst , k ⟩)             = ⟹-curry (compose-⟹-* apply ⟨ fst , k ⟩)
+curry-⟹-* (apply ∘ ⟨ snd , k ⟩)             = ⟹-curry (compose-⟹-* apply ⟨ snd , k ⟩)
+curry-⟹-* (apply ∘ ⟨ apply , k ⟩)           = ⟹-curry (compose-⟹-* apply ⟨ apply , k ⟩)
+curry-⟹-* (apply ∘ ⟨ (curry h) , k ⟩)       = ⟹-curry (compose-⟹-* apply ⟨ curry h , k ⟩)
+-- apply ∘ ⟨ h ∘ ? , k ⟩ — sub-enumerate ? (8 shapes).
+curry-⟹-* (apply ∘ ⟨ h ∘ id , k ⟩)          = ⟹-curry (compose-⟹-* apply ⟨ h ∘ id , k ⟩)
+curry-⟹-* (apply ∘ ⟨ h ∘ terminal , k ⟩)    = ⟹-curry (compose-⟹-* apply ⟨ h ∘ terminal , k ⟩)
+curry-⟹-* (apply ∘ ⟨ h ∘ snd , k ⟩)         = ⟹-curry (compose-⟹-* apply ⟨ h ∘ snd , k ⟩)
+curry-⟹-* (apply ∘ ⟨ h ∘ apply , k ⟩)       = ⟹-curry (compose-⟹-* apply ⟨ h ∘ apply , k ⟩)
+curry-⟹-* (apply ∘ ⟨ h ∘ (j ∘ ℓ) , k ⟩)     = ⟹-curry (compose-⟹-* apply ⟨ h ∘ (j ∘ ℓ) , k ⟩)
+curry-⟹-* (apply ∘ ⟨ h ∘ ⟨ j , ℓ ⟩ , k ⟩)   = ⟹-curry (compose-⟹-* apply ⟨ h ∘ ⟨ j , ℓ ⟩ , k ⟩)
+curry-⟹-* (apply ∘ ⟨ h ∘ (curry j) , k ⟩)   = ⟹-curry (compose-⟹-* apply ⟨ h ∘ (curry j) , k ⟩)
+-- apply ∘ ⟨ h ∘ fst , k ⟩ with k ≠ snd — sub-enumerate k (7 shapes, snd is curry-η).
+curry-⟹-* (apply ∘ ⟨ h ∘ fst , id ⟩)        = ⟹-curry (compose-⟹-* apply ⟨ h ∘ fst , id ⟩)
+curry-⟹-* (apply ∘ ⟨ h ∘ fst , terminal ⟩)  = ⟹-curry (compose-⟹-* apply ⟨ h ∘ fst , terminal ⟩)
+curry-⟹-* (apply ∘ ⟨ h ∘ fst , fst ⟩)       = ⟹-curry (compose-⟹-* apply ⟨ h ∘ fst , fst ⟩)
+curry-⟹-* (apply ∘ ⟨ h ∘ fst , apply ⟩)     = ⟹-curry (compose-⟹-* apply ⟨ h ∘ fst , apply ⟩)
+curry-⟹-* (apply ∘ ⟨ h ∘ fst , (j ∘ ℓ) ⟩)   = ⟹-curry (compose-⟹-* apply ⟨ h ∘ fst , (j ∘ ℓ) ⟩)
+curry-⟹-* (apply ∘ ⟨ h ∘ fst , ⟨ j , ℓ ⟩ ⟩) = ⟹-curry (compose-⟹-* apply ⟨ h ∘ fst , ⟨ j , ℓ ⟩ ⟩)
+curry-⟹-* (apply ∘ ⟨ h ∘ fst , (curry j) ⟩) = ⟹-curry (compose-⟹-* apply ⟨ h ∘ fst , (curry j) ⟩)
