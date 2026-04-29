@@ -77,7 +77,7 @@ open import Once.CCC.Machine.SMCore
          lea-slot; restore-input;
          instr-alloc-stack; instr-dealloc-stack; instr-reclaim-to;
          instr-push-frame; instr-pop-frame; instr-call-closure;
-         instr-sigop; instr-load-const)
+         instr-sigop; instr-load-const; instr-load-code-addr)
 
 ------------------------------------------------------------------------
 -- IR → AbstractTrace, state-passing

@@ -47,7 +47,7 @@ open import Once.CCC.Machine.SMCore
          instr-alloc-stack; instr-dealloc-stack;
          instr-push-frame; instr-pop-frame; instr-call-closure;
          worklist-init; worklist-push; worklist-pop; worklist-check;
-         instr-reclaim-to; instr-sigop; instr-load-const)
+         instr-reclaim-to; instr-sigop; instr-load-const; instr-load-code-addr)
 
 ------------------------------------------------------------------------
 -- Slot to displacement conversion
@@ -189,6 +189,8 @@ compile-abstract (instr-sigop si) = call-sym (once-symbol (SigOpInfo.name si)) �
 -- Plan 0.11: const literal. X86-32 stub (full per-primitive codegen
 -- not yet implemented for X86-32). Trap so the gap is visible.
 compile-abstract (instr-load-const _ _) = ud2 ∷ []
+-- Plan 0.2.4.2: closure-body code-addr load. X86-32 stub.
+compile-abstract (instr-load-code-addr _) = ud2 ∷ []
 
 ------------------------------------------------------------------------
 -- Trace compilation: compile a whole trace to x86-32

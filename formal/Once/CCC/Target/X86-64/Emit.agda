@@ -49,6 +49,7 @@ showMem : Mem → String
 showMem (base r) = "(" ++ showReg r ++ ")"
 showMem (base+disp r n) = showNat n ++ "(" ++ showReg r ++ ")"
 showMem (rip+disp n) = showNat n ++ "(%rip)"
+showMem (rip+label n) = ".L_thunk_" ++ showNat n ++ "(%rip)"
 
 ------------------------------------------------------------------------
 -- Operands (AT&T syntax: $ for immediates)

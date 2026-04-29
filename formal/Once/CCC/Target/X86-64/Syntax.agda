@@ -67,6 +67,9 @@ data Mem : Set where
   -- [rip + offset]: RIP-relative addressing for position-independent code
   -- Used by curry to compute absolute address of thunk code
   rip+disp : ℕ → Mem
+  -- [rip + .L_thunk_<n>]: RIP-relative addressing of a closure-body
+  -- label. Plan 0.2.4.2 D7. Emitted as `.L_thunk_<n>(%rip)`.
+  rip+label : ℕ → Mem
 
 ------------------------------------------------------------------------
 -- Operands

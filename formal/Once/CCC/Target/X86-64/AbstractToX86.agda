@@ -22,7 +22,7 @@ import Once.CCC.Target.X86-64.CodeGen.Compile as CompileX86-64
 -- Import X86 syntax
 open import Once.CCC.Target.X86-64.Syntax
   using (Reg; rax; rbx; rcx; rdx; rdi; rsi; rbp; rsp; r8; r9; r10; r11; r12; r13; r14; r15;
-         Mem; base; base+disp; rip+disp;
+         Mem; base; base+disp; rip+disp; rip+label;
          Operand; reg; mem; imm;
          Instr; mov; lea; add; sub; cmp; push; pop; call; ret; jmp; jne; label; ud2;
          Program; slot-size; slots)
@@ -176,6 +176,13 @@ compile-abstract (instr-sigop si) =
 -- Delegates to the per-primitive helper in CodeGen/Compile.
 compile-abstract (instr-load-const p v) =
   CompileX86-64.compile-const p v
+
+-- Plan 0.2.4.2 Phase A: load closure-body label address into rax.
+-- `lea .L_thunk_<n>(%rip), %rax` — RIP-relative load of the body's
+-- absolute address. The body label is emitted by per-function
+-- codegen (Phase B + C) inside the same parent function symbol.
+compile-abstract (instr-load-code-addr n) =
+  lea rax (rip+label n) ∷ []
 
 ------------------------------------------------------------------------
 -- Trace compilation: compile a whole trace to x86

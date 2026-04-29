@@ -720,6 +720,17 @@ data AbstractInstr : Set where
   -- specific machine instructions.
   instr-load-const : ∀ {A : Type} → IsPrimitive A → ⟦ A ⟧ → AbstractInstr
 
+  -- Plan 0.2.4.2 Phase A: Load the address of a closure-body label
+  -- into Output. The argument `n : ℕ` indexes into the parent
+  -- function's per-function table of closure-body labels — Plan
+  -- 0.2.4.2 D5 (stateful counter, local to each parent function).
+  --
+  -- Per-arch `compile-abstract` lowers this to a label-relative
+  -- address load (`lea .L_thunk_<n>(%rip), %rax` on x86-64).
+  -- Used by `curry`'s codegen to set up the closure record's
+  -- code-pointer slot.
+  instr-load-code-addr : ℕ → AbstractInstr
+
 -- | A trace is a sequence of abstract instructions
 AbstractTrace : Set
 AbstractTrace = List AbstractInstr
@@ -924,6 +935,12 @@ module AbstractExec {FS : FrameSemantics} where
     -- The IsPrimitive evidence dispatches per primitive type.
     encode-const : ∀ {A} → IsPrimitive A → ⟦ A ⟧ → ValueLocation FS
 
+    -- Plan 0.2.4.2 Phase A: encode a closure-body label index into
+    -- a ValueLocation representing the body's address in the
+    -- compiled binary. Per-arch backends instantiate this
+    -- consistently with their `lea label(%rip)`-style emission.
+    encode-code-addr : ℕ → ValueLocation FS
+
   ------------------------------------------------------------------------
   -- Main exec-abstract definition
   ------------------------------------------------------------------------
@@ -1078,6 +1095,14 @@ module AbstractExec {FS : FrameSemantics} where
   -- comes from `encode-const` rather than from Input.
   exec-abstract (instr-load-const isPrim v) s alloc =
     record s { regs = writeReg (regs s) Output (encode-const isPrim v) } , alloc
+
+  -- Plan 0.2.4.2 Phase A: load a closure-body label's address into
+  -- Output. State change is exactly the Output register write —
+  -- mirrors `instr-load-const`'s shape, but the location comes from
+  -- `encode-code-addr` (a code address) rather than `encode-const`
+  -- (a primitive value).
+  exec-abstract (instr-load-code-addr n) s alloc =
+    record s { regs = writeReg (regs s) Output (encode-code-addr n) } , alloc
 
   -- | Execute a trace (sequence of abstract instructions)
   exec-trace : AbstractTrace → LocState FS → AllocState {FS} →

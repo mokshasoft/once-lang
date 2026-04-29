@@ -56,7 +56,7 @@ open import Once.CCC.Machine.SMCore
          instr-alloc-stack; instr-dealloc-stack;
          instr-push-frame; instr-pop-frame; instr-call-closure;
          worklist-init; worklist-push; worklist-pop; worklist-check;
-         instr-reclaim-to; instr-sigop; instr-load-const)
+         instr-reclaim-to; instr-sigop; instr-load-const; instr-load-code-addr)
 
 ------------------------------------------------------------------------
 -- Slot to displacement conversion
@@ -216,6 +216,8 @@ compile-abstract (instr-sigop si) = call-sym (once-symbol (SigOpInfo.name si)) �
 -- Plan 0.11: const literal. RV64 stub (full per-primitive codegen
 -- not yet implemented for RV64). Trap so the gap is visible.
 compile-abstract (instr-load-const _ _) = unimp ∷ []
+-- Plan 0.2.4.2: closure-body code-addr load. RV64 stub.
+compile-abstract (instr-load-code-addr _) = unimp ∷ []
 
 ------------------------------------------------------------------------
 -- Trace compilation: compile a whole trace to RISC-V
