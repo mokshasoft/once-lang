@@ -272,11 +272,15 @@ d_showInstr_12 v0
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
              ("    call " :: Data.Text.Text)
              (coe MAlonzo.Code.Data.Nat.Show.d_show_56 v1)
-      MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.C_nop_86
+      MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.C_call'45'sym_86 v1
+        -> coe
+             MAlonzo.Code.Data.String.Base.d__'43''43'__20
+             ("    call " :: Data.Text.Text) v1
+      MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.C_nop_88
         -> coe ("    nop" :: Data.Text.Text)
-      MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.C_unimp_88
+      MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.C_unimp_90
         -> coe ("    unimp" :: Data.Text.Text)
-      MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.C_label_90 v1
+      MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.C_label_92 v1
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
              (".L" :: Data.Text.Text)
@@ -286,23 +290,23 @@ d_showInstr_12 v0
                 (":" :: Data.Text.Text))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Target.RiscV64.Emit.instrToLine
-d_instrToLine_84 ::
+d_instrToLine_86 ::
   MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.T_Instr_54 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
-d_instrToLine_84 v0
+d_instrToLine_86 v0
   = coe
       MAlonzo.Code.Data.String.Base.d__'43''43'__20
       (d_showInstr_12 (coe v0)) ("\n" :: Data.Text.Text)
 -- Once.CCC.Target.RiscV64.Emit.programToText
-d_programToText_88 ::
+d_programToText_90 ::
   [MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.T_Instr_54] ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
-d_programToText_88
+d_programToText_90
   = coe
       MAlonzo.Code.Data.List.Base.du_foldr_216
       (coe
          (\ v0 ->
             coe
               MAlonzo.Code.Data.String.Base.d__'43''43'__20
-              (d_instrToLine_84 (coe v0))))
+              (d_instrToLine_86 (coe v0))))
       (coe ("" :: Data.Text.Text))

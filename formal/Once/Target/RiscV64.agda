@@ -22,6 +22,7 @@ module Once.Target.RiscV64 where
 open import Data.String using (String; _++_)
 
 open import Once.Target using (Target)
+open import Once.Target.Symbol using (once-symbol)
 open import Once.CCC.IR using (IR)
 
 open import Once.CCC.Codegen.IRToTrace using (ir-to-trace)
@@ -39,8 +40,8 @@ riscv64-asmHeader =
 
 riscv64-functionPrologue : String → String
 riscv64-functionPrologue fname =
-  ".globl once_" ++ fname ++ "\n" ++
-  "once_" ++ fname ++ ":\n"
+  ".globl " ++ once-symbol fname ++ "\n" ++
+  once-symbol fname ++ ":\n"
 
 riscv64-functionEpilogue : String
 riscv64-functionEpilogue = "    ret\n\n"

@@ -12469,7 +12469,7 @@ du_checkElab'45'fallback'45'RBinOp_8178 v0 v1 v2 v3
 d_compileExprTyped_8222 ::
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
-  Maybe MAlonzo.Code.Once.CCC.IR.T_IR_12
+  Maybe MAlonzo.Code.Once.CCC.IR.T_IR_264
 d_compileExprTyped_8222 v0 v1
   = let v2
           = d_checkElab_1790 (coe d_emptyCtx_438) (coe v0) (coe v1) in

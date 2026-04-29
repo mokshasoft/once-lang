@@ -17,6 +17,7 @@ import MAlonzo.RTE (coe, erased, AgdaAny, addInt, subInt, mulInt,
                     rem64, lt64, eq64, word64FromNat, word64ToNat)
 import qualified MAlonzo.RTE
 import qualified Data.Text
+import qualified MAlonzo.Code.Agda.Builtin.String
 
 -- Once.CCC.Target.X86-32.Syntax.Reg
 d_Reg_10 = ()
@@ -42,13 +43,14 @@ data T_Instr_44
     C_cmp_58 T_Operand_36 T_Operand_36 |
     C_test_60 T_Operand_36 T_Operand_36 | C_jmp_62 T_Operand_36 |
     C_jne_64 Integer | C_je_66 Integer | C_call_68 T_Operand_36 |
-    C_ret_70 | C_nop_72 | C_ud2_74 | C_label_76 Integer
+    C_call'45'sym_70 MAlonzo.Code.Agda.Builtin.String.T_String_6 |
+    C_ret_72 | C_nop_74 | C_ud2_76 | C_label_78 Integer
 -- Once.CCC.Target.X86-32.Syntax.Program
-d_Program_78 :: ()
-d_Program_78 = erased
+d_Program_80 :: ()
+d_Program_80 = erased
 -- Once.CCC.Target.X86-32.Syntax.slot-size
-d_slot'45'size_80 :: Integer
-d_slot'45'size_80 = coe (4 :: Integer)
+d_slot'45'size_82 :: Integer
+d_slot'45'size_82 = coe (4 :: Integer)
 -- Once.CCC.Target.X86-32.Syntax.slots
-d_slots_82 :: Integer -> Integer
-d_slots_82 v0 = coe mulInt (coe v0) (coe d_slot'45'size_80)
+d_slots_84 :: Integer -> Integer
+d_slots_84 v0 = coe mulInt (coe v0) (coe d_slot'45'size_82)

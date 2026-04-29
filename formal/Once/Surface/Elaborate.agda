@@ -17,7 +17,7 @@ open import Once.Surface.Syntax
 
 open import Data.Nat using (ℕ)
 open import Data.Fin using (Fin)
-open import Data.Integer using (ℤ)
+open import Data.Integer using (ℤ; ∣_∣)
 open import Data.Integer.Show using () renaming (show to showℤ)
 open import Data.String using (String; _++_)
 
@@ -42,8 +42,18 @@ open import Once.Arith.SigOp.Builders
          generic-info)
 
 -- Literals: constant morphisms that ignore input environment.
+--
+-- Plan 0.11: integer literals are CCC primitives (global elements
+-- 1 → Int), not external function calls. They use the `const`
+-- ctor — CCC compiles them inline (`mov $N, %rax` on x86-64) with
+-- no runtime symbol or call overhead.
+--
+-- Carries both semantic levels per `const`'s signature:
+--   - I.⟦Int⟧ = ℤ (proof level): the integer literal `n` itself.
+--   - M.⟦Int⟧ = ℕ (machine level): `∣ n ∣` (absolute value).
+-- Negative literals are tracked properly once arithmetic migrates.
 intLit : ℤ → ∀ {Γ} → IR Γ Int
-intLit n = SigOp (lit-int-info n) ∘ terminal
+intLit n = const is-int n ∣ n ∣ ∘ terminal
 
 strLit : String → ∀ {Γ} → IR Γ Str
 strLit s = SigOp (str-lit-info s) ∘ terminal

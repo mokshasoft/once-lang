@@ -219,13 +219,17 @@ d_showInstr_30 v0
                     ("    call " :: Data.Text.Text)
                     (coe MAlonzo.Code.Data.Nat.Show.d_show_56 v2)
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Syntax.C_ret_70
+      MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Syntax.C_call'45'sym_70 v1
+        -> coe
+             MAlonzo.Code.Data.String.Base.d__'43''43'__20
+             ("    call " :: Data.Text.Text) v1
+      MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Syntax.C_ret_72
         -> coe ("    ret" :: Data.Text.Text)
-      MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Syntax.C_nop_72
+      MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Syntax.C_nop_74
         -> coe ("    nop" :: Data.Text.Text)
-      MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Syntax.C_ud2_74
+      MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Syntax.C_ud2_76
         -> coe ("    ud2" :: Data.Text.Text)
-      MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Syntax.C_label_76 v1
+      MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Syntax.C_label_78 v1
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
              (".L" :: Data.Text.Text)
@@ -235,23 +239,23 @@ d_showInstr_30 v0
                 (":" :: Data.Text.Text))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Target.X86-32.Emit.instrToLine
-d_instrToLine_82 ::
+d_instrToLine_84 ::
   MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Syntax.T_Instr_44 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
-d_instrToLine_82 v0
+d_instrToLine_84 v0
   = coe
       MAlonzo.Code.Data.String.Base.d__'43''43'__20
       (d_showInstr_30 (coe v0)) ("\n" :: Data.Text.Text)
 -- Once.CCC.Target.X86-32.Emit.programToText
-d_programToText_86 ::
+d_programToText_88 ::
   [MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Syntax.T_Instr_44] ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
-d_programToText_86
+d_programToText_88
   = coe
       MAlonzo.Code.Data.List.Base.du_foldr_216
       (coe
          (\ v0 ->
             coe
               MAlonzo.Code.Data.String.Base.d__'43''43'__20
-              (d_instrToLine_82 (coe v0))))
+              (d_instrToLine_84 (coe v0))))
       (coe ("" :: Data.Text.Text))

@@ -36,6 +36,7 @@ module Once.CCC.Target.RiscV64.AbstractToRiscV where
 open import Data.Nat using (ℕ) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
 open import Data.Integer using (+_)
 open import Data.List using (List; []; _∷_; _++_)
+open import Once.Target.Symbol using (once-symbol)
 
 -- Import RISC-V syntax
 open import Once.CCC.Target.RiscV64.Syntax
@@ -211,7 +212,7 @@ compile-abstract (instr-reclaim-to n) = []
 -- Plan 0.11: name-agnostic SigOp codegen.
 -- Emit a single symbolic call; linker resolves the name at build time
 -- to the externally-defined function body. CCC stays name-agnostic.
-compile-abstract (instr-sigop si) = call-sym (SigOpInfo.name si) ∷ []
+compile-abstract (instr-sigop si) = call-sym (once-symbol (SigOpInfo.name si)) ∷ []
 -- Plan 0.11: const literal. RV64 stub (full per-primitive codegen
 -- not yet implemented for RV64). Trap so the gap is visible.
 compile-abstract (instr-load-const _ _) = unimp ∷ []

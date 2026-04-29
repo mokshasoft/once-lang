@@ -22,6 +22,7 @@ module Once.Target.X86-32 where
 open import Data.String using (String; _++_)
 
 open import Once.Target using (Target)
+open import Once.Target.Symbol using (once-symbol)
 open import Once.CCC.IR using (IR)
 
 open import Once.CCC.Codegen.IRToTrace using (ir-to-trace)
@@ -39,8 +40,8 @@ x86-32-asmHeader =
 
 x86-32-functionPrologue : String → String
 x86-32-functionPrologue fname =
-  ".globl once_" ++ fname ++ "\n" ++
-  "once_" ++ fname ++ ":\n"
+  ".globl " ++ once-symbol fname ++ "\n" ++
+  once-symbol fname ++ ":\n"
 
 x86-32-functionEpilogue : String
 x86-32-functionEpilogue = "    ret\n\n"

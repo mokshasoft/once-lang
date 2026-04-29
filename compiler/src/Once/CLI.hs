@@ -213,7 +213,7 @@ runPreprocess opts = do
     Left err -> do
       TIO.putStrLn $ "Error: " <> T.pack err
       exitFailure
-    Right mod_ ->
+    Right (mod_, _, _) ->
       case Bridge.compileFromModule Bridge.Parse False Bridge.X86_64 mod_ of
         Parsed sigs polySigs -> do
           emitStage (stageOutput opts) (showFunSigs sigs <> showPolyFunSigs polySigs)
@@ -235,7 +235,7 @@ runParse opts = do
     Left err -> do
       TIO.putStrLn $ "Error: " <> T.pack err
       exitFailure
-    Right mod_ ->
+    Right (mod_, _, _) ->
       case Bridge.compileFromModule Bridge.Parse False Bridge.X86_64 mod_ of
         Parsed sigs polySigs -> do
           emitStage (parseOutput opts)
@@ -262,7 +262,7 @@ runCheck opts = do
     Left err -> do
       TIO.putStrLn $ "Error: " <> T.pack err
       exitFailure
-    Right mod_ ->
+    Right (mod_, _, _) ->
       -- doOpt is irrelevant for Check stage (optimizer runs after type checking)
       case Bridge.compileFromModule Bridge.Check False Bridge.X86_64 mod_ of
         Checked -> do
@@ -301,10 +301,10 @@ runBuild opts = do
     Left err -> do
       TIO.putStrLn $ "Error: " <> T.pack err
       exitFailure
-    Right mod_ -> case target of
-      TargetX86_64  -> runVerifiedBuild opts outputBase Bridge.X86_64  mod_
-      TargetX86_32  -> runVerifiedBuild opts outputBase Bridge.X86_32  mod_
-      TargetRiscV64 -> runVerifiedBuild opts outputBase Bridge.RiscV64 mod_
+    Right (mod_, strataDir, importPaths) -> case target of
+      TargetX86_64  -> runVerifiedBuild opts outputBase Bridge.X86_64  mod_ strataDir importPaths
+      TargetX86_32  -> runVerifiedBuild opts outputBase Bridge.X86_32  mod_ strataDir importPaths
+      TargetRiscV64 -> runVerifiedBuild opts outputBase Bridge.RiscV64 mod_ strataDir importPaths
 
       -- Other targets not yet implemented
       TargetC -> do
@@ -319,8 +319,15 @@ runBuild opts = do
 
 -- | Run the verified pipeline for a Bridge.Arch and write the resulting
 -- assembly. Shared by all wired backends (x86_64, x86_32, riscv64).
-runVerifiedBuild :: BuildOptions -> FilePath -> Bridge.Arch -> Bridge.Module -> IO ()
-runVerifiedBuild opts outputBase arch mod_ =
+--
+-- Plan 0.11: also assembles and statically links the per-arch impl
+-- files (`Strata/Interpretations/<…>.<arch>`) for every transitive
+-- import. This is how SigOp `call once_<name>` references resolve to
+-- actual code (e.g. Linux `exit` syscall body lives in
+-- `Strata/Interpretations/Linux/Syscalls.x86_64`'s `once_exit`).
+runVerifiedBuild :: BuildOptions -> FilePath -> Bridge.Arch -> Bridge.Module
+                 -> FilePath -> [[T.Text]] -> IO ()
+runVerifiedBuild opts outputBase arch mod_ strataDir importPaths =
   case Bridge.compileFromModule Bridge.Build (buildOptimize opts) arch mod_ of
     Built asmText -> do
       let asmPath = outputBase ++ ".s"
@@ -335,27 +342,40 @@ runVerifiedBuild opts outputBase arch mod_ =
           exitSuccess
 
         Executable -> do
-          -- Assemble .s to .o
+          -- Assemble user .s → .o
           asmResult <- assemble asmPath objPath
           case asmResult of
             Left err -> do
               TIO.putStrLn $ "Assembly failed: " <> T.pack err
               exitFailure
             Right _ -> do
-              -- Link .o to executable
-              linkResult <- link [objPath] outputBase
-              case linkResult of
+              -- Plan 0.11: collect + assemble per-arch impl files for
+              -- imported Strata/Interpretations modules (e.g.
+              -- Strata/Interpretations/Linux/Syscalls.x86_64). Each
+              -- one becomes a .o that gets linked into the binary,
+              -- providing the `once_<name>` symbols that
+              -- `compile-sigOp` calls into.
+              implResult <- assembleImplFiles strataDir arch importPaths
+              case implResult of
                 Left err -> do
-                  TIO.putStrLn $ "Link failed: " <> T.pack err
+                  TIO.putStrLn $ "Impl-file assembly failed: " <> T.pack err
                   exitFailure
-                Right exePath -> do
-                  if buildSaveTemps opts
-                    then TIO.putStrLn $ "Generated: " <> T.pack asmPath <> ", " <> T.pack objPath <> ", " <> T.pack exePath
-                    else do
-                      removeFile asmPath
-                      removeFile objPath
-                      TIO.putStrLn $ "Generated: " <> T.pack exePath
-                  exitSuccess
+                Right implObjs -> do
+                  -- Link all .o files (user + impls) to executable
+                  linkResult <- link (objPath : implObjs) outputBase
+                  case linkResult of
+                    Left err -> do
+                      TIO.putStrLn $ "Link failed: " <> T.pack err
+                      exitFailure
+                    Right exePath -> do
+                      if buildSaveTemps opts
+                        then TIO.putStrLn $ "Generated: " <> T.pack asmPath <> ", " <> T.pack objPath <> ", " <> T.pack exePath
+                        else do
+                          removeFile asmPath
+                          removeFile objPath
+                          mapM_ removeFile implObjs
+                          TIO.putStrLn $ "Generated: " <> T.pack exePath
+                      exitSuccess
 
     Error err -> do
       TIO.putStrLn $ "Compilation error: " <> err
@@ -364,6 +384,25 @@ runVerifiedBuild opts outputBase arch mod_ =
     _ -> do
       TIO.putStrLn "Internal error: unexpected result from build"
       exitFailure
+
+-- | Plan 0.11: assemble per-arch impl files for the given list of
+-- import paths. Returns the list of `.o` paths produced (same order
+-- as input). Skips imports that have no `.<arch>` companion file.
+assembleImplFiles :: FilePath -> Bridge.Arch -> [[T.Text]] -> IO (Either String [FilePath])
+assembleImplFiles strataDir arch paths = go paths []
+  where
+    go []           acc = pure (Right (reverse acc))
+    go (p : rest)   acc = do
+      let implPath = importPathToImplPath strataDir arch p
+      exists <- doesFileExist implPath
+      if not exists
+        then go rest acc  -- Skip: no impl for this arch (may be intentional)
+        else do
+          let objPath = implPath ++ ".o"
+          asmResult <- assemble implPath objPath
+          case asmResult of
+            Left err  -> pure (Left ("Failed to assemble " ++ implPath ++ ": " ++ err))
+            Right _   -> go rest (objPath : acc)
 
 ------------------------------------------------------------------------
 -- Assembler/Linker Invocation
@@ -411,6 +450,25 @@ importPathToFilePath strataDir pathParts =
         other        -> other
   in strataDir </> intercalate "/" mapped ++ ".once"
 
+-- | Plan 0.11: per-arch implementation file extension.
+-- For each Bridge.Arch, returns the file extension used by
+-- Strata/Interpretations/<...>.<ext> companion files providing
+-- runtime symbol implementations.
+archImplExtension :: Bridge.Arch -> String
+archImplExtension Bridge.X86_64  = "x86_64"
+archImplExtension Bridge.X86_32  = "x86_32"
+archImplExtension Bridge.RiscV64 = "riscv64"
+
+-- | Plan 0.11: map an import path to its per-arch implementation file
+-- (e.g. `["I","Linux","Syscalls"]` + X86_64 →
+-- `Strata/Interpretations/Linux/Syscalls.x86_64`).
+importPathToImplPath :: FilePath -> Bridge.Arch -> [T.Text] -> FilePath
+importPathToImplPath strataDir arch pathParts =
+  let mapped = case map T.unpack pathParts of
+        ("I" : rest) -> "Interpretations" : rest
+        other        -> other
+  in strataDir </> intercalate "/" mapped ++ "." ++ archImplExtension arch
+
 -- | Find the Strata directory (containing Interpretations/) by walking
 -- up from the input file, then up from the CWD. Falls back to ./Strata.
 findStrataDir :: FilePath -> Maybe FilePath -> IO FilePath
@@ -446,7 +504,8 @@ findStrataDir inputPath mStrataOpt = case mStrataOpt of
 --
 -- Import cycles are detected during the recursive descent (any path
 -- visited twice on the same chain triggers an error).
-loadAndResolve :: FilePath -> Maybe FilePath -> T.Text -> IO (Either String Bridge.Module)
+loadAndResolve :: FilePath -> Maybe FilePath -> T.Text
+               -> IO (Either String (Bridge.Module, FilePath, [[T.Text]]))
 loadAndResolve inputPath mStrataOpt source = do
   strataDir <- findStrataDir inputPath mStrataOpt
   case Bridge.parseSource source of
@@ -458,7 +517,7 @@ loadAndResolve inputPath mStrataOpt source = do
         Right modMap ->
           case Bridge.resolveImports modMap userMod of
             Left err    -> pure (Left (T.unpack err))
-            Right flat  -> pure (Right flat)
+            Right flat  -> pure (Right (flat, strataDir, map fst modMap))
   where
     -- | Recursively load all transitive imports. Returns a ModuleMap
     -- where every entry is already fully resolved (its own DImport

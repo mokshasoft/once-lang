@@ -26,7 +26,7 @@ d_Target_4 = ()
 data T_Target_4
   = C_constructor_30 (MAlonzo.Code.Once.Type.T_Type_108 ->
                       MAlonzo.Code.Once.Type.T_Type_108 ->
-                      MAlonzo.Code.Once.CCC.IR.T_IR_12 ->
+                      MAlonzo.Code.Once.CCC.IR.T_IR_264 ->
                       MAlonzo.Code.Agda.Builtin.String.T_String_6)
                      MAlonzo.Code.Agda.Builtin.String.T_String_6
                      (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
@@ -37,7 +37,7 @@ d_irToAsm_22 ::
   T_Target_4 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.CCC.IR.T_IR_12 ->
+  MAlonzo.Code.Once.CCC.IR.T_IR_264 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
 d_irToAsm_22 v0
   = case coe v0 of

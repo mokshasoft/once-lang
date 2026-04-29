@@ -40,6 +40,7 @@ open import Once.CCC.IR
 
 -- Imports for SigOp dispatch (plan 0.2.4.1 Phase C)
 open import Data.String as Str using (String; toList; fromList)
+open import Once.Target.Symbol using (once-symbol)
 open import Data.String.Properties as StrProp using ()
 open import Data.Char as Char using (Char)
 open import Data.List.Base as L using ([]; _∷_)
@@ -210,9 +211,16 @@ apply-instrs =
 
 -- | Generate instructions for a SigOp: a single symbolic call. The
 -- linker resolves the symbol at build time. CCC does not inspect
--- the string.
+-- the string except via `once-symbol`, the shared cross-arch symbol
+-- convention defined in `Once.Target.Symbol`.
+--
+-- CCC assumes names are already valid assembly symbols (no dots,
+-- no qualifier prefixes). The frontend's import resolver is
+-- responsible for canonicalizing (`S.exit` → `exit`); integer
+-- literals are CCC primitives via `const`, not SigOps. If CCC ever
+-- sees a name with a dot, it's a frontend bug, not a CCC bug.
 compile-sigOp : String → Program
-compile-sigOp name = call-sym name ∷ []
+compile-sigOp name = call-sym (once-symbol name) ∷ []
 
 -- | Codegen-size: always 1 instruction (the call).
 compile-sigOp-size : String → ℕ

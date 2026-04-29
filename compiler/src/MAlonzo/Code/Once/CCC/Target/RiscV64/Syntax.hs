@@ -17,6 +17,7 @@ import MAlonzo.RTE (coe, erased, AgdaAny, addInt, subInt, mulInt,
                     rem64, lt64, eq64, word64FromNat, word64ToNat)
 import qualified MAlonzo.RTE
 import qualified Data.Text
+import qualified MAlonzo.Code.Agda.Builtin.String
 import qualified MAlonzo.Code.Data.List.Base
 
 -- Once.CCC.Target.RiscV64.Syntax.Reg
@@ -38,41 +39,43 @@ data T_Instr_54
     C_beq_72 T_Reg_10 T_Reg_10 Integer |
     C_bne_74 T_Reg_10 T_Reg_10 Integer | C_jal_76 T_Reg_10 Integer |
     C_jalr_78 T_Reg_10 T_Reg_10 Integer | C_j_80 Integer | C_ret_82 |
-    C_call_84 Integer | C_nop_86 | C_unimp_88 | C_label_90 Integer
+    C_call_84 Integer |
+    C_call'45'sym_86 MAlonzo.Code.Agda.Builtin.String.T_String_6 |
+    C_nop_88 | C_unimp_90 | C_label_92 Integer
 -- Once.CCC.Target.RiscV64.Syntax.Program
-d_Program_92 :: ()
-d_Program_92 = erased
+d_Program_94 :: ()
+d_Program_94 = erased
 -- Once.CCC.Target.RiscV64.Syntax.Function
-d_Function_94 = ()
-data T_Function_94 = C_mkfun_104 Integer [T_Instr_54]
+d_Function_96 = ()
+data T_Function_96 = C_mkfun_106 Integer [T_Instr_54]
 -- Once.CCC.Target.RiscV64.Syntax.Function.name
-d_name_100 :: T_Function_94 -> Integer
-d_name_100 v0
+d_name_102 :: T_Function_96 -> Integer
+d_name_102 v0
   = case coe v0 of
-      C_mkfun_104 v1 v2 -> coe v1
+      C_mkfun_106 v1 v2 -> coe v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Target.RiscV64.Syntax.Function.body
-d_body_102 :: T_Function_94 -> [T_Instr_54]
-d_body_102 v0
+d_body_104 :: T_Function_96 -> [T_Instr_54]
+d_body_104 v0
   = case coe v0 of
-      C_mkfun_104 v1 v2 -> coe v2
+      C_mkfun_106 v1 v2 -> coe v2
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Target.RiscV64.Syntax.slot-size
-d_slot'45'size_106 :: Integer
-d_slot'45'size_106 = coe (8 :: Integer)
+d_slot'45'size_108 :: Integer
+d_slot'45'size_108 = coe (8 :: Integer)
 -- Once.CCC.Target.RiscV64.Syntax.slots
-d_slots_108 :: Integer -> Integer
-d_slots_108 v0 = coe mulInt (coe v0) (coe d_slot'45'size_106)
+d_slots_110 :: Integer -> Integer
+d_slots_110 v0 = coe mulInt (coe v0) (coe d_slot'45'size_108)
 -- Once.CCC.Target.RiscV64.Syntax.instr-consumed-slots
-d_instr'45'consumed'45'slots_112 :: T_Instr_54 -> Integer
-d_instr'45'consumed'45'slots_112 v0
+d_instr'45'consumed'45'slots_114 :: T_Instr_54 -> Integer
+d_instr'45'consumed'45'slots_114 v0
   = coe seq (coe v0) (coe (0 :: Integer))
 -- Once.CCC.Target.RiscV64.Syntax.program-consumed-slots
-d_program'45'consumed'45'slots_114 :: [T_Instr_54] -> Integer
-d_program'45'consumed'45'slots_114 v0
+d_program'45'consumed'45'slots_116 :: [T_Instr_54] -> Integer
+d_program'45'consumed'45'slots_116 v0
   = coe
       MAlonzo.Code.Data.List.Base.du_foldr_216 (coe addInt)
       (coe (0 :: Integer))
       (coe
          MAlonzo.Code.Data.List.Base.du_map_22
-         (coe d_instr'45'consumed'45'slots_112) (coe v0))
+         (coe d_instr'45'consumed'45'slots_114) (coe v0))

@@ -13,6 +13,7 @@ module Once.Target.X86-64 where
 open import Data.String using (String; _++_)
 
 open import Once.Target using (Target)
+open import Once.Target.Symbol using (once-symbol)
 open import Once.CCC.IR using (IR)
 
 -- x86-64 code generation and emission. Plan 0.10 Phase C: switched
@@ -37,8 +38,8 @@ x86-64-asmHeader =
 
 x86-64-functionPrologue : String → String
 x86-64-functionPrologue fname =
-  ".globl once_" ++ fname ++ "\n" ++
-  "once_" ++ fname ++ ":\n"
+  ".globl " ++ once-symbol fname ++ "\n" ++
+  once-symbol fname ++ ":\n"
 
 x86-64-functionEpilogue : String
 x86-64-functionEpilogue = "    ret\n\n"
