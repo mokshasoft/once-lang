@@ -641,10 +641,10 @@ d_archTarget_324 ::
 d_archTarget_324 v0
   = case coe v0 of
       C_x86'45'64_318
-        -> coe MAlonzo.Code.Once.Target.X86Z45Z64.d_x86'45'64_22
+        -> coe MAlonzo.Code.Once.Target.X86Z45Z64.d_x86'45'64_40
       C_x86'45'32_320
-        -> coe MAlonzo.Code.Once.Target.X86Z45Z32.d_x86'45'32_22
-      C_riscv64_322 -> coe MAlonzo.Code.Once.Target.RiscV64.d_riscv64_22
+        -> coe MAlonzo.Code.Once.Target.X86Z45Z32.d_x86'45'32_28
+      C_riscv64_322 -> coe MAlonzo.Code.Once.Target.RiscV64.d_riscv64_28
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Compile.compileFunWithTarget
 d_compileFunWithTarget_326 ::
@@ -658,15 +658,21 @@ d_compileFunWithTarget_326 v0 v1
          else coe
                 MAlonzo.Code.Data.String.Base.d__'43''43'__20
                 (coe
-                   MAlonzo.Code.Once.Target.d_functionPrologue_26 v0
+                   MAlonzo.Code.Once.Target.d_functionPrologue_38 v0
                    (d_cfName_160 (coe v1)))
                 (coe
                    MAlonzo.Code.Data.String.Base.d__'43''43'__20
                    (coe
-                      MAlonzo.Code.Once.Target.d_irToAsm_22 v0
+                      MAlonzo.Code.Once.Target.d_irToAsm_28 v0
                       (coe MAlonzo.Code.Once.Type.C_Unit_118) (d_cfType_162 (coe v1))
                       (d_cfIR_164 (coe v1)))
-                   (MAlonzo.Code.Once.Target.d_functionEpilogue_28 (coe v0))))
+                   (coe
+                      MAlonzo.Code.Data.String.Base.d__'43''43'__20
+                      (MAlonzo.Code.Once.Target.d_functionEpilogue_40 (coe v0))
+                      (coe
+                         MAlonzo.Code.Once.Target.d_irToBodies_34 v0
+                         (coe MAlonzo.Code.Once.Type.C_Unit_118) (d_cfType_162 (coe v1))
+                         (d_cfIR_164 (coe v1))))))
 -- Once.Compile.compileAllWithTarget
 d_compileAllWithTarget_344 ::
   MAlonzo.Code.Once.Target.T_Target_4 ->
@@ -1089,7 +1095,7 @@ d_compile_394 v0 v1 v2 v3
                                                         C_Built_366
                                                         (coe
                                                            MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                                                           (MAlonzo.Code.Once.Target.d_asmHeader_24
+                                                           (MAlonzo.Code.Once.Target.d_asmHeader_36
                                                               (coe d_archTarget_324 (coe v2)))
                                                            (coe
                                                               d_compileAllWithTarget_344
@@ -1154,7 +1160,7 @@ d_compileFromModule_456 v0 v1 v2 v3
                                         C_Built_366
                                         (coe
                                            MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                                           (MAlonzo.Code.Once.Target.d_asmHeader_24
+                                           (MAlonzo.Code.Once.Target.d_asmHeader_36
                                               (coe d_archTarget_324 (coe v2)))
                                            (coe
                                               d_compileAllWithTarget_344 (d_archTarget_324 (coe v2))

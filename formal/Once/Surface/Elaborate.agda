@@ -238,8 +238,32 @@ elaborate (arr' f) = arr ∘ elaborate f
 
 -- OCP-0003: roll'/unroll' removed. Use In/Cata/Out/Ana directly.
 
--- Imported primitive: call external function by name
--- Like intLit/strLit, ignores environment and produces the result
+-- Imported primitive: call external function by name.
+--
+-- Plan 0.2.4.2 (Option 3): the elaboration dispatches on the
+-- SigOp's type at the use site:
+--
+--   - **Arrow-typed (Dom ⇒[k] Cod)**: emit a CLOSURE that, when
+--     applied, invokes the SigOp with its arg. The IR is `curry
+--     (SigOp ∘ snd) Heap`: takes (env, arg), projects the arg
+--     via `snd`, applies the SigOp morphism. The closure can be
+--     passed around as a first-class value and applied later via
+--     `apply`. This is what `effApp (sigOp _) x` requires —
+--     without it, `SigOp ∘ terminal` would invoke the SigOp during
+--     pair construction (with the env's Unit value) instead of
+--     during apply (with the proper arg from `x`).
+--
+--   - **Non-arrow A**: keep the original elaboration `SigOp ∘
+--     terminal`. SigOps with non-arrow type produce a value
+--     directly (like `intLit`/`strLit`'s shape — though those use
+--     `const` now, not `SigOp`). The terminal discards the env;
+--     the SigOp produces the result.
+--
+-- The arrow case is structurally identical to how a user-defined
+-- `λ x → f x` would elaborate, so SigOps and user closures are
+-- now value-equivalent under apply.
+elaborate (sigOp {A = (Dom ⇒[ k ] Cod)} name) =
+  curry {k = k} (SigOp (generic-info name) ∘ snd) Heap
 elaborate (sigOp name) = SigOp (generic-info name) ∘ terminal
 -- Unresolved polymorphic placeholder. A well-formed Surface Expr
 -- reaching elaborate has been through `resolveExpr`, so `poly` nodes

@@ -24,7 +24,11 @@ import qualified MAlonzo.Code.Once.Type
 -- Once.Target.Target
 d_Target_4 = ()
 data T_Target_4
-  = C_constructor_30 (MAlonzo.Code.Once.Type.T_Type_108 ->
+  = C_constructor_42 (MAlonzo.Code.Once.Type.T_Type_108 ->
+                      MAlonzo.Code.Once.Type.T_Type_108 ->
+                      MAlonzo.Code.Once.CCC.IR.T_IR_264 ->
+                      MAlonzo.Code.Agda.Builtin.String.T_String_6)
+                     (MAlonzo.Code.Once.Type.T_Type_108 ->
                       MAlonzo.Code.Once.Type.T_Type_108 ->
                       MAlonzo.Code.Once.CCC.IR.T_IR_264 ->
                       MAlonzo.Code.Agda.Builtin.String.T_String_6)
@@ -33,36 +37,47 @@ data T_Target_4
                       MAlonzo.Code.Agda.Builtin.String.T_String_6)
                      MAlonzo.Code.Agda.Builtin.String.T_String_6
 -- Once.Target.Target.irToAsm
-d_irToAsm_22 ::
+d_irToAsm_28 ::
   T_Target_4 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.CCC.IR.T_IR_264 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
-d_irToAsm_22 v0
+d_irToAsm_28 v0
   = case coe v0 of
-      C_constructor_30 v1 v2 v3 v4 -> coe v1
+      C_constructor_42 v1 v2 v3 v4 v5 -> coe v1
+      _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.Target.Target.irToBodies
+d_irToBodies_34 ::
+  T_Target_4 ->
+  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.CCC.IR.T_IR_264 ->
+  MAlonzo.Code.Agda.Builtin.String.T_String_6
+d_irToBodies_34 v0
+  = case coe v0 of
+      C_constructor_42 v1 v2 v3 v4 v5 -> coe v2
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Target.Target.asmHeader
-d_asmHeader_24 ::
+d_asmHeader_36 ::
   T_Target_4 -> MAlonzo.Code.Agda.Builtin.String.T_String_6
-d_asmHeader_24 v0
+d_asmHeader_36 v0
   = case coe v0 of
-      C_constructor_30 v1 v2 v3 v4 -> coe v2
+      C_constructor_42 v1 v2 v3 v4 v5 -> coe v3
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Target.Target.functionPrologue
-d_functionPrologue_26 ::
+d_functionPrologue_38 ::
   T_Target_4 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
-d_functionPrologue_26 v0
+d_functionPrologue_38 v0
   = case coe v0 of
-      C_constructor_30 v1 v2 v3 v4 -> coe v3
+      C_constructor_42 v1 v2 v3 v4 v5 -> coe v4
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Target.Target.functionEpilogue
-d_functionEpilogue_28 ::
+d_functionEpilogue_40 ::
   T_Target_4 -> MAlonzo.Code.Agda.Builtin.String.T_String_6
-d_functionEpilogue_28 v0
+d_functionEpilogue_40 v0
   = case coe v0 of
-      C_constructor_30 v1 v2 v3 v4 -> coe v4
+      C_constructor_42 v1 v2 v3 v4 v5 -> coe v5
       _ -> MAlonzo.RTE.mazUnreachableError

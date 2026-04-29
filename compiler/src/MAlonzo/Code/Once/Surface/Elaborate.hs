@@ -724,14 +724,29 @@ du_elaborate_114 v0 v1 v2
                        (coe v8))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Surface.Syntax.C_sigOp_494 v6
-        -> coe
-             MAlonzo.Code.Once.CCC.IR.C__'8728'__276
-             (coe MAlonzo.Code.Once.Type.C_Unit_118)
-             (coe
-                MAlonzo.Code.Once.CCC.IR.C_SigOp_412
-                (MAlonzo.Code.Once.Arith.SigOp.Builders.d_generic'45'info_356
-                   (coe MAlonzo.Code.Once.Type.C_Unit_118) (coe v1) (coe v6)))
-             (coe MAlonzo.Code.Once.CCC.IR.C_terminal_320)
+        -> let v7
+                 = coe
+                     MAlonzo.Code.Once.CCC.IR.C__'8728'__276
+                     (coe MAlonzo.Code.Once.Type.C_Unit_118)
+                     (coe
+                        MAlonzo.Code.Once.CCC.IR.C_SigOp_412
+                        (MAlonzo.Code.Once.Arith.SigOp.Builders.d_generic'45'info_356
+                           (coe MAlonzo.Code.Once.Type.C_Unit_118) (coe v1) (coe v6)))
+                     (coe MAlonzo.Code.Once.CCC.IR.C_terminal_320) in
+           coe
+             (case coe v1 of
+                MAlonzo.Code.Once.Type.C__'8658''91'_'93'__126 v8 v9 v10
+                  -> coe
+                       MAlonzo.Code.Once.CCC.IR.C_curry_334
+                       (coe
+                          MAlonzo.Code.Once.CCC.IR.C__'8728'__276 v8
+                          (coe
+                             MAlonzo.Code.Once.CCC.IR.C_SigOp_412
+                             (MAlonzo.Code.Once.Arith.SigOp.Builders.d_generic'45'info_356
+                                (coe v8) (coe v10) (coe v6)))
+                          (coe MAlonzo.Code.Once.CCC.IR.C_snd_296))
+                       (coe MAlonzo.Code.Once.CCC.IR.C_Heap_262)
+                _ -> coe v7)
       MAlonzo.Code.Once.Surface.Syntax.C_poly_504 v5
         -> coe
              MAlonzo.Code.Once.CCC.IR.C__'8728'__276

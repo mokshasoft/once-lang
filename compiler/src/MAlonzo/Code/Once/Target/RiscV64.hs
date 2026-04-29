@@ -55,29 +55,39 @@ d_riscv64'45'functionPrologue_8 v0
                MAlonzo.Code.Data.String.Base.d__'43''43'__20
                (MAlonzo.Code.Once.Target.Symbol.d_once'45'symbol_8 (coe v0))
                (":\n" :: Data.Text.Text))))
--- Once.Target.RiscV64.riscv64-functionEpilogue
-d_riscv64'45'functionEpilogue_12 ::
+-- Once.Target.RiscV64.riscv64-irToBodies
+d_riscv64'45'irToBodies_16 ::
+  MAlonzo.Code.Once.CCC.IR.T_IR_264 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
-d_riscv64'45'functionEpilogue_12
+d_riscv64'45'irToBodies_16 ~v0 = du_riscv64'45'irToBodies_16
+du_riscv64'45'irToBodies_16 ::
+  MAlonzo.Code.Agda.Builtin.String.T_String_6
+du_riscv64'45'irToBodies_16 = coe ("" :: Data.Text.Text)
+-- Once.Target.RiscV64.riscv64-functionEpilogue
+d_riscv64'45'functionEpilogue_18 ::
+  MAlonzo.Code.Agda.Builtin.String.T_String_6
+d_riscv64'45'functionEpilogue_18
   = coe ("    ret\n\n" :: Data.Text.Text)
 -- Once.Target.RiscV64.riscv64-irToAsm
-d_riscv64'45'irToAsm_18 ::
+d_riscv64'45'irToAsm_24 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.CCC.IR.T_IR_264 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
-d_riscv64'45'irToAsm_18 v0 v1 v2
+d_riscv64'45'irToAsm_24 v0 v1 v2
   = coe
       MAlonzo.Code.Once.CCC.Target.RiscV64.Emit.d_programToText_90
       (MAlonzo.Code.Once.CCC.Target.RiscV64.AbstractToRiscV.d_compile'45'trace_50
          (coe
-            MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace_112
+            MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace_202
             (coe v0) (coe v1) (coe v2)))
 -- Once.Target.RiscV64.riscv64
-d_riscv64_22 :: MAlonzo.Code.Once.Target.T_Target_4
-d_riscv64_22
+d_riscv64_28 :: MAlonzo.Code.Once.Target.T_Target_4
+d_riscv64_28
   = coe
-      MAlonzo.Code.Once.Target.C_constructor_30
-      (coe d_riscv64'45'irToAsm_18) (coe d_riscv64'45'asmHeader_6)
+      MAlonzo.Code.Once.Target.C_constructor_42
+      (coe d_riscv64'45'irToAsm_24)
+      (coe (\ v0 v1 v2 -> "" :: Data.Text.Text))
+      (coe d_riscv64'45'asmHeader_6)
       (coe d_riscv64'45'functionPrologue_8)
-      (coe d_riscv64'45'functionEpilogue_12)
+      (coe d_riscv64'45'functionEpilogue_18)
