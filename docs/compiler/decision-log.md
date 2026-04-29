@@ -3649,3 +3649,47 @@ with `make compiler` re-run between commits.
   motivated the plan.
 - `docs/formal/guides/exhaustive-semantics.md` — usage guide for
   `{-# CATCHALL #-}` and the audit-surface conventions.
+
+## D053: Layer-0 Closure Calling Convention (`%r12` + (env, arg) Pair)
+
+**Plan:** 0.2.4.2 (Closure Codegen Fix), Phase D follow-up.
+
+**Decision.** A closure on x86-64 is a 2-word record laid out as
+`[env, code-addr]`. Calling a closure with argument `arg` is a
+two-step operation:
+
+1. **Closure register** — `%r12` holds the closure pointer for the
+   duration of the call. The call site does `call *0x8(%r12)`.
+2. **Argument convention** — `%rdi` points to a freshly-built
+   `(env, arg)` pair on the caller's stack frame. The closure body
+   reads its captured environment via `fst` and its argument via
+   `snd`, both relative to `%rdi`.
+
+**Why two pieces of state?** Pure-SysV would put the argument in
+`%rdi` directly, but Once closures capture an environment that the
+body also needs. Passing the pair by pointer is the natural shape;
+`%r12` is callee-saved in SysV, so a long body can use scratch
+registers without spilling the closure pointer.
+
+**Consequence: a new `AbstractInstr`.** The `apply` IR primitive
+needed to put the closure pointer into `%r12` somewhere between
+"load it from the input pair" and "build the new (env, arg) pair
+in `%rdi`". That's now `instr-save-closure-reg`, abstractly an
+identity (we don't track `%r12` at the abstract level), per-arch
+lowering `movq %rdi, %r12` on x86-64 (and `ud2`/`unimp` stubs on
+the other backends until layer-0 reaches them).
+
+**Consequence: `_start` must build the pair.** When `_start` calls
+the top-level `main` closure with `()` as the argument, it has to
+construct an `(env, ())` pair on the stack and set `%rdi` to point
+at it — same as `apply` would. Failing to do this segfaults on the
+body's first instruction (`fst` dereferences `%rdi`).
+
+**Verified by:** `Layer0/id returns input (exit 42)` regression
+test in `compiler/test/Layer0Spec.hs` — `main = exit@S (id 42)`
+compiles and the resulting binary exits with code 42.
+
+**Known limitation (separate from D053):** The default optimizer
+currently elides effApp closure bodies when it shouldn't, so the
+Layer-0 regression tests pass `--no-optimize` for now. Tracked
+separately.
