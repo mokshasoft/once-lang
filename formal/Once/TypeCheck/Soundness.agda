@@ -1242,10 +1242,56 @@ postulate
   -- One named gap per unwitnessed dispatched shape; check-sound
   -- delegates here. RInt/RStringLit/RUnit/RLam are proven inline in
   -- check-sound and don't need spec gaps.
-  spec-gap-check-RVar : ∀ (ctx : NamedCtx) (x : _) (T : Type)
+  -- Per-builtin check-mode lemmas (view-dispatched analogously to
+  -- the RApp per-shape lemmas). Each takes a checkElab-success
+  -- witness for its specific bare builtin name. bbc-other handles
+  -- the catch-all (RVar dispatching through inferElab+lookupPoly).
+  spec-gap-sound-check-RVar-id : ∀ (ctx : NamedCtx) (T : Type)
     {Ψ : Surface.Usage (NamedCtx.size ctx)}
     {eE : SExpr (NamedCtx.debruijn ctx) Ψ T} {d f : ℕ}
-    → checkElab ctx (Raw.RVar x) T ≡ success Ψ eE d f
+    → checkElab ctx (Raw.RVar "id") T ≡ success Ψ eE d f
+    → ctx ⊢ᶜ Raw.RVar "id" ∶ T ⨾ Ψ
+  spec-gap-sound-check-RVar-fst : ∀ (ctx : NamedCtx) (T : Type)
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ T} {d f : ℕ}
+    → checkElab ctx (Raw.RVar "fst") T ≡ success Ψ eE d f
+    → ctx ⊢ᶜ Raw.RVar "fst" ∶ T ⨾ Ψ
+  spec-gap-sound-check-RVar-snd : ∀ (ctx : NamedCtx) (T : Type)
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ T} {d f : ℕ}
+    → checkElab ctx (Raw.RVar "snd") T ≡ success Ψ eE d f
+    → ctx ⊢ᶜ Raw.RVar "snd" ∶ T ⨾ Ψ
+  spec-gap-sound-check-RVar-terminal : ∀ (ctx : NamedCtx) (T : Type)
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ T} {d f : ℕ}
+    → checkElab ctx (Raw.RVar "terminal") T ≡ success Ψ eE d f
+    → ctx ⊢ᶜ Raw.RVar "terminal" ∶ T ⨾ Ψ
+  spec-gap-sound-check-RVar-initial : ∀ (ctx : NamedCtx) (T : Type)
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ T} {d f : ℕ}
+    → checkElab ctx (Raw.RVar "initial") T ≡ success Ψ eE d f
+    → ctx ⊢ᶜ Raw.RVar "initial" ∶ T ⨾ Ψ
+  spec-gap-sound-check-RVar-inl : ∀ (ctx : NamedCtx) (T : Type)
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ T} {d f : ℕ}
+    → checkElab ctx (Raw.RVar "inl") T ≡ success Ψ eE d f
+    → ctx ⊢ᶜ Raw.RVar "inl" ∶ T ⨾ Ψ
+  spec-gap-sound-check-RVar-inr : ∀ (ctx : NamedCtx) (T : Type)
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ T} {d f : ℕ}
+    → checkElab ctx (Raw.RVar "inr") T ≡ success Ψ eE d f
+    → ctx ⊢ᶜ Raw.RVar "inr" ∶ T ⨾ Ψ
+  spec-gap-sound-check-RVar-arr : ∀ (ctx : NamedCtx) (T : Type)
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ T} {d f : ℕ}
+    → checkElab ctx (Raw.RVar "arr") T ≡ success Ψ eE d f
+    → ctx ⊢ᶜ Raw.RVar "arr" ∶ T ⨾ Ψ
+  spec-gap-sound-check-RVar-other :
+    ∀ (ctx : NamedCtx) (x : _) (T : Type)
+      (eqResult : Once.TypeCheck.Elaborate.CheckElabResult (NamedCtx.debruijn ctx) T)
+      {Ψ : Surface.Usage (NamedCtx.size ctx)}
+      {eE : SExpr (NamedCtx.debruijn ctx) Ψ T} {d fr : ℕ}
+    → eqResult ≡ success Ψ eE d fr
     → ctx ⊢ᶜ Raw.RVar x ∶ T ⨾ Ψ
   spec-gap-check-RApp : ∀ (ctx : NamedCtx) (f arg : RawExpr) (T : Type)
     {Ψ : Surface.Usage (NamedCtx.size ctx)}
@@ -1357,7 +1403,19 @@ mutual
   ...   | refl = t-embed t-unit
   check-sound ctx Raw.RUnit T eq | no _ with eq
   ...   | ()
-  check-sound ctx (Raw.RVar x)         T eq = spec-gap-check-RVar ctx x T eq
+  -- View-dispatch on classifyBareBuiltin: per-builtin cases bind
+  -- x via the GADT index, the catchall bbc-other postulate is the
+  -- residual gap (analogous to ahv-other for RApp).
+  check-sound ctx (Raw.RVar x) T eq with Once.TypeCheck.Elaborate.classifyBareBuiltin x
+  ... | Once.TypeCheck.Elaborate.bbc-id       = spec-gap-sound-check-RVar-id ctx T eq
+  ... | Once.TypeCheck.Elaborate.bbc-fst      = spec-gap-sound-check-RVar-fst ctx T eq
+  ... | Once.TypeCheck.Elaborate.bbc-snd      = spec-gap-sound-check-RVar-snd ctx T eq
+  ... | Once.TypeCheck.Elaborate.bbc-terminal = spec-gap-sound-check-RVar-terminal ctx T eq
+  ... | Once.TypeCheck.Elaborate.bbc-initial  = spec-gap-sound-check-RVar-initial ctx T eq
+  ... | Once.TypeCheck.Elaborate.bbc-inl      = spec-gap-sound-check-RVar-inl ctx T eq
+  ... | Once.TypeCheck.Elaborate.bbc-inr      = spec-gap-sound-check-RVar-inr ctx T eq
+  ... | Once.TypeCheck.Elaborate.bbc-arr      = spec-gap-sound-check-RVar-arr ctx T eq
+  ... | Once.TypeCheck.Elaborate.bbc-other    = spec-gap-sound-check-RVar-other ctx x T _ eq
   -- RQualified goes through checkElab's catch-all `with inferElab`.
   check-sound ctx (Raw.RQualified n a) T eq with inferBundle ctx (Raw.RQualified n a)
   ... | success T' Ψ' eE' d' f' , eqInf with tyEqBundle T T'
