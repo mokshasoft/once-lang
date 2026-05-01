@@ -213,26 +213,16 @@ case-branch-mismatch-is-CaseBranchMismatch
 ------------------------------------------------------------------------
 -- Application type mismatch (generic RApp)
 ------------------------------------------------------------------------
-
-app-domain-mismatch-is-ApplicationTypeMismatch :
-  ∀ (ctx : NamedCtx) (f x : Raw.RawExpr)
-    (A B : Type) (q : _)
-    {Ψf fE df fx-fresh}
-    (Ax : Type)
-    {Ψx xE dx fx-f-fresh err}
-  → Once.TypeCheck.Elaborate.classifyAppHead f ≡ nothing
-  → inferElab ctx f ≡ success (A T.⇒[ T.mk-kind q T.pure ] B) Ψf fE df fx-fresh
-  → inferElab ctx x ≡ success Ax Ψx xE dx fx-f-fresh
-  → ¬ (A ≡ Ax)
-  → inferElab ctx (Raw.RApp f x) ≡ failure err
-  → err ≡ ApplicationTypeMismatch A Ax
-app-domain-mismatch-is-ApplicationTypeMismatch
-  ctx f x A B q Ax notPoly eqF eqX A≢Ax eqFail
-  rewrite Once.TypeCheck.Elaborate.classifyAppHead-nothing⇒view-other {f} notPoly
-        | eqF | eqX with Once.TypeCheck.Elaborate._≟T_ A Ax
-... | yes p = ⊥-elim (A≢Ax p)
-... | no  _ with eqFail
-...   | refl = refl
+--
+-- Plan 0.4 T1, change 1 (2026-04-30): the
+-- `app-domain-mismatch-is-ApplicationTypeMismatch` lemma is GONE.
+-- The elaborator no longer emits `ApplicationTypeMismatch` for RApp
+-- domain mismatches: under the bidirectional rule, a domain
+-- mismatch surfaces as whatever error `checkElab ctx x A` returns
+-- (typically `TypeMismatch A inferred-type`). The new error class
+-- can be characterized by an `app-domain-mismatch-via-checkElab`
+-- lemma — left to a future ErrorProofs round once we have a
+-- broader story for check-mode error normalization.
 
 ------------------------------------------------------------------------
 -- Variable lookup: unbound (neither "unit", local, nor import).

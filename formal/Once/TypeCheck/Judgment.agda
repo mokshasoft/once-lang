@@ -212,12 +212,18 @@ mutual
     -- admit derivations the elaborator cannot realise.
     ----------------------------------------------------------------
 
+    -- Plan 0.4 T1, change 1 (2026-04-30): the `x` premise is now
+    -- check-mode (`⊢ᶜ x ∶ A`), matching the bidirectional rule
+    -- the elaborator now implements (infer f, check x ⇐ A). This
+    -- admits polymorphic-builtin args like bare `id` checked
+    -- against the synthesized domain. Existing infer-mode `dX :
+    -- ⊢ᵢ x ∶ A` derivations lift trivially via `t-embed dX`.
     t-app : ∀ {ctx : NamedCtx} {f x : RawExpr}
             {A B : Type} {q : Quantity}
             {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
           → classifyAppHead f ≡ nothing
           → ctx ⊢ᵢ f ∶ (A Once.Type.⇒[ Once.Type.mk-kind q Once.Type.pure ] B) ⨾ Ψ₁
-          → ctx ⊢ᵢ x ∶ A ⨾ Ψ₂
+          → ctx ⊢ᶜ x ∶ A ⨾ Ψ₂
           → ctx ⊢ᵢ RApp f x ∶ B ⨾ (Ψ₁ +ᵘ (q *ᵘ Ψ₂))
 
     ----------------------------------------------------------------
@@ -234,7 +240,7 @@ mutual
                {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
              → classifyAppHead f ≡ nothing
              → ctx ⊢ᵢ f ∶ A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B ⨾ Ψ₁
-             → ctx ⊢ᵢ x ∶ A ⨾ Ψ₂
+             → ctx ⊢ᶜ x ∶ A ⨾ Ψ₂
              → ctx ⊢ᵢ RApp f x ∶ Once.Type.Unit Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B ⨾ (Ψ₁ +ᵘ Ψ₂)
 
   -- | Check-mode judgment.

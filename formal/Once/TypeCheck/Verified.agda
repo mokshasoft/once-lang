@@ -359,19 +359,14 @@ record VerifiedTypeChecker : Set₁ where
       → tcInfer ctx (Raw.RDestruct scrut xL eL xR eR) ≡ failure err
       → err ≡ CaseBranchMismatch
 
-    -- Generic RApp argument-type mismatch → ApplicationTypeMismatch.
-    tc-err-app-domain-mismatch :
-      ∀ (ctx : NamedCtx) (f x : RawExpr)
-        (A B : Type) (q : _)
-        {Ψf fE df fx-fresh}
-        (Ax : Type)
-        {Ψx xE dx fx-f-fresh err}
-      → Once.TypeCheck.Elaborate.classifyAppHead f ≡ nothing
-      → tcInfer ctx f ≡ success (A Once.Type.⇒[ Once.Type.mk-kind q Once.Type.pure ] B) Ψf fE df fx-fresh
-      → tcInfer ctx x ≡ success Ax Ψx xE dx fx-f-fresh
-      → ¬ (A ≡ Ax)
-      → tcInfer ctx (RApp f x) ≡ failure err
-      → err ≡ (ApplicationTypeMismatch A Ax)
+    -- Plan 0.4 T1, change 1 (2026-04-30): the
+    -- `tc-err-app-domain-mismatch` field was REMOVED. The
+    -- elaborator no longer emits `ApplicationTypeMismatch` for
+    -- RApp domain mismatches — under the bidirectional rule, a
+    -- domain mismatch surfaces as whatever error `tcCheck ctx x A`
+    -- returns (typically `TypeMismatch A inferred-type`). The
+    -- corresponding `app-domain-mismatch-is-…` lemma in
+    -- `ErrorProofs.agda` was retired for the same reason.
 
     -- Previously-blocked: RLam with a body usage that violates the
     -- arrow's declared grade → UsageViolation.
@@ -532,6 +527,12 @@ record VerifiedTypeChecker : Set₁ where
     -- `classifyAppHead f ≡ nothing`, i.e. `f` is not one of the
     -- seven polymorphic builtins. Completes the 15 / 15 RawExpr
     -- soundness coverage for infer mode.
+    --
+    -- Plan 0.4 T1, change 1 (2026-04-30): IH_x's premise is now
+    -- `tcCheck ctx x A' ≡ success`, matching the bidirectional
+    -- inferElab rule (infer f, check x at f's domain). The result
+    -- is a check-mode `⊢ᶜ x ∶ A'` derivation, fed straight into
+    -- t-app/t-effApp's updated check-mode premise.
     tcInfer-sound-RApp-generic :
       ∀ (ctx : NamedCtx) (f x : RawExpr)
         {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
@@ -540,9 +541,9 @@ record VerifiedTypeChecker : Set₁ where
       → (IH_f : ∀ {F' Ψ' eE' d' f'}
              → tcInfer ctx f ≡ success F' Ψ' eE' d' f'
              → ctx ⊢ f ∶ F' ⨾ Ψ')
-      → (IH_x : ∀ {X' Ψ' eE' d' f'}
-             → tcInfer ctx x ≡ success X' Ψ' eE' d' f'
-             → ctx ⊢ x ∶ X' ⨾ Ψ')
+      → (IH_x : ∀ {A' Ψ' eE' d' f'}
+             → tcCheck ctx x A' ≡ success Ψ' eE' d' f'
+             → ctx ⊢ᶜ x ∶ A' ⨾ Ψ')
       → tcInfer ctx (RApp f x) ≡ success A Ψ eE d fresh
       → ctx ⊢ RApp f x ∶ A ⨾ Ψ
 
@@ -792,7 +793,9 @@ record VerifiedTypeChecker : Set₁ where
           tcInfer ctx (Raw.RDestruct scrut xL eL xR eR)
             ≡ success C (Ψs Surface.+ᵘ (Ψₗ Surface.⊔ᵘ Ψᵣ)) eE d f
 
-    -- Generic RApp
+    -- Generic RApp.
+    -- Plan 0.4 T1, change 1: x premise is now `tcCheck ctx x A`
+    -- (matches the bidirectional inferElab rule).
     tcInfer-complete-RApp-generic :
       ∀ (ctx : NamedCtx) (f x : RawExpr) (A : Type) {B : Type} {q : _}
         {Ψf : Surface.Usage (NamedCtx.size ctx)}
@@ -803,7 +806,7 @@ record VerifiedTypeChecker : Set₁ where
         {dx fx : _}
       → Once.TypeCheck.Elaborate.classifyAppHead f ≡ nothing
       → tcInfer ctx f ≡ success (A Once.Type.⇒[ Once.Type.mk-kind q Once.Type.pure ] B) Ψf fE df ff
-      → tcInfer ctx x ≡ success A Ψx xE dx fx
+      → tcCheck ctx x A ≡ success Ψx xE dx fx
       → ∃[ eE ] ∃[ d ] ∃[ f' ]
           tcInfer ctx (RApp f x) ≡ success B (Ψf Surface.+ᵘ (q Surface.*ᵘ Ψx)) eE d f'
 
@@ -946,7 +949,6 @@ verifiedTypeChecker = record
   ; tc-err-snd-non-pair-Int       = EP.snd-non-pair-Int
   ; tc-err-case-scrut-Unit        = EP.case-scrut-Unit
   ; tc-err-case-scrut-Int         = EP.case-scrut-Int
-  ; tc-err-app-domain-mismatch    = EP.app-domain-mismatch-is-ApplicationTypeMismatch
   ; tc-err-lam-usage-violation    = EP.lam-usage-violation-is-UsageViolation
   ; tc-err-binop-left-wraps       = EP.binop-left-err-wraps
   ; tc-err-binop-right-wraps      = EP.binop-right-err-wraps

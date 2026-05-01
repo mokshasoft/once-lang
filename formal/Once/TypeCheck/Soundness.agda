@@ -904,6 +904,12 @@ sound-RApp-snd ctx arg IH eq | failure _ , eqSub
 -- closes by absurd-pattern on the outer equation.
 ------------------------------------------------------------------------
 
+-- Plan 0.4 T1, change 1 (2026-04-30): the elaborator now CHECKS x at
+-- the synthesized domain Af (instead of inferring x then matching).
+-- IH_x correspondingly takes a `checkElab ctx x A' ≡ success` witness
+-- and produces `⊢ᶜ x ∶ A'`. The proof scrutinizes `checkElab ctx x Af`
+-- via `checkBundle` instead of the old `inferBundle ctx x` +
+-- `tyEqBundle Af Ax` pair.
 sound-RApp-generic :
   ∀ (ctx : NamedCtx) (f x : RawExpr)
     {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
@@ -912,43 +918,30 @@ sound-RApp-generic :
   → (IH_f : ∀ {F' Ψ' eE' d' f'}
          → inferElab ctx f ≡ success F' Ψ' eE' d' f'
          → ctx ⊢ f ∶ F' ⨾ Ψ')
-  → (IH_x : ∀ {X' Ψ' eE' d' f'}
-         → inferElab ctx x ≡ success X' Ψ' eE' d' f'
-         → ctx ⊢ x ∶ X' ⨾ Ψ')
+  → (IH_x : ∀ {A' Ψ' eE' d' f'}
+         → checkElab ctx x A' ≡ success Ψ' eE' d' f'
+         → ctx ⊢ᶜ x ∶ A' ⨾ Ψ')
   → inferElab ctx (RApp f x) ≡ success A Ψ eE d fresh
   → ctx ⊢ RApp f x ∶ A ⨾ Ψ
 sound-RApp-generic ctx f x notPoly IH_f IH_x eq
   rewrite Once.TypeCheck.Elaborate.classifyAppHead-nothing⇒view-other {f} notPoly
   with inferBundle ctx f
--- f is a function type — recurse into x.
+-- f is a function type — check x at the function's domain.
 sound-RApp-generic ctx f x notPoly IH_f IH_x eq
   | success (Af T.⇒[ T.mk-kind q T.pure ] Bf) Ψf fE df ff , eqF
-  with inferBundle ctx x
--- Arg matches function domain (bundle the `≟T` decision to avoid
--- the same opaque-with-helper issue seen with RDestruct).
+  with checkBundle ctx x Af
 sound-RApp-generic ctx f x notPoly IH_f IH_x eq
   | success (Af T.⇒[ T.mk-kind q T.pure ] Bf) Ψf fE df ff , eqF
-  | success Ax Ψx xE dx fx , eqX
-  with tyEqBundle Af Ax
-sound-RApp-generic ctx f x notPoly IH_f IH_x eq
-  | success (Af T.⇒[ T.mk-kind q T.pure ] Bf) Ψf fE df ff , eqF
-  | success .Af Ψx xE dx fx , eqX
-  | yes refl , eqTy
+  | success Ψx xE dx fx , eqX
   with IH_f eqF | IH_x eqX
-... | fJ | xJ rewrite eqF | eqX | eqTy with eq
+... | fJ | xJ rewrite eqF | eqX with eq
 ... | refl = t-app notPoly fJ xJ
--- Arg type mismatches.
-sound-RApp-generic ctx f x notPoly IH_f IH_x eq
-  | success (Af T.⇒[ T.mk-kind q T.pure ] Bf) Ψf fE df ff , eqF
-  | success Ax Ψx xE dx fx , eqX
-  | no _ , eqTy rewrite eqF | eqX | eqTy with eq
-... | ()
--- x failed.
+-- x check failed.
 sound-RApp-generic ctx f x notPoly IH_f IH_x eq
   | success (Af T.⇒[ T.mk-kind q T.pure ] Bf) Ψf fE df ff , eqF
   | failure _ , eqX rewrite eqF | eqX with eq
 ... | ()
--- f succeeded at a non-function type: 11 absurd cases.
+-- f succeeded at a non-function type: absurd cases.
 sound-RApp-generic ctx f x notPoly IH_f IH_x eq
   | success Unit _ _ _ _ , eqF rewrite eqF with eq
 ... | ()
@@ -973,29 +966,17 @@ sound-RApp-generic ctx f x notPoly IH_f IH_x eq
 sound-RApp-generic ctx f x notPoly IH_f IH_x eq
   | success (_ + _) _ _ _ _ , eqF rewrite eqF with eq
 ... | ()
--- f succeeded at an effect type: dispatch to `t-effApp` (paralleling
--- `t-app`'s success case above). Eff is no longer an absurd case.
+-- f succeeded at an effect type: dispatch to `t-effApp`.
 sound-RApp-generic ctx f x notPoly IH_f IH_x eq
   | success (Af T.⇒[ T.mk-kind T.Many T.eff ] Bf) Ψf fE df ff , eqF
-  with inferBundle ctx x
+  with checkBundle ctx x Af
 sound-RApp-generic ctx f x notPoly IH_f IH_x eq
   | success (Af T.⇒[ T.mk-kind T.Many T.eff ] Bf) Ψf fE df ff , eqF
-  | success Ax Ψx xE dx fx , eqX
-  with tyEqBundle Af Ax
-sound-RApp-generic ctx f x notPoly IH_f IH_x eq
-  | success (Af T.⇒[ T.mk-kind T.Many T.eff ] Bf) Ψf fE df ff , eqF
-  | success .Af Ψx xE dx fx , eqX
-  | yes refl , eqTy
+  | success Ψx xE dx fx , eqX
   with IH_f eqF | IH_x eqX
-... | fJ | xJ rewrite eqF | eqX | eqTy with eq
+... | fJ | xJ rewrite eqF | eqX with eq
 ... | refl = t-effApp notPoly fJ xJ
--- Arg type mismatches.
-sound-RApp-generic ctx f x notPoly IH_f IH_x eq
-  | success (Af T.⇒[ T.mk-kind T.Many T.eff ] Bf) Ψf fE df ff , eqF
-  | success Ax Ψx xE dx fx , eqX
-  | no _ , eqTy rewrite eqF | eqX | eqTy with eq
-... | ()
--- x failed.
+-- x check failed.
 sound-RApp-generic ctx f x notPoly IH_f IH_x eq
   | success (Af T.⇒[ T.mk-kind T.Many T.eff ] Bf) Ψf fE df ff , eqF
   | failure _ , eqX rewrite eqF | eqX with eq

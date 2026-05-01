@@ -389,6 +389,12 @@ infer-complete-RDestruct scrut xL eL xR eR C eqS eqL eqR
 -- Generic RApp
 ------------------------------------------------------------------------
 
+-- Plan 0.4 T1, change 1 (2026-04-30): premise on `x` is now a
+-- `checkElab` success, matching the new bidirectional rule in
+-- `inferElab` (it CHECKs the arg at the synthesized domain rather
+-- than inferring it). Call sites that have a `t-app`-style
+-- derivation already provide ⊢ᶜ for x; those that have an
+-- inferElab witness convert via `check-complete (t-embed dX)`.
 infer-complete-RApp-generic :
   ∀ {ctx : NamedCtx} (f x : RawExpr) (A : Type) {B : Type} {q : Quantity}
     {Ψf : Surface.Usage (NamedCtx.size ctx)}
@@ -399,15 +405,13 @@ infer-complete-RApp-generic :
     {dx fx : ℕ}
   → Once.TypeCheck.Elaborate.classifyAppHead f ≡ nothing
   → inferElab ctx f ≡ success (A T.⇒[ T.mk-kind q T.pure ] B) Ψf fE df ff
-  → inferElab ctx x ≡ success A Ψx xE dx fx
+  → checkElab ctx x A ≡ success Ψx xE dx fx
   → ∃[ eE ] ∃[ d ] ∃[ f' ]
       inferElab ctx (Raw.RApp f x)
         ≡ success B (Ψf +ᵘ (q *ᵘ Ψx)) eE d f'
 infer-complete-RApp-generic f x A notPoly eqF eqX
   rewrite Once.TypeCheck.Elaborate.classifyAppHead-nothing⇒view-other {f} notPoly
-        | eqF | eqX with Once.TypeCheck.Elaborate._≟T_ A A
-... | yes refl = _ , _ , _ , refl
-... | no ¬eq   = ⊥-elim (¬eq refl)
+        | eqF | eqX = _ , _ , _ , refl
 
 ------------------------------------------------------------------------
 -- Effectful RApp completeness
@@ -432,15 +436,13 @@ infer-complete-RApp-eff :
     {dx fx : ℕ}
   → Once.TypeCheck.Elaborate.classifyAppHead f ≡ nothing
   → inferElab ctx f ≡ success (A T.⇒[ T.mk-kind T.Many T.eff ] B) Ψf fE df ff
-  → inferElab ctx x ≡ success A Ψx xE dx fx
+  → checkElab ctx x A ≡ success Ψx xE dx fx
   → ∃[ eE ] ∃[ d ] ∃[ f' ]
       inferElab ctx (Raw.RApp f x)
         ≡ success (T.Unit T.⇒[ T.mk-kind T.Many T.eff ] B) (Ψf +ᵘ Ψx) eE d f'
 infer-complete-RApp-eff f x A notPoly eqF eqX
   rewrite Once.TypeCheck.Elaborate.classifyAppHead-nothing⇒view-other {f} notPoly
-        | eqF | eqX with Once.TypeCheck.Elaborate._≟T_ A A
-... | yes refl = _ , _ , _ , refl
-... | no ¬eq   = ⊥-elim (¬eq refl)
+        | eqF | eqX = _ , _ , _ , refl
 
 ------------------------------------------------------------------------
 -- Full-walk completeness — enabled by the G2(a) judgment split
@@ -612,13 +614,16 @@ mutual
   infer-complete (t-terminal-app {e = e} d) =
     let (_ , _ , _ , eqSub) = infer-complete d
     in infer-complete-RApp-terminal e eqSub
+  -- Plan 0.4 T1, change 1: dX is now a check-mode derivation
+  -- (per the t-app/t-effApp signature changes in Judgment).
+  -- check-complete gives us the checkElab evidence directly.
   infer-complete (t-app {f = f} {x = x} {A = A} notPoly dF dX) =
     let (_ , _ , _ , eqF) = infer-complete dF
-        (_ , _ , _ , eqX) = infer-complete dX
+        (_ , _ , _ , eqX) = check-complete dX
     in infer-complete-RApp-generic f x A notPoly eqF eqX
   infer-complete (t-effApp {f = f} {x = x} {A = A} notPoly dF dX) =
     let (_ , _ , _ , eqF) = infer-complete dF
-        (_ , _ , _ , eqX) = infer-complete dX
+        (_ , _ , _ , eqX) = check-complete dX
     in infer-complete-RApp-eff f x A notPoly eqF eqX
 
   -- Full ⊢ᶜ walk: handles t-lam recursively and delegates t-embed

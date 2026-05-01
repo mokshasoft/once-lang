@@ -1155,19 +1155,22 @@ mutual
   ...   | no  _ = failure (BuiltinTypeMismatch "apply")
   inferElab ctx (Raw.RApp _ _) | ahv-apply | success _ _ _ _ _ =
     failure (BuiltinTypeMismatch "apply")
-  -- Generic application: infer f as function type, then x.
+  -- Generic application: infer f as function type, then CHECK x at A.
+  --
+  -- Plan 0.4 T1, change 1 (2026-04-30): swapped from "infer x then
+  -- match" to the standard bidirectional rule "infer f, check x ⇐ A".
+  -- Strictly more permissive — accepts polymorphic builtins like
+  -- bare `id` in argument position by routing them through
+  -- `checkElab-RVar`'s specialized clauses. The inferred-and-matched
+  -- shape was a non-standard variant that lost bidirectional power.
   inferElab ctx (Raw.RApp f x) | ahv-other with asFun (inferElab ctx f)
   ... | notFun err = failure err
-  ... | isFun A q B Ψ₁ fE df ff with inferElab ctx x
+  ... | isFun A q B Ψ₁ fE df ff with checkElab ctx x A
   ...   | failure err = failure err
-  ...   | success A' Ψ₂ xE dx fx with A ≟T A'
-  ...     | yes refl = success B _ (Surface.app fE xE) (df ⊔ dx) fx
-  ...     | no _ = failure (ApplicationTypeMismatch A A')
-  inferElab ctx (Raw.RApp f x) | ahv-other | isEff A B Ψ₁ fE df ff with inferElab ctx x
+  ...   | success Ψ₂ xE dx fx = success B _ (Surface.app fE xE) (df ⊔ dx) fx
+  inferElab ctx (Raw.RApp f x) | ahv-other | isEff A B Ψ₁ fE df ff with checkElab ctx x A
   ...   | failure err = failure err
-  ...   | success A' Ψ₂ xE dx fx with A ≟T A'
-  ...     | yes refl = success (Unit ⇒[ mk-kind Many eff ] B) _ (Surface.effApp fE xE) (df ⊔ dx) fx
-  ...     | no _ = failure (ApplicationTypeMismatch A A')
+  ...   | success Ψ₂ xE dx fx = success (Unit ⇒[ mk-kind Many eff ] B) _ (Surface.effApp fE xE) (df ⊔ dx) fx
 
   -- Let binding: infer e₁, then e₂ under extended context.
   -- e₂'s usage has the shape (q ∷ᵘ Ψ) where q is the bound var's usage.
