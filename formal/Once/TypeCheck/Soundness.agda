@@ -1259,17 +1259,16 @@ postulate
   -- sound-RApp-generic. Constructing the `notPoly` proof for
   -- arbitrary x requires nested case analysis on the builtin
   -- string set. Postulated for now.
-  spec-gap-RApp-RVar-other : ∀ (ctx : NamedCtx) (x : _) (arg : RawExpr)
-    {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
-    → inferElab ctx (Raw.RApp (Raw.RVar x) arg) ≡ success A Ψ eE d f
-    → ctx ⊢ Raw.RApp (Raw.RVar x) arg ∶ A ⨾ Ψ
-  -- For RApp f arg with f a non-RVar shape, sound-RApp-generic
-  -- applies but constructing notPoly needs case analysis on f.
-  spec-gap-RApp-non-RVar : ∀ (ctx : NamedCtx) (f arg : RawExpr)
-    {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f' : ℕ}
-    → inferElab ctx (Raw.RApp f arg) ≡ success A Ψ eE d f'
+  -- ahv-other adapter: takes the inferElab result as an explicit
+  -- term parameter so the proof can pass `_` (Agda fills it from
+  -- the partially-reduced form). The eq witness then types the
+  -- explicit term against `success`. Sidesteps with-helper opacity.
+  spec-gap-RApp-ahv-other :
+    ∀ (ctx : NamedCtx) (f arg : RawExpr)
+      (eqResult : Once.TypeCheck.Elaborate.InferElabResult (NamedCtx.debruijn ctx))
+      {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
+      {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d fr : ℕ}
+    → eqResult ≡ success A Ψ eE d fr
     → ctx ⊢ Raw.RApp f arg ∶ A ⨾ Ψ
 
 mutual
@@ -1309,17 +1308,35 @@ mutual
   infer-sound ctx (Raw.RAnnot e T) eq =
     sound-RAnnot ctx e T (check-sound ctx e T) eq
 
-  -- RApp dispatch — postulated for now via two named gaps.
-  -- (See feedback_with_abstraction.md and plan 0.4 T0 docs.)
-  -- The view-dispatch attempt confirmed: `with classifyAppHeadView f`
-  -- in the proof partially-reduces eq into the elaborator's
-  -- with-helper form (`with-NNNN f ahv-X ...`), which doesn't
-  -- align with `inferElab ctx (RApp f arg) ≡ success ...` that
-  -- the per-shape lemmas expect. Bridge requires refactoring the
-  -- elaborator's RApp dispatch to take AppHeadView as explicit arg.
-  infer-sound ctx (Raw.RApp (Raw.RVar x) arg) eq =
-    spec-gap-RApp-RVar-other ctx x arg eq
-  infer-sound ctx (Raw.RApp f arg) eq = spec-gap-RApp-non-RVar ctx f arg eq
+  -- POC: view-dispatch with per-shape cases active, ahv-other postulated.
+  -- Tests whether the GADT-index refinement makes the per-shape cases work.
+  infer-sound ctx (Raw.RApp f arg) eq with Once.TypeCheck.Elaborate.classifyAppHeadView f
+  ... | Once.TypeCheck.Elaborate.ahv-id       = sound-RApp-id ctx arg (infer-sound ctx arg) eq
+  ... | Once.TypeCheck.Elaborate.ahv-fst      = sound-RApp-fst ctx arg (infer-sound ctx arg) eq
+  ... | Once.TypeCheck.Elaborate.ahv-snd      = sound-RApp-snd ctx arg (infer-sound ctx arg) eq
+  ... | Once.TypeCheck.Elaborate.ahv-terminal = sound-RApp-terminal ctx arg (infer-sound ctx arg) eq
+  ... | Once.TypeCheck.Elaborate.ahv-arr      = sound-RApp-arr ctx arg (infer-sound ctx arg) eq
+  ... | Once.TypeCheck.Elaborate.ahv-apply    = sound-RApp-apply ctx arg (infer-sound ctx arg) eq
+  ... | Once.TypeCheck.Elaborate.ahv-inl with eq
+  ...                                       | ()
+  infer-sound ctx (Raw.RApp f arg) eq | Once.TypeCheck.Elaborate.ahv-inr with eq
+  ...                                                                      | ()
+  infer-sound ctx (Raw.RApp f arg) eq | Once.TypeCheck.Elaborate.ahv-initial with eq
+  ...                                                                          | ()
+  infer-sound ctx (Raw.RApp f arg) eq | Once.TypeCheck.Elaborate.ahv-pair-applied with eq
+  ...                                                                                | ()
+  infer-sound ctx (Raw.RApp f arg) eq | Once.TypeCheck.Elaborate.ahv-compose-applied with eq
+  ...                                                                                   | ()
+  infer-sound ctx (Raw.RApp f arg) eq | Once.TypeCheck.Elaborate.ahv-curry with eq
+  ...                                                                        | ()
+  -- ahv-other: the only case still blocked by the with-helper
+  -- opacity. f stays abstract (ahv-other has no GADT index
+  -- constraint), so eq's type doesn't reduce. Postulated via an
+  -- adapter that takes the inferElab-result expression as an
+  -- explicit eqResult parameter, sidestepping the with-helper
+  -- opacity issue.
+  infer-sound ctx (Raw.RApp f arg) eq | Once.TypeCheck.Elaborate.ahv-other =
+    spec-gap-RApp-ahv-other ctx f arg _ eq
 
   -- ===== check-sound: 13 RawExpr cases =====
   -- All check-mode shapes go through named spec-gap postulates for
