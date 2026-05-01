@@ -968,6 +968,16 @@ composeArgB ctx (Raw.RVar "terminal") _ = just Unit
 composeArgB ctx (Raw.RVar name) A with lookupPoly (NamedCtx.polys ctx) name
 ... | just (schema , _) = schemaArrowCodomain schema A
 ... | nothing = nothing
+-- Plan 0.4 T1, change 4 (2026-04-30): nested compose recursion.
+-- For `compose f' g'` viewed as A → ?, find the inner middle type B'
+-- via g' at A, then the codomain via f' at B'. Combined with the
+-- existing id/fst/snd/terminal clauses, lets `id . id . id` resolve
+-- through arbitrarily deep composition chains in check mode.
+composeArgB ctx (Raw.RApp (Raw.RApp (Raw.RVar "compose") f') g') A with composeArgB ctx g' A
+... | nothing = nothing
+... | just B' with composeArgB ctx f' B'
+...   | nothing = nothing
+...   | just C  = just C
 -- Other shapes: compose can't proceed without inferElab success.
 composeArgB _ _ _ = nothing
 
@@ -1281,6 +1291,7 @@ mutual
   -- `f` concretely via the view-constructor's index, making the
   -- reduction visible to downstream proofs (no opaque with-helper
   -- over classifyAppHead's internal string-comparison chain).
+  --
   checkElab ctx (Raw.RApp f arg) T with classifyAppHeadView f
   ... | ahv-inl with T
   ...   | (A Once.Type.+ B) with checkElab ctx arg A
@@ -1372,11 +1383,23 @@ mutual
   -- POC-3).
   checkElab ctx (Raw.RApp f arg) T | ahv-curry = checkCurry ctx arg T
   checkElab ctx (Raw.RApp f arg) T | ahv-apply = checkApply ctx arg T
+  -- Plan 0.4 T1, change 2 (2026-04-30): argument-driven application
+  -- as a check-mode rule. When inferElab on (RApp f arg) fails (the
+  -- function-driven path can't synthesize the head — typically
+  -- because it ends in a polymorphic builtin like a saturated
+  -- `compose`), try: infer arg → X, then check f ⇐ X → T. This
+  -- unblocks polymorphic-builtin chains in function position
+  -- (layer0-compose's `(id . id . id) 42`). Pure-Many kind matches
+  -- the expected use case.
   checkElab ctx (Raw.RApp f arg) T | ahv-other with inferElab ctx (Raw.RApp f arg)
-  ... | failure err = failure err
   ... | success T' Ψ eE d fr with T ≟T T'
   ...   | yes refl = success _ eE d fr
   ...   | no _ = failure (TypeMismatch T T')
+  checkElab ctx (Raw.RApp f arg) T | ahv-other | failure _ with inferElab ctx arg
+  ... | failure err = failure err
+  ... | success X Ψx argE dx frx with checkElab ctx f (X ⇒[ pureK Many ] T)
+  ...   | failure err = failure err
+  ...   | success Ψf fE df frf = success _ (Surface.app fE argE) (suc (df ⊔ dx)) frf
 
   -- Bare polymorphic builtins in check mode: the specialised
   -- `RVar "id"`/`RVar "fst"`/... clauses were REMOVED (G2 decision,

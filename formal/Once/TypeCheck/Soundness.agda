@@ -1083,74 +1083,19 @@ postulate
     → inferElab ctx (RApp (RVar "apply") arg) ≡ success A Ψ eE d f
     → ctx ⊢ RApp (RVar "apply") arg ∶ A ⨾ Ψ
   -- ---- Per-shape check-mode lemmas not yet written ----
-  -- All check-mode dispatches except RLam are unwitnessed today.
-  -- One named gap per dispatched shape; check-sound delegates here.
-  spec-gap-check-RInt : ∀ (ctx : NamedCtx) (n : _) (T : Type)
-    {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {eE : SExpr (NamedCtx.debruijn ctx) Ψ T} {d f : ℕ}
-    → checkElab ctx (Raw.RInt n) T ≡ success Ψ eE d f
-    → ctx ⊢ᶜ Raw.RInt n ∶ T ⨾ Ψ
-  spec-gap-check-RStringLit : ∀ (ctx : NamedCtx) (s : _) (T : Type)
-    {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {eE : SExpr (NamedCtx.debruijn ctx) Ψ T} {d f : ℕ}
-    → checkElab ctx (Raw.RStringLit s) T ≡ success Ψ eE d f
-    → ctx ⊢ᶜ Raw.RStringLit s ∶ T ⨾ Ψ
-  spec-gap-check-RUnit : ∀ (ctx : NamedCtx) (T : Type)
-    {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {eE : SExpr (NamedCtx.debruijn ctx) Ψ T} {d f : ℕ}
-    → checkElab ctx Raw.RUnit T ≡ success Ψ eE d f
-    → ctx ⊢ᶜ Raw.RUnit ∶ T ⨾ Ψ
+  -- One named gap per unwitnessed dispatched shape; check-sound
+  -- delegates here. RInt/RStringLit/RUnit/RLam are proven inline in
+  -- check-sound and don't need spec gaps.
   spec-gap-check-RVar : ∀ (ctx : NamedCtx) (x : _) (T : Type)
     {Ψ : Surface.Usage (NamedCtx.size ctx)}
     {eE : SExpr (NamedCtx.debruijn ctx) Ψ T} {d f : ℕ}
     → checkElab ctx (Raw.RVar x) T ≡ success Ψ eE d f
     → ctx ⊢ᶜ Raw.RVar x ∶ T ⨾ Ψ
-  spec-gap-check-RQualified : ∀ (ctx : NamedCtx) (n a : _) (T : Type)
-    {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {eE : SExpr (NamedCtx.debruijn ctx) Ψ T} {d f : ℕ}
-    → checkElab ctx (Raw.RQualified n a) T ≡ success Ψ eE d f
-    → ctx ⊢ᶜ Raw.RQualified n a ∶ T ⨾ Ψ
   spec-gap-check-RApp : ∀ (ctx : NamedCtx) (f arg : RawExpr) (T : Type)
     {Ψ : Surface.Usage (NamedCtx.size ctx)}
     {eE : SExpr (NamedCtx.debruijn ctx) Ψ T} {d f' : ℕ}
     → checkElab ctx (Raw.RApp f arg) T ≡ success Ψ eE d f'
     → ctx ⊢ᶜ Raw.RApp f arg ∶ T ⨾ Ψ
-  spec-gap-check-RLet : ∀ (ctx : NamedCtx) (x : _) (e₁ e₂ : RawExpr) (T : Type)
-    {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {eE : SExpr (NamedCtx.debruijn ctx) Ψ T} {d f : ℕ}
-    → checkElab ctx (Raw.RLet x e₁ e₂) T ≡ success Ψ eE d f
-    → ctx ⊢ᶜ Raw.RLet x e₁ e₂ ∶ T ⨾ Ψ
-  spec-gap-check-RPair : ∀ (ctx : NamedCtx) (a b : RawExpr) (T : Type)
-    {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {eE : SExpr (NamedCtx.debruijn ctx) Ψ T} {d f : ℕ}
-    → checkElab ctx (Raw.RPair a b) T ≡ success Ψ eE d f
-    → ctx ⊢ᶜ Raw.RPair a b ∶ T ⨾ Ψ
-  spec-gap-check-RDestruct : ∀ (ctx : NamedCtx)
-      (scrut : RawExpr) (xL : _) (eL : RawExpr) (xR : _) (eR : RawExpr) (T : Type)
-    {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {eE : SExpr (NamedCtx.debruijn ctx) Ψ T} {d f : ℕ}
-    → checkElab ctx (Raw.RDestruct scrut xL eL xR eR) T ≡ success Ψ eE d f
-    → ctx ⊢ᶜ Raw.RDestruct scrut xL eL xR eR ∶ T ⨾ Ψ
-  spec-gap-check-RAnnot : ∀ (ctx : NamedCtx) (e : RawExpr) (T0 : Type) (T : Type)
-    {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {eE : SExpr (NamedCtx.debruijn ctx) Ψ T} {d f : ℕ}
-    → checkElab ctx (Raw.RAnnot e T0) T ≡ success Ψ eE d f
-    → ctx ⊢ᶜ Raw.RAnnot e T0 ∶ T ⨾ Ψ
-  spec-gap-check-RBinOp : ∀ (ctx : NamedCtx) (op : Raw.BinOp) (e₁ e₂ : RawExpr) (T : Type)
-    {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {eE : SExpr (NamedCtx.debruijn ctx) Ψ T} {d f : ℕ}
-    → checkElab ctx (Raw.RBinOp op e₁ e₂) T ≡ success Ψ eE d f
-    → ctx ⊢ᶜ Raw.RBinOp op e₁ e₂ ∶ T ⨾ Ψ
-  spec-gap-check-RUnaryOp : ∀ (ctx : NamedCtx) (op : Raw.UnaryOp) (e : RawExpr) (T : Type)
-    {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {eE : SExpr (NamedCtx.debruijn ctx) Ψ T} {d f : ℕ}
-    → checkElab ctx (Raw.RUnaryOp op e) T ≡ success Ψ eE d f
-    → ctx ⊢ᶜ Raw.RUnaryOp op e ∶ T ⨾ Ψ
-  spec-gap-check-RLam : ∀ (ctx : NamedCtx) (x : _) (body : RawExpr) (T : Type)
-    {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {eE : SExpr (NamedCtx.debruijn ctx) Ψ T} {d f : ℕ}
-    → checkElab ctx (Raw.RLam x body) T ≡ success Ψ eE d f
-    → ctx ⊢ᶜ Raw.RLam x body ∶ T ⨾ Ψ
   -- ---- Infer-mode RApp dispatch sub-cases not yet proven ----
   -- For RApp (RVar x) arg with x not in the builtin set of
   -- {id, fst, snd, terminal, arr, apply, inl, inr, initial,
