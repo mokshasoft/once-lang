@@ -1310,17 +1310,13 @@ mutual
     sound-RAnnot ctx e T (check-sound ctx e T) eq
 
   -- RApp dispatch — postulated for now via two named gaps.
-  -- (See feedback_with_abstraction.md.) Composing per-shape
-  -- lemmas requires a top-level helper `infer-sound-RApp ctx f arg
-  -- view eq` where the AppHeadView constructor pattern-match
-  -- forces f via the GADT index, and a bridge lemma rewrites
-  -- the elaborator's `with classifyAppHeadView f` reduction to
-  -- match. Attempted in this branch — the GADT index unification
-  -- doesn't propagate to eq's type as expected, so the dispatch
-  -- can't yet plug into `sound-RApp-id`'s exact signature. Likely
-  -- needs the elaborator's own `inferElab.RApp` refactored to
-  -- take the AppHeadView as input (a wrapper-pattern variant of
-  -- the view-classifier refactor). Filed for next T0 round.
+  -- (See feedback_with_abstraction.md and plan 0.4 T0 docs.)
+  -- The view-dispatch attempt confirmed: `with classifyAppHeadView f`
+  -- in the proof partially-reduces eq into the elaborator's
+  -- with-helper form (`with-NNNN f ahv-X ...`), which doesn't
+  -- align with `inferElab ctx (RApp f arg) ≡ success ...` that
+  -- the per-shape lemmas expect. Bridge requires refactoring the
+  -- elaborator's RApp dispatch to take AppHeadView as explicit arg.
   infer-sound ctx (Raw.RApp (Raw.RVar x) arg) eq =
     spec-gap-RApp-RVar-other ctx x arg eq
   infer-sound ctx (Raw.RApp f arg) eq = spec-gap-RApp-non-RVar ctx f arg eq
