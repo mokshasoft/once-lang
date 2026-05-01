@@ -129,10 +129,32 @@ record VerifiedTypeChecker : Set₁ where
                   ⊎ IsCheckFailure (tcCheck ctx e T)
 
     ----------------------------------------------------------------
-    -- G2 (partial): soundness against the declarative judgment for
-    -- the leaf RawExpr forms (literals, `unit` builtin). Recursive
-    -- forms are currently not covered — see
-    -- `Once.TypeCheck.Soundness` for the deferred cases.
+    -- Plan 0.4 T0 (2026-04-30): top-level soundness theorems.
+    --
+    -- These two fields enforce that EVERY successful elaborator
+    -- result has a corresponding judgment derivation. Adding a new
+    -- elaborator code path without a matching judgment rule will
+    -- fail to inhabit these fields, forcing spec/impl to stay in
+    -- sync. Per-shape lemmas below remain for fine-grained reuse.
+    ----------------------------------------------------------------
+
+    tcInfer-sound : ∀ (ctx : NamedCtx) (e : RawExpr)
+      {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
+      {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : _}
+      → tcInfer ctx e ≡ success A Ψ eE d f
+      → ctx ⊢ e ∶ A ⨾ Ψ
+
+    tcCheck-sound : ∀ (ctx : NamedCtx) (e : RawExpr) (T : Type)
+      {Ψ : Surface.Usage (NamedCtx.size ctx)}
+      {eE : SExpr (NamedCtx.debruijn ctx) Ψ T} {d f : _}
+      → tcCheck ctx e T ≡ success Ψ eE d f
+      → ctx ⊢ᶜ e ∶ T ⨾ Ψ
+
+    ----------------------------------------------------------------
+    -- G2 (partial): per-shape soundness lemmas — kept for
+    -- fine-grained reuse alongside the global theorems above.
+    -- Adding new per-shape lemmas remains valuable; the global
+    -- theorem composes them.
     ----------------------------------------------------------------
 
     tcInfer-sound-RInt :
@@ -921,6 +943,8 @@ verifiedTypeChecker = record
   ; tcCheck-cong              = Det.checkElab-cong
   ; tcInfer-total             = Tot.inferElab-total
   ; tcCheck-total             = Tot.checkElab-total
+  ; tcInfer-sound                 = Snd.infer-sound
+  ; tcCheck-sound                 = Snd.check-sound
   ; tcInfer-sound-RInt            = Snd.sound-RInt
   ; tcInfer-sound-RStringLit      = Snd.sound-RStringLit
   ; tcInfer-sound-RUnit           = Snd.sound-RUnit

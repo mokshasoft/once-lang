@@ -1004,3 +1004,199 @@ sound-RApp-generic ctx f x notPoly IH_f IH_x eq
 sound-RApp-generic ctx f x notPoly IH_f IH_x eq
   | failure _ , eqF rewrite eqF with eq
 ... | ()
+
+------------------------------------------------------------------------
+-- Plan 0.4 T0 — Top-level soundness theorems.
+--
+-- `infer-sound` and `check-sound` case-split exhaustively on
+-- `RawExpr` (and on the elaborator's dispatch shape), composing the
+-- per-shape lemmas above. Adding a new elaborator code path
+-- without a matching judgment rule will surface as a missing case
+-- here, forcing spec/impl to stay in sync.
+--
+-- Coverage gaps (spec rules missing despite elaborator successes,
+-- or per-shape lemmas not yet written) are encoded as NAMED
+-- POSTULATES below the mutual block, one per gap. Each replacement
+-- requires either (1) a missing judgment rule + soundness proof, or
+-- (2) a new per-shape lemma. Naming makes them auditable via
+-- `make postulates-grep`.
+------------------------------------------------------------------------
+
+import Data.String.Properties as StrProp
+
+postulate
+  -- ---- Spec gaps: judgment rule missing for elaborator success ----
+  -- `arr f` in infer mode: elab succeeds when f : A→B (yields Eff A B).
+  -- Missing: judgment rule t-arr-app-infer.
+  spec-gap-arr-app-infer : ∀ (ctx : NamedCtx) (arg : RawExpr)
+    {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
+    → inferElab ctx (RApp (RVar "arr") arg) ≡ success A Ψ eE d f
+    → ctx ⊢ RApp (RVar "arr") arg ∶ A ⨾ Ψ
+  -- `apply p` in infer mode: elab succeeds when p : (A→B) * A.
+  -- Missing: judgment rule t-apply-app-infer.
+  spec-gap-apply-app-infer : ∀ (ctx : NamedCtx) (arg : RawExpr)
+    {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
+    → inferElab ctx (RApp (RVar "apply") arg) ≡ success A Ψ eE d f
+    → ctx ⊢ RApp (RVar "apply") arg ∶ A ⨾ Ψ
+  -- ---- Per-shape check-mode lemmas not yet written ----
+  -- All check-mode dispatches except RLam are unwitnessed today.
+  -- One named gap per dispatched shape; check-sound delegates here.
+  spec-gap-check-RInt : ∀ (ctx : NamedCtx) (n : _) (T : Type)
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ T} {d f : ℕ}
+    → checkElab ctx (Raw.RInt n) T ≡ success Ψ eE d f
+    → ctx ⊢ᶜ Raw.RInt n ∶ T ⨾ Ψ
+  spec-gap-check-RStringLit : ∀ (ctx : NamedCtx) (s : _) (T : Type)
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ T} {d f : ℕ}
+    → checkElab ctx (Raw.RStringLit s) T ≡ success Ψ eE d f
+    → ctx ⊢ᶜ Raw.RStringLit s ∶ T ⨾ Ψ
+  spec-gap-check-RUnit : ∀ (ctx : NamedCtx) (T : Type)
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ T} {d f : ℕ}
+    → checkElab ctx Raw.RUnit T ≡ success Ψ eE d f
+    → ctx ⊢ᶜ Raw.RUnit ∶ T ⨾ Ψ
+  spec-gap-check-RVar : ∀ (ctx : NamedCtx) (x : _) (T : Type)
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ T} {d f : ℕ}
+    → checkElab ctx (Raw.RVar x) T ≡ success Ψ eE d f
+    → ctx ⊢ᶜ Raw.RVar x ∶ T ⨾ Ψ
+  spec-gap-check-RQualified : ∀ (ctx : NamedCtx) (n a : _) (T : Type)
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ T} {d f : ℕ}
+    → checkElab ctx (Raw.RQualified n a) T ≡ success Ψ eE d f
+    → ctx ⊢ᶜ Raw.RQualified n a ∶ T ⨾ Ψ
+  spec-gap-check-RApp : ∀ (ctx : NamedCtx) (f arg : RawExpr) (T : Type)
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ T} {d f' : ℕ}
+    → checkElab ctx (Raw.RApp f arg) T ≡ success Ψ eE d f'
+    → ctx ⊢ᶜ Raw.RApp f arg ∶ T ⨾ Ψ
+  spec-gap-check-RLet : ∀ (ctx : NamedCtx) (x : _) (e₁ e₂ : RawExpr) (T : Type)
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ T} {d f : ℕ}
+    → checkElab ctx (Raw.RLet x e₁ e₂) T ≡ success Ψ eE d f
+    → ctx ⊢ᶜ Raw.RLet x e₁ e₂ ∶ T ⨾ Ψ
+  spec-gap-check-RPair : ∀ (ctx : NamedCtx) (a b : RawExpr) (T : Type)
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ T} {d f : ℕ}
+    → checkElab ctx (Raw.RPair a b) T ≡ success Ψ eE d f
+    → ctx ⊢ᶜ Raw.RPair a b ∶ T ⨾ Ψ
+  spec-gap-check-RDestruct : ∀ (ctx : NamedCtx)
+      (scrut : RawExpr) (xL : _) (eL : RawExpr) (xR : _) (eR : RawExpr) (T : Type)
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ T} {d f : ℕ}
+    → checkElab ctx (Raw.RDestruct scrut xL eL xR eR) T ≡ success Ψ eE d f
+    → ctx ⊢ᶜ Raw.RDestruct scrut xL eL xR eR ∶ T ⨾ Ψ
+  spec-gap-check-RAnnot : ∀ (ctx : NamedCtx) (e : RawExpr) (T0 : Type) (T : Type)
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ T} {d f : ℕ}
+    → checkElab ctx (Raw.RAnnot e T0) T ≡ success Ψ eE d f
+    → ctx ⊢ᶜ Raw.RAnnot e T0 ∶ T ⨾ Ψ
+  spec-gap-check-RBinOp : ∀ (ctx : NamedCtx) (op : Raw.BinOp) (e₁ e₂ : RawExpr) (T : Type)
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ T} {d f : ℕ}
+    → checkElab ctx (Raw.RBinOp op e₁ e₂) T ≡ success Ψ eE d f
+    → ctx ⊢ᶜ Raw.RBinOp op e₁ e₂ ∶ T ⨾ Ψ
+  spec-gap-check-RUnaryOp : ∀ (ctx : NamedCtx) (op : Raw.UnaryOp) (e : RawExpr) (T : Type)
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ T} {d f : ℕ}
+    → checkElab ctx (Raw.RUnaryOp op e) T ≡ success Ψ eE d f
+    → ctx ⊢ᶜ Raw.RUnaryOp op e ∶ T ⨾ Ψ
+  spec-gap-check-RLam : ∀ (ctx : NamedCtx) (x : _) (body : RawExpr) (T : Type)
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ T} {d f : ℕ}
+    → checkElab ctx (Raw.RLam x body) T ≡ success Ψ eE d f
+    → ctx ⊢ᶜ Raw.RLam x body ∶ T ⨾ Ψ
+  -- ---- Infer-mode RApp dispatch sub-cases not yet proven ----
+  -- For RApp (RVar x) arg with x not in the builtin set of
+  -- {id, fst, snd, terminal, arr, apply, inl, inr, initial,
+  -- pair, compose, curry}, the elaborator falls through to
+  -- sound-RApp-generic. Constructing the `notPoly` proof for
+  -- arbitrary x requires nested case analysis on the builtin
+  -- string set. Postulated for now.
+  spec-gap-RApp-RVar-other : ∀ (ctx : NamedCtx) (x : _) (arg : RawExpr)
+    {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
+    → inferElab ctx (Raw.RApp (Raw.RVar x) arg) ≡ success A Ψ eE d f
+    → ctx ⊢ Raw.RApp (Raw.RVar x) arg ∶ A ⨾ Ψ
+  -- For RApp f arg with f a non-RVar shape, sound-RApp-generic
+  -- applies but constructing notPoly needs case analysis on f.
+  spec-gap-RApp-non-RVar : ∀ (ctx : NamedCtx) (f arg : RawExpr)
+    {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f' : ℕ}
+    → inferElab ctx (Raw.RApp f arg) ≡ success A Ψ eE d f'
+    → ctx ⊢ Raw.RApp f arg ∶ A ⨾ Ψ
+
+mutual
+  infer-sound : ∀ (ctx : NamedCtx) (e : RawExpr)
+    {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
+    → inferElab ctx e ≡ success A Ψ eE d f
+    → ctx ⊢ e ∶ A ⨾ Ψ
+
+  check-sound : ∀ (ctx : NamedCtx) (e : RawExpr) (T : Type)
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ T} {d f : ℕ}
+    → checkElab ctx e T ≡ success Ψ eE d f
+    → ctx ⊢ᶜ e ∶ T ⨾ Ψ
+
+  -- ===== infer-sound: 13 RawExpr cases =====
+  infer-sound ctx (Raw.RInt n)        eq = sound-RInt ctx n eq
+  infer-sound ctx (Raw.RStringLit s)  eq = sound-RStringLit ctx s eq
+  infer-sound ctx Raw.RUnit           eq = sound-RUnit ctx eq
+  infer-sound ctx (Raw.RVar x)        eq = sound-RVar ctx x eq
+  infer-sound ctx (Raw.RQualified n a) eq = sound-RQualified ctx n a eq
+  infer-sound ctx (Raw.RPair a b) eq =
+    sound-RPair ctx a b (infer-sound ctx a) (infer-sound ctx b) eq
+  infer-sound ctx (Raw.RBinOp op e₁ e₂) eq =
+    sound-RBinOp ctx op e₁ e₂ (infer-sound ctx e₁) (infer-sound ctx e₂) eq
+  infer-sound ctx (Raw.RUnaryOp Raw.OpNeg e) eq =
+    sound-RUnaryOp-neg ctx e (infer-sound ctx e) eq
+  infer-sound ctx (Raw.RLam x body) ()
+  infer-sound ctx (Raw.RLet x e₁ e₂) eq =
+    sound-RLet ctx x e₁ e₂ (infer-sound ctx e₁) (infer-sound (extendNamedCtx ctx x _) e₂) eq
+  infer-sound ctx (Raw.RDestruct scrut xL eL xR eR) eq =
+    sound-RDestruct ctx scrut xL eL xR eR
+      (infer-sound ctx scrut)
+      (λ {Aty} → infer-sound (extendNamedCtx ctx xL Aty) eL)
+      (λ {Bty} → infer-sound (extendNamedCtx ctx xR Bty) eR)
+      eq
+  infer-sound ctx (Raw.RAnnot e T) eq =
+    sound-RAnnot ctx e T (check-sound ctx e T) eq
+
+  -- RApp dispatch — postulated for now.
+  --
+  -- The string-discriminator chain `with StrProp._≟_ x "id" / "fst"
+  -- / ...` does NOT reduce the eq's type when x is abstract, because
+  -- the elaborator's own classifyAppHeadView dispatch is opaque on
+  -- abstract strings (the classic "with-abstraction blocks
+  -- reduction" trap). Composing the per-shape lemmas
+  -- `sound-RApp-id` etc. requires a bridge lemma converting
+  -- `classifyAppHead (RVar x) ≡ just pba-X` into a refinement of
+  -- the elaborator's dispatch. Two named gaps for now; the bridge
+  -- + per-pba dispatch is the single largest piece of work
+  -- remaining for T0's RApp coverage.
+  infer-sound ctx (Raw.RApp (Raw.RVar x) arg) eq =
+    spec-gap-RApp-RVar-other ctx x arg eq
+  infer-sound ctx (Raw.RApp f arg) eq = spec-gap-RApp-non-RVar ctx f arg eq
+
+  -- ===== check-sound: 13 RawExpr cases =====
+  -- All check-mode shapes go through named spec-gap postulates for
+  -- now. Each represents one missing per-shape lemma. They are the
+  -- single largest chunk of T0's remaining work.
+  check-sound ctx (Raw.RInt n)         T eq = spec-gap-check-RInt ctx n T eq
+  check-sound ctx (Raw.RStringLit s)   T eq = spec-gap-check-RStringLit ctx s T eq
+  check-sound ctx Raw.RUnit            T eq = spec-gap-check-RUnit ctx T eq
+  check-sound ctx (Raw.RVar x)         T eq = spec-gap-check-RVar ctx x T eq
+  check-sound ctx (Raw.RQualified n a) T eq = spec-gap-check-RQualified ctx n a T eq
+  check-sound ctx (Raw.RApp f arg)     T eq = spec-gap-check-RApp ctx f arg T eq
+  check-sound ctx (Raw.RLam x body)    T eq = spec-gap-check-RLam ctx x body T eq
+  check-sound ctx (Raw.RLet x e₁ e₂)   T eq = spec-gap-check-RLet ctx x e₁ e₂ T eq
+  check-sound ctx (Raw.RPair a b)      T eq = spec-gap-check-RPair ctx a b T eq
+  check-sound ctx (Raw.RDestruct scrut xL eL xR eR) T eq =
+    spec-gap-check-RDestruct ctx scrut xL eL xR eR T eq
+  check-sound ctx (Raw.RAnnot e T0)    T eq = spec-gap-check-RAnnot ctx e T0 T eq
+  check-sound ctx (Raw.RBinOp op e₁ e₂) T eq = spec-gap-check-RBinOp ctx op e₁ e₂ T eq
+  check-sound ctx (Raw.RUnaryOp op e)  T eq = spec-gap-check-RUnaryOp ctx op e T eq
