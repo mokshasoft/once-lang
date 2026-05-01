@@ -1024,6 +1024,48 @@ sound-RApp-generic ctx f x notPoly IH_f IH_x eq
 
 import Data.String.Properties as StrProp
 
+-- Plan 0.4 T0: bridge lemmas to align proof's view-dispatch with
+-- the elaborator's `with classifyAppHeadView` reduction. Each
+-- lemma type-checks at `refl` because when the head's literal
+-- string is concrete, `classifyAppHeadView` reduces through its
+-- internal `with StrProp._≟_` chain. Rewrites with these in the
+-- top-level helper `infer-sound-RApp` force the elaborator's eq
+-- type to match the per-shape lemma's expected shape.
+classifyAppHeadView-RVar-id : Once.TypeCheck.Elaborate.classifyAppHeadView (Raw.RVar "id")
+  ≡ Once.TypeCheck.Elaborate.ahv-id
+classifyAppHeadView-RVar-id = refl
+classifyAppHeadView-RVar-fst : Once.TypeCheck.Elaborate.classifyAppHeadView (Raw.RVar "fst")
+  ≡ Once.TypeCheck.Elaborate.ahv-fst
+classifyAppHeadView-RVar-fst = refl
+classifyAppHeadView-RVar-snd : Once.TypeCheck.Elaborate.classifyAppHeadView (Raw.RVar "snd")
+  ≡ Once.TypeCheck.Elaborate.ahv-snd
+classifyAppHeadView-RVar-snd = refl
+classifyAppHeadView-RVar-terminal : Once.TypeCheck.Elaborate.classifyAppHeadView (Raw.RVar "terminal")
+  ≡ Once.TypeCheck.Elaborate.ahv-terminal
+classifyAppHeadView-RVar-terminal = refl
+classifyAppHeadView-RVar-arr : Once.TypeCheck.Elaborate.classifyAppHeadView (Raw.RVar "arr")
+  ≡ Once.TypeCheck.Elaborate.ahv-arr
+classifyAppHeadView-RVar-arr = refl
+classifyAppHeadView-RVar-apply : Once.TypeCheck.Elaborate.classifyAppHeadView (Raw.RVar "apply")
+  ≡ Once.TypeCheck.Elaborate.ahv-apply
+classifyAppHeadView-RVar-apply = refl
+classifyAppHeadView-RVar-inl : Once.TypeCheck.Elaborate.classifyAppHeadView (Raw.RVar "inl")
+  ≡ Once.TypeCheck.Elaborate.ahv-inl
+classifyAppHeadView-RVar-inl = refl
+classifyAppHeadView-RVar-inr : Once.TypeCheck.Elaborate.classifyAppHeadView (Raw.RVar "inr")
+  ≡ Once.TypeCheck.Elaborate.ahv-inr
+classifyAppHeadView-RVar-inr = refl
+classifyAppHeadView-RVar-initial : Once.TypeCheck.Elaborate.classifyAppHeadView (Raw.RVar "initial")
+  ≡ Once.TypeCheck.Elaborate.ahv-initial
+classifyAppHeadView-RVar-initial = refl
+classifyAppHeadView-RVar-curry : Once.TypeCheck.Elaborate.classifyAppHeadView (Raw.RVar "curry")
+  ≡ Once.TypeCheck.Elaborate.ahv-curry
+classifyAppHeadView-RVar-curry = refl
+-- Note: `pair` and `compose` are pba-pair-applied / pba-compose-applied
+-- which require the head to be RApp (RVar "pair" / "compose") _ — not
+-- RApp (RVar "pair") arg directly. Their bridge lemmas live at the
+-- nested-RApp level and aren't needed for the bare-RVar dispatch.
+
 postulate
   -- ---- Spec gaps: judgment rule missing for elaborator success ----
   -- `arr f` in infer mode: elab succeeds when f : A→B (yields Eff A B).
@@ -1166,20 +1208,18 @@ mutual
   infer-sound ctx (Raw.RAnnot e T) eq =
     sound-RAnnot ctx e T (check-sound ctx e T) eq
 
-  -- RApp dispatch via Once.TypeCheck.Elaborate.classifyAppHeadView. Each AppHeadView
-  -- constructor carries the head's structure as an index, so
-  -- pattern-matching ahv-X unifies f with the right shape.
-  -- The elaborator dispatches the same way, so eq reduces cleanly.
-  -- RApp: would dispatch via `with classifyAppHeadView f` and
-  -- pattern-match on each ahv-X constructor to compose per-shape
-  -- lemmas (sound-RApp-id etc.). However, the elaborator's own
-  -- `with classifyAppHeadView` generates a `with-1958` helper
-  -- that doesn't reduce together with the proof's own
-  -- `with classifyAppHeadView`, leaving eq mismatched. Replacing
-  -- the postulates requires either inspect-style alignment or
-  -- top-level helpers (`infer-sound-RApp ctx f arg view eq`)
-  -- that take the AppHeadView result as an explicit argument.
-  -- See feedback_with_abstraction.md for the pattern.
+  -- RApp dispatch — postulated for now via two named gaps.
+  -- (See feedback_with_abstraction.md.) Composing per-shape
+  -- lemmas requires a top-level helper `infer-sound-RApp ctx f arg
+  -- view eq` where the AppHeadView constructor pattern-match
+  -- forces f via the GADT index, and a bridge lemma rewrites
+  -- the elaborator's `with classifyAppHeadView f` reduction to
+  -- match. Attempted in this branch — the GADT index unification
+  -- doesn't propagate to eq's type as expected, so the dispatch
+  -- can't yet plug into `sound-RApp-id`'s exact signature. Likely
+  -- needs the elaborator's own `inferElab.RApp` refactored to
+  -- take the AppHeadView as input (a wrapper-pattern variant of
+  -- the view-classifier refactor). Filed for next T0 round.
   infer-sound ctx (Raw.RApp (Raw.RVar x) arg) eq =
     spec-gap-RApp-RVar-other ctx x arg eq
   infer-sound ctx (Raw.RApp f arg) eq = spec-gap-RApp-non-RVar ctx f arg eq
