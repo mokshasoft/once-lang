@@ -948,6 +948,83 @@ classifyAppHead-nothing⇒view-other {Raw.RVar s} p | no _ | no _ | no _ | no _ 
 ...   | ()
 classifyAppHead-nothing⇒view-other {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ = refl
 
+-- Reverse bridge (Plan 0.4 T0 Option A): from view ≡ ahv-other to
+-- classifyAppHead ≡ nothing. Needed by `infer-sound`'s ahv-other
+-- branch to feed `sound-RApp-generic`'s `notPoly` premise (which
+-- types `t-app` / `t-effApp`).
+view-other⇒classifyAppHead-nothing :
+  ∀ {f} → classifyAppHeadView f ≡ ahv-other → classifyAppHead f ≡ nothing
+view-other⇒classifyAppHead-nothing {Raw.RApp (Raw.RVar s) _} p with StrProp._≟_ s "pair"
+... | yes refl with p
+...   | ()
+view-other⇒classifyAppHead-nothing {Raw.RApp (Raw.RVar s) _} p | no _ with StrProp._≟_ s "compose"
+... | yes refl with p
+...   | ()
+view-other⇒classifyAppHead-nothing {Raw.RApp (Raw.RVar _) _} _ | no _ | no _ = refl
+view-other⇒classifyAppHead-nothing {Raw.RApp (Raw.RApp _ _) _}       _ = refl
+view-other⇒classifyAppHead-nothing {Raw.RApp (Raw.RQualified _ _) _} _ = refl
+view-other⇒classifyAppHead-nothing {Raw.RApp (Raw.RLam _ _) _}       _ = refl
+view-other⇒classifyAppHead-nothing {Raw.RApp (Raw.RLet _ _ _) _}     _ = refl
+view-other⇒classifyAppHead-nothing {Raw.RApp (Raw.RPair _ _) _}      _ = refl
+view-other⇒classifyAppHead-nothing {Raw.RApp (Raw.RDestruct _ _ _ _ _) _} _ = refl
+view-other⇒classifyAppHead-nothing {Raw.RApp Raw.RUnit _}            _ = refl
+view-other⇒classifyAppHead-nothing {Raw.RApp (Raw.RInt _) _}         _ = refl
+view-other⇒classifyAppHead-nothing {Raw.RApp (Raw.RStringLit _) _}   _ = refl
+view-other⇒classifyAppHead-nothing {Raw.RApp (Raw.RAnnot _ _) _}     _ = refl
+view-other⇒classifyAppHead-nothing {Raw.RApp (Raw.RBinOp _ _ _) _}   _ = refl
+view-other⇒classifyAppHead-nothing {Raw.RApp (Raw.RUnaryOp _ _) _}   _ = refl
+view-other⇒classifyAppHead-nothing {Raw.RQualified _ _}     _ = refl
+view-other⇒classifyAppHead-nothing {Raw.RLam _ _}           _ = refl
+view-other⇒classifyAppHead-nothing {Raw.RLet _ _ _}         _ = refl
+view-other⇒classifyAppHead-nothing {Raw.RPair _ _}          _ = refl
+view-other⇒classifyAppHead-nothing {Raw.RDestruct _ _ _ _ _} _ = refl
+view-other⇒classifyAppHead-nothing {Raw.RUnit}              _ = refl
+view-other⇒classifyAppHead-nothing {Raw.RInt _}             _ = refl
+view-other⇒classifyAppHead-nothing {Raw.RStringLit _}       _ = refl
+view-other⇒classifyAppHead-nothing {Raw.RAnnot _ _}         _ = refl
+view-other⇒classifyAppHead-nothing {Raw.RBinOp _ _ _}       _ = refl
+view-other⇒classifyAppHead-nothing {Raw.RUnaryOp _ _}       _ = refl
+view-other⇒classifyAppHead-nothing {Raw.RVar s} p with StrProp._≟_ s "id"
+... | yes refl with p
+...   | ()
+view-other⇒classifyAppHead-nothing {Raw.RVar s} p | no _
+  with StrProp._≟_ s "fst"
+... | yes refl with p
+...   | ()
+view-other⇒classifyAppHead-nothing {Raw.RVar s} p | no _ | no _
+  with StrProp._≟_ s "snd"
+... | yes refl with p
+...   | ()
+view-other⇒classifyAppHead-nothing {Raw.RVar s} p | no _ | no _ | no _
+  with StrProp._≟_ s "terminal"
+... | yes refl with p
+...   | ()
+view-other⇒classifyAppHead-nothing {Raw.RVar s} p | no _ | no _ | no _ | no _
+  with StrProp._≟_ s "inl"
+... | yes refl with p
+...   | ()
+view-other⇒classifyAppHead-nothing {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _
+  with StrProp._≟_ s "inr"
+... | yes refl with p
+...   | ()
+view-other⇒classifyAppHead-nothing {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _ | no _
+  with StrProp._≟_ s "initial"
+... | yes refl with p
+...   | ()
+view-other⇒classifyAppHead-nothing {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _ | no _ | no _
+  with StrProp._≟_ s "arr"
+... | yes refl with p
+...   | ()
+view-other⇒classifyAppHead-nothing {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _
+  with StrProp._≟_ s "curry"
+... | yes refl with p
+...   | ()
+view-other⇒classifyAppHead-nothing {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _
+  with StrProp._≟_ s "apply"
+... | yes refl with p
+...   | ()
+view-other⇒classifyAppHead-nothing {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ = refl
+
 -- | Plan 0.6.2 Phase 3b: for `compose f g` at expected `A → C`,
 -- when `inferElab g` fails, try to determine the intermediate
 -- type `B` from `g`'s structural shape:
@@ -1020,6 +1097,22 @@ classifyBareBuiltin x with StrProp._≟_ x "id"
 ...               | no  _ = bbc-other
 
 ------------------------------------------------------------------------
+-- Plan 0.4 T0 Option A POC: per-shape RApp dispatch as top-level
+-- helpers taking the precomputed `inferElab ctx x` result. By moving
+-- the body OUT of `inferElab`'s `with classifyAppHeadView f` block,
+-- soundness proofs (e.g. `sound-RApp-id`) can reduce through a plain
+-- top-level function call instead of the with-helper that the case
+-- tree compiler keeps opaque. POC scope: `ahv-id` only.
+------------------------------------------------------------------------
+
+inferElab-RApp-id : (ctx : NamedCtx)
+                  → InferElabResult (NamedCtx.debruijn ctx)
+                  → InferElabResult (NamedCtx.debruijn ctx)
+inferElab-RApp-id ctx (failure err) = failure err
+inferElab-RApp-id ctx (success T Ψ argE d f') =
+  success T _ (Surface.app (weakenFromEmpty (specId T)) argE) (suc d) f'
+
+------------------------------------------------------------------------
 -- Bidirectional Inference (produces usage-indexed Expr)
 ------------------------------------------------------------------------
 
@@ -1044,6 +1137,16 @@ mutual
   checkCompose : (ctx : NamedCtx) → (composeHead arg : RawExpr) → (T : Type) → CheckElabResult (NamedCtx.debruijn ctx) T
   checkCurry : (ctx : NamedCtx) → (arg : RawExpr) → (T : Type) → CheckElabResult (NamedCtx.debruijn ctx) T
   checkApply : (ctx : NamedCtx) → (arg : RawExpr) → (T : Type) → CheckElabResult (NamedCtx.debruijn ctx) T
+
+  -- Plan 0.4 T0 Option A: hoist the `ahv-other` (generic application)
+  -- branch of `inferElab RApp` into its own top-level mutual member.
+  -- The body is structurally identical to the previous in-place
+  -- clause; the win is that `inferElab ctx (RApp f x) | ahv-other`
+  -- now reduces to a *named* function call rather than to the
+  -- `inferElab` case tree's anonymous with-helper. Soundness for the
+  -- `ahv-other` view branch (`spec-gap-RApp-ahv-other`) can pattern-
+  -- match through this helper transparently.
+  inferElab-RApp-other : (ctx : NamedCtx) (f x : RawExpr) → InferElabResult (NamedCtx.debruijn ctx)
 
   -- ===== inferElab =====
 
@@ -1108,11 +1211,8 @@ mutual
   -- neutral-term ambiguity between literal-pattern clauses and the
   -- generic-RApp clause.
   inferElab ctx (Raw.RApp f x) with classifyAppHeadView f
-  -- id : A → A
-  ... | ahv-id with inferElab ctx x
-  ...   | failure err = failure err
-  ...   | success T Ψ argE d f' =
-          success T _ (Surface.app (weakenFromEmpty (specId T)) argE) (suc d) f'
+  -- id : A → A   (POC: dispatch via top-level helper, see `inferElab-RApp-id`)
+  ... | ahv-id = inferElab-RApp-id ctx (inferElab ctx x)
   -- fst : (A * B) → A
   inferElab ctx (Raw.RApp f x) | ahv-fst with inferElab ctx x
   ... | failure err = failure err
@@ -1173,14 +1273,7 @@ mutual
   -- bare `id` in argument position by routing them through
   -- `checkElab-RVar`'s specialized clauses. The inferred-and-matched
   -- shape was a non-standard variant that lost bidirectional power.
-  inferElab ctx (Raw.RApp f x) | ahv-other with asFun (inferElab ctx f)
-  ... | notFun err = failure err
-  ... | isFun A q B Ψ₁ fE df ff with checkElab ctx x A
-  ...   | failure err = failure err
-  ...   | success Ψ₂ xE dx fx = success B _ (Surface.app fE xE) (df ⊔ dx) fx
-  inferElab ctx (Raw.RApp f x) | ahv-other | isEff A B Ψ₁ fE df ff with checkElab ctx x A
-  ...   | failure err = failure err
-  ...   | success Ψ₂ xE dx fx = success (Unit ⇒[ mk-kind Many eff ] B) _ (Surface.effApp fE xE) (df ⊔ dx) fx
+  inferElab ctx (Raw.RApp f x) | ahv-other = inferElab-RApp-other ctx f x
 
   -- Let binding: infer e₁, then e₂ under extended context.
   -- e₂'s usage has the shape (q ∷ᵘ Ψ) where q is the bound var's usage.
@@ -1614,6 +1707,16 @@ mutual
   ... | success T' Ψ eE d fr with T ≟T T'
   ...   | yes refl = success _ eE d fr
   ...   | no _ = failure (TypeMismatch T T')
+
+  -- Body for the hoisted `ahv-other` (generic application) branch.
+  inferElab-RApp-other ctx f x with asFun (inferElab ctx f)
+  ... | notFun err = failure err
+  ... | isFun A q B Ψ₁ fE df ff with checkElab ctx x A
+  ...   | failure err = failure err
+  ...   | success Ψ₂ xE dx fx = success B _ (Surface.app fE xE) (df ⊔ dx) fx
+  inferElab-RApp-other ctx f x | isEff A B Ψ₁ fE df ff with checkElab ctx x A
+  ...   | failure err = failure err
+  ...   | success Ψ₂ xE dx fx = success (Unit ⇒[ mk-kind Many eff ] B) _ (Surface.effApp fE xE) (df ⊔ dx) fx
 
 ------------------------------------------------------------------------
 -- Generic-fallback lemmas (G2 completeness — check-mode).

@@ -129,6 +129,55 @@ CheckBundle ctx e T =
 checkBundle : (ctx : NamedCtx) (e : RawExpr) (T : Type) → CheckBundle ctx e T
 checkBundle ctx e T = checkElab ctx e T , refl
 
+-- Bundle for AppHeadView: pairs the view with its defining equation.
+-- Used by `infer-sound`'s RApp dispatch so the `ahv-other` branch can
+-- recover `classifyAppHeadView f ≡ ahv-other` for the reverse bridge
+-- to `classifyAppHead f ≡ nothing`. See `view-other⇒classifyAppHead-nothing`.
+ViewBundle : RawExpr → Set
+ViewBundle f =
+  ∃[ v ] Once.TypeCheck.Elaborate.classifyAppHeadView f ≡ v
+
+viewBundle : (f : RawExpr) → ViewBundle f
+viewBundle f = Once.TypeCheck.Elaborate.classifyAppHeadView f , refl
+
+------------------------------------------------------------------------
+-- Plan 0.4 T0 Option B (verified-elaborator) — DESIGN POC.
+--
+-- A verified `inferElab` returns its result paired with a soundness
+-- witness: the typing judgment for `success`, trivial for `failure`.
+-- This eliminates the case-tree alignment problem by construction —
+-- the elaborator's clause IS the proof.
+--
+-- This file isn't yet a full migration. It demonstrates the design
+-- on the trivial RInt clause. Scaling up requires either:
+--   (a) a module split (extract NamedCtx + classifyAppHead* into a
+--       new module so `Once.TypeCheck.Elaborate` can import
+--       `Once.TypeCheck.Judgment`), enabling `inferElab` itself to
+--       return the Σ-pair directly; or
+--   (b) keeping the wrapper here in `Soundness.agda`, which requires
+--       each clause to dispatch on `inferElab`'s case tree — the same
+--       problem Option A had for hard cases.
+--
+-- (a) is the principled path. (b) is the half-step.
+------------------------------------------------------------------------
+
+soundOf : (ctx : NamedCtx) (e : RawExpr)
+        → InferElabResult (NamedCtx.debruijn ctx) → Set
+soundOf ctx e (success A Ψ eE d f) = ctx ⊢ e ∶ A ⨾ Ψ
+soundOf ctx e (failure _) = ⊤
+  where open import Data.Unit using (⊤)
+
+VerifiedInferResult : (ctx : NamedCtx) (e : RawExpr) → Set
+VerifiedInferResult ctx e =
+  ∃[ r ] soundOf ctx e r
+
+-- POC clause: `RInt n` always succeeds at `Int` with zeroUsage, and
+-- the witness is the `t-int n` judgment rule applied directly.
+inferElabV-RInt : (ctx : NamedCtx) (n : ℤ)
+                → VerifiedInferResult ctx (Raw.RInt n)
+inferElabV-RInt ctx n =
+  success Int _ (Surface.int n) 0 (NamedCtx.freshCounter ctx) , t-int n
+
 -- Soundness for RUnaryOp OpNeg: the sub-expression must be inferable
 -- at type Int, and the result inherits that type and its usage
 -- vector unchanged.
@@ -1393,24 +1442,6 @@ postulate
     {eE : SExpr (NamedCtx.debruijn ctx) Ψ T} {d f' : ℕ}
     → checkElab ctx (Raw.RApp f arg) T ≡ success Ψ eE d f'
     → ctx ⊢ᶜ Raw.RApp f arg ∶ T ⨾ Ψ
-  -- ---- Infer-mode RApp dispatch sub-cases not yet proven ----
-  -- For RApp (RVar x) arg with x not in the builtin set of
-  -- {id, fst, snd, terminal, arr, apply, inl, inr, initial,
-  -- pair, compose, curry}, the elaborator falls through to
-  -- sound-RApp-generic. Constructing the `notPoly` proof for
-  -- arbitrary x requires nested case analysis on the builtin
-  -- string set. Postulated for now.
-  -- ahv-other adapter: takes the inferElab result as an explicit
-  -- term parameter so the proof can pass `_` (Agda fills it from
-  -- the partially-reduced form). The eq witness then types the
-  -- explicit term against `success`. Sidesteps with-helper opacity.
-  spec-gap-RApp-ahv-other :
-    ∀ (ctx : NamedCtx) (f arg : RawExpr)
-      (eqResult : Once.TypeCheck.Elaborate.InferElabResult (NamedCtx.debruijn ctx))
-      {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
-      {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d fr : ℕ}
-    → eqResult ≡ success A Ψ eE d fr
-    → ctx ⊢ Raw.RApp f arg ∶ A ⨾ Ψ
 
 mutual
   infer-sound : ∀ (ctx : NamedCtx) (e : RawExpr)
@@ -1449,35 +1480,36 @@ mutual
   infer-sound ctx (Raw.RAnnot e T) eq =
     sound-RAnnot ctx e T (check-sound ctx e T) eq
 
-  -- POC: view-dispatch with per-shape cases active, ahv-other postulated.
-  -- Tests whether the GADT-index refinement makes the per-shape cases work.
-  infer-sound ctx (Raw.RApp f arg) eq with Once.TypeCheck.Elaborate.classifyAppHeadView f
-  ... | Once.TypeCheck.Elaborate.ahv-id       = sound-RApp-id ctx arg (infer-sound ctx arg) eq
-  ... | Once.TypeCheck.Elaborate.ahv-fst      = sound-RApp-fst ctx arg (infer-sound ctx arg) eq
-  ... | Once.TypeCheck.Elaborate.ahv-snd      = sound-RApp-snd ctx arg (infer-sound ctx arg) eq
-  ... | Once.TypeCheck.Elaborate.ahv-terminal = sound-RApp-terminal ctx arg (infer-sound ctx arg) eq
-  ... | Once.TypeCheck.Elaborate.ahv-arr      = sound-RApp-arr ctx arg (infer-sound ctx arg) eq
-  ... | Once.TypeCheck.Elaborate.ahv-apply    = sound-RApp-apply ctx arg (infer-sound ctx arg) eq
-  ... | Once.TypeCheck.Elaborate.ahv-inl with eq
-  ...                                       | ()
-  infer-sound ctx (Raw.RApp f arg) eq | Once.TypeCheck.Elaborate.ahv-inr with eq
-  ...                                                                      | ()
-  infer-sound ctx (Raw.RApp f arg) eq | Once.TypeCheck.Elaborate.ahv-initial with eq
-  ...                                                                          | ()
-  infer-sound ctx (Raw.RApp f arg) eq | Once.TypeCheck.Elaborate.ahv-pair-applied with eq
-  ...                                                                                | ()
-  infer-sound ctx (Raw.RApp f arg) eq | Once.TypeCheck.Elaborate.ahv-compose-applied with eq
-  ...                                                                                   | ()
-  infer-sound ctx (Raw.RApp f arg) eq | Once.TypeCheck.Elaborate.ahv-curry with eq
-  ...                                                                        | ()
-  -- ahv-other: the only case still blocked by the with-helper
-  -- opacity. f stays abstract (ahv-other has no GADT index
-  -- constraint), so eq's type doesn't reduce. Postulated via an
-  -- adapter that takes the inferElab-result expression as an
-  -- explicit eqResult parameter, sidestepping the with-helper
-  -- opacity issue.
-  infer-sound ctx (Raw.RApp f arg) eq | Once.TypeCheck.Elaborate.ahv-other =
-    spec-gap-RApp-ahv-other ctx f arg _ eq
+  -- Plan 0.4 T0 Option A: view-dispatch via `viewBundle` to capture
+  -- `classifyAppHeadView f ≡ v` for the ahv-other branch. The
+  -- ahv-other clause now discharges via `sound-RApp-generic` after
+  -- the reverse bridge supplies its `notPoly` premise.
+  infer-sound ctx (Raw.RApp f arg) eq with viewBundle f
+  ... | Once.TypeCheck.Elaborate.ahv-id       , _ = sound-RApp-id ctx arg (infer-sound ctx arg) eq
+  ... | Once.TypeCheck.Elaborate.ahv-fst      , _ = sound-RApp-fst ctx arg (infer-sound ctx arg) eq
+  ... | Once.TypeCheck.Elaborate.ahv-snd      , _ = sound-RApp-snd ctx arg (infer-sound ctx arg) eq
+  ... | Once.TypeCheck.Elaborate.ahv-terminal , _ = sound-RApp-terminal ctx arg (infer-sound ctx arg) eq
+  ... | Once.TypeCheck.Elaborate.ahv-arr      , _ = sound-RApp-arr ctx arg (infer-sound ctx arg) eq
+  ... | Once.TypeCheck.Elaborate.ahv-apply    , _ = sound-RApp-apply ctx arg (infer-sound ctx arg) eq
+  ... | Once.TypeCheck.Elaborate.ahv-inl      , _ with eq
+  ...                                                | ()
+  infer-sound ctx (Raw.RApp f arg) eq | Once.TypeCheck.Elaborate.ahv-inr      , _ with eq
+  ...                                                                              | ()
+  infer-sound ctx (Raw.RApp f arg) eq | Once.TypeCheck.Elaborate.ahv-initial  , _ with eq
+  ...                                                                              | ()
+  infer-sound ctx (Raw.RApp f arg) eq | Once.TypeCheck.Elaborate.ahv-pair-applied , _ with eq
+  ...                                                                                  | ()
+  infer-sound ctx (Raw.RApp f arg) eq | Once.TypeCheck.Elaborate.ahv-compose-applied , _ with eq
+  ...                                                                                     | ()
+  infer-sound ctx (Raw.RApp f arg) eq | Once.TypeCheck.Elaborate.ahv-curry    , _ with eq
+  ...                                                                              | ()
+  -- ahv-other: discharged via the reverse bridge.
+  infer-sound ctx (Raw.RApp f arg) eq | Once.TypeCheck.Elaborate.ahv-other , eqView =
+    sound-RApp-generic ctx f arg
+      (Once.TypeCheck.Elaborate.view-other⇒classifyAppHead-nothing eqView)
+      (infer-sound ctx f)
+      (λ {A'} → check-sound ctx arg A')
+      eq
 
   -- ===== check-sound: 13 RawExpr cases =====
   -- All check-mode shapes go through named spec-gap postulates for
