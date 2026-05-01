@@ -1166,18 +1166,20 @@ mutual
   infer-sound ctx (Raw.RAnnot e T) eq =
     sound-RAnnot ctx e T (check-sound ctx e T) eq
 
-  -- RApp dispatch — postulated for now.
-  --
-  -- The string-discriminator chain `with StrProp._≟_ x "id" / "fst"
-  -- / ...` does NOT reduce the eq's type when x is abstract, because
-  -- the elaborator's own classifyAppHeadView dispatch is opaque on
-  -- abstract strings (the classic "with-abstraction blocks
-  -- reduction" trap). Composing the per-shape lemmas
-  -- `sound-RApp-id` etc. requires a bridge lemma converting
-  -- `classifyAppHead (RVar x) ≡ just pba-X` into a refinement of
-  -- the elaborator's dispatch. Two named gaps for now; the bridge
-  -- + per-pba dispatch is the single largest piece of work
-  -- remaining for T0's RApp coverage.
+  -- RApp dispatch via Once.TypeCheck.Elaborate.classifyAppHeadView. Each AppHeadView
+  -- constructor carries the head's structure as an index, so
+  -- pattern-matching ahv-X unifies f with the right shape.
+  -- The elaborator dispatches the same way, so eq reduces cleanly.
+  -- RApp: would dispatch via `with classifyAppHeadView f` and
+  -- pattern-match on each ahv-X constructor to compose per-shape
+  -- lemmas (sound-RApp-id etc.). However, the elaborator's own
+  -- `with classifyAppHeadView` generates a `with-1958` helper
+  -- that doesn't reduce together with the proof's own
+  -- `with classifyAppHeadView`, leaving eq mismatched. Replacing
+  -- the postulates requires either inspect-style alignment or
+  -- top-level helpers (`infer-sound-RApp ctx f arg view eq`)
+  -- that take the AppHeadView result as an explicit argument.
+  -- See feedback_with_abstraction.md for the pattern.
   infer-sound ctx (Raw.RApp (Raw.RVar x) arg) eq =
     spec-gap-RApp-RVar-other ctx x arg eq
   infer-sound ctx (Raw.RApp f arg) eq = spec-gap-RApp-non-RVar ctx f arg eq
