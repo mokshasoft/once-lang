@@ -1214,7 +1214,23 @@ mutual
     | failure _ , eqInf rewrite eqInf with eq
   ...   | ()
   check-sound ctx (Raw.RApp f arg)     T eq = spec-gap-check-RApp ctx f arg T eq
-  check-sound ctx (Raw.RLam x body)    T eq = spec-gap-check-RLam ctx x body T eq
+  -- RLam is the only shape with a specialized check clause: only
+  -- well-typed at a pure-arrow type, otherwise fails. Dispatch on T.
+  check-sound ctx (Raw.RLam x body) (A T.⇒[ T.mk-kind q T.pure ] B) eq =
+    sound-check-RLam ctx x body A q B
+      (check-sound (extendNamedCtx ctx x A) body B) eq
+  -- Non-arrow / wrong-purity / wrong-kind T: elaborator fails.
+  check-sound ctx (Raw.RLam _ _) Unit       ()
+  check-sound ctx (Raw.RLam _ _) Int        ()
+  check-sound ctx (Raw.RLam _ _) Float      ()
+  check-sound ctx (Raw.RLam _ _) Str        ()
+  check-sound ctx (Raw.RLam _ _) Buffer     ()
+  check-sound ctx (Raw.RLam _ _) Void       ()
+  check-sound ctx (Raw.RLam _ _) (_ T.* _)  ()
+  check-sound ctx (Raw.RLam _ _) (_ T.+ _)  ()
+  check-sound ctx (Raw.RLam _ _) (_ T.⇒[ T.mk-kind _ T.eff ] _) ()
+  check-sound ctx (Raw.RLam _ _) (T.μ-type _) ()
+  check-sound ctx (Raw.RLam _ _) (T.ν-type _) ()
   -- RPair via catch-all infer-fallback. Per-shape lemma sound-RPair
   -- recurses on STRICTLY SMALLER subterms (a, b), so termination
   -- holds (vs calling infer-sound on the same Raw.RPair a b which
