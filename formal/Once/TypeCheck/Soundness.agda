@@ -188,19 +188,24 @@ sound-RUnaryOp-neg ctx e IH eq | failure _ , eqSub
 
 -- Soundness for RAnnot: the sub-expression must successfully check
 -- at the annotated type, and the result's type equals that annotation.
+-- Plan 0.4 T0 (2026-04-30): IH now gives ⊢ᶜ directly (matches what
+-- check-sound returns). The previous shape took a checkElab success
+-- but claimed to produce ⊢ᵢ — a direction mismatch that no real
+-- caller could satisfy. Body simplifies to drop the now-redundant
+-- t-embed.
 sound-RAnnot :
   ∀ (ctx : NamedCtx) (e : RawExpr) (T : Type)
     {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
     {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
   → (IH : ∀ {Ψ' eE' d' f'}
         → checkElab ctx e T ≡ success Ψ' eE' d' f'
-        → ctx ⊢ e ∶ T ⨾ Ψ')
+        → ctx ⊢ᶜ e ∶ T ⨾ Ψ')
   → inferElab ctx (RAnnot e T) ≡ success A Ψ eE d f
   → ctx ⊢ RAnnot e T ∶ A ⨾ Ψ
 sound-RAnnot ctx e T IH eq with checkBundle ctx e T
 sound-RAnnot ctx e T IH eq | success _ _ _ _ , eqSub
   rewrite eqSub with eq
-... | refl = t-annot (t-embed (IH refl))
+... | refl = t-annot (IH refl)
 sound-RAnnot ctx e T IH eq | failure _ , eqSub
   rewrite eqSub with eq
 ... | ()

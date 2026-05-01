@@ -188,13 +188,17 @@ record VerifiedTypeChecker : Set₁ where
       → tcInfer ctx (RUnaryOp OpNeg e) ≡ success A Ψ eE d f
       → ctx ⊢ RUnaryOp OpNeg e ∶ A ⨾ Ψ
 
+    -- Plan 0.4 T0 (2026-04-30): IH now gives ⊢ᶜ (matches what
+    -- check-sound returns). Previously claimed to give ⊢ᵢ from a
+    -- checkElab success — a direction mismatch that no real
+    -- caller could satisfy. Surfaced when scaffolding infer-sound.
     tcInfer-sound-RAnnot :
       ∀ (ctx : NamedCtx) (e : RawExpr) (T : Type)
         {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
         {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : _}
       → (IH : ∀ {Ψ' eE' d' f'}
             → tcCheck ctx e T ≡ success Ψ' eE' d' f'
-            → ctx ⊢ e ∶ T ⨾ Ψ')
+            → ctx ⊢ᶜ e ∶ T ⨾ Ψ')
       → tcInfer ctx (RAnnot e T) ≡ success A Ψ eE d f
       → ctx ⊢ RAnnot e T ∶ A ⨾ Ψ
 
