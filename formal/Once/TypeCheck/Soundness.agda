@@ -42,7 +42,8 @@ open import Once.TypeCheck.Raw as Raw
          RLam; RLet; RDestruct; RUnaryOp; RBinOp; OpNeg; BinOp)
 open import Data.String using (_++_)
 import Data.String.Properties
-open import Relation.Nullary using (yes; no)
+open import Relation.Nullary using (yes; no; ¬_)
+open import Data.Empty using (⊥-elim)
 open import Once.TypeCheck.Elaborate
   using (NamedCtx; inferElab; checkElab; InferElabResult; CheckElabResult;
          success; failure; lookupLocal; lookupImport; extendNamedCtx)
@@ -331,6 +332,105 @@ sound-RVar ctx x eq
   | nothing , eqLocal
   | nothing , eqImport
   rewrite eqImport with eq
+... | ()
+
+-- Plan 0.4 T0: bridge from inferElab failure on a concrete non-unit
+-- builtin name to both lookup failures. Used by check-mode bbc-X
+-- soundness lemmas to construct t-X-check's lookup-nothing premises.
+-- Specialised to each builtin name to keep proofs concrete.
+private
+  inferElab-RVar-fail-local :
+    ∀ {ctx : NamedCtx} {x : String} {err}
+    → ¬ (x ≡ "unit")
+    → inferElab ctx (Raw.RVar x) ≡ failure err
+    → lookupLocal ctx x ≡ nothing
+  inferElab-RVar-fail-local {ctx} {x} x≢unit eq with unitDecBundle x
+  ... | yes uniteq , _ = ⊥-elim (x≢unit uniteq)
+  ... | no _ , eqU rewrite eqU with localLookupBundle ctx x
+  inferElab-RVar-fail-local x≢unit eq | no _ , _ | just _ , eqL rewrite eqL with eq
+  ... | ()
+  inferElab-RVar-fail-local x≢unit eq | no _ , _ | nothing , eqL = eqL
+
+  inferElab-RVar-fail-import :
+    ∀ {ctx : NamedCtx} {x : String} {err}
+    → ¬ (x ≡ "unit")
+    → inferElab ctx (Raw.RVar x) ≡ failure err
+    → lookupImport (NamedCtx.imports ctx) x ≡ nothing
+  inferElab-RVar-fail-import {ctx} {x} x≢unit eq with unitDecBundle x
+  ... | yes uniteq , _ = ⊥-elim (x≢unit uniteq)
+  ... | no _ , eqU rewrite eqU with localLookupBundle ctx x
+  inferElab-RVar-fail-import x≢unit eq | no _ , _ | just _ , eqL rewrite eqL with eq
+  ... | ()
+  inferElab-RVar-fail-import {ctx} {x} x≢unit eq | no _ , _ | nothing , eqL
+    rewrite eqL with lookupBundle (NamedCtx.imports ctx) x
+  inferElab-RVar-fail-import x≢unit eq | no _ , _ | nothing , _ | just _ , eqI
+    rewrite eqI with eq
+  ... | ()
+  inferElab-RVar-fail-import x≢unit eq | no _ , _ | nothing , _ | nothing , eqI = eqI
+
+-- Plan 0.4 T0: discharge of sound-check-RVar-id.
+-- The elaborator's bbc-id dispatch:
+--   (1) Try inferElab. If success at T' and T = T' → transport via t-embed.
+--   (2) On inferElab failure at T = A ⇒[Many] A (A=B) → t-id-check with
+--       lookup-failure premises derived from the inferElab failure.
+--   (3) Otherwise → elaborator failure, eq absurd.
+sound-check-RVar-id :
+  ∀ (ctx : NamedCtx) (T : Type)
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ T} {d f : ℕ}
+  → checkElab ctx (Raw.RVar "id") T ≡ success Ψ eE d f
+  → ctx ⊢ᶜ Raw.RVar "id" ∶ T ⨾ Ψ
+sound-check-RVar-id ctx T eq with inferBundle ctx (Raw.RVar "id")
+... | success T' Ψ' eE' d' f' , eqInf
+      rewrite eqInf with T Once.TypeCheck.Elaborate.≟T T'
+...     | yes refl with eq
+...                   | refl = t-embed (sound-RVar ctx "id" eqInf)
+sound-check-RVar-id ctx T eq | success T' Ψ' eE' d' f' , eqInf | no _
+  rewrite eqInf with eq
+... | ()
+sound-check-RVar-id ctx T eq | failure _ , eqInf rewrite eqInf with T
+... | (A T.⇒[ T.mk-kind T.Many T.pure ] B) with A Once.TypeCheck.Elaborate.≟T B
+...     | yes refl with eq
+...                   | refl = t-id-check
+                                  (inferElab-RVar-fail-local {ctx} {"id"} (λ ()) eqInf)
+                                  (inferElab-RVar-fail-import {ctx} {"id"} (λ ()) eqInf)
+sound-check-RVar-id ctx T eq | failure _ , eqInf
+  | (A T.⇒[ T.mk-kind T.Many T.pure ] B) | no _ with eq
+... | ()
+sound-check-RVar-id ctx T eq | failure _ , eqInf | Unit with eq
+... | ()
+sound-check-RVar-id ctx T eq | failure _ , eqInf | Int with eq
+... | ()
+sound-check-RVar-id ctx T eq | failure _ , eqInf | Str with eq
+... | ()
+sound-check-RVar-id ctx T eq | failure _ , eqInf | Void with eq
+... | ()
+sound-check-RVar-id ctx T eq | failure _ , eqInf | Float with eq
+... | ()
+sound-check-RVar-id ctx T eq | failure _ , eqInf | Buffer with eq
+... | ()
+sound-check-RVar-id ctx T eq | failure _ , eqInf | (_ T.* _) with eq
+... | ()
+sound-check-RVar-id ctx T eq | failure _ , eqInf | (_ T.+ _) with eq
+... | ()
+sound-check-RVar-id ctx T eq | failure _ , eqInf
+  | (_ T.⇒[ T.mk-kind T.One T.pure ] _) with eq
+... | ()
+sound-check-RVar-id ctx T eq | failure _ , eqInf
+  | (_ T.⇒[ T.mk-kind T.Zero T.pure ] _) with eq
+... | ()
+sound-check-RVar-id ctx T eq | failure _ , eqInf
+  | (_ T.⇒[ T.mk-kind T.Many T.eff ] _) with eq
+... | ()
+sound-check-RVar-id ctx T eq | failure _ , eqInf
+  | (_ T.⇒[ T.mk-kind T.One T.eff ] _) with eq
+... | ()
+sound-check-RVar-id ctx T eq | failure _ , eqInf
+  | (_ T.⇒[ T.mk-kind T.Zero T.eff ] _) with eq
+... | ()
+sound-check-RVar-id ctx T eq | failure _ , eqInf | T.μ-type _ with eq
+... | ()
+sound-check-RVar-id ctx T eq | failure _ , eqInf | T.ν-type _ with eq
 ... | ()
 
 -- `sound-RVar-unit` is now a specialisation; rewrite in terms of
@@ -1246,11 +1346,6 @@ postulate
   -- the RApp per-shape lemmas). Each takes a checkElab-success
   -- witness for its specific bare builtin name. bbc-other handles
   -- the catch-all (RVar dispatching through inferElab+lookupPoly).
-  spec-gap-sound-check-RVar-id : ∀ (ctx : NamedCtx) (T : Type)
-    {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {eE : SExpr (NamedCtx.debruijn ctx) Ψ T} {d f : ℕ}
-    → checkElab ctx (Raw.RVar "id") T ≡ success Ψ eE d f
-    → ctx ⊢ᶜ Raw.RVar "id" ∶ T ⨾ Ψ
   spec-gap-sound-check-RVar-fst : ∀ (ctx : NamedCtx) (T : Type)
     {Ψ : Surface.Usage (NamedCtx.size ctx)}
     {eE : SExpr (NamedCtx.debruijn ctx) Ψ T} {d f : ℕ}
@@ -1407,7 +1502,7 @@ mutual
   -- x via the GADT index, the catchall bbc-other postulate is the
   -- residual gap (analogous to ahv-other for RApp).
   check-sound ctx (Raw.RVar x) T eq with Once.TypeCheck.Elaborate.classifyBareBuiltin x
-  ... | Once.TypeCheck.Elaborate.bbc-id       = spec-gap-sound-check-RVar-id ctx T eq
+  ... | Once.TypeCheck.Elaborate.bbc-id       = sound-check-RVar-id ctx T eq
   ... | Once.TypeCheck.Elaborate.bbc-fst      = spec-gap-sound-check-RVar-fst ctx T eq
   ... | Once.TypeCheck.Elaborate.bbc-snd      = spec-gap-sound-check-RVar-snd ctx T eq
   ... | Once.TypeCheck.Elaborate.bbc-terminal = spec-gap-sound-check-RVar-terminal ctx T eq
