@@ -1186,17 +1186,117 @@ mutual
   -- All check-mode shapes go through named spec-gap postulates for
   -- now. Each represents one missing per-shape lemma. They are the
   -- single largest chunk of T0's remaining work.
-  check-sound ctx (Raw.RInt n)         T eq = spec-gap-check-RInt ctx n T eq
-  check-sound ctx (Raw.RStringLit s)   T eq = spec-gap-check-RStringLit ctx s T eq
-  check-sound ctx Raw.RUnit            T eq = spec-gap-check-RUnit ctx T eq
+  check-sound ctx (Raw.RInt n) T eq with T Once.TypeCheck.Elaborate.≟T Int
+  ... | yes refl with eq
+  ...   | refl = t-embed (t-int n)
+  check-sound ctx (Raw.RInt n) T eq | no _ with eq
+  ...   | ()
+  check-sound ctx (Raw.RStringLit s) T eq with T Once.TypeCheck.Elaborate.≟T Str
+  ... | yes refl with eq
+  ...   | refl = t-embed (t-str s)
+  check-sound ctx (Raw.RStringLit s) T eq | no _ with eq
+  ...   | ()
+  check-sound ctx Raw.RUnit T eq with T Once.TypeCheck.Elaborate.≟T Unit
+  ... | yes refl with eq
+  ...   | refl = t-embed t-unit
+  check-sound ctx Raw.RUnit T eq | no _ with eq
+  ...   | ()
   check-sound ctx (Raw.RVar x)         T eq = spec-gap-check-RVar ctx x T eq
-  check-sound ctx (Raw.RQualified n a) T eq = spec-gap-check-RQualified ctx n a T eq
+  -- RQualified goes through checkElab's catch-all `with inferElab`.
+  check-sound ctx (Raw.RQualified n a) T eq with inferBundle ctx (Raw.RQualified n a)
+  ... | success T' Ψ' eE' d' f' , eqInf with tyEqBundle T T'
+  ...   | yes refl , eqTy rewrite eqInf | eqTy with eq
+  ...     | refl = t-embed (sound-RQualified ctx n a eqInf)
+  check-sound ctx (Raw.RQualified n a) T eq
+    | success T' Ψ' eE' d' f' , eqInf | no _ , eqTy rewrite eqInf | eqTy with eq
+  ...     | ()
+  check-sound ctx (Raw.RQualified n a) T eq
+    | failure _ , eqInf rewrite eqInf with eq
+  ...   | ()
   check-sound ctx (Raw.RApp f arg)     T eq = spec-gap-check-RApp ctx f arg T eq
   check-sound ctx (Raw.RLam x body)    T eq = spec-gap-check-RLam ctx x body T eq
-  check-sound ctx (Raw.RLet x e₁ e₂)   T eq = spec-gap-check-RLet ctx x e₁ e₂ T eq
-  check-sound ctx (Raw.RPair a b)      T eq = spec-gap-check-RPair ctx a b T eq
-  check-sound ctx (Raw.RDestruct scrut xL eL xR eR) T eq =
-    spec-gap-check-RDestruct ctx scrut xL eL xR eR T eq
-  check-sound ctx (Raw.RAnnot e T0)    T eq = spec-gap-check-RAnnot ctx e T0 T eq
-  check-sound ctx (Raw.RBinOp op e₁ e₂) T eq = spec-gap-check-RBinOp ctx op e₁ e₂ T eq
-  check-sound ctx (Raw.RUnaryOp op e)  T eq = spec-gap-check-RUnaryOp ctx op e T eq
+  -- RPair via catch-all infer-fallback. Per-shape lemma sound-RPair
+  -- recurses on STRICTLY SMALLER subterms (a, b), so termination
+  -- holds (vs calling infer-sound on the same Raw.RPair a b which
+  -- would loop).
+  check-sound ctx (Raw.RPair a b) T eq with inferBundle ctx (Raw.RPair a b)
+  ... | success T' Ψ' eE' d' f' , eqInf with tyEqBundle T T'
+  ...   | yes refl , eqTy rewrite eqInf | eqTy with eq
+  ...     | refl = t-embed (sound-RPair ctx a b (infer-sound ctx a) (infer-sound ctx b) eqInf)
+  check-sound ctx (Raw.RPair a b) T eq
+    | success T' Ψ' eE' d' f' , eqInf | no _ , eqTy rewrite eqInf | eqTy with eq
+  ...     | ()
+  check-sound ctx (Raw.RPair a b) T eq
+    | failure _ , eqInf rewrite eqInf with eq
+  ...   | ()
+
+  -- RLet via catch-all infer-fallback.
+  check-sound ctx (Raw.RLet x e₁ e₂) T eq with inferBundle ctx (Raw.RLet x e₁ e₂)
+  ... | success T' Ψ' eE' d' f' , eqInf with tyEqBundle T T'
+  ...   | yes refl , eqTy rewrite eqInf | eqTy with eq
+  ...     | refl = t-embed (sound-RLet ctx x e₁ e₂
+                              (infer-sound ctx e₁)
+                              (infer-sound (extendNamedCtx ctx x _) e₂)
+                              eqInf)
+  check-sound ctx (Raw.RLet x e₁ e₂) T eq
+    | success T' Ψ' eE' d' f' , eqInf | no _ , eqTy rewrite eqInf | eqTy with eq
+  ...     | ()
+  check-sound ctx (Raw.RLet x e₁ e₂) T eq
+    | failure _ , eqInf rewrite eqInf with eq
+  ...   | ()
+
+  -- RDestruct via catch-all infer-fallback.
+  check-sound ctx (Raw.RDestruct scrut xL eL xR eR) T eq
+    with inferBundle ctx (Raw.RDestruct scrut xL eL xR eR)
+  ... | success T' Ψ' eE' d' f' , eqInf with tyEqBundle T T'
+  ...   | yes refl , eqTy rewrite eqInf | eqTy with eq
+  ...     | refl = t-embed (sound-RDestruct ctx scrut xL eL xR eR
+                              (infer-sound ctx scrut)
+                              (λ {Aty} → infer-sound (extendNamedCtx ctx xL Aty) eL)
+                              (λ {Bty} → infer-sound (extendNamedCtx ctx xR Bty) eR)
+                              eqInf)
+  check-sound ctx (Raw.RDestruct scrut xL eL xR eR) T eq
+    | success T' Ψ' eE' d' f' , eqInf | no _ , eqTy rewrite eqInf | eqTy with eq
+  ...     | ()
+  check-sound ctx (Raw.RDestruct scrut xL eL xR eR) T eq
+    | failure _ , eqInf rewrite eqInf with eq
+  ...   | ()
+
+  -- RAnnot via catch-all infer-fallback. Inner expression's check
+  -- recurses on a structurally smaller term.
+  check-sound ctx (Raw.RAnnot e T0) T eq with inferBundle ctx (Raw.RAnnot e T0)
+  ... | success T' Ψ' eE' d' f' , eqInf with tyEqBundle T T'
+  ...   | yes refl , eqTy rewrite eqInf | eqTy with eq
+  ...     | refl = t-embed (sound-RAnnot ctx e T0 (check-sound ctx e T0) eqInf)
+  check-sound ctx (Raw.RAnnot e T0) T eq
+    | success T' Ψ' eE' d' f' , eqInf | no _ , eqTy rewrite eqInf | eqTy with eq
+  ...     | ()
+  check-sound ctx (Raw.RAnnot e T0) T eq
+    | failure _ , eqInf rewrite eqInf with eq
+  ...   | ()
+
+  -- RBinOp via catch-all infer-fallback.
+  check-sound ctx (Raw.RBinOp op e₁ e₂) T eq with inferBundle ctx (Raw.RBinOp op e₁ e₂)
+  ... | success T' Ψ' eE' d' f' , eqInf with tyEqBundle T T'
+  ...   | yes refl , eqTy rewrite eqInf | eqTy with eq
+  ...     | refl = t-embed (sound-RBinOp ctx op e₁ e₂
+                              (infer-sound ctx e₁) (infer-sound ctx e₂) eqInf)
+  check-sound ctx (Raw.RBinOp op e₁ e₂) T eq
+    | success T' Ψ' eE' d' f' , eqInf | no _ , eqTy rewrite eqInf | eqTy with eq
+  ...     | ()
+  check-sound ctx (Raw.RBinOp op e₁ e₂) T eq
+    | failure _ , eqInf rewrite eqInf with eq
+  ...   | ()
+
+  -- RUnaryOp via catch-all infer-fallback.
+  check-sound ctx (Raw.RUnaryOp Raw.OpNeg e) T eq
+    with inferBundle ctx (Raw.RUnaryOp Raw.OpNeg e)
+  ... | success T' Ψ' eE' d' f' , eqInf with tyEqBundle T T'
+  ...   | yes refl , eqTy rewrite eqInf | eqTy with eq
+  ...     | refl = t-embed (sound-RUnaryOp-neg ctx e (infer-sound ctx e) eqInf)
+  check-sound ctx (Raw.RUnaryOp Raw.OpNeg e) T eq
+    | success T' Ψ' eE' d' f' , eqInf | no _ , eqTy rewrite eqInf | eqTy with eq
+  ...     | ()
+  check-sound ctx (Raw.RUnaryOp Raw.OpNeg e) T eq
+    | failure _ , eqInf rewrite eqInf with eq
+  ...   | ()
