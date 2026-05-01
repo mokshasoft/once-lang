@@ -202,6 +202,24 @@ mutual
                    → ctx ⊢ᵢ e ∶ T ⨾ Ψ
                    → ctx ⊢ᵢ RApp (RVar "terminal") e ∶ Unit ⨾ (zeroUsage +ᵘ (Once.Type.Many *ᵘ Ψ))
 
+    -- | `arr f` — lift a Many-quantity pure function into Eff.
+    -- Plan 0.4 T0 spec rule (2026-04-30): closes spec-gap-arr-app-infer.
+    -- Disjoint from t-app by classifyAppHead (RVar "arr") = just pba-arr.
+    t-arr-app-infer : ∀ {ctx : NamedCtx} {e : RawExpr} {A B : Type}
+                      {Ψ : Surface.Usage (NamedCtx.size ctx)}
+                    → ctx ⊢ᵢ e ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) ⨾ Ψ
+                    → ctx ⊢ᵢ RApp (RVar "arr") e
+                              ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B)
+                              ⨾ (zeroUsage +ᵘ (Once.Type.Many *ᵘ Ψ))
+
+    -- | `apply p` — eliminate a pair-of-function. p must infer at
+    -- (A ⇒[Many] B) * A. Plan 0.4 T0 spec rule (2026-04-30): closes
+    -- spec-gap-apply-app-infer. Disjoint from t-app similarly.
+    t-apply-app-infer : ∀ {ctx : NamedCtx} {p : RawExpr} {A B : Type}
+                        {Ψ : Surface.Usage (NamedCtx.size ctx)}
+                      → ctx ⊢ᵢ p ∶ ((A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) Once.Type.* A) ⨾ Ψ
+                      → ctx ⊢ᵢ RApp (RVar "apply") p ∶ B ⨾ (zeroUsage +ᵘ (Once.Type.Many *ᵘ Ψ))
+
     ----------------------------------------------------------------
     -- Generic function application.
     --

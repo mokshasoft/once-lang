@@ -1927,6 +1927,22 @@ checkElab-fallback-RApp-curry :
 checkElab-fallback-RApp-curry {ctx} f A B C eq_f
   rewrite eq_f = _ , _ , _ , refl
 
+-- Plan 0.4 T0 (2026-04-30): applied `arr e` in check mode at
+-- `Eff A B`. The elaborator's ahv-arr check-mode path checks `e`
+-- at `A ⇒[Many] B`. Premise is checkElab evidence on `e`.
+checkElab-fallback-RApp-arr :
+  ∀ {ctx : NamedCtx} (e : RawExpr) (A B : Type)
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)}
+    {d fr : ℕ}
+  → checkElab ctx e (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)
+      ≡ success Ψ eE d fr
+  → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
+      checkElab ctx (Raw.RApp (Raw.RVar "arr") e)
+                    (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B)
+        ≡ success (Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ)) eE' d' f')))
+checkElab-fallback-RApp-arr {ctx} e A B eqCheck rewrite eqCheck = _ , _ , _ , refl
+
 -- Plan 0.6 Phase C.7 POC-3: applied `apply p` at result type B.
 checkElab-fallback-RApp-apply :
   ∀ {ctx : NamedCtx} (p : RawExpr) (A B : Type)

@@ -229,6 +229,32 @@ infer-complete-RApp-snd :
 infer-complete-RApp-snd arg eqSub rewrite eqSub =
   _ , _ , _ , refl
 
+infer-complete-RApp-arr :
+  ∀ {ctx : NamedCtx} (arg : RawExpr) {A B : Type}
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {argE : SExpr (NamedCtx.debruijn ctx) Ψ (A T.⇒[ T.mk-kind T.Many T.pure ] B)}
+    {d' f' : ℕ}
+  → inferElab ctx arg ≡ success (A T.⇒[ T.mk-kind T.Many T.pure ] B) Ψ argE d' f'
+  → ∃[ eE ] ∃[ d ] ∃[ f ]
+      inferElab ctx (Raw.RApp (RVar "arr") arg)
+        ≡ success (A T.⇒[ T.mk-kind T.Many T.eff ] B) (zeroUsage +ᵘ (T.Many *ᵘ Ψ)) eE d f
+infer-complete-RApp-arr arg eqSub rewrite eqSub =
+  _ , _ , _ , refl
+
+infer-complete-RApp-apply :
+  ∀ {ctx : NamedCtx} (arg : RawExpr) (A : Type) {B : Type}
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {argE : SExpr (NamedCtx.debruijn ctx) Ψ ((A T.⇒[ T.mk-kind T.Many T.pure ] B) T.* A)}
+    {d' f' : ℕ}
+  → inferElab ctx arg ≡ success ((A T.⇒[ T.mk-kind T.Many T.pure ] B) T.* A) Ψ argE d' f'
+  → ∃[ eE ] ∃[ d ] ∃[ f ]
+      inferElab ctx (Raw.RApp (RVar "apply") arg)
+        ≡ success B (zeroUsage +ᵘ (T.Many *ᵘ Ψ)) eE d f
+infer-complete-RApp-apply arg A eqSub rewrite eqSub
+  with A Once.TypeCheck.Elaborate.≟T A
+... | yes refl = _ , _ , _ , refl
+... | no ¬eq = ⊥-elim (¬eq refl)
+
 ------------------------------------------------------------------------
 -- Variable lookup (local / import)
 ------------------------------------------------------------------------
@@ -489,6 +515,7 @@ open Once.TypeCheck.Elaborate
          checkElab-fallback-RVar-inr; checkElab-fallback-RVar-arr;
          checkElab-fallback-RApp-pair; checkElab-fallback-RApp-compose;
          checkElab-fallback-RApp-curry; checkElab-fallback-RApp-apply;
+         checkElab-fallback-RApp-arr;
          checkElab-fallback-RVar-poly;
          checkElab-fallback-RQualified; checkElab-fallback-RAnnot;
          checkElab-fallback-RPair; checkElab-fallback-RLet;
@@ -553,6 +580,31 @@ checkElab-fallback-RVar x T eqInf | Once.TypeCheck.Elaborate.bbc-other
 ... | yes refl = _ , _ , _ , refl
 ... | no ¬eq   = ⊥-elim (¬eq refl)
 
+-- Plan 0.4 T0 (2026-04-30): completeness gaps for t-embed of
+-- t-arr-app-infer / t-apply-app-infer. The elaborator's check-mode
+-- for these uses specialised dispatches that don't transport via
+-- inferElab → checkElab catchall. The natural fix is recursion on
+-- check-complete (t-embed d), which is structurally smaller — but
+-- Agda's mutual termination checker rejects it. Soundness is fully
+-- proven (sound-RApp-arr, sound-RApp-apply); this gap is on the
+-- completeness side only.
+postulate
+  completeness-gap-arr-check :
+    ∀ {ctx : NamedCtx} {e : RawExpr} {A B : Type}
+      {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    → ctx ⊢ᵢ e ∶ (A T.⇒[ T.mk-kind T.Many T.pure ] B) ⨾ Ψ
+    → ∃[ eE ] ∃[ d ] ∃[ f ]
+        checkElab ctx (Raw.RApp (RVar "arr") e)
+                      (A T.⇒[ T.mk-kind T.Many T.eff ] B)
+          ≡ success (zeroUsage +ᵘ (T.Many *ᵘ Ψ)) eE d f
+  completeness-gap-apply-check :
+    ∀ {ctx : NamedCtx} {p : RawExpr} {A B : Type}
+      {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    → ctx ⊢ᵢ p ∶ ((A T.⇒[ T.mk-kind T.Many T.pure ] B) T.* A) ⨾ Ψ
+    → ∃[ eE ] ∃[ d ] ∃[ f ]
+        checkElab ctx (Raw.RApp (RVar "apply") p) B
+          ≡ success (zeroUsage +ᵘ (T.Many *ᵘ Ψ)) eE d f
+
 mutual
   infer-complete :
     ∀ {ctx : NamedCtx} {e : RawExpr} {A : Type}
@@ -614,6 +666,12 @@ mutual
   infer-complete (t-terminal-app {e = e} d) =
     let (_ , _ , _ , eqSub) = infer-complete d
     in infer-complete-RApp-terminal e eqSub
+  infer-complete (t-arr-app-infer {e = e} d) =
+    let (_ , _ , _ , eqSub) = infer-complete d
+    in infer-complete-RApp-arr e eqSub
+  infer-complete (t-apply-app-infer {p = p} {A = A} d) =
+    let (_ , _ , _ , eqSub) = infer-complete d
+    in infer-complete-RApp-apply p A eqSub
   -- Plan 0.4 T1, change 1: dX is now a check-mode derivation
   -- (per the t-app/t-effApp signature changes in Judgment).
   -- check-complete gives us the checkElab evidence directly.
@@ -693,6 +751,22 @@ mutual
   check-complete (t-embed (t-terminal-app {e = e} d)) =
     let (_ , _ , _ , eqI) = infer-complete (t-terminal-app d)
     in checkElab-fallback-RApp-terminal e Unit eqI
+  -- Plan 0.4 T0 (2026-04-30): t-embed of t-arr-app-infer.
+  -- The elaborator's check-mode for `arr e` uses ahv-arr-check (a
+  -- specialised path) which calls checkElab on `e` rather than
+  -- transporting via inferElab. So the existing
+  -- checkElab-fallback-RApp-generic (which assumes catchall transport)
+  -- doesn't apply. The natural recursion `check-complete (t-embed d)`
+  -- to obtain checkElab evidence on `e` triggers a termination-checker
+  -- false-negative (the recursive arg is structurally smaller, but
+  -- the lex measure is confused by the mutual block + projection
+  -- pattern). Postulated as a completeness gap; soundness for
+  -- t-arr-app-infer / t-apply-app-infer is fully proven via
+  -- sound-RApp-arr / sound-RApp-apply.
+  check-complete (t-embed (t-arr-app-infer d)) =
+    completeness-gap-arr-check d
+  check-complete (t-embed (t-apply-app-infer d)) =
+    completeness-gap-apply-check d
   check-complete (t-embed (t-app {f = f} {x = x} {B = B} notPoly dF dX)) =
     let (_ , _ , _ , eqI) = infer-complete (t-app notPoly dF dX)
     in checkElab-fallback-RApp-generic f x B notPoly eqI

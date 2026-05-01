@@ -890,6 +890,177 @@ sound-RApp-snd ctx arg IH eq | failure _ , eqSub
   rewrite eqSub with eq
 ... | ()
 
+-- arr applied: argument must be `A ⇒[Many] B`.
+-- Plan 0.4 T0 (2026-04-30): closes spec-gap-arr-app-infer.
+sound-RApp-arr :
+  ∀ (ctx : NamedCtx) (arg : RawExpr)
+    {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
+  → (IH : ∀ {A' Ψ' eE' d' f'}
+        → inferElab ctx arg ≡ success A' Ψ' eE' d' f'
+        → ctx ⊢ arg ∶ A' ⨾ Ψ')
+  → inferElab ctx (RApp (RVar "arr") arg) ≡ success A Ψ eE d f
+  → ctx ⊢ RApp (RVar "arr") arg ∶ A ⨾ Ψ
+sound-RApp-arr ctx arg IH eq with inferBundle ctx arg
+sound-RApp-arr ctx arg IH eq | success (_ T.⇒[ T.mk-kind T.Many T.pure ] _) _ _ _ _ , eqSub
+  rewrite eqSub with eq
+... | refl = t-arr-app-infer (IH refl)
+sound-RApp-arr ctx arg IH eq | success Unit _ _ _ _ , eqSub
+  rewrite eqSub with eq
+... | ()
+sound-RApp-arr ctx arg IH eq | success Void _ _ _ _ , eqSub
+  rewrite eqSub with eq
+... | ()
+sound-RApp-arr ctx arg IH eq | success Int _ _ _ _ , eqSub
+  rewrite eqSub with eq
+... | ()
+sound-RApp-arr ctx arg IH eq | success Float _ _ _ _ , eqSub
+  rewrite eqSub with eq
+... | ()
+sound-RApp-arr ctx arg IH eq | success Str _ _ _ _ , eqSub
+  rewrite eqSub with eq
+... | ()
+sound-RApp-arr ctx arg IH eq | success Buffer _ _ _ _ , eqSub
+  rewrite eqSub with eq
+... | ()
+sound-RApp-arr ctx arg IH eq | success (_ T.* _) _ _ _ _ , eqSub
+  rewrite eqSub with eq
+... | ()
+sound-RApp-arr ctx arg IH eq | success (_ T.+ _) _ _ _ _ , eqSub
+  rewrite eqSub with eq
+... | ()
+sound-RApp-arr ctx arg IH eq | success (_ T.⇒[ T.mk-kind T.One T.pure ] _) _ _ _ _ , eqSub
+  rewrite eqSub with eq
+... | ()
+sound-RApp-arr ctx arg IH eq | success (_ T.⇒[ T.mk-kind T.Zero T.pure ] _) _ _ _ _ , eqSub
+  rewrite eqSub with eq
+... | ()
+sound-RApp-arr ctx arg IH eq | success (_ T.⇒[ T.mk-kind T.Many T.eff ] _) _ _ _ _ , eqSub
+  rewrite eqSub with eq
+... | ()
+sound-RApp-arr ctx arg IH eq | success (_ T.⇒[ T.mk-kind T.One T.eff ] _) _ _ _ _ , eqSub
+  rewrite eqSub with eq
+... | ()
+sound-RApp-arr ctx arg IH eq | success (_ T.⇒[ T.mk-kind T.Zero T.eff ] _) _ _ _ _ , eqSub
+  rewrite eqSub with eq
+... | ()
+sound-RApp-arr ctx arg IH eq | success (T.μ-type _) _ _ _ _ , eqSub
+  rewrite eqSub with eq
+... | ()
+sound-RApp-arr ctx arg IH eq | success (T.ν-type _) _ _ _ _ , eqSub
+  rewrite eqSub with eq
+... | ()
+sound-RApp-arr ctx arg IH eq | failure _ , eqSub
+  rewrite eqSub with eq
+... | ()
+
+-- apply applied: argument must be `(A ⇒[Many] B) * A`.
+-- Plan 0.4 T0 (2026-04-30): closes spec-gap-apply-app-infer.
+sound-RApp-apply :
+  ∀ (ctx : NamedCtx) (arg : RawExpr)
+    {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
+  → (IH : ∀ {A' Ψ' eE' d' f'}
+        → inferElab ctx arg ≡ success A' Ψ' eE' d' f'
+        → ctx ⊢ arg ∶ A' ⨾ Ψ')
+  → inferElab ctx (RApp (RVar "apply") arg) ≡ success A Ψ eE d f
+  → ctx ⊢ RApp (RVar "apply") arg ∶ A ⨾ Ψ
+sound-RApp-apply ctx arg IH eq with inferBundle ctx arg
+sound-RApp-apply ctx arg IH eq
+  | success ((Aᶠ T.⇒[ T.mk-kind T.Many T.pure ] _) T.* Aˢ) _ _ _ _ , eqSub
+  rewrite eqSub with Aᶠ Once.TypeCheck.Elaborate.≟T Aˢ
+... | yes refl with eq
+...   | refl = t-apply-app-infer (IH refl)
+sound-RApp-apply ctx arg IH eq
+  | success ((_ T.⇒[ T.mk-kind T.Many T.pure ] _) T.* _) _ _ _ _ , eqSub
+  | no _ with eq
+... | ()
+-- All other ((arrow-shape) * _) variants — exact-split: enumerate
+-- explicitly to make the elaborator's catchall reduction visible.
+sound-RApp-apply ctx arg IH eq
+  | success ((_ T.⇒[ T.mk-kind T.One T.pure ] _) T.* _) _ _ _ _ , eqSub
+  rewrite eqSub with eq
+... | ()
+sound-RApp-apply ctx arg IH eq
+  | success ((_ T.⇒[ T.mk-kind T.Zero T.pure ] _) T.* _) _ _ _ _ , eqSub
+  rewrite eqSub with eq
+... | ()
+sound-RApp-apply ctx arg IH eq
+  | success ((_ T.⇒[ T.mk-kind T.One T.eff ] _) T.* _) _ _ _ _ , eqSub
+  rewrite eqSub with eq
+... | ()
+sound-RApp-apply ctx arg IH eq
+  | success ((_ T.⇒[ T.mk-kind T.Zero T.eff ] _) T.* _) _ _ _ _ , eqSub
+  rewrite eqSub with eq
+... | ()
+sound-RApp-apply ctx arg IH eq
+  | success ((_ T.⇒[ T.mk-kind T.Many T.eff ] _) T.* _) _ _ _ _ , eqSub
+  rewrite eqSub with eq
+... | ()
+sound-RApp-apply ctx arg IH eq | success (Unit T.* _) _ _ _ _ , eqSub
+  rewrite eqSub with eq
+... | ()
+sound-RApp-apply ctx arg IH eq | success (Void T.* _) _ _ _ _ , eqSub
+  rewrite eqSub with eq
+... | ()
+sound-RApp-apply ctx arg IH eq | success (Int T.* _) _ _ _ _ , eqSub
+  rewrite eqSub with eq
+... | ()
+sound-RApp-apply ctx arg IH eq | success (Float T.* _) _ _ _ _ , eqSub
+  rewrite eqSub with eq
+... | ()
+sound-RApp-apply ctx arg IH eq | success (Str T.* _) _ _ _ _ , eqSub
+  rewrite eqSub with eq
+... | ()
+sound-RApp-apply ctx arg IH eq | success (Buffer T.* _) _ _ _ _ , eqSub
+  rewrite eqSub with eq
+... | ()
+sound-RApp-apply ctx arg IH eq | success ((_ T.* _) T.* _) _ _ _ _ , eqSub
+  rewrite eqSub with eq
+... | ()
+sound-RApp-apply ctx arg IH eq | success ((_ T.+ _) T.* _) _ _ _ _ , eqSub
+  rewrite eqSub with eq
+... | ()
+sound-RApp-apply ctx arg IH eq | success ((T.μ-type _) T.* _) _ _ _ _ , eqSub
+  rewrite eqSub with eq
+... | ()
+sound-RApp-apply ctx arg IH eq | success ((T.ν-type _) T.* _) _ _ _ _ , eqSub
+  rewrite eqSub with eq
+... | ()
+sound-RApp-apply ctx arg IH eq | success Unit _ _ _ _ , eqSub
+  rewrite eqSub with eq
+... | ()
+sound-RApp-apply ctx arg IH eq | success Void _ _ _ _ , eqSub
+  rewrite eqSub with eq
+... | ()
+sound-RApp-apply ctx arg IH eq | success Int _ _ _ _ , eqSub
+  rewrite eqSub with eq
+... | ()
+sound-RApp-apply ctx arg IH eq | success Float _ _ _ _ , eqSub
+  rewrite eqSub with eq
+... | ()
+sound-RApp-apply ctx arg IH eq | success Str _ _ _ _ , eqSub
+  rewrite eqSub with eq
+... | ()
+sound-RApp-apply ctx arg IH eq | success Buffer _ _ _ _ , eqSub
+  rewrite eqSub with eq
+... | ()
+sound-RApp-apply ctx arg IH eq | success (_ T.+ _) _ _ _ _ , eqSub
+  rewrite eqSub with eq
+... | ()
+sound-RApp-apply ctx arg IH eq | success (_ T.⇒[ _ ] _) _ _ _ _ , eqSub
+  rewrite eqSub with eq
+... | ()
+sound-RApp-apply ctx arg IH eq | success (T.μ-type _) _ _ _ _ , eqSub
+  rewrite eqSub with eq
+... | ()
+sound-RApp-apply ctx arg IH eq | success (T.ν-type _) _ _ _ _ , eqSub
+  rewrite eqSub with eq
+... | ()
+sound-RApp-apply ctx arg IH eq | failure _ , eqSub
+  rewrite eqSub with eq
+... | ()
+
 ------------------------------------------------------------------------
 -- Soundness for generic RApp
 --
@@ -1067,21 +1238,6 @@ classifyAppHeadView-RVar-curry = refl
 -- nested-RApp level and aren't needed for the bare-RVar dispatch.
 
 postulate
-  -- ---- Spec gaps: judgment rule missing for elaborator success ----
-  -- `arr f` in infer mode: elab succeeds when f : A→B (yields Eff A B).
-  -- Missing: judgment rule t-arr-app-infer.
-  spec-gap-arr-app-infer : ∀ (ctx : NamedCtx) (arg : RawExpr)
-    {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
-    → inferElab ctx (RApp (RVar "arr") arg) ≡ success A Ψ eE d f
-    → ctx ⊢ RApp (RVar "arr") arg ∶ A ⨾ Ψ
-  -- `apply p` in infer mode: elab succeeds when p : (A→B) * A.
-  -- Missing: judgment rule t-apply-app-infer.
-  spec-gap-apply-app-infer : ∀ (ctx : NamedCtx) (arg : RawExpr)
-    {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
-    → inferElab ctx (RApp (RVar "apply") arg) ≡ success A Ψ eE d f
-    → ctx ⊢ RApp (RVar "apply") arg ∶ A ⨾ Ψ
   -- ---- Per-shape check-mode lemmas not yet written ----
   -- One named gap per unwitnessed dispatched shape; check-sound
   -- delegates here. RInt/RStringLit/RUnit/RLam are proven inline in
