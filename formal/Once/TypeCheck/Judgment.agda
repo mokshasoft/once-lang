@@ -390,6 +390,64 @@ mutual
                            ∶ B
                            ⨾ (Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ))
 
+    -- | Plan 0.4 T0 Phase F: applied `inl arg` in check mode at
+    -- sum type. The arrow `Surface.specInl A B` is the categorical
+    -- left-injection morphism `A → A + B`; this rule says the
+    -- saturated form `inl arg` checks at `A + B` when arg checks at
+    -- A. Forced by the CCC's coproduct structure.
+    t-inl-app-check : ∀ {ctx : NamedCtx} {arg : RawExpr} {A B : Type}
+                      {Ψ : Surface.Usage (NamedCtx.size ctx)}
+                    → ctx ⊢ᶜ arg ∶ A ⨾ Ψ
+                    → ctx ⊢ᶜ RApp (RVar "inl") arg
+                             ∶ (A Once.Type.+ B)
+                             ⨾ (Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ))
+
+    -- | Symmetric to `t-inl-app-check`: applied `inr arg`.
+    t-inr-app-check : ∀ {ctx : NamedCtx} {arg : RawExpr} {A B : Type}
+                      {Ψ : Surface.Usage (NamedCtx.size ctx)}
+                    → ctx ⊢ᶜ arg ∶ B ⨾ Ψ
+                    → ctx ⊢ᶜ RApp (RVar "inr") arg
+                             ∶ (A Once.Type.+ B)
+                             ⨾ (Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ))
+
+    -- | Applied `initial arg` (Void elimination) in check mode at
+    -- any expected type T. The unique morphism from the initial
+    -- object (`Void`) to any object — forced by CCC.
+    t-initial-app-check : ∀ {ctx : NamedCtx} {arg : RawExpr} {T : Type}
+                          {Ψ : Surface.Usage (NamedCtx.size ctx)}
+                        → ctx ⊢ᶜ arg ∶ Once.Type.Void ⨾ Ψ
+                        → ctx ⊢ᶜ RApp (RVar "initial") arg
+                                 ∶ T
+                                 ⨾ (Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ))
+
+    -- | Applied `arr arg` in check mode at expected `Eff A B`.
+    -- Plan 0.4 T1 change 4. `arr` is the lift operation of the
+    -- effect arrow on the CCC (Hughes' `arr`); this rule names it
+    -- in saturated form. Drives specialisation from the expected
+    -- `Eff A B` so a bare lambda `\p => …` can typecheck (otherwise
+    -- the lambda has no infer rule).
+    t-arr-app-check : ∀ {ctx : NamedCtx} {arg : RawExpr} {A B : Type}
+                      {Ψ : Surface.Usage (NamedCtx.size ctx)}
+                    → ctx ⊢ᶜ arg ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) ⨾ Ψ
+                    → ctx ⊢ᶜ RApp (RVar "arr") arg
+                             ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B)
+                             ⨾ (Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ))
+
+    -- | Argument-driven application in check mode. Plan 0.4 T1
+    -- changes 2+4. When `f` cannot be inferred as a function (the
+    -- function-driven `t-app` path fails), infer the argument first
+    -- then check the function against the resulting arrow. Enables
+    -- programs like `(id . id . id) 42` without annotations: the
+    -- argument's `Int` drives checking the compose chain at
+    -- `Int → Int`. The `classifyAppHead f ≡ nothing` premise keeps
+    -- this disjoint from the polymorphic-builtin rules.
+    t-arg-driven-app-check : ∀ {ctx : NamedCtx} {f arg : RawExpr} {X T : Type}
+                             {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
+                           → classifyAppHead f ≡ nothing
+                           → ctx ⊢ᵢ arg ∶ X ⨾ Ψ₂
+                           → ctx ⊢ᶜ f ∶ (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] T) ⨾ Ψ₁
+                           → ctx ⊢ᶜ RApp f arg ∶ T ⨾ (Ψ₁ Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ₂))
+
     -- | Plan 0.6.2 Phase 4: polymorphic name specialisation at a
     -- call-site expected type. Disjoint from `t-embed (t-var-
     -- local/import …)` by the two lookup-failure premises (name

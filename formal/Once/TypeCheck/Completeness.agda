@@ -605,6 +605,50 @@ postulate
         checkElab ctx (Raw.RApp (RVar "apply") p) B
           ≡ success (zeroUsage +ᵘ (T.Many *ᵘ Ψ)) eE d f
 
+  -- Phase F new-rule completeness gaps. Each is the dual of
+  -- t-{inl,inr,initial,arr,arg-driven}-app-check from Judgment.agda.
+  -- The elaborator's specialised check-mode branches realise each
+  -- rule; these postulates stand in for the structural completeness
+  -- proofs.
+  completeness-gap-inl-app-check :
+    ∀ {ctx : NamedCtx} {arg : RawExpr} {A B : Type}
+      {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    → ctx ⊢ᶜ arg ∶ A ⨾ Ψ
+    → ∃[ eE ] ∃[ d ] ∃[ f ]
+        checkElab ctx (Raw.RApp (RVar "inl") arg) (A T.+ B)
+          ≡ success (zeroUsage +ᵘ (T.Many *ᵘ Ψ)) eE d f
+  completeness-gap-inr-app-check :
+    ∀ {ctx : NamedCtx} {arg : RawExpr} {A B : Type}
+      {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    → ctx ⊢ᶜ arg ∶ B ⨾ Ψ
+    → ∃[ eE ] ∃[ d ] ∃[ f ]
+        checkElab ctx (Raw.RApp (RVar "inr") arg) (A T.+ B)
+          ≡ success (zeroUsage +ᵘ (T.Many *ᵘ Ψ)) eE d f
+  completeness-gap-initial-app-check :
+    ∀ {ctx : NamedCtx} {arg : RawExpr} {T : Type}
+      {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    → ctx ⊢ᶜ arg ∶ T.Void ⨾ Ψ
+    → ∃[ eE ] ∃[ d ] ∃[ f ]
+        checkElab ctx (Raw.RApp (RVar "initial") arg) T
+          ≡ success (zeroUsage +ᵘ (T.Many *ᵘ Ψ)) eE d f
+  completeness-gap-arr-app-check :
+    ∀ {ctx : NamedCtx} {arg : RawExpr} {A B : Type}
+      {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    → ctx ⊢ᶜ arg ∶ (A T.⇒[ T.mk-kind T.Many T.pure ] B) ⨾ Ψ
+    → ∃[ eE ] ∃[ d ] ∃[ f ]
+        checkElab ctx (Raw.RApp (RVar "arr") arg)
+                      (A T.⇒[ T.mk-kind T.Many T.eff ] B)
+          ≡ success (zeroUsage +ᵘ (T.Many *ᵘ Ψ)) eE d f
+  completeness-gap-arg-driven-app-check :
+    ∀ {ctx : NamedCtx} {f arg : RawExpr} {X T : Type}
+      {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
+    → Once.TypeCheck.Elaborate.classifyAppHead f ≡ nothing
+    → ctx ⊢ᵢ arg ∶ X ⨾ Ψ₂
+    → ctx ⊢ᶜ f ∶ (X T.⇒[ T.mk-kind T.Many T.pure ] T) ⨾ Ψ₁
+    → ∃[ eE ] ∃[ d ] ∃[ fr ]
+        checkElab ctx (Raw.RApp f arg) T
+          ≡ success (Ψ₁ +ᵘ (T.Many *ᵘ Ψ₂)) eE d fr
+
 mutual
   infer-complete :
     ∀ {ctx : NamedCtx} {e : RawExpr} {A : Type}
@@ -811,6 +855,19 @@ mutual
   check-complete (t-apply-check {p = p} {A = A} {B = B} d) =
     let (_ , _ , _ , eq) = infer-complete d
     in checkElab-fallback-RApp-apply p A B eq
+  -- Plan 0.4 T0 Phase F new check-mode rules — completeness via
+  -- dedicated postulates (see completeness-gap-* above).
+  check-complete (t-inl-app-check d) =
+    completeness-gap-inl-app-check d
+  check-complete (t-inr-app-check d) =
+    completeness-gap-inr-app-check d
+  check-complete (t-initial-app-check d) =
+    completeness-gap-initial-app-check d
+  check-complete (t-arr-app-check d) =
+    completeness-gap-arr-app-check d
+  check-complete (t-arg-driven-app-check notPoly dArg dF) =
+    completeness-gap-arg-driven-app-check notPoly dArg dF
+
   -- Plan 0.6.2 Phase 4: polymorphic schema-instantiation. Threads
   -- the body's check-mode derivation through `check-complete`,
   -- then composes with the lookup premises via the helper.
