@@ -532,3 +532,14 @@ classifyBareBuiltin x with StrProp._≟_ x "id"
 ...             | no  _ with StrProp._≟_ x "arr"
 ...               | yes refl = bbc-arr
 ...               | no  _ = bbc-other
+
+-- Bundle for AppHeadView: pairs the view with its defining equation.
+-- Lets callers recover a term-level witness `classifyAppHeadView f ≡ v`
+-- after a `with`-match — used to feed the reverse bridge
+-- `view-other⇒classifyAppHead-nothing`.
+ViewBundle : RawExpr → Set
+ViewBundle f =
+  ∃-syntax (λ v → classifyAppHeadView f ≡ v)
+
+viewBundle : (f : RawExpr) → ViewBundle f
+viewBundle f = classifyAppHeadView f , refl
