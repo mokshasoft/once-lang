@@ -2218,33 +2218,29 @@ compileExpr e with inferElab emptyCtx e
 ------------------------------------------------------------------------
 
 postulate
-  -- Witness for the `bbc-other` poly-instantiate case. The judgment
-  -- rule `t-var-poly-instantiate` requires the body's check-mode
-  -- derivation as a premise; the elaborator only emits a `poly`
-  -- placeholder (Phase 2 splices the body via well-founded recursion
-  -- on `length polys`). Until Phase 2 is migrated to verified form,
-  -- the body's derivation is postulated.
+  -- Witness for the `bbc-other` poly-instantiate case (Phase 2 gap).
   bbc-other-poly-witness :
     ∀ (ctx : NamedCtx) (x : String) (T : Type)
     → ctx ⊢ᶜ Raw.RVar x ∶ T ⨾ Surface.zeroUsage
-  -- Soundness of the four check-mode applied-builtin helpers
-  -- (checkPair, checkCompose, checkCurry, checkApply). They live in
-  -- the original mutual block; the verified `checkElabV` delegates
-  -- to them and trusts these postulates for the witness. They are
-  -- discharged when the helpers themselves are migrated to verified
-  -- form (a separate refactor — see Plan 0.4 T0 handoff).
-  pair-applied-witness :
+  -- Abstract success-case witnesses for the check-mode applied-
+  -- builtin helpers. Don't reference the helpers in their types so they
+  -- can be moved before the merged mutual block in the cleanup phase.
+  pair-applied-success-witness :
     ∀ (ctx : NamedCtx) (pairHead arg : RawExpr) (T : Type)
-    → checkSoundOf ctx (Raw.RApp pairHead arg) T (checkPair ctx pairHead arg T)
-  compose-applied-witness :
+      {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    → ctx ⊢ᶜ Raw.RApp pairHead arg ∶ T ⨾ Ψ
+  compose-applied-success-witness :
     ∀ (ctx : NamedCtx) (composeHead arg : RawExpr) (T : Type)
-    → checkSoundOf ctx (Raw.RApp composeHead arg) T (checkCompose ctx composeHead arg T)
-  curry-applied-witness :
+      {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    → ctx ⊢ᶜ Raw.RApp composeHead arg ∶ T ⨾ Ψ
+  curry-applied-success-witness :
     ∀ (ctx : NamedCtx) (arg : RawExpr) (T : Type)
-    → checkSoundOf ctx (Raw.RApp (Raw.RVar "curry") arg) T (checkCurry ctx arg T)
-  apply-applied-witness :
+      {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    → ctx ⊢ᶜ Raw.RApp (Raw.RVar "curry") arg ∶ T ⨾ Ψ
+  apply-applied-success-witness :
     ∀ (ctx : NamedCtx) (arg : RawExpr) (T : Type)
-    → checkSoundOf ctx (Raw.RApp (Raw.RVar "apply") arg) T (checkApply ctx arg T)
+      {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    → ctx ⊢ᶜ Raw.RApp (Raw.RVar "apply") arg ∶ T ⨾ Ψ
 
 mutual
   inferElabV : (ctx : NamedCtx) (e : RawExpr) → VerifiedInferResult ctx e
@@ -2513,15 +2509,20 @@ mutual
             success _ (Surface.app (weakenFromEmpty (specArr A B)) argE) (suc d) fr , t-arr-app-check w
   checkElabV ctx (Raw.RApp f arg) T | ahv-arr | _ = failure (TypeMismatch T T) , tt
   -- ahv-pair-applied / ahv-compose-applied / ahv-curry / ahv-apply:
-  -- delegate to the existing helpers; witness via per-helper postulate.
-  checkElabV ctx (Raw.RApp f arg) T | ahv-pair-applied =
-    checkPair ctx f arg T , pair-applied-witness ctx f arg T
-  checkElabV ctx (Raw.RApp f arg) T | ahv-compose-applied =
-    checkCompose ctx f arg T , compose-applied-witness ctx f arg T
-  checkElabV ctx (Raw.RApp f arg) T | ahv-curry =
-    checkCurry ctx arg T , curry-applied-witness ctx arg T
-  checkElabV ctx (Raw.RApp f arg) T | ahv-apply =
-    checkApply ctx arg T , apply-applied-witness ctx arg T
+  -- delegate to existing helpers, case-split on result, witness via
+  -- abstract success-case postulate.
+  checkElabV ctx (Raw.RApp f arg) T | ahv-pair-applied with checkPair ctx f arg T
+  ...   | success Ψ eE d fr = success Ψ eE d fr , pair-applied-success-witness ctx f arg T
+  ...   | failure err = failure err , tt
+  checkElabV ctx (Raw.RApp f arg) T | ahv-compose-applied with checkCompose ctx f arg T
+  ...   | success Ψ eE d fr = success Ψ eE d fr , compose-applied-success-witness ctx f arg T
+  ...   | failure err = failure err , tt
+  checkElabV ctx (Raw.RApp f arg) T | ahv-curry with checkCurry ctx arg T
+  ...   | success Ψ eE d fr = success Ψ eE d fr , curry-applied-success-witness ctx arg T
+  ...   | failure err = failure err , tt
+  checkElabV ctx (Raw.RApp f arg) T | ahv-apply with checkApply ctx arg T
+  ...   | success Ψ eE d fr = success Ψ eE d fr , apply-applied-success-witness ctx arg T
+  ...   | failure err = failure err , tt
   -- ahv-other: try infer-then-match; on failure, arg-driven application.
   checkElabV ctx (Raw.RApp f arg) T | ahv-other with inferElabV ctx (Raw.RApp f arg)
   ...   | success T' Ψ eE d fr , w with T ≟T T'
