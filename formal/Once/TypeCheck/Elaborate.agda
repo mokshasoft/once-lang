@@ -2393,9 +2393,114 @@ mutual
   -- `t-embed`.
   ----------------------------------------------------------------------
 
-  checkElabV ctx (Raw.RVar x) T = checkElab ctx (Raw.RVar x) T , todo-witness-check ctx (Raw.RVar x) T
   checkElabV ctx (Raw.RApp f arg) T = checkElab ctx (Raw.RApp f arg) T , todo-witness-check ctx (Raw.RApp f arg) T
   checkElabV ctx (Raw.RLam x body) T = checkElab ctx (Raw.RLam x body) T , todo-witness-check ctx (Raw.RLam x body) T
+
+  ----------------------------------------------------------------------
+  -- Phase E — `checkElab` `RVar` migration via `classifyBareBuiltin`
+  -- dispatch. Each `bbc-X` clause produces both result and witness
+  -- inline; the previously-postulated `spec-gap-sound-check-RVar-X`
+  -- proofs become unnecessary once this phase replaces every clause.
+  -- POC: bbc-fst migrated; other bbc-X still delegate.
+  ----------------------------------------------------------------------
+
+  checkElabV ctx (Raw.RVar x) T with classifyBareBuiltin x
+  checkElabV ctx (Raw.RVar x) T | bbc-fst with inferElabV ctx (Raw.RVar x)
+  checkElabV ctx (Raw.RVar x) T | bbc-fst | success T' Ψ eE d fr , w with T ≟T T'
+  ...   | yes refl = success Ψ eE d fr , t-embed w
+  ...   | no _     = failure (TypeMismatch T T') , tt
+  checkElabV ctx (Raw.RVar x) T | bbc-fst | failure err , _ with T
+  checkElabV ctx (Raw.RVar x) T | bbc-fst | failure err , _ | (A Once.Type.* B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] A' with A ≟T A' | lookupLocal ctx x in eq-loc | lookupImport (NamedCtx.imports ctx) x in eq-imp
+  ...     | yes refl | nothing | nothing =
+            success Surface.zeroUsage (weakenFromEmpty (specFst A B)) 0 (NamedCtx.freshCounter ctx) , t-fst-check eq-loc eq-imp
+  ...     | _ | _ | _ = failure (BuiltinTypeMismatch "fst") , tt
+  checkElabV ctx (Raw.RVar x) T | bbc-fst | failure err , _ | _ = failure err , tt
+  -- bbc-id: canonical T = `T' ⇒[Many,pure] T'`.
+  checkElabV ctx (Raw.RVar x) T | bbc-id with inferElabV ctx (Raw.RVar x)
+  checkElabV ctx (Raw.RVar x) T | bbc-id | success T' Ψ eE d fr , w with T ≟T T'
+  ...   | yes refl = success Ψ eE d fr , t-embed w
+  ...   | no _     = failure (TypeMismatch T T') , tt
+  checkElabV ctx (Raw.RVar x) T | bbc-id | failure err , _ with T
+  checkElabV ctx (Raw.RVar x) T | bbc-id | failure err , _ | (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] Y) with X ≟T Y | lookupLocal ctx x in eq-loc | lookupImport (NamedCtx.imports ctx) x in eq-imp
+  ...     | yes refl | nothing | nothing =
+            success Surface.zeroUsage (weakenFromEmpty (specId X)) 0 (NamedCtx.freshCounter ctx) , t-id-check eq-loc eq-imp
+  ...     | _ | _ | _ = failure (BuiltinTypeMismatch "id") , tt
+  checkElabV ctx (Raw.RVar x) T | bbc-id | failure err , _ | _ = failure err , tt
+
+  -- bbc-snd: canonical T = `(A * B) ⇒[Many,pure] B'`.
+  checkElabV ctx (Raw.RVar x) T | bbc-snd with inferElabV ctx (Raw.RVar x)
+  checkElabV ctx (Raw.RVar x) T | bbc-snd | success T' Ψ eE d fr , w with T ≟T T'
+  ...   | yes refl = success Ψ eE d fr , t-embed w
+  ...   | no _     = failure (TypeMismatch T T') , tt
+  checkElabV ctx (Raw.RVar x) T | bbc-snd | failure err , _ with T
+  checkElabV ctx (Raw.RVar x) T | bbc-snd | failure err , _ | (A Once.Type.* B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B' with B ≟T B' | lookupLocal ctx x in eq-loc | lookupImport (NamedCtx.imports ctx) x in eq-imp
+  ...     | yes refl | nothing | nothing =
+            success Surface.zeroUsage (weakenFromEmpty (specSnd A B)) 0 (NamedCtx.freshCounter ctx) , t-snd-check eq-loc eq-imp
+  ...     | _ | _ | _ = failure (BuiltinTypeMismatch "snd") , tt
+  checkElabV ctx (Raw.RVar x) T | bbc-snd | failure err , _ | _ = failure err , tt
+
+  -- bbc-terminal: canonical T = `A ⇒[Many,pure] Unit`.
+  checkElabV ctx (Raw.RVar x) T | bbc-terminal with inferElabV ctx (Raw.RVar x)
+  checkElabV ctx (Raw.RVar x) T | bbc-terminal | success T' Ψ eE d fr , w with T ≟T T'
+  ...   | yes refl = success Ψ eE d fr , t-embed w
+  ...   | no _     = failure (TypeMismatch T T') , tt
+  checkElabV ctx (Raw.RVar x) T | bbc-terminal | failure err , _ with T
+  checkElabV ctx (Raw.RVar x) T | bbc-terminal | failure err , _ | A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] Once.Type.Unit with lookupLocal ctx x in eq-loc | lookupImport (NamedCtx.imports ctx) x in eq-imp
+  ...     | nothing | nothing =
+            success Surface.zeroUsage (weakenFromEmpty (specTerminal A)) 0 (NamedCtx.freshCounter ctx) , t-terminal-check eq-loc eq-imp
+  ...     | _ | _ = failure (BuiltinTypeMismatch "terminal") , tt
+  checkElabV ctx (Raw.RVar x) T | bbc-terminal | failure err , _ | _ = failure err , tt
+
+  -- bbc-initial: canonical T = `Void ⇒[Many,pure] A`.
+  checkElabV ctx (Raw.RVar x) T | bbc-initial with inferElabV ctx (Raw.RVar x)
+  checkElabV ctx (Raw.RVar x) T | bbc-initial | success T' Ψ eE d fr , w with T ≟T T'
+  ...   | yes refl = success Ψ eE d fr , t-embed w
+  ...   | no _     = failure (TypeMismatch T T') , tt
+  checkElabV ctx (Raw.RVar x) T | bbc-initial | failure err , _ with T
+  checkElabV ctx (Raw.RVar x) T | bbc-initial | failure err , _ | Once.Type.Void Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] A with lookupLocal ctx x in eq-loc | lookupImport (NamedCtx.imports ctx) x in eq-imp
+  ...     | nothing | nothing =
+            success Surface.zeroUsage (weakenFromEmpty (specInitial A)) 0 (NamedCtx.freshCounter ctx) , t-initial-check eq-loc eq-imp
+  ...     | _ | _ = failure (BuiltinTypeMismatch "initial") , tt
+  checkElabV ctx (Raw.RVar x) T | bbc-initial | failure err , _ | _ = failure err , tt
+
+  -- bbc-inl: canonical T = `A ⇒[Many,pure] (A' + B)` with A ≟T A'.
+  checkElabV ctx (Raw.RVar x) T | bbc-inl with inferElabV ctx (Raw.RVar x)
+  checkElabV ctx (Raw.RVar x) T | bbc-inl | success T' Ψ eE d fr , w with T ≟T T'
+  ...   | yes refl = success Ψ eE d fr , t-embed w
+  ...   | no _     = failure (TypeMismatch T T') , tt
+  checkElabV ctx (Raw.RVar x) T | bbc-inl | failure err , _ with T
+  checkElabV ctx (Raw.RVar x) T | bbc-inl | failure err , _ | A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] (A' Once.Type.+ B) with A ≟T A' | lookupLocal ctx x in eq-loc | lookupImport (NamedCtx.imports ctx) x in eq-imp
+  ...     | yes refl | nothing | nothing =
+            success Surface.zeroUsage (weakenFromEmpty (specInl A B)) 0 (NamedCtx.freshCounter ctx) , t-inl-check eq-loc eq-imp
+  ...     | _ | _ | _ = failure (BuiltinTypeMismatch "inl") , tt
+  checkElabV ctx (Raw.RVar x) T | bbc-inl | failure err , _ | _ = failure err , tt
+
+  -- bbc-inr: canonical T = `B ⇒[Many,pure] (A + B')` with B ≟T B'.
+  checkElabV ctx (Raw.RVar x) T | bbc-inr with inferElabV ctx (Raw.RVar x)
+  checkElabV ctx (Raw.RVar x) T | bbc-inr | success T' Ψ eE d fr , w with T ≟T T'
+  ...   | yes refl = success Ψ eE d fr , t-embed w
+  ...   | no _     = failure (TypeMismatch T T') , tt
+  checkElabV ctx (Raw.RVar x) T | bbc-inr | failure err , _ with T
+  checkElabV ctx (Raw.RVar x) T | bbc-inr | failure err , _ | B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] (A Once.Type.+ B') with B ≟T B' | lookupLocal ctx x in eq-loc | lookupImport (NamedCtx.imports ctx) x in eq-imp
+  ...     | yes refl | nothing | nothing =
+            success Surface.zeroUsage (weakenFromEmpty (specInr A B)) 0 (NamedCtx.freshCounter ctx) , t-inr-check eq-loc eq-imp
+  ...     | _ | _ | _ = failure (BuiltinTypeMismatch "inr") , tt
+  checkElabV ctx (Raw.RVar x) T | bbc-inr | failure err , _ | _ = failure err , tt
+
+  -- bbc-arr: canonical T = `(A ⇒[Many,pure] B) ⇒[Many,pure] (A' ⇒[Many,eff] B')`.
+  checkElabV ctx (Raw.RVar x) T | bbc-arr with inferElabV ctx (Raw.RVar x)
+  checkElabV ctx (Raw.RVar x) T | bbc-arr | success T' Ψ eE d fr , w with T ≟T T'
+  ...   | yes refl = success Ψ eE d fr , t-embed w
+  ...   | no _     = failure (TypeMismatch T T') , tt
+  checkElabV ctx (Raw.RVar x) T | bbc-arr | failure err , _ with T
+  checkElabV ctx (Raw.RVar x) T | bbc-arr | failure err , _ | (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] (A' Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B') with A ≟T A' | B ≟T B' | lookupLocal ctx x in eq-loc | lookupImport (NamedCtx.imports ctx) x in eq-imp
+  ...     | yes refl | yes refl | nothing | nothing =
+            success Surface.zeroUsage (weakenFromEmpty (specArr A B)) 0 (NamedCtx.freshCounter ctx) , t-arr-check eq-loc eq-imp
+  ...     | _ | _ | _ | _ = failure (BuiltinTypeMismatch "arr") , tt
+  checkElabV ctx (Raw.RVar x) T | bbc-arr | failure err , _ | _ = failure err , tt
+
+  -- bbc-other still TODO (poly lookup + ¬unit logic).
+  checkElabV ctx (Raw.RVar x) T | bbc-other = checkElab ctx (Raw.RVar x) T , todo-witness-check ctx (Raw.RVar x) T
 
   -- Generic infer-and-match fallback — covers RInt, RStringLit, RUnit,
   -- RPair, RBinOp, RUnaryOp, RLet, RDestruct, RAnnot, RQualified.
