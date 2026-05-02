@@ -2220,6 +2220,15 @@ compileExpr e with inferElab emptyCtx e
 postulate
   todo-witness-check : ∀ (ctx : NamedCtx) (e : RawExpr) (T : Type)
                      → checkSoundOf ctx e T (checkElab ctx e T)
+  -- Witness for the `bbc-other` poly-instantiate case. The judgment
+  -- rule `t-var-poly-instantiate` requires the body's check-mode
+  -- derivation as a premise; the elaborator only emits a `poly`
+  -- placeholder (Phase 2 splices the body via well-founded recursion
+  -- on `length polys`). Until Phase 2 is migrated to verified form,
+  -- the body's derivation is postulated.
+  bbc-other-poly-witness :
+    ∀ (ctx : NamedCtx) (x : String) (T : Type)
+    → ctx ⊢ᶜ Raw.RVar x ∶ T ⨾ Surface.zeroUsage
 
 mutual
   inferElabV : (ctx : NamedCtx) (e : RawExpr) → VerifiedInferResult ctx e
@@ -2430,7 +2439,15 @@ mutual
   ----------------------------------------------------------------------
 
   checkElabV ctx (Raw.RApp f arg) T = checkElab ctx (Raw.RApp f arg) T , todo-witness-check ctx (Raw.RApp f arg) T
-  checkElabV ctx (Raw.RLam x body) T = checkElab ctx (Raw.RLam x body) T , todo-witness-check ctx (Raw.RLam x body) T
+
+  -- RLam check-mode: only well-typed at a pure arrow type.
+  checkElabV ctx (Raw.RLam x body) (A Once.Type.⇒[ Once.Type.mk-kind q Once.Type.pure ] B) with checkElabV (extendNamedCtx ctx x A) body B
+  ... | failure err , _ = failure err , tt
+  ... | success (q' ∷ᵘ Ψ) bodyE d fr , wBody with decideLeq q' q
+  ...   | just eq = success _ (Surface.lam q eq bodyE) (suc d) fr , t-lam eq wBody
+  ...   | nothing = failure (UsageViolation x q q') , tt
+  -- Non-pure-arrow T: lambda's only check-mode rule is t-lam (pure).
+  checkElabV ctx (Raw.RLam _ _) _ = failure LambdaRequiresFunctionType , tt
 
   ----------------------------------------------------------------------
   -- Phase E — `checkElab` `RVar` migration via `classifyBareBuiltin`
@@ -2535,8 +2552,16 @@ mutual
   ...     | _ | _ | _ | _ = failure (BuiltinTypeMismatch "arr") , tt
   checkElabV ctx (Raw.RVar x) T | bbc-arr | failure err , _ | _ = failure err , tt
 
-  -- bbc-other still TODO (poly lookup + ¬unit logic).
-  checkElabV ctx (Raw.RVar x) T | bbc-other = checkElab ctx (Raw.RVar x) T , todo-witness-check ctx (Raw.RVar x) T
+  -- bbc-other: lookup-then-poly. Self-contained migration mirroring
+  -- checkElab-RVar's bbc-other dispatch. The poly-instantiate witness
+  -- is supplied by `bbc-other-poly-witness` (Phase 2 gap).
+  checkElabV ctx (Raw.RVar x) T | bbc-other with inferElabV ctx (Raw.RVar x)
+  checkElabV ctx (Raw.RVar x) T | bbc-other | success T' Ψ eE d fr , w with T ≟T T'
+  ...   | yes refl = success Ψ eE d fr , t-embed w
+  ...   | no _     = failure (TypeMismatch T T') , tt
+  checkElabV ctx (Raw.RVar x) T | bbc-other | failure err , _ with lookupPoly (NamedCtx.polys ctx) x
+  ...   | nothing = failure err , tt
+  ...   | just _  = success Surface.zeroUsage (Surface.poly x T) 0 (NamedCtx.freshCounter ctx) , bbc-other-poly-witness ctx x T
 
   -- Generic infer-and-match fallback — covers RInt, RStringLit, RUnit,
   -- RPair, RBinOp, RUnaryOp, RLet, RDestruct, RAnnot, RQualified.
