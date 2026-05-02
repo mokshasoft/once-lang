@@ -1,0 +1,534 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson and contributors
+
+------------------------------------------------------------------------
+-- Once.TypeCheck.Classify
+--
+-- Classifier helpers and named contexts shared between the elaborator
+-- and the judgment.
+--
+-- Extracted from `Once.TypeCheck.Elaborate` (Plan 0.4 T0 Option B
+-- preparation) to break the import cycle that prevented
+-- `Elaborate.agda` from importing `Judgment.agda`. After the split:
+--
+--   * `Once.TypeCheck.Judgment`  imports `Classify` (no longer
+--     `Elaborate`).
+--   * `Once.TypeCheck.Elaborate` imports `Classify` and re-exports
+--     it `public` for backward compatibility, then imports
+--     `Judgment` (the cycle being broken makes this admissible).
+--
+-- Contents are unchanged from their previous location in
+-- `Elaborate.agda`; only the host module has changed.
+------------------------------------------------------------------------
+
+module Once.TypeCheck.Classify where
+
+open import Data.String using (String; _++_)
+open import Data.String.Properties as StrProp using (_≟_)
+import Data.String
+open import Data.Nat using (ℕ; zero; suc; _<_; s≤s)
+open import Data.Nat.Properties using (≤-refl)
+open import Data.Nat.Show renaming (show to showℕ)
+open import Data.Fin using (Fin; zero; suc)
+open import Data.Maybe using (Maybe; just; nothing)
+open import Data.List using (List; []; _∷_; length)
+open import Relation.Nullary using (yes; no)
+open import Data.Product using (_×_; _,_; ∃-syntax)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+
+open import Once.Type
+open import Once.TypeCheck.Raw using (RawExpr)
+open import Once.TypeCheck.Raw as Raw
+open import Once.TypeCheck.Context using (Ctx; ∅; name)
+open import Once.TypeCheck.Context as Context using () renaming (_,_∷_ to extendCtx)
+open import Once.Surface.Syntax as Surface using ()
+  renaming (Ctx to SCtx; Expr to SExpr; ∅ to S∅; _,_ to _S,_; _,_^_ to _S,_^_)
+open import Once.Surface.Thinning using (weaken)
+
+------------------------------------------------------------------------
+------------------------------------------------------------------------
+-- Named Context with de Bruijn Correspondence
+------------------------------------------------------------------------
+
+-- | Imported primitives from other modules (e.g., "S.exit0" → Eff Unit Unit)
+-- These are populated from qualified imports like "import M as S"
+Imports : Set
+Imports = List (String × Type)
+
+-- | Empty imports
+emptyImports : Imports
+emptyImports = []
+
+-- | Polymorphic-definition context (plan 0.6.2). Carries each
+-- user-declared poly def's schema and body so they can be
+-- specialised at call sites via schema instantiation. Structurally
+-- `List (name, schema, body)`; kept separate from `imports` (which
+-- is ground-typed) because lookup resolves differently.
+PolyCtx : Set
+PolyCtx = List (String × PolyType × RawExpr)
+
+emptyPolyCtx : PolyCtx
+emptyPolyCtx = []
+
+-- | Lookup a polymorphic def by name.
+lookupPoly : PolyCtx → String → Maybe (PolyType × RawExpr)
+lookupPoly [] _ = nothing
+lookupPoly ((n , schema , body) ∷ rest) x with StrProp._≟_ n x
+... | yes _ = just (schema , body)
+... | no  _ = lookupPoly rest x
+
+-- | Remove the named entry from a PolyCtx. Used during schema
+-- instantiation to prevent direct cycles (a poly body specialising
+-- to its own name's instantiation would loop); the recursive
+-- `checkElab` call sees a `PolyCtx` without the name being
+-- specialised, so that name's use sites inside the body fall
+-- through to the non-poly lookup path.
+-- Plan 0.6.2 Phase 4 (termination principlization).
+removePoly : String → PolyCtx → PolyCtx
+removePoly _ [] = []
+removePoly x ((n , s , b) ∷ rest) with StrProp._≟_ n x
+... | yes _ = rest
+... | no  _ = (n , s , b) ∷ removePoly x rest
+
+-- | When `x` is found in `polys`, `removePoly` strictly shrinks it.
+-- Load-bearing for well-founded termination of the poly-splice recursion
+-- in `resolveExpr`. Plan 0.6.2 Phase 4 (final).
+removePoly-decreases :
+  ∀ {r : PolyType × RawExpr} (x : String) (polys : PolyCtx)
+  → lookupPoly polys x ≡ just r
+  → length (removePoly x polys) < length polys
+removePoly-decreases x [] ()
+removePoly-decreases x ((n , s , b) ∷ rest) eq with StrProp._≟_ n x
+... | yes _ = s≤s ≤-refl
+... | no  _ = s≤s (removePoly-decreases x rest eq)
+
+-- | A named context paired with its de Bruijn representation
+-- Includes a fresh counter for generating unique type variables during instantiation
+-- and imported primitives from other modules
+record NamedCtx : Set where
+  constructor mkCtx
+  field
+    size        : ℕ
+    named       : Ctx
+    debruijn    : SCtx size
+    freshCounter : ℕ  -- For generating fresh type variables (α₀, α₁, α₂, ...)
+    imports     : Imports  -- Imported primitives (qualified names → types)
+    polys       : PolyCtx  -- User polymorphic definitions (plan 0.6.2)
+
+-- | Empty context
+emptyCtx : NamedCtx
+emptyCtx = mkCtx 0 ∅ S∅ 0 emptyImports emptyPolyCtx
+
+-- | Create context with imports
+ctxWithImports : Imports → NamedCtx
+ctxWithImports imps = mkCtx 0 ∅ S∅ 0 imps emptyPolyCtx
+
+-- | Create context with imports and polymorphic defs. Plan 0.6.2.
+ctxWithImportsAndPolys : Imports → PolyCtx → NamedCtx
+ctxWithImportsAndPolys imps polys = mkCtx 0 ∅ S∅ 0 imps polys
+
+-- | Create context with imports and self-reference for recursive definitions
+-- The function's own name and type are added to the imports list so it can call itself.
+-- This causes recursive calls to elaborate to `SigOp "name"` which the C backend
+-- handles as a function call.
+ctxWithImportsAndSelf : Imports → String → Type → NamedCtx
+ctxWithImportsAndSelf imps name ty =
+  ctxWithImports ((name , ty) ∷ imps)
+
+-- | Same as `ctxWithImportsAndSelf` but also carries a polymorphic
+-- context. Plan 0.6.2 — used by `compileFun` to make poly defs
+-- available to each ground function's body during typecheck.
+ctxWithImportsAndSelfAndPolys : Imports → PolyCtx → String → Type → NamedCtx
+ctxWithImportsAndSelfAndPolys imps polys name ty =
+  ctxWithImportsAndPolys ((name , ty) ∷ imps) polys
+
+-- | Extend context with a new binding (preserves fresh counter, imports, polys)
+extendNamedCtx : NamedCtx → String → Type → NamedCtx
+extendNamedCtx (mkCtx n Γ Δ fresh imps polys) x A =
+  mkCtx (suc n) (extendCtx Γ x A) (Δ S, A) fresh imps polys
+
+-- | Bump fresh counter (for generating new type variables)
+bumpFresh : NamedCtx → NamedCtx
+bumpFresh (mkCtx n Γ Δ fresh imps polys) = mkCtx n Γ Δ (suc fresh) imps polys
+
+-- | Generate fresh type variable name
+freshTVar : ℕ → String
+freshTVar n = "α" ++ showℕ n
+------------------------------------------------------------------------
+-- Variable Lookup with Weakening and Instantiation
+------------------------------------------------------------------------
+
+-- | Look up a type in the imports list by name
+lookupImport : Imports → String → Maybe Type
+lookupImport [] _ = nothing
+lookupImport ((n , ty) ∷ rest) x with StrProp._≟_ n x
+... | yes _ = just ty
+... | no  _ = lookupImport rest x
+lookupLocal : (ctx : NamedCtx) → String
+            → Maybe (∃[ A ] ∃[ Ψ ] (SExpr (NamedCtx.debruijn ctx) Ψ A))
+lookupLocal (mkCtx n Γ Δ _ _ _) x = go Γ Δ
+  where
+    go : ∀ {m} → Ctx → (Δ' : SCtx m) → Maybe (∃[ A ] ∃[ Ψ ] (SExpr Δ' Ψ A))
+    go [] S∅                   = nothing
+    go [] (_ S, _ ^ _)         = nothing
+    go (_ ∷ _) S∅              = nothing
+    go {suc m} (b ∷ Γ') (Δ' S, B ^ _) with Data.String._≟_ x (name b)
+    ... | yes _ = just (B , _ , Surface.var zero)
+    ... | no _  with go Γ' Δ'
+    ...   | nothing        = nothing
+    ...   | just (A , Ψ , se) = just (A , _ , weaken se)
+
+-- | Find a local variable's de Bruijn position and declared quantity.
+findLocalVarUsage : (ctx : NamedCtx) → String → Maybe (Fin (NamedCtx.size ctx) × Quantity)
+findLocalVarUsage (mkCtx n Γ Δ _ _ _) x = go Γ Δ
+  where
+    go : ∀ {m} → Ctx → SCtx m → Maybe (Fin m × Quantity)
+    go [] S∅ = nothing
+    go [] (_ S, _ ^ _) = nothing
+    go (_ ∷ _) S∅ = nothing
+    go {suc m} (b ∷ Γ') (Δ' S, _ ^ q) with Data.String._≟_ x (name b)
+    ... | yes _ = just (zero , q)
+    ... | no  _ with go Γ' Δ'
+    ...   | nothing = nothing
+    ...   | just (i , q') = just (suc i , q')
+-- | Polymorphic-builtin identifier for the function position of an
+-- `RApp`. The elaborator handles each polymorphic builtin specially
+-- (separate type-checking rules, separate error paths). Hoisting the
+-- dispatch into a classifier + `Maybe PolyBuiltinApp` makes the
+-- elaborator's pattern coverage explicit and avoids the neutral-term
+-- obstacle with literal-string patterns (analogous to the RVar "unit"
+-- refactor).
+data PolyBuiltinApp : Set where
+  pba-id pba-fst pba-snd pba-terminal : PolyBuiltinApp  -- infer-mode successes
+  pba-inl pba-inr pba-initial : PolyBuiltinApp          -- infer-mode rejections
+  pba-arr : PolyBuiltinApp                              -- Eff lift, infer mode
+  pba-pair-applied : PolyBuiltinApp                     -- `RApp (RVar "pair") _` head, check mode
+  pba-compose-applied : PolyBuiltinApp                  -- `RApp (RVar "compose") _` head, check mode
+  pba-curry : PolyBuiltinApp                            -- 1-arg `curry f`, check mode
+  pba-apply : PolyBuiltinApp                            -- 1-arg `apply p`, infer / check mode
+
+-- | Classify an application head. `just <pba>` iff the head is an
+-- `RVar` bound to one of the seven polymorphic builtins; `nothing`
+-- otherwise, in which case the generic application rule applies.
+classifyAppHead : RawExpr → Maybe PolyBuiltinApp
+classifyAppHead (Raw.RVar x) with StrProp._≟_ x "id"
+... | yes _ = just pba-id
+... | no  _ with StrProp._≟_ x "fst"
+...   | yes _ = just pba-fst
+...   | no  _ with StrProp._≟_ x "snd"
+...     | yes _ = just pba-snd
+...     | no  _ with StrProp._≟_ x "terminal"
+...       | yes _ = just pba-terminal
+...       | no  _ with StrProp._≟_ x "inl"
+...         | yes _ = just pba-inl
+...         | no  _ with StrProp._≟_ x "inr"
+...           | yes _ = just pba-inr
+...           | no  _ with StrProp._≟_ x "initial"
+...             | yes _ = just pba-initial
+...             | no  _ with StrProp._≟_ x "arr"
+...               | yes _ = just pba-arr
+...               | no  _ with StrProp._≟_ x "curry"
+...                 | yes _ = just pba-curry
+...                 | no  _ with StrProp._≟_ x "apply"
+...                   | yes _ = just pba-apply
+...                   | no  _ = nothing
+-- Applied-form heads: `RApp (RVar "pair" | "compose") _`. Plan 0.6
+-- Phase C.7 POC-2 / POC-3.
+classifyAppHead (Raw.RApp (Raw.RVar x) _) with StrProp._≟_ x "pair"
+... | yes _ = just pba-pair-applied
+... | no  _ with StrProp._≟_ x "compose"
+...   | yes _ = just pba-compose-applied
+...   | no  _ = nothing
+-- RApp with non-RVar head: not a builtin reference.
+classifyAppHead (Raw.RApp (Raw.RApp _ _) _)         = nothing
+classifyAppHead (Raw.RApp (Raw.RQualified _ _) _)   = nothing
+classifyAppHead (Raw.RApp (Raw.RLam _ _) _)         = nothing
+classifyAppHead (Raw.RApp (Raw.RLet _ _ _) _)       = nothing
+classifyAppHead (Raw.RApp (Raw.RPair _ _) _)        = nothing
+classifyAppHead (Raw.RApp (Raw.RDestruct _ _ _ _ _) _) = nothing
+classifyAppHead (Raw.RApp Raw.RUnit _)              = nothing
+classifyAppHead (Raw.RApp (Raw.RInt _) _)           = nothing
+classifyAppHead (Raw.RApp (Raw.RStringLit _) _)     = nothing
+classifyAppHead (Raw.RApp (Raw.RAnnot _ _) _)       = nothing
+classifyAppHead (Raw.RApp (Raw.RBinOp _ _ _) _)     = nothing
+classifyAppHead (Raw.RApp (Raw.RUnaryOp _ _) _)     = nothing
+-- Non-RApp / non-RVar heads.
+classifyAppHead (Raw.RQualified _ _)      = nothing
+classifyAppHead (Raw.RLam _ _)            = nothing
+classifyAppHead (Raw.RLet _ _ _)          = nothing
+classifyAppHead (Raw.RPair _ _)           = nothing
+classifyAppHead (Raw.RDestruct _ _ _ _ _) = nothing
+classifyAppHead Raw.RUnit                 = nothing
+classifyAppHead (Raw.RInt _)              = nothing
+classifyAppHead (Raw.RStringLit _)        = nothing
+classifyAppHead (Raw.RAnnot _ _)          = nothing
+classifyAppHead (Raw.RBinOp _ _ _)        = nothing
+classifyAppHead (Raw.RUnaryOp _ _)        = nothing
+
+-- | View-type classification of an application head. Each constructor
+-- fixes the head's concrete RawExpr shape via an index, so pattern-
+-- matching on an `AppHeadView f` value makes `f`'s shape available
+-- in the goal structurally — no `with`-abstraction interplay. This
+-- is the "eliminate opaque `with`-helpers by refactoring the
+-- definition" idiom (see `docs/formal/historical/lessons-learned.md`):
+-- when a proof is fighting `rewrite` against an internal `with`-
+-- dispatch, the fix is to refactor the function to return a datatype
+-- carrying the proof, not to layer more proof tactics.
+data AppHeadView : RawExpr → Set where
+  ahv-id       : AppHeadView (Raw.RVar "id")
+  ahv-fst      : AppHeadView (Raw.RVar "fst")
+  ahv-snd      : AppHeadView (Raw.RVar "snd")
+  ahv-terminal : AppHeadView (Raw.RVar "terminal")
+  ahv-inl      : AppHeadView (Raw.RVar "inl")
+  ahv-inr      : AppHeadView (Raw.RVar "inr")
+  ahv-initial  : AppHeadView (Raw.RVar "initial")
+  ahv-arr      : AppHeadView (Raw.RVar "arr")
+  ahv-curry    : AppHeadView (Raw.RVar "curry")
+  ahv-apply    : AppHeadView (Raw.RVar "apply")
+  ahv-pair-applied    : ∀ {f'} → AppHeadView (Raw.RApp (Raw.RVar "pair") f')
+  ahv-compose-applied : ∀ {f'} → AppHeadView (Raw.RApp (Raw.RVar "compose") f')
+  ahv-other    : ∀ {f} → AppHeadView f
+
+classifyAppHeadView : (f : RawExpr) → AppHeadView f
+classifyAppHeadView (Raw.RVar x) with StrProp._≟_ x "id"
+... | yes refl = ahv-id
+... | no  _ with StrProp._≟_ x "fst"
+...   | yes refl = ahv-fst
+...   | no  _ with StrProp._≟_ x "snd"
+...     | yes refl = ahv-snd
+...     | no  _ with StrProp._≟_ x "terminal"
+...       | yes refl = ahv-terminal
+...       | no  _ with StrProp._≟_ x "inl"
+...         | yes refl = ahv-inl
+...         | no  _ with StrProp._≟_ x "inr"
+...           | yes refl = ahv-inr
+...           | no  _ with StrProp._≟_ x "initial"
+...             | yes refl = ahv-initial
+...             | no  _ with StrProp._≟_ x "arr"
+...               | yes refl = ahv-arr
+...               | no  _ with StrProp._≟_ x "curry"
+...                 | yes refl = ahv-curry
+...                 | no  _ with StrProp._≟_ x "apply"
+...                   | yes refl = ahv-apply
+...                   | no  _ = ahv-other
+classifyAppHeadView (Raw.RApp (Raw.RVar x) _) with StrProp._≟_ x "pair"
+... | yes refl = ahv-pair-applied
+... | no  _    with StrProp._≟_ x "compose"
+...   | yes refl = ahv-compose-applied
+...   | no  _    = ahv-other
+-- RApp with non-RVar head: ahv-other.
+classifyAppHeadView (Raw.RApp (Raw.RApp _ _) _)         = ahv-other
+classifyAppHeadView (Raw.RApp (Raw.RQualified _ _) _)   = ahv-other
+classifyAppHeadView (Raw.RApp (Raw.RLam _ _) _)         = ahv-other
+classifyAppHeadView (Raw.RApp (Raw.RLet _ _ _) _)       = ahv-other
+classifyAppHeadView (Raw.RApp (Raw.RPair _ _) _)        = ahv-other
+classifyAppHeadView (Raw.RApp (Raw.RDestruct _ _ _ _ _) _) = ahv-other
+classifyAppHeadView (Raw.RApp Raw.RUnit _)              = ahv-other
+classifyAppHeadView (Raw.RApp (Raw.RInt _) _)           = ahv-other
+classifyAppHeadView (Raw.RApp (Raw.RStringLit _) _)     = ahv-other
+classifyAppHeadView (Raw.RApp (Raw.RAnnot _ _) _)       = ahv-other
+classifyAppHeadView (Raw.RApp (Raw.RBinOp _ _ _) _)     = ahv-other
+classifyAppHeadView (Raw.RApp (Raw.RUnaryOp _ _) _)     = ahv-other
+classifyAppHeadView (Raw.RQualified _ _)      = ahv-other
+classifyAppHeadView (Raw.RLam _ _)            = ahv-other
+classifyAppHeadView (Raw.RLet _ _ _)          = ahv-other
+classifyAppHeadView (Raw.RPair _ _)           = ahv-other
+classifyAppHeadView (Raw.RDestruct _ _ _ _ _) = ahv-other
+classifyAppHeadView Raw.RUnit                 = ahv-other
+classifyAppHeadView (Raw.RInt _)              = ahv-other
+classifyAppHeadView (Raw.RStringLit _)        = ahv-other
+classifyAppHeadView (Raw.RAnnot _ _)          = ahv-other
+classifyAppHeadView (Raw.RBinOp _ _ _)        = ahv-other
+classifyAppHeadView (Raw.RUnaryOp _ _)        = ahv-other
+
+-- | Compat: `classifyAppHead f ≡ nothing` ⇔ `classifyAppHeadView f ≡
+-- ahv-other`. Needed because existing downstream proofs (Judgment's
+-- t-app premise, Soundness's sound-RApp-generic, etc.) use
+-- `classifyAppHead`'s `Maybe`-return form, while the view enables
+-- new proofs (`checkElab-fallback-RApp-generic` below).
+classifyAppHead-nothing⇒view-other :
+  ∀ {f} → classifyAppHead f ≡ nothing → classifyAppHeadView f ≡ ahv-other
+-- Non-RVar heads: both classifyAppHead and classifyAppHeadView
+-- reduce definitionally to their respective nothing / ahv-other.
+-- Plan 0.6 Phase C.7 POC-2: the RApp case now has a nested match
+-- on `RApp (RVar "pair") _`. Split: if head is `RVar "pair"`,
+-- classifyAppHead returns `just pba-pair-applied` (so the premise
+-- `≡ nothing` is impossible); otherwise uniform `refl`.
+classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RVar s) _} p with StrProp._≟_ s "pair"
+... | yes _ with p
+...   | ()
+classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RVar s) _} p | no _ with StrProp._≟_ s "compose"
+... | yes _ with p
+...   | ()
+classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RVar _) _} _ | no _ | no _ = refl
+classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RApp _ _) _}       _ = refl
+classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RQualified _ _) _} _ = refl
+classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RLam _ _) _}       _ = refl
+classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RLet _ _ _) _}     _ = refl
+classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RPair _ _) _}      _ = refl
+classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RDestruct _ _ _ _ _) _} _ = refl
+classifyAppHead-nothing⇒view-other {Raw.RApp Raw.RUnit _}            _ = refl
+classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RInt _) _}         _ = refl
+classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RStringLit _) _}   _ = refl
+classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RAnnot _ _) _}     _ = refl
+classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RBinOp _ _ _) _}   _ = refl
+classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RUnaryOp _ _) _}   _ = refl
+classifyAppHead-nothing⇒view-other {Raw.RQualified _ _}     _ = refl
+classifyAppHead-nothing⇒view-other {Raw.RLam _ _}           _ = refl
+classifyAppHead-nothing⇒view-other {Raw.RLet _ _ _}         _ = refl
+classifyAppHead-nothing⇒view-other {Raw.RPair _ _}          _ = refl
+classifyAppHead-nothing⇒view-other {Raw.RDestruct _ _ _ _ _} _ = refl
+classifyAppHead-nothing⇒view-other {Raw.RUnit}              _ = refl
+classifyAppHead-nothing⇒view-other {Raw.RInt _}             _ = refl
+classifyAppHead-nothing⇒view-other {Raw.RStringLit _}       _ = refl
+classifyAppHead-nothing⇒view-other {Raw.RAnnot _ _}         _ = refl
+classifyAppHead-nothing⇒view-other {Raw.RBinOp _ _ _}       _ = refl
+classifyAppHead-nothing⇒view-other {Raw.RUnaryOp _ _}       _ = refl
+-- RVar: both dispatches walk the same 7-string chain; show the
+-- result alignment case-by-case.
+classifyAppHead-nothing⇒view-other {Raw.RVar s} p with StrProp._≟_ s "id"
+... | yes _ with p
+...   | ()
+classifyAppHead-nothing⇒view-other {Raw.RVar s} p | no _
+  with StrProp._≟_ s "fst"
+... | yes _ with p
+...   | ()
+classifyAppHead-nothing⇒view-other {Raw.RVar s} p | no _ | no _
+  with StrProp._≟_ s "snd"
+... | yes _ with p
+...   | ()
+classifyAppHead-nothing⇒view-other {Raw.RVar s} p | no _ | no _ | no _
+  with StrProp._≟_ s "terminal"
+... | yes _ with p
+...   | ()
+classifyAppHead-nothing⇒view-other {Raw.RVar s} p | no _ | no _ | no _ | no _
+  with StrProp._≟_ s "inl"
+... | yes _ with p
+...   | ()
+classifyAppHead-nothing⇒view-other {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _
+  with StrProp._≟_ s "inr"
+... | yes _ with p
+...   | ()
+classifyAppHead-nothing⇒view-other {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _ | no _
+  with StrProp._≟_ s "initial"
+... | yes _ with p
+...   | ()
+classifyAppHead-nothing⇒view-other {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _ | no _ | no _
+  with StrProp._≟_ s "arr"
+... | yes _ with p
+...   | ()
+classifyAppHead-nothing⇒view-other {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _
+  with StrProp._≟_ s "curry"
+... | yes _ with p
+...   | ()
+classifyAppHead-nothing⇒view-other {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _
+  with StrProp._≟_ s "apply"
+... | yes _ with p
+...   | ()
+classifyAppHead-nothing⇒view-other {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ = refl
+
+-- Reverse bridge (Plan 0.4 T0 Option A): from view ≡ ahv-other to
+-- classifyAppHead ≡ nothing. Needed by `infer-sound`'s ahv-other
+-- branch to feed `sound-RApp-generic`'s `notPoly` premise (which
+-- types `t-app` / `t-effApp`).
+view-other⇒classifyAppHead-nothing :
+  ∀ {f} → classifyAppHeadView f ≡ ahv-other → classifyAppHead f ≡ nothing
+view-other⇒classifyAppHead-nothing {Raw.RApp (Raw.RVar s) _} p with StrProp._≟_ s "pair"
+... | yes refl with p
+...   | ()
+view-other⇒classifyAppHead-nothing {Raw.RApp (Raw.RVar s) _} p | no _ with StrProp._≟_ s "compose"
+... | yes refl with p
+...   | ()
+view-other⇒classifyAppHead-nothing {Raw.RApp (Raw.RVar _) _} _ | no _ | no _ = refl
+view-other⇒classifyAppHead-nothing {Raw.RApp (Raw.RApp _ _) _}       _ = refl
+view-other⇒classifyAppHead-nothing {Raw.RApp (Raw.RQualified _ _) _} _ = refl
+view-other⇒classifyAppHead-nothing {Raw.RApp (Raw.RLam _ _) _}       _ = refl
+view-other⇒classifyAppHead-nothing {Raw.RApp (Raw.RLet _ _ _) _}     _ = refl
+view-other⇒classifyAppHead-nothing {Raw.RApp (Raw.RPair _ _) _}      _ = refl
+view-other⇒classifyAppHead-nothing {Raw.RApp (Raw.RDestruct _ _ _ _ _) _} _ = refl
+view-other⇒classifyAppHead-nothing {Raw.RApp Raw.RUnit _}            _ = refl
+view-other⇒classifyAppHead-nothing {Raw.RApp (Raw.RInt _) _}         _ = refl
+view-other⇒classifyAppHead-nothing {Raw.RApp (Raw.RStringLit _) _}   _ = refl
+view-other⇒classifyAppHead-nothing {Raw.RApp (Raw.RAnnot _ _) _}     _ = refl
+view-other⇒classifyAppHead-nothing {Raw.RApp (Raw.RBinOp _ _ _) _}   _ = refl
+view-other⇒classifyAppHead-nothing {Raw.RApp (Raw.RUnaryOp _ _) _}   _ = refl
+view-other⇒classifyAppHead-nothing {Raw.RQualified _ _}     _ = refl
+view-other⇒classifyAppHead-nothing {Raw.RLam _ _}           _ = refl
+view-other⇒classifyAppHead-nothing {Raw.RLet _ _ _}         _ = refl
+view-other⇒classifyAppHead-nothing {Raw.RPair _ _}          _ = refl
+view-other⇒classifyAppHead-nothing {Raw.RDestruct _ _ _ _ _} _ = refl
+view-other⇒classifyAppHead-nothing {Raw.RUnit}              _ = refl
+view-other⇒classifyAppHead-nothing {Raw.RInt _}             _ = refl
+view-other⇒classifyAppHead-nothing {Raw.RStringLit _}       _ = refl
+view-other⇒classifyAppHead-nothing {Raw.RAnnot _ _}         _ = refl
+view-other⇒classifyAppHead-nothing {Raw.RBinOp _ _ _}       _ = refl
+view-other⇒classifyAppHead-nothing {Raw.RUnaryOp _ _}       _ = refl
+view-other⇒classifyAppHead-nothing {Raw.RVar s} p with StrProp._≟_ s "id"
+... | yes refl with p
+...   | ()
+view-other⇒classifyAppHead-nothing {Raw.RVar s} p | no _
+  with StrProp._≟_ s "fst"
+... | yes refl with p
+...   | ()
+view-other⇒classifyAppHead-nothing {Raw.RVar s} p | no _ | no _
+  with StrProp._≟_ s "snd"
+... | yes refl with p
+...   | ()
+view-other⇒classifyAppHead-nothing {Raw.RVar s} p | no _ | no _ | no _
+  with StrProp._≟_ s "terminal"
+... | yes refl with p
+...   | ()
+view-other⇒classifyAppHead-nothing {Raw.RVar s} p | no _ | no _ | no _ | no _
+  with StrProp._≟_ s "inl"
+... | yes refl with p
+...   | ()
+view-other⇒classifyAppHead-nothing {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _
+  with StrProp._≟_ s "inr"
+... | yes refl with p
+...   | ()
+view-other⇒classifyAppHead-nothing {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _ | no _
+  with StrProp._≟_ s "initial"
+... | yes refl with p
+...   | ()
+view-other⇒classifyAppHead-nothing {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _ | no _ | no _
+  with StrProp._≟_ s "arr"
+... | yes refl with p
+...   | ()
+view-other⇒classifyAppHead-nothing {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _
+  with StrProp._≟_ s "curry"
+... | yes refl with p
+...   | ()
+view-other⇒classifyAppHead-nothing {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _
+  with StrProp._≟_ s "apply"
+... | yes refl with p
+...   | ()
+view-other⇒classifyAppHead-nothing {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ = refl
+data BareBuiltinClass : String → Set where
+  bbc-id       : BareBuiltinClass "id"
+  bbc-fst      : BareBuiltinClass "fst"
+  bbc-snd      : BareBuiltinClass "snd"
+  bbc-terminal : BareBuiltinClass "terminal"
+  bbc-initial  : BareBuiltinClass "initial"
+  bbc-inl      : BareBuiltinClass "inl"
+  bbc-inr      : BareBuiltinClass "inr"
+  bbc-arr      : BareBuiltinClass "arr"
+  bbc-other    : ∀ {x} → BareBuiltinClass x
+
+classifyBareBuiltin : (x : String) → BareBuiltinClass x
+classifyBareBuiltin x with StrProp._≟_ x "id"
+... | yes refl = bbc-id
+... | no  _ with StrProp._≟_ x "fst"
+...   | yes refl = bbc-fst
+...   | no  _ with StrProp._≟_ x "snd"
+...     | yes refl = bbc-snd
+...     | no  _ with StrProp._≟_ x "terminal"
+...       | yes refl = bbc-terminal
+...       | no  _ with StrProp._≟_ x "initial"
+...         | yes refl = bbc-initial
+...         | no  _ with StrProp._≟_ x "inl"
+...           | yes refl = bbc-inl
+...           | no  _ with StrProp._≟_ x "inr"
+...             | yes refl = bbc-inr
+...             | no  _ with StrProp._≟_ x "arr"
+...               | yes refl = bbc-arr
+...               | no  _ = bbc-other

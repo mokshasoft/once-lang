@@ -45,7 +45,7 @@ open import Once.TypeCheck.Raw as Raw
   using (RawExpr; RVar; RQualified; RApp; RInt; RStringLit; RUnit; RAnnot; RPair;
          RLam; RLet; RDestruct; RUnaryOp; RBinOp; OpNeg; UnaryOp;
          BinOp; isArithmeticOp; isComparisonOp)
-open import Once.TypeCheck.Elaborate
+open import Once.TypeCheck.Classify
   using (NamedCtx; lookupLocal; lookupImport; lookupPoly; removePoly;
          ctxWithImportsAndPolys; extendNamedCtx; classifyAppHead)
 
@@ -402,7 +402,7 @@ mutual
     -- rule on the same name (cycle prevention).
     t-var-poly-instantiate :
       ∀ {ctx : NamedCtx} {x : String} {T : Type} {schema : Once.Type.PolyType} {body : RawExpr}
-      → Once.TypeCheck.Elaborate.classifyBareBuiltin x ≡ Once.TypeCheck.Elaborate.bbc-other
+      → Once.TypeCheck.Classify.classifyBareBuiltin x ≡ Once.TypeCheck.Classify.bbc-other
       → ¬ (x ≡ "unit")
       → lookupLocal ctx x ≡ nothing
       → lookupImport (NamedCtx.imports ctx) x ≡ nothing

@@ -54,6 +54,9 @@ open Surface.Usage using () renaming (_∷_ to _∷ᵘ_)
 open import Once.Surface.Thinning using (weaken; weakenFromEmpty)
 open import Once.Surface.Elaborate as Elab using (elaborate)
 
+open import Once.TypeCheck.Classify public
+open import Once.TypeCheck.Judgment
+
 ------------------------------------------------------------------------
 -- Weakening from Empty Context
 ------------------------------------------------------------------------
@@ -323,121 +326,47 @@ data CheckElabResult {n : ℕ} (Δ : SCtx n) (A : Type) : Set where
   failure : TypeError → CheckElabResult Δ A
 
 ------------------------------------------------------------------------
+-- Plan 0.4 T0 Option B (verified elaborator)
+--
+-- The intended typing for an inference result. `success` carries a
+-- proof that the surface judgment holds; `failure` carries no
+-- obligation (`⊤`). Pairing `inferElab`'s result with `soundOf` in a
+-- `Σ` makes soundness a clause-level invariant the type checker
+-- enforces — there is no separate `infer-sound` proof to drift out
+-- of sync.
+------------------------------------------------------------------------
+
+open import Data.Unit using (⊤; tt) public
+
+-- Soundness witness type. `success` carries an infer-mode judgment;
+-- `failure` carries no obligation. The verified elaborator's `Σ`
+-- result couples each `inferElab` clause with this witness directly.
+soundOf : (ctx : NamedCtx) (e : RawExpr)
+        → InferElabResult (NamedCtx.debruijn ctx) → Set
+soundOf ctx e (success A Ψ eE d f) = ctx ⊢ᵢ e ∶ A ⨾ Ψ
+soundOf ctx e (failure _) = ⊤
+
+VerifiedInferResult : (ctx : NamedCtx) (e : RawExpr) → Set
+VerifiedInferResult ctx e =
+  ∃-syntax (λ r → soundOf ctx e r)
+
+-- Check-mode dual: success carries a check-mode judgment.
+checkSoundOf : (ctx : NamedCtx) (e : RawExpr) (T : Type)
+             → CheckElabResult (NamedCtx.debruijn ctx) T → Set
+checkSoundOf ctx e T (success Ψ eE d f) = ctx ⊢ᶜ e ∶ T ⨾ Ψ
+checkSoundOf ctx e T (failure _) = ⊤
+
+VerifiedCheckResult : (ctx : NamedCtx) (e : RawExpr) (T : Type) → Set
+VerifiedCheckResult ctx e T =
+  ∃-syntax (λ r → checkSoundOf ctx e T r)
+
+------------------------------------------------------------------------
 -- QTT Usage Helpers
 ------------------------------------------------------------------------
 
 -- Import usage operations from Surface.Syntax
 open Surface using (zeroUsage; singleUse; _+ᵘ_; _*ᵘ_) public
 
-------------------------------------------------------------------------
-------------------------------------------------------------------------
--- Named Context with de Bruijn Correspondence
-------------------------------------------------------------------------
-
--- | Imported primitives from other modules (e.g., "S.exit0" → Eff Unit Unit)
--- These are populated from qualified imports like "import M as S"
-Imports : Set
-Imports = List (String × Type)
-
--- | Empty imports
-emptyImports : Imports
-emptyImports = []
-
--- | Polymorphic-definition context (plan 0.6.2). Carries each
--- user-declared poly def's schema and body so they can be
--- specialised at call sites via schema instantiation. Structurally
--- `List (name, schema, body)`; kept separate from `imports` (which
--- is ground-typed) because lookup resolves differently.
-PolyCtx : Set
-PolyCtx = List (String × PolyType × RawExpr)
-
-emptyPolyCtx : PolyCtx
-emptyPolyCtx = []
-
--- | Lookup a polymorphic def by name.
-lookupPoly : PolyCtx → String → Maybe (PolyType × RawExpr)
-lookupPoly [] _ = nothing
-lookupPoly ((n , schema , body) ∷ rest) x with StrProp._≟_ n x
-... | yes _ = just (schema , body)
-... | no  _ = lookupPoly rest x
-
--- | Remove the named entry from a PolyCtx. Used during schema
--- instantiation to prevent direct cycles (a poly body specialising
--- to its own name's instantiation would loop); the recursive
--- `checkElab` call sees a `PolyCtx` without the name being
--- specialised, so that name's use sites inside the body fall
--- through to the non-poly lookup path.
--- Plan 0.6.2 Phase 4 (termination principlization).
-removePoly : String → PolyCtx → PolyCtx
-removePoly _ [] = []
-removePoly x ((n , s , b) ∷ rest) with StrProp._≟_ n x
-... | yes _ = rest
-... | no  _ = (n , s , b) ∷ removePoly x rest
-
--- | When `x` is found in `polys`, `removePoly` strictly shrinks it.
--- Load-bearing for well-founded termination of the poly-splice recursion
--- in `resolveExpr`. Plan 0.6.2 Phase 4 (final).
-removePoly-decreases :
-  ∀ {r : PolyType × RawExpr} (x : String) (polys : PolyCtx)
-  → lookupPoly polys x ≡ just r
-  → length (removePoly x polys) < length polys
-removePoly-decreases x [] ()
-removePoly-decreases x ((n , s , b) ∷ rest) eq with StrProp._≟_ n x
-... | yes _ = s≤s ≤-refl
-... | no  _ = s≤s (removePoly-decreases x rest eq)
-
--- | A named context paired with its de Bruijn representation
--- Includes a fresh counter for generating unique type variables during instantiation
--- and imported primitives from other modules
-record NamedCtx : Set where
-  constructor mkCtx
-  field
-    size        : ℕ
-    named       : Ctx
-    debruijn    : SCtx size
-    freshCounter : ℕ  -- For generating fresh type variables (α₀, α₁, α₂, ...)
-    imports     : Imports  -- Imported primitives (qualified names → types)
-    polys       : PolyCtx  -- User polymorphic definitions (plan 0.6.2)
-
--- | Empty context
-emptyCtx : NamedCtx
-emptyCtx = mkCtx 0 ∅ S∅ 0 emptyImports emptyPolyCtx
-
--- | Create context with imports
-ctxWithImports : Imports → NamedCtx
-ctxWithImports imps = mkCtx 0 ∅ S∅ 0 imps emptyPolyCtx
-
--- | Create context with imports and polymorphic defs. Plan 0.6.2.
-ctxWithImportsAndPolys : Imports → PolyCtx → NamedCtx
-ctxWithImportsAndPolys imps polys = mkCtx 0 ∅ S∅ 0 imps polys
-
--- | Create context with imports and self-reference for recursive definitions
--- The function's own name and type are added to the imports list so it can call itself.
--- This causes recursive calls to elaborate to `SigOp "name"` which the C backend
--- handles as a function call.
-ctxWithImportsAndSelf : Imports → String → Type → NamedCtx
-ctxWithImportsAndSelf imps name ty =
-  ctxWithImports ((name , ty) ∷ imps)
-
--- | Same as `ctxWithImportsAndSelf` but also carries a polymorphic
--- context. Plan 0.6.2 — used by `compileFun` to make poly defs
--- available to each ground function's body during typecheck.
-ctxWithImportsAndSelfAndPolys : Imports → PolyCtx → String → Type → NamedCtx
-ctxWithImportsAndSelfAndPolys imps polys name ty =
-  ctxWithImportsAndPolys ((name , ty) ∷ imps) polys
-
--- | Extend context with a new binding (preserves fresh counter, imports, polys)
-extendNamedCtx : NamedCtx → String → Type → NamedCtx
-extendNamedCtx (mkCtx n Γ Δ fresh imps polys) x A =
-  mkCtx (suc n) (extendCtx Γ x A) (Δ S, A) fresh imps polys
-
--- | Bump fresh counter (for generating new type variables)
-bumpFresh : NamedCtx → NamedCtx
-bumpFresh (mkCtx n Γ Δ fresh imps polys) = mkCtx n Γ Δ (suc fresh) imps polys
-
--- | Generate fresh type variable name
-freshTVar : ℕ → String
-freshTVar n = "α" ++ showℕ n
 ------------------------------------------------------------------------
 -- Per-Builtin Body Specializers
 ------------------------------------------------------------------------
@@ -515,16 +444,6 @@ specArr : (A B : Type) → SExpr S∅ Surface.zeroUsage ((A ⇒ B) ⇒ (A ⇒[ m
 specArr A B = Surface.lam Many refl (Surface.arr' (Surface.var zero))
 
 
-------------------------------------------------------------------------
--- Variable Lookup with Weakening and Instantiation
-------------------------------------------------------------------------
-
--- | Look up a type in the imports list by name
-lookupImport : Imports → String → Maybe Type
-lookupImport [] _ = nothing
-lookupImport ((n , ty) ∷ rest) x with StrProp._≟_ n x
-... | yes _ = just ty
-... | no  _ = lookupImport rest x
 
 -- | Look up a variable by name and return its de Bruijn indexed expression
 --
@@ -588,33 +507,6 @@ isPolyBuiltin _          = false
 
 -- | Look up a local variable by name in a NamedCtx.
 -- Returns (A , Ψ , e) where Ψ is the usage vector of the resulting expression.
-lookupLocal : (ctx : NamedCtx) → String
-            → Maybe (∃[ A ] ∃[ Ψ ] (SExpr (NamedCtx.debruijn ctx) Ψ A))
-lookupLocal (mkCtx n Γ Δ _ _ _) x = go Γ Δ
-  where
-    go : ∀ {m} → Ctx → (Δ' : SCtx m) → Maybe (∃[ A ] ∃[ Ψ ] (SExpr Δ' Ψ A))
-    go [] S∅                   = nothing
-    go [] (_ S, _ ^ _)         = nothing
-    go (_ ∷ _) S∅              = nothing
-    go {suc m} (b ∷ Γ') (Δ' S, B ^ _) with Data.String._≟_ x (name b)
-    ... | yes _ = just (B , _ , Surface.var zero)
-    ... | no _  with go Γ' Δ'
-    ...   | nothing        = nothing
-    ...   | just (A , Ψ , se) = just (A , _ , weaken se)
-
--- | Find a local variable's de Bruijn position and declared quantity.
-findLocalVarUsage : (ctx : NamedCtx) → String → Maybe (Fin (NamedCtx.size ctx) × Quantity)
-findLocalVarUsage (mkCtx n Γ Δ _ _ _) x = go Γ Δ
-  where
-    go : ∀ {m} → Ctx → SCtx m → Maybe (Fin m × Quantity)
-    go [] S∅ = nothing
-    go [] (_ S, _ ^ _) = nothing
-    go (_ ∷ _) S∅ = nothing
-    go {suc m} (b ∷ Γ') (Δ' S, _ ^ q) with Data.String._≟_ x (name b)
-    ... | yes _ = just (zero , q)
-    ... | no  _ with go Γ' Δ'
-    ...   | nothing = nothing
-    ...   | just (i , q') = just (suc i , q')
 
 ------------------------------------------------------------------------
 -- Function-type and Int-type projections (for inference branching)
@@ -712,318 +604,6 @@ decideLeq Many Zero = nothing
 decideLeq Many One  = nothing
 decideLeq Many Many = just refl
 
--- | Polymorphic-builtin identifier for the function position of an
--- `RApp`. The elaborator handles each polymorphic builtin specially
--- (separate type-checking rules, separate error paths). Hoisting the
--- dispatch into a classifier + `Maybe PolyBuiltinApp` makes the
--- elaborator's pattern coverage explicit and avoids the neutral-term
--- obstacle with literal-string patterns (analogous to the RVar "unit"
--- refactor).
-data PolyBuiltinApp : Set where
-  pba-id pba-fst pba-snd pba-terminal : PolyBuiltinApp  -- infer-mode successes
-  pba-inl pba-inr pba-initial : PolyBuiltinApp          -- infer-mode rejections
-  pba-arr : PolyBuiltinApp                              -- Eff lift, infer mode
-  pba-pair-applied : PolyBuiltinApp                     -- `RApp (RVar "pair") _` head, check mode
-  pba-compose-applied : PolyBuiltinApp                  -- `RApp (RVar "compose") _` head, check mode
-  pba-curry : PolyBuiltinApp                            -- 1-arg `curry f`, check mode
-  pba-apply : PolyBuiltinApp                            -- 1-arg `apply p`, infer / check mode
-
--- | Classify an application head. `just <pba>` iff the head is an
--- `RVar` bound to one of the seven polymorphic builtins; `nothing`
--- otherwise, in which case the generic application rule applies.
-classifyAppHead : RawExpr → Maybe PolyBuiltinApp
-classifyAppHead (Raw.RVar x) with StrProp._≟_ x "id"
-... | yes _ = just pba-id
-... | no  _ with StrProp._≟_ x "fst"
-...   | yes _ = just pba-fst
-...   | no  _ with StrProp._≟_ x "snd"
-...     | yes _ = just pba-snd
-...     | no  _ with StrProp._≟_ x "terminal"
-...       | yes _ = just pba-terminal
-...       | no  _ with StrProp._≟_ x "inl"
-...         | yes _ = just pba-inl
-...         | no  _ with StrProp._≟_ x "inr"
-...           | yes _ = just pba-inr
-...           | no  _ with StrProp._≟_ x "initial"
-...             | yes _ = just pba-initial
-...             | no  _ with StrProp._≟_ x "arr"
-...               | yes _ = just pba-arr
-...               | no  _ with StrProp._≟_ x "curry"
-...                 | yes _ = just pba-curry
-...                 | no  _ with StrProp._≟_ x "apply"
-...                   | yes _ = just pba-apply
-...                   | no  _ = nothing
--- Applied-form heads: `RApp (RVar "pair" | "compose") _`. Plan 0.6
--- Phase C.7 POC-2 / POC-3.
-classifyAppHead (Raw.RApp (Raw.RVar x) _) with StrProp._≟_ x "pair"
-... | yes _ = just pba-pair-applied
-... | no  _ with StrProp._≟_ x "compose"
-...   | yes _ = just pba-compose-applied
-...   | no  _ = nothing
--- RApp with non-RVar head: not a builtin reference.
-classifyAppHead (Raw.RApp (Raw.RApp _ _) _)         = nothing
-classifyAppHead (Raw.RApp (Raw.RQualified _ _) _)   = nothing
-classifyAppHead (Raw.RApp (Raw.RLam _ _) _)         = nothing
-classifyAppHead (Raw.RApp (Raw.RLet _ _ _) _)       = nothing
-classifyAppHead (Raw.RApp (Raw.RPair _ _) _)        = nothing
-classifyAppHead (Raw.RApp (Raw.RDestruct _ _ _ _ _) _) = nothing
-classifyAppHead (Raw.RApp Raw.RUnit _)              = nothing
-classifyAppHead (Raw.RApp (Raw.RInt _) _)           = nothing
-classifyAppHead (Raw.RApp (Raw.RStringLit _) _)     = nothing
-classifyAppHead (Raw.RApp (Raw.RAnnot _ _) _)       = nothing
-classifyAppHead (Raw.RApp (Raw.RBinOp _ _ _) _)     = nothing
-classifyAppHead (Raw.RApp (Raw.RUnaryOp _ _) _)     = nothing
--- Non-RApp / non-RVar heads.
-classifyAppHead (Raw.RQualified _ _)      = nothing
-classifyAppHead (Raw.RLam _ _)            = nothing
-classifyAppHead (Raw.RLet _ _ _)          = nothing
-classifyAppHead (Raw.RPair _ _)           = nothing
-classifyAppHead (Raw.RDestruct _ _ _ _ _) = nothing
-classifyAppHead Raw.RUnit                 = nothing
-classifyAppHead (Raw.RInt _)              = nothing
-classifyAppHead (Raw.RStringLit _)        = nothing
-classifyAppHead (Raw.RAnnot _ _)          = nothing
-classifyAppHead (Raw.RBinOp _ _ _)        = nothing
-classifyAppHead (Raw.RUnaryOp _ _)        = nothing
-
--- | View-type classification of an application head. Each constructor
--- fixes the head's concrete RawExpr shape via an index, so pattern-
--- matching on an `AppHeadView f` value makes `f`'s shape available
--- in the goal structurally — no `with`-abstraction interplay. This
--- is the "eliminate opaque `with`-helpers by refactoring the
--- definition" idiom (see `docs/formal/historical/lessons-learned.md`):
--- when a proof is fighting `rewrite` against an internal `with`-
--- dispatch, the fix is to refactor the function to return a datatype
--- carrying the proof, not to layer more proof tactics.
-data AppHeadView : RawExpr → Set where
-  ahv-id       : AppHeadView (Raw.RVar "id")
-  ahv-fst      : AppHeadView (Raw.RVar "fst")
-  ahv-snd      : AppHeadView (Raw.RVar "snd")
-  ahv-terminal : AppHeadView (Raw.RVar "terminal")
-  ahv-inl      : AppHeadView (Raw.RVar "inl")
-  ahv-inr      : AppHeadView (Raw.RVar "inr")
-  ahv-initial  : AppHeadView (Raw.RVar "initial")
-  ahv-arr      : AppHeadView (Raw.RVar "arr")
-  ahv-curry    : AppHeadView (Raw.RVar "curry")
-  ahv-apply    : AppHeadView (Raw.RVar "apply")
-  ahv-pair-applied    : ∀ {f'} → AppHeadView (Raw.RApp (Raw.RVar "pair") f')
-  ahv-compose-applied : ∀ {f'} → AppHeadView (Raw.RApp (Raw.RVar "compose") f')
-  ahv-other    : ∀ {f} → AppHeadView f
-
-classifyAppHeadView : (f : RawExpr) → AppHeadView f
-classifyAppHeadView (Raw.RVar x) with StrProp._≟_ x "id"
-... | yes refl = ahv-id
-... | no  _ with StrProp._≟_ x "fst"
-...   | yes refl = ahv-fst
-...   | no  _ with StrProp._≟_ x "snd"
-...     | yes refl = ahv-snd
-...     | no  _ with StrProp._≟_ x "terminal"
-...       | yes refl = ahv-terminal
-...       | no  _ with StrProp._≟_ x "inl"
-...         | yes refl = ahv-inl
-...         | no  _ with StrProp._≟_ x "inr"
-...           | yes refl = ahv-inr
-...           | no  _ with StrProp._≟_ x "initial"
-...             | yes refl = ahv-initial
-...             | no  _ with StrProp._≟_ x "arr"
-...               | yes refl = ahv-arr
-...               | no  _ with StrProp._≟_ x "curry"
-...                 | yes refl = ahv-curry
-...                 | no  _ with StrProp._≟_ x "apply"
-...                   | yes refl = ahv-apply
-...                   | no  _ = ahv-other
-classifyAppHeadView (Raw.RApp (Raw.RVar x) _) with StrProp._≟_ x "pair"
-... | yes refl = ahv-pair-applied
-... | no  _    with StrProp._≟_ x "compose"
-...   | yes refl = ahv-compose-applied
-...   | no  _    = ahv-other
--- RApp with non-RVar head: ahv-other.
-classifyAppHeadView (Raw.RApp (Raw.RApp _ _) _)         = ahv-other
-classifyAppHeadView (Raw.RApp (Raw.RQualified _ _) _)   = ahv-other
-classifyAppHeadView (Raw.RApp (Raw.RLam _ _) _)         = ahv-other
-classifyAppHeadView (Raw.RApp (Raw.RLet _ _ _) _)       = ahv-other
-classifyAppHeadView (Raw.RApp (Raw.RPair _ _) _)        = ahv-other
-classifyAppHeadView (Raw.RApp (Raw.RDestruct _ _ _ _ _) _) = ahv-other
-classifyAppHeadView (Raw.RApp Raw.RUnit _)              = ahv-other
-classifyAppHeadView (Raw.RApp (Raw.RInt _) _)           = ahv-other
-classifyAppHeadView (Raw.RApp (Raw.RStringLit _) _)     = ahv-other
-classifyAppHeadView (Raw.RApp (Raw.RAnnot _ _) _)       = ahv-other
-classifyAppHeadView (Raw.RApp (Raw.RBinOp _ _ _) _)     = ahv-other
-classifyAppHeadView (Raw.RApp (Raw.RUnaryOp _ _) _)     = ahv-other
-classifyAppHeadView (Raw.RQualified _ _)      = ahv-other
-classifyAppHeadView (Raw.RLam _ _)            = ahv-other
-classifyAppHeadView (Raw.RLet _ _ _)          = ahv-other
-classifyAppHeadView (Raw.RPair _ _)           = ahv-other
-classifyAppHeadView (Raw.RDestruct _ _ _ _ _) = ahv-other
-classifyAppHeadView Raw.RUnit                 = ahv-other
-classifyAppHeadView (Raw.RInt _)              = ahv-other
-classifyAppHeadView (Raw.RStringLit _)        = ahv-other
-classifyAppHeadView (Raw.RAnnot _ _)          = ahv-other
-classifyAppHeadView (Raw.RBinOp _ _ _)        = ahv-other
-classifyAppHeadView (Raw.RUnaryOp _ _)        = ahv-other
-
--- | Compat: `classifyAppHead f ≡ nothing` ⇔ `classifyAppHeadView f ≡
--- ahv-other`. Needed because existing downstream proofs (Judgment's
--- t-app premise, Soundness's sound-RApp-generic, etc.) use
--- `classifyAppHead`'s `Maybe`-return form, while the view enables
--- new proofs (`checkElab-fallback-RApp-generic` below).
-classifyAppHead-nothing⇒view-other :
-  ∀ {f} → classifyAppHead f ≡ nothing → classifyAppHeadView f ≡ ahv-other
--- Non-RVar heads: both classifyAppHead and classifyAppHeadView
--- reduce definitionally to their respective nothing / ahv-other.
--- Plan 0.6 Phase C.7 POC-2: the RApp case now has a nested match
--- on `RApp (RVar "pair") _`. Split: if head is `RVar "pair"`,
--- classifyAppHead returns `just pba-pair-applied` (so the premise
--- `≡ nothing` is impossible); otherwise uniform `refl`.
-classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RVar s) _} p with StrProp._≟_ s "pair"
-... | yes _ with p
-...   | ()
-classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RVar s) _} p | no _ with StrProp._≟_ s "compose"
-... | yes _ with p
-...   | ()
-classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RVar _) _} _ | no _ | no _ = refl
-classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RApp _ _) _}       _ = refl
-classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RQualified _ _) _} _ = refl
-classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RLam _ _) _}       _ = refl
-classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RLet _ _ _) _}     _ = refl
-classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RPair _ _) _}      _ = refl
-classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RDestruct _ _ _ _ _) _} _ = refl
-classifyAppHead-nothing⇒view-other {Raw.RApp Raw.RUnit _}            _ = refl
-classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RInt _) _}         _ = refl
-classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RStringLit _) _}   _ = refl
-classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RAnnot _ _) _}     _ = refl
-classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RBinOp _ _ _) _}   _ = refl
-classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RUnaryOp _ _) _}   _ = refl
-classifyAppHead-nothing⇒view-other {Raw.RQualified _ _}     _ = refl
-classifyAppHead-nothing⇒view-other {Raw.RLam _ _}           _ = refl
-classifyAppHead-nothing⇒view-other {Raw.RLet _ _ _}         _ = refl
-classifyAppHead-nothing⇒view-other {Raw.RPair _ _}          _ = refl
-classifyAppHead-nothing⇒view-other {Raw.RDestruct _ _ _ _ _} _ = refl
-classifyAppHead-nothing⇒view-other {Raw.RUnit}              _ = refl
-classifyAppHead-nothing⇒view-other {Raw.RInt _}             _ = refl
-classifyAppHead-nothing⇒view-other {Raw.RStringLit _}       _ = refl
-classifyAppHead-nothing⇒view-other {Raw.RAnnot _ _}         _ = refl
-classifyAppHead-nothing⇒view-other {Raw.RBinOp _ _ _}       _ = refl
-classifyAppHead-nothing⇒view-other {Raw.RUnaryOp _ _}       _ = refl
--- RVar: both dispatches walk the same 7-string chain; show the
--- result alignment case-by-case.
-classifyAppHead-nothing⇒view-other {Raw.RVar s} p with StrProp._≟_ s "id"
-... | yes _ with p
-...   | ()
-classifyAppHead-nothing⇒view-other {Raw.RVar s} p | no _
-  with StrProp._≟_ s "fst"
-... | yes _ with p
-...   | ()
-classifyAppHead-nothing⇒view-other {Raw.RVar s} p | no _ | no _
-  with StrProp._≟_ s "snd"
-... | yes _ with p
-...   | ()
-classifyAppHead-nothing⇒view-other {Raw.RVar s} p | no _ | no _ | no _
-  with StrProp._≟_ s "terminal"
-... | yes _ with p
-...   | ()
-classifyAppHead-nothing⇒view-other {Raw.RVar s} p | no _ | no _ | no _ | no _
-  with StrProp._≟_ s "inl"
-... | yes _ with p
-...   | ()
-classifyAppHead-nothing⇒view-other {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _
-  with StrProp._≟_ s "inr"
-... | yes _ with p
-...   | ()
-classifyAppHead-nothing⇒view-other {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _ | no _
-  with StrProp._≟_ s "initial"
-... | yes _ with p
-...   | ()
-classifyAppHead-nothing⇒view-other {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _ | no _ | no _
-  with StrProp._≟_ s "arr"
-... | yes _ with p
-...   | ()
-classifyAppHead-nothing⇒view-other {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _
-  with StrProp._≟_ s "curry"
-... | yes _ with p
-...   | ()
-classifyAppHead-nothing⇒view-other {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _
-  with StrProp._≟_ s "apply"
-... | yes _ with p
-...   | ()
-classifyAppHead-nothing⇒view-other {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ = refl
-
--- Reverse bridge (Plan 0.4 T0 Option A): from view ≡ ahv-other to
--- classifyAppHead ≡ nothing. Needed by `infer-sound`'s ahv-other
--- branch to feed `sound-RApp-generic`'s `notPoly` premise (which
--- types `t-app` / `t-effApp`).
-view-other⇒classifyAppHead-nothing :
-  ∀ {f} → classifyAppHeadView f ≡ ahv-other → classifyAppHead f ≡ nothing
-view-other⇒classifyAppHead-nothing {Raw.RApp (Raw.RVar s) _} p with StrProp._≟_ s "pair"
-... | yes refl with p
-...   | ()
-view-other⇒classifyAppHead-nothing {Raw.RApp (Raw.RVar s) _} p | no _ with StrProp._≟_ s "compose"
-... | yes refl with p
-...   | ()
-view-other⇒classifyAppHead-nothing {Raw.RApp (Raw.RVar _) _} _ | no _ | no _ = refl
-view-other⇒classifyAppHead-nothing {Raw.RApp (Raw.RApp _ _) _}       _ = refl
-view-other⇒classifyAppHead-nothing {Raw.RApp (Raw.RQualified _ _) _} _ = refl
-view-other⇒classifyAppHead-nothing {Raw.RApp (Raw.RLam _ _) _}       _ = refl
-view-other⇒classifyAppHead-nothing {Raw.RApp (Raw.RLet _ _ _) _}     _ = refl
-view-other⇒classifyAppHead-nothing {Raw.RApp (Raw.RPair _ _) _}      _ = refl
-view-other⇒classifyAppHead-nothing {Raw.RApp (Raw.RDestruct _ _ _ _ _) _} _ = refl
-view-other⇒classifyAppHead-nothing {Raw.RApp Raw.RUnit _}            _ = refl
-view-other⇒classifyAppHead-nothing {Raw.RApp (Raw.RInt _) _}         _ = refl
-view-other⇒classifyAppHead-nothing {Raw.RApp (Raw.RStringLit _) _}   _ = refl
-view-other⇒classifyAppHead-nothing {Raw.RApp (Raw.RAnnot _ _) _}     _ = refl
-view-other⇒classifyAppHead-nothing {Raw.RApp (Raw.RBinOp _ _ _) _}   _ = refl
-view-other⇒classifyAppHead-nothing {Raw.RApp (Raw.RUnaryOp _ _) _}   _ = refl
-view-other⇒classifyAppHead-nothing {Raw.RQualified _ _}     _ = refl
-view-other⇒classifyAppHead-nothing {Raw.RLam _ _}           _ = refl
-view-other⇒classifyAppHead-nothing {Raw.RLet _ _ _}         _ = refl
-view-other⇒classifyAppHead-nothing {Raw.RPair _ _}          _ = refl
-view-other⇒classifyAppHead-nothing {Raw.RDestruct _ _ _ _ _} _ = refl
-view-other⇒classifyAppHead-nothing {Raw.RUnit}              _ = refl
-view-other⇒classifyAppHead-nothing {Raw.RInt _}             _ = refl
-view-other⇒classifyAppHead-nothing {Raw.RStringLit _}       _ = refl
-view-other⇒classifyAppHead-nothing {Raw.RAnnot _ _}         _ = refl
-view-other⇒classifyAppHead-nothing {Raw.RBinOp _ _ _}       _ = refl
-view-other⇒classifyAppHead-nothing {Raw.RUnaryOp _ _}       _ = refl
-view-other⇒classifyAppHead-nothing {Raw.RVar s} p with StrProp._≟_ s "id"
-... | yes refl with p
-...   | ()
-view-other⇒classifyAppHead-nothing {Raw.RVar s} p | no _
-  with StrProp._≟_ s "fst"
-... | yes refl with p
-...   | ()
-view-other⇒classifyAppHead-nothing {Raw.RVar s} p | no _ | no _
-  with StrProp._≟_ s "snd"
-... | yes refl with p
-...   | ()
-view-other⇒classifyAppHead-nothing {Raw.RVar s} p | no _ | no _ | no _
-  with StrProp._≟_ s "terminal"
-... | yes refl with p
-...   | ()
-view-other⇒classifyAppHead-nothing {Raw.RVar s} p | no _ | no _ | no _ | no _
-  with StrProp._≟_ s "inl"
-... | yes refl with p
-...   | ()
-view-other⇒classifyAppHead-nothing {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _
-  with StrProp._≟_ s "inr"
-... | yes refl with p
-...   | ()
-view-other⇒classifyAppHead-nothing {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _ | no _
-  with StrProp._≟_ s "initial"
-... | yes refl with p
-...   | ()
-view-other⇒classifyAppHead-nothing {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _ | no _ | no _
-  with StrProp._≟_ s "arr"
-... | yes refl with p
-...   | ()
-view-other⇒classifyAppHead-nothing {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _
-  with StrProp._≟_ s "curry"
-... | yes refl with p
-...   | ()
-view-other⇒classifyAppHead-nothing {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _
-  with StrProp._≟_ s "apply"
-... | yes refl with p
-...   | ()
-view-other⇒classifyAppHead-nothing {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ = refl
 
 -- | Plan 0.6.2 Phase 3b: for `compose f g` at expected `A → C`,
 -- when `inferElab g` fails, try to determine the intermediate
@@ -1066,35 +646,6 @@ composeArgB _ _ _ = nothing
 -- string in each case, so Agda reductions proceed cleanly and proof
 -- `with classifyBareBuiltin x` mirrors the elaborator's dispatch.
 
-data BareBuiltinClass : String → Set where
-  bbc-id       : BareBuiltinClass "id"
-  bbc-fst      : BareBuiltinClass "fst"
-  bbc-snd      : BareBuiltinClass "snd"
-  bbc-terminal : BareBuiltinClass "terminal"
-  bbc-initial  : BareBuiltinClass "initial"
-  bbc-inl      : BareBuiltinClass "inl"
-  bbc-inr      : BareBuiltinClass "inr"
-  bbc-arr      : BareBuiltinClass "arr"
-  bbc-other    : ∀ {x} → BareBuiltinClass x
-
-classifyBareBuiltin : (x : String) → BareBuiltinClass x
-classifyBareBuiltin x with StrProp._≟_ x "id"
-... | yes refl = bbc-id
-... | no  _ with StrProp._≟_ x "fst"
-...   | yes refl = bbc-fst
-...   | no  _ with StrProp._≟_ x "snd"
-...     | yes refl = bbc-snd
-...     | no  _ with StrProp._≟_ x "terminal"
-...       | yes refl = bbc-terminal
-...       | no  _ with StrProp._≟_ x "initial"
-...         | yes refl = bbc-initial
-...         | no  _ with StrProp._≟_ x "inl"
-...           | yes refl = bbc-inl
-...           | no  _ with StrProp._≟_ x "inr"
-...             | yes refl = bbc-inr
-...             | no  _ with StrProp._≟_ x "arr"
-...               | yes refl = bbc-arr
-...               | no  _ = bbc-other
 
 ------------------------------------------------------------------------
 -- Plan 0.4 T0 Option A POC: per-shape RApp dispatch as top-level
@@ -2649,3 +2200,217 @@ compileExpr : RawExpr → Maybe (∃[ A ] IR Unit A)
 compileExpr e with inferElab emptyCtx e
 ... | failure _                 = nothing
 ... | success A Ψ se _ _        = just (A , elaborate se)
+
+------------------------------------------------------------------------
+-- Plan 0.4 T0 Option B — Verified elaborator
+--
+-- `inferElabV` and `checkElabV` are the canonical verified versions of
+-- the elaborator: each clause produces both the elaboration result and
+-- its soundness witness. The type checker enforces the witness; there
+-- is no separate `infer-sound` / `check-sound` proof to drift out of
+-- sync.
+--
+-- Migration is incremental — each `Phase` of plans/0.4-T0-handoff
+-- replaces a TODO-stub clause with a real clause. Unmigrated clauses
+-- delegate to the existing `inferElab` / `checkElab` for the result and
+-- to a TODO-witness postulate for the soundness obligation. The
+-- postulates retire as clauses migrate.
+------------------------------------------------------------------------
+
+postulate
+  todo-witness-infer : ∀ (ctx : NamedCtx) (e : RawExpr)
+                     → soundOf ctx e (inferElab ctx e)
+  todo-witness-check : ∀ (ctx : NamedCtx) (e : RawExpr) (T : Type)
+                     → checkSoundOf ctx e T (checkElab ctx e T)
+  todo-witness-RApp-other : ∀ (ctx : NamedCtx) (f arg : RawExpr)
+                          → soundOf ctx (Raw.RApp f arg) (inferElab-RApp-other ctx f arg)
+
+mutual
+  inferElabV : (ctx : NamedCtx) (e : RawExpr) → VerifiedInferResult ctx e
+  checkElabV : (ctx : NamedCtx) (e : RawExpr) (T : Type) → VerifiedCheckResult ctx e T
+  inferElabV-RApp-other : (ctx : NamedCtx) (f x : RawExpr)
+                        → VerifiedInferResult ctx (Raw.RApp f x)
+
+  ----------------------------------------------------------------------
+  -- Phase A — easy `inferElab` clauses (literals, RLam-failure,
+  -- RAnnot, RPair).
+  ----------------------------------------------------------------------
+
+  inferElabV ctx (Raw.RInt n) =
+    success Int _ (Surface.int n) 0 (NamedCtx.freshCounter ctx) , t-int n
+
+  inferElabV ctx (Raw.RStringLit s) =
+    success Str _ (Surface.str s) 0 (NamedCtx.freshCounter ctx) , t-str s
+
+  inferElabV ctx Raw.RUnit =
+    success Unit _ Surface.unit 0 (NamedCtx.freshCounter ctx) , t-unit
+
+  inferElabV ctx (Raw.RLam _ _) =
+    failure LambdaInInferMode , tt
+
+  inferElabV ctx (Raw.RAnnot e T) with checkElabV ctx e T
+  ... | success Ψ eE d fr , witness = success T Ψ eE d fr , t-annot witness
+  ... | failure err , _             = failure err , tt
+
+  inferElabV ctx (Raw.RPair a b) with inferElabV ctx a
+  ... | failure err , _ = failure err , tt
+  ... | success A Ψ₁ aE da fa , wA with inferElabV ctx b
+  ...   | failure err , _ = failure err , tt
+  ...   | success B Ψ₂ bE db fb , wB =
+          success (A Once.Type.* B) _ (Surface.pair aE bE) (da ⊔ db) fb , t-pair wA wB
+
+  ----------------------------------------------------------------------
+  -- Phase B — lookup-driven clauses (RQualified, RVar, RUnaryOp,
+  -- RLet, RDestruct). RBinOp deferred (more complex op + type
+  -- dispatch).
+  ----------------------------------------------------------------------
+
+  inferElabV ctx (Raw.RQualified name alias)
+    with lookupImport (NamedCtx.imports ctx) (alias ++ "." ++ name) in eq
+  ... | just ty  = success ty _ (Surface.sigOp name) 0 (NamedCtx.freshCounter ctx) , t-var-qualified eq
+  ... | nothing  = failure (UnboundQualified name alias) , tt
+
+  inferElabV ctx (Raw.RVar x) with StrProp._≟_ x "unit"
+  ... | yes refl = success Unit _ Surface.unit 0 (NamedCtx.freshCounter ctx) , t-unit-var
+  ... | no ¬unit with lookupLocal ctx x in eq-loc
+  ...   | just (A , Ψ , se) = success A Ψ se 0 (NamedCtx.freshCounter ctx) , t-var-local ¬unit eq-loc
+  ...   | nothing with lookupImport (NamedCtx.imports ctx) x in eq-imp
+  ...     | just ty  = success ty _ (Surface.sigOp x) 0 (NamedCtx.freshCounter ctx) , t-var-import ¬unit eq-loc eq-imp
+  ...     | nothing  = failure (UnboundVariable x) , tt
+
+  inferElabV ctx (Raw.RUnaryOp Raw.OpNeg e) with inferElabV ctx e
+  ... | failure err , _                        = failure err , tt
+  ... | success Unit       _ _ _ _ , _         = failure (TypeMismatch Int Unit) , tt
+  ... | success Void       _ _ _ _ , _         = failure (TypeMismatch Int Void) , tt
+  ... | success Int        Ψ eE d fr , w       = success Int _ (Surface.neg eE) (suc d) fr , t-neg w
+  ... | success Float      _ _ _ _ , _         = failure (TypeMismatch Int Float) , tt
+  ... | success Str        _ _ _ _ , _         = failure (TypeMismatch Int Str) , tt
+  ... | success Buffer     _ _ _ _ , _         = failure (TypeMismatch Int Buffer) , tt
+  ... | success (A Once.Type.* B)       _ _ _ _ , _ = failure (TypeMismatch Int (A Once.Type.* B)) , tt
+  ... | success (A Once.Type.+ B)       _ _ _ _ , _ = failure (TypeMismatch Int (A Once.Type.+ B)) , tt
+  ... | success (A Once.Type.⇒[ k ] B)  _ _ _ _ , _ = failure (TypeMismatch Int (A Once.Type.⇒[ k ] B)) , tt
+  ... | success (Once.Type.μ-type F)    _ _ _ _ , _ = failure (TypeMismatch Int (Once.Type.μ-type F)) , tt
+  ... | success (Once.Type.ν-type F)    _ _ _ _ , _ = failure (TypeMismatch Int (Once.Type.ν-type F)) , tt
+
+  inferElabV ctx (Raw.RLet x e₁ e₂) with inferElabV ctx e₁
+  ... | failure err , _ = failure err , tt
+  ... | success A Ψ₁ e₁E d₁ f₁ , w₁ with inferElabV (extendNamedCtx ctx x A) e₂
+  ...   | failure err , _ = failure err , tt
+  ...   | success B (q ∷ᵘ Ψ₂) e₂E d₂ f₂ , w₂ =
+          success B _ (Surface.let' e₁E e₂E) (d₁ ⊔ suc d₂) f₂ , t-let w₁ w₂
+
+  inferElabV ctx (Raw.RDestruct scrut xL eL xR eR) with inferElabV ctx scrut
+  ... | failure err , _                        = failure err , tt
+  ... | success Unit   _ _ _ _ , _             = failure CaseScrutineeNotSum , tt
+  ... | success Void   _ _ _ _ , _             = failure CaseScrutineeNotSum , tt
+  ... | success Int    _ _ _ _ , _             = failure CaseScrutineeNotSum , tt
+  ... | success Float  _ _ _ _ , _             = failure CaseScrutineeNotSum , tt
+  ... | success Str    _ _ _ _ , _             = failure CaseScrutineeNotSum , tt
+  ... | success Buffer _ _ _ _ , _             = failure CaseScrutineeNotSum , tt
+  ... | success (_ Once.Type.* _) _ _ _ _ , _  = failure CaseScrutineeNotSum , tt
+  ... | success (_ Once.Type.⇒[ _ ] _) _ _ _ _ , _ = failure CaseScrutineeNotSum , tt
+  ... | success (Once.Type.μ-type _) _ _ _ _ , _   = failure CaseScrutineeNotSum , tt
+  ... | success (Once.Type.ν-type _) _ _ _ _ , _   = failure CaseScrutineeNotSum , tt
+  ... | success (A Once.Type.+ B) Ψs scrutE ds fs , wS
+        with inferElabV (extendNamedCtx ctx xL A) eL
+  ...     | failure err , _ = failure err , tt
+  ...     | success C₁ (qℓ ∷ᵘ Ψₗ) eLE dL fL , wL
+            with inferElabV (extendNamedCtx ctx xR B) eR
+  ...       | failure err , _ = failure err , tt
+  ...       | success C₂ (qr ∷ᵘ Ψᵣ) eRE dR fR , wR
+              with C₁ ≟T C₂
+  ...         | yes refl =
+                success C₁ _ (Surface.case' scrutE eLE eRE)
+                  (ds ⊔ suc dL ⊔ suc dR) fR , t-case wS wL wR
+  ...         | no _ = failure CaseBranchMismatch , tt
+
+  ----------------------------------------------------------------------
+  -- Phase C — `inferElab` `RApp` (13 view branches).
+  ----------------------------------------------------------------------
+
+  inferElabV ctx (Raw.RApp f arg) with classifyAppHeadView f
+  -- ahv-id : argument can have any type, result has the same type.
+  inferElabV ctx (Raw.RApp f arg) | ahv-id with inferElabV ctx arg
+  inferElabV ctx (Raw.RApp f arg) | ahv-id | failure err , _ = failure err , tt
+  inferElabV ctx (Raw.RApp f arg) | ahv-id | success T Ψ argE d fr , w =
+    success T _ (Surface.app (weakenFromEmpty (specId T)) argE) (suc d) fr , t-id-app w
+  -- ahv-fst : argument must have product type.
+  inferElabV ctx (Raw.RApp f arg) | ahv-fst with inferElabV ctx arg
+  inferElabV ctx (Raw.RApp f arg) | ahv-fst | failure err , _ = failure err , tt
+  inferElabV ctx (Raw.RApp f arg) | ahv-fst | success (A Once.Type.* B) Ψ argE d fr , w =
+    success A _ (Surface.app (weakenFromEmpty (specFst A B)) argE) (suc d) fr , t-fst-app w
+  inferElabV ctx (Raw.RApp f arg) | ahv-fst | success _ _ _ _ _ , _ = failure FstNeedsPair , tt
+  -- ahv-snd : argument must have product type.
+  inferElabV ctx (Raw.RApp f arg) | ahv-snd with inferElabV ctx arg
+  inferElabV ctx (Raw.RApp f arg) | ahv-snd | failure err , _ = failure err , tt
+  inferElabV ctx (Raw.RApp f arg) | ahv-snd | success (A Once.Type.* B) Ψ argE d fr , w =
+    success B _ (Surface.app (weakenFromEmpty (specSnd A B)) argE) (suc d) fr , t-snd-app w
+  inferElabV ctx (Raw.RApp f arg) | ahv-snd | success _ _ _ _ _ , _ = failure SndNeedsPair , tt
+  -- ahv-terminal : any-typed argument, Unit result.
+  inferElabV ctx (Raw.RApp f arg) | ahv-terminal with inferElabV ctx arg
+  inferElabV ctx (Raw.RApp f arg) | ahv-terminal | failure err , _ = failure err , tt
+  inferElabV ctx (Raw.RApp f arg) | ahv-terminal | success T Ψ argE d fr , w =
+    success Unit _ (Surface.app (weakenFromEmpty (specTerminal T)) argE) (suc d) fr , t-terminal-app w
+  -- ahv-arr : argument must be `A ⇒[Many,pure] B`; result is Eff A B.
+  inferElabV ctx (Raw.RApp f arg) | ahv-arr with inferElabV ctx arg
+  inferElabV ctx (Raw.RApp f arg) | ahv-arr | failure err , _ = failure err , tt
+  inferElabV ctx (Raw.RApp f arg) | ahv-arr | success (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) Ψ argE d fr , w =
+    success (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B) _
+            (Surface.app (weakenFromEmpty (specArr A B)) argE) (suc d) fr , t-arr-app-infer w
+  inferElabV ctx (Raw.RApp f arg) | ahv-arr | success _ _ _ _ _ , _ = failure ArrNeedsFunction , tt
+  -- ahv-apply : argument must be `(A ⇒[Many,pure] B) * A`.
+  inferElabV ctx (Raw.RApp f arg) | ahv-apply with inferElabV ctx arg
+  inferElabV ctx (Raw.RApp f arg) | ahv-apply | failure err , _ = failure err , tt
+  inferElabV ctx (Raw.RApp f arg) | ahv-apply | success ((A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) Once.Type.* A') Ψ argE d fr , w with A ≟T A'
+  inferElabV ctx (Raw.RApp f arg) | ahv-apply | success ((A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) Once.Type.* A') Ψ argE d fr , w | yes refl =
+    success B _ (Surface.app (weakenFromEmpty (specApply A B)) argE) (suc d) fr , t-apply-app-infer w
+  inferElabV ctx (Raw.RApp f arg) | ahv-apply | success ((A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) Once.Type.* A') Ψ argE d fr , w | no _ =
+    failure (BuiltinTypeMismatch "apply") , tt
+  inferElabV ctx (Raw.RApp f arg) | ahv-apply | success _ _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
+  -- ahv-inl / ahv-inr / ahv-initial : check-only builtins, infer fails.
+  inferElabV ctx (Raw.RApp _ _) | ahv-inl     = failure InlInInferMode , tt
+  inferElabV ctx (Raw.RApp _ _) | ahv-inr     = failure InrInInferMode , tt
+  inferElabV ctx (Raw.RApp _ _) | ahv-initial = failure InitialInInferMode , tt
+  -- ahv-pair-applied / ahv-compose-applied / ahv-curry : check-only.
+  inferElabV ctx (Raw.RApp _ _) | ahv-pair-applied    = failure (BuiltinTypeMismatch "pair") , tt
+  inferElabV ctx (Raw.RApp _ _) | ahv-compose-applied = failure (BuiltinTypeMismatch "compose") , tt
+  inferElabV ctx (Raw.RApp _ _) | ahv-curry           = failure (BuiltinTypeMismatch "curry") , tt
+  -- ahv-other : generic application via `inferElabV-RApp-other`.
+  inferElabV ctx (Raw.RApp f arg) | ahv-other = inferElabV-RApp-other ctx f arg
+
+  ----------------------------------------------------------------------
+  -- inferElabV catch-all — RBinOp (deferred). Delegates to existing
+  -- `inferElab` for result, TODO witness for soundness.
+  ----------------------------------------------------------------------
+
+  inferElabV ctx e = inferElab ctx e , todo-witness-infer ctx e
+
+  ----------------------------------------------------------------------
+  -- Phase D — `checkElab` clauses.
+  -- Specialised RawExpr shapes (RVar, RApp, RLam) are still TODO; they
+  -- delegate to the existing `checkElab`. Everything else uses the
+  -- generic infer-and-match fallback, with the witness lifted via
+  -- `t-embed`.
+  ----------------------------------------------------------------------
+
+  checkElabV ctx (Raw.RVar x) T = checkElab ctx (Raw.RVar x) T , todo-witness-check ctx (Raw.RVar x) T
+  checkElabV ctx (Raw.RApp f arg) T = checkElab ctx (Raw.RApp f arg) T , todo-witness-check ctx (Raw.RApp f arg) T
+  checkElabV ctx (Raw.RLam x body) T = checkElab ctx (Raw.RLam x body) T , todo-witness-check ctx (Raw.RLam x body) T
+
+  -- Generic infer-and-match fallback — covers RInt, RStringLit, RUnit,
+  -- RPair, RBinOp, RUnaryOp, RLet, RDestruct, RAnnot, RQualified.
+  checkElabV ctx e T with inferElabV ctx e
+  ... | failure err , _ = failure err , tt
+  ... | success T' Ψ eE d fr , w with T ≟T T'
+  ...   | yes refl = success Ψ eE d fr , t-embed w
+  ...   | no _     = failure (TypeMismatch T T') , tt
+
+  ----------------------------------------------------------------------
+  -- `inferElabV-RApp-other` body — verified counterpart of
+  -- `inferElab-RApp-other`. Initial cut: delegate to the existing
+  -- `inferElab-RApp-other` and use a TODO-witness postulate. A
+  -- subsequent migration replaces this with inline witness
+  -- construction reusing `sound-RApp-generic`'s logic.
+  ----------------------------------------------------------------------
+  inferElabV-RApp-other ctx f arg =
+    inferElab-RApp-other ctx f arg , todo-witness-RApp-other ctx f arg
