@@ -170,6 +170,32 @@ infer-soundV ctx e eq with Once.TypeCheck.Elaborate.inferElabV ctx e
 infer-soundV ctx e eq | failure _ , _ with eq
 ... | ()
 
+------------------------------------------------------------------------
+-- Equivalence bridge — per-clause refl tests.
+-- Goal: prove `proj₁ ∘ inferElabV ≡ inferElab` per RawExpr case.
+-- Where `refl` works, the corresponding spec-gap postulate retires
+-- via check-soundV / infer-soundV.
+------------------------------------------------------------------------
+
+-- Trivial literals — same constructor application on both sides.
+inferElab-eq-RInt : ∀ ctx n → Once.TypeCheck.Elaborate.inferElabProj ctx (Raw.RInt n) ≡ Once.TypeCheck.Elaborate.inferElab ctx (Raw.RInt n)
+inferElab-eq-RInt ctx n = refl
+
+inferElab-eq-RStringLit : ∀ ctx s → Once.TypeCheck.Elaborate.inferElabProj ctx (Raw.RStringLit s) ≡ Once.TypeCheck.Elaborate.inferElab ctx (Raw.RStringLit s)
+inferElab-eq-RStringLit ctx s = refl
+
+inferElab-eq-RUnit : ∀ ctx → Once.TypeCheck.Elaborate.inferElabProj ctx Raw.RUnit ≡ Once.TypeCheck.Elaborate.inferElab ctx Raw.RUnit
+inferElab-eq-RUnit ctx = refl
+
+-- RVar / RApp / RBinOp / etc. — refl does NOT work because the two
+-- functions live in different mutual blocks and Agda's case-tree
+-- compiler emits distinct internal `with`-helpers. Closing these
+-- bridges requires either:
+--   (1) merging the two mutual blocks so `inferElab = proj₁ ∘ inferElabV`
+--       holds definitionally (substantial restructure, ~700 LoC moved);
+--   (2) per-case case-analysis proofs (~50–100 LoC per RawExpr shape).
+-- See plans/0.4-T0-handoff for the path.
+
 -- Soundness for RUnaryOp OpNeg: the sub-expression must be inferable
 -- at type Int, and the result inherits that type and its usage
 -- vector unchanged.
