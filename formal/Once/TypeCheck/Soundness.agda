@@ -30,7 +30,7 @@ open import Data.Nat using (ℕ; zero; suc; _⊔_)
 open import Data.String using (String; _++_)
 open import Data.Integer using (ℤ)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Product using (∃; ∃-syntax; _,_; _×_)
+open import Data.Product using (∃; ∃-syntax; _,_; _×_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality
   using (_≡_; refl; sym; trans; cong; subst; inspect; [_])
 
@@ -139,6 +139,36 @@ ViewBundle f =
 
 viewBundle : (f : RawExpr) → ViewBundle f
 viewBundle f = Once.TypeCheck.Elaborate.classifyAppHeadView f , refl
+
+------------------------------------------------------------------------
+-- Plan 0.4 T0 Option B — postulate retirement scaffolding.
+--
+-- A new soundness theorem stated over `checkElabProj` (the projection
+-- of `checkElabV`'s result). It's a one-liner because `checkElabV`
+-- already carries the witness.
+------------------------------------------------------------------------
+
+check-soundV : ∀ (ctx : NamedCtx) (e : RawExpr) (T : Type)
+  {Ψ : Surface.Usage (NamedCtx.size ctx)}
+  {eE : SExpr (NamedCtx.debruijn ctx) Ψ T} {d f : ℕ}
+  → Once.TypeCheck.Elaborate.checkElabProj ctx e T ≡ success Ψ eE d f
+  → ctx ⊢ᶜ e ∶ T ⨾ Ψ
+check-soundV ctx e T eq with Once.TypeCheck.Elaborate.checkElabV ctx e T
+... | success Ψ' eE' d' fr' , w with eq
+...   | refl = w
+check-soundV ctx e T eq | failure _ , _ with eq
+... | ()
+
+infer-soundV : ∀ (ctx : NamedCtx) (e : RawExpr)
+  {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
+  {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
+  → Once.TypeCheck.Elaborate.inferElabProj ctx e ≡ success A Ψ eE d f
+  → ctx ⊢ᵢ e ∶ A ⨾ Ψ
+infer-soundV ctx e eq with Once.TypeCheck.Elaborate.inferElabV ctx e
+... | success A' Ψ' eE' d' f' , w with eq
+...   | refl = w
+infer-soundV ctx e eq | failure _ , _ with eq
+... | ()
 
 -- Soundness for RUnaryOp OpNeg: the sub-expression must be inferable
 -- at type Int, and the result inherits that type and its usage
