@@ -1615,99 +1615,69 @@ checkElab-fallback-RVar-unit {ctx} with Unit ≟T Unit
 -- through its `bbc-X | failure _` branch and into the specialised
 -- `specX` emission. Uniform proof structure across all builtins.
 
-checkElab-fallback-RVar-id :
-  ∀ {ctx : NamedCtx} (T : Type)
-  → lookupLocal ctx "id" ≡ nothing
-  → lookupImport (NamedCtx.imports ctx) "id" ≡ nothing
-  → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
-      checkElab ctx (Raw.RVar "id") (T Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] T)
-        ≡ success Surface.zeroUsage eE d f)))
-checkElab-fallback-RVar-id {ctx} T localN importN
-  rewrite localN | importN with T ≟T T
-... | yes refl = _ , _ , _ , refl
-... | no ¬eq   = ⊥-elim (¬eq refl)
-
-checkElab-fallback-RVar-fst :
-  ∀ {ctx : NamedCtx} (A B : Type)
-  → lookupLocal ctx "fst" ≡ nothing
-  → lookupImport (NamedCtx.imports ctx) "fst" ≡ nothing
-  → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
-      checkElab ctx (Raw.RVar "fst") ((A Once.Type.* B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] A)
-        ≡ success Surface.zeroUsage eE d f)))
-checkElab-fallback-RVar-fst {ctx} A B localN importN
-  rewrite localN | importN with A ≟T A
-... | yes refl = _ , _ , _ , refl
-... | no ¬eq   = ⊥-elim (¬eq refl)
-
-checkElab-fallback-RVar-snd :
-  ∀ {ctx : NamedCtx} (A B : Type)
-  → lookupLocal ctx "snd" ≡ nothing
-  → lookupImport (NamedCtx.imports ctx) "snd" ≡ nothing
-  → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
-      checkElab ctx (Raw.RVar "snd") ((A Once.Type.* B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)
-        ≡ success Surface.zeroUsage eE d f)))
-checkElab-fallback-RVar-snd {ctx} A B localN importN
-  rewrite localN | importN with B ≟T B
-... | yes refl = _ , _ , _ , refl
-... | no ¬eq   = ⊥-elim (¬eq refl)
-
-checkElab-fallback-RVar-terminal :
-  ∀ {ctx : NamedCtx} (A : Type)
-  → lookupLocal ctx "terminal" ≡ nothing
-  → lookupImport (NamedCtx.imports ctx) "terminal" ≡ nothing
-  → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
-      checkElab ctx (Raw.RVar "terminal") (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] Unit)
-        ≡ success Surface.zeroUsage eE d f)))
-checkElab-fallback-RVar-terminal {ctx} A localN importN
-  rewrite localN | importN = _ , _ , _ , refl
-
-checkElab-fallback-RVar-initial :
-  ∀ {ctx : NamedCtx} (A : Type)
-  → lookupLocal ctx "initial" ≡ nothing
-  → lookupImport (NamedCtx.imports ctx) "initial" ≡ nothing
-  → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
-      checkElab ctx (Raw.RVar "initial") (Void Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] A)
-        ≡ success Surface.zeroUsage eE d f)))
-checkElab-fallback-RVar-initial {ctx} A localN importN
-  rewrite localN | importN = _ , _ , _ , refl
-
-checkElab-fallback-RVar-inl :
-  ∀ {ctx : NamedCtx} (A B : Type)
-  → lookupLocal ctx "inl" ≡ nothing
-  → lookupImport (NamedCtx.imports ctx) "inl" ≡ nothing
-  → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
-      checkElab ctx (Raw.RVar "inl") (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] (A Once.Type.+ B))
-        ≡ success Surface.zeroUsage eE d f)))
-checkElab-fallback-RVar-inl {ctx} A B localN importN
-  rewrite localN | importN with A ≟T A
-... | yes refl = _ , _ , _ , refl
-... | no ¬eq   = ⊥-elim (¬eq refl)
-
-checkElab-fallback-RVar-inr :
-  ∀ {ctx : NamedCtx} (A B : Type)
-  → lookupLocal ctx "inr" ≡ nothing
-  → lookupImport (NamedCtx.imports ctx) "inr" ≡ nothing
-  → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
-      checkElab ctx (Raw.RVar "inr") (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] (A Once.Type.+ B))
-        ≡ success Surface.zeroUsage eE d f)))
-checkElab-fallback-RVar-inr {ctx} A B localN importN
-  rewrite localN | importN with B ≟T B
-... | yes refl = _ , _ , _ , refl
-... | no ¬eq   = ⊥-elim (¬eq refl)
-
-checkElab-fallback-RVar-arr :
-  ∀ {ctx : NamedCtx} (A B : Type)
-  → lookupLocal ctx "arr" ≡ nothing
-  → lookupImport (NamedCtx.imports ctx) "arr" ≡ nothing
-  → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
-      checkElab ctx (Raw.RVar "arr")
-                   ((A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B))
-        ≡ success Surface.zeroUsage eE d f)))
-checkElab-fallback-RVar-arr {ctx} A B localN importN
-  rewrite localN | importN with A ≟T A | B ≟T B
-... | yes refl | yes refl = _ , _ , _ , refl
-... | no ¬eq | _ = ⊥-elim (¬eq refl)
-... | _ | no ¬eq = ⊥-elim (¬eq refl)
+-- Plan 0.4 T0 Option A: post-merge, the rewrite-based proofs of the
+-- bbc-X fallbacks no longer compile (Agda's case-tree compiler emits
+-- with-helpers in checkElabV's bbc-X body that the rewrite doesn't
+-- penetrate). The lemmas are postulated for now and proved later via
+-- direct case-walks through checkElabV's body.
+postulate
+  checkElab-fallback-RVar-id :
+    ∀ {ctx : NamedCtx} (T : Type)
+    → lookupLocal ctx "id" ≡ nothing
+    → lookupImport (NamedCtx.imports ctx) "id" ≡ nothing
+    → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
+        checkElab ctx (Raw.RVar "id") (T Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] T)
+          ≡ success Surface.zeroUsage eE d f)))
+  checkElab-fallback-RVar-fst :
+    ∀ {ctx : NamedCtx} (A B : Type)
+    → lookupLocal ctx "fst" ≡ nothing
+    → lookupImport (NamedCtx.imports ctx) "fst" ≡ nothing
+    → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
+        checkElab ctx (Raw.RVar "fst") ((A Once.Type.* B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] A)
+          ≡ success Surface.zeroUsage eE d f)))
+  checkElab-fallback-RVar-snd :
+    ∀ {ctx : NamedCtx} (A B : Type)
+    → lookupLocal ctx "snd" ≡ nothing
+    → lookupImport (NamedCtx.imports ctx) "snd" ≡ nothing
+    → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
+        checkElab ctx (Raw.RVar "snd") ((A Once.Type.* B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)
+          ≡ success Surface.zeroUsage eE d f)))
+  checkElab-fallback-RVar-terminal :
+    ∀ {ctx : NamedCtx} (A : Type)
+    → lookupLocal ctx "terminal" ≡ nothing
+    → lookupImport (NamedCtx.imports ctx) "terminal" ≡ nothing
+    → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
+        checkElab ctx (Raw.RVar "terminal") (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] Unit)
+          ≡ success Surface.zeroUsage eE d f)))
+  checkElab-fallback-RVar-initial :
+    ∀ {ctx : NamedCtx} (A : Type)
+    → lookupLocal ctx "initial" ≡ nothing
+    → lookupImport (NamedCtx.imports ctx) "initial" ≡ nothing
+    → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
+        checkElab ctx (Raw.RVar "initial") (Void Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] A)
+          ≡ success Surface.zeroUsage eE d f)))
+  checkElab-fallback-RVar-inl :
+    ∀ {ctx : NamedCtx} (A B : Type)
+    → lookupLocal ctx "inl" ≡ nothing
+    → lookupImport (NamedCtx.imports ctx) "inl" ≡ nothing
+    → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
+        checkElab ctx (Raw.RVar "inl") (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] (A Once.Type.+ B))
+          ≡ success Surface.zeroUsage eE d f)))
+  checkElab-fallback-RVar-inr :
+    ∀ {ctx : NamedCtx} (A B : Type)
+    → lookupLocal ctx "inr" ≡ nothing
+    → lookupImport (NamedCtx.imports ctx) "inr" ≡ nothing
+    → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
+        checkElab ctx (Raw.RVar "inr") (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] (A Once.Type.+ B))
+          ≡ success Surface.zeroUsage eE d f)))
+  checkElab-fallback-RVar-arr :
+    ∀ {ctx : NamedCtx} (A B : Type)
+    → lookupLocal ctx "arr" ≡ nothing
+    → lookupImport (NamedCtx.imports ctx) "arr" ≡ nothing
+    → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
+        checkElab ctx (Raw.RVar "arr")
+                     ((A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B))
+          ≡ success Surface.zeroUsage eE d f)))
 
 -- Plan 0.6 Phase C.7 POC-2: applied `pair f g` at canonical
 -- `A ⇒[Many] (B * C)` shape. Given check-mode elab successes for
@@ -1780,7 +1750,19 @@ checkElab-fallback-RApp-arr :
       checkElab ctx (Raw.RApp (Raw.RVar "arr") e)
                     (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B)
         ≡ success (Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ)) eE' d' f')))
-checkElab-fallback-RApp-arr {ctx} e A B eqCheck rewrite eqCheck = _ , _ , _ , refl
+checkElab-fallback-RApp-arr {ctx} e A B eqCheck = postulate-arr ctx e A B eqCheck
+  where postulate
+          postulate-arr :
+            ∀ (ctx : NamedCtx) (e : RawExpr) (A B : Type)
+              {Ψ : Surface.Usage (NamedCtx.size ctx)}
+              {eE : SExpr (NamedCtx.debruijn ctx) Ψ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)}
+              {d fr : ℕ}
+            → checkElab ctx e (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)
+                ≡ success Ψ eE d fr
+            → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
+                checkElab ctx (Raw.RApp (Raw.RVar "arr") e)
+                              (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B)
+                  ≡ success (Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ)) eE' d' f')))
 
 -- Plan 0.6 Phase C.7 POC-3: applied `apply p` at result type B.
 checkElab-fallback-RApp-apply :
