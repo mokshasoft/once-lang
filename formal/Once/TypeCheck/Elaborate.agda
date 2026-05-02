@@ -2218,8 +2218,6 @@ compileExpr e with inferElab emptyCtx e
 ------------------------------------------------------------------------
 
 postulate
-  todo-witness-check : ∀ (ctx : NamedCtx) (e : RawExpr) (T : Type)
-                     → checkSoundOf ctx e T (checkElab ctx e T)
   -- Witness for the `bbc-other` poly-instantiate case. The judgment
   -- rule `t-var-poly-instantiate` requires the body's check-mode
   -- derivation as a premise; the elaborator only emits a `poly`
@@ -2229,6 +2227,24 @@ postulate
   bbc-other-poly-witness :
     ∀ (ctx : NamedCtx) (x : String) (T : Type)
     → ctx ⊢ᶜ Raw.RVar x ∶ T ⨾ Surface.zeroUsage
+  -- Soundness of the four check-mode applied-builtin helpers
+  -- (checkPair, checkCompose, checkCurry, checkApply). They live in
+  -- the original mutual block; the verified `checkElabV` delegates
+  -- to them and trusts these postulates for the witness. They are
+  -- discharged when the helpers themselves are migrated to verified
+  -- form (a separate refactor — see Plan 0.4 T0 handoff).
+  pair-applied-witness :
+    ∀ (ctx : NamedCtx) (pairHead arg : RawExpr) (T : Type)
+    → checkSoundOf ctx (Raw.RApp pairHead arg) T (checkPair ctx pairHead arg T)
+  compose-applied-witness :
+    ∀ (ctx : NamedCtx) (composeHead arg : RawExpr) (T : Type)
+    → checkSoundOf ctx (Raw.RApp composeHead arg) T (checkCompose ctx composeHead arg T)
+  curry-applied-witness :
+    ∀ (ctx : NamedCtx) (arg : RawExpr) (T : Type)
+    → checkSoundOf ctx (Raw.RApp (Raw.RVar "curry") arg) T (checkCurry ctx arg T)
+  apply-applied-witness :
+    ∀ (ctx : NamedCtx) (arg : RawExpr) (T : Type)
+    → checkSoundOf ctx (Raw.RApp (Raw.RVar "apply") arg) T (checkApply ctx arg T)
 
 mutual
   inferElabV : (ctx : NamedCtx) (e : RawExpr) → VerifiedInferResult ctx e
@@ -2438,7 +2454,87 @@ mutual
   -- `t-embed`.
   ----------------------------------------------------------------------
 
-  checkElabV ctx (Raw.RApp f arg) T = checkElab ctx (Raw.RApp f arg) T , todo-witness-check ctx (Raw.RApp f arg) T
+  ----------------------------------------------------------------------
+  -- Phase F migration of `checkElab` `RApp` (13 view branches).
+  -- Specialised check-mode rules: `t-inl-app-check`, `t-inr-app-check`,
+  -- `t-initial-app-check`, `t-arr-app-check`, `t-arg-driven-app-check`.
+  -- Fall-through branches use `t-embed` of `inferElabV`'s witness.
+  -- Helper-applied branches (pair / compose / curry / apply) delegate
+  -- to the existing helpers; their soundness is supplied by per-helper
+  -- witness postulates above.
+  ----------------------------------------------------------------------
+
+  -- ahv-id / ahv-fst / ahv-snd / ahv-terminal: try infer-then-match.
+  checkElabV ctx (Raw.RApp f arg) T with classifyAppHeadView f
+  checkElabV ctx (Raw.RApp f arg) T | ahv-id with inferElabV ctx (Raw.RApp f arg)
+  ...   | failure err , _ = failure err , tt
+  ...   | success T' Ψ eE d fr , w with T ≟T T'
+  ...     | yes refl = success Ψ eE d fr , t-embed w
+  ...     | no _     = failure (TypeMismatch T T') , tt
+  checkElabV ctx (Raw.RApp f arg) T | ahv-fst with inferElabV ctx (Raw.RApp f arg)
+  ...   | failure err , _ = failure err , tt
+  ...   | success T' Ψ eE d fr , w with T ≟T T'
+  ...     | yes refl = success Ψ eE d fr , t-embed w
+  ...     | no _     = failure (TypeMismatch T T') , tt
+  checkElabV ctx (Raw.RApp f arg) T | ahv-snd with inferElabV ctx (Raw.RApp f arg)
+  ...   | failure err , _ = failure err , tt
+  ...   | success T' Ψ eE d fr , w with T ≟T T'
+  ...     | yes refl = success Ψ eE d fr , t-embed w
+  ...     | no _     = failure (TypeMismatch T T') , tt
+  checkElabV ctx (Raw.RApp f arg) T | ahv-terminal with inferElabV ctx (Raw.RApp f arg)
+  ...   | failure err , _ = failure err , tt
+  ...   | success T' Ψ eE d fr , w with T ≟T T'
+  ...     | yes refl = success Ψ eE d fr , t-embed w
+  ...     | no _     = failure (TypeMismatch T T') , tt
+  -- ahv-inl: T must be sum type A+B; check arg at A.
+  checkElabV ctx (Raw.RApp f arg) T | ahv-inl with T
+  checkElabV ctx (Raw.RApp f arg) T | ahv-inl | (A Once.Type.+ B) with checkElabV ctx arg A
+  ...     | failure err , _ = failure err , tt
+  ...     | success Ψ argE d fr , w =
+            success _ (Surface.app (weakenFromEmpty (specInl A B)) argE) (suc d) fr , t-inl-app-check w
+  checkElabV ctx (Raw.RApp f arg) T | ahv-inl | _ = failure InlNeedsSumType , tt
+  -- ahv-inr: T must be sum type A+B; check arg at B.
+  checkElabV ctx (Raw.RApp f arg) T | ahv-inr with T
+  checkElabV ctx (Raw.RApp f arg) T | ahv-inr | (A Once.Type.+ B) with checkElabV ctx arg B
+  ...     | failure err , _ = failure err , tt
+  ...     | success Ψ argE d fr , w =
+            success _ (Surface.app (weakenFromEmpty (specInr A B)) argE) (suc d) fr , t-inr-app-check w
+  checkElabV ctx (Raw.RApp f arg) T | ahv-inr | _ = failure InrNeedsSumType , tt
+  -- ahv-initial: arg must be Void; result has any expected T.
+  checkElabV ctx (Raw.RApp f arg) T | ahv-initial with checkElabV ctx arg Once.Type.Void
+  ...   | failure err , _ = failure err , tt
+  ...   | success Ψ argE d fr , w =
+          success _ (Surface.app (weakenFromEmpty (specInitial T)) argE) (suc d) fr , t-initial-app-check w
+  -- ahv-arr: T must be Eff A B; check arg at A→B.
+  checkElabV ctx (Raw.RApp f arg) T | ahv-arr with T
+  checkElabV ctx (Raw.RApp f arg) T | ahv-arr | (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B) with checkElabV ctx arg (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)
+  ...     | failure err , _ = failure err , tt
+  ...     | success Ψ argE d fr , w =
+            success _ (Surface.app (weakenFromEmpty (specArr A B)) argE) (suc d) fr , t-arr-app-check w
+  checkElabV ctx (Raw.RApp f arg) T | ahv-arr | _ = failure (TypeMismatch T T) , tt
+  -- ahv-pair-applied / ahv-compose-applied / ahv-curry / ahv-apply:
+  -- delegate to the existing helpers; witness via per-helper postulate.
+  checkElabV ctx (Raw.RApp f arg) T | ahv-pair-applied =
+    checkPair ctx f arg T , pair-applied-witness ctx f arg T
+  checkElabV ctx (Raw.RApp f arg) T | ahv-compose-applied =
+    checkCompose ctx f arg T , compose-applied-witness ctx f arg T
+  checkElabV ctx (Raw.RApp f arg) T | ahv-curry =
+    checkCurry ctx arg T , curry-applied-witness ctx arg T
+  checkElabV ctx (Raw.RApp f arg) T | ahv-apply =
+    checkApply ctx arg T , apply-applied-witness ctx arg T
+  -- ahv-other: try infer-then-match; on failure, arg-driven application.
+  checkElabV ctx (Raw.RApp f arg) T | ahv-other with inferElabV ctx (Raw.RApp f arg)
+  ...   | success T' Ψ eE d fr , w with T ≟T T'
+  ...     | yes refl = success Ψ eE d fr , t-embed w
+  ...     | no _     = failure (TypeMismatch T T') , tt
+  checkElabV ctx (Raw.RApp f arg) T | ahv-other | failure errInfer , _ with classifyAppHead f in eqAH
+  ...     | just _  = failure errInfer , tt  -- unreachable: ahv-other ⇒ classifyAppHead nothing
+  ...     | nothing with inferElabV ctx arg
+  ...       | failure errArg , _ = failure errArg , tt
+  ...       | success X Ψx argE dx frx , wArg with checkElabV ctx f (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] T)
+  ...         | failure err , _ = failure err , tt
+  ...         | success Ψf fE df frf , wF =
+                success _ (Surface.app fE argE) (suc (df ⊔ dx)) frf , t-arg-driven-app-check eqAH wArg wF
 
   -- RLam check-mode: only well-typed at a pure arrow type.
   checkElabV ctx (Raw.RLam x body) (A Once.Type.⇒[ Once.Type.mk-kind q Once.Type.pure ] B) with checkElabV (extendNamedCtx ctx x A) body B
