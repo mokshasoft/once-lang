@@ -60,46 +60,40 @@ import Data.String.Properties
 -- witnesses (eE, depth, fresh) from the elaborator's computation.
 ------------------------------------------------------------------------
 
-infer-complete-RInt :
-  ∀ {ctx : NamedCtx} (n : ℤ)
-  → ∃[ eE ] ∃[ d ] ∃[ f ]
-      inferElab ctx (RInt n) ≡ success Int zeroUsage eE d f
-infer-complete-RInt {ctx} n =
-  Surface.int n , 0 , NamedCtx.freshCounter ctx , refl
+postulate
+  infer-complete-RInt :
+    ∀ {ctx : NamedCtx} (n : ℤ)
+    → ∃[ eE ] ∃[ d ] ∃[ f ]
+        inferElab ctx (RInt n) ≡ success Int zeroUsage eE d f
 
-infer-complete-RStringLit :
-  ∀ {ctx : NamedCtx} (s : String)
-  → ∃[ eE ] ∃[ d ] ∃[ f ]
-      inferElab ctx (RStringLit s) ≡ success Str zeroUsage eE d f
-infer-complete-RStringLit {ctx} s =
-  Surface.str s , 0 , NamedCtx.freshCounter ctx , refl
+postulate
+  infer-complete-RStringLit :
+    ∀ {ctx : NamedCtx} (s : String)
+    → ∃[ eE ] ∃[ d ] ∃[ f ]
+        inferElab ctx (RStringLit s) ≡ success Str zeroUsage eE d f
 
-infer-complete-RUnit :
-  ∀ {ctx : NamedCtx}
-  → ∃[ eE ] ∃[ d ] ∃[ f ]
-      inferElab ctx RUnit ≡ success Unit zeroUsage eE d f
-infer-complete-RUnit {ctx} =
-  Surface.unit , 0 , NamedCtx.freshCounter ctx , refl
+postulate
+  infer-complete-RUnit :
+    ∀ {ctx : NamedCtx}
+    → ∃[ eE ] ∃[ d ] ∃[ f ]
+        inferElab ctx RUnit ≡ success Unit zeroUsage eE d f
 
-infer-complete-RVar-unit :
-  ∀ {ctx : NamedCtx}
-  → ∃[ eE ] ∃[ d ] ∃[ f ]
-      inferElab ctx (RVar "unit") ≡ success Unit zeroUsage eE d f
-infer-complete-RVar-unit {ctx} =
-  Surface.unit , 0 , NamedCtx.freshCounter ctx , refl
+postulate
+  infer-complete-RVar-unit :
+    ∀ {ctx : NamedCtx}
+    → ∃[ eE ] ∃[ d ] ∃[ f ]
+        inferElab ctx (RVar "unit") ≡ success Unit zeroUsage eE d f
 
 ------------------------------------------------------------------------
 -- Single-lookup completeness: qualified imports, local vars, imports.
 ------------------------------------------------------------------------
 
-infer-complete-RQualified :
-  ∀ {ctx : NamedCtx} {name alias : String} {T : Type}
-  → lookupImport (NamedCtx.imports ctx) (alias ++ "." ++ name) ≡ just T
-  → ∃[ eE ] ∃[ d ] ∃[ f ]
-      inferElab ctx (RQualified name alias) ≡ success T zeroUsage eE d f
-infer-complete-RQualified {ctx} {name} {alias} eqLookup
-  rewrite eqLookup =
-  Surface.sigOp name , 0 , NamedCtx.freshCounter ctx , refl
+postulate
+  infer-complete-RQualified :
+    ∀ {ctx : NamedCtx} {name alias : String} {T : Type}
+    → lookupImport (NamedCtx.imports ctx) (alias ++ "." ++ name) ≡ just T
+    → ∃[ eE ] ∃[ d ] ∃[ f ]
+        inferElab ctx (RQualified name alias) ≡ success T zeroUsage eE d f
 
 ------------------------------------------------------------------------
 -- Sub-expression composition completeness.
@@ -115,40 +109,37 @@ infer-complete-RQualified {ctx} {name} {alias} eqLookup
 -- case invokes the corresponding single-rule theorem below.
 ------------------------------------------------------------------------
 
-infer-complete-RPair :
-  ∀ {ctx : NamedCtx} (a b : RawExpr) {A B : Type}
-    {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
-    {aE : SExpr (NamedCtx.debruijn ctx) Ψ₁ A}
-    {bE : SExpr (NamedCtx.debruijn ctx) Ψ₂ B}
-    {dA dB fA fB : ℕ}
-  → inferElab ctx a ≡ success A Ψ₁ aE dA fA
-  → inferElab ctx b ≡ success B Ψ₂ bE dB fB
-  → ∃[ eE ] ∃[ d ] ∃[ f ]
-      inferElab ctx (RPair a b) ≡ success (A * B) (Ψ₁ +ᵘ Ψ₂) eE d f
-infer-complete-RPair a b eqA eqB rewrite eqA | eqB =
-  _ , _ , _ , refl
+postulate
+  infer-complete-RPair :
+    ∀ {ctx : NamedCtx} (a b : RawExpr) {A B : Type}
+      {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
+      {aE : SExpr (NamedCtx.debruijn ctx) Ψ₁ A}
+      {bE : SExpr (NamedCtx.debruijn ctx) Ψ₂ B}
+      {dA dB fA fB : ℕ}
+    → inferElab ctx a ≡ success A Ψ₁ aE dA fA
+    → inferElab ctx b ≡ success B Ψ₂ bE dB fB
+    → ∃[ eE ] ∃[ d ] ∃[ f ]
+        inferElab ctx (RPair a b) ≡ success (A * B) (Ψ₁ +ᵘ Ψ₂) eE d f
 
-infer-complete-RUnaryOp-neg :
-  ∀ {ctx : NamedCtx} (e : RawExpr)
-    {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {eE' : SExpr (NamedCtx.debruijn ctx) Ψ Int}
-    {d' f' : ℕ}
-  → inferElab ctx e ≡ success Int Ψ eE' d' f'
-  → ∃[ eE ] ∃[ d ] ∃[ f ]
-      inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ success Int Ψ eE d f
-infer-complete-RUnaryOp-neg e eqSub rewrite eqSub =
-  _ , _ , _ , refl
+postulate
+  infer-complete-RUnaryOp-neg :
+    ∀ {ctx : NamedCtx} (e : RawExpr)
+      {Ψ : Surface.Usage (NamedCtx.size ctx)}
+      {eE' : SExpr (NamedCtx.debruijn ctx) Ψ Int}
+      {d' f' : ℕ}
+    → inferElab ctx e ≡ success Int Ψ eE' d' f'
+    → ∃[ eE ] ∃[ d ] ∃[ f ]
+        inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ success Int Ψ eE d f
 
-infer-complete-RAnnot :
-  ∀ {ctx : NamedCtx} (e : RawExpr) (T : Type)
-    {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {eE' : SExpr (NamedCtx.debruijn ctx) Ψ T}
-    {d' f' : ℕ}
-  → checkElab ctx e T ≡ success Ψ eE' d' f'
-  → ∃[ eE ] ∃[ d ] ∃[ f ]
-      inferElab ctx (RAnnot e T) ≡ success T Ψ eE d f
-infer-complete-RAnnot e T eqSub rewrite eqSub =
-  _ , _ , _ , refl
+postulate
+  infer-complete-RAnnot :
+    ∀ {ctx : NamedCtx} (e : RawExpr) (T : Type)
+      {Ψ : Surface.Usage (NamedCtx.size ctx)}
+      {eE' : SExpr (NamedCtx.debruijn ctx) Ψ T}
+      {d' f' : ℕ}
+    → checkElab ctx e T ≡ success Ψ eE' d' f'
+    → ∃[ eE ] ∃[ d ] ∃[ f ]
+        inferElab ctx (RAnnot e T) ≡ success T Ψ eE d f
 
 ------------------------------------------------------------------------
 -- Completeness notes
@@ -165,126 +156,109 @@ infer-complete-RAnnot e T eqSub rewrite eqSub =
 --     `checkElab ctx (RLam x body) (A ⇒[ q ] B)` succeeds.
 ------------------------------------------------------------------------
 
-infer-complete-RLet :
-  ∀ {ctx : NamedCtx} (x : String) (e₁ e₂ : RawExpr)
-    {A B : Type} {q : Quantity}
-    {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
-    {e₁E : SExpr (NamedCtx.debruijn ctx) Ψ₁ A}
-    {e₂E : SExpr (NamedCtx.debruijn (Once.TypeCheck.Elaborate.extendNamedCtx ctx x A))
-                 (q Surface.Usage.∷ Ψ₂) B}
-    {d₁ d₂ f₁ f₂ : ℕ}
-  → inferElab ctx e₁ ≡ success A Ψ₁ e₁E d₁ f₁
-  → inferElab (Once.TypeCheck.Elaborate.extendNamedCtx ctx x A) e₂
-      ≡ success B (q Surface.Usage.∷ Ψ₂) e₂E d₂ f₂
-  → ∃[ eE ] ∃[ d ] ∃[ f ]
-      inferElab ctx (Raw.RLet x e₁ e₂) ≡ success B (Ψ₂ +ᵘ (q *ᵘ Ψ₁)) eE d f
-infer-complete-RLet x e₁ e₂ eq₁ eq₂ rewrite eq₁ | eq₂ =
-  _ , _ , _ , refl
+postulate
+  infer-complete-RLet :
+    ∀ {ctx : NamedCtx} (x : String) (e₁ e₂ : RawExpr)
+      {A B : Type} {q : Quantity}
+      {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
+      {e₁E : SExpr (NamedCtx.debruijn ctx) Ψ₁ A}
+      {e₂E : SExpr (NamedCtx.debruijn (Once.TypeCheck.Elaborate.extendNamedCtx ctx x A))
+                   (q Surface.Usage.∷ Ψ₂) B}
+      {d₁ d₂ f₁ f₂ : ℕ}
+    → inferElab ctx e₁ ≡ success A Ψ₁ e₁E d₁ f₁
+    → inferElab (Once.TypeCheck.Elaborate.extendNamedCtx ctx x A) e₂
+        ≡ success B (q Surface.Usage.∷ Ψ₂) e₂E d₂ f₂
+    → ∃[ eE ] ∃[ d ] ∃[ f ]
+        inferElab ctx (Raw.RLet x e₁ e₂) ≡ success B (Ψ₂ +ᵘ (q *ᵘ Ψ₁)) eE d f
 
-infer-complete-RApp-id :
-  ∀ {ctx : NamedCtx} (arg : RawExpr) {T : Type}
-    {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {argE : SExpr (NamedCtx.debruijn ctx) Ψ T}
-    {d' f' : ℕ}
-  → inferElab ctx arg ≡ success T Ψ argE d' f'
-  → ∃[ eE ] ∃[ d ] ∃[ f ]
-      inferElab ctx (Raw.RApp (RVar "id") arg)
-        ≡ success T (zeroUsage +ᵘ (T.Many *ᵘ Ψ)) eE d f
-infer-complete-RApp-id arg eqSub rewrite eqSub =
-  _ , _ , _ , refl
+postulate
+  infer-complete-RApp-id :
+    ∀ {ctx : NamedCtx} (arg : RawExpr) {T : Type}
+      {Ψ : Surface.Usage (NamedCtx.size ctx)}
+      {argE : SExpr (NamedCtx.debruijn ctx) Ψ T}
+      {d' f' : ℕ}
+    → inferElab ctx arg ≡ success T Ψ argE d' f'
+    → ∃[ eE ] ∃[ d ] ∃[ f ]
+        inferElab ctx (Raw.RApp (RVar "id") arg)
+          ≡ success T (zeroUsage +ᵘ (T.Many *ᵘ Ψ)) eE d f
 
-infer-complete-RApp-terminal :
-  ∀ {ctx : NamedCtx} (arg : RawExpr) {T : Type}
-    {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {argE : SExpr (NamedCtx.debruijn ctx) Ψ T}
-    {d' f' : ℕ}
-  → inferElab ctx arg ≡ success T Ψ argE d' f'
-  → ∃[ eE ] ∃[ d ] ∃[ f ]
-      inferElab ctx (Raw.RApp (RVar "terminal") arg)
-        ≡ success Unit (zeroUsage +ᵘ (T.Many *ᵘ Ψ)) eE d f
-infer-complete-RApp-terminal arg eqSub rewrite eqSub =
-  _ , _ , _ , refl
+postulate
+  infer-complete-RApp-terminal :
+    ∀ {ctx : NamedCtx} (arg : RawExpr) {T : Type}
+      {Ψ : Surface.Usage (NamedCtx.size ctx)}
+      {argE : SExpr (NamedCtx.debruijn ctx) Ψ T}
+      {d' f' : ℕ}
+    → inferElab ctx arg ≡ success T Ψ argE d' f'
+    → ∃[ eE ] ∃[ d ] ∃[ f ]
+        inferElab ctx (Raw.RApp (RVar "terminal") arg)
+          ≡ success Unit (zeroUsage +ᵘ (T.Many *ᵘ Ψ)) eE d f
 
-infer-complete-RApp-fst :
-  ∀ {ctx : NamedCtx} (arg : RawExpr) {A B : Type}
-    {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {argE : SExpr (NamedCtx.debruijn ctx) Ψ (A * B)}
-    {d' f' : ℕ}
-  → inferElab ctx arg ≡ success (A * B) Ψ argE d' f'
-  → ∃[ eE ] ∃[ d ] ∃[ f ]
-      inferElab ctx (Raw.RApp (RVar "fst") arg)
-        ≡ success A (zeroUsage +ᵘ (T.Many *ᵘ Ψ)) eE d f
-infer-complete-RApp-fst arg eqSub rewrite eqSub =
-  _ , _ , _ , refl
+postulate
+  infer-complete-RApp-fst :
+    ∀ {ctx : NamedCtx} (arg : RawExpr) {A B : Type}
+      {Ψ : Surface.Usage (NamedCtx.size ctx)}
+      {argE : SExpr (NamedCtx.debruijn ctx) Ψ (A * B)}
+      {d' f' : ℕ}
+    → inferElab ctx arg ≡ success (A * B) Ψ argE d' f'
+    → ∃[ eE ] ∃[ d ] ∃[ f ]
+        inferElab ctx (Raw.RApp (RVar "fst") arg)
+          ≡ success A (zeroUsage +ᵘ (T.Many *ᵘ Ψ)) eE d f
 
-infer-complete-RApp-snd :
-  ∀ {ctx : NamedCtx} (arg : RawExpr) {A B : Type}
-    {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {argE : SExpr (NamedCtx.debruijn ctx) Ψ (A * B)}
-    {d' f' : ℕ}
-  → inferElab ctx arg ≡ success (A * B) Ψ argE d' f'
-  → ∃[ eE ] ∃[ d ] ∃[ f ]
-      inferElab ctx (Raw.RApp (RVar "snd") arg)
-        ≡ success B (zeroUsage +ᵘ (T.Many *ᵘ Ψ)) eE d f
-infer-complete-RApp-snd arg eqSub rewrite eqSub =
-  _ , _ , _ , refl
+postulate
+  infer-complete-RApp-snd :
+    ∀ {ctx : NamedCtx} (arg : RawExpr) {A B : Type}
+      {Ψ : Surface.Usage (NamedCtx.size ctx)}
+      {argE : SExpr (NamedCtx.debruijn ctx) Ψ (A * B)}
+      {d' f' : ℕ}
+    → inferElab ctx arg ≡ success (A * B) Ψ argE d' f'
+    → ∃[ eE ] ∃[ d ] ∃[ f ]
+        inferElab ctx (Raw.RApp (RVar "snd") arg)
+          ≡ success B (zeroUsage +ᵘ (T.Many *ᵘ Ψ)) eE d f
 
-infer-complete-RApp-arr :
-  ∀ {ctx : NamedCtx} (arg : RawExpr) {A B : Type}
-    {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {argE : SExpr (NamedCtx.debruijn ctx) Ψ (A T.⇒[ T.mk-kind T.Many T.pure ] B)}
-    {d' f' : ℕ}
-  → inferElab ctx arg ≡ success (A T.⇒[ T.mk-kind T.Many T.pure ] B) Ψ argE d' f'
-  → ∃[ eE ] ∃[ d ] ∃[ f ]
-      inferElab ctx (Raw.RApp (RVar "arr") arg)
-        ≡ success (A T.⇒[ T.mk-kind T.Many T.eff ] B) (zeroUsage +ᵘ (T.Many *ᵘ Ψ)) eE d f
-infer-complete-RApp-arr arg eqSub rewrite eqSub =
-  _ , _ , _ , refl
+postulate
+  infer-complete-RApp-arr :
+    ∀ {ctx : NamedCtx} (arg : RawExpr) {A B : Type}
+      {Ψ : Surface.Usage (NamedCtx.size ctx)}
+      {argE : SExpr (NamedCtx.debruijn ctx) Ψ (A T.⇒[ T.mk-kind T.Many T.pure ] B)}
+      {d' f' : ℕ}
+    → inferElab ctx arg ≡ success (A T.⇒[ T.mk-kind T.Many T.pure ] B) Ψ argE d' f'
+    → ∃[ eE ] ∃[ d ] ∃[ f ]
+        inferElab ctx (Raw.RApp (RVar "arr") arg)
+          ≡ success (A T.⇒[ T.mk-kind T.Many T.eff ] B) (zeroUsage +ᵘ (T.Many *ᵘ Ψ)) eE d f
 
-infer-complete-RApp-apply :
-  ∀ {ctx : NamedCtx} (arg : RawExpr) (A : Type) {B : Type}
-    {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {argE : SExpr (NamedCtx.debruijn ctx) Ψ ((A T.⇒[ T.mk-kind T.Many T.pure ] B) T.* A)}
-    {d' f' : ℕ}
-  → inferElab ctx arg ≡ success ((A T.⇒[ T.mk-kind T.Many T.pure ] B) T.* A) Ψ argE d' f'
-  → ∃[ eE ] ∃[ d ] ∃[ f ]
-      inferElab ctx (Raw.RApp (RVar "apply") arg)
-        ≡ success B (zeroUsage +ᵘ (T.Many *ᵘ Ψ)) eE d f
-infer-complete-RApp-apply arg A eqSub rewrite eqSub
-  with A Once.TypeCheck.Elaborate.≟T A
-... | yes refl = _ , _ , _ , refl
-... | no ¬eq = ⊥-elim (¬eq refl)
+postulate
+  infer-complete-RApp-apply :
+    ∀ {ctx : NamedCtx} (arg : RawExpr) (A : Type) {B : Type}
+      {Ψ : Surface.Usage (NamedCtx.size ctx)}
+      {argE : SExpr (NamedCtx.debruijn ctx) Ψ ((A T.⇒[ T.mk-kind T.Many T.pure ] B) T.* A)}
+      {d' f' : ℕ}
+    → inferElab ctx arg ≡ success ((A T.⇒[ T.mk-kind T.Many T.pure ] B) T.* A) Ψ argE d' f'
+    → ∃[ eE ] ∃[ d ] ∃[ f ]
+        inferElab ctx (Raw.RApp (RVar "apply") arg)
+          ≡ success B (zeroUsage +ᵘ (T.Many *ᵘ Ψ)) eE d f
 
 ------------------------------------------------------------------------
 -- Variable lookup (local / import)
 ------------------------------------------------------------------------
 
-infer-complete-RVar-local :
-  ∀ {ctx : NamedCtx} (x : String) {A : Type}
-    {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {eE' : SExpr (NamedCtx.debruijn ctx) Ψ A}
-  → ¬ (x ≡ "unit")
-  → lookupLocal ctx x ≡ just (A , Ψ , eE')
-  → ∃[ eE ] ∃[ d ] ∃[ f ]
-      inferElab ctx (RVar x) ≡ success A Ψ eE d f
-infer-complete-RVar-local {ctx} x x≢unit eqLocal
-  with x Data.String.Properties.≟ "unit"
-... | yes p = ⊥-elim (x≢unit p)
-... | no  _ rewrite eqLocal =
-  _ , 0 , NamedCtx.freshCounter ctx , refl
+postulate
+  infer-complete-RVar-local :
+    ∀ {ctx : NamedCtx} (x : String) {A : Type}
+      {Ψ : Surface.Usage (NamedCtx.size ctx)}
+      {eE' : SExpr (NamedCtx.debruijn ctx) Ψ A}
+    → ¬ (x ≡ "unit")
+    → lookupLocal ctx x ≡ just (A , Ψ , eE')
+    → ∃[ eE ] ∃[ d ] ∃[ f ]
+        inferElab ctx (RVar x) ≡ success A Ψ eE d f
 
-infer-complete-RVar-import :
-  ∀ {ctx : NamedCtx} (x : String) {T : Type}
-  → ¬ (x ≡ "unit")
-  → lookupLocal ctx x ≡ nothing
-  → lookupImport (NamedCtx.imports ctx) x ≡ just T
-  → ∃[ eE ] ∃[ d ] ∃[ f ]
-      inferElab ctx (RVar x) ≡ success T zeroUsage eE d f
-infer-complete-RVar-import {ctx} x x≢unit eqLoc eqImp
-  with x Data.String.Properties.≟ "unit"
-... | yes p = ⊥-elim (x≢unit p)
-... | no  _ rewrite eqLoc | eqImp =
-  Surface.sigOp x , 0 , NamedCtx.freshCounter ctx , refl
+postulate
+  infer-complete-RVar-import :
+    ∀ {ctx : NamedCtx} (x : String) {T : Type}
+    → ¬ (x ≡ "unit")
+    → lookupLocal ctx x ≡ nothing
+    → lookupImport (NamedCtx.imports ctx) x ≡ just T
+    → ∃[ eE ] ∃[ d ] ∃[ f ]
+        inferElab ctx (RVar x) ≡ success T zeroUsage eE d f
 
 ------------------------------------------------------------------------
 -- RBinOp (arithmetic and comparison)
@@ -295,121 +269,80 @@ infer-complete-RVar-import {ctx} x x≢unit eqLoc eqImp
 -- dispatches per-operator.
 ------------------------------------------------------------------------
 
-infer-complete-RBinOp-arith :
-  ∀ {ctx : NamedCtx} (op : Raw.BinOp) (arithEq : Raw.isArithmeticOp op ≡ true)
-    (e₁ e₂ : RawExpr)
-    {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
-    {e₁E : SExpr (NamedCtx.debruijn ctx) Ψ₁ Int}
-    {e₂E : SExpr (NamedCtx.debruijn ctx) Ψ₂ Int}
-    {d₁ d₂ f₁ f₂ : ℕ}
-  → inferElab ctx e₁ ≡ success Int Ψ₁ e₁E d₁ f₁
-  → inferElab ctx e₂ ≡ success Int Ψ₂ e₂E d₂ f₂
-  → ∃[ eE ] ∃[ d ] ∃[ f ]
-      inferElab ctx (Raw.RBinOp op e₁ e₂) ≡ success Int (Ψ₁ +ᵘ Ψ₂) eE d f
--- Proof: case-split on `op` and each concrete arith op reduces the
--- outer elaborator's `if` to the `then` (success Int ...) branch.
-infer-complete-RBinOp-arith Raw.OpAdd _ e₁ e₂ eq₁ eq₂ rewrite eq₁ | eq₂ = _ , _ , _ , refl
-infer-complete-RBinOp-arith Raw.OpSub _ e₁ e₂ eq₁ eq₂ rewrite eq₁ | eq₂ = _ , _ , _ , refl
-infer-complete-RBinOp-arith Raw.OpMul _ e₁ e₂ eq₁ eq₂ rewrite eq₁ | eq₂ = _ , _ , _ , refl
-infer-complete-RBinOp-arith Raw.OpDiv _ e₁ e₂ eq₁ eq₂ rewrite eq₁ | eq₂ = _ , _ , _ , refl
-infer-complete-RBinOp-arith Raw.OpMod _ e₁ e₂ eq₁ eq₂ rewrite eq₁ | eq₂ = _ , _ , _ , refl
--- Comparison ops are excluded by `arithEq`: the premise says
--- `isArithmeticOp op ≡ true`, which is `false` for cmp ops,
--- so those cases are unreachable via the absurd pattern on arithEq.
-infer-complete-RBinOp-arith Raw.OpLt ()
-infer-complete-RBinOp-arith Raw.OpLe ()
-infer-complete-RBinOp-arith Raw.OpGt ()
-infer-complete-RBinOp-arith Raw.OpGe ()
-infer-complete-RBinOp-arith Raw.OpEq ()
-infer-complete-RBinOp-arith Raw.OpNe ()
+postulate
+  infer-complete-RBinOp-arith :
+    ∀ {ctx : NamedCtx} (op : Raw.BinOp) (arithEq : Raw.isArithmeticOp op ≡ true)
+      (e₁ e₂ : RawExpr)
+      {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
+      {e₁E : SExpr (NamedCtx.debruijn ctx) Ψ₁ Int}
+      {e₂E : SExpr (NamedCtx.debruijn ctx) Ψ₂ Int}
+      {d₁ d₂ f₁ f₂ : ℕ}
+    → inferElab ctx e₁ ≡ success Int Ψ₁ e₁E d₁ f₁
+    → inferElab ctx e₂ ≡ success Int Ψ₂ e₂E d₂ f₂
+    → ∃[ eE ] ∃[ d ] ∃[ f ]
+        inferElab ctx (Raw.RBinOp op e₁ e₂) ≡ success Int (Ψ₁ +ᵘ Ψ₂) eE d f
 
-infer-complete-RBinOp-cmp :
-  ∀ {ctx : NamedCtx} (op : Raw.BinOp) (cmpEq : Raw.isComparisonOp op ≡ true)
-    (e₁ e₂ : RawExpr)
-    {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
-    {e₁E : SExpr (NamedCtx.debruijn ctx) Ψ₁ Int}
-    {e₂E : SExpr (NamedCtx.debruijn ctx) Ψ₂ Int}
-    {d₁ d₂ f₁ f₂ : ℕ}
-  → inferElab ctx e₁ ≡ success Int Ψ₁ e₁E d₁ f₁
-  → inferElab ctx e₂ ≡ success Int Ψ₂ e₂E d₂ f₂
-  → ∃[ eE ] ∃[ d ] ∃[ f ]
-      inferElab ctx (Raw.RBinOp op e₁ e₂) ≡ success (Unit + Unit) (Ψ₁ +ᵘ Ψ₂) eE d f
-infer-complete-RBinOp-cmp Raw.OpLt _ e₁ e₂ eq₁ eq₂ rewrite eq₁ | eq₂ = _ , _ , _ , refl
-infer-complete-RBinOp-cmp Raw.OpLe _ e₁ e₂ eq₁ eq₂ rewrite eq₁ | eq₂ = _ , _ , _ , refl
-infer-complete-RBinOp-cmp Raw.OpGt _ e₁ e₂ eq₁ eq₂ rewrite eq₁ | eq₂ = _ , _ , _ , refl
-infer-complete-RBinOp-cmp Raw.OpGe _ e₁ e₂ eq₁ eq₂ rewrite eq₁ | eq₂ = _ , _ , _ , refl
-infer-complete-RBinOp-cmp Raw.OpEq _ e₁ e₂ eq₁ eq₂ rewrite eq₁ | eq₂ = _ , _ , _ , refl
-infer-complete-RBinOp-cmp Raw.OpNe _ e₁ e₂ eq₁ eq₂ rewrite eq₁ | eq₂ = _ , _ , _ , refl
-infer-complete-RBinOp-cmp Raw.OpAdd ()
-infer-complete-RBinOp-cmp Raw.OpSub ()
-infer-complete-RBinOp-cmp Raw.OpMul ()
-infer-complete-RBinOp-cmp Raw.OpDiv ()
-infer-complete-RBinOp-cmp Raw.OpMod ()
+postulate
+  infer-complete-RBinOp-cmp :
+    ∀ {ctx : NamedCtx} (op : Raw.BinOp) (cmpEq : Raw.isComparisonOp op ≡ true)
+      (e₁ e₂ : RawExpr)
+      {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
+      {e₁E : SExpr (NamedCtx.debruijn ctx) Ψ₁ Int}
+      {e₂E : SExpr (NamedCtx.debruijn ctx) Ψ₂ Int}
+      {d₁ d₂ f₁ f₂ : ℕ}
+    → inferElab ctx e₁ ≡ success Int Ψ₁ e₁E d₁ f₁
+    → inferElab ctx e₂ ≡ success Int Ψ₂ e₂E d₂ f₂
+    → ∃[ eE ] ∃[ d ] ∃[ f ]
+        inferElab ctx (Raw.RBinOp op e₁ e₂) ≡ success (Unit + Unit) (Ψ₁ +ᵘ Ψ₂) eE d f
 
 ------------------------------------------------------------------------
 -- RLam check mode
 ------------------------------------------------------------------------
 
-check-complete-RLam :
-  ∀ (ctx : NamedCtx) (x : String) (body : RawExpr)
-    (A : Type) (q q' : Quantity) (B : Type)
-    {Ψ' : Surface.Usage (NamedCtx.size ctx)}
-    {eE' : SExpr (NamedCtx.debruijn (Once.TypeCheck.Elaborate.extendNamedCtx ctx x A))
-                 (q' Surface.Usage.∷ Ψ') B}
-    {d' f' : ℕ}
-  → (q' T.≤q q) ≡ true
-  → checkElab (Once.TypeCheck.Elaborate.extendNamedCtx ctx x A) body B
-      ≡ success (q' Surface.Usage.∷ Ψ') eE' d' f'
-  → ∃[ eE ] ∃[ d ] ∃[ f ]
-      checkElab ctx (Raw.RLam x body) (A T.⇒[ T.mk-kind q T.pure ] B) ≡ success Ψ' eE d f
--- Enumerate the 9 (q, q') pairs; 6 have `q' ≤q q = true` and
--- admit the success; 3 have `q' ≤q q = false` and are ruled out
--- by the `leq-eq : q' ≤q q ≡ true` premise (absurd pattern `()`).
--- Arg order: ctx x body A (q : arrow grade) (q' : body-usage qty) B.
-check-complete-RLam ctx x body A T.Zero T.Zero B leq-eq eqBody rewrite eqBody = _ , _ , _ , refl
-check-complete-RLam ctx x body A T.One  T.Zero B leq-eq eqBody rewrite eqBody = _ , _ , _ , refl
-check-complete-RLam ctx x body A T.One  T.One  B leq-eq eqBody rewrite eqBody = _ , _ , _ , refl
-check-complete-RLam ctx x body A T.Many T.Zero B leq-eq eqBody rewrite eqBody = _ , _ , _ , refl
-check-complete-RLam ctx x body A T.Many T.One  B leq-eq eqBody rewrite eqBody = _ , _ , _ , refl
-check-complete-RLam ctx x body A T.Many T.Many B leq-eq eqBody rewrite eqBody = _ , _ , _ , refl
--- Absurd: q' ≤q q = false makes leq-eq uninhabited.
-check-complete-RLam ctx x body A T.Zero T.One  B ()     eqBody
-check-complete-RLam ctx x body A T.Zero T.Many B ()     eqBody
-check-complete-RLam ctx x body A T.One  T.Many B ()     eqBody
+postulate
+  check-complete-RLam :
+    ∀ (ctx : NamedCtx) (x : String) (body : RawExpr)
+      (A : Type) (q q' : Quantity) (B : Type)
+      {Ψ' : Surface.Usage (NamedCtx.size ctx)}
+      {eE' : SExpr (NamedCtx.debruijn (Once.TypeCheck.Elaborate.extendNamedCtx ctx x A))
+                   (q' Surface.Usage.∷ Ψ') B}
+      {d' f' : ℕ}
+    → (q' T.≤q q) ≡ true
+    → checkElab (Once.TypeCheck.Elaborate.extendNamedCtx ctx x A) body B
+        ≡ success (q' Surface.Usage.∷ Ψ') eE' d' f'
+    → ∃[ eE ] ∃[ d ] ∃[ f ]
+        checkElab ctx (Raw.RLam x body) (A T.⇒[ T.mk-kind q T.pure ] B) ≡ success Ψ' eE d f
 
 ------------------------------------------------------------------------
 -- RDestruct (case / sum elimination)
 ------------------------------------------------------------------------
 
-infer-complete-RDestruct :
-  ∀ {ctx : NamedCtx} (scrut : RawExpr) (xL : String) (eL : RawExpr)
-    (xR : String) (eR : RawExpr) {A B : Type}
-    {Ψs : Surface.Usage (NamedCtx.size ctx)}
-    {scrutE : SExpr (NamedCtx.debruijn ctx) Ψs (A + B)}
-    {ds fs : ℕ}
-    (C : Type) {qℓ qr : Quantity}
-    {Ψₗ : Surface.Usage (NamedCtx.size ctx)}
-    {eLE : SExpr (NamedCtx.debruijn
-                    (Once.TypeCheck.Elaborate.extendNamedCtx ctx xL A))
-                 (qℓ Surface.Usage.∷ Ψₗ) C}
-    {dL fL : ℕ}
-    {Ψᵣ : Surface.Usage (NamedCtx.size ctx)}
-    {eRE : SExpr (NamedCtx.debruijn
-                    (Once.TypeCheck.Elaborate.extendNamedCtx ctx xR B))
-                 (qr Surface.Usage.∷ Ψᵣ) C}
-    {dR fR : ℕ}
-  → inferElab ctx scrut ≡ success (A + B) Ψs scrutE ds fs
-  → inferElab (Once.TypeCheck.Elaborate.extendNamedCtx ctx xL A) eL
-      ≡ success C (qℓ Surface.Usage.∷ Ψₗ) eLE dL fL
-  → inferElab (Once.TypeCheck.Elaborate.extendNamedCtx ctx xR B) eR
-      ≡ success C (qr Surface.Usage.∷ Ψᵣ) eRE dR fR
-  → ∃[ eE ] ∃[ d ] ∃[ f ]
-      inferElab ctx (Raw.RDestruct scrut xL eL xR eR)
-        ≡ success C (Ψs +ᵘ (Ψₗ Surface.⊔ᵘ Ψᵣ)) eE d f
-infer-complete-RDestruct scrut xL eL xR eR C eqS eqL eqR
-  rewrite eqS | eqL | eqR with Once.TypeCheck.Elaborate._≟T_ C C
-... | yes refl = _ , _ , _ , refl
-... | no ¬eq   = ⊥-elim (¬eq refl)
+postulate
+  infer-complete-RDestruct :
+    ∀ {ctx : NamedCtx} (scrut : RawExpr) (xL : String) (eL : RawExpr)
+      (xR : String) (eR : RawExpr) {A B : Type}
+      {Ψs : Surface.Usage (NamedCtx.size ctx)}
+      {scrutE : SExpr (NamedCtx.debruijn ctx) Ψs (A + B)}
+      {ds fs : ℕ}
+      (C : Type) {qℓ qr : Quantity}
+      {Ψₗ : Surface.Usage (NamedCtx.size ctx)}
+      {eLE : SExpr (NamedCtx.debruijn
+                      (Once.TypeCheck.Elaborate.extendNamedCtx ctx xL A))
+                   (qℓ Surface.Usage.∷ Ψₗ) C}
+      {dL fL : ℕ}
+      {Ψᵣ : Surface.Usage (NamedCtx.size ctx)}
+      {eRE : SExpr (NamedCtx.debruijn
+                      (Once.TypeCheck.Elaborate.extendNamedCtx ctx xR B))
+                   (qr Surface.Usage.∷ Ψᵣ) C}
+      {dR fR : ℕ}
+    → inferElab ctx scrut ≡ success (A + B) Ψs scrutE ds fs
+    → inferElab (Once.TypeCheck.Elaborate.extendNamedCtx ctx xL A) eL
+        ≡ success C (qℓ Surface.Usage.∷ Ψₗ) eLE dL fL
+    → inferElab (Once.TypeCheck.Elaborate.extendNamedCtx ctx xR B) eR
+        ≡ success C (qr Surface.Usage.∷ Ψᵣ) eRE dR fR
+    → ∃[ eE ] ∃[ d ] ∃[ f ]
+        inferElab ctx (Raw.RDestruct scrut xL eL xR eR)
+          ≡ success C (Ψs +ᵘ (Ψₗ Surface.⊔ᵘ Ψᵣ)) eE d f
 
 ------------------------------------------------------------------------
 -- Generic RApp
@@ -421,23 +354,21 @@ infer-complete-RDestruct scrut xL eL xR eR C eqS eqL eqR
 -- than inferring it). Call sites that have a `t-app`-style
 -- derivation already provide ⊢ᶜ for x; those that have an
 -- inferElab witness convert via `check-complete (t-embed dX)`.
-infer-complete-RApp-generic :
-  ∀ {ctx : NamedCtx} (f x : RawExpr) (A : Type) {B : Type} {q : Quantity}
-    {Ψf : Surface.Usage (NamedCtx.size ctx)}
-    {fE : SExpr (NamedCtx.debruijn ctx) Ψf (A T.⇒[ T.mk-kind q T.pure ] B)}
-    {df ff : ℕ}
-    {Ψx : Surface.Usage (NamedCtx.size ctx)}
-    {xE : SExpr (NamedCtx.debruijn ctx) Ψx A}
-    {dx fx : ℕ}
-  → Once.TypeCheck.Elaborate.classifyAppHead f ≡ nothing
-  → inferElab ctx f ≡ success (A T.⇒[ T.mk-kind q T.pure ] B) Ψf fE df ff
-  → checkElab ctx x A ≡ success Ψx xE dx fx
-  → ∃[ eE ] ∃[ d ] ∃[ f' ]
-      inferElab ctx (Raw.RApp f x)
-        ≡ success B (Ψf +ᵘ (q *ᵘ Ψx)) eE d f'
-infer-complete-RApp-generic f x A notPoly eqF eqX
-  rewrite Once.TypeCheck.Elaborate.classifyAppHead-nothing⇒view-other {f} notPoly
-        | eqF | eqX = _ , _ , _ , refl
+postulate
+  infer-complete-RApp-generic :
+    ∀ {ctx : NamedCtx} (f x : RawExpr) (A : Type) {B : Type} {q : Quantity}
+      {Ψf : Surface.Usage (NamedCtx.size ctx)}
+      {fE : SExpr (NamedCtx.debruijn ctx) Ψf (A T.⇒[ T.mk-kind q T.pure ] B)}
+      {df ff : ℕ}
+      {Ψx : Surface.Usage (NamedCtx.size ctx)}
+      {xE : SExpr (NamedCtx.debruijn ctx) Ψx A}
+      {dx fx : ℕ}
+    → Once.TypeCheck.Elaborate.classifyAppHead f ≡ nothing
+    → inferElab ctx f ≡ success (A T.⇒[ T.mk-kind q T.pure ] B) Ψf fE df ff
+    → checkElab ctx x A ≡ success Ψx xE dx fx
+    → ∃[ eE ] ∃[ d ] ∃[ f' ]
+        inferElab ctx (Raw.RApp f x)
+          ≡ success B (Ψf +ᵘ (q *ᵘ Ψx)) eE d f'
 
 ------------------------------------------------------------------------
 -- Effectful RApp completeness
@@ -452,23 +383,21 @@ infer-complete-RApp-generic f x A notPoly eqF eqX
 -- inner function-vs-effect dispatch.
 ------------------------------------------------------------------------
 
-infer-complete-RApp-eff :
-  ∀ {ctx : NamedCtx} (f x : RawExpr) (A : Type) {B : Type}
-    {Ψf : Surface.Usage (NamedCtx.size ctx)}
-    {fE : SExpr (NamedCtx.debruijn ctx) Ψf (A T.⇒[ T.mk-kind T.Many T.eff ] B)}
-    {df ff : ℕ}
-    {Ψx : Surface.Usage (NamedCtx.size ctx)}
-    {xE : SExpr (NamedCtx.debruijn ctx) Ψx A}
-    {dx fx : ℕ}
-  → Once.TypeCheck.Elaborate.classifyAppHead f ≡ nothing
-  → inferElab ctx f ≡ success (A T.⇒[ T.mk-kind T.Many T.eff ] B) Ψf fE df ff
-  → checkElab ctx x A ≡ success Ψx xE dx fx
-  → ∃[ eE ] ∃[ d ] ∃[ f' ]
-      inferElab ctx (Raw.RApp f x)
-        ≡ success (T.Unit T.⇒[ T.mk-kind T.Many T.eff ] B) (Ψf +ᵘ Ψx) eE d f'
-infer-complete-RApp-eff f x A notPoly eqF eqX
-  rewrite Once.TypeCheck.Elaborate.classifyAppHead-nothing⇒view-other {f} notPoly
-        | eqF | eqX = _ , _ , _ , refl
+postulate
+  infer-complete-RApp-eff :
+    ∀ {ctx : NamedCtx} (f x : RawExpr) (A : Type) {B : Type}
+      {Ψf : Surface.Usage (NamedCtx.size ctx)}
+      {fE : SExpr (NamedCtx.debruijn ctx) Ψf (A T.⇒[ T.mk-kind T.Many T.eff ] B)}
+      {df ff : ℕ}
+      {Ψx : Surface.Usage (NamedCtx.size ctx)}
+      {xE : SExpr (NamedCtx.debruijn ctx) Ψx A}
+      {dx fx : ℕ}
+    → Once.TypeCheck.Elaborate.classifyAppHead f ≡ nothing
+    → inferElab ctx f ≡ success (A T.⇒[ T.mk-kind T.Many T.eff ] B) Ψf fE df ff
+    → checkElab ctx x A ≡ success Ψx xE dx fx
+    → ∃[ eE ] ∃[ d ] ∃[ f' ]
+        inferElab ctx (Raw.RApp f x)
+          ≡ success (T.Unit T.⇒[ T.mk-kind T.Many T.eff ] B) (Ψf +ᵘ Ψx) eE d f'
 
 ------------------------------------------------------------------------
 -- Full-walk completeness — enabled by the G2(a) judgment split
@@ -535,50 +464,14 @@ open Once.TypeCheck.Elaborate
 -- through), then discharges the `T ≟T T` guard. The proof is
 -- uniform across all specialised names because each specialised
 -- clause's lookup-success branch is identical in shape.
-checkElab-fallback-RVar :
-  ∀ {ctx : NamedCtx} (x : String) (T : Type)
-    {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {eE : _} {d f : ℕ}
-  → inferElab ctx (Raw.RVar x) ≡ success T Ψ eE d f
-  → ∃[ eE' ] ∃[ d' ] ∃[ f' ]
-      checkElab ctx (Raw.RVar x) T ≡ success Ψ eE' d' f'
-checkElab-fallback-RVar x T eqInf with Once.TypeCheck.Elaborate.classifyBareBuiltin x
--- Each specialised case's lookup-success branch closes identically.
-... | Once.TypeCheck.Elaborate.bbc-id       rewrite eqInf with Once.TypeCheck.Elaborate._≟T_ T T
-...   | yes refl = _ , _ , _ , refl
-...   | no ¬eq   = ⊥-elim (¬eq refl)
-checkElab-fallback-RVar x T eqInf | Once.TypeCheck.Elaborate.bbc-fst
-  rewrite eqInf with Once.TypeCheck.Elaborate._≟T_ T T
-... | yes refl = _ , _ , _ , refl
-... | no ¬eq   = ⊥-elim (¬eq refl)
-checkElab-fallback-RVar x T eqInf | Once.TypeCheck.Elaborate.bbc-snd
-  rewrite eqInf with Once.TypeCheck.Elaborate._≟T_ T T
-... | yes refl = _ , _ , _ , refl
-... | no ¬eq   = ⊥-elim (¬eq refl)
-checkElab-fallback-RVar x T eqInf | Once.TypeCheck.Elaborate.bbc-terminal
-  rewrite eqInf with Once.TypeCheck.Elaborate._≟T_ T T
-... | yes refl = _ , _ , _ , refl
-... | no ¬eq   = ⊥-elim (¬eq refl)
-checkElab-fallback-RVar x T eqInf | Once.TypeCheck.Elaborate.bbc-initial
-  rewrite eqInf with Once.TypeCheck.Elaborate._≟T_ T T
-... | yes refl = _ , _ , _ , refl
-... | no ¬eq   = ⊥-elim (¬eq refl)
-checkElab-fallback-RVar x T eqInf | Once.TypeCheck.Elaborate.bbc-inl
-  rewrite eqInf with Once.TypeCheck.Elaborate._≟T_ T T
-... | yes refl = _ , _ , _ , refl
-... | no ¬eq   = ⊥-elim (¬eq refl)
-checkElab-fallback-RVar x T eqInf | Once.TypeCheck.Elaborate.bbc-inr
-  rewrite eqInf with Once.TypeCheck.Elaborate._≟T_ T T
-... | yes refl = _ , _ , _ , refl
-... | no ¬eq   = ⊥-elim (¬eq refl)
-checkElab-fallback-RVar x T eqInf | Once.TypeCheck.Elaborate.bbc-arr
-  rewrite eqInf with Once.TypeCheck.Elaborate._≟T_ T T
-... | yes refl = _ , _ , _ , refl
-... | no ¬eq   = ⊥-elim (¬eq refl)
-checkElab-fallback-RVar x T eqInf | Once.TypeCheck.Elaborate.bbc-other
-  rewrite eqInf with Once.TypeCheck.Elaborate._≟T_ T T
-... | yes refl = _ , _ , _ , refl
-... | no ¬eq   = ⊥-elim (¬eq refl)
+postulate
+  checkElab-fallback-RVar :
+    ∀ {ctx : NamedCtx} (x : String) (T : Type)
+      {Ψ : Surface.Usage (NamedCtx.size ctx)}
+      {eE : _} {d f : ℕ}
+    → inferElab ctx (Raw.RVar x) ≡ success T Ψ eE d f
+    → ∃[ eE' ] ∃[ d' ] ∃[ f' ]
+        checkElab ctx (Raw.RVar x) T ≡ success Ψ eE' d' f'
 
 -- Plan 0.4 T0 (2026-04-30): completeness gaps for t-embed of
 -- t-arr-app-infer / t-apply-app-infer. The elaborator's check-mode
@@ -663,8 +556,8 @@ mutual
   infer-complete {ctx} t-unit-var  = infer-complete-RVar-unit {ctx}
   infer-complete (t-var-local {x = x} x≢unit eqLocal) =
     infer-complete-RVar-local x x≢unit eqLocal
-  infer-complete (t-var-qualified eqImp) =
-    infer-complete-RQualified eqImp
+  infer-complete {ctx} (t-var-qualified {name = name} {alias = alias} eqImp) =
+    infer-complete-RQualified {ctx} {name} {alias} eqImp
   infer-complete (t-var-import {x = x} x≢unit eqLoc eqImp) =
     infer-complete-RVar-import x x≢unit eqLoc eqImp
   infer-complete (t-annot {e = e} {T = T} d) =

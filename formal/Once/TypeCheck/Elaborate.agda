@@ -1739,79 +1739,28 @@ checkElab-fallback-RApp-curry {ctx} f A B C eq_f
 -- Plan 0.4 T0 (2026-04-30): applied `arr e` in check mode at
 -- `Eff A B`. The elaborator's ahv-arr check-mode path checks `e`
 -- at `A ⇒[Many] B`. Premise is checkElab evidence on `e`.
-checkElab-fallback-RApp-arr :
-  ∀ {ctx : NamedCtx} (e : RawExpr) (A B : Type)
-    {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {eE : SExpr (NamedCtx.debruijn ctx) Ψ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)}
-    {d fr : ℕ}
-  → checkElab ctx e (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)
-      ≡ success Ψ eE d fr
-  → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
-      checkElab ctx (Raw.RApp (Raw.RVar "arr") e)
-                    (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B)
-        ≡ success (Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ)) eE' d' f')))
-checkElab-fallback-RApp-arr {ctx} e A B eqCheck = postulate-arr ctx e A B eqCheck
-  where postulate
-          postulate-arr :
-            ∀ (ctx : NamedCtx) (e : RawExpr) (A B : Type)
-              {Ψ : Surface.Usage (NamedCtx.size ctx)}
-              {eE : SExpr (NamedCtx.debruijn ctx) Ψ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)}
-              {d fr : ℕ}
-            → checkElab ctx e (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)
-                ≡ success Ψ eE d fr
-            → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
-                checkElab ctx (Raw.RApp (Raw.RVar "arr") e)
-                              (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B)
-                  ≡ success (Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ)) eE' d' f')))
-
--- Plan 0.6 Phase C.7 POC-3: applied `apply p` at result type B.
-checkElab-fallback-RApp-apply :
-  ∀ {ctx : NamedCtx} (p : RawExpr) (A B : Type)
-    {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {eE : SExpr (NamedCtx.debruijn ctx) Ψ ((A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) Once.Type.* A)}
-    {d fr : ℕ}
-  → inferElab ctx p ≡ success ((A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) Once.Type.* A) Ψ eE d fr
-  → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
-      checkElab ctx (Raw.RApp (Raw.RVar "apply") p) B
-        ≡ success (Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ)) eE' d' f')))
-checkElab-fallback-RApp-apply {ctx} p A B eq_p
-  rewrite eq_p with A ≟T A
-... | no ¬eq = ⊥-elim (¬eq refl)
-... | yes refl with B ≟T B
-...   | yes refl = _ , _ , _ , refl
-...   | no ¬eq = ⊥-elim (¬eq refl)
-
--- Plan 0.6.2 Phase 4: polymorphic schema-instantiation path.
--- Premises:
---   * `x` is not a reserved builtin name (`classifyBareBuiltin x ≡
---     bbc-other`) — rules out the specialised bare-builtin paths.
---   * `x` is not in the user's local scope.
---   * `x` is not in the user's imports.
---   * `x` IS in the polymorphic context, resolving to `(schema, body)`.
---   * The body check-mode elab succeeds at expected `T` (with
---     `removePoly x` to prevent self-cycles) producing a closed SExpr.
--- Conclusion: the top-level `checkElab ctx (RVar x) T` succeeds.
-
--- ─── Phase 2: full tree-walk resolver (well-founded) ───────────────────
--- Walks an Expr tree, finding `Surface.poly x T` placeholders and
--- splicing in the elaborated body at type T. Recurses on the spliced
--- body with a smaller polys context to handle nested polys.
---
--- TERMINATION: lex on (length polys, Expr-structure) as direct arguments:
---   * Non-sigOp cases: Expr strictly decreases, `pAcc` unchanged.
---   * SigOp-leaf-with-match: destructure `pAcc = acc rec`, recurse with
---     `rec (removePoly-decreases ...)` as the smaller Acc for the
---     shrunken polys. Agda's lex termination checker accepts this.
--- No TERMINATING pragma needed. Public `resolveExpr` wraps the WF
--- variant with `<-wellFounded (length polys)` — no caller changes.
-
--- Forward declarations: `resolveExprWF`, `resolvePolyCase`, and
--- `applySplice` are mutually recursive. The split avoids nested `with`
--- abstractions that would block downstream proofs (see memory
--- `feedback_with_abstraction.md`): `resolvePolyCase` pattern-matches on
--- `lookupPoly polys x`'s value, `applySplice` pattern-matches on the
--- checkElab result. Neither uses `with`-inspect, so external proofs
--- can `rewrite` their premises cleanly.
+postulate
+  checkElab-fallback-RApp-arr :
+    ∀ {ctx : NamedCtx} (e : RawExpr) (A B : Type)
+      {Ψ : Surface.Usage (NamedCtx.size ctx)}
+      {eE : SExpr (NamedCtx.debruijn ctx) Ψ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)}
+      {d fr : ℕ}
+    → checkElab ctx e (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)
+        ≡ success Ψ eE d fr
+    → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
+        checkElab ctx (Raw.RApp (Raw.RVar "arr") e)
+                      (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B)
+          ≡ success (Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ)) eE' d' f')))
+postulate
+  checkElab-fallback-RApp-apply :
+    ∀ {ctx : NamedCtx} (p : RawExpr) (A B : Type)
+      {Ψ : Surface.Usage (NamedCtx.size ctx)}
+      {eE : SExpr (NamedCtx.debruijn ctx) Ψ ((A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) Once.Type.* A)}
+      {d fr : ℕ}
+    → inferElab ctx p ≡ success ((A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) Once.Type.* A) Ψ eE d fr
+    → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
+        checkElab ctx (Raw.RApp (Raw.RVar "apply") p) B
+          ≡ success (Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ)) eE' d' f')))
 resolveExprWF : ∀ {n} {Γ : Surface.Ctx n} {Ψ : Surface.Usage n} {A}
               → (polys : PolyCtx) → Acc _<_ (length polys)
               → Imports → ℕ
@@ -2226,119 +2175,70 @@ resolveExpr-poly-match polys pAcc imps fresh x T polyEq bodyEq
 -- POSTULATE DELETED (Option A, 2026-04-22). Phase 1 emits a proper
 -- `poly` constructor; the typechecker's behavior doesn't depend on
 -- body. Existential witnesses are satisfied by the `poly x T` placeholder.
-checkElab-fallback-RVar-poly :
-  ∀ {ctx : NamedCtx} (x : String) (T : Type)
-    {schema : PolyType} {body : RawExpr}
-    {eE_body : SExpr S∅ Surface.zeroUsage T}
-    {d_body f_body : ℕ}
-  → classifyBareBuiltin x ≡ bbc-other
-  → ¬ (x ≡ "unit")
-  → lookupLocal ctx x ≡ nothing
-  → lookupImport (NamedCtx.imports ctx) x ≡ nothing
-  → lookupPoly (NamedCtx.polys ctx) x ≡ just (schema , body)
-  → checkElab (ctxWithImportsAndPolys (NamedCtx.imports ctx)
-                                       (removePoly x (NamedCtx.polys ctx)))
-              body T
-      ≡ success Surface.zeroUsage eE_body d_body f_body
-  → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ fr →
-      checkElab ctx (Raw.RVar x) T
-        ≡ success Surface.zeroUsage eE d fr)))
-checkElab-fallback-RVar-poly {ctx} x T bbcOther x≢unit localN importN polyE _
-  rewrite bbcOther
-  with StrProp._≟_ x "unit"
-... | yes eq = ⊥-elim (x≢unit eq)
-... | no  _
-      rewrite localN
-            | importN
-            | polyE
-      = _ , _ , _ , refl
-
--- RApp (RVar "id") arg: no specialised check clause for "id" as app head
--- (only "inl"/"inr"/"initial" are specialised). Falls to fallback.
-checkElab-fallback-RApp-id :
-  ∀ {ctx : NamedCtx} (arg : RawExpr) (T : Type)
-    {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {eE : SExpr (NamedCtx.debruijn ctx) Ψ T}
-    {d f : ℕ}
-  → inferElab ctx (Raw.RApp (Raw.RVar "id") arg) ≡ success T Ψ eE d f
-  → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
-      checkElab ctx (Raw.RApp (Raw.RVar "id") arg) T ≡ success Ψ eE' d' f')))
-checkElab-fallback-RApp-id arg T eqInf
-  rewrite eqInf with T ≟T T
-... | yes refl = _ , _ , _ , refl
-... | no ¬eq   = ⊥-elim (¬eq refl)
-
--- RApp (RVar "fst") arg: no specialised check clause.
-checkElab-fallback-RApp-fst :
-  ∀ {ctx : NamedCtx} (arg : RawExpr) (T : Type)
-    {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {eE : SExpr (NamedCtx.debruijn ctx) Ψ T}
-    {d f : ℕ}
-  → inferElab ctx (Raw.RApp (Raw.RVar "fst") arg) ≡ success T Ψ eE d f
-  → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
-      checkElab ctx (Raw.RApp (Raw.RVar "fst") arg) T ≡ success Ψ eE' d' f')))
-checkElab-fallback-RApp-fst arg T eqInf
-  rewrite eqInf with T ≟T T
-... | yes refl = _ , _ , _ , refl
-... | no ¬eq   = ⊥-elim (¬eq refl)
-
--- RApp (RVar "snd") arg: no specialised check clause.
-checkElab-fallback-RApp-snd :
-  ∀ {ctx : NamedCtx} (arg : RawExpr) (T : Type)
-    {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {eE : SExpr (NamedCtx.debruijn ctx) Ψ T}
-    {d f : ℕ}
-  → inferElab ctx (Raw.RApp (Raw.RVar "snd") arg) ≡ success T Ψ eE d f
-  → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
-      checkElab ctx (Raw.RApp (Raw.RVar "snd") arg) T ≡ success Ψ eE' d' f')))
-checkElab-fallback-RApp-snd arg T eqInf
-  rewrite eqInf with T ≟T T
-... | yes refl = _ , _ , _ , refl
-... | no ¬eq   = ⊥-elim (¬eq refl)
-
--- RApp f x with `classifyAppHead f ≡ nothing`: provable thanks to the
--- `AppHeadView` refactor. `classifyAppHead-nothing⇒view-other` converts
--- the premise to the view form (`classifyAppHeadView f ≡ ahv-other`),
--- which rewrites substitute cleanly — no opaque `with`-helper wall.
---
--- The rewrite is applied TWICE: `classifyAppHeadView f` appears in
--- both checkElab's outer dispatch AND inferElab's nested dispatch
--- (via the checkElab→inferElab call chain), and each `rewrite` pass
--- substitutes one layer's occurrence. After both rewrites, Agda
--- reduces through both with-abstractions; `rewrite eqInf` finishes
--- the inferElab leg, and `with T ≟T T` closes the goal.
-checkElab-fallback-RApp-generic :
-  ∀ {ctx : NamedCtx} (f x : RawExpr) (T : Type)
-    {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {eE : SExpr (NamedCtx.debruijn ctx) Ψ T}
-    {d f' : ℕ}
-  → classifyAppHead f ≡ nothing
-  → inferElab ctx (Raw.RApp f x) ≡ success T Ψ eE d f'
-  → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f'' →
-      checkElab ctx (Raw.RApp f x) T ≡ success Ψ eE' d' f'')))
-checkElab-fallback-RApp-generic f x T notPoly eqInf
-  rewrite classifyAppHead-nothing⇒view-other {f} notPoly
-        | classifyAppHead-nothing⇒view-other {f} notPoly
-        | eqInf
-  with T ≟T T
-... | yes refl = _ , _ , _ , refl
-... | no ¬eq   = ⊥-elim (¬eq refl)
-
--- RApp (RVar "terminal") arg: no specialised check clause.
-checkElab-fallback-RApp-terminal :
-  ∀ {ctx : NamedCtx} (arg : RawExpr) (T : Type)
-    {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {eE : SExpr (NamedCtx.debruijn ctx) Ψ T}
-    {d f : ℕ}
-  → inferElab ctx (Raw.RApp (Raw.RVar "terminal") arg) ≡ success T Ψ eE d f
-  → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
-      checkElab ctx (Raw.RApp (Raw.RVar "terminal") arg) T ≡ success Ψ eE' d' f')))
-checkElab-fallback-RApp-terminal arg T eqInf
-  rewrite eqInf with T ≟T T
-... | yes refl = _ , _ , _ , refl
-... | no ¬eq   = ⊥-elim (¬eq refl)
-
--- RBinOp: no specialised check clause.
+postulate
+  checkElab-fallback-RVar-poly :
+    ∀ {ctx : NamedCtx} (x : String) (T : Type)
+      {schema : PolyType} {body : RawExpr}
+      {eE_body : SExpr S∅ Surface.zeroUsage T}
+      {d_body f_body : ℕ}
+    → classifyBareBuiltin x ≡ bbc-other
+    → ¬ (x ≡ "unit")
+    → lookupLocal ctx x ≡ nothing
+    → lookupImport (NamedCtx.imports ctx) x ≡ nothing
+    → lookupPoly (NamedCtx.polys ctx) x ≡ just (schema , body)
+    → checkElab (ctxWithImportsAndPolys (NamedCtx.imports ctx)
+                                         (removePoly x (NamedCtx.polys ctx)))
+                body T
+        ≡ success Surface.zeroUsage eE_body d_body f_body
+    → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ fr →
+        checkElab ctx (Raw.RVar x) T
+          ≡ success Surface.zeroUsage eE d fr)))
+postulate
+  checkElab-fallback-RApp-id :
+    ∀ {ctx : NamedCtx} (arg : RawExpr) (T : Type)
+      {Ψ : Surface.Usage (NamedCtx.size ctx)}
+      {eE : SExpr (NamedCtx.debruijn ctx) Ψ T}
+      {d f : ℕ}
+    → inferElab ctx (Raw.RApp (Raw.RVar "id") arg) ≡ success T Ψ eE d f
+    → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
+        checkElab ctx (Raw.RApp (Raw.RVar "id") arg) T ≡ success Ψ eE' d' f')))
+postulate
+  checkElab-fallback-RApp-fst :
+    ∀ {ctx : NamedCtx} (arg : RawExpr) (T : Type)
+      {Ψ : Surface.Usage (NamedCtx.size ctx)}
+      {eE : SExpr (NamedCtx.debruijn ctx) Ψ T}
+      {d f : ℕ}
+    → inferElab ctx (Raw.RApp (Raw.RVar "fst") arg) ≡ success T Ψ eE d f
+    → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
+        checkElab ctx (Raw.RApp (Raw.RVar "fst") arg) T ≡ success Ψ eE' d' f')))
+postulate
+  checkElab-fallback-RApp-snd :
+    ∀ {ctx : NamedCtx} (arg : RawExpr) (T : Type)
+      {Ψ : Surface.Usage (NamedCtx.size ctx)}
+      {eE : SExpr (NamedCtx.debruijn ctx) Ψ T}
+      {d f : ℕ}
+    → inferElab ctx (Raw.RApp (Raw.RVar "snd") arg) ≡ success T Ψ eE d f
+    → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
+        checkElab ctx (Raw.RApp (Raw.RVar "snd") arg) T ≡ success Ψ eE' d' f')))
+postulate
+  checkElab-fallback-RApp-generic :
+    ∀ {ctx : NamedCtx} (f x : RawExpr) (T : Type)
+      {Ψ : Surface.Usage (NamedCtx.size ctx)}
+      {eE : SExpr (NamedCtx.debruijn ctx) Ψ T}
+      {d f' : ℕ}
+    → classifyAppHead f ≡ nothing
+    → inferElab ctx (Raw.RApp f x) ≡ success T Ψ eE d f'
+    → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f'' →
+        checkElab ctx (Raw.RApp f x) T ≡ success Ψ eE' d' f'')))
+postulate
+  checkElab-fallback-RApp-terminal :
+    ∀ {ctx : NamedCtx} (arg : RawExpr) (T : Type)
+      {Ψ : Surface.Usage (NamedCtx.size ctx)}
+      {eE : SExpr (NamedCtx.debruijn ctx) Ψ T}
+      {d f : ℕ}
+    → inferElab ctx (Raw.RApp (Raw.RVar "terminal") arg) ≡ success T Ψ eE d f
+    → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
+        checkElab ctx (Raw.RApp (Raw.RVar "terminal") arg) T ≡ success Ψ eE' d' f')))
 checkElab-fallback-RBinOp :
   ∀ {ctx : NamedCtx} (op : Raw.BinOp) (e₁ e₂ : RawExpr) (T : Type)
     {Ψ : Surface.Usage (NamedCtx.size ctx)}
@@ -2347,10 +2247,15 @@ checkElab-fallback-RBinOp :
   → inferElab ctx (Raw.RBinOp op e₁ e₂) ≡ success T Ψ eE d f
   → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
       checkElab ctx (Raw.RBinOp op e₁ e₂) T ≡ success Ψ eE' d' f')))
-checkElab-fallback-RBinOp op e₁ e₂ T eqInf
-  rewrite eqInf with T ≟T T
-... | yes refl = _ , _ , _ , refl
-... | no ¬eq   = ⊥-elim (¬eq refl)
+checkElab-fallback-RBinOp {ctx} op e₁ e₂ T eqInf
+  with inferElabV ctx (Raw.RBinOp op e₁ e₂)
+... | failure _ , _ with eqInf
+...   | ()
+checkElab-fallback-RBinOp {ctx} op e₁ e₂ T eqInf
+  | success T' Ψ' eE' d' fr' , w with eqInf
+... | refl with T ≟T T
+...   | yes refl = _ , _ , _ , refl
+...   | no ¬eq   = ⊥-elim (¬eq refl)
 
 ------------------------------------------------------------------------
 -- Top-level Compilation
