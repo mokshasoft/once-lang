@@ -2701,3 +2701,21 @@ mutual
             success (Unit Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B) _ (Surface.effApp fE xE) (df ⊔ dx) fx , t-effApp eqAH wF wX
   inferElabV-RApp-other ctx f x | nothing | success (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.One Once.Type.eff ] B) _ _ _ _ , _ = failure (NotFunction (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.One Once.Type.eff ] B)) , tt
   inferElabV-RApp-other ctx f x | nothing | success (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Zero Once.Type.eff ] B) _ _ _ _ , _ = failure (NotFunction (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Zero Once.Type.eff ] B)) , tt
+
+------------------------------------------------------------------------
+-- Plan 0.4 T0 Option B — projection wrappers.
+--
+-- Top-level views of the verified elaborators that strip the witness.
+-- A new soundness theorem `infer-soundV` / `check-soundV` over these
+-- projections is straightforwardly provable from `proj₂ ∘ inferElabV`
+-- and replaces the spec-gap postulates that target `check-sound`'s
+-- specialised dispatch.
+------------------------------------------------------------------------
+
+inferElabProj : (ctx : NamedCtx) (e : RawExpr) → InferElabResult (NamedCtx.debruijn ctx)
+inferElabProj ctx e = proj₁ (inferElabV ctx e)
+  where open import Data.Product using (proj₁)
+
+checkElabProj : (ctx : NamedCtx) (e : RawExpr) (T : Type) → CheckElabResult (NamedCtx.debruijn ctx) T
+checkElabProj ctx e T = proj₁ (checkElabV ctx e T)
+  where open import Data.Product using (proj₁)
