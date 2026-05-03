@@ -2307,47 +2307,37 @@ checkElab-fallback-RApp-compose :
 -- J-style bridge: substitute the elaborator's internal
 -- `composeArgB ctx g A , refl` with the externally-provided
 -- `(just B) , eqArgB` pair.
-private
-  checkComposeWithB-J :
-    ∀ ctx f_inner arg A C
-    → (mb : Maybe Type) (eq : composeArgB ctx arg A ≡ mb)
-    → Data.Product.proj₁ (checkComposeWithB ctx f_inner arg A C (composeArgB ctx arg A) refl)
-        ≡ Data.Product.proj₁ (checkComposeWithB ctx f_inner arg A C mb eq)
-  checkComposeWithB-J ctx f_inner arg A C .(composeArgB ctx arg A) refl = refl
+checkComposeWithB-J :
+  ∀ ctx f_inner arg A C
+  → (mb : Maybe Type) (eq : composeArgB ctx arg A ≡ mb)
+  → Data.Product.proj₁ (checkComposeWithB ctx f_inner arg A C (composeArgB ctx arg A) refl)
+      ≡ Data.Product.proj₁ (checkComposeWithB ctx f_inner arg A C mb eq)
+checkComposeWithB-J ctx f_inner arg A C .(composeArgB ctx arg A) refl = refl
 
-  -- Σ-inversion: from `proj₁ rg ≡ success ...` recover the full pair
-  -- and the witness component.
-  invert-checkV-success :
-    ∀ {ctx e T Ψ} {eE : SExpr (NamedCtx.debruijn ctx) Ψ T} {d fr}
-    → (rg : VerifiedCheckResult ctx e T)
-    → Data.Product.proj₁ rg ≡ success Ψ eE d fr
-    → ∃-syntax (λ w → rg ≡ (success Ψ eE d fr , w))
-  invert-checkV-success (success _ _ _ _ , w) refl = w , refl
-
-  -- Reducing checkComposeWithB on (just B) when both checkElabV
-  -- calls succeed. Postulated due to with-abstraction limitations:
-  -- the internal `checkElabV ctx arg (A → B)` call inside
-  -- checkComposeWithB's body doesn't unify with the externally-
-  -- abstracted variable. Discharging cleanly would require either
-  -- (a) lifting these calls to a different layer (cyclic with
-  -- Soundness), or (b) UIP-style reasoning that Agda's
-  -- with-mechanism does not natively support. The claim is sound by
-  -- direct computation — checkComposeWithB on (just B) reduces to
-  -- success when both sub-elaborations succeed.
-  postulate
-    checkComposeWithB-just-success :
-      ∀ ctx f_inner arg A B C
-      → (eqArgB : composeArgB ctx arg A ≡ just B)
-      → ∀ {Ψg Ψf eE_g eE_f d_g f_g d_f f_f}
-      → checkElab ctx arg (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)
-          ≡ success Ψg eE_g d_g f_g
-      → checkElab ctx f_inner (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C)
-          ≡ success Ψf eE_f d_f f_f
-      → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ fr →
-          Data.Product.proj₁ (checkComposeWithB ctx f_inner arg A C (just B) eqArgB)
-            ≡ success ((Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψf))
-                        Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψg))
-                      eE d fr)))
+-- Reduce checkComposeWithB on (just B) when both checkElabV calls
+-- succeed. Postulated due to Agda with-abstraction limitation that
+-- prevents abstracting `checkElabV ctx arg (A ⇒[..] B)` against the
+-- bound variable in the with-helper signature, when `arg`/`A`/`B`
+-- are bound parameters of the surrounding function. (The structurally
+-- identical pattern works for `checkElab-fallback-RApp-pair` whose
+-- types A,B,C aren't constrained by a dependent premise like
+-- `composeArgB ctx arg A ≡ just B`.) Sound by direct computation —
+-- checkComposeWithBg's success clause fires when both rg and rf are
+-- success forms.
+postulate
+  checkComposeWithB-just-success :
+    ∀ ctx f_inner arg A B C
+    → (eqArgB : composeArgB ctx arg A ≡ just B)
+    → ∀ {Ψg Ψf eE_g eE_f d_g f_g d_f f_f}
+    → checkElab ctx arg (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)
+        ≡ success Ψg eE_g d_g f_g
+    → checkElab ctx f_inner (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C)
+        ≡ success Ψf eE_f d_f f_f
+    → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ fr →
+        Data.Product.proj₁ (checkComposeWithB ctx f_inner arg A C (just B) eqArgB)
+          ≡ success ((Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψf))
+                      Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψg))
+                    eE d fr)))
 
 checkElab-fallback-RApp-compose {ctx} f g A B C eqArgB eq_f eq_g =
   let (_ , _ , _ , eq) = checkComposeWithB-just-success ctx f g A B C eqArgB eq_g eq_f
