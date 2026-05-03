@@ -47,6 +47,7 @@ import qualified MAlonzo.Code.Once.Target.RiscV64
 import qualified MAlonzo.Code.Once.Target.X86Z45Z32
 import qualified MAlonzo.Code.Once.Target.X86Z45Z64
 import qualified MAlonzo.Code.Once.Type
+import qualified MAlonzo.Code.Once.TypeCheck.Classify
 import qualified MAlonzo.Code.Once.TypeCheck.Elaborate
 import qualified MAlonzo.Code.Once.TypeCheck.Error
 import qualified MAlonzo.Code.Once.TypeCheck.Raw
@@ -116,11 +117,13 @@ d_compileFunBody_24 ::
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30
 d_compileFunBody_24 v0 v1 v2 v3 v4 v5
   = let v6
-          = MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElab_1846
+          = MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
               (coe
-                 MAlonzo.Code.Once.TypeCheck.Elaborate.d_ctxWithImportsAndSelfAndPolys_458
-                 (coe v1) (coe v2) (coe v3) (coe v4))
-              (coe v5) (coe v4) in
+                 MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_902
+                 (coe
+                    MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndSelfAndPolys_184
+                    (coe v1) (coe v2) (coe v3) (coe v4))
+                 (coe v5) (coe v4)) in
     coe
       (case coe v6 of
          MAlonzo.Code.Once.TypeCheck.Elaborate.C_success_276 v7 v8 v9 v10
@@ -138,7 +141,7 @@ d_compileFunBody_24 v0 v1 v2 v3 v4 v5
                          MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_114
                          (coe MAlonzo.Code.Once.Surface.Syntax.C_'8709'_8) (coe v4)
                          (coe
-                            MAlonzo.Code.Once.TypeCheck.Elaborate.du_resolveExpr_7114
+                            MAlonzo.Code.Once.TypeCheck.Elaborate.du_resolveExpr_11076
                             (coe (0 :: Integer))
                             (coe MAlonzo.Code.Once.Surface.Syntax.C_'8709'_8) (coe v4) (coe v2)
                             (coe
@@ -150,7 +153,7 @@ d_compileFunBody_24 v0 v1 v2 v3 v4 v5
                       MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_114
                       (coe MAlonzo.Code.Once.Surface.Syntax.C_'8709'_8) (coe v4)
                       (coe
-                         MAlonzo.Code.Once.TypeCheck.Elaborate.du_resolveExpr_7114
+                         MAlonzo.Code.Once.TypeCheck.Elaborate.du_resolveExpr_11076
                          (coe (0 :: Integer))
                          (coe MAlonzo.Code.Once.Surface.Syntax.C_'8709'_8) (coe v4) (coe v2)
                          (coe
@@ -264,7 +267,7 @@ d_buildPolyCtx_176 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14]
 d_buildPolyCtx_176 v0
   = case coe v0 of
-      [] -> coe MAlonzo.Code.Once.TypeCheck.Elaborate.d_emptyPolyCtx_286
+      [] -> coe MAlonzo.Code.Once.TypeCheck.Classify.d_emptyPolyCtx_12
       (:) v1 v2
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22

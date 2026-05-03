@@ -305,9 +305,11 @@ library
       MAlonzo.Code.Once.Target.X86Z45Z32
       MAlonzo.Code.Once.Target.RiscV64
       MAlonzo.Code.Once.Type
+      MAlonzo.Code.Once.TypeCheck.Classify
       MAlonzo.Code.Once.TypeCheck.Context
       MAlonzo.Code.Once.TypeCheck.Elaborate
       MAlonzo.Code.Once.TypeCheck.Error
+      MAlonzo.Code.Once.TypeCheck.Judgment
       MAlonzo.Code.Once.TypeCheck.Raw
       MAlonzo.Code.Relation.Binary
       MAlonzo.Code.Relation.Binary.Bundles
