@@ -684,9 +684,6 @@ postulate
   bbc-other-poly-witness :
     ∀ (ctx : NamedCtx) (x : String) (T : Type)
     → ctx ⊢ᶜ Raw.RVar x ∶ T ⨾ Surface.zeroUsage
-  -- Abstract success-case witnesses for the check-mode applied-
-  -- builtin helpers. Don't reference the helpers in their types so they
-  -- can be moved before the merged mutual block in the cleanup phase.
 
 
 mutual
