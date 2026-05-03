@@ -808,6 +808,45 @@ mutual
     → (impLhs : Maybe Type)
     → lookupImport (NamedCtx.imports ctx) "arr" ≡ impLhs
     → VerifiedCheckResult ctx (Raw.RVar "arr") T
+  -- Per-bbc-X aux taking the inferElab result explicitly. Eliminates
+  -- the inner with-helper opacity. Each bbc-X's success-via-infer path
+  -- uses t-embed; the failure path delegates to bbc-X-failure-aux.
+  checkElabV-RVar-bbc-id-aux :
+    ∀ (ctx : NamedCtx) (T : Type)
+    → VerifiedInferResult ctx (Raw.RVar "id")
+    → VerifiedCheckResult ctx (Raw.RVar "id") T
+  checkElabV-RVar-bbc-fst-aux :
+    ∀ (ctx : NamedCtx) (T : Type)
+    → VerifiedInferResult ctx (Raw.RVar "fst")
+    → VerifiedCheckResult ctx (Raw.RVar "fst") T
+  checkElabV-RVar-bbc-snd-aux :
+    ∀ (ctx : NamedCtx) (T : Type)
+    → VerifiedInferResult ctx (Raw.RVar "snd")
+    → VerifiedCheckResult ctx (Raw.RVar "snd") T
+  checkElabV-RVar-bbc-terminal-aux :
+    ∀ (ctx : NamedCtx) (T : Type)
+    → VerifiedInferResult ctx (Raw.RVar "terminal")
+    → VerifiedCheckResult ctx (Raw.RVar "terminal") T
+  checkElabV-RVar-bbc-initial-aux :
+    ∀ (ctx : NamedCtx) (T : Type)
+    → VerifiedInferResult ctx (Raw.RVar "initial")
+    → VerifiedCheckResult ctx (Raw.RVar "initial") T
+  checkElabV-RVar-bbc-inl-aux :
+    ∀ (ctx : NamedCtx) (T : Type)
+    → VerifiedInferResult ctx (Raw.RVar "inl")
+    → VerifiedCheckResult ctx (Raw.RVar "inl") T
+  checkElabV-RVar-bbc-inr-aux :
+    ∀ (ctx : NamedCtx) (T : Type)
+    → VerifiedInferResult ctx (Raw.RVar "inr")
+    → VerifiedCheckResult ctx (Raw.RVar "inr") T
+  checkElabV-RVar-bbc-arr-aux :
+    ∀ (ctx : NamedCtx) (T : Type)
+    → VerifiedInferResult ctx (Raw.RVar "arr")
+    → VerifiedCheckResult ctx (Raw.RVar "arr") T
+  checkElabV-RVar-bbc-other-aux :
+    ∀ (ctx : NamedCtx) (x : String) (T : Type)
+    → VerifiedInferResult ctx (Raw.RVar x)
+    → VerifiedCheckResult ctx (Raw.RVar x) T
 
   -- ===== inferElab =====
 
@@ -1266,66 +1305,21 @@ mutual
   -- POC: bbc-fst migrated; other bbc-X still delegate.
   ----------------------------------------------------------------------
 
-  checkElabV ctx (Raw.RVar x) T with classifyBareBuiltin x
-  checkElabV ctx (Raw.RVar x) T | bbc-fst with inferElabV ctx (Raw.RVar x)
-  checkElabV ctx (Raw.RVar x) T | bbc-fst | success T' Ψ eE d fr , w with T ≟T T'
-  ...   | yes refl = success Ψ eE d fr , t-embed w
-  ...   | no _     = failure (TypeMismatch T T') , tt
-  checkElabV ctx (Raw.RVar x) T | bbc-fst | failure err , _ =
-    checkElabV-RVar-bbc-fst-failure-aux ctx T err _ refl _ refl
-  checkElabV ctx (Raw.RVar x) T | bbc-id with inferElabV ctx (Raw.RVar x)
-  checkElabV ctx (Raw.RVar x) T | bbc-id | success T' Ψ eE d fr , w with T ≟T T'
-  ...   | yes refl = success Ψ eE d fr , t-embed w
-  ...   | no _     = failure (TypeMismatch T T') , tt
-  checkElabV ctx (Raw.RVar x) T | bbc-id | failure err , _ =
-    checkElabV-RVar-bbc-id-failure-aux ctx T err _ refl _ refl
-  checkElabV ctx (Raw.RVar x) T | bbc-snd with inferElabV ctx (Raw.RVar x)
-  checkElabV ctx (Raw.RVar x) T | bbc-snd | success T' Ψ eE d fr , w with T ≟T T'
-  ...   | yes refl = success Ψ eE d fr , t-embed w
-  ...   | no _     = failure (TypeMismatch T T') , tt
-  checkElabV ctx (Raw.RVar x) T | bbc-snd | failure err , _ =
-    checkElabV-RVar-bbc-snd-failure-aux ctx T err _ refl _ refl
-  checkElabV ctx (Raw.RVar x) T | bbc-terminal with inferElabV ctx (Raw.RVar x)
-  checkElabV ctx (Raw.RVar x) T | bbc-terminal | success T' Ψ eE d fr , w with T ≟T T'
-  ...   | yes refl = success Ψ eE d fr , t-embed w
-  ...   | no _     = failure (TypeMismatch T T') , tt
-  checkElabV ctx (Raw.RVar x) T | bbc-terminal | failure err , _ =
-    checkElabV-RVar-bbc-terminal-failure-aux ctx T err _ refl _ refl
-  checkElabV ctx (Raw.RVar x) T | bbc-initial with inferElabV ctx (Raw.RVar x)
-  checkElabV ctx (Raw.RVar x) T | bbc-initial | success T' Ψ eE d fr , w with T ≟T T'
-  ...   | yes refl = success Ψ eE d fr , t-embed w
-  ...   | no _     = failure (TypeMismatch T T') , tt
-  checkElabV ctx (Raw.RVar x) T | bbc-initial | failure err , _ =
-    checkElabV-RVar-bbc-initial-failure-aux ctx T err _ refl _ refl
-  checkElabV ctx (Raw.RVar x) T | bbc-inl with inferElabV ctx (Raw.RVar x)
-  checkElabV ctx (Raw.RVar x) T | bbc-inl | success T' Ψ eE d fr , w with T ≟T T'
-  ...   | yes refl = success Ψ eE d fr , t-embed w
-  ...   | no _     = failure (TypeMismatch T T') , tt
-  checkElabV ctx (Raw.RVar x) T | bbc-inl | failure err , _ =
-    checkElabV-RVar-bbc-inl-failure-aux ctx T err _ refl _ refl
-  checkElabV ctx (Raw.RVar x) T | bbc-inr with inferElabV ctx (Raw.RVar x)
-  checkElabV ctx (Raw.RVar x) T | bbc-inr | success T' Ψ eE d fr , w with T ≟T T'
-  ...   | yes refl = success Ψ eE d fr , t-embed w
-  ...   | no _     = failure (TypeMismatch T T') , tt
-  checkElabV ctx (Raw.RVar x) T | bbc-inr | failure err , _ =
-    checkElabV-RVar-bbc-inr-failure-aux ctx T err _ refl _ refl
-  checkElabV ctx (Raw.RVar x) T | bbc-arr with inferElabV ctx (Raw.RVar x)
-  checkElabV ctx (Raw.RVar x) T | bbc-arr | success T' Ψ eE d fr , w with T ≟T T'
-  ...   | yes refl = success Ψ eE d fr , t-embed w
-  ...   | no _     = failure (TypeMismatch T T') , tt
-  checkElabV ctx (Raw.RVar x) T | bbc-arr | failure err , _ =
-    checkElabV-RVar-bbc-arr-failure-aux ctx T err _ refl _ refl
-
-  -- bbc-other: lookup-then-poly. Self-contained migration mirroring
-  -- checkElab-RVar's bbc-other dispatch. The poly-instantiate witness
-  -- is supplied by `bbc-other-poly-witness` (Phase 2 gap).
-  checkElabV ctx (Raw.RVar x) T | bbc-other with inferElabV ctx (Raw.RVar x)
-  checkElabV ctx (Raw.RVar x) T | bbc-other | success T' Ψ eE d fr , w with T ≟T T'
-  ...   | yes refl = success Ψ eE d fr , t-embed w
-  ...   | no _     = failure (TypeMismatch T T') , tt
-  checkElabV ctx (Raw.RVar x) T | bbc-other | failure err , _ with lookupPoly (NamedCtx.polys ctx) x
-  ...   | nothing = failure err , tt
-  ...   | just _  = success Surface.zeroUsage (Surface.poly x T) 0 (NamedCtx.freshCounter ctx) , bbc-other-poly-witness ctx x T
+  -- Plan 0.4 T2 Phase 3: per-bbc-X aux takes inferElab result + eq
+  -- explicitly. The outer with on classifyBareBuiltin remains, and
+  -- we use a second with on inferElab (rather than eager-evaluation)
+  -- so Agda's termination check sees the result as a with-helper
+  -- value rather than an arbitrary argument.
+  checkElabV ctx (Raw.RVar x) T with classifyBareBuiltin x | inferElabV ctx (Raw.RVar x)
+  ... | bbc-id       | rInfV = checkElabV-RVar-bbc-id-aux ctx T rInfV
+  ... | bbc-fst      | rInfV = checkElabV-RVar-bbc-fst-aux ctx T rInfV
+  ... | bbc-snd      | rInfV = checkElabV-RVar-bbc-snd-aux ctx T rInfV
+  ... | bbc-terminal | rInfV = checkElabV-RVar-bbc-terminal-aux ctx T rInfV
+  ... | bbc-initial  | rInfV = checkElabV-RVar-bbc-initial-aux ctx T rInfV
+  ... | bbc-inl      | rInfV = checkElabV-RVar-bbc-inl-aux ctx T rInfV
+  ... | bbc-inr      | rInfV = checkElabV-RVar-bbc-inr-aux ctx T rInfV
+  ... | bbc-arr      | rInfV = checkElabV-RVar-bbc-arr-aux ctx T rInfV
+  ... | bbc-other    | rInfV = checkElabV-RVar-bbc-other-aux ctx x T rInfV
 
   -- Generic infer-and-match fallback — covers RInt, RStringLit, RUnit,
   -- RPair, RBinOp, RUnaryOp, RLet, RDestruct, RAnnot, RQualified.
@@ -1591,10 +1585,12 @@ mutual
   -- bbc-X failure-branch aux bodies. Each pattern-matches on T to the
   -- canonical builtin shape and on the lookup results. Success iff
   -- T = canonical & both lookups nothing & inner type-checks pass.
-  checkElabV-RVar-bbc-id-failure-aux ctx (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] Y) err locLhs eqLoc impLhs eqImp with X ≟T Y | locLhs | impLhs
-  ... | yes refl | nothing | nothing =
+  checkElabV-RVar-bbc-id-failure-aux ctx (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] Y) err nothing eqLoc nothing eqImp with X ≟T Y
+  ... | yes refl =
         success Surface.zeroUsage (weakenFromEmpty (specId X)) 0 (NamedCtx.freshCounter ctx) , t-id-check eqLoc eqImp
-  ... | _ | _ | _ = failure (BuiltinTypeMismatch "id") , tt
+  ... | no _ = failure (BuiltinTypeMismatch "id") , tt
+  checkElabV-RVar-bbc-id-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] _) err nothing _ (just _) _ = failure (BuiltinTypeMismatch "id") , tt
+  checkElabV-RVar-bbc-id-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] _) err (just _) _ _ _ = failure (BuiltinTypeMismatch "id") , tt
   checkElabV-RVar-bbc-id-failure-aux ctx Unit err _ _ _ _ = failure err , tt
   checkElabV-RVar-bbc-id-failure-aux ctx Void err _ _ _ _ = failure err , tt
   checkElabV-RVar-bbc-id-failure-aux ctx Int err _ _ _ _ = failure err , tt
@@ -1847,6 +1843,66 @@ mutual
   checkElabV-RVar-bbc-arr-failure-aux ctx (Once.Type.μ-type _) err _ _ _ _ = failure err , tt
   checkElabV-RVar-bbc-arr-failure-aux ctx (Once.Type.ν-type _) err _ _ _ _ = failure err , tt
 
+  -- Per-bbc-X auxes: pattern-match on the verified inferElabV result
+  -- (Σ-pair). The success path uses t-embed of the witness; the
+  -- failure path delegates to bbc-X-failure-aux.
+  checkElabV-RVar-bbc-id-aux ctx T (success T' Ψ eE d fr , w) with T ≟T T'
+  ... | yes refl = success Ψ eE d fr , t-embed w
+  ... | no _     = failure (TypeMismatch T T') , tt
+  checkElabV-RVar-bbc-id-aux ctx T (failure err , _) =
+    checkElabV-RVar-bbc-id-failure-aux ctx T err _ refl _ refl
+
+  checkElabV-RVar-bbc-fst-aux ctx T (success T' Ψ eE d fr , w) with T ≟T T'
+  ... | yes refl = success Ψ eE d fr , t-embed w
+  ... | no _     = failure (TypeMismatch T T') , tt
+  checkElabV-RVar-bbc-fst-aux ctx T (failure err , _) =
+    checkElabV-RVar-bbc-fst-failure-aux ctx T err _ refl _ refl
+
+  checkElabV-RVar-bbc-snd-aux ctx T (success T' Ψ eE d fr , w) with T ≟T T'
+  ... | yes refl = success Ψ eE d fr , t-embed w
+  ... | no _     = failure (TypeMismatch T T') , tt
+  checkElabV-RVar-bbc-snd-aux ctx T (failure err , _) =
+    checkElabV-RVar-bbc-snd-failure-aux ctx T err _ refl _ refl
+
+  checkElabV-RVar-bbc-terminal-aux ctx T (success T' Ψ eE d fr , w) with T ≟T T'
+  ... | yes refl = success Ψ eE d fr , t-embed w
+  ... | no _     = failure (TypeMismatch T T') , tt
+  checkElabV-RVar-bbc-terminal-aux ctx T (failure err , _) =
+    checkElabV-RVar-bbc-terminal-failure-aux ctx T err _ refl _ refl
+
+  checkElabV-RVar-bbc-initial-aux ctx T (success T' Ψ eE d fr , w) with T ≟T T'
+  ... | yes refl = success Ψ eE d fr , t-embed w
+  ... | no _     = failure (TypeMismatch T T') , tt
+  checkElabV-RVar-bbc-initial-aux ctx T (failure err , _) =
+    checkElabV-RVar-bbc-initial-failure-aux ctx T err _ refl _ refl
+
+  checkElabV-RVar-bbc-inl-aux ctx T (success T' Ψ eE d fr , w) with T ≟T T'
+  ... | yes refl = success Ψ eE d fr , t-embed w
+  ... | no _     = failure (TypeMismatch T T') , tt
+  checkElabV-RVar-bbc-inl-aux ctx T (failure err , _) =
+    checkElabV-RVar-bbc-inl-failure-aux ctx T err _ refl _ refl
+
+  checkElabV-RVar-bbc-inr-aux ctx T (success T' Ψ eE d fr , w) with T ≟T T'
+  ... | yes refl = success Ψ eE d fr , t-embed w
+  ... | no _     = failure (TypeMismatch T T') , tt
+  checkElabV-RVar-bbc-inr-aux ctx T (failure err , _) =
+    checkElabV-RVar-bbc-inr-failure-aux ctx T err _ refl _ refl
+
+  checkElabV-RVar-bbc-arr-aux ctx T (success T' Ψ eE d fr , w) with T ≟T T'
+  ... | yes refl = success Ψ eE d fr , t-embed w
+  ... | no _     = failure (TypeMismatch T T') , tt
+  checkElabV-RVar-bbc-arr-aux ctx T (failure err , _) =
+    checkElabV-RVar-bbc-arr-failure-aux ctx T err _ refl _ refl
+
+  -- bbc-other: success-via-infer mirrors the others; failure goes
+  -- through lookupPoly fallback (still postulate-witnessed).
+  checkElabV-RVar-bbc-other-aux ctx x T (success T' Ψ eE d fr , w) with T ≟T T'
+  ... | yes refl = success Ψ eE d fr , t-embed w
+  ... | no _     = failure (TypeMismatch T T') , tt
+  checkElabV-RVar-bbc-other-aux ctx x T (failure err , _) with lookupPoly (NamedCtx.polys ctx) x
+  ... | nothing = failure err , tt
+  ... | just _  = success Surface.zeroUsage (Surface.poly x T) 0 (NamedCtx.freshCounter ctx) , bbc-other-poly-witness ctx x T
+
 ------------------------------------------------------------------------
 -- Plan 0.4 T0 Option B — projection wrappers.
 --
@@ -2030,6 +2086,14 @@ checkElab-fallback-RVar-unit {ctx} with Unit ≟T Unit
 -- penetrate). The lemmas are postulated for now and proved later via
 -- direct case-walks through checkElabV's body.
 postulate
+  -- Plan 0.4 T2: bbc-X RVar fallbacks. The aux extraction (Phase 3)
+  -- created the typed-by-construction handler, but layered with-helper
+  -- opacity persists. Discharging requires the lookup-view refactor
+  -- (LookupLocalView / LookupImportView datatypes that bundle the
+  -- equation into the constructor — analogous to AppHeadView), so the
+  -- failure-aux receives the eq as a constructor field instead of a
+  -- separate refl arg that doesn't survive external with-abstraction.
+  -- See plans/0.4-T2-failure-witness.md Phase 3 outcome.
   checkElab-fallback-RVar-id :
     ∀ {ctx : NamedCtx} (T : Type)
     → lookupLocal ctx "id" ≡ nothing
