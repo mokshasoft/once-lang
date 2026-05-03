@@ -735,6 +735,20 @@ mutual
   inferElabV : (ctx : NamedCtx) (e : RawExpr) → VerifiedInferResult ctx e
   checkElabV : (ctx : NamedCtx) (e : RawExpr) (T : Type) → VerifiedCheckResult ctx e T
   inferElabV-RApp-other : (ctx : NamedCtx) (f x : RawExpr) → VerifiedInferResult ctx (Raw.RApp f x)
+  -- Aux helpers that take the lookup result + equation as explicit args,
+  -- so external proofs can pattern-match on the Maybe and supply the eq
+  -- without `with...in` opacity.
+  inferElabV-RQualified-aux :
+    ∀ (ctx : NamedCtx) (name alias : String) (lhs : Maybe Type)
+    → lookupImport (NamedCtx.imports ctx) (alias ++ "." ++ name) ≡ lhs
+    → VerifiedInferResult ctx (Raw.RQualified name alias)
+  inferElabV-RVar-lookup-aux :
+    ∀ (ctx : NamedCtx) (x : String) → ¬ (x ≡ "unit")
+    → (locLhs : Maybe (∃[ A ] ∃[ Ψ ] (SExpr (NamedCtx.debruijn ctx) Ψ A)))
+    → lookupLocal ctx x ≡ locLhs
+    → (impLhs : Maybe Type)
+    → lookupImport (NamedCtx.imports ctx) x ≡ impLhs
+    → VerifiedInferResult ctx (Raw.RVar x)
 
   -- ===== inferElab =====
 
@@ -1017,18 +1031,12 @@ mutual
   -- dispatch).
   ----------------------------------------------------------------------
 
-  inferElabV ctx (Raw.RQualified name alias)
-    with lookupImport (NamedCtx.imports ctx) (alias ++ "." ++ name) in eq
-  ... | just ty  = success ty _ (Surface.sigOp name) 0 (NamedCtx.freshCounter ctx) , t-var-qualified eq
-  ... | nothing  = failure (UnboundQualified name alias) , tt
+  inferElabV ctx (Raw.RQualified name alias) =
+    inferElabV-RQualified-aux ctx name alias _ refl
 
   inferElabV ctx (Raw.RVar x) with StrProp._≟_ x "unit"
   ... | yes refl = success Unit _ Surface.unit 0 (NamedCtx.freshCounter ctx) , t-unit-var
-  ... | no ¬unit with lookupLocal ctx x in eq-loc
-  ...   | just (A , Ψ , se) = success A Ψ se 0 (NamedCtx.freshCounter ctx) , t-var-local ¬unit eq-loc
-  ...   | nothing with lookupImport (NamedCtx.imports ctx) x in eq-imp
-  ...     | just ty  = success ty _ (Surface.sigOp x) 0 (NamedCtx.freshCounter ctx) , t-var-import ¬unit eq-loc eq-imp
-  ...     | nothing  = failure (UnboundVariable x) , tt
+  ... | no ¬unit = inferElabV-RVar-lookup-aux ctx x ¬unit _ refl _ refl
 
   inferElabV ctx (Raw.RUnaryOp Raw.OpNeg e) with inferElabV ctx e
   ... | failure err , _                        = failure err , tt
@@ -1437,6 +1445,21 @@ mutual
             success (Unit Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B) _ (Surface.effApp fE xE) (df ⊔ dx) fx , t-effApp eqAH wF wX
   inferElabV-RApp-other ctx f x | nothing | success (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.One Once.Type.eff ] B) _ _ _ _ , _ = failure (NotFunction (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.One Once.Type.eff ] B)) , tt
   inferElabV-RApp-other ctx f x | nothing | success (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Zero Once.Type.eff ] B) _ _ _ _ , _ = failure (NotFunction (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Zero Once.Type.eff ] B)) , tt
+
+  -- Aux helper bodies (placed after all main mutual members so that the
+  -- `... | pat` continuations of inferElabV/checkElabV clauses don't
+  -- conflict with the aux's own clauses).
+  inferElabV-RQualified-aux ctx name alias (just ty) eq =
+    success ty _ (Surface.sigOp name) 0 (NamedCtx.freshCounter ctx) , t-var-qualified eq
+  inferElabV-RQualified-aux ctx name alias nothing _ =
+    failure (UnboundQualified name alias) , tt
+
+  inferElabV-RVar-lookup-aux ctx x ¬unit (just (A , Ψ , se)) eq-loc _ _ =
+    success A Ψ se 0 (NamedCtx.freshCounter ctx) , t-var-local ¬unit eq-loc
+  inferElabV-RVar-lookup-aux ctx x ¬unit nothing eq-loc (just ty) eq-imp =
+    success ty _ (Surface.sigOp x) 0 (NamedCtx.freshCounter ctx) , t-var-import ¬unit eq-loc eq-imp
+  inferElabV-RVar-lookup-aux ctx x ¬unit nothing eq-loc nothing eq-imp =
+    failure (UnboundVariable x) , tt
 
 ------------------------------------------------------------------------
 -- Plan 0.4 T0 Option B — projection wrappers.

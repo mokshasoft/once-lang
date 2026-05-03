@@ -33,7 +33,8 @@ open import Data.Integer using (ℤ)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (∃; ∃-syntax; _×_; _,_; proj₁; proj₂)
 open import Relation.Nullary using (yes; no)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; trans; sym)
+open import Data.String.Properties as StrProp using (_≟_)
 
 open import Once.Type as T using (Type; Unit; Int; Str; Void; Float; Buffer;
                                   _*_; _+_; _⇒[_]_; Quantity; _≤q_;
@@ -90,12 +91,21 @@ infer-complete-RVar-unit = _ , _ , _ , refl
 -- Single-lookup completeness: qualified imports, local vars, imports.
 ------------------------------------------------------------------------
 
-postulate
-  infer-complete-RQualified :
-    ∀ {ctx : NamedCtx} {name alias : String} {T : Type}
-    → lookupImport (NamedCtx.imports ctx) (alias ++ "." ++ name) ≡ just T
-    → ∃[ eE ] ∃[ d ] ∃[ f ]
-        inferElab ctx (RQualified name alias) ≡ success T zeroUsage eE d f
+infer-complete-RQualified :
+  ∀ {ctx : NamedCtx} {name alias : String} {T : Type}
+  → lookupImport (NamedCtx.imports ctx) (alias ++ "." ++ name) ≡ just T
+  → ∃[ eE ] ∃[ d ] ∃[ f ]
+      inferElab ctx (RQualified name alias) ≡ success T zeroUsage eE d f
+infer-complete-RQualified {ctx} {name} {alias} {T} eq =
+  _ , _ , _ , cong proj₁ (helper _ eq)
+  where
+    open Once.TypeCheck.Elaborate using (inferElabV-RQualified-aux)
+    helper : ∀ (lhs : Maybe Type)
+           → (eq' : lookupImport (NamedCtx.imports ctx) (alias ++ "." ++ name) ≡ lhs)
+           → inferElabV-RQualified-aux ctx name alias
+               (lookupImport (NamedCtx.imports ctx) (alias ++ "." ++ name)) refl
+             ≡ inferElabV-RQualified-aux ctx name alias lhs eq'
+    helper _ refl = refl
 
 ------------------------------------------------------------------------
 -- Sub-expression composition completeness.
@@ -270,24 +280,49 @@ infer-complete-RApp-apply {ctx} arg A eqArg
 -- Variable lookup (local / import)
 ------------------------------------------------------------------------
 
-postulate
-  infer-complete-RVar-local :
-    ∀ {ctx : NamedCtx} (x : String) {A : Type}
-      {Ψ : Surface.Usage (NamedCtx.size ctx)}
-      {eE' : SExpr (NamedCtx.debruijn ctx) Ψ A}
-    → ¬ (x ≡ "unit")
-    → lookupLocal ctx x ≡ just (A , Ψ , eE')
-    → ∃[ eE ] ∃[ d ] ∃[ f ]
-        inferElab ctx (RVar x) ≡ success A Ψ eE d f
+infer-complete-RVar-local :
+  ∀ {ctx : NamedCtx} (x : String) {A : Type}
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE' : SExpr (NamedCtx.debruijn ctx) Ψ A}
+  → ¬ (x ≡ "unit")
+  → lookupLocal ctx x ≡ just (A , Ψ , eE')
+  → ∃[ eE ] ∃[ d ] ∃[ f ]
+      inferElab ctx (RVar x) ≡ success A Ψ eE d f
+infer-complete-RVar-local {ctx} x {A} {Ψ} {eE'} ¬unit eqLoc
+  with StrProp._≟_ x "unit"
+... | yes refl = ⊥-elim (¬unit refl)
+... | no _     = _ , _ , _ , cong proj₁ (helper _ eqLoc)
+  where
+    open Once.TypeCheck.Elaborate using (inferElabV-RVar-lookup-aux)
+    helper : ∀ (lhs : Maybe (∃[ A' ] ∃[ Ψ' ] (SExpr (NamedCtx.debruijn ctx) Ψ' A')))
+           → (eq' : lookupLocal ctx x ≡ lhs)
+           → inferElabV-RVar-lookup-aux ctx x ¬unit (lookupLocal ctx x) refl _ refl
+             ≡ inferElabV-RVar-lookup-aux ctx x ¬unit lhs eq' _ refl
+    helper _ refl = refl
 
-postulate
-  infer-complete-RVar-import :
-    ∀ {ctx : NamedCtx} (x : String) {T : Type}
-    → ¬ (x ≡ "unit")
-    → lookupLocal ctx x ≡ nothing
-    → lookupImport (NamedCtx.imports ctx) x ≡ just T
-    → ∃[ eE ] ∃[ d ] ∃[ f ]
-        inferElab ctx (RVar x) ≡ success T zeroUsage eE d f
+infer-complete-RVar-import :
+  ∀ {ctx : NamedCtx} (x : String) {T : Type}
+  → ¬ (x ≡ "unit")
+  → lookupLocal ctx x ≡ nothing
+  → lookupImport (NamedCtx.imports ctx) x ≡ just T
+  → ∃[ eE ] ∃[ d ] ∃[ f ]
+      inferElab ctx (RVar x) ≡ success T zeroUsage eE d f
+infer-complete-RVar-import {ctx} x {T} ¬unit eqLoc eqImp
+  with StrProp._≟_ x "unit"
+... | yes refl = ⊥-elim (¬unit refl)
+... | no _     = _ , _ , _ , cong proj₁ (trans (helperLoc _ eqLoc) (helperImp _ eqImp))
+  where
+    open Once.TypeCheck.Elaborate using (inferElabV-RVar-lookup-aux)
+    helperLoc : ∀ (lhs : Maybe (∃[ A' ] ∃[ Ψ' ] (SExpr (NamedCtx.debruijn ctx) Ψ' A')))
+              → (eq' : lookupLocal ctx x ≡ lhs)
+              → inferElabV-RVar-lookup-aux ctx x ¬unit (lookupLocal ctx x) refl _ refl
+                ≡ inferElabV-RVar-lookup-aux ctx x ¬unit lhs eq' _ refl
+    helperLoc _ refl = refl
+    helperImp : ∀ (lhs : Maybe Type)
+              → (eq' : lookupImport (NamedCtx.imports ctx) x ≡ lhs)
+              → inferElabV-RVar-lookup-aux ctx x ¬unit nothing eqLoc (lookupImport (NamedCtx.imports ctx) x) refl
+                ≡ inferElabV-RVar-lookup-aux ctx x ¬unit nothing eqLoc lhs eq'
+    helperImp _ refl = refl
 
 ------------------------------------------------------------------------
 -- RBinOp (arithmetic and comparison)

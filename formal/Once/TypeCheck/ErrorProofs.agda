@@ -25,11 +25,12 @@
 module Once.TypeCheck.ErrorProofs where
 
 open import Data.String using (String; _++_)
+open import Data.String.Properties as StrProp using ()
 open import Data.Empty using (⊥; ⊥-elim)
 open import Relation.Nullary using (¬_; yes; no)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Product using (∃; ∃-syntax; _×_; _,_)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+open import Data.Product using (∃; ∃-syntax; _×_; _,_; proj₁)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
 
 open import Once.Type using (Type; Unit; Void; Int; Str)
 import Once.Type as T
@@ -49,6 +50,7 @@ open import Once.TypeCheck.Error
          ApplicationTypeMismatch; TypeMismatch;
          UnboundVariable; UnboundQualified)
 import Once.Surface.Syntax
+open import Once.Surface.Syntax as Surface using () renaming (Expr to SExpr)
 
 ------------------------------------------------------------------------
 -- Unconditional-failure paths (now trivial after refactor)
@@ -91,12 +93,24 @@ inl-check-Int : ∀ (ctx : NamedCtx) (arg : RawExpr) {err : TypeError}
                → checkElab ctx (Raw.RApp (Raw.RVar "inl") arg) Int ≡ failure err
                → err ≡ InlNeedsSumType
 inl-check-Int ctx arg refl = refl
-postulate
-  qualified-not-found-is-UnboundQualified :
-    ∀ (ctx : NamedCtx) (name alias : String) {err : TypeError}
-    → lookupImport (NamedCtx.imports ctx) (alias ++ "." ++ name) ≡ nothing
-    → inferElab ctx (RQualified name alias) ≡ failure err
-    → err ≡ UnboundQualified name alias
+qualified-not-found-is-UnboundQualified :
+  ∀ (ctx : NamedCtx) (name alias : String) {err : TypeError}
+  → lookupImport (NamedCtx.imports ctx) (alias ++ "." ++ name) ≡ nothing
+  → inferElab ctx (RQualified name alias) ≡ failure err
+  → err ≡ UnboundQualified name alias
+qualified-not-found-is-UnboundQualified ctx name alias eqLookup eqOuter =
+  go (trans (sym (cong proj₁ (helper _ eqLookup))) eqOuter)
+  where
+    open Once.TypeCheck.Elaborate using (inferElabV-RQualified-aux)
+    helper : ∀ (lhs : Maybe Type)
+           → (eq' : lookupImport (NamedCtx.imports ctx) (alias ++ "." ++ name) ≡ lhs)
+           → inferElabV-RQualified-aux ctx name alias
+               (lookupImport (NamedCtx.imports ctx) (alias ++ "." ++ name)) refl
+             ≡ inferElabV-RQualified-aux ctx name alias lhs eq'
+    helper _ refl = refl
+    go : ∀ {err} → failure (UnboundQualified name alias) ≡ failure err
+       → err ≡ UnboundQualified name alias
+    go refl = refl
 fst-non-pair-Unit : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr)
                       {Ψ' eE' d' f' err}
                     → inferElab ctx arg ≡ success Unit Ψ' eE' d' f'
@@ -220,15 +234,33 @@ case-branch-mismatch-is-CaseBranchMismatch ctx scrut xL eL xR eR A B C₁ C₂ e
 -- Variable lookup: unbound (neither "unit", local, nor import).
 ------------------------------------------------------------------------
 
-postulate
-  var-unbound-is-UnboundVariable :
-    ∀ (ctx : NamedCtx) (x : String)
-      {err : TypeError}
-    → ¬ (x ≡ "unit")
-    → lookupLocal ctx x ≡ nothing
-    → lookupImport (NamedCtx.imports ctx) x ≡ nothing
-    → inferElab ctx (Raw.RVar x) ≡ failure err
-    → err ≡ UnboundVariable x
+var-unbound-is-UnboundVariable :
+  ∀ (ctx : NamedCtx) (x : String)
+    {err : TypeError}
+  → ¬ (x ≡ "unit")
+  → lookupLocal ctx x ≡ nothing
+  → lookupImport (NamedCtx.imports ctx) x ≡ nothing
+  → inferElab ctx (Raw.RVar x) ≡ failure err
+  → err ≡ UnboundVariable x
+var-unbound-is-UnboundVariable ctx x ¬unit eqLoc eqImp eqOuter
+  with StrProp._≟_ x "unit"
+... | yes refl = ⊥-elim (¬unit refl)
+... | no _     = go (trans (sym (cong proj₁ (trans (helperLoc _ eqLoc) (helperImp _ eqImp)))) eqOuter)
+  where
+    open Once.TypeCheck.Elaborate using (inferElabV-RVar-lookup-aux)
+    helperLoc : ∀ (lhs : Maybe (∃[ A' ] ∃[ Ψ' ] (SExpr (NamedCtx.debruijn ctx) Ψ' A')))
+              → (eq' : lookupLocal ctx x ≡ lhs)
+              → inferElabV-RVar-lookup-aux ctx x ¬unit (lookupLocal ctx x) refl _ refl
+                ≡ inferElabV-RVar-lookup-aux ctx x ¬unit lhs eq' _ refl
+    helperLoc _ refl = refl
+    helperImp : ∀ (lhs : Maybe Type)
+              → (eq' : lookupImport (NamedCtx.imports ctx) x ≡ lhs)
+              → inferElabV-RVar-lookup-aux ctx x ¬unit nothing eqLoc (lookupImport (NamedCtx.imports ctx) x) refl
+                ≡ inferElabV-RVar-lookup-aux ctx x ¬unit nothing eqLoc lhs eq'
+    helperImp _ refl = refl
+    go : ∀ {err} → failure (UnboundVariable x) ≡ failure err
+       → err ≡ UnboundVariable x
+    go refl = refl
 check-RInt-type-mismatch :
   ∀ (ctx : NamedCtx) (n : _) (T : Type) {err : TypeError}
   → ¬ (T ≡ Int)
