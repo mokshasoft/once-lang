@@ -687,22 +687,10 @@ postulate
   -- Abstract success-case witnesses for the check-mode applied-
   -- builtin helpers. Don't reference the helpers in their types so they
   -- can be moved before the merged mutual block in the cleanup phase.
-  pair-applied-success-witness :
-    ∀ (ctx : NamedCtx) (pairHead arg : RawExpr) (T : Type)
-      {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    → ctx ⊢ᶜ Raw.RApp pairHead arg ∶ T ⨾ Ψ
   compose-applied-success-witness :
     ∀ (ctx : NamedCtx) (composeHead arg : RawExpr) (T : Type)
       {Ψ : Surface.Usage (NamedCtx.size ctx)}
     → ctx ⊢ᶜ Raw.RApp composeHead arg ∶ T ⨾ Ψ
-  curry-applied-success-witness :
-    ∀ (ctx : NamedCtx) (arg : RawExpr) (T : Type)
-      {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    → ctx ⊢ᶜ Raw.RApp (Raw.RVar "curry") arg ∶ T ⨾ Ψ
-  apply-applied-success-witness :
-    ∀ (ctx : NamedCtx) (arg : RawExpr) (T : Type)
-      {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    → ctx ⊢ᶜ Raw.RApp (Raw.RVar "apply") arg ∶ T ⨾ Ψ
 
 
 mutual
@@ -714,12 +702,15 @@ mutual
   -- Pair classifier helper (plan 0.6 Phase C.7 POC-2). Checks a
   -- 2-arg `pair f g` expression in check mode against the canonical
   -- `A ⇒[Many] (B * C)` shape.
-  checkPair : (ctx : NamedCtx) → (pairHead arg : RawExpr) → (T : Type) → CheckElabResult (NamedCtx.debruijn ctx) T
+  checkPair : (ctx : NamedCtx) → (pairHead arg : RawExpr) → (T : Type)
+            → VerifiedCheckResult ctx (Raw.RApp pairHead arg) T
   -- Compose / curry / apply classifier helpers (plan 0.6 Phase C.7
   -- POC-3).
   checkCompose : (ctx : NamedCtx) → (composeHead arg : RawExpr) → (T : Type) → CheckElabResult (NamedCtx.debruijn ctx) T
-  checkCurry : (ctx : NamedCtx) → (arg : RawExpr) → (T : Type) → CheckElabResult (NamedCtx.debruijn ctx) T
-  checkApply : (ctx : NamedCtx) → (arg : RawExpr) → (T : Type) → CheckElabResult (NamedCtx.debruijn ctx) T
+  checkCurry : (ctx : NamedCtx) → (arg : RawExpr) → (T : Type)
+             → VerifiedCheckResult ctx (Raw.RApp (Raw.RVar "curry") arg) T
+  checkApply : (ctx : NamedCtx) → (arg : RawExpr) → (T : Type)
+             → VerifiedCheckResult ctx (Raw.RApp (Raw.RVar "apply") arg) T
 
   -- Plan 0.4 T0 Option A: hoist the `ahv-other` (generic application)
   -- branch of `inferElab RApp` into its own top-level mutual member.
@@ -893,17 +884,18 @@ mutual
   -- `classifyAppHead f ≡ nothing` fails for the pair-applied shape.
   checkPair ctx (Raw.RApp (Raw.RVar "pair") f_inner) arg
             (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] (B Once.Type.* C))
-    with checkElab ctx f_inner (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)
-  ... | failure err = failure err
-  ... | success Ψf fE df frf with checkElab ctx arg (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C)
-  ...   | failure err = failure err
-  ...   | success Ψg gE dg frg =
-          success _
-            (Surface.app (Surface.app (weakenFromEmpty (specPair A B C)) fE) gE)
-            (suc (df Data.Nat.⊔ dg)) frg
+    with checkElabV ctx f_inner (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)
+  ... | failure err , _ = failure err , tt
+  ... | success Ψf fE df frf , wF
+        with checkElabV ctx arg (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C)
+  ...     | failure err , _ = failure err , tt
+  ...     | success Ψg gE dg frg , wG =
+            success _
+              (Surface.app (Surface.app (weakenFromEmpty (specPair A B C)) fE) gE)
+              (suc (df Data.Nat.⊔ dg)) frg , t-pair-check wF wG
   -- Any other shape falls through to failure. Consistent with
   -- ahv-inl's per-shape exhaustive enumeration pattern.
-  checkPair _ _ _ _ = failure (BuiltinTypeMismatch "pair")
+  checkPair _ _ _ _ = failure (BuiltinTypeMismatch "pair") , tt
 
   -- Plan 0.6 Phase C.7 POC-3 + 0.6.2 Phase 3b: bare `compose f g`
   -- check-mode. Expected `A ⇒[Many] C`. Primary path: infer g's type
@@ -953,20 +945,46 @@ mutual
   -- Plan 0.6 Phase C.7 POC-3: `curry f` check-mode.
   -- Expected `A ⇒[Many] (B ⇒[Many] C)`. Check f at `(A * B) ⇒[Many] C`.
   checkCurry ctx arg (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C))
-    with checkElab ctx arg ((A Once.Type.* B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C)
-  ... | failure err = failure err
-  ... | success Ψ argE d fr =
-        success _ (Surface.app (weakenFromEmpty (specCurry A B C)) argE) (suc d) fr
-  checkCurry _ _ _ = failure (BuiltinTypeMismatch "curry")
+    with checkElabV ctx arg ((A Once.Type.* B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C)
+  ... | failure err , _ = failure err , tt
+  ... | success Ψ argE d fr , w =
+        success _ (Surface.app (weakenFromEmpty (specCurry A B C)) argE) (suc d) fr , t-curry-check w
+  checkCurry _ _ _ = failure (BuiltinTypeMismatch "curry") , tt
 
   -- Plan 0.6 Phase C.7 POC-3: `apply p` check-mode.
   -- Check mode falls through to infer (apply's infer mode succeeds
   -- when p has pair-of-function type). Matches result against T.
-  checkApply ctx arg T with inferElab ctx (Raw.RApp (Raw.RVar "apply") arg)
-  ... | failure err = failure err
-  ... | success T' Ψ eE d fr with T ≟T T'
-  ...   | yes refl = success _ eE d fr
-  ...   | no _ = failure (TypeMismatch T T')
+  checkApply ctx arg T with inferElabV ctx arg
+  ... | failure err , _ = failure err , tt
+  ... | success ((A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) Once.Type.* A') Ψ argE d fr , w with A ≟T A'
+  ...   | no _ = failure (BuiltinTypeMismatch "apply") , tt
+  ...   | yes refl with T ≟T B
+  ...     | yes refl =
+            success _ (Surface.app (weakenFromEmpty (specApply A B)) argE) (suc d) fr , t-apply-check w
+  ...     | no _ = failure (TypeMismatch T B) , tt
+  checkApply ctx arg T | success Unit _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
+  checkApply ctx arg T | success Void _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
+  checkApply ctx arg T | success Int _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
+  checkApply ctx arg T | success Float _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
+  checkApply ctx arg T | success Str _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
+  checkApply ctx arg T | success Buffer _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
+  checkApply ctx arg T | success (_ Once.Type.+ _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
+  checkApply ctx arg T | success (_ Once.Type.⇒[ _ ] _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
+  checkApply ctx arg T | success (Unit Once.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
+  checkApply ctx arg T | success (Void Once.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
+  checkApply ctx arg T | success (Int Once.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
+  checkApply ctx arg T | success (Float Once.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
+  checkApply ctx arg T | success (Str Once.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
+  checkApply ctx arg T | success (Buffer Once.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
+  checkApply ctx arg T | success ((_ Once.Type.* _) Once.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
+  checkApply ctx arg T | success ((_ Once.Type.+ _) Once.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
+  checkApply ctx arg T | success ((_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Zero Once.Type.pure ] _) Once.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
+  checkApply ctx arg T | success ((_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.One Once.Type.pure ] _) Once.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
+  checkApply ctx arg T | success ((_ Once.Type.⇒[ Once.Type.mk-kind _ Once.Type.eff ] _) Once.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
+  checkApply ctx arg T | success ((Once.Type.μ-type _) Once.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
+  checkApply ctx arg T | success ((Once.Type.ν-type _) Once.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
+  checkApply ctx arg T | success (Once.Type.μ-type _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
+  checkApply ctx arg T | success (Once.Type.ν-type _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
 
   -- Body for the hoisted `ahv-other` (generic application) branch.
   inferElab-RApp-other ctx f x with asFun (inferElab ctx f)
@@ -1215,18 +1233,12 @@ mutual
   -- ahv-pair-applied / ahv-compose-applied / ahv-curry / ahv-apply:
   -- delegate to existing helpers, case-split on result, witness via
   -- abstract success-case postulate.
-  checkElabV ctx (Raw.RApp f arg) T | ahv-pair-applied with checkPair ctx f arg T
-  ...   | success Ψ eE d fr = success Ψ eE d fr , pair-applied-success-witness ctx f arg T
-  ...   | failure err = failure err , tt
+  checkElabV ctx (Raw.RApp f arg) T | ahv-pair-applied = checkPair ctx f arg T
   checkElabV ctx (Raw.RApp f arg) T | ahv-compose-applied with checkCompose ctx f arg T
   ...   | success Ψ eE d fr = success Ψ eE d fr , compose-applied-success-witness ctx f arg T
   ...   | failure err = failure err , tt
-  checkElabV ctx (Raw.RApp f arg) T | ahv-curry with checkCurry ctx arg T
-  ...   | success Ψ eE d fr = success Ψ eE d fr , curry-applied-success-witness ctx arg T
-  ...   | failure err = failure err , tt
-  checkElabV ctx (Raw.RApp f arg) T | ahv-apply with checkApply ctx arg T
-  ...   | success Ψ eE d fr = success Ψ eE d fr , apply-applied-success-witness ctx arg T
-  ...   | failure err = failure err , tt
+  checkElabV ctx (Raw.RApp f arg) T | ahv-curry = checkCurry ctx arg T
+  checkElabV ctx (Raw.RApp f arg) T | ahv-apply = checkApply ctx arg T
   -- ahv-other: try infer-then-match; on failure, arg-driven application.
   checkElabV ctx (Raw.RApp f arg) T | ahv-other with inferElabV ctx (Raw.RApp f arg)
   ...   | success T' Ψ eE d fr , w with T ≟T T'
@@ -1787,7 +1799,10 @@ checkElab-fallback-RApp-pair :
         ≡ success ((Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ₁))
                     Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ₂)) eE d fr)))
 checkElab-fallback-RApp-pair {ctx} f g A B C eq_f eq_g
-  rewrite eq_f | eq_g = _ , _ , _ , refl
+  with checkElabV ctx f (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) | eq_f
+... | success _ _ _ _ , _ | refl
+    with checkElabV ctx g (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C) | eq_g
+...   | success _ _ _ _ , _ | refl = _ , _ , _ , refl
 
 -- Plan 0.6 Phase C.7 POC-3: applied `compose f g` at `A ⇒[Many] C`.
 -- Takes the inferElab-success for g (fixes B) and checkElab-success
@@ -1822,7 +1837,8 @@ checkElab-fallback-RApp-curry :
                     (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C))
         ≡ success (Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ)) eE' d' f')))
 checkElab-fallback-RApp-curry {ctx} f A B C eq_f
-  rewrite eq_f = _ , _ , _ , refl
+  with checkElabV ctx f ((A Once.Type.* B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C) | eq_f
+... | success _ _ _ _ , _ | refl = _ , _ , _ , refl
 
 -- Plan 0.4 T0 (2026-04-30): applied `arr e` in check mode at
 -- `Eff A B`. The elaborator's ahv-arr check-mode path checks `e`
