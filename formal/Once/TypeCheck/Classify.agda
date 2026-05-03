@@ -164,19 +164,26 @@ lookupImport [] _ = nothing
 lookupImport ((n , ty) ∷ rest) x with StrProp._≟_ n x
 ... | yes _ = just ty
 ... | no  _ = lookupImport rest x
+-- | Local lookup walker. Top-level (not a where-helper inside
+-- lookupLocal) so external `with lookupLocal ctx x` aligns
+-- syntactically with the elaborator's internal `with lookupLocal ctx x
+-- in eq` — Agda would otherwise reduce lookupLocal's body via the
+-- where-helper, generating a different scrutinee shape that breaks
+-- with-abstraction unification.
+lookupLocal-go : ∀ {m} (x : String) (Γ : Ctx) (Δ' : SCtx m)
+               → Maybe (∃[ A ] ∃[ Ψ ] (SExpr Δ' Ψ A))
+lookupLocal-go x [] S∅ = nothing
+lookupLocal-go x [] (_ S, _ ^ _) = nothing
+lookupLocal-go x (_ ∷ _) S∅ = nothing
+lookupLocal-go {m = suc m'} x (b ∷ Γ') (Δ' S, B ^ _) with Data.String._≟_ x (name b)
+... | yes _ = just (B , _ , Surface.var zero)
+... | no _  with lookupLocal-go x Γ' Δ'
+...   | nothing        = nothing
+...   | just (A , Ψ , se) = just (A , _ , weaken se)
+
 lookupLocal : (ctx : NamedCtx) → String
             → Maybe (∃[ A ] ∃[ Ψ ] (SExpr (NamedCtx.debruijn ctx) Ψ A))
-lookupLocal (mkCtx n Γ Δ _ _ _) x = go Γ Δ
-  where
-    go : ∀ {m} → Ctx → (Δ' : SCtx m) → Maybe (∃[ A ] ∃[ Ψ ] (SExpr Δ' Ψ A))
-    go [] S∅                   = nothing
-    go [] (_ S, _ ^ _)         = nothing
-    go (_ ∷ _) S∅              = nothing
-    go {suc m} (b ∷ Γ') (Δ' S, B ^ _) with Data.String._≟_ x (name b)
-    ... | yes _ = just (B , _ , Surface.var zero)
-    ... | no _  with go Γ' Δ'
-    ...   | nothing        = nothing
-    ...   | just (A , Ψ , se) = just (A , _ , weaken se)
+lookupLocal ctx x = lookupLocal-go x (NamedCtx.named ctx) (NamedCtx.debruijn ctx)
 
 -- | Find a local variable's de Bruijn position and declared quantity.
 findLocalVarUsage : (ctx : NamedCtx) → String → Maybe (Fin (NamedCtx.size ctx) × Quantity)
