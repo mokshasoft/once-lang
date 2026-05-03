@@ -46,7 +46,10 @@ open import Once.TypeCheck.Elaborate
          success; failure; lookupLocal; lookupImport;
          inferElabV; checkElabV; _≟T_;
          classifyAppHead; classifyAppHeadView; ahv-other;
-         classifyAppHead-nothing⇒view-other; AppHeadView)
+         classifyAppHead-nothing⇒view-other; AppHeadView;
+         classifyBareBuiltin;
+         bbc-id; bbc-fst; bbc-snd; bbc-terminal; bbc-initial;
+         bbc-inl; bbc-inr; bbc-arr; bbc-other)
 open import Once.TypeCheck.Judgment
 
 open import Once.Surface.Syntax as Surface using (zeroUsage; _+ᵘ_; _*ᵘ_)
@@ -634,14 +637,59 @@ open Once.TypeCheck.Elaborate
 -- through), then discharges the `T ≟T T` guard. The proof is
 -- uniform across all specialised names because each specialised
 -- clause's lookup-success branch is identical in shape.
-postulate
-  checkElab-fallback-RVar :
-    ∀ {ctx : NamedCtx} (x : String) (T : Type)
-      {Ψ : Surface.Usage (NamedCtx.size ctx)}
-      {eE : _} {d f : ℕ}
-    → inferElab ctx (Raw.RVar x) ≡ success T Ψ eE d f
-    → ∃[ eE' ] ∃[ d' ] ∃[ f' ]
-        checkElab ctx (Raw.RVar x) T ≡ success Ψ eE' d' f'
+checkElab-fallback-RVar :
+  ∀ {ctx : NamedCtx} (x : String) (T : Type)
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : _} {d f : ℕ}
+  → inferElab ctx (Raw.RVar x) ≡ success T Ψ eE d f
+  → ∃[ eE' ] ∃[ d' ] ∃[ f' ]
+      checkElab ctx (Raw.RVar x) T ≡ success Ψ eE' d' f'
+checkElab-fallback-RVar {ctx} x T eqInf
+  with classifyBareBuiltin x
+... | bbc-id with inferElabV ctx (Raw.RVar x) | eqInf
+...   | success _ _ _ _ _ , _ | refl with T ≟T T
+...     | yes refl = _ , _ , _ , refl
+...     | no ¬eq   = ⊥-elim (¬eq refl)
+checkElab-fallback-RVar {ctx} x T eqInf
+    | bbc-fst with inferElabV ctx (Raw.RVar x) | eqInf
+...   | success _ _ _ _ _ , _ | refl with T ≟T T
+...     | yes refl = _ , _ , _ , refl
+...     | no ¬eq   = ⊥-elim (¬eq refl)
+checkElab-fallback-RVar {ctx} x T eqInf
+    | bbc-snd with inferElabV ctx (Raw.RVar x) | eqInf
+...   | success _ _ _ _ _ , _ | refl with T ≟T T
+...     | yes refl = _ , _ , _ , refl
+...     | no ¬eq   = ⊥-elim (¬eq refl)
+checkElab-fallback-RVar {ctx} x T eqInf
+    | bbc-terminal with inferElabV ctx (Raw.RVar x) | eqInf
+...   | success _ _ _ _ _ , _ | refl with T ≟T T
+...     | yes refl = _ , _ , _ , refl
+...     | no ¬eq   = ⊥-elim (¬eq refl)
+checkElab-fallback-RVar {ctx} x T eqInf
+    | bbc-initial with inferElabV ctx (Raw.RVar x) | eqInf
+...   | success _ _ _ _ _ , _ | refl with T ≟T T
+...     | yes refl = _ , _ , _ , refl
+...     | no ¬eq   = ⊥-elim (¬eq refl)
+checkElab-fallback-RVar {ctx} x T eqInf
+    | bbc-inl with inferElabV ctx (Raw.RVar x) | eqInf
+...   | success _ _ _ _ _ , _ | refl with T ≟T T
+...     | yes refl = _ , _ , _ , refl
+...     | no ¬eq   = ⊥-elim (¬eq refl)
+checkElab-fallback-RVar {ctx} x T eqInf
+    | bbc-inr with inferElabV ctx (Raw.RVar x) | eqInf
+...   | success _ _ _ _ _ , _ | refl with T ≟T T
+...     | yes refl = _ , _ , _ , refl
+...     | no ¬eq   = ⊥-elim (¬eq refl)
+checkElab-fallback-RVar {ctx} x T eqInf
+    | bbc-arr with inferElabV ctx (Raw.RVar x) | eqInf
+...   | success _ _ _ _ _ , _ | refl with T ≟T T
+...     | yes refl = _ , _ , _ , refl
+...     | no ¬eq   = ⊥-elim (¬eq refl)
+checkElab-fallback-RVar {ctx} x T eqInf
+    | bbc-other with inferElabV ctx (Raw.RVar x) | eqInf
+...   | success _ _ _ _ _ , _ | refl with T ≟T T
+...     | yes refl = _ , _ , _ , refl
+...     | no ¬eq   = ⊥-elim (¬eq refl)
 
 -- Plan 0.4 T0 (2026-04-30): completeness gaps for t-embed of
 -- t-arr-app-infer / t-apply-app-infer. The elaborator's check-mode
