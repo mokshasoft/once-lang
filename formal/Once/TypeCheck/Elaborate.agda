@@ -1739,18 +1739,20 @@ checkElab-fallback-RApp-curry {ctx} f A B C eq_f
 -- Plan 0.4 T0 (2026-04-30): applied `arr e` in check mode at
 -- `Eff A B`. The elaborator's ahv-arr check-mode path checks `e`
 -- at `A ⇒[Many] B`. Premise is checkElab evidence on `e`.
-postulate
-  checkElab-fallback-RApp-arr :
-    ∀ {ctx : NamedCtx} (e : RawExpr) (A B : Type)
-      {Ψ : Surface.Usage (NamedCtx.size ctx)}
-      {eE : SExpr (NamedCtx.debruijn ctx) Ψ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)}
-      {d fr : ℕ}
-    → checkElab ctx e (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)
-        ≡ success Ψ eE d fr
-    → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
-        checkElab ctx (Raw.RApp (Raw.RVar "arr") e)
-                      (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B)
-          ≡ success (Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ)) eE' d' f')))
+checkElab-fallback-RApp-arr :
+  ∀ {ctx : NamedCtx} (e : RawExpr) (A B : Type)
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)}
+    {d fr : ℕ}
+  → checkElab ctx e (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)
+      ≡ success Ψ eE d fr
+  → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
+      checkElab ctx (Raw.RApp (Raw.RVar "arr") e)
+                    (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B)
+        ≡ success (Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ)) eE' d' f')))
+checkElab-fallback-RApp-arr {ctx} e A B eqC
+  with checkElabV ctx e (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) | eqC
+... | success _ _ _ _ , _ | refl = _ , _ , _ , refl
 postulate
   checkElab-fallback-RApp-apply :
     ∀ {ctx : NamedCtx} (p : RawExpr) (A B : Type)
@@ -2193,33 +2195,45 @@ postulate
     → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ fr →
         checkElab ctx (Raw.RVar x) T
           ≡ success Surface.zeroUsage eE d fr)))
-postulate
-  checkElab-fallback-RApp-id :
-    ∀ {ctx : NamedCtx} (arg : RawExpr) (T : Type)
-      {Ψ : Surface.Usage (NamedCtx.size ctx)}
-      {eE : SExpr (NamedCtx.debruijn ctx) Ψ T}
-      {d f : ℕ}
-    → inferElab ctx (Raw.RApp (Raw.RVar "id") arg) ≡ success T Ψ eE d f
-    → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
-        checkElab ctx (Raw.RApp (Raw.RVar "id") arg) T ≡ success Ψ eE' d' f')))
-postulate
-  checkElab-fallback-RApp-fst :
-    ∀ {ctx : NamedCtx} (arg : RawExpr) (T : Type)
-      {Ψ : Surface.Usage (NamedCtx.size ctx)}
-      {eE : SExpr (NamedCtx.debruijn ctx) Ψ T}
-      {d f : ℕ}
-    → inferElab ctx (Raw.RApp (Raw.RVar "fst") arg) ≡ success T Ψ eE d f
-    → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
-        checkElab ctx (Raw.RApp (Raw.RVar "fst") arg) T ≡ success Ψ eE' d' f')))
-postulate
-  checkElab-fallback-RApp-snd :
-    ∀ {ctx : NamedCtx} (arg : RawExpr) (T : Type)
-      {Ψ : Surface.Usage (NamedCtx.size ctx)}
-      {eE : SExpr (NamedCtx.debruijn ctx) Ψ T}
-      {d f : ℕ}
-    → inferElab ctx (Raw.RApp (Raw.RVar "snd") arg) ≡ success T Ψ eE d f
-    → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
-        checkElab ctx (Raw.RApp (Raw.RVar "snd") arg) T ≡ success Ψ eE' d' f')))
+checkElab-fallback-RApp-id :
+  ∀ {ctx : NamedCtx} (arg : RawExpr) (T : Type)
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ T}
+    {d f : ℕ}
+  → inferElab ctx (Raw.RApp (Raw.RVar "id") arg) ≡ success T Ψ eE d f
+  → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
+      checkElab ctx (Raw.RApp (Raw.RVar "id") arg) T ≡ success Ψ eE' d' f')))
+checkElab-fallback-RApp-id {ctx} arg T eqInf
+  with inferElabV ctx (Raw.RApp (Raw.RVar "id") arg) | eqInf
+... | success T' _ _ _ _ , _ | refl with T ≟T T'
+...   | yes refl = _ , _ , _ , refl
+...   | no ¬eq   = ⊥-elim (¬eq refl)
+checkElab-fallback-RApp-fst :
+  ∀ {ctx : NamedCtx} (arg : RawExpr) (T : Type)
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ T}
+    {d f : ℕ}
+  → inferElab ctx (Raw.RApp (Raw.RVar "fst") arg) ≡ success T Ψ eE d f
+  → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
+      checkElab ctx (Raw.RApp (Raw.RVar "fst") arg) T ≡ success Ψ eE' d' f')))
+checkElab-fallback-RApp-fst {ctx} arg T eqInf
+  with inferElabV ctx (Raw.RApp (Raw.RVar "fst") arg) | eqInf
+... | success T' _ _ _ _ , _ | refl with T ≟T T'
+...   | yes refl = _ , _ , _ , refl
+...   | no ¬eq   = ⊥-elim (¬eq refl)
+checkElab-fallback-RApp-snd :
+  ∀ {ctx : NamedCtx} (arg : RawExpr) (T : Type)
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ T}
+    {d f : ℕ}
+  → inferElab ctx (Raw.RApp (Raw.RVar "snd") arg) ≡ success T Ψ eE d f
+  → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
+      checkElab ctx (Raw.RApp (Raw.RVar "snd") arg) T ≡ success Ψ eE' d' f')))
+checkElab-fallback-RApp-snd {ctx} arg T eqInf
+  with inferElabV ctx (Raw.RApp (Raw.RVar "snd") arg) | eqInf
+... | success T' _ _ _ _ , _ | refl with T ≟T T'
+...   | yes refl = _ , _ , _ , refl
+...   | no ¬eq   = ⊥-elim (¬eq refl)
 postulate
   checkElab-fallback-RApp-generic :
     ∀ {ctx : NamedCtx} (f x : RawExpr) (T : Type)
@@ -2230,15 +2244,19 @@ postulate
     → inferElab ctx (Raw.RApp f x) ≡ success T Ψ eE d f'
     → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f'' →
         checkElab ctx (Raw.RApp f x) T ≡ success Ψ eE' d' f'')))
-postulate
-  checkElab-fallback-RApp-terminal :
-    ∀ {ctx : NamedCtx} (arg : RawExpr) (T : Type)
-      {Ψ : Surface.Usage (NamedCtx.size ctx)}
-      {eE : SExpr (NamedCtx.debruijn ctx) Ψ T}
-      {d f : ℕ}
-    → inferElab ctx (Raw.RApp (Raw.RVar "terminal") arg) ≡ success T Ψ eE d f
-    → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
-        checkElab ctx (Raw.RApp (Raw.RVar "terminal") arg) T ≡ success Ψ eE' d' f')))
+checkElab-fallback-RApp-terminal :
+  ∀ {ctx : NamedCtx} (arg : RawExpr) (T : Type)
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ T}
+    {d f : ℕ}
+  → inferElab ctx (Raw.RApp (Raw.RVar "terminal") arg) ≡ success T Ψ eE d f
+  → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
+      checkElab ctx (Raw.RApp (Raw.RVar "terminal") arg) T ≡ success Ψ eE' d' f')))
+checkElab-fallback-RApp-terminal {ctx} arg T eqInf
+  with inferElabV ctx (Raw.RApp (Raw.RVar "terminal") arg) | eqInf
+... | success T' _ _ _ _ , _ | refl with T ≟T T'
+...   | yes refl = _ , _ , _ , refl
+...   | no ¬eq   = ⊥-elim (¬eq refl)
 checkElab-fallback-RBinOp :
   ∀ {ctx : NamedCtx} (op : Raw.BinOp) (e₁ e₂ : RawExpr) (T : Type)
     {Ψ : Surface.Usage (NamedCtx.size ctx)}
