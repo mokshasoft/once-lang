@@ -207,16 +207,21 @@ inferElab-eq-RUnit ctx = refl
 -- Int branch, we apply `t-neg` with `IH refl` (the IH is also
 -- rewritten, so `refl` now gives us the judgment for the sub). In
 -- every other branch, the outer `eq` is `failure ≡ success`, absurd.
-postulate
-  sound-RUnaryOp-neg :
-    ∀ (ctx : NamedCtx) (e : RawExpr)
-      {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
-      {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
-    → (IH : ∀ {A' Ψ' eE' d' f'}
-          → inferElab ctx e ≡ success A' Ψ' eE' d' f'
-          → ctx ⊢ e ∶ A' ⨾ Ψ')
-    → inferElab ctx (RUnaryOp OpNeg e) ≡ success A Ψ eE d f
-    → ctx ⊢ RUnaryOp OpNeg e ∶ A ⨾ Ψ
+sound-RUnaryOp-neg :
+  ∀ (ctx : NamedCtx) (e : RawExpr)
+    {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
+  → (IH : ∀ {A' Ψ' eE' d' f'}
+        → inferElab ctx e ≡ success A' Ψ' eE' d' f'
+        → ctx ⊢ e ∶ A' ⨾ Ψ')
+  → inferElab ctx (RUnaryOp OpNeg e) ≡ success A Ψ eE d f
+  → ctx ⊢ RUnaryOp OpNeg e ∶ A ⨾ Ψ
+sound-RUnaryOp-neg ctx e IH eq
+  with Once.TypeCheck.Elaborate.inferElabV ctx (RUnaryOp OpNeg e)
+... | success A' Ψ' eE' d' f' , w with eq
+...   | refl = w
+sound-RUnaryOp-neg ctx e IH eq | failure _ , _ with eq
+... | ()
 
 -- Soundness for RAnnot: the sub-expression must successfully check
 -- at the annotated type, and the result's type equals that annotation.
@@ -225,32 +230,42 @@ postulate
 -- but claimed to produce ⊢ᵢ — a direction mismatch that no real
 -- caller could satisfy. Body simplifies to drop the now-redundant
 -- t-embed.
-postulate
-  sound-RAnnot :
-    ∀ (ctx : NamedCtx) (e : RawExpr) (T : Type)
-      {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
-      {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
-    → (IH : ∀ {Ψ' eE' d' f'}
-          → checkElab ctx e T ≡ success Ψ' eE' d' f'
-          → ctx ⊢ᶜ e ∶ T ⨾ Ψ')
-    → inferElab ctx (RAnnot e T) ≡ success A Ψ eE d f
-    → ctx ⊢ RAnnot e T ∶ A ⨾ Ψ
+sound-RAnnot :
+  ∀ (ctx : NamedCtx) (e : RawExpr) (T : Type)
+    {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
+  → (IH : ∀ {Ψ' eE' d' f'}
+        → checkElab ctx e T ≡ success Ψ' eE' d' f'
+        → ctx ⊢ᶜ e ∶ T ⨾ Ψ')
+  → inferElab ctx (RAnnot e T) ≡ success A Ψ eE d f
+  → ctx ⊢ RAnnot e T ∶ A ⨾ Ψ
+sound-RAnnot ctx e T IH eq
+  with Once.TypeCheck.Elaborate.inferElabV ctx (RAnnot e T)
+... | success A' Ψ' eE' d' f' , w with eq
+...   | refl = w
+sound-RAnnot ctx e T IH eq | failure _ , _ with eq
+... | ()
 
 -- Soundness for RPair: both sub-expressions infer; the pair's type
 -- is the product, and its usage is the per-position sum.
-postulate
-  sound-RPair :
-    ∀ (ctx : NamedCtx) (a b : RawExpr)
-      {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
-      {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
-    → (IHa : ∀ {A' Ψ' eE' d' f'}
-           → inferElab ctx a ≡ success A' Ψ' eE' d' f'
-           → ctx ⊢ a ∶ A' ⨾ Ψ')
-    → (IHb : ∀ {B' Ψ' eE' d' f'}
-           → inferElab ctx b ≡ success B' Ψ' eE' d' f'
-           → ctx ⊢ b ∶ B' ⨾ Ψ')
-    → inferElab ctx (RPair a b) ≡ success A Ψ eE d f
-    → ctx ⊢ RPair a b ∶ A ⨾ Ψ
+sound-RPair :
+  ∀ (ctx : NamedCtx) (a b : RawExpr)
+    {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
+  → (IHa : ∀ {A' Ψ' eE' d' f'}
+         → inferElab ctx a ≡ success A' Ψ' eE' d' f'
+         → ctx ⊢ a ∶ A' ⨾ Ψ')
+  → (IHb : ∀ {B' Ψ' eE' d' f'}
+         → inferElab ctx b ≡ success B' Ψ' eE' d' f'
+         → ctx ⊢ b ∶ B' ⨾ Ψ')
+  → inferElab ctx (RPair a b) ≡ success A Ψ eE d f
+  → ctx ⊢ RPair a b ∶ A ⨾ Ψ
+sound-RPair ctx a b IHa IHb eq
+  with Once.TypeCheck.Elaborate.inferElabV ctx (RPair a b)
+... | success A' Ψ' eE' d' f' , w with eq
+...   | refl = w
+sound-RPair ctx a b IHa IHb eq | failure _ , _ with eq
+... | ()
 
 ------------------------------------------------------------------------
 -- Soundness for RQualified
@@ -267,13 +282,18 @@ LookupBundle xs q = ∃[ r ] lookupImport xs q ≡ r
 lookupBundle : ∀ xs q → LookupBundle xs q
 lookupBundle xs q = lookupImport xs q , refl
 
-postulate
-  sound-RQualified :
-    ∀ (ctx : NamedCtx) (name alias : _)
-      {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
-      {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
-    → inferElab ctx (RQualified name alias) ≡ success A Ψ eE d f
-    → ctx ⊢ RQualified name alias ∶ A ⨾ Ψ
+sound-RQualified :
+  ∀ (ctx : NamedCtx) (name alias : _)
+    {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
+  → inferElab ctx (RQualified name alias) ≡ success A Ψ eE d f
+  → ctx ⊢ RQualified name alias ∶ A ⨾ Ψ
+sound-RQualified ctx name alias eq
+  with Once.TypeCheck.Elaborate.inferElabV ctx (RQualified name alias)
+... | success A' Ψ' eE' d' f' , w with eq
+...   | refl = w
+sound-RQualified ctx name alias eq | failure _ , _ with eq
+... | ()
 
 ------------------------------------------------------------------------
 -- Soundness for RVar
@@ -301,13 +321,18 @@ UnitDecBundle x = ∃[ r ] Data.String.Properties._≟_ x "unit" ≡ r
 unitDecBundle : (x : _) → UnitDecBundle x
 unitDecBundle x = Data.String.Properties._≟_ x "unit" , refl
 
-postulate
-  sound-RVar :
-    ∀ (ctx : NamedCtx) (x : _)
-      {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
-      {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
-    → inferElab ctx (RVar x) ≡ success A Ψ eE d f
-    → ctx ⊢ RVar x ∶ A ⨾ Ψ
+sound-RVar :
+  ∀ (ctx : NamedCtx) (x : _)
+    {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
+  → inferElab ctx (RVar x) ≡ success A Ψ eE d f
+  → ctx ⊢ RVar x ∶ A ⨾ Ψ
+sound-RVar ctx x eq
+  with Once.TypeCheck.Elaborate.inferElabV ctx (RVar x)
+... | success A' Ψ' eE' d' f' , w with eq
+...   | refl = w
+sound-RVar ctx x eq | failure _ , _ with eq
+... | ()
 
 -- Plan 0.4 T0: bridge from inferElab failure on a concrete non-unit
 -- builtin name to both lookup failures. Used by check-mode bbc-X
@@ -331,13 +356,18 @@ postulate
 --   (2) On inferElab failure at T = A ⇒[Many] A (A=B) → t-id-check with
 --       lookup-failure premises derived from the inferElab failure.
 --   (3) Otherwise → elaborator failure, eq absurd.
-postulate
-  sound-check-RVar-id :
-    ∀ (ctx : NamedCtx) (T : Type)
-      {Ψ : Surface.Usage (NamedCtx.size ctx)}
-      {eE : SExpr (NamedCtx.debruijn ctx) Ψ T} {d f : ℕ}
-    → checkElab ctx (Raw.RVar "id") T ≡ success Ψ eE d f
-    → ctx ⊢ᶜ Raw.RVar "id" ∶ T ⨾ Ψ
+sound-check-RVar-id :
+  ∀ (ctx : NamedCtx) (T : Type)
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ T} {d f : ℕ}
+  → checkElab ctx (Raw.RVar "id") T ≡ success Ψ eE d f
+  → ctx ⊢ᶜ Raw.RVar "id" ∶ T ⨾ Ψ
+sound-check-RVar-id ctx T eq
+  with Once.TypeCheck.Elaborate.checkElabV ctx (Raw.RVar "id") T
+... | success Ψ' eE' d' fr' , w with eq
+...   | refl = w
+sound-check-RVar-id ctx T eq | failure _ , _ with eq
+... | ()
 
 -- `sound-RVar-unit` is now a specialisation; rewrite in terms of
 -- the generic `sound-RVar` for consistency.
@@ -366,19 +396,24 @@ sound-RVar-unit-generic ctx = sound-RVar ctx "unit"
 -- is concrete.
 ------------------------------------------------------------------------
 
-postulate
-  sound-RBinOp :
-    ∀ (ctx : NamedCtx) (op : BinOp) (e₁ e₂ : RawExpr)
-      {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
-      {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
-    → (IH₁ : ∀ {A' Ψ' eE' d' f'}
-           → inferElab ctx e₁ ≡ success A' Ψ' eE' d' f'
-           → ctx ⊢ e₁ ∶ A' ⨾ Ψ')
-    → (IH₂ : ∀ {B' Ψ' eE' d' f'}
-           → inferElab ctx e₂ ≡ success B' Ψ' eE' d' f'
-           → ctx ⊢ e₂ ∶ B' ⨾ Ψ')
-    → inferElab ctx (RBinOp op e₁ e₂) ≡ success A Ψ eE d f
-    → ctx ⊢ RBinOp op e₁ e₂ ∶ A ⨾ Ψ
+sound-RBinOp :
+  ∀ (ctx : NamedCtx) (op : BinOp) (e₁ e₂ : RawExpr)
+    {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
+  → (IH₁ : ∀ {A' Ψ' eE' d' f'}
+         → inferElab ctx e₁ ≡ success A' Ψ' eE' d' f'
+         → ctx ⊢ e₁ ∶ A' ⨾ Ψ')
+  → (IH₂ : ∀ {B' Ψ' eE' d' f'}
+         → inferElab ctx e₂ ≡ success B' Ψ' eE' d' f'
+         → ctx ⊢ e₂ ∶ B' ⨾ Ψ')
+  → inferElab ctx (RBinOp op e₁ e₂) ≡ success A Ψ eE d f
+  → ctx ⊢ RBinOp op e₁ e₂ ∶ A ⨾ Ψ
+sound-RBinOp ctx op e₁ e₂ IH₁ IH₂ eq
+  with Once.TypeCheck.Elaborate.inferElabV ctx (RBinOp op e₁ e₂)
+... | success A' Ψ' eE' d' f' , w with eq
+...   | refl = w
+sound-RBinOp ctx op e₁ e₂ IH₁ IH₂ eq | failure _ , _ with eq
+... | ()
 
 ------------------------------------------------------------------------
 -- Soundness for RLet
@@ -401,19 +436,24 @@ letBodyBundle : ∀ (ctx : NamedCtx) (x : _) (A : Type) (e₂ : RawExpr)
               → LetBodyBundle ctx x A e₂
 letBodyBundle ctx x A e₂ = inferElab (extendNamedCtx ctx x A) e₂ , refl
 
-postulate
-  sound-RLet :
-    ∀ (ctx : NamedCtx) (x : _) (e₁ e₂ : RawExpr)
-      {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
-      {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
-    → (IH₁ : ∀ {A' Ψ' eE' d' f'}
-           → inferElab ctx e₁ ≡ success A' Ψ' eE' d' f'
-           → ctx ⊢ e₁ ∶ A' ⨾ Ψ')
-    → (IH₂ : ∀ {Aty B' Ψ' eE' d' f'}
-           → inferElab (extendNamedCtx ctx x Aty) e₂ ≡ success B' Ψ' eE' d' f'
-           → (extendNamedCtx ctx x Aty) ⊢ e₂ ∶ B' ⨾ Ψ')
-    → inferElab ctx (RLet x e₁ e₂) ≡ success A Ψ eE d f
-    → ctx ⊢ RLet x e₁ e₂ ∶ A ⨾ Ψ
+sound-RLet :
+  ∀ (ctx : NamedCtx) (x : _) (e₁ e₂ : RawExpr)
+    {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
+  → (IH₁ : ∀ {A' Ψ' eE' d' f'}
+         → inferElab ctx e₁ ≡ success A' Ψ' eE' d' f'
+         → ctx ⊢ e₁ ∶ A' ⨾ Ψ')
+  → (IH₂ : ∀ {Aty B' Ψ' eE' d' f'}
+         → inferElab (extendNamedCtx ctx x Aty) e₂ ≡ success B' Ψ' eE' d' f'
+         → (extendNamedCtx ctx x Aty) ⊢ e₂ ∶ B' ⨾ Ψ')
+  → inferElab ctx (RLet x e₁ e₂) ≡ success A Ψ eE d f
+  → ctx ⊢ RLet x e₁ e₂ ∶ A ⨾ Ψ
+sound-RLet ctx x e₁ e₂ IH₁ IH₂ eq
+  with Once.TypeCheck.Elaborate.inferElabV ctx (RLet x e₁ e₂)
+... | success A' Ψ' eE' d' f' , w with eq
+...   | refl = w
+sound-RLet ctx x e₁ e₂ IH₁ IH₂ eq | failure _ , _ with eq
+... | ()
 
 ------------------------------------------------------------------------
 -- Soundness for RDestruct (case / sum elimination)
@@ -445,23 +485,28 @@ TyEqBundle A B = ∃[ r ] Once.TypeCheck.Elaborate._≟T_ A B ≡ r
 tyEqBundle : (A B : Type) → TyEqBundle A B
 tyEqBundle A B = Once.TypeCheck.Elaborate._≟T_ A B , refl
 
-postulate
-  sound-RDestruct :
-    ∀ (ctx : NamedCtx) (scrut : RawExpr) (xL : _) (eL : RawExpr)
-      (xR : _) (eR : RawExpr)
-      {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
-      {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
-    → (IHs : ∀ {T' Ψ' eE' d' f'}
-           → inferElab ctx scrut ≡ success T' Ψ' eE' d' f'
-           → ctx ⊢ scrut ∶ T' ⨾ Ψ')
-    → (IHL : ∀ {Aty B' Ψ' eE' d' f'}
-           → inferElab (extendNamedCtx ctx xL Aty) eL ≡ success B' Ψ' eE' d' f'
-           → (extendNamedCtx ctx xL Aty) ⊢ eL ∶ B' ⨾ Ψ')
-    → (IHR : ∀ {Bty C' Ψ' eE' d' f'}
-           → inferElab (extendNamedCtx ctx xR Bty) eR ≡ success C' Ψ' eE' d' f'
-           → (extendNamedCtx ctx xR Bty) ⊢ eR ∶ C' ⨾ Ψ')
-    → inferElab ctx (RDestruct scrut xL eL xR eR) ≡ success A Ψ eE d f
-    → ctx ⊢ RDestruct scrut xL eL xR eR ∶ A ⨾ Ψ
+sound-RDestruct :
+  ∀ (ctx : NamedCtx) (scrut : RawExpr) (xL : _) (eL : RawExpr)
+    (xR : _) (eR : RawExpr)
+    {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
+  → (IHs : ∀ {T' Ψ' eE' d' f'}
+         → inferElab ctx scrut ≡ success T' Ψ' eE' d' f'
+         → ctx ⊢ scrut ∶ T' ⨾ Ψ')
+  → (IHL : ∀ {Aty B' Ψ' eE' d' f'}
+         → inferElab (extendNamedCtx ctx xL Aty) eL ≡ success B' Ψ' eE' d' f'
+         → (extendNamedCtx ctx xL Aty) ⊢ eL ∶ B' ⨾ Ψ')
+  → (IHR : ∀ {Bty C' Ψ' eE' d' f'}
+         → inferElab (extendNamedCtx ctx xR Bty) eR ≡ success C' Ψ' eE' d' f'
+         → (extendNamedCtx ctx xR Bty) ⊢ eR ∶ C' ⨾ Ψ')
+  → inferElab ctx (RDestruct scrut xL eL xR eR) ≡ success A Ψ eE d f
+  → ctx ⊢ RDestruct scrut xL eL xR eR ∶ A ⨾ Ψ
+sound-RDestruct ctx scrut xL eL xR eR IHs IHL IHR eq
+  with Once.TypeCheck.Elaborate.inferElabV ctx (RDestruct scrut xL eL xR eR)
+... | success A' Ψ' eE' d' f' , w with eq
+...   | refl = w
+sound-RDestruct ctx scrut xL eL xR eR IHs IHL IHR eq | failure _ , _ with eq
+... | ()
 
 ------------------------------------------------------------------------
 -- Soundness for RLam in CHECK mode
@@ -496,18 +541,23 @@ LeqBundle q' q = ∃[ r ] Once.TypeCheck.Elaborate.decideLeq q' q ≡ r
 leqBundle : (q' q : Quantity) → LeqBundle q' q
 leqBundle q' q = Once.TypeCheck.Elaborate.decideLeq q' q , refl
 
-postulate
-  sound-check-RLam :
-    ∀ (ctx : NamedCtx) (x : _) (body : RawExpr)
-      (A : Type) (q : Quantity) (B : Type)
-      {Ψ : Surface.Usage (NamedCtx.size ctx)}
-      {eE : SExpr (NamedCtx.debruijn ctx) Ψ (A T.⇒[ T.mk-kind q T.pure ] B)}
-      {d f : ℕ}
-    → (IH : ∀ {Ψ' eE' d' f'}
-          → checkElab (extendNamedCtx ctx x A) body B ≡ success Ψ' eE' d' f'
-          → (extendNamedCtx ctx x A) ⊢ᶜ body ∶ B ⨾ Ψ')
-    → checkElab ctx (RLam x body) (A T.⇒[ T.mk-kind q T.pure ] B) ≡ success Ψ eE d f
-    → ctx ⊢ᶜ RLam x body ∶ (A T.⇒[ T.mk-kind q T.pure ] B) ⨾ Ψ
+sound-check-RLam :
+  ∀ (ctx : NamedCtx) (x : _) (body : RawExpr)
+    (A : Type) (q : Quantity) (B : Type)
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ (A T.⇒[ T.mk-kind q T.pure ] B)}
+    {d f : ℕ}
+  → (IH : ∀ {Ψ' eE' d' f'}
+        → checkElab (extendNamedCtx ctx x A) body B ≡ success Ψ' eE' d' f'
+        → (extendNamedCtx ctx x A) ⊢ᶜ body ∶ B ⨾ Ψ')
+  → checkElab ctx (RLam x body) (A T.⇒[ T.mk-kind q T.pure ] B) ≡ success Ψ eE d f
+  → ctx ⊢ᶜ RLam x body ∶ (A T.⇒[ T.mk-kind q T.pure ] B) ⨾ Ψ
+sound-check-RLam ctx x body A q B IH eq
+  with Once.TypeCheck.Elaborate.checkElabV ctx (RLam x body) (A T.⇒[ T.mk-kind q T.pure ] B)
+... | success Ψ' eE' d' fr' , w with eq
+...   | refl = w
+sound-check-RLam ctx x body A q B IH eq | failure _ , _ with eq
+... | ()
 
 ------------------------------------------------------------------------
 -- Soundness for RApp polymorphic-builtin specialisations
@@ -521,78 +571,108 @@ postulate
 ------------------------------------------------------------------------
 
 -- id applied: the argument can have any type, result has the same type.
-postulate
-  sound-RApp-id :
-    ∀ (ctx : NamedCtx) (arg : RawExpr)
-      {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
-      {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
-    → (IH : ∀ {A' Ψ' eE' d' f'}
-          → inferElab ctx arg ≡ success A' Ψ' eE' d' f'
-          → ctx ⊢ arg ∶ A' ⨾ Ψ')
-    → inferElab ctx (RApp (RVar "id") arg) ≡ success A Ψ eE d f
-    → ctx ⊢ RApp (RVar "id") arg ∶ A ⨾ Ψ
+sound-RApp-id :
+  ∀ (ctx : NamedCtx) (arg : RawExpr)
+    {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
+  → (IH : ∀ {A' Ψ' eE' d' f'}
+        → inferElab ctx arg ≡ success A' Ψ' eE' d' f'
+        → ctx ⊢ arg ∶ A' ⨾ Ψ')
+  → inferElab ctx (RApp (RVar "id") arg) ≡ success A Ψ eE d f
+  → ctx ⊢ RApp (RVar "id") arg ∶ A ⨾ Ψ
+sound-RApp-id ctx arg IH eq
+  with Once.TypeCheck.Elaborate.inferElabV ctx (RApp (RVar "id") arg)
+... | success A' Ψ' eE' d' f' , w with eq
+...   | refl = w
+sound-RApp-id ctx arg IH eq | failure _ , _ with eq
+... | ()
 
 -- terminal applied: any-typed argument, Unit result.
-postulate
-  sound-RApp-terminal :
-    ∀ (ctx : NamedCtx) (arg : RawExpr)
-      {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
-      {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
-    → (IH : ∀ {A' Ψ' eE' d' f'}
-          → inferElab ctx arg ≡ success A' Ψ' eE' d' f'
-          → ctx ⊢ arg ∶ A' ⨾ Ψ')
-    → inferElab ctx (RApp (RVar "terminal") arg) ≡ success A Ψ eE d f
-    → ctx ⊢ RApp (RVar "terminal") arg ∶ A ⨾ Ψ
+sound-RApp-terminal :
+  ∀ (ctx : NamedCtx) (arg : RawExpr)
+    {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
+  → (IH : ∀ {A' Ψ' eE' d' f'}
+        → inferElab ctx arg ≡ success A' Ψ' eE' d' f'
+        → ctx ⊢ arg ∶ A' ⨾ Ψ')
+  → inferElab ctx (RApp (RVar "terminal") arg) ≡ success A Ψ eE d f
+  → ctx ⊢ RApp (RVar "terminal") arg ∶ A ⨾ Ψ
+sound-RApp-terminal ctx arg IH eq
+  with Once.TypeCheck.Elaborate.inferElabV ctx (RApp (RVar "terminal") arg)
+... | success A' Ψ' eE' d' f' , w with eq
+...   | refl = w
+sound-RApp-terminal ctx arg IH eq | failure _ , _ with eq
+... | ()
 
 -- fst applied: argument must have product type.
-postulate
-  sound-RApp-fst :
-    ∀ (ctx : NamedCtx) (arg : RawExpr)
-      {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
-      {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
-    → (IH : ∀ {A' Ψ' eE' d' f'}
-          → inferElab ctx arg ≡ success A' Ψ' eE' d' f'
-          → ctx ⊢ arg ∶ A' ⨾ Ψ')
-    → inferElab ctx (RApp (RVar "fst") arg) ≡ success A Ψ eE d f
-    → ctx ⊢ RApp (RVar "fst") arg ∶ A ⨾ Ψ
+sound-RApp-fst :
+  ∀ (ctx : NamedCtx) (arg : RawExpr)
+    {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
+  → (IH : ∀ {A' Ψ' eE' d' f'}
+        → inferElab ctx arg ≡ success A' Ψ' eE' d' f'
+        → ctx ⊢ arg ∶ A' ⨾ Ψ')
+  → inferElab ctx (RApp (RVar "fst") arg) ≡ success A Ψ eE d f
+  → ctx ⊢ RApp (RVar "fst") arg ∶ A ⨾ Ψ
+sound-RApp-fst ctx arg IH eq
+  with Once.TypeCheck.Elaborate.inferElabV ctx (RApp (RVar "fst") arg)
+... | success A' Ψ' eE' d' f' , w with eq
+...   | refl = w
+sound-RApp-fst ctx arg IH eq | failure _ , _ with eq
+... | ()
 
 -- snd applied: same structure as fst.
-postulate
-  sound-RApp-snd :
-    ∀ (ctx : NamedCtx) (arg : RawExpr)
-      {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
-      {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
-    → (IH : ∀ {A' Ψ' eE' d' f'}
-          → inferElab ctx arg ≡ success A' Ψ' eE' d' f'
-          → ctx ⊢ arg ∶ A' ⨾ Ψ')
-    → inferElab ctx (RApp (RVar "snd") arg) ≡ success A Ψ eE d f
-    → ctx ⊢ RApp (RVar "snd") arg ∶ A ⨾ Ψ
+sound-RApp-snd :
+  ∀ (ctx : NamedCtx) (arg : RawExpr)
+    {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
+  → (IH : ∀ {A' Ψ' eE' d' f'}
+        → inferElab ctx arg ≡ success A' Ψ' eE' d' f'
+        → ctx ⊢ arg ∶ A' ⨾ Ψ')
+  → inferElab ctx (RApp (RVar "snd") arg) ≡ success A Ψ eE d f
+  → ctx ⊢ RApp (RVar "snd") arg ∶ A ⨾ Ψ
+sound-RApp-snd ctx arg IH eq
+  with Once.TypeCheck.Elaborate.inferElabV ctx (RApp (RVar "snd") arg)
+... | success A' Ψ' eE' d' f' , w with eq
+...   | refl = w
+sound-RApp-snd ctx arg IH eq | failure _ , _ with eq
+... | ()
 
 -- arr applied: argument must be `A ⇒[Many] B`.
 -- Plan 0.4 T0 (2026-04-30): closes spec-gap-arr-app-infer.
-postulate
-  sound-RApp-arr :
-    ∀ (ctx : NamedCtx) (arg : RawExpr)
-      {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
-      {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
-    → (IH : ∀ {A' Ψ' eE' d' f'}
-          → inferElab ctx arg ≡ success A' Ψ' eE' d' f'
-          → ctx ⊢ arg ∶ A' ⨾ Ψ')
-    → inferElab ctx (RApp (RVar "arr") arg) ≡ success A Ψ eE d f
-    → ctx ⊢ RApp (RVar "arr") arg ∶ A ⨾ Ψ
+sound-RApp-arr :
+  ∀ (ctx : NamedCtx) (arg : RawExpr)
+    {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
+  → (IH : ∀ {A' Ψ' eE' d' f'}
+        → inferElab ctx arg ≡ success A' Ψ' eE' d' f'
+        → ctx ⊢ arg ∶ A' ⨾ Ψ')
+  → inferElab ctx (RApp (RVar "arr") arg) ≡ success A Ψ eE d f
+  → ctx ⊢ RApp (RVar "arr") arg ∶ A ⨾ Ψ
+sound-RApp-arr ctx arg IH eq
+  with Once.TypeCheck.Elaborate.inferElabV ctx (RApp (RVar "arr") arg)
+... | success A' Ψ' eE' d' f' , w with eq
+...   | refl = w
+sound-RApp-arr ctx arg IH eq | failure _ , _ with eq
+... | ()
 
 -- apply applied: argument must be `(A ⇒[Many] B) * A`.
 -- Plan 0.4 T0 (2026-04-30): closes spec-gap-apply-app-infer.
-postulate
-  sound-RApp-apply :
-    ∀ (ctx : NamedCtx) (arg : RawExpr)
-      {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
-      {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
-    → (IH : ∀ {A' Ψ' eE' d' f'}
-          → inferElab ctx arg ≡ success A' Ψ' eE' d' f'
-          → ctx ⊢ arg ∶ A' ⨾ Ψ')
-    → inferElab ctx (RApp (RVar "apply") arg) ≡ success A Ψ eE d f
-    → ctx ⊢ RApp (RVar "apply") arg ∶ A ⨾ Ψ
+sound-RApp-apply :
+  ∀ (ctx : NamedCtx) (arg : RawExpr)
+    {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
+  → (IH : ∀ {A' Ψ' eE' d' f'}
+        → inferElab ctx arg ≡ success A' Ψ' eE' d' f'
+        → ctx ⊢ arg ∶ A' ⨾ Ψ')
+  → inferElab ctx (RApp (RVar "apply") arg) ≡ success A Ψ eE d f
+  → ctx ⊢ RApp (RVar "apply") arg ∶ A ⨾ Ψ
+sound-RApp-apply ctx arg IH eq
+  with Once.TypeCheck.Elaborate.inferElabV ctx (RApp (RVar "apply") arg)
+... | success A' Ψ' eE' d' f' , w with eq
+...   | refl = w
+sound-RApp-apply ctx arg IH eq | failure _ , _ with eq
+... | ()
 
 ------------------------------------------------------------------------
 -- Soundness for generic RApp
@@ -619,20 +699,25 @@ postulate
 -- and produces `⊢ᶜ x ∶ A'`. The proof scrutinizes `checkElab ctx x Af`
 -- via `checkBundle` instead of the old `inferBundle ctx x` +
 -- `tyEqBundle Af Ax` pair.
-postulate
-  sound-RApp-generic :
-    ∀ (ctx : NamedCtx) (f x : RawExpr)
-      {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
-      {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d fresh : ℕ}
-    → Once.TypeCheck.Elaborate.classifyAppHead f ≡ nothing
-    → (IH_f : ∀ {F' Ψ' eE' d' f'}
-           → inferElab ctx f ≡ success F' Ψ' eE' d' f'
-           → ctx ⊢ f ∶ F' ⨾ Ψ')
-    → (IH_x : ∀ {A' Ψ' eE' d' f'}
-           → checkElab ctx x A' ≡ success Ψ' eE' d' f'
-           → ctx ⊢ᶜ x ∶ A' ⨾ Ψ')
-    → inferElab ctx (RApp f x) ≡ success A Ψ eE d fresh
-    → ctx ⊢ RApp f x ∶ A ⨾ Ψ
+sound-RApp-generic :
+  ∀ (ctx : NamedCtx) (f x : RawExpr)
+    {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d fresh : ℕ}
+  → Once.TypeCheck.Elaborate.classifyAppHead f ≡ nothing
+  → (IH_f : ∀ {F' Ψ' eE' d' f'}
+         → inferElab ctx f ≡ success F' Ψ' eE' d' f'
+         → ctx ⊢ f ∶ F' ⨾ Ψ')
+  → (IH_x : ∀ {A' Ψ' eE' d' f'}
+         → checkElab ctx x A' ≡ success Ψ' eE' d' f'
+         → ctx ⊢ᶜ x ∶ A' ⨾ Ψ')
+  → inferElab ctx (RApp f x) ≡ success A Ψ eE d fresh
+  → ctx ⊢ RApp f x ∶ A ⨾ Ψ
+sound-RApp-generic ctx f x _ IH_f IH_x eq
+  with Once.TypeCheck.Elaborate.inferElabV ctx (RApp f x)
+... | success A' Ψ' eE' d' f' , w with eq
+...   | refl = w
+sound-RApp-generic ctx f x _ IH_f IH_x eq | failure _ , _ with eq
+... | ()
 
 ------------------------------------------------------------------------
 -- Plan 0.4 T0 — Top-level soundness theorems.
