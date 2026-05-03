@@ -291,20 +291,20 @@ record VerifiedTypeChecker : Set₁ where
       → tcInfer ctx (RApp (RVar "fst") arg) ≡ failure err
       → err ≡ FstNeedsPair
 
-    -- Negation with Unit / Str argument → NegationNotInt
+    -- Negation with non-Int argument → TypeMismatch Int <type>
     tc-err-neg-non-Int-Unit :
       ∀ (ctx : NamedCtx) (e : RawExpr)
         {Ψ' eE' d' f' err}
       → tcInfer ctx e ≡ success Once.Type.Unit Ψ' eE' d' f'
       → tcInfer ctx (RUnaryOp OpNeg e) ≡ failure err
-      → err ≡ NegationNotInt
+      → err ≡ TypeMismatch Once.Type.Int Once.Type.Unit
 
     tc-err-neg-non-Int-Str :
       ∀ (ctx : NamedCtx) (e : RawExpr)
         {Ψ' eE' d' f' err}
       → tcInfer ctx e ≡ success Once.Type.Str Ψ' eE' d' f'
       → tcInfer ctx (RUnaryOp OpNeg e) ≡ failure err
-      → err ≡ NegationNotInt
+      → err ≡ TypeMismatch Once.Type.Int Once.Type.Str
 
     -- Bare-name variable that is not "unit" and not in local/import scope.
     tc-err-var-unbound :
@@ -460,7 +460,7 @@ record VerifiedTypeChecker : Set₁ where
         {Ψ' eE' d' f' err}
       → tcInfer ctx e ≡ success Once.Type.Void Ψ' eE' d' f'
       → tcInfer ctx (RUnaryOp OpNeg e) ≡ failure err
-      → err ≡ NegationNotInt
+      → err ≡ TypeMismatch Once.Type.Int Once.Type.Void
 
     tc-err-case-scrut-Void :
       ∀ (ctx : NamedCtx) (scrut : RawExpr) (xL : String) (eL : RawExpr)
@@ -495,7 +495,7 @@ record VerifiedTypeChecker : Set₁ where
       ∀ (ctx : NamedCtx) (e : RawExpr) {Ψ' eE' d' f' err}
       → tcInfer ctx e ≡ success Once.Type.Float Ψ' eE' d' f'
       → tcInfer ctx (RUnaryOp OpNeg e) ≡ failure err
-      → err ≡ NegationNotInt
+      → err ≡ TypeMismatch Once.Type.Int Once.Type.Float
 
     tc-err-case-scrut-Float :
       ∀ (ctx : NamedCtx) (scrut : RawExpr) (xL : String) (eL : RawExpr)

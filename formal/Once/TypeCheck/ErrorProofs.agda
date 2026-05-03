@@ -133,18 +133,25 @@ snd-non-pair-Int ctx arg eqInner eqOuter
   with inferElabV ctx arg | eqInner
 ... | success Int _ _ _ _ , _ | refl with eqOuter
 ...   | refl = refl
-postulate
-  neg-non-Int-Unit : ∀ (ctx : NamedCtx) (e : Raw.RawExpr)
-                       {Ψ' eE' d' f' err}
-                     → inferElab ctx e ≡ success Unit Ψ' eE' d' f'
-                     → inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ failure err
-                     → err ≡ NegationNotInt
-postulate
-  neg-non-Int-Str : ∀ (ctx : NamedCtx) (e : Raw.RawExpr)
-                      {Ψ' eE' d' f' err}
-                    → inferElab ctx e ≡ success Str Ψ' eE' d' f'
-                    → inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ failure err
-                    → err ≡ NegationNotInt
+neg-non-Int-Unit : ∀ (ctx : NamedCtx) (e : Raw.RawExpr)
+                     {Ψ' eE' d' f' err}
+                   → inferElab ctx e ≡ success Unit Ψ' eE' d' f'
+                   → inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ failure err
+                   → err ≡ TypeMismatch Int Unit
+neg-non-Int-Unit ctx e eqInner eqOuter
+  with inferElabV ctx e | eqInner
+... | success Unit _ _ _ _ , _ | refl with eqOuter
+...   | refl = refl
+
+neg-non-Int-Str : ∀ (ctx : NamedCtx) (e : Raw.RawExpr)
+                    {Ψ' eE' d' f' err}
+                  → inferElab ctx e ≡ success Str Ψ' eE' d' f'
+                  → inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ failure err
+                  → err ≡ TypeMismatch Int Str
+neg-non-Int-Str ctx e eqInner eqOuter
+  with inferElabV ctx e | eqInner
+... | success Str _ _ _ _ , _ | refl with eqOuter
+...   | refl = refl
 case-scrut-Unit : ∀ (ctx : NamedCtx) (scrut : Raw.RawExpr)
                     (xL : String) (eL : Raw.RawExpr)
                     (xR : String) (eR : Raw.RawExpr)
@@ -336,12 +343,15 @@ snd-non-pair-Str ctx arg eqInner eqOuter
   with inferElabV ctx arg | eqInner
 ... | success Str _ _ _ _ , _ | refl with eqOuter
 ...   | refl = refl
-postulate
-  neg-non-Int-Void : ∀ (ctx : NamedCtx) (e : Raw.RawExpr)
-                      {Ψ' eE' d' f' err}
-                    → inferElab ctx e ≡ success Void Ψ' eE' d' f'
-                    → inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ failure err
-                    → err ≡ NegationNotInt
+neg-non-Int-Void : ∀ (ctx : NamedCtx) (e : Raw.RawExpr)
+                    {Ψ' eE' d' f' err}
+                  → inferElab ctx e ≡ success Void Ψ' eE' d' f'
+                  → inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ failure err
+                  → err ≡ TypeMismatch Int Void
+neg-non-Int-Void ctx e eqInner eqOuter
+  with inferElabV ctx e | eqInner
+... | success Void _ _ _ _ , _ | refl with eqOuter
+...   | refl = refl
 case-scrut-Void : ∀ (ctx : NamedCtx) (scrut : Raw.RawExpr)
                     (xL : String) (eL : Raw.RawExpr)
                     (xR : String) (eR : Raw.RawExpr)
@@ -400,30 +410,45 @@ fst-non-pair-Fun ctx arg eqInner eqOuter
   with inferElabV ctx arg | eqInner
 ... | success (_ T.⇒[ T.mk-kind _ T.pure ] _) _ _ _ _ , _ | refl with eqOuter
 ...   | refl = refl
-postulate
-  neg-non-Int-Float : ∀ (ctx : NamedCtx) (e : Raw.RawExpr)
-                       {Ψ' eE' d' f' err}
-                     → inferElab ctx e ≡ success T.Float Ψ' eE' d' f'
-                     → inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ failure err
-                     → err ≡ NegationNotInt
-postulate
-  neg-non-Int-Buffer : ∀ (ctx : NamedCtx) (e : Raw.RawExpr)
-                        {Ψ' eE' d' f' err}
-                      → inferElab ctx e ≡ success T.Buffer Ψ' eE' d' f'
-                      → inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ failure err
-                      → err ≡ NegationNotInt
-postulate
-  neg-non-Int-Product : ∀ (ctx : NamedCtx) (e : Raw.RawExpr) {A B : Type}
-                         {Ψ' eE' d' f' err}
-                       → inferElab ctx e ≡ success (A T.* B) Ψ' eE' d' f'
-                       → inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ failure err
-                       → err ≡ NegationNotInt
-postulate
-  neg-non-Int-Sum : ∀ (ctx : NamedCtx) (e : Raw.RawExpr) {A B : Type}
+neg-non-Int-Float : ∀ (ctx : NamedCtx) (e : Raw.RawExpr)
                      {Ψ' eE' d' f' err}
-                   → inferElab ctx e ≡ success (A T.+ B) Ψ' eE' d' f'
+                   → inferElab ctx e ≡ success T.Float Ψ' eE' d' f'
                    → inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ failure err
-                   → err ≡ NegationNotInt
+                   → err ≡ TypeMismatch Int T.Float
+neg-non-Int-Float ctx e eqInner eqOuter
+  with inferElabV ctx e | eqInner
+... | success T.Float _ _ _ _ , _ | refl with eqOuter
+...   | refl = refl
+
+neg-non-Int-Buffer : ∀ (ctx : NamedCtx) (e : Raw.RawExpr)
+                      {Ψ' eE' d' f' err}
+                    → inferElab ctx e ≡ success T.Buffer Ψ' eE' d' f'
+                    → inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ failure err
+                    → err ≡ TypeMismatch Int T.Buffer
+neg-non-Int-Buffer ctx e eqInner eqOuter
+  with inferElabV ctx e | eqInner
+... | success T.Buffer _ _ _ _ , _ | refl with eqOuter
+...   | refl = refl
+
+neg-non-Int-Product : ∀ (ctx : NamedCtx) (e : Raw.RawExpr) {A B : Type}
+                       {Ψ' eE' d' f' err}
+                     → inferElab ctx e ≡ success (A T.* B) Ψ' eE' d' f'
+                     → inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ failure err
+                     → err ≡ TypeMismatch Int (A T.* B)
+neg-non-Int-Product ctx e eqInner eqOuter
+  with inferElabV ctx e | eqInner
+... | success (_ T.* _) _ _ _ _ , _ | refl with eqOuter
+...   | refl = refl
+
+neg-non-Int-Sum : ∀ (ctx : NamedCtx) (e : Raw.RawExpr) {A B : Type}
+                   {Ψ' eE' d' f' err}
+                 → inferElab ctx e ≡ success (A T.+ B) Ψ' eE' d' f'
+                 → inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ failure err
+                 → err ≡ TypeMismatch Int (A T.+ B)
+neg-non-Int-Sum ctx e eqInner eqOuter
+  with inferElabV ctx e | eqInner
+... | success (_ T.+ _) _ _ _ _ , _ | refl with eqOuter
+...   | refl = refl
 snd-non-pair-Float : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr)
                       {Ψ' eE' d' f' err}
                     → inferElab ctx arg ≡ success T.Float Ψ' eE' d' f'
@@ -558,30 +583,45 @@ snd-non-pair-ν ctx arg eqInner eqOuter
   with inferElabV ctx arg | eqInner
 ... | success (T.ν-type _) _ _ _ _ , _ | refl with eqOuter
 ...   | refl = refl
-postulate
-  neg-non-Int-Eff : ∀ (ctx : NamedCtx) (e : Raw.RawExpr) {A B : Type}
-                      {Ψ' eE' d' f' err}
-                    → inferElab ctx e ≡ success (A T.⇒[ T.mk-kind T.Many T.eff ] B) Ψ' eE' d' f'
-                    → inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ failure err
-                    → err ≡ NegationNotInt
-postulate
-  neg-non-Int-μ : ∀ (ctx : NamedCtx) (e : Raw.RawExpr) {F}
-                   {Ψ' eE' d' f' err}
-                 → inferElab ctx e ≡ success (T.μ-type F) Ψ' eE' d' f'
-                 → inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ failure err
-                 → err ≡ NegationNotInt
-postulate
-  neg-non-Int-ν : ∀ (ctx : NamedCtx) (e : Raw.RawExpr) {F}
-                   {Ψ' eE' d' f' err}
-                 → inferElab ctx e ≡ success (T.ν-type F) Ψ' eE' d' f'
-                 → inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ failure err
-                 → err ≡ NegationNotInt
-postulate
-  neg-non-Int-Fun : ∀ (ctx : NamedCtx) (e : Raw.RawExpr) {A B : Type} {q : _}
-                      {Ψ' eE' d' f' err}
-                    → inferElab ctx e ≡ success (A T.⇒[ T.mk-kind q T.pure ] B) Ψ' eE' d' f'
-                    → inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ failure err
-                    → err ≡ NegationNotInt
+neg-non-Int-Eff : ∀ (ctx : NamedCtx) (e : Raw.RawExpr) {A B : Type}
+                    {Ψ' eE' d' f' err}
+                  → inferElab ctx e ≡ success (A T.⇒[ T.mk-kind T.Many T.eff ] B) Ψ' eE' d' f'
+                  → inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ failure err
+                  → err ≡ TypeMismatch Int (A T.⇒[ T.mk-kind T.Many T.eff ] B)
+neg-non-Int-Eff ctx e eqInner eqOuter
+  with inferElabV ctx e | eqInner
+... | success (_ T.⇒[ T.mk-kind T.Many T.eff ] _) _ _ _ _ , _ | refl with eqOuter
+...   | refl = refl
+
+neg-non-Int-μ : ∀ (ctx : NamedCtx) (e : Raw.RawExpr) {F}
+                 {Ψ' eE' d' f' err}
+               → inferElab ctx e ≡ success (T.μ-type F) Ψ' eE' d' f'
+               → inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ failure err
+               → err ≡ TypeMismatch Int (T.μ-type F)
+neg-non-Int-μ ctx e eqInner eqOuter
+  with inferElabV ctx e | eqInner
+... | success (T.μ-type _) _ _ _ _ , _ | refl with eqOuter
+...   | refl = refl
+
+neg-non-Int-ν : ∀ (ctx : NamedCtx) (e : Raw.RawExpr) {F}
+                 {Ψ' eE' d' f' err}
+               → inferElab ctx e ≡ success (T.ν-type F) Ψ' eE' d' f'
+               → inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ failure err
+               → err ≡ TypeMismatch Int (T.ν-type F)
+neg-non-Int-ν ctx e eqInner eqOuter
+  with inferElabV ctx e | eqInner
+... | success (T.ν-type _) _ _ _ _ , _ | refl with eqOuter
+...   | refl = refl
+
+neg-non-Int-Fun : ∀ (ctx : NamedCtx) (e : Raw.RawExpr) {A B : Type} {q : _}
+                    {Ψ' eE' d' f' err}
+                  → inferElab ctx e ≡ success (A T.⇒[ T.mk-kind q T.pure ] B) Ψ' eE' d' f'
+                  → inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ failure err
+                  → err ≡ TypeMismatch Int (A T.⇒[ T.mk-kind q T.pure ] B)
+neg-non-Int-Fun ctx e eqInner eqOuter
+  with inferElabV ctx e | eqInner
+... | success (_ T.⇒[ T.mk-kind _ T.pure ] _) _ _ _ _ , _ | refl with eqOuter
+...   | refl = refl
 case-scrut-Eff : ∀ (ctx : NamedCtx) (scrut : Raw.RawExpr)
                     (xL : String) (eL : Raw.RawExpr)
                     (xR : String) (eR : Raw.RawExpr)
