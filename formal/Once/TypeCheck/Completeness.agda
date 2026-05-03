@@ -44,7 +44,9 @@ open import Once.TypeCheck.Raw as Raw
 open import Once.TypeCheck.Elaborate
   using (NamedCtx; inferElab; checkElab; InferElabResult; CheckElabResult;
          success; failure; lookupLocal; lookupImport;
-         inferElabV; checkElabV; _≟T_)
+         inferElabV; checkElabV; _≟T_;
+         classifyAppHead; classifyAppHeadView; ahv-other;
+         classifyAppHead-nothing⇒view-other; AppHeadView)
 open import Once.TypeCheck.Judgment
 
 open import Once.Surface.Syntax as Surface using (zeroUsage; _+ᵘ_; _*ᵘ_)
@@ -495,21 +497,62 @@ infer-complete-RDestruct {ctx} scrut xL eL xR eR {A = A} {B = B} C eqS eqL eqR
 -- than inferring it). Call sites that have a `t-app`-style
 -- derivation already provide ⊢ᶜ for x; those that have an
 -- inferElab witness convert via `check-complete (t-embed dX)`.
-postulate
-  infer-complete-RApp-generic :
-    ∀ {ctx : NamedCtx} (f x : RawExpr) (A : Type) {B : Type} {q : Quantity}
-      {Ψf : Surface.Usage (NamedCtx.size ctx)}
-      {fE : SExpr (NamedCtx.debruijn ctx) Ψf (A T.⇒[ T.mk-kind q T.pure ] B)}
-      {df ff : ℕ}
-      {Ψx : Surface.Usage (NamedCtx.size ctx)}
-      {xE : SExpr (NamedCtx.debruijn ctx) Ψx A}
-      {dx fx : ℕ}
-    → Once.TypeCheck.Elaborate.classifyAppHead f ≡ nothing
-    → inferElab ctx f ≡ success (A T.⇒[ T.mk-kind q T.pure ] B) Ψf fE df ff
-    → checkElab ctx x A ≡ success Ψx xE dx fx
-    → ∃[ eE ] ∃[ d ] ∃[ f' ]
-        inferElab ctx (Raw.RApp f x)
-          ≡ success B (Ψf +ᵘ (q *ᵘ Ψx)) eE d f'
+infer-complete-RApp-generic :
+  ∀ {ctx : NamedCtx} (f x : RawExpr) (A : Type) {B : Type} {q : Quantity}
+    {Ψf : Surface.Usage (NamedCtx.size ctx)}
+    {fE : SExpr (NamedCtx.debruijn ctx) Ψf (A T.⇒[ T.mk-kind q T.pure ] B)}
+    {df ff : ℕ}
+    {Ψx : Surface.Usage (NamedCtx.size ctx)}
+    {xE : SExpr (NamedCtx.debruijn ctx) Ψx A}
+    {dx fx : ℕ}
+  → Once.TypeCheck.Elaborate.classifyAppHead f ≡ nothing
+  → inferElab ctx f ≡ success (A T.⇒[ T.mk-kind q T.pure ] B) Ψf fE df ff
+  → checkElab ctx x A ≡ success Ψx xE dx fx
+  → ∃[ eE ] ∃[ d ] ∃[ f' ]
+      inferElab ctx (Raw.RApp f x)
+        ≡ success B (Ψf +ᵘ (q *ᵘ Ψx)) eE d f'
+private
+  open Once.TypeCheck.Elaborate
+    using (inferElabV-RApp-dispatch; inferElabV-RApp-other-aux)
+  viewBridge : ∀ {ctx f x} (vw : AppHeadView f) (eq : classifyAppHeadView f ≡ vw)
+             → inferElabV-RApp-dispatch ctx f x (classifyAppHeadView f) refl
+               ≡ inferElabV-RApp-dispatch ctx f x vw eq
+  viewBridge _ refl = refl
+  otherBridge : ∀ {ctx f x} (lhs : Maybe Once.TypeCheck.Elaborate.PolyBuiltinApp)
+                (eq : classifyAppHead f ≡ lhs)
+              → inferElabV-RApp-other-aux ctx f x (classifyAppHead f) refl
+                ≡ inferElabV-RApp-other-aux ctx f x lhs eq
+  otherBridge _ refl = refl
+
+infer-complete-RApp-generic {ctx} f x A {B} {q} eqAH eqF eqX
+  rewrite cong proj₁ (viewBridge {ctx} {f} {x} ahv-other (classifyAppHead-nothing⇒view-other eqAH))
+        | cong proj₁ (otherBridge {ctx} {f} {x} nothing eqAH)
+  with inferElabV ctx f | eqF
+... | success _ _ _ _ _ , _ | refl
+    with checkElabV ctx x A | eqX
+...   | success _ _ _ _ , _ | refl = _ , _ , _ , refl
+
+infer-complete-RApp-eff :
+  ∀ {ctx : NamedCtx} (f x : RawExpr) (A : Type) {B : Type}
+    {Ψf : Surface.Usage (NamedCtx.size ctx)}
+    {fE : SExpr (NamedCtx.debruijn ctx) Ψf (A T.⇒[ T.mk-kind T.Many T.eff ] B)}
+    {df ff : ℕ}
+    {Ψx : Surface.Usage (NamedCtx.size ctx)}
+    {xE : SExpr (NamedCtx.debruijn ctx) Ψx A}
+    {dx fx : ℕ}
+  → Once.TypeCheck.Elaborate.classifyAppHead f ≡ nothing
+  → inferElab ctx f ≡ success (A T.⇒[ T.mk-kind T.Many T.eff ] B) Ψf fE df ff
+  → checkElab ctx x A ≡ success Ψx xE dx fx
+  → ∃[ eE ] ∃[ d ] ∃[ f' ]
+      inferElab ctx (Raw.RApp f x)
+        ≡ success (T.Unit T.⇒[ T.mk-kind T.Many T.eff ] B) (Ψf +ᵘ Ψx) eE d f'
+infer-complete-RApp-eff {ctx} f x A {B} eqAH eqF eqX
+  rewrite cong proj₁ (viewBridge {ctx} {f} {x} ahv-other (classifyAppHead-nothing⇒view-other eqAH))
+        | cong proj₁ (otherBridge {ctx} {f} {x} nothing eqAH)
+  with inferElabV ctx f | eqF
+... | success _ _ _ _ _ , _ | refl
+    with checkElabV ctx x A | eqX
+...   | success _ _ _ _ , _ | refl = _ , _ , _ , refl
 
 ------------------------------------------------------------------------
 -- Effectful RApp completeness
@@ -524,21 +567,7 @@ postulate
 -- inner function-vs-effect dispatch.
 ------------------------------------------------------------------------
 
-postulate
-  infer-complete-RApp-eff :
-    ∀ {ctx : NamedCtx} (f x : RawExpr) (A : Type) {B : Type}
-      {Ψf : Surface.Usage (NamedCtx.size ctx)}
-      {fE : SExpr (NamedCtx.debruijn ctx) Ψf (A T.⇒[ T.mk-kind T.Many T.eff ] B)}
-      {df ff : ℕ}
-      {Ψx : Surface.Usage (NamedCtx.size ctx)}
-      {xE : SExpr (NamedCtx.debruijn ctx) Ψx A}
-      {dx fx : ℕ}
-    → Once.TypeCheck.Elaborate.classifyAppHead f ≡ nothing
-    → inferElab ctx f ≡ success (A T.⇒[ T.mk-kind T.Many T.eff ] B) Ψf fE df ff
-    → checkElab ctx x A ≡ success Ψx xE dx fx
-    → ∃[ eE ] ∃[ d ] ∃[ f' ]
-        inferElab ctx (Raw.RApp f x)
-          ≡ success (T.Unit T.⇒[ T.mk-kind T.Many T.eff ] B) (Ψf +ᵘ Ψx) eE d f'
+-- (defined above with infer-complete-RApp-generic)
 
 ------------------------------------------------------------------------
 -- Full-walk completeness — enabled by the G2(a) judgment split

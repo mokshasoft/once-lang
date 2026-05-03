@@ -749,6 +749,14 @@ mutual
     → (impLhs : Maybe Type)
     → lookupImport (NamedCtx.imports ctx) x ≡ impLhs
     → VerifiedInferResult ctx (Raw.RVar x)
+  inferElabV-RApp-other-aux :
+    ∀ (ctx : NamedCtx) (f x : RawExpr) (lhs : Maybe PolyBuiltinApp)
+    → classifyAppHead f ≡ lhs
+    → VerifiedInferResult ctx (Raw.RApp f x)
+  inferElabV-RApp-dispatch :
+    ∀ (ctx : NamedCtx) (f arg : RawExpr) (vw : AppHeadView f)
+    → classifyAppHeadView f ≡ vw
+    → VerifiedInferResult ctx (Raw.RApp f arg)
 
   -- ===== inferElab =====
 
@@ -1088,55 +1096,8 @@ mutual
   -- Phase C — `inferElab` `RApp` (13 view branches).
   ----------------------------------------------------------------------
 
-  inferElabV ctx (Raw.RApp f arg) with classifyAppHeadView f
-  -- ahv-id : argument can have any type, result has the same type.
-  inferElabV ctx (Raw.RApp f arg) | ahv-id with inferElabV ctx arg
-  inferElabV ctx (Raw.RApp f arg) | ahv-id | failure err , _ = failure err , tt
-  inferElabV ctx (Raw.RApp f arg) | ahv-id | success T Ψ argE d fr , w =
-    success T _ (Surface.app (weakenFromEmpty (specId T)) argE) (suc d) fr , t-id-app w
-  -- ahv-fst : argument must have product type.
-  inferElabV ctx (Raw.RApp f arg) | ahv-fst with inferElabV ctx arg
-  inferElabV ctx (Raw.RApp f arg) | ahv-fst | failure err , _ = failure err , tt
-  inferElabV ctx (Raw.RApp f arg) | ahv-fst | success (A Once.Type.* B) Ψ argE d fr , w =
-    success A _ (Surface.app (weakenFromEmpty (specFst A B)) argE) (suc d) fr , t-fst-app w
-  inferElabV ctx (Raw.RApp f arg) | ahv-fst | success _ _ _ _ _ , _ = failure FstNeedsPair , tt
-  -- ahv-snd : argument must have product type.
-  inferElabV ctx (Raw.RApp f arg) | ahv-snd with inferElabV ctx arg
-  inferElabV ctx (Raw.RApp f arg) | ahv-snd | failure err , _ = failure err , tt
-  inferElabV ctx (Raw.RApp f arg) | ahv-snd | success (A Once.Type.* B) Ψ argE d fr , w =
-    success B _ (Surface.app (weakenFromEmpty (specSnd A B)) argE) (suc d) fr , t-snd-app w
-  inferElabV ctx (Raw.RApp f arg) | ahv-snd | success _ _ _ _ _ , _ = failure SndNeedsPair , tt
-  -- ahv-terminal : any-typed argument, Unit result.
-  inferElabV ctx (Raw.RApp f arg) | ahv-terminal with inferElabV ctx arg
-  inferElabV ctx (Raw.RApp f arg) | ahv-terminal | failure err , _ = failure err , tt
-  inferElabV ctx (Raw.RApp f arg) | ahv-terminal | success T Ψ argE d fr , w =
-    success Unit _ (Surface.app (weakenFromEmpty (specTerminal T)) argE) (suc d) fr , t-terminal-app w
-  -- ahv-arr : argument must be `A ⇒[Many,pure] B`; result is Eff A B.
-  inferElabV ctx (Raw.RApp f arg) | ahv-arr with inferElabV ctx arg
-  inferElabV ctx (Raw.RApp f arg) | ahv-arr | failure err , _ = failure err , tt
-  inferElabV ctx (Raw.RApp f arg) | ahv-arr | success (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) Ψ argE d fr , w =
-    success (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B) _
-            (Surface.app (weakenFromEmpty (specArr A B)) argE) (suc d) fr , t-arr-app-infer w
-  inferElabV ctx (Raw.RApp f arg) | ahv-arr | success _ _ _ _ _ , _ = failure ArrNeedsFunction , tt
-  -- ahv-apply : argument must be `(A ⇒[Many,pure] B) * A`.
-  inferElabV ctx (Raw.RApp f arg) | ahv-apply with inferElabV ctx arg
-  inferElabV ctx (Raw.RApp f arg) | ahv-apply | failure err , _ = failure err , tt
-  inferElabV ctx (Raw.RApp f arg) | ahv-apply | success ((A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) Once.Type.* A') Ψ argE d fr , w with A ≟T A'
-  inferElabV ctx (Raw.RApp f arg) | ahv-apply | success ((A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) Once.Type.* A') Ψ argE d fr , w | yes refl =
-    success B _ (Surface.app (weakenFromEmpty (specApply A B)) argE) (suc d) fr , t-apply-app-infer w
-  inferElabV ctx (Raw.RApp f arg) | ahv-apply | success ((A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) Once.Type.* A') Ψ argE d fr , w | no _ =
-    failure (BuiltinTypeMismatch "apply") , tt
-  inferElabV ctx (Raw.RApp f arg) | ahv-apply | success _ _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
-  -- ahv-inl / ahv-inr / ahv-initial : check-only builtins, infer fails.
-  inferElabV ctx (Raw.RApp _ _) | ahv-inl     = failure InlInInferMode , tt
-  inferElabV ctx (Raw.RApp _ _) | ahv-inr     = failure InrInInferMode , tt
-  inferElabV ctx (Raw.RApp _ _) | ahv-initial = failure InitialInInferMode , tt
-  -- ahv-pair-applied / ahv-compose-applied / ahv-curry : check-only.
-  inferElabV ctx (Raw.RApp _ _) | ahv-pair-applied    = failure (BuiltinTypeMismatch "pair") , tt
-  inferElabV ctx (Raw.RApp _ _) | ahv-compose-applied = failure (BuiltinTypeMismatch "compose") , tt
-  inferElabV ctx (Raw.RApp _ _) | ahv-curry           = failure (BuiltinTypeMismatch "curry") , tt
-  -- ahv-other : generic application via `inferElabV-RApp-other`.
-  inferElabV ctx (Raw.RApp f arg) | ahv-other = inferElabV-RApp-other ctx f arg
+  inferElabV ctx (Raw.RApp f arg) =
+    inferElabV-RApp-dispatch ctx f arg _ refl
 
   ----------------------------------------------------------------------
   -- inferElabV `RBinOp` — both operands must be Int. The result type
@@ -1421,30 +1382,8 @@ mutual
   -- it; the `just _` branch is unreachable because callers only
   -- invoke this helper when the view classifies `f` as `ahv-other`.
   ----------------------------------------------------------------------
-  inferElabV-RApp-other ctx f x with classifyAppHead f in eqAH
-  inferElabV-RApp-other ctx f x | just _  = failure (BuiltinTypeMismatch "unreachable: ahv-other ⇒ classifyAppHead nothing") , tt
-  inferElabV-RApp-other ctx f x | nothing with inferElabV ctx f
-  inferElabV-RApp-other ctx f x | nothing | failure err , _ = failure err , tt
-  inferElabV-RApp-other ctx f x | nothing | success Unit       _ _ _ _ , _ = failure (NotFunction Unit) , tt
-  inferElabV-RApp-other ctx f x | nothing | success Void       _ _ _ _ , _ = failure (NotFunction Void) , tt
-  inferElabV-RApp-other ctx f x | nothing | success Int        _ _ _ _ , _ = failure (NotFunction Int) , tt
-  inferElabV-RApp-other ctx f x | nothing | success Float      _ _ _ _ , _ = failure (NotFunction Float) , tt
-  inferElabV-RApp-other ctx f x | nothing | success Str        _ _ _ _ , _ = failure (NotFunction Str) , tt
-  inferElabV-RApp-other ctx f x | nothing | success Buffer     _ _ _ _ , _ = failure (NotFunction Buffer) , tt
-  inferElabV-RApp-other ctx f x | nothing | success (A Once.Type.* B) _ _ _ _ , _ = failure (NotFunction (A Once.Type.* B)) , tt
-  inferElabV-RApp-other ctx f x | nothing | success (A Once.Type.+ B) _ _ _ _ , _ = failure (NotFunction (A Once.Type.+ B)) , tt
-  inferElabV-RApp-other ctx f x | nothing | success (Once.Type.μ-type F) _ _ _ _ , _ = failure (NotFunction (Once.Type.μ-type F)) , tt
-  inferElabV-RApp-other ctx f x | nothing | success (Once.Type.ν-type F) _ _ _ _ , _ = failure (NotFunction (Once.Type.ν-type F)) , tt
-  inferElabV-RApp-other ctx f x | nothing | success (A Once.Type.⇒[ Once.Type.mk-kind q Once.Type.pure ] B) Ψ₁ fE df ff , wF with checkElabV ctx x A
-  ...     | failure err , _ = failure err , tt
-  ...     | success Ψ₂ xE dx fx , wX =
-            success B _ (Surface.app fE xE) (df ⊔ dx) fx , t-app eqAH wF wX
-  inferElabV-RApp-other ctx f x | nothing | success (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B) Ψ₁ fE df ff , wF with checkElabV ctx x A
-  ...     | failure err , _ = failure err , tt
-  ...     | success Ψ₂ xE dx fx , wX =
-            success (Unit Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B) _ (Surface.effApp fE xE) (df ⊔ dx) fx , t-effApp eqAH wF wX
-  inferElabV-RApp-other ctx f x | nothing | success (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.One Once.Type.eff ] B) _ _ _ _ , _ = failure (NotFunction (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.One Once.Type.eff ] B)) , tt
-  inferElabV-RApp-other ctx f x | nothing | success (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Zero Once.Type.eff ] B) _ _ _ _ , _ = failure (NotFunction (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Zero Once.Type.eff ] B)) , tt
+  inferElabV-RApp-other ctx f x =
+    inferElabV-RApp-other-aux ctx f x _ refl
 
   -- Aux helper bodies (placed after all main mutual members so that the
   -- `... | pat` continuations of inferElabV/checkElabV clauses don't
@@ -1460,6 +1399,132 @@ mutual
     success ty _ (Surface.sigOp x) 0 (NamedCtx.freshCounter ctx) , t-var-import ¬unit eq-loc eq-imp
   inferElabV-RVar-lookup-aux ctx x ¬unit nothing eq-loc nothing eq-imp =
     failure (UnboundVariable x) , tt
+
+  inferElabV-RApp-other-aux ctx f x (just _) _ =
+    failure (BuiltinTypeMismatch "unreachable: ahv-other ⇒ classifyAppHead nothing") , tt
+  inferElabV-RApp-other-aux ctx f x nothing eqAH with inferElabV ctx f
+  ... | failure err , _ = failure err , tt
+  ... | success Unit       _ _ _ _ , _ = failure (NotFunction Unit) , tt
+  ... | success Void       _ _ _ _ , _ = failure (NotFunction Void) , tt
+  ... | success Int        _ _ _ _ , _ = failure (NotFunction Int) , tt
+  ... | success Float      _ _ _ _ , _ = failure (NotFunction Float) , tt
+  ... | success Str        _ _ _ _ , _ = failure (NotFunction Str) , tt
+  ... | success Buffer     _ _ _ _ , _ = failure (NotFunction Buffer) , tt
+  ... | success (A Once.Type.* B) _ _ _ _ , _ = failure (NotFunction (A Once.Type.* B)) , tt
+  ... | success (A Once.Type.+ B) _ _ _ _ , _ = failure (NotFunction (A Once.Type.+ B)) , tt
+  ... | success (Once.Type.μ-type F) _ _ _ _ , _ = failure (NotFunction (Once.Type.μ-type F)) , tt
+  ... | success (Once.Type.ν-type F) _ _ _ _ , _ = failure (NotFunction (Once.Type.ν-type F)) , tt
+  ... | success (A Once.Type.⇒[ Once.Type.mk-kind q Once.Type.pure ] B) Ψ₁ fE df ff , wF with checkElabV ctx x A
+  ...   | failure err , _ = failure err , tt
+  ...   | success Ψ₂ xE dx fx , wX =
+          success B _ (Surface.app fE xE) (df ⊔ dx) fx , t-app eqAH wF wX
+  inferElabV-RApp-other-aux ctx f x nothing eqAH | success (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B) Ψ₁ fE df ff , wF with checkElabV ctx x A
+  ...   | failure err , _ = failure err , tt
+  ...   | success Ψ₂ xE dx fx , wX =
+          success (Unit Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B) _ (Surface.effApp fE xE) (df ⊔ dx) fx , t-effApp eqAH wF wX
+  inferElabV-RApp-other-aux ctx f x nothing eqAH | success (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.One Once.Type.eff ] B) _ _ _ _ , _ = failure (NotFunction (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.One Once.Type.eff ] B)) , tt
+  inferElabV-RApp-other-aux ctx f x nothing eqAH | success (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Zero Once.Type.eff ] B) _ _ _ _ , _ = failure (NotFunction (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Zero Once.Type.eff ] B)) , tt
+
+  -- ahv-id : argument can have any type, result has the same type.
+  inferElabV-RApp-dispatch ctx f arg ahv-id _ with inferElabV ctx arg
+  ... | failure err , _ = failure err , tt
+  ... | success T Ψ argE d fr , w =
+    success T _ (Surface.app (weakenFromEmpty (specId T)) argE) (suc d) fr , t-id-app w
+  -- ahv-fst : argument must have product type.
+  inferElabV-RApp-dispatch ctx f arg ahv-fst _ with inferElabV ctx arg
+  ... | failure err , _ = failure err , tt
+  ... | success (A Once.Type.* B) Ψ argE d fr , w =
+    success A _ (Surface.app (weakenFromEmpty (specFst A B)) argE) (suc d) fr , t-fst-app w
+  ... | success Unit _ _ _ _ , _ = failure FstNeedsPair , tt
+  ... | success Void _ _ _ _ , _ = failure FstNeedsPair , tt
+  ... | success Int _ _ _ _ , _ = failure FstNeedsPair , tt
+  ... | success Float _ _ _ _ , _ = failure FstNeedsPair , tt
+  ... | success Str _ _ _ _ , _ = failure FstNeedsPair , tt
+  ... | success Buffer _ _ _ _ , _ = failure FstNeedsPair , tt
+  ... | success (_ Once.Type.+ _) _ _ _ _ , _ = failure FstNeedsPair , tt
+  ... | success (_ Once.Type.⇒[ _ ] _) _ _ _ _ , _ = failure FstNeedsPair , tt
+  ... | success (Once.Type.μ-type _) _ _ _ _ , _ = failure FstNeedsPair , tt
+  ... | success (Once.Type.ν-type _) _ _ _ _ , _ = failure FstNeedsPair , tt
+  -- ahv-snd : argument must have product type.
+  inferElabV-RApp-dispatch ctx f arg ahv-snd _ with inferElabV ctx arg
+  ... | failure err , _ = failure err , tt
+  ... | success (A Once.Type.* B) Ψ argE d fr , w =
+    success B _ (Surface.app (weakenFromEmpty (specSnd A B)) argE) (suc d) fr , t-snd-app w
+  ... | success Unit _ _ _ _ , _ = failure SndNeedsPair , tt
+  ... | success Void _ _ _ _ , _ = failure SndNeedsPair , tt
+  ... | success Int _ _ _ _ , _ = failure SndNeedsPair , tt
+  ... | success Float _ _ _ _ , _ = failure SndNeedsPair , tt
+  ... | success Str _ _ _ _ , _ = failure SndNeedsPair , tt
+  ... | success Buffer _ _ _ _ , _ = failure SndNeedsPair , tt
+  ... | success (_ Once.Type.+ _) _ _ _ _ , _ = failure SndNeedsPair , tt
+  ... | success (_ Once.Type.⇒[ _ ] _) _ _ _ _ , _ = failure SndNeedsPair , tt
+  ... | success (Once.Type.μ-type _) _ _ _ _ , _ = failure SndNeedsPair , tt
+  ... | success (Once.Type.ν-type _) _ _ _ _ , _ = failure SndNeedsPair , tt
+  -- ahv-terminal : any-typed argument, Unit result.
+  inferElabV-RApp-dispatch ctx f arg ahv-terminal _ with inferElabV ctx arg
+  ... | failure err , _ = failure err , tt
+  ... | success T Ψ argE d fr , w =
+    success Unit _ (Surface.app (weakenFromEmpty (specTerminal T)) argE) (suc d) fr , t-terminal-app w
+  -- ahv-arr : argument must be `A ⇒[Many,pure] B`; result is Eff A B.
+  inferElabV-RApp-dispatch ctx f arg ahv-arr _ with inferElabV ctx arg
+  ... | failure err , _ = failure err , tt
+  ... | success (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) Ψ argE d fr , w =
+    success (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B) _
+            (Surface.app (weakenFromEmpty (specArr A B)) argE) (suc d) fr , t-arr-app-infer w
+  ... | success Unit _ _ _ _ , _ = failure ArrNeedsFunction , tt
+  ... | success Void _ _ _ _ , _ = failure ArrNeedsFunction , tt
+  ... | success Int _ _ _ _ , _ = failure ArrNeedsFunction , tt
+  ... | success Float _ _ _ _ , _ = failure ArrNeedsFunction , tt
+  ... | success Str _ _ _ _ , _ = failure ArrNeedsFunction , tt
+  ... | success Buffer _ _ _ _ , _ = failure ArrNeedsFunction , tt
+  ... | success (_ Once.Type.* _) _ _ _ _ , _ = failure ArrNeedsFunction , tt
+  ... | success (_ Once.Type.+ _) _ _ _ _ , _ = failure ArrNeedsFunction , tt
+  ... | success (_ Once.Type.⇒[ Once.Type.mk-kind _ Once.Type.eff ] _) _ _ _ _ , _ = failure ArrNeedsFunction , tt
+  ... | success (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Zero Once.Type.pure ] _) _ _ _ _ , _ = failure ArrNeedsFunction , tt
+  ... | success (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.One Once.Type.pure ] _) _ _ _ _ , _ = failure ArrNeedsFunction , tt
+  ... | success (Once.Type.μ-type _) _ _ _ _ , _ = failure ArrNeedsFunction , tt
+  ... | success (Once.Type.ν-type _) _ _ _ _ , _ = failure ArrNeedsFunction , tt
+  -- ahv-apply : argument must be `(A ⇒[Many,pure] B) * A`.
+  inferElabV-RApp-dispatch ctx f arg ahv-apply _ with inferElabV ctx arg
+  ... | failure err , _ = failure err , tt
+  ... | success ((A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) Once.Type.* A') Ψ argE d fr , w with A ≟T A'
+  ...   | yes refl =
+    success B _ (Surface.app (weakenFromEmpty (specApply A B)) argE) (suc d) fr , t-apply-app-infer w
+  ...   | no _ =
+    failure (BuiltinTypeMismatch "apply") , tt
+  inferElabV-RApp-dispatch ctx f arg ahv-apply _ | success Unit _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
+  inferElabV-RApp-dispatch ctx f arg ahv-apply _ | success Void _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
+  inferElabV-RApp-dispatch ctx f arg ahv-apply _ | success Int _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
+  inferElabV-RApp-dispatch ctx f arg ahv-apply _ | success Float _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
+  inferElabV-RApp-dispatch ctx f arg ahv-apply _ | success Str _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
+  inferElabV-RApp-dispatch ctx f arg ahv-apply _ | success Buffer _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
+  inferElabV-RApp-dispatch ctx f arg ahv-apply _ | success (_ Once.Type.+ _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
+  inferElabV-RApp-dispatch ctx f arg ahv-apply _ | success (_ Once.Type.⇒[ _ ] _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
+  inferElabV-RApp-dispatch ctx f arg ahv-apply _ | success (Unit Once.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
+  inferElabV-RApp-dispatch ctx f arg ahv-apply _ | success (Void Once.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
+  inferElabV-RApp-dispatch ctx f arg ahv-apply _ | success (Int Once.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
+  inferElabV-RApp-dispatch ctx f arg ahv-apply _ | success (Float Once.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
+  inferElabV-RApp-dispatch ctx f arg ahv-apply _ | success (Str Once.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
+  inferElabV-RApp-dispatch ctx f arg ahv-apply _ | success (Buffer Once.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
+  inferElabV-RApp-dispatch ctx f arg ahv-apply _ | success ((_ Once.Type.* _) Once.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
+  inferElabV-RApp-dispatch ctx f arg ahv-apply _ | success ((_ Once.Type.+ _) Once.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
+  inferElabV-RApp-dispatch ctx f arg ahv-apply _ | success ((_ Once.Type.⇒[ Once.Type.mk-kind _ Once.Type.eff ] _) Once.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
+  inferElabV-RApp-dispatch ctx f arg ahv-apply _ | success ((_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Zero Once.Type.pure ] _) Once.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
+  inferElabV-RApp-dispatch ctx f arg ahv-apply _ | success ((_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.One Once.Type.pure ] _) Once.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
+  inferElabV-RApp-dispatch ctx f arg ahv-apply _ | success ((Once.Type.μ-type _) Once.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
+  inferElabV-RApp-dispatch ctx f arg ahv-apply _ | success ((Once.Type.ν-type _) Once.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
+  inferElabV-RApp-dispatch ctx f arg ahv-apply _ | success (Once.Type.μ-type _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
+  inferElabV-RApp-dispatch ctx f arg ahv-apply _ | success (Once.Type.ν-type _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
+  -- ahv-inl / ahv-inr / ahv-initial : check-only builtins, infer fails.
+  inferElabV-RApp-dispatch ctx f arg ahv-inl     _ = failure InlInInferMode , tt
+  inferElabV-RApp-dispatch ctx f arg ahv-inr     _ = failure InrInInferMode , tt
+  inferElabV-RApp-dispatch ctx f arg ahv-initial _ = failure InitialInInferMode , tt
+  -- ahv-pair-applied / ahv-compose-applied / ahv-curry : check-only.
+  inferElabV-RApp-dispatch ctx f arg ahv-pair-applied    _ = failure (BuiltinTypeMismatch "pair") , tt
+  inferElabV-RApp-dispatch ctx f arg ahv-compose-applied _ = failure (BuiltinTypeMismatch "compose") , tt
+  inferElabV-RApp-dispatch ctx f arg ahv-curry           _ = failure (BuiltinTypeMismatch "curry") , tt
+  -- ahv-other : generic application via `inferElabV-RApp-other`.
+  inferElabV-RApp-dispatch ctx f arg ahv-other _ = inferElabV-RApp-other ctx f arg
 
 ------------------------------------------------------------------------
 -- Plan 0.4 T0 Option B — projection wrappers.
