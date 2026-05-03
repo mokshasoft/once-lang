@@ -214,6 +214,34 @@ inspectLookupImport ctx x with lookupImport (NamedCtx.imports ctx) x in eq
 ... | just T  = liv-found eq
 ... | nothing = liv-not-found eq
 
+-- | Plan 0.6.2 Phase 3b: for `compose f g` at expected `A → C`,
+-- determine the intermediate type `B` from `g`'s structural shape.
+-- Plan 0.4 T2 follow-up (rule-split): this is now the *only* path for
+-- t-compose-check; the inferElab-driven path (path 2) was dropped
+-- because the typing rule must be locally decidable in a no-unification
+-- bidirectional system.
+composeArgB : NamedCtx → RawExpr → Type → Maybe Type
+-- fst : (X * Y) → X, so B = X when A = X * Y.
+composeArgB ctx (Raw.RVar "fst") (X * _) = just X
+-- snd : (X * Y) → Y, so B = Y when A = X * Y.
+composeArgB ctx (Raw.RVar "snd") (_ * Y) = just Y
+-- id : X → X, so B = A.
+composeArgB ctx (Raw.RVar "id") A = just A
+-- terminal : X → Unit, so B = Unit.
+composeArgB ctx (Raw.RVar "terminal") _ = just Unit
+-- User poly name: look up schema, match domain, extract codomain.
+composeArgB ctx (Raw.RVar name) A with lookupPoly (NamedCtx.polys ctx) name
+... | just (schema , _) = schemaArrowCodomain schema A
+... | nothing = nothing
+-- Nested compose: recurse.
+composeArgB ctx (Raw.RApp (Raw.RApp (Raw.RVar "compose") f') g') A with composeArgB ctx g' A
+... | nothing = nothing
+... | just B' with composeArgB ctx f' B'
+...   | nothing = nothing
+...   | just C  = just C
+-- Other shapes: compose can't proceed.
+composeArgB _ _ _ = nothing
+
 -- | Find a local variable's de Bruijn position and declared quantity.
 findLocalVarUsage : (ctx : NamedCtx) → String → Maybe (Fin (NamedCtx.size ctx) × Quantity)
 findLocalVarUsage (mkCtx n Γ Δ _ _ _) x = go Γ Δ

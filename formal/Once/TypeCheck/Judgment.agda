@@ -47,7 +47,8 @@ open import Once.TypeCheck.Raw as Raw
          BinOp; isArithmeticOp; isComparisonOp)
 open import Once.TypeCheck.Classify
   using (NamedCtx; lookupLocal; lookupImport; lookupPoly; removePoly;
-         ctxWithImportsAndPolys; extendNamedCtx; classifyAppHead)
+         ctxWithImportsAndPolys; extendNamedCtx; classifyAppHead;
+         composeArgB)
 
 open import Data.String using (_++_)
 
@@ -365,12 +366,19 @@ mutual
     -- Ψ follows the elab emission `app (app specCompose fE) gE`
     -- with specCompose contributing zeroUsage.
     --
-    -- Plan 0.4 T0 (witness refactor): the g-premise is ⊢ᶜ rather than
-    -- ⊢ᵢ to admit checkCompose's composeArgB-fallback path (where g is
-    -- a polymorphic name resolved by check-mode at the projected
-    -- domain). The infer-mode case converts via t-embed.
+    -- Plan 0.4 T2 follow-up (2026-05-03): rule-split. The bidirectional
+    -- elaborator can't always recover B from `⊢ᶜ g : A → B` alone — for
+    -- bbc-X check-only primitives (inl/inr/arr/initial) and arbitrary
+    -- locals, B isn't locally derivable. Without unification, the
+    -- typing rule must reflect what the algorithm can decide.
+    -- `composeArgB` is the explicit, locally-decidable B-recovery
+    -- procedure; making it a premise aligns the rule with the
+    -- elaborator. Cases supported by composeArgB: id, fst, snd,
+    -- terminal, polymorphic names (schema-instantiated), nested
+    -- compose. Other g shapes are not composable in check mode.
     t-compose-check : ∀ {ctx : NamedCtx} {f g : RawExpr} {A B C : Type}
                       {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
+                    → composeArgB ctx g A ≡ just B
                     → ctx ⊢ᶜ f ∶ (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C) ⨾ Ψ₁
                     → ctx ⊢ᶜ g ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) ⨾ Ψ₂
                     → ctx ⊢ᶜ RApp (RApp (RVar "compose") f) g

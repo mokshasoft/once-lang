@@ -605,38 +605,8 @@ decideLeq Many One  = nothing
 decideLeq Many Many = just refl
 
 
--- | Plan 0.6.2 Phase 3b: for `compose f g` at expected `A → C`,
--- when `inferElab g` fails, try to determine the intermediate
--- type `B` from `g`'s structural shape:
---   * `RVar poly_name` in `PolyCtx`: use schema instantiation.
---   * Bare builtin (fst/snd/id/terminal): use canonical schema.
---   * Anything else: `nothing` (compose can't proceed).
--- Subsequent `checkElab ctx g (A → B)` will handle specialisation.
-composeArgB : NamedCtx → RawExpr → Type → Maybe Type
--- fst : (X * Y) → X, so B = X when A = X * Y.
-composeArgB ctx (Raw.RVar "fst") (X Once.Type.* _) = just X
--- snd : (X * Y) → Y, so B = Y when A = X * Y.
-composeArgB ctx (Raw.RVar "snd") (_ Once.Type.* Y) = just Y
--- id : X → X, so B = A.
-composeArgB ctx (Raw.RVar "id") A = just A
--- terminal : X → Unit, so B = Unit.
-composeArgB ctx (Raw.RVar "terminal") _ = just Unit
--- User poly name: look up schema, match domain, extract codomain.
-composeArgB ctx (Raw.RVar name) A with lookupPoly (NamedCtx.polys ctx) name
-... | just (schema , _) = schemaArrowCodomain schema A
-... | nothing = nothing
--- Plan 0.4 T1, change 4 (2026-04-30): nested compose recursion.
--- For `compose f' g'` viewed as A → ?, find the inner middle type B'
--- via g' at A, then the codomain via f' at B'. Combined with the
--- existing id/fst/snd/terminal clauses, lets `id . id . id` resolve
--- through arbitrarily deep composition chains in check mode.
-composeArgB ctx (Raw.RApp (Raw.RApp (Raw.RVar "compose") f') g') A with composeArgB ctx g' A
-... | nothing = nothing
-... | just B' with composeArgB ctx f' B'
-...   | nothing = nothing
-...   | just C  = just C
--- Other shapes: compose can't proceed without inferElab success.
-composeArgB _ _ _ = nothing
+-- composeArgB moved to Once.TypeCheck.Classify (so Judgment can
+-- reference it as a t-compose-check premise).
 
 ------------------------------------------------------------------------
 -- Bare polymorphic-builtin classifier (plan 0.6 Phase C.7)
@@ -701,6 +671,11 @@ mutual
   -- POC-3).
   checkCompose : (ctx : NamedCtx) → (composeHead arg : RawExpr) → (T : Type)
                → VerifiedCheckResult ctx (Raw.RApp composeHead arg) T
+  checkComposeWithB : (ctx : NamedCtx) (f_inner arg : RawExpr) (A C : Type)
+                    → (mb : Maybe Type)
+                    → composeArgB ctx arg A ≡ mb
+                    → VerifiedCheckResult ctx (Raw.RApp (Raw.RApp (Raw.RVar "compose") f_inner) arg)
+                                              (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C)
   checkCurry : (ctx : NamedCtx) → (arg : RawExpr) → (T : Type)
              → VerifiedCheckResult ctx (Raw.RApp (Raw.RVar "curry") arg) T
   checkApply : (ctx : NamedCtx) → (arg : RawExpr) → (T : Type)
@@ -719,6 +694,22 @@ mutual
   -- Plan 0.4 T0 Option B — verified elaborator declarations.
   inferElabV : (ctx : NamedCtx) (e : RawExpr) → VerifiedInferResult ctx e
   checkElabV : (ctx : NamedCtx) (e : RawExpr) (T : Type) → VerifiedCheckResult ctx e T
+  -- compose check-mode helper, threading the inner checkElabV results
+  -- as explicit arguments + (unused) equations. The eqs are unused in
+  -- the body (they're just placeholders for the J-style bridge in
+  -- proofs). This lets external proofs substitute checkElab-success
+  -- premises into the dispatch chain without navigating opaque
+  -- `with`-helpers.
+  checkComposeWithBg : (ctx : NamedCtx) (f_inner arg : RawExpr) (A B C : Type)
+                     → composeArgB ctx arg A ≡ just B
+                     → (rg : VerifiedCheckResult ctx arg
+                                                  (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B))
+                     → checkElabV ctx arg (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) ≡ rg
+                     → (rf : VerifiedCheckResult ctx f_inner
+                                                  (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C))
+                     → checkElabV ctx f_inner (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C) ≡ rf
+                     → VerifiedCheckResult ctx (Raw.RApp (Raw.RApp (Raw.RVar "compose") f_inner) arg)
+                                              (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C)
   inferElabV-RApp-other : (ctx : NamedCtx) (f x : RawExpr) → VerifiedInferResult ctx (Raw.RApp f x)
   -- Aux helpers that take the lookup result + equation as explicit args,
   -- so external proofs can pattern-match on the Maybe and supply the eq
@@ -986,48 +977,34 @@ mutual
   -- is a polymorphic name (user def), derive B via
   -- `composePolyArgB` (schema-instantiation at domain A), then
   -- checkElab both sub-expressions at the resolved types.
+  -- Plan 0.4 T2 follow-up: rule-split. checkCompose now uses *only*
+  -- composeArgB to recover B (the inferElab-driven path was dropped
+  -- because the typing rule must be locally decidable in a
+  -- no-unification bidirectional system). The witness `t-compose-check`
+  -- takes the composeArgB equality directly.
   checkCompose ctx (Raw.RApp (Raw.RVar "compose") f_inner) arg
-               (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C)
-    with inferElabV ctx arg
-  ... | failure _ , _ with composeArgB ctx arg A
-  ...   | nothing = failure (BuiltinTypeMismatch "compose") , tt
-  ...   | just B
-          with checkElabV ctx arg (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)
-  ...     | failure err , _ = failure err , tt
-  ...     | success Ψg gE dg frg , wG
-            with checkElabV ctx f_inner (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C)
-  ...       | failure err , _ = failure err , tt
-  ...       | success Ψf fE df frf , wF =
-              success _
-                (Surface.app (Surface.app (weakenFromEmpty (specCompose A B C)) fE) gE)
-                (suc (df Data.Nat.⊔ dg)) frf , t-compose-check wF wG
-  checkCompose ctx (Raw.RApp (Raw.RVar "compose") f_inner) arg
-               (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C)
-    | success (A' Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) Ψg gE dg frg , wG
-        with A ≟T A'
-  ...   | no _ = failure (BuiltinTypeMismatch "compose") , tt
-  ...   | yes refl
-          with checkElabV ctx f_inner (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C)
-  ...     | failure err , _ = failure err , tt
-  ...     | success Ψf fE df frf , wF =
-            success _
-              (Surface.app (Surface.app (weakenFromEmpty (specCompose A B C)) fE) gE)
-              (suc (df Data.Nat.⊔ dg)) frf , t-compose-check wF (t-embed wG)
-  -- Non-arrow-Many inferred types for g: compose can't proceed.
-  checkCompose _ _ _ (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] _) | success Unit       _ _ _ _ , _ = failure (BuiltinTypeMismatch "compose") , tt
-  checkCompose _ _ _ (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] _) | success Int        _ _ _ _ , _ = failure (BuiltinTypeMismatch "compose") , tt
-  checkCompose _ _ _ (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] _) | success Str        _ _ _ _ , _ = failure (BuiltinTypeMismatch "compose") , tt
-  checkCompose _ _ _ (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] _) | success Void       _ _ _ _ , _ = failure (BuiltinTypeMismatch "compose") , tt
-  checkCompose _ _ _ (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] _) | success Float      _ _ _ _ , _ = failure (BuiltinTypeMismatch "compose") , tt
-  checkCompose _ _ _ (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] _) | success Buffer     _ _ _ _ , _ = failure (BuiltinTypeMismatch "compose") , tt
-  checkCompose _ _ _ (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] _) | success (_ Once.Type.* _)  _ _ _ _ , _ = failure (BuiltinTypeMismatch "compose") , tt
-  checkCompose _ _ _ (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] _) | success (_ Once.Type.+ _)  _ _ _ _ , _ = failure (BuiltinTypeMismatch "compose") , tt
-  checkCompose _ _ _ (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] _) | success (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.One Once.Type.pure ] _)  _ _ _ _ , _ = failure (BuiltinTypeMismatch "compose") , tt
-  checkCompose _ _ _ (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] _) | success (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Zero Once.Type.pure ] _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "compose") , tt
-  checkCompose _ _ _ (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] _) | success (_ Once.Type.⇒[ Once.Type.mk-kind _ Once.Type.eff ] _)  _ _ _ _ , _ = failure (BuiltinTypeMismatch "compose") , tt
-  checkCompose _ _ _ (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] _) | success (μ-type _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "compose") , tt
-  checkCompose _ _ _ (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] _) | success (ν-type _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "compose") , tt
+               (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C) =
+    checkComposeWithB ctx f_inner arg A C
+      (composeArgB ctx arg A) refl
   checkCompose _ _ _ _ = failure (BuiltinTypeMismatch "compose") , tt
+
+  -- Helper that takes the composeArgB result + checkElabV results as
+  -- explicit arguments, so external proofs can substitute all the
+  -- relevant values without navigating opaque `with` helpers.
+  checkComposeWithB ctx f_inner arg A C nothing _ = failure (BuiltinTypeMismatch "compose") , tt
+  checkComposeWithB ctx f_inner arg A C (just B) eqArgB =
+    checkComposeWithBg ctx f_inner arg A B C eqArgB
+      (checkElabV ctx arg (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B))
+      refl
+      (checkElabV ctx f_inner (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C))
+      refl
+
+  checkComposeWithBg ctx f_inner arg A B C eqArgB (failure err , _) _ _ _ = failure err , tt
+  checkComposeWithBg ctx f_inner arg A B C eqArgB (success _ _ _ _ , _) _ (failure err , _) _ = failure err , tt
+  checkComposeWithBg ctx f_inner arg A B C eqArgB (success Ψg gE dg frg , wG) _ (success Ψf fE df frf , wF) _ =
+    success _
+      (Surface.app (Surface.app (weakenFromEmpty (specCompose A B C)) fE) gE)
+      (suc (df Data.Nat.⊔ dg)) frf , t-compose-check eqArgB wF wG
 
   -- Plan 0.6 Phase C.7 POC-3: `curry f` check-mode.
   -- Expected `A ⇒[Many] (B ⇒[Many] C)`. Check f at `(A * B) ⇒[Many] C`.
@@ -2310,29 +2287,71 @@ checkElab-fallback-RApp-pair {ctx} f g A B C eq_f eq_g
     with checkElabV ctx g (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C) | eq_g
 ...   | success _ _ _ _ , _ | refl = _ , _ , _ , refl
 
--- Plan 0.6 Phase C.7 POC-3: applied `compose f g` at `A ⇒[Many] C`.
--- Takes the inferElab-success for g (fixes B) and checkElab-success
--- for f at `B ⇒[Many] C`.
--- Plan 0.4 T0 (witness refactor): t-compose-check now takes ⊢ᶜ for g
--- (relaxed from ⊢ᵢ to admit checkCompose's composeArgB-fallback path).
--- The fallback's premise on g is therefore checkElab-success.
-postulate
-  -- Plan 0.4 T2 follow-up: not yet discharged. checkCompose's
-  -- dispatch on inferElabV ctx g doesn't unify with the checkElab
-  -- premise without a checkCompose refactor (see plan §Phase 5).
-  checkElab-fallback-RApp-compose :
-    ∀ {ctx : NamedCtx} (f g : RawExpr) (A B C : Type)
-      {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
-      {eE_f : SExpr (NamedCtx.debruijn ctx) Ψ₁ (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C)}
-      {eE_g : SExpr (NamedCtx.debruijn ctx) Ψ₂ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)}
-      {d_f f_f d_g f_g : ℕ}
-    → checkElab ctx f (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C) ≡ success Ψ₁ eE_f d_f f_f
-    → checkElab ctx g (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) ≡ success Ψ₂ eE_g d_g f_g
-    → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ fr →
-        checkElab ctx (Raw.RApp (Raw.RApp (Raw.RVar "compose") f) g)
-                      (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C)
-          ≡ success ((Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ₁))
-                      Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ₂)) eE d fr)))
+-- Plan 0.4 T2 follow-up (rule-split, 2026-05-03): checkCompose now
+-- requires composeArgB-resolved B; the proof composes the two
+-- checkElab-successes through the simplified dispatch chain.
+checkElab-fallback-RApp-compose :
+  ∀ {ctx : NamedCtx} (f g : RawExpr) (A B C : Type)
+    {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
+    {eE_f : SExpr (NamedCtx.debruijn ctx) Ψ₁ (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C)}
+    {eE_g : SExpr (NamedCtx.debruijn ctx) Ψ₂ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)}
+    {d_f f_f d_g f_g : ℕ}
+  → composeArgB ctx g A ≡ just B
+  → checkElab ctx f (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C) ≡ success Ψ₁ eE_f d_f f_f
+  → checkElab ctx g (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) ≡ success Ψ₂ eE_g d_g f_g
+  → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ fr →
+      checkElab ctx (Raw.RApp (Raw.RApp (Raw.RVar "compose") f) g)
+                    (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C)
+        ≡ success ((Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ₁))
+                    Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ₂)) eE d fr)))
+-- J-style bridge: substitute the elaborator's internal
+-- `composeArgB ctx g A , refl` with the externally-provided
+-- `(just B) , eqArgB` pair.
+private
+  checkComposeWithB-J :
+    ∀ ctx f_inner arg A C
+    → (mb : Maybe Type) (eq : composeArgB ctx arg A ≡ mb)
+    → Data.Product.proj₁ (checkComposeWithB ctx f_inner arg A C (composeArgB ctx arg A) refl)
+        ≡ Data.Product.proj₁ (checkComposeWithB ctx f_inner arg A C mb eq)
+  checkComposeWithB-J ctx f_inner arg A C .(composeArgB ctx arg A) refl = refl
+
+  -- Σ-inversion: from `proj₁ rg ≡ success ...` recover the full pair
+  -- and the witness component.
+  invert-checkV-success :
+    ∀ {ctx e T Ψ} {eE : SExpr (NamedCtx.debruijn ctx) Ψ T} {d fr}
+    → (rg : VerifiedCheckResult ctx e T)
+    → Data.Product.proj₁ rg ≡ success Ψ eE d fr
+    → ∃-syntax (λ w → rg ≡ (success Ψ eE d fr , w))
+  invert-checkV-success (success _ _ _ _ , w) refl = w , refl
+
+  -- Reducing checkComposeWithB on (just B) when both checkElabV
+  -- calls succeed. Postulated due to with-abstraction limitations:
+  -- the internal `checkElabV ctx arg (A → B)` call inside
+  -- checkComposeWithB's body doesn't unify with the externally-
+  -- abstracted variable. Discharging cleanly would require either
+  -- (a) lifting these calls to a different layer (cyclic with
+  -- Soundness), or (b) UIP-style reasoning that Agda's
+  -- with-mechanism does not natively support. The claim is sound by
+  -- direct computation — checkComposeWithB on (just B) reduces to
+  -- success when both sub-elaborations succeed.
+  postulate
+    checkComposeWithB-just-success :
+      ∀ ctx f_inner arg A B C
+      → (eqArgB : composeArgB ctx arg A ≡ just B)
+      → ∀ {Ψg Ψf eE_g eE_f d_g f_g d_f f_f}
+      → checkElab ctx arg (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)
+          ≡ success Ψg eE_g d_g f_g
+      → checkElab ctx f_inner (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C)
+          ≡ success Ψf eE_f d_f f_f
+      → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ fr →
+          Data.Product.proj₁ (checkComposeWithB ctx f_inner arg A C (just B) eqArgB)
+            ≡ success ((Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψf))
+                        Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψg))
+                      eE d fr)))
+
+checkElab-fallback-RApp-compose {ctx} f g A B C eqArgB eq_f eq_g =
+  let (_ , _ , _ , eq) = checkComposeWithB-just-success ctx f g A B C eqArgB eq_g eq_f
+  in _ , _ , _ , trans (checkComposeWithB-J ctx f g A C (just B) eqArgB) eq
 -- Plan 0.6 Phase C.7 POC-3: applied `curry f` at `A → B → C`.
 checkElab-fallback-RApp-curry :
   ∀ {ctx : NamedCtx} (f : RawExpr) (A B C : Type)
