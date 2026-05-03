@@ -746,6 +746,68 @@ mutual
     ∀ (ctx : NamedCtx) (f arg : RawExpr) (T : Type) (vw : AppHeadView f)
     → classifyAppHeadView f ≡ vw
     → VerifiedCheckResult ctx (Raw.RApp f arg) T
+  -- Plan 0.4 T2: bbc-X failure-branch aux helpers. Each is hardcoded
+  -- to its builtin name (forced by the `bbc-X` constructor at the call
+  -- site). Takes lookupLocal/lookupImport results + equations as
+  -- explicit args (eliminating `with...in eq-loc/eq-imp` opacity).
+  -- Returns success at the canonical builtin type if all conditions
+  -- match, failure otherwise.
+  checkElabV-RVar-bbc-id-failure-aux :
+    ∀ (ctx : NamedCtx) (T : Type) (err : TypeError)
+    → (locLhs : Maybe (∃[ A ] ∃[ Ψ ] (SExpr (NamedCtx.debruijn ctx) Ψ A)))
+    → lookupLocal ctx "id" ≡ locLhs
+    → (impLhs : Maybe Type)
+    → lookupImport (NamedCtx.imports ctx) "id" ≡ impLhs
+    → VerifiedCheckResult ctx (Raw.RVar "id") T
+  checkElabV-RVar-bbc-fst-failure-aux :
+    ∀ (ctx : NamedCtx) (T : Type) (err : TypeError)
+    → (locLhs : Maybe (∃[ A ] ∃[ Ψ ] (SExpr (NamedCtx.debruijn ctx) Ψ A)))
+    → lookupLocal ctx "fst" ≡ locLhs
+    → (impLhs : Maybe Type)
+    → lookupImport (NamedCtx.imports ctx) "fst" ≡ impLhs
+    → VerifiedCheckResult ctx (Raw.RVar "fst") T
+  checkElabV-RVar-bbc-snd-failure-aux :
+    ∀ (ctx : NamedCtx) (T : Type) (err : TypeError)
+    → (locLhs : Maybe (∃[ A ] ∃[ Ψ ] (SExpr (NamedCtx.debruijn ctx) Ψ A)))
+    → lookupLocal ctx "snd" ≡ locLhs
+    → (impLhs : Maybe Type)
+    → lookupImport (NamedCtx.imports ctx) "snd" ≡ impLhs
+    → VerifiedCheckResult ctx (Raw.RVar "snd") T
+  checkElabV-RVar-bbc-terminal-failure-aux :
+    ∀ (ctx : NamedCtx) (T : Type) (err : TypeError)
+    → (locLhs : Maybe (∃[ A ] ∃[ Ψ ] (SExpr (NamedCtx.debruijn ctx) Ψ A)))
+    → lookupLocal ctx "terminal" ≡ locLhs
+    → (impLhs : Maybe Type)
+    → lookupImport (NamedCtx.imports ctx) "terminal" ≡ impLhs
+    → VerifiedCheckResult ctx (Raw.RVar "terminal") T
+  checkElabV-RVar-bbc-initial-failure-aux :
+    ∀ (ctx : NamedCtx) (T : Type) (err : TypeError)
+    → (locLhs : Maybe (∃[ A ] ∃[ Ψ ] (SExpr (NamedCtx.debruijn ctx) Ψ A)))
+    → lookupLocal ctx "initial" ≡ locLhs
+    → (impLhs : Maybe Type)
+    → lookupImport (NamedCtx.imports ctx) "initial" ≡ impLhs
+    → VerifiedCheckResult ctx (Raw.RVar "initial") T
+  checkElabV-RVar-bbc-inl-failure-aux :
+    ∀ (ctx : NamedCtx) (T : Type) (err : TypeError)
+    → (locLhs : Maybe (∃[ A ] ∃[ Ψ ] (SExpr (NamedCtx.debruijn ctx) Ψ A)))
+    → lookupLocal ctx "inl" ≡ locLhs
+    → (impLhs : Maybe Type)
+    → lookupImport (NamedCtx.imports ctx) "inl" ≡ impLhs
+    → VerifiedCheckResult ctx (Raw.RVar "inl") T
+  checkElabV-RVar-bbc-inr-failure-aux :
+    ∀ (ctx : NamedCtx) (T : Type) (err : TypeError)
+    → (locLhs : Maybe (∃[ A ] ∃[ Ψ ] (SExpr (NamedCtx.debruijn ctx) Ψ A)))
+    → lookupLocal ctx "inr" ≡ locLhs
+    → (impLhs : Maybe Type)
+    → lookupImport (NamedCtx.imports ctx) "inr" ≡ impLhs
+    → VerifiedCheckResult ctx (Raw.RVar "inr") T
+  checkElabV-RVar-bbc-arr-failure-aux :
+    ∀ (ctx : NamedCtx) (T : Type) (err : TypeError)
+    → (locLhs : Maybe (∃[ A ] ∃[ Ψ ] (SExpr (NamedCtx.debruijn ctx) Ψ A)))
+    → lookupLocal ctx "arr" ≡ locLhs
+    → (impLhs : Maybe Type)
+    → lookupImport (NamedCtx.imports ctx) "arr" ≡ impLhs
+    → VerifiedCheckResult ctx (Raw.RVar "arr") T
 
   -- ===== inferElab =====
 
@@ -1209,95 +1271,50 @@ mutual
   checkElabV ctx (Raw.RVar x) T | bbc-fst | success T' Ψ eE d fr , w with T ≟T T'
   ...   | yes refl = success Ψ eE d fr , t-embed w
   ...   | no _     = failure (TypeMismatch T T') , tt
-  checkElabV ctx (Raw.RVar x) T | bbc-fst | failure err , _ with T
-  checkElabV ctx (Raw.RVar x) T | bbc-fst | failure err , _ | (A Once.Type.* B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] A' with A ≟T A' | lookupLocal ctx x in eq-loc | lookupImport (NamedCtx.imports ctx) x in eq-imp
-  ...     | yes refl | nothing | nothing =
-            success Surface.zeroUsage (weakenFromEmpty (specFst A B)) 0 (NamedCtx.freshCounter ctx) , t-fst-check eq-loc eq-imp
-  ...     | _ | _ | _ = failure (BuiltinTypeMismatch "fst") , tt
-  checkElabV ctx (Raw.RVar x) T | bbc-fst | failure err , _ | _ = failure err , tt
-  -- bbc-id: canonical T = `T' ⇒[Many,pure] T'`.
+  checkElabV ctx (Raw.RVar x) T | bbc-fst | failure err , _ =
+    checkElabV-RVar-bbc-fst-failure-aux ctx T err _ refl _ refl
   checkElabV ctx (Raw.RVar x) T | bbc-id with inferElabV ctx (Raw.RVar x)
   checkElabV ctx (Raw.RVar x) T | bbc-id | success T' Ψ eE d fr , w with T ≟T T'
   ...   | yes refl = success Ψ eE d fr , t-embed w
   ...   | no _     = failure (TypeMismatch T T') , tt
-  checkElabV ctx (Raw.RVar x) T | bbc-id | failure err , _ with T
-  checkElabV ctx (Raw.RVar x) T | bbc-id | failure err , _ | (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] Y) with X ≟T Y | lookupLocal ctx x in eq-loc | lookupImport (NamedCtx.imports ctx) x in eq-imp
-  ...     | yes refl | nothing | nothing =
-            success Surface.zeroUsage (weakenFromEmpty (specId X)) 0 (NamedCtx.freshCounter ctx) , t-id-check eq-loc eq-imp
-  ...     | _ | _ | _ = failure (BuiltinTypeMismatch "id") , tt
-  checkElabV ctx (Raw.RVar x) T | bbc-id | failure err , _ | _ = failure err , tt
-
-  -- bbc-snd: canonical T = `(A * B) ⇒[Many,pure] B'`.
+  checkElabV ctx (Raw.RVar x) T | bbc-id | failure err , _ =
+    checkElabV-RVar-bbc-id-failure-aux ctx T err _ refl _ refl
   checkElabV ctx (Raw.RVar x) T | bbc-snd with inferElabV ctx (Raw.RVar x)
   checkElabV ctx (Raw.RVar x) T | bbc-snd | success T' Ψ eE d fr , w with T ≟T T'
   ...   | yes refl = success Ψ eE d fr , t-embed w
   ...   | no _     = failure (TypeMismatch T T') , tt
-  checkElabV ctx (Raw.RVar x) T | bbc-snd | failure err , _ with T
-  checkElabV ctx (Raw.RVar x) T | bbc-snd | failure err , _ | (A Once.Type.* B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B' with B ≟T B' | lookupLocal ctx x in eq-loc | lookupImport (NamedCtx.imports ctx) x in eq-imp
-  ...     | yes refl | nothing | nothing =
-            success Surface.zeroUsage (weakenFromEmpty (specSnd A B)) 0 (NamedCtx.freshCounter ctx) , t-snd-check eq-loc eq-imp
-  ...     | _ | _ | _ = failure (BuiltinTypeMismatch "snd") , tt
-  checkElabV ctx (Raw.RVar x) T | bbc-snd | failure err , _ | _ = failure err , tt
-
-  -- bbc-terminal: canonical T = `A ⇒[Many,pure] Unit`.
+  checkElabV ctx (Raw.RVar x) T | bbc-snd | failure err , _ =
+    checkElabV-RVar-bbc-snd-failure-aux ctx T err _ refl _ refl
   checkElabV ctx (Raw.RVar x) T | bbc-terminal with inferElabV ctx (Raw.RVar x)
   checkElabV ctx (Raw.RVar x) T | bbc-terminal | success T' Ψ eE d fr , w with T ≟T T'
   ...   | yes refl = success Ψ eE d fr , t-embed w
   ...   | no _     = failure (TypeMismatch T T') , tt
-  checkElabV ctx (Raw.RVar x) T | bbc-terminal | failure err , _ with T
-  checkElabV ctx (Raw.RVar x) T | bbc-terminal | failure err , _ | A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] Once.Type.Unit with lookupLocal ctx x in eq-loc | lookupImport (NamedCtx.imports ctx) x in eq-imp
-  ...     | nothing | nothing =
-            success Surface.zeroUsage (weakenFromEmpty (specTerminal A)) 0 (NamedCtx.freshCounter ctx) , t-terminal-check eq-loc eq-imp
-  ...     | _ | _ = failure (BuiltinTypeMismatch "terminal") , tt
-  checkElabV ctx (Raw.RVar x) T | bbc-terminal | failure err , _ | _ = failure err , tt
-
-  -- bbc-initial: canonical T = `Void ⇒[Many,pure] A`.
+  checkElabV ctx (Raw.RVar x) T | bbc-terminal | failure err , _ =
+    checkElabV-RVar-bbc-terminal-failure-aux ctx T err _ refl _ refl
   checkElabV ctx (Raw.RVar x) T | bbc-initial with inferElabV ctx (Raw.RVar x)
   checkElabV ctx (Raw.RVar x) T | bbc-initial | success T' Ψ eE d fr , w with T ≟T T'
   ...   | yes refl = success Ψ eE d fr , t-embed w
   ...   | no _     = failure (TypeMismatch T T') , tt
-  checkElabV ctx (Raw.RVar x) T | bbc-initial | failure err , _ with T
-  checkElabV ctx (Raw.RVar x) T | bbc-initial | failure err , _ | Once.Type.Void Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] A with lookupLocal ctx x in eq-loc | lookupImport (NamedCtx.imports ctx) x in eq-imp
-  ...     | nothing | nothing =
-            success Surface.zeroUsage (weakenFromEmpty (specInitial A)) 0 (NamedCtx.freshCounter ctx) , t-initial-check eq-loc eq-imp
-  ...     | _ | _ = failure (BuiltinTypeMismatch "initial") , tt
-  checkElabV ctx (Raw.RVar x) T | bbc-initial | failure err , _ | _ = failure err , tt
-
-  -- bbc-inl: canonical T = `A ⇒[Many,pure] (A' + B)` with A ≟T A'.
+  checkElabV ctx (Raw.RVar x) T | bbc-initial | failure err , _ =
+    checkElabV-RVar-bbc-initial-failure-aux ctx T err _ refl _ refl
   checkElabV ctx (Raw.RVar x) T | bbc-inl with inferElabV ctx (Raw.RVar x)
   checkElabV ctx (Raw.RVar x) T | bbc-inl | success T' Ψ eE d fr , w with T ≟T T'
   ...   | yes refl = success Ψ eE d fr , t-embed w
   ...   | no _     = failure (TypeMismatch T T') , tt
-  checkElabV ctx (Raw.RVar x) T | bbc-inl | failure err , _ with T
-  checkElabV ctx (Raw.RVar x) T | bbc-inl | failure err , _ | A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] (A' Once.Type.+ B) with A ≟T A' | lookupLocal ctx x in eq-loc | lookupImport (NamedCtx.imports ctx) x in eq-imp
-  ...     | yes refl | nothing | nothing =
-            success Surface.zeroUsage (weakenFromEmpty (specInl A B)) 0 (NamedCtx.freshCounter ctx) , t-inl-check eq-loc eq-imp
-  ...     | _ | _ | _ = failure (BuiltinTypeMismatch "inl") , tt
-  checkElabV ctx (Raw.RVar x) T | bbc-inl | failure err , _ | _ = failure err , tt
-
-  -- bbc-inr: canonical T = `B ⇒[Many,pure] (A + B')` with B ≟T B'.
+  checkElabV ctx (Raw.RVar x) T | bbc-inl | failure err , _ =
+    checkElabV-RVar-bbc-inl-failure-aux ctx T err _ refl _ refl
   checkElabV ctx (Raw.RVar x) T | bbc-inr with inferElabV ctx (Raw.RVar x)
   checkElabV ctx (Raw.RVar x) T | bbc-inr | success T' Ψ eE d fr , w with T ≟T T'
   ...   | yes refl = success Ψ eE d fr , t-embed w
   ...   | no _     = failure (TypeMismatch T T') , tt
-  checkElabV ctx (Raw.RVar x) T | bbc-inr | failure err , _ with T
-  checkElabV ctx (Raw.RVar x) T | bbc-inr | failure err , _ | B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] (A Once.Type.+ B') with B ≟T B' | lookupLocal ctx x in eq-loc | lookupImport (NamedCtx.imports ctx) x in eq-imp
-  ...     | yes refl | nothing | nothing =
-            success Surface.zeroUsage (weakenFromEmpty (specInr A B)) 0 (NamedCtx.freshCounter ctx) , t-inr-check eq-loc eq-imp
-  ...     | _ | _ | _ = failure (BuiltinTypeMismatch "inr") , tt
-  checkElabV ctx (Raw.RVar x) T | bbc-inr | failure err , _ | _ = failure err , tt
-
-  -- bbc-arr: canonical T = `(A ⇒[Many,pure] B) ⇒[Many,pure] (A' ⇒[Many,eff] B')`.
+  checkElabV ctx (Raw.RVar x) T | bbc-inr | failure err , _ =
+    checkElabV-RVar-bbc-inr-failure-aux ctx T err _ refl _ refl
   checkElabV ctx (Raw.RVar x) T | bbc-arr with inferElabV ctx (Raw.RVar x)
   checkElabV ctx (Raw.RVar x) T | bbc-arr | success T' Ψ eE d fr , w with T ≟T T'
   ...   | yes refl = success Ψ eE d fr , t-embed w
   ...   | no _     = failure (TypeMismatch T T') , tt
-  checkElabV ctx (Raw.RVar x) T | bbc-arr | failure err , _ with T
-  checkElabV ctx (Raw.RVar x) T | bbc-arr | failure err , _ | (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] (A' Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B') with A ≟T A' | B ≟T B' | lookupLocal ctx x in eq-loc | lookupImport (NamedCtx.imports ctx) x in eq-imp
-  ...     | yes refl | yes refl | nothing | nothing =
-            success Surface.zeroUsage (weakenFromEmpty (specArr A B)) 0 (NamedCtx.freshCounter ctx) , t-arr-check eq-loc eq-imp
-  ...     | _ | _ | _ | _ = failure (BuiltinTypeMismatch "arr") , tt
-  checkElabV ctx (Raw.RVar x) T | bbc-arr | failure err , _ | _ = failure err , tt
+  checkElabV ctx (Raw.RVar x) T | bbc-arr | failure err , _ =
+    checkElabV-RVar-bbc-arr-failure-aux ctx T err _ refl _ refl
 
   -- bbc-other: lookup-then-poly. Self-contained migration mirroring
   -- checkElab-RVar's bbc-other dispatch. The poly-instantiate witness
@@ -1570,6 +1587,265 @@ mutual
   ...       | failure err , _ = failure err , tt
   ...       | success Ψf fE df frf , wF =
               success _ (Surface.app fE argE) (suc (df ⊔ dx)) frf , t-arg-driven-app-check eqAH wArg wF
+
+  -- bbc-X failure-branch aux bodies. Each pattern-matches on T to the
+  -- canonical builtin shape and on the lookup results. Success iff
+  -- T = canonical & both lookups nothing & inner type-checks pass.
+  checkElabV-RVar-bbc-id-failure-aux ctx (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] Y) err locLhs eqLoc impLhs eqImp with X ≟T Y | locLhs | impLhs
+  ... | yes refl | nothing | nothing =
+        success Surface.zeroUsage (weakenFromEmpty (specId X)) 0 (NamedCtx.freshCounter ctx) , t-id-check eqLoc eqImp
+  ... | _ | _ | _ = failure (BuiltinTypeMismatch "id") , tt
+  checkElabV-RVar-bbc-id-failure-aux ctx Unit err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-id-failure-aux ctx Void err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-id-failure-aux ctx Int err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-id-failure-aux ctx Float err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-id-failure-aux ctx Str err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-id-failure-aux ctx Buffer err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-id-failure-aux ctx (_ Once.Type.* _) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-id-failure-aux ctx (_ Once.Type.+ _) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-id-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind _ Once.Type.eff ] _) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-id-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Zero Once.Type.pure ] _) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-id-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.One Once.Type.pure ] _) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-id-failure-aux ctx (Once.Type.μ-type _) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-id-failure-aux ctx (Once.Type.ν-type _) err _ _ _ _ = failure err , tt
+
+  checkElabV-RVar-bbc-fst-failure-aux ctx ((A Once.Type.* B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] A') err locLhs eqLoc impLhs eqImp with A ≟T A' | locLhs | impLhs
+  ... | yes refl | nothing | nothing =
+        success Surface.zeroUsage (weakenFromEmpty (specFst A B)) 0 (NamedCtx.freshCounter ctx) , t-fst-check eqLoc eqImp
+  ... | _ | _ | _ = failure (BuiltinTypeMismatch "fst") , tt
+  checkElabV-RVar-bbc-fst-failure-aux ctx Unit err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-fst-failure-aux ctx Void err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-fst-failure-aux ctx Int err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-fst-failure-aux ctx Float err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-fst-failure-aux ctx Str err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-fst-failure-aux ctx Buffer err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-fst-failure-aux ctx (Unit Once.Type.⇒[ _ ] _) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-fst-failure-aux ctx (Void Once.Type.⇒[ _ ] _) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-fst-failure-aux ctx (Int Once.Type.⇒[ _ ] _) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-fst-failure-aux ctx (Float Once.Type.⇒[ _ ] _) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-fst-failure-aux ctx (Str Once.Type.⇒[ _ ] _) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-fst-failure-aux ctx (Buffer Once.Type.⇒[ _ ] _) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-fst-failure-aux ctx ((_ Once.Type.+ _) Once.Type.⇒[ _ ] _) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-fst-failure-aux ctx ((_ Once.Type.⇒[ _ ] _) Once.Type.⇒[ _ ] _) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-fst-failure-aux ctx ((Once.Type.μ-type _) Once.Type.⇒[ _ ] _) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-fst-failure-aux ctx ((Once.Type.ν-type _) Once.Type.⇒[ _ ] _) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-fst-failure-aux ctx ((_ Once.Type.* _) Once.Type.⇒[ Once.Type.mk-kind _ Once.Type.eff ] _) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-fst-failure-aux ctx ((_ Once.Type.* _) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Zero Once.Type.pure ] _) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-fst-failure-aux ctx ((_ Once.Type.* _) Once.Type.⇒[ Once.Type.mk-kind Once.Type.One Once.Type.pure ] _) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-fst-failure-aux ctx (_ Once.Type.* _) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-fst-failure-aux ctx (_ Once.Type.+ _) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-fst-failure-aux ctx (Once.Type.μ-type _) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-fst-failure-aux ctx (Once.Type.ν-type _) err _ _ _ _ = failure err , tt
+
+  -- bbc-snd: canonical T = (A * B) ⇒[Many,pure] B'
+  checkElabV-RVar-bbc-snd-failure-aux ctx ((A Once.Type.* B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B') err locLhs eqLoc impLhs eqImp with B ≟T B' | locLhs | impLhs
+  ... | yes refl | nothing | nothing =
+        success Surface.zeroUsage (weakenFromEmpty (specSnd A B)) 0 (NamedCtx.freshCounter ctx) , t-snd-check eqLoc eqImp
+  ... | _ | _ | _ = failure (BuiltinTypeMismatch "snd") , tt
+  checkElabV-RVar-bbc-snd-failure-aux ctx Unit err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-snd-failure-aux ctx Void err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-snd-failure-aux ctx Int err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-snd-failure-aux ctx Float err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-snd-failure-aux ctx Str err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-snd-failure-aux ctx Buffer err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-snd-failure-aux ctx (Unit Once.Type.⇒[ _ ] _) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-snd-failure-aux ctx (Void Once.Type.⇒[ _ ] _) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-snd-failure-aux ctx (Int Once.Type.⇒[ _ ] _) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-snd-failure-aux ctx (Float Once.Type.⇒[ _ ] _) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-snd-failure-aux ctx (Str Once.Type.⇒[ _ ] _) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-snd-failure-aux ctx (Buffer Once.Type.⇒[ _ ] _) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-snd-failure-aux ctx ((_ Once.Type.+ _) Once.Type.⇒[ _ ] _) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-snd-failure-aux ctx ((_ Once.Type.⇒[ _ ] _) Once.Type.⇒[ _ ] _) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-snd-failure-aux ctx ((Once.Type.μ-type _) Once.Type.⇒[ _ ] _) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-snd-failure-aux ctx ((Once.Type.ν-type _) Once.Type.⇒[ _ ] _) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-snd-failure-aux ctx ((_ Once.Type.* _) Once.Type.⇒[ Once.Type.mk-kind _ Once.Type.eff ] _) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-snd-failure-aux ctx ((_ Once.Type.* _) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Zero Once.Type.pure ] _) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-snd-failure-aux ctx ((_ Once.Type.* _) Once.Type.⇒[ Once.Type.mk-kind Once.Type.One Once.Type.pure ] _) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-snd-failure-aux ctx (_ Once.Type.* _) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-snd-failure-aux ctx (_ Once.Type.+ _) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-snd-failure-aux ctx (Once.Type.μ-type _) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-snd-failure-aux ctx (Once.Type.ν-type _) err _ _ _ _ = failure err , tt
+
+  -- bbc-terminal: canonical T = A ⇒[Many,pure] Unit
+  checkElabV-RVar-bbc-terminal-failure-aux ctx (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] Unit) err locLhs eqLoc impLhs eqImp with locLhs | impLhs
+  ... | nothing | nothing =
+        success Surface.zeroUsage (weakenFromEmpty (specTerminal A)) 0 (NamedCtx.freshCounter ctx) , t-terminal-check eqLoc eqImp
+  ... | _ | _ = failure (BuiltinTypeMismatch "terminal") , tt
+  checkElabV-RVar-bbc-terminal-failure-aux ctx Unit err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-terminal-failure-aux ctx Void err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-terminal-failure-aux ctx Int err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-terminal-failure-aux ctx Float err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-terminal-failure-aux ctx Str err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-terminal-failure-aux ctx Buffer err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.* _) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.+ _) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.⇒[ _ ] Void) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.⇒[ _ ] Int) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.⇒[ _ ] Float) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.⇒[ _ ] Str) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.⇒[ _ ] Buffer) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.⇒[ _ ] (_ Once.Type.* _)) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.⇒[ _ ] (_ Once.Type.+ _)) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.⇒[ _ ] (_ Once.Type.⇒[ _ ] _)) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.⇒[ _ ] (Once.Type.μ-type _)) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.⇒[ _ ] (Once.Type.ν-type _)) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind _ Once.Type.eff ] Unit) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Zero Once.Type.pure ] Unit) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.One Once.Type.pure ] Unit) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-terminal-failure-aux ctx (Once.Type.μ-type _) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-terminal-failure-aux ctx (Once.Type.ν-type _) err _ _ _ _ = failure err , tt
+
+  -- bbc-initial: canonical T = Void ⇒[Many,pure] A
+  checkElabV-RVar-bbc-initial-failure-aux ctx (Void Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] A) err locLhs eqLoc impLhs eqImp with locLhs | impLhs
+  ... | nothing | nothing =
+        success Surface.zeroUsage (weakenFromEmpty (specInitial A)) 0 (NamedCtx.freshCounter ctx) , t-initial-check eqLoc eqImp
+  ... | _ | _ = failure (BuiltinTypeMismatch "initial") , tt
+  checkElabV-RVar-bbc-initial-failure-aux ctx Unit err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-initial-failure-aux ctx Void err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-initial-failure-aux ctx Int err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-initial-failure-aux ctx Float err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-initial-failure-aux ctx Str err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-initial-failure-aux ctx Buffer err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-initial-failure-aux ctx (_ Once.Type.* _) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-initial-failure-aux ctx (_ Once.Type.+ _) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-initial-failure-aux ctx (Unit Once.Type.⇒[ _ ] _) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-initial-failure-aux ctx (Int Once.Type.⇒[ _ ] _) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-initial-failure-aux ctx (Float Once.Type.⇒[ _ ] _) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-initial-failure-aux ctx (Str Once.Type.⇒[ _ ] _) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-initial-failure-aux ctx (Buffer Once.Type.⇒[ _ ] _) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-initial-failure-aux ctx ((_ Once.Type.* _) Once.Type.⇒[ _ ] _) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-initial-failure-aux ctx ((_ Once.Type.+ _) Once.Type.⇒[ _ ] _) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-initial-failure-aux ctx ((_ Once.Type.⇒[ _ ] _) Once.Type.⇒[ _ ] _) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-initial-failure-aux ctx ((Once.Type.μ-type _) Once.Type.⇒[ _ ] _) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-initial-failure-aux ctx ((Once.Type.ν-type _) Once.Type.⇒[ _ ] _) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-initial-failure-aux ctx (Void Once.Type.⇒[ Once.Type.mk-kind _ Once.Type.eff ] _) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-initial-failure-aux ctx (Void Once.Type.⇒[ Once.Type.mk-kind Once.Type.Zero Once.Type.pure ] _) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-initial-failure-aux ctx (Void Once.Type.⇒[ Once.Type.mk-kind Once.Type.One Once.Type.pure ] _) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-initial-failure-aux ctx (Once.Type.μ-type _) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-initial-failure-aux ctx (Once.Type.ν-type _) err _ _ _ _ = failure err , tt
+
+  -- bbc-inl: canonical T = A ⇒[Many,pure] (A' + B)
+  checkElabV-RVar-bbc-inl-failure-aux ctx (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] (A' Once.Type.+ B)) err locLhs eqLoc impLhs eqImp with A ≟T A' | locLhs | impLhs
+  ... | yes refl | nothing | nothing =
+        success Surface.zeroUsage (weakenFromEmpty (specInl A B)) 0 (NamedCtx.freshCounter ctx) , t-inl-check eqLoc eqImp
+  ... | _ | _ | _ = failure (BuiltinTypeMismatch "inl") , tt
+  checkElabV-RVar-bbc-inl-failure-aux ctx Unit err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-inl-failure-aux ctx Void err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-inl-failure-aux ctx Int err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-inl-failure-aux ctx Float err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-inl-failure-aux ctx Str err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-inl-failure-aux ctx Buffer err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.* _) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.+ _) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.⇒[ _ ] Unit) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.⇒[ _ ] Void) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.⇒[ _ ] Int) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.⇒[ _ ] Float) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.⇒[ _ ] Str) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.⇒[ _ ] Buffer) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.⇒[ _ ] (_ Once.Type.* _)) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.⇒[ _ ] (_ Once.Type.⇒[ _ ] _)) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.⇒[ _ ] (Once.Type.μ-type _)) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.⇒[ _ ] (Once.Type.ν-type _)) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind _ Once.Type.eff ] (_ Once.Type.+ _)) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Zero Once.Type.pure ] (_ Once.Type.+ _)) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.One Once.Type.pure ] (_ Once.Type.+ _)) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-inl-failure-aux ctx (Once.Type.μ-type _) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-inl-failure-aux ctx (Once.Type.ν-type _) err _ _ _ _ = failure err , tt
+
+  -- bbc-inr: canonical T = B ⇒[Many,pure] (A + B')
+  checkElabV-RVar-bbc-inr-failure-aux ctx (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] (A Once.Type.+ B')) err locLhs eqLoc impLhs eqImp with B ≟T B' | locLhs | impLhs
+  ... | yes refl | nothing | nothing =
+        success Surface.zeroUsage (weakenFromEmpty (specInr A B)) 0 (NamedCtx.freshCounter ctx) , t-inr-check eqLoc eqImp
+  ... | _ | _ | _ = failure (BuiltinTypeMismatch "inr") , tt
+  checkElabV-RVar-bbc-inr-failure-aux ctx Unit err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-inr-failure-aux ctx Void err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-inr-failure-aux ctx Int err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-inr-failure-aux ctx Float err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-inr-failure-aux ctx Str err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-inr-failure-aux ctx Buffer err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.* _) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.+ _) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.⇒[ _ ] Unit) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.⇒[ _ ] Void) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.⇒[ _ ] Int) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.⇒[ _ ] Float) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.⇒[ _ ] Str) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.⇒[ _ ] Buffer) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.⇒[ _ ] (_ Once.Type.* _)) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.⇒[ _ ] (_ Once.Type.⇒[ _ ] _)) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.⇒[ _ ] (Once.Type.μ-type _)) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.⇒[ _ ] (Once.Type.ν-type _)) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind _ Once.Type.eff ] (_ Once.Type.+ _)) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Zero Once.Type.pure ] (_ Once.Type.+ _)) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.One Once.Type.pure ] (_ Once.Type.+ _)) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-inr-failure-aux ctx (Once.Type.μ-type _) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-inr-failure-aux ctx (Once.Type.ν-type _) err _ _ _ _ = failure err , tt
+
+  -- bbc-arr: canonical T = (A ⇒[Many,pure] B) ⇒[Many,pure] (A' ⇒[Many,eff] B')
+  -- Use a Bool helper to identify the canonical shape; avoids enumerating
+  -- the deep arrow-kind combinatorial.
+  checkElabV-RVar-bbc-arr-failure-aux ctx (T₁ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] T₂) err locLhs eqLoc impLhs eqImp
+    with T₁
+  ... | A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B with T₂
+  ...   | A' Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B' with A ≟T A' | B ≟T B' | locLhs | impLhs
+  ...     | yes refl | yes refl | nothing | nothing =
+            success Surface.zeroUsage (weakenFromEmpty (specArr A B)) 0 (NamedCtx.freshCounter ctx) , t-arr-check eqLoc eqImp
+  ...     | _ | _ | _ | _ = failure (BuiltinTypeMismatch "arr") , tt
+  checkElabV-RVar-bbc-arr-failure-aux ctx (T₁ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] T₂) err _ _ _ _
+    | A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B | Unit = failure err , tt
+  checkElabV-RVar-bbc-arr-failure-aux ctx (T₁ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] T₂) err _ _ _ _
+    | A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B | Void = failure err , tt
+  checkElabV-RVar-bbc-arr-failure-aux ctx (T₁ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] T₂) err _ _ _ _
+    | A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B | Int = failure err , tt
+  checkElabV-RVar-bbc-arr-failure-aux ctx (T₁ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] T₂) err _ _ _ _
+    | A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B | Float = failure err , tt
+  checkElabV-RVar-bbc-arr-failure-aux ctx (T₁ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] T₂) err _ _ _ _
+    | A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B | Str = failure err , tt
+  checkElabV-RVar-bbc-arr-failure-aux ctx (T₁ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] T₂) err _ _ _ _
+    | A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B | Buffer = failure err , tt
+  checkElabV-RVar-bbc-arr-failure-aux ctx (T₁ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] T₂) err _ _ _ _
+    | A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B | (_ Once.Type.* _) = failure err , tt
+  checkElabV-RVar-bbc-arr-failure-aux ctx (T₁ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] T₂) err _ _ _ _
+    | A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B | (_ Once.Type.+ _) = failure err , tt
+  checkElabV-RVar-bbc-arr-failure-aux ctx (T₁ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] T₂) err _ _ _ _
+    | A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B | (_ Once.Type.⇒[ Once.Type.mk-kind _ Once.Type.pure ] _) = failure err , tt
+  checkElabV-RVar-bbc-arr-failure-aux ctx (T₁ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] T₂) err _ _ _ _
+    | A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B | (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Zero Once.Type.eff ] _) = failure err , tt
+  checkElabV-RVar-bbc-arr-failure-aux ctx (T₁ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] T₂) err _ _ _ _
+    | A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B | (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.One Once.Type.eff ] _) = failure err , tt
+  checkElabV-RVar-bbc-arr-failure-aux ctx (T₁ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] T₂) err _ _ _ _
+    | A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B | (Once.Type.μ-type _) = failure err , tt
+  checkElabV-RVar-bbc-arr-failure-aux ctx (T₁ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] T₂) err _ _ _ _
+    | A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B | (Once.Type.ν-type _) = failure err , tt
+  -- T₁ not (_ ⇒[Many,pure] _)
+  checkElabV-RVar-bbc-arr-failure-aux ctx (T₁ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] T₂) err _ _ _ _ | Unit = failure err , tt
+  checkElabV-RVar-bbc-arr-failure-aux ctx (T₁ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] T₂) err _ _ _ _ | Void = failure err , tt
+  checkElabV-RVar-bbc-arr-failure-aux ctx (T₁ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] T₂) err _ _ _ _ | Int = failure err , tt
+  checkElabV-RVar-bbc-arr-failure-aux ctx (T₁ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] T₂) err _ _ _ _ | Float = failure err , tt
+  checkElabV-RVar-bbc-arr-failure-aux ctx (T₁ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] T₂) err _ _ _ _ | Str = failure err , tt
+  checkElabV-RVar-bbc-arr-failure-aux ctx (T₁ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] T₂) err _ _ _ _ | Buffer = failure err , tt
+  checkElabV-RVar-bbc-arr-failure-aux ctx (T₁ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] T₂) err _ _ _ _ | (_ Once.Type.* _) = failure err , tt
+  checkElabV-RVar-bbc-arr-failure-aux ctx (T₁ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] T₂) err _ _ _ _ | (_ Once.Type.+ _) = failure err , tt
+  checkElabV-RVar-bbc-arr-failure-aux ctx (T₁ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] T₂) err _ _ _ _ | (_ Once.Type.⇒[ Once.Type.mk-kind _ Once.Type.eff ] _) = failure err , tt
+  checkElabV-RVar-bbc-arr-failure-aux ctx (T₁ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] T₂) err _ _ _ _ | (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Zero Once.Type.pure ] _) = failure err , tt
+  checkElabV-RVar-bbc-arr-failure-aux ctx (T₁ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] T₂) err _ _ _ _ | (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.One Once.Type.pure ] _) = failure err , tt
+  checkElabV-RVar-bbc-arr-failure-aux ctx (T₁ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] T₂) err _ _ _ _ | (Once.Type.μ-type _) = failure err , tt
+  checkElabV-RVar-bbc-arr-failure-aux ctx (T₁ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] T₂) err _ _ _ _ | (Once.Type.ν-type _) = failure err , tt
+  -- Outer T not (_ ⇒[Many,pure] _)
+  checkElabV-RVar-bbc-arr-failure-aux ctx Unit err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-arr-failure-aux ctx Void err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-arr-failure-aux ctx Int err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-arr-failure-aux ctx Float err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-arr-failure-aux ctx Str err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-arr-failure-aux ctx Buffer err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-arr-failure-aux ctx (_ Once.Type.* _) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-arr-failure-aux ctx (_ Once.Type.+ _) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-arr-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind _ Once.Type.eff ] _) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-arr-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Zero Once.Type.pure ] _) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-arr-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.One Once.Type.pure ] _) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-arr-failure-aux ctx (Once.Type.μ-type _) err _ _ _ _ = failure err , tt
+  checkElabV-RVar-bbc-arr-failure-aux ctx (Once.Type.ν-type _) err _ _ _ _ = failure err , tt
 
 ------------------------------------------------------------------------
 -- Plan 0.4 T0 Option B — projection wrappers.
