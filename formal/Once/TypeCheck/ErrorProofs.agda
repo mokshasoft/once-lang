@@ -37,7 +37,8 @@ open import Once.TypeCheck.Raw as Raw
   using (RawExpr; RVar; RLam; RQualified)
 open import Once.TypeCheck.Elaborate
   using (NamedCtx; inferElab; checkElab; InferElabResult; CheckElabResult;
-         success; failure; lookupLocal; lookupImport)
+         success; failure; lookupLocal; lookupImport;
+         inferElabV; checkElabV; _≟T_)
 open import Once.TypeCheck.Error
   using (TypeError;
          LambdaInInferMode; LambdaRequiresFunctionType;
@@ -53,113 +54,146 @@ import Once.Surface.Syntax
 -- Unconditional-failure paths (now trivial after refactor)
 ------------------------------------------------------------------------
 
-postulate
-  lam-infer-is-LambdaInInferMode :
-    ∀ (ctx : NamedCtx) (x : String) (body : RawExpr) {err : TypeError}
-    → inferElab ctx (RLam x body) ≡ failure err
-    → err ≡ LambdaInInferMode
-postulate
-  inl-app-infer-is-InlInInferMode :
-    ∀ (ctx : NamedCtx) (arg : RawExpr) {err : TypeError}
-    → inferElab ctx (Raw.RApp (RVar "inl") arg) ≡ failure err
-    → err ≡ InlInInferMode
-postulate
-  inr-app-infer-is-InrInInferMode :
-    ∀ (ctx : NamedCtx) (arg : RawExpr) {err : TypeError}
-    → inferElab ctx (Raw.RApp (RVar "inr") arg) ≡ failure err
-    → err ≡ InrInInferMode
-postulate
-  initial-app-infer-is-InitialInInferMode :
-    ∀ (ctx : NamedCtx) (arg : RawExpr) {err : TypeError}
-    → inferElab ctx (Raw.RApp (RVar "initial") arg) ≡ failure err
-    → err ≡ InitialInInferMode
-postulate
-  inl-check-Unit : ∀ (ctx : NamedCtx) (arg : RawExpr) {err : TypeError}
-                 → checkElab ctx (Raw.RApp (Raw.RVar "inl") arg) Unit ≡ failure err
-                 → err ≡ InlNeedsSumType
-postulate
-  inl-check-Void : ∀ (ctx : NamedCtx) (arg : RawExpr) {err : TypeError}
-                 → checkElab ctx (Raw.RApp (Raw.RVar "inl") arg) Void ≡ failure err
-                 → err ≡ InlNeedsSumType
-postulate
-  inl-check-Int : ∀ (ctx : NamedCtx) (arg : RawExpr) {err : TypeError}
-                 → checkElab ctx (Raw.RApp (Raw.RVar "inl") arg) Int ≡ failure err
-                 → err ≡ InlNeedsSumType
+lam-infer-is-LambdaInInferMode :
+  ∀ (ctx : NamedCtx) (x : String) (body : RawExpr) {err : TypeError}
+  → inferElab ctx (RLam x body) ≡ failure err
+  → err ≡ LambdaInInferMode
+lam-infer-is-LambdaInInferMode ctx x body refl = refl
+
+inl-app-infer-is-InlInInferMode :
+  ∀ (ctx : NamedCtx) (arg : RawExpr) {err : TypeError}
+  → inferElab ctx (Raw.RApp (RVar "inl") arg) ≡ failure err
+  → err ≡ InlInInferMode
+inl-app-infer-is-InlInInferMode ctx arg refl = refl
+
+inr-app-infer-is-InrInInferMode :
+  ∀ (ctx : NamedCtx) (arg : RawExpr) {err : TypeError}
+  → inferElab ctx (Raw.RApp (RVar "inr") arg) ≡ failure err
+  → err ≡ InrInInferMode
+inr-app-infer-is-InrInInferMode ctx arg refl = refl
+
+initial-app-infer-is-InitialInInferMode :
+  ∀ (ctx : NamedCtx) (arg : RawExpr) {err : TypeError}
+  → inferElab ctx (Raw.RApp (RVar "initial") arg) ≡ failure err
+  → err ≡ InitialInInferMode
+initial-app-infer-is-InitialInInferMode ctx arg refl = refl
+inl-check-Unit : ∀ (ctx : NamedCtx) (arg : RawExpr) {err : TypeError}
+               → checkElab ctx (Raw.RApp (Raw.RVar "inl") arg) Unit ≡ failure err
+               → err ≡ InlNeedsSumType
+inl-check-Unit ctx arg refl = refl
+
+inl-check-Void : ∀ (ctx : NamedCtx) (arg : RawExpr) {err : TypeError}
+               → checkElab ctx (Raw.RApp (Raw.RVar "inl") arg) Void ≡ failure err
+               → err ≡ InlNeedsSumType
+inl-check-Void ctx arg refl = refl
+
+inl-check-Int : ∀ (ctx : NamedCtx) (arg : RawExpr) {err : TypeError}
+               → checkElab ctx (Raw.RApp (Raw.RVar "inl") arg) Int ≡ failure err
+               → err ≡ InlNeedsSumType
+inl-check-Int ctx arg refl = refl
 postulate
   qualified-not-found-is-UnboundQualified :
     ∀ (ctx : NamedCtx) (name alias : String) {err : TypeError}
     → lookupImport (NamedCtx.imports ctx) (alias ++ "." ++ name) ≡ nothing
     → inferElab ctx (RQualified name alias) ≡ failure err
     → err ≡ UnboundQualified name alias
-postulate
-  fst-non-pair-Unit : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr)
+fst-non-pair-Unit : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr)
                       {Ψ' eE' d' f' err}
                     → inferElab ctx arg ≡ success Unit Ψ' eE' d' f'
                     → inferElab ctx (Raw.RApp (Raw.RVar "fst") arg) ≡ failure err
                     → err ≡ FstNeedsPair
-postulate
-  fst-non-pair-Int : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr)
+fst-non-pair-Unit ctx arg eqInner eqOuter
+  with inferElabV ctx arg | eqInner
+... | success Unit _ _ _ _ , _ | refl with eqOuter
+...   | refl = refl
+fst-non-pair-Int : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr)
                      {Ψ' eE' d' f' err}
                    → inferElab ctx arg ≡ success Int Ψ' eE' d' f'
                    → inferElab ctx (Raw.RApp (Raw.RVar "fst") arg) ≡ failure err
                    → err ≡ FstNeedsPair
-postulate
-  snd-non-pair-Unit : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr)
+fst-non-pair-Int ctx arg eqInner eqOuter
+  with inferElabV ctx arg | eqInner
+... | success Int _ _ _ _ , _ | refl with eqOuter
+...   | refl = refl
+snd-non-pair-Unit : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr)
                       {Ψ' eE' d' f' err}
                     → inferElab ctx arg ≡ success Unit Ψ' eE' d' f'
                     → inferElab ctx (Raw.RApp (Raw.RVar "snd") arg) ≡ failure err
                     → err ≡ SndNeedsPair
-postulate
-  snd-non-pair-Int : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr)
+snd-non-pair-Unit ctx arg eqInner eqOuter
+  with inferElabV ctx arg | eqInner
+... | success Unit _ _ _ _ , _ | refl with eqOuter
+...   | refl = refl
+snd-non-pair-Int : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr)
                      {Ψ' eE' d' f' err}
                    → inferElab ctx arg ≡ success Int Ψ' eE' d' f'
                    → inferElab ctx (Raw.RApp (Raw.RVar "snd") arg) ≡ failure err
                    → err ≡ SndNeedsPair
+snd-non-pair-Int ctx arg eqInner eqOuter
+  with inferElabV ctx arg | eqInner
+... | success Int _ _ _ _ , _ | refl with eqOuter
+...   | refl = refl
 postulate
   neg-non-Int-Unit : ∀ (ctx : NamedCtx) (e : Raw.RawExpr)
-                     {Ψ' eE' d' f' err}
-                   → inferElab ctx e ≡ success Unit Ψ' eE' d' f'
-                   → inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ failure err
-                   → err ≡ NegationNotInt
+                       {Ψ' eE' d' f' err}
+                     → inferElab ctx e ≡ success Unit Ψ' eE' d' f'
+                     → inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ failure err
+                     → err ≡ NegationNotInt
 postulate
   neg-non-Int-Str : ∀ (ctx : NamedCtx) (e : Raw.RawExpr)
-                    {Ψ' eE' d' f' err}
-                  → inferElab ctx e ≡ success Str Ψ' eE' d' f'
-                  → inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ failure err
-                  → err ≡ NegationNotInt
-postulate
-  case-scrut-Unit : ∀ (ctx : NamedCtx) (scrut : Raw.RawExpr)
+                      {Ψ' eE' d' f' err}
+                    → inferElab ctx e ≡ success Str Ψ' eE' d' f'
+                    → inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ failure err
+                    → err ≡ NegationNotInt
+case-scrut-Unit : ∀ (ctx : NamedCtx) (scrut : Raw.RawExpr)
                     (xL : String) (eL : Raw.RawExpr)
                     (xR : String) (eR : Raw.RawExpr)
                     {Ψ' eE' d' f' err}
                   → inferElab ctx scrut ≡ success Unit Ψ' eE' d' f'
                   → inferElab ctx (Raw.RDestruct scrut xL eL xR eR) ≡ failure err
                   → err ≡ CaseScrutineeNotSum
-postulate
-  case-scrut-Int : ∀ (ctx : NamedCtx) (scrut : Raw.RawExpr)
+case-scrut-Unit ctx scrut xL eL xR eR eqInner eqOuter
+  with inferElabV ctx scrut | eqInner
+... | success Unit _ _ _ _ , _ | refl with eqOuter
+...   | refl = refl
+case-scrut-Int : ∀ (ctx : NamedCtx) (scrut : Raw.RawExpr)
                    (xL : String) (eL : Raw.RawExpr)
                    (xR : String) (eR : Raw.RawExpr)
                    {Ψ' eE' d' f' err}
                  → inferElab ctx scrut ≡ success Int Ψ' eE' d' f'
                  → inferElab ctx (Raw.RDestruct scrut xL eL xR eR) ≡ failure err
                  → err ≡ CaseScrutineeNotSum
-postulate
-  case-branch-mismatch-is-CaseBranchMismatch :
-    ∀ (ctx : NamedCtx) (scrut : Raw.RawExpr)
-      (xL : String) (eL : Raw.RawExpr)
-      (xR : String) (eR : Raw.RawExpr)
-      (A B : Type)
-      {Ψs scrutE ds fs}
-      (C₁ C₂ : Type) {qℓ qr}
-      {Ψₗ eLE dL fL Ψᵣ eRE dR fR err}
-    → inferElab ctx scrut ≡ success (A T.+ B) Ψs scrutE ds fs
-    → inferElab (Once.TypeCheck.Elaborate.extendNamedCtx ctx xL A) eL
-        ≡ success C₁ (qℓ Once.Surface.Syntax.Usage.∷ Ψₗ) eLE dL fL
-    → inferElab (Once.TypeCheck.Elaborate.extendNamedCtx ctx xR B) eR
-        ≡ success C₂ (qr Once.Surface.Syntax.Usage.∷ Ψᵣ) eRE dR fR
-    → ¬ (C₁ ≡ C₂)
-    → inferElab ctx (Raw.RDestruct scrut xL eL xR eR) ≡ failure err
-    → err ≡ CaseBranchMismatch
+case-scrut-Int ctx scrut xL eL xR eR eqInner eqOuter
+  with inferElabV ctx scrut | eqInner
+... | success Int _ _ _ _ , _ | refl with eqOuter
+...   | refl = refl
+case-branch-mismatch-is-CaseBranchMismatch :
+  ∀ (ctx : NamedCtx) (scrut : Raw.RawExpr)
+    (xL : String) (eL : Raw.RawExpr)
+    (xR : String) (eR : Raw.RawExpr)
+    (A B : Type)
+    {Ψs scrutE ds fs}
+    (C₁ C₂ : Type) {qℓ qr}
+    {Ψₗ eLE dL fL Ψᵣ eRE dR fR err}
+  → inferElab ctx scrut ≡ success (A T.+ B) Ψs scrutE ds fs
+  → inferElab (Once.TypeCheck.Elaborate.extendNamedCtx ctx xL A) eL
+      ≡ success C₁ (qℓ Once.Surface.Syntax.Usage.∷ Ψₗ) eLE dL fL
+  → inferElab (Once.TypeCheck.Elaborate.extendNamedCtx ctx xR B) eR
+      ≡ success C₂ (qr Once.Surface.Syntax.Usage.∷ Ψᵣ) eRE dR fR
+  → ¬ (C₁ ≡ C₂)
+  → inferElab ctx (Raw.RDestruct scrut xL eL xR eR) ≡ failure err
+  → err ≡ CaseBranchMismatch
+case-branch-mismatch-is-CaseBranchMismatch ctx scrut xL eL xR eR A B C₁ C₂ eqS eqL eqR ¬eq eqOuter
+  with inferElabV ctx scrut | eqS
+... | success (_ T.+ _) _ _ _ _ , _ | refl
+    with inferElabV (Once.TypeCheck.Elaborate.extendNamedCtx ctx xL A) eL | eqL
+...   | success _ (_ Once.Surface.Syntax.Usage.∷ _) _ _ _ , _ | refl
+      with inferElabV (Once.TypeCheck.Elaborate.extendNamedCtx ctx xR B) eR | eqR
+...     | success _ (_ Once.Surface.Syntax.Usage.∷ _) _ _ _ , _ | refl
+        with C₁ ≟T C₂
+...       | yes ceq = ⊥-elim (¬eq ceq)
+...       | no _ with eqOuter
+...         | refl = refl
 
 ------------------------------------------------------------------------
 -- Application type mismatch (generic RApp)
@@ -188,36 +222,55 @@ postulate
     → lookupImport (NamedCtx.imports ctx) x ≡ nothing
     → inferElab ctx (Raw.RVar x) ≡ failure err
     → err ≡ UnboundVariable x
-postulate
-  check-RInt-type-mismatch :
-    ∀ (ctx : NamedCtx) (n : _) (T : Type) {err : TypeError}
-    → ¬ (T ≡ Int)
-    → checkElab ctx (Raw.RInt n) T ≡ failure err
-    → err ≡ TypeMismatch T Int
-postulate
-  check-RUnit-type-mismatch :
-    ∀ (ctx : NamedCtx) (T : Type) {err : TypeError}
-    → ¬ (T ≡ Unit)
-    → checkElab ctx Raw.RUnit T ≡ failure err
-    → err ≡ TypeMismatch T Unit
-postulate
-  check-RStringLit-type-mismatch :
-    ∀ (ctx : NamedCtx) (s : _) (T : Type) {err : TypeError}
-    → ¬ (T ≡ Str)
-    → checkElab ctx (Raw.RStringLit s) T ≡ failure err
-    → err ≡ TypeMismatch T Str
-postulate
-  lam-usage-violation-is-UsageViolation :
-    ∀ (ctx : NamedCtx) (x : String) (body : Raw.RawExpr)
-      (A : Type) (q : _) (B : Type)
-      (q' : _) {Ψ' eE' d' f' err}
-    → Once.TypeCheck.Elaborate.checkElab
-        (Once.TypeCheck.Elaborate.extendNamedCtx ctx x A) body B
-        ≡ success (q' Once.Surface.Syntax.Usage.∷ Ψ') eE' d' f'
-    → Once.TypeCheck.Elaborate.decideLeq q' q ≡ nothing
-    → Once.TypeCheck.Elaborate.checkElab ctx (Raw.RLam x body)
-        (A T.⇒[ T.mk-kind q T.pure ] B) ≡ failure err
-    → err ≡ Once.TypeCheck.Error.UsageViolation x q q'
+check-RInt-type-mismatch :
+  ∀ (ctx : NamedCtx) (n : _) (T : Type) {err : TypeError}
+  → ¬ (T ≡ Int)
+  → checkElab ctx (Raw.RInt n) T ≡ failure err
+  → err ≡ TypeMismatch T Int
+check-RInt-type-mismatch ctx n T ¬eq eq
+  with T ≟T Int
+... | yes refl = ⊥-elim (¬eq refl)
+... | no _ with eq
+...   | refl = refl
+
+check-RUnit-type-mismatch :
+  ∀ (ctx : NamedCtx) (T : Type) {err : TypeError}
+  → ¬ (T ≡ Unit)
+  → checkElab ctx Raw.RUnit T ≡ failure err
+  → err ≡ TypeMismatch T Unit
+check-RUnit-type-mismatch ctx T ¬eq eq
+  with T ≟T Unit
+... | yes refl = ⊥-elim (¬eq refl)
+... | no _ with eq
+...   | refl = refl
+
+check-RStringLit-type-mismatch :
+  ∀ (ctx : NamedCtx) (s : _) (T : Type) {err : TypeError}
+  → ¬ (T ≡ Str)
+  → checkElab ctx (Raw.RStringLit s) T ≡ failure err
+  → err ≡ TypeMismatch T Str
+check-RStringLit-type-mismatch ctx s T ¬eq eq
+  with T ≟T Str
+... | yes refl = ⊥-elim (¬eq refl)
+... | no _ with eq
+...   | refl = refl
+lam-usage-violation-is-UsageViolation :
+  ∀ (ctx : NamedCtx) (x : String) (body : Raw.RawExpr)
+    (A : Type) (q : _) (B : Type)
+    (q' : _) {Ψ' eE' d' f' err}
+  → Once.TypeCheck.Elaborate.checkElab
+      (Once.TypeCheck.Elaborate.extendNamedCtx ctx x A) body B
+      ≡ success (q' Once.Surface.Syntax.Usage.∷ Ψ') eE' d' f'
+  → Once.TypeCheck.Elaborate.decideLeq q' q ≡ nothing
+  → Once.TypeCheck.Elaborate.checkElab ctx (Raw.RLam x body)
+      (A T.⇒[ T.mk-kind q T.pure ] B) ≡ failure err
+  → err ≡ Once.TypeCheck.Error.UsageViolation x q q'
+lam-usage-violation-is-UsageViolation ctx x body A q B q' eqInner eqLeq eqOuter
+  with checkElabV (Once.TypeCheck.Elaborate.extendNamedCtx ctx x A) body B | eqInner
+... | success (_ Once.Surface.Syntax.Usage.∷ _) _ _ _ , _ | refl
+    with Once.TypeCheck.Elaborate.decideLeq q' q | eqLeq
+...   | nothing | refl with eqOuter
+...     | refl = refl
 
 ------------------------------------------------------------------------
 -- BinOpLeftError / BinOpRightError: sub-errors from binop operands
@@ -247,232 +300,310 @@ postulate
         ≡ Once.TypeCheck.Elaborate.notInt sub-err
     → inferElab ctx (Raw.RBinOp op e₁ e₂) ≡ failure outer-err
     → outer-err ≡ Once.TypeCheck.Error.BinOpRightError sub-err
-postulate
-  fst-non-pair-Void : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr)
+fst-non-pair-Void : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr)
                      {Ψ' eE' d' f' err}
                    → inferElab ctx arg ≡ success Void Ψ' eE' d' f'
                    → inferElab ctx (Raw.RApp (Raw.RVar "fst") arg) ≡ failure err
                    → err ≡ FstNeedsPair
-postulate
-  fst-non-pair-Str : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr)
+fst-non-pair-Void ctx arg eqInner eqOuter
+  with inferElabV ctx arg | eqInner
+... | success Void _ _ _ _ , _ | refl with eqOuter
+...   | refl = refl
+fst-non-pair-Str : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr)
                     {Ψ' eE' d' f' err}
                   → inferElab ctx arg ≡ success Str Ψ' eE' d' f'
                   → inferElab ctx (Raw.RApp (Raw.RVar "fst") arg) ≡ failure err
                   → err ≡ FstNeedsPair
-postulate
-  snd-non-pair-Void : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr)
+fst-non-pair-Str ctx arg eqInner eqOuter
+  with inferElabV ctx arg | eqInner
+... | success Str _ _ _ _ , _ | refl with eqOuter
+...   | refl = refl
+snd-non-pair-Void : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr)
                      {Ψ' eE' d' f' err}
                    → inferElab ctx arg ≡ success Void Ψ' eE' d' f'
                    → inferElab ctx (Raw.RApp (Raw.RVar "snd") arg) ≡ failure err
                    → err ≡ SndNeedsPair
-postulate
-  snd-non-pair-Str : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr)
+snd-non-pair-Void ctx arg eqInner eqOuter
+  with inferElabV ctx arg | eqInner
+... | success Void _ _ _ _ , _ | refl with eqOuter
+...   | refl = refl
+snd-non-pair-Str : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr)
                     {Ψ' eE' d' f' err}
                   → inferElab ctx arg ≡ success Str Ψ' eE' d' f'
                   → inferElab ctx (Raw.RApp (Raw.RVar "snd") arg) ≡ failure err
                   → err ≡ SndNeedsPair
+snd-non-pair-Str ctx arg eqInner eqOuter
+  with inferElabV ctx arg | eqInner
+... | success Str _ _ _ _ , _ | refl with eqOuter
+...   | refl = refl
 postulate
   neg-non-Int-Void : ∀ (ctx : NamedCtx) (e : Raw.RawExpr)
-                    {Ψ' eE' d' f' err}
-                  → inferElab ctx e ≡ success Void Ψ' eE' d' f'
-                  → inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ failure err
-                  → err ≡ NegationNotInt
-postulate
-  case-scrut-Void : ∀ (ctx : NamedCtx) (scrut : Raw.RawExpr)
+                      {Ψ' eE' d' f' err}
+                    → inferElab ctx e ≡ success Void Ψ' eE' d' f'
+                    → inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ failure err
+                    → err ≡ NegationNotInt
+case-scrut-Void : ∀ (ctx : NamedCtx) (scrut : Raw.RawExpr)
                     (xL : String) (eL : Raw.RawExpr)
                     (xR : String) (eR : Raw.RawExpr)
                     {Ψ' eE' d' f' err}
                   → inferElab ctx scrut ≡ success Void Ψ' eE' d' f'
                   → inferElab ctx (Raw.RDestruct scrut xL eL xR eR) ≡ failure err
                   → err ≡ CaseScrutineeNotSum
-postulate
-  case-scrut-Str : ∀ (ctx : NamedCtx) (scrut : Raw.RawExpr)
+case-scrut-Void ctx scrut xL eL xR eR eqInner eqOuter
+  with inferElabV ctx scrut | eqInner
+... | success Void _ _ _ _ , _ | refl with eqOuter
+...   | refl = refl
+case-scrut-Str : ∀ (ctx : NamedCtx) (scrut : Raw.RawExpr)
                    (xL : String) (eL : Raw.RawExpr)
                    (xR : String) (eR : Raw.RawExpr)
                    {Ψ' eE' d' f' err}
                  → inferElab ctx scrut ≡ success Str Ψ' eE' d' f'
                  → inferElab ctx (Raw.RDestruct scrut xL eL xR eR) ≡ failure err
                  → err ≡ CaseScrutineeNotSum
-postulate
-  fst-non-pair-Float : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr)
+case-scrut-Str ctx scrut xL eL xR eR eqInner eqOuter
+  with inferElabV ctx scrut | eqInner
+... | success Str _ _ _ _ , _ | refl with eqOuter
+...   | refl = refl
+fst-non-pair-Float : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr)
                       {Ψ' eE' d' f' err}
                     → inferElab ctx arg ≡ success T.Float Ψ' eE' d' f'
                     → inferElab ctx (Raw.RApp (Raw.RVar "fst") arg) ≡ failure err
                     → err ≡ FstNeedsPair
-postulate
-  fst-non-pair-Buffer : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr)
+fst-non-pair-Float ctx arg eqInner eqOuter
+  with inferElabV ctx arg | eqInner
+... | success T.Float _ _ _ _ , _ | refl with eqOuter
+...   | refl = refl
+fst-non-pair-Buffer : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr)
                        {Ψ' eE' d' f' err}
                      → inferElab ctx arg ≡ success T.Buffer Ψ' eE' d' f'
                      → inferElab ctx (Raw.RApp (Raw.RVar "fst") arg) ≡ failure err
                      → err ≡ FstNeedsPair
-postulate
-  fst-non-pair-Sum : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr) {A B : Type}
+fst-non-pair-Buffer ctx arg eqInner eqOuter
+  with inferElabV ctx arg | eqInner
+... | success T.Buffer _ _ _ _ , _ | refl with eqOuter
+...   | refl = refl
+fst-non-pair-Sum : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr) {A B : Type}
                     {Ψ' eE' d' f' err}
                   → inferElab ctx arg ≡ success (A T.+ B) Ψ' eE' d' f'
                   → inferElab ctx (Raw.RApp (Raw.RVar "fst") arg) ≡ failure err
                   → err ≡ FstNeedsPair
-postulate
-  fst-non-pair-Fun : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr) {A B : Type} {q : _}
+fst-non-pair-Sum ctx arg eqInner eqOuter
+  with inferElabV ctx arg | eqInner
+... | success (_ T.+ _) _ _ _ _ , _ | refl with eqOuter
+...   | refl = refl
+fst-non-pair-Fun : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr) {A B : Type} {q : _}
                     {Ψ' eE' d' f' err}
                   → inferElab ctx arg ≡ success (A T.⇒[ T.mk-kind q T.pure ] B) Ψ' eE' d' f'
                   → inferElab ctx (Raw.RApp (Raw.RVar "fst") arg) ≡ failure err
                   → err ≡ FstNeedsPair
+fst-non-pair-Fun ctx arg eqInner eqOuter
+  with inferElabV ctx arg | eqInner
+... | success (_ T.⇒[ T.mk-kind _ T.pure ] _) _ _ _ _ , _ | refl with eqOuter
+...   | refl = refl
 postulate
   neg-non-Int-Float : ∀ (ctx : NamedCtx) (e : Raw.RawExpr)
-                     {Ψ' eE' d' f' err}
-                   → inferElab ctx e ≡ success T.Float Ψ' eE' d' f'
-                   → inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ failure err
-                   → err ≡ NegationNotInt
-postulate
-  neg-non-Int-Buffer : ∀ (ctx : NamedCtx) (e : Raw.RawExpr)
-                      {Ψ' eE' d' f' err}
-                    → inferElab ctx e ≡ success T.Buffer Ψ' eE' d' f'
-                    → inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ failure err
-                    → err ≡ NegationNotInt
-postulate
-  neg-non-Int-Product : ∀ (ctx : NamedCtx) (e : Raw.RawExpr) {A B : Type}
                        {Ψ' eE' d' f' err}
-                     → inferElab ctx e ≡ success (A T.* B) Ψ' eE' d' f'
+                     → inferElab ctx e ≡ success T.Float Ψ' eE' d' f'
                      → inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ failure err
                      → err ≡ NegationNotInt
 postulate
-  neg-non-Int-Sum : ∀ (ctx : NamedCtx) (e : Raw.RawExpr) {A B : Type}
-                   {Ψ' eE' d' f' err}
-                 → inferElab ctx e ≡ success (A T.+ B) Ψ' eE' d' f'
-                 → inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ failure err
-                 → err ≡ NegationNotInt
+  neg-non-Int-Buffer : ∀ (ctx : NamedCtx) (e : Raw.RawExpr)
+                        {Ψ' eE' d' f' err}
+                      → inferElab ctx e ≡ success T.Buffer Ψ' eE' d' f'
+                      → inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ failure err
+                      → err ≡ NegationNotInt
 postulate
-  snd-non-pair-Float : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr)
+  neg-non-Int-Product : ∀ (ctx : NamedCtx) (e : Raw.RawExpr) {A B : Type}
+                         {Ψ' eE' d' f' err}
+                       → inferElab ctx e ≡ success (A T.* B) Ψ' eE' d' f'
+                       → inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ failure err
+                       → err ≡ NegationNotInt
+postulate
+  neg-non-Int-Sum : ∀ (ctx : NamedCtx) (e : Raw.RawExpr) {A B : Type}
+                     {Ψ' eE' d' f' err}
+                   → inferElab ctx e ≡ success (A T.+ B) Ψ' eE' d' f'
+                   → inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ failure err
+                   → err ≡ NegationNotInt
+snd-non-pair-Float : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr)
                       {Ψ' eE' d' f' err}
                     → inferElab ctx arg ≡ success T.Float Ψ' eE' d' f'
                     → inferElab ctx (Raw.RApp (Raw.RVar "snd") arg) ≡ failure err
                     → err ≡ SndNeedsPair
-postulate
-  snd-non-pair-Buffer : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr)
+snd-non-pair-Float ctx arg eqInner eqOuter
+  with inferElabV ctx arg | eqInner
+... | success T.Float _ _ _ _ , _ | refl with eqOuter
+...   | refl = refl
+snd-non-pair-Buffer : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr)
                        {Ψ' eE' d' f' err}
                      → inferElab ctx arg ≡ success T.Buffer Ψ' eE' d' f'
                      → inferElab ctx (Raw.RApp (Raw.RVar "snd") arg) ≡ failure err
                      → err ≡ SndNeedsPair
-postulate
-  snd-non-pair-Sum : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr) {A B : Type}
+snd-non-pair-Buffer ctx arg eqInner eqOuter
+  with inferElabV ctx arg | eqInner
+... | success T.Buffer _ _ _ _ , _ | refl with eqOuter
+...   | refl = refl
+snd-non-pair-Sum : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr) {A B : Type}
                     {Ψ' eE' d' f' err}
                   → inferElab ctx arg ≡ success (A T.+ B) Ψ' eE' d' f'
                   → inferElab ctx (Raw.RApp (Raw.RVar "snd") arg) ≡ failure err
                   → err ≡ SndNeedsPair
-postulate
-  snd-non-pair-Fun : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr) {A B : Type} {q : _}
+snd-non-pair-Sum ctx arg eqInner eqOuter
+  with inferElabV ctx arg | eqInner
+... | success (_ T.+ _) _ _ _ _ , _ | refl with eqOuter
+...   | refl = refl
+snd-non-pair-Fun : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr) {A B : Type} {q : _}
                     {Ψ' eE' d' f' err}
                   → inferElab ctx arg ≡ success (A T.⇒[ T.mk-kind q T.pure ] B) Ψ' eE' d' f'
                   → inferElab ctx (Raw.RApp (Raw.RVar "snd") arg) ≡ failure err
                   → err ≡ SndNeedsPair
-postulate
-  case-scrut-Float : ∀ (ctx : NamedCtx) (scrut : Raw.RawExpr)
+snd-non-pair-Fun ctx arg eqInner eqOuter
+  with inferElabV ctx arg | eqInner
+... | success (_ T.⇒[ T.mk-kind _ T.pure ] _) _ _ _ _ , _ | refl with eqOuter
+...   | refl = refl
+case-scrut-Float : ∀ (ctx : NamedCtx) (scrut : Raw.RawExpr)
                       (xL : String) (eL : Raw.RawExpr)
                       (xR : String) (eR : Raw.RawExpr)
                       {Ψ' eE' d' f' err}
                     → inferElab ctx scrut ≡ success T.Float Ψ' eE' d' f'
                     → inferElab ctx (Raw.RDestruct scrut xL eL xR eR) ≡ failure err
                     → err ≡ CaseScrutineeNotSum
-postulate
-  case-scrut-Buffer : ∀ (ctx : NamedCtx) (scrut : Raw.RawExpr)
+case-scrut-Float ctx scrut xL eL xR eR eqInner eqOuter
+  with inferElabV ctx scrut | eqInner
+... | success T.Float _ _ _ _ , _ | refl with eqOuter
+...   | refl = refl
+case-scrut-Buffer : ∀ (ctx : NamedCtx) (scrut : Raw.RawExpr)
                       (xL : String) (eL : Raw.RawExpr)
                       (xR : String) (eR : Raw.RawExpr)
                       {Ψ' eE' d' f' err}
                     → inferElab ctx scrut ≡ success T.Buffer Ψ' eE' d' f'
                     → inferElab ctx (Raw.RDestruct scrut xL eL xR eR) ≡ failure err
                     → err ≡ CaseScrutineeNotSum
-postulate
-  case-scrut-Product : ∀ (ctx : NamedCtx) (scrut : Raw.RawExpr)
+case-scrut-Buffer ctx scrut xL eL xR eR eqInner eqOuter
+  with inferElabV ctx scrut | eqInner
+... | success T.Buffer _ _ _ _ , _ | refl with eqOuter
+...   | refl = refl
+case-scrut-Product : ∀ (ctx : NamedCtx) (scrut : Raw.RawExpr)
                       (xL : String) (eL : Raw.RawExpr)
                       (xR : String) (eR : Raw.RawExpr)
                       {A B : Type} {Ψ' eE' d' f' err}
                     → inferElab ctx scrut ≡ success (A T.* B) Ψ' eE' d' f'
                     → inferElab ctx (Raw.RDestruct scrut xL eL xR eR) ≡ failure err
                     → err ≡ CaseScrutineeNotSum
-postulate
-  case-scrut-Fun : ∀ (ctx : NamedCtx) (scrut : Raw.RawExpr)
+case-scrut-Product ctx scrut xL eL xR eR eqInner eqOuter
+  with inferElabV ctx scrut | eqInner
+... | success (_ T.* _) _ _ _ _ , _ | refl with eqOuter
+...   | refl = refl
+case-scrut-Fun : ∀ (ctx : NamedCtx) (scrut : Raw.RawExpr)
                       (xL : String) (eL : Raw.RawExpr)
                       (xR : String) (eR : Raw.RawExpr)
                       {A B : Type} {q : _} {Ψ' eE' d' f' err}
                     → inferElab ctx scrut ≡ success (A T.⇒[ T.mk-kind q T.pure ] B) Ψ' eE' d' f'
                     → inferElab ctx (Raw.RDestruct scrut xL eL xR eR) ≡ failure err
                     → err ≡ CaseScrutineeNotSum
-postulate
-  fst-non-pair-Eff : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr) {A B : Type}
+case-scrut-Fun ctx scrut xL eL xR eR eqInner eqOuter
+  with inferElabV ctx scrut | eqInner
+... | success (_ T.⇒[ T.mk-kind _ T.pure ] _) _ _ _ _ , _ | refl with eqOuter
+...   | refl = refl
+fst-non-pair-Eff : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr) {A B : Type}
                      {Ψ' eE' d' f' err}
                    → inferElab ctx arg ≡ success (A T.⇒[ T.mk-kind T.Many T.eff ] B) Ψ' eE' d' f'
                    → inferElab ctx (Raw.RApp (Raw.RVar "fst") arg) ≡ failure err
                    → err ≡ FstNeedsPair
-postulate
-  fst-non-pair-μ : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr) {F}
+fst-non-pair-Eff ctx arg eqInner eqOuter
+  with inferElabV ctx arg | eqInner
+... | success (_ T.⇒[ T.mk-kind T.Many T.eff ] _) _ _ _ _ , _ | refl with eqOuter
+...   | refl = refl
+fst-non-pair-μ : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr) {F}
                   {Ψ' eE' d' f' err}
                 → inferElab ctx arg ≡ success (T.μ-type F) Ψ' eE' d' f'
                 → inferElab ctx (Raw.RApp (Raw.RVar "fst") arg) ≡ failure err
                 → err ≡ FstNeedsPair
-postulate
-  fst-non-pair-ν : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr) {F}
+fst-non-pair-μ ctx arg eqInner eqOuter
+  with inferElabV ctx arg | eqInner
+... | success (T.μ-type _) _ _ _ _ , _ | refl with eqOuter
+...   | refl = refl
+fst-non-pair-ν : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr) {F}
                   {Ψ' eE' d' f' err}
                 → inferElab ctx arg ≡ success (T.ν-type F) Ψ' eE' d' f'
                 → inferElab ctx (Raw.RApp (Raw.RVar "fst") arg) ≡ failure err
                 → err ≡ FstNeedsPair
-postulate
-  snd-non-pair-Eff : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr) {A B : Type}
+fst-non-pair-ν ctx arg eqInner eqOuter
+  with inferElabV ctx arg | eqInner
+... | success (T.ν-type _) _ _ _ _ , _ | refl with eqOuter
+...   | refl = refl
+snd-non-pair-Eff : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr) {A B : Type}
                      {Ψ' eE' d' f' err}
                    → inferElab ctx arg ≡ success (A T.⇒[ T.mk-kind T.Many T.eff ] B) Ψ' eE' d' f'
                    → inferElab ctx (Raw.RApp (Raw.RVar "snd") arg) ≡ failure err
                    → err ≡ SndNeedsPair
-postulate
-  snd-non-pair-μ : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr) {F}
+snd-non-pair-Eff ctx arg eqInner eqOuter
+  with inferElabV ctx arg | eqInner
+... | success (_ T.⇒[ T.mk-kind T.Many T.eff ] _) _ _ _ _ , _ | refl with eqOuter
+...   | refl = refl
+snd-non-pair-μ : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr) {F}
                   {Ψ' eE' d' f' err}
                 → inferElab ctx arg ≡ success (T.μ-type F) Ψ' eE' d' f'
                 → inferElab ctx (Raw.RApp (Raw.RVar "snd") arg) ≡ failure err
                 → err ≡ SndNeedsPair
-postulate
-  snd-non-pair-ν : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr) {F}
+snd-non-pair-μ ctx arg eqInner eqOuter
+  with inferElabV ctx arg | eqInner
+... | success (T.μ-type _) _ _ _ _ , _ | refl with eqOuter
+...   | refl = refl
+snd-non-pair-ν : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr) {F}
                   {Ψ' eE' d' f' err}
                 → inferElab ctx arg ≡ success (T.ν-type F) Ψ' eE' d' f'
                 → inferElab ctx (Raw.RApp (Raw.RVar "snd") arg) ≡ failure err
                 → err ≡ SndNeedsPair
+snd-non-pair-ν ctx arg eqInner eqOuter
+  with inferElabV ctx arg | eqInner
+... | success (T.ν-type _) _ _ _ _ , _ | refl with eqOuter
+...   | refl = refl
 postulate
   neg-non-Int-Eff : ∀ (ctx : NamedCtx) (e : Raw.RawExpr) {A B : Type}
-                    {Ψ' eE' d' f' err}
-                  → inferElab ctx e ≡ success (A T.⇒[ T.mk-kind T.Many T.eff ] B) Ψ' eE' d' f'
-                  → inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ failure err
-                  → err ≡ NegationNotInt
+                      {Ψ' eE' d' f' err}
+                    → inferElab ctx e ≡ success (A T.⇒[ T.mk-kind T.Many T.eff ] B) Ψ' eE' d' f'
+                    → inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ failure err
+                    → err ≡ NegationNotInt
 postulate
   neg-non-Int-μ : ∀ (ctx : NamedCtx) (e : Raw.RawExpr) {F}
-                 {Ψ' eE' d' f' err}
-               → inferElab ctx e ≡ success (T.μ-type F) Ψ' eE' d' f'
-               → inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ failure err
-               → err ≡ NegationNotInt
+                   {Ψ' eE' d' f' err}
+                 → inferElab ctx e ≡ success (T.μ-type F) Ψ' eE' d' f'
+                 → inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ failure err
+                 → err ≡ NegationNotInt
 postulate
   neg-non-Int-ν : ∀ (ctx : NamedCtx) (e : Raw.RawExpr) {F}
-                 {Ψ' eE' d' f' err}
-               → inferElab ctx e ≡ success (T.ν-type F) Ψ' eE' d' f'
-               → inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ failure err
-               → err ≡ NegationNotInt
+                   {Ψ' eE' d' f' err}
+                 → inferElab ctx e ≡ success (T.ν-type F) Ψ' eE' d' f'
+                 → inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ failure err
+                 → err ≡ NegationNotInt
 postulate
   neg-non-Int-Fun : ∀ (ctx : NamedCtx) (e : Raw.RawExpr) {A B : Type} {q : _}
-                    {Ψ' eE' d' f' err}
-                  → inferElab ctx e ≡ success (A T.⇒[ T.mk-kind q T.pure ] B) Ψ' eE' d' f'
-                  → inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ failure err
-                  → err ≡ NegationNotInt
-postulate
-  case-scrut-Eff : ∀ (ctx : NamedCtx) (scrut : Raw.RawExpr)
+                      {Ψ' eE' d' f' err}
+                    → inferElab ctx e ≡ success (A T.⇒[ T.mk-kind q T.pure ] B) Ψ' eE' d' f'
+                    → inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ failure err
+                    → err ≡ NegationNotInt
+case-scrut-Eff : ∀ (ctx : NamedCtx) (scrut : Raw.RawExpr)
                     (xL : String) (eL : Raw.RawExpr)
                     (xR : String) (eR : Raw.RawExpr)
                     {A B : Type} {Ψ' eE' d' f' err}
                   → inferElab ctx scrut ≡ success (A T.⇒[ T.mk-kind T.Many T.eff ] B) Ψ' eE' d' f'
                   → inferElab ctx (Raw.RDestruct scrut xL eL xR eR) ≡ failure err
                   → err ≡ CaseScrutineeNotSum
-postulate
-  case-scrut-μ : ∀ (ctx : NamedCtx) (scrut : Raw.RawExpr)
+case-scrut-Eff ctx scrut xL eL xR eR eqInner eqOuter
+  with inferElabV ctx scrut | eqInner
+... | success (_ T.⇒[ T.mk-kind T.Many T.eff ] _) _ _ _ _ , _ | refl with eqOuter
+...   | refl = refl
+case-scrut-μ : ∀ (ctx : NamedCtx) (scrut : Raw.RawExpr)
                   (xL : String) (eL : Raw.RawExpr)
                   (xR : String) (eR : Raw.RawExpr)
                   {F} {Ψ' eE' d' f' err}
                 → inferElab ctx scrut ≡ success (T.μ-type F) Ψ' eE' d' f'
                 → inferElab ctx (Raw.RDestruct scrut xL eL xR eR) ≡ failure err
                 → err ≡ CaseScrutineeNotSum
+case-scrut-μ ctx scrut xL eL xR eR eqInner eqOuter
+  with inferElabV ctx scrut | eqInner
+... | success (T.μ-type _) _ _ _ _ , _ | refl with eqOuter
+...   | refl = refl
 postulate
   case-scrut-ν : ∀ (ctx : NamedCtx) (scrut : Raw.RawExpr)
                   (xL : String) (eL : Raw.RawExpr)
