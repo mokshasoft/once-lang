@@ -185,6 +185,35 @@ lookupLocal : (ctx : NamedCtx) → String
             → Maybe (∃[ A ] ∃[ Ψ ] (SExpr (NamedCtx.debruijn ctx) Ψ A))
 lookupLocal ctx x = lookupLocal-go x (NamedCtx.named ctx) (NamedCtx.debruijn ctx)
 
+------------------------------------------------------------------------
+-- Plan 0.4 T2: lookup view datatypes
+--
+-- A view that bundles the lookup outcome WITH its defining equation.
+-- Pattern-matching on a constructor directly yields the eq, sidestepping
+-- the with-helper opacity that captured-`refl` arguments suffer when
+-- abstracted by external `with` clauses (per
+-- `feedback_with_abstraction.md`: change the operational function, not
+-- the proof tactics). Mirrors `AppHeadView` in spirit.
+------------------------------------------------------------------------
+
+data LookupLocalView (ctx : NamedCtx) (x : String) : Set where
+  llv-found : ∀ {A Ψ se} → lookupLocal ctx x ≡ just (A , Ψ , se) → LookupLocalView ctx x
+  llv-not-found : lookupLocal ctx x ≡ nothing → LookupLocalView ctx x
+
+inspectLookupLocal : (ctx : NamedCtx) (x : String) → LookupLocalView ctx x
+inspectLookupLocal ctx x with lookupLocal ctx x in eq
+... | just (A , Ψ , se) = llv-found eq
+... | nothing           = llv-not-found eq
+
+data LookupImportView (ctx : NamedCtx) (x : String) : Set where
+  liv-found : ∀ {T} → lookupImport (NamedCtx.imports ctx) x ≡ just T → LookupImportView ctx x
+  liv-not-found : lookupImport (NamedCtx.imports ctx) x ≡ nothing → LookupImportView ctx x
+
+inspectLookupImport : (ctx : NamedCtx) (x : String) → LookupImportView ctx x
+inspectLookupImport ctx x with lookupImport (NamedCtx.imports ctx) x in eq
+... | just T  = liv-found eq
+... | nothing = liv-not-found eq
+
 -- | Find a local variable's de Bruijn position and declared quantity.
 findLocalVarUsage : (ctx : NamedCtx) → String → Maybe (Fin (NamedCtx.size ctx) × Quantity)
 findLocalVarUsage (mkCtx n Γ Δ _ _ _) x = go Γ Δ
