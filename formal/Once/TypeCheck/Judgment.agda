@@ -364,10 +364,15 @@ mutual
     -- 0.6 Phase C.7 POC-3. Intermediate type B is inferred from g.
     -- Ψ follows the elab emission `app (app specCompose fE) gE`
     -- with specCompose contributing zeroUsage.
+    --
+    -- Plan 0.4 T0 (witness refactor): the g-premise is ⊢ᶜ rather than
+    -- ⊢ᵢ to admit checkCompose's composeArgB-fallback path (where g is
+    -- a polymorphic name resolved by check-mode at the projected
+    -- domain). The infer-mode case converts via t-embed.
     t-compose-check : ∀ {ctx : NamedCtx} {f g : RawExpr} {A B C : Type}
                       {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
                     → ctx ⊢ᶜ f ∶ (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C) ⨾ Ψ₁
-                    → ctx ⊢ᵢ g ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) ⨾ Ψ₂
+                    → ctx ⊢ᶜ g ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) ⨾ Ψ₂
                     → ctx ⊢ᶜ RApp (RApp (RVar "compose") f) g
                              ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C)
                              ⨾ ((Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ₁))

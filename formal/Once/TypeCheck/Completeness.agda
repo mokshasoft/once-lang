@@ -910,7 +910,7 @@ mutual
     in checkElab-fallback-RApp-pair f g A B C eq₁ eq₂
   check-complete (t-compose-check {f = f} {g = g} {A = A} {B = B} {C = C} d₁ d₂) =
     let (_ , _ , _ , eq₁) = check-complete d₁
-        (_ , _ , _ , eq₂) = infer-complete d₂
+        (_ , _ , _ , eq₂) = check-complete d₂
     in checkElab-fallback-RApp-compose f g A B C eq₁ eq₂
   check-complete (t-curry-check {f = f} {A = A} {B = B} {C = C} d) =
     let (_ , _ , _ , eq) = check-complete d

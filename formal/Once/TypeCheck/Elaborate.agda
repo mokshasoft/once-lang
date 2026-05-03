@@ -687,10 +687,6 @@ postulate
   -- Abstract success-case witnesses for the check-mode applied-
   -- builtin helpers. Don't reference the helpers in their types so they
   -- can be moved before the merged mutual block in the cleanup phase.
-  compose-applied-success-witness :
-    ∀ (ctx : NamedCtx) (composeHead arg : RawExpr) (T : Type)
-      {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    → ctx ⊢ᶜ Raw.RApp composeHead arg ∶ T ⨾ Ψ
 
 
 mutual
@@ -706,7 +702,8 @@ mutual
             → VerifiedCheckResult ctx (Raw.RApp pairHead arg) T
   -- Compose / curry / apply classifier helpers (plan 0.6 Phase C.7
   -- POC-3).
-  checkCompose : (ctx : NamedCtx) → (composeHead arg : RawExpr) → (T : Type) → CheckElabResult (NamedCtx.debruijn ctx) T
+  checkCompose : (ctx : NamedCtx) → (composeHead arg : RawExpr) → (T : Type)
+               → VerifiedCheckResult ctx (Raw.RApp composeHead arg) T
   checkCurry : (ctx : NamedCtx) → (arg : RawExpr) → (T : Type)
              → VerifiedCheckResult ctx (Raw.RApp (Raw.RVar "curry") arg) T
   checkApply : (ctx : NamedCtx) → (arg : RawExpr) → (T : Type)
@@ -905,42 +902,46 @@ mutual
   -- checkElab both sub-expressions at the resolved types.
   checkCompose ctx (Raw.RApp (Raw.RVar "compose") f_inner) arg
                (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C)
-    with inferElab ctx arg
-  ... | failure _ with composeArgB ctx arg A
-  ...   | nothing = failure (BuiltinTypeMismatch "compose")
-  ...   | just B with checkElab ctx arg (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)
-  ...     | failure err = failure err
-  ...     | success Ψg gE dg frg with checkElab ctx f_inner (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C)
-  ...       | failure err = failure err
-  ...       | success Ψf fE df frf =
+    with inferElabV ctx arg
+  ... | failure _ , _ with composeArgB ctx arg A
+  ...   | nothing = failure (BuiltinTypeMismatch "compose") , tt
+  ...   | just B
+          with checkElabV ctx arg (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)
+  ...     | failure err , _ = failure err , tt
+  ...     | success Ψg gE dg frg , wG
+            with checkElabV ctx f_inner (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C)
+  ...       | failure err , _ = failure err , tt
+  ...       | success Ψf fE df frf , wF =
               success _
                 (Surface.app (Surface.app (weakenFromEmpty (specCompose A B C)) fE) gE)
-                (suc (df Data.Nat.⊔ dg)) frf
+                (suc (df Data.Nat.⊔ dg)) frf , t-compose-check wF wG
   checkCompose ctx (Raw.RApp (Raw.RVar "compose") f_inner) arg
                (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C)
-    | success (A' Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) Ψg gE dg frg with A ≟T A'
-  ...   | no _ = failure (BuiltinTypeMismatch "compose")
-  ...   | yes refl with checkElab ctx f_inner (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C)
-  ...     | failure err = failure err
-  ...     | success Ψf fE df frf =
+    | success (A' Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) Ψg gE dg frg , wG
+        with A ≟T A'
+  ...   | no _ = failure (BuiltinTypeMismatch "compose") , tt
+  ...   | yes refl
+          with checkElabV ctx f_inner (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C)
+  ...     | failure err , _ = failure err , tt
+  ...     | success Ψf fE df frf , wF =
             success _
               (Surface.app (Surface.app (weakenFromEmpty (specCompose A B C)) fE) gE)
-              (suc (df Data.Nat.⊔ dg)) frf
+              (suc (df Data.Nat.⊔ dg)) frf , t-compose-check wF (t-embed wG)
   -- Non-arrow-Many inferred types for g: compose can't proceed.
-  checkCompose _ _ _ (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] _) | success Unit       _ _ _ _ = failure (BuiltinTypeMismatch "compose")
-  checkCompose _ _ _ (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] _) | success Int        _ _ _ _ = failure (BuiltinTypeMismatch "compose")
-  checkCompose _ _ _ (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] _) | success Str        _ _ _ _ = failure (BuiltinTypeMismatch "compose")
-  checkCompose _ _ _ (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] _) | success Void       _ _ _ _ = failure (BuiltinTypeMismatch "compose")
-  checkCompose _ _ _ (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] _) | success Float      _ _ _ _ = failure (BuiltinTypeMismatch "compose")
-  checkCompose _ _ _ (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] _) | success Buffer     _ _ _ _ = failure (BuiltinTypeMismatch "compose")
-  checkCompose _ _ _ (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] _) | success (_ Once.Type.* _)  _ _ _ _ = failure (BuiltinTypeMismatch "compose")
-  checkCompose _ _ _ (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] _) | success (_ Once.Type.+ _)  _ _ _ _ = failure (BuiltinTypeMismatch "compose")
-  checkCompose _ _ _ (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] _) | success (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.One Once.Type.pure ] _)  _ _ _ _ = failure (BuiltinTypeMismatch "compose")
-  checkCompose _ _ _ (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] _) | success (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Zero Once.Type.pure ] _) _ _ _ _ = failure (BuiltinTypeMismatch "compose")
-  checkCompose _ _ _ (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] _) | success (_ Once.Type.⇒[ Once.Type.mk-kind _ Once.Type.eff ] _)  _ _ _ _ = failure (BuiltinTypeMismatch "compose")
-  checkCompose _ _ _ (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] _) | success (μ-type _) _ _ _ _ = failure (BuiltinTypeMismatch "compose")
-  checkCompose _ _ _ (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] _) | success (ν-type _) _ _ _ _ = failure (BuiltinTypeMismatch "compose")
-  checkCompose _ _ _ _ = failure (BuiltinTypeMismatch "compose")
+  checkCompose _ _ _ (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] _) | success Unit       _ _ _ _ , _ = failure (BuiltinTypeMismatch "compose") , tt
+  checkCompose _ _ _ (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] _) | success Int        _ _ _ _ , _ = failure (BuiltinTypeMismatch "compose") , tt
+  checkCompose _ _ _ (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] _) | success Str        _ _ _ _ , _ = failure (BuiltinTypeMismatch "compose") , tt
+  checkCompose _ _ _ (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] _) | success Void       _ _ _ _ , _ = failure (BuiltinTypeMismatch "compose") , tt
+  checkCompose _ _ _ (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] _) | success Float      _ _ _ _ , _ = failure (BuiltinTypeMismatch "compose") , tt
+  checkCompose _ _ _ (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] _) | success Buffer     _ _ _ _ , _ = failure (BuiltinTypeMismatch "compose") , tt
+  checkCompose _ _ _ (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] _) | success (_ Once.Type.* _)  _ _ _ _ , _ = failure (BuiltinTypeMismatch "compose") , tt
+  checkCompose _ _ _ (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] _) | success (_ Once.Type.+ _)  _ _ _ _ , _ = failure (BuiltinTypeMismatch "compose") , tt
+  checkCompose _ _ _ (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] _) | success (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.One Once.Type.pure ] _)  _ _ _ _ , _ = failure (BuiltinTypeMismatch "compose") , tt
+  checkCompose _ _ _ (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] _) | success (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Zero Once.Type.pure ] _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "compose") , tt
+  checkCompose _ _ _ (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] _) | success (_ Once.Type.⇒[ Once.Type.mk-kind _ Once.Type.eff ] _)  _ _ _ _ , _ = failure (BuiltinTypeMismatch "compose") , tt
+  checkCompose _ _ _ (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] _) | success (μ-type _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "compose") , tt
+  checkCompose _ _ _ (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] _) | success (ν-type _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "compose") , tt
+  checkCompose _ _ _ _ = failure (BuiltinTypeMismatch "compose") , tt
 
   -- Plan 0.6 Phase C.7 POC-3: `curry f` check-mode.
   -- Expected `A ⇒[Many] (B ⇒[Many] C)`. Check f at `(A * B) ⇒[Many] C`.
@@ -1234,9 +1235,7 @@ mutual
   -- delegate to existing helpers, case-split on result, witness via
   -- abstract success-case postulate.
   checkElabV ctx (Raw.RApp f arg) T | ahv-pair-applied = checkPair ctx f arg T
-  checkElabV ctx (Raw.RApp f arg) T | ahv-compose-applied with checkCompose ctx f arg T
-  ...   | success Ψ eE d fr = success Ψ eE d fr , compose-applied-success-witness ctx f arg T
-  ...   | failure err = failure err , tt
+  checkElabV ctx (Raw.RApp f arg) T | ahv-compose-applied = checkCompose ctx f arg T
   checkElabV ctx (Raw.RApp f arg) T | ahv-curry = checkCurry ctx arg T
   checkElabV ctx (Raw.RApp f arg) T | ahv-apply = checkApply ctx arg T
   -- ahv-other: try infer-then-match; on failure, arg-driven application.
@@ -1807,23 +1806,23 @@ checkElab-fallback-RApp-pair {ctx} f g A B C eq_f eq_g
 -- Plan 0.6 Phase C.7 POC-3: applied `compose f g` at `A ⇒[Many] C`.
 -- Takes the inferElab-success for g (fixes B) and checkElab-success
 -- for f at `B ⇒[Many] C`.
-checkElab-fallback-RApp-compose :
-  ∀ {ctx : NamedCtx} (f g : RawExpr) (A B C : Type)
-    {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
-    {eE_f : SExpr (NamedCtx.debruijn ctx) Ψ₁ (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C)}
-    {eE_g : SExpr (NamedCtx.debruijn ctx) Ψ₂ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)}
-    {d_f f_f d_g f_g : ℕ}
-  → checkElab ctx f (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C) ≡ success Ψ₁ eE_f d_f f_f
-  → inferElab ctx g ≡ success (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) Ψ₂ eE_g d_g f_g
-  → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ fr →
-      checkElab ctx (Raw.RApp (Raw.RApp (Raw.RVar "compose") f) g)
-                    (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C)
-        ≡ success ((Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ₁))
-                    Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ₂)) eE d fr)))
-checkElab-fallback-RApp-compose {ctx} f g A B C eq_f eq_g
-  rewrite eq_g with A ≟T A
-... | yes refl rewrite eq_f = _ , _ , _ , refl
-... | no ¬eq   = ⊥-elim (¬eq refl)
+-- Plan 0.4 T0 (witness refactor): t-compose-check now takes ⊢ᶜ for g
+-- (relaxed from ⊢ᵢ to admit checkCompose's composeArgB-fallback path).
+-- The fallback's premise on g is therefore checkElab-success.
+postulate
+  checkElab-fallback-RApp-compose :
+    ∀ {ctx : NamedCtx} (f g : RawExpr) (A B C : Type)
+      {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
+      {eE_f : SExpr (NamedCtx.debruijn ctx) Ψ₁ (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C)}
+      {eE_g : SExpr (NamedCtx.debruijn ctx) Ψ₂ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)}
+      {d_f f_f d_g f_g : ℕ}
+    → checkElab ctx f (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C) ≡ success Ψ₁ eE_f d_f f_f
+    → checkElab ctx g (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) ≡ success Ψ₂ eE_g d_g f_g
+    → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ fr →
+        checkElab ctx (Raw.RApp (Raw.RApp (Raw.RVar "compose") f) g)
+                      (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C)
+          ≡ success ((Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ₁))
+                      Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ₂)) eE d fr)))
 
 -- Plan 0.6 Phase C.7 POC-3: applied `curry f` at `A → B → C`.
 checkElab-fallback-RApp-curry :
