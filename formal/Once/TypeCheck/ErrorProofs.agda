@@ -321,24 +321,153 @@ lam-usage-violation-is-UsageViolation ctx x body A q B q' eqInner eqLeq eqOuter
 -- When the left operand of a binop infers to a non-Int and produces
 -- `asInt-sub-err : TypeError`, the outer err equals
 -- `BinOpLeftError asInt-sub-err`.
-postulate
-  binop-left-err-wraps :
-    ∀ (ctx : NamedCtx) (op : Raw.BinOp) (e₁ e₂ : Raw.RawExpr)
-      {sub-err outer-err}
-    → Once.TypeCheck.Elaborate.asInt (inferElab ctx e₁)
-        ≡ Once.TypeCheck.Elaborate.notInt sub-err
-    → inferElab ctx (Raw.RBinOp op e₁ e₂) ≡ failure outer-err
-    → outer-err ≡ Once.TypeCheck.Error.BinOpLeftError sub-err
-postulate
-  binop-right-err-wraps :
-    ∀ (ctx : NamedCtx) (op : Raw.BinOp) (e₁ e₂ : Raw.RawExpr)
-      {Ψ₁ e₁E d₁ f₁ sub-err outer-err}
-    → Once.TypeCheck.Elaborate.asInt (inferElab ctx e₁)
-        ≡ Once.TypeCheck.Elaborate.isInt Ψ₁ e₁E d₁ f₁
-    → Once.TypeCheck.Elaborate.asInt (inferElab ctx e₂)
-        ≡ Once.TypeCheck.Elaborate.notInt sub-err
-    → inferElab ctx (Raw.RBinOp op e₁ e₂) ≡ failure outer-err
-    → outer-err ≡ Once.TypeCheck.Error.BinOpRightError sub-err
+binop-left-err-wraps :
+  ∀ (ctx : NamedCtx) (op : Raw.BinOp) (e₁ e₂ : Raw.RawExpr)
+    {sub-err outer-err}
+  → Once.TypeCheck.Elaborate.asInt (inferElab ctx e₁)
+      ≡ Once.TypeCheck.Elaborate.notInt sub-err
+  → inferElab ctx (Raw.RBinOp op e₁ e₂) ≡ failure outer-err
+  → outer-err ≡ Once.TypeCheck.Error.BinOpLeftError sub-err
+binop-left-err-wraps ctx op e₁ e₂ eqAsInt eqOuter
+  with inferElabV ctx e₁
+... | failure _ , _                       with eqAsInt
+...   | refl with eqOuter
+...     | refl = refl
+binop-left-err-wraps ctx op e₁ e₂ eqAsInt eqOuter
+    | success Unit _ _ _ _ , _            with eqAsInt
+...   | refl with eqOuter
+...     | refl = refl
+binop-left-err-wraps ctx op e₁ e₂ eqAsInt eqOuter
+    | success Void _ _ _ _ , _            with eqAsInt
+...   | refl with eqOuter
+...     | refl = refl
+binop-left-err-wraps ctx op e₁ e₂ eqAsInt eqOuter
+    | success Int _ _ _ _ , _             with eqAsInt
+...   | ()
+binop-left-err-wraps ctx op e₁ e₂ eqAsInt eqOuter
+    | success T.Float _ _ _ _ , _         with eqAsInt
+...   | refl with eqOuter
+...     | refl = refl
+binop-left-err-wraps ctx op e₁ e₂ eqAsInt eqOuter
+    | success Str _ _ _ _ , _             with eqAsInt
+...   | refl with eqOuter
+...     | refl = refl
+binop-left-err-wraps ctx op e₁ e₂ eqAsInt eqOuter
+    | success T.Buffer _ _ _ _ , _        with eqAsInt
+...   | refl with eqOuter
+...     | refl = refl
+binop-left-err-wraps ctx op e₁ e₂ eqAsInt eqOuter
+    | success (_ T.* _) _ _ _ _ , _       with eqAsInt
+...   | refl with eqOuter
+...     | refl = refl
+binop-left-err-wraps ctx op e₁ e₂ eqAsInt eqOuter
+    | success (_ T.+ _) _ _ _ _ , _       with eqAsInt
+...   | refl with eqOuter
+...     | refl = refl
+binop-left-err-wraps ctx op e₁ e₂ eqAsInt eqOuter
+    | success (_ T.⇒[ _ ] _) _ _ _ _ , _  with eqAsInt
+...   | refl with eqOuter
+...     | refl = refl
+binop-left-err-wraps ctx op e₁ e₂ eqAsInt eqOuter
+    | success (T.μ-type _) _ _ _ _ , _    with eqAsInt
+...   | refl with eqOuter
+...     | refl = refl
+binop-left-err-wraps ctx op e₁ e₂ eqAsInt eqOuter
+    | success (T.ν-type _) _ _ _ _ , _    with eqAsInt
+...   | refl with eqOuter
+...     | refl = refl
+
+binop-right-err-wraps :
+  ∀ (ctx : NamedCtx) (op : Raw.BinOp) (e₁ e₂ : Raw.RawExpr)
+    {Ψ₁ e₁E d₁ f₁ sub-err outer-err}
+  → Once.TypeCheck.Elaborate.asInt (inferElab ctx e₁)
+      ≡ Once.TypeCheck.Elaborate.isInt Ψ₁ e₁E d₁ f₁
+  → Once.TypeCheck.Elaborate.asInt (inferElab ctx e₂)
+      ≡ Once.TypeCheck.Elaborate.notInt sub-err
+  → inferElab ctx (Raw.RBinOp op e₁ e₂) ≡ failure outer-err
+  → outer-err ≡ Once.TypeCheck.Error.BinOpRightError sub-err
+binop-right-err-wraps ctx op e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
+  with inferElabV ctx e₁
+... | failure _ , _                       with eqAsInt₁
+...   | ()
+binop-right-err-wraps ctx op e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
+    | success Unit _ _ _ _ , _            with eqAsInt₁
+...   | ()
+binop-right-err-wraps ctx op e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
+    | success Void _ _ _ _ , _            with eqAsInt₁
+...   | ()
+binop-right-err-wraps ctx op e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
+    | success T.Float _ _ _ _ , _         with eqAsInt₁
+...   | ()
+binop-right-err-wraps ctx op e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
+    | success Str _ _ _ _ , _             with eqAsInt₁
+...   | ()
+binop-right-err-wraps ctx op e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
+    | success T.Buffer _ _ _ _ , _        with eqAsInt₁
+...   | ()
+binop-right-err-wraps ctx op e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
+    | success (_ T.* _) _ _ _ _ , _       with eqAsInt₁
+...   | ()
+binop-right-err-wraps ctx op e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
+    | success (_ T.+ _) _ _ _ _ , _       with eqAsInt₁
+...   | ()
+binop-right-err-wraps ctx op e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
+    | success (_ T.⇒[ _ ] _) _ _ _ _ , _  with eqAsInt₁
+...   | ()
+binop-right-err-wraps ctx op e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
+    | success (T.μ-type _) _ _ _ _ , _    with eqAsInt₁
+...   | ()
+binop-right-err-wraps ctx op e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
+    | success (T.ν-type _) _ _ _ _ , _    with eqAsInt₁
+...   | ()
+binop-right-err-wraps ctx op e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
+    | success Int _ _ _ _ , _ with inferElabV ctx e₂
+... | failure _ , _ with eqAsInt₂
+...   | refl with eqOuter
+...     | refl = refl
+binop-right-err-wraps ctx op e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
+    | success Int _ _ _ _ , _ | success Unit _ _ _ _ , _ with eqAsInt₂
+... | refl with eqOuter
+...   | refl = refl
+binop-right-err-wraps ctx op e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
+    | success Int _ _ _ _ , _ | success Void _ _ _ _ , _ with eqAsInt₂
+... | refl with eqOuter
+...   | refl = refl
+binop-right-err-wraps ctx op e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
+    | success Int _ _ _ _ , _ | success Int _ _ _ _ , _ with eqAsInt₂
+... | ()
+binop-right-err-wraps ctx op e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
+    | success Int _ _ _ _ , _ | success T.Float _ _ _ _ , _ with eqAsInt₂
+... | refl with eqOuter
+...   | refl = refl
+binop-right-err-wraps ctx op e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
+    | success Int _ _ _ _ , _ | success Str _ _ _ _ , _ with eqAsInt₂
+... | refl with eqOuter
+...   | refl = refl
+binop-right-err-wraps ctx op e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
+    | success Int _ _ _ _ , _ | success T.Buffer _ _ _ _ , _ with eqAsInt₂
+... | refl with eqOuter
+...   | refl = refl
+binop-right-err-wraps ctx op e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
+    | success Int _ _ _ _ , _ | success (_ T.* _) _ _ _ _ , _ with eqAsInt₂
+... | refl with eqOuter
+...   | refl = refl
+binop-right-err-wraps ctx op e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
+    | success Int _ _ _ _ , _ | success (_ T.+ _) _ _ _ _ , _ with eqAsInt₂
+... | refl with eqOuter
+...   | refl = refl
+binop-right-err-wraps ctx op e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
+    | success Int _ _ _ _ , _ | success (_ T.⇒[ _ ] _) _ _ _ _ , _ with eqAsInt₂
+... | refl with eqOuter
+...   | refl = refl
+binop-right-err-wraps ctx op e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
+    | success Int _ _ _ _ , _ | success (T.μ-type _) _ _ _ _ , _ with eqAsInt₂
+... | refl with eqOuter
+...   | refl = refl
+binop-right-err-wraps ctx op e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
+    | success Int _ _ _ _ , _ | success (T.ν-type _) _ _ _ _ , _ with eqAsInt₂
+... | refl with eqOuter
+...   | refl = refl
 fst-non-pair-Void : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr)
                      {Ψ' eE' d' f' err}
                    → inferElab ctx arg ≡ success Void Ψ' eE' d' f'
@@ -676,11 +805,14 @@ case-scrut-μ ctx scrut xL eL xR eR eqInner eqOuter
   with inferElabV ctx scrut | eqInner
 ... | success (T.μ-type _) _ _ _ _ , _ | refl with eqOuter
 ...   | refl = refl
-postulate
-  case-scrut-ν : ∀ (ctx : NamedCtx) (scrut : Raw.RawExpr)
-                  (xL : String) (eL : Raw.RawExpr)
-                  (xR : String) (eR : Raw.RawExpr)
-                  {F} {Ψ' eE' d' f' err}
-                → inferElab ctx scrut ≡ success (T.ν-type F) Ψ' eE' d' f'
-                → inferElab ctx (Raw.RDestruct scrut xL eL xR eR) ≡ failure err
-                → err ≡ CaseScrutineeNotSum
+case-scrut-ν : ∀ (ctx : NamedCtx) (scrut : Raw.RawExpr)
+                (xL : String) (eL : Raw.RawExpr)
+                (xR : String) (eR : Raw.RawExpr)
+                {F} {Ψ' eE' d' f' err}
+              → inferElab ctx scrut ≡ success (T.ν-type F) Ψ' eE' d' f'
+              → inferElab ctx (Raw.RDestruct scrut xL eL xR eR) ≡ failure err
+              → err ≡ CaseScrutineeNotSum
+case-scrut-ν ctx scrut xL eL xR eR eqInner eqOuter
+  with inferElabV ctx scrut | eqInner
+... | success (T.ν-type _) _ _ _ _ , _ | refl with eqOuter
+...   | refl = refl
