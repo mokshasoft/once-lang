@@ -699,6 +699,63 @@ checkElab-fallback-RVar {ctx} x T eqInf
 -- Agda's mutual termination checker rejects it. Soundness is fully
 -- proven (sound-RApp-arr, sound-RApp-apply); this gap is on the
 -- completeness side only.
+-- Completeness-gap-* helpers (formerly postulates) — given a checkElab/
+-- inferElab equation on the sub-expression(s), produce the outer
+-- checkElab equation. The proofs walk checkElabV-RApp-dispatch at the
+-- corresponding ahv-X branch.
+completeness-gap-inl-app-check-eq :
+  ∀ {ctx : NamedCtx} (arg : RawExpr) (A B : Type)
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ A}
+    {d f : ℕ}
+  → checkElab ctx arg A ≡ success Ψ eE d f
+  → ∃[ eE' ] ∃[ d' ] ∃[ f' ]
+      checkElab ctx (Raw.RApp (RVar "inl") arg) (A T.+ B)
+        ≡ success (zeroUsage +ᵘ (T.Many *ᵘ Ψ)) eE' d' f'
+completeness-gap-inl-app-check-eq {ctx} arg A B eqC
+  with checkElabV ctx arg A | eqC
+... | success _ _ _ _ , _ | refl = _ , _ , _ , refl
+
+completeness-gap-inr-app-check-eq :
+  ∀ {ctx : NamedCtx} (arg : RawExpr) (A B : Type)
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ B}
+    {d f : ℕ}
+  → checkElab ctx arg B ≡ success Ψ eE d f
+  → ∃[ eE' ] ∃[ d' ] ∃[ f' ]
+      checkElab ctx (Raw.RApp (RVar "inr") arg) (A T.+ B)
+        ≡ success (zeroUsage +ᵘ (T.Many *ᵘ Ψ)) eE' d' f'
+completeness-gap-inr-app-check-eq {ctx} arg A B eqC
+  with checkElabV ctx arg B | eqC
+... | success _ _ _ _ , _ | refl = _ , _ , _ , refl
+
+completeness-gap-initial-app-check-eq :
+  ∀ {ctx : NamedCtx} (arg : RawExpr) (T : Type)
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ T.Void}
+    {d f : ℕ}
+  → checkElab ctx arg T.Void ≡ success Ψ eE d f
+  → ∃[ eE' ] ∃[ d' ] ∃[ f' ]
+      checkElab ctx (Raw.RApp (RVar "initial") arg) T
+        ≡ success (zeroUsage +ᵘ (T.Many *ᵘ Ψ)) eE' d' f'
+completeness-gap-initial-app-check-eq {ctx} arg T eqC
+  with checkElabV ctx arg T.Void | eqC
+... | success _ _ _ _ , _ | refl = _ , _ , _ , refl
+
+completeness-gap-arr-app-check-eq :
+  ∀ {ctx : NamedCtx} (arg : RawExpr) (A B : Type)
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ (A T.⇒[ T.mk-kind T.Many T.pure ] B)}
+    {d f : ℕ}
+  → checkElab ctx arg (A T.⇒[ T.mk-kind T.Many T.pure ] B) ≡ success Ψ eE d f
+  → ∃[ eE' ] ∃[ d' ] ∃[ f' ]
+      checkElab ctx (Raw.RApp (RVar "arr") arg)
+                    (A T.⇒[ T.mk-kind T.Many T.eff ] B)
+        ≡ success (zeroUsage +ᵘ (T.Many *ᵘ Ψ)) eE' d' f'
+completeness-gap-arr-app-check-eq {ctx} arg A B eqC
+  with checkElabV ctx arg (A T.⇒[ T.mk-kind T.Many T.pure ] B) | eqC
+... | success _ _ _ _ , _ | refl = _ , _ , _ , refl
+
 postulate
   completeness-gap-arr-check :
     ∀ {ctx : NamedCtx} {e : RawExpr} {A B : Type}
@@ -714,41 +771,6 @@ postulate
     → ctx ⊢ᵢ p ∶ ((A T.⇒[ T.mk-kind T.Many T.pure ] B) T.* A) ⨾ Ψ
     → ∃[ eE ] ∃[ d ] ∃[ f ]
         checkElab ctx (Raw.RApp (RVar "apply") p) B
-          ≡ success (zeroUsage +ᵘ (T.Many *ᵘ Ψ)) eE d f
-
-  -- Phase F new-rule completeness gaps. Each is the dual of
-  -- t-{inl,inr,initial,arr,arg-driven}-app-check from Judgment.agda.
-  -- The elaborator's specialised check-mode branches realise each
-  -- rule; these postulates stand in for the structural completeness
-  -- proofs.
-  completeness-gap-inl-app-check :
-    ∀ {ctx : NamedCtx} {arg : RawExpr} {A B : Type}
-      {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    → ctx ⊢ᶜ arg ∶ A ⨾ Ψ
-    → ∃[ eE ] ∃[ d ] ∃[ f ]
-        checkElab ctx (Raw.RApp (RVar "inl") arg) (A T.+ B)
-          ≡ success (zeroUsage +ᵘ (T.Many *ᵘ Ψ)) eE d f
-  completeness-gap-inr-app-check :
-    ∀ {ctx : NamedCtx} {arg : RawExpr} {A B : Type}
-      {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    → ctx ⊢ᶜ arg ∶ B ⨾ Ψ
-    → ∃[ eE ] ∃[ d ] ∃[ f ]
-        checkElab ctx (Raw.RApp (RVar "inr") arg) (A T.+ B)
-          ≡ success (zeroUsage +ᵘ (T.Many *ᵘ Ψ)) eE d f
-  completeness-gap-initial-app-check :
-    ∀ {ctx : NamedCtx} {arg : RawExpr} {T : Type}
-      {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    → ctx ⊢ᶜ arg ∶ T.Void ⨾ Ψ
-    → ∃[ eE ] ∃[ d ] ∃[ f ]
-        checkElab ctx (Raw.RApp (RVar "initial") arg) T
-          ≡ success (zeroUsage +ᵘ (T.Many *ᵘ Ψ)) eE d f
-  completeness-gap-arr-app-check :
-    ∀ {ctx : NamedCtx} {arg : RawExpr} {A B : Type}
-      {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    → ctx ⊢ᶜ arg ∶ (A T.⇒[ T.mk-kind T.Many T.pure ] B) ⨾ Ψ
-    → ∃[ eE ] ∃[ d ] ∃[ f ]
-        checkElab ctx (Raw.RApp (RVar "arr") arg)
-                      (A T.⇒[ T.mk-kind T.Many T.eff ] B)
           ≡ success (zeroUsage +ᵘ (T.Many *ᵘ Ψ)) eE d f
   completeness-gap-arg-driven-app-check :
     ∀ {ctx : NamedCtx} {f arg : RawExpr} {X T : Type}
@@ -966,16 +988,21 @@ mutual
   check-complete (t-apply-check {p = p} {A = A} {B = B} d) =
     let (_ , _ , _ , eq) = infer-complete d
     in checkElab-fallback-RApp-apply p A B eq
-  -- Plan 0.4 T0 Phase F new check-mode rules — completeness via
-  -- dedicated postulates (see completeness-gap-* above).
-  check-complete (t-inl-app-check d) =
-    completeness-gap-inl-app-check d
-  check-complete (t-inr-app-check d) =
-    completeness-gap-inr-app-check d
-  check-complete (t-initial-app-check d) =
-    completeness-gap-initial-app-check d
-  check-complete (t-arr-app-check d) =
-    completeness-gap-arr-app-check d
+  -- Plan 0.4 T0 Phase F new check-mode rules — discharged by
+  -- completeness-gap-*-eq helpers above (recursive check-complete on
+  -- the sub-derivation produces the bridging checkElab equation).
+  check-complete (t-inl-app-check {arg = arg} {A = A} {B = B} d) =
+    let (_ , _ , _ , eqC) = check-complete d
+    in completeness-gap-inl-app-check-eq arg A B eqC
+  check-complete (t-inr-app-check {arg = arg} {A = A} {B = B} d) =
+    let (_ , _ , _ , eqC) = check-complete d
+    in completeness-gap-inr-app-check-eq arg A B eqC
+  check-complete (t-initial-app-check {arg = arg} {T = T} d) =
+    let (_ , _ , _ , eqC) = check-complete d
+    in completeness-gap-initial-app-check-eq arg T eqC
+  check-complete (t-arr-app-check {arg = arg} {A = A} {B = B} d) =
+    let (_ , _ , _ , eqC) = check-complete d
+    in completeness-gap-arr-app-check-eq arg A B eqC
   check-complete (t-arg-driven-app-check notPoly dArg dF) =
     completeness-gap-arg-driven-app-check notPoly dArg dF
 
