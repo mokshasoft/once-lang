@@ -745,6 +745,10 @@ mutual
     ∀ (ctx : NamedCtx) (f arg : RawExpr) (vw : AppHeadView f)
     → classifyAppHeadView f ≡ vw
     → VerifiedInferResult ctx (Raw.RApp f arg)
+  checkElabV-RApp-dispatch :
+    ∀ (ctx : NamedCtx) (f arg : RawExpr) (T : Type) (vw : AppHeadView f)
+    → classifyAppHeadView f ≡ vw
+    → VerifiedCheckResult ctx (Raw.RApp f arg) T
 
   -- ===== inferElab =====
 
@@ -957,12 +961,12 @@ mutual
   -- when p has pair-of-function type). Matches result against T.
   checkApply ctx arg T with inferElabV ctx arg
   ... | failure err , _ = failure err , tt
-  ... | success ((A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) Once.Type.* A') Ψ argE d fr , w with A ≟T A'
-  ...   | no _ = failure (BuiltinTypeMismatch "apply") , tt
-  ...   | yes refl with T ≟T B
-  ...     | yes refl =
-            success _ (Surface.app (weakenFromEmpty (specApply A B)) argE) (suc d) fr , t-apply-check w
-  ...     | no _ = failure (TypeMismatch T B) , tt
+  ... | success ((A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) Once.Type.* A') Ψ argE d fr , w
+        with A ≟T A' | T ≟T B
+  ...   | yes refl | yes refl =
+          success _ (Surface.app (weakenFromEmpty (specApply A B)) argE) (suc d) fr , t-apply-check w
+  ...   | yes refl | no _ = failure (TypeMismatch T B) , tt
+  ...   | no _ | _ = failure (BuiltinTypeMismatch "apply") , tt
   checkApply ctx arg T | success Unit _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
   checkApply ctx arg T | success Void _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
   checkApply ctx arg T | success Int _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
@@ -1183,74 +1187,8 @@ mutual
   -- witness postulates above.
   ----------------------------------------------------------------------
 
-  -- ahv-id / ahv-fst / ahv-snd / ahv-terminal: try infer-then-match.
-  checkElabV ctx (Raw.RApp f arg) T with classifyAppHeadView f
-  checkElabV ctx (Raw.RApp f arg) T | ahv-id with inferElabV ctx (Raw.RApp f arg)
-  ...   | failure err , _ = failure err , tt
-  ...   | success T' Ψ eE d fr , w with T ≟T T'
-  ...     | yes refl = success Ψ eE d fr , t-embed w
-  ...     | no _     = failure (TypeMismatch T T') , tt
-  checkElabV ctx (Raw.RApp f arg) T | ahv-fst with inferElabV ctx (Raw.RApp f arg)
-  ...   | failure err , _ = failure err , tt
-  ...   | success T' Ψ eE d fr , w with T ≟T T'
-  ...     | yes refl = success Ψ eE d fr , t-embed w
-  ...     | no _     = failure (TypeMismatch T T') , tt
-  checkElabV ctx (Raw.RApp f arg) T | ahv-snd with inferElabV ctx (Raw.RApp f arg)
-  ...   | failure err , _ = failure err , tt
-  ...   | success T' Ψ eE d fr , w with T ≟T T'
-  ...     | yes refl = success Ψ eE d fr , t-embed w
-  ...     | no _     = failure (TypeMismatch T T') , tt
-  checkElabV ctx (Raw.RApp f arg) T | ahv-terminal with inferElabV ctx (Raw.RApp f arg)
-  ...   | failure err , _ = failure err , tt
-  ...   | success T' Ψ eE d fr , w with T ≟T T'
-  ...     | yes refl = success Ψ eE d fr , t-embed w
-  ...     | no _     = failure (TypeMismatch T T') , tt
-  -- ahv-inl: T must be sum type A+B; check arg at A.
-  checkElabV ctx (Raw.RApp f arg) T | ahv-inl with T
-  checkElabV ctx (Raw.RApp f arg) T | ahv-inl | (A Once.Type.+ B) with checkElabV ctx arg A
-  ...     | failure err , _ = failure err , tt
-  ...     | success Ψ argE d fr , w =
-            success _ (Surface.app (weakenFromEmpty (specInl A B)) argE) (suc d) fr , t-inl-app-check w
-  checkElabV ctx (Raw.RApp f arg) T | ahv-inl | _ = failure InlNeedsSumType , tt
-  -- ahv-inr: T must be sum type A+B; check arg at B.
-  checkElabV ctx (Raw.RApp f arg) T | ahv-inr with T
-  checkElabV ctx (Raw.RApp f arg) T | ahv-inr | (A Once.Type.+ B) with checkElabV ctx arg B
-  ...     | failure err , _ = failure err , tt
-  ...     | success Ψ argE d fr , w =
-            success _ (Surface.app (weakenFromEmpty (specInr A B)) argE) (suc d) fr , t-inr-app-check w
-  checkElabV ctx (Raw.RApp f arg) T | ahv-inr | _ = failure InrNeedsSumType , tt
-  -- ahv-initial: arg must be Void; result has any expected T.
-  checkElabV ctx (Raw.RApp f arg) T | ahv-initial with checkElabV ctx arg Once.Type.Void
-  ...   | failure err , _ = failure err , tt
-  ...   | success Ψ argE d fr , w =
-          success _ (Surface.app (weakenFromEmpty (specInitial T)) argE) (suc d) fr , t-initial-app-check w
-  -- ahv-arr: T must be Eff A B; check arg at A→B.
-  checkElabV ctx (Raw.RApp f arg) T | ahv-arr with T
-  checkElabV ctx (Raw.RApp f arg) T | ahv-arr | (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B) with checkElabV ctx arg (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)
-  ...     | failure err , _ = failure err , tt
-  ...     | success Ψ argE d fr , w =
-            success _ (Surface.app (weakenFromEmpty (specArr A B)) argE) (suc d) fr , t-arr-app-check w
-  checkElabV ctx (Raw.RApp f arg) T | ahv-arr | _ = failure (TypeMismatch T T) , tt
-  -- ahv-pair-applied / ahv-compose-applied / ahv-curry / ahv-apply:
-  -- delegate to existing helpers, case-split on result, witness via
-  -- abstract success-case postulate.
-  checkElabV ctx (Raw.RApp f arg) T | ahv-pair-applied = checkPair ctx f arg T
-  checkElabV ctx (Raw.RApp f arg) T | ahv-compose-applied = checkCompose ctx f arg T
-  checkElabV ctx (Raw.RApp f arg) T | ahv-curry = checkCurry ctx arg T
-  checkElabV ctx (Raw.RApp f arg) T | ahv-apply = checkApply ctx arg T
-  -- ahv-other: try infer-then-match; on failure, arg-driven application.
-  checkElabV ctx (Raw.RApp f arg) T | ahv-other with inferElabV ctx (Raw.RApp f arg)
-  ...   | success T' Ψ eE d fr , w with T ≟T T'
-  ...     | yes refl = success Ψ eE d fr , t-embed w
-  ...     | no _     = failure (TypeMismatch T T') , tt
-  checkElabV ctx (Raw.RApp f arg) T | ahv-other | failure errInfer , _ with classifyAppHead f in eqAH
-  ...     | just _  = failure errInfer , tt  -- unreachable: ahv-other ⇒ classifyAppHead nothing
-  ...     | nothing with inferElabV ctx arg
-  ...       | failure errArg , _ = failure errArg , tt
-  ...       | success X Ψx argE dx frx , wArg with checkElabV ctx f (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] T)
-  ...         | failure err , _ = failure err , tt
-  ...         | success Ψf fE df frf , wF =
-                success _ (Surface.app fE argE) (suc (df ⊔ dx)) frf , t-arg-driven-app-check eqAH wArg wF
+  checkElabV ctx (Raw.RApp f arg) T =
+    checkElabV-RApp-dispatch ctx f arg T _ refl
 
   -- RLam check-mode: only well-typed at a pure arrow type.
   checkElabV ctx (Raw.RLam x body) (A Once.Type.⇒[ Once.Type.mk-kind q Once.Type.pure ] B) with checkElabV (extendNamedCtx ctx x A) body B
@@ -1536,6 +1474,105 @@ mutual
   inferElabV-RApp-dispatch ctx f arg ahv-curry           _ = failure (BuiltinTypeMismatch "curry") , tt
   -- ahv-other : generic application via `inferElabV-RApp-other`.
   inferElabV-RApp-dispatch ctx f arg ahv-other _ = inferElabV-RApp-other ctx f arg
+
+  -- checkElabV's RApp dispatch — mirror of inferElabV-RApp-dispatch.
+  checkElabV-RApp-dispatch ctx f arg T ahv-id _ with inferElabV ctx (Raw.RApp f arg)
+  ... | failure err , _ = failure err , tt
+  ... | success T' Ψ eE d fr , w with T ≟T T'
+  ...   | yes refl = success Ψ eE d fr , t-embed w
+  ...   | no _     = failure (TypeMismatch T T') , tt
+  checkElabV-RApp-dispatch ctx f arg T ahv-fst _ with inferElabV ctx (Raw.RApp f arg)
+  ... | failure err , _ = failure err , tt
+  ... | success T' Ψ eE d fr , w with T ≟T T'
+  ...   | yes refl = success Ψ eE d fr , t-embed w
+  ...   | no _     = failure (TypeMismatch T T') , tt
+  checkElabV-RApp-dispatch ctx f arg T ahv-snd _ with inferElabV ctx (Raw.RApp f arg)
+  ... | failure err , _ = failure err , tt
+  ... | success T' Ψ eE d fr , w with T ≟T T'
+  ...   | yes refl = success Ψ eE d fr , t-embed w
+  ...   | no _     = failure (TypeMismatch T T') , tt
+  checkElabV-RApp-dispatch ctx f arg T ahv-terminal _ with inferElabV ctx (Raw.RApp f arg)
+  ... | failure err , _ = failure err , tt
+  ... | success T' Ψ eE d fr , w with T ≟T T'
+  ...   | yes refl = success Ψ eE d fr , t-embed w
+  ...   | no _     = failure (TypeMismatch T T') , tt
+  -- ahv-inl: T must be sum type A+B; check arg at A.
+  checkElabV-RApp-dispatch ctx f arg T ahv-inl _ with T
+  ... | (A Once.Type.+ B) with checkElabV ctx arg A
+  ...   | failure err , _ = failure err , tt
+  ...   | success Ψ argE d fr , w =
+          success _ (Surface.app (weakenFromEmpty (specInl A B)) argE) (suc d) fr , t-inl-app-check w
+  checkElabV-RApp-dispatch ctx f arg T ahv-inl _ | Unit = failure InlNeedsSumType , tt
+  checkElabV-RApp-dispatch ctx f arg T ahv-inl _ | Void = failure InlNeedsSumType , tt
+  checkElabV-RApp-dispatch ctx f arg T ahv-inl _ | Int = failure InlNeedsSumType , tt
+  checkElabV-RApp-dispatch ctx f arg T ahv-inl _ | Float = failure InlNeedsSumType , tt
+  checkElabV-RApp-dispatch ctx f arg T ahv-inl _ | Str = failure InlNeedsSumType , tt
+  checkElabV-RApp-dispatch ctx f arg T ahv-inl _ | Buffer = failure InlNeedsSumType , tt
+  checkElabV-RApp-dispatch ctx f arg T ahv-inl _ | (_ Once.Type.* _) = failure InlNeedsSumType , tt
+  checkElabV-RApp-dispatch ctx f arg T ahv-inl _ | (_ Once.Type.⇒[ _ ] _) = failure InlNeedsSumType , tt
+  checkElabV-RApp-dispatch ctx f arg T ahv-inl _ | (μ-type _) = failure InlNeedsSumType , tt
+  checkElabV-RApp-dispatch ctx f arg T ahv-inl _ | (ν-type _) = failure InlNeedsSumType , tt
+  -- ahv-inr: T must be sum type A+B; check arg at B.
+  checkElabV-RApp-dispatch ctx f arg T ahv-inr _ with T
+  ... | (A Once.Type.+ B) with checkElabV ctx arg B
+  ...   | failure err , _ = failure err , tt
+  ...   | success Ψ argE d fr , w =
+          success _ (Surface.app (weakenFromEmpty (specInr A B)) argE) (suc d) fr , t-inr-app-check w
+  checkElabV-RApp-dispatch ctx f arg T ahv-inr _ | Unit = failure InrNeedsSumType , tt
+  checkElabV-RApp-dispatch ctx f arg T ahv-inr _ | Void = failure InrNeedsSumType , tt
+  checkElabV-RApp-dispatch ctx f arg T ahv-inr _ | Int = failure InrNeedsSumType , tt
+  checkElabV-RApp-dispatch ctx f arg T ahv-inr _ | Float = failure InrNeedsSumType , tt
+  checkElabV-RApp-dispatch ctx f arg T ahv-inr _ | Str = failure InrNeedsSumType , tt
+  checkElabV-RApp-dispatch ctx f arg T ahv-inr _ | Buffer = failure InrNeedsSumType , tt
+  checkElabV-RApp-dispatch ctx f arg T ahv-inr _ | (_ Once.Type.* _) = failure InrNeedsSumType , tt
+  checkElabV-RApp-dispatch ctx f arg T ahv-inr _ | (_ Once.Type.⇒[ _ ] _) = failure InrNeedsSumType , tt
+  checkElabV-RApp-dispatch ctx f arg T ahv-inr _ | (μ-type _) = failure InrNeedsSumType , tt
+  checkElabV-RApp-dispatch ctx f arg T ahv-inr _ | (ν-type _) = failure InrNeedsSumType , tt
+  -- ahv-initial: arg must be Void; result has any expected T.
+  checkElabV-RApp-dispatch ctx f arg T ahv-initial _ with checkElabV ctx arg Once.Type.Void
+  ... | failure err , _ = failure err , tt
+  ... | success Ψ argE d fr , w =
+        success _ (Surface.app (weakenFromEmpty (specInitial T)) argE) (suc d) fr , t-initial-app-check w
+  -- ahv-arr: T must be Eff A B; check arg at A→B.
+  checkElabV-RApp-dispatch ctx f arg T ahv-arr _ with T
+  ... | (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B)
+        with checkElabV ctx arg (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)
+  ...   | failure err , _ = failure err , tt
+  ...   | success Ψ argE d fr , w =
+          success _ (Surface.app (weakenFromEmpty (specArr A B)) argE) (suc d) fr , t-arr-app-check w
+  checkElabV-RApp-dispatch ctx f arg T ahv-arr _ | Unit = failure (TypeMismatch T T) , tt
+  checkElabV-RApp-dispatch ctx f arg T ahv-arr _ | Void = failure (TypeMismatch T T) , tt
+  checkElabV-RApp-dispatch ctx f arg T ahv-arr _ | Int = failure (TypeMismatch T T) , tt
+  checkElabV-RApp-dispatch ctx f arg T ahv-arr _ | Float = failure (TypeMismatch T T) , tt
+  checkElabV-RApp-dispatch ctx f arg T ahv-arr _ | Str = failure (TypeMismatch T T) , tt
+  checkElabV-RApp-dispatch ctx f arg T ahv-arr _ | Buffer = failure (TypeMismatch T T) , tt
+  checkElabV-RApp-dispatch ctx f arg T ahv-arr _ | (_ Once.Type.* _) = failure (TypeMismatch T T) , tt
+  checkElabV-RApp-dispatch ctx f arg T ahv-arr _ | (_ Once.Type.+ _) = failure (TypeMismatch T T) , tt
+  checkElabV-RApp-dispatch ctx f arg T ahv-arr _ | (_ Once.Type.⇒[ Once.Type.mk-kind _ Once.Type.pure ] _) = failure (TypeMismatch T T) , tt
+  checkElabV-RApp-dispatch ctx f arg T ahv-arr _ | (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Zero Once.Type.eff ] _) = failure (TypeMismatch T T) , tt
+  checkElabV-RApp-dispatch ctx f arg T ahv-arr _ | (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.One Once.Type.eff ] _) = failure (TypeMismatch T T) , tt
+  checkElabV-RApp-dispatch ctx f arg T ahv-arr _ | (μ-type _) = failure (TypeMismatch T T) , tt
+  checkElabV-RApp-dispatch ctx f arg T ahv-arr _ | (ν-type _) = failure (TypeMismatch T T) , tt
+  -- Helper-applied branches.
+  checkElabV-RApp-dispatch ctx f arg T ahv-pair-applied _ = checkPair ctx f arg T
+  checkElabV-RApp-dispatch ctx f arg T ahv-compose-applied _ = checkCompose ctx f arg T
+  checkElabV-RApp-dispatch ctx f arg T ahv-curry _ = checkCurry ctx arg T
+  checkElabV-RApp-dispatch ctx f arg T ahv-apply _ = checkApply ctx arg T
+  -- ahv-other: try infer-then-match; on failure, arg-driven application.
+  checkElabV-RApp-dispatch ctx f arg T ahv-other _ with inferElabV ctx (Raw.RApp f arg)
+  ... | success T' Ψ eE d fr , w with T ≟T T'
+  ...   | yes refl = success Ψ eE d fr , t-embed w
+  ...   | no _     = failure (TypeMismatch T T') , tt
+  checkElabV-RApp-dispatch ctx f arg T ahv-other _ | failure errInfer , _
+        with classifyAppHead f in eqAH
+  ...   | just _  = failure errInfer , tt
+  ...   | nothing with inferElabV ctx arg
+  ...     | failure errArg , _ = failure errArg , tt
+  ...     | success X Ψx argE dx frx , wArg
+              with checkElabV ctx f (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] T)
+  ...       | failure err , _ = failure err , tt
+  ...       | success Ψf fE df frf , wF =
+              success _ (Surface.app fE argE) (suc (df ⊔ dx)) frf , t-arg-driven-app-check eqAH wArg wF
 
 ------------------------------------------------------------------------
 -- Plan 0.4 T0 Option B — projection wrappers.
@@ -1856,16 +1893,22 @@ checkElab-fallback-RApp-arr :
 checkElab-fallback-RApp-arr {ctx} e A B eqC
   with checkElabV ctx e (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) | eqC
 ... | success _ _ _ _ , _ | refl = _ , _ , _ , refl
-postulate
-  checkElab-fallback-RApp-apply :
-    ∀ {ctx : NamedCtx} (p : RawExpr) (A B : Type)
-      {Ψ : Surface.Usage (NamedCtx.size ctx)}
-      {eE : SExpr (NamedCtx.debruijn ctx) Ψ ((A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) Once.Type.* A)}
-      {d fr : ℕ}
-    → inferElab ctx p ≡ success ((A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) Once.Type.* A) Ψ eE d fr
-    → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
-        checkElab ctx (Raw.RApp (Raw.RVar "apply") p) B
-          ≡ success (Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ)) eE' d' f')))
+checkElab-fallback-RApp-apply :
+  ∀ {ctx : NamedCtx} (p : RawExpr) (A B : Type)
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ ((A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) Once.Type.* A)}
+    {d fr : ℕ}
+  → inferElab ctx p ≡ success ((A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) Once.Type.* A) Ψ eE d fr
+  → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
+      checkElab ctx (Raw.RApp (Raw.RVar "apply") p) B
+        ≡ success (Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ)) eE' d' f')))
+checkElab-fallback-RApp-apply {ctx} p A B eqInf
+  with inferElabV ctx p | eqInf
+... | success ((_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] _) Once.Type.* _) _ _ _ _ , _ | refl
+    with A ≟T A | B ≟T B
+...   | yes refl | yes refl = _ , _ , _ , refl
+...   | yes refl | no  ¬eq  = ⊥-elim (¬eq refl)
+...   | no  ¬eq  | _        = ⊥-elim (¬eq refl)
 resolveExprWF : ∀ {n} {Γ : Surface.Ctx n} {Ψ : Surface.Usage n} {A}
               → (polys : PolyCtx) → Acc _<_ (length polys)
               → Imports → ℕ
@@ -2337,16 +2380,29 @@ checkElab-fallback-RApp-snd {ctx} arg T eqInf
 ... | success T' _ _ _ _ , _ | refl with T ≟T T'
 ...   | yes refl = _ , _ , _ , refl
 ...   | no ¬eq   = ⊥-elim (¬eq refl)
-postulate
-  checkElab-fallback-RApp-generic :
-    ∀ {ctx : NamedCtx} (f x : RawExpr) (T : Type)
-      {Ψ : Surface.Usage (NamedCtx.size ctx)}
-      {eE : SExpr (NamedCtx.debruijn ctx) Ψ T}
-      {d f' : ℕ}
-    → classifyAppHead f ≡ nothing
-    → inferElab ctx (Raw.RApp f x) ≡ success T Ψ eE d f'
-    → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f'' →
-        checkElab ctx (Raw.RApp f x) T ≡ success Ψ eE' d' f'')))
+private
+  open import Data.Product using () renaming (proj₁ to checkProj₁)
+  checkViewBridge : ∀ {ctx f x T} (vw : AppHeadView f) (eq : classifyAppHeadView f ≡ vw)
+                  → checkElabV-RApp-dispatch ctx f x T (classifyAppHeadView f) refl
+                    ≡ checkElabV-RApp-dispatch ctx f x T vw eq
+  checkViewBridge _ refl = refl
+
+checkElab-fallback-RApp-generic :
+  ∀ {ctx : NamedCtx} (f x : RawExpr) (T : Type)
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ T}
+    {d f' : ℕ}
+  → classifyAppHead f ≡ nothing
+  → inferElab ctx (Raw.RApp f x) ≡ success T Ψ eE d f'
+  → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f'' →
+      checkElab ctx (Raw.RApp f x) T ≡ success Ψ eE' d' f'')))
+checkElab-fallback-RApp-generic {ctx} f x T eqAH eqInf
+  rewrite cong checkProj₁ (checkViewBridge {ctx} {f} {x} {T} ahv-other (classifyAppHead-nothing⇒view-other eqAH))
+  with inferElabV ctx (Raw.RApp f x) | eqInf
+... | success _ _ _ _ _ , _ | refl
+    with T ≟T T
+...   | yes refl = _ , _ , _ , refl
+...   | no ¬eq   = ⊥-elim (¬eq refl)
 checkElab-fallback-RApp-terminal :
   ∀ {ctx : NamedCtx} (arg : RawExpr) (T : Type)
     {Ψ : Surface.Usage (NamedCtx.size ctx)}
