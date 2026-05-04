@@ -19,6 +19,8 @@ module Once.Verified.Behavior where
 open import Data.Maybe using (Maybe)
 open import Data.Nat using (ℕ)
 
+import Once.Grammar as G
+
 ------------------------------------------------------------------------
 -- Behavior — the chosen observable.
 --
@@ -44,25 +46,31 @@ Behavior : Set
 Behavior = Maybe ℕ
 
 ------------------------------------------------------------------------
--- The only real gap here is the connector that bridges the parser
--- output (Module / RawExpr) to a closed, well-typed Surface
--- expression with `main : Eff Unit Unit`. Once that's concrete
--- (Plan 0.4.2), `⟦_⟧` is forced: it is `evalSurface ε (ast-of pc)`
--- composed with the exit-code projection. There's no choice in it
--- — the shape is determined by `Source` and `Behavior` together.
+-- Source — anchored at the formal grammar.
 --
--- We postulate `⟦_⟧` here only because `Source` is postulated; both
--- are filled in together when the connector lands.
+-- `Source = GModule` is the most natural anchor: the parser produces
+-- it, the rest of the compiler consumes it. Choosing this point
+-- means `compile` carries responsibility for typechecking and
+-- codegen; parsing itself is upstream (its correctness is a separate
+-- claim handled in `Once.Parser` / `Once.Grammar.Roundtrip`).
+--
+-- A type-correct program is a `GModule` whose decls satisfy the
+-- well-formedness predicates already in `Once.Grammar`
+-- (`ValidMainType`, `ValidDeclPair`, …). For ill-typed modules
+-- `compile` returns `nothing`, satisfying the witness vacuously.
+------------------------------------------------------------------------
+
+Source : Set
+Source = G.GModule
+
+------------------------------------------------------------------------
+-- ⟦_⟧ — denotation. Postulated until Once.Surface.Semantics is
+-- connected to GModule (typecheck + evalSurface + extract-exit-code).
+-- The shape is forced by Source + Behavior; only the wiring is gap.
 ------------------------------------------------------------------------
 
 postulate
-  -- Source ASTs accepted by the compiler. Discharge: a sigma over
-  -- the existing `Once.Surface.Syntax.Expr` family that captures
-  -- "well-typed program with main : Eff Unit Unit."
-  Source : Set
-
-  -- Forced once `Source` is concrete:
-  --   ⟦ pc ⟧ = extract-exit-code (evalSurface ε (ast-of pc))
-  -- where `extract-exit-code : ⟦ Eff Unit Unit ⟧Type → Maybe ℕ`
-  -- reads the `exit N` event from the effect-tree denotation.
+  -- ⟦ m ⟧ = if (typecheck m) succeeds and `main : Eff Unit Unit` is
+  -- well-typed, evaluate via evalSurface and read the exit code from
+  -- the resulting effect tree. Else `nothing`.
   ⟦_⟧ : Source → Behavior
