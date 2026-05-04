@@ -17,7 +17,7 @@
 
 module Once.Verified.Compile where
 
-open import Data.Bool using (false)
+open import Data.Bool using (Bool; false)
 open import Data.List using (List)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.String using (String)
@@ -51,10 +51,23 @@ postulate
   -- `parse : String → Maybe Module` (which side-steps GModule today).
   gmoduleToModule : G.GModule → Maybe P.Module
 
-  -- Assembly text → executable bytes.
-  -- B1 plan: discharge via a concrete Agda byte-encoder.
-  -- B2 alternative: keep this postulate as the assembler-conformance
-  -- trusted-base axiom.
+  -- ╔══════════════════════════════════════════════════════════════╗
+  -- ║ TRUSTED BASE — current B2 stance.                            ║
+  -- ║                                                              ║
+  -- ║ `string-to-bytes` is THE GNU assembler trust postulate. We  ║
+  -- ║ trust that the asm text produced by `compileFromModule`,    ║
+  -- ║ when fed to GNU `as`, yields bytes whose CPU execution      ║
+  -- ║ matches running our structured-Program model on the same    ║
+  -- ║ instructions.                                                ║
+  -- ║                                                              ║
+  -- ║ This is the deliberately-chosen B2 stance: practical now,   ║
+  -- ║ replaceable by an in-Agda assembler (B1) without spec       ║
+  -- ║ changes — the postulate goes away, nothing else.             ║
+  -- ║                                                              ║
+  -- ║ One axiom per arch eventually (linker conformance is        ║
+  -- ║ separate). For now, single string-to-bytes covers all       ║
+  -- ║ arches uniformly through the asm-text intermediate.          ║
+  -- ╚══════════════════════════════════════════════════════════════╝
   string-to-bytes : String → List Byte
 
 ------------------------------------------------------------------------
@@ -67,6 +80,36 @@ compile arch gmod with gmoduleToModule gmod
 ... | just m  with C.compileFromModule C.Build false (toLegacyArch arch) m
 ...   | C.Built asm = just (string-to-bytes asm)
 ...   | _           = nothing
+
+------------------------------------------------------------------------
+-- CLI entry point — asm-producing variant (B2 pragmatic path).
+--
+-- CLI/Bridge.hs currently consumes asm text (passed to GNU `as`),
+-- not raw bytes. Until we have an in-Agda assembler (B1), the CLI
+-- path goes through this asm-producing function which delegates to
+-- the same underlying `compileFromModule` pipeline.
+--
+-- This function is THE function CLI must call (Plan 0.10 — extracted
+-- = verified). The bytes-producing `compile` above remains the
+-- spec-side anchor; the link between them is `string-to-bytes`,
+-- which is the assembler trust postulate (B2's irreducible item).
+------------------------------------------------------------------------
+
+compile-asm : Arch → Source → C.CompileResult
+compile-asm arch gmod with gmoduleToModule gmod
+... | nothing = C.Error "GModule → Module conversion failed"
+... | just m  = C.compileFromModule C.Build false (toLegacyArch arch) m
+
+-- Module-input variant for the CLI/Bridge path. The CLI parses
+-- source text to a `Module` (via Once.Parser.parseStrict / equivalent)
+-- and calls this function to get assembly. Architecturally identical
+-- to going through compile-asm; the GModule round-trip is skipped
+-- since the parser already produced the typed-pipeline `Module`.
+--
+-- This is THE function Bridge.hs must call (Plan 0.10).
+compile-cli-asm : C.Stage → Bool → Arch → P.Module → C.CompileResult
+compile-cli-asm stage doOpt arch m =
+  C.compileFromModule stage doOpt (toLegacyArch arch) m
 
 ------------------------------------------------------------------------
 -- Correctness — POSTULATED. Discharging this is the substantive

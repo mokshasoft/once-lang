@@ -207,7 +207,10 @@ compiler: compiler-x86-64
 malonzo:
 	@echo "Extracting compiler via MAlonzo..."
 	@mkdir -p _build/malonzo
-	@sh -c '$(AGDA_CMD) -c --ghc-dont-call-ghc --compile-dir=_build/malonzo Once/Compile.agda'
+	@# Extract from Once/Compiler.agda (the verified instance) which
+	@# transitively reaches Once.Compile + the Verified hierarchy. Bridge.hs
+	@# imports the verified entry point from this extraction.
+	@sh -c '$(AGDA_CMD) -c --ghc-dont-call-ghc --compile-dir=_build/malonzo Once/Compiler.agda'
 	@echo "Copying extracted modules to compiler..."
 	@rm -rf ../compiler/src/MAlonzo/Code/Once
 	@mkdir -p ../compiler/src/MAlonzo/Code/Once

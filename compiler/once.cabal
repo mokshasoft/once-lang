@@ -311,6 +311,15 @@ library
       MAlonzo.Code.Once.TypeCheck.Error
       MAlonzo.Code.Once.TypeCheck.Judgment
       MAlonzo.Code.Once.TypeCheck.Raw
+      MAlonzo.Code.Once.Verified
+      MAlonzo.Code.Once.Verified.Behavior
+      MAlonzo.Code.Once.Verified.CPU
+      MAlonzo.Code.Once.Verified.CPU.Interface
+      MAlonzo.Code.Once.Verified.CPU.RiscV64
+      MAlonzo.Code.Once.Verified.CPU.X86Z45Z32
+      MAlonzo.Code.Once.Verified.CPU.X86Z45Z64
+      MAlonzo.Code.Once.Verified.Compile
+      MAlonzo.Code.Once.Compiler
       MAlonzo.Code.Relation.Binary
       MAlonzo.Code.Relation.Binary.Bundles
       MAlonzo.Code.Relation.Binary.Bundles.Raw

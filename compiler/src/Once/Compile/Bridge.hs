@@ -41,6 +41,8 @@ import Unsafe.Coerce (unsafeCoerce)
 import qualified MAlonzo.Code.Agda.Builtin.Sigma as MSigma
 import qualified MAlonzo.Code.Data.Sum.Base as MSum
 import qualified MAlonzo.Code.Once.Compile as MC
+import qualified MAlonzo.Code.Once.Verified.Compile as MVC
+import qualified MAlonzo.Code.Once.Verified.CPU.Interface as MVCI
 import qualified MAlonzo.Code.Once.Parser as MP
 import qualified MAlonzo.Code.Once.Parser.Module.Core as MMC
 import qualified MAlonzo.Code.Once.Parser.Module.Resolve as MMR
@@ -104,6 +106,13 @@ toMArch :: Arch -> MC.T_Arch_316
 toMArch X86_64  = MC.C_x86'45'64_318
 toMArch X86_32  = MC.C_x86'45'32_320
 toMArch RiscV64 = MC.C_riscv64_322
+
+-- Verified Arch (in Once.Verified.CPU.Interface). Same shape as MC.Arch
+-- but a separate Agda type, hence a separate coercion.
+toMVArch :: Arch -> MVCI.T_Arch_10
+toMVArch X86_64  = MVCI.C_x86'45'64_12
+toMVArch X86_32  = MVCI.C_x86'45'32_14
+toMVArch RiscV64 = MVCI.C_riscv64_16
 
 -- | Agda strings are Haskell `Text` at runtime (MAlonzo primitive binding).
 agdaToText :: a -> Text
@@ -190,7 +199,15 @@ resolveImports modMap (Module userMod) =
 -- | Compile a pre-resolved Module through the selected stage.
 -- Equivalent to `compile` but skips the initial parse step — used by
 -- the AST-level pipeline after `resolveImports` produces a flat Module.
+--
+-- Routes through `Once.Verified.Compile.compile-cli-asm` (Plan 0.10:
+-- extracted = verified). The verified path is currently a thin
+-- wrapper around `compileFromModule` for Build, with one named
+-- trusted-base postulate (`string-to-bytes` — GNU `as` conformance,
+-- the B2 stance). When B1 (in-Agda assembler) lands, the postulate
+-- goes away and this binding stays the same.
 compileFromModule :: Stage -> Bool -> Arch -> Module -> CompileResult
 compileFromModule stage doOpt arch (Module m) =
   fromMResult
-    (MC.d_compileFromModule_456 (toMStage stage) doOpt (toMArch arch) (unsafeCoerce m))
+    (MVC.d_compile'45'cli'45'asm_70
+       (toMStage stage) doOpt (toMVArch arch) (unsafeCoerce m))
