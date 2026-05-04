@@ -34,6 +34,24 @@
 -- ║  Therefore `Behavior` MUST be effect-trace-shaped (or a          ║
 -- ║  projection thereof), not "exit-code-shaped" thought of as a     ║
 -- ║  return value.                                                   ║
+-- ║                                                                  ║
+-- ║  COMPILER CORRECTNESS IS TRACE PRESERVATION ONLY.                ║
+-- ║                                                                  ║
+-- ║  The compile-correct theorem says: the compiled bytes invoke    ║
+-- ║  the same SigOp calls (same name, args, order) as the source    ║
+-- ║  intends. It DOES NOT say anything about what those SigOp       ║
+-- ║  calls *do* — whether `linux.exit` actually terminates, whether ║
+-- ║  `linux.write` actually outputs bytes, etc. That is the         ║
+-- ║  INTERPRETATION's responsibility, proven separately per SigOp   ║
+-- ║  (or postulated by the Once programmer using their interpretation║
+-- ║  layer in `Strata/Interpretations/...`).                         ║
+-- ║                                                                  ║
+-- ║  End-to-end behavioural correctness is the COMPOSITION of:       ║
+-- ║    - compiler's trace preservation (this module)                 ║
+-- ║    - interpretation's protocol conformance (separate, per impl) ║
+-- ║                                                                  ║
+-- ║  Don't conflate the two. Don't put protocol obligations on the   ║
+-- ║  compiler. Don't put trace obligations on the interpretation.    ║
 -- ╚══════════════════════════════════════════════════════════════════╝
 --
 -- For Layer 0 the only SigOp a program can call is `linux.exit`,
