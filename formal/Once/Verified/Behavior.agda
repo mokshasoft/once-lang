@@ -4,14 +4,57 @@
 ------------------------------------------------------------------------
 -- Once.Verified.Behavior — WHAT THIS COMPILER CLAIMS
 --
--- Concrete choices for the abstract `Source`, `Behavior`, and `⟦_⟧`
--- fields of `CorrectCompiler`. A reviewer reads THIS module to
--- answer: "what does correctness mean for THIS compiler?"
+-- ╔══════════════════════════════════════════════════════════════════╗
+-- ║  CRITICAL READING NOTE — DO NOT GET THIS WRONG.                  ║
+-- ║                                                                  ║
+-- ║  Once programs DO NOT RETURN A VALUE.                            ║
+-- ║                                                                  ║
+-- ║  `main : Eff Unit Unit` is fixed by `validateMain`. The trailing ║
+-- ║  `Unit` is meaningless — there is nothing for a program to       ║
+-- ║  return because there is no caller above `main`. What a program  ║
+-- ║  *does* is INVOKE SIGNATURE OPERATIONS (SigOps): `linux.exit`,   ║
+-- ║  `linux.write`, `arith.add.int`, etc. The observable behaviour   ║
+-- ║  is THE SEQUENCE OF SIGOP CALLS the program performs and their  ║
+-- ║  arguments — i.e. an EFFECT TRACE.                               ║
+-- ║                                                                  ║
+-- ║  The exit code (Layer 0's only observable) is not a "return      ║
+-- ║  value." It is *the argument* to the program's final             ║
+-- ║  `linux.exit` SigOp call. There is no other channel by which     ║
+-- ║  exit codes leave the program; "the program returns 42" is       ║
+-- ║  shorthand for "the program calls `linux.exit 42`."              ║
+-- ║                                                                  ║
+-- ║  Anyone tempted to project a "return value" from `evalSurface`   ║
+-- ║  is reading the semantics wrong. `evalSurface ε e : ⟦ T ⟧Type`   ║
+-- ║  collapses effectful arrows to plain function arrows             ║
+-- ║  (⟦ A ⇒[_] B ⟧ = ⟦ A ⟧ → ⟦ B ⟧); for `Eff Unit Unit` this is     ║
+-- ║  `⊤ → ⊤`, which carries NO INFORMATION. The actual effect        ║
+-- ║  semantics flows through `generic-semI`, which is the SigOp      ║
+-- ║  dispatcher.                                                     ║
+-- ║                                                                  ║
+-- ║  Therefore `Behavior` MUST be effect-trace-shaped (or a          ║
+-- ║  projection thereof), not "exit-code-shaped" thought of as a     ║
+-- ║  return value.                                                   ║
+-- ╚══════════════════════════════════════════════════════════════════╝
 --
--- Currently postulated; discharge maps to Plan 0.4.2 (frontend↔
--- backend connector). Once discharged, every entry below is a
--- concrete inspectable definition that imports `Once.Surface.Syntax`
--- and `Once.Surface.Semantics`.
+-- For Layer 0 the only SigOp a program can call is `linux.exit`,
+-- so the trace is always `[("linux.exit", N)]`. The argument N is
+-- what humans call "the exit code." We could pick any of these
+-- equivalent shapes for `Behavior`:
+--
+--   (a) `Behavior = List SigOpEvent`
+--       — the full trace; richest, future-proof for richer effects.
+--   (b) `Behavior = Maybe ℕ`
+--       — the argument of the final `linux.exit` event, or `nothing`
+--         if the program didn't call exit. Coarser but matches what
+--         Layer 0 cares about.
+--
+-- We pick (b) for Layer 0 since it's the smallest correct observable.
+-- Layer-1+ work will widen to (a).
+--
+-- This is a CHOICE of observable, not a derived consequence of CCC
+-- / structural-recursion laws. Those laws prove equalities between
+-- source terms; this declares what counts as observably-equivalent
+-- to the outside world.
 ------------------------------------------------------------------------
 
 module Once.Verified.Behavior where
@@ -22,24 +65,8 @@ open import Data.Nat using (ℕ)
 import Once.Grammar as G
 
 ------------------------------------------------------------------------
--- Behavior — the chosen observable.
---
--- For Layer 0, the only effect a program can perform is `exit N`.
--- The observable phenomenon we promise to preserve is: "what exit
--- code did the program produce, if any?" This is the narrowest
--- interesting Behavior — sufficient for `exit ((id . id . id) 42)`
--- but coarse enough to be vacuous for programs that do I/O before
--- exiting (a `hello world; exit 0` program would be observably
--- equivalent to a silent `exit 0` under this Behavior).
---
--- Widening: when richer effects come online (read, write, …), this
--- becomes `List SigOpEvent × Maybe ℕ` (a syscall trace plus exit
--- code) or a free-monad denotation. Until then, exit code suffices.
---
--- This is a CHOICE, not a derived consequence of CCC / structural
--- laws. Those laws prove equalities between source terms; this
--- definition declares what counts as observably-equivalent to the
--- outside world.
+-- Behavior — Layer 0 observable: the argument of the final
+-- `linux.exit` SigOp call (if any). NOT a "return value."
 ------------------------------------------------------------------------
 
 Behavior : Set
@@ -47,30 +74,23 @@ Behavior = Maybe ℕ
 
 ------------------------------------------------------------------------
 -- Source — anchored at the formal grammar.
---
--- `Source = GModule` is the most natural anchor: the parser produces
--- it, the rest of the compiler consumes it. Choosing this point
--- means `compile` carries responsibility for typechecking and
--- codegen; parsing itself is upstream (its correctness is a separate
--- claim handled in `Once.Parser` / `Once.Grammar.Roundtrip`).
---
--- A type-correct program is a `GModule` whose decls satisfy the
--- well-formedness predicates already in `Once.Grammar`
--- (`ValidMainType`, `ValidDeclPair`, …). For ill-typed modules
--- `compile` returns `nothing`, satisfying the witness vacuously.
 ------------------------------------------------------------------------
 
 Source : Set
 Source = G.GModule
 
 ------------------------------------------------------------------------
--- ⟦_⟧ — denotation. Postulated until Once.Surface.Semantics is
--- connected to GModule (typecheck + evalSurface + extract-exit-code).
--- The shape is forced by Source + Behavior; only the wiring is gap.
+-- ⟦_⟧ — extracts the `linux.exit` argument from a program's
+-- effect-tree denotation. Postulated until the connector to the
+-- effect-tracking interpreter lands.
+--
+-- IMPORTANT: this CANNOT be `extract-from-evalSurface ∘ evalSurface ε`
+-- because `evalSurface` flattens `Eff Unit Unit` to `⊤ → ⊤` and
+-- discards SigOp arguments via the postulated `generic-semI`.
+-- Discharging this requires a richer effect-tracking interpreter
+-- (free monad over SigOp, or similar) — substantive new work,
+-- NOT just connector plumbing.
 ------------------------------------------------------------------------
 
 postulate
-  -- ⟦ m ⟧ = if (typecheck m) succeeds and `main : Eff Unit Unit` is
-  -- well-typed, evaluate via evalSurface and read the exit code from
-  -- the resulting effect tree. Else `nothing`.
   ⟦_⟧ : Source → Behavior

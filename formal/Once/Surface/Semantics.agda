@@ -6,6 +6,24 @@
 --
 -- Denotational semantics for surface expressions.
 -- Interprets expressions in an environment.
+--
+-- ╔══════════════════════════════════════════════════════════════════╗
+-- ║  WARNING — EFFECTS ARE NOT TRACKED HERE.                         ║
+-- ║                                                                  ║
+-- ║  This module gives a value-level denotation: `evalSurface ε e :  ║
+-- ║  ⟦ T ⟧`. The Eff arrow (`A ⇒[ mk-kind _ eff ] B`) is denoted     ║
+-- ║  exactly like the pure arrow (`⟦ A ⟧ → ⟦ B ⟧`); the `eff` kind   ║
+-- ║  annotation is dropped. SigOp calls flow through the postulated  ║
+-- ║  `generic-semI`, which produces a value but does NOT record the  ║
+-- ║  call in any trace.                                              ║
+-- ║                                                                  ║
+-- ║  Consequence: this denotation cannot be used as the observable  ║
+-- ║  for compile-correctness when the observable is a SigOp trace    ║
+-- ║  or exit code (which is the SigOp argument of `linux.exit`,      ║
+-- ║  not a return value — see `Once.Verified.Behavior`'s warning).   ║
+-- ║  An effect-tracking interpreter (free monad over SigOp) is       ║
+-- ║  needed for that.                                                ║
+-- ╚══════════════════════════════════════════════════════════════════╝
 ------------------------------------------------------------------------
 
 module Once.Surface.Semantics where

@@ -12,6 +12,27 @@
 --   - Semantic laws
 --
 -- Instantiate with ℕ for machine semantics, ℤ for proof semantics.
+--
+-- ╔══════════════════════════════════════════════════════════════════╗
+-- ║  WARNING — Eff IS DENOTED AS A PLAIN ARROW.                      ║
+-- ║                                                                  ║
+-- ║      ⟦ A ⇒[ _ ] B ⟧ = ⟦ A ⟧ → ⟦ B ⟧                              ║
+-- ║                                                                  ║
+-- ║  Pure (`mk-kind _ pure`) and effectful (`mk-kind _ eff`) arrows  ║
+-- ║  collapse to the same Agda function type. Effects are INVISIBLE  ║
+-- ║  at this denotation level; there is no SigOp trace, no exit-     ║
+-- ║  code preservation, nothing observable beyond the function       ║
+-- ║  shape.                                                          ║
+-- ║                                                                  ║
+-- ║  Reading note: a program of type `Eff Unit Unit` denotes         ║
+-- ║  `⊤ → ⊤` (the constant function). Programs DO NOT RETURN A      ║
+-- ║  VALUE — they invoke SigOps. Any observable based on those       ║
+-- ║  SigOps (syscall trace, exit code as the linux.exit argument)   ║
+-- ║  lives ELSEWHERE; see `Once.Verified.Behavior`.                  ║
+-- ║                                                                  ║
+-- ║  Use `⟦_⟧` for value-level reasoning only (CCC laws, structural  ║
+-- ║  recursion). Don't try to project effects from it.               ║
+-- ╚══════════════════════════════════════════════════════════════════╝
 ------------------------------------------------------------------------
 
 module Once.Semantics.Core (IntRep : Set) where
