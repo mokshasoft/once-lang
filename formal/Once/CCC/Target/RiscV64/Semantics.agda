@@ -343,6 +343,12 @@ execInstr prog s unimp =
 execInstr prog s (label _) =
   just (record s { pc = pc s + 1 })
 
+-- call-sym: External symbol call. Modeled as halt — outside our
+-- abstract semantics' scope; the SigOp framework / interpretation
+-- layer handles the actual external behavior.
+execInstr prog s (call-sym _) =
+  just (record s { halted = true })
+
 ------------------------------------------------------------------------
 -- Program execution
 ------------------------------------------------------------------------

@@ -4,65 +4,56 @@
 ------------------------------------------------------------------------
 -- Once.Verified.CPU — TRUSTED BASE: per-arch CPU semantics
 --
--- This module defines the supported architectures and their byte-level
--- execution semantics. Each `exec-<arch>` is a concrete state-machine
--- definition (currently postulated stub). The TRUST point per arch is
--- the BODY of `exec-<arch>`: a reviewer compares it clause-by-clause
--- against the vendor ISA spec (Intel SDM, RISC-V manual, etc.).
--- There is no separate "matches-spec" axiom — same convention as
--- CompCert's `Asm.v`.
+-- TWO LAYERS:
 --
--- Bytes are typed `List (Fin 256)` — fully primitive, fully
--- inspectable, no opaque wrapper.
+--   1. The portable interface — `ArchSemantics` record (defined in
+--      `Once.Verified.CPU.Interface` to avoid module cycles). Each
+--      supported arch (RiscV64, X86-64, X86-32) provides one of
+--      these by combining its concrete `Program / State / run` with
+--      a byte-decoder and a state-to-behavior projection.
+--      Downstream proofs work against this record so they're
+--      arch-generic.
 --
--- The result type `Behavior` is imported from `Once.Verified.Behavior`
--- so the per-arch CPU model produces values of the same observable
--- type the source semantics produces. Equality between them is what
--- compiler correctness reduces to.
+--   2. The bytes-level execution — `exec : Arch → List Byte → Behavior`.
+--      Computed by dispatching on Arch, decoding bytes, running the
+--      per-arch semantics, and projecting to Behavior.
+--
+-- The TRUST point per arch is the body of its `ArchSemantics` instance
+-- — specifically the `run` function (the per-arch ISA semantics).
+-- Reviewers compare clause-by-clause against the vendor manual.
+-- No separate "matches-spec" axiom; same convention as CompCert's
+-- `Asm.v`.
 ------------------------------------------------------------------------
 
 module Once.Verified.CPU where
 
-open import Data.Fin using (Fin)
 open import Data.List using (List)
 
-open import Once.Verified.Behavior using (Behavior)
+open import Once.Verified.Behavior        using (Behavior)
+open import Once.Verified.CPU.Interface   public  -- re-export
+import Once.Verified.CPU.RiscV64 as RiscV64-CPU
 
 ------------------------------------------------------------------------
--- Bytes
-------------------------------------------------------------------------
-
-Byte : Set
-Byte = Fin 256
-
-------------------------------------------------------------------------
--- Supported architectures
-------------------------------------------------------------------------
-
-data Arch : Set where
-  x86-64  : Arch
-  x86-32  : Arch
-  riscv64 : Arch
-
-------------------------------------------------------------------------
--- Per-arch CPU semantics (the trusted bodies)
+-- Per-arch instances.
 --
--- Each `exec-<arch>` will become a concrete state machine. Postulated
--- stub today; discharge maps to Plan 0.11 (parameterised trusted
--- base). The trust is in each function's body once written, not in
--- a separate axiom.
+--   - RiscV64: real instance via `Once.CCC.Target.RiscV64.Semantics`.
+--   - X86-64 / X86-32: pre-DirectSim shape to be restored from
+--     history (commit 90468b8f and predecessors). Postulated until
+--     then.
 ------------------------------------------------------------------------
 
 postulate
-  exec-x86-64  : List Byte → Behavior
-  exec-x86-32  : List Byte → Behavior
-  exec-riscv64 : List Byte → Behavior
+  arch-semantics-x86-64 : ArchSemantics
+  arch-semantics-x86-32 : ArchSemantics
+
+arch-semantics : Arch → ArchSemantics
+arch-semantics x86-64  = arch-semantics-x86-64
+arch-semantics x86-32  = arch-semantics-x86-32
+arch-semantics riscv64 = RiscV64-CPU.arch-semantics
 
 ------------------------------------------------------------------------
--- Dispatcher
+-- Top-level bytes-execution: arch-generic via `ArchSemantics`.
 ------------------------------------------------------------------------
 
 exec : Arch → List Byte → Behavior
-exec x86-64  = exec-x86-64
-exec x86-32  = exec-x86-32
-exec riscv64 = exec-riscv64
+exec arch bytes = ArchSemantics.exec-bytes (arch-semantics arch) bytes
