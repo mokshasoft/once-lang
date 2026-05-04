@@ -1,0 +1,345 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson and contributors
+
+------------------------------------------------------------------------
+-- Once.CCC.Target.X86-64.Semantics
+--
+-- Operational semantics for the x86-64 instruction subset.
+-- Defines how instructions modify machine state.
+--
+-- Restored from `Once.Target.X86.Semantics` (deleted in commit
+-- 5ec55198 when X86v3 / DirectSim consolidated). This module
+-- provides the clean `Program / State / step / exec / run` shape
+-- that downstream proofs work against; DirectSim remains as the
+-- lower-level proof engineering tool.
+--
+-- Trust point: the BODY of `execInstr` (clause-by-clause). Reviewer
+-- compares each case against Intel SDM. No separate matches-spec
+-- axiom — same convention as CompCert's `Asm.v`.
+--
+-- Based on the Sail x86-64 formal specification from REMS project.
+------------------------------------------------------------------------
+
+module Once.CCC.Target.X86-64.Semantics where
+
+open import Once.CCC.Target.X86-64.Syntax
+
+open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _≡ᵇ_; _≟_)
+open import Data.Bool using (Bool; true; false; if_then_else_)
+open import Data.List using (List; []; _∷_)
+open import Data.Maybe using (Maybe; just; nothing)
+open import Data.Product using (_×_; _,_; proj₁; proj₂)
+open import Data.String using (String)
+open import Function using (_∘_; case_of_)
+open import Relation.Nullary using (yes; no)
+
+------------------------------------------------------------------------
+-- Machine State
+------------------------------------------------------------------------
+
+-- | 64-bit word (represented as ℕ for simplicity)
+Word : Set
+Word = ℕ
+
+-- | Register file: mapping from registers to values
+record RegFile : Set where
+  constructor mkregfile
+  field
+    get-rax : Word
+    get-rbx : Word
+    get-rcx : Word
+    get-rdx : Word
+    get-rsi : Word
+    get-rdi : Word
+    get-rbp : Word
+    get-rsp : Word
+    get-r8  : Word
+    get-r9  : Word
+    get-r10 : Word
+    get-r11 : Word
+    get-r12 : Word
+    get-r13 : Word
+    get-r14 : Word
+    get-r15 : Word
+
+open RegFile
+
+-- | Read a register
+readReg : RegFile → Reg → Word
+readReg rf rax = get-rax rf
+readReg rf rbx = get-rbx rf
+readReg rf rcx = get-rcx rf
+readReg rf rdx = get-rdx rf
+readReg rf rsi = get-rsi rf
+readReg rf rdi = get-rdi rf
+readReg rf rbp = get-rbp rf
+readReg rf rsp = get-rsp rf
+readReg rf r8  = get-r8 rf
+readReg rf r9  = get-r9 rf
+readReg rf r10 = get-r10 rf
+readReg rf r11 = get-r11 rf
+readReg rf r12 = get-r12 rf
+readReg rf r13 = get-r13 rf
+readReg rf r14 = get-r14 rf
+readReg rf r15 = get-r15 rf
+
+-- | Write a register
+writeReg : RegFile → Reg → Word → RegFile
+writeReg rf rax v = record rf { get-rax = v }
+writeReg rf rbx v = record rf { get-rbx = v }
+writeReg rf rcx v = record rf { get-rcx = v }
+writeReg rf rdx v = record rf { get-rdx = v }
+writeReg rf rsi v = record rf { get-rsi = v }
+writeReg rf rdi v = record rf { get-rdi = v }
+writeReg rf rbp v = record rf { get-rbp = v }
+writeReg rf rsp v = record rf { get-rsp = v }
+writeReg rf r8  v = record rf { get-r8 = v }
+writeReg rf r9  v = record rf { get-r9 = v }
+writeReg rf r10 v = record rf { get-r10 = v }
+writeReg rf r11 v = record rf { get-r11 = v }
+writeReg rf r12 v = record rf { get-r12 = v }
+writeReg rf r13 v = record rf { get-r13 = v }
+writeReg rf r14 v = record rf { get-r14 = v }
+writeReg rf r15 v = record rf { get-r15 = v }
+
+-- | Memory: mapping from addresses to values
+Memory : Set
+Memory = Word → Maybe Word
+
+readMem : Memory → Word → Maybe Word
+readMem m addr = m addr
+
+writeMem : Memory → Word → Word → Memory
+writeMem m addr val = λ a → if a ≡ᵇ addr then just val else m a
+
+-- | Flags register (simplified: just zero / carry / sign)
+record Flags : Set where
+  constructor mkflags
+  field
+    zf : Bool
+    cf : Bool
+    sf : Bool
+
+open Flags
+
+-- | Machine state
+record State : Set where
+  constructor mkstate
+  field
+    regs   : RegFile
+    memory : Memory
+    flags  : Flags
+    pc     : ℕ
+    halted : Bool
+
+open State
+
+------------------------------------------------------------------------
+-- Initial state
+------------------------------------------------------------------------
+
+emptyRegFile : RegFile
+emptyRegFile = mkregfile 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+
+emptyMemory : Memory
+emptyMemory = λ _ → nothing
+
+initFlags : Flags
+initFlags = mkflags false false false
+
+initState : State
+initState = mkstate emptyRegFile emptyMemory initFlags 0 false
+
+------------------------------------------------------------------------
+-- Operand evaluation
+------------------------------------------------------------------------
+
+effectiveAddr : State → Mem → Word
+effectiveAddr s (base r)         = readReg (regs s) r
+effectiveAddr s (base+disp r d)  = readReg (regs s) r + d
+effectiveAddr s (rip+disp d)     = pc s + d
+effectiveAddr s (rip+label n)    = n  -- label resolved by linker; abstract
+
+readOperand : State → Operand → Maybe Word
+readOperand s (reg r) = just (readReg (regs s) r)
+readOperand s (mem m) = readMem (memory s) (effectiveAddr s m)
+readOperand s (imm n) = just n
+
+writeOperand : State → Operand → Word → State
+writeOperand s (reg r) v = record s { regs = writeReg (regs s) r v }
+writeOperand s (mem m) v = record s { memory = writeMem (memory s) (effectiveAddr s m) v }
+writeOperand s (imm _) _ = s
+
+------------------------------------------------------------------------
+-- Flags helper
+------------------------------------------------------------------------
+
+updateFlags : Word → Word → Flags
+updateFlags result _ = mkflags (result ≡ᵇ 0) false false
+
+_<ᵇ_ : ℕ → ℕ → Bool
+zero <ᵇ zero  = false
+zero <ᵇ suc _ = true
+suc _ <ᵇ zero  = false
+suc m <ᵇ suc n = m <ᵇ n
+
+------------------------------------------------------------------------
+-- Instruction semantics
+------------------------------------------------------------------------
+
+execInstr : Program → State → Instr → Maybe State
+
+execInstr prog s (mov dst src) =
+  case readOperand s src of λ where
+    nothing  → nothing
+    (just v) → just (record (writeOperand s dst v) { pc = pc s + 1 })
+
+execInstr prog s (lea r m) =
+  just (record s { regs = writeReg (regs s) r (effectiveAddr s m)
+                 ; pc = pc s + 1 })
+
+execInstr prog s (add dst src) =
+  case readOperand s dst of λ where
+    nothing  → nothing
+    (just d) → case readOperand s src of λ where
+      nothing  → nothing
+      (just v) →
+        let result = d + v
+        in just (record (writeOperand s dst result)
+                 { pc    = pc s + 1
+                 ; flags = updateFlags result d })
+
+execInstr prog s (sub dst src) =
+  case readOperand s dst of λ where
+    nothing  → nothing
+    (just d) → case readOperand s src of λ where
+      nothing  → nothing
+      (just v) →
+        let result = d ∸ v
+        in just (record (writeOperand s dst result)
+                 { pc    = pc s + 1
+                 ; flags = updateFlags result d })
+
+execInstr prog s (cmp op1 op2) =
+  case readOperand s op1 of λ where
+    nothing   → nothing
+    (just v1) → case readOperand s op2 of λ where
+      nothing   → nothing
+      (just v2) →
+        just (record s { pc    = pc s + 1
+                       ; flags = mkflags (v1 ≡ᵇ v2) (v1 <ᵇ v2) false })
+
+execInstr prog s (test op1 op2) =
+  case readOperand s op1 of λ where
+    nothing   → nothing
+    (just v1) → case readOperand s op2 of λ where
+      nothing  → nothing
+      (just _) →
+        just (record s { pc    = pc s + 1
+                       ; flags = mkflags (v1 ≡ᵇ 0) false false })
+
+-- Jumps use PC-relative offsets (target = offset from next instr).
+execInstr prog s (jmp target) =
+  just (record s { pc = pc s + 1 + target })
+
+execInstr prog s (je target) =
+  just (record s { pc = if zf (flags s) then pc s + 1 + target else pc s + 1 })
+
+execInstr prog s (jne target) =
+  just (record s { pc = if zf (flags s) then pc s + 1 else pc s + 1 + target })
+
+-- call: push return address, jump to target
+execInstr prog s (call target) =
+  case readOperand s target of λ where
+    nothing     → nothing
+    (just addr) →
+      let retAddr = pc s + 1
+          sp     = readReg (regs s) rsp
+          newSp  = sp ∸ slot-size
+      in just (record s { regs   = writeReg (regs s) rsp newSp
+                        ; memory = writeMem (memory s) newSp retAddr
+                        ; pc     = addr })
+
+-- call-sym: External symbol call (SigOp dispatch). Outside this
+-- abstract semantics' scope; modeled as halt — the SigOp /
+-- interpretation layer handles the actual external call/return.
+execInstr prog s (call-sym _) =
+  just (record s { halted = true })
+
+-- ret: pop return address, jump
+execInstr prog s ret =
+  case readMem (memory s) (readReg (regs s) rsp) of λ where
+    nothing        → nothing
+    (just retAddr) →
+      let sp = readReg (regs s) rsp
+      in just (record s { regs = writeReg (regs s) rsp (sp + slot-size)
+                        ; pc   = retAddr })
+
+execInstr prog s (push src) =
+  case readOperand s src of λ where
+    nothing  → nothing
+    (just v) →
+      let sp    = readReg (regs s) rsp
+          newSp = sp ∸ slot-size
+      in just (record s { regs   = writeReg (regs s) rsp newSp
+                        ; memory = writeMem (memory s) newSp v
+                        ; pc     = pc s + 1 })
+
+execInstr prog s (pop r) =
+  case readMem (memory s) (readReg (regs s) rsp) of λ where
+    nothing  → nothing
+    (just v) →
+      let sp = readReg (regs s) rsp
+      in just (record s { regs = writeReg (writeReg (regs s) r v) rsp (sp + slot-size)
+                        ; pc   = pc s + 1 })
+
+execInstr prog s nop =
+  just (record s { pc = pc s + 1 })
+
+execInstr prog s ud2 =
+  just (record s { halted = true })
+
+-- syscall: Linux syscall. Outside abstract semantics' scope (kernel
+-- transition); modeled as halt — interpretation layer dispatches
+-- the actual syscall.
+execInstr prog s syscall =
+  just (record s { halted = true })
+
+execInstr prog s (label _) =
+  just (record s { pc = pc s + 1 })
+
+------------------------------------------------------------------------
+-- Program execution
+------------------------------------------------------------------------
+
+-- | Fetch instruction at program counter
+fetch : Program → ℕ → Maybe Instr
+fetch []       _       = nothing
+fetch (i ∷ _)  zero    = just i
+fetch (_ ∷ is) (suc n) = fetch is n
+
+step-not-halted : Program → State → Maybe State
+step-not-halted prog s = case fetch prog (pc s) of λ where
+  nothing      → just (record s { halted = true })
+  (just instr) → execInstr prog s instr
+
+step : Program → State → Maybe State
+step prog s with halted s
+... | true  = just s
+... | false = step-not-halted prog s
+
+exec : ℕ → Program → State → Maybe State
+exec zero    _    s = just s
+exec (suc n) prog s with halted s
+... | true  = just s
+... | false with step prog s
+...   | nothing  = nothing
+...   | just s' with halted s'
+...     | true  = just s'
+...     | false = exec n prog s'
+
+defaultFuel : ℕ
+defaultFuel = 10000
+
+run : Program → State → Maybe State
+run = exec defaultFuel

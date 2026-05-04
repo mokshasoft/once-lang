@@ -32,23 +32,20 @@ open import Data.List using (List)
 open import Once.Verified.Behavior        using (Behavior)
 open import Once.Verified.CPU.Interface   public  -- re-export
 import Once.Verified.CPU.RiscV64 as RiscV64-CPU
+import Once.Verified.CPU.X86-64  as X86-64-CPU
+import Once.Verified.CPU.X86-32  as X86-32-CPU
 
 ------------------------------------------------------------------------
--- Per-arch instances.
---
---   - RiscV64: real instance via `Once.CCC.Target.RiscV64.Semantics`.
---   - X86-64 / X86-32: pre-DirectSim shape to be restored from
---     history (commit 90468b8f and predecessors). Postulated until
---     then.
+-- Per-arch instances. All three are now real (not wholesale postulates).
+-- Each instance's `Program / State / initialState / run` is concrete
+-- in its corresponding `Once.CCC.Target.<arch>.Semantics`. Only the
+-- byte-decoder and Behavior-projection are postulated per arch
+-- (pending Plan 0.4.2's connector + a concrete decoder).
 ------------------------------------------------------------------------
-
-postulate
-  arch-semantics-x86-64 : ArchSemantics
-  arch-semantics-x86-32 : ArchSemantics
 
 arch-semantics : Arch → ArchSemantics
-arch-semantics x86-64  = arch-semantics-x86-64
-arch-semantics x86-32  = arch-semantics-x86-32
+arch-semantics x86-64  = X86-64-CPU.arch-semantics
+arch-semantics x86-32  = X86-32-CPU.arch-semantics
 arch-semantics riscv64 = RiscV64-CPU.arch-semantics
 
 ------------------------------------------------------------------------
