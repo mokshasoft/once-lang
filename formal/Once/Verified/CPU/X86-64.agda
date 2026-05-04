@@ -26,8 +26,9 @@
 
 module Once.Verified.CPU.X86-64 where
 
+open import Data.Bool using (Bool; true; false)
 open import Data.List using (List)
-open import Data.Maybe using (Maybe)
+open import Data.Maybe using (Maybe; just; nothing)
 
 open import Once.Verified.Behavior      using (Behavior)
 open import Once.Verified.CPU.Interface using (Byte; ArchSemantics)
@@ -35,18 +36,32 @@ open import Once.Verified.CPU.Interface using (Byte; ArchSemantics)
 import Once.CCC.Target.X86-64.Semantics as X64
 import Once.CCC.Target.X86-64.Syntax    as X64S
 
-postulate
-  -- Decode raw bytes into a structured x86-64 program. Discharge:
-  -- a concrete instruction-encoding function per the Intel SDM,
-  -- consuming variable-length opcodes until exhausted (or fails on
-  -- malformed bytes).
-  decode-x86-64 : List Byte → Maybe X64S.Program
+------------------------------------------------------------------------
+-- observe-x86-64 — concrete projection.
+--
+-- Linux/SysV calling convention: `exit N` puts N in `%rdi` then
+-- invokes the `linux.exit` SigOp (which our abstract semantics
+-- handles by halting). So at halt, `%rdi` holds the exit code.
+--
+-- Reads:
+--   - `nothing`  if no final state (run failed / out of fuel)
+--   - `nothing`  if halted = false (didn't terminate)
+--   - `just (rdi-value)`  otherwise
+------------------------------------------------------------------------
 
-  -- Project a final State to the universal Behavior. Discharge:
-  -- once `Behavior` becomes concrete (Plan 0.4.2), this reads the
-  -- exit code (or syscall trace) from the State and produces the
-  -- corresponding Behavior value.
-  observe-x86-64 : Maybe X64.State → Behavior
+observe-x86-64 : Maybe X64.State → Behavior
+observe-x86-64 nothing  = nothing
+observe-x86-64 (just s) with X64.State.halted s
+... | false = nothing
+... | true  = just (X64.readReg (X64.State.regs s) X64S.rdi)
+
+------------------------------------------------------------------------
+-- decode-x86-64 — POSTULATED. Concrete byte-encoder/decoder per the
+-- Intel SDM is significant work; left as a named gap for now.
+------------------------------------------------------------------------
+
+postulate
+  decode-x86-64 : List Byte → Maybe X64S.Program
 
 ------------------------------------------------------------------------
 -- The instance.
