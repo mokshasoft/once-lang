@@ -2,6 +2,11 @@
 .build/
 result
 compiler/dist-newstyle/
+*.o
+compiler/test_*.s
+
+# Agent state
+.claude/
 
 # Agda build artifacts
 formal/_build/
