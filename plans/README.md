@@ -16,10 +16,14 @@ in `docs/compiler/decision-log.md` for durable records of landed work.
 │       └── 0.2.3-positive-invariants (completed)
 │           └── 0.2.4-categorical-layer-0 ← ACTIVE (compiler-side Layer 0 integration)
 │               ├── 0.2.4.1-sigop-framework (design — unblocks Layer 0 end-to-end)
-│               └── 0.2.4.2-closure-codegen-fix (design — fix closure lifetime bugs exposed by 0.2.4.1)
+│               ├── 0.2.4.2-closure-codegen-fix (design — partly superseded by 0.2.4.3 D1)
+│               ├── 0.2.4.3-slot-model-alignment (active — no-frame model across spec / abstract trace / target trace)
+│               ├── 0.2.4.4-closure-pointer-pin (active — close the closure[1] hiding place at the spec level)
+│               └── 0.2.4.5-allocmode-semantic-clarification (design — decision pending: layout vs allocation)
 │
 ├── 0.3-frontend-verification-gaps (completed 2026-04-19 — retained for 0.4 context)
 │   └── 0.4-frontend-completeness-and-bridges (planning)
+│       ├── 0.4-T3-pipeline-composition (T3 partial — Verified.Compile per-stage decomposition landed)
 │       └── 0.4.2-end-to-end-connector (planning)
 │
 ├── 0.6-user-polymorphism-and-strict-parser (planning — Section A landed 2026-04-20)
@@ -39,9 +43,13 @@ in `docs/compiler/decision-log.md` for durable records of landed work.
 | `0.2.3-positive-invariants` | completed | Kept for 0.2.4 context |
 | `0.2.4-categorical-layer-0` | active | Compiler Layer 0 integration |
 | `0.2.4.1-sigop-framework` | design | SigOp framework for effectful ops; unblocks Layer 0's end-to-end (exit, print, readline) |
-| `0.2.4.2-closure-codegen-fix` | design | Fix closure-lifetime + `lea`-offset + AllocMode-dispatch bugs exposed by 0.2.4.1 Phase D testing |
+| `0.2.4.2-closure-codegen-fix` | design (partly superseded) | B1/B2/B3 catalog kept for context; D2 (per-thunk SysV frame) replaced by 0.2.4.3 D1 (no frames) |
+| `0.2.4.3-slot-model-alignment` | active | No-frame model across the three layers (SM*/WF spec, abstract trace, target trace). ApplyWF spec landed (`3760c10b`); IRToTrace.curry frontier-threading + target prologue cleanup pending. |
+| `0.2.4.4-closure-pointer-pin` | active | Close the closure[1] hiding place. `body-label` field + `encode-decode-code-addr` bijection. Stage 1 (spec pin) in progress; Stage 2 (couple `instr-call-closure` to `closure[1]`) deferred. |
+| `0.2.4.5-allocmode-semantic-clarification` | design | Decide between (A) rename to layout, (B) repurpose to allocation, (C) drop. Layer 0 invariant "stack-only" becomes a type-level assertion under (B). |
 | `0.3-frontend-verification-gaps` | completed | Kept for 0.4 context |
 | `0.4-frontend-completeness-and-bridges` | planning | T1–T4 (G2 completeness, parse→pretty, grammar conformance, surface-semantics bridges) |
+| `0.4-T3-pipeline-composition` | T3 partial | `Verified.Compile.correct` decomposed into named per-stage postulates (commit `4dd740cc`). Discharge of `module-to-asm-correct` chains through 0.10 + 0.2.4.3 + 0.2.4.4. |
 | `0.4.2-end-to-end-connector` | planning | Depends on 0.4 — composed surface→machine theorem |
 | `0.6-user-polymorphism-and-strict-parser` | planning | Section A landed; B/C in progress via children |
 | `0.6.1-phase-c-design` | design | Phase C design + classifier migration |
@@ -63,8 +71,20 @@ in `docs/compiler/decision-log.md` for durable records of landed work.
 
 ## Current Focus
 
-- **`0.2.4-categorical-layer-0`** — compiler-side Layer 0 integration (MAlonzo extraction, Layer 0 test harness). Paused since 2025-04-14; backend track resumes here.
+- **`0.2.4` family** — Layer 0 backend now resumed. Three new active children opened 2026-05-05 from a closure-codegen audit:
+  - `0.2.4.3` — slot-model alignment (no frames, slot-frontier threading) across spec + abstract trace + target trace.
+  - `0.2.4.4` — close the closure[1] hiding place at the spec level (`body-label` + `encode-decode-code-addr` bijection).
+  - `0.2.4.5` — resolve `AllocMode`'s drift from "allocation location" to vestigial layout tag.
+- **`0.4-T3`** — top-level pipeline composition for `Verified.Compile.correct` landed (commit `4dd740cc`). Per-stage discharge follows once `0.10` + `0.2.4.3` + `0.2.4.4` close.
 - **`0.4` / `0.4.2`** — frontend completeness closure + end-to-end composed theorem. Natural follow-on from recently-landed `0.6.2`.
+
+## Live regression test
+
+`(id . id . id) 42` is the canonical Layer 0 end-to-end regression for the 0.2.4 family. Current state under the partial fix:
+
+- `id 42` → exit 42 ✓
+- `(id . id) 42` → exit 42 ✓ (was broken pre-2026-05-04)
+- `(id . id . id) 42` → segfaults at `RIP=0x2a` (different bug from the original saved-rbp/return-address corruption). Closes when `0.2.4.3` + `0.2.4.4` land fully.
 
 ## Notes on Layout
 
