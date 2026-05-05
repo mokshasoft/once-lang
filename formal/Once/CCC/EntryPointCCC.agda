@@ -71,22 +71,17 @@ module X86-64 where
   FS : FrameSemantics
   FS = x86v3-frame-semantics
 
-  -- Postulates for missing pieces
+  -- Postulates for missing pieces.
+  -- (`frame-ops` and `escape-survives` were removed when ApplyWF
+  -- adopted the no-frame model; `runtime` and `sigOp-proof` remain.)
   postulate
     runtime : RuntimeContract FS
-    frame-ops : FrameOps FS
-
-    escape-survives : ∀ (alloc : AllocState {FS}) (body-final : AllocState {FS})
-      (result-loc : ValueLocation FS) →
-      current-frame body-final ≡ FrameOps.get-child-frame frame-ops (current-frame alloc) →
-      ApplyWFModule.BeforeFrontier' body-final result-loc →
-      ApplyWFModule.SurvivesFramePop (FrameOps.get-child-frame frame-ops (current-frame alloc)) result-loc
     sigOp-proof : DispatcherModule.SigOpContract.Provider {FS}
       (RuntimeContract.program-bound runtime)
 
   -- Instantiate Correctness
   open import Once.CCC.Target.X86-64.Correct as C
-  module Correct = C.Correctness {FS} runtime frame-ops escape-survives sigOp-proof
+  module Correct = C.Correctness {FS} runtime sigOp-proof
 
   -- Code generation
   compile : ∀ {A B} → IR A B → Program
@@ -128,22 +123,15 @@ module X86-32 where
   FS : FrameSemantics
   FS = x86-32-frame-semantics
 
-  -- Postulates for missing pieces
+  -- Postulates for missing pieces (no-frame model).
   postulate
     runtime : RuntimeContract FS
-    frame-ops : FrameOps FS
-
-    escape-survives : ∀ (alloc : AllocState {FS}) (body-final : AllocState {FS})
-      (result-loc : ValueLocation FS) →
-      current-frame body-final ≡ FrameOps.get-child-frame frame-ops (current-frame alloc) →
-      ApplyWFModule.BeforeFrontier' body-final result-loc →
-      ApplyWFModule.SurvivesFramePop (FrameOps.get-child-frame frame-ops (current-frame alloc)) result-loc
     sigOp-proof : DispatcherModule.SigOpContract.Provider {FS}
       (RuntimeContract.program-bound runtime)
 
   -- Instantiate Correctness
   open import Once.CCC.Target.X86-32.Correct as C
-  module Correct = C.Correctness {FS} runtime frame-ops escape-survives sigOp-proof
+  module Correct = C.Correctness {FS} runtime sigOp-proof
 
   -- Code generation: IR → AbstractTrace → Program
   -- Note: compile-trace converts AbstractTrace to x86-32 instructions
@@ -181,22 +169,15 @@ module RiscV64 where
   FS : FrameSemantics
   FS = rv64-frame-semantics
 
-  -- Postulates for missing pieces
+  -- Postulates for missing pieces (no-frame model).
   postulate
     runtime : RuntimeContract FS
-    frame-ops : FrameOps FS
-
-    escape-survives : ∀ (alloc : AllocState {FS}) (body-final : AllocState {FS})
-      (result-loc : ValueLocation FS) →
-      current-frame body-final ≡ FrameOps.get-child-frame frame-ops (current-frame alloc) →
-      ApplyWFModule.BeforeFrontier' body-final result-loc →
-      ApplyWFModule.SurvivesFramePop (FrameOps.get-child-frame frame-ops (current-frame alloc)) result-loc
     sigOp-proof : DispatcherModule.SigOpContract.Provider {FS}
       (RuntimeContract.program-bound runtime)
 
   -- Instantiate Correctness
   open import Once.CCC.Target.RiscV64.Correct as C
-  module Correct = C.Correctness {FS} runtime frame-ops escape-survives sigOp-proof
+  module Correct = C.Correctness {FS} runtime sigOp-proof
 
   -- Code generation: IR → AbstractTrace → Program
   -- Note: compile-trace converts AbstractTrace to RISC-V instructions

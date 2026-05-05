@@ -69,27 +69,18 @@ import Once.CCC.Machine.Dispatcher as DispatcherModule
 
 module Correctness
   {FS : FrameSemantics}
-  -- RuntimeContract: bounds + memory layout + region invariants
+  -- RuntimeContract: bounds + memory layout + region invariants.
+  -- (FrameOps and `escape-result-survives` are no longer parameters —
+  -- the no-frame model in `ApplyWF` makes them vestigial. Per-arch
+  -- instances may pass them for ABI continuity but the proof chain
+  -- doesn't consult them.)
   (runtime : RuntimeContract FS)
-  -- FrameOps: calling convention (child frame creation)
-  (frame-ops : FrameOps FS)
-  -- SigOpSem provides semantics for all primitives (required for eval)
- 
-  -- Escape analysis guarantees (provided by escape analysis pass)
-  (escape-result-survives : ∀ (alloc : AllocState {FS}) (body-final : AllocState {FS})
-    (result-loc : ValueLocation FS) →
-    current-frame body-final ≡ FrameOps.get-child-frame frame-ops (current-frame alloc) →
-    ApplyWFModule.BeforeFrontier' body-final result-loc →
-    ApplyWFModule.SurvivesFramePop (FrameOps.get-child-frame frame-ops (current-frame alloc)) result-loc)
   -- SigOp contract provider (from domain compilers)
   (sigOp-proof : DispatcherModule.SigOpContract.Provider {FS} (RuntimeContract.program-bound runtime))
   where
 
   -- Extract fields from RuntimeContract
   open RuntimeContract runtime
-
-  -- Extract fields from FrameOps
-  open FrameOps frame-ops
 
   open FrontierInvariant {FS} using (BeforeFrontier)
 
@@ -98,24 +89,7 @@ module Correctness
 
   open import Once.CCC.Machine.Dispatcher
 
-  -- Adapt FrameOps to Dispatcher interface (takes AllocState instead of Frame)
-  get-child-frame' : AllocState {FS} → FrameSemantics.Frame FS
-  get-child-frame' alloc = get-child-frame (current-frame alloc)
-
-  child-frame-ordered' : ∀ (alloc : AllocState {FS}) →
-    FrameSemantics._≺_ FS (get-child-frame' alloc) (current-frame alloc)
-  child-frame-ordered' alloc = child-frame-ordered (current-frame alloc)
-
-  child-frame-adjacent' : ∀ (alloc : AllocState {FS}) (f : FrameSemantics.Frame FS) →
-    FrameSemantics._≺_ FS (get-child-frame' alloc) f →
-    FrameSemantics._≺_ FS f (current-frame alloc) →
-    ⊥
-  child-frame-adjacent' alloc = child-frame-adjacent (current-frame alloc)
-
-  -- DYNAMIC CAPACITY: Each closure carries its own body-capacity
-  module D = Dispatcher {FS} program-bound acc-pb
-    get-child-frame' child-frame-ordered' child-frame-adjacent'
-    escape-result-survives sigOp-proof
+  module D = Dispatcher {FS} program-bound acc-pb sigOp-proof
 
   ----------------------------------------------------------------------
   -- Represents: value v is stored at location loc in state s

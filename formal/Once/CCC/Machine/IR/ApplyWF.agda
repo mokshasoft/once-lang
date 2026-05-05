@@ -7,14 +7,18 @@
 -- Apply IR implementation with clean trace-based structure.
 -- Final state defined via exec-trace, making trace-correct = refl.
 --
--- Apply uses frame push/pop for body execution but follows the same
--- trace composition pattern as other WF2 files.
+-- FRAME MODEL: NONE.
+--
+-- Apply does NOT push a child frame for body execution. Body inherits
+-- the parent's frame and uses slot indices threaded above the parent's
+-- used slots (i.e. body's own slot frontier starts at
+-- `next-slot alloc + pair-slots`, just past the (env, arg) pair we set
+-- up). Closures live in the curry's caller's slots and survive across
+-- all calls; nothing dangles.
 --
 -- TRACE STRUCTURE:
---   1. Setup pair (env, arg) on stack
---   2. Push child frame
---   3. Execute body trace
---   4. Pop frame
+--   1. Setup (env, arg) pair on stack
+--   2. Execute body trace (in same frame, advanced frontier)
 ------------------------------------------------------------------------
 
 module Once.CCC.Machine.IR.ApplyWF where
@@ -81,19 +85,13 @@ module BFTransfer {FS : FrameSemantics} where
 -- Apply implementation with clean trace-based structure
 ------------------------------------------------------------------------
 
+-- The four child-frame parameters (`get-child-frame`,
+-- `child-frame-ordered`, `child-frame-adjacent`, `escape-result-survives`)
+-- have been removed. Apply no longer creates a child frame; the body
+-- runs in the parent's frame with the slot frontier advanced past the
+-- (env, arg) pair we just stored. Closure pointers therefore reference
+-- the parent's frame and survive trivially across the apply.
 module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
-  (get-child-frame : ∀ (alloc : AllocState {FS}) → FrameSemantics.Frame FS)
-  (child-frame-ordered : ∀ (alloc : AllocState {FS}) →
-    FrameSemantics._≺_ FS (get-child-frame alloc) (current-frame alloc))
-  (child-frame-adjacent : ∀ (alloc : AllocState {FS}) (f : FrameSemantics.Frame FS) →
-    FrameSemantics._≺_ FS (get-child-frame alloc) f →
-    FrameSemantics._≺_ FS f (current-frame alloc) →
-    ⊥)
-  (escape-result-survives : ∀ (alloc : AllocState {FS}) (body-final : AllocState {FS})
-    (result-loc : ValueLocation FS) →
-    current-frame body-final ≡ get-child-frame alloc →
-    BeforeFrontier' body-final result-loc →
-    SurvivesFramePop (get-child-frame alloc) result-loc)
   where
   open FrontierInvariant {FS}
   open MemOps {FS}
@@ -135,9 +133,8 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
   --
   -- Apply trace structure:
   --   setup-trace: Store (env, arg) pair to stack, set Input
-  --   instr-push-frame body-cap: Enter child frame
-  --   body-trace: Execute closure body
-  --   instr-pop-frame: Return to parent frame
+  --   body-trace:  Execute closure body in the same frame, with
+  --                slot indices starting above the (env, arg) pair.
   ------------------------------------------------------------------------
 
   -- Setup trace: prepare pair input for body
@@ -164,13 +161,14 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
     lea-slot pair-slot ∷               -- Output := &pair
     mov-to-input ∷ []                  -- Input := &pair
 
-  -- Full apply trace: setup + push + body + pop
+  -- Full apply trace: setup + body. No frame push/pop — body inherits
+  -- parent's frame and uses slot indices threaded above the (env, arg)
+  -- pair we just stored. The `body-cap` parameter is retained for ABI
+  -- compatibility with the dispatcher's body-correct signature but is
+  -- not used in the trace itself.
   apply-full-trace : (pair-slot : ℕ) (body-cap : ℕ) (body-trace : AbstractTrace) → AbstractTrace
-  apply-full-trace pair-slot body-cap body-trace =
-    apply-setup-trace pair-slot ++
-    instr-push-frame body-cap ∷
-    body-trace ++
-    instr-pop-frame ∷ []
+  apply-full-trace pair-slot _ body-trace =
+    apply-setup-trace pair-slot ++ body-trace
 
   ------------------------------------------------------------------------
   -- run-apply: Clean trace-based implementation
@@ -267,23 +265,13 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       alloc' : AllocState {FS}
       alloc' = record alloc { next-slot = next-slot alloc +ℕ pair-slots }
 
-      -- Child frame setup
-      child-frame = get-child-frame alloc
-      child-frame-below-parent = child-frame-ordered alloc
-
+      -- Body inherits the parent's frame; only the slot frontier
+      -- advances past the (env, arg) pair we stored.
       child-alloc : AllocState {FS}
-      child-alloc = record
-        { current-frame = child-frame
-        ; next-slot = 0
-        -- Note: frame-capacity removed in Phase 3
-        ; next-heap-ref = next-heap-ref alloc
-        }
+      child-alloc = alloc'
 
       ------------------------------------------------------------------------
-      -- Execute body in child frame (to get body-trace)
-      --
-      -- We need to execute body to get its trace, which we then compose
-      -- into apply's full trace.
+      -- Execute body in same frame as parent (to get body-trace).
       ------------------------------------------------------------------------
 
       -- State after setup (before push-frame)
@@ -639,25 +627,22 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       not-halted-after-setup : halted s-after-setup ≡ false
       not-halted-after-setup = exec-trace-preserves-halted (apply-setup-trace pair-slot) s alloc not-halted setup-tph
 
-      -- Pair validity in child-alloc (after setup, transferred to child frame)
+      -- Pair validity in alloc' (same frame as parent, frontier
+      -- advanced past the (env, arg) pair).
       pair-input-valid-child : ValidAtWF Heap child-alloc {EnvType * A} (pair env arg) pair-input-loc s-after-setup
       pair-input-valid-child = SMP.!!
 
-      -- Pair is before frontier in child-alloc
-      -- pair-input-loc = OnStack (current-frame alloc) pair-slot
-      -- child-alloc has current-frame = child-frame, which is ≺ current-frame alloc
-      -- So pair-input-loc is in an ancestor frame
-      -- Use pair-slot + pair-slots as bound (the updated parent frontier)
+      -- Pair is before frontier in alloc' (same frame, slot index
+      -- pair-slot < next-slot alloc + pair-slots).
       pair-input-before-child : BeforeFrontier child-alloc pair-input-loc
-      pair-input-before-child = stack-ancestor child-frame-below-parent
-        (src-origin (next-slot alloc +ℕ pair-slots) (m<m+n pair-slot {pair-slots} (s≤s z≤n)))
+      pair-input-before-child =
+        stack-before refl (m<m+n pair-slot {pair-slots} (s≤s z≤n))
 
-      -- Body execution in child frame
+      -- Body execution in the same frame as parent.
       body-exec-result : ∃[ mOut ] IRResultAWF mOut body (pair env arg) s-after-setup child-alloc
       body-exec-result = BodyCorrect.execute body-correct arg arg-loc pair-input-loc
         s-after-setup child-alloc Heap
         pair-input-valid-child pair-input-before-child not-halted-after-setup pair-input-eq
-        -- Note: capacity argument removed in Phase 3
 
       mBody = proj₁ body-exec-result
       body-result = proj₂ body-exec-result
@@ -680,13 +665,10 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       -- Proof obligations for properties
       ------------------------------------------------------------------------
 
-      -- Trace preserves halted (structural proof - defined first for use in not-halted')
+      -- Trace preserves halted: setup-tph ++ body-trace's tph.
       trace-preserves-halted' : TracePreservesHaltedP trace
       trace-preserves-halted' =
-        tph-++ setup-tph
-        (tph-∷ iph-push-frame
-        (tph-++ (IRResultAWF.trace-preserves-halted body-result)
-        (tph-∷ iph-pop-frame tph-[])))
+        tph-++ setup-tph (IRResultAWF.trace-preserves-halted body-result)
 
       -- Output register contains result location
       rax-eq' : readReg (regs s') Output ≡ result-loc
@@ -737,12 +719,9 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
 
       trace-no-heap-writes' : TraceNoHeapWrites trace
       trace-no-heap-writes' =
-        trace-no-heap-writes-append (apply-setup-trace pair-slot)
-          (instr-push-frame body-cap ∷ body-trace ++ instr-pop-frame ∷ [])
+        trace-no-heap-writes-append (apply-setup-trace pair-slot) body-trace
           setup-no-heap-writes
-          (trace-no-heap-writes-append body-trace (instr-pop-frame ∷ [])
-                  (IRResultAWF.trace-no-heap-writes body-result)
-                  tt)
+          (IRResultAWF.trace-no-heap-writes body-result)
 
       -- Reclamation proofs
       -- Note: fits parameter removed in Phase 3

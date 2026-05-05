@@ -120,29 +120,12 @@ module SigOpContract {FS : FrameSemantics} (program-bound : ℕ) =
 ------------------------------------------------------------------------
 
 module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ program-bound)
-  -- SigOpSem provides semantics for all primitives (required for eval)
- 
-  -- Child frame support for apply's hybrid frame approach
-  -- get-child-frame returns a frame below the parent (child ≺ parent) for body execution
-  (get-child-frame : ∀ (alloc : AllocState {FS}) → FrameSemantics.Frame FS)
-  (child-frame-ordered : ∀ (alloc : AllocState {FS}) →
-    FrameSemantics._≺_ FS (get-child-frame alloc) (current-frame alloc))  -- Child is below parent
-  -- Immediate adjacency: no frame exists between child and parent
-  (child-frame-adjacent : ∀ (alloc : AllocState {FS}) (f : FrameSemantics.Frame FS) →
-    FrameSemantics._≺_ FS (get-child-frame alloc) f →
-    FrameSemantics._≺_ FS f (current-frame alloc) →
-    ⊥)
-  -- REMOVED: child-capacity and child-cap-sufficient
-  -- DYNAMIC CAPACITY: Each closure's body-capacity determines child frame size.
-  -- No global worst-case allocation - each closure gets exactly what it needs.
-  -- Escape analysis guarantees (provided by escape analysis pass)
-  -- Body results survive child frame pop (the MINIMAL escape interface)
-  (escape-result-survives : ∀ (alloc : AllocState {FS}) (body-final : AllocState {FS})
-    (result-loc : ValueLocation FS) →
-    current-frame body-final ≡ get-child-frame alloc →
-    ApplyWFModule.BeforeFrontier' body-final result-loc →
-    ApplyWFModule.SurvivesFramePop (get-child-frame alloc) result-loc)
-  -- REMOVED: parent-bound-eq (handled locally in ApplyWF)
+  -- The four child-frame parameters (`get-child-frame`,
+  -- `child-frame-ordered`, `child-frame-adjacent`,
+  -- `escape-result-survives`) have been removed. Apply no longer
+  -- creates a child frame; body inherits the parent's frame. See
+  -- `Once.CCC.Machine.IR.ApplyWF` for the no-frame model.
+  --
   -- SigOp contract provider (from domain compilers)
   (sigOp-proof : SigOpContract.Provider {FS} program-bound)
   where
@@ -185,11 +168,9 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
   -- Import curry IR implementation
   open CurryWFModule.CurryWFImpl {FS} program-bound
 
-  -- Import apply IR implementation (pass child-frame and escape analysis parameters)
-  -- DYNAMIC CAPACITY: child-capacity and parent-bound-eq removed
+  -- Import apply IR implementation (no-frame model: body inherits
+  -- parent's frame; child-frame parameters no longer exist).
   open ApplyWFModule.ApplyWFImpl {FS} program-bound
-    get-child-frame child-frame-ordered child-frame-adjacent
-    escape-result-survives
 
   -- Import sum IR implementations (inl, inr, case, initial)
   -- OCP-0003: fold/unfold removed. Use In/Cata/Out/Ana handlers instead.

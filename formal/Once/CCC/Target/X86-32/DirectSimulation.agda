@@ -16,6 +16,7 @@ module Once.CCC.Target.X86-32.DirectSimulation where
 open import Data.Nat using (ℕ; zero; suc; _∸_; _≡ᵇ_; _≤_) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
 open import Data.String using (String)
 import Once.CCC.SigOp.Info
+import Once.Type
 open import Data.Nat.DivMod using (_/_; m*n/n≡m)
 open import Data.Bool using (Bool; true; false; if_then_else_)
 open import Data.Maybe using (Maybe; just; nothing)
@@ -566,7 +567,7 @@ module Simulation {FS : FrameSemantics} where
     -- ud2 on this backend, so codegen-faithful is trivially true at the
     -- abstract level (the trap-on-execution is outside the simulation
     -- relation's scope; layer 0 only exercises x86-64).
-    load-const-codegen-faithful-32 : ∀ {A} (p : Once.CCC.Machine.SMCore.IsPrimitive A) v ls xs alloc →
+    load-const-codegen-faithful-32 : ∀ {A} (p : Once.Type.IsPrimitive A) v ls xs alloc →
       halted ls ≡ false → Corresponds ls xs alloc →
       Corresponds (proj₁ (exec-abstract (instr-load-const p v) ls alloc))
                   (exec-prog (compile-abstract (instr-load-const p v)) xs (current-frame alloc))
