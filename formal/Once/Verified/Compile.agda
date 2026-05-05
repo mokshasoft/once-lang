@@ -2,17 +2,31 @@
 -- Copyright (C) 2025-2026 Jonas Claesson and contributors
 
 ------------------------------------------------------------------------
--- Once.Verified.Compile — the compile function + correctness witness.
+-- Once.Verified.Compile — the verified compile pipeline.
 --
--- Wires `Once.Compile.compileFromModule` (the existing pipeline)
--- into the verified type. Concrete `compile` body: convert the
--- `GModule` source to the parser's `Module` type, dispatch to
--- `compileFromModule` for the Build stage, project the assembly
--- bytes from the result.
+-- The compile pipeline is a composition of named stages:
 --
--- `correct` is still postulated wholesale — discharging it is the
--- substantive proof work that surfaces codegen bugs (the closure
--- bug for `(id . id . id) 42` will surface here).
+--   GModule  ──gmoduleToModule──▶  Module
+--   Module   ──compileFromModule──▶  CompileResult (Built asm | …)
+--   asm      ──string-to-bytes────▶  bytes               (B2 trust)
+--   bytes    ──exec arch──────────▶  Behavior            (CPU semantics)
+--
+-- Per-stage correctness is stated as a NAMED POSTULATE. The top-level
+-- `correct` is no longer a wholesale postulate; it's a PROOF chaining
+-- the per-stage postulates by transitivity. Each named postulate is the
+-- explicit, named obligation a future discharge must satisfy.
+--
+-- Discharge plan (plans 0.4 / 0.10 / 0.11):
+--   - `gmoduleToModule-correct`: structural argument over Grammar/Parser
+--     conversion. Mostly mechanical.
+--   - `module-to-asm-correct`: the substantive piece. Composes
+--     typechecker correctness (T0 / T2 work) with
+--     `Once.CCC.Target.X86-64.CompileCorrect.compile-correct` (the
+--     CCC grand theorem, fully discharged inside CCC modulo named
+--     bug-hiding postulates) and a small `asm-emission-correct` that
+--     ties `programToText` + thunk wrapping to `Program` semantics.
+--   - `string-to-bytes-correct`: B2 GNU `as` trust. Goes away when
+--     the in-Agda assembler (B1) lands; this binding stays the same.
 ------------------------------------------------------------------------
 
 module Once.Verified.Compile where
@@ -21,7 +35,8 @@ open import Data.Bool using (Bool; false)
 open import Data.List using (List)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.String using (String)
-open import Relation.Binary.PropositionalEquality using (_≡_)
+open import Relation.Binary.PropositionalEquality
+  using (_≡_; refl; sym; trans; cong)
 
 open import Once.Verified.Behavior using (Source; Behavior; ⟦_⟧)
 open import Once.Verified.CPU      using (Arch; Byte; exec)
@@ -33,40 +48,31 @@ import Once.Grammar as G
 import Once.Parser.Module.Core as P
 
 ------------------------------------------------------------------------
--- Connectors
-------------------------------------------------------------------------
-
 -- Architecture coercion. The two `Arch` types are structurally
 -- identical but live in different modules.
+------------------------------------------------------------------------
+
 toLegacyArch : Arch → C.Arch
 toLegacyArch Va-x86-64  = C.x86-64
 toLegacyArch Va-x86-32  = C.x86-32
 toLegacyArch Va-riscv64 = C.riscv64
 
+------------------------------------------------------------------------
+-- Per-stage adapters and trust postulates.
+------------------------------------------------------------------------
+
 postulate
-  -- GModule (formal grammar) → Module (parser output type with
-  -- RawExpr / PolyType). Discharge: a structural conversion using
-  -- the `gexprToRaw` family from `Once.Grammar.ExprConvert` plus
-  -- a Decl-level walker. Same direction as the existing parser's
-  -- `parse : String → Maybe Module` (which side-steps GModule today).
+  -- Stage 1: GModule (formal grammar) → Module (parser AST).
+  -- Discharge: a structural conversion using the `gexprToRaw` family
+  -- from `Once.Grammar.ExprConvert` plus a Decl-level walker.
   gmoduleToModule : G.GModule → Maybe P.Module
 
   -- ╔══════════════════════════════════════════════════════════════╗
   -- ║ TRUSTED BASE — current B2 stance.                            ║
   -- ║                                                              ║
-  -- ║ `string-to-bytes` is THE GNU assembler trust postulate. We  ║
-  -- ║ trust that the asm text produced by `compileFromModule`,    ║
-  -- ║ when fed to GNU `as`, yields bytes whose CPU execution      ║
-  -- ║ matches running our structured-Program model on the same    ║
-  -- ║ instructions.                                                ║
-  -- ║                                                              ║
-  -- ║ This is the deliberately-chosen B2 stance: practical now,   ║
-  -- ║ replaceable by an in-Agda assembler (B1) without spec       ║
-  -- ║ changes — the postulate goes away, nothing else.             ║
-  -- ║                                                              ║
-  -- ║ One axiom per arch eventually (linker conformance is        ║
-  -- ║ separate). For now, single string-to-bytes covers all       ║
-  -- ║ arches uniformly through the asm-text intermediate.          ║
+  -- ║ `string-to-bytes` is THE GNU assembler trust postulate.      ║
+  -- ║ When B1 (in-Agda assembler) lands, this postulate goes away ║
+  -- ║ and replacement bindings keep the same name and signature.  ║
   -- ╚══════════════════════════════════════════════════════════════╝
   string-to-bytes : String → List Byte
 
@@ -82,17 +88,7 @@ compile arch gmod with gmoduleToModule gmod
 ...   | _           = nothing
 
 ------------------------------------------------------------------------
--- CLI entry point — asm-producing variant (B2 pragmatic path).
---
--- CLI/Bridge.hs currently consumes asm text (passed to GNU `as`),
--- not raw bytes. Until we have an in-Agda assembler (B1), the CLI
--- path goes through this asm-producing function which delegates to
--- the same underlying `compileFromModule` pipeline.
---
--- This function is THE function CLI must call (Plan 0.10 — extracted
--- = verified). The bytes-producing `compile` above remains the
--- spec-side anchor; the link between them is `string-to-bytes`,
--- which is the assembler trust postulate (B2's irreducible item).
+-- CLI entry points (called by Bridge.hs / Once.Compiler).
 ------------------------------------------------------------------------
 
 compile-asm : Arch → Source → C.CompileResult
@@ -100,27 +96,88 @@ compile-asm arch gmod with gmoduleToModule gmod
 ... | nothing = C.Error "GModule → Module conversion failed"
 ... | just m  = C.compileFromModule C.Build false (toLegacyArch arch) m
 
--- Module-input variant for the CLI/Bridge path. The CLI parses
--- source text to a `Module` (via Once.Parser.parseStrict / equivalent)
--- and calls this function to get assembly. Architecturally identical
--- to going through compile-asm; the GModule round-trip is skipped
--- since the parser already produced the typed-pipeline `Module`.
---
--- This is THE function Bridge.hs must call (Plan 0.10).
 compile-cli-asm : C.Stage → Bool → Arch → P.Module → C.CompileResult
 compile-cli-asm stage doOpt arch m =
   C.compileFromModule stage doOpt (toLegacyArch arch) m
 
 ------------------------------------------------------------------------
--- Correctness — POSTULATED. Discharging this is the substantive
--- proof work; it forces codegen bugs to surface as proof failures.
--- For programs with escaping closures (the `(id . id . id) 42`
--- pattern), the proof obligation cannot be filled with the current
--- codegen — that's how the architecture catches the closure bug.
+-- Per-stage correctness — named obligations.
+--
+-- Two intermediate semantic layers (`⟦_⟧M` / `⟦_⟧A`) bridge the
+-- pipeline stages; their bodies are postulated for now (their
+-- discharge is part of the substantive proof work — they are NOT
+-- new trusted-base axioms, they are spec-level connectors).
 ------------------------------------------------------------------------
 
 postulate
-  correct :
-    ∀ (arch : Arch) (src : Source) (bytes : List Byte) →
-    compile arch src ≡ just bytes →
-    exec arch bytes ≡ ⟦ src ⟧
+  -- Module-level behavior: source semantics after the GModule→Module
+  -- adapter. Discharged together with `gmoduleToModule-correct`.
+  ⟦_⟧M : P.Module → Behavior
+
+  -- Asm-text-level behavior: the abstract semantics of an asm string
+  -- when run on a chosen architecture. Discharge bridges to CCC's
+  -- `Program` semantics through `programToText`.
+  ⟦_⟧A_ : Arch → String → Behavior
+
+  -- Stage 1 correctness — GModule → Module preserves observable
+  -- behavior. Discharge: structural conversion is observably trivial.
+  gmoduleToModule-correct :
+    ∀ (src : Source) (m : P.Module) →
+    gmoduleToModule src ≡ just m →
+    ⟦ m ⟧M ≡ ⟦ src ⟧
+
+  -- Stage 2 correctness — Module → asm preserves observable behavior.
+  --
+  -- This is THE LOAD-BEARING postulate. Discharge composes:
+  --   - typechecker correctness (T0/T2): the elaborated IR realises
+  --     the source's intended SigOp trace;
+  --   - CCC.compile-correct-extracted: `compile-trace ∘ ir-to-trace`
+  --     produces a `Program` whose execution corresponds to the IR's
+  --     abstract semantics;
+  --   - asm-emission-correct: `programToText` + thunk wrapping
+  --     preserves `Program` semantics.
+  --
+  -- A buggy codegen surfaces here as an undischarged proof goal.
+  module-to-asm-correct :
+    ∀ (arch : Arch) (m : P.Module) (asm : String) →
+    C.compileFromModule C.Build false (toLegacyArch arch) m ≡ C.Built asm →
+    ⟦ arch ⟧A asm ≡ ⟦ m ⟧M
+
+  -- Stage 3 correctness — `string-to-bytes` followed by `exec` matches
+  -- the abstract asm-text semantics. This is the B2 trust postulate
+  -- (GNU `as` conformance), removable by B1.
+  string-to-bytes-correct :
+    ∀ (arch : Arch) (asm : String) →
+    exec arch (string-to-bytes asm) ≡ ⟦ arch ⟧A asm
+
+------------------------------------------------------------------------
+-- The grand theorem — by composition of the per-stage postulates.
+--
+-- This is no longer a wholesale postulate. Reverting any pipeline
+-- stage to a known-bad implementation (e.g. dropping the thunk-frame
+-- reservation in the codegen) breaks the discharge chain via
+-- `module-to-asm-correct` and surfaces in `make typecheck`.
+------------------------------------------------------------------------
+
+correct :
+  ∀ (arch : Arch) (src : Source) (bytes : List Byte) →
+  compile arch src ≡ just bytes →
+  exec arch bytes ≡ ⟦ src ⟧
+correct arch src bytes pf with gmoduleToModule src in g-eq
+correct arch src bytes () | nothing
+correct arch src bytes pf | just m
+  with C.compileFromModule C.Build false (toLegacyArch arch) m in c-eq
+correct arch src bytes pf | just m | C.Parsed _ _    with pf
+... | ()
+correct arch src bytes pf | just m | C.Checked _      with pf
+... | ()
+correct arch src bytes pf | just m | C.Error _        with pf
+... | ()
+correct arch src bytes pf | just m | C.Built asm
+  -- pf : just (string-to-bytes asm) ≡ just bytes
+  -- ⇒ bytes ≡ string-to-bytes asm
+  with bytes | pf
+... | _ | refl =
+  trans (string-to-bytes-correct arch asm)
+        (trans (module-to-asm-correct arch m asm c-eq)
+               (gmoduleToModule-correct src m g-eq))

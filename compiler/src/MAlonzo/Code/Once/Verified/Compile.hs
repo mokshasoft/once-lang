@@ -18,6 +18,7 @@ import MAlonzo.RTE (coe, erased, AgdaAny, addInt, subInt, mulInt,
 import qualified MAlonzo.RTE
 import qualified Data.Text
 import qualified MAlonzo.Code.Agda.Builtin.Bool
+import qualified MAlonzo.Code.Agda.Builtin.Equality
 import qualified MAlonzo.Code.Agda.Builtin.Maybe
 import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Data.Fin.Base
@@ -141,7 +142,31 @@ d_compile'45'cli'45'asm_70 v0 v1 v2 v3
   = coe
       MAlonzo.Code.Once.Compile.d_compileFromModule_456 (coe v0) (coe v1)
       (coe d_toLegacyArch_6 (coe v2)) (coe v3)
--- Once.Verified.Compile.correct
-d_correct_86
+-- Once.Verified.Compile.⟦_⟧M
+d_'10214'_'10215'M_80
   = error
-      "MAlonzo Runtime Error: postulate evaluated: Once.Verified.Compile.correct"
+      "MAlonzo Runtime Error: postulate evaluated: Once.Verified.Compile.\10214_\10215M"
+-- Once.Verified.Compile.⟦_⟧A_
+d_'10214'_'10215'A__82
+  = error
+      "MAlonzo Runtime Error: postulate evaluated: Once.Verified.Compile.\10214_\10215A_"
+-- Once.Verified.Compile.gmoduleToModule-correct
+d_gmoduleToModule'45'correct_88
+  = error
+      "MAlonzo Runtime Error: postulate evaluated: Once.Verified.Compile.gmoduleToModule-correct"
+-- Once.Verified.Compile.module-to-asm-correct
+d_module'45'to'45'asm'45'correct_96
+  = error
+      "MAlonzo Runtime Error: postulate evaluated: Once.Verified.Compile.module-to-asm-correct"
+-- Once.Verified.Compile.string-to-bytes-correct
+d_string'45'to'45'bytes'45'correct_102
+  = error
+      "MAlonzo Runtime Error: postulate evaluated: Once.Verified.Compile.string-to-bytes-correct"
+-- Once.Verified.Compile.correct
+d_correct_110 ::
+  MAlonzo.Code.Once.Verified.CPU.Interface.T_Arch_10 ->
+  MAlonzo.Code.Once.Grammar.T_GModule_126 ->
+  [MAlonzo.Code.Data.Fin.Base.T_Fin_10] ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_correct_110 = erased
