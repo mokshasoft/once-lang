@@ -75,17 +75,17 @@ x86-64-asmHeader =
   "_start:\n" ++
   "    leaq once_heap_base(%rip), %rax\n" ++
   "    movq %rax, once_heap_pos(%rip)\n" ++
-  "    movq %rsp, %rbp\n" ++
+  -- Reserve scratch buffer FIRST, then anchor %rbp at the bottom.
+  -- Slot offsets (slot*8)(%rbp) reach into the reservation.
   "    subq $4096, %rsp\n" ++
+  "    movq %rsp, %rbp\n" ++
   "    call once_main\n" ++
-  -- main returned a closure pointer in %rax. Set up r12 + (env,())
-  -- pair and call the body per D8 calling convention.
+  -- main returned a closure pointer in %rax. Plan 0.2.4.5 Stage C
+  -- split-input convention: pass env in %rdi (Input1), unit in %rsi
+  -- (Input2). No more packed-pair pointer.
   "    movq %rax, %r12\n" ++         -- r12 = closure ptr
-  "    movq 0(%r12), %rax\n" ++      -- rax = closure[0] = env
-  "    movq %rax, 16(%rbp)\n" ++     -- pair[0] = env
-  "    xorq %rax, %rax\n" ++         -- rax = 0
-  "    movq %rax, 24(%rbp)\n" ++     -- pair[1] = () = 0
-  "    leaq 16(%rbp), %rdi\n" ++     -- rdi = &pair
+  "    movq 0(%r12), %rdi\n" ++      -- rdi (Input1) = closure[0] = env
+  "    xorq %rsi, %rsi\n" ++         -- rsi (Input2) = 0 (= () unit arg)
   "    callq *0x8(%r12)\n" ++        -- call [r12+8] = body
   -- If body returned normally, exit cleanly.
   "    movq $60, %rax\n" ++
@@ -120,13 +120,16 @@ x86-64-irToAsm ir = programToText (compile-trace (ir-to-trace ir))
 -- Bodies come AFTER the parent's `ret` (function epilogue). Reachable
 -- only via `lea .L_thunk_<n>(%rip), %rax` from the parent's curry
 -- trace.
+-- Plan 0.2.4.3 / 0.2.4.5: no-frame model. The body inherits the
+-- parent's %rbp (anchored at _start's reserved buffer); body writes
+-- via (slot*8)(%rbp) land inside the buffer. The old SysV envelope
+-- (pushq %rbp; mov %rsp, %rbp; …; leave) shifted %rbp to the saved-
+-- rbp slot, making (0)(%rbp) overwrite saved-rbp and (8)(%rbp)
+-- overwrite the return address — the original compose-bug shape.
 emit-thunk-body : (ℕ × AbstractTrace) → String
 emit-thunk-body (n , body-trace) =
   ".L_thunk_" ++ showNat n ++ ":\n" ++
-  "    pushq %rbp\n" ++
-  "    movq %rsp, %rbp\n" ++
   programToText (compile-trace body-trace) ++
-  "    leave\n" ++
   "    ret\n\n"
 
 x86-64-irToBodies : ∀ {A B} → IR A B → String

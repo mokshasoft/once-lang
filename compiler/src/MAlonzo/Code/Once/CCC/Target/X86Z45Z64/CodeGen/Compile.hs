@@ -557,16 +557,6 @@ du_compile'45'const_60 v0 v1
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_ud2_94)
              (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
-      MAlonzo.Code.Once.Type.C_is'45'str_196
-        -> coe
-             MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
-             (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_ud2_94)
-             (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
-      MAlonzo.Code.Once.Type.C_is'45'buffer_198
-        -> coe
-             MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
-             (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_ud2_94)
-             (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Target.X86-64.CodeGen.Compile.compile-const-size
 d_compile'45'const'45'size_66 ::
@@ -581,8 +571,6 @@ du_compile'45'const'45'size_66 v0
       MAlonzo.Code.Once.Type.C_is'45'unit_190 -> coe (0 :: Integer)
       MAlonzo.Code.Once.Type.C_is'45'int_192 -> coe (1 :: Integer)
       MAlonzo.Code.Once.Type.C_is'45'float_194 -> coe (1 :: Integer)
-      MAlonzo.Code.Once.Type.C_is'45'str_196 -> coe (1 :: Integer)
-      MAlonzo.Code.Once.Type.C_is'45'buffer_198 -> coe (1 :: Integer)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Target.X86-64.CodeGen.Compile.compile-const-length
 d_compile'45'const'45'length_74 ::

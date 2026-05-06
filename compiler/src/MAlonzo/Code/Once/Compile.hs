@@ -66,7 +66,7 @@ d_validateMain_4 v0
                  ("main must have type IO Unit (= Eff Unit Unit), but got: "
                   ::
                   Data.Text.Text)
-                 (MAlonzo.Code.Once.Type.d_showType_206 (coe v0))) in
+                 (MAlonzo.Code.Once.Type.d_showType_202 (coe v0))) in
     coe
       (case coe v0 of
          MAlonzo.Code.Once.Type.C__'8658''91'_'93'__126 v2 v3 v4
@@ -711,7 +711,7 @@ d_showFunInfo_370 v0
       (coe
          MAlonzo.Code.Data.String.Base.d__'43''43'__20
          (" : " :: Data.Text.Text)
-         (MAlonzo.Code.Once.Type.d_showType_206
+         (MAlonzo.Code.Once.Type.d_showType_202
             (coe MAlonzo.Code.Once.Parser.d_funType_98 (coe v0))))
 -- Once.Compile.showPolyFunInfo
 d_showPolyFunInfo_374 ::
@@ -724,7 +724,7 @@ d_showPolyFunInfo_374 v0
       (coe
          MAlonzo.Code.Data.String.Base.d__'43''43'__20
          (" : " :: Data.Text.Text)
-         (MAlonzo.Code.Once.Type.d_showPolyType_468
+         (MAlonzo.Code.Once.Type.d_showPolyType_464
             (coe MAlonzo.Code.Once.Parser.d_pfunType_120 (coe v0))))
 -- Once.Compile.showFunInfos
 d_showFunInfos_378 ::
