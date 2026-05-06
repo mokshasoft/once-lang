@@ -244,8 +244,11 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     valid-primitive-wf is-unit bf = valid-unit-wf
     valid-primitive-wf is-int bf = valid-int-wf bf
     valid-primitive-wf is-float bf = valid-float-wf bf
-    valid-primitive-wf is-str bf = valid-str-wf bf
-    valid-primitive-wf is-buffer bf = valid-buffer-wf bf
+    -- Plan 0.2.4.5 Stage H: is-str / is-buffer dropped from
+    -- IsPrimitive. Str / Buffer are 2-slot compound; their
+    -- valid-str-wf / valid-buffer-wf witnesses are still produced
+    -- by the (future) compound-shape paths, not via IsPrimitive
+    -- dispatch.
 
     --------------------------------------------------------------------
     -- IRResultAWF: Mode-indexed IR execution result

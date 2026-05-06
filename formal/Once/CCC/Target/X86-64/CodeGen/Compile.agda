@@ -241,7 +241,7 @@ compile-sigOp-length _ = refl
 -- instructions for each.
 ------------------------------------------------------------------------
 
-open import Once.Type using (IsPrimitive; is-unit; is-int; is-float; is-str; is-buffer)
+open import Once.Type using (IsPrimitive; is-unit; is-int; is-float)
 import Once.Semantics.Core as SC
 
 compile-const : ∀ {A} → IsPrimitive A → SC.⟦_⟧ ℕ A → Program
@@ -249,26 +249,22 @@ compile-const : ∀ {A} → IsPrimitive A → SC.⟦_⟧ ℕ A → Program
 compile-const is-unit  _ = []
 -- Int: load immediate into rax
 compile-const is-int   n = mov (reg rax) (imm n) ∷ []
--- Float, Str, Buffer: not yet implemented for x86-64 codegen.
--- Trap so the gap is visible at runtime instead of silent.
+-- Float: not yet implemented for x86-64 codegen. Trap so the gap is
+-- visible at runtime instead of silent.
 compile-const is-float _ = ud2 ∷ []
-compile-const is-str   _ = ud2 ∷ []
-compile-const is-buffer _ = ud2 ∷ []
+-- Note: Str / Buffer dropped from IsPrimitive in Stage H. Their
+-- compound 2-slot codegen is a separate concern (Layer 1+).
 
 compile-const-size : ∀ {A} → IsPrimitive A → ℕ
 compile-const-size is-unit  = 0
 compile-const-size is-int   = 1
 compile-const-size is-float = 1
-compile-const-size is-str   = 1
-compile-const-size is-buffer = 1
 
 compile-const-length : ∀ {A} (p : IsPrimitive A) (v : SC.⟦_⟧ ℕ A) →
                         length (compile-const p v) ≡ compile-const-size p
 compile-const-length is-unit  _ = refl
 compile-const-length is-int   _ = refl
 compile-const-length is-float _ = refl
-compile-const-length is-str   _ = refl
-compile-const-length is-buffer _ = refl
 
 ------------------------------------------------------------------------
 -- Code generation

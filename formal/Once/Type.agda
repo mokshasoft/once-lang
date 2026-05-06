@@ -332,12 +332,19 @@ TreeF A = K A ⊕ (Id ⊗ Id)
 
 -- | Evidence that a type is a primitive (non-compound) type.
 -- Used by backends to dispatch on primitive types.
+-- Plan 0.2.4.5 Stage H: Str and Buffer dropped from IsPrimitive.
+-- Both are 16-byte fat (data-ptr + len) — structurally compound
+-- 2-slot records, not atomic values. They retain their own
+-- valid-str-wf / valid-buffer-wf validity witnesses but don't
+-- participate in IsPrimitive-driven dispatch (e.g. instr-load-const).
+-- IsPrimitive after Stage H = {Unit, Int, Float} — atomic value
+-- types. (Unit is erased; Int / Float are register-fittable per
+-- FitsInReg.) Layer 0 doesn't exercise Str / Buffer; their
+-- 2-slot layout codegen lands later.
 data IsPrimitive : Type → Set where
   is-unit   : IsPrimitive Unit
   is-int    : IsPrimitive Int
   is-float  : IsPrimitive Float
-  is-str    : IsPrimitive Str
-  is-buffer : IsPrimitive Buffer
 
 ------------------------------------------------------------------------
 -- FitsInReg (Plan 0.2.4.5)
