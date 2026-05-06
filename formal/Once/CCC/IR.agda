@@ -58,6 +58,31 @@ data AllocMode : Set where
   Heap  : AllocMode  -- Allocate on heap (escaping)
 
 ------------------------------------------------------------------------
+-- Allocator (Plan 0.2.4.5)
+--
+-- The replacement for AllocMode under the IR-destination-passing
+-- design. Per-allocation choice between:
+--
+--   Stack   - frame-bound; codegen lowers to frontier-bump (no
+--             runtime call). Implicit free on frame pop.
+--
+--   Dynamic - runtime call to alloc/free SigOps. Pool, Arena, malloc
+--             all collapse into Dynamic at the IR level — the
+--             specific allocator (function symbol) is a
+--             Place-time decision, not a runtime/link-time concern.
+--
+-- The IR itself does NOT pick this — it's chosen upstream by the
+-- Place pass (Plan 0.2.4.6) and threaded as a destination
+-- annotation. AllocMode's role in IR signatures is being phased
+-- out; Allocator carries the same binary distinction with explicit
+-- naming aligned with the Allocator-vs-Place architecture.
+------------------------------------------------------------------------
+
+data Allocator : Set where
+  Stack-allocator   : Allocator
+  Dynamic-allocator : Allocator
+
+------------------------------------------------------------------------
 -- IR Language
 --
 -- CCC-based intermediate representation.

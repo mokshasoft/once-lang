@@ -340,6 +340,31 @@ data IsPrimitive : Type → Set where
   is-buffer : IsPrimitive Buffer
 
 ------------------------------------------------------------------------
+-- FitsInReg (Plan 0.2.4.5)
+--
+-- The replacement for `IsPrimitive`'s register-fittable dimension.
+-- A type satisfies `FitsInReg A` iff a value of type A fits in a
+-- single machine register (one word).
+--
+-- Excluded from FitsInReg (deliberately):
+--   - Unit: erased entirely; carries no information; not register-
+--           tracked. (`IsPrimitive` includes Unit because it's
+--           "atomic in the source language"; FitsInReg is about
+--           runtime register-fittability, where Unit has no value
+--           to fit.)
+--   - Str, Buffer: 16-byte fat (data-ptr + len); structurally
+--           compound 2-slot records, not register-fittable.
+--
+-- Used to gate the `InReg : Reg → ValueLocation` constructor (Plan
+-- 0.2.4.5 D4): only `FitsInReg`-typed values may be register-
+-- resident. Compounds always live at `AtStack` / `AtDynamic`.
+------------------------------------------------------------------------
+
+data FitsInReg : Type → Set where
+  fits-int   : FitsInReg Int
+  fits-float : FitsInReg Float
+
+------------------------------------------------------------------------
 -- Type Pretty Printing
 ------------------------------------------------------------------------
 
