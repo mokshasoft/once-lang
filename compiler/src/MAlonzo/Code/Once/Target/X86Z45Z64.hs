@@ -164,14 +164,14 @@ d_x86'45'64'45'functionEpilogue_12
 d_x86'45'64'45'irToAsm_18 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.CCC.IR.T_IR_264 ->
+  MAlonzo.Code.Once.CCC.IR.T_IR_270 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
 d_x86'45'64'45'irToAsm_18 v0 v1 v2
   = coe
       MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Emit.d_programToText_86
       (MAlonzo.Code.Once.CCC.Target.X86Z45Z64.AbstractToX86.d_compile'45'trace_48
          (coe
-            MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace_202
+            MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace_200
             (coe v0) (coe v1) (coe v2)))
 -- Once.Target.X86-64.emit-thunk-body
 d_emit'45'thunk'45'body_22 ::
@@ -210,7 +210,7 @@ d_emit'45'thunk'45'body_22 v0
 d_x86'45'64'45'irToBodies_32 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.CCC.IR.T_IR_264 ->
+  MAlonzo.Code.Once.CCC.IR.T_IR_270 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
 d_x86'45'64'45'irToBodies_32 v0 v1 v2
   = coe
@@ -222,7 +222,7 @@ d_x86'45'64'45'irToBodies_32 v0 v1 v2
               (d_emit'45'thunk'45'body_22 (coe v3))))
       (coe ("" :: Data.Text.Text))
       (coe
-         MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'bodies_210
+         MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'bodies_208
          (coe v0) (coe v1) (coe v2))
 -- Once.Target.X86-64.x86-64
 d_x86'45'64_40 :: MAlonzo.Code.Once.Target.T_Target_4

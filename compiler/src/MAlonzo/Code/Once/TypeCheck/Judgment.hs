@@ -126,7 +126,7 @@ data T__'8866''7580'_'8758'_'10814'__16
                                              MAlonzo.Code.Once.Surface.Syntax.T_Usage_50
                                              T__'8866''7522'_'8758'_'10814'__10
                                              T__'8866''7580'_'8758'_'10814'__16 |
-    C_t'45'var'45'poly'45'instantiate_502 MAlonzo.Code.Once.Type.T_PolyType_238
+    C_t'45'var'45'poly'45'instantiate_502 MAlonzo.Code.Once.Type.T_PolyType_244
                                           MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34
                                           T__'8866''7580'_'8758'_'10814'__16
 -- Once.TypeCheck.Judgment._⊢_∶_⨾_

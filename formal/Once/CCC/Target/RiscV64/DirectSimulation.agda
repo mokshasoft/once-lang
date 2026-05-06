@@ -219,6 +219,7 @@ module Simulation {FS : FrameSemantics} where
     record rs { a0-val = slotLoc frame (disp-to-slot (imm-to-ℕ d)) }
 
   -- mov-to-output: mv a0, t0 → a0' = t0
+  -- mov-input2-to-output: mv a0, t0 → a0' = t0
   exec-rv64 (mv a0 t0) rs _ = record rs { a0-val = t0-val rs }
 
   -- mov-to-input: mv t0, a0 → t0' = a0
@@ -616,8 +617,10 @@ module Simulation {FS : FrameSemantics} where
                 (proj₂ (exec-abstract i ls alloc))
 
   -- mov-to-output: Output := Input1
+  -- mov-input2-to-output: Output := Input1
   -- RV64: compiles to [] (no-op) because a0 holds both
   instr-sim mov-to-output ls rs alloc not-halted corr with rv64-halted rs | rs-not-halted ls rs alloc not-halted corr
+  instr-sim mov-input2-to-output ls rs alloc not-halted corr with rv64-halted rs | rs-not-halted ls rs alloc not-halted corr
   ... | false | _ =
     let inputVal = readReg (regs ls) Input1
         newRegs = writeReg (regs ls) Output inputVal
@@ -1044,6 +1047,7 @@ module Simulation {FS : FrameSemantics} where
   exec-abstract-preserves-frame : ∀ i ls alloc →
     current-frame (proj₂ (exec-abstract i ls alloc)) ≡ current-frame alloc
   exec-abstract-preserves-frame mov-to-output ls alloc = refl
+  exec-abstract-preserves-frame mov-input2-to-output ls alloc = refl
   exec-abstract-preserves-frame mov-to-input ls alloc = refl
   exec-abstract-preserves-frame mov-output-to-input2 ls alloc = refl
   exec-abstract-preserves-frame load-indirect ls alloc = refl

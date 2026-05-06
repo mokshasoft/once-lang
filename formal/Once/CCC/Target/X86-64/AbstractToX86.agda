@@ -31,7 +31,9 @@ open import Once.CCC.Target.X86-64.Syntax
 open import Once.CCC.Machine.SMCore
 open import Once.CCC.SigOp.Info using (SigOpInfo)
   using (AbstractInstr; AbstractTrace; Slot;
-         mov-to-output; mov-to-input; load-indirect; load-indirect-suc;
+         mov-to-output; mov-to-input;
+         mov-output-to-input2; mov-input2-to-output;
+         load-indirect; load-indirect-suc;
          load-from-slot; store-at-slot; store-indirect; store-indirect-suc;
          lea-slot; restore-input;
          instr-alloc-stack; instr-dealloc-stack;
@@ -72,6 +74,10 @@ compile-abstract mov-to-input =
 -- x86 SysV calling convention: rsi = second integer argument register
 compile-abstract mov-output-to-input2 =
   mov (reg rsi) (reg rax) ∷ []
+
+-- mov-input2-to-output: Output := Input2 (Stage C body-side snd)
+compile-abstract mov-input2-to-output =
+  mov (reg rax) (reg rsi) ∷ []
 
 -- load-indirect: Output := *Input1
 -- x86: mov rax, [rdi]

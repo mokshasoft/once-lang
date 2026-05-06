@@ -113,27 +113,27 @@ d_renderError_76 v0
              ("Application: argument type " :: Data.Text.Text)
              (coe
                 MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                (MAlonzo.Code.Once.Type.d_showType_200 (coe v2))
+                (MAlonzo.Code.Once.Type.d_showType_206 (coe v2))
                 (coe
                    MAlonzo.Code.Data.String.Base.d__'43''43'__20
                    (" does not match function domain " :: Data.Text.Text)
-                   (MAlonzo.Code.Once.Type.d_showType_200 (coe v1))))
+                   (MAlonzo.Code.Once.Type.d_showType_206 (coe v1))))
       C_TypeMismatch_52 v1 v2
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
              ("Type mismatch: expected " :: Data.Text.Text)
              (coe
                 MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                (MAlonzo.Code.Once.Type.d_showType_200 (coe v1))
+                (MAlonzo.Code.Once.Type.d_showType_206 (coe v1))
                 (coe
                    MAlonzo.Code.Data.String.Base.d__'43''43'__20
                    (" but got " :: Data.Text.Text)
-                   (MAlonzo.Code.Once.Type.d_showType_200 (coe v2))))
+                   (MAlonzo.Code.Once.Type.d_showType_206 (coe v2))))
       C_NotFunction_56 v1
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
              ("expected function type, got " :: Data.Text.Text)
-             (MAlonzo.Code.Once.Type.d_showType_200 (coe v1))
+             (MAlonzo.Code.Once.Type.d_showType_206 (coe v1))
       C_UsageViolation_64 v1 v2 v3
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20

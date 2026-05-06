@@ -680,9 +680,16 @@ data AbstractInstr : Set where
 
   -- Plan 0.2.4.5 Stage C: split-input calling convention. Apply's
   -- body receives env in Input1, arg in Input2 (no packed (env, arg)
-  -- record). This instruction sets Input2 from Output, mirroring
-  -- `mov-to-input` for Input2.
+  -- record). These instructions move between the second input register
+  -- and Output, mirroring mov-to-input/mov-to-output for Input2.
+  --
+  -- For Layer 0–4 with no nested pair construction, fst lowers to
+  -- mov-to-output (read Input1) and snd lowers to mov-input2-to-output
+  -- (read Input2) — they project the body's split input. Layer 1+ with
+  -- nested packed pairs needs a layout-discriminating fst/snd; that's
+  -- a future concern.
   mov-output-to-input2 : AbstractInstr            -- Input2 := Output
+  mov-input2-to-output : AbstractInstr            -- Output := Input2
 
   -- Memory load operations (slot-level, not physical address arithmetic)
   load-indirect      : AbstractInstr              -- Output := *Input1
@@ -1002,6 +1009,10 @@ module AbstractExec {FS : FrameSemantics} where
   -- mov-output-to-input2: Input2 := Output (Stage C split-input setup)
   exec-abstract mov-output-to-input2 s alloc =
     record s { regs = writeReg (regs s) Input2 (readReg (regs s) Output) } , alloc
+
+  -- mov-input2-to-output: Output := Input2 (Stage C body-side snd)
+  exec-abstract mov-input2-to-output s alloc =
+    record s { regs = writeReg (regs s) Output (readReg (regs s) Input2) } , alloc
 
   -- load-indirect: Output := *Input1
   -- Uses exec-load-with-value for easier external proofs

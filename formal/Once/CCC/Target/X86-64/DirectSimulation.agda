@@ -202,6 +202,7 @@ module Simulation {FS : FrameSemantics} where
   exec-x86 : X86Instr → X86State → Frame → X86State
 
   -- mov-to-output: mov rax, rdi → rax' = rdi
+  -- mov-input2-to-output: mov rax, rdi → rax' = rdi
   exec-x86 (mov (reg rax) (reg rdi)) xs _ = record xs { rax-val = rdi-val xs }
 
   -- mov-to-input: mov rdi, rax → rdi' = rax
@@ -642,10 +643,12 @@ module Simulation {FS : FrameSemantics} where
                 (proj₂ (exec-abstract i ls alloc))
 
   -- mov-to-output: Output := Input1
+  -- mov-input2-to-output: Output := Input1
   -- x86: mov rax, rdi → rax' = rdi
   -- Abstract: regs' Output = readReg regs Input1
   -- TRIVIAL: both set output to input value
   instr-sim mov-to-output ls xs alloc not-halted corr with x86-halted xs | xs-not-halted ls xs alloc not-halted corr
+  instr-sim mov-input2-to-output ls xs alloc not-halted corr with x86-halted xs | xs-not-halted ls xs alloc not-halted corr
   ... | true | ()
   ... | false | _ =
     let inputVal = readReg (regs ls) Input1
@@ -1075,6 +1078,7 @@ module Simulation {FS : FrameSemantics} where
   exec-abstract-preserves-frame : ∀ i ls alloc →
     current-frame (proj₂ (exec-abstract i ls alloc)) ≡ current-frame alloc
   exec-abstract-preserves-frame mov-to-output ls alloc = refl
+  exec-abstract-preserves-frame mov-input2-to-output ls alloc = refl
   exec-abstract-preserves-frame mov-to-input ls alloc = refl
   exec-abstract-preserves-frame mov-output-to-input2 ls alloc = refl
   exec-abstract-preserves-frame load-indirect ls alloc = refl

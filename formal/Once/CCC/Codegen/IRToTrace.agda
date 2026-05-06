@@ -71,7 +71,7 @@ open import Once.CCC.IR using (IR;
 
 open import Once.CCC.Machine.SMCore
   using (AbstractInstr; AbstractTrace;
-         mov-to-output; mov-to-input; mov-output-to-input2;
+         mov-to-output; mov-to-input; mov-output-to-input2; mov-input2-to-output;
          load-indirect; load-indirect-suc; load-from-slot;
          store-at-slot; store-indirect; store-indirect-suc;
          lea-slot; restore-input;
@@ -109,8 +109,13 @@ ir-to-trace' : ∀ {A B} → ℕ → ℕ → IR A B
 -- ────────────────────────────────────────────────────────────────────
 
 ir-to-trace' n l id        = n , l , (mov-to-output ∷ []) , []
-ir-to-trace' n l fst       = n , l , (load-indirect ∷ []) , []
-ir-to-trace' n l snd       = n , l , (load-indirect-suc ∷ []) , []
+-- Plan 0.2.4.5 Stage C: split-input calling convention.
+-- fst projects the first component of the input pair = Input1.
+-- snd projects the second component of the input pair = Input2.
+-- Valid for Layer 0–4 (no nested pair construction). Layer 1+ with
+-- nested packed pairs needs layout-discriminating fst/snd.
+ir-to-trace' n l fst       = n , l , (mov-to-output ∷ []) , []
+ir-to-trace' n l snd       = n , l , (mov-input2-to-output ∷ []) , []
 ir-to-trace' n l terminal  = n , l , (mov-to-output ∷ []) , []
 ir-to-trace' n l initial   = n , l , (mov-to-output ∷ []) , []
 ir-to-trace' n l arr       = n , l , (mov-to-output ∷ []) , []

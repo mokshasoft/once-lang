@@ -66,7 +66,7 @@ d_validateMain_4 v0
                  ("main must have type IO Unit (= Eff Unit Unit), but got: "
                   ::
                   Data.Text.Text)
-                 (MAlonzo.Code.Once.Type.d_showType_200 (coe v0))) in
+                 (MAlonzo.Code.Once.Type.d_showType_206 (coe v0))) in
     coe
       (case coe v0 of
          MAlonzo.Code.Once.Type.C__'8658''91'_'93'__126 v2 v3 v4
@@ -219,7 +219,7 @@ d_compileFun_78 v0 v1 v2 v3 v4 v5
 d_CompiledFun_150 = ()
 data T_CompiledFun_150
   = C_mkCompiledFun_168 MAlonzo.Code.Agda.Builtin.String.T_String_6
-                        MAlonzo.Code.Once.Type.T_Type_108 MAlonzo.Code.Once.CCC.IR.T_IR_264
+                        MAlonzo.Code.Once.Type.T_Type_108 MAlonzo.Code.Once.CCC.IR.T_IR_270
                         Bool
 -- Once.Compile.CompiledFun.cfName
 d_cfName_160 ::
@@ -237,7 +237,7 @@ d_cfType_162 v0
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Compile.CompiledFun.cfIR
 d_cfIR_164 ::
-  T_CompiledFun_150 -> MAlonzo.Code.Once.CCC.IR.T_IR_264
+  T_CompiledFun_150 -> MAlonzo.Code.Once.CCC.IR.T_IR_270
 d_cfIR_164 v0
   = case coe v0 of
       C_mkCompiledFun_168 v1 v2 v3 v4 -> coe v3
@@ -607,7 +607,7 @@ d_pipeline_298 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Surface.IR.T_SurfaceIR_6 ->
-  MAlonzo.Code.Once.CCC.IR.T_IR_264
+  MAlonzo.Code.Once.CCC.IR.T_IR_270
 d_pipeline_298 v0 v1 v2
   = coe
       MAlonzo.Code.Once.Escape.d_escape_126 v0 v1
@@ -620,7 +620,7 @@ d_pipeline'45'no'45'escape_306 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Surface.IR.T_SurfaceIR_6 ->
-  MAlonzo.Code.Once.CCC.IR.T_IR_264
+  MAlonzo.Code.Once.CCC.IR.T_IR_270
 d_pipeline'45'no'45'escape_306 v0 v1 v2
   = coe
       MAlonzo.Code.Once.Optimize.d_optimize_4026 v0 v1
@@ -631,7 +631,7 @@ d_pipeline'45'no'45'opt_314 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Surface.IR.T_SurfaceIR_6 ->
-  MAlonzo.Code.Once.CCC.IR.T_IR_264
+  MAlonzo.Code.Once.CCC.IR.T_IR_270
 d_pipeline'45'no'45'opt_314 v0 v1
   = coe
       MAlonzo.Code.Once.Surface.Desugar.d_desugar_18 (coe v0) (coe v1)
@@ -711,7 +711,7 @@ d_showFunInfo_370 v0
       (coe
          MAlonzo.Code.Data.String.Base.d__'43''43'__20
          (" : " :: Data.Text.Text)
-         (MAlonzo.Code.Once.Type.d_showType_200
+         (MAlonzo.Code.Once.Type.d_showType_206
             (coe MAlonzo.Code.Once.Parser.d_funType_98 (coe v0))))
 -- Once.Compile.showPolyFunInfo
 d_showPolyFunInfo_374 ::
@@ -724,7 +724,7 @@ d_showPolyFunInfo_374 v0
       (coe
          MAlonzo.Code.Data.String.Base.d__'43''43'__20
          (" : " :: Data.Text.Text)
-         (MAlonzo.Code.Once.Type.d_showPolyType_462
+         (MAlonzo.Code.Once.Type.d_showPolyType_468
             (coe MAlonzo.Code.Once.Parser.d_pfunType_120 (coe v0))))
 -- Once.Compile.showFunInfos
 d_showFunInfos_378 ::
