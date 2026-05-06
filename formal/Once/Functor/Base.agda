@@ -265,7 +265,7 @@ fuseNatS {F} {G} {B} transform alg = cataS {G} (alg ∘ transform)
 -- fuseS alg transform x = alg (sfmap F (fuseS alg transform) (transform (outS x)))
 --
 -- This is a μ-anchored hylomorphism where:
--- - Input is μS G (well-founded)
+-- - Input1 is μS G (well-founded)
 -- - Transform maps G-layers to F-layers: G(μG) → F(μG)
 -- - Recursion is on the μG values in the F-layer
 --
@@ -284,7 +284,7 @@ fuseNatS {F} {G} {B} transform alg = cataS {G} (alg ∘ transform)
 --
 -- TERMINATING justification: Unlike Hylo where the coalgebra could ignore
 -- its μ-component and loop forever, here transform is constrained:
--- - Input: ⟦ G ⟧SF (μS G) containing μS G subterms from out-μ
+-- - Input1: ⟦ G ⟧SF (μS G) containing μS G subterms from out-μ
 -- - Output: ⟦ F ⟧SF (μS G) containing (some of) those same subterms
 -- - Transform cannot CREATE new μS G values, only rearrange existing ones
 -- - Therefore all recursive calls are on strict subterms of the input

@@ -35,7 +35,7 @@ open import Once.CCC.Machine.SMCore
   using (LocState; mkLocState; ValueLocation; OnStack;
          halted; regs; stackMem; heapMem;
          readReg; writeReg; writeReg-same;
-         Input; Output; AbstractTrace; mov-to-output)
+         Input1; Output; AbstractTrace; mov-to-output)
 open import Once.Semantics.Machine using (⟦_⟧)
 open import Once.CCC.Eval using ()
 
@@ -178,14 +178,14 @@ module PrimHelper {FS : FrameSemantics} (program-bound : ℕ) where
     (alloc : AllocState {FS}) →
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
-    readReg (regs s) Input ≡ input-loc →
+    readReg (regs s) Input1 ≡ input-loc →
     -- Trace correctness proof (connects abstract exec to concrete)
     (trace-correct-pf : proj₁ (exec-trace (mov-to-output ∷ []) s alloc) ≡
       mkLocState (writeReg (regs s) Output input-loc) (stackMem s) (heapMem s) (halted s)) →
     -- Frontier stability proof (wrapped in sum type per IRResultAWF)
     (frontier-stable-pf : ∀ (s' : LocState FS) (input-loc' : ValueLocation FS) →
       halted s' ≡ false →
-      readReg (regs s') Input ≡ input-loc' →
+      readReg (regs s') Input1 ≡ input-loc' →
       readLoc s' (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc' →
       (next-slot alloc ≡ next-slot alloc) ⊎
       ((readLoc (proj₁ (exec-trace (mov-to-output ∷ []) s' alloc))

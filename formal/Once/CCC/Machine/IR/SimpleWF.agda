@@ -69,7 +69,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     ValidAtWF m alloc x input-loc s →
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
-    readReg (regs s) Input ≡ input-loc →
+    readReg (regs s) Input1 ≡ input-loc →
     IRResultAWF m (id {A}) x s alloc
   run-id x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     record
@@ -109,29 +109,29 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       s' = proj₁ (exec-trace trace s alloc)
 
       -- State equivalence via exec-trace-single
-      s'-eq : s' ≡ exec (mov Output Input) s
+      s'-eq : s' ≡ exec (mov Output Input1) s
       s'-eq = cong proj₁ (exec-trace-single mov-to-output s alloc not-halted)
 
       not-halted' : halted s' ≡ false
       not-halted' = subst (λ st → halted st ≡ false) (sym s'-eq) not-halted
 
       valid-s' = subst (λ st → ValidAtWF _ alloc x input-loc st) (sym s'-eq)
-                   (validityWF-mem-only x input-loc s (exec (mov Output Input) s) refl refl input-valid-wf)
+                   (validityWF-mem-only x input-loc s (exec (mov Output Input1) s) refl refl input-valid-wf)
 
       rax-eq : readReg (regs s') Output ≡ input-loc
       rax-eq = trans (cong (λ st → readReg (regs st) Output) s'-eq)
-                     (trans (mov-result Output Input s) rdi-eq)
+                     (trans (mov-result Output Input1 s) rdi-eq)
 
       mem-preserved : ∀ loc → BeforeFrontier alloc loc → readLoc s' loc ≡ readLoc s loc
       mem-preserved loc _ = trans (cong (λ st → readLoc st loc) s'-eq)
-                              (readLoc-stackMem-eq (exec (mov Output Input) s) s loc
-                                 (mov-preserves-stackMem Output Input s)
-                                 (mov-preserves-heapMem Output Input s))
+                              (readLoc-stackMem-eq (exec (mov Output Input1) s) s loc
+                                 (mov-preserves-stackMem Output Input1 s)
+                                 (mov-preserves-heapMem Output Input1 s))
 
       -- IR doesn't allocate, so return inj₁ refl
       frontier-stable : ∀ s'' input-loc'' →
         halted s'' ≡ false →
-        readReg (regs s'') Input ≡ input-loc'' →
+        readReg (regs s'') Input1 ≡ input-loc'' →
         readLoc s'' (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc'' →
         _
       frontier-stable _ _ _ _ _ = inj₁ refl
@@ -146,7 +146,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     ValidAtWF m alloc x input-loc s →
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
-    readReg (regs s) Input ≡ input-loc →
+    readReg (regs s) Input1 ≡ input-loc →
     ∃[ mA ] IRResultAWF mA (fst {A} {B}) x s alloc
   run-fst {m} {A} {B} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     mA , record
@@ -185,7 +185,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       fst-valid-wf = PairValidWF.fst-valid pair-decomp
       fst-before = PairValidWF.fst-before pair-decomp
 
-      mem-read : readLoc s (resolveSourceExt (regs s) (IndReg Input)) ≡ just fst-loc
+      mem-read : readLoc s (resolveSourceExt (regs s) (IndReg Input1)) ≡ just fst-loc
       mem-read = subst (λ loc → readLoc s loc ≡ just fst-loc)
                        (sym rdi-eq) (PairValidWF.fst-ptr pair-decomp)
 
@@ -195,34 +195,34 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       s' : LocState FS
       s' = proj₁ (exec-trace trace s alloc)
 
-      s'-eq : s' ≡ exec (load Output (IndReg Input)) s
+      s'-eq : s' ≡ exec (load Output (IndReg Input1)) s
       s'-eq = cong proj₁ (exec-trace-single load-indirect s alloc not-halted)
 
       fst-valid-s' : ValidAtWF mA alloc (proj₁ x) fst-loc s'
       fst-valid-s' = subst (λ st → ValidAtWF mA alloc (proj₁ x) fst-loc st) (sym s'-eq)
-                       (validityWF-mem-only (proj₁ x) fst-loc s (exec (load Output (IndReg Input)) s)
-                          (load-preserves-stackMem Output (IndReg Input) s)
-                          (load-preserves-heapMem Output (IndReg Input) s)
+                       (validityWF-mem-only (proj₁ x) fst-loc s (exec (load Output (IndReg Input1)) s)
+                          (load-preserves-stackMem Output (IndReg Input1) s)
+                          (load-preserves-heapMem Output (IndReg Input1) s)
                           fst-valid-wf)
 
       rax-eq : readReg (regs s') Output ≡ fst-loc
       rax-eq = trans (cong (λ st → readReg (regs st) Output) s'-eq)
-                     (load-result Output (IndReg Input) s fst-loc mem-read)
+                     (load-result Output (IndReg Input1) s fst-loc mem-read)
 
       not-halted' : halted s' ≡ false
       not-halted' = subst (λ st → halted st ≡ false) (sym s'-eq)
-                      (load-no-halt Output (IndReg Input) s fst-loc mem-read not-halted)
+                      (load-no-halt Output (IndReg Input1) s fst-loc mem-read not-halted)
 
       mem-preserved : ∀ loc → BeforeFrontier alloc loc → readLoc s' loc ≡ readLoc s loc
       mem-preserved loc _ = trans (cong (λ st → readLoc st loc) s'-eq)
-                              (readLoc-stackMem-eq (exec (load Output (IndReg Input)) s) s loc
-                                 (load-preserves-stackMem Output (IndReg Input) s)
-                                 (load-preserves-heapMem Output (IndReg Input) s))
+                              (readLoc-stackMem-eq (exec (load Output (IndReg Input1)) s) s loc
+                                 (load-preserves-stackMem Output (IndReg Input1) s)
+                                 (load-preserves-heapMem Output (IndReg Input1) s))
 
       -- IR doesn't allocate, so return inj₁ refl
       frontier-stable : ∀ s'' input-loc'' →
         halted s'' ≡ false →
-        readReg (regs s'') Input ≡ input-loc'' →
+        readReg (regs s'') Input1 ≡ input-loc'' →
         readLoc s'' (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc'' →
         _
       frontier-stable _ _ _ _ _ = inj₁ refl
@@ -237,7 +237,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     ValidAtWF m alloc x input-loc s →
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
-    readReg (regs s) Input ≡ input-loc →
+    readReg (regs s) Input1 ≡ input-loc →
     ∃[ mB ] IRResultAWF mB (snd {A} {B}) x s alloc
   run-snd {m} {A} {B} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     mB , record
@@ -276,7 +276,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       snd-valid-wf = PairValidWF.snd-valid pair-decomp
       snd-before = PairValidWF.snd-before pair-decomp
 
-      mem-read : readLoc s (resolveSourceExt (regs s) (IndRegSuc Input)) ≡ just snd-loc
+      mem-read : readLoc s (resolveSourceExt (regs s) (IndRegSuc Input1)) ≡ just snd-loc
       mem-read = subst (λ loc → readLoc s (sucLoc loc) ≡ just snd-loc)
                        (sym rdi-eq) (PairValidWF.snd-ptr pair-decomp)
 
@@ -286,34 +286,34 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       s' : LocState FS
       s' = proj₁ (exec-trace trace s alloc)
 
-      s'-eq : s' ≡ exec (load Output (IndRegSuc Input)) s
+      s'-eq : s' ≡ exec (load Output (IndRegSuc Input1)) s
       s'-eq = cong proj₁ (exec-trace-single load-indirect-suc s alloc not-halted)
 
       snd-valid-s' : ValidAtWF mB alloc (proj₂ x) snd-loc s'
       snd-valid-s' = subst (λ st → ValidAtWF mB alloc (proj₂ x) snd-loc st) (sym s'-eq)
-                       (validityWF-mem-only (proj₂ x) snd-loc s (exec (load Output (IndRegSuc Input)) s)
-                          (load-preserves-stackMem Output (IndRegSuc Input) s)
-                          (load-preserves-heapMem Output (IndRegSuc Input) s)
+                       (validityWF-mem-only (proj₂ x) snd-loc s (exec (load Output (IndRegSuc Input1)) s)
+                          (load-preserves-stackMem Output (IndRegSuc Input1) s)
+                          (load-preserves-heapMem Output (IndRegSuc Input1) s)
                           snd-valid-wf)
 
       rax-eq : readReg (regs s') Output ≡ snd-loc
       rax-eq = trans (cong (λ st → readReg (regs st) Output) s'-eq)
-                     (load-result Output (IndRegSuc Input) s snd-loc mem-read)
+                     (load-result Output (IndRegSuc Input1) s snd-loc mem-read)
 
       not-halted' : halted s' ≡ false
       not-halted' = subst (λ st → halted st ≡ false) (sym s'-eq)
-                      (load-no-halt Output (IndRegSuc Input) s snd-loc mem-read not-halted)
+                      (load-no-halt Output (IndRegSuc Input1) s snd-loc mem-read not-halted)
 
       mem-preserved : ∀ loc → BeforeFrontier alloc loc → readLoc s' loc ≡ readLoc s loc
       mem-preserved loc _ = trans (cong (λ st → readLoc st loc) s'-eq)
-                              (readLoc-stackMem-eq (exec (load Output (IndRegSuc Input)) s) s loc
-                                 (load-preserves-stackMem Output (IndRegSuc Input) s)
-                                 (load-preserves-heapMem Output (IndRegSuc Input) s))
+                              (readLoc-stackMem-eq (exec (load Output (IndRegSuc Input1)) s) s loc
+                                 (load-preserves-stackMem Output (IndRegSuc Input1) s)
+                                 (load-preserves-heapMem Output (IndRegSuc Input1) s))
 
       -- IR doesn't allocate, so return inj₁ refl
       frontier-stable : ∀ s'' input-loc'' →
         halted s'' ≡ false →
-        readReg (regs s'') Input ≡ input-loc'' →
+        readReg (regs s'') Input1 ≡ input-loc'' →
         readLoc s'' (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc'' →
         _
       frontier-stable _ _ _ _ _ = inj₁ refl
@@ -328,7 +328,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     ValidAtWF m alloc x input-loc s →
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
-    readReg (regs s) Input ≡ input-loc →
+    readReg (regs s) Input1 ≡ input-loc →
     IRResultAWF m (terminal {A}) x s alloc
   run-terminal x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     record
@@ -367,7 +367,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       s' : LocState FS
       s' = proj₁ (exec-trace trace s alloc)
 
-      s'-eq : s' ≡ exec (mov Output Input) s
+      s'-eq : s' ≡ exec (mov Output Input1) s
       s'-eq = cong proj₁ (exec-trace-single mov-to-output s alloc not-halted)
 
       not-halted' : halted s' ≡ false
@@ -375,18 +375,18 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
       rax-eq : readReg (regs s') Output ≡ input-loc
       rax-eq = trans (cong (λ st → readReg (regs st) Output) s'-eq)
-                     (trans (mov-result Output Input s) rdi-eq)
+                     (trans (mov-result Output Input1 s) rdi-eq)
 
       mem-preserved : ∀ loc → BeforeFrontier alloc loc → readLoc s' loc ≡ readLoc s loc
       mem-preserved loc _ = trans (cong (λ st → readLoc st loc) s'-eq)
-                              (readLoc-stackMem-eq (exec (mov Output Input) s) s loc
-                                 (mov-preserves-stackMem Output Input s)
-                                 (mov-preserves-heapMem Output Input s))
+                              (readLoc-stackMem-eq (exec (mov Output Input1) s) s loc
+                                 (mov-preserves-stackMem Output Input1 s)
+                                 (mov-preserves-heapMem Output Input1 s))
 
       -- IR doesn't allocate, so return inj₁ refl
       frontier-stable : ∀ s'' input-loc'' →
         halted s'' ≡ false →
-        readReg (regs s'') Input ≡ input-loc'' →
+        readReg (regs s'') Input1 ≡ input-loc'' →
         readLoc s'' (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc'' →
         _
       frontier-stable _ _ _ _ _ = inj₁ refl
@@ -401,7 +401,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     ValidAtWF m alloc x input-loc s →
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
-    readReg (regs s) Input ≡ input-loc →
+    readReg (regs s) Input1 ≡ input-loc →
     IRResultAWF m (free-heap ref) x s alloc
   run-free-heap ref x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     record
@@ -440,29 +440,29 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       s' : LocState FS
       s' = proj₁ (exec-trace trace s alloc)
 
-      s'-eq : s' ≡ exec (mov Output Input) s
+      s'-eq : s' ≡ exec (mov Output Input1) s
       s'-eq = cong proj₁ (exec-trace-single mov-to-output s alloc not-halted)
 
       not-halted' : halted s' ≡ false
       not-halted' = subst (λ st → halted st ≡ false) (sym s'-eq) not-halted
 
       valid-s' = subst (λ st → ValidAtWF _ alloc x input-loc st) (sym s'-eq)
-                   (validityWF-mem-only x input-loc s (exec (mov Output Input) s) refl refl input-valid-wf)
+                   (validityWF-mem-only x input-loc s (exec (mov Output Input1) s) refl refl input-valid-wf)
 
       rax-eq : readReg (regs s') Output ≡ input-loc
       rax-eq = trans (cong (λ st → readReg (regs st) Output) s'-eq)
-                     (trans (mov-result Output Input s) rdi-eq)
+                     (trans (mov-result Output Input1 s) rdi-eq)
 
       mem-preserved : ∀ loc → BeforeFrontier alloc loc → readLoc s' loc ≡ readLoc s loc
       mem-preserved loc _ = trans (cong (λ st → readLoc st loc) s'-eq)
-                              (readLoc-stackMem-eq (exec (mov Output Input) s) s loc
-                                 (mov-preserves-stackMem Output Input s)
-                                 (mov-preserves-heapMem Output Input s))
+                              (readLoc-stackMem-eq (exec (mov Output Input1) s) s loc
+                                 (mov-preserves-stackMem Output Input1 s)
+                                 (mov-preserves-heapMem Output Input1 s))
 
       -- IR doesn't allocate, so return inj₁ refl
       frontier-stable : ∀ s'' input-loc'' →
         halted s'' ≡ false →
-        readReg (regs s'') Input ≡ input-loc'' →
+        readReg (regs s'') Input1 ≡ input-loc'' →
         readLoc s'' (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc'' →
         _
       frontier-stable _ _ _ _ _ = inj₁ refl
@@ -477,7 +477,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     ValidAtWF m alloc {A ⇒[ mk-kind q pure ] B} x input-loc s →
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
-    readReg (regs s) Input ≡ input-loc →
+    readReg (regs s) Input1 ≡ input-loc →
     IRResultAWF m (arr {A} {B} {q}) x s alloc
   run-arr {m} {A} {B} {q} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     record
@@ -516,7 +516,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       s' : LocState FS
       s' = proj₁ (exec-trace trace s alloc)
 
-      s'-eq : s' ≡ exec (mov Output Input) s
+      s'-eq : s' ≡ exec (mov Output Input1) s
       s'-eq = cong proj₁ (exec-trace-single mov-to-output s alloc not-halted)
 
       not-halted' : halted s' ≡ false
@@ -524,25 +524,25 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
       valid-s' : ValidAtWF m alloc {A ⇒[ mk-kind q pure ] B} x input-loc s'
       valid-s' = subst (λ st → ValidAtWF m alloc {A ⇒[ mk-kind q pure ] B} x input-loc st) (sym s'-eq)
-                   (validityWF-mem-only x input-loc s (exec (mov Output Input) s) refl refl input-valid-wf)
+                   (validityWF-mem-only x input-loc s (exec (mov Output Input1) s) refl refl input-valid-wf)
 
       valid-eff : ValidAtWF m alloc {A ⇒[ mk-kind Many eff ] B} x input-loc s'
       valid-eff = valid-coerce-kind-wf valid-s'
 
       rax-eq : readReg (regs s') Output ≡ input-loc
       rax-eq = trans (cong (λ st → readReg (regs st) Output) s'-eq)
-                     (trans (mov-result Output Input s) rdi-eq)
+                     (trans (mov-result Output Input1 s) rdi-eq)
 
       mem-preserved : ∀ loc → BeforeFrontier alloc loc → readLoc s' loc ≡ readLoc s loc
       mem-preserved loc _ = trans (cong (λ st → readLoc st loc) s'-eq)
-                              (readLoc-stackMem-eq (exec (mov Output Input) s) s loc
-                                 (mov-preserves-stackMem Output Input s)
-                                 (mov-preserves-heapMem Output Input s))
+                              (readLoc-stackMem-eq (exec (mov Output Input1) s) s loc
+                                 (mov-preserves-stackMem Output Input1 s)
+                                 (mov-preserves-heapMem Output Input1 s))
 
       -- IR doesn't allocate, so return inj₁ refl
       frontier-stable : ∀ s'' input-loc'' →
         halted s'' ≡ false →
-        readReg (regs s'') Input ≡ input-loc'' →
+        readReg (regs s'') Input1 ≡ input-loc'' →
         readLoc s'' (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc'' →
         _
       frontier-stable _ _ _ _ _ = inj₁ refl

@@ -27,7 +27,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.IR using (IR; SigOp; AllocMode; Stack)
 open import Once.CCC.Machine.SMCore
   using (LocState; ValueLocation; OnStack; halted; regs;
-         readReg; Input; Output; AbstractTrace; mov-to-output;
+         readReg; Input1; Output; AbstractTrace; mov-to-output;
          mkLocState; stackMem; heapMem; writeReg; module MemOps;
          module AbstractExec; module ExecLemmas)
 open import Once.CCC.Eval using ()
@@ -72,12 +72,12 @@ module ArithProofs {FS : FrameSemantics} (program-bound : ℕ) where
   -- Lemmas
   ------------------------------------------------------------------------
 
-  -- Trace execution: mov-to-output writes Input to Output
-  -- Precondition: readReg (regs s) Input ≡ input-loc
+  -- Trace execution: mov-to-output writes Input1 to Output
+  -- Precondition: readReg (regs s) Input1 ≡ input-loc
   arith-trace-correct : ∀ (input-loc : ValueLocation FS)
     (s : LocState FS) (alloc : AllocState {FS}) →
     halted s ≡ false →
-    readReg (regs s) Input ≡ input-loc →
+    readReg (regs s) Input1 ≡ input-loc →
     proj₁ (exec-trace (mov-to-output ∷ []) s alloc) ≡
     mkLocState (writeReg (regs s) Output input-loc)
                (stackMem s) (heapMem s) (halted s)
@@ -88,15 +88,15 @@ module ArithProofs {FS : FrameSemantics} (program-bound : ℕ) where
               proj₁ (exec-abstract mov-to-output s alloc)
       step1 = cong proj₁ (exec-trace-single mov-to-output s alloc not-halted)
 
-      -- exec-abstract mov-to-output writes readReg Input to Output
+      -- exec-abstract mov-to-output writes readReg Input1 to Output
       -- Result state only changes regs field
       step2 : proj₁ (exec-abstract mov-to-output s alloc) ≡
-              mkLocState (writeReg (regs s) Output (readReg (regs s) Input))
+              mkLocState (writeReg (regs s) Output (readReg (regs s) Input1))
                          (stackMem s) (heapMem s) (halted s)
       step2 = refl
 
       -- Using rdi-eq to substitute input-loc
-      step3 : mkLocState (writeReg (regs s) Output (readReg (regs s) Input))
+      step3 : mkLocState (writeReg (regs s) Output (readReg (regs s) Input1))
                          (stackMem s) (heapMem s) (halted s) ≡
               mkLocState (writeReg (regs s) Output input-loc)
                          (stackMem s) (heapMem s) (halted s)
@@ -108,7 +108,7 @@ module ArithProofs {FS : FrameSemantics} (program-bound : ℕ) where
   arith-frontier-stable : ∀ (s' : LocState FS) (input-loc' : ValueLocation FS)
     (alloc : AllocState {FS}) →
     halted s' ≡ false →
-    readReg (regs s') Input ≡ input-loc' →
+    readReg (regs s') Input1 ≡ input-loc' →
     readLoc s' (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc' →
     readLoc (proj₁ (exec-trace (mov-to-output ∷ []) s' alloc))
             (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc'

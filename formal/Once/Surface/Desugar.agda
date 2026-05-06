@@ -83,7 +83,7 @@ desugar S.arr = C.arr
 -- let x = e1 in e2   desugars to   e2 ∘ ⟨ id , e1 ⟩
 --
 -- Intuition:
--- - Input a : A flows to both id (unchanged) and e1 (producing b : B)
+-- - Input1 a : A flows to both id (unchanged) and e1 (producing b : B)
 -- - Result is pair (a, b) : A * B
 -- - Body e2 : A * B → C receives this pair
 -- - Body uses fst to access original input, snd for bound value

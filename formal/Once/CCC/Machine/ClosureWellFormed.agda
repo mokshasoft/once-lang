@@ -314,7 +314,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
         -- Frontier slot stability: if input-loc is at frontier initially, it stays there
         -- This is because IR traces either:
         --   1. Don't write to frontier slot (e.g., inl/inr write to suc)
-        --   2. Write Input to frontier slot (via mov-to-output; store-at-slot)
+        --   2. Write Input1 to frontier slot (via mov-to-output; store-at-slot)
         --   3. Push a frame, so writes go to child frame (apply)
         -- This property enables pair's backup-slot preservation proof.
         --
@@ -328,7 +328,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
         -- f's result (not the original input) to the frontier slot.
         frontier-slot-stable : ∀ (s' : LocState FS) (input-loc : ValueLocation FS) →
           halted s' ≡ false →
-          readReg (regs s') Input ≡ input-loc →
+          readReg (regs s') Input1 ≡ input-loc →
           readLoc s' (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc →
           (next-slot alloc ≡ next-slot final-alloc) ⊎
           ((readLoc (proj₁ (exec-trace trace s' alloc))
@@ -361,7 +361,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
         scratch-bounded : max-slot-written ≤ next-slot final-alloc +ℕ ir-scratch-requirement ir
         -- Note: trace-preserves-capacity removed in Phase 3 (frame-capacity removed)
         -- Trace contains no heap-writing instructions.
-        -- Heap writes (store-indirect) write to arbitrary memory (wherever Input points),
+        -- Heap writes (store-indirect) write to arbitrary memory (wherever Input1 points),
         -- so traces containing them require additional disjointness preconditions.
         -- Our IR traces don't write to heap (they use store-at-slot instead).
         trace-no-heap-writes : TraceNoHeapWrites trace
@@ -374,7 +374,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     --------------------------------------------------------------------
     -- BodyCorrect: Pre-computed body execution proof
     --
-    -- Input pair is constructed by Apply as Heap (boxed).
+    -- Input1 pair is constructed by Apply as Heap (boxed).
     -- Output mode comes from body's actual output.
     --------------------------------------------------------------------
 
@@ -390,16 +390,16 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
         body-cap-eq : body-capacity ≡ ir-stack-requirement body
 
         -- Execute returns mode-indexed result
-        -- Input pair is Heap (boxed) - constructed by Apply
+        -- Input1 pair is Heap (boxed) - constructed by Apply
         -- Output mode is existentially quantified (body decides)
         -- Note: capacity precondition removed in Phase 3 (frame-capacity removed)
         execute : ∀ (arg : ⟦ A ⟧) (arg-loc pair-loc : ValueLocation FS)
           (s : LocState FS) (alloc : AllocState {FS})
-          (mPair : AllocMode) →  -- Input pair mode (Apply provides Heap)
+          (mPair : AllocMode) →  -- Input1 pair mode (Apply provides Heap)
           ValidAtWF mPair alloc (pair env arg) pair-loc s →
           BeforeFrontier alloc pair-loc →
           halted s ≡ false →
-          readReg (regs s) Input ≡ pair-loc →
+          readReg (regs s) Input1 ≡ pair-loc →
           ∃[ mOut ] IRResultAWF mOut body (pair env arg) s alloc
 
   open IRResultAWF public
@@ -529,7 +529,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     ValidAtWF mIn alloc x input-loc s →
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
-    readReg (regs s) Input ≡ input-loc →
+    readReg (regs s) Input1 ≡ input-loc →
     ∃[ mOut ] IRResultAWF mOut ir x s alloc
 
   ------------------------------------------------------------------------
@@ -1203,7 +1203,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
   -- where backup-slot is modified but no sub-location uses it.
   --
   -- The key insight is that IR results have sub-locations that are either:
-  --   1. Input locations at slots < start-frontier (inherited from input)
+  --   1. Input1 locations at slots < start-frontier (inherited from input)
   --   2. Fresh allocations at slots ≥ suc start-frontier (allocated by IR)
   -- So slot = start-frontier is a "gap" never used by sub-locations.
   --
@@ -1224,7 +1224,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
   --
   -- Key insight for pair validity: when IR f executes starting at
   -- next-slot = suc backup-slot, its result has sub-locations at:
-  --   - Input locations: slots < backup-slot (inherited from input)
+  --   - Input1 locations: slots < backup-slot (inherited from input)
   --   - Fresh allocations: slots ≥ suc backup-slot (allocated by f)
   -- Therefore NO sub-location is at exactly backup-slot.
   --
@@ -1235,7 +1235,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
 
   -- Validity transfers when memory differs only at gap slot.
   -- The gap slot is NOT accessed because of disjoint slot ranges:
-  --   - Input data is at slots < gap-slot
+  --   - Input1 data is at slots < gap-slot
   --   - Fresh allocations are at slots ≥ suc gap-slot
   --   - gap-slot falls between these ranges
   validityWF-mem-preserved-excluding :
@@ -1259,7 +1259,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
   --
   -- Positive characterization: instead of excluding a gap slot, we specify
   -- the two disjoint regions where sub-locations can exist:
-  --   1. Input region: [0, input-bound) - inherited from input value
+  --   1. Input1 region: [0, input-bound) - inherited from input value
   --   2. Fresh region: [fresh-start, frontier) - newly allocated by IR
   --
   -- The gap [input-bound, fresh-start) contains no sub-locations, so we

@@ -18,7 +18,7 @@
 --
 -- Once's mapping:
 --   - eax: Output register (return value)
---   - ecx: Input register (first logical argument)
+--   - ecx: Input1 register (first logical argument)
 --   - ebp: frame pointer
 --   - ebx: closure/environment pointer (callee-saved)
 ------------------------------------------------------------------------
@@ -67,7 +67,7 @@ slot-to-disp n = n *ℕ slot-size
 -- The mapping follows the SlotMachine operational semantics.
 --
 -- Key register mapping:
---   Input  → ecx
+--   Input1  → ecx
 --   Output → eax
 --   Frame  → ebp
 --   Closure → ebx (environment pointer)
@@ -75,22 +75,22 @@ slot-to-disp n = n *ℕ slot-size
 
 compile-abstract : AbstractInstr → Program
 
--- mov-to-output: Output := Input
+-- mov-to-output: Output := Input1
 -- x86-32: mov eax, ecx
 compile-abstract mov-to-output =
   mov (reg eax) (reg ecx) ∷ []
 
--- mov-to-input: Input := Output (compose bridge)
+-- mov-to-input: Input1 := Output (compose bridge)
 -- x86-32: mov ecx, eax
 compile-abstract mov-to-input =
   mov (reg ecx) (reg eax) ∷ []
 
--- load-indirect: Output := *Input
+-- load-indirect: Output := *Input1
 -- x86-32: mov eax, [ecx]
 compile-abstract load-indirect =
   mov (reg eax) (mem (base ecx)) ∷ []
 
--- load-indirect-suc: Output := *(sucLoc Input)
+-- load-indirect-suc: Output := *(sucLoc Input1)
 -- x86-32: mov eax, [ecx + 4]
 compile-abstract load-indirect-suc =
   mov (reg eax) (mem (base+disp ecx slot-size)) ∷ []
@@ -105,12 +105,12 @@ compile-abstract (load-from-slot n) =
 compile-abstract (store-at-slot n) =
   mov (mem (base+disp ebp (slot-to-disp n))) (reg eax) ∷ []
 
--- store-indirect: *Input := Output
+-- store-indirect: *Input1 := Output
 -- x86-32: mov [ecx], eax
 compile-abstract store-indirect =
   mov (mem (base ecx)) (reg eax) ∷ []
 
--- store-indirect-suc: *(sucLoc Input) := Output
+-- store-indirect-suc: *(sucLoc Input1) := Output
 -- x86-32: mov [ecx + 4], eax
 compile-abstract store-indirect-suc =
   mov (mem (base+disp ecx slot-size)) (reg eax) ∷ []
@@ -120,7 +120,7 @@ compile-abstract store-indirect-suc =
 compile-abstract (lea-slot n) =
   lea eax (base+disp ebp (slot-to-disp n)) ∷ []
 
--- restore-input: Input := stack[slot]
+-- restore-input: Input1 := stack[slot]
 -- x86-32: mov ecx, [ebp + slot*4]
 compile-abstract (restore-input n) =
   mov (reg ecx) (mem (base+disp ebp (slot-to-disp n))) ∷ []
@@ -193,7 +193,7 @@ compile-abstract (instr-load-const _ _) = ud2 ∷ []
 -- Plan 0.2.4.2: closure-body code-addr load. X86-32 stub.
 compile-abstract (instr-load-code-addr _) = ud2 ∷ []
 -- Plan 0.2.4.2: save closure-register. On x86-32 the closure pointer
--- lives in ebx (mirror of x86-64's r12); Input is in ecx. Move ecx
+-- lives in ebx (mirror of x86-64's r12); Input1 is in ecx. Move ecx
 -- into ebx so the subsequent `call [ebx + 4]` resolves correctly.
 compile-abstract instr-save-closure-reg =
   mov (reg ebx) (reg ecx) ∷ []

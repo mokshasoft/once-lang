@@ -10,7 +10,7 @@
 -- operations proven correct in X86-64.Dispatcher.
 --
 -- Convention:
---   - Input value pointer in rdi
+--   - Input1 value pointer in rdi
 --   - Output value pointer in rax
 --   - rbp = frame pointer (for slot addressing)
 --   - r12 = environment pointer (for closures)
@@ -172,7 +172,7 @@ curry-thunk-cleanup _ = curry-thunk-cleanup' 0
 ------------------------------------------------------------------------
 -- Apply: call closure
 --
--- Input: pair of (closure, arg)
+-- Input1: pair of (closure, arg)
 -- Load closure, extract env and code-ptr, call with arg
 ------------------------------------------------------------------------
 
@@ -372,7 +372,7 @@ compile-ir ir = proj₁ (compile-ir' 0 ir)
 --   1. Follows SlotMachine operation patterns
 --   2. Uses frame-relative addressing (rbp + offset)
 --   3. Preserves callee-saved registers (r12, r14, r15, rbp)
---   4. Input in rdi, output in rax
+--   4. Input1 in rdi, output in rax
 --
 -- Correspondence to SlotMachine:
 --   compile-ir id        → mov rax, rdi           (no SlotMachine op)

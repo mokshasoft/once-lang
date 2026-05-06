@@ -84,7 +84,7 @@ record TargetSimulation {FS : FrameSemantics} : Set₁ where
     -- Correspondence relation
     --
     -- Simple mapping between abstract and target state:
-    --   - Input register ↔ target input register
+    --   - Input1 register ↔ target input register
     --   - Output register ↔ target output register
     --   - Frame pointer ↔ target frame register
     --   - Memory at location ↔ Memory at address
@@ -131,7 +131,7 @@ record TargetSimulation {FS : FrameSemantics} : Set₁ where
 -- 1. Define your TargetState, TargetInstr, exec-target, etc.
 --
 -- 2. Define Corresponds with these fields:
---    - input-reg-corresponds : target-input-reg ≡ loc-to-addr (Input)
+--    - input-reg-corresponds : target-input-reg ≡ loc-to-addr (Input1)
 --    - output-reg-corresponds : target-output-reg ≡ loc-to-addr (Output)
 --    - frame-reg-corresponds : target-frame-reg ≡ frame-base (current-frame)
 --    - mem-corresponds : abstract-mem loc ≡ just v → target-mem (addr loc) ≡ just (addr v)

@@ -58,22 +58,22 @@ slot-to-disp n = n *ℕ slot-size
 
 compile-abstract : AbstractInstr → Program
 
--- mov-to-output: Output := Input
+-- mov-to-output: Output := Input1
 -- x86: mov rax, rdi
 compile-abstract mov-to-output =
   mov (reg rax) (reg rdi) ∷ []
 
--- mov-to-input: Input := Output (compose bridge)
+-- mov-to-input: Input1 := Output (compose bridge)
 -- x86: mov rdi, rax
 compile-abstract mov-to-input =
   mov (reg rdi) (reg rax) ∷ []
 
--- load-indirect: Output := *Input
+-- load-indirect: Output := *Input1
 -- x86: mov rax, [rdi]
 compile-abstract load-indirect =
   mov (reg rax) (mem (base rdi)) ∷ []
 
--- load-indirect-suc: Output := *(sucLoc Input)
+-- load-indirect-suc: Output := *(sucLoc Input1)
 -- x86: mov rax, [rdi + 8]
 compile-abstract load-indirect-suc =
   mov (reg rax) (mem (base+disp rdi slot-size)) ∷ []
@@ -88,12 +88,12 @@ compile-abstract (load-from-slot n) =
 compile-abstract (store-at-slot n) =
   mov (mem (base+disp rbp (slot-to-disp n))) (reg rax) ∷ []
 
--- store-indirect: *Input := Output
+-- store-indirect: *Input1 := Output
 -- x86: mov [rdi], rax
 compile-abstract store-indirect =
   mov (mem (base rdi)) (reg rax) ∷ []
 
--- store-indirect-suc: *(sucLoc Input) := Output
+-- store-indirect-suc: *(sucLoc Input1) := Output
 -- x86: mov [rdi + 8], rax
 compile-abstract store-indirect-suc =
   mov (mem (base+disp rdi slot-size)) (reg rax) ∷ []
@@ -103,7 +103,7 @@ compile-abstract store-indirect-suc =
 compile-abstract (lea-slot n) =
   lea rax (base+disp rbp (slot-to-disp n)) ∷ []
 
--- restore-input: Input := stack[slot]
+-- restore-input: Input1 := stack[slot]
 -- x86: mov rdi, [rbp + slot*8]
 compile-abstract (restore-input n) =
   mov (reg rdi) (mem (base+disp rbp (slot-to-disp n))) ∷ []
@@ -184,9 +184,9 @@ compile-abstract (instr-load-const p v) =
 compile-abstract (instr-load-code-addr n) =
   lea rax (rip+label n) ∷ []
 
--- Plan 0.2.4.2 Phase D follow-up: save Input register to the
+-- Plan 0.2.4.2 Phase D follow-up: save Input1 register to the
 -- closure register. On x86-64 SysV: rdi holds the apply argument
--- (Input), r12 is reserved as the closure pointer for the indirect
+-- (Input1), r12 is reserved as the closure pointer for the indirect
 -- call `call *0x8(%r12)`.
 compile-abstract instr-save-closure-reg =
   mov (reg r12) (reg rdi) ∷ []

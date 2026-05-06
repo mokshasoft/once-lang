@@ -184,7 +184,7 @@ data IR : Type → Type → Set where
   --
   -- OCP-0003: Hylo is now based on Fuse, removing the need for TerminatesOn.
   -- Termination is guaranteed by requiring μG as input:
-  -- - Input is μG (well-founded inductive type)
+  -- - Input1 is μG (well-founded inductive type)
   -- - Coalgebra produces F-layers from μG values
   -- - Recursion is structural on μG
   --
@@ -202,7 +202,7 @@ data IR : Type → Type → Set where
   --
   -- OCP-0003: Structured fusion that is provably terminating.
   -- Unlike Hylo, termination is guaranteed by the type structure:
-  -- - Input is μG (well-founded inductive type)
+  -- - Input1 is μG (well-founded inductive type)
   -- - Transform receives pre-destructed G-layer via out-μ
   -- - Recursion is structural on μG - each recursive call on strict subterm
   --

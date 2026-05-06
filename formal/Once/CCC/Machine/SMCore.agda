@@ -202,36 +202,51 @@ HeapMem = HeapLocation → Maybe HeapLocation
 ------------------------------------------------------------------------
 -- Registers: Hold Locations (not Words)
 --
--- Two-register model:
---   Input  - argument location (maps to RDI in x86)
+-- Three-register model (Plan 0.2.4.5 D2):
+--   Input1 - first argument location (maps to RDI in x86 SysV)
+--   Input2 - second argument location (maps to RSI in x86 SysV)
 --   Output - result location (maps to RAX in x86)
+--
+-- Two input registers eliminate the (env, arg) pack-into-pair waste
+-- in `apply-setup-trace`: apply now writes env to Input1 and arg to
+-- Input2, no two-store + lea slot pack. CCC primitives top out at
+-- a 2-product input shape, so two input registers cover all of
+-- pair, curry's body, and apply.
 ------------------------------------------------------------------------
 
 data AbstractReg : Set where
-  Input  : AbstractReg    -- argument location
+  Input1 : AbstractReg    -- first argument location
+  Input2 : AbstractReg    -- second argument location
   Output : AbstractReg    -- result location
 
 -- Decidable equality for AbstractReg
 _≟R_ : (r₁ r₂ : AbstractReg) → Dec (r₁ ≡ r₂)
-Input  ≟R Input  = yes refl
-Input  ≟R Output = no (λ ())
-Output ≟R Input  = no (λ ())
+Input1 ≟R Input1 = yes refl
+Input1 ≟R Input2 = no (λ ())
+Input1 ≟R Output = no (λ ())
+Input2 ≟R Input1 = no (λ ())
+Input2 ≟R Input2 = yes refl
+Input2 ≟R Output = no (λ ())
+Output ≟R Input1 = no (λ ())
+Output ≟R Input2 = no (λ ())
 Output ≟R Output = yes refl
 
 record Registers (FS : FrameSemantics) : Set where
   constructor mkRegs
   field
-    input output : ValueLocation FS
+    input1 input2 output : ValueLocation FS
     stackSlot : ℕ  -- current stack slot index (like rsp, but as slot count)
 
 open Registers public
 
 readReg : ∀ {FS} → Registers FS → AbstractReg → ValueLocation FS
-readReg r Input  = input r
+readReg r Input1 = input1 r
+readReg r Input2 = input2 r
 readReg r Output = output r
 
 writeReg : ∀ {FS} → Registers FS → AbstractReg → ValueLocation FS → Registers FS
-writeReg r Input  v = record r { input = v }
+writeReg r Input1 v = record r { input1 = v }
+writeReg r Input2 v = record r { input2 = v }
 writeReg r Output v = record r { output = v }
 
 -- | Update stackSlot
@@ -251,29 +266,38 @@ decrStackSlot r n = record r { stackSlot = stackSlot r ∸ n }
 writeReg-preserves : ∀ {FS} (regs : Registers FS) dst r v →
   r ≢ dst →
   readReg (writeReg regs dst v) r ≡ readReg regs r
-writeReg-preserves regs Input  Input  v r≢dst = ⊥-elim (r≢dst refl)
+writeReg-preserves regs Input1 Input1 v r≢dst = ⊥-elim (r≢dst refl)
   where open import Data.Empty using (⊥-elim)
-writeReg-preserves regs Input  Output v r≢dst = refl
-writeReg-preserves regs Output Input  v r≢dst = refl
+writeReg-preserves regs Input1 Input2 v r≢dst = refl
+writeReg-preserves regs Input1 Output v r≢dst = refl
+writeReg-preserves regs Input2 Input1 v r≢dst = refl
+writeReg-preserves regs Input2 Input2 v r≢dst = ⊥-elim (r≢dst refl)
+  where open import Data.Empty using (⊥-elim)
+writeReg-preserves regs Input2 Output v r≢dst = refl
+writeReg-preserves regs Output Input1 v r≢dst = refl
+writeReg-preserves regs Output Input2 v r≢dst = refl
 writeReg-preserves regs Output Output v r≢dst = ⊥-elim (r≢dst refl)
   where open import Data.Empty using (⊥-elim)
 
 -- Key lemma: writing to a register and reading it back gives the written value
 writeReg-same : ∀ {FS} (regs : Registers FS) dst v →
   readReg (writeReg regs dst v) dst ≡ v
-writeReg-same regs Input  v = refl
+writeReg-same regs Input1 v = refl
+writeReg-same regs Input2 v = refl
 writeReg-same regs Output v = refl
 
 -- Key lemma: writeReg preserves stackSlot
 writeReg-preserves-stackSlot : ∀ {FS} (regs : Registers FS) dst v →
   stackSlot (writeReg regs dst v) ≡ stackSlot regs
-writeReg-preserves-stackSlot regs Input  v = refl
+writeReg-preserves-stackSlot regs Input1 v = refl
+writeReg-preserves-stackSlot regs Input2 v = refl
 writeReg-preserves-stackSlot regs Output v = refl
 
 -- Key lemma: writing twice to same register is same as writing once
 writeReg-overwrite : ∀ {FS} (regs : Registers FS) dst x y →
   writeReg (writeReg regs dst x) dst y ≡ writeReg regs dst y
-writeReg-overwrite regs Input  x y = refl
+writeReg-overwrite regs Input1 x y = refl
+writeReg-overwrite regs Input2 x y = refl
 writeReg-overwrite regs Output x y = refl
 
 ------------------------------------------------------------------------
@@ -651,22 +675,22 @@ module ExecLemmas {FS : FrameSemantics} where
 
 data AbstractInstr : Set where
   -- Register operations
-  mov-to-output      : AbstractInstr              -- Output := Input
-  mov-to-input       : AbstractInstr              -- Input := Output (compose bridge)
+  mov-to-output      : AbstractInstr              -- Output := Input1
+  mov-to-input       : AbstractInstr              -- Input1 := Output (compose bridge)
 
   -- Memory load operations (slot-level, not physical address arithmetic)
-  load-indirect      : AbstractInstr              -- Output := *Input
-  load-indirect-suc  : AbstractInstr              -- Output := *(sucLoc Input)
+  load-indirect      : AbstractInstr              -- Output := *Input1
+  load-indirect-suc  : AbstractInstr              -- Output := *(sucLoc Input1)
   load-from-slot     : Slot → AbstractInstr       -- Output := stack[slot]
 
   -- Memory store operations
   store-at-slot      : Slot → AbstractInstr       -- stack[slot] := Output
-  store-indirect     : AbstractInstr              -- *Input := Output
-  store-indirect-suc : AbstractInstr              -- *(sucLoc Input) := Output
+  store-indirect     : AbstractInstr              -- *Input1 := Output
+  store-indirect-suc : AbstractInstr              -- *(sucLoc Input1) := Output
 
   -- Address computation
   lea-slot           : Slot → AbstractInstr       -- Output := &stack[slot]
-  restore-input      : Slot → AbstractInstr       -- Input := stack[slot]
+  restore-input      : Slot → AbstractInstr       -- Input1 := stack[slot]
 
   -- Stack management
   instr-alloc-stack   : ℕ → AbstractInstr          -- allocate N slots
@@ -728,7 +752,7 @@ data AbstractInstr : Set where
   -- Per-arch `compile-abstract` lowers this to a label-relative
   -- address load (`lea .L_thunk_<n>(%rip), %rax` on x86-64).
   --
-  -- Plan 0.2.4.2 Phase D follow-up: capture the current Input
+  -- Plan 0.2.4.2 Phase D follow-up: capture the current Input1
   -- register into the closure-register convention slot (e.g.
   -- `%r12` on x86-64). Used in `apply`'s setup trace to keep the
   -- closure pointer alive across pair-construction so that
@@ -887,7 +911,7 @@ module AbstractExec {FS : FrameSemantics} where
   exec-restore-input-with-value : Maybe (ValueLocation FS) → LocState FS →
                                   AllocState {FS} → LocState FS × AllocState {FS}
   exec-restore-input-with-value (just v) s alloc =
-    record s { regs = writeReg (regs s) Input v } , alloc
+    record s { regs = writeReg (regs s) Input1 v } , alloc
   exec-restore-input-with-value nothing s alloc =
     record s { halted = true } , alloc
 
@@ -905,7 +929,7 @@ module AbstractExec {FS : FrameSemantics} where
   -- Lemmas for restore-input helper
   exec-restore-input-just : ∀ v s alloc →
     exec-restore-input-with-value (just v) s alloc ≡
-    (record s { regs = writeReg (regs s) Input v } , alloc)
+    (record s { regs = writeReg (regs s) Input1 v } , alloc)
   exec-restore-input-just _ _ _ = refl
 
   exec-restore-input-nothing : ∀ s alloc →
@@ -926,7 +950,7 @@ module AbstractExec {FS : FrameSemantics} where
   -- Note: by structuring the abstract semantics this way (only Output
   -- and halted may change), the relaxed CCC discipline contract holds
   -- *definitionally* for `instr-sigop si`: frame, alloc, memory,
-  -- Input register, and stackSlot are all unchanged by the body of
+  -- Input1 register, and stackSlot are all unchanged by the body of
   -- `exec-abstract (instr-sigop si)` below.
   ------------------------------------------------------------------------
 
@@ -961,23 +985,23 @@ module AbstractExec {FS : FrameSemantics} where
   exec-abstract : AbstractInstr → LocState FS → AllocState {FS} →
                   LocState FS × AllocState {FS}
 
-  -- mov-to-output: Output := Input
+  -- mov-to-output: Output := Input1
   exec-abstract mov-to-output s alloc =
-    record s { regs = writeReg (regs s) Output (readReg (regs s) Input) } , alloc
+    record s { regs = writeReg (regs s) Output (readReg (regs s) Input1) } , alloc
 
-  -- mov-to-input: Input := Output (compose bridge)
+  -- mov-to-input: Input1 := Output (compose bridge)
   exec-abstract mov-to-input s alloc =
-    record s { regs = writeReg (regs s) Input (readReg (regs s) Output) } , alloc
+    record s { regs = writeReg (regs s) Input1 (readReg (regs s) Output) } , alloc
 
-  -- load-indirect: Output := *Input
+  -- load-indirect: Output := *Input1
   -- Uses exec-load-with-value for easier external proofs
   exec-abstract load-indirect s alloc =
-    exec-load-with-value Output (readLoc s (readReg (regs s) Input)) s , alloc
+    exec-load-with-value Output (readLoc s (readReg (regs s) Input1)) s , alloc
 
-  -- load-indirect-suc: Output := *(sucLoc Input)
+  -- load-indirect-suc: Output := *(sucLoc Input1)
   -- Uses exec-load-with-value for easier external proofs
   exec-abstract load-indirect-suc s alloc =
-    exec-load-with-value Output (readLoc s (sucLoc (readReg (regs s) Input))) s , alloc
+    exec-load-with-value Output (readLoc s (sucLoc (readReg (regs s) Input1))) s , alloc
 
   -- load-from-slot: Output := stack[frame, slot]
   exec-abstract (load-from-slot slot) s alloc =
@@ -987,19 +1011,19 @@ module AbstractExec {FS : FrameSemantics} where
   exec-abstract (store-at-slot slot) s alloc =
     writeLoc s (OnStack (current-frame alloc) slot) (readReg (regs s) Output) , alloc
 
-  -- store-indirect: *Input := Output
+  -- store-indirect: *Input1 := Output
   exec-abstract store-indirect s alloc =
-    writeLoc s (readReg (regs s) Input) (readReg (regs s) Output) , alloc
+    writeLoc s (readReg (regs s) Input1) (readReg (regs s) Output) , alloc
 
-  -- store-indirect-suc: *(sucLoc Input) := Output
+  -- store-indirect-suc: *(sucLoc Input1) := Output
   exec-abstract store-indirect-suc s alloc =
-    writeLoc s (sucLoc (readReg (regs s) Input)) (readReg (regs s) Output) , alloc
+    writeLoc s (sucLoc (readReg (regs s) Input1)) (readReg (regs s) Output) , alloc
 
   -- lea-slot: Output := &stack[frame, slot]
   exec-abstract (lea-slot slot) s alloc =
     record s { regs = writeReg (regs s) Output (OnStack (current-frame alloc) slot) } , alloc
 
-  -- restore-input: Input := stack[frame, slot]
+  -- restore-input: Input1 := stack[frame, slot]
   exec-abstract (restore-input slot) s alloc =
     exec-restore-input-with-value (readLoc s (OnStack (current-frame alloc) slot)) s alloc
 
@@ -1073,7 +1097,7 @@ module AbstractExec {FS : FrameSemantics} where
   -- The abstract semantics of `instr-sigop si` is **structured**: it
   -- may write a new value-location to Output and may halt the
   -- machine, but it leaves everything else (frame, alloc, memory,
-  -- Input register, stackSlot) unchanged. The two postulates below
+  -- Input1 register, stackSlot) unchanged. The two postulates below
   -- (`exec-sigop-output` and `exec-sigop-halts`) are the trusted-
   -- base axioms describing what a SigOp does at the abstract level.
   -- Per-name discharge of these axioms (e.g. `linux.exit` halts;
@@ -1104,7 +1128,7 @@ module AbstractExec {FS : FrameSemantics} where
   -- representing `v`. This is the abstract counterpart to per-arch
   -- immediate-load codegen. State change is exactly the Output
   -- register write — same shape as `mov-to-output`, but the value
-  -- comes from `encode-const` rather than from Input.
+  -- comes from `encode-const` rather than from Input1.
   exec-abstract (instr-load-const isPrim v) s alloc =
     record s { regs = writeReg (regs s) Output (encode-const isPrim v) } , alloc
 
@@ -1116,7 +1140,7 @@ module AbstractExec {FS : FrameSemantics} where
   exec-abstract (instr-load-code-addr n) s alloc =
     record s { regs = writeReg (regs s) Output (encode-code-addr n) } , alloc
 
-  -- Plan 0.2.4.2 Phase D follow-up: save Input to closure register.
+  -- Plan 0.2.4.2 Phase D follow-up: save Input1 to closure register.
   -- Identity at the abstract level — the closure register is purely
   -- a per-arch concern.
   exec-abstract instr-save-closure-reg s alloc = s , alloc

@@ -110,7 +110,7 @@ obs {A} wfStream wfList =
         zeroCase = curry (In wfList Stack ∘ inl Stack ∘ terminal) Stack
 
         -- Suc case: (Nat × (Stream A ⇒ List A)) → (Stream A ⇒ List A)
-        -- Input: pair of (predecessor Nat, recursive continuation)
+        -- Input1: pair of (predecessor Nat, recursive continuation)
         -- Produces: function that takes stream, returns Cons (head, rec tail)
         -- The predecessor Nat (fst) is unused - we only need the continuation (snd)
         sucCase : IR (Nat * (Stream A ⇒[ Many ] List A)) (Stream A ⇒[ Many ] List A)

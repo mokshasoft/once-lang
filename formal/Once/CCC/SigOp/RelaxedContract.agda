@@ -34,7 +34,7 @@
 --
 -- This contract has NO value-flow obligation tying Output to `semM
 -- si`. That means a copy-trace `mov-to-output ∷ []` (which sets
--- Output := Input) satisfies the contract for *any* SigOp, including
+-- Output := Input1) satisfies the contract for *any* SigOp, including
 -- `arith.add.int` whose `semM` is "add the components of the input
 -- pair" — clearly not a copy.
 --
@@ -69,7 +69,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.SigOp.Info using (SigOpInfo; name; semM)
 open import Once.CCC.Machine.SMCore
   using (LocState; AbstractInstr; AbstractTrace;
-         AbstractReg; Input; Output;
+         AbstractReg; Input1; Output;
          halted; regs; readReg;
          module AbstractExec; module MemOps)
 open import Once.CCC.Machine.Allocation
@@ -126,9 +126,9 @@ module RelaxedDef {FS : FrameSemantics} where
       ------------------------------------------------------------------
       -- (4) Register discipline: only Output may change.
       --
-      -- Input is preserved too. (For SigOps that need to read input
+      -- Input1 is preserved too. (For SigOps that need to read input
       -- multiple times — e.g. binary arithmetic on a pair — this is
-      -- naturally satisfied since they only consume from Input.)
+      -- naturally satisfied since they only consume from Input1.)
       ------------------------------------------------------------------
       regs-only-output : ∀ (s : LocState FS) (alloc : AllocState {FS})
         (r : AbstractReg) →

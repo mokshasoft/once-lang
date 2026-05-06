@@ -122,7 +122,7 @@ module NatCataTrace {FS : FrameSemantics} where
   --
   -- In/Out are representational identity at runtime.
   -- The trace is empty because no actual computation is needed.
-  -- Input: Input register points to μNat value
+  -- Input1: Input1 register points to μNat value
   -- Output: Output register contains the layer (same location)
   ------------------------------------------------------------------------
 
@@ -209,7 +209,7 @@ module NatCataTrace {FS : FrameSemantics} where
   --
   -- 1. STATE INVARIANT:
   --    - Output register contains the "current result"
-  --    - Input register points to current μ-value
+  --    - Input1 register points to current μ-value
   --
   -- 2. INDUCTIVE STEP (from sem-cata-compute):
   --    - Zero: trace executes alg-trace on (inj₁ tt)
@@ -235,7 +235,7 @@ module NatCataTrace {FS : FrameSemantics} where
     → ∀ (s : LocState FS) (alloc : AllocState {FS})
     → (input-loc : ValueLocation FS)
     → halted s ≡ false
-    → readReg (regs s) Input ≡ input-loc
+    → readReg (regs s) Input1 ≡ input-loc
     -- Assuming alg-trace correctly implements alg, then:
     -- exec-trace produces semantic result
     → ⊤  -- Full proof would construct ValidAtWF

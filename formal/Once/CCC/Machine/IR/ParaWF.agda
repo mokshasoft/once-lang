@@ -178,7 +178,7 @@ module ParaWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     → ValidAtWF mIn alloc x input-loc s
     → BeforeFrontier alloc input-loc
     → halted s ≡ false
-    → readReg (regs s) Input ≡ input-loc
+    → readReg (regs s) Input1 ≡ input-loc
     → ∃[ mOut ] IRResultAWF mOut (Para wf alg) x s alloc
   run-para-core {F} {A} wf alg rec-wf mIn x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     Heap , record
@@ -263,7 +263,7 @@ module ParaWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
       frontier-stable : ∀ (s'' : LocState FS) (input-loc' : ValueLocation FS) →
         halted s'' ≡ false →
-        readReg (regs s'') Input ≡ input-loc' →
+        readReg (regs s'') Input1 ≡ input-loc' →
         readLoc s'' (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc' →
         _
       frontier-stable s'' input-loc' _ _ _ = inj₂ (inj₂ tt)

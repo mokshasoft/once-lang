@@ -100,7 +100,7 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
   curry-trace : (closure-slot : ℕ) → AbstractTrace
   curry-trace closure-slot =
-    mov-to-output ∷                    -- Output := Input (env pointer)
+    mov-to-output ∷                    -- Output := Input1 (env pointer)
     store-at-slot closure-slot ∷       -- closure[0] := env
     lea-slot (suc closure-slot) ∷      -- Output := &closure[1] (code loc)
     store-at-slot (suc closure-slot) ∷ -- closure[1] := code pointer
@@ -118,7 +118,7 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     ValidAtWF mIn alloc x input-loc s →
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
-    readReg (regs s) Input ≡ input-loc →
+    readReg (regs s) Input1 ≡ input-loc →
     IRResultAWF Heap (curry {k = k} f m) x s alloc
   run-curry {A} {B} {C} {k} mIn f m ir<bound rec-wf x input-loc s alloc
     input-valid-wf input-before not-halted rdi-eq =
@@ -226,7 +226,7 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       rax-eq' : readReg (regs s') Output ≡ closure-loc
       rax-eq' = exec-trace-final-lea-slot prefix-trace closure-slot s alloc not-halted-after-prefix
 
-      -- Closure slot env-ptr': store-at-slot writes Input to closure-slot, preserved by rest
+      -- Closure slot env-ptr': store-at-slot writes Input1 to closure-slot, preserved by rest
       -- Using prefix-store-preserve with:
       --   prefix = [mov-to-output]
       --   k = closure-slot
@@ -247,14 +247,14 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       env-suffix-twa : TraceWritesAbove (suc closure-slot) env-suffix
       env-suffix-twa = ≤-refl , tt
 
-      -- After mov-to-output: Output = Input = input-loc
+      -- After mov-to-output: Output = Input1 = input-loc
       -- Use exec-abstract directly for definitional computation, then connect via exec-trace-single
       s-after-mov : LocState FS
       s-after-mov = proj₁ (exec-abstract mov-to-output s alloc)
 
-      -- Output = Input after mov-to-output (definitional from exec-abstract)
+      -- Output = Input1 after mov-to-output (definitional from exec-abstract)
       output-after-mov : readReg (regs s-after-mov) Output ≡ input-loc
-      output-after-mov = trans (writeReg-same (regs s) Output (readReg (regs s) Input)) rdi-eq
+      output-after-mov = trans (writeReg-same (regs s) Output (readReg (regs s) Input1)) rdi-eq
 
       -- Connect exec-trace to exec-abstract
       exec-trace-env-prefix : exec-trace env-prefix s alloc ≡ exec-abstract mov-to-output s alloc
@@ -340,21 +340,21 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
       -- Frontier slot stability
       -- The trace writes to closure-slot, but writes the SAME value (input-loc'):
-      --   1. mov-to-output: Output = Input = input-loc'
+      --   1. mov-to-output: Output = Input1 = input-loc'
       --   2. store-at-slot closure-slot: slot = Output = input-loc'
       --   3. Rest of trace writes only to higher slots
       frontier-stable' : ∀ (s'' : LocState FS) (input-loc' : ValueLocation FS) →
         halted s'' ≡ false →
-        readReg (regs s'') Input ≡ input-loc' →
+        readReg (regs s'') Input1 ≡ input-loc' →
         readLoc s'' (OnStack (current-frame alloc) closure-slot) ≡ just input-loc' →
         _
       frontier-stable' s'' input-loc' not-halted'' rdi-eq'' _ =
         let -- Use same decomposition as env-ptr': prefix = [mov-to-output], suffix = rest
-            -- After mov-to-output in s'': Output = Input = input-loc'
+            -- After mov-to-output in s'': Output = Input1 = input-loc'
             s''-after-mov = proj₁ (exec-abstract mov-to-output s'' alloc)
 
             output-after-mov'' : readReg (regs s''-after-mov) Output ≡ input-loc'
-            output-after-mov'' = trans (writeReg-same (regs s'') Output (readReg (regs s'') Input)) rdi-eq''
+            output-after-mov'' = trans (writeReg-same (regs s'') Output (readReg (regs s'') Input1)) rdi-eq''
 
             -- Connect exec-trace to exec-abstract
             exec-trace-env-prefix'' : exec-trace env-prefix s'' alloc ≡ exec-abstract mov-to-output s'' alloc
@@ -378,7 +378,7 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
         in inj₂ (inj₁ (trans result (cong just output-after-env-prefix'')))
 
-      -- Input validity in final state
+      -- Input1 validity in final state
       -- Transfer validity across memory-preserving trace execution
       -- Step 1: Use validityWF-trace-preserves to preserve through trace execution
       -- Step 2: Use validityWF-frontier-advance to convert alloc → alloc'
@@ -395,7 +395,7 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       closure-before' : BeforeFrontier alloc' closure-loc
       closure-before' = at-frontier-before-closure alloc
 
-      -- Input location still before frontier after allocation
+      -- Input1 location still before frontier after allocation
       input-before' : BeforeFrontier alloc' input-loc
       input-before' = stack-alloc-advances alloc closure-slots input-loc input-before
 

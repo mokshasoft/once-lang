@@ -526,7 +526,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
     (s : LocState FS) (alloc : AllocState {FS})
     (input-loc : ValueLocation FS)
     (not-halted : halted s ≡ false)
-    (input-eq : readReg (regs s) Input ≡ input-loc)
+    (input-eq : readReg (regs s) Input1 ≡ input-loc)
     → let trace = cata-trace-μ wf alg-trace x
       in ⊤  -- Specification: trace execution produces correct result
   cata-trace-valid-spec wf alg-trace x s alloc input-loc not-halted input-eq = tt
@@ -822,7 +822,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
   --
   -- For Product case, we need:
   --   1. Save input-loc to stack slot before left processing
-  --   2. Load fst-loc into Input for left processing
+  --   2. Load fst-loc into Input1 for left processing
   --   3. After left, restore input-loc and load snd-loc for right
   --
   -- Instructions used:
@@ -862,7 +862,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
   -- | Product left setup trace
   --
-  -- Saves input-loc to stack and sets Input := fst-loc
+  -- Saves input-loc to stack and sets Input1 := fst-loc
   -- Instructions: mov-to-output ∷ store-at-slot ∷ load-indirect ∷ mov-to-input
   prod-left-setup-trace : (save-slot : ℕ) → AbstractTrace
   prod-left-setup-trace save-slot =
@@ -870,34 +870,34 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
   -- | Product right setup trace
   --
-  -- Restores input-loc from stack and sets Input := snd-loc
+  -- Restores input-loc from stack and sets Input1 := snd-loc
   -- Instructions: load-from-slot ∷ mov-to-input ∷ load-indirect-suc ∷ mov-to-input
   prod-right-setup-trace : (save-slot : ℕ) → AbstractTrace
   prod-right-setup-trace save-slot =
     load-from-slot save-slot ∷ mov-to-input ∷ load-indirect-suc ∷ mov-to-input ∷ []
 
-  -- | After prod-left-setup-trace, Input = fst-loc
+  -- | After prod-left-setup-trace, Input1 = fst-loc
   --
   -- Preconditions:
-  --   - Input = input-loc
+  --   - Input1 = input-loc
   --   - readLoc s input-loc ≡ just fst-loc
   --   - halted s ≡ false
   prod-left-setup-input : ∀ (save-slot : ℕ) (s : LocState FS) (alloc : AllocState {FS})
     (input-loc fst-loc : ValueLocation FS) →
     halted s ≡ false →
-    readReg (regs s) Input ≡ input-loc →
+    readReg (regs s) Input1 ≡ input-loc →
     readLoc s input-loc ≡ just fst-loc →
     let (s' , _) = exec-trace (prod-left-setup-trace save-slot) s alloc
-    in readReg (regs s') Input ≡ fst-loc
+    in readReg (regs s') Input1 ≡ fst-loc
   prod-left-setup-input save-slot s alloc input-loc fst-loc not-halted rdi-eq fst-ptr =
     -- Step through the trace:
-    -- 1. mov-to-output: Output := Input
+    -- 1. mov-to-output: Output := Input1
     -- 2. store-at-slot: stack[save-slot] := Output (memory write, regs unchanged)
-    -- 3. load-indirect: Output := *Input (requires halted = false and deref succeeds)
-    -- 4. mov-to-input: Input := Output
+    -- 3. load-indirect: Output := *Input1 (requires halted = false and deref succeeds)
+    -- 4. mov-to-input: Input1 := Output
     --
     -- After load-indirect: Output = fst-loc (from fst-ptr)
-    -- After mov-to-input: Input = fst-loc
+    -- After mov-to-input: Input1 = fst-loc
     SMP.RecSchemeSemantics.prod-left-setup-input-helper save-slot s alloc input-loc fst-loc not-halted rdi-eq fst-ptr
 
   -- | After prod-left-setup-trace, alloc unchanged
@@ -1159,23 +1159,23 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
       mem-result = trans (cong (λ st → readLoc st loc) trace-eq) (trans s3-mem (trans s2-mem s1-mem))
 
   ------------------------------------------------------------------------
-  -- Sum Approach C Traces (OCP-0003: Reuse Input Container)
+  -- Sum Approach C Traces (OCP-0003: Reuse Input1 Container)
   --
   -- Instead of allocating a new Sum wrapper, we reuse the input container
   -- by updating its payload pointer in place. This matches cata semantics:
   -- fmap (cata alg) preserves structure while transforming payloads.
   --
-  -- sum-setup-trace: saves input-loc, loads payload-loc into Input
+  -- sum-setup-trace: saves input-loc, loads payload-loc into Input1
   -- sum-update-trace: restores input-loc, updates pointer, returns input-loc
   ------------------------------------------------------------------------
 
   -- | Sum setup trace (saves input-loc and loads payload)
   --
   -- Instructions:
-  --   1. mov-to-output    -- Output := Input (= input-loc)
+  --   1. mov-to-output    -- Output := Input1 (= input-loc)
   --   2. store-at-slot    -- stack[save-slot] := Output (save input-loc)
-  --   3. load-indirect-suc -- Output := *(sucLoc Input) = payload-loc
-  --   4. mov-to-input     -- Input := Output (= payload-loc for recursive call)
+  --   3. load-indirect-suc -- Output := *(sucLoc Input1) = payload-loc
+  --   4. mov-to-input     -- Input1 := Output (= payload-loc for recursive call)
   sum-setup-trace : (save-slot : ℕ) → AbstractTrace
   sum-setup-trace save-slot =
     mov-to-output ∷ store-at-slot save-slot ∷ load-indirect-suc ∷ mov-to-input ∷ []
@@ -1184,9 +1184,9 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
   --
   -- After recursive processing, Output contains result-loc.
   -- This trace:
-  --   1. restore-input    -- Input := stack[save-slot] = input-loc
-  --   2. store-indirect-suc -- *(sucLoc Input) := Output (update container pointer)
-  --   3. mov-to-output    -- Output := Input = input-loc (result location in rax)
+  --   1. restore-input    -- Input1 := stack[save-slot] = input-loc
+  --   2. store-indirect-suc -- *(sucLoc Input1) := Output (update container pointer)
+  --   3. mov-to-output    -- Output := Input1 = input-loc (result location in rax)
   sum-update-trace : (save-slot : ℕ) → AbstractTrace
   sum-update-trace save-slot =
     restore-input save-slot ∷ store-indirect-suc ∷ mov-to-output ∷ []
@@ -1197,9 +1197,9 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
     sum-setup-input-helper : ∀ (save-slot : ℕ) (s : LocState FS) (alloc : AllocState {FS})
       (input-loc payload-loc : ValueLocation FS) →
       halted s ≡ false →
-      readReg (regs s) Input ≡ input-loc →
+      readReg (regs s) Input1 ≡ input-loc →
       readLoc s (sucLoc input-loc) ≡ just payload-loc →
-      readReg (regs (proj₁ (exec-trace (sum-setup-trace save-slot) s alloc))) Input ≡ payload-loc
+      readReg (regs (proj₁ (exec-trace (sum-setup-trace save-slot) s alloc))) Input1 ≡ payload-loc
 
     sum-setup-alloc-helper : ∀ (save-slot : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
       halted s ≡ false →
@@ -1208,7 +1208,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
     sum-setup-saves-helper : ∀ (save-slot : ℕ) (s : LocState FS) (alloc : AllocState {FS})
       (input-loc : ValueLocation FS) →
       halted s ≡ false →
-      readReg (regs s) Input ≡ input-loc →
+      readReg (regs s) Input1 ≡ input-loc →
       readLoc (proj₁ (exec-trace (sum-setup-trace save-slot) s alloc))
               (OnStack (current-frame alloc) save-slot) ≡ just input-loc
 
@@ -1222,7 +1222,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
       (input-loc : ValueLocation FS) →
       halted s ≡ false →
       readLoc s (OnStack (current-frame alloc) save-slot) ≡ just input-loc →
-      readReg (regs (proj₁ (exec-trace (sum-update-trace save-slot) s alloc))) Input ≡ input-loc
+      readReg (regs (proj₁ (exec-trace (sum-update-trace save-slot) s alloc))) Input1 ≡ input-loc
 
     sum-update-output-helper : ∀ (save-slot : ℕ) (s : LocState FS) (alloc : AllocState {FS})
       (input-loc : ValueLocation FS) →
@@ -1241,25 +1241,25 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
       halted s ≡ false →
       proj₂ (exec-trace (sum-update-trace save-slot) s alloc) ≡ alloc
 
-  -- | After sum-setup-trace, Input = payload-loc
+  -- | After sum-setup-trace, Input1 = payload-loc
   --
   -- Preconditions:
-  --   - Input = input-loc
+  --   - Input1 = input-loc
   --   - readLoc s (sucLoc input-loc) ≡ just payload-loc
   --   - halted s ≡ false
   sum-setup-sets-input : ∀ (save-slot : ℕ) (s : LocState FS) (alloc : AllocState {FS})
     (input-loc payload-loc : ValueLocation FS) →
     halted s ≡ false →
-    readReg (regs s) Input ≡ input-loc →
+    readReg (regs s) Input1 ≡ input-loc →
     readLoc s (sucLoc input-loc) ≡ just payload-loc →
     let (s' , _) = exec-trace (sum-setup-trace save-slot) s alloc
-    in readReg (regs s') Input ≡ payload-loc
+    in readReg (regs s') Input1 ≡ payload-loc
   sum-setup-sets-input save-slot s alloc input-loc payload-loc not-halted rdi-eq payload-ptr =
     -- Same logic as prod-left-setup but uses load-indirect-suc instead of load-indirect
-    -- Step 1: mov-to-output: Output := Input = input-loc
+    -- Step 1: mov-to-output: Output := Input1 = input-loc
     -- Step 2: store-at-slot: stack[save-slot] := Output (memory write, regs unchanged)
-    -- Step 3: load-indirect-suc: Output := *(sucLoc Input) = payload-loc
-    -- Step 4: mov-to-input: Input := Output = payload-loc
+    -- Step 3: load-indirect-suc: Output := *(sucLoc Input1) = payload-loc
+    -- Step 4: mov-to-input: Input1 := Output = payload-loc
     sum-setup-input-helper save-slot s alloc input-loc payload-loc not-halted rdi-eq payload-ptr
 
   -- | After sum-setup-trace, alloc unchanged
@@ -1273,7 +1273,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
   sum-setup-saves-input : ∀ (save-slot : ℕ) (s : LocState FS) (alloc : AllocState {FS})
     (input-loc : ValueLocation FS) →
     halted s ≡ false →
-    readReg (regs s) Input ≡ input-loc →
+    readReg (regs s) Input1 ≡ input-loc →
     let (s' , _) = exec-trace (sum-setup-trace save-slot) s alloc
     in readLoc s' (OnStack (current-frame alloc) save-slot) ≡ just input-loc
   sum-setup-saves-input save-slot s alloc input-loc not-halted rdi-eq =
@@ -1289,13 +1289,13 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
   sum-setup-mem-eq save-slot s alloc loc not-halted loc-neq =
     sum-setup-mem-helper save-slot s alloc loc not-halted loc-neq
 
-  -- | After sum-update-trace, Input = input-loc (restored from stack)
+  -- | After sum-update-trace, Input1 = input-loc (restored from stack)
   sum-update-restores-input : ∀ (save-slot : ℕ) (s : LocState FS) (alloc : AllocState {FS})
     (input-loc : ValueLocation FS) →
     halted s ≡ false →
     readLoc s (OnStack (current-frame alloc) save-slot) ≡ just input-loc →
     let (s' , _) = exec-trace (sum-update-trace save-slot) s alloc
-    in readReg (regs s') Input ≡ input-loc
+    in readReg (regs s') Input1 ≡ input-loc
   sum-update-restores-input save-slot s alloc input-loc not-halted stack-has-input =
     sum-update-input-helper save-slot s alloc input-loc not-halted stack-has-input
 
@@ -1366,7 +1366,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
       → μLayerValid alloc wfF wfG layer input-loc s  -- Layer validity
       → BeforeFrontier alloc input-loc
       → halted s ≡ false
-      → readReg (regs s) Input ≡ input-loc
+      → readReg (regs s) Input1 ≡ input-loc
       → ∃[ mOut ] ProcessedLayerResult wfG alg mOut wfF layer s alloc
 
     -- K case: constant layer, no recursion
@@ -1385,7 +1385,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; result-loc = input-loc
         ; processed-valid = validityWF-mem-only k-val input-loc s s-after refl refl (valid-basetype-wf isBase input-before)
         ; result-before = input-before
-        ; rax-is-result = trans (writeReg-same (regs s) Output (readReg (regs s) Input)) rdi-eq
+        ; rax-is-result = trans (writeReg-same (regs s) Output (readReg (regs s) Input1)) rdi-eq
         ; not-halted = not-halted
         ; semantic-correct = refl  -- sem-fmap K f x = x, coerce-struct⁻¹ K _ x = x
         ; frame-preserved = refl
@@ -1499,19 +1499,19 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
     --
     -- Linear trace structure:
     --   1. load-indirect-suc  -- Output := payload-loc (read from sucLoc input-loc)
-    --   2. mov-to-input       -- Input := payload-loc
+    --   2. mov-to-input       -- Input1 := payload-loc
     --   3. [sub-trace]        -- recursive processing, Output := processed-result-loc
-    --   4. store-indirect-suc -- *(sucLoc input-loc)... wait, Input changed!
+    --   4. store-indirect-suc -- *(sucLoc input-loc)... wait, Input1 changed!
     --
-    -- Issue: After step 2-3, Input = payload-loc, but step 4 needs Input = input-loc
+    -- Issue: After step 2-3, Input1 = payload-loc, but step 4 needs Input1 = input-loc
     -- Solution: Save input-loc to stack before step 1, restore after step 3
     --
     -- Correct linear trace:
     --   1. store-at-slot save-slot   -- Save input-loc
     --   2. load-indirect-suc         -- Output := payload-loc
-    --   3. mov-to-input              -- Input := payload-loc
+    --   3. mov-to-input              -- Input1 := payload-loc
     --   4. [sub-trace]               -- Output := processed-result-loc
-    --   5. restore-input save-slot   -- Input := input-loc (restored)
+    --   5. restore-input save-slot   -- Input1 := input-loc (restored)
     --   6. store-indirect-suc        -- *(sucLoc input-loc) := processed-result-loc
     --   7. mov-to-output             -- Output := input-loc
     --
@@ -1520,12 +1520,12 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
     process-layer (wf-Sum wfL wfR) wfG alg dispatch (inj₁ l-layer) mIn input-loc s alloc
       (μlayer-inl {payload-loc = payload-loc} payload-ptr payload-bf sucLoc-bf l-layer-valid) input-before not-halted rdi-eq =
       let
-        -- Step 1: Setup trace - load payload pointer and set Input
-        -- This transforms s (where Input = input-loc) to s-setup (where Input = payload-loc)
+        -- Step 1: Setup trace - load payload pointer and set Input1
+        -- This transforms s (where Input1 = input-loc) to s-setup (where Input1 = payload-loc)
         setup-trace : AbstractTrace
         setup-trace = load-indirect-suc ∷ mov-to-input ∷ []
 
-        -- Execute setup trace to get state where Input = payload-loc
+        -- Execute setup trace to get state where Input1 = payload-loc
         s-after-load : LocState FS
         s-after-load = proj₁ (exec-abstract load-indirect-suc s alloc)
 
@@ -1534,22 +1534,22 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
         -- After load-indirect-suc: Output = payload-loc (from sucLoc input-loc)
         -- The payload-ptr proof tells us: readLoc s (sucLoc input-loc) ≡ just payload-loc
-        -- exec-abstract load-indirect-suc reads from sucLoc(Input) = sucLoc(input-loc)
+        -- exec-abstract load-indirect-suc reads from sucLoc(Input1) = sucLoc(input-loc)
         -- and writes the result to Output
 
-        -- Then mov-to-input copies Output to Input
+        -- Then mov-to-input copies Output to Input1
         s-setup : LocState FS
         s-setup = proj₁ (exec-abstract mov-to-input s-after-load alloc-after-load)
 
         alloc-setup : AllocState {FS}
         alloc-setup = proj₂ (exec-abstract mov-to-input s-after-load alloc-after-load)
 
-        -- At s-setup: Input = payload-loc, so rdi-eq is satisfied for recursive call
-        -- Proof: load-indirect-suc sets Output to value at sucLoc(Input)
-        --        Since Input = input-loc and payload-ptr says sucLoc(input-loc) contains payload-loc,
+        -- At s-setup: Input1 = payload-loc, so rdi-eq is satisfied for recursive call
+        -- Proof: load-indirect-suc sets Output to value at sucLoc(Input1)
+        --        Since Input1 = input-loc and payload-ptr says sucLoc(input-loc) contains payload-loc,
         --        Output = payload-loc
-        --        Then mov-to-input copies Output to Input, so Input = payload-loc
-        rdi-setup : readReg (regs s-setup) Input ≡ payload-loc
+        --        Then mov-to-input copies Output to Input1, so Input1 = payload-loc
+        rdi-setup : readReg (regs s-setup) Input1 ≡ payload-loc
         rdi-setup = setup-trace-sets-input s alloc input-loc payload-loc not-halted rdi-eq payload-ptr
 
         -- Transfer l-layer-valid through setup (memory not changed by register ops)
@@ -2187,34 +2187,34 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
     -- at the frontier. This mirrors the inj₁ case exactly.
     --
     -- Trace structure:
-    --   1. setup-trace: load payload-loc into Input
+    --   1. setup-trace: load payload-loc into Input1
     --   2. sub-trace: process payload recursively
     --   3. wrapper-trace: allocate Sum wrapper at frontier
     ------------------------------------------------------------------------
     process-layer (wf-Sum wfL wfR) wfG alg dispatch (inj₂ r-layer) mIn input-loc s alloc
       (μlayer-inr {payload-loc = payload-loc} payload-ptr payload-bf sucLoc-bf r-layer-valid) input-before not-halted rdi-eq =
       let
-        -- Step 1: Setup trace - load payload pointer and set Input
-        -- This transforms s (where Input = input-loc) to s-setup (where Input = payload-loc)
+        -- Step 1: Setup trace - load payload pointer and set Input1
+        -- This transforms s (where Input1 = input-loc) to s-setup (where Input1 = payload-loc)
         setup-trace : AbstractTrace
         setup-trace = load-indirect-suc ∷ mov-to-input ∷ []
 
-        -- Execute setup trace to get state where Input = payload-loc
+        -- Execute setup trace to get state where Input1 = payload-loc
         s-after-load : LocState FS
         s-after-load = proj₁ (exec-abstract load-indirect-suc s alloc)
 
         alloc-after-load : AllocState {FS}
         alloc-after-load = proj₂ (exec-abstract load-indirect-suc s alloc)
 
-        -- Then mov-to-input copies Output to Input
+        -- Then mov-to-input copies Output to Input1
         s-setup : LocState FS
         s-setup = proj₁ (exec-abstract mov-to-input s-after-load alloc-after-load)
 
         alloc-setup : AllocState {FS}
         alloc-setup = proj₂ (exec-abstract mov-to-input s-after-load alloc-after-load)
 
-        -- At s-setup: Input = payload-loc
-        rdi-setup : readReg (regs s-setup) Input ≡ payload-loc
+        -- At s-setup: Input1 = payload-loc
+        rdi-setup : readReg (regs s-setup) Input1 ≡ payload-loc
         rdi-setup = setup-trace-sets-input s alloc input-loc payload-loc not-halted rdi-eq payload-ptr
 
         -- Transfer r-layer-valid through setup (memory not changed by register ops)
@@ -2809,7 +2809,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
       (r-layer-valid : μLayerValid alloc wfR wfG r-comp snd-loc s)
       (input-before : BeforeFrontier alloc input-loc)
       (not-halted : halted s ≡ false)
-      (rdi-eq : readReg (regs s) Input ≡ input-loc)
+      (rdi-eq : readReg (regs s) Input1 ≡ input-loc)
       → ∃[ mOut ] ProcessedLayerResult wfG alg mOut (wf-Prod wfL wfR) (l-comp , r-comp) s alloc
     process-layer-prod {FL} {FR} {G} {A} wfL wfR wfG alg dispatch l-comp r-comp mIn
       input-loc fst-loc snd-loc s alloc
@@ -2895,7 +2895,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
         alloc-left-setup : AllocState {FS}
         alloc-left-setup = proj₂ (exec-trace left-setup-trace s alloc)
 
-        rdi-left-setup : readReg (regs s-left-setup) Input ≡ fst-loc
+        rdi-left-setup : readReg (regs s-left-setup) Input1 ≡ fst-loc
         rdi-left-setup = prod-left-setup-input save-slot s alloc input-loc fst-loc
                            not-halted rdi-eq fst-ptr
 
@@ -3067,8 +3067,8 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
         s-right-setup : LocState FS
         s-right-setup = proj₁ (exec-trace right-setup-trace s-l alloc-for-right)
 
-        -- Input = snd-loc after right setup
-        rdi-right-setup : readReg (regs s-right-setup) Input ≡ snd-loc
+        -- Input1 = snd-loc after right setup
+        rdi-right-setup : readReg (regs s-right-setup) Input1 ≡ snd-loc
         rdi-right-setup = rdi-right-setup-proof
           where
             -- Stack at save-slot still contains input-loc (preserved through left processing)
@@ -3096,7 +3096,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
                 (λ eq → Data.Nat.Properties.<-irrefl refl (bf-slot-contradiction alloc (sucLoc input-loc) save-slot sucLoc-bf eq)))
                 snd-ptr)
 
-            rdi-right-setup-proof : readReg (regs s-right-setup) Input ≡ snd-loc
+            rdi-right-setup-proof : readReg (regs s-right-setup) Input1 ≡ snd-loc
             rdi-right-setup-proof = SMP.RecSchemeSemantics.prod-right-setup-input-helper
               save-slot s-l alloc-for-right input-loc snd-loc l-not-halted
               stack-at-s-l' snd-ptr-at-s-l
@@ -3541,14 +3541,14 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
     readLoc-regs-irrelevant s r (OnStack f k) = refl
     readLoc-regs-irrelevant s r (OnHeap hl) = refl
 
-    -- Helper: mov-to-input state equals manual Input write when Output = target
-    -- exec-abstract mov-to-input s alloc = (record s { regs = writeReg (regs s) Input (readReg (regs s) Output) }, alloc)
-    -- When Output = target-loc, this equals (record s { regs = writeReg (regs s) Input target-loc }, alloc)
+    -- Helper: mov-to-input state equals manual Input1 write when Output = target
+    -- exec-abstract mov-to-input s alloc = (record s { regs = writeReg (regs s) Input1 (readReg (regs s) Output) }, alloc)
+    -- When Output = target-loc, this equals (record s { regs = writeReg (regs s) Input1 target-loc }, alloc)
     exec-mov-to-input-state : ∀ (s : LocState FS) (alloc : AllocState {FS}) (target-loc : ValueLocation FS) →
       readReg (regs s) Output ≡ target-loc →
-      proj₁ (exec-abstract mov-to-input s alloc) ≡ record s { regs = writeReg (regs s) Input target-loc }
+      proj₁ (exec-abstract mov-to-input s alloc) ≡ record s { regs = writeReg (regs s) Input1 target-loc }
     exec-mov-to-input-state s alloc target-loc output-eq =
-      cong (λ loc → record s { regs = writeReg (regs s) Input loc }) output-eq
+      cong (λ loc → record s { regs = writeReg (regs s) Input1 loc }) output-eq
 
     extract-μLayerValid : ∀ {G m} (wfG : WellFormedF G)
       {alloc : AllocState {FS}} {x : ⟦μ⟧ G}
@@ -3574,7 +3574,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
       → ValidAtWF mIn alloc x input-loc s
       → BeforeFrontier alloc input-loc
       → halted s ≡ false
-      → readReg (regs s) Input ≡ input-loc
+      → readReg (regs s) Input1 ≡ input-loc
       → ∃[ mOut ] IRResultAWF mOut (Cata wfG alg) x s alloc
     cata-dispatched-new {G} {A} wfG alg dispatch x mIn input-loc s alloc
       x-valid input-before not-halted rdi-eq =
@@ -3606,10 +3606,10 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
         -- Step 3: Bridge state with mov-to-input for algebra
         s-bridged : LocState FS
-        s-bridged = record s-layer { regs = writeReg (regs s-layer) Input layer-loc }
+        s-bridged = record s-layer { regs = writeReg (regs s-layer) Input1 layer-loc }
 
-        rdi-bridged : readReg (regs s-bridged) Input ≡ layer-loc
-        rdi-bridged = writeReg-same (regs s-layer) Input layer-loc
+        rdi-bridged : readReg (regs s-bridged) Input1 ≡ layer-loc
+        rdi-bridged = writeReg-same (regs s-layer) Input1 layer-loc
 
         layer-valid-bridged : ValidAtWF mLayer alloc-layer processed-layer layer-loc s-bridged
         layer-valid-bridged = validityWF-mem-only processed-layer layer-loc s-layer s-bridged refl refl layer-valid-wf
@@ -3703,7 +3703,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
           let bf-layer = frontier-monotone alloc alloc-layer
                           (sym layer-frame-preserved) layer-slot-mono layer-heap-mono loc bf
               -- s-bridged = record s-layer { regs = ... }
-              bridged-eq = readLoc-regs-irrelevant s-layer (writeReg (regs s-layer) Input layer-loc) loc
+              bridged-eq = readLoc-regs-irrelevant s-layer (writeReg (regs s-layer) Input1 layer-loc) loc
           in trans (alg-mem-pres loc bf-layer) (trans bridged-eq (layer-mem-pres loc bf))
 
         -- Trace correctness: compose layer-trace ++ mov-to-input ∷ alg-trace
@@ -3871,7 +3871,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
   --
   --   Chain by:
   --     1. Execute trace₁, get IRResultAWF₁
-  --     2. mov-to-input bridges Output to Input
+  --     2. mov-to-input bridges Output to Input1
   --     3. Execute trace₂ from IRResultAWF₁.final-state
   --     4. Combine proofs (validityWF-mem-preserved, etc.)
   --
@@ -3913,7 +3913,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
   -- SOLUTION: Two-Phase Architecture
   --
   -- Phase 1: process-layer
-  --   Input:  layer : ⟦ G ⟧F (⟦μ⟧ G)  (layer with μ-values at Id positions)
+  --   Input1:  layer : ⟦ G ⟧F (⟦μ⟧ G)  (layer with μ-values at Id positions)
   --   Output: processed : ⟦ G ⟧F A'    (layer with fold results at Id positions)
   --           + trace, state, validity proofs
   --
@@ -3925,7 +3925,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
   --   - Prod (l, r): recurse on both, combine as (processed-l, processed-r)
   --
   -- Phase 2: apply-algebra
-  --   Input:  processed : ⟦ G ⟧F A'
+  --   Input1:  processed : ⟦ G ⟧F A'
   --   Output: result : A' = alg' processed
   --
   -- RETURN TYPE for process-layer:

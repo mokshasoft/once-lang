@@ -46,7 +46,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.SigOp.Info using (SigOpInfo)
 open import Once.CCC.Machine.SMCore
   using (LocState; mkLocState; AbstractInstr; AbstractTrace;
-         AbstractReg; Input; Output;
+         AbstractReg; Input1; Output;
          Registers; halted; regs; stackMem; heapMem;
          readReg; writeReg; writeReg-preserves;
          mov-to-output;
@@ -71,7 +71,7 @@ module POC {FS : FrameSemantics} where
 
   ----------------------------------------------------------------------
   -- The "compiled" trace under test: a single mov-to-output.
-  -- Semantically: Output := Input. (A copy.)
+  -- Semantically: Output := Input1. (A copy.)
   --
   -- For `add (a, b)`, the right output is `a + b`, which is NOT
   -- the input pair location. So this trace is wrong for `add` at
@@ -83,13 +83,13 @@ module POC {FS : FrameSemantics} where
 
   ----------------------------------------------------------------------
   -- After-state of executing copy-trace from a not-halted state.
-  -- exec-abstract mov-to-output writes Input's value to Output,
+  -- exec-abstract mov-to-output writes Input1's value to Output,
   -- leaving everything else unchanged.
   ----------------------------------------------------------------------
 
   copy-after : LocState FS → AllocState {FS} → LocState FS × AllocState {FS}
   copy-after s alloc =
-    mkLocState (writeReg (regs s) Output (readReg (regs s) Input))
+    mkLocState (writeReg (regs s) Output (readReg (regs s) Input1))
                (stackMem s) (heapMem s) (halted s)
     , alloc
 
@@ -138,12 +138,12 @@ module POC {FS : FrameSemantics} where
       ≡ readReg (regs s) r
   copy-regs-only-output s alloc r r≢out not-halted =
     let regs-eq : regs (proj₁ (exec-trace copy-trace s alloc))
-                  ≡ writeReg (regs s) Output (readReg (regs s) Input)
+                  ≡ writeReg (regs s) Output (readReg (regs s) Input1)
         regs-eq = cong (λ p → regs (proj₁ p))
                        (copy-trace-reduces s alloc not-halted)
     in trans (cong (λ rs → readReg rs r) regs-eq)
              (writeReg-preserves (regs s) Output r
-                                 (readReg (regs s) Input) r≢out)
+                                 (readReg (regs s) Input1) r≢out)
 
   -- (5) Halted: stays false (mov-to-output doesn't halt).
   copy-halted-after : ∀ s alloc → halted s ≡ false →
@@ -195,13 +195,13 @@ module POC {FS : FrameSemantics} where
 -- Tier-2 negative-test: try to prove Faithful for add-info with the
 -- copy-trace.
 --
--- The trace is `mov-to-output ∷ []`. Its effect: Output := Input.
--- So `Output post-trace = readReg (regs s) Input` and `s post-trace`
+-- The trace is `mov-to-output ∷ []`. Its effect: Output := Input1.
+-- So `Output post-trace = readReg (regs s) Input1` and `s post-trace`
 -- has the same heap/stack as `s` but with Output written.
 --
--- Faithful obligation: for any Repr, given the Input represents x,
+-- Faithful obligation: for any Repr, given the Input1 represents x,
 -- the post-trace Output represents `add-semM x`. With Output =
--- Input post-trace, we'd need Repr B (add-semM x) … (Input-loc).
+-- Input1 post-trace, we'd need Repr B (add-semM x) … (Input-loc).
 -- But the only thing we know about Input-loc is Repr A x. The only
 -- way these two could agree is if `add-semM x = x` (and even then,
 -- not for arbitrary Repr — Repr A and Repr B are at different
@@ -227,7 +227,7 @@ module POC {FS : FrameSemantics} where
     -- attempt the proof honestly and document where it gets stuck.
     --
     -- Attempt: discharge `output-faithful` directly. Given Repr A x
-    -- s alloc (Input-loc), the post-trace state has Output := Input
+    -- s alloc (Input-loc), the post-trace state has Output := Input1
     -- (mov-to-output's effect), and stack/heap/halted unchanged.
     -- So we need:
     --

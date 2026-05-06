@@ -41,7 +41,7 @@ open import Once.CCC.IR using (IR; AllocMode)
 open import Once.CCC.Eval using (eval)
 
 open import Once.CCC.Machine.SMCore
-  using (LocState; ValueLocation; halted; regs; readReg; Input;
+  using (LocState; ValueLocation; halted; regs; readReg; Input1;
          AbstractTrace)
 open import Once.CCC.Machine.Allocation using (AllocState; current-frame)
 
@@ -124,7 +124,7 @@ module Correctness {FS : FrameSemantics} (program-bound : ℕ) where
     ValidAtWF mIn alloc x input-loc s →
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
-    readReg (regs s) Input ≡ input-loc →
+    readReg (regs s) Input1 ≡ input-loc →
     let trace = ir-to-trace ir
         abs-result = exec-trace trace s alloc
         abs-final-s = proj₁ abs-result

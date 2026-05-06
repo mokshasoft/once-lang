@@ -73,7 +73,7 @@ module Simulation {FS : FrameSemantics} where
     constructor mkX86
     field
       rax-val : ValueLocation FS   -- Output register (maps to x86-64 rax)
-      rdi-val : ValueLocation FS   -- Input register (maps to x86-64 rdi)
+      rdi-val : ValueLocation FS   -- Input1 register (maps to x86-64 rdi)
       cur-frame : Frame            -- Current frame (maps to rbp)
       stack-slot : ℕ               -- Stack slot index (maps to rsp offset)
       x86-mem : ValueLocation FS → Maybe (ValueLocation FS)  -- Memory
@@ -89,7 +89,7 @@ module Simulation {FS : FrameSemantics} where
 
   record Corresponds (ls : LocState FS) (xs : X86State) (alloc : AllocState {FS}) : Set where
     field
-      rdi-eq : rdi-val xs ≡ readReg (regs ls) Input
+      rdi-eq : rdi-val xs ≡ readReg (regs ls) Input1
       rax-eq : rax-val xs ≡ readReg (regs ls) Output
       frame-eq : cur-frame xs ≡ current-frame alloc
       -- Phase 3: frame-capacity removed from AllocState
@@ -330,11 +330,11 @@ module Simulation {FS : FrameSemantics} where
   -- Helper lemmas
   ------------------------------------------------------------------------
 
-  Input≢Output : Input ≢ Output
-  Input≢Output ()
+  Input1≢Output : Input1 ≢ Output
+  Input1≢Output ()
 
-  Output≢Input : Output ≢ Input
-  Output≢Input ()
+  Output≢Input1 : Output ≢ Input1
+  Output≢Input1 ()
 
   -- readLoc only depends on stackMem and heapMem, not regs
   readLoc-regs-irrel : ∀ ls newRegs loc →
@@ -463,7 +463,7 @@ module Simulation {FS : FrameSemantics} where
 
   -- Helper: incrStackSlot preserves register reads
   incrStackSlot-preserves-Input : ∀ (r : Registers FS) (n : ℕ) →
-    readReg (incrStackSlot r n) Input ≡ readReg r Input
+    readReg (incrStackSlot r n) Input1 ≡ readReg r Input1
   incrStackSlot-preserves-Input r n = refl
 
   incrStackSlot-preserves-Output : ∀ (r : Registers FS) (n : ℕ) →
@@ -472,7 +472,7 @@ module Simulation {FS : FrameSemantics} where
 
   -- Helper: decrStackSlot preserves register reads
   decrStackSlot-preserves-Input : ∀ (r : Registers FS) (n : ℕ) →
-    readReg (decrStackSlot r n) Input ≡ readReg r Input
+    readReg (decrStackSlot r n) Input1 ≡ readReg r Input1
   decrStackSlot-preserves-Input r n = refl
 
   decrStackSlot-preserves-Output : ∀ (r : Registers FS) (n : ℕ) →
@@ -541,12 +541,12 @@ module Simulation {FS : FrameSemantics} where
                 (exec-x86-load-rdi-with-value mv xs)
                 (proj₂ (exec-restore-input-with-value mv ls alloc))
   load-rdi-corresponds (just v) ls xs alloc corr = record
-    -- x86: rdi-val becomes v; abstract: Input reg becomes v (via writeReg-same)
-    { rdi-eq = sym (writeReg-same (regs ls) Input v)
-    ; rax-eq = trans (rax-eq corr) (sym (writeReg-preserves (regs ls) Input Output v (λ ())))
+    -- x86: rdi-val becomes v; abstract: Input1 reg becomes v (via writeReg-same)
+    { rdi-eq = sym (writeReg-same (regs ls) Input1 v)
+    ; rax-eq = trans (rax-eq corr) (sym (writeReg-preserves (regs ls) Input1 Output v (λ ())))
     ; frame-eq = frame-eq corr
-    ; slot-eq = trans (slot-eq corr) (slot-eq-lift alloc (sym (writeReg-preserves-stackSlot (regs ls) Input v)))
-    ; mem-eq = λ l → trans (mem-eq corr l) (sym (readLoc-regs-irrel ls (writeReg (regs ls) Input v) l))
+    ; slot-eq = trans (slot-eq corr) (slot-eq-lift alloc (sym (writeReg-preserves-stackSlot (regs ls) Input1 v)))
+    ; mem-eq = λ l → trans (mem-eq corr l) (sym (readLoc-regs-irrel ls (writeReg (regs ls) Input1 v) l))
     ; halt-eq = halt-eq corr
     }
   -- When read fails, both set halted to true
@@ -640,17 +640,17 @@ module Simulation {FS : FrameSemantics} where
                 (exec-prog (compile-abstract i) xs (current-frame alloc))
                 (proj₂ (exec-abstract i ls alloc))
 
-  -- mov-to-output: Output := Input
+  -- mov-to-output: Output := Input1
   -- x86: mov rax, rdi → rax' = rdi
-  -- Abstract: regs' Output = readReg regs Input
+  -- Abstract: regs' Output = readReg regs Input1
   -- TRIVIAL: both set output to input value
   instr-sim mov-to-output ls xs alloc not-halted corr with x86-halted xs | xs-not-halted ls xs alloc not-halted corr
   ... | true | ()
   ... | false | _ =
-    let inputVal = readReg (regs ls) Input
+    let inputVal = readReg (regs ls) Input1
         newRegs = writeReg (regs ls) Output inputVal
     in record
-    { rdi-eq = trans (rdi-eq corr) (sym (writeReg-preserves (regs ls) Output Input inputVal Input≢Output))
+    { rdi-eq = trans (rdi-eq corr) (sym (writeReg-preserves (regs ls) Output Input1 inputVal Input1≢Output))
     ; rax-eq = trans (rdi-eq corr) (sym (writeReg-same (regs ls) Output inputVal))
     ; frame-eq = frame-eq corr
     ; slot-eq = trans (slot-eq corr) (slot-eq-lift alloc (sym (writeReg-preserves-stackSlot (regs ls) Output inputVal)))
@@ -658,32 +658,32 @@ module Simulation {FS : FrameSemantics} where
     ; halt-eq = halt-eq corr
     }
 
-  -- mov-to-input: Input := Output
+  -- mov-to-input: Input1 := Output
   -- x86: mov rdi, rax → rdi' = rax
-  -- Abstract: regs' Input = readReg regs Output
+  -- Abstract: regs' Input1 = readReg regs Output
   instr-sim mov-to-input ls xs alloc not-halted corr with x86-halted xs | xs-not-halted ls xs alloc not-halted corr
   ... | true | ()
   ... | false | _ =
     let outputVal = readReg (regs ls) Output
-        newRegs = writeReg (regs ls) Input outputVal
+        newRegs = writeReg (regs ls) Input1 outputVal
     in record
-    { rdi-eq = trans (rax-eq corr) (sym (writeReg-same (regs ls) Input outputVal))
-    ; rax-eq = trans (rax-eq corr) (sym (writeReg-preserves (regs ls) Input Output outputVal Output≢Input))
+    { rdi-eq = trans (rax-eq corr) (sym (writeReg-same (regs ls) Input1 outputVal))
+    ; rax-eq = trans (rax-eq corr) (sym (writeReg-preserves (regs ls) Input1 Output outputVal Output≢Input1))
     ; frame-eq = frame-eq corr
-    ; slot-eq = trans (slot-eq corr) (slot-eq-lift alloc (sym (writeReg-preserves-stackSlot (regs ls) Input outputVal)))
+    ; slot-eq = trans (slot-eq corr) (slot-eq-lift alloc (sym (writeReg-preserves-stackSlot (regs ls) Input1 outputVal)))
     ; mem-eq = λ l → trans (mem-eq corr l) (sym (readLoc-regs-irrel ls newRegs l))
     ; halt-eq = halt-eq corr
     }
 
-  -- load-indirect: Output := *Input
-  -- Abstract: exec-load-with-value Output (readLoc ls (readReg (regs ls) Input)) ls , alloc
+  -- load-indirect: Output := *Input1
+  -- Abstract: exec-load-with-value Output (readLoc ls (readReg (regs ls) Input1)) ls , alloc
   -- X86: exec-x86-load-rax-with-value (x86-mem xs (rdi-val xs)) xs
-  -- By correspondence: rdi-val xs ≡ readReg (regs ls) Input and x86-mem ≡ readLoc
+  -- By correspondence: rdi-val xs ≡ readReg (regs ls) Input1 and x86-mem ≡ readLoc
   instr-sim load-indirect ls xs alloc not-halted corr
     with x86-halted xs | xs-not-halted ls xs alloc not-halted corr
   ... | true | ()
   ... | false | _ =
-    let loc = readReg (regs ls) Input
+    let loc = readReg (regs ls) Input1
         -- Both read from the same location (by correspondence)
         x86-loc-eq : rdi-val xs ≡ loc
         x86-loc-eq = rdi-eq corr
@@ -700,15 +700,15 @@ module Simulation {FS : FrameSemantics} where
              (sym mem-read-eq)
              base-corr
 
-  -- load-indirect-suc: Output := *(sucLoc Input)
-  -- Abstract: exec-load-with-value Output (readLoc ls (sucLoc (readReg (regs ls) Input))) ls , alloc
+  -- load-indirect-suc: Output := *(sucLoc Input1)
+  -- Abstract: exec-load-with-value Output (readLoc ls (sucLoc (readReg (regs ls) Input1))) ls , alloc
   -- X86: exec-x86-load-rax-with-value (x86-mem xs (sucLoc (rdi-val xs))) xs
   instr-sim load-indirect-suc ls xs alloc not-halted corr
     with x86-halted xs | xs-not-halted ls xs alloc not-halted corr
   ... | true | ()
   ... | false | _ =
-    let loc = sucLoc (readReg (regs ls) Input)
-        -- Key: x86-mem xs (sucLoc (rdi-val xs)) ≡ readLoc ls (sucLoc (readReg (regs ls) Input))
+    let loc = sucLoc (readReg (regs ls) Input1)
+        -- Key: x86-mem xs (sucLoc (rdi-val xs)) ≡ readLoc ls (sucLoc (readReg (regs ls) Input1))
         x86-loc-eq : sucLoc (rdi-val xs) ≡ loc
         x86-loc-eq = cong sucLoc (rdi-eq corr)
         mem-read-eq : x86-mem xs (sucLoc (rdi-val xs)) ≡ readLoc ls loc
@@ -769,7 +769,7 @@ module Simulation {FS : FrameSemantics} where
                         (sym slot-recover)
                         (writeX86Mem-stack-corresponds ls xs frame slot val (mem-eq corr) (rax-eq corr))
     in record
-    { rdi-eq = trans (rdi-eq corr) (cong (λ r → readReg r Input) (sym regs-eq))
+    { rdi-eq = trans (rdi-eq corr) (cong (λ r → readReg r Input1) (sym regs-eq))
     ; rax-eq = trans (rax-eq corr) (cong (λ r → readReg r Output) (sym regs-eq))
     ; frame-eq = frame-eq corr
     ; slot-eq = trans (slot-eq corr) (slot-eq-lift alloc (cong stackSlot (sym regs-eq)))
@@ -777,12 +777,12 @@ module Simulation {FS : FrameSemantics} where
     ; halt-eq = trans (halt-eq corr) (sym (writeLoc-halted ls loc val))
     }
 
-  -- store-indirect: *Input := Output
+  -- store-indirect: *Input1 := Output
   instr-sim store-indirect ls xs alloc not-halted corr
     with x86-halted xs | xs-not-halted ls xs alloc not-halted corr
   ... | true | ()
   ... | false | _ =
-    let loc = readReg (regs ls) Input
+    let loc = readReg (regs ls) Input1
         val = readReg (regs ls) Output
         ls' = writeLoc ls loc val
         regs-eq : regs ls' ≡ regs ls
@@ -796,7 +796,7 @@ module Simulation {FS : FrameSemantics} where
                        (sym loc-eq)
                        (writeX86Mem-corresponds ls xs loc val (mem-eq corr) (rax-eq corr))
     in record
-    { rdi-eq = trans (rdi-eq corr) (cong (λ r → readReg r Input) (sym regs-eq))
+    { rdi-eq = trans (rdi-eq corr) (cong (λ r → readReg r Input1) (sym regs-eq))
     ; rax-eq = trans (rax-eq corr) (cong (λ r → readReg r Output) (sym regs-eq))
     ; frame-eq = frame-eq corr
     ; slot-eq = trans (slot-eq corr) (slot-eq-lift alloc (cong stackSlot (sym regs-eq)))
@@ -804,18 +804,18 @@ module Simulation {FS : FrameSemantics} where
     ; halt-eq = trans (halt-eq corr) (sym (writeLoc-halted ls loc val))
     }
 
-  -- store-indirect-suc: *(sucLoc Input) := Output
+  -- store-indirect-suc: *(sucLoc Input1) := Output
   instr-sim store-indirect-suc ls xs alloc not-halted corr
     with x86-halted xs | xs-not-halted ls xs alloc not-halted corr
   ... | true | ()
   ... | false | _ =
-    let loc = sucLoc (readReg (regs ls) Input)
+    let loc = sucLoc (readReg (regs ls) Input1)
         val = readReg (regs ls) Output
         ls' = writeLoc ls loc val
         regs-eq : regs ls' ≡ regs ls
         regs-eq = writeLoc-regs ls loc val
-        -- rdi-val xs ≡ readReg (regs ls) Input by correspondence
-        rdi-eq' : rdi-val xs ≡ readReg (regs ls) Input
+        -- rdi-val xs ≡ readReg (regs ls) Input1 by correspondence
+        rdi-eq' : rdi-val xs ≡ readReg (regs ls) Input1
         rdi-eq' = rdi-eq corr
         -- x86 writes to sucLoc (rdi-val xs) which equals loc
         loc-eq : sucLoc (rdi-val xs) ≡ loc
@@ -825,7 +825,7 @@ module Simulation {FS : FrameSemantics} where
                        (sym loc-eq)
                        (writeX86Mem-corresponds ls xs loc val (mem-eq corr) (rax-eq corr))
     in record
-    { rdi-eq = trans (rdi-eq corr) (cong (λ r → readReg r Input) (sym regs-eq))
+    { rdi-eq = trans (rdi-eq corr) (cong (λ r → readReg r Input1) (sym regs-eq))
     ; rax-eq = trans (rax-eq corr) (cong (λ r → readReg r Output) (sym regs-eq))
     ; frame-eq = frame-eq corr
     ; slot-eq = trans (slot-eq corr) (slot-eq-lift alloc (cong stackSlot (sym regs-eq)))
@@ -847,7 +847,7 @@ module Simulation {FS : FrameSemantics} where
         slot-recover : disp-to-slot (slot *ℕ slot-size) ≡ slot
         slot-recover = m*n/n≡m slot slot-size
     in record
-    { rdi-eq = trans (rdi-eq corr) (sym (writeReg-preserves (regs ls) Output Input loc Input≢Output))
+    { rdi-eq = trans (rdi-eq corr) (sym (writeReg-preserves (regs ls) Output Input1 loc Input1≢Output))
     ; rax-eq = trans (cong (λ s → OnStack frame s) slot-recover)
                      (sym (writeReg-same (regs ls) Output loc))
     ; frame-eq = frame-eq corr
@@ -856,7 +856,7 @@ module Simulation {FS : FrameSemantics} where
     ; halt-eq = halt-eq corr
     }
 
-  -- restore-input: Input := stack[frame, slot]
+  -- restore-input: Input1 := stack[frame, slot]
   -- Abstract: exec-restore-input-with-value (readLoc ls (OnStack frame slot)) ls alloc
   -- X86: exec-x86-load-rdi-with-value (x86-mem xs (slotLoc frame (disp-to-slot ...))) xs
   instr-sim (restore-input slot) ls xs alloc not-halted corr
@@ -1004,7 +1004,7 @@ module Simulation {FS : FrameSemantics} where
                         (sym slot-recover)
                         (writeX86Mem-stack-corresponds ls xs frame slot val (mem-eq corr) (rax-eq corr))
     in record
-    { rdi-eq = trans (rdi-eq corr) (cong (λ r → readReg r Input) (sym regs-eq))
+    { rdi-eq = trans (rdi-eq corr) (cong (λ r → readReg r Input1) (sym regs-eq))
     ; rax-eq = trans (rax-eq corr) (cong (λ r → readReg r Output) (sym regs-eq))
     ; frame-eq = frame-eq corr
     ; slot-eq = trans (slot-eq corr) (slot-eq-lift alloc (cong stackSlot (sym regs-eq)))

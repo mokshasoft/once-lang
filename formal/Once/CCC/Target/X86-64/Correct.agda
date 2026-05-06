@@ -42,7 +42,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open FrameSemantics using (Frame; _≺_)
-open import Once.CCC.Machine.SMCore using (LocState; ValueLocation; halted; regs; readReg; Input)
+open import Once.CCC.Machine.SMCore using (LocState; ValueLocation; halted; regs; readReg; Input1)
 
 open import Once.Type using (Type)
 open import Once.Semantics.Machine using (⟦_⟧)
@@ -123,7 +123,7 @@ module Correctness
     ir-size ir < program-bound →
     -- Machine is ready to execute (caller must establish)
     halted s ≡ false →
-    readReg (regs s) Input ≡ input-loc →
+    readReg (regs s) Input1 ≡ input-loc →
     -- Phase 3: capacity parameter removed (unbounded stack model)
     -- ...then output represents (eval ir x)
     ∃[ mOut ] ∃[ result-loc ] ∃[ s' ] ∃[ alloc' ]
@@ -146,7 +146,7 @@ module Correctness
 -- compile-correct shows:
 --   Represents x input-loc s
 --   ∧ halted s ≡ false           (CPU running)
---   ∧ Input = input-loc            (calling convention)
+--   ∧ Input1 = input-loc            (calling convention)
 --   (Phase 3: capacity precondition removed - unbounded stack model)
 --     →
 --   Represents (eval ir x) result-loc s'

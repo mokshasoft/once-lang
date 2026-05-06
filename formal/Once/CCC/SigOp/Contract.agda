@@ -36,7 +36,7 @@ open import Once.Semantics.Machine using (⟦_⟧)
 ------------------------------------------------------------------------
 
 module Def {FS : FrameSemantics} (program-bound : ℕ) where
-  open import Once.CCC.Machine.SMCore using (LocState; ValueLocation; halted; regs; readReg; Input)
+  open import Once.CCC.Machine.SMCore using (LocState; ValueLocation; halted; regs; readReg; Input1)
   open import Once.CCC.Machine.Allocation using (AllocState; module FrontierInvariant)
   open FrontierInvariant {FS} using (BeforeFrontier)
   open import Once.CCC.Machine.ClosureWellFormed
@@ -55,7 +55,7 @@ module Def {FS : FrameSemantics} (program-bound : ℕ) where
       ValidAtWF mIn alloc x input-loc s →
       BeforeFrontier alloc input-loc →
       halted s ≡ false →
-      readReg (regs s) Input ≡ input-loc →
+      readReg (regs s) Input1 ≡ input-loc →
       IRResultAWF output-mode ir x s alloc
 
   -- | Provider interface (partial).

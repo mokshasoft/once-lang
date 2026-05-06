@@ -18,7 +18,7 @@
 --   - ra: return address
 --
 -- Once's register mapping:
---   - a0: Input AND Output register
+--   - a0: Input1 AND Output register
 --     (RISC-V LP64 uses a0 for both first argument and return value.
 --      This means id, fold, unfold, arr compile to ZERO instructions!)
 --   - s0 (fp): frame pointer
@@ -76,7 +76,7 @@ slot-to-disp n = n *ℕ slot-size
 -- The mapping follows the SlotMachine operational semantics.
 --
 -- Register mapping (optimized for RISC-V LP64):
---   Input  → a0 (primary value register)
+--   Input1  → a0 (primary value register)
 --   Output → a0 (same! a0 serves both roles)
 --   Frame  → fp (s0)
 --   Closure → s1 (environment pointer, callee-saved)
@@ -85,23 +85,23 @@ slot-to-disp n = n *ℕ slot-size
 
 compile-abstract : AbstractInstr → Program
 
--- mov-to-output: Output := Input
--- Copy t0 (Input) to a0 (Output)
+-- mov-to-output: Output := Input1
+-- Copy t0 (Input1) to a0 (Output)
 compile-abstract mov-to-output =
   mv a0 t0 ∷ []
 
--- mov-to-input: Input := Output
--- Copy a0 (Output) to t0 (Input)
+-- mov-to-input: Input1 := Output
+-- Copy a0 (Output) to t0 (Input1)
 compile-abstract mov-to-input =
   mv t0 a0 ∷ []
 
--- load-indirect: Output := *Input
--- t0 holds address (Input), load value into a0 (Output)
+-- load-indirect: Output := *Input1
+-- t0 holds address (Input1), load value into a0 (Output)
 -- RV64: ld a0, 0(t0)
 compile-abstract load-indirect =
   ld a0 t0 0 ∷ []
 
--- load-indirect-suc: Output := *(sucLoc Input)
+-- load-indirect-suc: Output := *(sucLoc Input1)
 -- RV64: ld a0, 8(t0)
 compile-abstract load-indirect-suc =
   ld a0 t0 slot-size ∷ []
@@ -116,14 +116,14 @@ compile-abstract (load-from-slot n) =
 compile-abstract (store-at-slot n) =
   sd a0 fp (slot-to-disp n) ∷ []
 
--- store-indirect: *Input := Output
+-- store-indirect: *Input1 := Output
 -- Need address and value, but both are a0!
 -- Solution: address was saved to t0 by preceding instruction
 -- RV64: sd a0, 0(t0)
 compile-abstract store-indirect =
   sd a0 t0 0 ∷ []
 
--- store-indirect-suc: *(sucLoc Input) := Output
+-- store-indirect-suc: *(sucLoc Input1) := Output
 -- RV64: sd a0, 8(t0)
 compile-abstract store-indirect-suc =
   sd a0 t0 slot-size ∷ []
@@ -133,7 +133,7 @@ compile-abstract store-indirect-suc =
 compile-abstract (lea-slot n) =
   addi a0 fp (+ (slot-to-disp n)) ∷ []
 
--- restore-input: Input := stack[slot]
+-- restore-input: Input1 := stack[slot]
 -- This restores a saved address for use by store-indirect
 -- We load into t0 (not a0) to preserve current value
 -- RV64: ld t0, slot*8(fp)
@@ -220,7 +220,7 @@ compile-abstract (instr-load-const _ _) = unimp ∷ []
 -- Plan 0.2.4.2: closure-body code-addr load. RV64 stub.
 compile-abstract (instr-load-code-addr _) = unimp ∷ []
 -- Plan 0.2.4.2: save closure-register. On RV64 the closure pointer
--- lives in s1; Input is in t0. Move t0 into s1 so the subsequent
+-- lives in s1; Input1 is in t0. Move t0 into s1 so the subsequent
 -- `ld t0, 8(s1); jalr ra, t0, 0` resolves correctly.
 compile-abstract instr-save-closure-reg =
   mv s1 t0 ∷ []

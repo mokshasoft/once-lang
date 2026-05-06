@@ -77,8 +77,8 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     -- f produces s₁
     proj₁ (exec-trace f-trace s alloc) ≡ s₁ →
     halted s₁ ≡ false →
-    -- s₁' is s₁ with Input := Output
-    s₁' ≡ record s₁ { regs = writeReg (regs s₁) Input (readReg (regs s₁) Output) } →
+    -- s₁' is s₁ with Input1 := Output
+    s₁' ≡ record s₁ { regs = writeReg (regs s₁) Input1 (readReg (regs s₁) Output) } →
     -- g produces s₂ from s₁' (alloc-g has same current-frame as alloc)
     current-frame alloc-g ≡ current-frame alloc →
     proj₁ (exec-trace g-trace s₁' alloc-g) ≡ s₂ →
@@ -160,7 +160,7 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     ValidAtWF mIn alloc x input-loc s →
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
-    readReg (regs s) Input ≡ input-loc →
+    readReg (regs s) Input1 ≡ input-loc →
     ∃[ mOut ] IRResultAWF mOut (g ∘ f) x s alloc
   run-compose mIn f g rec-wf x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     mOut , record
@@ -254,10 +254,10 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
              alloc₁ alloc₁-reclaimed bf-transfer
              (IRResultAWF.result-valid-wf result-f)
 
-      s₁' = record s₁ { regs = writeReg (regs s₁) Input inter-loc }
+      s₁' = record s₁ { regs = writeReg (regs s₁) Input1 inter-loc }
 
-      rdi-eq₁ : readReg (regs s₁') Input ≡ inter-loc
-      rdi-eq₁ = writeReg-same (regs s₁) Input inter-loc
+      rdi-eq₁ : readReg (regs s₁') Input1 ≡ inter-loc
+      rdi-eq₁ = writeReg-same (regs s₁) Input1 inter-loc
 
       inter-valid-wf' : ValidAtWF mMid alloc₁-reclaimed (eval f x) inter-loc s₁'
       inter-valid-wf' = validityWF-mem-only (eval f x) inter-loc s₁ s₁' refl refl inter-valid-reclaimed
@@ -285,11 +285,11 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       s-final = proj₁ (exec-trace compose-trace s alloc)
 
       -- Prove s-final ≡ s₂ using the compose equation
-      -- s₁' = record s₁ { regs = writeReg (regs s₁) Input inter-loc }
+      -- s₁' = record s₁ { regs = writeReg (regs s₁) Input1 inter-loc }
       -- By rax-is-result: readReg (regs s₁) Output ≡ inter-loc
-      -- So s₁' ≡ record s₁ { regs = writeReg (regs s₁) Input (readReg (regs s₁) Output) }
-      s₁'-eq-output : s₁' ≡ record s₁ { regs = writeReg (regs s₁) Input (readReg (regs s₁) Output) }
-      s₁'-eq-output = cong (λ v → record s₁ { regs = writeReg (regs s₁) Input v })
+      -- So s₁' ≡ record s₁ { regs = writeReg (regs s₁) Input1 (readReg (regs s₁) Output) }
+      s₁'-eq-output : s₁' ≡ record s₁ { regs = writeReg (regs s₁) Input1 (readReg (regs s₁) Output) }
+      s₁'-eq-output = cong (λ v → record s₁ { regs = writeReg (regs s₁) Input1 v })
                            (sym (IRResultAWF.rax-is-result result-f))
 
       s-final-eq : s-final ≡ s₂
@@ -427,7 +427,7 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ------------------------------------------------------------------------
       compose-frontier-stable : ∀ (s' : LocState FS) (input-loc' : ValueLocation FS) →
         halted s' ≡ false →
-        readReg (regs s') Input ≡ input-loc' →
+        readReg (regs s') Input1 ≡ input-loc' →
         readLoc s' (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc' →
         (next-slot alloc ≡ next-slot alloc₂) ⊎
         ((readLoc (proj₁ (exec-trace compose-trace s' alloc))

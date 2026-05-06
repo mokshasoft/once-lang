@@ -157,7 +157,7 @@ ir-to-trace' n l (⟨ f , g ⟩ _) =
 -- ────────────────────────────────────────────────────────────────────
 -- curry — closure construction.
 -- Mirror CurryWF.curry-trace closure-slot:
---   mov-to-output ∷                       -- Output := Input (env ptr)
+--   mov-to-output ∷                       -- Output := Input1 (env ptr)
 --   store-at-slot closure-slot ∷          -- closure[0] := env
 --   lea-slot (suc closure-slot) ∷         -- Output := &closure[1]
 --   store-at-slot (suc closure-slot) ∷    -- closure[1] := code-ptr
@@ -214,7 +214,7 @@ ir-to-trace' n l (curry body _) =
 --   apply-setup-trace pair-slot ++ instr-call-closure ∷ []
 --
 -- Setup loads (closure, arg) from the input pair, stores them at
--- slot/slot+1, points Input at the new pair. Then instr-call-closure
+-- slot/slot+1, points Input1 at the new pair. Then instr-call-closure
 -- transfers control to the closure's code pointer (per-arch lowering
 -- knows the calling convention).
 -- ────────────────────────────────────────────────────────────────────
@@ -226,7 +226,7 @@ ir-to-trace' n l apply =
       store-at-slot (suc pair-slot) ∷
       load-indirect ∷
       mov-to-input ∷
-      -- Save closure ptr (now in Input) to closure-register so the
+      -- Save closure ptr (now in Input1) to closure-register so the
       -- subsequent indirect call (`call *0x8(%r12)`) has a target.
       instr-save-closure-reg ∷
       load-indirect ∷
@@ -254,7 +254,7 @@ ir-to-trace' n l (inr _)       = n , l , [] , []
 ir-to-trace' n l (case _ _)    = n , l , [] , []
 
 ir-to-trace' n l (In _ _)       = n , l , [] , []
--- out-μ and Out: ν/μ Lambek inverses; semantically Output := Input.
+-- out-μ and Out: ν/μ Lambek inverses; semantically Output := Input1.
 -- run-X uses `mov-to-output ∷ []`; mirror it so the discharge falls
 -- out via the same `transport-trivial` pattern as id/arr/free-heap.
 ir-to-trace' n l (out-μ _)      = n , l , (mov-to-output ∷ []) , []
@@ -267,7 +267,7 @@ ir-to-trace' n l (Hylo _ _ _ _) = n , l , [] , []
 ir-to-trace' n l (Fuse _ _ _ _) = n , l , [] , []
 
 -- free-heap is semantically a no-op (returns its input unchanged).
--- run-free-heap emits `mov-to-output ∷ []` to copy Input → Output as
+-- run-free-heap emits `mov-to-output ∷ []` to copy Input1 → Output as
 -- the identity behavior; we mirror that exactly so trace correctness
 -- discharges via the same transport-trivial pattern as id/arr.
 ir-to-trace' n l (free-heap _)  = n , l , (mov-to-output ∷ []) , []

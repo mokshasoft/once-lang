@@ -221,7 +221,7 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
     ValidAtWF mIn alloc x input-loc s →
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
-    readReg (regs s) Input ≡ input-loc →
+    readReg (regs s) Input1 ≡ input-loc →
     ∃[ m ] IRResultAWF m (SigOp {A} {B} si) x s alloc
   run-sigOp {A} {B} mIn si x input-loc s alloc valid bf nh rdi
     with sigOp-proof {A} {B} si
@@ -265,7 +265,7 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
       ValidAtWF mIn alloc x input-loc s →
       BeforeFrontier alloc input-loc →
       halted s ≡ false →
-      readReg (regs s) Input ≡ input-loc →
+      readReg (regs s) Input1 ≡ input-loc →
       Acc _<_ (ir-size ir) →
       ∃[ mOut ] IRResultAWF mOut ir x s alloc
 
@@ -349,7 +349,7 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
         input-valid-wf input-before not-halted rdi-eq
 
     -- Apply: uses BodyCorrect.execute from closure (quantity-polymorphic)
-    -- Input must be Heap (boxed pair of closure * arg)
+    -- Input1 must be Heap (boxed pair of closure * arg)
     -- Uses PURE RECLAMATION: body executes in same frame, then reclaims stack
     --
     -- DYNAMIC CAPACITY THREADING (X86-style):
@@ -460,7 +460,7 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
     ValidAtWF mIn alloc x input-loc s →
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
-    readReg (regs s) Input ≡ input-loc →
+    readReg (regs s) Input1 ≡ input-loc →
     ∃[ mOut ] IRResultAWF mOut ir x s alloc
   run-wf mIn ir ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     run-ir-wf mIn ir ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq

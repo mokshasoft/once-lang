@@ -664,7 +664,7 @@ unfoldS (sem-ana F {A} coalg a) = sfmap (translateF IntRep F) (sem-ana F coalg) 
 --
 -- OCP-0003: Unlike Hylo where termination is a CONTRACT (coalgebra must
 -- destruct the μ-component), Fuse guarantees termination STRUCTURALLY:
--- - Input is μG (well-founded inductive type)
+-- - Input1 is μG (well-founded inductive type)
 -- - Transform receives pre-destructed G-layer via out-μ
 -- - Transform produces F-layer with same μG values (rearranged)
 -- - Recursion is structural on the μG subterms
@@ -714,7 +714,7 @@ sem-fuseNat F G wfF wfG {B} transform alg =
 --
 -- OCP-0003: Hylo is now based on Fuse, removing the need for TerminatesOn.
 -- Termination is guaranteed by requiring μG as input:
--- - Input is μG (well-founded inductive type)
+-- - Input1 is μG (well-founded inductive type)
 -- - Coalgebra produces F-layers from μG values
 -- - Recursion is structural on μG
 --

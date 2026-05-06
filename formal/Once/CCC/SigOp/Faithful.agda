@@ -74,7 +74,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.SigOp.Info using (SigOpInfo; semM)
 open import Once.CCC.Machine.SMCore
   using (LocState; AbstractTrace;
-         AbstractReg; Input; Output;
+         AbstractReg; Input1; Output;
          ValueLocation;
          halted; regs; readReg;
          module AbstractExec)
@@ -104,7 +104,7 @@ module FaithfulDef {FS : FrameSemantics} where
 
   ----------------------------------------------------------------------
   -- The contract: post-trace Output represents `semM si` of the
-  -- pre-trace Input.
+  -- pre-trace Input1.
   --
   -- Crucially, this requires the implementor to *exhibit*
   -- evidence that the trace's effect, when interpreted via Repr,
@@ -119,7 +119,7 @@ module FaithfulDef {FS : FrameSemantics} where
       output-faithful : ∀ (s : LocState FS) (alloc : AllocState {FS})
                          (x : ⟦ A ⟧) →
         halted s ≡ false →
-        Repr A x s alloc (readReg (regs s) Input) →
+        Repr A x s alloc (readReg (regs s) Input1) →
         Repr B (semM si x)
                (proj₁ (exec-trace trace s alloc))
                (proj₂ (exec-trace trace s alloc))

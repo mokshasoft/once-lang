@@ -83,7 +83,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
     ValidAtWF mIn alloc x input-loc s →
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
-    readReg (regs s) Input ≡ input-loc →
+    readReg (regs s) Input1 ≡ input-loc →
     IRResultAWF m (⟨ f , g ⟩ m) x s alloc
 
   run-pair {A} {B} {C} mIn f g m rec-wf x input-loc s alloc
@@ -150,7 +150,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
       ------------------------------------------------------------------------
       -- Capacity derivations
       ------------------------------------------------------------------------
-      -- Input validity at advanced frontier
+      -- Input1 validity at advanced frontier
       ------------------------------------------------------------------------
       input-before-at-f-start : BeforeFrontier alloc-after-pair-slots input-loc
       input-before-at-f-start = frontier-monotone alloc alloc-after-pair-slots refl
@@ -194,7 +194,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
       alloc-after-f-reclaim = record alloc { next-slot = reclaim-f }
 
       ------------------------------------------------------------------------
-      -- Input validity for g (after restoring from backup-slot)
+      -- Input1 validity for g (after restoring from backup-slot)
       ------------------------------------------------------------------------
       input-before-at-reclaim-f : BeforeFrontier alloc-after-f-reclaim input-loc
       input-before-at-reclaim-f = frontier-monotone alloc alloc-after-f-reclaim refl
@@ -203,7 +203,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
                                         (≤-trans (n≤1+n snd-slot) reclaim-f-above-f-start)))
                                     ≤-refl input-loc input-before
 
-      -- Input validity at s₁ (memory preserved through f-trace for input-loc)
+      -- Input1 validity at s₁ (memory preserved through f-trace for input-loc)
       input-valid-wf-s1 : ValidAtWF mIn alloc x input-loc s₁
       input-valid-wf-s1 = validityWF-mem-preserved x input-loc s s₁ input-before
                             (λ loc bf → irresult-mem-preserved result-f loc (bf-to-after-pair-slots loc bf))
@@ -217,9 +217,9 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
                                       ≤-refl input-valid-wf-s1
 
       -- Restore input register for g
-      s₁' = record s₁ { regs = writeReg (regs s₁) Input input-loc }
-      rdi-eq₁ : readReg (regs s₁') Input ≡ input-loc
-      rdi-eq₁ = writeReg-same (regs s₁) Input input-loc
+      s₁' = record s₁ { regs = writeReg (regs s₁) Input1 input-loc }
+      rdi-eq₁ : readReg (regs s₁') Input1 ≡ input-loc
+      rdi-eq₁ = writeReg-same (regs s₁) Input1 input-loc
 
       input-valid-wf₁' : ValidAtWF mIn alloc-after-f-reclaim x input-loc s₁'
       input-valid-wf₁' = validityWF-mem-only x input-loc s₁ s₁' refl refl input-valid-wf-at-reclaim-f
@@ -741,7 +741,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
       ------------------------------------------------------------------------
       pair-frontier-stable : ∀ (s' : LocState FS) (input-loc' : ValueLocation FS) →
         halted s' ≡ false →
-        readReg (regs s') Input ≡ input-loc' →
+        readReg (regs s') Input1 ≡ input-loc' →
         readLoc s' (OnStack frame backup-slot) ≡ just input-loc' →
         (next-slot alloc ≡ pair-reclaim) ⊎
         ((readLoc (proj₁ (exec-trace pair-trace s' alloc))
@@ -816,7 +816,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
 
       -- Output at s-after-f contains fst-loc
       -- Use exec-trace-output-deterministic: two executions of f-trace from states
-      -- that agree on Input and memory in [f-start, max-slot-f) give same Output.
+      -- that agree on Input1 and memory in [f-start, max-slot-f) give same Output.
       --
       -- Execution 1: f-trace from s-after-setup with alloc-after-setup → s-after-f
       -- Execution 2: f-trace from s with alloc-after-pair-slots → s₁ (via trace-correct)
@@ -827,16 +827,16 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
       oaf-frame-eq : current-frame alloc-after-setup ≡ current-frame alloc-after-pair-slots
       oaf-frame-eq = trans (exec-trace-preserves-frame setup-trace s alloc) refl
 
-      -- Input preservation through setup-trace (mov-to-output and store-at-slot don't modify Input)
-      oaf-input-preserved : readReg (regs s-after-setup) Input ≡ readReg (regs s) Input
+      -- Input1 preservation through setup-trace (mov-to-output and store-at-slot don't modify Input1)
+      oaf-input-preserved : readReg (regs s-after-setup) Input1 ≡ readReg (regs s) Input1
       oaf-input-preserved =
         let s₁' = proj₁ (exec-abstract mov-to-output s alloc)
             alloc₁' = proj₂ (exec-abstract mov-to-output s alloc)
-            mov-preserves-input : readReg (regs s₁') Input ≡ readReg (regs s) Input
-            mov-preserves-input = writeReg-preserves (regs s) Output Input (readReg (regs s) Input) (λ ())
+            mov-preserves-input : readReg (regs s₁') Input1 ≡ readReg (regs s) Input1
+            mov-preserves-input = writeReg-preserves (regs s) Output Input1 (readReg (regs s) Input1) (λ ())
             not-halted₁' = exec-abstract-preserves-halted mov-to-output s alloc not-halted iph-mov-to-output
             s₂' = proj₁ (exec-abstract (store-at-slot backup-slot) s₁' alloc₁')
-            store-preserves-input : readReg (regs s₂') Input ≡ readReg (regs s₁') Input
+            store-preserves-input : readReg (regs s₂') Input1 ≡ readReg (regs s₁') Input1
             store-preserves-input = exec-abstract-store-at-slot-preserves-input backup-slot s₁' alloc₁'
             setup-decomp : exec-trace setup-trace s alloc ≡ exec-trace (store-at-slot backup-slot ∷ []) s₁' alloc₁'
             setup-decomp = exec-trace-cons mov-to-output (store-at-slot backup-slot ∷ []) s alloc not-halted
@@ -844,7 +844,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
             store-single = exec-trace-single (store-at-slot backup-slot) s₁' alloc₁' not-halted₁'
             s-setup-eq : s-after-setup ≡ s₂'
             s-setup-eq = cong proj₁ (trans setup-decomp store-single)
-        in trans (cong (λ st → readReg (regs st) Input) s-setup-eq)
+        in trans (cong (λ st → readReg (regs st) Input1) s-setup-eq)
                  (trans store-preserves-input mov-preserves-input)
 
       -- Memory agreement at [f-start, max-slot-f): setup writes only at backup-slot < f-start
@@ -920,7 +920,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
 
       -- Output at s-after-g contains snd-loc
       -- Use exec-trace-output-deterministic: two executions of g-trace from states
-      -- that agree on Input and memory in [reclaim-f, max-slot-g) give same Output.
+      -- that agree on Input1 and memory in [reclaim-f, max-slot-g) give same Output.
       --
       -- Execution 1: g-trace from s-after-middle with alloc-after-middle → s-after-g
       -- Execution 2: g-trace from s₁' with alloc-after-f-reclaim → (via trace-correct)
@@ -933,9 +933,9 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
                      (trans (exec-trace-preserves-frame f-trace s-after-setup alloc-after-setup)
                      (trans (exec-trace-preserves-frame setup-trace s alloc) refl))
 
-      -- Input equality: both have input-loc (s₁' has it from writeReg, s-after-middle from restore-input)
-      oag-input-s1' : readReg (regs s₁') Input ≡ input-loc
-      oag-input-s1' = writeReg-same (regs s₁) Input input-loc
+      -- Input1 equality: both have input-loc (s₁' has it from writeReg, s-after-middle from restore-input)
+      oag-input-s1' : readReg (regs s₁') Input1 ≡ input-loc
+      oag-input-s1' = writeReg-same (regs s₁) Input1 input-loc
 
       -- Decompose middle-trace: store-at-slot fst-slot ∷ restore-input backup-slot ∷ []
       -- (moved before oag-input-after-middle which needs these)
@@ -953,16 +953,16 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
                                      (trans (exec-trace-preserves-frame f-trace s-after-setup alloc-after-setup)
                                             (exec-trace-preserves-frame setup-trace s alloc))
 
-      -- Input after middle-trace: restore-input backup-slot sets Input to backup-slot's value
+      -- Input1 after middle-trace: restore-input backup-slot sets Input1 to backup-slot's value
       -- Chain: setup writes input-loc to backup → f preserves → store fst preserves → restore reads
       -- Key steps: (1) setup writes input-loc to backup-slot, (2) f-trace preserves backup (writes above f-start),
-      -- (3) store-at-slot fst-slot preserves backup (fst > backup), (4) restore-input reads backup and sets Input
-      oag-input-after-middle : readReg (regs s-after-middle) Input ≡ input-loc
+      -- (3) store-at-slot fst-slot preserves backup (fst > backup), (4) restore-input reads backup and sets Input1
+      oag-input-after-middle : readReg (regs s-after-middle) Input1 ≡ input-loc
       oag-input-after-middle =
         let -- Step 1: After setup-trace, backup-slot has input-loc
             -- setup-trace = mov-to-output ∷ store-at-slot backup-slot ∷ []
             -- Use rec-scheme-stores-input which proves exactly this
-            setup-stores : readLoc s-after-setup (OnStack (current-frame alloc) backup-slot) ≡ just (readReg (regs s) Input)
+            setup-stores : readLoc s-after-setup (OnStack (current-frame alloc) backup-slot) ≡ just (readReg (regs s) Input1)
             setup-stores = SMP.RecSchemeSemantics.rec-scheme-stores-input backup-slot s alloc not-halted
             setup-has-input : readLoc s-after-setup (OnStack frame backup-slot) ≡ just input-loc
             setup-has-input = trans setup-stores (cong just rdi-eq)
@@ -999,12 +999,12 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
             fst-store-has-input : readLoc oag-s-after-fst-store (OnStack frame backup-slot) ≡ just input-loc
             fst-store-has-input = trans store-fst-preserves-backup f-has-input
 
-            -- Step 4: restore-input backup-slot sets Input to value at backup-slot
+            -- Step 4: restore-input backup-slot sets Input1 to value at backup-slot
             fst-store-backup-slot-eq : readLoc oag-s-after-fst-store (OnStack (current-frame oag-alloc-after-fst-store) backup-slot) ≡ just input-loc
             fst-store-backup-slot-eq = subst (λ f → readLoc oag-s-after-fst-store (OnStack f backup-slot) ≡ just input-loc)
                                              (sym oag-frame-fst-store-eq)
                                              fst-store-has-input
-            restore-sets-input : readReg (regs (proj₁ (exec-abstract (restore-input backup-slot) oag-s-after-fst-store oag-alloc-after-fst-store))) Input ≡ input-loc
+            restore-sets-input : readReg (regs (proj₁ (exec-abstract (restore-input backup-slot) oag-s-after-fst-store oag-alloc-after-fst-store))) Input1 ≡ input-loc
             restore-sets-input = SMP.RecSchemeSemantics.exec-abstract-restore-input-sets-input backup-slot oag-s-after-fst-store oag-alloc-after-fst-store input-loc fst-store-backup-slot-eq
 
             -- Connect s-after-middle to the restore result
@@ -1019,9 +1019,9 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
             s-middle-eq : s-after-middle ≡ proj₁ (exec-abstract (restore-input backup-slot) oag-s-after-fst-store oag-alloc-after-fst-store)
             s-middle-eq = cong proj₁ (trans middle-decomp restore-single)
 
-        in trans (cong (λ st → readReg (regs st) Input) s-middle-eq) restore-sets-input
+        in trans (cong (λ st → readReg (regs st) Input1) s-middle-eq) restore-sets-input
 
-      oag-input-eq : readReg (regs s-after-middle) Input ≡ readReg (regs s₁') Input
+      oag-input-eq : readReg (regs s-after-middle) Input1 ≡ readReg (regs s₁') Input1
       oag-input-eq = trans oag-input-after-middle (sym oag-input-s1')
 
       -- Memory agreement at [reclaim-f, max-slot-g)
@@ -1202,7 +1202,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
       frame-after-fst-store-eq = trans (exec-abstract-preserves-frame (store-at-slot fst-slot) s-after-f alloc-after-f)
                                        frame-after-f-eq
 
-      -- restore-input preserves all memory locations (it only modifies Input register)
+      -- restore-input preserves all memory locations (it only modifies Input1 register)
       restore-preserves-fst : readLoc (proj₁ (exec-abstract (restore-input backup-slot) s-after-fst-store alloc-after-fst-store))
                                       (OnStack frame fst-slot) ≡ readLoc s-after-fst-store (OnStack frame fst-slot)
       restore-preserves-fst =
@@ -1346,7 +1346,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
       -- 1. reclaim-preserves-validity gives validity at s₁ with alloc-after-f-reclaim
       -- 2. Transfer validity from s₁ to s-after-f using validityWF-mem-preserved-in-regions
       --    Memory agrees in two disjoint regions:
-      --      - Input region: [0, backup-slot) - preserved from initial state
+      --      - Input1 region: [0, backup-slot) - preserved from initial state
       --      - Fresh region: [f-start, reclaim-f) - written by f-trace deterministically
       --    The gap [backup-slot, f-start) = {backup-slot, fst-slot, snd-slot} contains
       --    no sub-locations of fst-loc.
@@ -1354,7 +1354,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
       -- 4. Advance frontier from reclaim-f to reclaim-g
       --
       -- Key insight (positive characterization): fst-loc's sub-locations are in:
-      --   - Input region: [0, backup-slot) - from input x
+      --   - Input1 region: [0, backup-slot) - from input x
       --   - Fresh region: [f-start, reclaim-f) - from f's allocations
       ----------------------------------------------------------------------
 
@@ -1407,7 +1407,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
         in trans f-pres-frame (trans setup-pres (sym s₁-pres))
 
       -- Memory agrees on fresh region [f-start, reclaim-f)
-      -- Both executions of f-trace write same values (deterministic given same Input)
+      -- Both executions of f-trace write same values (deterministic given same Input1)
       f-mem-fresh-region : ∀ slot → f-start ≤ slot → slot < reclaim-f →
         readLoc s-after-f (OnStack frame slot) ≡ readLoc s₁ (OnStack frame slot)
       f-mem-fresh-region slot f-start≤slot slot<reclaim =
@@ -1661,7 +1661,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
       -- 1. reclaim-preserves-validity gives validity at s₂ with alloc-reclaim-g
       -- 2. Transfer validity from s₂ to s-after-g using validityWF-mem-preserved-in-regions
       --    Memory agrees in two disjoint regions:
-      --      - Input region: [0, backup-slot) - preserved from before g
+      --      - Input1 region: [0, backup-slot) - preserved from before g
       --      - Fresh region: [reclaim-f, reclaim-g) - written by g-trace deterministically
       -- 3. Transfer validity from s-after-g to s-final (final-trace preserves both regions)
       -- 4. Frontier advance is trivial (alloc-reclaim-g = alloc-final)
@@ -1733,7 +1733,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
         in trans g-pres-frame (trans middle-pres-frame (trans f-input-eq (trans (sym s₁'-eq) (sym s₂-pres))))
 
       -- Memory agrees on fresh region [reclaim-f, reclaim-g)
-      -- Both executions of g-trace write same values (deterministic given same Input)
+      -- Both executions of g-trace write same values (deterministic given same Input1)
       g-mem-fresh-region : ∀ slot → reclaim-f ≤ slot → slot < reclaim-g →
         readLoc s-after-g (OnStack frame slot) ≡ readLoc s₂ (OnStack frame slot)
       g-mem-fresh-region slot rf≤slot slot<rg =

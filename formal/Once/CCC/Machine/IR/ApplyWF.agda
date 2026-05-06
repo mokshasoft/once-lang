@@ -132,34 +132,34 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
   -- Apply trace construction
   --
   -- Apply trace structure:
-  --   setup-trace: Store (env, arg) pair to stack, set Input
+  --   setup-trace: Store (env, arg) pair to stack, set Input1
   --   body-trace:  Execute closure body in the same frame, with
   --                slot indices starting above the (env, arg) pair.
   ------------------------------------------------------------------------
 
   -- Setup trace: prepare pair input for body
   --
-  -- Input structure: (closure, arg) pair where closure = (env, code)
+  -- Input1 structure: (closure, arg) pair where closure = (env, code)
   -- We need to build a new pair (env, arg) for the body.
   --
-  -- Step 1: Get arg-loc from *(Input+1) while Input still points to original pair
+  -- Step 1: Get arg-loc from *(Input1+1) while Input1 still points to original pair
   -- Step 2: Store arg at pair[1]
-  -- Step 3: Get closure-loc from *Input
-  -- Step 4: Set Input := closure-loc
-  -- Step 5: Get env-loc from *Input (now pointing to closure)
+  -- Step 3: Get closure-loc from *Input1
+  -- Step 4: Set Input1 := closure-loc
+  -- Step 5: Get env-loc from *Input1 (now pointing to closure)
   -- Step 6: Store env at pair[0]
   -- Step 7: Set Output := &pair
-  -- Step 8: Set Input := &pair
+  -- Step 8: Set Input1 := &pair
   apply-setup-trace : (pair-slot : ℕ) → AbstractTrace
   apply-setup-trace pair-slot =
-    load-indirect-suc ∷                -- Output := *(Input+1) = arg-loc
+    load-indirect-suc ∷                -- Output := *(Input1+1) = arg-loc
     store-at-slot (suc pair-slot) ∷    -- pair[1] := arg-loc
-    load-indirect ∷                    -- Output := *Input = closure-loc
-    mov-to-input ∷                     -- Input := closure-loc
-    load-indirect ∷                    -- Output := *Input = env-loc
+    load-indirect ∷                    -- Output := *Input1 = closure-loc
+    mov-to-input ∷                     -- Input1 := closure-loc
+    load-indirect ∷                    -- Output := *Input1 = env-loc
     store-at-slot pair-slot ∷          -- pair[0] := env-loc
     lea-slot pair-slot ∷               -- Output := &pair
-    mov-to-input ∷ []                  -- Input := &pair
+    mov-to-input ∷ []                  -- Input1 := &pair
 
   -- Full apply trace: setup + body. No frame push/pop — body inherits
   -- parent's frame and uses slot indices threaded above the (env, arg)
@@ -180,7 +180,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
     (input-valid-wf : ValidAtWF m alloc x input-loc s) →
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
-    readReg (regs s) Input ≡ input-loc →
+    readReg (regs s) Input1 ≡ input-loc →
     ∃[ mOut ] IRResultAWF mOut (apply {A} {B} {k}) x s alloc
   run-apply {m} {A} {B} {k} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     mBody , record
@@ -299,21 +299,21 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       -- Step-by-step execution of setup trace
       --
       -- Setup trace structure:
-      --   1. load-indirect-suc    -- Output := *(sucLoc Input) = arg-loc
+      --   1. load-indirect-suc    -- Output := *(sucLoc Input1) = arg-loc
       --   2. store-at-slot (suc pair-slot)  -- slot (suc pair-slot) := arg-loc
-      --   3. load-indirect        -- Output := *Input = closure-loc
-      --   4. mov-to-input         -- Input := closure-loc
+      --   3. load-indirect        -- Output := *Input1 = closure-loc
+      --   4. mov-to-input         -- Input1 := closure-loc
       --   5. load-indirect        -- Output := *closure-loc = env-loc
       --   6. store-at-slot pair-slot  -- slot pair-slot := env-loc
       --   7. lea-slot pair-slot   -- Output := &pair
-      --   8. mov-to-input         -- Input := &pair
+      --   8. mov-to-input         -- Input1 := &pair
       ------------------------------------------------------------------------
 
       -- Frame shorthand
       frame = current-frame alloc
 
       -- Step 1: load-indirect-suc
-      -- Before: Input = input-loc
+      -- Before: Input1 = input-loc
       -- After: Output = arg-loc (from *(sucLoc input-loc))
       step1-trace : AbstractTrace
       step1-trace = load-indirect-suc ∷ []
@@ -321,8 +321,8 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       s1 : LocState FS
       s1 = proj₁ (exec-trace step1-trace s alloc)
 
-      -- load-indirect-suc reads from sucLoc Input = sucLoc input-loc
-      step1-mem-read : readLoc s (sucLoc (readReg (regs s) Input)) ≡ just arg-loc
+      -- load-indirect-suc reads from sucLoc Input1 = sucLoc input-loc
+      step1-mem-read : readLoc s (sucLoc (readReg (regs s) Input1)) ≡ just arg-loc
       step1-mem-read = subst (λ loc → readLoc s (sucLoc loc) ≡ just arg-loc) (sym rdi-eq) arg-ptr
 
       -- After load-indirect-suc, Output = arg-loc
@@ -337,9 +337,9 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
         where
           step1-output-helper : (s₀ : LocState FS) (a₀ : AllocState {FS}) →
             s1 ≡ proj₁ (exec-abstract load-indirect-suc s₀ a₀) →
-            readLoc s₀ (sucLoc (readReg (regs s₀) Input)) ≡ just arg-loc →
+            readLoc s₀ (sucLoc (readReg (regs s₀) Input1)) ≡ just arg-loc →
             readReg (regs s1) Output ≡ arg-loc
-          step1-output-helper s₀ a₀ s1-eq mem-eq with readLoc s₀ (sucLoc (readReg (regs s₀) Input)) | mem-eq
+          step1-output-helper s₀ a₀ s1-eq mem-eq with readLoc s₀ (sucLoc (readReg (regs s₀) Input1)) | mem-eq
           ... | just v | refl = trans (cong (λ s' → readReg (regs s') Output) s1-eq)
                                       (writeReg-same (regs s₀) Output v)
 
@@ -464,11 +464,11 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       -- Prove output-after-prefix: Output = env-loc after steps 1-5
       --
       -- Step by step:
-      --   1. load-indirect-suc: Output := *(sucLoc Input) = arg-loc
+      --   1. load-indirect-suc: Output := *(sucLoc Input1) = arg-loc
       --   2. store-at-slot: Output unchanged
-      --   3. load-indirect: Output := *Input = closure-loc
-      --   4. mov-to-input: Input := Output = closure-loc, Output unchanged
-      --   5. load-indirect: Output := *Input = *closure-loc = env-loc
+      --   3. load-indirect: Output := *Input1 = closure-loc
+      --   4. mov-to-input: Input1 := Output = closure-loc, Output unchanged
+      --   5. load-indirect: Output := *Input1 = *closure-loc = env-loc
       ------------------------------------------------------------------------
 
       -- Decompose prefix-for-env into sub-traces
@@ -495,10 +495,10 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       not-halted-s12 : halted s12 ≡ false
       not-halted-s12 = exec-trace-preserves-halted prefix12 s alloc not-halted prefix12-tph
 
-      -- Input is still input-loc after steps 1-2 (neither instruction modifies Input)
+      -- Input1 is still input-loc after steps 1-2 (neither instruction modifies Input1)
       -- Step 1 modifies Output only, Step 2 writes to memory only
-      -- Both preserve Input register
-      input-after-s12 : readReg (regs s12) Input ≡ input-loc
+      -- Both preserve Input1 register
+      input-after-s12 : readReg (regs s12) Input1 ≡ input-loc
       input-after-s12 = SMP.!!  -- Needs trace infrastructure for register preservation
 
       -- Memory is preserved for closure-loc: steps 1-2 only write to slot (suc pair-slot)
@@ -513,11 +513,11 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       s3-partial : LocState FS
       s3-partial = proj₁ (exec-trace prefix3 s12 alloc12)
 
-      -- After step 3, Output = *Input = *input-loc = closure-loc
+      -- After step 3, Output = *Input1 = *input-loc = closure-loc
       step3-output : readReg (regs s3-partial) Output ≡ closure-loc
       step3-output = SMP.!!  -- Needs load-indirect result lemma
 
-      -- Step 4: mov-to-input sets Input := Output = closure-loc, preserves Output
+      -- Step 4: mov-to-input sets Input1 := Output = closure-loc, preserves Output
       prefix34 : AbstractTrace
       prefix34 = load-indirect ∷ mov-to-input ∷ []
 
@@ -530,18 +530,18 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       not-halted-s3 : halted s3-partial ≡ false
       not-halted-s3 = exec-trace-preserves-halted prefix3 s12 alloc12 not-halted-s12 prefix3-tph
 
-      -- After step 4, Input = closure-loc
-      step4-input : readReg (regs s34-partial) Input ≡ closure-loc
+      -- After step 4, Input1 = closure-loc
+      step4-input : readReg (regs s34-partial) Input1 ≡ closure-loc
       step4-input =
         let alloc3 = proj₂ (exec-trace prefix3 s12 alloc12)
             s34-decomp : s34-partial ≡ proj₁ (exec-abstract mov-to-input s3-partial alloc3)
             s34-decomp = cong proj₁ (trans (exec-trace-append prefix3 (mov-to-input ∷ []) s12 alloc12)
                                            (exec-trace-single mov-to-input s3-partial alloc3 not-halted-s3))
-        in trans (cong (λ s' → readReg (regs s') Input) s34-decomp)
-                 (trans (writeReg-same (regs s3-partial) Input (readReg (regs s3-partial) Output))
+        in trans (cong (λ s' → readReg (regs s') Input1) s34-decomp)
+                 (trans (writeReg-same (regs s3-partial) Input1 (readReg (regs s3-partial) Output))
                         step3-output)
 
-      -- Step 5: load-indirect reads *Input = *closure-loc = env-loc
+      -- Step 5: load-indirect reads *Input1 = *closure-loc = env-loc
       prefix345-tph : TracePreservesHaltedP prefix345
       prefix345-tph = tph-∷ iph-load-indirect (tph-∷ iph-mov-to-input (tph-∷ iph-load-indirect tph-[]))
 
@@ -574,7 +574,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
             --          just (readReg (regs (proj₁ (exec-trace prefix s alloc))) Output)
         in trans result (cong just output-after-prefix)
 
-      -- Input register points to pair after setup
+      -- Input1 register points to pair after setup
       -- Decompose setup-trace as prefix ++ (lea-slot pair-slot ∷ mov-to-input ∷ [])
       setup-prefix : AbstractTrace
       setup-prefix = load-indirect-suc ∷ store-at-slot (suc pair-slot) ∷
@@ -598,16 +598,16 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       not-halted-after-prefix : halted (proj₁ (exec-trace setup-prefix s alloc)) ≡ false
       not-halted-after-prefix = exec-trace-preserves-halted setup-prefix s alloc not-halted setup-prefix-tph
 
-      pair-input-eq : readReg (regs s-after-setup) Input ≡ pair-input-loc
+      pair-input-eq : readReg (regs s-after-setup) Input1 ≡ pair-input-loc
       pair-input-eq =
         let eq1 : apply-setup-trace pair-slot ≡
                   setup-prefix ++ (lea-slot pair-slot ∷ mov-to-input ∷ [])
             eq1 = setup-decomp
             eq2 : readReg (regs (proj₁ (exec-trace (setup-prefix ++
-                           (lea-slot pair-slot ∷ mov-to-input ∷ [])) s alloc))) Input ≡
+                           (lea-slot pair-slot ∷ mov-to-input ∷ [])) s alloc))) Input1 ≡
                   OnStack (current-frame alloc) pair-slot
             eq2 = exec-trace-final-lea-mov-input setup-prefix pair-slot s alloc not-halted-after-prefix
-        in subst (λ t → readReg (regs (proj₁ (exec-trace t s alloc))) Input ≡
+        in subst (λ t → readReg (regs (proj₁ (exec-trace t s alloc))) Input1 ≡
                         OnStack (current-frame alloc) pair-slot)
                  (sym eq1) eq2
 
@@ -693,7 +693,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       -- Frontier slot stability
       frontier-stable' : ∀ (s'' : LocState FS) (input-loc' : ValueLocation FS) →
         halted s'' ≡ false →
-        readReg (regs s'') Input ≡ input-loc' →
+        readReg (regs s'') Input1 ≡ input-loc' →
         readLoc s'' (OnStack (current-frame alloc) pair-slot) ≡ just input-loc' →
         _
       frontier-stable' s'' input-loc' _ _ _ = inj₂ (inj₁ SMP.!!)

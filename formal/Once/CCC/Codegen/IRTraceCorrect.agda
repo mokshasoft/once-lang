@@ -68,7 +68,7 @@ open import Once.CCC.IR
 open import Once.CCC.Eval using (eval)
 
 open import Once.CCC.Machine.SMCore
-  using (LocState; ValueLocation; halted; regs; readReg; Input;
+  using (LocState; ValueLocation; halted; regs; readReg; Input1;
          AbstractTrace; AbstractInstr;
          mov-to-output; mov-to-input;
          load-indirect; load-indirect-suc)
@@ -120,7 +120,7 @@ module IRTraceCorrectness {FS : FrameSemantics} (program-bound : ℕ) where
     ValidAtWF mIn alloc x input-loc s →
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
-    readReg (regs s) Input ≡ input-loc →
+    readReg (regs s) Input1 ≡ input-loc →
     let result = exec-trace (ir-to-trace ir) s alloc
         final-s = proj₁ result
         final-alloc = proj₂ result
@@ -286,7 +286,7 @@ module IRTraceCorrectness {FS : FrameSemantics} (program-bound : ℕ) where
       ValidAtWF mIn alloc x input-loc s →
       BeforeFrontier alloc input-loc →
       halted s ≡ false →
-      readReg (regs s) Input ≡ input-loc →
+      readReg (regs s) Input1 ≡ input-loc →
       ∃[ mOut ]
         ValidAtWF mOut alloc (semM si x)
           (exec-sigop-output si s)
