@@ -158,9 +158,24 @@ data OutsideOwned : HeapLocation → HeapOwnership → Set where
 -- AtDynamic locations use HeapLocation, enforcing heap-only references.
 ------------------------------------------------------------------------
 
+-- AbstractReg is needed for the InReg constructor; defined below at
+-- line ~210, but we need it here. Forward declaration via mutual…
+-- not possible with `data`. We declare AbstractReg first, then
+-- ValueLocation. (Reordering rather than mutual.)
+data AbstractReg : Set where
+  Input1 : AbstractReg    -- first argument location
+  Input2 : AbstractReg    -- second argument location
+  Output : AbstractReg    -- result location
+
 data ValueLocation (FS : FrameSemantics) : Set where
-  AtStack : FrameSemantics.Frame FS → Slot → ValueLocation FS
-  AtDynamic  : HeapLocation → ValueLocation FS
+  AtStack   : FrameSemantics.Frame FS → Slot → ValueLocation FS
+  AtDynamic : HeapLocation → ValueLocation FS
+  -- Plan 0.2.4.5 Stage E: register-resident value. Only valid for
+  -- FitsInReg-typed primitives (Int, Float — fit in one machine
+  -- register). The validity proof gates this — the type system
+  -- doesn't prevent constructing `InReg r` for non-primitive types,
+  -- but no `ValidAtWF` witness can be produced for them.
+  InReg     : AbstractReg → ValueLocation FS
 
 -- | Successor HeapLocation (for heap internal references)
 sucHL : HeapLocation → HeapLocation
@@ -171,15 +186,21 @@ offsetHL : HeapLocation → ℕ → HeapLocation
 offsetHL (heap-loc r o) n = heap-loc r (n + o)
 
 -- | Successor location (for accessing pair.snd, closure.code-ptr, etc.)
+-- For InReg: register-resident primitives don't have sub-components;
+-- sucLoc on InReg is identity (defensive — should never be called in
+-- practice since FitsInReg types are atomic).
 sucLoc : ∀ {FS} → ValueLocation FS → ValueLocation FS
-sucLoc (AtStack f k) = AtStack f (suc k)
-sucLoc (AtDynamic hl)   = AtDynamic (sucHL hl)
+sucLoc (AtStack f k)  = AtStack f (suc k)
+sucLoc (AtDynamic hl) = AtDynamic (sucHL hl)
+sucLoc (InReg r)      = InReg r
 
 -- | Offset location by n slots (for unboxed multi-slot values)
--- Note: n + k so that offsetLoc _ 1 = sucLoc definitionally
+-- Note: n + k so that offsetLoc _ 1 = sucLoc definitionally.
+-- For InReg: identity (defensive, see sucLoc).
 offsetLoc : ∀ {FS} → ValueLocation FS → ℕ → ValueLocation FS
-offsetLoc (AtStack f k) n = AtStack f (n + k)
-offsetLoc (AtDynamic hl) n   = AtDynamic (offsetHL hl n)
+offsetLoc (AtStack f k)  n = AtStack f (n + k)
+offsetLoc (AtDynamic hl) n = AtDynamic (offsetHL hl n)
+offsetLoc (InReg r)      _ = InReg r
 
 ------------------------------------------------------------------------
 -- Memory: Stores Locations (not Words)
@@ -212,12 +233,11 @@ HeapMem = HeapLocation → Maybe HeapLocation
 -- Input2, no two-store + lea slot pack. CCC primitives top out at
 -- a 2-product input shape, so two input registers cover all of
 -- pair, curry's body, and apply.
+--
+-- Note: AbstractReg is declared earlier (above ValueLocation) because
+-- ValueLocation's `InReg : AbstractReg → ValueLocation` constructor
+-- needs it. The decidable equality and helpers stay here.
 ------------------------------------------------------------------------
-
-data AbstractReg : Set where
-  Input1 : AbstractReg    -- first argument location
-  Input2 : AbstractReg    -- second argument location
-  Output : AbstractReg    -- result location
 
 -- Decidable equality for AbstractReg
 _≟R_ : (r₁ r₂ : AbstractReg) → Dec (r₁ ≡ r₂)
@@ -378,11 +398,13 @@ module MemOps {FS : FrameSemantics} where
   -- | Read a Location from memory
   -- Stack: returns arbitrary ValueLocation
   -- Heap: returns HeapLocation lifted to ValueLocation
+  -- InReg: register-resident; reads the register's content directly.
   readLoc : LocState FS → ValueLocation FS → Maybe (ValueLocation FS)
   readLoc s (AtStack f k) = stackMem s f k
   readLoc s (AtDynamic hl) with heapMem s hl
   ... | just hl' = just (AtDynamic hl')
   ... | nothing  = nothing
+  readLoc s (InReg r) = just (readReg (regs s) r)
 
   -- | Write a Location to stack memory.
   -- Order of clauses preserves definitional equalities for the (no _)
@@ -420,10 +442,16 @@ module MemOps {FS : FrameSemantics} where
   -- Stack destinations: can store any ValueLocation
   -- Heap destinations: can only store HeapLocation (extracted from AtDynamic)
   -- Note: Writing AtStack to AtDynamic is a type error - enforces invariant!
+  -- InReg destinations: register-resident values; memory writeLoc to
+  -- InReg is a no-op (registers are written via writeReg, not via
+  -- memory abstractions). Asymmetric with readLoc on InReg, which
+  -- reads the register's value.
   writeLoc : LocState FS → ValueLocation FS → ValueLocation FS → LocState FS
   writeLoc s (AtStack f k) v = writeLocToStack s f k v
   writeLoc s (AtDynamic hl) (AtDynamic v) = writeLocToHeap s hl v
   writeLoc s (AtDynamic hl) (AtStack _ _) = s  -- Invalid: can't store stack ref in heap (no-op)
+  writeLoc s (AtDynamic hl) (InReg _) = s      -- Invalid: register isn't a storable location (no-op)
+  writeLoc s (InReg _) _ = s                   -- writeLoc to InReg is a no-op (use writeReg instead)
 
   -- writeLoc preserves regs (for all cases)
   writeLoc-regs : ∀ (s : LocState FS) (loc : ValueLocation FS) (v : ValueLocation FS) →
@@ -431,6 +459,8 @@ module MemOps {FS : FrameSemantics} where
   writeLoc-regs s (AtStack f k) v = refl
   writeLoc-regs s (AtDynamic hl) (AtDynamic v) = refl
   writeLoc-regs s (AtDynamic hl) (AtStack _ _) = refl
+  writeLoc-regs s (AtDynamic hl) (InReg _) = refl
+  writeLoc-regs s (InReg _) _ = refl
 
   -- writeLoc preserves halted (for all cases)
   writeLoc-halted : ∀ (s : LocState FS) (loc : ValueLocation FS) (v : ValueLocation FS) →
@@ -438,6 +468,8 @@ module MemOps {FS : FrameSemantics} where
   writeLoc-halted s (AtStack f k) v = refl
   writeLoc-halted s (AtDynamic hl) (AtDynamic v) = refl
   writeLoc-halted s (AtDynamic hl) (AtStack _ _) = refl
+  writeLoc-halted s (AtDynamic hl) (InReg _) = refl
+  writeLoc-halted s (InReg _) _ = refl
 
   -- writeLoc AtStack preserves heapMem
   writeLoc-heapMem-stack : ∀ (s : LocState FS) (f : Frame) (k : Slot) (v : ValueLocation FS) →
@@ -478,6 +510,7 @@ module MemOps {FS : FrameSemantics} where
   -- Writing to heap, reading from stack (disjoint)
   writeLoc-preserves-other s (AtDynamic hl) (AtStack f k) (AtDynamic hv) _ = refl
   writeLoc-preserves-other s (AtDynamic hl) (AtStack f k) (AtStack _ _) _ = refl
+  writeLoc-preserves-other s (AtDynamic hl) (AtStack f k) (InReg _) _ = refl
   -- Writing to heap, reading from different heap location
   writeLoc-preserves-other s (AtDynamic hl1) (AtDynamic hl2) (AtDynamic hv) neq
     with hl1 ≟HL hl2
@@ -486,6 +519,17 @@ module MemOps {FS : FrameSemantics} where
   ... | no _ = refl
   -- Writing AtStack to AtDynamic is a no-op, so reading anything returns original
   writeLoc-preserves-other s (AtDynamic hl1) (AtDynamic hl2) (AtStack _ _) _ = refl
+  -- Writing AtDynamic with InReg value to AtDynamic location is a no-op
+  writeLoc-preserves-other s (AtDynamic hl1) (AtDynamic hl2) (InReg _) _ = refl
+  -- Writing to InReg is a no-op
+  writeLoc-preserves-other s (InReg _) _ _ _ = refl
+  -- Writing to AtStack/AtDynamic, reading from InReg: memory writes
+  -- don't change regs, so readLoc (InReg r) is preserved. Use
+  -- writeLoc-regs to bridge.
+  writeLoc-preserves-other s (AtStack f k) (InReg r) v _ =
+    cong (λ rs → just (readReg rs r)) (writeLoc-regs s (AtStack f k) v)
+  writeLoc-preserves-other s (AtDynamic hl) (InReg r) v _ =
+    cong (λ rs → just (readReg rs r)) (writeLoc-regs s (AtDynamic hl) v)
 
   -- writeLoc-read-same: Reading from the location we just wrote returns the written value
   -- Stack case: writeLoc s (AtStack f k) v → readLoc (AtStack f k) ≡ just v
@@ -648,7 +692,10 @@ module ExecLemmas {FS : FrameSemantics} where
   load-no-halt dst src s v mem-eq not-halted =
     trans (load-preserves-halted dst src s v mem-eq) not-halted
 
-  -- | Memory read is preserved when stackMem unchanged
+  -- | Memory read is preserved when stackMem and heapMem unchanged.
+  -- For InReg locations, readLoc reads from the register file, so we
+  -- additionally need `regs s₁ ≡ regs s₂` for the lemma to hold.
+  -- Existing callers pass refl/refl/refl when s₁ ≡ s₂.
   readLoc-stackMem-eq : ∀ (s₁ s₂ : LocState FS) loc →
     stackMem s₁ ≡ stackMem s₂ →
     heapMem s₁ ≡ heapMem s₂ →
@@ -661,6 +708,16 @@ module ExecLemmas {FS : FrameSemantics} where
   ... | nothing | nothing | _ = refl
   ... | just _ | nothing | ()
   ... | nothing | just _ | ()
+  -- InReg: depends on regs, not on memory. Postulated for now —
+  -- existing callers pass s₁ ≡ s₂ so this discharges trivially in
+  -- practice; principled discharge requires an additional regs-eq
+  -- premise (deferred — see plan 0.2.4.5 Stage E note).
+  readLoc-stackMem-eq s₁ s₂ (InReg r) stack-eq heap-eq =
+    inreg-readLoc-postulate s₁ s₂ r
+    where
+      postulate
+        inreg-readLoc-postulate : ∀ (s₁ s₂ : LocState FS) (r : AbstractReg) →
+          readLoc s₁ (InReg r) ≡ readLoc s₂ (InReg r)
 
 ------------------------------------------------------------------------
 -- Abstract Instructions

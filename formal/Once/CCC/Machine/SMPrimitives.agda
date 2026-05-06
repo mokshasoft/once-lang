@@ -1198,12 +1198,11 @@ module TracePrimitives {FS : FrameSemantics} where
                step-pres
     -- Non-writing instructions (instr-writes-slot = nothing)
     exec-trace-preserves-slot-below (mov-to-output ∷ rest) s alloc n slot twa tnhw slot<n =
-    exec-trace-preserves-slot-below (mov-input2-to-output ∷ rest) s alloc n slot twa tnhw slot<n =
       exec-trace-preserves-slot-below-nonwrite mov-to-output rest s alloc n slot twa tnhw slot<n nhw-mov-to-output refl
-      exec-trace-preserves-slot-below-nonwrite mov-input2-to-output rest s alloc n slot twa tnhw slot<n nhw-mov-to-output refl
+    exec-trace-preserves-slot-below (mov-input2-to-output ∷ rest) s alloc n slot twa tnhw slot<n =
+      exec-trace-preserves-slot-below-nonwrite mov-input2-to-output rest s alloc n slot twa tnhw slot<n nhw-mov-input2-to-output refl
     exec-trace-preserves-slot-below (mov-to-input ∷ rest) s alloc n slot twa tnhw slot<n =
     exec-trace-preserves-slot-below (mov-output-to-input2 ∷ rest) s alloc n slot twa tnhw slot<n =
-      exec-trace-preserves-slot-below-nonwrite mov-to-input rest s alloc n slot twa tnhw slot<n nhw-mov-to-input refl
       exec-trace-preserves-slot-below-nonwrite mov-output-to-input2 rest s alloc n slot twa tnhw slot<n nhw-mov-output-to-input2 refl
     exec-trace-preserves-slot-below (load-indirect ∷ rest) s alloc n slot twa tnhw slot<n =
       exec-trace-preserves-slot-below-nonwrite load-indirect rest s alloc n slot twa tnhw slot<n nhw-load-indirect refl
@@ -1322,12 +1321,12 @@ module TracePrimitives {FS : FrameSemantics} where
                step-pres
     -- Non-writing instructions (instr-writes-slot = nothing)
     exec-trace-preserves-slot-above (mov-to-output ∷ rest) s alloc m slot twb tnhw m≤slot =
-    exec-trace-preserves-slot-above (mov-input2-to-output ∷ rest) s alloc m slot twb tnhw m≤slot =
       exec-trace-preserves-slot-above-nonwrite mov-to-output rest s alloc m slot twb tnhw m≤slot nhw-mov-to-output refl
-      exec-trace-preserves-slot-above-nonwrite mov-input2-to-output rest s alloc m slot twb tnhw m≤slot nhw-mov-to-output refl
+    exec-trace-preserves-slot-above (mov-input2-to-output ∷ rest) s alloc m slot twb tnhw m≤slot =
+      exec-trace-preserves-slot-above-nonwrite mov-input2-to-output rest s alloc m slot twb tnhw m≤slot nhw-mov-input2-to-output refl
     exec-trace-preserves-slot-above (mov-to-input ∷ rest) s alloc m slot twb tnhw m≤slot =
-    exec-trace-preserves-slot-above (mov-output-to-input2 ∷ rest) s alloc m slot twb tnhw m≤slot =
       exec-trace-preserves-slot-above-nonwrite mov-to-input rest s alloc m slot twb tnhw m≤slot nhw-mov-to-input refl
+    exec-trace-preserves-slot-above (mov-output-to-input2 ∷ rest) s alloc m slot twb tnhw m≤slot =
       exec-trace-preserves-slot-above-nonwrite mov-output-to-input2 rest s alloc m slot twb tnhw m≤slot nhw-mov-output-to-input2 refl
     exec-trace-preserves-slot-above (load-indirect ∷ rest) s alloc m slot twb tnhw m≤slot =
       exec-trace-preserves-slot-above-nonwrite load-indirect rest s alloc m slot twb tnhw m≤slot nhw-load-indirect refl
@@ -1442,12 +1441,12 @@ module TracePrimitives {FS : FrameSemantics} where
       in trans ih step-pres
     -- Non-writing instructions: use exec-abstract-preserves-stack-slot
     exec-trace-preserves-ancestor (mov-to-output ∷ rest) s alloc f slot cf≺f tnhw =
-    exec-trace-preserves-ancestor (mov-input2-to-output ∷ rest) s alloc f slot cf≺f tnhw =
       exec-trace-preserves-ancestor-nonwrite mov-to-output rest s alloc f slot cf≺f tnhw nhw-mov-to-output refl
-      exec-trace-preserves-ancestor-nonwrite mov-input2-to-output rest s alloc f slot cf≺f tnhw nhw-mov-to-output refl
+    exec-trace-preserves-ancestor (mov-input2-to-output ∷ rest) s alloc f slot cf≺f tnhw =
+      exec-trace-preserves-ancestor-nonwrite mov-input2-to-output rest s alloc f slot cf≺f tnhw nhw-mov-input2-to-output refl
     exec-trace-preserves-ancestor (mov-to-input ∷ rest) s alloc f slot cf≺f tnhw =
-    exec-trace-preserves-ancestor (mov-output-to-input2 ∷ rest) s alloc f slot cf≺f tnhw =
       exec-trace-preserves-ancestor-nonwrite mov-to-input rest s alloc f slot cf≺f tnhw nhw-mov-to-input refl
+    exec-trace-preserves-ancestor (mov-output-to-input2 ∷ rest) s alloc f slot cf≺f tnhw =
       exec-trace-preserves-ancestor-nonwrite mov-output-to-input2 rest s alloc f slot cf≺f tnhw nhw-mov-output-to-input2 refl
     exec-trace-preserves-ancestor (load-indirect ∷ rest) s alloc f slot cf≺f tnhw =
       exec-trace-preserves-ancestor-nonwrite load-indirect rest s alloc f slot cf≺f tnhw nhw-load-indirect refl
