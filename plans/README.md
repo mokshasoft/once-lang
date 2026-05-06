@@ -19,7 +19,8 @@ in `docs/compiler/decision-log.md` for durable records of landed work.
 │               ├── 0.2.4.2-closure-codegen-fix (design — partly superseded by 0.2.4.3 D1)
 │               ├── 0.2.4.3-slot-model-alignment (active — no-frame model across spec / abstract trace / target trace)
 │               ├── 0.2.4.4-closure-pointer-pin (active — close the closure[1] hiding place at the spec level)
-│               └── 0.2.4.5-allocmode-semantic-clarification (design — decision pending: layout vs allocation)
+│               ├── 0.2.4.5-allocmode-semantic-clarification (active, re-scoped — drop AllocMode; IR destination passing; Allocator sum type)
+│               └── 0.2.4.6-place-pass (design — static analysis that decides destinations + lifetimes; subsumes Once.Escape)
 │
 ├── 0.3-frontend-verification-gaps (completed 2026-04-19 — retained for 0.4 context)
 │   └── 0.4-frontend-completeness-and-bridges (planning)
@@ -46,7 +47,8 @@ in `docs/compiler/decision-log.md` for durable records of landed work.
 | `0.2.4.2-closure-codegen-fix` | design (partly superseded) | B1/B2/B3 catalog kept for context; D2 (per-thunk SysV frame) replaced by 0.2.4.3 D1 (no frames) |
 | `0.2.4.3-slot-model-alignment` | active | No-frame model across the three layers (SM*/WF spec, abstract trace, target trace). ApplyWF spec landed (`3760c10b`); IRToTrace.curry frontier-threading + target prologue cleanup pending. |
 | `0.2.4.4-closure-pointer-pin` | active | Close the closure[1] hiding place. `body-label` field + `encode-decode-code-addr` bijection. Stage 1 (spec pin) in progress; Stage 2 (couple `instr-call-closure` to `closure[1]`) deferred. |
-| `0.2.4.5-allocmode-semantic-clarification` | design | Decide between (A) rename to layout, (B) repurpose to allocation, (C) drop. Layer 0 invariant "stack-only" becomes a type-level assertion under (B). |
+| `0.2.4.5-allocmode-semantic-clarification` | active (re-scoped 2026-05-05) | Drop `AllocMode` entirely. Introduce `Allocator = Stack \| Dynamic` sum type. Rename `ValueLocation` constructors to mirror Allocator (`InReg` / `AtStack` / `AtDynamic`). Two input registers (`Input1`, `Input2`) — apply doesn't pack. `IsPrimitive` collapses to `FitsInReg`; Unit erased; Str/Buffer reclassified as compound. IRs take destinations, don't choose. No `free` IR — alloc/free are SigOps. |
+| `0.2.4.6-place-pass` | design | Static analysis pass (`Once.Place`) that walks IR, decides each value's destination + lifetime, inserts alloc/free SigOps for Dynamic values. Subsumes (or consumes) `Once.Escape`. Layer 0 Place is trivial (next-slot bump-allocator). |
 | `0.3-frontend-verification-gaps` | completed | Kept for 0.4 context |
 | `0.4-frontend-completeness-and-bridges` | planning | T1–T4 (G2 completeness, parse→pretty, grammar conformance, surface-semantics bridges) |
 | `0.4-T3-pipeline-composition` | T3 partial | `Verified.Compile.correct` decomposed into named per-stage postulates (commit `4dd740cc`). Discharge of `module-to-asm-correct` chains through 0.10 + 0.2.4.3 + 0.2.4.4. |
@@ -71,10 +73,11 @@ in `docs/compiler/decision-log.md` for durable records of landed work.
 
 ## Current Focus
 
-- **`0.2.4` family** — Layer 0 backend now resumed. Three new active children opened 2026-05-05 from a closure-codegen audit:
+- **`0.2.4` family** — Layer 0 backend now resumed. Four new active/design children opened 2026-05-05 from a closure-codegen audit:
   - `0.2.4.3` — slot-model alignment (no frames, slot-frontier threading) across spec + abstract trace + target trace.
   - `0.2.4.4` — close the closure[1] hiding place at the spec level (`body-label` + `encode-decode-code-addr` bijection).
-  - `0.2.4.5` — resolve `AllocMode`'s drift from "allocation location" to vestigial layout tag.
+  - `0.2.4.5` (re-scoped) — drop `AllocMode`; introduce `Allocator = Stack \| Dynamic`; rename `ValueLocation` constructors (`InReg` / `AtStack` / `AtDynamic`); two input registers; `FitsInReg` replaces `IsPrimitive`; Unit erased; alloc/free as SigOps.
+  - `0.2.4.6` — `Once.Place` pass: static analysis deciding destinations + lifetimes, inserting alloc/free SigOps. Subsumes `Once.Escape`.
 - **`0.4-T3`** — top-level pipeline composition for `Verified.Compile.correct` landed (commit `4dd740cc`). Per-stage discharge follows once `0.10` + `0.2.4.3` + `0.2.4.4` close.
 - **`0.4` / `0.4.2`** — frontend completeness closure + end-to-end composed theorem. Natural follow-on from recently-landed `0.6.2`.
 
