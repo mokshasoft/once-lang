@@ -45,7 +45,7 @@ module StackAllocation {FS : FrameSemantics} where
   stack-alloc : (as : AllocState {FS}) (n : ℕ) →
     ValueLocation FS × AllocState {FS}
   stack-alloc as n =
-    OnStack (current-frame as) (next-slot as) ,
+    AtStack (current-frame as) (next-slot as) ,
     record as { next-slot = next-slot as +ℕ n }
 
   -- The allocated location
@@ -59,7 +59,7 @@ module StackAllocation {FS : FrameSemantics} where
 
   -- Key property: allocated slots are in the current frame
   stack-alloc-in-frame : (as : AllocState {FS}) (n : ℕ) →
-    ∃[ slot ] stack-alloc-loc as n ≡ OnStack (current-frame as) slot
+    ∃[ slot ] stack-alloc-loc as n ≡ AtStack (current-frame as) slot
   stack-alloc-in-frame as n = next-slot as , refl
 
   -- Successive slots are at offset from base
@@ -67,7 +67,7 @@ module StackAllocation {FS : FrameSemantics} where
     (k : ℕ) → k < n →
     ValueLocation FS
   stack-alloc-offset as n k k<n =
-    OnStack (current-frame as) (next-slot as +ℕ k)
+    AtStack (current-frame as) (next-slot as +ℕ k)
 
 ------------------------------------------------------------------------
 -- Heap Allocation
@@ -83,7 +83,7 @@ module HeapAllocation {FS : FrameSemantics} where
   heap-alloc : (as : AllocState {FS}) (n : ℕ) →
     ValueLocation FS × AllocState {FS}
   heap-alloc as n =
-    OnHeap (heap-loc (mkHeapRef (next-heap-ref as)) 0) ,
+    AtDynamic (heap-loc (mkHeapRef (next-heap-ref as)) 0) ,
     record as { next-heap-ref = suc (next-heap-ref as) }
 
   -- The allocated HeapLocation (for heap-internal operations)
@@ -167,9 +167,9 @@ module WriteOps {FS : FrameSemantics} where
   -- Write to a ValueLocation
   -- Note: Writing stack ref to heap is now a type error! The invariant is enforced.
   write-loc : LocState FS → ValueLocation FS → ValueLocation FS → LocState FS
-  write-loc s (OnStack f k) val = write-stack-slot s f k val
-  write-loc s (OnHeap hl) (OnHeap val) = write-heap-slot s hl val
-  write-loc s (OnHeap hl) (OnStack _ _) = s  -- Invalid: can't store stack ref in heap
+  write-loc s (AtStack f k) val = write-stack-slot s f k val
+  write-loc s (AtDynamic hl) (AtDynamic val) = write-heap-slot s hl val
+  write-loc s (AtDynamic hl) (AtStack _ _) = s  -- Invalid: can't store stack ref in heap
 
   -- Write preserves reads at different locations (stack)
   write-stack-preserves-diff : ∀ s f₁ k₁ f₂ k₂ val →
@@ -265,17 +265,17 @@ module FrontierInvariant {FS : FrameSemantics} where
     stack-before : ∀ {f k} →
       f ≡ current-frame alloc →
       k < next-slot alloc →
-      BeforeFrontier alloc (OnStack f k)
+      BeforeFrontier alloc (AtStack f k)
 
     stack-ancestor : ∀ {f k origin-frame bound} →
       current-frame alloc ≺ f →  -- f is above current (caller or higher)
       StackAncestorSource origin-frame f k bound →
-      BeforeFrontier alloc (OnStack f k)
+      BeforeFrontier alloc (AtStack f k)
 
     -- Heap locations are before frontier if their ref-id < next-heap-ref
     heap-before : ∀ {hl : HeapLocation} →
       ref-id (heap-ref hl) < next-heap-ref alloc →
-      BeforeFrontier alloc (OnHeap hl)
+      BeforeFrontier alloc (AtDynamic hl)
 
   -- Helper: frame ordering implies inequality (via irreflexivity)
   ≺⇒≢ : ∀ {f₁ f₂ : Frame} → f₁ ≺ f₂ → f₁ ≢ f₂
@@ -284,34 +284,34 @@ module FrontierInvariant {FS : FrameSemantics} where
   -- Fresh allocation is after all existing locations
   fresh-stack-after : ∀ (alloc : AllocState {FS}) (loc : ValueLocation FS) →
     BeforeFrontier alloc loc →
-    loc ≢ OnStack (current-frame alloc) (next-slot alloc)
-  fresh-stack-after alloc (OnStack f k) (stack-before refl k<next) eq
+    loc ≢ AtStack (current-frame alloc) (next-slot alloc)
+  fresh-stack-after alloc (AtStack f k) (stack-before refl k<next) eq
     with eq
   ... | refl = (<⇒≢ k<next) refl
-  fresh-stack-after alloc (OnStack f k) (stack-ancestor cf≺f _) eq
+  fresh-stack-after alloc (AtStack f k) (stack-ancestor cf≺f _) eq
     with eq
   ... | refl = ≺⇒≢ cf≺f refl
-  fresh-stack-after alloc (OnHeap hl) (heap-before _) ()
+  fresh-stack-after alloc (AtDynamic hl) (heap-before _) ()
 
   -- Allocation advances frontier
   stack-alloc-advances : ∀ (alloc : AllocState {FS}) n →
     ∀ loc → BeforeFrontier alloc loc →
     BeforeFrontier (record alloc { next-slot = next-slot alloc +ℕ n }) loc
-  stack-alloc-advances alloc n (OnStack f k) (stack-before refl k<next) =
+  stack-alloc-advances alloc n (AtStack f k) (stack-before refl k<next) =
     stack-before refl (≤-trans k<next (m≤m+n (next-slot alloc) n))
-  stack-alloc-advances alloc n (OnStack f k) (stack-ancestor cf≺f src) =
+  stack-alloc-advances alloc n (AtStack f k) (stack-ancestor cf≺f src) =
     stack-ancestor cf≺f src  -- Frame ordering and provenance unchanged (same current-frame)
-  stack-alloc-advances alloc n (OnHeap hl) (heap-before r<next) =
+  stack-alloc-advances alloc n (AtDynamic hl) (heap-before r<next) =
     heap-before r<next
 
   heap-alloc-advances : ∀ (alloc : AllocState {FS}) →
     ∀ loc → BeforeFrontier alloc loc →
     BeforeFrontier (record alloc { next-heap-ref = suc (next-heap-ref alloc) }) loc
-  heap-alloc-advances alloc (OnStack f k) (stack-before eq k<next) =
+  heap-alloc-advances alloc (AtStack f k) (stack-before eq k<next) =
     stack-before eq k<next
-  heap-alloc-advances alloc (OnStack f k) (stack-ancestor cf≺f src) =
+  heap-alloc-advances alloc (AtStack f k) (stack-ancestor cf≺f src) =
     stack-ancestor cf≺f src  -- Frame ordering and provenance unchanged (same current-frame)
-  heap-alloc-advances alloc (OnHeap hl) (heap-before r<next) =
+  heap-alloc-advances alloc (AtDynamic hl) (heap-before r<next) =
     heap-before (≤-trans r<next (n≤1+n (next-heap-ref alloc)))
 
   -- General frontier monotonicity: if frontier advances, old locations are still before
@@ -321,12 +321,12 @@ module FrontierInvariant {FS : FrameSemantics} where
     next-slot alloc ≤ next-slot alloc' →
     next-heap-ref alloc ≤ next-heap-ref alloc' →
     ∀ loc → BeforeFrontier alloc loc → BeforeFrontier alloc' loc
-  frontier-monotone alloc alloc' cf-eq slot-≤ heap-≤ (OnStack f k) (stack-before f-eq k<slot) =
+  frontier-monotone alloc alloc' cf-eq slot-≤ heap-≤ (AtStack f k) (stack-before f-eq k<slot) =
     stack-before (trans f-eq cf-eq) (<-≤-trans k<slot slot-≤)
     where open import Data.Nat.Properties using (<-≤-trans)
-  frontier-monotone alloc alloc' cf-eq slot-≤ heap-≤ (OnStack f k) (stack-ancestor cf≺f src) =
+  frontier-monotone alloc alloc' cf-eq slot-≤ heap-≤ (AtStack f k) (stack-ancestor cf≺f src) =
     stack-ancestor (subst (_≺ f) cf-eq cf≺f) src  -- Transfer ordering via frame equality, preserve provenance
-  frontier-monotone alloc alloc' cf-eq slot-≤ heap-≤ (OnHeap hl) (heap-before r<heap) =
+  frontier-monotone alloc alloc' cf-eq slot-≤ heap-≤ (AtDynamic hl) (heap-before r<heap) =
     heap-before (<-≤-trans r<heap heap-≤)
     where open import Data.Nat.Properties using (<-≤-trans)
 
@@ -401,7 +401,7 @@ module FrameOps {FS : FrameSemantics} where
     child-frame ≺ current-frame parent →  -- Child is below parent
     k < next-slot parent →
     BeforeFrontier (push-frame parent child-frame child-capacity)
-                   (OnStack (current-frame parent) k)
+                   (AtStack (current-frame parent) k)
   in-parent-frame-before-child parent cf cc k cf≺pf k<next =
     stack-ancestor cf≺pf (src-origin (next-slot parent) k<next)  -- Parent is origin, k < next-slot parent
 
@@ -409,7 +409,7 @@ module FrameOps {FS : FrameSemantics} where
   heap-before-child : ∀ (parent : AllocState {FS})
     (child-frame : Frame) (child-capacity : ℕ) (hl : HeapLocation) →
     ref-id (heap-ref hl) < next-heap-ref parent →
-    BeforeFrontier (push-frame parent child-frame child-capacity) (OnHeap hl)
+    BeforeFrontier (push-frame parent child-frame child-capacity) (AtDynamic hl)
   heap-before-child parent cf cc hl r<next = heap-before r<next
 
   -- Locations in an ancestor frame (above parent) are BeforeFrontier in child
@@ -420,7 +420,7 @@ module FrameOps {FS : FrameSemantics} where
     (bound : ℕ) (k<bound : k < bound) →
     child-frame ≺ current-frame parent →  -- Child is below parent
     current-frame parent ≺ f →            -- f is above parent
-    BeforeFrontier (push-frame parent child-frame child-capacity) (OnStack f k)
+    BeforeFrontier (push-frame parent child-frame child-capacity) (AtStack f k)
   ancestor-frame-before-child parent cf cc f k bound k<bound cf≺pf pf≺f =
     stack-ancestor (≺-trans cf≺pf pf≺f) (src-above-origin pf≺f bound k<bound)
 
@@ -440,13 +440,13 @@ module FrameOps {FS : FrameSemantics} where
     child-frame ≺ current-frame parent →  -- Child is below parent
     BeforeFrontier parent loc →
     BeforeFrontier (push-frame parent child-frame child-capacity) loc
-  parent-before-child parent cf cc (OnStack f k) cf≺pf (stack-before refl k<next) =
+  parent-before-child parent cf cc (AtStack f k) cf≺pf (stack-before refl k<next) =
     stack-ancestor cf≺pf (src-origin (next-slot parent) k<next)  -- f = parent is origin
-  parent-before-child parent cf cc (OnStack f k) cf≺pf (stack-ancestor pf≺f (src-origin bound k<bound)) =
+  parent-before-child parent cf cc (AtStack f k) cf≺pf (stack-ancestor pf≺f (src-origin bound k<bound)) =
     stack-ancestor (≺-trans cf≺pf pf≺f) (src-above-origin pf≺f bound k<bound)
-  parent-before-child parent cf cc (OnStack f k) cf≺pf (stack-ancestor pf≺f (src-above-origin _ bound k<bound)) =
+  parent-before-child parent cf cc (AtStack f k) cf≺pf (stack-ancestor pf≺f (src-above-origin _ bound k<bound)) =
     stack-ancestor (≺-trans cf≺pf pf≺f) (src-above-origin pf≺f bound k<bound)
-  parent-before-child parent cf cc (OnHeap hl) cf≺pf (heap-before r<next) =
+  parent-before-child parent cf cc (AtDynamic hl) cf≺pf (heap-before r<next) =
     heap-before r<next  -- Heap refs unchanged
 
   ------------------------------------------------------------------------
@@ -458,7 +458,7 @@ module FrameOps {FS : FrameSemantics} where
     (result-slot : ℕ) (k : ℕ) →
     k < result-slot →
     BeforeFrontier (pop-frame child parent result-slot)
-                   (OnStack (current-frame parent) k)
+                   (AtStack (current-frame parent) k)
   pop-preserves-before child parent rs k k<rs = stack-before refl k<rs
 
   -- Heap locations after pop: if they were valid in child, still valid
@@ -466,7 +466,7 @@ module FrameOps {FS : FrameSemantics} where
   pop-heap-before : ∀ (child parent : AllocState {FS})
     (result-slot : ℕ) (hl : HeapLocation) →
     ref-id (heap-ref hl) < next-heap-ref child →
-    BeforeFrontier (pop-frame child parent result-slot) (OnHeap hl)
+    BeforeFrontier (pop-frame child parent result-slot) (AtDynamic hl)
   pop-heap-before child parent rs hl r<child-heap = heap-before r<child-heap
 
 ------------------------------------------------------------------------

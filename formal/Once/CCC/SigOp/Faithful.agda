@@ -24,7 +24,7 @@
 -- ## Why parameterize by `Repr`
 --
 -- The CCC abstract machine only tracks *locations*: `ValueLocation
--- = OnStack Frame ℕ | OnHeap HeapLoc`. Locations point to other
+-- = AtStack Frame ℕ | AtDynamic HeapLoc`. Locations point to other
 -- locations via `stackMem`/`heapMem`. There is no "the integer 42
 -- is at this location" — the abstract machine has no values, only
 -- pointer chains.

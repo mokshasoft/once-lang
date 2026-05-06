@@ -74,11 +74,11 @@ module BFTransfer {FS : FrameSemantics} where
     (loc : ValueLocation FS) →
     BeforeFrontier alloc₁ loc →
     BeforeFrontier alloc₂ loc
-  bf-same-frame-slot a₁ a₂ cf-eq ns-eq hr-eq (OnStack f k) (stack-before f-eq k<ns)
+  bf-same-frame-slot a₁ a₂ cf-eq ns-eq hr-eq (AtStack f k) (stack-before f-eq k<ns)
     rewrite cf-eq | ns-eq = stack-before f-eq k<ns
-  bf-same-frame-slot a₁ a₂ cf-eq ns-eq hr-eq (OnStack f k) (stack-ancestor cf≺f src)
+  bf-same-frame-slot a₁ a₂ cf-eq ns-eq hr-eq (AtStack f k) (stack-ancestor cf≺f src)
     rewrite cf-eq = stack-ancestor cf≺f src
-  bf-same-frame-slot a₁ a₂ cf-eq ns-eq hr-eq (OnHeap hl) (heap-before r<hr)
+  bf-same-frame-slot a₁ a₂ cf-eq ns-eq hr-eq (AtDynamic hl) (heap-before r<hr)
     rewrite hr-eq = heap-before r<hr
 
 ------------------------------------------------------------------------
@@ -260,7 +260,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
 
       -- Pair slot allocation
       pair-slot = next-slot alloc
-      pair-input-loc = OnStack (current-frame alloc) pair-slot
+      pair-input-loc = AtStack (current-frame alloc) pair-slot
 
       alloc' : AllocState {FS}
       alloc' = record alloc { next-slot = next-slot alloc +ℕ pair-slots }
@@ -358,7 +358,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
                         (tph-∷ iph-load-indirect-suc tph-[])
 
       -- Step 2 writes arg-loc to slot (suc pair-slot)
-      step2-written : readLoc s2 (OnStack frame (suc pair-slot)) ≡ just arg-loc
+      step2-written : readLoc s2 (AtStack frame (suc pair-slot)) ≡ just arg-loc
       step2-written =
         let alloc1 = proj₂ (exec-trace step1-trace s alloc)
             frame-eq : current-frame alloc1 ≡ frame
@@ -369,13 +369,13 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
                              proj₁ (exec-abstract (store-at-slot (suc pair-slot)) s1 alloc1)
             s2-as-abstract = cong proj₁ (exec-trace-single (store-at-slot (suc pair-slot)) s1 alloc1 not-halted-s1)
             store-result : readLoc (proj₁ (exec-abstract (store-at-slot (suc pair-slot)) s1 alloc1))
-                                   (OnStack (current-frame alloc1) (suc pair-slot)) ≡
+                                   (AtStack (current-frame alloc1) (suc pair-slot)) ≡
                            just (readReg (regs s1) Output)
             store-result = store-at-slot-result (suc pair-slot) s1 alloc1
-        in subst (λ s' → readLoc s' (OnStack frame (suc pair-slot)) ≡ just arg-loc)
+        in subst (λ s' → readLoc s' (AtStack frame (suc pair-slot)) ≡ just arg-loc)
                  (sym (trans s2-decomp s2-as-abstract))
                  (subst (λ f → readLoc (proj₁ (exec-abstract (store-at-slot (suc pair-slot)) s1 alloc1))
-                                       (OnStack f (suc pair-slot)) ≡ just arg-loc)
+                                       (AtStack f (suc pair-slot)) ≡ just arg-loc)
                         frame-eq
                         (trans store-result (cong just step1-output)))
 
@@ -415,15 +415,15 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
             -- Use exec-trace-slot-value-below to show slot (suc pair-slot) is preserved
             -- rest writes below suc pair-slot, so slot suc pair-slot is preserved
             preserved : readLoc (proj₁ (exec-trace rest-after-step2 s2 alloc2))
-                               (OnStack (current-frame alloc2) (suc pair-slot)) ≡ just arg-loc
+                               (AtStack (current-frame alloc2) (suc pair-slot)) ≡ just arg-loc
             preserved = exec-trace-slot-value-below rest-after-step2 s2 alloc2 (suc pair-slot) arg-loc
-                          (subst (λ f → readLoc s2 (OnStack f (suc pair-slot)) ≡ just arg-loc)
+                          (subst (λ f → readLoc s2 (AtStack f (suc pair-slot)) ≡ just arg-loc)
                                  (sym frame-eq2) step2-written)
                           rest-writes-below-suc rest-no-heap-writes
-        in subst (λ s' → readLoc s' (OnStack frame (suc pair-slot)) ≡ just arg-loc)
+        in subst (λ s' → readLoc s' (AtStack frame (suc pair-slot)) ≡ just arg-loc)
                  (sym s-after-setup-decomp)
                  (subst (λ f → readLoc (proj₁ (exec-trace rest-after-step2 s2 alloc2))
-                                       (OnStack f (suc pair-slot)) ≡ just arg-loc)
+                                       (AtStack f (suc pair-slot)) ≡ just arg-loc)
                         frame-eq2 preserved)
 
       -- For pair-env-ptr, we need to trace through to step 6
@@ -570,7 +570,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
         let result = prefix-store-preserve prefix-for-env pair-slot suffix-after-env-store
                        s alloc prefix-for-env-tph not-halted suffix-writes-above suffix-no-heap-writes
             -- result : readLoc (proj₁ (exec-trace (prefix ++ store ∷ suffix) s alloc))
-            --                  (OnStack frame pair-slot) ≡
+            --                  (AtStack frame pair-slot) ≡
             --          just (readReg (regs (proj₁ (exec-trace prefix s alloc))) Output)
         in trans result (cong just output-after-prefix)
 
@@ -605,10 +605,10 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
             eq1 = setup-decomp
             eq2 : readReg (regs (proj₁ (exec-trace (setup-prefix ++
                            (lea-slot pair-slot ∷ mov-to-input ∷ [])) s alloc))) Input1 ≡
-                  OnStack (current-frame alloc) pair-slot
+                  AtStack (current-frame alloc) pair-slot
             eq2 = exec-trace-final-lea-mov-input setup-prefix pair-slot s alloc not-halted-after-prefix
         in subst (λ t → readReg (regs (proj₁ (exec-trace t s alloc))) Input1 ≡
-                        OnStack (current-frame alloc) pair-slot)
+                        AtStack (current-frame alloc) pair-slot)
                  (sym eq1) eq2
 
       -- Setup trace preserves halted (used in multiple places)
@@ -694,7 +694,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       frontier-stable' : ∀ (s'' : LocState FS) (input-loc' : ValueLocation FS) →
         halted s'' ≡ false →
         readReg (regs s'') Input1 ≡ input-loc' →
-        readLoc s'' (OnStack (current-frame alloc) pair-slot) ≡ just input-loc' →
+        readLoc s'' (AtStack (current-frame alloc) pair-slot) ≡ just input-loc' →
         _
       frontier-stable' s'' input-loc' _ _ _ = inj₂ (inj₁ SMP.!!)
 

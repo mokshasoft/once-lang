@@ -132,7 +132,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       frontier-stable : ∀ s'' input-loc'' →
         halted s'' ≡ false →
         readReg (regs s'') Input1 ≡ input-loc'' →
-        readLoc s'' (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc'' →
+        readLoc s'' (AtStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc'' →
         _
       frontier-stable _ _ _ _ _ = inj₁ refl
 
@@ -223,7 +223,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       frontier-stable : ∀ s'' input-loc'' →
         halted s'' ≡ false →
         readReg (regs s'') Input1 ≡ input-loc'' →
-        readLoc s'' (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc'' →
+        readLoc s'' (AtStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc'' →
         _
       frontier-stable _ _ _ _ _ = inj₁ refl
 
@@ -314,7 +314,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       frontier-stable : ∀ s'' input-loc'' →
         halted s'' ≡ false →
         readReg (regs s'') Input1 ≡ input-loc'' →
-        readLoc s'' (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc'' →
+        readLoc s'' (AtStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc'' →
         _
       frontier-stable _ _ _ _ _ = inj₁ refl
 
@@ -387,7 +387,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       frontier-stable : ∀ s'' input-loc'' →
         halted s'' ≡ false →
         readReg (regs s'') Input1 ≡ input-loc'' →
-        readLoc s'' (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc'' →
+        readLoc s'' (AtStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc'' →
         _
       frontier-stable _ _ _ _ _ = inj₁ refl
 
@@ -463,7 +463,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       frontier-stable : ∀ s'' input-loc'' →
         halted s'' ≡ false →
         readReg (regs s'') Input1 ≡ input-loc'' →
-        readLoc s'' (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc'' →
+        readLoc s'' (AtStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc'' →
         _
       frontier-stable _ _ _ _ _ = inj₁ refl
 
@@ -543,6 +543,6 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       frontier-stable : ∀ s'' input-loc'' →
         halted s'' ≡ false →
         readReg (regs s'') Input1 ≡ input-loc'' →
-        readLoc s'' (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc'' →
+        readLoc s'' (AtStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc'' →
         _
       frontier-stable _ _ _ _ _ = inj₁ refl

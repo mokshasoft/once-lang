@@ -107,7 +107,7 @@ module Simulation {FS : FrameSemantics} where
 
   -- Helper: compute slot location from frame and slot number
   slotLoc : Frame → ℕ → ValueLocation FS
-  slotLoc f n = OnStack f n
+  slotLoc f n = AtStack f n
 
   -- Helper: convert displacement back to slot number (inverse of slot-to-disp)
   -- slot-to-disp n = n * slot-size, so disp-to-slot d = d / slot-size
@@ -120,7 +120,7 @@ module Simulation {FS : FrameSemantics} where
 
   ≟L-OnStack-aux : ∀ {f1 f2 k1 k2}
                  → Dec (f1 ≡ f2) → Dec (k1 ≡ k2)
-                 → Dec (OnStack {FS} f1 k1 ≡ OnStack {FS} f2 k2)
+                 → Dec (AtStack {FS} f1 k1 ≡ AtStack {FS} f2 k2)
   ≟L-OnStack-aux (yes refl) (yes refl) = yes refl
   ≟L-OnStack-aux (yes refl) (no k≢k)   = no λ { refl → k≢k refl }
   ≟L-OnStack-aux (no f≢f)   (yes _)    = no λ { refl → f≢f refl }
@@ -128,15 +128,15 @@ module Simulation {FS : FrameSemantics} where
 
   ≟L-OnHeap-aux : ∀ {hl1 hl2}
                 → Dec (hl1 ≡ hl2)
-                → Dec (OnHeap {FS} hl1 ≡ OnHeap {FS} hl2)
+                → Dec (AtDynamic {FS} hl1 ≡ AtDynamic {FS} hl2)
   ≟L-OnHeap-aux (yes refl) = yes refl
   ≟L-OnHeap-aux (no neq)   = no λ { refl → neq refl }
 
   _≟L_ : (l1 l2 : ValueLocation FS) → Dec (l1 ≡ l2)
-  OnStack f1 k1 ≟L OnStack f2 k2 = ≟L-OnStack-aux (f1 ≟F f2) (k1 ≟ k2)
-  OnStack _ _   ≟L OnHeap _      = no λ ()
-  OnHeap _      ≟L OnStack _ _   = no λ ()
-  OnHeap hl1    ≟L OnHeap hl2    = ≟L-OnHeap-aux (hl1 ≟HL hl2)
+  AtStack f1 k1 ≟L AtStack f2 k2 = ≟L-OnStack-aux (f1 ≟F f2) (k1 ≟ k2)
+  AtStack _ _   ≟L AtDynamic _      = no λ ()
+  AtDynamic _      ≟L AtStack _ _   = no λ ()
+  AtDynamic hl1    ≟L AtDynamic hl2    = ≟L-OnHeap-aux (hl1 ≟HL hl2)
 
   -- Helper: write to memory (functional update)
   writeX86Mem : (ValueLocation FS → Maybe (ValueLocation FS)) →
@@ -309,16 +309,16 @@ module Simulation {FS : FrameSemantics} where
   -- readLoc only depends on stackMem and heapMem, not regs
   readLoc-regs-irrel : ∀ ls newRegs loc →
     readLoc (record ls { regs = newRegs }) loc ≡ readLoc ls loc
-  readLoc-regs-irrel ls newRegs (OnStack f k) = refl
-  readLoc-regs-irrel ls newRegs (OnHeap hl) with heapMem ls hl
+  readLoc-regs-irrel ls newRegs (AtStack f k) = refl
+  readLoc-regs-irrel ls newRegs (AtDynamic hl) with heapMem ls hl
   ... | just _ = refl
   ... | nothing = refl
 
   -- readLoc is unchanged when only halted changes
   readLoc-halted-irrel : ∀ ls h loc →
     readLoc (record ls { halted = h }) loc ≡ readLoc ls loc
-  readLoc-halted-irrel ls h (OnStack f k) = refl
-  readLoc-halted-irrel ls h (OnHeap hl) with heapMem ls hl
+  readLoc-halted-irrel ls h (AtStack f k) = refl
+  readLoc-halted-irrel ls h (AtDynamic hl) with heapMem ls hl
   ... | just _ = refl
   ... | nothing = refl
 
@@ -401,30 +401,30 @@ module Simulation {FS : FrameSemantics} where
   writeX86Mem-stack-corresponds : ∀ (ls : LocState FS) (xs : X86State) (f : Frame) (k : ℕ) (val : ValueLocation FS) →
     (∀ l → x86-mem xs l ≡ readLoc ls l) →
     eax-val xs ≡ val →
-    (∀ l → writeX86Mem (x86-mem xs) (OnStack f k) (eax-val xs) l ≡ readLoc (writeLoc ls (OnStack f k) val) l)
+    (∀ l → writeX86Mem (x86-mem xs) (AtStack f k) (eax-val xs) l ≡ readLoc (writeLoc ls (AtStack f k) val) l)
   writeX86Mem-stack-corresponds ls xs f k val mem-eq eax-eq l
-    with (OnStack f k) ≟L l
+    with (AtStack f k) ≟L l
   ... | yes refl =
     -- Writing and reading same location: both return just val
     trans (cong just eax-eq) (sym (writeLoc-read-same-stack ls f k val))
   ... | no loc≢l =
     -- Different locations: both preserve original value
-    trans (mem-eq l) (sym (writeLoc-preserves-other ls (OnStack f k) l val loc≢l))
+    trans (mem-eq l) (sym (writeLoc-preserves-other ls (AtStack f k) l val loc≢l))
 
   -- Helper: writeX86Mem corresponds to writeLoc for any location (general case)
   writeX86Mem-corresponds : ∀ (ls : LocState FS) (xs : X86State) (loc val : ValueLocation FS) →
     (∀ l → x86-mem xs l ≡ readLoc ls l) →
     eax-val xs ≡ val →
     (∀ l → writeX86Mem (x86-mem xs) loc (eax-val xs) l ≡ readLoc (writeLoc ls loc val) l)
-  writeX86Mem-corresponds ls xs (OnStack f k) val mem-eq eax-eq =
+  writeX86Mem-corresponds ls xs (AtStack f k) val mem-eq eax-eq =
     writeX86Mem-stack-corresponds ls xs f k val mem-eq eax-eq
-  writeX86Mem-corresponds ls xs (OnHeap hl) val mem-eq eax-eq l
-    with (OnHeap hl) ≟L l
+  writeX86Mem-corresponds ls xs (AtDynamic hl) val mem-eq eax-eq l
+    with (AtDynamic hl) ≟L l
   ... | yes refl =
     -- writeX86Mem returns just (eax-val xs) = just val (by eax-eq)
     -- readLoc (writeLoc ...) returns just val (by readLoc-writeLoc-same)
-    trans (cong just eax-eq) (sym (SMP.MemoryOps.readLoc-writeLoc-same ls (OnHeap hl) val))
-  ... | no loc≢l = trans (mem-eq l) (sym (writeLoc-preserves-other ls (OnHeap hl) l val loc≢l))
+    trans (cong just eax-eq) (sym (SMP.MemoryOps.readLoc-writeLoc-same ls (AtDynamic hl) val))
+  ... | no loc≢l = trans (mem-eq l) (sym (writeLoc-preserves-other ls (AtDynamic hl) l val loc≢l))
 
   -- Helper to derive contradiction from halted xs ≡ true and correspondence
   halted-contradiction : ∀ {ls xs alloc} → x86-halted xs ≡ true → halted ls ≡ false → Corresponds ls xs alloc → ⊥
@@ -670,20 +670,20 @@ module Simulation {FS : FrameSemantics} where
              base-corr
 
   -- load-from-slot: Output := stack[frame, slot]
-  -- Abstract: exec-load-from-slot-with-value (readLoc ls (OnStack frame slot)) ls alloc
+  -- Abstract: exec-load-from-slot-with-value (readLoc ls (AtStack frame slot)) ls alloc
   -- X86: exec-x86-load-eax-with-value (x86-mem xs (slotLoc frame (disp-to-slot (slot*slot-size)))) xs
   instr-sim (load-from-slot slot) ls xs alloc not-halted corr
     with x86-halted xs | xs-not-halted ls xs alloc not-halted corr
   ... | true | ()
   ... | false | _ =
     let frame = current-frame alloc
-        loc = OnStack frame slot
+        loc = AtStack frame slot
         -- Recover slot: disp-to-slot (slot * slot-size) = slot
         slot-recover : disp-to-slot (slot *ℕ slot-size) ≡ slot
         slot-recover = m*n/n≡m slot slot-size
-        -- x86 reads from slotLoc frame (disp-to-slot ...) = OnStack frame slot = loc
+        -- x86 reads from slotLoc frame (disp-to-slot ...) = AtStack frame slot = loc
         x86-loc : slotLoc frame (disp-to-slot (slot *ℕ slot-size)) ≡ loc
-        x86-loc = cong (OnStack frame) slot-recover
+        x86-loc = cong (AtStack frame) slot-recover
         -- Memory read equality
         mem-read-eq : x86-mem xs (slotLoc frame (disp-to-slot (slot *ℕ slot-size))) ≡ readLoc ls loc
         mem-read-eq = trans (cong (x86-mem xs) x86-loc) (mem-eq corr loc)
@@ -703,17 +703,17 @@ module Simulation {FS : FrameSemantics} where
   ... | true | ()
   ... | false | _ =
     let frame = current-frame alloc
-        loc = OnStack frame slot
+        loc = AtStack frame slot
         val = readReg (regs ls) Output
         ls' = writeLoc ls loc val
         regs-eq : regs ls' ≡ regs ls
         regs-eq = writeLoc-regs ls loc val
-        -- x86 writes to slotLoc frame (disp-to-slot (slot * slot-size)) = OnStack frame slot
+        -- x86 writes to slotLoc frame (disp-to-slot (slot * slot-size)) = AtStack frame slot
         slot-recover : disp-to-slot (slot *ℕ slot-size) ≡ slot
         slot-recover = m*n/n≡m slot slot-size
         -- Use slot-recover to fix the slot argument
-        mem-eq' : ∀ l → writeX86Mem (x86-mem xs) (OnStack frame (disp-to-slot (slot *ℕ slot-size))) (eax-val xs) l ≡ readLoc ls' l
-        mem-eq' = subst (λ s → ∀ l → writeX86Mem (x86-mem xs) (OnStack frame s) (eax-val xs) l ≡ readLoc ls' l)
+        mem-eq' : ∀ l → writeX86Mem (x86-mem xs) (AtStack frame (disp-to-slot (slot *ℕ slot-size))) (eax-val xs) l ≡ readLoc ls' l
+        mem-eq' = subst (λ s → ∀ l → writeX86Mem (x86-mem xs) (AtStack frame s) (eax-val xs) l ≡ readLoc ls' l)
                         (sym slot-recover)
                         (writeX86Mem-stack-corresponds ls xs frame slot val (mem-eq corr) (eax-eq corr))
     in record
@@ -782,21 +782,21 @@ module Simulation {FS : FrameSemantics} where
     }
 
   -- lea-slot: Output := &stack[frame, slot]
-  -- Abstract: writeReg regs Output (OnStack frame slot)
-  -- x86: lea eax, [ebp + slot*4] → eax' = OnStack frame (slot*4/4) = OnStack frame slot
+  -- Abstract: writeReg regs Output (AtStack frame slot)
+  -- x86: lea eax, [ebp + slot*4] → eax' = AtStack frame (slot*4/4) = AtStack frame slot
   instr-sim (lea-slot slot) ls xs alloc not-halted corr
     with x86-halted xs | xs-not-halted ls xs alloc not-halted corr
   ... | true | ()
   ... | false | _ =
     let frame = current-frame alloc
-        loc = OnStack frame slot
+        loc = AtStack frame slot
         newRegs = writeReg (regs ls) Output loc
         -- disp-to-slot (slot * slot-size) = slot (by n*4/4 = n)
         slot-recover : disp-to-slot (slot *ℕ slot-size) ≡ slot
         slot-recover = m*n/n≡m slot slot-size
     in record
     { ecx-eq = trans (ecx-eq corr) (sym (writeReg-preserves (regs ls) Output Input1 loc Input1≢Output))
-    ; eax-eq = trans (cong (λ s → OnStack frame s) slot-recover)
+    ; eax-eq = trans (cong (λ s → AtStack frame s) slot-recover)
                      (sym (writeReg-same (regs ls) Output loc))
     ; frame-eq = frame-eq corr
     ; slot-eq = trans (slot-eq corr) (slot-eq-lift alloc (sym (writeReg-preserves-stackSlot (regs ls) Output loc)))
@@ -805,18 +805,18 @@ module Simulation {FS : FrameSemantics} where
     }
 
   -- restore-input: Input1 := stack[frame, slot]
-  -- Abstract: exec-restore-input-with-value (readLoc ls (OnStack frame slot)) ls alloc
+  -- Abstract: exec-restore-input-with-value (readLoc ls (AtStack frame slot)) ls alloc
   -- X86: exec-x86-load-ecx-with-value (x86-mem xs (slotLoc frame (disp-to-slot ...))) xs
   instr-sim (restore-input slot) ls xs alloc not-halted corr
     with x86-halted xs | xs-not-halted ls xs alloc not-halted corr
   ... | true | ()
   ... | false | _ =
     let frame = current-frame alloc
-        loc = OnStack frame slot
+        loc = AtStack frame slot
         slot-recover : disp-to-slot (slot *ℕ slot-size) ≡ slot
         slot-recover = m*n/n≡m slot slot-size
         x86-loc : slotLoc frame (disp-to-slot (slot *ℕ slot-size)) ≡ loc
-        x86-loc = cong (OnStack frame) slot-recover
+        x86-loc = cong (AtStack frame) slot-recover
         mem-read-eq : x86-mem xs (slotLoc frame (disp-to-slot (slot *ℕ slot-size))) ≡ readLoc ls loc
         mem-read-eq = trans (cong (x86-mem xs) x86-loc) (mem-eq corr loc)
         abs-read = readLoc ls loc
@@ -998,7 +998,7 @@ module Simulation {FS : FrameSemantics} where
   exec-abstract-preserves-frame load-indirect-suc ls alloc = refl
   -- load-from-slot uses exec-load-from-slot-with-value which always returns alloc unchanged
   exec-abstract-preserves-frame (load-from-slot slot) ls alloc
-    with readLoc ls (OnStack (current-frame alloc) slot)
+    with readLoc ls (AtStack (current-frame alloc) slot)
   ... | just _  = refl
   ... | nothing = refl
   exec-abstract-preserves-frame (store-at-slot _) ls alloc = refl
@@ -1007,7 +1007,7 @@ module Simulation {FS : FrameSemantics} where
   exec-abstract-preserves-frame (lea-slot _) ls alloc = refl
   -- restore-input uses exec-restore-input-with-value which always returns alloc unchanged
   exec-abstract-preserves-frame (restore-input slot) ls alloc
-    with readLoc ls (OnStack (current-frame alloc) slot)
+    with readLoc ls (AtStack (current-frame alloc) slot)
   ... | just _  = refl
   ... | nothing = refl
   exec-abstract-preserves-frame (instr-alloc-stack _) ls alloc = refl
@@ -1019,7 +1019,7 @@ module Simulation {FS : FrameSemantics} where
   exec-abstract-preserves-frame (worklist-init _) ls alloc = refl
   exec-abstract-preserves-frame (worklist-push _) ls alloc = refl
   exec-abstract-preserves-frame (worklist-pop slot) ls alloc
-    with readLoc ls (OnStack (current-frame alloc) slot)
+    with readLoc ls (AtStack (current-frame alloc) slot)
   ... | just _  = refl
   ... | nothing = refl
   exec-abstract-preserves-frame (worklist-check _) ls alloc = refl

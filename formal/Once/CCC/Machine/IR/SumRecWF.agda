@@ -112,7 +112,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   lea-slot-state-eq : ∀ (slot : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
     halted s ≡ false →
     proj₁ (exec-trace (lea-slot slot ∷ []) s alloc) ≡
-    record s { regs = writeReg (regs s) Output (OnStack (current-frame alloc) slot) }
+    record s { regs = writeReg (regs s) Output (AtStack (current-frame alloc) slot) }
   lea-slot-state-eq slot s alloc not-halted =
     cong proj₁ (exec-trace-single (lea-slot slot) s alloc not-halted)
 
@@ -138,16 +138,16 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     (input-loc : ValueLocation FS) (result-loc : ValueLocation FS)
     (s-final : LocState FS) →
     readReg (regs s) Input1 ≡ input-loc →
-    result-loc ≡ OnStack (current-frame alloc) result-slot →
-    s-final ≡ record (write-loc s (OnStack (current-frame alloc) payload-slot) input-loc)
-                { regs = writeReg (regs (write-loc s (OnStack (current-frame alloc) payload-slot) input-loc)) Output result-loc } →
+    result-loc ≡ AtStack (current-frame alloc) result-slot →
+    s-final ≡ record (write-loc s (AtStack (current-frame alloc) payload-slot) input-loc)
+                { regs = writeReg (regs (write-loc s (AtStack (current-frame alloc) payload-slot) input-loc)) Output result-loc } →
     halted s ≡ false →
     proj₁ (exec-trace (mov-to-output ∷ store-at-slot payload-slot ∷ lea-slot result-slot ∷ []) s alloc) ≡ s-final
   inl-inr-trace-state-correct payload-slot result-slot s alloc input-loc result-loc s-final
     rdi-eq result-eq s-final-eq not-halted =
     let
       frame = current-frame alloc
-      s₁ = write-loc s (OnStack frame payload-slot) input-loc
+      s₁ = write-loc s (AtStack frame payload-slot) input-loc
 
       -- exec-abstract mov-to-output gives: Output := readReg Input1
       -- Using rdi-eq: readReg (regs s) Input1 = input-loc
@@ -158,11 +158,11 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       s'₀-eq : s'₀-actual ≡ s'₀
       s'₀-eq = cong (λ v → record s { regs = writeReg (regs s) Output v }) rdi-eq
 
-      -- After store-at-slot: write input-loc to OnStack frame payload-slot
+      -- After store-at-slot: write input-loc to AtStack frame payload-slot
       -- exec-abstract (store-at-slot payload-slot) writes readReg Output
       -- After mov-to-output, Output = input-loc, so it writes input-loc
-      s'₁-actual = writeLoc s'₀-actual (OnStack frame payload-slot) (readReg (regs s'₀-actual) Output)
-      s'₁ = writeLoc s'₀ (OnStack frame payload-slot) input-loc
+      s'₁-actual = writeLoc s'₀-actual (AtStack frame payload-slot) (readReg (regs s'₀-actual) Output)
+      s'₁ = writeLoc s'₀ (AtStack frame payload-slot) input-loc
 
       -- Output after mov-to-output is input-loc
       output-eq : readReg (regs s'₀-actual) Output ≡ input-loc
@@ -175,16 +175,16 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
                  (writeReg (regs s) Output input-loc)
 
       -- By writeReg-overwrite, this simplifies
-      regs-simplify : writeReg (writeReg (regs s) Output input-loc) Output (OnStack frame result-slot)
-                    ≡ writeReg (regs s) Output (OnStack frame result-slot)
-      regs-simplify = writeReg-overwrite (regs s) Output input-loc (OnStack frame result-slot)
+      regs-simplify : writeReg (writeReg (regs s) Output input-loc) Output (AtStack frame result-slot)
+                    ≡ writeReg (regs s) Output (AtStack frame result-slot)
+      regs-simplify = writeReg-overwrite (regs s) Output input-loc (AtStack frame result-slot)
 
       -- regs s₁ = regs s
       regs-s₁ : regs s₁ ≡ regs s
-      regs-s₁ = writeLoc-regs s (OnStack frame payload-slot) input-loc
+      regs-s₁ = writeLoc-regs s (AtStack frame payload-slot) input-loc
 
       -- The final register state using result-eq
-      final-regs : writeReg (regs s) Output (OnStack frame result-slot) ≡ writeReg (regs s) Output result-loc
+      final-regs : writeReg (regs s) Output (AtStack frame result-slot) ≡ writeReg (regs s) Output result-loc
       final-regs = cong (λ r → writeReg (regs s) Output r) (sym result-eq)
 
       -- halted is preserved by register updates
@@ -193,15 +193,15 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
       -- halted is preserved by writeLoc
       halted-s'₁ : halted s'₁ ≡ false
-      halted-s'₁ = trans (writeLoc-halted s'₀ (OnStack frame payload-slot) input-loc) halted-s'₀
+      halted-s'₁ = trans (writeLoc-halted s'₀ (AtStack frame payload-slot) input-loc) halted-s'₀
 
       -- halted of s₁ with different regs
       halted-s₁-regs : halted (record s₁ { regs = writeReg (regs s) Output input-loc }) ≡ false
-      halted-s₁-regs = trans (writeLoc-halted s (OnStack frame payload-slot) input-loc) not-halted
+      halted-s₁-regs = trans (writeLoc-halted s (AtStack frame payload-slot) input-loc) not-halted
 
       -- Show that s'₁ = s'₁-actual (they compute the same since readReg Output = input-loc after s'₀-eq)
       s'₁-actual-eq : s'₁-actual ≡ s'₁
-      s'₁-actual-eq = trans (cong₂ (λ s' v → writeLoc s' (OnStack frame payload-slot) v) s'₀-eq output-eq) refl
+      s'₁-actual-eq = trans (cong₂ (λ s' v → writeLoc s' (AtStack frame payload-slot) v) s'₀-eq output-eq) refl
 
     in
     -- The proof uses equational reasoning through exec-trace-cons
@@ -213,17 +213,17 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     ≡⟨ cong (λ s' → proj₁ (exec-trace (store-at-slot payload-slot ∷ lea-slot result-slot ∷ []) s' alloc)) s'₀-eq ⟩
       proj₁ (exec-trace (store-at-slot payload-slot ∷ lea-slot result-slot ∷ []) s'₀ alloc)
     ≡⟨ cong proj₁ (exec-trace-cons (store-at-slot payload-slot) _ s'₀ alloc halted-s'₀) ⟩
-      proj₁ (exec-trace (lea-slot result-slot ∷ []) (writeLoc s'₀ (OnStack frame payload-slot) (readReg (regs s'₀) Output)) alloc)
-    ≡⟨ cong (λ v → proj₁ (exec-trace (lea-slot result-slot ∷ []) (writeLoc s'₀ (OnStack frame payload-slot) v) alloc))
+      proj₁ (exec-trace (lea-slot result-slot ∷ []) (writeLoc s'₀ (AtStack frame payload-slot) (readReg (regs s'₀) Output)) alloc)
+    ≡⟨ cong (λ v → proj₁ (exec-trace (lea-slot result-slot ∷ []) (writeLoc s'₀ (AtStack frame payload-slot) v) alloc))
             (writeReg-same (regs s) Output input-loc) ⟩
       proj₁ (exec-trace (lea-slot result-slot ∷ []) s'₁ alloc)
     ≡⟨ cong (λ s' → proj₁ (exec-trace (lea-slot result-slot ∷ []) s' alloc)) s'₁-eq ⟩
       proj₁ (exec-trace (lea-slot result-slot ∷ []) (record s₁ { regs = writeReg (regs s) Output input-loc }) alloc)
     ≡⟨ lea-slot-state-eq result-slot (record s₁ { regs = writeReg (regs s) Output input-loc }) alloc halted-s₁-regs ⟩
       record (record s₁ { regs = writeReg (regs s) Output input-loc })
-        { regs = writeReg (writeReg (regs s) Output input-loc) Output (OnStack frame result-slot) }
+        { regs = writeReg (writeReg (regs s) Output input-loc) Output (AtStack frame result-slot) }
     ≡⟨ cong (λ r → record s₁ { regs = r }) regs-simplify ⟩
-      record s₁ { regs = writeReg (regs s) Output (OnStack frame result-slot) }
+      record s₁ { regs = writeReg (regs s) Output (AtStack frame result-slot) }
     ≡⟨ cong (λ r → record s₁ { regs = r }) final-regs ⟩
       record s₁ { regs = writeReg (regs s) Output result-loc }
     ≡⟨ cong (λ r → record s₁ { regs = writeReg r Output result-loc }) (sym regs-s₁) ⟩
@@ -384,7 +384,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       sum-slots : ℕ
       sum-slots = 2
 
-      sum-loc = OnStack (current-frame alloc) (next-slot alloc)
+      sum-loc = AtStack (current-frame alloc) (next-slot alloc)
 
       alloc₁ : AllocState {FS}
       alloc₁ = record alloc
@@ -469,13 +469,13 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       inl-frontier-stable : ∀ (s' : LocState FS) (input-loc' : ValueLocation FS) →
         halted s' ≡ false →
         readReg (regs s') Input1 ≡ input-loc' →
-        readLoc s' (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc' →
+        readLoc s' (AtStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc' →
         _
       inl-frontier-stable s' input-loc' s'-not-halted input-eq' slot-eq' =
         inj₂ (inj₁ (trans preserved slot-eq'))
         where
           n = next-slot alloc
-          frontier-loc = OnStack (current-frame alloc) n
+          frontier-loc = AtStack (current-frame alloc) n
           -- TraceWritesAbove (suc n) inl-trace: the only store is at suc sum-slot = suc n
           tw : SMP.TraceWritesAbove (suc n) inl-trace
           tw = ≤-refl , tt
@@ -533,7 +533,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       sum-slots : ℕ
       sum-slots = 2
 
-      sum-loc = OnStack (current-frame alloc) (next-slot alloc)
+      sum-loc = AtStack (current-frame alloc) (next-slot alloc)
 
       alloc₁ : AllocState {FS}
       alloc₁ = record alloc
@@ -617,13 +617,13 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       inl-frontier-stable : ∀ (s' : LocState FS) (input-loc' : ValueLocation FS) →
         halted s' ≡ false →
         readReg (regs s') Input1 ≡ input-loc' →
-        readLoc s' (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc' →
+        readLoc s' (AtStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc' →
         _
       inl-frontier-stable s' input-loc' s'-not-halted input-eq' slot-eq' =
         inj₂ (inj₁ (trans preserved slot-eq'))
         where
           n = next-slot alloc
-          frontier-loc = OnStack (current-frame alloc) n
+          frontier-loc = AtStack (current-frame alloc) n
           tw : SMP.TraceWritesAbove (suc n) inl-trace
           tw = ≤-refl , tt
           tnhw : SMP.TraceNoHeapWrites inl-trace
@@ -698,7 +698,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       sum-slots : ℕ
       sum-slots = 2
 
-      sum-loc = OnStack (current-frame alloc) (next-slot alloc)
+      sum-loc = AtStack (current-frame alloc) (next-slot alloc)
 
       alloc₁ : AllocState {FS}
       alloc₁ = record alloc
@@ -779,13 +779,13 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       inr-frontier-stable : ∀ (s' : LocState FS) (input-loc' : ValueLocation FS) →
         halted s' ≡ false →
         readReg (regs s') Input1 ≡ input-loc' →
-        readLoc s' (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc' →
+        readLoc s' (AtStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc' →
         _
       inr-frontier-stable s' input-loc' s'-not-halted input-eq' slot-eq' =
         inj₂ (inj₁ (trans preserved slot-eq'))
         where
           n = next-slot alloc
-          frontier-loc = OnStack (current-frame alloc) n
+          frontier-loc = AtStack (current-frame alloc) n
           tw : SMP.TraceWritesAbove (suc n) inr-trace
           tw = ≤-refl , tt
           tnhw : SMP.TraceNoHeapWrites inr-trace
@@ -839,7 +839,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       sum-slots : ℕ
       sum-slots = 2
 
-      sum-loc = OnStack (current-frame alloc) (next-slot alloc)
+      sum-loc = AtStack (current-frame alloc) (next-slot alloc)
 
       alloc₁ : AllocState {FS}
       alloc₁ = record alloc
@@ -922,13 +922,13 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       inr-frontier-stable : ∀ (s' : LocState FS) (input-loc' : ValueLocation FS) →
         halted s' ≡ false →
         readReg (regs s') Input1 ≡ input-loc' →
-        readLoc s' (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc' →
+        readLoc s' (AtStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc' →
         _
       inr-frontier-stable s' input-loc' s'-not-halted input-eq' slot-eq' =
         inj₂ (inj₁ (trans preserved slot-eq'))
         where
           n = next-slot alloc
-          frontier-loc = OnStack (current-frame alloc) n
+          frontier-loc = AtStack (current-frame alloc) n
           tw : SMP.TraceWritesAbove (suc n) inr-trace
           tw = ≤-refl , tt
           tnhw : SMP.TraceNoHeapWrites inr-trace
@@ -1073,7 +1073,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       case-frontier-stable : ∀ (s' : LocState FS) (input-loc' : ValueLocation FS) →
         halted s' ≡ false →
         readReg (regs s') Input1 ≡ input-loc' →
-        readLoc s' (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc' →
+        readLoc s' (AtStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc' →
         _
       case-frontier-stable _ _ _ _ _ = inj₂ (inj₂ tt)
 
@@ -1186,7 +1186,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       case-frontier-stable : ∀ (s' : LocState FS) (input-loc' : ValueLocation FS) →
         halted s' ≡ false →
         readReg (regs s') Input1 ≡ input-loc' →
-        readLoc s' (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc' →
+        readLoc s' (AtStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc' →
         _
       case-frontier-stable _ _ _ _ _ = inj₂ (inj₂ tt)
 
@@ -1277,7 +1277,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     where
       -- ir-stack-requirement (In _ _) = 1
       result-slot = next-slot alloc
-      result-loc = OnStack (current-frame alloc) result-slot
+      result-loc = AtStack (current-frame alloc) result-slot
 
       alloc' : AllocState {FS}
       alloc' = record alloc { next-slot = suc (next-slot alloc) }
@@ -1320,11 +1320,11 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       not-halted' = rec-scheme-preserves-halted-3 result-slot s alloc not-halted
 
       mem-preserved : ∀ loc → BeforeFrontier alloc loc → readLoc s' loc ≡ readLoc s loc
-      mem-preserved (OnStack f k) (stack-before refl k<n) =
+      mem-preserved (AtStack f k) (stack-before refl k<n) =
         rec-scheme-preserves-slot-below-3 result-slot k s alloc not-halted k<n
-      mem-preserved (OnStack f k) (stack-ancestor cf≺f _) =
+      mem-preserved (AtStack f k) (stack-ancestor cf≺f _) =
         rec-scheme-preserves-ancestor-3 result-slot s alloc f k not-halted (λ eq → ≺⇒≢ cf≺f (sym eq))
-      mem-preserved (OnHeap hl) (heap-before _) =
+      mem-preserved (AtDynamic hl) (heap-before _) =
         rec-scheme-preserves-heap-3 result-slot s alloc hl not-halted
 
       trace-wa : SMP.TraceWritesAbove (next-slot alloc) in-trace
@@ -1336,7 +1336,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       frontier-stable : ∀ (s'' : LocState FS) (input-loc' : ValueLocation FS) →
         halted s'' ≡ false →
         readReg (regs s'') Input1 ≡ input-loc' →
-        readLoc s'' (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc' →
+        readLoc s'' (AtStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc' →
         _
       frontier-stable s'' input-loc' _ _ _ = inj₂ (inj₂ tt)
 
@@ -1418,7 +1418,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       frontier-stable : ∀ (s'' : LocState FS) (input-loc' : ValueLocation FS) →
         halted s'' ≡ false →
         readReg (regs s'') Input1 ≡ input-loc' →
-        readLoc s'' (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc' →
+        readLoc s'' (AtStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc' →
         _
       frontier-stable _ _ _ _ _ = inj₁ refl
 
@@ -1497,7 +1497,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       frontier-stable : ∀ (s'' : LocState FS) (input-loc' : ValueLocation FS) →
         halted s'' ≡ false →
         readReg (regs s'') Input1 ≡ input-loc' →
-        readLoc s'' (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc' →
+        readLoc s'' (AtStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc' →
         _
       frontier-stable _ _ _ _ _ = inj₁ refl
 
@@ -1553,7 +1553,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     where
       -- ir-stack-requirement (in-ν _ _) = 1
       result-slot = next-slot alloc
-      result-loc = OnStack (current-frame alloc) result-slot
+      result-loc = AtStack (current-frame alloc) result-slot
 
       alloc' : AllocState {FS}
       alloc' = record alloc { next-slot = suc (next-slot alloc) }
@@ -1595,11 +1595,11 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       not-halted' = rec-scheme-preserves-halted-3 result-slot s alloc not-halted
 
       mem-preserved : ∀ loc → BeforeFrontier alloc loc → readLoc s' loc ≡ readLoc s loc
-      mem-preserved (OnStack f k) (stack-before refl k<n) =
+      mem-preserved (AtStack f k) (stack-before refl k<n) =
         rec-scheme-preserves-slot-below-3 result-slot k s alloc not-halted k<n
-      mem-preserved (OnStack f k) (stack-ancestor cf≺f _) =
+      mem-preserved (AtStack f k) (stack-ancestor cf≺f _) =
         rec-scheme-preserves-ancestor-3 result-slot s alloc f k not-halted (≢-sym (≺⇒≢ cf≺f))
-      mem-preserved (OnHeap hl) (heap-before _) =
+      mem-preserved (AtDynamic hl) (heap-before _) =
         rec-scheme-preserves-heap-3 result-slot s alloc hl not-halted
 
       trace-wa : SMP.TraceWritesAbove (next-slot alloc) in-ν-trace
@@ -1611,7 +1611,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       frontier-stable : ∀ (s'' : LocState FS) (input-loc' : ValueLocation FS) →
         halted s'' ≡ false →
         readReg (regs s'') Input1 ≡ input-loc' →
-        readLoc s'' (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc' →
+        readLoc s'' (AtStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc' →
         _
       frontier-stable s'' input-loc' _ _ _ = inj₂ (inj₂ tt)
 

@@ -154,13 +154,13 @@ data OutsideOwned : HeapLocation → HeapOwnership → Set where
 ------------------------------------------------------------------------
 -- ValueLocation: Where a value lives
 --
--- OnStack locations can reference anything (stack or heap).
--- OnHeap locations use HeapLocation, enforcing heap-only references.
+-- AtStack locations can reference anything (stack or heap).
+-- AtDynamic locations use HeapLocation, enforcing heap-only references.
 ------------------------------------------------------------------------
 
 data ValueLocation (FS : FrameSemantics) : Set where
-  OnStack : FrameSemantics.Frame FS → Slot → ValueLocation FS
-  OnHeap  : HeapLocation → ValueLocation FS
+  AtStack : FrameSemantics.Frame FS → Slot → ValueLocation FS
+  AtDynamic  : HeapLocation → ValueLocation FS
 
 -- | Successor HeapLocation (for heap internal references)
 sucHL : HeapLocation → HeapLocation
@@ -172,14 +172,14 @@ offsetHL (heap-loc r o) n = heap-loc r (n + o)
 
 -- | Successor location (for accessing pair.snd, closure.code-ptr, etc.)
 sucLoc : ∀ {FS} → ValueLocation FS → ValueLocation FS
-sucLoc (OnStack f k) = OnStack f (suc k)
-sucLoc (OnHeap hl)   = OnHeap (sucHL hl)
+sucLoc (AtStack f k) = AtStack f (suc k)
+sucLoc (AtDynamic hl)   = AtDynamic (sucHL hl)
 
 -- | Offset location by n slots (for unboxed multi-slot values)
 -- Note: n + k so that offsetLoc _ 1 = sucLoc definitionally
 offsetLoc : ∀ {FS} → ValueLocation FS → ℕ → ValueLocation FS
-offsetLoc (OnStack f k) n = OnStack f (n + k)
-offsetLoc (OnHeap hl) n   = OnHeap (offsetHL hl n)
+offsetLoc (AtStack f k) n = AtStack f (n + k)
+offsetLoc (AtDynamic hl) n   = AtDynamic (offsetHL hl n)
 
 ------------------------------------------------------------------------
 -- Memory: Stores Locations (not Words)
@@ -379,9 +379,9 @@ module MemOps {FS : FrameSemantics} where
   -- Stack: returns arbitrary ValueLocation
   -- Heap: returns HeapLocation lifted to ValueLocation
   readLoc : LocState FS → ValueLocation FS → Maybe (ValueLocation FS)
-  readLoc s (OnStack f k) = stackMem s f k
-  readLoc s (OnHeap hl) with heapMem s hl
-  ... | just hl' = just (OnHeap hl')
+  readLoc s (AtStack f k) = stackMem s f k
+  readLoc s (AtDynamic hl) with heapMem s hl
+  ... | just hl' = just (AtDynamic hl')
   ... | nothing  = nothing
 
   -- | Write a Location to stack memory.
@@ -418,38 +418,38 @@ module MemOps {FS : FrameSemantics} where
 
   -- | Write a Location to memory
   -- Stack destinations: can store any ValueLocation
-  -- Heap destinations: can only store HeapLocation (extracted from OnHeap)
-  -- Note: Writing OnStack to OnHeap is a type error - enforces invariant!
+  -- Heap destinations: can only store HeapLocation (extracted from AtDynamic)
+  -- Note: Writing AtStack to AtDynamic is a type error - enforces invariant!
   writeLoc : LocState FS → ValueLocation FS → ValueLocation FS → LocState FS
-  writeLoc s (OnStack f k) v = writeLocToStack s f k v
-  writeLoc s (OnHeap hl) (OnHeap v) = writeLocToHeap s hl v
-  writeLoc s (OnHeap hl) (OnStack _ _) = s  -- Invalid: can't store stack ref in heap (no-op)
+  writeLoc s (AtStack f k) v = writeLocToStack s f k v
+  writeLoc s (AtDynamic hl) (AtDynamic v) = writeLocToHeap s hl v
+  writeLoc s (AtDynamic hl) (AtStack _ _) = s  -- Invalid: can't store stack ref in heap (no-op)
 
   -- writeLoc preserves regs (for all cases)
   writeLoc-regs : ∀ (s : LocState FS) (loc : ValueLocation FS) (v : ValueLocation FS) →
     regs (writeLoc s loc v) ≡ regs s
-  writeLoc-regs s (OnStack f k) v = refl
-  writeLoc-regs s (OnHeap hl) (OnHeap v) = refl
-  writeLoc-regs s (OnHeap hl) (OnStack _ _) = refl
+  writeLoc-regs s (AtStack f k) v = refl
+  writeLoc-regs s (AtDynamic hl) (AtDynamic v) = refl
+  writeLoc-regs s (AtDynamic hl) (AtStack _ _) = refl
 
   -- writeLoc preserves halted (for all cases)
   writeLoc-halted : ∀ (s : LocState FS) (loc : ValueLocation FS) (v : ValueLocation FS) →
     halted (writeLoc s loc v) ≡ halted s
-  writeLoc-halted s (OnStack f k) v = refl
-  writeLoc-halted s (OnHeap hl) (OnHeap v) = refl
-  writeLoc-halted s (OnHeap hl) (OnStack _ _) = refl
+  writeLoc-halted s (AtStack f k) v = refl
+  writeLoc-halted s (AtDynamic hl) (AtDynamic v) = refl
+  writeLoc-halted s (AtDynamic hl) (AtStack _ _) = refl
 
-  -- writeLoc OnStack preserves heapMem
+  -- writeLoc AtStack preserves heapMem
   writeLoc-heapMem-stack : ∀ (s : LocState FS) (f : Frame) (k : Slot) (v : ValueLocation FS) →
-    heapMem (writeLoc s (OnStack f k) v) ≡ heapMem s
+    heapMem (writeLoc s (AtStack f k) v) ≡ heapMem s
   writeLoc-heapMem-stack s f k v = refl
 
-  -- writeLoc commutes with register updates for OnStack locations
+  -- writeLoc commutes with register updates for AtStack locations
   -- Key for proving trace correctness where register operations interleave with memory writes
   writeLoc-regs-commute : ∀ (s : LocState FS) (f : Frame) (k : Slot) (v : ValueLocation FS)
     (r : Registers FS) →
-    writeLoc (record s { regs = r }) (OnStack f k) v ≡
-    record (writeLoc s (OnStack f k) v) { regs = r }
+    writeLoc (record s { regs = r }) (AtStack f k) v ≡
+    record (writeLoc s (AtStack f k) v) { regs = r }
   writeLoc-regs-commute s f k v r = refl
 
   -- writeLoc preserves other locations (reading from a different location)
@@ -458,7 +458,7 @@ module MemOps {FS : FrameSemantics} where
   writeLoc-preserves-other-stack-aux : ∀ {f1 f2 : Frame} {k1 k2 : Slot}
     (s : LocState FS) (v : ValueLocation FS)
     (df : Dec (f1 ≡ f2)) (dk : Dec (k1 ≡ k2))
-    → OnStack {FS} f1 k1 ≢ OnStack {FS} f2 k2
+    → AtStack {FS} f1 k1 ≢ AtStack {FS} f2 k2
     → writeStackMem-aux df dk (stackMem s f2 k2) v ≡ stackMem s f2 k2
   writeLoc-preserves-other-stack-aux s v (yes refl) (yes refl) neq = ⊥-elim (neq refl)
     where open import Data.Empty using (⊥-elim)
@@ -471,26 +471,26 @@ module MemOps {FS : FrameSemantics} where
     loc1 ≢ loc2 →
     readLoc (writeLoc s loc1 v) loc2 ≡ readLoc s loc2
   -- Writing to stack, reading from different stack location
-  writeLoc-preserves-other s (OnStack f1 k1) (OnStack f2 k2) v neq =
+  writeLoc-preserves-other s (AtStack f1 k1) (AtStack f2 k2) v neq =
     writeLoc-preserves-other-stack-aux s v (f1 ≟F f2) (k1 ≟ k2) neq
   -- Writing to stack, reading from heap (disjoint)
-  writeLoc-preserves-other s (OnStack f k) (OnHeap hl) v _ = refl
+  writeLoc-preserves-other s (AtStack f k) (AtDynamic hl) v _ = refl
   -- Writing to heap, reading from stack (disjoint)
-  writeLoc-preserves-other s (OnHeap hl) (OnStack f k) (OnHeap hv) _ = refl
-  writeLoc-preserves-other s (OnHeap hl) (OnStack f k) (OnStack _ _) _ = refl
+  writeLoc-preserves-other s (AtDynamic hl) (AtStack f k) (AtDynamic hv) _ = refl
+  writeLoc-preserves-other s (AtDynamic hl) (AtStack f k) (AtStack _ _) _ = refl
   -- Writing to heap, reading from different heap location
-  writeLoc-preserves-other s (OnHeap hl1) (OnHeap hl2) (OnHeap hv) neq
+  writeLoc-preserves-other s (AtDynamic hl1) (AtDynamic hl2) (AtDynamic hv) neq
     with hl1 ≟HL hl2
   ... | yes refl = ⊥-elim (neq refl)
     where open import Data.Empty using (⊥-elim)
   ... | no _ = refl
-  -- Writing OnStack to OnHeap is a no-op, so reading anything returns original
-  writeLoc-preserves-other s (OnHeap hl1) (OnHeap hl2) (OnStack _ _) _ = refl
+  -- Writing AtStack to AtDynamic is a no-op, so reading anything returns original
+  writeLoc-preserves-other s (AtDynamic hl1) (AtDynamic hl2) (AtStack _ _) _ = refl
 
   -- writeLoc-read-same: Reading from the location we just wrote returns the written value
-  -- Stack case: writeLoc s (OnStack f k) v → readLoc (OnStack f k) ≡ just v
+  -- Stack case: writeLoc s (AtStack f k) v → readLoc (AtStack f k) ≡ just v
   writeLoc-read-same-stack : ∀ (s : LocState FS) (f : Frame) (k : Slot) (v : ValueLocation FS) →
-    readLoc (writeLoc s (OnStack f k) v) (OnStack f k) ≡ just v
+    readLoc (writeLoc s (AtStack f k) v) (AtStack f k) ≡ just v
   writeLoc-read-same-stack s f k v with f ≟F f | k ≟ k
   ... | yes _ | yes _ = refl
   ... | yes _ | no k≢k = ⊥-elim (k≢k refl)
@@ -653,11 +653,11 @@ module ExecLemmas {FS : FrameSemantics} where
     stackMem s₁ ≡ stackMem s₂ →
     heapMem s₁ ≡ heapMem s₂ →
     readLoc s₁ loc ≡ readLoc s₂ loc
-  readLoc-stackMem-eq s₁ s₂ (OnStack f k) stack-eq heap-eq =
+  readLoc-stackMem-eq s₁ s₂ (AtStack f k) stack-eq heap-eq =
     cong (λ m → m f k) stack-eq
-  readLoc-stackMem-eq s₁ s₂ (OnHeap hl) stack-eq heap-eq
+  readLoc-stackMem-eq s₁ s₂ (AtDynamic hl) stack-eq heap-eq
     with heapMem s₁ hl | heapMem s₂ hl | cong (λ m → m hl) heap-eq
-  ... | just hl₁ | just hl₂ | eq = cong (λ x → just (OnHeap x)) (just-injective eq)
+  ... | just hl₁ | just hl₂ | eq = cong (λ x → just (AtDynamic x)) (just-injective eq)
   ... | nothing | nothing | _ = refl
   ... | just _ | nothing | ()
   ... | nothing | just _ | ()
@@ -1005,11 +1005,11 @@ module AbstractExec {FS : FrameSemantics} where
 
   -- load-from-slot: Output := stack[frame, slot]
   exec-abstract (load-from-slot slot) s alloc =
-    exec-load-from-slot-with-value (readLoc s (OnStack (current-frame alloc) slot)) s alloc
+    exec-load-from-slot-with-value (readLoc s (AtStack (current-frame alloc) slot)) s alloc
 
   -- store-at-slot: stack[frame, slot] := Output
   exec-abstract (store-at-slot slot) s alloc =
-    writeLoc s (OnStack (current-frame alloc) slot) (readReg (regs s) Output) , alloc
+    writeLoc s (AtStack (current-frame alloc) slot) (readReg (regs s) Output) , alloc
 
   -- store-indirect: *Input1 := Output
   exec-abstract store-indirect s alloc =
@@ -1021,11 +1021,11 @@ module AbstractExec {FS : FrameSemantics} where
 
   -- lea-slot: Output := &stack[frame, slot]
   exec-abstract (lea-slot slot) s alloc =
-    record s { regs = writeReg (regs s) Output (OnStack (current-frame alloc) slot) } , alloc
+    record s { regs = writeReg (regs s) Output (AtStack (current-frame alloc) slot) } , alloc
 
   -- restore-input: Input1 := stack[frame, slot]
   exec-abstract (restore-input slot) s alloc =
-    exec-restore-input-with-value (readLoc s (OnStack (current-frame alloc) slot)) s alloc
+    exec-restore-input-with-value (readLoc s (AtStack (current-frame alloc) slot)) s alloc
 
   -- instr-alloc-stack: advance stackSlot by n AND advance next-slot frontier
   -- Capacity was verified by Dispatcher when constructing the trace
@@ -1081,12 +1081,12 @@ module AbstractExec {FS : FrameSemantics} where
   -- worklist-push: Push Output onto worklist, advance count
   -- Abstract: store value at slot (simplified - runtime tracks index)
   exec-abstract (worklist-push slot) s alloc =
-    writeLoc s (OnStack (current-frame alloc) slot) (readReg (regs s) Output) , alloc
+    writeLoc s (AtStack (current-frame alloc) slot) (readReg (regs s) Output) , alloc
 
   -- worklist-pop: Pop top item into Output, decrement count
   -- Abstract: load from slot (simplified - runtime tracks index)
   exec-abstract (worklist-pop slot) s alloc =
-    exec-load-from-slot-with-value (readLoc s (OnStack (current-frame alloc) slot)) s alloc
+    exec-load-from-slot-with-value (readLoc s (AtStack (current-frame alloc) slot)) s alloc
 
   -- worklist-check: Set Output based on worklist empty status
   -- Abstract: no-op (Star proofs handle termination structurally)
@@ -1195,7 +1195,7 @@ module AbstractExec {FS : FrameSemantics} where
   -- At runtime, this reads the discriminator field of a sum value.
   -- For proofs, we use a simplified model where nothing means "take left".
   getTag : LocState FS → AllocState {FS} → Slot → Maybe ℕ
-  getTag s alloc slot with readLoc s (OnStack (current-frame alloc) slot)
+  getTag s alloc slot with readLoc s (AtStack (current-frame alloc) slot)
   ... | nothing = nothing
   ... | just _ = just 0  -- Simplified: actual tag extraction is backend-specific
 

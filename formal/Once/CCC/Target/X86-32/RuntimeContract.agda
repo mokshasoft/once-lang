@@ -25,7 +25,7 @@ open import Induction.WellFounded using (Acc)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Memory.MemoryLayoutSemantics as MLS using (MemoryLayout; upper)
-open import Once.CCC.Machine.SMCore using (ValueLocation; OnStack; OnHeap; HeapLocation; HeapRef)
+open import Once.CCC.Machine.SMCore using (ValueLocation; AtStack; AtDynamic; HeapLocation; HeapRef)
 
 ------------------------------------------------------------------------
 -- Frame Slots In Stack: predicate that all slots are in stack region

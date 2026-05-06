@@ -160,7 +160,7 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     where
       -- Closure location and trace
       closure-slot = next-slot alloc
-      closure-loc = OnStack (current-frame alloc) closure-slot
+      closure-loc = AtStack (current-frame alloc) closure-slot
       code-loc = sucLoc closure-loc
       trace = curry-trace closure-slot
 
@@ -208,7 +208,7 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       not-halted' = exec-trace-preserves-halted trace s alloc not-halted trace-preserves-halted'
 
       -- Output register contains closure address
-      -- The trace ends with lea-slot closure-slot, so Output = OnStack frame closure-slot
+      -- The trace ends with lea-slot closure-slot, so Output = AtStack frame closure-slot
       -- Proof: split trace = prefix ++ [lea-slot closure-slot], use exec-trace-final-lea-slot
       prefix-trace : AbstractTrace
       prefix-trace = mov-to-output ∷ store-at-slot closure-slot ∷
@@ -293,14 +293,14 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       code-suffix-twa : TraceWritesAbove (suc (suc closure-slot)) code-suffix
       code-suffix-twa = tt
 
-      -- After code-prefix: Output = OnStack frame (suc closure-slot) = code-loc
+      -- After code-prefix: Output = AtStack frame (suc closure-slot) = code-loc
       s-after-code-prefix : LocState FS
       s-after-code-prefix = proj₁ (exec-trace code-prefix s alloc)
 
       code-prefix-not-halted : halted s-after-code-prefix ≡ false
       code-prefix-not-halted = exec-trace-preserves-halted code-prefix s alloc not-halted code-prefix-tph
 
-      -- lea-slot (suc closure-slot) puts OnStack frame (suc closure-slot) in Output
+      -- lea-slot (suc closure-slot) puts AtStack frame (suc closure-slot) in Output
       -- Use exec-trace-final-lea-slot: code-prefix = prefix ++ [lea-slot k]
       -- where prefix = mov-to-output ∷ store-at-slot closure-slot ∷ []
       code-prefix-before-lea : AbstractTrace
@@ -325,16 +325,16 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Memory before frontier is preserved
       -- Trace writes above closure-slot, so slots below are preserved
       mem-preserved' : ∀ loc → BeforeFrontier alloc loc → readLoc s' loc ≡ readLoc s loc
-      mem-preserved' (OnStack f' k) (stack-before {.f'} {.k} frame-eq k<next) =
+      mem-preserved' (AtStack f' k) (stack-before {.f'} {.k} frame-eq k<next) =
         -- k < next-slot alloc = closure-slot, so slot k is below write region
-        subst (λ f → readLoc s' (OnStack f k) ≡ readLoc s (OnStack f k))
+        subst (λ f → readLoc s' (AtStack f k) ≡ readLoc s (AtStack f k))
               (sym frame-eq)
               (exec-trace-preserves-slot-below trace s alloc closure-slot k
                  trace-writes-above' tt k<next)
-      mem-preserved' (OnStack f' k) (stack-ancestor {.f'} cf≺f' _) =
+      mem-preserved' (AtStack f' k) (stack-ancestor {.f'} cf≺f' _) =
         -- f' is an ancestor frame (current-frame alloc ≺ f')
         exec-trace-preserves-ancestor trace s alloc f' k cf≺f' tt
-      mem-preserved' (OnHeap h) (heap-before _) =
+      mem-preserved' (AtDynamic h) (heap-before _) =
         -- Heap location, use preserves-heap-loc
         exec-trace-preserves-heap-loc trace s alloc h tt
 
@@ -346,7 +346,7 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       frontier-stable' : ∀ (s'' : LocState FS) (input-loc' : ValueLocation FS) →
         halted s'' ≡ false →
         readReg (regs s'') Input1 ≡ input-loc' →
-        readLoc s'' (OnStack (current-frame alloc) closure-slot) ≡ just input-loc' →
+        readLoc s'' (AtStack (current-frame alloc) closure-slot) ≡ just input-loc' →
         _
       frontier-stable' s'' input-loc' not-halted'' rdi-eq'' _ =
         let -- Use same decomposition as env-ptr': prefix = [mov-to-output], suffix = rest
@@ -371,7 +371,7 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
             -- Apply prefix-store-preserve
             result : readLoc (proj₁ (exec-trace trace s'' alloc))
-                             (OnStack (current-frame alloc) closure-slot) ≡
+                             (AtStack (current-frame alloc) closure-slot) ≡
                      just (readReg (regs s''-after-env-prefix) Output)
             result = prefix-store-preserve env-prefix closure-slot env-suffix s'' alloc
                        env-prefix-tph not-halted'' env-suffix-twa tt

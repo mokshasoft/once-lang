@@ -26,7 +26,7 @@ open import Once.Type using (Type; Int; IsPrimitive; is-int; _*_)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.IR using (IR; SigOp; AllocMode; Stack)
 open import Once.CCC.Machine.SMCore
-  using (LocState; ValueLocation; OnStack; halted; regs;
+  using (LocState; ValueLocation; AtStack; halted; regs;
          readReg; Input1; Output; AbstractTrace; mov-to-output;
          mkLocState; stackMem; heapMem; writeReg; module MemOps;
          module AbstractExec; module ExecLemmas)
@@ -109,9 +109,9 @@ module ArithProofs {FS : FrameSemantics} (program-bound : ℕ) where
     (alloc : AllocState {FS}) →
     halted s' ≡ false →
     readReg (regs s') Input1 ≡ input-loc' →
-    readLoc s' (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc' →
+    readLoc s' (AtStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc' →
     readLoc (proj₁ (exec-trace (mov-to-output ∷ []) s' alloc))
-            (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc'
+            (AtStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc'
   arith-frontier-stable s' input-loc' alloc not-halted rdi-eq slot-eq =
     let
       s'' = proj₁ (exec-trace (mov-to-output ∷ []) s' alloc)
@@ -126,11 +126,11 @@ module ArithProofs {FS : FrameSemantics} (program-bound : ℕ) where
       heap-preserved = cong heapMem
         (trans (cong proj₁ (exec-trace-single mov-to-output s' alloc not-halted)) refl)
 
-      -- readLoc only depends on stackMem/heapMem for OnStack locations
-      loc-preserved : readLoc s'' (OnStack (current-frame alloc) (next-slot alloc)) ≡
-                      readLoc s' (OnStack (current-frame alloc) (next-slot alloc))
+      -- readLoc only depends on stackMem/heapMem for AtStack locations
+      loc-preserved : readLoc s'' (AtStack (current-frame alloc) (next-slot alloc)) ≡
+                      readLoc s' (AtStack (current-frame alloc) (next-slot alloc))
       loc-preserved = readLoc-stackMem-eq s'' s'
-                        (OnStack (current-frame alloc) (next-slot alloc))
+                        (AtStack (current-frame alloc) (next-slot alloc))
                         stack-preserved heap-preserved
     in trans loc-preserved slot-eq
 

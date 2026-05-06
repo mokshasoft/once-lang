@@ -138,7 +138,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
       f-start = suc snd-slot  -- = suc (suc (suc backup-slot))
 
       pair-loc : ValueLocation FS
-      pair-loc = OnStack frame fst-slot
+      pair-loc = AtStack frame fst-slot
 
       ------------------------------------------------------------------------
       -- Allocation state after reserving pair slots
@@ -723,16 +723,16 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Memory preservation (using positive write bounds)
       ------------------------------------------------------------------------
       mem-preserved-pair : ∀ loc → BeforeFrontier alloc loc → readLoc s-final loc ≡ readLoc s loc
-      mem-preserved-pair (OnStack f' k) (stack-before f'≡cf k<next) =
+      mem-preserved-pair (AtStack f' k) (stack-before f'≡cf k<next) =
         -- k < next-slot alloc = backup-slot, so slot k is below write region
-        subst (λ f → readLoc s-final (OnStack f k) ≡ readLoc s (OnStack f k))
+        subst (λ f → readLoc s-final (AtStack f k) ≡ readLoc s (AtStack f k))
               (sym f'≡cf)
               (exec-trace-preserves-slot-below pair-trace s alloc backup-slot k
                  pair-trace-writes-above pair-trace-no-heap-writes k<next)
-      mem-preserved-pair (OnStack f' k) (stack-ancestor cf≺f' _) =
+      mem-preserved-pair (AtStack f' k) (stack-ancestor cf≺f' _) =
         -- f' is an ancestor frame
         exec-trace-preserves-ancestor pair-trace s alloc f' k cf≺f' pair-trace-no-heap-writes
-      mem-preserved-pair (OnHeap h) (heap-before _) =
+      mem-preserved-pair (AtDynamic h) (heap-before _) =
         -- Heap location
         exec-trace-preserves-heap-loc pair-trace s alloc h pair-trace-no-heap-writes
 
@@ -742,10 +742,10 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
       pair-frontier-stable : ∀ (s' : LocState FS) (input-loc' : ValueLocation FS) →
         halted s' ≡ false →
         readReg (regs s') Input1 ≡ input-loc' →
-        readLoc s' (OnStack frame backup-slot) ≡ just input-loc' →
+        readLoc s' (AtStack frame backup-slot) ≡ just input-loc' →
         (next-slot alloc ≡ pair-reclaim) ⊎
         ((readLoc (proj₁ (exec-trace pair-trace s' alloc))
-                 (OnStack frame backup-slot) ≡ just input-loc') ⊎ ⊤)
+                 (AtStack frame backup-slot) ≡ just input-loc') ⊎ ⊤)
       pair-frontier-stable s' input-loc' not-halted' rdi-eq' _ =
         -- Use store-then-preserve pattern:
         -- mov-to-output sets Output = input-loc', store-at-slot backup-slot saves it
@@ -762,7 +762,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
       -- RAX contains result
       --
       -- final-trace = store-at-slot snd-slot ∷ lea-slot fst-slot ∷ []
-      -- The last instruction lea-slot fst-slot sets Output = OnStack frame fst-slot
+      -- The last instruction lea-slot fst-slot sets Output = AtStack frame fst-slot
       ------------------------------------------------------------------------
       -- Decompose final-trace execution
       s-after-snd-store : LocState FS
@@ -798,7 +798,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
         let eq1 = cong (λ st → readReg (regs st) Output) s-final-eq
             eq2 = cong (λ st → readReg (regs st) Output) s-after-final-eq
             eq3 = lea-slot-result fst-slot s-after-snd-store alloc-after-snd-store
-            eq4 = cong (λ f → OnStack f fst-slot) frame-after-snd-store
+            eq4 = cong (λ f → AtStack f fst-slot) frame-after-snd-store
         in trans eq1 (trans eq2 (trans eq3 eq4))
 
       ------------------------------------------------------------------------
@@ -858,13 +858,13 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
       oaf-frame-pair-slots = refl
 
       oaf-mem-agree : ∀ slot → f-start ≤ slot → slot < max-slot-f →
-        readLoc s-after-setup (OnStack (current-frame alloc-after-setup) slot) ≡
-        readLoc s (OnStack (current-frame alloc-after-pair-slots) slot)
+        readLoc s-after-setup (AtStack (current-frame alloc-after-setup) slot) ≡
+        readLoc s (AtStack (current-frame alloc-after-pair-slots) slot)
       oaf-mem-agree slot f-start≤slot slot<max =
         -- setup-trace writes only to backup-slot, and f-start > backup-slot
         -- So memory at slot ≥ f-start is unchanged
         -- Use frame equalities to convert to `frame`, prove equality, then convert back
-        subst₂ (λ f1 f2 → readLoc s-after-setup (OnStack f1 slot) ≡ readLoc s (OnStack f2 slot))
+        subst₂ (λ f1 f2 → readLoc s-after-setup (AtStack f1 slot) ≡ readLoc s (AtStack f2 slot))
                (sym oaf-frame-setup) (sym oaf-frame-pair-slots)
                oaf-mem-at-frame
         where
@@ -875,22 +875,22 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
           backup<slot : backup-slot < slot
           backup<slot = <-≤-trans backup<f-start f-start≤slot
 
-          -- Core proof: s-after-setup agrees with s at (OnStack frame slot)
-          oaf-mem-at-frame : readLoc s-after-setup (OnStack frame slot) ≡ readLoc s (OnStack frame slot)
+          -- Core proof: s-after-setup agrees with s at (AtStack frame slot)
+          oaf-mem-at-frame : readLoc s-after-setup (AtStack frame slot) ≡ readLoc s (AtStack frame slot)
           oaf-mem-at-frame =
             let -- setup-trace = mov-to-output ∷ store-at-slot backup-slot ∷ []
                 -- mov-to-output preserves memory
                 s₁' = proj₁ (exec-abstract mov-to-output s alloc)
                 alloc₁' = proj₂ (exec-abstract mov-to-output s alloc)
-                mov-preserves-mem : readLoc s₁' (OnStack frame slot) ≡ readLoc s (OnStack frame slot)
-                mov-preserves-mem = readLoc-stackMem-eq s₁' s (OnStack frame slot) refl refl
+                mov-preserves-mem : readLoc s₁' (AtStack frame slot) ≡ readLoc s (AtStack frame slot)
+                mov-preserves-mem = readLoc-stackMem-eq s₁' s (AtStack frame slot) refl refl
                 -- store-at-slot backup-slot preserves slot (since backup-slot < slot)
                 s₂' = proj₁ (exec-abstract (store-at-slot backup-slot) s₁' alloc₁')
                 not-halted₁' = exec-abstract-preserves-halted mov-to-output s alloc not-halted iph-mov-to-output
                 frame₁' : current-frame alloc₁' ≡ frame
                 frame₁' = exec-abstract-preserves-frame mov-to-output s alloc
-                store-preserves-slot : readLoc s₂' (OnStack frame slot) ≡ readLoc s₁' (OnStack frame slot)
-                store-preserves-slot = subst (λ f → readLoc s₂' (OnStack f slot) ≡ readLoc s₁' (OnStack f slot))
+                store-preserves-slot : readLoc s₂' (AtStack frame slot) ≡ readLoc s₁' (AtStack frame slot)
+                store-preserves-slot = subst (λ f → readLoc s₂' (AtStack f slot) ≡ readLoc s₁' (AtStack f slot))
                                              frame₁'
                                              (store-at-slot-preserves-other backup-slot slot s₁' alloc₁' (inj₁ backup<slot))
                 -- Connect s-after-setup to s₂'
@@ -900,7 +900,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
                 store-single = exec-trace-single (store-at-slot backup-slot) s₁' alloc₁' not-halted₁'
                 s-setup-eq : s-after-setup ≡ s₂'
                 s-setup-eq = cong proj₁ (trans setup-decomp store-single)
-            in trans (cong (λ st → readLoc st (OnStack frame slot)) s-setup-eq)
+            in trans (cong (λ st → readLoc st (AtStack frame slot)) s-setup-eq)
                      (trans store-preserves-slot mov-preserves-mem)
 
       -- s₁ output from trace-correct and rax-is-result
@@ -962,9 +962,9 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
         let -- Step 1: After setup-trace, backup-slot has input-loc
             -- setup-trace = mov-to-output ∷ store-at-slot backup-slot ∷ []
             -- Use rec-scheme-stores-input which proves exactly this
-            setup-stores : readLoc s-after-setup (OnStack (current-frame alloc) backup-slot) ≡ just (readReg (regs s) Input1)
+            setup-stores : readLoc s-after-setup (AtStack (current-frame alloc) backup-slot) ≡ just (readReg (regs s) Input1)
             setup-stores = SMP.RecSchemeSemantics.rec-scheme-stores-input backup-slot s alloc not-halted
-            setup-has-input : readLoc s-after-setup (OnStack frame backup-slot) ≡ just input-loc
+            setup-has-input : readLoc s-after-setup (AtStack frame backup-slot) ≡ just input-loc
             setup-has-input = trans setup-stores (cong just rdi-eq)
 
             -- Step 2: f-trace preserves backup-slot (writes above f-start, backup-slot < f-start)
@@ -975,13 +975,13 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
             -- Use exec-trace-preserves-slot-below
             frame-setup-eq : current-frame alloc-after-setup ≡ frame
             frame-setup-eq = exec-trace-preserves-frame setup-trace s alloc
-            f-preserves-backup : readLoc s-after-f (OnStack (current-frame alloc-after-setup) backup-slot) ≡
-                                 readLoc s-after-setup (OnStack (current-frame alloc-after-setup) backup-slot)
+            f-preserves-backup : readLoc s-after-f (AtStack (current-frame alloc-after-setup) backup-slot) ≡
+                                 readLoc s-after-setup (AtStack (current-frame alloc-after-setup) backup-slot)
             f-preserves-backup = exec-trace-preserves-slot-below f-trace s-after-setup alloc-after-setup f-start backup-slot
                                    f-twa f-tnhw backup<f-start
             -- Transport to frame
-            f-has-input : readLoc s-after-f (OnStack frame backup-slot) ≡ just input-loc
-            f-has-input = trans (subst (λ f → readLoc s-after-f (OnStack f backup-slot) ≡ readLoc s-after-setup (OnStack f backup-slot))
+            f-has-input : readLoc s-after-f (AtStack frame backup-slot) ≡ just input-loc
+            f-has-input = trans (subst (λ f → readLoc s-after-f (AtStack f backup-slot) ≡ readLoc s-after-setup (AtStack f backup-slot))
                                        frame-setup-eq f-preserves-backup)
                                 setup-has-input
 
@@ -992,16 +992,16 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
             frame-f-eq : current-frame alloc-after-f ≡ frame
             frame-f-eq = trans (exec-trace-preserves-frame f-trace s-after-setup alloc-after-setup)
                                (exec-trace-preserves-frame setup-trace s alloc)
-            store-fst-preserves-backup : readLoc oag-s-after-fst-store (OnStack frame backup-slot) ≡ readLoc s-after-f (OnStack frame backup-slot)
-            store-fst-preserves-backup = subst (λ f → readLoc oag-s-after-fst-store (OnStack f backup-slot) ≡ readLoc s-after-f (OnStack f backup-slot))
+            store-fst-preserves-backup : readLoc oag-s-after-fst-store (AtStack frame backup-slot) ≡ readLoc s-after-f (AtStack frame backup-slot)
+            store-fst-preserves-backup = subst (λ f → readLoc oag-s-after-fst-store (AtStack f backup-slot) ≡ readLoc s-after-f (AtStack f backup-slot))
                                                frame-f-eq
                                                (store-at-slot-preserves-other fst-slot backup-slot s-after-f alloc-after-f (inj₂ backup<fst))
-            fst-store-has-input : readLoc oag-s-after-fst-store (OnStack frame backup-slot) ≡ just input-loc
+            fst-store-has-input : readLoc oag-s-after-fst-store (AtStack frame backup-slot) ≡ just input-loc
             fst-store-has-input = trans store-fst-preserves-backup f-has-input
 
             -- Step 4: restore-input backup-slot sets Input1 to value at backup-slot
-            fst-store-backup-slot-eq : readLoc oag-s-after-fst-store (OnStack (current-frame oag-alloc-after-fst-store) backup-slot) ≡ just input-loc
-            fst-store-backup-slot-eq = subst (λ f → readLoc oag-s-after-fst-store (OnStack f backup-slot) ≡ just input-loc)
+            fst-store-backup-slot-eq : readLoc oag-s-after-fst-store (AtStack (current-frame oag-alloc-after-fst-store) backup-slot) ≡ just input-loc
+            fst-store-backup-slot-eq = subst (λ f → readLoc oag-s-after-fst-store (AtStack f backup-slot) ≡ just input-loc)
                                              (sym oag-frame-fst-store-eq)
                                              fst-store-has-input
             restore-sets-input : readReg (regs (proj₁ (exec-abstract (restore-input backup-slot) oag-s-after-fst-store oag-alloc-after-fst-store))) Input1 ≡ input-loc
@@ -1040,8 +1040,8 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
       oag-frame-reclaim = refl
 
       oag-mem-agree : ∀ slot → reclaim-f ≤ slot → slot < max-slot-g →
-        readLoc s-after-middle (OnStack (current-frame alloc-after-middle) slot) ≡
-        readLoc s₁' (OnStack (current-frame alloc-after-f-reclaim) slot)
+        readLoc s-after-middle (AtStack (current-frame alloc-after-middle) slot) ≡
+        readLoc s₁' (AtStack (current-frame alloc-after-f-reclaim) slot)
       oag-mem-agree slot rf≤slot slot<max with slot <? max-slot-f
       ... | yes slot<max-f =
         -- Case 1: slot ∈ [reclaim-f, max-slot-f) - in f's write range, use determinism
@@ -1055,8 +1055,8 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
             middle-twb = fst-slot<reclaim-f , tt
             middle-pres = SMP.TracePrimitives.exec-trace-preserves-slot-above middle-trace
                             s-after-f alloc-after-f reclaim-f slot middle-twb tt rf≤slot
-            middle-pres-frame = subst (λ fr → readLoc s-after-middle (OnStack fr slot) ≡
-                                              readLoc s-after-f (OnStack fr slot))
+            middle-pres-frame = subst (λ fr → readLoc s-after-middle (AtStack fr slot) ≡
+                                              readLoc s-after-f (AtStack fr slot))
                                       frame-f-eq middle-pres
 
             -- slot ≥ reclaim-f ≥ f-start
@@ -1072,25 +1072,25 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
                         slot slot≥f-start slot<max-f
 
             -- Convert frames
-            mem-det-frame : readLoc s-after-f (OnStack frame slot) ≡
-                            readLoc (proj₁ (exec-trace f-trace s alloc-after-pair-slots)) (OnStack frame slot)
-            mem-det-frame = subst₂ (λ f1 f2 → readLoc s-after-f (OnStack f1 slot) ≡
-                                              readLoc (proj₁ (exec-trace f-trace s alloc-after-pair-slots)) (OnStack f2 slot))
+            mem-det-frame : readLoc s-after-f (AtStack frame slot) ≡
+                            readLoc (proj₁ (exec-trace f-trace s alloc-after-pair-slots)) (AtStack frame slot)
+            mem-det-frame = subst₂ (λ f1 f2 → readLoc s-after-f (AtStack f1 slot) ≡
+                                              readLoc (proj₁ (exec-trace f-trace s alloc-after-pair-slots)) (AtStack f2 slot))
                                    oaf-frame-setup oaf-frame-pair-slots mem-det
 
             -- Convert to s₁ using trace-correct
-            s₁-eq : readLoc (proj₁ (exec-trace f-trace s alloc-after-pair-slots)) (OnStack frame slot) ≡
-                    readLoc s₁ (OnStack frame slot)
-            s₁-eq = cong (λ st → readLoc st (OnStack frame slot)) (IRResultAWF.trace-correct result-f)
+            s₁-eq : readLoc (proj₁ (exec-trace f-trace s alloc-after-pair-slots)) (AtStack frame slot) ≡
+                    readLoc s₁ (AtStack frame slot)
+            s₁-eq = cong (λ st → readLoc st (AtStack frame slot)) (IRResultAWF.trace-correct result-f)
 
             -- s₁' has same stack as s₁
-            s₁'-eq : readLoc s₁' (OnStack frame slot) ≡ readLoc s₁ (OnStack frame slot)
+            s₁'-eq : readLoc s₁' (AtStack frame slot) ≡ readLoc s₁ (AtStack frame slot)
             s₁'-eq = refl
 
-            f-eq : readLoc s-after-f (OnStack frame slot) ≡ readLoc s₁ (OnStack frame slot)
+            f-eq : readLoc s-after-f (AtStack frame slot) ≡ readLoc s₁ (AtStack frame slot)
             f-eq = trans mem-det-frame s₁-eq
 
-        in subst₂ (λ f1 f2 → readLoc s-after-middle (OnStack f1 slot) ≡ readLoc s₁' (OnStack f2 slot))
+        in subst₂ (λ f1 f2 → readLoc s-after-middle (AtStack f1 slot) ≡ readLoc s₁' (AtStack f2 slot))
                   (sym oag-frame-middle) (sym oag-frame-reclaim)
                   (trans middle-pres-frame (trans f-eq (sym s₁'-eq)))
       ... | no slot≮max-f =
@@ -1108,15 +1108,15 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
             middle-twb = fst-slot<reclaim-f , tt
             middle-pres = SMP.TracePrimitives.exec-trace-preserves-slot-above middle-trace
                             s-after-f alloc-after-f reclaim-f slot middle-twb tt rf≤slot
-            middle-pres-frame = subst (λ fr → readLoc s-after-middle (OnStack fr slot) ≡
-                                              readLoc s-after-f (OnStack fr slot))
+            middle-pres-frame = subst (λ fr → readLoc s-after-middle (AtStack fr slot) ≡
+                                              readLoc s-after-f (AtStack fr slot))
                                       frame-f-eq middle-pres
 
             -- f-trace preserves slot ≥ max-slot-f (writes below max-slot-f)
             f-pres = SMP.TracePrimitives.exec-trace-preserves-slot-above f-trace
                        s-after-setup alloc-after-setup max-slot-f slot f-twb f-tnhw slot≥max-f
-            f-pres-frame = subst (λ fr → readLoc s-after-f (OnStack fr slot) ≡
-                                         readLoc s-after-setup (OnStack fr slot))
+            f-pres-frame = subst (λ fr → readLoc s-after-f (AtStack fr slot) ≡
+                                         readLoc s-after-setup (AtStack fr slot))
                                  oaf-frame-setup f-pres
 
             -- setup-trace preserves slot ≥ max-slot-f (writes at backup-slot < max-slot-f)
@@ -1147,18 +1147,18 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
             -- s₁ also preserves from s (f writes below max-slot-f)
             s₁-f-pres = SMP.TracePrimitives.exec-trace-preserves-slot-above f-trace
                           s alloc-after-pair-slots max-slot-f slot f-twb f-tnhw slot≥max-f
-            s₁-pres = subst (λ st → readLoc st (OnStack frame slot) ≡ readLoc s (OnStack frame slot))
+            s₁-pres = subst (λ st → readLoc st (AtStack frame slot) ≡ readLoc s (AtStack frame slot))
                             (IRResultAWF.trace-correct result-f) s₁-f-pres
 
             -- s₁' = s₁ (only regs changed)
-            s₁'-eq : readLoc s₁' (OnStack frame slot) ≡ readLoc s₁ (OnStack frame slot)
+            s₁'-eq : readLoc s₁' (AtStack frame slot) ≡ readLoc s₁ (AtStack frame slot)
             s₁'-eq = refl
 
             -- Both preserve from s, so they're equal
-            f-eq : readLoc s-after-f (OnStack frame slot) ≡ readLoc s₁ (OnStack frame slot)
+            f-eq : readLoc s-after-f (AtStack frame slot) ≡ readLoc s₁ (AtStack frame slot)
             f-eq = trans s-after-f-pres (sym s₁-pres)
 
-        in subst₂ (λ f1 f2 → readLoc s-after-middle (OnStack f1 slot) ≡ readLoc s₁' (OnStack f2 slot))
+        in subst₂ (λ f1 f2 → readLoc s-after-middle (AtStack f1 slot) ≡ readLoc s₁' (AtStack f2 slot))
                   (sym oag-frame-middle) (sym oag-frame-reclaim)
                   (trans middle-pres-frame (trans f-eq (sym s₁'-eq)))
 
@@ -1188,7 +1188,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
       not-halted-after-fst-store = trans (store-at-slot-halted fst-slot s-after-f alloc-after-f) not-halted-after-f
 
       -- fst-slot gets fst-loc after store-at-slot fst-slot
-      fst-written-in-store : readLoc s-after-fst-store (OnStack (current-frame alloc-after-f) fst-slot) ≡ just fst-loc
+      fst-written-in-store : readLoc s-after-fst-store (AtStack (current-frame alloc-after-f) fst-slot) ≡ just fst-loc
       fst-written-in-store = trans (store-at-slot-result fst-slot s-after-f alloc-after-f)
                                    (cong just output-after-f)
 
@@ -1204,19 +1204,19 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
 
       -- restore-input preserves all memory locations (it only modifies Input1 register)
       restore-preserves-fst : readLoc (proj₁ (exec-abstract (restore-input backup-slot) s-after-fst-store alloc-after-fst-store))
-                                      (OnStack frame fst-slot) ≡ readLoc s-after-fst-store (OnStack frame fst-slot)
+                                      (AtStack frame fst-slot) ≡ readLoc s-after-fst-store (AtStack frame fst-slot)
       restore-preserves-fst =
         readLoc-stackMem-eq
           (proj₁ (exec-abstract (restore-input backup-slot) s-after-fst-store alloc-after-fst-store))
           s-after-fst-store
-          (OnStack frame fst-slot)
+          (AtStack frame fst-slot)
           (SMP.RecSchemeSemantics.exec-abstract-restore-input-preserves-stackMem backup-slot s-after-fst-store alloc-after-fst-store)
           (SMP.RecSchemeSemantics.exec-abstract-restore-input-preserves-heapMem backup-slot s-after-fst-store alloc-after-fst-store)
 
       -- Combine: s-after-middle has fst-loc at fst-slot
       -- middle-trace = store-at-slot fst-slot ∷ restore-input backup-slot ∷ []
       -- restore-input only modifies register, not memory, so fst-slot is preserved
-      fst-at-s-after-middle : readLoc s-after-middle (OnStack frame fst-slot) ≡ just fst-loc
+      fst-at-s-after-middle : readLoc s-after-middle (AtStack frame fst-slot) ≡ just fst-loc
       fst-at-s-after-middle =
         -- Use exec-trace-preserves-slot-below on the restore-input part
         -- First, restore-input doesn't write to any stack slot (TraceWritesAbove anything)
@@ -1251,14 +1251,14 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
             rest-preserves-heapMem : heapMem s-after-rest ≡ heapMem s-after-fst-store
             rest-preserves-heapMem = SMP.RecSchemeSemantics.restore-trace-preserves-heapMem backup-slot s-after-fst-store alloc-after-fst-store
                                        not-halted-after-fst-store
-            rest-preserves-fst' : readLoc s-after-rest (OnStack frame fst-slot) ≡
-                                  readLoc s-after-fst-store (OnStack frame fst-slot)
-            rest-preserves-fst' = readLoc-stackMem-eq s-after-rest s-after-fst-store (OnStack frame fst-slot)
+            rest-preserves-fst' : readLoc s-after-rest (AtStack frame fst-slot) ≡
+                                  readLoc s-after-fst-store (AtStack frame fst-slot)
+            rest-preserves-fst' = readLoc-stackMem-eq s-after-rest s-after-fst-store (AtStack frame fst-slot)
                                     rest-preserves-stackMem rest-preserves-heapMem
-            fst-at-fst-store : readLoc s-after-fst-store (OnStack frame fst-slot) ≡ just fst-loc
-            fst-at-fst-store = subst (λ f → readLoc s-after-fst-store (OnStack f fst-slot) ≡ just fst-loc)
+            fst-at-fst-store : readLoc s-after-fst-store (AtStack frame fst-slot) ≡ just fst-loc
+            fst-at-fst-store = subst (λ f → readLoc s-after-fst-store (AtStack f fst-slot) ≡ just fst-loc)
                                  frame-after-f-eq fst-written-in-store
-        in trans (cong (λ st → readLoc st (OnStack frame fst-slot)) s-middle-eq)
+        in trans (cong (λ st → readLoc st (AtStack frame fst-slot)) s-middle-eq)
                  (trans rest-preserves-fst' fst-at-fst-store)
 
       -- fst-slot preserved through rest of middle-trace (restore-input doesn't write)
@@ -1266,52 +1266,52 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
       -- then through final-trace (writes to snd-slot ≠ fst-slot, lea doesn't write)
 
       -- g-trace preserves fst-slot (writes above reclaim-f, fst-slot < reclaim-f)
-      g-preserves-fst : readLoc s-after-g (OnStack frame fst-slot) ≡ readLoc s-after-middle (OnStack frame fst-slot)
+      g-preserves-fst : readLoc s-after-g (AtStack frame fst-slot) ≡ readLoc s-after-middle (AtStack frame fst-slot)
       g-preserves-fst =
         let preserved = exec-trace-preserves-slot-below g-trace s-after-middle alloc-after-middle
                           reclaim-f fst-slot g-twa g-tnhw fst-slot<reclaim-f
             frame-eq = exec-trace-preserves-frame middle-trace s-after-f alloc-after-f
-        in subst (λ f → readLoc s-after-g (OnStack f fst-slot) ≡ readLoc s-after-middle (OnStack f fst-slot))
+        in subst (λ f → readLoc s-after-g (AtStack f fst-slot) ≡ readLoc s-after-middle (AtStack f fst-slot))
                  (trans frame-eq frame-after-f-eq) preserved
 
       -- store-at-slot snd-slot preserves fst-slot (different slots)
       -- snd-slot = suc fst-slot, so fst-slot < snd-slot means suc fst-slot ≤ suc fst-slot = ≤-refl
-      snd-store-preserves-fst : readLoc s-after-snd-store (OnStack frame fst-slot) ≡ readLoc s-after-g (OnStack frame fst-slot)
+      snd-store-preserves-fst : readLoc s-after-snd-store (AtStack frame fst-slot) ≡ readLoc s-after-g (AtStack frame fst-slot)
       snd-store-preserves-fst =
-        subst (λ f → readLoc s-after-snd-store (OnStack f fst-slot) ≡ readLoc s-after-g (OnStack f fst-slot))
+        subst (λ f → readLoc s-after-snd-store (AtStack f fst-slot) ≡ readLoc s-after-g (AtStack f fst-slot))
               frame-preserved-through
               (store-at-slot-preserves-other snd-slot fst-slot s-after-g alloc-after-g (inj₂ ≤-refl))
 
       -- lea-slot preserves all memory
       lea-preserves-fst : readLoc (proj₁ (exec-abstract (lea-slot fst-slot) s-after-snd-store alloc-after-snd-store))
-                                  (OnStack frame fst-slot) ≡ readLoc s-after-snd-store (OnStack frame fst-slot)
-      lea-preserves-fst = lea-slot-preserves-mem fst-slot s-after-snd-store alloc-after-snd-store (OnStack frame fst-slot)
+                                  (AtStack frame fst-slot) ≡ readLoc s-after-snd-store (AtStack frame fst-slot)
+      lea-preserves-fst = lea-slot-preserves-mem fst-slot s-after-snd-store alloc-after-snd-store (AtStack frame fst-slot)
 
-      fst-ptr : readLoc s-final (OnStack frame fst-slot) ≡ just fst-loc
+      fst-ptr : readLoc s-final (AtStack frame fst-slot) ≡ just fst-loc
       fst-ptr =
         -- Chain: s-final -> s-after-final -> lea preserves -> store snd preserves -> g preserves -> s-after-middle
-        let eq1 = cong (λ st → readLoc st (OnStack frame fst-slot)) s-final-eq
-            eq2 = cong (λ st → readLoc st (OnStack frame fst-slot)) s-after-final-eq
+        let eq1 = cong (λ st → readLoc st (AtStack frame fst-slot)) s-final-eq
+            eq2 = cong (λ st → readLoc st (AtStack frame fst-slot)) s-after-final-eq
         in trans eq1 (trans eq2 (trans lea-preserves-fst
                                 (trans snd-store-preserves-fst
                                 (trans g-preserves-fst fst-at-s-after-middle))))
 
       -- snd-slot gets snd-loc from final-trace
-      snd-written : readLoc s-after-snd-store (OnStack frame snd-slot) ≡ just snd-loc
-      snd-written = subst (λ f → readLoc s-after-snd-store (OnStack f snd-slot) ≡ just snd-loc)
+      snd-written : readLoc s-after-snd-store (AtStack frame snd-slot) ≡ just snd-loc
+      snd-written = subst (λ f → readLoc s-after-snd-store (AtStack f snd-slot) ≡ just snd-loc)
                           frame-preserved-through
                           (trans (store-at-slot-result snd-slot s-after-g alloc-after-g)
                                  (cong just output-after-g))
 
       -- lea-slot preserves snd-slot
       lea-preserves-snd : readLoc (proj₁ (exec-abstract (lea-slot fst-slot) s-after-snd-store alloc-after-snd-store))
-                                  (OnStack frame snd-slot) ≡ readLoc s-after-snd-store (OnStack frame snd-slot)
-      lea-preserves-snd = lea-slot-preserves-mem fst-slot s-after-snd-store alloc-after-snd-store (OnStack frame snd-slot)
+                                  (AtStack frame snd-slot) ≡ readLoc s-after-snd-store (AtStack frame snd-slot)
+      lea-preserves-snd = lea-slot-preserves-mem fst-slot s-after-snd-store alloc-after-snd-store (AtStack frame snd-slot)
 
-      snd-ptr : readLoc s-final (OnStack frame snd-slot) ≡ just snd-loc
+      snd-ptr : readLoc s-final (AtStack frame snd-slot) ≡ just snd-loc
       snd-ptr =
-        let eq1 = cong (λ st → readLoc st (OnStack frame snd-slot)) s-final-eq
-            eq2 = cong (λ st → readLoc st (OnStack frame snd-slot)) s-after-final-eq
+        let eq1 = cong (λ st → readLoc st (AtStack frame snd-slot)) s-final-eq
+            eq2 = cong (λ st → readLoc st (AtStack frame snd-slot)) s-after-final-eq
         in trans eq1 (trans eq2 (trans lea-preserves-snd snd-written))
 
       ------------------------------------------------------------------------
@@ -1335,7 +1335,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
                      refl ≤-refl ≤-refl snd-loc
                      (IRResultAWF.reclaim-preserves-result result-g)
 
-      -- sucLoc pair-loc = OnStack frame snd-slot
+      -- sucLoc pair-loc = AtStack frame snd-slot
       sucLoc-pair-before : BeforeFrontier alloc-final (sucLoc pair-loc)
       sucLoc-pair-before = stack-before refl snd<reclaim-g
 
@@ -1377,7 +1377,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Memory agrees on input region [0, backup-slot)
       -- Both s₁ and s-after-f preserve this from initial state (f writes above f-start)
       f-mem-input-region : ∀ slot → slot < backup-slot →
-        readLoc s-after-f (OnStack frame slot) ≡ readLoc s₁ (OnStack frame slot)
+        readLoc s-after-f (AtStack frame slot) ≡ readLoc s₁ (AtStack frame slot)
       f-mem-input-region slot slot<backup =
         let -- slot < backup-slot < f-start, so slot < f-start
             -- f-start = suc snd-slot = suc (suc (suc backup-slot))
@@ -1393,8 +1393,8 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
             -- s-after-f preserves slot from s-after-setup (f-trace writes above f-start > slot)
             f-pres = SMP.TracePrimitives.exec-trace-preserves-slot-below f-trace s-after-setup
                        alloc-after-setup f-start slot f-twa f-tnhw slot<f-start
-            f-pres-frame = subst (λ fr → readLoc s-after-f (OnStack fr slot) ≡
-                                         readLoc s-after-setup (OnStack fr slot))
+            f-pres-frame = subst (λ fr → readLoc s-after-f (AtStack fr slot) ≡
+                                         readLoc s-after-setup (AtStack fr slot))
                                  oaf-frame-setup f-pres
             -- s-after-setup preserves slot from s (setup-trace writes at backup-slot > slot)
             setup-pres = SMP.TracePrimitives.exec-trace-preserves-slot-below setup-trace s alloc
@@ -1402,14 +1402,14 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
             -- s₁ preserves slot from s (f-trace writes above f-start > slot)
             exec-f-pres = SMP.TracePrimitives.exec-trace-preserves-slot-below f-trace s
                             alloc-after-pair-slots f-start slot f-twa f-tnhw slot<f-start
-            s₁-pres = subst (λ st → readLoc st (OnStack frame slot) ≡ readLoc s (OnStack frame slot))
+            s₁-pres = subst (λ st → readLoc st (AtStack frame slot) ≡ readLoc s (AtStack frame slot))
                             (IRResultAWF.trace-correct result-f) exec-f-pres
         in trans f-pres-frame (trans setup-pres (sym s₁-pres))
 
       -- Memory agrees on fresh region [f-start, reclaim-f)
       -- Both executions of f-trace write same values (deterministic given same Input1)
       f-mem-fresh-region : ∀ slot → f-start ≤ slot → slot < reclaim-f →
-        readLoc s-after-f (OnStack frame slot) ≡ readLoc s₁ (OnStack frame slot)
+        readLoc s-after-f (AtStack frame slot) ≡ readLoc s₁ (AtStack frame slot)
       f-mem-fresh-region slot f-start≤slot slot<reclaim =
         let -- slot < reclaim-f ≤ max-slot-f
             slot<max : slot < max-slot-f
@@ -1423,19 +1423,19 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
                         f-tsra f-tsrb f-twa f-twb f-tnhw oaf-mem-agree
                         slot f-start≤slot slot<max
             -- Convert frame: result uses current-frame alloc-after-setup = frame
-            mem-det-frame : readLoc s-after-f (OnStack frame slot) ≡
-                            readLoc (proj₁ (exec-trace f-trace s alloc-after-pair-slots)) (OnStack frame slot)
-            mem-det-frame = subst₂ (λ f1 f2 → readLoc s-after-f (OnStack f1 slot) ≡
-                                              readLoc (proj₁ (exec-trace f-trace s alloc-after-pair-slots)) (OnStack f2 slot))
+            mem-det-frame : readLoc s-after-f (AtStack frame slot) ≡
+                            readLoc (proj₁ (exec-trace f-trace s alloc-after-pair-slots)) (AtStack frame slot)
+            mem-det-frame = subst₂ (λ f1 f2 → readLoc s-after-f (AtStack f1 slot) ≡
+                                              readLoc (proj₁ (exec-trace f-trace s alloc-after-pair-slots)) (AtStack f2 slot))
                                    oaf-frame-setup oaf-frame-pair-slots mem-det
             -- Convert exec result to s₁ using trace-correct
-            s₁-eq : readLoc (proj₁ (exec-trace f-trace s alloc-after-pair-slots)) (OnStack frame slot) ≡
-                    readLoc s₁ (OnStack frame slot)
-            s₁-eq = cong (λ st → readLoc st (OnStack frame slot)) (IRResultAWF.trace-correct result-f)
+            s₁-eq : readLoc (proj₁ (exec-trace f-trace s alloc-after-pair-slots)) (AtStack frame slot) ≡
+                    readLoc s₁ (AtStack frame slot)
+            s₁-eq = cong (λ st → readLoc st (AtStack frame slot)) (IRResultAWF.trace-correct result-f)
         in trans mem-det-frame s₁-eq
 
       -- Memory agrees on heap (no heap writes)
-      f-mem-heap : ∀ h → readLoc s-after-f (OnHeap h) ≡ readLoc s₁ (OnHeap h)
+      f-mem-heap : ∀ h → readLoc s-after-f (AtDynamic h) ≡ readLoc s₁ (AtDynamic h)
       f-mem-heap h =
         let -- s-after-f preserves heap from s-after-setup (f-trace has no heap writes)
             s-after-f-pres = SMP.TracePrimitives.exec-trace-preserves-heap-loc f-trace s-after-setup alloc-after-setup h f-tnhw
@@ -1445,13 +1445,13 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
             s-setup-pres = SMP.TracePrimitives.exec-trace-preserves-heap-loc setup-trace s alloc h setup-tnhw
             -- s₁ preserves heap from s via trace-correct
             exec-f-pres = SMP.TracePrimitives.exec-trace-preserves-heap-loc f-trace s alloc-after-pair-slots h f-tnhw
-            s₁-pres = subst (λ st → readLoc st (OnHeap h) ≡ readLoc s (OnHeap h))
+            s₁-pres = subst (λ st → readLoc st (AtDynamic h) ≡ readLoc s (AtDynamic h))
                             (IRResultAWF.trace-correct result-f) exec-f-pres
         in trans s-after-f-pres (trans s-setup-pres (sym s₁-pres))
 
       -- Memory agrees on ancestor frames (f doesn't write there)
       f-mem-ancestors : ∀ f' k → current-frame alloc-after-f-reclaim ≺ f' →
-        readLoc s-after-f (OnStack f' k) ≡ readLoc s₁ (OnStack f' k)
+        readLoc s-after-f (AtStack f' k) ≡ readLoc s₁ (AtStack f' k)
       f-mem-ancestors f' k cf≺f' =
         let -- current-frame alloc-after-f-reclaim = frame (only next-slot changed)
             -- So cf≺f' : frame ≺ f' by reflexivity
@@ -1469,7 +1469,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
             alloc-pair-slots-cf≺f' = subst (_≺ f') (sym oaf-frame-pair-slots) cf≺f'
             exec-f-pres = SMP.TracePrimitives.exec-trace-preserves-ancestor f-trace s alloc-after-pair-slots
                             f' k alloc-pair-slots-cf≺f' f-tnhw
-            s₁-pres = subst (λ st → readLoc st (OnStack f' k) ≡ readLoc s (OnStack f' k))
+            s₁-pres = subst (λ st → readLoc st (AtStack f' k) ≡ readLoc s (AtStack f' k))
                             (IRResultAWF.trace-correct result-f) exec-f-pres
         in trans s-after-f-pres (trans s-setup-pres (sym s₁-pres))
 
@@ -1503,7 +1503,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
 
       -- Memory agrees on input region [0, backup-slot): rest-trace writes above backup-slot
       rest-mem-input-region : ∀ slot → slot < backup-slot →
-        readLoc s-final (OnStack frame slot) ≡ readLoc s-after-f (OnStack frame slot)
+        readLoc s-final (AtStack frame slot) ≡ readLoc s-after-f (AtStack frame slot)
       rest-mem-input-region slot slot<backup =
         let -- slot < backup-slot < fst-slot = suc backup-slot
             slot<fst : slot < fst-slot
@@ -1520,14 +1520,14 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
             -- middle-trace preserves slot from s-after-f to s-after-middle
             middle-pres = SMP.TracePrimitives.exec-trace-preserves-slot-below middle-trace
                             s-after-f alloc-after-f fst-slot slot middle-twa middle-tnhw slot<fst
-            middle-pres-frame = subst (λ fr → readLoc s-after-middle (OnStack fr slot) ≡
-                                              readLoc s-after-f (OnStack fr slot))
+            middle-pres-frame = subst (λ fr → readLoc s-after-middle (AtStack fr slot) ≡
+                                              readLoc s-after-f (AtStack fr slot))
                                       frame-after-f-eq middle-pres
             -- g-trace writes above reclaim-f, so preserves slot < reclaim-f
             g-pres = SMP.TracePrimitives.exec-trace-preserves-slot-below g-trace
                        s-after-middle alloc-after-middle reclaim-f slot g-twa g-tnhw slot<reclaim-f
-            g-pres-frame = subst (λ fr → readLoc s-after-g (OnStack fr slot) ≡
-                                         readLoc s-after-middle (OnStack fr slot))
+            g-pres-frame = subst (λ fr → readLoc s-after-g (AtStack fr slot) ≡
+                                         readLoc s-after-middle (AtStack fr slot))
                                  oag-frame-middle g-pres
             -- final-trace writes at snd-slot, so TraceWritesAbove snd-slot
             final-twa : TraceWritesAbove snd-slot final-trace
@@ -1537,19 +1537,19 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
             -- final-trace preserves slot from s-after-g to s-after-final
             final-pres = SMP.TracePrimitives.exec-trace-preserves-slot-below final-trace
                            s-after-g alloc-after-g snd-slot slot final-twa final-tnhw slot<snd
-            final-pres-frame = subst (λ fr → readLoc s-after-final (OnStack fr slot) ≡
-                                             readLoc s-after-g (OnStack fr slot))
+            final-pres-frame = subst (λ fr → readLoc s-after-final (AtStack fr slot) ≡
+                                             readLoc s-after-g (AtStack fr slot))
                                      frame-preserved-through final-pres
             -- Chain: s-after-final preserves from s-after-f
             chain = trans final-pres-frame (trans g-pres-frame middle-pres-frame)
             -- Use s-final-eq : s-final ≡ s-after-final
-        in subst (λ st → readLoc st (OnStack frame slot) ≡ readLoc s-after-f (OnStack frame slot))
+        in subst (λ st → readLoc st (AtStack frame slot) ≡ readLoc s-after-f (AtStack frame slot))
                  (sym s-final-eq) chain
 
       -- Memory agrees on fresh region [f-start, reclaim-f): rest-trace writes elsewhere
       -- rest-trace writes to [backup-slot, f-start) ∪ [reclaim-f, max-g), so [f-start, reclaim-f) preserved
       rest-mem-fresh-region : ∀ slot → f-start ≤ slot → slot < reclaim-f →
-        readLoc s-final (OnStack frame slot) ≡ readLoc s-after-f (OnStack frame slot)
+        readLoc s-final (AtStack frame slot) ≡ readLoc s-after-f (AtStack frame slot)
       rest-mem-fresh-region slot f-start≤slot slot<reclaim =
         let -- middle-trace writes at fst-slot < f-start, so preserves slot ≥ f-start
             -- fst-slot < f-start since suc fst-slot = snd-slot and f-start = suc snd-slot
@@ -1562,14 +1562,14 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
             middle-tnhw = tt
             middle-pres = SMP.TracePrimitives.exec-trace-preserves-slot-above middle-trace
                             s-after-f alloc-after-f f-start slot middle-twb middle-tnhw f-start≤slot
-            middle-pres-frame = subst (λ fr → readLoc s-after-middle (OnStack fr slot) ≡
-                                              readLoc s-after-f (OnStack fr slot))
+            middle-pres-frame = subst (λ fr → readLoc s-after-middle (AtStack fr slot) ≡
+                                              readLoc s-after-f (AtStack fr slot))
                                       frame-after-f-eq middle-pres
             -- g-trace writes above reclaim-f, so preserves slot < reclaim-f
             g-pres = SMP.TracePrimitives.exec-trace-preserves-slot-below g-trace
                        s-after-middle alloc-after-middle reclaim-f slot g-twa g-tnhw slot<reclaim
-            g-pres-frame = subst (λ fr → readLoc s-after-g (OnStack fr slot) ≡
-                                         readLoc s-after-middle (OnStack fr slot))
+            g-pres-frame = subst (λ fr → readLoc s-after-g (AtStack fr slot) ≡
+                                         readLoc s-after-middle (AtStack fr slot))
                                  oag-frame-middle g-pres
             -- final-trace writes at snd-slot < f-start, so preserves slot ≥ f-start
             -- snd-slot < f-start = suc snd-slot ≤ f-start = f-start ≤ f-start = ≤-refl
@@ -1581,17 +1581,17 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
             final-tnhw = tt
             final-pres = SMP.TracePrimitives.exec-trace-preserves-slot-above final-trace
                            s-after-g alloc-after-g f-start slot final-twb final-tnhw f-start≤slot
-            final-pres-frame = subst (λ fr → readLoc s-after-final (OnStack fr slot) ≡
-                                             readLoc s-after-g (OnStack fr slot))
+            final-pres-frame = subst (λ fr → readLoc s-after-final (AtStack fr slot) ≡
+                                             readLoc s-after-g (AtStack fr slot))
                                      frame-preserved-through final-pres
             -- Chain: s-after-final preserves from s-after-f
             chain = trans final-pres-frame (trans g-pres-frame middle-pres-frame)
             -- Use s-final-eq : s-final ≡ s-after-final
-        in subst (λ st → readLoc st (OnStack frame slot) ≡ readLoc s-after-f (OnStack frame slot))
+        in subst (λ st → readLoc st (AtStack frame slot) ≡ readLoc s-after-f (AtStack frame slot))
                  (sym s-final-eq) chain
 
       -- Memory agrees on heap (no heap writes in rest-trace)
-      rest-mem-heap : ∀ h → readLoc s-final (OnHeap h) ≡ readLoc s-after-f (OnHeap h)
+      rest-mem-heap : ∀ h → readLoc s-final (AtDynamic h) ≡ readLoc s-after-f (AtDynamic h)
       rest-mem-heap h =
         let -- middle-trace preserves heap from s-after-f to s-after-middle
             middle-tnhw : TraceNoHeapWrites middle-trace
@@ -1606,12 +1606,12 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
             -- Chain: s-after-final preserves from s-after-f
             chain = trans final-pres (trans g-pres middle-pres)
             -- Use s-final-eq : s-final ≡ s-after-final
-        in subst (λ st → readLoc st (OnHeap h) ≡ readLoc s-after-f (OnHeap h))
+        in subst (λ st → readLoc st (AtDynamic h) ≡ readLoc s-after-f (AtDynamic h))
                  (sym s-final-eq) chain
 
       -- Memory agrees on ancestor frames
       rest-mem-ancestors : ∀ f' k → current-frame alloc-after-f-reclaim ≺ f' →
-        readLoc s-final (OnStack f' k) ≡ readLoc s-after-f (OnStack f' k)
+        readLoc s-final (AtStack f' k) ≡ readLoc s-after-f (AtStack f' k)
       rest-mem-ancestors f' k cf≺f' =
         let -- Convert cf≺f' to work with each alloc (all have current-frame = frame)
             frame≺f' : frame ≺ f'
@@ -1638,7 +1638,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
             -- Chain: s-after-final preserves from s-after-f
             chain = trans final-pres (trans g-pres middle-pres)
             -- Use s-final-eq : s-final ≡ s-after-final
-        in subst (λ st → readLoc st (OnStack f' k) ≡ readLoc s-after-f (OnStack f' k))
+        in subst (λ st → readLoc st (AtStack f' k) ≡ readLoc s-after-f (AtStack f' k))
                  (sym s-final-eq) chain
 
       -- Transfer validity from s-after-f to s-final using positive regions
@@ -1695,7 +1695,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Memory agrees on input region [0, backup-slot)
       -- Both s₂ and s-after-g preserve this from before g runs
       g-mem-input-region : ∀ slot → slot < backup-slot →
-        readLoc s-after-g (OnStack frame slot) ≡ readLoc s₂ (OnStack frame slot)
+        readLoc s-after-g (AtStack frame slot) ≡ readLoc s₂ (AtStack frame slot)
       g-mem-input-region slot slot<backup =
         let -- slot < backup-slot < reclaim-f, so g-trace preserves slot
             slot<reclaim-f : slot < reclaim-f
@@ -1703,16 +1703,16 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
             -- s-after-g preserves slot from s-after-middle (g-trace writes above reclaim-f)
             g-pres = SMP.TracePrimitives.exec-trace-preserves-slot-below g-trace s-after-middle
                        alloc-after-middle reclaim-f slot g-twa g-tnhw slot<reclaim-f
-            g-pres-frame = subst (λ fr → readLoc s-after-g (OnStack fr slot) ≡
-                                         readLoc s-after-middle (OnStack fr slot))
+            g-pres-frame = subst (λ fr → readLoc s-after-g (AtStack fr slot) ≡
+                                         readLoc s-after-middle (AtStack fr slot))
                                  oag-frame-middle g-pres
             -- s₂ preserves slot from s₁' (g-trace writes above reclaim-f)
             exec-g-pres = SMP.TracePrimitives.exec-trace-preserves-slot-below g-trace s₁'
                             alloc-after-f-reclaim reclaim-f slot g-twa g-tnhw slot<reclaim-f
-            s₂-pres = subst (λ st → readLoc st (OnStack frame slot) ≡ readLoc s₁' (OnStack frame slot))
+            s₂-pres = subst (λ st → readLoc st (AtStack frame slot) ≡ readLoc s₁' (AtStack frame slot))
                             (IRResultAWF.trace-correct result-g) exec-g-pres
             -- s₁' has same memory as s₁ at this slot (only regs changed)
-            s₁'-eq : readLoc s₁' (OnStack frame slot) ≡ readLoc s₁ (OnStack frame slot)
+            s₁'-eq : readLoc s₁' (AtStack frame slot) ≡ readLoc s₁ (AtStack frame slot)
             s₁'-eq = refl
             -- Now chain back through middle, f, setup to compare with path from s-after-g
             -- Both paths end at same value from s
@@ -1725,8 +1725,8 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
             middle-twa = ≤-refl , tt
             middle-pres = SMP.TracePrimitives.exec-trace-preserves-slot-below middle-trace
                             s-after-f alloc-after-f fst-slot slot middle-twa tt slot<fst
-            middle-pres-frame = subst (λ fr → readLoc s-after-middle (OnStack fr slot) ≡
-                                              readLoc s-after-f (OnStack fr slot))
+            middle-pres-frame = subst (λ fr → readLoc s-after-middle (AtStack fr slot) ≡
+                                              readLoc s-after-f (AtStack fr slot))
                                       frame-after-f-eq middle-pres
             -- Use f-mem-input-region for s-after-f vs s₁
             f-input-eq = f-mem-input-region slot slot<backup
@@ -1735,7 +1735,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Memory agrees on fresh region [reclaim-f, reclaim-g)
       -- Both executions of g-trace write same values (deterministic given same Input1)
       g-mem-fresh-region : ∀ slot → reclaim-f ≤ slot → slot < reclaim-g →
-        readLoc s-after-g (OnStack frame slot) ≡ readLoc s₂ (OnStack frame slot)
+        readLoc s-after-g (AtStack frame slot) ≡ readLoc s₂ (AtStack frame slot)
       g-mem-fresh-region slot rf≤slot slot<rg =
         let -- slot < reclaim-g ≤ max-slot-g
             slot<max : slot < max-slot-g
@@ -1748,19 +1748,19 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
                         g-twa g-twb g-tnhw oag-mem-agree
                         slot rf≤slot slot<max
             -- Convert frames
-            mem-det-frame : readLoc s-after-g (OnStack frame slot) ≡
-                            readLoc (proj₁ (exec-trace g-trace s₁' alloc-after-f-reclaim)) (OnStack frame slot)
-            mem-det-frame = subst₂ (λ f1 f2 → readLoc s-after-g (OnStack f1 slot) ≡
-                                              readLoc (proj₁ (exec-trace g-trace s₁' alloc-after-f-reclaim)) (OnStack f2 slot))
+            mem-det-frame : readLoc s-after-g (AtStack frame slot) ≡
+                            readLoc (proj₁ (exec-trace g-trace s₁' alloc-after-f-reclaim)) (AtStack frame slot)
+            mem-det-frame = subst₂ (λ f1 f2 → readLoc s-after-g (AtStack f1 slot) ≡
+                                              readLoc (proj₁ (exec-trace g-trace s₁' alloc-after-f-reclaim)) (AtStack f2 slot))
                                    oag-frame-middle oag-frame-reclaim mem-det
             -- Convert exec result to s₂ using trace-correct
-            s₂-eq : readLoc (proj₁ (exec-trace g-trace s₁' alloc-after-f-reclaim)) (OnStack frame slot) ≡
-                    readLoc s₂ (OnStack frame slot)
-            s₂-eq = cong (λ st → readLoc st (OnStack frame slot)) (IRResultAWF.trace-correct result-g)
+            s₂-eq : readLoc (proj₁ (exec-trace g-trace s₁' alloc-after-f-reclaim)) (AtStack frame slot) ≡
+                    readLoc s₂ (AtStack frame slot)
+            s₂-eq = cong (λ st → readLoc st (AtStack frame slot)) (IRResultAWF.trace-correct result-g)
         in trans mem-det-frame s₂-eq
 
       -- Memory agrees on heap (no heap writes in g-trace)
-      g-mem-heap : ∀ h → readLoc s-after-g (OnHeap h) ≡ readLoc s₂ (OnHeap h)
+      g-mem-heap : ∀ h → readLoc s-after-g (AtDynamic h) ≡ readLoc s₂ (AtDynamic h)
       g-mem-heap h =
         let -- s-after-g preserves heap from s-after-middle
             g-heap = SMP.TracePrimitives.exec-trace-preserves-heap-loc g-trace
@@ -1768,10 +1768,10 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
             -- s₂ preserves heap from s₁'
             exec-g-heap = SMP.TracePrimitives.exec-trace-preserves-heap-loc g-trace
                             s₁' alloc-after-f-reclaim h g-tnhw
-            s₂-heap = subst (λ st → readLoc st (OnHeap h) ≡ readLoc s₁' (OnHeap h))
+            s₂-heap = subst (λ st → readLoc st (AtDynamic h) ≡ readLoc s₁' (AtDynamic h))
                             (IRResultAWF.trace-correct result-g) exec-g-heap
             -- s₁' has same heap as s₁ (only regs changed)
-            s₁'-heap : readLoc s₁' (OnHeap h) ≡ readLoc s₁ (OnHeap h)
+            s₁'-heap : readLoc s₁' (AtDynamic h) ≡ readLoc s₁ (AtDynamic h)
             s₁'-heap = refl
             -- Chain back through middle, f, setup
             middle-heap = SMP.TracePrimitives.exec-trace-preserves-heap-loc middle-trace
@@ -1782,7 +1782,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
 
       -- Memory agrees on ancestor frames
       g-mem-ancestors : ∀ f' k → current-frame alloc-reclaim-g ≺ f' →
-        readLoc s-after-g (OnStack f' k) ≡ readLoc s₂ (OnStack f' k)
+        readLoc s-after-g (AtStack f' k) ≡ readLoc s₂ (AtStack f' k)
       g-mem-ancestors f' k cf≺f' =
         let -- current-frame alloc-reclaim-g = frame
             frame≺f' : frame ≺ f'
@@ -1797,10 +1797,10 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
             alloc-f-reclaim-cf≺f' = frame≺f'
             exec-g-anc = SMP.TracePrimitives.exec-trace-preserves-ancestor g-trace
                            s₁' alloc-after-f-reclaim f' k alloc-f-reclaim-cf≺f' g-tnhw
-            s₂-anc = subst (λ st → readLoc st (OnStack f' k) ≡ readLoc s₁' (OnStack f' k))
+            s₂-anc = subst (λ st → readLoc st (AtStack f' k) ≡ readLoc s₁' (AtStack f' k))
                            (IRResultAWF.trace-correct result-g) exec-g-anc
             -- s₁' has same stack as s₁
-            s₁'-anc : readLoc s₁' (OnStack f' k) ≡ readLoc s₁ (OnStack f' k)
+            s₁'-anc : readLoc s₁' (AtStack f' k) ≡ readLoc s₁ (AtStack f' k)
             s₁'-anc = refl
             -- Chain back through middle, f
             alloc-after-f-cf≺f' : current-frame alloc-after-f ≺ f'
@@ -1825,7 +1825,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
 
       -- Memory agrees on input region [0, backup-slot): final-trace writes above backup-slot
       final-mem-input-region : ∀ slot → slot < backup-slot →
-        readLoc s-final (OnStack frame slot) ≡ readLoc s-after-g (OnStack frame slot)
+        readLoc s-final (AtStack frame slot) ≡ readLoc s-after-g (AtStack frame slot)
       final-mem-input-region slot slot<backup =
         let slot<snd : slot < snd-slot
             slot<snd = ≤-trans slot<backup (≤-trans (n≤1+n backup-slot) (n≤1+n fst-slot))
@@ -1833,37 +1833,37 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
             final-twa = ≤-refl , tt
             final-pres = SMP.TracePrimitives.exec-trace-preserves-slot-below final-trace
                            s-after-g alloc-after-g snd-slot slot final-twa tt slot<snd
-            final-pres-frame = subst (λ fr → readLoc s-after-final (OnStack fr slot) ≡
-                                             readLoc s-after-g (OnStack fr slot))
+            final-pres-frame = subst (λ fr → readLoc s-after-final (AtStack fr slot) ≡
+                                             readLoc s-after-g (AtStack fr slot))
                                      frame-preserved-through final-pres
-        in subst (λ st → readLoc st (OnStack frame slot) ≡ readLoc s-after-g (OnStack frame slot))
+        in subst (λ st → readLoc st (AtStack frame slot) ≡ readLoc s-after-g (AtStack frame slot))
                  (sym s-final-eq) final-pres-frame
 
       -- Memory agrees on fresh region [reclaim-f, reclaim-g): final-trace writes below reclaim-f
       final-mem-fresh-region : ∀ slot → reclaim-f ≤ slot → slot < reclaim-g →
-        readLoc s-final (OnStack frame slot) ≡ readLoc s-after-g (OnStack frame slot)
+        readLoc s-final (AtStack frame slot) ≡ readLoc s-after-g (AtStack frame slot)
       final-mem-fresh-region slot rf≤slot _ =
         let final-twb : TraceWritesBelow reclaim-f final-trace
             final-twb = snd-slot<reclaim-f , tt  -- snd-slot < f-start ≤ reclaim-f
             final-pres = SMP.TracePrimitives.exec-trace-preserves-slot-above final-trace
                            s-after-g alloc-after-g reclaim-f slot final-twb tt rf≤slot
-            final-pres-frame = subst (λ fr → readLoc s-after-final (OnStack fr slot) ≡
-                                             readLoc s-after-g (OnStack fr slot))
+            final-pres-frame = subst (λ fr → readLoc s-after-final (AtStack fr slot) ≡
+                                             readLoc s-after-g (AtStack fr slot))
                                      frame-preserved-through final-pres
-        in subst (λ st → readLoc st (OnStack frame slot) ≡ readLoc s-after-g (OnStack frame slot))
+        in subst (λ st → readLoc st (AtStack frame slot) ≡ readLoc s-after-g (AtStack frame slot))
                  (sym s-final-eq) final-pres-frame
 
       -- Memory agrees on heap (no heap writes in final-trace)
-      final-mem-heap : ∀ h → readLoc s-final (OnHeap h) ≡ readLoc s-after-g (OnHeap h)
+      final-mem-heap : ∀ h → readLoc s-final (AtDynamic h) ≡ readLoc s-after-g (AtDynamic h)
       final-mem-heap h =
         let final-heap = SMP.TracePrimitives.exec-trace-preserves-heap-loc final-trace
                            s-after-g alloc-after-g h tt
-        in subst (λ st → readLoc st (OnHeap h) ≡ readLoc s-after-g (OnHeap h))
+        in subst (λ st → readLoc st (AtDynamic h) ≡ readLoc s-after-g (AtDynamic h))
                  (sym s-final-eq) final-heap
 
       -- Memory agrees on ancestor frames
       final-mem-ancestors : ∀ f' k → current-frame alloc-reclaim-g ≺ f' →
-        readLoc s-final (OnStack f' k) ≡ readLoc s-after-g (OnStack f' k)
+        readLoc s-final (AtStack f' k) ≡ readLoc s-after-g (AtStack f' k)
       final-mem-ancestors f' k cf≺f' =
         let frame≺f' : frame ≺ f'
             frame≺f' = cf≺f'
@@ -1871,7 +1871,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
             alloc-after-g-cf≺f' = subst (_≺ f') (sym frame-preserved-through) frame≺f'
             final-anc = SMP.TracePrimitives.exec-trace-preserves-ancestor final-trace
                           s-after-g alloc-after-g f' k alloc-after-g-cf≺f' tt
-        in subst (λ st → readLoc st (OnStack f' k) ≡ readLoc s-after-g (OnStack f' k))
+        in subst (λ st → readLoc st (AtStack f' k) ≡ readLoc s-after-g (AtStack f' k))
                  (sym s-final-eq) final-anc
 
       -- Transfer validity from s-after-g to s-final using positive regions

@@ -329,10 +329,10 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
         frontier-slot-stable : ∀ (s' : LocState FS) (input-loc : ValueLocation FS) →
           halted s' ≡ false →
           readReg (regs s') Input1 ≡ input-loc →
-          readLoc s' (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc →
+          readLoc s' (AtStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc →
           (next-slot alloc ≡ next-slot final-alloc) ⊎
           ((readLoc (proj₁ (exec-trace trace s' alloc))
-                   (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc) ⊎ ⊤)
+                   (AtStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc) ⊎ ⊤)
         -- Trace slot bound: all stack writes are at slots ≥ next-slot alloc.
         -- This enables compositional proofs that traces don't write below their frontier.
         -- Key for pair's g-preserves-backup proof via exec-trace-preserves-disjoint.
@@ -748,7 +748,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     (s : LocState FS) (val : ValueLocation FS) →
     BeforeFrontier alloc loc →
     ValidAtWF m alloc v loc s →
-    ValidAtWF m alloc v loc (write-loc s (OnStack (current-frame alloc) (next-slot alloc)) val)
+    ValidAtWF m alloc v loc (write-loc s (AtStack (current-frame alloc) (next-slot alloc)) val)
 
   validityWF-write-at-frontier {m} {alloc} {Unit} _ loc s val loc-before valid-unit-wf =
     valid-unit-wf
@@ -796,14 +796,14 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
   validityWF-write-at-frontier {m} {alloc} {μ-type F} x loc s val loc-before (valid-μ-wf wf .x μv) =
     valid-μ-wf wf x (μValid-mem-preserved alloc wf x loc s s' loc-before mem-eq μv)
     where
-      s' = write-loc s (OnStack (current-frame alloc) (next-slot alloc)) val
+      s' = write-loc s (AtStack (current-frame alloc) (next-slot alloc)) val
       mem-eq : ∀ loc' → BeforeFrontier alloc loc' → readLoc s' loc' ≡ readLoc s loc'
       mem-eq loc' bf = write-at-frontier-preserves-before s alloc loc' val bf
 
   validityWF-write-at-frontier {m} {alloc} {ν-type F} x loc s val loc-before (valid-ν-wf wf .x νv) =
     valid-ν-wf wf x (νValid-mem-preserved alloc wf x loc s s' loc-before mem-eq νv)
     where
-      s' = write-loc s (OnStack (current-frame alloc) (next-slot alloc)) val
+      s' = write-loc s (AtStack (current-frame alloc) (next-slot alloc)) val
       mem-eq : ∀ loc' → BeforeFrontier alloc loc' → readLoc s' loc' ≡ readLoc s loc'
       mem-eq loc' bf = write-at-frontier-preserves-before s alloc loc' val bf
 
@@ -822,7 +822,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     (s : LocState FS) (val : ValueLocation FS) →
     BeforeFrontier alloc loc →
     ValidAtWF m alloc v loc s →
-    ValidAtWF m alloc v loc (write-loc s (OnStack (current-frame alloc) (suc (next-slot alloc))) val)
+    ValidAtWF m alloc v loc (write-loc s (AtStack (current-frame alloc) (suc (next-slot alloc))) val)
 
   validityWF-write-at-suc-frontier {m} {alloc} {Unit} _ loc s val loc-before valid-unit-wf =
     valid-unit-wf
@@ -870,14 +870,14 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
   validityWF-write-at-suc-frontier {m} {alloc} {μ-type F} x loc s val loc-before (valid-μ-wf wf .x μv) =
     valid-μ-wf wf x (μValid-mem-preserved alloc wf x loc s s' loc-before mem-eq μv)
     where
-      s' = write-loc s (OnStack (current-frame alloc) (suc (next-slot alloc))) val
+      s' = write-loc s (AtStack (current-frame alloc) (suc (next-slot alloc))) val
       mem-eq : ∀ loc' → BeforeFrontier alloc loc' → readLoc s' loc' ≡ readLoc s loc'
       mem-eq loc' bf = write-at-suc-frontier-preserves-before s alloc loc' val bf
 
   validityWF-write-at-suc-frontier {m} {alloc} {ν-type F} x loc s val loc-before (valid-ν-wf wf .x νv) =
     valid-ν-wf wf x (νValid-mem-preserved alloc wf x loc s s' loc-before mem-eq νv)
     where
-      s' = write-loc s (OnStack (current-frame alloc) (suc (next-slot alloc))) val
+      s' = write-loc s (AtStack (current-frame alloc) (suc (next-slot alloc))) val
       mem-eq : ∀ loc' → BeforeFrontier alloc loc' → readLoc s' loc' ≡ readLoc s loc'
       mem-eq loc' bf = write-at-suc-frontier-preserves-before s alloc loc' val bf
 
@@ -1213,11 +1213,11 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
   --   mem-eq : memory preserved for all OTHER BeforeFrontier locations
   ------------------------------------------------------------------------
 
-  -- Helper: extract slot from OnStack location (for documentation, may be used later)
+  -- Helper: extract slot from AtStack location (for documentation, may be used later)
   private
     slot-of-loc : ValueLocation FS → ℕ
-    slot-of-loc (OnStack _ k) = k
-    slot-of-loc (OnHeap _) = 0  -- dummy, heap locations don't use slot comparison
+    slot-of-loc (AtStack _ k) = k
+    slot-of-loc (AtDynamic _) = 0  -- dummy, heap locations don't use slot comparison
 
   ------------------------------------------------------------------------
   -- Validity preservation with gap slot
@@ -1247,7 +1247,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     -- Memory agrees on all BeforeFrontier locations except the gap
     (∀ (loc' : ValueLocation FS) →
        BeforeFrontier alloc loc' →
-       loc' ≢ OnStack gap-frame gap-slot →
+       loc' ≢ AtStack gap-frame gap-slot →
        readLoc s₁ loc' ≡ readLoc s₂ loc') →
     -- Validity transfers
     ValidAtWF m alloc v loc s₁ →
@@ -1280,17 +1280,17 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     fresh-start ≤ next-slot alloc →
     -- Memory agrees on input region [0, input-bound) on current frame
     (∀ slot → slot < input-bound →
-      readLoc s₂ (OnStack (current-frame alloc) slot) ≡
-      readLoc s₁ (OnStack (current-frame alloc) slot)) →
+      readLoc s₂ (AtStack (current-frame alloc) slot) ≡
+      readLoc s₁ (AtStack (current-frame alloc) slot)) →
     -- Memory agrees on fresh region [fresh-start, frontier) on current frame
     (∀ slot → fresh-start ≤ slot → slot < next-slot alloc →
-      readLoc s₂ (OnStack (current-frame alloc) slot) ≡
-      readLoc s₁ (OnStack (current-frame alloc) slot)) →
+      readLoc s₂ (AtStack (current-frame alloc) slot) ≡
+      readLoc s₁ (AtStack (current-frame alloc) slot)) →
     -- Memory agrees on heap locations (sub-locations may be on heap)
-    (∀ h → readLoc s₂ (OnHeap h) ≡ readLoc s₁ (OnHeap h)) →
+    (∀ h → readLoc s₂ (AtDynamic h) ≡ readLoc s₁ (AtDynamic h)) →
     -- Memory agrees on ancestor frames (sub-locations may be there)
     (∀ f k → current-frame alloc ≺ f →
-      readLoc s₂ (OnStack f k) ≡ readLoc s₁ (OnStack f k)) →
+      readLoc s₂ (AtStack f k) ≡ readLoc s₁ (AtStack f k)) →
     -- Validity transfers
     ValidAtWF m alloc v loc s₁ →
     ValidAtWF m alloc v loc s₂
@@ -1327,12 +1327,12 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
         (loc : ValueLocation FS) →
         BeforeFrontier alloc loc →
         BeforeFrontier (record alloc { next-slot = rs }) loc
-      stack-alloc-advances' alloc rs monotone (OnStack f k) (stack-before refl k<next) =
+      stack-alloc-advances' alloc rs monotone (AtStack f k) (stack-before refl k<next) =
         stack-before refl (<-≤-trans k<next monotone)
         where open import Data.Nat.Properties using (<-≤-trans)
-      stack-alloc-advances' alloc rs monotone (OnStack f k) (stack-ancestor cf≺f src) =
+      stack-alloc-advances' alloc rs monotone (AtStack f k) (stack-ancestor cf≺f src) =
         stack-ancestor cf≺f src  -- Frame ordering and provenance unchanged (same current-frame)
-      stack-alloc-advances' alloc rs monotone (OnHeap hl) (heap-before r<next) =
+      stack-alloc-advances' alloc rs monotone (AtDynamic hl) (heap-before r<next) =
         heap-before r<next
 
   -- ValidAtWF is preserved after reclamation
@@ -1385,19 +1385,19 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     BeforeFrontier alloc loc →
     start ≥ next-slot alloc →  -- start is at or above frontier
     readLoc (proj₁ (exec-trace trace s alloc)) loc ≡ readLoc s loc
-  derive-mem-preserved-at alloc start trace s twa tnhw (OnStack f k) (stack-before f≡cf k<next) start≥frontier =
+  derive-mem-preserved-at alloc start trace s twa tnhw (AtStack f k) (stack-before f≡cf k<next) start≥frontier =
     -- k < next-slot alloc ≤ start, so k < start and slot k is below write region
-    subst (λ f' → readLoc (proj₁ (exec-trace trace s alloc)) (OnStack f' k) ≡
-                  readLoc s (OnStack f' k))
+    subst (λ f' → readLoc (proj₁ (exec-trace trace s alloc)) (AtStack f' k) ≡
+                  readLoc s (AtStack f' k))
           (sym f≡cf)
           (exec-trace-preserves-slot-below trace s alloc start k twa tnhw k<start)
     where
       open import Data.Nat.Properties using (<-≤-trans)
       k<start = <-≤-trans k<next start≥frontier
-  derive-mem-preserved-at alloc start trace s twa tnhw (OnStack f k) (stack-ancestor cf≺f _) _ =
+  derive-mem-preserved-at alloc start trace s twa tnhw (AtStack f k) (stack-ancestor cf≺f _) _ =
     -- f is an ancestor frame (current-frame alloc ≺ f)
     exec-trace-preserves-ancestor trace s alloc f k cf≺f tnhw
-  derive-mem-preserved-at alloc start trace s twa tnhw (OnHeap h) (heap-before _) _ =
+  derive-mem-preserved-at alloc start trace s twa tnhw (AtDynamic h) (heap-before _) _ =
     -- Heap location
     exec-trace-preserves-heap-loc trace s alloc h tnhw
 

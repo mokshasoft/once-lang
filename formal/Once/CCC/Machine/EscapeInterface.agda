@@ -33,7 +33,7 @@ open import Once.CCC.Machine.SMCore using (HeapRef; HeapLocation; heap-ref; ref-
 
 module EscapeInterfaceDef {FS : FrameSemantics} where
   open FrameSemantics FS
-  open import Once.CCC.Machine.SMCore using (ValueLocation; OnStack; OnHeap)
+  open import Once.CCC.Machine.SMCore using (ValueLocation; AtStack; AtDynamic)
   open import Once.CCC.Machine.Allocation using (AllocState; next-heap-ref; current-frame; next-slot)
   open import Once.CCC.Machine.Allocation using (module FrontierInvariant)
   open FrontierInvariant {FS}
@@ -51,9 +51,9 @@ module EscapeInterfaceDef {FS : FrameSemantics} where
 
   data SurvivesFramePop (frame : Frame) : ValueLocation FS → Set where
     -- Stack location in ancestor frame survives
-    in-ancestor : ∀ {f k} → frame ≺ f → SurvivesFramePop frame (OnStack f k)
+    in-ancestor : ∀ {f k} → frame ≺ f → SurvivesFramePop frame (AtStack f k)
     -- Heap location always survives
-    on-heap : ∀ {hl} → SurvivesFramePop frame (OnHeap hl)
+    on-heap : ∀ {hl} → SurvivesFramePop frame (AtDynamic hl)
 
   ------------------------------------------------------------------------
   -- Derive SurvivesFramePop from BeforeFrontier
@@ -68,9 +68,9 @@ module EscapeInterfaceDef {FS : FrameSemantics} where
   -- It says: "Fresh child-frame stack allocations don't appear as results."
   --
   -- Internally, BeforeFrontier has three cases:
-  --   - OnHeap: trivially survives (on-heap)
-  --   - OnStack via stack-ancestor: survives (in-ancestor)
-  --   - OnStack via stack-before: eliminated by escape obligation
+  --   - AtDynamic: trivially survives (on-heap)
+  --   - AtStack via stack-ancestor: survives (in-ancestor)
+  --   - AtStack via stack-before: eliminated by escape obligation
   ------------------------------------------------------------------------
 
   -- Derive SurvivesFramePop for any valid result location
@@ -85,12 +85,12 @@ module EscapeInterfaceDef {FS : FrameSemantics} where
     BeforeFrontier body-final result-loc →
     -- Result survives child frame pop
     SurvivesFramePop child-frame result-loc
-  derive-survives child-frame body-final (OnHeap hl) _ _ _ = on-heap
-  derive-survives child-frame body-final (OnStack f k) escape-obl cf-eq (stack-before f≡cf k<ns) =
+  derive-survives child-frame body-final (AtDynamic hl) _ _ _ = on-heap
+  derive-survives child-frame body-final (AtStack f k) escape-obl cf-eq (stack-before f≡cf k<ns) =
     -- stack-before gives: f ≡ current-frame body-final AND k < next-slot body-final
     -- Escape obligation eliminates this case
     ⊥-elim (escape-obl k<ns)
-  derive-survives child-frame body-final (OnStack f k) escape-obl cf-eq (stack-ancestor cf≺f _) =
+  derive-survives child-frame body-final (AtStack f k) escape-obl cf-eq (stack-ancestor cf≺f _) =
     -- stack-ancestor gives: current-frame body-final ≺ f
     -- Since current-frame body-final ≡ child-frame, we have child-frame ≺ f
     in-ancestor (subst (_≺ f) cf-eq cf≺f)
@@ -105,7 +105,7 @@ module EscapeInterfaceDef {FS : FrameSemantics} where
   data ReferencesBlock : ValueLocation FS → HeapRef → Set where
     -- HeapLocation with matching ref references that block
     heap-ref-match : ∀ {hl : HeapLocation} →
-      ReferencesBlock (OnHeap hl) (heap-ref hl)
+      ReferencesBlock (AtDynamic hl) (heap-ref hl)
 
   ------------------------------------------------------------------------
   -- CanFreeHeap
@@ -130,7 +130,7 @@ module EscapeInterfaceDef {FS : FrameSemantics} where
   --
   --   escape-obligation : ∀ {k} → k < slot-bound → ⊥
   --
-  -- This says: "For the result location, if it's OnStack child-frame k
+  -- This says: "For the result location, if it's AtStack child-frame k
   -- with k < slot-bound (freshly allocated in child frame), that's
   -- impossible."
   --

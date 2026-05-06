@@ -80,17 +80,17 @@ module Ops {FS : FrameSemantics} where
 -- Stack locations with different slots are disjoint (same frame)
 -- Internal helper for converting slot ordering to location disjointness
 stack-slot-disjoint : ∀ {FS : FrameSemantics} (f : Frame FS) (s₁ s₂ : ℕ) →
-  s₁ ≢ s₂ → OnStack {FS} f s₁ ≢ OnStack f s₂
+  s₁ ≢ s₂ → AtStack {FS} f s₁ ≢ AtStack f s₂
 stack-slot-disjoint f s₁ s₂ s₁≢s₂ refl = s₁≢s₂ refl
 
 -- Extract frame from stack location equality
 stack-frame-injective : ∀ {FS : FrameSemantics} {f₁ f₂ : Frame FS} {s₁ s₂ : ℕ} →
-  OnStack {FS} f₁ s₁ ≡ OnStack f₂ s₂ → f₁ ≡ f₂
+  AtStack {FS} f₁ s₁ ≡ AtStack f₂ s₂ → f₁ ≡ f₂
 stack-frame-injective refl = refl
 
 -- Extract slot from stack location equality
 stack-slot-injective : ∀ {FS : FrameSemantics} {f₁ f₂ : Frame FS} {s₁ s₂ : ℕ} →
-  OnStack {FS} f₁ s₁ ≡ OnStack f₂ s₂ → s₁ ≡ s₂
+  AtStack {FS} f₁ s₁ ≡ AtStack f₂ s₂ → s₁ ≡ s₂
 stack-slot-injective refl = refl
 
 ------------------------------------------------------------------------
@@ -118,40 +118,40 @@ module MemoryOps {FS : FrameSemantics} where
   -- Stack write, heap read: always disjoint (different constructors)
   readLoc-writeLoc-stack-heap : ∀ (s : LocState FS) (f : Frame FS) (k : ℕ) (h : HeapLocation)
     (v : ValueLocation FS) →
-    readLoc (writeLoc s (OnStack f k) v) (OnHeap h) ≡ readLoc s (OnHeap h)
+    readLoc (writeLoc s (AtStack f k) v) (AtDynamic h) ≡ readLoc s (AtDynamic h)
   readLoc-writeLoc-stack-heap s f k h v = refl
 
   -- Heap write, stack read: always disjoint (different constructors)
   readLoc-writeLoc-heap-stack : ∀ (s : LocState FS) (h : HeapLocation) (f : Frame FS) (k : ℕ)
     (v : ValueLocation FS) →
-    readLoc (writeLoc s (OnHeap h) v) (OnStack f k) ≡ readLoc s (OnStack f k)
-  readLoc-writeLoc-heap-stack s h f k (OnHeap _) = refl
-  readLoc-writeLoc-heap-stack s h f k (OnStack _ _) = refl
+    readLoc (writeLoc s (AtDynamic h) v) (AtStack f k) ≡ readLoc s (AtStack f k)
+  readLoc-writeLoc-heap-stack s h f k (AtDynamic _) = refl
+  readLoc-writeLoc-heap-stack s h f k (AtStack _ _) = refl
 
   -- heapMem equality implies readLoc equality for heap locations
   readLoc-heapMem-eq : ∀ (s₁ s₂ : LocState FS) (h : HeapLocation) →
     heapMem s₁ ≡ heapMem s₂ →
-    readLoc s₁ (OnHeap h) ≡ readLoc s₂ (OnHeap h)
+    readLoc s₁ (AtDynamic h) ≡ readLoc s₂ (AtDynamic h)
   readLoc-heapMem-eq s₁ s₂ h heq with heapMem s₁ h | heapMem s₂ h | cong (λ m → m h) heq
   ... | just h₁ | just .h₁ | refl = refl
   ... | nothing | nothing  | refl = refl
 
-  -- writeLoc commutes with register updates for OnHeap locations
+  -- writeLoc commutes with register updates for AtDynamic locations
   writeLoc-regs-commute-heap : ∀ (s : LocState FS) (hl : HeapLocation) (v : ValueLocation FS)
     (r : Registers FS) →
-    writeLoc (record s { regs = r }) (OnHeap hl) v ≡
-    record (writeLoc s (OnHeap hl) v) { regs = r }
-  writeLoc-regs-commute-heap s hl (OnHeap v) r = refl
-  writeLoc-regs-commute-heap s hl (OnStack _ _) r = refl
+    writeLoc (record s { regs = r }) (AtDynamic hl) v ≡
+    record (writeLoc s (AtDynamic hl) v) { regs = r }
+  writeLoc-regs-commute-heap s hl (AtDynamic v) r = refl
+  writeLoc-regs-commute-heap s hl (AtStack _ _) r = refl
 
   -- General writeLoc commutes with register updates for any location
-  -- Symmetric with writeLoc-regs-commute (OnStack case from SlotMachine)
+  -- Symmetric with writeLoc-regs-commute (AtStack case from SlotMachine)
   writeLoc-regs-commute-general : ∀ (s : LocState FS) (loc : ValueLocation FS) (v : ValueLocation FS)
     (r : Registers FS) →
     writeLoc (record s { regs = r }) loc v ≡
     record (writeLoc s loc v) { regs = r }
-  writeLoc-regs-commute-general s (OnStack f k) v r = writeLoc-regs-commute s f k v r
-  writeLoc-regs-commute-general s (OnHeap hl) v r = writeLoc-regs-commute-heap s hl v r
+  writeLoc-regs-commute-general s (AtStack f k) v r = writeLoc-regs-commute s f k v r
+  writeLoc-regs-commute-general s (AtDynamic hl) v r = writeLoc-regs-commute-heap s hl v r
 
   ------------------------------------------------------------------------
   -- Positive stack slot preservation lemmas
@@ -164,7 +164,7 @@ module MemoryOps {FS : FrameSemantics} where
   readLoc-writeLoc-stack-slot-lt : ∀ (s : LocState FS) (f : Frame FS) (j k : ℕ)
     (v : ValueLocation FS) →
     j < k →
-    readLoc (writeLoc s (OnStack f k) v) (OnStack f j) ≡ readLoc s (OnStack f j)
+    readLoc (writeLoc s (AtStack f k) v) (AtStack f j) ≡ readLoc s (AtStack f j)
   readLoc-writeLoc-stack-slot-lt s f j k v j<k with f ≟F f | k ≟ℕ j
   ... | yes _ | yes k≡j = ⊥-elim (<⇒≢ j<k (sym k≡j))
   ... | yes _ | no _ = refl
@@ -174,7 +174,7 @@ module MemoryOps {FS : FrameSemantics} where
   readLoc-writeLoc-stack-slot-gt : ∀ (s : LocState FS) (f : Frame FS) (j k : ℕ)
     (v : ValueLocation FS) →
     j < k →
-    readLoc (writeLoc s (OnStack f j) v) (OnStack f k) ≡ readLoc s (OnStack f k)
+    readLoc (writeLoc s (AtStack f j) v) (AtStack f k) ≡ readLoc s (AtStack f k)
   readLoc-writeLoc-stack-slot-gt s f j k v j<k with f ≟F f | j ≟ℕ k
   ... | yes _ | yes j≡k = ⊥-elim (<⇒≢ j<k j≡k)
   ... | yes _ | no _ = refl
@@ -184,7 +184,7 @@ module MemoryOps {FS : FrameSemantics} where
   readLoc-writeLoc-stack-ancestor : ∀ (s : LocState FS) (f₁ f₂ : Frame FS) (k₁ k₂ : ℕ)
     (v : ValueLocation FS) →
     f₁ ≺ f₂ →
-    readLoc (writeLoc s (OnStack f₁ k₁) v) (OnStack f₂ k₂) ≡ readLoc s (OnStack f₂ k₂)
+    readLoc (writeLoc s (AtStack f₁ k₁) v) (AtStack f₂ k₂) ≡ readLoc s (AtStack f₂ k₂)
   readLoc-writeLoc-stack-ancestor s f₁ f₂ k₁ k₂ v f₁≺f₂ with f₁ ≟F f₂
   ... | yes f₁≡f₂ = ⊥-elim (≺-irrefl (subst (λ f → f ≺ f₂) f₁≡f₂ f₁≺f₂))
   ... | no _ = refl
@@ -194,9 +194,9 @@ module MemoryOps {FS : FrameSemantics} where
   -- Heap cases use axiom (heap write semantics are more complex)
   readLoc-writeLoc-same : ∀ (s : LocState FS) (loc : ValueLocation FS) (v : ValueLocation FS) →
     readLoc (writeLoc s loc v) loc ≡ just v
-  readLoc-writeLoc-same s (OnStack f k) v = writeLoc-read-same-stack s f k v
-  readLoc-writeLoc-same s (OnHeap hl) v = readLoc-writeLoc-same-heap s hl v
-    where postulate readLoc-writeLoc-same-heap : ∀ s hl v → readLoc (writeLoc s (OnHeap hl) v) (OnHeap hl) ≡ just v
+  readLoc-writeLoc-same s (AtStack f k) v = writeLoc-read-same-stack s f k v
+  readLoc-writeLoc-same s (AtDynamic hl) v = readLoc-writeLoc-same-heap s hl v
+    where postulate readLoc-writeLoc-same-heap : ∀ s hl v → readLoc (writeLoc s (AtDynamic hl) v) (AtDynamic hl) ≡ just v
 
 ------------------------------------------------------------------------
 -- Level 3: Instruction Characterization (POSITIVE)
@@ -293,12 +293,12 @@ instr-reads-slot instr-save-closure-reg   = nothing
 -- Returns nothing if writing to stack (not a heap write).
 -- Helpers (no with-block) for the indirect-store cases.
 instr-writes-heap-indirect-aux : ValueLocation FS → Maybe HeapLocation
-instr-writes-heap-indirect-aux (OnHeap hl)    = just hl
-instr-writes-heap-indirect-aux (OnStack _ _)  = nothing
+instr-writes-heap-indirect-aux (AtDynamic hl)    = just hl
+instr-writes-heap-indirect-aux (AtStack _ _)  = nothing
 
 instr-writes-heap-indirect-suc-aux : ValueLocation FS → Maybe HeapLocation
-instr-writes-heap-indirect-suc-aux (OnHeap hl)    = just (sucHL hl)
-instr-writes-heap-indirect-suc-aux (OnStack _ _)  = nothing
+instr-writes-heap-indirect-suc-aux (AtDynamic hl)    = just (sucHL hl)
+instr-writes-heap-indirect-suc-aux (AtStack _ _)  = nothing
 
 instr-writes-heap : AbstractInstr → LocState FS → Maybe HeapLocation
 instr-writes-heap store-indirect          s = instr-writes-heap-indirect-aux (readReg (regs s) Input1)
@@ -412,12 +412,12 @@ instr-reads-mem mov-to-output s alloc = nothing  -- register only
 instr-reads-mem mov-to-input s alloc = nothing   -- register only
 instr-reads-mem load-indirect s alloc = just (readReg (regs s) Input1)
 instr-reads-mem load-indirect-suc s alloc = just (sucLoc (readReg (regs s) Input1))
-instr-reads-mem (load-from-slot k) s alloc = just (OnStack (current-frame alloc) k)
+instr-reads-mem (load-from-slot k) s alloc = just (AtStack (current-frame alloc) k)
 instr-reads-mem (store-at-slot k) s alloc = nothing  -- reads Output register, not memory
 instr-reads-mem store-indirect s alloc = nothing     -- reads Output register, not memory
 instr-reads-mem store-indirect-suc s alloc = nothing -- reads Output register, not memory
 instr-reads-mem (lea-slot k) s alloc = nothing       -- computes address, no read
-instr-reads-mem (restore-input k) s alloc = just (OnStack (current-frame alloc) k)
+instr-reads-mem (restore-input k) s alloc = just (AtStack (current-frame alloc) k)
 instr-reads-mem (instr-alloc-stack n) s alloc = nothing
 instr-reads-mem (instr-dealloc-stack n) s alloc = nothing
 instr-reads-mem (instr-reclaim-to n) s alloc = nothing
@@ -427,7 +427,7 @@ instr-reads-mem instr-call-closure s alloc = nothing
 -- OCP-0003: Worklist instructions
 instr-reads-mem (worklist-init k) s alloc = nothing      -- no-op
 instr-reads-mem (worklist-push k) s alloc = nothing      -- reads register, not memory
-instr-reads-mem (worklist-pop k) s alloc = just (OnStack (current-frame alloc) k)
+instr-reads-mem (worklist-pop k) s alloc = just (AtStack (current-frame alloc) k)
 instr-reads-mem (worklist-check k) s alloc = nothing     -- no-op
 instr-reads-mem (instr-sigop _)    s alloc = nothing     -- no-op
 instr-reads-mem (instr-load-const _ _) s alloc = nothing -- no-op (only writes Output)
@@ -442,7 +442,7 @@ instr-writes-mem mov-to-input s alloc = nothing   -- register only
 instr-writes-mem load-indirect s alloc = nothing  -- writes Output register, not memory
 instr-writes-mem load-indirect-suc s alloc = nothing
 instr-writes-mem (load-from-slot k) s alloc = nothing
-instr-writes-mem (store-at-slot k) s alloc = just (OnStack (current-frame alloc) k)
+instr-writes-mem (store-at-slot k) s alloc = just (AtStack (current-frame alloc) k)
 instr-writes-mem store-indirect s alloc = just (readReg (regs s) Input1)
 instr-writes-mem store-indirect-suc s alloc = just (sucLoc (readReg (regs s) Input1))
 instr-writes-mem (lea-slot k) s alloc = nothing
@@ -455,7 +455,7 @@ instr-writes-mem instr-pop-frame s alloc = nothing
 instr-writes-mem instr-call-closure s alloc = nothing
 -- OCP-0003: Worklist instructions
 instr-writes-mem (worklist-init k) s alloc = nothing     -- no-op
-instr-writes-mem (worklist-push k) s alloc = just (OnStack (current-frame alloc) k)
+instr-writes-mem (worklist-push k) s alloc = just (AtStack (current-frame alloc) k)
 instr-writes-mem (worklist-pop k) s alloc = nothing      -- writes register, not memory
 instr-writes-mem (worklist-check k) s alloc = nothing    -- no-op
 instr-writes-mem (instr-sigop _)    s alloc = nothing    -- no-op
@@ -523,7 +523,7 @@ module InstrPrimitives {FS : FrameSemantics} where
   exec-abstract-preserves-frame load-indirect s alloc = refl
   exec-abstract-preserves-frame load-indirect-suc s alloc = refl
   exec-abstract-preserves-frame (load-from-slot slot) s alloc
-    with readLoc s (OnStack (current-frame alloc) slot)
+    with readLoc s (AtStack (current-frame alloc) slot)
   ... | just _  = refl
   ... | nothing = refl
   exec-abstract-preserves-frame (store-at-slot slot) s alloc = refl
@@ -531,7 +531,7 @@ module InstrPrimitives {FS : FrameSemantics} where
   exec-abstract-preserves-frame store-indirect-suc s alloc = refl
   exec-abstract-preserves-frame (lea-slot slot) s alloc = refl
   exec-abstract-preserves-frame (restore-input slot) s alloc
-    with readLoc s (OnStack (current-frame alloc) slot)
+    with readLoc s (AtStack (current-frame alloc) slot)
   ... | just _  = refl
   ... | nothing = refl
   exec-abstract-preserves-frame (instr-alloc-stack n) s alloc = refl
@@ -544,7 +544,7 @@ module InstrPrimitives {FS : FrameSemantics} where
   exec-abstract-preserves-frame (worklist-init slot) s alloc = refl
   exec-abstract-preserves-frame (worklist-push slot) s alloc = refl  -- alloc unchanged
   exec-abstract-preserves-frame (worklist-pop slot) s alloc
-    with readLoc s (OnStack (current-frame alloc) slot)
+    with readLoc s (AtStack (current-frame alloc) slot)
   ... | just _  = refl
   ... | nothing = refl
   exec-abstract-preserves-frame (worklist-check slot) s alloc = refl
@@ -570,14 +570,14 @@ module InstrPrimitives {FS : FrameSemantics} where
   ... | just _  = refl
   ... | nothing = refl
   exec-abstract-preserves-heapMem (load-from-slot slot) s alloc nhw-load-from-slot
-    with readLoc s (OnStack (current-frame alloc) slot)
+    with readLoc s (AtStack (current-frame alloc) slot)
   ... | just _  = refl
   ... | nothing = refl
   exec-abstract-preserves-heapMem (store-at-slot slot) s alloc nhw-store-at-slot =
     writeLoc-heapMem-stack s (current-frame alloc) slot (readReg (regs s) Output)
   exec-abstract-preserves-heapMem (lea-slot slot) s alloc nhw-lea-slot = refl
   exec-abstract-preserves-heapMem (restore-input slot) s alloc nhw-restore-input
-    with readLoc s (OnStack (current-frame alloc) slot)
+    with readLoc s (AtStack (current-frame alloc) slot)
   ... | just _  = refl
   ... | nothing = refl
   exec-abstract-preserves-heapMem (instr-alloc-stack n) s alloc nhw-instr-alloc-stack = refl
@@ -591,7 +591,7 @@ module InstrPrimitives {FS : FrameSemantics} where
   exec-abstract-preserves-heapMem (worklist-push slot) s alloc nhw-worklist-push =
     writeLoc-heapMem-stack s (current-frame alloc) slot (readReg (regs s) Output)
   exec-abstract-preserves-heapMem (worklist-pop slot) s alloc nhw-worklist-pop
-    with readLoc s (OnStack (current-frame alloc) slot)
+    with readLoc s (AtStack (current-frame alloc) slot)
   ... | just _  = refl
   ... | nothing = refl
   exec-abstract-preserves-heapMem (worklist-check slot) s alloc nhw-worklist-check = refl
@@ -613,26 +613,26 @@ module InstrPrimitives {FS : FrameSemantics} where
     (alloc : AllocState {FS}) (f : Frame FS) (slot : ℕ) →
     InstrNoHeapWrite i →
     instr-writes-slot i ≡ nothing →
-    readLoc (proj₁ (exec-abstract i s alloc)) (OnStack f slot) ≡ readLoc s (OnStack f slot)
+    readLoc (proj₁ (exec-abstract i s alloc)) (AtStack f slot) ≡ readLoc s (AtStack f slot)
   -- Register-only instructions
   exec-abstract-preserves-stack-slot mov-to-output s alloc f slot _ _ = refl
   exec-abstract-preserves-stack-slot mov-to-input s alloc f slot _ _ = refl
   -- Load instructions: only modify registers, preserve all memory
   exec-abstract-preserves-stack-slot load-indirect s alloc f slot _ _ =
-    readLoc-stackMem-eq (proj₁ (exec-abstract load-indirect s alloc)) s (OnStack f slot)
+    readLoc-stackMem-eq (proj₁ (exec-abstract load-indirect s alloc)) s (AtStack f slot)
       (load-preserves-stackMem Output (IndReg Input1) s)
       (load-preserves-heapMem Output (IndReg Input1) s)
   exec-abstract-preserves-stack-slot load-indirect-suc s alloc f slot _ _ =
-    readLoc-stackMem-eq (proj₁ (exec-abstract load-indirect-suc s alloc)) s (OnStack f slot)
+    readLoc-stackMem-eq (proj₁ (exec-abstract load-indirect-suc s alloc)) s (AtStack f slot)
       (load-preserves-stackMem Output (IndRegSuc Input1) s)
       (load-preserves-heapMem Output (IndRegSuc Input1) s)
   exec-abstract-preserves-stack-slot (load-from-slot k) s alloc f slot _ _
-    with readLoc s (OnStack (current-frame alloc) k)
+    with readLoc s (AtStack (current-frame alloc) k)
   ... | just _  = refl
   ... | nothing = refl
   exec-abstract-preserves-stack-slot (lea-slot k) s alloc f slot _ _ = refl
   exec-abstract-preserves-stack-slot (restore-input k) s alloc f slot _ _
-    with readLoc s (OnStack (current-frame alloc) k)
+    with readLoc s (AtStack (current-frame alloc) k)
   ... | just _  = refl
   ... | nothing = refl
   -- Stack management instructions: preserve all memory
@@ -647,7 +647,7 @@ module InstrPrimitives {FS : FrameSemantics} where
   -- worklist-push is like store-at-slot - need to handle separately with slot bounds
   exec-abstract-preserves-stack-slot (worklist-push k) s alloc f slot _ _ = !!  -- TODO: needs slot bound reasoning
   exec-abstract-preserves-stack-slot (worklist-pop k) s alloc f slot _ _
-    with readLoc s (OnStack (current-frame alloc) k)
+    with readLoc s (AtStack (current-frame alloc) k)
   ... | just _  = refl
   ... | nothing = refl
   exec-abstract-preserves-stack-slot (worklist-check _) s alloc f slot _ _ = refl
@@ -659,16 +659,16 @@ module InstrPrimitives {FS : FrameSemantics} where
   -- store-at-slot k preserves slot j when j < k (positive ordering)
   store-at-slot-preserves-below : ∀ (j k : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
     j < k →
-    readLoc (proj₁ (exec-abstract (store-at-slot k) s alloc)) (OnStack (current-frame alloc) j) ≡
-    readLoc s (OnStack (current-frame alloc) j)
+    readLoc (proj₁ (exec-abstract (store-at-slot k) s alloc)) (AtStack (current-frame alloc) j) ≡
+    readLoc s (AtStack (current-frame alloc) j)
   store-at-slot-preserves-below j k s alloc j<k =
     readLoc-writeLoc-stack-slot-lt s (current-frame alloc) j k (readReg (regs s) Output) j<k
 
   -- store-at-slot j preserves slot k when j < k (positive ordering)
   store-at-slot-preserves-above : ∀ (j k : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
     j < k →
-    readLoc (proj₁ (exec-abstract (store-at-slot j) s alloc)) (OnStack (current-frame alloc) k) ≡
-    readLoc s (OnStack (current-frame alloc) k)
+    readLoc (proj₁ (exec-abstract (store-at-slot j) s alloc)) (AtStack (current-frame alloc) k) ≡
+    readLoc s (AtStack (current-frame alloc) k)
   store-at-slot-preserves-above j k s alloc j<k =
     readLoc-writeLoc-stack-slot-gt s (current-frame alloc) j k (readReg (regs s) Output) j<k
 
@@ -676,8 +676,8 @@ module InstrPrimitives {FS : FrameSemantics} where
   store-at-slot-preserves-ancestor : ∀ (k : ℕ) (s : LocState FS) (alloc : AllocState {FS})
     (f : Frame FS) (slot : ℕ) →
     current-frame alloc ≺ f →
-    readLoc (proj₁ (exec-abstract (store-at-slot k) s alloc)) (OnStack f slot) ≡
-    readLoc s (OnStack f slot)
+    readLoc (proj₁ (exec-abstract (store-at-slot k) s alloc)) (AtStack f slot) ≡
+    readLoc s (AtStack f slot)
   store-at-slot-preserves-ancestor k s alloc f slot cf≺f =
     readLoc-writeLoc-stack-ancestor s (current-frame alloc) f k slot (readReg (regs s) Output) cf≺f
 
@@ -707,9 +707,9 @@ module InstrPrimitives {FS : FrameSemantics} where
   exec-abstract-same-frame instr-call-closure s alloc₁ alloc₂ _ = refl
   -- Instructions that use current-frame alloc
   exec-abstract-same-frame (load-from-slot slot) s alloc₁ alloc₂ frame-eq
-    with readLoc s (OnStack (current-frame alloc₁) slot)
-       | readLoc s (OnStack (current-frame alloc₂) slot)
-       | cong (λ f → readLoc s (OnStack f slot)) frame-eq
+    with readLoc s (AtStack (current-frame alloc₁) slot)
+       | readLoc s (AtStack (current-frame alloc₂) slot)
+       | cong (λ f → readLoc s (AtStack f slot)) frame-eq
   ... | just v₁ | just v₂ | eq rewrite just-injective eq = refl
   ... | nothing | nothing | _ = refl
   ... | just _ | nothing | ()
@@ -719,9 +719,9 @@ module InstrPrimitives {FS : FrameSemantics} where
   exec-abstract-same-frame (lea-slot slot) s alloc₁ alloc₂ frame-eq
     rewrite frame-eq = refl
   exec-abstract-same-frame (restore-input slot) s alloc₁ alloc₂ frame-eq
-    with readLoc s (OnStack (current-frame alloc₁) slot)
-       | readLoc s (OnStack (current-frame alloc₂) slot)
-       | cong (λ f → readLoc s (OnStack f slot)) frame-eq
+    with readLoc s (AtStack (current-frame alloc₁) slot)
+       | readLoc s (AtStack (current-frame alloc₂) slot)
+       | cong (λ f → readLoc s (AtStack f slot)) frame-eq
   ... | just v₁ | just v₂ | eq rewrite just-injective eq = refl
   ... | nothing | nothing | _ = refl
   ... | just _ | nothing | ()
@@ -731,9 +731,9 @@ module InstrPrimitives {FS : FrameSemantics} where
   exec-abstract-same-frame (worklist-push slot) s alloc₁ alloc₂ frame-eq
     rewrite frame-eq = refl
   exec-abstract-same-frame (worklist-pop slot) s alloc₁ alloc₂ frame-eq
-    with readLoc s (OnStack (current-frame alloc₁) slot)
-       | readLoc s (OnStack (current-frame alloc₂) slot)
-       | cong (λ f → readLoc s (OnStack f slot)) frame-eq
+    with readLoc s (AtStack (current-frame alloc₁) slot)
+       | readLoc s (AtStack (current-frame alloc₂) slot)
+       | cong (λ f → readLoc s (AtStack f slot)) frame-eq
   ... | just v₁ | just v₂ | eq rewrite just-injective eq = refl
   ... | nothing | nothing | _ = refl
   ... | just _ | nothing | ()
@@ -752,7 +752,7 @@ module InstrPrimitives {FS : FrameSemantics} where
 --   TraceNoHeapWrites trace : "writes only to stack (no heap writes)"
 --
 -- Together these POSITIVELY characterize the write set:
---   "trace writes to {OnStack frame k | k < n}"
+--   "trace writes to {AtStack frame k | k < n}"
 --
 -- Preservation DERIVES from this:
 --   If k ≥ n, slot k is not in write set → preserved
@@ -1140,8 +1140,8 @@ module TracePrimitives {FS : FrameSemantics} where
       TraceWritesAbove n trace →        -- writes at slots ≥ n
       TraceNoHeapWrites trace →         -- no heap writes
       slot < n →                        -- slot is below write region
-      readLoc (proj₁ (exec-trace trace s alloc)) (OnStack (current-frame alloc) slot) ≡
-      readLoc s (OnStack (current-frame alloc) slot)
+      readLoc (proj₁ (exec-trace trace s alloc)) (AtStack (current-frame alloc) slot) ≡
+      readLoc s (AtStack (current-frame alloc) slot)
     -- Proof: induction on trace using positive instruction lemmas
     -- Key lemmas: store-at-slot-preserves-below, exec-abstract-preserves-stack-slot
     exec-trace-preserves-slot-below [] s alloc n slot _ _ _ = refl
@@ -1160,8 +1160,8 @@ module TracePrimitives {FS : FrameSemantics} where
           frame-pres = exec-abstract-preserves-frame (store-at-slot k) s alloc
           ih = exec-trace-preserves-slot-below rest s' alloc' n slot twa-rest tnhw slot<n
           -- Need to transport result across frame equality
-      in trans (subst (λ cf → readLoc (proj₁ (exec-trace rest s' alloc')) (OnStack cf slot) ≡
-                             readLoc s' (OnStack cf slot))
+      in trans (subst (λ cf → readLoc (proj₁ (exec-trace rest s' alloc')) (AtStack cf slot) ≡
+                             readLoc s' (AtStack cf slot))
                      frame-pres ih)
                step-pres
     -- Non-writing instructions (instr-writes-slot = nothing)
@@ -1209,8 +1209,8 @@ module TracePrimitives {FS : FrameSemantics} where
           step-pres = store-at-slot-preserves-below slot k s alloc slot<k
           frame-pres = exec-abstract-preserves-frame (worklist-push k) s alloc
           ih = exec-trace-preserves-slot-below rest s' alloc' n slot twa-rest tnhw slot<n
-      in trans (subst (λ cf → readLoc (proj₁ (exec-trace rest s' alloc')) (OnStack cf slot) ≡
-                             readLoc s' (OnStack cf slot))
+      in trans (subst (λ cf → readLoc (proj₁ (exec-trace rest s' alloc')) (AtStack cf slot) ≡
+                             readLoc s' (AtStack cf slot))
                      frame-pres ih)
                step-pres
     exec-trace-preserves-slot-below (worklist-pop k ∷ rest) s alloc n slot twa tnhw slot<n =
@@ -1234,8 +1234,8 @@ module TracePrimitives {FS : FrameSemantics} where
       slot < n →
       InstrNoHeapWrite i →
       instr-writes-slot i ≡ nothing →
-      readLoc (proj₁ (exec-trace (i ∷ rest) s alloc)) (OnStack (current-frame alloc) slot) ≡
-      readLoc s (OnStack (current-frame alloc) slot)
+      readLoc (proj₁ (exec-trace (i ∷ rest) s alloc)) (AtStack (current-frame alloc) slot) ≡
+      readLoc s (AtStack (current-frame alloc) slot)
     exec-trace-preserves-slot-below-nonwrite i rest s alloc n slot twa tnhw slot<n inhw iws-eq with halted s
     ... | true = refl
     ... | false =
@@ -1249,8 +1249,8 @@ module TracePrimitives {FS : FrameSemantics} where
           twa-rest = twa-tail n i rest iws-eq twa
           tnhw-rest = tnhw-tail i rest tnhw
           ih = exec-trace-preserves-slot-below rest s' alloc' n slot twa-rest tnhw-rest slot<n
-      in trans (subst (λ cf → readLoc (proj₁ (exec-trace rest s' alloc')) (OnStack cf slot) ≡
-                             readLoc s' (OnStack cf slot))
+      in trans (subst (λ cf → readLoc (proj₁ (exec-trace rest s' alloc')) (AtStack cf slot) ≡
+                             readLoc s' (AtStack cf slot))
                      frame-pres ih)
                step-pres
 
@@ -1262,8 +1262,8 @@ module TracePrimitives {FS : FrameSemantics} where
       TraceWritesBelow m trace →        -- writes at slots < m
       TraceNoHeapWrites trace →         -- no heap writes
       m ≤ slot →                        -- slot is above write region
-      readLoc (proj₁ (exec-trace trace s alloc)) (OnStack (current-frame alloc) slot) ≡
-      readLoc s (OnStack (current-frame alloc) slot)
+      readLoc (proj₁ (exec-trace trace s alloc)) (AtStack (current-frame alloc) slot) ≡
+      readLoc s (AtStack (current-frame alloc) slot)
     -- Proof: induction on trace; each write is at slot' < m ≤ slot, so slot' < slot
     exec-trace-preserves-slot-above [] s alloc m slot _ _ _ = refl
     exec-trace-preserves-slot-above (store-at-slot k ∷ rest) s alloc m slot (k<m , twb-rest) tnhw m≤slot
@@ -1280,8 +1280,8 @@ module TracePrimitives {FS : FrameSemantics} where
           -- Frame preserved
           frame-pres = exec-abstract-preserves-frame (store-at-slot k) s alloc
           ih = exec-trace-preserves-slot-above rest s' alloc' m slot twb-rest tnhw m≤slot
-      in trans (subst (λ cf → readLoc (proj₁ (exec-trace rest s' alloc')) (OnStack cf slot) ≡
-                             readLoc s' (OnStack cf slot))
+      in trans (subst (λ cf → readLoc (proj₁ (exec-trace rest s' alloc')) (AtStack cf slot) ≡
+                             readLoc s' (AtStack cf slot))
                      frame-pres ih)
                step-pres
     -- Non-writing instructions (instr-writes-slot = nothing)
@@ -1330,8 +1330,8 @@ module TracePrimitives {FS : FrameSemantics} where
           step-pres = store-at-slot-preserves-above k slot s alloc k<slot
           frame-pres = exec-abstract-preserves-frame (worklist-push k) s alloc
           ih = exec-trace-preserves-slot-above rest s' alloc' m slot twb-rest tnhw m≤slot
-      in trans (subst (λ cf → readLoc (proj₁ (exec-trace rest s' alloc')) (OnStack cf slot) ≡
-                             readLoc s' (OnStack cf slot))
+      in trans (subst (λ cf → readLoc (proj₁ (exec-trace rest s' alloc')) (AtStack cf slot) ≡
+                             readLoc s' (AtStack cf slot))
                      frame-pres ih)
                step-pres
     exec-trace-preserves-slot-above (worklist-pop k ∷ rest) s alloc m slot twb tnhw m≤slot =
@@ -1355,8 +1355,8 @@ module TracePrimitives {FS : FrameSemantics} where
       m ≤ slot →
       InstrNoHeapWrite i →
       instr-writes-slot i ≡ nothing →
-      readLoc (proj₁ (exec-trace (i ∷ rest) s alloc)) (OnStack (current-frame alloc) slot) ≡
-      readLoc s (OnStack (current-frame alloc) slot)
+      readLoc (proj₁ (exec-trace (i ∷ rest) s alloc)) (AtStack (current-frame alloc) slot) ≡
+      readLoc s (AtStack (current-frame alloc) slot)
     exec-trace-preserves-slot-above-nonwrite i rest s alloc m slot twb tnhw m≤slot inhw iws-eq with halted s
     ... | true = refl
     ... | false =
@@ -1370,8 +1370,8 @@ module TracePrimitives {FS : FrameSemantics} where
           twb-rest = twb-tail m i rest iws-eq twb
           tnhw-rest = tnhw-tail i rest tnhw
           ih = exec-trace-preserves-slot-above rest s' alloc' m slot twb-rest tnhw-rest m≤slot
-      in trans (subst (λ cf → readLoc (proj₁ (exec-trace rest s' alloc')) (OnStack cf slot) ≡
-                             readLoc s' (OnStack cf slot))
+      in trans (subst (λ cf → readLoc (proj₁ (exec-trace rest s' alloc')) (AtStack cf slot) ≡
+                             readLoc s' (AtStack cf slot))
                      frame-pres ih)
                step-pres
 
@@ -1383,8 +1383,8 @@ module TracePrimitives {FS : FrameSemantics} where
       (alloc : AllocState {FS}) (f : Frame FS) (slot : ℕ) →
       current-frame alloc ≺ f →         -- f is an ancestor (current ≺ f means f is "above" current)
       TraceNoHeapWrites trace →         -- no heap writes
-      readLoc (proj₁ (exec-trace trace s alloc)) (OnStack f slot) ≡
-      readLoc s (OnStack f slot)
+      readLoc (proj₁ (exec-trace trace s alloc)) (AtStack f slot) ≡
+      readLoc s (AtStack f slot)
     -- Proof: induction on trace; each write is at current-frame which is ≺ f
     exec-trace-preserves-ancestor [] s alloc f slot _ _ = refl
     exec-trace-preserves-ancestor (store-at-slot k ∷ rest) s alloc f slot cf≺f tnhw with halted s
@@ -1464,8 +1464,8 @@ module TracePrimitives {FS : FrameSemantics} where
       TraceNoHeapWrites (i ∷ rest) →
       InstrNoHeapWrite i →
       instr-writes-slot i ≡ nothing →
-      readLoc (proj₁ (exec-trace (i ∷ rest) s alloc)) (OnStack f slot) ≡
-      readLoc s (OnStack f slot)
+      readLoc (proj₁ (exec-trace (i ∷ rest) s alloc)) (AtStack f slot) ≡
+      readLoc s (AtStack f slot)
     exec-trace-preserves-ancestor-nonwrite i rest s alloc f slot cf≺f tnhw inhw iws-eq with halted s
     ... | true = refl
     ... | false =
@@ -1486,8 +1486,8 @@ module TracePrimitives {FS : FrameSemantics} where
   exec-trace-preserves-heap-loc : ∀ (trace : AbstractTrace) (s : LocState FS)
     (alloc : AllocState {FS}) (h : HeapLocation) →
     TraceNoHeapWrites trace →         -- no heap writes
-    readLoc (proj₁ (exec-trace trace s alloc)) (OnHeap h) ≡
-    readLoc s (OnHeap h)
+    readLoc (proj₁ (exec-trace trace s alloc)) (AtDynamic h) ≡
+    readLoc s (AtDynamic h)
   -- Proof: induction on trace; no instruction writes to heap
   exec-trace-preserves-heap-loc [] s alloc h _ = refl
   exec-trace-preserves-heap-loc (i ∷ rest) s alloc h tnhw with halted s
@@ -1521,8 +1521,8 @@ module TracePrimitives {FS : FrameSemantics} where
     -- frame matches
     current-frame alloc ≡ f →
     -- Then writeLoc commutes
-    proj₁ (exec-trace trace (writeLoc s (OnStack f slot) val) alloc) ≡
-    writeLoc (proj₁ (exec-trace trace s alloc)) (OnStack f slot) val
+    proj₁ (exec-trace trace (writeLoc s (AtStack f slot) val) alloc) ≡
+    writeLoc (proj₁ (exec-trace trace s alloc)) (AtStack f slot) val
   exec-trace-independent = !!
 
   -- Case 2: slot is BELOW all reads and writes
@@ -1539,8 +1539,8 @@ module TracePrimitives {FS : FrameSemantics} where
     -- frame matches
     current-frame alloc ≡ f →
     -- Then writeLoc commutes
-    proj₁ (exec-trace trace (writeLoc s (OnStack f slot) val) alloc) ≡
-    writeLoc (proj₁ (exec-trace trace s alloc)) (OnStack f slot) val
+    proj₁ (exec-trace trace (writeLoc s (AtStack f slot) val) alloc) ≡
+    writeLoc (proj₁ (exec-trace trace s alloc)) (AtStack f slot) val
   exec-trace-independent-below = !!
 
   -- (C) DETERMINISM - trace version
@@ -1552,7 +1552,7 @@ module TracePrimitives {FS : FrameSemantics} where
     halted s₁ ≡ halted s₂ →
     -- Slots in read range agree
     (∀ k → TraceSlotReadsAbove k trace →
-           readLoc s₁ (OnStack (current-frame alloc) k) ≡ readLoc s₂ (OnStack (current-frame alloc) k)) →
+           readLoc s₁ (AtStack (current-frame alloc) k) ≡ readLoc s₂ (AtStack (current-frame alloc) k)) →
     -- Heap agrees (for load-indirect)
     heapMem s₁ ≡ heapMem s₂ →
     -- Stack structure agrees
@@ -1693,7 +1693,7 @@ module TracePrimitives {FS : FrameSemantics} where
   exec-abstract-preserves-halted mov-to-output s alloc h-eq _ = h-eq
   exec-abstract-preserves-halted mov-to-input s alloc h-eq _ = h-eq
   exec-abstract-preserves-halted (store-at-slot slot) s alloc h-eq _ =
-    trans (writeLoc-halted s (OnStack (current-frame alloc) slot) (readReg (regs s) Output)) h-eq
+    trans (writeLoc-halted s (AtStack (current-frame alloc) slot) (readReg (regs s) Output)) h-eq
   exec-abstract-preserves-halted store-indirect s alloc h-eq _ =
     trans (writeLoc-halted s (readReg (regs s) Input1) (readReg (regs s) Output)) h-eq
   exec-abstract-preserves-halted store-indirect-suc s alloc h-eq _ =
@@ -1716,7 +1716,7 @@ module TracePrimitives {FS : FrameSemantics} where
   -- OCP-0003: Worklist instructions
   exec-abstract-preserves-halted (worklist-init slot) s alloc h-eq _ = h-eq
   exec-abstract-preserves-halted (worklist-push slot) s alloc h-eq _ =
-    trans (writeLoc-halted s (OnStack (current-frame alloc) slot) (readReg (regs s) Output)) h-eq
+    trans (writeLoc-halted s (AtStack (current-frame alloc) slot) (readReg (regs s) Output)) h-eq
   exec-abstract-preserves-halted (worklist-pop slot) s alloc h-eq iph-worklist-pop =
     load-from-slot-preserves-halted slot s alloc h-eq  -- same as load-from-slot
   exec-abstract-preserves-halted (worklist-check slot) s alloc h-eq _ = h-eq
@@ -1769,17 +1769,17 @@ module TracePrimitives {FS : FrameSemantics} where
   -- then slot k still has value v after trace
   exec-trace-slot-value : ∀ (trace : AbstractTrace) (s : LocState FS)
     (alloc : AllocState {FS}) (k : ℕ) (v : ValueLocation FS) →
-    readLoc s (OnStack (current-frame alloc) k) ≡ just v →
+    readLoc s (AtStack (current-frame alloc) k) ≡ just v →
     TraceWritesAbove (suc k) trace →
     TraceNoHeapWrites trace →
-    readLoc (proj₁ (exec-trace trace s alloc)) (OnStack (current-frame alloc) k) ≡ just v
+    readLoc (proj₁ (exec-trace trace s alloc)) (AtStack (current-frame alloc) k) ≡ just v
   exec-trace-slot-value trace s alloc k v slot-has-v twa tnhw =
     let -- k < suc k, so slot k is below write region
         k<suck : k < suc k
         k<suck = ≤-refl
         -- Apply positive characterization lemma
-        preserved : readLoc (proj₁ (exec-trace trace s alloc)) (OnStack (current-frame alloc) k) ≡
-                    readLoc s (OnStack (current-frame alloc) k)
+        preserved : readLoc (proj₁ (exec-trace trace s alloc)) (AtStack (current-frame alloc) k) ≡
+                    readLoc s (AtStack (current-frame alloc) k)
         preserved = exec-trace-preserves-slot-below trace s alloc (suc k) k twa tnhw k<suck
     in trans preserved slot-has-v
 
@@ -1787,46 +1787,46 @@ module TracePrimitives {FS : FrameSemantics} where
   -- If slot k has value v and trace writes below k (at slots < k), then k is preserved
   exec-trace-slot-value-below : ∀ (trace : AbstractTrace) (s : LocState FS)
     (alloc : AllocState {FS}) (k : ℕ) (v : ValueLocation FS) →
-    readLoc s (OnStack (current-frame alloc) k) ≡ just v →
+    readLoc s (AtStack (current-frame alloc) k) ≡ just v →
     TraceWritesBelow k trace →        -- writes at slots < k
     TraceNoHeapWrites trace →
-    readLoc (proj₁ (exec-trace trace s alloc)) (OnStack (current-frame alloc) k) ≡ just v
+    readLoc (proj₁ (exec-trace trace s alloc)) (AtStack (current-frame alloc) k) ≡ just v
   exec-trace-slot-value-below trace s alloc k v slot-has-v twb tnhw =
     let -- k ≥ k, so slot k is above write region
         k≤k : k ≤ k
         k≤k = ≤-refl
         -- Apply positive characterization lemma
-        preserved : readLoc (proj₁ (exec-trace trace s alloc)) (OnStack (current-frame alloc) k) ≡
-                    readLoc s (OnStack (current-frame alloc) k)
+        preserved : readLoc (proj₁ (exec-trace trace s alloc)) (AtStack (current-frame alloc) k) ≡
+                    readLoc s (AtStack (current-frame alloc) k)
         preserved = exec-trace-preserves-slot-above trace s alloc k k twb tnhw k≤k
     in trans preserved slot-has-v
 
   -- store-at-slot writes the Output register value to the slot
   store-at-slot-result : ∀ (k : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
     readLoc (proj₁ (exec-abstract (store-at-slot k) s alloc))
-            (OnStack (current-frame alloc) k) ≡ just (readReg (regs s) Output)
-  store-at-slot-result k s alloc = readLoc-writeLoc-same s (OnStack (current-frame alloc) k) (readReg (regs s) Output)
+            (AtStack (current-frame alloc) k) ≡ just (readReg (regs s) Output)
+  store-at-slot-result k s alloc = readLoc-writeLoc-same s (AtStack (current-frame alloc) k) (readReg (regs s) Output)
 
   -- store-at-slot preserves halted
   store-at-slot-halted : ∀ (k : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
     halted (proj₁ (exec-abstract (store-at-slot k) s alloc)) ≡ halted s
-  store-at-slot-halted k s alloc = writeLoc-halted s (OnStack (current-frame alloc) k) (readReg (regs s) Output)
+  store-at-slot-halted k s alloc = writeLoc-halted s (AtStack (current-frame alloc) k) (readReg (regs s) Output)
 
   -- store-at-slot preserves registers
   store-at-slot-regs : ∀ (k : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
     regs (proj₁ (exec-abstract (store-at-slot k) s alloc)) ≡ regs s
-  store-at-slot-regs k s alloc = writeLoc-regs s (OnStack (current-frame alloc) k) (readReg (regs s) Output)
+  store-at-slot-regs k s alloc = writeLoc-regs s (AtStack (current-frame alloc) k) (readReg (regs s) Output)
 
   -- store-at-slot preserves other slots: writing to slot j preserves slot k when j < k or k < j
   store-at-slot-preserves-other : ∀ (j k : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
     j < k ⊎ k < j →
-    readLoc (proj₁ (exec-abstract (store-at-slot j) s alloc)) (OnStack (current-frame alloc) k) ≡
-    readLoc s (OnStack (current-frame alloc) k)
+    readLoc (proj₁ (exec-abstract (store-at-slot j) s alloc)) (AtStack (current-frame alloc) k) ≡
+    readLoc s (AtStack (current-frame alloc) k)
   store-at-slot-preserves-other j k s alloc (inj₁ j<k) =
-    writeLoc-preserves-other s (OnStack (current-frame alloc) j) (OnStack (current-frame alloc) k)
+    writeLoc-preserves-other s (AtStack (current-frame alloc) j) (AtStack (current-frame alloc) k)
       (readReg (regs s) Output) (stack-slot-disjoint (current-frame alloc) j k (<⇒≢ j<k))
   store-at-slot-preserves-other j k s alloc (inj₂ k<j) =
-    writeLoc-preserves-other s (OnStack (current-frame alloc) j) (OnStack (current-frame alloc) k)
+    writeLoc-preserves-other s (AtStack (current-frame alloc) j) (AtStack (current-frame alloc) k)
       (readReg (regs s) Output) (stack-slot-disjoint (current-frame alloc) j k (≢-sym (<⇒≢ k<j)))
 
   -- store-at-slot preserves Input1 register (derived from store-at-slot-regs)
@@ -1840,13 +1840,13 @@ module TracePrimitives {FS : FrameSemantics} where
   -- This handles heap locations, ancestor frames, and different slots
   exec-abstract-store-at-slot-preserves-loc : ∀ (k : ℕ) (s : LocState FS) (alloc : AllocState {FS})
     (loc : ValueLocation FS) →
-    loc ≢ OnStack (current-frame alloc) k →
+    loc ≢ AtStack (current-frame alloc) k →
     readLoc (proj₁ (exec-abstract (store-at-slot k) s alloc)) loc ≡ readLoc s loc
-  exec-abstract-store-at-slot-preserves-loc k s alloc (OnStack f j) loc≢slot =
-    writeLoc-preserves-other s (OnStack (current-frame alloc) k) (OnStack f j)
+  exec-abstract-store-at-slot-preserves-loc k s alloc (AtStack f j) loc≢slot =
+    writeLoc-preserves-other s (AtStack (current-frame alloc) k) (AtStack f j)
       (readReg (regs s) Output) (λ eq → loc≢slot (sym eq))
-  exec-abstract-store-at-slot-preserves-loc k s alloc (OnHeap hl) _ =
-    writeLoc-preserves-other s (OnStack (current-frame alloc) k) (OnHeap hl)
+  exec-abstract-store-at-slot-preserves-loc k s alloc (AtDynamic hl) _ =
+    writeLoc-preserves-other s (AtStack (current-frame alloc) k) (AtDynamic hl)
       (readReg (regs s) Output) (λ ())
 
   ------------------------------------------------------------------------
@@ -1889,8 +1889,8 @@ module TracePrimitives {FS : FrameSemantics} where
   -- lea-slot sets Output register to the slot address
   lea-slot-result : ∀ (k : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
     readReg (regs (proj₁ (exec-abstract (lea-slot k) s alloc))) Output ≡
-    OnStack (current-frame alloc) k
-  lea-slot-result k s alloc = writeReg-same (regs s) Output (OnStack (current-frame alloc) k)
+    AtStack (current-frame alloc) k
+  lea-slot-result k s alloc = writeReg-same (regs s) Output (AtStack (current-frame alloc) k)
 
   -- lea-slot preserves halted
   lea-slot-halted : ∀ (k : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
@@ -1909,7 +1909,7 @@ module TracePrimitives {FS : FrameSemantics} where
     (alloc : AllocState {FS}) →
     halted (proj₁ (exec-trace trace s alloc)) ≡ false →
     readReg (regs (proj₁ (exec-trace (trace ++ (lea-slot k ∷ [])) s alloc))) Output ≡
-    OnStack (current-frame alloc) k
+    AtStack (current-frame alloc) k
   exec-trace-final-lea-slot trace k s alloc not-halted-after =
     let s' = proj₁ (exec-trace trace s alloc)
         alloc' = proj₂ (exec-trace trace s alloc)
@@ -1919,16 +1919,16 @@ module TracePrimitives {FS : FrameSemantics} where
         snoc-eq = exec-trace-snoc-state trace (lea-slot k) s alloc not-halted-after
         -- Step 2: lea-slot result (uses alloc')
         lea-result : readReg (regs (proj₁ (exec-abstract (lea-slot k) s' alloc'))) Output ≡
-                     OnStack (current-frame alloc') k
+                     AtStack (current-frame alloc') k
         lea-result = lea-slot-result k s' alloc'
         -- Step 3: Frame preservation (works for all traces)
         frame-eq : current-frame alloc' ≡ current-frame alloc
         frame-eq = exec-trace-preserves-frame trace s alloc
         -- Step 4: Combine
         result-with-alloc' : readReg (regs (proj₁ (exec-trace (trace ++ (lea-slot k ∷ [])) s alloc))) Output ≡
-                             OnStack (current-frame alloc') k
+                             AtStack (current-frame alloc') k
         result-with-alloc' = trans (cong (λ st → readReg (regs st) Output) snoc-eq) lea-result
-    in trans result-with-alloc' (cong (λ f → OnStack f k) frame-eq)
+    in trans result-with-alloc' (cong (λ f → AtStack f k) frame-eq)
 
   -- Final lea-slot k followed by mov-to-input: sets Input1 to slot address
   -- Common pattern in Apply setup traces
@@ -1936,7 +1936,7 @@ module TracePrimitives {FS : FrameSemantics} where
     (alloc : AllocState {FS}) →
     halted (proj₁ (exec-trace trace s alloc)) ≡ false →
     readReg (regs (proj₁ (exec-trace (trace ++ (lea-slot k ∷ mov-to-input ∷ [])) s alloc))) Input1 ≡
-    OnStack (current-frame alloc) k
+    AtStack (current-frame alloc) k
   exec-trace-final-lea-mov-input trace k s alloc not-halted-after =
     let s' = proj₁ (exec-trace trace s alloc)
         alloc' = proj₂ (exec-trace trace s alloc)
@@ -1950,8 +1950,8 @@ module TracePrimitives {FS : FrameSemantics} where
         lea-step : exec-trace (lea-slot k ∷ mov-to-input ∷ []) s' alloc' ≡
                    exec-trace (mov-to-input ∷ []) s-after-lea alloc-after-lea
         lea-step = exec-trace-cons (lea-slot k) (mov-to-input ∷ []) s' alloc' not-halted-after
-        -- Step 3: lea-slot sets Output = OnStack (current-frame alloc') k
-        output-after-lea : readReg (regs s-after-lea) Output ≡ OnStack (current-frame alloc') k
+        -- Step 3: lea-slot sets Output = AtStack (current-frame alloc') k
+        output-after-lea : readReg (regs s-after-lea) Output ≡ AtStack (current-frame alloc') k
         output-after-lea = lea-slot-result k s' alloc'
         -- Step 4: lea-slot preserves halted
         not-halted-after-lea : halted s-after-lea ≡ false
@@ -1979,10 +1979,10 @@ module TracePrimitives {FS : FrameSemantics} where
         -- Now transport the Input1 register result
         eq4 : readReg (regs final-state) Input1 ≡ readReg (regs s-after-mov) Input1
         eq4 = cong (λ st → readReg (regs st) Input1) eq3
-        eq5 : readReg (regs s-after-mov) Input1 ≡ OnStack (current-frame alloc') k
+        eq5 : readReg (regs s-after-mov) Input1 ≡ AtStack (current-frame alloc') k
         eq5 = trans input-after-mov output-after-lea
-        eq6 : OnStack (current-frame alloc') k ≡ OnStack (current-frame alloc) k
-        eq6 = cong (λ f → OnStack f k) frame-eq
+        eq6 : AtStack (current-frame alloc') k ≡ AtStack (current-frame alloc) k
+        eq6 = cong (λ f → AtStack f k) frame-eq
     in trans eq4 (trans eq5 eq6)
 
   ------------------------------------------------------------------------
@@ -1999,7 +1999,7 @@ module TracePrimitives {FS : FrameSemantics} where
     TraceWritesAbove (suc k) rest →
     TraceNoHeapWrites rest →
     readLoc (proj₁ (exec-trace (store-at-slot k ∷ rest) s alloc))
-            (OnStack (current-frame alloc) k) ≡ just (readReg (regs s) Output)
+            (AtStack (current-frame alloc) k) ≡ just (readReg (regs s) Output)
   store-then-preserve k rest s alloc not-halted twa tnhw with halted s
   ... | true = case not-halted of λ ()  -- contradiction
   ... | false =
@@ -2007,20 +2007,20 @@ module TracePrimitives {FS : FrameSemantics} where
         s' = proj₁ (exec-abstract (store-at-slot k) s alloc)
         alloc' = proj₂ (exec-abstract (store-at-slot k) s alloc)
         -- Step 1: store-at-slot writes Output to slot k
-        slot-has-value : readLoc s' (OnStack (current-frame alloc) k) ≡ just (readReg (regs s) Output)
+        slot-has-value : readLoc s' (AtStack (current-frame alloc) k) ≡ just (readReg (regs s) Output)
         slot-has-value = store-at-slot-result k s alloc
         -- Step 2: rest preserves slot k (writes above suc k)
-        preserved : readLoc (proj₁ (exec-trace rest s' alloc')) (OnStack (current-frame alloc') k) ≡
+        preserved : readLoc (proj₁ (exec-trace rest s' alloc')) (AtStack (current-frame alloc') k) ≡
                     just (readReg (regs s) Output)
         preserved = exec-trace-slot-value rest s' alloc' k (readReg (regs s) Output)
-                      (subst (λ f → readLoc s' (OnStack f k) ≡ just (readReg (regs s) Output))
+                      (subst (λ f → readLoc s' (AtStack f k) ≡ just (readReg (regs s) Output))
                              (sym (exec-abstract-preserves-frame (store-at-slot k) s alloc))
                              slot-has-value)
                       twa tnhw
         -- Step 3: Frame preserved by store-at-slot
         frame-eq : current-frame alloc' ≡ current-frame alloc
         frame-eq = exec-abstract-preserves-frame (store-at-slot k) s alloc
-    in subst (λ f → readLoc (proj₁ (exec-trace rest s' alloc')) (OnStack f k) ≡
+    in subst (λ f → readLoc (proj₁ (exec-trace rest s' alloc')) (AtStack f k) ≡
                     just (readReg (regs s) Output))
              frame-eq preserved
 
@@ -2043,7 +2043,7 @@ module TracePrimitives {FS : FrameSemantics} where
     let s-after-prefix = proj₁ (exec-trace prefix s alloc)
     in
     readLoc (proj₁ (exec-trace (prefix ++ store-at-slot k ∷ suffix) s alloc))
-            (OnStack (current-frame alloc) k) ≡
+            (AtStack (current-frame alloc) k) ≡
     just (readReg (regs s-after-prefix) Output)
   prefix-store-preserve [] k suffix s alloc tph-prefix not-halted twa tnhw =
     -- Empty prefix: just apply store-then-preserve
@@ -2061,7 +2061,7 @@ module TracePrimitives {FS : FrameSemantics} where
         TraceNoHeapWrites suffix →
         halted s ≡ false →  -- duplicate for pattern matching
         readLoc (proj₁ (exec-trace ((i ∷ prefix) ++ store-at-slot k ∷ suffix) s alloc))
-                (OnStack (current-frame alloc) k) ≡
+                (AtStack (current-frame alloc) k) ≡
         just (readReg (regs (proj₁ (exec-trace (i ∷ prefix) s alloc))) Output)
       psp-cons i prefix k suffix s alloc iph tph-rest not-halted twa tnhw refl =
         let -- Execute first instruction
@@ -2075,7 +2075,7 @@ module TracePrimitives {FS : FrameSemantics} where
             -- Recursive call for rest of prefix
             rest-trace = prefix ++ store-at-slot k ∷ suffix
             ih : readLoc (proj₁ (exec-trace rest-trace s₁ alloc₁))
-                         (OnStack (current-frame alloc₁) k) ≡
+                         (AtStack (current-frame alloc₁) k) ≡
                  just (readReg (regs (proj₁ (exec-trace prefix s₁ alloc₁))) Output)
             ih = prefix-store-preserve prefix k suffix s₁ alloc₁ tph-rest not-halted₁ twa tnhw
 
@@ -2086,7 +2086,7 @@ module TracePrimitives {FS : FrameSemantics} where
             -- After prefix in original state = after prefix in s₁
             s-after-prefix = proj₁ (exec-trace prefix s₁ alloc₁)
 
-        in subst (λ f → readLoc (proj₁ (exec-trace rest-trace s₁ alloc₁)) (OnStack f k) ≡
+        in subst (λ f → readLoc (proj₁ (exec-trace rest-trace s₁ alloc₁)) (AtStack f k) ≡
                         just (readReg (regs s-after-prefix) Output))
                  frame-eq ih
 
@@ -2159,8 +2159,8 @@ module TraceOutputDeterminism {FS : FrameSemantics} where
     TraceWritesAbove n trace →
     TraceNoHeapWrites trace →
     (∀ slot → n ≤ slot → slot < m →
-      readLoc s₁ (OnStack (current-frame alloc₁) slot) ≡
-      readLoc s₂ (OnStack (current-frame alloc₂) slot)) →
+      readLoc s₁ (AtStack (current-frame alloc₁) slot) ≡
+      readLoc s₂ (AtStack (current-frame alloc₂) slot)) →
     readReg (regs (proj₁ (exec-trace trace s₁ alloc₁))) Output ≡
     readReg (regs (proj₁ (exec-trace trace s₂ alloc₂))) Output
   -- Proof sketch: by induction on trace
@@ -2202,11 +2202,11 @@ module TraceOutputDeterminism {FS : FrameSemantics} where
     TraceWritesBelow m trace →
     TraceNoHeapWrites trace →
     (∀ slot → n ≤ slot → slot < m →
-      readLoc s₁ (OnStack (current-frame alloc₁) slot) ≡
-      readLoc s₂ (OnStack (current-frame alloc₂) slot)) →
+      readLoc s₁ (AtStack (current-frame alloc₁) slot) ≡
+      readLoc s₂ (AtStack (current-frame alloc₂) slot)) →
     ∀ slot → n ≤ slot → slot < m →
-      readLoc (proj₁ (exec-trace trace s₁ alloc₁)) (OnStack (current-frame alloc₁) slot) ≡
-      readLoc (proj₁ (exec-trace trace s₂ alloc₂)) (OnStack (current-frame alloc₂) slot)
+      readLoc (proj₁ (exec-trace trace s₁ alloc₁)) (AtStack (current-frame alloc₁) slot) ≡
+      readLoc (proj₁ (exec-trace trace s₂ alloc₂)) (AtStack (current-frame alloc₂) slot)
   -- Base case: empty trace - memory unchanged, use input agreement directly
   exec-trace-mem-deterministic [] s₁ s₂ alloc₁ alloc₂ n m _ _ _ _ _ _ _ _ _ mem-agree slot n≤slot slot<m =
     mem-agree slot n≤slot slot<m
@@ -2277,8 +2277,8 @@ module RecSchemeSemantics {FS : FrameSemantics} where
   exec-abstract-mov-to-output-preserves-mem : ∀ (s : LocState FS) (alloc : AllocState {FS})
     (loc : ValueLocation FS) →
     readLoc (proj₁ (exec-abstract mov-to-output s alloc)) loc ≡ readLoc s loc
-  exec-abstract-mov-to-output-preserves-mem s alloc (OnStack f k) = refl
-  exec-abstract-mov-to-output-preserves-mem s alloc (OnHeap hl) = refl
+  exec-abstract-mov-to-output-preserves-mem s alloc (AtStack f k) = refl
+  exec-abstract-mov-to-output-preserves-mem s alloc (AtDynamic hl) = refl
 
   -- After mov-to-output ∷ [], memory is preserved
   -- mov-to-output only modifies registers, not memory
@@ -2350,7 +2350,7 @@ module RecSchemeSemantics {FS : FrameSemantics} where
   rec-scheme-stores-input : ∀ (n : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
     halted s ≡ false →
     readLoc (proj₁ (exec-trace (mov-to-output ∷ store-at-slot n ∷ []) s alloc))
-            (OnStack (current-frame alloc) n) ≡ just (readReg (regs s) Input1)
+            (AtStack (current-frame alloc) n) ≡ just (readReg (regs s) Input1)
   rec-scheme-stores-input n s alloc not-halted =
     let -- Step 1: Unfold first instruction (mov-to-output)
         s1 = proj₁ (exec-abstract mov-to-output s alloc)
@@ -2366,7 +2366,7 @@ module RecSchemeSemantics {FS : FrameSemantics} where
         alloc1-eq = refl
         -- Step 2: store-at-slot n writes Output to slot n
         s2 = proj₁ (exec-abstract (store-at-slot n) s1 alloc1)
-        store-result : readLoc s2 (OnStack (current-frame alloc1) n) ≡ just (readReg (regs s1) Output)
+        store-result : readLoc s2 (AtStack (current-frame alloc1) n) ≡ just (readReg (regs s1) Output)
         store-result = store-at-slot-result n s1 alloc1
         -- Step 3: Unfold trace
         step1 : exec-trace (mov-to-output ∷ store-at-slot n ∷ []) s alloc ≡
@@ -2377,7 +2377,7 @@ module RecSchemeSemantics {FS : FrameSemantics} where
         -- Step 4: Combine
         final-state-eq : proj₁ (exec-trace (mov-to-output ∷ store-at-slot n ∷ []) s alloc) ≡ s2
         final-state-eq = cong proj₁ (trans step1 step2)
-    in trans (cong (λ st → readLoc st (OnStack (current-frame alloc) n)) final-state-eq)
+    in trans (cong (λ st → readLoc st (AtStack (current-frame alloc) n)) final-state-eq)
              (trans store-result (cong just mov-result))
 
   ------------------------------------------------------------------------
@@ -2388,14 +2388,14 @@ module RecSchemeSemantics {FS : FrameSemantics} where
   -- 2. Stores Output at slot n
   -- 3. Loads address of slot n into Output
   --
-  -- After this trace, Output = OnStack frame n (the result location)
+  -- After this trace, Output = AtStack frame n (the result location)
   ------------------------------------------------------------------------
 
-  -- After mov-to-output ∷ store-at-slot n ∷ lea-slot n ∷ [], Output = OnStack frame n
+  -- After mov-to-output ∷ store-at-slot n ∷ lea-slot n ∷ [], Output = AtStack frame n
   rec-scheme-output-is-slot : ∀ (n : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
     halted s ≡ false →
     readReg (regs (proj₁ (exec-trace (mov-to-output ∷ store-at-slot n ∷ lea-slot n ∷ []) s alloc))) Output ≡
-    OnStack (current-frame alloc) n
+    AtStack (current-frame alloc) n
   rec-scheme-output-is-slot n s alloc not-halted =
     -- The trace is (mov-to-output ∷ store-at-slot n ∷ []) ++ (lea-slot n ∷ [])
     -- which is definitionally equal to mov-to-output ∷ store-at-slot n ∷ lea-slot n ∷ []
@@ -2417,22 +2417,22 @@ module RecSchemeSemantics {FS : FrameSemantics} where
   rec-scheme-stores-input-3 : ∀ (n : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
     halted s ≡ false →
     readLoc (proj₁ (exec-trace (mov-to-output ∷ store-at-slot n ∷ lea-slot n ∷ []) s alloc))
-            (OnStack (current-frame alloc) n) ≡ just (readReg (regs s) Input1)
+            (AtStack (current-frame alloc) n) ≡ just (readReg (regs s) Input1)
   rec-scheme-stores-input-3 n s alloc not-halted =
     let prefix = mov-to-output ∷ store-at-slot n ∷ []
         s-after-prefix = proj₁ (exec-trace prefix s alloc)
         alloc-after-prefix = proj₂ (exec-trace prefix s alloc)
         -- After prefix, slot n = Input1
-        prefix-result : readLoc s-after-prefix (OnStack (current-frame alloc) n) ≡ just (readReg (regs s) Input1)
+        prefix-result : readLoc s-after-prefix (AtStack (current-frame alloc) n) ≡ just (readReg (regs s) Input1)
         prefix-result = rec-scheme-stores-input n s alloc not-halted
         -- After prefix, halted = false
         not-halted-after : halted s-after-prefix ≡ false
         not-halted-after = rec-scheme-preserves-halted n s alloc not-halted
         -- lea-slot preserves memory
         s-after-lea = proj₁ (exec-abstract (lea-slot n) s-after-prefix alloc-after-prefix)
-        lea-preserves : readLoc s-after-lea (OnStack (current-frame alloc) n) ≡
-                        readLoc s-after-prefix (OnStack (current-frame alloc) n)
-        lea-preserves = lea-slot-preserves-mem n s-after-prefix alloc-after-prefix (OnStack (current-frame alloc) n)
+        lea-preserves : readLoc s-after-lea (AtStack (current-frame alloc) n) ≡
+                        readLoc s-after-prefix (AtStack (current-frame alloc) n)
+        lea-preserves = lea-slot-preserves-mem n s-after-prefix alloc-after-prefix (AtStack (current-frame alloc) n)
         -- Trace decomposition
         step1 : exec-trace (prefix ++ (lea-slot n ∷ [])) s alloc ≡
                 exec-trace (lea-slot n ∷ []) s-after-prefix alloc-after-prefix
@@ -2442,7 +2442,7 @@ module RecSchemeSemantics {FS : FrameSemantics} where
         step2 = exec-trace-single (lea-slot n) s-after-prefix alloc-after-prefix not-halted-after
         final-state-eq : proj₁ (exec-trace (mov-to-output ∷ store-at-slot n ∷ lea-slot n ∷ []) s alloc) ≡ s-after-lea
         final-state-eq = cong proj₁ (trans step1 step2)
-    in trans (cong (λ st → readLoc st (OnStack (current-frame alloc) n)) final-state-eq)
+    in trans (cong (λ st → readLoc st (AtStack (current-frame alloc) n)) final-state-eq)
              (trans lea-preserves prefix-result)
 
   -- After mov-to-output ∷ store-at-slot n ∷ lea-slot n ∷ [], memory at slots < n is preserved
@@ -2455,8 +2455,8 @@ module RecSchemeSemantics {FS : FrameSemantics} where
     halted s ≡ false →
     k < n →
     readLoc (proj₁ (exec-trace (mov-to-output ∷ store-at-slot n ∷ lea-slot n ∷ []) s alloc))
-            (OnStack (current-frame alloc) k) ≡
-    readLoc s (OnStack (current-frame alloc) k)
+            (AtStack (current-frame alloc) k) ≡
+    readLoc s (AtStack (current-frame alloc) k)
   rec-scheme-preserves-slot-below-3 n k s alloc not-halted k<n =
     -- The trace writes only at slot n, so slots k < n are preserved
     -- TraceWritesAbove n: store-at-slot n writes at n ≥ n
@@ -2471,8 +2471,8 @@ module RecSchemeSemantics {FS : FrameSemantics} where
   rec-scheme-preserves-heap-3 : ∀ (n : ℕ) (s : LocState FS) (alloc : AllocState {FS}) (hl : HeapLocation) →
     halted s ≡ false →
     readLoc (proj₁ (exec-trace (mov-to-output ∷ store-at-slot n ∷ lea-slot n ∷ []) s alloc))
-            (OnHeap hl) ≡
-    readLoc s (OnHeap hl)
+            (AtDynamic hl) ≡
+    readLoc s (AtDynamic hl)
   rec-scheme-preserves-heap-3 n s alloc hl not-halted =
     -- The trace has no heap-writing instructions
     exec-trace-preserves-heap-loc
@@ -2485,36 +2485,36 @@ module RecSchemeSemantics {FS : FrameSemantics} where
     halted s ≡ false →
     f ≢ current-frame alloc →
     readLoc (proj₁ (exec-trace (mov-to-output ∷ store-at-slot n ∷ lea-slot n ∷ []) s alloc))
-            (OnStack f k) ≡
-    readLoc s (OnStack f k)
+            (AtStack f k) ≡
+    readLoc s (AtStack f k)
   rec-scheme-preserves-ancestor-3 n s alloc f k not-halted f≢cf =
-    -- The trace writes only to OnStack (current-frame alloc) n
-    -- OnStack f k is on a different frame (f ≢ cf), so it's preserved
-    trans (cong (λ st → readLoc st (OnStack f k)) final-state-eq)
+    -- The trace writes only to AtStack (current-frame alloc) n
+    -- AtStack f k is on a different frame (f ≢ cf), so it's preserved
+    trans (cong (λ st → readLoc st (AtStack f k)) final-state-eq)
           (trans lea-preserves (trans store-preserves mov-preserves))
     where
       -- Step 1: Unfold first instruction (mov-to-output) - preserves all memory
       s1 = proj₁ (exec-abstract mov-to-output s alloc)
       alloc1 = proj₂ (exec-abstract mov-to-output s alloc)
-      mov-preserves : readLoc s1 (OnStack f k) ≡ readLoc s (OnStack f k)
+      mov-preserves : readLoc s1 (AtStack f k) ≡ readLoc s (AtStack f k)
       mov-preserves = refl  -- mov-to-output only changes registers
       s1-not-halted : halted s1 ≡ false
       s1-not-halted = not-halted
-      -- Step 2: store-at-slot n writes to OnStack cf n, preserves OnStack f k (different frame)
+      -- Step 2: store-at-slot n writes to AtStack cf n, preserves AtStack f k (different frame)
       s2 = proj₁ (exec-abstract (store-at-slot n) s1 alloc1)
       alloc2 = proj₂ (exec-abstract (store-at-slot n) s1 alloc1)
-      -- OnStack cf n ≢ OnStack f k because f ≢ cf
-      loc-neq : OnStack (current-frame alloc1) n ≢ OnStack f k
+      -- AtStack cf n ≢ AtStack f k because f ≢ cf
+      loc-neq : AtStack (current-frame alloc1) n ≢ AtStack f k
       loc-neq refl = f≢cf refl  -- contradiction: f ≡ cf
-      store-preserves : readLoc s2 (OnStack f k) ≡ readLoc s1 (OnStack f k)
-      store-preserves = writeLoc-preserves-other s1 (OnStack (current-frame alloc1) n) (OnStack f k)
+      store-preserves : readLoc s2 (AtStack f k) ≡ readLoc s1 (AtStack f k)
+      store-preserves = writeLoc-preserves-other s1 (AtStack (current-frame alloc1) n) (AtStack f k)
                           (readReg (regs s1) Output) loc-neq
       s2-not-halted : halted s2 ≡ false
       s2-not-halted = s1-not-halted
       -- Step 3: lea-slot n - preserves all memory
       s3 = proj₁ (exec-abstract (lea-slot n) s2 alloc2)
-      lea-preserves : readLoc s3 (OnStack f k) ≡ readLoc s2 (OnStack f k)
-      lea-preserves = lea-slot-preserves-mem n s2 alloc2 (OnStack f k)
+      lea-preserves : readLoc s3 (AtStack f k) ≡ readLoc s2 (AtStack f k)
+      lea-preserves = lea-slot-preserves-mem n s2 alloc2 (AtStack f k)
       -- Step 4: Trace decomposition
       step1 : exec-trace (mov-to-output ∷ store-at-slot n ∷ lea-slot n ∷ []) s alloc ≡
               exec-trace (store-at-slot n ∷ lea-slot n ∷ []) s1 alloc1
@@ -2567,11 +2567,11 @@ module RecSchemeSemantics {FS : FrameSemantics} where
   exec-abstract-load-indirect-suc-preserves-mem : ∀ (s : LocState FS) (alloc : AllocState {FS})
     (loc : ValueLocation FS) →
     readLoc (proj₁ (exec-abstract load-indirect-suc s alloc)) loc ≡ readLoc s loc
-  exec-abstract-load-indirect-suc-preserves-mem s alloc (OnStack f k)
+  exec-abstract-load-indirect-suc-preserves-mem s alloc (AtStack f k)
     with readLoc s (sucLoc (readReg (regs s) Input1))
   ... | just _ = refl
   ... | nothing = refl
-  exec-abstract-load-indirect-suc-preserves-mem s alloc (OnHeap hl)
+  exec-abstract-load-indirect-suc-preserves-mem s alloc (AtDynamic hl)
     with readLoc s (sucLoc (readReg (regs s) Input1))
   ... | just _ = refl
   ... | nothing = refl
@@ -2667,7 +2667,7 @@ module RecSchemeSemantics {FS : FrameSemantics} where
   exec-abstract-load-from-slot-preserves-alloc : ∀ (slot : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
     proj₂ (exec-abstract (load-from-slot slot) s alloc) ≡ alloc
   exec-abstract-load-from-slot-preserves-alloc slot s alloc
-    with readLoc s (OnStack (current-frame alloc) slot)
+    with readLoc s (AtStack (current-frame alloc) slot)
   ... | just _  = refl
   ... | nothing = refl
 
@@ -2675,7 +2675,7 @@ module RecSchemeSemantics {FS : FrameSemantics} where
   exec-abstract-restore-input-preserves-alloc : ∀ (slot : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
     proj₂ (exec-abstract (restore-input slot) s alloc) ≡ alloc
   exec-abstract-restore-input-preserves-alloc slot s alloc
-    with readLoc s (OnStack (current-frame alloc) slot)
+    with readLoc s (AtStack (current-frame alloc) slot)
   ... | just _  = refl
   ... | nothing = refl
 
@@ -2691,24 +2691,24 @@ module RecSchemeSemantics {FS : FrameSemantics} where
   -- When slot contains v, restore-input sets Input1 := v
   exec-abstract-restore-input-sets-input : ∀ (slot : ℕ) (s : LocState FS) (alloc : AllocState {FS})
     (v : ValueLocation FS) →
-    readLoc s (OnStack (current-frame alloc) slot) ≡ just v →
+    readLoc s (AtStack (current-frame alloc) slot) ≡ just v →
     readReg (regs (proj₁ (exec-abstract (restore-input slot) s alloc))) Input1 ≡ v
   exec-abstract-restore-input-sets-input slot s alloc v slot-has-v
-    with readLoc s (OnStack (current-frame alloc) slot) | slot-has-v
+    with readLoc s (AtStack (current-frame alloc) slot) | slot-has-v
   ... | just _ | refl = writeReg-same (regs s) Input1 v
 
   -- restore-input preserves memory (it only writes to Input1 register)
   exec-abstract-restore-input-preserves-stackMem : ∀ (slot : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
     stackMem (proj₁ (exec-abstract (restore-input slot) s alloc)) ≡ stackMem s
   exec-abstract-restore-input-preserves-stackMem slot s alloc
-    with readLoc s (OnStack (current-frame alloc) slot)
+    with readLoc s (AtStack (current-frame alloc) slot)
   ... | just _  = refl
   ... | nothing = refl
 
   exec-abstract-restore-input-preserves-heapMem : ∀ (slot : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
     heapMem (proj₁ (exec-abstract (restore-input slot) s alloc)) ≡ heapMem s
   exec-abstract-restore-input-preserves-heapMem slot s alloc
-    with readLoc s (OnStack (current-frame alloc) slot)
+    with readLoc s (AtStack (current-frame alloc) slot)
   ... | just _  = refl
   ... | nothing = refl
 
@@ -2981,7 +2981,7 @@ module RecSchemeSemantics {FS : FrameSemantics} where
   exec-abstract-preserves-heap-ref load-indirect s alloc = refl
   exec-abstract-preserves-heap-ref load-indirect-suc s alloc = refl
   exec-abstract-preserves-heap-ref (load-from-slot slot) s alloc
-    with readLoc s (OnStack (current-frame alloc) slot)
+    with readLoc s (AtStack (current-frame alloc) slot)
   ... | just v = refl
   ... | nothing = refl
   exec-abstract-preserves-heap-ref (store-at-slot _) s alloc = refl
@@ -2989,7 +2989,7 @@ module RecSchemeSemantics {FS : FrameSemantics} where
   exec-abstract-preserves-heap-ref store-indirect-suc s alloc = refl
   exec-abstract-preserves-heap-ref (lea-slot _) s alloc = refl
   exec-abstract-preserves-heap-ref (restore-input slot) s alloc
-    with readLoc s (OnStack (current-frame alloc) slot)
+    with readLoc s (AtStack (current-frame alloc) slot)
   ... | just v = refl
   ... | nothing = refl
   exec-abstract-preserves-heap-ref (instr-alloc-stack _) s alloc = refl
@@ -3001,7 +3001,7 @@ module RecSchemeSemantics {FS : FrameSemantics} where
   exec-abstract-preserves-heap-ref (worklist-init _) s alloc = refl
   exec-abstract-preserves-heap-ref (worklist-push _) s alloc = refl
   exec-abstract-preserves-heap-ref (worklist-pop slot) s alloc
-    with readLoc s (OnStack (current-frame alloc) slot)
+    with readLoc s (AtStack (current-frame alloc) slot)
   ... | just v = refl
   ... | nothing = refl
   exec-abstract-preserves-heap-ref (worklist-check _) s alloc = refl
@@ -3182,11 +3182,11 @@ module RecSchemeSemantics {FS : FrameSemantics} where
   exec-abstract-load-indirect-preserves-mem : ∀ (s : LocState FS) (alloc : AllocState {FS})
     (loc : ValueLocation FS) →
     readLoc (proj₁ (exec-abstract load-indirect s alloc)) loc ≡ readLoc s loc
-  exec-abstract-load-indirect-preserves-mem s alloc (OnStack f k)
+  exec-abstract-load-indirect-preserves-mem s alloc (AtStack f k)
     with readLoc s (readReg (regs s) Input1)
   ... | just v = refl   -- When load succeeds, only registers change
   ... | nothing = refl  -- When load fails (halts), memory unchanged
-  exec-abstract-load-indirect-preserves-mem s alloc (OnHeap hl)
+  exec-abstract-load-indirect-preserves-mem s alloc (AtDynamic hl)
     with readLoc s (readReg (regs s) Input1)
   ... | just v = refl
   ... | nothing = refl
@@ -3195,14 +3195,14 @@ module RecSchemeSemantics {FS : FrameSemantics} where
   exec-abstract-mov-to-input-preserves-mem : ∀ (s : LocState FS) (alloc : AllocState {FS})
     (loc : ValueLocation FS) →
     readLoc (proj₁ (exec-abstract mov-to-input s alloc)) loc ≡ readLoc s loc
-  exec-abstract-mov-to-input-preserves-mem s alloc (OnStack f k) = refl
-  exec-abstract-mov-to-input-preserves-mem s alloc (OnHeap hl) = refl
+  exec-abstract-mov-to-input-preserves-mem s alloc (AtStack f k) = refl
+  exec-abstract-mov-to-input-preserves-mem s alloc (AtDynamic hl) = refl
 
   -- | 4-instruction left setup trace preserves memory except save-slot
   prod-left-setup-mem-helper : ∀ (save-slot : ℕ) (s : LocState FS) (alloc : AllocState {FS})
     (loc : ValueLocation FS) →
     halted s ≡ false →
-    loc ≢ OnStack (current-frame alloc) save-slot →
+    loc ≢ AtStack (current-frame alloc) save-slot →
     readLoc (proj₁ (exec-trace (mov-to-output ∷ store-at-slot save-slot ∷ load-indirect ∷ mov-to-input ∷ []) s alloc)) loc ≡ readLoc s loc
   prod-left-setup-mem-helper save-slot s alloc loc not-halted loc-neq =
     step-through save-slot s alloc loc not-halted loc-neq
@@ -3210,7 +3210,7 @@ module RecSchemeSemantics {FS : FrameSemantics} where
       step-through : ∀ (slot : ℕ) (s : LocState FS) (alloc : AllocState {FS})
         (loc : ValueLocation FS) →
         halted s ≡ false →
-        loc ≢ OnStack (current-frame alloc) slot →
+        loc ≢ AtStack (current-frame alloc) slot →
         readLoc (proj₁ (exec-trace (mov-to-output ∷ store-at-slot slot ∷ load-indirect ∷ mov-to-input ∷ []) s alloc)) loc ≡ readLoc s loc
       step-through slot s alloc loc h-eq loc-neq rewrite h-eq =
         let
@@ -3223,7 +3223,7 @@ module RecSchemeSemantics {FS : FrameSemantics} where
           step-2 : ∀ (slot : ℕ) (s₁ : LocState FS) (alloc : AllocState {FS})
             (loc : ValueLocation FS) →
             halted s₁ ≡ false →
-            loc ≢ OnStack (current-frame alloc) slot →
+            loc ≢ AtStack (current-frame alloc) slot →
             readLoc (proj₁ (exec-trace (store-at-slot slot ∷ load-indirect ∷ mov-to-input ∷ []) s₁ alloc)) loc ≡ readLoc s₁ loc
           step-2 slot s₁ alloc loc h-eq₁ loc-neq rewrite h-eq₁ =
             let
@@ -3266,7 +3266,7 @@ module RecSchemeSemantics {FS : FrameSemantics} where
     halted s ≡ false →
     readReg (regs s) Input1 ≡ input-loc →
     let (s' , _) = exec-trace (mov-to-output ∷ store-at-slot save-slot ∷ load-indirect ∷ mov-to-input ∷ []) s alloc
-    in readLoc s' (OnStack (current-frame alloc) save-slot) ≡ just input-loc
+    in readLoc s' (AtStack (current-frame alloc) save-slot) ≡ just input-loc
   prod-left-setup-saves-input save-slot s alloc input-loc not-halted rdi-eq =
     step-through save-slot s alloc input-loc not-halted rdi-eq
     where
@@ -3275,7 +3275,7 @@ module RecSchemeSemantics {FS : FrameSemantics} where
         halted s ≡ false →
         readReg (regs s) Input1 ≡ input-loc →
         let (s' , _) = exec-trace (mov-to-output ∷ store-at-slot slot ∷ load-indirect ∷ mov-to-input ∷ []) s alloc
-        in readLoc s' (OnStack (current-frame alloc) slot) ≡ just input-loc
+        in readLoc s' (AtStack (current-frame alloc) slot) ≡ just input-loc
       step-through slot s alloc input-loc h-eq rdi-eq rewrite h-eq =
         let
           -- After mov-to-output: Output = input-loc
@@ -3291,13 +3291,13 @@ module RecSchemeSemantics {FS : FrameSemantics} where
             halted s₁ ≡ false →
             readReg (regs s₁) Output ≡ input-loc →
             let (s' , _) = exec-trace (store-at-slot slot ∷ load-indirect ∷ mov-to-input ∷ []) s₁ alloc
-            in readLoc s' (OnStack (current-frame alloc) slot) ≡ just input-loc
+            in readLoc s' (AtStack (current-frame alloc) slot) ≡ just input-loc
           step-2 slot s₁ alloc input-loc h-eq₁ output-eq rewrite h-eq₁ =
             let
               -- After store-at-slot: stack[slot] = Output = input-loc
               s₂ = proj₁ (exec-abstract (store-at-slot slot) s₁ alloc)
               -- The key: store-at-slot writes Output to stack[slot]
-              slot-has-input : readLoc s₂ (OnStack (current-frame alloc) slot) ≡ just input-loc
+              slot-has-input : readLoc s₂ (AtStack (current-frame alloc) slot) ≡ just input-loc
               slot-has-input = trans (store-at-slot-result slot s₁ alloc) (cong just output-eq)
               h-eq₂ : halted s₂ ≡ false
               h-eq₂ = trans (store-at-slot-halted slot s₁ alloc) h-eq₁
@@ -3306,24 +3306,24 @@ module RecSchemeSemantics {FS : FrameSemantics} where
               -- load-indirect and mov-to-input don't modify stack[slot]
               step-3 : ∀ (s₂ : LocState FS) (alloc : AllocState {FS}) (slot : ℕ) →
                 halted s₂ ≡ false →
-                readLoc s₂ (OnStack (current-frame alloc) slot) ≡ just input-loc →
+                readLoc s₂ (AtStack (current-frame alloc) slot) ≡ just input-loc →
                 let (s' , _) = exec-trace (load-indirect ∷ mov-to-input ∷ []) s₂ alloc
-                in readLoc s' (OnStack (current-frame alloc) slot) ≡ just input-loc
+                in readLoc s' (AtStack (current-frame alloc) slot) ≡ just input-loc
               step-3 s₂ alloc slot h-eq₂ slot-eq rewrite h-eq₂ =
                 let
                   s₃ = proj₁ (exec-abstract load-indirect s₂ alloc)
-                  mem₃ = exec-abstract-load-indirect-preserves-mem s₂ alloc (OnStack (current-frame alloc) slot)
+                  mem₃ = exec-abstract-load-indirect-preserves-mem s₂ alloc (AtStack (current-frame alloc) slot)
                   slot-s₃ = trans mem₃ slot-eq
                   h-eq₃ = load-indirect-preserves-halted s₂ alloc h-eq₂
                 in step-4 s₃ alloc slot h-eq₃ slot-s₃
                 where
                   step-4 : ∀ (s₃ : LocState FS) (alloc : AllocState {FS}) (slot : ℕ) →
                     halted s₃ ≡ false →
-                    readLoc s₃ (OnStack (current-frame alloc) slot) ≡ just input-loc →
+                    readLoc s₃ (AtStack (current-frame alloc) slot) ≡ just input-loc →
                     let (s' , _) = exec-trace (mov-to-input ∷ []) s₃ alloc
-                    in readLoc s' (OnStack (current-frame alloc) slot) ≡ just input-loc
+                    in readLoc s' (AtStack (current-frame alloc) slot) ≡ just input-loc
                   step-4 s₃ alloc slot h-eq₃ slot-eq rewrite h-eq₃ =
-                    trans (exec-abstract-mov-to-input-preserves-mem s₃ alloc (OnStack (current-frame alloc) slot)) slot-eq
+                    trans (exec-abstract-mov-to-input-preserves-mem s₃ alloc (AtStack (current-frame alloc) slot)) slot-eq
 
   ------------------------------------------------------------------------
   -- Right Setup Helpers
@@ -3336,12 +3336,12 @@ module RecSchemeSemantics {FS : FrameSemantics} where
   exec-abstract-load-from-slot-preserves-mem : ∀ (slot : ℕ) (s : LocState FS) (alloc : AllocState {FS})
     (loc : ValueLocation FS) →
     readLoc (proj₁ (exec-abstract (load-from-slot slot) s alloc)) loc ≡ readLoc s loc
-  exec-abstract-load-from-slot-preserves-mem slot s alloc (OnStack f k)
-    with readLoc s (OnStack (current-frame alloc) slot)
+  exec-abstract-load-from-slot-preserves-mem slot s alloc (AtStack f k)
+    with readLoc s (AtStack (current-frame alloc) slot)
   ... | just _  = refl
   ... | nothing = refl
-  exec-abstract-load-from-slot-preserves-mem slot s alloc (OnHeap hl)
-    with readLoc s (OnStack (current-frame alloc) slot)
+  exec-abstract-load-from-slot-preserves-mem slot s alloc (AtDynamic hl)
+    with readLoc s (AtStack (current-frame alloc) slot)
   ... | just _  = refl
   ... | nothing = refl
 
@@ -3359,7 +3359,7 @@ module RecSchemeSemantics {FS : FrameSemantics} where
         halted s ≡ false →
         proj₂ (exec-trace (load-from-slot slot ∷ mov-to-input ∷ load-indirect-suc ∷ mov-to-input ∷ []) s alloc) ≡ alloc
       step-through slot s alloc h-eq rewrite h-eq
-        with readLoc s (OnStack (current-frame alloc) slot)
+        with readLoc s (AtStack (current-frame alloc) slot)
       ... | nothing = refl  -- halted becomes true, trace returns alloc immediately
       ... | just v = step-2 (record s { regs = writeReg (regs s) Output v }) alloc h-eq
         where
@@ -3393,7 +3393,7 @@ module RecSchemeSemantics {FS : FrameSemantics} where
   prod-right-setup-mem-helper : ∀ (save-slot : ℕ) (s : LocState FS) (alloc : AllocState {FS})
     (loc : ValueLocation FS) →
     halted s ≡ false →
-    loc ≢ OnStack (current-frame alloc) save-slot →  -- This constraint is actually not needed but kept for symmetry
+    loc ≢ AtStack (current-frame alloc) save-slot →  -- This constraint is actually not needed but kept for symmetry
     let (s' , _) = exec-trace (load-from-slot save-slot ∷ mov-to-input ∷ load-indirect-suc ∷ mov-to-input ∷ []) s alloc
     in readLoc s' loc ≡ readLoc s loc
   prod-right-setup-mem-helper save-slot s alloc loc not-halted _ =
@@ -3405,7 +3405,7 @@ module RecSchemeSemantics {FS : FrameSemantics} where
         let (s' , _) = exec-trace (load-from-slot slot ∷ mov-to-input ∷ load-indirect-suc ∷ mov-to-input ∷ []) s alloc
         in readLoc s' loc ≡ readLoc s loc
       step-through slot s alloc loc h-eq rewrite h-eq
-        with readLoc s (OnStack (current-frame alloc) slot)
+        with readLoc s (AtStack (current-frame alloc) slot)
       -- When read fails: halted becomes true, rest of trace is skipped, memory unchanged
       ... | nothing = nothing-case
         where
@@ -3469,7 +3469,7 @@ module RecSchemeSemantics {FS : FrameSemantics} where
   prod-right-setup-input-helper : ∀ (save-slot : ℕ) (s : LocState FS) (alloc : AllocState {FS})
     (input-loc snd-loc : ValueLocation FS) →
     halted s ≡ false →
-    readLoc s (OnStack (current-frame alloc) save-slot) ≡ just input-loc →
+    readLoc s (AtStack (current-frame alloc) save-slot) ≡ just input-loc →
     readLoc s (sucLoc input-loc) ≡ just snd-loc →
     let (s' , _) = exec-trace (load-from-slot save-slot ∷ mov-to-input ∷ load-indirect-suc ∷ mov-to-input ∷ []) s alloc
     in readReg (regs s') Input1 ≡ snd-loc
@@ -3479,12 +3479,12 @@ module RecSchemeSemantics {FS : FrameSemantics} where
       step-through : ∀ (slot : ℕ) (s : LocState FS) (alloc : AllocState {FS})
         (input-loc snd-loc : ValueLocation FS) →
         halted s ≡ false →
-        readLoc s (OnStack (current-frame alloc) slot) ≡ just input-loc →
+        readLoc s (AtStack (current-frame alloc) slot) ≡ just input-loc →
         readLoc s (sucLoc input-loc) ≡ just snd-loc →
         let (s' , _) = exec-trace (load-from-slot slot ∷ mov-to-input ∷ load-indirect-suc ∷ mov-to-input ∷ []) s alloc
         in readReg (regs s') Input1 ≡ snd-loc
       step-through slot s alloc input-loc snd-loc h-eq stack-eq snd-ptr rewrite h-eq
-        with readLoc s (OnStack (current-frame alloc) slot) | stack-eq
+        with readLoc s (AtStack (current-frame alloc) slot) | stack-eq
       ... | .(just input-loc) | refl =
         let
           -- After load-from-slot with just: s₁ = record s { regs = writeReg ... }

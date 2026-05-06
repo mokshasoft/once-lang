@@ -124,20 +124,20 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
   open import Data.Empty using (⊥-elim)
 
-  -- | BeforeFrontier alloc loc → loc ≡ OnStack cf slot → slot < next-slot alloc
+  -- | BeforeFrontier alloc loc → loc ≡ AtStack cf slot → slot < next-slot alloc
   bf-slot-contradiction : (alloc : AllocState {FS}) (loc : ValueLocation FS) (slot : ℕ)
     → BeforeFrontier alloc loc
-    → loc ≡ OnStack (current-frame alloc) slot
+    → loc ≡ AtStack (current-frame alloc) slot
     → slot < next-slot alloc
-  bf-slot-contradiction alloc .(OnStack f k) slot (stack-before {f} {k} f-eq k<ns) loc-eq =
+  bf-slot-contradiction alloc .(AtStack f k) slot (stack-before {f} {k} f-eq k<ns) loc-eq =
     subst (λ s → s < next-slot alloc) (SMP.stack-slot-injective loc-eq) k<ns
-  bf-slot-contradiction alloc .(OnStack f k) slot (stack-ancestor {f} {k} cf≺f src) loc-eq =
+  bf-slot-contradiction alloc .(AtStack f k) slot (stack-ancestor {f} {k} cf≺f src) loc-eq =
     ⊥-elim (≺-irrefl (subst (λ f' → current-frame alloc ≺ f') (SMP.stack-frame-injective loc-eq) cf≺f))
 
   -- | The slot at next-slot is BeforeFrontier after incrementing next-slot
   slot-at-next-bf : (alloc : AllocState {FS})
     → BeforeFrontier (record alloc { next-slot = suc (next-slot alloc) })
-                     (OnStack (current-frame alloc) (next-slot alloc))
+                     (AtStack (current-frame alloc) (next-slot alloc))
   slot-at-next-bf alloc = stack-before refl (n<1+n (next-slot alloc))
 
   ------------------------------------------------------------------------
@@ -918,7 +918,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
   prod-left-setup-mem-eq : ∀ (save-slot : ℕ) (s : LocState FS) (alloc : AllocState {FS})
     (loc : ValueLocation FS) →
     halted s ≡ false →
-    loc ≢ OnStack (current-frame alloc) save-slot →
+    loc ≢ AtStack (current-frame alloc) save-slot →
     let (s' , _) = exec-trace (prod-left-setup-trace save-slot) s alloc
     in readLoc s' loc ≡ readLoc s loc
   prod-left-setup-mem-eq save-slot s alloc loc not-halted loc-neq =
@@ -999,13 +999,13 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
                                            (trans alloc3-eq (trans alloc2-eq alloc1-eq))))
     in final-alloc-eq
 
-  -- | After wrapper trace, Output register contains OnStack frame base
+  -- | After wrapper trace, Output register contains AtStack frame base
   -- wrapper-trace = [instr-alloc-stack 2, store-at-slot (suc base), lea-slot base]
-  -- The final lea-slot sets Output := OnStack (current-frame alloc) base
+  -- The final lea-slot sets Output := AtStack (current-frame alloc) base
   wrapper-trace-output : ∀ (base : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
     halted s ≡ false →
     readReg (regs (proj₁ (exec-trace (instr-alloc-stack 2 ∷ store-at-slot (suc base) ∷ lea-slot base ∷ []) s alloc))) Output ≡
-    OnStack (current-frame alloc) base
+    AtStack (current-frame alloc) base
   wrapper-trace-output base s alloc not-halted =
     -- wrapper-trace = prefix ++ [lea-slot base] where prefix = [instr-alloc-stack 2, store-at-slot (suc base)]
     exec-trace-final-lea-slot prefix base s alloc prefix-not-halted
@@ -1025,7 +1025,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
   wrapper-trace-ptr-written : ∀ (base : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
     halted s ≡ false →
     readLoc (proj₁ (exec-trace (instr-alloc-stack 2 ∷ store-at-slot (suc base) ∷ lea-slot base ∷ []) s alloc))
-            (OnStack (current-frame alloc) (suc base)) ≡
+            (AtStack (current-frame alloc) (suc base)) ≡
     just (readReg (regs s) Output)
   wrapper-trace-ptr-written base s alloc not-halted = ptr-result
     where
@@ -1042,13 +1042,13 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
       s2-nh : halted s2 ≡ false
       s2-nh = exec-abstract-preserves-halted (store-at-slot (suc base)) s1 alloc s1-nh iph-store-at-slot
       -- store-at-slot writes Output to the slot
-      slot-written : readLoc s2 (OnStack (current-frame alloc) (suc base)) ≡ just (readReg (regs s1) Output)
+      slot-written : readLoc s2 (AtStack (current-frame alloc) (suc base)) ≡ just (readReg (regs s1) Output)
       slot-written = store-at-slot-result (suc base) s1 alloc
 
       -- After lea-slot base: memory preserved (lea only changes registers)
       s3 = proj₁ (exec-abstract (lea-slot base) s2 alloc)
-      slot-preserved : readLoc s3 (OnStack (current-frame alloc) (suc base)) ≡ readLoc s2 (OnStack (current-frame alloc) (suc base))
-      slot-preserved = lea-slot-preserves-mem base s2 alloc (OnStack (current-frame alloc) (suc base))
+      slot-preserved : readLoc s3 (AtStack (current-frame alloc) (suc base)) ≡ readLoc s2 (AtStack (current-frame alloc) (suc base))
+      slot-preserved = lea-slot-preserves-mem base s2 alloc (AtStack (current-frame alloc) (suc base))
 
       -- Step through exec-trace using explicit decomposition
       alloc1 = proj₂ (exec-abstract (instr-alloc-stack 2) s alloc)
@@ -1070,9 +1070,9 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
       -- Combine: readLoc final (suc base) = just (readReg s Output)
       ptr-result : readLoc (proj₁ (exec-trace (instr-alloc-stack 2 ∷ store-at-slot (suc base) ∷ lea-slot base ∷ []) s alloc))
-                           (OnStack (current-frame alloc) (suc base)) ≡
+                           (AtStack (current-frame alloc) (suc base)) ≡
                    just (readReg (regs s) Output)
-      ptr-result = trans (cong (λ st → readLoc st (OnStack (current-frame alloc) (suc base))) trace-eq)
+      ptr-result = trans (cong (λ st → readLoc st (AtStack (current-frame alloc) (suc base))) trace-eq)
                          (trans slot-preserved (trans slot-written (cong just output-preserved)))
 
   -- | Helper: BeforeFrontier locations are disjoint from suc(next-slot)
@@ -1081,22 +1081,22 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
   -- For heap-before: different location type
   bf-neq-suc-frontier : ∀ (alloc : AllocState {FS}) (loc : ValueLocation FS) →
     BeforeFrontier alloc loc →
-    loc ≢ OnStack (current-frame alloc) (suc (next-slot alloc))
-  bf-neq-suc-frontier alloc (OnStack f k) (stack-before frame-eq k<next) eq =
-    -- eq : OnStack f k ≡ OnStack (current-frame alloc) (suc (next-slot alloc))
+    loc ≢ AtStack (current-frame alloc) (suc (next-slot alloc))
+  bf-neq-suc-frontier alloc (AtStack f k) (stack-before frame-eq k<next) eq =
+    -- eq : AtStack f k ≡ AtStack (current-frame alloc) (suc (next-slot alloc))
     -- k<next : k < next-slot alloc
     -- From eq, k = suc (next-slot alloc)
     -- But k < next-slot alloc < suc (next-slot alloc), contradiction
     let k≡suc-next = SMP.stack-slot-injective eq
         k<suc-next = <-≤-trans k<next (n≤1+n (next-slot alloc))
     in <⇒≢ k<suc-next k≡suc-next
-  bf-neq-suc-frontier alloc (OnStack f k) (stack-ancestor cf≺f _) eq =
-    -- eq : OnStack f k ≡ OnStack (current-frame alloc) (suc (next-slot alloc))
+  bf-neq-suc-frontier alloc (AtStack f k) (stack-ancestor cf≺f _) eq =
+    -- eq : AtStack f k ≡ AtStack (current-frame alloc) (suc (next-slot alloc))
     -- cf≺f : current-frame alloc ≺ f
     -- From eq, f = current-frame alloc, contradicting cf≺f
     let f≡cf = SMP.stack-frame-injective eq
     in ≺⇒≢ cf≺f (sym f≡cf)
-  bf-neq-suc-frontier alloc (OnHeap _) (heap-before _) ()
+  bf-neq-suc-frontier alloc (AtDynamic _) (heap-before _) ()
 
   -- | Wrapper trace preserves memory at locations before frontier
   -- wrapper-trace = [instr-alloc-stack 2, store-at-slot (suc base), lea-slot base]
@@ -1118,18 +1118,18 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
       s1-mem : readLoc s1 loc ≡ readLoc s loc
       s1-mem = readLoc-stackMem-eq s1 s loc refl refl
 
-      -- After store-at-slot (suc base): preserves loc because loc ≠ OnStack frame (suc base)
+      -- After store-at-slot (suc base): preserves loc because loc ≠ AtStack frame (suc base)
       s2 = proj₁ (exec-abstract (store-at-slot (suc base)) s1 alloc)
       s2-nh : halted s2 ≡ false
       s2-nh = exec-abstract-preserves-halted (store-at-slot (suc base)) s1 alloc s1-nh iph-store-at-slot
 
       -- Use module-level helper, substituting base-eq to match signature
-      loc-neq-suc-base : loc ≢ OnStack (current-frame alloc) (suc base)
-      loc-neq-suc-base = subst (λ n → loc ≢ OnStack (current-frame alloc) (suc n)) (sym base-eq)
+      loc-neq-suc-base : loc ≢ AtStack (current-frame alloc) (suc base)
+      loc-neq-suc-base = subst (λ n → loc ≢ AtStack (current-frame alloc) (suc n)) (sym base-eq)
                                (bf-neq-suc-frontier alloc loc bf)
 
       s2-mem : readLoc s2 loc ≡ readLoc s1 loc
-      s2-mem = writeLoc-preserves-other s1 (OnStack (current-frame alloc) (suc base)) loc
+      s2-mem = writeLoc-preserves-other s1 (AtStack (current-frame alloc) (suc base)) loc
                  (readReg (regs s1) Output) (≢-sym loc-neq-suc-base)
 
       -- After lea-slot base: memory preserved (lea doesn't write memory)
@@ -1210,30 +1210,30 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
       halted s ≡ false →
       readReg (regs s) Input1 ≡ input-loc →
       readLoc (proj₁ (exec-trace (sum-setup-trace save-slot) s alloc))
-              (OnStack (current-frame alloc) save-slot) ≡ just input-loc
+              (AtStack (current-frame alloc) save-slot) ≡ just input-loc
 
     sum-setup-mem-helper : ∀ (save-slot : ℕ) (s : LocState FS) (alloc : AllocState {FS})
       (loc : ValueLocation FS) →
       halted s ≡ false →
-      loc ≢ OnStack (current-frame alloc) save-slot →
+      loc ≢ AtStack (current-frame alloc) save-slot →
       readLoc (proj₁ (exec-trace (sum-setup-trace save-slot) s alloc)) loc ≡ readLoc s loc
 
     sum-update-input-helper : ∀ (save-slot : ℕ) (s : LocState FS) (alloc : AllocState {FS})
       (input-loc : ValueLocation FS) →
       halted s ≡ false →
-      readLoc s (OnStack (current-frame alloc) save-slot) ≡ just input-loc →
+      readLoc s (AtStack (current-frame alloc) save-slot) ≡ just input-loc →
       readReg (regs (proj₁ (exec-trace (sum-update-trace save-slot) s alloc))) Input1 ≡ input-loc
 
     sum-update-output-helper : ∀ (save-slot : ℕ) (s : LocState FS) (alloc : AllocState {FS})
       (input-loc : ValueLocation FS) →
       halted s ≡ false →
-      readLoc s (OnStack (current-frame alloc) save-slot) ≡ just input-loc →
+      readLoc s (AtStack (current-frame alloc) save-slot) ≡ just input-loc →
       readReg (regs (proj₁ (exec-trace (sum-update-trace save-slot) s alloc))) Output ≡ input-loc
 
     sum-update-ptr-helper : ∀ (save-slot : ℕ) (s : LocState FS) (alloc : AllocState {FS})
       (input-loc result-loc : ValueLocation FS) →
       halted s ≡ false →
-      readLoc s (OnStack (current-frame alloc) save-slot) ≡ just input-loc →
+      readLoc s (AtStack (current-frame alloc) save-slot) ≡ just input-loc →
       readReg (regs s) Output ≡ result-loc →
       readLoc (proj₁ (exec-trace (sum-update-trace save-slot) s alloc)) (sucLoc input-loc) ≡ just result-loc
 
@@ -1275,7 +1275,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
     halted s ≡ false →
     readReg (regs s) Input1 ≡ input-loc →
     let (s' , _) = exec-trace (sum-setup-trace save-slot) s alloc
-    in readLoc s' (OnStack (current-frame alloc) save-slot) ≡ just input-loc
+    in readLoc s' (AtStack (current-frame alloc) save-slot) ≡ just input-loc
   sum-setup-saves-input save-slot s alloc input-loc not-halted rdi-eq =
     sum-setup-saves-helper save-slot s alloc input-loc not-halted rdi-eq
 
@@ -1283,7 +1283,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
   sum-setup-mem-eq : ∀ (save-slot : ℕ) (s : LocState FS) (alloc : AllocState {FS})
     (loc : ValueLocation FS) →
     halted s ≡ false →
-    loc ≢ OnStack (current-frame alloc) save-slot →
+    loc ≢ AtStack (current-frame alloc) save-slot →
     let (s' , _) = exec-trace (sum-setup-trace save-slot) s alloc
     in readLoc s' loc ≡ readLoc s loc
   sum-setup-mem-eq save-slot s alloc loc not-halted loc-neq =
@@ -1293,7 +1293,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
   sum-update-restores-input : ∀ (save-slot : ℕ) (s : LocState FS) (alloc : AllocState {FS})
     (input-loc : ValueLocation FS) →
     halted s ≡ false →
-    readLoc s (OnStack (current-frame alloc) save-slot) ≡ just input-loc →
+    readLoc s (AtStack (current-frame alloc) save-slot) ≡ just input-loc →
     let (s' , _) = exec-trace (sum-update-trace save-slot) s alloc
     in readReg (regs s') Input1 ≡ input-loc
   sum-update-restores-input save-slot s alloc input-loc not-halted stack-has-input =
@@ -1303,7 +1303,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
   sum-update-output : ∀ (save-slot : ℕ) (s : LocState FS) (alloc : AllocState {FS})
     (input-loc : ValueLocation FS) →
     halted s ≡ false →
-    readLoc s (OnStack (current-frame alloc) save-slot) ≡ just input-loc →
+    readLoc s (AtStack (current-frame alloc) save-slot) ≡ just input-loc →
     let (s' , _) = exec-trace (sum-update-trace save-slot) s alloc
     in readReg (regs s') Output ≡ input-loc
   sum-update-output save-slot s alloc input-loc not-halted stack-has-input =
@@ -1314,7 +1314,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
   sum-update-writes-ptr : ∀ (save-slot : ℕ) (s : LocState FS) (alloc : AllocState {FS})
     (input-loc result-loc : ValueLocation FS) →
     halted s ≡ false →
-    readLoc s (OnStack (current-frame alloc) save-slot) ≡ just input-loc →
+    readLoc s (AtStack (current-frame alloc) save-slot) ≡ just input-loc →
     readReg (regs s) Output ≡ result-loc →
     let (s' , _) = exec-trace (sum-update-trace save-slot) s alloc
     in readLoc s' (sucLoc input-loc) ≡ just result-loc
@@ -1739,7 +1739,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
         -- The wrapper location at wrapper-base (= l-reclaimable, child's reclaimed slot)
         wrapper-loc : ValueLocation FS
-        wrapper-loc = OnStack (current-frame alloc-after-sub) wrapper-base
+        wrapper-loc = AtStack (current-frame alloc-after-sub) wrapper-base
 
         ------------------------------------------------------------------------
 
@@ -1899,7 +1899,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
         wrapper-rax-result =
           -- exec-trace reclaim-wrapper-trace = exec-trace wrapper-trace after reclaim
           let trace-split = exec-trace-cons reclaim-instr wrapper-trace s-after-sub alloc-after-sub l-not-halted
-              -- wrapper-trace-output: readReg Output = OnStack frame base
+              -- wrapper-trace-output: readReg Output = AtStack frame base
               output-eq = wrapper-trace-output wrapper-base s-after-sub alloc-reclaimed l-not-halted
           in trans (cong (λ p → readReg (regs (proj₁ p)) Output) trace-split) output-eq
 
@@ -1911,7 +1911,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
               rax-before = ProcessedLayerResult.rax-is-result l-result
               -- wrapper-trace-ptr-written: slot (suc base) contains original Output value
               ptr-eq : readLoc (proj₁ (exec-trace wrapper-trace s-after-sub alloc-reclaimed))
-                               (OnStack (current-frame alloc-reclaimed) (suc wrapper-base)) ≡
+                               (AtStack (current-frame alloc-reclaimed) (suc wrapper-base)) ≡
                        just (readReg (regs s-after-sub) Output)
               ptr-eq = wrapper-trace-ptr-written wrapper-base s-after-sub alloc-reclaimed l-not-halted
           in trans (cong (λ p → readLoc (proj₁ p) (sucLoc wrapper-loc)) trace-split)
@@ -1973,7 +1973,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
                l-result-loc l-bf-reclaimed
 
         -- 2. BeforeFrontier alloc-after-wrapper (sucLoc wrapper-loc)
-        --    sucLoc wrapper-loc = OnStack frame (suc wrapper-base) = OnStack frame (suc l-reclaimable)
+        --    sucLoc wrapper-loc = AtStack frame (suc wrapper-base) = AtStack frame (suc l-reclaimable)
         --    suc l-reclaimable < l-reclaimable + 2 = next-slot alloc-after-wrapper
         wb+2≡sswb : wrapper-base +ℕ 2 ≡ suc (suc wrapper-base)
         wb+2≡sswb = +-comm wrapper-base 2
@@ -2347,7 +2347,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
         -- The wrapper location at wrapper-base (= r-reclaimable, child's reclaimed slot)
         wrapper-loc : ValueLocation FS
-        wrapper-loc = OnStack (current-frame alloc-after-sub) wrapper-base
+        wrapper-loc = AtStack (current-frame alloc-after-sub) wrapper-base
 
         -- Full trace ends at (s-after-wrapper, alloc-after-wrapper)
         -- Note: uses reclaim-wrapper-trace instead of just wrapper-trace
@@ -2511,7 +2511,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
         wrapper-rax-result =
           -- exec-trace reclaim-wrapper-trace = exec-trace wrapper-trace after reclaim
           let trace-split = exec-trace-cons reclaim-instr wrapper-trace s-after-sub alloc-after-sub r-not-halted
-              -- wrapper-trace-output: readReg Output = OnStack frame base
+              -- wrapper-trace-output: readReg Output = AtStack frame base
               output-eq = wrapper-trace-output wrapper-base s-after-sub alloc-reclaimed r-not-halted
           in trans (cong (λ p → readReg (regs (proj₁ p)) Output) trace-split) output-eq
 
@@ -2523,7 +2523,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
               rax-before = ProcessedLayerResult.rax-is-result r-result
               -- wrapper-trace-ptr-written: slot (suc base) contains original Output value
               ptr-eq : readLoc (proj₁ (exec-trace wrapper-trace s-after-sub alloc-reclaimed))
-                               (OnStack (current-frame alloc-reclaimed) (suc wrapper-base)) ≡
+                               (AtStack (current-frame alloc-reclaimed) (suc wrapper-base)) ≡
                        just (readReg (regs s-after-sub) Output)
               ptr-eq = wrapper-trace-ptr-written wrapper-base s-after-sub alloc-reclaimed r-not-halted
           in trans (cong (λ p → readLoc (proj₁ p) (sucLoc wrapper-loc)) trace-split)
@@ -2583,7 +2583,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
                r-result-loc r-bf-reclaimed
 
         -- 2. BeforeFrontier alloc-after-wrapper (sucLoc wrapper-loc)
-        --    sucLoc wrapper-loc = OnStack frame (suc wrapper-base) = OnStack frame (suc r-reclaimable)
+        --    sucLoc wrapper-loc = AtStack frame (suc wrapper-base) = AtStack frame (suc r-reclaimable)
         --    suc r-reclaimable < r-reclaimable + 2 = next-slot alloc-after-wrapper
         wb+2≡sswb : wrapper-base +ℕ 2 ≡ suc (suc wrapper-base)
         wb+2≡sswb = +-comm wrapper-base 2
@@ -2920,7 +2920,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
                   where
                     -- BeforeFrontier alloc loc' implies loc' is not at save-slot
                     -- because save-slot = next-slot alloc, and BeforeFrontier requires < next-slot
-                    loc'-neq-slot : loc' ≢ OnStack (current-frame alloc) save-slot
+                    loc'-neq-slot : loc' ≢ AtStack (current-frame alloc) save-slot
                     loc'-neq-slot eq = Data.Nat.Properties.<-irrefl refl (bf-slot-contradiction alloc loc' save-slot bf' eq)
 
             -- Step 2: Transfer through alloc change using μLayerValid-frontier-advance
@@ -3072,18 +3072,18 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
         rdi-right-setup = rdi-right-setup-proof
           where
             -- Stack at save-slot still contains input-loc (preserved through left processing)
-            stack-preserved : readLoc s-l (OnStack (current-frame alloc) save-slot) ≡
-                              readLoc s-left-setup (OnStack (current-frame alloc) save-slot)
+            stack-preserved : readLoc s-l (AtStack (current-frame alloc) save-slot) ≡
+                              readLoc s-left-setup (AtStack (current-frame alloc) save-slot)
             stack-preserved = ProcessedLayerResult.mem-preserved l-result
-              (OnStack (current-frame alloc) save-slot)
+              (AtStack (current-frame alloc) save-slot)
               (slot-at-next-bf alloc)
 
             -- After left-setup, stack[save-slot] = input-loc
-            stack-has-input : readLoc s-left-setup (OnStack (current-frame alloc) save-slot) ≡ just input-loc
+            stack-has-input : readLoc s-left-setup (AtStack (current-frame alloc) save-slot) ≡ just input-loc
             stack-has-input = SMP.RecSchemeSemantics.prod-left-setup-saves-input save-slot s alloc input-loc not-halted rdi-eq
 
             -- So s-l still has input-loc at save-slot
-            stack-at-s-l : readLoc s-l (OnStack (current-frame alloc) save-slot) ≡ just input-loc
+            stack-at-s-l : readLoc s-l (AtStack (current-frame alloc) save-slot) ≡ just input-loc
             stack-at-s-l = trans stack-preserved stack-has-input
 
             -- sucLoc input-loc still points to snd-loc (memory preserved)
@@ -3102,8 +3102,8 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
               stack-at-s-l' snd-ptr-at-s-l
               where
                 -- Convert stack-at-s-l to use alloc-for-right's frame (they're equal)
-                stack-at-s-l' : readLoc s-l (OnStack (current-frame alloc-for-right) save-slot) ≡ just input-loc
-                stack-at-s-l' = subst (λ cf → readLoc s-l (OnStack cf save-slot) ≡ just input-loc)
+                stack-at-s-l' : readLoc s-l (AtStack (current-frame alloc-for-right) save-slot) ≡ just input-loc
+                stack-at-s-l' = subst (λ cf → readLoc s-l (AtStack cf save-slot) ≡ just input-loc)
                                       (sym alloc-for-right-frame) stack-at-s-l
 
         not-halted-right-setup : halted s-right-setup ≡ false
@@ -3538,8 +3538,8 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
     -- Pattern matching helps Agda see the definitional equality
     readLoc-regs-irrelevant : ∀ (s : LocState FS) (r : Registers FS) (loc : ValueLocation FS) →
       readLoc (record s { regs = r }) loc ≡ readLoc s loc
-    readLoc-regs-irrelevant s r (OnStack f k) = refl
-    readLoc-regs-irrelevant s r (OnHeap hl) = refl
+    readLoc-regs-irrelevant s r (AtStack f k) = refl
+    readLoc-regs-irrelevant s r (AtDynamic hl) = refl
 
     -- Helper: mov-to-input state equals manual Input1 write when Output = target
     -- exec-abstract mov-to-input s alloc = (record s { regs = writeReg (regs s) Input1 (readReg (regs s) Output) }, alloc)

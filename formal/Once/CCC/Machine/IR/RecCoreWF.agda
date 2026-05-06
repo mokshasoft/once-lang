@@ -265,11 +265,11 @@ module RecCoreWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     ∀ loc → BeforeFrontier alloc loc →
     readLoc (proj₁ (exec-trace (mov-to-output ∷ store-at-slot n ∷ lea-slot n ∷ []) s alloc)) loc ≡
     readLoc s loc
-  rec-scheme-mem-preserved {n} s alloc refl not-halted (OnStack f k) (stack-before refl k<n) =
+  rec-scheme-mem-preserved {n} s alloc refl not-halted (AtStack f k) (stack-before refl k<n) =
     rec-scheme-preserves-slot-below-3 n k s alloc not-halted k<n
-  rec-scheme-mem-preserved {n} s alloc refl not-halted (OnStack f k) (stack-ancestor cf≺f _) =
+  rec-scheme-mem-preserved {n} s alloc refl not-halted (AtStack f k) (stack-ancestor cf≺f _) =
     rec-scheme-preserves-ancestor-3 n s alloc f k not-halted (λ eq → ≺⇒≢ cf≺f (sym eq))
-  rec-scheme-mem-preserved {n} s alloc refl not-halted (OnHeap hl) (heap-before _) =
+  rec-scheme-mem-preserved {n} s alloc refl not-halted (AtDynamic hl) (heap-before _) =
     rec-scheme-preserves-heap-3 n s alloc hl not-halted
 
   ------------------------------------------------------------------------
@@ -370,7 +370,7 @@ module RecCoreWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       }
     where
       result-slot = next-slot alloc
-      result-loc = OnStack (current-frame alloc) result-slot
+      result-loc = AtStack (current-frame alloc) result-slot
 
       alloc' : AllocState {FS}
       alloc' = record alloc { next-slot = suc (next-slot alloc) }
@@ -414,7 +414,7 @@ module RecCoreWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       frontier-stable : ∀ (s'' : LocState FS) (input-loc' : ValueLocation FS) →
         halted s'' ≡ false →
         readReg (regs s'') Input1 ≡ input-loc' →
-        readLoc s'' (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc' →
+        readLoc s'' (AtStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc' →
         _
       frontier-stable s'' input-loc' _ _ _ = inj₂ (inj₂ tt)
 
@@ -473,7 +473,7 @@ module RecCoreWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       }
     where
       result-slot = next-slot alloc
-      result-loc = OnStack (current-frame alloc) result-slot
+      result-loc = AtStack (current-frame alloc) result-slot
 
       alloc' : AllocState {FS}
       alloc' = record alloc { next-slot = suc (next-slot alloc) }
@@ -517,7 +517,7 @@ module RecCoreWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       frontier-stable : ∀ (s'' : LocState FS) (input-loc' : ValueLocation FS) →
         halted s'' ≡ false →
         readReg (regs s'') Input1 ≡ input-loc' →
-        readLoc s'' (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc' →
+        readLoc s'' (AtStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc' →
         _
       frontier-stable s'' input-loc' _ _ _ = inj₂ (inj₂ tt)
 

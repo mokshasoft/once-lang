@@ -32,7 +32,7 @@ open import Once.Type using (Type; IsPrimitive)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.IR using (IR; SigOp; SigOpInfo; AllocMode; Stack; Heap)
 open import Once.CCC.Machine.SMCore
-  using (LocState; mkLocState; ValueLocation; OnStack;
+  using (LocState; mkLocState; ValueLocation; AtStack;
          halted; regs; stackMem; heapMem;
          readReg; writeReg; writeReg-same;
          Input1; Output; AbstractTrace; mov-to-output)
@@ -186,10 +186,10 @@ module PrimHelper {FS : FrameSemantics} (program-bound : ℕ) where
     (frontier-stable-pf : ∀ (s' : LocState FS) (input-loc' : ValueLocation FS) →
       halted s' ≡ false →
       readReg (regs s') Input1 ≡ input-loc' →
-      readLoc s' (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc' →
+      readLoc s' (AtStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc' →
       (next-slot alloc ≡ next-slot alloc) ⊎
       ((readLoc (proj₁ (exec-trace (mov-to-output ∷ []) s' alloc))
-               (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc') ⊎ ⊤)) →
+               (AtStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc') ⊎ ⊤)) →
     IRResultAWF output-mode (SigOp {A} {B} si) x s alloc
 
   mkPurePrimResult {A} {B} si output-mode is-prim x input-loc s alloc

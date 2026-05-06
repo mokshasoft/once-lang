@@ -43,12 +43,12 @@ module FrontierLemmas {FS : FrameSemantics} where
     n<n+suc-k : ∀ (n k : ℕ) → n < n +ℕ suc k
     n<n+suc-k n k = m<m+n n (s≤s z≤n)
 
-  -- The location OnStack cf (next-slot alloc) is BeforeFrontier
+  -- The location AtStack cf (next-slot alloc) is BeforeFrontier
   -- after allocating k slots (where k > 0)
   at-frontier-becomes-before : ∀ (alloc : AllocState {FS}) (k : ℕ) →
     (k>0 : 0 < k) →
     let alloc' = record alloc { next-slot = next-slot alloc +ℕ k }
-    in BeforeFrontier alloc' (OnStack (current-frame alloc) (next-slot alloc))
+    in BeforeFrontier alloc' (AtStack (current-frame alloc) (next-slot alloc))
   at-frontier-becomes-before alloc (suc k) (s≤s z≤n) =
     stack-before refl (n<n+suc-k (next-slot alloc) k)
 
@@ -57,14 +57,14 @@ module FrontierLemmas {FS : FrameSemantics} where
   -- pair-slots = 2
   at-frontier-before-pair : ∀ (alloc : AllocState {FS}) →
     let alloc' = record alloc { next-slot = next-slot alloc +ℕ 2 }
-    in BeforeFrontier alloc' (OnStack (current-frame alloc) (next-slot alloc))
+    in BeforeFrontier alloc' (AtStack (current-frame alloc) (next-slot alloc))
   at-frontier-before-pair alloc =
     at-frontier-becomes-before alloc 2 (s≤s z≤n)
 
   -- closure-slots = 2
   at-frontier-before-closure : ∀ (alloc : AllocState {FS}) →
     let alloc' = record alloc { next-slot = next-slot alloc +ℕ 2 }
-    in BeforeFrontier alloc' (OnStack (current-frame alloc) (next-slot alloc))
+    in BeforeFrontier alloc' (AtStack (current-frame alloc) (next-slot alloc))
   at-frontier-before-closure = at-frontier-before-pair
 
   ------------------------------------------------------------------------
@@ -81,9 +81,9 @@ module FrontierLemmas {FS : FrameSemantics} where
     next-slot a1 ≡ next-slot a2 →
     next-heap-ref a1 ≡ next-heap-ref a2 →
     ∀ loc → BeforeFrontier a1 loc → BeforeFrontier a2 loc
-  frontier-same-heap a1 a2 frame-eq slot-eq heap-eq (OnStack f k) (stack-before f-eq k<slot) =
+  frontier-same-heap a1 a2 frame-eq slot-eq heap-eq (AtStack f k) (stack-before f-eq k<slot) =
     stack-before (trans f-eq frame-eq) (subst (k <_) slot-eq k<slot)
-  frontier-same-heap a1 a2 frame-eq slot-eq heap-eq (OnStack f k) (stack-ancestor cf≺f src) =
+  frontier-same-heap a1 a2 frame-eq slot-eq heap-eq (AtStack f k) (stack-ancestor cf≺f src) =
     stack-ancestor (subst (_≺ f) frame-eq cf≺f) src  -- Transfer ordering via frame equality, preserve provenance
-  frontier-same-heap a1 a2 frame-eq slot-eq heap-eq (OnHeap hl) (heap-before ref<heap) =
+  frontier-same-heap a1 a2 frame-eq slot-eq heap-eq (AtDynamic hl) (heap-before ref<heap) =
     heap-before (subst (ref-id (heap-ref hl) <_) heap-eq ref<heap)
