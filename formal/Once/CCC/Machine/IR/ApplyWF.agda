@@ -137,29 +137,39 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
   --                slot indices starting above the (env, arg) pair.
   ------------------------------------------------------------------------
 
-  -- Setup trace: prepare pair input for body
+  -- Setup trace: split-input calling convention (Plan 0.2.4.5 Stage C).
   --
-  -- Input1 structure: (closure, arg) pair where closure = (env, code)
-  -- We need to build a new pair (env, arg) for the body.
+  -- Apply's input is the pair (closure, arg). Body's input is the
+  -- pair (env, arg) at the CCC type level. Under split-input
+  -- convention at the abstract machine, that pair is split across
+  -- the two input registers:
+  --   Input1 := env-loc  (after deref'ing closure)
+  --   Input2 := arg-loc
+  -- and we call body. No (env, arg) record gets packed into adjacent
+  -- slots — the two `store-at-slot` writes + the `lea-slot` of the
+  -- old packed-pair convention are gone.
   --
-  -- Step 1: Get arg-loc from *(Input1+1) while Input1 still points to original pair
-  -- Step 2: Store arg at pair[1]
-  -- Step 3: Get closure-loc from *Input1
-  -- Step 4: Set Input1 := closure-loc
-  -- Step 5: Get env-loc from *Input1 (now pointing to closure)
-  -- Step 6: Store env at pair[0]
-  -- Step 7: Set Output := &pair
-  -- Step 8: Set Input1 := &pair
+  -- Step 1: Get arg-loc from *(Input1+1) while Input1 still points
+  --         to original (closure, arg) pair.
+  -- Step 2: Set Input2 := arg-loc.
+  -- Step 3: Get closure-loc from *Input1.
+  -- Step 4: Set Input1 := closure-loc (now points at closure).
+  -- Step 5: Save closure-reg from Input1 (for the indirect call).
+  -- Step 6: Get env-loc from *Input1 (closure[0] = env).
+  -- Step 7: Set Input1 := env-loc.
+  --
+  -- The `pair-slot` parameter is retained for downstream lemma
+  -- signatures but is unused — no slot is allocated for the packed
+  -- pair. (Stage F removes the parameter entirely.)
   apply-setup-trace : (pair-slot : ℕ) → AbstractTrace
-  apply-setup-trace pair-slot =
-    load-indirect-suc ∷                -- Output := *(Input1+1) = arg-loc
-    store-at-slot (suc pair-slot) ∷    -- pair[1] := arg-loc
-    load-indirect ∷                    -- Output := *Input1 = closure-loc
-    mov-to-input ∷                     -- Input1 := closure-loc
-    load-indirect ∷                    -- Output := *Input1 = env-loc
-    store-at-slot pair-slot ∷          -- pair[0] := env-loc
-    lea-slot pair-slot ∷               -- Output := &pair
-    mov-to-input ∷ []                  -- Input1 := &pair
+  apply-setup-trace _ =
+    load-indirect-suc ∷         -- Output := *(Input1+1) = arg-loc
+    mov-output-to-input2 ∷      -- Input2 := arg-loc
+    load-indirect ∷             -- Output := *Input1 = closure-loc
+    mov-to-input ∷              -- Input1 := closure-loc
+    instr-save-closure-reg ∷    -- save closure-reg from Input1
+    load-indirect ∷             -- Output := *Input1 = env-loc
+    mov-to-input ∷ []           -- Input1 := env-loc
 
   -- Full apply trace: setup + body. No frame push/pop — body inherits
   -- parent's frame and uses slot indices threaded above the (env, arg)

@@ -41,7 +41,8 @@ open import Once.CCC.SigOp.Info using (SigOpInfo)
 -- Import AbstractInstr from SMCore
 open import Once.CCC.Machine.SMCore
   using (AbstractInstr; AbstractTrace; Slot;
-         mov-to-output; mov-to-input; load-indirect; load-indirect-suc;
+         mov-to-output; mov-to-input; mov-output-to-input2;
+         load-indirect; load-indirect-suc;
          load-from-slot; store-at-slot; store-indirect; store-indirect-suc;
          lea-slot; restore-input;
          instr-alloc-stack; instr-dealloc-stack;
@@ -84,6 +85,12 @@ compile-abstract mov-to-output =
 -- x86-32: mov ecx, eax
 compile-abstract mov-to-input =
   mov (reg ecx) (reg eax) ∷ []
+
+-- mov-output-to-input2: Input2 := Output (Stage C split-input setup)
+-- x86-32 cdecl convention has no fixed second-arg register; we use
+-- edx as the conventional second integer argument register.
+compile-abstract mov-output-to-input2 =
+  mov (reg edx) (reg eax) ∷ []
 
 -- load-indirect: Output := *Input1
 -- x86-32: mov eax, [ecx]

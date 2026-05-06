@@ -50,7 +50,8 @@ open import Once.CCC.SigOp.Info using (SigOpInfo)
 -- Import AbstractInstr from SMCore
 open import Once.CCC.Machine.SMCore
   using (AbstractInstr; AbstractTrace; Slot;
-         mov-to-output; mov-to-input; load-indirect; load-indirect-suc;
+         mov-to-output; mov-to-input; mov-output-to-input2;
+         load-indirect; load-indirect-suc;
          load-from-slot; store-at-slot; store-indirect; store-indirect-suc;
          lea-slot; restore-input;
          instr-alloc-stack; instr-dealloc-stack;
@@ -94,6 +95,11 @@ compile-abstract mov-to-output =
 -- Copy a0 (Output) to t0 (Input1)
 compile-abstract mov-to-input =
   mv t0 a0 ∷ []
+
+-- mov-output-to-input2: Input2 := Output (Stage C split-input setup)
+-- RV64 LP64 calling convention: a1 = second integer argument register
+compile-abstract mov-output-to-input2 =
+  mv a1 a0 ∷ []
 
 -- load-indirect: Output := *Input1
 -- t0 holds address (Input1), load value into a0 (Output)

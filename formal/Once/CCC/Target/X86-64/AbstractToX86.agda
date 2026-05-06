@@ -68,6 +68,11 @@ compile-abstract mov-to-output =
 compile-abstract mov-to-input =
   mov (reg rdi) (reg rax) ∷ []
 
+-- mov-output-to-input2: Input2 := Output (Stage C split-input setup)
+-- x86 SysV calling convention: rsi = second integer argument register
+compile-abstract mov-output-to-input2 =
+  mov (reg rsi) (reg rax) ∷ []
+
 -- load-indirect: Output := *Input1
 -- x86: mov rax, [rdi]
 compile-abstract load-indirect =

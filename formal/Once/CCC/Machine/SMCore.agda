@@ -678,6 +678,12 @@ data AbstractInstr : Set where
   mov-to-output      : AbstractInstr              -- Output := Input1
   mov-to-input       : AbstractInstr              -- Input1 := Output (compose bridge)
 
+  -- Plan 0.2.4.5 Stage C: split-input calling convention. Apply's
+  -- body receives env in Input1, arg in Input2 (no packed (env, arg)
+  -- record). This instruction sets Input2 from Output, mirroring
+  -- `mov-to-input` for Input2.
+  mov-output-to-input2 : AbstractInstr            -- Input2 := Output
+
   -- Memory load operations (slot-level, not physical address arithmetic)
   load-indirect      : AbstractInstr              -- Output := *Input1
   load-indirect-suc  : AbstractInstr              -- Output := *(sucLoc Input1)
@@ -992,6 +998,10 @@ module AbstractExec {FS : FrameSemantics} where
   -- mov-to-input: Input1 := Output (compose bridge)
   exec-abstract mov-to-input s alloc =
     record s { regs = writeReg (regs s) Input1 (readReg (regs s) Output) } , alloc
+
+  -- mov-output-to-input2: Input2 := Output (Stage C split-input setup)
+  exec-abstract mov-output-to-input2 s alloc =
+    record s { regs = writeReg (regs s) Input2 (readReg (regs s) Output) } , alloc
 
   -- load-indirect: Output := *Input1
   -- Uses exec-load-with-value for easier external proofs

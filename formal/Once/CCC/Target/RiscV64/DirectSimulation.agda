@@ -222,6 +222,7 @@ module Simulation {FS : FrameSemantics} where
   exec-rv64 (mv a0 t0) rs _ = record rs { a0-val = t0-val rs }
 
   -- mov-to-input: mv t0, a0 → t0' = a0
+  -- mov-output-to-input2: mv t0, a0 → t0' = a0
   exec-rv64 (mv t0 a0) rs _ = record rs { t0-val = a0-val rs }
 
   -- Frame push sequence helpers
@@ -631,8 +632,10 @@ module Simulation {FS : FrameSemantics} where
   ... | true | ()
 
   -- mov-to-input: Input1 := Output
+  -- mov-output-to-input2: Input1 := Output
   -- RV64: compiles to [] (no-op)
   instr-sim mov-to-input ls rs alloc not-halted corr with rv64-halted rs | rs-not-halted ls rs alloc not-halted corr
+  instr-sim mov-output-to-input2 ls rs alloc not-halted corr with rv64-halted rs | rs-not-halted ls rs alloc not-halted corr
   ... | false | _ =
     let outputVal = readReg (regs ls) Output
         newRegs = writeReg (regs ls) Input1 outputVal
@@ -1042,6 +1045,7 @@ module Simulation {FS : FrameSemantics} where
     current-frame (proj₂ (exec-abstract i ls alloc)) ≡ current-frame alloc
   exec-abstract-preserves-frame mov-to-output ls alloc = refl
   exec-abstract-preserves-frame mov-to-input ls alloc = refl
+  exec-abstract-preserves-frame mov-output-to-input2 ls alloc = refl
   exec-abstract-preserves-frame load-indirect ls alloc = refl
   exec-abstract-preserves-frame load-indirect-suc ls alloc = refl
   exec-abstract-preserves-frame (load-from-slot slot) ls alloc

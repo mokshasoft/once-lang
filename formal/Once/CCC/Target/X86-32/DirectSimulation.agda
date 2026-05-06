@@ -187,6 +187,7 @@ module Simulation {FS : FrameSemantics} where
   exec-x86 (mov (reg eax) (reg ecx)) xs _ = record xs { eax-val = ecx-val xs }
 
   -- mov-to-input: mov ecx, eax → ecx' = eax
+  -- mov-output-to-input2: mov ecx, eax → ecx' = eax
   exec-x86 (mov (reg ecx) (reg eax)) xs _ = record xs { ecx-val = eax-val xs }
 
   -- load-indirect: mov eax, [ecx] → eax' = *ecx
@@ -606,10 +607,12 @@ module Simulation {FS : FrameSemantics} where
   ... | true | ()
 
   -- mov-to-input: Input1 := Output
+  -- mov-output-to-input2: Input1 := Output
   -- x86: mov ecx, eax → ecx' = eax
   -- Abstract: regs' Input1 = readReg regs Output
   -- TRIVIAL: both set input to output value
   instr-sim mov-to-input ls xs alloc not-halted corr with x86-halted xs | xs-not-halted ls xs alloc not-halted corr
+  instr-sim mov-output-to-input2 ls xs alloc not-halted corr with x86-halted xs | xs-not-halted ls xs alloc not-halted corr
   ... | false | _ =
     let outputVal = readReg (regs ls) Output
         newRegs = writeReg (regs ls) Input1 outputVal
@@ -994,6 +997,7 @@ module Simulation {FS : FrameSemantics} where
     current-frame (proj₂ (exec-abstract i ls alloc)) ≡ current-frame alloc
   exec-abstract-preserves-frame mov-to-output ls alloc = refl
   exec-abstract-preserves-frame mov-to-input ls alloc = refl
+  exec-abstract-preserves-frame mov-output-to-input2 ls alloc = refl
   exec-abstract-preserves-frame load-indirect ls alloc = refl
   exec-abstract-preserves-frame load-indirect-suc ls alloc = refl
   -- load-from-slot uses exec-load-from-slot-with-value which always returns alloc unchanged
