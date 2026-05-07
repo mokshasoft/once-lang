@@ -171,7 +171,18 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; final-alloc = alloc₂
       ; trace = compose-trace
       ; trace-correct = refl  -- s-final DEFINED by trace
-      ; result-place = at-loc result-loc-g result-valid-final result-before-g rax-eq-final compose-reclaim-preserves-validity compose-reclaim-preserves-result
+      -- Plan 0.2.4.5 D1 task #28 partial: transport result-g's
+      -- result-place wholesale along s-final-eq. Generalises over
+      -- Unit / non-Unit result type without unbundling — Unit's
+      -- `unit-result` and non-Unit's `at-loc` propagate uniformly.
+      -- Removes 6 place-* call sites (result-loc-g, result-valid-final,
+      -- result-before-g, rax-eq-final, compose-reclaim-*) on result-g.
+      ; result-place = subst
+          (λ st → ResultPlace _ mOut alloc₂
+                    (record alloc { next-slot = next-slot alloc₂ })
+                    (eval g (eval f x)) st)
+          (sym s-final-eq)
+          (IRResultAWF.result-place result-g)
       ; not-halted = not-halted-final
       ; frame-preserved = IRResultAWF.frame-preserved result-g
       ; slot-monotone = slot-mono
@@ -269,9 +280,12 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       result-g = proj₂ g-result-pair
       s₂ = IRResultAWF.final-state result-g
       alloc₂ = IRResultAWF.final-alloc result-g
-      result-loc-g = place-loc (IRResultAWF.result-place result-g)
       g-trace = IRResultAWF.trace result-g
-      result-before-g = place-before (IRResultAWF.result-place result-g)
+      -- Plan 0.2.4.5 D1 task #28: result-loc-g, result-before-g
+      -- removed — the compose's result-place is now constructed by
+      -- whole-bundle transport (see line ~175), not by unbundling
+      -- result-g's place into individual loc/valid/before/rax/reclaim-*
+      -- facts. The transport eliminates 6 place-* call sites.
 
       ------------------------------------------------------------------------
       -- Compose trace and final state DEFINED by trace execution
@@ -300,15 +314,9 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
       ------------------------------------------------------------------------
       -- Transport proofs from s₂ to s-final
+      -- (result-valid-final / rax-eq-final removed: their facts are
+      -- now bundled inside the transported result-place above.)
       ------------------------------------------------------------------------
-      result-valid-final : ValidAtWF mOut alloc₂ (eval (g ∘ f) x) result-loc-g s-final
-      result-valid-final = subst (λ st → ValidAtWF mOut alloc₂ (eval (g ∘ f) x) result-loc-g st)
-                             (sym s-final-eq) (place-valid (IRResultAWF.result-place result-g))
-
-      rax-eq-final : readReg (regs s-final) Output ≡ result-loc-g
-      rax-eq-final = trans (cong (λ st → readReg (regs st) Output) s-final-eq)
-                           (place-rax (IRResultAWF.result-place result-g))
-
       not-halted-final : halted s-final ≡ false
       not-halted-final = subst (λ st → halted st ≡ false) (sym s-final-eq)
                            (IRResultAWF.not-halted result-g)
@@ -326,16 +334,11 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Phase 7: Removed reclamation section (reclaimable-slot = next-slot final-alloc)
       -- Keep reclaim-preserves-* for compositional proofs with heap allocation
 
-      -- reclaim-preserves-result: result is BeforeFrontier at alloc with advanced next-slot
-      -- Key insight: alloc₁-reclaimed = record alloc { next-slot = reclaim-f }
-      -- So record alloc₁-reclaimed { next-slot = n } = record alloc { next-slot = n }
-      -- Therefore g's reclaim-preserves-result transfers directly!
-      compose-reclaim-preserves-result :
-        BeforeFrontier (record alloc { next-slot = next-slot alloc₂ }) (place-loc (IRResultAWF.result-place result-g))
-      compose-reclaim-preserves-result = place-reclaim-before (IRResultAWF.result-place result-g)
-
-      -- reclaim-preserves-validity: result valid at alloc with advanced next-slot
-      -- Need to transport from s₂ to s-final via s-final-eq
+      -- compose-reclaim-preserves-{result,validity} removed: the
+      -- reclaim-side facts are now bundled inside the transported
+      -- result-place above. (Old code used place-reclaim-before /
+      -- place-reclaim-valid to extract them; with the whole-bundle
+      -- transport the dual-alloc form of `at-loc` carries them.)
       compose-reclaim-preserves-validity :
         ValidAtWF mOut (record alloc { next-slot = next-slot alloc₂ })
                   (eval g (eval f x)) (place-loc (IRResultAWF.result-place result-g)) s-final
