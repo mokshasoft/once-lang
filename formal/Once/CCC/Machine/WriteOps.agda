@@ -51,15 +51,6 @@ module WriteWithDisjoint {FS : FrameSemantics} where
     with hl ≟HL hl'
   ... | yes refl = ⊥-elim (neq refl)
   ... | no _ = refl
-  -- Erased: readLoc s Erased = nothing always; write-loc to Erased / from
-  -- Erased is a no-op (see Allocation.write-loc), so all combinations are
-  -- trivially preserved.
-  write-preserves-disjoint s (AtStack _ _) val Erased _ = refl
-  write-preserves-disjoint s (AtDynamic _) val Erased _ = refl
-  write-preserves-disjoint s (AtDynamic _) Erased (AtStack _ _) _ = refl
-  write-preserves-disjoint s (AtDynamic _) Erased (AtDynamic _) _ = refl
-  write-preserves-disjoint s (AtDynamic _) Erased Erased _ = refl
-  write-preserves-disjoint s Erased _ _ _ = refl
 
   -- Reading from the location we just wrote to (stack case)
   write-read-same-stack : ∀ (s : LocState FS) (f : Frame) (k : ℕ) (val : ValueLocation FS) →
@@ -123,9 +114,6 @@ module WriteWithDisjoint {FS : FrameSemantics} where
   -- Case 3: Heap location (stack write doesn't affect heap)
   write-at-frontier-preserves-before s alloc (AtDynamic hl) val (heap-before _) = refl
 
-  -- Case 4: Erased — readLoc Erased = nothing on both sides
-  write-at-frontier-preserves-before s alloc Erased val erased-before = refl
-
   -- Writing at suc frontier preserves all BeforeFrontier locations
   write-at-suc-frontier-preserves-before : ∀ (s : LocState FS) (alloc : AllocState {FS})
     (loc : ValueLocation FS) (val : ValueLocation FS) →
@@ -148,6 +136,3 @@ module WriteWithDisjoint {FS : FrameSemantics} where
 
   -- Case 3: Heap location
   write-at-suc-frontier-preserves-before s alloc (AtDynamic hl) val (heap-before _) = refl
-
-  -- Case 4: Erased
-  write-at-suc-frontier-preserves-before s alloc Erased val erased-before = refl

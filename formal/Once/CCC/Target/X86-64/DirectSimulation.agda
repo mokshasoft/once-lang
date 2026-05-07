@@ -136,13 +136,8 @@ module Simulation {FS : FrameSemantics} where
   _≟L_ : (l1 l2 : ValueLocation FS) → Dec (l1 ≡ l2)
   AtStack f1 k1 ≟L AtStack f2 k2 = ≟L-OnStack-aux (f1 ≟F f2) (k1 ≟ k2)
   AtStack _ _   ≟L AtDynamic _      = no λ ()
-  AtStack _ _   ≟L Erased           = no λ ()
   AtDynamic _      ≟L AtStack _ _   = no λ ()
   AtDynamic hl1    ≟L AtDynamic hl2    = ≟L-OnHeap-aux (hl1 ≟HL hl2)
-  AtDynamic _      ≟L Erased        = no λ ()
-  Erased        ≟L AtStack _ _   = no λ ()
-  Erased        ≟L AtDynamic _   = no λ ()
-  Erased        ≟L Erased        = yes refl
 
   -- Helper: write to memory (functional update)
   writeX86Mem : (ValueLocation FS → Maybe (ValueLocation FS)) →
@@ -350,7 +345,6 @@ module Simulation {FS : FrameSemantics} where
   readLoc-regs-irrel ls newRegs (AtDynamic hl) with heapMem ls hl
   ... | just _ = refl
   ... | nothing = refl
-  readLoc-regs-irrel ls newRegs Erased = refl
 
   -- readLoc is unchanged when only halted changes
   readLoc-halted-irrel : ∀ ls h loc →
@@ -359,7 +353,6 @@ module Simulation {FS : FrameSemantics} where
   readLoc-halted-irrel ls h (AtDynamic hl) with heapMem ls hl
   ... | just _ = refl
   ... | nothing = refl
-  readLoc-halted-irrel ls h Erased = refl
 
   -- If halted, exec-prog returns unchanged
   exec-prog-halted : ∀ prog xs frame → x86-halted xs ≡ true → exec-prog prog xs frame ≡ xs
@@ -464,20 +457,6 @@ module Simulation {FS : FrameSemantics} where
     -- readLoc (writeLoc ...) returns just val (by readLoc-writeLoc-same)
     trans (cong just rax-eq) (sym (SMP.MemoryOps.readLoc-writeLoc-same ls (AtDynamic hl) val))
   ... | no loc≢l = trans (mem-eq l) (sym (writeLoc-preserves-other ls (AtDynamic hl) l val loc≢l))
-  -- Erased destination: in real traces no instruction writes to a
-  -- result-loc of `Erased` (Unit-typed values are never stored).
-  -- The lemma's claim doesn't hold uniformly: at `l = Erased` LHS is
-  -- `just val` while RHS is `nothing`. Postulated as a
-  -- never-reached-in-real-runs stub; the proper fix is the structural
-  -- split (Place vs StorageLoc) at Plan 0.2.4.5 D4.
-  writeX86Mem-corresponds ls xs Erased val mem-eq rax-eq l =
-    writeX86Mem-corresponds-erased-stub ls xs val mem-eq rax-eq l
-    where
-      postulate
-        writeX86Mem-corresponds-erased-stub : ∀ ls xs val →
-          (∀ l → x86-mem xs l ≡ readLoc ls l) →
-          rax-val xs ≡ val →
-          (∀ l → writeX86Mem (x86-mem xs) Erased (rax-val xs) l ≡ readLoc (writeLoc ls Erased val) l)
 
   -- Helper to derive contradiction from halted xs ≡ true and correspondence
   halted-contradiction : ∀ {ls xs alloc} → x86-halted xs ≡ true → halted ls ≡ false → Corresponds ls xs alloc → ⊥

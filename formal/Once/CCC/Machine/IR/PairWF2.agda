@@ -733,7 +733,6 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
       mem-preserved-pair (AtDynamic h) (heap-before _) =
         -- Heap location
         exec-trace-preserves-heap-loc pair-trace s alloc h pair-trace-no-heap-writes
-      mem-preserved-pair Erased erased-before = refl
 
       ------------------------------------------------------------------------
       -- Frontier slot stability

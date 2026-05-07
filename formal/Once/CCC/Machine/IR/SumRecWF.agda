@@ -1288,7 +1288,6 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         rec-scheme-preserves-ancestor-3 result-slot s alloc f k not-halted (λ eq → ≺⇒≢ cf≺f (sym eq))
       mem-preserved (AtDynamic hl) (heap-before _) =
         rec-scheme-preserves-heap-3 result-slot s alloc hl not-halted
-      mem-preserved Erased erased-before = refl
 
       trace-wa : SMP.TraceWritesAbove (next-slot alloc) in-trace
       trace-wa = ≤-refl , tt
@@ -1546,7 +1545,6 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         rec-scheme-preserves-ancestor-3 result-slot s alloc f k not-halted (≢-sym (≺⇒≢ cf≺f))
       mem-preserved (AtDynamic hl) (heap-before _) =
         rec-scheme-preserves-heap-3 result-slot s alloc hl not-halted
-      mem-preserved Erased erased-before = refl
 
       trace-wa : SMP.TraceWritesAbove (next-slot alloc) in-ν-trace
       trace-wa = ≤-refl , tt

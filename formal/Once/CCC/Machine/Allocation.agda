@@ -170,8 +170,6 @@ module WriteOps {FS : FrameSemantics} where
   write-loc s (AtStack f k) val = write-stack-slot s f k val
   write-loc s (AtDynamic hl) (AtDynamic val) = write-heap-slot s hl val
   write-loc s (AtDynamic hl) (AtStack _ _) = s  -- Invalid: can't store stack ref in heap
-  write-loc s (AtDynamic hl) Erased = s         -- Erased values aren't storable
-  write-loc s Erased _ = s                      -- writes to Erased are no-ops
 
   -- Write preserves reads at different locations (stack)
   write-stack-preserves-diff : ∀ s f₁ k₁ f₂ k₂ val →
@@ -279,10 +277,6 @@ module FrontierInvariant {FS : FrameSemantics} where
       ref-id (heap-ref hl) < next-heap-ref alloc →
       BeforeFrontier alloc (AtDynamic hl)
 
-    -- Plan 0.2.4.5 D1 (Unit erasure): Erased is vacuously before any
-    -- frontier — Unit values carry no information and aren't tracked.
-    erased-before : BeforeFrontier alloc Erased
-
   -- Helper: frame ordering implies inequality (via irreflexivity)
   ≺⇒≢ : ∀ {f₁ f₂ : Frame} → f₁ ≺ f₂ → f₁ ≢ f₂
   ≺⇒≢ {f₁} {f₂} f₁≺f₂ refl = ≺-irrefl f₁≺f₂
@@ -309,7 +303,6 @@ module FrontierInvariant {FS : FrameSemantics} where
     stack-ancestor cf≺f src  -- Frame ordering and provenance unchanged (same current-frame)
   stack-alloc-advances alloc n (AtDynamic hl) (heap-before r<next) =
     heap-before r<next
-  stack-alloc-advances alloc n Erased erased-before = erased-before
 
   heap-alloc-advances : ∀ (alloc : AllocState {FS}) →
     ∀ loc → BeforeFrontier alloc loc →
@@ -320,7 +313,6 @@ module FrontierInvariant {FS : FrameSemantics} where
     stack-ancestor cf≺f src  -- Frame ordering and provenance unchanged (same current-frame)
   heap-alloc-advances alloc (AtDynamic hl) (heap-before r<next) =
     heap-before (≤-trans r<next (n≤1+n (next-heap-ref alloc)))
-  heap-alloc-advances alloc Erased erased-before = erased-before
 
   -- General frontier monotonicity: if frontier advances, old locations are still before
   -- This is useful when alloc' is derived from alloc through arbitrary operations
@@ -337,7 +329,6 @@ module FrontierInvariant {FS : FrameSemantics} where
   frontier-monotone alloc alloc' cf-eq slot-≤ heap-≤ (AtDynamic hl) (heap-before r<heap) =
     heap-before (<-≤-trans r<heap heap-≤)
     where open import Data.Nat.Properties using (<-≤-trans)
-  frontier-monotone alloc alloc' cf-eq slot-≤ heap-≤ Erased erased-before = erased-before
 
 ------------------------------------------------------------------------
 -- Frame Push/Pop Operations
@@ -457,7 +448,6 @@ module FrameOps {FS : FrameSemantics} where
     stack-ancestor (≺-trans cf≺pf pf≺f) (src-above-origin pf≺f bound k<bound)
   parent-before-child parent cf cc (AtDynamic hl) cf≺pf (heap-before r<next) =
     heap-before r<next  -- Heap refs unchanged
-  parent-before-child parent cf cc Erased cf≺pf erased-before = erased-before
 
   ------------------------------------------------------------------------
   -- Pop lemmas: After body completes, restore parent frame state

@@ -80,7 +80,6 @@ module BFTransfer {FS : FrameSemantics} where
     rewrite cf-eq = stack-ancestor cf≺f src
   bf-same-frame-slot a₁ a₂ cf-eq ns-eq hr-eq (AtDynamic hl) (heap-before r<hr)
     rewrite hr-eq = heap-before r<hr
-  bf-same-frame-slot a₁ a₂ cf-eq ns-eq hr-eq Erased erased-before = erased-before
 
 ------------------------------------------------------------------------
 -- Apply implementation with clean trace-based structure

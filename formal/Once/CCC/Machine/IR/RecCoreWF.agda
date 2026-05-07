@@ -271,7 +271,6 @@ module RecCoreWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     rec-scheme-preserves-ancestor-3 n s alloc f k not-halted (λ eq → ≺⇒≢ cf≺f (sym eq))
   rec-scheme-mem-preserved {n} s alloc refl not-halted (AtDynamic hl) (heap-before _) =
     rec-scheme-preserves-heap-3 n s alloc hl not-halted
-  rec-scheme-mem-preserved s alloc refl not-halted Erased erased-before = refl
 
   ------------------------------------------------------------------------
   -- Specialized Entry Points for Recursion Schemes

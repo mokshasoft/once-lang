@@ -332,7 +332,6 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       mem-preserved' (AtDynamic h) (heap-before _) =
         -- Heap location, use preserves-heap-loc
         exec-trace-preserves-heap-loc trace s alloc h tt
-      mem-preserved' Erased erased-before = refl
 
       -- Frontier slot stability
       -- The trace writes to closure-slot, but writes the SAME value (input-loc'):

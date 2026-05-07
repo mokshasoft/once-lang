@@ -171,14 +171,16 @@ data AbstractReg : Set where
 data ValueLocation (FS : FrameSemantics) : Set where
   AtStack   : FrameSemantics.Frame FS → Slot → ValueLocation FS
   AtDynamic : HeapLocation → ValueLocation FS
-  -- Plan 0.2.4.5 D1 (Unit erasure): sentinel for Unit-typed values.
-  -- Unit values carry no information — no register, no slot, no
-  -- observable content. Used as `result-loc` for `terminal` (and any
-  -- other Unit-producing IR), so the spec doesn't have to lie about
-  -- a phantom slot. `readLoc s Erased = nothing`; `BeforeFrontier
-  -- alloc Erased = ⊤`; only `valid-unit-wf` inhabits a `ValidAtWF`
-  -- at `Erased`.
-  Erased    : ValueLocation FS
+
+-- Plan 0.2.4.5 D1 (Unit erasure) note: there is intentionally no
+-- `Erased` sentinel here. The earlier Erased constructor encoded
+-- "Unit values are nowhere" as a value, but that's a half-measure
+-- — every memory operation needed a no-op clause for it. The
+-- principled spec answer (per `Once.CCC.Machine.ClosureWellFormed`'s
+-- `ResultPlace`) is to track Unit-typed results structurally:
+-- `unit-result : ResultPlace Unit ...` carries no location at all.
+-- So `ValueLocation` stays as the memory-locations type — exactly
+-- what its name suggests.
 
 -- Plan 0.2.4.5 Stage E retired (2026-05-07): the speculative
 -- `InReg : AbstractReg → ValueLocation` constructor has been removed.
@@ -209,14 +211,12 @@ offsetHL (heap-loc r o) n = heap-loc r (n + o)
 sucLoc : ∀ {FS} → ValueLocation FS → ValueLocation FS
 sucLoc (AtStack f k)  = AtStack f (suc k)
 sucLoc (AtDynamic hl) = AtDynamic (sucHL hl)
-sucLoc Erased         = Erased
 
 -- | Offset location by n slots (for unboxed multi-slot values)
 -- Note: n + k so that offsetLoc _ 1 = sucLoc definitionally.
 offsetLoc : ∀ {FS} → ValueLocation FS → ℕ → ValueLocation FS
 offsetLoc (AtStack f k)  n = AtStack f (n + k)
 offsetLoc (AtDynamic hl) n = AtDynamic (offsetHL hl n)
-offsetLoc Erased         _ = Erased
 
 ------------------------------------------------------------------------
 -- Memory: Stores Locations (not Words)
@@ -414,14 +414,12 @@ module MemOps {FS : FrameSemantics} where
   -- | Read a Location from memory
   -- Stack: returns arbitrary ValueLocation
   -- Heap: returns HeapLocation lifted to ValueLocation
-  -- Erased: returns nothing (Unit values have no observable content).
   readLoc : LocState FS → ValueLocation FS → Maybe (ValueLocation FS)
   readLoc s (AtStack f k) = stackMem s f k
   readLoc s (AtDynamic hl) with heapMem s hl
   ... | just hl' = just (AtDynamic hl')
   ... | nothing  = nothing
   -- Plan 0.2.4.5 D1 (Unit erasure): erased values have no content.
-  readLoc s Erased = nothing
 
   -- | Write a Location to stack memory.
   -- Order of clauses preserves definitional equalities for the (no _)
@@ -459,14 +457,10 @@ module MemOps {FS : FrameSemantics} where
   -- Stack destinations: can store any ValueLocation
   -- Heap destinations: can only store HeapLocation (extracted from AtDynamic)
   -- Note: Writing AtStack to AtDynamic is a type error - enforces invariant!
-  -- Erased destinations: writeLoc is a no-op (Unit has no content).
   writeLoc : LocState FS → ValueLocation FS → ValueLocation FS → LocState FS
   writeLoc s (AtStack f k) v = writeLocToStack s f k v
   writeLoc s (AtDynamic hl) (AtDynamic v) = writeLocToHeap s hl v
   writeLoc s (AtDynamic hl) (AtStack _ _) = s  -- Invalid: can't store stack ref in heap (no-op)
-  writeLoc s (AtDynamic hl) Erased = s         -- Erased values aren't storable (no-op)
-  -- Plan 0.2.4.5 D1 (Unit erasure): writes to Erased are no-ops.
-  writeLoc s Erased _ = s
 
   -- writeLoc preserves regs (for all cases)
   writeLoc-regs : ∀ (s : LocState FS) (loc : ValueLocation FS) (v : ValueLocation FS) →
@@ -474,8 +468,6 @@ module MemOps {FS : FrameSemantics} where
   writeLoc-regs s (AtStack f k) v = refl
   writeLoc-regs s (AtDynamic hl) (AtDynamic v) = refl
   writeLoc-regs s (AtDynamic hl) (AtStack _ _) = refl
-  writeLoc-regs s (AtDynamic hl) Erased = refl
-  writeLoc-regs s Erased _ = refl
 
   -- writeLoc preserves halted (for all cases)
   writeLoc-halted : ∀ (s : LocState FS) (loc : ValueLocation FS) (v : ValueLocation FS) →
@@ -483,8 +475,6 @@ module MemOps {FS : FrameSemantics} where
   writeLoc-halted s (AtStack f k) v = refl
   writeLoc-halted s (AtDynamic hl) (AtDynamic v) = refl
   writeLoc-halted s (AtDynamic hl) (AtStack _ _) = refl
-  writeLoc-halted s (AtDynamic hl) Erased = refl
-  writeLoc-halted s Erased _ = refl
 
   -- writeLoc AtStack preserves heapMem
   writeLoc-heapMem-stack : ∀ (s : LocState FS) (f : Frame) (k : Slot) (v : ValueLocation FS) →
@@ -525,7 +515,6 @@ module MemOps {FS : FrameSemantics} where
   -- Writing to heap, reading from stack (disjoint)
   writeLoc-preserves-other s (AtDynamic hl) (AtStack f k) (AtDynamic hv) _ = refl
   writeLoc-preserves-other s (AtDynamic hl) (AtStack f k) (AtStack _ _) _ = refl
-  writeLoc-preserves-other s (AtDynamic hl) (AtStack f k) Erased _ = refl
   -- Writing to heap, reading from different heap location
   writeLoc-preserves-other s (AtDynamic hl1) (AtDynamic hl2) (AtDynamic hv) neq
     with hl1 ≟HL hl2
@@ -534,14 +523,7 @@ module MemOps {FS : FrameSemantics} where
   ... | no _ = refl
   -- Writing AtStack to AtDynamic is a no-op, so reading anything returns original
   writeLoc-preserves-other s (AtDynamic hl1) (AtDynamic hl2) (AtStack _ _) _ = refl
-  -- Plan 0.2.4.5 D1 (Unit erasure): readLoc Erased = nothing always,
-  -- and writeLoc to Erased is a no-op, so Erased is disjoint from
   -- every other location.
-  writeLoc-preserves-other s (AtStack f k) Erased _ _ = refl
-  writeLoc-preserves-other s (AtDynamic hl) Erased _ _ = refl
-  writeLoc-preserves-other s Erased _ _ _ = refl
-  -- Writing AtDynamic with Erased value to AtDynamic location is a no-op
-  writeLoc-preserves-other s (AtDynamic hl1) (AtDynamic hl2) Erased _ = refl
 
   -- writeLoc-read-same: Reading from the location we just wrote returns the written value
   -- Stack case: writeLoc s (AtStack f k) v → readLoc (AtStack f k) ≡ just v
@@ -721,8 +703,6 @@ module ExecLemmas {FS : FrameSemantics} where
   ... | nothing | nothing | _ = refl
   ... | just _ | nothing | ()
   ... | nothing | just _ | ()
-  -- Plan 0.2.4.5 D1 (Unit erasure): Erased reads as nothing in any state.
-  readLoc-stackMem-eq s₁ s₂ Erased _ _ = refl
 
 ------------------------------------------------------------------------
 -- Abstract Instructions

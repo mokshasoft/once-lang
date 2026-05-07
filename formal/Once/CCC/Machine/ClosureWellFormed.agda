@@ -1296,7 +1296,6 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     slot-of-loc : ValueLocation FS → ℕ
     slot-of-loc (AtStack _ k) = k
     slot-of-loc (AtDynamic _) = 0  -- dummy, heap locations don't use slot comparison
-    slot-of-loc Erased        = 0  -- dummy, Unit has no slot
 
   ------------------------------------------------------------------------
   -- Validity preservation with gap slot
@@ -1413,7 +1412,6 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
         stack-ancestor cf≺f src  -- Frame ordering and provenance unchanged (same current-frame)
       stack-alloc-advances' alloc rs monotone (AtDynamic hl) (heap-before r<next) =
         heap-before r<next
-      stack-alloc-advances' alloc rs monotone Erased erased-before = erased-before
 
   -- ValidAtWF is preserved after reclamation
   validityWF-reclaim : ∀ {m alloc A} (v : ⟦ A ⟧) loc s reclaim-slot
@@ -1480,7 +1478,6 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
   derive-mem-preserved-at alloc start trace s twa tnhw (AtDynamic h) (heap-before _) _ =
     -- Heap location
     exec-trace-preserves-heap-loc trace s alloc h tnhw
-  derive-mem-preserved-at alloc start trace s twa tnhw Erased erased-before _ = refl
 
   -- Standard variant: derive preservation for slots below next-slot alloc
   derive-mem-preserved : ∀ (alloc : AllocState {FS})

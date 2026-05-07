@@ -347,7 +347,6 @@ module ValidityDef {FS : FrameSemantics} (program-bound : ℕ) where
   ... | nothing | nothing | _ = refl
   ... | just _ | nothing | ()
   ... | nothing | just _ | ()
-  readLoc-stack-heap-eq s₁ s₂ Erased _ _ = refl
 
   validity-mem-only : ∀ {alloc A} (v : ⟦ A ⟧) loc (s₁ s₂ : LocState FS) →
     stackMem s₁ ≡ stackMem s₂ →

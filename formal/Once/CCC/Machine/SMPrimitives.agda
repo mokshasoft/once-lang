@@ -127,7 +127,6 @@ module MemoryOps {FS : FrameSemantics} where
     readLoc (writeLoc s (AtDynamic h) v) (AtStack f k) ≡ readLoc s (AtStack f k)
   readLoc-writeLoc-heap-stack s h f k (AtDynamic _) = refl
   readLoc-writeLoc-heap-stack s h f k (AtStack _ _) = refl
-  readLoc-writeLoc-heap-stack s h f k Erased = refl
 
   -- heapMem equality implies readLoc equality for heap locations
   readLoc-heapMem-eq : ∀ (s₁ s₂ : LocState FS) (h : HeapLocation) →
@@ -144,7 +143,6 @@ module MemoryOps {FS : FrameSemantics} where
     record (writeLoc s (AtDynamic hl) v) { regs = r }
   writeLoc-regs-commute-heap s hl (AtDynamic v) r = refl
   writeLoc-regs-commute-heap s hl (AtStack _ _) r = refl
-  writeLoc-regs-commute-heap s hl Erased r = refl
 
   -- General writeLoc commutes with register updates for any location
   -- Symmetric with writeLoc-regs-commute (AtStack case from SlotMachine)
@@ -154,7 +152,6 @@ module MemoryOps {FS : FrameSemantics} where
     record (writeLoc s loc v) { regs = r }
   writeLoc-regs-commute-general s (AtStack f k) v r = writeLoc-regs-commute s f k v r
   writeLoc-regs-commute-general s (AtDynamic hl) v r = writeLoc-regs-commute-heap s hl v r
-  writeLoc-regs-commute-general s Erased v r = refl
 
   ------------------------------------------------------------------------
   -- Positive stack slot preservation lemmas
@@ -195,20 +192,11 @@ module MemoryOps {FS : FrameSemantics} where
   -- Read after write (same location)
   -- Uses writeLoc-read-same-stack from SMCore for stack locations
   -- Heap cases use axiom (heap write semantics are more complex)
-  -- For Erased: writeLoc is a no-op, readLoc always returns nothing,
-  -- so the property `readLoc (writeLoc s Erased v) Erased ≡ just v`
-  -- is FALSE unconditionally. Plan 0.2.4.5 D1: callers never invoke
-  -- this lemma at Erased — Erased is exclusively a result-handle for
-  -- Unit-typed values, never a write target. Postulated for coverage;
-  -- a principled fix separates "storage location" from "result place"
-  -- at the type level (the structural split, deferred to D4).
   readLoc-writeLoc-same : ∀ (s : LocState FS) (loc : ValueLocation FS) (v : ValueLocation FS) →
     readLoc (writeLoc s loc v) loc ≡ just v
   readLoc-writeLoc-same s (AtStack f k) v = writeLoc-read-same-stack s f k v
   readLoc-writeLoc-same s (AtDynamic hl) v = readLoc-writeLoc-same-heap s hl v
     where postulate readLoc-writeLoc-same-heap : ∀ s hl v → readLoc (writeLoc s (AtDynamic hl) v) (AtDynamic hl) ≡ just v
-  readLoc-writeLoc-same s Erased v = readLoc-writeLoc-same-erased-stub s v
-    where postulate readLoc-writeLoc-same-erased-stub : ∀ s v → readLoc (writeLoc s Erased v) Erased ≡ just v
 
 ------------------------------------------------------------------------
 -- Level 3: Instruction Characterization (POSITIVE)
@@ -311,12 +299,10 @@ instr-reads-slot instr-save-closure-reg   = nothing
 instr-writes-heap-indirect-aux : ValueLocation FS → Maybe HeapLocation
 instr-writes-heap-indirect-aux (AtDynamic hl)    = just hl
 instr-writes-heap-indirect-aux (AtStack _ _)  = nothing
-instr-writes-heap-indirect-aux Erased         = nothing
 
 instr-writes-heap-indirect-suc-aux : ValueLocation FS → Maybe HeapLocation
 instr-writes-heap-indirect-suc-aux (AtDynamic hl)    = just (sucHL hl)
 instr-writes-heap-indirect-suc-aux (AtStack _ _)  = nothing
-instr-writes-heap-indirect-suc-aux Erased         = nothing
 
 instr-writes-heap : AbstractInstr → LocState FS → Maybe HeapLocation
 instr-writes-heap store-indirect          s = instr-writes-heap-indirect-aux (readReg (regs s) Input1)
@@ -1915,7 +1901,6 @@ module TracePrimitives {FS : FrameSemantics} where
     writeLoc-preserves-other s (AtStack (current-frame alloc) k) (AtDynamic hl)
       (readReg (regs s) Output) (λ ())
   -- Erased reads as nothing in any state, so trivially preserved.
-  exec-abstract-store-at-slot-preserves-loc k s alloc Erased _ = refl
 
   ------------------------------------------------------------------------
   -- (I) SNOC DECOMPOSITION
@@ -2339,7 +2324,6 @@ module RecSchemeSemantics {FS : FrameSemantics} where
     readLoc (proj₁ (exec-abstract mov-to-output s alloc)) loc ≡ readLoc s loc
   exec-abstract-mov-to-output-preserves-mem s alloc (AtStack f k) = refl
   exec-abstract-mov-to-output-preserves-mem s alloc (AtDynamic hl) = refl
-  exec-abstract-mov-to-output-preserves-mem s alloc Erased = refl
 
   -- After mov-to-output ∷ [], memory is preserved
   -- mov-to-output only modifies registers, not memory
@@ -2636,7 +2620,6 @@ module RecSchemeSemantics {FS : FrameSemantics} where
     with readLoc s (sucLoc (readReg (regs s) Input1))
   ... | just _ = refl
   ... | nothing = refl
-  exec-abstract-load-indirect-suc-preserves-mem s alloc Erased = refl
 
   -- load-indirect-suc preserves stackMem and heapMem (for μLayerValid transfer)
   exec-abstract-load-indirect-suc-preserves-stackMem : ∀ (s : LocState FS) (alloc : AllocState {FS}) →
@@ -3254,7 +3237,6 @@ module RecSchemeSemantics {FS : FrameSemantics} where
     with readLoc s (readReg (regs s) Input1)
   ... | just v = refl
   ... | nothing = refl
-  exec-abstract-load-indirect-preserves-mem s alloc Erased = refl
 
   -- | mov-to-input preserves memory (only changes registers)
   exec-abstract-mov-to-input-preserves-mem : ∀ (s : LocState FS) (alloc : AllocState {FS})
@@ -3262,7 +3244,6 @@ module RecSchemeSemantics {FS : FrameSemantics} where
     readLoc (proj₁ (exec-abstract mov-to-input s alloc)) loc ≡ readLoc s loc
   exec-abstract-mov-to-input-preserves-mem s alloc (AtStack f k) = refl
   exec-abstract-mov-to-input-preserves-mem s alloc (AtDynamic hl) = refl
-  exec-abstract-mov-to-input-preserves-mem s alloc Erased = refl
 
   -- | 4-instruction left setup trace preserves memory except save-slot
   prod-left-setup-mem-helper : ∀ (save-slot : ℕ) (s : LocState FS) (alloc : AllocState {FS})
@@ -3413,7 +3394,6 @@ module RecSchemeSemantics {FS : FrameSemantics} where
     with readLoc s (AtStack (current-frame alloc) slot)
   ... | just _  = refl
   ... | nothing = refl
-  exec-abstract-load-from-slot-preserves-mem slot s alloc Erased = refl
 
   -- | prod-right-setup preserves alloc
   --
