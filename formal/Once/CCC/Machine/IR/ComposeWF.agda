@@ -339,14 +339,6 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- result-place above. (Old code used place-reclaim-before /
       -- place-reclaim-valid to extract them; with the whole-bundle
       -- transport the dual-alloc form of `at-loc` carries them.)
-      compose-reclaim-preserves-validity :
-        ValidAtWF mOut (record alloc { next-slot = next-slot alloc₂ })
-                  (eval g (eval f x)) (place-loc (IRResultAWF.result-place result-g)) s-final
-      compose-reclaim-preserves-validity =
-        subst (λ st → ValidAtWF mOut (record alloc { next-slot = next-slot alloc₂ })
-                        (eval g (eval f x)) (place-loc (IRResultAWF.result-place result-g)) st)
-              (sym s-final-eq)
-              (place-reclaim-valid (IRResultAWF.result-place result-g))
 
       ------------------------------------------------------------------------
       -- Max slot tracking
