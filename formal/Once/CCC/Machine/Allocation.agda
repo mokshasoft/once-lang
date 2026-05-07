@@ -170,6 +170,8 @@ module WriteOps {FS : FrameSemantics} where
   write-loc s (AtStack f k) val = write-stack-slot s f k val
   write-loc s (AtDynamic hl) (AtDynamic val) = write-heap-slot s hl val
   write-loc s (AtDynamic hl) (AtStack _ _) = s  -- Invalid: can't store stack ref in heap
+  write-loc s (AtDynamic hl) Erased = s         -- Erased values aren't storable
+  write-loc s Erased _ = s                      -- writes to Erased are no-ops
 
   -- Write preserves reads at different locations (stack)
   write-stack-preserves-diff : ∀ s f₁ k₁ f₂ k₂ val →

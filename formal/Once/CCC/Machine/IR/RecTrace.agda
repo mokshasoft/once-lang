@@ -3540,6 +3540,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
       readLoc (record s { regs = r }) loc ≡ readLoc s loc
     readLoc-regs-irrelevant s r (AtStack f k) = refl
     readLoc-regs-irrelevant s r (AtDynamic hl) = refl
+    readLoc-regs-irrelevant s r Erased = refl
 
     -- Helper: mov-to-input state equals manual Input1 write when Output = target
     -- exec-abstract mov-to-input s alloc = (record s { regs = writeReg (regs s) Input1 (readReg (regs s) Output) }, alloc)

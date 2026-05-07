@@ -1217,6 +1217,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     slot-of-loc : ValueLocation FS → ℕ
     slot-of-loc (AtStack _ k) = k
     slot-of-loc (AtDynamic _) = 0  -- dummy, heap locations don't use slot comparison
+    slot-of-loc Erased        = 0  -- dummy, Unit has no slot
 
   ------------------------------------------------------------------------
   -- Validity preservation with gap slot

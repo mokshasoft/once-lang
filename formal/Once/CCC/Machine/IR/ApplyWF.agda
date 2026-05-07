@@ -389,15 +389,17 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
                         (trans store-result (cong just step1-output)))
 
       -- Remaining setup preserves slot (suc pair-slot)
-      -- Steps 3-8 don't write to slot (suc pair-slot):
+      -- Steps 3-9 don't write to slot (suc pair-slot):
       --   3. load-indirect (no mem write)
       --   4. mov-to-input (no mem write)
-      --   5. load-indirect (no mem write)
-      --   6. store-at-slot pair-slot (writes to pair-slot ≠ suc pair-slot)
-      --   7. lea-slot pair-slot (no mem write)
-      --   8. mov-to-input (no mem write)
+      --   5. instr-save-closure-reg (no mem write)
+      --   6. load-indirect (no mem write)
+      --   7. store-at-slot pair-slot (writes to pair-slot ≠ suc pair-slot)
+      --   8. lea-slot pair-slot (no mem write)
+      --   9. mov-to-input (no mem write)
       rest-after-step2 : AbstractTrace
       rest-after-step2 = load-indirect ∷ mov-to-input ∷
+                         instr-save-closure-reg ∷
                          load-indirect ∷ store-at-slot pair-slot ∷
                          lea-slot pair-slot ∷ mov-to-input ∷ []
 
@@ -435,13 +437,14 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
                                        (AtStack f (suc pair-slot)) ≡ just arg-loc)
                         frame-eq2 preserved)
 
-      -- For pair-env-ptr, we need to trace through to step 6
-      -- Steps 1-5 are prefix, step 6 stores env-loc, steps 7-8 preserve
+      -- For pair-env-ptr, we need to trace through to step 7
+      -- Steps 1-6 are prefix, step 7 stores env-loc, steps 8-9 preserve
 
-      -- State after steps 1-5 (before store-at-slot pair-slot)
+      -- State after steps 1-6 (before store-at-slot pair-slot)
       prefix-for-env : AbstractTrace
       prefix-for-env = load-indirect-suc ∷ store-at-slot (suc pair-slot) ∷
-                       load-indirect ∷ mov-to-input ∷ load-indirect ∷ []
+                       load-indirect ∷ mov-to-input ∷ instr-save-closure-reg ∷
+                       load-indirect ∷ []
 
       suffix-after-env-store : AbstractTrace
       suffix-after-env-store = lea-slot pair-slot ∷ mov-to-input ∷ []
@@ -457,7 +460,8 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
         (tph-∷ iph-store-at-slot
         (tph-∷ iph-load-indirect
         (tph-∷ iph-mov-to-input
-        (tph-∷ iph-load-indirect tph-[]))))
+        (tph-∷ iph-instr-save-closure-reg
+        (tph-∷ iph-load-indirect tph-[])))))
 
       not-halted-after-prefix-for-env : halted (proj₁ (exec-trace prefix-for-env s alloc)) ≡ false
       not-halted-after-prefix-for-env = exec-trace-preserves-halted prefix-for-env s alloc not-halted prefix-for-env-tph
@@ -485,7 +489,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       prefix12 = load-indirect-suc ∷ store-at-slot (suc pair-slot) ∷ []
 
       prefix345 : AbstractTrace
-      prefix345 = load-indirect ∷ mov-to-input ∷ load-indirect ∷ []
+      prefix345 = load-indirect ∷ mov-to-input ∷ instr-save-closure-reg ∷ load-indirect ∷ []
 
       prefix-decomp-12-345 : prefix-for-env ≡ prefix12 ++ prefix345
       prefix-decomp-12-345 = refl
@@ -552,7 +556,9 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
 
       -- Step 5: load-indirect reads *Input1 = *closure-loc = env-loc
       prefix345-tph : TracePreservesHaltedP prefix345
-      prefix345-tph = tph-∷ iph-load-indirect (tph-∷ iph-mov-to-input (tph-∷ iph-load-indirect tph-[]))
+      prefix345-tph = tph-∷ iph-load-indirect (tph-∷ iph-mov-to-input
+                      (tph-∷ iph-instr-save-closure-reg
+                      (tph-∷ iph-load-indirect tph-[])))
 
       not-halted-s345 : halted (proj₁ (exec-trace prefix345 s12 alloc12)) ≡ false
       not-halted-s345 = exec-trace-preserves-halted prefix345 s12 alloc12 not-halted-s12 prefix345-tph
@@ -587,7 +593,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       -- Decompose setup-trace as prefix ++ (lea-slot pair-slot ∷ mov-to-input ∷ [])
       setup-prefix : AbstractTrace
       setup-prefix = load-indirect-suc ∷ store-at-slot (suc pair-slot) ∷
-                     load-indirect ∷ mov-to-input ∷
+                     load-indirect ∷ mov-to-input ∷ instr-save-closure-reg ∷
                      load-indirect ∷ store-at-slot pair-slot ∷ []
 
       setup-decomp : apply-setup-trace pair-slot ≡
@@ -601,8 +607,9 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
         (tph-∷ iph-store-at-slot
         (tph-∷ iph-load-indirect
         (tph-∷ iph-mov-to-input
+        (tph-∷ iph-instr-save-closure-reg
         (tph-∷ iph-load-indirect
-        (tph-∷ iph-store-at-slot tph-[])))))
+        (tph-∷ iph-store-at-slot tph-[]))))))
 
       not-halted-after-prefix : halted (proj₁ (exec-trace setup-prefix s alloc)) ≡ false
       not-halted-after-prefix = exec-trace-preserves-halted setup-prefix s alloc not-halted setup-prefix-tph
@@ -627,10 +634,11 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
         (tph-∷ iph-store-at-slot
         (tph-∷ iph-load-indirect
         (tph-∷ iph-mov-to-input
+        (tph-∷ iph-instr-save-closure-reg
         (tph-∷ iph-load-indirect
         (tph-∷ iph-store-at-slot
         (tph-∷ iph-lea-slot
-        (tph-∷ iph-mov-to-input tph-[])))))))
+        (tph-∷ iph-mov-to-input tph-[]))))))))
 
       -- Not halted after setup
       not-halted-after-setup : halted s-after-setup ≡ false

@@ -135,7 +135,7 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
   open WriteOps {FS}
   open ExecFinal {FS}
   open ExecLemmas {FS}
-  open Allocator {FS}
+  open Once.CCC.Machine.Allocation.Allocator {FS}
   open StackAllocation {FS}
   open FrameSemantics FS
   open import Data.Nat.Properties using (≤-refl; ≤-trans; ≤-reflexive; m≤m+n; m<m+n; n≤1+n; n<1+n; <-trans; m+n≤o⇒m≤o; +-suc; +-comm; +-monoˡ-≤; +-monoʳ-≤; +-assoc)
