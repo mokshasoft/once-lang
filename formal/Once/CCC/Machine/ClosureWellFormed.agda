@@ -295,12 +295,40 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
                   → BeforeFrontier reclaim-alloc loc
                   → ResultPlace B m alloc reclaim-alloc v s
 
-    -- Plan 0.2.4.5 D1: transitional helpers for ProcessedLayerResult
-    -- (whose old plain `rax-is-result` / `result-loc` / etc. fields
-    -- haven't been migrated to ResultPlace yet). The Unit case
-    -- postulates a stub since ProcessedLayerResult expects plain
-    -- (non-erased) equations. Once ProcessedLayerResult also adopts
-    -- ResultPlace, these helpers go away.
+    -- Plan 0.2.4.5 D1 trust points: place-* extraction helpers.
+    --
+    -- These project facts out of a `ResultPlace` into the plain
+    -- shape that consumers (compose, pair, RecTrace cata) and
+    -- `rec-wf`'s preconditions still expect:
+    --
+    --   * `place-loc rp` — a `ValueLocation FS`.
+    --   * `place-valid rp` — `ValidAtWF` at `place-loc rp`.
+    --   * `place-before rp` — `BeforeFrontier alloc (place-loc rp)`.
+    --   * `place-rax rp` — `readReg s Output ≡ place-loc rp`.
+    --   * `place-reclaim-valid rp` / `place-reclaim-before rp` —
+    --     same but for the reclaim-side alloc state.
+    --
+    -- For `at-loc`, all six are constructor projections (no trust).
+    -- For `unit-result`, each is postulated, encoding the
+    -- structural fact that "Unit values don't observably reside
+    -- anywhere" — there's nothing to extract.
+    --
+    -- Each postulate is sound for Unit because:
+    --   * Unit values carry no observable content.
+    --   * `valid-unit-wf` is loc-agnostic (works at any loc).
+    --   * BeforeFrontier on a Unit's mythical loc is vacuous.
+    --   * Output's value at a Unit boundary is irrelevant.
+    --
+    -- The postulates are TRANSITIONAL. They go away when either:
+    --   (a) `rec-wf`'s preconditions become type-aware — for
+    --       Unit-typed IRs, drop `BeforeFrontier alloc input-loc`
+    --       and `readReg s Input1 ≡ input-loc` (both vacuous).
+    --   (b) Each consumer (compose, pair, RecTrace cata)
+    --       case-splits on the `result-place` constructor and takes
+    --       a Unit-aware code path that doesn't go through place-*.
+    --
+    -- Either route requires a deeper proof restructure than the
+    -- spec migration covered. Tracked as Plan 0.2.4.5 D1 task #28.
     place-loc : ∀ {B m a₁ a₂ v s} → ResultPlace B m a₁ a₂ v s → ValueLocation FS
     place-loc (at-loc loc _ _ _ _ _) = loc
     place-loc {Unit} unit-result = unit-result-loc-stub
@@ -324,8 +352,6 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     place-rax {Unit} {_} {_} {_} {_} {s} unit-result = rax-stub
       where postulate rax-stub : readReg (regs s) Output ≡ _
 
-    -- Reclaim-side projections (validity + before-frontier under the
-    -- reclaimed alloc state). Same loc as place-loc by construction.
     place-reclaim-valid : ∀ {B m a₁ a₂ v s} (rp : ResultPlace B m a₁ a₂ v s) →
                           ValidAtWF m a₂ v (place-loc rp) s
     place-reclaim-valid (at-loc _ _ _ _ rvalid _) = rvalid
