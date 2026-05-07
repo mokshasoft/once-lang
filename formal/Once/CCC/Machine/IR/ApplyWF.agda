@@ -106,8 +106,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
 
   open import Once.CCC.Machine.ClosureWellFormed
   open ClosureWellFormedDef {FS} program-bound
-    using (ValidAtWF; IRResultAWF; ResultPlace; unit-result; at-loc;
-           place-loc; place-valid; place-before; place-rax; BodyCorrect;
+    using (ValidAtWF; IRResultAWF; ResultPlace; unit-result; at-loc; BodyCorrect;
            valid-unit-wf; valid-pair-wf; valid-closure-wf;
            valid-inl-wf; valid-inr-wf;
            -- OCP-0003: valid-fold-wf removed
@@ -661,7 +660,20 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       body-result = proj₂ body-exec-result
 
       body-trace = IRResultAWF.trace body-result
-      result-loc = place-loc (IRResultAWF.result-place body-result)
+
+      -- Plan 0.2.4.5 D1 task #28: dispatch on body's result-place
+      -- to extract result-loc. Same pattern as compose / pair:
+      --   at-loc → bound loc.
+      --   unit-result → readReg <body-final-state> Output (whatever
+      --     Output happens to be at body's end). Apply's downstream
+      --     properties (rax-eq', mem-preserved', result-before',
+      --     etc., all currently SMP.!! — see task #30) inherit this
+      --     value as their result-loc index.
+      result-loc-dispatch : ResultPlace _ _ _ _ _ _ → ValueLocation FS
+      result-loc-dispatch (at-loc loc _ _ _ _ _) = loc
+      result-loc-dispatch unit-result = readReg (regs (IRResultAWF.final-state body-result)) Output
+
+      result-loc = result-loc-dispatch (IRResultAWF.result-place body-result)
 
       ------------------------------------------------------------------------
       -- Full trace and final state (CLEAN: defined by exec-trace)
