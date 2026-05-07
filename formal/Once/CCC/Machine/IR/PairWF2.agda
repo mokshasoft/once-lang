@@ -65,10 +65,8 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
   -- Types from ClosureWellFormed
   open ClosureWellFormedDef {FS} program-bound
     using (ValidAtWF; IRResultAWF; ResultPlace; unit-result; at-loc;
-           place-loc; place-valid; place-before; place-rax;
-           place-reclaim-valid; place-reclaim-before;
            RecDispatcherWF;
-           valid-pair-wf;
+           valid-pair-wf; valid-unit-wf;
            validityWF-mem-only; validityWF-mem-preserved;
            validityWF-mem-preserved-in-regions;
            validityWF-frontier-advance;
@@ -174,8 +172,64 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
       mF = proj₁ f-exec-result
       result-f = proj₂ f-exec-result
       s₁ = IRResultAWF.final-state result-f
-      fst-loc = place-loc (IRResultAWF.result-place result-f)
       f-trace = IRResultAWF.trace result-f
+
+      ------------------------------------------------------------------------
+      -- Plan 0.2.4.5 D1 task #28: dispatch on f's result-place to
+      -- extract fst-loc + supporting facts. Same pattern as compose:
+      --   at-loc → bound vars from constructor.
+      --   unit-result → fst-loc = readReg s₁ Output (whatever Output
+      --     happens to be at f's end), making the rax equation refl
+      --     by construction. validity at any loc is valid-unit-wf.
+      --     pair-loc[0]'s contents will equal Output's value via the
+      --     store-at-slot fst-slot instruction, so valid-pair-wf's
+      --     "pair-loc[0] ≡ just fst-loc" claim holds.
+      record FstFacts : Set where
+        field
+          fst-loc-f       : ValueLocation FS
+          fst-rax-f       : readReg (regs s₁) Output ≡ fst-loc-f
+          fst-valid-f     : ValidAtWF mF (IRResultAWF.final-alloc result-f) (eval f x) fst-loc-f s₁
+          fst-before-f    : BeforeFrontier (IRResultAWF.final-alloc result-f) fst-loc-f
+          fst-rec-valid-f : ValidAtWF mF (record alloc-after-pair-slots
+                                            { next-slot = next-slot (IRResultAWF.final-alloc result-f) })
+                                       (eval f x) fst-loc-f s₁
+          fst-rec-before-f : BeforeFrontier (record alloc-after-pair-slots
+                                              { next-slot = next-slot (IRResultAWF.final-alloc result-f) })
+                                            fst-loc-f
+
+      f-facts : FstFacts
+      f-facts with IRResultAWF.result-place result-f
+      ... | at-loc loc valid before rax rvalid rbefore = record
+              { fst-loc-f        = loc
+              ; fst-rax-f        = rax
+              ; fst-valid-f      = valid
+              ; fst-before-f     = before
+              ; fst-rec-valid-f  = rvalid
+              ; fst-rec-before-f = rbefore
+              }
+      ... | unit-result = record
+              { fst-loc-f        = readReg (regs s₁) Output
+              ; fst-rax-f        = refl
+              ; fst-valid-f      = valid-unit-wf
+              ; fst-before-f     = unit-fst-before
+              ; fst-rec-valid-f  = valid-unit-wf
+              ; fst-rec-before-f = unit-fst-rec-before
+              }
+        where
+          postulate
+            unit-fst-before : BeforeFrontier (IRResultAWF.final-alloc result-f) (readReg (regs s₁) Output)
+            unit-fst-rec-before : BeforeFrontier
+              (record alloc-after-pair-slots
+                { next-slot = next-slot (IRResultAWF.final-alloc result-f) })
+              (readReg (regs s₁) Output)
+
+      open FstFacts f-facts using ()
+        renaming (fst-loc-f to fst-loc;
+                  fst-rax-f to fst-rax-eq;
+                  fst-valid-f to fst-valid-from-f;
+                  fst-before-f to fst-before-pre-from-f;
+                  fst-rec-valid-f to fst-rec-valid-from-f;
+                  fst-rec-before-f to fst-rec-before-from-f)
 
       ------------------------------------------------------------------------
       -- Reclaim after f (Phase 7: use next-slot final-alloc instead of reclaimable-slot)
@@ -232,8 +286,57 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
       mG = proj₁ g-exec-result
       result-g = proj₂ g-exec-result
       s₂ = IRResultAWF.final-state result-g
-      snd-loc = place-loc (IRResultAWF.result-place result-g)
       g-trace = IRResultAWF.trace result-g
+
+      ------------------------------------------------------------------------
+      -- Plan 0.2.4.5 D1 task #28: dispatch on g's result-place to
+      -- extract snd-loc + supporting facts. Same pattern as fst above.
+      record SndFacts : Set where
+        field
+          snd-loc-g       : ValueLocation FS
+          snd-rax-g       : readReg (regs s₂) Output ≡ snd-loc-g
+          snd-valid-g     : ValidAtWF mG (IRResultAWF.final-alloc result-g) (eval g x) snd-loc-g s₂
+          snd-before-g    : BeforeFrontier (IRResultAWF.final-alloc result-g) snd-loc-g
+          snd-rec-valid-g : ValidAtWF mG (record alloc-after-f-reclaim
+                                            { next-slot = next-slot (IRResultAWF.final-alloc result-g) })
+                                       (eval g x) snd-loc-g s₂
+          snd-rec-before-g : BeforeFrontier (record alloc-after-f-reclaim
+                                              { next-slot = next-slot (IRResultAWF.final-alloc result-g) })
+                                            snd-loc-g
+
+      g-facts : SndFacts
+      g-facts with IRResultAWF.result-place result-g
+      ... | at-loc loc valid before rax rvalid rbefore = record
+              { snd-loc-g        = loc
+              ; snd-rax-g        = rax
+              ; snd-valid-g      = valid
+              ; snd-before-g     = before
+              ; snd-rec-valid-g  = rvalid
+              ; snd-rec-before-g = rbefore
+              }
+      ... | unit-result = record
+              { snd-loc-g        = readReg (regs s₂) Output
+              ; snd-rax-g        = refl
+              ; snd-valid-g      = valid-unit-wf
+              ; snd-before-g     = unit-snd-before
+              ; snd-rec-valid-g  = valid-unit-wf
+              ; snd-rec-before-g = unit-snd-rec-before
+              }
+        where
+          postulate
+            unit-snd-before : BeforeFrontier (IRResultAWF.final-alloc result-g) (readReg (regs s₂) Output)
+            unit-snd-rec-before : BeforeFrontier
+              (record alloc-after-f-reclaim
+                { next-slot = next-slot (IRResultAWF.final-alloc result-g) })
+              (readReg (regs s₂) Output)
+
+      open SndFacts g-facts using ()
+        renaming (snd-loc-g to snd-loc;
+                  snd-rax-g to snd-rax-eq;
+                  snd-valid-g to snd-valid-from-g;
+                  snd-before-g to snd-before-pre-from-g;
+                  snd-rec-valid-g to snd-rec-valid-from-g;
+                  snd-rec-before-g to snd-rec-before-from-g)
 
       ------------------------------------------------------------------------
       -- Reclaim after g (Phase 7: use next-slot final-alloc instead of reclaimable-slot)
@@ -905,7 +1008,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
       oaf-s1-output : readReg (regs (proj₁ (exec-trace f-trace s alloc-after-pair-slots))) Output ≡ fst-loc
       oaf-s1-output = subst (λ st → readReg (regs st) Output ≡ fst-loc)
                             (sym (IRResultAWF.trace-correct result-f))
-                            (place-rax (IRResultAWF.result-place result-f))
+                            fst-rax-eq
 
       output-after-f : readReg (regs s-after-f) Output ≡ fst-loc
       output-after-f =
@@ -1164,7 +1267,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
       oag-s2-output : readReg (regs (proj₁ (exec-trace g-trace s₁' alloc-after-f-reclaim))) Output ≡ snd-loc
       oag-s2-output = subst (λ st → readReg (regs st) Output ≡ snd-loc)
                             (sym (IRResultAWF.trace-correct result-g))
-                            (place-rax (IRResultAWF.result-place result-g))
+                            snd-rax-eq
 
       output-after-g : readReg (regs s-after-g) Output ≡ snd-loc
       output-after-g =
@@ -1326,12 +1429,12 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
                      (IRResultAWF.slot-monotone result-g)
                      ≤-refl
                      fst-loc
-                     (place-reclaim-before (IRResultAWF.result-place result-f))
+                     fst-rec-before-from-f
 
       snd-before : BeforeFrontier alloc-final snd-loc
       snd-before = frontier-monotone (record alloc { next-slot = reclaim-g }) alloc-final
                      refl ≤-refl ≤-refl snd-loc
-                     (place-reclaim-before (IRResultAWF.result-place result-g))
+                     snd-rec-before-from-g
 
       -- sucLoc pair-loc = AtStack frame snd-slot
       sucLoc-pair-before : BeforeFrontier alloc-final (sucLoc pair-loc)
@@ -1358,11 +1461,11 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
 
       -- Step 1: Get validity at s₁ with alloc-after-f-reclaim
       valid-s1-reclaimed : ValidAtWF mF alloc-after-f-reclaim (eval f x) fst-loc s₁
-      valid-s1-reclaimed = place-reclaim-valid (IRResultAWF.result-place result-f)
+      valid-s1-reclaimed = fst-rec-valid-from-f
 
       -- fst-loc is before frontier at alloc-after-f-reclaim
       fst-loc-before-reclaimed : BeforeFrontier alloc-after-f-reclaim fst-loc
-      fst-loc-before-reclaimed = place-reclaim-before (IRResultAWF.result-place result-f)
+      fst-loc-before-reclaimed = fst-rec-before-from-f
 
       -- Step 2: Memory agreement from s₁ to s-after-f using POSITIVE BOUNDS
       -- s₁ = exec f-trace s alloc-after-pair-slots (recursive call result)
@@ -1671,11 +1774,11 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
 
       -- Step 1: Get validity at s₂ with alloc-reclaim-g
       valid-s2-reclaimed : ValidAtWF mG alloc-reclaim-g (eval g x) snd-loc s₂
-      valid-s2-reclaimed = place-reclaim-valid (IRResultAWF.result-place result-g)
+      valid-s2-reclaimed = snd-rec-valid-from-g
 
       -- snd-loc is before frontier at alloc-reclaim-g
       snd-loc-before-reclaim-g : BeforeFrontier alloc-reclaim-g snd-loc
-      snd-loc-before-reclaim-g = place-reclaim-before (IRResultAWF.result-place result-g)
+      snd-loc-before-reclaim-g = snd-rec-before-from-g
 
       -- Region bounds for snd-loc's sub-locations:
       --   input-bound = backup-slot (sub-locations from x are < backup-slot)
