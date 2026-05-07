@@ -683,6 +683,33 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       trace-preserves-halted' =
         tph-++ setup-tph (IRResultAWF.trace-preserves-halted body-result)
 
+      ----------------------------------------------------------------
+      -- Foundation postulates (Plan 0.2.4.5 task #30).
+      --
+      -- apply's full trace is `setup-trace ++ body-trace`, so its
+      -- semantics decompose: each property below = setup-trace's
+      -- contribution + body-trace's IRResultAWF transport.
+      --
+      -- rax-eq': Output ≡ result-loc.
+      --   Discharge: exec-trace-append decomposes s' into
+      --   exec-trace body-trace from s-after-setup; body's
+      --   `place-rax (IRResultAWF.result-place body-result)` then
+      --   gives the equation modulo alloc-state irrelevance for
+      --   register reads. (Body's place-rax has the standard Unit
+      --   trust point — see ClosureWellFormed place-* docs.)
+      --
+      -- mem-preserved', result-before', result-valid-wf':
+      --   Same shape — setup-trace's per-instruction memory effects
+      --   (analogous to the SMPrimitives passthrough lemmas) chained
+      --   with body's `irresult-mem-preserved` / `place-before` /
+      --   `place-valid` (all transitionally postulated for Unit).
+      --
+      -- The discharge is real work (each property = ~50 lines of
+      -- chained lemmas), not deep but substantial. Tracked as
+      -- task #30 — to be done before any IR composition that
+      -- nests apply (Layer 1+).
+      ----------------------------------------------------------------
+
       -- Output register contains result location
       rax-eq' : readReg (regs s') Output ≡ result-loc
       rax-eq' = SMP.!!
