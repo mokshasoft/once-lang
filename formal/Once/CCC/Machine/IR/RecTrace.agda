@@ -716,18 +716,15 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Trace execution correctness: executing trace from s produces final-state/alloc
       trace-correct : proj₁ (exec-trace trace s alloc) ≡ final-state
 
-      -- Where the processed layer result is stored
-      result-loc : ValueLocation FS
-
-      -- The processed layer is valid at result-loc
-      -- Uses ⟦ F ⟧T A as the Type, so value has type ⟦ ⟦ F ⟧T A ⟧
-      processed-valid : ValidAtWF m final-alloc processed result-loc final-state
-
-      -- Result is before frontier (can be used as input)
-      result-before : BeforeFrontier final-alloc result-loc
-
-      -- Output register contains result location
-      rax-is-result : readReg (regs final-state) Output ≡ result-loc
+      -- Plan 0.2.4.5 D1 task #28: result-loc / processed-valid /
+      -- result-before / rax-is-result collapsed into a single
+      -- result-place field, mirroring the IRResultAWF migration.
+      -- For Unit-typed processed values (rare but possible), the
+      -- type-indexed `unit-result` constructor carries no location.
+      -- ProcessedLayerResult doesn't track a separate reclaim-alloc,
+      -- so the dual-alloc ResultPlace is parameterised with the
+      -- same alloc on both sides.
+      result-place : ResultPlace (⟦ F ⟧T A) m final-alloc final-alloc processed final-state
 
       -- Machine not halted
       not-halted : halted final-state ≡ false
@@ -1403,10 +1400,12 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; final-state = s-after
         ; final-alloc = alloc
         ; trace-correct = cong proj₁ (exec-trace-single mov-to-output s alloc not-halted)
-        ; result-loc = input-loc
-        ; processed-valid = validityWF-mem-only k-val input-loc s s-after refl refl (valid-basetype-wf isBase input-before)
-        ; result-before = input-before
-        ; rax-is-result = trans (writeReg-same (regs s) Output (readReg (regs s) Input1)) rdi-eq
+        ; result-place = at-loc input-loc
+            (validityWF-mem-only k-val input-loc s s-after refl refl (valid-basetype-wf isBase input-before))
+            input-before
+            (trans (writeReg-same (regs s) Output (readReg (regs s) Input1)) rdi-eq)
+            (validityWF-mem-only k-val input-loc s s-after refl refl (valid-basetype-wf isBase input-before))
+            input-before
         ; not-halted = not-halted
         ; semantic-correct = refl  -- sem-fmap K f x = x, coerce-struct⁻¹ K _ x = x
         ; frame-preserved = refl
@@ -1478,10 +1477,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; final-state = s-rec
         ; final-alloc = alloc-rec
         ; trace-correct = IRResultAWF.trace-correct rec-result
-        ; result-loc = rec-loc
-        ; processed-valid = rec-valid
-        ; result-before = rec-before
-        ; rax-is-result = rec-rax
+        ; result-place = at-loc rec-loc rec-valid rec-before rec-rax rec-valid rec-before
         ; not-halted = rec-not-halted
         ; semantic-correct = refl  -- sem-fmap Id f x = f x, coerce-struct⁻¹ Id _ x = x
         ; frame-preserved = IRResultAWF.frame-preserved rec-result
@@ -1601,16 +1597,16 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
         -- Extract recursive results
         l-processed = ProcessedLayerResult.processed l-result
         s-after-sub = ProcessedLayerResult.final-state l-result
-        l-result-loc = ProcessedLayerResult.result-loc l-result
+        l-result-loc = place-loc (ProcessedLayerResult.result-place l-result)
         sub-trace = ProcessedLayerResult.trace l-result
         -- Architectural split: compile-time vs runtime alloc
         -- Use ProcessedLayerResult.final-alloc for frontier properties (has frontier invariants)
         alloc-after-sub = ProcessedLayerResult.final-alloc l-result
         -- Runtime execution result (for trace composition proofs only)
         alloc-after-sub-runtime = proj₂ (exec-trace sub-trace s-setup alloc-setup)
-        l-valid = ProcessedLayerResult.processed-valid l-result
-        l-before = ProcessedLayerResult.result-before l-result
-        l-rax = ProcessedLayerResult.rax-is-result l-result
+        l-valid = place-valid (ProcessedLayerResult.result-place l-result)
+        l-before = place-before (ProcessedLayerResult.result-place l-result)
+        l-rax = place-rax (ProcessedLayerResult.result-place l-result)
         l-not-halted = ProcessedLayerResult.not-halted l-result
 
         -- Wrap in inj₁
@@ -1930,7 +1926,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
         wrapper-ptr-written =
           let trace-split = exec-trace-cons reclaim-instr wrapper-trace s-after-sub alloc-after-sub l-not-halted
               -- Before wrapper-trace: rax = l-result-loc (from child's rax-is-result)
-              rax-before = ProcessedLayerResult.rax-is-result l-result
+              rax-before = place-rax (ProcessedLayerResult.result-place l-result)
               -- wrapper-trace-ptr-written: slot (suc base) contains original Output value
               ptr-eq : readLoc (proj₁ (exec-trace wrapper-trace s-after-sub alloc-reclaimed))
                                (AtStack (current-frame alloc-reclaimed) (suc wrapper-base)) ≡
@@ -1972,7 +1968,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
           -- Transfer to (record alloc-setup { next-slot = l-reclaimable }) via frontier-same-heap
           -- Since alloc-after-sub = final-alloc, and frame/heap are preserved through processing
           let l-bf-final : BeforeFrontier alloc-after-sub l-result-loc
-              l-bf-final = ProcessedLayerResult.result-before l-result
+              l-bf-final = place-before (ProcessedLayerResult.result-place l-result)
               -- Transfer: alloc-after-sub has same frame/heap as alloc-setup, same next-slot as l-reclaimable
               l-bf-reclaimed : BeforeFrontier (record alloc-setup { next-slot = l-reclaimable }) l-result-loc
               l-bf-reclaimed = frontier-same-heap alloc-after-sub (record alloc-setup { next-slot = l-reclaimable })
@@ -2031,10 +2027,10 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
               l-valid-reclaimed : ValidAtWF mL target-alloc l-processed l-result-loc s-after-sub
               l-valid-reclaimed = validityWF-with-bf-transfer l-processed l-result-loc s-after-sub
                                     alloc-after-sub target-alloc bf-transfer
-                                    (ProcessedLayerResult.processed-valid l-result)
+                                    (place-valid (ProcessedLayerResult.result-place l-result))
               -- l-result-loc is BeforeFrontier at the reclaim alloc
               l-bf-reclaimed : BeforeFrontier target-alloc l-result-loc
-              l-bf-reclaimed = bf-transfer l-result-loc (ProcessedLayerResult.result-before l-result)
+              l-bf-reclaimed = bf-transfer l-result-loc (place-before (ProcessedLayerResult.result-place l-result))
               -- wrapper-trace writes above l-reclaimable (at suc l-reclaimable)
               wrapper-twa-l : TraceWritesAbove l-reclaimable wrapper-trace
               wrapper-twa-l = n≤1+n l-reclaimable , tt
@@ -2100,10 +2096,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; trace-correct = trace-correct-inj1
         -- Wrapper location: the Sum container at [wrapper-base, wrapper-base+1]
         -- wrapper-base = l-reclaimable (child's reclaimable-slot with ACTUAL RECLAMATION)
-        ; result-loc = wrapper-loc
-        ; processed-valid = processed-valid-proof
-        ; result-before = result-before-proof
-        ; rax-is-result = wrapper-rax-result
+        ; result-place = at-loc wrapper-loc processed-valid-proof result-before-proof wrapper-rax-result processed-valid-proof result-before-proof
         ; not-halted = reclaim-wrapper-not-halted l-not-halted
         ; semantic-correct = cong inj₁ (ProcessedLayerResult.semantic-correct l-result)
         ; frame-preserved = trans wrapper-frame-preserved frame-preserved-inj1
@@ -2266,16 +2259,16 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
         -- Extract recursive results
         r-processed = ProcessedLayerResult.processed r-result
         s-after-sub = ProcessedLayerResult.final-state r-result
-        r-result-loc = ProcessedLayerResult.result-loc r-result
+        r-result-loc = place-loc (ProcessedLayerResult.result-place r-result)
         sub-trace = ProcessedLayerResult.trace r-result
         -- Architectural split: compile-time vs runtime alloc
         -- Use ProcessedLayerResult.final-alloc for frontier properties (has frontier invariants)
         alloc-after-sub = ProcessedLayerResult.final-alloc r-result
         -- Runtime execution result (for trace composition proofs only)
         alloc-after-sub-runtime = proj₂ (exec-trace sub-trace s-setup alloc-setup)
-        r-valid = ProcessedLayerResult.processed-valid r-result
-        r-before = ProcessedLayerResult.result-before r-result
-        r-rax = ProcessedLayerResult.rax-is-result r-result
+        r-valid = place-valid (ProcessedLayerResult.result-place r-result)
+        r-before = place-before (ProcessedLayerResult.result-place r-result)
+        r-rax = place-rax (ProcessedLayerResult.result-place r-result)
         r-not-halted = ProcessedLayerResult.not-halted r-result
 
         -- Wrap in inj₂
@@ -2542,7 +2535,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
         wrapper-ptr-written =
           let trace-split = exec-trace-cons reclaim-instr wrapper-trace s-after-sub alloc-after-sub r-not-halted
               -- Before wrapper-trace: rax = r-result-loc (from child's rax-is-result)
-              rax-before = ProcessedLayerResult.rax-is-result r-result
+              rax-before = place-rax (ProcessedLayerResult.result-place r-result)
               -- wrapper-trace-ptr-written: slot (suc base) contains original Output value
               ptr-eq : readLoc (proj₁ (exec-trace wrapper-trace s-after-sub alloc-reclaimed))
                                (AtStack (current-frame alloc-reclaimed) (suc wrapper-base)) ≡
@@ -2582,7 +2575,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
           -- r-result-loc is BeforeFrontier at final-alloc (from result-before)
           -- Transfer to (record alloc-setup { next-slot = r-reclaimable }) via frontier-same-heap
           let r-bf-final : BeforeFrontier alloc-after-sub r-result-loc
-              r-bf-final = ProcessedLayerResult.result-before r-result
+              r-bf-final = place-before (ProcessedLayerResult.result-place r-result)
               -- Transfer: alloc-after-sub has same frame/heap as alloc-setup, same next-slot as r-reclaimable
               r-bf-reclaimed : BeforeFrontier (record alloc-setup { next-slot = r-reclaimable }) r-result-loc
               r-bf-reclaimed = frontier-same-heap alloc-after-sub (record alloc-setup { next-slot = r-reclaimable })
@@ -2641,10 +2634,10 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
               r-valid-reclaimed : ValidAtWF mR target-alloc-r r-processed r-result-loc s-after-sub
               r-valid-reclaimed = validityWF-with-bf-transfer r-processed r-result-loc s-after-sub
                                     alloc-after-sub target-alloc-r bf-transfer-r
-                                    (ProcessedLayerResult.processed-valid r-result)
+                                    (place-valid (ProcessedLayerResult.result-place r-result))
               -- r-result-loc is BeforeFrontier at the reclaim alloc
               r-bf-reclaimed : BeforeFrontier target-alloc-r r-result-loc
-              r-bf-reclaimed = bf-transfer-r r-result-loc (ProcessedLayerResult.result-before r-result)
+              r-bf-reclaimed = bf-transfer-r r-result-loc (place-before (ProcessedLayerResult.result-place r-result))
               -- wrapper-trace writes above r-reclaimable (at suc r-reclaimable)
               wrapper-twa-r : TraceWritesAbove r-reclaimable wrapper-trace
               wrapper-twa-r = n≤1+n r-reclaimable , tt
@@ -2699,12 +2692,9 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; final-alloc = alloc-after-wrapper
         ; trace-correct = trace-correct-inj2
         -- Wrapper location: the Sum container at [wrapper-base, wrapper-base+1]
-        ; result-loc = wrapper-loc
-        ; processed-valid = processed-valid-proof
-        -- result-before: wrapper-base < next-slot alloc-after-wrapper (allocated at frontier)
-        ; result-before = result-before-proof
-        -- rax-is-result: lea-slot wrapper-base sets Output to wrapper-loc
-        ; rax-is-result = wrapper-rax-result
+        ; result-place = at-loc wrapper-loc processed-valid-proof
+            result-before-proof wrapper-rax-result
+            processed-valid-proof result-before-proof
         -- not-halted: reclaim-wrapper trace preserves halted=false
         ; not-halted = reclaim-wrapper-not-halted r-not-halted
         ; semantic-correct = cong inj₂ (ProcessedLayerResult.semantic-correct r-result)
@@ -2843,10 +2833,12 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; final-state = ProcessedLayerResult.final-state r-result
         ; final-alloc = final-alloc
         ; trace-correct = trace-correct-proof
-        ; result-loc = ProcessedLayerResult.result-loc r-result
-        ; processed-valid = processed-valid-proof
-        ; result-before = ProcessedLayerResult.result-before r-result
-        ; rax-is-result = ProcessedLayerResult.rax-is-result r-result
+        ; result-place = at-loc (place-loc (ProcessedLayerResult.result-place r-result))
+            processed-valid-proof
+            (place-before (ProcessedLayerResult.result-place r-result))
+            (place-rax (ProcessedLayerResult.result-place r-result))
+            processed-valid-proof
+            (place-before (ProcessedLayerResult.result-place r-result))
         ; not-halted = ProcessedLayerResult.not-halted r-result
         ; semantic-correct = cong₂ _,_ (ProcessedLayerResult.semantic-correct l-result)
                                        (ProcessedLayerResult.semantic-correct r-result)
@@ -2981,7 +2973,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
         alloc-l = ProcessedLayerResult.final-alloc l-result
 
         l-loc : ValueLocation FS
-        l-loc = ProcessedLayerResult.result-loc l-result
+        l-loc = place-loc (ProcessedLayerResult.result-place l-result)
 
         l-trace : AbstractTrace
         l-trace = ProcessedLayerResult.trace l-result
@@ -3394,7 +3386,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
         -- But processed = (l-processed, r-processed), which needs a pair container
         -- Fix: add pair-wrapper-trace to allocate [fst-ptr, snd-ptr] at frontier
         processed-valid-proof : ValidAtWF mR final-alloc processed
-                                  (ProcessedLayerResult.result-loc r-result)
+                                  (place-loc (ProcessedLayerResult.result-place r-result))
                                   (ProcessedLayerResult.final-state r-result)
         processed-valid-proof = SMP.!!  -- BLOCKED: missing pair container allocation
 
@@ -3618,11 +3610,11 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
         processed-layer = ProcessedLayerResult.processed layer-result
         s-layer = ProcessedLayerResult.final-state layer-result
         alloc-layer = ProcessedLayerResult.final-alloc layer-result
-        layer-loc = ProcessedLayerResult.result-loc layer-result
+        layer-loc = place-loc (ProcessedLayerResult.result-place layer-result)
         layer-trace = ProcessedLayerResult.trace layer-result
-        layer-valid-wf = ProcessedLayerResult.processed-valid layer-result
-        layer-before = ProcessedLayerResult.result-before layer-result
-        layer-rax = ProcessedLayerResult.rax-is-result layer-result
+        layer-valid-wf = place-valid (ProcessedLayerResult.result-place layer-result)
+        layer-before = place-before (ProcessedLayerResult.result-place layer-result)
+        layer-rax = place-rax (ProcessedLayerResult.result-place layer-result)
         layer-not-halted = ProcessedLayerResult.not-halted layer-result
         layer-sem-correct = ProcessedLayerResult.semantic-correct layer-result
 
