@@ -46,7 +46,7 @@ open import Relation.Nullary using (¬_; Dec; yes; no)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics; module FrameSemantics)
 open import Once.CCC.SigOp.Info using (SigOpInfo)
-open import Once.Type using (IsPrimitive)
+open import Once.Type using (FitsInReg)
 open import Once.CCC.Machine.SMCore public
 
 ------------------------------------------------------------------------
@@ -378,7 +378,7 @@ data InstrNoHeapWrite : AbstractInstr → Set where
   -- Plan 0.10 Phase B
   nhw-instr-sigop        : ∀ {A B} {si : SigOpInfo A B} → InstrNoHeapWrite (instr-sigop si)
   -- Plan 0.11: const literal load only writes Output register
-  nhw-instr-load-const   : ∀ {A} {p : IsPrimitive A} {v} →
+  nhw-instr-load-const   : ∀ {A} {p : FitsInReg A} {v} →
                            InstrNoHeapWrite (instr-load-const p v)
   -- Plan 0.2.4.2 Phase A: code-addr load only writes Output register
   nhw-instr-load-code-addr : ∀ {n} → InstrNoHeapWrite (instr-load-code-addr n)
@@ -1202,6 +1202,7 @@ module TracePrimitives {FS : FrameSemantics} where
     exec-trace-preserves-slot-below (mov-input2-to-output ∷ rest) s alloc n slot twa tnhw slot<n =
       exec-trace-preserves-slot-below-nonwrite mov-input2-to-output rest s alloc n slot twa tnhw slot<n nhw-mov-input2-to-output refl
     exec-trace-preserves-slot-below (mov-to-input ∷ rest) s alloc n slot twa tnhw slot<n =
+      exec-trace-preserves-slot-below-nonwrite mov-to-input rest s alloc n slot twa tnhw slot<n nhw-mov-to-input refl
     exec-trace-preserves-slot-below (mov-output-to-input2 ∷ rest) s alloc n slot twa tnhw slot<n =
       exec-trace-preserves-slot-below-nonwrite mov-output-to-input2 rest s alloc n slot twa tnhw slot<n nhw-mov-output-to-input2 refl
     exec-trace-preserves-slot-below (load-indirect ∷ rest) s alloc n slot twa tnhw slot<n =

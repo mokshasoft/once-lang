@@ -53,7 +53,7 @@ open import Once.Arith.SigOp.Builders
 --   - M.⟦Int⟧ = ℕ (machine level): `∣ n ∣` (absolute value).
 -- Negative literals are tracked properly once arithmetic migrates.
 intLit : ℤ → ∀ {Γ} → IR Γ Int
-intLit n = const is-int n ∣ n ∣ ∘ terminal
+intLit n = const fits-int n ∣ n ∣ ∘ terminal
 
 strLit : String → ∀ {Γ} → IR Γ Str
 strLit s = SigOp (str-lit-info s) ∘ terminal

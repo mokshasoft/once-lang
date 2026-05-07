@@ -28,7 +28,7 @@ open import Data.String using (String)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 
-open import Once.Type using (Type; IsPrimitive)
+open import Once.Type using (Type; FitsInReg)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.IR using (IR; SigOp; SigOpInfo; AllocMode; Stack; Heap)
 open import Once.CCC.Machine.SMCore
@@ -171,7 +171,7 @@ module PrimHelper {FS : FrameSemantics} (program-bound : ℕ) where
   mkPurePrimResult : ∀ {A B : Type}
     (si : SigOpInfo A B)
     (output-mode : AllocMode)
-    (is-prim : IsPrimitive B)
+    (is-prim : FitsInReg B)
     (x : ⟦ A ⟧)
     (input-loc : ValueLocation FS)
     (s : LocState FS)

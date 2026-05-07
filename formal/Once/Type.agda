@@ -327,38 +327,17 @@ TreeF : Type → Functor
 TreeF A = K A ⊕ (Id ⊗ Id)
 
 ------------------------------------------------------------------------
--- Primitive Type Evidence
-------------------------------------------------------------------------
-
--- | Evidence that a type is a primitive (non-compound) type.
--- Used by backends to dispatch on primitive types.
--- Plan 0.2.4.5 Stage H: Str and Buffer dropped from IsPrimitive.
--- Both are 16-byte fat (data-ptr + len) — structurally compound
--- 2-slot records, not atomic values. They retain their own
--- valid-str-wf / valid-buffer-wf validity witnesses but don't
--- participate in IsPrimitive-driven dispatch (e.g. instr-load-const).
--- IsPrimitive after Stage H = {Unit, Int, Float} — atomic value
--- types. (Unit is erased; Int / Float are register-fittable per
--- FitsInReg.) Layer 0 doesn't exercise Str / Buffer; their
--- 2-slot layout codegen lands later.
-data IsPrimitive : Type → Set where
-  is-unit   : IsPrimitive Unit
-  is-int    : IsPrimitive Int
-  is-float  : IsPrimitive Float
-
-------------------------------------------------------------------------
 -- FitsInReg (Plan 0.2.4.5)
 --
--- The replacement for `IsPrimitive`'s register-fittable dimension.
 -- A type satisfies `FitsInReg A` iff a value of type A fits in a
--- single machine register (one word).
+-- single machine register (one word). After Plan 0.2.4.5 the legacy
+-- `IsPrimitive` predicate has been retired in favour of FitsInReg
+-- everywhere; Unit is erased throughout the IR semantics rather than
+-- carrying a register slot.
 --
 -- Excluded from FitsInReg (deliberately):
 --   - Unit: erased entirely; carries no information; not register-
---           tracked. (`IsPrimitive` includes Unit because it's
---           "atomic in the source language"; FitsInReg is about
---           runtime register-fittability, where Unit has no value
---           to fit.)
+--           tracked.
 --   - Str, Buffer: 16-byte fat (data-ptr + len); structurally
 --           compound 2-slot records, not register-fittable.
 --

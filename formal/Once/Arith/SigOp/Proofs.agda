@@ -22,7 +22,7 @@ open import Data.String using (String)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 
-open import Once.Type using (Type; Int; IsPrimitive; is-int; _*_)
+open import Once.Type using (Type; Int; FitsInReg; fits-int; _*_)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.IR using (IR; SigOp; AllocMode; Stack)
 open import Once.CCC.Machine.SMCore
@@ -143,7 +143,7 @@ module ArithProofs {FS : FrameSemantics} (program-bound : ℕ) where
     mkPurePrimResult
       Builders.add-info
       Stack
-      is-int
+      fits-int
       x
       input-loc
       s

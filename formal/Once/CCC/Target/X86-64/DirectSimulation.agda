@@ -15,7 +15,7 @@ module Once.CCC.Target.X86-64.DirectSimulation where
 
 open import Data.Nat using (ℕ; zero; suc; _∸_; _≡ᵇ_; _≤_) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
 open import Data.String using (String)
-open import Once.Type using (IsPrimitive)
+open import Once.Type using (FitsInReg)
 import Once.CCC.SigOp.Info
 open import Data.Nat.DivMod using (_/_; m*n/n≡m)
 open import Data.Bool using (Bool; true; false; if_then_else_)
@@ -610,9 +610,9 @@ module Simulation {FS : FrameSemantics} where
     -- in `compile-const p v` (e.g. `mov $N, %rax`) matches what
     -- `exec-abstract (instr-load-const p v)` says (write
     -- `encode-const p v` to Output). Per-primitive discharge can
-    -- replace this with concrete proofs per IsPrimitive case.
+    -- replace this with concrete proofs per FitsInReg case.
     load-const-codegen-faithful :
-      ∀ {A} (p : IsPrimitive A) (v : ⟦ A ⟧) ls xs alloc →
+      ∀ {A} (p : FitsInReg A) (v : ⟦ A ⟧) ls xs alloc →
       halted ls ≡ false → Corresponds ls xs alloc →
       Corresponds (proj₁ (exec-abstract (instr-load-const p v) ls alloc))
                   (exec-prog (compile-abstract (instr-load-const p v)) xs (current-frame alloc))

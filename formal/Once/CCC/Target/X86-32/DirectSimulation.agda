@@ -569,7 +569,7 @@ module Simulation {FS : FrameSemantics} where
     -- ud2 on this backend, so codegen-faithful is trivially true at the
     -- abstract level (the trap-on-execution is outside the simulation
     -- relation's scope; layer 0 only exercises x86-64).
-    load-const-codegen-faithful-32 : ∀ {A} (p : Once.Type.IsPrimitive A) v ls xs alloc →
+    load-const-codegen-faithful-32 : ∀ {A} (p : Once.Type.FitsInReg A) v ls xs alloc →
       halted ls ≡ false → Corresponds ls xs alloc →
       Corresponds (proj₁ (exec-abstract (instr-load-const p v) ls alloc))
                   (exec-prog (compile-abstract (instr-load-const p v)) xs (current-frame alloc))

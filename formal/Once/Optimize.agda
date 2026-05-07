@@ -669,7 +669,7 @@ f ≟IR g = ≟IRH f g refl refl
 
 -- Plan 0.11: const ctor decidable equality.
 -- Postulated for now — proper discharge requires decidable equality
--- on IsPrimitive + per-primitive-type decidable equality on the
+-- on FitsInReg + per-register-fittable-type decidable equality on the
 -- proof-level and machine-level values. Tractable but adds scope.
 -- Trusted-base entry until then.
 ≟IRH-diag (const p₁ vI₁ vM₁) (const p₂ vI₂ vM₂) _ refl refl =
@@ -680,7 +680,7 @@ f ≟IR g = ≟IRH f g refl refl
     import Once.Semantics.Core ℤ as I
     import Once.Semantics.Core ℕ as M
     postulate
-      ≟const-irrelevant : ∀ (q₁ q₂ : IsPrimitive _) (uI₁ uI₂ : I.⟦ _ ⟧) (uM₁ uM₂ : M.⟦ _ ⟧) →
+      ≟const-irrelevant : ∀ (q₁ q₂ : FitsInReg _) (uI₁ uI₂ : I.⟦ _ ⟧) (uM₁ uM₂ : M.⟦ _ ⟧) →
                           Dec (const q₁ uI₁ uM₁ ≡ const q₂ uI₂ uM₂)
 
 ------------------------------------------------------------------------

@@ -228,27 +228,23 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
         ValidAtWF m alloc {A ⇒[ mk-kind Many eff ] B} f loc s
 
     --------------------------------------------------------------------
-    -- valid-primitive-wf: Dispatch on IsPrimitive evidence
+    -- valid-primitive-wf: Dispatch on FitsInReg evidence
     --
-    -- For primitive types, ValidAtWF only needs BeforeFrontier.
-    -- This function dispatches based on IsPrimitive evidence,
-    -- providing exhaustive type-indexed coverage of all primitive types.
+    -- For register-fittable primitive types, ValidAtWF only needs
+    -- BeforeFrontier. Plan 0.2.4.5: legacy IsPrimitive retired —
+    -- Unit is erased (no slot), Str/Buffer are 2-slot compounds with
+    -- their own valid-str-wf / valid-buffer-wf witnesses. The only
+    -- inhabitants left are Int and Float.
     --------------------------------------------------------------------
 
     valid-primitive-wf : ∀ {m} {B : Type} {v : ⟦ B ⟧}
       {alloc : AllocState {FS}}
       {loc : ValueLocation FS} {s : LocState FS} →
-      IsPrimitive B →
+      FitsInReg B →
       BeforeFrontier alloc loc →
       ValidAtWF m alloc {B} v loc s
-    valid-primitive-wf is-unit bf = valid-unit-wf
-    valid-primitive-wf is-int bf = valid-int-wf bf
-    valid-primitive-wf is-float bf = valid-float-wf bf
-    -- Plan 0.2.4.5 Stage H: is-str / is-buffer dropped from
-    -- IsPrimitive. Str / Buffer are 2-slot compound; their
-    -- valid-str-wf / valid-buffer-wf witnesses are still produced
-    -- by the (future) compound-shape paths, not via IsPrimitive
-    -- dispatch.
+    valid-primitive-wf fits-int   bf = valid-int-wf bf
+    valid-primitive-wf fits-float bf = valid-float-wf bf
 
     --------------------------------------------------------------------
     -- IRResultAWF: Mode-indexed IR execution result

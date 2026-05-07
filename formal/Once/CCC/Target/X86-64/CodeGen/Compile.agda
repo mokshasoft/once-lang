@@ -233,38 +233,32 @@ compile-sigOp-length _ = refl
 ------------------------------------------------------------------------
 -- Plan 0.11: const literal codegen.
 --
--- Per-primitive-type codegen for the `const` IR ctor. The IsPrimitive
--- evidence dispatches; each primitive emits the appropriate immediate-
--- load instruction. CCC IR is type-agnostic (uses `IsPrimitive` as
--- abstraction); the per-arch backend necessarily knows specific
--- primitive types because it has to emit specific machine
--- instructions for each.
+-- Per-primitive-type codegen for the `const` IR ctor. The FitsInReg
+-- evidence dispatches; each register-fittable primitive emits the
+-- appropriate immediate-load instruction. CCC IR is type-agnostic
+-- (uses `FitsInReg` as abstraction); the per-arch backend
+-- necessarily knows specific primitive types because it has to emit
+-- specific machine instructions for each.
 ------------------------------------------------------------------------
 
-open import Once.Type using (IsPrimitive; is-unit; is-int; is-float)
+open import Once.Type using (FitsInReg; fits-int; fits-float)
 import Once.Semantics.Core as SC
 
-compile-const : ∀ {A} → IsPrimitive A → SC.⟦_⟧ ℕ A → Program
--- Unit: no-op (Unit value is unobservable; Output unchanged or zero)
-compile-const is-unit  _ = []
+compile-const : ∀ {A} → FitsInReg A → SC.⟦_⟧ ℕ A → Program
 -- Int: load immediate into rax
-compile-const is-int   n = mov (reg rax) (imm n) ∷ []
+compile-const fits-int   n = mov (reg rax) (imm n) ∷ []
 -- Float: not yet implemented for x86-64 codegen. Trap so the gap is
 -- visible at runtime instead of silent.
-compile-const is-float _ = ud2 ∷ []
--- Note: Str / Buffer dropped from IsPrimitive in Stage H. Their
--- compound 2-slot codegen is a separate concern (Layer 1+).
+compile-const fits-float _ = ud2 ∷ []
 
-compile-const-size : ∀ {A} → IsPrimitive A → ℕ
-compile-const-size is-unit  = 0
-compile-const-size is-int   = 1
-compile-const-size is-float = 1
+compile-const-size : ∀ {A} → FitsInReg A → ℕ
+compile-const-size fits-int   = 1
+compile-const-size fits-float = 1
 
-compile-const-length : ∀ {A} (p : IsPrimitive A) (v : SC.⟦_⟧ ℕ A) →
+compile-const-length : ∀ {A} (p : FitsInReg A) (v : SC.⟦_⟧ ℕ A) →
                         length (compile-const p v) ≡ compile-const-size p
-compile-const-length is-unit  _ = refl
-compile-const-length is-int   _ = refl
-compile-const-length is-float _ = refl
+compile-const-length fits-int   _ = refl
+compile-const-length fits-float _ = refl
 
 ------------------------------------------------------------------------
 -- Code generation

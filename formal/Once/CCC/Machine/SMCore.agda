@@ -43,7 +43,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 -- info (name + semI + semM), not just the name. This unlocks per-name
 -- discharge of `ir-to-trace-correct-sigop` and per-(arch, name)
 -- discharge of `sigop-codegen-faithful`.
-open import Once.Type using (Type; IsPrimitive)
+open import Once.Type using (Type; FitsInReg)
 open import Once.Semantics.Machine using (⟦_⟧)
 open import Once.CCC.SigOp.Info using (SigOpInfo)
 
@@ -805,14 +805,13 @@ data AbstractInstr : Set where
 
   -- Plan 0.11: Load a primitive-typed constant into Output.
   --
-  -- Carries the `IsPrimitive` evidence and the machine-level value
+  -- Carries `FitsInReg` evidence and the machine-level value
   -- `v : ⟦ A ⟧`. Per-arch `compile-abstract` pattern-matches on the
   -- evidence to emit the right load instruction (`mov $N, %rax` for
-  -- Int, label load for Str, etc.). CCC stays
-  -- specific-primitive-type-agnostic; the per-arch backend
-  -- necessarily knows specific primitives because it has to emit
-  -- specific machine instructions.
-  instr-load-const : ∀ {A : Type} → IsPrimitive A → ⟦ A ⟧ → AbstractInstr
+  -- Int, etc.). CCC stays specific-primitive-type-agnostic; the
+  -- per-arch backend knows specific register-fittable types because
+  -- it has to emit specific machine instructions.
+  instr-load-const : ∀ {A : Type} → FitsInReg A → ⟦ A ⟧ → AbstractInstr
 
   -- Plan 0.2.4.2 Phase A: Load the address of a closure-body label
   -- into Output. The argument `n : ℕ` indexes into the parent
@@ -1038,8 +1037,8 @@ module AbstractExec {FS : FrameSemantics} where
     -- Plan 0.11: encode a primitive-typed value into a ValueLocation.
     -- Per-arch backends instantiate this consistently with how
     -- compile-abstract emits the load (e.g., x86 `mov $N, %rax`).
-    -- The IsPrimitive evidence dispatches per primitive type.
-    encode-const : ∀ {A} → IsPrimitive A → ⟦ A ⟧ → ValueLocation FS
+    -- The FitsInReg evidence dispatches per register-fittable type.
+    encode-const : ∀ {A} → FitsInReg A → ⟦ A ⟧ → ValueLocation FS
 
     -- Plan 0.2.4.2 Phase A: encode a closure-body label index into
     -- a ValueLocation representing the body's address in the

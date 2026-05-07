@@ -229,23 +229,20 @@ data IR : Type → Type → Set where
   -- In any concrete CCC, every element corresponds to such a global
   -- element; this ctor names the syntactic form.
   --
-  -- Restricted to types `A` for which `IsPrimitive A` is inhabited
-  -- (Unit, Int, Float, Str, Buffer — see `Once.Type.IsPrimitive`).
+  -- Restricted to types `A` for which `FitsInReg A` is inhabited
+  -- (Int, Float — see `Once.Type.FitsInReg`).
   -- This restriction prevents nonsense like `const … (λ x → x)`
   -- (function-typed constants are not compilable). Compound
   -- constants are built structurally via `⟨_,_⟩`, `inl`, `inr`
-  -- composed with primitive `const`s.
-  --
-  -- CCC's IR mentions `IsPrimitive` (an abstraction over "the user's
-  -- primitive type set"); it does NOT mention any specific primitive
-  -- type by name. Adding a new primitive = extending `IsPrimitive`
-  -- in `Once.Type`; no IR change.
+  -- composed with primitive `const`s. Unit constants don't go
+  -- through `const` — they are produced by `terminal` (Unit is
+  -- erased throughout the IR semantics post Plan 0.2.4.5).
   --
   -- Carries values at BOTH semantic levels (proof-level `I.⟦A⟧` with
   -- Int ≡ ℤ, machine-level `M.⟦A⟧` with Int ≡ ℕ), mirroring
   -- `SigOpInfo.semI` / `semM`. CCC doesn't define a conversion;
   -- the user supplies both.
-  const : ∀ {A} → IsPrimitive A → I.⟦ A ⟧ → M.⟦ A ⟧ → IR Unit A
+  const : ∀ {A} → FitsInReg A → I.⟦ A ⟧ → M.⟦ A ⟧ → IR Unit A
 
   -- Signature operations (opaque escape hatch).
   -- Carries a `SigOpInfo` (name + sem at both levels) so the IR

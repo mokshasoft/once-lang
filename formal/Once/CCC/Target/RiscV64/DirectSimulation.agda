@@ -596,7 +596,7 @@ module Simulation {FS : FrameSemantics} where
                   (proj₂ (exec-abstract (instr-sigop si) ls alloc))
     -- RV64 stubs (unimp emission): all three abstract instrs lower
     -- to unimp on this backend; layer 0 doesn't exercise RV64.
-    load-const-codegen-faithful-rv : ∀ {A} (p : Once.CCC.Machine.SMCore.IsPrimitive A) v ls rs alloc →
+    load-const-codegen-faithful-rv : ∀ {A} (p : Once.CCC.Machine.SMCore.FitsInReg A) v ls rs alloc →
       halted ls ≡ false → Corresponds ls rs alloc →
       Corresponds (proj₁ (exec-abstract (instr-load-const p v) ls alloc))
                   (exec-prog (compile-abstract (instr-load-const p v)) rs (current-frame alloc))
