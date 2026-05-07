@@ -702,13 +702,11 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       -- semantics decompose: each property below = setup-trace's
       -- contribution + body-trace's IRResultAWF transport.
       --
-      -- rax-eq': Output ≡ result-loc.
-      --   Discharge: exec-trace-append decomposes s' into
-      --   exec-trace body-trace from s-after-setup; body's
-      --   `place-rax (IRResultAWF.result-place body-result)` then
-      --   gives the equation modulo alloc-state irrelevance for
-      --   register reads. (Body's place-rax has the standard Unit
-      --   trust point — see ClosureWellFormed place-* docs.)
+      -- Foundation lemma s'-eq (below) is the shared workhorse:
+      --   s' ≡ IRResultAWF.final-state body-result
+      -- via exec-trace-append-state (decompose) + exec-trace-same-frame
+      -- (bridge alloc-after-setup ≡ child-alloc by frame equivalence)
+      -- + body's trace-correct (body-final-state defined by trace).
       --
       -- mem-preserved', result-before', result-valid-wf':
       --   Same shape — setup-trace's per-instruction memory effects
@@ -722,9 +720,45 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       -- nests apply (Layer 1+).
       ----------------------------------------------------------------
 
-      -- Output register contains result location
+      -- s' decomposes via exec-trace-append-state.
+      s'-decomp : s' ≡ proj₁ (exec-trace body-trace s-after-setup
+                                (proj₂ (exec-trace (apply-setup-trace pair-slot) s alloc)))
+      s'-decomp = exec-trace-append-state (apply-setup-trace pair-slot) body-trace s alloc
+
+      -- Frame after setup ≡ frame of child-alloc (both = current-frame alloc).
+      frame-after-setup-eq :
+        current-frame (proj₂ (exec-trace (apply-setup-trace pair-slot) s alloc))
+        ≡ current-frame child-alloc
+      frame-after-setup-eq = exec-trace-preserves-frame (apply-setup-trace pair-slot) s alloc
+
+      -- Bridge: exec-trace body-trace from s-after-setup is the same
+      -- under (proj₂ exec-trace setup) and child-alloc (same frame).
+      body-frame-bridge :
+        proj₁ (exec-trace body-trace s-after-setup
+                (proj₂ (exec-trace (apply-setup-trace pair-slot) s alloc)))
+        ≡ proj₁ (exec-trace body-trace s-after-setup child-alloc)
+      body-frame-bridge = exec-trace-same-frame body-trace s-after-setup
+                            (proj₂ (exec-trace (apply-setup-trace pair-slot) s alloc))
+                            child-alloc frame-after-setup-eq
+
+      -- Body's trace-correct.
+      body-trace-correct :
+        proj₁ (exec-trace body-trace s-after-setup child-alloc) ≡ IRResultAWF.final-state body-result
+      body-trace-correct = IRResultAWF.trace-correct body-result
+
+      -- Foundation: s' equals body's final-state.
+      s'-eq : s' ≡ IRResultAWF.final-state body-result
+      s'-eq = trans s'-decomp (trans body-frame-bridge body-trace-correct)
+
+      -- Output register contains result location.
+      -- Dispatch on body's result-place: at-loc gives place-rax;
+      -- unit-result reduces result-loc to readReg body-final-state Output (refl after s'-eq).
       rax-eq' : readReg (regs s') Output ≡ result-loc
-      rax-eq' = SMP.!!
+      rax-eq' with IRResultAWF.result-place body-result
+      ... | at-loc loc valid before rax _ _ =
+              trans (cong (λ st → readReg (regs st) Output) s'-eq) rax
+      ... | unit-result =
+              cong (λ st → readReg (regs st) Output) s'-eq
 
       -- Not halted after full trace
       not-halted' : halted s' ≡ false
