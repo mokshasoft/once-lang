@@ -135,10 +135,10 @@ module Correctness
     let (mOut , result) = D.run-wf mIn ir ir<bound x input-loc s alloc
           repr before not-halted rdi-eq
     in mOut
-     , CWF.IRResultAWF.result-loc result
+     , CWF.place-loc (CWF.IRResultAWF.result-place result)
      , CWF.IRResultAWF.final-state result
      , CWF.IRResultAWF.final-alloc result
-     , CWF.IRResultAWF.result-valid-wf result
+     , CWF.place-valid (CWF.IRResultAWF.result-place result)
 
 ------------------------------------------------------------------------
 -- LAYER 1: Complete

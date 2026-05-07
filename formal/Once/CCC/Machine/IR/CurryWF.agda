@@ -59,7 +59,7 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
   open import Once.CCC.Machine.ClosureWellFormed
   open ClosureWellFormedDef {FS} program-bound
-    using (ValidAtWF; IRResultAWF; RaxConstraint; rax-output-eq; rax-erased; RecDispatcherWF; BodyCorrect;
+    using (ValidAtWF; IRResultAWF; ResultPlace; unit-result; at-loc; RecDispatcherWF; BodyCorrect;
            valid-closure-wf; validityWF-mem-only;
            validityWF-alloc-advance; validityWF-frontier-advance;
            validityWF-write-at-frontier; validityWF-write-at-suc-frontier;
@@ -123,21 +123,16 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   run-curry {A} {B} {C} {k} mIn f m ir<bound rec-wf x input-loc s alloc
     input-valid-wf input-before not-halted rdi-eq =
     record
-      { result-loc = closure-loc
-      ; final-state = s'
+      { final-state = s'
       ; final-alloc = alloc'
       ; trace = trace
       ; trace-correct = refl  -- BY DEFINITION
-      ; result-valid-wf = result-valid-wf'
-      ; result-before = closure-before'
-      ; rax-is-result = rax-output-eq rax-eq'
+      ; result-place = at-loc closure-loc result-valid-wf' closure-before' rax-eq' reclaim-preserves-validity' reclaim-preserves-result'
       ; not-halted = not-halted'
       ; frame-preserved = refl
       ; slot-monotone = m≤m+n (next-slot alloc) closure-slots
       ; heap-monotone = ≤-refl
       -- Phase 7: Removed reclaimable-slot, reclaim-monotone, reclaim-bounded, reclaim-size-bound
-      ; reclaim-preserves-result = reclaim-preserves-result'
-      ; reclaim-preserves-validity = reclaim-preserves-validity'
       ; max-slot-written = next-slot alloc +ℕ closure-slots
       ; max-slot-geq-final = ≤-refl
       ; max-slot-usage-bound = +-monoʳ-≤ (next-slot alloc) closure-bound

@@ -64,7 +64,10 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
 
   -- Types from ClosureWellFormed
   open ClosureWellFormedDef {FS} program-bound
-    using (ValidAtWF; IRResultAWF; RaxConstraint; rax-output-eq; rax-erased; extract-rax-eq; RecDispatcherWF;
+    using (ValidAtWF; IRResultAWF; ResultPlace; unit-result; at-loc;
+           place-loc; place-valid; place-before; place-rax;
+           place-reclaim-valid; place-reclaim-before;
+           RecDispatcherWF;
            valid-pair-wf;
            validityWF-mem-only; validityWF-mem-preserved;
            validityWF-mem-preserved-in-regions;
@@ -89,21 +92,16 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
   run-pair {A} {B} {C} mIn f g m rec-wf x input-loc s alloc
            input-valid-wf input-before not-halted rdi-eq =
     record
-      { result-loc = pair-loc
-      ; final-state = s-final
+      { final-state = s-final
       ; final-alloc = alloc-final
       ; trace = pair-trace
       ; trace-correct = refl  -- s-final DEFINED by trace
-      ; result-valid-wf = pair-valid-wf-final
-      ; result-before = pair-before
-      ; rax-is-result = rax-output-eq rax-eq
+      ; result-place = at-loc pair-loc pair-valid-wf-final pair-before rax-eq pair-valid-wf-final pair-before
       ; not-halted = not-halted-final
       ; frame-preserved = refl
       ; slot-monotone = slot-monotone-pair
       ; heap-monotone = ≤-refl
       -- Phase 7: Removed reclaimable-slot, reclaim-monotone, reclaim-bounded, reclaim-size-bound
-      ; reclaim-preserves-result = pair-before
-      ; reclaim-preserves-validity = pair-valid-wf-final
       ; max-slot-written = pair-max-slot
       ; max-slot-geq-final = pair-max-slot-geq-final
       ; max-slot-usage-bound = pair-max-slot-bound
@@ -176,7 +174,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
       mF = proj₁ f-exec-result
       result-f = proj₂ f-exec-result
       s₁ = IRResultAWF.final-state result-f
-      fst-loc = IRResultAWF.result-loc result-f
+      fst-loc = place-loc (IRResultAWF.result-place result-f)
       f-trace = IRResultAWF.trace result-f
 
       ------------------------------------------------------------------------
@@ -234,7 +232,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
       mG = proj₁ g-exec-result
       result-g = proj₂ g-exec-result
       s₂ = IRResultAWF.final-state result-g
-      snd-loc = IRResultAWF.result-loc result-g
+      snd-loc = place-loc (IRResultAWF.result-place result-g)
       g-trace = IRResultAWF.trace result-g
 
       ------------------------------------------------------------------------
@@ -908,7 +906,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
       oaf-s1-output : readReg (regs (proj₁ (exec-trace f-trace s alloc-after-pair-slots))) Output ≡ fst-loc
       oaf-s1-output = subst (λ st → readReg (regs st) Output ≡ fst-loc)
                             (sym (IRResultAWF.trace-correct result-f))
-                            (extract-rax-eq (IRResultAWF.rax-is-result result-f))
+                            (place-rax (IRResultAWF.result-place result-f))
 
       output-after-f : readReg (regs s-after-f) Output ≡ fst-loc
       output-after-f =
@@ -1167,7 +1165,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
       oag-s2-output : readReg (regs (proj₁ (exec-trace g-trace s₁' alloc-after-f-reclaim))) Output ≡ snd-loc
       oag-s2-output = subst (λ st → readReg (regs st) Output ≡ snd-loc)
                             (sym (IRResultAWF.trace-correct result-g))
-                            (extract-rax-eq (IRResultAWF.rax-is-result result-g))
+                            (place-rax (IRResultAWF.result-place result-g))
 
       output-after-g : readReg (regs s-after-g) Output ≡ snd-loc
       output-after-g =
@@ -1329,12 +1327,12 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
                      (IRResultAWF.slot-monotone result-g)
                      ≤-refl
                      fst-loc
-                     (IRResultAWF.reclaim-preserves-result result-f)
+                     (place-reclaim-before (IRResultAWF.result-place result-f))
 
       snd-before : BeforeFrontier alloc-final snd-loc
       snd-before = frontier-monotone (record alloc { next-slot = reclaim-g }) alloc-final
                      refl ≤-refl ≤-refl snd-loc
-                     (IRResultAWF.reclaim-preserves-result result-g)
+                     (place-reclaim-before (IRResultAWF.result-place result-g))
 
       -- sucLoc pair-loc = AtStack frame snd-slot
       sucLoc-pair-before : BeforeFrontier alloc-final (sucLoc pair-loc)
@@ -1361,11 +1359,11 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
 
       -- Step 1: Get validity at s₁ with alloc-after-f-reclaim
       valid-s1-reclaimed : ValidAtWF mF alloc-after-f-reclaim (eval f x) fst-loc s₁
-      valid-s1-reclaimed = IRResultAWF.reclaim-preserves-validity result-f
+      valid-s1-reclaimed = place-reclaim-valid (IRResultAWF.result-place result-f)
 
       -- fst-loc is before frontier at alloc-after-f-reclaim
       fst-loc-before-reclaimed : BeforeFrontier alloc-after-f-reclaim fst-loc
-      fst-loc-before-reclaimed = IRResultAWF.reclaim-preserves-result result-f
+      fst-loc-before-reclaimed = place-reclaim-before (IRResultAWF.result-place result-f)
 
       -- Step 2: Memory agreement from s₁ to s-after-f using POSITIVE BOUNDS
       -- s₁ = exec f-trace s alloc-after-pair-slots (recursive call result)
@@ -1674,11 +1672,11 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
 
       -- Step 1: Get validity at s₂ with alloc-reclaim-g
       valid-s2-reclaimed : ValidAtWF mG alloc-reclaim-g (eval g x) snd-loc s₂
-      valid-s2-reclaimed = IRResultAWF.reclaim-preserves-validity result-g
+      valid-s2-reclaimed = place-reclaim-valid (IRResultAWF.result-place result-g)
 
       -- snd-loc is before frontier at alloc-reclaim-g
       snd-loc-before-reclaim-g : BeforeFrontier alloc-reclaim-g snd-loc
-      snd-loc-before-reclaim-g = IRResultAWF.reclaim-preserves-result result-g
+      snd-loc-before-reclaim-g = place-reclaim-before (IRResultAWF.result-place result-g)
 
       -- Region bounds for snd-loc's sub-locations:
       --   input-bound = backup-slot (sub-locations from x are < backup-slot)

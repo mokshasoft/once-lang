@@ -65,7 +65,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
   open import Once.CCC.Machine.ClosureWellFormed
   open ClosureWellFormedDef {FS} program-bound
-    using (ValidAtWF; IRResultAWF; RaxConstraint; rax-output-eq; rax-erased; RecDispatcherWF; valid-unit-wf;
+    using (ValidAtWF; IRResultAWF; ResultPlace; unit-result; at-loc; RecDispatcherWF; valid-unit-wf;
            validityWF-mem-only; validityWF-frontier-advance;
            validityWF-alloc-advance; validityWF-mem-preserved;
            validityWF-write-at-frontier; validityWF-write-at-suc-frontier;
@@ -341,21 +341,15 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   -- Stack mode: reference-based (tag + pointer), same as Heap mode
   run-inl {A} {B} mIn Stack x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     record
-      { result-loc = sum-loc
-      ; final-state = s-final
+      { final-state = s-final
       ; final-alloc = alloc₁
       ; trace = inl-trace
       ; trace-correct = inl-inr-trace-state-correct (suc (next-slot alloc)) (next-slot alloc) s alloc input-loc sum-loc s-final rdi-eq refl refl not-halted
-      ; result-valid-wf = inl-valid-wf-final
-      ; result-before = sum-before
-      ; rax-is-result = rax-output-eq rax-eq
+      ; result-place = at-loc sum-loc inl-valid-wf-final sum-before rax-eq inl-reclaim-preserves-validity inl-reclaim-preserves-result
       ; not-halted = not-halted
       ; frame-preserved = refl
       ; slot-monotone = slot-monotone-inl
       ; heap-monotone = ≤-refl
-      -- Phase 7: Removed reclaimable-slot, reclaim-monotone, reclaim-bounded, reclaim-size-bound
-      ; reclaim-preserves-result = inl-reclaim-preserves-result
-      ; reclaim-preserves-validity = inl-reclaim-preserves-validity
       ; max-slot-written = next-slot alloc +ℕ sum-slots
       ; max-slot-geq-final = ≤-refl
       ; max-slot-usage-bound = reclaim-size-bound-inl
@@ -492,21 +486,15 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   -- Heap mode: boxed representation (tag + pointer)
   run-inl {A} {B} mIn Heap x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     record
-      { result-loc = sum-loc
-      ; final-state = s-final
+      { final-state = s-final
       ; final-alloc = alloc₁
       ; trace = inl-trace
       ; trace-correct = inl-inr-trace-state-correct (suc (next-slot alloc)) (next-slot alloc) s alloc input-loc sum-loc s-final rdi-eq refl refl not-halted
-      ; result-valid-wf = inl-valid-wf-final
-      ; result-before = sum-before
-      ; rax-is-result = rax-output-eq rax-eq
+      ; result-place = at-loc sum-loc inl-valid-wf-final sum-before rax-eq inl-reclaim-preserves-validity inl-reclaim-preserves-result
       ; not-halted = not-halted
       ; frame-preserved = refl
       ; slot-monotone = slot-monotone-inl
       ; heap-monotone = ≤-refl
-      -- Phase 7: Removed reclaimable-slot, reclaim-monotone, reclaim-bounded, reclaim-size-bound
-      ; reclaim-preserves-result = inl-reclaim-preserves-result
-      ; reclaim-preserves-validity = inl-reclaim-preserves-validity
       ; max-slot-written = next-slot alloc +ℕ sum-slots
       ; max-slot-geq-final = ≤-refl
       ; max-slot-usage-bound = reclaim-size-bound-inl
@@ -657,21 +645,15 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   -- Stack mode: reference-based (tag + pointer), same as Heap mode
   run-inr {A} {B} mIn Stack x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     record
-      { result-loc = sum-loc
-      ; final-state = s-final
+      { final-state = s-final
       ; final-alloc = alloc₁
       ; trace = inr-trace
       ; trace-correct = inl-inr-trace-state-correct (suc (next-slot alloc)) (next-slot alloc) s alloc input-loc sum-loc s-final rdi-eq refl refl not-halted
-      ; result-valid-wf = inr-valid-wf-final
-      ; result-before = sum-before
-      ; rax-is-result = rax-output-eq rax-eq
+      ; result-place = at-loc sum-loc inr-valid-wf-final sum-before rax-eq inr-reclaim-preserves-validity inr-reclaim-preserves-result
       ; not-halted = not-halted
       ; frame-preserved = refl
       ; slot-monotone = slot-monotone-inr
       ; heap-monotone = ≤-refl
-      -- Phase 7: Removed reclaimable-slot, reclaim-monotone, reclaim-bounded, reclaim-size-bound
-      ; reclaim-preserves-result = inr-reclaim-preserves-result
-      ; reclaim-preserves-validity = inr-reclaim-preserves-validity
       ; max-slot-written = next-slot alloc +ℕ sum-slots
       ; max-slot-geq-final = ≤-refl
       ; max-slot-usage-bound = reclaim-size-bound-inr
@@ -798,21 +780,15 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   -- Heap mode: boxed representation (tag + pointer)
   run-inr {A} {B} mIn Heap x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     record
-      { result-loc = sum-loc
-      ; final-state = s-final
+      { final-state = s-final
       ; final-alloc = alloc₁
       ; trace = inr-trace
       ; trace-correct = inl-inr-trace-state-correct (suc (next-slot alloc)) (next-slot alloc) s alloc input-loc sum-loc s-final rdi-eq refl refl not-halted
-      ; result-valid-wf = inr-valid-wf-final
-      ; result-before = sum-before
-      ; rax-is-result = rax-output-eq rax-eq
+      ; result-place = at-loc sum-loc inr-valid-wf-final sum-before rax-eq inr-reclaim-preserves-validity inr-reclaim-preserves-result
       ; not-halted = not-halted
       ; frame-preserved = refl
       ; slot-monotone = slot-monotone-inr
       ; heap-monotone = ≤-refl
-      -- Phase 7: Removed reclaimable-slot, reclaim-monotone, reclaim-bounded, reclaim-size-bound
-      ; reclaim-preserves-result = inr-reclaim-preserves-result
-      ; reclaim-preserves-validity = inr-reclaim-preserves-validity
       ; max-slot-written = next-slot alloc +ℕ sum-slots
       ; max-slot-geq-final = ≤-refl
       ; max-slot-usage-bound = reclaim-size-bound-inr
@@ -965,24 +941,20 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   -- Case for inl: dispatch to f
   run-case {m} {A} {B} {C} f g rec-wf (inj₁ a) input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     mF , record
-      { result-loc = IRResultAWF.result-loc result-f
-      ; final-state = IRResultAWF.final-state result-f
+      { final-state = IRResultAWF.final-state result-f
       ; final-alloc = IRResultAWF.final-alloc result-f
       ; trace = case-inl-trace
       ; trace-correct = case-trace-state-correct f-trace s alloc payload-loc s-setup (IRResultAWF.final-state result-f)
                           (subst (λ loc → readLoc s (sucLoc loc) ≡ just payload-loc) (sym rdi-eq) (InlValidWF.payload-ptr inl-decomp))
                           refl
                           (IRResultAWF.trace-correct result-f) not-halted
-      ; result-valid-wf = IRResultAWF.result-valid-wf result-f
-      ; result-before = IRResultAWF.result-before result-f
-      ; rax-is-result = IRResultAWF.rax-is-result result-f
+      ; result-place = IRResultAWF.result-place result-f
       ; not-halted = IRResultAWF.not-halted result-f
       ; frame-preserved = IRResultAWF.frame-preserved result-f
       ; slot-monotone = IRResultAWF.slot-monotone result-f
       ; heap-monotone = IRResultAWF.heap-monotone result-f
       -- Phase 7: Removed reclaimable-slot, reclaim-monotone, reclaim-bounded, reclaim-size-bound
-      ; reclaim-preserves-result = IRResultAWF.reclaim-preserves-result result-f
-      ; reclaim-preserves-validity = IRResultAWF.reclaim-preserves-validity result-f
+      
       ; max-slot-written = IRResultAWF.max-slot-written result-f
       ; max-slot-geq-final = IRResultAWF.max-slot-geq-final result-f
       ; max-slot-usage-bound = ≤-trans (IRResultAWF.max-slot-usage-bound result-f) cap-f-bound
@@ -1080,24 +1052,20 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   -- Case for inr: dispatch to g
   run-case {m} {A} {B} {C} f g rec-wf (inj₂ b) input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     mG , record
-      { result-loc = IRResultAWF.result-loc result-g
-      ; final-state = IRResultAWF.final-state result-g
+      { final-state = IRResultAWF.final-state result-g
       ; final-alloc = IRResultAWF.final-alloc result-g
       ; trace = case-inr-trace
       ; trace-correct = case-trace-state-correct g-trace s alloc payload-loc s-setup (IRResultAWF.final-state result-g)
                           (subst (λ loc → readLoc s (sucLoc loc) ≡ just payload-loc) (sym rdi-eq) (InrValidWF.payload-ptr inr-decomp))
                           refl
                           (IRResultAWF.trace-correct result-g) not-halted
-      ; result-valid-wf = IRResultAWF.result-valid-wf result-g
-      ; result-before = IRResultAWF.result-before result-g
-      ; rax-is-result = IRResultAWF.rax-is-result result-g
+      ; result-place = IRResultAWF.result-place result-g
       ; not-halted = IRResultAWF.not-halted result-g
       ; frame-preserved = IRResultAWF.frame-preserved result-g
       ; slot-monotone = IRResultAWF.slot-monotone result-g
       ; heap-monotone = IRResultAWF.heap-monotone result-g
       -- Phase 7: Removed reclaimable-slot, reclaim-monotone, reclaim-bounded, reclaim-size-bound
-      ; reclaim-preserves-result = IRResultAWF.reclaim-preserves-result result-g
-      ; reclaim-preserves-validity = IRResultAWF.reclaim-preserves-validity result-g
+      
       ; max-slot-written = IRResultAWF.max-slot-written result-g
       ; max-slot-geq-final = IRResultAWF.max-slot-geq-final result-g
       ; max-slot-usage-bound = ≤-trans (IRResultAWF.max-slot-usage-bound result-g) cap-g-bound
@@ -1242,21 +1210,15 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     IRResultAWF m (In {F} wf m) x s alloc
   run-In {F} wf mIn m x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     record
-      { result-loc = result-loc
-      ; final-state = s'
+      { final-state = s'
       ; final-alloc = alloc'
       ; trace = in-trace
       ; trace-correct = refl  -- s' DEFINED by trace
-      ; result-valid-wf = result-valid
-      ; result-before = result-bf
-      ; rax-is-result = rax-output-eq rax-eq
+      ; result-place = at-loc result-loc result-valid result-bf rax-eq result-valid result-bf
       ; not-halted = not-halted'
       ; frame-preserved = refl
       ; slot-monotone = slot-mono
       ; heap-monotone = ≤-refl
-      -- Phase 7: Removed reclaimable-slot, reclaim-monotone, reclaim-bounded, reclaim-size-bound
-      ; reclaim-preserves-result = result-bf
-      ; reclaim-preserves-validity = result-valid
       ; max-slot-written = next-slot alloc'
       ; max-slot-geq-final = ≤-refl
       ; max-slot-usage-bound = reclaim-bound
@@ -1358,21 +1320,15 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     IRResultAWF Heap (out-μ {F} wf) x s alloc
   run-out-μ {F} wf mIn x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     record
-      { result-loc = input-loc
-      ; final-state = s'
+      { final-state = s'
       ; final-alloc = alloc
       ; trace = out-μ-trace
       ; trace-correct = refl  -- s' DEFINED by trace
-      ; result-valid-wf = result-valid
-      ; result-before = input-before
-      ; rax-is-result = rax-output-eq rax-eq
+      ; result-place = at-loc input-loc result-valid input-before rax-eq result-valid input-before
       ; not-halted = not-halted'
       ; frame-preserved = refl
       ; slot-monotone = ≤-refl
       ; heap-monotone = ≤-refl
-      -- Phase 7: Removed reclaimable-slot, reclaim-monotone, reclaim-bounded, reclaim-size-bound
-      ; reclaim-preserves-result = input-before
-      ; reclaim-preserves-validity = result-valid
       ; max-slot-written = next-slot alloc
       ; max-slot-geq-final = ≤-refl
       ; max-slot-usage-bound = m≤m+n (next-slot alloc) 0
@@ -1441,21 +1397,15 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     IRResultAWF Heap (Out {F} wf) x s alloc
   run-Out {F} wf mIn x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     record
-      { result-loc = input-loc
-      ; final-state = s'
+      { final-state = s'
       ; final-alloc = alloc
       ; trace = out-trace
       ; trace-correct = refl  -- s' DEFINED by trace
-      ; result-valid-wf = result-valid
-      ; result-before = input-before
-      ; rax-is-result = rax-output-eq rax-eq
+      ; result-place = at-loc input-loc result-valid input-before rax-eq result-valid input-before
       ; not-halted = not-halted'
       ; frame-preserved = refl
       ; slot-monotone = ≤-refl
       ; heap-monotone = ≤-refl
-      -- Phase 7: Removed reclaimable-slot, reclaim-monotone, reclaim-bounded, reclaim-size-bound
-      ; reclaim-preserves-result = input-before
-      ; reclaim-preserves-validity = result-valid
       ; max-slot-written = next-slot alloc
       ; max-slot-geq-final = ≤-refl
       ; max-slot-usage-bound = m≤m+n (next-slot alloc) 0
@@ -1520,21 +1470,15 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     IRResultAWF m (in-ν {F} wf m) x s alloc
   run-in-ν {F} wf mIn m x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     record
-      { result-loc = result-loc
-      ; final-state = s'
+      { final-state = s'
       ; final-alloc = alloc'
       ; trace = in-ν-trace
       ; trace-correct = refl  -- s' DEFINED by trace
-      ; result-valid-wf = result-valid
-      ; result-before = result-bf
-      ; rax-is-result = rax-output-eq rax-eq
+      ; result-place = at-loc result-loc result-valid result-bf rax-eq result-valid result-bf
       ; not-halted = not-halted'
       ; frame-preserved = refl
       ; slot-monotone = slot-mono
       ; heap-monotone = ≤-refl
-      -- Phase 7: Removed reclaimable-slot, reclaim-monotone, reclaim-bounded, reclaim-size-bound
-      ; reclaim-preserves-result = result-bf
-      ; reclaim-preserves-validity = result-valid
       ; max-slot-written = next-slot alloc'
       ; max-slot-geq-final = ≤-refl
       ; max-slot-usage-bound = reclaim-bound

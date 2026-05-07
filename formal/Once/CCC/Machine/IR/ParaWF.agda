@@ -93,7 +93,7 @@ module ParaWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
   open import Once.CCC.Machine.ClosureWellFormed
   open ClosureWellFormedDef {FS} program-bound
-    using (ValidAtWF; IRResultAWF; RaxConstraint; rax-output-eq; rax-erased; RecDispatcherWF;
+    using (ValidAtWF; IRResultAWF; ResultPlace; unit-result; at-loc; RecDispatcherWF;
            validityWF-mem-only; validityWF-frontier-advance;
            validityWF-alloc-advance)
 
@@ -183,21 +183,16 @@ module ParaWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     → ∃[ mOut ] IRResultAWF mOut (Para wf alg) x s alloc
   run-para-core {F} {A} wf alg rec-wf mIn x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     Heap , record
-      { result-loc = result-loc
-      ; final-state = s'
+      { final-state = s'
       ; final-alloc = alloc'
       ; trace = para-trace
       ; trace-correct = refl
-      ; result-valid-wf = result-valid
-      ; result-before = result-bf
-      ; rax-is-result = rax-output-eq rax-eq
+      ; result-place = at-loc result-loc result-valid result-bf rax-eq result-valid result-bf
       ; not-halted = not-halted'
       ; frame-preserved = refl
       ; slot-monotone = slot-mono
       ; heap-monotone = ≤-refl
       -- Phase 7: Removed reclaimable-slot, reclaim-monotone, reclaim-bounded, reclaim-size-bound
-      ; reclaim-preserves-result = result-bf
-      ; reclaim-preserves-validity = result-valid
       ; max-slot-written = next-slot alloc'
       ; max-slot-geq-final = ≤-refl
       ; max-slot-usage-bound = reclaim-bound

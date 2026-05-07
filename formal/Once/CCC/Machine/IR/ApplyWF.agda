@@ -107,7 +107,8 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
 
   open import Once.CCC.Machine.ClosureWellFormed
   open ClosureWellFormedDef {FS} program-bound
-    using (ValidAtWF; IRResultAWF; RaxConstraint; rax-output-eq; rax-erased; BodyCorrect;
+    using (ValidAtWF; IRResultAWF; ResultPlace; unit-result; at-loc;
+           place-loc; place-valid; place-before; place-rax; BodyCorrect;
            valid-unit-wf; valid-pair-wf; valid-closure-wf;
            valid-inl-wf; valid-inr-wf;
            -- OCP-0003: valid-fold-wf removed
@@ -194,21 +195,16 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
     ∃[ mOut ] IRResultAWF mOut (apply {A} {B} {k}) x s alloc
   run-apply {m} {A} {B} {k} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     mBody , record
-      { result-loc = result-loc
-      ; final-state = s'
+      { final-state = s'
       ; final-alloc = alloc'
       ; trace = trace
       ; trace-correct = refl  -- BY DEFINITION
-      ; result-valid-wf = result-valid-wf'
-      ; result-before = result-before'
-      ; rax-is-result = rax-output-eq rax-eq'
+      ; result-place = at-loc result-loc result-valid-wf' result-before' rax-eq' reclaim-preserves-validity' reclaim-preserves-result'
       ; not-halted = not-halted'
       ; frame-preserved = refl
       ; slot-monotone = m≤m+n (next-slot alloc) pair-slots
       ; heap-monotone = ≤-refl
       -- Phase 7: Removed reclaimable-slot, reclaim-monotone, reclaim-bounded, reclaim-size-bound
-      ; reclaim-preserves-result = reclaim-preserves-result'
-      ; reclaim-preserves-validity = reclaim-preserves-validity'
       ; max-slot-written = next-slot alloc +ℕ pair-slots
       ; max-slot-geq-final = ≤-refl
       ; max-slot-usage-bound = ≤-refl
@@ -666,7 +662,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       body-result = proj₂ body-exec-result
 
       body-trace = IRResultAWF.trace body-result
-      result-loc = IRResultAWF.result-loc body-result
+      result-loc = place-loc (IRResultAWF.result-place body-result)
 
       ------------------------------------------------------------------------
       -- Full trace and final state (CLEAN: defined by exec-trace)

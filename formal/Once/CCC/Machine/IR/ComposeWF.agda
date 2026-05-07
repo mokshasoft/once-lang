@@ -55,7 +55,10 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
   open import Once.CCC.Machine.ClosureWellFormed
   open ClosureWellFormedDef {FS} program-bound
-    using (ValidAtWF; IRResultAWF; RaxConstraint; rax-output-eq; rax-erased; extract-rax-eq; RecDispatcherWF; validityWF-mem-only;
+    using (ValidAtWF; IRResultAWF; ResultPlace; unit-result; at-loc;
+           place-loc; place-valid; place-before; place-rax;
+           place-reclaim-valid; place-reclaim-before;
+           RecDispatcherWF; validityWF-mem-only;
            validityWF-frontier-advance; validityWF-mem-preserved;
            validityWF-with-bf-transfer)
 
@@ -164,21 +167,16 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     ∃[ mOut ] IRResultAWF mOut (g ∘ f) x s alloc
   run-compose mIn f g rec-wf x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     mOut , record
-      { result-loc = result-loc-g
-      ; final-state = s-final
+      { final-state = s-final
       ; final-alloc = alloc₂
       ; trace = compose-trace
       ; trace-correct = refl  -- s-final DEFINED by trace
-      ; result-valid-wf = result-valid-final
-      ; result-before = result-before-g
-      ; rax-is-result = rax-output-eq rax-eq-final
+      ; result-place = at-loc result-loc-g result-valid-final result-before-g rax-eq-final compose-reclaim-preserves-validity compose-reclaim-preserves-result
       ; not-halted = not-halted-final
       ; frame-preserved = IRResultAWF.frame-preserved result-g
       ; slot-monotone = slot-mono
       ; heap-monotone = heap-mono
       -- Phase 7: Removed reclaimable-slot, reclaim-monotone, reclaim-bounded, reclaim-size-bound
-      ; reclaim-preserves-result = compose-reclaim-preserves-result
-      ; reclaim-preserves-validity = compose-reclaim-preserves-validity
       ; max-slot-written = compose-max-slot
       ; max-slot-geq-final = compose-max-slot-geq-final
       ; max-slot-usage-bound = compose-max-slot-bound
@@ -208,7 +206,7 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       result-f = proj₂ f-result-pair
       s₁ = IRResultAWF.final-state result-f
       alloc₁ = IRResultAWF.final-alloc result-f
-      inter-loc = IRResultAWF.result-loc result-f
+      inter-loc = place-loc (IRResultAWF.result-place result-f)
       f-trace = IRResultAWF.trace result-f
       not-halted₁ = IRResultAWF.not-halted result-f
 
@@ -242,7 +240,7 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       inter-before-reclaimed =
         frontier-same-heap alloc₁ alloc₁-reclaimed
           (IRResultAWF.frame-preserved result-f) refl heap-eq-f inter-loc
-          (IRResultAWF.result-before result-f)
+          (place-before (IRResultAWF.result-place result-f))
 
       -- Transfer validity from alloc₁ to alloc₁-reclaimed
       -- These allocs have: same next-slot, same frame (by frame-preserved), same heap (by heap-eq-f)
@@ -252,7 +250,7 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
                             (IRResultAWF.frame-preserved result-f) refl heap-eq-f
         in validityWF-with-bf-transfer (eval f x) inter-loc s₁
              alloc₁ alloc₁-reclaimed bf-transfer
-             (IRResultAWF.result-valid-wf result-f)
+             (place-valid (IRResultAWF.result-place result-f))
 
       s₁' = record s₁ { regs = writeReg (regs s₁) Input1 inter-loc }
 
@@ -271,9 +269,9 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       result-g = proj₂ g-result-pair
       s₂ = IRResultAWF.final-state result-g
       alloc₂ = IRResultAWF.final-alloc result-g
-      result-loc-g = IRResultAWF.result-loc result-g
+      result-loc-g = place-loc (IRResultAWF.result-place result-g)
       g-trace = IRResultAWF.trace result-g
-      result-before-g = IRResultAWF.result-before result-g
+      result-before-g = place-before (IRResultAWF.result-place result-g)
 
       ------------------------------------------------------------------------
       -- Compose trace and final state DEFINED by trace execution
@@ -290,7 +288,7 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- So s₁' ≡ record s₁ { regs = writeReg (regs s₁) Input1 (readReg (regs s₁) Output) }
       s₁'-eq-output : s₁' ≡ record s₁ { regs = writeReg (regs s₁) Input1 (readReg (regs s₁) Output) }
       s₁'-eq-output = cong (λ v → record s₁ { regs = writeReg (regs s₁) Input1 v })
-                           (sym (extract-rax-eq (IRResultAWF.rax-is-result result-f)))
+                           (sym (place-rax (IRResultAWF.result-place result-f)))
 
       s-final-eq : s-final ≡ s₂
       s-final-eq = exec-trace-compose-eq f-trace g-trace s alloc s₁ s₁' alloc₁-reclaimed s₂
@@ -305,11 +303,11 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ------------------------------------------------------------------------
       result-valid-final : ValidAtWF mOut alloc₂ (eval (g ∘ f) x) result-loc-g s-final
       result-valid-final = subst (λ st → ValidAtWF mOut alloc₂ (eval (g ∘ f) x) result-loc-g st)
-                             (sym s-final-eq) (IRResultAWF.result-valid-wf result-g)
+                             (sym s-final-eq) (place-valid (IRResultAWF.result-place result-g))
 
       rax-eq-final : readReg (regs s-final) Output ≡ result-loc-g
       rax-eq-final = trans (cong (λ st → readReg (regs st) Output) s-final-eq)
-                           (extract-rax-eq (IRResultAWF.rax-is-result result-g))
+                           (place-rax (IRResultAWF.result-place result-g))
 
       not-halted-final : halted s-final ≡ false
       not-halted-final = subst (λ st → halted st ≡ false) (sym s-final-eq)
@@ -333,19 +331,19 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- So record alloc₁-reclaimed { next-slot = n } = record alloc { next-slot = n }
       -- Therefore g's reclaim-preserves-result transfers directly!
       compose-reclaim-preserves-result :
-        BeforeFrontier (record alloc { next-slot = next-slot alloc₂ }) (IRResultAWF.result-loc result-g)
-      compose-reclaim-preserves-result = IRResultAWF.reclaim-preserves-result result-g
+        BeforeFrontier (record alloc { next-slot = next-slot alloc₂ }) (place-loc (IRResultAWF.result-place result-g))
+      compose-reclaim-preserves-result = place-reclaim-before (IRResultAWF.result-place result-g)
 
       -- reclaim-preserves-validity: result valid at alloc with advanced next-slot
       -- Need to transport from s₂ to s-final via s-final-eq
       compose-reclaim-preserves-validity :
         ValidAtWF mOut (record alloc { next-slot = next-slot alloc₂ })
-                  (eval g (eval f x)) (IRResultAWF.result-loc result-g) s-final
+                  (eval g (eval f x)) (place-loc (IRResultAWF.result-place result-g)) s-final
       compose-reclaim-preserves-validity =
         subst (λ st → ValidAtWF mOut (record alloc { next-slot = next-slot alloc₂ })
-                        (eval g (eval f x)) (IRResultAWF.result-loc result-g) st)
+                        (eval g (eval f x)) (place-loc (IRResultAWF.result-place result-g)) st)
               (sym s-final-eq)
-              (IRResultAWF.reclaim-preserves-validity result-g)
+              (place-reclaim-valid (IRResultAWF.result-place result-g))
 
       ------------------------------------------------------------------------
       -- Max slot tracking

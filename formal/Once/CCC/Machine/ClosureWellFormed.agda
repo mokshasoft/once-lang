@@ -257,34 +257,86 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     -- from pattern matching on input validity.
     --------------------------------------------------------------------
 
-    -- Plan 0.2.4.5 D1 (Unit erasure): for Unit-typed results the
-    -- value is genuinely "nowhere" — no register, no slot, no
-    -- observable content. `rax-is-result` ("Output holds the
-    -- result-loc") gets a vacuous case for Unit so the spec doesn't
-    -- have to lie about a non-existent equation.
+    -- Plan 0.2.4.5 D1 (Unit erasure): result placement is type-aware.
     --
-    -- Modeled as a data type so it works with B as a free variable:
-    -- producers pick the constructor (`rax-output-eq` for non-Unit,
-    -- `rax-erased` for Unit), consumers case-split. For non-Unit B
-    -- the existing equation is preserved unchanged.
-    data RaxConstraint : (B : Type) → LocState FS → ValueLocation FS → Set where
-      rax-output-eq : ∀ {B s loc} → readReg (regs s) Output ≡ loc → RaxConstraint B s loc
-      rax-erased    : ∀ {s loc} → RaxConstraint Unit s loc
+    -- For Unit-typed results, the value is genuinely "nowhere" — no
+    -- register, no slot, no observable content. So the data that
+    -- normally pins down "where the result is" (a ValueLocation +
+    -- validity at it + before-frontier proof + Output equation) has
+    -- nothing to talk about. Encoded structurally:
+    --
+    --   `unit-result` : Unit-typed result; carries no location.
+    --   `at-loc loc valid-wf before output-eq` : non-Unit result;
+    --     bundles all four facts about the location at once.
+    --
+    -- This subsumes the old separate fields (`result-loc`,
+    -- `result-valid-wf`, `result-before`, `rax-is-result`) into a
+    -- single `result-place` field, and removes the redundancy where
+    -- `rax-is-result` was bridging `result-loc` to `Output`.
+    -- Consumers (compose, pair, RecTrace) pattern-match on the
+    -- constructor; the type system forces them to handle Unit
+    -- separately — there's no loc to extract from `unit-result`.
+    -- The reclaim-alloc shape: same as input alloc but with frontier
+    -- bumped to the IR's final next-slot. Carrying it in the type
+    -- lets a single `at-loc` constructor share its `loc` between
+    -- post-IR and post-reclaim invariants — consumers don't need a
+    -- separate "loc-eq" lemma to bridge two parallel ResultPlaces.
+    data ResultPlace : (B : Type) (m : AllocMode)
+                       (alloc reclaim-alloc : AllocState {FS})
+                       (v : ⟦ B ⟧) (s : LocState FS) → Set where
+      unit-result : ∀ {m alloc reclaim-alloc s} →
+                    ResultPlace Unit m alloc reclaim-alloc tt s
+      at-loc      : ∀ {B m alloc reclaim-alloc v s}
+                    (loc : ValueLocation FS)
+                  → ValidAtWF m alloc v loc s
+                  → BeforeFrontier alloc loc
+                  → readReg (regs s) Output ≡ loc
+                  → ValidAtWF m reclaim-alloc v loc s
+                  → BeforeFrontier reclaim-alloc loc
+                  → ResultPlace B m alloc reclaim-alloc v s
 
-    -- Plan 0.2.4.5 D1: extract the Output equation from the
-    -- type-indexed rax-is-result. Used by consumers (compose,
-    -- pair, RecTrace) that haven't yet split their proofs into a
-    -- Unit-aware case branch. The Unit case requires a postulate
-    -- stub — this is a TODO until consumers learn to dispatch on
-    -- the constructor properly. (Run-terminal is the only producer
-    -- that currently emits `rax-erased`, so the postulate is hit
-    -- only when terminal is composed without elaboration eliding
-    -- the redundancy first.)
-    extract-rax-eq : ∀ {B s loc} → RaxConstraint B s loc →
-                     readReg (regs s) Output ≡ loc
-    extract-rax-eq (rax-output-eq eq) = eq
-    extract-rax-eq {Unit} {s} {loc} rax-erased = unit-rax-stub s loc
-      where postulate unit-rax-stub : ∀ s loc → readReg (regs s) Output ≡ loc
+    -- Plan 0.2.4.5 D1: transitional helpers for ProcessedLayerResult
+    -- (whose old plain `rax-is-result` / `result-loc` / etc. fields
+    -- haven't been migrated to ResultPlace yet). The Unit case
+    -- postulates a stub since ProcessedLayerResult expects plain
+    -- (non-erased) equations. Once ProcessedLayerResult also adopts
+    -- ResultPlace, these helpers go away.
+    place-loc : ∀ {B m a₁ a₂ v s} → ResultPlace B m a₁ a₂ v s → ValueLocation FS
+    place-loc (at-loc loc _ _ _ _ _) = loc
+    place-loc {Unit} unit-result = unit-result-loc-stub
+      where postulate unit-result-loc-stub : ValueLocation FS
+
+    place-valid : ∀ {B m a₁ a₂ v s} (rp : ResultPlace B m a₁ a₂ v s) →
+                  ValidAtWF m a₁ v (place-loc rp) s
+    place-valid (at-loc _ valid _ _ _ _) = valid
+    place-valid {Unit} {m} {a₁} {_} {tt} {s} unit-result = valid-unit-stub
+      where postulate valid-unit-stub : ValidAtWF m a₁ {Unit} tt _ s
+
+    place-before : ∀ {B m a₁ a₂ v s} (rp : ResultPlace B m a₁ a₂ v s) →
+                   BeforeFrontier a₁ (place-loc rp)
+    place-before (at-loc _ _ before _ _ _) = before
+    place-before {Unit} {_} {a₁} unit-result = before-stub
+      where postulate before-stub : BeforeFrontier a₁ _
+
+    place-rax : ∀ {B m a₁ a₂ v s} (rp : ResultPlace B m a₁ a₂ v s) →
+                readReg (regs s) Output ≡ place-loc rp
+    place-rax (at-loc _ _ _ rax _ _) = rax
+    place-rax {Unit} {_} {_} {_} {_} {s} unit-result = rax-stub
+      where postulate rax-stub : readReg (regs s) Output ≡ _
+
+    -- Reclaim-side projections (validity + before-frontier under the
+    -- reclaimed alloc state). Same loc as place-loc by construction.
+    place-reclaim-valid : ∀ {B m a₁ a₂ v s} (rp : ResultPlace B m a₁ a₂ v s) →
+                          ValidAtWF m a₂ v (place-loc rp) s
+    place-reclaim-valid (at-loc _ _ _ _ rvalid _) = rvalid
+    place-reclaim-valid {Unit} {m} {_} {a₂} {tt} {s} unit-result = valid-unit-rs
+      where postulate valid-unit-rs : ValidAtWF m a₂ {Unit} tt _ s
+
+    place-reclaim-before : ∀ {B m a₁ a₂ v s} (rp : ResultPlace B m a₁ a₂ v s) →
+                           BeforeFrontier a₂ (place-loc rp)
+    place-reclaim-before (at-loc _ _ _ _ _ rbefore) = rbefore
+    place-reclaim-before {Unit} {_} {_} {a₂} unit-result = before-rs
+      where postulate before-rs : BeforeFrontier a₂ _
 
     record IRResultAWF (m : AllocMode)
                        {A B : Type}
@@ -294,7 +346,6 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
                        (alloc : AllocState {FS}) : Set where
       inductive
       field
-        result-loc : ValueLocation FS
         final-state : LocState FS
         -- Compile-time allocation state (Dispatcher's bookkeeping)
         -- Has incremented next-slot for BeforeFrontier/validity reasoning
@@ -305,10 +356,14 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
         -- Note: exec-trace returns (final-state, alloc) for non-apply IRs
         -- since next-slot is compile-time only and traces don't modify it
         trace-correct : proj₁ (exec-trace trace s alloc) ≡ final-state
-        -- Existing validity fields
-        result-valid-wf : ValidAtWF m final-alloc (eval ir x) result-loc final-state
-        result-before : BeforeFrontier final-alloc result-loc
-        rax-is-result : RaxConstraint B final-state result-loc
+        -- Where the result is. For Unit results, `unit-result`
+        -- (no location). For non-Unit, `at-loc loc validity before
+        -- output-eq reclaim-validity reclaim-before` bundles all
+        -- six invariants at the same `loc` — consumers don't need
+        -- a separate `loc-eq` to bridge result-state and reclaim-state.
+        result-place : ResultPlace B m final-alloc
+          (record alloc { next-slot = next-slot final-alloc })
+          (eval ir x) final-state
         not-halted : halted final-state ≡ false
         frame-preserved : current-frame final-alloc ≡ current-frame alloc
         slot-monotone : next-slot alloc ≤ next-slot final-alloc
@@ -319,14 +374,9 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
         --   With perfect reclaim, reclaimable-slot ≡ next-slot final-alloc, so:
         --   - reclaim-monotone = slot-monotone
         --   - reclaim-size-bound = slot-stays-in-budget
-        -- Result is BeforeFrontier relative to original alloc with advanced next-slot
-        -- (Needed for compositional proofs - can't be derived from result-before for heap results)
-        reclaim-preserves-result :
-          BeforeFrontier (record alloc { next-slot = next-slot final-alloc }) result-loc
-        -- Validity preserved in reclaimed alloc state
-        reclaim-preserves-validity :
-          ValidAtWF m (record alloc { next-slot = next-slot final-alloc })
-                    (eval ir x) result-loc final-state
+        -- Note: reclaim-place was a separate field but is now folded
+        -- into `result-place` via the dual-alloc form of
+        -- `ResultPlace`. The shared loc is captured at construction.
         -- High-water mark of slot allocation (maximum slot ever written)
         -- With reclamation, next-slot final-alloc may be < max slots actually written
         max-slot-written : ℕ

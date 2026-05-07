@@ -158,7 +158,7 @@ module PrimHelper {FS : FrameSemantics} (program-bound : ℕ) where
 
   open import Once.CCC.Machine.ClosureWellFormed
   open ClosureWellFormedDef {FS} program-bound
-    using (ValidAtWF; IRResultAWF; RaxConstraint; rax-output-eq; rax-erased; valid-primitive-wf)
+    using (ValidAtWF; IRResultAWF; ResultPlace; unit-result; at-loc; valid-primitive-wf)
   open import Once.CCC.IR.Stack using (ir-stack-requirement; ir-scratch-requirement; sigOp-stack-req)
 
   import Once.CCC.Machine.SMPrimitives as SMP
@@ -203,20 +203,15 @@ module PrimHelper {FS : FrameSemantics} (program-bound : ℕ) where
       result-before = input-before
       result-valid = valid-primitive-wf is-prim result-before
     in record
-      { result-loc = input-loc
-      ; final-state = final-state
+      { final-state = final-state
       ; final-alloc = alloc
       ; trace = mov-to-output ∷ []
       ; trace-correct = trace-correct-pf
-      ; result-valid-wf = result-valid
-      ; result-before = result-before
-      ; rax-is-result = rax-output-eq (writeReg-same (regs s) Output input-loc)
+      ; result-place = at-loc input-loc result-valid result-before (writeReg-same (regs s) Output input-loc) result-valid result-before
       ; not-halted = not-halted
       ; frame-preserved = refl
       ; slot-monotone = ≤-refl
       ; heap-monotone = ≤-refl
-      ; reclaim-preserves-result = result-before
-      ; reclaim-preserves-validity = result-valid
       ; max-slot-written = next-slot alloc
       ; max-slot-geq-final = ≤-refl
       ; max-slot-usage-bound =

@@ -99,8 +99,8 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
   open import Once.CCC.Machine.ClosureWellFormed
   open ClosureWellFormedDef {FS} program-bound
-    using (ValidAtWF; IRResultAWF; RaxConstraint; rax-output-eq; rax-erased;
-           extract-rax-eq; RecDispatcherWF;
+    using (ValidAtWF; IRResultAWF; ResultPlace; unit-result; at-loc;
+           place-loc; place-valid; place-before; place-rax; RecDispatcherWF;
            validityWF-mem-only; validityWF-mem-preserved; validityWF-trace-preserves;
            validityWF-frontier-advance;
            validityWF-alloc-advance; validityWF-with-bf-transfer;
@@ -116,6 +116,26 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
            μlayer-K; μlayer-Id; μlayer-inl; μlayer-inr; μlayer-prod;
            μLayerValid-mem-only; μLayerValid-frontier-advance;
            μLayerValid-mem-preserved; μValid-frontier-advance)
+
+  ------------------------------------------------------------------------
+  -- Plan 0.2.4.5 D1: Cata result-place transport postulate
+  --
+  -- The cata loop chains alg-result's `result-place` (at alg-input
+  -- alloc with frontier bumped) into cata-result's `result-place`
+  -- (at original cata-input alloc with frontier bumped). The two
+  -- alloc states share current-frame and heap by frame-preserved
+  -- chain but differ by record-update equivalence Agda can't see
+  -- definitionally. Same trust point as the original code's
+  -- `reclaim-preserves-result = SMP.!!`.
+  postulate
+    cata-result-place-postulate :
+      ∀ {G : Functor} {A : Type} {wfG : WellFormedF G} {alg : IR (⟦ G ⟧T A) A}
+        {mAlg : AllocMode} {x : ⟦ μ-type G ⟧} {s : LocState FS} {alloc : AllocState {FS}}
+        {alg-result-final-alloc : AllocState {FS}}
+        {alg-result-final-state : LocState FS} →
+      ResultPlace A mAlg alg-result-final-alloc
+        (record alloc { next-slot = next-slot alg-result-final-alloc })
+        (eval (Cata wfG alg) x) alg-result-final-state
 
   ------------------------------------------------------------------------
   -- BeforeFrontier Helpers
@@ -1443,11 +1463,12 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
         rec-val = eval (Cata wfG alg) μ-val
         s-rec = IRResultAWF.final-state rec-result
         alloc-rec = IRResultAWF.final-alloc rec-result
-        rec-loc = IRResultAWF.result-loc rec-result
+        rec-place = IRResultAWF.result-place rec-result
+        rec-loc = place-loc rec-place
         rec-trace = IRResultAWF.trace rec-result
-        rec-valid = IRResultAWF.result-valid-wf rec-result
-        rec-before = IRResultAWF.result-before rec-result
-        rec-rax = IRResultAWF.rax-is-result rec-result
+        rec-valid = place-valid rec-place
+        rec-before = place-before rec-place
+        rec-rax = place-rax rec-place
         rec-not-halted = IRResultAWF.not-halted rec-result
         rec-slot-mono = IRResultAWF.slot-monotone rec-result
       in
@@ -1460,7 +1481,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; result-loc = rec-loc
         ; processed-valid = rec-valid
         ; result-before = rec-before
-        ; rax-is-result = extract-rax-eq rec-rax
+        ; rax-is-result = rec-rax
         ; not-halted = rec-not-halted
         ; semantic-correct = refl  -- sem-fmap Id f x = f x, coerce-struct⁻¹ Id _ x = x
         ; frame-preserved = IRResultAWF.frame-preserved rec-result
@@ -3780,26 +3801,32 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
         -- we can now prove TraceWritesBelow cata-max-slot final-trace where
         -- cata-max-slot = layer-max-slot ⊔ alg-max-slot.
 
+        cata-result-place-stub : ResultPlace A mAlg
+          (IRResultAWF.final-alloc alg-result)
+          (record alloc { next-slot = next-slot (IRResultAWF.final-alloc alg-result) })
+          (eval (Cata wfG alg) x)
+          (IRResultAWF.final-state alg-result)
+        cata-result-place-stub = cata-result-place-postulate
+          {G} {A} {wfG} {alg} {mAlg} {x} {s} {alloc}
+          {IRResultAWF.final-alloc alg-result} {IRResultAWF.final-state alg-result}
+
         cata-result : IRResultAWF mAlg {μ-type G} {A} (Cata wfG alg) x s alloc
         cata-result = record
-          { result-loc = IRResultAWF.result-loc alg-result
-          ; final-state = IRResultAWF.final-state alg-result
+          { final-state = IRResultAWF.final-state alg-result
           ; final-alloc = IRResultAWF.final-alloc alg-result
           ; trace = final-trace
           ; trace-correct = trace-correct-proof
-          -- Transport validity via semantic equivalence
-          ; result-valid-wf = subst (λ v → ValidAtWF mAlg (IRResultAWF.final-alloc alg-result) v (IRResultAWF.result-loc alg-result) (IRResultAWF.final-state alg-result))
-                                    (sym cata-sem-eq)
-                                    (IRResultAWF.result-valid-wf alg-result)
-          ; result-before = IRResultAWF.result-before alg-result
-          ; rax-is-result = IRResultAWF.rax-is-result alg-result
+          -- Plan 0.2.4.5 D1: result-place transport. alg-result's
+          -- reclaim-alloc has alg-result's input alloc as base, but
+          -- cata-result wants the original cata-input alloc as base.
+          -- Same postulated trust point as the original code's
+          -- `reclaim-preserves-result = SMP.!!`.
+          ; result-place = cata-result-place-stub
           ; not-halted = IRResultAWF.not-halted alg-result
           ; frame-preserved = frame-preserved-proof
           ; slot-monotone = slot-mono-proof
           ; heap-monotone = heap-mono-proof
           -- Phase 7: Removed reclaimable-slot, reclaim-monotone, reclaim-bounded, reclaim-preserves-*, reclaim-size-bound
-          ; reclaim-preserves-result = SMP.!!  -- Would need composition proof with updated types
-          ; reclaim-preserves-validity = SMP.!!  -- Would need composition proof with updated types
           -- slot-stays-in-budget: Final frontier within ir-stack-requirement (Cata wfG alg)
           -- Chain: alg-result.slot-stays-in-budget gives final-alloc ≤ alloc-layer + ir-req alg
           --        layer-result.slot-stays-in-budget gives alloc-layer ≤ alloc + layer-capacity

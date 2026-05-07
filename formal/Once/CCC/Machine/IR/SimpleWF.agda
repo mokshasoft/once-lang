@@ -51,7 +51,9 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
   open import Once.CCC.Machine.ClosureWellFormed
   open ClosureWellFormedDef {FS} program-bound
-    using (ValidAtWF; IRResultAWF; RaxConstraint; rax-output-eq; rax-erased; valid-unit-wf; valid-coerce-kind-wf;
+    using (ValidAtWF; IRResultAWF;
+           ResultPlace; unit-result; at-loc;
+           valid-unit-wf; valid-coerce-kind-wf;
            validityWF-mem-only; validityWF-frontier-advance;
            decomposePairWF; PairValidWF)
 
@@ -73,21 +75,16 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     IRResultAWF m (id {A}) x s alloc
   run-id x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     record
-      { result-loc = input-loc
-      ; final-state = s'
+      { final-state = s'
       ; final-alloc = alloc
       ; trace = trace
       ; trace-correct = refl  -- s' DEFINED by trace
-      ; result-valid-wf = valid-s'
-      ; result-before = input-before
-      ; rax-is-result = rax-output-eq rax-eq
+      ; result-place = at-loc input-loc valid-s' input-before rax-eq valid-s' input-before
       ; not-halted = not-halted'
       ; frame-preserved = refl
       ; slot-monotone = ≤-refl
       ; heap-monotone = ≤-refl
       -- Phase 7: Removed reclaimable-slot, reclaim-monotone, reclaim-bounded, reclaim-size-bound
-      ; reclaim-preserves-result = input-before
-      ; reclaim-preserves-validity = valid-s'
       ; max-slot-written = next-slot alloc
       ; max-slot-geq-final = ≤-refl
       ; max-slot-usage-bound = m≤m+n (next-slot alloc) 0
@@ -150,21 +147,16 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     ∃[ mA ] IRResultAWF mA (fst {A} {B}) x s alloc
   run-fst {m} {A} {B} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     mA , record
-      { result-loc = fst-loc
-      ; final-state = s'
+      { final-state = s'
       ; final-alloc = alloc
       ; trace = trace
       ; trace-correct = refl  -- s' DEFINED by trace
-      ; result-valid-wf = fst-valid-s'
-      ; result-before = fst-before
-      ; rax-is-result = rax-output-eq rax-eq
+      ; result-place = at-loc fst-loc fst-valid-s' fst-before rax-eq fst-valid-s' fst-before
       ; not-halted = not-halted'
       ; frame-preserved = refl
       ; slot-monotone = ≤-refl
       ; heap-monotone = ≤-refl
       -- Phase 7: Removed reclaimable-slot, reclaim-monotone, reclaim-bounded, reclaim-size-bound
-      ; reclaim-preserves-result = fst-before
-      ; reclaim-preserves-validity = fst-valid-s'
       ; max-slot-written = next-slot alloc
       ; max-slot-geq-final = ≤-refl
       ; max-slot-usage-bound = m≤m+n (next-slot alloc) 0
@@ -241,21 +233,16 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     ∃[ mB ] IRResultAWF mB (snd {A} {B}) x s alloc
   run-snd {m} {A} {B} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     mB , record
-      { result-loc = snd-loc
-      ; final-state = s'
+      { final-state = s'
       ; final-alloc = alloc
       ; trace = trace
       ; trace-correct = refl  -- s' DEFINED by trace
-      ; result-valid-wf = snd-valid-s'
-      ; result-before = snd-before
-      ; rax-is-result = rax-output-eq rax-eq
+      ; result-place = at-loc snd-loc snd-valid-s' snd-before rax-eq snd-valid-s' snd-before
       ; not-halted = not-halted'
       ; frame-preserved = refl
       ; slot-monotone = ≤-refl
       ; heap-monotone = ≤-refl
       -- Phase 7: Removed reclaimable-slot, reclaim-monotone, reclaim-bounded, reclaim-size-bound
-      ; reclaim-preserves-result = snd-before
-      ; reclaim-preserves-validity = snd-valid-s'
       ; max-slot-written = next-slot alloc
       ; max-slot-geq-final = ≤-refl
       ; max-slot-usage-bound = m≤m+n (next-slot alloc) 0
@@ -331,26 +318,21 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     readReg (regs s) Input1 ≡ input-loc →
     IRResultAWF m (terminal {A}) x s alloc
   -- Plan 0.2.4.5 D1 (Unit erasure): terminal produces a Unit value
-  -- which carries no information. result-loc = Erased, trace = []
-  -- (no-op), and rax-is-result = rax-erased (no Output equation).
-  -- The Unit value is genuinely "nowhere" — no register, no slot,
-  -- no observable state delta.
+  -- which has no observable content — no register, no slot, no
+  -- state delta. result-place = unit-result (no location), trace =
+  -- [] (no-op). The structural Unit-erasure: the spec doesn't carry
+  -- any "where the value is" data because there is no value.
   run-terminal x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     record
-      { result-loc = Erased
-      ; final-state = s
+      { final-state = s
       ; final-alloc = alloc
       ; trace = []
       ; trace-correct = refl
-      ; result-valid-wf = valid-unit-wf
-      ; result-before = erased-before
-      ; rax-is-result = rax-erased
+      ; result-place = unit-result
       ; not-halted = not-halted
       ; frame-preserved = refl
       ; slot-monotone = ≤-refl
       ; heap-monotone = ≤-refl
-      ; reclaim-preserves-result = erased-before
-      ; reclaim-preserves-validity = valid-unit-wf
       ; max-slot-written = next-slot alloc
       ; max-slot-geq-final = ≤-refl
       ; max-slot-usage-bound = m≤m+n (next-slot alloc) 0
@@ -379,28 +361,24 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   run-free-heap : ∀ {m} (ref : HeapRef)
     (x : ⟦ Unit ⟧) (input-loc : ValueLocation FS)
     (s : LocState FS) (alloc : AllocState {FS}) →
-    ValidAtWF m alloc x input-loc s →
+    ValidAtWF m alloc {Unit} x input-loc s →
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
     readReg (regs s) Input1 ≡ input-loc →
     IRResultAWF m (free-heap ref) x s alloc
+  -- Plan 0.2.4.5 D1: free-heap : IR Unit Unit. Like terminal, it
+  -- has a Unit-typed result — `unit-result` carries no location.
   run-free-heap ref x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     record
-      { result-loc = input-loc
-      ; final-state = s'
+      { final-state = s'
       ; final-alloc = alloc
       ; trace = trace
       ; trace-correct = refl  -- s' DEFINED by trace
-      ; result-valid-wf = valid-s'
-      ; result-before = input-before
-      ; rax-is-result = rax-output-eq rax-eq
+      ; result-place = unit-result
       ; not-halted = not-halted'
       ; frame-preserved = refl
       ; slot-monotone = ≤-refl
       ; heap-monotone = ≤-refl
-      -- Phase 7: Removed reclaimable-slot, reclaim-monotone, reclaim-bounded, reclaim-size-bound
-      ; reclaim-preserves-result = input-before
-      ; reclaim-preserves-validity = valid-s'
       ; max-slot-written = next-slot alloc
       ; max-slot-geq-final = ≤-refl
       ; max-slot-usage-bound = m≤m+n (next-slot alloc) 0
@@ -427,18 +405,6 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       not-halted' : halted s' ≡ false
       not-halted' = subst (λ st → halted st ≡ false) (sym s'-eq) not-halted
 
-      valid-s' = subst (λ st → ValidAtWF _ alloc x input-loc st) (sym s'-eq)
-                   (validityWF-mem-only x input-loc s (exec (mov Output Input1) s) refl refl input-valid-wf)
-
-      rax-eq : readReg (regs s') Output ≡ input-loc
-      rax-eq = trans (cong (λ st → readReg (regs st) Output) s'-eq)
-                     (trans (mov-result Output Input1 s) rdi-eq)
-
-      mem-preserved : ∀ loc → BeforeFrontier alloc loc → readLoc s' loc ≡ readLoc s loc
-      mem-preserved loc _ = trans (cong (λ st → readLoc st loc) s'-eq)
-                              (readLoc-stackMem-eq (exec (mov Output Input1) s) s loc
-                                 (mov-preserves-stackMem Output Input1 s)
-                                 (mov-preserves-heapMem Output Input1 s))
 
       -- IR doesn't allocate, so return inj₁ refl
       frontier-stable : ∀ s'' input-loc'' →
@@ -462,21 +428,16 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     IRResultAWF m (arr {A} {B} {q}) x s alloc
   run-arr {m} {A} {B} {q} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     record
-      { result-loc = input-loc
-      ; final-state = s'
+      { final-state = s'
       ; final-alloc = alloc
       ; trace = trace
       ; trace-correct = refl  -- s' DEFINED by trace
-      ; result-valid-wf = valid-eff
-      ; result-before = input-before
-      ; rax-is-result = rax-output-eq rax-eq
+      ; result-place = at-loc input-loc valid-eff input-before rax-eq valid-eff input-before
       ; not-halted = not-halted'
       ; frame-preserved = refl
       ; slot-monotone = ≤-refl
       ; heap-monotone = ≤-refl
       -- Phase 7: Removed reclaimable-slot, reclaim-monotone, reclaim-bounded, reclaim-size-bound
-      ; reclaim-preserves-result = input-before
-      ; reclaim-preserves-validity = valid-eff
       ; max-slot-written = next-slot alloc
       ; max-slot-geq-final = ≤-refl
       ; max-slot-usage-bound = m≤m+n (next-slot alloc) 0
