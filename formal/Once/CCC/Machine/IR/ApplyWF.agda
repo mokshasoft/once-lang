@@ -818,13 +818,17 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       result-valid-wf' : ValidAtWF mBody alloc' (eval (apply {A} {B} {k}) x) result-loc s'
       result-valid-wf' = SMP.!!
 
-      -- Frontier slot stability
+      -- Frontier slot stability: apply uses the third (give-up) branch.
+      -- The 3-way return for IRs that allocate but may write the
+      -- frontier slot accommodates apply's pair construction (which
+      -- writes pair-slot during setup, so the slot does NOT preserve
+      -- the original input-loc). inj₂ (inj₂ tt) is the give-up branch.
       frontier-stable' : ∀ (s'' : LocState FS) (input-loc' : ValueLocation FS) →
         halted s'' ≡ false →
         readReg (regs s'') Input1 ≡ input-loc' →
         readLoc s'' (AtStack (current-frame alloc) pair-slot) ≡ just input-loc' →
         _
-      frontier-stable' s'' input-loc' _ _ _ = inj₂ (inj₁ SMP.!!)
+      frontier-stable' s'' input-loc' _ _ _ = inj₂ (inj₂ tt)
 
       -- Setup-trace writes only at pair-slot and suc pair-slot.
       -- Both ≥ pair-slot, so TraceWritesAbove pair-slot.
