@@ -176,6 +176,14 @@ data ValueLocation (FS : FrameSemantics) : Set where
   -- doesn't prevent constructing `InReg r` for non-primitive types,
   -- but no `ValidAtWF` witness can be produced for them.
   InReg     : AbstractReg → ValueLocation FS
+  -- Plan 0.2.4.5 D1 (Unit erasure): sentinel for Unit-typed values.
+  -- Unit values carry no information — no register, no slot, no
+  -- observable content. Used as `result-loc` for `terminal` (and any
+  -- other Unit-producing IR), so the spec doesn't have to lie about
+  -- a phantom slot. `readLoc s Erased = nothing`; `BeforeFrontier
+  -- alloc Erased = ⊤`; only `valid-unit-wf` inhabits a `ValidAtWF`
+  -- at `Erased`.
+  Erased    : ValueLocation FS
 
 -- | Successor HeapLocation (for heap internal references)
 sucHL : HeapLocation → HeapLocation
@@ -193,6 +201,7 @@ sucLoc : ∀ {FS} → ValueLocation FS → ValueLocation FS
 sucLoc (AtStack f k)  = AtStack f (suc k)
 sucLoc (AtDynamic hl) = AtDynamic (sucHL hl)
 sucLoc (InReg r)      = InReg r
+sucLoc Erased         = Erased
 
 -- | Offset location by n slots (for unboxed multi-slot values)
 -- Note: n + k so that offsetLoc _ 1 = sucLoc definitionally.
@@ -201,6 +210,7 @@ offsetLoc : ∀ {FS} → ValueLocation FS → ℕ → ValueLocation FS
 offsetLoc (AtStack f k)  n = AtStack f (n + k)
 offsetLoc (AtDynamic hl) n = AtDynamic (offsetHL hl n)
 offsetLoc (InReg r)      _ = InReg r
+offsetLoc Erased         _ = Erased
 
 ------------------------------------------------------------------------
 -- Memory: Stores Locations (not Words)
@@ -405,6 +415,8 @@ module MemOps {FS : FrameSemantics} where
   ... | just hl' = just (AtDynamic hl')
   ... | nothing  = nothing
   readLoc s (InReg r) = just (readReg (regs s) r)
+  -- Plan 0.2.4.5 D1 (Unit erasure): erased values have no content.
+  readLoc s Erased = nothing
 
   -- | Write a Location to stack memory.
   -- Order of clauses preserves definitional equalities for the (no _)
@@ -451,7 +463,10 @@ module MemOps {FS : FrameSemantics} where
   writeLoc s (AtDynamic hl) (AtDynamic v) = writeLocToHeap s hl v
   writeLoc s (AtDynamic hl) (AtStack _ _) = s  -- Invalid: can't store stack ref in heap (no-op)
   writeLoc s (AtDynamic hl) (InReg _) = s      -- Invalid: register isn't a storable location (no-op)
+  writeLoc s (AtDynamic hl) Erased = s         -- Erased values aren't storable (no-op)
   writeLoc s (InReg _) _ = s                   -- writeLoc to InReg is a no-op (use writeReg instead)
+  -- Plan 0.2.4.5 D1 (Unit erasure): writes to Erased are no-ops.
+  writeLoc s Erased _ = s
 
   -- writeLoc preserves regs (for all cases)
   writeLoc-regs : ∀ (s : LocState FS) (loc : ValueLocation FS) (v : ValueLocation FS) →
@@ -460,7 +475,9 @@ module MemOps {FS : FrameSemantics} where
   writeLoc-regs s (AtDynamic hl) (AtDynamic v) = refl
   writeLoc-regs s (AtDynamic hl) (AtStack _ _) = refl
   writeLoc-regs s (AtDynamic hl) (InReg _) = refl
+  writeLoc-regs s (AtDynamic hl) Erased = refl
   writeLoc-regs s (InReg _) _ = refl
+  writeLoc-regs s Erased _ = refl
 
   -- writeLoc preserves halted (for all cases)
   writeLoc-halted : ∀ (s : LocState FS) (loc : ValueLocation FS) (v : ValueLocation FS) →
@@ -469,7 +486,9 @@ module MemOps {FS : FrameSemantics} where
   writeLoc-halted s (AtDynamic hl) (AtDynamic v) = refl
   writeLoc-halted s (AtDynamic hl) (AtStack _ _) = refl
   writeLoc-halted s (AtDynamic hl) (InReg _) = refl
+  writeLoc-halted s (AtDynamic hl) Erased = refl
   writeLoc-halted s (InReg _) _ = refl
+  writeLoc-halted s Erased _ = refl
 
   -- writeLoc AtStack preserves heapMem
   writeLoc-heapMem-stack : ∀ (s : LocState FS) (f : Frame) (k : Slot) (v : ValueLocation FS) →
@@ -511,6 +530,7 @@ module MemOps {FS : FrameSemantics} where
   writeLoc-preserves-other s (AtDynamic hl) (AtStack f k) (AtDynamic hv) _ = refl
   writeLoc-preserves-other s (AtDynamic hl) (AtStack f k) (AtStack _ _) _ = refl
   writeLoc-preserves-other s (AtDynamic hl) (AtStack f k) (InReg _) _ = refl
+  writeLoc-preserves-other s (AtDynamic hl) (AtStack f k) Erased _ = refl
   -- Writing to heap, reading from different heap location
   writeLoc-preserves-other s (AtDynamic hl1) (AtDynamic hl2) (AtDynamic hv) neq
     with hl1 ≟HL hl2
@@ -530,6 +550,14 @@ module MemOps {FS : FrameSemantics} where
     cong (λ rs → just (readReg rs r)) (writeLoc-regs s (AtStack f k) v)
   writeLoc-preserves-other s (AtDynamic hl) (InReg r) v _ =
     cong (λ rs → just (readReg rs r)) (writeLoc-regs s (AtDynamic hl) v)
+  -- Plan 0.2.4.5 D1 (Unit erasure): readLoc Erased = nothing always,
+  -- and writeLoc to Erased is a no-op, so Erased is disjoint from
+  -- every other location.
+  writeLoc-preserves-other s (AtStack f k) Erased _ _ = refl
+  writeLoc-preserves-other s (AtDynamic hl) Erased _ _ = refl
+  writeLoc-preserves-other s Erased _ _ _ = refl
+  -- Writing AtDynamic with Erased value to AtDynamic location is a no-op
+  writeLoc-preserves-other s (AtDynamic hl1) (AtDynamic hl2) Erased _ = refl
 
   -- writeLoc-read-same: Reading from the location we just wrote returns the written value
   -- Stack case: writeLoc s (AtStack f k) v → readLoc (AtStack f k) ≡ just v
@@ -718,6 +746,8 @@ module ExecLemmas {FS : FrameSemantics} where
       postulate
         inreg-readLoc-postulate : ∀ (s₁ s₂ : LocState FS) (r : AbstractReg) →
           readLoc s₁ (InReg r) ≡ readLoc s₂ (InReg r)
+  -- Plan 0.2.4.5 D1 (Unit erasure): Erased reads as nothing in any state.
+  readLoc-stackMem-eq s₁ s₂ Erased _ _ = refl
 
 ------------------------------------------------------------------------
 -- Abstract Instructions
