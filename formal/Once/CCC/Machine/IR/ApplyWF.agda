@@ -784,12 +784,46 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
         _
       frontier-stable' s'' input-loc' _ _ _ = inj₂ (inj₁ SMP.!!)
 
-      -- Trace properties
+      -- Setup-trace writes only at pair-slot and suc pair-slot.
+      -- Both ≥ pair-slot, so TraceWritesAbove pair-slot.
+      setup-writes-above : TraceWritesAbove pair-slot (apply-setup-trace pair-slot)
+      setup-writes-above =
+        n≤1+n pair-slot ,                   -- store-at-slot (suc pair-slot)
+        ≤-refl ,                            -- store-at-slot pair-slot
+        tt
+        where
+          open import Data.Nat.Properties using (n≤1+n; ≤-refl)
+
+      -- Setup-trace reads no slots (instr-reads-slot = nothing for all).
+      setup-slot-reads-above : TraceSlotReadsAbove pair-slot (apply-setup-trace pair-slot)
+      setup-slot-reads-above = tt
+
+      -- Body's trace-writes-above is at next-slot child-alloc = pair-slot + pair-slots.
+      -- Mono down to pair-slot.
+      body-writes-above-pair-slot : TraceWritesAbove pair-slot body-trace
+      body-writes-above-pair-slot = trace-writes-above-mono pair-slot
+        (next-slot alloc +ℕ pair-slots)
+        body-trace
+        (m≤m+n pair-slot pair-slots)
+        (IRResultAWF.trace-writes-above body-result)
+
+      body-slot-reads-above-pair-slot : TraceSlotReadsAbove pair-slot body-trace
+      body-slot-reads-above-pair-slot = trace-slot-reads-above-mono pair-slot
+        (next-slot alloc +ℕ pair-slots)
+        body-trace
+        (m≤m+n pair-slot pair-slots)
+        (IRResultAWF.trace-slot-reads-above body-result)
+
+      -- Trace properties: append setup and body.
       trace-writes-above' : TraceWritesAbove pair-slot trace
-      trace-writes-above' = SMP.!!
+      trace-writes-above' = trace-writes-above-append pair-slot
+        (apply-setup-trace pair-slot) body-trace
+        setup-writes-above body-writes-above-pair-slot
 
       trace-slot-reads-above' : TraceSlotReadsAbove pair-slot trace
-      trace-slot-reads-above' = SMP.!!
+      trace-slot-reads-above' = trace-slot-reads-above-append pair-slot
+        (apply-setup-trace pair-slot) body-trace
+        setup-slot-reads-above body-slot-reads-above-pair-slot
 
       trace-writes-below' : TraceWritesBelow (next-slot alloc +ℕ pair-slots) trace
       trace-writes-below' = SMP.!!
