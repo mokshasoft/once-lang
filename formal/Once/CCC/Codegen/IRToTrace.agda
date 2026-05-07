@@ -109,13 +109,17 @@ ir-to-trace' : ∀ {A B} → ℕ → ℕ → IR A B
 -- ────────────────────────────────────────────────────────────────────
 
 ir-to-trace' n l id        = n , l , (mov-to-output ∷ []) , []
--- Plan 0.2.4.5 Stage C: split-input calling convention.
--- fst projects the first component of the input pair = Input1.
--- snd projects the second component of the input pair = Input2.
--- Valid for Layer 0–4 (no nested pair construction). Layer 1+ with
--- nested packed pairs needs layout-discriminating fst/snd.
-ir-to-trace' n l fst       = n , l , (mov-to-output ∷ []) , []
-ir-to-trace' n l snd       = n , l , (mov-input2-to-output ∷ []) , []
+-- Plan 0.2.4.5 Stage C γ-revert: uniform packed-pair convention.
+-- fst / snd dereference Input1 (= pointer to packed pair record).
+-- The split-input optimization (apply pre-unpacks pair into
+-- Input1/Input2) was reverted because nested fst/snd (reading from
+-- packed compound values) needed layout-discriminating lowering,
+-- which adds context tracking complexity that's a hiding place for
+-- postulates. Future: type-driven split for register-fittable
+-- primitive args, layered as an optimization pass on top of the
+-- uniform packed base.
+ir-to-trace' n l fst       = n , l , (load-indirect ∷ []) , []
+ir-to-trace' n l snd       = n , l , (load-indirect-suc ∷ []) , []
 ir-to-trace' n l terminal  = n , l , (mov-to-output ∷ []) , []
 ir-to-trace' n l initial   = n , l , (mov-to-output ∷ []) , []
 ir-to-trace' n l arr       = n , l , (mov-to-output ∷ []) , []
@@ -224,26 +228,26 @@ ir-to-trace' n l (curry body _) =
 -- knows the calling convention).
 -- ────────────────────────────────────────────────────────────────────
 
--- Plan 0.2.4.5 Stage C: split-input calling convention.
--- Apply's body receives env in Input1 and arg in Input2 (no packed
--- (env, arg) pair record). Saves two slot stores + a lea per apply
--- vs the old packed-pair convention. The body's IR uses fst/snd at
--- the type level; their lowering at the *boundary* (top-level
--- Input read) goes through `mov-output-to-input2` etc. instead of
--- `load-indirect-suc`.
+-- Plan 0.2.4.5 Stage C γ-revert: uniform packed-pair convention.
+-- Apply receives a (closure, arg) pair pointer in Input1. It packs
+-- a NEW (env, arg) pair at slots [pair-slot, pair-slot+1] for the
+-- body and points Input1 at it. Body uses uniform fst/snd =
+-- load-indirect / load-indirect-suc to project from packed pairs,
+-- regardless of nesting level.
 ir-to-trace' n l apply =
-  n , l ,
-  (load-indirect-suc ∷         -- Output := *(Input1+1) = arg-loc
-   mov-output-to-input2 ∷      -- Input2 := arg-loc
-   load-indirect ∷             -- Output := *Input1 = closure-loc
-   mov-to-input ∷              -- Input1 := closure-loc
-   -- Save closure ptr (now in Input1) to closure-register so the
-   -- subsequent indirect call (`call *0x8(%r12)`) has a target.
-   instr-save-closure-reg ∷
-   load-indirect ∷             -- Output := *Input1 = env-loc
-   mov-to-input ∷              -- Input1 := env-loc
-   instr-call-closure ∷ []) ,
-  []
+  let pair-slot = n
+  in (suc (suc pair-slot)) , l ,
+     (load-indirect-suc ∷                -- Output := arg-loc from input pair
+      store-at-slot (suc pair-slot) ∷    -- new-pair[1] := arg-loc
+      load-indirect ∷                    -- Output := closure-loc from input pair
+      mov-to-input ∷                     -- Input1 := closure-loc
+      instr-save-closure-reg ∷
+      load-indirect ∷                    -- Output := env-loc from closure
+      store-at-slot pair-slot ∷          -- new-pair[0] := env-loc
+      lea-slot pair-slot ∷               -- Output := &new-pair
+      mov-to-input ∷                     -- Input1 := &new-pair
+      instr-call-closure ∷ []) ,
+     []
 
 -- ────────────────────────────────────────────────────────────────────
 -- SigOp — per-name dispatch handled by per-arch compile-abstract.
