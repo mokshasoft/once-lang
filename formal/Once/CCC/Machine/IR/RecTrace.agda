@@ -1458,7 +1458,12 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
         (mRec , rec-result) = cata-dispatched-new wfG alg dispatch μ-val mIn input-loc s alloc
                                 μ-val-valid input-before not-halted rdi-eq
 
-        -- Extract results
+        -- Extract results.
+        -- Plan 0.2.4.5 D1 task #28: place-* uses retained here.
+        -- The let-block syntax doesn't admit multi-clause definitions
+        -- (or type-signature + clauses), so the FFacts-style dispatch
+        -- pattern used in compose / pair / apply doesn't fit. Lifting
+        -- this let into a where-block is the next refactor step.
         rec-val = eval (Cata wfG alg) μ-val
         s-rec = IRResultAWF.final-state rec-result
         alloc-rec = IRResultAWF.final-alloc rec-result
