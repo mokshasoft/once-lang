@@ -158,10 +158,11 @@ data OutsideOwned : HeapLocation → HeapOwnership → Set where
 -- AtDynamic locations use HeapLocation, enforcing heap-only references.
 ------------------------------------------------------------------------
 
--- AbstractReg is needed for the InReg constructor; defined below at
--- line ~210, but we need it here. Forward declaration via mutual…
--- not possible with `data`. We declare AbstractReg first, then
--- ValueLocation. (Reordering rather than mutual.)
+-- AbstractReg: declared here ahead of `regs : AbstractReg → ValueLocation`
+-- so LocState can reference it. (Stage-E previously also needed
+-- AbstractReg here for `InReg : AbstractReg → ValueLocation`; that
+-- constructor has been retired, but AbstractReg's role for register
+-- state stays the same.)
 data AbstractReg : Set where
   Input1 : AbstractReg    -- first argument location
   Input2 : AbstractReg    -- second argument location
@@ -170,12 +171,6 @@ data AbstractReg : Set where
 data ValueLocation (FS : FrameSemantics) : Set where
   AtStack   : FrameSemantics.Frame FS → Slot → ValueLocation FS
   AtDynamic : HeapLocation → ValueLocation FS
-  -- Plan 0.2.4.5 Stage E: register-resident value. Only valid for
-  -- FitsInReg-typed primitives (Int, Float — fit in one machine
-  -- register). The validity proof gates this — the type system
-  -- doesn't prevent constructing `InReg r` for non-primitive types,
-  -- but no `ValidAtWF` witness can be produced for them.
-  InReg     : AbstractReg → ValueLocation FS
   -- Plan 0.2.4.5 D1 (Unit erasure): sentinel for Unit-typed values.
   -- Unit values carry no information — no register, no slot, no
   -- observable content. Used as `result-loc` for `terminal` (and any
@@ -184,6 +179,23 @@ data ValueLocation (FS : FrameSemantics) : Set where
   -- alloc Erased = ⊤`; only `valid-unit-wf` inhabits a `ValidAtWF`
   -- at `Erased`.
   Erased    : ValueLocation FS
+
+-- Plan 0.2.4.5 Stage E retired (2026-05-07): the speculative
+-- `InReg : AbstractReg → ValueLocation` constructor has been removed.
+-- It was added as forward-compatible scaffolding for future
+-- register-residency of FitsInReg-typed values, but never wired into
+-- any consumer (no `valid-*-wf` ever produced an `InReg`-witness).
+-- Its presence broke the `preserves-mem` family of lemmas
+-- universally (`readLoc s (InReg Output)` shifts under `mov-to-output`)
+-- without any compensating benefit. When register-residency lands for
+-- real (Plan 0.2.4.5 D4), it should arrive as a SEPARATE polymorphic
+-- "result place" type
+--     data Place = AtStorage ValueLocation | InReg AbstractReg
+-- so memory-only operations (`readLoc`, `writeLoc`, `stackMem`, `regs`)
+-- keep their `ValueLocation`-typed (= storage-only) signatures and
+-- `preserves-mem` retains its universal form. Result handles
+-- (`IRResultAWF.result-loc`, `ValidAtWF`'s loc parameter) move to
+-- `Place` only at handover points.
 
 -- | Successor HeapLocation (for heap internal references)
 sucHL : HeapLocation → HeapLocation
@@ -194,22 +206,16 @@ offsetHL : HeapLocation → ℕ → HeapLocation
 offsetHL (heap-loc r o) n = heap-loc r (n + o)
 
 -- | Successor location (for accessing pair.snd, closure.code-ptr, etc.)
--- For InReg: register-resident primitives don't have sub-components;
--- sucLoc on InReg is identity (defensive — should never be called in
--- practice since FitsInReg types are atomic).
 sucLoc : ∀ {FS} → ValueLocation FS → ValueLocation FS
 sucLoc (AtStack f k)  = AtStack f (suc k)
 sucLoc (AtDynamic hl) = AtDynamic (sucHL hl)
-sucLoc (InReg r)      = InReg r
 sucLoc Erased         = Erased
 
 -- | Offset location by n slots (for unboxed multi-slot values)
 -- Note: n + k so that offsetLoc _ 1 = sucLoc definitionally.
--- For InReg: identity (defensive, see sucLoc).
 offsetLoc : ∀ {FS} → ValueLocation FS → ℕ → ValueLocation FS
 offsetLoc (AtStack f k)  n = AtStack f (n + k)
 offsetLoc (AtDynamic hl) n = AtDynamic (offsetHL hl n)
-offsetLoc (InReg r)      _ = InReg r
 offsetLoc Erased         _ = Erased
 
 ------------------------------------------------------------------------
@@ -244,9 +250,9 @@ HeapMem = HeapLocation → Maybe HeapLocation
 -- a 2-product input shape, so two input registers cover all of
 -- pair, curry's body, and apply.
 --
--- Note: AbstractReg is declared earlier (above ValueLocation) because
--- ValueLocation's `InReg : AbstractReg → ValueLocation` constructor
--- needs it. The decidable equality and helpers stay here.
+-- Note: AbstractReg is declared earlier (above ValueLocation) so
+-- LocState's `regs : AbstractReg → ValueLocation` field can reference
+-- it. The decidable equality and helpers stay here.
 ------------------------------------------------------------------------
 
 -- Decidable equality for AbstractReg
@@ -408,13 +414,12 @@ module MemOps {FS : FrameSemantics} where
   -- | Read a Location from memory
   -- Stack: returns arbitrary ValueLocation
   -- Heap: returns HeapLocation lifted to ValueLocation
-  -- InReg: register-resident; reads the register's content directly.
+  -- Erased: returns nothing (Unit values have no observable content).
   readLoc : LocState FS → ValueLocation FS → Maybe (ValueLocation FS)
   readLoc s (AtStack f k) = stackMem s f k
   readLoc s (AtDynamic hl) with heapMem s hl
   ... | just hl' = just (AtDynamic hl')
   ... | nothing  = nothing
-  readLoc s (InReg r) = just (readReg (regs s) r)
   -- Plan 0.2.4.5 D1 (Unit erasure): erased values have no content.
   readLoc s Erased = nothing
 
@@ -454,17 +459,12 @@ module MemOps {FS : FrameSemantics} where
   -- Stack destinations: can store any ValueLocation
   -- Heap destinations: can only store HeapLocation (extracted from AtDynamic)
   -- Note: Writing AtStack to AtDynamic is a type error - enforces invariant!
-  -- InReg destinations: register-resident values; memory writeLoc to
-  -- InReg is a no-op (registers are written via writeReg, not via
-  -- memory abstractions). Asymmetric with readLoc on InReg, which
-  -- reads the register's value.
+  -- Erased destinations: writeLoc is a no-op (Unit has no content).
   writeLoc : LocState FS → ValueLocation FS → ValueLocation FS → LocState FS
   writeLoc s (AtStack f k) v = writeLocToStack s f k v
   writeLoc s (AtDynamic hl) (AtDynamic v) = writeLocToHeap s hl v
   writeLoc s (AtDynamic hl) (AtStack _ _) = s  -- Invalid: can't store stack ref in heap (no-op)
-  writeLoc s (AtDynamic hl) (InReg _) = s      -- Invalid: register isn't a storable location (no-op)
   writeLoc s (AtDynamic hl) Erased = s         -- Erased values aren't storable (no-op)
-  writeLoc s (InReg _) _ = s                   -- writeLoc to InReg is a no-op (use writeReg instead)
   -- Plan 0.2.4.5 D1 (Unit erasure): writes to Erased are no-ops.
   writeLoc s Erased _ = s
 
@@ -474,9 +474,7 @@ module MemOps {FS : FrameSemantics} where
   writeLoc-regs s (AtStack f k) v = refl
   writeLoc-regs s (AtDynamic hl) (AtDynamic v) = refl
   writeLoc-regs s (AtDynamic hl) (AtStack _ _) = refl
-  writeLoc-regs s (AtDynamic hl) (InReg _) = refl
   writeLoc-regs s (AtDynamic hl) Erased = refl
-  writeLoc-regs s (InReg _) _ = refl
   writeLoc-regs s Erased _ = refl
 
   -- writeLoc preserves halted (for all cases)
@@ -485,9 +483,7 @@ module MemOps {FS : FrameSemantics} where
   writeLoc-halted s (AtStack f k) v = refl
   writeLoc-halted s (AtDynamic hl) (AtDynamic v) = refl
   writeLoc-halted s (AtDynamic hl) (AtStack _ _) = refl
-  writeLoc-halted s (AtDynamic hl) (InReg _) = refl
   writeLoc-halted s (AtDynamic hl) Erased = refl
-  writeLoc-halted s (InReg _) _ = refl
   writeLoc-halted s Erased _ = refl
 
   -- writeLoc AtStack preserves heapMem
@@ -529,7 +525,6 @@ module MemOps {FS : FrameSemantics} where
   -- Writing to heap, reading from stack (disjoint)
   writeLoc-preserves-other s (AtDynamic hl) (AtStack f k) (AtDynamic hv) _ = refl
   writeLoc-preserves-other s (AtDynamic hl) (AtStack f k) (AtStack _ _) _ = refl
-  writeLoc-preserves-other s (AtDynamic hl) (AtStack f k) (InReg _) _ = refl
   writeLoc-preserves-other s (AtDynamic hl) (AtStack f k) Erased _ = refl
   -- Writing to heap, reading from different heap location
   writeLoc-preserves-other s (AtDynamic hl1) (AtDynamic hl2) (AtDynamic hv) neq
@@ -539,17 +534,6 @@ module MemOps {FS : FrameSemantics} where
   ... | no _ = refl
   -- Writing AtStack to AtDynamic is a no-op, so reading anything returns original
   writeLoc-preserves-other s (AtDynamic hl1) (AtDynamic hl2) (AtStack _ _) _ = refl
-  -- Writing AtDynamic with InReg value to AtDynamic location is a no-op
-  writeLoc-preserves-other s (AtDynamic hl1) (AtDynamic hl2) (InReg _) _ = refl
-  -- Writing to InReg is a no-op
-  writeLoc-preserves-other s (InReg _) _ _ _ = refl
-  -- Writing to AtStack/AtDynamic, reading from InReg: memory writes
-  -- don't change regs, so readLoc (InReg r) is preserved. Use
-  -- writeLoc-regs to bridge.
-  writeLoc-preserves-other s (AtStack f k) (InReg r) v _ =
-    cong (λ rs → just (readReg rs r)) (writeLoc-regs s (AtStack f k) v)
-  writeLoc-preserves-other s (AtDynamic hl) (InReg r) v _ =
-    cong (λ rs → just (readReg rs r)) (writeLoc-regs s (AtDynamic hl) v)
   -- Plan 0.2.4.5 D1 (Unit erasure): readLoc Erased = nothing always,
   -- and writeLoc to Erased is a no-op, so Erased is disjoint from
   -- every other location.
@@ -721,9 +705,10 @@ module ExecLemmas {FS : FrameSemantics} where
     trans (load-preserves-halted dst src s v mem-eq) not-halted
 
   -- | Memory read is preserved when stackMem and heapMem unchanged.
-  -- For InReg locations, readLoc reads from the register file, so we
-  -- additionally need `regs s₁ ≡ regs s₂` for the lemma to hold.
-  -- Existing callers pass refl/refl/refl when s₁ ≡ s₂.
+  -- Now universal (post-Stage-E retirement): readLoc only depends on
+  -- (stackMem, heapMem) for AtStack/AtDynamic, and is constantly
+  -- `nothing` for Erased. The Stage-E InReg-postulate is gone with
+  -- the constructor it was working around.
   readLoc-stackMem-eq : ∀ (s₁ s₂ : LocState FS) loc →
     stackMem s₁ ≡ stackMem s₂ →
     heapMem s₁ ≡ heapMem s₂ →
@@ -736,16 +721,6 @@ module ExecLemmas {FS : FrameSemantics} where
   ... | nothing | nothing | _ = refl
   ... | just _ | nothing | ()
   ... | nothing | just _ | ()
-  -- InReg: depends on regs, not on memory. Postulated for now —
-  -- existing callers pass s₁ ≡ s₂ so this discharges trivially in
-  -- practice; principled discharge requires an additional regs-eq
-  -- premise (deferred — see plan 0.2.4.5 Stage E note).
-  readLoc-stackMem-eq s₁ s₂ (InReg r) stack-eq heap-eq =
-    inreg-readLoc-postulate s₁ s₂ r
-    where
-      postulate
-        inreg-readLoc-postulate : ∀ (s₁ s₂ : LocState FS) (r : AbstractReg) →
-          readLoc s₁ (InReg r) ≡ readLoc s₂ (InReg r)
   -- Plan 0.2.4.5 D1 (Unit erasure): Erased reads as nothing in any state.
   readLoc-stackMem-eq s₁ s₂ Erased _ _ = refl
 
