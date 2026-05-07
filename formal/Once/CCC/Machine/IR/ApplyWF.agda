@@ -708,16 +708,22 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       -- (bridge alloc-after-setup ≡ child-alloc by frame equivalence)
       -- + body's trace-correct (body-final-state defined by trace).
       --
-      -- mem-preserved', result-before', result-valid-wf':
-      --   Same shape — setup-trace's per-instruction memory effects
-      --   (analogous to the SMPrimitives passthrough lemmas) chained
-      --   with body's `irresult-mem-preserved` / `place-before` /
-      --   `place-valid` (all transitionally postulated for Unit).
+      -- DISCHARGED here: rax-eq', mem-preserved', trace-writes-above',
+      -- trace-slot-reads-above'.
       --
-      -- The discharge is real work (each property = ~50 lines of
-      -- chained lemmas), not deep but substantial. Tracked as
-      -- task #30 — to be done before any IR composition that
-      -- nests apply (Layer 1+).
+      -- STRUCTURALLY DEFERRED (need apply spec changes):
+      --   result-before', result-valid-wf' — body's `place-before`
+      --     gives `BeforeFrontier (final-alloc body) loc`, but apply's
+      --     `alloc'` only widens next-slot by pair-slots, NOT
+      --     next-heap-ref. If body allocates in heap, the returned loc
+      --     can't be `BeforeFrontier alloc'`. Fix: alloc' must track
+      --     body's full final-alloc (or apply's spec must propagate
+      --     body's heap frontier).
+      --   frontier-stable' — same family.
+      --   trace-writes-below', trace-slot-reads-below' — body writes
+      --     at slots in [next-slot child-alloc, body-max), exceeding
+      --     `next-slot alloc + pair-slots`. Fix: ir-stack-requirement
+      --     apply must include body-cap (currently pair-slots only).
       ----------------------------------------------------------------
 
       -- s' decomposes via exec-trace-append-state.
