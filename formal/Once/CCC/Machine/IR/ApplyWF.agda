@@ -197,7 +197,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       ; final-alloc = alloc'
       ; trace = trace
       ; trace-correct = refl  -- BY DEFINITION
-      ; result-place = at-loc result-loc result-valid-wf' result-before' rax-eq' reclaim-preserves-validity' reclaim-preserves-result'
+      ; result-place = result-place-final
       ; not-halted = not-halted'
       ; frame-preserved = refl
       ; slot-monotone = m≤m+n (next-slot alloc) pair-slots
@@ -903,3 +903,19 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
           (record alloc { next-slot = next-slot alloc +ℕ pair-slots })
           refl refl refl loc bf)
         result-valid-wf'
+
+      -- Plan 0.2.4.5 D1 task #30: dispatch on body's result-place.
+      -- For unit-result: apply's result-place is also unit-result (no
+      -- per-loc witnesses needed; B must unify with Unit). Fully
+      -- discharged.
+      -- For at-loc: construct at-loc with the existing top-level
+      -- postulates (rax-eq' discharged; result-valid-wf', result-before'
+      -- and their reclaim wrappers remain — see structural deferral
+      -- block above).
+      result-place-final : ResultPlace B mBody alloc'
+        (record alloc { next-slot = next-slot alloc' })
+        (eval (apply {A} {B} {k}) x) s'
+      result-place-final with IRResultAWF.result-place body-result
+      ... | at-loc _ _ _ _ _ _ = at-loc result-loc result-valid-wf' result-before' rax-eq'
+                                       reclaim-preserves-validity' reclaim-preserves-result'
+      ... | unit-result = unit-result
