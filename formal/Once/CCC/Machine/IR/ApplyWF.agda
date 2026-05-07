@@ -764,9 +764,45 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       not-halted' : halted s' ≡ false
       not-halted' = exec-trace-preserves-halted trace s alloc not-halted trace-preserves-halted'
 
-      -- Memory before frontier preserved
+      -- Setup-trace writes only at pair-slot and suc pair-slot.
+      -- Both ≥ pair-slot, so TraceWritesAbove pair-slot.
+      setup-writes-above-early : TraceWritesAbove pair-slot (apply-setup-trace pair-slot)
+      setup-writes-above-early =
+        n≤1+n pair-slot ,                   -- store-at-slot (suc pair-slot)
+        ≤-refl ,                            -- store-at-slot pair-slot
+        tt
+        where
+          open import Data.Nat.Properties using (n≤1+n; ≤-refl)
+
+      -- Setup trace has no heap writes.
+      setup-no-heap-writes-early : TraceNoHeapWrites (apply-setup-trace pair-slot)
+      setup-no-heap-writes-early = tt
+
+      -- Frontier widening: alloc's frontier is below child-alloc's
+      -- (same frame, next-slot widened by pair-slots).
+      widen-bf-to-child : ∀ loc → BeforeFrontier alloc loc → BeforeFrontier child-alloc loc
+      widen-bf-to-child loc bf = frontier-monotone alloc child-alloc refl
+        (m≤m+n (next-slot alloc) pair-slots) ≤-refl loc bf
+        where
+          open import Data.Nat.Properties using (m≤m+n; ≤-refl)
+
+      -- Setup-trace preserves loc-reads at any loc < alloc-frontier
+      -- (no heap writes; stack writes only at pair-slot, suc pair-slot ≥ alloc-frontier).
+      setup-mem-preserved : ∀ loc → BeforeFrontier alloc loc → readLoc s-after-setup loc ≡ readLoc s loc
+      setup-mem-preserved loc bf = ClosureWellFormedDef.derive-mem-preserved
+                                     program-bound
+                                     alloc (apply-setup-trace pair-slot) s
+                                     setup-writes-above-early setup-no-heap-writes-early loc bf
+
+      -- Body's mem preservation via irresult-mem-preserved + frontier widening.
+      body-mem-preserved : ∀ loc → BeforeFrontier alloc loc →
+        readLoc (IRResultAWF.final-state body-result) loc ≡ readLoc s-after-setup loc
+      body-mem-preserved loc bf = ClosureWellFormedDef.irresult-mem-preserved program-bound body-result loc (widen-bf-to-child loc bf)
+
+      -- Memory before frontier preserved: chain s'-eq + body + setup.
       mem-preserved' : ∀ loc → BeforeFrontier alloc loc → readLoc s' loc ≡ readLoc s loc
-      mem-preserved' = SMP.!!
+      mem-preserved' loc bf = trans (cong (λ st → readLoc st loc) s'-eq)
+                                (trans (body-mem-preserved loc bf) (setup-mem-preserved loc bf))
 
       -- Result is before frontier in alloc'
       result-before' : BeforeFrontier alloc' result-loc
