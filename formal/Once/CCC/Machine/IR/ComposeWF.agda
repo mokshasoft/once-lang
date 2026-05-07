@@ -56,8 +56,7 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   open import Once.CCC.Machine.ClosureWellFormed
   open ClosureWellFormedDef {FS} program-bound
     using (ValidAtWF; IRResultAWF; ResultPlace; unit-result; at-loc;
-           place-loc; place-valid; place-before; place-rax;
-           place-reclaim-valid; place-reclaim-before;
+           valid-unit-wf;
            RecDispatcherWF; validityWF-mem-only;
            validityWF-frontier-advance; validityWF-mem-preserved;
            validityWF-with-bf-transfer)
@@ -217,9 +216,51 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       result-f = proj₂ f-result-pair
       s₁ = IRResultAWF.final-state result-f
       alloc₁ = IRResultAWF.final-alloc result-f
-      inter-loc = place-loc (IRResultAWF.result-place result-f)
       f-trace = IRResultAWF.trace result-f
       not-halted₁ = IRResultAWF.not-halted result-f
+
+      ------------------------------------------------------------------------
+      -- Plan 0.2.4.5 D1 task #28: dispatch on f's result-place
+      -- constructor to extract concrete inter-* facts.
+      --
+      -- For at-loc (non-Unit B): use the bundled facts directly.
+      -- For unit-result (B = Unit): pick inter-loc = readReg s₁ Output
+      -- so the rax equation becomes refl by construction; ValidAtWF
+      -- Unit at any loc is `valid-unit-wf` (loc-agnostic, no
+      -- postulate). Only `unit-inter-before` remains postulated —
+      -- BeforeFrontier on Output's value isn't generally provable,
+      -- which is the genuine trust point for Unit erasure when
+      -- composing through `rec-wf`'s fixed precondition shape.
+      record FFacts : Set where
+        field
+          inter-loc-f    : ValueLocation FS
+          inter-before-f : BeforeFrontier alloc₁ inter-loc-f
+          inter-valid-f  : ValidAtWF mMid alloc₁ (eval f x) inter-loc-f s₁
+          inter-rax-f    : readReg (regs s₁) Output ≡ inter-loc-f
+
+      f-facts : FFacts
+      f-facts with IRResultAWF.result-place result-f
+      ... | at-loc loc valid before rax _ _ = record
+              { inter-loc-f    = loc
+              ; inter-before-f = before
+              ; inter-valid-f  = valid
+              ; inter-rax-f    = rax
+              }
+      ... | unit-result = record
+              { inter-loc-f    = readReg (regs s₁) Output
+              ; inter-before-f = unit-inter-before
+              ; inter-valid-f  = valid-unit-wf
+              ; inter-rax-f    = refl
+              }
+        where
+          postulate
+            unit-inter-before : BeforeFrontier alloc₁ (readReg (regs s₁) Output)
+
+      open FFacts f-facts using ()
+        renaming (inter-loc-f to inter-loc;
+                  inter-before-f to inter-before-f';
+                  inter-valid-f to inter-valid-f';
+                  inter-rax-f to inter-rax-f')
 
       ------------------------------------------------------------------------
       -- Reclaim after f (Phase 7: reclaimable-slot = next-slot final-alloc)
@@ -251,7 +292,7 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       inter-before-reclaimed =
         frontier-same-heap alloc₁ alloc₁-reclaimed
           (IRResultAWF.frame-preserved result-f) refl heap-eq-f inter-loc
-          (place-before (IRResultAWF.result-place result-f))
+          inter-before-f'
 
       -- Transfer validity from alloc₁ to alloc₁-reclaimed
       -- These allocs have: same next-slot, same frame (by frame-preserved), same heap (by heap-eq-f)
@@ -261,7 +302,7 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
                             (IRResultAWF.frame-preserved result-f) refl heap-eq-f
         in validityWF-with-bf-transfer (eval f x) inter-loc s₁
              alloc₁ alloc₁-reclaimed bf-transfer
-             (place-valid (IRResultAWF.result-place result-f))
+             inter-valid-f'
 
       s₁' = record s₁ { regs = writeReg (regs s₁) Input1 inter-loc }
 
@@ -302,7 +343,7 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- So s₁' ≡ record s₁ { regs = writeReg (regs s₁) Input1 (readReg (regs s₁) Output) }
       s₁'-eq-output : s₁' ≡ record s₁ { regs = writeReg (regs s₁) Input1 (readReg (regs s₁) Output) }
       s₁'-eq-output = cong (λ v → record s₁ { regs = writeReg (regs s₁) Input1 v })
-                           (sym (place-rax (IRResultAWF.result-place result-f)))
+                           (sym inter-rax-f')
 
       s-final-eq : s-final ≡ s₂
       s-final-eq = exec-trace-compose-eq f-trace g-trace s alloc s₁ s₁' alloc₁-reclaimed s₂
