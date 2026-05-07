@@ -1446,36 +1446,6 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
     -- The processed layer is the cata result
     process-layer wf-Id wfG alg dispatch μ-val mIn input-loc s alloc
       (μlayer-Id μ-val-μvalid) input-before not-halted rdi-eq =
-      -- For Id: ⟦ Id ⟧F (⟦μ⟧ G) = ⟦μ⟧ G
-      -- The μ-val IS the recursive μ-value
-      -- Compute sem-cata wfG alg μ-val via recursive dispatch
-      let
-        -- Validity for μ-val (extracted from μLayerValid for Id)
-        μ-val-valid : ValidAtWF mIn alloc μ-val input-loc s
-        μ-val-valid = valid-μ-wf wfG μ-val μ-val-μvalid
-
-        -- Recursive call: compute cata on μ-val
-        (mRec , rec-result) = cata-dispatched-new wfG alg dispatch μ-val mIn input-loc s alloc
-                                μ-val-valid input-before not-halted rdi-eq
-
-        -- Extract results.
-        -- Plan 0.2.4.5 D1 task #28: place-* uses retained here.
-        -- The let-block syntax doesn't admit multi-clause definitions
-        -- (or type-signature + clauses), so the FFacts-style dispatch
-        -- pattern used in compose / pair / apply doesn't fit. Lifting
-        -- this let into a where-block is the next refactor step.
-        rec-val = eval (Cata wfG alg) μ-val
-        s-rec = IRResultAWF.final-state rec-result
-        alloc-rec = IRResultAWF.final-alloc rec-result
-        rec-place = IRResultAWF.result-place rec-result
-        rec-loc = place-loc rec-place
-        rec-trace = IRResultAWF.trace rec-result
-        rec-valid = place-valid rec-place
-        rec-before = place-before rec-place
-        rec-rax = place-rax rec-place
-        rec-not-halted = IRResultAWF.not-halted rec-result
-        rec-slot-mono = IRResultAWF.slot-monotone rec-result
-      in
       mRec , record
         { processed = rec-val  -- The cata result
         ; trace = rec-trace
@@ -1517,6 +1487,33 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
         -- Use max-slot-usage-bound which is INPUT-relative
         ; scratch-bounded = IRResultAWF.max-slot-usage-bound rec-result
         }
+      where
+        -- Validity for μ-val (extracted from μLayerValid for Id)
+        μ-val-valid : ValidAtWF mIn alloc μ-val input-loc s
+        μ-val-valid = valid-μ-wf wfG μ-val μ-val-μvalid
+
+        -- Recursive call: compute cata on μ-val
+        cata-call = cata-dispatched-new wfG alg dispatch μ-val mIn input-loc s alloc
+                      μ-val-valid input-before not-halted rdi-eq
+        mRec = proj₁ cata-call
+        rec-result = proj₂ cata-call
+
+        -- Plan 0.2.4.5 D1 task #28: place-* uses retained here.
+        -- Where-block enables multi-clause dispatch but the result-place
+        -- field requires explicit at-loc construction since the cata's
+        -- result-place type doesn't align with ProcessedLayerResult's
+        -- (different reclaim-alloc indexing).
+        rec-val = eval (Cata wfG alg) μ-val
+        s-rec = IRResultAWF.final-state rec-result
+        alloc-rec = IRResultAWF.final-alloc rec-result
+        rec-place = IRResultAWF.result-place rec-result
+        rec-loc = place-loc rec-place
+        rec-trace = IRResultAWF.trace rec-result
+        rec-valid = place-valid rec-place
+        rec-before = place-before rec-place
+        rec-rax = place-rax rec-place
+        rec-not-halted = IRResultAWF.not-halted rec-result
+        rec-slot-mono = IRResultAWF.slot-monotone rec-result
 
     -- Sum inj₁ case (LINEAR): process left branch, update pointer in-place, return container
     --
