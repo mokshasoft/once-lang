@@ -51,7 +51,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
   open import Once.CCC.Machine.ClosureWellFormed
   open ClosureWellFormedDef {FS} program-bound
-    using (ValidAtWF; IRResultAWF; valid-unit-wf; valid-coerce-kind-wf;
+    using (ValidAtWF; IRResultAWF; RaxConstraint; rax-output-eq; rax-erased; valid-unit-wf; valid-coerce-kind-wf;
            validityWF-mem-only; validityWF-frontier-advance;
            decomposePairWF; PairValidWF)
 
@@ -80,7 +80,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; trace-correct = refl  -- s' DEFINED by trace
       ; result-valid-wf = valid-s'
       ; result-before = input-before
-      ; rax-is-result = rax-eq
+      ; rax-is-result = rax-output-eq rax-eq
       ; not-halted = not-halted'
       ; frame-preserved = refl
       ; slot-monotone = ≤-refl
@@ -157,7 +157,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; trace-correct = refl  -- s' DEFINED by trace
       ; result-valid-wf = fst-valid-s'
       ; result-before = fst-before
-      ; rax-is-result = rax-eq
+      ; rax-is-result = rax-output-eq rax-eq
       ; not-halted = not-halted'
       ; frame-preserved = refl
       ; slot-monotone = ≤-refl
@@ -248,7 +248,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; trace-correct = refl  -- s' DEFINED by trace
       ; result-valid-wf = snd-valid-s'
       ; result-before = snd-before
-      ; rax-is-result = rax-eq
+      ; rax-is-result = rax-output-eq rax-eq
       ; not-halted = not-halted'
       ; frame-preserved = refl
       ; slot-monotone = ≤-refl
@@ -330,22 +330,26 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     halted s ≡ false →
     readReg (regs s) Input1 ≡ input-loc →
     IRResultAWF m (terminal {A}) x s alloc
+  -- Plan 0.2.4.5 D1 (Unit erasure): terminal produces a Unit value
+  -- which carries no information. result-loc = Erased, trace = []
+  -- (no-op), and rax-is-result = rax-erased (no Output equation).
+  -- The Unit value is genuinely "nowhere" — no register, no slot,
+  -- no observable state delta.
   run-terminal x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     record
-      { result-loc = input-loc
-      ; final-state = s'
+      { result-loc = Erased
+      ; final-state = s
       ; final-alloc = alloc
-      ; trace = trace
-      ; trace-correct = refl  -- s' DEFINED by trace
+      ; trace = []
+      ; trace-correct = refl
       ; result-valid-wf = valid-unit-wf
-      ; result-before = input-before
-      ; rax-is-result = rax-eq
-      ; not-halted = not-halted'
+      ; result-before = erased-before
+      ; rax-is-result = rax-erased
+      ; not-halted = not-halted
       ; frame-preserved = refl
       ; slot-monotone = ≤-refl
       ; heap-monotone = ≤-refl
-      -- Phase 7: Removed reclaimable-slot, reclaim-monotone, reclaim-bounded, reclaim-size-bound
-      ; reclaim-preserves-result = input-before
+      ; reclaim-preserves-result = erased-before
       ; reclaim-preserves-validity = valid-unit-wf
       ; max-slot-written = next-slot alloc
       ; max-slot-geq-final = ≤-refl
@@ -357,33 +361,10 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; trace-writes-below = tt
       ; trace-slot-reads-below = tt
       ; trace-no-heap-writes = tt
-      ; trace-preserves-halted = tph-∷ iph-mov-to-output tph-[]
+      ; trace-preserves-halted = tph-[]
       ; scratch-bounded = m≤m+n (next-slot alloc) 0
       }
     where
-      trace : AbstractTrace
-      trace = mov-to-output ∷ []
-
-      s' : LocState FS
-      s' = proj₁ (exec-trace trace s alloc)
-
-      s'-eq : s' ≡ exec (mov Output Input1) s
-      s'-eq = cong proj₁ (exec-trace-single mov-to-output s alloc not-halted)
-
-      not-halted' : halted s' ≡ false
-      not-halted' = subst (λ st → halted st ≡ false) (sym s'-eq) not-halted
-
-      rax-eq : readReg (regs s') Output ≡ input-loc
-      rax-eq = trans (cong (λ st → readReg (regs st) Output) s'-eq)
-                     (trans (mov-result Output Input1 s) rdi-eq)
-
-      mem-preserved : ∀ loc → BeforeFrontier alloc loc → readLoc s' loc ≡ readLoc s loc
-      mem-preserved loc _ = trans (cong (λ st → readLoc st loc) s'-eq)
-                              (readLoc-stackMem-eq (exec (mov Output Input1) s) s loc
-                                 (mov-preserves-stackMem Output Input1 s)
-                                 (mov-preserves-heapMem Output Input1 s))
-
-      -- IR doesn't allocate, so return inj₁ refl
       frontier-stable : ∀ s'' input-loc'' →
         halted s'' ≡ false →
         readReg (regs s'') Input1 ≡ input-loc'' →
@@ -412,7 +393,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; trace-correct = refl  -- s' DEFINED by trace
       ; result-valid-wf = valid-s'
       ; result-before = input-before
-      ; rax-is-result = rax-eq
+      ; rax-is-result = rax-output-eq rax-eq
       ; not-halted = not-halted'
       ; frame-preserved = refl
       ; slot-monotone = ≤-refl
@@ -488,7 +469,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; trace-correct = refl  -- s' DEFINED by trace
       ; result-valid-wf = valid-eff
       ; result-before = input-before
-      ; rax-is-result = rax-eq
+      ; rax-is-result = rax-output-eq rax-eq
       ; not-halted = not-halted'
       ; frame-preserved = refl
       ; slot-monotone = ≤-refl

@@ -120,7 +120,10 @@ ir-to-trace' n l id        = n , l , (mov-to-output ∷ []) , []
 -- uniform packed base.
 ir-to-trace' n l fst       = n , l , (load-indirect ∷ []) , []
 ir-to-trace' n l snd       = n , l , (load-indirect-suc ∷ []) , []
-ir-to-trace' n l terminal  = n , l , (mov-to-output ∷ []) , []
+-- Plan 0.2.4.5 D1 (Unit erasure): terminal produces a Unit value
+-- which carries no information — emit no instructions. Matches
+-- run-terminal's empty-trace WF spec.
+ir-to-trace' n l terminal  = n , l , [] , []
 ir-to-trace' n l initial   = n , l , (mov-to-output ∷ []) , []
 ir-to-trace' n l arr       = n , l , (mov-to-output ∷ []) , []
 

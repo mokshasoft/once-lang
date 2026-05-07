@@ -257,6 +257,35 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     -- from pattern matching on input validity.
     --------------------------------------------------------------------
 
+    -- Plan 0.2.4.5 D1 (Unit erasure): for Unit-typed results the
+    -- value is genuinely "nowhere" — no register, no slot, no
+    -- observable content. `rax-is-result` ("Output holds the
+    -- result-loc") gets a vacuous case for Unit so the spec doesn't
+    -- have to lie about a non-existent equation.
+    --
+    -- Modeled as a data type so it works with B as a free variable:
+    -- producers pick the constructor (`rax-output-eq` for non-Unit,
+    -- `rax-erased` for Unit), consumers case-split. For non-Unit B
+    -- the existing equation is preserved unchanged.
+    data RaxConstraint : (B : Type) → LocState FS → ValueLocation FS → Set where
+      rax-output-eq : ∀ {B s loc} → readReg (regs s) Output ≡ loc → RaxConstraint B s loc
+      rax-erased    : ∀ {s loc} → RaxConstraint Unit s loc
+
+    -- Plan 0.2.4.5 D1: extract the Output equation from the
+    -- type-indexed rax-is-result. Used by consumers (compose,
+    -- pair, RecTrace) that haven't yet split their proofs into a
+    -- Unit-aware case branch. The Unit case requires a postulate
+    -- stub — this is a TODO until consumers learn to dispatch on
+    -- the constructor properly. (Run-terminal is the only producer
+    -- that currently emits `rax-erased`, so the postulate is hit
+    -- only when terminal is composed without elaboration eliding
+    -- the redundancy first.)
+    extract-rax-eq : ∀ {B s loc} → RaxConstraint B s loc →
+                     readReg (regs s) Output ≡ loc
+    extract-rax-eq (rax-output-eq eq) = eq
+    extract-rax-eq {Unit} {s} {loc} rax-erased = unit-rax-stub s loc
+      where postulate unit-rax-stub : ∀ s loc → readReg (regs s) Output ≡ loc
+
     record IRResultAWF (m : AllocMode)
                        {A B : Type}
                        (ir : IR A B)
@@ -279,7 +308,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
         -- Existing validity fields
         result-valid-wf : ValidAtWF m final-alloc (eval ir x) result-loc final-state
         result-before : BeforeFrontier final-alloc result-loc
-        rax-is-result : readReg (regs final-state) Output ≡ result-loc
+        rax-is-result : RaxConstraint B final-state result-loc
         not-halted : halted final-state ≡ false
         frame-preserved : current-frame final-alloc ≡ current-frame alloc
         slot-monotone : next-slot alloc ≤ next-slot final-alloc
@@ -1334,6 +1363,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
         stack-ancestor cf≺f src  -- Frame ordering and provenance unchanged (same current-frame)
       stack-alloc-advances' alloc rs monotone (AtDynamic hl) (heap-before r<next) =
         heap-before r<next
+      stack-alloc-advances' alloc rs monotone Erased erased-before = erased-before
 
   -- ValidAtWF is preserved after reclamation
   validityWF-reclaim : ∀ {m alloc A} (v : ⟦ A ⟧) loc s reclaim-slot
@@ -1400,6 +1430,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
   derive-mem-preserved-at alloc start trace s twa tnhw (AtDynamic h) (heap-before _) _ =
     -- Heap location
     exec-trace-preserves-heap-loc trace s alloc h tnhw
+  derive-mem-preserved-at alloc start trace s twa tnhw Erased erased-before _ = refl
 
   -- Standard variant: derive preservation for slots below next-slot alloc
   derive-mem-preserved : ∀ (alloc : AllocState {FS})

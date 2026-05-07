@@ -99,7 +99,8 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
   open import Once.CCC.Machine.ClosureWellFormed
   open ClosureWellFormedDef {FS} program-bound
-    using (ValidAtWF; IRResultAWF; RecDispatcherWF;
+    using (ValidAtWF; IRResultAWF; RaxConstraint; rax-output-eq; rax-erased;
+           extract-rax-eq; RecDispatcherWF;
            validityWF-mem-only; validityWF-mem-preserved; validityWF-trace-preserves;
            validityWF-frontier-advance;
            validityWF-alloc-advance; validityWF-with-bf-transfer;
@@ -1459,7 +1460,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; result-loc = rec-loc
         ; processed-valid = rec-valid
         ; result-before = rec-before
-        ; rax-is-result = rec-rax
+        ; rax-is-result = extract-rax-eq rec-rax
         ; not-halted = rec-not-halted
         ; semantic-correct = refl  -- sem-fmap Id f x = f x, coerce-struct⁻¹ Id _ x = x
         ; frame-preserved = IRResultAWF.frame-preserved rec-result

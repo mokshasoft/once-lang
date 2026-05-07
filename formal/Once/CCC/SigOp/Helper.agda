@@ -158,7 +158,7 @@ module PrimHelper {FS : FrameSemantics} (program-bound : ℕ) where
 
   open import Once.CCC.Machine.ClosureWellFormed
   open ClosureWellFormedDef {FS} program-bound
-    using (ValidAtWF; IRResultAWF; valid-primitive-wf)
+    using (ValidAtWF; IRResultAWF; RaxConstraint; rax-output-eq; rax-erased; valid-primitive-wf)
   open import Once.CCC.IR.Stack using (ir-stack-requirement; ir-scratch-requirement; sigOp-stack-req)
 
   import Once.CCC.Machine.SMPrimitives as SMP
@@ -210,7 +210,7 @@ module PrimHelper {FS : FrameSemantics} (program-bound : ℕ) where
       ; trace-correct = trace-correct-pf
       ; result-valid-wf = result-valid
       ; result-before = result-before
-      ; rax-is-result = writeReg-same (regs s) Output input-loc
+      ; rax-is-result = rax-output-eq (writeReg-same (regs s) Output input-loc)
       ; not-halted = not-halted
       ; frame-preserved = refl
       ; slot-monotone = ≤-refl

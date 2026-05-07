@@ -64,7 +64,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
 
   -- Types from ClosureWellFormed
   open ClosureWellFormedDef {FS} program-bound
-    using (ValidAtWF; IRResultAWF; RecDispatcherWF;
+    using (ValidAtWF; IRResultAWF; RaxConstraint; rax-output-eq; rax-erased; extract-rax-eq; RecDispatcherWF;
            valid-pair-wf;
            validityWF-mem-only; validityWF-mem-preserved;
            validityWF-mem-preserved-in-regions;
@@ -96,7 +96,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
       ; trace-correct = refl  -- s-final DEFINED by trace
       ; result-valid-wf = pair-valid-wf-final
       ; result-before = pair-before
-      ; rax-is-result = rax-eq
+      ; rax-is-result = rax-output-eq rax-eq
       ; not-halted = not-halted-final
       ; frame-preserved = refl
       ; slot-monotone = slot-monotone-pair
@@ -735,6 +735,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
       mem-preserved-pair (AtDynamic h) (heap-before _) =
         -- Heap location
         exec-trace-preserves-heap-loc pair-trace s alloc h pair-trace-no-heap-writes
+      mem-preserved-pair Erased erased-before = refl
 
       ------------------------------------------------------------------------
       -- Frontier slot stability
@@ -907,7 +908,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
       oaf-s1-output : readReg (regs (proj₁ (exec-trace f-trace s alloc-after-pair-slots))) Output ≡ fst-loc
       oaf-s1-output = subst (λ st → readReg (regs st) Output ≡ fst-loc)
                             (sym (IRResultAWF.trace-correct result-f))
-                            (IRResultAWF.rax-is-result result-f)
+                            (extract-rax-eq (IRResultAWF.rax-is-result result-f))
 
       output-after-f : readReg (regs s-after-f) Output ≡ fst-loc
       output-after-f =
@@ -1166,7 +1167,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
       oag-s2-output : readReg (regs (proj₁ (exec-trace g-trace s₁' alloc-after-f-reclaim))) Output ≡ snd-loc
       oag-s2-output = subst (λ st → readReg (regs st) Output ≡ snd-loc)
                             (sym (IRResultAWF.trace-correct result-g))
-                            (IRResultAWF.rax-is-result result-g)
+                            (extract-rax-eq (IRResultAWF.rax-is-result result-g))
 
       output-after-g : readReg (regs s-after-g) Output ≡ snd-loc
       output-after-g =

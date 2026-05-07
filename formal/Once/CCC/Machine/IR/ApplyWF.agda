@@ -80,6 +80,7 @@ module BFTransfer {FS : FrameSemantics} where
     rewrite cf-eq = stack-ancestor cf≺f src
   bf-same-frame-slot a₁ a₂ cf-eq ns-eq hr-eq (AtDynamic hl) (heap-before r<hr)
     rewrite hr-eq = heap-before r<hr
+  bf-same-frame-slot a₁ a₂ cf-eq ns-eq hr-eq Erased erased-before = erased-before
 
 ------------------------------------------------------------------------
 -- Apply implementation with clean trace-based structure
@@ -106,7 +107,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
 
   open import Once.CCC.Machine.ClosureWellFormed
   open ClosureWellFormedDef {FS} program-bound
-    using (ValidAtWF; IRResultAWF; BodyCorrect;
+    using (ValidAtWF; IRResultAWF; RaxConstraint; rax-output-eq; rax-erased; BodyCorrect;
            valid-unit-wf; valid-pair-wf; valid-closure-wf;
            valid-inl-wf; valid-inr-wf;
            -- OCP-0003: valid-fold-wf removed
@@ -200,7 +201,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       ; trace-correct = refl  -- BY DEFINITION
       ; result-valid-wf = result-valid-wf'
       ; result-before = result-before'
-      ; rax-is-result = rax-eq'
+      ; rax-is-result = rax-output-eq rax-eq'
       ; not-halted = not-halted'
       ; frame-preserved = refl
       ; slot-monotone = m≤m+n (next-slot alloc) pair-slots

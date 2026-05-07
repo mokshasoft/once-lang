@@ -59,7 +59,7 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
   open import Once.CCC.Machine.ClosureWellFormed
   open ClosureWellFormedDef {FS} program-bound
-    using (ValidAtWF; IRResultAWF; RecDispatcherWF; BodyCorrect;
+    using (ValidAtWF; IRResultAWF; RaxConstraint; rax-output-eq; rax-erased; RecDispatcherWF; BodyCorrect;
            valid-closure-wf; validityWF-mem-only;
            validityWF-alloc-advance; validityWF-frontier-advance;
            validityWF-write-at-frontier; validityWF-write-at-suc-frontier;
@@ -130,7 +130,7 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; trace-correct = refl  -- BY DEFINITION
       ; result-valid-wf = result-valid-wf'
       ; result-before = closure-before'
-      ; rax-is-result = rax-eq'
+      ; rax-is-result = rax-output-eq rax-eq'
       ; not-halted = not-halted'
       ; frame-preserved = refl
       ; slot-monotone = m≤m+n (next-slot alloc) closure-slots
@@ -337,6 +337,7 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       mem-preserved' (AtDynamic h) (heap-before _) =
         -- Heap location, use preserves-heap-loc
         exec-trace-preserves-heap-loc trace s alloc h tt
+      mem-preserved' Erased erased-before = refl
 
       -- Frontier slot stability
       -- The trace writes to closure-slot, but writes the SAME value (input-loc'):

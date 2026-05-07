@@ -33,7 +33,7 @@ open import Once.CCC.Machine.SMCore using (HeapRef; HeapLocation; heap-ref; ref-
 
 module EscapeInterfaceDef {FS : FrameSemantics} where
   open FrameSemantics FS
-  open import Once.CCC.Machine.SMCore using (ValueLocation; AtStack; AtDynamic)
+  open import Once.CCC.Machine.SMCore using (ValueLocation; AtStack; AtDynamic; Erased)
   open import Once.CCC.Machine.Allocation using (AllocState; next-heap-ref; current-frame; next-slot)
   open import Once.CCC.Machine.Allocation using (module FrontierInvariant)
   open FrontierInvariant {FS}
@@ -54,6 +54,8 @@ module EscapeInterfaceDef {FS : FrameSemantics} where
     in-ancestor : ∀ {f k} → frame ≺ f → SurvivesFramePop frame (AtStack f k)
     -- Heap location always survives
     on-heap : ∀ {hl} → SurvivesFramePop frame (AtDynamic hl)
+    -- Erased trivially survives — Unit values aren't stored anywhere
+    erased-survives : SurvivesFramePop frame Erased
 
   ------------------------------------------------------------------------
   -- Derive SurvivesFramePop from BeforeFrontier
@@ -94,6 +96,7 @@ module EscapeInterfaceDef {FS : FrameSemantics} where
     -- stack-ancestor gives: current-frame body-final ≺ f
     -- Since current-frame body-final ≡ child-frame, we have child-frame ≺ f
     in-ancestor (subst (_≺ f) cf-eq cf≺f)
+  derive-survives child-frame body-final Erased _ _ _ = erased-survives
 
   ------------------------------------------------------------------------
   -- ReferencesBlock

@@ -87,3 +87,4 @@ module FrontierLemmas {FS : FrameSemantics} where
     stack-ancestor (subst (_≺ f) frame-eq cf≺f) src  -- Transfer ordering via frame equality, preserve provenance
   frontier-same-heap a1 a2 frame-eq slot-eq heap-eq (AtDynamic hl) (heap-before ref<heap) =
     heap-before (subst (ref-id (heap-ref hl) <_) heap-eq ref<heap)
+  frontier-same-heap a1 a2 frame-eq slot-eq heap-eq Erased erased-before = erased-before

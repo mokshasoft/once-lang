@@ -55,7 +55,7 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
   open import Once.CCC.Machine.ClosureWellFormed
   open ClosureWellFormedDef {FS} program-bound
-    using (ValidAtWF; IRResultAWF; RecDispatcherWF; validityWF-mem-only;
+    using (ValidAtWF; IRResultAWF; RaxConstraint; rax-output-eq; rax-erased; extract-rax-eq; RecDispatcherWF; validityWF-mem-only;
            validityWF-frontier-advance; validityWF-mem-preserved;
            validityWF-with-bf-transfer)
 
@@ -171,7 +171,7 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; trace-correct = refl  -- s-final DEFINED by trace
       ; result-valid-wf = result-valid-final
       ; result-before = result-before-g
-      ; rax-is-result = rax-eq-final
+      ; rax-is-result = rax-output-eq rax-eq-final
       ; not-halted = not-halted-final
       ; frame-preserved = IRResultAWF.frame-preserved result-g
       ; slot-monotone = slot-mono
@@ -290,7 +290,7 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- So s₁' ≡ record s₁ { regs = writeReg (regs s₁) Input1 (readReg (regs s₁) Output) }
       s₁'-eq-output : s₁' ≡ record s₁ { regs = writeReg (regs s₁) Input1 (readReg (regs s₁) Output) }
       s₁'-eq-output = cong (λ v → record s₁ { regs = writeReg (regs s₁) Input1 v })
-                           (sym (IRResultAWF.rax-is-result result-f))
+                           (sym (extract-rax-eq (IRResultAWF.rax-is-result result-f)))
 
       s-final-eq : s-final ≡ s₂
       s-final-eq = exec-trace-compose-eq f-trace g-trace s alloc s₁ s₁' alloc₁-reclaimed s₂
@@ -309,7 +309,7 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
       rax-eq-final : readReg (regs s-final) Output ≡ result-loc-g
       rax-eq-final = trans (cong (λ st → readReg (regs st) Output) s-final-eq)
-                           (IRResultAWF.rax-is-result result-g)
+                           (extract-rax-eq (IRResultAWF.rax-is-result result-g))
 
       not-halted-final : halted s-final ≡ false
       not-halted-final = subst (λ st → halted st ≡ false) (sym s-final-eq)

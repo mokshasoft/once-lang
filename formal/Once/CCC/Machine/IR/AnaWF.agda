@@ -101,7 +101,7 @@ module AnaWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
   open import Once.CCC.Machine.ClosureWellFormed
   open ClosureWellFormedDef {FS} program-bound
-    using (ValidAtWF; IRResultAWF; RecDispatcherWF;
+    using (ValidAtWF; IRResultAWF; RaxConstraint; rax-output-eq; rax-erased; RecDispatcherWF;
            validityWF-mem-only; validityWF-frontier-advance;
            validityWF-alloc-advance)
 
@@ -145,6 +145,7 @@ module AnaWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     rec-scheme-preserves-ancestor-3 n s alloc f k not-halted (λ eq → ≺⇒≢ cf≺f (sym eq))
   rec-scheme-mem-preserved {n} s alloc refl not-halted (AtDynamic hl) (heap-before _) =
     rec-scheme-preserves-heap-3 n s alloc hl not-halted
+  rec-scheme-mem-preserved s alloc refl not-halted Erased erased-before = refl
 
   ------------------------------------------------------------------------
   -- Ana: Anamorphism (unfold to build ν-type)
@@ -187,7 +188,7 @@ module AnaWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; trace-correct = refl  -- s' DEFINED by trace
       ; result-valid-wf = result-valid
       ; result-before = result-bf
-      ; rax-is-result = rax-eq
+      ; rax-is-result = rax-output-eq rax-eq
       ; not-halted = not-halted'
       ; frame-preserved = refl
       ; slot-monotone = slot-mono

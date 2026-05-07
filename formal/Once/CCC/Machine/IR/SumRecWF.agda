@@ -65,7 +65,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
   open import Once.CCC.Machine.ClosureWellFormed
   open ClosureWellFormedDef {FS} program-bound
-    using (ValidAtWF; IRResultAWF; RecDispatcherWF; valid-unit-wf;
+    using (ValidAtWF; IRResultAWF; RaxConstraint; rax-output-eq; rax-erased; RecDispatcherWF; valid-unit-wf;
            validityWF-mem-only; validityWF-frontier-advance;
            validityWF-alloc-advance; validityWF-mem-preserved;
            validityWF-write-at-frontier; validityWF-write-at-suc-frontier;
@@ -348,7 +348,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; trace-correct = inl-inr-trace-state-correct (suc (next-slot alloc)) (next-slot alloc) s alloc input-loc sum-loc s-final rdi-eq refl refl not-halted
       ; result-valid-wf = inl-valid-wf-final
       ; result-before = sum-before
-      ; rax-is-result = rax-eq
+      ; rax-is-result = rax-output-eq rax-eq
       ; not-halted = not-halted
       ; frame-preserved = refl
       ; slot-monotone = slot-monotone-inl
@@ -499,7 +499,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; trace-correct = inl-inr-trace-state-correct (suc (next-slot alloc)) (next-slot alloc) s alloc input-loc sum-loc s-final rdi-eq refl refl not-halted
       ; result-valid-wf = inl-valid-wf-final
       ; result-before = sum-before
-      ; rax-is-result = rax-eq
+      ; rax-is-result = rax-output-eq rax-eq
       ; not-halted = not-halted
       ; frame-preserved = refl
       ; slot-monotone = slot-monotone-inl
@@ -664,7 +664,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; trace-correct = inl-inr-trace-state-correct (suc (next-slot alloc)) (next-slot alloc) s alloc input-loc sum-loc s-final rdi-eq refl refl not-halted
       ; result-valid-wf = inr-valid-wf-final
       ; result-before = sum-before
-      ; rax-is-result = rax-eq
+      ; rax-is-result = rax-output-eq rax-eq
       ; not-halted = not-halted
       ; frame-preserved = refl
       ; slot-monotone = slot-monotone-inr
@@ -805,7 +805,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; trace-correct = inl-inr-trace-state-correct (suc (next-slot alloc)) (next-slot alloc) s alloc input-loc sum-loc s-final rdi-eq refl refl not-halted
       ; result-valid-wf = inr-valid-wf-final
       ; result-before = sum-before
-      ; rax-is-result = rax-eq
+      ; rax-is-result = rax-output-eq rax-eq
       ; not-halted = not-halted
       ; frame-preserved = refl
       ; slot-monotone = slot-monotone-inr
@@ -1249,7 +1249,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; trace-correct = refl  -- s' DEFINED by trace
       ; result-valid-wf = result-valid
       ; result-before = result-bf
-      ; rax-is-result = rax-eq
+      ; rax-is-result = rax-output-eq rax-eq
       ; not-halted = not-halted'
       ; frame-preserved = refl
       ; slot-monotone = slot-mono
@@ -1326,6 +1326,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         rec-scheme-preserves-ancestor-3 result-slot s alloc f k not-halted (λ eq → ≺⇒≢ cf≺f (sym eq))
       mem-preserved (AtDynamic hl) (heap-before _) =
         rec-scheme-preserves-heap-3 result-slot s alloc hl not-halted
+      mem-preserved Erased erased-before = refl
 
       trace-wa : SMP.TraceWritesAbove (next-slot alloc) in-trace
       trace-wa = ≤-refl , tt
@@ -1364,7 +1365,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; trace-correct = refl  -- s' DEFINED by trace
       ; result-valid-wf = result-valid
       ; result-before = input-before
-      ; rax-is-result = rax-eq
+      ; rax-is-result = rax-output-eq rax-eq
       ; not-halted = not-halted'
       ; frame-preserved = refl
       ; slot-monotone = ≤-refl
@@ -1447,7 +1448,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; trace-correct = refl  -- s' DEFINED by trace
       ; result-valid-wf = result-valid
       ; result-before = input-before
-      ; rax-is-result = rax-eq
+      ; rax-is-result = rax-output-eq rax-eq
       ; not-halted = not-halted'
       ; frame-preserved = refl
       ; slot-monotone = ≤-refl
@@ -1526,7 +1527,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; trace-correct = refl  -- s' DEFINED by trace
       ; result-valid-wf = result-valid
       ; result-before = result-bf
-      ; rax-is-result = rax-eq
+      ; rax-is-result = rax-output-eq rax-eq
       ; not-halted = not-halted'
       ; frame-preserved = refl
       ; slot-monotone = slot-mono
@@ -1601,6 +1602,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         rec-scheme-preserves-ancestor-3 result-slot s alloc f k not-halted (≢-sym (≺⇒≢ cf≺f))
       mem-preserved (AtDynamic hl) (heap-before _) =
         rec-scheme-preserves-heap-3 result-slot s alloc hl not-halted
+      mem-preserved Erased erased-before = refl
 
       trace-wa : SMP.TraceWritesAbove (next-slot alloc) in-ν-trace
       trace-wa = ≤-refl , tt
