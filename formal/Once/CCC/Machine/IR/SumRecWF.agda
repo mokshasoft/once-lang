@@ -352,6 +352,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; heap-monotone = ≤-refl
       ; max-slot-written = next-slot alloc +ℕ sum-slots
       ; max-slot-geq-final = ≤-refl
+      ; stack-budget = ir-stack-requirement (inl {A} {B} Stack)
       ; max-slot-usage-bound = reclaim-size-bound-inl
       ; slot-stays-in-budget = reclaim-size-bound-inl
       -- Frontier slot stability for inl (Stack mode)
@@ -371,6 +372,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; trace-preserves-halted = tph-∷ iph-mov-to-output (tph-∷ iph-store-at-slot (tph-∷ iph-lea-slot tph-[]))
       -- scratch-bounded: max-slot-written = n + 2, final-alloc = n + 2, ir-scratch-requirement = 2
       -- (n + 2) ≤ (n + 2) + 2 by m≤m+n
+      ; scratch-budget = ir-scratch-requirement (inl {A} {B} Stack)
       ; scratch-bounded = m≤m+n (next-slot alloc +ℕ 2) 2
       }
     where
@@ -497,6 +499,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; heap-monotone = ≤-refl
       ; max-slot-written = next-slot alloc +ℕ sum-slots
       ; max-slot-geq-final = ≤-refl
+      ; stack-budget = ir-stack-requirement (inl {A} {B} Heap)
       ; max-slot-usage-bound = reclaim-size-bound-inl
       ; slot-stays-in-budget = reclaim-size-bound-inl
       -- Frontier slot stability for inl (Heap mode)
@@ -514,6 +517,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; trace-no-heap-writes = tt
       ; trace-preserves-halted = tph-∷ iph-mov-to-output (tph-∷ iph-store-at-slot (tph-∷ iph-lea-slot tph-[]))
       -- scratch-bounded: max-slot-written = n + 2, final-alloc = n + 2, ir-scratch-requirement = 2
+      ; scratch-budget = ir-scratch-requirement (inl {A} {B} Heap)
       ; scratch-bounded = m≤m+n (next-slot alloc +ℕ 2) 2
       }
     where
@@ -656,6 +660,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; heap-monotone = ≤-refl
       ; max-slot-written = next-slot alloc +ℕ sum-slots
       ; max-slot-geq-final = ≤-refl
+      ; stack-budget = ir-stack-requirement (inr {A} {B} Stack)
       ; max-slot-usage-bound = reclaim-size-bound-inr
       ; slot-stays-in-budget = reclaim-size-bound-inr
       -- Frontier slot stability for inr (Stack mode)
@@ -673,6 +678,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; trace-no-heap-writes = tt
       ; trace-preserves-halted = tph-∷ iph-mov-to-output (tph-∷ iph-store-at-slot (tph-∷ iph-lea-slot tph-[]))
       -- scratch-bounded: max-slot-written = n + 2, final-alloc = n + 2, ir-scratch-requirement = 2
+      ; scratch-budget = ir-scratch-requirement (inr {A} {B} Stack)
       ; scratch-bounded = m≤m+n (next-slot alloc +ℕ 2) 2
       }
     where
@@ -791,6 +797,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; heap-monotone = ≤-refl
       ; max-slot-written = next-slot alloc +ℕ sum-slots
       ; max-slot-geq-final = ≤-refl
+      ; stack-budget = ir-stack-requirement (inr {A} {B} Heap)
       ; max-slot-usage-bound = reclaim-size-bound-inr
       ; slot-stays-in-budget = reclaim-size-bound-inr
       -- Frontier slot stability for inr (Heap mode)
@@ -808,6 +815,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; trace-no-heap-writes = tt
       ; trace-preserves-halted = tph-∷ iph-mov-to-output (tph-∷ iph-store-at-slot (tph-∷ iph-lea-slot tph-[]))
       -- scratch-bounded: max-slot-written = n + 2, final-alloc = n + 2, ir-scratch-requirement = 2
+      ; scratch-budget = ir-scratch-requirement (inr {A} {B} Heap)
       ; scratch-bounded = m≤m+n (next-slot alloc +ℕ 2) 2
       }
     where
@@ -957,8 +965,11 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       
       ; max-slot-written = IRResultAWF.max-slot-written result-f
       ; max-slot-geq-final = IRResultAWF.max-slot-geq-final result-f
-      ; max-slot-usage-bound = ≤-trans (IRResultAWF.max-slot-usage-bound result-f) cap-f-bound
-      ; slot-stays-in-budget = ≤-trans (IRResultAWF.slot-stays-in-budget result-f) cap-f-bound
+      -- Plan 0.2.4.5 D1 task #30: dynamic budgets. For the inl branch
+      -- only f is executed, so the case-IR's budget is just f's.
+      ; stack-budget = IRResultAWF.stack-budget result-f
+      ; max-slot-usage-bound = IRResultAWF.max-slot-usage-bound result-f
+      ; slot-stays-in-budget = IRResultAWF.slot-stays-in-budget result-f
       -- Frontier slot stability for case (inl branch)
       ; frontier-slot-stable = case-frontier-stable
       -- Trace writes above: setup instructions don't store, f-trace writes above frontier
@@ -973,9 +984,8 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Note: trace-preserves-capacity removed in Phase 3
       ; trace-no-heap-writes = IRResultAWF.trace-no-heap-writes result-f
       ; trace-preserves-halted = tph-∷ iph-load-indirect-suc (tph-∷ iph-mov-to-input (IRResultAWF.trace-preserves-halted result-f))
-      -- scratch-bounded: forward from f, lifting rf to req-case
-      ; scratch-bounded = ≤-trans (IRResultAWF.scratch-bounded result-f)
-                                   (+-monoʳ-≤ (next-slot (IRResultAWF.final-alloc result-f)) (m≤m+n rf rg))
+      ; scratch-budget = IRResultAWF.scratch-budget result-f
+      ; scratch-bounded = IRResultAWF.scratch-bounded result-f
       }
     where
       rf = ir-stack-requirement f
@@ -1068,8 +1078,11 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       
       ; max-slot-written = IRResultAWF.max-slot-written result-g
       ; max-slot-geq-final = IRResultAWF.max-slot-geq-final result-g
-      ; max-slot-usage-bound = ≤-trans (IRResultAWF.max-slot-usage-bound result-g) cap-g-bound
-      ; slot-stays-in-budget = ≤-trans (IRResultAWF.slot-stays-in-budget result-g) cap-g-bound
+      -- Plan 0.2.4.5 D1 task #30: dynamic budgets. For the inr branch
+      -- only g is executed, so the case-IR's budget is just g's.
+      ; stack-budget = IRResultAWF.stack-budget result-g
+      ; max-slot-usage-bound = IRResultAWF.max-slot-usage-bound result-g
+      ; slot-stays-in-budget = IRResultAWF.slot-stays-in-budget result-g
       -- Frontier slot stability for case (inr branch)
       ; frontier-slot-stable = case-frontier-stable
       -- Trace writes above: setup instructions don't store, g-trace writes above frontier
@@ -1084,9 +1097,8 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Note: trace-preserves-capacity removed in Phase 3
       ; trace-no-heap-writes = IRResultAWF.trace-no-heap-writes result-g
       ; trace-preserves-halted = tph-∷ iph-load-indirect-suc (tph-∷ iph-mov-to-input (IRResultAWF.trace-preserves-halted result-g))
-      -- scratch-bounded: forward from g, lifting rg to req-case
-      ; scratch-bounded = ≤-trans (IRResultAWF.scratch-bounded result-g)
-                                   (+-monoʳ-≤ (next-slot (IRResultAWF.final-alloc result-g)) (m≤n+m rg rf))
+      ; scratch-budget = IRResultAWF.scratch-budget result-g
+      ; scratch-bounded = IRResultAWF.scratch-bounded result-g
       }
     where
       rf = ir-stack-requirement f
@@ -1221,6 +1233,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; heap-monotone = ≤-refl
       ; max-slot-written = next-slot alloc'
       ; max-slot-geq-final = ≤-refl
+      ; stack-budget = ir-stack-requirement (In {F} wf m)
       ; max-slot-usage-bound = reclaim-bound
       -- slot-stays-in-budget: In allocates exactly 1 slot
       ; slot-stays-in-budget = reclaim-bound
@@ -1234,6 +1247,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; trace-preserves-halted = tph-∷ iph-mov-to-output (tph-∷ iph-store-at-slot (tph-∷ iph-lea-slot tph-[]))
       -- scratch-bounded: In allocates 1 slot (max-slot = suc n = next-slot alloc')
       -- ir-scratch-requirement (In _ _) = 1, so bound is suc n ≤ suc n + 1
+      ; scratch-budget = ir-scratch-requirement (In {F} wf m)
       ; scratch-bounded = m≤m+n (suc (next-slot alloc)) 1
       }
     where
@@ -1330,6 +1344,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; heap-monotone = ≤-refl
       ; max-slot-written = next-slot alloc
       ; max-slot-geq-final = ≤-refl
+      ; stack-budget = ir-stack-requirement (out-μ {F} wf)
       ; max-slot-usage-bound = m≤m+n (next-slot alloc) 0
       -- slot-stays-in-budget: out-μ allocates 0 slots
       ; slot-stays-in-budget = m≤m+n (next-slot alloc) 0
@@ -1343,6 +1358,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; trace-preserves-halted = tph-∷ iph-mov-to-output tph-[]
       -- scratch-bounded: out-μ allocates 0 slots, max-slot = next-slot alloc
       -- ir-scratch-requirement (out-μ _) = 0, so bound is n + 0 = n
+      ; scratch-budget = ir-scratch-requirement (out-μ {F} wf)
       ; scratch-bounded = m≤m+n (next-slot alloc) 0
       }
     where
@@ -1407,6 +1423,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; heap-monotone = ≤-refl
       ; max-slot-written = next-slot alloc
       ; max-slot-geq-final = ≤-refl
+      ; stack-budget = ir-stack-requirement (Out {F} wf)
       ; max-slot-usage-bound = m≤m+n (next-slot alloc) 0
       ; slot-stays-in-budget = m≤m+n (next-slot alloc) 0
       ; frontier-slot-stable = frontier-stable
@@ -1419,6 +1436,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; trace-preserves-halted = tph-∷ iph-mov-to-output tph-[]
       -- scratch-bounded: Out allocates 0 slots, max-slot = next-slot alloc
       -- ir-scratch-requirement (Out _) = 0, so bound is n + 0 = n
+      ; scratch-budget = ir-scratch-requirement (Out {F} wf)
       ; scratch-bounded = m≤m+n (next-slot alloc) 0
       }
     where
@@ -1480,6 +1498,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; heap-monotone = ≤-refl
       ; max-slot-written = next-slot alloc'
       ; max-slot-geq-final = ≤-refl
+      ; stack-budget = ir-stack-requirement (in-ν {F} wf m)
       ; max-slot-usage-bound = reclaim-bound
       ; slot-stays-in-budget = reclaim-bound
       ; frontier-slot-stable = frontier-stable
@@ -1492,6 +1511,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; trace-preserves-halted = tph-∷ iph-mov-to-output (tph-∷ iph-store-at-slot (tph-∷ iph-lea-slot tph-[]))
       -- scratch-bounded: in-ν allocates 1 slot (max-slot = suc n = next-slot alloc')
       -- ir-scratch-requirement (in-ν _ _) = 1, so bound is suc n ≤ suc n + 1
+      ; scratch-budget = ir-scratch-requirement (in-ν {F} wf m)
       ; scratch-bounded = m≤m+n (suc (next-slot alloc)) 1
       }
     where

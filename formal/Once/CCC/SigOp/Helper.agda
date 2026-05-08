@@ -214,6 +214,7 @@ module PrimHelper {FS : FrameSemantics} (program-bound : ℕ) where
       ; heap-monotone = ≤-refl
       ; max-slot-written = next-slot alloc
       ; max-slot-geq-final = ≤-refl
+      ; stack-budget = ir-stack-requirement (SigOp {A} {B} si)
       ; max-slot-usage-bound =
           let n = next-slot alloc
               eq : n +ℕ ir-stack-requirement (SigOp {A} {B} si) ≡ n
@@ -231,6 +232,7 @@ module PrimHelper {FS : FrameSemantics} (program-bound : ℕ) where
       ; trace-slot-reads-below = tt
       -- scratch-bounded: max-slot-written = next-slot alloc = next-slot final-alloc
       -- ir-scratch-requirement (SigOp name) = 0, so bound is n +ℕ 0 = n
+      ; scratch-budget = ir-scratch-requirement (SigOp {A} {B} si)
       ; scratch-bounded =
           let n = next-slot alloc
               eq : n +ℕ ir-scratch-requirement (SigOp {A} {B} si) ≡ n

@@ -87,6 +87,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Phase 7: Removed reclaimable-slot, reclaim-monotone, reclaim-bounded, reclaim-size-bound
       ; max-slot-written = next-slot alloc
       ; max-slot-geq-final = ≤-refl
+      ; stack-budget = 0
       ; max-slot-usage-bound = m≤m+n (next-slot alloc) 0
       ; slot-stays-in-budget = m≤m+n (next-slot alloc) 0
       ; frontier-slot-stable = frontier-stable
@@ -96,6 +97,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; trace-slot-reads-below = tt
       ; trace-no-heap-writes = tt
       ; trace-preserves-halted = tph-∷ iph-mov-to-output tph-[]
+      ; scratch-budget = 0
       ; scratch-bounded = m≤m+n (next-slot alloc) 0
       }
     where
@@ -159,6 +161,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Phase 7: Removed reclaimable-slot, reclaim-monotone, reclaim-bounded, reclaim-size-bound
       ; max-slot-written = next-slot alloc
       ; max-slot-geq-final = ≤-refl
+      ; stack-budget = 0
       ; max-slot-usage-bound = m≤m+n (next-slot alloc) 0
       ; slot-stays-in-budget = m≤m+n (next-slot alloc) 0
       ; frontier-slot-stable = frontier-stable
@@ -168,6 +171,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; trace-slot-reads-below = tt
       ; trace-no-heap-writes = tt
       ; trace-preserves-halted = tph-∷ iph-load-indirect tph-[]
+      ; scratch-budget = 0
       ; scratch-bounded = m≤m+n (next-slot alloc) 0
       }
     where
@@ -245,6 +249,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Phase 7: Removed reclaimable-slot, reclaim-monotone, reclaim-bounded, reclaim-size-bound
       ; max-slot-written = next-slot alloc
       ; max-slot-geq-final = ≤-refl
+      ; stack-budget = 0
       ; max-slot-usage-bound = m≤m+n (next-slot alloc) 0
       ; slot-stays-in-budget = m≤m+n (next-slot alloc) 0
       ; frontier-slot-stable = frontier-stable
@@ -254,6 +259,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; trace-slot-reads-below = tt
       ; trace-no-heap-writes = tt
       ; trace-preserves-halted = tph-∷ iph-load-indirect-suc tph-[]
+      ; scratch-budget = 0
       ; scratch-bounded = m≤m+n (next-slot alloc) 0
       }
     where
@@ -335,6 +341,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; heap-monotone = ≤-refl
       ; max-slot-written = next-slot alloc
       ; max-slot-geq-final = ≤-refl
+      ; stack-budget = 0
       ; max-slot-usage-bound = m≤m+n (next-slot alloc) 0
       ; slot-stays-in-budget = m≤m+n (next-slot alloc) 0
       ; frontier-slot-stable = frontier-stable
@@ -344,6 +351,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; trace-slot-reads-below = tt
       ; trace-no-heap-writes = tt
       ; trace-preserves-halted = tph-[]
+      ; scratch-budget = 0
       ; scratch-bounded = m≤m+n (next-slot alloc) 0
       }
     where
@@ -381,6 +389,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; heap-monotone = ≤-refl
       ; max-slot-written = next-slot alloc
       ; max-slot-geq-final = ≤-refl
+      ; stack-budget = 0
       ; max-slot-usage-bound = m≤m+n (next-slot alloc) 0
       ; slot-stays-in-budget = m≤m+n (next-slot alloc) 0
       ; frontier-slot-stable = frontier-stable
@@ -390,6 +399,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; trace-slot-reads-below = tt
       ; trace-no-heap-writes = tt
       ; trace-preserves-halted = tph-∷ iph-mov-to-output tph-[]
+      ; scratch-budget = 0
       ; scratch-bounded = m≤m+n (next-slot alloc) 0
       }
     where
@@ -440,6 +450,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Phase 7: Removed reclaimable-slot, reclaim-monotone, reclaim-bounded, reclaim-size-bound
       ; max-slot-written = next-slot alloc
       ; max-slot-geq-final = ≤-refl
+      ; stack-budget = 0
       ; max-slot-usage-bound = m≤m+n (next-slot alloc) 0
       ; slot-stays-in-budget = m≤m+n (next-slot alloc) 0
       ; frontier-slot-stable = frontier-stable
@@ -449,6 +460,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; trace-slot-reads-below = tt
       ; trace-no-heap-writes = tt
       ; trace-preserves-halted = tph-∷ iph-mov-to-output tph-[]
+      ; scratch-budget = 0
       ; scratch-bounded = m≤m+n (next-slot alloc) 0
       }
     where

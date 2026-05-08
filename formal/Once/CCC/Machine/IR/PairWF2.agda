@@ -17,7 +17,7 @@
 module Once.CCC.Machine.IR.PairWF2 where
 
 open import Data.Nat using (ℕ; suc; _<_; _≤_; _≥_; s≤s; z≤n; _⊔_) renaming (_+_ to _+ℕ_)
-open import Data.Nat.Properties using (≤-refl; ≤-trans; m≤m+n; n≤1+n; +-comm; +-assoc; +-suc; +-identityʳ; +-monoˡ-≤; +-monoʳ-≤; <-≤-trans; <⇒≤; <⇒≢; m≤m⊔n; m≤n⊔m; ⊔-lub; _<?_; ≮⇒≥)
+open import Data.Nat.Properties using (≤-refl; ≤-trans; m≤m+n; m≤n+m; n≤1+n; +-comm; +-assoc; +-suc; +-identityʳ; +-monoˡ-≤; +-monoʳ-≤; <-≤-trans; <⇒≤; <⇒≢; m≤m⊔n; m≤n⊔m; ⊔-lub; _<?_; ≮⇒≥)
 open import Data.Empty using (⊥-elim)
 open import Data.Bool using (false)
 open import Data.Unit using (⊤; tt)
@@ -102,6 +102,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Phase 7: Removed reclaimable-slot, reclaim-monotone, reclaim-bounded, reclaim-size-bound
       ; max-slot-written = pair-max-slot
       ; max-slot-geq-final = pair-max-slot-geq-final
+      ; stack-budget = req-pair
       ; max-slot-usage-bound = pair-max-slot-bound
       ; slot-stays-in-budget = pair-slot-stays-in-budget
       ; frontier-slot-stable = pair-frontier-stable
@@ -112,6 +113,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Note: trace-preserves-capacity removed in Phase 3
       ; trace-no-heap-writes = pair-trace-no-heap-writes
       ; trace-preserves-halted = pair-trace-preserves-halted
+      ; scratch-budget = req-pair-scratch
       ; scratch-bounded = pair-scratch-bounded
       }
     where
@@ -124,9 +126,10 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
       -- f-start     = suc snd-slot          -- f writes to [f-start, max-f)
       -- g-start     = reclaim-f             -- g writes to [reclaim-f, max-g)
       ------------------------------------------------------------------------
-      rf = ir-stack-requirement f
-      rg = ir-stack-requirement g
-      req-pair = ir-stack-requirement (⟨ f , g ⟩ m)
+      -- Plan 0.2.4.5 D1 task #30: dynamic stack-budget composition.
+      -- rf / rg / sf / sg / req-pair are defined later, after result-f / result-g
+      -- are in scope (split across the where block to satisfy Agda's
+      -- order-sensitive scoping in `let`/`where`).
       frame = current-frame alloc
       backup-slot = next-slot alloc
       fst-slot = suc backup-slot
@@ -173,6 +176,10 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
       result-f = proj₂ f-exec-result
       s₁ = IRResultAWF.final-state result-f
       f-trace = IRResultAWF.trace result-f
+
+      -- Plan 0.2.4.5 D1 task #30: f's portion of dynamic budgets.
+      rf = IRResultAWF.stack-budget result-f
+      sf = IRResultAWF.scratch-budget result-f
 
       ------------------------------------------------------------------------
       -- Plan 0.2.4.5 D1 task #28: dispatch on f's result-place to
@@ -287,6 +294,12 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
       result-g = proj₂ g-exec-result
       s₂ = IRResultAWF.final-state result-g
       g-trace = IRResultAWF.trace result-g
+
+      -- Plan 0.2.4.5 D1 task #30: g's portion + dynamic pair budgets.
+      rg = IRResultAWF.stack-budget result-g
+      sg = IRResultAWF.scratch-budget result-g
+      req-pair = 1 +ℕ rf +ℕ rg +ℕ pair-slots
+      req-pair-scratch = 1 +ℕ sf +ℕ sg +ℕ pair-slots
 
       ------------------------------------------------------------------------
       -- Plan 0.2.4.5 D1 task #28: dispatch on g's result-place to
@@ -792,33 +805,57 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Since alloc-final ≥ alloc (slot monotone) and req-pair covers rf + rg + overhead,
       -- we can bound both max-slot-f and max-slot-g.
       ------------------------------------------------------------------------
-      pair-scratch-bounded : pair-max-slot ≤ next-slot alloc-final +ℕ req-pair
+      -- Plan 0.2.4.5 D1 task #30: scratch variant using sf/sg.
+      -- Mirrors `sss-rf-rg≡req-pair` for the scratch budget.
+      sss-sf-sg≡req-pair-scratch : (f-start +ℕ sf) +ℕ sg ≡ backup-slot +ℕ req-pair-scratch
+      sss-sf-sg≡req-pair-scratch =
+        let step1 : (((1 +ℕ sf) +ℕ sg) +ℕ 2) ≡ 3 +ℕ (sf +ℕ sg)
+            step1 = trans (+-assoc (1 +ℕ sf) sg 2)
+                    (trans (cong ((1 +ℕ sf) +ℕ_) (+-comm sg 2))
+                    (trans (sym (+-assoc (1 +ℕ sf) 2 sg))
+                    (trans (cong (_+ℕ sg) (+-assoc 1 sf 2))
+                    (trans (cong (λ x → (1 +ℕ x) +ℕ sg) (+-comm sf 2))
+                    (trans (cong (_+ℕ sg) (sym (+-assoc 1 2 sf))) (+-assoc 3 sf sg))))))
+            step2 : backup-slot +ℕ (3 +ℕ (sf +ℕ sg)) ≡ suc (suc (suc (backup-slot +ℕ (sf +ℕ sg))))
+            step2 = trans (sym (+-assoc backup-slot 3 (sf +ℕ sg)))
+                      (trans (cong (_+ℕ (sf +ℕ sg)) (+-comm backup-slot 3))
+                        (+-assoc 3 backup-slot (sf +ℕ sg)))
+            step3 : (backup-slot +ℕ sf) +ℕ sg ≡ backup-slot +ℕ (sf +ℕ sg)
+            step3 = +-assoc backup-slot sf sg
+        in trans (cong (λ x → suc (suc (suc x))) step3)
+             (trans (sym step2) (cong (backup-slot +ℕ_) (sym step1)))
+
+      pair-scratch-bounded : pair-max-slot ≤ next-slot alloc-final +ℕ req-pair-scratch
       pair-scratch-bounded =
         ⊔-lub f-scratch-bound g-scratch-bound
         where
-          -- f's scratch-bounded: max-slot-f ≤ next-slot alloc₁ +ℕ rf
-          -- where alloc₁ is f's final alloc (starting from f-start)
-          -- Since next-slot alloc-final = reclaim-g ≥ f-start (transitively through reclaim-f),
-          -- we have: max-slot-f ≤ (f-start +ℕ rf) ≤ backup-slot +ℕ req-pair ≤ reclaim-g +ℕ req-pair
-          f-scratch-bound : max-slot-f ≤ next-slot alloc-final +ℕ req-pair
-          f-scratch-bound =
-            let max-f-bound : max-slot-f ≤ backup-slot +ℕ req-pair
-                max-f-bound = ≤-trans (IRResultAWF.max-slot-usage-bound result-f)
-                                (≤-trans (m≤m+n (f-start +ℕ rf) rg)
-                                  (subst (((f-start +ℕ rf) +ℕ rg) ≤_) sss-rf-rg≡req-pair ≤-refl))
-            in ≤-trans max-f-bound (+-monoˡ-≤ req-pair pair-reclaim-monotone)
+          -- f's scratch-bounded: max-slot-f ≤ next-slot alloc₁ +ℕ sf
+          -- where alloc₁ is f's final alloc.
+          -- Need: max-slot-f ≤ next-slot alloc-final +ℕ req-pair-scratch
+          -- next-slot (final-alloc result-f) = reclaim-f
+          -- next-slot alloc-final = reclaim-g
+          -- reclaim-f ≤ reclaim-g via g's slot-monotone (g runs starting at reclaim-f)
+          alloc₁≤alloc-final : next-slot (IRResultAWF.final-alloc result-f) ≤ next-slot alloc-final
+          alloc₁≤alloc-final = IRResultAWF.slot-monotone result-g
 
-          -- g's scratch-bounded: max-slot-g ≤ next-slot alloc-g +ℕ rg
-          -- where alloc-g = IRResultAWF.final-alloc result-g
-          -- next-slot alloc-g = next-slot alloc-final since alloc-final = alloc-g (with reclaim)
-          -- Actually, alloc-final has next-slot = reclaim-g, and g ran on alloc-after-f-reclaim
-          g-scratch-bound : max-slot-g ≤ next-slot alloc-final +ℕ req-pair
+          f-scratch-bound : max-slot-f ≤ next-slot alloc-final +ℕ req-pair-scratch
+          f-scratch-bound =
+            ≤-trans (IRResultAWF.scratch-bounded result-f)
+              (≤-trans (+-monoˡ-≤ sf alloc₁≤alloc-final)
+                (+-monoʳ-≤ (next-slot alloc-final)
+                  (≤-trans (m≤m+n sf sg)
+                    (≤-trans (m≤m+n (sf +ℕ sg) pair-slots)
+                             (m≤n+m ((sf +ℕ sg) +ℕ pair-slots) 1)))))
+
+          -- g's scratch-bounded: max-slot-g ≤ next-slot (final-alloc result-g) +ℕ sg
+          -- next-slot (final-alloc result-g) = reclaim-g = next-slot alloc-final
+          g-scratch-bound : max-slot-g ≤ next-slot alloc-final +ℕ req-pair-scratch
           g-scratch-bound =
-            let max-g-bound : max-slot-g ≤ backup-slot +ℕ req-pair
-                max-g-bound = ≤-trans (IRResultAWF.max-slot-usage-bound result-g)
-                                (≤-trans (+-monoˡ-≤ rg reclaim-f-bound)
-                                  (subst (((f-start +ℕ rf) +ℕ rg) ≤_) sss-rf-rg≡req-pair ≤-refl))
-            in ≤-trans max-g-bound (+-monoˡ-≤ req-pair pair-reclaim-monotone)
+            ≤-trans (IRResultAWF.scratch-bounded result-g)
+              (+-monoʳ-≤ (next-slot alloc-final)
+                (≤-trans (m≤n+m sg sf)
+                  (≤-trans (m≤m+n (sf +ℕ sg) pair-slots)
+                           (m≤n+m ((sf +ℕ sg) +ℕ pair-slots) 1))))
 
       ------------------------------------------------------------------------
       -- Memory preservation (using positive write bounds)

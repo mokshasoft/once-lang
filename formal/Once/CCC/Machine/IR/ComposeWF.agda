@@ -189,6 +189,7 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Phase 7: Removed reclaimable-slot, reclaim-monotone, reclaim-bounded, reclaim-size-bound
       ; max-slot-written = compose-max-slot
       ; max-slot-geq-final = compose-max-slot-geq-final
+      ; stack-budget = req-compose
       ; max-slot-usage-bound = compose-max-slot-bound
       ; slot-stays-in-budget = compose-slot-stays-in-budget
       ; frontier-slot-stable = compose-frontier-stable
@@ -199,13 +200,15 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Note: trace-preserves-capacity removed in Phase 3
       ; trace-no-heap-writes = compose-trace-no-heap-writes
       ; trace-preserves-halted = compose-trace-preserves-halted
+      ; scratch-budget = req-compose-scratch
       ; scratch-bounded = compose-scratch-bounded
       }
     where
-      -- Stack requirement abbreviations
-      rf = ir-stack-requirement f
-      rg = ir-stack-requirement g
-      req-compose = ir-stack-requirement (g ∘ f)
+      -- Plan 0.2.4.5 D1 task #30: dynamic stack-budget composition.
+      -- rf / rg / req-compose are defined below after result-f / result-g
+      -- are bound. They read the sub-result budgets dynamically, since
+      -- IRResultAWF.stack-budget is a stuck projection over an opaque
+      -- rec-wf result.
 
       ------------------------------------------------------------------------
       -- Run f via recursive dispatch
@@ -218,6 +221,10 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       alloc₁ = IRResultAWF.final-alloc result-f
       f-trace = IRResultAWF.trace result-f
       not-halted₁ = IRResultAWF.not-halted result-f
+
+      -- Plan 0.2.4.5 D1 task #30: dynamic stack-budget composition (f's portion).
+      rf = IRResultAWF.stack-budget result-f
+      sf = IRResultAWF.scratch-budget result-f
 
       ------------------------------------------------------------------------
       -- Plan 0.2.4.5 D1 task #28: dispatch on f's result-place
@@ -328,6 +335,13 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- result-g's place into individual loc/valid/before/rax/reclaim-*
       -- facts. The transport eliminates 6 place-* call sites.
 
+      -- Plan 0.2.4.5 D1 task #30: dynamic stack-budget composition (g's portion).
+      rg = IRResultAWF.stack-budget result-g
+      sg = IRResultAWF.scratch-budget result-g
+
+      req-compose = rf +ℕ rg
+      req-compose-scratch = sf +ℕ sg
+
       ------------------------------------------------------------------------
       -- Compose trace and final state DEFINED by trace execution
       ------------------------------------------------------------------------
@@ -400,29 +414,23 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         where
           f-bound : max-slot-f ≤ next-slot alloc +ℕ req-compose
           f-bound = ≤-trans (IRResultAWF.max-slot-usage-bound result-f)
-                            (subst (next-slot alloc +ℕ rf ≤_)
-                              (trans (cong (next-slot alloc +ℕ_) (sym (∘-stack-req f g))) refl)
-                              (+-monoʳ-≤ (next-slot alloc) (m≤m+n rf rg)))
+                            (+-monoʳ-≤ (next-slot alloc) (m≤m+n rf rg))
 
           g-bound : max-slot-g ≤ next-slot alloc +ℕ req-compose
           g-bound = ≤-trans (IRResultAWF.max-slot-usage-bound result-g)
-                            (subst (reclaim-f +ℕ rg ≤_)
-                              (trans (cong (next-slot alloc +ℕ_) (sym (∘-stack-req f g))) refl)
-                              (≤-trans (+-monoˡ-≤ rg reclaim-f-bound)
-                                (≤-reflexive (+-assoc (next-slot alloc) rf rg))))
+                            (≤-trans (+-monoˡ-≤ rg reclaim-f-bound)
+                              (≤-reflexive (+-assoc (next-slot alloc) rf rg)))
 
       -- Stack discipline: composition stays within budget
       -- alloc₂ is final after g, which ran on alloc₁-reclaimed with next-slot = reclaim-f
       -- From g.slot-stays-in-budget: next-slot alloc₂ ≤ reclaim-f + rg
-      -- From f.reclaim-size-bound: reclaim-f ≤ next-slot alloc + rf
+      -- From f.slot-stays-in-budget: reclaim-f ≤ next-slot alloc + rf
       -- Therefore: next-slot alloc₂ ≤ next-slot alloc + (rf + rg) = next-slot alloc + req-compose
       compose-slot-stays-in-budget : next-slot alloc₂ ≤ next-slot alloc +ℕ req-compose
       compose-slot-stays-in-budget =
         ≤-trans (IRResultAWF.slot-stays-in-budget result-g)
-          (subst (reclaim-f +ℕ rg ≤_)
-            (trans (cong (next-slot alloc +ℕ_) (sym (∘-stack-req f g))) refl)
-            (≤-trans (+-monoˡ-≤ rg reclaim-f-bound)
-              (≤-reflexive (+-assoc (next-slot alloc) rf rg))))
+          (≤-trans (+-monoˡ-≤ rg reclaim-f-bound)
+            (≤-reflexive (+-assoc (next-slot alloc) rf rg)))
 
       ------------------------------------------------------------------------
       -- Trace predicates
@@ -666,46 +674,29 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- For max-slot-g: directly from g's scratch-bounded
       --   max-slot-g ≤ next-slot alloc₂ +ℕ rg ≤ next-slot alloc₂ +ℕ (rf + rg)
       ------------------------------------------------------------------------
-      compose-scratch-bounded : compose-max-slot ≤ next-slot alloc₂ +ℕ req-compose
+      compose-scratch-bounded : compose-max-slot ≤ next-slot alloc₂ +ℕ req-compose-scratch
       compose-scratch-bounded = ⊔-lub f-scratch-bound g-scratch-bound
         where
-          -- f's scratch-bounded: max-slot-f ≤ next-slot alloc₁ +ℕ rf
-          f-sb : max-slot-f ≤ next-slot alloc₁ +ℕ rf
+          -- f's scratch-bounded: max-slot-f ≤ next-slot alloc₁ +ℕ sf
+          f-sb : max-slot-f ≤ next-slot alloc₁ +ℕ sf
           f-sb = IRResultAWF.scratch-bounded result-f
 
-          -- g's scratch-bounded: max-slot-g ≤ next-slot alloc₂ +ℕ rg
-          g-sb : max-slot-g ≤ next-slot alloc₂ +ℕ rg
+          -- g's scratch-bounded: max-slot-g ≤ next-slot alloc₂ +ℕ sg
+          g-sb : max-slot-g ≤ next-slot alloc₂ +ℕ sg
           g-sb = IRResultAWF.scratch-bounded result-g
 
-          -- next-slot alloc₁ ≤ next-slot alloc₂
-          -- Proof: g runs on alloc₁-reclaimed with next-slot = reclaim-f
-          --        reclaim-f ≤ next-slot alloc₁ (by reclaim-bounded)
-          --        reclaim-f ≤ next-slot alloc₂ (by g's slot-monotone)
-          --        And next-slot alloc₁ = next-slot (final-alloc f) ≥ next-slot alloc
-          --        We need to show next-slot alloc₁ ≤ next-slot alloc₂
-          --
-          -- Actually: alloc₂ = IRResultAWF.final-alloc result-g where result-g runs on alloc₁-reclaimed
-          -- So next-slot alloc₁-reclaimed = reclaim-f, and by g's slot-monotone: reclaim-f ≤ next-slot alloc₂
-          -- We need: next-slot alloc₁ ≤ next-slot alloc₂
-          -- From f's reclaim-bounded: reclaim-f ≤ next-slot alloc₁
-          -- From g's slot-monotone: reclaim-f ≤ next-slot alloc₂
-          -- This doesn't directly give us next-slot alloc₁ ≤ next-slot alloc₂...
-          --
-          -- But wait, we can use a different approach:
-          -- max-slot-f ≤ next-slot alloc +ℕ rf (from f's max-slot-usage-bound)
-          -- next-slot alloc ≤ next-slot alloc₂ (from compose's slot-mono)
-          -- So: max-slot-f ≤ next-slot alloc₂ +ℕ rf ≤ next-slot alloc₂ +ℕ (rf + rg)
-          f-scratch-bound : max-slot-f ≤ next-slot alloc₂ +ℕ req-compose
-          f-scratch-bound =
-            ≤-trans (IRResultAWF.max-slot-usage-bound result-f)
-              (≤-trans (+-monoˡ-≤ rf slot-mono)
-                (subst (next-slot alloc₂ +ℕ rf ≤_)
-                  (trans (cong (next-slot alloc₂ +ℕ_) (sym (∘-stack-req f g))) refl)
-                  (+-monoʳ-≤ (next-slot alloc₂) (m≤m+n rf rg))))
+          -- next-slot alloc₁ ≤ next-slot alloc₂ via:
+          --   reclaim-f = next-slot alloc₁ (by definition)
+          --   reclaim-f ≤ next-slot alloc₂ (g's slot-monotone, since g runs on alloc₁-reclaimed)
+          alloc₁≤alloc₂ : next-slot alloc₁ ≤ next-slot alloc₂
+          alloc₁≤alloc₂ = IRResultAWF.slot-monotone result-g
 
-          g-scratch-bound : max-slot-g ≤ next-slot alloc₂ +ℕ req-compose
+          f-scratch-bound : max-slot-f ≤ next-slot alloc₂ +ℕ req-compose-scratch
+          f-scratch-bound =
+            ≤-trans f-sb
+              (≤-trans (+-monoˡ-≤ sf alloc₁≤alloc₂)
+                (+-monoʳ-≤ (next-slot alloc₂) (m≤m+n sf sg)))
+
+          g-scratch-bound : max-slot-g ≤ next-slot alloc₂ +ℕ req-compose-scratch
           g-scratch-bound =
-            ≤-trans g-sb
-              (subst (next-slot alloc₂ +ℕ rg ≤_)
-                (trans (cong (next-slot alloc₂ +ℕ_) (sym (∘-stack-req f g))) refl)
-                (+-monoʳ-≤ (next-slot alloc₂) (m≤n+m rg rf)))
+            ≤-trans g-sb (+-monoʳ-≤ (next-slot alloc₂) (m≤n+m sg sf))

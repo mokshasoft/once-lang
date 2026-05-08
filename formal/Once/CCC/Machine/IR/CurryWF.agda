@@ -135,6 +135,7 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Phase 7: Removed reclaimable-slot, reclaim-monotone, reclaim-bounded, reclaim-size-bound
       ; max-slot-written = next-slot alloc +ℕ closure-slots
       ; max-slot-geq-final = ≤-refl
+      ; stack-budget = ir-stack-requirement (curry {k = k} f m)
       ; max-slot-usage-bound = +-monoʳ-≤ (next-slot alloc) closure-bound
       -- slot-stays-in-budget: curry allocates closure-slots
       -- next-slot alloc' = next-slot alloc + closure-slots
@@ -150,6 +151,7 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; trace-preserves-halted = trace-preserves-halted'
       -- scratch-bounded: max-slot-written = next-slot alloc + closure-slots = next-slot alloc'
       -- (n + 2) ≤ (n + 2) + req by m≤m+n
+      ; scratch-budget = ir-scratch-requirement (curry {k = k} f m)
       ; scratch-bounded = m≤m+n (next-slot alloc +ℕ closure-slots) req-curry
       }
     where

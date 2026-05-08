@@ -408,13 +408,19 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
         max-slot-written : ℕ
         -- max-slot-written is at least next-slot final-alloc (was: reclaimable-slot)
         max-slot-geq-final : next-slot final-alloc ≤ max-slot-written
-        -- max-slot-written is bounded by input next-slot + ir-stack-requirement
-        max-slot-usage-bound : max-slot-written ≤ next-slot alloc +ℕ ir-stack-requirement ir
-        -- Stack discipline: execution stays within stack requirement budget
-        -- Final stack frontier bounded by requirement (pointers/tags/temps)
+        -- Plan 0.2.4.5 D1 task #30: dynamic stack budget. Each IR carries
+        -- its own runtime ℕ bound. Static IRs use ir-stack-requirement;
+        -- apply uses pair-slots + body-cap (read off the closure value).
+        -- Required for structured recursion later, where bounds depend
+        -- on runtime structure size.
+        stack-budget : ℕ
+        -- max-slot-written is bounded by input next-slot + stack-budget
+        max-slot-usage-bound : max-slot-written ≤ next-slot alloc +ℕ stack-budget
+        -- Stack discipline: execution stays within stack budget
+        -- Final stack frontier bounded by budget (pointers/tags/temps)
         -- Even with arbitrary-sized output (on heap), stack usage (pointers/tags) is bounded
         -- Enables compositional capacity proofs: if f and g stay in bounds, so does f;g
-        slot-stays-in-budget : next-slot final-alloc ≤ next-slot alloc +ℕ ir-stack-requirement ir
+        slot-stays-in-budget : next-slot final-alloc ≤ next-slot alloc +ℕ stack-budget
         -- Frontier slot stability: if input-loc is at frontier initially, it stays there
         -- This is because IR traces either:
         --   1. Don't write to frontier slot (e.g., inl/inr write to suc)
@@ -459,10 +465,11 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
         -- OCP-0003: Scratch bounded relative to OUTPUT frontier (not input)
         -- This is the key insight from stack-model-design.md:
         --   - Output: unbounded, runtime-determined (how much frontier advanced)
-        --   - Scratch: bounded, static (temporary space above output)
-        -- max-slot-written ≤ next-slot final-alloc +ℕ ir-scratch-requirement
-        -- Combined with slot-monotone, this enables MAX-based composition
-        scratch-bounded : max-slot-written ≤ next-slot final-alloc +ℕ ir-scratch-requirement ir
+        --   - Scratch: bounded, runtime-known (temporary space above output)
+        -- Plan 0.2.4.5 D1 task #30: scratch-budget is also a dynamic ℕ field
+        -- (was static `ir-scratch-requirement ir`). Same motivation as stack-budget.
+        scratch-budget : ℕ
+        scratch-bounded : max-slot-written ≤ next-slot final-alloc +ℕ scratch-budget
         -- Note: trace-preserves-capacity removed in Phase 3 (frame-capacity removed)
         -- Trace contains no heap-writing instructions.
         -- Heap writes (store-indirect) write to arbitrary memory (wherever Input1 points),

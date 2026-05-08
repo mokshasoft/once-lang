@@ -346,6 +346,7 @@ module RecCoreWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; heap-monotone = ≤-refl
       ; max-slot-written = next-slot alloc'
       ; max-slot-geq-final = ≤-refl
+      ; stack-budget = ir-stack-requirement (Fuse wfF wfG alg transform)
       ; max-slot-usage-bound = reclaim-bound
       -- slot-stays-in-budget: allocates exactly 1 slot
       -- next-slot alloc' = suc (next-slot alloc) ≤ next-slot alloc + ir-stack-requirement
@@ -360,6 +361,7 @@ module RecCoreWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; trace-preserves-halted = tph-∷ iph-mov-to-output (tph-∷ iph-store-at-slot (tph-∷ iph-lea-slot tph-[]))
       -- scratch-bounded: max-slot-written = suc n = next-slot alloc'
       -- suc n ≤ suc n + ir-scratch-requirement (Fuse ...) by m≤m+n
+      ; scratch-budget = ir-scratch-requirement (Fuse wfF wfG alg transform)
       ; scratch-bounded = m≤m+n (suc (next-slot alloc)) (ir-scratch-requirement (Fuse wfF wfG alg transform))
       }
     where
@@ -443,6 +445,7 @@ module RecCoreWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; heap-monotone = ≤-refl
       ; max-slot-written = next-slot alloc'
       ; max-slot-geq-final = ≤-refl
+      ; stack-budget = ir-stack-requirement (Hylo wfF wfG alg coalg)
       ; max-slot-usage-bound = reclaim-bound
       -- slot-stays-in-budget: allocates exactly 1 slot
       -- next-slot alloc' = suc (next-slot alloc) ≤ next-slot alloc + ir-stack-requirement
@@ -457,6 +460,7 @@ module RecCoreWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; trace-preserves-halted = tph-∷ iph-mov-to-output (tph-∷ iph-store-at-slot (tph-∷ iph-lea-slot tph-[]))
       -- scratch-bounded: max-slot-written = suc n = next-slot alloc'
       -- suc n ≤ suc n + ir-scratch-requirement (Hylo ...) by m≤m+n
+      ; scratch-budget = ir-scratch-requirement (Hylo wfF wfG alg coalg)
       ; scratch-bounded = m≤m+n (suc (next-slot alloc)) (ir-scratch-requirement (Hylo wfF wfG alg coalg))
       }
     where

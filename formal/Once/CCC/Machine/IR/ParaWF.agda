@@ -194,6 +194,7 @@ module ParaWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Phase 7: Removed reclaimable-slot, reclaim-monotone, reclaim-bounded, reclaim-size-bound
       ; max-slot-written = next-slot alloc'
       ; max-slot-geq-final = ≤-refl
+      ; stack-budget = ir-stack-requirement (Para wf alg)
       ; max-slot-usage-bound = reclaim-bound
       -- slot-stays-in-budget: Para allocates exactly 1 slot
       -- next-slot alloc' = suc (next-slot alloc)
@@ -209,6 +210,7 @@ module ParaWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; trace-preserves-halted = tph-∷ iph-mov-to-output (tph-∷ iph-store-at-slot (tph-∷ iph-lea-slot tph-[]))
       -- scratch-bounded: max-slot-written = suc n = next-slot alloc'
       -- suc n ≤ suc n + ir-scratch-requirement (Para wf alg) by m≤m+n
+      ; scratch-budget = ir-scratch-requirement (Para wf alg)
       ; scratch-bounded = m≤m+n (suc (next-slot alloc)) (ir-scratch-requirement (Para wf alg))
       }
     where

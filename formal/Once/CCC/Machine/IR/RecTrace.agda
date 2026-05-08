@@ -1459,15 +1459,18 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; slot-monotone = rec-slot-mono
         -- Phase 7: Removed reclaimable-slot, reclaim-monotone, reclaim-bounded, reclaim-preserves-*
         -- slot-usage-bound: IRResultAWF.slot-stays-in-budget gives exactly this bound
-        ; slot-usage-bound = IRResultAWF.slot-stays-in-budget rec-result
+        ; slot-usage-bound = bridge-slot-bound (next-slot alloc-rec ≤_)
+            (IRResultAWF.slot-stays-in-budget rec-result)
         -- max-slot-used: Use IRResultAWF.max-slot-written for consistent trace-writes-below type
         ; max-slot-used = IRResultAWF.max-slot-written rec-result
         ; max-slot-geq-final = IRResultAWF.max-slot-geq-final rec-result
-        ; max-slot-usage-bound = IRResultAWF.max-slot-usage-bound rec-result
+        ; max-slot-usage-bound = bridge-slot-bound (IRResultAWF.max-slot-written rec-result ≤_)
+            (IRResultAWF.max-slot-usage-bound rec-result)
         -- slot-stays-in-budget: Id delegates to Cata, which provides this property
         -- layer-capacity wf-Id = ir-stack-requirement (Cata wfG alg), so this says:
         --   next-slot final-alloc ≤ next-slot alloc + ir-stack-requirement (Cata wfG alg)
-        ; slot-stays-in-budget = IRResultAWF.slot-stays-in-budget rec-result
+        ; slot-stays-in-budget = bridge-slot-bound (next-slot alloc-rec ≤_)
+            (IRResultAWF.slot-stays-in-budget rec-result)
         ; heap-monotone = IRResultAWF.heap-monotone rec-result
         -- heap-preserved: Depends on Cata algebra - stack-only algebras preserve heap
         -- For algebras that allocate heap, this would need additional assumptions
@@ -1485,7 +1488,8 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
         -- scratch-bounded (INPUT-relative): Id delegates to Cata
         -- layer-capacity wf-Id = ir-stack-requirement (Cata wfG alg)
         -- Use max-slot-usage-bound which is INPUT-relative
-        ; scratch-bounded = IRResultAWF.max-slot-usage-bound rec-result
+        ; scratch-bounded = bridge-slot-bound (IRResultAWF.max-slot-written rec-result ≤_)
+            (IRResultAWF.max-slot-usage-bound rec-result)
         }
       where
         -- Validity for μ-val (extracted from μLayerValid for Id)
@@ -1514,6 +1518,19 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
         rec-rax = place-rax rec-place
         rec-not-halted = IRResultAWF.not-halted rec-result
         rec-slot-mono = IRResultAWF.slot-monotone rec-result
+
+        -- Plan 0.2.4.5 D1 task #30: dynamic-budget bridge.
+        -- cata-dispatched-new sets stack-budget = ir-stack-requirement (Cata wfG alg)
+        -- which is definitionally equal to layer-capacity wf-Id wfG alg, but Agda
+        -- can't reduce the projection on the opaque rec-result. Local trust point
+        -- discharged by the producer's literal setting (RecTrace run-Cata at line ~3823).
+        postulate
+          stack-budget-rec-eq : IRResultAWF.stack-budget rec-result ≡ layer-capacity wf-Id wfG alg
+
+        bridge-slot-bound : ∀ (P : ℕ → Set) →
+          P (next-slot alloc +ℕ IRResultAWF.stack-budget rec-result) →
+          P (next-slot alloc +ℕ layer-capacity wf-Id wfG alg)
+        bridge-slot-bound P pf = subst (λ b → P (next-slot alloc +ℕ b)) stack-budget-rec-eq pf
 
     -- Sum inj₁ case (LINEAR): process left branch, update pointer in-place, return container
     --
@@ -3820,6 +3837,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
           ; slot-monotone = slot-mono-proof
           ; heap-monotone = heap-mono-proof
           -- Phase 7: Removed reclaimable-slot, reclaim-monotone, reclaim-bounded, reclaim-preserves-*, reclaim-size-bound
+          ; stack-budget = ir-stack-requirement (Cata wfG alg)
           -- slot-stays-in-budget: Final frontier within ir-stack-requirement (Cata wfG alg)
           -- Chain: alg-result.slot-stays-in-budget gives final-alloc ≤ alloc-layer + ir-req alg
           --        layer-result.slot-stays-in-budget gives alloc-layer ≤ alloc + layer-capacity
@@ -3862,6 +3880,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
               (IRResultAWF.trace-no-heap-writes alg-result)
           ; trace-preserves-halted = tph-++ (ProcessedLayerResult.trace-preserves-halted layer-result)
               (tph-∷ iph-mov-to-input (IRResultAWF.trace-preserves-halted alg-result))
+          ; scratch-budget = ir-scratch-requirement (Cata wfG alg)
           -- scratch-bounded: composite of layer and algebra
           -- BLOCKED: needs composition proof similar to other blocked fields
           ; scratch-bounded = SMP.!!
