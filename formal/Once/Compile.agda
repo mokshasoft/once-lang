@@ -25,7 +25,7 @@ module Once.Compile where
 open import Data.Bool using (Bool; true; false; if_then_else_)
 open import Data.List using (List; []; _∷_; foldr)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Product using (_×_; _,_)
+open import Data.Product using (_×_; _,_; ∃; ∃-syntax; proj₁; proj₂)
 open import Data.String using (String; _++_; _==_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
@@ -102,6 +102,28 @@ open import Once.Surface.Elaborate using (elaborate)
 validateMain : Type → String ⊎ ⊤
 validateMain (Unit ⇒[ mk-kind Many eff ] Unit) = inj₂ tt
 validateMain ty = inj₁ ("main must have type IO Unit (= Eff Unit Unit), but got: " ++ showType ty)
+
+-- | Plan 0.2.4.5 D1: target-independent entry-point IR construction.
+-- main : IR Unit (Eff Unit Unit) produces a closure value. To run it,
+-- we need to apply that closure to (). Express this in CCC IR:
+--
+--   wrapMainAsEntry main = apply ∘ ⟨ main , terminal ⟩ : IR Unit Unit
+--
+-- This shifts the responsibility for the closure-call ABI from a
+-- hand-written `_start` template (which previously drifted out of sync
+-- with the verified apply-setup-trace) onto the verified `apply` IR
+-- itself. `_start` then only needs to do kernel-runtime setup
+-- (heap-pool init, stack reservation) and call the wrapped entry.
+wrapMainAsEntry : IR Unit (Unit ⇒[ mk-kind Many eff ] Unit) → IR Unit Unit
+wrapMainAsEntry mainIR = apply ∘ ⟨ mainIR , terminal ⟩ Stack
+
+-- | Apply the entry wrap conditionally for the function named "main".
+-- Returns the (possibly-rewritten) type and IR. Non-main functions and
+-- main with a non-validated type pass through unchanged.
+maybeWrapMain : (name : String) (ty : Type) → IR Unit ty
+              → ∃[ ty' ] IR Unit ty'
+maybeWrapMain "main" (Unit ⇒[ mk-kind Many eff ] Unit) ir = Unit , wrapMainAsEntry ir
+maybeWrapMain _ ty ir = ty , ir
 
 ------------------------------------------------------------------------
 -- Function compilation: RawExpr → IR
@@ -189,7 +211,15 @@ compileAllFuns doOpt funs polys = go funs emptyFunCtx
     ... | inj₁ err = inj₁ err
     ... | inj₂ ir with go rest (extendFunCtx ctx (funName fi) (funType fi))
     ...   | inj₁ err = inj₁ err
-    ...   | inj₂ compiled = inj₂ (mkCompiledFun (funName fi) (funType fi) ir (funIsPrimitive fi) ∷ compiled)
+    ...   | inj₂ compiled =
+              -- Plan 0.2.4.5 D1: for main, wrap as `apply ∘ ⟨ main , terminal ⟩`
+              -- so codegen produces a Unit→Unit entry point that does the
+              -- closure invocation via the verified apply IR. _start no longer
+              -- needs hand-written closure-call ABI (which drifted at Stage C).
+              let wrapped = maybeWrapMain (funName fi) (funType fi) ir
+                  ty'     = proj₁ wrapped
+                  ir'     = proj₂ wrapped
+              in inj₂ (mkCompiledFun (funName fi) ty' ir' (funIsPrimitive fi) ∷ compiled)
 
 -- | Compile source text to list of compiled functions
 -- Returns: Left error | Right list of (name, type, IR)

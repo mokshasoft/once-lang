@@ -51,43 +51,28 @@ x86-64-asmHeader =
   "once_heap_pos:\n" ++
   "    .quad 0\n\n" ++
   ".section .text\n\n" ++
-  -- Plan 0.11 + 0.2.4.2 Phase D: program entry stub. The Linux ELF
-  -- loader jumps to `_start`. This stub:
-  --   1. Initializes the heap pool's bump pointer.
-  --   2. Sets up rbp = stack frame base (kernel's stack pointer).
-  --   3. Reserves 4KB scratch on the stack.
-  --   4. Calls `once_main`. Main's type is `IO Unit = Eff Unit
-  --      Unit`, which elaborates to a closure constructor; main
-  --      returns a closure pointer in %rax (or has already exited
-  --      via a syscall, in which case the rest is unreachable).
-  --   5. Applies the returned closure to () per Plan 0.2.4.2 D8.
-  --      The closure body expects rdi = pointer to a freshly-built
-  --      (env, arg) pair on the parent's stack frame (this is what
-  --      `apply`'s trace constructs). At top-level we manually build
-  --      that pair: env is closure[0], arg is () = 0. We place it
-  --      at scratch slots 2,3 of the parent frame (slots 0,1 hold
-  --      the closure record itself).
-  --   6. r12 = closure ptr, rdi = &(env,()), call [r12+8] = body.
-  --      The body is the actual effectful sequence (e.g. exit 42).
-  --   7. If the body returns normally (most Layer 0 programs call
-  --      exit themselves), fall through to sys_exit(0).
+  -- Plan 0.2.4.5 D1: program entry stub.
+  --
+  -- Main is wrapped at the IR level via `wrapMainAsEntry` in
+  -- Once.Compile to `apply ∘ ⟨ main , terminal ⟩ : IR Unit Unit`.
+  -- The compiled `once_main` therefore performs the full closure
+  -- invocation via the verified `apply` IR — no hand-written
+  -- closure-call ABI here.
+  --
+  -- _start's only job is target-specific runtime setup that's not
+  -- expressible in CCC IR:
+  --   1. Initialize the heap pool's bump pointer.
+  --   2. Reserve 4KB scratch on the stack and anchor %rbp.
+  --   3. Call once_main. Main's IR is Unit→Unit; its trace executes
+  --      the program body (which typically calls exit and never returns).
+  --   4. If main returns normally, fall through to sys_exit(0).
   ".globl _start\n" ++
   "_start:\n" ++
   "    leaq once_heap_base(%rip), %rax\n" ++
   "    movq %rax, once_heap_pos(%rip)\n" ++
-  -- Reserve scratch buffer FIRST, then anchor %rbp at the bottom.
-  -- Slot offsets (slot*8)(%rbp) reach into the reservation.
   "    subq $4096, %rsp\n" ++
   "    movq %rsp, %rbp\n" ++
   "    call once_main\n" ++
-  -- main returned a closure pointer in %rax. Plan 0.2.4.5 Stage C
-  -- split-input convention: pass env in %rdi (Input1), unit in %rsi
-  -- (Input2). No more packed-pair pointer.
-  "    movq %rax, %r12\n" ++         -- r12 = closure ptr
-  "    movq 0(%r12), %rdi\n" ++      -- rdi (Input1) = closure[0] = env
-  "    xorq %rsi, %rsi\n" ++         -- rsi (Input2) = 0 (= () unit arg)
-  "    callq *0x8(%r12)\n" ++        -- call [r12+8] = body
-  -- If body returned normally, exit cleanly.
   "    movq $60, %rax\n" ++
   "    xorq %rdi, %rdi\n" ++
   "    syscall\n\n"
