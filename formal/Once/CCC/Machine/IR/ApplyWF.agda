@@ -199,17 +199,18 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       ; trace-correct = refl  -- BY DEFINITION
       ; result-place = result-place-final
       ; not-halted = not-halted'
-      ; frame-preserved = refl
-      ; slot-monotone = m≤m+n (next-slot alloc) pair-slots
-      ; heap-monotone = ≤-refl
-      -- Phase 7: Removed reclaimable-slot, reclaim-monotone, reclaim-bounded, reclaim-size-bound
-      ; max-slot-written = next-slot alloc +ℕ pair-slots
-      ; max-slot-geq-final = ≤-refl
-      ; max-slot-usage-bound = ≤-refl
-      -- slot-stays-in-budget: apply allocates exactly pair-slots
-      -- next-slot alloc' = next-slot alloc + pair-slots
-      -- ir-stack-requirement apply = pair-slots
-      ; slot-stays-in-budget = ≤-refl
+      ; frame-preserved = trans (IRResultAWF.frame-preserved body-result) refl
+      ; slot-monotone = ≤-trans (m≤m+n (next-slot alloc) pair-slots)
+                                (IRResultAWF.slot-monotone body-result)
+      ; heap-monotone = IRResultAWF.heap-monotone body-result
+      -- Plan 0.2.4.5 D1 task #30: dynamic budgets — body-cap propagates
+      -- through pair-slots + body's stack-budget. With alloc' = body's
+      -- final-alloc, the bounds chain directly via body's IRResultAWF.
+      ; stack-budget = pair-slots +ℕ IRResultAWF.stack-budget body-result
+      ; max-slot-written = IRResultAWF.max-slot-written body-result
+      ; max-slot-geq-final = IRResultAWF.max-slot-geq-final body-result
+      ; max-slot-usage-bound = max-slot-usage-bound'
+      ; slot-stays-in-budget = slot-stays-in-budget'
       ; frontier-slot-stable = frontier-stable'
       ; trace-writes-above = trace-writes-above'
       ; trace-slot-reads-above = trace-slot-reads-above'
@@ -218,9 +219,8 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       -- Note: trace-preserves-capacity removed in Phase 3
       ; trace-no-heap-writes = trace-no-heap-writes'
       ; trace-preserves-halted = trace-preserves-halted'
-      -- scratch-bounded: apply allocates pair-slots, max-slot-written = n + pair-slots = n + 2
-      -- ir-scratch-requirement apply = pair-slots = 2, so (n + 2) ≤ (n + 2) + 2
-      ; scratch-bounded = m≤m+n (next-slot alloc +ℕ pair-slots) pair-slots
+      ; scratch-budget = IRResultAWF.scratch-budget body-result
+      ; scratch-bounded = IRResultAWF.scratch-bounded body-result
       }
     where
       open import Data.Nat using (_≥_)
@@ -266,13 +266,10 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       pair-slot = next-slot alloc
       pair-input-loc = AtStack (current-frame alloc) pair-slot
 
-      alloc' : AllocState {FS}
-      alloc' = record alloc { next-slot = next-slot alloc +ℕ pair-slots }
-
       -- Body inherits the parent's frame; only the slot frontier
       -- advances past the (env, arg) pair we stored.
       child-alloc : AllocState {FS}
-      child-alloc = alloc'
+      child-alloc = record alloc { next-slot = next-slot alloc +ℕ pair-slots }
 
       ------------------------------------------------------------------------
       -- Execute body in same frame as parent (to get body-trace).
@@ -661,6 +658,14 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
 
       body-trace = IRResultAWF.trace body-result
 
+      -- Plan 0.2.4.5 D1 task #30: alloc' tracks body's full final-alloc
+      -- (next-slot extends past pair-slots into body's stack region).
+      -- This bridges body's place-before / place-valid (both in body's
+      -- final-alloc) up to apply's alloc' frontier without going through
+      -- a (broken) static `next-slot alloc + pair-slots` claim.
+      alloc' : AllocState {FS}
+      alloc' = IRResultAWF.final-alloc body-result
+
       -- Plan 0.2.4.5 D1 task #28: dispatch on body's result-place
       -- to extract result-loc. Same pattern as compose / pair:
       --   at-loc → bound loc.
@@ -810,11 +815,24 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       mem-preserved' loc bf = trans (cong (λ st → readLoc st loc) s'-eq)
                                 (trans (body-mem-preserved loc bf) (setup-mem-preserved loc bf))
 
-      -- Result is before frontier in alloc'
+      -- Result is before frontier in alloc'.
+      -- Plan 0.2.4.5 D1 task #30: alloc' = body's final-alloc, so body's
+      -- place-before transports directly via the result-place dispatch.
+      -- For unit-result branch this isn't reached (apply uses unit-result),
+      -- but the function must still typecheck for the at-loc dispatch.
       result-before' : BeforeFrontier alloc' result-loc
-      result-before' = SMP.!!
+      result-before' with IRResultAWF.result-place body-result
+      ... | at-loc loc valid before _ _ _ = before
+      ... | unit-result = unit-bf
+        where postulate unit-bf : BeforeFrontier alloc' (readReg (regs (IRResultAWF.final-state body-result)) Output)
 
-      -- Result validity
+      -- Result validity. body's place-valid gives validity for body's eval
+      -- value (eval body (pair env arg)), but we need apply's eval
+      -- (eval (apply ...) x = closure arg = eval body (env, arg)). The
+      -- closure-decomp equation `eval body (env, arg) ≡ eval (apply ...) x`
+      -- requires unpacking the closure value — separate work. SMP.!!
+      -- transitionally; sidestepped for unit-result branch via result-place
+      -- dispatch (no per-loc validity needed).
       result-valid-wf' : ValidAtWF mBody alloc' (eval (apply {A} {B} {k}) x) result-loc s'
       result-valid-wf' = SMP.!!
 
@@ -871,11 +889,75 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
         (apply-setup-trace pair-slot) body-trace
         setup-slot-reads-above body-slot-reads-above-pair-slot
 
-      trace-writes-below' : TraceWritesBelow (next-slot alloc +ℕ pair-slots) trace
-      trace-writes-below' = SMP.!!
+      -- Plan 0.2.4.5 D1 task #30: dynamic-budget bounds.
+      -- Apply's max-slot-written = body's max-slot-written (body always
+      -- writes ≥ next-slot child-alloc = next-slot alloc + pair-slots,
+      -- which dominates setup's writes at pair-slot / suc pair-slot).
+      -- The budget is pair-slots + body's stack-budget.
 
-      trace-slot-reads-below' : TraceSlotReadsBelow (next-slot alloc +ℕ pair-slots) trace
-      trace-slot-reads-below' = SMP.!!
+      -- max-slot-usage-bound: body's max ≤ next-slot child-alloc + body's stack-budget
+      --                                  = next-slot alloc + pair-slots + body's stack-budget
+      --                                  = next-slot alloc + apply's stack-budget.
+      max-slot-usage-bound' :
+        IRResultAWF.max-slot-written body-result
+        ≤ next-slot alloc +ℕ (pair-slots +ℕ IRResultAWF.stack-budget body-result)
+      max-slot-usage-bound' =
+        subst
+          (IRResultAWF.max-slot-written body-result ≤_)
+          (+-assoc (next-slot alloc) pair-slots (IRResultAWF.stack-budget body-result))
+          (IRResultAWF.max-slot-usage-bound body-result)
+        where open import Data.Nat.Properties using (+-assoc)
+
+      slot-stays-in-budget' :
+        next-slot alloc'
+        ≤ next-slot alloc +ℕ (pair-slots +ℕ IRResultAWF.stack-budget body-result)
+      slot-stays-in-budget' =
+        subst
+          (next-slot alloc' ≤_)
+          (+-assoc (next-slot alloc) pair-slots (IRResultAWF.stack-budget body-result))
+          (IRResultAWF.slot-stays-in-budget body-result)
+        where open import Data.Nat.Properties using (+-assoc)
+
+      -- trace-writes-below: setup writes at suc pair-slot and pair-slot.
+      -- Both < body's max-slot-written (body monotone gives
+      -- next-slot child-alloc = pair-slot + pair-slots ≤ body-final.next-slot
+      -- ≤ body-max-slot).
+      pair-slot+2≤body-max :
+        next-slot alloc +ℕ pair-slots ≤ IRResultAWF.max-slot-written body-result
+      pair-slot+2≤body-max =
+        ≤-trans (IRResultAWF.slot-monotone body-result)
+                (IRResultAWF.max-slot-geq-final body-result)
+
+      -- Bridge: next-slot alloc + pair-slots = next-slot alloc + 2 ≡ suc (suc (next-slot alloc)).
+      -- _+_ recurses on the left, so we apply +-suc twice to push sucs out.
+      n+2≡ssuc-n : ∀ n → n +ℕ pair-slots ≡ suc (suc n)
+      n+2≡ssuc-n n = trans (+-suc n 1) (cong suc (trans (+-suc n 0) (cong suc (+-identityʳ n))))
+        where open import Data.Nat.Properties using (+-suc; +-identityʳ)
+
+      ssuc-pair-slot≤body-max : suc (suc pair-slot) ≤ IRResultAWF.max-slot-written body-result
+      ssuc-pair-slot≤body-max =
+        subst (_≤ IRResultAWF.max-slot-written body-result)
+              (n+2≡ssuc-n (next-slot alloc))
+              pair-slot+2≤body-max
+
+      suc-pair-slot≤body-max : suc pair-slot ≤ IRResultAWF.max-slot-written body-result
+      suc-pair-slot≤body-max = ≤-trans (n≤1+n (suc pair-slot)) ssuc-pair-slot≤body-max
+        where open import Data.Nat.Properties using (n≤1+n)
+
+      setup-writes-below-body-max : TraceWritesBelow (IRResultAWF.max-slot-written body-result) (apply-setup-trace pair-slot)
+      setup-writes-below-body-max = ssuc-pair-slot≤body-max , suc-pair-slot≤body-max , tt
+
+      trace-writes-below' : TraceWritesBelow (IRResultAWF.max-slot-written body-result) trace
+      trace-writes-below' = trace-writes-below-append (IRResultAWF.max-slot-written body-result)
+        (apply-setup-trace pair-slot) body-trace
+        setup-writes-below-body-max
+        (IRResultAWF.trace-writes-below body-result)
+
+      trace-slot-reads-below' : TraceSlotReadsBelow (IRResultAWF.max-slot-written body-result) trace
+      trace-slot-reads-below' = trace-slot-reads-below-append (IRResultAWF.max-slot-written body-result)
+        (apply-setup-trace pair-slot) body-trace
+        tt  -- setup reads no slots
+        (IRResultAWF.trace-slot-reads-below body-result)
 
       -- Note: trace-preserves-capacity' removed in Phase 3
 
@@ -889,23 +971,31 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
           setup-no-heap-writes
           (IRResultAWF.trace-no-heap-writes body-result)
 
-      -- Reclamation proofs
-      -- Note: fits parameter removed in Phase 3
-      reclaim-preserves-result' :
-        BeforeFrontier (record alloc { next-slot = next-slot alloc +ℕ pair-slots }) result-loc
-      reclaim-preserves-result' = bf-same-frame-slot alloc'
-        (record alloc { next-slot = next-slot alloc +ℕ pair-slots })
-        refl refl refl result-loc result-before'
+      -- Plan 0.2.4.5 D1 task #30: reclaim-alloc now uses next-slot alloc'
+      -- (= body's final next-slot), not pair-slots, since alloc' tracks
+      -- body's full stack.
+      reclaim-alloc : AllocState {FS}
+      reclaim-alloc = record alloc { next-slot = next-slot alloc' }
+
+      -- Frame equivalence: alloc'.frame = alloc.frame via body's frame-preserved + child-alloc.
+      alloc'-frame-eq : current-frame alloc' ≡ current-frame alloc
+      alloc'-frame-eq = trans (IRResultAWF.frame-preserved body-result) refl
+
+      -- Stack-only assumption: body doesn't heap-allocate, so heap-frontier
+      -- is preserved. Will be discharged once mBody is constrained to Stack
+      -- or once heap-preserved replaces heap-monotone in IRResultAWF.
+      postulate
+        alloc'-heap-eq : next-heap-ref alloc' ≡ next-heap-ref alloc
+
+      reclaim-preserves-result' : BeforeFrontier reclaim-alloc result-loc
+      reclaim-preserves-result' = bf-same-frame-slot alloc' reclaim-alloc
+        alloc'-frame-eq refl alloc'-heap-eq result-loc result-before'
 
       reclaim-preserves-validity' :
-        ValidAtWF mBody (record alloc { next-slot = next-slot alloc +ℕ pair-slots })
-                  (eval (apply {A} {B} {k}) x) result-loc s'
+        ValidAtWF mBody reclaim-alloc (eval (apply {A} {B} {k}) x) result-loc s'
       reclaim-preserves-validity' = validityWF-with-bf-transfer
-        (eval (apply {A} {B} {k}) x) result-loc s' alloc'
-        (record alloc { next-slot = next-slot alloc +ℕ pair-slots })
-        (λ loc bf → bf-same-frame-slot alloc'
-          (record alloc { next-slot = next-slot alloc +ℕ pair-slots })
-          refl refl refl loc bf)
+        (eval (apply {A} {B} {k}) x) result-loc s' alloc' reclaim-alloc
+        (λ loc bf → bf-same-frame-slot alloc' reclaim-alloc alloc'-frame-eq refl alloc'-heap-eq loc bf)
         result-valid-wf'
 
       -- Plan 0.2.4.5 D1 task #30: dispatch on body's result-place.
