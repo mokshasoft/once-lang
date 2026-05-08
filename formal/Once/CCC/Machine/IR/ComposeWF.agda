@@ -185,7 +185,7 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; not-halted = not-halted-final
       ; frame-preserved = IRResultAWF.frame-preserved result-g
       ; slot-monotone = slot-mono
-      ; heap-monotone = heap-mono
+      ; heap-preserved = heap-mono
       -- Phase 7: Removed reclaimable-slot, reclaim-monotone, reclaim-bounded, reclaim-size-bound
       ; max-slot-written = compose-max-slot
       ; max-slot-geq-final = compose-max-slot-geq-final
@@ -380,8 +380,9 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       slot-mono = ≤-trans (IRResultAWF.slot-monotone result-f)
                           (IRResultAWF.slot-monotone result-g)
 
-      heap-mono : next-heap-ref alloc ≤ next-heap-ref alloc₂
-      heap-mono = IRResultAWF.heap-monotone result-g
+      heap-mono : next-heap-ref alloc₂ ≡ next-heap-ref alloc
+      heap-mono = trans (IRResultAWF.heap-preserved result-g)
+                  (trans (sym heap-eq-f) (IRResultAWF.heap-preserved result-f))
 
       -- Note: mem-preserved-compose removed in Phase 4 (field no longer in IRResultAWF)
       -- Use irresult-mem-preserved to derive preservation when needed

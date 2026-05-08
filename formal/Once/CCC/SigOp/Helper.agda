@@ -211,7 +211,7 @@ module PrimHelper {FS : FrameSemantics} (program-bound : ℕ) where
       ; not-halted = not-halted
       ; frame-preserved = refl
       ; slot-monotone = ≤-refl
-      ; heap-monotone = ≤-refl
+      ; heap-preserved = refl
       ; max-slot-written = next-slot alloc
       ; max-slot-geq-final = ≤-refl
       ; stack-budget = ir-stack-requirement (SigOp {A} {B} si)

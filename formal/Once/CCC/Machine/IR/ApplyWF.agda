@@ -202,7 +202,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       ; frame-preserved = trans (IRResultAWF.frame-preserved body-result) refl
       ; slot-monotone = ≤-trans (m≤m+n (next-slot alloc) pair-slots)
                                 (IRResultAWF.slot-monotone body-result)
-      ; heap-monotone = IRResultAWF.heap-monotone body-result
+      ; heap-preserved = IRResultAWF.heap-preserved body-result
       -- Plan 0.2.4.5 D1 task #30: dynamic budgets — body-cap propagates
       -- through pair-slots + body's stack-budget. With alloc' = body's
       -- final-alloc, the bounds chain directly via body's IRResultAWF.
@@ -997,10 +997,10 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       alloc'-frame-eq = trans (IRResultAWF.frame-preserved body-result) refl
 
       -- Stack-only assumption: body doesn't heap-allocate, so heap-frontier
-      -- is preserved. Will be discharged once mBody is constrained to Stack
-      -- or once heap-preserved replaces heap-monotone in IRResultAWF.
-      postulate
-        alloc'-heap-eq : next-heap-ref alloc' ≡ next-heap-ref alloc
+      -- is preserved. Discharged via IRResultAWF.heap-preserved (since
+      -- alloc' = body-result.final-alloc).
+      alloc'-heap-eq : next-heap-ref alloc' ≡ next-heap-ref alloc
+      alloc'-heap-eq = IRResultAWF.heap-preserved body-result
 
       reclaim-preserves-result' : BeforeFrontier reclaim-alloc result-loc
       reclaim-preserves-result' = bf-same-frame-slot alloc' reclaim-alloc

@@ -83,7 +83,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; not-halted = not-halted'
       ; frame-preserved = refl
       ; slot-monotone = ≤-refl
-      ; heap-monotone = ≤-refl
+      ; heap-preserved = refl
       -- Phase 7: Removed reclaimable-slot, reclaim-monotone, reclaim-bounded, reclaim-size-bound
       ; max-slot-written = next-slot alloc
       ; max-slot-geq-final = ≤-refl
@@ -157,7 +157,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; not-halted = not-halted'
       ; frame-preserved = refl
       ; slot-monotone = ≤-refl
-      ; heap-monotone = ≤-refl
+      ; heap-preserved = refl
       -- Phase 7: Removed reclaimable-slot, reclaim-monotone, reclaim-bounded, reclaim-size-bound
       ; max-slot-written = next-slot alloc
       ; max-slot-geq-final = ≤-refl
@@ -245,7 +245,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; not-halted = not-halted'
       ; frame-preserved = refl
       ; slot-monotone = ≤-refl
-      ; heap-monotone = ≤-refl
+      ; heap-preserved = refl
       -- Phase 7: Removed reclaimable-slot, reclaim-monotone, reclaim-bounded, reclaim-size-bound
       ; max-slot-written = next-slot alloc
       ; max-slot-geq-final = ≤-refl
@@ -338,7 +338,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; not-halted = not-halted
       ; frame-preserved = refl
       ; slot-monotone = ≤-refl
-      ; heap-monotone = ≤-refl
+      ; heap-preserved = refl
       ; max-slot-written = next-slot alloc
       ; max-slot-geq-final = ≤-refl
       ; stack-budget = 0
@@ -386,7 +386,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; not-halted = not-halted'
       ; frame-preserved = refl
       ; slot-monotone = ≤-refl
-      ; heap-monotone = ≤-refl
+      ; heap-preserved = refl
       ; max-slot-written = next-slot alloc
       ; max-slot-geq-final = ≤-refl
       ; stack-budget = 0
@@ -446,7 +446,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; not-halted = not-halted'
       ; frame-preserved = refl
       ; slot-monotone = ≤-refl
-      ; heap-monotone = ≤-refl
+      ; heap-preserved = refl
       -- Phase 7: Removed reclaimable-slot, reclaim-monotone, reclaim-bounded, reclaim-size-bound
       ; max-slot-written = next-slot alloc
       ; max-slot-geq-final = ≤-refl

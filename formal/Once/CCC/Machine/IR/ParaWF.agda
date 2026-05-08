@@ -190,7 +190,7 @@ module ParaWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; not-halted = not-halted'
       ; frame-preserved = refl
       ; slot-monotone = slot-mono
-      ; heap-monotone = ≤-refl
+      ; heap-preserved = refl
       -- Phase 7: Removed reclaimable-slot, reclaim-monotone, reclaim-bounded, reclaim-size-bound
       ; max-slot-written = next-slot alloc'
       ; max-slot-geq-final = ≤-refl

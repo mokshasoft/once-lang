@@ -393,7 +393,14 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
         not-halted : halted final-state ≡ false
         frame-preserved : current-frame final-alloc ≡ current-frame alloc
         slot-monotone : next-slot alloc ≤ next-slot final-alloc
-        heap-monotone : next-heap-ref alloc ≤ next-heap-ref final-alloc
+        -- Plan 0.2.4.5 D1 task #30: stack-only invariant strengthening.
+        -- The abstract instruction set has no heap-allocation operation,
+        -- so every IR genuinely preserves the heap-frontier. Promoting
+        -- this from ≤ to ≡ rules out producers claiming heap grew (a
+        -- "smart" malloc-then-dealloc trick can't satisfy a point-to-point
+        -- equality). Will be relaxed to a mode-conditional form when
+        -- heap-allocating IRs land.
+        heap-preserved : next-heap-ref final-alloc ≡ next-heap-ref alloc
         -- Note: capacity-preserved removed in Phase 3 (frame-capacity removed from AllocState)
         -- Note: mem-preserved-before removed in Phase 4 - use irresult-mem-preserved instead
         -- Phase 7: Removed reclaimable-slot, reclaim-monotone, reclaim-bounded, reclaim-size-bound

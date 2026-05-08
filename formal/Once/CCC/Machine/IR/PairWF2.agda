@@ -98,7 +98,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
       ; not-halted = not-halted-final
       ; frame-preserved = refl
       ; slot-monotone = slot-monotone-pair
-      ; heap-monotone = ≤-refl
+      ; heap-preserved = refl
       -- Phase 7: Removed reclaimable-slot, reclaim-monotone, reclaim-bounded, reclaim-size-bound
       ; max-slot-written = pair-max-slot
       ; max-slot-geq-final = pair-max-slot-geq-final

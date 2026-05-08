@@ -349,7 +349,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; not-halted = not-halted
       ; frame-preserved = refl
       ; slot-monotone = slot-monotone-inl
-      ; heap-monotone = ≤-refl
+      ; heap-preserved = refl
       ; max-slot-written = next-slot alloc +ℕ sum-slots
       ; max-slot-geq-final = ≤-refl
       ; stack-budget = ir-stack-requirement (inl {A} {B} Stack)
@@ -496,7 +496,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; not-halted = not-halted
       ; frame-preserved = refl
       ; slot-monotone = slot-monotone-inl
-      ; heap-monotone = ≤-refl
+      ; heap-preserved = refl
       ; max-slot-written = next-slot alloc +ℕ sum-slots
       ; max-slot-geq-final = ≤-refl
       ; stack-budget = ir-stack-requirement (inl {A} {B} Heap)
@@ -657,7 +657,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; not-halted = not-halted
       ; frame-preserved = refl
       ; slot-monotone = slot-monotone-inr
-      ; heap-monotone = ≤-refl
+      ; heap-preserved = refl
       ; max-slot-written = next-slot alloc +ℕ sum-slots
       ; max-slot-geq-final = ≤-refl
       ; stack-budget = ir-stack-requirement (inr {A} {B} Stack)
@@ -794,7 +794,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; not-halted = not-halted
       ; frame-preserved = refl
       ; slot-monotone = slot-monotone-inr
-      ; heap-monotone = ≤-refl
+      ; heap-preserved = refl
       ; max-slot-written = next-slot alloc +ℕ sum-slots
       ; max-slot-geq-final = ≤-refl
       ; stack-budget = ir-stack-requirement (inr {A} {B} Heap)
@@ -960,7 +960,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; not-halted = IRResultAWF.not-halted result-f
       ; frame-preserved = IRResultAWF.frame-preserved result-f
       ; slot-monotone = IRResultAWF.slot-monotone result-f
-      ; heap-monotone = IRResultAWF.heap-monotone result-f
+      ; heap-preserved = IRResultAWF.heap-preserved result-f
       -- Phase 7: Removed reclaimable-slot, reclaim-monotone, reclaim-bounded, reclaim-size-bound
       
       ; max-slot-written = IRResultAWF.max-slot-written result-f
@@ -1073,7 +1073,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; not-halted = IRResultAWF.not-halted result-g
       ; frame-preserved = IRResultAWF.frame-preserved result-g
       ; slot-monotone = IRResultAWF.slot-monotone result-g
-      ; heap-monotone = IRResultAWF.heap-monotone result-g
+      ; heap-preserved = IRResultAWF.heap-preserved result-g
       -- Phase 7: Removed reclaimable-slot, reclaim-monotone, reclaim-bounded, reclaim-size-bound
       
       ; max-slot-written = IRResultAWF.max-slot-written result-g
@@ -1230,7 +1230,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; not-halted = not-halted'
       ; frame-preserved = refl
       ; slot-monotone = slot-mono
-      ; heap-monotone = ≤-refl
+      ; heap-preserved = refl
       ; max-slot-written = next-slot alloc'
       ; max-slot-geq-final = ≤-refl
       ; stack-budget = ir-stack-requirement (In {F} wf m)
@@ -1341,7 +1341,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; not-halted = not-halted'
       ; frame-preserved = refl
       ; slot-monotone = ≤-refl
-      ; heap-monotone = ≤-refl
+      ; heap-preserved = refl
       ; max-slot-written = next-slot alloc
       ; max-slot-geq-final = ≤-refl
       ; stack-budget = ir-stack-requirement (out-μ {F} wf)
@@ -1420,7 +1420,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; not-halted = not-halted'
       ; frame-preserved = refl
       ; slot-monotone = ≤-refl
-      ; heap-monotone = ≤-refl
+      ; heap-preserved = refl
       ; max-slot-written = next-slot alloc
       ; max-slot-geq-final = ≤-refl
       ; stack-budget = ir-stack-requirement (Out {F} wf)
@@ -1495,7 +1495,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; not-halted = not-halted'
       ; frame-preserved = refl
       ; slot-monotone = slot-mono
-      ; heap-monotone = ≤-refl
+      ; heap-preserved = refl
       ; max-slot-written = next-slot alloc'
       ; max-slot-geq-final = ≤-refl
       ; stack-budget = ir-stack-requirement (in-ν {F} wf m)

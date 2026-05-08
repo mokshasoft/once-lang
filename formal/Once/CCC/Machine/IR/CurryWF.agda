@@ -131,7 +131,7 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; not-halted = not-halted'
       ; frame-preserved = refl
       ; slot-monotone = m≤m+n (next-slot alloc) closure-slots
-      ; heap-monotone = ≤-refl
+      ; heap-preserved = refl
       -- Phase 7: Removed reclaimable-slot, reclaim-monotone, reclaim-bounded, reclaim-size-bound
       ; max-slot-written = next-slot alloc +ℕ closure-slots
       ; max-slot-geq-final = ≤-refl

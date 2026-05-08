@@ -1471,7 +1471,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
         --   next-slot final-alloc ≤ next-slot alloc + ir-stack-requirement (Cata wfG alg)
         ; slot-stays-in-budget = bridge-slot-bound (next-slot alloc-rec ≤_)
             (IRResultAWF.slot-stays-in-budget rec-result)
-        ; heap-monotone = IRResultAWF.heap-monotone rec-result
+        ; heap-monotone = ≤-reflexive (sym (IRResultAWF.heap-preserved rec-result))
         -- heap-preserved: Depends on Cata algebra - stack-only algebras preserve heap
         -- For algebras that allocate heap, this would need additional assumptions
         ; heap-preserved = SMP.!!
@@ -3707,8 +3707,12 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
         slot-mono-proof : next-slot alloc ≤ next-slot (IRResultAWF.final-alloc alg-result)
         slot-mono-proof = ≤-trans layer-slot-mono (IRResultAWF.slot-monotone alg-result)
 
-        heap-mono-proof : next-heap-ref alloc ≤ next-heap-ref (IRResultAWF.final-alloc alg-result)
-        heap-mono-proof = ≤-trans layer-heap-mono (IRResultAWF.heap-monotone alg-result)
+        -- heap-pres-proof: chain alg-result.heap-preserved + layer-heap-preserved.
+        -- alg-result runs on alloc-layer, so gives ≡ between alg-final and alloc-layer.
+        -- layer-heap-preserved gives ≡ between alloc-layer and alloc.
+        heap-pres-proof : next-heap-ref (IRResultAWF.final-alloc alg-result) ≡ next-heap-ref alloc
+        heap-pres-proof = trans (IRResultAWF.heap-preserved alg-result)
+                                (ProcessedLayerResult.heap-preserved layer-result)
 
         -- Note: cap-preserved-proof removed in Phase 3
 
@@ -3835,7 +3839,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
           ; not-halted = IRResultAWF.not-halted alg-result
           ; frame-preserved = frame-preserved-proof
           ; slot-monotone = slot-mono-proof
-          ; heap-monotone = heap-mono-proof
+          ; heap-preserved = heap-pres-proof
           -- Phase 7: Removed reclaimable-slot, reclaim-monotone, reclaim-bounded, reclaim-preserves-*, reclaim-size-bound
           ; stack-budget = ir-stack-requirement (Cata wfG alg)
           -- slot-stays-in-budget: Final frontier within ir-stack-requirement (Cata wfG alg)

@@ -343,7 +343,7 @@ module RecCoreWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; not-halted = not-halted'
       ; frame-preserved = refl
       ; slot-monotone = slot-mono
-      ; heap-monotone = ≤-refl
+      ; heap-preserved = refl
       ; max-slot-written = next-slot alloc'
       ; max-slot-geq-final = ≤-refl
       ; stack-budget = ir-stack-requirement (Fuse wfF wfG alg transform)
@@ -442,7 +442,7 @@ module RecCoreWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; not-halted = not-halted'
       ; frame-preserved = refl
       ; slot-monotone = slot-mono
-      ; heap-monotone = ≤-refl
+      ; heap-preserved = refl
       ; max-slot-written = next-slot alloc'
       ; max-slot-geq-final = ≤-refl
       ; stack-budget = ir-stack-requirement (Hylo wfF wfG alg coalg)
