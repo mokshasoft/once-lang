@@ -10,6 +10,8 @@
 
 module Once.Target where
 
+open import Data.Nat using (ℕ)
+open import Data.Product using (_×_)
 open import Data.String using (String)
 open import Once.CCC.IR using (IR)
 
@@ -20,14 +22,20 @@ open import Once.CCC.IR using (IR)
 -- | A target provides architecture-specific code generation
 record Target : Set where
   field
-    -- | Compile IR to assembly text (function body only)
-    irToAsm : ∀ {A B} → IR A B → String
+    -- | Compile IR to assembly text (function body only).
+    -- Plan 0.12 Layer 1: takes a starting thunk-label counter and
+    -- returns the next-available counter so that thunk labels stay
+    -- globally unique across multiple top-level functions in the
+    -- same module. `compileAllWithTarget` left-folds the counter.
+    irToAsm : ℕ → ∀ {A B} → IR A B → ℕ × String
     -- | Plan 0.2.4.2 Phase B: assembly text for closure-body labels
     -- (`.L_thunk_<n>:` blocks) emitted AFTER the parent's `ret`.
     -- Empty string for IRs containing no `curry` (most non-effectful
     -- code). Two-pass codegen separates this from `irToAsm` so the
-    -- parent's ret comes between them.
-    irToBodies : ∀ {A B} → IR A B → String
+    -- parent's ret comes between them. Plan 0.12 Layer 1: takes the
+    -- same starting label counter `irToAsm` was called with, so that
+    -- the body-emission's labels match the trace's call sites.
+    irToBodies : ℕ → ∀ {A B} → IR A B → ℕ × String
     -- | Assembly file header (e.g., ".section .text")
     asmHeader : String
     -- | Generate function prologue (label, .globl directive)

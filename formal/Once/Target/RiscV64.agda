@@ -25,7 +25,9 @@ open import Once.Target using (Target)
 open import Once.Target.Symbol using (once-symbol)
 open import Once.CCC.IR using (IR)
 
-open import Once.CCC.Codegen.IRToTrace using (ir-to-trace)
+open import Once.CCC.Codegen.IRToTrace using (ir-to-trace; ir-to-trace-from)
+open import Data.Nat using (ℕ)
+open import Data.Product using (_×_; _,_)
 open import Once.CCC.Target.RiscV64.AbstractToRiscV using (compile-trace)
 open import Once.CCC.Target.RiscV64.Emit using (programToText)
 
@@ -44,8 +46,11 @@ riscv64-functionPrologue fname =
   once-symbol fname ++ ":\n"
 
 -- | Plan 0.2.4.2 Phase B: closure-body emission stub.
-riscv64-irToBodies : ∀ {A B} → IR A B → String
-riscv64-irToBodies _ = ""
+-- Plan 0.12 Layer 1: takes a starting label counter for symmetry
+-- with the x86-64 backend; RiscV64 doesn't actually emit thunks
+-- yet so the counter passes through unchanged.
+riscv64-irToBodies : ℕ → ∀ {A B} → IR A B → ℕ × String
+riscv64-irToBodies l _ = l , ""
 
 riscv64-functionEpilogue : String
 riscv64-functionEpilogue = "    ret\n\n"
@@ -54,8 +59,13 @@ riscv64-functionEpilogue = "    ret\n\n"
 -- IR → Assembly
 ------------------------------------------------------------------------
 
-riscv64-irToAsm : ∀ {A B} → IR A B → String
-riscv64-irToAsm ir = programToText (compile-trace (ir-to-trace ir))
+-- Plan 0.12 Layer 1: takes a starting label counter for symmetry
+-- with the x86-64 backend; RiscV64 doesn't currently emit thunks
+-- so the counter passes through unchanged.
+riscv64-irToAsm : ℕ → ∀ {A B} → IR A B → ℕ × String
+riscv64-irToAsm l ir =
+  let (l' , trace) = ir-to-trace-from l ir
+  in l' , programToText (compile-trace trace)
 
 ------------------------------------------------------------------------
 -- Target Instance

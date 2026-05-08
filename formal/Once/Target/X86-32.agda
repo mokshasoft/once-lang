@@ -25,7 +25,9 @@ open import Once.Target using (Target)
 open import Once.Target.Symbol using (once-symbol)
 open import Once.CCC.IR using (IR)
 
-open import Once.CCC.Codegen.IRToTrace using (ir-to-trace)
+open import Once.CCC.Codegen.IRToTrace using (ir-to-trace; ir-to-trace-from)
+open import Data.Nat using (ℕ)
+open import Data.Product using (_×_; _,_)
 open import Once.CCC.Target.X86-32.AbstractToX86-32 using (compile-trace)
 open import Once.CCC.Target.X86-32.Emit using (programToText)
 
@@ -44,8 +46,11 @@ x86-32-functionPrologue fname =
   once-symbol fname ++ ":\n"
 
 -- | Plan 0.2.4.2 Phase B: closure-body emission stub.
-x86-32-irToBodies : ∀ {A B} → IR A B → String
-x86-32-irToBodies _ = ""
+-- Plan 0.12 Layer 1: takes a starting label counter for symmetry
+-- with the x86-64 backend; x86-32 doesn't actually emit thunks
+-- yet so the counter passes through unchanged.
+x86-32-irToBodies : ℕ → ∀ {A B} → IR A B → ℕ × String
+x86-32-irToBodies l _ = l , ""
 
 x86-32-functionEpilogue : String
 x86-32-functionEpilogue = "    ret\n\n"
@@ -54,8 +59,13 @@ x86-32-functionEpilogue = "    ret\n\n"
 -- IR → Assembly
 ------------------------------------------------------------------------
 
-x86-32-irToAsm : ∀ {A B} → IR A B → String
-x86-32-irToAsm ir = programToText (compile-trace (ir-to-trace ir))
+-- Plan 0.12 Layer 1: takes a starting label counter for symmetry
+-- with the x86-64 backend; x86-32 doesn't currently emit thunks
+-- so the counter passes through unchanged.
+x86-32-irToAsm : ℕ → ∀ {A B} → IR A B → ℕ × String
+x86-32-irToAsm l ir =
+  let (l' , trace) = ir-to-trace-from l ir
+  in l' , programToText (compile-trace trace)
 
 ------------------------------------------------------------------------
 -- Target Instance

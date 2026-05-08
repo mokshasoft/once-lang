@@ -428,6 +428,7 @@ test-suite once-test
       BackendSpec
       IRSpec
       Layer0Spec
+      Layer1Spec
       ParseSpec
       TypeCheckSpec
       TypeErrorSpec

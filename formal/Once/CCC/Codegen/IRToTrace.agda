@@ -329,3 +329,37 @@ ir-stack-budget ir = proj-budget (ir-to-trace' 0 0 ir)
 -- %rsp-relative frame, physically disjoint from caller's).
 ir-to-bodies : ∀ {A B} → IR A B → List (ℕ × ℕ × AbstractTrace)
 ir-to-bodies ir = proj-bodies (ir-to-trace' 0 0 ir)
+
+------------------------------------------------------------------------
+-- Plan 0.12 Layer 1: label-counter-threading entry points.
+--
+-- Each top-level user function (CompiledFun) emits its own thunk
+-- bodies. Without threading the label counter, every function's
+-- `ir-to-trace'` starts from 0 and produces overlapping
+-- `.L_thunk_0`, `.L_thunk_1`, … — the assembler then rejects the
+-- module with "symbol already defined".
+--
+-- These variants take a starting label `l` and return the
+-- next-available label alongside the result. `Once.Compile`'s
+-- `compileAllWithTarget` left-folds with this counter to keep
+-- thunk labels globally unique across the module.
+------------------------------------------------------------------------
+
+-- | Trace + next-label, given a starting label counter.
+-- (`l₀ → ir → (l₁, trace)` where `l₁ ≥ l₀` and labels in `trace` /
+-- emitted bodies are drawn from `[l₀, l₁)`.)
+ir-to-trace-from : ∀ {A B} → ℕ → IR A B → ℕ × AbstractTrace
+ir-to-trace-from l ir =
+  let (_ , l' , t , _) = ir-to-trace' 0 l ir
+  in l' , t
+
+-- | Slot budget — independent of label counter; provided in this
+-- form for symmetry.
+ir-stack-budget-from : ∀ {A B} → ℕ → IR A B → ℕ
+ir-stack-budget-from l ir = proj-budget (ir-to-trace' 0 l ir)
+
+-- | Closure bodies + next-label, given a starting label counter.
+ir-to-bodies-from : ∀ {A B} → ℕ → IR A B → ℕ × List (ℕ × ℕ × AbstractTrace)
+ir-to-bodies-from l ir =
+  let (_ , l' , _ , bs) = ir-to-trace' 0 l ir
+  in l' , bs

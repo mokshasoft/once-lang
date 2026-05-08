@@ -17,6 +17,7 @@ import MAlonzo.RTE (coe, erased, AgdaAny, addInt, subInt, mulInt,
                     rem64, lt64, eq64, word64FromNat, word64ToNat)
 import qualified MAlonzo.RTE
 import qualified Data.Text
+import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Agda.Builtin.String
 import qualified MAlonzo.Code.Data.String.Base
 import qualified MAlonzo.Code.Once.CCC.Codegen.IRToTrace
@@ -57,37 +58,54 @@ d_riscv64'45'functionPrologue_8 v0
                (":\n" :: Data.Text.Text))))
 -- Once.Target.RiscV64.riscv64-irToBodies
 d_riscv64'45'irToBodies_16 ::
+  Integer ->
+  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.CCC.IR.T_IR_270 ->
-  MAlonzo.Code.Agda.Builtin.String.T_String_6
-d_riscv64'45'irToBodies_16 ~v0 = du_riscv64'45'irToBodies_16
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
+d_riscv64'45'irToBodies_16 v0 ~v1 ~v2 ~v3
+  = du_riscv64'45'irToBodies_16 v0
 du_riscv64'45'irToBodies_16 ::
-  MAlonzo.Code.Agda.Builtin.String.T_String_6
-du_riscv64'45'irToBodies_16 = coe ("" :: Data.Text.Text)
+  Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
+du_riscv64'45'irToBodies_16 v0
+  = coe
+      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v0)
+      (coe ("" :: Data.Text.Text))
 -- Once.Target.RiscV64.riscv64-functionEpilogue
-d_riscv64'45'functionEpilogue_18 ::
+d_riscv64'45'functionEpilogue_20 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6
-d_riscv64'45'functionEpilogue_18
+d_riscv64'45'functionEpilogue_20
   = coe ("    ret\n\n" :: Data.Text.Text)
 -- Once.Target.RiscV64.riscv64-irToAsm
-d_riscv64'45'irToAsm_24 ::
+d_riscv64'45'irToAsm_26 ::
+  Integer ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.CCC.IR.T_IR_270 ->
-  MAlonzo.Code.Agda.Builtin.String.T_String_6
-d_riscv64'45'irToAsm_24 v0 v1 v2
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
+d_riscv64'45'irToAsm_26 v0 v1 v2 v3
   = coe
-      MAlonzo.Code.Once.CCC.Target.RiscV64.Emit.d_programToText_90
-      (MAlonzo.Code.Once.CCC.Target.RiscV64.AbstractToRiscV.d_compile'45'trace_50
+      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+      (coe
+         MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
          (coe
-            MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace_208
-            (coe v0) (coe v1) (coe v2)))
+            MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace'45'from_232
+            (coe v1) (coe v2) (coe v0) (coe v3)))
+      (coe
+         MAlonzo.Code.Once.CCC.Target.RiscV64.Emit.d_programToText_90
+         (MAlonzo.Code.Once.CCC.Target.RiscV64.AbstractToRiscV.d_compile'45'trace_50
+            (coe
+               MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
+               (coe
+                  MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace'45'from_232
+                  (coe v1) (coe v2) (coe v0) (coe v3)))))
 -- Once.Target.RiscV64.riscv64
-d_riscv64_28 :: MAlonzo.Code.Once.Target.T_Target_4
-d_riscv64_28
+d_riscv64_36 :: MAlonzo.Code.Once.Target.T_Target_4
+d_riscv64_36
   = coe
       MAlonzo.Code.Once.Target.C_constructor_42
-      (coe d_riscv64'45'irToAsm_24)
-      (coe (\ v0 v1 v2 -> "" :: Data.Text.Text))
+      (coe d_riscv64'45'irToAsm_26)
+      (\ v0 v1 v2 v3 -> coe du_riscv64'45'irToBodies_16 v0)
       (coe d_riscv64'45'asmHeader_6)
       (coe d_riscv64'45'functionPrologue_8)
-      (coe d_riscv64'45'functionEpilogue_18)
+      (coe d_riscv64'45'functionEpilogue_20)

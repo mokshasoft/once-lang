@@ -23,7 +23,8 @@
 module Once.Compile where
 
 open import Data.Bool using (Bool; true; false; if_then_else_)
-open import Data.List using (List; []; _∷_; foldr)
+open import Data.List using (List; []; _∷_; foldr; foldl)
+open import Data.Nat using (ℕ)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_; ∃; ∃-syntax; proj₁; proj₂)
 open import Data.String using (String; _++_; _==_)
@@ -323,18 +324,42 @@ archTarget riscv64 = RiscV64-Target.riscv64
 -- emitted via `irToBodies` AFTER the parent's `ret` (epilogue). The
 -- parent's fall-through stops at `ret`; bodies are reachable only
 -- via `lea label(%rip)` from the parent's curry trace.
-compileFunWithTarget : Target → CompiledFun → String
-compileFunWithTarget target cf with cfIsPrimitive cf
-... | true  = ""  -- primitive: external symbol, no body
+--
+-- Plan 0.12 Layer 1: takes a starting thunk-label counter `l` and
+-- returns the next-available counter alongside the assembly text,
+-- so that thunks emitted by separate top-level functions don't
+-- collide. Both `irToAsm` and `irToBodies` are called with the same
+-- `l` and produce the same `l'` — the calls re-traverse the IR but
+-- agree on the label counter advancement (`ir-to-trace'` is
+-- deterministic in `l`).
+compileFunWithTarget : Target → ℕ → CompiledFun → ℕ × String
+compileFunWithTarget target l cf with cfIsPrimitive cf
+... | true  = l , ""  -- primitive: external symbol, no body
 ... | false =
-  functionPrologue target (cfName cf) ++
-  irToAsm target (cfIR cf) ++
-  functionEpilogue target ++
-  irToBodies target (cfIR cf)
+  let (l₁ , asm)    = irToAsm    target l (cfIR cf)
+      (l₂ , bodies) = irToBodies target l (cfIR cf)
+  in l₁ , (functionPrologue target (cfName cf) ++
+           asm ++
+           functionEpilogue target ++
+           bodies)
+  where
+    -- l₁ ≡ l₂ by determinism of ir-to-trace'; we pick l₁ for the
+    -- threaded result. l₂ is unused but bound for clarity.
 
--- | Compile all functions to assembly using a target
+-- | Compile all functions to assembly using a target.
+-- Plan 0.12 Layer 1: left-fold threading the thunk-label counter so
+-- thunks remain globally unique across the module.
 compileAllWithTarget : Target → List CompiledFun → String
-compileAllWithTarget target = foldr (λ cf acc → compileFunWithTarget target cf ++ acc) ""
+compileAllWithTarget target cfs = proj₂ (foldl step (0 , "") cfs)
+  where
+    step : ℕ × String → CompiledFun → ℕ × String
+    step p cf =
+      let l       = proj₁ p
+          acc     = proj₂ p
+          result  = compileFunWithTarget target l cf
+          l'      = proj₁ result
+          fn-asm  = proj₂ result
+      in l' , (acc ++ fn-asm)
 
 ------------------------------------------------------------------------
 -- Unified compilation entry point

@@ -1,0 +1,16 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson and contributors
+
+-- Layer 1 test: user-defined function over a pair
+-- Tests that top-level user functions whose bodies emit thunks
+-- coexist in the same module without thunk-label collisions
+-- (Plan 0.12 thunk-label-threading fix).
+-- Expected: exit code 42
+
+import I.Linux.Syscalls as S
+
+swap : Int * Int -> Int * Int
+swap p = (snd p, fst p)
+
+main : IO Unit
+main = exit@S (fst (swap (99, 42)))

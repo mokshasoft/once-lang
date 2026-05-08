@@ -17,6 +17,7 @@ import MAlonzo.RTE (coe, erased, AgdaAny, addInt, subInt, mulInt,
                     rem64, lt64, eq64, word64FromNat, word64ToNat)
 import qualified MAlonzo.RTE
 import qualified Data.Text
+import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Agda.Builtin.String
 import qualified MAlonzo.Code.Once.CCC.IR
 import qualified MAlonzo.Code.Once.Type
@@ -24,14 +25,16 @@ import qualified MAlonzo.Code.Once.Type
 -- Once.Target.Target
 d_Target_4 = ()
 data T_Target_4
-  = C_constructor_42 (MAlonzo.Code.Once.Type.T_Type_108 ->
+  = C_constructor_42 (Integer ->
+                      MAlonzo.Code.Once.Type.T_Type_108 ->
                       MAlonzo.Code.Once.Type.T_Type_108 ->
                       MAlonzo.Code.Once.CCC.IR.T_IR_270 ->
-                      MAlonzo.Code.Agda.Builtin.String.T_String_6)
-                     (MAlonzo.Code.Once.Type.T_Type_108 ->
+                      MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14)
+                     (Integer ->
+                      MAlonzo.Code.Once.Type.T_Type_108 ->
                       MAlonzo.Code.Once.Type.T_Type_108 ->
                       MAlonzo.Code.Once.CCC.IR.T_IR_270 ->
-                      MAlonzo.Code.Agda.Builtin.String.T_String_6)
+                      MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14)
                      MAlonzo.Code.Agda.Builtin.String.T_String_6
                      (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
                       MAlonzo.Code.Agda.Builtin.String.T_String_6)
@@ -39,10 +42,11 @@ data T_Target_4
 -- Once.Target.Target.irToAsm
 d_irToAsm_28 ::
   T_Target_4 ->
+  Integer ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.CCC.IR.T_IR_270 ->
-  MAlonzo.Code.Agda.Builtin.String.T_String_6
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_irToAsm_28 v0
   = case coe v0 of
       C_constructor_42 v1 v2 v3 v4 v5 -> coe v1
@@ -50,10 +54,11 @@ d_irToAsm_28 v0
 -- Once.Target.Target.irToBodies
 d_irToBodies_34 ::
   T_Target_4 ->
+  Integer ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.CCC.IR.T_IR_270 ->
-  MAlonzo.Code.Agda.Builtin.String.T_String_6
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_irToBodies_34 v0
   = case coe v0 of
       C_constructor_42 v1 v2 v3 v4 v5 -> coe v2

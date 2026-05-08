@@ -1,0 +1,10 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson and contributors
+
+-- Layer 1 test: deeply-nested snd projection (3 levels)
+-- Expected: exit code 42
+
+import I.Linux.Syscalls as S
+
+main : IO Unit
+main = exit@S (snd (snd (snd (1, (2, (3, 42))))))

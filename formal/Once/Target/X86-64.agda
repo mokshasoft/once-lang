@@ -27,7 +27,11 @@ open import Once.CCC.IR using (IR)
 -- `Once.CCC.Target.X86-64.CompileCorrect.compile-correct`; the old
 -- compile-ir is retained for now as a reference but no longer
 -- extracted.
-open import Once.CCC.Codegen.IRToTrace using (ir-to-trace; ir-to-bodies; ir-stack-budget)
+open import Once.CCC.Codegen.IRToTrace
+  using (ir-to-trace; ir-to-bodies; ir-stack-budget;
+         ir-to-trace-from; ir-to-bodies-from; ir-stack-budget-from)
+open import Data.Nat using (ℕ)
+open import Data.Product using (_×_; _,_)
 open import Once.CCC.Machine.SMCore using (AbstractTrace)
 open import Once.CCC.Target.X86-64.AbstractToX86 using (compile-trace)
 open import Once.CCC.Target.X86-64.Emit using (programToText)
@@ -91,12 +95,18 @@ x86-64-functionEpilogue = "    ret\n\n"
 
 -- Plan 0.2.4.5 D1: each compiled IR function brackets its trace with
 -- subq/addq for its private %rsp-relative slot frame.
-x86-64-irToAsm : ∀ {A B} → IR A B → String
-x86-64-irToAsm ir =
-  let budget = ir-stack-budget ir
-  in "    subq $" ++ showNat (budget * 8) ++ ", %rsp\n" ++
-     programToText (compile-trace (ir-to-trace ir)) ++
-     "    addq $" ++ showNat (budget * 8) ++ ", %rsp\n"
+--
+-- Plan 0.12 Layer 1: takes a starting thunk-label counter `l` and
+-- returns the next-available counter alongside the assembly text.
+-- The label counter is threaded by `Once.Compile.compileAllWithTarget`
+-- so thunks emitted by separate top-level functions don't collide.
+x86-64-irToAsm : ℕ → ∀ {A B} → IR A B → ℕ × String
+x86-64-irToAsm l ir =
+  let budget = ir-stack-budget-from l ir
+      (l' , trace) = ir-to-trace-from l ir
+  in l' , ("    subq $" ++ showNat (budget * 8) ++ ", %rsp\n" ++
+           programToText (compile-trace trace) ++
+           "    addq $" ++ showNat (budget * 8) ++ ", %rsp\n")
 
 -- | Plan 0.2.4.5 D1: emit closure-body labels for an IR (frameless,
 -- %rsp-relative). For each `(label, body-budget, body-trace)` triple
@@ -124,9 +134,13 @@ emit-thunk-body (lbl , budget , body-trace) =
   "    addq $" ++ showNat (budget * 8) ++ ", %rsp\n" ++
   "    ret\n\n"
 
-x86-64-irToBodies : ∀ {A B} → IR A B → String
-x86-64-irToBodies ir =
-  foldr (λ b acc → emit-thunk-body b ++ acc) "" (ir-to-bodies ir)
+-- Plan 0.12 Layer 1: takes the same starting label counter as
+-- `irToAsm` so the bodies' labels match the call sites in the
+-- emitted trace.
+x86-64-irToBodies : ℕ → ∀ {A B} → IR A B → ℕ × String
+x86-64-irToBodies l ir =
+  let (l' , bodies) = ir-to-bodies-from l ir
+  in l' , foldr (λ b acc → emit-thunk-body b ++ acc) "" bodies
 
 ------------------------------------------------------------------------
 -- Target Instance
