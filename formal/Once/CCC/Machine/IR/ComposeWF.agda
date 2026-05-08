@@ -286,9 +286,11 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ------------------------------------------------------------------------
       -- Phase 7: Derive from result-before since reclaim = final-alloc
       -- alloc₁-reclaimed has same next-slot as alloc₁, same current-frame as alloc
-      -- Heap equality: with current design (IRs don't allocate heap), heap is preserved
+      -- Heap equality: heap-preserved (post task #30) gives this directly.
+      -- alloc₁-reclaimed has next-heap-ref = alloc.next-heap-ref by construction;
+      -- alloc₁ = result-f.final-alloc has the same by f's heap-preserved.
       heap-eq-f : next-heap-ref alloc₁ ≡ next-heap-ref alloc₁-reclaimed
-      heap-eq-f = SMP.!!
+      heap-eq-f = IRResultAWF.heap-preserved result-f
       -- PROOF OBLIGATION: Valid for Layer 0 because:
       -- 1. alloc₁-reclaimed only changes next-slot (line 225)
       -- 2. Layer 0 IRs (id, compose) all set final-alloc = alloc or preserve heap-ref inductively

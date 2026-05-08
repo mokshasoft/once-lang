@@ -1472,9 +1472,8 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; slot-stays-in-budget = bridge-slot-bound (next-slot alloc-rec ≤_)
             (IRResultAWF.slot-stays-in-budget rec-result)
         ; heap-monotone = ≤-reflexive (sym (IRResultAWF.heap-preserved rec-result))
-        -- heap-preserved: Depends on Cata algebra - stack-only algebras preserve heap
-        -- For algebras that allocate heap, this would need additional assumptions
-        ; heap-preserved = SMP.!!
+        -- heap-preserved: post task #30 — directly from rec-result's heap-preserved.
+        ; heap-preserved = IRResultAWF.heap-preserved rec-result
         ; mem-preserved = irresult-mem-preserved rec-result
         -- Trace region bounds from IRResultAWF
         -- IRResultAWF uses max-slot-written as bound, which equals our max-slot-used
