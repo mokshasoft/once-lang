@@ -217,12 +217,16 @@ module Simulation {FS : FrameSemantics} where
   exec-x86 (mov (reg rax) (mem (base+disp rdi d))) xs _ =
     exec-x86-load-rax-with-value (x86-mem xs (sucLoc (rdi-val xs))) xs
 
-  -- load-from-slot: mov rax, [rbp + disp] → rax' = stack[frame, slot]
-  exec-x86 (mov (reg rax) (mem (base+disp rbp d))) xs frame =
+  -- load-from-slot: mov rax, [rsp + disp] → rax' = stack[frame, slot]
+  -- Plan 0.2.4.5 D1 (frameless ABI): all slot accesses are %rsp-relative.
+  -- The current frame's slots are at [rsp + 0..n*8] after the function's
+  -- own `sub rsp, n*8`. cur-frame in the simulation corresponds to the
+  -- abstract `current-frame alloc` (rbp-equivalent).
+  exec-x86 (mov (reg rax) (mem (base+disp rsp d))) xs frame =
     exec-x86-load-rax-with-value (x86-mem xs (slotLoc frame (disp-to-slot d))) xs
 
-  -- restore-input: mov rdi, [rbp + disp] → rdi' = stack[frame, slot]
-  exec-x86 (mov (reg rdi) (mem (base+disp rbp d))) xs frame =
+  -- restore-input: mov rdi, [rsp + disp] → rdi' = stack[frame, slot]
+  exec-x86 (mov (reg rdi) (mem (base+disp rsp d))) xs frame =
     exec-x86-load-rdi-with-value (x86-mem xs (slotLoc frame (disp-to-slot d))) xs
 
   -- store-indirect: mov [rdi], rax → *rdi := rax
@@ -233,12 +237,14 @@ module Simulation {FS : FrameSemantics} where
   exec-x86 (mov (mem (base+disp rdi d)) (reg rax)) xs _ =
     record xs { x86-mem = writeX86Mem (x86-mem xs) (sucLoc (rdi-val xs)) (rax-val xs) }
 
-  -- store-at-slot: mov [rbp + disp], rax → stack[frame, slot] := rax
-  exec-x86 (mov (mem (base+disp rbp d)) (reg rax)) xs frame =
+  -- store-at-slot: mov [rsp + disp], rax → stack[frame, slot] := rax
+  -- Plan 0.2.4.5 D1 (frameless ABI): %rsp-relative.
+  exec-x86 (mov (mem (base+disp rsp d)) (reg rax)) xs frame =
     record xs { x86-mem = writeX86Mem (x86-mem xs) (slotLoc frame (disp-to-slot d)) (rax-val xs) }
 
-  -- lea-slot: lea rax, [rbp + disp] → rax' = &stack[frame, slot]
-  exec-x86 (lea rax (base+disp rbp d)) xs frame =
+  -- lea-slot: lea rax, [rsp + disp] → rax' = &stack[frame, slot]
+  -- Plan 0.2.4.5 D1 (frameless ABI): %rsp-relative.
+  exec-x86 (lea rax (base+disp rsp d)) xs frame =
     record xs { rax-val = slotLoc frame (disp-to-slot d) }
 
   -- Stack management (convert bytes to slots using division)

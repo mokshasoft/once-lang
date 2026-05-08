@@ -79,7 +79,7 @@ d_x86'45'32'45'irToAsm_24 v0 v1 v2
       MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Emit.d_programToText_88
       (MAlonzo.Code.Once.CCC.Target.X86Z45Z32.AbstractToX86Z45Z32.d_compile'45'trace_42
          (coe
-            MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace_200
+            MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace_208
             (coe v0) (coe v1) (coe v2)))
 -- Once.Target.X86-32.x86-32
 d_x86'45'32_28 :: MAlonzo.Code.Once.Target.T_Target_4

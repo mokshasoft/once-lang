@@ -992,6 +992,6 @@ data T_IR_270
                MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 T_IR_270
                T_IR_270 |
     C_free'45'heap_408 MAlonzo.Code.Once.CCC.Machine.SMCore.T_HeapRef_20 |
-    C_const_412 MAlonzo.Code.Once.Type.T_IsPrimitive_188 AgdaAny
+    C_const_412 MAlonzo.Code.Once.Type.T_FitsInReg_188 AgdaAny
                 AgdaAny |
     C_SigOp_418 MAlonzo.Code.Once.CCC.SigOp.Info.T_SigOpInfo_264

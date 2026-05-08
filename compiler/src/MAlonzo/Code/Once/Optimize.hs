@@ -2911,10 +2911,10 @@ du_'8799'IRH'45'Fuse'45'inner_1148 v0 v1
 -- Once.Optimize._.I.⟦_⟧
 d_'10214'_'10215'_2504 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.T_IsPrimitive_188 ->
+  MAlonzo.Code.Once.Type.T_FitsInReg_188 ->
   AgdaAny ->
   AgdaAny ->
-  MAlonzo.Code.Once.Type.T_IsPrimitive_188 ->
+  MAlonzo.Code.Once.Type.T_FitsInReg_188 ->
   AgdaAny ->
   AgdaAny ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
@@ -2923,10 +2923,10 @@ d_'10214'_'10215'_2504 = erased
 -- Once.Optimize._.M.⟦_⟧
 d_'10214'_'10215'_2630 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.T_IsPrimitive_188 ->
+  MAlonzo.Code.Once.Type.T_FitsInReg_188 ->
   AgdaAny ->
   AgdaAny ->
-  MAlonzo.Code.Once.Type.T_IsPrimitive_188 ->
+  MAlonzo.Code.Once.Type.T_FitsInReg_188 ->
   AgdaAny ->
   AgdaAny ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->

@@ -84,44 +84,16 @@ d_x86'45'64'45'asmHeader_6
                                               Data.Text.Text)
                                              (coe
                                                 MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                                                ("    subq $4096, %rsp\n" :: Data.Text.Text)
+                                                ("    call once_main\n" :: Data.Text.Text)
                                                 (coe
                                                    MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                                                   ("    movq %rsp, %rbp\n" :: Data.Text.Text)
+                                                   ("    movq $60, %rax\n" :: Data.Text.Text)
                                                    (coe
                                                       MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                                                      ("    call once_main\n" :: Data.Text.Text)
-                                                      (coe
-                                                         MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                                                         ("    movq %rax, %r12\n" :: Data.Text.Text)
-                                                         (coe
-                                                            MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                                                            ("    movq 0(%r12), %rdi\n"
-                                                             ::
-                                                             Data.Text.Text)
-                                                            (coe
-                                                               MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                                                               ("    xorq %rsi, %rsi\n"
-                                                                ::
-                                                                Data.Text.Text)
-                                                               (coe
-                                                                  MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                                                                  ("    callq *0x8(%r12)\n"
-                                                                   ::
-                                                                   Data.Text.Text)
-                                                                  (coe
-                                                                     MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                                                                     ("    movq $60, %rax\n"
-                                                                      ::
-                                                                      Data.Text.Text)
-                                                                     (coe
-                                                                        MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                                                                        ("    xorq %rdi, %rdi\n"
-                                                                         ::
-                                                                         Data.Text.Text)
-                                                                        ("    syscall\n\n"
-                                                                         ::
-                                                                         Data.Text.Text)))))))))))))))))))))))
+                                                      ("    xorq %rdi, %rdi\n" :: Data.Text.Text)
+                                                      ("    syscall\n\n"
+                                                       ::
+                                                       Data.Text.Text)))))))))))))))))
 -- Once.Target.X86-64.x86-64-functionPrologue
 d_x86'45'64'45'functionPrologue_8 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
@@ -153,59 +125,114 @@ d_x86'45'64'45'irToAsm_18 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6
 d_x86'45'64'45'irToAsm_18 v0 v1 v2
   = coe
-      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Emit.d_programToText_86
-      (MAlonzo.Code.Once.CCC.Target.X86Z45Z64.AbstractToX86.d_compile'45'trace_48
+      MAlonzo.Code.Data.String.Base.d__'43''43'__20
+      ("    subq $" :: Data.Text.Text)
+      (coe
+         MAlonzo.Code.Data.String.Base.d__'43''43'__20
          (coe
-            MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace_200
-            (coe v0) (coe v1) (coe v2)))
+            MAlonzo.Code.Data.Nat.Show.d_show_56
+            (mulInt
+               (coe
+                  MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'stack'45'budget_216
+                  (coe v0) (coe v1) (coe v2))
+               (coe (8 :: Integer))))
+         (coe
+            MAlonzo.Code.Data.String.Base.d__'43''43'__20
+            (", %rsp\n" :: Data.Text.Text)
+            (coe
+               MAlonzo.Code.Data.String.Base.d__'43''43'__20
+               (coe
+                  MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Emit.d_programToText_86
+                  (MAlonzo.Code.Once.CCC.Target.X86Z45Z64.AbstractToX86.d_compile'45'trace_48
+                     (coe
+                        MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace_208
+                        (coe v0) (coe v1) (coe v2))))
+               (coe
+                  MAlonzo.Code.Data.String.Base.d__'43''43'__20
+                  ("    addq $" :: Data.Text.Text)
+                  (coe
+                     MAlonzo.Code.Data.String.Base.d__'43''43'__20
+                     (coe
+                        MAlonzo.Code.Data.Nat.Show.d_show_56
+                        (mulInt
+                           (coe
+                              MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'stack'45'budget_216
+                              (coe v0) (coe v1) (coe v2))
+                           (coe (8 :: Integer))))
+                     (", %rsp\n" :: Data.Text.Text))))))
 -- Once.Target.X86-64.emit-thunk-body
-d_emit'45'thunk'45'body_22 ::
+d_emit'45'thunk'45'body_24 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
-d_emit'45'thunk'45'body_22 v0
+d_emit'45'thunk'45'body_24 v0
   = case coe v0 of
       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v1 v2
-        -> coe
-             MAlonzo.Code.Data.String.Base.d__'43''43'__20
-             (".L_thunk_" :: Data.Text.Text)
-             (coe
-                MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                (coe MAlonzo.Code.Data.Nat.Show.d_show_56 v1)
-                (coe
-                   MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                   (":\n" :: Data.Text.Text)
-                   (coe
-                      MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                      (coe
-                         MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Emit.d_programToText_86
-                         (MAlonzo.Code.Once.CCC.Target.X86Z45Z64.AbstractToX86.d_compile'45'trace_48
-                            (coe v2)))
-                      ("    ret\n\n" :: Data.Text.Text))))
+        -> case coe v2 of
+             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v3 v4
+               -> coe
+                    MAlonzo.Code.Data.String.Base.d__'43''43'__20
+                    (".L_thunk_" :: Data.Text.Text)
+                    (coe
+                       MAlonzo.Code.Data.String.Base.d__'43''43'__20
+                       (coe MAlonzo.Code.Data.Nat.Show.d_show_56 v1)
+                       (coe
+                          MAlonzo.Code.Data.String.Base.d__'43''43'__20
+                          (":\n" :: Data.Text.Text)
+                          (coe
+                             MAlonzo.Code.Data.String.Base.d__'43''43'__20
+                             ("    subq $" :: Data.Text.Text)
+                             (coe
+                                MAlonzo.Code.Data.String.Base.d__'43''43'__20
+                                (coe
+                                   MAlonzo.Code.Data.Nat.Show.d_show_56
+                                   (mulInt (coe v3) (coe (8 :: Integer))))
+                                (coe
+                                   MAlonzo.Code.Data.String.Base.d__'43''43'__20
+                                   (", %rsp\n" :: Data.Text.Text)
+                                   (coe
+                                      MAlonzo.Code.Data.String.Base.d__'43''43'__20
+                                      (coe
+                                         MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Emit.d_programToText_86
+                                         (MAlonzo.Code.Once.CCC.Target.X86Z45Z64.AbstractToX86.d_compile'45'trace_48
+                                            (coe v4)))
+                                      (coe
+                                         MAlonzo.Code.Data.String.Base.d__'43''43'__20
+                                         ("    addq $" :: Data.Text.Text)
+                                         (coe
+                                            MAlonzo.Code.Data.String.Base.d__'43''43'__20
+                                            (coe
+                                               MAlonzo.Code.Data.Nat.Show.d_show_56
+                                               (mulInt (coe v3) (coe (8 :: Integer))))
+                                            (coe
+                                               MAlonzo.Code.Data.String.Base.d__'43''43'__20
+                                               (", %rsp\n" :: Data.Text.Text)
+                                               ("    ret\n\n" :: Data.Text.Text))))))))))
+             _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Target.X86-64.x86-64-irToBodies
-d_x86'45'64'45'irToBodies_32 ::
+d_x86'45'64'45'irToBodies_36 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.CCC.IR.T_IR_270 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
-d_x86'45'64'45'irToBodies_32 v0 v1 v2
+d_x86'45'64'45'irToBodies_36 v0 v1 v2
   = coe
       MAlonzo.Code.Data.List.Base.du_foldr_216
       (coe
          (\ v3 ->
             coe
               MAlonzo.Code.Data.String.Base.d__'43''43'__20
-              (d_emit'45'thunk'45'body_22 (coe v3))))
+              (d_emit'45'thunk'45'body_24 (coe v3))))
       (coe ("" :: Data.Text.Text))
       (coe
-         MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'bodies_208
+         MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'bodies_224
          (coe v0) (coe v1) (coe v2))
 -- Once.Target.X86-64.x86-64
-d_x86'45'64_40 :: MAlonzo.Code.Once.Target.T_Target_4
-d_x86'45'64_40
+d_x86'45'64_44 :: MAlonzo.Code.Once.Target.T_Target_4
+d_x86'45'64_44
   = coe
       MAlonzo.Code.Once.Target.C_constructor_42
-      (coe d_x86'45'64'45'irToAsm_18) (coe d_x86'45'64'45'irToBodies_32)
+      (coe d_x86'45'64'45'irToAsm_18) (coe d_x86'45'64'45'irToBodies_36)
       (coe d_x86'45'64'45'asmHeader_6)
       (coe d_x86'45'64'45'functionPrologue_8)
       (coe d_x86'45'64'45'functionEpilogue_12)

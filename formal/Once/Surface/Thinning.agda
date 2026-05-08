@@ -236,6 +236,20 @@ rename {Δ = Δ} θ (Surface.ne {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) =
 rename θ (Surface.arr' f) = Surface.arr' (rename θ f)
 rename {Δ = Δ} θ (Surface.sigOp name) = subst (λ Ψ → SExpr Δ Ψ _) (sym (thin-usage-zeroUsage θ)) (Surface.sigOp name)
 rename {Δ = Δ} θ (Surface.poly name T) = subst (λ Ψ → SExpr Δ Ψ _) (sym (thin-usage-zeroUsage θ)) (Surface.poly name T)
+-- Plan 0.2.4.5 D2: morphism realm. `lift-morphism` carries no
+-- context dependency (closed by construction, zeroUsage), so renaming
+-- threads through unchanged modulo the `thin-usage-zeroUsage` adjustment.
+rename {Δ = Δ} θ (Surface.lift-morphism m) =
+  subst (λ Ψ → SExpr Δ Ψ _) (sym (thin-usage-zeroUsage θ)) (Surface.lift-morphism m)
+-- Plan 0.2.4.5 D2: morphism-realm application. Usage shape mirrors
+-- `Surface.app` (with f-usage = zeroUsage, q = Many): renaming the
+-- argument propagates through `+ᵘ` and `*ᵘ` and `zeroUsage`.
+rename {Δ = Δ} θ (Surface.morph-app {Ψ = Ψ} m x) =
+  subst (λ Ψ' → SExpr Δ Ψ' _)
+        (sym (trans (thin-usage-+ᵘ θ Surface.zeroUsage (Many *ᵘ Ψ))
+                    (cong₂ _+ᵘ_ (thin-usage-zeroUsage θ)
+                                (thin-usage-*ᵘ θ Many Ψ))))
+        (Surface.morph-app m (rename θ x))
 
 ------------------------------------------------------------------------
 -- Telescopes (for generalized exchange)

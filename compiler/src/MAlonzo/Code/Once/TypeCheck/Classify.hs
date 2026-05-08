@@ -418,7 +418,7 @@ d_lookupLocal'45'go_272 v0 v1 v2 v3
                                                                                MAlonzo.Code.Once.Type.C_Zero_6)
                                                                             v18)
                                                                          (coe
-                                                                            MAlonzo.Code.Once.Surface.Thinning.du_weaken_910
+                                                                            MAlonzo.Code.Once.Surface.Thinning.du_weaken_930
                                                                             (coe v7) (coe v8)
                                                                             (coe v16) (coe v9)
                                                                             (coe v19))))
@@ -508,7 +508,7 @@ d_composeArgB_458 v0 v1 v2
                              -> case coe v6 of
                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v7 v8
                                     -> coe
-                                         MAlonzo.Code.Once.Type.d_schemaArrowCodomain_856 (coe v7)
+                                         MAlonzo.Code.Once.Type.d_schemaArrowCodomain_848 (coe v7)
                                          (coe v2)
                                   _ -> MAlonzo.RTE.mazUnreachableError
                            MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v5

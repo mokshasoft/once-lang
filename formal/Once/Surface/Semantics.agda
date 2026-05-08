@@ -29,9 +29,9 @@
 module Once.Surface.Semantics where
 
 open import Once.Type
-open import Once.Semantics.IR using (⟦_⟧)
+open import Once.Semantics.IR using (⟦_⟧; eval′)
 open import Once.Arith.SigOp.Builders using (generic-semI)
-open import Once.Surface.Syntax using (Ctx; ∅; lookup; Usage; Expr; var; lam; app; effApp; pair; fst'; snd'; inl'; inr'; case'; unit; absurd; let'; int; str; add; sub; mul; div; mod'; neg; lt; le; gt; ge; eq; ne; arr'; sigOp; poly) renaming (_,_ to _▸_)
+open import Once.Surface.Syntax using (Ctx; ∅; lookup; Usage; Expr; var; lam; app; effApp; pair; fst'; snd'; inl'; inr'; case'; unit; absurd; let'; int; str; add; sub; mul; div; mod'; neg; lt; le; gt; ge; eq; ne; arr'; sigOp; poly; lift-morphism; morph-app) renaming (_,_ to _▸_)
 
 open import Data.Nat using (ℕ)
 open import Data.Fin using (Fin)
@@ -160,3 +160,11 @@ evalSurface ρ (sigOp name)    = evalSurfaceSigOp name
 -- Poly placeholder: if one reaches eval, resolver didn't clean it up.
 -- Treat as an opaque external ref, same as sigOp.
 evalSurface ρ (poly name _)  = evalSurfaceSigOp name
+-- Plan 0.2.4.5 D2: morphism realm. The Surface value `lift-morphism m`
+-- denotes the function `λ x → eval′ m x`. Since `⟦ A ⇒ B ⟧ = ⟦ A ⟧ → ⟦ B ⟧`
+-- in this denotation (kind annotation dropped — see header warning),
+-- this is just `eval′ m` with η.
+evalSurface ρ (lift-morphism m) = eval′ m
+-- Plan 0.2.4.5 D2: morphism-realm application — eagerly run the
+-- morphism on the (Surface-evaluated) argument.
+evalSurface ρ (morph-app m x)   = eval′ m (evalSurface ρ x)

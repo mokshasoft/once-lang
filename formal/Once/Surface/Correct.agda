@@ -14,7 +14,7 @@ open import Once.Type
 open import Once.CCC.IR
 open import Once.Semantics.IR as IR using (⟦_⟧; eval′)
 -- Using eval′ (backward-compatible non-parameterized eval)
-open import Once.Surface.Syntax using (Ctx; ∅; lookup; Usage; zeroUsage; _+ᵘ_; Expr; var; lam; app; effApp; pair; fst'; snd'; inl'; inr'; case'; unit; absurd; let'; int; str; add; sub; mul; div; mod'; neg; lt; le; gt; ge; ne; arr'; sigOp; poly) renaming (_,_ to _▸_; eq to eq')
+open import Once.Surface.Syntax using (Ctx; ∅; lookup; Usage; zeroUsage; _+ᵘ_; Expr; var; lam; app; effApp; pair; fst'; snd'; inl'; inr'; case'; unit; absurd; let'; int; str; add; sub; mul; div; mod'; neg; lt; le; gt; ge; ne; arr'; sigOp; poly; lift-morphism; morph-app) renaming (_,_ to _▸_; eq to eq')
 open Once.Surface.Syntax.Usage using ([]; _∷_)
 import Once.Surface.Syntax as S
 open import Once.Surface.Semantics using (Env; ε; _∷_; envLookup; evalSurface)
@@ -279,6 +279,22 @@ mutual
   -- PROVEN: same as sigOp — poly placeholders elaborate to `SigOp name`
   -- (cycle/unresolved fallback), and evalSurface treats them identically.
   elaborate-correct ρ (poly name _) = refl
+  -- Plan 0.2.4.5 D2: morphism realm.
+  --   LHS: evalSurface ρ (lift-morphism m) = eval′ m
+  --   RHS: eval′ (curry (m ∘ snd) Heap) γ
+  --      = λ x → eval′ (m ∘ snd) (γ , x)
+  --      = λ x → eval′ m (eval′ snd (γ , x))
+  --      = λ x → eval′ m x
+  --   Bridge: extensionality (λ x → refl).
+  -- (Agda has function-eta, but we go through extensionality to keep
+  -- the proof robust against η-flag changes.)
+  elaborate-correct ρ (lift-morphism m) = extensionality (λ x → refl)
+  -- Plan 0.2.4.5 D2: morphism-realm application.
+  --   LHS: evalSurface ρ (morph-app m x) = eval′ m (evalSurface ρ x)
+  --   RHS: eval′ (m ∘ elaborate x) γ    = eval′ m (eval′ (elaborate x) γ)
+  --   Bridge: cong (eval′ m) (elaborate-correct ρ x)
+  elaborate-correct ρ (morph-app m x) =
+    cong (eval′ m) (elaborate-correct ρ x)
 
   -- Helper for comparison correctness
   arith-cmp-correct : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} (ρ : Env Γ)

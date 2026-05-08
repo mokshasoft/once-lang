@@ -38,7 +38,7 @@ du_intLit_8 v0
       (coe MAlonzo.Code.Once.Type.C_Unit_118)
       (coe
          MAlonzo.Code.Once.CCC.IR.C_const_412
-         (coe MAlonzo.Code.Once.Type.C_is'45'int_192) v0
+         (coe MAlonzo.Code.Once.Type.C_fits'45'int_190) v0
          (MAlonzo.Code.Data.Integer.Base.d_'8739'_'8739'_18 (coe v0)))
       (coe MAlonzo.Code.Once.CCC.IR.C_terminal_326)
 -- Once.Surface.Elaborate.strLit
@@ -756,4 +756,18 @@ du_elaborate_114 v0 v1 v2
                 (MAlonzo.Code.Once.Arith.SigOp.Builders.d_generic'45'info_356
                    (coe MAlonzo.Code.Once.Type.C_Unit_118) (coe v1) (coe v5)))
              (coe MAlonzo.Code.Once.CCC.IR.C_terminal_326)
+      MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_514 v7
+        -> case coe v1 of
+             MAlonzo.Code.Once.Type.C__'8658''91'_'93'__126 v8 v9 v10
+               -> coe
+                    MAlonzo.Code.Once.CCC.IR.C_curry_340
+                    (coe
+                       MAlonzo.Code.Once.CCC.IR.C__'8728'__282 v8 v7
+                       (coe MAlonzo.Code.Once.CCC.IR.C_snd_302))
+                    (coe MAlonzo.Code.Once.CCC.IR.C_Heap_262)
+             _ -> MAlonzo.RTE.mazUnreachableError
+      MAlonzo.Code.Once.Surface.Syntax.C_morph'45'app_526 v5 v6 v8 v9
+        -> coe
+             MAlonzo.Code.Once.CCC.IR.C__'8728'__282 v6 v8
+             (coe du_elaborate_114 (coe v0) (coe v6) (coe v9))
       _ -> MAlonzo.RTE.mazUnreachableError

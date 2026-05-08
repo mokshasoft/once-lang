@@ -271,3 +271,19 @@ elaborate (sigOp name) = SigOp (generic-info name) ∘ terminal
 -- external SigOp with the unqualified name — matches evalSurface for
 -- the correctness theorem, and codegen will catch it as unresolved.
 elaborate (poly name _) = SigOp (generic-info name) ∘ terminal
+
+-- Plan 0.2.4.5 D2: morphism realm.
+-- A `lift-morphism m` used as a value (e.g. assigned to a variable
+-- or returned from a branch) is curry'd over a discarded environment:
+-- `curry (m ∘ snd) Heap : IR ⟦Γ⟧ᶜ (A ⇒ B)`. When the typechecker
+-- knows it is immediately applied, it emits `morph-app` instead,
+-- bypassing this curry/apply round-trip and the closure ABI.
+elaborate (lift-morphism m) = curry (m ∘ snd) Heap
+
+-- Plan 0.2.4.5 D2: morphism-realm application.
+-- `morph-app m x` lowers as the pure CCC compose `m ∘ elaborate x` —
+-- no `apply`, no closure-record allocation, no dangling-pointer
+-- apply-chain bug (Plan 0.2.4.5 D1 compose runtime). This is the
+-- principled lowering for "categorical-style" code (id chains,
+-- compose chains, primitives). See `plans/0.2.4.5-morphism-realm-split.md`.
+elaborate (morph-app m x) = m ∘ elaborate x

@@ -29,7 +29,7 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Data.List using (List; []; _∷_; length)
 open import Relation.Nullary using (Dec; yes; no; ¬_)
 open import Data.Product using (_×_; _,_; ∃-syntax)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; cong; sym; trans)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; cong; cong₂; sym; trans)
 
 open import Once.Type
 open Once.Type using (showQuantity; showType) public
@@ -52,6 +52,7 @@ open import Once.Surface.Syntax as Surface using (lookupUsage; tailUsage; _+ᵘ_
   renaming (Ctx to SCtx; Expr to SExpr; ∅ to S∅; _,_ to _S,_; _,_^_ to _S,_^_)
 open Surface.Usage using () renaming (_∷_ to _∷ᵘ_)
 open import Once.Surface.Thinning using (weaken; weakenFromEmpty)
+open import Once.Surface.Properties using (+ᵘ-identityˡ; +ᵘ-identityʳ; *ᵘ-zeroʳ)
 open import Once.Surface.Elaborate as Elab using (elaborate)
 
 open import Once.TypeCheck.Classify public
@@ -380,20 +381,30 @@ open Surface using (zeroUsage; singleUse; _+ᵘ_; _*ᵘ_) public
 -- All return SExpr S∅ _ (closed expressions); weaken to the actual
 -- context with weakenFromEmpty at the call site.
 
+-- Plan 0.2.4.5 D2: morphism-realm spec helpers.
+--
+-- Each builtin's specialization is now a `lift-morphism` wrapping the
+-- corresponding CCC primitive, instead of a Surface lambda body.
+-- Combined with `morph-app` at the application sites (see specX-app
+-- below), this routes "categorical-style" code (id, fst, snd,
+-- terminal, initial, compose chains) directly to the morphism realm:
+-- pure CCC compose at elaborate time, no closure record, no apply, no
+-- dangling-pointer apply-chain bug.
+
 specId : (T : Type) → SExpr S∅ Surface.zeroUsage (T ⇒ T)
-specId T = Surface.lam Many refl (Surface.var zero)
+specId T = Surface.lift-morphism IR.id
 
 specFst : (A B : Type) → SExpr S∅ Surface.zeroUsage (A Once.Type.* B ⇒ A)
-specFst A B = Surface.lam Many refl (Surface.fst' (Surface.var zero))
+specFst A B = Surface.lift-morphism IR.fst
 
 specSnd : (A B : Type) → SExpr S∅ Surface.zeroUsage (A Once.Type.* B ⇒ B)
-specSnd A B = Surface.lam Many refl (Surface.snd' (Surface.var zero))
+specSnd A B = Surface.lift-morphism IR.snd
 
 specInl : (A B : Type) → SExpr S∅ Surface.zeroUsage (A ⇒ (A Once.Type.+ B))
-specInl A B = Surface.lam Many refl (Surface.inl' (Surface.var zero))
+specInl A B = Surface.lift-morphism (IR.inl IR.Heap)
 
 specInr : (A B : Type) → SExpr S∅ Surface.zeroUsage (B ⇒ (A Once.Type.+ B))
-specInr A B = Surface.lam Many refl (Surface.inr' (Surface.var zero))
+specInr A B = Surface.lift-morphism (IR.inr IR.Heap)
 
 specUnitGen : SExpr S∅ Surface.zeroUsage Unit
 specUnitGen = Surface.unit
@@ -409,11 +420,11 @@ specPair A B C =
 
 -- terminal : a → Unit
 specTerminal : (A : Type) → SExpr S∅ Surface.zeroUsage (A ⇒ Unit)
-specTerminal A = Surface.lam Many refl Surface.unit
+specTerminal A = Surface.lift-morphism IR.terminal
 
 -- initial : Void → a
 specInitial : (A : Type) → SExpr S∅ Surface.zeroUsage (Void ⇒ A)
-specInitial A = Surface.lam Many refl (Surface.absurd (Surface.var zero))
+specInitial A = Surface.lift-morphism IR.initial
 
 -- curry : ((a × b) → c) → a → b → c
 specCurry : (A B C : Type)
@@ -438,6 +449,40 @@ specCompose A B C =
   Surface.lam Many refl (Surface.lam Many refl (Surface.lam Many refl
     (Surface.app (Surface.var (suc (suc zero)))
                  (Surface.app (Surface.var (suc zero)) (Surface.var zero)))))
+
+------------------------------------------------------------------------
+-- Plan 0.2.4.5 D2: morphism-realm extractor
+--
+-- Recognise a Surface expression that is a `lift-morphism m`,
+-- returning the underlying CCC IR. Used by `checkComposeWithBg` to
+-- emit `lift-morphism (m_f ∘ m_g)` directly when both arms of
+-- `compose f g` are morphism-realm values, bypassing the closure-
+-- realm `app (app specCompose f) g` form.
+--
+-- Implementation note (`feedback_generic_codomain_trick`): a direct
+-- `extract-morph (lift-morphism m) = just m / _ = nothing` definition
+-- hits an Agda SplitError because `var i`'s opaque index `lookup Γ i`
+-- can't be unified against `A ⇒ B`. The codomain trick parameterises
+-- over a free type T plus an equality proof T ≡ A ⇒ B, which lets
+-- the catch-all wildcard sidestep the dependent-pattern obligation.
+------------------------------------------------------------------------
+
+-- The `Σ`-result pairs the IR with `Ψ ≡ zeroUsage` because
+-- `lift-morphism`'s constructor type forces Ψ = zeroUsage on success.
+-- Callers use the equation to discharge usage-mismatch obligations
+-- when bridging the bypass form to a judgment whose claimed usage
+-- depends on the discarded inputs' Ψ.
+extract-morph-aux : ∀ {n} {Γ : SCtx n} {Ψ : Surface.Usage n} {T : Type} {A B : Type}
+                  → SExpr Γ Ψ T
+                  → T ≡ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)
+                  → Maybe (∃-syntax (λ (m : IR A B) → Ψ ≡ Surface.zeroUsage))
+extract-morph-aux (Surface.lift-morphism m) refl = just (m , refl)
+extract-morph-aux _ _ = nothing
+
+extract-morph : ∀ {n} {Γ : SCtx n} {Ψ : Surface.Usage n} {A B : Type}
+              → SExpr Γ Ψ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)
+              → Maybe (∃-syntax (λ (m : IR A B) → Ψ ≡ Surface.zeroUsage))
+extract-morph e = extract-morph-aux e refl
 
 -- arr : (a → b) → Eff a b
 specArr : (A B : Type) → SExpr S∅ Surface.zeroUsage ((A ⇒ B) ⇒ (A ⇒[ mk-kind Many eff ] B))
@@ -631,7 +676,7 @@ inferElab-RApp-id : (ctx : NamedCtx)
                   → InferElabResult (NamedCtx.debruijn ctx)
 inferElab-RApp-id ctx (failure err) = failure err
 inferElab-RApp-id ctx (success T Ψ argE d f') =
-  success T _ (Surface.app (weakenFromEmpty (specId T)) argE) (suc d) f'
+  success T _ (Surface.morph-app IR.id argE) (suc d) f'
 
 ------------------------------------------------------------------------
 -- Bidirectional Inference (produces usage-indexed Expr)
@@ -1001,7 +1046,45 @@ mutual
 
   checkComposeWithBg ctx f_inner arg A B C eqArgB (failure err , _) _ _ _ = failure err , tt
   checkComposeWithBg ctx f_inner arg A B C eqArgB (success _ _ _ _ , _) _ (failure err , _) _ = failure err , tt
-  checkComposeWithBg ctx f_inner arg A B C eqArgB (success Ψg gE dg frg , wG) _ (success Ψf fE df frf , wF) _ =
+  -- Plan 0.2.4.5 D2: morphism-realm bypass for `compose f g`. When
+  -- both arms are recognisable as `lift-morphism m`, emit a single
+  -- `lift-morphism (m_f IR.∘ m_g)` directly — no `app`, no `apply`,
+  -- no closure record. Pure CCC compose. Fall through to the
+  -- closure-realm `app (app specCompose) f g` form when either arm
+  -- isn't a syntactic morphism (e.g. `compose g (lam …)`).
+  --
+  -- Usage bookkeeping: `lift-morphism _` has Ψ = zeroUsage by its
+  -- constructor signature; `extract-morph` returns this equation
+  -- (eqf/eqg) so we can subst the wF/wG witnesses to zeroUsage,
+  -- then collapse the judgment's claimed usage `zeroUsage +ᵘ Many
+  -- *ᵘ zeroUsage +ᵘ Many *ᵘ zeroUsage` to `zeroUsage` via the
+  -- standard `*ᵘ-zeroʳ` and `+ᵘ-identityˡ`/`+ᵘ-identityʳ` lemmas.
+  checkComposeWithBg ctx f_inner arg A B C eqArgB
+    (success Ψg gE dg frg , wG) _ (success Ψf fE df frf , wF) _
+    with extract-morph fE | extract-morph gE
+  ... | just (m_f , eqf) | just (m_g , eqg) =
+    let
+      wF' : ctx ⊢ᶜ f_inner ∶ (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C) ⨾ Surface.zeroUsage
+      wF' = subst (λ Ψ → ctx ⊢ᶜ f_inner ∶ _ ⨾ Ψ) eqf wF
+      wG' : ctx ⊢ᶜ arg ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) ⨾ Surface.zeroUsage
+      wG' = subst (λ Ψ → ctx ⊢ᶜ arg ∶ _ ⨾ Ψ) eqg wG
+      -- Collapse `(zeroUsage +ᵘ Many *ᵘ zeroUsage) +ᵘ Many *ᵘ zeroUsage`
+      -- to `zeroUsage` so the judgment matches the lift-morphism's Ψ.
+      collapse : (Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Surface.zeroUsage))
+                 Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Surface.zeroUsage)
+               ≡ Surface.zeroUsage {NamedCtx.size ctx}
+      collapse =
+        trans (cong₂ Surface._+ᵘ_
+                     (trans (cong (Surface.zeroUsage Surface.+ᵘ_) (*ᵘ-zeroʳ Once.Type.Many))
+                            (+ᵘ-identityʳ Surface.zeroUsage))
+                     (*ᵘ-zeroʳ Once.Type.Many))
+              (+ᵘ-identityʳ Surface.zeroUsage)
+    in success _
+        (Surface.lift-morphism (m_f IR.∘ m_g))
+        (suc (df Data.Nat.⊔ dg)) frf
+      , subst (λ Ψ → ctx ⊢ᶜ _ ∶ _ ⨾ Ψ) collapse
+              (t-compose-check eqArgB wF' wG')
+  ... | _        | _        =
     success _
       (Surface.app (Surface.app (weakenFromEmpty (specCompose A B C)) fE) gE)
       (suc (df Data.Nat.⊔ dg)) frf , t-compose-check eqArgB wF wG
@@ -1347,12 +1430,12 @@ mutual
   inferElabV-RApp-dispatch ctx f arg ahv-id _ with inferElabV ctx arg
   ... | failure err , _ = failure err , tt
   ... | success T Ψ argE d fr , w =
-    success T _ (Surface.app (weakenFromEmpty (specId T)) argE) (suc d) fr , t-id-app w
+    success T _ (Surface.morph-app IR.id argE) (suc d) fr , t-id-app w
   -- ahv-fst : argument must have product type.
   inferElabV-RApp-dispatch ctx f arg ahv-fst _ with inferElabV ctx arg
   ... | failure err , _ = failure err , tt
   ... | success (A Once.Type.* B) Ψ argE d fr , w =
-    success A _ (Surface.app (weakenFromEmpty (specFst A B)) argE) (suc d) fr , t-fst-app w
+    success A _ (Surface.morph-app (IR.fst {A = A} {B = B}) argE) (suc d) fr , t-fst-app w
   ... | success Unit _ _ _ _ , _ = failure FstNeedsPair , tt
   ... | success Void _ _ _ _ , _ = failure FstNeedsPair , tt
   ... | success Int _ _ _ _ , _ = failure FstNeedsPair , tt
@@ -1367,7 +1450,7 @@ mutual
   inferElabV-RApp-dispatch ctx f arg ahv-snd _ with inferElabV ctx arg
   ... | failure err , _ = failure err , tt
   ... | success (A Once.Type.* B) Ψ argE d fr , w =
-    success B _ (Surface.app (weakenFromEmpty (specSnd A B)) argE) (suc d) fr , t-snd-app w
+    success B _ (Surface.morph-app (IR.snd {A = A} {B = B}) argE) (suc d) fr , t-snd-app w
   ... | success Unit _ _ _ _ , _ = failure SndNeedsPair , tt
   ... | success Void _ _ _ _ , _ = failure SndNeedsPair , tt
   ... | success Int _ _ _ _ , _ = failure SndNeedsPair , tt
@@ -1382,7 +1465,7 @@ mutual
   inferElabV-RApp-dispatch ctx f arg ahv-terminal _ with inferElabV ctx arg
   ... | failure err , _ = failure err , tt
   ... | success T Ψ argE d fr , w =
-    success Unit _ (Surface.app (weakenFromEmpty (specTerminal T)) argE) (suc d) fr , t-terminal-app w
+    success Unit _ (Surface.morph-app IR.terminal argE) (suc d) fr , t-terminal-app w
   -- ahv-arr : argument must be `A ⇒[Many,pure] B`; result is Eff A B.
   inferElabV-RApp-dispatch ctx f arg ahv-arr _ with inferElabV ctx arg
   ... | failure err , _ = failure err , tt
@@ -1470,7 +1553,7 @@ mutual
   ... | (A Once.Type.+ B) with checkElabV ctx arg A
   ...   | failure err , _ = failure err , tt
   ...   | success Ψ argE d fr , w =
-          success _ (Surface.app (weakenFromEmpty (specInl A B)) argE) (suc d) fr , t-inl-app-check w
+          success _ (Surface.morph-app (IR.inl {A = A} {B = B} IR.Heap) argE) (suc d) fr , t-inl-app-check w
   checkElabV-RApp-dispatch ctx f arg T ahv-inl _ | Unit = failure InlNeedsSumType , tt
   checkElabV-RApp-dispatch ctx f arg T ahv-inl _ | Void = failure InlNeedsSumType , tt
   checkElabV-RApp-dispatch ctx f arg T ahv-inl _ | Int = failure InlNeedsSumType , tt
@@ -1486,7 +1569,7 @@ mutual
   ... | (A Once.Type.+ B) with checkElabV ctx arg B
   ...   | failure err , _ = failure err , tt
   ...   | success Ψ argE d fr , w =
-          success _ (Surface.app (weakenFromEmpty (specInr A B)) argE) (suc d) fr , t-inr-app-check w
+          success _ (Surface.morph-app (IR.inr {A = A} {B = B} IR.Heap) argE) (suc d) fr , t-inr-app-check w
   checkElabV-RApp-dispatch ctx f arg T ahv-inr _ | Unit = failure InrNeedsSumType , tt
   checkElabV-RApp-dispatch ctx f arg T ahv-inr _ | Void = failure InrNeedsSumType , tt
   checkElabV-RApp-dispatch ctx f arg T ahv-inr _ | Int = failure InrNeedsSumType , tt
@@ -1501,7 +1584,7 @@ mutual
   checkElabV-RApp-dispatch ctx f arg T ahv-initial _ with checkElabV ctx arg Once.Type.Void
   ... | failure err , _ = failure err , tt
   ... | success Ψ argE d fr , w =
-        success _ (Surface.app (weakenFromEmpty (specInitial T)) argE) (suc d) fr , t-initial-app-check w
+        success _ (Surface.morph-app (IR.initial {A = T}) argE) (suc d) fr , t-initial-app-check w
   -- ahv-arr: T must be Eff A B; check arg at A→B.
   checkElabV-RApp-dispatch ctx f arg T ahv-arr _ with T
   ... | (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B)
@@ -2457,6 +2540,11 @@ resolveExprWF polys pAcc imps fresh (Surface.ne a b) =
 resolveExprWF polys pAcc imps fresh (Surface.arr' e) = Surface.arr' (resolveExprWF polys pAcc imps fresh e)
 -- SigOp = external primitive. Pass through unchanged; resolver doesn't touch it.
 resolveExprWF polys _ imps _ (Surface.sigOp s) = Surface.sigOp s
+-- Plan 0.2.4.5 D2: morphism-realm forms carry CCC IR directly (no
+-- polymorphic-def references to splice in). Pass through unchanged.
+resolveExprWF polys _ imps _ (Surface.lift-morphism m) = Surface.lift-morphism m
+resolveExprWF polys pAcc imps fresh (Surface.morph-app m a) =
+  Surface.morph-app m (resolveExprWF polys pAcc imps fresh a)
 -- Poly = unresolved placeholder from Phase 1. Delegate to helper that
 -- takes the lookup result + equation explicitly, so external proofs
 -- about the sigOp case can `rewrite` the premise cleanly.

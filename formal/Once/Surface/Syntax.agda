@@ -11,6 +11,7 @@
 module Once.Surface.Syntax where
 
 open import Once.Type
+open import Once.CCC.IR using (IR)
 
 open import Data.Nat using (ℕ)
 open import Data.Fin using (Fin)
@@ -245,3 +246,37 @@ data Expr : ∀ {n} → Ctx n → Usage n → Type → Set where
   -- Expr reaching IR emission / codegen contains no `poly` nodes —
   -- downstream consumers reject it as "resolver not run".
   poly    : ∀ {n} {Γ : Ctx n} (name : String) (T : Type) → Expr Γ zeroUsage T
+
+  -- Plan 0.2.4.5 D2: morphism realm.
+  --
+  -- Wrap a CCC morphism `m : IR A B` as a Surface function value of
+  -- type `A ⇒ B`. Uses no context variables (zeroUsage) — the morphism
+  -- is closed by construction. Distinguishes "categorical-style" code
+  -- (id, fst, snd, terminal, compose chains) from genuine first-class
+  -- closure values: standalone use elaborates to `curry (m ∘ snd) Heap`
+  -- (closure realm), and direct application is expressed via the
+  -- `morph-app` constructor (below) which bypasses apply entirely.
+  -- See `plans/0.2.4.5-morphism-realm-split.md`.
+  lift-morphism : ∀ {n} {Γ : Ctx n} {A B}
+                → IR A B → Expr Γ zeroUsage (A ⇒ B)
+
+  -- Plan 0.2.4.5 D2: morphism-realm application.
+  --
+  -- `morph-app m x` is the eager application of a CCC morphism to a
+  -- Surface argument: it elaborates to the pure compose `m ∘ elaborate x`
+  -- — no `apply`, no closure record, no dangling-pointer apply-chain bug
+  -- (Plan 0.2.4.5 D1 compose runtime issue).
+  --
+  -- The typechecker emits this directly (via spec helpers like specId,
+  -- specFst, …; via checkComposeWithBg) instead of `app (lift-morphism m) x`,
+  -- because Agda's dependent pattern compiler refuses to split on the
+  -- inner `lift-morphism` head of `app f x` (var i's opaque index
+  -- `lookup Γ i` triggers a SplitError vs `A ⇒ B`). Direct emission as
+  -- `morph-app` is the workaround that preserves the realm-split design.
+  --
+  -- Usage shape mirrors `app (lift-morphism m) x` exactly: morphism
+  -- usage is `zeroUsage` (closed), argument usage scales by `Many`
+  -- (the default arrow grade). Keeping the shape identical to `app`'s
+  -- emission lets us swap call sites without touching judgment rules.
+  morph-app : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A B}
+            → IR A B → Expr Γ Ψ A → Expr Γ (zeroUsage +ᵘ (Many *ᵘ Ψ)) B
