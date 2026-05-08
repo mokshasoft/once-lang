@@ -33,7 +33,9 @@ in `docs/compiler/decision-log.md` for durable records of landed work.
 │   ├── 0.6.1-phase-c-design (design)
 │   └── 0.7-parser-strictness-relational (planning)
 │
-└── 0.11-parameterized-trusted-base (design — `--safe` proof modules + TrustedBase parameter; orthogonal to 0.10)
+├── 0.11-parameterized-trusted-base (design — `--safe` proof modules + TrustedBase parameter; orthogonal to 0.10)
+│
+└── 0.12-categorical-layer-1 (active — Products. Runtime ground-mode green for current tests; blocked by thunk-label collision bug for top-level user fns)
 ```
 
 ## Status Summary
@@ -62,6 +64,7 @@ in `docs/compiler/decision-log.md` for durable records of landed work.
 | `0.7-parser-strictness-relational` | planning | Relational parser + proofs |
 | `0.9-exhaustive-semantics` | partial | `--exact-split` enabled; bug-hiding class closed in `exec-x86` (Phase B) and `instr-consumed-slots` (Phase D). 17 CATCHALLs in DirectSim route to named postulates. ~85 safe-class warnings remain as discipline backlog. **D049** in decision log. Error promotion deferred until backlog clears. |
 | `0.11-parameterized-trusted-base` | design | Make all proof modules `--safe` by parameterizing them over a single `TrustedBase` module. Closes the "is this theorem axiom-free?" audit question structurally. Orthogonal to 0.10. |
+| `0.12-categorical-layer-1` | active | Layer 1: Products. Runtime ground-mode green for current pair smoke tests. **Blocker**: thunk-label collision (`.L_thunk_0` duplicate) for any source with multiple top-level user functions whose bodies emit thunks. Fix: thread label counter through `Compile.agda` across `compileFunWithTarget` calls. ~½ day plumbing. Verification of `ir-to-trace-correct-pair` chains through 0.2.4.7. |
 
 ## Recently Closed (in git history + decision log)
 
