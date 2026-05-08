@@ -826,15 +826,30 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       ... | unit-result = unit-bf
         where postulate unit-bf : BeforeFrontier alloc' (readReg (regs (IRResultAWF.final-state body-result)) Output)
 
-      -- Result validity. body's place-valid gives validity for body's eval
-      -- value (eval body (pair env arg)), but we need apply's eval
-      -- (eval (apply ...) x = closure arg = eval body (env, arg)). The
-      -- closure-decomp equation `eval body (env, arg) ≡ eval (apply ...) x`
-      -- requires unpacking the closure value — separate work. SMP.!!
-      -- transitionally; sidestepped for unit-result branch via result-place
-      -- dispatch (no per-loc validity needed).
+      -- Closure-decomp eval bridge: eval (apply ...) x ≡ eval body (pair env arg).
+      -- closure-is-body : closure ≡ (λ a → eval body (pair env a)).
+      -- eval (apply) (closure, arg) reduces to closure arg, which equals
+      -- (λ a → eval body (pair env a)) arg ≡ eval body (pair env arg).
+      eval-apply-eq : eval (apply {A} {B} {k}) x ≡ eval body (pair env arg)
+      eval-apply-eq = cong (λ c → c arg) closure-is-body
+
+      -- Result validity. body's place-valid gives validity for eval body
+      -- (pair env arg) at body-final-alloc / body-final-state.
+      -- alloc' = body's final-alloc (definitional);
+      -- s' ≡ body-final-state via s'-eq;
+      -- eval (apply ...) x ≡ eval body (pair env arg) via eval-apply-eq.
       result-valid-wf' : ValidAtWF mBody alloc' (eval (apply {A} {B} {k}) x) result-loc s'
-      result-valid-wf' = SMP.!!
+      result-valid-wf' with IRResultAWF.result-place body-result
+      ... | at-loc body-loc body-valid _ _ _ _ =
+              subst (λ st → ValidAtWF mBody alloc' (eval (apply {A} {B} {k}) x) body-loc st)
+                    (sym s'-eq)
+                    (subst (λ v → ValidAtWF mBody alloc' v body-loc (IRResultAWF.final-state body-result))
+                           (sym eval-apply-eq)
+                           body-valid)
+      ... | unit-result =
+              subst (λ st → ValidAtWF mBody alloc' tt
+                              (readReg (regs (IRResultAWF.final-state body-result)) Output) st)
+                    (sym s'-eq) valid-unit-wf
 
       -- Frontier slot stability: apply uses the third (give-up) branch.
       -- The 3-way return for IRs that allocate but may write the
