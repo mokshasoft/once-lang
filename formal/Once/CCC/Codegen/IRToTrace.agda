@@ -96,13 +96,18 @@ open import Once.CCC.Machine.SMCore
 --   slot-frontier-after — slots used by this IR's main trace
 --   label-counter-after — labels used by this IR + nested bodies
 --   main-trace          — the trace executed in the parent function
---   body-traces         — `(label, body-trace)` pairs for each
---                         curry encountered (this IR + nested)
+--   body-traces         — `(label, body-budget, body-trace)` triples
+--                         for each curry encountered (this IR + nested).
+--                         Plan 0.2.4.5 D1: body-budget is the slot
+--                         frontier reached by the body, used by codegen
+--                         to emit `subq budget*8, %rsp` / `addq` brackets
+--                         around the body's trace (frameless model —
+--                         body has its own %rsp-relative frame).
 --
 -- The `curry` clause is the only one that allocates a new label.
 -- Other clauses thread the counter and accumulate body lists.
 ir-to-trace' : ∀ {A B} → ℕ → ℕ → IR A B
-              → ℕ × ℕ × AbstractTrace × List (ℕ × AbstractTrace)
+              → ℕ × ℕ × AbstractTrace × List (ℕ × ℕ × AbstractTrace)
 
 -- ────────────────────────────────────────────────────────────────────
 -- Trivial morphisms (no slots needed; mirror SimpleWF.run-*-trace).
@@ -208,20 +213,19 @@ ir-to-trace' n l (curry body _) =
       l1         = suc l
       closure-slot = n
       next        = suc (suc closure-slot)
-      -- Plan 0.2.4.5 D1: thread the slot frontier into the body.
-      -- The body inherits the parent's stack frame at runtime
-      -- (curry-thunk-setup' is frameless — see X86-64.CodeGen.Compile).
-      -- Body's slot indices are absolute relative to the shared %rbp;
-      -- they must start ABOVE the parent's frontier (specifically:
-      -- after the closure record at slots [closure-slot, suc closure-slot])
-      -- to avoid clobbering parent's data.
-      (_ , l2 , body-trace , body-bodies) = ir-to-trace' next l1 body
+      -- Plan 0.2.4.5 D1: body uses its own %rsp-relative frame at
+      -- runtime. Each compiled IR function shifts %rsp by its own
+      -- stack-budget at entry, runs the trace using X(%rsp), then
+      -- shifts %rsp back at exit. Body's slot indices restart at 0
+      -- and address into body's own private frame — physically
+      -- disjoint from the caller's frame.
+      (body-budget , l2 , body-trace , body-bodies) = ir-to-trace' 0 l1 body
       this-trace  = mov-to-output ∷
                     store-at-slot closure-slot ∷
                     instr-load-code-addr this-label ∷
                     store-at-slot (suc closure-slot) ∷
                     lea-slot closure-slot ∷ []
-      all-bodies  = (this-label , body-trace) ∷ body-bodies
+      all-bodies  = (this-label , body-budget , body-trace) ∷ body-bodies
   in next , l2 , this-trace , all-bodies
 
 -- ────────────────────────────────────────────────────────────────────
@@ -300,17 +304,28 @@ ir-to-trace' n l (free-heap _)  = n , l , (mov-to-output ∷ []) , []
 -- | Plan 0.2.4.2 Phase C: helpers to project main trace / bodies
 -- from `ir-to-trace'`'s 4-tuple result.
 private
-  proj-trace : ℕ × ℕ × AbstractTrace × List (ℕ × AbstractTrace) → AbstractTrace
+  proj-trace : ℕ × ℕ × AbstractTrace × List (ℕ × ℕ × AbstractTrace) → AbstractTrace
   proj-trace (_ , _ , t , _) = t
 
-  proj-bodies : ℕ × ℕ × AbstractTrace × List (ℕ × AbstractTrace) → List (ℕ × AbstractTrace)
+  proj-bodies : ℕ × ℕ × AbstractTrace × List (ℕ × ℕ × AbstractTrace) → List (ℕ × ℕ × AbstractTrace)
   proj-bodies (_ , _ , _ , bs) = bs
+
+  proj-budget : ℕ × ℕ × AbstractTrace × List (ℕ × ℕ × AbstractTrace) → ℕ
+  proj-budget (n , _ , _ , _) = n
 
 ir-to-trace : ∀ {A B} → IR A B → AbstractTrace
 ir-to-trace ir = proj-trace (ir-to-trace' 0 0 ir)
 
+-- | Plan 0.2.4.5 D1: slot budget for an IR's main trace.
+-- Used by per-arch codegen to emit `subq budget*8, %rsp` / `addq` around
+-- the trace, so all slot accesses are %rsp-relative within a private frame.
+ir-stack-budget : ∀ {A B} → IR A B → ℕ
+ir-stack-budget ir = proj-budget (ir-to-trace' 0 0 ir)
+
 -- | Plan 0.2.4.2 Phase C: closure-body traces collected for an IR.
--- Each `(label, body-trace)` pair becomes a `.L_thunk_<label>:` block
--- in the parent function's emitted assembly, after the parent's `ret`.
-ir-to-bodies : ∀ {A B} → IR A B → List (ℕ × AbstractTrace)
+-- Each `(label, body-budget, body-trace)` triple becomes a
+-- `.L_thunk_<label>:` block, framed by `subq body-budget*8, %rsp` and
+-- `addq body-budget*8, %rsp` (frameless model — body has its own
+-- %rsp-relative frame, physically disjoint from caller's).
+ir-to-bodies : ∀ {A B} → IR A B → List (ℕ × ℕ × AbstractTrace)
 ir-to-bodies ir = proj-bodies (ir-to-trace' 0 0 ir)

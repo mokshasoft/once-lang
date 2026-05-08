@@ -11,7 +11,7 @@
 module Once.Target.X86-64 where
 
 open import Data.String using (String; _++_)
-open import Data.Nat using (ℕ)
+open import Data.Nat using (ℕ; _*_)
 open import Data.Nat.Show using () renaming (show to showNat)
 open import Data.List using (List; []; _∷_; foldr)
 open import Data.Product using (_×_; _,_)
@@ -27,7 +27,7 @@ open import Once.CCC.IR using (IR)
 -- `Once.CCC.Target.X86-64.CompileCorrect.compile-correct`; the old
 -- compile-ir is retained for now as a reference but no longer
 -- extracted.
-open import Once.CCC.Codegen.IRToTrace using (ir-to-trace; ir-to-bodies)
+open import Once.CCC.Codegen.IRToTrace using (ir-to-trace; ir-to-bodies; ir-stack-budget)
 open import Once.CCC.Machine.SMCore using (AbstractTrace)
 open import Once.CCC.Target.X86-64.AbstractToX86 using (compile-trace)
 open import Once.CCC.Target.X86-64.Emit using (programToText)
@@ -51,27 +51,27 @@ x86-64-asmHeader =
   "once_heap_pos:\n" ++
   "    .quad 0\n\n" ++
   ".section .text\n\n" ++
-  -- Plan 0.2.4.5 D1: program entry stub.
+  -- Plan 0.2.4.5 D1: program entry stub (frameless, %rsp-relative).
   --
   -- Main is wrapped at the IR level via `wrapMainAsEntry` in
   -- Once.Compile to `apply ∘ ⟨ main , terminal ⟩ : IR Unit Unit`.
-  -- The compiled `once_main` therefore performs the full closure
-  -- invocation via the verified `apply` IR — no hand-written
-  -- closure-call ABI here.
+  -- The compiled `once_main` performs the full closure invocation
+  -- via the verified `apply` IR.
   --
-  -- _start's only job is target-specific runtime setup that's not
-  -- expressible in CCC IR:
+  -- Each compiled IR function (once_main, thunks) manages its own
+  -- frame via `subq $stack-budget*8, %rsp` at entry and `addq` at
+  -- exit. All slot accesses are %rsp-relative. %rbp is no longer used.
+  --
+  -- _start's only job is target-specific runtime setup not expressible
+  -- in CCC IR:
   --   1. Initialize the heap pool's bump pointer.
-  --   2. Reserve 4KB scratch on the stack and anchor %rbp.
-  --   3. Call once_main. Main's IR is Unit→Unit; its trace executes
-  --      the program body (which typically calls exit and never returns).
-  --   4. If main returns normally, fall through to sys_exit(0).
+  --   2. Call once_main. (No %rsp/rbp reservation — once_main's prologue
+  --      handles its own frame.)
+  --   3. If main returns normally, fall through to sys_exit(0).
   ".globl _start\n" ++
   "_start:\n" ++
   "    leaq once_heap_base(%rip), %rax\n" ++
   "    movq %rax, once_heap_pos(%rip)\n" ++
-  "    subq $4096, %rsp\n" ++
-  "    movq %rsp, %rbp\n" ++
   "    call once_main\n" ++
   "    movq $60, %rax\n" ++
   "    xorq %rdi, %rdi\n" ++
@@ -89,32 +89,39 @@ x86-64-functionEpilogue = "    ret\n\n"
 -- IR → Assembly
 ------------------------------------------------------------------------
 
+-- Plan 0.2.4.5 D1: each compiled IR function brackets its trace with
+-- subq/addq for its private %rsp-relative slot frame.
 x86-64-irToAsm : ∀ {A B} → IR A B → String
-x86-64-irToAsm ir = programToText (compile-trace (ir-to-trace ir))
+x86-64-irToAsm ir =
+  let budget = ir-stack-budget ir
+  in "    subq $" ++ showNat (budget * 8) ++ ", %rsp\n" ++
+     programToText (compile-trace (ir-to-trace ir)) ++
+     "    addq $" ++ showNat (budget * 8) ++ ", %rsp\n"
 
--- | Plan 0.2.4.2 Phase C: emit closure-body labels for an IR.
--- For each `(label, body-trace)` pair from `ir-to-bodies`, emit:
+-- | Plan 0.2.4.5 D1: emit closure-body labels for an IR (frameless,
+-- %rsp-relative). For each `(label, body-budget, body-trace)` triple
+-- from `ir-to-bodies`, emit:
 --
 --   .L_thunk_<label>:
---       push %rbp                ; standard SysV prologue (D2)
---       mov %rsp, %rbp
---       <body-trace compiled to x86>
---       leave                    ; standard SysV epilogue
+--       subq $body-budget*8, %rsp     ; reserve body's slot frame
+--       <body-trace compiled to x86>  ; uses X(%rsp) for slot X
+--       addq $body-budget*8, %rsp     ; release body's slot frame
 --       ret
 --
--- Bodies come AFTER the parent's `ret` (function epilogue). Reachable
--- only via `lea .L_thunk_<n>(%rip), %rax` from the parent's curry
--- trace.
--- Plan 0.2.4.3 / 0.2.4.5: no-frame model. The body inherits the
--- parent's %rbp (anchored at _start's reserved buffer); body writes
--- via (slot*8)(%rbp) land inside the buffer. The old SysV envelope
--- (pushq %rbp; mov %rsp, %rbp; …; leave) shifted %rbp to the saved-
--- rbp slot, making (0)(%rbp) overwrite saved-rbp and (8)(%rbp)
--- overwrite the return address — the original compose-bug shape.
-emit-thunk-body : (ℕ × AbstractTrace) → String
-emit-thunk-body (n , body-trace) =
-  ".L_thunk_" ++ showNat n ++ ":\n" ++
+-- Bodies come AFTER the parent's `ret`. Reachable only via
+-- `lea .L_thunk_<n>(%rip), %rax` from the parent's curry trace.
+--
+-- Each body's slot range is private: `[%rsp, %rsp + body-budget*8)`,
+-- physically disjoint from caller's frame (which lives at the prior
+-- %rsp position). When body returns, %rsp snaps back; body's data
+-- is gone. No %rbp is touched anywhere — this is the unified
+-- frameless model where every IR function is %rsp-relative.
+emit-thunk-body : (ℕ × ℕ × AbstractTrace) → String
+emit-thunk-body (lbl , budget , body-trace) =
+  ".L_thunk_" ++ showNat lbl ++ ":\n" ++
+  "    subq $" ++ showNat (budget * 8) ++ ", %rsp\n" ++
   programToText (compile-trace body-trace) ++
+  "    addq $" ++ showNat (budget * 8) ++ ", %rsp\n" ++
   "    ret\n\n"
 
 x86-64-irToBodies : ∀ {A B} → IR A B → String

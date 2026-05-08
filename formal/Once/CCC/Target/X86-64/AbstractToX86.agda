@@ -90,14 +90,18 @@ compile-abstract load-indirect-suc =
   mov (reg rax) (mem (base+disp rdi slot-size)) ∷ []
 
 -- load-from-slot: Output := stack[slot]
--- x86: mov rax, [rbp + slot*8]
+-- x86: mov rax, [rsp + slot*8]
+-- Plan 0.2.4.5 D1 (frameless): all slot accesses are %rsp-relative.
+-- Each compiled IR function shifts %rsp by its own stack-budget at
+-- entry (sub) and back at exit (add), so slot offsets are private to
+-- that function's frame. %rbp is no longer used.
 compile-abstract (load-from-slot n) =
-  mov (reg rax) (mem (base+disp rbp (slot-to-disp n))) ∷ []
+  mov (reg rax) (mem (base+disp rsp (slot-to-disp n))) ∷ []
 
 -- store-at-slot: stack[slot] := Output
--- x86: mov [rbp + slot*8], rax
+-- x86: mov [rsp + slot*8], rax
 compile-abstract (store-at-slot n) =
-  mov (mem (base+disp rbp (slot-to-disp n))) (reg rax) ∷ []
+  mov (mem (base+disp rsp (slot-to-disp n))) (reg rax) ∷ []
 
 -- store-indirect: *Input1 := Output
 -- x86: mov [rdi], rax
@@ -110,14 +114,14 @@ compile-abstract store-indirect-suc =
   mov (mem (base+disp rdi slot-size)) (reg rax) ∷ []
 
 -- lea-slot: Output := &stack[slot]
--- x86: lea rax, [rbp + slot*8]
+-- x86: lea rax, [rsp + slot*8]
 compile-abstract (lea-slot n) =
-  lea rax (base+disp rbp (slot-to-disp n)) ∷ []
+  lea rax (base+disp rsp (slot-to-disp n)) ∷ []
 
 -- restore-input: Input1 := stack[slot]
--- x86: mov rdi, [rbp + slot*8]
+-- x86: mov rdi, [rsp + slot*8]
 compile-abstract (restore-input n) =
-  mov (reg rdi) (mem (base+disp rbp (slot-to-disp n))) ∷ []
+  mov (reg rdi) (mem (base+disp rsp (slot-to-disp n))) ∷ []
 
 -- instr-alloc-stack: allocate N slots on stack
 -- x86: sub rsp, N*8
@@ -161,14 +165,14 @@ compile-abstract instr-call-closure =
 compile-abstract (worklist-init n) = []
 
 -- worklist-push: Push Output to worklist at slot
--- x86: mov [rbp + slot*8], rax  (same as store-at-slot)
+-- x86: mov [rsp + slot*8], rax  (same as store-at-slot)
 compile-abstract (worklist-push n) =
-  mov (mem (base+disp rbp (slot-to-disp n))) (reg rax) ∷ []
+  mov (mem (base+disp rsp (slot-to-disp n))) (reg rax) ∷ []
 
 -- worklist-pop: Pop from worklist at slot to Output
--- x86: mov rax, [rbp + slot*8]  (same as load-from-slot)
+-- x86: mov rax, [rsp + slot*8]  (same as load-from-slot)
 compile-abstract (worklist-pop n) =
-  mov (reg rax) (mem (base+disp rbp (slot-to-disp n))) ∷ []
+  mov (reg rax) (mem (base+disp rsp (slot-to-disp n))) ∷ []
 
 -- worklist-check: Check if worklist is empty (no-op in simplified model)
 -- x86: (empty - proofs use Star-based reasoning, not loop mechanics)
