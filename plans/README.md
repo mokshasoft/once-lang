@@ -20,6 +20,7 @@ in `docs/compiler/decision-log.md` for durable records of landed work.
 │               ├── 0.2.4.3-slot-model-alignment (active — no-frame model across spec / abstract trace / target trace)
 │               ├── 0.2.4.4-closure-pointer-pin (active — close the closure[1] hiding place at the spec level)
 │               ├── 0.2.4.5-allocmode-semantic-clarification (active, re-scoped — drop AllocMode; IR destination passing; Allocator sum type)
+│               ├── 0.2.4.5-morphism-realm-split (D2 landed 2026-05-08 — `lift-morphism`/`morph-app` realm split + compose bypass; closure-realm ABI fix open)
 │               └── 0.2.4.6-place-pass (design — static analysis that decides destinations + lifetimes; subsumes Once.Escape)
 │
 ├── 0.3-frontend-verification-gaps (completed 2026-04-19 — retained for 0.4 context)
@@ -48,6 +49,7 @@ in `docs/compiler/decision-log.md` for durable records of landed work.
 | `0.2.4.3-slot-model-alignment` | active | No-frame model across the three layers (SM*/WF spec, abstract trace, target trace). ApplyWF spec landed (`3760c10b`); IRToTrace.curry frontier-threading + target prologue cleanup pending. |
 | `0.2.4.4-closure-pointer-pin` | active | Close the closure[1] hiding place. `body-label` field + `encode-decode-code-addr` bijection. Stage 1 (spec pin) in progress; Stage 2 (couple `instr-call-closure` to `closure[1]`) deferred. |
 | `0.2.4.5-allocmode-semantic-clarification` | active (re-scoped 2026-05-05) | Drop `AllocMode` entirely. Introduce `Allocator = Stack \| Dynamic` sum type. Rename `ValueLocation` constructors to mirror Allocator (`InReg` / `AtStack` / `AtDynamic`). Two input registers (`Input1`, `Input2`) — apply doesn't pack. `IsPrimitive` collapses to `FitsInReg`; Unit erased; Str/Buffer reclassified as compound. IRs take destinations, don't choose. No `free` IR — alloc/free are SigOps. |
+| `0.2.4.5-morphism-realm-split` | D2 landed 2026-05-08 (commit `eb639573`) | Surface `lift-morphism`/`morph-app` realm split. Typechecker emits morphism-realm directly for id/fst/snd/terminal/initial/inl/inr-app and for compose-of-morphisms (via `extract-morph` codomain trick). Side fix: DirectSimulation `[rbp+d]`→`[rsp+d]` for the Plan 0.2.4.5 D1 frameless ABI. Closure-realm dangling-returned-pointer ABI bug remains but no current frontend-accepted program triggers it. |
 | `0.2.4.6-place-pass` | design | Static analysis pass (`Once.Place`) that walks IR, decides each value's destination + lifetime, inserts alloc/free SigOps for Dynamic values. Subsumes (or consumes) `Once.Escape`. Layer 0 Place is trivial (next-slot bump-allocator). |
 | `0.3-frontend-verification-gaps` | completed | Kept for 0.4 context |
 | `0.4-frontend-completeness-and-bridges` | planning | T1–T4 (G2 completeness, parse→pretty, grammar conformance, surface-semantics bridges) |
@@ -73,21 +75,24 @@ in `docs/compiler/decision-log.md` for durable records of landed work.
 
 ## Current Focus
 
-- **`0.2.4` family** — Layer 0 backend now resumed. Four new active/design children opened 2026-05-05 from a closure-codegen audit:
-  - `0.2.4.3` — slot-model alignment (no frames, slot-frontier threading) across spec + abstract trace + target trace.
+- **`0.2.4` family** — Layer 0 backend integration. Active/design children:
+  - `0.2.4.3` — slot-model alignment (no frames, slot-frontier threading) across spec + abstract trace + target trace. ApplyWF spec landed (`3760c10b`); IRToTrace.curry frontier-threading + target prologue cleanup pending.
   - `0.2.4.4` — close the closure[1] hiding place at the spec level (`body-label` + `encode-decode-code-addr` bijection).
   - `0.2.4.5` (re-scoped) — drop `AllocMode`; introduce `Allocator = Stack \| Dynamic`; rename `ValueLocation` constructors (`InReg` / `AtStack` / `AtDynamic`); two input registers; `FitsInReg` replaces `IsPrimitive`; Unit erased; alloc/free as SigOps.
+  - `0.2.4.5-morphism-realm-split` — D2 **landed 2026-05-08** (commit `eb639573`). `(id . id . id) 42` regression now passes. Closure-realm ABI fix open but unreachable from current frontend.
   - `0.2.4.6` — `Once.Place` pass: static analysis deciding destinations + lifetimes, inserting alloc/free SigOps. Subsumes `Once.Escape`.
 - **`0.4-T3`** — top-level pipeline composition for `Verified.Compile.correct` landed (commit `4dd740cc`). Per-stage discharge follows once `0.10` + `0.2.4.3` + `0.2.4.4` close.
 - **`0.4` / `0.4.2`** — frontend completeness closure + end-to-end composed theorem. Natural follow-on from recently-landed `0.6.2`.
 
 ## Live regression test
 
-`(id . id . id) 42` is the canonical Layer 0 end-to-end regression for the 0.2.4 family. Current state under the partial fix:
+`(id . id . id) 42` is the canonical Layer 0 end-to-end regression for the 0.2.4 family. Current state (2026-05-08 after Plan 0.2.4.5 D2):
 
 - `id 42` → exit 42 ✓
-- `(id . id) 42` → exit 42 ✓ (was broken pre-2026-05-04)
-- `(id . id . id) 42` → segfaults at `RIP=0x2a` (different bug from the original saved-rbp/return-address corruption). Closes when `0.2.4.3` + `0.2.4.4` land fully.
+- `(id . id) 42` → exit 42 ✓
+- `(id . id . id) 42` → exit 42 ✓ (was segfaulting at `RIP=0x2a`; fixed by morphism-realm split routing compose chains through pure CCC compose, no `apply`-chain).
+
+The closure-realm `apply`-with-returned-closure path is still buggy (Plan 0.2.4.5 D1 frameless `%rsp` ABI dangles closures returned past `addq %rsp; ret`). No current frontend-accepted program reaches it; closure-realm ABI fix tracked as open work in `0.2.4.5-morphism-realm-split.md`.
 
 ## Notes on Layout
 
