@@ -206,11 +206,16 @@ ir-to-trace' n l (⟨ f , g ⟩ _) =
 ir-to-trace' n l (curry body _) =
   let this-label = l
       l1         = suc l
-      -- Body uses fresh slot frame (own SysV frame at runtime, D2)
-      -- and shares the global label counter.
-      (_ , l2 , body-trace , body-bodies) = ir-to-trace' 0 l1 body
       closure-slot = n
       next        = suc (suc closure-slot)
+      -- Plan 0.2.4.5 D1: thread the slot frontier into the body.
+      -- The body inherits the parent's stack frame at runtime
+      -- (curry-thunk-setup' is frameless — see X86-64.CodeGen.Compile).
+      -- Body's slot indices are absolute relative to the shared %rbp;
+      -- they must start ABOVE the parent's frontier (specifically:
+      -- after the closure record at slots [closure-slot, suc closure-slot])
+      -- to avoid clobbering parent's data.
+      (_ , l2 , body-trace , body-bodies) = ir-to-trace' next l1 body
       this-trace  = mov-to-output ∷
                     store-at-slot closure-slot ∷
                     instr-load-code-addr this-label ∷

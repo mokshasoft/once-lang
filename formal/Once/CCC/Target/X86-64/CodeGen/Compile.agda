@@ -141,13 +141,16 @@ curry-closure-setup lbl body-len =
 
 -- | Thunk code prefix: called with arg in rdi, env in r12
 -- lbl: unique label base for this curry expression
+--
+-- Plan 0.2.4.5 D1: FRAMELESS. Thunk inherits caller's %rbp; body's
+-- slot offsets (in trace) are absolute relative to the shared %rbp,
+-- threaded above the parent's frontier at curry-expansion time
+-- (see ir-to-trace' (curry body _)).
 curry-thunk-setup' : ℕ → Program
 curry-thunk-setup' lbl =
   label lbl ∷                           -- thunk entry point (lbl)
-  push (reg r15) ∷                      -- save r15
-  push (reg rbp) ∷                      -- save rbp
-  mov (reg rbp) (reg rsp) ∷             -- set frame
-  sub (reg rsp) (imm (slots 2)) ∷       -- allocate pair
+  push (reg r15) ∷                      -- save r15 (closure-reg, may be reused)
+  sub (reg rsp) (imm (slots 2)) ∷       -- allocate (env, arg) pair on top of stack
   mov (mem (base rsp)) (reg r12) ∷      -- [pair] = env
   mov (mem (base+disp rsp slot-size)) (reg rdi) ∷  -- [pair+8] = arg
   mov (reg rdi) (reg rsp) ∷ []          -- rdi = pair address
@@ -156,8 +159,7 @@ curry-thunk-setup' lbl =
 -- lbl: unique label base for this curry expression
 curry-thunk-cleanup' : ℕ → Program
 curry-thunk-cleanup' lbl =
-  mov (reg rsp) (reg rbp) ∷             -- restore stack
-  pop rbp ∷                             -- restore rbp
+  add (reg rsp) (imm (slots 2)) ∷       -- deallocate (env, arg) pair
   pop r15 ∷                             -- restore r15
   ret ∷                                 -- return to caller
   label (lbl +ℕ 1) ∷ []                  -- end label (lbl+1)
@@ -274,7 +276,11 @@ compile-length (⟨ f , g ⟩ _) = length pair-setup +ℕ compile-length f +ℕ
                                length pair-middle +ℕ compile-length g +ℕ
                                length pair-cleanup
 compile-length terminal = length terminal-instrs
-compile-length (curry f _) = 6 +ℕ length curry-thunk-setup +ℕ compile-length f +ℕ 5  -- closure + thunk + cleanup
+-- closure-setup + thunk-setup + body + thunk-cleanup. Closure-setup and
+-- cleanup lengths don't depend on lbl (only emitted labels do).
+compile-length (curry f _) =
+  length (curry-closure-setup 0 0) +ℕ length curry-thunk-setup +ℕ
+  compile-length f +ℕ length (curry-thunk-cleanup' 0)
 compile-length apply = length apply-instrs
 -- Sum type operations (placeholder lengths)
 compile-length (inl _) = 1  -- placeholder
@@ -441,8 +447,8 @@ compile-ir'-length n (curry f m) =
       step3 = length-++ body {ctc}
       inner = cong (length cts +ℕ_) (trans (cong (_+ℕ length ctc) lf) refl)
       outer = refl
-      assoc1 = sym (+-assoc 6 (length cts) (compile-length f +ℕ 5))
-      assoc2 = sym (+-assoc (6 +ℕ length cts) (compile-length f) 5)
+      assoc1 = sym (+-assoc (length ccs) (length cts) (compile-length f +ℕ length ctc))
+      assoc2 = sym (+-assoc (length ccs +ℕ length cts) (compile-length f) (length ctc))
   in trans step1 (trans (cong (length ccs +ℕ_) (trans step2 (trans (cong (length cts +ℕ_) step3) inner)))
                         (trans outer (trans assoc1 assoc2)))
 
