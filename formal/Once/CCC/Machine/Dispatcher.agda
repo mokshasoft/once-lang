@@ -25,6 +25,7 @@ open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥; ⊥-elim)
+open import Data.List using ([]; _∷_)
 open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; cong; trans; sym; subst)
 open import Relation.Nullary using (Dec; yes; no)
@@ -135,6 +136,11 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
   open WriteOps {FS}
   open ExecFinal {FS}
   open ExecLemmas {FS}
+  open AbstractExec {FS}
+  import Once.CCC.Machine.SMPrimitives as SMP
+  open SMP.TracePrimitives {FS}
+    using (exec-trace-preserves-halted; tph-[]; tph-∷;
+           iph-instr-load-const)
   open Once.CCC.Machine.Allocation.Allocator {FS}
   open StackAllocation {FS}
   open FrameSemantics FS
@@ -144,6 +150,8 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
   open ClosureWellFormedDef {FS} program-bound
     using (BodyCorrect; ValidAtWF; IRResultAWF; RecDispatcherWF;
            valid-unit-wf; valid-pair-wf; valid-closure-wf;
+           valid-primitive-wf;
+           ResultPlace; at-loc; unit-result;
            decomposeClosureWF; ClosureValidWF; decomposePairWF; PairValidWF;
            closure-mode-is-heap-proof;
            validityWF-mem-only;
@@ -373,16 +381,62 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
     run-ir-wf mIn (free-heap ref) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ =
       mIn , run-free-heap ref x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
 
-    -- Plan 0.11: const literal. The dispatcher needs an
-    -- IRResultAWF for `const p vI vM`. Postulated for now —
-    -- per-primitive-type discharge produces concrete IRResultAWFs
-    -- (similar in shape to SimpleWFImpl's run-X). Audit-visible
-    -- trusted-base entry until then.
+    -- Plan 0.11: const literal. Implemented via instr-load-const which
+    -- writes encode-const into Output. The encoded location is a per-arch
+    -- artifact (literal pool / register-immediate) — its BeforeFrontier
+    -- property (`encode-const-before`) is the single per-arch trust point
+    -- that replaces the previous monolithic run-const-postulate.
     run-ir-wf mIn (const p vI vM) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ =
-      mIn , run-const-postulate
+      mIn , record
+        { final-state = s'
+        ; final-alloc = alloc
+        ; trace = trace
+        ; trace-correct = refl
+        ; result-place = at-loc encoded-loc valid-encoded encoded-before rax-eq valid-encoded encoded-before
+        ; not-halted = not-halted'
+        ; frame-preserved = refl
+        ; slot-monotone = ≤-refl
+        ; heap-preserved = refl
+        ; max-slot-written = next-slot alloc
+        ; max-slot-geq-final = ≤-refl
+        ; stack-budget = 0
+        ; max-slot-usage-bound = m≤m+n (next-slot alloc) 0
+        ; slot-stays-in-budget = m≤m+n (next-slot alloc) 0
+        ; frontier-slot-stable = λ _ _ _ _ _ → inj₁ refl
+        ; trace-writes-above = tt
+        ; trace-slot-reads-above = tt
+        ; trace-writes-below = tt
+        ; trace-slot-reads-below = tt
+        ; trace-no-heap-writes = tt
+        ; trace-preserves-halted = tph-∷ iph-instr-load-const tph-[]
+        ; scratch-budget = 0
+        ; scratch-bounded = m≤m+n (next-slot alloc) 0
+        }
       where
+        encoded-loc = encode-const p vM
+        trace = instr-load-const p vM ∷ []
+        s' = proj₁ (exec-trace trace s alloc)
+
+        not-halted' : halted s' ≡ false
+        not-halted' = exec-trace-preserves-halted trace s alloc not-halted
+                        (tph-∷ iph-instr-load-const tph-[])
+
+        s'-eq : s' ≡ proj₁ (exec-abstract (instr-load-const p vM) s alloc)
+        s'-eq = cong proj₁ (exec-trace-single (instr-load-const p vM) s alloc not-halted)
+
+        rax-eq : readReg (regs s') Output ≡ encoded-loc
+        rax-eq = trans (cong (λ st → readReg (regs st) Output) s'-eq)
+                       (writeReg-same (regs s) Output encoded-loc)
+
+        -- Per-arch trust point: encoded location is observable (lives
+        -- in the literal pool / register-immediate region, before any
+        -- alloc frontier). Each backend instantiates this consistently
+        -- with its compile-abstract emission for `instr-load-const`.
         postulate
-          run-const-postulate : IRResultAWF mIn (const p vI vM) x s alloc
+          encoded-before : BeforeFrontier alloc encoded-loc
+
+        valid-encoded : ValidAtWF mIn alloc {_} vM encoded-loc s'
+        valid-encoded = valid-primitive-wf p encoded-before
 
     --------------------------------------------------------------------------
     -- OCP-0003: Recursion Schemes
