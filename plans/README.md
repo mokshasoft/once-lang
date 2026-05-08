@@ -21,7 +21,8 @@ in `docs/compiler/decision-log.md` for durable records of landed work.
 │               ├── 0.2.4.4-closure-pointer-pin (active — close the closure[1] hiding place at the spec level)
 │               ├── 0.2.4.5-allocmode-semantic-clarification (active, re-scoped — drop AllocMode; IR destination passing; Allocator sum type)
 │               ├── 0.2.4.5-morphism-realm-split (D2 landed 2026-05-08 — `lift-morphism`/`morph-app` realm split + compose bypass; closure-realm ABI fix open)
-│               └── 0.2.4.6-place-pass (design — static analysis that decides destinations + lifetimes; subsumes Once.Escape)
+│               ├── 0.2.4.6-place-pass (design — static analysis that decides destinations + lifetimes; subsumes Once.Escape)
+│               └── 0.2.4.7-irtracecorrect-frontier (design — discharge 4 ir-to-trace-correct postulates by parameterising on frontier + slot-shift lemma)
 │
 ├── 0.3-frontend-verification-gaps (completed 2026-04-19 — retained for 0.4 context)
 │   └── 0.4-frontend-completeness-and-bridges (planning)
@@ -51,6 +52,7 @@ in `docs/compiler/decision-log.md` for durable records of landed work.
 | `0.2.4.5-allocmode-semantic-clarification` | active (re-scoped 2026-05-05) | Drop `AllocMode` entirely. Introduce `Allocator = Stack \| Dynamic` sum type. Rename `ValueLocation` constructors to mirror Allocator (`InReg` / `AtStack` / `AtDynamic`). Two input registers (`Input1`, `Input2`) — apply doesn't pack. `IsPrimitive` collapses to `FitsInReg`; Unit erased; Str/Buffer reclassified as compound. IRs take destinations, don't choose. No `free` IR — alloc/free are SigOps. |
 | `0.2.4.5-morphism-realm-split` | D2 landed 2026-05-08 (commit `eb639573`) | Surface `lift-morphism`/`morph-app` realm split. Typechecker emits morphism-realm directly for id/fst/snd/terminal/initial/inl/inr-app and for compose-of-morphisms (via `extract-morph` codomain trick). Side fix: DirectSimulation `[rbp+d]`→`[rsp+d]` for the Plan 0.2.4.5 D1 frameless ABI. Closure-realm dangling-returned-pointer ABI bug remains but no current frontend-accepted program triggers it. |
 | `0.2.4.6-place-pass` | design | Static analysis pass (`Once.Place`) that walks IR, decides each value's destination + lifetime, inserts alloc/free SigOps for Dynamic values. Subsumes (or consumes) `Once.Escape`. Layer 0 Place is trivial (next-slot bump-allocator). |
+| `0.2.4.7-irtracecorrect-frontier` | design | Discharge `ir-to-trace-correct-{compose,pair,curry,apply}` postulates in `IRTraceCorrect.agda`. Hybrid Option 2+5: parameterise the theorem on a slot frontier `n`, prove a `shift-trace` translation lemma + `exec-trace` translation invariance. ~3-4 days. Runtime is unaffected (these are verification-side gaps, not runtime bugs). |
 | `0.3-frontend-verification-gaps` | completed | Kept for 0.4 context |
 | `0.4-frontend-completeness-and-bridges` | planning | T1–T4 (G2 completeness, parse→pretty, grammar conformance, surface-semantics bridges) |
 | `0.4-T3-pipeline-composition` | T3 partial | `Verified.Compile.correct` decomposed into named per-stage postulates (commit `4dd740cc`). Discharge of `module-to-asm-correct` chains through 0.10 + 0.2.4.3 + 0.2.4.4. |
