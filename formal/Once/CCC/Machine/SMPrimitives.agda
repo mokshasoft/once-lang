@@ -1707,11 +1707,6 @@ module TracePrimitives {FS : FrameSemantics} where
     iph-worklist-check     : ∀ {slot} → InstrPreservesHalted (worklist-check slot)
     -- Plan 0.2.4.2 Phase D: closure-reg save (no-op at the abstract level)
     iph-instr-save-closure-reg : InstrPreservesHalted instr-save-closure-reg
-    -- Plan 0.11: const literal load (Output := encode-const)
-    iph-instr-load-const : ∀ {A} {p : FitsInReg A} {v} →
-                           InstrPreservesHalted (instr-load-const p v)
-    -- Plan 0.2.4.2 Phase A: code-addr load (Output := encode-code-addr)
-    iph-instr-load-code-addr : ∀ {n} → InstrPreservesHalted (instr-load-code-addr n)
 
   -- Load instructions: these cases require the read to succeed.
   -- Our IR compilation ensures loads are only executed when the slot/location is valid,
@@ -1777,10 +1772,6 @@ module TracePrimitives {FS : FrameSemantics} where
   exec-abstract-preserves-halted (worklist-check slot) s alloc h-eq _ = h-eq
   -- Plan 0.2.4.2 Phase D: closure-reg save is a no-op at the abstract level
   exec-abstract-preserves-halted instr-save-closure-reg s alloc h-eq _ = h-eq
-  -- Plan 0.11: const literal load (Output := encode-const) is a register-only no-op
-  exec-abstract-preserves-halted (instr-load-const _ _) s alloc h-eq _ = h-eq
-  -- Plan 0.2.4.2 Phase A: code-addr load (Output := encode-code-addr) is register-only
-  exec-abstract-preserves-halted (instr-load-code-addr _) s alloc h-eq _ = h-eq
   -- Plan 0.11 Task A: SigOp may halt (e.g. linux.exit), so it is NOT
   -- a member of InstrPreservesHalted. The case is unreachable —
   -- there is no `iph-instr-sigop` constructor — so we use the absurd
