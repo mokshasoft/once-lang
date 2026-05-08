@@ -35,7 +35,9 @@ in `docs/compiler/decision-log.md` for durable records of landed work.
 │
 ├── 0.11-parameterized-trusted-base (design — `--safe` proof modules + TrustedBase parameter; orthogonal to 0.10)
 │
-└── 0.12-categorical-layer-1 (active — Products. Runtime ground-mode green for current tests; blocked by thunk-label collision bug for top-level user fns)
+├── 0.12-categorical-layer-1 (active — Products. Ground-pair tests landed; thunk-label collision fixed; user fns hit closure-realm ABI bug)
+│
+└── 0.13-layer-survey-2026-05-09 (design — cross-layer failure-mode survey identifying two independent codegen gaps: closure-realm ABI + Layer 2/5/6 stubs)
 ```
 
 ## Status Summary
@@ -64,7 +66,8 @@ in `docs/compiler/decision-log.md` for durable records of landed work.
 | `0.7-parser-strictness-relational` | planning | Relational parser + proofs |
 | `0.9-exhaustive-semantics` | partial | `--exact-split` enabled; bug-hiding class closed in `exec-x86` (Phase B) and `instr-consumed-slots` (Phase D). 17 CATCHALLs in DirectSim route to named postulates. ~85 safe-class warnings remain as discipline backlog. **D049** in decision log. Error promotion deferred until backlog clears. |
 | `0.11-parameterized-trusted-base` | design | Make all proof modules `--safe` by parameterizing them over a single `TrustedBase` module. Closes the "is this theorem axiom-free?" audit question structurally. Orthogonal to 0.10. |
-| `0.12-categorical-layer-1` | active | Layer 1: Products. Runtime ground-mode green for current pair smoke tests. **Blocker**: thunk-label collision (`.L_thunk_0` duplicate) for any source with multiple top-level user functions whose bodies emit thunks. Fix: thread label counter through `Compile.agda` across `compileFunWithTarget` calls. ~½ day plumbing. Verification of `ir-to-trace-correct-pair` chains through 0.2.4.7. |
+| `0.12-categorical-layer-1` | active | Layer 1: Products. Ground-pair tests landed (`layer1-{fst,snd-deep,compose-snd}.once` all pass). Thunk-label collision fixed (commit `b1ec94ac`). **Open**: user-defined pair functions compile but exit-wrong at runtime — the closure-realm ABI dangling-pointer bug; same gap as Layer 4 user curried fns. |
+| `0.13-layer-survey-2026-05-09` | design | Cross-layer failure-mode survey. Identifies two **independent** codegen gaps blocking Layers 2, 4, 5, 6 and Layer 1-with-user-fns: (A) closure-realm ABI dangling-pointer (Layer 1 user fns + Layer 4); (B) codegen stubs (Layer 2 inl/inr/case + Layer 5/6 In/Cata/Para/in-ν/Ana/Hylo/Fuse). Recommends priority ordering. Layer 0 + Layer 1-ground are the only fully-running paths today. |
 
 ## Recently Closed (in git history + decision log)
 
