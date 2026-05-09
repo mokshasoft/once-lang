@@ -37,7 +37,9 @@ in `docs/compiler/decision-log.md` for durable records of landed work.
 │
 ├── 0.12-categorical-layer-1 (active — Products. Ground-pair tests landed; thunk-label collision fixed; user fns hit closure-realm ABI bug)
 │
-└── 0.13-layer-survey-2026-05-09 (design — cross-layer failure-mode survey identifying two independent codegen gaps: closure-realm ABI + Layer 2/5/6 stubs)
+├── 0.13-layer-survey-2026-05-09 (design — cross-layer failure-mode survey identifying two independent codegen gaps: closure-realm ABI + Layer 2/5/6 stubs)
+│   ├── 0.13.1-layer2-sums-codegen (Phase 1 landed — instr-case-on-tag halts at abstract level + named postulate; Phases 2-7 deferred until 0.13.2 lands)
+│   └── 0.13.2-stored-value-type (design — separate `ValueLocation` (address) from `StoredValue` (content). Lifts memory cells to a real sum type holding pointers/tags/ints/code-addrs. Removes encode-const/encode-code-addr postulates. Unblocks Phases 2-7 of 0.13.1.)
 ```
 
 ## Status Summary
@@ -68,6 +70,8 @@ in `docs/compiler/decision-log.md` for durable records of landed work.
 | `0.11-parameterized-trusted-base` | design | Make all proof modules `--safe` by parameterizing them over a single `TrustedBase` module. Closes the "is this theorem axiom-free?" audit question structurally. Orthogonal to 0.10. |
 | `0.12-categorical-layer-1` | active | Layer 1: Products. Ground-pair tests landed (`layer1-{fst,snd-deep,compose-snd}.once` all pass). Thunk-label collision fixed (commit `b1ec94ac`). **Open**: user-defined pair functions compile but exit-wrong at runtime — the closure-realm ABI dangling-pointer bug; same gap as Layer 4 user curried fns. |
 | `0.13-layer-survey-2026-05-09` | design | Cross-layer failure-mode survey. Identifies two **independent** codegen gaps blocking Layers 2, 4, 5, 6 and Layer 1-with-user-fns: (A) closure-realm ABI dangling-pointer (Layer 1 user fns + Layer 4); (B) codegen stubs (Layer 2 inl/inr/case + Layer 5/6 In/Cata/Para/in-ν/Ana/Hylo/Fuse). Recommends priority ordering. Layer 0 + Layer 1-ground are the only fully-running paths today. |
+| `0.13.1-layer2-sums-codegen` | Phase 1 landed (commit `e4de7543`) | Layer 2 sums codegen across proof + abstract + target. Phase 1: `instr-case-on-tag` added to AbstractInstr, halts at abstract level (with named postulate `case-codegen-faithful-phase1` for the per-arch correspondence), per-arch x86-64 lowers to `ud2`. Phases 2-7 (real tag dispatch, SumRecWF traces, IRToTrace, real branches per-arch, tests, DirectSim) **deferred until Plan 0.13.2 lands** — they need a real way to put a tag in memory. |
+| `0.13.2-stored-value-type` | design | Architectural refactor: separate `ValueLocation` (address) from `StoredValue` (content). Memory cells hold a sum type with `SV-Ptr`/`SV-Tag`/`SV-Int`/`SV-Code` constructors. Replaces `encode-const`/`encode-code-addr` postulates with real constructors (two trusted-base axioms removed). Cascade through ~30 files; phased A-H over 3-5 days. Unblocks Plan 0.13.1's Layer 2 phases. |
 
 ## Recently Closed (in git history + decision log)
 
