@@ -172,6 +172,34 @@ data ValueLocation (FS : FrameSemantics) : Set where
   AtStack   : FrameSemantics.Frame FS → Slot → ValueLocation FS
   AtDynamic : HeapLocation → ValueLocation FS
 
+-- Plan 0.13.2 — separation of address from value.
+--
+-- `ValueLocation` is the type of *addresses* — where in memory a
+-- value lives. `StoredValue` is the type of *values* — what a
+-- memory cell holds.
+--
+--   - `SV-Ptr loc`     — a pointer cell.
+--   - `SV-Tag n`       — a sum-type tag literal (0 = inl, 1 = inr).
+--   - `SV-Lit p v`     — a register-fittable primitive literal
+--                        (replaces the `encode-const` postulate).
+--                        `p : FitsInReg A` is the type evidence;
+--                        `v : ⟦ A ⟧` is the value (ℕ for Int,
+--                        AgdaFloat for Float, etc.).
+--   - `SV-Code n`      — code-address label index (replaces
+--                        `encode-code-addr`).
+--
+-- Closures, pairs, μ-cells are *records* spanning multiple
+-- consecutive cells; they decompose into `SV-Ptr` + per-slot
+-- contents and don't need their own constructor here. Sums are
+-- the only construct where the runtime needs to inspect a tag in
+-- memory — hence `SV-Tag`. See `plans/0.13.2-stored-value-type.md`
+-- for full rationale.
+data StoredValue (FS : FrameSemantics) : Set where
+  SV-Ptr  : ValueLocation FS → StoredValue FS
+  SV-Tag  : ℕ → StoredValue FS
+  SV-Lit  : ∀ {A} → FitsInReg A → ⟦ A ⟧ → StoredValue FS
+  SV-Code : ℕ → StoredValue FS
+
 -- Plan 0.2.4.5 D1 (Unit erasure) note: there is intentionally no
 -- `Erased` sentinel here. The earlier Erased constructor encoded
 -- "Unit values are nowhere" as a value, but that's a half-measure
@@ -229,8 +257,9 @@ offsetLoc (AtDynamic hl) n = AtDynamic (offsetHL hl n)
 -- Heap memory can only store HeapLocation (heap-only).
 ------------------------------------------------------------------------
 
+-- Plan 0.13.2: stack memory holds `StoredValue`, not `ValueLocation`.
 StackMem : (FS : FrameSemantics) → Set
-StackMem FS = FrameSemantics.Frame FS → Slot → Maybe (ValueLocation FS)
+StackMem FS = FrameSemantics.Frame FS → Slot → Maybe (StoredValue FS)
 
 -- Heap memory stores HeapLocation (enforces heap-only-references-heap)
 HeapMem : Set
@@ -267,20 +296,24 @@ Output ≟R Input1 = no (λ ())
 Output ≟R Input2 = no (λ ())
 Output ≟R Output = yes refl
 
+-- Plan 0.13.2: registers hold `StoredValue`, not `ValueLocation`.
+-- Real machines load tags / ints / pointers into the same registers
+-- and discriminate by what was loaded. So register state lifts to
+-- the same value type as memory cells.
 record Registers (FS : FrameSemantics) : Set where
   constructor mkRegs
   field
-    input1 input2 output : ValueLocation FS
+    input1 input2 output : StoredValue FS
     stackSlot : ℕ  -- current stack slot index (like rsp, but as slot count)
 
 open Registers public
 
-readReg : ∀ {FS} → Registers FS → AbstractReg → ValueLocation FS
+readReg : ∀ {FS} → Registers FS → AbstractReg → StoredValue FS
 readReg r Input1 = input1 r
 readReg r Input2 = input2 r
 readReg r Output = output r
 
-writeReg : ∀ {FS} → Registers FS → AbstractReg → ValueLocation FS → Registers FS
+writeReg : ∀ {FS} → Registers FS → AbstractReg → StoredValue FS → Registers FS
 writeReg r Input1 v = record r { input1 = v }
 writeReg r Input2 v = record r { input2 = v }
 writeReg r Output v = record r { output = v }
@@ -403,21 +436,24 @@ open AllocState public
 module MemOps {FS : FrameSemantics} where
   open FrameSemantics FS
 
-  -- | Read a Location from stack memory (returns ValueLocation)
-  readStackLoc : LocState FS → Frame → Slot → Maybe (ValueLocation FS)
+  -- | Read a value from stack memory (returns StoredValue)
+  readStackLoc : LocState FS → Frame → Slot → Maybe (StoredValue FS)
   readStackLoc s f k = stackMem s f k
 
   -- | Read from heap memory (returns HeapLocation - enforces invariant)
   readHeapLoc : LocState FS → HeapLocation → Maybe HeapLocation
   readHeapLoc s hl = heapMem s hl
 
-  -- | Read a Location from memory
-  -- Stack: returns arbitrary ValueLocation
-  -- Heap: returns HeapLocation lifted to ValueLocation
-  readLoc : LocState FS → ValueLocation FS → Maybe (ValueLocation FS)
+  -- | Read a value from memory.
+  --
+  -- Plan 0.13.2: returns `Maybe StoredValue` — the cell's contents
+  -- type. Heap reads still return a HeapLocation (heap-only invariant);
+  -- they're lifted to `SV-Ptr (AtDynamic _)` at the boundary so the
+  -- API uniformly returns StoredValue regardless of address kind.
+  readLoc : LocState FS → ValueLocation FS → Maybe (StoredValue FS)
   readLoc s (AtStack f k) = stackMem s f k
   readLoc s (AtDynamic hl) with heapMem s hl
-  ... | just hl' = just (AtDynamic hl')
+  ... | just hl' = just (SV-Ptr (AtDynamic hl'))
   ... | nothing  = nothing
   -- Plan 0.2.4.5 D1 (Unit erasure): erased values have no content.
 
@@ -427,16 +463,17 @@ module MemOps {FS : FrameSemantics} where
   -- the no-frame-match branch is a single clause that returns `old`
   -- regardless of the slot decision, so `writeStackMem-aux (no _) _ old _`
   -- reduces by `refl` without case-splitting the second arg.
+  -- Plan 0.13.2: stack now holds StoredValue.
   writeStackMem-aux : ∀ {f f' : Frame} {k k' : Slot}
                     → Dec (f ≡ f') → Dec (k ≡ k')
-                    → Maybe (ValueLocation FS)  -- existing value at (f',k')
-                    → ValueLocation FS           -- new value
-                    → Maybe (ValueLocation FS)
+                    → Maybe (StoredValue FS)  -- existing value at (f',k')
+                    → StoredValue FS           -- new value
+                    → Maybe (StoredValue FS)
   writeStackMem-aux (no _)  _       old _ = old
   writeStackMem-aux (yes _) (yes _) _   v = just v
   writeStackMem-aux (yes _) (no _)  old _ = old
 
-  writeStackMem : StackMem FS → Frame → Slot → ValueLocation FS → StackMem FS
+  writeStackMem : StackMem FS → Frame → Slot → StoredValue FS → StackMem FS
   writeStackMem mem f k v f' k' = writeStackMem-aux (f ≟F f') (k ≟ k') (mem f' k') v
 
   -- | Write a HeapLocation to heap memory (enforces heap-only invariant)
@@ -445,45 +482,58 @@ module MemOps {FS : FrameSemantics} where
   ... | yes _ = just v
   ... | no _  = mem hl'
 
-  -- | Write a Location to stack memory at a ValueLocation
-  writeLocToStack : LocState FS → Frame → Slot → ValueLocation FS → LocState FS
+  -- | Write a value (StoredValue) to stack memory at a slot.
+  -- Plan 0.13.2.
+  writeLocToStack : LocState FS → Frame → Slot → StoredValue FS → LocState FS
   writeLocToStack s f k v = record s { stackMem = writeStackMem (stackMem s) f k v }
 
   -- | Write a HeapLocation to heap memory at a HeapLocation
   writeLocToHeap : LocState FS → HeapLocation → HeapLocation → LocState FS
   writeLocToHeap s hl v = record s { heapMem = writeHeapMem (heapMem s) hl v }
 
-  -- | Write a Location to memory
-  -- Stack destinations: can store any ValueLocation
-  -- Heap destinations: can only store HeapLocation (extracted from AtDynamic)
-  -- Note: Writing AtStack to AtDynamic is a type error - enforces invariant!
-  writeLoc : LocState FS → ValueLocation FS → ValueLocation FS → LocState FS
-  writeLoc s (AtStack f k) v = writeLocToStack s f k v
-  writeLoc s (AtDynamic hl) (AtDynamic v) = writeLocToHeap s hl v
-  writeLoc s (AtDynamic hl) (AtStack _ _) = s  -- Invalid: can't store stack ref in heap (no-op)
+  -- | Write a value (StoredValue) to memory.
+  --
+  -- Plan 0.13.2: the value arg is now StoredValue (was ValueLocation).
+  -- Stack destinations: can store any StoredValue.
+  -- Heap destinations: can only store SV-Ptr to another AtDynamic
+  -- (heap-only invariant kept). All other StoredValue-to-heap
+  -- combinations are no-op (illegal at the abstract level).
+  writeLoc : LocState FS → ValueLocation FS → StoredValue FS → LocState FS
+  writeLoc s (AtStack f k)  v                          = writeLocToStack s f k v
+  writeLoc s (AtDynamic hl) (SV-Ptr (AtDynamic v))     = writeLocToHeap s hl v
+  writeLoc s (AtDynamic hl) (SV-Ptr (AtStack _ _))     = s  -- Invalid: stack ref in heap
+  writeLoc s (AtDynamic hl) (SV-Tag _)                 = s  -- Invalid: tag in heap
+  writeLoc s (AtDynamic hl) (SV-Lit _ _)                 = s  -- Invalid: raw int in heap
+  writeLoc s (AtDynamic hl) (SV-Code _)                = s  -- Invalid: code-addr in heap
 
-  -- writeLoc preserves regs (for all cases)
-  writeLoc-regs : ∀ (s : LocState FS) (loc : ValueLocation FS) (v : ValueLocation FS) →
+  -- writeLoc preserves regs (for all cases). Plan 0.13.2: v : StoredValue.
+  writeLoc-regs : ∀ (s : LocState FS) (loc : ValueLocation FS) (v : StoredValue FS) →
     regs (writeLoc s loc v) ≡ regs s
-  writeLoc-regs s (AtStack f k) v = refl
-  writeLoc-regs s (AtDynamic hl) (AtDynamic v) = refl
-  writeLoc-regs s (AtDynamic hl) (AtStack _ _) = refl
+  writeLoc-regs s (AtStack f k)  v                      = refl
+  writeLoc-regs s (AtDynamic hl) (SV-Ptr (AtDynamic v)) = refl
+  writeLoc-regs s (AtDynamic hl) (SV-Ptr (AtStack _ _)) = refl
+  writeLoc-regs s (AtDynamic hl) (SV-Tag _)             = refl
+  writeLoc-regs s (AtDynamic hl) (SV-Lit _ _)             = refl
+  writeLoc-regs s (AtDynamic hl) (SV-Code _)            = refl
 
-  -- writeLoc preserves halted (for all cases)
-  writeLoc-halted : ∀ (s : LocState FS) (loc : ValueLocation FS) (v : ValueLocation FS) →
+  -- writeLoc preserves halted (for all cases). Plan 0.13.2: v : StoredValue.
+  writeLoc-halted : ∀ (s : LocState FS) (loc : ValueLocation FS) (v : StoredValue FS) →
     halted (writeLoc s loc v) ≡ halted s
-  writeLoc-halted s (AtStack f k) v = refl
-  writeLoc-halted s (AtDynamic hl) (AtDynamic v) = refl
-  writeLoc-halted s (AtDynamic hl) (AtStack _ _) = refl
+  writeLoc-halted s (AtStack f k)  v                      = refl
+  writeLoc-halted s (AtDynamic hl) (SV-Ptr (AtDynamic v)) = refl
+  writeLoc-halted s (AtDynamic hl) (SV-Ptr (AtStack _ _)) = refl
+  writeLoc-halted s (AtDynamic hl) (SV-Tag _)             = refl
+  writeLoc-halted s (AtDynamic hl) (SV-Lit _ _)             = refl
+  writeLoc-halted s (AtDynamic hl) (SV-Code _)            = refl
 
-  -- writeLoc AtStack preserves heapMem
-  writeLoc-heapMem-stack : ∀ (s : LocState FS) (f : Frame) (k : Slot) (v : ValueLocation FS) →
+  -- writeLoc AtStack preserves heapMem. Plan 0.13.2: v : StoredValue.
+  writeLoc-heapMem-stack : ∀ (s : LocState FS) (f : Frame) (k : Slot) (v : StoredValue FS) →
     heapMem (writeLoc s (AtStack f k) v) ≡ heapMem s
   writeLoc-heapMem-stack s f k v = refl
 
-  -- writeLoc commutes with register updates for AtStack locations
-  -- Key for proving trace correctness where register operations interleave with memory writes
-  writeLoc-regs-commute : ∀ (s : LocState FS) (f : Frame) (k : Slot) (v : ValueLocation FS)
+  -- writeLoc commutes with register updates for AtStack locations.
+  -- Plan 0.13.2: v : StoredValue.
+  writeLoc-regs-commute : ∀ (s : LocState FS) (f : Frame) (k : Slot) (v : StoredValue FS)
     (r : Registers FS) →
     writeLoc (record s { regs = r }) (AtStack f k) v ≡
     record (writeLoc s (AtStack f k) v) { regs = r }
@@ -493,7 +543,7 @@ module MemOps {FS : FrameSemantics} where
   -- Key lemma for frame-independence proofs.
   -- Inner-with logic extracted to a helper to keep the proof CATCHALL-free.
   writeLoc-preserves-other-stack-aux : ∀ {f1 f2 : Frame} {k1 k2 : Slot}
-    (s : LocState FS) (v : ValueLocation FS)
+    (s : LocState FS) (v : StoredValue FS)
     (df : Dec (f1 ≡ f2)) (dk : Dec (k1 ≡ k2))
     → AtStack {FS} f1 k1 ≢ AtStack {FS} f2 k2
     → writeStackMem-aux df dk (stackMem s f2 k2) v ≡ stackMem s f2 k2
@@ -504,7 +554,7 @@ module MemOps {FS : FrameSemantics} where
   writeLoc-preserves-other-stack-aux s v (no _)     (no _)     _   = refl
 
   writeLoc-preserves-other : ∀ (s : LocState FS) (loc1 loc2 : ValueLocation FS)
-    (v : ValueLocation FS) →
+    (v : StoredValue FS) →
     loc1 ≢ loc2 →
     readLoc (writeLoc s loc1 v) loc2 ≡ readLoc s loc2
   -- Writing to stack, reading from different stack location
@@ -512,22 +562,29 @@ module MemOps {FS : FrameSemantics} where
     writeLoc-preserves-other-stack-aux s v (f1 ≟F f2) (k1 ≟ k2) neq
   -- Writing to stack, reading from heap (disjoint)
   writeLoc-preserves-other s (AtStack f k) (AtDynamic hl) v _ = refl
-  -- Writing to heap, reading from stack (disjoint)
-  writeLoc-preserves-other s (AtDynamic hl) (AtStack f k) (AtDynamic hv) _ = refl
-  writeLoc-preserves-other s (AtDynamic hl) (AtStack f k) (AtStack _ _) _ = refl
+  -- Writing to heap (SV-Ptr (AtDynamic v)), reading from stack (disjoint)
+  writeLoc-preserves-other s (AtDynamic hl) (AtStack f k) (SV-Ptr (AtDynamic hv)) _ = refl
+  writeLoc-preserves-other s (AtDynamic hl) (AtStack f k) (SV-Ptr (AtStack _ _))  _ = refl
+  -- Writing non-pointer to heap is no-op, so reading anywhere unchanged
+  writeLoc-preserves-other s (AtDynamic hl) (AtStack f k) (SV-Tag _)              _ = refl
+  writeLoc-preserves-other s (AtDynamic hl) (AtStack f k) (SV-Lit _ _)              _ = refl
+  writeLoc-preserves-other s (AtDynamic hl) (AtStack f k) (SV-Code _)             _ = refl
   -- Writing to heap, reading from different heap location
-  writeLoc-preserves-other s (AtDynamic hl1) (AtDynamic hl2) (AtDynamic hv) neq
+  writeLoc-preserves-other s (AtDynamic hl1) (AtDynamic hl2) (SV-Ptr (AtDynamic hv)) neq
     with hl1 ≟HL hl2
   ... | yes refl = ⊥-elim (neq refl)
     where open import Data.Empty using (⊥-elim)
   ... | no _ = refl
-  -- Writing AtStack to AtDynamic is a no-op, so reading anything returns original
-  writeLoc-preserves-other s (AtDynamic hl1) (AtDynamic hl2) (AtStack _ _) _ = refl
+  -- Writing non-heap-pointer to AtDynamic is a no-op
+  writeLoc-preserves-other s (AtDynamic hl1) (AtDynamic hl2) (SV-Ptr (AtStack _ _)) _ = refl
+  writeLoc-preserves-other s (AtDynamic hl1) (AtDynamic hl2) (SV-Tag _)              _ = refl
+  writeLoc-preserves-other s (AtDynamic hl1) (AtDynamic hl2) (SV-Lit _ _)              _ = refl
+  writeLoc-preserves-other s (AtDynamic hl1) (AtDynamic hl2) (SV-Code _)             _ = refl
   -- every other location.
 
   -- writeLoc-read-same: Reading from the location we just wrote returns the written value
   -- Stack case: writeLoc s (AtStack f k) v → readLoc (AtStack f k) ≡ just v
-  writeLoc-read-same-stack : ∀ (s : LocState FS) (f : Frame) (k : Slot) (v : ValueLocation FS) →
+  writeLoc-read-same-stack : ∀ (s : LocState FS) (f : Frame) (k : Slot) (v : StoredValue FS) →
     readLoc (writeLoc s (AtStack f k) v) (AtStack f k) ≡ just v
   writeLoc-read-same-stack s f k v with f ≟F f | k ≟ k
   ... | yes _ | yes _ = refl
@@ -545,10 +602,23 @@ data LocSourceExt (FS : FrameSemantics) : Set where
   IndReg : AbstractReg → LocSourceExt FS
   IndRegSuc : AbstractReg → LocSourceExt FS
 
-resolveSourceExt : ∀ {FS} → Registers FS → LocSourceExt FS → ValueLocation FS
-resolveSourceExt regs (Loc loc) = loc
-resolveSourceExt regs (IndReg r) = readReg regs r
-resolveSourceExt regs (IndRegSuc r) = sucLoc (readReg regs r)
+-- Helper: extract a `ValueLocation` from a `StoredValue` if it's
+-- a pointer. Plan 0.13.2: registers hold StoredValue, but
+-- `resolveSourceExt` needs to derive addresses for loads/stores.
+-- A non-pointer register value (tag/int/code) means the program
+-- is dereferencing something it shouldn't — return `nothing`.
+sv-as-loc : ∀ {FS} → StoredValue FS → Maybe (ValueLocation FS)
+sv-as-loc (SV-Ptr loc) = just loc
+sv-as-loc (SV-Tag _)   = nothing
+sv-as-loc (SV-Lit _ _)   = nothing
+sv-as-loc (SV-Code _)  = nothing
+
+resolveSourceExt : ∀ {FS} → Registers FS → LocSourceExt FS → Maybe (ValueLocation FS)
+resolveSourceExt regs (Loc loc) = just loc
+resolveSourceExt regs (IndReg r) = sv-as-loc (readReg regs r)
+resolveSourceExt regs (IndRegSuc r) with sv-as-loc (readReg regs r)
+... | just loc = just (sucLoc loc)
+... | nothing  = nothing
 
 ------------------------------------------------------------------------
 -- Instructions
@@ -566,22 +636,36 @@ data Instr (FS : FrameSemantics) : Set where
 module ExecFinal {FS : FrameSemantics} where
   open MemOps {FS}
 
-  -- Helper: Apply the result of a memory read to produce new state
-  -- This exposes the decision point for external proofs
-  exec-load-with-value : AbstractReg → Maybe (ValueLocation FS) →
+  -- Helper: Apply the result of a memory read to produce new state.
+  -- Plan 0.13.2: the read result is `Maybe StoredValue`.
+  exec-load-with-value : AbstractReg → Maybe (StoredValue FS) →
                          LocState FS → LocState FS
   exec-load-with-value dst (just v) s = record s { regs = writeReg (regs s) dst v }
   exec-load-with-value dst nothing s = record s { halted = true }
 
+  -- Helper: bind through Maybe-resolved address. If resolveSourceExt
+  -- returned `nothing` (non-pointer in register), halt.
+  exec-load-via-resolved : AbstractReg → Maybe (ValueLocation FS) →
+                           LocState FS → LocState FS
+  exec-load-via-resolved dst (just loc) s = exec-load-with-value dst (readLoc s loc) s
+  exec-load-via-resolved dst nothing    s = record s { halted = true }
+
+  -- Same shape for stores: if dst-resolution fails, halt.
+  exec-store-via-resolved : Maybe (ValueLocation FS) → StoredValue FS →
+                            LocState FS → LocState FS
+  exec-store-via-resolved (just loc) v s = writeLoc s loc v
+  exec-store-via-resolved nothing    _ s = record s { halted = true }
+
   exec : Instr FS → LocState FS → LocState FS
 
   exec (load dst src) s =
-    exec-load-with-value dst (readLoc s (resolveSourceExt (regs s) src)) s
+    exec-load-via-resolved dst (resolveSourceExt (regs s) src) s
 
   exec (store dst src) s =
-    let dstLoc = resolveSourceExt (regs s) dst
-        val = readReg (regs s) src
-    in writeLoc s dstLoc val
+    exec-store-via-resolved
+      (resolveSourceExt (regs s) dst)
+      (readReg (regs s) src)
+      s
 
   exec (mov dst src) s =
     record s { regs = writeReg (regs s) dst (readReg (regs s) src) }
@@ -609,45 +693,74 @@ module ExecLemmas {FS : FrameSemantics} where
   open MemOps {FS}
   open ExecFinal {FS}
 
-  -- | After load, dst holds the value from memory (when successful)
-  load-result : ∀ dst src (s : LocState FS) v →
-    readLoc s (resolveSourceExt (regs s) src) ≡ just v →
+  -- | Plan 0.13.2: helper to unify the two Maybe-layers introduced
+  -- by resolveSourceExt now returning `Maybe ValueLocation`.
+  -- Combines "resolve the source address" and "read the cell".
+  resolved-readLoc : LocState FS → LocSourceExt FS → Maybe (StoredValue FS)
+  resolved-readLoc s src with resolveSourceExt (regs s) src
+  ... | just loc = readLoc s loc
+  ... | nothing  = nothing
+
+  -- | After load, dst holds the value from memory (when successful).
+  -- Plan 0.13.2: takes the resolved address as an explicit arg to
+  -- avoid double-`with` unification issues.
+  load-result : ∀ dst src loc (s : LocState FS) v →
+    resolveSourceExt (regs s) src ≡ just loc →
+    readLoc s loc ≡ just v →
     readReg (regs (exec (load dst src) s)) dst ≡ v
-  load-result dst src s v mem-eq with readLoc s (resolveSourceExt (regs s) src) | mem-eq
-  ... | just v' | refl = writeReg-same (regs s) dst v'
+  load-result dst src loc s v r-eq mem-eq
+    with resolveSourceExt (regs s) src | r-eq
+  ... | just loc' | refl with readLoc s loc' | mem-eq
+  ...   | just v' | refl = writeReg-same (regs s) dst v'
 
   -- | After load (successful), other registers are preserved
-  load-preserves-reg : ∀ dst src (s : LocState FS) r v →
-    readLoc s (resolveSourceExt (regs s) src) ≡ just v →
+  load-preserves-reg : ∀ dst src loc (s : LocState FS) r v →
+    resolveSourceExt (regs s) src ≡ just loc →
+    readLoc s loc ≡ just v →
     r ≢ dst →
     readReg (regs (exec (load dst src) s)) r ≡ readReg (regs s) r
-  load-preserves-reg dst src s r v mem-eq r≢dst
-    with readLoc s (resolveSourceExt (regs s) src) | mem-eq
-  ... | just v' | refl = writeReg-preserves (regs s) dst r v' r≢dst
+  load-preserves-reg dst src loc s r v r-eq mem-eq r≢dst
+    with resolveSourceExt (regs s) src | r-eq
+  ... | just loc' | refl with readLoc s loc' | mem-eq
+  ...   | just v' | refl = writeReg-preserves (regs s) dst r v' r≢dst
 
-  -- | After load (failed), registers unchanged
-  load-failed-preserves : ∀ dst src (s : LocState FS) →
-    readLoc s (resolveSourceExt (regs s) src) ≡ nothing →
+  -- | After load (resolve failed), registers unchanged
+  load-failed-resolve-preserves : ∀ dst src (s : LocState FS) →
+    resolveSourceExt (regs s) src ≡ nothing →
     regs (exec (load dst src) s) ≡ regs s
-  load-failed-preserves dst src s mem-eq
-    with readLoc s (resolveSourceExt (regs s) src) | mem-eq
+  load-failed-resolve-preserves dst src s r-eq
+    with resolveSourceExt (regs s) src | r-eq
   ... | nothing | refl = refl
+
+  -- | After load (read returned nothing), registers unchanged
+  load-failed-read-preserves : ∀ dst src loc (s : LocState FS) →
+    resolveSourceExt (regs s) src ≡ just loc →
+    readLoc s loc ≡ nothing →
+    regs (exec (load dst src) s) ≡ regs s
+  load-failed-read-preserves dst src loc s r-eq mem-eq
+    with resolveSourceExt (regs s) src | r-eq
+  ... | just loc' | refl with readLoc s loc' | mem-eq
+  ...   | nothing | refl = refl
 
   -- | Load preserves stack memory
   load-preserves-stackMem : ∀ dst src (s : LocState FS) →
     stackMem (exec (load dst src) s) ≡ stackMem s
   load-preserves-stackMem dst src s
-    with readLoc s (resolveSourceExt (regs s) src)
-  ... | just _  = refl
-  ... | nothing = refl
+    with resolveSourceExt (regs s) src
+  ... | nothing  = refl
+  ... | just loc with readLoc s loc
+  ...   | just _  = refl
+  ...   | nothing = refl
 
   -- | Load preserves heap memory
   load-preserves-heapMem : ∀ dst src (s : LocState FS) →
     heapMem (exec (load dst src) s) ≡ heapMem s
   load-preserves-heapMem dst src s
-    with readLoc s (resolveSourceExt (regs s) src)
-  ... | just _  = refl
-  ... | nothing = refl
+    with resolveSourceExt (regs s) src
+  ... | nothing  = refl
+  ... | just loc with readLoc s loc
+  ...   | just _  = refl
+  ...   | nothing = refl
 
   -- | After mov, dst holds what src held
   mov-result : ∀ dst src (s : LocState FS) →
@@ -671,20 +784,23 @@ module ExecLemmas {FS : FrameSemantics} where
   mov-preserves-heapMem dst src s = refl
 
   -- | Load preserves halted status when memory read succeeds
-  load-preserves-halted : ∀ dst src (s : LocState FS) v →
-    readLoc s (resolveSourceExt (regs s) src) ≡ just v →
+  load-preserves-halted : ∀ dst src loc (s : LocState FS) v →
+    resolveSourceExt (regs s) src ≡ just loc →
+    readLoc s loc ≡ just v →
     halted (exec (load dst src) s) ≡ halted s
-  load-preserves-halted dst src s v mem-eq
-    with readLoc s (resolveSourceExt (regs s) src) | mem-eq
-  ... | just _ | refl = refl
+  load-preserves-halted dst src loc s v r-eq mem-eq
+    with resolveSourceExt (regs s) src | r-eq
+  ... | just loc' | refl with readLoc s loc' | mem-eq
+  ...   | just _ | refl = refl
 
   -- | Load doesn't halt when memory read succeeds and not already halted
-  load-no-halt : ∀ dst src (s : LocState FS) v →
-    readLoc s (resolveSourceExt (regs s) src) ≡ just v →
+  load-no-halt : ∀ dst src loc (s : LocState FS) v →
+    resolveSourceExt (regs s) src ≡ just loc →
+    readLoc s loc ≡ just v →
     halted s ≡ false →
     halted (exec (load dst src) s) ≡ false
-  load-no-halt dst src s v mem-eq not-halted =
-    trans (load-preserves-halted dst src s v mem-eq) not-halted
+  load-no-halt dst src loc s v r-eq mem-eq not-halted =
+    trans (load-preserves-halted dst src loc s v r-eq mem-eq) not-halted
 
   -- | Memory read is preserved when stackMem and heapMem unchanged.
   -- Now universal (post-Stage-E retirement): readLoc only depends on
@@ -699,7 +815,7 @@ module ExecLemmas {FS : FrameSemantics} where
     cong (λ m → m f k) stack-eq
   readLoc-stackMem-eq s₁ s₂ (AtDynamic hl) stack-eq heap-eq
     with heapMem s₁ hl | heapMem s₂ hl | cong (λ m → m hl) heap-eq
-  ... | just hl₁ | just hl₂ | eq = cong (λ x → just (AtDynamic x)) (just-injective eq)
+  ... | just hl₁ | just hl₂ | eq = cong (λ x → just (SV-Ptr (AtDynamic x))) (just-injective eq)
   ... | nothing | nothing | _ = refl
   ... | just _ | nothing | ()
   ... | nothing | just _ | ()
@@ -972,16 +1088,18 @@ module AbstractExec {FS : FrameSemantics} where
   -- the Maybe value rather than needing with-pattern alignment.
   ------------------------------------------------------------------------
 
-  -- Helper for load-from-slot: applies memory read result
-  exec-load-from-slot-with-value : Maybe (ValueLocation FS) → LocState FS →
+  -- Helper for load-from-slot: applies memory read result.
+  -- Plan 0.13.2: read result is now `Maybe StoredValue`.
+  exec-load-from-slot-with-value : Maybe (StoredValue FS) → LocState FS →
                                    AllocState {FS} → LocState FS × AllocState {FS}
   exec-load-from-slot-with-value (just v) s alloc =
     record s { regs = writeReg (regs s) Output v } , alloc
   exec-load-from-slot-with-value nothing s alloc =
     record s { halted = true } , alloc
 
-  -- Helper for restore-input: applies memory read result
-  exec-restore-input-with-value : Maybe (ValueLocation FS) → LocState FS →
+  -- Helper for restore-input: applies memory read result.
+  -- Plan 0.13.2: read result is now `Maybe StoredValue`.
+  exec-restore-input-with-value : Maybe (StoredValue FS) → LocState FS →
                                   AllocState {FS} → LocState FS × AllocState {FS}
   exec-restore-input-with-value (just v) s alloc =
     record s { regs = writeReg (regs s) Input1 v } , alloc
@@ -1028,27 +1146,21 @@ module AbstractExec {FS : FrameSemantics} where
   ------------------------------------------------------------------------
 
   postulate
-    -- The new value-location placed in Output after the SigOp runs.
-    -- For `lit.int.<N>` this would be a location encoding N; for
-    -- `linux.exit` it is irrelevant (the machine halts).
+    -- The new value placed in Output after the SigOp runs.
+    -- Plan 0.13.2: returns `StoredValue` (was `ValueLocation`) since
+    -- a SigOp's output could be any kind of value.
     exec-sigop-output : ∀ {A B} → SigOpInfo A B → LocState FS →
-                        ValueLocation FS
+                        StoredValue FS
 
     -- Whether the SigOp halts. `linux.exit` returns `true`; pure
     -- SigOps return `false`.
     exec-sigop-halts  : ∀ {A B} → SigOpInfo A B → LocState FS → Bool
 
-    -- Plan 0.11: encode a primitive-typed value into a ValueLocation.
-    -- Per-arch backends instantiate this consistently with how
-    -- compile-abstract emits the load (e.g., x86 `mov $N, %rax`).
-    -- The FitsInReg evidence dispatches per register-fittable type.
-    encode-const : ∀ {A} → FitsInReg A → ⟦ A ⟧ → ValueLocation FS
-
-    -- Plan 0.2.4.2 Phase A: encode a closure-body label index into
-    -- a ValueLocation representing the body's address in the
-    -- compiled binary. Per-arch backends instantiate this
-    -- consistently with their `lea label(%rip)`-style emission.
-    encode-code-addr : ℕ → ValueLocation FS
+  -- Plan 0.13.2: `encode-const` and `encode-code-addr` deleted —
+  -- their roles are now real `StoredValue` constructors.
+  -- `instr-load-const fits-int n` writes `SV-Int n` to Output;
+  -- `instr-load-code-addr n` writes `SV-Code n`. Two trusted-base
+  -- axioms removed.
 
   ------------------------------------------------------------------------
   -- Main exec-abstract definition
@@ -1074,15 +1186,19 @@ module AbstractExec {FS : FrameSemantics} where
   exec-abstract mov-input2-to-output s alloc =
     record s { regs = writeReg (regs s) Output (readReg (regs s) Input2) } , alloc
 
-  -- load-indirect: Output := *Input1
-  -- Uses exec-load-with-value for easier external proofs
-  exec-abstract load-indirect s alloc =
-    exec-load-with-value Output (readLoc s (readReg (regs s) Input1)) s , alloc
+  -- load-indirect: Output := *Input1.
+  -- Plan 0.13.2: Input1 holds StoredValue; only succeeds when it's
+  -- a pointer. sv-as-loc returns the address or `nothing`.
+  exec-abstract load-indirect s alloc
+    with sv-as-loc (readReg (regs s) Input1)
+  ... | just loc = exec-load-with-value Output (readLoc s loc) s , alloc
+  ... | nothing  = record s { halted = true } , alloc
 
   -- load-indirect-suc: Output := *(sucLoc Input1)
-  -- Uses exec-load-with-value for easier external proofs
-  exec-abstract load-indirect-suc s alloc =
-    exec-load-with-value Output (readLoc s (sucLoc (readReg (regs s) Input1))) s , alloc
+  exec-abstract load-indirect-suc s alloc
+    with sv-as-loc (readReg (regs s) Input1)
+  ... | just loc = exec-load-with-value Output (readLoc s (sucLoc loc)) s , alloc
+  ... | nothing  = record s { halted = true } , alloc
 
   -- load-from-slot: Output := stack[frame, slot]
   exec-abstract (load-from-slot slot) s alloc =
@@ -1092,17 +1208,24 @@ module AbstractExec {FS : FrameSemantics} where
   exec-abstract (store-at-slot slot) s alloc =
     writeLoc s (AtStack (current-frame alloc) slot) (readReg (regs s) Output) , alloc
 
-  -- store-indirect: *Input1 := Output
-  exec-abstract store-indirect s alloc =
-    writeLoc s (readReg (regs s) Input1) (readReg (regs s) Output) , alloc
+  -- store-indirect: *Input1 := Output.
+  -- Plan 0.13.2: Input1 holds StoredValue; only succeeds when it's
+  -- a pointer.
+  exec-abstract store-indirect s alloc
+    with sv-as-loc (readReg (regs s) Input1)
+  ... | just loc = writeLoc s loc (readReg (regs s) Output) , alloc
+  ... | nothing  = record s { halted = true } , alloc
 
   -- store-indirect-suc: *(sucLoc Input1) := Output
-  exec-abstract store-indirect-suc s alloc =
-    writeLoc s (sucLoc (readReg (regs s) Input1)) (readReg (regs s) Output) , alloc
+  exec-abstract store-indirect-suc s alloc
+    with sv-as-loc (readReg (regs s) Input1)
+  ... | just loc = writeLoc s (sucLoc loc) (readReg (regs s) Output) , alloc
+  ... | nothing  = record s { halted = true } , alloc
 
-  -- lea-slot: Output := &stack[frame, slot]
+  -- lea-slot: Output := &stack[frame, slot].
+  -- Plan 0.13.2: Output gets a `SV-Ptr` to the slot's address.
   exec-abstract (lea-slot slot) s alloc =
-    record s { regs = writeReg (regs s) Output (AtStack (current-frame alloc) slot) } , alloc
+    record s { regs = writeReg (regs s) Output (SV-Ptr (AtStack (current-frame alloc) slot)) } , alloc
 
   -- restore-input: Input1 := stack[frame, slot]
   exec-abstract (restore-input slot) s alloc =
@@ -1203,23 +1326,17 @@ module AbstractExec {FS : FrameSemantics} where
              ; halted = exec-sigop-halts si s }
     , alloc
 
-  -- Plan 0.11: load a primitive constant into Output.
-  --
-  -- The `encode-const isPrim v` postulate produces the location
-  -- representing `v`. This is the abstract counterpart to per-arch
-  -- immediate-load codegen. State change is exactly the Output
-  -- register write — same shape as `mov-to-output`, but the value
-  -- comes from `encode-const` rather than from Input1.
+  -- Plan 0.13.2: load a primitive constant into Output as `SV-Lit`.
+  -- Replaces the encode-const postulate. The FitsInReg evidence is
+  -- carried through to the cell so float vs int discrimination
+  -- happens via pattern-matching on `SV-Lit isPrim v`.
   exec-abstract (instr-load-const isPrim v) s alloc =
-    record s { regs = writeReg (regs s) Output (encode-const isPrim v) } , alloc
+    record s { regs = writeReg (regs s) Output (SV-Lit isPrim v) } , alloc
 
-  -- Plan 0.2.4.2 Phase A: load a closure-body label's address into
-  -- Output. State change is exactly the Output register write —
-  -- mirrors `instr-load-const`'s shape, but the location comes from
-  -- `encode-code-addr` (a code address) rather than `encode-const`
-  -- (a primitive value).
+  -- Plan 0.13.2: load a closure-body label's address into Output as
+  -- `SV-Code n`. Replaces the encode-code-addr postulate.
   exec-abstract (instr-load-code-addr n) s alloc =
-    record s { regs = writeReg (regs s) Output (encode-code-addr n) } , alloc
+    record s { regs = writeReg (regs s) Output (SV-Code n) } , alloc
 
   -- Plan 0.2.4.2 Phase D follow-up: save Input1 to closure register.
   -- Identity at the abstract level — the closure register is purely
