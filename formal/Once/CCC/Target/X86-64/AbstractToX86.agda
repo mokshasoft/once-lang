@@ -206,6 +206,21 @@ compile-abstract (instr-load-code-addr n) =
 compile-abstract instr-save-closure-reg =
   mov (reg r12) (reg rdi) ∷ []
 
+-- Plan 0.13.1 Phase 1: case-on-tag stub.
+--
+-- Emits `ud2` (illegal instruction; traps with SIGILL if executed).
+-- The real lowering (`mov (%rdi), %rax; cmp $0, %rax; je .L_inl_k;
+-- <g-code>; jmp .L_end_k; .L_inl_k: <f-code>; .L_end_k:`) requires
+-- per-case label threading through `Compile.agda` (similar to the
+-- thunk-label counter from Plan 0.12). Deferred to Phase 5 of plan
+-- 0.13.1; see plan doc for full design.
+--
+-- Until Phase 5 lands, Layer 2 programs that compile through case
+-- will trap at runtime — exactly the "named gap" the user's
+-- methodology asks for.
+compile-abstract (instr-case-on-tag _ _) =
+  ud2 ∷ []
+
 ------------------------------------------------------------------------
 -- Trace compilation: compile a whole trace to x86
 ------------------------------------------------------------------------

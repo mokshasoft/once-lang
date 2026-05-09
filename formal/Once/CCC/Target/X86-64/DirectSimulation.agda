@@ -611,6 +611,19 @@ module Simulation {FS : FrameSemantics} where
                   (exec-prog (compile-abstract (instr-sigop si)) xs (current-frame alloc))
                   (proj₂ (exec-abstract (instr-sigop si) ls alloc))
 
+    -- Plan 0.13.1 Phase 1: case-on-tag — both sides halt.
+    -- Mechanical proof gap (record-update eta misalignment); Phase 5
+    -- supersedes by emitting real branches and proving correspondence
+    -- through the meta-tag-driven branch.
+    case-codegen-faithful-phase1 :
+      ∀ (f g : AbstractTrace) (ls : LocState FS) (xs : X86State)
+        (alloc : AllocState {FS}) →
+      halted ls ≡ false →
+      Corresponds ls xs alloc →
+      Corresponds (proj₁ (exec-abstract (instr-case-on-tag f g) ls alloc))
+                  (exec-prog (compile-abstract (instr-case-on-tag f g)) xs (current-frame alloc))
+                  (proj₂ (exec-abstract (instr-case-on-tag f g) ls alloc))
+
     -- Plan 0.11: const literal codegen↔abstract correspondence.
     -- Per-primitive immediate load. Trusted-base axiom: the encoding
     -- in `compile-const p v` (e.g. `mov $N, %rax`) matches what
@@ -1080,6 +1093,14 @@ module Simulation {FS : FrameSemantics} where
   ... | true  | ()
   ... | false | _ = corr
 
+  -- Plan 0.13.1 Phase 1: case-on-tag — both sides halt.
+  -- Abstract: instr-case-on-tag halts ls. x86: ud2 sets x86-halted = true.
+  -- Routes through `case-codegen-faithful-phase1` (named postulate
+  -- alongside `sigop-codegen-faithful` above). Phase 5 replaces this
+  -- with real dispatch + a proper proof.
+  instr-sim (instr-case-on-tag f g) ls xs alloc not-halted corr =
+    case-codegen-faithful-phase1 f g ls xs alloc not-halted corr
+
   -- instr-reclaim-to: no-op in x86 (compiles to empty)
   -- Abstract: only updates alloc.next-slot, ls unchanged
   -- x86: empty program, xs unchanged
@@ -1140,6 +1161,7 @@ module Simulation {FS : FrameSemantics} where
   exec-abstract-preserves-frame (instr-load-const _ _) ls alloc = refl
   exec-abstract-preserves-frame (instr-load-code-addr _) ls alloc = refl
   exec-abstract-preserves-frame instr-save-closure-reg ls alloc = refl
+  exec-abstract-preserves-frame (instr-case-on-tag _ _) ls alloc = refl
   exec-abstract-preserves-frame (instr-reclaim-to _) ls alloc = refl
 
   ------------------------------------------------------------------------

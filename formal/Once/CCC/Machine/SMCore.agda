@@ -821,6 +821,25 @@ data AbstractInstr : Set where
   instr-load-code-addr : ℕ → AbstractInstr
   instr-save-closure-reg : AbstractInstr
 
+  -- Plan 0.13.1 Phase 1 — sum tag dispatch.
+  --
+  -- Carries both sub-traces (for inl and inr branches respectively).
+  -- At the abstract level this instruction *halts*: the abstract
+  -- semantics doesn't model runtime tag inspection. Per-arch
+  -- lowering does the real `cmp + je` dispatch using the runtime
+  -- tag stored at `*Input1`.
+  --
+  -- The proof of run-case correctness uses an honest postulate
+  -- (`case-codegen-faithful`, in `SumRecWF.agda`) that connects the
+  -- per-arch dispatch to the meta-validity-determined branch. This
+  -- is the "named postulate hiding the runtime gap" — visible in
+  -- `make postulates`, audit-trackable, and replaceable when the
+  -- abstract layer gets tag-aware (a separate plan).
+  --
+  -- Argument type is `List AbstractInstr` (= `AbstractTrace`)
+  -- spelled out — the `AbstractTrace` alias is defined just below.
+  instr-case-on-tag : List AbstractInstr → List AbstractInstr → AbstractInstr
+
 -- | A trace is a sequence of abstract instructions
 AbstractTrace : Set
 AbstractTrace = List AbstractInstr
@@ -1207,6 +1226,13 @@ module AbstractExec {FS : FrameSemantics} where
   -- a per-arch concern.
   exec-abstract instr-save-closure-reg s alloc = s , alloc
 
+  -- Plan 0.13.1 Phase 1: case-on-tag halts at the abstract level.
+  -- Per-arch lowering does the real runtime dispatch; the proof-side
+  -- correspondence is via `case-codegen-faithful` (named postulate
+  -- in `SumRecWF.agda`).
+  exec-abstract (instr-case-on-tag f g) s alloc =
+    record s { halted = true } , alloc
+
   -- | Execute a trace (sequence of abstract instructions)
   exec-trace : AbstractTrace → LocState FS → AllocState {FS} →
                LocState FS × AllocState {FS}
@@ -1215,6 +1241,7 @@ module AbstractExec {FS : FrameSemantics} where
   ... | true  = s , alloc
   ... | false = let (s' , alloc') = exec-abstract i s alloc
                 in exec-trace is s' alloc'
+
 
   -- | Reduction lemma: when not halted, exec-trace reduces
   exec-trace-cons : ∀ (i : AbstractInstr) (is : AbstractTrace)
