@@ -1982,6 +1982,103 @@ module TracePrimitives {FS : FrameSemantics} where
              TraceWF (proj₁ (exec-abstract i s alloc)) (proj₂ (exec-abstract i s alloc)) rest →
              TraceWF s alloc (i ∷ rest)
 
+  -- Per-instruction halt preservation under InstrWF.
+  -- For unconditional instructions InstrWF = ⊤ and the proof falls back
+  -- on the existing exec-abstract-preserves-halted with the appropriate iph.
+  -- For conditional ones the InstrWF witness rules out the halt branch.
+  exec-abstract-preserves-halted-WF : ∀ (i : AbstractInstr) (s : LocState FS) (alloc : AllocState {FS}) →
+    halted s ≡ false →
+    InstrWF s alloc i →
+    halted (proj₁ (exec-abstract i s alloc)) ≡ false
+  exec-abstract-preserves-halted-WF mov-to-output           s alloc h-eq _ = h-eq
+  exec-abstract-preserves-halted-WF mov-input2-to-output    s alloc h-eq _ = h-eq
+  exec-abstract-preserves-halted-WF mov-to-input            s alloc h-eq _ = h-eq
+  exec-abstract-preserves-halted-WF mov-output-to-input2    s alloc h-eq _ = h-eq
+  exec-abstract-preserves-halted-WF (store-at-slot slot)    s alloc h-eq _ =
+    exec-abstract-preserves-halted (store-at-slot slot) s alloc h-eq iph-store-at-slot
+  -- store-indirect: InstrWF carries `sv-as-loc Input1 ≡ just loc`.
+  -- Case-split via the with-block of exec-abstract.
+  exec-abstract-preserves-halted-WF store-indirect          s alloc h-eq (loc , rdi-eq)
+    with sv-as-loc (readReg (regs s) Input1) | rdi-eq
+  ... | .(just loc) | refl = trans (writeLoc-halted s loc (readReg (regs s) Output)) h-eq
+  exec-abstract-preserves-halted-WF store-indirect-suc      s alloc h-eq (loc , rdi-eq)
+    with sv-as-loc (readReg (regs s) Input1) | rdi-eq
+  ... | .(just loc) | refl = trans (writeLoc-halted s (sucLoc loc) (readReg (regs s) Output)) h-eq
+  exec-abstract-preserves-halted-WF (lea-slot _)            s alloc h-eq _ = h-eq
+  exec-abstract-preserves-halted-WF (instr-alloc-stack _)   s alloc h-eq _ = h-eq
+  exec-abstract-preserves-halted-WF (instr-dealloc-stack _) s alloc h-eq _ = h-eq
+  exec-abstract-preserves-halted-WF (instr-reclaim-to _)    s alloc h-eq _ = h-eq
+  exec-abstract-preserves-halted-WF (instr-push-frame _)    s alloc h-eq _ = h-eq
+  exec-abstract-preserves-halted-WF instr-pop-frame         s alloc h-eq _ = h-eq
+  exec-abstract-preserves-halted-WF instr-call-closure      s alloc h-eq _ = h-eq
+  -- load-indirect: InstrWF carries (loc , sv-as-loc Input1 ≡ just loc , v , readLoc s loc ≡ just v).
+  exec-abstract-preserves-halted-WF load-indirect           s alloc h-eq (loc , rdi-eq , v , read-eq)
+    with sv-as-loc (readReg (regs s) Input1) | rdi-eq
+  ... | .(just loc) | refl
+    with readLoc s loc | read-eq
+  ... | .(just v) | refl = h-eq
+  exec-abstract-preserves-halted-WF load-indirect-suc       s alloc h-eq (loc , rdi-eq , v , read-eq)
+    with sv-as-loc (readReg (regs s) Input1) | rdi-eq
+  ... | .(just loc) | refl
+    with readLoc s (sucLoc loc) | read-eq
+  ... | .(just v) | refl = h-eq
+  -- load-from-slot: requires the slot read succeeds.
+  exec-abstract-preserves-halted-WF (load-from-slot slot)   s alloc h-eq (v , read-eq)
+    with readLoc s (AtStack (current-frame alloc) slot) | read-eq
+  ... | .(just v) | refl = h-eq
+  -- restore-input: same shape as load-from-slot.
+  exec-abstract-preserves-halted-WF (restore-input slot)    s alloc h-eq (v , read-eq)
+    with readLoc s (AtStack (current-frame alloc) slot) | read-eq
+  ... | .(just v) | refl = h-eq
+  exec-abstract-preserves-halted-WF (worklist-init _)       s alloc h-eq _ = h-eq
+  exec-abstract-preserves-halted-WF (worklist-push slot)    s alloc h-eq _ =
+    exec-abstract-preserves-halted (worklist-push slot) s alloc h-eq iph-worklist-push
+  -- worklist-pop has the same body as load-from-slot.
+  exec-abstract-preserves-halted-WF (worklist-pop slot)     s alloc h-eq (v , read-eq)
+    with readLoc s (AtStack (current-frame alloc) slot) | read-eq
+  ... | .(just v) | refl = h-eq
+  exec-abstract-preserves-halted-WF (worklist-check _)      s alloc h-eq _ = h-eq
+  exec-abstract-preserves-halted-WF instr-save-closure-reg  s alloc h-eq _ = h-eq
+  -- instr-sigop and instr-load-const / instr-load-code-addr / instr-case-on-tag
+  -- aren't currently named in InstrWF; fall back on ⊤. SigOp may halt
+  -- per its own postulate so InstrWF = ⊤ would be unsound — leave it
+  -- for the SigOp-aware lift in 0.13.3 Phase c.
+  exec-abstract-preserves-halted-WF (instr-sigop _)         s alloc h-eq _ = !!
+  exec-abstract-preserves-halted-WF (instr-load-const _ _)  s alloc h-eq _ = h-eq
+  exec-abstract-preserves-halted-WF (instr-load-code-addr _) s alloc h-eq _ = h-eq
+  exec-abstract-preserves-halted-WF (instr-case-on-tag _ _) s alloc h-eq _ = !!
+
+  -- Universal trace-level halt preservation under TraceWF.
+  exec-trace-preserves-halted-WF : ∀ (trace : AbstractTrace) (s : LocState FS) (alloc : AllocState {FS}) →
+    halted s ≡ false →
+    TraceWF s alloc trace →
+    halted (proj₁ (exec-trace trace s alloc)) ≡ false
+  exec-trace-preserves-halted-WF [] s alloc h-eq _ = h-eq
+  exec-trace-preserves-halted-WF (i ∷ rest) s alloc h-eq (twf-∷ iwf twf)
+    rewrite h-eq =
+    let s'     = proj₁ (exec-abstract i s alloc)
+        alloc' = proj₂ (exec-abstract i s alloc)
+        h-step = exec-abstract-preserves-halted-WF i s alloc h-eq iwf
+    in exec-trace-preserves-halted-WF rest s' alloc' h-step twf
+
+  -- Append preserves TraceWF (state-threaded composition).
+  -- Requires `halted s ≡ false` so `exec-trace (t₁ ++ t₂)` can be
+  -- decomposed via the non-short-circuit path of `exec-trace`.
+  -- Consumers always have this from their not-halted invariants.
+  twf-++ : ∀ {t₁ t₂ s alloc} →
+           halted s ≡ false →
+           TraceWF s alloc t₁ →
+           TraceWF (proj₁ (exec-trace t₁ s alloc)) (proj₂ (exec-trace t₁ s alloc)) t₂ →
+           TraceWF s alloc (t₁ ++ t₂)
+  twf-++ {[]}     {t₂} {s} {alloc} h-eq twf-[]               twf₂ = twf₂
+  twf-++ {i ∷ rest} {t₂} {s} {alloc} h-eq (twf-∷ iwf twf₁) twf₂
+    rewrite h-eq =
+    -- After `rewrite h-eq`, exec-trace (i ∷ rest) s alloc reduces to
+    -- exec-trace rest (after i) (after i), so `twf₂` already has the
+    -- state we need. Recurse, using the post-i `halted` derived from
+    -- exec-abstract-preserves-halted-WF.
+    twf-∷ iwf (twf-++ (exec-abstract-preserves-halted-WF i s alloc h-eq iwf) twf₁ twf₂)
+
   ------------------------------------------------------------------------
   -- (H) WRITE-THEN-PRESERVE PATTERN
   --
