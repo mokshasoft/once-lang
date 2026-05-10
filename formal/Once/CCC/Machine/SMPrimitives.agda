@@ -1773,14 +1773,21 @@ module TracePrimitives {FS : FrameSemantics} where
 
   -- Instruction preserves halted (state-independent instructions)
   -- These instructions ALWAYS preserve halted=false, regardless of state
+  -- Plan 0.13.3 Phase c: dropped iph-load-from-slot, iph-load-indirect,
+  -- iph-load-indirect-suc, iph-restore-input, iph-worklist-pop,
+  -- iph-store-indirect, iph-store-indirect-suc. These were unsound:
+  -- they asserted unconditional halt-preservation for instructions
+  -- with a real runtime halt path (non-pointer in Input1 / missing
+  -- memory cell). The corresponding `*-preserves-halted = !!`
+  -- postulates also went. Halt preservation for these instructions
+  -- now lives in `exec-abstract-preserves-halted-WF` under a state-aware
+  -- `InstrWF` precondition (Phase b above).
   data InstrPreservesHalted : AbstractInstr → Set where
     iph-mov-to-output         : InstrPreservesHalted mov-to-output
     iph-mov-input2-to-output  : InstrPreservesHalted mov-input2-to-output
     iph-mov-to-input          : InstrPreservesHalted mov-to-input
     iph-mov-output-to-input2  : InstrPreservesHalted mov-output-to-input2
     iph-store-at-slot      : ∀ {slot} → InstrPreservesHalted (store-at-slot slot)
-    iph-store-indirect     : InstrPreservesHalted store-indirect
-    iph-store-indirect-suc : InstrPreservesHalted store-indirect-suc
     iph-lea-slot           : ∀ {slot} → InstrPreservesHalted (lea-slot slot)
     iph-alloc-stack        : ∀ {n} → InstrPreservesHalted (instr-alloc-stack n)
     iph-dealloc-stack      : ∀ {n} → InstrPreservesHalted (instr-dealloc-stack n)
@@ -1788,50 +1795,16 @@ module TracePrimitives {FS : FrameSemantics} where
     iph-push-frame         : ∀ {cap} → InstrPreservesHalted (instr-push-frame cap)
     iph-pop-frame          : InstrPreservesHalted instr-pop-frame
     iph-call-closure       : InstrPreservesHalted instr-call-closure
-    -- Load instructions: these can fail if the read returns nothing.
-    -- However, our IR compilation ensures loads are only used when the slot/location is valid.
-    -- We include them in InstrPreservesHalted for compositional proofs.
-    iph-load-from-slot     : ∀ {slot} → InstrPreservesHalted (load-from-slot slot)
-    iph-load-indirect      : InstrPreservesHalted load-indirect
-    iph-load-indirect-suc  : InstrPreservesHalted load-indirect-suc
-    iph-restore-input      : ∀ {slot} → InstrPreservesHalted (restore-input slot)
-    -- OCP-0003: Worklist instructions preserve halted
-    -- worklist-init and worklist-check are no-ops
-    -- worklist-push is a store (always preserves)
-    -- worklist-pop is a load (may fail, but IR compilation ensures validity)
+    -- OCP-0003: Worklist instructions
     iph-worklist-init      : ∀ {slot} → InstrPreservesHalted (worklist-init slot)
     iph-worklist-push      : ∀ {slot} → InstrPreservesHalted (worklist-push slot)
-    iph-worklist-pop       : ∀ {slot} → InstrPreservesHalted (worklist-pop slot)
     iph-worklist-check     : ∀ {slot} → InstrPreservesHalted (worklist-check slot)
     -- Plan 0.2.4.2 Phase D: closure-reg save (no-op at the abstract level)
     iph-instr-save-closure-reg : InstrPreservesHalted instr-save-closure-reg
 
-  -- Load instructions: these cases require the read to succeed.
-  -- Our IR compilation ensures loads are only executed when the slot/location is valid,
-  -- so the read succeeds and halted is preserved.
-  -- These require state-dependent reasoning about slot validity.
-  -- Sound because IR compilation guarantees loads are from valid locations.
-  load-from-slot-preserves-halted : ∀ (slot : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
-    halted s ≡ false →
-    halted (proj₁ (exec-abstract (load-from-slot slot) s alloc)) ≡ false
-  load-from-slot-preserves-halted = !!
-
-  load-indirect-preserves-halted : ∀ (s : LocState FS) (alloc : AllocState {FS}) →
-    halted s ≡ false →
-    halted (proj₁ (exec-abstract load-indirect s alloc)) ≡ false
-  load-indirect-preserves-halted = !!
-
-  load-indirect-suc-preserves-halted : ∀ (s : LocState FS) (alloc : AllocState {FS}) →
-    halted s ≡ false →
-    halted (proj₁ (exec-abstract load-indirect-suc s alloc)) ≡ false
-  load-indirect-suc-preserves-halted = !!
-
-  restore-input-preserves-halted : ∀ (slot : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
-    halted s ≡ false →
-    halted (proj₁ (exec-abstract (restore-input slot) s alloc)) ≡ false
-  restore-input-preserves-halted = !!
-
-  -- exec-abstract preserves halted=false when InstrPreservesHalted holds
+  -- exec-abstract preserves halted=false when InstrPreservesHalted holds.
+  -- Plan 0.13.3: this only handles the unconditional preservers; the
+  -- conditional ones moved to `exec-abstract-preserves-halted-WF`.
   exec-abstract-preserves-halted : ∀ (i : AbstractInstr) (s : LocState FS) (alloc : AllocState {FS}) →
     halted s ≡ false →
     InstrPreservesHalted i →
@@ -1842,26 +1815,6 @@ module TracePrimitives {FS : FrameSemantics} where
   exec-abstract-preserves-halted mov-output-to-input2 s alloc h-eq _ = h-eq
   exec-abstract-preserves-halted (store-at-slot slot) s alloc h-eq _ =
     trans (writeLoc-halted s (AtStack (current-frame alloc) slot) (readReg (regs s) Output)) h-eq
-  -- Plan 0.13.2: store-indirect halts when Input1 isn't a pointer.
-  -- iph-store-indirect is now over-strong — proof requires that
-  -- Input1 is a pointer. Case-split: when sv-as-loc succeeds, we
-  -- get the writeLoc-halted-preservation; when it fails, the
-  -- abstract step halts (so the lemma's conclusion fails). We
-  -- accept this by case-splitting and using h-eq for the success
-  -- branch; the failure branch is unreachable in well-typed
-  -- traces. Encoded by absurd elim using the iph constructor
-  -- carrying a runtime witness.
-  -- Plan 0.13.3: iph-store-indirect / iph-store-indirect-suc remain
-  -- here for now (removed in Phase c). The nothing branch is unsound;
-  -- discharge with !! pending the constructor's removal.
-  exec-abstract-preserves-halted store-indirect s alloc h-eq _
-    with sv-as-loc (readReg (regs s) Input1)
-  ... | just loc = trans (writeLoc-halted s loc (readReg (regs s) Output)) h-eq
-  ... | nothing  = !!
-  exec-abstract-preserves-halted store-indirect-suc s alloc h-eq _
-    with sv-as-loc (readReg (regs s) Input1)
-  ... | just loc = trans (writeLoc-halted s (sucLoc loc) (readReg (regs s) Output)) h-eq
-  ... | nothing  = !!
   exec-abstract-preserves-halted (lea-slot slot) s alloc h-eq _ = h-eq
   exec-abstract-preserves-halted (instr-alloc-stack n) s alloc h-eq _ = h-eq
   exec-abstract-preserves-halted (instr-dealloc-stack n) s alloc h-eq _ = h-eq
@@ -1869,20 +1822,10 @@ module TracePrimitives {FS : FrameSemantics} where
   exec-abstract-preserves-halted (instr-push-frame cap) s alloc h-eq _ = h-eq
   exec-abstract-preserves-halted instr-pop-frame s alloc h-eq _ = h-eq
   exec-abstract-preserves-halted instr-call-closure s alloc h-eq _ = h-eq
-  exec-abstract-preserves-halted (load-from-slot slot) s alloc h-eq iph-load-from-slot =
-    load-from-slot-preserves-halted slot s alloc h-eq
-  exec-abstract-preserves-halted load-indirect s alloc h-eq iph-load-indirect =
-    load-indirect-preserves-halted s alloc h-eq
-  exec-abstract-preserves-halted load-indirect-suc s alloc h-eq iph-load-indirect-suc =
-    load-indirect-suc-preserves-halted s alloc h-eq
-  exec-abstract-preserves-halted (restore-input slot) s alloc h-eq iph-restore-input =
-    restore-input-preserves-halted slot s alloc h-eq
-  -- OCP-0003: Worklist instructions
+  -- OCP-0003: Worklist instructions (the unconditional ones)
   exec-abstract-preserves-halted (worklist-init slot) s alloc h-eq _ = h-eq
   exec-abstract-preserves-halted (worklist-push slot) s alloc h-eq _ =
     trans (writeLoc-halted s (AtStack (current-frame alloc) slot) (readReg (regs s) Output)) h-eq
-  exec-abstract-preserves-halted (worklist-pop slot) s alloc h-eq iph-worklist-pop =
-    load-from-slot-preserves-halted slot s alloc h-eq  -- same as load-from-slot
   exec-abstract-preserves-halted (worklist-check slot) s alloc h-eq _ = h-eq
   -- Plan 0.2.4.2 Phase D: closure-reg save is a no-op at the abstract level
   exec-abstract-preserves-halted instr-save-closure-reg s alloc h-eq _ = h-eq
@@ -3386,15 +3329,7 @@ module RecSchemeSemantics {FS : FrameSemantics} where
     halted s ≡ false →
     proj₂ (exec-trace (mov-to-output ∷ store-at-slot save-slot ∷ load-indirect ∷ mov-to-input ∷ []) s alloc) ≡ alloc
   prod-left-setup-alloc-helper save-slot s alloc not-halted =
-    -- All 4 instructions preserve alloc, and exec-trace-preserves-halted ensures we don't halt early.
-    -- We use TracePreservesHaltedP to ensure halted stays false throughout.
-    let
-      tph : TracePreservesHaltedP (mov-to-output ∷ store-at-slot save-slot ∷ load-indirect ∷ mov-to-input ∷ [])
-      tph = tph-∷ iph-mov-to-output (tph-∷ iph-store-at-slot (tph-∷ iph-load-indirect (tph-∷ iph-mov-to-input tph-[])))
-      halted-preserved = exec-trace-preserves-halted
-                           (mov-to-output ∷ store-at-slot save-slot ∷ load-indirect ∷ mov-to-input ∷ [])
-                           s alloc not-halted tph
-    in exec-trace-preserves-alloc-4 save-slot s alloc not-halted
+    exec-trace-preserves-alloc-4 save-slot s alloc not-halted
     where
       -- Helper: step through 4 instructions showing alloc is preserved
       exec-trace-preserves-alloc-4 : ∀ (slot : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
