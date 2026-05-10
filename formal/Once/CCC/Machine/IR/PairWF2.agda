@@ -84,7 +84,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
     ValidAtWF mIn alloc x input-loc s →
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
-    readReg (regs s) Input1 ≡ input-loc →
+    readReg (regs s) Input1 ≡ SV-Ptr input-loc →
     IRResultAWF m (⟨ f , g ⟩ m) x s alloc
 
   run-pair {A} {B} {C} mIn f g m rec-wf x input-loc s alloc
@@ -194,7 +194,8 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
       record FstFacts : Set where
         field
           fst-loc-f       : ValueLocation FS
-          fst-rax-f       : readReg (regs s₁) Output ≡ fst-loc-f
+          -- Plan 0.13.2: Output now stores SV-Ptr.
+          fst-rax-f       : readReg (regs s₁) Output ≡ SV-Ptr fst-loc-f
           fst-valid-f     : ValidAtWF mF (IRResultAWF.final-alloc result-f) (eval f x) fst-loc-f s₁
           fst-before-f    : BeforeFrontier (IRResultAWF.final-alloc result-f) fst-loc-f
           fst-rec-valid-f : ValidAtWF mF (record alloc-after-pair-slots
@@ -215,8 +216,8 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
               ; fst-rec-before-f = rbefore
               }
       ... | unit-result = record
-              { fst-loc-f        = readReg (regs s₁) Output
-              ; fst-rax-f        = refl
+              { fst-loc-f        = unit-fst-loc
+              ; fst-rax-f        = unit-fst-rax
               ; fst-valid-f      = valid-unit-wf
               ; fst-before-f     = unit-fst-before
               ; fst-rec-valid-f  = valid-unit-wf
@@ -224,11 +225,14 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
               }
         where
           postulate
-            unit-fst-before : BeforeFrontier (IRResultAWF.final-alloc result-f) (readReg (regs s₁) Output)
+            -- Unit values have no observable location; postulate a witness loc.
+            unit-fst-loc : ValueLocation FS
+            unit-fst-rax : readReg (regs s₁) Output ≡ SV-Ptr unit-fst-loc
+            unit-fst-before : BeforeFrontier (IRResultAWF.final-alloc result-f) unit-fst-loc
             unit-fst-rec-before : BeforeFrontier
               (record alloc-after-pair-slots
                 { next-slot = next-slot (IRResultAWF.final-alloc result-f) })
-              (readReg (regs s₁) Output)
+              unit-fst-loc
 
       open FstFacts f-facts using ()
         renaming (fst-loc-f to fst-loc;
@@ -276,9 +280,9 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
                                       ≤-refl input-valid-wf-s1
 
       -- Restore input register for g
-      s₁' = record s₁ { regs = writeReg (regs s₁) Input1 input-loc }
-      rdi-eq₁ : readReg (regs s₁') Input1 ≡ input-loc
-      rdi-eq₁ = writeReg-same (regs s₁) Input1 input-loc
+      s₁' = record s₁ { regs = writeReg (regs s₁) Input1 (SV-Ptr input-loc) }
+      rdi-eq₁ : readReg (regs s₁') Input1 ≡ SV-Ptr input-loc
+      rdi-eq₁ = writeReg-same (regs s₁) Input1 (SV-Ptr input-loc)
 
       input-valid-wf₁' : ValidAtWF mIn alloc-after-f-reclaim x input-loc s₁'
       input-valid-wf₁' = validityWF-mem-only x input-loc s₁ s₁' refl refl input-valid-wf-at-reclaim-f
@@ -307,7 +311,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
       record SndFacts : Set where
         field
           snd-loc-g       : ValueLocation FS
-          snd-rax-g       : readReg (regs s₂) Output ≡ snd-loc-g
+          snd-rax-g       : readReg (regs s₂) Output ≡ SV-Ptr snd-loc-g
           snd-valid-g     : ValidAtWF mG (IRResultAWF.final-alloc result-g) (eval g x) snd-loc-g s₂
           snd-before-g    : BeforeFrontier (IRResultAWF.final-alloc result-g) snd-loc-g
           snd-rec-valid-g : ValidAtWF mG (record alloc-after-f-reclaim
@@ -328,8 +332,8 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
               ; snd-rec-before-g = rbefore
               }
       ... | unit-result = record
-              { snd-loc-g        = readReg (regs s₂) Output
-              ; snd-rax-g        = refl
+              { snd-loc-g        = unit-snd-loc
+              ; snd-rax-g        = unit-snd-rax
               ; snd-valid-g      = valid-unit-wf
               ; snd-before-g     = unit-snd-before
               ; snd-rec-valid-g  = valid-unit-wf
@@ -337,11 +341,13 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
               }
         where
           postulate
-            unit-snd-before : BeforeFrontier (IRResultAWF.final-alloc result-g) (readReg (regs s₂) Output)
+            unit-snd-loc : ValueLocation FS
+            unit-snd-rax : readReg (regs s₂) Output ≡ SV-Ptr unit-snd-loc
+            unit-snd-before : BeforeFrontier (IRResultAWF.final-alloc result-g) unit-snd-loc
             unit-snd-rec-before : BeforeFrontier
               (record alloc-after-f-reclaim
                 { next-slot = next-slot (IRResultAWF.final-alloc result-g) })
-              (readReg (regs s₂) Output)
+              unit-snd-loc
 
       open SndFacts g-facts using ()
         renaming (snd-loc-g to snd-loc;
@@ -452,7 +458,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
 
       -- Note: f-tpc removed in Phase 3
 
-      f-tph : TracePreservesHaltedP f-trace
+      f-tph : TraceWF s alloc-after-pair-slots f-trace
       f-tph = IRResultAWF.trace-preserves-halted result-f
 
       g-twa : TraceWritesAbove reclaim-f g-trace
@@ -466,7 +472,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
 
       -- Note: g-tpc removed in Phase 3
 
-      g-tph : TracePreservesHaltedP g-trace
+      g-tph : TraceWF s₁' alloc-after-f-reclaim g-trace
       g-tph = IRResultAWF.trace-preserves-halted result-g
 
       ------------------------------------------------------------------------
