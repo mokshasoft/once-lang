@@ -112,7 +112,8 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
       ; trace-slot-reads-below = pair-trace-slot-reads-below
       -- Note: trace-preserves-capacity removed in Phase 3
       ; trace-no-heap-writes = pair-trace-no-heap-writes
-      ; trace-preserves-halted = pair-trace-preserves-halted
+      ; trace-twf = pair-trace-twf
+      ; trace-preserves-halted = exec-trace-preserves-halted-WF pair-trace
       ; scratch-budget = req-pair-scratch
       ; scratch-bounded = pair-scratch-bounded
       }
@@ -543,7 +544,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Note: f-tpc removed in Phase 3
 
       f-tph : TraceWF s-after-setup alloc-after-pair-slots f-trace
-      f-tph = IRResultAWF.trace-preserves-halted result-f
+      f-tph = IRResultAWF.trace-twf result-f
 
       g-twa : TraceWritesAbove reclaim-f g-trace
       g-twa = IRResultAWF.trace-writes-above result-g
@@ -557,7 +558,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Note: g-tpc removed in Phase 3
 
       g-tph : TraceWF s₁' alloc-after-f-reclaim g-trace
-      g-tph = IRResultAWF.trace-preserves-halted result-g
+      g-tph = IRResultAWF.trace-twf result-g
 
       ------------------------------------------------------------------------
       -- Halted preservation and trace equality (Plan 0.13.3 Phase d).
@@ -881,8 +882,8 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
       ------------------------------------------------------------------------
       -- Trace preserves halted
       ------------------------------------------------------------------------
-      pair-trace-preserves-halted : TraceWF s alloc pair-trace
-      pair-trace-preserves-halted =
+      pair-trace-twf : TraceWF s alloc pair-trace
+      pair-trace-twf =
         twf-++ not-halted setup-twf
           (twf-++ not-halted-after-setup f-tph-runtime
             (twf-++ not-halted-after-f middle-twf
@@ -1106,7 +1107,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Not halted after trace
       ------------------------------------------------------------------------
       not-halted-final : halted s-final ≡ false
-      not-halted-final = exec-trace-preserves-halted-WF pair-trace s alloc not-halted pair-trace-preserves-halted
+      not-halted-final = exec-trace-preserves-halted-WF pair-trace s alloc not-halted pair-trace-twf
 
       ------------------------------------------------------------------------
       -- fst-ptr and snd-ptr (memory holds correct values)

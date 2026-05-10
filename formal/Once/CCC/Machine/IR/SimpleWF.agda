@@ -96,7 +96,8 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; trace-writes-below = tt
       ; trace-slot-reads-below = tt
       ; trace-no-heap-writes = tt
-      ; trace-preserves-halted = twf-∷ tt twf-[]
+      ; trace-twf = twf-∷ tt twf-[]
+      ; trace-preserves-halted = exec-trace-preserves-halted-WF trace
       ; scratch-budget = 0
       ; scratch-bounded = m≤m+n (next-slot alloc) 0
       }
@@ -163,8 +164,9 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; trace-writes-below = tt
       ; trace-slot-reads-below = tt
       ; trace-no-heap-writes = tt
-      ; trace-preserves-halted =
+      ; trace-twf =
           twf-∷ (input-loc , sv-as-loc-eq , SV-Ptr fst-loc , fst-ptr-eq) twf-[]
+      ; trace-preserves-halted = exec-trace-preserves-halted-WF trace
       ; scratch-budget = 0
       ; scratch-bounded = m≤m+n (next-slot alloc) 0
       }
@@ -255,8 +257,9 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; trace-writes-below = tt
       ; trace-slot-reads-below = tt
       ; trace-no-heap-writes = tt
-      ; trace-preserves-halted =
+      ; trace-twf =
           twf-∷ (input-loc , sv-as-loc-eq , SV-Ptr snd-loc , snd-ptr-eq) twf-[]
+      ; trace-preserves-halted = exec-trace-preserves-halted-WF trace
       ; scratch-budget = 0
       ; scratch-bounded = m≤m+n (next-slot alloc) 0
       }
@@ -346,7 +349,8 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; trace-writes-below = tt
       ; trace-slot-reads-below = tt
       ; trace-no-heap-writes = tt
-      ; trace-preserves-halted = twf-[]
+      ; trace-twf = twf-[]
+      ; trace-preserves-halted = exec-trace-preserves-halted-WF []
       ; scratch-budget = 0
       ; scratch-bounded = m≤m+n (next-slot alloc) 0
       }
@@ -394,7 +398,8 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; trace-writes-below = tt
       ; trace-slot-reads-below = tt
       ; trace-no-heap-writes = tt
-      ; trace-preserves-halted = twf-∷ tt twf-[]
+      ; trace-twf = twf-∷ tt twf-[]
+      ; trace-preserves-halted = exec-trace-preserves-halted-WF trace
       ; scratch-budget = 0
       ; scratch-bounded = m≤m+n (next-slot alloc) 0
       }
@@ -455,7 +460,8 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; trace-writes-below = tt
       ; trace-slot-reads-below = tt
       ; trace-no-heap-writes = tt
-      ; trace-preserves-halted = twf-∷ tt twf-[]
+      ; trace-twf = twf-∷ tt twf-[]
+      ; trace-preserves-halted = exec-trace-preserves-halted-WF trace
       ; scratch-budget = 0
       ; scratch-bounded = m≤m+n (next-slot alloc) 0
       }

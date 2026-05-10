@@ -485,13 +485,23 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
         -- State-aware chain of per-instruction halt preconditions
         -- (`InstrWF` witnesses for the conditional ones — load/store
         -- indirect, load-from-slot, restore-input, worklist-pop —
-        -- and ⊤ for unconditional ones). Halt preservation is derived
-        -- via `exec-trace-preserves-halted-WF`. Replaces the old
-        -- `TracePreservesHaltedP trace`, which masked unsoundness in
-        -- the iph-load-* postulates. Consumers at fresh states (e.g.
-        -- compose-frontier-stable) reconstruct TraceWF at their state
-        -- from local validity hypotheses.
-        trace-preserves-halted : TraceWF s alloc trace
+        -- and ⊤ for unconditional ones). Used internally by parent
+        -- IRs (pair, apply, compose) to chain TraceWFs in the
+        -- construction-state composition.
+        trace-twf : TraceWF s alloc trace
+        -- Plan 0.13.3 option U: universal-over-state halt-preservation.
+        -- "For any state where the IR-compilation invariant holds at
+        -- trace entry (encoded as TraceWF s' alloc' trace), running
+        -- this trace preserves halt." Consumers at fresh states
+        -- (compose-frontier-stable, pair's g-tph-runtime) provide
+        -- their own TraceWF at the state they care about and read
+        -- back halt-preservation. Implementation is trivially
+        -- `exec-trace-preserves-halted-WF` applied to this IR's trace.
+        trace-preserves-halted :
+          ∀ (s' : LocState FS) (alloc' : AllocState {FS}) →
+          halted s' ≡ false →
+          TraceWF s' alloc' trace →
+          halted (proj₁ (exec-trace trace s' alloc')) ≡ false
 
     --------------------------------------------------------------------
     -- BodyCorrect: Pre-computed body execution proof
