@@ -2022,6 +2022,148 @@ module TracePrimitives {FS : FrameSemantics} where
     -- exec-abstract-preserves-halted-WF.
     twf-∷ iwf (twf-++ (exec-abstract-preserves-halted-WF i s alloc h-eq iwf) twf₁ twf₂)
 
+  -- (G'') Alloc-frame transfer for TraceWF.
+  -- Plan 0.13.3: the pair / apply / rec patterns call rec-wf at a
+  -- compile-time bookkeeping `alloc-after-...-slots` (advanced
+  -- next-slot). At runtime, pair-trace runs f-trace with the
+  -- original `alloc`. Since InstrWF references only `current-frame
+  -- alloc` (never `next-slot alloc`), and every instruction
+  -- preserves current-frame, TraceWF transfers across allocs that
+  -- share a current-frame.
+
+  -- Per-instruction: InstrWF only inspects `current-frame alloc` for
+  -- the slot-using cases.
+  InstrWF-frame-eq : ∀ (i : AbstractInstr) (s : LocState FS)
+    (alloc alloc' : AllocState {FS}) →
+    current-frame alloc ≡ current-frame alloc' →
+    InstrWF s alloc i → InstrWF s alloc' i
+  InstrWF-frame-eq mov-to-output           s _ _ _  iwf = iwf
+  InstrWF-frame-eq mov-input2-to-output    s _ _ _  iwf = iwf
+  InstrWF-frame-eq mov-to-input            s _ _ _  iwf = iwf
+  InstrWF-frame-eq mov-output-to-input2    s _ _ _  iwf = iwf
+  InstrWF-frame-eq (store-at-slot _)       s _ _ _  iwf = iwf
+  InstrWF-frame-eq store-indirect          s _ _ _  iwf = iwf
+  InstrWF-frame-eq store-indirect-suc      s _ _ _  iwf = iwf
+  InstrWF-frame-eq (lea-slot _)            s _ _ _  iwf = iwf
+  InstrWF-frame-eq (instr-alloc-stack _)   s _ _ _  iwf = iwf
+  InstrWF-frame-eq (instr-dealloc-stack _) s _ _ _  iwf = iwf
+  InstrWF-frame-eq (instr-reclaim-to _)    s _ _ _  iwf = iwf
+  InstrWF-frame-eq (instr-push-frame _)    s _ _ _  iwf = iwf
+  InstrWF-frame-eq instr-pop-frame         s _ _ _  iwf = iwf
+  InstrWF-frame-eq instr-call-closure      s _ _ _  iwf = iwf
+  InstrWF-frame-eq load-indirect           s _ _ _  iwf = iwf
+  InstrWF-frame-eq load-indirect-suc       s _ _ _  iwf = iwf
+  -- The slot-using cases: rewrite via the frame equality.
+  InstrWF-frame-eq (load-from-slot slot)   s alloc alloc' fe (v , read-eq) =
+    v , subst (λ f → readLoc s (AtStack f slot) ≡ just v) fe read-eq
+  InstrWF-frame-eq (restore-input slot)    s alloc alloc' fe (v , read-eq) =
+    v , subst (λ f → readLoc s (AtStack f slot) ≡ just v) fe read-eq
+  InstrWF-frame-eq (worklist-init _)       s _ _ _  iwf = iwf
+  InstrWF-frame-eq (worklist-push _)       s _ _ _  iwf = iwf
+  InstrWF-frame-eq (worklist-pop slot)     s alloc alloc' fe (v , read-eq) =
+    v , subst (λ f → readLoc s (AtStack f slot) ≡ just v) fe read-eq
+  InstrWF-frame-eq (worklist-check _)      s _ _ _  iwf = iwf
+  InstrWF-frame-eq instr-save-closure-reg  s _ _ _  iwf = iwf
+  InstrWF-frame-eq (instr-sigop _)         s _ _ _  iwf = iwf
+  InstrWF-frame-eq (instr-load-const _ _)  s _ _ _  iwf = iwf
+  InstrWF-frame-eq (instr-load-code-addr _) s _ _ _ iwf = iwf
+  InstrWF-frame-eq (instr-case-on-tag _ _) s _ _ _  iwf = iwf
+
+  -- exec-abstract's *state* output (proj₁) depends only on (s,
+  -- current-frame alloc, instr) — never on next-slot. (instr-alloc-stack
+  -- modifies stackSlot via incrStackSlot which only reads the
+  -- register, not alloc.) The *alloc* output (proj₂) may differ in
+  -- next-slot between alloc and alloc', but current-frame is
+  -- preserved by every instruction.
+  exec-abstract-state-frame-eq : ∀ (i : AbstractInstr) (s : LocState FS)
+    (alloc alloc' : AllocState {FS}) →
+    current-frame alloc ≡ current-frame alloc' →
+    proj₁ (exec-abstract i s alloc) ≡ proj₁ (exec-abstract i s alloc')
+  exec-abstract-state-frame-eq mov-to-output           s _ _ _  = refl
+  exec-abstract-state-frame-eq mov-input2-to-output    s _ _ _  = refl
+  exec-abstract-state-frame-eq mov-to-input            s _ _ _  = refl
+  exec-abstract-state-frame-eq mov-output-to-input2    s _ _ _  = refl
+  exec-abstract-state-frame-eq (store-at-slot slot)    s alloc alloc' fe =
+    cong (λ f → writeLoc s (AtStack f slot) (readReg (regs s) Output)) fe
+  exec-abstract-state-frame-eq store-indirect          s alloc alloc' fe
+    with sv-as-loc (readReg (regs s) Input1)
+  ... | just _  = refl
+  ... | nothing = refl
+  exec-abstract-state-frame-eq store-indirect-suc      s alloc alloc' fe
+    with sv-as-loc (readReg (regs s) Input1)
+  ... | just _  = refl
+  ... | nothing = refl
+  exec-abstract-state-frame-eq load-indirect           s alloc alloc' fe
+    with sv-as-loc (readReg (regs s) Input1)
+  ... | just l with readLoc s l
+  ...   | just _  = refl
+  ...   | nothing = refl
+  exec-abstract-state-frame-eq load-indirect           s alloc alloc' fe
+    | nothing = refl
+  exec-abstract-state-frame-eq load-indirect-suc       s alloc alloc' fe
+    with sv-as-loc (readReg (regs s) Input1)
+  ... | just l with readLoc s (sucLoc l)
+  ...   | just _  = refl
+  ...   | nothing = refl
+  exec-abstract-state-frame-eq load-indirect-suc       s alloc alloc' fe
+    | nothing = refl
+  exec-abstract-state-frame-eq (lea-slot slot)         s alloc alloc' fe =
+    cong (λ f → record s { regs = writeReg (regs s) Output (SV-Ptr (AtStack f slot)) }) fe
+  exec-abstract-state-frame-eq (instr-alloc-stack _)   s _ _ _  = refl
+  exec-abstract-state-frame-eq (instr-dealloc-stack _) s _ _ _  = refl
+  exec-abstract-state-frame-eq (instr-reclaim-to _)    s _ _ _  = refl
+  exec-abstract-state-frame-eq (instr-push-frame _)    s _ _ _  = refl
+  exec-abstract-state-frame-eq instr-pop-frame         s _ _ _  = refl
+  exec-abstract-state-frame-eq instr-call-closure      s _ _ _  = refl
+  -- For the slot-using cases: case-split on the readLoc result and
+  -- use the alloc-independence of `proj₁ ∘ exec-load-from-slot-with-value`
+  -- (which discards alloc on the proj₁ side).
+  exec-abstract-state-frame-eq (load-from-slot slot)   s alloc alloc' fe
+    rewrite (sym fe)
+    with readLoc s (AtStack (current-frame alloc) slot)
+  ... | just _  = refl
+  ... | nothing = refl
+  exec-abstract-state-frame-eq (restore-input slot)    s alloc alloc' fe
+    rewrite (sym fe)
+    with readLoc s (AtStack (current-frame alloc) slot)
+  ... | just _  = refl
+  ... | nothing = refl
+  exec-abstract-state-frame-eq (worklist-init _)       s _ _ _  = refl
+  exec-abstract-state-frame-eq (worklist-push slot)    s alloc alloc' fe =
+    cong (λ f → writeLoc s (AtStack f slot) (readReg (regs s) Output)) fe
+  exec-abstract-state-frame-eq (worklist-pop slot)     s alloc alloc' fe
+    rewrite (sym fe)
+    with readLoc s (AtStack (current-frame alloc) slot)
+  ... | just _  = refl
+  ... | nothing = refl
+  exec-abstract-state-frame-eq (worklist-check _)      s _ _ _  = refl
+  exec-abstract-state-frame-eq instr-save-closure-reg  s _ _ _  = refl
+  exec-abstract-state-frame-eq (instr-sigop _)         s _ _ _  = refl
+  exec-abstract-state-frame-eq (instr-load-const _ _)  s _ _ _  = refl
+  exec-abstract-state-frame-eq (instr-load-code-addr _) s _ _ _ = refl
+  exec-abstract-state-frame-eq (instr-case-on-tag _ _) s _ _ _  = refl
+
+  -- TraceWF transfer when allocs share a current-frame.
+  TraceWF-frame-eq : ∀ {trace} {s : LocState FS} {alloc alloc' : AllocState {FS}} →
+    current-frame alloc ≡ current-frame alloc' →
+    TraceWF s alloc trace → TraceWF s alloc' trace
+  TraceWF-frame-eq fe twf-[] = twf-[]
+  TraceWF-frame-eq {i ∷ rest} {s} {alloc} {alloc'} fe (twf-∷ iwf rest-twf) =
+    twf-∷ (InstrWF-frame-eq i s alloc alloc' fe iwf)
+      (subst (λ st → TraceWF st (proj₂ (exec-abstract i s alloc')) rest)
+             (exec-abstract-state-frame-eq i s alloc alloc' fe)
+             (TraceWF-frame-eq fe-after rest-twf))
+    where
+      fe-after : current-frame (proj₂ (exec-abstract i s alloc)) ≡ current-frame (proj₂ (exec-abstract i s alloc'))
+      fe-after = trans (exec-abstract-preserves-frame i s alloc)
+                       (trans fe (sym (exec-abstract-preserves-frame i s alloc')))
+
+  -- TraceWF transfer when allocs are propositionally equal.
+  TraceWF-alloc-eq : ∀ {trace s alloc alloc'} →
+    alloc ≡ alloc' →
+    TraceWF s alloc trace → TraceWF s alloc' trace
+  TraceWF-alloc-eq refl twf = twf
+
   ------------------------------------------------------------------------
   -- (H) WRITE-THEN-PRESERVE PATTERN
   --
