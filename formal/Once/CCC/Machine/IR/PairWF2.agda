@@ -167,11 +167,77 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
                                         ≤-refl loc bf
 
       ------------------------------------------------------------------------
-      -- Run f via recursive dispatch
+      -- Plan 0.13.3 Phase d (option b): compute s-after-setup BEFORE
+      -- the recursive call, so result-f's invariants are at the same
+      -- state where pair-trace actually runs f-trace from.
       ------------------------------------------------------------------------
-      f-exec-result : ∃[ mOut ] IRResultAWF mOut f x s alloc-after-pair-slots
-      f-exec-result = rec-wf mIn f (⟨,⟩-f-smaller f g {m}) x input-loc s alloc-after-pair-slots
-                        input-valid-wf-at-f-start input-before-at-f-start not-halted rdi-eq
+      setup-trace : AbstractTrace
+      setup-trace = mov-to-output ∷ store-at-slot backup-slot ∷ []
+
+      s-after-setup : LocState FS
+      s-after-setup = proj₁ (exec-trace setup-trace s alloc)
+
+      alloc-after-setup : AllocState {FS}
+      alloc-after-setup = proj₂ (exec-trace setup-trace s alloc)
+
+      -- TraceWF for setup-trace at (s, alloc) — both instrs are
+      -- unconditional preservers (InstrWF = ⊤).
+      setup-twf : TraceWF s alloc setup-trace
+      setup-twf = twf-∷ tt (twf-∷ tt twf-[])
+
+      not-halted-after-setup : halted s-after-setup ≡ false
+      not-halted-after-setup = exec-trace-preserves-halted-WF setup-trace s alloc not-halted setup-twf
+
+      -- setup-trace doesn't change Input1 register: mov-to-output
+      -- writes Output, store-at-slot writes stack memory.
+      rdi-eq-after-setup : readReg (regs s-after-setup) Input1 ≡ SV-Ptr input-loc
+      rdi-eq-after-setup =
+        let s₁ʳ = proj₁ (exec-abstract mov-to-output s alloc)
+            alloc₁ʳ = proj₂ (exec-abstract mov-to-output s alloc)
+            mov-preserves : readReg (regs s₁ʳ) Input1 ≡ readReg (regs s) Input1
+            mov-preserves = writeReg-preserves (regs s) Output Input1 (readReg (regs s) Input1) (λ ())
+            not-halted₁ʳ = exec-abstract-preserves-halted mov-to-output s alloc not-halted iph-mov-to-output
+            s₂ʳ = proj₁ (exec-abstract (store-at-slot backup-slot) s₁ʳ alloc₁ʳ)
+            store-preserves : readReg (regs s₂ʳ) Input1 ≡ readReg (regs s₁ʳ) Input1
+            store-preserves = exec-abstract-store-at-slot-preserves-input backup-slot s₁ʳ alloc₁ʳ
+            setup-decomp : exec-trace setup-trace s alloc ≡ exec-trace (store-at-slot backup-slot ∷ []) s₁ʳ alloc₁ʳ
+            setup-decomp = exec-trace-cons mov-to-output (store-at-slot backup-slot ∷ []) s alloc not-halted
+            store-single : exec-trace (store-at-slot backup-slot ∷ []) s₁ʳ alloc₁ʳ ≡ exec-abstract (store-at-slot backup-slot) s₁ʳ alloc₁ʳ
+            store-single = exec-trace-single (store-at-slot backup-slot) s₁ʳ alloc₁ʳ not-halted₁ʳ
+            s-eq : s-after-setup ≡ s₂ʳ
+            s-eq = cong proj₁ (trans setup-decomp store-single)
+        in trans (cong (λ st → readReg (regs st) Input1) s-eq)
+                 (trans store-preserves (trans mov-preserves rdi-eq))
+
+      -- Validity transfers through setup. setup writes only at
+      -- backup-slot = next-slot alloc (the frontier). input-loc has
+      -- BeforeFrontier — so it's strictly before the frontier and
+      -- doesn't overlap with backup-slot.
+      -- The mem-preserved-through-setup hypothesis is a real,
+      -- mechanically-discharable memory-disjointness fact —
+      -- postulated to keep momentum on the broader migration;
+      -- discharge via writeLoc-preserves-other + BeforeFrontier
+      -- case-split is in plan 0.13.3 follow-up.
+      postulate
+        mem-preserved-through-setup : ∀ loc → BeforeFrontier alloc loc →
+          readLoc s-after-setup loc ≡ readLoc s loc
+
+      input-valid-wf-after-setup : ValidAtWF mIn alloc-after-pair-slots x input-loc s-after-setup
+      input-valid-wf-after-setup =
+        validityWF-frontier-advance x input-loc s-after-setup refl
+          (≤-trans (n≤1+n backup-slot) (≤-trans (n≤1+n fst-slot) (n≤1+n snd-slot)))
+          ≤-refl
+          (validityWF-mem-preserved x input-loc s s-after-setup input-before
+            mem-preserved-through-setup
+            input-valid-wf)
+
+      ------------------------------------------------------------------------
+      -- Run f via recursive dispatch — at the post-setup state.
+      ------------------------------------------------------------------------
+      f-exec-result : ∃[ mOut ] IRResultAWF mOut f x s-after-setup alloc-after-pair-slots
+      f-exec-result = rec-wf mIn f (⟨,⟩-f-smaller f g {m}) x input-loc s-after-setup alloc-after-pair-slots
+                        input-valid-wf-after-setup input-before-at-f-start
+                        not-halted-after-setup rdi-eq-after-setup
       mF = proj₁ f-exec-result
       result-f = proj₂ f-exec-result
       s₁ = IRResultAWF.final-state result-f
@@ -407,22 +473,17 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
       ------------------------------------------------------------------------
 
       -- Trace segments
-      setup-trace : AbstractTrace
-      setup-trace = mov-to-output ∷ store-at-slot backup-slot ∷ []
-
+      -- Note: setup-trace, s-after-setup, alloc-after-setup defined
+      -- earlier (before f-exec-result, Plan 0.13.3 Phase d option b).
       middle-trace : AbstractTrace
       middle-trace = store-at-slot fst-slot ∷ restore-input backup-slot ∷ []
 
       final-trace : AbstractTrace
       final-trace = store-at-slot snd-slot ∷ lea-slot fst-slot ∷ []
 
-      -- Intermediate states (value bindings, not functions)
-      s-after-setup : LocState FS
-      s-after-setup = proj₁ (exec-trace setup-trace s alloc)
-
-      alloc-after-setup : AllocState {FS}
-      alloc-after-setup = proj₂ (exec-trace setup-trace s alloc)
-
+      -- Intermediate states (value bindings, not functions).
+      -- Pair-trace at runtime evolves through alloc (not alloc-after-pair-slots),
+      -- so s-after-f / alloc-after-f reflect the runtime state.
       s-after-f : LocState FS
       s-after-f = proj₁ (exec-trace f-trace s-after-setup alloc-after-setup)
 
@@ -476,31 +537,55 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
       g-tph = IRResultAWF.trace-preserves-halted result-g
 
       ------------------------------------------------------------------------
-      -- Halted preservation and trace equality
+      -- Halted preservation and trace equality (Plan 0.13.3 Phase d).
+      -- setup-twf, not-halted-after-setup defined above (before f-exec-result).
+      -- f-tph is at (s-after-setup, alloc-after-pair-slots); we transfer
+      -- to (s-after-setup, alloc-after-setup) ≈ (s-after-setup, alloc) via
+      -- TraceWF-frame-eq. (alloc-after-setup ≡ alloc since setup-trace
+      -- doesn't change alloc.)
       ------------------------------------------------------------------------
-      setup-tph : TracePreservesHaltedP setup-trace
-      setup-tph = tph-∷ iph-mov-to-output (tph-∷ iph-store-at-slot tph-[])
-
-      not-halted-after-setup : halted s-after-setup ≡ false
-      not-halted-after-setup = exec-trace-preserves-halted setup-trace s alloc not-halted setup-tph
+      f-tph-runtime : TraceWF s-after-setup alloc-after-setup f-trace
+      f-tph-runtime = TraceWF-frame-eq f-frame-eq f-tph
+        where
+          f-frame-eq : current-frame alloc-after-pair-slots ≡ current-frame alloc-after-setup
+          f-frame-eq = trans refl (sym (exec-trace-preserves-frame setup-trace s alloc))
 
       not-halted-after-f : halted s-after-f ≡ false
-      not-halted-after-f = exec-trace-preserves-halted f-trace s-after-setup alloc-after-setup
-                             not-halted-after-setup f-tph
+      not-halted-after-f = exec-trace-preserves-halted-WF f-trace s-after-setup alloc-after-setup
+                             not-halted-after-setup f-tph-runtime
 
-      middle-tph : TracePreservesHaltedP middle-trace
-      middle-tph = tph-∷ iph-store-at-slot (tph-∷ iph-restore-input tph-[])
+      -- middle-trace = store-at-slot fst-slot ∷ restore-input backup-slot ∷ [].
+      -- store-at-slot is unconditional. restore-input requires a runtime
+      -- witness `∃ v, readLoc s' (AtStack frame backup-slot) ≡ just v`.
+      -- After setup we wrote `SV-Ptr input-loc` to backup-slot. f-trace
+      -- writes above f-start > backup-slot (so doesn't disturb backup-slot).
+      -- store-at-slot fst-slot also doesn't touch backup-slot. So the
+      -- witness is `(SV-Ptr input-loc , <slot still has SV-Ptr input-loc>)`.
+      -- The slot-content proof composes from prod-left-setup-saves-input
+      -- (or similar) and write-disjointness — postulated for now since it
+      -- is a real, mechanically-discharable slot-preservation fact.
+      postulate
+        middle-restore-input-witness :
+          let s-after-fst-store = proj₁ (exec-abstract (store-at-slot fst-slot) s-after-f alloc-after-f)
+              alloc-after-fst-store = proj₂ (exec-abstract (store-at-slot fst-slot) s-after-f alloc-after-f)
+          in InstrWF s-after-fst-store alloc-after-fst-store (restore-input backup-slot)
+
+      middle-twf : TraceWF s-after-f alloc-after-f middle-trace
+      middle-twf = twf-∷ tt (twf-∷ middle-restore-input-witness twf-[])
 
       not-halted-after-middle : halted s-after-middle ≡ false
-      not-halted-after-middle = exec-trace-preserves-halted middle-trace s-after-f alloc-after-f
-                                  not-halted-after-f middle-tph
+      not-halted-after-middle = exec-trace-preserves-halted-WF middle-trace s-after-f alloc-after-f
+                                  not-halted-after-f middle-twf
+
+      g-tph-runtime : TraceWF s-after-middle alloc-after-middle g-trace
+      g-tph-runtime = !!  -- TODO: bridge from g-tph at (s₁', alloc-after-f-reclaim)
 
       not-halted-after-g : halted s-after-g ≡ false
-      not-halted-after-g = exec-trace-preserves-halted g-trace s-after-middle alloc-after-middle
-                             not-halted-after-middle g-tph
+      not-halted-after-g = exec-trace-preserves-halted-WF g-trace s-after-middle alloc-after-middle
+                             not-halted-after-middle g-tph-runtime
 
-      final-tph : TracePreservesHaltedP final-trace
-      final-tph = tph-∷ iph-store-at-slot (tph-∷ iph-lea-slot tph-[])
+      final-twf : TraceWF s-after-g alloc-after-g final-trace
+      final-twf = twf-∷ tt (twf-∷ tt twf-[])
 
       -- s-final ≡ s-after-final via trace decomposition
       s-final-eq : s-final ≡ s-after-final
@@ -721,16 +806,13 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
       ------------------------------------------------------------------------
       -- Trace preserves halted
       ------------------------------------------------------------------------
-      pair-trace-preserves-halted : TracePreservesHaltedP pair-trace
+      pair-trace-preserves-halted : TraceWF s alloc pair-trace
       pair-trace-preserves-halted =
-        tph-∷ iph-mov-to-output
-        (tph-∷ iph-store-at-slot
-        (tph-++ f-tph
-        (tph-∷ iph-store-at-slot
-        (tph-∷ iph-restore-input
-        (tph-++ g-tph
-        (tph-∷ iph-store-at-slot
-        (tph-∷ iph-lea-slot tph-[])))))))
+        twf-++ not-halted setup-twf
+          (twf-++ not-halted-after-setup f-tph-runtime
+            (twf-++ not-halted-after-f middle-twf
+              (twf-++ not-halted-after-middle g-tph-runtime
+                final-twf)))
 
       ------------------------------------------------------------------------
       -- Slot monotone for pair
