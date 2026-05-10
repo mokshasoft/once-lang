@@ -115,12 +115,13 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
 
       -- Pair (any mode): two pointers at pair-loc, sucLoc pair-loc
       -- Reference-based model: Stack and Heap use identical representation
+      -- Plan 0.13.2: pointer reads in memory wrap as SV-Ptr.
       valid-pair-wf : ∀ {m A B} {a : ⟦ A ⟧} {b : ⟦ B ⟧}
         {alloc : AllocState {FS}}
         {pair-loc fst-loc snd-loc : ValueLocation FS} {s : LocState FS}
-        {mA mB : AllocMode} →  -- Component modes can be anything
-        readLoc s pair-loc ≡ just fst-loc →
-        readLoc s (sucLoc pair-loc) ≡ just snd-loc →
+        {mA mB : AllocMode} →
+        readLoc s pair-loc ≡ just (SV-Ptr fst-loc) →
+        readLoc s (sucLoc pair-loc) ≡ just (SV-Ptr snd-loc) →
         BeforeFrontier alloc fst-loc →
         BeforeFrontier alloc snd-loc →
         BeforeFrontier alloc (sucLoc pair-loc) →
@@ -128,18 +129,15 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
         ValidAtWF mB alloc b snd-loc s →
         ValidAtWF m alloc {A * B} (a , b) pair-loc s
 
-      -- Closure: always boxed (env-ptr + code-ptr), output mode is Heap
-      -- Kind-polymorphic: handles both pure (⇒[ mk-kind q pure ]) and effectful (Eff) arrows
-      -- since their runtime representation is identical.
       valid-closure-wf : ∀ {EnvType k A B}
         {body : IR (EnvType * A) B}
         {env : ⟦ EnvType ⟧}
         {alloc : AllocState {FS}}
         (body<bound : ir-size body < program-bound) →
         {closure-loc env-loc code-loc : ValueLocation FS} {s : LocState FS}
-        {mEnv : AllocMode} →  -- Env mode can be anything
-        readLoc s closure-loc ≡ just env-loc →
-        readLoc s (sucLoc closure-loc) ≡ just code-loc →
+        {mEnv : AllocMode} →
+        readLoc s closure-loc ≡ just (SV-Ptr env-loc) →
+        readLoc s (sucLoc closure-loc) ≡ just (SV-Ptr code-loc) →
         BeforeFrontier alloc env-loc →
         BeforeFrontier alloc code-loc →
         BeforeFrontier alloc (sucLoc closure-loc) →
@@ -147,25 +145,21 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
         BodyCorrect body env env-loc program-bound →
         ValidAtWF Heap alloc {A ⇒[ k ] B} (λ arg → eval body (pair env arg)) closure-loc s
 
-      -- Sum inl (any mode): tag + payload-ptr
-      -- Reference-based model: Stack and Heap use identical representation
       valid-inl-wf : ∀ {m A B} {a : ⟦ A ⟧}
         {alloc : AllocState {FS}}
         {sum-loc payload-loc : ValueLocation FS} {s : LocState FS}
         {mA : AllocMode} →
-        readLoc s (sucLoc sum-loc) ≡ just payload-loc →
+        readLoc s (sucLoc sum-loc) ≡ just (SV-Ptr payload-loc) →
         BeforeFrontier alloc payload-loc →
         BeforeFrontier alloc (sucLoc sum-loc) →
         ValidAtWF mA alloc a payload-loc s →
         ValidAtWF m alloc {A + B} (sem-inl a) sum-loc s
 
-      -- Sum inr (any mode): tag + payload-ptr
-      -- Reference-based model: Stack and Heap use identical representation
       valid-inr-wf : ∀ {m A B} {b : ⟦ B ⟧}
         {alloc : AllocState {FS}}
         {sum-loc payload-loc : ValueLocation FS} {s : LocState FS}
         {mB : AllocMode} →
-        readLoc s (sucLoc sum-loc) ≡ just payload-loc →
+        readLoc s (sucLoc sum-loc) ≡ just (SV-Ptr payload-loc) →
         BeforeFrontier alloc payload-loc →
         BeforeFrontier alloc (sucLoc sum-loc) →
         ValidAtWF mB alloc b payload-loc s →
@@ -290,7 +284,9 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
                     (loc : ValueLocation FS)
                   → ValidAtWF m alloc v loc s
                   → BeforeFrontier alloc loc
-                  → readReg (regs s) Output ≡ loc
+                  -- Plan 0.13.2: Output register stores StoredValue;
+                  -- a result location is reified as SV-Ptr loc.
+                  → readReg (regs s) Output ≡ SV-Ptr loc
                   → ValidAtWF m reclaim-alloc v loc s
                   → BeforeFrontier reclaim-alloc loc
                   → ResultPlace B m alloc reclaim-alloc v s
@@ -347,10 +343,10 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       where postulate before-stub : BeforeFrontier a₁ _
 
     place-rax : ∀ {B m a₁ a₂ v s} (rp : ResultPlace B m a₁ a₂ v s) →
-                readReg (regs s) Output ≡ place-loc rp
+                readReg (regs s) Output ≡ SV-Ptr (place-loc rp)
     place-rax (at-loc _ _ _ rax _ _) = rax
     place-rax {Unit} {_} {_} {_} {_} {s} unit-result = rax-stub
-      where postulate rax-stub : readReg (regs s) Output ≡ _
+      where postulate rax-stub : readReg (regs s) Output ≡ SV-Ptr _
 
     place-reclaim-valid : ∀ {B m a₁ a₂ v s} (rp : ResultPlace B m a₁ a₂ v s) →
                           ValidAtWF m a₂ v (place-loc rp) s
@@ -443,13 +439,15 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
         -- The third case arises in compose when f doesn't allocate but returns a
         -- different location (like fst, snd), and g allocates. In this case, g writes
         -- f's result (not the original input) to the frontier slot.
+        -- Plan 0.13.2: Input1 holds StoredValue; pointer-equivalent
+        -- inputs are wrapped as SV-Ptr.
         frontier-slot-stable : ∀ (s' : LocState FS) (input-loc : ValueLocation FS) →
           halted s' ≡ false →
-          readReg (regs s') Input1 ≡ input-loc →
-          readLoc s' (AtStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc →
+          readReg (regs s') Input1 ≡ SV-Ptr input-loc →
+          readLoc s' (AtStack (current-frame alloc) (next-slot alloc)) ≡ just (SV-Ptr input-loc) →
           (next-slot alloc ≡ next-slot final-alloc) ⊎
           ((readLoc (proj₁ (exec-trace trace s' alloc))
-                   (AtStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc) ⊎ ⊤)
+                   (AtStack (current-frame alloc) (next-slot alloc)) ≡ just (SV-Ptr input-loc)) ⊎ ⊤)
         -- Trace slot bound: all stack writes are at slots ≥ next-slot alloc.
         -- This enables compositional proofs that traces don't write below their frontier.
         -- Key for pair's g-preserves-backup proof via exec-trace-preserves-disjoint.
@@ -483,11 +481,17 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
         -- so traces containing them require additional disjointness preconditions.
         -- Our IR traces don't write to heap (they use store-at-slot instead).
         trace-no-heap-writes : TraceNoHeapWrites trace
-        -- Trace preserves halted: all instructions in trace preserve halted status.
-        -- This enables proving halted preservation through composed traces.
-        -- Combined with not-halted precondition, proves intermediate states are not halted.
-        -- Key for pair's fst-ptr/snd-ptr proofs which need not-halted at intermediate states.
-        trace-preserves-halted : TracePreservesHaltedP trace
+        -- Plan 0.13.3: Trace well-formedness at construction state.
+        -- State-aware chain of per-instruction halt preconditions
+        -- (`InstrWF` witnesses for the conditional ones — load/store
+        -- indirect, load-from-slot, restore-input, worklist-pop —
+        -- and ⊤ for unconditional ones). Halt preservation is derived
+        -- via `exec-trace-preserves-halted-WF`. Replaces the old
+        -- `TracePreservesHaltedP trace`, which masked unsoundness in
+        -- the iph-load-* postulates. Consumers at fresh states (e.g.
+        -- compose-frontier-stable) reconstruct TraceWF at their state
+        -- from local validity hypotheses.
+        trace-preserves-halted : TraceWF s alloc trace
 
     --------------------------------------------------------------------
     -- BodyCorrect: Pre-computed body execution proof
@@ -513,11 +517,11 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
         -- Note: capacity precondition removed in Phase 3 (frame-capacity removed)
         execute : ∀ (arg : ⟦ A ⟧) (arg-loc pair-loc : ValueLocation FS)
           (s : LocState FS) (alloc : AllocState {FS})
-          (mPair : AllocMode) →  -- Input1 pair mode (Apply provides Heap)
+          (mPair : AllocMode) →
           ValidAtWF mPair alloc (pair env arg) pair-loc s →
           BeforeFrontier alloc pair-loc →
           halted s ≡ false →
-          readReg (regs s) Input1 ≡ pair-loc →
+          readReg (regs s) Input1 ≡ SV-Ptr pair-loc →
           ∃[ mOut ] IRResultAWF mOut body (pair env arg) s alloc
 
   open IRResultAWF public
@@ -539,8 +543,8 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
                            (alloc : AllocState {FS}) : Set where
     field
       -- Memory layout
-      env-ptr : readLoc s closure-loc ≡ just env-loc
-      code-ptr : readLoc s (sucLoc closure-loc) ≡ just code-loc
+      env-ptr : readLoc s closure-loc ≡ just (SV-Ptr env-loc)
+      code-ptr : readLoc s (sucLoc closure-loc) ≡ just (SV-Ptr code-loc)
       -- Frontier tracking
       env-before : BeforeFrontier alloc env-loc
       code-before : BeforeFrontier alloc code-loc
@@ -569,8 +573,8 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       env-loc : ValueLocation FS
       code-loc : ValueLocation FS
       mEnv : AllocMode  -- Mode of env
-      env-ptr : readLoc s closure-loc ≡ just env-loc
-      code-ptr : readLoc s (sucLoc closure-loc) ≡ just code-loc
+      env-ptr : readLoc s closure-loc ≡ just (SV-Ptr env-loc)
+      code-ptr : readLoc s (sucLoc closure-loc) ≡ just (SV-Ptr code-loc)
       env-before : BeforeFrontier alloc env-loc
       code-before : BeforeFrontier alloc code-loc
       sucLoc-before : BeforeFrontier alloc (sucLoc closure-loc)
@@ -647,7 +651,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     ValidAtWF mIn alloc x input-loc s →
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
-    readReg (regs s) Input1 ≡ input-loc →
+    readReg (regs s) Input1 ≡ SV-Ptr input-loc →
     ∃[ mOut ] IRResultAWF mOut ir x s alloc
 
   ------------------------------------------------------------------------
@@ -665,8 +669,8 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       snd-loc : ValueLocation FS
       mA : AllocMode  -- Component A mode
       mB : AllocMode  -- Component B mode
-      fst-ptr : readLoc s pair-loc ≡ just fst-loc
-      snd-ptr : readLoc s (sucLoc pair-loc) ≡ just snd-loc
+      fst-ptr : readLoc s pair-loc ≡ just (SV-Ptr fst-loc)
+      snd-ptr : readLoc s (sucLoc pair-loc) ≡ just (SV-Ptr snd-loc)
       fst-before : BeforeFrontier alloc fst-loc
       snd-before : BeforeFrontier alloc snd-loc
       sucLoc-before : BeforeFrontier alloc (sucLoc pair-loc)
@@ -704,7 +708,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       a : ⟦ A ⟧
       mA : AllocMode
       payload-loc : ValueLocation FS
-      payload-ptr : readLoc s (sucLoc sum-loc) ≡ just payload-loc
+      payload-ptr : readLoc s (sucLoc sum-loc) ≡ just (SV-Ptr payload-loc)
       payload-before : BeforeFrontier alloc payload-loc
       sucLoc-before : BeforeFrontier alloc (sucLoc sum-loc)
       payload-valid : ValidAtWF mA alloc a payload-loc s
@@ -718,7 +722,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       b : ⟦ B ⟧
       mB : AllocMode
       payload-loc : ValueLocation FS
-      payload-ptr : readLoc s (sucLoc sum-loc) ≡ just payload-loc
+      payload-ptr : readLoc s (sucLoc sum-loc) ≡ just (SV-Ptr payload-loc)
       payload-before : BeforeFrontier alloc payload-loc
       sucLoc-before : BeforeFrontier alloc (sucLoc sum-loc)
       payload-valid : ValidAtWF mB alloc b payload-loc s
@@ -788,10 +792,10 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     (valid-pair-wf {fst-loc = fl} {snd-loc = sl} fp sp fb sb slb fv sv) =
     valid-pair-wf fp' sp' fb sb slb fv' sv'
     where
-      fp' : readLoc s₂ loc ≡ just fl
+      fp' : readLoc s₂ loc ≡ just (SV-Ptr fl)
       fp' = trans (readLoc-stack-heap-eq s₂ s₁ loc stack-eq heap-eq) fp
 
-      sp' : readLoc s₂ (sucLoc loc) ≡ just sl
+      sp' : readLoc s₂ (sucLoc loc) ≡ just (SV-Ptr sl)
       sp' = trans (readLoc-stack-heap-eq s₂ s₁ (sucLoc loc) stack-eq heap-eq) sp
 
       fv' = validityWF-mem-only a fl s₁ s₂ stack-eq heap-eq fv
@@ -801,10 +805,10 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     (valid-closure-wf {body = body} {env = env} bb {env-loc = el} {code-loc = cl} ep cp eb cb slb ev bc) =
     valid-closure-wf bb ep' cp' eb cb slb ev' bc
     where
-      ep' : readLoc s₂ loc ≡ just el
+      ep' : readLoc s₂ loc ≡ just (SV-Ptr el)
       ep' = trans (readLoc-stack-heap-eq s₂ s₁ loc stack-eq heap-eq) ep
 
-      cp' : readLoc s₂ (sucLoc loc) ≡ just cl
+      cp' : readLoc s₂ (sucLoc loc) ≡ just (SV-Ptr cl)
       cp' = trans (readLoc-stack-heap-eq s₂ s₁ (sucLoc loc) stack-eq heap-eq) cp
 
       ev' = validityWF-mem-only env el s₁ s₂ stack-eq heap-eq ev
@@ -820,7 +824,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     (valid-inl-wf {a = a} {payload-loc = pl} pp pb slb pv) =
     valid-inl-wf pp' pb slb pv'
     where
-      pp' : readLoc s₂ (sucLoc loc) ≡ just pl
+      pp' : readLoc s₂ (sucLoc loc) ≡ just (SV-Ptr pl)
       pp' = trans (readLoc-stack-heap-eq s₂ s₁ (sucLoc loc) stack-eq heap-eq) pp
 
       pv' = validityWF-mem-only a pl s₁ s₂ stack-eq heap-eq pv
@@ -830,7 +834,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     (valid-inr-wf {b = b} {payload-loc = pl} pp pb slb pv) =
     valid-inr-wf pp' pb slb pv'
     where
-      pp' : readLoc s₂ (sucLoc loc) ≡ just pl
+      pp' : readLoc s₂ (sucLoc loc) ≡ just (SV-Ptr pl)
       pp' = trans (readLoc-stack-heap-eq s₂ s₁ (sucLoc loc) stack-eq heap-eq) pp
 
       pv' = validityWF-mem-only b pl s₁ s₂ stack-eq heap-eq pv

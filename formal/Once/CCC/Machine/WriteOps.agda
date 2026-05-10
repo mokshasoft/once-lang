@@ -52,14 +52,16 @@ module WriteWithDisjoint {FS : FrameSemantics} where
   ... | yes refl = ⊥-elim (neq refl)
   ... | no _ = refl
 
-  -- Reading from the location we just wrote to (stack case)
+  -- Reading from the location we just wrote to (stack case).
+  -- Plan 0.13.2: write-loc to AtStack wraps val as SV-Ptr.
   write-read-same-stack : ∀ (s : LocState FS) (f : Frame) (k : ℕ) (val : ValueLocation FS) →
-    readLoc (write-loc s (AtStack f k) val) (AtStack f k) ≡ just val
-  write-read-same-stack s f k val = write-stack-read-same s f k val
+    readLoc (write-loc s (AtStack f k) val) (AtStack f k) ≡ just (SV-Ptr val)
+  write-read-same-stack s f k val = write-stack-read-same s f k (SV-Ptr val)
 
-  -- Reading from the heap location we just wrote to (heap case - val must be HeapLocation)
+  -- Reading from the heap location we just wrote to (heap case - val must be HeapLocation).
+  -- Plan 0.13.2: heap reads lift to SV-Ptr at the boundary.
   write-read-same-heap : ∀ (s : LocState FS) (hl : HeapLocation) (v : HeapLocation) →
-    readLoc (write-loc s (AtDynamic hl) (AtDynamic v)) (AtDynamic hl) ≡ just (AtDynamic v)
+    readLoc (write-loc s (AtDynamic hl) (AtDynamic v)) (AtDynamic hl) ≡ just (SV-Ptr (AtDynamic v))
   write-read-same-heap s hl v with hl ≟HL hl
   ... | yes _ = refl
   ... | no hl≢hl = ⊥-elim (hl≢hl refl)
@@ -76,12 +78,13 @@ module WriteWithDisjoint {FS : FrameSemantics} where
     stack-valid : ∀ {f k val} → ValidWrite (AtStack f k) val
     heap-valid : ∀ {hl v} → ValidWrite (AtDynamic hl) (AtDynamic v)
 
-  -- General write-read-same: requires ValidWrite proof to ensure semantic validity
-  -- ValidWrite evidence provides type-level proof that only well-typed cases are constructed
+  -- General write-read-same: requires ValidWrite proof to ensure semantic validity.
+  -- Plan 0.13.2: now produces `≡ just (SV-Ptr val)`, since write-loc wraps the
+  -- written ValueLocation as SV-Ptr.
   write-read-same : ∀ (s : LocState FS) (loc val : ValueLocation FS) →
     ValidWrite loc val →
-    readLoc (write-loc s loc val) loc ≡ just val
-  write-read-same s (AtStack f k) val stack-valid = write-stack-read-same s f k val
+    readLoc (write-loc s loc val) loc ≡ just (SV-Ptr val)
+  write-read-same s (AtStack f k) val stack-valid = write-stack-read-same s f k (SV-Ptr val)
   write-read-same s (AtDynamic hl) (AtDynamic v) heap-valid = write-read-same-heap s hl v
 
   ------------------------------------------------------------------------

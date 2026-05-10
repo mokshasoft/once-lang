@@ -154,8 +154,9 @@ module WriteOps {FS : FrameSemantics} where
   open MemOps {FS}
   open FrameSemantics FS
 
-  -- Write to a stack slot
-  write-stack-slot : LocState FS → Frame → ℕ → ValueLocation FS → LocState FS
+  -- Write to a stack slot.
+  -- Plan 0.13.2: stackMem stores StoredValue; lift the parameter type.
+  write-stack-slot : LocState FS → Frame → ℕ → StoredValue FS → LocState FS
   write-stack-slot s frame slot val =
     record s { stackMem = writeStackMem (stackMem s) frame slot val }
 
@@ -164,10 +165,10 @@ module WriteOps {FS : FrameSemantics} where
   write-heap-slot s hl val =
     record s { heapMem = writeHeapMem (heapMem s) hl val }
 
-  -- Write to a ValueLocation
+  -- Write a ValueLocation pointer (wrapped as SV-Ptr) to a location.
   -- Note: Writing stack ref to heap is now a type error! The invariant is enforced.
   write-loc : LocState FS → ValueLocation FS → ValueLocation FS → LocState FS
-  write-loc s (AtStack f k) val = write-stack-slot s f k val
+  write-loc s (AtStack f k) val = write-stack-slot s f k (SV-Ptr val)
   write-loc s (AtDynamic hl) (AtDynamic val) = write-heap-slot s hl val
   write-loc s (AtDynamic hl) (AtStack _ _) = s  -- Invalid: can't store stack ref in heap
 

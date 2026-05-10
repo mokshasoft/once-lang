@@ -103,7 +103,7 @@ module MuValidityImpl {FS : FrameSemantics} (program-bound : ℕ) where
         {wfG : WellFormedF G}
         {x : ⟦ F ⟧F (⟦μ⟧ G)}
         {sum-loc payload-loc : ValueLocation FS} {s : LocState FS} →
-        readLoc s (sucLoc sum-loc) ≡ just payload-loc →
+        readLoc s (sucLoc sum-loc) ≡ just (SV-Ptr payload-loc) →
         BeforeFrontier alloc payload-loc →
         BeforeFrontier alloc (sucLoc sum-loc) →
         μLayerValid alloc wfF wfG x payload-loc s →
@@ -114,7 +114,7 @@ module MuValidityImpl {FS : FrameSemantics} (program-bound : ℕ) where
         {wfG : WellFormedF G}
         {y : ⟦ F' ⟧F (⟦μ⟧ G)}
         {sum-loc payload-loc : ValueLocation FS} {s : LocState FS} →
-        readLoc s (sucLoc sum-loc) ≡ just payload-loc →
+        readLoc s (sucLoc sum-loc) ≡ just (SV-Ptr payload-loc) →
         BeforeFrontier alloc payload-loc →
         BeforeFrontier alloc (sucLoc sum-loc) →
         μLayerValid alloc wfF' wfG y payload-loc s →
@@ -125,8 +125,8 @@ module MuValidityImpl {FS : FrameSemantics} (program-bound : ℕ) where
         {wfG : WellFormedF G}
         {x : ⟦ F ⟧F (⟦μ⟧ G)} {y : ⟦ F' ⟧F (⟦μ⟧ G)}
         {pair-loc fst-loc snd-loc : ValueLocation FS} {s : LocState FS} →
-        readLoc s pair-loc ≡ just fst-loc →
-        readLoc s (sucLoc pair-loc) ≡ just snd-loc →
+        readLoc s pair-loc ≡ just (SV-Ptr fst-loc) →
+        readLoc s (sucLoc pair-loc) ≡ just (SV-Ptr snd-loc) →
         BeforeFrontier alloc fst-loc →
         BeforeFrontier alloc snd-loc →
         BeforeFrontier alloc (sucLoc pair-loc) →
@@ -176,7 +176,7 @@ module MuValidityImpl {FS : FrameSemantics} (program-bound : ℕ) where
         {wfG : WellFormedF G}
         {x : ⟦ F ⟧F (⟦ν⟧ G)}
         {sum-loc payload-loc : ValueLocation FS} {s : LocState FS} →
-        readLoc s (sucLoc sum-loc) ≡ just payload-loc →
+        readLoc s (sucLoc sum-loc) ≡ just (SV-Ptr payload-loc) →
         BeforeFrontier alloc payload-loc →
         BeforeFrontier alloc (sucLoc sum-loc) →
         νLayerValid alloc wfF wfG x payload-loc s →
@@ -186,7 +186,7 @@ module MuValidityImpl {FS : FrameSemantics} (program-bound : ℕ) where
         {wfG : WellFormedF G}
         {y : ⟦ F' ⟧F (⟦ν⟧ G)}
         {sum-loc payload-loc : ValueLocation FS} {s : LocState FS} →
-        readLoc s (sucLoc sum-loc) ≡ just payload-loc →
+        readLoc s (sucLoc sum-loc) ≡ just (SV-Ptr payload-loc) →
         BeforeFrontier alloc payload-loc →
         BeforeFrontier alloc (sucLoc sum-loc) →
         νLayerValid alloc wfF' wfG y payload-loc s →
@@ -196,8 +196,8 @@ module MuValidityImpl {FS : FrameSemantics} (program-bound : ℕ) where
         {wfG : WellFormedF G}
         {x : ⟦ F ⟧F (⟦ν⟧ G)} {y : ⟦ F' ⟧F (⟦ν⟧ G)}
         {pair-loc fst-loc snd-loc : ValueLocation FS} {s : LocState FS} →
-        readLoc s pair-loc ≡ just fst-loc →
-        readLoc s (sucLoc pair-loc) ≡ just snd-loc →
+        readLoc s pair-loc ≡ just (SV-Ptr fst-loc) →
+        readLoc s (sucLoc pair-loc) ≡ just (SV-Ptr snd-loc) →
         BeforeFrontier alloc fst-loc →
         BeforeFrontier alloc snd-loc →
         BeforeFrontier alloc (sucLoc pair-loc) →

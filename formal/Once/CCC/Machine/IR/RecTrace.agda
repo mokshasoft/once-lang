@@ -796,7 +796,8 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
       trace-slot-reads-above : TraceSlotReadsAbove (next-slot alloc) trace
       trace-slot-reads-below : TraceSlotReadsBelow max-slot-used trace
       -- Preservation properties
-      trace-preserves-halted : TracePreservesHaltedP trace
+      -- Plan 0.13.3: state-aware halt-preservation certificate.
+      trace-preserves-halted : TraceWF s alloc trace
       -- Note: trace-preserves-capacity removed in Phase 3 (frame-capacity removed)
       trace-no-heap-writes : TraceNoHeapWrites trace
 

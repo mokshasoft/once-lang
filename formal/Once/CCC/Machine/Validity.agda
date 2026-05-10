@@ -70,27 +70,24 @@ module ValidityDef {FS : FrameSemantics} (program-bound : ℕ) where
     valid-unit : ∀ {loc s} →
       ValidAt alloc {Unit} tt loc s
 
-    -- Pair validity: memory contains pointers to valid components
-    -- Components must be before frontier (tracked recursively)
-    -- IMPORTANT: sucLoc pair-loc must also be before frontier (for validity-write proofs)
+    -- Pair validity: memory contains pointers to valid components.
+    -- Plan 0.13.2: pointer reads now produce `just (SV-Ptr loc)`.
     valid-pair : ∀ {A B} {a : ⟦ A ⟧} {b : ⟦ B ⟧}
       {pair-loc fst-loc snd-loc : ValueLocation FS} {s : LocState FS} →
-      readLoc s pair-loc ≡ just fst-loc →
-      readLoc s (sucLoc pair-loc) ≡ just snd-loc →
+      readLoc s pair-loc ≡ just (SV-Ptr fst-loc) →
+      readLoc s (sucLoc pair-loc) ≡ just (SV-Ptr snd-loc) →
       BeforeFrontier alloc fst-loc →
       BeforeFrontier alloc snd-loc →
-      BeforeFrontier alloc (sucLoc pair-loc) →  -- NEW: sucLoc is also before frontier
+      BeforeFrontier alloc (sucLoc pair-loc) →
       ValidAt alloc a fst-loc s →
       ValidAt alloc b snd-loc s →
       ValidAt alloc {A * B} (a , b) pair-loc s
 
-    -- Sum type validity: tagged union
-    -- Memory layout: sum-loc's first slot stores tag, sucLoc sum-loc stores payload-loc
-    -- Tag is implicit in which constructor (valid-inl vs valid-inr) is used
-    -- For execution, tag is encoded in memory (0 = left, 1 = right)
+    -- Sum type validity: payload at sucLoc sum-loc.
+    -- Plan 0.13.2: pointer reads return `just (SV-Ptr loc)`.
     valid-inl : ∀ {A B} {a : ⟦ A ⟧}
       {sum-loc payload-loc : ValueLocation FS} {s : LocState FS} →
-      readLoc s (sucLoc sum-loc) ≡ just payload-loc →
+      readLoc s (sucLoc sum-loc) ≡ just (SV-Ptr payload-loc) →
       BeforeFrontier alloc payload-loc →
       BeforeFrontier alloc (sucLoc sum-loc) →
       ValidAt alloc a payload-loc s →
@@ -98,7 +95,7 @@ module ValidityDef {FS : FrameSemantics} (program-bound : ℕ) where
 
     valid-inr : ∀ {A B} {b : ⟦ B ⟧}
       {sum-loc payload-loc : ValueLocation FS} {s : LocState FS} →
-      readLoc s (sucLoc sum-loc) ≡ just payload-loc →
+      readLoc s (sucLoc sum-loc) ≡ just (SV-Ptr payload-loc) →
       BeforeFrontier alloc payload-loc →
       BeforeFrontier alloc (sucLoc sum-loc) →
       ValidAt alloc b payload-loc s →
@@ -120,18 +117,20 @@ module ValidityDef {FS : FrameSemantics} (program-bound : ℕ) where
     -- Curry captures (ir-size body < program-bound) when building the closure.
     -- Apply uses this with (rs body<bound) to recurse.
     -- IMPORTANT: sucLoc closure-loc must also be before frontier (for validity-write proofs)
+    -- Plan 0.13.2: env and code pointers wrapped as SV-Ptr in memory.
+    -- (The semantic question of whether the code slot should hold
+    -- SV-Code rather than a SV-Ptr is deferred — Plan 0.13.2 Phase E.)
     valid-closure : ∀ {EnvType q A B}
       {body : IR (EnvType * A) B}
       {env : ⟦ EnvType ⟧}
-      (body<bound : ir-size body < program-bound) →  -- Size bound (not Acc!)
+      (body<bound : ir-size body < program-bound) →
       {closure-loc env-loc code-loc : ValueLocation FS} {s : LocState FS} →
-      readLoc s closure-loc ≡ just env-loc →
-      readLoc s (sucLoc closure-loc) ≡ just code-loc →
+      readLoc s closure-loc ≡ just (SV-Ptr env-loc) →
+      readLoc s (sucLoc closure-loc) ≡ just (SV-Ptr code-loc) →
       BeforeFrontier alloc env-loc →
       BeforeFrontier alloc code-loc →
       BeforeFrontier alloc (sucLoc closure-loc) →
       ValidAt alloc env env-loc s →
-      -- The semantic value matches: closure = λ arg → eval body (pair env arg)
       ValidAt alloc {A ⇒[ mk-kind q pure ] B} (λ arg → eval body (pair env arg)) closure-loc s
 
   ------------------------------------------------------------------------
@@ -145,11 +144,11 @@ module ValidityDef {FS : FrameSemantics} (program-bound : ℕ) where
     field
       fst-loc : ValueLocation FS
       snd-loc : ValueLocation FS
-      fst-ptr : readLoc s pair-loc ≡ just fst-loc
-      snd-ptr : readLoc s (sucLoc pair-loc) ≡ just snd-loc
+      fst-ptr : readLoc s pair-loc ≡ just (SV-Ptr fst-loc)
+      snd-ptr : readLoc s (sucLoc pair-loc) ≡ just (SV-Ptr snd-loc)
       fst-before : BeforeFrontier alloc fst-loc
       snd-before : BeforeFrontier alloc snd-loc
-      sucLoc-before : BeforeFrontier alloc (sucLoc pair-loc)  -- NEW
+      sucLoc-before : BeforeFrontier alloc (sucLoc pair-loc)
       fst-valid : ValidAt alloc (sem-fst p) fst-loc s
       snd-valid : ValidAt alloc (sem-snd p) snd-loc s
 
@@ -166,16 +165,15 @@ module ValidityDef {FS : FrameSemantics} (program-bound : ℕ) where
       EnvType : Type
       body : IR (EnvType * A) B
       env : ⟦ EnvType ⟧
-      body<bound : ir-size body < program-bound       -- Size bound (not Acc!)
+      body<bound : ir-size body < program-bound
       env-loc : ValueLocation FS
       code-loc : ValueLocation FS
-      env-ptr : readLoc s closure-loc ≡ just env-loc
-      code-ptr : readLoc s (sucLoc closure-loc) ≡ just code-loc
+      env-ptr : readLoc s closure-loc ≡ just (SV-Ptr env-loc)
+      code-ptr : readLoc s (sucLoc closure-loc) ≡ just (SV-Ptr code-loc)
       env-before : BeforeFrontier alloc env-loc
       code-before : BeforeFrontier alloc code-loc
       sucLoc-before : BeforeFrontier alloc (sucLoc closure-loc)
       env-valid : ValidAt alloc env env-loc s
-      -- Proof that f is the closure we expect
       f-is-closure : f ≡ (λ arg → eval body (pair env arg))
 
   ------------------------------------------------------------------------
@@ -189,7 +187,7 @@ module ValidityDef {FS : FrameSemantics} (program-bound : ℕ) where
     field
       a : ⟦ A ⟧
       payload-loc : ValueLocation FS
-      payload-ptr : readLoc s (sucLoc sum-loc) ≡ just payload-loc
+      payload-ptr : readLoc s (sucLoc sum-loc) ≡ just (SV-Ptr payload-loc)
       payload-before : BeforeFrontier alloc payload-loc
       sucLoc-before : BeforeFrontier alloc (sucLoc sum-loc)
       payload-valid : ValidAt alloc a payload-loc s
@@ -202,7 +200,7 @@ module ValidityDef {FS : FrameSemantics} (program-bound : ℕ) where
     field
       b : ⟦ B ⟧
       payload-loc : ValueLocation FS
-      payload-ptr : readLoc s (sucLoc sum-loc) ≡ just payload-loc
+      payload-ptr : readLoc s (sucLoc sum-loc) ≡ just (SV-Ptr payload-loc)
       payload-before : BeforeFrontier alloc payload-loc
       sucLoc-before : BeforeFrontier alloc (sucLoc sum-loc)
       payload-valid : ValidAt alloc b payload-loc s
@@ -279,24 +277,23 @@ module ValidityDef {FS : FrameSemantics} (program-bound : ℕ) where
 
   composePair : ∀ {alloc A B} (a : ⟦ A ⟧) (b : ⟦ B ⟧)
     (pair-loc fst-loc snd-loc : ValueLocation FS) (s : LocState FS) →
-    readLoc s pair-loc ≡ just fst-loc →
-    readLoc s (sucLoc pair-loc) ≡ just snd-loc →
+    readLoc s pair-loc ≡ just (SV-Ptr fst-loc) →
+    readLoc s (sucLoc pair-loc) ≡ just (SV-Ptr snd-loc) →
     BeforeFrontier alloc fst-loc →
     BeforeFrontier alloc snd-loc →
-    BeforeFrontier alloc (sucLoc pair-loc) →  -- NEW
+    BeforeFrontier alloc (sucLoc pair-loc) →
     ValidAt alloc a fst-loc s →
     ValidAt alloc b snd-loc s →
     ValidAt alloc (pair a b) pair-loc s
   composePair a b pair-loc fst-loc snd-loc s fp sp fb sb slb fv sv =
     valid-pair fp sp fb sb slb fv sv
 
-  -- Compose a closure validity from its components
   composeClosure : ∀ {alloc EnvType q A B}
     (body : IR (EnvType * A) B) (env : ⟦ EnvType ⟧)
-    (body<bound : ir-size body < program-bound) →      -- Size bound (not Acc!)
+    (body<bound : ir-size body < program-bound) →
     (closure-loc env-loc code-loc : ValueLocation FS) (s : LocState FS) →
-    readLoc s closure-loc ≡ just env-loc →
-    readLoc s (sucLoc closure-loc) ≡ just code-loc →
+    readLoc s closure-loc ≡ just (SV-Ptr env-loc) →
+    readLoc s (sucLoc closure-loc) ≡ just (SV-Ptr code-loc) →
     BeforeFrontier alloc env-loc →
     BeforeFrontier alloc code-loc →
     BeforeFrontier alloc (sucLoc closure-loc) →
@@ -305,20 +302,18 @@ module ValidityDef {FS : FrameSemantics} (program-bound : ℕ) where
   composeClosure {_} {_} {_} {_} {_} body env bb closure-loc env-loc code-loc s ep cp eb cb slb ev =
     valid-closure {body = body} {env = env} bb ep cp eb cb slb ev
 
-  -- Compose sum validity (inl)
   composeInl : ∀ {alloc A B} (a : ⟦ A ⟧)
     (sum-loc payload-loc : ValueLocation FS) (s : LocState FS) →
-    readLoc s (sucLoc sum-loc) ≡ just payload-loc →
+    readLoc s (sucLoc sum-loc) ≡ just (SV-Ptr payload-loc) →
     BeforeFrontier alloc payload-loc →
     BeforeFrontier alloc (sucLoc sum-loc) →
     ValidAt alloc a payload-loc s →
     ValidAt alloc {A + B} (sem-inl a) sum-loc s
   composeInl a sum-loc payload-loc s pp pb slb pv = valid-inl pp pb slb pv
 
-  -- Compose sum validity (inr)
   composeInr : ∀ {alloc A B} (b : ⟦ B ⟧)
     (sum-loc payload-loc : ValueLocation FS) (s : LocState FS) →
-    readLoc s (sucLoc sum-loc) ≡ just payload-loc →
+    readLoc s (sucLoc sum-loc) ≡ just (SV-Ptr payload-loc) →
     BeforeFrontier alloc payload-loc →
     BeforeFrontier alloc (sucLoc sum-loc) →
     ValidAt alloc b payload-loc s →
@@ -340,7 +335,7 @@ module ValidityDef {FS : FrameSemantics} (program-bound : ℕ) where
   readLoc-stack-heap-eq s₁ s₂ (AtStack f k) seq heq = cong (λ m → m f k) seq
   readLoc-stack-heap-eq s₁ s₂ (AtDynamic hl) seq heq
     with heapMem s₁ hl | heapMem s₂ hl | cong (λ m → m hl) heq
-  ... | just hl₁ | just hl₂ | eq = cong (λ x → just (AtDynamic x)) (just-injective eq)
+  ... | just hl₁ | just hl₂ | eq = cong (λ x → just (SV-Ptr (AtDynamic x))) (just-injective eq)
     where
       just-injective : ∀ {A : Set} {x y : A} → just x ≡ just y → x ≡ y
       just-injective refl = refl
@@ -359,10 +354,10 @@ module ValidityDef {FS : FrameSemantics} (program-bound : ℕ) where
     (valid-pair {fst-loc = fl} {snd-loc = sl} fp sp fb sb slb fv sv) =
     valid-pair fp' sp' fb sb slb fv' sv'
     where
-      fp' : readLoc s₂ loc ≡ just fl
+      fp' : readLoc s₂ loc ≡ just (SV-Ptr fl)
       fp' = trans (sym (readLoc-stack-heap-eq s₁ s₂ loc stack-eq heap-eq)) fp
 
-      sp' : readLoc s₂ (sucLoc loc) ≡ just sl
+      sp' : readLoc s₂ (sucLoc loc) ≡ just (SV-Ptr sl)
       sp' = trans (sym (readLoc-stack-heap-eq s₁ s₂ (sucLoc loc) stack-eq heap-eq)) sp
 
       fv' : ValidAt alloc a fl s₂
@@ -375,10 +370,10 @@ module ValidityDef {FS : FrameSemantics} (program-bound : ℕ) where
     (valid-closure {EnvType} {_} {_} {_} {body} {env} ba {env-loc = el} {code-loc = cl} ep cp eb cb slb ev) =
     valid-closure {body = body} {env = env} ba ep' cp' eb cb slb ev'
     where
-      ep' : readLoc s₂ loc ≡ just el
+      ep' : readLoc s₂ loc ≡ just (SV-Ptr el)
       ep' = trans (sym (readLoc-stack-heap-eq s₁ s₂ loc stack-eq heap-eq)) ep
 
-      cp' : readLoc s₂ (sucLoc loc) ≡ just cl
+      cp' : readLoc s₂ (sucLoc loc) ≡ just (SV-Ptr cl)
       cp' = trans (sym (readLoc-stack-heap-eq s₁ s₂ (sucLoc loc) stack-eq heap-eq)) cp
 
       ev' : ValidAt alloc env el s₂
@@ -388,7 +383,7 @@ module ValidityDef {FS : FrameSemantics} (program-bound : ℕ) where
     (valid-inl {a = a} {payload-loc = pl} pp pb slb pv) =
     valid-inl pp' pb slb pv'
     where
-      pp' : readLoc s₂ (sucLoc loc) ≡ just pl
+      pp' : readLoc s₂ (sucLoc loc) ≡ just (SV-Ptr pl)
       pp' = trans (sym (readLoc-stack-heap-eq s₁ s₂ (sucLoc loc) stack-eq heap-eq)) pp
 
       pv' : ValidAt alloc a pl s₂
@@ -398,7 +393,7 @@ module ValidityDef {FS : FrameSemantics} (program-bound : ℕ) where
     (valid-inr {b = b} {payload-loc = pl} pp pb slb pv) =
     valid-inr pp' pb slb pv'
     where
-      pp' : readLoc s₂ (sucLoc loc) ≡ just pl
+      pp' : readLoc s₂ (sucLoc loc) ≡ just (SV-Ptr pl)
       pp' = trans (sym (readLoc-stack-heap-eq s₁ s₂ (sucLoc loc) stack-eq heap-eq)) pp
 
       pv' : ValidAt alloc b pl s₂
