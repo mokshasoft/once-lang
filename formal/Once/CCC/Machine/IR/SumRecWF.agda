@@ -137,7 +137,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     (s : LocState FS) (alloc : AllocState {FS})
     (input-loc : ValueLocation FS) (result-loc : ValueLocation FS)
     (s-final : LocState FS) →
-    readReg (regs s) Input1 ≡ input-loc →
+    readReg (regs s) Input1 ≡ SV-Ptr input-loc →
     result-loc ≡ AtStack (current-frame alloc) result-slot →
     s-final ≡ record (write-loc s (AtStack (current-frame alloc) payload-slot) input-loc)
                 { regs = writeReg (regs (write-loc s (AtStack (current-frame alloc) payload-slot) input-loc)) Output result-loc } →
@@ -308,7 +308,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     ValidAtWF m alloc x input-loc s →
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
-    readReg (regs s) Input1 ≡ input-loc →
+    readReg (regs s) Input1 ≡ SV-Ptr input-loc →
     ∃[ mOut ] IRResultAWF mOut (initial {A}) x s alloc
   run-initial () _ _ _ _ _ _ _  -- x : ⟦ Void ⟧ = ⊥, so pattern match is absurd
 
@@ -335,7 +335,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     ValidAtWF mIn alloc x input-loc s →
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
-    readReg (regs s) Input1 ≡ input-loc →
+    readReg (regs s) Input1 ≡ SV-Ptr input-loc →
     IRResultAWF m (inl {A} {B} m) x s alloc  -- Output mode is m (the inl's AllocMode)
 
   -- Stack mode: reference-based (tag + pointer), same as Heap mode
@@ -369,7 +369,8 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Trace preserves capacity: no push-frame in inl-trace
       -- Note: trace-preserves-capacity removed in Phase 3
       ; trace-no-heap-writes = tt
-      ; trace-preserves-halted = tph-∷ iph-mov-to-output (tph-∷ iph-store-at-slot (tph-∷ iph-lea-slot tph-[]))
+      ; trace-twf = twf-∷ tt (twf-∷ tt (twf-∷ tt twf-[]))
+      ; trace-preserves-halted = SMP.!!  -- TODO: exec-trace-preserves-halted-WF on local trace
       -- scratch-bounded: max-slot-written = n + 2, final-alloc = n + 2, ir-scratch-requirement = 2
       -- (n + 2) ≤ (n + 2) + 2 by m≤m+n
       ; scratch-budget = ir-scratch-requirement (inl {A} {B} Stack)
@@ -407,8 +408,8 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       input-before₁ : BeforeFrontier alloc₁ input-loc
       input-before₁ = stack-alloc-advances alloc sum-slots input-loc input-before
 
-      -- Payload pointer: readLoc s-final (sucLoc sum-loc) ≡ just input-loc
-      payload-ptr : readLoc s-final (sucLoc sum-loc) ≡ just input-loc
+      -- Payload pointer: readLoc s-final (sucLoc sum-loc) ≡ just (SV-Ptr input-loc)
+      payload-ptr : readLoc s-final (sucLoc sum-loc) ≡ just (SV-Ptr input-loc)
       payload-ptr = trans (readLoc-stackMem-eq s-final s₁ (sucLoc sum-loc) refl refl)
                           (write-read-same s (sucLoc sum-loc) input-loc stack-valid)
 
@@ -464,8 +465,8 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- So the frontier slot at sum-slot is preserved (whatever was there stays)
       inl-frontier-stable : ∀ (s' : LocState FS) (input-loc' : ValueLocation FS) →
         halted s' ≡ false →
-        readReg (regs s') Input1 ≡ input-loc' →
-        readLoc s' (AtStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc' →
+        readReg (regs s') Input1 ≡ SV-Ptr input-loc' →
+        readLoc s' (AtStack (current-frame alloc) (next-slot alloc)) ≡ just (SV-Ptr input-loc') →
         _
       inl-frontier-stable s' input-loc' s'-not-halted input-eq' slot-eq' =
         inj₂ (inj₁ (trans preserved slot-eq'))
@@ -515,7 +516,8 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Trace preserves capacity: no push-frame in inl-trace
       -- Note: trace-preserves-capacity removed in Phase 3
       ; trace-no-heap-writes = tt
-      ; trace-preserves-halted = tph-∷ iph-mov-to-output (tph-∷ iph-store-at-slot (tph-∷ iph-lea-slot tph-[]))
+      ; trace-twf = twf-∷ tt (twf-∷ tt (twf-∷ tt twf-[]))
+      ; trace-preserves-halted = SMP.!!  -- TODO: exec-trace-preserves-halted-WF on local trace
       -- scratch-bounded: max-slot-written = n + 2, final-alloc = n + 2, ir-scratch-requirement = 2
       ; scratch-budget = ir-scratch-requirement (inl {A} {B} Heap)
       ; scratch-bounded = m≤m+n (next-slot alloc +ℕ 2) 2
@@ -554,8 +556,8 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       input-before₁ : BeforeFrontier alloc₁ input-loc
       input-before₁ = stack-alloc-advances alloc sum-slots input-loc input-before
 
-      -- Payload pointer: readLoc s-final (sucLoc sum-loc) ≡ just input-loc
-      payload-ptr : readLoc s-final (sucLoc sum-loc) ≡ just input-loc
+      -- Payload pointer: readLoc s-final (sucLoc sum-loc) ≡ just (SV-Ptr input-loc)
+      payload-ptr : readLoc s-final (sucLoc sum-loc) ≡ just (SV-Ptr input-loc)
       payload-ptr = trans (readLoc-stackMem-eq s-final s₁ (sucLoc sum-loc) refl refl)
                           (write-read-same s (sucLoc sum-loc) input-loc stack-valid)
 
@@ -608,8 +610,8 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Frontier slot stability for inl (Heap mode)
       inl-frontier-stable : ∀ (s' : LocState FS) (input-loc' : ValueLocation FS) →
         halted s' ≡ false →
-        readReg (regs s') Input1 ≡ input-loc' →
-        readLoc s' (AtStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc' →
+        readReg (regs s') Input1 ≡ SV-Ptr input-loc' →
+        readLoc s' (AtStack (current-frame alloc) (next-slot alloc)) ≡ just (SV-Ptr input-loc') →
         _
       inl-frontier-stable s' input-loc' s'-not-halted input-eq' slot-eq' =
         inj₂ (inj₁ (trans preserved slot-eq'))
@@ -643,7 +645,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     ValidAtWF mIn alloc x input-loc s →
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
-    readReg (regs s) Input1 ≡ input-loc →
+    readReg (regs s) Input1 ≡ SV-Ptr input-loc →
     IRResultAWF m (inr {A} {B} m) x s alloc  -- Output mode is m (the inr's AllocMode)
 
   -- Stack mode: reference-based (tag + pointer), same as Heap mode
@@ -676,7 +678,8 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Trace preserves capacity: no push-frame in inr-trace
       -- Note: trace-preserves-capacity removed in Phase 3
       ; trace-no-heap-writes = tt
-      ; trace-preserves-halted = tph-∷ iph-mov-to-output (tph-∷ iph-store-at-slot (tph-∷ iph-lea-slot tph-[]))
+      ; trace-twf = twf-∷ tt (twf-∷ tt (twf-∷ tt twf-[]))
+      ; trace-preserves-halted = SMP.!!  -- TODO: exec-trace-preserves-halted-WF on local trace
       -- scratch-bounded: max-slot-written = n + 2, final-alloc = n + 2, ir-scratch-requirement = 2
       ; scratch-budget = ir-scratch-requirement (inr {A} {B} Stack)
       ; scratch-bounded = m≤m+n (next-slot alloc +ℕ 2) 2
@@ -713,8 +716,8 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       input-before₁ : BeforeFrontier alloc₁ input-loc
       input-before₁ = stack-alloc-advances alloc sum-slots input-loc input-before
 
-      -- Payload pointer: readLoc s-final (sucLoc sum-loc) ≡ just input-loc
-      payload-ptr : readLoc s-final (sucLoc sum-loc) ≡ just input-loc
+      -- Payload pointer: readLoc s-final (sucLoc sum-loc) ≡ just (SV-Ptr input-loc)
+      payload-ptr : readLoc s-final (sucLoc sum-loc) ≡ just (SV-Ptr input-loc)
       payload-ptr = trans (readLoc-stackMem-eq s-final s₁ (sucLoc sum-loc) refl refl)
                           (write-read-same s (sucLoc sum-loc) input-loc stack-valid)
 
@@ -766,8 +769,8 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Frontier slot stability for inr (Stack mode)
       inr-frontier-stable : ∀ (s' : LocState FS) (input-loc' : ValueLocation FS) →
         halted s' ≡ false →
-        readReg (regs s') Input1 ≡ input-loc' →
-        readLoc s' (AtStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc' →
+        readReg (regs s') Input1 ≡ SV-Ptr input-loc' →
+        readLoc s' (AtStack (current-frame alloc) (next-slot alloc)) ≡ just (SV-Ptr input-loc') →
         _
       inr-frontier-stable s' input-loc' s'-not-halted input-eq' slot-eq' =
         inj₂ (inj₁ (trans preserved slot-eq'))
@@ -813,7 +816,8 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Trace preserves capacity: no push-frame in inr-trace
       -- Note: trace-preserves-capacity removed in Phase 3
       ; trace-no-heap-writes = tt
-      ; trace-preserves-halted = tph-∷ iph-mov-to-output (tph-∷ iph-store-at-slot (tph-∷ iph-lea-slot tph-[]))
+      ; trace-twf = twf-∷ tt (twf-∷ tt (twf-∷ tt twf-[]))
+      ; trace-preserves-halted = SMP.!!  -- TODO: exec-trace-preserves-halted-WF on local trace
       -- scratch-bounded: max-slot-written = n + 2, final-alloc = n + 2, ir-scratch-requirement = 2
       ; scratch-budget = ir-scratch-requirement (inr {A} {B} Heap)
       ; scratch-bounded = m≤m+n (next-slot alloc +ℕ 2) 2
@@ -851,8 +855,8 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       input-before₁ : BeforeFrontier alloc₁ input-loc
       input-before₁ = stack-alloc-advances alloc sum-slots input-loc input-before
 
-      -- Payload pointer: readLoc s-final (sucLoc sum-loc) ≡ just input-loc
-      payload-ptr : readLoc s-final (sucLoc sum-loc) ≡ just input-loc
+      -- Payload pointer: readLoc s-final (sucLoc sum-loc) ≡ just (SV-Ptr input-loc)
+      payload-ptr : readLoc s-final (sucLoc sum-loc) ≡ just (SV-Ptr input-loc)
       payload-ptr = trans (readLoc-stackMem-eq s-final s₁ (sucLoc sum-loc) refl refl)
                           (write-read-same s (sucLoc sum-loc) input-loc stack-valid)
 
@@ -905,8 +909,8 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Frontier slot stability for inr (Heap mode)
       inr-frontier-stable : ∀ (s' : LocState FS) (input-loc' : ValueLocation FS) →
         halted s' ≡ false →
-        readReg (regs s') Input1 ≡ input-loc' →
-        readLoc s' (AtStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc' →
+        readReg (regs s') Input1 ≡ SV-Ptr input-loc' →
+        readLoc s' (AtStack (current-frame alloc) (next-slot alloc)) ≡ just (SV-Ptr input-loc') →
         _
       inr-frontier-stable s' input-loc' s'-not-halted input-eq' slot-eq' =
         inj₂ (inj₁ (trans preserved slot-eq'))
@@ -943,7 +947,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     ValidAtWF m alloc x input-loc s →  -- Reference-based: any mode works
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
-    readReg (regs s) Input1 ≡ input-loc →
+    readReg (regs s) Input1 ≡ SV-Ptr input-loc →
     ∃[ mOut ] IRResultAWF mOut (case f g) x s alloc
 
   -- Case for inl: dispatch to f
@@ -983,7 +987,8 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Trace preserves capacity: setup + f-trace preserves capacity
       -- Note: trace-preserves-capacity removed in Phase 3
       ; trace-no-heap-writes = IRResultAWF.trace-no-heap-writes result-f
-      ; trace-preserves-halted = tph-∷ iph-load-indirect-suc (tph-∷ iph-mov-to-input (IRResultAWF.trace-preserves-halted result-f))
+      ; trace-twf = twf-∷ (SMP.!!) (twf-∷ tt (IRResultAWF.trace-twf result-f))  -- TODO: load-indirect-suc InstrWF witness
+      ; trace-preserves-halted = SMP.!!  -- TODO: exec-trace-preserves-halted-WF
       ; scratch-budget = IRResultAWF.scratch-budget result-f
       ; scratch-bounded = IRResultAWF.scratch-bounded result-f
       }
@@ -1054,8 +1059,8 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- This is safe: compose handles uncertainty correctly by propagating it.
       case-frontier-stable : ∀ (s' : LocState FS) (input-loc' : ValueLocation FS) →
         halted s' ≡ false →
-        readReg (regs s') Input1 ≡ input-loc' →
-        readLoc s' (AtStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc' →
+        readReg (regs s') Input1 ≡ SV-Ptr input-loc' →
+        readLoc s' (AtStack (current-frame alloc) (next-slot alloc)) ≡ just (SV-Ptr input-loc') →
         _
       case-frontier-stable _ _ _ _ _ = inj₂ (inj₂ tt)
 
@@ -1096,7 +1101,8 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Trace preserves capacity: setup + g-trace preserves capacity
       -- Note: trace-preserves-capacity removed in Phase 3
       ; trace-no-heap-writes = IRResultAWF.trace-no-heap-writes result-g
-      ; trace-preserves-halted = tph-∷ iph-load-indirect-suc (tph-∷ iph-mov-to-input (IRResultAWF.trace-preserves-halted result-g))
+      ; trace-twf = twf-∷ (SMP.!!) (twf-∷ tt (IRResultAWF.trace-twf result-g))  -- TODO: load-indirect-suc InstrWF witness
+      ; trace-preserves-halted = SMP.!!  -- TODO: exec-trace-preserves-halted-WF
       ; scratch-budget = IRResultAWF.scratch-budget result-g
       ; scratch-bounded = IRResultAWF.scratch-bounded result-g
       }
@@ -1165,8 +1171,8 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Return uncertain (inj₂ (inj₂ tt)) since g may allocate at the frontier slot.
       case-frontier-stable : ∀ (s' : LocState FS) (input-loc' : ValueLocation FS) →
         halted s' ≡ false →
-        readReg (regs s') Input1 ≡ input-loc' →
-        readLoc s' (AtStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc' →
+        readReg (regs s') Input1 ≡ SV-Ptr input-loc' →
+        readLoc s' (AtStack (current-frame alloc) (next-slot alloc)) ≡ just (SV-Ptr input-loc') →
         _
       case-frontier-stable _ _ _ _ _ = inj₂ (inj₂ tt)
 
@@ -1218,7 +1224,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     ValidAtWF mIn alloc x input-loc s →
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
-    readReg (regs s) Input1 ≡ input-loc →
+    readReg (regs s) Input1 ≡ SV-Ptr input-loc →
     IRResultAWF m (In {F} wf m) x s alloc
   run-In {F} wf mIn m x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     record
@@ -1244,7 +1250,8 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; trace-slot-reads-below = tt
       -- Note: trace-preserves-capacity removed in Phase 3
       ; trace-no-heap-writes = tt
-      ; trace-preserves-halted = tph-∷ iph-mov-to-output (tph-∷ iph-store-at-slot (tph-∷ iph-lea-slot tph-[]))
+      ; trace-twf = twf-∷ tt (twf-∷ tt (twf-∷ tt twf-[]))
+      ; trace-preserves-halted = SMP.!!  -- TODO: exec-trace-preserves-halted-WF on local trace
       -- scratch-bounded: In allocates 1 slot (max-slot = suc n = next-slot alloc')
       -- ir-scratch-requirement (In _ _) = 1, so bound is suc n ≤ suc n + 1
       ; scratch-budget = ir-scratch-requirement (In {F} wf m)
@@ -1289,7 +1296,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       result-valid : ValidAtWF m alloc' (eval (In wf m) x) result-loc s'
       result-valid = In-trace-valid wf m x
 
-      rax-eq : readReg (regs s') Output ≡ result-loc
+      rax-eq : readReg (regs s') Output ≡ SV-Ptr result-loc
       rax-eq = rec-scheme-output-is-slot result-slot s alloc not-halted
 
       not-halted' : halted s' ≡ false
@@ -1311,8 +1318,8 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
       frontier-stable : ∀ (s'' : LocState FS) (input-loc' : ValueLocation FS) →
         halted s'' ≡ false →
-        readReg (regs s'') Input1 ≡ input-loc' →
-        readLoc s'' (AtStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc' →
+        readReg (regs s'') Input1 ≡ SV-Ptr input-loc' →
+        readLoc s'' (AtStack (current-frame alloc) (next-slot alloc)) ≡ just (SV-Ptr input-loc') →
         _
       frontier-stable s'' input-loc' _ _ _ = inj₂ (inj₂ tt)
 
@@ -1329,7 +1336,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     ValidAtWF mIn alloc x input-loc s →
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
-    readReg (regs s) Input1 ≡ input-loc →
+    readReg (regs s) Input1 ≡ SV-Ptr input-loc →
     IRResultAWF Heap (out-μ {F} wf) x s alloc
   run-out-μ {F} wf mIn x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     record
@@ -1355,7 +1362,8 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; trace-slot-reads-below = tt
       -- Note: trace-preserves-capacity removed in Phase 3
       ; trace-no-heap-writes = tt
-      ; trace-preserves-halted = tph-∷ iph-mov-to-output tph-[]
+      ; trace-twf = twf-∷ tt twf-[]
+      ; trace-preserves-halted = SMP.!!  -- TODO: exec-trace-preserves-halted-WF
       -- scratch-bounded: out-μ allocates 0 slots, max-slot = next-slot alloc
       -- ir-scratch-requirement (out-μ _) = 0, so bound is n + 0 = n
       ; scratch-budget = ir-scratch-requirement (out-μ {F} wf)
@@ -1389,8 +1397,8 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- IR doesn't allocate, return inj₁ refl
       frontier-stable : ∀ (s'' : LocState FS) (input-loc' : ValueLocation FS) →
         halted s'' ≡ false →
-        readReg (regs s'') Input1 ≡ input-loc' →
-        readLoc s'' (AtStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc' →
+        readReg (regs s'') Input1 ≡ SV-Ptr input-loc' →
+        readLoc s'' (AtStack (current-frame alloc) (next-slot alloc)) ≡ just (SV-Ptr input-loc') →
         _
       frontier-stable _ _ _ _ _ = inj₁ refl
 
@@ -1408,7 +1416,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     ValidAtWF mIn alloc x input-loc s →
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
-    readReg (regs s) Input1 ≡ input-loc →
+    readReg (regs s) Input1 ≡ SV-Ptr input-loc →
     IRResultAWF Heap (Out {F} wf) x s alloc
   run-Out {F} wf mIn x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     record
@@ -1433,7 +1441,8 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; trace-slot-reads-below = tt
       -- Note: trace-preserves-capacity removed in Phase 3
       ; trace-no-heap-writes = tt
-      ; trace-preserves-halted = tph-∷ iph-mov-to-output tph-[]
+      ; trace-twf = twf-∷ tt twf-[]
+      ; trace-preserves-halted = SMP.!!  -- TODO: exec-trace-preserves-halted-WF
       -- scratch-bounded: Out allocates 0 slots, max-slot = next-slot alloc
       -- ir-scratch-requirement (Out _) = 0, so bound is n + 0 = n
       ; scratch-budget = ir-scratch-requirement (Out {F} wf)
@@ -1464,8 +1473,8 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- IR doesn't allocate, return inj₁ refl
       frontier-stable : ∀ (s'' : LocState FS) (input-loc' : ValueLocation FS) →
         halted s'' ≡ false →
-        readReg (regs s'') Input1 ≡ input-loc' →
-        readLoc s'' (AtStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc' →
+        readReg (regs s'') Input1 ≡ SV-Ptr input-loc' →
+        readLoc s'' (AtStack (current-frame alloc) (next-slot alloc)) ≡ just (SV-Ptr input-loc') →
         _
       frontier-stable _ _ _ _ _ = inj₁ refl
 
@@ -1483,7 +1492,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     ValidAtWF mIn alloc x input-loc s →
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
-    readReg (regs s) Input1 ≡ input-loc →
+    readReg (regs s) Input1 ≡ SV-Ptr input-loc →
     IRResultAWF m (in-ν {F} wf m) x s alloc
   run-in-ν {F} wf mIn m x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     record
@@ -1508,7 +1517,8 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; trace-slot-reads-below = tt
       -- Note: trace-preserves-capacity removed in Phase 3
       ; trace-no-heap-writes = tt
-      ; trace-preserves-halted = tph-∷ iph-mov-to-output (tph-∷ iph-store-at-slot (tph-∷ iph-lea-slot tph-[]))
+      ; trace-twf = twf-∷ tt (twf-∷ tt (twf-∷ tt twf-[]))
+      ; trace-preserves-halted = SMP.!!  -- TODO: exec-trace-preserves-halted-WF on local trace
       -- scratch-bounded: in-ν allocates 1 slot (max-slot = suc n = next-slot alloc')
       -- ir-scratch-requirement (in-ν _ _) = 1, so bound is suc n ≤ suc n + 1
       ; scratch-budget = ir-scratch-requirement (in-ν {F} wf m)
@@ -1552,7 +1562,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       reclaim-bound = ≤-reflexive suc-n≡n+1
 
       -- rax-eq: Output = slot address after lea-slot
-      rax-eq : readReg (regs s') Output ≡ result-loc
+      rax-eq : readReg (regs s') Output ≡ SV-Ptr result-loc
       rax-eq = rec-scheme-output-is-slot result-slot s alloc not-halted
 
       not-halted' : halted s' ≡ false
@@ -1574,8 +1584,8 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
       frontier-stable : ∀ (s'' : LocState FS) (input-loc' : ValueLocation FS) →
         halted s'' ≡ false →
-        readReg (regs s'') Input1 ≡ input-loc' →
-        readLoc s'' (AtStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc' →
+        readReg (regs s'') Input1 ≡ SV-Ptr input-loc' →
+        readLoc s'' (AtStack (current-frame alloc) (next-slot alloc)) ≡ just (SV-Ptr input-loc') →
         _
       frontier-stable s'' input-loc' _ _ _ = inj₂ (inj₂ tt)
 

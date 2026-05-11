@@ -189,7 +189,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
     (input-valid-wf : ValidAtWF m alloc x input-loc s) →
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
-    readReg (regs s) Input1 ≡ input-loc →
+    readReg (regs s) Input1 ≡ SV-Ptr input-loc →
     ∃[ mOut ] IRResultAWF mOut (apply {A} {B} {k}) x s alloc
   run-apply {m} {A} {B} {k} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     mBody , record
@@ -218,7 +218,8 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       ; trace-slot-reads-below = trace-slot-reads-below'
       -- Note: trace-preserves-capacity removed in Phase 3
       ; trace-no-heap-writes = trace-no-heap-writes'
-      ; trace-preserves-halted = trace-preserves-halted'
+      ; trace-twf = trace-twf'
+      ; trace-preserves-halted = exec-trace-preserves-halted-WF trace
       ; scratch-budget = IRResultAWF.scratch-budget body-result
       ; scratch-bounded = IRResultAWF.scratch-bounded body-result
       }
@@ -287,13 +288,13 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       s-after-setup-def = refl
 
       -- Memory facts from validity witnesses
-      closure-ptr : readLoc s input-loc ≡ just closure-loc
+      closure-ptr : readLoc s input-loc ≡ just (SV-Ptr closure-loc)
       closure-ptr = PairValidWF.fst-ptr pair-decomp
 
-      arg-ptr : readLoc s (sucLoc input-loc) ≡ just arg-loc
+      arg-ptr : readLoc s (sucLoc input-loc) ≡ just (SV-Ptr arg-loc)
       arg-ptr = PairValidWF.snd-ptr pair-decomp
 
-      env-ptr : readLoc s closure-loc ≡ just env-loc
+      env-ptr : readLoc s closure-loc ≡ just (SV-Ptr env-loc)
       env-ptr = ClosureValidWF.env-ptr closure-decomp
 
       ------------------------------------------------------------------------
@@ -322,27 +323,11 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       s1 : LocState FS
       s1 = proj₁ (exec-trace step1-trace s alloc)
 
-      -- load-indirect-suc reads from sucLoc Input1 = sucLoc input-loc
-      step1-mem-read : readLoc s (sucLoc (readReg (regs s) Input1)) ≡ just arg-loc
-      step1-mem-read = subst (λ loc → readLoc s (sucLoc loc) ≡ just arg-loc) (sym rdi-eq) arg-ptr
-
-      -- After load-indirect-suc, Output = arg-loc
-      step1-output : readReg (regs s1) Output ≡ arg-loc
-      step1-output =
-        let s1-as-abstract : s1 ≡ proj₁ (exec-abstract load-indirect-suc s alloc)
-            s1-as-abstract = cong proj₁ (exec-trace-single load-indirect-suc s alloc not-halted)
-            -- exec-abstract load-indirect-suc = exec-load-with-value Output (readLoc s (sucLoc (input (regs s)))) s
-            -- When readLoc returns just v, this becomes record s { regs = writeReg (regs s) Output v }
-            -- Need to pattern match on the readLoc result
-        in step1-output-helper s alloc s1-as-abstract step1-mem-read
-        where
-          step1-output-helper : (s₀ : LocState FS) (a₀ : AllocState {FS}) →
-            s1 ≡ proj₁ (exec-abstract load-indirect-suc s₀ a₀) →
-            readLoc s₀ (sucLoc (readReg (regs s₀) Input1)) ≡ just arg-loc →
-            readReg (regs s1) Output ≡ arg-loc
-          step1-output-helper s₀ a₀ s1-eq mem-eq with readLoc s₀ (sucLoc (readReg (regs s₀) Input1)) | mem-eq
-          ... | just v | refl = trans (cong (λ s' → readReg (regs s') Output) s1-eq)
-                                      (writeReg-same (regs s₀) Output v)
+      -- After load-indirect-suc, Output = SV-Ptr arg-loc.
+      -- TODO: discharge — proof composes sv-as-loc-SV-Ptr rdi-eq + arg-ptr
+      -- through exec-abstract's load-indirect-suc with-branch.
+      step1-output : readReg (regs s1) Output ≡ SV-Ptr arg-loc
+      step1-output = SMP.!!
 
       -- Step 2: store-at-slot (suc pair-slot)
       -- Writes Output (= arg-loc) to slot (suc pair-slot)
@@ -355,11 +340,11 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
 
       -- Not halted after step 1
       not-halted-s1 : halted s1 ≡ false
-      not-halted-s1 = exec-trace-preserves-halted step1-trace s alloc not-halted
-                        (tph-∷ iph-load-indirect-suc tph-[])
+      not-halted-s1 = exec-trace-preserves-halted-WF step1-trace s alloc not-halted
+                        (twf-∷ (SMP.!!) twf-[])  -- load-indirect-suc InstrWF: arg-ptr witness
 
       -- Step 2 writes arg-loc to slot (suc pair-slot)
-      step2-written : readLoc s2 (AtStack frame (suc pair-slot)) ≡ just arg-loc
+      step2-written : readLoc s2 (AtStack frame (suc pair-slot)) ≡ just (SV-Ptr arg-loc)
       step2-written =
         let alloc1 = proj₂ (exec-trace step1-trace s alloc)
             frame-eq : current-frame alloc1 ≡ frame
@@ -373,10 +358,10 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
                                    (AtStack (current-frame alloc1) (suc pair-slot)) ≡
                            just (readReg (regs s1) Output)
             store-result = store-at-slot-result (suc pair-slot) s1 alloc1
-        in subst (λ s' → readLoc s' (AtStack frame (suc pair-slot)) ≡ just arg-loc)
+        in subst (λ s' → readLoc s' (AtStack frame (suc pair-slot)) ≡ just (SV-Ptr arg-loc))
                  (sym (trans s2-decomp s2-as-abstract))
                  (subst (λ f → readLoc (proj₁ (exec-abstract (store-at-slot (suc pair-slot)) s1 alloc1))
-                                       (AtStack f (suc pair-slot)) ≡ just arg-loc)
+                                       (AtStack f (suc pair-slot)) ≡ just (SV-Ptr arg-loc))
                         frame-eq
                         (trans store-result (cong just step1-output)))
 
@@ -408,7 +393,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       rest-no-heap-writes = tt
 
       -- Pair is properly constructed after setup
-      pair-arg-ptr : readLoc s-after-setup (sucLoc pair-input-loc) ≡ just arg-loc
+      pair-arg-ptr : readLoc s-after-setup (sucLoc pair-input-loc) ≡ just (SV-Ptr arg-loc)
       pair-arg-ptr =
         let alloc2 = proj₂ (exec-trace (step1-trace ++ step2-trace) s alloc)
             s-after-setup-decomp : s-after-setup ≡ proj₁ (exec-trace rest-after-step2 s2 alloc2)
@@ -418,15 +403,15 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
             -- Use exec-trace-slot-value-below to show slot (suc pair-slot) is preserved
             -- rest writes below suc pair-slot, so slot suc pair-slot is preserved
             preserved : readLoc (proj₁ (exec-trace rest-after-step2 s2 alloc2))
-                               (AtStack (current-frame alloc2) (suc pair-slot)) ≡ just arg-loc
-            preserved = exec-trace-slot-value-below rest-after-step2 s2 alloc2 (suc pair-slot) arg-loc
-                          (subst (λ f → readLoc s2 (AtStack f (suc pair-slot)) ≡ just arg-loc)
+                               (AtStack (current-frame alloc2) (suc pair-slot)) ≡ just (SV-Ptr arg-loc)
+            preserved = exec-trace-slot-value-below rest-after-step2 s2 alloc2 (suc pair-slot) (SV-Ptr arg-loc)
+                          (subst (λ f → readLoc s2 (AtStack f (suc pair-slot)) ≡ just (SV-Ptr arg-loc))
                                  (sym frame-eq2) step2-written)
                           rest-writes-below-suc rest-no-heap-writes
-        in subst (λ s' → readLoc s' (AtStack frame (suc pair-slot)) ≡ just arg-loc)
+        in subst (λ s' → readLoc s' (AtStack frame (suc pair-slot)) ≡ just (SV-Ptr arg-loc))
                  (sym s-after-setup-decomp)
                  (subst (λ f → readLoc (proj₁ (exec-trace rest-after-step2 s2 alloc2))
-                                       (AtStack f (suc pair-slot)) ≡ just arg-loc)
+                                       (AtStack f (suc pair-slot)) ≡ just (SV-Ptr arg-loc))
                         frame-eq2 preserved)
 
       -- For pair-env-ptr, we need to trace through to step 7
@@ -446,17 +431,17 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       setup-decomp-for-env = refl
 
       -- TracePreservesHalted for prefix-for-env
-      prefix-for-env-tph : TracePreservesHaltedP prefix-for-env
+      prefix-for-env-tph : TraceWF s alloc prefix-for-env
       prefix-for-env-tph =
-        tph-∷ iph-load-indirect-suc
-        (tph-∷ iph-store-at-slot
-        (tph-∷ iph-load-indirect
-        (tph-∷ iph-mov-to-input
-        (tph-∷ iph-instr-save-closure-reg
-        (tph-∷ iph-load-indirect tph-[])))))
+        twf-∷ (SMP.!!)            -- load-indirect-suc: arg-ptr witness
+        (twf-∷ tt
+        (twf-∷ (SMP.!!)          -- load-indirect: closure-ptr witness
+        (twf-∷ tt
+        (twf-∷ tt
+        (twf-∷ (SMP.!!) twf-[]))))) -- load-indirect: env-ptr witness
 
       not-halted-after-prefix-for-env : halted (proj₁ (exec-trace prefix-for-env s alloc)) ≡ false
-      not-halted-after-prefix-for-env = exec-trace-preserves-halted prefix-for-env s alloc not-halted prefix-for-env-tph
+      not-halted-after-prefix-for-env = exec-trace-preserves-halted-WF prefix-for-env s alloc not-halted prefix-for-env-tph
 
       -- suffix writes above suc pair-slot (lea-slot and mov-to-input don't write to slots)
       suffix-writes-above : SMP.TraceWritesAbove (suc pair-slot) suffix-after-env-store
@@ -494,21 +479,21 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       alloc12 = proj₂ (exec-trace prefix12 s alloc)
 
       -- Steps 1-2 preserve halted
-      prefix12-tph : TracePreservesHaltedP prefix12
-      prefix12-tph = tph-∷ iph-load-indirect-suc (tph-∷ iph-store-at-slot tph-[])
+      prefix12-tph : TraceWF s alloc prefix12
+      prefix12-tph = twf-∷ (SMP.!!) (twf-∷ tt twf-[])  -- TODO: load-indirect-suc witness
 
       not-halted-s12 : halted s12 ≡ false
-      not-halted-s12 = exec-trace-preserves-halted prefix12 s alloc not-halted prefix12-tph
+      not-halted-s12 = exec-trace-preserves-halted-WF prefix12 s alloc not-halted prefix12-tph
 
       -- Input1 is still input-loc after steps 1-2 (neither instruction modifies Input1)
       -- Step 1 modifies Output only, Step 2 writes to memory only
       -- Both preserve Input1 register
-      input-after-s12 : readReg (regs s12) Input1 ≡ input-loc
+      input-after-s12 : readReg (regs s12) Input1 ≡ SV-Ptr input-loc
       input-after-s12 = SMP.!!  -- Needs trace infrastructure for register preservation
 
       -- Memory is preserved for closure-loc: steps 1-2 only write to slot (suc pair-slot)
       -- which is on stack, not at closure-loc (which is on heap since closure is Heap mode)
-      closure-readable-after-s12 : readLoc s12 closure-loc ≡ just env-loc
+      closure-readable-after-s12 : readLoc s12 closure-loc ≡ just (SV-Ptr env-loc)
       closure-readable-after-s12 = SMP.!!  -- Needs frame/heap preservation proof
 
       -- Step 3: load-indirect reads closure-loc, gets env-loc (after step 3)
@@ -519,7 +504,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       s3-partial = proj₁ (exec-trace prefix3 s12 alloc12)
 
       -- After step 3, Output = *Input1 = *input-loc = closure-loc
-      step3-output : readReg (regs s3-partial) Output ≡ closure-loc
+      step3-output : readReg (regs s3-partial) Output ≡ SV-Ptr closure-loc
       step3-output = SMP.!!  -- Needs load-indirect result lemma
 
       -- Step 4: mov-to-input sets Input1 := Output = closure-loc, preserves Output
@@ -529,14 +514,14 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       s34-partial : LocState FS
       s34-partial = proj₁ (exec-trace prefix34 s12 alloc12)
 
-      prefix3-tph : TracePreservesHaltedP prefix3
-      prefix3-tph = tph-∷ iph-load-indirect tph-[]
+      prefix3-tph : TraceWF s12 alloc12 prefix3
+      prefix3-tph = twf-∷ (SMP.!!) twf-[]  -- TODO: load-indirect witness at s12
 
       not-halted-s3 : halted s3-partial ≡ false
-      not-halted-s3 = exec-trace-preserves-halted prefix3 s12 alloc12 not-halted-s12 prefix3-tph
+      not-halted-s3 = exec-trace-preserves-halted-WF prefix3 s12 alloc12 not-halted-s12 prefix3-tph
 
       -- After step 4, Input1 = closure-loc
-      step4-input : readReg (regs s34-partial) Input1 ≡ closure-loc
+      step4-input : readReg (regs s34-partial) Input1 ≡ SV-Ptr closure-loc
       step4-input =
         let alloc3 = proj₂ (exec-trace prefix3 s12 alloc12)
             s34-decomp : s34-partial ≡ proj₁ (exec-abstract mov-to-input s3-partial alloc3)
@@ -547,16 +532,17 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
                         step3-output)
 
       -- Step 5: load-indirect reads *Input1 = *closure-loc = env-loc
-      prefix345-tph : TracePreservesHaltedP prefix345
-      prefix345-tph = tph-∷ iph-load-indirect (tph-∷ iph-mov-to-input
-                      (tph-∷ iph-instr-save-closure-reg
-                      (tph-∷ iph-load-indirect tph-[])))
+      prefix345-tph : TraceWF s12 alloc12 prefix345
+      prefix345-tph = twf-∷ (SMP.!!)        -- TODO: load-indirect witness at s12
+                      (twf-∷ tt
+                      (twf-∷ tt
+                      (twf-∷ (SMP.!!) twf-[])))  -- TODO: load-indirect witness at s345
 
       not-halted-s345 : halted (proj₁ (exec-trace prefix345 s12 alloc12)) ≡ false
-      not-halted-s345 = exec-trace-preserves-halted prefix345 s12 alloc12 not-halted-s12 prefix345-tph
+      not-halted-s345 = exec-trace-preserves-halted-WF prefix345 s12 alloc12 not-halted-s12 prefix345-tph
 
       -- After step 5, Output = *closure-loc = env-loc
-      output-after-prefix : readReg (regs (proj₁ (exec-trace prefix-for-env s alloc))) Output ≡ env-loc
+      output-after-prefix : readReg (regs (proj₁ (exec-trace prefix-for-env s alloc))) Output ≡ SV-Ptr env-loc
       output-after-prefix =
         let -- Decompose prefix execution
             prefix-decomp : proj₁ (exec-trace prefix-for-env s alloc) ≡
@@ -567,19 +553,13 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
         where
           step5-output-final : (s₀ : LocState FS) (a₀ : AllocState {FS}) →
             halted s₀ ≡ false →
-            readReg (regs (proj₁ (exec-trace prefix345 s₀ a₀))) Output ≡ env-loc
+            readReg (regs (proj₁ (exec-trace prefix345 s₀ a₀))) Output ≡ SV-Ptr env-loc
           step5-output-final s₀ a₀ nh = SMP.!!  -- Final step needs closure memory read
 
-      -- Use prefix-store-preserve to prove pair-env-ptr
-      -- After prefix-for-env, Output = env-loc, then store-at-slot pair-slot writes it
-      pair-env-ptr : readLoc s-after-setup pair-input-loc ≡ just env-loc
-      pair-env-ptr =
-        let result = prefix-store-preserve prefix-for-env pair-slot suffix-after-env-store
-                       s alloc prefix-for-env-tph not-halted suffix-writes-above suffix-no-heap-writes
-            -- result : readLoc (proj₁ (exec-trace (prefix ++ store ∷ suffix) s alloc))
-            --                  (AtStack frame pair-slot) ≡
-            --          just (readReg (regs (proj₁ (exec-trace prefix s alloc))) Output)
-        in trans result (cong just output-after-prefix)
+      -- TODO (post-scaffold): rederive via a TraceWF-shaped
+      -- prefix-store-preserve. Original proof used the tph chain.
+      pair-env-ptr : readLoc s-after-setup pair-input-loc ≡ just (SV-Ptr env-loc)
+      pair-env-ptr = SMP.!!
 
       -- Input1 register points to pair after setup
       -- Decompose setup-trace as prefix ++ (lea-slot pair-slot ∷ mov-to-input ∷ [])
@@ -593,48 +573,48 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       setup-decomp = refl
 
       -- TracePreservesHalted for the prefix
-      setup-prefix-tph : TracePreservesHaltedP setup-prefix
+      setup-prefix-tph : TraceWF s alloc setup-prefix
       setup-prefix-tph =
-        tph-∷ iph-load-indirect-suc
-        (tph-∷ iph-store-at-slot
-        (tph-∷ iph-load-indirect
-        (tph-∷ iph-mov-to-input
-        (tph-∷ iph-instr-save-closure-reg
-        (tph-∷ iph-load-indirect
-        (tph-∷ iph-store-at-slot tph-[]))))))
+        twf-∷ (SMP.!!)            -- TODO: load-indirect-suc witness
+        (twf-∷ tt
+        (twf-∷ (SMP.!!)          -- TODO: load-indirect witness
+        (twf-∷ tt
+        (twf-∷ tt
+        (twf-∷ (SMP.!!)          -- TODO: load-indirect witness
+        (twf-∷ tt twf-[]))))))
 
       not-halted-after-prefix : halted (proj₁ (exec-trace setup-prefix s alloc)) ≡ false
-      not-halted-after-prefix = exec-trace-preserves-halted setup-prefix s alloc not-halted setup-prefix-tph
+      not-halted-after-prefix = exec-trace-preserves-halted-WF setup-prefix s alloc not-halted setup-prefix-tph
 
-      pair-input-eq : readReg (regs s-after-setup) Input1 ≡ pair-input-loc
+      pair-input-eq : readReg (regs s-after-setup) Input1 ≡ SV-Ptr pair-input-loc
       pair-input-eq =
         let eq1 : apply-setup-trace pair-slot ≡
                   setup-prefix ++ (lea-slot pair-slot ∷ mov-to-input ∷ [])
             eq1 = setup-decomp
             eq2 : readReg (regs (proj₁ (exec-trace (setup-prefix ++
                            (lea-slot pair-slot ∷ mov-to-input ∷ [])) s alloc))) Input1 ≡
-                  AtStack (current-frame alloc) pair-slot
-            eq2 = exec-trace-final-lea-mov-input setup-prefix pair-slot s alloc not-halted-after-prefix
+                  SV-Ptr (AtStack (current-frame alloc) pair-slot)
+            eq2 = SMP.!!  -- TODO: exec-trace-final-lea-mov-input under StoredValue
         in subst (λ t → readReg (regs (proj₁ (exec-trace t s alloc))) Input1 ≡
-                        AtStack (current-frame alloc) pair-slot)
+                        SV-Ptr (AtStack (current-frame alloc) pair-slot))
                  (sym eq1) eq2
 
       -- Setup trace preserves halted (used in multiple places)
-      setup-tph : TracePreservesHaltedP (apply-setup-trace pair-slot)
+      setup-tph : TraceWF s alloc (apply-setup-trace pair-slot)
       setup-tph =
-        tph-∷ iph-load-indirect-suc
-        (tph-∷ iph-store-at-slot
-        (tph-∷ iph-load-indirect
-        (tph-∷ iph-mov-to-input
-        (tph-∷ iph-instr-save-closure-reg
-        (tph-∷ iph-load-indirect
-        (tph-∷ iph-store-at-slot
-        (tph-∷ iph-lea-slot
-        (tph-∷ iph-mov-to-input tph-[]))))))))
+        twf-∷ (SMP.!!)            -- TODO: load-indirect-suc witness
+        (twf-∷ tt
+        (twf-∷ (SMP.!!)          -- TODO: load-indirect witness
+        (twf-∷ tt
+        (twf-∷ tt
+        (twf-∷ (SMP.!!)          -- TODO: load-indirect witness
+        (twf-∷ tt
+        (twf-∷ tt
+        (twf-∷ tt twf-[]))))))))
 
       -- Not halted after setup
       not-halted-after-setup : halted s-after-setup ≡ false
-      not-halted-after-setup = exec-trace-preserves-halted (apply-setup-trace pair-slot) s alloc not-halted setup-tph
+      not-halted-after-setup = exec-trace-preserves-halted-WF (apply-setup-trace pair-slot) s alloc not-halted setup-tph
 
       -- Pair validity in alloc' (same frame as parent, frontier
       -- advanced past the (env, arg) pair).
@@ -676,7 +656,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       --     value as their result-loc index.
       result-loc-dispatch : ResultPlace _ _ _ _ _ _ → ValueLocation FS
       result-loc-dispatch (at-loc loc _ _ _ _ _) = loc
-      result-loc-dispatch unit-result = readReg (regs (IRResultAWF.final-state body-result)) Output
+      result-loc-dispatch unit-result = SMP.!!  -- TODO: extract via sv-as-loc of body's Output
 
       result-loc = result-loc-dispatch (IRResultAWF.result-place body-result)
 
@@ -695,10 +675,11 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       -- Proof obligations for properties
       ------------------------------------------------------------------------
 
-      -- Trace preserves halted: setup-tph ++ body-trace's tph.
-      trace-preserves-halted' : TracePreservesHaltedP trace
-      trace-preserves-halted' =
-        tph-++ setup-tph (IRResultAWF.trace-preserves-halted body-result)
+      -- Trace preserves halted: setup-twf ++ body-trace's twf.
+      -- TODO: body-trace's TraceWF is at (s-after-setup-via-child-alloc, child-alloc);
+      -- need to bridge through frame-eq to (s-after-setup, alloc-after-setup).
+      trace-twf' : TraceWF s alloc trace
+      trace-twf' = twf-++ not-halted setup-tph (SMP.!!)  -- TODO: body-trace's twf at runtime state
 
       ----------------------------------------------------------------
       -- Foundation postulates (Plan 0.2.4.5 task #30).
@@ -764,7 +745,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       -- Output register contains result location.
       -- Dispatch on body's result-place: at-loc gives place-rax;
       -- unit-result reduces result-loc to readReg body-final-state Output (refl after s'-eq).
-      rax-eq' : readReg (regs s') Output ≡ result-loc
+      rax-eq' : readReg (regs s') Output ≡ SV-Ptr result-loc
       rax-eq' with IRResultAWF.result-place body-result
       ... | at-loc loc valid before rax _ _ =
               trans (cong (λ st → readReg (regs st) Output) s'-eq) rax
@@ -773,7 +754,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
 
       -- Not halted after full trace
       not-halted' : halted s' ≡ false
-      not-halted' = exec-trace-preserves-halted trace s alloc not-halted trace-preserves-halted'
+      not-halted' = exec-trace-preserves-halted-WF trace s alloc not-halted trace-twf'
 
       -- Setup-trace writes only at pair-slot and suc pair-slot.
       -- Both ≥ pair-slot, so TraceWritesAbove pair-slot.
@@ -858,8 +839,8 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       -- the original input-loc). inj₂ (inj₂ tt) is the give-up branch.
       frontier-stable' : ∀ (s'' : LocState FS) (input-loc' : ValueLocation FS) →
         halted s'' ≡ false →
-        readReg (regs s'') Input1 ≡ input-loc' →
-        readLoc s'' (AtStack (current-frame alloc) pair-slot) ≡ just input-loc' →
+        readReg (regs s'') Input1 ≡ SV-Ptr input-loc' →
+        readLoc s'' (AtStack (current-frame alloc) pair-slot) ≡ just (SV-Ptr input-loc') →
         _
       frontier-stable' s'' input-loc' _ _ _ = inj₂ (inj₂ tt)
 

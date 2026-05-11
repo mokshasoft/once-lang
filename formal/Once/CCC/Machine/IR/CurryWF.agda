@@ -118,7 +118,7 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     ValidAtWF mIn alloc x input-loc s →
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
-    readReg (regs s) Input1 ≡ input-loc →
+    readReg (regs s) Input1 ≡ SV-Ptr input-loc →
     IRResultAWF Heap (curry {k = k} f m) x s alloc
   run-curry {A} {B} {C} {k} mIn f m ir<bound rec-wf x input-loc s alloc
     input-valid-wf input-before not-halted rdi-eq =
@@ -148,7 +148,8 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; trace-slot-reads-below = tt
       -- Note: trace-preserves-capacity removed in Phase 3
       ; trace-no-heap-writes = tt
-      ; trace-preserves-halted = trace-preserves-halted'
+      ; trace-twf = trace-twf'
+      ; trace-preserves-halted = exec-trace-preserves-halted-WF trace
       -- scratch-bounded: max-slot-written = next-slot alloc + closure-slots = next-slot alloc'
       -- (n + 2) ≤ (n + 2) + req by m≤m+n
       ; scratch-budget = ir-scratch-requirement (curry {k = k} f m)
@@ -188,13 +189,13 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
       -- Note: trace-preserves-capacity' removed in Phase 3
 
-      trace-preserves-halted' : TracePreservesHaltedP trace
-      trace-preserves-halted' =
-        tph-∷ iph-mov-to-output
-        (tph-∷ iph-store-at-slot
-        (tph-∷ iph-lea-slot
-        (tph-∷ iph-store-at-slot
-        (tph-∷ iph-lea-slot tph-[]))))
+      trace-twf' : TraceWF s alloc trace
+      trace-twf' =
+        twf-∷ tt
+        (twf-∷ tt
+        (twf-∷ tt
+        (twf-∷ tt
+        (twf-∷ tt twf-[]))))
 
       ----------------------------------------------------------------------
       -- Proof obligations for exec-trace properties
@@ -202,7 +203,7 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
       -- Halted status preserved (use exec-trace-preserves-halted)
       not-halted' : halted s' ≡ false
-      not-halted' = exec-trace-preserves-halted trace s alloc not-halted trace-preserves-halted'
+      not-halted' = exec-trace-preserves-halted-WF trace s alloc not-halted trace-twf'
 
       -- Output register contains closure address
       -- The trace ends with lea-slot closure-slot, so Output = AtStack frame closure-slot
@@ -211,16 +212,16 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       prefix-trace = mov-to-output ∷ store-at-slot closure-slot ∷
                      lea-slot (suc closure-slot) ∷ store-at-slot (suc closure-slot) ∷ []
 
-      prefix-tph : TracePreservesHaltedP prefix-trace
-      prefix-tph = tph-∷ iph-mov-to-output
-                   (tph-∷ iph-store-at-slot
-                   (tph-∷ iph-lea-slot
-                   (tph-∷ iph-store-at-slot tph-[])))
+      prefix-tph : TraceWF s alloc prefix-trace
+      prefix-tph = twf-∷ tt
+                   (twf-∷ tt
+                   (twf-∷ tt
+                   (twf-∷ tt twf-[])))
 
       not-halted-after-prefix : halted (proj₁ (exec-trace prefix-trace s alloc)) ≡ false
-      not-halted-after-prefix = exec-trace-preserves-halted prefix-trace s alloc not-halted prefix-tph
+      not-halted-after-prefix = exec-trace-preserves-halted-WF prefix-trace s alloc not-halted prefix-tph
 
-      rax-eq' : readReg (regs s') Output ≡ closure-loc
+      rax-eq' : readReg (regs s') Output ≡ SV-Ptr closure-loc
       rax-eq' = exec-trace-final-lea-slot prefix-trace closure-slot s alloc not-halted-after-prefix
 
       -- Closure slot env-ptr': store-at-slot writes Input1 to closure-slot, preserved by rest
@@ -235,8 +236,8 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       env-suffix = lea-slot (suc closure-slot) ∷ store-at-slot (suc closure-slot) ∷
                    lea-slot closure-slot ∷ []
 
-      env-prefix-tph : TracePreservesHaltedP env-prefix
-      env-prefix-tph = tph-∷ iph-mov-to-output tph-[]
+      env-prefix-tph : TraceWF s alloc env-prefix
+      env-prefix-tph = twf-∷ tt twf-[]
 
       -- env-suffix = lea-slot (suc cs) ∷ store-at-slot (suc cs) ∷ lea-slot cs ∷ []
       -- lea-slot doesn't write (nothing), store-at-slot (suc cs) writes to (suc cs)
@@ -267,7 +268,7 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       output-after-env-prefix = subst (λ s'' → readReg (regs s'') Output ≡ input-loc)
                                       (sym s-after-env-prefix-eq) output-after-mov
 
-      env-ptr' : readLoc s' closure-loc ≡ just input-loc
+      env-ptr' : readLoc s' closure-loc ≡ just (SV-Ptr input-loc)
       env-ptr' = trans (prefix-store-preserve env-prefix closure-slot env-suffix s alloc
                           env-prefix-tph not-halted env-suffix-twa tt)
                        (cong just output-after-env-prefix)
@@ -283,8 +284,8 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       code-suffix : AbstractTrace
       code-suffix = lea-slot closure-slot ∷ []
 
-      code-prefix-tph : TracePreservesHaltedP code-prefix
-      code-prefix-tph = tph-∷ iph-mov-to-output (tph-∷ iph-store-at-slot (tph-∷ iph-lea-slot tph-[]))
+      code-prefix-tph : TraceWF s alloc code-prefix
+      code-prefix-tph = twf-∷ tt (twf-∷ tt (twf-∷ tt twf-[]))
 
       -- suc (suc closure-slot) > suc closure-slot, and lea-slot doesn't write
       code-suffix-twa : TraceWritesAbove (suc (suc closure-slot)) code-suffix
@@ -295,7 +296,7 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       s-after-code-prefix = proj₁ (exec-trace code-prefix s alloc)
 
       code-prefix-not-halted : halted s-after-code-prefix ≡ false
-      code-prefix-not-halted = exec-trace-preserves-halted code-prefix s alloc not-halted code-prefix-tph
+      code-prefix-not-halted = exec-trace-preserves-halted-WF code-prefix s alloc not-halted code-prefix-tph
 
       -- lea-slot (suc closure-slot) puts AtStack frame (suc closure-slot) in Output
       -- Use exec-trace-final-lea-slot: code-prefix = prefix ++ [lea-slot k]
@@ -303,11 +304,11 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       code-prefix-before-lea : AbstractTrace
       code-prefix-before-lea = mov-to-output ∷ store-at-slot closure-slot ∷ []
 
-      code-prefix-before-lea-tph : TracePreservesHaltedP code-prefix-before-lea
-      code-prefix-before-lea-tph = tph-∷ iph-mov-to-output (tph-∷ iph-store-at-slot tph-[])
+      code-prefix-before-lea-tph : TraceWF s alloc code-prefix-before-lea
+      code-prefix-before-lea-tph = twf-∷ tt (twf-∷ tt twf-[])
 
       not-halted-before-lea : halted (proj₁ (exec-trace code-prefix-before-lea s alloc)) ≡ false
-      not-halted-before-lea = exec-trace-preserves-halted code-prefix-before-lea s alloc not-halted
+      not-halted-before-lea = exec-trace-preserves-halted-WF code-prefix-before-lea s alloc not-halted
                                 code-prefix-before-lea-tph
 
       output-after-code-prefix : readReg (regs s-after-code-prefix) Output ≡ code-loc
@@ -342,8 +343,8 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       --   3. Rest of trace writes only to higher slots
       frontier-stable' : ∀ (s'' : LocState FS) (input-loc' : ValueLocation FS) →
         halted s'' ≡ false →
-        readReg (regs s'') Input1 ≡ input-loc' →
-        readLoc s'' (AtStack (current-frame alloc) closure-slot) ≡ just input-loc' →
+        readReg (regs s'') Input1 ≡ SV-Ptr input-loc' →
+        readLoc s'' (AtStack (current-frame alloc) closure-slot) ≡ just (SV-Ptr input-loc') →
         _
       frontier-stable' s'' input-loc' not-halted'' rdi-eq'' _ =
         let -- Use same decomposition as env-ptr': prefix = [mov-to-output], suffix = rest

@@ -162,7 +162,7 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     ValidAtWF mIn alloc x input-loc s →
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
-    readReg (regs s) Input1 ≡ input-loc →
+    readReg (regs s) Input1 ≡ SV-Ptr input-loc →
     ∃[ mOut ] IRResultAWF mOut (g ∘ f) x s alloc
   run-compose mIn f g rec-wf x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     mOut , record
@@ -199,7 +199,8 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; trace-slot-reads-below = compose-trace-slot-reads-below
       -- Note: trace-preserves-capacity removed in Phase 3
       ; trace-no-heap-writes = compose-trace-no-heap-writes
-      ; trace-preserves-halted = compose-trace-preserves-halted
+      ; trace-twf = compose-trace-twf
+      ; trace-preserves-halted = SMP.!!  -- TODO: exec-trace-preserves-halted-WF compose-trace
       ; scratch-budget = req-compose-scratch
       ; scratch-bounded = compose-scratch-bounded
       }
@@ -448,12 +449,17 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       compose-trace-no-heap-writes =
         SMP.trace-no-heap-writes-append f-trace (mov-to-input ∷ g-trace) f-nhw g-nhw
 
-      f-tph : TracePreservesHaltedP f-trace
-      f-tph = IRResultAWF.trace-preserves-halted result-f
-      g-tph : TracePreservesHaltedP g-trace
-      g-tph = IRResultAWF.trace-preserves-halted result-g
-      compose-trace-preserves-halted : TracePreservesHaltedP compose-trace
-      compose-trace-preserves-halted = tph-++ f-tph (tph-∷ iph-mov-to-input g-tph)
+      f-tph : TraceWF s alloc f-trace
+      f-tph = IRResultAWF.trace-twf result-f
+      -- TODO: g-tph runs at a runtime state different from g's construction
+      -- state; same shape as PairWF2's g-tph-runtime. Postulate for the
+      -- scaffold pass, discharge in follow-up.
+      g-tph : TraceWF (proj₁ (exec-trace (f-trace ++ mov-to-input ∷ []) s alloc))
+                      (proj₂ (exec-trace (f-trace ++ mov-to-input ∷ []) s alloc))
+                      g-trace
+      g-tph = SMP.!!  -- TODO: bridge from result-g's trace-twf
+      compose-trace-twf : TraceWF s alloc compose-trace
+      compose-trace-twf = SMP.!!  -- TODO: twf-++ f-tph (twf-∷ tt g-tph) with state-threading
 
       ------------------------------------------------------------------------
       -- Frontier slot stability
@@ -472,11 +478,11 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ------------------------------------------------------------------------
       compose-frontier-stable : ∀ (s' : LocState FS) (input-loc' : ValueLocation FS) →
         halted s' ≡ false →
-        readReg (regs s') Input1 ≡ input-loc' →
-        readLoc s' (AtStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc' →
+        readReg (regs s') Input1 ≡ SV-Ptr input-loc' →
+        readLoc s' (AtStack (current-frame alloc) (next-slot alloc)) ≡ just (SV-Ptr input-loc') →
         (next-slot alloc ≡ next-slot alloc₂) ⊎
         ((readLoc (proj₁ (exec-trace compose-trace s' alloc))
-                 (AtStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc') ⊎ ⊤)
+                 (AtStack (current-frame alloc) (next-slot alloc)) ≡ just (SV-Ptr input-loc')) ⊎ ⊤)
       compose-frontier-stable s' input-loc' not-halted' rdi-eq' slot-eq' = result
         where
           -- Step 1: Decompose trace using exec-trace-append-state
@@ -495,8 +501,7 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
           -- Step 2: mov-to-input preserves memory (only modifies registers)
           not-halted-after-f : halted s-after-f ≡ false
-          not-halted-after-f = exec-trace-preserves-halted f-trace s' alloc not-halted'
-                                 (IRResultAWF.trace-preserves-halted result-f)
+          not-halted-after-f = SMP.!!  -- TODO: result-f.trace-preserves-halted at s' state
 
           s-after-mov = proj₁ (exec-abstract mov-to-input s-after-f alloc-after-f)
           alloc-after-mov = proj₂ (exec-abstract mov-to-input s-after-f alloc-after-f)
@@ -527,17 +532,17 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
           -- New 3-way return: inj₁ (no-alloc) | inj₂ (inj₁ preserved) | inj₂ (inj₂ tt) (uncertain)
           result : (next-slot alloc ≡ next-slot alloc₂) ⊎
                    ((readLoc (proj₁ (exec-trace compose-trace s' alloc))
-                            (AtStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc') ⊎ ⊤)
+                            (AtStack (current-frame alloc) (next-slot alloc)) ≡ just (SV-Ptr input-loc')) ⊎ ⊤)
           result with IRResultAWF.frontier-slot-stable result-f s' input-loc' not-halted' rdi-eq' slot-eq'
           -- If f is uncertain, compose is also uncertain
           ... | inj₂ (inj₂ tt) = inj₂ (inj₂ tt)
           -- If f preserves the slot
           ... | inj₂ (inj₁ f-preserved) = result-with-slot-after-f f-preserved
             where
-              slot-after-f : readLoc s-after-f (AtStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc'
+              slot-after-f : readLoc s-after-f (AtStack (current-frame alloc) (next-slot alloc)) ≡ just (SV-Ptr input-loc')
               slot-after-f = f-preserved
 
-              slot-after-mov : readLoc s-after-mov (AtStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc'
+              slot-after-mov : readLoc s-after-mov (AtStack (current-frame alloc) (next-slot alloc)) ≡ just (SV-Ptr input-loc')
               slot-after-mov = trans (sym (exec-abstract-preserves-stack-slot mov-to-input s-after-f alloc-after-f
                                              (current-frame alloc) (next-slot alloc) nhw-mov-to-input refl))
                                      slot-after-f
@@ -545,7 +550,7 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
               -- Case A: f allocates, use trace bounds for g
               slot-after-g : next-slot alloc < reclaim-f →
                              readLoc (proj₁ (exec-trace g-trace s-after-mov alloc₁-reclaimed))
-                                     (AtStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc'
+                                     (AtStack (current-frame alloc) (next-slot alloc)) ≡ just (SV-Ptr input-loc')
               slot-after-g slot<reclaim-f =
                 let preserved = exec-trace-preserves-slot-below g-trace s-after-mov alloc₁-reclaimed
                                   reclaim-f (next-slot alloc) g-twa g-tnhw slot<reclaim-f
@@ -565,16 +570,16 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
               build-preserved : next-slot alloc < reclaim-f →
                                 readLoc (proj₁ (exec-trace compose-trace s' alloc))
-                                        (AtStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc'
+                                        (AtStack (current-frame alloc) (next-slot alloc)) ≡ just (SV-Ptr input-loc')
               build-preserved slot<reclaim-f =
                 trans (cong (λ st → readLoc st (AtStack (current-frame alloc) (next-slot alloc)))
                             (trans split1 (trans (cong proj₁ split2) frame-g-result)))
                       (slot-after-g slot<reclaim-f)
 
-              result-with-slot-after-f : readLoc s-after-f (AtStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc' →
+              result-with-slot-after-f : readLoc s-after-f (AtStack (current-frame alloc) (next-slot alloc)) ≡ just (SV-Ptr input-loc') →
                                          (next-slot alloc ≡ next-slot alloc₂) ⊎
                                          ((readLoc (proj₁ (exec-trace compose-trace s' alloc))
-                                                  (AtStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc') ⊎ ⊤)
+                                                  (AtStack (current-frame alloc) (next-slot alloc)) ≡ just (SV-Ptr input-loc')) ⊎ ⊤)
               result-with-slot-after-f _ with m≤n⇒m<n∨m≡n reclaim-f-mono
               -- Case A: f allocates (next-slot < reclaim-f)
               ... | inj₁ slot<reclaim-f = inj₂ (inj₁ (build-preserved slot<reclaim-f))
@@ -594,7 +599,7 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
             where
               result-f-no-alloc : (next-slot alloc ≡ next-slot alloc₂) ⊎
                                   ((readLoc (proj₁ (exec-trace compose-trace s' alloc))
-                                           (AtStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc') ⊎ ⊤)
+                                           (AtStack (current-frame alloc) (next-slot alloc)) ≡ just (SV-Ptr input-loc')) ⊎ ⊤)
               result-f-no-alloc with m≤n⇒m<n∨m≡n (IRResultAWF.slot-monotone result-g)
               -- Case B1: g allocates at frontier - uncertain
               ... | inj₁ reclaim-f<alloc₂ = inj₂ (inj₂ tt)

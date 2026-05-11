@@ -547,7 +547,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
     (s : LocState FS) (alloc : AllocState {FS})
     (input-loc : ValueLocation FS)
     (not-halted : halted s ≡ false)
-    (input-eq : readReg (regs s) Input1 ≡ input-loc)
+    (input-eq : readReg (regs s) Input1 ≡ SV-Ptr input-loc)
     → let trace = cata-trace-μ wf alg-trace x
       in ⊤  -- Specification: trace execution produces correct result
   cata-trace-valid-spec wf alg-trace x s alloc input-loc not-halted input-eq = tt
@@ -797,7 +797,9 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
       trace-slot-reads-below : TraceSlotReadsBelow max-slot-used trace
       -- Preservation properties
       -- Plan 0.13.3: state-aware halt-preservation certificate.
-      trace-preserves-halted : TraceWF s alloc trace
+      -- Option U rename: trace-preserves-halted → trace-twf (the
+      -- construction-state TraceWF used internally for chaining).
+      trace-twf : TraceWF s alloc trace
       -- Note: trace-preserves-capacity removed in Phase 3 (frame-capacity removed)
       trace-no-heap-writes : TraceNoHeapWrites trace
 
@@ -904,7 +906,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
   prod-left-setup-input : ∀ (save-slot : ℕ) (s : LocState FS) (alloc : AllocState {FS})
     (input-loc fst-loc : ValueLocation FS) →
     halted s ≡ false →
-    readReg (regs s) Input1 ≡ input-loc →
+    readReg (regs s) Input1 ≡ SV-Ptr input-loc →
     readLoc s input-loc ≡ just fst-loc →
     let (s' , _) = exec-trace (prod-left-setup-trace save-slot) s alloc
     in readReg (regs s') Input1 ≡ fst-loc
@@ -1031,7 +1033,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
     where
       prefix = instr-alloc-stack 2 ∷ store-at-slot (suc base) ∷ []
       prefix-tph : TracePreservesHaltedP prefix
-      prefix-tph = tph-∷ iph-alloc-stack (tph-∷ iph-store-at-slot tph-[])
+      prefix-tph = twf-∷ tt (twf-∷ tt twf-[])
       prefix-not-halted : halted (proj₁ (exec-trace prefix s alloc)) ≡ false
       prefix-not-halted = exec-trace-preserves-halted prefix s alloc not-halted prefix-tph
 
@@ -1216,7 +1218,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
     sum-setup-input-helper : ∀ (save-slot : ℕ) (s : LocState FS) (alloc : AllocState {FS})
       (input-loc payload-loc : ValueLocation FS) →
       halted s ≡ false →
-      readReg (regs s) Input1 ≡ input-loc →
+      readReg (regs s) Input1 ≡ SV-Ptr input-loc →
       readLoc s (sucLoc input-loc) ≡ just payload-loc →
       readReg (regs (proj₁ (exec-trace (sum-setup-trace save-slot) s alloc))) Input1 ≡ payload-loc
 
@@ -1227,9 +1229,9 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
     sum-setup-saves-helper : ∀ (save-slot : ℕ) (s : LocState FS) (alloc : AllocState {FS})
       (input-loc : ValueLocation FS) →
       halted s ≡ false →
-      readReg (regs s) Input1 ≡ input-loc →
+      readReg (regs s) Input1 ≡ SV-Ptr input-loc →
       readLoc (proj₁ (exec-trace (sum-setup-trace save-slot) s alloc))
-              (AtStack (current-frame alloc) save-slot) ≡ just input-loc
+              (AtStack (current-frame alloc) save-slot) ≡ just (SV-Ptr input-loc)
 
     sum-setup-mem-helper : ∀ (save-slot : ℕ) (s : LocState FS) (alloc : AllocState {FS})
       (loc : ValueLocation FS) →
@@ -1240,21 +1242,21 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
     sum-update-input-helper : ∀ (save-slot : ℕ) (s : LocState FS) (alloc : AllocState {FS})
       (input-loc : ValueLocation FS) →
       halted s ≡ false →
-      readLoc s (AtStack (current-frame alloc) save-slot) ≡ just input-loc →
-      readReg (regs (proj₁ (exec-trace (sum-update-trace save-slot) s alloc))) Input1 ≡ input-loc
+      readLoc s (AtStack (current-frame alloc) save-slot) ≡ just (SV-Ptr input-loc) →
+      readReg (regs (proj₁ (exec-trace (sum-update-trace save-slot) s alloc))) Input1 ≡ SV-Ptr input-loc
 
     sum-update-output-helper : ∀ (save-slot : ℕ) (s : LocState FS) (alloc : AllocState {FS})
       (input-loc : ValueLocation FS) →
       halted s ≡ false →
-      readLoc s (AtStack (current-frame alloc) save-slot) ≡ just input-loc →
+      readLoc s (AtStack (current-frame alloc) save-slot) ≡ just (SV-Ptr input-loc) →
       readReg (regs (proj₁ (exec-trace (sum-update-trace save-slot) s alloc))) Output ≡ input-loc
 
     sum-update-ptr-helper : ∀ (save-slot : ℕ) (s : LocState FS) (alloc : AllocState {FS})
       (input-loc result-loc : ValueLocation FS) →
       halted s ≡ false →
-      readLoc s (AtStack (current-frame alloc) save-slot) ≡ just input-loc →
-      readReg (regs s) Output ≡ result-loc →
-      readLoc (proj₁ (exec-trace (sum-update-trace save-slot) s alloc)) (sucLoc input-loc) ≡ just result-loc
+      readLoc s (AtStack (current-frame alloc) save-slot) ≡ just (SV-Ptr input-loc) →
+      readReg (regs s) Output ≡ SV-Ptr result-loc →
+      readLoc (proj₁ (exec-trace (sum-update-trace save-slot) s alloc)) (sucLoc input-loc) ≡ just (SV-Ptr result-loc)
 
     sum-update-alloc-helper : ∀ (save-slot : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
       halted s ≡ false →
@@ -1269,7 +1271,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
   sum-setup-sets-input : ∀ (save-slot : ℕ) (s : LocState FS) (alloc : AllocState {FS})
     (input-loc payload-loc : ValueLocation FS) →
     halted s ≡ false →
-    readReg (regs s) Input1 ≡ input-loc →
+    readReg (regs s) Input1 ≡ SV-Ptr input-loc →
     readLoc s (sucLoc input-loc) ≡ just payload-loc →
     let (s' , _) = exec-trace (sum-setup-trace save-slot) s alloc
     in readReg (regs s') Input1 ≡ payload-loc
@@ -1292,9 +1294,9 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
   sum-setup-saves-input : ∀ (save-slot : ℕ) (s : LocState FS) (alloc : AllocState {FS})
     (input-loc : ValueLocation FS) →
     halted s ≡ false →
-    readReg (regs s) Input1 ≡ input-loc →
+    readReg (regs s) Input1 ≡ SV-Ptr input-loc →
     let (s' , _) = exec-trace (sum-setup-trace save-slot) s alloc
-    in readLoc s' (AtStack (current-frame alloc) save-slot) ≡ just input-loc
+    in readLoc s' (AtStack (current-frame alloc) save-slot) ≡ just (SV-Ptr input-loc)
   sum-setup-saves-input save-slot s alloc input-loc not-halted rdi-eq =
     sum-setup-saves-helper save-slot s alloc input-loc not-halted rdi-eq
 
@@ -1312,9 +1314,9 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
   sum-update-restores-input : ∀ (save-slot : ℕ) (s : LocState FS) (alloc : AllocState {FS})
     (input-loc : ValueLocation FS) →
     halted s ≡ false →
-    readLoc s (AtStack (current-frame alloc) save-slot) ≡ just input-loc →
+    readLoc s (AtStack (current-frame alloc) save-slot) ≡ just (SV-Ptr input-loc) →
     let (s' , _) = exec-trace (sum-update-trace save-slot) s alloc
-    in readReg (regs s') Input1 ≡ input-loc
+    in readReg (regs s') Input1 ≡ SV-Ptr input-loc
   sum-update-restores-input save-slot s alloc input-loc not-halted stack-has-input =
     sum-update-input-helper save-slot s alloc input-loc not-halted stack-has-input
 
@@ -1322,7 +1324,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
   sum-update-output : ∀ (save-slot : ℕ) (s : LocState FS) (alloc : AllocState {FS})
     (input-loc : ValueLocation FS) →
     halted s ≡ false →
-    readLoc s (AtStack (current-frame alloc) save-slot) ≡ just input-loc →
+    readLoc s (AtStack (current-frame alloc) save-slot) ≡ just (SV-Ptr input-loc) →
     let (s' , _) = exec-trace (sum-update-trace save-slot) s alloc
     in readReg (regs s') Output ≡ input-loc
   sum-update-output save-slot s alloc input-loc not-halted stack-has-input =
@@ -1333,10 +1335,10 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
   sum-update-writes-ptr : ∀ (save-slot : ℕ) (s : LocState FS) (alloc : AllocState {FS})
     (input-loc result-loc : ValueLocation FS) →
     halted s ≡ false →
-    readLoc s (AtStack (current-frame alloc) save-slot) ≡ just input-loc →
-    readReg (regs s) Output ≡ result-loc →
+    readLoc s (AtStack (current-frame alloc) save-slot) ≡ just (SV-Ptr input-loc) →
+    readReg (regs s) Output ≡ SV-Ptr result-loc →
     let (s' , _) = exec-trace (sum-update-trace save-slot) s alloc
-    in readLoc s' (sucLoc input-loc) ≡ just result-loc
+    in readLoc s' (sucLoc input-loc) ≡ just (SV-Ptr result-loc)
   sum-update-writes-ptr save-slot s alloc input-loc result-loc not-halted stack-has-input output-eq =
     sum-update-ptr-helper save-slot s alloc input-loc result-loc not-halted stack-has-input output-eq
 
@@ -1353,7 +1355,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
     halted (proj₁ (exec-trace (sum-update-trace save-slot) s alloc)) ≡ false
   sum-update-preserves-halted save-slot s alloc not-halted =
     exec-trace-preserves-halted (sum-update-trace save-slot) s alloc not-halted
-      (tph-∷ iph-restore-input (tph-∷ iph-store-indirect-suc (tph-∷ iph-mov-to-output tph-[])))
+      (twf-∷ (SMP.!!) (twf-∷ (SMP.!!) (twf-∷ tt twf-[])))
 
   {-# TERMINATING #-}
   mutual
@@ -1385,7 +1387,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
       → μLayerValid alloc wfF wfG layer input-loc s  -- Layer validity
       → BeforeFrontier alloc input-loc
       → halted s ≡ false
-      → readReg (regs s) Input1 ≡ input-loc
+      → readReg (regs s) Input1 ≡ SV-Ptr input-loc
       → ∃[ mOut ] ProcessedLayerResult wfG alg mOut wfF layer s alloc
 
     -- K case: constant layer, no recursion
@@ -1430,7 +1432,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; trace-slot-reads-above = tt
         ; trace-slot-reads-below = tt
         -- Trace preservation properties
-        ; trace-preserves-halted = tph-∷ iph-mov-to-output tph-[]
+        ; trace-twf = twf-∷ tt twf-[]
         ; trace-no-heap-writes = tt
         -- scratch-bounded: K case has final-alloc = alloc, so same as max-slot-usage-bound
         ; scratch-bounded = m≤m+n (next-slot alloc) (layer-capacity (wf-K isBase) wfG alg)
@@ -1483,7 +1485,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; trace-slot-reads-above = IRResultAWF.trace-slot-reads-above rec-result
         ; trace-slot-reads-below = IRResultAWF.trace-slot-reads-below rec-result
         -- Trace preservation properties
-        ; trace-preserves-halted = IRResultAWF.trace-preserves-halted rec-result
+        ; trace-twf = IRResultAWF.trace-twf rec-result
         ; trace-no-heap-writes = IRResultAWF.trace-no-heap-writes rec-result
         -- scratch-bounded (INPUT-relative): Id delegates to Cata
         -- layer-capacity wf-Id = ir-stack-requirement (Cata wfG alg)
@@ -1851,7 +1853,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
         setup-tsrb = tt  -- Neither instruction reads slots
 
         setup-tph : TracePreservesHaltedP setup-trace
-        setup-tph = tph-∷ iph-load-indirect-suc (tph-∷ iph-mov-to-input tph-[])
+        setup-tph = twf-∷ (SMP.!!) (twf-∷ tt twf-[])
 
         -- Note: setup-tpc removed in Phase 3
 
@@ -1872,7 +1874,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
         -- TracePreservesHaltedP for reclaim-wrapper-trace
         reclaim-wrapper-tph : TracePreservesHaltedP reclaim-wrapper-trace
-        reclaim-wrapper-tph = tph-∷ iph-reclaim-to (tph-∷ iph-alloc-stack (tph-∷ iph-store-at-slot (tph-∷ iph-lea-slot tph-[])))
+        reclaim-wrapper-tph = twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt twf-[])))
 
         -- Note: reclaim-wrapper-tpc removed in Phase 3
 
@@ -2193,7 +2195,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
                  (ProcessedLayerResult.trace-slot-reads-below l-result))
               (SMP.trace-slot-reads-below-mono (l-reclaimable +ℕ 2) max-slot-used-inj1 reclaim-wrapper-trace
                  (n≤m⊔n l-max-slot-used (l-reclaimable +ℕ 2)) wrapper-tsrb))
-        ; trace-preserves-halted = tph-++ setup-tph (tph-++ (ProcessedLayerResult.trace-preserves-halted l-result) reclaim-wrapper-tph)
+        ; trace-twf = SMP.!!  -- TODO: twf-++ chain (setup-tph + l-result + reclaim-wrapper-tph)
         ; trace-no-heap-writes = SMP.trace-no-heap-writes-append setup-trace (sub-trace ++ reclaim-wrapper-trace)
             setup-tnhw (SMP.trace-no-heap-writes-append sub-trace reclaim-wrapper-trace
                          (ProcessedLayerResult.trace-no-heap-writes l-result) reclaim-wrapper-tnhw)
@@ -2460,7 +2462,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
         setup-tsrb = tt  -- Neither instruction reads slots
 
         setup-tph : TracePreservesHaltedP setup-trace
-        setup-tph = tph-∷ iph-load-indirect-suc (tph-∷ iph-mov-to-input tph-[])
+        setup-tph = twf-∷ (SMP.!!) (twf-∷ tt twf-[])
 
         -- Note: setup-tpc removed in Phase 3
 
@@ -2481,7 +2483,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
         -- TracePreservesHaltedP for reclaim-wrapper-trace
         reclaim-wrapper-tph : TracePreservesHaltedP reclaim-wrapper-trace
-        reclaim-wrapper-tph = tph-∷ iph-reclaim-to (tph-∷ iph-alloc-stack (tph-∷ iph-store-at-slot (tph-∷ iph-lea-slot tph-[])))
+        reclaim-wrapper-tph = twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt twf-[])))
 
         -- Note: reclaim-wrapper-tpc removed in Phase 3
 
@@ -2787,7 +2789,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
                  (ProcessedLayerResult.trace-slot-reads-below r-result))
               (SMP.trace-slot-reads-below-mono (r-reclaimable +ℕ 2) max-slot-used-inj2 reclaim-wrapper-trace
                  (n≤m⊔n r-max-slot-used (r-reclaimable +ℕ 2)) wrapper-tsrb))
-        ; trace-preserves-halted = tph-++ setup-tph (tph-++ (ProcessedLayerResult.trace-preserves-halted r-result) reclaim-wrapper-tph)
+        ; trace-twf = SMP.!!  -- TODO: twf-++ chain (setup-tph + r-result + reclaim-wrapper-tph)
         ; trace-no-heap-writes = SMP.trace-no-heap-writes-append setup-trace (sub-trace ++ reclaim-wrapper-trace)
             setup-tnhw (SMP.trace-no-heap-writes-append sub-trace reclaim-wrapper-trace
                          (ProcessedLayerResult.trace-no-heap-writes r-result) reclaim-wrapper-tnhw)
@@ -2840,7 +2842,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
       (r-layer-valid : μLayerValid alloc wfR wfG r-comp snd-loc s)
       (input-before : BeforeFrontier alloc input-loc)
       (not-halted : halted s ≡ false)
-      (rdi-eq : readReg (regs s) Input1 ≡ input-loc)
+      (rdi-eq : readReg (regs s) Input1 ≡ SV-Ptr input-loc)
       → ∃[ mOut ] ProcessedLayerResult wfG alg mOut (wf-Prod wfL wfR) (l-comp , r-comp) s alloc
     process-layer-prod {FL} {FR} {G} {A} wfL wfR wfG alg dispatch l-comp r-comp mIn
       input-loc fst-loc snd-loc s alloc
@@ -2891,10 +2893,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; trace-writes-below = trace-writes-below-proof
         ; trace-slot-reads-above = trace-slot-reads-above-proof
         ; trace-slot-reads-below = trace-slot-reads-below-proof
-        ; trace-preserves-halted = tph-++ left-setup-tph
-                                    (tph-++ (ProcessedLayerResult.trace-preserves-halted l-result)
-                                            (tph-++ right-setup-tph
-                                                    (ProcessedLayerResult.trace-preserves-halted r-result)))
+        ; trace-twf = SMP.!!  -- TODO: twf-++ chain (left-setup + l-result + right-setup + r-result)
         ; trace-no-heap-writes = SMP.trace-no-heap-writes-append left-setup-trace
                                     (l-trace ++ right-setup-trace ++ r-trace) tt
                                     (SMP.trace-no-heap-writes-append l-trace (right-setup-trace ++ r-trace)
@@ -3112,11 +3111,11 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
               (slot-at-next-bf alloc)
 
             -- After left-setup, stack[save-slot] = input-loc
-            stack-has-input : readLoc s-left-setup (AtStack (current-frame alloc) save-slot) ≡ just input-loc
+            stack-has-input : readLoc s-left-setup (AtStack (current-frame alloc) save-slot) ≡ just (SV-Ptr input-loc)
             stack-has-input = SMP.RecSchemeSemantics.prod-left-setup-saves-input save-slot s alloc input-loc not-halted rdi-eq
 
             -- So s-l still has input-loc at save-slot
-            stack-at-s-l : readLoc s-l (AtStack (current-frame alloc) save-slot) ≡ just input-loc
+            stack-at-s-l : readLoc s-l (AtStack (current-frame alloc) save-slot) ≡ just (SV-Ptr input-loc)
             stack-at-s-l = trans stack-preserved stack-has-input
 
             -- sucLoc input-loc still points to snd-loc (memory preserved)
@@ -3135,15 +3134,15 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
               stack-at-s-l' snd-ptr-at-s-l
               where
                 -- Convert stack-at-s-l to use alloc-for-right's frame (they're equal)
-                stack-at-s-l' : readLoc s-l (AtStack (current-frame alloc-for-right) save-slot) ≡ just input-loc
-                stack-at-s-l' = subst (λ cf → readLoc s-l (AtStack cf save-slot) ≡ just input-loc)
+                stack-at-s-l' : readLoc s-l (AtStack (current-frame alloc-for-right) save-slot) ≡ just (SV-Ptr input-loc)
+                stack-at-s-l' = subst (λ cf → readLoc s-l (AtStack cf save-slot) ≡ just (SV-Ptr input-loc))
                                       (sym alloc-for-right-frame) stack-at-s-l
 
         not-halted-right-setup : halted s-right-setup ≡ false
         not-halted-right-setup = SMP.TracePrimitives.exec-trace-preserves-halted
                                    right-setup-trace s-l alloc-for-right l-not-halted
-                                   (tph-∷ iph-load-from-slot (tph-∷ iph-mov-to-input
-                                     (tph-∷ iph-load-indirect-suc (tph-∷ iph-mov-to-input tph-[]))))
+                                   (twf-∷ (SMP.!!) (twf-∷ tt
+                                     (twf-∷ (SMP.!!) (twf-∷ tt twf-[]))))
 
         r-layer-valid-right-setup : μLayerValid alloc-for-right wfR wfG r-comp snd-loc s-right-setup
         r-layer-valid-right-setup = μLayerValid-mem-preserved alloc-for-right wfR wfG r-comp snd-loc s-l s-right-setup
@@ -3411,12 +3410,12 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
         -- Setup trace halted preservation proofs
         left-setup-tph : TracePreservesHaltedP left-setup-trace
-        left-setup-tph = tph-∷ iph-mov-to-output (tph-∷ iph-store-at-slot
-                          (tph-∷ iph-load-indirect (tph-∷ iph-mov-to-input tph-[])))
+        left-setup-tph = twf-∷ tt (twf-∷ tt
+                          (twf-∷ (SMP.!!) (twf-∷ tt twf-[])))
 
         right-setup-tph : TracePreservesHaltedP right-setup-trace
-        right-setup-tph = tph-∷ iph-load-from-slot (tph-∷ iph-mov-to-input
-                            (tph-∷ iph-load-indirect-suc (tph-∷ iph-mov-to-input tph-[])))
+        right-setup-tph = twf-∷ (SMP.!!) (twf-∷ tt
+                            (twf-∷ (SMP.!!) (twf-∷ tt twf-[])))
 
         -- Note: left-setup-tpc and right-setup-tpc removed in Phase 3
 
@@ -3607,7 +3606,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
       → ValidAtWF mIn alloc x input-loc s
       → BeforeFrontier alloc input-loc
       → halted s ≡ false
-      → readReg (regs s) Input1 ≡ input-loc
+      → readReg (regs s) Input1 ≡ SV-Ptr input-loc
       → ∃[ mOut ] IRResultAWF mOut (Cata wfG alg) x s alloc
     cata-dispatched-new {G} {A} wfG alg dispatch x mIn input-loc s alloc
       x-valid input-before not-halted rdi-eq =
@@ -3882,8 +3881,8 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
           ; trace-no-heap-writes = SMP.trace-no-heap-writes-append layer-trace (mov-to-input ∷ IRResultAWF.trace alg-result)
               (ProcessedLayerResult.trace-no-heap-writes layer-result)
               (IRResultAWF.trace-no-heap-writes alg-result)
-          ; trace-preserves-halted = tph-++ (ProcessedLayerResult.trace-preserves-halted layer-result)
-              (tph-∷ iph-mov-to-input (IRResultAWF.trace-preserves-halted alg-result))
+          ; trace-twf = SMP.!!  -- TODO: twf-++ chain (layer-result + mov-to-input + alg-result)
+          ; trace-preserves-halted = SMP.!!  -- TODO: exec-trace-preserves-halted-WF
           ; scratch-budget = ir-scratch-requirement (Cata wfG alg)
           -- scratch-bounded: composite of layer and algebra
           -- BLOCKED: needs composition proof similar to other blocked fields
