@@ -181,24 +181,28 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   --   2. Prove IR dispatch traces satisfy this predicate
   --   3. Prove exec-trace is insensitive to Output for such traces
   ------------------------------------------------------------------------
+  -- Plan 0.13.2 StoredValue restate: input-loc threaded via SV-Ptr;
+  -- payload reads now produce SV-Ptr payload-loc.
   postulate
     case-dispatch-output-independent : ∀ (dispatch-trace : AbstractTrace)
       (s : LocState FS) (alloc : AllocState {FS})
-      (payload-loc : ValueLocation FS)
+      (input-loc payload-loc : ValueLocation FS)
       (s-setup : LocState FS) (s-final : LocState FS) →
-      readLoc s (sucLoc (readReg (regs s) Input1)) ≡ just payload-loc →
-      s-setup ≡ record s { regs = writeReg (regs s) Input1 payload-loc } →
+      readReg (regs s) Input1 ≡ SV-Ptr input-loc →
+      readLoc s (sucLoc input-loc) ≡ just (SV-Ptr payload-loc) →
+      s-setup ≡ record s { regs = writeReg (regs s) Input1 (SV-Ptr payload-loc) } →
       proj₁ (exec-trace dispatch-trace s-setup alloc) ≡ s-final →
       halted s ≡ false →
       proj₁ (exec-trace (load-indirect-suc ∷ mov-to-input ∷ dispatch-trace) s alloc) ≡ s-final
 
-  -- case trace correctness - delegated to postulate
+  -- case trace correctness - delegated to postulate (Plan 0.13.2 restated)
   case-trace-state-correct : ∀ (dispatch-trace : AbstractTrace)
     (s : LocState FS) (alloc : AllocState {FS})
-    (payload-loc : ValueLocation FS)
+    (input-loc payload-loc : ValueLocation FS)
     (s-setup : LocState FS) (s-final : LocState FS) →
-    readLoc s (sucLoc (readReg (regs s) Input1)) ≡ just payload-loc →
-    s-setup ≡ record s { regs = writeReg (regs s) Input1 payload-loc } →
+    readReg (regs s) Input1 ≡ SV-Ptr input-loc →
+    readLoc s (sucLoc input-loc) ≡ just (SV-Ptr payload-loc) →
+    s-setup ≡ record s { regs = writeReg (regs s) Input1 (SV-Ptr payload-loc) } →
     proj₁ (exec-trace dispatch-trace s-setup alloc) ≡ s-final →
     halted s ≡ false →
     proj₁ (exec-trace (load-indirect-suc ∷ mov-to-input ∷ dispatch-trace) s alloc) ≡ s-final
@@ -306,7 +310,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
       -- Write payload pointer to sucLoc sum-loc
       s₁ = write-loc s (sucLoc sum-loc) input-loc
-      s-final = record s₁ { regs = writeReg (regs s₁) Output sum-loc }
+      s-final = record s₁ { regs = writeReg (regs s₁) Output (SV-Ptr sum-loc) }
 
       -- Stack mode: sum-slots = 2 > 0
       sum-slots>0 : 0 < sum-slots
@@ -341,8 +345,8 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       inl-valid-wf-final : ValidAtWF Stack alloc₁ (sem-inl {A} {B} x) sum-loc s-final
       inl-valid-wf-final = valid-inl-wf payload-ptr input-before₁ sucLoc-sum-before input-valid-wf-final
 
-      rax-eq : readReg (regs s-final) Output ≡ sum-loc
-      rax-eq = writeReg-same (regs s₁) Output sum-loc
+      rax-eq : readReg (regs s-final) Output ≡ SV-Ptr sum-loc
+      rax-eq = writeReg-same (regs s₁) Output (SV-Ptr sum-loc)
 
       slot-monotone-inl : next-slot alloc ≤ next-slot alloc₁
       slot-monotone-inl = m≤m+n (next-slot alloc) sum-slots
@@ -452,7 +456,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
       -- Write payload pointer to sucLoc sum-loc
       s₁ = write-loc s (sucLoc sum-loc) input-loc
-      s-final = record s₁ { regs = writeReg (regs s₁) Output sum-loc }
+      s-final = record s₁ { regs = writeReg (regs s₁) Output (SV-Ptr sum-loc) }
 
       -- Heap mode: sum-slots = 2 > 0
       sum-slots>0 : 0 < sum-slots
@@ -490,8 +494,8 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       inl-valid-wf-final : ValidAtWF Heap alloc₁ (sem-inl {A} {B} x) sum-loc s-final
       inl-valid-wf-final = valid-inl-wf payload-ptr input-before₁ sucLoc-sum-before input-valid-wf-final
 
-      rax-eq : readReg (regs s-final) Output ≡ sum-loc
-      rax-eq = writeReg-same (regs s₁) Output sum-loc
+      rax-eq : readReg (regs s-final) Output ≡ SV-Ptr sum-loc
+      rax-eq = writeReg-same (regs s₁) Output (SV-Ptr sum-loc)
 
       slot-monotone-inl : next-slot alloc ≤ next-slot alloc₁
       slot-monotone-inl = m≤m+n (next-slot alloc) sum-slots
@@ -614,7 +618,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
       -- Write payload pointer to sucLoc sum-loc
       s₁ = write-loc s (sucLoc sum-loc) input-loc
-      s-final = record s₁ { regs = writeReg (regs s₁) Output sum-loc }
+      s-final = record s₁ { regs = writeReg (regs s₁) Output (SV-Ptr sum-loc) }
 
       -- Stack mode: sum-slots = 2 > 0
       sum-slots>0 : 0 < sum-slots
@@ -649,8 +653,8 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       inr-valid-wf-final : ValidAtWF Stack alloc₁ (sem-inr {A} {B} x) sum-loc s-final
       inr-valid-wf-final = valid-inr-wf payload-ptr input-before₁ sucLoc-sum-before input-valid-wf-final
 
-      rax-eq : readReg (regs s-final) Output ≡ sum-loc
-      rax-eq = writeReg-same (regs s₁) Output sum-loc
+      rax-eq : readReg (regs s-final) Output ≡ SV-Ptr sum-loc
+      rax-eq = writeReg-same (regs s₁) Output (SV-Ptr sum-loc)
 
       slot-monotone-inr : next-slot alloc ≤ next-slot alloc₁
       slot-monotone-inr = m≤m+n (next-slot alloc) sum-slots
@@ -752,7 +756,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
       -- Write payload pointer to sucLoc sum-loc
       s₁ = write-loc s (sucLoc sum-loc) input-loc
-      s-final = record s₁ { regs = writeReg (regs s₁) Output sum-loc }
+      s-final = record s₁ { regs = writeReg (regs s₁) Output (SV-Ptr sum-loc) }
 
       -- Heap mode: sum-slots = 2 > 0
       sum-slots>0 : 0 < sum-slots
@@ -789,8 +793,8 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       inr-valid-wf-final : ValidAtWF Heap alloc₁ (sem-inr {A} {B} x) sum-loc s-final
       inr-valid-wf-final = valid-inr-wf payload-ptr input-before₁ sucLoc-sum-before input-valid-wf-final
 
-      rax-eq : readReg (regs s-final) Output ≡ sum-loc
-      rax-eq = writeReg-same (regs s₁) Output sum-loc
+      rax-eq : readReg (regs s-final) Output ≡ SV-Ptr sum-loc
+      rax-eq = writeReg-same (regs s₁) Output (SV-Ptr sum-loc)
 
       slot-monotone-inr : next-slot alloc ≤ next-slot alloc₁
       slot-monotone-inr = m≤m+n (next-slot alloc) sum-slots
@@ -872,8 +876,9 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       { final-state = IRResultAWF.final-state result-f
       ; final-alloc = IRResultAWF.final-alloc result-f
       ; trace = case-inl-trace
-      ; trace-correct = case-trace-state-correct f-trace s alloc payload-loc s-setup (IRResultAWF.final-state result-f)
-                          (subst (λ loc → readLoc s (sucLoc loc) ≡ just payload-loc) (sym rdi-eq) (InlValidWF.payload-ptr inl-decomp))
+      ; trace-correct = case-trace-state-correct f-trace s alloc input-loc payload-loc s-setup (IRResultAWF.final-state result-f)
+                          rdi-eq
+                          (InlValidWF.payload-ptr inl-decomp)
                           refl
                           (IRResultAWF.trace-correct result-f) not-halted
       ; result-place = IRResultAWF.result-place result-f
@@ -903,7 +908,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Trace preserves capacity: setup + f-trace preserves capacity
       -- Note: trace-preserves-capacity removed in Phase 3
       ; trace-no-heap-writes = IRResultAWF.trace-no-heap-writes result-f
-      ; trace-twf = twf-∷ (SMP.!!) (twf-∷ tt (IRResultAWF.trace-twf result-f))  -- TODO: load-indirect-suc InstrWF witness
+      ; trace-twf = SMP.!!  -- TODO: load-indirect-suc + result-f.trace-twf chained
       ; trace-preserves-halted = SMP.!!  -- TODO: exec-trace-preserves-halted-WF
       ; scratch-budget = IRResultAWF.scratch-budget result-f
       ; scratch-bounded = IRResultAWF.scratch-bounded result-f
@@ -936,14 +941,14 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       cap-f-bound = +-monoʳ-≤ (next-slot alloc) (m≤m+n rf rg)
 
       -- Put payload-loc in Input1 for dispatch
-      s-setup = record s { regs = writeReg (regs s) Input1 payload-loc }
+      s-setup = record s { regs = writeReg (regs s) Input1 (SV-Ptr payload-loc) }
 
       -- s-setup preserves memory from s (only regs changed)
       mem-setup-eq : ∀ loc → readLoc s-setup loc ≡ readLoc s loc
       mem-setup-eq loc = readLoc-stackMem-eq s-setup s loc refl refl
 
-      rdi-payload : readReg (regs s-setup) Input1 ≡ payload-loc
-      rdi-payload = writeReg-same (regs s) Input1 payload-loc
+      rdi-payload : readReg (regs s-setup) Input1 ≡ SV-Ptr payload-loc
+      rdi-payload = writeReg-same (regs s) Input1 (SV-Ptr payload-loc)
 
       not-halted-setup : halted s-setup ≡ false
       not-halted-setup = not-halted
@@ -986,8 +991,9 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       { final-state = IRResultAWF.final-state result-g
       ; final-alloc = IRResultAWF.final-alloc result-g
       ; trace = case-inr-trace
-      ; trace-correct = case-trace-state-correct g-trace s alloc payload-loc s-setup (IRResultAWF.final-state result-g)
-                          (subst (λ loc → readLoc s (sucLoc loc) ≡ just payload-loc) (sym rdi-eq) (InrValidWF.payload-ptr inr-decomp))
+      ; trace-correct = case-trace-state-correct g-trace s alloc input-loc payload-loc s-setup (IRResultAWF.final-state result-g)
+                          rdi-eq
+                          (InrValidWF.payload-ptr inr-decomp)
                           refl
                           (IRResultAWF.trace-correct result-g) not-halted
       ; result-place = IRResultAWF.result-place result-g
@@ -1017,7 +1023,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Trace preserves capacity: setup + g-trace preserves capacity
       -- Note: trace-preserves-capacity removed in Phase 3
       ; trace-no-heap-writes = IRResultAWF.trace-no-heap-writes result-g
-      ; trace-twf = twf-∷ (SMP.!!) (twf-∷ tt (IRResultAWF.trace-twf result-g))  -- TODO: load-indirect-suc InstrWF witness
+      ; trace-twf = SMP.!!  -- TODO: load-indirect-suc + result-g.trace-twf chained
       ; trace-preserves-halted = SMP.!!  -- TODO: exec-trace-preserves-halted-WF
       ; scratch-budget = IRResultAWF.scratch-budget result-g
       ; scratch-bounded = IRResultAWF.scratch-bounded result-g
@@ -1050,14 +1056,14 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       cap-g-bound = +-monoʳ-≤ (next-slot alloc) (m≤n+m rg rf)
 
       -- Put payload-loc in Input1 for dispatch
-      s-setup = record s { regs = writeReg (regs s) Input1 payload-loc }
+      s-setup = record s { regs = writeReg (regs s) Input1 (SV-Ptr payload-loc) }
 
       -- s-setup preserves memory from s (only regs changed)
       mem-setup-eq : ∀ loc → readLoc s-setup loc ≡ readLoc s loc
       mem-setup-eq loc = readLoc-stackMem-eq s-setup s loc refl refl
 
-      rdi-payload : readReg (regs s-setup) Input1 ≡ payload-loc
-      rdi-payload = writeReg-same (regs s) Input1 payload-loc
+      rdi-payload : readReg (regs s-setup) Input1 ≡ SV-Ptr payload-loc
+      rdi-payload = writeReg-same (regs s) Input1 (SV-Ptr payload-loc)
 
       not-halted-setup : halted s-setup ≡ false
       not-halted-setup = not-halted

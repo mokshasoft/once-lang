@@ -1219,8 +1219,8 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
       (input-loc payload-loc : ValueLocation FS) →
       halted s ≡ false →
       readReg (regs s) Input1 ≡ SV-Ptr input-loc →
-      readLoc s (sucLoc input-loc) ≡ just payload-loc →
-      readReg (regs (proj₁ (exec-trace (sum-setup-trace save-slot) s alloc))) Input1 ≡ payload-loc
+      readLoc s (sucLoc input-loc) ≡ just (SV-Ptr payload-loc) →
+      readReg (regs (proj₁ (exec-trace (sum-setup-trace save-slot) s alloc))) Input1 ≡ SV-Ptr payload-loc
 
     sum-setup-alloc-helper : ∀ (save-slot : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
       halted s ≡ false →
@@ -1266,15 +1266,15 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
   --
   -- Preconditions:
   --   - Input1 = input-loc
-  --   - readLoc s (sucLoc input-loc) ≡ just payload-loc
+  --   - readLoc s (sucLoc input-loc) ≡ just (SV-Ptr payload-loc)
   --   - halted s ≡ false
   sum-setup-sets-input : ∀ (save-slot : ℕ) (s : LocState FS) (alloc : AllocState {FS})
     (input-loc payload-loc : ValueLocation FS) →
     halted s ≡ false →
     readReg (regs s) Input1 ≡ SV-Ptr input-loc →
-    readLoc s (sucLoc input-loc) ≡ just payload-loc →
+    readLoc s (sucLoc input-loc) ≡ just (SV-Ptr payload-loc) →
     let (s' , _) = exec-trace (sum-setup-trace save-slot) s alloc
-    in readReg (regs s') Input1 ≡ payload-loc
+    in readReg (regs s') Input1 ≡ SV-Ptr payload-loc
   sum-setup-sets-input save-slot s alloc input-loc payload-loc not-halted rdi-eq payload-ptr =
     -- Same logic as prod-left-setup but uses load-indirect-suc instead of load-indirect
     -- Step 1: mov-to-output: Output := Input1 = input-loc
@@ -1572,7 +1572,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
         alloc-after-load = proj₂ (exec-abstract load-indirect-suc s alloc)
 
         -- After load-indirect-suc: Output = payload-loc (from sucLoc input-loc)
-        -- The payload-ptr proof tells us: readLoc s (sucLoc input-loc) ≡ just payload-loc
+        -- The payload-ptr proof tells us: readLoc s (sucLoc input-loc) ≡ just (SV-Ptr payload-loc)
         -- exec-abstract load-indirect-suc reads from sucLoc(Input1) = sucLoc(input-loc)
         -- and writes the result to Output
 
@@ -1588,7 +1588,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
         --        Since Input1 = input-loc and payload-ptr says sucLoc(input-loc) contains payload-loc,
         --        Output = payload-loc
         --        Then mov-to-input copies Output to Input1, so Input1 = payload-loc
-        rdi-setup : readReg (regs s-setup) Input1 ≡ payload-loc
+        rdi-setup : readReg (regs s-setup) Input1 ≡ SV-Ptr payload-loc
         rdi-setup = setup-trace-sets-input s alloc input-loc payload-loc not-halted rdi-eq payload-ptr
 
         -- Transfer l-layer-valid through setup (memory not changed by register ops)
@@ -2250,7 +2250,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
         alloc-setup = proj₂ (exec-abstract mov-to-input s-after-load alloc-after-load)
 
         -- At s-setup: Input1 = payload-loc
-        rdi-setup : readReg (regs s-setup) Input1 ≡ payload-loc
+        rdi-setup : readReg (regs s-setup) Input1 ≡ SV-Ptr payload-loc
         rdi-setup = setup-trace-sets-input s alloc input-loc payload-loc not-halted rdi-eq payload-ptr
 
         -- Transfer r-layer-valid through setup (memory not changed by register ops)
