@@ -2163,6 +2163,35 @@ module TracePrimitives {FS : FrameSemantics} where
   exec-abstract-state-frame-eq (instr-load-code-addr _) s _ _ _ = refl
   exec-abstract-state-frame-eq (instr-case-on-tag _ _) s _ _ _  = refl
 
+  -- Lift exec-abstract-state-frame-eq to traces.
+  -- Running a trace from `(s, alloc)` and `(s, alloc')` where the
+  -- allocs share a current-frame produces the same state (proj₁) at
+  -- the end. Useful for bridging runtime-alloc / bookkeeping-alloc
+  -- splits where the only difference is `next-slot`.
+  exec-trace-state-frame-eq : ∀ (trace : AbstractTrace) (s : LocState FS)
+    (alloc alloc' : AllocState {FS}) →
+    current-frame alloc ≡ current-frame alloc' →
+    proj₁ (exec-trace trace s alloc) ≡ proj₁ (exec-trace trace s alloc')
+  exec-trace-state-frame-eq []           s alloc alloc' fe = refl
+  exec-trace-state-frame-eq (i ∷ rest) s alloc alloc' fe with halted s
+  ... | true  = refl
+  ... | false =
+    let s-eq : proj₁ (exec-abstract i s alloc) ≡ proj₁ (exec-abstract i s alloc')
+        s-eq = exec-abstract-state-frame-eq i s alloc alloc' fe
+        fe-after : current-frame (proj₂ (exec-abstract i s alloc)) ≡
+                   current-frame (proj₂ (exec-abstract i s alloc'))
+        fe-after = trans (exec-abstract-preserves-frame i s alloc)
+                         (trans fe (sym (exec-abstract-preserves-frame i s alloc')))
+        rest-eq : proj₁ (exec-trace rest (proj₁ (exec-abstract i s alloc'))
+                                          (proj₂ (exec-abstract i s alloc))) ≡
+                  proj₁ (exec-trace rest (proj₁ (exec-abstract i s alloc'))
+                                          (proj₂ (exec-abstract i s alloc')))
+        rest-eq = exec-trace-state-frame-eq rest (proj₁ (exec-abstract i s alloc'))
+                    (proj₂ (exec-abstract i s alloc)) (proj₂ (exec-abstract i s alloc'))
+                    fe-after
+    in trans (cong (λ st → proj₁ (exec-trace rest st (proj₂ (exec-abstract i s alloc)))) s-eq)
+             rest-eq
+
   -- TraceWF transfer when allocs share a current-frame.
   TraceWF-frame-eq : ∀ {trace} {s : LocState FS} {alloc alloc' : AllocState {FS}} →
     current-frame alloc ≡ current-frame alloc' →
