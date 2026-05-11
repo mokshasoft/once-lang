@@ -2022,6 +2022,26 @@ module TracePrimitives {FS : FrameSemantics} where
     -- exec-abstract-preserves-halted-WF.
     twf-∷ iwf (twf-++ (exec-abstract-preserves-halted-WF i s alloc h-eq iwf) twf₁ twf₂)
 
+  -- Plan 0.13.3 option U: decompose a TraceWF for a concatenated trace.
+  -- Dual of `twf-++`. Useful when a consumer (e.g. pair's universal
+  -- trace-preserves-halted) receives a TraceWF for the full trace and
+  -- needs the sub-trace TraceWFs to route through sub-IRs' own
+  -- universal halt-preservation functions.
+  --
+  -- Requires `halted s ≡ false` so the concatenation reduces along
+  -- the non-short-circuit path of `exec-trace`.
+  twf-++-decomp : ∀ (t₁ : AbstractTrace) {t₂ s alloc} →
+                  halted s ≡ false →
+                  TraceWF s alloc (t₁ ++ t₂) →
+                  TraceWF s alloc t₁ ×
+                  TraceWF (proj₁ (exec-trace t₁ s alloc)) (proj₂ (exec-trace t₁ s alloc)) t₂
+  twf-++-decomp []           {t₂} {s} {alloc} h-eq twf = twf-[] , twf
+  twf-++-decomp (i ∷ rest) {t₂} {s} {alloc} h-eq (twf-∷ iwf twf-rest)
+    rewrite h-eq =
+    let h-step = exec-abstract-preserves-halted-WF i s alloc h-eq iwf
+        (rest-twf , t₂-twf) = twf-++-decomp rest h-step twf-rest
+    in (twf-∷ iwf rest-twf) , t₂-twf
+
   -- (G'') Alloc-frame transfer for TraceWF.
   -- Plan 0.13.3: the pair / apply / rec patterns call rec-wf at a
   -- compile-time bookkeeping `alloc-after-...-slots` (advanced
