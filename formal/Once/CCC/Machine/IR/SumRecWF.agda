@@ -1304,8 +1304,8 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       result-valid : ValidAtWF Heap alloc (eval (out-μ wf) x) input-loc s'
       result-valid = out-μ-trace-valid wf x
 
-      -- mov-to-output sets Output := Input1 = input-loc
-      rax-eq : readReg (regs s') Output ≡ input-loc
+      -- mov-to-output sets Output := Input1 = SV-Ptr input-loc
+      rax-eq : readReg (regs s') Output ≡ SV-Ptr input-loc
       rax-eq = trans (passthrough-output-is-input s alloc not-halted) rdi-eq
 
       -- mov-to-output preserves halted
@@ -1382,8 +1382,8 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       result-valid : ValidAtWF Heap alloc (eval (Out wf) x) input-loc s'
       result-valid = Out-trace-valid wf x
 
-      -- rax-eq: Output = Input1 (from passthrough) = input-loc (from rdi-eq)
-      rax-eq : readReg (regs s') Output ≡ input-loc
+      -- rax-eq: Output = Input1 (from passthrough) = SV-Ptr input-loc (from rdi-eq)
+      rax-eq : readReg (regs s') Output ≡ SV-Ptr input-loc
       rax-eq = trans (passthrough-output-is-input s alloc not-halted) rdi-eq
 
       not-halted' : halted s' ≡ false

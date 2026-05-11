@@ -244,7 +244,7 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
           inter-loc-f    : ValueLocation FS
           inter-before-f : BeforeFrontier alloc₁ inter-loc-f
           inter-valid-f  : ValidAtWF mMid alloc₁ (eval f x) inter-loc-f s₁
-          inter-rax-f    : readReg (regs s₁) Output ≡ inter-loc-f
+          inter-rax-f    : readReg (regs s₁) Output ≡ SV-Ptr inter-loc-f
 
       f-facts : FFacts
       f-facts with IRResultAWF.result-place result-f
@@ -255,14 +255,16 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
               ; inter-rax-f    = rax
               }
       ... | unit-result = record
-              { inter-loc-f    = readReg (regs s₁) Output
+              { inter-loc-f    = unit-inter-loc
               ; inter-before-f = unit-inter-before
               ; inter-valid-f  = valid-unit-wf
-              ; inter-rax-f    = refl
+              ; inter-rax-f    = unit-inter-rax
               }
         where
           postulate
-            unit-inter-before : BeforeFrontier alloc₁ (readReg (regs s₁) Output)
+            unit-inter-loc : ValueLocation FS
+            unit-inter-before : BeforeFrontier alloc₁ unit-inter-loc
+            unit-inter-rax : readReg (regs s₁) Output ≡ SV-Ptr unit-inter-loc
 
       open FFacts f-facts using ()
         renaming (inter-loc-f to inter-loc;
@@ -314,10 +316,10 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
              alloc₁ alloc₁-reclaimed bf-transfer
              inter-valid-f'
 
-      s₁' = record s₁ { regs = writeReg (regs s₁) Input1 inter-loc }
+      s₁' = record s₁ { regs = writeReg (regs s₁) Input1 (SV-Ptr inter-loc) }
 
-      rdi-eq₁ : readReg (regs s₁') Input1 ≡ inter-loc
-      rdi-eq₁ = writeReg-same (regs s₁) Input1 inter-loc
+      rdi-eq₁ : readReg (regs s₁') Input1 ≡ SV-Ptr inter-loc
+      rdi-eq₁ = writeReg-same (regs s₁) Input1 (SV-Ptr inter-loc)
 
       inter-valid-wf' : ValidAtWF mMid alloc₁-reclaimed (eval f x) inter-loc s₁'
       inter-valid-wf' = validityWF-mem-only (eval f x) inter-loc s₁ s₁' refl refl inter-valid-reclaimed

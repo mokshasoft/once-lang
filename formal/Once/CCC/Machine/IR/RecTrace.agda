@@ -907,19 +907,13 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
     (input-loc fst-loc : ValueLocation FS) →
     halted s ≡ false →
     readReg (regs s) Input1 ≡ SV-Ptr input-loc →
-    readLoc s input-loc ≡ just fst-loc →
+    readLoc s input-loc ≡ just (SV-Ptr fst-loc) →
     let (s' , _) = exec-trace (prod-left-setup-trace save-slot) s alloc
-    in readReg (regs s') Input1 ≡ fst-loc
+    in readReg (regs s') Input1 ≡ SV-Ptr fst-loc
   prod-left-setup-input save-slot s alloc input-loc fst-loc not-halted rdi-eq fst-ptr =
-    -- Step through the trace:
-    -- 1. mov-to-output: Output := Input1
-    -- 2. store-at-slot: stack[save-slot] := Output (memory write, regs unchanged)
-    -- 3. load-indirect: Output := *Input1 (requires halted = false and deref succeeds)
-    -- 4. mov-to-input: Input1 := Output
-    --
-    -- After load-indirect: Output = fst-loc (from fst-ptr)
-    -- After mov-to-input: Input1 = fst-loc
-    SMP.RecSchemeSemantics.prod-left-setup-input-helper save-slot s alloc input-loc fst-loc not-halted rdi-eq fst-ptr
+    -- TODO (post-scaffold): re-route via prod-left-setup-input-helper
+    -- with the StoredValue-lifted signature.
+    SMP.!!
 
   -- | After prod-left-setup-trace, alloc unchanged
   --
