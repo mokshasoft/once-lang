@@ -695,6 +695,81 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
       not-halted-after-g = exec-trace-preserves-halted-WF g-trace s-after-middle alloc-after-middle
                              not-halted-after-middle g-tph-runtime
 
+      ------------------------------------------------------------------------
+      -- POC (Plan 0.13.3 Phase d — option b principled refactor)
+      --
+      -- LOAD-BEARING CLAIM: the four preconditions of rec-wf for g are
+      -- derivable at the *runtime* state (s-after-middle, alloc-after-middle).
+      -- If yes, then rec-wf returns an IRResultAWF at runtime state whose
+      -- `trace-twf` IS g-tph-runtime directly — no state-bridge needed.
+      --
+      -- This POC builds `g-exec-result-runtime` adjacent to the existing
+      -- `g-exec-result` (which stays at synthetic state s₁'). The POC
+      -- demonstrates type-level feasibility. Integration is separate:
+      -- replacing the synthetic-state result with this runtime result
+      -- cascades through ~30 downstream consumers of result-g — that's
+      -- the cost-estimate gate, not the principle gate.
+      ------------------------------------------------------------------------
+
+      -- (1) halted s-after-middle ≡ false — already have not-halted-after-middle.
+
+      -- (2) Input1 = SV-Ptr input-loc at s-after-middle.
+      --
+      -- Direct chain through middle-trace's two instructions:
+      --   store-at-slot fst-slot: stack write, leaves regs unchanged
+      --     (store-at-slot-regs in SMPrimitives).
+      --   restore-input backup-slot: reads stack[backup-slot] = SV-Ptr input-loc
+      --     (middle-restore-input-witness) and writes Input1
+      --     (exec-restore-input-just in SMCore).
+      -- All ingredients exist; chain is ~15 lines of plumbing.
+      postulate
+        rdi-eq-at-s-after-middle : readReg (regs s-after-middle) Input1 ≡ SV-Ptr input-loc
+
+      -- (3) BeforeFrontier alloc-after-middle input-loc.
+      --
+      -- alloc-after-middle = alloc-after-f (middle-trace alloc-preserving).
+      -- alloc-after-f.next-slot ≥ alloc.next-slot by exec-trace monotonicity.
+      -- frontier-monotone transfers input-before. Trivial chain.
+      postulate
+        before-at-alloc-after-middle : BeforeFrontier alloc-after-middle input-loc
+
+      -- (4) ValidAtWF mIn alloc-after-middle x input-loc s-after-middle.
+      --
+      -- Memory at input-loc preserved through setup + f-trace + middle-trace:
+      --   - setup: mem-preserved-through-setup (already proved, line 220ish).
+      --   - f-trace: writes above f-start; input-loc below backup-slot<f-start.
+      --   - middle: store-at-slot fst-slot ≠ input-loc-slot; restore-input
+      --             writes only registers.
+      -- Combined via validityWF-mem-preserved + validityWF-frontier-advance,
+      -- mirroring input-valid-wf-s1 / input-valid-wf-at-reclaim-f above.
+      postulate
+        valid-at-s-after-middle : ValidAtWF mIn alloc-after-middle x input-loc s-after-middle
+
+      -- THE POC: rec-wf at runtime state.
+      --
+      -- If this typechecks, the principled refactor is shape-correct.
+      -- The trace and result-place returned here are at the runtime state.
+      g-exec-result-runtime : ∃[ mOut ] IRResultAWF mOut g x s-after-middle alloc-after-middle
+      g-exec-result-runtime = rec-wf mIn g (⟨,⟩-g-smaller f g {m})
+                                x input-loc s-after-middle alloc-after-middle
+                                valid-at-s-after-middle before-at-alloc-after-middle
+                                not-halted-after-middle rdi-eq-at-s-after-middle
+
+      -- g-tph-runtime falls out directly: no state-bridge, no region-aware lemma.
+      g-tph-runtime-poc :
+        TraceWF s-after-middle alloc-after-middle
+                (IRResultAWF.trace (proj₂ g-exec-result-runtime))
+      g-tph-runtime-poc = IRResultAWF.trace-twf (proj₂ g-exec-result-runtime)
+
+      ------------------------------------------------------------------------
+      -- End POC. Integration cost (separate gate): replacing the existing
+      -- g-exec-result with g-exec-result-runtime cascades through every
+      -- consumer of result-g's fields (trace-correct, slot-monotone,
+      -- mem-preserved, max-slot-written, result-place, etc. — ~30 sites
+      -- in PairWF2). Those rebind from s₁' to s-after-middle. Many bridges
+      -- that currently transfer construction→runtime become identities.
+      ------------------------------------------------------------------------
+
       final-twf : TraceWF s-after-g alloc-after-g final-trace
       final-twf = twf-∷ tt (twf-∷ tt twf-[])
 
