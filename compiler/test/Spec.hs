@@ -7,6 +7,7 @@ import BackendSpec (backendTests)
 import IRSpec (irTests)
 import Layer0Spec (layer0Tests)
 import Layer1Spec (layer1Tests)
+import Layer2Spec (layer2Tests)
 import ParseSpec (parseTests)
 import TypeCheckSpec (typeCheckTests)
 import TypeErrorSpec (typeErrorTests)
@@ -19,6 +20,7 @@ main = defaultMain $ testGroup "Once"
   , irTests
   , layer0Tests
   , layer1Tests
+  , layer2Tests
   , backendTests
   , allocationStressTests
   ]

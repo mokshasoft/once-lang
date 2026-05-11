@@ -1,0 +1,10 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson and contributors
+
+-- Layer 2 test: destruct on directly-annotated inr
+-- Expected: exit code 99.
+
+import I.Linux.Syscalls as S
+
+main : IO Unit
+main = exit@S (destruct ((inr 99) : Int + Int) of { Left x -> 42 ; Right y -> y })
