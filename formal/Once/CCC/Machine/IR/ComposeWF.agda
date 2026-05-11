@@ -200,7 +200,7 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Note: trace-preserves-capacity removed in Phase 3
       ; trace-no-heap-writes = compose-trace-no-heap-writes
       ; trace-twf = compose-trace-twf
-      ; trace-preserves-halted = SMP.!!  -- TODO: exec-trace-preserves-halted-WF compose-trace
+      ; trace-preserves-halted = exec-trace-preserves-halted-WF compose-trace
       ; scratch-budget = req-compose-scratch
       ; scratch-bounded = compose-scratch-bounded
       }

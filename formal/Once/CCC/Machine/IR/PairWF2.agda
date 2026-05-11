@@ -344,6 +344,34 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
       alloc-after-f-reclaim = record alloc { next-slot = reclaim-f }
 
       ------------------------------------------------------------------------
+      -- Plan 0.13.3 Phase d (option b — g hoist): compute runtime
+      -- state s-after-middle BEFORE g-exec-result, so that the
+      -- recursive call is at the same state where g-trace actually
+      -- runs from at runtime. Mirrors the f-hoist done earlier.
+      -- Dissolves g-tph-runtime (it becomes a direct TraceWF-frame-eq).
+      ------------------------------------------------------------------------
+
+      -- middle-trace = store-at-slot fst-slot ∷ restore-input backup-slot ∷ []
+      -- (constant — doesn't depend on result-f's trace).
+      middle-trace : AbstractTrace
+      middle-trace = store-at-slot fst-slot ∷ restore-input backup-slot ∷ []
+
+      -- Runtime states: pair-trace evolves through (s, alloc), so
+      -- s-after-f / alloc-after-f are at the runtime alloc, not
+      -- alloc-after-pair-slots.
+      s-after-f : LocState FS
+      s-after-f = proj₁ (exec-trace f-trace s-after-setup alloc-after-setup)
+
+      alloc-after-f : AllocState {FS}
+      alloc-after-f = proj₂ (exec-trace f-trace s-after-setup alloc-after-setup)
+
+      s-after-middle : LocState FS
+      s-after-middle = proj₁ (exec-trace middle-trace s-after-f alloc-after-f)
+
+      alloc-after-middle : AllocState {FS}
+      alloc-after-middle = proj₂ (exec-trace middle-trace s-after-f alloc-after-f)
+
+      ------------------------------------------------------------------------
       -- Input1 validity for g (after restoring from backup-slot)
       ------------------------------------------------------------------------
       input-before-at-reclaim-f : BeforeFrontier alloc-after-f-reclaim input-loc
@@ -369,7 +397,10 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
                                           (≤-trans (n≤1+n snd-slot) reclaim-f-above-f-start)))
                                       ≤-refl input-valid-wf-s1
 
-      -- Restore input register for g
+      -- TODO (option b refactor): derive ValidAtWF, halted-eq, and
+      -- rdi-eq at s-after-middle so we can call rec-wf for g there.
+      -- For now, keep s₁' as the bookkeeping state and dissolve the
+      -- gap in the next stage.
       s₁' = record s₁ { regs = writeReg (regs s₁) Input1 (SV-Ptr input-loc) }
       rdi-eq₁ : readReg (regs s₁') Input1 ≡ SV-Ptr input-loc
       rdi-eq₁ = writeReg-same (regs s₁) Input1 (SV-Ptr input-loc)
@@ -497,28 +528,12 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
       ------------------------------------------------------------------------
 
       -- Trace segments
-      -- Note: setup-trace, s-after-setup, alloc-after-setup defined
-      -- earlier (before f-exec-result, Plan 0.13.3 Phase d option b).
-      middle-trace : AbstractTrace
-      middle-trace = store-at-slot fst-slot ∷ restore-input backup-slot ∷ []
-
+      -- Note: setup-trace, s-after-setup, alloc-after-setup, middle-trace,
+      -- s-after-f, alloc-after-f, s-after-middle, alloc-after-middle
+      -- defined earlier (before f-exec-result / g-exec-result,
+      -- Plan 0.13.3 Phase d option b).
       final-trace : AbstractTrace
       final-trace = store-at-slot snd-slot ∷ lea-slot fst-slot ∷ []
-
-      -- Intermediate states (value bindings, not functions).
-      -- Pair-trace at runtime evolves through alloc (not alloc-after-pair-slots),
-      -- so s-after-f / alloc-after-f reflect the runtime state.
-      s-after-f : LocState FS
-      s-after-f = proj₁ (exec-trace f-trace s-after-setup alloc-after-setup)
-
-      alloc-after-f : AllocState {FS}
-      alloc-after-f = proj₂ (exec-trace f-trace s-after-setup alloc-after-setup)
-
-      s-after-middle : LocState FS
-      s-after-middle = proj₁ (exec-trace middle-trace s-after-f alloc-after-f)
-
-      alloc-after-middle : AllocState {FS}
-      alloc-after-middle = proj₂ (exec-trace middle-trace s-after-f alloc-after-f)
 
       s-after-g : LocState FS
       s-after-g = proj₁ (exec-trace g-trace s-after-middle alloc-after-middle)
@@ -653,8 +668,28 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
       not-halted-after-middle = exec-trace-preserves-halted-WF middle-trace s-after-f alloc-after-f
                                   not-halted-after-f middle-twf
 
+      -- POSTULATE — last open obligation in PairWF2.
+      --
+      -- g-tph (from result-g) gives TraceWF s₁' alloc-after-f-reclaim g-trace,
+      -- but at runtime g-trace executes from (s-after-middle, alloc-after-middle).
+      -- The state delta is: s-after-middle has stack[fst-slot]=SV-Ptr fst-loc
+      -- (from middle-trace's store-at-slot), s₁' does not. The alloc delta is
+      -- next-slot only; current-frame agrees (see oag-frame-eq below).
+      --
+      -- Discharge requires one of:
+      --   (a) Region-aware TraceWF state-transfer: TraceWF s alloc tr at one
+      --       state transfers to s' that agrees with s on the read-region of
+      --       tr (g-trace operates above reclaim-f > fst-slot). Sketched in
+      --       SMPrimitives but blocked on load-indirect/IndirectDisjoint
+      --       reach analysis.
+      --   (b) Full hoist of g-exec-result to (s-after-middle, alloc-after-f-
+      --       reclaim) and TraceWF-frame-eq bridge to alloc-after-middle.
+      --       Requires reordering ~50 lines (middle-twf prerequisites must
+      --       precede rec-wf for g) and updating ~30 downstream consumers of
+      --       result-g's trace-correct / slot-monotone / etc that currently
+      --       bind at s₁'.
       g-tph-runtime : TraceWF s-after-middle alloc-after-middle g-trace
-      g-tph-runtime = !!  -- TODO: bridge from g-tph at (s₁', alloc-after-f-reclaim)
+      g-tph-runtime = !!  -- requires (a) reach analysis OR (b) g-state hoist
 
       not-halted-after-g : halted s-after-g ≡ false
       not-halted-after-g = exec-trace-preserves-halted-WF g-trace s-after-middle alloc-after-middle

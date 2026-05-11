@@ -290,7 +290,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Note: trace-preserves-capacity removed in Phase 3
       ; trace-no-heap-writes = tt
       ; trace-twf = twf-∷ tt (twf-∷ tt (twf-∷ tt twf-[]))
-      ; trace-preserves-halted = SMP.!!  -- TODO: exec-trace-preserves-halted-WF on local trace
+      ; trace-preserves-halted = exec-trace-preserves-halted-WF inl-trace
       -- scratch-bounded: max-slot-written = n + 2, final-alloc = n + 2, ir-scratch-requirement = 2
       -- (n + 2) ≤ (n + 2) + 2 by m≤m+n
       ; scratch-budget = ir-scratch-requirement (inl {A} {B} Stack)
@@ -437,7 +437,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Note: trace-preserves-capacity removed in Phase 3
       ; trace-no-heap-writes = tt
       ; trace-twf = twf-∷ tt (twf-∷ tt (twf-∷ tt twf-[]))
-      ; trace-preserves-halted = SMP.!!  -- TODO: exec-trace-preserves-halted-WF on local trace
+      ; trace-preserves-halted = exec-trace-preserves-halted-WF inl-trace
       -- scratch-bounded: max-slot-written = n + 2, final-alloc = n + 2, ir-scratch-requirement = 2
       ; scratch-budget = ir-scratch-requirement (inl {A} {B} Heap)
       ; scratch-bounded = m≤m+n (next-slot alloc +ℕ 2) 2
@@ -599,7 +599,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Note: trace-preserves-capacity removed in Phase 3
       ; trace-no-heap-writes = tt
       ; trace-twf = twf-∷ tt (twf-∷ tt (twf-∷ tt twf-[]))
-      ; trace-preserves-halted = SMP.!!  -- TODO: exec-trace-preserves-halted-WF on local trace
+      ; trace-preserves-halted = exec-trace-preserves-halted-WF inr-trace
       -- scratch-bounded: max-slot-written = n + 2, final-alloc = n + 2, ir-scratch-requirement = 2
       ; scratch-budget = ir-scratch-requirement (inr {A} {B} Stack)
       ; scratch-bounded = m≤m+n (next-slot alloc +ℕ 2) 2
@@ -737,7 +737,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Note: trace-preserves-capacity removed in Phase 3
       ; trace-no-heap-writes = tt
       ; trace-twf = twf-∷ tt (twf-∷ tt (twf-∷ tt twf-[]))
-      ; trace-preserves-halted = SMP.!!  -- TODO: exec-trace-preserves-halted-WF on local trace
+      ; trace-preserves-halted = exec-trace-preserves-halted-WF inr-trace
       -- scratch-bounded: max-slot-written = n + 2, final-alloc = n + 2, ir-scratch-requirement = 2
       ; scratch-budget = ir-scratch-requirement (inr {A} {B} Heap)
       ; scratch-bounded = m≤m+n (next-slot alloc +ℕ 2) 2
@@ -909,7 +909,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Note: trace-preserves-capacity removed in Phase 3
       ; trace-no-heap-writes = IRResultAWF.trace-no-heap-writes result-f
       ; trace-twf = SMP.!!  -- TODO: load-indirect-suc + result-f.trace-twf chained
-      ; trace-preserves-halted = SMP.!!  -- TODO: exec-trace-preserves-halted-WF
+      ; trace-preserves-halted = exec-trace-preserves-halted-WF case-inl-trace
       ; scratch-budget = IRResultAWF.scratch-budget result-f
       ; scratch-bounded = IRResultAWF.scratch-bounded result-f
       }
@@ -1024,7 +1024,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Note: trace-preserves-capacity removed in Phase 3
       ; trace-no-heap-writes = IRResultAWF.trace-no-heap-writes result-g
       ; trace-twf = SMP.!!  -- TODO: load-indirect-suc + result-g.trace-twf chained
-      ; trace-preserves-halted = SMP.!!  -- TODO: exec-trace-preserves-halted-WF
+      ; trace-preserves-halted = exec-trace-preserves-halted-WF case-inr-trace
       ; scratch-budget = IRResultAWF.scratch-budget result-g
       ; scratch-bounded = IRResultAWF.scratch-bounded result-g
       }
@@ -1173,7 +1173,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Note: trace-preserves-capacity removed in Phase 3
       ; trace-no-heap-writes = tt
       ; trace-twf = twf-∷ tt (twf-∷ tt (twf-∷ tt twf-[]))
-      ; trace-preserves-halted = SMP.!!  -- TODO: exec-trace-preserves-halted-WF on local trace
+      ; trace-preserves-halted = exec-trace-preserves-halted-WF in-trace
       -- scratch-bounded: In allocates 1 slot (max-slot = suc n = next-slot alloc')
       -- ir-scratch-requirement (In _ _) = 1, so bound is suc n ≤ suc n + 1
       ; scratch-budget = ir-scratch-requirement (In {F} wf m)
@@ -1285,7 +1285,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Note: trace-preserves-capacity removed in Phase 3
       ; trace-no-heap-writes = tt
       ; trace-twf = twf-∷ tt twf-[]
-      ; trace-preserves-halted = SMP.!!  -- TODO: exec-trace-preserves-halted-WF
+      ; trace-preserves-halted = exec-trace-preserves-halted-WF out-μ-trace
       -- scratch-bounded: out-μ allocates 0 slots, max-slot = next-slot alloc
       -- ir-scratch-requirement (out-μ _) = 0, so bound is n + 0 = n
       ; scratch-budget = ir-scratch-requirement (out-μ {F} wf)
@@ -1364,7 +1364,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Note: trace-preserves-capacity removed in Phase 3
       ; trace-no-heap-writes = tt
       ; trace-twf = twf-∷ tt twf-[]
-      ; trace-preserves-halted = SMP.!!  -- TODO: exec-trace-preserves-halted-WF
+      ; trace-preserves-halted = exec-trace-preserves-halted-WF out-trace
       -- scratch-bounded: Out allocates 0 slots, max-slot = next-slot alloc
       -- ir-scratch-requirement (Out _) = 0, so bound is n + 0 = n
       ; scratch-budget = ir-scratch-requirement (Out {F} wf)
@@ -1440,7 +1440,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Note: trace-preserves-capacity removed in Phase 3
       ; trace-no-heap-writes = tt
       ; trace-twf = twf-∷ tt (twf-∷ tt (twf-∷ tt twf-[]))
-      ; trace-preserves-halted = SMP.!!  -- TODO: exec-trace-preserves-halted-WF on local trace
+      ; trace-preserves-halted = exec-trace-preserves-halted-WF in-ν-trace
       -- scratch-bounded: in-ν allocates 1 slot (max-slot = suc n = next-slot alloc')
       -- ir-scratch-requirement (in-ν _ _) = 1, so bound is suc n ≤ suc n + 1
       ; scratch-budget = ir-scratch-requirement (in-ν {F} wf m)
