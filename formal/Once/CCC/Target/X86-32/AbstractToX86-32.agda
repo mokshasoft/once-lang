@@ -50,7 +50,8 @@ open import Once.CCC.Machine.SMCore
          instr-push-frame; instr-pop-frame; instr-call-closure;
          worklist-init; worklist-push; worklist-pop; worklist-check;
          instr-reclaim-to; instr-sigop; instr-load-const; instr-load-code-addr;
-         instr-save-closure-reg)
+         instr-save-closure-reg;
+         instr-load-tag-lit; instr-case-on-tag)
 
 ------------------------------------------------------------------------
 -- Slot to displacement conversion
@@ -209,6 +210,11 @@ compile-abstract (instr-load-code-addr _) = ud2 ∷ []
 -- into ebx so the subsequent `call [ebx + 4]` resolves correctly.
 compile-abstract instr-save-closure-reg =
   mov (reg ebx) (reg ecx) ∷ []
+
+-- Plan 0.13.1: tag literal — X86-32 stub. Trap so the gap is visible.
+compile-abstract (instr-load-tag-lit _) = ud2 ∷ []
+-- Plan 0.13.1: case-on-tag — X86-32 stub. Sub-traces not lowered.
+compile-abstract (instr-case-on-tag _ _) = ud2 ∷ []
 
 ------------------------------------------------------------------------
 -- Trace compilation: compile a whole trace to x86-32

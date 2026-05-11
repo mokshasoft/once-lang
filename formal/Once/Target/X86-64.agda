@@ -33,7 +33,8 @@ open import Once.CCC.Codegen.IRToTrace
 open import Data.Nat using (ℕ)
 open import Data.Product using (_×_; _,_)
 open import Once.CCC.Machine.SMCore using (AbstractTrace)
-open import Once.CCC.Target.X86-64.AbstractToX86 using (compile-trace)
+open import Once.CCC.Target.X86-64.AbstractToX86 using (compile-trace; compile-trace-cnt)
+open import Data.Product using (proj₁; proj₂)
 open import Once.CCC.Target.X86-64.Emit using (programToText)
 
 ------------------------------------------------------------------------
@@ -104,9 +105,13 @@ x86-64-irToAsm : ℕ → ∀ {A B} → IR A B → ℕ × String
 x86-64-irToAsm l ir =
   let budget = ir-stack-budget-from l ir
       (l' , trace) = ir-to-trace-from l ir
-  in l' , ("    subq $" ++ showNat (budget * 8) ++ ", %rsp\n" ++
-           programToText (compile-trace trace) ++
-           "    addq $" ++ showNat (budget * 8) ++ ", %rsp\n")
+      -- Plan 0.13.1 Phase 5: thread the label counter through
+      -- compile-trace-cnt so case-on-tag dispatch gets fresh
+      -- (globally-unique) labels per function.
+      (l'' , prog) = compile-trace-cnt l' trace
+  in l'' , ("    subq $" ++ showNat (budget * 8) ++ ", %rsp\n" ++
+            programToText prog ++
+            "    addq $" ++ showNat (budget * 8) ++ ", %rsp\n")
 
 -- | Plan 0.2.4.5 D1: emit closure-body labels for an IR (frameless,
 -- %rsp-relative). For each `(label, body-budget, body-trace)` triple
@@ -126,21 +131,36 @@ x86-64-irToAsm l ir =
 -- %rsp position). When body returns, %rsp snaps back; body's data
 -- is gone. No %rbp is touched anywhere — this is the unified
 -- frameless model where every IR function is %rsp-relative.
-emit-thunk-body : (ℕ × ℕ × AbstractTrace) → String
-emit-thunk-body (lbl , budget , body-trace) =
-  ".L_thunk_" ++ showNat lbl ++ ":\n" ++
-  "    subq $" ++ showNat (budget * 8) ++ ", %rsp\n" ++
-  programToText (compile-trace body-trace) ++
-  "    addq $" ++ showNat (budget * 8) ++ ", %rsp\n" ++
-  "    ret\n\n"
+-- Plan 0.13.1 Phase 5: emit-thunk-body now threads a label counter
+-- for case-on-tag dispatch in the body.
+emit-thunk-body : ℕ → (ℕ × ℕ × AbstractTrace) → ℕ × String
+emit-thunk-body cl (lbl , budget , body-trace) =
+  let (cl' , prog) = compile-trace-cnt cl body-trace
+  in cl' , (".L_thunk_" ++ showNat lbl ++ ":\n" ++
+            "    subq $" ++ showNat (budget * 8) ++ ", %rsp\n" ++
+            programToText prog ++
+            "    addq $" ++ showNat (budget * 8) ++ ", %rsp\n" ++
+            "    ret\n\n")
 
 -- Plan 0.12 Layer 1: takes the same starting label counter as
 -- `irToAsm` so the bodies' labels match the call sites in the
 -- emitted trace.
+-- Plan 0.13.1 Phase 5: also threads case-label counter through the
+-- bodies' compile-trace expansions.
 x86-64-irToBodies : ℕ → ∀ {A B} → IR A B → ℕ × String
 x86-64-irToBodies l ir =
   let (l' , bodies) = ir-to-bodies-from l ir
-  in l' , foldr (λ b acc → emit-thunk-body b ++ acc) "" bodies
+  in emit-bodies l' bodies
+  where
+    -- Threading: each emit-thunk-body consumes & produces a fresh
+    -- case-label counter so nested cases inside thunk bodies get
+    -- globally-unique labels.
+    emit-bodies : ℕ → List (ℕ × ℕ × AbstractTrace) → ℕ × String
+    emit-bodies cl []       = cl , ""
+    emit-bodies cl (b ∷ bs) =
+      let (cl1 , txt1) = emit-thunk-body cl b
+          (cl2 , txt2) = emit-bodies cl1 bs
+      in cl2 , (txt1 ++ txt2)
 
 ------------------------------------------------------------------------
 -- Target Instance

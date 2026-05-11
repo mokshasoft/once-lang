@@ -78,7 +78,8 @@ open import Once.CCC.Machine.SMCore
          instr-alloc-stack; instr-dealloc-stack; instr-reclaim-to;
          instr-push-frame; instr-pop-frame; instr-call-closure;
          instr-sigop; instr-load-const; instr-load-code-addr;
-         instr-save-closure-reg)
+         instr-save-closure-reg;
+         instr-load-tag-lit; instr-case-on-tag)
 
 ------------------------------------------------------------------------
 -- IR → AbstractTrace, state-passing
@@ -274,9 +275,51 @@ ir-to-trace' n l (const p _ vM) = n , l , (instr-load-const p vM ∷ []) , []
 -- Stubbed — emit `[]`. Not needed for Layer 0; future work.
 -- ────────────────────────────────────────────────────────────────────
 
-ir-to-trace' n l (inl _)       = n , l , [] , []
-ir-to-trace' n l (inr _)       = n , l , [] , []
-ir-to-trace' n l (case _ _)    = n , l , [] , []
+-- ────────────────────────────────────────────────────────────────────
+-- inl / inr — sum construction (Plan 0.13.1 Phase 4).
+-- 5-instruction sum payload layout:
+--   slot[N]   := SV-Tag t            (t = 0 for inl, 1 for inr)
+--   slot[N+1] := payload pointer (Input1)
+--   Output    := &slot[N]
+-- Mirrors SumRecWF.run-inl / run-inr's expected trace shape (Phase 3).
+-- ────────────────────────────────────────────────────────────────────
+
+ir-to-trace' n l (inl _) =
+  let sum-slot = n
+      next     = suc (suc sum-slot)
+  in next , l ,
+     (instr-load-tag-lit 0 ∷
+      store-at-slot sum-slot ∷
+      mov-to-output ∷
+      store-at-slot (suc sum-slot) ∷
+      lea-slot sum-slot ∷ []) ,
+     []
+
+ir-to-trace' n l (inr _) =
+  let sum-slot = n
+      next     = suc (suc sum-slot)
+  in next , l ,
+     (instr-load-tag-lit 1 ∷
+      store-at-slot sum-slot ∷
+      mov-to-output ∷
+      store-at-slot (suc sum-slot) ∷
+      lea-slot sum-slot ∷ []) ,
+     []
+
+-- ────────────────────────────────────────────────────────────────────
+-- case f g — sum elimination (Plan 0.13.1 Phase 4).
+-- Per-branch dispatch trace (load payload pointer from sucLoc Input1,
+-- mov it into Input1, then run the branch body):
+--   load-indirect-suc ∷ mov-to-input ∷ <sub-trace>
+-- Then wrap the two branches in instr-case-on-tag.
+-- ────────────────────────────────────────────────────────────────────
+
+ir-to-trace' n l (case f g) =
+  let (n1 , l1 , ft , fb) = ir-to-trace' n  l  f
+      (n2 , l2 , gt , gb) = ir-to-trace' n1 l1 g
+      f-dispatch = load-indirect-suc ∷ mov-to-input ∷ ft
+      g-dispatch = load-indirect-suc ∷ mov-to-input ∷ gt
+  in n2 , l2 , (instr-case-on-tag f-dispatch g-dispatch ∷ []) , (fb ++ gb)
 
 ir-to-trace' n l (In _ _)       = n , l , [] , []
 -- out-μ and Out: ν/μ Lambek inverses; semantically Output := Input1.

@@ -13,18 +13,20 @@
 
 module Once.CCC.Target.X86-64.AbstractToX86 where
 
-open import Data.Nat using (ℕ) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
+open import Data.Nat using (ℕ; suc) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
 open import Data.List using (List; []; _∷_; _++_)
 
 -- Plan 0.10 Phase B: SigOp dispatch.
 import Once.CCC.Target.X86-64.CodeGen.Compile as CompileX86-64
+
+open import Data.Product using (_×_; _,_; proj₁; proj₂)
 
 -- Import X86 syntax
 open import Once.CCC.Target.X86-64.Syntax
   using (Reg; rax; rbx; rcx; rdx; rdi; rsi; rbp; rsp; r8; r9; r10; r11; r12; r13; r14; r15;
          Mem; base; base+disp; rip+disp; rip+label;
          Operand; reg; mem; imm;
-         Instr; mov; lea; add; sub; cmp; push; pop; call; ret; jmp; jne; label; ud2;
+         Instr; mov; lea; add; sub; cmp; push; pop; call; ret; jmp; je; jne; label; ud2;
          Program; slot-size; slots)
 
 -- Import AbstractInstr from SMCore
@@ -39,7 +41,8 @@ open import Once.CCC.SigOp.Info using (SigOpInfo)
          instr-alloc-stack; instr-dealloc-stack;
          instr-push-frame; instr-pop-frame; instr-call-closure;
          worklist-init; worklist-push; worklist-pop; worklist-check;
-         instr-reclaim-to; instr-sigop; instr-save-closure-reg)
+         instr-reclaim-to; instr-sigop; instr-save-closure-reg;
+         instr-load-tag-lit)
 
 ------------------------------------------------------------------------
 -- Slot to displacement conversion
@@ -206,25 +209,63 @@ compile-abstract (instr-load-code-addr n) =
 compile-abstract instr-save-closure-reg =
   mov (reg r12) (reg rdi) ∷ []
 
--- Plan 0.13.1 Phase 1: case-on-tag stub.
---
--- Emits `ud2` (illegal instruction; traps with SIGILL if executed).
--- The real lowering (`mov (%rdi), %rax; cmp $0, %rax; je .L_inl_k;
--- <g-code>; jmp .L_end_k; .L_inl_k: <f-code>; .L_end_k:`) requires
--- per-case label threading through `Compile.agda` (similar to the
--- thunk-label counter from Plan 0.12). Deferred to Phase 5 of plan
--- 0.13.1; see plan doc for full design.
---
--- Until Phase 5 lands, Layer 2 programs that compile through case
--- will trap at runtime — exactly the "named gap" the user's
--- methodology asks for.
+-- Plan 0.13.1 Phase 1: tag literal — write SV-Tag n to Output (rax).
+-- x86: mov $n, %rax (loads the small natural-number tag into rax as
+-- an immediate; the StoredValue's SV-Tag wrapper is type-level only).
+compile-abstract (instr-load-tag-lit n) =
+  mov (reg rax) (imm n) ∷ []
+
+-- Plan 0.13.1 Phase 1: case-on-tag — single-instruction view only.
+-- The real lowering with cmp/je/jmp/labels for the sub-traces is in
+-- compile-trace-cnt below (which has the label counter to thread).
+-- This single-instruction view emits ud2 as a sentinel — it should
+-- never appear in the output of compile-trace-cnt (which intercepts
+-- the instruction before delegating here). If it does, runtime traps.
 compile-abstract (instr-case-on-tag _ _) =
   ud2 ∷ []
 
 ------------------------------------------------------------------------
 -- Trace compilation: compile a whole trace to x86
+--
+-- Plan 0.13.1 Phase 5: label-threading variant. case-on-tag in the
+-- abstract trace expands to a 5-line dispatch sequence:
+--
+--   cmpq $0, (%rdi)        ; sum value at *Input1; tag at offset 0
+--   je .L<inl-lbl>
+--   <g-trace compiled>
+--   jmp .L<end-lbl>
+--   .L<inl-lbl>:
+--   <f-trace compiled>
+--   .L<end-lbl>:
+--
+-- Each case consumes 2 fresh labels. compile-trace-cnt threads a
+-- counter through the trace; case-on-tag's sub-traces recurse with
+-- the updated counter so nested cases get unique labels.
 ------------------------------------------------------------------------
 
+compile-trace-cnt : ℕ → AbstractTrace → ℕ × Program
+
+compile-trace-cnt n [] = n , []
+compile-trace-cnt n (instr-case-on-tag f g ∷ rest) =
+  let lbl-inl = n
+      lbl-end = suc n
+      (n1 , pf) = compile-trace-cnt (suc (suc n)) f
+      (n2 , pg) = compile-trace-cnt n1 g
+      (n3 , pr) = compile-trace-cnt n2 rest
+      dispatch  = cmp (mem (base+disp rdi 0)) (imm 0) ∷
+                  je lbl-inl ∷
+                  pg ++
+                  jmp lbl-end ∷
+                  label lbl-inl ∷
+                  pf ++
+                  label lbl-end ∷ []
+  in n3 , dispatch ++ pr
+compile-trace-cnt n (i ∷ rest) =
+  let (n1 , pr) = compile-trace-cnt n rest
+  in n1 , compile-abstract i ++ pr
+
+-- Backward-compatible non-threaded variant. Starts case-labels at 0.
+-- For end-to-end compilation, prefer `compile-trace-cnt` and thread
+-- the counter from x86-64-irToAsm.
 compile-trace : AbstractTrace → Program
-compile-trace [] = []
-compile-trace (i ∷ is) = compile-abstract i ++ compile-trace is
+compile-trace t = proj₂ (compile-trace-cnt 0 t)

@@ -59,7 +59,8 @@ open import Once.CCC.Machine.SMCore
          instr-push-frame; instr-pop-frame; instr-call-closure;
          worklist-init; worklist-push; worklist-pop; worklist-check;
          instr-reclaim-to; instr-sigop; instr-load-const; instr-load-code-addr;
-         instr-save-closure-reg)
+         instr-save-closure-reg;
+         instr-load-tag-lit; instr-case-on-tag)
 
 ------------------------------------------------------------------------
 -- Slot to displacement conversion
@@ -235,6 +236,11 @@ compile-abstract (instr-load-code-addr _) = unimp ∷ []
 -- `ld t0, 8(s1); jalr ra, t0, 0` resolves correctly.
 compile-abstract instr-save-closure-reg =
   mv s1 t0 ∷ []
+
+-- Plan 0.13.1: tag literal — RV64 stub. Trap so the gap is visible.
+compile-abstract (instr-load-tag-lit _) = unimp ∷ []
+-- Plan 0.13.1: case-on-tag — RV64 stub.
+compile-abstract (instr-case-on-tag _ _) = unimp ∷ []
 
 ------------------------------------------------------------------------
 -- Trace compilation: compile a whole trace to RISC-V
