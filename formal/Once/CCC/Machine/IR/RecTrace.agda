@@ -1020,16 +1020,16 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
   wrapper-trace-output : ∀ (base : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
     halted s ≡ false →
     readReg (regs (proj₁ (exec-trace (instr-alloc-stack 2 ∷ store-at-slot (suc base) ∷ lea-slot base ∷ []) s alloc))) Output ≡
-    AtStack (current-frame alloc) base
+    SV-Ptr (AtStack (current-frame alloc) base)
   wrapper-trace-output base s alloc not-halted =
     -- wrapper-trace = prefix ++ [lea-slot base] where prefix = [instr-alloc-stack 2, store-at-slot (suc base)]
     exec-trace-final-lea-slot prefix base s alloc prefix-not-halted
     where
       prefix = instr-alloc-stack 2 ∷ store-at-slot (suc base) ∷ []
-      prefix-tph : TracePreservesHaltedP prefix
+      prefix-tph : TraceWF s alloc prefix
       prefix-tph = twf-∷ tt (twf-∷ tt twf-[])
       prefix-not-halted : halted (proj₁ (exec-trace prefix s alloc)) ≡ false
-      prefix-not-halted = exec-trace-preserves-halted prefix s alloc not-halted prefix-tph
+      prefix-not-halted = exec-trace-preserves-halted-WF prefix s alloc not-halted prefix-tph
 
   -- | After wrapper trace, slot (suc base) contains the original Output value
   -- Trace: instr-alloc-stack 2 → store-at-slot (suc base) → lea-slot base
@@ -1243,7 +1243,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
       (input-loc : ValueLocation FS) →
       halted s ≡ false →
       readLoc s (AtStack (current-frame alloc) save-slot) ≡ just (SV-Ptr input-loc) →
-      readReg (regs (proj₁ (exec-trace (sum-update-trace save-slot) s alloc))) Output ≡ input-loc
+      readReg (regs (proj₁ (exec-trace (sum-update-trace save-slot) s alloc))) Output ≡ SV-Ptr input-loc
 
     sum-update-ptr-helper : ∀ (save-slot : ℕ) (s : LocState FS) (alloc : AllocState {FS})
       (input-loc result-loc : ValueLocation FS) →
@@ -1320,7 +1320,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
     halted s ≡ false →
     readLoc s (AtStack (current-frame alloc) save-slot) ≡ just (SV-Ptr input-loc) →
     let (s' , _) = exec-trace (sum-update-trace save-slot) s alloc
-    in readReg (regs s') Output ≡ input-loc
+    in readReg (regs s') Output ≡ SV-Ptr input-loc
   sum-update-output save-slot s alloc input-loc not-halted stack-has-input =
     sum-update-output-helper save-slot s alloc input-loc not-halted stack-has-input
 
@@ -1348,7 +1348,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
     halted s ≡ false →
     halted (proj₁ (exec-trace (sum-update-trace save-slot) s alloc)) ≡ false
   sum-update-preserves-halted save-slot s alloc not-halted =
-    exec-trace-preserves-halted (sum-update-trace save-slot) s alloc not-halted
+    exec-trace-preserves-halted-WF (sum-update-trace save-slot) s alloc not-halted
       (twf-∷ (SMP.!!) (twf-∷ (SMP.!!) (twf-∷ tt twf-[])))
 
   {-# TERMINATING #-}
@@ -1583,27 +1583,20 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
         --        Output = payload-loc
         --        Then mov-to-input copies Output to Input1, so Input1 = payload-loc
         rdi-setup : readReg (regs s-setup) Input1 ≡ SV-Ptr payload-loc
-        rdi-setup = setup-trace-sets-input s alloc input-loc payload-loc not-halted rdi-eq payload-ptr
+        rdi-setup = setup-trace-sets-input s alloc input-loc (SV-Ptr payload-loc) not-halted rdi-eq payload-ptr
 
-        -- Transfer l-layer-valid through setup (memory not changed by register ops)
+        -- TODO (post-scaffold): re-route under StoredValue (load-indirect-suc
+        -- now case-splits on sv-as-loc; setup-trace-preserves-alloc needs
+        -- the InstrWF witness to discharge the halt case).
         l-layer-valid-setup : μLayerValid alloc-setup wfL wfG l-layer payload-loc s-setup
-        l-layer-valid-setup =
-          μLayerValid-mem-only alloc wfL wfG l-layer payload-loc s s-setup
-            (setup-trace-preserves-stackMem s alloc)
-            (setup-trace-preserves-heapMem s alloc)
-            (subst (λ al → μLayerValid al wfL wfG l-layer payload-loc s)
-                   (sym (setup-trace-preserves-alloc s alloc))
-                   l-layer-valid)
+        l-layer-valid-setup = SMP.!!
 
-        -- Transfer payload-bf through setup (alloc unchanged by register ops)
         payload-bf-setup : BeforeFrontier alloc-setup payload-loc
-        payload-bf-setup = subst (λ al → BeforeFrontier al payload-loc)
-                                 (sym (setup-trace-preserves-alloc s alloc))
-                                 payload-bf
+        payload-bf-setup = SMP.!!
 
         -- Halted preserved through setup
         not-halted-setup : halted s-setup ≡ false
-        not-halted-setup = setup-trace-preserves-halted s alloc input-loc payload-loc not-halted rdi-eq payload-ptr
+        not-halted-setup = setup-trace-preserves-halted s alloc input-loc (SV-Ptr payload-loc) not-halted rdi-eq payload-ptr
 
         -- Step 2: Process left sub-layer (recursive call)
         (mL , l-result) = process-layer wfL wfG alg dispatch l-layer mIn payload-loc s-setup alloc-setup
@@ -1665,7 +1658,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
         -- Full trace: setup ++ sub ++ wrapper
         -- exec-trace executes left-to-right
         setup-exec-eq : exec-trace setup-trace s alloc ≡ (s-setup , alloc-setup)
-        setup-exec-eq = setup-trace-exec s alloc input-loc payload-loc not-halted rdi-eq payload-ptr
+        setup-exec-eq = setup-trace-exec s alloc input-loc (SV-Ptr payload-loc) not-halted rdi-eq payload-ptr
 
         -- After setup ++ sub: state uses trace-correct, alloc uses runtime
         -- Note: alloc-after-sub ≠ alloc-after-sub-runtime (architectural mismatch)
@@ -1846,7 +1839,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
         setup-tsrb : TraceSlotReadsBelow (next-slot alloc-after-wrapper) setup-trace
         setup-tsrb = tt  -- Neither instruction reads slots
 
-        setup-tph : TracePreservesHaltedP setup-trace
+        setup-tph : TraceWF s alloc setup-trace
         setup-tph = twf-∷ (SMP.!!) (twf-∷ tt twf-[])
 
         -- Note: setup-tpc removed in Phase 3
@@ -1867,7 +1860,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ------------------------------------------------------------------------
 
         -- TracePreservesHaltedP for reclaim-wrapper-trace
-        reclaim-wrapper-tph : TracePreservesHaltedP reclaim-wrapper-trace
+        reclaim-wrapper-tph : ∀ {s alloc} → TraceWF s alloc reclaim-wrapper-trace
         reclaim-wrapper-tph = twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt twf-[])))
 
         -- Note: reclaim-wrapper-tpc removed in Phase 3
@@ -1896,7 +1889,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
         -- reclaim-wrapper-trace preserves halted=false
         reclaim-wrapper-not-halted : halted s-after-sub ≡ false → halted s-after-wrapper ≡ false
-        reclaim-wrapper-not-halted nh = exec-trace-preserves-halted reclaim-wrapper-trace s-after-sub alloc-after-sub nh reclaim-wrapper-tph
+        reclaim-wrapper-not-halted nh = exec-trace-preserves-halted-WF reclaim-wrapper-trace s-after-sub alloc-after-sub nh reclaim-wrapper-tph
 
         -- Final alloc after reclaim + wrapper: next-slot = l-reclaimable + 2
         -- Frame is preserved, heap is preserved, capacity is preserved
@@ -1926,18 +1919,16 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
         wrapper-before-frontier = subst (λ x → wrapper-base < x) (sym wrapper-next-slot-eq)
                                         (m<m+n wrapper-base {2} (s≤s z≤n))
 
-        -- After lea-slot, Output register contains wrapper-loc
+        -- After lea-slot, Output register contains SV-Ptr wrapper-loc
         -- reclaim-instr doesn't change regs, so wrapper-trace-output still applies
-        wrapper-rax-result : readReg (regs s-after-wrapper) Output ≡ wrapper-loc
+        wrapper-rax-result : readReg (regs s-after-wrapper) Output ≡ SV-Ptr wrapper-loc
         wrapper-rax-result =
-          -- exec-trace reclaim-wrapper-trace = exec-trace wrapper-trace after reclaim
           let trace-split = exec-trace-cons reclaim-instr wrapper-trace s-after-sub alloc-after-sub l-not-halted
-              -- wrapper-trace-output: readReg Output = AtStack frame base
               output-eq = wrapper-trace-output wrapper-base s-after-sub alloc-reclaimed l-not-halted
           in trans (cong (λ p → readReg (regs (proj₁ p)) Output) trace-split) output-eq
 
         -- The pointer slot (wrapper-base + 1) was written with l-result-loc
-        wrapper-ptr-written : readLoc s-after-wrapper (sucLoc wrapper-loc) ≡ just l-result-loc
+        wrapper-ptr-written : readLoc s-after-wrapper (sucLoc wrapper-loc) ≡ just (SV-Ptr l-result-loc)
         wrapper-ptr-written =
           let trace-split = exec-trace-cons reclaim-instr wrapper-trace s-after-sub alloc-after-sub l-not-halted
               -- Before wrapper-trace: rax = l-result-loc (from child's rax-is-result)
@@ -1977,33 +1968,12 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
         --    With actual reclamation, l-result-loc's slot < l-reclaimable = wrapper-base
         --    Since next-slot alloc-after-wrapper = l-reclaimable + 2 > l-reclaimable,
         --    l-result-loc is still before the new frontier.
+        -- TODO (post-scaffold): alloc-setup-eq chain doesn't reduce under
+        -- StoredValue because exec-abstract load-indirect-suc has a
+        -- non-trivial with-block on sv-as-loc Input1. The proof composes
+        -- but cong needs an explicit witness from the InstrWF chain.
         l-before-wrapper : BeforeFrontier alloc-after-wrapper l-result-loc
-        l-before-wrapper =
-          -- l-result-loc is BeforeFrontier at final-alloc (from result-before)
-          -- Transfer to (record alloc-setup { next-slot = l-reclaimable }) via frontier-same-heap
-          -- Since alloc-after-sub = final-alloc, and frame/heap are preserved through processing
-          let l-bf-final : BeforeFrontier alloc-after-sub l-result-loc
-              l-bf-final = place-before (ProcessedLayerResult.result-place l-result)
-              -- Transfer: alloc-after-sub has same frame/heap as alloc-setup, same next-slot as l-reclaimable
-              l-bf-reclaimed : BeforeFrontier (record alloc-setup { next-slot = l-reclaimable }) l-result-loc
-              l-bf-reclaimed = frontier-same-heap alloc-after-sub (record alloc-setup { next-slot = l-reclaimable })
-                                 (trans frame-preserved-inj1 (cong current-frame alloc-setup-eq))
-                                 refl  -- both have next-slot = l-reclaimable
-                                 (trans heap-preserved-inj1 (cong next-heap-ref alloc-setup-eq))
-                                 l-result-loc l-bf-final
-              -- Transfer to alloc-after-wrapper: frame same, slot monotone (l-reclaimable ≤ l-reclaimable + 2)
-              -- Heap equality chain: next-heap-ref alloc-setup = next-heap-ref alloc (by alloc-setup-eq)
-              --                      = next-heap-ref alloc-after-sub (by sym heap-preserved-inj1)
-              --                      = next-heap-ref alloc-after-wrapper (by sym wrapper-heap-preserved)
-              heap-eq : next-heap-ref (record alloc-setup { next-slot = l-reclaimable }) ≡ next-heap-ref alloc-after-wrapper
-              heap-eq = trans (cong next-heap-ref alloc-setup-eq)
-                              (trans (sym heap-preserved-inj1) (sym wrapper-heap-preserved))
-          in frontier-monotone (record alloc-setup { next-slot = l-reclaimable }) alloc-after-wrapper
-               (trans (cong current-frame (sym alloc-setup-eq))
-                      (trans (sym frame-preserved-inj1) (sym wrapper-frame-preserved)))
-               (subst (l-reclaimable ≤_) (sym wrapper-next-slot-eq) (m≤m+n l-reclaimable 2))
-               (subst (_≤ next-heap-ref alloc-after-wrapper) (sym heap-eq) ≤-refl)
-               l-result-loc l-bf-reclaimed
+        l-before-wrapper = SMP.!!
 
         -- 2. BeforeFrontier alloc-after-wrapper (sucLoc wrapper-loc)
         --    sucLoc wrapper-loc = AtStack frame (suc wrapper-base) = AtStack frame (suc l-reclaimable)
@@ -2027,67 +1997,10 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
         l-valid-wrapper : ValidAtWF mL alloc-after-wrapper l-processed l-result-loc s-after-wrapper
         l-valid-wrapper =
           -- Strategy:
-          -- 1. Get l-valid-reclaimed at (record alloc-setup { next-slot = l-reclaimable }) in s-after-sub
-          -- 2. Use validityWF-trace-preserves to preserve through wrapper-trace to s-after-wrapper
-          --    (wrapper-trace writes at l-reclaimable+1, above the frontier l-reclaimable)
-          -- 3. Use validityWF-frontier-advance to transfer to alloc-after-wrapper
-          -- Transfer validity and BeforeFrontier from final-alloc to expected alloc
-          let target-alloc = record alloc-setup { next-slot = l-reclaimable }
-              -- Frame and heap equality for transfer
-              frame-eq-transfer : current-frame alloc-after-sub ≡ current-frame target-alloc
-              frame-eq-transfer = trans frame-preserved-inj1 (cong current-frame alloc-setup-eq)
-              heap-eq-transfer : next-heap-ref alloc-after-sub ≡ next-heap-ref target-alloc
-              heap-eq-transfer = trans heap-preserved-inj1 (cong next-heap-ref alloc-setup-eq)
-              bf-transfer = frontier-same-heap alloc-after-sub target-alloc frame-eq-transfer refl heap-eq-transfer
-              l-valid-reclaimed : ValidAtWF mL target-alloc l-processed l-result-loc s-after-sub
-              l-valid-reclaimed = validityWF-with-bf-transfer l-processed l-result-loc s-after-sub
-                                    alloc-after-sub target-alloc bf-transfer
-                                    (place-valid (ProcessedLayerResult.result-place l-result))
-              -- l-result-loc is BeforeFrontier at the reclaim alloc
-              l-bf-reclaimed : BeforeFrontier target-alloc l-result-loc
-              l-bf-reclaimed = bf-transfer l-result-loc (place-before (ProcessedLayerResult.result-place l-result))
-              -- wrapper-trace writes above l-reclaimable (at suc l-reclaimable)
-              wrapper-twa-l : TraceWritesAbove l-reclaimable wrapper-trace
-              wrapper-twa-l = n≤1+n l-reclaimable , tt
-              -- Step 2: Preserve validity through wrapper-trace
-              -- Note: We use exec-trace with the same alloc as l-valid-reclaimed
-              -- The alloc (record alloc-setup { next-slot = l-reclaimable }) only affects exec-trace
-              -- through its frame for lea-slot and store-at-slot
-              l-valid-after-wrapper : ValidAtWF mL (record alloc-setup { next-slot = l-reclaimable }) l-processed l-result-loc
-                                        (proj₁ (exec-trace wrapper-trace s-after-sub (record alloc-setup { next-slot = l-reclaimable })))
-              l-valid-after-wrapper = validityWF-trace-preserves (record alloc-setup { next-slot = l-reclaimable })
-                                        wrapper-trace l-processed l-result-loc s-after-sub l-bf-reclaimed l-valid-reclaimed
-                                        wrapper-twa-l tt
-              -- exec-trace with alloc-reclaimed vs record alloc-setup {...}: need to show they produce same state
-              -- alloc-reclaimed = record alloc-after-sub { next-slot = l-reclaimable }
-              -- record alloc-setup { next-slot = l-reclaimable } differs in frame (alloc-setup vs alloc-after-sub)
-              -- But alloc-setup = alloc (by alloc-setup-eq) and current-frame alloc = current-frame alloc-after-sub (by sym frame-preserved-inj1)
-              -- So current-frame alloc-reclaimed = current-frame (record alloc-setup {...})
-              alloc-setup-reclaim = record alloc-setup { next-slot = l-reclaimable }
-              -- For exec-trace, what matters for state is current-frame (for store-at-slot, lea-slot)
-              -- Since current-frame alloc-reclaimed = current-frame alloc-after-sub = current-frame alloc = current-frame alloc-setup = current-frame alloc-setup-reclaim
-              -- exec-trace produces the same state
-              frame-eq-reclaim : current-frame alloc-reclaimed ≡ current-frame alloc-setup-reclaim
-              frame-eq-reclaim = trans frame-preserved-inj1 (cong current-frame (sym alloc-setup-eq))
-              state-eq-reclaim : proj₁ (exec-trace wrapper-trace s-after-sub alloc-setup-reclaim) ≡ proj₁ (exec-trace wrapper-trace s-after-sub alloc-reclaimed)
-              state-eq-reclaim = SMP.TracePrimitives.exec-trace-same-frame wrapper-trace s-after-sub alloc-setup-reclaim alloc-reclaimed (sym frame-eq-reclaim)
-              -- s-after-wrapper = proj₁ (exec-trace reclaim-wrapper-trace ...) = proj₁ (exec-trace wrapper-trace ... alloc-reclaimed)
-              trace-split = exec-trace-cons reclaim-instr wrapper-trace s-after-sub alloc-after-sub l-not-halted
-              state-eq : proj₁ (exec-trace wrapper-trace s-after-sub alloc-reclaimed) ≡ s-after-wrapper
-              state-eq = sym (cong proj₁ trace-split)
-              l-valid-at-s-wrapper : ValidAtWF mL alloc-setup-reclaim l-processed l-result-loc s-after-wrapper
-              l-valid-at-s-wrapper = subst (λ s → ValidAtWF mL alloc-setup-reclaim l-processed l-result-loc s)
-                                           (trans state-eq-reclaim state-eq) l-valid-after-wrapper
-              -- Step 3: Transfer from reclaim alloc to alloc-after-wrapper
-              frame-eq : current-frame alloc-after-wrapper ≡ current-frame alloc-setup-reclaim
-              frame-eq = trans wrapper-frame-preserved (trans frame-preserved-inj1 (sym (cong current-frame alloc-setup-eq)))
-              slot-mono : next-slot alloc-setup-reclaim ≤ next-slot alloc-after-wrapper
-              slot-mono = subst (l-reclaimable ≤_) (sym wrapper-next-slot-eq) (m≤m+n l-reclaimable 2)
-              heap-mono : next-heap-ref alloc-setup-reclaim ≤ next-heap-ref alloc-after-wrapper
-              heap-mono = subst (_≤ next-heap-ref alloc-after-wrapper)
-                                (sym (cong next-heap-ref alloc-setup-eq))
-                                (subst (next-heap-ref alloc ≤_) (sym (trans wrapper-heap-preserved heap-preserved-inj1)) ≤-refl)
-          in validityWF-frontier-advance l-processed l-result-loc s-after-wrapper frame-eq slot-mono heap-mono l-valid-at-s-wrapper
+          -- TODO (post-scaffold): alloc-setup-eq chain doesn't reduce
+          -- under StoredValue (load-indirect-suc has a with-block on
+          -- sv-as-loc Input1); rederive once that propagates.
+          SMP.!!
 
         -- Construct full validity using valid-inl-wf
         processed-valid-proof : ValidAtWF mL alloc-after-wrapper processed wrapper-loc s-after-wrapper
@@ -2245,27 +2158,18 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
         -- At s-setup: Input1 = payload-loc
         rdi-setup : readReg (regs s-setup) Input1 ≡ SV-Ptr payload-loc
-        rdi-setup = setup-trace-sets-input s alloc input-loc payload-loc not-halted rdi-eq payload-ptr
+        rdi-setup = setup-trace-sets-input s alloc input-loc (SV-Ptr payload-loc) not-halted rdi-eq payload-ptr
 
-        -- Transfer r-layer-valid through setup (memory not changed by register ops)
+        -- TODO (post-scaffold): same alloc-setup non-reduction issue as
+        -- left-layer above. Postulate the three transfers.
         r-layer-valid-setup : μLayerValid alloc-setup wfR wfG r-layer payload-loc s-setup
-        r-layer-valid-setup =
-          μLayerValid-mem-only alloc wfR wfG r-layer payload-loc s s-setup
-            (setup-trace-preserves-stackMem s alloc)
-            (setup-trace-preserves-heapMem s alloc)
-            (subst (λ al → μLayerValid al wfR wfG r-layer payload-loc s)
-                   (sym (setup-trace-preserves-alloc s alloc))
-                   r-layer-valid)
+        r-layer-valid-setup = SMP.!!
 
-        -- Transfer payload-bf through setup (alloc unchanged by register ops)
         payload-bf-setup : BeforeFrontier alloc-setup payload-loc
-        payload-bf-setup = subst (λ al → BeforeFrontier al payload-loc)
-                                 (sym (setup-trace-preserves-alloc s alloc))
-                                 payload-bf
+        payload-bf-setup = SMP.!!
 
-        -- Halted preserved through setup
         not-halted-setup : halted s-setup ≡ false
-        not-halted-setup = setup-trace-preserves-halted s alloc input-loc payload-loc not-halted rdi-eq payload-ptr
+        not-halted-setup = setup-trace-preserves-halted s alloc input-loc (SV-Ptr payload-loc) not-halted rdi-eq payload-ptr
 
         -- Step 2: Process right sub-layer (recursive call)
         (mR , r-result) = process-layer wfR wfG alg dispatch r-layer mIn payload-loc s-setup alloc-setup
@@ -2292,7 +2196,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
         -- Trace execution correctness
         -- Full trace: setup ++ sub ++ wrapper
         setup-exec-eq : exec-trace setup-trace s alloc ≡ (s-setup , alloc-setup)
-        setup-exec-eq = setup-trace-exec s alloc input-loc payload-loc not-halted rdi-eq payload-ptr
+        setup-exec-eq = setup-trace-exec s alloc input-loc (SV-Ptr payload-loc) not-halted rdi-eq payload-ptr
 
         -- After setup ++ sub: state uses trace-correct, alloc uses runtime
         -- Note: alloc-after-sub ≠ alloc-after-sub-runtime (architectural mismatch)
@@ -2455,7 +2359,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
         setup-tsrb : TraceSlotReadsBelow (next-slot alloc-after-wrapper) setup-trace
         setup-tsrb = tt  -- Neither instruction reads slots
 
-        setup-tph : TracePreservesHaltedP setup-trace
+        setup-tph : TraceWF s alloc setup-trace
         setup-tph = twf-∷ (SMP.!!) (twf-∷ tt twf-[])
 
         -- Note: setup-tpc removed in Phase 3
@@ -2476,7 +2380,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ------------------------------------------------------------------------
 
         -- TracePreservesHaltedP for reclaim-wrapper-trace
-        reclaim-wrapper-tph : TracePreservesHaltedP reclaim-wrapper-trace
+        reclaim-wrapper-tph : ∀ {s alloc} → TraceWF s alloc reclaim-wrapper-trace
         reclaim-wrapper-tph = twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt twf-[])))
 
         -- Note: reclaim-wrapper-tpc removed in Phase 3
@@ -2505,7 +2409,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
         -- reclaim-wrapper-trace preserves halted=false
         reclaim-wrapper-not-halted : halted s-after-sub ≡ false → halted s-after-wrapper ≡ false
-        reclaim-wrapper-not-halted nh = exec-trace-preserves-halted reclaim-wrapper-trace s-after-sub alloc-after-sub nh reclaim-wrapper-tph
+        reclaim-wrapper-not-halted nh = exec-trace-preserves-halted-WF reclaim-wrapper-trace s-after-sub alloc-after-sub nh reclaim-wrapper-tph
 
         -- Final alloc after reclaim + wrapper: next-slot = r-reclaimable + 2
         -- Frame is preserved, heap is preserved, capacity is preserved
@@ -2537,16 +2441,14 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
         -- After lea-slot, Output register contains wrapper-loc
         -- reclaim-instr doesn't change regs, so wrapper-trace-output still applies
-        wrapper-rax-result : readReg (regs s-after-wrapper) Output ≡ wrapper-loc
+        wrapper-rax-result : readReg (regs s-after-wrapper) Output ≡ SV-Ptr wrapper-loc
         wrapper-rax-result =
-          -- exec-trace reclaim-wrapper-trace = exec-trace wrapper-trace after reclaim
           let trace-split = exec-trace-cons reclaim-instr wrapper-trace s-after-sub alloc-after-sub r-not-halted
-              -- wrapper-trace-output: readReg Output = AtStack frame base
               output-eq = wrapper-trace-output wrapper-base s-after-sub alloc-reclaimed r-not-halted
           in trans (cong (λ p → readReg (regs (proj₁ p)) Output) trace-split) output-eq
 
-        -- The pointer slot (wrapper-base + 1) was written with r-result-loc
-        wrapper-ptr-written : readLoc s-after-wrapper (sucLoc wrapper-loc) ≡ just r-result-loc
+        -- The pointer slot (wrapper-base + 1) was written with SV-Ptr r-result-loc
+        wrapper-ptr-written : readLoc s-after-wrapper (sucLoc wrapper-loc) ≡ just (SV-Ptr r-result-loc)
         wrapper-ptr-written =
           let trace-split = exec-trace-cons reclaim-instr wrapper-trace s-after-sub alloc-after-sub r-not-halted
               -- Before wrapper-trace: rax = r-result-loc (from child's rax-is-result)
@@ -2585,32 +2487,9 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
         --    With actual reclamation, r-result-loc's slot < r-reclaimable = wrapper-base
         --    Since next-slot alloc-after-wrapper = r-reclaimable + 2 > r-reclaimable,
         --    r-result-loc is still before the new frontier.
+        -- TODO (post-scaffold): same alloc-setup non-reduction issue.
         r-before-wrapper : BeforeFrontier alloc-after-wrapper r-result-loc
-        r-before-wrapper =
-          -- r-result-loc is BeforeFrontier at final-alloc (from result-before)
-          -- Transfer to (record alloc-setup { next-slot = r-reclaimable }) via frontier-same-heap
-          let r-bf-final : BeforeFrontier alloc-after-sub r-result-loc
-              r-bf-final = place-before (ProcessedLayerResult.result-place r-result)
-              -- Transfer: alloc-after-sub has same frame/heap as alloc-setup, same next-slot as r-reclaimable
-              r-bf-reclaimed : BeforeFrontier (record alloc-setup { next-slot = r-reclaimable }) r-result-loc
-              r-bf-reclaimed = frontier-same-heap alloc-after-sub (record alloc-setup { next-slot = r-reclaimable })
-                                 (trans frame-preserved-inj2 (cong current-frame alloc-setup-eq))
-                                 refl  -- both have next-slot = r-reclaimable
-                                 (trans heap-preserved-inj2 (cong next-heap-ref alloc-setup-eq))
-                                 r-result-loc r-bf-final
-              -- Transfer to alloc-after-wrapper: frame same, slot monotone (r-reclaimable ≤ r-reclaimable + 2)
-              -- Heap equality chain: next-heap-ref alloc-setup = next-heap-ref alloc (by alloc-setup-eq)
-              --                      = next-heap-ref alloc-after-sub (by sym heap-preserved-inj2)
-              --                      = next-heap-ref alloc-after-wrapper (by sym wrapper-heap-preserved)
-              heap-eq : next-heap-ref (record alloc-setup { next-slot = r-reclaimable }) ≡ next-heap-ref alloc-after-wrapper
-              heap-eq = trans (cong next-heap-ref alloc-setup-eq)
-                              (trans (sym heap-preserved-inj2) (sym wrapper-heap-preserved))
-          in frontier-monotone (record alloc-setup { next-slot = r-reclaimable }) alloc-after-wrapper
-               (trans (cong current-frame (sym alloc-setup-eq))
-                      (trans (sym frame-preserved-inj2) (sym wrapper-frame-preserved)))
-               (subst (r-reclaimable ≤_) (sym wrapper-next-slot-eq) (m≤m+n r-reclaimable 2))
-               (subst (_≤ next-heap-ref alloc-after-wrapper) (sym heap-eq) ≤-refl)
-               r-result-loc r-bf-reclaimed
+        r-before-wrapper = SMP.!!
 
         -- 2. BeforeFrontier alloc-after-wrapper (sucLoc wrapper-loc)
         --    sucLoc wrapper-loc = AtStack frame (suc wrapper-base) = AtStack frame (suc r-reclaimable)
@@ -2631,60 +2510,9 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
         --    r-result-loc's slot < r-reclaimable (child result is before child's reclaimable-slot),
         --    so it's disjoint from the wrapper write at suc r-reclaimable.
 
+        -- TODO (post-scaffold): same alloc-setup non-reduction issue.
         r-valid-wrapper : ValidAtWF mR alloc-after-wrapper r-processed r-result-loc s-after-wrapper
-        r-valid-wrapper =
-          -- Strategy:
-          -- 1. Get r-valid-reclaimed at (record alloc-setup { next-slot = r-reclaimable }) in s-after-sub
-          -- 2. Use validityWF-trace-preserves to preserve through wrapper-trace to s-after-wrapper
-          --    (wrapper-trace writes at r-reclaimable+1, above the frontier r-reclaimable)
-          -- 3. Use validityWF-frontier-advance to transfer to alloc-after-wrapper
-          -- Transfer validity and BeforeFrontier from final-alloc to expected alloc
-          let target-alloc-r = record alloc-setup { next-slot = r-reclaimable }
-              -- Frame and heap equality for transfer
-              frame-eq-transfer-r : current-frame alloc-after-sub ≡ current-frame target-alloc-r
-              frame-eq-transfer-r = trans frame-preserved-inj2 (cong current-frame alloc-setup-eq)
-              heap-eq-transfer-r : next-heap-ref alloc-after-sub ≡ next-heap-ref target-alloc-r
-              heap-eq-transfer-r = trans heap-preserved-inj2 (cong next-heap-ref alloc-setup-eq)
-              bf-transfer-r = frontier-same-heap alloc-after-sub target-alloc-r frame-eq-transfer-r refl heap-eq-transfer-r
-              r-valid-reclaimed : ValidAtWF mR target-alloc-r r-processed r-result-loc s-after-sub
-              r-valid-reclaimed = validityWF-with-bf-transfer r-processed r-result-loc s-after-sub
-                                    alloc-after-sub target-alloc-r bf-transfer-r
-                                    (place-valid (ProcessedLayerResult.result-place r-result))
-              -- r-result-loc is BeforeFrontier at the reclaim alloc
-              r-bf-reclaimed : BeforeFrontier target-alloc-r r-result-loc
-              r-bf-reclaimed = bf-transfer-r r-result-loc (place-before (ProcessedLayerResult.result-place r-result))
-              -- wrapper-trace writes above r-reclaimable (at suc r-reclaimable)
-              wrapper-twa-r : TraceWritesAbove r-reclaimable wrapper-trace
-              wrapper-twa-r = n≤1+n r-reclaimable , tt
-              -- Step 2: Preserve validity through wrapper-trace
-              alloc-setup-reclaim = record alloc-setup { next-slot = r-reclaimable }
-              r-valid-after-wrapper : ValidAtWF mR alloc-setup-reclaim r-processed r-result-loc
-                                        (proj₁ (exec-trace wrapper-trace s-after-sub alloc-setup-reclaim))
-              r-valid-after-wrapper = validityWF-trace-preserves alloc-setup-reclaim
-                                        wrapper-trace r-processed r-result-loc s-after-sub r-bf-reclaimed r-valid-reclaimed
-                                        wrapper-twa-r tt
-              -- exec-trace with alloc-reclaimed vs alloc-setup-reclaim: same current-frame
-              frame-eq-reclaim : current-frame alloc-reclaimed ≡ current-frame alloc-setup-reclaim
-              frame-eq-reclaim = trans frame-preserved-inj2 (cong current-frame (sym alloc-setup-eq))
-              state-eq-reclaim : proj₁ (exec-trace wrapper-trace s-after-sub alloc-setup-reclaim) ≡ proj₁ (exec-trace wrapper-trace s-after-sub alloc-reclaimed)
-              state-eq-reclaim = SMP.TracePrimitives.exec-trace-same-frame wrapper-trace s-after-sub alloc-setup-reclaim alloc-reclaimed (sym frame-eq-reclaim)
-              -- s-after-wrapper = proj₁ (exec-trace wrapper-trace s-after-sub alloc-reclaimed)
-              trace-split = exec-trace-cons reclaim-instr wrapper-trace s-after-sub alloc-after-sub r-not-halted
-              state-eq : proj₁ (exec-trace wrapper-trace s-after-sub alloc-reclaimed) ≡ s-after-wrapper
-              state-eq = sym (cong proj₁ trace-split)
-              r-valid-at-s-wrapper : ValidAtWF mR alloc-setup-reclaim r-processed r-result-loc s-after-wrapper
-              r-valid-at-s-wrapper = subst (λ s → ValidAtWF mR alloc-setup-reclaim r-processed r-result-loc s)
-                                           (trans state-eq-reclaim state-eq) r-valid-after-wrapper
-              -- Step 3: Transfer from reclaim alloc to alloc-after-wrapper
-              frame-eq : current-frame alloc-after-wrapper ≡ current-frame alloc-setup-reclaim
-              frame-eq = trans wrapper-frame-preserved (trans frame-preserved-inj2 (sym (cong current-frame alloc-setup-eq)))
-              slot-mono : next-slot alloc-setup-reclaim ≤ next-slot alloc-after-wrapper
-              slot-mono = subst (r-reclaimable ≤_) (sym wrapper-next-slot-eq) (m≤m+n r-reclaimable 2)
-              heap-mono : next-heap-ref alloc-setup-reclaim ≤ next-heap-ref alloc-after-wrapper
-              heap-mono = subst (_≤ next-heap-ref alloc-after-wrapper)
-                                (sym (cong next-heap-ref alloc-setup-eq))
-                                (subst (next-heap-ref alloc ≤_) (sym (trans wrapper-heap-preserved heap-preserved-inj2)) ≤-refl)
-          in validityWF-frontier-advance r-processed r-result-loc s-after-wrapper frame-eq slot-mono heap-mono r-valid-at-s-wrapper
+        r-valid-wrapper = SMP.!!
 
         -- Construct full validity using valid-inr-wf
         processed-valid-proof : ValidAtWF mR alloc-after-wrapper processed wrapper-loc s-after-wrapper
@@ -2827,8 +2655,8 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
       (mIn : AllocMode)
       (input-loc fst-loc snd-loc : ValueLocation FS)
       (s : LocState FS) (alloc : AllocState {FS})
-      (fst-ptr : readLoc s input-loc ≡ just fst-loc)
-      (snd-ptr : readLoc s (sucLoc input-loc) ≡ just snd-loc)
+      (fst-ptr : readLoc s input-loc ≡ just (SV-Ptr fst-loc))
+      (snd-ptr : readLoc s (sucLoc input-loc) ≡ just (SV-Ptr snd-loc))
       (fst-bf : BeforeFrontier alloc fst-loc)
       (snd-bf : BeforeFrontier alloc snd-loc)
       (sucLoc-bf : BeforeFrontier alloc (sucLoc input-loc))
@@ -2921,7 +2749,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
         alloc-left-setup : AllocState {FS}
         alloc-left-setup = proj₂ (exec-trace left-setup-trace s alloc)
 
-        rdi-left-setup : readReg (regs s-left-setup) Input1 ≡ fst-loc
+        rdi-left-setup : readReg (regs s-left-setup) Input1 ≡ SV-Ptr fst-loc
         rdi-left-setup = prod-left-setup-input save-slot s alloc input-loc fst-loc
                            not-halted rdi-eq fst-ptr
 
@@ -2959,8 +2787,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
                          refl (incr-next-slot-mono alloc) ≤-refl fst-loc fst-bf
 
         not-halted-left-setup : halted s-left-setup ≡ false
-        not-halted-left-setup = SMP.RecSchemeSemantics.prod-left-setup-halted-helper
-                                  save-slot s alloc input-loc fst-loc not-halted rdi-eq fst-ptr
+        not-halted-left-setup = SMP.!!  -- TODO: prod-left-setup-halted-helper under StoredValue
 
         ------------------------------------------------------------------------
         -- Phase 2: Left Processing
@@ -3093,9 +2920,9 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
         s-right-setup : LocState FS
         s-right-setup = proj₁ (exec-trace right-setup-trace s-l alloc-for-right)
 
-        -- Input1 = snd-loc after right setup
-        rdi-right-setup : readReg (regs s-right-setup) Input1 ≡ snd-loc
-        rdi-right-setup = rdi-right-setup-proof
+        -- Input1 = SV-Ptr snd-loc after right setup
+        rdi-right-setup : readReg (regs s-right-setup) Input1 ≡ SV-Ptr snd-loc
+        rdi-right-setup = SMP.!!  -- TODO: prod-right-setup-input under StoredValue
           where
             -- Stack at save-slot still contains input-loc (preserved through left processing)
             stack-preserved : readLoc s-l (AtStack (current-frame alloc) save-slot) ≡
@@ -3112,8 +2939,8 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
             stack-at-s-l : readLoc s-l (AtStack (current-frame alloc) save-slot) ≡ just (SV-Ptr input-loc)
             stack-at-s-l = trans stack-preserved stack-has-input
 
-            -- sucLoc input-loc still points to snd-loc (memory preserved)
-            snd-ptr-at-s-l : readLoc s-l (sucLoc input-loc) ≡ just snd-loc
+            -- sucLoc input-loc still points to SV-Ptr snd-loc (memory preserved)
+            snd-ptr-at-s-l : readLoc s-l (sucLoc input-loc) ≡ just (SV-Ptr snd-loc)
             snd-ptr-at-s-l = trans
               (ProcessedLayerResult.mem-preserved l-result (sucLoc input-loc)
                 (frontier-monotone alloc alloc-for-left refl (incr-next-slot-mono alloc) ≤-refl
@@ -3122,18 +2949,13 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
                 (λ eq → Data.Nat.Properties.<-irrefl refl (bf-slot-contradiction alloc (sucLoc input-loc) save-slot sucLoc-bf eq)))
                 snd-ptr)
 
-            rdi-right-setup-proof : readReg (regs s-right-setup) Input1 ≡ snd-loc
-            rdi-right-setup-proof = SMP.RecSchemeSemantics.prod-right-setup-input-helper
-              save-slot s-l alloc-for-right input-loc snd-loc l-not-halted
-              stack-at-s-l' snd-ptr-at-s-l
-              where
-                -- Convert stack-at-s-l to use alloc-for-right's frame (they're equal)
-                stack-at-s-l' : readLoc s-l (AtStack (current-frame alloc-for-right) save-slot) ≡ just (SV-Ptr input-loc)
-                stack-at-s-l' = subst (λ cf → readLoc s-l (AtStack cf save-slot) ≡ just (SV-Ptr input-loc))
-                                      (sym alloc-for-right-frame) stack-at-s-l
+            -- TODO (post-scaffold): rederive once prod-right-setup-input-helper
+            -- signature is restated under StoredValue.
+            rdi-right-setup-proof : readReg (regs s-right-setup) Input1 ≡ SV-Ptr snd-loc
+            rdi-right-setup-proof = SMP.!!
 
         not-halted-right-setup : halted s-right-setup ≡ false
-        not-halted-right-setup = SMP.TracePrimitives.exec-trace-preserves-halted
+        not-halted-right-setup = SMP.TracePrimitives.exec-trace-preserves-halted-WF
                                    right-setup-trace s-l alloc-for-right l-not-halted
                                    (twf-∷ (SMP.!!) (twf-∷ tt
                                      (twf-∷ (SMP.!!) (twf-∷ tt twf-[]))))
@@ -3403,11 +3225,11 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
         processed-valid-proof = SMP.!!  -- BLOCKED: missing pair container allocation
 
         -- Setup trace halted preservation proofs
-        left-setup-tph : TracePreservesHaltedP left-setup-trace
+        left-setup-tph : ∀ {s alloc} → TraceWF s alloc left-setup-trace
         left-setup-tph = twf-∷ tt (twf-∷ tt
                           (twf-∷ (SMP.!!) (twf-∷ tt twf-[])))
 
-        right-setup-tph : TracePreservesHaltedP right-setup-trace
+        right-setup-tph : ∀ {s alloc} → TraceWF s alloc right-setup-trace
         right-setup-tph = twf-∷ (SMP.!!) (twf-∷ tt
                             (twf-∷ (SMP.!!) (twf-∷ tt twf-[])))
 
@@ -3571,8 +3393,8 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
     -- exec-abstract mov-to-input s alloc = (record s { regs = writeReg (regs s) Input1 (readReg (regs s) Output) }, alloc)
     -- When Output = target-loc, this equals (record s { regs = writeReg (regs s) Input1 target-loc }, alloc)
     exec-mov-to-input-state : ∀ (s : LocState FS) (alloc : AllocState {FS}) (target-loc : ValueLocation FS) →
-      readReg (regs s) Output ≡ target-loc →
-      proj₁ (exec-abstract mov-to-input s alloc) ≡ record s { regs = writeReg (regs s) Input1 target-loc }
+      readReg (regs s) Output ≡ SV-Ptr target-loc →
+      proj₁ (exec-abstract mov-to-input s alloc) ≡ record s { regs = writeReg (regs s) Input1 (SV-Ptr target-loc) }
     exec-mov-to-input-state s alloc target-loc output-eq =
       cong (λ loc → record s { regs = writeReg (regs s) Input1 loc }) output-eq
 
@@ -3632,10 +3454,10 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
         -- Step 3: Bridge state with mov-to-input for algebra
         s-bridged : LocState FS
-        s-bridged = record s-layer { regs = writeReg (regs s-layer) Input1 layer-loc }
+        s-bridged = record s-layer { regs = writeReg (regs s-layer) Input1 (SV-Ptr layer-loc) }
 
-        rdi-bridged : readReg (regs s-bridged) Input1 ≡ layer-loc
-        rdi-bridged = writeReg-same (regs s-layer) Input1 layer-loc
+        rdi-bridged : readReg (regs s-bridged) Input1 ≡ SV-Ptr layer-loc
+        rdi-bridged = writeReg-same (regs s-layer) Input1 (SV-Ptr layer-loc)
 
         layer-valid-bridged : ValidAtWF mLayer alloc-layer processed-layer layer-loc s-bridged
         layer-valid-bridged = validityWF-mem-only processed-layer layer-loc s-layer s-bridged refl refl layer-valid-wf
@@ -3733,7 +3555,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
           let bf-layer = frontier-monotone alloc alloc-layer
                           (sym layer-frame-preserved) layer-slot-mono layer-heap-mono loc bf
               -- s-bridged = record s-layer { regs = ... }
-              bridged-eq = readLoc-regs-irrelevant s-layer (writeReg (regs s-layer) Input1 layer-loc) loc
+              bridged-eq = readLoc-regs-irrelevant s-layer (writeReg (regs s-layer) Input1 (SV-Ptr layer-loc)) loc
           in trans (alg-mem-pres loc bf-layer) (trans bridged-eq (layer-mem-pres loc bf))
 
         -- Trace correctness: compose layer-trace ++ mov-to-input ∷ alg-trace
