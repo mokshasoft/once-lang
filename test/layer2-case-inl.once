@@ -1,0 +1,18 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson and contributors
+
+-- Layer 2 test: case dispatch on inl, with explicit type annotations.
+
+import I.Linux.Syscalls as S
+
+leftId : Int -> Int
+leftId x = x
+
+rightId : Int -> Int
+rightId y = y
+
+extract : Int + Int -> Int
+extract = case leftId rightId
+
+main : IO Unit
+main = exit@S (extract (inl 42))

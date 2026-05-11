@@ -937,23 +937,27 @@ data AbstractInstr : Set where
   instr-load-code-addr : ℕ → AbstractInstr
   instr-save-closure-reg : AbstractInstr
 
-  -- Plan 0.13.1 Phase 1 — sum tag dispatch.
+  -- Plan 0.13.1 Phase 1 — sum tag handling (tag-aware abstract layer).
   --
-  -- Carries both sub-traces (for inl and inr branches respectively).
-  -- At the abstract level this instruction *halts*: the abstract
-  -- semantics doesn't model runtime tag inspection. Per-arch
-  -- lowering does the real `cmp + je` dispatch using the runtime
-  -- tag stored at `*Input1`.
+  -- `instr-load-tag-lit n`: write `SV-Tag n` to Output. Used by
+  -- `run-inl` / `run-inr` to deposit the sum-discriminator (0 for
+  -- inl, 1 for inr) before storing it to the container's tag slot.
   --
-  -- The proof of run-case correctness uses an honest postulate
-  -- (`case-codegen-faithful`, in `SumRecWF.agda`) that connects the
-  -- per-arch dispatch to the meta-validity-determined branch. This
-  -- is the "named postulate hiding the runtime gap" — visible in
-  -- `make postulates`, audit-trackable, and replaceable when the
-  -- abstract layer gets tag-aware (a separate plan).
+  -- `instr-case-on-tag f g`: read `SV-Tag k` from `*Input1` (the
+  -- sum value's tag slot, at offset 0) and dispatch:
+  --   k = 0 → exec-trace f
+  --   k = 1 → exec-trace g
+  --   otherwise (no tag / malformed sum) → halt
   --
-  -- Argument type is `List AbstractInstr` (= `AbstractTrace`)
-  -- spelled out — the `AbstractTrace` alias is defined just below.
+  -- This is the tag-aware abstract semantics promised by Plan 0.13.1
+  -- Phase 1. The proof of run-case correctness composes from
+  -- `valid-inl-wf` / `valid-inr-wf`'s tag-eq fields (Plan 0.13.1
+  -- Phase 2) — no `case-codegen-faithful` postulate needed.
+  --
+  -- Argument type for instr-case-on-tag is `List AbstractInstr`
+  -- (= `AbstractTrace`) spelled out — the `AbstractTrace` alias is
+  -- defined just below.
+  instr-load-tag-lit : ℕ → AbstractInstr
   instr-case-on-tag : List AbstractInstr → List AbstractInstr → AbstractInstr
 
 -- | A trace is a sequence of abstract instructions
@@ -1167,8 +1171,12 @@ module AbstractExec {FS : FrameSemantics} where
   ------------------------------------------------------------------------
 
   -- | Execute one abstract instruction
+  -- Plan 0.13.1: mutually recursive with exec-trace (case-on-tag
+  -- dispatches into one of two sub-traces).
   exec-abstract : AbstractInstr → LocState FS → AllocState {FS} →
                   LocState FS × AllocState {FS}
+  exec-trace : AbstractTrace → LocState FS → AllocState {FS} →
+               LocState FS × AllocState {FS}
 
   -- mov-to-output: Output := Input1
   exec-abstract mov-to-output s alloc =
@@ -1343,16 +1351,22 @@ module AbstractExec {FS : FrameSemantics} where
   -- a per-arch concern.
   exec-abstract instr-save-closure-reg s alloc = s , alloc
 
-  -- Plan 0.13.1 Phase 1: case-on-tag halts at the abstract level.
-  -- Per-arch lowering does the real runtime dispatch; the proof-side
-  -- correspondence is via `case-codegen-faithful` (named postulate
-  -- in `SumRecWF.agda`).
+  -- Plan 0.13.1 Phase 1: tag literal — write `SV-Tag n` to Output.
+  exec-abstract (instr-load-tag-lit n) s alloc =
+    record s { regs = writeReg (regs s) Output (SV-Tag n) } , alloc
+
+  -- Plan 0.13.1 Phase 1: case-on-tag — TEMPORARILY halts at the
+  -- abstract level. Making this tag-aware (dispatching into f or g
+  -- based on `*Input1`) requires lifting ~12 SMPrimitives lemmas
+  -- (TraceNoHeapWrites, instr-writes-slot, InstrPreservesFrame,
+  -- etc.) from "per-instruction" to "instruction-or-trace" shape,
+  -- since case-on-tag's effect becomes the union of two sub-traces.
+  -- See Plan 0.13.1 Phase 1.5 for the coordinated lift.
   exec-abstract (instr-case-on-tag f g) s alloc =
     record s { halted = true } , alloc
 
   -- | Execute a trace (sequence of abstract instructions)
-  exec-trace : AbstractTrace → LocState FS → AllocState {FS} →
-               LocState FS × AllocState {FS}
+  -- Signature declared above with exec-abstract for mutual recursion.
   exec-trace [] s alloc = s , alloc
   exec-trace (i ∷ is) s alloc with halted s
   ... | true  = s , alloc
