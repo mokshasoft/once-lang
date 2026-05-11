@@ -957,6 +957,9 @@ data AbstractInstr : Set where
   -- Argument type for instr-case-on-tag is `List AbstractInstr`
   -- (= `AbstractTrace`) spelled out — the `AbstractTrace` alias is
   -- defined just below.
+  -- NOTE: keep instr-case-on-tag LAST so the new instr-load-tag-lit
+  -- doesn't shift its MAlonzo constructor index (compile-correct
+  -- proofs and Haskell-side simulations may depend on the position).
   instr-load-tag-lit : ℕ → AbstractInstr
   instr-case-on-tag : List AbstractInstr → List AbstractInstr → AbstractInstr
 

@@ -756,7 +756,7 @@ d_archTarget_348 ::
 d_archTarget_348 v0
   = case coe v0 of
       C_x86'45'64_342
-        -> coe MAlonzo.Code.Once.Target.X86Z45Z64.d_x86'45'64_56
+        -> coe MAlonzo.Code.Once.Target.X86Z45Z64.d_x86'45'64_84
       C_x86'45'32_344
         -> coe MAlonzo.Code.Once.Target.X86Z45Z32.d_x86'45'32_36
       C_riscv64_346 -> coe MAlonzo.Code.Once.Target.RiscV64.d_riscv64_36

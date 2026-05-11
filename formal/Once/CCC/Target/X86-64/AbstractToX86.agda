@@ -264,8 +264,9 @@ compile-trace-cnt n (i ∷ rest) =
   let (n1 , pr) = compile-trace-cnt n rest
   in n1 , compile-abstract i ++ pr
 
--- Backward-compatible non-threaded variant. Starts case-labels at 0.
--- For end-to-end compilation, prefer `compile-trace-cnt` and thread
--- the counter from x86-64-irToAsm.
+-- Backward-compatible non-threaded variant — direct foldr.
+-- Doesn't dispatch case-on-tag (emits ud2 for it via compile-abstract).
+-- For Layer 2 use compile-trace-cnt with proper label threading.
 compile-trace : AbstractTrace → Program
-compile-trace t = proj₂ (compile-trace-cnt 0 t)
+compile-trace [] = []
+compile-trace (i ∷ is) = compile-abstract i ++ compile-trace is
