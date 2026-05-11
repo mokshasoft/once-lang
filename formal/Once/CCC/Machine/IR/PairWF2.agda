@@ -372,6 +372,40 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
       alloc-after-middle = proj₂ (exec-trace middle-trace s-after-f alloc-after-f)
 
       ------------------------------------------------------------------------
+      -- Alloc-base bridge (Plan 0.13.3 Phase d option b prep)
+      --
+      -- alloc-after-middle and alloc differ only in next-slot (setup, f,
+      -- middle all preserve current-frame and next-heap-ref). After the
+      -- hoist, downstream lemmas typed at `record alloc { next-slot = k }`
+      -- need a bridge to results typed at `record alloc-after-middle
+      -- { next-slot = k }`. This lemma is the bridge.
+      --
+      -- Proof: AllocState has 3 fields (current-frame, next-slot, next-heap-
+      -- ref); record-update fixes next-slot=k for both sides; the other
+      -- two field-eqs come from exec-trace preservation chained through
+      -- setup-trace, f-trace, middle-trace.
+      ------------------------------------------------------------------------
+      alloc-after-middle-vs-alloc-frame : current-frame alloc-after-middle ≡ current-frame alloc
+      alloc-after-middle-vs-alloc-frame =
+        trans (exec-trace-preserves-frame middle-trace s-after-f alloc-after-f)
+        (trans (exec-trace-preserves-frame f-trace s-after-setup alloc-after-setup)
+               (exec-trace-preserves-frame setup-trace s alloc))
+
+      alloc-after-middle-vs-alloc-heap-ref : next-heap-ref alloc-after-middle ≡ next-heap-ref alloc
+      alloc-after-middle-vs-alloc-heap-ref =
+        trans (SMP.RecSchemeSemantics.exec-trace-preserves-heap-ref middle-trace s-after-f alloc-after-f)
+        (trans (SMP.RecSchemeSemantics.exec-trace-preserves-heap-ref f-trace s-after-setup alloc-after-setup)
+               (SMP.RecSchemeSemantics.exec-trace-preserves-heap-ref setup-trace s alloc))
+
+      -- The bridge lemma itself: record-updates with same `next-slot` agree.
+      alloc-after-middle-record-eq : ∀ k →
+        record alloc-after-middle { next-slot = k } ≡ record alloc { next-slot = k }
+      alloc-after-middle-record-eq k =
+        cong₂ (λ cf hr → mkAllocState cf k hr)
+              alloc-after-middle-vs-alloc-frame
+              alloc-after-middle-vs-alloc-heap-ref
+
+      ------------------------------------------------------------------------
       -- Input1 validity for g (after restoring from backup-slot)
       ------------------------------------------------------------------------
       input-before-at-reclaim-f : BeforeFrontier alloc-after-f-reclaim input-loc
