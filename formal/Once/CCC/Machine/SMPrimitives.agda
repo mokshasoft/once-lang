@@ -2241,6 +2241,109 @@ module TracePrimitives {FS : FrameSemantics} where
   TraceWF-alloc-eq refl twf = twf
 
   ------------------------------------------------------------------------
+  -- Approach (a) sketch — Region-aware TraceWF state-transfer.
+  --
+  -- GOAL: discharge `g-tph-runtime` in PairWF2 by transferring g-tph
+  -- (TraceWF at construction state s₁') to the runtime state
+  -- (s-after-middle). The state delta is a single writeLoc at
+  -- stack[fst-slot] = SV-Ptr fst-loc, since middle-trace's
+  -- store-at-slot fst-slot is the only operation that distinguishes
+  -- the two states.
+  --
+  -- LEMMA SHAPE (what we want):
+  --
+  --   TraceWF-write-below-reads :
+  --     ∀ (trace : AbstractTrace) (s : LocState FS) (alloc : AllocState {FS})
+  --       (k : ℕ) (v : StoredValue FS) (n : ℕ) →
+  --     TraceSlotReadsAbove n trace →
+  --     TraceWritesAbove   n trace →
+  --     TraceNoHeapWrites    trace →
+  --     k < n →
+  --     -- Indirect-read disjointness, see ARCHITECTURAL OBSTACLE below.
+  --     IndirectDisjoint (current-frame alloc) k s alloc trace →
+  --     TraceWF s alloc trace →
+  --     TraceWF (writeLoc s (AtStack (current-frame alloc) k) v) alloc trace
+  --
+  -- PROOF SKETCH (per-instruction, by induction on TraceWF):
+  --
+  --   • mov-to-output / mov-to-input / lea-slot k' / alloc-stack /
+  --     dealloc-stack / reclaim-to / push-frame / pop-frame /
+  --     call-closure / save-closure-reg / load-const / load-code-addr /
+  --     load-tag-lit / sigop / case-on-tag / worklist-init/push/check:
+  --
+  --     InstrWF witness is `tt` (⊤). Trivially transfers.
+  --     The instruction's exec-abstract effect commutes with writeLoc:
+  --     it either touches regs (writeLoc preserves regs) or writes to
+  --     a slot k' ≥ n > k (writeLoc-preserves-other), or is a register-
+  --     identity. The post-state equals `writeLoc s_post (...) v` for
+  --     the same v, so the induction continues with the same hypothesis.
+  --
+  --   • store-at-slot k': writes Output to stack[frame, k']. Witness is
+  --     ⊤. TraceWritesAbove n + k < n gives k' ≥ n > k, so the write
+  --     doesn't overlap with our writeLoc target — they commute.
+  --
+  --   • load-from-slot k' / restore-input k' / worklist-pop k':
+  --     InstrWF witness is `∃ v', readLoc s (AtStack (current-frame alloc) k') ≡ just v'`.
+  --     k' ≥ n > k (from TraceSlotReadsAbove), so readLoc at k' is
+  --     unaffected by writeLoc at k (writeLoc-preserves-other).
+  --     Witness transfers; post-state's regs write Input1 = the read
+  --     value; commutes with our writeLoc.
+  --
+  --   • store-indirect / store-indirect-suc:
+  --     InstrWF witness is `∃ loc, sv-as-loc (readReg Input1) ≡ just loc`.
+  --     writeLoc preserves regs, so the witness is unchanged. The
+  --     instruction writes to *Input1's resolved location. If that
+  --     location ≠ AtStack frame k (the IndirectDisjoint precondition),
+  --     the write commutes with our writeLoc.
+  --
+  --   • load-indirect / load-indirect-suc:
+  --     InstrWF witness is `∃ loc, sv-as-loc Input1 ≡ just loc × ∃ v',
+  --     readLoc s loc ≡ just v'`. writeLoc preserves regs so the first
+  --     half is unchanged. For the second half: need
+  --     readLoc (writeLoc s (AtStack frame k) v) loc ≡ readLoc s loc,
+  --     which holds iff loc ≠ AtStack frame k. ← THIS is the
+  --     architectural obstacle.
+  --
+  -- ARCHITECTURAL OBSTACLE — IndirectDisjoint:
+  --
+  -- We need to know that at every step of g-trace's execution,
+  -- Input1's sv-as-loc resolution doesn't target AtStack frame
+  -- fst-slot. Input1 evolves through mov-to-input / load-indirect,
+  -- so this isn't a single-state property — it's a chain property.
+  --
+  -- The IR-compilation invariant says load-indirect targets are
+  -- BeforeFrontier alloc (= valid pointers). For g's runtime alloc
+  -- (alloc-after-f-reclaim with next-slot = reclaim-f), fst-slot
+  -- IS BeforeFrontier (fst-slot < reclaim-f), so this invariant
+  -- alone doesn't exclude Input1 from targeting fst-slot.
+  --
+  -- In practice g's Input1 only reaches input-loc's reachable graph
+  -- (sum-payload pointers, etc.), which doesn't include pair's
+  -- bookkeeping slots. But we don't have a formal invariant for
+  -- "Input1 stays within the input's reach domain through arbitrary
+  -- IR-compiled traces" — it would require a *reach analysis* in
+  -- the validity machinery.
+  --
+  -- CONCLUSION: approach (a) is provable for the non-indirect cases.
+  -- The load-indirect[-suc] cases require a stronger invariant than
+  -- BeforeFrontier — a *reach analysis* that tracks Input1's domain.
+  -- Without that, IndirectDisjoint is a load-bearing precondition
+  -- that can't be discharged at the call site.
+  --
+  -- RECOMMENDATION: pivot to approach (b) — restructure PairWF2 to
+  -- call rec-wf for g at the runtime state (s-after-middle,
+  -- alloc-after-f-reclaim). This dissolves the state-difference
+  -- entirely; same hoist pattern Plan 0.13.3 Phase d (option b)
+  -- used for f. The alloc bridge (alloc-after-f-reclaim ↔
+  -- alloc-after-middle) is handled by the existing TraceWF-frame-eq.
+  --
+  -- (a) is left as this sketch; if the reach analysis lands later
+  -- (e.g. as part of plan 0.13.x or a separate audit), the lemma
+  -- can be finished and used to dissolve g-tph-runtime + the
+  -- compose-frontier-stable analogue with no PairWF2 / ComposeWF
+  -- refactor.
+
+  ------------------------------------------------------------------------
   -- (H) WRITE-THEN-PRESERVE PATTERN
   --
   -- Core pattern for proving slot values after traces:
