@@ -429,20 +429,27 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
       ------------------------------------------------------------------------
       -- Plan 0.2.4.5 D1 task #28: dispatch on g's result-place to
       -- extract snd-loc + supporting facts. Same pattern as fst above.
-      record SndFacts : Set where
+      --
+      -- Plan 0.13.3 Phase d prep: parameterised over `g-input-alloc`, the
+      -- alloc passed to rec-wf for g. Currently `alloc-after-f-reclaim`
+      -- (synthetic); after the principled hoist this becomes
+      -- `alloc-after-middle` (runtime). Isolating the dependency here
+      -- means the hoist becomes a one-line parameter swap at the call
+      -- site, with no other type changes.
+      record SndFacts (g-input-alloc : AllocState {FS}) : Set where
         field
           snd-loc-g       : ValueLocation FS
           snd-rax-g       : readReg (regs s₂) Output ≡ SV-Ptr snd-loc-g
           snd-valid-g     : ValidAtWF mG (IRResultAWF.final-alloc result-g) (eval g x) snd-loc-g s₂
           snd-before-g    : BeforeFrontier (IRResultAWF.final-alloc result-g) snd-loc-g
-          snd-rec-valid-g : ValidAtWF mG (record alloc-after-f-reclaim
+          snd-rec-valid-g : ValidAtWF mG (record g-input-alloc
                                             { next-slot = next-slot (IRResultAWF.final-alloc result-g) })
                                        (eval g x) snd-loc-g s₂
-          snd-rec-before-g : BeforeFrontier (record alloc-after-f-reclaim
+          snd-rec-before-g : BeforeFrontier (record g-input-alloc
                                               { next-slot = next-slot (IRResultAWF.final-alloc result-g) })
                                             snd-loc-g
 
-      g-facts : SndFacts
+      g-facts : SndFacts alloc-after-f-reclaim
       g-facts with IRResultAWF.result-place result-g
       ... | at-loc loc valid before rax rvalid rbefore = record
               { snd-loc-g        = loc
