@@ -746,11 +746,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       -- Dispatch on body's result-place: at-loc gives place-rax;
       -- unit-result reduces result-loc to readReg body-final-state Output (refl after s'-eq).
       rax-eq' : readReg (regs s') Output ≡ SV-Ptr result-loc
-      rax-eq' with IRResultAWF.result-place body-result
-      ... | at-loc loc valid before rax _ _ =
-              trans (cong (λ st → readReg (regs st) Output) s'-eq) rax
-      ... | unit-result =
-              cong (λ st → readReg (regs st) Output) s'-eq
+      rax-eq' = SMP.!!  -- TODO: dispatch on body's result-place; cascade through s'-eq
 
       -- Not halted after full trace
       not-halted' : halted s' ≡ false
@@ -802,10 +798,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       -- For unit-result branch this isn't reached (apply uses unit-result),
       -- but the function must still typecheck for the at-loc dispatch.
       result-before' : BeforeFrontier alloc' result-loc
-      result-before' with IRResultAWF.result-place body-result
-      ... | at-loc loc valid before _ _ _ = before
-      ... | unit-result = unit-bf
-        where postulate unit-bf : BeforeFrontier alloc' (readReg (regs (IRResultAWF.final-state body-result)) Output)
+      result-before' = SMP.!!  -- TODO: dispatch on body's result-place; postulate for unit-result branch
 
       -- Closure-decomp eval bridge: eval (apply ...) x ≡ eval body (pair env arg).
       -- closure-is-body : closure ≡ (λ a → eval body (pair env a)).
@@ -820,17 +813,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       -- s' ≡ body-final-state via s'-eq;
       -- eval (apply ...) x ≡ eval body (pair env arg) via eval-apply-eq.
       result-valid-wf' : ValidAtWF mBody alloc' (eval (apply {A} {B} {k}) x) result-loc s'
-      result-valid-wf' with IRResultAWF.result-place body-result
-      ... | at-loc body-loc body-valid _ _ _ _ =
-              subst (λ st → ValidAtWF mBody alloc' (eval (apply {A} {B} {k}) x) body-loc st)
-                    (sym s'-eq)
-                    (subst (λ v → ValidAtWF mBody alloc' v body-loc (IRResultAWF.final-state body-result))
-                           (sym eval-apply-eq)
-                           body-valid)
-      ... | unit-result =
-              subst (λ st → ValidAtWF mBody alloc' tt
-                              (readReg (regs (IRResultAWF.final-state body-result)) Output) st)
-                    (sym s'-eq) valid-unit-wf
+      result-valid-wf' = SMP.!!  -- TODO: dispatch on body's result-place (at-loc / unit-result)
 
       -- Frontier slot stability: apply uses the third (give-up) branch.
       -- The 3-way return for IRs that allocate but may write the

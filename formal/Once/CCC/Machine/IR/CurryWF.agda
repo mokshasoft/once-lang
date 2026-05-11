@@ -251,7 +251,7 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       s-after-mov = proj₁ (exec-abstract mov-to-output s alloc)
 
       -- Output = Input1 after mov-to-output (definitional from exec-abstract)
-      output-after-mov : readReg (regs s-after-mov) Output ≡ input-loc
+      output-after-mov : readReg (regs s-after-mov) Output ≡ SV-Ptr input-loc
       output-after-mov = trans (writeReg-same (regs s) Output (readReg (regs s) Input1)) rdi-eq
 
       -- Connect exec-trace to exec-abstract
@@ -264,14 +264,13 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       s-after-env-prefix-eq : s-after-env-prefix ≡ s-after-mov
       s-after-env-prefix-eq = cong proj₁ exec-trace-env-prefix
 
-      output-after-env-prefix : readReg (regs s-after-env-prefix) Output ≡ input-loc
-      output-after-env-prefix = subst (λ s'' → readReg (regs s'') Output ≡ input-loc)
+      output-after-env-prefix : readReg (regs s-after-env-prefix) Output ≡ SV-Ptr input-loc
+      output-after-env-prefix = subst (λ s'' → readReg (regs s'') Output ≡ SV-Ptr input-loc)
                                       (sym s-after-env-prefix-eq) output-after-mov
 
+      -- TODO (post-scaffold): rederive via a TraceWF-shaped prefix-store-preserve.
       env-ptr' : readLoc s' closure-loc ≡ just (SV-Ptr input-loc)
-      env-ptr' = trans (prefix-store-preserve env-prefix closure-slot env-suffix s alloc
-                          env-prefix-tph not-halted env-suffix-twa tt)
-                       (cong just output-after-env-prefix)
+      env-ptr' = SMP.!!
 
       -- Code slot code-ptr': lea-slot sets Output=code-loc, store-at-slot stores it
       -- Using prefix-store-preserve with:
@@ -311,14 +310,12 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       not-halted-before-lea = exec-trace-preserves-halted-WF code-prefix-before-lea s alloc not-halted
                                 code-prefix-before-lea-tph
 
-      output-after-code-prefix : readReg (regs s-after-code-prefix) Output ≡ code-loc
-      output-after-code-prefix = exec-trace-final-lea-slot code-prefix-before-lea (suc closure-slot)
-                                   s alloc not-halted-before-lea
+      output-after-code-prefix : readReg (regs s-after-code-prefix) Output ≡ SV-Ptr code-loc
+      output-after-code-prefix = SMP.!!  -- TODO: exec-trace-final-lea-slot under StoredValue
 
-      code-ptr' : readLoc s' code-loc ≡ just code-loc
-      code-ptr' = trans (prefix-store-preserve code-prefix (suc closure-slot) code-suffix s alloc
-                           code-prefix-tph not-halted code-suffix-twa tt)
-                        (cong just output-after-code-prefix)
+      -- TODO (post-scaffold): rederive via TraceWF-shaped prefix-store-preserve.
+      code-ptr' : readLoc s' code-loc ≡ just (SV-Ptr code-loc)
+      code-ptr' = SMP.!!
 
       -- Memory before frontier is preserved
       -- Trace writes above closure-slot, so slots below are preserved
@@ -346,35 +343,9 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         readReg (regs s'') Input1 ≡ SV-Ptr input-loc' →
         readLoc s'' (AtStack (current-frame alloc) closure-slot) ≡ just (SV-Ptr input-loc') →
         _
-      frontier-stable' s'' input-loc' not-halted'' rdi-eq'' _ =
-        let -- Use same decomposition as env-ptr': prefix = [mov-to-output], suffix = rest
-            -- After mov-to-output in s'': Output = Input1 = input-loc'
-            s''-after-mov = proj₁ (exec-abstract mov-to-output s'' alloc)
-
-            output-after-mov'' : readReg (regs s''-after-mov) Output ≡ input-loc'
-            output-after-mov'' = trans (writeReg-same (regs s'') Output (readReg (regs s'') Input1)) rdi-eq''
-
-            -- Connect exec-trace to exec-abstract
-            exec-trace-env-prefix'' : exec-trace env-prefix s'' alloc ≡ exec-abstract mov-to-output s'' alloc
-            exec-trace-env-prefix'' = exec-trace-single mov-to-output s'' alloc not-halted''
-
-            s''-after-env-prefix = proj₁ (exec-trace env-prefix s'' alloc)
-
-            s''-after-env-prefix-eq : s''-after-env-prefix ≡ s''-after-mov
-            s''-after-env-prefix-eq = cong proj₁ exec-trace-env-prefix''
-
-            output-after-env-prefix'' : readReg (regs s''-after-env-prefix) Output ≡ input-loc'
-            output-after-env-prefix'' = subst (λ st → readReg (regs st) Output ≡ input-loc')
-                                              (sym s''-after-env-prefix-eq) output-after-mov''
-
-            -- Apply prefix-store-preserve
-            result : readLoc (proj₁ (exec-trace trace s'' alloc))
-                             (AtStack (current-frame alloc) closure-slot) ≡
-                     just (readReg (regs s''-after-env-prefix) Output)
-            result = prefix-store-preserve env-prefix closure-slot env-suffix s'' alloc
-                       env-prefix-tph not-halted'' env-suffix-twa tt
-
-        in inj₂ (inj₁ (trans result (cong just output-after-env-prefix'')))
+      -- TODO (post-scaffold): rederive via TraceWF-shaped prefix-store-preserve
+      -- under StoredValue (Output now stores SV-Ptr input-loc').
+      frontier-stable' s'' input-loc' _ _ _ = SMP.!!
 
       -- Input1 validity in final state
       -- Transfer validity across memory-preserving trace execution

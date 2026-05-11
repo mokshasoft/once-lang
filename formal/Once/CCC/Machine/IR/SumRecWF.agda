@@ -112,16 +112,17 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   lea-slot-state-eq : ∀ (slot : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
     halted s ≡ false →
     proj₁ (exec-trace (lea-slot slot ∷ []) s alloc) ≡
-    record s { regs = writeReg (regs s) Output (AtStack (current-frame alloc) slot) }
+    record s { regs = writeReg (regs s) Output (SV-Ptr (AtStack (current-frame alloc) slot)) }
   lea-slot-state-eq slot s alloc not-halted =
     cong proj₁ (exec-trace-single (lea-slot slot) s alloc not-halted)
 
   -- load-indirect state equality: executing load-indirect dereferences Input1
+  -- TODO (post-scaffold): under StoredValue, exec-abstract load-indirect
+  -- splits on sv-as-loc Input1; restate accordingly.
   load-indirect-state-eq : ∀ (s : LocState FS) (alloc : AllocState {FS}) →
     halted s ≡ false →
     proj₁ (exec-trace (load-indirect ∷ []) s alloc) ≡ exec (load Output (IndReg Input1)) s
-  load-indirect-state-eq s alloc not-halted =
-    cong proj₁ (exec-trace-single load-indirect s alloc not-halted)
+  load-indirect-state-eq s alloc not-halted = SMP.!!
 
   -- Postulate: trace correctness for inl/inr (complex record equality)
   -- The proof structure is correct but Agda has trouble with record equality.
@@ -140,98 +141,13 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     readReg (regs s) Input1 ≡ SV-Ptr input-loc →
     result-loc ≡ AtStack (current-frame alloc) result-slot →
     s-final ≡ record (write-loc s (AtStack (current-frame alloc) payload-slot) input-loc)
-                { regs = writeReg (regs (write-loc s (AtStack (current-frame alloc) payload-slot) input-loc)) Output result-loc } →
+                { regs = writeReg (regs (write-loc s (AtStack (current-frame alloc) payload-slot) input-loc)) Output (SV-Ptr result-loc) } →
     halted s ≡ false →
     proj₁ (exec-trace (mov-to-output ∷ store-at-slot payload-slot ∷ lea-slot result-slot ∷ []) s alloc) ≡ s-final
-  inl-inr-trace-state-correct payload-slot result-slot s alloc input-loc result-loc s-final
-    rdi-eq result-eq s-final-eq not-halted =
-    let
-      frame = current-frame alloc
-      s₁ = write-loc s (AtStack frame payload-slot) input-loc
-
-      -- exec-abstract mov-to-output gives: Output := readReg Input1
-      -- Using rdi-eq: readReg (regs s) Input1 = input-loc
-      s'₀-actual = record s { regs = writeReg (regs s) Output (readReg (regs s) Input1) }
-      s'₀ = record s { regs = writeReg (regs s) Output input-loc }
-
-      -- These are equal by rdi-eq
-      s'₀-eq : s'₀-actual ≡ s'₀
-      s'₀-eq = cong (λ v → record s { regs = writeReg (regs s) Output v }) rdi-eq
-
-      -- After store-at-slot: write input-loc to AtStack frame payload-slot
-      -- exec-abstract (store-at-slot payload-slot) writes readReg Output
-      -- After mov-to-output, Output = input-loc, so it writes input-loc
-      s'₁-actual = writeLoc s'₀-actual (AtStack frame payload-slot) (readReg (regs s'₀-actual) Output)
-      s'₁ = writeLoc s'₀ (AtStack frame payload-slot) input-loc
-
-      -- Output after mov-to-output is input-loc
-      output-eq : readReg (regs s'₀-actual) Output ≡ input-loc
-      output-eq = trans (cong (λ s' → readReg (regs s') Output) s'₀-eq)
-                        (writeReg-same (regs s) Output input-loc)
-
-      -- Key: s'₁ = record s₁ { regs = writeReg (regs s) Output input-loc }
-      s'₁-eq : s'₁ ≡ record s₁ { regs = writeReg (regs s) Output input-loc }
-      s'₁-eq = writeLoc-regs-commute s frame payload-slot input-loc
-                 (writeReg (regs s) Output input-loc)
-
-      -- By writeReg-overwrite, this simplifies
-      regs-simplify : writeReg (writeReg (regs s) Output input-loc) Output (AtStack frame result-slot)
-                    ≡ writeReg (regs s) Output (AtStack frame result-slot)
-      regs-simplify = writeReg-overwrite (regs s) Output input-loc (AtStack frame result-slot)
-
-      -- regs s₁ = regs s
-      regs-s₁ : regs s₁ ≡ regs s
-      regs-s₁ = writeLoc-regs s (AtStack frame payload-slot) input-loc
-
-      -- The final register state using result-eq
-      final-regs : writeReg (regs s) Output (AtStack frame result-slot) ≡ writeReg (regs s) Output result-loc
-      final-regs = cong (λ r → writeReg (regs s) Output r) (sym result-eq)
-
-      -- halted is preserved by register updates
-      halted-s'₀ : halted s'₀ ≡ false
-      halted-s'₀ = not-halted
-
-      -- halted is preserved by writeLoc
-      halted-s'₁ : halted s'₁ ≡ false
-      halted-s'₁ = trans (writeLoc-halted s'₀ (AtStack frame payload-slot) input-loc) halted-s'₀
-
-      -- halted of s₁ with different regs
-      halted-s₁-regs : halted (record s₁ { regs = writeReg (regs s) Output input-loc }) ≡ false
-      halted-s₁-regs = trans (writeLoc-halted s (AtStack frame payload-slot) input-loc) not-halted
-
-      -- Show that s'₁ = s'₁-actual (they compute the same since readReg Output = input-loc after s'₀-eq)
-      s'₁-actual-eq : s'₁-actual ≡ s'₁
-      s'₁-actual-eq = trans (cong₂ (λ s' v → writeLoc s' (AtStack frame payload-slot) v) s'₀-eq output-eq) refl
-
-    in
-    -- The proof uses equational reasoning through exec-trace-cons
-    -- Each step is justified by the instruction semantics and helper lemmas
-    begin
-      proj₁ (exec-trace (mov-to-output ∷ store-at-slot payload-slot ∷ lea-slot result-slot ∷ []) s alloc)
-    ≡⟨ cong proj₁ (exec-trace-cons mov-to-output _ s alloc not-halted) ⟩
-      proj₁ (exec-trace (store-at-slot payload-slot ∷ lea-slot result-slot ∷ []) s'₀-actual alloc)
-    ≡⟨ cong (λ s' → proj₁ (exec-trace (store-at-slot payload-slot ∷ lea-slot result-slot ∷ []) s' alloc)) s'₀-eq ⟩
-      proj₁ (exec-trace (store-at-slot payload-slot ∷ lea-slot result-slot ∷ []) s'₀ alloc)
-    ≡⟨ cong proj₁ (exec-trace-cons (store-at-slot payload-slot) _ s'₀ alloc halted-s'₀) ⟩
-      proj₁ (exec-trace (lea-slot result-slot ∷ []) (writeLoc s'₀ (AtStack frame payload-slot) (readReg (regs s'₀) Output)) alloc)
-    ≡⟨ cong (λ v → proj₁ (exec-trace (lea-slot result-slot ∷ []) (writeLoc s'₀ (AtStack frame payload-slot) v) alloc))
-            (writeReg-same (regs s) Output input-loc) ⟩
-      proj₁ (exec-trace (lea-slot result-slot ∷ []) s'₁ alloc)
-    ≡⟨ cong (λ s' → proj₁ (exec-trace (lea-slot result-slot ∷ []) s' alloc)) s'₁-eq ⟩
-      proj₁ (exec-trace (lea-slot result-slot ∷ []) (record s₁ { regs = writeReg (regs s) Output input-loc }) alloc)
-    ≡⟨ lea-slot-state-eq result-slot (record s₁ { regs = writeReg (regs s) Output input-loc }) alloc halted-s₁-regs ⟩
-      record (record s₁ { regs = writeReg (regs s) Output input-loc })
-        { regs = writeReg (writeReg (regs s) Output input-loc) Output (AtStack frame result-slot) }
-    ≡⟨ cong (λ r → record s₁ { regs = r }) regs-simplify ⟩
-      record s₁ { regs = writeReg (regs s) Output (AtStack frame result-slot) }
-    ≡⟨ cong (λ r → record s₁ { regs = r }) final-regs ⟩
-      record s₁ { regs = writeReg (regs s) Output result-loc }
-    ≡⟨ cong (λ r → record s₁ { regs = writeReg r Output result-loc }) (sym regs-s₁) ⟩
-      record s₁ { regs = writeReg (regs s₁) Output result-loc }
-    ≡⟨ sym s-final-eq ⟩
-      s-final
-    ∎
-    where open ≡-Reasoning
+  -- TODO (post-scaffold): port the equational proof under StoredValue
+  -- (writeReg Output now takes a StoredValue; result-loc lifts to
+  -- SV-Ptr result-loc throughout).
+  inl-inr-trace-state-correct _ _ _ _ _ _ _ _ _ _ _ = SMP.!!
 
   -- OCP-0003: fold-trace-state-correct removed (fold/unfold replaced by In/Cata/Out/Ana/Hylo)
 
