@@ -617,8 +617,233 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
         rdi-eq-at-s-after-middle =
           trans (cong (λ st → readReg (regs st) Input1) rdi-s-middle-eq) rdi-restore-sets-input
 
-      postulate
-        valid-at-s-after-middle      : ValidAtWF mIn alloc-after-f-reclaim x input-loc s-after-middle
+        --------------------------------------------------------------------
+        -- Stage C: discharge (3) valid-at-s-after-middle.
+        --
+        -- Strategy: validityWF-mem-preserved-in-regions with regions
+        -- input=[0, backup-slot), fresh=[f-start, reclaim-f), bridging
+        -- s₁ → s-after-middle. The s₁ → s-after-middle bridge composes
+        -- (a) f-trace alloc bridge s₁ ⇄ s-after-f (same trace from
+        --     s-after-setup, differing only in alloc.next-slot), and
+        -- (b) middle-trace preservation s-after-f → s-after-middle
+        --     (middle writes at fst-slot only).
+        --
+        -- The existing s₁ → s-after-f bridge lemmas (f-mem-*-region) are
+        -- defined at file line ~1811, well past this point. Where-blocks
+        -- aren't mutual, so we inline the bridge here using the same
+        -- proof skeleton.
+        --------------------------------------------------------------------
+
+        -- Frame equality bridges (forward-ref-equivalent of
+        -- oaf-frame-setup / oaf-frame-pair-slots / oaf-frame-eq).
+        val-mid-frame-setup : current-frame alloc-after-setup ≡ frame
+        val-mid-frame-setup = exec-trace-preserves-frame setup-trace s alloc
+
+        val-mid-frame-pair-slots : current-frame alloc-after-pair-slots ≡ frame
+        val-mid-frame-pair-slots = refl
+
+        val-mid-frame-after-f : current-frame alloc-after-f ≡ frame
+        val-mid-frame-after-f =
+          trans (exec-trace-preserves-frame f-trace s-after-setup alloc-after-setup)
+                val-mid-frame-setup
+
+        val-mid-oaf-frame-eq : current-frame alloc-after-setup ≡ current-frame alloc-after-pair-slots
+        val-mid-oaf-frame-eq = trans val-mid-frame-setup (sym val-mid-frame-pair-slots)
+
+        -- f-trace's slot-reads-above/below bounds (local copies).
+        val-mid-f-tsra : TraceSlotReadsAbove f-start f-trace
+        val-mid-f-tsra = IRResultAWF.trace-slot-reads-above result-f
+
+        val-mid-f-tsrb : TraceSlotReadsBelow (IRResultAWF.max-slot-written result-f) f-trace
+        val-mid-f-tsrb = IRResultAWF.trace-slot-reads-below result-f
+
+        val-mid-f-twb : TraceWritesBelow (IRResultAWF.max-slot-written result-f) f-trace
+        val-mid-f-twb = IRResultAWF.trace-writes-below result-f
+
+        -- Mem-agreement between the two starting states (both s-after-setup,
+        -- alloc only differs in next-slot — trivial via frame cong).
+        val-mid-oaf-mem-trivial : ∀ slot → f-start ≤ slot → slot < IRResultAWF.max-slot-written result-f →
+          readLoc s-after-setup (AtStack (current-frame alloc-after-setup) slot) ≡
+          readLoc s-after-setup (AtStack (current-frame alloc-after-pair-slots) slot)
+        val-mid-oaf-mem-trivial slot _ _ =
+          cong (λ fr → readLoc s-after-setup (AtStack fr slot)) val-mid-oaf-frame-eq
+
+        -- middle-trace bounds.
+        val-mid-twa : TraceWritesAbove fst-slot middle-trace
+        val-mid-twa = ≤-refl , tt
+
+        val-mid-twb : TraceWritesBelow f-start middle-trace
+        val-mid-twb = (n≤1+n snd-slot) , tt   -- fst-slot < f-start = suc snd-slot
+
+        val-mid-tnhw : TraceNoHeapWrites middle-trace
+        val-mid-tnhw = tt
+
+        -- Region predicate (1/4): input region [0, backup-slot)
+        val-mid-input-region : ∀ slot → slot < backup-slot →
+          readLoc s-after-middle (AtStack frame slot) ≡ readLoc s₁ (AtStack frame slot)
+        val-mid-input-region slot slot<backup =
+          let backup≤f-start : backup-slot ≤ f-start
+              backup≤f-start = ≤-trans (n≤1+n backup-slot)
+                                       (≤-trans (n≤1+n fst-slot) (n≤1+n snd-slot))
+              slot<f-start : slot < f-start
+              slot<f-start = ≤-trans slot<backup backup≤f-start
+              slot<fst : slot < fst-slot
+              slot<fst = ≤-trans slot<backup (n≤1+n backup-slot)
+              -- (a) middle-trace preserves slot < fst-slot
+              mid-pres : readLoc s-after-middle (AtStack (current-frame alloc-after-f) slot) ≡
+                         readLoc s-after-f (AtStack (current-frame alloc-after-f) slot)
+              mid-pres = SMP.TracePrimitives.exec-trace-preserves-slot-below middle-trace
+                           s-after-f alloc-after-f fst-slot slot
+                           val-mid-twa val-mid-tnhw slot<fst
+              mid-pres-frame : readLoc s-after-middle (AtStack frame slot) ≡
+                               readLoc s-after-f (AtStack frame slot)
+              mid-pres-frame = subst (λ fr → readLoc s-after-middle (AtStack fr slot) ≡
+                                             readLoc s-after-f (AtStack fr slot))
+                                     val-mid-frame-after-f mid-pres
+              -- (b) s-after-f → s-after-setup via f-trace preserves slot < f-start
+              f-pres : readLoc s-after-f (AtStack (current-frame alloc-after-setup) slot) ≡
+                       readLoc s-after-setup (AtStack (current-frame alloc-after-setup) slot)
+              f-pres = SMP.TracePrimitives.exec-trace-preserves-slot-below f-trace s-after-setup
+                         alloc-after-setup f-start slot f-twa f-tnhw slot<f-start
+              f-pres-frame : readLoc s-after-f (AtStack frame slot) ≡
+                             readLoc s-after-setup (AtStack frame slot)
+              f-pres-frame = subst (λ fr → readLoc s-after-f (AtStack fr slot) ≡
+                                           readLoc s-after-setup (AtStack fr slot))
+                                   val-mid-frame-setup f-pres
+              -- (c) s₁ → s-after-setup via synthetic f-trace preserves slot < f-start
+              exec-f-pres : readLoc (proj₁ (exec-trace f-trace s-after-setup alloc-after-pair-slots))
+                              (AtStack (current-frame alloc-after-pair-slots) slot) ≡
+                            readLoc s-after-setup (AtStack (current-frame alloc-after-pair-slots) slot)
+              exec-f-pres = SMP.TracePrimitives.exec-trace-preserves-slot-below f-trace s-after-setup
+                              alloc-after-pair-slots f-start slot f-twa f-tnhw slot<f-start
+              exec-f-pres-frame : readLoc (proj₁ (exec-trace f-trace s-after-setup alloc-after-pair-slots))
+                                    (AtStack frame slot) ≡
+                                  readLoc s-after-setup (AtStack frame slot)
+              exec-f-pres-frame = subst (λ fr → readLoc (proj₁ (exec-trace f-trace s-after-setup alloc-after-pair-slots))
+                                                  (AtStack fr slot) ≡
+                                                readLoc s-after-setup (AtStack fr slot))
+                                        val-mid-frame-pair-slots exec-f-pres
+              s₁-pres : readLoc s₁ (AtStack frame slot) ≡ readLoc s-after-setup (AtStack frame slot)
+              s₁-pres = subst (λ st → readLoc st (AtStack frame slot) ≡ readLoc s-after-setup (AtStack frame slot))
+                              (IRResultAWF.trace-correct result-f) exec-f-pres-frame
+              s-after-f→s₁ : readLoc s-after-f (AtStack frame slot) ≡ readLoc s₁ (AtStack frame slot)
+              s-after-f→s₁ = trans f-pres-frame (sym s₁-pres)
+          in trans mid-pres-frame s-after-f→s₁
+
+        -- Region predicate (2/4): fresh region [f-start, reclaim-f)
+        val-mid-fresh-region : ∀ slot → f-start ≤ slot → slot < reclaim-f →
+          readLoc s-after-middle (AtStack frame slot) ≡ readLoc s₁ (AtStack frame slot)
+        val-mid-fresh-region slot f-start≤slot slot<reclaim =
+          let slot<max : slot < IRResultAWF.max-slot-written result-f
+              slot<max = <-≤-trans slot<reclaim (IRResultAWF.max-slot-geq-final result-f)
+              -- (a) middle-trace preserves slot ≥ f-start (writes only at fst-slot < f-start)
+              mid-pres : readLoc s-after-middle (AtStack (current-frame alloc-after-f) slot) ≡
+                         readLoc s-after-f (AtStack (current-frame alloc-after-f) slot)
+              mid-pres = SMP.TracePrimitives.exec-trace-preserves-slot-above middle-trace
+                           s-after-f alloc-after-f f-start slot
+                           val-mid-twb val-mid-tnhw f-start≤slot
+              mid-pres-frame : readLoc s-after-middle (AtStack frame slot) ≡
+                               readLoc s-after-f (AtStack frame slot)
+              mid-pres-frame = subst (λ fr → readLoc s-after-middle (AtStack fr slot) ≡
+                                             readLoc s-after-f (AtStack fr slot))
+                                     val-mid-frame-after-f mid-pres
+              -- (b) s-after-f → s₁ via exec-trace-mem-deterministic (same f-trace,
+              --     two starting allocs that agree on the relevant region)
+              mem-det : readLoc s-after-f (AtStack (current-frame alloc-after-setup) slot) ≡
+                        readLoc (proj₁ (exec-trace f-trace s-after-setup alloc-after-pair-slots))
+                                (AtStack (current-frame alloc-after-pair-slots) slot)
+              mem-det = SMP.TraceOutputDeterminism.exec-trace-mem-deterministic f-trace
+                          s-after-setup s-after-setup alloc-after-setup alloc-after-pair-slots
+                          f-start (IRResultAWF.max-slot-written result-f)
+                          not-halted-after-setup not-halted-after-setup
+                          val-mid-oaf-frame-eq refl
+                          val-mid-f-tsra val-mid-f-tsrb f-twa val-mid-f-twb f-tnhw
+                          val-mid-oaf-mem-trivial
+                          slot f-start≤slot slot<max
+              mem-det-frame : readLoc s-after-f (AtStack frame slot) ≡
+                              readLoc (proj₁ (exec-trace f-trace s-after-setup alloc-after-pair-slots))
+                                      (AtStack frame slot)
+              mem-det-frame = subst₂ (λ f1 f2 → readLoc s-after-f (AtStack f1 slot) ≡
+                                                readLoc (proj₁ (exec-trace f-trace s-after-setup alloc-after-pair-slots))
+                                                        (AtStack f2 slot))
+                                     val-mid-frame-setup val-mid-frame-pair-slots mem-det
+              s₁-eq : readLoc (proj₁ (exec-trace f-trace s-after-setup alloc-after-pair-slots))
+                              (AtStack frame slot) ≡
+                      readLoc s₁ (AtStack frame slot)
+              s₁-eq = cong (λ st → readLoc st (AtStack frame slot)) (IRResultAWF.trace-correct result-f)
+              s-after-f→s₁ : readLoc s-after-f (AtStack frame slot) ≡ readLoc s₁ (AtStack frame slot)
+              s-after-f→s₁ = trans mem-det-frame s₁-eq
+          in trans mid-pres-frame s-after-f→s₁
+
+        -- Region predicate (3/4): heap.
+        val-mid-heap : ∀ h → readLoc s-after-middle (AtDynamic h) ≡ readLoc s₁ (AtDynamic h)
+        val-mid-heap h =
+          let mid-pres : readLoc s-after-middle (AtDynamic h) ≡ readLoc s-after-f (AtDynamic h)
+              mid-pres = SMP.TracePrimitives.exec-trace-preserves-heap-loc middle-trace
+                           s-after-f alloc-after-f h val-mid-tnhw
+              f-pres : readLoc s-after-f (AtDynamic h) ≡ readLoc s-after-setup (AtDynamic h)
+              f-pres = SMP.TracePrimitives.exec-trace-preserves-heap-loc f-trace s-after-setup
+                         alloc-after-setup h f-tnhw
+              exec-f-pres : readLoc (proj₁ (exec-trace f-trace s-after-setup alloc-after-pair-slots))
+                              (AtDynamic h) ≡
+                            readLoc s-after-setup (AtDynamic h)
+              exec-f-pres = SMP.TracePrimitives.exec-trace-preserves-heap-loc f-trace s-after-setup
+                              alloc-after-pair-slots h f-tnhw
+              s₁-pres : readLoc s₁ (AtDynamic h) ≡ readLoc s-after-setup (AtDynamic h)
+              s₁-pres = subst (λ st → readLoc st (AtDynamic h) ≡ readLoc s-after-setup (AtDynamic h))
+                              (IRResultAWF.trace-correct result-f) exec-f-pres
+              s-after-f→s₁ : readLoc s-after-f (AtDynamic h) ≡ readLoc s₁ (AtDynamic h)
+              s-after-f→s₁ = trans f-pres (sym s₁-pres)
+          in trans mid-pres s-after-f→s₁
+
+        -- Region predicate (4/4): ancestor frames.
+        val-mid-ancestors : ∀ f' k → current-frame alloc-after-f-reclaim ≺ f' →
+          readLoc s-after-middle (AtStack f' k) ≡ readLoc s₁ (AtStack f' k)
+        val-mid-ancestors f' k cf≺f' =
+          let frame≺f' : frame ≺ f'
+              frame≺f' = cf≺f'   -- current-frame alloc-after-f-reclaim ≡ frame definitionally
+              -- middle-trace preserves ancestors
+              alloc-after-f-cf≺f' : current-frame alloc-after-f ≺ f'
+              alloc-after-f-cf≺f' = subst (_≺ f') (sym val-mid-frame-after-f) frame≺f'
+              mid-pres : readLoc s-after-middle (AtStack f' k) ≡ readLoc s-after-f (AtStack f' k)
+              mid-pres = SMP.TracePrimitives.exec-trace-preserves-ancestor middle-trace
+                           s-after-f alloc-after-f f' k alloc-after-f-cf≺f' val-mid-tnhw
+              -- s-after-f → s-after-setup via f-trace ancestor preservation
+              alloc-after-setup-cf≺f' : current-frame alloc-after-setup ≺ f'
+              alloc-after-setup-cf≺f' = subst (_≺ f') (sym val-mid-frame-setup) frame≺f'
+              f-pres : readLoc s-after-f (AtStack f' k) ≡ readLoc s-after-setup (AtStack f' k)
+              f-pres = SMP.TracePrimitives.exec-trace-preserves-ancestor f-trace s-after-setup
+                         alloc-after-setup f' k alloc-after-setup-cf≺f' f-tnhw
+              -- s₁ from synthetic f-trace
+              alloc-pair-slots-cf≺f' : current-frame alloc-after-pair-slots ≺ f'
+              alloc-pair-slots-cf≺f' = subst (_≺ f') (sym val-mid-frame-pair-slots) frame≺f'
+              exec-f-pres : readLoc (proj₁ (exec-trace f-trace s-after-setup alloc-after-pair-slots))
+                              (AtStack f' k) ≡
+                            readLoc s-after-setup (AtStack f' k)
+              exec-f-pres = SMP.TracePrimitives.exec-trace-preserves-ancestor f-trace s-after-setup
+                              alloc-after-pair-slots f' k alloc-pair-slots-cf≺f' f-tnhw
+              s₁-pres : readLoc s₁ (AtStack f' k) ≡ readLoc s-after-setup (AtStack f' k)
+              s₁-pres = subst (λ st → readLoc st (AtStack f' k) ≡ readLoc s-after-setup (AtStack f' k))
+                              (IRResultAWF.trace-correct result-f) exec-f-pres
+              s-after-f→s₁ : readLoc s-after-f (AtStack f' k) ≡ readLoc s₁ (AtStack f' k)
+              s-after-f→s₁ = trans f-pres (sym s₁-pres)
+          in trans mid-pres s-after-f→s₁
+
+        val-mid-backup≤f-start : backup-slot ≤ f-start
+        val-mid-backup≤f-start = ≤-trans (n≤1+n backup-slot)
+                                         (≤-trans (n≤1+n fst-slot) (n≤1+n snd-slot))
+
+        val-mid-f-start≤reclaim-f : f-start ≤ reclaim-f
+        val-mid-f-start≤reclaim-f = reclaim-f-above-f-start
+
+        valid-at-s-after-middle : ValidAtWF mIn alloc-after-f-reclaim x input-loc s-after-middle
+        valid-at-s-after-middle =
+          validityWF-mem-preserved-in-regions alloc-after-f-reclaim
+            x input-loc backup-slot f-start s₁ s-after-middle
+            input-before-at-reclaim-f
+            val-mid-backup≤f-start val-mid-f-start≤reclaim-f
+            val-mid-input-region val-mid-fresh-region val-mid-heap val-mid-ancestors
+            input-valid-wf-at-reclaim-f
 
       s₁' : LocState FS
       s₁' = s-after-middle
