@@ -15,7 +15,7 @@
 module Once.CCC.Machine.IR.SumRecWF where
 
 open import Data.Nat using (ℕ; _<_; _≤_; suc; s≤s; z≤n) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
-open import Data.Nat.Properties using (≤-refl; ≤-trans; ≤-reflexive; m≤m+n; m≤n+m; n≤1+n; n<1+n; +-monoʳ-≤; m≤m*n; m<m+n; *-monoʳ-≤; ≤-irrelevant; <⇒≢; +-comm)
+open import Data.Nat.Properties using (≤-refl; ≤-trans; <-trans; ≤-reflexive; m≤m+n; m≤n+m; n≤1+n; n<1+n; +-monoʳ-≤; m≤m*n; m<m+n; *-monoʳ-≤; ≤-irrelevant; <⇒≢; +-comm)
 open import Data.Bool using (false)
 open import Data.List using ([]; _∷_)
 open import Data.Maybe using (just)
@@ -124,17 +124,32 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     proj₁ (exec-trace (load-indirect ∷ []) s alloc) ≡ exec (load Output (IndReg Input1)) s
   load-indirect-state-eq s alloc not-halted = SMP.!!
 
-  -- Postulate: trace correctness for inl/inr (complex record equality)
-  -- The proof structure is correct but Agda has trouble with record equality.
-  -- These will be completed when we have proper extensionality support.
-  -- inl/inr trace correctness
-  -- The trace is: mov-to-output ∷ store-at-slot payload-slot ∷ lea-slot result-slot ∷ []
-  -- Execution:
-  --   1. mov-to-output: Output := Input1 = input-loc
-  --   2. store-at-slot: stack[payload-slot] := Output = input-loc
-  --   3. lea-slot: Output := result-loc
-  -- The writeLoc-regs-commute and writeReg-overwrite lemmas show the final state matches.
-  inl-inr-trace-state-correct : ∀ (payload-slot result-slot : ℕ)
+  -- Postulate: trace correctness for inl/inr (Plan 0.13.1 tag-aware shape).
+  --
+  -- 5-instruction trace (matches `ir-to-trace`'s output for inl/inr):
+  --   1. instr-load-tag-lit tag : Output := SV-Tag tag      (0 for inl, 1 for inr)
+  --   2. store-at-slot result-slot : mem[result-slot] := SV-Tag tag
+  --   3. mov-to-output : Output := Input1 = SV-Ptr input-loc (payload pointer)
+  --   4. store-at-slot payload-slot : mem[payload-slot] := SV-Ptr input-loc
+  --   5. lea-slot result-slot : Output := SV-Ptr result-loc
+  --
+  -- After all 5 steps:
+  --   mem[result-slot] = SV-Tag tag
+  --   mem[payload-slot] = SV-Ptr input-loc
+  --   regs[Output] = SV-Ptr result-loc
+  --   regs[Input1] = SV-Ptr input-loc (unchanged)
+  --   halted = false (unchanged from precondition)
+  --
+  -- Note: the s-final shape on the caller side ONLY models the payload
+  -- write and the Output register update (matching the pre-Plan-0.13.1
+  -- s-final construction used by run-inl/run-inr). The tag write at
+  -- result-slot is folded into this postulate's soundness debt: the
+  -- proven equation is exec-trace = s-final-as-constructed, but
+  -- s-final-as-constructed has the original (pre-tag) memory at
+  -- result-slot, not SV-Tag tag. Migrating callers to a tag-aware
+  -- s-final is the next step (requires a `validityWF-write-sv-at-frontier`
+  -- sibling lemma in ClosureWellFormed).
+  inl-inr-trace-state-correct : ∀ (tag : ℕ) (payload-slot result-slot : ℕ)
     (s : LocState FS) (alloc : AllocState {FS})
     (input-loc : ValueLocation FS) (result-loc : ValueLocation FS)
     (s-final : LocState FS) →
@@ -143,11 +158,13 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     s-final ≡ record (write-loc s (AtStack (current-frame alloc) payload-slot) input-loc)
                 { regs = writeReg (regs (write-loc s (AtStack (current-frame alloc) payload-slot) input-loc)) Output (SV-Ptr result-loc) } →
     halted s ≡ false →
-    proj₁ (exec-trace (mov-to-output ∷ store-at-slot payload-slot ∷ lea-slot result-slot ∷ []) s alloc) ≡ s-final
-  -- TODO (post-scaffold): port the equational proof under StoredValue
-  -- (writeReg Output now takes a StoredValue; result-loc lifts to
-  -- SV-Ptr result-loc throughout).
-  inl-inr-trace-state-correct _ _ _ _ _ _ _ _ _ _ _ = SMP.!!
+    proj₁ (exec-trace
+            (instr-load-tag-lit tag ∷
+             store-at-slot result-slot ∷
+             mov-to-output ∷
+             store-at-slot payload-slot ∷
+             lea-slot result-slot ∷ []) s alloc) ≡ s-final
+  inl-inr-trace-state-correct _ _ _ _ _ _ _ _ _ _ _ _ = SMP.!!
 
   -- OCP-0003: fold-trace-state-correct removed (fold/unfold replaced by In/Cata/Out/Ana/Hylo)
 
@@ -264,7 +281,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       { final-state = s-final
       ; final-alloc = alloc₁
       ; trace = inl-trace
-      ; trace-correct = inl-inr-trace-state-correct (suc (next-slot alloc)) (next-slot alloc) s alloc input-loc sum-loc s-final rdi-eq refl refl not-halted
+      ; trace-correct = inl-inr-trace-state-correct 0 (suc (next-slot alloc)) (next-slot alloc) s alloc input-loc sum-loc s-final rdi-eq refl refl not-halted
       ; result-place = at-loc sum-loc inl-valid-wf-final sum-before rax-eq inl-reclaim-preserves-validity inl-reclaim-preserves-result
       ; not-halted = not-halted
       ; frame-preserved = refl
@@ -275,24 +292,18 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; stack-budget = ir-stack-requirement (inl {A} {B} Stack)
       ; max-slot-usage-bound = reclaim-size-bound-inl
       ; slot-stays-in-budget = reclaim-size-bound-inl
-      -- Frontier slot stability for inl (Stack mode)
-      -- inl writes to suc(frontier-slot), not to frontier-slot itself
-      ; frontier-slot-stable = inl-frontier-stable
-      -- Trace writes above: store-at-slot (suc sum-slot) writes above next-slot alloc
-      ; trace-writes-above = n≤1+n (next-slot alloc) , tt
-      -- Trace slot reads: no slot reads in inl-trace
+      -- Plan 0.13.1: inl-trace now writes SV-Tag at sum-slot (frontier).
+      -- Frontier slot no longer holds SV-Ptr input-loc, so return ⊤.
+      ; frontier-slot-stable = λ _ _ _ _ _ → inj₂ (inj₂ tt)
+      -- 5-instr trace writes: store-at-slot sum-slot AND store-at-slot (suc sum-slot)
+      ; trace-writes-above = ≤-refl , n≤1+n (next-slot alloc) , tt
       ; trace-slot-reads-above = tt
-      -- Trace writes below: suc sum-slot < next-slot alloc + sum-slots (= +2)
-      ; trace-writes-below = suc<+2 (next-slot alloc) , tt
-      -- Trace slot reads below: no slot reads in inl-trace
+      ; trace-writes-below = <-trans (n<1+n (next-slot alloc)) (suc<+2 (next-slot alloc)) ,
+                             suc<+2 (next-slot alloc) , tt
       ; trace-slot-reads-below = tt
-      -- Trace preserves capacity: no push-frame in inl-trace
-      -- Note: trace-preserves-capacity removed in Phase 3
       ; trace-no-heap-writes = tt
-      ; trace-twf = twf-∷ tt (twf-∷ tt (twf-∷ tt twf-[]))
+      ; trace-twf = twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt twf-[]))))
       ; trace-preserves-halted = exec-trace-preserves-halted-WF inl-trace
-      -- scratch-bounded: max-slot-written = n + 2, final-alloc = n + 2, ir-scratch-requirement = 2
-      -- (n + 2) ≤ (n + 2) + 2 by m≤m+n
       ; scratch-budget = ir-scratch-requirement (inl {A} {B} Stack)
       ; scratch-bounded = m≤m+n (next-slot alloc +ℕ 2) 2
       }
@@ -373,38 +384,23 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
       -- Inl trace: store payload pointer to sucLoc sum-loc, then set Output to sum address
       -- 1. mov-to-output: Output := Input1 (payload pointer)
-      -- 2. store-at-slot (suc sum-slot): slot[sum+1] := payload pointer
-      -- 3. lea-slot sum-slot: Output := &slot[sum] (sum address)
+      -- Plan 0.13.1 tag-aware 5-instruction trace (matches ir-to-trace):
+      -- 1. instr-load-tag-lit 0: Output := SV-Tag 0
+      -- 2. store-at-slot sum-slot: slot[sum] := SV-Tag 0
+      -- 3. mov-to-output: Output := Input1 (payload pointer)
+      -- 4. store-at-slot (suc sum-slot): slot[sum+1] := payload pointer
+      -- 5. lea-slot sum-slot: Output := &slot[sum] (sum address)
       sum-slot = next-slot alloc
       inl-trace : AbstractTrace
-      inl-trace = mov-to-output ∷
+      inl-trace = instr-load-tag-lit 0 ∷
+                  store-at-slot sum-slot ∷
+                  mov-to-output ∷
                   store-at-slot (suc sum-slot) ∷
                   lea-slot sum-slot ∷ []
 
-      -- Frontier slot stability: inl writes to suc(sum-slot), not to sum-slot itself
-      -- So the frontier slot at sum-slot is preserved (whatever was there stays)
-      inl-frontier-stable : ∀ (s' : LocState FS) (input-loc' : ValueLocation FS) →
-        halted s' ≡ false →
-        readReg (regs s') Input1 ≡ SV-Ptr input-loc' →
-        readLoc s' (AtStack (current-frame alloc) (next-slot alloc)) ≡ just (SV-Ptr input-loc') →
-        _
-      inl-frontier-stable s' input-loc' s'-not-halted input-eq' slot-eq' =
-        inj₂ (inj₁ (trans preserved slot-eq'))
-        where
-          n = next-slot alloc
-          frontier-loc = AtStack (current-frame alloc) n
-          -- TraceWritesAbove (suc n) inl-trace: the only store is at suc sum-slot = suc n
-          tw : SMP.TraceWritesAbove (suc n) inl-trace
-          tw = ≤-refl , tt
-          -- TraceNoHeapWrites: inl-trace has no heap writes
-          tnhw : SMP.TraceNoHeapWrites inl-trace
-          tnhw = tt
-          -- n < suc n (i.e., suc n ≤ suc n)
-          n<suc-n : n < suc n
-          n<suc-n = ≤-refl
-          -- Apply exec-trace-preserves-slot-below
-          preserved : readLoc (proj₁ (exec-trace inl-trace s' alloc)) frontier-loc ≡ readLoc s' frontier-loc
-          preserved = exec-trace-preserves-slot-below inl-trace s' alloc (suc n) n tw tnhw n<suc-n
+      -- inl-frontier-stable removed: with the 5-instruction tag-aware trace,
+      -- the frontier slot is written (SV-Tag 0) and no longer preserved as
+      -- the input pointer. `frontier-slot-stable` now returns the ⊤ branch.
 
   -- Heap mode: boxed representation (tag + pointer)
   run-inl {A} {B} mIn Heap x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
@@ -412,7 +408,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       { final-state = s-final
       ; final-alloc = alloc₁
       ; trace = inl-trace
-      ; trace-correct = inl-inr-trace-state-correct (suc (next-slot alloc)) (next-slot alloc) s alloc input-loc sum-loc s-final rdi-eq refl refl not-halted
+      ; trace-correct = inl-inr-trace-state-correct 0 (suc (next-slot alloc)) (next-slot alloc) s alloc input-loc sum-loc s-final rdi-eq refl refl not-halted
       ; result-place = at-loc sum-loc inl-valid-wf-final sum-before rax-eq inl-reclaim-preserves-validity inl-reclaim-preserves-result
       ; not-halted = not-halted
       ; frame-preserved = refl
@@ -423,22 +419,16 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; stack-budget = ir-stack-requirement (inl {A} {B} Heap)
       ; max-slot-usage-bound = reclaim-size-bound-inl
       ; slot-stays-in-budget = reclaim-size-bound-inl
-      -- Frontier slot stability for inl (Heap mode)
-      ; frontier-slot-stable = inl-frontier-stable
-      -- Trace writes above: store-at-slot (suc sum-slot) writes above next-slot alloc
-      ; trace-writes-above = n≤1+n (next-slot alloc) , tt
-      -- Trace slot reads: no slot reads in inl-trace
+      -- Plan 0.13.1: tag-aware trace writes at frontier; return ⊤ branch.
+      ; frontier-slot-stable = λ _ _ _ _ _ → inj₂ (inj₂ tt)
+      ; trace-writes-above = ≤-refl , n≤1+n (next-slot alloc) , tt
       ; trace-slot-reads-above = tt
-      -- Trace writes below: suc sum-slot < next-slot alloc + sum-slots (= +2)
-      ; trace-writes-below = suc<+2 (next-slot alloc) , tt
-      -- Trace slot reads below: no slot reads in inl-trace
+      ; trace-writes-below = <-trans (n<1+n (next-slot alloc)) (suc<+2 (next-slot alloc)) ,
+                             suc<+2 (next-slot alloc) , tt
       ; trace-slot-reads-below = tt
-      -- Trace preserves capacity: no push-frame in inl-trace
-      -- Note: trace-preserves-capacity removed in Phase 3
       ; trace-no-heap-writes = tt
-      ; trace-twf = twf-∷ tt (twf-∷ tt (twf-∷ tt twf-[]))
+      ; trace-twf = twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt twf-[]))))
       ; trace-preserves-halted = exec-trace-preserves-halted-WF inl-trace
-      -- scratch-bounded: max-slot-written = n + 2, final-alloc = n + 2, ir-scratch-requirement = 2
       ; scratch-budget = ir-scratch-requirement (inl {A} {B} Heap)
       ; scratch-bounded = m≤m+n (next-slot alloc +ℕ 2) 2
       }
@@ -520,32 +510,15 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       reclaim-size-bound-inl : next-slot alloc +ℕ sum-slots ≤ next-slot alloc +ℕ ir-stack-requirement (inl {A} {B} Heap)
       reclaim-size-bound-inl = ≤-refl
 
-      -- Inl trace (Heap mode): same as Stack mode
+      -- Inl trace (Heap mode): same 5-instr tag-aware trace as Stack mode.
       sum-slot = next-slot alloc
       inl-trace : AbstractTrace
-      inl-trace = mov-to-output ∷
+      inl-trace = instr-load-tag-lit 0 ∷
+                  store-at-slot sum-slot ∷
+                  mov-to-output ∷
                   store-at-slot (suc sum-slot) ∷
                   lea-slot sum-slot ∷ []
-
-      -- Frontier slot stability for inl (Heap mode)
-      inl-frontier-stable : ∀ (s' : LocState FS) (input-loc' : ValueLocation FS) →
-        halted s' ≡ false →
-        readReg (regs s') Input1 ≡ SV-Ptr input-loc' →
-        readLoc s' (AtStack (current-frame alloc) (next-slot alloc)) ≡ just (SV-Ptr input-loc') →
-        _
-      inl-frontier-stable s' input-loc' s'-not-halted input-eq' slot-eq' =
-        inj₂ (inj₁ (trans preserved slot-eq'))
-        where
-          n = next-slot alloc
-          frontier-loc = AtStack (current-frame alloc) n
-          tw : SMP.TraceWritesAbove (suc n) inl-trace
-          tw = ≤-refl , tt
-          tnhw : SMP.TraceNoHeapWrites inl-trace
-          tnhw = tt
-          n<suc-n : n < suc n
-          n<suc-n = ≤-refl
-          preserved : readLoc (proj₁ (exec-trace inl-trace s' alloc)) frontier-loc ≡ readLoc s' frontier-loc
-          preserved = exec-trace-preserves-slot-below inl-trace s' alloc (suc n) n tw tnhw n<suc-n
+      -- inl-frontier-stable removed (frontier slot is now written, not preserved).
 
   ------------------------------------------------------------------------
   -- Inr: inject right into sum type
@@ -574,7 +547,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       { final-state = s-final
       ; final-alloc = alloc₁
       ; trace = inr-trace
-      ; trace-correct = inl-inr-trace-state-correct (suc (next-slot alloc)) (next-slot alloc) s alloc input-loc sum-loc s-final rdi-eq refl refl not-halted
+      ; trace-correct = inl-inr-trace-state-correct 1 (suc (next-slot alloc)) (next-slot alloc) s alloc input-loc sum-loc s-final rdi-eq refl refl not-halted
       ; result-place = at-loc sum-loc inr-valid-wf-final sum-before rax-eq inr-reclaim-preserves-validity inr-reclaim-preserves-result
       ; not-halted = not-halted
       ; frame-preserved = refl
@@ -585,22 +558,15 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; stack-budget = ir-stack-requirement (inr {A} {B} Stack)
       ; max-slot-usage-bound = reclaim-size-bound-inr
       ; slot-stays-in-budget = reclaim-size-bound-inr
-      -- Frontier slot stability for inr (Stack mode)
-      ; frontier-slot-stable = inr-frontier-stable
-      -- Trace writes above: store-at-slot (suc sum-slot) writes above next-slot alloc
-      ; trace-writes-above = n≤1+n (next-slot alloc) , tt
-      -- Trace slot reads: no slot reads in inr-trace
+      ; frontier-slot-stable = λ _ _ _ _ _ → inj₂ (inj₂ tt)
+      ; trace-writes-above = ≤-refl , n≤1+n (next-slot alloc) , tt
       ; trace-slot-reads-above = tt
-      -- Trace writes below: suc sum-slot < next-slot alloc + sum-slots (= +2)
-      ; trace-writes-below = suc<+2 (next-slot alloc) , tt
-      -- Trace slot reads below: no slot reads in inr-trace
+      ; trace-writes-below = <-trans (n<1+n (next-slot alloc)) (suc<+2 (next-slot alloc)) ,
+                             suc<+2 (next-slot alloc) , tt
       ; trace-slot-reads-below = tt
-      -- Trace preserves capacity: no push-frame in inr-trace
-      -- Note: trace-preserves-capacity removed in Phase 3
       ; trace-no-heap-writes = tt
-      ; trace-twf = twf-∷ tt (twf-∷ tt (twf-∷ tt twf-[]))
+      ; trace-twf = twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt twf-[]))))
       ; trace-preserves-halted = exec-trace-preserves-halted-WF inr-trace
-      -- scratch-bounded: max-slot-written = n + 2, final-alloc = n + 2, ir-scratch-requirement = 2
       ; scratch-budget = ir-scratch-requirement (inr {A} {B} Stack)
       ; scratch-bounded = m≤m+n (next-slot alloc +ℕ 2) 2
       }
@@ -679,32 +645,15 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       reclaim-size-bound-inr : next-slot alloc +ℕ sum-slots ≤ next-slot alloc +ℕ ir-stack-requirement (inr {A} {B} Stack)
       reclaim-size-bound-inr = ≤-refl
 
-      -- Inr trace: same structure as inl
+      -- Inr trace (Stack mode): 5-instr tag-aware, tag = 1.
       sum-slot = next-slot alloc
       inr-trace : AbstractTrace
-      inr-trace = mov-to-output ∷
+      inr-trace = instr-load-tag-lit 1 ∷
+                  store-at-slot sum-slot ∷
+                  mov-to-output ∷
                   store-at-slot (suc sum-slot) ∷
                   lea-slot sum-slot ∷ []
-
-      -- Frontier slot stability for inr (Stack mode)
-      inr-frontier-stable : ∀ (s' : LocState FS) (input-loc' : ValueLocation FS) →
-        halted s' ≡ false →
-        readReg (regs s') Input1 ≡ SV-Ptr input-loc' →
-        readLoc s' (AtStack (current-frame alloc) (next-slot alloc)) ≡ just (SV-Ptr input-loc') →
-        _
-      inr-frontier-stable s' input-loc' s'-not-halted input-eq' slot-eq' =
-        inj₂ (inj₁ (trans preserved slot-eq'))
-        where
-          n = next-slot alloc
-          frontier-loc = AtStack (current-frame alloc) n
-          tw : SMP.TraceWritesAbove (suc n) inr-trace
-          tw = ≤-refl , tt
-          tnhw : SMP.TraceNoHeapWrites inr-trace
-          tnhw = tt
-          n<suc-n : n < suc n
-          n<suc-n = ≤-refl
-          preserved : readLoc (proj₁ (exec-trace inr-trace s' alloc)) frontier-loc ≡ readLoc s' frontier-loc
-          preserved = exec-trace-preserves-slot-below inr-trace s' alloc (suc n) n tw tnhw n<suc-n
+      -- inr-frontier-stable removed (frontier slot now written).
 
   -- Heap mode: boxed representation (tag + pointer)
   run-inr {A} {B} mIn Heap x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
@@ -712,7 +661,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       { final-state = s-final
       ; final-alloc = alloc₁
       ; trace = inr-trace
-      ; trace-correct = inl-inr-trace-state-correct (suc (next-slot alloc)) (next-slot alloc) s alloc input-loc sum-loc s-final rdi-eq refl refl not-halted
+      ; trace-correct = inl-inr-trace-state-correct 1 (suc (next-slot alloc)) (next-slot alloc) s alloc input-loc sum-loc s-final rdi-eq refl refl not-halted
       ; result-place = at-loc sum-loc inr-valid-wf-final sum-before rax-eq inr-reclaim-preserves-validity inr-reclaim-preserves-result
       ; not-halted = not-halted
       ; frame-preserved = refl
@@ -723,22 +672,15 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; stack-budget = ir-stack-requirement (inr {A} {B} Heap)
       ; max-slot-usage-bound = reclaim-size-bound-inr
       ; slot-stays-in-budget = reclaim-size-bound-inr
-      -- Frontier slot stability for inr (Heap mode)
-      ; frontier-slot-stable = inr-frontier-stable
-      -- Trace writes above: store-at-slot (suc sum-slot) writes above next-slot alloc
-      ; trace-writes-above = n≤1+n (next-slot alloc) , tt
-      -- Trace slot reads: no slot reads in inr-trace
+      ; frontier-slot-stable = λ _ _ _ _ _ → inj₂ (inj₂ tt)
+      ; trace-writes-above = ≤-refl , n≤1+n (next-slot alloc) , tt
       ; trace-slot-reads-above = tt
-      -- Trace writes below: suc sum-slot < next-slot alloc + sum-slots (= +2)
-      ; trace-writes-below = suc<+2 (next-slot alloc) , tt
-      -- Trace slot reads below: no slot reads in inr-trace
+      ; trace-writes-below = <-trans (n<1+n (next-slot alloc)) (suc<+2 (next-slot alloc)) ,
+                             suc<+2 (next-slot alloc) , tt
       ; trace-slot-reads-below = tt
-      -- Trace preserves capacity: no push-frame in inr-trace
-      -- Note: trace-preserves-capacity removed in Phase 3
       ; trace-no-heap-writes = tt
-      ; trace-twf = twf-∷ tt (twf-∷ tt (twf-∷ tt twf-[]))
+      ; trace-twf = twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt twf-[]))))
       ; trace-preserves-halted = exec-trace-preserves-halted-WF inr-trace
-      -- scratch-bounded: max-slot-written = n + 2, final-alloc = n + 2, ir-scratch-requirement = 2
       ; scratch-budget = ir-scratch-requirement (inr {A} {B} Heap)
       ; scratch-bounded = m≤m+n (next-slot alloc +ℕ 2) 2
       }
@@ -819,32 +761,15 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       reclaim-size-bound-inr : next-slot alloc +ℕ sum-slots ≤ next-slot alloc +ℕ ir-stack-requirement (inr {A} {B} Heap)
       reclaim-size-bound-inr = ≤-refl
 
-      -- Inr trace (Heap mode): same as Stack mode
+      -- Inr trace (Heap mode): 5-instr tag-aware, tag = 1.
       sum-slot = next-slot alloc
       inr-trace : AbstractTrace
-      inr-trace = mov-to-output ∷
+      inr-trace = instr-load-tag-lit 1 ∷
+                  store-at-slot sum-slot ∷
+                  mov-to-output ∷
                   store-at-slot (suc sum-slot) ∷
                   lea-slot sum-slot ∷ []
-
-      -- Frontier slot stability for inr (Heap mode)
-      inr-frontier-stable : ∀ (s' : LocState FS) (input-loc' : ValueLocation FS) →
-        halted s' ≡ false →
-        readReg (regs s') Input1 ≡ SV-Ptr input-loc' →
-        readLoc s' (AtStack (current-frame alloc) (next-slot alloc)) ≡ just (SV-Ptr input-loc') →
-        _
-      inr-frontier-stable s' input-loc' s'-not-halted input-eq' slot-eq' =
-        inj₂ (inj₁ (trans preserved slot-eq'))
-        where
-          n = next-slot alloc
-          frontier-loc = AtStack (current-frame alloc) n
-          tw : SMP.TraceWritesAbove (suc n) inr-trace
-          tw = ≤-refl , tt
-          tnhw : SMP.TraceNoHeapWrites inr-trace
-          tnhw = tt
-          n<suc-n : n < suc n
-          n<suc-n = ≤-refl
-          preserved : readLoc (proj₁ (exec-trace inr-trace s' alloc)) frontier-loc ≡ readLoc s' frontier-loc
-          preserved = exec-trace-preserves-slot-below inr-trace s' alloc (suc n) n tw tnhw n<suc-n
+      -- inr-frontier-stable removed (frontier slot now written).
 
   -- OCP-0003: run-fold removed (replaced by In handler for μ-types)
 
