@@ -1399,31 +1399,228 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
   --
   -- This is semantically equivalent to validityWF-mem-preserved-excluding
   -- but uses positive bounds rather than negative (≢) reasoning.
+  --
+  -- Plan: structural predicate `LocInRegions` + `LocsInRegions` captures
+  -- the layout invariant that ValidAtWF alone doesn't encode. Each caller
+  -- proves their value's sub-locations land in one of the four regions
+  -- (input/fresh/heap/ancestor); the proof then dispatches the four
+  -- region predicates per readLoc-transfer site.
   ------------------------------------------------------------------------
 
+  -- Per-location predicate: this loc is in one of the four regions
+  -- (input/fresh on current frame, ancestor, or heap).
+  data LocInRegions (alloc : AllocState {FS}) (input-bound fresh-start : ℕ) :
+       ValueLocation FS → Set where
+    loc-in-input : ∀ {k} →
+      k < input-bound →
+      LocInRegions alloc input-bound fresh-start
+        (AtStack (current-frame alloc) k)
+    loc-in-fresh : ∀ {k} →
+      fresh-start ≤ k → k < next-slot alloc →
+      LocInRegions alloc input-bound fresh-start
+        (AtStack (current-frame alloc) k)
+    loc-in-anc : ∀ {f k} →
+      current-frame alloc ≺ f →
+      LocInRegions alloc input-bound fresh-start (AtStack f k)
+    loc-in-heap : ∀ {hl} →
+      LocInRegions alloc input-bound fresh-start (AtDynamic hl)
+
+  -- Structural predicate: keyed by the ValidAtWF derivation so its
+  -- existentials (fst-loc, snd-loc, env-loc, ...) are shared. Recurses
+  -- structurally; at each pointer-read site we carry a LocInRegions
+  -- witness for the loc being read.
+  LocsInRegions : ∀ {m A} {v : ⟦ A ⟧} {loc s} {alloc : AllocState {FS}}
+                  (input-bound fresh-start : ℕ) →
+                  ValidAtWF m alloc v loc s → Set
+  LocsInRegions {alloc = alloc} ib fs valid-unit-wf = ⊤
+  LocsInRegions {alloc = alloc} ib fs
+    (valid-pair-wf {pair-loc = pl} fp sp fb sb slb fv sv) =
+    LocInRegions alloc ib fs pl ×
+    LocInRegions alloc ib fs (sucLoc pl) ×
+    LocsInRegions ib fs fv ×
+    LocsInRegions ib fs sv
+  LocsInRegions {alloc = alloc} ib fs
+    (valid-closure-wf bb {closure-loc = cl} ep cp eb cb slb ev bc) =
+    LocInRegions alloc ib fs cl ×
+    LocInRegions alloc ib fs (sucLoc cl) ×
+    LocsInRegions ib fs ev
+  LocsInRegions ib fs (valid-coerce-kind-wf cv) = LocsInRegions ib fs cv
+  LocsInRegions {alloc = alloc} ib fs
+    (valid-inl-wf {sum-loc = sl} pp pb slb pv) =
+    LocInRegions alloc ib fs (sucLoc sl) ×
+    LocsInRegions ib fs pv
+  LocsInRegions {alloc = alloc} ib fs
+    (valid-inr-wf {sum-loc = sl} pp pb slb pv) =
+    LocInRegions alloc ib fs (sucLoc sl) ×
+    LocsInRegions ib fs pv
+  LocsInRegions ib fs (valid-μ-wf wf x μv) = ⊤    -- handled via μ-stub
+  LocsInRegions ib fs (valid-ν-wf wf x νv) = ⊤    -- handled via ν-stub
+  LocsInRegions ib fs (valid-int-wf bf)    = ⊤
+  LocsInRegions ib fs (valid-float-wf bf)  = ⊤
+  LocsInRegions ib fs (valid-str-wf bf)    = ⊤
+  LocsInRegions ib fs (valid-buffer-wf bf) = ⊤
+
+  -- Helper: derive a mem-eq at a particular loc from the four region
+  -- predicates and a LocInRegions witness.
+  loc-mem-eq-from-regions :
+    ∀ {alloc : AllocState {FS}} {input-bound fresh-start s₁ s₂ loc} →
+    (∀ slot → slot < input-bound →
+      readLoc s₂ (AtStack (current-frame alloc) slot) ≡
+      readLoc s₁ (AtStack (current-frame alloc) slot)) →
+    (∀ slot → fresh-start ≤ slot → slot < next-slot alloc →
+      readLoc s₂ (AtStack (current-frame alloc) slot) ≡
+      readLoc s₁ (AtStack (current-frame alloc) slot)) →
+    (∀ h → readLoc s₂ (AtDynamic h) ≡ readLoc s₁ (AtDynamic h)) →
+    (∀ f k → current-frame alloc ≺ f →
+      readLoc s₂ (AtStack f k) ≡ readLoc s₁ (AtStack f k)) →
+    LocInRegions alloc input-bound fresh-start loc →
+    readLoc s₂ loc ≡ readLoc s₁ loc
+  loc-mem-eq-from-regions ir fr hr ar (loc-in-input {k} k<ib)         = ir k k<ib
+  loc-mem-eq-from-regions ir fr hr ar (loc-in-fresh {k} fs≤k k<next)   = fr k fs≤k k<next
+  loc-mem-eq-from-regions ir fr hr ar (loc-in-anc {f} {k} cf≺f)        = ar f k cf≺f
+  loc-mem-eq-from-regions ir fr hr ar (loc-in-heap {hl})               = hr hl
+
+  -- TEMP: μ/ν cases deferred. The same regional reasoning applies but
+  -- requires defining μValid-mem-preserved-in-regions / νValid-mem-preserved-in-regions
+  -- which are sister lemmas in MuValidity. Tracked separately.
+  postulate
+    μ-validity-in-regions-stub : ∀ {alloc F} {wf : WellFormedF F} {x loc s₁ s₂}
+                                   {input-bound fresh-start : ℕ} →
+      μValid alloc wf x loc s₁ →
+      μValid alloc wf x loc s₂
+
+    ν-validity-in-regions-stub : ∀ {alloc F} {wf : WellFormedF F} {x loc s₁ s₂}
+                                   {input-bound fresh-start : ℕ} →
+      νValid alloc wf x loc s₁ →
+      νValid alloc wf x loc s₂
+
+  -- STRONG version: requires an additional LocsInRegions hypothesis that
+  -- witnesses the value's sub-locations all land in input/fresh/heap/anc
+  -- (never in the gap [input-bound, fresh-start) on current frame).
+  -- This is the version that can be proven without postulates (modulo μ/ν
+  -- stubs, which require sister lemmas in MuValidity).
+  --
+  -- The original `validityWF-mem-preserved-in-regions` (below, still
+  -- postulated as SMP.!!) is the unsafe version without this hypothesis.
+  -- Callers can migrate to the strong version as needed; until then the
+  -- unsafe version remains for backward compatibility.
+  validityWF-mem-preserved-in-regions-strong :
+    ∀ {m A} (alloc : AllocState {FS}) (v : ⟦ A ⟧) (loc : ValueLocation FS)
+      (input-bound fresh-start : ℕ)
+      (s₁ s₂ : LocState FS) →
+    BeforeFrontier alloc loc →
+    input-bound ≤ fresh-start →
+    fresh-start ≤ next-slot alloc →
+    (∀ slot → slot < input-bound →
+      readLoc s₂ (AtStack (current-frame alloc) slot) ≡
+      readLoc s₁ (AtStack (current-frame alloc) slot)) →
+    (∀ slot → fresh-start ≤ slot → slot < next-slot alloc →
+      readLoc s₂ (AtStack (current-frame alloc) slot) ≡
+      readLoc s₁ (AtStack (current-frame alloc) slot)) →
+    (∀ h → readLoc s₂ (AtDynamic h) ≡ readLoc s₁ (AtDynamic h)) →
+    (∀ f k → current-frame alloc ≺ f →
+      readLoc s₂ (AtStack f k) ≡ readLoc s₁ (AtStack f k)) →
+    (vw : ValidAtWF m alloc v loc s₁) → LocsInRegions input-bound fresh-start vw →
+    ValidAtWF m alloc v loc s₂
+
+  validityWF-mem-preserved-in-regions-strong alloc tt loc ib fs s₁ s₂
+    loc-before _ _ _ _ _ _ valid-unit-wf _ = valid-unit-wf
+
+  validityWF-mem-preserved-in-regions-strong alloc (a , b) loc ib fs s₁ s₂
+    loc-before ib≤fs fs≤next ir fr hr ar
+    (valid-pair-wf {fst-loc = fl} {snd-loc = sl} fp sp fb sb slb fv sv)
+    (pl-ir , spl-ir , flocs , slocs) =
+    valid-pair-wf fp' sp' fb sb slb fv' sv'
+    where
+      pl-eq  = loc-mem-eq-from-regions ir fr hr ar pl-ir
+      spl-eq = loc-mem-eq-from-regions ir fr hr ar spl-ir
+      fp'    = trans pl-eq fp
+      sp'    = trans spl-eq sp
+      fv'    = validityWF-mem-preserved-in-regions-strong alloc a fl ib fs s₁ s₂
+                 fb ib≤fs fs≤next ir fr hr ar fv flocs
+      sv'    = validityWF-mem-preserved-in-regions-strong alloc b sl ib fs s₁ s₂
+                 sb ib≤fs fs≤next ir fr hr ar sv slocs
+
+  validityWF-mem-preserved-in-regions-strong alloc
+    .(λ arg → eval body (pair env arg)) loc ib fs s₁ s₂
+    loc-before ib≤fs fs≤next ir fr hr ar
+    (valid-closure-wf {body = body} {env = env} bb
+      {closure-loc = clo} {env-loc = el} {code-loc = cl} ep cp eb cb slb ev bc)
+    (cl-ir , scl-ir , elocs) =
+    valid-closure-wf bb ep' cp' eb cb slb ev' bc
+    where
+      cl-eq  = loc-mem-eq-from-regions ir fr hr ar cl-ir
+      scl-eq = loc-mem-eq-from-regions ir fr hr ar scl-ir
+      ep'    = trans cl-eq ep
+      cp'    = trans scl-eq cp
+      ev'    = validityWF-mem-preserved-in-regions-strong alloc env el ib fs s₁ s₂
+                 eb ib≤fs fs≤next ir fr hr ar ev elocs
+
+  validityWF-mem-preserved-in-regions-strong alloc f loc ib fs s₁ s₂
+    loc-before ib≤fs fs≤next ir fr hr ar (valid-coerce-kind-wf cv) flocs =
+    valid-coerce-kind-wf
+      (validityWF-mem-preserved-in-regions-strong alloc f loc ib fs s₁ s₂
+         loc-before ib≤fs fs≤next ir fr hr ar cv flocs)
+
+  validityWF-mem-preserved-in-regions-strong alloc .(sem-inl a) loc ib fs s₁ s₂
+    loc-before ib≤fs fs≤next ir fr hr ar
+    (valid-inl-wf {a = a} {payload-loc = pl} pp pb slb pv)
+    (sl-ir , plocs) =
+    valid-inl-wf pp' pb slb pv'
+    where
+      sl-eq = loc-mem-eq-from-regions ir fr hr ar sl-ir
+      pp'   = trans sl-eq pp
+      pv'   = validityWF-mem-preserved-in-regions-strong alloc a pl ib fs s₁ s₂
+                pb ib≤fs fs≤next ir fr hr ar pv plocs
+
+  validityWF-mem-preserved-in-regions-strong alloc .(sem-inr b) loc ib fs s₁ s₂
+    loc-before ib≤fs fs≤next ir fr hr ar
+    (valid-inr-wf {b = b} {payload-loc = pl} pp pb slb pv)
+    (sl-ir , plocs) =
+    valid-inr-wf pp' pb slb pv'
+    where
+      sl-eq = loc-mem-eq-from-regions ir fr hr ar sl-ir
+      pp'   = trans sl-eq pp
+      pv'   = validityWF-mem-preserved-in-regions-strong alloc b pl ib fs s₁ s₂
+                pb ib≤fs fs≤next ir fr hr ar pv plocs
+
+  -- μ/ν: defer to the inline stubs above (parallel lemma needed in MuValidity).
+  validityWF-mem-preserved-in-regions-strong alloc x loc ib fs s₁ s₂
+    loc-before _ _ _ _ _ _ (valid-μ-wf wf .x μv) _ =
+    valid-μ-wf wf x (μ-validity-in-regions-stub {input-bound = ib} {fresh-start = fs} μv)
+  validityWF-mem-preserved-in-regions-strong alloc x loc ib fs s₁ s₂
+    loc-before _ _ _ _ _ _ (valid-ν-wf wf .x νv) _ =
+    valid-ν-wf wf x (ν-validity-in-regions-stub {input-bound = ib} {fresh-start = fs} νv)
+
+  -- Primitives: BeforeFrontier alone is sufficient.
+  validityWF-mem-preserved-in-regions-strong alloc _ loc ib fs s₁ s₂
+    loc-before _ _ _ _ _ _ (valid-int-wf bf) _ = valid-int-wf bf
+  validityWF-mem-preserved-in-regions-strong alloc _ loc ib fs s₁ s₂
+    loc-before _ _ _ _ _ _ (valid-float-wf bf) _ = valid-float-wf bf
+  validityWF-mem-preserved-in-regions-strong alloc _ loc ib fs s₁ s₂
+    loc-before _ _ _ _ _ _ (valid-str-wf bf) _ = valid-str-wf bf
+  validityWF-mem-preserved-in-regions-strong alloc _ loc ib fs s₁ s₂
+    loc-before _ _ _ _ _ _ (valid-buffer-wf bf) _ = valid-buffer-wf bf
+
+  -- UNSAFE version (still postulated): no LocsInRegions hypothesis.
+  -- Existing callers (PairWF2's 5 sites) use this. Migrate to the strong
+  -- version above (taking a LocsInRegions witness) to discharge this.
   validityWF-mem-preserved-in-regions :
     ∀ {m A} (alloc : AllocState {FS}) (v : ⟦ A ⟧) (loc : ValueLocation FS)
       (input-bound fresh-start : ℕ)
       (s₁ s₂ : LocState FS) →
-    -- Location is before frontier
     BeforeFrontier alloc loc →
-    -- Regions are properly ordered: input-bound ≤ fresh-start ≤ frontier
     input-bound ≤ fresh-start →
     fresh-start ≤ next-slot alloc →
-    -- Memory agrees on input region [0, input-bound) on current frame
     (∀ slot → slot < input-bound →
       readLoc s₂ (AtStack (current-frame alloc) slot) ≡
       readLoc s₁ (AtStack (current-frame alloc) slot)) →
-    -- Memory agrees on fresh region [fresh-start, frontier) on current frame
     (∀ slot → fresh-start ≤ slot → slot < next-slot alloc →
       readLoc s₂ (AtStack (current-frame alloc) slot) ≡
       readLoc s₁ (AtStack (current-frame alloc) slot)) →
-    -- Memory agrees on heap locations (sub-locations may be on heap)
     (∀ h → readLoc s₂ (AtDynamic h) ≡ readLoc s₁ (AtDynamic h)) →
-    -- Memory agrees on ancestor frames (sub-locations may be there)
     (∀ f k → current-frame alloc ≺ f →
       readLoc s₂ (AtStack f k) ≡ readLoc s₁ (AtStack f k)) →
-    -- Validity transfers
     ValidAtWF m alloc v loc s₁ →
     ValidAtWF m alloc v loc s₂
   validityWF-mem-preserved-in-regions = SMP.!!
