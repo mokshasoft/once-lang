@@ -365,6 +365,15 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
       alloc-after-f : AllocState {FS}
       alloc-after-f = proj₂ (exec-trace f-trace s-after-setup alloc-after-setup)
 
+      -- Intermediate state after store-at-slot fst-slot (first instr of
+      -- middle-trace). Named at where-block scope so Stage B proofs don't
+      -- inline `proj₁/proj₂ (exec-abstract …)` at every use site.
+      s-after-fst-store : LocState FS
+      s-after-fst-store = proj₁ (exec-abstract (store-at-slot fst-slot) s-after-f alloc-after-f)
+
+      alloc-after-fst-store : AllocState {FS}
+      alloc-after-fst-store = proj₂ (exec-abstract (store-at-slot fst-slot) s-after-f alloc-after-f)
+
       s-after-middle : LocState FS
       s-after-middle = proj₁ (exec-trace middle-trace s-after-f alloc-after-f)
 
@@ -463,9 +472,152 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
       -- in oag-* and g-mem-* bridges. Those bridges become identities since
       -- s₁' and s-after-middle are now the same state.
       ------------------------------------------------------------------------
-      postulate
+      ------------------------------------------------------------------------
+      -- f-trace predicates and middle-trace halt-preservation (Stage B):
+      -- relocated here from later in the file so the rec-wf preconditions
+      -- below can use them as real proofs.
+      ------------------------------------------------------------------------
+      f-twa : TraceWritesAbove f-start f-trace
+      f-twa = IRResultAWF.trace-writes-above result-f
+
+      f-twb : TraceWritesBelow (IRResultAWF.max-slot-written result-f) f-trace
+      f-twb = IRResultAWF.trace-writes-below result-f
+
+      f-tnhw : TraceNoHeapWrites f-trace
+      f-tnhw = IRResultAWF.trace-no-heap-writes result-f
+
+      f-tph : TraceWF s-after-setup alloc-after-pair-slots f-trace
+      f-tph = IRResultAWF.trace-twf result-f
+
+      f-tph-runtime : TraceWF s-after-setup alloc-after-setup f-trace
+      f-tph-runtime = TraceWF-frame-eq f-frame-eq f-tph
+        where
+          f-frame-eq : current-frame alloc-after-pair-slots ≡ current-frame alloc-after-setup
+          f-frame-eq = trans refl (sym (exec-trace-preserves-frame setup-trace s alloc))
+
+      not-halted-after-f : halted s-after-f ≡ false
+      not-halted-after-f = exec-trace-preserves-halted-WF f-trace s-after-setup alloc-after-setup
+                             not-halted-after-setup f-tph-runtime
+
+      -- middle-trace's restore-input precondition: backup-slot holds SV-Ptr input-loc
+      -- after f-trace has run (since f writes above f-start > backup-slot) and
+      -- after store-at-slot fst-slot (which doesn't touch backup-slot).
+      -- Sub-lemmas for middle-restore-input-witness. Hoisted to where-scope
+      -- so Agda elaborates each in its own pass and downstream proofs
+      -- (rdi-eq-at-s-after-middle) can share `s-after-fst-store` /
+      -- `alloc-after-fst-store` as opaque names.
+      --
+      -- Wrapped in `abstract` so downstream proofs (especially oag-input-s1'
+      -- at line ~1391) see only the propositional types of the Stage B
+      -- witnesses, not their term bodies. Without this, Agda's elaborator
+      -- normalises through the trans/cong/subst chain during downstream
+      -- typechecking and OOMs under the 7.5 GB ulimit cap.
+      abstract
+        mri-backup-setup-stores : readLoc s-after-setup (AtStack (current-frame alloc) backup-slot) ≡
+                                   just (readReg (regs s) Input1)
+        mri-backup-setup-stores = SMP.RecSchemeSemantics.rec-scheme-stores-input backup-slot s alloc not-halted
+
+        mri-backup-setup-has-input : readLoc s-after-setup (AtStack frame backup-slot) ≡ just (SV-Ptr input-loc)
+        mri-backup-setup-has-input = trans mri-backup-setup-stores (cong just rdi-eq)
+
+        mri-backup<f-start : backup-slot < f-start
+        mri-backup<f-start = ≤-trans (n≤1+n fst-slot) (n≤1+n snd-slot)
+
+        mri-frame-setup-eq : current-frame alloc-after-setup ≡ frame
+        mri-frame-setup-eq = exec-trace-preserves-frame setup-trace s alloc
+
+        mri-f-preserves-backup :
+          readLoc s-after-f (AtStack (current-frame alloc-after-setup) backup-slot) ≡
+          readLoc s-after-setup (AtStack (current-frame alloc-after-setup) backup-slot)
+        mri-f-preserves-backup = exec-trace-preserves-slot-below f-trace s-after-setup alloc-after-setup
+                                   f-start backup-slot f-twa f-tnhw mri-backup<f-start
+
+        mri-f-has-input-at-backup : readLoc s-after-f (AtStack frame backup-slot) ≡ just (SV-Ptr input-loc)
+        mri-f-has-input-at-backup =
+          trans (subst (λ fr → readLoc s-after-f (AtStack fr backup-slot) ≡
+                               readLoc s-after-setup (AtStack fr backup-slot))
+                       mri-frame-setup-eq mri-f-preserves-backup)
+                mri-backup-setup-has-input
+
+        mri-frame-f-eq : current-frame alloc-after-f ≡ frame
+        mri-frame-f-eq = trans (exec-trace-preserves-frame f-trace s-after-setup alloc-after-setup)
+                               mri-frame-setup-eq
+
+        mri-store-fst-preserves-backup :
+          readLoc s-after-fst-store (AtStack frame backup-slot) ≡
+          readLoc s-after-f (AtStack frame backup-slot)
+        mri-store-fst-preserves-backup =
+          subst (λ fr → readLoc s-after-fst-store (AtStack fr backup-slot) ≡
+                        readLoc s-after-f (AtStack fr backup-slot))
+                mri-frame-f-eq
+                (store-at-slot-preserves-other fst-slot backup-slot s-after-f alloc-after-f
+                                                (inj₂ (≤-refl {x = fst-slot})))
+
+        mri-fst-store-has-input : readLoc s-after-fst-store (AtStack frame backup-slot) ≡
+                                   just (SV-Ptr input-loc)
+        mri-fst-store-has-input = trans mri-store-fst-preserves-backup mri-f-has-input-at-backup
+
+        mri-frame-fst-store-eq : current-frame alloc-after-fst-store ≡ frame
+        mri-frame-fst-store-eq = trans (exec-abstract-preserves-frame (store-at-slot fst-slot) s-after-f alloc-after-f)
+                                       mri-frame-f-eq
+
+        mri-backup-witness-at-fst-store :
+          readLoc s-after-fst-store (AtStack (current-frame alloc-after-fst-store) backup-slot) ≡
+          just (SV-Ptr input-loc)
+        mri-backup-witness-at-fst-store =
+          subst (λ fr → readLoc s-after-fst-store (AtStack fr backup-slot) ≡ just (SV-Ptr input-loc))
+                (sym mri-frame-fst-store-eq)
+                mri-fst-store-has-input
+
+        middle-restore-input-witness :
+          InstrWF s-after-fst-store alloc-after-fst-store (restore-input backup-slot)
+        middle-restore-input-witness = (SV-Ptr input-loc , mri-backup-witness-at-fst-store)
+
+        middle-twf : TraceWF s-after-f alloc-after-f middle-trace
+        middle-twf = twf-∷ tt (twf-∷ middle-restore-input-witness twf-[])
+
+        not-halted-after-middle : halted s-after-middle ≡ false
+        not-halted-after-middle = exec-trace-preserves-halted-WF middle-trace s-after-f alloc-after-f
+                                    not-halted-after-f middle-twf
+
+        ----------------------------------------------------------------------
+        -- Stage B: discharge (1) and (2). (3) remains postulated.
+        ----------------------------------------------------------------------
         not-halted-at-s-after-middle : halted s-after-middle ≡ false
-        rdi-eq-at-s-after-middle     : readReg (regs s-after-middle) Input1 ≡ SV-Ptr input-loc
+        not-halted-at-s-after-middle = not-halted-after-middle
+
+        rdi-not-halted-fst-store : halted s-after-fst-store ≡ false
+        rdi-not-halted-fst-store = trans (store-at-slot-halted fst-slot s-after-f alloc-after-f) not-halted-after-f
+
+        rdi-restore-sets-input :
+          readReg (regs (proj₁ (exec-abstract (restore-input backup-slot)
+                                                s-after-fst-store alloc-after-fst-store))) Input1
+            ≡ SV-Ptr input-loc
+        rdi-restore-sets-input =
+          SMP.RecSchemeSemantics.exec-abstract-restore-input-sets-input
+            backup-slot s-after-fst-store alloc-after-fst-store (SV-Ptr input-loc)
+            mri-backup-witness-at-fst-store
+
+        rdi-middle-decomp : exec-trace middle-trace s-after-f alloc-after-f ≡
+                            exec-trace (restore-input backup-slot ∷ []) s-after-fst-store alloc-after-fst-store
+        rdi-middle-decomp = exec-trace-cons (store-at-slot fst-slot) (restore-input backup-slot ∷ [])
+                                            s-after-f alloc-after-f not-halted-after-f
+
+        rdi-restore-single :
+          exec-trace (restore-input backup-slot ∷ []) s-after-fst-store alloc-after-fst-store ≡
+          exec-abstract (restore-input backup-slot) s-after-fst-store alloc-after-fst-store
+        rdi-restore-single = exec-trace-single (restore-input backup-slot) s-after-fst-store alloc-after-fst-store
+                                                rdi-not-halted-fst-store
+
+        rdi-s-middle-eq : s-after-middle ≡
+                          proj₁ (exec-abstract (restore-input backup-slot) s-after-fst-store alloc-after-fst-store)
+        rdi-s-middle-eq = cong proj₁ (trans rdi-middle-decomp rdi-restore-single)
+
+        rdi-eq-at-s-after-middle : readReg (regs s-after-middle) Input1 ≡ SV-Ptr input-loc
+        rdi-eq-at-s-after-middle =
+          trans (cong (λ st → readReg (regs st) Input1) rdi-s-middle-eq) rdi-restore-sets-input
+
+      postulate
         valid-at-s-after-middle      : ValidAtWF mIn alloc-after-f-reclaim x input-loc s-after-middle
 
       s₁' : LocState FS
@@ -615,22 +767,9 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
       s-after-final = proj₁ (exec-trace final-trace s-after-g alloc-after-g)
 
       ------------------------------------------------------------------------
-      -- Trace predicates from sub-IRs
+      -- Trace predicates from sub-IRs (g-only; f-related moved earlier
+      -- in the where-block for Stage B forward references).
       ------------------------------------------------------------------------
-      f-twa : TraceWritesAbove f-start f-trace
-      f-twa = IRResultAWF.trace-writes-above result-f
-
-      f-twb : TraceWritesBelow (IRResultAWF.max-slot-written result-f) f-trace
-      f-twb = IRResultAWF.trace-writes-below result-f
-
-      f-tnhw : TraceNoHeapWrites f-trace
-      f-tnhw = IRResultAWF.trace-no-heap-writes result-f
-
-      -- Note: f-tpc removed in Phase 3
-
-      f-tph : TraceWF s-after-setup alloc-after-pair-slots f-trace
-      f-tph = IRResultAWF.trace-twf result-f
-
       g-twa : TraceWritesAbove reclaim-f g-trace
       g-twa = IRResultAWF.trace-writes-above result-g
 
@@ -645,119 +784,10 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
       g-tph : TraceWF s-after-middle alloc-after-f-reclaim g-trace
       g-tph = IRResultAWF.trace-twf result-g
 
-      ------------------------------------------------------------------------
-      -- Halted preservation and trace equality (Plan 0.13.3 Phase d).
-      -- setup-twf, not-halted-after-setup defined above (before f-exec-result).
-      -- f-tph is at (s-after-setup, alloc-after-pair-slots); we transfer
-      -- to (s-after-setup, alloc-after-setup) ≈ (s-after-setup, alloc) via
-      -- TraceWF-frame-eq. (alloc-after-setup ≡ alloc since setup-trace
-      -- doesn't change alloc.)
-      ------------------------------------------------------------------------
-      f-tph-runtime : TraceWF s-after-setup alloc-after-setup f-trace
-      f-tph-runtime = TraceWF-frame-eq f-frame-eq f-tph
-        where
-          f-frame-eq : current-frame alloc-after-pair-slots ≡ current-frame alloc-after-setup
-          f-frame-eq = trans refl (sym (exec-trace-preserves-frame setup-trace s alloc))
+      -- (f-tph-runtime, not-halted-after-f, middle-restore-input-witness,
+      --  middle-twf, not-halted-after-middle moved earlier in the
+      --  where-block for Stage B forward references.)
 
-      not-halted-after-f : halted s-after-f ≡ false
-      not-halted-after-f = exec-trace-preserves-halted-WF f-trace s-after-setup alloc-after-setup
-                             not-halted-after-setup f-tph-runtime
-
-      -- middle-trace = store-at-slot fst-slot ∷ restore-input backup-slot ∷ [].
-      -- store-at-slot is unconditional. restore-input requires a runtime
-      -- witness `∃ v, readLoc s' (AtStack frame backup-slot) ≡ just v`.
-      -- After setup we wrote `SV-Ptr input-loc` to backup-slot. f-trace
-      -- writes above f-start > backup-slot (so doesn't disturb backup-slot).
-      -- store-at-slot fst-slot also doesn't touch backup-slot. So the
-      -- witness is `(SV-Ptr input-loc , <slot still has SV-Ptr input-loc>)`.
-      -- Plan 0.13.3 Phase d: discharged via rec-scheme-stores-input
-      -- (setup-trace) + exec-trace-preserves-slot-below (f-trace, since
-      -- backup-slot < f-start) + store-at-slot-preserves-other (fst-slot
-      -- ≠ backup-slot).
-      middle-restore-input-witness :
-        let s-after-fst-store = proj₁ (exec-abstract (store-at-slot fst-slot) s-after-f alloc-after-f)
-            alloc-after-fst-store = proj₂ (exec-abstract (store-at-slot fst-slot) s-after-f alloc-after-f)
-        in InstrWF s-after-fst-store alloc-after-fst-store (restore-input backup-slot)
-      middle-restore-input-witness =
-        let s-after-fst-store = proj₁ (exec-abstract (store-at-slot fst-slot) s-after-f alloc-after-f)
-            alloc-after-fst-store = proj₂ (exec-abstract (store-at-slot fst-slot) s-after-f alloc-after-f)
-            -- Step 1: After setup, backup-slot holds SV-Ptr input-loc.
-            setup-stores : readLoc s-after-setup (AtStack (current-frame alloc) backup-slot) ≡
-                           just (readReg (regs s) Input1)
-            setup-stores = SMP.RecSchemeSemantics.rec-scheme-stores-input backup-slot s alloc not-halted
-            setup-has-input : readLoc s-after-setup (AtStack frame backup-slot) ≡ just (SV-Ptr input-loc)
-            setup-has-input = trans setup-stores (cong just rdi-eq)
-            -- Step 2: f-trace preserves backup-slot (writes above f-start > backup-slot).
-            backup<f-start : backup-slot < f-start
-            backup<f-start = ≤-trans (n≤1+n fst-slot) (n≤1+n snd-slot)
-            frame-setup-eq : current-frame alloc-after-setup ≡ frame
-            frame-setup-eq = exec-trace-preserves-frame setup-trace s alloc
-            f-preserves-backup :
-              readLoc s-after-f (AtStack (current-frame alloc-after-setup) backup-slot) ≡
-              readLoc s-after-setup (AtStack (current-frame alloc-after-setup) backup-slot)
-            f-preserves-backup = exec-trace-preserves-slot-below f-trace s-after-setup alloc-after-setup
-                                   f-start backup-slot f-twa f-tnhw backup<f-start
-            f-has-input : readLoc s-after-f (AtStack frame backup-slot) ≡ just (SV-Ptr input-loc)
-            f-has-input = trans (subst (λ fr → readLoc s-after-f (AtStack fr backup-slot) ≡
-                                               readLoc s-after-setup (AtStack fr backup-slot))
-                                       frame-setup-eq f-preserves-backup)
-                                setup-has-input
-            -- Step 3: store-at-slot fst-slot preserves backup-slot (backup-slot < fst-slot).
-            backup<fst : backup-slot < fst-slot
-            backup<fst = ≤-refl
-            frame-f-eq : current-frame alloc-after-f ≡ frame
-            frame-f-eq = trans (exec-trace-preserves-frame f-trace s-after-setup alloc-after-setup)
-                               frame-setup-eq
-            store-fst-preserves-backup :
-              readLoc s-after-fst-store (AtStack frame backup-slot) ≡
-              readLoc s-after-f (AtStack frame backup-slot)
-            store-fst-preserves-backup =
-              subst (λ fr → readLoc s-after-fst-store (AtStack fr backup-slot) ≡
-                            readLoc s-after-f (AtStack fr backup-slot))
-                    frame-f-eq
-                    (store-at-slot-preserves-other fst-slot backup-slot s-after-f alloc-after-f
-                                                    (inj₂ backup<fst))
-            fst-store-has-input : readLoc s-after-fst-store (AtStack frame backup-slot) ≡
-                                  just (SV-Ptr input-loc)
-            fst-store-has-input = trans store-fst-preserves-backup f-has-input
-            -- Step 4: convert frame to (current-frame alloc-after-fst-store).
-            frame-fst-store-eq : current-frame alloc-after-fst-store ≡ frame
-            frame-fst-store-eq = trans (exec-abstract-preserves-frame (store-at-slot fst-slot) s-after-f alloc-after-f)
-                                       frame-f-eq
-            final-eq : readLoc s-after-fst-store (AtStack (current-frame alloc-after-fst-store) backup-slot) ≡
-                       just (SV-Ptr input-loc)
-            final-eq = subst (λ fr → readLoc s-after-fst-store (AtStack fr backup-slot) ≡ just (SV-Ptr input-loc))
-                             (sym frame-fst-store-eq)
-                             fst-store-has-input
-        in (SV-Ptr input-loc , final-eq)
-
-      middle-twf : TraceWF s-after-f alloc-after-f middle-trace
-      middle-twf = twf-∷ tt (twf-∷ middle-restore-input-witness twf-[])
-
-      not-halted-after-middle : halted s-after-middle ≡ false
-      not-halted-after-middle = exec-trace-preserves-halted-WF middle-trace s-after-f alloc-after-f
-                                  not-halted-after-f middle-twf
-
-      -- POSTULATE — last open obligation in PairWF2.
-      --
-      -- g-tph (from result-g) gives TraceWF s₁' alloc-after-f-reclaim g-trace,
-      -- but at runtime g-trace executes from (s-after-middle, alloc-after-middle).
-      -- The state delta is: s-after-middle has stack[fst-slot]=SV-Ptr fst-loc
-      -- (from middle-trace's store-at-slot), s₁' does not. The alloc delta is
-      -- next-slot only; current-frame agrees (see oag-frame-eq below).
-      --
-      -- Discharge requires one of:
-      --   (a) Region-aware TraceWF state-transfer: TraceWF s alloc tr at one
-      --       state transfers to s' that agrees with s on the read-region of
-      --       tr (g-trace operates above reclaim-f > fst-slot). Sketched in
-      --       SMPrimitives but blocked on load-indirect/IndirectDisjoint
-      --       reach analysis.
-      --   (b) Full hoist of g-exec-result to (s-after-middle, alloc-after-f-
-      --       reclaim) and TraceWF-frame-eq bridge to alloc-after-middle.
-      --       Requires reordering ~50 lines (middle-twf prerequisites must
-      --       precede rec-wf for g) and updating ~30 downstream consumers of
-      --       result-g's trace-correct / slot-monotone / etc that currently
-      --       bind at s₁'.
       -- Plan 0.13.3 Phase d option b: bridge via TraceWF-frame-eq.
       -- After state-only hoist, g-tph is at (s-after-middle, alloc-after-f-reclaim).
       -- alloc-after-f-reclaim and alloc-after-middle agree on current-frame
@@ -1584,12 +1614,8 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
               oag-s2-output
 
       -- Decompose middle-trace: store-at-slot fst-slot ∷ restore-input backup-slot ∷ []
-      s-after-fst-store : LocState FS
-      s-after-fst-store = proj₁ (exec-abstract (store-at-slot fst-slot) s-after-f alloc-after-f)
-
-      alloc-after-fst-store : AllocState {FS}
-      alloc-after-fst-store = proj₂ (exec-abstract (store-at-slot fst-slot) s-after-f alloc-after-f)
-
+      -- s-after-fst-store / alloc-after-fst-store are defined earlier in
+      -- this where-block (alongside s-after-f / alloc-after-f).
       not-halted-after-fst-store : halted s-after-fst-store ≡ false
       not-halted-after-fst-store = trans (store-at-slot-halted fst-slot s-after-f alloc-after-f) not-halted-after-f
 
