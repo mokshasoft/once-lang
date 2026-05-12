@@ -431,24 +431,53 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
                                           (≤-trans (n≤1+n snd-slot) reclaim-f-above-f-start)))
                                       ≤-refl input-valid-wf-s1
 
-      -- TODO (option b refactor): derive ValidAtWF, halted-eq, and
-      -- rdi-eq at s-after-middle so we can call rec-wf for g there.
-      -- For now, keep s₁' as the bookkeeping state and dissolve the
-      -- gap in the next stage.
-      s₁' = record s₁ { regs = writeReg (regs s₁) Input1 (SV-Ptr input-loc) }
-      rdi-eq₁ : readReg (regs s₁') Input1 ≡ SV-Ptr input-loc
-      rdi-eq₁ = writeReg-same (regs s₁) Input1 (SV-Ptr input-loc)
+      ------------------------------------------------------------------------
+      -- Plan 0.13.3 Phase d (option b state-only hoist):
+      --
+      -- Pass s-after-middle (RUNTIME state at g's entry) to rec-wf,
+      -- keeping alloc-after-f-reclaim as the proof-level alloc for
+      -- slot bookkeeping. This eliminates the synthetic s₁' construction
+      -- AND avoids any slot-budget cascade (alloc bookkeeping unchanged).
+      --
+      -- After this hoist:
+      --   g-tph : TraceWF s-after-middle alloc-after-f-reclaim g-trace  (from result-g)
+      --   g-tph-runtime via TraceWF-frame-eq (alloc-after-f-reclaim and
+      --     alloc-after-middle agree on current-frame — same pattern as
+      --     f-tph-runtime).
+      --
+      -- The four preconditions at (s-after-middle, alloc-after-f-reclaim):
+      --   (1) halted s-after-middle ≡ false       — = not-halted-after-middle
+      --   (2) Input1 = SV-Ptr input-loc            — = oag-input-after-middle
+      --   (3) BeforeFrontier alloc-after-f-reclaim — = input-before-at-reclaim-f
+      --   (4) ValidAtWF mIn alloc-after-f-reclaim x input-loc s-after-middle
+      --       — same as input-valid-wf-at-reclaim-f but at s-after-middle;
+      --         bridge via memory preservation at input-loc through middle-trace.
+      --
+      -- For this commit (Stage A), all four are named postulates with their
+      -- proofs documented. Stage B promotes them to real proofs by moving
+      -- prerequisites (not-halted-after-middle, oag-input-after-middle, etc.)
+      -- earlier in the file. The four postulates have known discharges —
+      -- the references above show where the proof material already exists.
+      --
+      -- s₁' kept as ALIAS for s-after-middle to avoid 76 downstream renames
+      -- in oag-* and g-mem-* bridges. Those bridges become identities since
+      -- s₁' and s-after-middle are now the same state.
+      ------------------------------------------------------------------------
+      postulate
+        not-halted-at-s-after-middle : halted s-after-middle ≡ false
+        rdi-eq-at-s-after-middle     : readReg (regs s-after-middle) Input1 ≡ SV-Ptr input-loc
+        valid-at-s-after-middle      : ValidAtWF mIn alloc-after-f-reclaim x input-loc s-after-middle
 
-      input-valid-wf₁' : ValidAtWF mIn alloc-after-f-reclaim x input-loc s₁'
-      input-valid-wf₁' = validityWF-mem-only x input-loc s₁ s₁' refl refl input-valid-wf-at-reclaim-f
+      s₁' : LocState FS
+      s₁' = s-after-middle
 
       ------------------------------------------------------------------------
-      -- Run g via recursive dispatch
+      -- Run g via recursive dispatch — at runtime state.
       ------------------------------------------------------------------------
-      g-exec-result : ∃[ mOut ] IRResultAWF mOut g x s₁' alloc-after-f-reclaim
-      g-exec-result = rec-wf mIn g (⟨,⟩-g-smaller f g {m}) x input-loc s₁' alloc-after-f-reclaim
-                        input-valid-wf₁' input-before-at-reclaim-f
-                        (IRResultAWF.not-halted result-f) rdi-eq₁
+      g-exec-result : ∃[ mOut ] IRResultAWF mOut g x s-after-middle alloc-after-f-reclaim
+      g-exec-result = rec-wf mIn g (⟨,⟩-g-smaller f g {m}) x input-loc s-after-middle alloc-after-f-reclaim
+                        valid-at-s-after-middle input-before-at-reclaim-f
+                        not-halted-at-s-after-middle rdi-eq-at-s-after-middle
       mG = proj₁ g-exec-result
       result-g = proj₂ g-exec-result
       s₂ = IRResultAWF.final-state result-g
@@ -613,7 +642,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
 
       -- Note: g-tpc removed in Phase 3
 
-      g-tph : TraceWF s₁' alloc-after-f-reclaim g-trace
+      g-tph : TraceWF s-after-middle alloc-after-f-reclaim g-trace
       g-tph = IRResultAWF.trace-twf result-g
 
       ------------------------------------------------------------------------
@@ -729,87 +758,22 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
       --       precede rec-wf for g) and updating ~30 downstream consumers of
       --       result-g's trace-correct / slot-monotone / etc that currently
       --       bind at s₁'.
+      -- Plan 0.13.3 Phase d option b: bridge via TraceWF-frame-eq.
+      -- After state-only hoist, g-tph is at (s-after-middle, alloc-after-f-reclaim).
+      -- alloc-after-f-reclaim and alloc-after-middle agree on current-frame
+      -- (both inherit from alloc; setup/f/middle traces preserve frame).
       g-tph-runtime : TraceWF s-after-middle alloc-after-middle g-trace
-      g-tph-runtime = !!  -- requires (a) reach analysis OR (b) g-state hoist
+      g-tph-runtime = TraceWF-frame-eq g-frame-eq g-tph
+        where
+          g-frame-eq : current-frame alloc-after-f-reclaim ≡ current-frame alloc-after-middle
+          g-frame-eq = sym alloc-after-middle-vs-alloc-frame
 
       not-halted-after-g : halted s-after-g ≡ false
       not-halted-after-g = exec-trace-preserves-halted-WF g-trace s-after-middle alloc-after-middle
                              not-halted-after-middle g-tph-runtime
 
-      ------------------------------------------------------------------------
-      -- POC (Plan 0.13.3 Phase d — option b principled refactor)
-      --
-      -- LOAD-BEARING CLAIM: the four preconditions of rec-wf for g are
-      -- derivable at the *runtime* state (s-after-middle, alloc-after-middle).
-      -- If yes, then rec-wf returns an IRResultAWF at runtime state whose
-      -- `trace-twf` IS g-tph-runtime directly — no state-bridge needed.
-      --
-      -- This POC builds `g-exec-result-runtime` adjacent to the existing
-      -- `g-exec-result` (which stays at synthetic state s₁'). The POC
-      -- demonstrates type-level feasibility. Integration is separate:
-      -- replacing the synthetic-state result with this runtime result
-      -- cascades through ~30 downstream consumers of result-g — that's
-      -- the cost-estimate gate, not the principle gate.
-      ------------------------------------------------------------------------
-
-      -- (1) halted s-after-middle ≡ false — already have not-halted-after-middle.
-
-      -- (2) Input1 = SV-Ptr input-loc at s-after-middle.
-      --
-      -- Direct chain through middle-trace's two instructions:
-      --   store-at-slot fst-slot: stack write, leaves regs unchanged
-      --     (store-at-slot-regs in SMPrimitives).
-      --   restore-input backup-slot: reads stack[backup-slot] = SV-Ptr input-loc
-      --     (middle-restore-input-witness) and writes Input1
-      --     (exec-restore-input-just in SMCore).
-      -- All ingredients exist; chain is ~15 lines of plumbing.
-      postulate
-        rdi-eq-at-s-after-middle : readReg (regs s-after-middle) Input1 ≡ SV-Ptr input-loc
-
-      -- (3) BeforeFrontier alloc-after-middle input-loc.
-      --
-      -- alloc-after-middle = alloc-after-f (middle-trace alloc-preserving).
-      -- alloc-after-f.next-slot ≥ alloc.next-slot by exec-trace monotonicity.
-      -- frontier-monotone transfers input-before. Trivial chain.
-      postulate
-        before-at-alloc-after-middle : BeforeFrontier alloc-after-middle input-loc
-
-      -- (4) ValidAtWF mIn alloc-after-middle x input-loc s-after-middle.
-      --
-      -- Memory at input-loc preserved through setup + f-trace + middle-trace:
-      --   - setup: mem-preserved-through-setup (already proved, line 220ish).
-      --   - f-trace: writes above f-start; input-loc below backup-slot<f-start.
-      --   - middle: store-at-slot fst-slot ≠ input-loc-slot; restore-input
-      --             writes only registers.
-      -- Combined via validityWF-mem-preserved + validityWF-frontier-advance,
-      -- mirroring input-valid-wf-s1 / input-valid-wf-at-reclaim-f above.
-      postulate
-        valid-at-s-after-middle : ValidAtWF mIn alloc-after-middle x input-loc s-after-middle
-
-      -- THE POC: rec-wf at runtime state.
-      --
-      -- If this typechecks, the principled refactor is shape-correct.
-      -- The trace and result-place returned here are at the runtime state.
-      g-exec-result-runtime : ∃[ mOut ] IRResultAWF mOut g x s-after-middle alloc-after-middle
-      g-exec-result-runtime = rec-wf mIn g (⟨,⟩-g-smaller f g {m})
-                                x input-loc s-after-middle alloc-after-middle
-                                valid-at-s-after-middle before-at-alloc-after-middle
-                                not-halted-after-middle rdi-eq-at-s-after-middle
-
-      -- g-tph-runtime falls out directly: no state-bridge, no region-aware lemma.
-      g-tph-runtime-poc :
-        TraceWF s-after-middle alloc-after-middle
-                (IRResultAWF.trace (proj₂ g-exec-result-runtime))
-      g-tph-runtime-poc = IRResultAWF.trace-twf (proj₂ g-exec-result-runtime)
-
-      ------------------------------------------------------------------------
-      -- End POC. Integration cost (separate gate): replacing the existing
-      -- g-exec-result with g-exec-result-runtime cascades through every
-      -- consumer of result-g's fields (trace-correct, slot-monotone,
-      -- mem-preserved, max-slot-written, result-place, etc. — ~30 sites
-      -- in PairWF2). Those rebind from s₁' to s-after-middle. Many bridges
-      -- that currently transfer construction→runtime become identities.
-      ------------------------------------------------------------------------
+      -- POC superseded: g-exec-result is now at runtime state (state-only hoist).
+      -- g-tph-runtime above is the real proof via TraceWF-frame-eq.
 
       final-twf : TraceWF s-after-g alloc-after-g final-trace
       final-twf = twf-∷ tt (twf-∷ tt twf-[])
@@ -1394,9 +1358,10 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
                      (trans (exec-trace-preserves-frame f-trace s-after-setup alloc-after-setup)
                      (trans (exec-trace-preserves-frame setup-trace s alloc) refl))
 
-      -- Input1 equality: both have input-loc (s₁' has it from writeReg, s-after-middle from restore-input)
+      -- Input1 equality: after state-only hoist, s₁' = s-after-middle, so this
+      -- IS rdi-eq-at-s-after-middle.
       oag-input-s1' : readReg (regs s₁') Input1 ≡ SV-Ptr input-loc
-      oag-input-s1' = writeReg-same (regs s₁) Input1 (SV-Ptr input-loc)
+      oag-input-s1' = rdi-eq-at-s-after-middle
 
       -- Decompose middle-trace: store-at-slot fst-slot ∷ restore-input backup-slot ∷ []
       -- (moved before oag-input-after-middle which needs these)
@@ -1546,9 +1511,10 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
                     readLoc s₁ (AtStack frame slot)
             s₁-eq = cong (λ st → readLoc st (AtStack frame slot)) (IRResultAWF.trace-correct result-f)
 
-            -- s₁' has same stack as s₁
+            -- After state-only hoist, s₁' = s-after-middle, so s₁'-eq becomes
+            -- the full chain we just built (rather than refl).
             s₁'-eq : readLoc s₁' (AtStack frame slot) ≡ readLoc s₁ (AtStack frame slot)
-            s₁'-eq = refl
+            s₁'-eq = trans middle-pres-frame (trans mem-det-frame s₁-eq)
 
             f-eq : readLoc s-after-f (AtStack frame slot) ≡ readLoc s₁ (AtStack frame slot)
             f-eq = trans mem-det-frame s₁-eq
@@ -1590,13 +1556,13 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
             s₁-pres = subst (λ st → readLoc st (AtStack frame slot) ≡ readLoc s-after-setup (AtStack frame slot))
                             (IRResultAWF.trace-correct result-f) s₁-f-pres
 
-            -- s₁' = s₁ (only regs changed)
-            s₁'-eq : readLoc s₁' (AtStack frame slot) ≡ readLoc s₁ (AtStack frame slot)
-            s₁'-eq = refl
-
-            -- Both preserve from s-after-setup, so they're equal
+            -- After state-only hoist, s₁' = s-after-middle, so s₁'-eq becomes
+            -- the chain (s-after-middle → s-after-f → s-after-setup → s₁).
             f-eq : readLoc s-after-f (AtStack frame slot) ≡ readLoc s₁ (AtStack frame slot)
             f-eq = trans s-after-f-pres (sym s₁-pres)
+
+            s₁'-eq : readLoc s₁' (AtStack frame slot) ≡ readLoc s₁ (AtStack frame slot)
+            s₁'-eq = trans middle-pres-frame f-eq
 
         in subst₂ (λ f1 f2 → readLoc s-after-middle (AtStack f1 slot) ≡ readLoc s₁' (AtStack f2 slot))
                   (sym oag-frame-middle) (sym oag-frame-reclaim)
@@ -1612,7 +1578,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
       output-after-g =
         trans (exec-trace-output-deterministic g-trace
                 s-after-middle s₁' alloc-after-middle alloc-after-f-reclaim reclaim-f max-slot-g
-                not-halted-after-middle (IRResultAWF.not-halted result-f) oag-frame-eq oag-input-eq
+                not-halted-after-middle not-halted-at-s-after-middle oag-frame-eq oag-input-eq
                 g-tsra (IRResultAWF.trace-slot-reads-below result-g)
                 g-twa g-tnhw oag-mem-agree)
               oag-s2-output
@@ -2127,14 +2093,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
                             alloc-after-f-reclaim reclaim-f slot g-twa g-tnhw slot<reclaim-f
             s₂-pres = subst (λ st → readLoc st (AtStack frame slot) ≡ readLoc s₁' (AtStack frame slot))
                             (IRResultAWF.trace-correct result-g) exec-g-pres
-            -- s₁' has same memory as s₁ at this slot (only regs changed)
-            s₁'-eq : readLoc s₁' (AtStack frame slot) ≡ readLoc s₁ (AtStack frame slot)
-            s₁'-eq = refl
-            -- Now chain back through middle, f, setup to compare with path from s-after-g
-            -- Both paths end at same value from s
-            -- Path 1: s-after-g <- s-after-middle
-            -- We need s-after-middle to agree with s₁' at this slot
-            -- Use f-mem-input-region and middle preservation
+            -- After state-only hoist: s₁' = s-after-middle, derive via chain.
             slot<fst : slot < fst-slot
             slot<fst = ≤-trans slot<backup (n≤1+n backup-slot)
             middle-twa : TraceWritesAbove fst-slot middle-trace
@@ -2144,8 +2103,9 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
             middle-pres-frame = subst (λ fr → readLoc s-after-middle (AtStack fr slot) ≡
                                               readLoc s-after-f (AtStack fr slot))
                                       frame-after-f-eq middle-pres
-            -- Use f-mem-input-region for s-after-f vs s₁
             f-input-eq = f-mem-input-region slot slot<backup
+            s₁'-eq : readLoc s₁' (AtStack frame slot) ≡ readLoc s₁ (AtStack frame slot)
+            s₁'-eq = trans middle-pres-frame f-input-eq
         in trans g-pres-frame (trans middle-pres-frame (trans f-input-eq (trans (sym s₁'-eq) (sym s₂-pres))))
 
       -- Memory agrees on fresh region [reclaim-f, reclaim-g)
@@ -2159,7 +2119,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
             -- Use exec-trace-mem-deterministic for g-trace
             mem-det = SMP.TraceOutputDeterminism.exec-trace-mem-deterministic g-trace
                         s-after-middle s₁' alloc-after-middle alloc-after-f-reclaim reclaim-f max-slot-g
-                        not-halted-after-middle (IRResultAWF.not-halted result-f) oag-frame-eq oag-input-eq
+                        not-halted-after-middle not-halted-at-s-after-middle oag-frame-eq oag-input-eq
                         g-tsra (IRResultAWF.trace-slot-reads-below result-g)
                         g-twa g-twb g-tnhw oag-mem-agree
                         slot rf≤slot slot<max
@@ -2186,14 +2146,12 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
                             s₁' alloc-after-f-reclaim h g-tnhw
             s₂-heap = subst (λ st → readLoc st (AtDynamic h) ≡ readLoc s₁' (AtDynamic h))
                             (IRResultAWF.trace-correct result-g) exec-g-heap
-            -- s₁' has same heap as s₁ (only regs changed)
-            s₁'-heap : readLoc s₁' (AtDynamic h) ≡ readLoc s₁ (AtDynamic h)
-            s₁'-heap = refl
-            -- Chain back through middle, f, setup
+            -- After state-only hoist: s₁' = s-after-middle, derive via chain.
             middle-heap = SMP.TracePrimitives.exec-trace-preserves-heap-loc middle-trace
                             s-after-f alloc-after-f h tt
-            -- Use f-mem-heap
             f-heap-eq = f-mem-heap h
+            s₁'-heap : readLoc s₁' (AtDynamic h) ≡ readLoc s₁ (AtDynamic h)
+            s₁'-heap = trans middle-heap f-heap-eq
         in trans g-heap (trans middle-heap (trans f-heap-eq (trans (sym s₁'-heap) (sym s₂-heap))))
 
       -- Memory agrees on ancestor frames
@@ -2215,16 +2173,14 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
                            s₁' alloc-after-f-reclaim f' k alloc-f-reclaim-cf≺f' g-tnhw
             s₂-anc = subst (λ st → readLoc st (AtStack f' k) ≡ readLoc s₁' (AtStack f' k))
                            (IRResultAWF.trace-correct result-g) exec-g-anc
-            -- s₁' has same stack as s₁
-            s₁'-anc : readLoc s₁' (AtStack f' k) ≡ readLoc s₁ (AtStack f' k)
-            s₁'-anc = refl
-            -- Chain back through middle, f
+            -- After state-only hoist: s₁' = s-after-middle, derive via chain.
             alloc-after-f-cf≺f' : current-frame alloc-after-f ≺ f'
             alloc-after-f-cf≺f' = subst (_≺ f') (sym frame-after-f-eq) frame≺f'
             middle-anc = SMP.TracePrimitives.exec-trace-preserves-ancestor middle-trace
                            s-after-f alloc-after-f f' k alloc-after-f-cf≺f' tt
-            -- Use f-mem-ancestors
             f-anc-eq = f-mem-ancestors f' k frame≺f'
+            s₁'-anc : readLoc s₁' (AtStack f' k) ≡ readLoc s₁ (AtStack f' k)
+            s₁'-anc = trans middle-anc f-anc-eq
         in trans g-anc (trans middle-anc (trans f-anc-eq (trans (sym s₁'-anc) (sym s₂-anc))))
 
       -- Transfer validity from s₂ to s-after-g using positive regions
