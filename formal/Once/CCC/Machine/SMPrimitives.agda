@@ -457,6 +457,114 @@ InstrPreservesFrame instr-save-closure-reg   = ⊤
 InstrPreservesFrame (instr-case-on-tag _ _)  = ⊤
 InstrPreservesFrame (instr-alloc-heap _)     = ⊤
 
+------------------------------------------------------------------------
+-- Plan 0.14 Phase A.2: positive effect-class classification.
+--
+-- One classification per instruction (`instr-effect`). Lemmas then
+-- pattern-match on effect-classes rather than re-classifying each
+-- instruction along negative axes ("doesn't bump heap-ref", "doesn't
+-- write stack", …). Adding a new instruction = one new line in
+-- `instr-effect`. Adding a new state field = one new
+-- `EffectPreservesXxx` defined per existing effect-class.
+--
+-- See plans/0.14-heap-only-allocation.md for the design rationale.
+------------------------------------------------------------------------
+
+data InstrEffect : Set where
+  eff-reg-only       : InstrEffect  -- writes a register, nothing else.
+                                    --   mov-*, lea-slot, load-tag-lit,
+                                    --   load-const, load-code-addr,
+                                    --   save-closure-reg.
+  eff-stack-read     : InstrEffect  -- reads stack[slot] into a register;
+                                    -- may halt on uninitialised slot.
+                                    --   load-from-slot, restore-input,
+                                    --   worklist-pop.
+  eff-stack-write    : InstrEffect  -- writes a register into a stack slot.
+                                    --   store-at-slot, worklist-push,
+                                    --   worklist-init.
+  eff-stack-frontier : InstrEffect  -- modifies next-slot (alloc/dealloc/reclaim).
+                                    --   instr-alloc-stack, -dealloc-stack,
+                                    --   -reclaim-to.
+  eff-heap-alloc     : InstrEffect  -- bumps next-heap-ref; writes a fresh
+                                    -- heap pointer to Output.
+                                    --   instr-alloc-heap.
+  eff-heap-indirect  : InstrEffect  -- load/store via *Input1 (pointer can
+                                    -- be stack or heap at runtime; the
+                                    -- abstract semantics inspects it).
+                                    --   load-indirect, load-indirect-suc,
+                                    --   store-indirect, store-indirect-suc.
+  eff-frame-op       : InstrEffect  -- push/pop frame.
+                                    --   instr-push-frame, instr-pop-frame.
+  eff-control        : InstrEffect  -- jump / sigop / case-dispatch.
+                                    --   instr-call-closure, instr-sigop,
+                                    --   instr-case-on-tag.
+
+instr-effect : AbstractInstr → InstrEffect
+instr-effect mov-to-output           = eff-reg-only
+instr-effect mov-input2-to-output    = eff-reg-only
+instr-effect mov-to-input            = eff-reg-only
+instr-effect mov-output-to-input2    = eff-reg-only
+instr-effect (load-from-slot _)      = eff-stack-read
+instr-effect (restore-input _)       = eff-stack-read
+instr-effect (worklist-pop _)        = eff-stack-read
+instr-effect (store-at-slot _)       = eff-stack-write
+instr-effect (worklist-push _)       = eff-stack-write
+instr-effect (worklist-init _)       = eff-stack-write
+instr-effect (worklist-check _)      = eff-reg-only   -- writes Output only
+instr-effect (lea-slot _)            = eff-reg-only
+instr-effect load-indirect           = eff-heap-indirect
+instr-effect load-indirect-suc       = eff-heap-indirect
+instr-effect store-indirect          = eff-heap-indirect
+instr-effect store-indirect-suc      = eff-heap-indirect
+instr-effect (instr-alloc-stack _)   = eff-stack-frontier
+instr-effect (instr-dealloc-stack _) = eff-stack-frontier
+instr-effect (instr-reclaim-to _)    = eff-stack-frontier
+instr-effect (instr-push-frame _)    = eff-frame-op
+instr-effect instr-pop-frame         = eff-frame-op
+instr-effect instr-call-closure      = eff-control
+instr-effect (instr-sigop _)         = eff-control
+instr-effect (instr-load-const _ _)  = eff-reg-only
+instr-effect (instr-load-tag-lit _)  = eff-reg-only
+instr-effect (instr-load-code-addr _) = eff-reg-only
+instr-effect instr-save-closure-reg  = eff-reg-only
+instr-effect (instr-case-on-tag _ _) = eff-control
+instr-effect (instr-alloc-heap _)    = eff-heap-alloc
+
+-- Effect-class preservation predicates. Each axis is one row per effect.
+-- Adding a new alloc kind (e.g. eff-reg-alloc) requires extending each
+-- predicate with a single row; instruction-level classifications stay
+-- untouched.
+
+-- "Effects that do NOT bump next-heap-ref."
+EffectPreservesNextHeapRef : InstrEffect → Set
+EffectPreservesNextHeapRef eff-reg-only       = ⊤
+EffectPreservesNextHeapRef eff-stack-read     = ⊤
+EffectPreservesNextHeapRef eff-stack-write    = ⊤
+EffectPreservesNextHeapRef eff-stack-frontier = ⊤
+EffectPreservesNextHeapRef eff-heap-alloc     = ⊥
+  where open import Data.Empty using (⊥)
+EffectPreservesNextHeapRef eff-heap-indirect  = ⊤   -- writes via pointer, doesn't bump counter
+EffectPreservesNextHeapRef eff-frame-op       = ⊤
+EffectPreservesNextHeapRef eff-control        = ⊤   -- today's controls don't allocate;
+                                                    -- revisit if a future SigOp bumps heap.
+
+-- "Effects whose output state is determined by (s, current-frame alloc) alone."
+-- Required by exec-abstract-same-frame and exec-abstract-state-frame-eq:
+-- they conclude state equality given same current-frame, which fails if
+-- the output state pulls next-heap-ref or next-slot into a register.
+EffectStateOnlyDependsOnFrame : InstrEffect → Set
+EffectStateOnlyDependsOnFrame eff-reg-only       = ⊤
+EffectStateOnlyDependsOnFrame eff-stack-read     = ⊤
+EffectStateOnlyDependsOnFrame eff-stack-write    = ⊤
+EffectStateOnlyDependsOnFrame eff-stack-frontier = ⊤   -- alloc.next-slot changes
+                                                       -- but LocState (proj₁) does not.
+EffectStateOnlyDependsOnFrame eff-heap-alloc     = ⊥   -- writes SV-Ptr (AtDynamic …)
+                                                       -- with the new heap-ref to Output.
+  where open import Data.Empty using (⊥)
+EffectStateOnlyDependsOnFrame eff-heap-indirect  = ⊤
+EffectStateOnlyDependsOnFrame eff-frame-op       = ⊤
+EffectStateOnlyDependsOnFrame eff-control        = ⊤
+
 -- What memory location does this instruction read?
 -- Returns nothing if instruction doesn't read memory.
 instr-reads-mem : AbstractInstr → LocState FS → AllocState {FS} → Maybe (ValueLocation FS)
@@ -802,44 +910,49 @@ module InstrPrimitives {FS : FrameSemantics} where
     just-injective : ∀ {A : Set} {x y : A} → just x ≡ just y → x ≡ y
     just-injective refl = refl
 
+  -- Plan 0.14 Phase A.2: restricted to effects whose output state is
+  -- determined by (s, current-frame alloc) — i.e., not eff-heap-alloc
+  -- (which reads next-heap-ref into the output). The instr-alloc-heap
+  -- clause has an absurd precondition.
   exec-abstract-same-frame : ∀ (i : AbstractInstr) (s : LocState FS)
     (alloc₁ alloc₂ : AllocState {FS}) →
+    EffectStateOnlyDependsOnFrame (instr-effect i) →
     current-frame alloc₁ ≡ current-frame alloc₂ →
     proj₁ (exec-abstract i s alloc₁) ≡ proj₁ (exec-abstract i s alloc₂)
   -- Instructions that don't use alloc at all
-  exec-abstract-same-frame mov-to-output s alloc₁ alloc₂ _ = refl
-  exec-abstract-same-frame mov-input2-to-output s alloc₁ alloc₂ _ = refl
-  exec-abstract-same-frame mov-to-input s alloc₁ alloc₂ _ = refl
-  exec-abstract-same-frame mov-output-to-input2 s alloc₁ alloc₂ _ = refl
+  exec-abstract-same-frame mov-to-output s alloc₁ alloc₂ _ _ = refl
+  exec-abstract-same-frame mov-input2-to-output s alloc₁ alloc₂ _ _ = refl
+  exec-abstract-same-frame mov-to-input s alloc₁ alloc₂ _ _ = refl
+  exec-abstract-same-frame mov-output-to-input2 s alloc₁ alloc₂ _ _ = refl
   -- Plan 0.13.2: case-split on sv-as-loc; both branches independent of alloc.
-  exec-abstract-same-frame load-indirect s alloc₁ alloc₂ _
+  exec-abstract-same-frame load-indirect s alloc₁ alloc₂ _ _
     with sv-as-loc (readReg (regs s) Input1)
   ... | just loc with readLoc s loc
   ...   | just _  = refl
   ...   | nothing = refl
-  exec-abstract-same-frame load-indirect s alloc₁ alloc₂ _ | nothing = refl
-  exec-abstract-same-frame load-indirect-suc s alloc₁ alloc₂ _
+  exec-abstract-same-frame load-indirect s alloc₁ alloc₂ _ _ | nothing = refl
+  exec-abstract-same-frame load-indirect-suc s alloc₁ alloc₂ _ _
     with sv-as-loc (readReg (regs s) Input1)
   ... | just loc with readLoc s (sucLoc loc)
   ...   | just _  = refl
   ...   | nothing = refl
-  exec-abstract-same-frame load-indirect-suc s alloc₁ alloc₂ _ | nothing = refl
-  exec-abstract-same-frame store-indirect s alloc₁ alloc₂ _
+  exec-abstract-same-frame load-indirect-suc s alloc₁ alloc₂ _ _ | nothing = refl
+  exec-abstract-same-frame store-indirect s alloc₁ alloc₂ _ _
     with sv-as-loc (readReg (regs s) Input1)
   ... | just loc = refl
   ... | nothing  = refl
-  exec-abstract-same-frame store-indirect-suc s alloc₁ alloc₂ _
+  exec-abstract-same-frame store-indirect-suc s alloc₁ alloc₂ _ _
     with sv-as-loc (readReg (regs s) Input1)
   ... | just loc = refl
   ... | nothing  = refl
-  exec-abstract-same-frame (instr-alloc-stack n) s alloc₁ alloc₂ _ = refl
-  exec-abstract-same-frame (instr-dealloc-stack n) s alloc₁ alloc₂ _ = refl
-  exec-abstract-same-frame (instr-reclaim-to n) s alloc₁ alloc₂ _ = refl
-  exec-abstract-same-frame (instr-push-frame cap) s alloc₁ alloc₂ _ = refl
-  exec-abstract-same-frame instr-pop-frame s alloc₁ alloc₂ _ = refl
-  exec-abstract-same-frame instr-call-closure s alloc₁ alloc₂ _ = refl
+  exec-abstract-same-frame (instr-alloc-stack n) s alloc₁ alloc₂ _ _ = refl
+  exec-abstract-same-frame (instr-dealloc-stack n) s alloc₁ alloc₂ _ _ = refl
+  exec-abstract-same-frame (instr-reclaim-to n) s alloc₁ alloc₂ _ _ = refl
+  exec-abstract-same-frame (instr-push-frame cap) s alloc₁ alloc₂ _ _ = refl
+  exec-abstract-same-frame instr-pop-frame s alloc₁ alloc₂ _ _ = refl
+  exec-abstract-same-frame instr-call-closure s alloc₁ alloc₂ _ _ = refl
   -- Instructions that use current-frame alloc
-  exec-abstract-same-frame (load-from-slot slot) s alloc₁ alloc₂ frame-eq
+  exec-abstract-same-frame (load-from-slot slot) s alloc₁ alloc₂ _ frame-eq
     with readLoc s (AtStack (current-frame alloc₁) slot)
        | readLoc s (AtStack (current-frame alloc₂) slot)
        | cong (λ f → readLoc s (AtStack f slot)) frame-eq
@@ -847,11 +960,11 @@ module InstrPrimitives {FS : FrameSemantics} where
   ... | nothing | nothing | _ = refl
   ... | just _ | nothing | ()
   ... | nothing | just _ | ()
-  exec-abstract-same-frame (store-at-slot slot) s alloc₁ alloc₂ frame-eq
+  exec-abstract-same-frame (store-at-slot slot) s alloc₁ alloc₂ _ frame-eq
     rewrite frame-eq = refl
-  exec-abstract-same-frame (lea-slot slot) s alloc₁ alloc₂ frame-eq
+  exec-abstract-same-frame (lea-slot slot) s alloc₁ alloc₂ _ frame-eq
     rewrite frame-eq = refl
-  exec-abstract-same-frame (restore-input slot) s alloc₁ alloc₂ frame-eq
+  exec-abstract-same-frame (restore-input slot) s alloc₁ alloc₂ _ frame-eq
     with readLoc s (AtStack (current-frame alloc₁) slot)
        | readLoc s (AtStack (current-frame alloc₂) slot)
        | cong (λ f → readLoc s (AtStack f slot)) frame-eq
@@ -860,10 +973,10 @@ module InstrPrimitives {FS : FrameSemantics} where
   ... | just _ | nothing | ()
   ... | nothing | just _ | ()
   -- OCP-0003: Worklist instructions
-  exec-abstract-same-frame (worklist-init slot) s alloc₁ alloc₂ _ = refl
-  exec-abstract-same-frame (worklist-push slot) s alloc₁ alloc₂ frame-eq
+  exec-abstract-same-frame (worklist-init slot) s alloc₁ alloc₂ _ _ = refl
+  exec-abstract-same-frame (worklist-push slot) s alloc₁ alloc₂ _ frame-eq
     rewrite frame-eq = refl
-  exec-abstract-same-frame (worklist-pop slot) s alloc₁ alloc₂ frame-eq
+  exec-abstract-same-frame (worklist-pop slot) s alloc₁ alloc₂ _ frame-eq
     with readLoc s (AtStack (current-frame alloc₁) slot)
        | readLoc s (AtStack (current-frame alloc₂) slot)
        | cong (λ f → readLoc s (AtStack f slot)) frame-eq
@@ -871,20 +984,16 @@ module InstrPrimitives {FS : FrameSemantics} where
   ... | nothing | nothing | _ = refl
   ... | just _ | nothing | ()
   ... | nothing | just _ | ()
-  exec-abstract-same-frame (worklist-check slot) s alloc₁ alloc₂ _ = refl
-  exec-abstract-same-frame (instr-sigop _)       s alloc₁ alloc₂ _ = refl
-  exec-abstract-same-frame (instr-load-const _ _) s alloc₁ alloc₂ _ = refl
-  exec-abstract-same-frame (instr-load-tag-lit _) s alloc₁ alloc₂ _ = refl
-  exec-abstract-same-frame (instr-load-code-addr _) s alloc₁ alloc₂ _ = refl
-  exec-abstract-same-frame instr-save-closure-reg   s alloc₁ alloc₂ _ = refl
-  exec-abstract-same-frame (instr-case-on-tag _ _)  s alloc₁ alloc₂ _ = refl
-  -- Plan 0.14 Phase A: instr-alloc-heap's output state depends on
-  -- next-heap-ref alloc, NOT just current-frame. So states differ when
-  -- alloc₁ and alloc₂ have different next-heap-ref. Same-frame
-  -- equivalence is false for this instr. !! tracks this gap; the
-  -- principled fix weakens the lemma to also require same-heap-ref
-  -- (or splits it across instruction classes).
-  exec-abstract-same-frame (instr-alloc-heap _)     s alloc₁ alloc₂ _ = !!
+  exec-abstract-same-frame (worklist-check slot) s alloc₁ alloc₂ _ _ = refl
+  exec-abstract-same-frame (instr-sigop _)       s alloc₁ alloc₂ _ _ = refl
+  exec-abstract-same-frame (instr-load-const _ _) s alloc₁ alloc₂ _ _ = refl
+  exec-abstract-same-frame (instr-load-tag-lit _) s alloc₁ alloc₂ _ _ = refl
+  exec-abstract-same-frame (instr-load-code-addr _) s alloc₁ alloc₂ _ _ = refl
+  exec-abstract-same-frame instr-save-closure-reg   s alloc₁ alloc₂ _ _ = refl
+  exec-abstract-same-frame (instr-case-on-tag _ _)  s alloc₁ alloc₂ _ _ = refl
+  -- instr-alloc-heap: EffectStateOnlyDependsOnFrame eff-heap-alloc = ⊥,
+  -- absurd precondition.
+  exec-abstract-same-frame (instr-alloc-heap _)     s alloc₁ alloc₂ () _
 
 ------------------------------------------------------------------------
 -- Level 5: Trace Primitives
@@ -1801,7 +1910,12 @@ module TracePrimitives {FS : FrameSemantics} where
       s₁' = proj₁ (exec-abstract i s alloc₁)
       s₂' = proj₁ (exec-abstract i s alloc₂)
       state-eq : s₁' ≡ s₂'
-      state-eq = exec-abstract-same-frame i s alloc₁ alloc₂ frame-eq
+      -- Phase A.2: `!!` as the witness is sound for traces of effects
+      -- that satisfy EffectStateOnlyDependsOnFrame (everything except
+      -- eff-heap-alloc). For alloc-heap-containing traces this lemma is
+      -- genuinely false; localized here pending trace-level precondition
+      -- migration.
+      state-eq = exec-abstract-same-frame i s alloc₁ alloc₂ !! frame-eq
 
       -- After one instruction, frames are still equal
       alloc₁' = proj₂ (exec-abstract i s alloc₁)
@@ -2157,78 +2271,76 @@ module TracePrimitives {FS : FrameSemantics} where
   -- register, not alloc.) The *alloc* output (proj₂) may differ in
   -- next-slot between alloc and alloc', but current-frame is
   -- preserved by every instruction.
+  -- Plan 0.14 Phase A.2: restricted to effects whose output state is
+  -- determined by (s, current-frame alloc) — i.e., not eff-heap-alloc.
   exec-abstract-state-frame-eq : ∀ (i : AbstractInstr) (s : LocState FS)
     (alloc alloc' : AllocState {FS}) →
+    EffectStateOnlyDependsOnFrame (instr-effect i) →
     current-frame alloc ≡ current-frame alloc' →
     proj₁ (exec-abstract i s alloc) ≡ proj₁ (exec-abstract i s alloc')
-  exec-abstract-state-frame-eq mov-to-output           s _ _ _  = refl
-  exec-abstract-state-frame-eq mov-input2-to-output    s _ _ _  = refl
-  exec-abstract-state-frame-eq mov-to-input            s _ _ _  = refl
-  exec-abstract-state-frame-eq mov-output-to-input2    s _ _ _  = refl
-  exec-abstract-state-frame-eq (store-at-slot slot)    s alloc alloc' fe =
+  exec-abstract-state-frame-eq mov-to-output           s _ _ _ _ = refl
+  exec-abstract-state-frame-eq mov-input2-to-output    s _ _ _ _ = refl
+  exec-abstract-state-frame-eq mov-to-input            s _ _ _ _ = refl
+  exec-abstract-state-frame-eq mov-output-to-input2    s _ _ _ _ = refl
+  exec-abstract-state-frame-eq (store-at-slot slot)    s alloc alloc' _ fe =
     cong (λ f → writeLoc s (AtStack f slot) (readReg (regs s) Output)) fe
-  exec-abstract-state-frame-eq store-indirect          s alloc alloc' fe
+  exec-abstract-state-frame-eq store-indirect          s alloc alloc' _ fe
     with sv-as-loc (readReg (regs s) Input1)
   ... | just _  = refl
   ... | nothing = refl
-  exec-abstract-state-frame-eq store-indirect-suc      s alloc alloc' fe
+  exec-abstract-state-frame-eq store-indirect-suc      s alloc alloc' _ fe
     with sv-as-loc (readReg (regs s) Input1)
   ... | just _  = refl
   ... | nothing = refl
-  exec-abstract-state-frame-eq load-indirect           s alloc alloc' fe
+  exec-abstract-state-frame-eq load-indirect           s alloc alloc' _ fe
     with sv-as-loc (readReg (regs s) Input1)
   ... | just l with readLoc s l
   ...   | just _  = refl
   ...   | nothing = refl
-  exec-abstract-state-frame-eq load-indirect           s alloc alloc' fe
+  exec-abstract-state-frame-eq load-indirect           s alloc alloc' _ fe
     | nothing = refl
-  exec-abstract-state-frame-eq load-indirect-suc       s alloc alloc' fe
+  exec-abstract-state-frame-eq load-indirect-suc       s alloc alloc' _ fe
     with sv-as-loc (readReg (regs s) Input1)
   ... | just l with readLoc s (sucLoc l)
   ...   | just _  = refl
   ...   | nothing = refl
-  exec-abstract-state-frame-eq load-indirect-suc       s alloc alloc' fe
+  exec-abstract-state-frame-eq load-indirect-suc       s alloc alloc' _ fe
     | nothing = refl
-  exec-abstract-state-frame-eq (lea-slot slot)         s alloc alloc' fe =
+  exec-abstract-state-frame-eq (lea-slot slot)         s alloc alloc' _ fe =
     cong (λ f → record s { regs = writeReg (regs s) Output (SV-Ptr (AtStack f slot)) }) fe
-  exec-abstract-state-frame-eq (instr-alloc-stack _)   s _ _ _  = refl
-  exec-abstract-state-frame-eq (instr-dealloc-stack _) s _ _ _  = refl
-  exec-abstract-state-frame-eq (instr-reclaim-to _)    s _ _ _  = refl
-  exec-abstract-state-frame-eq (instr-push-frame _)    s _ _ _  = refl
-  exec-abstract-state-frame-eq instr-pop-frame         s _ _ _  = refl
-  exec-abstract-state-frame-eq instr-call-closure      s _ _ _  = refl
-  -- For the slot-using cases: case-split on the readLoc result and
-  -- use the alloc-independence of `proj₁ ∘ exec-load-from-slot-with-value`
-  -- (which discards alloc on the proj₁ side).
-  exec-abstract-state-frame-eq (load-from-slot slot)   s alloc alloc' fe
+  exec-abstract-state-frame-eq (instr-alloc-stack _)   s _ _ _ _ = refl
+  exec-abstract-state-frame-eq (instr-dealloc-stack _) s _ _ _ _ = refl
+  exec-abstract-state-frame-eq (instr-reclaim-to _)    s _ _ _ _ = refl
+  exec-abstract-state-frame-eq (instr-push-frame _)    s _ _ _ _ = refl
+  exec-abstract-state-frame-eq instr-pop-frame         s _ _ _ _ = refl
+  exec-abstract-state-frame-eq instr-call-closure      s _ _ _ _ = refl
+  exec-abstract-state-frame-eq (load-from-slot slot)   s alloc alloc' _ fe
     rewrite (sym fe)
     with readLoc s (AtStack (current-frame alloc) slot)
   ... | just _  = refl
   ... | nothing = refl
-  exec-abstract-state-frame-eq (restore-input slot)    s alloc alloc' fe
+  exec-abstract-state-frame-eq (restore-input slot)    s alloc alloc' _ fe
     rewrite (sym fe)
     with readLoc s (AtStack (current-frame alloc) slot)
   ... | just _  = refl
   ... | nothing = refl
-  exec-abstract-state-frame-eq (worklist-init _)       s _ _ _  = refl
-  exec-abstract-state-frame-eq (worklist-push slot)    s alloc alloc' fe =
+  exec-abstract-state-frame-eq (worklist-init _)       s _ _ _ _ = refl
+  exec-abstract-state-frame-eq (worklist-push slot)    s alloc alloc' _ fe =
     cong (λ f → writeLoc s (AtStack f slot) (readReg (regs s) Output)) fe
-  exec-abstract-state-frame-eq (worklist-pop slot)     s alloc alloc' fe
+  exec-abstract-state-frame-eq (worklist-pop slot)     s alloc alloc' _ fe
     rewrite (sym fe)
     with readLoc s (AtStack (current-frame alloc) slot)
   ... | just _  = refl
   ... | nothing = refl
-  exec-abstract-state-frame-eq (worklist-check _)      s _ _ _  = refl
-  exec-abstract-state-frame-eq instr-save-closure-reg  s _ _ _  = refl
-  exec-abstract-state-frame-eq (instr-sigop _)         s _ _ _  = refl
-  exec-abstract-state-frame-eq (instr-load-const _ _)  s _ _ _  = refl
-  exec-abstract-state-frame-eq (instr-load-tag-lit _)  s _ _ _  = refl
-  exec-abstract-state-frame-eq (instr-load-code-addr _) s _ _ _ = refl
-  exec-abstract-state-frame-eq (instr-case-on-tag _ _) s _ _ _  = refl
-  -- Plan 0.14 Phase A: alloc-heap's output state depends on next-heap-ref,
-  -- not just current-frame; states differ if allocs disagree on next-heap-ref.
-  -- Same gap as exec-abstract-same-frame above.
-  exec-abstract-state-frame-eq (instr-alloc-heap _)    s _ _ _  = !!
+  exec-abstract-state-frame-eq (worklist-check _)      s _ _ _ _ = refl
+  exec-abstract-state-frame-eq instr-save-closure-reg  s _ _ _ _ = refl
+  exec-abstract-state-frame-eq (instr-sigop _)         s _ _ _ _ = refl
+  exec-abstract-state-frame-eq (instr-load-const _ _)  s _ _ _ _ = refl
+  exec-abstract-state-frame-eq (instr-load-tag-lit _)  s _ _ _ _ = refl
+  exec-abstract-state-frame-eq (instr-load-code-addr _) s _ _ _ _ = refl
+  exec-abstract-state-frame-eq (instr-case-on-tag _ _) s _ _ _ _ = refl
+  -- instr-alloc-heap: absurd precondition (EffectStateOnlyDependsOnFrame eff-heap-alloc = ⊥).
+  exec-abstract-state-frame-eq (instr-alloc-heap _)    s _ _ () _
 
   -- Lift exec-abstract-state-frame-eq to traces.
   -- Running a trace from `(s, alloc)` and `(s, alloc')` where the
@@ -2244,7 +2356,8 @@ module TracePrimitives {FS : FrameSemantics} where
   ... | true  = refl
   ... | false =
     let s-eq : proj₁ (exec-abstract i s alloc) ≡ proj₁ (exec-abstract i s alloc')
-        s-eq = exec-abstract-state-frame-eq i s alloc alloc' fe
+        -- Phase A.2: `!!` as the witness; same caveat as exec-trace-same-frame.
+        s-eq = exec-abstract-state-frame-eq i s alloc alloc' !! fe
         fe-after : current-frame (proj₂ (exec-abstract i s alloc)) ≡
                    current-frame (proj₂ (exec-abstract i s alloc'))
         fe-after = trans (exec-abstract-preserves-frame i s alloc)
@@ -2267,7 +2380,7 @@ module TracePrimitives {FS : FrameSemantics} where
   TraceWF-frame-eq {i ∷ rest} {s} {alloc} {alloc'} fe (twf-∷ iwf rest-twf) =
     twf-∷ (InstrWF-frame-eq i s alloc alloc' fe iwf)
       (subst (λ st → TraceWF st (proj₂ (exec-abstract i s alloc')) rest)
-             (exec-abstract-state-frame-eq i s alloc alloc' fe)
+             (exec-abstract-state-frame-eq i s alloc alloc' !! fe)
              (TraceWF-frame-eq fe-after rest-twf))
     where
       fe-after : current-frame (proj₂ (exec-abstract i s alloc)) ≡ current-frame (proj₂ (exec-abstract i s alloc'))
@@ -3595,86 +3708,206 @@ module RecSchemeSemantics {FS : FrameSemantics} where
     in trans step1 step2
 
   ------------------------------------------------------------------------
-  -- Heap-ref preservation
+  -- Heap-ref preservation (Plan 0.14 Phase A.2: effect-class restricted)
   --
-  -- Abstract instructions never modify next-heap-ref (no heap allocation
-  -- at abstract level). This is crucial for reclaim property composition.
+  -- Restricted to instructions whose effect class preserves next-heap-ref
+  -- (everything except eff-heap-alloc). The instr-alloc-heap case is an
+  -- absurd pattern: its EffectPreservesNextHeapRef precondition is ⊥.
+  --
+  -- The corresponding trace-level wrapper below keeps an internal !! for
+  -- the instr-alloc-heap cons-case so external callers (6 sites in
+  -- PairWF2/RecTrace) don't need updating. Real fix: weaken the
+  -- trace-level wrapper to take TraceEffectsPreservesNextHeapRef and
+  -- propagate at the 6 call sites. Deferred to follow-up.
   ------------------------------------------------------------------------
 
-  -- exec-abstract preserves next-heap-ref for all instructions
   exec-abstract-preserves-heap-ref : ∀ (i : AbstractInstr) (s : LocState FS) (alloc : AllocState {FS}) →
+    EffectPreservesNextHeapRef (instr-effect i) →
     next-heap-ref (proj₂ (exec-abstract i s alloc)) ≡ next-heap-ref alloc
-  exec-abstract-preserves-heap-ref mov-to-output s alloc = refl
-  exec-abstract-preserves-heap-ref mov-input2-to-output s alloc = refl
-  exec-abstract-preserves-heap-ref mov-to-input s alloc = refl
-  exec-abstract-preserves-heap-ref mov-output-to-input2 s alloc = refl
-  exec-abstract-preserves-heap-ref load-indirect s alloc
+  exec-abstract-preserves-heap-ref mov-to-output s alloc _ = refl
+  exec-abstract-preserves-heap-ref mov-input2-to-output s alloc _ = refl
+  exec-abstract-preserves-heap-ref mov-to-input s alloc _ = refl
+  exec-abstract-preserves-heap-ref mov-output-to-input2 s alloc _ = refl
+  exec-abstract-preserves-heap-ref load-indirect s alloc _
     with sv-as-loc (readReg (regs s) Input1)
   ... | just _  = refl
   ... | nothing = refl
-  exec-abstract-preserves-heap-ref load-indirect-suc s alloc
+  exec-abstract-preserves-heap-ref load-indirect-suc s alloc _
     with sv-as-loc (readReg (regs s) Input1)
   ... | just l with readLoc s (sucLoc l)
   ...   | just _  = refl
   ...   | nothing = refl
-  exec-abstract-preserves-heap-ref load-indirect-suc s alloc
+  exec-abstract-preserves-heap-ref load-indirect-suc s alloc _
     | nothing = refl
-  exec-abstract-preserves-heap-ref (load-from-slot slot) s alloc
+  exec-abstract-preserves-heap-ref (load-from-slot slot) s alloc _
     with readLoc s (AtStack (current-frame alloc) slot)
   ... | just v = refl
   ... | nothing = refl
-  exec-abstract-preserves-heap-ref (store-at-slot _) s alloc = refl
-  exec-abstract-preserves-heap-ref store-indirect s alloc
+  exec-abstract-preserves-heap-ref (store-at-slot _) s alloc _ = refl
+  exec-abstract-preserves-heap-ref store-indirect s alloc _
     with sv-as-loc (readReg (regs s) Input1)
   ... | just _  = refl
   ... | nothing = refl
-  exec-abstract-preserves-heap-ref store-indirect-suc s alloc
+  exec-abstract-preserves-heap-ref store-indirect-suc s alloc _
     with sv-as-loc (readReg (regs s) Input1)
   ... | just _  = refl
   ... | nothing = refl
-  exec-abstract-preserves-heap-ref (lea-slot _) s alloc = refl
-  exec-abstract-preserves-heap-ref (restore-input slot) s alloc
+  exec-abstract-preserves-heap-ref (lea-slot _) s alloc _ = refl
+  exec-abstract-preserves-heap-ref (restore-input slot) s alloc _
     with readLoc s (AtStack (current-frame alloc) slot)
   ... | just v = refl
   ... | nothing = refl
-  exec-abstract-preserves-heap-ref (instr-alloc-stack _) s alloc = refl
-  exec-abstract-preserves-heap-ref (instr-dealloc-stack _) s alloc = refl
-  exec-abstract-preserves-heap-ref (instr-reclaim-to _) s alloc = refl
-  exec-abstract-preserves-heap-ref (instr-push-frame _) s alloc = refl
-  exec-abstract-preserves-heap-ref instr-pop-frame s alloc = refl
-  exec-abstract-preserves-heap-ref instr-call-closure s alloc = refl
-  exec-abstract-preserves-heap-ref (worklist-init _) s alloc = refl
-  exec-abstract-preserves-heap-ref (worklist-push _) s alloc = refl
-  exec-abstract-preserves-heap-ref (worklist-pop slot) s alloc
+  exec-abstract-preserves-heap-ref (instr-alloc-stack _) s alloc _ = refl
+  exec-abstract-preserves-heap-ref (instr-dealloc-stack _) s alloc _ = refl
+  exec-abstract-preserves-heap-ref (instr-reclaim-to _) s alloc _ = refl
+  exec-abstract-preserves-heap-ref (instr-push-frame _) s alloc _ = refl
+  exec-abstract-preserves-heap-ref instr-pop-frame s alloc _ = refl
+  exec-abstract-preserves-heap-ref instr-call-closure s alloc _ = refl
+  exec-abstract-preserves-heap-ref (worklist-init _) s alloc _ = refl
+  exec-abstract-preserves-heap-ref (worklist-push _) s alloc _ = refl
+  exec-abstract-preserves-heap-ref (worklist-pop slot) s alloc _
     with readLoc s (AtStack (current-frame alloc) slot)
   ... | just v = refl
   ... | nothing = refl
-  exec-abstract-preserves-heap-ref (worklist-check _) s alloc = refl
-  exec-abstract-preserves-heap-ref (instr-sigop _)    s alloc = refl
-  exec-abstract-preserves-heap-ref (instr-load-const _ _) s alloc = refl
-  exec-abstract-preserves-heap-ref (instr-load-tag-lit _) s alloc = refl
-  exec-abstract-preserves-heap-ref (instr-load-code-addr _) s alloc = refl
-  exec-abstract-preserves-heap-ref instr-save-closure-reg   s alloc = refl
-  exec-abstract-preserves-heap-ref (instr-case-on-tag _ _)  s alloc = refl
-  -- Plan 0.14 Phase A: instr-alloc-heap GENUINELY bumps next-heap-ref by 1.
-  -- The "abstract instructions never modify next-heap-ref" invariant is
-  -- now false. Callers that rely on preserves-heap-ref with traces
-  -- containing instr-alloc-heap will get an unsound `refl`. Real fix:
-  -- weaken the lemma to `≤` (or split into preserves/bumps cases) and
-  -- update the 41 call sites. Tracked as Plan 0.14 follow-up.
-  exec-abstract-preserves-heap-ref (instr-alloc-heap _)     s alloc = !!
+  exec-abstract-preserves-heap-ref (worklist-check _) s alloc _ = refl
+  exec-abstract-preserves-heap-ref (instr-sigop _)    s alloc _ = refl
+  exec-abstract-preserves-heap-ref (instr-load-const _ _) s alloc _ = refl
+  exec-abstract-preserves-heap-ref (instr-load-tag-lit _) s alloc _ = refl
+  exec-abstract-preserves-heap-ref (instr-load-code-addr _) s alloc _ = refl
+  exec-abstract-preserves-heap-ref instr-save-closure-reg   s alloc _ = refl
+  exec-abstract-preserves-heap-ref (instr-case-on-tag _ _)  s alloc _ = refl
+  -- instr-alloc-heap: EffectPreservesNextHeapRef eff-heap-alloc = ⊥,
+  -- so the precondition is uninhabited and this clause is absurd.
+  exec-abstract-preserves-heap-ref (instr-alloc-heap _)     s alloc ()
 
-  -- exec-trace preserves next-heap-ref
+  -- exec-trace preserves next-heap-ref (Phase A.2: unchanged signature;
+  -- the cons-case for instr-alloc-heap has a localised !! placeholder
+  -- since the trace's precondition isn't threaded through yet —
+  -- TraceEffectsPreservesNextHeapRef + caller migration is the next step).
+  --
+  -- The cons-case pattern-matches directly on the instruction so each
+  -- branch can pass the right `tt` precondition to the restricted
+  -- instruction-level lemma. Verbose (~28 instruction cases) but
+  -- mechanical; per-instruction the witness is `tt`.
   exec-trace-preserves-heap-ref : ∀ (t : AbstractTrace) (s : LocState FS) (alloc : AllocState {FS}) →
     next-heap-ref (proj₂ (exec-trace t s alloc)) ≡ next-heap-ref alloc
   exec-trace-preserves-heap-ref [] s alloc = refl
-  exec-trace-preserves-heap-ref (i ∷ t) s alloc with halted s
+  exec-trace-preserves-heap-ref (mov-to-output ∷ t) s alloc with halted s
   ... | true = refl
-  ... | false =
-    let (s' , alloc') = exec-abstract i s alloc
-        ih = exec-trace-preserves-heap-ref t s' alloc'
-        step = exec-abstract-preserves-heap-ref i s alloc
-    in trans ih step
+  ... | false = trans (exec-trace-preserves-heap-ref t _ _)
+                      (exec-abstract-preserves-heap-ref mov-to-output s alloc tt)
+  exec-trace-preserves-heap-ref (mov-input2-to-output ∷ t) s alloc with halted s
+  ... | true = refl
+  ... | false = trans (exec-trace-preserves-heap-ref t _ _)
+                      (exec-abstract-preserves-heap-ref mov-input2-to-output s alloc tt)
+  exec-trace-preserves-heap-ref (mov-to-input ∷ t) s alloc with halted s
+  ... | true = refl
+  ... | false = trans (exec-trace-preserves-heap-ref t _ _)
+                      (exec-abstract-preserves-heap-ref mov-to-input s alloc tt)
+  exec-trace-preserves-heap-ref (mov-output-to-input2 ∷ t) s alloc with halted s
+  ... | true = refl
+  ... | false = trans (exec-trace-preserves-heap-ref t _ _)
+                      (exec-abstract-preserves-heap-ref mov-output-to-input2 s alloc tt)
+  exec-trace-preserves-heap-ref (load-indirect ∷ t) s alloc with halted s
+  ... | true = refl
+  ... | false = trans (exec-trace-preserves-heap-ref t _ _)
+                      (exec-abstract-preserves-heap-ref load-indirect s alloc tt)
+  exec-trace-preserves-heap-ref (load-indirect-suc ∷ t) s alloc with halted s
+  ... | true = refl
+  ... | false = trans (exec-trace-preserves-heap-ref t _ _)
+                      (exec-abstract-preserves-heap-ref load-indirect-suc s alloc tt)
+  exec-trace-preserves-heap-ref (load-from-slot k ∷ t) s alloc with halted s
+  ... | true = refl
+  ... | false = trans (exec-trace-preserves-heap-ref t _ _)
+                      (exec-abstract-preserves-heap-ref (load-from-slot k) s alloc tt)
+  exec-trace-preserves-heap-ref (store-at-slot k ∷ t) s alloc with halted s
+  ... | true = refl
+  ... | false = trans (exec-trace-preserves-heap-ref t _ _)
+                      (exec-abstract-preserves-heap-ref (store-at-slot k) s alloc tt)
+  exec-trace-preserves-heap-ref (store-indirect ∷ t) s alloc with halted s
+  ... | true = refl
+  ... | false = trans (exec-trace-preserves-heap-ref t _ _)
+                      (exec-abstract-preserves-heap-ref store-indirect s alloc tt)
+  exec-trace-preserves-heap-ref (store-indirect-suc ∷ t) s alloc with halted s
+  ... | true = refl
+  ... | false = trans (exec-trace-preserves-heap-ref t _ _)
+                      (exec-abstract-preserves-heap-ref store-indirect-suc s alloc tt)
+  exec-trace-preserves-heap-ref (lea-slot k ∷ t) s alloc with halted s
+  ... | true = refl
+  ... | false = trans (exec-trace-preserves-heap-ref t _ _)
+                      (exec-abstract-preserves-heap-ref (lea-slot k) s alloc tt)
+  exec-trace-preserves-heap-ref (restore-input k ∷ t) s alloc with halted s
+  ... | true = refl
+  ... | false = trans (exec-trace-preserves-heap-ref t _ _)
+                      (exec-abstract-preserves-heap-ref (restore-input k) s alloc tt)
+  exec-trace-preserves-heap-ref (instr-alloc-stack n ∷ t) s alloc with halted s
+  ... | true = refl
+  ... | false = trans (exec-trace-preserves-heap-ref t _ _)
+                      (exec-abstract-preserves-heap-ref (instr-alloc-stack n) s alloc tt)
+  exec-trace-preserves-heap-ref (instr-dealloc-stack n ∷ t) s alloc with halted s
+  ... | true = refl
+  ... | false = trans (exec-trace-preserves-heap-ref t _ _)
+                      (exec-abstract-preserves-heap-ref (instr-dealloc-stack n) s alloc tt)
+  exec-trace-preserves-heap-ref (instr-reclaim-to n ∷ t) s alloc with halted s
+  ... | true = refl
+  ... | false = trans (exec-trace-preserves-heap-ref t _ _)
+                      (exec-abstract-preserves-heap-ref (instr-reclaim-to n) s alloc tt)
+  exec-trace-preserves-heap-ref (instr-push-frame cap ∷ t) s alloc with halted s
+  ... | true = refl
+  ... | false = trans (exec-trace-preserves-heap-ref t _ _)
+                      (exec-abstract-preserves-heap-ref (instr-push-frame cap) s alloc tt)
+  exec-trace-preserves-heap-ref (instr-pop-frame ∷ t) s alloc with halted s
+  ... | true = refl
+  ... | false = trans (exec-trace-preserves-heap-ref t _ _)
+                      (exec-abstract-preserves-heap-ref instr-pop-frame s alloc tt)
+  exec-trace-preserves-heap-ref (instr-call-closure ∷ t) s alloc with halted s
+  ... | true = refl
+  ... | false = trans (exec-trace-preserves-heap-ref t _ _)
+                      (exec-abstract-preserves-heap-ref instr-call-closure s alloc tt)
+  exec-trace-preserves-heap-ref (worklist-init k ∷ t) s alloc with halted s
+  ... | true = refl
+  ... | false = trans (exec-trace-preserves-heap-ref t _ _)
+                      (exec-abstract-preserves-heap-ref (worklist-init k) s alloc tt)
+  exec-trace-preserves-heap-ref (worklist-push k ∷ t) s alloc with halted s
+  ... | true = refl
+  ... | false = trans (exec-trace-preserves-heap-ref t _ _)
+                      (exec-abstract-preserves-heap-ref (worklist-push k) s alloc tt)
+  exec-trace-preserves-heap-ref (worklist-pop k ∷ t) s alloc with halted s
+  ... | true = refl
+  ... | false = trans (exec-trace-preserves-heap-ref t _ _)
+                      (exec-abstract-preserves-heap-ref (worklist-pop k) s alloc tt)
+  exec-trace-preserves-heap-ref (worklist-check k ∷ t) s alloc with halted s
+  ... | true = refl
+  ... | false = trans (exec-trace-preserves-heap-ref t _ _)
+                      (exec-abstract-preserves-heap-ref (worklist-check k) s alloc tt)
+  exec-trace-preserves-heap-ref (instr-sigop si ∷ t) s alloc with halted s
+  ... | true = refl
+  ... | false = trans (exec-trace-preserves-heap-ref t _ _)
+                      (exec-abstract-preserves-heap-ref (instr-sigop si) s alloc tt)
+  exec-trace-preserves-heap-ref (instr-load-const p v ∷ t) s alloc with halted s
+  ... | true = refl
+  ... | false = trans (exec-trace-preserves-heap-ref t _ _)
+                      (exec-abstract-preserves-heap-ref (instr-load-const p v) s alloc tt)
+  exec-trace-preserves-heap-ref (instr-load-tag-lit k ∷ t) s alloc with halted s
+  ... | true = refl
+  ... | false = trans (exec-trace-preserves-heap-ref t _ _)
+                      (exec-abstract-preserves-heap-ref (instr-load-tag-lit k) s alloc tt)
+  exec-trace-preserves-heap-ref (instr-load-code-addr k ∷ t) s alloc with halted s
+  ... | true = refl
+  ... | false = trans (exec-trace-preserves-heap-ref t _ _)
+                      (exec-abstract-preserves-heap-ref (instr-load-code-addr k) s alloc tt)
+  exec-trace-preserves-heap-ref (instr-save-closure-reg ∷ t) s alloc with halted s
+  ... | true = refl
+  ... | false = trans (exec-trace-preserves-heap-ref t _ _)
+                      (exec-abstract-preserves-heap-ref instr-save-closure-reg s alloc tt)
+  exec-trace-preserves-heap-ref (instr-case-on-tag f g ∷ t) s alloc with halted s
+  ... | true = refl
+  ... | false = trans (exec-trace-preserves-heap-ref t _ _)
+                      (exec-abstract-preserves-heap-ref (instr-case-on-tag f g) s alloc tt)
+  -- instr-alloc-heap: this trace-level claim is genuinely false here
+  -- (the instruction bumps next-heap-ref). Localised !!.
+  -- Real fix: trace-level precondition + caller migration.
+  exec-trace-preserves-heap-ref (instr-alloc-heap _ ∷ t) s alloc = !!
 
   ------------------------------------------------------------------------
   -- Product Left Setup Trace (4-instruction: save + setup)
