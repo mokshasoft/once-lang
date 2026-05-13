@@ -178,40 +178,44 @@ module ParaWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     → ValidAtWF mIn alloc x input-loc s
     → BeforeFrontier alloc input-loc
     → halted s ≡ false
-    → readReg (regs s) Input1 ≡ input-loc
+    → readReg (regs s) Input1 ≡ SV-Ptr input-loc
     → ∃[ mOut ] IRResultAWF mOut (Para wf alg) x s alloc
   run-para-core {F} {A} wf alg rec-wf mIn x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     Heap , record
-      { final-state = s'
-      ; final-alloc = alloc'
-      ; trace = para-trace
-      ; trace-correct = refl
-      ; result-place = at-loc result-loc result-valid result-bf rax-eq result-valid result-bf
-      ; not-halted = not-halted'
-      ; frame-preserved = refl
-      ; slot-monotone = slot-mono
-      ; heap-preserved = refl
-      -- Phase 7: Removed reclaimable-slot, reclaim-monotone, reclaim-bounded, reclaim-size-bound
-      ; max-slot-written = next-slot alloc'
-      ; max-slot-geq-final = ≤-refl
-      ; stack-budget = ir-stack-requirement (Para wf alg)
-      ; max-slot-usage-bound = reclaim-bound
-      -- slot-stays-in-budget: Para allocates exactly 1 slot
-      -- next-slot alloc' = suc (next-slot alloc)
-      -- reclaim-bound proves: suc n ≤ n + ir-stack-requirement (Para wf alg)
-      ; slot-stays-in-budget = reclaim-bound
-      ; frontier-slot-stable = frontier-stable
-      ; trace-writes-above = trace-wa
-      ; trace-slot-reads-above = tt
-      ; trace-writes-below = trace-wb
-      ; trace-slot-reads-below = tt
-      -- Note: trace-preserves-capacity removed in Phase 3
-      ; trace-no-heap-writes = tt
-      ; trace-preserves-halted = tph-∷ iph-mov-to-output (tph-∷ iph-store-at-slot (tph-∷ iph-lea-slot tph-[]))
-      -- scratch-bounded: max-slot-written = suc n = next-slot alloc'
-      -- suc n ≤ suc n + ir-scratch-requirement (Para wf alg) by m≤m+n
-      ; scratch-budget = ir-scratch-requirement (Para wf alg)
-      ; scratch-bounded = m≤m+n (suc (next-slot alloc)) (ir-scratch-requirement (Para wf alg))
+      { base = record
+        { final-state = s'
+        ; final-alloc = alloc'
+        ; trace = para-trace
+        ; trace-correct = refl
+        ; result-place = at-loc result-loc result-valid result-bf rax-eq result-valid result-bf
+        ; not-halted = not-halted'
+        ; frame-preserved = refl
+        ; trace-twf = SMP.!!
+        ; trace-preserves-halted = exec-trace-preserves-halted-WF para-trace
+        }
+      ; stack-inv = record
+        { slot-monotone = slot-mono
+        ; max-slot-written = next-slot alloc'
+        ; max-slot-geq-final = ≤-refl
+        ; stack-budget = ir-stack-requirement (Para wf alg)
+        ; max-slot-usage-bound = reclaim-bound
+        ; slot-stays-in-budget = reclaim-bound
+        ; frontier-slot-stable = frontier-stable
+        ; trace-writes-above = trace-wa
+        ; trace-slot-reads-above = tt
+        ; trace-writes-below = trace-wb
+        ; trace-slot-reads-below = tt
+        ; scratch-budget = ir-scratch-requirement (Para wf alg)
+        ; scratch-bounded = m≤m+n (suc (next-slot alloc)) (ir-scratch-requirement (Para wf alg))
+        }
+      ; heap-inv = record
+        { heap-monotone = ≤-refl
+        ; heap-budget = 0
+        ; max-heap-ref-written = next-heap-ref alloc
+        ; max-heap-ref-geq-final = ≤-refl
+        ; max-heap-usage-bound = m≤m+n (next-heap-ref alloc) 0
+        ; trace-no-heap-writes = tt
+        }
       }
     where
       -- Para stores result at slot, preserving subterms during recursion
@@ -243,7 +247,7 @@ module ParaWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       reclaim-bound : suc n ≤ n +ℕ ir-stack-requirement (Para wf alg)
       reclaim-bound = suc-≤-plus-req-2 n (product-depth wf +ℕ sum-depth wf *ℕ 2) (ir-stack-requirement alg)
 
-      rax-eq : readReg (regs s') Output ≡ result-loc
+      rax-eq : readReg (regs s') Output ≡ SV-Ptr result-loc
       rax-eq = rec-scheme-output-is-slot result-slot s alloc not-halted
 
       not-halted' : halted s' ≡ false
@@ -260,8 +264,8 @@ module ParaWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
       frontier-stable : ∀ (s'' : LocState FS) (input-loc' : ValueLocation FS) →
         halted s'' ≡ false →
-        readReg (regs s'') Input1 ≡ input-loc' →
-        readLoc s'' (AtStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc' →
+        readReg (regs s'') Input1 ≡ SV-Ptr input-loc' →
+        readLoc s'' (AtStack (current-frame alloc) (next-slot alloc)) ≡ just (SV-Ptr input-loc') →
         _
       frontier-stable s'' input-loc' _ _ _ = inj₂ (inj₂ tt)
 

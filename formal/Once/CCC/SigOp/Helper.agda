@@ -32,7 +32,7 @@ open import Once.Type using (Type; FitsInReg)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.IR using (IR; SigOp; SigOpInfo; AllocMode; Stack; Heap)
 open import Once.CCC.Machine.SMCore
-  using (LocState; mkLocState; ValueLocation; AtStack;
+  using (LocState; mkLocState; ValueLocation; AtStack; SV-Ptr;
          halted; regs; stackMem; heapMem;
          readReg; writeReg; writeReg-same;
          Input1; Output; AbstractTrace; mov-to-output)
@@ -105,7 +105,7 @@ module PrimHelper {FS : FrameSemantics} (program-bound : ℕ) where
       result-loc-eq : input-loc ≡ input-loc  -- trivial, for interface consistency
       -- State only differs in Output register
       state-eq : final-state ≡ mkLocState
-        (writeReg (regs s) Output input-loc)
+        (writeReg (regs s) Output (SV-Ptr input-loc))
         (stackMem s)
         (heapMem s)
         (halted s)
@@ -121,7 +121,7 @@ module PrimHelper {FS : FrameSemantics} (program-bound : ℕ) where
     PurePrimExec sem x input-loc s alloc
   exec-pure-sigOp sem x input-loc s alloc = record
     { final-state = mkLocState
-        (writeReg (regs s) Output input-loc)
+        (writeReg (regs s) Output (SV-Ptr input-loc))
         (stackMem s)
         (heapMem s)
         (halted s)
@@ -141,10 +141,9 @@ module PrimHelper {FS : FrameSemantics} (program-bound : ℕ) where
   pure-preserves sem x input-loc s alloc not-halted = record
     { frame-eq = refl
     ; not-halted = not-halted
-    -- Note: capacity-eq removed in Phase 3
     ; prior-preserved = λ loc bf →
         readLoc-stackMem-eq
-          (mkLocState (writeReg (regs s) Output input-loc) (stackMem s) (heapMem s) (halted s))
+          (mkLocState (writeReg (regs s) Output (SV-Ptr input-loc)) (stackMem s) (heapMem s) (halted s))
           s loc refl refl
     ; heap-monotone = ≤-refl
     ; slot-monotone = ≤-refl
@@ -178,67 +177,75 @@ module PrimHelper {FS : FrameSemantics} (program-bound : ℕ) where
     (alloc : AllocState {FS}) →
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
-    readReg (regs s) Input1 ≡ input-loc →
+    readReg (regs s) Input1 ≡ SV-Ptr input-loc →
     -- Trace correctness proof (connects abstract exec to concrete)
     (trace-correct-pf : proj₁ (exec-trace (mov-to-output ∷ []) s alloc) ≡
-      mkLocState (writeReg (regs s) Output input-loc) (stackMem s) (heapMem s) (halted s)) →
+      mkLocState (writeReg (regs s) Output (SV-Ptr input-loc)) (stackMem s) (heapMem s) (halted s)) →
     -- Frontier stability proof (wrapped in sum type per IRResultAWF)
     (frontier-stable-pf : ∀ (s' : LocState FS) (input-loc' : ValueLocation FS) →
       halted s' ≡ false →
-      readReg (regs s') Input1 ≡ input-loc' →
-      readLoc s' (AtStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc' →
+      readReg (regs s') Input1 ≡ SV-Ptr input-loc' →
+      readLoc s' (AtStack (current-frame alloc) (next-slot alloc)) ≡ just (SV-Ptr input-loc') →
       (next-slot alloc ≡ next-slot alloc) ⊎
       ((readLoc (proj₁ (exec-trace (mov-to-output ∷ []) s' alloc))
-               (AtStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc') ⊎ ⊤)) →
+               (AtStack (current-frame alloc) (next-slot alloc)) ≡ just (SV-Ptr input-loc')) ⊎ ⊤)) →
     IRResultAWF output-mode (SigOp {A} {B} si) x s alloc
 
   mkPurePrimResult {A} {B} si output-mode is-prim x input-loc s alloc
     input-before not-halted rdi-eq trace-correct-pf frontier-stable-pf =
     let
       final-state = mkLocState
-        (writeReg (regs s) Output input-loc)
+        (writeReg (regs s) Output (SV-Ptr input-loc))
         (stackMem s)
         (heapMem s)
         (halted s)
       result-before = input-before
       result-valid = valid-primitive-wf is-prim result-before
     in record
-      { final-state = final-state
-      ; final-alloc = alloc
-      ; trace = mov-to-output ∷ []
-      ; trace-correct = trace-correct-pf
-      ; result-place = at-loc input-loc result-valid result-before (writeReg-same (regs s) Output input-loc) result-valid result-before
-      ; not-halted = not-halted
-      ; frame-preserved = refl
-      ; slot-monotone = ≤-refl
-      ; heap-preserved = refl
-      ; max-slot-written = next-slot alloc
-      ; max-slot-geq-final = ≤-refl
-      ; stack-budget = ir-stack-requirement (SigOp {A} {B} si)
-      ; max-slot-usage-bound =
-          let n = next-slot alloc
-              eq : n +ℕ ir-stack-requirement (SigOp {A} {B} si) ≡ n
-              eq = trans (cong (n +ℕ_) (sigOp-stack-req {A} {B} si)) (+-identityʳ n)
-          in subst (n ≤_) (sym eq) ≤-refl
-      ; slot-stays-in-budget =
-          let n = next-slot alloc
-              eq : n +ℕ ir-stack-requirement (SigOp {A} {B} si) ≡ n
-              eq = trans (cong (n +ℕ_) (sigOp-stack-req {A} {B} si)) (+-identityʳ n)
-          in subst (n ≤_) (sym eq) ≤-refl
-      ; frontier-slot-stable = frontier-stable-pf
-      ; trace-writes-above = tt
-      ; trace-slot-reads-above = tt
-      ; trace-writes-below = tt
-      ; trace-slot-reads-below = tt
-      -- scratch-bounded: max-slot-written = next-slot alloc = next-slot final-alloc
-      -- ir-scratch-requirement (SigOp name) = 0, so bound is n +ℕ 0 = n
-      ; scratch-budget = ir-scratch-requirement (SigOp {A} {B} si)
-      ; scratch-bounded =
-          let n = next-slot alloc
-              eq : n +ℕ ir-scratch-requirement (SigOp {A} {B} si) ≡ n
-              eq = trans (cong (n +ℕ_) (sigOp-stack-req {A} {B} si)) (+-identityʳ n)
-          in subst (n ≤_) (sym eq) ≤-refl
-      -- Note: trace-preserves-capacity removed in Phase 3
-      ; trace-no-heap-writes = tt
-      ; trace-preserves-halted = tph-∷ iph-mov-to-output tph-[]
+      { base = record
+        { final-state = final-state
+        ; final-alloc = alloc
+        ; trace = mov-to-output ∷ []
+        ; trace-correct = trace-correct-pf
+        ; result-place = at-loc input-loc result-valid result-before (writeReg-same (regs s) Output (SV-Ptr input-loc)) result-valid result-before
+        ; not-halted = not-halted
+        ; frame-preserved = refl
+        ; trace-twf = twf-∷ tt twf-[]
+        ; trace-preserves-halted = exec-trace-preserves-halted-WF (mov-to-output ∷ [])
+        }
+      ; stack-inv = record
+        { slot-monotone = ≤-refl
+        ; max-slot-written = next-slot alloc
+        ; max-slot-geq-final = ≤-refl
+        ; stack-budget = ir-stack-requirement (SigOp {A} {B} si)
+        ; max-slot-usage-bound =
+            let n = next-slot alloc
+                eq : n +ℕ ir-stack-requirement (SigOp {A} {B} si) ≡ n
+                eq = trans (cong (n +ℕ_) (sigOp-stack-req {A} {B} si)) (+-identityʳ n)
+            in subst (n ≤_) (sym eq) ≤-refl
+        ; slot-stays-in-budget =
+            let n = next-slot alloc
+                eq : n +ℕ ir-stack-requirement (SigOp {A} {B} si) ≡ n
+                eq = trans (cong (n +ℕ_) (sigOp-stack-req {A} {B} si)) (+-identityʳ n)
+            in subst (n ≤_) (sym eq) ≤-refl
+        ; frontier-slot-stable = frontier-stable-pf
+        ; trace-writes-above = tt
+        ; trace-slot-reads-above = tt
+        ; trace-writes-below = tt
+        ; trace-slot-reads-below = tt
+        ; scratch-budget = ir-scratch-requirement (SigOp {A} {B} si)
+        ; scratch-bounded =
+            let n = next-slot alloc
+                eq : n +ℕ ir-scratch-requirement (SigOp {A} {B} si) ≡ n
+                eq = trans (cong (n +ℕ_) (sigOp-stack-req {A} {B} si)) (+-identityʳ n)
+            in subst (n ≤_) (sym eq) ≤-refl
+        }
+      ; heap-inv = record
+        { heap-monotone = ≤-refl
+        ; heap-budget = 0
+        ; max-heap-ref-written = next-heap-ref alloc
+        ; max-heap-ref-geq-final = ≤-refl
+        ; max-heap-usage-bound = m≤m+n (next-heap-ref alloc) 0
+        ; trace-no-heap-writes = tt
+        }
       }

@@ -278,34 +278,41 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   -- Stack mode: reference-based (tag + pointer), same as Heap mode
   run-inl {A} {B} mIn Stack x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     record
-      { final-state = s-final
-      ; final-alloc = alloc₁
-      ; trace = inl-trace
-      ; trace-correct = inl-inr-trace-state-correct 0 (suc (next-slot alloc)) (next-slot alloc) s alloc input-loc sum-loc s-final rdi-eq refl refl not-halted
-      ; result-place = at-loc sum-loc inl-valid-wf-final sum-before rax-eq inl-reclaim-preserves-validity inl-reclaim-preserves-result
-      ; not-halted = not-halted
-      ; frame-preserved = refl
-      ; slot-monotone = slot-monotone-inl
-      ; heap-preserved = refl
-      ; max-slot-written = next-slot alloc +ℕ sum-slots
-      ; max-slot-geq-final = ≤-refl
-      ; stack-budget = ir-stack-requirement (inl {A} {B} Stack)
-      ; max-slot-usage-bound = reclaim-size-bound-inl
-      ; slot-stays-in-budget = reclaim-size-bound-inl
-      -- Plan 0.13.1: inl-trace now writes SV-Tag at sum-slot (frontier).
-      -- Frontier slot no longer holds SV-Ptr input-loc, so return ⊤.
-      ; frontier-slot-stable = λ _ _ _ _ _ → inj₂ (inj₂ tt)
-      -- 5-instr trace writes: store-at-slot sum-slot AND store-at-slot (suc sum-slot)
-      ; trace-writes-above = ≤-refl , n≤1+n (next-slot alloc) , tt
-      ; trace-slot-reads-above = tt
-      ; trace-writes-below = <-trans (n<1+n (next-slot alloc)) (suc<+2 (next-slot alloc)) ,
-                             suc<+2 (next-slot alloc) , tt
-      ; trace-slot-reads-below = tt
-      ; trace-no-heap-writes = tt
-      ; trace-twf = twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt twf-[]))))
-      ; trace-preserves-halted = exec-trace-preserves-halted-WF inl-trace
-      ; scratch-budget = ir-scratch-requirement (inl {A} {B} Stack)
-      ; scratch-bounded = m≤m+n (next-slot alloc +ℕ 2) 2
+      { base = record
+        { final-state = s-final
+        ; final-alloc = alloc₁
+        ; trace = inl-trace
+        ; trace-correct = inl-inr-trace-state-correct 0 (suc (next-slot alloc)) (next-slot alloc) s alloc input-loc sum-loc s-final rdi-eq refl refl not-halted
+        ; result-place = at-loc sum-loc inl-valid-wf-final sum-before rax-eq inl-reclaim-preserves-validity inl-reclaim-preserves-result
+        ; not-halted = not-halted
+        ; frame-preserved = refl
+        ; trace-twf = twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt twf-[]))))
+        ; trace-preserves-halted = exec-trace-preserves-halted-WF inl-trace
+        }
+      ; stack-inv = record
+        { slot-monotone = slot-monotone-inl
+        ; max-slot-written = next-slot alloc +ℕ sum-slots
+        ; max-slot-geq-final = ≤-refl
+        ; stack-budget = ir-stack-requirement (inl {A} {B} Stack)
+        ; max-slot-usage-bound = reclaim-size-bound-inl
+        ; slot-stays-in-budget = reclaim-size-bound-inl
+        ; frontier-slot-stable = λ _ _ _ _ _ → inj₂ (inj₂ tt)
+        ; trace-writes-above = ≤-refl , n≤1+n (next-slot alloc) , tt
+        ; trace-slot-reads-above = tt
+        ; trace-writes-below = <-trans (n<1+n (next-slot alloc)) (suc<+2 (next-slot alloc)) ,
+                               suc<+2 (next-slot alloc) , tt
+        ; trace-slot-reads-below = tt
+        ; scratch-budget = ir-scratch-requirement (inl {A} {B} Stack)
+        ; scratch-bounded = m≤m+n (next-slot alloc +ℕ 2) 2
+        }
+      ; heap-inv = record
+        { heap-monotone = ≤-refl
+        ; heap-budget = 0
+        ; max-heap-ref-written = next-heap-ref alloc
+        ; max-heap-ref-geq-final = ≤-refl
+        ; max-heap-usage-bound = m≤m+n (next-heap-ref alloc) 0
+        ; trace-no-heap-writes = tt
+        }
       }
     where
       -- Stack mode: sum-slots = stack-type-slots (A + B) = 2 (tag + pointer)
@@ -405,32 +412,41 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   -- Heap mode: boxed representation (tag + pointer)
   run-inl {A} {B} mIn Heap x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     record
-      { final-state = s-final
-      ; final-alloc = alloc₁
-      ; trace = inl-trace
-      ; trace-correct = inl-inr-trace-state-correct 0 (suc (next-slot alloc)) (next-slot alloc) s alloc input-loc sum-loc s-final rdi-eq refl refl not-halted
-      ; result-place = at-loc sum-loc inl-valid-wf-final sum-before rax-eq inl-reclaim-preserves-validity inl-reclaim-preserves-result
-      ; not-halted = not-halted
-      ; frame-preserved = refl
-      ; slot-monotone = slot-monotone-inl
-      ; heap-preserved = refl
-      ; max-slot-written = next-slot alloc +ℕ sum-slots
-      ; max-slot-geq-final = ≤-refl
-      ; stack-budget = ir-stack-requirement (inl {A} {B} Heap)
-      ; max-slot-usage-bound = reclaim-size-bound-inl
-      ; slot-stays-in-budget = reclaim-size-bound-inl
-      -- Plan 0.13.1: tag-aware trace writes at frontier; return ⊤ branch.
-      ; frontier-slot-stable = λ _ _ _ _ _ → inj₂ (inj₂ tt)
-      ; trace-writes-above = ≤-refl , n≤1+n (next-slot alloc) , tt
-      ; trace-slot-reads-above = tt
-      ; trace-writes-below = <-trans (n<1+n (next-slot alloc)) (suc<+2 (next-slot alloc)) ,
-                             suc<+2 (next-slot alloc) , tt
-      ; trace-slot-reads-below = tt
-      ; trace-no-heap-writes = tt
-      ; trace-twf = twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt twf-[]))))
-      ; trace-preserves-halted = exec-trace-preserves-halted-WF inl-trace
-      ; scratch-budget = ir-scratch-requirement (inl {A} {B} Heap)
-      ; scratch-bounded = m≤m+n (next-slot alloc +ℕ 2) 2
+      { base = record
+        { final-state = s-final
+        ; final-alloc = alloc₁
+        ; trace = inl-trace
+        ; trace-correct = inl-inr-trace-state-correct 0 (suc (next-slot alloc)) (next-slot alloc) s alloc input-loc sum-loc s-final rdi-eq refl refl not-halted
+        ; result-place = at-loc sum-loc inl-valid-wf-final sum-before rax-eq inl-reclaim-preserves-validity inl-reclaim-preserves-result
+        ; not-halted = not-halted
+        ; frame-preserved = refl
+        ; trace-twf = twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt twf-[]))))
+        ; trace-preserves-halted = exec-trace-preserves-halted-WF inl-trace
+        }
+      ; stack-inv = record
+        { slot-monotone = slot-monotone-inl
+        ; max-slot-written = next-slot alloc +ℕ sum-slots
+        ; max-slot-geq-final = ≤-refl
+        ; stack-budget = ir-stack-requirement (inl {A} {B} Heap)
+        ; max-slot-usage-bound = reclaim-size-bound-inl
+        ; slot-stays-in-budget = reclaim-size-bound-inl
+        ; frontier-slot-stable = λ _ _ _ _ _ → inj₂ (inj₂ tt)
+        ; trace-writes-above = ≤-refl , n≤1+n (next-slot alloc) , tt
+        ; trace-slot-reads-above = tt
+        ; trace-writes-below = <-trans (n<1+n (next-slot alloc)) (suc<+2 (next-slot alloc)) ,
+                               suc<+2 (next-slot alloc) , tt
+        ; trace-slot-reads-below = tt
+        ; scratch-budget = ir-scratch-requirement (inl {A} {B} Heap)
+        ; scratch-bounded = m≤m+n (next-slot alloc +ℕ 2) 2
+        }
+      ; heap-inv = record
+        { heap-monotone = ≤-refl
+        ; heap-budget = 0
+        ; max-heap-ref-written = next-heap-ref alloc
+        ; max-heap-ref-geq-final = ≤-refl
+        ; max-heap-usage-bound = m≤m+n (next-heap-ref alloc) 0
+        ; trace-no-heap-writes = tt
+        }
       }
     where
       -- Heap mode: sum-slots = heap-type-slots (A + B) = 2 (tag + pointer)
@@ -544,31 +560,41 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   -- Stack mode: reference-based (tag + pointer), same as Heap mode
   run-inr {A} {B} mIn Stack x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     record
-      { final-state = s-final
-      ; final-alloc = alloc₁
-      ; trace = inr-trace
-      ; trace-correct = inl-inr-trace-state-correct 1 (suc (next-slot alloc)) (next-slot alloc) s alloc input-loc sum-loc s-final rdi-eq refl refl not-halted
-      ; result-place = at-loc sum-loc inr-valid-wf-final sum-before rax-eq inr-reclaim-preserves-validity inr-reclaim-preserves-result
-      ; not-halted = not-halted
-      ; frame-preserved = refl
-      ; slot-monotone = slot-monotone-inr
-      ; heap-preserved = refl
-      ; max-slot-written = next-slot alloc +ℕ sum-slots
-      ; max-slot-geq-final = ≤-refl
-      ; stack-budget = ir-stack-requirement (inr {A} {B} Stack)
-      ; max-slot-usage-bound = reclaim-size-bound-inr
-      ; slot-stays-in-budget = reclaim-size-bound-inr
-      ; frontier-slot-stable = λ _ _ _ _ _ → inj₂ (inj₂ tt)
-      ; trace-writes-above = ≤-refl , n≤1+n (next-slot alloc) , tt
-      ; trace-slot-reads-above = tt
-      ; trace-writes-below = <-trans (n<1+n (next-slot alloc)) (suc<+2 (next-slot alloc)) ,
-                             suc<+2 (next-slot alloc) , tt
-      ; trace-slot-reads-below = tt
-      ; trace-no-heap-writes = tt
-      ; trace-twf = twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt twf-[]))))
-      ; trace-preserves-halted = exec-trace-preserves-halted-WF inr-trace
-      ; scratch-budget = ir-scratch-requirement (inr {A} {B} Stack)
-      ; scratch-bounded = m≤m+n (next-slot alloc +ℕ 2) 2
+      { base = record
+        { final-state = s-final
+        ; final-alloc = alloc₁
+        ; trace = inr-trace
+        ; trace-correct = inl-inr-trace-state-correct 1 (suc (next-slot alloc)) (next-slot alloc) s alloc input-loc sum-loc s-final rdi-eq refl refl not-halted
+        ; result-place = at-loc sum-loc inr-valid-wf-final sum-before rax-eq inr-reclaim-preserves-validity inr-reclaim-preserves-result
+        ; not-halted = not-halted
+        ; frame-preserved = refl
+        ; trace-twf = twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt twf-[]))))
+        ; trace-preserves-halted = exec-trace-preserves-halted-WF inr-trace
+        }
+      ; stack-inv = record
+        { slot-monotone = slot-monotone-inr
+        ; max-slot-written = next-slot alloc +ℕ sum-slots
+        ; max-slot-geq-final = ≤-refl
+        ; stack-budget = ir-stack-requirement (inr {A} {B} Stack)
+        ; max-slot-usage-bound = reclaim-size-bound-inr
+        ; slot-stays-in-budget = reclaim-size-bound-inr
+        ; frontier-slot-stable = λ _ _ _ _ _ → inj₂ (inj₂ tt)
+        ; trace-writes-above = ≤-refl , n≤1+n (next-slot alloc) , tt
+        ; trace-slot-reads-above = tt
+        ; trace-writes-below = <-trans (n<1+n (next-slot alloc)) (suc<+2 (next-slot alloc)) ,
+                               suc<+2 (next-slot alloc) , tt
+        ; trace-slot-reads-below = tt
+        ; scratch-budget = ir-scratch-requirement (inr {A} {B} Stack)
+        ; scratch-bounded = m≤m+n (next-slot alloc +ℕ 2) 2
+        }
+      ; heap-inv = record
+        { heap-monotone = ≤-refl
+        ; heap-budget = 0
+        ; max-heap-ref-written = next-heap-ref alloc
+        ; max-heap-ref-geq-final = ≤-refl
+        ; max-heap-usage-bound = m≤m+n (next-heap-ref alloc) 0
+        ; trace-no-heap-writes = tt
+        }
       }
     where
       -- Stack mode: sum-slots = stack-type-slots (A + B) = 2 (tag + pointer)
@@ -658,31 +684,41 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   -- Heap mode: boxed representation (tag + pointer)
   run-inr {A} {B} mIn Heap x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     record
-      { final-state = s-final
-      ; final-alloc = alloc₁
-      ; trace = inr-trace
-      ; trace-correct = inl-inr-trace-state-correct 1 (suc (next-slot alloc)) (next-slot alloc) s alloc input-loc sum-loc s-final rdi-eq refl refl not-halted
-      ; result-place = at-loc sum-loc inr-valid-wf-final sum-before rax-eq inr-reclaim-preserves-validity inr-reclaim-preserves-result
-      ; not-halted = not-halted
-      ; frame-preserved = refl
-      ; slot-monotone = slot-monotone-inr
-      ; heap-preserved = refl
-      ; max-slot-written = next-slot alloc +ℕ sum-slots
-      ; max-slot-geq-final = ≤-refl
-      ; stack-budget = ir-stack-requirement (inr {A} {B} Heap)
-      ; max-slot-usage-bound = reclaim-size-bound-inr
-      ; slot-stays-in-budget = reclaim-size-bound-inr
-      ; frontier-slot-stable = λ _ _ _ _ _ → inj₂ (inj₂ tt)
-      ; trace-writes-above = ≤-refl , n≤1+n (next-slot alloc) , tt
-      ; trace-slot-reads-above = tt
-      ; trace-writes-below = <-trans (n<1+n (next-slot alloc)) (suc<+2 (next-slot alloc)) ,
-                             suc<+2 (next-slot alloc) , tt
-      ; trace-slot-reads-below = tt
-      ; trace-no-heap-writes = tt
-      ; trace-twf = twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt twf-[]))))
-      ; trace-preserves-halted = exec-trace-preserves-halted-WF inr-trace
-      ; scratch-budget = ir-scratch-requirement (inr {A} {B} Heap)
-      ; scratch-bounded = m≤m+n (next-slot alloc +ℕ 2) 2
+      { base = record
+        { final-state = s-final
+        ; final-alloc = alloc₁
+        ; trace = inr-trace
+        ; trace-correct = inl-inr-trace-state-correct 1 (suc (next-slot alloc)) (next-slot alloc) s alloc input-loc sum-loc s-final rdi-eq refl refl not-halted
+        ; result-place = at-loc sum-loc inr-valid-wf-final sum-before rax-eq inr-reclaim-preserves-validity inr-reclaim-preserves-result
+        ; not-halted = not-halted
+        ; frame-preserved = refl
+        ; trace-twf = twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt twf-[]))))
+        ; trace-preserves-halted = exec-trace-preserves-halted-WF inr-trace
+        }
+      ; stack-inv = record
+        { slot-monotone = slot-monotone-inr
+        ; max-slot-written = next-slot alloc +ℕ sum-slots
+        ; max-slot-geq-final = ≤-refl
+        ; stack-budget = ir-stack-requirement (inr {A} {B} Heap)
+        ; max-slot-usage-bound = reclaim-size-bound-inr
+        ; slot-stays-in-budget = reclaim-size-bound-inr
+        ; frontier-slot-stable = λ _ _ _ _ _ → inj₂ (inj₂ tt)
+        ; trace-writes-above = ≤-refl , n≤1+n (next-slot alloc) , tt
+        ; trace-slot-reads-above = tt
+        ; trace-writes-below = <-trans (n<1+n (next-slot alloc)) (suc<+2 (next-slot alloc)) ,
+                               suc<+2 (next-slot alloc) , tt
+        ; trace-slot-reads-below = tt
+        ; scratch-budget = ir-scratch-requirement (inr {A} {B} Heap)
+        ; scratch-bounded = m≤m+n (next-slot alloc +ℕ 2) 2
+        }
+      ; heap-inv = record
+        { heap-monotone = ≤-refl
+        ; heap-budget = 0
+        ; max-heap-ref-written = next-heap-ref alloc
+        ; max-heap-ref-geq-final = ≤-refl
+        ; max-heap-usage-bound = m≤m+n (next-heap-ref alloc) 0
+        ; trace-no-heap-writes = tt
+        }
       }
     where
       -- Heap mode: sum-slots = heap-type-slots (A + B) = 2 (tag + pointer)
@@ -798,45 +834,44 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   -- Case for inl: dispatch to f
   run-case {m} {A} {B} {C} f g rec-wf (inj₁ a) input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     mF , record
-      { final-state = IRResultAWF.final-state result-f
-      ; final-alloc = IRResultAWF.final-alloc result-f
-      ; trace = case-inl-trace
-      ; trace-correct = case-trace-state-correct f-trace s alloc input-loc payload-loc s-setup (IRResultAWF.final-state result-f)
-                          rdi-eq
-                          (InlValidWF.payload-ptr inl-decomp)
-                          refl
-                          (IRResultAWF.trace-correct result-f) not-halted
-      ; result-place = IRResultAWF.result-place result-f
-      ; not-halted = IRResultAWF.not-halted result-f
-      ; frame-preserved = IRResultAWF.frame-preserved result-f
-      ; slot-monotone = IRResultAWF.slot-monotone result-f
-      ; heap-preserved = IRResultAWF.heap-preserved result-f
-      -- Phase 7: Removed reclaimable-slot, reclaim-monotone, reclaim-bounded, reclaim-size-bound
-      
-      ; max-slot-written = IRResultAWF.max-slot-written result-f
-      ; max-slot-geq-final = IRResultAWF.max-slot-geq-final result-f
-      -- Plan 0.2.4.5 D1 task #30: dynamic budgets. For the inl branch
-      -- only f is executed, so the case-IR's budget is just f's.
-      ; stack-budget = IRResultAWF.stack-budget result-f
-      ; max-slot-usage-bound = IRResultAWF.max-slot-usage-bound result-f
-      ; slot-stays-in-budget = IRResultAWF.slot-stays-in-budget result-f
-      -- Frontier slot stability for case (inl branch)
-      ; frontier-slot-stable = case-frontier-stable
-      -- Trace writes above: setup instructions don't store, f-trace writes above frontier
-      ; trace-writes-above = IRResultAWF.trace-writes-above result-f
-      -- Trace slot reads above: setup instructions don't read slots, forward from f
-      ; trace-slot-reads-above = IRResultAWF.trace-slot-reads-above result-f
-      -- Trace writes below: forward from f
-      ; trace-writes-below = IRResultAWF.trace-writes-below result-f
-      -- Trace slot reads below: forward from f
-      ; trace-slot-reads-below = IRResultAWF.trace-slot-reads-below result-f
-      -- Trace preserves capacity: setup + f-trace preserves capacity
-      -- Note: trace-preserves-capacity removed in Phase 3
-      ; trace-no-heap-writes = IRResultAWF.trace-no-heap-writes result-f
-      ; trace-twf = SMP.!!  -- TODO: load-indirect-suc + result-f.trace-twf chained
-      ; trace-preserves-halted = exec-trace-preserves-halted-WF case-inl-trace
-      ; scratch-budget = IRResultAWF.scratch-budget result-f
-      ; scratch-bounded = IRResultAWF.scratch-bounded result-f
+      { base = record
+        { final-state = IRResultAWF.final-state result-f
+        ; final-alloc = IRResultAWF.final-alloc result-f
+        ; trace = case-inl-trace
+        ; trace-correct = case-trace-state-correct f-trace s alloc input-loc payload-loc s-setup (IRResultAWF.final-state result-f)
+                            rdi-eq
+                            (InlValidWF.payload-ptr inl-decomp)
+                            refl
+                            (IRResultAWF.trace-correct result-f) not-halted
+        ; result-place = IRResultAWF.result-place result-f
+        ; not-halted = IRResultAWF.not-halted result-f
+        ; frame-preserved = IRResultAWF.frame-preserved result-f
+        ; trace-twf = SMP.!!  -- TODO: load-indirect-suc + result-f.trace-twf chained
+        ; trace-preserves-halted = exec-trace-preserves-halted-WF case-inl-trace
+        }
+      ; stack-inv = record
+        { slot-monotone = IRResultAWF.slot-monotone result-f
+        ; max-slot-written = IRResultAWF.max-slot-written result-f
+        ; max-slot-geq-final = IRResultAWF.max-slot-geq-final result-f
+        ; stack-budget = IRResultAWF.stack-budget result-f
+        ; max-slot-usage-bound = IRResultAWF.max-slot-usage-bound result-f
+        ; slot-stays-in-budget = IRResultAWF.slot-stays-in-budget result-f
+        ; frontier-slot-stable = case-frontier-stable
+        ; trace-writes-above = IRResultAWF.trace-writes-above result-f
+        ; trace-slot-reads-above = IRResultAWF.trace-slot-reads-above result-f
+        ; trace-writes-below = IRResultAWF.trace-writes-below result-f
+        ; trace-slot-reads-below = IRResultAWF.trace-slot-reads-below result-f
+        ; scratch-budget = IRResultAWF.scratch-budget result-f
+        ; scratch-bounded = IRResultAWF.scratch-bounded result-f
+        }
+      ; heap-inv = record
+        { heap-monotone = IRResultAWF.heap-monotone result-f
+        ; heap-budget = IRResultAWF.heap-budget result-f
+        ; max-heap-ref-written = IRResultAWF.max-heap-ref-written result-f
+        ; max-heap-ref-geq-final = IRResultAWF.max-heap-ref-geq-final result-f
+        ; max-heap-usage-bound = IRResultAWF.max-heap-usage-bound result-f
+        ; trace-no-heap-writes = IRResultAWF.trace-no-heap-writes result-f
+        }
       }
     where
       rf = ir-stack-requirement f
@@ -913,45 +948,44 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   -- Case for inr: dispatch to g
   run-case {m} {A} {B} {C} f g rec-wf (inj₂ b) input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     mG , record
-      { final-state = IRResultAWF.final-state result-g
-      ; final-alloc = IRResultAWF.final-alloc result-g
-      ; trace = case-inr-trace
-      ; trace-correct = case-trace-state-correct g-trace s alloc input-loc payload-loc s-setup (IRResultAWF.final-state result-g)
-                          rdi-eq
-                          (InrValidWF.payload-ptr inr-decomp)
-                          refl
-                          (IRResultAWF.trace-correct result-g) not-halted
-      ; result-place = IRResultAWF.result-place result-g
-      ; not-halted = IRResultAWF.not-halted result-g
-      ; frame-preserved = IRResultAWF.frame-preserved result-g
-      ; slot-monotone = IRResultAWF.slot-monotone result-g
-      ; heap-preserved = IRResultAWF.heap-preserved result-g
-      -- Phase 7: Removed reclaimable-slot, reclaim-monotone, reclaim-bounded, reclaim-size-bound
-      
-      ; max-slot-written = IRResultAWF.max-slot-written result-g
-      ; max-slot-geq-final = IRResultAWF.max-slot-geq-final result-g
-      -- Plan 0.2.4.5 D1 task #30: dynamic budgets. For the inr branch
-      -- only g is executed, so the case-IR's budget is just g's.
-      ; stack-budget = IRResultAWF.stack-budget result-g
-      ; max-slot-usage-bound = IRResultAWF.max-slot-usage-bound result-g
-      ; slot-stays-in-budget = IRResultAWF.slot-stays-in-budget result-g
-      -- Frontier slot stability for case (inr branch)
-      ; frontier-slot-stable = case-frontier-stable
-      -- Trace writes above: setup instructions don't store, g-trace writes above frontier
-      ; trace-writes-above = IRResultAWF.trace-writes-above result-g
-      -- Trace slot reads above: setup instructions don't read slots, forward from g
-      ; trace-slot-reads-above = IRResultAWF.trace-slot-reads-above result-g
-      -- Trace writes below: forward from g
-      ; trace-writes-below = IRResultAWF.trace-writes-below result-g
-      -- Trace slot reads below: forward from g
-      ; trace-slot-reads-below = IRResultAWF.trace-slot-reads-below result-g
-      -- Trace preserves capacity: setup + g-trace preserves capacity
-      -- Note: trace-preserves-capacity removed in Phase 3
-      ; trace-no-heap-writes = IRResultAWF.trace-no-heap-writes result-g
-      ; trace-twf = SMP.!!  -- TODO: load-indirect-suc + result-g.trace-twf chained
-      ; trace-preserves-halted = exec-trace-preserves-halted-WF case-inr-trace
-      ; scratch-budget = IRResultAWF.scratch-budget result-g
-      ; scratch-bounded = IRResultAWF.scratch-bounded result-g
+      { base = record
+        { final-state = IRResultAWF.final-state result-g
+        ; final-alloc = IRResultAWF.final-alloc result-g
+        ; trace = case-inr-trace
+        ; trace-correct = case-trace-state-correct g-trace s alloc input-loc payload-loc s-setup (IRResultAWF.final-state result-g)
+                            rdi-eq
+                            (InrValidWF.payload-ptr inr-decomp)
+                            refl
+                            (IRResultAWF.trace-correct result-g) not-halted
+        ; result-place = IRResultAWF.result-place result-g
+        ; not-halted = IRResultAWF.not-halted result-g
+        ; frame-preserved = IRResultAWF.frame-preserved result-g
+        ; trace-twf = SMP.!!  -- TODO: load-indirect-suc + result-g.trace-twf chained
+        ; trace-preserves-halted = exec-trace-preserves-halted-WF case-inr-trace
+        }
+      ; stack-inv = record
+        { slot-monotone = IRResultAWF.slot-monotone result-g
+        ; max-slot-written = IRResultAWF.max-slot-written result-g
+        ; max-slot-geq-final = IRResultAWF.max-slot-geq-final result-g
+        ; stack-budget = IRResultAWF.stack-budget result-g
+        ; max-slot-usage-bound = IRResultAWF.max-slot-usage-bound result-g
+        ; slot-stays-in-budget = IRResultAWF.slot-stays-in-budget result-g
+        ; frontier-slot-stable = case-frontier-stable
+        ; trace-writes-above = IRResultAWF.trace-writes-above result-g
+        ; trace-slot-reads-above = IRResultAWF.trace-slot-reads-above result-g
+        ; trace-writes-below = IRResultAWF.trace-writes-below result-g
+        ; trace-slot-reads-below = IRResultAWF.trace-slot-reads-below result-g
+        ; scratch-budget = IRResultAWF.scratch-budget result-g
+        ; scratch-bounded = IRResultAWF.scratch-bounded result-g
+        }
+      ; heap-inv = record
+        { heap-monotone = IRResultAWF.heap-monotone result-g
+        ; heap-budget = IRResultAWF.heap-budget result-g
+        ; max-heap-ref-written = IRResultAWF.max-heap-ref-written result-g
+        ; max-heap-ref-geq-final = IRResultAWF.max-heap-ref-geq-final result-g
+        ; max-heap-usage-bound = IRResultAWF.max-heap-usage-bound result-g
+        ; trace-no-heap-writes = IRResultAWF.trace-no-heap-writes result-g
+        }
       }
     where
       rf = ir-stack-requirement f
@@ -1075,34 +1109,40 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     IRResultAWF m (In {F} wf m) x s alloc
   run-In {F} wf mIn m x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     record
-      { final-state = s'
-      ; final-alloc = alloc'
-      ; trace = in-trace
-      ; trace-correct = refl  -- s' DEFINED by trace
-      ; result-place = at-loc result-loc result-valid result-bf rax-eq result-valid result-bf
-      ; not-halted = not-halted'
-      ; frame-preserved = refl
-      ; slot-monotone = slot-mono
-      ; heap-preserved = refl
-      ; max-slot-written = next-slot alloc'
-      ; max-slot-geq-final = ≤-refl
-      ; stack-budget = ir-stack-requirement (In {F} wf m)
-      ; max-slot-usage-bound = reclaim-bound
-      -- slot-stays-in-budget: In allocates exactly 1 slot
-      ; slot-stays-in-budget = reclaim-bound
-      ; frontier-slot-stable = frontier-stable
-      ; trace-writes-above = trace-wa
-      ; trace-slot-reads-above = tt
-      ; trace-writes-below = trace-wb
-      ; trace-slot-reads-below = tt
-      -- Note: trace-preserves-capacity removed in Phase 3
-      ; trace-no-heap-writes = tt
-      ; trace-twf = twf-∷ tt (twf-∷ tt (twf-∷ tt twf-[]))
-      ; trace-preserves-halted = exec-trace-preserves-halted-WF in-trace
-      -- scratch-bounded: In allocates 1 slot (max-slot = suc n = next-slot alloc')
-      -- ir-scratch-requirement (In _ _) = 1, so bound is suc n ≤ suc n + 1
-      ; scratch-budget = ir-scratch-requirement (In {F} wf m)
-      ; scratch-bounded = m≤m+n (suc (next-slot alloc)) 1
+      { base = record
+        { final-state = s'
+        ; final-alloc = alloc'
+        ; trace = in-trace
+        ; trace-correct = refl  -- s' DEFINED by trace
+        ; result-place = at-loc result-loc result-valid result-bf rax-eq result-valid result-bf
+        ; not-halted = not-halted'
+        ; frame-preserved = refl
+        ; trace-twf = twf-∷ tt (twf-∷ tt (twf-∷ tt twf-[]))
+        ; trace-preserves-halted = exec-trace-preserves-halted-WF in-trace
+        }
+      ; stack-inv = record
+        { slot-monotone = slot-mono
+        ; max-slot-written = next-slot alloc'
+        ; max-slot-geq-final = ≤-refl
+        ; stack-budget = ir-stack-requirement (In {F} wf m)
+        ; max-slot-usage-bound = reclaim-bound
+        ; slot-stays-in-budget = reclaim-bound
+        ; frontier-slot-stable = frontier-stable
+        ; trace-writes-above = trace-wa
+        ; trace-slot-reads-above = tt
+        ; trace-writes-below = trace-wb
+        ; trace-slot-reads-below = tt
+        ; scratch-budget = ir-scratch-requirement (In {F} wf m)
+        ; scratch-bounded = m≤m+n (suc (next-slot alloc)) 1
+        }
+      ; heap-inv = record
+        { heap-monotone = ≤-refl
+        ; heap-budget = 0
+        ; max-heap-ref-written = next-heap-ref alloc
+        ; max-heap-ref-geq-final = ≤-refl
+        ; max-heap-usage-bound = m≤m+n (next-heap-ref alloc) 0
+        ; trace-no-heap-writes = tt
+        }
       }
     where
       -- ir-stack-requirement (In _ _) = 1
@@ -1187,34 +1227,40 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     IRResultAWF Heap (out-μ {F} wf) x s alloc
   run-out-μ {F} wf mIn x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     record
-      { final-state = s'
-      ; final-alloc = alloc
-      ; trace = out-μ-trace
-      ; trace-correct = refl  -- s' DEFINED by trace
-      ; result-place = at-loc input-loc result-valid input-before rax-eq result-valid input-before
-      ; not-halted = not-halted'
-      ; frame-preserved = refl
-      ; slot-monotone = ≤-refl
-      ; heap-preserved = refl
-      ; max-slot-written = next-slot alloc
-      ; max-slot-geq-final = ≤-refl
-      ; stack-budget = ir-stack-requirement (out-μ {F} wf)
-      ; max-slot-usage-bound = m≤m+n (next-slot alloc) 0
-      -- slot-stays-in-budget: out-μ allocates 0 slots
-      ; slot-stays-in-budget = m≤m+n (next-slot alloc) 0
-      ; frontier-slot-stable = frontier-stable
-      ; trace-writes-above = tt
-      ; trace-slot-reads-above = tt
-      ; trace-writes-below = tt
-      ; trace-slot-reads-below = tt
-      -- Note: trace-preserves-capacity removed in Phase 3
-      ; trace-no-heap-writes = tt
-      ; trace-twf = twf-∷ tt twf-[]
-      ; trace-preserves-halted = exec-trace-preserves-halted-WF out-μ-trace
-      -- scratch-bounded: out-μ allocates 0 slots, max-slot = next-slot alloc
-      -- ir-scratch-requirement (out-μ _) = 0, so bound is n + 0 = n
-      ; scratch-budget = ir-scratch-requirement (out-μ {F} wf)
-      ; scratch-bounded = m≤m+n (next-slot alloc) 0
+      { base = record
+        { final-state = s'
+        ; final-alloc = alloc
+        ; trace = out-μ-trace
+        ; trace-correct = refl  -- s' DEFINED by trace
+        ; result-place = at-loc input-loc result-valid input-before rax-eq result-valid input-before
+        ; not-halted = not-halted'
+        ; frame-preserved = refl
+        ; trace-twf = twf-∷ tt twf-[]
+        ; trace-preserves-halted = exec-trace-preserves-halted-WF out-μ-trace
+        }
+      ; stack-inv = record
+        { slot-monotone = ≤-refl
+        ; max-slot-written = next-slot alloc
+        ; max-slot-geq-final = ≤-refl
+        ; stack-budget = ir-stack-requirement (out-μ {F} wf)
+        ; max-slot-usage-bound = m≤m+n (next-slot alloc) 0
+        ; slot-stays-in-budget = m≤m+n (next-slot alloc) 0
+        ; frontier-slot-stable = frontier-stable
+        ; trace-writes-above = tt
+        ; trace-slot-reads-above = tt
+        ; trace-writes-below = tt
+        ; trace-slot-reads-below = tt
+        ; scratch-budget = ir-scratch-requirement (out-μ {F} wf)
+        ; scratch-bounded = m≤m+n (next-slot alloc) 0
+        }
+      ; heap-inv = record
+        { heap-monotone = ≤-refl
+        ; heap-budget = 0
+        ; max-heap-ref-written = next-heap-ref alloc
+        ; max-heap-ref-geq-final = ≤-refl
+        ; max-heap-usage-bound = m≤m+n (next-heap-ref alloc) 0
+        ; trace-no-heap-writes = tt
+        }
       }
     where
       -- ir-stack-requirement (out-μ _) = 0, so no allocation
@@ -1267,33 +1313,40 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     IRResultAWF Heap (Out {F} wf) x s alloc
   run-Out {F} wf mIn x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     record
-      { final-state = s'
-      ; final-alloc = alloc
-      ; trace = out-trace
-      ; trace-correct = refl  -- s' DEFINED by trace
-      ; result-place = at-loc input-loc result-valid input-before rax-eq result-valid input-before
-      ; not-halted = not-halted'
-      ; frame-preserved = refl
-      ; slot-monotone = ≤-refl
-      ; heap-preserved = refl
-      ; max-slot-written = next-slot alloc
-      ; max-slot-geq-final = ≤-refl
-      ; stack-budget = ir-stack-requirement (Out {F} wf)
-      ; max-slot-usage-bound = m≤m+n (next-slot alloc) 0
-      ; slot-stays-in-budget = m≤m+n (next-slot alloc) 0
-      ; frontier-slot-stable = frontier-stable
-      ; trace-writes-above = tt
-      ; trace-slot-reads-above = tt
-      ; trace-writes-below = tt
-      ; trace-slot-reads-below = tt
-      -- Note: trace-preserves-capacity removed in Phase 3
-      ; trace-no-heap-writes = tt
-      ; trace-twf = twf-∷ tt twf-[]
-      ; trace-preserves-halted = exec-trace-preserves-halted-WF out-trace
-      -- scratch-bounded: Out allocates 0 slots, max-slot = next-slot alloc
-      -- ir-scratch-requirement (Out _) = 0, so bound is n + 0 = n
-      ; scratch-budget = ir-scratch-requirement (Out {F} wf)
-      ; scratch-bounded = m≤m+n (next-slot alloc) 0
+      { base = record
+        { final-state = s'
+        ; final-alloc = alloc
+        ; trace = out-trace
+        ; trace-correct = refl  -- s' DEFINED by trace
+        ; result-place = at-loc input-loc result-valid input-before rax-eq result-valid input-before
+        ; not-halted = not-halted'
+        ; frame-preserved = refl
+        ; trace-twf = twf-∷ tt twf-[]
+        ; trace-preserves-halted = exec-trace-preserves-halted-WF out-trace
+        }
+      ; stack-inv = record
+        { slot-monotone = ≤-refl
+        ; max-slot-written = next-slot alloc
+        ; max-slot-geq-final = ≤-refl
+        ; stack-budget = ir-stack-requirement (Out {F} wf)
+        ; max-slot-usage-bound = m≤m+n (next-slot alloc) 0
+        ; slot-stays-in-budget = m≤m+n (next-slot alloc) 0
+        ; frontier-slot-stable = frontier-stable
+        ; trace-writes-above = tt
+        ; trace-slot-reads-above = tt
+        ; trace-writes-below = tt
+        ; trace-slot-reads-below = tt
+        ; scratch-budget = ir-scratch-requirement (Out {F} wf)
+        ; scratch-bounded = m≤m+n (next-slot alloc) 0
+        }
+      ; heap-inv = record
+        { heap-monotone = ≤-refl
+        ; heap-budget = 0
+        ; max-heap-ref-written = next-heap-ref alloc
+        ; max-heap-ref-geq-final = ≤-refl
+        ; max-heap-usage-bound = m≤m+n (next-heap-ref alloc) 0
+        ; trace-no-heap-writes = tt
+        }
       }
     where
       -- ir-stack-requirement (Out _) = 0, so no allocation
@@ -1343,33 +1396,40 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     IRResultAWF m (in-ν {F} wf m) x s alloc
   run-in-ν {F} wf mIn m x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     record
-      { final-state = s'
-      ; final-alloc = alloc'
-      ; trace = in-ν-trace
-      ; trace-correct = refl  -- s' DEFINED by trace
-      ; result-place = at-loc result-loc result-valid result-bf rax-eq result-valid result-bf
-      ; not-halted = not-halted'
-      ; frame-preserved = refl
-      ; slot-monotone = slot-mono
-      ; heap-preserved = refl
-      ; max-slot-written = next-slot alloc'
-      ; max-slot-geq-final = ≤-refl
-      ; stack-budget = ir-stack-requirement (in-ν {F} wf m)
-      ; max-slot-usage-bound = reclaim-bound
-      ; slot-stays-in-budget = reclaim-bound
-      ; frontier-slot-stable = frontier-stable
-      ; trace-writes-above = trace-wa
-      ; trace-slot-reads-above = tt
-      ; trace-writes-below = trace-wb
-      ; trace-slot-reads-below = tt
-      -- Note: trace-preserves-capacity removed in Phase 3
-      ; trace-no-heap-writes = tt
-      ; trace-twf = twf-∷ tt (twf-∷ tt (twf-∷ tt twf-[]))
-      ; trace-preserves-halted = exec-trace-preserves-halted-WF in-ν-trace
-      -- scratch-bounded: in-ν allocates 1 slot (max-slot = suc n = next-slot alloc')
-      -- ir-scratch-requirement (in-ν _ _) = 1, so bound is suc n ≤ suc n + 1
-      ; scratch-budget = ir-scratch-requirement (in-ν {F} wf m)
-      ; scratch-bounded = m≤m+n (suc (next-slot alloc)) 1
+      { base = record
+        { final-state = s'
+        ; final-alloc = alloc'
+        ; trace = in-ν-trace
+        ; trace-correct = refl  -- s' DEFINED by trace
+        ; result-place = at-loc result-loc result-valid result-bf rax-eq result-valid result-bf
+        ; not-halted = not-halted'
+        ; frame-preserved = refl
+        ; trace-twf = twf-∷ tt (twf-∷ tt (twf-∷ tt twf-[]))
+        ; trace-preserves-halted = exec-trace-preserves-halted-WF in-ν-trace
+        }
+      ; stack-inv = record
+        { slot-monotone = slot-mono
+        ; max-slot-written = next-slot alloc'
+        ; max-slot-geq-final = ≤-refl
+        ; stack-budget = ir-stack-requirement (in-ν {F} wf m)
+        ; max-slot-usage-bound = reclaim-bound
+        ; slot-stays-in-budget = reclaim-bound
+        ; frontier-slot-stable = frontier-stable
+        ; trace-writes-above = trace-wa
+        ; trace-slot-reads-above = tt
+        ; trace-writes-below = trace-wb
+        ; trace-slot-reads-below = tt
+        ; scratch-budget = ir-scratch-requirement (in-ν {F} wf m)
+        ; scratch-bounded = m≤m+n (suc (next-slot alloc)) 1
+        }
+      ; heap-inv = record
+        { heap-monotone = ≤-refl
+        ; heap-budget = 0
+        ; max-heap-ref-written = next-heap-ref alloc
+        ; max-heap-ref-geq-final = ≤-refl
+        ; max-heap-usage-bound = m≤m+n (next-heap-ref alloc) 0
+        ; trace-no-heap-writes = tt
+        }
       }
     where
       -- ir-stack-requirement (in-ν _ _) = 1

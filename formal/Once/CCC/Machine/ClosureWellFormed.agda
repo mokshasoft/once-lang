@@ -22,6 +22,7 @@
 module Once.CCC.Machine.ClosureWellFormed where
 
 open import Data.Nat using (ℕ; _<_; _≤_; _≥_; suc; zero) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
+open import Data.Nat.Properties using (≤-antisym; ≤-trans; +-identityʳ)
 open import Data.Bool using (false)
 open import Data.Maybe using (just)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
@@ -360,6 +361,95 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     place-reclaim-before {Unit} {_} {_} {a₂} unit-result = before-rs
       where postulate before-rs : BeforeFrontier a₂ _
 
+    --------------------------------------------------------------------
+    -- Plan 0.14 Phase B.0: factored IRResultAWF.
+    --
+    -- Three sub-records by allocator world:
+    --   IRResultBase   — common fields every IR result must provide
+    --                    (state/alloc/trace + result-place + halt/frame
+    --                     + per-instruction WF chain).
+    --   IRStackBudget  — stack-allocator invariants (next-slot bumps,
+    --                    slot writes/reads, scratch budget).
+    --   IRHeapBudget   — heap-allocator invariants (next-heap-ref bumps,
+    --                    heap budget, existing-heap-preservation).
+    --
+    -- IRResultAWF bundles all three. `open … public` re-exposes each
+    -- sub-record's fields at the bundle level so consumers can still
+    -- write `r .final-state`, `r .slot-monotone`, `r .heap-monotone`
+    -- without going through `.base.` / `.stack-inv.` / `.heap-inv.`.
+    --
+    -- Stack-only IRs fill the heap sub-record trivially
+    -- (heap-monotone = ≤-refl, heap-budget = 0, trace-no-heap-writes = tt).
+    -- Heap-allocating IRs (run-pair-heap and friends) contribute
+    -- non-trivially to the heap sub-record while filling the stack
+    -- sub-record with whatever scratch they use.
+    --
+    -- Future InReg-allocating IRs add an IRRegBudget sub-record and
+    -- one new bundle field; the existing two sub-records stay untouched.
+    --------------------------------------------------------------------
+
+    record IRResultBase (m : AllocMode)
+                        {A B : Type}
+                        (ir : IR A B)
+                        (x : ⟦ A ⟧)
+                        (s : LocState FS)
+                        (alloc : AllocState {FS}) : Set where
+      inductive
+      field
+        final-state : LocState FS
+        final-alloc : AllocState {FS}
+        trace : AbstractTrace
+        trace-correct : proj₁ (exec-trace trace s alloc) ≡ final-state
+        result-place : ResultPlace B m final-alloc
+          (record alloc { next-slot = next-slot final-alloc })
+          (eval ir x) final-state
+        not-halted : halted final-state ≡ false
+        frame-preserved : current-frame final-alloc ≡ current-frame alloc
+        trace-twf : TraceWF s alloc trace
+        trace-preserves-halted :
+          ∀ (s' : LocState FS) (alloc' : AllocState {FS}) →
+          halted s' ≡ false →
+          TraceWF s' alloc' trace →
+          halted (proj₁ (exec-trace trace s' alloc')) ≡ false
+
+    record IRStackBudget (alloc final-alloc : AllocState {FS})
+                         (trace : AbstractTrace)
+                         (s : LocState FS) : Set where
+      inductive
+      field
+        slot-monotone : next-slot alloc ≤ next-slot final-alloc
+        max-slot-written : ℕ
+        max-slot-geq-final : next-slot final-alloc ≤ max-slot-written
+        stack-budget : ℕ
+        max-slot-usage-bound : max-slot-written ≤ next-slot alloc +ℕ stack-budget
+        slot-stays-in-budget : next-slot final-alloc ≤ next-slot alloc +ℕ stack-budget
+        frontier-slot-stable : ∀ (s' : LocState FS) (input-loc : ValueLocation FS) →
+          halted s' ≡ false →
+          readReg (regs s') Input1 ≡ SV-Ptr input-loc →
+          readLoc s' (AtStack (current-frame alloc) (next-slot alloc)) ≡ just (SV-Ptr input-loc) →
+          (next-slot alloc ≡ next-slot final-alloc) ⊎
+          ((readLoc (proj₁ (exec-trace trace s' alloc))
+                   (AtStack (current-frame alloc) (next-slot alloc)) ≡ just (SV-Ptr input-loc)) ⊎ ⊤)
+        trace-writes-above : TraceWritesAbove (next-slot alloc) trace
+        trace-slot-reads-above : TraceSlotReadsAbove (next-slot alloc) trace
+        trace-writes-below : TraceWritesBelow max-slot-written trace
+        trace-slot-reads-below : TraceSlotReadsBelow max-slot-written trace
+        scratch-budget : ℕ
+        scratch-bounded : max-slot-written ≤ next-slot final-alloc +ℕ scratch-budget
+
+    record IRHeapBudget (alloc final-alloc : AllocState {FS})
+                        (trace : AbstractTrace) : Set where
+      inductive
+      field
+        -- Plan 0.14: heap-monotone replaces the old heap-preserved (≡).
+        -- ≤ accommodates instr-alloc-heap-bearing traces.
+        heap-monotone : next-heap-ref alloc ≤ next-heap-ref final-alloc
+        heap-budget : ℕ
+        max-heap-ref-written : ℕ
+        max-heap-ref-geq-final : next-heap-ref final-alloc ≤ max-heap-ref-written
+        max-heap-usage-bound : max-heap-ref-written ≤ next-heap-ref alloc +ℕ heap-budget
+        trace-no-heap-writes : TraceNoHeapWrites trace
+
     record IRResultAWF (m : AllocMode)
                        {A B : Type}
                        (ir : IR A B)
@@ -368,140 +458,12 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
                        (alloc : AllocState {FS}) : Set where
       inductive
       field
-        final-state : LocState FS
-        -- Compile-time allocation state (Dispatcher's bookkeeping)
-        -- Has incremented next-slot for BeforeFrontier/validity reasoning
-        final-alloc : AllocState {FS}
-        -- Trace: sequence of abstract instructions that produces this result
-        trace : AbstractTrace
-        -- Runtime trace correctness: proves state transformation
-        -- Note: exec-trace returns (final-state, alloc) for non-apply IRs
-        -- since next-slot is compile-time only and traces don't modify it
-        trace-correct : proj₁ (exec-trace trace s alloc) ≡ final-state
-        -- Where the result is. For Unit results, `unit-result`
-        -- (no location). For non-Unit, `at-loc loc validity before
-        -- output-eq reclaim-validity reclaim-before` bundles all
-        -- six invariants at the same `loc` — consumers don't need
-        -- a separate `loc-eq` to bridge result-state and reclaim-state.
-        result-place : ResultPlace B m final-alloc
-          (record alloc { next-slot = next-slot final-alloc })
-          (eval ir x) final-state
-        not-halted : halted final-state ≡ false
-        frame-preserved : current-frame final-alloc ≡ current-frame alloc
-        slot-monotone : next-slot alloc ≤ next-slot final-alloc
-        -- Plan 0.2.4.5 D1 task #30: stack-only invariant strengthening.
-        -- The abstract instruction set has no heap-allocation operation,
-        -- so every IR genuinely preserves the heap-frontier. Promoting
-        -- this from ≤ to ≡ rules out producers claiming heap grew (a
-        -- "smart" malloc-then-dealloc trick can't satisfy a point-to-point
-        -- equality). Will be relaxed to a mode-conditional form when
-        -- heap-allocating IRs land.
-        heap-preserved : next-heap-ref final-alloc ≡ next-heap-ref alloc
-        -- Note: capacity-preserved removed in Phase 3 (frame-capacity removed from AllocState)
-        -- Note: mem-preserved-before removed in Phase 4 - use irresult-mem-preserved instead
-        -- Phase 7: Removed reclaimable-slot, reclaim-monotone, reclaim-bounded, reclaim-size-bound
-        --   With perfect reclaim, reclaimable-slot ≡ next-slot final-alloc, so:
-        --   - reclaim-monotone = slot-monotone
-        --   - reclaim-size-bound = slot-stays-in-budget
-        -- Note: reclaim-place was a separate field but is now folded
-        -- into `result-place` via the dual-alloc form of
-        -- `ResultPlace`. The shared loc is captured at construction.
-        -- High-water mark of slot allocation (maximum slot ever written)
-        -- With reclamation, next-slot final-alloc may be < max slots actually written
-        max-slot-written : ℕ
-        -- max-slot-written is at least next-slot final-alloc (was: reclaimable-slot)
-        max-slot-geq-final : next-slot final-alloc ≤ max-slot-written
-        -- Plan 0.2.4.5 D1 task #30: dynamic stack budget. Each IR carries
-        -- its own runtime ℕ bound. Static IRs use ir-stack-requirement;
-        -- apply uses pair-slots + body-cap (read off the closure value).
-        -- Required for structured recursion later, where bounds depend
-        -- on runtime structure size.
-        stack-budget : ℕ
-        -- max-slot-written is bounded by input next-slot + stack-budget
-        max-slot-usage-bound : max-slot-written ≤ next-slot alloc +ℕ stack-budget
-        -- Stack discipline: execution stays within stack budget
-        -- Final stack frontier bounded by budget (pointers/tags/temps)
-        -- Even with arbitrary-sized output (on heap), stack usage (pointers/tags) is bounded
-        -- Enables compositional capacity proofs: if f and g stay in bounds, so does f;g
-        slot-stays-in-budget : next-slot final-alloc ≤ next-slot alloc +ℕ stack-budget
-        -- Frontier slot stability: if input-loc is at frontier initially, it stays there
-        -- This is because IR traces either:
-        --   1. Don't write to frontier slot (e.g., inl/inr write to suc)
-        --   2. Write Input1 to frontier slot (via mov-to-output; store-at-slot)
-        --   3. Push a frame, so writes go to child frame (apply)
-        -- This property enables pair's backup-slot preservation proof.
-        --
-        -- Returns a 3-way sum:
-        --   inj₁: IR doesn't allocate (final-alloc = input alloc)
-        --   inj₂ (inj₁ proof): IR allocates and preserves the slot
-        --   inj₂ (inj₂ tt): IR allocates but might not preserve (edge case in compose)
-        --
-        -- The third case arises in compose when f doesn't allocate but returns a
-        -- different location (like fst, snd), and g allocates. In this case, g writes
-        -- f's result (not the original input) to the frontier slot.
-        -- Plan 0.13.2: Input1 holds StoredValue; pointer-equivalent
-        -- inputs are wrapped as SV-Ptr.
-        frontier-slot-stable : ∀ (s' : LocState FS) (input-loc : ValueLocation FS) →
-          halted s' ≡ false →
-          readReg (regs s') Input1 ≡ SV-Ptr input-loc →
-          readLoc s' (AtStack (current-frame alloc) (next-slot alloc)) ≡ just (SV-Ptr input-loc) →
-          (next-slot alloc ≡ next-slot final-alloc) ⊎
-          ((readLoc (proj₁ (exec-trace trace s' alloc))
-                   (AtStack (current-frame alloc) (next-slot alloc)) ≡ just (SV-Ptr input-loc)) ⊎ ⊤)
-        -- Trace slot bound: all stack writes are at slots ≥ next-slot alloc.
-        -- This enables compositional proofs that traces don't write below their frontier.
-        -- Key for pair's g-preserves-backup proof via exec-trace-preserves-disjoint.
-        trace-writes-above : TraceWritesAbove (next-slot alloc) trace
-        -- Trace slot read bound: all stack reads are from slots ≥ next-slot alloc.
-        -- This enables frame-independence proofs: running a trace on a state with
-        -- a slot written (below frontier) produces the same result with that slot preserved.
-        -- Key for pair's trustMe-pair-stack/heap proofs via exec-trace-slot-independent.
-        trace-slot-reads-above : TraceSlotReadsAbove (next-slot alloc) trace
-        -- Trace upper bound: all stack writes are at slots < max-slot-written.
-        -- Combined with trace-writes-above, this gives: writes are in [next-slot alloc, max-slot-written).
-        -- With reclamation, traces may write up to max-slot-written, then reclaim back to reclaimable-slot.
-        -- Key for pair's g-fst-slot preservation: g writes in [reclaim-f, max-slot-g), so fst-slot = reclaim-g is safe.
-        trace-writes-below : TraceWritesBelow max-slot-written trace
-        -- Trace slot read upper bound: all stack reads are from slots < max-slot-written.
-        -- Combined with trace-slot-reads-above, this gives: reads are in [next-slot alloc, max-slot-written).
-        -- With reclamation, traces may read up to max-slot-written before reclaiming back.
-        -- Key for pair's g-fst-indep: g reads in [reclaim-f, max-slot-g), so fst-slot = reclaim-g is independent.
-        trace-slot-reads-below : TraceSlotReadsBelow max-slot-written trace
-        -- OCP-0003: Scratch bounded relative to OUTPUT frontier (not input)
-        -- This is the key insight from stack-model-design.md:
-        --   - Output: unbounded, runtime-determined (how much frontier advanced)
-        --   - Scratch: bounded, runtime-known (temporary space above output)
-        -- Plan 0.2.4.5 D1 task #30: scratch-budget is also a dynamic ℕ field
-        -- (was static `ir-scratch-requirement ir`). Same motivation as stack-budget.
-        scratch-budget : ℕ
-        scratch-bounded : max-slot-written ≤ next-slot final-alloc +ℕ scratch-budget
-        -- Note: trace-preserves-capacity removed in Phase 3 (frame-capacity removed)
-        -- Trace contains no heap-writing instructions.
-        -- Heap writes (store-indirect) write to arbitrary memory (wherever Input1 points),
-        -- so traces containing them require additional disjointness preconditions.
-        -- Our IR traces don't write to heap (they use store-at-slot instead).
-        trace-no-heap-writes : TraceNoHeapWrites trace
-        -- Plan 0.13.3: Trace well-formedness at construction state.
-        -- State-aware chain of per-instruction halt preconditions
-        -- (`InstrWF` witnesses for the conditional ones — load/store
-        -- indirect, load-from-slot, restore-input, worklist-pop —
-        -- and ⊤ for unconditional ones). Used internally by parent
-        -- IRs (pair, apply, compose) to chain TraceWFs in the
-        -- construction-state composition.
-        trace-twf : TraceWF s alloc trace
-        -- Plan 0.13.3 option U: universal-over-state halt-preservation.
-        -- "For any state where the IR-compilation invariant holds at
-        -- trace entry (encoded as TraceWF s' alloc' trace), running
-        -- this trace preserves halt." Consumers at fresh states
-        -- (compose-frontier-stable, pair's g-tph-runtime) provide
-        -- their own TraceWF at the state they care about and read
-        -- back halt-preservation. Implementation is trivially
-        -- `exec-trace-preserves-halted-WF` applied to this IR's trace.
-        trace-preserves-halted :
-          ∀ (s' : LocState FS) (alloc' : AllocState {FS}) →
-          halted s' ≡ false →
-          TraceWF s' alloc' trace →
-          halted (proj₁ (exec-trace trace s' alloc')) ≡ false
+        base       : IRResultBase m ir x s alloc
+        stack-inv  : IRStackBudget alloc (IRResultBase.final-alloc base) (IRResultBase.trace base) s
+        heap-inv   : IRHeapBudget  alloc (IRResultBase.final-alloc base) (IRResultBase.trace base)
+      open IRResultBase   base       public
+      open IRStackBudget  stack-inv  public
+      open IRHeapBudget   heap-inv   public
 
     --------------------------------------------------------------------
     -- BodyCorrect: Pre-computed body execution proof
@@ -536,6 +498,35 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
 
   open IRResultAWF public
   open BodyCorrect public
+
+  --------------------------------------------------------------------
+  -- Backward-compat helper: derive exact heap-preservation (≡) when
+  -- the IR result's heap-budget is 0. Replaces the old field
+  -- `heap-preserved : ≡` for consumers that need exact equality.
+  -- Stack-only IRs (the default) set heap-budget = 0, so the equality
+  -- is derivable. Heap-allocating IRs (Phase B+) cannot use this.
+  --------------------------------------------------------------------
+  heap-preserved-of : ∀ {m A B} {ir : IR A B} {x : ⟦ A ⟧}
+                       {s : LocState FS} {alloc : AllocState {FS}}
+                       (r : IRResultAWF m ir x s alloc) →
+    IRResultAWF.heap-budget r ≡ 0 →
+    next-heap-ref (IRResultAWF.final-alloc r) ≡ next-heap-ref alloc
+  heap-preserved-of {alloc = alloc} r budget-eq = ≤-antisym
+    (≤-trans (IRResultAWF.max-heap-ref-geq-final r) bound-alloc)
+    (IRResultAWF.heap-monotone r)
+    where
+      -- After substituting budget = 0 and applying +-identityʳ to
+      -- collapse `n +ℕ 0` to `n`, we get the desired bound.
+      bound-via-budget : IRResultAWF.max-heap-ref-written r ≤ next-heap-ref alloc +ℕ 0
+      bound-via-budget = subst
+        (λ b → IRResultAWF.max-heap-ref-written r ≤ next-heap-ref alloc +ℕ b)
+        budget-eq
+        (IRResultAWF.max-heap-usage-bound r)
+
+      bound-alloc : IRResultAWF.max-heap-ref-written r ≤ next-heap-ref alloc
+      bound-alloc = subst (IRResultAWF.max-heap-ref-written r ≤_)
+                          (+-identityʳ (next-heap-ref alloc))
+                          bound-via-budget
 
   ------------------------------------------------------------------------
   -- ClosureWellFormed: Closure with pre-computed body execution proof

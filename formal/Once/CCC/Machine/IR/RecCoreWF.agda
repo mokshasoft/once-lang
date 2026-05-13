@@ -307,7 +307,7 @@ module RecCoreWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     → ValidAtWF mIn alloc x input-loc s
     → BeforeFrontier alloc input-loc
     → halted s ≡ false
-    → readReg (regs s) Input1 ≡ input-loc
+    → readReg (regs s) Input1 ≡ SV-Ptr input-loc
     → ∃[ mOut ] IRResultAWF mOut (Cata wf alg) x s alloc
   run-cata-core wf alg rec-wf mIn x input-loc s alloc
     input-valid-wf input-before not-halted rdi-eq =
@@ -331,38 +331,44 @@ module RecCoreWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     → ValidAtWF mIn alloc x input-loc s
     → BeforeFrontier alloc input-loc
     → halted s ≡ false
-    → readReg (regs s) Input1 ≡ input-loc
+    → readReg (regs s) Input1 ≡ SV-Ptr input-loc
     → ∃[ mOut ] IRResultAWF mOut (Fuse wfF wfG alg transform) x s alloc
   run-fuse-core {F} {G} {B} wfF wfG alg transform rec-wf mIn x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     Heap , record
-      { final-state = s'
-      ; final-alloc = alloc'
-      ; trace = fuse-trace
-      ; trace-correct = refl
-      ; result-place = at-loc result-loc result-valid result-bf rax-eq result-valid result-bf
-      ; not-halted = not-halted'
-      ; frame-preserved = refl
-      ; slot-monotone = slot-mono
-      ; heap-preserved = refl
-      ; max-slot-written = next-slot alloc'
-      ; max-slot-geq-final = ≤-refl
-      ; stack-budget = ir-stack-requirement (Fuse wfF wfG alg transform)
-      ; max-slot-usage-bound = reclaim-bound
-      -- slot-stays-in-budget: allocates exactly 1 slot
-      -- next-slot alloc' = suc (next-slot alloc) ≤ next-slot alloc + ir-stack-requirement
-      ; slot-stays-in-budget = reclaim-bound
-      ; frontier-slot-stable = frontier-stable
-      ; trace-writes-above = trace-wa
-      ; trace-slot-reads-above = tt
-      ; trace-writes-below = trace-wb
-      ; trace-slot-reads-below = tt
-      -- Note: trace-preserves-capacity removed in Phase 3
-      ; trace-no-heap-writes = tt
-      ; trace-preserves-halted = tph-∷ iph-mov-to-output (tph-∷ iph-store-at-slot (tph-∷ iph-lea-slot tph-[]))
-      -- scratch-bounded: max-slot-written = suc n = next-slot alloc'
-      -- suc n ≤ suc n + ir-scratch-requirement (Fuse ...) by m≤m+n
-      ; scratch-budget = ir-scratch-requirement (Fuse wfF wfG alg transform)
-      ; scratch-bounded = m≤m+n (suc (next-slot alloc)) (ir-scratch-requirement (Fuse wfF wfG alg transform))
+      { base = record
+        { final-state = s'
+        ; final-alloc = alloc'
+        ; trace = fuse-trace
+        ; trace-correct = refl
+        ; result-place = at-loc result-loc result-valid result-bf rax-eq result-valid result-bf
+        ; not-halted = not-halted'
+        ; frame-preserved = refl
+        ; trace-twf = SMP.!!
+        ; trace-preserves-halted = exec-trace-preserves-halted-WF fuse-trace
+        }
+      ; stack-inv = record
+        { slot-monotone = slot-mono
+        ; max-slot-written = next-slot alloc'
+        ; max-slot-geq-final = ≤-refl
+        ; stack-budget = ir-stack-requirement (Fuse wfF wfG alg transform)
+        ; max-slot-usage-bound = reclaim-bound
+        ; slot-stays-in-budget = reclaim-bound
+        ; frontier-slot-stable = frontier-stable
+        ; trace-writes-above = trace-wa
+        ; trace-slot-reads-above = tt
+        ; trace-writes-below = trace-wb
+        ; trace-slot-reads-below = tt
+        ; scratch-budget = ir-scratch-requirement (Fuse wfF wfG alg transform)
+        ; scratch-bounded = m≤m+n (suc (next-slot alloc)) (ir-scratch-requirement (Fuse wfF wfG alg transform))
+        }
+      ; heap-inv = record
+        { heap-monotone = ≤-refl
+        ; heap-budget = 0
+        ; max-heap-ref-written = next-heap-ref alloc
+        ; max-heap-ref-geq-final = ≤-refl
+        ; max-heap-usage-bound = m≤m+n (next-heap-ref alloc) 0
+        ; trace-no-heap-writes = tt
+        }
       }
     where
       result-slot = next-slot alloc
@@ -392,7 +398,7 @@ module RecCoreWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       reclaim-bound : suc n ≤ n +ℕ ir-stack-requirement (Fuse wfF wfG alg transform)
       reclaim-bound = suc-≤-plus-req-2 n (ir-stack-requirement alg) (ir-stack-requirement transform)
 
-      rax-eq : readReg (regs s') Output ≡ result-loc
+      rax-eq : readReg (regs s') Output ≡ SV-Ptr result-loc
       rax-eq = rec-scheme-output-is-slot result-slot s alloc not-halted
 
       not-halted' : halted s' ≡ false
@@ -409,8 +415,8 @@ module RecCoreWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
       frontier-stable : ∀ (s'' : LocState FS) (input-loc' : ValueLocation FS) →
         halted s'' ≡ false →
-        readReg (regs s'') Input1 ≡ input-loc' →
-        readLoc s'' (AtStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc' →
+        readReg (regs s'') Input1 ≡ SV-Ptr input-loc' →
+        readLoc s'' (AtStack (current-frame alloc) (next-slot alloc)) ≡ just (SV-Ptr input-loc') →
         _
       frontier-stable s'' input-loc' _ _ _ = inj₂ (inj₂ tt)
 
@@ -430,38 +436,44 @@ module RecCoreWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     → ValidAtWF mIn alloc x input-loc s
     → BeforeFrontier alloc input-loc
     → halted s ≡ false
-    → readReg (regs s) Input1 ≡ input-loc
+    → readReg (regs s) Input1 ≡ SV-Ptr input-loc
     → ∃[ mOut ] IRResultAWF mOut (Hylo wfF wfG alg coalg) x s alloc
   run-hylo-core {F} {G} {B} wfF wfG alg coalg rec-wf mIn x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     Heap , record
-      { final-state = s'
-      ; final-alloc = alloc'
-      ; trace = hylo-trace
-      ; trace-correct = refl
-      ; result-place = at-loc result-loc result-valid result-bf rax-eq result-valid result-bf
-      ; not-halted = not-halted'
-      ; frame-preserved = refl
-      ; slot-monotone = slot-mono
-      ; heap-preserved = refl
-      ; max-slot-written = next-slot alloc'
-      ; max-slot-geq-final = ≤-refl
-      ; stack-budget = ir-stack-requirement (Hylo wfF wfG alg coalg)
-      ; max-slot-usage-bound = reclaim-bound
-      -- slot-stays-in-budget: allocates exactly 1 slot
-      -- next-slot alloc' = suc (next-slot alloc) ≤ next-slot alloc + ir-stack-requirement
-      ; slot-stays-in-budget = reclaim-bound
-      ; frontier-slot-stable = frontier-stable
-      ; trace-writes-above = trace-wa
-      ; trace-slot-reads-above = tt
-      ; trace-writes-below = trace-wb
-      ; trace-slot-reads-below = tt
-      -- Note: trace-preserves-capacity removed in Phase 3
-      ; trace-no-heap-writes = tt
-      ; trace-preserves-halted = tph-∷ iph-mov-to-output (tph-∷ iph-store-at-slot (tph-∷ iph-lea-slot tph-[]))
-      -- scratch-bounded: max-slot-written = suc n = next-slot alloc'
-      -- suc n ≤ suc n + ir-scratch-requirement (Hylo ...) by m≤m+n
-      ; scratch-budget = ir-scratch-requirement (Hylo wfF wfG alg coalg)
-      ; scratch-bounded = m≤m+n (suc (next-slot alloc)) (ir-scratch-requirement (Hylo wfF wfG alg coalg))
+      { base = record
+        { final-state = s'
+        ; final-alloc = alloc'
+        ; trace = hylo-trace
+        ; trace-correct = refl
+        ; result-place = at-loc result-loc result-valid result-bf rax-eq result-valid result-bf
+        ; not-halted = not-halted'
+        ; frame-preserved = refl
+        ; trace-twf = SMP.!!
+        ; trace-preserves-halted = exec-trace-preserves-halted-WF hylo-trace
+        }
+      ; stack-inv = record
+        { slot-monotone = slot-mono
+        ; max-slot-written = next-slot alloc'
+        ; max-slot-geq-final = ≤-refl
+        ; stack-budget = ir-stack-requirement (Hylo wfF wfG alg coalg)
+        ; max-slot-usage-bound = reclaim-bound
+        ; slot-stays-in-budget = reclaim-bound
+        ; frontier-slot-stable = frontier-stable
+        ; trace-writes-above = trace-wa
+        ; trace-slot-reads-above = tt
+        ; trace-writes-below = trace-wb
+        ; trace-slot-reads-below = tt
+        ; scratch-budget = ir-scratch-requirement (Hylo wfF wfG alg coalg)
+        ; scratch-bounded = m≤m+n (suc (next-slot alloc)) (ir-scratch-requirement (Hylo wfF wfG alg coalg))
+        }
+      ; heap-inv = record
+        { heap-monotone = ≤-refl
+        ; heap-budget = 0
+        ; max-heap-ref-written = next-heap-ref alloc
+        ; max-heap-ref-geq-final = ≤-refl
+        ; max-heap-usage-bound = m≤m+n (next-heap-ref alloc) 0
+        ; trace-no-heap-writes = tt
+        }
       }
     where
       result-slot = next-slot alloc
@@ -491,7 +503,7 @@ module RecCoreWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       reclaim-bound : suc n ≤ n +ℕ ir-stack-requirement (Hylo wfF wfG alg coalg)
       reclaim-bound = suc-≤-plus-req-2 n (ir-stack-requirement alg) (ir-stack-requirement coalg)
 
-      rax-eq : readReg (regs s') Output ≡ result-loc
+      rax-eq : readReg (regs s') Output ≡ SV-Ptr result-loc
       rax-eq = rec-scheme-output-is-slot result-slot s alloc not-halted
 
       not-halted' : halted s' ≡ false
@@ -508,8 +520,8 @@ module RecCoreWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
       frontier-stable : ∀ (s'' : LocState FS) (input-loc' : ValueLocation FS) →
         halted s'' ≡ false →
-        readReg (regs s'') Input1 ≡ input-loc' →
-        readLoc s'' (AtStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc' →
+        readReg (regs s'') Input1 ≡ SV-Ptr input-loc' →
+        readLoc s'' (AtStack (current-frame alloc) (next-slot alloc)) ≡ just (SV-Ptr input-loc') →
         _
       frontier-stable s'' input-loc' _ _ _ = inj₂ (inj₂ tt)
 

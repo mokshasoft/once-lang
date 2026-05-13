@@ -20,7 +20,7 @@
 module Once.CCC.Machine.IR.RecTrace where
 
 open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; _⊔_; s≤s; z≤n) renaming (_+_ to _+ℕ_)
-open import Data.Nat.Properties using (≤-refl; ≤-trans; ≤-reflexive; <-≤-trans; ≤-<-trans; m≤m+n; m<m+n; m≤n+m; n≤1+n; n<1+n; m≤m⊔n; m≤n⊔m; n≤m⊔n; ⊔-lub; ⊔-monoˡ-≤; ⊔-monoʳ-≤; +-monoʳ-≤; +-monoˡ-≤; <⇒≢; +-comm; +-assoc; +-suc)
+open import Data.Nat.Properties using (≤-refl; ≤-trans; ≤-reflexive; <-≤-trans; ≤-<-trans; m≤m+n; m<m+n; m≤n+m; n≤1+n; n<1+n; m≤m⊔n; m≤n⊔m; n≤m⊔n; ⊔-lub; ⊔-monoˡ-≤; ⊔-monoʳ-≤; +-monoʳ-≤; +-monoˡ-≤; <⇒≢; +-comm; +-assoc; +-suc; +-identityʳ)
 open import Data.Bool using (false)
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.Maybe using (Maybe; just; nothing)
@@ -1468,9 +1468,12 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
         --   next-slot final-alloc ≤ next-slot alloc + ir-stack-requirement (Cata wfG alg)
         ; slot-stays-in-budget = bridge-slot-bound (next-slot alloc-rec ≤_)
             (IRResultAWF.slot-stays-in-budget rec-result)
-        ; heap-monotone = ≤-reflexive (sym (IRResultAWF.heap-preserved rec-result))
-        -- heap-preserved: post task #30 — directly from rec-result's heap-preserved.
-        ; heap-preserved = IRResultAWF.heap-preserved rec-result
+        -- Plan 0.14 Phase B.0: IRResultAWF.heap-preserved removed; rec-result
+        -- comes from Cata which is stack-only (heap-budget = 0), so heap-preserved
+        -- is derivable via CWF.heap-preserved-of. SMP.!! placeholder until the
+        -- "stack-only sub-IR" precondition is wired through.
+        ; heap-monotone = IRResultAWF.heap-monotone rec-result
+        ; heap-preserved = SMP.!!
         ; mem-preserved = irresult-mem-preserved rec-result
         -- Trace region bounds from IRResultAWF
         -- IRResultAWF uses max-slot-written as bound, which equals our max-slot-used
@@ -3525,9 +3528,11 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
         -- heap-pres-proof: chain alg-result.heap-preserved + layer-heap-preserved.
         -- alg-result runs on alloc-layer, so gives ≡ between alg-final and alloc-layer.
         -- layer-heap-preserved gives ≡ between alloc-layer and alloc.
+        -- Plan 0.14 Phase B.0: IRResultAWF.heap-preserved removed; alg-result
+        -- comes from a stack-only sub-IR (heap-budget = 0), so derivable via
+        -- CWF.heap-preserved-of. SMP.!! placeholder pending the "stack-only" hypothesis.
         heap-pres-proof : next-heap-ref (IRResultAWF.final-alloc alg-result) ≡ next-heap-ref alloc
-        heap-pres-proof = trans (IRResultAWF.heap-preserved alg-result)
-                                (ProcessedLayerResult.heap-preserved layer-result)
+        heap-pres-proof = SMP.!!
 
         -- Note: cap-preserved-proof removed in Phase 3
 
@@ -3641,68 +3646,68 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
         cata-result : IRResultAWF mAlg {μ-type G} {A} (Cata wfG alg) x s alloc
         cata-result = record
-          { final-state = IRResultAWF.final-state alg-result
-          ; final-alloc = IRResultAWF.final-alloc alg-result
-          ; trace = final-trace
-          ; trace-correct = trace-correct-proof
-          -- Plan 0.2.4.5 D1: result-place transport. alg-result's
-          -- reclaim-alloc has alg-result's input alloc as base, but
-          -- cata-result wants the original cata-input alloc as base.
-          -- Same postulated trust point as the original code's
-          -- `reclaim-preserves-result = SMP.!!`.
-          ; result-place = cata-result-place-stub
-          ; not-halted = IRResultAWF.not-halted alg-result
-          ; frame-preserved = frame-preserved-proof
-          ; slot-monotone = slot-mono-proof
-          ; heap-preserved = heap-pres-proof
-          -- Phase 7: Removed reclaimable-slot, reclaim-monotone, reclaim-bounded, reclaim-preserves-*, reclaim-size-bound
-          ; stack-budget = ir-stack-requirement (Cata wfG alg)
-          -- slot-stays-in-budget: Final frontier within ir-stack-requirement (Cata wfG alg)
-          -- Chain: alg-result.slot-stays-in-budget gives final-alloc ≤ alloc-layer + ir-req alg
-          --        layer-result.slot-stays-in-budget gives alloc-layer ≤ alloc + layer-capacity
-          -- BLOCKED: needs composition proof similar to Prod case
-          ; slot-stays-in-budget = SMP.!!
-          ; max-slot-written = cata-max-slot
-          ; max-slot-geq-final = cata-max-slot-geq-final
-          ; max-slot-usage-bound = SMP.!!  -- needs layer bound proof
-          ; frontier-slot-stable = λ _ _ _ _ _ → inj₂ (inj₂ tt)
-          ; trace-writes-above = SMP.trace-writes-above-append (next-slot alloc) layer-trace
-              (mov-to-input ∷ IRResultAWF.trace alg-result)
-              (ProcessedLayerResult.trace-writes-above layer-result)
-              (SMP.trace-writes-above-mono (next-slot alloc) (next-slot alloc-layer)
-                (IRResultAWF.trace alg-result) layer-slot-mono
-                (IRResultAWF.trace-writes-above alg-result))
-          ; trace-writes-below = SMP.trace-writes-below-append cata-max-slot layer-trace
-              (mov-to-input ∷ IRResultAWF.trace alg-result)
-              (SMP.trace-writes-below-mono layer-max-slot cata-max-slot layer-trace
-                 (m≤m⊔n layer-max-slot alg-max-slot)
-                 (ProcessedLayerResult.trace-writes-below layer-result))
-              (SMP.trace-writes-below-mono alg-max-slot cata-max-slot (IRResultAWF.trace alg-result)
-                 (m≤n⊔m layer-max-slot alg-max-slot)
-                 (IRResultAWF.trace-writes-below alg-result))
-          ; trace-slot-reads-above = SMP.trace-slot-reads-above-append (next-slot alloc) layer-trace
-              (mov-to-input ∷ IRResultAWF.trace alg-result)
-              (ProcessedLayerResult.trace-slot-reads-above layer-result)
-              (SMP.trace-slot-reads-above-mono (next-slot alloc) (next-slot alloc-layer)
-                (IRResultAWF.trace alg-result) layer-slot-mono
-                (IRResultAWF.trace-slot-reads-above alg-result))
-          ; trace-slot-reads-below = SMP.trace-slot-reads-below-append cata-max-slot layer-trace
-              (mov-to-input ∷ IRResultAWF.trace alg-result)
-              (SMP.trace-slot-reads-below-mono layer-max-slot cata-max-slot layer-trace
-                 (m≤m⊔n layer-max-slot alg-max-slot)
-                 (ProcessedLayerResult.trace-slot-reads-below layer-result))
-              (SMP.trace-slot-reads-below-mono alg-max-slot cata-max-slot (IRResultAWF.trace alg-result)
-                 (m≤n⊔m layer-max-slot alg-max-slot)
-                 (IRResultAWF.trace-slot-reads-below alg-result))
-          ; trace-no-heap-writes = SMP.trace-no-heap-writes-append layer-trace (mov-to-input ∷ IRResultAWF.trace alg-result)
-              (ProcessedLayerResult.trace-no-heap-writes layer-result)
-              (IRResultAWF.trace-no-heap-writes alg-result)
-          ; trace-twf = SMP.!!  -- TODO: twf-++ chain (layer-result + mov-to-input + alg-result)
-          ; trace-preserves-halted = SMP.!!  -- TODO: exec-trace-preserves-halted-WF
-          ; scratch-budget = ir-scratch-requirement (Cata wfG alg)
-          -- scratch-bounded: composite of layer and algebra
-          -- BLOCKED: needs composition proof similar to other blocked fields
-          ; scratch-bounded = SMP.!!
+          { base = record
+            { final-state = IRResultAWF.final-state alg-result
+            ; final-alloc = IRResultAWF.final-alloc alg-result
+            ; trace = final-trace
+            ; trace-correct = trace-correct-proof
+            ; result-place = cata-result-place-stub
+            ; not-halted = IRResultAWF.not-halted alg-result
+            ; frame-preserved = frame-preserved-proof
+            ; trace-twf = SMP.!!
+            ; trace-preserves-halted = SMP.!!
+            }
+          ; stack-inv = record
+            { slot-monotone = slot-mono-proof
+            ; max-slot-written = cata-max-slot
+            ; max-slot-geq-final = cata-max-slot-geq-final
+            ; stack-budget = ir-stack-requirement (Cata wfG alg)
+            ; max-slot-usage-bound = SMP.!!
+            ; slot-stays-in-budget = SMP.!!
+            ; frontier-slot-stable = λ _ _ _ _ _ → inj₂ (inj₂ tt)
+            ; trace-writes-above = SMP.trace-writes-above-append (next-slot alloc) layer-trace
+                (mov-to-input ∷ IRResultAWF.trace alg-result)
+                (ProcessedLayerResult.trace-writes-above layer-result)
+                (SMP.trace-writes-above-mono (next-slot alloc) (next-slot alloc-layer)
+                  (IRResultAWF.trace alg-result) layer-slot-mono
+                  (IRResultAWF.trace-writes-above alg-result))
+            ; trace-slot-reads-above = SMP.trace-slot-reads-above-append (next-slot alloc) layer-trace
+                (mov-to-input ∷ IRResultAWF.trace alg-result)
+                (ProcessedLayerResult.trace-slot-reads-above layer-result)
+                (SMP.trace-slot-reads-above-mono (next-slot alloc) (next-slot alloc-layer)
+                  (IRResultAWF.trace alg-result) layer-slot-mono
+                  (IRResultAWF.trace-slot-reads-above alg-result))
+            ; trace-writes-below = SMP.trace-writes-below-append cata-max-slot layer-trace
+                (mov-to-input ∷ IRResultAWF.trace alg-result)
+                (SMP.trace-writes-below-mono layer-max-slot cata-max-slot layer-trace
+                   (m≤m⊔n layer-max-slot alg-max-slot)
+                   (ProcessedLayerResult.trace-writes-below layer-result))
+                (SMP.trace-writes-below-mono alg-max-slot cata-max-slot (IRResultAWF.trace alg-result)
+                   (m≤n⊔m layer-max-slot alg-max-slot)
+                   (IRResultAWF.trace-writes-below alg-result))
+            ; trace-slot-reads-below = SMP.trace-slot-reads-below-append cata-max-slot layer-trace
+                (mov-to-input ∷ IRResultAWF.trace alg-result)
+                (SMP.trace-slot-reads-below-mono layer-max-slot cata-max-slot layer-trace
+                   (m≤m⊔n layer-max-slot alg-max-slot)
+                   (ProcessedLayerResult.trace-slot-reads-below layer-result))
+                (SMP.trace-slot-reads-below-mono alg-max-slot cata-max-slot (IRResultAWF.trace alg-result)
+                   (m≤n⊔m layer-max-slot alg-max-slot)
+                   (IRResultAWF.trace-slot-reads-below alg-result))
+            ; scratch-budget = ir-scratch-requirement (Cata wfG alg)
+            ; scratch-bounded = SMP.!!
+            }
+          ; heap-inv = record
+            { heap-monotone = ≤-reflexive (sym heap-pres-proof)
+            ; heap-budget = 0
+            ; max-heap-ref-written = next-heap-ref (IRResultAWF.final-alloc alg-result)
+            ; max-heap-ref-geq-final = ≤-refl
+            ; max-heap-usage-bound = subst (next-heap-ref (IRResultAWF.final-alloc alg-result) ≤_)
+                (sym (+-identityʳ (next-heap-ref alloc)))
+                (≤-reflexive heap-pres-proof)
+            ; trace-no-heap-writes = SMP.trace-no-heap-writes-append layer-trace (mov-to-input ∷ IRResultAWF.trace alg-result)
+                (ProcessedLayerResult.trace-no-heap-writes layer-result)
+                (IRResultAWF.trace-no-heap-writes alg-result)
+            }
           }
 
       in

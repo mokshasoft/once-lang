@@ -193,35 +193,41 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
     ∃[ mOut ] IRResultAWF mOut (apply {A} {B} {k}) x s alloc
   run-apply {m} {A} {B} {k} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     mBody , record
-      { final-state = s'
-      ; final-alloc = alloc'
-      ; trace = trace
-      ; trace-correct = refl  -- BY DEFINITION
-      ; result-place = result-place-final
-      ; not-halted = not-halted'
-      ; frame-preserved = trans (IRResultAWF.frame-preserved body-result) refl
-      ; slot-monotone = ≤-trans (m≤m+n (next-slot alloc) pair-slots)
-                                (IRResultAWF.slot-monotone body-result)
-      ; heap-preserved = IRResultAWF.heap-preserved body-result
-      -- Plan 0.2.4.5 D1 task #30: dynamic budgets — body-cap propagates
-      -- through pair-slots + body's stack-budget. With alloc' = body's
-      -- final-alloc, the bounds chain directly via body's IRResultAWF.
-      ; stack-budget = pair-slots +ℕ IRResultAWF.stack-budget body-result
-      ; max-slot-written = IRResultAWF.max-slot-written body-result
-      ; max-slot-geq-final = IRResultAWF.max-slot-geq-final body-result
-      ; max-slot-usage-bound = max-slot-usage-bound'
-      ; slot-stays-in-budget = slot-stays-in-budget'
-      ; frontier-slot-stable = frontier-stable'
-      ; trace-writes-above = trace-writes-above'
-      ; trace-slot-reads-above = trace-slot-reads-above'
-      ; trace-writes-below = trace-writes-below'
-      ; trace-slot-reads-below = trace-slot-reads-below'
-      -- Note: trace-preserves-capacity removed in Phase 3
-      ; trace-no-heap-writes = trace-no-heap-writes'
-      ; trace-twf = trace-twf'
-      ; trace-preserves-halted = exec-trace-preserves-halted-WF trace
-      ; scratch-budget = IRResultAWF.scratch-budget body-result
-      ; scratch-bounded = IRResultAWF.scratch-bounded body-result
+      { base = record
+        { final-state = s'
+        ; final-alloc = alloc'
+        ; trace = trace
+        ; trace-correct = refl  -- BY DEFINITION
+        ; result-place = result-place-final
+        ; not-halted = not-halted'
+        ; frame-preserved = trans (IRResultAWF.frame-preserved body-result) refl
+        ; trace-twf = trace-twf'
+        ; trace-preserves-halted = exec-trace-preserves-halted-WF trace
+        }
+      ; stack-inv = record
+        { slot-monotone = ≤-trans (m≤m+n (next-slot alloc) pair-slots)
+                                  (IRResultAWF.slot-monotone body-result)
+        ; stack-budget = pair-slots +ℕ IRResultAWF.stack-budget body-result
+        ; max-slot-written = IRResultAWF.max-slot-written body-result
+        ; max-slot-geq-final = IRResultAWF.max-slot-geq-final body-result
+        ; max-slot-usage-bound = max-slot-usage-bound'
+        ; slot-stays-in-budget = slot-stays-in-budget'
+        ; frontier-slot-stable = frontier-stable'
+        ; trace-writes-above = trace-writes-above'
+        ; trace-slot-reads-above = trace-slot-reads-above'
+        ; trace-writes-below = trace-writes-below'
+        ; trace-slot-reads-below = trace-slot-reads-below'
+        ; scratch-budget = IRResultAWF.scratch-budget body-result
+        ; scratch-bounded = IRResultAWF.scratch-bounded body-result
+        }
+      ; heap-inv = record
+        { heap-monotone = IRResultAWF.heap-monotone body-result
+        ; heap-budget = IRResultAWF.heap-budget body-result
+        ; max-heap-ref-written = IRResultAWF.max-heap-ref-written body-result
+        ; max-heap-ref-geq-final = IRResultAWF.max-heap-ref-geq-final body-result
+        ; max-heap-usage-bound = IRResultAWF.max-heap-usage-bound body-result
+        ; trace-no-heap-writes = trace-no-heap-writes'
+        }
       }
     where
       open import Data.Nat using (_≥_)
@@ -960,11 +966,12 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       alloc'-frame-eq : current-frame alloc' ≡ current-frame alloc
       alloc'-frame-eq = trans (IRResultAWF.frame-preserved body-result) refl
 
-      -- Stack-only assumption: body doesn't heap-allocate, so heap-frontier
-      -- is preserved. Discharged via IRResultAWF.heap-preserved (since
-      -- alloc' = body-result.final-alloc).
+      -- Plan 0.14 Phase B.0: heap-preserved field removed; derived
+      -- here via heap-preserved-of when body-result.heap-budget = 0
+      -- (stack-only). Postulated via !! until apply's signature
+      -- carries the "body is stack-only" precondition.
       alloc'-heap-eq : next-heap-ref alloc' ≡ next-heap-ref alloc
-      alloc'-heap-eq = IRResultAWF.heap-preserved body-result
+      alloc'-heap-eq = SMP.!!
 
       reclaim-preserves-result' : BeforeFrontier reclaim-alloc result-loc
       reclaim-preserves-result' = bf-same-frame-slot alloc' reclaim-alloc

@@ -76,30 +76,40 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     IRResultAWF m (id {A}) x s alloc
   run-id x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     record
-      { final-state = s'
-      ; final-alloc = alloc
-      ; trace = trace
-      ; trace-correct = refl
-      ; result-place = at-loc input-loc valid-s' input-before rax-eq valid-s' input-before
-      ; not-halted = not-halted'
-      ; frame-preserved = refl
-      ; slot-monotone = ≤-refl
-      ; heap-preserved = refl
-      ; max-slot-written = next-slot alloc
-      ; max-slot-geq-final = ≤-refl
-      ; stack-budget = 0
-      ; max-slot-usage-bound = m≤m+n (next-slot alloc) 0
-      ; slot-stays-in-budget = m≤m+n (next-slot alloc) 0
-      ; frontier-slot-stable = frontier-stable
-      ; trace-writes-above = tt
-      ; trace-slot-reads-above = tt
-      ; trace-writes-below = tt
-      ; trace-slot-reads-below = tt
-      ; trace-no-heap-writes = tt
-      ; trace-twf = twf-∷ tt twf-[]
-      ; trace-preserves-halted = exec-trace-preserves-halted-WF trace
-      ; scratch-budget = 0
-      ; scratch-bounded = m≤m+n (next-slot alloc) 0
+      { base = record
+        { final-state = s'
+        ; final-alloc = alloc
+        ; trace = trace
+        ; trace-correct = refl
+        ; result-place = at-loc input-loc valid-s' input-before rax-eq valid-s' input-before
+        ; not-halted = not-halted'
+        ; frame-preserved = refl
+        ; trace-twf = twf-∷ tt twf-[]
+        ; trace-preserves-halted = exec-trace-preserves-halted-WF trace
+        }
+      ; stack-inv = record
+        { slot-monotone = ≤-refl
+        ; max-slot-written = next-slot alloc
+        ; max-slot-geq-final = ≤-refl
+        ; stack-budget = 0
+        ; max-slot-usage-bound = m≤m+n (next-slot alloc) 0
+        ; slot-stays-in-budget = m≤m+n (next-slot alloc) 0
+        ; frontier-slot-stable = frontier-stable
+        ; trace-writes-above = tt
+        ; trace-slot-reads-above = tt
+        ; trace-writes-below = tt
+        ; trace-slot-reads-below = tt
+        ; scratch-budget = 0
+        ; scratch-bounded = m≤m+n (next-slot alloc) 0
+        }
+      ; heap-inv = record
+        { heap-monotone = ≤-refl
+        ; heap-budget = 0
+        ; max-heap-ref-written = next-heap-ref alloc
+        ; max-heap-ref-geq-final = ≤-refl
+        ; max-heap-usage-bound = m≤m+n (next-heap-ref alloc) 0
+        ; trace-no-heap-writes = tt
+        }
       }
     where
       trace : AbstractTrace
@@ -144,31 +154,41 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     ∃[ mA ] IRResultAWF mA (fst {A} {B}) x s alloc
   run-fst {m} {A} {B} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     mA , record
-      { final-state = s'
-      ; final-alloc = alloc
-      ; trace = trace
-      ; trace-correct = refl
-      ; result-place = at-loc fst-loc fst-valid-s' fst-before rax-eq fst-valid-s' fst-before
-      ; not-halted = not-halted'
-      ; frame-preserved = refl
-      ; slot-monotone = ≤-refl
-      ; heap-preserved = refl
-      ; max-slot-written = next-slot alloc
-      ; max-slot-geq-final = ≤-refl
-      ; stack-budget = 0
-      ; max-slot-usage-bound = m≤m+n (next-slot alloc) 0
-      ; slot-stays-in-budget = m≤m+n (next-slot alloc) 0
-      ; frontier-slot-stable = frontier-stable
-      ; trace-writes-above = tt
-      ; trace-slot-reads-above = tt
-      ; trace-writes-below = tt
-      ; trace-slot-reads-below = tt
-      ; trace-no-heap-writes = tt
-      ; trace-twf =
-          twf-∷ (input-loc , sv-as-loc-eq , SV-Ptr fst-loc , fst-ptr-eq) twf-[]
-      ; trace-preserves-halted = exec-trace-preserves-halted-WF trace
-      ; scratch-budget = 0
-      ; scratch-bounded = m≤m+n (next-slot alloc) 0
+      { base = record
+        { final-state = s'
+        ; final-alloc = alloc
+        ; trace = trace
+        ; trace-correct = refl
+        ; result-place = at-loc fst-loc fst-valid-s' fst-before rax-eq fst-valid-s' fst-before
+        ; not-halted = not-halted'
+        ; frame-preserved = refl
+        ; trace-twf =
+            twf-∷ (input-loc , sv-as-loc-eq , SV-Ptr fst-loc , fst-ptr-eq) twf-[]
+        ; trace-preserves-halted = exec-trace-preserves-halted-WF trace
+        }
+      ; stack-inv = record
+        { slot-monotone = ≤-refl
+        ; max-slot-written = next-slot alloc
+        ; max-slot-geq-final = ≤-refl
+        ; stack-budget = 0
+        ; max-slot-usage-bound = m≤m+n (next-slot alloc) 0
+        ; slot-stays-in-budget = m≤m+n (next-slot alloc) 0
+        ; frontier-slot-stable = frontier-stable
+        ; trace-writes-above = tt
+        ; trace-slot-reads-above = tt
+        ; trace-writes-below = tt
+        ; trace-slot-reads-below = tt
+        ; scratch-budget = 0
+        ; scratch-bounded = m≤m+n (next-slot alloc) 0
+        }
+      ; heap-inv = record
+        { heap-monotone = ≤-refl
+        ; heap-budget = 0
+        ; max-heap-ref-written = next-heap-ref alloc
+        ; max-heap-ref-geq-final = ≤-refl
+        ; max-heap-usage-bound = m≤m+n (next-heap-ref alloc) 0
+        ; trace-no-heap-writes = tt
+        }
       }
     where
       pair-decomp = decomposePairWF {m} input-valid-wf
@@ -237,31 +257,41 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     ∃[ mB ] IRResultAWF mB (snd {A} {B}) x s alloc
   run-snd {m} {A} {B} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     mB , record
-      { final-state = s'
-      ; final-alloc = alloc
-      ; trace = trace
-      ; trace-correct = refl
-      ; result-place = at-loc snd-loc snd-valid-s' snd-before rax-eq snd-valid-s' snd-before
-      ; not-halted = not-halted'
-      ; frame-preserved = refl
-      ; slot-monotone = ≤-refl
-      ; heap-preserved = refl
-      ; max-slot-written = next-slot alloc
-      ; max-slot-geq-final = ≤-refl
-      ; stack-budget = 0
-      ; max-slot-usage-bound = m≤m+n (next-slot alloc) 0
-      ; slot-stays-in-budget = m≤m+n (next-slot alloc) 0
-      ; frontier-slot-stable = frontier-stable
-      ; trace-writes-above = tt
-      ; trace-slot-reads-above = tt
-      ; trace-writes-below = tt
-      ; trace-slot-reads-below = tt
-      ; trace-no-heap-writes = tt
-      ; trace-twf =
-          twf-∷ (input-loc , sv-as-loc-eq , SV-Ptr snd-loc , snd-ptr-eq) twf-[]
-      ; trace-preserves-halted = exec-trace-preserves-halted-WF trace
-      ; scratch-budget = 0
-      ; scratch-bounded = m≤m+n (next-slot alloc) 0
+      { base = record
+        { final-state = s'
+        ; final-alloc = alloc
+        ; trace = trace
+        ; trace-correct = refl
+        ; result-place = at-loc snd-loc snd-valid-s' snd-before rax-eq snd-valid-s' snd-before
+        ; not-halted = not-halted'
+        ; frame-preserved = refl
+        ; trace-twf =
+            twf-∷ (input-loc , sv-as-loc-eq , SV-Ptr snd-loc , snd-ptr-eq) twf-[]
+        ; trace-preserves-halted = exec-trace-preserves-halted-WF trace
+        }
+      ; stack-inv = record
+        { slot-monotone = ≤-refl
+        ; max-slot-written = next-slot alloc
+        ; max-slot-geq-final = ≤-refl
+        ; stack-budget = 0
+        ; max-slot-usage-bound = m≤m+n (next-slot alloc) 0
+        ; slot-stays-in-budget = m≤m+n (next-slot alloc) 0
+        ; frontier-slot-stable = frontier-stable
+        ; trace-writes-above = tt
+        ; trace-slot-reads-above = tt
+        ; trace-writes-below = tt
+        ; trace-slot-reads-below = tt
+        ; scratch-budget = 0
+        ; scratch-bounded = m≤m+n (next-slot alloc) 0
+        }
+      ; heap-inv = record
+        { heap-monotone = ≤-refl
+        ; heap-budget = 0
+        ; max-heap-ref-written = next-heap-ref alloc
+        ; max-heap-ref-geq-final = ≤-refl
+        ; max-heap-usage-bound = m≤m+n (next-heap-ref alloc) 0
+        ; trace-no-heap-writes = tt
+        }
       }
     where
       pair-decomp = decomposePairWF {m} input-valid-wf
@@ -329,30 +359,40 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   -- any "where the value is" data because there is no value.
   run-terminal x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     record
-      { final-state = s
-      ; final-alloc = alloc
-      ; trace = []
-      ; trace-correct = refl
-      ; result-place = unit-result
-      ; not-halted = not-halted
-      ; frame-preserved = refl
-      ; slot-monotone = ≤-refl
-      ; heap-preserved = refl
-      ; max-slot-written = next-slot alloc
-      ; max-slot-geq-final = ≤-refl
-      ; stack-budget = 0
-      ; max-slot-usage-bound = m≤m+n (next-slot alloc) 0
-      ; slot-stays-in-budget = m≤m+n (next-slot alloc) 0
-      ; frontier-slot-stable = frontier-stable
-      ; trace-writes-above = tt
-      ; trace-slot-reads-above = tt
-      ; trace-writes-below = tt
-      ; trace-slot-reads-below = tt
-      ; trace-no-heap-writes = tt
-      ; trace-twf = twf-[]
-      ; trace-preserves-halted = exec-trace-preserves-halted-WF []
-      ; scratch-budget = 0
-      ; scratch-bounded = m≤m+n (next-slot alloc) 0
+      { base = record
+        { final-state = s
+        ; final-alloc = alloc
+        ; trace = []
+        ; trace-correct = refl
+        ; result-place = unit-result
+        ; not-halted = not-halted
+        ; frame-preserved = refl
+        ; trace-twf = twf-[]
+        ; trace-preserves-halted = exec-trace-preserves-halted-WF []
+        }
+      ; stack-inv = record
+        { slot-monotone = ≤-refl
+        ; max-slot-written = next-slot alloc
+        ; max-slot-geq-final = ≤-refl
+        ; stack-budget = 0
+        ; max-slot-usage-bound = m≤m+n (next-slot alloc) 0
+        ; slot-stays-in-budget = m≤m+n (next-slot alloc) 0
+        ; frontier-slot-stable = frontier-stable
+        ; trace-writes-above = tt
+        ; trace-slot-reads-above = tt
+        ; trace-writes-below = tt
+        ; trace-slot-reads-below = tt
+        ; scratch-budget = 0
+        ; scratch-bounded = m≤m+n (next-slot alloc) 0
+        }
+      ; heap-inv = record
+        { heap-monotone = ≤-refl
+        ; heap-budget = 0
+        ; max-heap-ref-written = next-heap-ref alloc
+        ; max-heap-ref-geq-final = ≤-refl
+        ; max-heap-usage-bound = m≤m+n (next-heap-ref alloc) 0
+        ; trace-no-heap-writes = tt
+        }
       }
     where
       frontier-stable : ∀ s'' input-loc'' →
@@ -378,30 +418,40 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   -- has a Unit-typed result — `unit-result` carries no location.
   run-free-heap ref x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     record
-      { final-state = s'
-      ; final-alloc = alloc
-      ; trace = trace
-      ; trace-correct = refl  -- s' DEFINED by trace
-      ; result-place = unit-result
-      ; not-halted = not-halted'
-      ; frame-preserved = refl
-      ; slot-monotone = ≤-refl
-      ; heap-preserved = refl
-      ; max-slot-written = next-slot alloc
-      ; max-slot-geq-final = ≤-refl
-      ; stack-budget = 0
-      ; max-slot-usage-bound = m≤m+n (next-slot alloc) 0
-      ; slot-stays-in-budget = m≤m+n (next-slot alloc) 0
-      ; frontier-slot-stable = frontier-stable
-      ; trace-writes-above = tt
-      ; trace-slot-reads-above = tt
-      ; trace-writes-below = tt
-      ; trace-slot-reads-below = tt
-      ; trace-no-heap-writes = tt
-      ; trace-twf = twf-∷ tt twf-[]
-      ; trace-preserves-halted = exec-trace-preserves-halted-WF trace
-      ; scratch-budget = 0
-      ; scratch-bounded = m≤m+n (next-slot alloc) 0
+      { base = record
+        { final-state = s'
+        ; final-alloc = alloc
+        ; trace = trace
+        ; trace-correct = refl  -- s' DEFINED by trace
+        ; result-place = unit-result
+        ; not-halted = not-halted'
+        ; frame-preserved = refl
+        ; trace-twf = twf-∷ tt twf-[]
+        ; trace-preserves-halted = exec-trace-preserves-halted-WF trace
+        }
+      ; stack-inv = record
+        { slot-monotone = ≤-refl
+        ; max-slot-written = next-slot alloc
+        ; max-slot-geq-final = ≤-refl
+        ; stack-budget = 0
+        ; max-slot-usage-bound = m≤m+n (next-slot alloc) 0
+        ; slot-stays-in-budget = m≤m+n (next-slot alloc) 0
+        ; frontier-slot-stable = frontier-stable
+        ; trace-writes-above = tt
+        ; trace-slot-reads-above = tt
+        ; trace-writes-below = tt
+        ; trace-slot-reads-below = tt
+        ; scratch-budget = 0
+        ; scratch-bounded = m≤m+n (next-slot alloc) 0
+        }
+      ; heap-inv = record
+        { heap-monotone = ≤-refl
+        ; heap-budget = 0
+        ; max-heap-ref-written = next-heap-ref alloc
+        ; max-heap-ref-geq-final = ≤-refl
+        ; max-heap-usage-bound = m≤m+n (next-heap-ref alloc) 0
+        ; trace-no-heap-writes = tt
+        }
       }
     where
       trace : AbstractTrace
@@ -439,31 +489,40 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     IRResultAWF m (arr {A} {B} {q}) x s alloc
   run-arr {m} {A} {B} {q} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     record
-      { final-state = s'
-      ; final-alloc = alloc
-      ; trace = trace
-      ; trace-correct = refl  -- s' DEFINED by trace
-      ; result-place = at-loc input-loc valid-eff input-before rax-eq valid-eff input-before
-      ; not-halted = not-halted'
-      ; frame-preserved = refl
-      ; slot-monotone = ≤-refl
-      ; heap-preserved = refl
-      -- Phase 7: Removed reclaimable-slot, reclaim-monotone, reclaim-bounded, reclaim-size-bound
-      ; max-slot-written = next-slot alloc
-      ; max-slot-geq-final = ≤-refl
-      ; stack-budget = 0
-      ; max-slot-usage-bound = m≤m+n (next-slot alloc) 0
-      ; slot-stays-in-budget = m≤m+n (next-slot alloc) 0
-      ; frontier-slot-stable = frontier-stable
-      ; trace-writes-above = tt
-      ; trace-slot-reads-above = tt
-      ; trace-writes-below = tt
-      ; trace-slot-reads-below = tt
-      ; trace-no-heap-writes = tt
-      ; trace-twf = twf-∷ tt twf-[]
-      ; trace-preserves-halted = exec-trace-preserves-halted-WF trace
-      ; scratch-budget = 0
-      ; scratch-bounded = m≤m+n (next-slot alloc) 0
+      { base = record
+        { final-state = s'
+        ; final-alloc = alloc
+        ; trace = trace
+        ; trace-correct = refl  -- s' DEFINED by trace
+        ; result-place = at-loc input-loc valid-eff input-before rax-eq valid-eff input-before
+        ; not-halted = not-halted'
+        ; frame-preserved = refl
+        ; trace-twf = twf-∷ tt twf-[]
+        ; trace-preserves-halted = exec-trace-preserves-halted-WF trace
+        }
+      ; stack-inv = record
+        { slot-monotone = ≤-refl
+        ; max-slot-written = next-slot alloc
+        ; max-slot-geq-final = ≤-refl
+        ; stack-budget = 0
+        ; max-slot-usage-bound = m≤m+n (next-slot alloc) 0
+        ; slot-stays-in-budget = m≤m+n (next-slot alloc) 0
+        ; frontier-slot-stable = frontier-stable
+        ; trace-writes-above = tt
+        ; trace-slot-reads-above = tt
+        ; trace-writes-below = tt
+        ; trace-slot-reads-below = tt
+        ; scratch-budget = 0
+        ; scratch-bounded = m≤m+n (next-slot alloc) 0
+        }
+      ; heap-inv = record
+        { heap-monotone = ≤-refl
+        ; heap-budget = 0
+        ; max-heap-ref-written = next-heap-ref alloc
+        ; max-heap-ref-geq-final = ≤-refl
+        ; max-heap-usage-bound = m≤m+n (next-heap-ref alloc) 0
+        ; trace-no-heap-writes = tt
+        }
       }
     where
       trace : AbstractTrace

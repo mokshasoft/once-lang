@@ -26,7 +26,7 @@ open import Once.Type using (Type; Int; FitsInReg; fits-int; _*_)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.IR using (IR; SigOp; AllocMode; Stack)
 open import Once.CCC.Machine.SMCore
-  using (LocState; ValueLocation; AtStack; halted; regs;
+  using (LocState; ValueLocation; AtStack; SV-Ptr; halted; regs;
          readReg; Input1; Output; AbstractTrace; mov-to-output;
          mkLocState; stackMem; heapMem; writeReg; module MemOps;
          module AbstractExec; module ExecLemmas)
@@ -77,28 +77,24 @@ module ArithProofs {FS : FrameSemantics} (program-bound : ℕ) where
   arith-trace-correct : ∀ (input-loc : ValueLocation FS)
     (s : LocState FS) (alloc : AllocState {FS}) →
     halted s ≡ false →
-    readReg (regs s) Input1 ≡ input-loc →
+    readReg (regs s) Input1 ≡ SV-Ptr input-loc →
     proj₁ (exec-trace (mov-to-output ∷ []) s alloc) ≡
-    mkLocState (writeReg (regs s) Output input-loc)
+    mkLocState (writeReg (regs s) Output (SV-Ptr input-loc))
                (stackMem s) (heapMem s) (halted s)
   arith-trace-correct input-loc s alloc not-halted rdi-eq =
     let
-      -- exec-trace (i ∷ []) = exec-abstract i when not halted
       step1 : proj₁ (exec-trace (mov-to-output ∷ []) s alloc) ≡
               proj₁ (exec-abstract mov-to-output s alloc)
       step1 = cong proj₁ (exec-trace-single mov-to-output s alloc not-halted)
 
-      -- exec-abstract mov-to-output writes readReg Input1 to Output
-      -- Result state only changes regs field
       step2 : proj₁ (exec-abstract mov-to-output s alloc) ≡
               mkLocState (writeReg (regs s) Output (readReg (regs s) Input1))
                          (stackMem s) (heapMem s) (halted s)
       step2 = refl
 
-      -- Using rdi-eq to substitute input-loc
       step3 : mkLocState (writeReg (regs s) Output (readReg (regs s) Input1))
                          (stackMem s) (heapMem s) (halted s) ≡
-              mkLocState (writeReg (regs s) Output input-loc)
+              mkLocState (writeReg (regs s) Output (SV-Ptr input-loc))
                          (stackMem s) (heapMem s) (halted s)
       step3 = cong (λ loc → mkLocState (writeReg (regs s) Output loc)
                                        (stackMem s) (heapMem s) (halted s)) rdi-eq
@@ -108,10 +104,10 @@ module ArithProofs {FS : FrameSemantics} (program-bound : ℕ) where
   arith-frontier-stable : ∀ (s' : LocState FS) (input-loc' : ValueLocation FS)
     (alloc : AllocState {FS}) →
     halted s' ≡ false →
-    readReg (regs s') Input1 ≡ input-loc' →
-    readLoc s' (AtStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc' →
+    readReg (regs s') Input1 ≡ SV-Ptr input-loc' →
+    readLoc s' (AtStack (current-frame alloc) (next-slot alloc)) ≡ just (SV-Ptr input-loc') →
     readLoc (proj₁ (exec-trace (mov-to-output ∷ []) s' alloc))
-            (AtStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc'
+            (AtStack (current-frame alloc) (next-slot alloc)) ≡ just (SV-Ptr input-loc')
   arith-frontier-stable s' input-loc' alloc not-halted rdi-eq slot-eq =
     let
       s'' = proj₁ (exec-trace (mov-to-output ∷ []) s' alloc)

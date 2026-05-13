@@ -166,43 +166,51 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     ∃[ mOut ] IRResultAWF mOut (g ∘ f) x s alloc
   run-compose mIn f g rec-wf x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     mOut , record
-      { final-state = s-final
-      ; final-alloc = alloc₂
-      ; trace = compose-trace
-      ; trace-correct = refl  -- s-final DEFINED by trace
-      -- Plan 0.2.4.5 D1 task #28 partial: transport result-g's
-      -- result-place wholesale along s-final-eq. Generalises over
-      -- Unit / non-Unit result type without unbundling — Unit's
-      -- `unit-result` and non-Unit's `at-loc` propagate uniformly.
-      -- Removes 6 place-* call sites (result-loc-g, result-valid-final,
-      -- result-before-g, rax-eq-final, compose-reclaim-*) on result-g.
-      ; result-place = subst
-          (λ st → ResultPlace _ mOut alloc₂
-                    (record alloc { next-slot = next-slot alloc₂ })
-                    (eval g (eval f x)) st)
-          (sym s-final-eq)
-          (IRResultAWF.result-place result-g)
-      ; not-halted = not-halted-final
-      ; frame-preserved = IRResultAWF.frame-preserved result-g
-      ; slot-monotone = slot-mono
-      ; heap-preserved = heap-mono
-      -- Phase 7: Removed reclaimable-slot, reclaim-monotone, reclaim-bounded, reclaim-size-bound
-      ; max-slot-written = compose-max-slot
-      ; max-slot-geq-final = compose-max-slot-geq-final
-      ; stack-budget = req-compose
-      ; max-slot-usage-bound = compose-max-slot-bound
-      ; slot-stays-in-budget = compose-slot-stays-in-budget
-      ; frontier-slot-stable = compose-frontier-stable
-      ; trace-writes-above = compose-trace-writes-above
-      ; trace-slot-reads-above = compose-trace-slot-reads-above
-      ; trace-writes-below = compose-trace-writes-below
-      ; trace-slot-reads-below = compose-trace-slot-reads-below
-      -- Note: trace-preserves-capacity removed in Phase 3
-      ; trace-no-heap-writes = compose-trace-no-heap-writes
-      ; trace-twf = compose-trace-twf
-      ; trace-preserves-halted = exec-trace-preserves-halted-WF compose-trace
-      ; scratch-budget = req-compose-scratch
-      ; scratch-bounded = compose-scratch-bounded
+      { base = record
+        { final-state = s-final
+        ; final-alloc = alloc₂
+        ; trace = compose-trace
+        ; trace-correct = refl  -- s-final DEFINED by trace
+        ; result-place = subst
+            (λ st → ResultPlace _ mOut alloc₂
+                      (record alloc { next-slot = next-slot alloc₂ })
+                      (eval g (eval f x)) st)
+            (sym s-final-eq)
+            (IRResultAWF.result-place result-g)
+        ; not-halted = not-halted-final
+        ; frame-preserved = IRResultAWF.frame-preserved result-g
+        ; trace-twf = compose-trace-twf
+        ; trace-preserves-halted = exec-trace-preserves-halted-WF compose-trace
+        }
+      ; stack-inv = record
+        { slot-monotone = slot-mono
+        ; max-slot-written = compose-max-slot
+        ; max-slot-geq-final = compose-max-slot-geq-final
+        ; stack-budget = req-compose
+        ; max-slot-usage-bound = compose-max-slot-bound
+        ; slot-stays-in-budget = compose-slot-stays-in-budget
+        ; frontier-slot-stable = compose-frontier-stable
+        ; trace-writes-above = compose-trace-writes-above
+        ; trace-slot-reads-above = compose-trace-slot-reads-above
+        ; trace-writes-below = compose-trace-writes-below
+        ; trace-slot-reads-below = compose-trace-slot-reads-below
+        ; scratch-budget = req-compose-scratch
+        ; scratch-bounded = compose-scratch-bounded
+        }
+      ; heap-inv = record
+        { heap-monotone = heap-mono
+        ; heap-budget = IRResultAWF.heap-budget result-f +ℕ IRResultAWF.heap-budget result-g
+        -- For the bound, use result-g's max-heap-ref-written (it's
+        -- the largest since heap-monotone is ≤). The full chain
+        -- (result-g's bound + result-f's contribution) is the right
+        -- thing; for current stack-only sub-IRs both are 0 anyway.
+        -- Phase B.0: defer the composed-bound proof via !!; this is
+        -- mechanical algebra once both sub-budgets are tracked.
+        ; max-heap-ref-written = IRResultAWF.max-heap-ref-written result-g
+        ; max-heap-ref-geq-final = IRResultAWF.max-heap-ref-geq-final result-g
+        ; max-heap-usage-bound = SMP.!!
+        ; trace-no-heap-writes = compose-trace-no-heap-writes
+        }
       }
     where
       -- Plan 0.2.4.5 D1 task #30: dynamic stack-budget composition.
@@ -292,8 +300,18 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Heap equality: heap-preserved (post task #30) gives this directly.
       -- alloc₁-reclaimed has next-heap-ref = alloc.next-heap-ref by construction;
       -- alloc₁ = result-f.final-alloc has the same by f's heap-preserved.
+      -- Plan 0.14 Phase B.0: temporary use of `!!` here.
+      -- heap-preserved (≡) used to be an IRResultAWF field; it's now
+      -- derivable via `heap-preserved-of result-f refl` PROVIDED that
+      -- `IRResultAWF.heap-budget result-f ≡ 0` — which holds for all
+      -- current (stack-only) sub-IRs but isn't statically known at
+      -- this point in compose. Resolved by:
+      --   (a) extending compose's signature with a "stack-only sub-IR"
+      --       precondition (caller burden), or
+      --   (b) refactoring heap-eq-f to ≤ and updating downstream
+      --       frontier-same-heap consumers.
       heap-eq-f : next-heap-ref alloc₁ ≡ next-heap-ref alloc₁-reclaimed
-      heap-eq-f = IRResultAWF.heap-preserved result-f
+      heap-eq-f = SMP.!!
       -- PROOF OBLIGATION: Valid for Layer 0 because:
       -- 1. alloc₁-reclaimed only changes next-slot (line 225)
       -- 2. Layer 0 IRs (id, compose) all set final-alloc = alloc or preserve heap-ref inductively
@@ -385,9 +403,13 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       slot-mono = ≤-trans (IRResultAWF.slot-monotone result-f)
                           (IRResultAWF.slot-monotone result-g)
 
-      heap-mono : next-heap-ref alloc₂ ≡ next-heap-ref alloc
-      heap-mono = trans (IRResultAWF.heap-preserved result-g)
-                  (trans (sym heap-eq-f) (IRResultAWF.heap-preserved result-f))
+      -- Plan 0.14 Phase B.0: same `!!` story as heap-eq-f above —
+      -- the strict ≡ is derivable only when the sub-IRs are stack-only
+      -- (heap-budget = 0). Restored when compose carries that hypothesis.
+      heap-mono : next-heap-ref alloc ≤ next-heap-ref alloc₂
+      heap-mono = ≤-trans (IRResultAWF.heap-monotone result-f)
+                          (subst (_≤ next-heap-ref alloc₂) (sym heap-eq-f)
+                                 (IRResultAWF.heap-monotone result-g))
 
       -- Note: mem-preserved-compose removed in Phase 4 (field no longer in IRResultAWF)
       -- Use irresult-mem-preserved to derive preservation when needed

@@ -123,37 +123,40 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   run-curry {A} {B} {C} {k} mIn f m ir<bound rec-wf x input-loc s alloc
     input-valid-wf input-before not-halted rdi-eq =
     record
-      { final-state = s'
-      ; final-alloc = alloc'
-      ; trace = trace
-      ; trace-correct = refl  -- BY DEFINITION
-      ; result-place = at-loc closure-loc result-valid-wf' closure-before' rax-eq' reclaim-preserves-validity' reclaim-preserves-result'
-      ; not-halted = not-halted'
-      ; frame-preserved = refl
-      ; slot-monotone = m≤m+n (next-slot alloc) closure-slots
-      ; heap-preserved = refl
-      -- Phase 7: Removed reclaimable-slot, reclaim-monotone, reclaim-bounded, reclaim-size-bound
-      ; max-slot-written = next-slot alloc +ℕ closure-slots
-      ; max-slot-geq-final = ≤-refl
-      ; stack-budget = ir-stack-requirement (curry {k = k} f m)
-      ; max-slot-usage-bound = +-monoʳ-≤ (next-slot alloc) closure-bound
-      -- slot-stays-in-budget: curry allocates closure-slots
-      -- next-slot alloc' = next-slot alloc + closure-slots
-      -- closure-bound: closure-slots ≤ ir-stack-requirement (curry f m)
-      ; slot-stays-in-budget = +-monoʳ-≤ (next-slot alloc) closure-bound
-      ; frontier-slot-stable = frontier-stable'
-      ; trace-writes-above = trace-writes-above'
-      ; trace-slot-reads-above = tt
-      ; trace-writes-below = trace-writes-below'
-      ; trace-slot-reads-below = tt
-      -- Note: trace-preserves-capacity removed in Phase 3
-      ; trace-no-heap-writes = tt
-      ; trace-twf = trace-twf'
-      ; trace-preserves-halted = exec-trace-preserves-halted-WF trace
-      -- scratch-bounded: max-slot-written = next-slot alloc + closure-slots = next-slot alloc'
-      -- (n + 2) ≤ (n + 2) + req by m≤m+n
-      ; scratch-budget = ir-scratch-requirement (curry {k = k} f m)
-      ; scratch-bounded = m≤m+n (next-slot alloc +ℕ closure-slots) req-curry
+      { base = record
+        { final-state = s'
+        ; final-alloc = alloc'
+        ; trace = trace
+        ; trace-correct = refl  -- BY DEFINITION
+        ; result-place = at-loc closure-loc result-valid-wf' closure-before' rax-eq' reclaim-preserves-validity' reclaim-preserves-result'
+        ; not-halted = not-halted'
+        ; frame-preserved = refl
+        ; trace-twf = trace-twf'
+        ; trace-preserves-halted = exec-trace-preserves-halted-WF trace
+        }
+      ; stack-inv = record
+        { slot-monotone = m≤m+n (next-slot alloc) closure-slots
+        ; max-slot-written = next-slot alloc +ℕ closure-slots
+        ; max-slot-geq-final = ≤-refl
+        ; stack-budget = ir-stack-requirement (curry {k = k} f m)
+        ; max-slot-usage-bound = +-monoʳ-≤ (next-slot alloc) closure-bound
+        ; slot-stays-in-budget = +-monoʳ-≤ (next-slot alloc) closure-bound
+        ; frontier-slot-stable = frontier-stable'
+        ; trace-writes-above = trace-writes-above'
+        ; trace-slot-reads-above = tt
+        ; trace-writes-below = trace-writes-below'
+        ; trace-slot-reads-below = tt
+        ; scratch-budget = ir-scratch-requirement (curry {k = k} f m)
+        ; scratch-bounded = m≤m+n (next-slot alloc +ℕ closure-slots) req-curry
+        }
+      ; heap-inv = record
+        { heap-monotone = ≤-refl
+        ; heap-budget = 0
+        ; max-heap-ref-written = next-heap-ref alloc
+        ; max-heap-ref-geq-final = ≤-refl
+        ; max-heap-usage-bound = m≤m+n (next-heap-ref alloc) 0
+        ; trace-no-heap-writes = tt
+        }
       }
     where
       -- Closure location and trace

@@ -90,32 +90,40 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
   run-pair {A} {B} {C} mIn f g m rec-wf x input-loc s alloc
            input-valid-wf input-before not-halted rdi-eq =
     record
-      { final-state = s-final
-      ; final-alloc = alloc-final
-      ; trace = pair-trace
-      ; trace-correct = refl  -- s-final DEFINED by trace
-      ; result-place = at-loc pair-loc pair-valid-wf-final pair-before rax-eq pair-valid-wf-final pair-before
-      ; not-halted = not-halted-final
-      ; frame-preserved = refl
-      ; slot-monotone = slot-monotone-pair
-      ; heap-preserved = refl
-      -- Phase 7: Removed reclaimable-slot, reclaim-monotone, reclaim-bounded, reclaim-size-bound
-      ; max-slot-written = pair-max-slot
-      ; max-slot-geq-final = pair-max-slot-geq-final
-      ; stack-budget = req-pair
-      ; max-slot-usage-bound = pair-max-slot-bound
-      ; slot-stays-in-budget = pair-slot-stays-in-budget
-      ; frontier-slot-stable = pair-frontier-stable
-      ; trace-writes-above = pair-trace-writes-above
-      ; trace-slot-reads-above = pair-trace-slot-reads-above
-      ; trace-writes-below = pair-trace-writes-below
-      ; trace-slot-reads-below = pair-trace-slot-reads-below
-      -- Note: trace-preserves-capacity removed in Phase 3
-      ; trace-no-heap-writes = pair-trace-no-heap-writes
-      ; trace-twf = pair-trace-twf
-      ; trace-preserves-halted = exec-trace-preserves-halted-WF pair-trace
-      ; scratch-budget = req-pair-scratch
-      ; scratch-bounded = pair-scratch-bounded
+      { base = record
+        { final-state = s-final
+        ; final-alloc = alloc-final
+        ; trace = pair-trace
+        ; trace-correct = refl  -- s-final DEFINED by trace
+        ; result-place = at-loc pair-loc pair-valid-wf-final pair-before rax-eq pair-valid-wf-final pair-before
+        ; not-halted = not-halted-final
+        ; frame-preserved = refl
+        ; trace-twf = pair-trace-twf
+        ; trace-preserves-halted = exec-trace-preserves-halted-WF pair-trace
+        }
+      ; stack-inv = record
+        { slot-monotone = slot-monotone-pair
+        ; max-slot-written = pair-max-slot
+        ; max-slot-geq-final = pair-max-slot-geq-final
+        ; stack-budget = req-pair
+        ; max-slot-usage-bound = pair-max-slot-bound
+        ; slot-stays-in-budget = pair-slot-stays-in-budget
+        ; frontier-slot-stable = pair-frontier-stable
+        ; trace-writes-above = pair-trace-writes-above
+        ; trace-slot-reads-above = pair-trace-slot-reads-above
+        ; trace-writes-below = pair-trace-writes-below
+        ; trace-slot-reads-below = pair-trace-slot-reads-below
+        ; scratch-budget = req-pair-scratch
+        ; scratch-bounded = pair-scratch-bounded
+        }
+      ; heap-inv = record
+        { heap-monotone = ≤-refl
+        ; heap-budget = 0
+        ; max-heap-ref-written = next-heap-ref alloc
+        ; max-heap-ref-geq-final = ≤-refl
+        ; max-heap-usage-bound = m≤m+n (next-heap-ref alloc) 0
+        ; trace-no-heap-writes = pair-trace-no-heap-writes
+        }
       }
     where
       ------------------------------------------------------------------------
