@@ -957,11 +957,28 @@ data AbstractInstr : Set where
   -- Argument type for instr-case-on-tag is `List AbstractInstr`
   -- (= `AbstractTrace`) spelled out — the `AbstractTrace` alias is
   -- defined just below.
-  -- NOTE: keep instr-case-on-tag LAST so the new instr-load-tag-lit
-  -- doesn't shift its MAlonzo constructor index (compile-correct
-  -- proofs and Haskell-side simulations may depend on the position).
+  -- NOTE: keep instr-case-on-tag in this position so existing
+  -- compile-correct proofs and Haskell-side simulations don't shift.
+  -- New constructors get added strictly AFTER instr-case-on-tag.
   instr-load-tag-lit : ℕ → AbstractInstr
   instr-case-on-tag : List AbstractInstr → List AbstractInstr → AbstractInstr
+
+  -- Plan 0.14 Phase A — heap allocation primitive.
+  --
+  -- `instr-alloc-heap n`: allocate a fresh heap block (n cells), bump
+  -- `next-heap-ref`, write the resulting `SV-Ptr (AtDynamic …)` to Output.
+  -- Caller subsequently writes the cells via `store-indirect` /
+  -- `store-indirect-suc` and reads them via `load-indirect` /
+  -- `load-indirect-suc`.
+  --
+  -- The `n` parameter is the cell count for codegen / sigop dispatch;
+  -- the abstract semantics treats every `instr-alloc-heap _` as a single
+  -- fresh `AtDynamic` whose `sucLoc` chains give access to all n cells
+  -- (HeapLocation already supports this).
+  --
+  -- Added AFTER `instr-case-on-tag` so existing MAlonzo constructor
+  -- indices remain stable.
+  instr-alloc-heap : ℕ → AbstractInstr
 
 -- | A trace is a sequence of abstract instructions
 AbstractTrace : Set
@@ -1367,6 +1384,15 @@ module AbstractExec {FS : FrameSemantics} where
   -- See Plan 0.13.1 Phase 1.5 for the coordinated lift.
   exec-abstract (instr-case-on-tag f g) s alloc =
     record s { halted = true } , alloc
+
+  -- Plan 0.14 Phase A: heap allocation.
+  -- Bumps `next-heap-ref` via `heap-alloc`, writes the resulting
+  -- `SV-Ptr (AtDynamic …)` to Output. Memory at the freshly allocated
+  -- cells starts uninitialised (reads return `nothing` until written).
+  exec-abstract (instr-alloc-heap n) s alloc =
+    let new-loc = AtDynamic (heap-loc (mkHeapRef (next-heap-ref alloc)) 0)
+        alloc' = record alloc { next-heap-ref = suc (next-heap-ref alloc) }
+    in record s { regs = writeReg (regs s) Output (SV-Ptr new-loc) } , alloc'
 
   -- | Execute a trace (sequence of abstract instructions)
   -- Signature declared above with exec-abstract for mutual recursion.
