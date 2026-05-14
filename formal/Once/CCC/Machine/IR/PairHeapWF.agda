@@ -332,16 +332,83 @@ module PairHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       s-after-f-eq : s-after-f ≡ IRResultAWF.final-state result-f
       s-after-f-eq = IRResultAWF.trace-correct result-f
 
+      not-halted-after-f : halted s-after-f ≡ false
+      not-halted-after-f = exec-trace-preserves-halted-WF f-trace s-after-setup alloc-after-scratch
+                             not-halted-after-setup (IRResultAWF.trace-twf result-f)
+
       ------------------------------------------------------------------
       -- Middle phase: stash f's result to fst-stash, restore input.
+      --
+      -- The restore-input backup-slot precondition needs that backup-slot
+      -- still holds SV-Ptr input-loc at this point. That value was put
+      -- there by setup; f preserves it (BeforeFrontier alloc-after-scratch
+      -- holds for backup-slot since backup-slot < f-start = next-slot
+      -- alloc-after-scratch); store-at-slot fst-stash also preserves it
+      -- (different slot).
       ------------------------------------------------------------------
+
+      -- backup-slot < f-start = next-slot alloc-after-scratch, so
+      -- BeforeFrontier alloc-after-scratch holds for it.
+      backup<f-start : backup-slot < next-slot alloc-after-scratch
+      backup<f-start =
+        subst (suc backup-slot ≤_) f-start≡+4
+          (≤-trans (n≤1+n fst-stash)
+            (≤-trans (n≤1+n snd-stash) (n≤1+n pair-stash)))
+
+      backup-loc-before-scratch : BeforeFrontier alloc-after-scratch (AtStack frame backup-slot)
+      backup-loc-before-scratch = stack-before refl backup<f-start
+
+      -- After setup, backup-slot holds SV-Ptr input-loc.
+      -- setup-trace stores Output (= readReg Input1 after mov-to-output =
+      -- SV-Ptr input-loc) into backup-slot. instr-alloc-stack doesn't
+      -- touch stack memory. Provable via direct trace stepping.
+      backup-after-setup : readLoc s-after-setup (AtStack frame backup-slot) ≡ just (SV-Ptr input-loc)
+      backup-after-setup = SMP.!!  -- TODO: trace-step proof
+
+      -- f preserves backup-slot. Discharged via mem-preserved-before
+      -- from result-f (consequence-form invariant: any BeforeFrontier
+      -- alloc-after-scratch loc is unchanged after f). For heap-mode f
+      -- the field is currently SMP.!! pending heap-aware derivation;
+      -- consuming it transitively trusts the place-stage discipline
+      -- that store-indirect's Input1 is AtDynamic.
+      backup-after-f : readLoc s-after-f (AtStack frame backup-slot) ≡
+                       readLoc s-after-setup (AtStack frame backup-slot)
+      backup-after-f =
+        subst (λ st → readLoc st (AtStack frame backup-slot) ≡
+                      readLoc s-after-setup (AtStack frame backup-slot))
+              (sym s-after-f-eq)
+              (irresult-mem-preserved result-f (AtStack frame backup-slot) backup-loc-before-scratch)
+        where
+          open ClosureWellFormedDef {FS} program-bound using (irresult-mem-preserved)
+
       s-after-middle : LocState FS
       s-after-middle = proj₁ (exec-trace mid-trace s-after-f alloc-after-f)
       alloc-after-middle : AllocState {FS}
       alloc-after-middle = proj₂ (exec-trace mid-trace s-after-f alloc-after-f)
 
+      -- s-after-fst-store : state after the first instruction of mid-trace
+      s-after-fst-store : LocState FS
+      s-after-fst-store = proj₁ (exec-abstract (store-at-slot fst-stash) s-after-f alloc-after-f)
+      alloc-after-fst-store : AllocState {FS}
+      alloc-after-fst-store = proj₂ (exec-abstract (store-at-slot fst-stash) s-after-f alloc-after-f)
+
+      -- backup-slot is preserved through store-at-slot fst-stash
+      -- (different slot: fst-stash = suc backup-slot ≠ backup-slot).
+      backup-after-fst-store : readLoc s-after-fst-store (AtStack frame backup-slot) ≡
+                               readLoc s-after-f (AtStack frame backup-slot)
+      backup-after-fst-store = SMP.!!  -- TODO: writeLoc-preserves-other + frame eq
+
+      -- Chain everything: backup-slot in s-after-fst-store = SV-Ptr input-loc.
+      backup-at-fst-store : readLoc s-after-fst-store (AtStack frame backup-slot) ≡ just (SV-Ptr input-loc)
+      backup-at-fst-store = trans backup-after-fst-store (trans backup-after-f backup-after-setup)
+
+      mid-twf : TraceWF s-after-f alloc-after-f mid-trace
+      mid-twf = twf-∷ tt (twf-∷ (SMP.!! , SMP.!!) twf-[])
+        -- TODO: replace SMP.!! pair with (SV-Ptr input-loc , backup-at-fst-store-bridged-to-current-frame-alloc-after-f)
+
       not-halted-after-middle : halted s-after-middle ≡ false
-      not-halted-after-middle = SMP.!!
+      not-halted-after-middle = exec-trace-preserves-halted-WF mid-trace s-after-f alloc-after-f
+                                  not-halted-after-f mid-twf
 
       rdi-eq-after-middle : readReg (regs s-after-middle) Input1 ≡ SV-Ptr input-loc
       rdi-eq-after-middle = SMP.!!
