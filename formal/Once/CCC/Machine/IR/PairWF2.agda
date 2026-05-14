@@ -71,7 +71,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
            validityWF-mem-preserved-in-regions;
            validityWF-frontier-advance;
            validityWF-trace-preserves;
-           irresult-mem-preserved)
+           irresult-mem-preserved; mem-preserved-from-tnhw)
 
   ------------------------------------------------------------------------
   -- run-pair: Main implementation
@@ -99,6 +99,8 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
         ; not-halted = not-halted-final
         ; frame-preserved = refl
         ; trace-twf = pair-trace-twf
+        ; mem-preserved-before = mem-preserved-from-tnhw alloc pair-trace s s-final refl
+            pair-trace-writes-above pair-trace-no-heap-writes
         ; trace-preserves-halted = exec-trace-preserves-halted-WF pair-trace
         }
       ; stack-inv = record

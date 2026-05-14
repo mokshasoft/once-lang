@@ -56,7 +56,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
            ResultPlace; unit-result; at-loc;
            valid-unit-wf; valid-coerce-kind-wf;
            validityWF-mem-only; validityWF-frontier-advance;
-           decomposePairWF; PairValidWF)
+           decomposePairWF; PairValidWF; mem-preserved-from-tnhw)
 
   open import Once.CCC.Machine.FrontierLemma using (module FrontierLemmas)
   open FrontierLemmas {FS}
@@ -85,6 +85,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; not-halted = not-halted'
         ; frame-preserved = refl
         ; trace-twf = twf-∷ tt twf-[]
+        ; mem-preserved-before = mem-preserved-from-tnhw alloc trace s s' refl tt tt
         ; trace-preserves-halted = exec-trace-preserves-halted-WF trace
         }
       ; stack-inv = record
@@ -164,6 +165,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; frame-preserved = refl
         ; trace-twf =
             twf-∷ (input-loc , sv-as-loc-eq , SV-Ptr fst-loc , fst-ptr-eq) twf-[]
+        ; mem-preserved-before = mem-preserved-from-tnhw alloc trace s s' refl tt tt
         ; trace-preserves-halted = exec-trace-preserves-halted-WF trace
         }
       ; stack-inv = record
@@ -267,6 +269,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; frame-preserved = refl
         ; trace-twf =
             twf-∷ (input-loc , sv-as-loc-eq , SV-Ptr snd-loc , snd-ptr-eq) twf-[]
+        ; mem-preserved-before = mem-preserved-from-tnhw alloc trace s s' refl tt tt
         ; trace-preserves-halted = exec-trace-preserves-halted-WF trace
         }
       ; stack-inv = record
@@ -368,6 +371,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; not-halted = not-halted
         ; frame-preserved = refl
         ; trace-twf = twf-[]
+        ; mem-preserved-before = mem-preserved-from-tnhw alloc [] s s refl tt tt
         ; trace-preserves-halted = exec-trace-preserves-halted-WF []
         }
       ; stack-inv = record
@@ -427,6 +431,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; not-halted = not-halted'
         ; frame-preserved = refl
         ; trace-twf = twf-∷ tt twf-[]
+        ; mem-preserved-before = mem-preserved-from-tnhw alloc trace s s' refl tt tt
         ; trace-preserves-halted = exec-trace-preserves-halted-WF trace
         }
       ; stack-inv = record
@@ -498,6 +503,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; not-halted = not-halted'
         ; frame-preserved = refl
         ; trace-twf = twf-∷ tt twf-[]
+        ; mem-preserved-before = mem-preserved-from-tnhw alloc trace s s' refl tt tt
         ; trace-preserves-halted = exec-trace-preserves-halted-WF trace
         }
       ; stack-inv = record

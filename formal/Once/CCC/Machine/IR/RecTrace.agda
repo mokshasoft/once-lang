@@ -3657,6 +3657,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
             ; not-halted = IRResultAWF.not-halted alg-result
             ; frame-preserved = frame-preserved-proof
             ; trace-twf = SMP.!!
+            ; mem-preserved-before = λ _ _ → SMP.!!
             ; trace-preserves-halted = SMP.!!
             }
           ; stack-inv = record

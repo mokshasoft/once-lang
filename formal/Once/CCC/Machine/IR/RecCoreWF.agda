@@ -196,7 +196,7 @@ module RecCoreWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   open ClosureWellFormedDef {FS} program-bound
     using (ValidAtWF; IRResultAWF; ResultPlace; unit-result; at-loc; RecDispatcherWF;
            validityWF-mem-only; validityWF-frontier-advance;
-           validityWF-alloc-advance)
+           validityWF-alloc-advance; mem-preserved-from-tnhw)
 
   ------------------------------------------------------------------------
   -- Semantic Correctness: TRUST BOUNDARY
@@ -344,6 +344,8 @@ module RecCoreWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; not-halted = not-halted'
         ; frame-preserved = refl
         ; trace-twf = SMP.!!
+        ; mem-preserved-before = mem-preserved-from-tnhw alloc fuse-trace s s' refl
+            trace-wa tt
         ; trace-preserves-halted = exec-trace-preserves-halted-WF fuse-trace
         }
       ; stack-inv = record
@@ -449,6 +451,8 @@ module RecCoreWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; not-halted = not-halted'
         ; frame-preserved = refl
         ; trace-twf = SMP.!!
+        ; mem-preserved-before = mem-preserved-from-tnhw alloc hylo-trace s s' refl
+            trace-wa tt
         ; trace-preserves-halted = exec-trace-preserves-halted-WF hylo-trace
         }
       ; stack-inv = record

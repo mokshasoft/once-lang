@@ -115,6 +115,7 @@ module PairHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; not-halted = not-halted-final
         ; frame-preserved = SMP.!!
         ; trace-twf = SMP.!!
+        ; mem-preserved-before = λ _ _ → SMP.!!  -- TODO: heap-aware mem-preserved
         ; trace-preserves-halted = exec-trace-preserves-halted-WF pair-heap-trace
         }
       ; stack-inv = record

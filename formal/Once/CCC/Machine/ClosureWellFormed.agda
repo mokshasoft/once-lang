@@ -418,6 +418,15 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
           (eval ir x) final-state
         not-halted : halted final-state ≡ false
         frame-preserved : current-frame final-alloc ≡ current-frame alloc
+        -- Plan 0.14: consequence-form memory preservation. Locations
+        -- valid in the caller's view (BeforeFrontier alloc) read the
+        -- same after the IR runs as before. Subsumes the old
+        -- TraceNoHeapWrites + TraceWritesAbove combo. Each producer
+        -- proves this from whatever shape its trace has; place-stage
+        -- locality keeps the obligation tractable.
+        mem-preserved-before :
+          (loc : ValueLocation FS) → BeforeFrontier alloc loc →
+          readLoc final-state loc ≡ readLoc s loc
         trace-twf : TraceWF s alloc trace
         trace-preserves-halted :
           ∀ (s' : LocState FS) (alloc' : AllocState {FS}) →
@@ -461,6 +470,15 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
         max-heap-ref-written : ℕ
         max-heap-ref-geq-final : next-heap-ref final-alloc ≤ max-heap-ref-written
         max-heap-usage-bound : max-heap-ref-written ≤ next-heap-ref alloc +ℕ heap-budget
+        -- Plan 0.14: kept as a SYNTACTIC convenience field — true iff
+        -- the trace contains no store-indirect / store-indirect-suc.
+        -- For heap-allocating IRs (PairHeapWF, future heap-inl/inr)
+        -- this is false; those IRs prove
+        -- IRResultBase.mem-preserved-before directly, which is the
+        -- *real* invariant downstream cares about. RecTrace internals
+        -- still depend on this syntactic form for ProcessedLayerResult
+        -- composition (which only consumes stack-only sub-IR results),
+        -- so it stays available.
         trace-no-heap-writes : TraceNoHeapWrites trace
 
     record IRResultAWF (m : AllocMode)
@@ -1771,17 +1789,28 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
   -- using trace-correct to translate from exec-trace to final-state.
   ------------------------------------------------------------------------
 
+  -- Plan 0.14: now a trivial accessor — the producer carried the
+  -- consequence directly.
   irresult-mem-preserved : ∀ {m A B} {ir : IR A B} {x : ⟦ A ⟧}
     {s : LocState FS} {alloc : AllocState {FS}}
     (result : IRResultAWF m ir x s alloc) →
     (loc : ValueLocation FS) →
     BeforeFrontier alloc loc →
     readLoc (IRResultAWF.final-state result) loc ≡ readLoc s loc
-  irresult-mem-preserved {s = s} {alloc = alloc} result loc bf =
-    subst (λ fs → readLoc fs loc ≡ readLoc s loc)
-      (IRResultAWF.trace-correct result)
-      (derive-mem-preserved alloc (IRResultAWF.trace result) s
-        (IRResultAWF.trace-writes-above result)
-        (IRResultAWF.trace-no-heap-writes result)
-        loc bf)
+  irresult-mem-preserved = IRResultAWF.mem-preserved-before
+
+  -- Plan 0.14: helper for stack-only producers. Their traces still
+  -- syntactically satisfy TraceNoHeapWrites + TraceWritesAbove; this
+  -- helper packages the derivation, so each producer's
+  -- `mem-preserved-before` is one line instead of inlining the chain.
+  mem-preserved-from-tnhw : ∀ (alloc : AllocState {FS})
+    (trace : AbstractTrace) (s final-state : LocState FS) →
+    proj₁ (exec-trace trace s alloc) ≡ final-state →
+    TraceWritesAbove (next-slot alloc) trace →
+    TraceNoHeapWrites trace →
+    (loc : ValueLocation FS) → BeforeFrontier alloc loc →
+    readLoc final-state loc ≡ readLoc s loc
+  mem-preserved-from-tnhw alloc trace s fs tc twa tnhw loc bf =
+    subst (λ st → readLoc st loc ≡ readLoc s loc) tc
+      (derive-mem-preserved alloc trace s twa tnhw loc bf)
     where open import Relation.Binary.PropositionalEquality using (subst)

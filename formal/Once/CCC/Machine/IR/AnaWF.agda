@@ -103,7 +103,7 @@ module AnaWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   open ClosureWellFormedDef {FS} program-bound
     using (ValidAtWF; IRResultAWF; ResultPlace; unit-result; at-loc; RecDispatcherWF;
            validityWF-mem-only; validityWF-frontier-advance;
-           validityWF-alloc-advance)
+           validityWF-alloc-advance; mem-preserved-from-tnhw)
 
   ------------------------------------------------------------------------
   -- Semantic Correctness Postulate (from consolidated module)
@@ -189,6 +189,7 @@ module AnaWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; not-halted = not-halted'
         ; frame-preserved = refl
         ; trace-twf = SMP.!!
+        ; mem-preserved-before = mem-preserved-from-tnhw alloc ana-trace s s' refl trace-wa tt
         ; trace-preserves-halted = exec-trace-preserves-halted-WF ana-trace
         }
       ; stack-inv = record

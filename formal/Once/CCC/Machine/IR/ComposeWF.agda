@@ -59,7 +59,7 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
            valid-unit-wf;
            RecDispatcherWF; validityWF-mem-only;
            validityWF-frontier-advance; validityWF-mem-preserved;
-           validityWF-with-bf-transfer)
+           validityWF-with-bf-transfer; mem-preserved-from-tnhw)
 
   open import Once.CCC.Machine.FrontierLemma
   open FrontierLemmas {FS}
@@ -181,6 +181,8 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; not-halted = not-halted-final
         ; frame-preserved = IRResultAWF.frame-preserved result-g
         ; trace-twf = compose-trace-twf
+        ; mem-preserved-before = mem-preserved-from-tnhw alloc compose-trace s s-final
+            refl compose-trace-writes-above compose-trace-no-heap-writes
         ; trace-preserves-halted = exec-trace-preserves-halted-WF compose-trace
         }
       ; stack-inv = record

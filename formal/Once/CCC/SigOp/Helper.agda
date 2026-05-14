@@ -157,7 +157,8 @@ module PrimHelper {FS : FrameSemantics} (program-bound : ℕ) where
 
   open import Once.CCC.Machine.ClosureWellFormed
   open ClosureWellFormedDef {FS} program-bound
-    using (ValidAtWF; IRResultAWF; ResultPlace; unit-result; at-loc; valid-primitive-wf)
+    using (ValidAtWF; IRResultAWF; ResultPlace; unit-result; at-loc; valid-primitive-wf;
+           mem-preserved-from-tnhw)
   open import Once.CCC.IR.Stack using (ir-stack-requirement; ir-scratch-requirement; sigOp-stack-req)
 
   import Once.CCC.Machine.SMPrimitives as SMP
@@ -211,6 +212,8 @@ module PrimHelper {FS : FrameSemantics} (program-bound : ℕ) where
         ; not-halted = not-halted
         ; frame-preserved = refl
         ; trace-twf = twf-∷ tt twf-[]
+        ; mem-preserved-before = mem-preserved-from-tnhw alloc (mov-to-output ∷ []) s final-state
+            trace-correct-pf tt tt
         ; trace-preserves-halted = exec-trace-preserves-halted-WF (mov-to-output ∷ [])
         }
       ; stack-inv = record

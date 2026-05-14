@@ -63,7 +63,8 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
            valid-closure-wf; validityWF-mem-only;
            validityWF-alloc-advance; validityWF-frontier-advance;
            validityWF-write-at-frontier; validityWF-write-at-suc-frontier;
-           validityWF-with-bf-transfer; validityWF-trace-preserves)
+           validityWF-with-bf-transfer; validityWF-trace-preserves;
+           mem-preserved-from-tnhw)
 
   -- Import bf-same-frame-slot from BFTransfer module
   open import Once.CCC.Machine.IR.ApplyWF
@@ -132,6 +133,7 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; not-halted = not-halted'
         ; frame-preserved = refl
         ; trace-twf = trace-twf'
+        ; mem-preserved-before = mem-preserved-from-tnhw alloc trace s s' refl trace-writes-above' tt
         ; trace-preserves-halted = exec-trace-preserves-halted-WF trace
         }
       ; stack-inv = record

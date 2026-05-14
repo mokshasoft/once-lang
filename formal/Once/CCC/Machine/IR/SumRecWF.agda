@@ -287,6 +287,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; not-halted = not-halted
         ; frame-preserved = refl
         ; trace-twf = twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt twf-[]))))
+        ; mem-preserved-before = λ _ _ → SMP.!!
         ; trace-preserves-halted = exec-trace-preserves-halted-WF inl-trace
         }
       ; stack-inv = record
@@ -421,6 +422,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; not-halted = not-halted
         ; frame-preserved = refl
         ; trace-twf = twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt twf-[]))))
+        ; mem-preserved-before = λ _ _ → SMP.!!
         ; trace-preserves-halted = exec-trace-preserves-halted-WF inl-trace
         }
       ; stack-inv = record
@@ -569,6 +571,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; not-halted = not-halted
         ; frame-preserved = refl
         ; trace-twf = twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt twf-[]))))
+        ; mem-preserved-before = λ _ _ → SMP.!!
         ; trace-preserves-halted = exec-trace-preserves-halted-WF inr-trace
         }
       ; stack-inv = record
@@ -693,6 +696,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; not-halted = not-halted
         ; frame-preserved = refl
         ; trace-twf = twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt twf-[]))))
+        ; mem-preserved-before = λ _ _ → SMP.!!
         ; trace-preserves-halted = exec-trace-preserves-halted-WF inr-trace
         }
       ; stack-inv = record
@@ -847,6 +851,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; not-halted = IRResultAWF.not-halted result-f
         ; frame-preserved = IRResultAWF.frame-preserved result-f
         ; trace-twf = SMP.!!  -- TODO: load-indirect-suc + result-f.trace-twf chained
+        ; mem-preserved-before = λ _ _ → SMP.!!
         ; trace-preserves-halted = exec-trace-preserves-halted-WF case-inl-trace
         }
       ; stack-inv = record
@@ -961,6 +966,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; not-halted = IRResultAWF.not-halted result-g
         ; frame-preserved = IRResultAWF.frame-preserved result-g
         ; trace-twf = SMP.!!  -- TODO: load-indirect-suc + result-g.trace-twf chained
+        ; mem-preserved-before = λ _ _ → SMP.!!
         ; trace-preserves-halted = exec-trace-preserves-halted-WF case-inr-trace
         }
       ; stack-inv = record
@@ -1118,6 +1124,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; not-halted = not-halted'
         ; frame-preserved = refl
         ; trace-twf = twf-∷ tt (twf-∷ tt (twf-∷ tt twf-[]))
+        ; mem-preserved-before = λ _ _ → SMP.!!
         ; trace-preserves-halted = exec-trace-preserves-halted-WF in-trace
         }
       ; stack-inv = record
@@ -1236,6 +1243,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; not-halted = not-halted'
         ; frame-preserved = refl
         ; trace-twf = twf-∷ tt twf-[]
+        ; mem-preserved-before = λ _ _ → SMP.!!
         ; trace-preserves-halted = exec-trace-preserves-halted-WF out-μ-trace
         }
       ; stack-inv = record
@@ -1322,6 +1330,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; not-halted = not-halted'
         ; frame-preserved = refl
         ; trace-twf = twf-∷ tt twf-[]
+        ; mem-preserved-before = λ _ _ → SMP.!!
         ; trace-preserves-halted = exec-trace-preserves-halted-WF out-trace
         }
       ; stack-inv = record
@@ -1405,6 +1414,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; not-halted = not-halted'
         ; frame-preserved = refl
         ; trace-twf = twf-∷ tt (twf-∷ tt (twf-∷ tt twf-[]))
+        ; mem-preserved-before = λ _ _ → SMP.!!
         ; trace-preserves-halted = exec-trace-preserves-halted-WF in-ν-trace
         }
       ; stack-inv = record

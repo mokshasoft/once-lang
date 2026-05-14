@@ -202,6 +202,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
         ; not-halted = not-halted'
         ; frame-preserved = trans (IRResultAWF.frame-preserved body-result) refl
         ; trace-twf = trace-twf'
+        ; mem-preserved-before = λ _ _ → SMP.!!  -- TODO: compose setup + body witnesses
         ; trace-preserves-halted = exec-trace-preserves-halted-WF trace
         }
       ; stack-inv = record
