@@ -157,53 +157,19 @@ module PairHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       alloc-after-scratch = record alloc { next-slot = f-start }
 
       ------------------------------------------------------------------
-      -- Run f at the post-scratch state.
-      -- For scaffolding, we run f directly on (s, alloc-after-scratch)
-      -- — discharging the setup-trace transport is part of the followup
-      -- pass.
+      -- Trace phases — named so each phase's proofs can target the
+      -- correct intermediate state without re-deriving exec-trace
+      -- decompositions.
       ------------------------------------------------------------------
-      input-before-at-f-start : BeforeFrontier alloc-after-scratch input-loc
-      input-before-at-f-start = frontier-monotone alloc alloc-after-scratch refl
-                                  (≤-trans (n≤1+n backup-slot)
-                                    (≤-trans (n≤1+n fst-stash)
-                                      (≤-trans (n≤1+n snd-stash) (n≤1+n pair-stash))))
-                                  ≤-refl input-loc input-before
+      setup-trace : AbstractTrace
+      setup-trace = mov-to-output ∷ store-at-slot backup-slot ∷ []
 
-      input-valid-wf-at-f-start : ValidAtWF mIn alloc-after-scratch x input-loc s
-      input-valid-wf-at-f-start = validityWF-frontier-advance x input-loc s refl
-                                    (≤-trans (n≤1+n backup-slot)
-                                      (≤-trans (n≤1+n fst-stash)
-                                        (≤-trans (n≤1+n snd-stash) (n≤1+n pair-stash))))
-                                    ≤-refl input-valid-wf
+      mid-trace : AbstractTrace
+      mid-trace = store-at-slot fst-stash ∷ restore-input backup-slot ∷ []
 
-      f-exec : ∃[ mF ] IRResultAWF mF f x s alloc-after-scratch
-      f-exec = rec-wf mIn f (⟨,⟩-f-smaller f g {Heap}) x input-loc s alloc-after-scratch
-                 input-valid-wf-at-f-start input-before-at-f-start not-halted rdi-eq
-      result-f = proj₂ f-exec
-
-      ------------------------------------------------------------------
-      -- Run g — scaffolded as a re-call on the same alloc.
-      ------------------------------------------------------------------
-      g-exec : ∃[ mG ] IRResultAWF mG g x s alloc-after-scratch
-      g-exec = rec-wf mIn g (⟨,⟩-g-smaller f g {Heap}) x input-loc s alloc-after-scratch
-                 input-valid-wf-at-f-start input-before-at-f-start not-halted rdi-eq
-      result-g = proj₂ g-exec
-
-      f-trace = IRResultAWF.trace result-f
-      g-trace = IRResultAWF.trace result-g
-
-      ------------------------------------------------------------------
-      -- Pair-heap trace
-      ------------------------------------------------------------------
-      pair-heap-trace : AbstractTrace
-      pair-heap-trace =
-          mov-to-output
-        ∷ store-at-slot backup-slot
-        ∷ f-trace
-        ++ store-at-slot fst-stash
-        ∷ restore-input backup-slot
-        ∷ g-trace
-        ++ store-at-slot snd-stash
+      post-trace : AbstractTrace
+      post-trace =
+          store-at-slot snd-stash
         ∷ instr-alloc-heap 2
         ∷ store-at-slot pair-stash
         ∷ mov-to-input
@@ -213,6 +179,87 @@ module PairHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ∷ store-indirect-suc
         ∷ load-from-slot pair-stash
         ∷ []
+
+      ------------------------------------------------------------------
+      -- Setup phase: stash input pointer to backup-slot.
+      -- Neither instruction bumps next-slot or next-heap-ref, so the
+      -- runtime alloc matches input alloc on those axes.
+      ------------------------------------------------------------------
+      s-after-setup : LocState FS
+      s-after-setup = proj₁ (exec-trace setup-trace s alloc)
+
+      not-halted-after-setup : halted s-after-setup ≡ false
+      not-halted-after-setup = SMP.!!
+
+      rdi-eq-after-setup : readReg (regs s-after-setup) Input1 ≡ SV-Ptr input-loc
+      rdi-eq-after-setup = SMP.!!
+
+      input-before-at-f-start : BeforeFrontier alloc-after-scratch input-loc
+      input-before-at-f-start = frontier-monotone alloc alloc-after-scratch refl
+                                  (≤-trans (n≤1+n backup-slot)
+                                    (≤-trans (n≤1+n fst-stash)
+                                      (≤-trans (n≤1+n snd-stash) (n≤1+n pair-stash))))
+                                  ≤-refl input-loc input-before
+
+      input-valid-wf-at-f-start : ValidAtWF mIn alloc-after-scratch x input-loc s-after-setup
+      input-valid-wf-at-f-start = SMP.!!
+
+      ------------------------------------------------------------------
+      -- f phase: run f on (s-after-setup, alloc-after-scratch).
+      ------------------------------------------------------------------
+      f-exec : ∃[ mF ] IRResultAWF mF f x s-after-setup alloc-after-scratch
+      f-exec = rec-wf mIn f (⟨,⟩-f-smaller f g {Heap}) x input-loc s-after-setup alloc-after-scratch
+                 input-valid-wf-at-f-start input-before-at-f-start
+                 not-halted-after-setup rdi-eq-after-setup
+      result-f = proj₂ f-exec
+      f-trace = IRResultAWF.trace result-f
+
+      s-after-f : LocState FS
+      s-after-f = IRResultAWF.final-state result-f
+      alloc-after-f : AllocState {FS}
+      alloc-after-f = IRResultAWF.final-alloc result-f
+
+      ------------------------------------------------------------------
+      -- Middle phase: stash f's result to fst-stash, restore input.
+      ------------------------------------------------------------------
+      s-after-middle : LocState FS
+      s-after-middle = proj₁ (exec-trace mid-trace s-after-f alloc-after-f)
+      alloc-after-middle : AllocState {FS}
+      alloc-after-middle = proj₂ (exec-trace mid-trace s-after-f alloc-after-f)
+
+      not-halted-after-middle : halted s-after-middle ≡ false
+      not-halted-after-middle = SMP.!!
+
+      rdi-eq-after-middle : readReg (regs s-after-middle) Input1 ≡ SV-Ptr input-loc
+      rdi-eq-after-middle = SMP.!!
+
+      input-before-at-g-start : BeforeFrontier alloc-after-middle input-loc
+      input-before-at-g-start = SMP.!!
+
+      input-valid-wf-at-g-start : ValidAtWF mIn alloc-after-middle x input-loc s-after-middle
+      input-valid-wf-at-g-start = SMP.!!
+
+      ------------------------------------------------------------------
+      -- g phase: run g on (s-after-middle, alloc-after-middle).
+      ------------------------------------------------------------------
+      g-exec : ∃[ mG ] IRResultAWF mG g x s-after-middle alloc-after-middle
+      g-exec = rec-wf mIn g (⟨,⟩-g-smaller f g {Heap}) x input-loc
+                 s-after-middle alloc-after-middle
+                 input-valid-wf-at-g-start input-before-at-g-start
+                 not-halted-after-middle rdi-eq-after-middle
+      result-g = proj₂ g-exec
+      g-trace = IRResultAWF.trace result-g
+
+      s-after-g : LocState FS
+      s-after-g = IRResultAWF.final-state result-g
+      alloc-after-g : AllocState {FS}
+      alloc-after-g = IRResultAWF.final-alloc result-g
+
+      ------------------------------------------------------------------
+      -- Pair-heap trace: composition of all phases.
+      ------------------------------------------------------------------
+      pair-heap-trace : AbstractTrace
+      pair-heap-trace = setup-trace ++ f-trace ++ mid-trace ++ g-trace ++ post-trace
 
       s-final : LocState FS
       s-final = proj₁ (exec-trace pair-heap-trace s alloc)
@@ -231,8 +278,12 @@ module PairHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- allocations; for the scaffold we leave it abstract and let
       -- `SMP.!!` produce the witness.
       ------------------------------------------------------------------
+      -- Concrete: after g finishes, alloc-after-g.next-heap-ref is the
+      -- ref the next instr-alloc-heap will hand out. store-at-slot
+      -- snd-stash doesn't touch next-heap-ref, so the fresh ref at the
+      -- instr-alloc-heap point is exactly next-heap-ref alloc-after-g.
       pair-loc : ValueLocation FS
-      pair-loc = SMP.!!  -- fresh AtDynamic at next-heap-ref-after-(setup ++ f ++ middle ++ g ++ middle')
+      pair-loc = AtDynamic (heap-loc (mkHeapRef (next-heap-ref alloc-after-g)) 0)
 
       pair-valid-final : ValidAtWF Heap alloc-final
                            (sem-pair (eval f x) (eval g x)) pair-loc s-final
