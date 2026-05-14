@@ -476,8 +476,36 @@ module PairHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       not-halted-after-middle = exec-trace-preserves-halted-WF mid-trace s-after-f alloc-after-f
                                   not-halted-after-f mid-twf
 
+      not-halted-after-fst-store : halted s-after-fst-store ≡ false
+      not-halted-after-fst-store = exec-abstract-preserves-halted (store-at-slot fst-stash)
+        s-after-f alloc-after-f not-halted-after-f iph-store-at-slot
+
+      s-after-restore : LocState FS
+      s-after-restore = proj₁ (exec-abstract (restore-input backup-slot)
+                                 s-after-fst-store alloc-after-fst-store)
+
+      -- The `just` branch of exec-restore-input-with-value writes
+      -- the looked-up value to Input1. backup-at-fst-store-current-frame
+      -- says the lookup returns just (SV-Ptr input-loc).
+      restore-input-input1 : readReg (regs s-after-restore) Input1 ≡ SV-Ptr input-loc
+      restore-input-input1
+        rewrite backup-at-fst-store-current-frame =
+          writeReg-same (regs s-after-fst-store) Input1 (SV-Ptr input-loc)
+
+      -- mid-trace's last instruction is restore-input backup-slot, which
+      -- overwrites Input1 with stack[backup-slot] = SV-Ptr input-loc.
       rdi-eq-after-middle : readReg (regs s-after-middle) Input1 ≡ SV-Ptr input-loc
-      rdi-eq-after-middle = SMP.!!
+      rdi-eq-after-middle =
+        let d1 : exec-trace mid-trace s-after-f alloc-after-f ≡
+                 exec-trace (restore-input backup-slot ∷ []) s-after-fst-store alloc-after-fst-store
+            d1 = exec-trace-cons (store-at-slot fst-stash) _ s-after-f alloc-after-f not-halted-after-f
+            d2 : exec-trace (restore-input backup-slot ∷ []) s-after-fst-store alloc-after-fst-store ≡
+                 exec-abstract (restore-input backup-slot) s-after-fst-store alloc-after-fst-store
+            d2 = exec-trace-single (restore-input backup-slot) s-after-fst-store alloc-after-fst-store
+                   not-halted-after-fst-store
+            s-eq : s-after-middle ≡ s-after-restore
+            s-eq = cong proj₁ (trans d1 d2)
+        in trans (cong (λ st → readReg (regs st) Input1) s-eq) restore-input-input1
 
       input-before-at-g-start : BeforeFrontier alloc-after-middle input-loc
       input-before-at-g-start = SMP.!!
