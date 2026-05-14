@@ -134,7 +134,8 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
         {alg-result-final-alloc : AllocState {FS}}
         {alg-result-final-state : LocState FS} →
       ResultPlace A mAlg alg-result-final-alloc
-        (record alloc { next-slot = next-slot alg-result-final-alloc })
+        (record alloc { next-slot     = next-slot     alg-result-final-alloc
+                      ; next-heap-ref = next-heap-ref alg-result-final-alloc })
         (eval (Cata wfG alg) x) alg-result-final-state
 
   ------------------------------------------------------------------------
@@ -3637,7 +3638,8 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
         cata-result-place-stub : ResultPlace A mAlg
           (IRResultAWF.final-alloc alg-result)
-          (record alloc { next-slot = next-slot (IRResultAWF.final-alloc alg-result) })
+          (record alloc { next-slot     = next-slot     (IRResultAWF.final-alloc alg-result)
+                        ; next-heap-ref = next-heap-ref (IRResultAWF.final-alloc alg-result) })
           (eval (Cata wfG alg) x)
           (IRResultAWF.final-state alg-result)
         cata-result-place-stub = cata-result-place-postulate

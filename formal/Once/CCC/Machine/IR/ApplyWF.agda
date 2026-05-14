@@ -956,46 +956,36 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
           setup-no-heap-writes
           (IRResultAWF.trace-no-heap-writes body-result)
 
-      -- Plan 0.2.4.5 D1 task #30: reclaim-alloc now uses next-slot alloc'
-      -- (= body's final next-slot), not pair-slots, since alloc' tracks
-      -- body's full stack.
-      reclaim-alloc : AllocState {FS}
-      reclaim-alloc = record alloc { next-slot = next-slot alloc' }
+      -- Plan 0.14: continuation-alloc inherits next-slot AND
+      -- next-heap-ref from alloc' (body's final-alloc), reflecting the
+      -- alloc state the caller resumes with. Replaces the old
+      -- reclaim-alloc that took next-heap-ref from the input alloc and
+      -- needed an SMP.!! to bridge the heap-ref gap.
+      continuation-alloc : AllocState {FS}
+      continuation-alloc = record alloc { next-slot     = next-slot     alloc'
+                                        ; next-heap-ref = next-heap-ref alloc' }
 
       -- Frame equivalence: alloc'.frame = alloc.frame via body's frame-preserved + child-alloc.
       alloc'-frame-eq : current-frame alloc' ≡ current-frame alloc
       alloc'-frame-eq = trans (IRResultAWF.frame-preserved body-result) refl
 
-      -- Plan 0.14 Phase B.0: heap-preserved field removed; derived
-      -- here via heap-preserved-of when body-result.heap-budget = 0
-      -- (stack-only). Postulated via !! until apply's signature
-      -- carries the "body is stack-only" precondition.
-      alloc'-heap-eq : next-heap-ref alloc' ≡ next-heap-ref alloc
-      alloc'-heap-eq = SMP.!!
+      cont-preserves-result' : BeforeFrontier continuation-alloc result-loc
+      cont-preserves-result' = bf-same-frame-slot alloc' continuation-alloc
+        alloc'-frame-eq refl refl result-loc result-before'
 
-      reclaim-preserves-result' : BeforeFrontier reclaim-alloc result-loc
-      reclaim-preserves-result' = bf-same-frame-slot alloc' reclaim-alloc
-        alloc'-frame-eq refl alloc'-heap-eq result-loc result-before'
-
-      reclaim-preserves-validity' :
-        ValidAtWF mBody reclaim-alloc (eval (apply {A} {B} {k}) x) result-loc s'
-      reclaim-preserves-validity' = validityWF-with-bf-transfer
-        (eval (apply {A} {B} {k}) x) result-loc s' alloc' reclaim-alloc
-        (λ loc bf → bf-same-frame-slot alloc' reclaim-alloc alloc'-frame-eq refl alloc'-heap-eq loc bf)
+      cont-preserves-validity' :
+        ValidAtWF mBody continuation-alloc (eval (apply {A} {B} {k}) x) result-loc s'
+      cont-preserves-validity' = validityWF-with-bf-transfer
+        (eval (apply {A} {B} {k}) x) result-loc s' alloc' continuation-alloc
+        (λ loc bf → bf-same-frame-slot alloc' continuation-alloc alloc'-frame-eq refl refl loc bf)
         result-valid-wf'
 
       -- Plan 0.2.4.5 D1 task #30: dispatch on body's result-place.
-      -- For unit-result: apply's result-place is also unit-result (no
-      -- per-loc witnesses needed; B must unify with Unit). Fully
-      -- discharged.
-      -- For at-loc: construct at-loc with the existing top-level
-      -- postulates (rax-eq' discharged; result-valid-wf', result-before'
-      -- and their reclaim wrappers remain — see structural deferral
-      -- block above).
       result-place-final : ResultPlace B mBody alloc'
-        (record alloc { next-slot = next-slot alloc' })
+        (record alloc { next-slot     = next-slot     alloc'
+                      ; next-heap-ref = next-heap-ref alloc' })
         (eval (apply {A} {B} {k}) x) s'
       result-place-final with IRResultAWF.result-place body-result
       ... | at-loc _ _ _ _ _ _ = at-loc result-loc result-valid-wf' result-before' rax-eq'
-                                       reclaim-preserves-validity' reclaim-preserves-result'
+                                       cont-preserves-validity' cont-preserves-result'
       ... | unit-result = unit-result

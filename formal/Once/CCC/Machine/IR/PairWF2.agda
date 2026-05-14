@@ -117,11 +117,12 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
         ; scratch-bounded = pair-scratch-bounded
         }
       ; heap-inv = record
-        { heap-monotone = ≤-refl
-        ; heap-budget = 0
-        ; max-heap-ref-written = next-heap-ref alloc
-        ; max-heap-ref-geq-final = ≤-refl
-        ; max-heap-usage-bound = m≤m+n (next-heap-ref alloc) 0
+        { heap-monotone = ≤-trans (IRResultAWF.heap-monotone result-f)
+                                  (IRResultAWF.heap-monotone result-g)
+        ; heap-budget = IRResultAWF.heap-budget result-f +ℕ IRResultAWF.heap-budget result-g
+        ; max-heap-ref-written = IRResultAWF.max-heap-ref-written result-g
+        ; max-heap-ref-geq-final = IRResultAWF.max-heap-ref-geq-final result-g
+        ; max-heap-usage-bound = pair-max-heap-usage-bound
         ; trace-no-heap-writes = pair-trace-no-heap-writes
         }
       }
@@ -294,10 +295,12 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
           fst-valid-f     : ValidAtWF mF (IRResultAWF.final-alloc result-f) (eval f x) fst-loc-f s₁
           fst-before-f    : BeforeFrontier (IRResultAWF.final-alloc result-f) fst-loc-f
           fst-rec-valid-f : ValidAtWF mF (record alloc-after-pair-slots
-                                            { next-slot = next-slot (IRResultAWF.final-alloc result-f) })
+                                            { next-slot     = next-slot     (IRResultAWF.final-alloc result-f)
+                                            ; next-heap-ref = next-heap-ref (IRResultAWF.final-alloc result-f) })
                                        (eval f x) fst-loc-f s₁
           fst-rec-before-f : BeforeFrontier (record alloc-after-pair-slots
-                                              { next-slot = next-slot (IRResultAWF.final-alloc result-f) })
+                                              { next-slot     = next-slot     (IRResultAWF.final-alloc result-f)
+                                              ; next-heap-ref = next-heap-ref (IRResultAWF.final-alloc result-f) })
                                             fst-loc-f
 
       f-facts : FstFacts
@@ -326,7 +329,8 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
             unit-fst-before : BeforeFrontier (IRResultAWF.final-alloc result-f) unit-fst-loc
             unit-fst-rec-before : BeforeFrontier
               (record alloc-after-pair-slots
-                { next-slot = next-slot (IRResultAWF.final-alloc result-f) })
+                { next-slot     = next-slot     (IRResultAWF.final-alloc result-f)
+                ; next-heap-ref = next-heap-ref (IRResultAWF.final-alloc result-f) })
               unit-fst-loc
 
       open FstFacts f-facts using ()
@@ -348,8 +352,12 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
       reclaim-f-above-f-start : f-start ≤ reclaim-f
       reclaim-f-above-f-start = IRResultAWF.slot-monotone result-f
 
+      -- Plan 0.14: alloc-after-f-reclaim inherits next-heap-ref from
+      -- f's final-alloc (continuation-alloc semantics). For stack-only
+      -- f this collapses to next-heap-ref alloc.
       alloc-after-f-reclaim : AllocState {FS}
-      alloc-after-f-reclaim = record alloc { next-slot = reclaim-f }
+      alloc-after-f-reclaim = record alloc { next-slot     = reclaim-f
+                                           ; next-heap-ref = next-heap-ref (IRResultAWF.final-alloc result-f) }
 
       ------------------------------------------------------------------------
       -- Plan 0.13.3 Phase d (option b — g hoist): compute runtime
@@ -430,7 +438,8 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
                                     (≤-trans (n≤1+n backup-slot)
                                       (≤-trans (n≤1+n fst-slot)
                                         (≤-trans (n≤1+n snd-slot) reclaim-f-above-f-start)))
-                                    ≤-refl input-loc input-before
+                                    (IRResultAWF.heap-monotone result-f)
+                                    input-loc input-before
 
       -- Input1 validity at s₁ (memory preserved through setup + f-trace for input-loc).
       -- result-f's mem-preserved is at s-after-setup; compose with mem-preserved-through-setup
@@ -446,7 +455,8 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
                                       (≤-trans (n≤1+n backup-slot)
                                         (≤-trans (n≤1+n fst-slot)
                                           (≤-trans (n≤1+n snd-slot) reclaim-f-above-f-start)))
-                                      ≤-refl input-valid-wf-s1
+                                      (IRResultAWF.heap-monotone result-f)
+                                      input-valid-wf-s1
 
       ------------------------------------------------------------------------
       -- Plan 0.13.3 Phase d (option b state-only hoist):
@@ -891,10 +901,12 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
           snd-valid-g     : ValidAtWF mG (IRResultAWF.final-alloc result-g) (eval g x) snd-loc-g s₂
           snd-before-g    : BeforeFrontier (IRResultAWF.final-alloc result-g) snd-loc-g
           snd-rec-valid-g : ValidAtWF mG (record g-input-alloc
-                                            { next-slot = next-slot (IRResultAWF.final-alloc result-g) })
+                                            { next-slot     = next-slot     (IRResultAWF.final-alloc result-g)
+                                            ; next-heap-ref = next-heap-ref (IRResultAWF.final-alloc result-g) })
                                        (eval g x) snd-loc-g s₂
           snd-rec-before-g : BeforeFrontier (record g-input-alloc
-                                              { next-slot = next-slot (IRResultAWF.final-alloc result-g) })
+                                              { next-slot     = next-slot     (IRResultAWF.final-alloc result-g)
+                                              ; next-heap-ref = next-heap-ref (IRResultAWF.final-alloc result-g) })
                                             snd-loc-g
 
       g-facts : SndFacts alloc-after-f-reclaim
@@ -922,7 +934,8 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
             unit-snd-before : BeforeFrontier (IRResultAWF.final-alloc result-g) unit-snd-loc
             unit-snd-rec-before : BeforeFrontier
               (record alloc-after-f-reclaim
-                { next-slot = next-slot (IRResultAWF.final-alloc result-g) })
+                { next-slot     = next-slot     (IRResultAWF.final-alloc result-g)
+                ; next-heap-ref = next-heap-ref (IRResultAWF.final-alloc result-g) })
               unit-snd-loc
 
       open SndFacts g-facts using ()
@@ -944,8 +957,13 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
       ------------------------------------------------------------------------
       -- Final allocation
       ------------------------------------------------------------------------
+      -- Plan 0.14: alloc-final inherits next-heap-ref from result-g's
+      -- final-alloc (which itself inherits any heap consumed by f via
+      -- result-f.heap-monotone composition). For stack-only sub-IRs
+      -- this collapses back to next-heap-ref alloc.
       alloc-final : AllocState {FS}
-      alloc-final = record alloc { next-slot = reclaim-g }
+      alloc-final = record alloc { next-slot     = reclaim-g
+                                 ; next-heap-ref = next-heap-ref (IRResultAWF.final-alloc result-g) }
 
       pair-reclaim = reclaim-g
 
@@ -1245,6 +1263,27 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
       ------------------------------------------------------------------------
       -- Trace no heap writes
       ------------------------------------------------------------------------
+      -- Plan 0.14: heap budget composes f's + g's. result-g.final's
+      -- max-heap-ref bounded via g's max-heap-usage-bound (relative to
+      -- g's input alloc, whose next-heap-ref = result-f.final.next-heap-ref)
+      -- composed with f's bound.
+      pair-max-heap-usage-bound :
+        IRResultAWF.max-heap-ref-written result-g
+        ≤ next-heap-ref alloc +ℕ (IRResultAWF.heap-budget result-f +ℕ IRResultAWF.heap-budget result-g)
+      pair-max-heap-usage-bound = ≤-trans g-bound (≤-trans step (≤-reflexive (+-assoc (next-heap-ref alloc) _ _)))
+        where
+          open import Data.Nat.Properties using (+-monoˡ-≤; ≤-reflexive)
+          g-bound : IRResultAWF.max-heap-ref-written result-g
+                    ≤ next-heap-ref (IRResultAWF.final-alloc result-f) +ℕ IRResultAWF.heap-budget result-g
+          g-bound = IRResultAWF.max-heap-usage-bound result-g
+          f-bound : next-heap-ref (IRResultAWF.final-alloc result-f)
+                    ≤ next-heap-ref alloc +ℕ IRResultAWF.heap-budget result-f
+          f-bound = ≤-trans (IRResultAWF.max-heap-ref-geq-final result-f)
+                            (IRResultAWF.max-heap-usage-bound result-f)
+          step : next-heap-ref (IRResultAWF.final-alloc result-f) +ℕ IRResultAWF.heap-budget result-g
+                 ≤ (next-heap-ref alloc +ℕ IRResultAWF.heap-budget result-f) +ℕ IRResultAWF.heap-budget result-g
+          step = +-monoˡ-≤ (IRResultAWF.heap-budget result-g) f-bound
+
       pair-trace-no-heap-writes : TraceNoHeapWrites pair-trace
       pair-trace-no-heap-writes =
         trace-no-heap-writes-append (mov-to-output ∷ store-at-slot backup-slot ∷ [])
@@ -1991,12 +2030,15 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
       fst-before = frontier-monotone alloc-after-f-reclaim alloc-final
                      refl
                      (IRResultAWF.slot-monotone result-g)
-                     ≤-refl
+                     (IRResultAWF.heap-monotone result-g)
                      fst-loc
                      fst-rec-before-from-f
 
       snd-before : BeforeFrontier alloc-final snd-loc
-      snd-before = frontier-monotone (record alloc { next-slot = reclaim-g }) alloc-final
+      snd-before = frontier-monotone
+                     (record alloc { next-slot     = reclaim-g
+                                   ; next-heap-ref = next-heap-ref (IRResultAWF.final-alloc result-g) })
+                     alloc-final
                      refl ≤-refl ≤-refl snd-loc
                      snd-rec-before-from-g
 
@@ -2293,7 +2335,9 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Step 4: Advance frontier from alloc-after-f-reclaim to alloc-final
       fst-valid : ValidAtWF mF alloc-final (eval f x) fst-loc s-final
       fst-valid = validityWF-frontier-advance (eval f x) fst-loc s-final refl
-                    (IRResultAWF.slot-monotone result-g) ≤-refl valid-at-s-final
+                    (IRResultAWF.slot-monotone result-g)
+                    (IRResultAWF.heap-monotone result-g)
+                    valid-at-s-final
 
       ----------------------------------------------------------------------
       -- snd-valid: Validity of g's result at snd-loc in s-final
@@ -2308,9 +2352,10 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
       -- 4. Frontier advance is trivial (alloc-reclaim-g = alloc-final)
       ----------------------------------------------------------------------
 
-      -- Alloc state after g's reclaim
+      -- Alloc state after g's reclaim (continuation-alloc shape).
       alloc-reclaim-g : AllocState {FS}
-      alloc-reclaim-g = record alloc { next-slot = reclaim-g }
+      alloc-reclaim-g = record alloc { next-slot     = reclaim-g
+                                     ; next-heap-ref = next-heap-ref (IRResultAWF.final-alloc result-g) }
 
       -- Step 1: Get validity at s₂ with alloc-reclaim-g
       valid-s2-reclaimed : ValidAtWF mG alloc-reclaim-g (eval g x) snd-loc s₂

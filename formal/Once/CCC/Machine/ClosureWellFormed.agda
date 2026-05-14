@@ -271,26 +271,33 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     -- Consumers (compose, pair, RecTrace) pattern-match on the
     -- constructor; the type system forces them to handle Unit
     -- separately — there's no loc to extract from `unit-result`.
-    -- The reclaim-alloc shape: same as input alloc but with frontier
-    -- bumped to the IR's final next-slot. Carrying it in the type
-    -- lets a single `at-loc` constructor share its `loc` between
-    -- post-IR and post-reclaim invariants — consumers don't need a
-    -- separate "loc-eq" lemma to bridge two parallel ResultPlaces.
+    -- The continuation-alloc shape: caller's frame, with `next-slot`
+    -- and `next-heap-ref` taken from the IR's `final-alloc` — i.e., the
+    -- alloc state the caller resumes with after the callee returns.
+    -- Carrying it in the type lets a single `at-loc` constructor share
+    -- its `loc` between post-IR and continuation invariants — consumers
+    -- don't need a separate "loc-eq" lemma to bridge two parallel
+    -- ResultPlaces.
+    --
+    -- Previously named `reclaim-alloc`; that baked in a stack-only
+    -- mental model. The field never represented heap reclamation
+    -- (heap blocks aren't freed by IRs), only the caller's
+    -- continuation view of consumed resources.
     data ResultPlace : (B : Type) (m : AllocMode)
-                       (alloc reclaim-alloc : AllocState {FS})
+                       (alloc continuation-alloc : AllocState {FS})
                        (v : ⟦ B ⟧) (s : LocState FS) → Set where
-      unit-result : ∀ {m alloc reclaim-alloc s} →
-                    ResultPlace Unit m alloc reclaim-alloc tt s
-      at-loc      : ∀ {B m alloc reclaim-alloc v s}
+      unit-result : ∀ {m alloc continuation-alloc s} →
+                    ResultPlace Unit m alloc continuation-alloc tt s
+      at-loc      : ∀ {B m alloc continuation-alloc v s}
                     (loc : ValueLocation FS)
                   → ValidAtWF m alloc v loc s
                   → BeforeFrontier alloc loc
                   -- Plan 0.13.2: Output register stores StoredValue;
                   -- a result location is reified as SV-Ptr loc.
                   → readReg (regs s) Output ≡ SV-Ptr loc
-                  → ValidAtWF m reclaim-alloc v loc s
-                  → BeforeFrontier reclaim-alloc loc
-                  → ResultPlace B m alloc reclaim-alloc v s
+                  → ValidAtWF m continuation-alloc v loc s
+                  → BeforeFrontier continuation-alloc loc
+                  → ResultPlace B m alloc continuation-alloc v s
 
     -- Plan 0.2.4.5 D1 trust points: place-* extraction helpers.
     --
@@ -302,8 +309,8 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     --   * `place-valid rp` — `ValidAtWF` at `place-loc rp`.
     --   * `place-before rp` — `BeforeFrontier alloc (place-loc rp)`.
     --   * `place-rax rp` — `readReg s Output ≡ place-loc rp`.
-    --   * `place-reclaim-valid rp` / `place-reclaim-before rp` —
-    --     same but for the reclaim-side alloc state.
+    --   * `place-cont-valid rp` / `place-cont-before rp` —
+    --     same but for the continuation-side alloc state.
     --
     -- For `at-loc`, all six are constructor projections (no trust).
     -- For `unit-result`, each is postulated, encoding the
@@ -349,17 +356,17 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     place-rax {Unit} {_} {_} {_} {_} {s} unit-result = rax-stub
       where postulate rax-stub : readReg (regs s) Output ≡ SV-Ptr _
 
-    place-reclaim-valid : ∀ {B m a₁ a₂ v s} (rp : ResultPlace B m a₁ a₂ v s) →
-                          ValidAtWF m a₂ v (place-loc rp) s
-    place-reclaim-valid (at-loc _ _ _ _ rvalid _) = rvalid
-    place-reclaim-valid {Unit} {m} {_} {a₂} {tt} {s} unit-result = valid-unit-rs
-      where postulate valid-unit-rs : ValidAtWF m a₂ {Unit} tt _ s
+    place-cont-valid : ∀ {B m a₁ a₂ v s} (rp : ResultPlace B m a₁ a₂ v s) →
+                       ValidAtWF m a₂ v (place-loc rp) s
+    place-cont-valid (at-loc _ _ _ _ cvalid _) = cvalid
+    place-cont-valid {Unit} {m} {_} {a₂} {tt} {s} unit-result = valid-unit-cs
+      where postulate valid-unit-cs : ValidAtWF m a₂ {Unit} tt _ s
 
-    place-reclaim-before : ∀ {B m a₁ a₂ v s} (rp : ResultPlace B m a₁ a₂ v s) →
-                           BeforeFrontier a₂ (place-loc rp)
-    place-reclaim-before (at-loc _ _ _ _ _ rbefore) = rbefore
-    place-reclaim-before {Unit} {_} {_} {a₂} unit-result = before-rs
-      where postulate before-rs : BeforeFrontier a₂ _
+    place-cont-before : ∀ {B m a₁ a₂ v s} (rp : ResultPlace B m a₁ a₂ v s) →
+                       BeforeFrontier a₂ (place-loc rp)
+    place-cont-before (at-loc _ _ _ _ _ cbefore) = cbefore
+    place-cont-before {Unit} {_} {_} {a₂} unit-result = before-cs
+      where postulate before-cs : BeforeFrontier a₂ _
 
     --------------------------------------------------------------------
     -- Plan 0.14 Phase B.0: factored IRResultAWF.
@@ -400,8 +407,14 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
         final-alloc : AllocState {FS}
         trace : AbstractTrace
         trace-correct : proj₁ (exec-trace trace s alloc) ≡ final-state
+        -- continuation-alloc: caller's frame, but next-slot and
+        -- next-heap-ref both inherited from final-alloc (the resources
+        -- the IR consumed). Bumping next-heap-ref here is what makes
+        -- heap-mode pair / inl / inr's fresh AtDynamic result satisfy
+        -- BeforeFrontier on the continuation side.
         result-place : ResultPlace B m final-alloc
-          (record alloc { next-slot = next-slot final-alloc })
+          (record alloc { next-slot     = next-slot     final-alloc
+                        ; next-heap-ref = next-heap-ref final-alloc })
           (eval ir x) final-state
         not-halted : halted final-state ≡ false
         frame-preserved : current-frame final-alloc ≡ current-frame alloc

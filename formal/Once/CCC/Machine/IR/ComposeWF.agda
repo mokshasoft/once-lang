@@ -173,7 +173,8 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; trace-correct = refl  -- s-final DEFINED by trace
         ; result-place = subst
             (λ st → ResultPlace _ mOut alloc₂
-                      (record alloc { next-slot = next-slot alloc₂ })
+                      (record alloc { next-slot     = next-slot     alloc₂
+                                    ; next-heap-ref = next-heap-ref alloc₂ })
                       (eval g (eval f x)) st)
             (sym s-final-eq)
             (IRResultAWF.result-place result-g)
