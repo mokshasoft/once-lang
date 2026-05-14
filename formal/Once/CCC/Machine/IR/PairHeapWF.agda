@@ -316,10 +316,21 @@ module PairHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       result-f = proj₂ f-exec
       f-trace = IRResultAWF.trace result-f
 
+      -- Plan 0.14: s-after-f / alloc-after-f are the RUNTIME values
+      -- after exec-trace f-trace from (s-after-setup, alloc-after-scratch).
+      -- result-f.final-state ≡ s-after-f via trace-correct; result-f.final-alloc
+      -- is a construction-time bookkeeping alloc that may differ from the
+      -- runtime alloc on slot/heap-ref dimensions. Bridge via monotone
+      -- lemmas where needed. See [[alloc-construction-vs-runtime]] and the
+      -- PairWF2 stage-A/B pattern.
       s-after-f : LocState FS
-      s-after-f = IRResultAWF.final-state result-f
+      s-after-f = proj₁ (exec-trace f-trace s-after-setup alloc-after-scratch)
       alloc-after-f : AllocState {FS}
-      alloc-after-f = IRResultAWF.final-alloc result-f
+      alloc-after-f = proj₂ (exec-trace f-trace s-after-setup alloc-after-scratch)
+
+      -- s-after-f ≡ result-f.final-state by trace-correct (free bridge).
+      s-after-f-eq : s-after-f ≡ IRResultAWF.final-state result-f
+      s-after-f-eq = IRResultAWF.trace-correct result-f
 
       ------------------------------------------------------------------
       -- Middle phase: stash f's result to fst-stash, restore input.
