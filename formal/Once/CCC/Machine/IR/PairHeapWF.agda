@@ -52,7 +52,7 @@ open import Data.Product using (_×_; _,_; ∃; ∃-syntax; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.Nat.Properties using (≤-refl; ≤-trans; m≤m+n; n≤1+n; +-identityʳ; m≤n+m)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore hiding (AllocMode; Stack; Heap)
@@ -188,11 +188,35 @@ module PairHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       s-after-setup : LocState FS
       s-after-setup = proj₁ (exec-trace setup-trace s alloc)
 
-      not-halted-after-setup : halted s-after-setup ≡ false
-      not-halted-after-setup = SMP.!!
+      -- Both setup instructions are unconditional preservers (InstrWF = ⊤).
+      setup-twf : TraceWF s alloc setup-trace
+      setup-twf = twf-∷ tt (twf-∷ tt twf-[])
 
+      not-halted-after-setup : halted s-after-setup ≡ false
+      not-halted-after-setup = exec-trace-preserves-halted-WF setup-trace s alloc not-halted setup-twf
+
+      -- mov-to-output writes Output (not Input1), and store-at-slot
+      -- writes stack memory (not registers). Both preserve Input1.
       rdi-eq-after-setup : readReg (regs s-after-setup) Input1 ≡ SV-Ptr input-loc
-      rdi-eq-after-setup = SMP.!!
+      rdi-eq-after-setup =
+        let s₁ʳ      = proj₁ (exec-abstract mov-to-output s alloc)
+            alloc₁ʳ  = proj₂ (exec-abstract mov-to-output s alloc)
+            mov-preserves : readReg (regs s₁ʳ) Input1 ≡ readReg (regs s) Input1
+            mov-preserves = writeReg-preserves (regs s) Output Input1 (readReg (regs s) Input1) (λ ())
+            not-halted₁ʳ = exec-abstract-preserves-halted mov-to-output s alloc not-halted iph-mov-to-output
+            s₂ʳ      = proj₁ (exec-abstract (store-at-slot backup-slot) s₁ʳ alloc₁ʳ)
+            store-preserves : readReg (regs s₂ʳ) Input1 ≡ readReg (regs s₁ʳ) Input1
+            store-preserves = exec-abstract-store-at-slot-preserves-input backup-slot s₁ʳ alloc₁ʳ
+            setup-decomp : exec-trace setup-trace s alloc ≡
+                           exec-trace (store-at-slot backup-slot ∷ []) s₁ʳ alloc₁ʳ
+            setup-decomp = exec-trace-cons mov-to-output (store-at-slot backup-slot ∷ []) s alloc not-halted
+            store-single : exec-trace (store-at-slot backup-slot ∷ []) s₁ʳ alloc₁ʳ ≡
+                           exec-abstract (store-at-slot backup-slot) s₁ʳ alloc₁ʳ
+            store-single = exec-trace-single (store-at-slot backup-slot) s₁ʳ alloc₁ʳ not-halted₁ʳ
+            s-eq : s-after-setup ≡ s₂ʳ
+            s-eq = cong proj₁ (trans setup-decomp store-single)
+        in trans (cong (λ st → readReg (regs st) Input1) s-eq)
+                 (trans store-preserves (trans mov-preserves rdi-eq))
 
       input-before-at-f-start : BeforeFrontier alloc-after-scratch input-loc
       input-before-at-f-start = frontier-monotone alloc alloc-after-scratch refl
@@ -201,8 +225,44 @@ module PairHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
                                       (≤-trans (n≤1+n snd-stash) (n≤1+n pair-stash))))
                                   ≤-refl input-loc input-before
 
+      -- setup-trace's stack write is at backup-slot = next-slot alloc
+      -- (the frontier). Any BeforeFrontier location is strictly below
+      -- backup-slot, so the write doesn't touch it.
+      mem-preserved-through-setup :
+        ∀ loc → BeforeFrontier alloc loc → readLoc s-after-setup loc ≡ readLoc s loc
+      mem-preserved-through-setup loc bf =
+        let s₁ʳ      = proj₁ (exec-abstract mov-to-output s alloc)
+            alloc₁ʳ  = proj₂ (exec-abstract mov-to-output s alloc)
+            not-halted₁ʳ = exec-abstract-preserves-halted mov-to-output s alloc not-halted iph-mov-to-output
+            mov-mem : readLoc s₁ʳ loc ≡ readLoc s loc
+            mov-mem = SMP.RecSchemeSemantics.exec-abstract-mov-to-output-preserves-mem s alloc loc
+            frame-eq : current-frame alloc₁ʳ ≡ current-frame alloc
+            frame-eq = exec-abstract-preserves-frame mov-to-output s alloc
+            loc≢slot : loc ≢ AtStack (current-frame alloc₁ʳ) backup-slot
+            loc≢slot eq = fresh-stack-after alloc loc bf
+                            (trans eq (cong (λ fr → AtStack fr backup-slot) frame-eq))
+            store-mem : readLoc (proj₁ (exec-abstract (store-at-slot backup-slot) s₁ʳ alloc₁ʳ)) loc ≡
+                        readLoc s₁ʳ loc
+            store-mem = exec-abstract-store-at-slot-preserves-loc backup-slot s₁ʳ alloc₁ʳ loc loc≢slot
+            setup-decomp : exec-trace setup-trace s alloc ≡
+                           exec-trace (store-at-slot backup-slot ∷ []) s₁ʳ alloc₁ʳ
+            setup-decomp = exec-trace-cons mov-to-output (store-at-slot backup-slot ∷ []) s alloc not-halted
+            store-single : exec-trace (store-at-slot backup-slot ∷ []) s₁ʳ alloc₁ʳ ≡
+                           exec-abstract (store-at-slot backup-slot) s₁ʳ alloc₁ʳ
+            store-single = exec-trace-single (store-at-slot backup-slot) s₁ʳ alloc₁ʳ not-halted₁ʳ
+            s-eq : s-after-setup ≡ proj₁ (exec-abstract (store-at-slot backup-slot) s₁ʳ alloc₁ʳ)
+            s-eq = cong proj₁ (trans setup-decomp store-single)
+        in trans (cong (λ st → readLoc st loc) s-eq) (trans store-mem mov-mem)
+
       input-valid-wf-at-f-start : ValidAtWF mIn alloc-after-scratch x input-loc s-after-setup
-      input-valid-wf-at-f-start = SMP.!!
+      input-valid-wf-at-f-start =
+        validityWF-frontier-advance x input-loc s-after-setup refl
+          (≤-trans (n≤1+n backup-slot)
+            (≤-trans (n≤1+n fst-stash)
+              (≤-trans (n≤1+n snd-stash) (n≤1+n pair-stash))))
+          ≤-refl
+          (validityWF-mem-preserved x input-loc s s-after-setup input-before
+            mem-preserved-through-setup input-valid-wf)
 
       ------------------------------------------------------------------
       -- f phase: run f on (s-after-setup, alloc-after-scratch).
