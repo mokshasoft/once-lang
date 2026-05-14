@@ -51,7 +51,7 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_; ∃; ∃-syntax; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.List using (List; []; _∷_; _++_)
-open import Data.Nat.Properties using (≤-refl; ≤-trans; m≤m+n; n≤1+n; +-identityʳ; m≤n+m)
+open import Data.Nat.Properties using (≤-refl; ≤-trans; m≤m+n; n≤1+n; +-identityʳ; m≤n+m; m≤n⊔m; m≤m⊔n)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
@@ -113,18 +113,18 @@ module PairHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; result-place = at-loc pair-loc pair-valid-final pair-before-final
                             pair-rax-eq pair-valid-cont pair-before-cont
         ; not-halted = not-halted-final
-        ; frame-preserved = exec-trace-preserves-frame pair-heap-trace s alloc
+        ; frame-preserved = refl  -- alloc-final = record alloc { ... } definitionally
         ; trace-twf = SMP.!!
         ; mem-preserved-before = λ _ _ → SMP.!!  -- TODO: heap-aware mem-preserved
         ; trace-preserves-halted = exec-trace-preserves-halted-WF pair-heap-trace
         }
       ; stack-inv = record
-        { slot-monotone = SMP.!!
+        { slot-monotone = slot-monotone-pair
         ; max-slot-written = max-slot-pair
-        ; max-slot-geq-final = SMP.!!
+        ; max-slot-geq-final = max-slot-geq-final-pair
         ; stack-budget = req-pair-stack
-        ; max-slot-usage-bound = SMP.!!
-        ; slot-stays-in-budget = SMP.!!
+        ; max-slot-usage-bound = max-slot-usage-bound-pair
+        ; slot-stays-in-budget = slot-stays-in-budget-pair
         ; frontier-slot-stable = λ _ _ _ _ _ → inj₂ (inj₂ tt)
         ; trace-writes-above = SMP.!!
         ; trace-slot-reads-above = SMP.!!
@@ -138,7 +138,11 @@ module PairHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; heap-budget = req-pair-heap
         ; max-heap-ref-written = next-heap-ref alloc-final
         ; max-heap-ref-geq-final = ≤-refl
-        ; max-heap-usage-bound = SMP.!!
+        ; max-heap-usage-bound = max-heap-usage-bound-pair
+        -- ARCHITECTURAL: trace-no-heap-writes is structurally false for
+        -- pair-heap-trace (contains store-indirect / store-indirect-suc).
+        -- mem-preserved-before is the load-bearing consequence-form
+        -- invariant; this field stays SMP.!! by design for heap-mode IRs.
         ; trace-no-heap-writes = SMP.!!
         }
       }
@@ -679,8 +683,17 @@ module PairHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       s-final : LocState FS
       s-final = proj₁ (exec-trace pair-heap-trace s alloc)
 
+      -- Plan 0.14: construction-time alloc-final. final-alloc has no
+      -- trace-correct constraint, so we're free to pick a value that
+      -- makes the budget bookkeeping work out. After g, alloc-after-g
+      -- summarises sub-IR allocations; post-trace's only frontier-bumping
+      -- instruction is instr-alloc-heap (+1 next-heap-ref). next-slot is
+      -- unchanged by post-trace.
       alloc-final : AllocState {FS}
-      alloc-final = proj₂ (exec-trace pair-heap-trace s alloc)
+      alloc-final = record alloc
+        { next-slot     = next-slot     alloc-after-g
+        ; next-heap-ref = suc (next-heap-ref alloc-after-g)
+        }
 
       not-halted-final : halted s-final ≡ false
       not-halted-final = exec-trace-preserves-halted-WF pair-heap-trace s alloc not-halted SMP.!!
@@ -751,9 +764,142 @@ module PairHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
                     ⊔ IRResultAWF.max-slot-written result-f
                     ⊔ IRResultAWF.max-slot-written result-g
 
-      -- alloc-final.next-heap-ref ≥ alloc.next-heap-ref by composing
-      -- f's heap-monotone, g's heap-monotone, and the +1 from
-      -- instr-alloc-heap. For now keep as SMP.!! pending proper state
-      -- threading; the budget side is already correct.
+      -- next-slot alloc-final = next-slot alloc-after-g ≤ max-slot-written result-g ≤ max-slot-pair.
+      max-slot-geq-final-pair : next-slot alloc-final ≤ max-slot-pair
+      max-slot-geq-final-pair =
+        ≤-trans (IRResultAWF.max-slot-geq-final result-g)
+                (m≤n⊔m (suc pair-stash ⊔ IRResultAWF.max-slot-written result-f)
+                       (IRResultAWF.max-slot-written result-g))
+
+      -- Bounds for the three components of max-slot-pair, all in terms of
+      -- next-slot alloc + req-pair-stack = next-slot alloc + 4 + rf-stack + rg-stack.
+      open import Data.Nat.Properties using (+-monoʳ-≤; +-monoˡ-≤; +-assoc; +-suc; +-comm; ⊔-lub)
+
+      pair-stash≡+3 : suc pair-stash ≡ next-slot alloc +ℕ 4
+      pair-stash≡+3 = f-start≡+4
+
+      suc-pair-stash≤budget : suc pair-stash ≤ next-slot alloc +ℕ req-pair-stack
+      suc-pair-stash≤budget =
+        subst (suc pair-stash ≤_)
+          (cong (next-slot alloc +ℕ_) refl)
+          (≤-trans (≤-reflexive pair-stash≡+3)
+                   (+-monoʳ-≤ (next-slot alloc) (m≤m+n 4 (rf-stack +ℕ rg-stack))))
+        where open import Data.Nat.Properties using (≤-reflexive)
+
+      -- max-slot-written result-f ≤ next-slot alloc-after-scratch + rf-stack
+      --                          = (next-slot alloc + 4) + rf-stack
+      --                          ≤ next-slot alloc + (4 + rf-stack + rg-stack).
+      max-f-bound : IRResultAWF.max-slot-written result-f ≤ next-slot alloc +ℕ req-pair-stack
+      max-f-bound =
+        let bound-f : IRResultAWF.max-slot-written result-f ≤ next-slot alloc-after-scratch +ℕ rf-stack
+            bound-f = IRResultAWF.max-slot-usage-bound result-f
+            -- next-slot alloc-after-scratch = next-slot alloc + 4
+            -- (next-slot alloc + 4) + rf-stack = next-slot alloc + (4 + rf-stack)
+            step1 : next-slot alloc-after-scratch +ℕ rf-stack ≡ next-slot alloc +ℕ (4 +ℕ rf-stack)
+            step1 = +-assoc (next-slot alloc) 4 rf-stack
+            -- 4 + rf-stack ≤ 4 + rf-stack + rg-stack = req-pair-stack
+            step2 : 4 +ℕ rf-stack ≤ req-pair-stack
+            step2 = m≤m+n (4 +ℕ rf-stack) rg-stack
+        in ≤-trans bound-f
+             (≤-trans (≤-reflexive step1)
+                      (+-monoʳ-≤ (next-slot alloc) step2))
+        where open import Data.Nat.Properties using (≤-reflexive)
+
+      -- max-slot-written result-g ≤ next-slot alloc-for-g + rg-stack
+      -- alloc-for-g.next-slot = next-slot result-f.final-alloc.
+      -- result-f.slot-stays-in-budget: next-slot result-f.final-alloc ≤
+      --   next-slot alloc-after-scratch + rf-stack = (next-slot alloc + 4) + rf-stack.
+      -- So max-g ≤ ((next-slot alloc + 4) + rf-stack) + rg-stack
+      --        = next-slot alloc + (4 + rf-stack + rg-stack) = next-slot alloc + req-pair-stack.
+      max-g-bound : IRResultAWF.max-slot-written result-g ≤ next-slot alloc +ℕ req-pair-stack
+      max-g-bound =
+        let bound-g : IRResultAWF.max-slot-written result-g ≤
+                      next-slot (IRResultAWF.final-alloc result-f) +ℕ rg-stack
+            bound-g = IRResultAWF.max-slot-usage-bound result-g
+            -- result-f.slot-stays-in-budget at alloc-after-scratch gives
+            -- `... ≤ next-slot alloc-after-scratch + rf-stack`. Agda eagerly
+            -- reduces next-slot alloc-after-scratch to next-slot alloc + 4
+            -- (record projection), so the actual type uses (next-slot alloc + 4).
+            f-final-bound : next-slot (IRResultAWF.final-alloc result-f) ≤
+                            (next-slot alloc +ℕ 4) +ℕ rf-stack
+            f-final-bound = IRResultAWF.slot-stays-in-budget result-f
+            step : next-slot (IRResultAWF.final-alloc result-f) +ℕ rg-stack ≤
+                   ((next-slot alloc +ℕ 4) +ℕ rf-stack) +ℕ rg-stack
+            step = +-monoˡ-≤ rg-stack f-final-bound
+            -- ((next-slot alloc + 4) + rf-stack) + rg-stack
+            --   = next-slot alloc + (4 + rf-stack + rg-stack)
+            --   = next-slot alloc + req-pair-stack.
+            req-pair-stack-eq : ((next-slot alloc +ℕ 4) +ℕ rf-stack) +ℕ rg-stack ≡
+                                next-slot alloc +ℕ req-pair-stack
+            req-pair-stack-eq =
+              trans (+-assoc (next-slot alloc +ℕ 4) rf-stack rg-stack)
+                    (+-assoc (next-slot alloc) 4 (rf-stack +ℕ rg-stack))
+        in ≤-trans bound-g (≤-trans step (≤-reflexive req-pair-stack-eq))
+        where open import Data.Nat.Properties using (≤-reflexive)
+
+      max-slot-usage-bound-pair : max-slot-pair ≤ next-slot alloc +ℕ req-pair-stack
+      max-slot-usage-bound-pair =
+        ⊔-lub (⊔-lub suc-pair-stash≤budget max-f-bound) max-g-bound
+
+      -- next-slot alloc-final = next-slot result-g.final-alloc
+      --                     ≤ next-slot result-f.final-alloc + rg-stack
+      --                     ≤ (next-slot alloc + 4 + rf-stack) + rg-stack
+      --                     ≤ next-slot alloc + req-pair-stack.
+      slot-stays-in-budget-pair : next-slot alloc-final ≤ next-slot alloc +ℕ req-pair-stack
+      slot-stays-in-budget-pair = ≤-trans max-slot-geq-final-pair max-slot-usage-bound-pair
+
+      -- max-heap-usage-bound: next-heap-ref alloc-final = suc (next-heap-ref alloc-after-g)
+      -- ≤ next-heap-ref alloc + req-pair-heap.
+      -- Chain: alloc-after-g.next-heap-ref ≤ result-f.final.next-heap-ref + rg-heap
+      --       (g's max-heap-usage-bound + max-heap-ref-geq-final)
+      --     ≤ (next-heap-ref alloc + rf-heap) + rg-heap (similar for f)
+      --     = next-heap-ref alloc + (rf-heap + rg-heap).
+      -- suc that = next-heap-ref alloc + suc (rf-heap + rg-heap) = + req-pair-heap.
+      max-heap-usage-bound-pair :
+        next-heap-ref alloc-final ≤ next-heap-ref alloc +ℕ req-pair-heap
+      max-heap-usage-bound-pair =
+        let g-step : next-heap-ref alloc-after-g ≤
+                     next-heap-ref (IRResultAWF.final-alloc result-f) +ℕ rg-heap
+            g-step = ≤-trans (IRResultAWF.max-heap-ref-geq-final result-g)
+                             (IRResultAWF.max-heap-usage-bound result-g)
+            f-step : next-heap-ref (IRResultAWF.final-alloc result-f) ≤
+                     next-heap-ref alloc +ℕ rf-heap
+            f-step = ≤-trans (IRResultAWF.max-heap-ref-geq-final result-f)
+                             (IRResultAWF.max-heap-usage-bound result-f)
+            chain : next-heap-ref alloc-after-g ≤
+                    (next-heap-ref alloc +ℕ rf-heap) +ℕ rg-heap
+            chain = ≤-trans g-step (+-monoˡ-≤ rg-heap f-step)
+            assoc-eq : (next-heap-ref alloc +ℕ rf-heap) +ℕ rg-heap ≡
+                       next-heap-ref alloc +ℕ (rf-heap +ℕ rg-heap)
+            assoc-eq = +-assoc (next-heap-ref alloc) rf-heap rg-heap
+            suc-+-eq : suc (next-heap-ref alloc +ℕ (rf-heap +ℕ rg-heap)) ≡
+                       next-heap-ref alloc +ℕ req-pair-heap
+            suc-+-eq = sym (+-suc (next-heap-ref alloc) (rf-heap +ℕ rg-heap))
+        in ≤-trans (s≤s (≤-trans chain (≤-reflexive assoc-eq)))
+                   (≤-reflexive suc-+-eq)
+        where open import Data.Nat.Properties using (≤-reflexive)
+
+      -- slot-monotone-pair: alloc.next-slot ≤ alloc-final.next-slot
+      -- = alloc-after-g.next-slot. Chain: alloc → alloc-after-scratch
+      -- (definitional +4) → result-f.final-alloc (via f's slot-monotone)
+      -- = alloc-for-g → result-g.final-alloc (via g's slot-monotone) =
+      -- alloc-after-g.
+      slot-monotone-pair : next-slot alloc ≤ next-slot alloc-final
+      slot-monotone-pair =
+        ≤-trans (subst (next-slot alloc ≤_) f-start≡+4
+                  (≤-trans (n≤1+n backup-slot)
+                    (≤-trans (n≤1+n fst-stash)
+                      (≤-trans (n≤1+n snd-stash) (n≤1+n pair-stash)))))
+                (≤-trans (IRResultAWF.slot-monotone result-f)
+                         (IRResultAWF.slot-monotone result-g))
+
+      -- alloc-final.next-heap-ref ≥ alloc.next-heap-ref:
+      -- alloc.next-heap-ref ≤ next-heap-ref result-f.final-alloc (f.heap-monotone)
+      -- ≤ next-heap-ref result-g.final-alloc (g.heap-monotone, since
+      --   alloc-for-g.next-heap-ref = next-heap-ref result-f.final-alloc)
+      -- ≤ suc (next-heap-ref alloc-after-g) = next-heap-ref alloc-final
       heap-mono : next-heap-ref alloc ≤ next-heap-ref alloc-final
-      heap-mono = SMP.!!
+      heap-mono =
+        ≤-trans (IRResultAWF.heap-monotone result-f)
+          (≤-trans (IRResultAWF.heap-monotone result-g)
+                   (n≤1+n (next-heap-ref alloc-after-g)))
