@@ -131,7 +131,7 @@ module PairHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; trace-writes-below = pair-trace-writes-below
         ; trace-slot-reads-below = pair-trace-slot-reads-below
         ; scratch-budget = req-pair-scratch
-        ; scratch-bounded = SMP.!!
+        ; scratch-bounded = scratch-bounded-pair
         }
       ; heap-inv = record
         { heap-monotone = heap-mono
@@ -1018,6 +1018,47 @@ module PairHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
                          (IRResultAWF.max-slot-written result-g))
                   (IRResultAWF.trace-slot-reads-below result-g))
                 post-tsrb)))
+
+      -- scratch-bounded: max-slot-pair ≤ next-slot alloc-after-g + req-pair-scratch.
+      -- Each ⊔-component:
+      --   suc pair-stash = next-slot alloc + 4 ≤ next-slot alloc-after-g + 4
+      --                   (slot-monotone-pair via slot-monotone of f then g)
+      --                   ≤ next-slot alloc-after-g + req-pair-scratch (4 ≤ 4 + rf + rg)
+      --   max-slot-written result-f ≤ next-slot alloc-for-g + rf-scratch
+      --                             ≤ next-slot alloc-after-g + rf-scratch
+      --                             (result-g.slot-monotone)
+      --                             ≤ next-slot alloc-after-g + req-pair-scratch
+      --   max-slot-written result-g ≤ next-slot alloc-after-g + rg-scratch
+      --                             ≤ next-slot alloc-after-g + req-pair-scratch
+      scratch-bounded-pair : max-slot-pair ≤ next-slot alloc-after-g +ℕ req-pair-scratch
+      scratch-bounded-pair = ⊔-lub (⊔-lub bound-pair-stash bound-f) bound-g
+        where
+          open import Data.Nat.Properties using (≤-reflexive)
+          -- next-slot alloc ≤ next-slot alloc-after-g
+          slot-mono-to-g : next-slot alloc-after-scratch ≤ next-slot alloc-after-g
+          slot-mono-to-g = ≤-trans (IRResultAWF.slot-monotone result-f)
+                                   (IRResultAWF.slot-monotone result-g)
+          bound-pair-stash : suc pair-stash ≤ next-slot alloc-after-g +ℕ req-pair-scratch
+          bound-pair-stash =
+            -- suc pair-stash = next-slot alloc + 4 (propositionally via f-start≡+4).
+            -- next-slot alloc + 4 = next-slot alloc-after-scratch (definitionally).
+            -- ≤ next-slot alloc-after-g (slot-mono-to-g).
+            -- ≤ next-slot alloc-after-g + req-pair-scratch (m≤m+n).
+            ≤-trans (≤-reflexive f-start≡+4)
+              (≤-trans slot-mono-to-g (m≤m+n (next-slot alloc-after-g) req-pair-scratch))
+          rf-≤-req : rf-scratch ≤ req-pair-scratch
+          rf-≤-req = ≤-trans (m≤n+m rf-scratch 4) (m≤m+n (4 +ℕ rf-scratch) rg-scratch)
+          rg-≤-req : rg-scratch ≤ req-pair-scratch
+          rg-≤-req = ≤-trans (m≤n+m rg-scratch (4 +ℕ rf-scratch)) (≤-reflexive refl)
+          bound-f : IRResultAWF.max-slot-written result-f ≤ next-slot alloc-after-g +ℕ req-pair-scratch
+          bound-f =
+            ≤-trans (IRResultAWF.scratch-bounded result-f)
+              (≤-trans (+-monoˡ-≤ rf-scratch (IRResultAWF.slot-monotone result-g))
+                       (+-monoʳ-≤ (next-slot alloc-after-g) rf-≤-req))
+          bound-g : IRResultAWF.max-slot-written result-g ≤ next-slot alloc-after-g +ℕ req-pair-scratch
+          bound-g =
+            ≤-trans (IRResultAWF.scratch-bounded result-g)
+              (+-monoʳ-≤ (next-slot alloc-after-g) rg-≤-req)
 
       max-heap-usage-bound-pair :
         next-heap-ref alloc-final ≤ next-heap-ref alloc +ℕ req-pair-heap
