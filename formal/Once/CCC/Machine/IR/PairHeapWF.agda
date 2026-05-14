@@ -47,7 +47,7 @@ module Once.CCC.Machine.IR.PairHeapWF where
 open import Data.Nat using (ℕ; suc; _<_; _≤_; _≥_; s≤s; z≤n; _⊔_) renaming (_+_ to _+ℕ_)
 open import Data.Bool using (false)
 open import Data.Unit using (⊤; tt)
-open import Data.Maybe using (just)
+open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_; ∃; ∃-syntax; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.List using (List; []; _∷_; _++_)
@@ -507,18 +507,159 @@ module PairHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
             s-eq = cong proj₁ (trans d1 d2)
         in trans (cong (λ st → readReg (regs st) Input1) s-eq) restore-input-input1
 
-      input-before-at-g-start : BeforeFrontier alloc-after-middle input-loc
-      input-before-at-g-start = SMP.!!
+      ------------------------------------------------------------------
+      -- Construction-time alloc passed to g-exec. PairWF2's pattern:
+      -- runtime state + construction-time alloc (with bookkeeping that
+      -- reflects result-f's claimed final alloc).
+      ------------------------------------------------------------------
+      alloc-for-g : AllocState {FS}
+      alloc-for-g = record alloc { next-slot     = next-slot     (IRResultAWF.final-alloc result-f)
+                                 ; next-heap-ref = next-heap-ref (IRResultAWF.final-alloc result-f) }
 
-      input-valid-wf-at-g-start : ValidAtWF mIn alloc-after-middle x input-loc s-after-middle
-      input-valid-wf-at-g-start = SMP.!!
+      input-before-at-g-start : BeforeFrontier alloc-for-g input-loc
+      input-before-at-g-start = frontier-monotone alloc alloc-for-g refl
+                                  (≤-trans
+                                    (subst (next-slot alloc ≤_) f-start≡+4
+                                      (≤-trans (n≤1+n backup-slot)
+                                        (≤-trans (n≤1+n fst-stash)
+                                          (≤-trans (n≤1+n snd-stash) (n≤1+n pair-stash)))))
+                                    (IRResultAWF.slot-monotone result-f))
+                                  (IRResultAWF.heap-monotone result-f)
+                                  input-loc input-before
+
+      -- BeforeFrontier alloc loc lifts to BeforeFrontier alloc-after-scratch loc
+      -- (alloc-after-scratch.next-slot ≥ next-slot alloc; same frame; same heap-ref).
+      bf-lift-to-scratch :
+        ∀ loc → BeforeFrontier alloc loc → BeforeFrontier alloc-after-scratch loc
+      bf-lift-to-scratch loc bf =
+        frontier-monotone alloc alloc-after-scratch refl
+          (subst (next-slot alloc ≤_) f-start≡+4
+            (≤-trans (n≤1+n backup-slot)
+              (≤-trans (n≤1+n fst-stash)
+                (≤-trans (n≤1+n snd-stash) (n≤1+n pair-stash)))))
+          ≤-refl loc bf
+
+      -- s → s-after-middle preserves BeforeFrontier-alloc locations.
+      -- Chain through setup, f, and mid using:
+      --   - mem-preserved-through-setup: setup-trace preserves
+      --   - irresult-mem-preserved result-f: f-trace preserves (via
+      --     mem-preserved-before, transitively place-stage-trusted
+      --     for heap-mode f)
+      --   - mid-trace preservation: store-at-slot fst-stash writes
+      --     above frontier (fst-stash > next-slot alloc); restore-input
+      --     writes regs, not memory
+      -- mid-trace step 1 (store-at-slot fst-stash): writes at fst-stash =
+      -- suc backup-slot, which is > next-slot alloc. BeforeFrontier alloc
+      -- locs are either AtDynamic, AtStack ancestor, or AtStack with
+      -- slot < next-slot alloc ≤ fst-stash — all disjoint from the write.
+      -- Top-level helpers (let-bindings can't have where clauses).
+      AtStack-fst-injective : ∀ {f₁ f₂ : Frame} {k₁ k₂ : Slot} →
+                              AtStack {FS} f₁ k₁ ≡ AtStack {FS} f₂ k₂ → f₁ ≡ f₂
+      AtStack-fst-injective refl = refl
+
+      k<fst-stash : ∀ {k} → k < next-slot alloc → k < fst-stash
+      k<fst-stash k<n = ≤-trans k<n (n≤1+n (next-slot alloc))
+
+      store-fst-preserves : ∀ loc → BeforeFrontier alloc loc →
+        readLoc s-after-fst-store loc ≡ readLoc s-after-f loc
+      store-fst-preserves (AtStack f k) (stack-before f≡cf k<next) =
+        writeLoc-preserves-other s-after-f
+          (AtStack (current-frame alloc-after-f) fst-stash) (AtStack f k)
+          (readReg (regs s-after-f) Output)
+          (λ eq → <⇒≢ (k<fst-stash k<next) (sym (AtStack-snd-injective eq)))
+        where open import Data.Nat.Properties using (<⇒≢)
+      store-fst-preserves (AtStack f k) (stack-ancestor cf≺f _) =
+        writeLoc-preserves-other s-after-f
+          (AtStack (current-frame alloc-after-f) fst-stash) (AtStack f k)
+          (readReg (regs s-after-f) Output)
+          (λ eq → ≺⇒≢ cf≺f (trans (sym frame-after-f-eq) (AtStack-fst-injective eq)))
+      store-fst-preserves (AtDynamic hl) (heap-before _) =
+        writeLoc-preserves-other s-after-f
+          (AtStack (current-frame alloc-after-f) fst-stash) (AtDynamic hl)
+          (readReg (regs s-after-f) Output)
+          (λ ())
+
+      -- Top-level helpers (restore-input case split on the Maybe).
+      restore-input-stackMem-aux : ∀ (m : Maybe (StoredValue FS)) →
+        stackMem (proj₁ (exec-restore-input-with-value m s-after-fst-store
+                          alloc-after-fst-store)) ≡ stackMem s-after-fst-store
+      restore-input-stackMem-aux (just _) = refl
+      restore-input-stackMem-aux nothing = refl
+
+      restore-input-heapMem-aux : ∀ (m : Maybe (StoredValue FS)) →
+        heapMem (proj₁ (exec-restore-input-with-value m s-after-fst-store
+                         alloc-after-fst-store)) ≡ heapMem s-after-fst-store
+      restore-input-heapMem-aux (just _) = refl
+      restore-input-heapMem-aux nothing = refl
+
+      mid-state-eq : s-after-middle ≡ s-after-restore
+      mid-state-eq =
+        let d1 : exec-trace mid-trace s-after-f alloc-after-f ≡
+                 exec-trace (restore-input backup-slot ∷ []) s-after-fst-store alloc-after-fst-store
+            d1 = exec-trace-cons (store-at-slot fst-stash) _ s-after-f alloc-after-f not-halted-after-f
+            d2 : exec-trace (restore-input backup-slot ∷ []) s-after-fst-store alloc-after-fst-store ≡
+                 exec-abstract (restore-input backup-slot) s-after-fst-store alloc-after-fst-store
+            d2 = exec-trace-single (restore-input backup-slot) s-after-fst-store alloc-after-fst-store
+                   not-halted-after-fst-store
+        in cong proj₁ (trans d1 d2)
+
+      restore-input-preserves-stackMem :
+        stackMem s-after-middle ≡ stackMem s-after-fst-store
+      restore-input-preserves-stackMem =
+        trans (cong stackMem mid-state-eq)
+              (restore-input-stackMem-aux
+                (readLoc s-after-fst-store
+                  (AtStack (current-frame alloc-after-fst-store) backup-slot)))
+
+      restore-input-preserves-heapMem :
+        heapMem s-after-middle ≡ heapMem s-after-fst-store
+      restore-input-preserves-heapMem =
+        trans (cong heapMem mid-state-eq)
+              (restore-input-heapMem-aux
+                (readLoc s-after-fst-store
+                  (AtStack (current-frame alloc-after-fst-store) backup-slot)))
+
+      restore-input-preserves-mem : ∀ loc →
+        readLoc s-after-middle loc ≡ readLoc s-after-fst-store loc
+      restore-input-preserves-mem loc =
+        ExecLemmas.readLoc-stackMem-eq s-after-middle s-after-fst-store loc
+          restore-input-preserves-stackMem restore-input-preserves-heapMem
+
+      mem-preserved-f-to-mid :
+        ∀ loc → BeforeFrontier alloc loc → readLoc s-after-middle loc ≡ readLoc s-after-f loc
+      mem-preserved-f-to-mid loc bf =
+        trans (restore-input-preserves-mem loc) (store-fst-preserves loc bf)
+
+      mem-preserved-s-to-after-middle :
+        ∀ loc → BeforeFrontier alloc loc → readLoc s-after-middle loc ≡ readLoc s loc
+      mem-preserved-s-to-after-middle loc bf =
+        trans (mem-preserved-f-to-mid loc bf)
+              (trans (subst (λ st → readLoc st loc ≡ readLoc s-after-setup loc)
+                            (sym s-after-f-eq)
+                            (irresult-mem-preserved result-f loc (bf-lift-to-scratch loc bf)))
+                     (mem-preserved-through-setup loc bf))
+        where
+          open ClosureWellFormedDef {FS} program-bound using (irresult-mem-preserved)
+
+      input-valid-wf-at-g-start : ValidAtWF mIn alloc-for-g x input-loc s-after-middle
+      input-valid-wf-at-g-start =
+        validityWF-frontier-advance x input-loc s-after-middle refl
+          (≤-trans
+            (subst (next-slot alloc ≤_) f-start≡+4
+              (≤-trans (n≤1+n backup-slot)
+                (≤-trans (n≤1+n fst-stash)
+                  (≤-trans (n≤1+n snd-stash) (n≤1+n pair-stash)))))
+            (IRResultAWF.slot-monotone result-f))
+          (IRResultAWF.heap-monotone result-f)
+          (validityWF-mem-preserved x input-loc s s-after-middle input-before
+            mem-preserved-s-to-after-middle input-valid-wf)
 
       ------------------------------------------------------------------
-      -- g phase: run g on (s-after-middle, alloc-after-middle).
+      -- g phase: run g on (s-after-middle, alloc-for-g).
       ------------------------------------------------------------------
-      g-exec : ∃[ mG ] IRResultAWF mG g x s-after-middle alloc-after-middle
+      g-exec : ∃[ mG ] IRResultAWF mG g x s-after-middle alloc-for-g
       g-exec = rec-wf mIn g (⟨,⟩-g-smaller f g {Heap}) x input-loc
-                 s-after-middle alloc-after-middle
+                 s-after-middle alloc-for-g
                  input-valid-wf-at-g-start input-before-at-g-start
                  not-halted-after-middle rdi-eq-after-middle
       result-g = proj₂ g-exec
