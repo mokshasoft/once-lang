@@ -261,9 +261,12 @@ offsetLoc (AtDynamic hl) n = AtDynamic (offsetHL hl n)
 StackMem : (FS : FrameSemantics) → Set
 StackMem FS = FrameSemantics.Frame FS → Slot → Maybe (StoredValue FS)
 
--- Heap memory stores HeapLocation (enforces heap-only-references-heap)
-HeapMem : Set
-HeapMem = HeapLocation → Maybe HeapLocation
+-- Heap memory stores StoredValue. The cross-region constraint
+-- (no heap → stack pointers) is enforced at the writeLoc boundary,
+-- not in the type — primitives (SV-Lit, SV-Tag, SV-Code) and
+-- heap pointers (SV-Ptr (AtDynamic _)) are all valid cell contents.
+HeapMem : (FS : FrameSemantics) → Set
+HeapMem FS = HeapLocation → Maybe (StoredValue FS)
 
 ------------------------------------------------------------------------
 -- Registers: Hold Locations (not Words)
@@ -378,7 +381,7 @@ record LocState (FS : FrameSemantics) : Set where
   field
     regs : Registers FS
     stackMem : StackMem FS
-    heapMem : HeapMem   -- Note: HeapMem is no longer parameterized
+    heapMem : HeapMem FS
     halted : Bool
 
 open LocState public
@@ -440,21 +443,20 @@ module MemOps {FS : FrameSemantics} where
   readStackLoc : LocState FS → Frame → Slot → Maybe (StoredValue FS)
   readStackLoc s f k = stackMem s f k
 
-  -- | Read from heap memory (returns HeapLocation - enforces invariant)
-  readHeapLoc : LocState FS → HeapLocation → Maybe HeapLocation
+  -- | Read from heap memory (returns StoredValue).
+  readHeapLoc : LocState FS → HeapLocation → Maybe (StoredValue FS)
   readHeapLoc s hl = heapMem s hl
 
   -- | Read a value from memory.
   --
-  -- Plan 0.13.2: returns `Maybe StoredValue` — the cell's contents
-  -- type. Heap reads still return a HeapLocation (heap-only invariant);
-  -- they're lifted to `SV-Ptr (AtDynamic _)` at the boundary so the
-  -- API uniformly returns StoredValue regardless of address kind.
+  -- Plan 0.14: heap reads return StoredValue directly. The cell holds
+  -- whatever was stored there (primitive, tag, code address, or heap
+  -- pointer). The cross-region constraint — no stack pointers — is
+  -- enforced at writeLoc, so heap reads can be trusted not to fabricate
+  -- AtStack references.
   readLoc : LocState FS → ValueLocation FS → Maybe (StoredValue FS)
   readLoc s (AtStack f k) = stackMem s f k
-  readLoc s (AtDynamic hl) with heapMem s hl
-  ... | just hl' = just (SV-Ptr (AtDynamic hl'))
-  ... | nothing  = nothing
+  readLoc s (AtDynamic hl) = heapMem s hl
   -- Plan 0.2.4.5 D1 (Unit erasure): erased values have no content.
 
   -- | Write a Location to stack memory.
@@ -476,8 +478,8 @@ module MemOps {FS : FrameSemantics} where
   writeStackMem : StackMem FS → Frame → Slot → StoredValue FS → StackMem FS
   writeStackMem mem f k v f' k' = writeStackMem-aux (f ≟F f') (k ≟ k') (mem f' k') v
 
-  -- | Write a HeapLocation to heap memory (enforces heap-only invariant)
-  writeHeapMem : HeapMem → HeapLocation → HeapLocation → HeapMem
+  -- | Write a StoredValue to heap memory.
+  writeHeapMem : HeapMem FS → HeapLocation → StoredValue FS → HeapMem FS
   writeHeapMem mem hl v hl' with hl ≟HL hl'
   ... | yes _ = just v
   ... | no _  = mem hl'
@@ -487,24 +489,23 @@ module MemOps {FS : FrameSemantics} where
   writeLocToStack : LocState FS → Frame → Slot → StoredValue FS → LocState FS
   writeLocToStack s f k v = record s { stackMem = writeStackMem (stackMem s) f k v }
 
-  -- | Write a HeapLocation to heap memory at a HeapLocation
-  writeLocToHeap : LocState FS → HeapLocation → HeapLocation → LocState FS
+  -- | Write a StoredValue to heap memory at a HeapLocation.
+  writeLocToHeap : LocState FS → HeapLocation → StoredValue FS → LocState FS
   writeLocToHeap s hl v = record s { heapMem = writeHeapMem (heapMem s) hl v }
 
   -- | Write a value (StoredValue) to memory.
   --
-  -- Plan 0.13.2: the value arg is now StoredValue (was ValueLocation).
-  -- Stack destinations: can store any StoredValue.
-  -- Heap destinations: can only store SV-Ptr to another AtDynamic
-  -- (heap-only invariant kept). All other StoredValue-to-heap
-  -- combinations are no-op (illegal at the abstract level).
+  -- Plan 0.14: heap cells accept any StoredValue *except* a stack
+  -- pointer. Cross-region pointers heap→stack are forbidden (lifetime
+  -- reasoning); primitives (SV-Lit, SV-Tag, SV-Code) and heap pointers
+  -- are all legal. The single illegal case stays a no-op.
   writeLoc : LocState FS → ValueLocation FS → StoredValue FS → LocState FS
   writeLoc s (AtStack f k)  v                          = writeLocToStack s f k v
-  writeLoc s (AtDynamic hl) (SV-Ptr (AtDynamic v))     = writeLocToHeap s hl v
   writeLoc s (AtDynamic hl) (SV-Ptr (AtStack _ _))     = s  -- Invalid: stack ref in heap
-  writeLoc s (AtDynamic hl) (SV-Tag _)                 = s  -- Invalid: tag in heap
-  writeLoc s (AtDynamic hl) (SV-Lit _ _)                 = s  -- Invalid: raw int in heap
-  writeLoc s (AtDynamic hl) (SV-Code _)                = s  -- Invalid: code-addr in heap
+  writeLoc s (AtDynamic hl) (SV-Ptr (AtDynamic v))     = writeLocToHeap s hl (SV-Ptr (AtDynamic v))
+  writeLoc s (AtDynamic hl) (SV-Tag t)                 = writeLocToHeap s hl (SV-Tag t)
+  writeLoc s (AtDynamic hl) (SV-Lit p v)               = writeLocToHeap s hl (SV-Lit p v)
+  writeLoc s (AtDynamic hl) (SV-Code c)                = writeLocToHeap s hl (SV-Code c)
 
   -- writeLoc preserves regs (for all cases). Plan 0.13.2: v : StoredValue.
   writeLoc-regs : ∀ (s : LocState FS) (loc : ValueLocation FS) (v : StoredValue FS) →
@@ -569,18 +570,32 @@ module MemOps {FS : FrameSemantics} where
   writeLoc-preserves-other s (AtDynamic hl) (AtStack f k) (SV-Tag _)              _ = refl
   writeLoc-preserves-other s (AtDynamic hl) (AtStack f k) (SV-Lit _ _)              _ = refl
   writeLoc-preserves-other s (AtDynamic hl) (AtStack f k) (SV-Code _)             _ = refl
-  -- Writing to heap, reading from different heap location
+  -- Writing to heap, reading from a different heap location.
+  -- Plan 0.14: heap cells now accept any StoredValue except
+  -- SV-Ptr (AtStack _ _), so all four "value" cases share the same
+  -- "different cell" reasoning.
   writeLoc-preserves-other s (AtDynamic hl1) (AtDynamic hl2) (SV-Ptr (AtDynamic hv)) neq
     with hl1 ≟HL hl2
   ... | yes refl = ⊥-elim (neq refl)
     where open import Data.Empty using (⊥-elim)
   ... | no _ = refl
-  -- Writing non-heap-pointer to AtDynamic is a no-op
+  writeLoc-preserves-other s (AtDynamic hl1) (AtDynamic hl2) (SV-Tag t) neq
+    with hl1 ≟HL hl2
+  ... | yes refl = ⊥-elim (neq refl)
+    where open import Data.Empty using (⊥-elim)
+  ... | no _ = refl
+  writeLoc-preserves-other s (AtDynamic hl1) (AtDynamic hl2) (SV-Lit p v) neq
+    with hl1 ≟HL hl2
+  ... | yes refl = ⊥-elim (neq refl)
+    where open import Data.Empty using (⊥-elim)
+  ... | no _ = refl
+  writeLoc-preserves-other s (AtDynamic hl1) (AtDynamic hl2) (SV-Code c) neq
+    with hl1 ≟HL hl2
+  ... | yes refl = ⊥-elim (neq refl)
+    where open import Data.Empty using (⊥-elim)
+  ... | no _ = refl
+  -- Writing the one still-forbidden value (stack pointer to heap) is a no-op
   writeLoc-preserves-other s (AtDynamic hl1) (AtDynamic hl2) (SV-Ptr (AtStack _ _)) _ = refl
-  writeLoc-preserves-other s (AtDynamic hl1) (AtDynamic hl2) (SV-Tag _)              _ = refl
-  writeLoc-preserves-other s (AtDynamic hl1) (AtDynamic hl2) (SV-Lit _ _)              _ = refl
-  writeLoc-preserves-other s (AtDynamic hl1) (AtDynamic hl2) (SV-Code _)             _ = refl
-  -- every other location.
 
   -- writeLoc-read-same: Reading from the location we just wrote returns the written value
   -- Stack case: writeLoc s (AtStack f k) v → readLoc (AtStack f k) ≡ just v
@@ -813,12 +828,8 @@ module ExecLemmas {FS : FrameSemantics} where
     readLoc s₁ loc ≡ readLoc s₂ loc
   readLoc-stackMem-eq s₁ s₂ (AtStack f k) stack-eq heap-eq =
     cong (λ m → m f k) stack-eq
-  readLoc-stackMem-eq s₁ s₂ (AtDynamic hl) stack-eq heap-eq
-    with heapMem s₁ hl | heapMem s₂ hl | cong (λ m → m hl) heap-eq
-  ... | just hl₁ | just hl₂ | eq = cong (λ x → just (SV-Ptr (AtDynamic x))) (just-injective eq)
-  ... | nothing | nothing | _ = refl
-  ... | just _ | nothing | ()
-  ... | nothing | just _ | ()
+  readLoc-stackMem-eq s₁ s₂ (AtDynamic hl) stack-eq heap-eq =
+    cong (λ m → m hl) heap-eq
 
 ------------------------------------------------------------------------
 -- Abstract Instructions

@@ -333,15 +333,7 @@ module ValidityDef {FS : FrameSemantics} (program-bound : ℕ) where
     heapMem s₁ ≡ heapMem s₂ →
     readLoc s₁ loc ≡ readLoc s₂ loc
   readLoc-stack-heap-eq s₁ s₂ (AtStack f k) seq heq = cong (λ m → m f k) seq
-  readLoc-stack-heap-eq s₁ s₂ (AtDynamic hl) seq heq
-    with heapMem s₁ hl | heapMem s₂ hl | cong (λ m → m hl) heq
-  ... | just hl₁ | just hl₂ | eq = cong (λ x → just (SV-Ptr (AtDynamic x))) (just-injective eq)
-    where
-      just-injective : ∀ {A : Set} {x y : A} → just x ≡ just y → x ≡ y
-      just-injective refl = refl
-  ... | nothing | nothing | _ = refl
-  ... | just _ | nothing | ()
-  ... | nothing | just _ | ()
+  readLoc-stack-heap-eq s₁ s₂ (AtDynamic hl) seq heq = cong (λ m → m hl) heq
 
   validity-mem-only : ∀ {alloc A} (v : ⟦ A ⟧) loc (s₁ s₂ : LocState FS) →
     stackMem s₁ ≡ stackMem s₂ →

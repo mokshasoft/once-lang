@@ -160,16 +160,18 @@ module WriteOps {FS : FrameSemantics} where
   write-stack-slot s frame slot val =
     record s { stackMem = writeStackMem (stackMem s) frame slot val }
 
-  -- Write HeapLocation to a heap slot (enforces heap-only invariant)
-  write-heap-slot : LocState FS → HeapLocation → HeapLocation → LocState FS
+  -- Write a StoredValue to a heap slot.
+  -- Plan 0.14: heap cells hold StoredValue (primitives or heap pointers).
+  write-heap-slot : LocState FS → HeapLocation → StoredValue FS → LocState FS
   write-heap-slot s hl val =
     record s { heapMem = writeHeapMem (heapMem s) hl val }
 
   -- Write a ValueLocation pointer (wrapped as SV-Ptr) to a location.
-  -- Note: Writing stack ref to heap is now a type error! The invariant is enforced.
+  -- The cross-region constraint stays: storing a stack pointer into
+  -- a heap cell is a no-op (the only forbidden combination).
   write-loc : LocState FS → ValueLocation FS → ValueLocation FS → LocState FS
   write-loc s (AtStack f k) val = write-stack-slot s f k (SV-Ptr val)
-  write-loc s (AtDynamic hl) (AtDynamic val) = write-heap-slot s hl val
+  write-loc s (AtDynamic hl) (AtDynamic val) = write-heap-slot s hl (SV-Ptr (AtDynamic val))
   write-loc s (AtDynamic hl) (AtStack _ _) = s  -- Invalid: can't store stack ref in heap
 
   -- Write preserves reads at different locations (stack)
