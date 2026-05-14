@@ -126,10 +126,10 @@ module PairHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; max-slot-usage-bound = max-slot-usage-bound-pair
         ; slot-stays-in-budget = slot-stays-in-budget-pair
         ; frontier-slot-stable = λ _ _ _ _ _ → inj₂ (inj₂ tt)
-        ; trace-writes-above = SMP.!!
-        ; trace-slot-reads-above = SMP.!!
-        ; trace-writes-below = SMP.!!
-        ; trace-slot-reads-below = SMP.!!
+        ; trace-writes-above = pair-trace-writes-above
+        ; trace-slot-reads-above = pair-trace-slot-reads-above
+        ; trace-writes-below = pair-trace-writes-below
+        ; trace-slot-reads-below = pair-trace-slot-reads-below
         ; scratch-budget = req-pair-scratch
         ; scratch-bounded = SMP.!!
         }
@@ -855,6 +855,170 @@ module PairHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       --     ≤ (next-heap-ref alloc + rf-heap) + rg-heap (similar for f)
       --     = next-heap-ref alloc + (rf-heap + rg-heap).
       -- suc that = next-heap-ref alloc + suc (rf-heap + rg-heap) = + req-pair-heap.
+      ------------------------------------------------------------------
+      -- Trace-write/read region bookkeeping.
+      ------------------------------------------------------------------
+      next-slot≤alloc-after-scratch : next-slot alloc ≤ next-slot alloc-after-scratch
+      next-slot≤alloc-after-scratch =
+        subst (next-slot alloc ≤_) f-start≡+4 (≤-trans (n≤1+n backup-slot)
+          (≤-trans (n≤1+n fst-stash)
+            (≤-trans (n≤1+n snd-stash) (n≤1+n pair-stash))))
+
+      next-slot≤alloc-for-g : next-slot alloc ≤ next-slot alloc-for-g
+      next-slot≤alloc-for-g = ≤-trans next-slot≤alloc-after-scratch
+                                       (IRResultAWF.slot-monotone result-f)
+
+      setup-twa : SMP.TraceWritesAbove (next-slot alloc) setup-trace
+      setup-twa = ≤-refl , tt
+
+      mid-twa : SMP.TraceWritesAbove (next-slot alloc) mid-trace
+      mid-twa = n≤1+n (next-slot alloc) , tt
+
+      post-twa : SMP.TraceWritesAbove (next-slot alloc) post-trace
+      post-twa =
+        ≤-trans (n≤1+n backup-slot) (n≤1+n fst-stash) ,  -- next-slot alloc ≤ snd-stash
+        ≤-trans (n≤1+n backup-slot)
+          (≤-trans (n≤1+n fst-stash) (n≤1+n snd-stash)) ,  -- next-slot alloc ≤ pair-stash
+        tt
+
+      -- Named tails for explicit append-chains.
+      rest-from-f : AbstractTrace
+      rest-from-f = mid-trace ++ g-trace ++ post-trace
+      rest-from-mid : AbstractTrace
+      rest-from-mid = g-trace ++ post-trace
+
+      pair-trace-writes-above : SMP.TraceWritesAbove (next-slot alloc) pair-heap-trace
+      pair-trace-writes-above =
+        SMP.trace-writes-above-append (next-slot alloc) setup-trace
+          (f-trace ++ rest-from-f) setup-twa
+          (SMP.trace-writes-above-append (next-slot alloc) f-trace rest-from-f
+            (SMP.trace-writes-above-mono (next-slot alloc) (next-slot alloc-after-scratch) f-trace
+              next-slot≤alloc-after-scratch (IRResultAWF.trace-writes-above result-f))
+            (SMP.trace-writes-above-append (next-slot alloc) mid-trace rest-from-mid mid-twa
+              (SMP.trace-writes-above-append (next-slot alloc) g-trace post-trace
+                (SMP.trace-writes-above-mono (next-slot alloc) (next-slot alloc-for-g) g-trace
+                  next-slot≤alloc-for-g (IRResultAWF.trace-writes-above result-g))
+                post-twa)))
+
+      -- trace-slot-reads-above: pair-heap-trace's slot reads come from
+      -- load-from-slot (fst-stash, snd-stash, pair-stash), restore-input
+      -- (backup-slot), and whatever f/g read. All ≥ next-slot alloc.
+      setup-tsra : SMP.TraceSlotReadsAbove (next-slot alloc) setup-trace
+      setup-tsra = tt  -- setup has no slot reads (mov, store, alloc-stack)
+
+      mid-tsra : SMP.TraceSlotReadsAbove (next-slot alloc) mid-trace
+      mid-tsra = ≤-refl , tt  -- restore-input backup-slot reads backup-slot = next-slot alloc
+
+      post-tsra : SMP.TraceSlotReadsAbove (next-slot alloc) post-trace
+      post-tsra =
+        ≤-trans (n≤1+n backup-slot) ≤-refl ,       -- load-from-slot fst-stash
+        ≤-trans (n≤1+n backup-slot)
+          (≤-trans (n≤1+n fst-stash) ≤-refl) ,     -- load-from-slot snd-stash
+        ≤-trans (n≤1+n backup-slot)
+          (≤-trans (n≤1+n fst-stash)
+            (≤-trans (n≤1+n snd-stash) ≤-refl)) ,  -- load-from-slot pair-stash
+        tt
+
+      pair-trace-slot-reads-above : SMP.TraceSlotReadsAbove (next-slot alloc) pair-heap-trace
+      pair-trace-slot-reads-above =
+        SMP.trace-slot-reads-above-append (next-slot alloc) setup-trace
+          (f-trace ++ rest-from-f) setup-tsra
+          (SMP.trace-slot-reads-above-append (next-slot alloc) f-trace rest-from-f
+            (SMP.trace-slot-reads-above-mono (next-slot alloc) (next-slot alloc-after-scratch) f-trace
+              next-slot≤alloc-after-scratch (IRResultAWF.trace-slot-reads-above result-f))
+            (SMP.trace-slot-reads-above-append (next-slot alloc) mid-trace rest-from-mid mid-tsra
+              (SMP.trace-slot-reads-above-append (next-slot alloc) g-trace post-trace
+                (SMP.trace-slot-reads-above-mono (next-slot alloc) (next-slot alloc-for-g) g-trace
+                  next-slot≤alloc-for-g (IRResultAWF.trace-slot-reads-above result-g))
+                post-tsra)))
+
+      -- trace-writes-below max-slot-pair: every slot write in pair-heap-trace
+      -- is at a slot < max-slot-pair.
+      max-slot-pair-bound-on-stashes :
+        ∀ {k} → k ≤ pair-stash → k < max-slot-pair
+      max-slot-pair-bound-on-stashes k≤pair =
+        ≤-trans (s≤s k≤pair)
+          (≤-trans (m≤m⊔n (suc pair-stash) (IRResultAWF.max-slot-written result-f))
+                   (m≤m⊔n (suc pair-stash ⊔ IRResultAWF.max-slot-written result-f)
+                          (IRResultAWF.max-slot-written result-g)))
+
+      setup-twb : SMP.TraceWritesBelow max-slot-pair setup-trace
+      setup-twb =
+        -- store-at-slot backup-slot: backup-slot < max-slot-pair
+        max-slot-pair-bound-on-stashes
+          (≤-trans (n≤1+n backup-slot)
+            (≤-trans (n≤1+n fst-stash) (n≤1+n snd-stash))) ,
+        tt
+
+      mid-twb : SMP.TraceWritesBelow max-slot-pair mid-trace
+      mid-twb =
+        -- store-at-slot fst-stash: fst-stash < max-slot-pair
+        max-slot-pair-bound-on-stashes
+          (≤-trans (n≤1+n fst-stash) (n≤1+n snd-stash)) ,
+        tt
+
+      post-twb : SMP.TraceWritesBelow max-slot-pair post-trace
+      post-twb =
+        -- store-at-slot snd-stash: snd-stash < max-slot-pair
+        max-slot-pair-bound-on-stashes (n≤1+n snd-stash) ,
+        -- store-at-slot pair-stash: pair-stash < max-slot-pair
+        max-slot-pair-bound-on-stashes ≤-refl ,
+        tt
+
+      pair-trace-writes-below : SMP.TraceWritesBelow max-slot-pair pair-heap-trace
+      pair-trace-writes-below =
+        SMP.trace-writes-below-append max-slot-pair setup-trace
+          (f-trace ++ rest-from-f) setup-twb
+          (SMP.trace-writes-below-append max-slot-pair f-trace rest-from-f
+            (SMP.trace-writes-below-mono (IRResultAWF.max-slot-written result-f) max-slot-pair f-trace
+              (≤-trans (m≤n⊔m (suc pair-stash) (IRResultAWF.max-slot-written result-f))
+                       (m≤m⊔n (suc pair-stash ⊔ IRResultAWF.max-slot-written result-f)
+                              (IRResultAWF.max-slot-written result-g)))
+              (IRResultAWF.trace-writes-below result-f))
+            (SMP.trace-writes-below-append max-slot-pair mid-trace rest-from-mid mid-twb
+              (SMP.trace-writes-below-append max-slot-pair g-trace post-trace
+                (SMP.trace-writes-below-mono (IRResultAWF.max-slot-written result-g) max-slot-pair g-trace
+                  (m≤n⊔m (suc pair-stash ⊔ IRResultAWF.max-slot-written result-f)
+                         (IRResultAWF.max-slot-written result-g))
+                  (IRResultAWF.trace-writes-below result-g))
+                post-twb)))
+
+      setup-tsrb : SMP.TraceSlotReadsBelow max-slot-pair setup-trace
+      setup-tsrb = tt
+
+      mid-tsrb : SMP.TraceSlotReadsBelow max-slot-pair mid-trace
+      mid-tsrb =
+        max-slot-pair-bound-on-stashes
+          (≤-trans (n≤1+n backup-slot)
+            (≤-trans (n≤1+n fst-stash) (n≤1+n snd-stash))) ,  -- backup-slot ≤ pair-stash
+        tt
+
+      post-tsrb : SMP.TraceSlotReadsBelow max-slot-pair post-trace
+      post-tsrb =
+        max-slot-pair-bound-on-stashes
+          (≤-trans (n≤1+n fst-stash) (n≤1+n snd-stash)) ,  -- fst-stash ≤ pair-stash
+        max-slot-pair-bound-on-stashes (n≤1+n snd-stash) ,  -- snd-stash ≤ pair-stash
+        max-slot-pair-bound-on-stashes ≤-refl ,             -- pair-stash ≤ pair-stash
+        tt
+
+      pair-trace-slot-reads-below : SMP.TraceSlotReadsBelow max-slot-pair pair-heap-trace
+      pair-trace-slot-reads-below =
+        SMP.trace-slot-reads-below-append max-slot-pair setup-trace
+          (f-trace ++ rest-from-f) setup-tsrb
+          (SMP.trace-slot-reads-below-append max-slot-pair f-trace rest-from-f
+            (SMP.trace-slot-reads-below-mono (IRResultAWF.max-slot-written result-f) max-slot-pair f-trace
+              (≤-trans (m≤n⊔m (suc pair-stash) (IRResultAWF.max-slot-written result-f))
+                       (m≤m⊔n (suc pair-stash ⊔ IRResultAWF.max-slot-written result-f)
+                              (IRResultAWF.max-slot-written result-g)))
+              (IRResultAWF.trace-slot-reads-below result-f))
+            (SMP.trace-slot-reads-below-append max-slot-pair mid-trace rest-from-mid mid-tsrb
+              (SMP.trace-slot-reads-below-append max-slot-pair g-trace post-trace
+                (SMP.trace-slot-reads-below-mono (IRResultAWF.max-slot-written result-g) max-slot-pair g-trace
+                  (m≤n⊔m (suc pair-stash ⊔ IRResultAWF.max-slot-written result-f)
+                         (IRResultAWF.max-slot-written result-g))
+                  (IRResultAWF.trace-slot-reads-below result-g))
+                post-tsrb)))
+
       max-heap-usage-bound-pair :
         next-heap-ref alloc-final ≤ next-heap-ref alloc +ℕ req-pair-heap
       max-heap-usage-bound-pair =
