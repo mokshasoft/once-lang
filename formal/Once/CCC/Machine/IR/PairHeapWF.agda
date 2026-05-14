@@ -153,8 +153,11 @@ module PairHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       pair-stash  = suc snd-stash
       f-start     = suc pair-stash    -- = next-slot alloc + 4
 
+      -- Plan 0.14: phrased as `next-slot alloc + 4` (not `f-start`) so
+      -- alloc-after-scratch is definitionally equal to the output of
+      -- `instr-alloc-stack 4` at the end of setup-trace.
       alloc-after-scratch : AllocState {FS}
-      alloc-after-scratch = record alloc { next-slot = f-start }
+      alloc-after-scratch = record alloc { next-slot = next-slot alloc +ℕ 4 }
 
       ------------------------------------------------------------------
       -- Trace phases — named so each phase's proofs can target the
@@ -236,11 +239,19 @@ module PairHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
                    (trans store-preserves
                      (trans mov-preserves rdi-eq)))
 
+      -- f-start ≡ next-slot alloc + 4 propositionally. `4 + n` reduces
+      -- definitionally to suc(suc(suc(suc n))) = f-start (when
+      -- n = next-slot alloc); add `+-comm` to swap.
+      f-start≡+4 : f-start ≡ next-slot alloc +ℕ 4
+      f-start≡+4 = sym (+-comm (next-slot alloc) 4)
+        where open import Data.Nat.Properties using (+-comm)
+
       input-before-at-f-start : BeforeFrontier alloc-after-scratch input-loc
       input-before-at-f-start = frontier-monotone alloc alloc-after-scratch refl
-                                  (≤-trans (n≤1+n backup-slot)
-                                    (≤-trans (n≤1+n fst-stash)
-                                      (≤-trans (n≤1+n snd-stash) (n≤1+n pair-stash))))
+                                  (subst (next-slot alloc ≤_) f-start≡+4
+                                    (≤-trans (n≤1+n backup-slot)
+                                      (≤-trans (n≤1+n fst-stash)
+                                        (≤-trans (n≤1+n snd-stash) (n≤1+n pair-stash)))))
                                   ≤-refl input-loc input-before
 
       -- setup-trace stack writes: backup-slot = next-slot alloc.
@@ -287,9 +298,10 @@ module PairHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       input-valid-wf-at-f-start : ValidAtWF mIn alloc-after-scratch x input-loc s-after-setup
       input-valid-wf-at-f-start =
         validityWF-frontier-advance x input-loc s-after-setup refl
-          (≤-trans (n≤1+n backup-slot)
-            (≤-trans (n≤1+n fst-stash)
-              (≤-trans (n≤1+n snd-stash) (n≤1+n pair-stash))))
+          (subst (next-slot alloc ≤_) f-start≡+4
+            (≤-trans (n≤1+n backup-slot)
+              (≤-trans (n≤1+n fst-stash)
+                (≤-trans (n≤1+n snd-stash) (n≤1+n pair-stash)))))
           ≤-refl
           (validityWF-mem-preserved x input-loc s s-after-setup input-before
             mem-preserved-through-setup input-valid-wf)
