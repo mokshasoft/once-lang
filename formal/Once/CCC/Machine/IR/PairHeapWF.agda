@@ -44,7 +44,7 @@
 
 module Once.CCC.Machine.IR.PairHeapWF where
 
-open import Data.Nat using (ℕ; suc; _<_; _≤_; _≥_; s≤s; z≤n) renaming (_+_ to _+ℕ_)
+open import Data.Nat using (ℕ; suc; _<_; _≤_; _≥_; s≤s; z≤n; _⊔_) renaming (_+_ to _+ℕ_)
 open import Data.Bool using (false)
 open import Data.Unit using (⊤; tt)
 open import Data.Maybe using (just)
@@ -113,7 +113,7 @@ module PairHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; result-place = at-loc pair-loc pair-valid-final pair-before-final
                             pair-rax-eq pair-valid-cont pair-before-cont
         ; not-halted = not-halted-final
-        ; frame-preserved = SMP.!!
+        ; frame-preserved = exec-trace-preserves-frame pair-heap-trace s alloc
         ; trace-twf = SMP.!!
         ; mem-preserved-before = λ _ _ → SMP.!!  -- TODO: heap-aware mem-preserved
         ; trace-preserves-halted = exec-trace-preserves-halted-WF pair-heap-trace
@@ -221,7 +221,8 @@ module PairHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       alloc-final = proj₂ (exec-trace pair-heap-trace s alloc)
 
       not-halted-final : halted s-final ≡ false
-      not-halted-final = SMP.!!
+      not-halted-final = exec-trace-preserves-halted-WF pair-heap-trace s alloc not-halted SMP.!!
+        -- TODO: replace SMP.!! with the trace-twf witness once `trace-twf` discharges
 
       ------------------------------------------------------------------
       -- Pair location (fresh AtDynamic) and validity at final state.
@@ -277,8 +278,16 @@ module PairHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       req-pair-heap : ℕ
       req-pair-heap = suc (rf-heap +ℕ rg-heap)
 
+      -- Concrete watermark: covers the 4 scratch slots + the high
+      -- watermarks of f and g, capped via ⊔.
       max-slot-pair : ℕ
-      max-slot-pair = SMP.!!  -- max of f's, g's writes and pair-stash + 1
+      max-slot-pair = suc pair-stash
+                    ⊔ IRResultAWF.max-slot-written result-f
+                    ⊔ IRResultAWF.max-slot-written result-g
 
+      -- alloc-final.next-heap-ref ≥ alloc.next-heap-ref by composing
+      -- f's heap-monotone, g's heap-monotone, and the +1 from
+      -- instr-alloc-heap. For now keep as SMP.!! pending proper state
+      -- threading; the budget side is already correct.
       heap-mono : next-heap-ref alloc ≤ next-heap-ref alloc-final
       heap-mono = SMP.!!
