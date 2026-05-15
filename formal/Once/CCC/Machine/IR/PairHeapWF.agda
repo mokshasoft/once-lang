@@ -717,8 +717,13 @@ module PairHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
                            (sem-pair (eval f x) (eval g x)) pair-loc s-final
       pair-valid-final = SMP.!!
 
+      -- pair-loc's ref-id = next-heap-ref alloc-after-g
+      -- alloc-final.next-heap-ref = suc (next-heap-ref alloc-after-g)
+      -- So the freshness check is `next-heap-ref alloc-after-g < suc(...)`
+      -- = ≤-refl. The disjointness lives in the allocator interface
+      -- (AbstractInstance); here we just instantiate `heap-before`.
       pair-before-final : BeforeFrontier alloc-final pair-loc
-      pair-before-final = SMP.!!
+      pair-before-final = heap-before ≤-refl
 
       pair-rax-eq : readReg (regs s-final) Output ≡ SV-Ptr pair-loc
       pair-rax-eq = SMP.!!
@@ -733,8 +738,10 @@ module PairHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
                            (sem-pair (eval f x) (eval g x)) pair-loc s-final
       pair-valid-cont = SMP.!!
 
+      -- pair-cont-alloc.next-heap-ref = next-heap-ref alloc-final
+      -- = suc (next-heap-ref alloc-after-g). Same fact as pair-before-final.
       pair-before-cont : BeforeFrontier pair-cont-alloc pair-loc
-      pair-before-cont = SMP.!!
+      pair-before-cont = heap-before ≤-refl
 
       ------------------------------------------------------------------
       -- Budgets
