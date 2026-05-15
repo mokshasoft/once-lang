@@ -15,7 +15,7 @@
 --   rax = allocation result (return value)
 ------------------------------------------------------------------------
 
-open import Once.CCC.Memory.MemoryLayoutSemantics
+open import Once.Memory.MemoryLayoutSemantics
   using (MemoryLayout; Addr)
 
 module Once.Allocator.Target.X86 (layout : MemoryLayout) where
@@ -41,7 +41,7 @@ open import Once.Allocator.BumpAllocator layout as Bump
          slot-size; block-in-heap)
 
 -- Import InHeap
-open import Once.CCC.Memory.Regions layout using (InHeap)
+open import Once.Memory.Regions layout using (InHeap)
 
 ------------------------------------------------------------------------
 -- Register Convention

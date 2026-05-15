@@ -19,10 +19,10 @@
 --   - alloc-contiguous: slots within a block are contiguous
 --
 -- This serves as the FOUNDATIONAL allocator model. The legacy
--- CCC.AllocatorSemantics interface can be derived from this.
+-- legacy InHeap helpers are derived directly from block-in-region.
 ------------------------------------------------------------------------
 
-open import Once.CCC.Memory.MemoryLayoutSemantics
+open import Once.Memory.MemoryLayoutSemantics
   using (MemoryLayout; Addr; RegionBounds; lower; upper)
 
 module Once.Allocator.BumpAllocator (layout : MemoryLayout) where
@@ -41,8 +41,8 @@ open import Relation.Nullary using (Dec; yes; no; ¬_)
 open import Relation.Nullary.Decidable using (⌊_⌋)
 
 -- Import heap region definition
-open import Once.CCC.Memory.Regions layout using (InHeap)
-open import Once.CCC.Memory.Regions layout as Regions using (heap-bounds)
+open import Once.Memory.Regions layout using (InHeap)
+open import Once.Memory.Regions layout as Regions using (heap-bounds)
 
 ------------------------------------------------------------------------
 -- Configuration
@@ -227,9 +227,9 @@ alloc-advances s fits = refl
 --  addr₂ = heap-ptr after first alloc = addr₁ + n₁ * slot-size)
 
 ------------------------------------------------------------------------
--- DERIVED: Legacy AllocatorSemantics Interface
+-- DERIVED: Legacy InHeap helpers
 --
--- These match the signatures in AllocatorSemantics.agda so existing
+-- These match the legacy InHeap-helper signatures so existing
 -- proofs can use them without modification.
 ------------------------------------------------------------------------
 

@@ -24,7 +24,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_)
 open import Induction.WellFounded using (Acc)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
-open import Once.CCC.Memory.MemoryLayoutSemantics as MLS using (MemoryLayout; upper)
+open import Once.Memory.MemoryLayoutSemantics as MLS using (MemoryLayout; upper)
 open import Once.CCC.Machine.SMCore using (ValueLocation; AtStack; AtDynamic; HeapLocation; HeapRef)
 
 ------------------------------------------------------------------------
@@ -32,7 +32,7 @@ open import Once.CCC.Machine.SMCore using (ValueLocation; AtStack; AtDynamic; He
 ------------------------------------------------------------------------
 
 module FrameRegion (layout : MemoryLayout) where
-  open import Once.CCC.Memory.Regions layout public
+  open import Once.Memory.Regions layout public
     using (InStack; InHeap; stack-heap-addr-disjoint)
 
   -- All slots 0..capacity-1 at frame base are in stack region

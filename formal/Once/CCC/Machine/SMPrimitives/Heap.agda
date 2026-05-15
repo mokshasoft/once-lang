@@ -26,17 +26,24 @@
 module Once.CCC.Machine.SMPrimitives.Heap where
 
 open import Data.Bool using (false)
-open import Data.Nat using (ℕ; suc; _≤_)
-open import Data.Nat.Properties using (n≤1+n)
+open import Data.Nat using (ℕ; suc; _<_; _≤_)
+open import Data.Nat.Properties using (n≤1+n; <-irrefl)
 open import Data.Product using (proj₁; proj₂)
-open import Data.Unit using (tt)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; cong)
+open import Data.Unit using (⊤; tt)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; cong)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore
 open import Once.CCC.Machine.Allocation hiding (AllocMode)
 
 import Once.CCC.Machine.SMPrimitives as SMP
+
+-- Plan 0.14: the abstract-trace instance of the malloc-like allocator
+-- interface. This is where heap disjointness for the abstract trace
+-- layer lives. Concrete codegen (Target/X86) corresponds to this via
+-- simulation; we don't re-derive disjointness.
+import Once.Allocator.AbstractInstance as AI
+open import Once.Allocator.Interface using (AllocatorInterface)
 
 ------------------------------------------------------------------------
 -- Heap-mode helpers
@@ -103,3 +110,44 @@ module HeapPrimitives {FS : FrameSemantics} where
   alloc-heap-preserves-halted n s alloc h-eq =
     SMP.TracePrimitives.exec-abstract-preserves-halted-WF {FS} (instr-alloc-heap n)
       s alloc h-eq tt
+
+  ----------------------------------------------------------------------
+  -- Disjointness, from the malloc-like allocator interface
+  --
+  -- The abstract-trace instance (`AI.abstract-allocator`) supplies
+  -- `blocks-disjoint`. The forms re-exported here are the
+  -- BeforeFrontier-friendly corollaries actually consumed by heap-mode
+  -- IR producers.
+  ----------------------------------------------------------------------
+
+  -- A freshly-allocated heap location (= the one `instr-alloc-heap`
+  -- returns at state `alloc`) is distinct from any heap location whose
+  -- ref-id is strictly less than `next-heap-ref alloc`. Derived from
+  -- the abstract-allocator interface (`AI.fresh-loc-disjoint`); no
+  -- parallel inline derivation.
+  fresh-heap-ref-disjoint :
+    ∀ (alloc : AllocState {FS}) (hl : HeapLocation) →
+    ref-id (heap-ref hl) < next-heap-ref alloc →
+    AtDynamic hl ≢ fresh-heap-loc alloc
+  fresh-heap-ref-disjoint alloc hl r<next eq =
+    AI.fresh-loc-disjoint (next-heap-ref alloc) hl r<next
+      (AtDynamic-injective eq)
+    where
+      AtDynamic-injective : ∀ {h₁ h₂ : HeapLocation} →
+                            AtDynamic {FS} h₁ ≡ AtDynamic {FS} h₂ → h₁ ≡ h₂
+      AtDynamic-injective refl = refl
+
+  -- A freshly-allocated heap location's i-th cell is distinct from any
+  -- heap location whose ref-id is strictly less than next-heap-ref alloc.
+  -- Derived from `AI.fresh-cell-disjoint`.
+  fresh-heap-cell-disjoint :
+    ∀ (alloc : AllocState {FS}) (hl : HeapLocation) (i : ℕ) →
+    ref-id (heap-ref hl) < next-heap-ref alloc →
+    AtDynamic hl ≢ AtDynamic (offsetHL (heap-loc (mkHeapRef (next-heap-ref alloc)) 0) i)
+  fresh-heap-cell-disjoint alloc hl i r<next eq =
+    AI.fresh-cell-disjoint (next-heap-ref alloc) hl i r<next
+      (AtDynamic-injective eq)
+    where
+      AtDynamic-injective : ∀ {h₁ h₂ : HeapLocation} →
+                            AtDynamic {FS} h₁ ≡ AtDynamic {FS} h₂ → h₁ ≡ h₂
+      AtDynamic-injective refl = refl

@@ -17,7 +17,7 @@
 -- is minimal - no witness types, no slot-size in interface.
 ------------------------------------------------------------------------
 
-open import Once.CCC.Memory.MemoryLayoutSemantics
+open import Once.Memory.MemoryLayoutSemantics
   using (MemoryLayout; Addr)
 
 module Once.Allocator.Malloc (layout : MemoryLayout) where
@@ -28,7 +28,7 @@ open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
-open import Once.CCC.Memory.Regions layout using (InHeap)
+open import Once.Memory.Regions layout using (InHeap)
 
 ------------------------------------------------------------------------
 -- Malloc Interface

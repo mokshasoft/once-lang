@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson and contributors
 
 ------------------------------------------------------------------------
--- Once.CCC.Memory.TypeSlots
+-- Once.Memory.TypeSlots
 --
 -- Type-to-slot-count mapping for memory layout.
 --
@@ -19,7 +19,7 @@
 --   - Target-specific byte sizes are defined elsewhere (e.g., slot-bytes)
 ------------------------------------------------------------------------
 
-module Once.CCC.Memory.TypeSlots where
+module Once.Memory.TypeSlots where
 
 open import Data.Nat using (ℕ)
 open import Once.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_;

@@ -34,7 +34,7 @@ open import Once.CCC.Eval using (eval)
 open import Once.CCC.IR.Size
 open import Once.CCC.IR.Stack
 open import Once.CCC.Machine.Allocation hiding (AllocMode)
-open import Once.CCC.Memory.TypeSlots using (type-slots)
+open import Once.Memory.TypeSlots using (type-slots)
 
 -- Import SMPrimitives qualified for trace predicates
 import Once.CCC.Machine.SMPrimitives as SMP

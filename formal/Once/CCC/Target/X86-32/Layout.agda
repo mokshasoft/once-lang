@@ -26,7 +26,7 @@ open import Relation.Nullary using (¬_)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst)
 
 -- Import types for layout construction
-open import Once.CCC.Memory.MemoryLayoutSemantics as MLS
+open import Once.Memory.MemoryLayoutSemantics as MLS
   using (MemoryLayout; RegionBounds; lower; upper; InRegion)
 open MLS using (Addr; lower; upper) public
 
@@ -76,22 +76,20 @@ x86-32-layout = record
 
 -- Regions (InStack, InHeap, InCode, disjointness)
 -- Hide Addr since we already export it from MLS above
-open import Once.CCC.Memory.Regions x86-32-layout public
+open import Once.Memory.Regions x86-32-layout public
   hiding (Addr)
 
 -- Stack slots (slot-addr, StackPointer, etc.)
 -- Hide InStack since it's already exported from Regions
-open import Once.CCC.Memory.StackSlots x86-32-layout x86-32-stack-growth public
+open import Once.Memory.StackSlots x86-32-layout x86-32-stack-growth public
   hiding (InStack)
 
 -- Frame operations (frameSlot, memory preservation)
-open import Once.CCC.Memory.FrameOps x86-32-layout x86-32-stack-growth public
+open import Once.Memory.FrameOps x86-32-layout x86-32-stack-growth public
 
--- Allocator semantics (encode-in-heap, heap-offset)
-open import Once.CCC.Memory.AllocatorSemantics x86-32-layout public
 
 -- Re-export Memory operations
-open import Once.CCC.Memory.Memory using (Memory; Word; readMem; writeMem) public
+open import Once.Memory.Memory using (Memory; Word; readMem; writeMem) public
 
 ------------------------------------------------------------------------
 -- x86-32-Specific Properties (lower = 0 is definitional)

@@ -2,17 +2,17 @@
 -- Copyright (C) 2025-2026 Jonas Claesson and contributors
 
 ------------------------------------------------------------------------
--- Once.CCC.Memory.Memory
+-- Once.Memory.Memory
 --
 -- Common helper lemmas for memory proofs shared by all backends.
 -- These are pure lemmas about natural numbers and boolean equality
 -- that are used in memory-related proofs.
 --
 -- Usage in backend Correct.agda:
---   open import Once.CCC.Memory.Memory public
+--   open import Once.Memory.Memory public
 ------------------------------------------------------------------------
 
-module Once.CCC.Memory.Memory where
+module Once.Memory.Memory where
 
 open import Data.Bool using (Bool; true; false; if_then_else_)
 open import Data.Nat using (ℕ; zero; suc; _+_; _≡ᵇ_)

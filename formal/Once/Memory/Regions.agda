@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson and contributors
 
 ------------------------------------------------------------------------
--- Once.CCC.Memory.Regions
+-- Once.Memory.Regions
 --
 -- Abstract memory region predicates and disjointness.
 --
@@ -15,10 +15,10 @@
 -- They should NOT import architecture-specific modules like X86.Layout.
 ------------------------------------------------------------------------
 
-open import Once.CCC.Memory.MemoryLayoutSemantics
+open import Once.Memory.MemoryLayoutSemantics
   using (MemoryLayout; RegionBounds; Addr; lower; upper; InRegion)
 
-module Once.CCC.Memory.Regions (layout : MemoryLayout) where
+module Once.Memory.Regions (layout : MemoryLayout) where
 
 open import Data.Nat using (ℕ; _≤_)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; subst)
@@ -27,7 +27,7 @@ open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Empty using (⊥)
 
 -- Re-export Addr for convenience
-open import Once.CCC.Memory.MemoryLayoutSemantics public using (Addr)
+open import Once.Memory.MemoryLayoutSemantics public using (Addr)
 
 ------------------------------------------------------------------------
 -- Region Bounds (from layout parameter)

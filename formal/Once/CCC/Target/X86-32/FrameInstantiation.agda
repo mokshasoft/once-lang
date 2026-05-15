@@ -33,7 +33,7 @@ open import Relation.Binary.Definitions using (tri<; tri≈; tri>)
 
 -- Import the architecture-independent interface
 open import Once.CCC.FrameSemantics using (FrameSemantics)
-open import Once.CCC.Memory.MemoryLayoutSemantics using (Addr)
+open import Once.Memory.MemoryLayoutSemantics using (Addr)
 
 -- Import x86-32 Layout for StackPointer and slot operations
 open import Once.CCC.Target.X86-32.Layout

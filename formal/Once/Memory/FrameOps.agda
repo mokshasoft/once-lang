@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson and contributors
 
 ------------------------------------------------------------------------
--- Once.CCC.Memory.FrameOps
+-- Once.Memory.FrameOps
 --
 -- Frame-level memory operations.
 --
@@ -15,10 +15,10 @@
 --   - Memory preservation lemmas (stack writes don't affect heap/code)
 ------------------------------------------------------------------------
 
-open import Once.CCC.Memory.MemoryLayoutSemantics
+open import Once.Memory.MemoryLayoutSemantics
   using (MemoryLayout; StackGrowth; Addr)
 
-module Once.CCC.Memory.FrameOps
+module Once.Memory.FrameOps
   (layout : MemoryLayout)
   (sg : StackGrowth)
   where
@@ -28,16 +28,16 @@ open import Data.Maybe using (Maybe)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
 
 -- Import from Regions
-open import Once.CCC.Memory.Regions layout
+open import Once.Memory.Regions layout
   using (InStack; InHeap; InCode;
          stack-heap-addr-disjoint; stack-code-addr-disjoint)
 
 -- Import from StackSlots
-open import Once.CCC.Memory.StackSlots layout sg
+open import Once.Memory.StackSlots layout sg
   using (StackPointer; slot-addr; addr; init-slot-at-base)
 
 -- Import Memory operations
-open import Once.CCC.Memory.Memory
+open import Once.Memory.Memory
   using (Memory; Word; readMem; writeMem; readMem-writeMem-diff)
 
 ------------------------------------------------------------------------

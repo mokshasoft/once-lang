@@ -42,7 +42,7 @@ open import Once.CCC.Machine.SMCore hiding (AllocMode; Stack; Heap)
 import Once.CCC.Machine.SMPrimitives as SMP
 open import Once.Type
 open import Once.Semantics.Machine using (⟦_⟧; sem-fst; sem-snd; sem-pair; sem-inl; sem-inr; sem-case)
-open import Once.CCC.Memory.TypeSlots using (stack-type-slots; heap-type-slots; type-slots)
+open import Once.Memory.TypeSlots using (stack-type-slots; heap-type-slots; type-slots)
 pair = sem-pair
 open import Once.CCC.IR
 open import Once.CCC.Eval using (eval)

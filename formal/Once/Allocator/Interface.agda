@@ -4,117 +4,95 @@
 ------------------------------------------------------------------------
 -- Once.Allocator.Interface
 --
--- Abstract allocator interface (malloc-like).
+-- Abstract malloc-like allocator interface, parameterized over the
+-- address type and the slot-stepping operation.
 --
--- This module defines what an allocator must provide. Concrete
--- implementations (like BumpAllocator) satisfy this interface.
+-- This module defines what a malloc-like allocator must provide.
+-- Concrete implementations (BumpAllocator at the Addr level, SMCore's
+-- heap counter at the HeapLocation level) satisfy this interface.
+--
+-- Plan 0.14: parameterized over the address type so that the same
+-- malloc-like interface is consumed at both the abstract trace layer
+-- (HeapLocation) and the concrete codegen layer (Addr). One interface,
+-- two instances, single source of truth for disjointness. The
+-- codegen-level instance comes from BumpAllocator + Target/X86
+-- simulation; the abstract-level instance comes from SMCore's
+-- `next-heap-ref` counter.
 --
 -- The interface is:
---   1. Stateful allocation: alloc n → (addr, new-state)
---   2. Block membership: all slots of an allocation are InHeap
+--   1. Stateful allocation: alloc n → (addr, new-state, witness)
+--   2. Block membership: all slots of an allocation are InRegion
 --   3. Block disjointness: distinct allocations don't overlap
---
--- The legacy CCC.AllocatorSemantics (encode-in-heap, heap-offset) can
--- be derived from this interface.
 ------------------------------------------------------------------------
 
-open import Once.CCC.Memory.MemoryLayoutSemantics
-  using (MemoryLayout; Addr)
+module Once.Allocator.Interface where
 
-module Once.Allocator.Interface (layout : MemoryLayout) where
-
-open import Data.Nat using (ℕ; zero; suc; _+_; _*_; _<_; _≤_)
-open import Data.Product using (_×_; _,_; ∃; ∃-syntax)
-open import Relation.Binary.PropositionalEquality using (_≡_; _≢_)
-
--- Import heap region definition
-open import Once.CCC.Memory.Regions layout using (InHeap)
+open import Data.Nat using (ℕ; _<_)
+open import Data.Product using (∃; ∃-syntax)
+open import Relation.Binary.PropositionalEquality using (_≢_)
 
 ------------------------------------------------------------------------
 -- Allocator Interface
 --
 -- An allocator provides stateful block allocation with properties.
+--
+-- Parameters:
+--   Address  : the type of allocation addresses (Addr, HeapLocation, ...)
+--   slot-at  : compute the i-th slot of a block starting at addr
+--   InRegion : predicate stating that an address is in the allocator's
+--              region (for the abstract level this can be ⊤; for the
+--              concrete level it's InHeap on the heap region).
 ------------------------------------------------------------------------
 
-record AllocatorInterface : Set₁ where
+record AllocatorInterface
+  (Address  : Set)
+  (slot-at  : Address → ℕ → Address)
+  (InRegion : Address → Set)
+  : Set₁ where
   field
     -- Allocator state type
     State : Set
-
-    -- Slot size (architecture-dependent)
-    slot-size : ℕ
-    slot-size>0 : 0 < slot-size
 
     -- Initial state
     init : State
 
     -- Allocation witness (proof that addr was allocated with size n)
-    Allocated : State → Addr → ℕ → Set
+    Allocated : State → Address → ℕ → Set
 
     -- Allocation operation
     alloc : (n : ℕ) → (s : State) →
             ∃[ addr ] ∃[ s' ] Allocated s' addr n
 
-    -- Property 1: All slots of an allocated block are InHeap
-    block-in-heap : ∀ {s addr n} →
-                    Allocated s addr n →
-                    (i : ℕ) → i < n →
-                    InHeap (addr + i * slot-size)
+    -- Property 1: All slots of an allocated block are InRegion.
+    block-in-region :
+      ∀ {s addr n} →
+      Allocated s addr n →
+      (i : ℕ) → i < n →
+      InRegion (slot-at addr i)
 
-    -- Property 2: Distinct allocations have disjoint address ranges
-    blocks-disjoint : ∀ {s₁ s₂ addr₁ addr₂ n₁ n₂} →
-                      Allocated s₁ addr₁ n₁ →
-                      Allocated s₂ addr₂ n₂ →
-                      addr₁ ≢ addr₂ →
-                      ∀ (i j : ℕ) → i < n₁ → j < n₂ →
-                      (addr₁ + i * slot-size) ≢ (addr₂ + j * slot-size)
-
-------------------------------------------------------------------------
--- Derived Properties
---
--- These are the properties needed by the legacy AllocatorSemantics.
--- They are derived from the interface.
-------------------------------------------------------------------------
-
-module Derived (AI : AllocatorInterface) where
-  open AllocatorInterface AI
-
-  open import Data.Nat.Properties using (+-identityʳ; +-assoc; +-comm)
-  open import Relation.Binary.PropositionalEquality using (subst; cong; trans; sym)
-
-  -- Base address of an allocation is InHeap
-  alloc-base-in-heap : ∀ {s addr n} →
-                       Allocated s addr n →
-                       0 < n →
-                       InHeap addr
-  alloc-base-in-heap {_} {addr} alloc 0<n =
-    subst InHeap (+-identityʳ addr) (block-in-heap alloc 0 0<n)
-
-  -- Next slot after a valid slot is also InHeap (if within block)
-  alloc-next-in-heap : ∀ {s addr n} →
-                       Allocated s addr n →
-                       (i : ℕ) → suc i < n →
-                       InHeap (addr + i * slot-size + slot-size)
-  alloc-next-in-heap {_} {addr} alloc i si<n =
-    subst InHeap eq (block-in-heap alloc (suc i) si<n)
-    where
-      suc-mul : suc i * slot-size ≡ i * slot-size + slot-size
-      suc-mul = +-comm slot-size (i * slot-size)
-
-      eq : addr + suc i * slot-size ≡ addr + i * slot-size + slot-size
-      eq = trans (cong (addr +_) suc-mul) (sym (+-assoc addr (i * slot-size) slot-size))
+    -- Property 2: Distinct allocations have disjoint address ranges.
+    blocks-disjoint :
+      ∀ {s₁ s₂ addr₁ addr₂ n₁ n₂} →
+      Allocated s₁ addr₁ n₁ →
+      Allocated s₂ addr₂ n₂ →
+      addr₁ ≢ addr₂ →
+      ∀ (i j : ℕ) → i < n₁ → j < n₂ →
+      slot-at addr₁ i ≢ slot-at addr₂ j
 
 ------------------------------------------------------------------------
 -- Summary
 --
--- This interface captures what a malloc-like allocator provides:
+-- This interface captures what a malloc-like allocator provides. Two
+-- instantiations:
 --
---   State          : Allocator state (e.g., bump pointer + bounds)
---   Allocated s a n: Witness that n slots were allocated at a
---   alloc          : Allocate n slots, get address + witness
---   block-in-heap  : All slots of an allocation are in heap
---   blocks-disjoint: Different allocations don't overlap
+--   * Concrete (codegen):   Address = Addr, slot-at addr i = addr + i*slot-size,
+--                           InRegion = InHeap. Satisfied by BumpAllocator.
+--   * Abstract (SMCore):    Address = HeapLocation, slot-at = offsetHL,
+--                           InRegion = ⊤. Satisfied by SMCore's next-heap-ref
+--                           counter (see Once.Allocator.AbstractInstance).
 --
--- Concrete implementations (BumpAllocator) satisfy this interface.
--- Legacy code can use the Derived module for encode-in-heap style.
+-- The correspondence between the two instances is established at the
+-- simulation layer (Once.Allocator.Target.X86), not by re-proving
+-- disjointness — disjointness flows from the abstract layer through
+-- simulation faithfulness.
 ------------------------------------------------------------------------

@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson and contributors
 
 ------------------------------------------------------------------------
--- Once.CCC.Memory.StackSlots
+-- Once.Memory.StackSlots
 --
 -- Stack slot addressing derived from StackGrowth interface.
 --
@@ -15,10 +15,10 @@
 --   - Distinctness lemmas for slots and frames
 ------------------------------------------------------------------------
 
-open import Once.CCC.Memory.MemoryLayoutSemantics
+open import Once.Memory.MemoryLayoutSemantics
   using (MemoryLayout; StackGrowth; Addr)
 
-module Once.CCC.Memory.StackSlots
+module Once.Memory.StackSlots
   (layout : MemoryLayout)
   (sg : StackGrowth)
   where
@@ -27,7 +27,7 @@ open import Data.Nat using (ℕ; zero; suc; _≤_)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; subst)
 
 -- Import Regions for InStack and StackAddr
-open import Once.CCC.Memory.Regions layout public
+open import Once.Memory.Regions layout public
   using (InStack)
 
 ------------------------------------------------------------------------

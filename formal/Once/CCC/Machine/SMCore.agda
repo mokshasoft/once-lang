@@ -53,65 +53,29 @@ private
   just-injective refl = refl
 
 ------------------------------------------------------------------------
--- Slot and HeapOffset
+-- Slot
 ------------------------------------------------------------------------
 
 Slot : Set
 Slot = ℕ
 
-HeapOffset : Set
-HeapOffset = ℕ
-
 ------------------------------------------------------------------------
--- HeapRef: Opaque reference to a heap block
-------------------------------------------------------------------------
-
-record HeapRef : Set where
-  constructor mkHeapRef
-  field
-    ref-id : ℕ
-
-open HeapRef public
-
-_≟H_ : (h₁ h₂ : HeapRef) → Dec (h₁ ≡ h₂)
-mkHeapRef n₁ ≟H mkHeapRef n₂ with n₁ ≟ n₂
-... | yes refl = yes refl
-... | no neq = no λ { refl → neq refl }
-
-------------------------------------------------------------------------
--- HeapLocation: Location within the heap
+-- Heap addresses (HeapRef, HeapOffset, HeapLocation)
 --
--- Encapsulates HeapRef + HeapOffset. This type enforces the invariant
--- that heap-allocated values can only reference other heap locations,
--- never stack locations. By using HeapLocation in HeapMem's return type,
--- we make it impossible to store stack references in heap memory.
+-- These are language-agnostic and live in Once.Memory.HeapAddress so
+-- the allocator can depend on them without going through CCC.
 ------------------------------------------------------------------------
 
-record HeapLocation : Set where
-  constructor heap-loc
-  field
-    heap-ref : HeapRef
-    heap-offset : HeapOffset
+open import Once.Memory.HeapAddress public
+  using (HeapOffset; HeapRef; mkHeapRef; ref-id;
+         HeapLocation; heap-loc; heap-ref; heap-offset;
+         _≟H_; _≟HL_; ≟HL-aux; hl-ref)
 
-open HeapLocation public
-
--- Decidable equality for HeapLocation. Inner Dec results are
--- explicitly enumerated via a top-level helper to avoid the with-
--- block case-tree artifact under --exact-split.
-≟HL-aux : ∀ {r₁ r₂ o₁ o₂}
-        → Dec (r₁ ≡ r₂) → Dec (o₁ ≡ o₂)
-        → Dec (heap-loc r₁ o₁ ≡ heap-loc r₂ o₂)
-≟HL-aux (yes refl) (yes refl) = yes refl
-≟HL-aux (yes refl) (no o≢o)   = no λ { refl → o≢o refl }
-≟HL-aux (no r≢r)   (yes _)    = no λ { refl → r≢r refl }
-≟HL-aux (no r≢r)   (no _)     = no λ { refl → r≢r refl }
-
-_≟HL_ : (hl₁ hl₂ : HeapLocation) → Dec (hl₁ ≡ hl₂)
-heap-loc r₁ o₁ ≟HL heap-loc r₂ o₂ = ≟HL-aux (r₁ ≟H r₂) (o₁ ≟ o₂)
-
--- Convert HeapLocation to HeapRef (for frontier checks)
-hl-ref : HeapLocation → HeapRef
-hl-ref = heap-ref
+-- Plan 0.14: the abstract-trace allocator instance lives in
+-- Once.Allocator.AbstractInstance. SMCore consumes it for the
+-- semantics of instr-alloc-heap — so the allocator interface is the
+-- single source of truth, not a parallel definition.
+import Once.Allocator.AbstractInstance as AI
 
 ------------------------------------------------------------------------
 -- HeapRegion: A contiguous block of heap memory
@@ -227,13 +191,9 @@ data StoredValue (FS : FrameSemantics) : Set where
 -- (`IRResultAWF.result-loc`, `ValidAtWF`'s loc parameter) move to
 -- `Place` only at handover points.
 
--- | Successor HeapLocation (for heap internal references)
-sucHL : HeapLocation → HeapLocation
-sucHL (heap-loc r o) = heap-loc r (suc o)
-
--- | Offset HeapLocation by n slots
-offsetHL : HeapLocation → ℕ → HeapLocation
-offsetHL (heap-loc r o) n = heap-loc r (n + o)
+-- sucHL / offsetHL are now in Once.Memory.HeapAddress (re-exported
+-- above via the public open).
+open Once.Memory.HeapAddress public using (sucHL; offsetHL)
 
 -- | Successor location (for accessing pair.snd, closure.code-ptr, etc.)
 sucLoc : ∀ {FS} → ValueLocation FS → ValueLocation FS
@@ -1396,14 +1356,18 @@ module AbstractExec {FS : FrameSemantics} where
   exec-abstract (instr-case-on-tag f g) s alloc =
     record s { halted = true } , alloc
 
-  -- Plan 0.14 Phase A: heap allocation.
-  -- Bumps `next-heap-ref` via `heap-alloc`, writes the resulting
-  -- `SV-Ptr (AtDynamic …)` to Output. Memory at the freshly allocated
-  -- cells starts uninitialised (reads return `nothing` until written).
+  -- Plan 0.14: heap allocation routed through the abstract-allocator
+  -- interface (Once.Allocator.AbstractInstance). The `next-heap-ref`
+  -- field of AllocState is the State of the abstract bump allocator;
+  -- the allocation call returns a fresh HeapLocation and an updated
+  -- counter. Disjointness is then a consequence of the interface's
+  -- `blocks-disjoint`, not a parallel inline derivation.
   exec-abstract (instr-alloc-heap n) s alloc =
-    let new-loc = AtDynamic (heap-loc (mkHeapRef (next-heap-ref alloc)) 0)
-        alloc' = record alloc { next-heap-ref = suc (next-heap-ref alloc) }
-    in record s { regs = writeReg (regs s) Output (SV-Ptr new-loc) } , alloc'
+    let result = AI.alloc-impl n (next-heap-ref alloc)
+        addr = proj₁ result
+        new-state = proj₁ (proj₂ result)
+    in record s { regs = writeReg (regs s) Output (SV-Ptr (AtDynamic addr)) } ,
+       record alloc { next-heap-ref = new-state }
 
   -- | Execute a trace (sequence of abstract instructions)
   -- Signature declared above with exec-abstract for mutual recursion.

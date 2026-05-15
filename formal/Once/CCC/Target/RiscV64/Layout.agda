@@ -26,7 +26,7 @@ open import Relation.Nullary using (¬_)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst)
 
 -- Import types for layout construction
-open import Once.CCC.Memory.MemoryLayoutSemantics as MLS
+open import Once.Memory.MemoryLayoutSemantics as MLS
   using (MemoryLayout; RegionBounds; lower; upper; InRegion)
 open MLS using (Addr; lower; upper) public
 
@@ -76,22 +76,20 @@ rv64-layout = record
 
 -- Regions (InStack, InHeap, InCode, disjointness)
 -- Hide Addr since we already export it from MLS above
-open import Once.CCC.Memory.Regions rv64-layout public
+open import Once.Memory.Regions rv64-layout public
   hiding (Addr)
 
 -- Stack slots (slot-addr, StackPointer, etc.)
 -- Hide InStack since it's already exported from Regions
-open import Once.CCC.Memory.StackSlots rv64-layout rv64-stack-growth public
+open import Once.Memory.StackSlots rv64-layout rv64-stack-growth public
   hiding (InStack)
 
 -- Frame operations (frameSlot, memory preservation)
-open import Once.CCC.Memory.FrameOps rv64-layout rv64-stack-growth public
+open import Once.Memory.FrameOps rv64-layout rv64-stack-growth public
 
--- Allocator semantics (encode-in-heap, heap-offset)
-open import Once.CCC.Memory.AllocatorSemantics rv64-layout public
 
 -- Re-export Memory operations
-open import Once.CCC.Memory.Memory using (Memory; Word; readMem; writeMem) public
+open import Once.Memory.Memory using (Memory; Word; readMem; writeMem) public
 
 ------------------------------------------------------------------------
 -- RiscV64-Specific Properties (lower = 0 is definitional)

@@ -26,7 +26,7 @@ open import Relation.Nullary using (¬_)
 
 -- Import core types from existing MemoryLayoutSemantics
 -- (keeping compatibility with existing codebase)
-open import Once.CCC.Memory.MemoryLayoutSemantics
+open import Once.Memory.MemoryLayoutSemantics
   using (Addr; RegionBounds; lower; upper; InRegion)
 
 ------------------------------------------------------------------------

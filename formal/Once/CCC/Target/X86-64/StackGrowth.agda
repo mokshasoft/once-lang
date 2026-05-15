@@ -19,7 +19,7 @@ open import Data.Nat.Properties using (+-identityʳ; +-comm; *-comm; m≤m+n; +-
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong)
 open import Level using (0ℓ)
 
-open import Once.CCC.Memory.MemoryLayoutSemantics
+open import Once.Memory.MemoryLayoutSemantics
   using (Addr; StackGrowth)
 
 ------------------------------------------------------------------------

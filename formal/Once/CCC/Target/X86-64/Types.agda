@@ -7,7 +7,7 @@
 -- X86-64 specific constants.
 --
 -- For types, import Once.Type directly.
--- For slot calculations, import Once.CCC.Memory.TypeSlots.
+-- For slot calculations, import Once.Memory.TypeSlots.
 -- For semantics, import Once.Semantics.Machine.
 ------------------------------------------------------------------------
 

@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson and contributors
 
 ------------------------------------------------------------------------
--- Once.CCC.Memory.MemoryLayoutSemantics
+-- Once.Memory.MemoryLayoutSemantics
 --
 -- Memory layout interfaces and core types.
 --
@@ -15,7 +15,7 @@
 -- See X86.Layout for the X86-64 instantiation.
 ------------------------------------------------------------------------
 
-module Once.CCC.Memory.MemoryLayoutSemantics where
+module Once.Memory.MemoryLayoutSemantics where
 
 open import Data.Nat using (ℕ; zero; _≤_)
 open import Relation.Nullary using (¬_)
@@ -23,7 +23,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_)
 open import Data.Product using (_×_)
 
 -- Re-export Word from Memory
-open import Once.CCC.Memory.Memory using (Word) public
+open import Once.Memory.Memory using (Word) public
 
 ------------------------------------------------------------------------
 -- Core Types
