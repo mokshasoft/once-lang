@@ -362,7 +362,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
       -- Construct validity for inl x (Stack mode = reference-based)
       inl-valid-wf-final : ValidAtWF Stack alloc₁ (sem-inl {A} {B} x) sum-loc s-final
-      inl-valid-wf-final = valid-inl-wf payload-ptr input-before₁ sucLoc-sum-before input-valid-wf-final
+      inl-valid-wf-final = valid-inl-wf tt payload-ptr input-before₁ sucLoc-sum-before input-valid-wf-final
 
       rax-eq : readReg (regs s-final) Output ≡ SV-Ptr sum-loc
       rax-eq = writeReg-same (regs s₁) Output (SV-Ptr sum-loc)
@@ -499,8 +499,12 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
       -- Construct validity for inl x (Heap mode = boxed)
       -- valid-inl-wf needs: payload-ptr, payload-before, sucLoc-before, payload-valid
+      -- Plan 0.14 (Camp 2): sum-loc here is AtStack, so LocMatchesMode Heap sum-loc
+      -- reduces to ⊥. This is a Heap-mode path that lowers sums at stack locations
+      -- — architecturally inconsistent. Surfaced here as SMP.!! awaiting either
+      -- (a) deletion of this path or (b) actual heap-allocated sum lowering.
       inl-valid-wf-final : ValidAtWF Heap alloc₁ (sem-inl {A} {B} x) sum-loc s-final
-      inl-valid-wf-final = valid-inl-wf payload-ptr input-before₁ sucLoc-sum-before input-valid-wf-final
+      inl-valid-wf-final = valid-inl-wf SMP.!! payload-ptr input-before₁ sucLoc-sum-before input-valid-wf-final
 
       rax-eq : readReg (regs s-final) Output ≡ SV-Ptr sum-loc
       rax-eq = writeReg-same (regs s₁) Output (SV-Ptr sum-loc)
@@ -646,7 +650,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
       -- Construct validity for inr x (Stack mode = reference-based)
       inr-valid-wf-final : ValidAtWF Stack alloc₁ (sem-inr {A} {B} x) sum-loc s-final
-      inr-valid-wf-final = valid-inr-wf payload-ptr input-before₁ sucLoc-sum-before input-valid-wf-final
+      inr-valid-wf-final = valid-inr-wf tt payload-ptr input-before₁ sucLoc-sum-before input-valid-wf-final
 
       rax-eq : readReg (regs s-final) Output ≡ SV-Ptr sum-loc
       rax-eq = writeReg-same (regs s₁) Output (SV-Ptr sum-loc)
@@ -772,8 +776,9 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
       -- Construct validity for inr x (Heap mode = boxed)
       -- valid-inr-wf needs: payload-ptr, payload-before, sucLoc-before, payload-valid
+      -- Plan 0.14 (Camp 2): Heap-at-AtStack inconsistency surfaced as SMP.!!.
       inr-valid-wf-final : ValidAtWF Heap alloc₁ (sem-inr {A} {B} x) sum-loc s-final
-      inr-valid-wf-final = valid-inr-wf payload-ptr input-before₁ sucLoc-sum-before input-valid-wf-final
+      inr-valid-wf-final = valid-inr-wf SMP.!! payload-ptr input-before₁ sucLoc-sum-before input-valid-wf-final
 
       rax-eq : readReg (regs s-final) Output ≡ SV-Ptr sum-loc
       rax-eq = writeReg-same (regs s₁) Output (SV-Ptr sum-loc)

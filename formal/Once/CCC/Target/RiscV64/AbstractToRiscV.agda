@@ -55,7 +55,7 @@ open import Once.CCC.Machine.SMCore
          load-indirect; load-indirect-suc;
          load-from-slot; store-at-slot; store-indirect; store-indirect-suc;
          lea-slot; restore-input;
-         instr-alloc-stack; instr-dealloc-stack;
+         instr-alloc-stack; instr-alloc-heap; instr-dealloc-stack;
          instr-push-frame; instr-pop-frame; instr-call-closure;
          worklist-init; worklist-push; worklist-pop; worklist-check;
          instr-reclaim-to; instr-sigop; instr-load-const; instr-load-code-addr;
@@ -157,6 +157,12 @@ compile-abstract (restore-input n) =
 compile-abstract (instr-alloc-stack n) =
   addi sp sp (Data.Integer.-_ (+ (slots n))) ∷ []
   where import Data.Integer
+
+-- instr-alloc-heap: allocate a heap cell.
+-- Plan 0.14: RV64 codegen stub. Real heap allocation is target-specific
+-- (e.g. malloc/bump-allocator). Emitted as a no-op until the RV64
+-- backend wires up heap allocation.
+compile-abstract (instr-alloc-heap n) = []
 
 -- instr-dealloc-stack: deallocate N slots from stack
 -- RV64: addi sp, sp, N*8

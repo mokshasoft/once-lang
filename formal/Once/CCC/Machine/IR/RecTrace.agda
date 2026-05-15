@@ -2007,8 +2007,10 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
           SMP.!!
 
         -- Construct full validity using valid-inl-wf
+        -- Plan 0.14 (Camp 2): wrapper-loc is AtStack but mL is polymorphic.
+        -- For mL = Stack lmm = tt; for mL = Heap lmm = ⊥. Surfaced as SMP.!!.
         processed-valid-proof : ValidAtWF mL alloc-after-wrapper processed wrapper-loc s-after-wrapper
-        processed-valid-proof = valid-inl-wf wrapper-ptr-written l-before-wrapper suc-wrapper-before l-valid-wrapper
+        processed-valid-proof = valid-inl-wf SMP.!! wrapper-ptr-written l-before-wrapper suc-wrapper-before l-valid-wrapper
 
         -- result-before: wrapper-base = l-reclaimable < l-reclaimable + 2 = next-slot alloc-after-wrapper
         result-before-proof : BeforeFrontier alloc-after-wrapper wrapper-loc
@@ -2519,8 +2521,9 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
         r-valid-wrapper = SMP.!!
 
         -- Construct full validity using valid-inr-wf
+        -- Plan 0.14 (Camp 2): mR polymorphic at AtStack wrapper-loc — lmm surfaced as SMP.!!
         processed-valid-proof : ValidAtWF mR alloc-after-wrapper processed wrapper-loc s-after-wrapper
-        processed-valid-proof = valid-inr-wf wrapper-ptr-written r-before-wrapper suc-wrapper-before r-valid-wrapper
+        processed-valid-proof = valid-inr-wf SMP.!! wrapper-ptr-written r-before-wrapper suc-wrapper-before r-valid-wrapper
 
         -- result-before: wrapper-base < next-slot alloc-after-wrapper
         result-before-proof : BeforeFrontier alloc-after-wrapper wrapper-loc

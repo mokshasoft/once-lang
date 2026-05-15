@@ -2567,7 +2567,11 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
       ------------------------------------------------------------------------
       -- Final pair validity
       ------------------------------------------------------------------------
+      -- Plan 0.14 (Camp 2): pair-loc is AtStack but `m` is polymorphic.
+      -- For m = Stack lmm = tt; for m = Heap lmm = ⊥. The Dispatcher should
+      -- route Heap-mode pairs to PairHeapWF.run-pair-heap; until that split
+      -- lands, lmm is surfaced as SMP.!!.
       pair-valid-wf-final : ValidAtWF m alloc-final
                               (pair (eval f x) (eval g x)) pair-loc s-final
-      pair-valid-wf-final = valid-pair-wf fst-ptr snd-ptr fst-before snd-before
+      pair-valid-wf-final = valid-pair-wf SMP.!! fst-ptr snd-ptr fst-before snd-before
                               sucLoc-pair-before fst-valid snd-valid

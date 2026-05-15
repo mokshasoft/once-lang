@@ -389,8 +389,11 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         }
 
       -- Result validity: closure with body-correct embedded
+      -- Plan 0.14 (Camp 2): closure-loc is AtStack but ValidAtWF Heap; lmm
+      -- reduces to ⊥. Surfaced as SMP.!! pending either deletion of this path
+      -- or actual heap-allocated closure lowering.
       result-valid-wf' : ValidAtWF Heap alloc' (eval (curry {k = k} f m) x) closure-loc s'
-      result-valid-wf' = valid-closure-wf body<bound
+      result-valid-wf' = valid-closure-wf body<bound SMP.!!
         env-ptr' code-ptr' input-before' code-before' code-before'
         input-valid-wf' body-correct
 

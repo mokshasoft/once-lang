@@ -31,8 +31,9 @@ open import Once.Type public
 -- Import WellFormedF for recursion scheme constructors
 open import Once.Functor.Translate using (WellFormedF)
 
--- HeapRef for free-heap
-open import Once.CCC.Machine.SMCore using (HeapRef)
+-- HeapRef and ValueLocation: needed for the LocMatchesMode predicate below.
+open import Once.CCC.Machine.SMCore
+  using (HeapRef; ValueLocation; AtStack; AtDynamic)
 
 -- Eval semantics universes — `const` carries values at BOTH levels,
 -- mirroring `SigOpInfo`'s `semI` + `semM` pattern. The proof-level
@@ -56,6 +57,32 @@ open import Once.CCC.SigOp.Info public using (SigOpInfo; mk-info; name; semI; se
 data AllocMode : Set where
   Stack : AllocMode  -- Allocate inline on stack (non-escaping)
   Heap  : AllocMode  -- Allocate on heap (escaping)
+
+------------------------------------------------------------------------
+-- LocMatchesMode: link between mode and location shape
+--
+-- Plan 0.14 (Camp 2): make the mode tag in ValidAtWF semantically
+-- meaningful. A compound value's representation lives where its mode
+-- says: Stack-mode compounds at AtStack locations, Heap-mode at
+-- AtDynamic. The Place stage's "mode matches loc shape" discipline is
+-- surfaced into the proof system here, so any ValidAtWF Heap … loc …
+-- carries the witness loc = AtDynamic _.
+--
+-- Note: only used by compound-type ValidAtWF constructors (pair /
+-- inl / inr / closure / μ / ν). Primitives can live at any loc
+-- regardless of mode because writeLoc (since Plan 0.14) accepts
+-- primitive StoredValues in heap cells and any StoredValue in stack
+-- cells.
+------------------------------------------------------------------------
+
+open import Data.Unit using (⊤)
+open import Data.Empty using (⊥)
+
+LocMatchesMode : ∀ {FS} → AllocMode → ValueLocation FS → Set
+LocMatchesMode Stack (AtStack _ _)  = ⊤
+LocMatchesMode Stack (AtDynamic _)  = ⊥
+LocMatchesMode Heap  (AtStack _ _)  = ⊥
+LocMatchesMode Heap  (AtDynamic _)  = ⊤
 
 ------------------------------------------------------------------------
 -- Allocator (Plan 0.2.4.5)
