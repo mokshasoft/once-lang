@@ -77,7 +77,11 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
   -- run-pair: Main implementation
   ------------------------------------------------------------------------
 
-  run-pair : ∀ {A B C} (mIn : AllocMode) (f : IR A B) (g : IR A C) (m : AllocMode)
+  -- Plan 0.14 (Camp 2): run-pair handles the Stack-mode pair only.
+  -- pair-loc is AtStack so LocMatchesMode Stack pair-loc = ⊤ (witness tt).
+  -- The Heap-mode pair is handled by PairHeapWF.run-pair-heap; the
+  -- Dispatcher case-splits on the pair IR's mode to pick the handler.
+  run-pair : ∀ {A B C} (mIn : AllocMode) (f : IR A B) (g : IR A C)
     (rec-wf : RecDispatcherWF (ir-size (⟨ f , g ⟩ Heap)))
     (x : ⟦ A ⟧) (input-loc : ValueLocation FS)
     (s : LocState FS) (alloc : AllocState {FS}) →
@@ -85,9 +89,9 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
     readReg (regs s) Input1 ≡ SV-Ptr input-loc →
-    IRResultAWF m (⟨ f , g ⟩ m) x s alloc
+    IRResultAWF Stack (⟨ f , g ⟩ Stack) x s alloc
 
-  run-pair {A} {B} {C} mIn f g m rec-wf x input-loc s alloc
+  run-pair {A} {B} {C} mIn f g rec-wf x input-loc s alloc
            input-valid-wf input-before not-halted rdi-eq =
     record
       { base = record
@@ -267,7 +271,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Run f via recursive dispatch — at the post-setup state.
       ------------------------------------------------------------------------
       f-exec-result : ∃[ mOut ] IRResultAWF mOut f x s-after-setup alloc-after-pair-slots
-      f-exec-result = rec-wf mIn f (⟨,⟩-f-smaller f g {m}) x input-loc s-after-setup alloc-after-pair-slots
+      f-exec-result = rec-wf mIn f (⟨,⟩-f-smaller f g {Stack}) x input-loc s-after-setup alloc-after-pair-slots
                         input-valid-wf-after-setup input-before-at-f-start
                         not-halted-after-setup rdi-eq-after-setup
       mF = proj₁ f-exec-result
@@ -872,7 +876,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Run g via recursive dispatch — at runtime state.
       ------------------------------------------------------------------------
       g-exec-result : ∃[ mOut ] IRResultAWF mOut g x s-after-middle alloc-after-f-reclaim
-      g-exec-result = rec-wf mIn g (⟨,⟩-g-smaller f g {m}) x input-loc s-after-middle alloc-after-f-reclaim
+      g-exec-result = rec-wf mIn g (⟨,⟩-g-smaller f g {Stack}) x input-loc s-after-middle alloc-after-f-reclaim
                         valid-at-s-after-middle input-before-at-reclaim-f
                         not-halted-at-s-after-middle rdi-eq-at-s-after-middle
       mG = proj₁ g-exec-result
@@ -2567,11 +2571,9 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
       ------------------------------------------------------------------------
       -- Final pair validity
       ------------------------------------------------------------------------
-      -- Plan 0.14 (Camp 2): pair-loc is AtStack but `m` is polymorphic.
-      -- For m = Stack lmm = tt; for m = Heap lmm = ⊥. The Dispatcher should
-      -- route Heap-mode pairs to PairHeapWF.run-pair-heap; until that split
-      -- lands, lmm is surfaced as SMP.!!.
-      pair-valid-wf-final : ValidAtWF m alloc-final
+      -- Plan 0.14 (Camp 2): run-pair handles Stack-mode pairs only;
+      -- pair-loc is AtStack and LocMatchesMode Stack (AtStack _ _) = ⊤.
+      pair-valid-wf-final : ValidAtWF Stack alloc-final
                               (pair (eval f x) (eval g x)) pair-loc s-final
-      pair-valid-wf-final = valid-pair-wf SMP.!! fst-ptr snd-ptr fst-before snd-before
+      pair-valid-wf-final = valid-pair-wf tt fst-ptr snd-ptr fst-before snd-before
                               sucLoc-pair-before fst-valid snd-valid

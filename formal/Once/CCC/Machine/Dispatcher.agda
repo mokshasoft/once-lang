@@ -65,6 +65,7 @@ open import Once.CCC.Machine.SizeBoundLemma public
 import Once.CCC.Machine.IR.SimpleWF as SimpleWFModule
 import Once.CCC.Machine.IR.ComposeWF as ComposeWFModule
 import Once.CCC.Machine.IR.PairWF2 as PairWFModule
+import Once.CCC.Machine.IR.PairHeapWF as PairHeapWFModule
 import Once.CCC.Machine.IR.CurryWF as CurryWFModule
 import Once.CCC.Machine.IR.ApplyWF as ApplyWFModule
 import Once.CCC.Machine.IR.RecCoreWF as RecCoreWFModule
@@ -162,8 +163,11 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
   -- Import compose IR implementation
   open ComposeWFModule.ComposeWFImpl {FS} program-bound
 
-  -- Import pair IR implementation (using PairWF2 - the new trace-based proof)
+  -- Import pair IR implementation. Plan 0.14: Stack-mode pairs go to
+  -- PairWF2.run-pair; Heap-mode pairs go to PairHeapWF.run-pair-heap.
+  -- Mode is read off the IR (`⟨ f , g ⟩ m`) and case-split in run-ir-wf.
   open PairWFModule.PairWF2Impl {FS} program-bound
+  open PairHeapWFModule.PairHeapWFImpl {FS} program-bound
 
   -- Import curry IR implementation
   open CurryWFModule.CurryWFImpl {FS} program-bound
@@ -336,10 +340,15 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
       run-compose mIn f g (make-rec-wf ir<bound rs) x input-loc s alloc
         input-valid-wf input-before not-halted rdi-eq
 
-    -- Pair: delegated to PairWF module
-    -- Output mode is m (from ⟨ f , g ⟩ m)
-    run-ir-wf mIn (⟨ f , g ⟩ m) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq (acc rs) =
-      m , run-pair mIn f g m (make-rec-wf ir<bound rs) x input-loc s alloc
+    -- Pair: delegated to PairWF / PairHeapWF based on mode.
+    -- Plan 0.14: the IR carries the mode (`⟨ f , g ⟩ m`); Stack routes
+    -- to run-pair (stack-allocated pair), Heap routes to run-pair-heap
+    -- (heap-allocated pair via instr-alloc-heap).
+    run-ir-wf mIn (⟨ f , g ⟩ Stack) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq (acc rs) =
+      Stack , run-pair mIn f g (make-rec-wf ir<bound rs) x input-loc s alloc
+        input-valid-wf input-before not-halted rdi-eq
+    run-ir-wf mIn (⟨ f , g ⟩ Heap) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq (acc rs) =
+      Heap , run-pair-heap mIn f g (make-rec-wf ir<bound rs) x input-loc s alloc
         input-valid-wf input-before not-halted rdi-eq
 
     -- Curry: delegated to CurryWF module (quantity-polymorphic)
