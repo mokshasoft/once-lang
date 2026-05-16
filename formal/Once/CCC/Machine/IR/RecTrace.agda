@@ -1398,6 +1398,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; final-state = s-after
         ; final-alloc = alloc
         ; trace-correct = cong proj₁ (exec-trace-single mov-to-output s alloc not-halted)
+        ; alloc-correct = SMP.!!  -- Plan 0.14: complete migration in dedicated pass
         ; result-place = at-loc input-loc
             (validityWF-mem-only k-val input-loc s s-after refl refl (valid-basetype-wf isBase input-before))
             input-before
@@ -1450,6 +1451,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; final-state = s-rec
         ; final-alloc = alloc-rec
         ; trace-correct = IRResultAWF.trace-correct rec-result
+        ; alloc-correct = SMP.!!  -- Plan 0.14: complete migration in dedicated pass
         ; result-place = at-loc rec-loc rec-valid rec-before rec-rax rec-valid rec-before
         ; not-halted = rec-not-halted
         ; semantic-correct = refl  -- sem-fmap Id f x = f x, coerce-struct⁻¹ Id _ x = x
@@ -2030,6 +2032,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; trace-correct = trace-correct-inj1
         -- Wrapper location: the Sum container at [wrapper-base, wrapper-base+1]
         -- wrapper-base = l-reclaimable (child's reclaimable-slot with ACTUAL RECLAMATION)
+        ; alloc-correct = SMP.!!  -- Plan 0.14: complete migration in dedicated pass
         ; result-place = at-loc wrapper-loc processed-valid-proof result-before-proof wrapper-rax-result processed-valid-proof result-before-proof
         ; not-halted = reclaim-wrapper-not-halted l-not-halted
         ; semantic-correct = cong inj₁ (ProcessedLayerResult.semantic-correct l-result)
@@ -2542,6 +2545,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; final-alloc = alloc-after-wrapper
         ; trace-correct = trace-correct-inj2
         -- Wrapper location: the Sum container at [wrapper-base, wrapper-base+1]
+        ; alloc-correct = SMP.!!  -- Plan 0.14: complete migration in dedicated pass
         ; result-place = at-loc wrapper-loc processed-valid-proof
             result-before-proof wrapper-rax-result
             processed-valid-proof result-before-proof
@@ -2683,6 +2687,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; final-state = ProcessedLayerResult.final-state r-result
         ; final-alloc = final-alloc
         ; trace-correct = trace-correct-proof
+        ; alloc-correct = SMP.!!  -- Plan 0.14: complete migration in dedicated pass
         ; result-place = at-loc (place-loc (ProcessedLayerResult.result-place r-result))
             processed-valid-proof
             (place-before (ProcessedLayerResult.result-place r-result))
@@ -3656,6 +3661,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
             ; final-alloc = IRResultAWF.final-alloc alg-result
             ; trace = final-trace
             ; trace-correct = trace-correct-proof
+            ; alloc-correct = SMP.!!  -- Plan 0.14: complete migration in dedicated pass
             ; result-place = cata-result-place-stub
             ; not-halted = IRResultAWF.not-halted alg-result
             ; frame-preserved = frame-preserved-proof

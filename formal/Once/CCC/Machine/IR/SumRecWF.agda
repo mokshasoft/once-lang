@@ -283,6 +283,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; final-alloc = alloc₁
         ; trace = inl-trace
         ; trace-correct = inl-inr-trace-state-correct 0 (suc (next-slot alloc)) (next-slot alloc) s alloc input-loc sum-loc s-final rdi-eq refl refl not-halted
+        ; alloc-correct = SMP.!!  -- Plan 0.14: complete migration in dedicated pass
         ; result-place = at-loc sum-loc inl-valid-wf-final sum-before rax-eq inl-reclaim-preserves-validity inl-reclaim-preserves-result
         ; not-halted = not-halted
         ; frame-preserved = refl
@@ -418,6 +419,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; final-alloc = alloc₁
         ; trace = inl-trace
         ; trace-correct = inl-inr-trace-state-correct 0 (suc (next-slot alloc)) (next-slot alloc) s alloc input-loc sum-loc s-final rdi-eq refl refl not-halted
+        ; alloc-correct = SMP.!!  -- Plan 0.14: complete migration in dedicated pass
         ; result-place = at-loc sum-loc inl-valid-wf-final sum-before rax-eq inl-reclaim-preserves-validity inl-reclaim-preserves-result
         ; not-halted = not-halted
         ; frame-preserved = refl
@@ -571,6 +573,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; final-alloc = alloc₁
         ; trace = inr-trace
         ; trace-correct = inl-inr-trace-state-correct 1 (suc (next-slot alloc)) (next-slot alloc) s alloc input-loc sum-loc s-final rdi-eq refl refl not-halted
+        ; alloc-correct = SMP.!!  -- Plan 0.14: complete migration in dedicated pass
         ; result-place = at-loc sum-loc inr-valid-wf-final sum-before rax-eq inr-reclaim-preserves-validity inr-reclaim-preserves-result
         ; not-halted = not-halted
         ; frame-preserved = refl
@@ -696,6 +699,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; final-alloc = alloc₁
         ; trace = inr-trace
         ; trace-correct = inl-inr-trace-state-correct 1 (suc (next-slot alloc)) (next-slot alloc) s alloc input-loc sum-loc s-final rdi-eq refl refl not-halted
+        ; alloc-correct = SMP.!!  -- Plan 0.14: complete migration in dedicated pass
         ; result-place = at-loc sum-loc inr-valid-wf-final sum-before rax-eq inr-reclaim-preserves-validity inr-reclaim-preserves-result
         ; not-halted = not-halted
         ; frame-preserved = refl
@@ -852,6 +856,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
                             (InlValidWF.payload-ptr inl-decomp)
                             refl
                             (IRResultAWF.trace-correct result-f) not-halted
+        ; alloc-correct = SMP.!!  -- Plan 0.14: complete migration in dedicated pass
         ; result-place = IRResultAWF.result-place result-f
         ; not-halted = IRResultAWF.not-halted result-f
         ; frame-preserved = IRResultAWF.frame-preserved result-f
@@ -967,6 +972,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
                             (InrValidWF.payload-ptr inr-decomp)
                             refl
                             (IRResultAWF.trace-correct result-g) not-halted
+        ; alloc-correct = SMP.!!  -- Plan 0.14: complete migration in dedicated pass
         ; result-place = IRResultAWF.result-place result-g
         ; not-halted = IRResultAWF.not-halted result-g
         ; frame-preserved = IRResultAWF.frame-preserved result-g
@@ -1125,6 +1131,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; final-alloc = alloc'
         ; trace = in-trace
         ; trace-correct = refl  -- s' DEFINED by trace
+        ; alloc-correct = SMP.!!  -- Plan 0.14: complete migration in dedicated pass
         ; result-place = at-loc result-loc result-valid result-bf rax-eq result-valid result-bf
         ; not-halted = not-halted'
         ; frame-preserved = refl
@@ -1244,6 +1251,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; final-alloc = alloc
         ; trace = out-μ-trace
         ; trace-correct = refl  -- s' DEFINED by trace
+        ; alloc-correct = SMP.!!  -- Plan 0.14: complete migration in dedicated pass
         ; result-place = at-loc input-loc result-valid input-before rax-eq result-valid input-before
         ; not-halted = not-halted'
         ; frame-preserved = refl
@@ -1331,6 +1339,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; final-alloc = alloc
         ; trace = out-trace
         ; trace-correct = refl  -- s' DEFINED by trace
+        ; alloc-correct = SMP.!!  -- Plan 0.14: complete migration in dedicated pass
         ; result-place = at-loc input-loc result-valid input-before rax-eq result-valid input-before
         ; not-halted = not-halted'
         ; frame-preserved = refl
@@ -1415,6 +1424,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; final-alloc = alloc'
         ; trace = in-ν-trace
         ; trace-correct = refl  -- s' DEFINED by trace
+        ; alloc-correct = SMP.!!  -- Plan 0.14: complete migration in dedicated pass
         ; result-place = at-loc result-loc result-valid result-bf rax-eq result-valid result-bf
         ; not-halted = not-halted'
         ; frame-preserved = refl

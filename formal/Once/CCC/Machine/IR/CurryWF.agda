@@ -129,6 +129,7 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; final-alloc = alloc'
         ; trace = trace
         ; trace-correct = refl  -- BY DEFINITION
+        ; alloc-correct = SMP.!!  -- Plan 0.14: complete migration in dedicated pass
         ; result-place = at-loc closure-loc result-valid-wf' closure-before' rax-eq' reclaim-preserves-validity' reclaim-preserves-result'
         ; not-halted = not-halted'
         ; frame-preserved = refl

@@ -81,6 +81,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; final-alloc = alloc
         ; trace = trace
         ; trace-correct = refl
+        ; alloc-correct = cong proj₂ (exec-trace-single mov-to-output s alloc not-halted)
         ; result-place = at-loc input-loc valid-s' input-before rax-eq valid-s' input-before
         ; not-halted = not-halted'
         ; frame-preserved = refl
@@ -160,6 +161,9 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; final-alloc = alloc
         ; trace = trace
         ; trace-correct = refl
+        ; alloc-correct =
+            trans (cong proj₂ (exec-trace-single load-indirect s alloc not-halted))
+                  (exec-abstract-load-indirect-preserves-alloc s alloc)
         ; result-place = at-loc fst-loc fst-valid-s' fst-before rax-eq fst-valid-s' fst-before
         ; not-halted = not-halted'
         ; frame-preserved = refl
@@ -264,6 +268,9 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; final-alloc = alloc
         ; trace = trace
         ; trace-correct = refl
+        ; alloc-correct =
+            trans (cong proj₂ (exec-trace-single load-indirect-suc s alloc not-halted))
+                  (exec-abstract-load-indirect-suc-preserves-alloc s alloc)
         ; result-place = at-loc snd-loc snd-valid-s' snd-before rax-eq snd-valid-s' snd-before
         ; not-halted = not-halted'
         ; frame-preserved = refl
@@ -367,6 +374,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; final-alloc = alloc
         ; trace = []
         ; trace-correct = refl
+        ; alloc-correct = refl
         ; result-place = unit-result
         ; not-halted = not-halted
         ; frame-preserved = refl
@@ -426,7 +434,8 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         { final-state = s'
         ; final-alloc = alloc
         ; trace = trace
-        ; trace-correct = refl  -- s' DEFINED by trace
+        ; trace-correct = refl
+        ; alloc-correct = cong proj₂ (exec-trace-single mov-to-output s alloc not-halted)
         ; result-place = unit-result
         ; not-halted = not-halted'
         ; frame-preserved = refl
@@ -498,7 +507,8 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         { final-state = s'
         ; final-alloc = alloc
         ; trace = trace
-        ; trace-correct = refl  -- s' DEFINED by trace
+        ; trace-correct = refl
+        ; alloc-correct = cong proj₂ (exec-trace-single mov-to-output s alloc not-halted)
         ; result-place = at-loc input-loc valid-eff input-before rax-eq valid-eff input-before
         ; not-halted = not-halted'
         ; frame-preserved = refl

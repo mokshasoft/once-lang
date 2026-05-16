@@ -110,6 +110,7 @@ module PairHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; final-alloc = alloc-final
         ; trace = pair-heap-trace
         ; trace-correct = refl
+        ; alloc-correct = SMP.!!  -- Plan 0.14: complete migration in dedicated pass
         ; result-place = at-loc pair-loc pair-valid-final pair-before-final
                             pair-rax-eq pair-valid-cont pair-before-cont
         ; not-halted = not-halted-final

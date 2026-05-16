@@ -415,6 +415,16 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
         final-alloc : AllocState {FS}
         trace : AbstractTrace
         trace-correct : proj₁ (exec-trace trace s alloc) ≡ final-state
+        -- Plan 0.14: symmetric to trace-correct. Ties final-alloc to
+        -- the runtime alloc produced by exec-trace. With this, the
+        -- construction-time vs runtime alloc split disappears: any
+        -- consumer that wants TraceWF / BeforeFrontier at the runtime
+        -- alloc can rewrite via this equality. Producers that already
+        -- construct final-alloc to match exec-trace's output discharge
+        -- this with refl; producers that maintained synthetic allocs
+        -- need to either prove the equality or refactor to use the
+        -- runtime alloc directly.
+        alloc-correct : proj₂ (exec-trace trace s alloc) ≡ final-alloc
         -- continuation-alloc: caller's frame, but next-slot and
         -- next-heap-ref both inherited from final-alloc (the resources
         -- the IR consumed). Bumping next-heap-ref here is what makes

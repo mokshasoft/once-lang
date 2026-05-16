@@ -198,6 +198,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
         ; final-alloc = alloc'
         ; trace = trace
         ; trace-correct = refl  -- BY DEFINITION
+        ; alloc-correct = SMP.!!  -- Plan 0.14: complete migration in dedicated pass
         ; result-place = result-place-final
         ; not-halted = not-halted'
         ; frame-preserved = trans (IRResultAWF.frame-preserved body-result) refl

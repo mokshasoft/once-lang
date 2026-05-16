@@ -171,6 +171,7 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; final-alloc = alloc₂
         ; trace = compose-trace
         ; trace-correct = refl  -- s-final DEFINED by trace
+        ; alloc-correct = SMP.!!  -- Plan 0.14: complete migration in dedicated pass
         ; result-place = subst
             (λ st → ResultPlace _ mOut alloc₂
                       (record alloc { next-slot     = next-slot     alloc₂

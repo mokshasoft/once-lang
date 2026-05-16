@@ -99,6 +99,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
         ; final-alloc = alloc-final
         ; trace = pair-trace
         ; trace-correct = refl  -- s-final DEFINED by trace
+        ; alloc-correct = SMP.!!  -- Plan 0.14: complete migration in dedicated pass
         ; result-place = at-loc pair-loc pair-valid-wf-final pair-before rax-eq pair-valid-wf-final pair-before
         ; not-halted = not-halted-final
         ; frame-preserved = refl
