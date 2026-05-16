@@ -52,7 +52,7 @@ open import Data.Product using (_×_; _,_; ∃; ∃-syntax; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.Nat.Properties using (≤-refl; ≤-trans; m≤m+n; n≤1+n; +-identityʳ; m≤n+m; m≤n⊔m; m≤m⊔n)
-open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; cong₂; subst)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore hiding (AllocMode; Stack; Heap)
@@ -110,7 +110,7 @@ module PairHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; final-alloc = alloc-final
         ; trace = pair-heap-trace
         ; trace-correct = refl
-        ; alloc-correct = SMP.!!  -- Plan 0.14: complete migration in dedicated pass
+        ; alloc-correct = alloc-correct-pair-heap
         ; result-place = at-loc pair-loc pair-valid-final pair-before-final
                             pair-rax-eq pair-valid-cont pair-before-cont
         ; not-halted = not-halted-final
@@ -704,6 +704,146 @@ module PairHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         { next-slot     = next-slot     alloc-after-g
         ; next-heap-ref = suc (next-heap-ref alloc-after-g)
         }
+
+      ------------------------------------------------------------------
+      -- alloc-correct discharge for pair-heap-trace.
+      --
+      -- Strategy: walk through the 5 trace segments via exec-trace-append,
+      -- bridging construction-time and runtime alloc states as needed.
+      ------------------------------------------------------------------
+
+      rest-after-setup : AbstractTrace
+      rest-after-setup = f-trace ++ mid-trace ++ g-trace ++ post-trace
+
+      pair-trace-decomp-1 : exec-trace pair-heap-trace s alloc ≡
+                            exec-trace rest-after-setup (proj₁ (exec-trace setup-trace s alloc))
+                                                        (proj₂ (exec-trace setup-trace s alloc))
+      pair-trace-decomp-1 = SMP.TraceComposition.exec-trace-append {FS} setup-trace rest-after-setup s alloc
+
+      -- Setup-trace produces alloc-after-scratch (the synthetic), propositionally.
+      alloc-setup-eq-scratch : proj₂ (exec-trace setup-trace s alloc) ≡ alloc-after-scratch
+      alloc-setup-eq-scratch =
+        let s₁ʳ = proj₁ (exec-abstract mov-to-output s alloc)
+            alloc₁ʳ = proj₂ (exec-abstract mov-to-output s alloc)
+            not-halted₁ʳ = exec-abstract-preserves-halted mov-to-output s alloc not-halted iph-mov-to-output
+            s₂ʳ = proj₁ (exec-abstract (store-at-slot backup-slot) s₁ʳ alloc₁ʳ)
+            alloc₂ʳ = proj₂ (exec-abstract (store-at-slot backup-slot) s₁ʳ alloc₁ʳ)
+            not-halted₂ʳ = exec-abstract-preserves-halted (store-at-slot backup-slot) s₁ʳ alloc₁ʳ not-halted₁ʳ iph-store-at-slot
+            d₀ = exec-trace-cons mov-to-output _ s alloc not-halted
+            d₁ = exec-trace-cons (store-at-slot backup-slot) _ s₁ʳ alloc₁ʳ not-halted₁ʳ
+            d₂ = exec-trace-single (instr-alloc-stack pair-heap-overhead) s₂ʳ alloc₂ʳ not-halted₂ʳ
+        in cong proj₂ (trans d₀ (trans d₁ d₂))
+
+      pair-trace-after-setup-alloc-eq :
+        proj₂ (exec-trace pair-heap-trace s alloc) ≡
+        proj₂ (exec-trace rest-after-setup s-after-setup alloc-after-scratch)
+      pair-trace-after-setup-alloc-eq =
+        trans (cong proj₂ pair-trace-decomp-1)
+              (cong (λ a → proj₂ (exec-trace rest-after-setup s-after-setup a))
+                    alloc-setup-eq-scratch)
+
+      rest-after-f : AbstractTrace
+      rest-after-f = mid-trace ++ g-trace ++ post-trace
+
+      f-decomp : exec-trace rest-after-setup s-after-setup alloc-after-scratch ≡
+                 exec-trace rest-after-f
+                   (proj₁ (exec-trace f-trace s-after-setup alloc-after-scratch))
+                   (proj₂ (exec-trace f-trace s-after-setup alloc-after-scratch))
+      f-decomp = SMP.TraceComposition.exec-trace-append {FS} f-trace rest-after-f s-after-setup alloc-after-scratch
+
+      pair-trace-after-f-alloc-eq :
+        proj₂ (exec-trace pair-heap-trace s alloc) ≡
+        proj₂ (exec-trace rest-after-f s-after-f alloc-after-f)
+      pair-trace-after-f-alloc-eq =
+        trans pair-trace-after-setup-alloc-eq (cong proj₂ f-decomp)
+
+      rest-after-middle : AbstractTrace
+      rest-after-middle = g-trace ++ post-trace
+
+      mid-decomp : exec-trace rest-after-f s-after-f alloc-after-f ≡
+                   exec-trace rest-after-middle s-after-middle alloc-after-middle
+      mid-decomp = SMP.TraceComposition.exec-trace-append {FS} mid-trace rest-after-middle s-after-f alloc-after-f
+
+      pair-trace-after-middle-alloc-eq :
+        proj₂ (exec-trace pair-heap-trace s alloc) ≡
+        proj₂ (exec-trace rest-after-middle s-after-middle alloc-after-middle)
+      pair-trace-after-middle-alloc-eq =
+        trans pair-trace-after-f-alloc-eq (cong proj₂ mid-decomp)
+
+      -- Bridge alloc-after-middle ≡ alloc-for-g (so we can apply result-g.alloc-correct).
+      alloc-after-middle-eq-after-f : alloc-after-middle ≡ alloc-after-f
+      alloc-after-middle-eq-after-f =
+        let nh-store = exec-abstract-preserves-halted (store-at-slot fst-stash)
+              s-after-f alloc-after-f not-halted-after-f iph-store-at-slot
+            d₀ = exec-trace-cons (store-at-slot fst-stash) _ s-after-f alloc-after-f not-halted-after-f
+            d₁ = exec-trace-single (restore-input backup-slot)
+                   (proj₁ (exec-abstract (store-at-slot fst-stash) s-after-f alloc-after-f))
+                   (proj₂ (exec-abstract (store-at-slot fst-stash) s-after-f alloc-after-f))
+                   nh-store
+            rest-preserves =
+              SMP.RecSchemeSemantics.exec-abstract-restore-input-preserves-alloc {FS}
+                backup-slot
+                (proj₁ (exec-abstract (store-at-slot fst-stash) s-after-f alloc-after-f))
+                (proj₂ (exec-abstract (store-at-slot fst-stash) s-after-f alloc-after-f))
+        in trans (cong proj₂ (trans d₀ d₁)) rest-preserves
+
+      alloc-for-g-eq-final-f : alloc-for-g ≡ IRResultAWF.final-alloc result-f
+      alloc-for-g-eq-final-f =
+        cong (λ fr → record (IRResultAWF.final-alloc result-f) { current-frame = fr })
+             (sym (IRResultAWF.frame-preserved result-f))
+
+      alloc-after-middle-eq-for-g : alloc-after-middle ≡ alloc-for-g
+      alloc-after-middle-eq-for-g =
+        trans alloc-after-middle-eq-after-f
+              (trans (IRResultAWF.alloc-correct result-f) (sym alloc-for-g-eq-final-f))
+
+      g-decomp : exec-trace rest-after-middle s-after-middle alloc-after-middle ≡
+                 exec-trace post-trace
+                   (proj₁ (exec-trace g-trace s-after-middle alloc-after-middle))
+                   (proj₂ (exec-trace g-trace s-after-middle alloc-after-middle))
+      g-decomp = SMP.TraceComposition.exec-trace-append {FS} g-trace post-trace s-after-middle alloc-after-middle
+
+      runtime-state-after-g-eq :
+        proj₁ (exec-trace g-trace s-after-middle alloc-after-middle) ≡ s-after-g
+      runtime-state-after-g-eq =
+        trans (cong (λ a → proj₁ (exec-trace g-trace s-after-middle a)) alloc-after-middle-eq-for-g)
+              (IRResultAWF.trace-correct result-g)
+
+      runtime-alloc-after-g-eq-final-g :
+        proj₂ (exec-trace g-trace s-after-middle alloc-after-middle) ≡ IRResultAWF.final-alloc result-g
+      runtime-alloc-after-g-eq-final-g =
+        trans (cong (λ a → proj₂ (exec-trace g-trace s-after-middle a)) alloc-after-middle-eq-for-g)
+              (IRResultAWF.alloc-correct result-g)
+
+      pair-trace-after-g-alloc-eq :
+        proj₂ (exec-trace pair-heap-trace s alloc) ≡
+        proj₂ (exec-trace post-trace s-after-g alloc-after-g)
+      pair-trace-after-g-alloc-eq =
+        trans (trans pair-trace-after-middle-alloc-eq (cong proj₂ g-decomp))
+              (cong₂ (λ st a → proj₂ (exec-trace post-trace st a))
+                runtime-state-after-g-eq runtime-alloc-after-g-eq-final-g)
+
+      -- post-trace bumps next-heap-ref by 1 (via instr-alloc-heap 2).
+      -- 9 steps; postulated pending dedicated proof analogous to
+      -- curry-trace-alloc-correct.
+      post-trace-alloc-correct :
+        proj₂ (exec-trace post-trace s-after-g alloc-after-g) ≡
+          record alloc-after-g { next-heap-ref = suc (next-heap-ref alloc-after-g) }
+      post-trace-alloc-correct = SMP.!!
+
+      -- Final: bridge the bumped alloc-after-g to alloc-final (current-frame
+      -- match via result-g.frame-preserved; other fields match by def).
+      final-bridge-eq :
+        record alloc-after-g { next-heap-ref = suc (next-heap-ref alloc-after-g) } ≡ alloc-final
+      final-bridge-eq =
+        cong (λ fr → record alloc-after-g
+                       { current-frame = fr
+                       ; next-heap-ref = suc (next-heap-ref alloc-after-g) })
+             (IRResultAWF.frame-preserved result-g)
+
+      alloc-correct-pair-heap : proj₂ (exec-trace pair-heap-trace s alloc) ≡ alloc-final
+      alloc-correct-pair-heap =
+        trans pair-trace-after-g-alloc-eq (trans post-trace-alloc-correct final-bridge-eq)
 
       not-halted-final : halted s-final ≡ false
       not-halted-final = exec-trace-preserves-halted-WF pair-heap-trace s alloc not-halted SMP.!!
