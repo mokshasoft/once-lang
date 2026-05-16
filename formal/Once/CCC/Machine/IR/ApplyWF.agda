@@ -158,8 +158,13 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
   -- Step 7: Store env-loc at pair[0].
   -- Step 8: Set Output := &pair (= lea-slot pair-slot).
   -- Step 9: Set Input1 := &pair.
+  -- Plan 0.14: include instr-alloc-stack pair-slots at the start so
+  -- runtime alloc.next-slot bumps to match child-alloc (= record alloc
+  -- { next-slot += pair-slots }). The trace also reserves the (env, arg)
+  -- pair's stack slots.
   apply-setup-trace : (pair-slot : ℕ) → AbstractTrace
   apply-setup-trace pair-slot =
+    instr-alloc-stack pair-slots ∷      -- Reserve pair-slots for (env, arg)
     load-indirect-suc ∷                 -- Output := arg-loc
     store-at-slot (suc pair-slot) ∷     -- pair[1] := arg-loc
     load-indirect ∷                     -- Output := closure-loc
@@ -198,7 +203,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
         ; final-alloc = alloc'
         ; trace = trace
         ; trace-correct = refl  -- BY DEFINITION
-        ; alloc-correct = SMP.!!  -- Plan 0.14: complete migration in dedicated pass
+        ; alloc-correct = alloc-correct-apply
         ; result-place = result-place-final
         ; not-halted = not-halted'
         ; frame-preserved = trans (IRResultAWF.frame-preserved body-result) refl
@@ -322,11 +327,12 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       -- Frame shorthand
       frame = current-frame alloc
 
-      -- Step 1: load-indirect-suc
-      -- Before: Input1 = input-loc
-      -- After: Output = arg-loc (from *(sucLoc input-loc))
+      -- Step 1: instr-alloc-stack pair-slots ∷ load-indirect-suc
+      -- Plan 0.14: instr-alloc-stack at the start bumps next-slot by
+      -- pair-slots so runtime alloc matches child-alloc.
+      -- After load-indirect-suc: Output = arg-loc (from *(sucLoc input-loc))
       step1-trace : AbstractTrace
-      step1-trace = load-indirect-suc ∷ []
+      step1-trace = instr-alloc-stack pair-slots ∷ load-indirect-suc ∷ []
 
       s1 : LocState FS
       s1 = proj₁ (exec-trace step1-trace s alloc)
@@ -349,7 +355,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       -- Not halted after step 1
       not-halted-s1 : halted s1 ≡ false
       not-halted-s1 = exec-trace-preserves-halted-WF step1-trace s alloc not-halted
-                        (twf-∷ (SMP.!!) twf-[])  -- load-indirect-suc InstrWF: arg-ptr witness
+                        (twf-∷ tt (twf-∷ (SMP.!!) twf-[]))  -- alloc-stack + load-indirect-suc InstrWF
 
       -- Step 2 writes arg-loc to slot (suc pair-slot)
       step2-written : readLoc s2 (AtStack frame (suc pair-slot)) ≡ just (SV-Ptr arg-loc)
@@ -427,7 +433,8 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
 
       -- State after steps 1-6 (before store-at-slot pair-slot)
       prefix-for-env : AbstractTrace
-      prefix-for-env = load-indirect-suc ∷ store-at-slot (suc pair-slot) ∷
+      prefix-for-env = instr-alloc-stack pair-slots ∷
+                       load-indirect-suc ∷ store-at-slot (suc pair-slot) ∷
                        load-indirect ∷ mov-to-input ∷ instr-save-closure-reg ∷
                        load-indirect ∷ []
 
@@ -441,12 +448,13 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       -- TracePreservesHalted for prefix-for-env
       prefix-for-env-tph : TraceWF s alloc prefix-for-env
       prefix-for-env-tph =
-        twf-∷ (SMP.!!)            -- load-indirect-suc: arg-ptr witness
+        twf-∷ tt                 -- instr-alloc-stack: InstrWF = ⊤
+        (twf-∷ (SMP.!!)            -- load-indirect-suc: arg-ptr witness
         (twf-∷ tt
         (twf-∷ (SMP.!!)          -- load-indirect: closure-ptr witness
         (twf-∷ tt
         (twf-∷ tt
-        (twf-∷ (SMP.!!) twf-[]))))) -- load-indirect: env-ptr witness
+        (twf-∷ (SMP.!!) twf-[])))))) -- load-indirect: env-ptr witness
 
       not-halted-after-prefix-for-env : halted (proj₁ (exec-trace prefix-for-env s alloc)) ≡ false
       not-halted-after-prefix-for-env = exec-trace-preserves-halted-WF prefix-for-env s alloc not-halted prefix-for-env-tph
@@ -470,8 +478,9 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       ------------------------------------------------------------------------
 
       -- Decompose prefix-for-env into sub-traces
+      -- Plan 0.14: prefix12 includes instr-alloc-stack pair-slots at the start.
       prefix12 : AbstractTrace
-      prefix12 = load-indirect-suc ∷ store-at-slot (suc pair-slot) ∷ []
+      prefix12 = instr-alloc-stack pair-slots ∷ load-indirect-suc ∷ store-at-slot (suc pair-slot) ∷ []
 
       prefix345 : AbstractTrace
       prefix345 = load-indirect ∷ mov-to-input ∷ instr-save-closure-reg ∷ load-indirect ∷ []
@@ -488,7 +497,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
 
       -- Steps 1-2 preserve halted
       prefix12-tph : TraceWF s alloc prefix12
-      prefix12-tph = twf-∷ (SMP.!!) (twf-∷ tt twf-[])  -- TODO: load-indirect-suc witness
+      prefix12-tph = twf-∷ tt (twf-∷ (SMP.!!) (twf-∷ tt twf-[]))  -- alloc-stack + load-indirect-suc witness
 
       not-halted-s12 : halted s12 ≡ false
       not-halted-s12 = exec-trace-preserves-halted-WF prefix12 s alloc not-halted prefix12-tph
@@ -572,7 +581,8 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       -- Input1 register points to pair after setup
       -- Decompose setup-trace as prefix ++ (lea-slot pair-slot ∷ mov-to-input ∷ [])
       setup-prefix : AbstractTrace
-      setup-prefix = load-indirect-suc ∷ store-at-slot (suc pair-slot) ∷
+      setup-prefix = instr-alloc-stack pair-slots ∷
+                     load-indirect-suc ∷ store-at-slot (suc pair-slot) ∷
                      load-indirect ∷ mov-to-input ∷ instr-save-closure-reg ∷
                      load-indirect ∷ store-at-slot pair-slot ∷ []
 
@@ -583,13 +593,14 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       -- TracePreservesHalted for the prefix
       setup-prefix-tph : TraceWF s alloc setup-prefix
       setup-prefix-tph =
-        twf-∷ (SMP.!!)            -- TODO: load-indirect-suc witness
+        twf-∷ tt                 -- instr-alloc-stack: InstrWF = ⊤
+        (twf-∷ (SMP.!!)            -- TODO: load-indirect-suc witness
         (twf-∷ tt
         (twf-∷ (SMP.!!)          -- TODO: load-indirect witness
         (twf-∷ tt
         (twf-∷ tt
         (twf-∷ (SMP.!!)          -- TODO: load-indirect witness
-        (twf-∷ tt twf-[]))))))
+        (twf-∷ tt twf-[])))))))
 
       not-halted-after-prefix : halted (proj₁ (exec-trace setup-prefix s alloc)) ≡ false
       not-halted-after-prefix = exec-trace-preserves-halted-WF setup-prefix s alloc not-halted setup-prefix-tph
@@ -610,7 +621,8 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       -- Setup trace preserves halted (used in multiple places)
       setup-tph : TraceWF s alloc (apply-setup-trace pair-slot)
       setup-tph =
-        twf-∷ (SMP.!!)            -- TODO: load-indirect-suc witness
+        twf-∷ tt                 -- instr-alloc-stack pair-slots: InstrWF = ⊤
+        (twf-∷ (SMP.!!)            -- TODO: load-indirect-suc witness
         (twf-∷ tt
         (twf-∷ (SMP.!!)          -- TODO: load-indirect witness
         (twf-∷ tt
@@ -618,7 +630,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
         (twf-∷ (SMP.!!)          -- TODO: load-indirect witness
         (twf-∷ tt
         (twf-∷ tt
-        (twf-∷ tt twf-[]))))))))
+        (twf-∷ tt twf-[])))))))))
 
       -- Not halted after setup
       not-halted-after-setup : halted s-after-setup ≡ false
@@ -688,6 +700,35 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       -- need to bridge through frame-eq to (s-after-setup, alloc-after-setup).
       trace-twf' : TraceWF s alloc trace
       trace-twf' = twf-++ not-halted setup-tph (SMP.!!)  -- TODO: body-trace's twf at runtime state
+
+      ------------------------------------------------------------------
+      -- Plan 0.14: alloc-correct discharge for apply trace.
+      -- trace = apply-setup-trace ++ body-trace.
+      -- apply-setup-trace starts with `instr-alloc-stack pair-slots`,
+      -- followed by 9 alloc-preservers; its alloc output is child-alloc.
+      -- body-result.alloc-correct gives proj₂ at (s-after-setup, child-alloc)
+      -- = body-result.final-alloc = alloc'.
+      ------------------------------------------------------------------
+
+      -- Bridge: proj₂ (exec-trace apply-setup-trace s alloc) ≡ child-alloc.
+      -- 10-instr chain; instr-alloc-stack at the start bumps next-slot;
+      -- the remaining 9 preserve alloc.
+      alloc-setup-eq-child : proj₂ (exec-trace (apply-setup-trace pair-slot) s alloc) ≡ child-alloc
+      alloc-setup-eq-child = SMP.!!  -- 10-step chain pending dedicated proof
+
+      alloc-correct-apply : proj₂ (exec-trace trace s alloc) ≡ alloc'
+      alloc-correct-apply =
+        let -- Decompose trace via exec-trace-append.
+            split = SMP.TraceComposition.exec-trace-append {FS} (apply-setup-trace pair-slot) body-trace s alloc
+            -- After bridging alloc-setup-eq-child, we're running body-trace from (s-after-setup, child-alloc).
+            bridge : exec-trace body-trace (proj₁ (exec-trace (apply-setup-trace pair-slot) s alloc))
+                                            (proj₂ (exec-trace (apply-setup-trace pair-slot) s alloc))
+                     ≡ exec-trace body-trace s-after-setup child-alloc
+            bridge = cong (exec-trace body-trace s-after-setup) alloc-setup-eq-child
+            -- body-result.alloc-correct at (s-after-setup, child-alloc).
+            body-alloc : proj₂ (exec-trace body-trace s-after-setup child-alloc) ≡ alloc'
+            body-alloc = IRResultAWF.alloc-correct body-result
+        in trans (cong proj₂ (trans split bridge)) body-alloc
 
       ----------------------------------------------------------------
       -- Foundation postulates (Plan 0.2.4.5 task #30).
