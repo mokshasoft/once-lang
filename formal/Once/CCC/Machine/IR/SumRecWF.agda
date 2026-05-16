@@ -1232,11 +1232,15 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; final-alloc = alloc'
         ; trace = in-trace
         ; trace-correct = refl  -- s' DEFINED by trace
-        ; alloc-correct = SMP.!!  -- Plan 0.14: complete migration in dedicated pass
+        ; alloc-correct =
+            let raw = rec-scheme-alloc-correct-4 result-slot s alloc not-halted
+                arith : next-slot alloc +ℕ 1 ≡ suc (next-slot alloc)
+                arith = +-comm (next-slot alloc) 1
+            in trans raw (cong (λ k → record alloc { next-slot = k }) arith)
         ; result-place = at-loc result-loc result-valid result-bf rax-eq result-valid result-bf
         ; not-halted = not-halted'
         ; frame-preserved = refl
-        ; trace-twf = twf-∷ tt (twf-∷ tt (twf-∷ tt twf-[]))
+        ; trace-twf = twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt twf-[])))
         ; mem-preserved-before = λ _ _ → SMP.!!
         ; trace-preserves-halted = exec-trace-preserves-halted-WF in-trace
         }
@@ -1287,7 +1291,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- 2. store-at-slot: slot[n] := Output
       -- 3. lea-slot: Output := &slot[n] (result location)
       in-trace : AbstractTrace
-      in-trace = mov-to-output ∷ store-at-slot result-slot ∷ lea-slot result-slot ∷ []
+      in-trace = rec-scheme-trace-4 result-slot
 
       s' : LocState FS
       s' = proj₁ (exec-trace in-trace s alloc)
@@ -1304,18 +1308,18 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       result-valid = In-trace-valid wf m x
 
       rax-eq : readReg (regs s') Output ≡ SV-Ptr result-loc
-      rax-eq = rec-scheme-output-is-slot result-slot s alloc not-halted
+      rax-eq = rec-scheme-output-is-slot-4 result-slot s alloc not-halted
 
       not-halted' : halted s' ≡ false
-      not-halted' = rec-scheme-preserves-halted-3 result-slot s alloc not-halted
+      not-halted' = rec-scheme-preserves-halted-4 result-slot s alloc not-halted
 
       mem-preserved : ∀ loc → BeforeFrontier alloc loc → readLoc s' loc ≡ readLoc s loc
       mem-preserved (AtStack f k) (stack-before refl k<n) =
-        rec-scheme-preserves-slot-below-3 result-slot k s alloc not-halted k<n
+        rec-scheme-preserves-slot-below-4 result-slot k s alloc not-halted k<n
       mem-preserved (AtStack f k) (stack-ancestor cf≺f _) =
-        rec-scheme-preserves-ancestor-3 result-slot s alloc f k not-halted (λ eq → ≺⇒≢ cf≺f (sym eq))
+        rec-scheme-preserves-ancestor-4 result-slot s alloc f k not-halted (λ eq → ≺⇒≢ cf≺f (sym eq))
       mem-preserved (AtDynamic hl) (heap-before _) =
-        rec-scheme-preserves-heap-3 result-slot s alloc hl not-halted
+        rec-scheme-preserves-heap-4 result-slot s alloc hl not-halted
 
       trace-wa : SMP.TraceWritesAbove (next-slot alloc) in-trace
       trace-wa = ≤-refl , tt
@@ -1352,7 +1356,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; final-alloc = alloc
         ; trace = out-μ-trace
         ; trace-correct = refl  -- s' DEFINED by trace
-        ; alloc-correct = SMP.!!  -- Plan 0.14: complete migration in dedicated pass
+        ; alloc-correct = cong proj₂ (exec-trace-single mov-to-output s alloc not-halted)
         ; result-place = at-loc input-loc result-valid input-before rax-eq result-valid input-before
         ; not-halted = not-halted'
         ; frame-preserved = refl
@@ -1440,7 +1444,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; final-alloc = alloc
         ; trace = out-trace
         ; trace-correct = refl  -- s' DEFINED by trace
-        ; alloc-correct = SMP.!!  -- Plan 0.14: complete migration in dedicated pass
+        ; alloc-correct = cong proj₂ (exec-trace-single mov-to-output s alloc not-halted)
         ; result-place = at-loc input-loc result-valid input-before rax-eq result-valid input-before
         ; not-halted = not-halted'
         ; frame-preserved = refl
@@ -1525,11 +1529,15 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; final-alloc = alloc'
         ; trace = in-ν-trace
         ; trace-correct = refl  -- s' DEFINED by trace
-        ; alloc-correct = SMP.!!  -- Plan 0.14: complete migration in dedicated pass
+        ; alloc-correct =
+            let raw = rec-scheme-alloc-correct-4 result-slot s alloc not-halted
+                arith : next-slot alloc +ℕ 1 ≡ suc (next-slot alloc)
+                arith = +-comm (next-slot alloc) 1
+            in trans raw (cong (λ k → record alloc { next-slot = k }) arith)
         ; result-place = at-loc result-loc result-valid result-bf rax-eq result-valid result-bf
         ; not-halted = not-halted'
         ; frame-preserved = refl
-        ; trace-twf = twf-∷ tt (twf-∷ tt (twf-∷ tt twf-[]))
+        ; trace-twf = twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt twf-[])))
         ; mem-preserved-before = λ _ _ → SMP.!!
         ; trace-preserves-halted = exec-trace-preserves-halted-WF in-ν-trace
         }
@@ -1570,7 +1578,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- 2. store-at-slot: slot[n] := Output
       -- 3. lea-slot: Output := &slot[n] (result location)
       in-ν-trace : AbstractTrace
-      in-ν-trace = mov-to-output ∷ store-at-slot result-slot ∷ lea-slot result-slot ∷ []
+      in-ν-trace = rec-scheme-trace-4 result-slot
 
       s' : LocState FS
       s' = proj₁ (exec-trace in-ν-trace s alloc)
@@ -1596,18 +1604,18 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
       -- rax-eq: Output = slot address after lea-slot
       rax-eq : readReg (regs s') Output ≡ SV-Ptr result-loc
-      rax-eq = rec-scheme-output-is-slot result-slot s alloc not-halted
+      rax-eq = rec-scheme-output-is-slot-4 result-slot s alloc not-halted
 
       not-halted' : halted s' ≡ false
-      not-halted' = rec-scheme-preserves-halted-3 result-slot s alloc not-halted
+      not-halted' = rec-scheme-preserves-halted-4 result-slot s alloc not-halted
 
       mem-preserved : ∀ loc → BeforeFrontier alloc loc → readLoc s' loc ≡ readLoc s loc
       mem-preserved (AtStack f k) (stack-before refl k<n) =
-        rec-scheme-preserves-slot-below-3 result-slot k s alloc not-halted k<n
+        rec-scheme-preserves-slot-below-4 result-slot k s alloc not-halted k<n
       mem-preserved (AtStack f k) (stack-ancestor cf≺f _) =
-        rec-scheme-preserves-ancestor-3 result-slot s alloc f k not-halted (≢-sym (≺⇒≢ cf≺f))
+        rec-scheme-preserves-ancestor-4 result-slot s alloc f k not-halted (≢-sym (≺⇒≢ cf≺f))
       mem-preserved (AtDynamic hl) (heap-before _) =
-        rec-scheme-preserves-heap-3 result-slot s alloc hl not-halted
+        rec-scheme-preserves-heap-4 result-slot s alloc hl not-halted
 
       trace-wa : SMP.TraceWritesAbove (next-slot alloc) in-ν-trace
       trace-wa = ≤-refl , tt

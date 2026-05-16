@@ -3263,6 +3263,120 @@ module RecSchemeSemantics {FS : FrameSemantics} where
       final-state-eq : proj₁ (exec-trace (mov-to-output ∷ store-at-slot n ∷ lea-slot n ∷ []) s alloc) ≡ s3
       final-state-eq = cong proj₁ (trans step1 (trans step2 step3))
   ------------------------------------------------------------------------
+  -- Plan 0.14: rec-scheme-* helpers for the 4-instr trace
+  --     instr-alloc-stack 1 ∷ mov-to-output ∷ store-at-slot n ∷ lea-slot n ∷ []
+  --
+  -- Wrapper variants of the 3-instr family. The leading `instr-alloc-stack
+  -- 1` makes runtime alloc.next-slot match producers' `alloc' = record
+  -- alloc { next-slot = suc (next-slot alloc) }` claim. Used by AnaWF,
+  -- ParaWF, RecCoreWF Fuse/Hylo, SumRecWF run-In/Out.
+  ------------------------------------------------------------------------
+
+  -- 4-instr trace (parameterised by the result slot).
+  rec-scheme-trace-4 : (n : ℕ) → AbstractTrace
+  rec-scheme-trace-4 n = instr-alloc-stack 1 ∷ mov-to-output ∷ store-at-slot n ∷ lea-slot n ∷ []
+
+  -- After the 4-instr trace, halted is preserved.
+  rec-scheme-preserves-halted-4 : ∀ (n : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
+    halted s ≡ false →
+    halted (proj₁ (exec-trace (rec-scheme-trace-4 n) s alloc)) ≡ false
+  rec-scheme-preserves-halted-4 n s alloc not-halted =
+    exec-trace-preserves-halted (rec-scheme-trace-4 n) s alloc not-halted
+      (tph-∷ iph-alloc-stack
+        (tph-∷ iph-mov-to-output
+          (tph-∷ iph-store-at-slot (tph-∷ iph-lea-slot tph-[]))))
+
+  -- After the 4-instr trace, alloc.next-slot is bumped by 1.
+  -- instr-alloc-stack bumps; the remaining 3 preserve alloc.
+  -- Note: returns the "raw" form `next-slot alloc + 1` (from
+  -- instr-alloc-stack 1's semantics). Callers can convert via
+  -- arithmetic if they want `suc (next-slot alloc)`.
+  rec-scheme-alloc-correct-4 : ∀ (n : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
+    halted s ≡ false →
+    proj₂ (exec-trace (rec-scheme-trace-4 n) s alloc) ≡
+      record alloc { next-slot = Data.Nat._+_ (next-slot alloc) 1 }
+  rec-scheme-alloc-correct-4 n s alloc not-halted =
+    let s₁ = proj₁ (exec-abstract (instr-alloc-stack 1) s alloc)
+        alloc₁ = proj₂ (exec-abstract (instr-alloc-stack 1) s alloc)
+        h₁ = exec-abstract-preserves-halted (instr-alloc-stack 1) s alloc not-halted iph-alloc-stack
+        s₂ = proj₁ (exec-abstract mov-to-output s₁ alloc₁)
+        h₂ = exec-abstract-preserves-halted mov-to-output s₁ alloc₁ h₁ iph-mov-to-output
+        s₃ = proj₁ (exec-abstract (store-at-slot n) s₂ alloc₁)
+        h₃ = exec-abstract-preserves-halted (store-at-slot n) s₂ alloc₁ h₂ iph-store-at-slot
+        d₀ = exec-trace-cons (instr-alloc-stack 1) _ s alloc not-halted
+        d₁ = exec-trace-cons mov-to-output _ s₁ alloc₁ h₁
+        d₂ = exec-trace-cons (store-at-slot n) _ s₂ alloc₁ h₂
+        d₃ = exec-trace-single (lea-slot n) s₃ alloc₁ h₃
+    in cong proj₂ (trans d₀ (trans d₁ (trans d₂ d₃)))
+
+  -- After the 4-instr trace, Output = SV-Ptr (AtStack (current-frame alloc) n).
+  -- The lea-slot at the end uses current-frame of the alloc-at-that-point;
+  -- since instr-alloc-stack only changes next-slot, current-frame is
+  -- preserved throughout.
+  rec-scheme-output-is-slot-4 : ∀ (n : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
+    halted s ≡ false →
+    readReg (regs (proj₁ (exec-trace (rec-scheme-trace-4 n) s alloc))) Output ≡
+    SV-Ptr (AtStack (current-frame alloc) n)
+  rec-scheme-output-is-slot-4 n s alloc not-halted =
+    let s₁ = proj₁ (exec-abstract (instr-alloc-stack 1) s alloc)
+        alloc₁ = proj₂ (exec-abstract (instr-alloc-stack 1) s alloc)
+        h₁ = exec-abstract-preserves-halted (instr-alloc-stack 1) s alloc not-halted iph-alloc-stack
+        frame-eq : current-frame alloc₁ ≡ current-frame alloc
+        frame-eq = refl  -- instr-alloc-stack only changes next-slot
+        -- Recurse via existing 3-instr helper at (s₁, alloc₁).
+        tail-result : readReg (regs (proj₁ (exec-trace (mov-to-output ∷ store-at-slot n ∷ lea-slot n ∷ []) s₁ alloc₁))) Output ≡
+                      SV-Ptr (AtStack (current-frame alloc₁) n)
+        tail-result = rec-scheme-output-is-slot n s₁ alloc₁ h₁
+        d₀ = exec-trace-cons (instr-alloc-stack 1) _ s alloc not-halted
+    in trans (cong (λ p → readReg (regs (proj₁ p)) Output) d₀) tail-result
+
+  -- Slot below the result slot is preserved by the 4-instr trace.
+  -- Used in trace-writes-below proofs.
+  rec-scheme-preserves-slot-below-4 : ∀ (n k : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
+    halted s ≡ false →
+    k < n →
+    readLoc (proj₁ (exec-trace (rec-scheme-trace-4 n) s alloc))
+            (AtStack (current-frame alloc) k) ≡
+    readLoc s (AtStack (current-frame alloc) k)
+  rec-scheme-preserves-slot-below-4 n k s alloc not-halted k<n =
+    exec-trace-preserves-slot-below (rec-scheme-trace-4 n) s alloc n k
+      (≤-refl , tt)  -- TraceWritesAbove n: only store-at-slot n writes; n ≤ n
+      tt             -- TraceNoHeapWrites
+      k<n
+
+  -- BeforeFrontier mem-preserved-4 lives in producer files (which open
+  -- BeforeFrontier from CCC.Machine.Allocation); the building blocks are
+  -- rec-scheme-preserves-slot-below-4, rec-scheme-preserves-ancestor-4,
+  -- and rec-scheme-preserves-heap-4 below.
+
+  -- Helper: ancestor frame preservation through the 4-instr trace.
+  rec-scheme-preserves-ancestor-4 : ∀ (n : ℕ) (s : LocState FS) (alloc : AllocState {FS}) (f : RSFrame) (k : ℕ) →
+    halted s ≡ false →
+    f ≢ current-frame alloc →
+    readLoc (proj₁ (exec-trace (rec-scheme-trace-4 n) s alloc)) (AtStack f k) ≡
+    readLoc s (AtStack f k)
+  rec-scheme-preserves-ancestor-4 n s alloc f k not-halted f≢cf =
+    let s₁ = proj₁ (exec-abstract (instr-alloc-stack 1) s alloc)
+        alloc₁ = proj₂ (exec-abstract (instr-alloc-stack 1) s alloc)
+        h₁ = exec-abstract-preserves-halted (instr-alloc-stack 1) s alloc not-halted iph-alloc-stack
+        alloc-step-mem : readLoc s₁ (AtStack f k) ≡ readLoc s (AtStack f k)
+        alloc-step-mem = refl  -- instr-alloc-stack only changes regs.stackSlot
+        f≢cf₁ : f ≢ current-frame alloc₁
+        f≢cf₁ = f≢cf  -- current-frame alloc₁ = current-frame alloc (definitional)
+        tail-result = rec-scheme-preserves-ancestor-3 n s₁ alloc₁ f k h₁ f≢cf₁
+        d₀ = exec-trace-cons (instr-alloc-stack 1) _ s alloc not-halted
+    in trans (cong (λ p → readLoc (proj₁ p) (AtStack f k)) d₀)
+             (trans tail-result alloc-step-mem)
+
+  -- Helper: heap-loc preservation through the 4-instr trace.
+  rec-scheme-preserves-heap-4 : ∀ (n : ℕ) (s : LocState FS) (alloc : AllocState {FS}) (hl : HeapLocation) →
+    halted s ≡ false →
+    readLoc (proj₁ (exec-trace (rec-scheme-trace-4 n) s alloc)) (AtDynamic hl) ≡
+    readLoc s (AtDynamic hl)
+  rec-scheme-preserves-heap-4 n s alloc hl not-halted =
+    exec-trace-preserves-heap-loc (rec-scheme-trace-4 n) s alloc hl tt
+
+  ------------------------------------------------------------------------
   -- Helper lemmas for RecTrace register setup proofs
   --
   -- These prove properties about load-indirect-suc followed by mov-to-input.

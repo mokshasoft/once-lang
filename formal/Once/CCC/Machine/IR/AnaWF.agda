@@ -146,6 +146,21 @@ module AnaWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   rec-scheme-mem-preserved {n} s alloc refl not-halted (AtDynamic hl) (heap-before _) =
     rec-scheme-preserves-heap-3 n s alloc hl not-halted
 
+  -- Plan 0.14: rec-scheme-mem-preserved variant for the 4-instr trace.
+  -- Combines the 4-instr building blocks from SMP.RecSchemeSemantics.
+  rec-scheme-mem-preserved-4 : ∀ {n : ℕ} (s : LocState FS) (alloc : AllocState {FS}) →
+    n ≡ next-slot alloc →
+    halted s ≡ false →
+    ∀ loc → BeforeFrontier alloc loc →
+    readLoc (proj₁ (exec-trace (rec-scheme-trace-4 n) s alloc)) loc ≡
+    readLoc s loc
+  rec-scheme-mem-preserved-4 {n} s alloc refl not-halted (AtStack f k) (stack-before refl k<n) =
+    rec-scheme-preserves-slot-below-4 n k s alloc not-halted k<n
+  rec-scheme-mem-preserved-4 {n} s alloc refl not-halted (AtStack f k) (stack-ancestor cf≺f _) =
+    rec-scheme-preserves-ancestor-4 n s alloc f k not-halted (λ eq → ≺⇒≢ cf≺f (sym eq))
+  rec-scheme-mem-preserved-4 {n} s alloc refl not-halted (AtDynamic hl) (heap-before _) =
+    rec-scheme-preserves-heap-4 n s alloc hl not-halted
+
   ------------------------------------------------------------------------
   -- Ana: Anamorphism (unfold to build ν-type)
   --
@@ -185,7 +200,13 @@ module AnaWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; final-alloc = alloc'
         ; trace = ana-trace
         ; trace-correct = refl
-        ; alloc-correct = SMP.!!  -- Plan 0.14: needs instr-alloc-stack + rec-scheme helper updates
+        ; alloc-correct =
+            -- rec-scheme-alloc-correct-4 returns the alloc with next-slot bumped via _+_;
+            -- alloc' uses `suc`. Bridge via arithmetic (next-slot + 1 ≡ suc next-slot via +-comm).
+            let raw = rec-scheme-alloc-correct-4 result-slot s alloc not-halted
+                arith : next-slot alloc +ℕ 1 ≡ suc (next-slot alloc)
+                arith = +-comm (next-slot alloc) 1
+            in trans raw (cong (λ k → record alloc { next-slot = k }) arith)
         ; result-place = at-loc result-loc result-valid result-bf rax-eq result-valid result-bf
         ; not-halted = not-halted'
         ; frame-preserved = refl
@@ -225,10 +246,11 @@ module AnaWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       alloc' : AllocState {FS}
       alloc' = record alloc { next-slot = suc (next-slot alloc) }
 
-      -- Trace: store input (seed) at slot, return slot address
-      -- The coalgebra is implicitly part of the ν-type representation
+      -- Trace: alloc-stack the result slot, store input (seed) there,
+      -- return slot address. Plan 0.14: instr-alloc-stack 1 at the
+      -- start makes runtime alloc match alloc'.
       ana-trace : AbstractTrace
-      ana-trace = mov-to-output ∷ store-at-slot result-slot ∷ lea-slot result-slot ∷ []
+      ana-trace = rec-scheme-trace-4 result-slot
 
       s' : LocState FS
       s' = proj₁ (exec-trace ana-trace s alloc)
@@ -250,13 +272,13 @@ module AnaWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       reclaim-bound = suc-≤-plus-req n (ir-stack-requirement coalg)
 
       rax-eq : readReg (regs s') Output ≡ SV-Ptr result-loc
-      rax-eq = rec-scheme-output-is-slot result-slot s alloc not-halted
+      rax-eq = rec-scheme-output-is-slot-4 result-slot s alloc not-halted
 
       not-halted' : halted s' ≡ false
-      not-halted' = rec-scheme-preserves-halted-3 result-slot s alloc not-halted
+      not-halted' = rec-scheme-preserves-halted-4 result-slot s alloc not-halted
 
       mem-preserved : ∀ loc → BeforeFrontier alloc loc → readLoc s' loc ≡ readLoc s loc
-      mem-preserved loc bf = rec-scheme-mem-preserved s alloc refl not-halted loc bf
+      mem-preserved loc bf = rec-scheme-mem-preserved-4 s alloc refl not-halted loc bf
 
       trace-wa : SMP.TraceWritesAbove (next-slot alloc) ana-trace
       trace-wa = ≤-refl , tt

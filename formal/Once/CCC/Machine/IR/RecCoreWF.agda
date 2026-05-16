@@ -272,6 +272,20 @@ module RecCoreWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   rec-scheme-mem-preserved {n} s alloc refl not-halted (AtDynamic hl) (heap-before _) =
     rec-scheme-preserves-heap-3 n s alloc hl not-halted
 
+  -- Plan 0.14: rec-scheme-mem-preserved variant for the 4-instr trace.
+  rec-scheme-mem-preserved-4 : ∀ {n : ℕ} (s : LocState FS) (alloc : AllocState {FS}) →
+    n ≡ next-slot alloc →
+    halted s ≡ false →
+    ∀ loc → BeforeFrontier alloc loc →
+    readLoc (proj₁ (exec-trace (rec-scheme-trace-4 n) s alloc)) loc ≡
+    readLoc s loc
+  rec-scheme-mem-preserved-4 {n} s alloc refl not-halted (AtStack f k) (stack-before refl k<n) =
+    rec-scheme-preserves-slot-below-4 n k s alloc not-halted k<n
+  rec-scheme-mem-preserved-4 {n} s alloc refl not-halted (AtStack f k) (stack-ancestor cf≺f _) =
+    rec-scheme-preserves-ancestor-4 n s alloc f k not-halted (λ eq → ≺⇒≢ cf≺f (sym eq))
+  rec-scheme-mem-preserved-4 {n} s alloc refl not-halted (AtDynamic hl) (heap-before _) =
+    rec-scheme-preserves-heap-4 n s alloc hl not-halted
+
   ------------------------------------------------------------------------
   -- Specialized Entry Points for Recursion Schemes
   --
@@ -340,7 +354,11 @@ module RecCoreWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; final-alloc = alloc'
         ; trace = fuse-trace
         ; trace-correct = refl
-        ; alloc-correct = SMP.!!  -- Plan 0.14: complete migration in dedicated pass
+        ; alloc-correct =
+            let raw = rec-scheme-alloc-correct-4 result-slot s alloc not-halted
+                arith : next-slot alloc +ℕ 1 ≡ suc (next-slot alloc)
+                arith = +-comm (next-slot alloc) 1
+            in trans raw (cong (λ k → record alloc { next-slot = k }) arith)
         ; result-place = at-loc result-loc result-valid result-bf rax-eq result-valid result-bf
         ; not-halted = not-halted'
         ; frame-preserved = refl
@@ -381,7 +399,7 @@ module RecCoreWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       alloc' = record alloc { next-slot = suc (next-slot alloc) }
 
       fuse-trace : AbstractTrace
-      fuse-trace = mov-to-output ∷ store-at-slot result-slot ∷ lea-slot result-slot ∷ []
+      fuse-trace = rec-scheme-trace-4 result-slot
 
       s' : LocState FS
       s' = proj₁ (exec-trace fuse-trace s alloc)
@@ -402,13 +420,13 @@ module RecCoreWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       reclaim-bound = suc-≤-plus-req-2 n (ir-stack-requirement alg) (ir-stack-requirement transform)
 
       rax-eq : readReg (regs s') Output ≡ SV-Ptr result-loc
-      rax-eq = rec-scheme-output-is-slot result-slot s alloc not-halted
+      rax-eq = rec-scheme-output-is-slot-4 result-slot s alloc not-halted
 
       not-halted' : halted s' ≡ false
-      not-halted' = rec-scheme-preserves-halted-3 result-slot s alloc not-halted
+      not-halted' = rec-scheme-preserves-halted-4 result-slot s alloc not-halted
 
       mem-preserved : ∀ loc → BeforeFrontier alloc loc → readLoc s' loc ≡ readLoc s loc
-      mem-preserved loc bf = rec-scheme-mem-preserved s alloc refl not-halted loc bf
+      mem-preserved loc bf = rec-scheme-mem-preserved-4 s alloc refl not-halted loc bf
 
       trace-wa : SMP.TraceWritesAbove (next-slot alloc) fuse-trace
       trace-wa = ≤-refl , tt
@@ -448,7 +466,11 @@ module RecCoreWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; final-alloc = alloc'
         ; trace = hylo-trace
         ; trace-correct = refl
-        ; alloc-correct = SMP.!!  -- Plan 0.14: complete migration in dedicated pass
+        ; alloc-correct =
+            let raw = rec-scheme-alloc-correct-4 result-slot s alloc not-halted
+                arith : next-slot alloc +ℕ 1 ≡ suc (next-slot alloc)
+                arith = +-comm (next-slot alloc) 1
+            in trans raw (cong (λ k → record alloc { next-slot = k }) arith)
         ; result-place = at-loc result-loc result-valid result-bf rax-eq result-valid result-bf
         ; not-halted = not-halted'
         ; frame-preserved = refl
@@ -489,7 +511,7 @@ module RecCoreWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       alloc' = record alloc { next-slot = suc (next-slot alloc) }
 
       hylo-trace : AbstractTrace
-      hylo-trace = mov-to-output ∷ store-at-slot result-slot ∷ lea-slot result-slot ∷ []
+      hylo-trace = rec-scheme-trace-4 result-slot
 
       s' : LocState FS
       s' = proj₁ (exec-trace hylo-trace s alloc)
@@ -510,13 +532,13 @@ module RecCoreWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       reclaim-bound = suc-≤-plus-req-2 n (ir-stack-requirement alg) (ir-stack-requirement coalg)
 
       rax-eq : readReg (regs s') Output ≡ SV-Ptr result-loc
-      rax-eq = rec-scheme-output-is-slot result-slot s alloc not-halted
+      rax-eq = rec-scheme-output-is-slot-4 result-slot s alloc not-halted
 
       not-halted' : halted s' ≡ false
-      not-halted' = rec-scheme-preserves-halted-3 result-slot s alloc not-halted
+      not-halted' = rec-scheme-preserves-halted-4 result-slot s alloc not-halted
 
       mem-preserved : ∀ loc → BeforeFrontier alloc loc → readLoc s' loc ≡ readLoc s loc
-      mem-preserved loc bf = rec-scheme-mem-preserved s alloc refl not-halted loc bf
+      mem-preserved loc bf = rec-scheme-mem-preserved-4 s alloc refl not-halted loc bf
 
       trace-wa : SMP.TraceWritesAbove (next-slot alloc) hylo-trace
       trace-wa = ≤-refl , tt
