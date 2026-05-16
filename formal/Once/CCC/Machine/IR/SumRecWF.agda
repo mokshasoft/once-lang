@@ -192,7 +192,39 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
              store-at-slot payload-slot ∷
              lea-slot result-slot ∷ []) s alloc) ≡
       record alloc { next-slot = next-slot alloc +ℕ sum-slots }
-  inl-inr-trace-alloc-correct _ _ _ _ _ _ _ = SMP.!!
+  inl-inr-trace-alloc-correct sum-slots tag payload-slot result-slot s alloc not-halted =
+    -- Chain exec-trace-cons through all 6 instructions. instr-alloc-stack
+    -- bumps next-slot; the remaining 5 all preserve alloc definitionally
+    -- and unconditionally preserve halted.
+    -- Note: instr-load-tag-lit doesn't have a named iph- constructor in
+    -- InstrPreservesHalted (added later); halted preservation through
+    -- it is `refl` since `record s { regs = ... }`.halted = s.halted.
+    let s₁ = proj₁ (exec-abstract (instr-alloc-stack sum-slots) s alloc)
+        alloc₁ = proj₂ (exec-abstract (instr-alloc-stack sum-slots) s alloc)
+        h₁ = exec-abstract-preserves-halted (instr-alloc-stack sum-slots) s alloc
+               not-halted iph-alloc-stack
+
+        -- instr-load-tag-lit: halted preserved by refl (only writes regs)
+        s₂ = proj₁ (exec-abstract (instr-load-tag-lit tag) s₁ alloc₁)
+        h₂ : halted s₂ ≡ false
+        h₂ = h₁  -- exec-abstract (instr-load-tag-lit n) only updates regs
+
+        s₃ = proj₁ (exec-abstract (store-at-slot result-slot) s₂ alloc₁)
+        h₃ = exec-abstract-preserves-halted (store-at-slot result-slot) s₂ alloc₁ h₂ iph-store-at-slot
+
+        s₄ = proj₁ (exec-abstract mov-to-output s₃ alloc₁)
+        h₄ = exec-abstract-preserves-halted mov-to-output s₃ alloc₁ h₃ iph-mov-to-output
+
+        s₅ = proj₁ (exec-abstract (store-at-slot payload-slot) s₄ alloc₁)
+        h₅ = exec-abstract-preserves-halted (store-at-slot payload-slot) s₄ alloc₁ h₄ iph-store-at-slot
+
+        d₀ = exec-trace-cons (instr-alloc-stack sum-slots) _ s alloc not-halted
+        d₁ = exec-trace-cons (instr-load-tag-lit tag) _ s₁ alloc₁ h₁
+        d₂ = exec-trace-cons (store-at-slot result-slot) _ s₂ alloc₁ h₂
+        d₃ = exec-trace-cons mov-to-output _ s₃ alloc₁ h₃
+        d₄ = exec-trace-cons (store-at-slot payload-slot) _ s₄ alloc₁ h₄
+        d₅ = exec-trace-single (lea-slot result-slot) s₅ alloc₁ h₅
+    in cong proj₂ (trans d₀ (trans d₁ (trans d₂ (trans d₃ (trans d₄ d₅)))))
 
   -- OCP-0003: fold-trace-state-correct removed (fold/unfold replaced by In/Cata/Out/Ana/Hylo)
 

@@ -113,12 +113,44 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   -- Plan 0.14: alloc-correct shape lemma for curry-trace. The trace
   -- starts with `instr-alloc-stack closure-slots`, which bumps
   -- next-slot by closure-slots; the remaining 5 instructions all
-  -- preserve alloc.
+  -- preserve alloc definitionally (mov-to-output, store-at-slot,
+  -- lea-slot, store-at-slot, lea-slot all return `, alloc`).
   curry-trace-alloc-correct : ∀ (closure-slot : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
     halted s ≡ false →
     proj₂ (exec-trace (curry-trace closure-slot) s alloc) ≡
       record alloc { next-slot = next-slot alloc +ℕ closure-slots }
-  curry-trace-alloc-correct _ _ _ _ = SMP.!!  -- Plan 0.14: step-through proof pending
+  curry-trace-alloc-correct closure-slot s alloc not-halted =
+    -- Step-by-step: each instruction preserves halted unconditionally,
+    -- so we can chain exec-trace-cons through all 6 instructions and
+    -- end with the alloc that `instr-alloc-stack closure-slots`
+    -- produced (= the desired record).
+    let s₁ = proj₁ (exec-abstract (instr-alloc-stack closure-slots) s alloc)
+        alloc₁ = proj₂ (exec-abstract (instr-alloc-stack closure-slots) s alloc)
+        -- alloc₁ = record alloc { next-slot = next-slot alloc + closure-slots } (definitional)
+        h₁ = exec-abstract-preserves-halted (instr-alloc-stack closure-slots) s alloc
+               not-halted iph-alloc-stack
+
+        s₂ = proj₁ (exec-abstract mov-to-output s₁ alloc₁)
+        -- proj₂ (exec-abstract mov-to-output s₁ alloc₁) = alloc₁ (definitional)
+        h₂ = exec-abstract-preserves-halted mov-to-output s₁ alloc₁ h₁ iph-mov-to-output
+
+        s₃ = proj₁ (exec-abstract (store-at-slot closure-slot) s₂ alloc₁)
+        h₃ = exec-abstract-preserves-halted (store-at-slot closure-slot) s₂ alloc₁ h₂ iph-store-at-slot
+
+        s₄ = proj₁ (exec-abstract (lea-slot (suc closure-slot)) s₃ alloc₁)
+        h₄ = exec-abstract-preserves-halted (lea-slot (suc closure-slot)) s₃ alloc₁ h₃ iph-lea-slot
+
+        s₅ = proj₁ (exec-abstract (store-at-slot (suc closure-slot)) s₄ alloc₁)
+        h₅ = exec-abstract-preserves-halted (store-at-slot (suc closure-slot)) s₄ alloc₁ h₄ iph-store-at-slot
+
+        -- Chain exec-trace through each step.
+        d₀ = exec-trace-cons (instr-alloc-stack closure-slots) _ s alloc not-halted
+        d₁ = exec-trace-cons mov-to-output _ s₁ alloc₁ h₁
+        d₂ = exec-trace-cons (store-at-slot closure-slot) _ s₂ alloc₁ h₂
+        d₃ = exec-trace-cons (lea-slot (suc closure-slot)) _ s₃ alloc₁ h₃
+        d₄ = exec-trace-cons (store-at-slot (suc closure-slot)) _ s₄ alloc₁ h₄
+        d₅ = exec-trace-single (lea-slot closure-slot) s₅ alloc₁ h₅
+    in cong proj₂ (trans d₀ (trans d₁ (trans d₂ (trans d₃ (trans d₄ d₅)))))
 
   ------------------------------------------------------------------------
   -- run-curry: Clean trace-based implementation
