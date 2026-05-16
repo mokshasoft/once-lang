@@ -1787,6 +1787,20 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
                        (exec-trace-same-frame reclaim-wrapper-trace s-after-sub alloc-after-sub-runtime alloc-after-sub
                          runtime-compile-frame-eq))
 
+        -- Plan 0.14: alloc-correct for inj1 layer.
+        -- runtime alloc-after-sub ≡ alloc-after-sub (via l-result.alloc-correct).
+        -- alloc-after-wrapper = proj₂ exec-trace reclaim-wrapper-trace s-after-sub alloc-after-sub (def).
+        alloc-after-sub-runtime-eq-construction :
+          alloc-after-sub-runtime ≡ alloc-after-sub
+        alloc-after-sub-runtime-eq-construction = ProcessedLayerResult.alloc-correct l-result
+
+        alloc-correct-inj1 : proj₂ (exec-trace full-trace s alloc) ≡ alloc-after-wrapper
+        alloc-correct-inj1 =
+          trans (cong proj₂ (exec-trace-append (setup-trace ++ sub-trace) reclaim-wrapper-trace s alloc))
+                (trans (cong (λ p → proj₂ (exec-trace reclaim-wrapper-trace (proj₁ p) (proj₂ p))) setup-sub-exec-runtime-eq)
+                       (cong (λ a → proj₂ (exec-trace reclaim-wrapper-trace s-after-sub a))
+                             alloc-after-sub-runtime-eq-construction))
+
         -- Slot usage bound: sub-result bound applies since alloc-setup ≡ alloc
         -- Child's bound uses layer-capacity wfL wfG alg
         slot-usage-bound-inj1 : l-reclaimable ≤ next-slot alloc +ℕ layer-capacity wfL wfG alg
@@ -2032,9 +2046,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; final-state = s-after-wrapper
         ; final-alloc = alloc-after-wrapper
         ; trace-correct = trace-correct-inj1
-        -- Wrapper location: the Sum container at [wrapper-base, wrapper-base+1]
-        -- wrapper-base = l-reclaimable (child's reclaimable-slot with ACTUAL RECLAMATION)
-        ; alloc-correct = SMP.!!  -- Plan 0.14: complete migration in dedicated pass
+        ; alloc-correct = alloc-correct-inj1
         ; result-place = at-loc wrapper-loc processed-valid-proof result-before-proof wrapper-rax-result processed-valid-proof result-before-proof
         ; not-halted = reclaim-wrapper-not-halted l-not-halted
         ; semantic-correct = cong inj₁ (ProcessedLayerResult.semantic-correct l-result)
@@ -2303,6 +2315,18 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
                        (exec-trace-same-frame reclaim-wrapper-trace s-after-sub alloc-after-sub-runtime alloc-after-sub
                          runtime-compile-frame-eq))
 
+        -- Plan 0.14: alloc-correct for inj2 (symmetric to inj1).
+        alloc-after-sub-runtime-eq-construction :
+          alloc-after-sub-runtime ≡ alloc-after-sub
+        alloc-after-sub-runtime-eq-construction = ProcessedLayerResult.alloc-correct r-result
+
+        alloc-correct-inj2 : proj₂ (exec-trace full-trace s alloc) ≡ alloc-after-wrapper
+        alloc-correct-inj2 =
+          trans (cong proj₂ (exec-trace-append (setup-trace ++ sub-trace) reclaim-wrapper-trace s alloc))
+                (trans (cong (λ p → proj₂ (exec-trace reclaim-wrapper-trace (proj₁ p) (proj₂ p))) setup-sub-exec-runtime-eq)
+                       (cong (λ a → proj₂ (exec-trace reclaim-wrapper-trace s-after-sub a))
+                             alloc-after-sub-runtime-eq-construction))
+
         reclaim-mono-inj2 : next-slot alloc ≤ r-reclaimable
         reclaim-mono-inj2 = subst (λ al → next-slot al ≤ r-reclaimable)
                                   alloc-setup-eq
@@ -2546,8 +2570,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; final-state = s-after-wrapper
         ; final-alloc = alloc-after-wrapper
         ; trace-correct = trace-correct-inj2
-        -- Wrapper location: the Sum container at [wrapper-base, wrapper-base+1]
-        ; alloc-correct = SMP.!!  -- Plan 0.14: complete migration in dedicated pass
+        ; alloc-correct = alloc-correct-inj2
         ; result-place = at-loc wrapper-loc processed-valid-proof
             result-before-proof wrapper-rax-result
             processed-valid-proof result-before-proof
