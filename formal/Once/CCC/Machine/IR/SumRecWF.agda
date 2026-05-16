@@ -149,7 +149,12 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   -- result-slot, not SV-Tag tag. Migrating callers to a tag-aware
   -- s-final is the next step (requires a `validityWF-write-sv-at-frontier`
   -- sibling lemma in ClosureWellFormed).
-  inl-inr-trace-state-correct : ∀ (tag : ℕ) (payload-slot result-slot : ℕ)
+  -- Plan 0.14: inl/inr traces now start with `instr-alloc-stack
+  -- sum-slots` so the runtime next-slot matches the construction-time
+  -- alloc₁ (next-slot alloc + sum-slots). The instruction preserves
+  -- stack and heap memory, so it doesn't affect the state-side proof
+  -- (only the alloc-side does).
+  inl-inr-trace-state-correct : ∀ (sum-slots : ℕ) (tag : ℕ) (payload-slot result-slot : ℕ)
     (s : LocState FS) (alloc : AllocState {FS})
     (input-loc : ValueLocation FS) (result-loc : ValueLocation FS)
     (s-final : LocState FS) →
@@ -159,12 +164,35 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
                 { regs = writeReg (regs (write-loc s (AtStack (current-frame alloc) payload-slot) input-loc)) Output (SV-Ptr result-loc) } →
     halted s ≡ false →
     proj₁ (exec-trace
-            (instr-load-tag-lit tag ∷
+            (instr-alloc-stack sum-slots ∷
+             instr-load-tag-lit tag ∷
              store-at-slot result-slot ∷
              mov-to-output ∷
              store-at-slot payload-slot ∷
              lea-slot result-slot ∷ []) s alloc) ≡ s-final
-  inl-inr-trace-state-correct _ _ _ _ _ _ _ _ _ _ _ _ = SMP.!!
+  inl-inr-trace-state-correct _ _ _ _ _ _ _ _ _ _ _ _ _ = SMP.!!
+
+  -- Plan 0.14: alloc-correct for the inl/inr trace shape. The trace
+  -- starts with `instr-alloc-stack sum-slots`, which bumps next-slot
+  -- by sum-slots; the remaining 5 instructions all return alloc
+  -- unchanged (tag-lit, store-at-slot, mov-to-output, lea-slot). So
+  -- the runtime alloc output equals `record alloc { next-slot =
+  -- next-slot alloc + sum-slots }`, which is exactly the alloc₁ each
+  -- caller constructs. Body remains SMP.!! pending a tight step-by-
+  -- step proof; the result-shape is fixed, mirroring the structural
+  -- decision in inl-inr-trace-state-correct above.
+  inl-inr-trace-alloc-correct : ∀ (sum-slots : ℕ) (tag : ℕ) (payload-slot result-slot : ℕ)
+    (s : LocState FS) (alloc : AllocState {FS}) →
+    halted s ≡ false →
+    proj₂ (exec-trace
+            (instr-alloc-stack sum-slots ∷
+             instr-load-tag-lit tag ∷
+             store-at-slot result-slot ∷
+             mov-to-output ∷
+             store-at-slot payload-slot ∷
+             lea-slot result-slot ∷ []) s alloc) ≡
+      record alloc { next-slot = next-slot alloc +ℕ sum-slots }
+  inl-inr-trace-alloc-correct _ _ _ _ _ _ _ = SMP.!!
 
   -- OCP-0003: fold-trace-state-correct removed (fold/unfold replaced by In/Cata/Out/Ana/Hylo)
 
@@ -282,12 +310,12 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         { final-state = s-final
         ; final-alloc = alloc₁
         ; trace = inl-trace
-        ; trace-correct = inl-inr-trace-state-correct 0 (suc (next-slot alloc)) (next-slot alloc) s alloc input-loc sum-loc s-final rdi-eq refl refl not-halted
-        ; alloc-correct = SMP.!!  -- Plan 0.14: complete migration in dedicated pass
+        ; trace-correct = inl-inr-trace-state-correct sum-slots 0 (suc (next-slot alloc)) (next-slot alloc) s alloc input-loc sum-loc s-final rdi-eq refl refl not-halted
+        ; alloc-correct = inl-inr-trace-alloc-correct sum-slots 0 (suc (next-slot alloc)) (next-slot alloc) s alloc not-halted
         ; result-place = at-loc sum-loc inl-valid-wf-final sum-before rax-eq inl-reclaim-preserves-validity inl-reclaim-preserves-result
         ; not-halted = not-halted
         ; frame-preserved = refl
-        ; trace-twf = twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt twf-[]))))
+        ; trace-twf = twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt twf-[])))))
         ; mem-preserved-before = λ _ _ → SMP.!!
         ; trace-preserves-halted = exec-trace-preserves-halted-WF inl-trace
         }
@@ -401,7 +429,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- 5. lea-slot sum-slot: Output := &slot[sum] (sum address)
       sum-slot = next-slot alloc
       inl-trace : AbstractTrace
-      inl-trace = instr-load-tag-lit 0 ∷
+      inl-trace = instr-alloc-stack sum-slots ∷ instr-load-tag-lit 0 ∷
                   store-at-slot sum-slot ∷
                   mov-to-output ∷
                   store-at-slot (suc sum-slot) ∷
@@ -418,12 +446,12 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         { final-state = s-final
         ; final-alloc = alloc₁
         ; trace = inl-trace
-        ; trace-correct = inl-inr-trace-state-correct 0 (suc (next-slot alloc)) (next-slot alloc) s alloc input-loc sum-loc s-final rdi-eq refl refl not-halted
-        ; alloc-correct = SMP.!!  -- Plan 0.14: complete migration in dedicated pass
+        ; trace-correct = inl-inr-trace-state-correct sum-slots 0 (suc (next-slot alloc)) (next-slot alloc) s alloc input-loc sum-loc s-final rdi-eq refl refl not-halted
+        ; alloc-correct = inl-inr-trace-alloc-correct sum-slots 0 (suc (next-slot alloc)) (next-slot alloc) s alloc not-halted
         ; result-place = at-loc sum-loc inl-valid-wf-final sum-before rax-eq inl-reclaim-preserves-validity inl-reclaim-preserves-result
         ; not-halted = not-halted
         ; frame-preserved = refl
-        ; trace-twf = twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt twf-[]))))
+        ; trace-twf = twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt twf-[])))))
         ; mem-preserved-before = λ _ _ → SMP.!!
         ; trace-preserves-halted = exec-trace-preserves-halted-WF inl-trace
         }
@@ -537,7 +565,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Inl trace (Heap mode): same 5-instr tag-aware trace as Stack mode.
       sum-slot = next-slot alloc
       inl-trace : AbstractTrace
-      inl-trace = instr-load-tag-lit 0 ∷
+      inl-trace = instr-alloc-stack sum-slots ∷ instr-load-tag-lit 0 ∷
                   store-at-slot sum-slot ∷
                   mov-to-output ∷
                   store-at-slot (suc sum-slot) ∷
@@ -572,12 +600,12 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         { final-state = s-final
         ; final-alloc = alloc₁
         ; trace = inr-trace
-        ; trace-correct = inl-inr-trace-state-correct 1 (suc (next-slot alloc)) (next-slot alloc) s alloc input-loc sum-loc s-final rdi-eq refl refl not-halted
-        ; alloc-correct = SMP.!!  -- Plan 0.14: complete migration in dedicated pass
+        ; trace-correct = inl-inr-trace-state-correct sum-slots 1 (suc (next-slot alloc)) (next-slot alloc) s alloc input-loc sum-loc s-final rdi-eq refl refl not-halted
+        ; alloc-correct = inl-inr-trace-alloc-correct sum-slots 1 (suc (next-slot alloc)) (next-slot alloc) s alloc not-halted
         ; result-place = at-loc sum-loc inr-valid-wf-final sum-before rax-eq inr-reclaim-preserves-validity inr-reclaim-preserves-result
         ; not-halted = not-halted
         ; frame-preserved = refl
-        ; trace-twf = twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt twf-[]))))
+        ; trace-twf = twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt twf-[])))))
         ; mem-preserved-before = λ _ _ → SMP.!!
         ; trace-preserves-halted = exec-trace-preserves-halted-WF inr-trace
         }
@@ -684,7 +712,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Inr trace (Stack mode): 5-instr tag-aware, tag = 1.
       sum-slot = next-slot alloc
       inr-trace : AbstractTrace
-      inr-trace = instr-load-tag-lit 1 ∷
+      inr-trace = instr-alloc-stack sum-slots ∷ instr-load-tag-lit 1 ∷
                   store-at-slot sum-slot ∷
                   mov-to-output ∷
                   store-at-slot (suc sum-slot) ∷
@@ -698,12 +726,12 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         { final-state = s-final
         ; final-alloc = alloc₁
         ; trace = inr-trace
-        ; trace-correct = inl-inr-trace-state-correct 1 (suc (next-slot alloc)) (next-slot alloc) s alloc input-loc sum-loc s-final rdi-eq refl refl not-halted
-        ; alloc-correct = SMP.!!  -- Plan 0.14: complete migration in dedicated pass
+        ; trace-correct = inl-inr-trace-state-correct sum-slots 1 (suc (next-slot alloc)) (next-slot alloc) s alloc input-loc sum-loc s-final rdi-eq refl refl not-halted
+        ; alloc-correct = inl-inr-trace-alloc-correct sum-slots 1 (suc (next-slot alloc)) (next-slot alloc) s alloc not-halted
         ; result-place = at-loc sum-loc inr-valid-wf-final sum-before rax-eq inr-reclaim-preserves-validity inr-reclaim-preserves-result
         ; not-halted = not-halted
         ; frame-preserved = refl
-        ; trace-twf = twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt twf-[]))))
+        ; trace-twf = twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt twf-[])))))
         ; mem-preserved-before = λ _ _ → SMP.!!
         ; trace-preserves-halted = exec-trace-preserves-halted-WF inr-trace
         }
@@ -813,7 +841,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Inr trace (Heap mode): 5-instr tag-aware, tag = 1.
       sum-slot = next-slot alloc
       inr-trace : AbstractTrace
-      inr-trace = instr-load-tag-lit 1 ∷
+      inr-trace = instr-alloc-stack sum-slots ∷ instr-load-tag-lit 1 ∷
                   store-at-slot sum-slot ∷
                   mov-to-output ∷
                   store-at-slot (suc sum-slot) ∷
