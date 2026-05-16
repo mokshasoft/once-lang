@@ -1398,7 +1398,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; final-state = s-after
         ; final-alloc = alloc
         ; trace-correct = cong proj₁ (exec-trace-single mov-to-output s alloc not-halted)
-        ; alloc-correct = SMP.!!  -- Plan 0.14: complete migration in dedicated pass
+        ; alloc-correct = cong proj₂ (exec-trace-single mov-to-output s alloc not-halted)
         ; result-place = at-loc input-loc
             (validityWF-mem-only k-val input-loc s s-after refl refl (valid-basetype-wf isBase input-before))
             input-before
@@ -1451,7 +1451,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; final-state = s-rec
         ; final-alloc = alloc-rec
         ; trace-correct = IRResultAWF.trace-correct rec-result
-        ; alloc-correct = SMP.!!  -- Plan 0.14: complete migration in dedicated pass
+        ; alloc-correct = IRResultAWF.alloc-correct rec-result
         ; result-place = at-loc rec-loc rec-valid rec-before rec-rax rec-valid rec-before
         ; not-halted = rec-not-halted
         ; semantic-correct = refl  -- sem-fmap Id f x = f x, coerce-struct⁻¹ Id _ x = x
