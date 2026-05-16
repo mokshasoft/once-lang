@@ -716,6 +716,8 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
       -- Trace execution correctness: executing trace from s produces final-state/alloc
       trace-correct : proj₁ (exec-trace trace s alloc) ≡ final-state
+      -- Plan 0.14: symmetric alloc-correct, parallel to IRResultBase.alloc-correct.
+      alloc-correct : proj₂ (exec-trace trace s alloc) ≡ final-alloc
 
       -- Plan 0.2.4.5 D1 task #28: result-loc / processed-valid /
       -- result-before / rax-is-result collapsed into a single
@@ -3632,6 +3634,27 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
         trace-correct-proof = trans (cong proj₁ (trans trace-step1 (trans trace-step2 trace-step3)))
           (trans alg-trace-frame-indep (IRResultAWF.trace-correct alg-result))
 
+        -- Plan 0.14: alloc-correct parallel to trace-correct-proof.
+        -- After all trace-step{1,2,3}, alloc is at alloc-after-mov (= alloc-layer
+        -- by mov-to-input preserves alloc + alloc-after-mov-eq + layer-result.alloc-correct).
+        -- Bridge alloc-after-mov ≡ alloc-layer, then use alg-result.alloc-correct.
+        alloc-after-mov-eq-alloc-layer : alloc-after-mov ≡ alloc-layer
+        alloc-after-mov-eq-alloc-layer =
+          trans alloc-after-mov-eq  -- = layer-runtime-alloc (refl, mov preserves)
+                (ProcessedLayerResult.alloc-correct layer-result)
+
+        alg-trace-alloc-bridge :
+          proj₂ (exec-trace alg-trace s-bridged alloc-after-mov) ≡
+          proj₂ (exec-trace alg-trace s-bridged alloc-layer)
+        alg-trace-alloc-bridge = cong (λ a → proj₂ (exec-trace alg-trace s-bridged a))
+                                      alloc-after-mov-eq-alloc-layer
+
+        alloc-correct-proof : proj₂ (exec-trace final-trace s alloc) ≡
+                              IRResultAWF.final-alloc alg-result
+        alloc-correct-proof =
+          trans (cong proj₂ (trans trace-step1 (trans trace-step2 trace-step3)))
+                (trans alg-trace-alloc-bridge (IRResultAWF.alloc-correct alg-result))
+
         -- Max slot written: max of layer's max-slot-used and alg's max-slot-written
         layer-max-slot = ProcessedLayerResult.max-slot-used layer-result
         alg-max-slot = IRResultAWF.max-slot-written alg-result
@@ -3661,7 +3684,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
             ; final-alloc = IRResultAWF.final-alloc alg-result
             ; trace = final-trace
             ; trace-correct = trace-correct-proof
-            ; alloc-correct = SMP.!!  -- Plan 0.14: complete migration in dedicated pass
+            ; alloc-correct = alloc-correct-proof
             ; result-place = cata-result-place-stub
             ; not-halted = IRResultAWF.not-halted alg-result
             ; frame-preserved = frame-preserved-proof
