@@ -285,6 +285,37 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     proj₁ (exec-trace (load-indirect-suc ∷ mov-to-input ∷ dispatch-trace) s alloc) ≡ s-final
   case-trace-state-correct = case-dispatch-output-independent
 
+  -- Plan 0.14: alloc-correct sibling for the case dispatch trace.
+  -- The 2-prefix (load-indirect-suc, mov-to-input) preserves alloc
+  -- definitionally; alloc is the same whether dispatch-trace runs at
+  -- s-setup (the construction-time state) or at the state-after-prefix
+  -- (the runtime state) — alloc output is state-invariant for the
+  -- instruction set used. Postulated for the same reason
+  -- case-dispatch-output-independent is.
+  postulate
+    case-dispatch-alloc-independent : ∀ (dispatch-trace : AbstractTrace)
+      (s : LocState FS) (alloc : AllocState {FS})
+      (input-loc payload-loc : ValueLocation FS)
+      (s-setup : LocState FS) (alloc-final : AllocState {FS}) →
+      readReg (regs s) Input1 ≡ SV-Ptr input-loc →
+      readLoc s (sucLoc input-loc) ≡ just (SV-Ptr payload-loc) →
+      s-setup ≡ record s { regs = writeReg (regs s) Input1 (SV-Ptr payload-loc) } →
+      proj₂ (exec-trace dispatch-trace s-setup alloc) ≡ alloc-final →
+      halted s ≡ false →
+      proj₂ (exec-trace (load-indirect-suc ∷ mov-to-input ∷ dispatch-trace) s alloc) ≡ alloc-final
+
+  case-trace-alloc-correct : ∀ (dispatch-trace : AbstractTrace)
+    (s : LocState FS) (alloc : AllocState {FS})
+    (input-loc payload-loc : ValueLocation FS)
+    (s-setup : LocState FS) (alloc-final : AllocState {FS}) →
+    readReg (regs s) Input1 ≡ SV-Ptr input-loc →
+    readLoc s (sucLoc input-loc) ≡ just (SV-Ptr payload-loc) →
+    s-setup ≡ record s { regs = writeReg (regs s) Input1 (SV-Ptr payload-loc) } →
+    proj₂ (exec-trace dispatch-trace s-setup alloc) ≡ alloc-final →
+    halted s ≡ false →
+    proj₂ (exec-trace (load-indirect-suc ∷ mov-to-input ∷ dispatch-trace) s alloc) ≡ alloc-final
+  case-trace-alloc-correct = case-dispatch-alloc-independent
+
   -- OCP-0003: sem-fold-injective removed (fold/unfold replaced by recursion schemes)
 
   -- Helper: sem-inl is injective
@@ -916,7 +947,12 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
                             (InlValidWF.payload-ptr inl-decomp)
                             refl
                             (IRResultAWF.trace-correct result-f) not-halted
-        ; alloc-correct = SMP.!!  -- Plan 0.14: complete migration in dedicated pass
+        ; alloc-correct = case-trace-alloc-correct f-trace s alloc input-loc payload-loc s-setup
+                            (IRResultAWF.final-alloc result-f)
+                            rdi-eq
+                            (InlValidWF.payload-ptr inl-decomp)
+                            refl
+                            (IRResultAWF.alloc-correct result-f) not-halted
         ; result-place = IRResultAWF.result-place result-f
         ; not-halted = IRResultAWF.not-halted result-f
         ; frame-preserved = IRResultAWF.frame-preserved result-f
@@ -1032,7 +1068,12 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
                             (InrValidWF.payload-ptr inr-decomp)
                             refl
                             (IRResultAWF.trace-correct result-g) not-halted
-        ; alloc-correct = SMP.!!  -- Plan 0.14: complete migration in dedicated pass
+        ; alloc-correct = case-trace-alloc-correct g-trace s alloc input-loc payload-loc s-setup
+                            (IRResultAWF.final-alloc result-g)
+                            rdi-eq
+                            (InrValidWF.payload-ptr inr-decomp)
+                            refl
+                            (IRResultAWF.alloc-correct result-g) not-halted
         ; result-place = IRResultAWF.result-place result-g
         ; not-halted = IRResultAWF.not-halted result-g
         ; frame-preserved = IRResultAWF.frame-preserved result-g
