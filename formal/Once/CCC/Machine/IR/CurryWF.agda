@@ -101,11 +101,24 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
   curry-trace : (closure-slot : ℕ) → AbstractTrace
   curry-trace closure-slot =
+    -- Plan 0.14: instr-alloc-stack at the start so runtime alloc
+    -- catches up to alloc' (= record alloc { next-slot += closure-slots }).
+    instr-alloc-stack closure-slots ∷
     mov-to-output ∷                    -- Output := Input1 (env pointer)
     store-at-slot closure-slot ∷       -- closure[0] := env
     lea-slot (suc closure-slot) ∷      -- Output := &closure[1] (code loc)
     store-at-slot (suc closure-slot) ∷ -- closure[1] := code pointer
     lea-slot closure-slot ∷ []         -- Output := closure address
+
+  -- Plan 0.14: alloc-correct shape lemma for curry-trace. The trace
+  -- starts with `instr-alloc-stack closure-slots`, which bumps
+  -- next-slot by closure-slots; the remaining 5 instructions all
+  -- preserve alloc.
+  curry-trace-alloc-correct : ∀ (closure-slot : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
+    halted s ≡ false →
+    proj₂ (exec-trace (curry-trace closure-slot) s alloc) ≡
+      record alloc { next-slot = next-slot alloc +ℕ closure-slots }
+  curry-trace-alloc-correct _ _ _ _ = SMP.!!  -- Plan 0.14: step-through proof pending
 
   ------------------------------------------------------------------------
   -- run-curry: Clean trace-based implementation
@@ -129,7 +142,7 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; final-alloc = alloc'
         ; trace = trace
         ; trace-correct = refl  -- BY DEFINITION
-        ; alloc-correct = SMP.!!  -- Plan 0.14: complete migration in dedicated pass
+        ; alloc-correct = curry-trace-alloc-correct closure-slot s alloc not-halted
         ; result-place = at-loc closure-loc result-valid-wf' closure-before' rax-eq' reclaim-preserves-validity' reclaim-preserves-result'
         ; not-halted = not-halted'
         ; frame-preserved = refl
@@ -201,7 +214,8 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         (twf-∷ tt
         (twf-∷ tt
         (twf-∷ tt
-        (twf-∷ tt twf-[]))))
+        (twf-∷ tt
+        (twf-∷ tt twf-[])))))
 
       ----------------------------------------------------------------------
       -- Proof obligations for exec-trace properties
@@ -215,14 +229,15 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- The trace ends with lea-slot closure-slot, so Output = AtStack frame closure-slot
       -- Proof: split trace = prefix ++ [lea-slot closure-slot], use exec-trace-final-lea-slot
       prefix-trace : AbstractTrace
-      prefix-trace = mov-to-output ∷ store-at-slot closure-slot ∷
+      prefix-trace = instr-alloc-stack closure-slots ∷ mov-to-output ∷ store-at-slot closure-slot ∷
                      lea-slot (suc closure-slot) ∷ store-at-slot (suc closure-slot) ∷ []
 
       prefix-tph : TraceWF s alloc prefix-trace
       prefix-tph = twf-∷ tt
                    (twf-∷ tt
                    (twf-∷ tt
-                   (twf-∷ tt twf-[])))
+                   (twf-∷ tt
+                   (twf-∷ tt twf-[]))))
 
       not-halted-after-prefix : halted (proj₁ (exec-trace prefix-trace s alloc)) ≡ false
       not-halted-after-prefix = exec-trace-preserves-halted-WF prefix-trace s alloc not-halted prefix-tph
