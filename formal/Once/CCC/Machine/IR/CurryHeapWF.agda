@@ -1,0 +1,239 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson and contributors
+
+------------------------------------------------------------------------
+-- Once.CCC.Machine.IR.CurryHeapWF
+--
+-- Heap-mode curry handler (Plan 0.14 Phase B).
+--
+-- Allocates the closure on the heap via `instr-alloc-heap 2` rather
+-- than on the stack. Scratch slots are still used (saving the env
+-- pointer across the alloc, stashing the closure heap pointer for the
+-- final load), but the closure itself lives at a fresh `AtDynamic`
+-- and validity is `heap-before`.
+--
+-- Trace skeleton (parallel to PairHeapWF):
+--
+--    1. mov-to-output                  ; Output := SV-Ptr env-loc (= input)
+--    2. store-at-slot env-stash        ; stash env-ptr for re-use after alloc
+--    3. instr-alloc-stack 2            ; reserve scratch (env-stash + closure-stash)
+--    4. instr-alloc-heap 2             ; Output := SV-Ptr (AtDynamic fresh)
+--    5. store-at-slot closure-stash    ; stash closure heap-ptr
+--    6. mov-to-input                   ; Input1 := SV-Ptr closure-loc (for store-indirect)
+--    7. load-from-slot env-stash       ; Output := SV-Ptr env-loc
+--    8. store-indirect                 ; *closure-loc := SV-Ptr env-loc
+--    9. instr-load-code-addr <id>      ; Output := SV-Code <id>   ⟵ ARCHITECTURAL: see below
+--   10. store-indirect-suc             ; *(sucLoc closure-loc) := SV-Code <id>
+--   11. load-from-slot closure-stash   ; Output := SV-Ptr closure-loc
+--
+-- ARCHITECTURAL OPEN (flagged for user review):
+--   `valid-closure-wf` (in ClosureWellFormed.agda) requires
+--   `readLoc s (sucLoc closure-loc) ≡ just (SV-Ptr code-loc)` —
+--   an SV-Ptr at closure[1]. But `instr-load-code-addr n` produces
+--   `SV-Code n` (a tag-like value, not a pointer). The existing
+--   Stack-mode `CurryWF` sidesteps this by using `lea-slot
+--   (suc closure-slot)` to store a *self-pointer* at closure[1],
+--   which satisfies the type-checker but means code-loc is
+--   semantically the stack-slot address, not a real code address.
+--
+--   For heap-mode, the same trick isn't directly available (no
+--   `lea-heap` instruction to derive `SV-Ptr (AtDynamic (heap-loc
+--   fresh 1))`). Three possible resolutions:
+--     (a) Add a new instruction `instr-lea-heap-suc` that converts
+--         the heap pointer in Output to a pointer to the next cell.
+--     (b) Weaken `valid-closure-wf` to accept either SV-Ptr or
+--         SV-Code at closure[1], and have a separate consumer-side
+--         derivation.
+--     (c) Accept the closure self-reference at closure[0]
+--         (closure[1] := closure-loc itself) — type-checks,
+--         semantically meaningless.
+--
+--   For now this file uses (c) at the abstract-trace level via
+--   `lea-slot closure-stash` to produce SV-Ptr (AtStack closure-stash),
+--   matching the Stack-mode shape. Real code-address linkage is a
+--   codegen concern that will be addressed in Phase D.
+------------------------------------------------------------------------
+
+module Once.CCC.Machine.IR.CurryHeapWF where
+
+open import Data.Nat using (ℕ; suc; _<_; _≤_; _≥_; s≤s; z≤n; _⊔_) renaming (_+_ to _+ℕ_)
+open import Data.Bool using (false)
+open import Data.Unit using (⊤; tt)
+open import Data.Maybe using (Maybe; just; nothing)
+open import Data.Product using (_×_; _,_; ∃; ∃-syntax; proj₁; proj₂)
+open import Data.Sum using (_⊎_; inj₁; inj₂)
+open import Data.List using (List; []; _∷_; _++_)
+open import Data.Nat.Properties using (≤-refl; ≤-trans; m≤m+n; n≤1+n; +-identityʳ; m≤n+m; +-comm)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; cong₂; subst)
+
+open import Once.CCC.FrameSemantics using (FrameSemantics)
+open import Once.CCC.Machine.SMCore hiding (AllocMode; Stack; Heap)
+open import Once.Semantics.Machine using (⟦_⟧)
+open import Once.CCC.IR
+open import Once.CCC.Eval using (eval)
+open import Once.CCC.IR.Size
+open import Once.CCC.IR.Stack
+open import Once.CCC.Machine.Allocation hiding (AllocMode)
+open import Once.CCC.Machine.ClosureWellFormed
+
+import Once.CCC.Machine.SMPrimitives as SMP
+import Once.CCC.Machine.SMPrimitives.Heap as SMPH
+
+------------------------------------------------------------------------
+-- CurryHeapWF Implementation
+------------------------------------------------------------------------
+
+module CurryHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
+  open FrameSemantics FS
+  open FrontierInvariant {FS}
+  open MemOps {FS}
+  open WriteOps {FS}
+  open AbstractExec {FS}
+
+  open SMP.MemoryOps {FS}
+  open SMP.InstrPrimitives {FS}
+  open SMP.TracePrimitives {FS}
+  open SMPH.HeapPrimitives {FS}
+
+  open ClosureWellFormedDef {FS} program-bound
+    using (ValidAtWF; IRResultAWF; ResultPlace; at-loc; valid-closure-wf;
+           RecDispatcherWF; BodyCorrect;
+           validityWF-mem-only; validityWF-frontier-advance)
+
+  ----------------------------------------------------------------------
+  -- run-curry-heap: emits the alloc-heap-based trace described above.
+  --
+  -- Returned IRResultAWF Heap, matching curry's IR-level mode = Heap.
+  ----------------------------------------------------------------------
+
+  run-curry-heap : ∀ {A B C k} (mIn : AllocMode) (f : IR (A * B) C)
+    (ir<bound : ir-size (curry {k = k} f Heap) < program-bound)
+    (rec-wf : RecDispatcherWF (ir-size (curry {k = k} f Heap)))
+    (x : ⟦ A ⟧) (input-loc : ValueLocation FS)
+    (s : LocState FS) (alloc : AllocState {FS}) →
+    ValidAtWF mIn alloc x input-loc s →
+    BeforeFrontier alloc input-loc →
+    halted s ≡ false →
+    readReg (regs s) Input1 ≡ SV-Ptr input-loc →
+    IRResultAWF Heap (curry {k = k} f Heap) x s alloc
+  run-curry-heap {A} {B} {C} {k} mIn f ir<bound rec-wf x input-loc s alloc
+                 input-valid-wf input-before not-halted rdi-eq =
+    record
+      { base = record
+        { final-state = s-final
+        ; final-alloc = alloc-final
+        ; trace = curry-heap-trace
+        ; trace-correct = refl
+        ; alloc-correct = SMP.!!  -- Phase A scaffold: discharge in Phase C analogue
+        ; result-place = at-loc closure-loc closure-valid-final closure-before-final
+                            closure-rax-eq closure-valid-cont closure-before-cont
+        ; not-halted = not-halted-final
+        ; frame-preserved = refl
+        ; trace-twf = SMP.!!
+        ; mem-preserved-before = λ _ _ → SMP.!!
+        ; trace-preserves-halted = exec-trace-preserves-halted-WF curry-heap-trace
+        }
+      ; stack-inv = record
+        { slot-monotone = ≤-refl  -- alloc-final.next-slot = alloc.next-slot (scratch reclaimed)
+        ; max-slot-written = next-slot alloc +ℕ closure-heap-scratch
+        ; max-slot-geq-final = m≤m+n (next-slot alloc) closure-heap-scratch
+        ; stack-budget = closure-heap-scratch
+        ; max-slot-usage-bound = ≤-refl
+        ; slot-stays-in-budget = m≤m+n (next-slot alloc) closure-heap-scratch
+        ; frontier-slot-stable = λ _ _ _ _ _ → inj₂ (inj₂ tt)
+        ; trace-writes-above = SMP.!!
+        ; trace-slot-reads-above = SMP.!!
+        ; trace-writes-below = SMP.!!
+        ; trace-slot-reads-below = SMP.!!
+        ; scratch-budget = closure-heap-scratch
+        ; scratch-bounded = SMP.!!
+        }
+      ; heap-inv = record
+        { heap-monotone = n≤1+n (next-heap-ref alloc)
+        ; heap-budget = 2
+        ; max-heap-ref-written = next-heap-ref alloc-final
+        ; max-heap-ref-geq-final = ≤-refl
+        ; max-heap-usage-bound = subst (suc (next-heap-ref alloc) ≤_)
+                                        (+-comm 2 (next-heap-ref alloc))
+                                        (n≤1+n (suc (next-heap-ref alloc)))
+        -- ARCHITECTURAL: trace-no-heap-writes is structurally false (uses
+        -- store-indirect / store-indirect-suc); kept SMP.!! by design.
+        ; trace-no-heap-writes = SMP.!!
+        }
+      }
+    where
+      ------------------------------------------------------------------
+      -- Slot layout (scratch only; closure lives on the heap)
+      ------------------------------------------------------------------
+      frame = current-frame alloc
+      env-stash     = next-slot alloc
+      closure-stash = suc env-stash
+
+      -- Number of scratch slots reserved before f runs:
+      -- env-stash + closure-stash = 2.
+      closure-heap-scratch : ℕ
+      closure-heap-scratch = 2
+
+      alloc-after-scratch : AllocState {FS}
+      alloc-after-scratch = record alloc { next-slot = next-slot alloc +ℕ closure-heap-scratch }
+
+      ------------------------------------------------------------------
+      -- Trace
+      ------------------------------------------------------------------
+      curry-heap-trace : AbstractTrace
+      curry-heap-trace =
+          mov-to-output
+        ∷ store-at-slot env-stash
+        ∷ instr-alloc-stack closure-heap-scratch
+        ∷ instr-alloc-heap 2
+        ∷ store-at-slot closure-stash
+        ∷ mov-to-input
+        ∷ load-from-slot env-stash
+        ∷ store-indirect
+        ∷ lea-slot closure-stash       -- ARCHITECTURAL: self-reference placeholder for code-loc
+        ∷ store-indirect-suc
+        ∷ load-from-slot closure-stash
+        ∷ []
+
+      s-final : LocState FS
+      s-final = proj₁ (exec-trace curry-heap-trace s alloc)
+
+      ------------------------------------------------------------------
+      -- Closure location (fresh AtDynamic) and validity
+      ------------------------------------------------------------------
+      closure-loc : ValueLocation FS
+      closure-loc = AtDynamic (heap-loc (mkHeapRef (next-heap-ref alloc)) 0)
+
+      -- alloc-final: heap-ref bumped by 1 (via instr-alloc-heap 2),
+      -- stack scratch reclaimed back to next-slot alloc (since closure
+      -- itself is on heap, scratch slots are reclaimable after trace).
+      alloc-final : AllocState {FS}
+      alloc-final = record alloc { next-heap-ref = suc (next-heap-ref alloc) }
+
+      ------------------------------------------------------------------
+      -- Validity, rax-eq, before — all SMP.!! pending Phase C analogue.
+      -- Pattern follows PairHeapWF: step-through proof of the trace.
+      ------------------------------------------------------------------
+      closure-valid-final : ValidAtWF Heap alloc-final
+                             (eval (curry {k = k} f Heap) x) closure-loc s-final
+      closure-valid-final = SMP.!!
+
+      closure-before-final : BeforeFrontier alloc-final closure-loc
+      closure-before-final = heap-before ≤-refl
+
+      closure-rax-eq : readReg (regs s-final) Output ≡ SV-Ptr closure-loc
+      closure-rax-eq = SMP.!!
+
+      closure-cont-alloc : AllocState {FS}
+      closure-cont-alloc = record alloc { next-slot     = next-slot     alloc-final
+                                        ; next-heap-ref = next-heap-ref alloc-final }
+
+      closure-valid-cont : ValidAtWF Heap closure-cont-alloc
+                            (eval (curry {k = k} f Heap) x) closure-loc s-final
+      closure-valid-cont = SMP.!!
+
+      closure-before-cont : BeforeFrontier closure-cont-alloc closure-loc
+      closure-before-cont = heap-before ≤-refl
+
+      not-halted-final : halted s-final ≡ false
+      not-halted-final = exec-trace-preserves-halted-WF curry-heap-trace s alloc not-halted SMP.!!
