@@ -162,6 +162,10 @@ module IRTraceCorrectness {FS : FrameSemantics} (program-bound : ℕ)
   open SumInrHeapWFModule.SumInrHeapWFImpl {FS} program-bound
     using (run-inr-heap)
 
+  import Once.CCC.Machine.IR.CurryHeapWF as CurryHeapWFModule
+  open CurryHeapWFModule.CurryHeapWFImpl {FS} program-bound
+    using (run-curry-heap)
+
   -- Dispatcher: provides run-ir-wf as a well-founded recursive
   -- dispatcher for sub-IR computation. Used by pair/curry/apply/case
   -- to satisfy their RecDispatcherWF parameter.
@@ -431,9 +435,19 @@ module IRTraceCorrectness {FS : FrameSemantics} (program-bound : ℕ)
     ir-to-trace-correct-pair :
       ∀ {A B C} (m : AllocMode) (f : IR A B) (g : IR A C) →
       IRTraceCorrect (⟨_,_⟩ {A} {B} {C} f g m)
-    ir-to-trace-correct-curry :
-      ∀ {k A B C} (f : IR (A * B) C) (m : AllocMode) →
-      IRTraceCorrect (curry {k = k} f m)
+    -- Stack-mode curry: postulated. CurryWF (Stack) emits
+    -- `lea-slot closure-stash` for the code-pointer cell, which
+    -- produces SV-Ptr (self-reference fiction). After the Option 1
+    -- refactor, valid-closure-wf requires SV-Code at closure[1] —
+    -- CurryWF's result-valid-wf' uses SMP.!! at that slot. Until
+    -- CurryWF is migrated (or deleted; the elaborator never emits
+    -- `curry _ Stack`), Stack-mode curry stays postulated.
+    ir-to-trace-correct-curry-stack :
+      ∀ {k A B C} (f : IR (A * B) C) →
+      IRTraceCorrect (curry {k = k} {A} {B} {C} f Stack)
+
+    -- Apply: same RecDispatcherWF threading as curry, plus closure-
+    -- invariant + body-correct work. Postulated.
     ir-to-trace-correct-apply : ∀ {k A B} →
       IRTraceCorrect (apply {A} {B} {k})
 
@@ -446,6 +460,40 @@ module IRTraceCorrectness {FS : FrameSemantics} (program-bound : ℕ)
     ir-to-trace-correct-case :
       ∀ {A B C} (f : IR A C) (g : IR B C) → IRTraceCorrect (case f g)
 
+  ----------------------------------------------------------------------
+  -- Plan 0.14 (2026-05-17): curry Heap discharge via run-curry-heap +
+  -- make-rec-wf. The body label `0` in CurryHeapWF.curry-heap-trace
+  -- matches IRToTrace's `this-label = 0` (since ir-to-trace-at-frontier
+  -- always passes l=0 at the top), so the traces are definitionally
+  -- equal. The bridge then transports place-valid through trace-correct
+  -- and alloc-correct, exactly like inl/inr Heap above.
+  ----------------------------------------------------------------------
+
+  ir-to-trace-correct-curry :
+    ∀ {k A B C} (f : IR (A * B) C) (m : AllocMode) →
+    IRTraceCorrect (curry {k = k} {A} {B} {C} f m)
+  ir-to-trace-correct-curry f Stack = ir-to-trace-correct-curry-stack f
+  ir-to-trace-correct-curry {k} {A} {B} {C} f Heap ir<bound mIn x input-loc s alloc
+                            valid before not-halted rdi-eq =
+    let rec-wf = make-rec-wf ir<bound
+        r = run-curry-heap {A} {B} {C} {k} mIn f ir<bound rec-wf x input-loc s alloc
+              valid before not-halted rdi-eq
+        pv = place-valid (IRResultAWF.result-place r)
+        tc = IRResultAWF.trace-correct r
+        ac = IRResultAWF.alloc-correct r
+        trace = ir-to-trace-at-frontier (next-slot alloc) (curry {k = k} f Heap)
+    in Heap , place-loc (IRResultAWF.result-place r) ,
+       subst (λ st → ValidAtWF Heap (proj₂ (exec-trace trace s alloc))
+                                (eval (curry {k = k} f Heap) x)
+                                (place-loc (IRResultAWF.result-place r)) st)
+             (sym tc)
+             (subst (λ al → ValidAtWF Heap al (eval (curry {k = k} f Heap) x)
+                                (place-loc (IRResultAWF.result-place r))
+                                (IRResultAWF.final-state r))
+                    (sym ac)
+                    pv)
+
+  postulate
     -- Plan 0.11 Task A — SigOp value-flow trusted-base axiom.
     --
     -- After Plan 0.11 task A's structuring of `exec-abstract
