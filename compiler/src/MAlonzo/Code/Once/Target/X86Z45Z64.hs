@@ -73,12 +73,12 @@ d_x86'45'64'45'asmHeader_6
                                        ("_start:\n" :: Data.Text.Text)
                                        (coe
                                           MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                                          ("    leaq once_heap_base(%rip), %rax\n"
+                                          ("    leaq once_heap_base(%rip), %r15\n"
                                            ::
                                            Data.Text.Text)
                                           (coe
                                              MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                                             ("    movq %rax, once_heap_pos(%rip)\n"
+                                             ("    movq %r15, once_heap_pos(%rip)\n"
                                               ::
                                               Data.Text.Text)
                                              (coe
@@ -121,7 +121,7 @@ d_x86'45'64'45'irToAsm_18 ::
   Integer ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.CCC.IR.T_IR_270 ->
+  MAlonzo.Code.Once.CCC.IR.T_IR_274 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_x86'45'64'45'irToAsm_18 v0 v1 v2 v3
   = coe
@@ -129,7 +129,7 @@ d_x86'45'64'45'irToAsm_18 v0 v1 v2 v3
       (coe
          MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
          (coe
-            MAlonzo.Code.Once.CCC.Target.X86Z45Z64.AbstractToX86.d_compile'45'trace'45'cnt_50
+            MAlonzo.Code.Once.CCC.Target.X86Z45Z64.AbstractToX86.d_compile'45'trace'45'cnt_52
             (coe
                MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                (coe
@@ -161,7 +161,7 @@ d_x86'45'64'45'irToAsm_18 v0 v1 v2 v3
                      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Emit.d_programToText_86
                      (MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                         (coe
-                           MAlonzo.Code.Once.CCC.Target.X86Z45Z64.AbstractToX86.d_compile'45'trace'45'cnt_50
+                           MAlonzo.Code.Once.CCC.Target.X86Z45Z64.AbstractToX86.d_compile'45'trace'45'cnt_52
                            (coe
                               MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                               (coe
@@ -200,7 +200,7 @@ d_emit'45'thunk'45'body_34 v0 v1
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                        (coe
-                          MAlonzo.Code.Once.CCC.Target.X86Z45Z64.AbstractToX86.d_compile'45'trace'45'cnt_50
+                          MAlonzo.Code.Once.CCC.Target.X86Z45Z64.AbstractToX86.d_compile'45'trace'45'cnt_52
                           (coe v0) (coe v5)))
                     (coe
                        MAlonzo.Code.Data.String.Base.d__'43''43'__20
@@ -228,7 +228,7 @@ d_emit'45'thunk'45'body_34 v0 v1
                                             MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Emit.d_programToText_86
                                             (MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                                                (coe
-                                                  MAlonzo.Code.Once.CCC.Target.X86Z45Z64.AbstractToX86.d_compile'45'trace'45'cnt_50
+                                                  MAlonzo.Code.Once.CCC.Target.X86Z45Z64.AbstractToX86.d_compile'45'trace'45'cnt_52
                                                   (coe v0) (coe v5))))
                                          (coe
                                             MAlonzo.Code.Data.String.Base.d__'43''43'__20
@@ -249,7 +249,7 @@ d_x86'45'64'45'irToBodies_52 ::
   Integer ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.CCC.IR.T_IR_270 ->
+  MAlonzo.Code.Once.CCC.IR.T_IR_274 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_x86'45'64'45'irToBodies_52 v0 v1 v2 v3
   = coe
@@ -269,7 +269,7 @@ d_emit'45'bodies_62 ::
   Integer ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.CCC.IR.T_IR_270 ->
+  MAlonzo.Code.Once.CCC.IR.T_IR_274 ->
   Integer ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14

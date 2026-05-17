@@ -249,6 +249,6 @@ data T_Expr_174
     C_arr''_486 T_Expr_174 |
     C_sigOp_494 MAlonzo.Code.Agda.Builtin.String.T_String_6 |
     C_poly_504 MAlonzo.Code.Agda.Builtin.String.T_String_6 |
-    C_lift'45'morphism_514 MAlonzo.Code.Once.CCC.IR.T_IR_270 |
+    C_lift'45'morphism_514 MAlonzo.Code.Once.CCC.IR.T_IR_274 |
     C_morph'45'app_526 T_Usage_50 MAlonzo.Code.Once.Type.T_Type_108
-                       MAlonzo.Code.Once.CCC.IR.T_IR_270 T_Expr_174
+                       MAlonzo.Code.Once.CCC.IR.T_IR_274 T_Expr_174

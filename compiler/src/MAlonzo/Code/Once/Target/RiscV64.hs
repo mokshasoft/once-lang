@@ -61,7 +61,7 @@ d_riscv64'45'irToBodies_16 ::
   Integer ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.CCC.IR.T_IR_270 ->
+  MAlonzo.Code.Once.CCC.IR.T_IR_274 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_riscv64'45'irToBodies_16 v0 ~v1 ~v2 ~v3
   = du_riscv64'45'irToBodies_16 v0
@@ -81,7 +81,7 @@ d_riscv64'45'irToAsm_26 ::
   Integer ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.CCC.IR.T_IR_270 ->
+  MAlonzo.Code.Once.CCC.IR.T_IR_274 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_riscv64'45'irToAsm_26 v0 v1 v2 v3
   = coe
@@ -93,7 +93,7 @@ d_riscv64'45'irToAsm_26 v0 v1 v2 v3
             (coe v1) (coe v2) (coe v0) (coe v3)))
       (coe
          MAlonzo.Code.Once.CCC.Target.RiscV64.Emit.d_programToText_90
-         (MAlonzo.Code.Once.CCC.Target.RiscV64.AbstractToRiscV.d_compile'45'trace_50
+         (MAlonzo.Code.Once.CCC.Target.RiscV64.AbstractToRiscV.d_compile'45'trace_52
             (coe
                MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                (coe

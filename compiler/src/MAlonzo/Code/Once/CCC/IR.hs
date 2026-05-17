@@ -20,10 +20,12 @@ import qualified Data.Text
 import qualified MAlonzo.Code.Agda.Builtin.Equality
 import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Data.Sum.Base
+import qualified MAlonzo.Code.Once.CCC.FrameSemantics
 import qualified MAlonzo.Code.Once.CCC.Machine.SMCore
 import qualified MAlonzo.Code.Once.CCC.SigOp.Info
 import qualified MAlonzo.Code.Once.Functor.Base
 import qualified MAlonzo.Code.Once.Functor.Translate
+import qualified MAlonzo.Code.Once.Memory.HeapAddress
 import qualified MAlonzo.Code.Once.Semantics.Core
 import qualified MAlonzo.Code.Once.Type
 
@@ -956,42 +958,48 @@ d_'10214'ν'10215'_256 = erased
 -- Once.CCC.IR.AllocMode
 d_AllocMode_258 = ()
 data T_AllocMode_258 = C_Stack_260 | C_Heap_262
+-- Once.CCC.IR.LocMatchesMode
+d_LocMatchesMode_266 ::
+  MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
+  T_AllocMode_258 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_ValueLocation_66 -> ()
+d_LocMatchesMode_266 = erased
 -- Once.CCC.IR.Allocator
-d_Allocator_264 = ()
-data T_Allocator_264
-  = C_Stack'45'allocator_266 | C_Dynamic'45'allocator_268
+d_Allocator_268 = ()
+data T_Allocator_268
+  = C_Stack'45'allocator_270 | C_Dynamic'45'allocator_272
 -- Once.CCC.IR.IR
-d_IR_270 a0 a1 = ()
-data T_IR_270
-  = C_id_274 |
-    C__'8728'__282 MAlonzo.Code.Once.Type.T_Type_108 T_IR_270
-                   T_IR_270 |
-    C_'10216'_'44'_'10217'_290 T_IR_270 T_IR_270 T_AllocMode_258 |
-    C_fst_296 | C_snd_302 | C_inl_308 T_AllocMode_258 |
-    C_inr_314 T_AllocMode_258 | C_case_322 T_IR_270 T_IR_270 |
-    C_terminal_326 | C_initial_330 |
-    C_curry_340 T_IR_270 T_AllocMode_258 | C_apply_348 | C_arr_356 |
-    C_In_360 MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174
+d_IR_274 a0 a1 = ()
+data T_IR_274
+  = C_id_278 |
+    C__'8728'__286 MAlonzo.Code.Once.Type.T_Type_108 T_IR_274
+                   T_IR_274 |
+    C_'10216'_'44'_'10217'_294 T_IR_274 T_IR_274 T_AllocMode_258 |
+    C_fst_300 | C_snd_306 | C_inl_312 T_AllocMode_258 |
+    C_inr_318 T_AllocMode_258 | C_case_326 T_IR_274 T_IR_274 |
+    C_terminal_330 | C_initial_334 |
+    C_curry_344 T_IR_274 T_AllocMode_258 | C_apply_352 | C_arr_360 |
+    C_In_364 MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174
              T_AllocMode_258 |
-    C_out'45'μ_364 MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 |
-    C_Cata_370 MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174
-               T_IR_270 |
-    C_Para_376 MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174
-               T_IR_270 |
-    C_Out_380 MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 |
-    C_in'45'ν_384 MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174
+    C_out'45'μ_368 MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 |
+    C_Cata_374 MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174
+               T_IR_274 |
+    C_Para_380 MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174
+               T_IR_274 |
+    C_Out_384 MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 |
+    C_in'45'ν_388 MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174
                   T_AllocMode_258 |
-    C_Ana_390 MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174
-              T_IR_270 |
-    C_Hylo_398 MAlonzo.Code.Once.Type.T_Functor_106
+    C_Ana_394 MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174
+              T_IR_274 |
+    C_Hylo_402 MAlonzo.Code.Once.Type.T_Functor_106
                MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174
-               MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 T_IR_270
-               T_IR_270 |
-    C_Fuse_406 MAlonzo.Code.Once.Type.T_Functor_106
+               MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 T_IR_274
+               T_IR_274 |
+    C_Fuse_410 MAlonzo.Code.Once.Type.T_Functor_106
                MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174
-               MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 T_IR_270
-               T_IR_270 |
-    C_free'45'heap_408 MAlonzo.Code.Once.CCC.Machine.SMCore.T_HeapRef_20 |
-    C_const_412 MAlonzo.Code.Once.Type.T_FitsInReg_188 AgdaAny
+               MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 T_IR_274
+               T_IR_274 |
+    C_free'45'heap_412 MAlonzo.Code.Once.Memory.HeapAddress.T_HeapRef_8 |
+    C_const_416 MAlonzo.Code.Once.Type.T_FitsInReg_188 AgdaAny
                 AgdaAny |
-    C_SigOp_418 MAlonzo.Code.Once.CCC.SigOp.Info.T_SigOpInfo_264
+    C_SigOp_422 MAlonzo.Code.Once.CCC.SigOp.Info.T_SigOpInfo_264
