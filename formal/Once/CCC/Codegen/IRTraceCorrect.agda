@@ -21,6 +21,10 @@
 --
 --   id, fst, snd, terminal, initial, arr  — DISCHARGED via SimpleWFImpl
 --                                            run-X + transport-trivial
+--   out-μ, Out                            — DISCHARGED via SumRecWFImpl
+--                                            run-X (Lambek identity)
+--   free-heap                             — DISCHARGED via SimpleWFImpl
+--                                            run-free-heap
 --   _∘_                                   — POSTULATED (structural IH;
 --                                            blocked on slot-frontier
 --                                            invariance for sub-IRs)
@@ -28,7 +32,26 @@
 --                                            alignment between
 --                                            ir-to-trace's static `n`
 --                                            and run-X's `next-slot
---                                            alloc`)
+--                                            alloc`). Plan 0.14: Heap
+--                                            variants have run-pair-heap /
+--                                            run-curry-heap producers
+--                                            with matching trace shapes;
+--                                            still blocked on frontier.
+--   inl, inr                              — Plan 0.14, 2026-05-17:
+--                                            EXPLICITLY ROUTED via named
+--                                            postulates (`ir-to-trace-
+--                                            correct-inl`/`-inr`) instead
+--                                            of the catchall. Same
+--                                            slot-frontier mismatch as
+--                                            pair/curry; Heap variants
+--                                            have run-inl-heap / run-inr-
+--                                            heap producers with matching
+--                                            shapes.
+--   case                                  — Plan 0.14, 2026-05-17:
+--                                            EXPLICITLY ROUTED via named
+--                                            postulate (relies on
+--                                            SumRecWF.case-dispatch-{output,
+--                                            alloc}-independent).
 --   SigOp                                 — DERIVED from
 --                                            `exec-sigop-respects-semM`
 --                                            (Plan 0.11 task A); the
@@ -37,12 +60,11 @@
 --                                            obligation pinning
 --                                            `result-loc = exec-sigop-
 --                                            output si s`.
---   free-heap                             — POSTULATED (empty-trace
---                                            transport)
---   inl, inr, case, In, out-μ, Cata,
---     Para, Out, in-ν, Ana, Hylo, Fuse    — POSTULATED catchall (Layer 0
---                                            doesn't use; ir-to-trace
---                                            stubs to [])
+--   In, Cata, Para, in-ν, Ana, Hylo, Fuse
+--                                         — POSTULATED catchall
+--                                            (recursion schemes; routed
+--                                            via `ir-to-trace-correct-
+--                                            non-layer0`).
 ------------------------------------------------------------------------
 
 module Once.CCC.Codegen.IRTraceCorrect where
@@ -69,6 +91,7 @@ open import Once.CCC.Eval using (eval)
 
 open import Once.CCC.Machine.SMCore
   using (LocState; ValueLocation; halted; regs; readReg; Input1;
+         StoredValue; SV-Ptr;
          AbstractTrace; AbstractInstr;
          mov-to-output; mov-to-input;
          load-indirect; load-indirect-suc)
@@ -86,12 +109,19 @@ module IRTraceCorrectness {FS : FrameSemantics} (program-bound : ℕ) where
   open Once.CCC.Machine.SMCore.MemOps {FS}
   open Once.CCC.Machine.SMCore.ExecFinal {FS}
   open Once.CCC.Machine.SMCore.AbstractExec {FS}
+
+  -- exec-abstract preservation helpers (for load-indirect / load-indirect-suc
+  -- which case-split on sv-as-loc and need explicit alloc-preserved proofs).
+  open import Once.CCC.Machine.SMPrimitives as SMP hiding (AllocMode)
+  open SMP.ExecLemmas {FS}
+    using (exec-abstract-load-indirect-preserves-alloc;
+           exec-abstract-load-indirect-suc-preserves-alloc)
   open import Once.CCC.SigOp.Info using (SigOpInfo; semM)
   open import Once.CCC.Machine.SMCore using (mkLocState; stackMem; heapMem; writeReg; Output; instr-sigop)
 
   open import Once.CCC.Machine.ClosureWellFormed
   open ClosureWellFormedDef {FS} program-bound
-    using (ValidAtWF; IRResultAWF)
+    using (ValidAtWF; IRResultAWF; place-loc; place-valid)
 
   open Once.CCC.Machine.Allocation.FrontierInvariant {FS}
     using (BeforeFrontier)
@@ -120,7 +150,7 @@ module IRTraceCorrectness {FS : FrameSemantics} (program-bound : ℕ) where
     ValidAtWF mIn alloc x input-loc s →
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
-    readReg (regs s) Input1 ≡ input-loc →
+    readReg (regs s) Input1 ≡ SV-Ptr input-loc →
     let result = exec-trace (ir-to-trace ir) s alloc
         final-s = proj₁ result
         final-alloc = proj₂ result
@@ -165,30 +195,34 @@ module IRTraceCorrectness {FS : FrameSemantics} (program-bound : ℕ) where
   ir-to-trace-correct-id : ∀ {A} → IRTraceCorrect (id {A})
   ir-to-trace-correct-id mIn x input-loc s alloc valid before not-halted rdi-eq =
     let r = run-id x input-loc s alloc valid before not-halted rdi-eq
-    in mIn , IRResultAWF.result-loc r ,
+    in mIn , place-loc (IRResultAWF.result-place r) ,
        transport-trivial mov-to-output id x input-loc s alloc
-         not-halted refl (IRResultAWF.result-valid-wf r)
+         not-halted refl (place-valid (IRResultAWF.result-place r))
 
   ir-to-trace-correct-fst : ∀ {A B} → IRTraceCorrect (fst {A} {B})
   ir-to-trace-correct-fst mIn x input-loc s alloc valid before not-halted rdi-eq =
     let (mA , r) = run-fst x input-loc s alloc valid before not-halted rdi-eq
-    in mA , IRResultAWF.result-loc r ,
-       transport-trivial load-indirect fst x (IRResultAWF.result-loc r) s alloc
-         not-halted refl (IRResultAWF.result-valid-wf r)
+    in mA , place-loc (IRResultAWF.result-place r) ,
+       transport-trivial load-indirect fst x (place-loc (IRResultAWF.result-place r)) s alloc
+         not-halted
+         (exec-abstract-load-indirect-preserves-alloc s alloc)
+         (place-valid (IRResultAWF.result-place r))
 
   ir-to-trace-correct-snd : ∀ {A B} → IRTraceCorrect (snd {A} {B})
   ir-to-trace-correct-snd mIn x input-loc s alloc valid before not-halted rdi-eq =
     let (mB , r) = run-snd x input-loc s alloc valid before not-halted rdi-eq
-    in mB , IRResultAWF.result-loc r ,
-       transport-trivial load-indirect-suc snd x (IRResultAWF.result-loc r) s alloc
-         not-halted refl (IRResultAWF.result-valid-wf r)
+    in mB , place-loc (IRResultAWF.result-place r) ,
+       transport-trivial load-indirect-suc snd x (place-loc (IRResultAWF.result-place r)) s alloc
+         not-halted
+         (exec-abstract-load-indirect-suc-preserves-alloc s alloc)
+         (place-valid (IRResultAWF.result-place r))
 
   ir-to-trace-correct-terminal : ∀ {A} → IRTraceCorrect (terminal {A})
   ir-to-trace-correct-terminal {A} mIn x input-loc s alloc valid before not-halted rdi-eq =
     let r = run-terminal {mIn} {A} x input-loc s alloc valid before not-halted rdi-eq
-    in mIn , IRResultAWF.result-loc r ,
-       transport-trivial mov-to-output (terminal {A}) x (IRResultAWF.result-loc r) s alloc
-         not-halted refl (IRResultAWF.result-valid-wf r)
+    in mIn , place-loc (IRResultAWF.result-place r) ,
+       transport-trivial mov-to-output (terminal {A}) x (place-loc (IRResultAWF.result-place r)) s alloc
+         not-halted refl (place-valid (IRResultAWF.result-place r))
 
   -- initial: input type is Void, so caller can never invoke us with a
   -- valid x. Absurd-eliminated.
@@ -198,18 +232,18 @@ module IRTraceCorrectness {FS : FrameSemantics} (program-bound : ℕ) where
   ir-to-trace-correct-arr : ∀ {A B q} → IRTraceCorrect (arr {A} {B} {q})
   ir-to-trace-correct-arr {A} {B} {q} mIn x input-loc s alloc valid before not-halted rdi-eq =
     let r = run-arr {mIn} {A} {B} {q} x input-loc s alloc valid before not-halted rdi-eq
-    in mIn , IRResultAWF.result-loc r ,
+    in mIn , place-loc (IRResultAWF.result-place r) ,
        transport-trivial mov-to-output (arr {A} {B} {q}) x
-         (IRResultAWF.result-loc r) s alloc
-         not-halted refl (IRResultAWF.result-valid-wf r)
+         (place-loc (IRResultAWF.result-place r)) s alloc
+         not-halted refl (place-valid (IRResultAWF.result-place r))
 
   ir-to-trace-correct-free-heap : (ref : _) → IRTraceCorrect (free-heap ref)
   ir-to-trace-correct-free-heap ref mIn x input-loc s alloc valid before not-halted rdi-eq =
     let r = run-free-heap ref x input-loc s alloc valid before not-halted rdi-eq
-    in mIn , IRResultAWF.result-loc r ,
+    in mIn , place-loc (IRResultAWF.result-place r) ,
        transport-trivial mov-to-output (free-heap ref) x
-         (IRResultAWF.result-loc r) s alloc
-         not-halted refl (IRResultAWF.result-valid-wf r)
+         (place-loc (IRResultAWF.result-place r)) s alloc
+         not-halted refl (place-valid (IRResultAWF.result-place r))
 
   -- out-μ / Out: μ/ν Lambek inverses, semantically the identity. run-X
   -- emits `mov-to-output ∷ []`; ir-to-trace mirrors. Same shape as
@@ -217,18 +251,18 @@ module IRTraceCorrectness {FS : FrameSemantics} (program-bound : ℕ) where
   ir-to-trace-correct-out-μ : ∀ {F} (wf : _) → IRTraceCorrect (out-μ {F} wf)
   ir-to-trace-correct-out-μ {F} wf mIn x input-loc s alloc valid before not-halted rdi-eq =
     let r = run-out-μ wf mIn x input-loc s alloc valid before not-halted rdi-eq
-    in _ , IRResultAWF.result-loc r ,
+    in _ , place-loc (IRResultAWF.result-place r) ,
        transport-trivial mov-to-output (out-μ wf) x
-         (IRResultAWF.result-loc r) s alloc
-         not-halted refl (IRResultAWF.result-valid-wf r)
+         (place-loc (IRResultAWF.result-place r)) s alloc
+         not-halted refl (place-valid (IRResultAWF.result-place r))
 
   ir-to-trace-correct-Out : ∀ {F} (wf : _) → IRTraceCorrect (Out {F} wf)
   ir-to-trace-correct-Out {F} wf mIn x input-loc s alloc valid before not-halted rdi-eq =
     let r = run-Out wf mIn x input-loc s alloc valid before not-halted rdi-eq
-    in _ , IRResultAWF.result-loc r ,
+    in _ , place-loc (IRResultAWF.result-place r) ,
        transport-trivial mov-to-output (Out wf) x
-         (IRResultAWF.result-loc r) s alloc
-         not-halted refl (IRResultAWF.result-valid-wf r)
+         (place-loc (IRResultAWF.result-place r)) s alloc
+         not-halted refl (place-valid (IRResultAWF.result-place r))
 
   ----------------------------------------------------------------------
   -- Postulated per-IR cases. Audit handles for future discharges.
@@ -245,6 +279,13 @@ module IRTraceCorrectness {FS : FrameSemantics} (program-bound : ℕ) where
     -- base, while run-X uses `next-slot alloc`. Discharge requires
     -- precondition `next-slot alloc ≡ 0` or refactoring ir-to-trace
     -- to take the alloc's frontier.
+    --
+    -- Plan 0.14 (2026-05-17): Heap variants (m = Heap) now have
+    -- corresponding run-pair-heap / run-curry-heap producers in
+    -- PairHeapWF / CurryHeapWF that emit the same trace shape as
+    -- IRToTrace's Heap clause. The bridge becomes "transport via
+    -- result-place" once the slot-frontier alignment is resolved.
+    -- Currently postulated for both modes pending that refactor.
     ir-to-trace-correct-pair :
       ∀ {A B C} (m : AllocMode) (f : IR A B) (g : IR A C) →
       IRTraceCorrect (⟨_,_⟩ {A} {B} {C} f g m)
@@ -253,6 +294,28 @@ module IRTraceCorrectness {FS : FrameSemantics} (program-bound : ℕ) where
       IRTraceCorrect (curry {k = k} f m)
     ir-to-trace-correct-apply : ∀ {k A B} →
       IRTraceCorrect (apply {A} {B} {k})
+
+    -- Plan 0.14 (2026-05-17): Sum injections. Stack variant emits the
+    -- 5-instr in-place lowering matching SumRecWF's run-inl/run-inr
+    -- (stack-mode, kept by escape analysis when sum is consumed by
+    -- case in the same chain). Heap variant emits the 10-instr heap-
+    -- allocating trace matching SumInlHeapWF / SumInrHeapWF.
+    --
+    -- Same slot-frontier-0-mismatch as pair/curry; postulated until the
+    -- IRToTrace alloc-frontier refactor.
+    ir-to-trace-correct-inl :
+      ∀ {A B} (m : AllocMode) → IRTraceCorrect (inl {A} {B} m)
+    ir-to-trace-correct-inr :
+      ∀ {A B} (m : AllocMode) → IRTraceCorrect (inr {A} {B} m)
+
+    -- case: sum eliminator. Trace dispatches via instr-case-on-tag,
+    -- with two branches each prefixed by load-indirect-suc + mov-to-input.
+    -- Discharge via SumRecWF.case-trace-state-correct + case-trace-alloc-correct
+    -- (themselves postulates on the case-dispatch-output-independent /
+    -- alloc-independent axioms). Routed explicitly so this case isn't
+    -- absorbed into the catchall.
+    ir-to-trace-correct-case :
+      ∀ {A B C} (f : IR A C) (g : IR B C) → IRTraceCorrect (case f g)
 
     -- Plan 0.11 Task A — SigOp value-flow trusted-base axiom.
     --
@@ -346,8 +409,12 @@ module IRTraceCorrectness {FS : FrameSemantics} (program-bound : ℕ) where
   ir-to-trace-correct (SigOp si)    = ir-to-trace-correct-sigop si
   ir-to-trace-correct (out-μ wf)    = ir-to-trace-correct-out-μ wf
   ir-to-trace-correct (Out wf)      = ir-to-trace-correct-Out wf
-  -- All remaining IR ctors (sums, allocating recursion schemes,
-  -- transformations) — Layer 0 doesn't use them. Routed through the
-  -- named catchall postulate.
+  -- Layer 2 sum constructors (Plan 0.14, 2026-05-17): explicit clauses
+  -- via the heap-mode IRToTrace alignment + run-inl-heap / run-inr-heap.
+  ir-to-trace-correct (inl m)       = ir-to-trace-correct-inl m
+  ir-to-trace-correct (inr m)       = ir-to-trace-correct-inr m
+  ir-to-trace-correct (case f g)    = ir-to-trace-correct-case f g
+  -- Remaining IR ctors (recursion schemes, transformations) — Layer 0/1/2
+  -- don't use them. Routed through the named catchall postulate.
   {-# CATCHALL #-}
   ir-to-trace-correct ir            = ir-to-trace-correct-non-layer0 ir
