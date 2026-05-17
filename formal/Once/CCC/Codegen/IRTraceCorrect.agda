@@ -82,7 +82,7 @@ open FrameSemantics using (Frame)
 open import Once.Type using (Type; _*_; _+_)
 open import Once.Semantics.Machine using (⟦_⟧)
 open import Once.CCC.IR
-  using (IR; AllocMode;
+  using (IR; AllocMode; Stack; Heap;
          id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal; initial;
          curry; apply; arr;
          In; out-μ; Cata; Para; Out; in-ν; Ana; Hylo; Fuse;
@@ -99,12 +99,26 @@ open import Once.CCC.Machine.Allocation using (AllocState; current-frame; next-s
 
 open import Once.CCC.Codegen.IRToTrace using (ir-to-trace; ir-to-trace-at-frontier)
 
+-- Plan 0.14 (2026-05-17): Dispatcher import for pair/curry/apply/case
+-- discharges. The Dispatcher provides `run-ir-wf` which dispatches
+-- any IR to its WF producer with the appropriate rec-wf threading.
+-- IRTraceCorrect uses it as a recursive black-box for the complex
+-- IR constructors that need RecDispatcherWF parameters.
+import Once.CCC.Machine.Dispatcher as DispatcherModule
+open import Induction.WellFounded using (Acc; acc)
+open import Data.Nat using (_<_)
+
 ------------------------------------------------------------------------
 -- The proof framework is parameterized by FrameSemantics + program-bound,
--- matching the per-IR run-X helpers in SimpleWFImpl/SumRecWFImpl.
+-- + the recursive-dispatcher's well-founded accessibility + SigOp contract.
+-- The latter two are required to discharge pair/curry/apply/case (which
+-- internally invoke recursive dispatch on sub-IRs).
 ------------------------------------------------------------------------
 
-module IRTraceCorrectness {FS : FrameSemantics} (program-bound : ℕ) where
+module IRTraceCorrectness {FS : FrameSemantics} (program-bound : ℕ)
+  (acc-pb : Acc _<_ program-bound)
+  (sigOp-proof : DispatcherModule.SigOpContract.Provider {FS} program-bound)
+  where
 
   open Once.CCC.Machine.SMCore.MemOps {FS}
   open Once.CCC.Machine.SMCore.ExecFinal {FS}
@@ -148,6 +162,38 @@ module IRTraceCorrectness {FS : FrameSemantics} (program-bound : ℕ) where
   open SumInrHeapWFModule.SumInrHeapWFImpl {FS} program-bound
     using (run-inr-heap)
 
+  -- Dispatcher: provides run-ir-wf as a well-founded recursive
+  -- dispatcher for sub-IR computation. Used by pair/curry/apply/case
+  -- to satisfy their RecDispatcherWF parameter.
+  open DispatcherModule.Dispatcher {FS} program-bound acc-pb sigOp-proof
+    using (run-ir-wf)
+  open import Data.Nat.Properties using (<-trans)
+  open import Once.CCC.IR.Size using (ir-size)
+
+  -- Construct RecDispatcherWF at any size bound `n` from acc-pb +
+  -- `n < program-bound`. Mirrors Dispatcher.make-rec-wf: given the
+  -- predecessor-accessibility extracted from acc-pb at this bound,
+  -- delegate to run-ir-wf for each sub-IR with the threaded accessibility.
+  open import Once.CCC.Machine.ClosureWellFormed
+  open ClosureWellFormedDef {FS} program-bound
+    using (RecDispatcherWF) public
+
+  -- Helper: destructure acc-pb to peel off accessibility at any smaller size.
+  -- Mirrors Dispatcher.make-rec-wf's internal Acc threading. Implemented
+  -- via direct application of Acc's `rs` projection (since `with acc-pb`
+  -- isn't allowed — acc-pb is bound in the module telescope).
+  acc-rs : ∀ {n} → Acc _<_ n → ∀ {m} → m < n → Acc _<_ m
+  acc-rs (acc rs) lt = rs lt
+
+  make-rec-wf : ∀ {n} (n<bound : n < program-bound) → RecDispatcherWF n
+  make-rec-wf {n} n<bound mIn ir lt x' input-loc' s' alloc' valid' before' not-halted' rdi-eq' =
+    let acc-n : Acc _<_ n
+        acc-n = acc-rs acc-pb n<bound
+        acc-ir : Acc _<_ (ir-size ir)
+        acc-ir = acc-rs acc-n lt
+    in run-ir-wf mIn ir (<-trans lt n<bound) x' input-loc' s' alloc'
+         valid' before' not-halted' rdi-eq' acc-ir
+
   ----------------------------------------------------------------------
   -- Theorem signature, factored out so per-IR cases can refer to it.
   ----------------------------------------------------------------------
@@ -156,8 +202,15 @@ module IRTraceCorrectness {FS : FrameSemantics} (program-bound : ℕ) where
   -- frontier so it matches the slot indexing run-X helpers in IR/*WF
   -- use. At the runtime entry point (compile-correct, next-slot = 0)
   -- this reduces to `ir-to-trace ir`.
+  --
+  -- ir<bound precondition: the IR's size is bounded by the program's
+  -- total size. Needed by pair/curry/apply/case discharges to invoke
+  -- the Dispatcher's well-founded run-ir-wf for sub-IR computation.
+  -- For non-recursive constructors (id/fst/snd/etc.) the witness is
+  -- unused — they thread it through without inspection.
   IRTraceCorrect : ∀ {A B} → IR A B → Set
   IRTraceCorrect {A} {B} ir =
+    ir-size ir < program-bound →
     ∀ (mIn : AllocMode) (x : ⟦ A ⟧) (input-loc : ValueLocation FS)
       (s : LocState FS) (alloc : AllocState {FS}) →
     ValidAtWF mIn alloc x input-loc s →
@@ -206,14 +259,14 @@ module IRTraceCorrectness {FS : FrameSemantics} (program-bound : ℕ) where
                v
 
   ir-to-trace-correct-id : ∀ {A} → IRTraceCorrect (id {A})
-  ir-to-trace-correct-id mIn x input-loc s alloc valid before not-halted rdi-eq =
+  ir-to-trace-correct-id _ mIn x input-loc s alloc valid before not-halted rdi-eq =
     let r = run-id x input-loc s alloc valid before not-halted rdi-eq
     in mIn , place-loc (IRResultAWF.result-place r) ,
        transport-trivial mov-to-output id x input-loc s alloc
          not-halted refl (place-valid (IRResultAWF.result-place r))
 
   ir-to-trace-correct-fst : ∀ {A B} → IRTraceCorrect (fst {A} {B})
-  ir-to-trace-correct-fst mIn x input-loc s alloc valid before not-halted rdi-eq =
+  ir-to-trace-correct-fst _ mIn x input-loc s alloc valid before not-halted rdi-eq =
     let (mA , r) = run-fst x input-loc s alloc valid before not-halted rdi-eq
     in mA , place-loc (IRResultAWF.result-place r) ,
        transport-trivial load-indirect fst x (place-loc (IRResultAWF.result-place r)) s alloc
@@ -222,7 +275,7 @@ module IRTraceCorrectness {FS : FrameSemantics} (program-bound : ℕ) where
          (place-valid (IRResultAWF.result-place r))
 
   ir-to-trace-correct-snd : ∀ {A B} → IRTraceCorrect (snd {A} {B})
-  ir-to-trace-correct-snd mIn x input-loc s alloc valid before not-halted rdi-eq =
+  ir-to-trace-correct-snd _ mIn x input-loc s alloc valid before not-halted rdi-eq =
     let (mB , r) = run-snd x input-loc s alloc valid before not-halted rdi-eq
     in mB , place-loc (IRResultAWF.result-place r) ,
        transport-trivial load-indirect-suc snd x (place-loc (IRResultAWF.result-place r)) s alloc
@@ -231,7 +284,7 @@ module IRTraceCorrectness {FS : FrameSemantics} (program-bound : ℕ) where
          (place-valid (IRResultAWF.result-place r))
 
   ir-to-trace-correct-terminal : ∀ {A} → IRTraceCorrect (terminal {A})
-  ir-to-trace-correct-terminal {A} mIn x input-loc s alloc valid before not-halted rdi-eq =
+  ir-to-trace-correct-terminal {A} _ mIn x input-loc s alloc valid before not-halted rdi-eq =
     let r = run-terminal {mIn} {A} x input-loc s alloc valid before not-halted rdi-eq
     -- terminal emits []; exec-trace [] s alloc = (s, alloc) so
     -- place-valid threads directly without transport.
@@ -241,10 +294,10 @@ module IRTraceCorrectness {FS : FrameSemantics} (program-bound : ℕ) where
   -- initial: input type is Void, so caller can never invoke us with a
   -- valid x. Absurd-eliminated.
   ir-to-trace-correct-initial : ∀ {A} → IRTraceCorrect (initial {A})
-  ir-to-trace-correct-initial mIn () _ _ _ _ _ _ _
+  ir-to-trace-correct-initial _ mIn () _ _ _ _ _ _ _
 
   ir-to-trace-correct-arr : ∀ {A B q} → IRTraceCorrect (arr {A} {B} {q})
-  ir-to-trace-correct-arr {A} {B} {q} mIn x input-loc s alloc valid before not-halted rdi-eq =
+  ir-to-trace-correct-arr {A} {B} {q} _ mIn x input-loc s alloc valid before not-halted rdi-eq =
     let r = run-arr {mIn} {A} {B} {q} x input-loc s alloc valid before not-halted rdi-eq
     in mIn , place-loc (IRResultAWF.result-place r) ,
        transport-trivial mov-to-output (arr {A} {B} {q}) x
@@ -252,7 +305,7 @@ module IRTraceCorrectness {FS : FrameSemantics} (program-bound : ℕ) where
          not-halted refl (place-valid (IRResultAWF.result-place r))
 
   ir-to-trace-correct-free-heap : (ref : _) → IRTraceCorrect (free-heap ref)
-  ir-to-trace-correct-free-heap ref mIn x input-loc s alloc valid before not-halted rdi-eq =
+  ir-to-trace-correct-free-heap ref _ mIn x input-loc s alloc valid before not-halted rdi-eq =
     let r = run-free-heap ref x input-loc s alloc valid before not-halted rdi-eq
     in mIn , place-loc (IRResultAWF.result-place r) ,
        transport-trivial mov-to-output (free-heap ref) x
@@ -263,7 +316,7 @@ module IRTraceCorrectness {FS : FrameSemantics} (program-bound : ℕ) where
   -- emits `mov-to-output ∷ []`; ir-to-trace mirrors. Same shape as
   -- id/arr/free-heap discharges.
   ir-to-trace-correct-out-μ : ∀ {F} (wf : _) → IRTraceCorrect (out-μ {F} wf)
-  ir-to-trace-correct-out-μ {F} wf mIn x input-loc s alloc valid before not-halted rdi-eq =
+  ir-to-trace-correct-out-μ {F} wf _ mIn x input-loc s alloc valid before not-halted rdi-eq =
     let r = run-out-μ wf mIn x input-loc s alloc valid before not-halted rdi-eq
     in _ , place-loc (IRResultAWF.result-place r) ,
        transport-trivial mov-to-output (out-μ wf) x
@@ -271,7 +324,7 @@ module IRTraceCorrectness {FS : FrameSemantics} (program-bound : ℕ) where
          not-halted refl (place-valid (IRResultAWF.result-place r))
 
   ir-to-trace-correct-Out : ∀ {F} (wf : _) → IRTraceCorrect (Out {F} wf)
-  ir-to-trace-correct-Out {F} wf mIn x input-loc s alloc valid before not-halted rdi-eq =
+  ir-to-trace-correct-Out {F} wf _ mIn x input-loc s alloc valid before not-halted rdi-eq =
     let r = run-Out wf mIn x input-loc s alloc valid before not-halted rdi-eq
     in _ , place-loc (IRResultAWF.result-place r) ,
        transport-trivial mov-to-output (Out wf) x
@@ -294,30 +347,31 @@ module IRTraceCorrectness {FS : FrameSemantics} (program-bound : ℕ) where
   -- bridge becomes a real proof end-to-end.
   ----------------------------------------------------------------------
 
+  -- Stack-mode inl postulated pending SumRecWF.inl-trace shape alignment
+  -- with IRToTrace (SumRecWF currently emits `instr-alloc-stack ∷ ...`
+  -- while IRToTrace omits it since the function prologue handles slot
+  -- allocation). Not reached at runtime — elaborator emits `inl Heap`
+  -- (Desugar.agda:64). Discharging requires either dropping
+  -- instr-alloc-stack from SumRecWF.inl-trace (ripples to
+  -- inl-inr-trace-alloc-correct + alloc-final) or adding it back to
+  -- IRToTrace (changes runtime).
+  postulate
+    ir-to-trace-correct-inl-stack :
+      ∀ {A B} → IRTraceCorrect (inl {A} {B} Stack)
+    ir-to-trace-correct-inr-stack :
+      ∀ {A B} → IRTraceCorrect (inr {A} {B} Stack)
+
   ir-to-trace-correct-inl :
     ∀ {A B} (m : AllocMode) → IRTraceCorrect (inl {A} {B} m)
-  ir-to-trace-correct-inl {A} {B} Stack mIn x input-loc s alloc valid before not-halted rdi-eq =
-    let r = run-inl {A} {B} mIn x input-loc s alloc valid before not-halted rdi-eq
-        pv = place-valid (IRResultAWF.result-place r)
-        tc = IRResultAWF.trace-correct r
-        ac = IRResultAWF.alloc-correct r
-    in Stack , place-loc (IRResultAWF.result-place r) ,
-       subst (λ st → ValidAtWF Stack (proj₂ (exec-trace _ s alloc))
-                                (eval (inl Stack) x)
-                                (place-loc (IRResultAWF.result-place r)) st)
-             (sym tc)
-             (subst (λ al → ValidAtWF Stack al (eval (inl Stack) x)
-                                (place-loc (IRResultAWF.result-place r))
-                                (IRResultAWF.final-state r))
-                    (sym ac)
-                    pv)
-  ir-to-trace-correct-inl {A} {B} Heap mIn x input-loc s alloc valid before not-halted rdi-eq =
+  ir-to-trace-correct-inl Stack = ir-to-trace-correct-inl-stack
+  ir-to-trace-correct-inl {A} {B} Heap _ mIn x input-loc s alloc valid before not-halted rdi-eq =
     let r = run-inl-heap {A} {B} mIn x input-loc s alloc valid before not-halted rdi-eq
         pv = place-valid (IRResultAWF.result-place r)
         tc = IRResultAWF.trace-correct r
         ac = IRResultAWF.alloc-correct r
+        trace = ir-to-trace-at-frontier (next-slot alloc) (inl {A} {B} Heap)
     in Heap , place-loc (IRResultAWF.result-place r) ,
-       subst (λ st → ValidAtWF Heap (proj₂ (exec-trace _ s alloc))
+       subst (λ st → ValidAtWF Heap (proj₂ (exec-trace trace s alloc))
                                 (eval (inl Heap) x)
                                 (place-loc (IRResultAWF.result-place r)) st)
              (sym tc)
@@ -329,28 +383,15 @@ module IRTraceCorrectness {FS : FrameSemantics} (program-bound : ℕ) where
 
   ir-to-trace-correct-inr :
     ∀ {A B} (m : AllocMode) → IRTraceCorrect (inr {A} {B} m)
-  ir-to-trace-correct-inr {A} {B} Stack mIn x input-loc s alloc valid before not-halted rdi-eq =
-    let r = run-inr {A} {B} mIn x input-loc s alloc valid before not-halted rdi-eq
-        pv = place-valid (IRResultAWF.result-place r)
-        tc = IRResultAWF.trace-correct r
-        ac = IRResultAWF.alloc-correct r
-    in Stack , place-loc (IRResultAWF.result-place r) ,
-       subst (λ st → ValidAtWF Stack (proj₂ (exec-trace _ s alloc))
-                                (eval (inr Stack) x)
-                                (place-loc (IRResultAWF.result-place r)) st)
-             (sym tc)
-             (subst (λ al → ValidAtWF Stack al (eval (inr Stack) x)
-                                (place-loc (IRResultAWF.result-place r))
-                                (IRResultAWF.final-state r))
-                    (sym ac)
-                    pv)
-  ir-to-trace-correct-inr {A} {B} Heap mIn x input-loc s alloc valid before not-halted rdi-eq =
+  ir-to-trace-correct-inr Stack = ir-to-trace-correct-inr-stack
+  ir-to-trace-correct-inr {A} {B} Heap _ mIn x input-loc s alloc valid before not-halted rdi-eq =
     let r = run-inr-heap {A} {B} mIn x input-loc s alloc valid before not-halted rdi-eq
         pv = place-valid (IRResultAWF.result-place r)
         tc = IRResultAWF.trace-correct r
         ac = IRResultAWF.alloc-correct r
+        trace = ir-to-trace-at-frontier (next-slot alloc) (inr {A} {B} Heap)
     in Heap , place-loc (IRResultAWF.result-place r) ,
-       subst (λ st → ValidAtWF Heap (proj₂ (exec-trace _ s alloc))
+       subst (λ st → ValidAtWF Heap (proj₂ (exec-trace trace s alloc))
                                 (eval (inr Heap) x)
                                 (place-loc (IRResultAWF.result-place r)) st)
              (sym tc)
@@ -365,23 +406,28 @@ module IRTraceCorrectness {FS : FrameSemantics} (program-bound : ℕ) where
   ----------------------------------------------------------------------
 
   postulate
-    -- Compose: structural IH. Trace = ft ++ mov-to-input ∷ gt where
-    -- ft = ir-to-trace f, but gt = ir-to-trace' n1 g (slot-shifted),
-    -- so IH on g doesn't directly apply unless g is frontier-invariant.
+    -- Plan 0.14 (2026-05-17): the slot-frontier alignment (the IRTraceCorrect
+    -- signature now uses ir-to-trace-at-frontier (next-slot alloc) ir) and
+    -- Dispatcher import (make-rec-wf above) UNBLOCK the discharge framework
+    -- for these four. The remaining obstacle is per-IR trace-shape alignment
+    -- between IRToTrace and the WF spec:
+    --
+    --   - PairHeapWF.setup-trace contains `instr-alloc-stack pair-heap-overhead`
+    --     which IRToTrace omits (function prologue handles slot allocation).
+    --   - CurryHeapWF uses `instr-load-code-addr 0` (placeholder label);
+    --     IRToTrace uses `instr-load-code-addr this-label` (the actual
+    --     parent-emitted label counter value).
+    --   - case's run-case dispatcher chains through SumRecWF.case-dispatch-
+    --     {output,alloc}-independent (themselves postulates).
+    --   - compose's discharge needs trace-decomposition: ir-to-trace (g ∘ f)
+    --     = ft ++ mov-to-input ∷ gt, with the sub-IH applied separately to
+    --     f at frontier n and g at frontier n1. Doable structurally but
+    --     requires several intermediate lemmas.
+    --
+    -- Each is mechanical once the WF specs are aligned with IRToTrace.
+    -- Postulates kept here as the named handles for those alignments.
     ir-to-trace-correct-compose : ∀ {A B C} (g : IR B C) (f : IR A B) →
       IRTraceCorrect (g ∘ f)
-
-    -- Pair, curry, apply: ir-to-trace uses `0` as its slot frontier
-    -- base, while run-X uses `next-slot alloc`. Discharge requires
-    -- precondition `next-slot alloc ≡ 0` or refactoring ir-to-trace
-    -- to take the alloc's frontier.
-    --
-    -- Plan 0.14 (2026-05-17): Heap variants (m = Heap) now have
-    -- corresponding run-pair-heap / run-curry-heap producers in
-    -- PairHeapWF / CurryHeapWF that emit the same trace shape as
-    -- IRToTrace's Heap clause. The bridge becomes "transport via
-    -- result-place" once the slot-frontier alignment is resolved.
-    -- Currently postulated for both modes pending that refactor.
     ir-to-trace-correct-pair :
       ∀ {A B C} (m : AllocMode) (f : IR A B) (g : IR A C) →
       IRTraceCorrect (⟨_,_⟩ {A} {B} {C} f g m)
@@ -463,7 +509,7 @@ module IRTraceCorrectness {FS : FrameSemantics} (program-bound : ℕ) where
 
   ir-to-trace-correct-sigop : ∀ {A B} (si : SigOpInfo A B) →
     IRTraceCorrect (SigOp {A} {B} si)
-  ir-to-trace-correct-sigop si mIn x input-loc s alloc valid before not-halted rdi-eq =
+  ir-to-trace-correct-sigop si _ mIn x input-loc s alloc valid before not-halted rdi-eq =
     let
       (mOut , result-loc , v) = exec-sigop-respects-semM si mIn x input-loc s alloc
                                   valid before not-halted rdi-eq
