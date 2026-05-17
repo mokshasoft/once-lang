@@ -101,12 +101,12 @@ module SumInlHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; max-slot-usage-bound = ≤-refl
         ; slot-stays-in-budget = m≤m+n (next-slot alloc) scratch-slots
         ; frontier-slot-stable = λ _ _ _ _ _ → inj₂ (inj₂ tt)
-        ; trace-writes-above = SMP.!!
-        ; trace-slot-reads-above = SMP.!!
-        ; trace-writes-below = SMP.!!
-        ; trace-slot-reads-below = SMP.!!
+        ; trace-writes-above = inl-twa
+        ; trace-slot-reads-above = inl-tsra
+        ; trace-writes-below = inl-twb
+        ; trace-slot-reads-below = inl-tsrb
         ; scratch-budget = scratch-slots
-        ; scratch-bounded = SMP.!!
+        ; scratch-bounded = ≤-refl
         }
       ; heap-inv = record
         { heap-monotone = n≤1+n (next-heap-ref alloc)
@@ -127,11 +127,14 @@ module SumInlHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       scratch-slots : ℕ
       scratch-slots = 2
 
+      -- Plan 0.14 SV-Code refactor (2026-05-17): dropped instr-alloc-stack
+      -- to match IRToTrace runtime. Slot allocation is implicit in the
+      -- function prologue (subq $budget*8, %rsp); the abstract trace
+      -- doesn't bump next-slot. alloc-final tracks only next-heap-ref.
       inl-heap-trace : AbstractTrace
       inl-heap-trace =
           mov-to-output
         ∷ store-at-slot payload-stash
-        ∷ instr-alloc-stack scratch-slots
         ∷ instr-alloc-heap 2
         ∷ store-at-slot sum-stash
         ∷ mov-to-input                 -- Input1 := SV-Ptr sum-loc
@@ -172,3 +175,40 @@ module SumInlHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
       not-halted-final : halted s-final ≡ false
       not-halted-final = exec-trace-preserves-halted-WF inl-heap-trace s alloc not-halted SMP.!!
+
+      ------------------------------------------------------------------
+      -- Structural slot-bound discharges (Phase C, 2026-05-17).
+      -- inl-heap-trace writes only to payload-stash = next-slot alloc
+      -- and sum-stash = suc (next-slot alloc). Reads same two slots.
+      -- All other instructions are nothing-writes / nothing-reads at
+      -- the slot level. The four trace-{writes,slot-reads}-{above,below}
+      -- obligations reduce to per-instruction tuples Agda evaluates
+      -- via the with-clauses on instr-{writes,reads}-slot.
+      ------------------------------------------------------------------
+      open import Relation.Binary.PropositionalEquality using (sym)
+
+      max-sw : ℕ
+      max-sw = next-slot alloc +ℕ scratch-slots  -- = next-slot alloc + 2
+
+      -- Bridge `next-slot alloc + 2 ≡ suc (suc (next-slot alloc))` via
+      -- +-comm (2 + n reduces because + is left-recursive).
+      max-sw-eq : max-sw ≡ suc (suc (next-slot alloc))
+      max-sw-eq = +-comm (next-slot alloc) 2
+
+      sum-stash<max : sum-stash < max-sw
+      sum-stash<max = subst (suc sum-stash ≤_) (sym max-sw-eq) ≤-refl
+
+      payload-stash<max : payload-stash < max-sw
+      payload-stash<max = ≤-trans (n≤1+n sum-stash) sum-stash<max
+
+      inl-twa : TraceWritesAbove (next-slot alloc) inl-heap-trace
+      inl-twa = ≤-refl , n≤1+n (next-slot alloc) , tt
+
+      inl-twb : TraceWritesBelow max-sw inl-heap-trace
+      inl-twb = payload-stash<max , sum-stash<max , tt
+
+      inl-tsra : TraceSlotReadsAbove (next-slot alloc) inl-heap-trace
+      inl-tsra = ≤-refl , n≤1+n (next-slot alloc) , tt
+
+      inl-tsrb : TraceSlotReadsBelow max-sw inl-heap-trace
+      inl-tsrb = payload-stash<max , sum-stash<max , tt

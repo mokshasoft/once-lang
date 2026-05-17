@@ -141,12 +141,12 @@ module CurryHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; max-slot-usage-bound = ≤-refl
         ; slot-stays-in-budget = m≤m+n (next-slot alloc) closure-heap-scratch
         ; frontier-slot-stable = λ _ _ _ _ _ → inj₂ (inj₂ tt)
-        ; trace-writes-above = SMP.!!
-        ; trace-slot-reads-above = SMP.!!
-        ; trace-writes-below = SMP.!!
-        ; trace-slot-reads-below = SMP.!!
+        ; trace-writes-above = curry-twa
+        ; trace-slot-reads-above = curry-tsra
+        ; trace-writes-below = curry-twb
+        ; trace-slot-reads-below = curry-tsrb
         ; scratch-budget = closure-heap-scratch
-        ; scratch-bounded = SMP.!!
+        ; scratch-bounded = ≤-refl
         }
       ; heap-inv = record
         { heap-monotone = n≤1+n (next-heap-ref alloc)
@@ -180,18 +180,25 @@ module CurryHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ------------------------------------------------------------------
       -- Trace
       ------------------------------------------------------------------
+      -- Plan 0.14 SV-Code refactor (2026-05-17):
+      --   * Dropped instr-alloc-stack (function prologue allocates slots,
+      --     matches IRToTrace runtime).
+      --   * Replaced `lea-slot closure-stash` self-reference fiction with
+      --     `instr-load-code-addr 0` — matches runtime (which emits the
+      --     real body label) and the SV-Code invariant in valid-closure-wf.
+      --     The `0` is a placeholder; label coherence with the body's
+      --     trace is a separate IRTraceCorrect bridge concern.
       curry-heap-trace : AbstractTrace
       curry-heap-trace =
           mov-to-output
         ∷ store-at-slot env-stash
-        ∷ instr-alloc-stack closure-heap-scratch
         ∷ instr-alloc-heap 2
         ∷ store-at-slot closure-stash
         ∷ mov-to-input
         ∷ load-from-slot env-stash
         ∷ store-indirect
-        ∷ lea-slot closure-stash       -- ARCHITECTURAL: self-reference placeholder for code-loc
-        ∷ store-indirect-suc
+        ∷ instr-load-code-addr 0       -- Output := SV-Code 0 (label)
+        ∷ store-indirect-suc           -- closure[1] := SV-Code 0
         ∷ load-from-slot closure-stash
         ∷ []
 
@@ -237,3 +244,32 @@ module CurryHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
       not-halted-final : halted s-final ≡ false
       not-halted-final = exec-trace-preserves-halted-WF curry-heap-trace s alloc not-halted SMP.!!
+
+      ------------------------------------------------------------------
+      -- Structural slot-bound discharges (Phase C, mirror SumInlHeapWF).
+      ------------------------------------------------------------------
+      open import Relation.Binary.PropositionalEquality using (sym)
+
+      max-sw : ℕ
+      max-sw = next-slot alloc +ℕ closure-heap-scratch
+
+      max-sw-eq : max-sw ≡ suc (suc (next-slot alloc))
+      max-sw-eq = +-comm (next-slot alloc) 2
+
+      closure-stash<max : closure-stash < max-sw
+      closure-stash<max = subst (suc closure-stash ≤_) (sym max-sw-eq) ≤-refl
+
+      env-stash<max : env-stash < max-sw
+      env-stash<max = ≤-trans (n≤1+n closure-stash) closure-stash<max
+
+      curry-twa : TraceWritesAbove (next-slot alloc) curry-heap-trace
+      curry-twa = ≤-refl , n≤1+n (next-slot alloc) , tt
+
+      curry-twb : TraceWritesBelow max-sw curry-heap-trace
+      curry-twb = env-stash<max , closure-stash<max , tt
+
+      curry-tsra : TraceSlotReadsAbove (next-slot alloc) curry-heap-trace
+      curry-tsra = ≤-refl , n≤1+n (next-slot alloc) , tt
+
+      curry-tsrb : TraceSlotReadsBelow max-sw curry-heap-trace
+      curry-tsrb = env-stash<max , closure-stash<max , tt
