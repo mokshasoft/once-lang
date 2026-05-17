@@ -63,7 +63,7 @@ open import Data.List using (List; []; _∷_; _++_)
 open import Once.CCC.SigOp.Info using (SigOpInfo)
 open SigOpInfo using (name)
 
-open import Once.CCC.IR using (IR;
+open import Once.CCC.IR using (IR; AllocMode; Stack; Heap;
   id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal; initial;
   curry; apply; arr;
   In; out-μ; Cata; Para; Out; in-ν; Ana; Hylo; Fuse;
@@ -75,7 +75,7 @@ open import Once.CCC.Machine.SMCore
          load-indirect; load-indirect-suc; load-from-slot;
          store-at-slot; store-indirect; store-indirect-suc;
          lea-slot; restore-input;
-         instr-alloc-stack; instr-dealloc-stack; instr-reclaim-to;
+         instr-alloc-stack; instr-alloc-heap; instr-dealloc-stack; instr-reclaim-to;
          instr-push-frame; instr-pop-frame; instr-call-closure;
          instr-sigop; instr-load-const; instr-load-code-addr;
          instr-save-closure-reg;
@@ -284,7 +284,8 @@ ir-to-trace' n l (const p _ vM) = n , l , (instr-load-const p vM ∷ []) , []
 -- Mirrors SumRecWF.run-inl / run-inr's expected trace shape (Phase 3).
 -- ────────────────────────────────────────────────────────────────────
 
-ir-to-trace' n l (inl _) =
+-- Stack mode: 5-instruction stack lowering at slots [n, n+1].
+ir-to-trace' n l (inl Stack) =
   let sum-slot = n
       next     = suc (suc sum-slot)
   in next , l ,
@@ -295,7 +296,7 @@ ir-to-trace' n l (inl _) =
       lea-slot sum-slot ∷ []) ,
      []
 
-ir-to-trace' n l (inr _) =
+ir-to-trace' n l (inr Stack) =
   let sum-slot = n
       next     = suc (suc sum-slot)
   in next , l ,
@@ -304,6 +305,43 @@ ir-to-trace' n l (inr _) =
       mov-to-output ∷
       store-at-slot (suc sum-slot) ∷
       lea-slot sum-slot ∷ []) ,
+     []
+
+-- Heap mode: bump-allocate a 2-cell heap block, write [tag, payload-ptr].
+-- Mirrors SumInlHeapWF.inl-heap-trace / SumInrHeapWF.inr-heap-trace.
+-- Uses 2 scratch slots for stashing: payload-stash = n, sum-stash = n+1.
+ir-to-trace' n l (inl Heap) =
+  let payload-stash = n
+      sum-stash     = suc payload-stash
+      next          = suc sum-stash
+  in next , l ,
+     (mov-to-output ∷
+      store-at-slot payload-stash ∷
+      instr-alloc-heap 2 ∷
+      store-at-slot sum-stash ∷
+      mov-to-input ∷
+      instr-load-tag-lit 0 ∷
+      store-indirect ∷
+      load-from-slot payload-stash ∷
+      store-indirect-suc ∷
+      load-from-slot sum-stash ∷ []) ,
+     []
+
+ir-to-trace' n l (inr Heap) =
+  let payload-stash = n
+      sum-stash     = suc payload-stash
+      next          = suc sum-stash
+  in next , l ,
+     (mov-to-output ∷
+      store-at-slot payload-stash ∷
+      instr-alloc-heap 2 ∷
+      store-at-slot sum-stash ∷
+      mov-to-input ∷
+      instr-load-tag-lit 1 ∷
+      store-indirect ∷
+      load-from-slot payload-stash ∷
+      store-indirect-suc ∷
+      load-from-slot sum-stash ∷ []) ,
      []
 
 -- ────────────────────────────────────────────────────────────────────
