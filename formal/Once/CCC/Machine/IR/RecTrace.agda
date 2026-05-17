@@ -2024,11 +2024,10 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
           -- sv-as-loc Input1); rederive once that propagates.
           SMP.!!
 
-        -- Construct full validity using valid-inl-wf
-        -- Plan 0.14 (Camp 2): wrapper-loc is AtStack but mL is polymorphic.
-        -- For mL = Stack lmm = tt; for mL = Heap lmm = ⊥. Surfaced as SMP.!!.
-        processed-valid-proof : ValidAtWF mL alloc-after-wrapper processed wrapper-loc s-after-wrapper
-        processed-valid-proof = valid-inl-wf SMP.!! wrapper-ptr-written l-before-wrapper suc-wrapper-before l-valid-wrapper
+        -- Plan 0.14 (Camp 2): wrapper-loc is AtStack so wrapper-mode = Stack
+        -- (matching the function's returned mode). lmm = tt then.
+        processed-valid-proof : ValidAtWF Stack alloc-after-wrapper processed wrapper-loc s-after-wrapper
+        processed-valid-proof = valid-inl-wf tt wrapper-ptr-written l-before-wrapper suc-wrapper-before l-valid-wrapper
 
         -- result-before: wrapper-base = l-reclaimable < l-reclaimable + 2 = next-slot alloc-after-wrapper
         result-before-proof : BeforeFrontier alloc-after-wrapper wrapper-loc
@@ -2040,7 +2039,9 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
         slot-usage-and-budget-proof = sum-left-slot-budget wfL wfR wfG alg alloc l-reclaimable alloc-after-wrapper wrapper-next-slot-eq slot-usage-bound-inj1
 
       in
-      mL , record
+      -- Plan 0.14 (Camp 2): wrapper-loc is AtStack, so wrapper mode = Stack.
+      -- This is independent of sub-layer's mode mL (which may be Stack or Heap).
+      Stack , record
         { processed = processed
         ; trace = full-trace
         ; final-state = s-after-wrapper
@@ -2549,10 +2550,9 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
         r-valid-wrapper : ValidAtWF mR alloc-after-wrapper r-processed r-result-loc s-after-wrapper
         r-valid-wrapper = SMP.!!
 
-        -- Construct full validity using valid-inr-wf
-        -- Plan 0.14 (Camp 2): mR polymorphic at AtStack wrapper-loc — lmm surfaced as SMP.!!
-        processed-valid-proof : ValidAtWF mR alloc-after-wrapper processed wrapper-loc s-after-wrapper
-        processed-valid-proof = valid-inr-wf SMP.!! wrapper-ptr-written r-before-wrapper suc-wrapper-before r-valid-wrapper
+        -- Plan 0.14 (Camp 2): wrapper-loc is AtStack so wrapper-mode = Stack.
+        processed-valid-proof : ValidAtWF Stack alloc-after-wrapper processed wrapper-loc s-after-wrapper
+        processed-valid-proof = valid-inr-wf tt wrapper-ptr-written r-before-wrapper suc-wrapper-before r-valid-wrapper
 
         -- result-before: wrapper-base < next-slot alloc-after-wrapper
         result-before-proof : BeforeFrontier alloc-after-wrapper wrapper-loc
@@ -2564,7 +2564,8 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
         slot-usage-and-budget-proof-inj2 = sum-right-slot-budget wfL wfR wfG alg alloc r-reclaimable alloc-after-wrapper wrapper-next-slot-eq slot-usage-bound-inj2
 
       in
-      mR , record
+      -- Plan 0.14 (Camp 2): wrapper at AtStack means returned mode = Stack.
+      Stack , record
         { processed = processed
         ; trace = full-trace
         ; final-state = s-after-wrapper
