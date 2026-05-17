@@ -357,17 +357,20 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   sum-slots-pos : ∀ {A B} → 0 < type-slots (A + B)
   sum-slots-pos {A} {B} = s≤s z≤n
 
-  run-inl : ∀ {A B} (mIn : AllocMode) (m : AllocMode)
+  -- Plan 0.14 (Camp 2): run-inl handles Stack-mode only. Heap-mode inl is
+  -- dispatched to SumInlHeapWF. The Heap clause that used to live here
+  -- claimed Heap mode at AtStack sum-loc — a LocMatchesMode violation
+  -- only smuggled past via SMP.!!. Now deleted; dispatcher routes by mode.
+  run-inl : ∀ {A B} (mIn : AllocMode)
     (x : ⟦ A ⟧) (input-loc : ValueLocation FS)
     (s : LocState FS) (alloc : AllocState {FS}) →
     ValidAtWF mIn alloc x input-loc s →
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
     readReg (regs s) Input1 ≡ SV-Ptr input-loc →
-    IRResultAWF m (inl {A} {B} m) x s alloc  -- Output mode is m (the inl's AllocMode)
+    IRResultAWF Stack (inl {A} {B} Stack) x s alloc
 
-  -- Stack mode: reference-based (tag + pointer), same as Heap mode
-  run-inl {A} {B} mIn Stack x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
+  run-inl {A} {B} mIn x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     record
       { base = record
         { final-state = s-final
@@ -502,140 +505,6 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- the frontier slot is written (SV-Tag 0) and no longer preserved as
       -- the input pointer. `frontier-slot-stable` now returns the ⊤ branch.
 
-  -- Heap mode: boxed representation (tag + pointer)
-  run-inl {A} {B} mIn Heap x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
-    record
-      { base = record
-        { final-state = s-final
-        ; final-alloc = alloc₁
-        ; trace = inl-trace
-        ; trace-correct = inl-inr-trace-state-correct sum-slots 0 (suc (next-slot alloc)) (next-slot alloc) s alloc input-loc sum-loc s-final rdi-eq refl refl not-halted
-        ; alloc-correct = inl-inr-trace-alloc-correct sum-slots 0 (suc (next-slot alloc)) (next-slot alloc) s alloc not-halted
-        ; result-place = at-loc sum-loc inl-valid-wf-final sum-before rax-eq inl-reclaim-preserves-validity inl-reclaim-preserves-result
-        ; not-halted = not-halted
-        ; frame-preserved = refl
-        ; trace-twf = twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt twf-[])))))
-        ; mem-preserved-before = λ _ _ → SMP.!!
-        ; trace-preserves-halted = exec-trace-preserves-halted-WF inl-trace
-        }
-      ; stack-inv = record
-        { slot-monotone = slot-monotone-inl
-        ; max-slot-written = next-slot alloc +ℕ sum-slots
-        ; max-slot-geq-final = ≤-refl
-        ; stack-budget = ir-stack-requirement (inl {A} {B} Heap)
-        ; max-slot-usage-bound = reclaim-size-bound-inl
-        ; slot-stays-in-budget = reclaim-size-bound-inl
-        ; frontier-slot-stable = λ _ _ _ _ _ → inj₂ (inj₂ tt)
-        ; trace-writes-above = ≤-refl , n≤1+n (next-slot alloc) , tt
-        ; trace-slot-reads-above = tt
-        ; trace-writes-below = <-trans (n<1+n (next-slot alloc)) (suc<+2 (next-slot alloc)) ,
-                               suc<+2 (next-slot alloc) , tt
-        ; trace-slot-reads-below = tt
-        ; scratch-budget = ir-scratch-requirement (inl {A} {B} Heap)
-        ; scratch-bounded = m≤m+n (next-slot alloc +ℕ 2) 2
-        }
-      ; heap-inv = record
-        { heap-monotone = ≤-refl
-        ; heap-budget = 0
-        ; max-heap-ref-written = next-heap-ref alloc
-        ; max-heap-ref-geq-final = ≤-refl
-        ; max-heap-usage-bound = m≤m+n (next-heap-ref alloc) 0
-        ; trace-no-heap-writes = tt
-        }
-      }
-    where
-      -- Heap mode: sum-slots = heap-type-slots (A + B) = 2 (tag + pointer)
-      sum-slots : ℕ
-      sum-slots = 2
-
-      sum-loc = AtStack (current-frame alloc) (next-slot alloc)
-
-      alloc₁ : AllocState {FS}
-      alloc₁ = record alloc
-        { next-slot = next-slot alloc +ℕ sum-slots
-                }
-
-      -- Write payload pointer to sucLoc sum-loc
-      s₁ = write-loc s (sucLoc sum-loc) input-loc
-      s-final = record s₁ { regs = writeReg (regs s₁) Output (SV-Ptr sum-loc) }
-
-      -- Heap mode: sum-slots = 2 > 0
-      sum-slots>0 : 0 < sum-slots
-      sum-slots>0 = s≤s z≤n
-
-      -- sum-loc is BeforeFrontier after allocation
-      sum-before : BeforeFrontier alloc₁ sum-loc
-      sum-before = at-frontier-becomes-before alloc sum-slots sum-slots>0
-
-      -- sucLoc sum-loc is BeforeFrontier after allocation
-      -- Need: suc (next-slot alloc) < next-slot alloc +ℕ 2
-      -- Uses suc<+2 from DispatcherArithmeticLemma
-      sucLoc-sum-before : BeforeFrontier alloc₁ (sucLoc sum-loc)
-      sucLoc-sum-before = stack-before refl (suc<+2 (next-slot alloc))
-
-      -- input-loc stays BeforeFrontier after allocation
-      input-before₁ : BeforeFrontier alloc₁ input-loc
-      input-before₁ = stack-alloc-advances alloc sum-slots input-loc input-before
-
-      -- Payload pointer: readLoc s-final (sucLoc sum-loc) ≡ just (SV-Ptr input-loc)
-      payload-ptr : readLoc s-final (sucLoc sum-loc) ≡ just (SV-Ptr input-loc)
-      payload-ptr = trans (readLoc-stackMem-eq s-final s₁ (sucLoc sum-loc) refl refl)
-                          (write-read-same s (sucLoc sum-loc) input-loc stack-valid)
-
-      -- Input1 validity in final state
-      input-valid-wf-final : ValidAtWF mIn alloc₁ x input-loc s-final
-      input-valid-wf-final =
-        validityWF-alloc-advance x input-loc s-final sum-slots
-          (validityWF-mem-only x input-loc s₁ s-final refl refl
-            (validityWF-write-at-suc-frontier x input-loc s input-loc input-before
-              input-valid-wf))
-
-      -- Construct validity for inl x (Heap mode = boxed)
-      -- valid-inl-wf needs: payload-ptr, payload-before, sucLoc-before, payload-valid
-      -- Plan 0.14 (Camp 2): sum-loc here is AtStack, so LocMatchesMode Heap sum-loc
-      -- reduces to ⊥. This is a Heap-mode path that lowers sums at stack locations
-      -- — architecturally inconsistent. Surfaced here as SMP.!! awaiting either
-      -- (a) deletion of this path or (b) actual heap-allocated sum lowering.
-      inl-valid-wf-final : ValidAtWF Heap alloc₁ (sem-inl {A} {B} x) sum-loc s-final
-      inl-valid-wf-final = valid-inl-wf SMP.!! payload-ptr input-before₁ sucLoc-sum-before input-valid-wf-final
-
-      rax-eq : readReg (regs s-final) Output ≡ SV-Ptr sum-loc
-      rax-eq = writeReg-same (regs s₁) Output (SV-Ptr sum-loc)
-
-      slot-monotone-inl : next-slot alloc ≤ next-slot alloc₁
-      slot-monotone-inl = m≤m+n (next-slot alloc) sum-slots
-
-      mem-preserved-inl : ∀ loc → BeforeFrontier alloc loc →
-        readLoc s-final loc ≡ readLoc s loc
-      mem-preserved-inl loc bf =
-        trans (readLoc-stackMem-eq s-final s₁ loc refl refl)
-              (write-at-suc-frontier-preserves-before s alloc loc input-loc bf)
-
-      -- Note: fits parameter removed in Phase 3
-      inl-reclaim-preserves-result :
-        BeforeFrontier (record alloc { next-slot = next-slot alloc +ℕ sum-slots  }) sum-loc
-      inl-reclaim-preserves-result = at-frontier-becomes-before alloc sum-slots sum-slots>0
-
-      inl-reclaim-preserves-validity :
-        ValidAtWF Heap (record alloc { next-slot = next-slot alloc +ℕ sum-slots  })
-                  (sem-inl {A} {B} x) sum-loc s-final
-      inl-reclaim-preserves-validity = inl-valid-wf-final
-
-      -- reclaim-size-bound: sum-slots = 2 = ir-stack-requirement (inl Heap)
-      reclaim-size-bound-inl : next-slot alloc +ℕ sum-slots ≤ next-slot alloc +ℕ ir-stack-requirement (inl {A} {B} Heap)
-      reclaim-size-bound-inl = ≤-refl
-
-      -- Inl trace (Heap mode): same 5-instr tag-aware trace as Stack mode.
-      sum-slot = next-slot alloc
-      inl-trace : AbstractTrace
-      inl-trace = instr-alloc-stack sum-slots ∷ instr-load-tag-lit 0 ∷
-                  store-at-slot sum-slot ∷
-                  mov-to-output ∷
-                  store-at-slot (suc sum-slot) ∷
-                  lea-slot sum-slot ∷ []
-      -- inl-frontier-stable removed (frontier slot is now written, not preserved).
-
-  ------------------------------------------------------------------------
   -- Inr: inject right into sum type
   --
   -- Creates a sum value (inr x) by:
@@ -647,17 +516,17 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   -- Same pattern as run-inl, but produces inr instead of inl
   ------------------------------------------------------------------------
 
-  run-inr : ∀ {A B} (mIn : AllocMode) (m : AllocMode)
+  -- Plan 0.14 (Camp 2): run-inr handles Stack-mode only; Heap dispatches to SumInrHeapWF.
+  run-inr : ∀ {A B} (mIn : AllocMode)
     (x : ⟦ B ⟧) (input-loc : ValueLocation FS)
     (s : LocState FS) (alloc : AllocState {FS}) →
     ValidAtWF mIn alloc x input-loc s →
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
     readReg (regs s) Input1 ≡ SV-Ptr input-loc →
-    IRResultAWF m (inr {A} {B} m) x s alloc  -- Output mode is m (the inr's AllocMode)
+    IRResultAWF Stack (inr {A} {B} Stack) x s alloc
 
-  -- Stack mode: reference-based (tag + pointer), same as Heap mode
-  run-inr {A} {B} mIn Stack x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
+  run-inr {A} {B} mIn x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     record
       { base = record
         { final-state = s-final
@@ -773,135 +642,6 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       reclaim-size-bound-inr = ≤-refl
 
       -- Inr trace (Stack mode): 5-instr tag-aware, tag = 1.
-      sum-slot = next-slot alloc
-      inr-trace : AbstractTrace
-      inr-trace = instr-alloc-stack sum-slots ∷ instr-load-tag-lit 1 ∷
-                  store-at-slot sum-slot ∷
-                  mov-to-output ∷
-                  store-at-slot (suc sum-slot) ∷
-                  lea-slot sum-slot ∷ []
-      -- inr-frontier-stable removed (frontier slot now written).
-
-  -- Heap mode: boxed representation (tag + pointer)
-  run-inr {A} {B} mIn Heap x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
-    record
-      { base = record
-        { final-state = s-final
-        ; final-alloc = alloc₁
-        ; trace = inr-trace
-        ; trace-correct = inl-inr-trace-state-correct sum-slots 1 (suc (next-slot alloc)) (next-slot alloc) s alloc input-loc sum-loc s-final rdi-eq refl refl not-halted
-        ; alloc-correct = inl-inr-trace-alloc-correct sum-slots 1 (suc (next-slot alloc)) (next-slot alloc) s alloc not-halted
-        ; result-place = at-loc sum-loc inr-valid-wf-final sum-before rax-eq inr-reclaim-preserves-validity inr-reclaim-preserves-result
-        ; not-halted = not-halted
-        ; frame-preserved = refl
-        ; trace-twf = twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt twf-[])))))
-        ; mem-preserved-before = λ _ _ → SMP.!!
-        ; trace-preserves-halted = exec-trace-preserves-halted-WF inr-trace
-        }
-      ; stack-inv = record
-        { slot-monotone = slot-monotone-inr
-        ; max-slot-written = next-slot alloc +ℕ sum-slots
-        ; max-slot-geq-final = ≤-refl
-        ; stack-budget = ir-stack-requirement (inr {A} {B} Heap)
-        ; max-slot-usage-bound = reclaim-size-bound-inr
-        ; slot-stays-in-budget = reclaim-size-bound-inr
-        ; frontier-slot-stable = λ _ _ _ _ _ → inj₂ (inj₂ tt)
-        ; trace-writes-above = ≤-refl , n≤1+n (next-slot alloc) , tt
-        ; trace-slot-reads-above = tt
-        ; trace-writes-below = <-trans (n<1+n (next-slot alloc)) (suc<+2 (next-slot alloc)) ,
-                               suc<+2 (next-slot alloc) , tt
-        ; trace-slot-reads-below = tt
-        ; scratch-budget = ir-scratch-requirement (inr {A} {B} Heap)
-        ; scratch-bounded = m≤m+n (next-slot alloc +ℕ 2) 2
-        }
-      ; heap-inv = record
-        { heap-monotone = ≤-refl
-        ; heap-budget = 0
-        ; max-heap-ref-written = next-heap-ref alloc
-        ; max-heap-ref-geq-final = ≤-refl
-        ; max-heap-usage-bound = m≤m+n (next-heap-ref alloc) 0
-        ; trace-no-heap-writes = tt
-        }
-      }
-    where
-      -- Heap mode: sum-slots = heap-type-slots (A + B) = 2 (tag + pointer)
-      sum-slots : ℕ
-      sum-slots = 2
-
-      sum-loc = AtStack (current-frame alloc) (next-slot alloc)
-
-      alloc₁ : AllocState {FS}
-      alloc₁ = record alloc
-        { next-slot = next-slot alloc +ℕ sum-slots
-                }
-
-      -- Write payload pointer to sucLoc sum-loc
-      s₁ = write-loc s (sucLoc sum-loc) input-loc
-      s-final = record s₁ { regs = writeReg (regs s₁) Output (SV-Ptr sum-loc) }
-
-      -- Heap mode: sum-slots = 2 > 0
-      sum-slots>0 : 0 < sum-slots
-      sum-slots>0 = s≤s z≤n
-
-      -- sum-loc is BeforeFrontier after allocation
-      sum-before : BeforeFrontier alloc₁ sum-loc
-      sum-before = at-frontier-becomes-before alloc sum-slots sum-slots>0
-
-      -- sucLoc sum-loc is BeforeFrontier after allocation
-      -- Uses suc<+2 from DispatcherArithmeticLemma
-      sucLoc-sum-before : BeforeFrontier alloc₁ (sucLoc sum-loc)
-      sucLoc-sum-before = stack-before refl (suc<+2 (next-slot alloc))
-
-      -- input-loc stays BeforeFrontier after allocation
-      input-before₁ : BeforeFrontier alloc₁ input-loc
-      input-before₁ = stack-alloc-advances alloc sum-slots input-loc input-before
-
-      -- Payload pointer: readLoc s-final (sucLoc sum-loc) ≡ just (SV-Ptr input-loc)
-      payload-ptr : readLoc s-final (sucLoc sum-loc) ≡ just (SV-Ptr input-loc)
-      payload-ptr = trans (readLoc-stackMem-eq s-final s₁ (sucLoc sum-loc) refl refl)
-                          (write-read-same s (sucLoc sum-loc) input-loc stack-valid)
-
-      -- Input1 validity in final state
-      input-valid-wf-final : ValidAtWF mIn alloc₁ x input-loc s-final
-      input-valid-wf-final =
-        validityWF-alloc-advance x input-loc s-final sum-slots
-          (validityWF-mem-only x input-loc s₁ s-final refl refl
-            (validityWF-write-at-suc-frontier x input-loc s input-loc input-before
-              input-valid-wf))
-
-      -- Construct validity for inr x (Heap mode = boxed)
-      -- valid-inr-wf needs: payload-ptr, payload-before, sucLoc-before, payload-valid
-      -- Plan 0.14 (Camp 2): Heap-at-AtStack inconsistency surfaced as SMP.!!.
-      inr-valid-wf-final : ValidAtWF Heap alloc₁ (sem-inr {A} {B} x) sum-loc s-final
-      inr-valid-wf-final = valid-inr-wf SMP.!! payload-ptr input-before₁ sucLoc-sum-before input-valid-wf-final
-
-      rax-eq : readReg (regs s-final) Output ≡ SV-Ptr sum-loc
-      rax-eq = writeReg-same (regs s₁) Output (SV-Ptr sum-loc)
-
-      slot-monotone-inr : next-slot alloc ≤ next-slot alloc₁
-      slot-monotone-inr = m≤m+n (next-slot alloc) sum-slots
-
-      mem-preserved-inr : ∀ loc → BeforeFrontier alloc loc →
-        readLoc s-final loc ≡ readLoc s loc
-      mem-preserved-inr loc bf =
-        trans (readLoc-stackMem-eq s-final s₁ loc refl refl)
-              (write-at-suc-frontier-preserves-before s alloc loc input-loc bf)
-
-      -- Note: fits parameter removed in Phase 3
-      inr-reclaim-preserves-result :
-        BeforeFrontier (record alloc { next-slot = next-slot alloc +ℕ sum-slots  }) sum-loc
-      inr-reclaim-preserves-result = at-frontier-becomes-before alloc sum-slots sum-slots>0
-
-      inr-reclaim-preserves-validity :
-        ValidAtWF Heap (record alloc { next-slot = next-slot alloc +ℕ sum-slots  })
-                  (sem-inr {A} {B} x) sum-loc s-final
-      inr-reclaim-preserves-validity = inr-valid-wf-final
-
-      -- reclaim-size-bound: sum-slots = 2 = ir-stack-requirement (inr Heap)
-      reclaim-size-bound-inr : next-slot alloc +ℕ sum-slots ≤ next-slot alloc +ℕ ir-stack-requirement (inr {A} {B} Heap)
-      reclaim-size-bound-inr = ≤-refl
-
-      -- Inr trace (Heap mode): 5-instr tag-aware, tag = 1.
       sum-slot = next-slot alloc
       inr-trace : AbstractTrace
       inr-trace = instr-alloc-stack sum-slots ∷ instr-load-tag-lit 1 ∷

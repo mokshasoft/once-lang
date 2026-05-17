@@ -67,6 +67,9 @@ import Once.CCC.Machine.IR.ComposeWF as ComposeWFModule
 import Once.CCC.Machine.IR.PairWF2 as PairWFModule
 import Once.CCC.Machine.IR.PairHeapWF as PairHeapWFModule
 import Once.CCC.Machine.IR.CurryWF as CurryWFModule
+import Once.CCC.Machine.IR.CurryHeapWF as CurryHeapWFModule
+import Once.CCC.Machine.IR.SumInlHeapWF as SumInlHeapWFModule
+import Once.CCC.Machine.IR.SumInrHeapWF as SumInrHeapWFModule
 import Once.CCC.Machine.IR.ApplyWF as ApplyWFModule
 import Once.CCC.Machine.IR.RecCoreWF as RecCoreWFModule
 import Once.CCC.Machine.IR.ParaWF as ParaWFModule
@@ -171,6 +174,9 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
 
   -- Import curry IR implementation
   open CurryWFModule.CurryWFImpl {FS} program-bound
+  open CurryHeapWFModule.CurryHeapWFImpl {FS} program-bound
+  open SumInlHeapWFModule.SumInlHeapWFImpl {FS} program-bound
+  open SumInrHeapWFModule.SumInrHeapWFImpl {FS} program-bound
 
   -- Import apply IR implementation (no-frame model: body inherits
   -- parent's frame; child-frame parameters no longer exist).
@@ -308,15 +314,20 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
       let (m , result) = run-sigOp mIn si x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
       in m , result
 
-    -- Sum type: inject left (delegated to SumRecWF module)
-    -- Output mode is m (from inl m)
-    run-ir-wf mIn (inl {A} {B} m) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ =
-      m , run-inl {A} {B} mIn m x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
+    -- Sum type: inject left
+    -- Plan 0.14 (Camp 2): Stack-mode routes to SumRecWF.run-inl (stack-allocated
+    -- sum); Heap-mode routes to SumInlHeapWF.run-inl-heap (heap-allocated via
+    -- instr-alloc-heap).
+    run-ir-wf mIn (inl {A} {B} Stack) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ =
+      Stack , run-inl {A} {B} mIn x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
+    run-ir-wf mIn (inl {A} {B} Heap) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ =
+      Heap , run-inl-heap {A} {B} mIn x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
 
-    -- Sum type: inject right (delegated to SumRecWF module)
-    -- Output mode is m (from inr m)
-    run-ir-wf mIn (inr {A} {B} m) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ =
-      m , run-inr {A} {B} mIn m x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
+    -- Sum type: inject right (symmetric to inl)
+    run-ir-wf mIn (inr {A} {B} Stack) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ =
+      Stack , run-inr {A} {B} mIn x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
+    run-ir-wf mIn (inr {A} {B} Heap) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ =
+      Heap , run-inr-heap {A} {B} mIn x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
 
     -- Sum type: case analysis (delegated to SumRecWF module)
     -- Reference-based model: any mode works since sums use pointer representation
@@ -351,10 +362,15 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
       Heap , run-pair-heap mIn f g (make-rec-wf ir<bound rs) x input-loc s alloc
         input-valid-wf input-before not-halted rdi-eq
 
-    -- Curry: delegated to CurryWF module (quantity-polymorphic)
-    -- Output is always Heap (closure is boxed)
-    run-ir-wf mIn (curry {k = k} f m) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq (acc rs) =
-      Heap , run-curry {k = k} mIn f m ir<bound (make-rec-wf ir<bound rs) x input-loc s alloc
+    -- Curry: case-split on mode.
+    -- Plan 0.14 (Camp 2): Stack-mode routes to CurryWF (closure stored on
+    -- stack via instr-alloc-stack closure-slots); Heap-mode routes to
+    -- CurryHeapWF (closure heap-allocated via instr-alloc-heap 2).
+    run-ir-wf mIn (curry {k = k} f Stack) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq (acc rs) =
+      Heap , run-curry {k = k} mIn f Stack ir<bound (make-rec-wf ir<bound rs) x input-loc s alloc
+        input-valid-wf input-before not-halted rdi-eq
+    run-ir-wf mIn (curry {k = k} f Heap) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq (acc rs) =
+      Heap , run-curry-heap {k = k} mIn f ir<bound (make-rec-wf ir<bound rs) x input-loc s alloc
         input-valid-wf input-before not-halted rdi-eq
 
     -- Apply: uses BodyCorrect.execute from closure (quantity-polymorphic)
