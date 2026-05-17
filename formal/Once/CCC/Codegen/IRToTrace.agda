@@ -445,6 +445,18 @@ private
 ir-to-trace : ∀ {A B} → IR A B → AbstractTrace
 ir-to-trace ir = proj-trace (ir-to-trace' 0 0 ir)
 
+-- | Plan 0.14 (2026-05-17): trace-at-frontier entry point. The
+-- runtime path uses `ir-to-trace = ir-to-trace-at-frontier 0` since
+-- each function's `subq` allocates a fresh %rsp-relative frame
+-- indexing slots from 0. The IR-side correctness proof needs to
+-- match the trace's slot indexing to `next-slot alloc` to share
+-- slot bindings with the run-X helpers in IR/*WF (which use
+-- `next-slot alloc` as their scratch base). At function entry,
+-- `next-slot alloc = 0`, so `ir-to-trace-at-frontier 0 ≡ ir-to-trace`
+-- and the runtime and proof paths agree.
+ir-to-trace-at-frontier : ∀ {A B} → ℕ → IR A B → AbstractTrace
+ir-to-trace-at-frontier n ir = proj-trace (ir-to-trace' n 0 ir)
+
 -- | Plan 0.2.4.5 D1: slot budget for an IR's main trace.
 -- Used by per-arch codegen to emit `subq budget*8, %rsp` / `addq` around
 -- the trace, so all slot accesses are %rsp-relative within a private frame.

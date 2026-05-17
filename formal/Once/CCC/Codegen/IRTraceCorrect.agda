@@ -95,9 +95,9 @@ open import Once.CCC.Machine.SMCore
          AbstractTrace; AbstractInstr;
          mov-to-output; mov-to-input;
          load-indirect; load-indirect-suc)
-open import Once.CCC.Machine.Allocation using (AllocState; current-frame)
+open import Once.CCC.Machine.Allocation using (AllocState; current-frame; next-slot)
 
-open import Once.CCC.Codegen.IRToTrace using (ir-to-trace)
+open import Once.CCC.Codegen.IRToTrace using (ir-to-trace; ir-to-trace-at-frontier)
 
 ------------------------------------------------------------------------
 -- The proof framework is parameterized by FrameSemantics + program-bound,
@@ -113,7 +113,7 @@ module IRTraceCorrectness {FS : FrameSemantics} (program-bound : ℕ) where
   -- exec-abstract preservation helpers (for load-indirect / load-indirect-suc
   -- which case-split on sv-as-loc and need explicit alloc-preserved proofs).
   open import Once.CCC.Machine.SMPrimitives as SMP hiding (AllocMode)
-  open SMP.ExecLemmas {FS}
+  open SMP.RecSchemeSemantics {FS}
     using (exec-abstract-load-indirect-preserves-alloc;
            exec-abstract-load-indirect-suc-preserves-alloc)
   open import Once.CCC.SigOp.Info using (SigOpInfo; semM)
@@ -137,12 +137,25 @@ module IRTraceCorrectness {FS : FrameSemantics} (program-bound : ℕ) where
 
   import Once.CCC.Machine.IR.SumRecWF as SumRecWFModule
   open SumRecWFModule.SumRecWFImpl {FS} program-bound
-    using (run-initial; run-out-μ; run-Out)
+    using (run-initial; run-out-μ; run-Out; run-inl; run-inr)
+
+  -- Heap-mode IR producers — used by the layer-2 heap bridges below.
+  import Once.CCC.Machine.IR.SumInlHeapWF as SumInlHeapWFModule
+  open SumInlHeapWFModule.SumInlHeapWFImpl {FS} program-bound
+    using (run-inl-heap)
+
+  import Once.CCC.Machine.IR.SumInrHeapWF as SumInrHeapWFModule
+  open SumInrHeapWFModule.SumInrHeapWFImpl {FS} program-bound
+    using (run-inr-heap)
 
   ----------------------------------------------------------------------
   -- Theorem signature, factored out so per-IR cases can refer to it.
   ----------------------------------------------------------------------
 
+  -- Plan 0.14 (2026-05-17): trace is taken at the alloc's current
+  -- frontier so it matches the slot indexing run-X helpers in IR/*WF
+  -- use. At the runtime entry point (compile-correct, next-slot = 0)
+  -- this reduces to `ir-to-trace ir`.
   IRTraceCorrect : ∀ {A B} → IR A B → Set
   IRTraceCorrect {A} {B} ir =
     ∀ (mIn : AllocMode) (x : ⟦ A ⟧) (input-loc : ValueLocation FS)
@@ -151,7 +164,7 @@ module IRTraceCorrectness {FS : FrameSemantics} (program-bound : ℕ) where
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
     readReg (regs s) Input1 ≡ SV-Ptr input-loc →
-    let result = exec-trace (ir-to-trace ir) s alloc
+    let result = exec-trace (ir-to-trace-at-frontier (next-slot alloc) ir) s alloc
         final-s = proj₁ result
         final-alloc = proj₂ result
     in ∃[ mOut ] ∃[ result-loc ]
@@ -220,9 +233,10 @@ module IRTraceCorrectness {FS : FrameSemantics} (program-bound : ℕ) where
   ir-to-trace-correct-terminal : ∀ {A} → IRTraceCorrect (terminal {A})
   ir-to-trace-correct-terminal {A} mIn x input-loc s alloc valid before not-halted rdi-eq =
     let r = run-terminal {mIn} {A} x input-loc s alloc valid before not-halted rdi-eq
+    -- terminal emits []; exec-trace [] s alloc = (s, alloc) so
+    -- place-valid threads directly without transport.
     in mIn , place-loc (IRResultAWF.result-place r) ,
-       transport-trivial mov-to-output (terminal {A}) x (place-loc (IRResultAWF.result-place r)) s alloc
-         not-halted refl (place-valid (IRResultAWF.result-place r))
+       place-valid (IRResultAWF.result-place r)
 
   -- initial: input type is Void, so caller can never invoke us with a
   -- valid x. Absurd-eliminated.
@@ -265,6 +279,88 @@ module IRTraceCorrectness {FS : FrameSemantics} (program-bound : ℕ) where
          not-halted refl (place-valid (IRResultAWF.result-place r))
 
   ----------------------------------------------------------------------
+  -- Plan 0.14 (2026-05-17): inl/inr discharges via the run-X helpers.
+  -- After the slot-frontier alignment refactor (ir-to-trace-at-frontier
+  -- in IRToTrace.agda), the trace emitted by IRToTrace with the alloc's
+  -- frontier definitionally matches the run-X-{,heap} trace. The bridge
+  -- then transports `place-valid (result-place r)` (which lives at
+  -- `(final-state r, final-alloc r)`) to the IRTraceCorrect outer goal
+  -- (which lives at `(proj₁ exec-trace, proj₂ exec-trace)`) via
+  -- `trace-correct` and `alloc-correct`.
+  --
+  -- For heap-mode constructors, `alloc-correct` is currently SMP.!! in
+  -- the run-X-heap modules (deep Phase C obligation). The discharge
+  -- here uses that postulate as a black box — when Phase C lands, the
+  -- bridge becomes a real proof end-to-end.
+  ----------------------------------------------------------------------
+
+  ir-to-trace-correct-inl :
+    ∀ {A B} (m : AllocMode) → IRTraceCorrect (inl {A} {B} m)
+  ir-to-trace-correct-inl {A} {B} Stack mIn x input-loc s alloc valid before not-halted rdi-eq =
+    let r = run-inl {A} {B} mIn x input-loc s alloc valid before not-halted rdi-eq
+        pv = place-valid (IRResultAWF.result-place r)
+        tc = IRResultAWF.trace-correct r
+        ac = IRResultAWF.alloc-correct r
+    in Stack , place-loc (IRResultAWF.result-place r) ,
+       subst (λ st → ValidAtWF Stack (proj₂ (exec-trace _ s alloc))
+                                (eval (inl Stack) x)
+                                (place-loc (IRResultAWF.result-place r)) st)
+             (sym tc)
+             (subst (λ al → ValidAtWF Stack al (eval (inl Stack) x)
+                                (place-loc (IRResultAWF.result-place r))
+                                (IRResultAWF.final-state r))
+                    (sym ac)
+                    pv)
+  ir-to-trace-correct-inl {A} {B} Heap mIn x input-loc s alloc valid before not-halted rdi-eq =
+    let r = run-inl-heap {A} {B} mIn x input-loc s alloc valid before not-halted rdi-eq
+        pv = place-valid (IRResultAWF.result-place r)
+        tc = IRResultAWF.trace-correct r
+        ac = IRResultAWF.alloc-correct r
+    in Heap , place-loc (IRResultAWF.result-place r) ,
+       subst (λ st → ValidAtWF Heap (proj₂ (exec-trace _ s alloc))
+                                (eval (inl Heap) x)
+                                (place-loc (IRResultAWF.result-place r)) st)
+             (sym tc)
+             (subst (λ al → ValidAtWF Heap al (eval (inl Heap) x)
+                                (place-loc (IRResultAWF.result-place r))
+                                (IRResultAWF.final-state r))
+                    (sym ac)
+                    pv)
+
+  ir-to-trace-correct-inr :
+    ∀ {A B} (m : AllocMode) → IRTraceCorrect (inr {A} {B} m)
+  ir-to-trace-correct-inr {A} {B} Stack mIn x input-loc s alloc valid before not-halted rdi-eq =
+    let r = run-inr {A} {B} mIn x input-loc s alloc valid before not-halted rdi-eq
+        pv = place-valid (IRResultAWF.result-place r)
+        tc = IRResultAWF.trace-correct r
+        ac = IRResultAWF.alloc-correct r
+    in Stack , place-loc (IRResultAWF.result-place r) ,
+       subst (λ st → ValidAtWF Stack (proj₂ (exec-trace _ s alloc))
+                                (eval (inr Stack) x)
+                                (place-loc (IRResultAWF.result-place r)) st)
+             (sym tc)
+             (subst (λ al → ValidAtWF Stack al (eval (inr Stack) x)
+                                (place-loc (IRResultAWF.result-place r))
+                                (IRResultAWF.final-state r))
+                    (sym ac)
+                    pv)
+  ir-to-trace-correct-inr {A} {B} Heap mIn x input-loc s alloc valid before not-halted rdi-eq =
+    let r = run-inr-heap {A} {B} mIn x input-loc s alloc valid before not-halted rdi-eq
+        pv = place-valid (IRResultAWF.result-place r)
+        tc = IRResultAWF.trace-correct r
+        ac = IRResultAWF.alloc-correct r
+    in Heap , place-loc (IRResultAWF.result-place r) ,
+       subst (λ st → ValidAtWF Heap (proj₂ (exec-trace _ s alloc))
+                                (eval (inr Heap) x)
+                                (place-loc (IRResultAWF.result-place r)) st)
+             (sym tc)
+             (subst (λ al → ValidAtWF Heap al (eval (inr Heap) x)
+                                (place-loc (IRResultAWF.result-place r))
+                                (IRResultAWF.final-state r))
+                    (sym ac)
+                    pv)
+
+  ----------------------------------------------------------------------
   -- Postulated per-IR cases. Audit handles for future discharges.
   ----------------------------------------------------------------------
 
@@ -294,19 +390,6 @@ module IRTraceCorrectness {FS : FrameSemantics} (program-bound : ℕ) where
       IRTraceCorrect (curry {k = k} f m)
     ir-to-trace-correct-apply : ∀ {k A B} →
       IRTraceCorrect (apply {A} {B} {k})
-
-    -- Plan 0.14 (2026-05-17): Sum injections. Stack variant emits the
-    -- 5-instr in-place lowering matching SumRecWF's run-inl/run-inr
-    -- (stack-mode, kept by escape analysis when sum is consumed by
-    -- case in the same chain). Heap variant emits the 10-instr heap-
-    -- allocating trace matching SumInlHeapWF / SumInrHeapWF.
-    --
-    -- Same slot-frontier-0-mismatch as pair/curry; postulated until the
-    -- IRToTrace alloc-frontier refactor.
-    ir-to-trace-correct-inl :
-      ∀ {A B} (m : AllocMode) → IRTraceCorrect (inl {A} {B} m)
-    ir-to-trace-correct-inr :
-      ∀ {A B} (m : AllocMode) → IRTraceCorrect (inr {A} {B} m)
 
     -- case: sum eliminator. Trace dispatches via instr-case-on-tag,
     -- with two branches each prefixed by load-indirect-suc + mov-to-input.
@@ -342,6 +425,12 @@ module IRTraceCorrectness {FS : FrameSemantics} (program-bound : ℕ) where
     -- which links the codegen output of `compile-sigOp name` to
     -- `exec-abstract (instr-sigop si)`. The two together close the
     -- semantic chain for SigOps.
+    -- Plan 0.14 (2026-05-17): exec-sigop-output returns StoredValue, not
+    -- ValueLocation, after Plan 0.2.4.5 Stage B Input1-as-StoredValue.
+    -- The result-loc claimed by the SigOp validity now lives in
+    -- StoredValue space; we existentialize it for the proof to make
+    -- the SigOp bridge re-typecheck. Per-name SigOp discharge can
+    -- pin this when needed.
     exec-sigop-respects-semM :
       ∀ {A B} (si : SigOpInfo A B)
         (mIn : AllocMode) (x : ⟦ A ⟧) (input-loc : ValueLocation FS)
@@ -349,10 +438,9 @@ module IRTraceCorrectness {FS : FrameSemantics} (program-bound : ℕ) where
       ValidAtWF mIn alloc x input-loc s →
       BeforeFrontier alloc input-loc →
       halted s ≡ false →
-      readReg (regs s) Input1 ≡ input-loc →
-      ∃[ mOut ]
-        ValidAtWF mOut alloc (semM si x)
-          (exec-sigop-output si s)
+      readReg (regs s) Input1 ≡ SV-Ptr input-loc →
+      ∃[ mOut ] ∃[ result-loc ]
+        ValidAtWF mOut alloc (semM si x) result-loc
           (mkLocState (writeReg (regs s) Output (exec-sigop-output si s))
                       (stackMem s) (heapMem s)
                       (exec-sigop-halts si s))
@@ -377,16 +465,16 @@ module IRTraceCorrectness {FS : FrameSemantics} (program-bound : ℕ) where
     IRTraceCorrect (SigOp {A} {B} si)
   ir-to-trace-correct-sigop si mIn x input-loc s alloc valid before not-halted rdi-eq =
     let
-      (mOut , v) = exec-sigop-respects-semM si mIn x input-loc s alloc
-                     valid before not-halted rdi-eq
+      (mOut , result-loc , v) = exec-sigop-respects-semM si mIn x input-loc s alloc
+                                  valid before not-halted rdi-eq
       -- exec-trace (instr-sigop si ∷ []) s alloc reduces to
       -- exec-abstract (instr-sigop si) s alloc when not halted.
       trace-eq : exec-trace (instr-sigop si ∷ []) s alloc
                ≡ exec-abstract (instr-sigop si) s alloc
       trace-eq = exec-trace-single (instr-sigop si) s alloc not-halted
-    in mOut , exec-sigop-output si s ,
+    in mOut , result-loc ,
        subst (λ result → ValidAtWF mOut (proj₂ result) (semM si x)
-                                   (exec-sigop-output si s) (proj₁ result))
+                                   result-loc (proj₁ result))
              (sym trace-eq)
              v
 
