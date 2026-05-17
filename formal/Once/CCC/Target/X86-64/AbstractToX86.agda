@@ -131,11 +131,17 @@ compile-abstract (restore-input n) =
 compile-abstract (instr-alloc-stack n) =
   sub (reg rsp) (imm (slots n)) ∷ []
 
--- instr-alloc-heap: allocate a heap cell.
--- Plan 0.14: X86-64 codegen stub. Real heap allocation is target-specific
--- (e.g. malloc/bump-allocator). Emitted as a no-op until the X86-64
--- backend wires up heap allocation.
-compile-abstract (instr-alloc-heap n) = []
+-- instr-alloc-heap: bump-allocator implementation.
+-- Plan 0.14: r15 holds the heap top pointer (initialized by the runtime
+-- at program startup). To allocate n slots:
+--   mov rax, r15      ; Output := current heap top
+--   add r15, n*8      ; bump heap top by n words
+-- The freshly-allocated block lives at the OLD r15 value (now in rax).
+-- This is a single-threaded bump allocator; no GC, no recycling. Heap
+-- size is bounded by the initial allocation (see runtime).
+compile-abstract (instr-alloc-heap n) =
+  mov (reg rax) (reg r15) ∷
+  add (reg r15) (imm (slots n)) ∷ []
 
 -- instr-dealloc-stack: deallocate N slots from stack
 -- x86: add rsp, N*8
