@@ -441,8 +441,14 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- reduces to ⊥. Surfaced as SMP.!! pending either deletion of this path
       -- or actual heap-allocated closure lowering.
       result-valid-wf' : ValidAtWF Heap alloc' (eval (curry {k = k} f m) x) closure-loc s'
-      result-valid-wf' = valid-closure-wf body<bound SMP.!!
-        env-ptr' code-ptr' input-before' code-before' code-before'
+      -- Plan 0.14 SV-Code refactor: CurryWF (Stack-mode) emits
+      -- `lea-slot (suc closure-slot)` at closure[1] which produces
+      -- SV-Ptr, not SV-Code. valid-closure-wf now requires SV-Code.
+      -- CurryWF is structurally dead (elaborator emits curry Heap
+      -- only); SMP.!! pending deletion or trace migration to
+      -- instr-load-code-addr (needs label threading).
+      result-valid-wf' = valid-closure-wf body<bound {body-label = 0} SMP.!!
+        env-ptr' SMP.!! input-before' code-before'
         input-valid-wf' body-correct
 
       -- Reclamation proofs
