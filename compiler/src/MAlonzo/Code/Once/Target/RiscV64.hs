@@ -89,7 +89,7 @@ d_riscv64'45'irToAsm_26 v0 v1 v2 v3
       (coe
          MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
          (coe
-            MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace'45'from_284
+            MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace'45'from_346
             (coe v1) (coe v2) (coe v0) (coe v3)))
       (coe
          MAlonzo.Code.Once.CCC.Target.RiscV64.Emit.d_programToText_90
@@ -97,7 +97,7 @@ d_riscv64'45'irToAsm_26 v0 v1 v2 v3
             (coe
                MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                (coe
-                  MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace'45'from_284
+                  MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace'45'from_346
                   (coe v1) (coe v2) (coe v0) (coe v3)))))
 -- Once.Target.RiscV64.riscv64
 d_riscv64_36 :: MAlonzo.Code.Once.Target.T_Target_4

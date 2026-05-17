@@ -157,7 +157,8 @@ ir-to-trace' n l (g ∘ f)   =
 --     store-at-slot snd-slot ∷ lea-slot fst-slot ∷ []
 -- ────────────────────────────────────────────────────────────────────
 
-ir-to-trace' n l (⟨ f , g ⟩ _) =
+-- Stack mode: pair lives on stack at [fst-slot, snd-slot].
+ir-to-trace' n l (⟨ f , g ⟩ Stack) =
   let backup-slot = n
       fst-slot    = suc backup-slot
       snd-slot    = suc fst-slot
@@ -170,6 +171,34 @@ ir-to-trace' n l (⟨ f , g ⟩ _) =
       store-at-slot fst-slot ∷ restore-input backup-slot ∷
       gt ++
       store-at-slot snd-slot ∷ lea-slot fst-slot ∷ []) ,
+     (fb ++ gb)
+
+-- Heap mode: pair lives on the heap (2 cells). Mirrors
+-- PairHeapWF setup + mid + post. Uses 4 scratch slots:
+-- backup-slot (input ptr), fst-stash (f-result), snd-stash (g-result),
+-- pair-stash (heap ptr). f starts at n+4.
+ir-to-trace' n l (⟨ f , g ⟩ Heap) =
+  let backup-slot = n
+      fst-stash   = suc backup-slot
+      snd-stash   = suc fst-stash
+      pair-stash  = suc snd-stash
+      f-start     = suc pair-stash
+      (n1 , l1 , ft , fb) = ir-to-trace' f-start l  f
+      (n2 , l2 , gt , gb) = ir-to-trace' n1 l1 g
+  in n2 , l2 ,
+     (mov-to-output ∷ store-at-slot backup-slot ∷
+      ft ++
+      store-at-slot fst-stash ∷ restore-input backup-slot ∷
+      gt ++
+      store-at-slot snd-stash ∷
+      instr-alloc-heap 2 ∷
+      store-at-slot pair-stash ∷
+      mov-to-input ∷
+      load-from-slot fst-stash ∷
+      store-indirect ∷
+      load-from-slot snd-stash ∷
+      store-indirect-suc ∷
+      load-from-slot pair-stash ∷ []) ,
      (fb ++ gb)
 
 -- ────────────────────────────────────────────────────────────────────
@@ -209,23 +238,42 @@ ir-to-trace' n l (⟨ f , g ⟩ _) =
 -- The `_` for AllocMode is intentional in this phase — Stack and
 -- Heap diverge only at the record-allocation step, which is still
 -- "use parent's slots" for both. Phase D adds the divergence.
-ir-to-trace' n l (curry body _) =
+-- Stack mode: closure record at slots [closure-slot, closure-slot+1].
+ir-to-trace' n l (curry body Stack) =
   let this-label = l
       l1         = suc l
       closure-slot = n
       next        = suc (suc closure-slot)
-      -- Plan 0.2.4.5 D1: body uses its own %rsp-relative frame at
-      -- runtime. Each compiled IR function shifts %rsp by its own
-      -- stack-budget at entry, runs the trace using X(%rsp), then
-      -- shifts %rsp back at exit. Body's slot indices restart at 0
-      -- and address into body's own private frame — physically
-      -- disjoint from the caller's frame.
       (body-budget , l2 , body-trace , body-bodies) = ir-to-trace' 0 l1 body
       this-trace  = mov-to-output ∷
                     store-at-slot closure-slot ∷
                     instr-load-code-addr this-label ∷
                     store-at-slot (suc closure-slot) ∷
                     lea-slot closure-slot ∷ []
+      all-bodies  = (this-label , body-budget , body-trace) ∷ body-bodies
+  in next , l2 , this-trace , all-bodies
+
+-- Heap mode: closure record bump-allocated on the heap (2 cells:
+-- env-ptr at offset 0, code-address at offset 8). Mirrors
+-- CurryHeapWF.curry-heap-trace. Uses 2 scratch slots
+-- (env-stash, closure-stash).
+ir-to-trace' n l (curry body Heap) =
+  let this-label    = l
+      l1            = suc l
+      env-stash     = n
+      closure-stash = suc env-stash
+      next          = suc closure-stash
+      (body-budget , l2 , body-trace , body-bodies) = ir-to-trace' 0 l1 body
+      this-trace  = mov-to-output ∷
+                    store-at-slot env-stash ∷
+                    instr-alloc-heap 2 ∷
+                    store-at-slot closure-stash ∷
+                    mov-to-input ∷
+                    load-from-slot env-stash ∷
+                    store-indirect ∷
+                    instr-load-code-addr this-label ∷
+                    store-indirect-suc ∷
+                    load-from-slot closure-stash ∷ []
       all-bodies  = (this-label , body-budget , body-trace) ∷ body-bodies
   in next , l2 , this-trace , all-bodies
 
