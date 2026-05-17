@@ -75,8 +75,12 @@ x86-64-asmHeader =
   --   3. If main returns normally, fall through to sys_exit(0).
   ".globl _start\n" ++
   "_start:\n" ++
-  "    leaq once_heap_base(%rip), %rax\n" ++
-  "    movq %rax, once_heap_pos(%rip)\n" ++
+  -- Plan 0.14: r15 is the heap bump pointer. instr-alloc-heap emits
+  -- `mov rax, r15; add r15, n*8` — fast inline allocation, no memory
+  -- round-trip on once_heap_pos. once_heap_pos kept for compatibility
+  -- (and potential GC future) but not read on the hot path.
+  "    leaq once_heap_base(%rip), %r15\n" ++
+  "    movq %r15, once_heap_pos(%rip)\n" ++
   "    call once_main\n" ++
   "    movq $60, %rax\n" ++
   "    xorq %rdi, %rdi\n" ++
