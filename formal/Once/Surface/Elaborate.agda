@@ -118,8 +118,9 @@ proj {Γ = Γ , A ^ q} Fin.zero    = snd
 proj {Γ = Γ , A ^ q} (Fin.suc i) = proj i ∘ fst
 
 -- | Helper: swap product components
-swap' : ∀ {X Y} → IR (X * Y) (Y * X)
-swap' = ⟨ snd , fst ⟩ Heap
+-- Plan 0.14 follow-up: parameterized on AllocMode for the pair node.
+swap' : ∀ {X Y} → AllocMode → IR (X * Y) (Y * X)
+swap' m = ⟨ snd , fst ⟩ m
 
 -- | Distribute environment over sum (distributivity isomorphism)
 --
@@ -130,20 +131,20 @@ swap' = ⟨ snd , fst ⟩ Heap
 -- 2. Case on sum, currying the injection to capture Γ
 -- 3. Apply to reconstruct result
 --
-distribute : ∀ {Γ A B} → IR (Γ * (A + B)) ((Γ * A) + (Γ * B))
-distribute {Γ} {A} {B} = distrib' ∘ swap'
+distribute : ∀ {Γ A B} → AllocMode → IR (Γ * (A + B)) ((Γ * A) + (Γ * B))
+distribute {Γ} {A} {B} m = distrib' ∘ swap' m
   where
     curryInlSwap : IR A (Γ ⇒ ((Γ * A) + (Γ * B)))
-    curryInlSwap = curry (inl Heap ∘ swap') Heap
+    curryInlSwap = curry (inl m ∘ swap' m) m
 
     curryInrSwap : IR B (Γ ⇒ ((Γ * A) + (Γ * B)))
-    curryInrSwap = curry (inr Heap ∘ swap') Heap
+    curryInrSwap = curry (inr m ∘ swap' m) m
 
     curryDistrib : IR (A + B) (Γ ⇒ ((Γ * A) + (Γ * B)))
     curryDistrib = case curryInlSwap curryInrSwap
 
     distrib' : IR ((A + B) * Γ) ((Γ * A) + (Γ * B))
-    distrib' = apply ∘ ⟨ curryDistrib ∘ fst , snd ⟩ Heap
+    distrib' = apply ∘ ⟨ curryDistrib ∘ fst , snd ⟩ m
 
 -- | Elaborate surface expression to IR
 --
@@ -153,88 +154,94 @@ distribute {Γ} {A} {B} = distrib' ∘ swap'
 -- Key insight: lambdas extend the environment (product), variables
 -- project from the environment, and applications compose appropriately.
 --
-elaborate : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A} → Expr Γ Ψ A → IR ⟦ Γ ⟧ᶜ A
+-- Plan 0.14 follow-up (2026-05-18): parameterized on the default
+-- AllocMode for pair/curry/inl/inr/let/binop constructors. The
+-- previously-hardcoded Heap is now `m`, threaded from the CLI's
+-- --alloc flag via Once.Compile.compileFunBody. Backwards-compatible
+-- alias `elaborate-default = elaborate Heap` preserves the old
+-- semantics for any caller that doesn't want to choose.
+elaborate : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A} → AllocMode → Expr Γ Ψ A → IR ⟦ Γ ⟧ᶜ A
 
 -- Variable: project from environment
-elaborate (var i) = proj i
+elaborate m (var i) = proj i
 
 -- Lambda: λ^q x.e becomes curry of (elaborate e)
 -- Context (Γ, A) has type ⟦Γ⟧ᶜ * A = ⟦Γ,A⟧ᶜ
 -- IR curry is quantity-polymorphic, so it directly produces (A ⇒[ q ] B)
 -- The quantity q is enforced during type checking, not during elaboration
-elaborate (lam q _ e) = curry (elaborate e) Heap
+elaborate m (lam q _ e) = curry (elaborate m e) m
 
 -- Application: f x becomes apply ∘ ⟨f, x⟩
 -- IR's apply is quantity-polymorphic, no coercion needed
-elaborate (app f x) = apply ∘ ⟨ elaborate f , elaborate x ⟩ Heap
+elaborate m (app f x) = apply ∘ ⟨ elaborate m f , elaborate m x ⟩ m
 
 -- Effect application (D018-style lifting): `f x` where `f : Eff A B`
 -- becomes the suspended action `λ _ → f x : Eff Unit B`. Built from
 -- three existing IR primitives:
 --   `applyEff ∘ ⟨f, x⟩`  : IR Γ B                  -- run f on x
 --   (…) ∘ fst            : IR (Γ * Unit) B         -- ignore Unit input
---   curry (…) Heap       : IR Γ (Unit ⇒[Many] B)    -- abstract the Unit
---   arr ∘ curry (…) Heap : IR Γ (Unit ⇒[ mk-kind Many eff ] B)        -- tag as Eff
+--   curry (…) m          : IR Γ (Unit ⇒[Many] B)    -- abstract the Unit
+--   arr ∘ curry (…) m    : IR Γ (Unit ⇒[ mk-kind Many eff ] B)        -- tag as Eff
 -- No new IR constructors, no coercion, no postulate.
-elaborate (effApp f x) =
-  arr {q = Many} ∘ curry {k = pureK Many} ((apply {k = effK} ∘ ⟨ elaborate f , elaborate x ⟩ Heap) ∘ fst) Heap
+elaborate m (effApp f x) =
+  arr {q = Many} ∘ curry {k = pureK Many} ((apply {k = effK} ∘ ⟨ elaborate m f , elaborate m x ⟩ m) ∘ fst) m
 
 -- Pair: (a, b) becomes ⟨a, b⟩
-elaborate (pair a b) = ⟨ elaborate a , elaborate b ⟩ Heap
+elaborate m (pair a b) = ⟨ elaborate m a , elaborate m b ⟩ m
 
 -- Projections: compose with projection
-elaborate (fst' p) = fst ∘ elaborate p
-elaborate (snd' p) = snd ∘ elaborate p
+elaborate m (fst' p) = fst ∘ elaborate m p
+elaborate m (snd' p) = snd ∘ elaborate m p
 
 -- Sum introduction
-elaborate (inl' a) = inl Heap ∘ elaborate a
-elaborate (inr' b) = inr Heap ∘ elaborate b
+elaborate m (inl' a) = inl m ∘ elaborate m a
+elaborate m (inr' b) = inr m ∘ elaborate m b
 
 -- Case: distribute environment over sum, then case on result
 -- s : Expr Γ (A + B), l : Expr (Γ,A) C, r : Expr (Γ,B) C
 -- Result: (case el er) ∘ distribute ∘ ⟨ id , es ⟩
-elaborate (case' s l r) =
-  case (elaborate l) (elaborate r) ∘ distribute ∘ ⟨ id , elaborate s ⟩ Heap
+elaborate m (case' s l r) =
+  case (elaborate m l) (elaborate m r) ∘ distribute m ∘ ⟨ id , elaborate m s ⟩ m
 
 -- Unit
-elaborate unit = terminal
+elaborate m unit = terminal
 
 -- Absurd (void elimination)
-elaborate (absurd v) = initial ∘ elaborate v
+elaborate m (absurd v) = initial ∘ elaborate m v
 
 -- Let binding: let x = e1 in e2
 -- Pairs current environment with computed value, then evaluates e2
 -- ⟨ id , e1 ⟩ : Γ → Γ × A  (extend environment with bound value)
 -- elaborate e2 : Γ × A → B  (e2 in extended context)
-elaborate (let' e1 e2) = elaborate e2 ∘ ⟨ id , elaborate e1 ⟩ Heap
+elaborate m (let' e1 e2) = elaborate m e2 ∘ ⟨ id , elaborate m e1 ⟩ m
 
 -- Integer literal: constant that ignores environment
-elaborate (int n) = intLit n
+elaborate m (int n) = intLit n
 
 -- String literal: constant that ignores environment
-elaborate (str s) = strLit s
+elaborate m (str s) = strLit s
 
 -- Arithmetic operations: pair operands, then apply primitive
-elaborate (add e₁ e₂) = addIR ∘ ⟨ elaborate e₁ , elaborate e₂ ⟩ Heap
-elaborate (sub e₁ e₂) = subIR ∘ ⟨ elaborate e₁ , elaborate e₂ ⟩ Heap
-elaborate (mul e₁ e₂) = mulIR ∘ ⟨ elaborate e₁ , elaborate e₂ ⟩ Heap
-elaborate (div e₁ e₂) = divIR ∘ ⟨ elaborate e₁ , elaborate e₂ ⟩ Heap
-elaborate (mod' e₁ e₂) = modIR ∘ ⟨ elaborate e₁ , elaborate e₂ ⟩ Heap
+elaborate m (add e₁ e₂) = addIR ∘ ⟨ elaborate m e₁ , elaborate m e₂ ⟩ m
+elaborate m (sub e₁ e₂) = subIR ∘ ⟨ elaborate m e₁ , elaborate m e₂ ⟩ m
+elaborate m (mul e₁ e₂) = mulIR ∘ ⟨ elaborate m e₁ , elaborate m e₂ ⟩ m
+elaborate m (div e₁ e₂) = divIR ∘ ⟨ elaborate m e₁ , elaborate m e₂ ⟩ m
+elaborate m (mod' e₁ e₂) = modIR ∘ ⟨ elaborate m e₁ , elaborate m e₂ ⟩ m
 
 -- Unary negation
-elaborate (neg e) = negIR ∘ elaborate e
+elaborate m (neg e) = negIR ∘ elaborate m e
 
 -- Comparison operations
-elaborate (lt e₁ e₂) = ltIR ∘ ⟨ elaborate e₁ , elaborate e₂ ⟩ Heap
-elaborate (le e₁ e₂) = leIR ∘ ⟨ elaborate e₁ , elaborate e₂ ⟩ Heap
-elaborate (gt e₁ e₂) = gtIR ∘ ⟨ elaborate e₁ , elaborate e₂ ⟩ Heap
-elaborate (ge e₁ e₂) = geIR ∘ ⟨ elaborate e₁ , elaborate e₂ ⟩ Heap
-elaborate (eq e₁ e₂) = eqIR ∘ ⟨ elaborate e₁ , elaborate e₂ ⟩ Heap
-elaborate (ne e₁ e₂) = neIR ∘ ⟨ elaborate e₁ , elaborate e₂ ⟩ Heap
+elaborate m (lt e₁ e₂) = ltIR ∘ ⟨ elaborate m e₁ , elaborate m e₂ ⟩ m
+elaborate m (le e₁ e₂) = leIR ∘ ⟨ elaborate m e₁ , elaborate m e₂ ⟩ m
+elaborate m (gt e₁ e₂) = gtIR ∘ ⟨ elaborate m e₁ , elaborate m e₂ ⟩ m
+elaborate m (ge e₁ e₂) = geIR ∘ ⟨ elaborate m e₁ , elaborate m e₂ ⟩ m
+elaborate m (eq e₁ e₂) = eqIR ∘ ⟨ elaborate m e₁ , elaborate m e₂ ⟩ m
+elaborate m (ne e₁ e₂) = neIR ∘ ⟨ elaborate m e₁ , elaborate m e₂ ⟩ m
 
 -- Effect lifting: arr f lifts pure function to effectful morphism
 -- IR arr : (A ⇒ B) → Eff A B
-elaborate (arr' f) = arr ∘ elaborate f
+elaborate m (arr' f) = arr ∘ elaborate m f
 
 -- OCP-0003: roll'/unroll' removed. Use In/Cata/Out/Ana directly.
 
@@ -262,28 +269,32 @@ elaborate (arr' f) = arr ∘ elaborate f
 -- The arrow case is structurally identical to how a user-defined
 -- `λ x → f x` would elaborate, so SigOps and user closures are
 -- now value-equivalent under apply.
-elaborate (sigOp {A = (Dom ⇒[ k ] Cod)} name) =
-  curry {k = k} (SigOp (generic-info name) ∘ snd) Heap
-elaborate (sigOp name) = SigOp (generic-info name) ∘ terminal
+elaborate m (sigOp {A = (Dom ⇒[ k ] Cod)} name) =
+  curry {k = k} (SigOp (generic-info name) ∘ snd) m
+elaborate m (sigOp name) = SigOp (generic-info name) ∘ terminal
 -- Unresolved polymorphic placeholder. A well-formed Surface Expr
 -- reaching elaborate has been through `resolveExpr`, so `poly` nodes
 -- only survive when resolution failed (e.g. cycle). Treat as an
 -- external SigOp with the unqualified name — matches evalSurface for
 -- the correctness theorem, and codegen will catch it as unresolved.
-elaborate (poly name _) = SigOp (generic-info name) ∘ terminal
+elaborate m (poly name _) = SigOp (generic-info name) ∘ terminal
 
 -- Plan 0.2.4.5 D2: morphism realm.
--- A `lift-morphism m` used as a value (e.g. assigned to a variable
+-- A `lift-morphism morph` used as a value (e.g. assigned to a variable
 -- or returned from a branch) is curry'd over a discarded environment:
--- `curry (m ∘ snd) Heap : IR ⟦Γ⟧ᶜ (A ⇒ B)`. When the typechecker
+-- `curry (morph ∘ snd) m : IR ⟦Γ⟧ᶜ (A ⇒ B)`. When the typechecker
 -- knows it is immediately applied, it emits `morph-app` instead,
 -- bypassing this curry/apply round-trip and the closure ABI.
-elaborate (lift-morphism m) = curry (m ∘ snd) Heap
+elaborate m (lift-morphism morph) = curry (morph ∘ snd) m
 
 -- Plan 0.2.4.5 D2: morphism-realm application.
--- `morph-app m x` lowers as the pure CCC compose `m ∘ elaborate x` —
+-- `morph-app morph x` lowers as the pure CCC compose `morph ∘ elaborate x` —
 -- no `apply`, no closure-record allocation, no dangling-pointer
 -- apply-chain bug (Plan 0.2.4.5 D1 compose runtime). This is the
 -- principled lowering for "categorical-style" code (id chains,
 -- compose chains, primitives). See `plans/0.2.4.5-morphism-realm-split.md`.
-elaborate (morph-app m x) = m ∘ elaborate x
+elaborate m (morph-app morph x) = morph ∘ elaborate m x
+
+-- | Historical default: Heap allocation.
+elaborate-default : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A} → Expr Γ Ψ A → IR ⟦ Γ ⟧ᶜ A
+elaborate-default = elaborate Heap

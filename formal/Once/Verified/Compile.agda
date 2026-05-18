@@ -83,7 +83,7 @@ postulate
 compile : Arch → Source → Maybe (List Byte)
 compile arch gmod with gmoduleToModule gmod
 ... | nothing = nothing
-... | just m  with C.compileFromModule C.Build false (toLegacyArch arch) m
+... | just m  with C.compileFromModule C.Heap C.Build false (toLegacyArch arch) m
 ...   | C.Built asm = just (string-to-bytes asm)
 ...   | _           = nothing
 
@@ -91,14 +91,16 @@ compile arch gmod with gmoduleToModule gmod
 -- CLI entry points (called by Bridge.hs / Once.Compiler).
 ------------------------------------------------------------------------
 
+-- Plan 0.14 follow-up: take AllocMode from caller (CLI --alloc).
+-- compile-asm (no-CLI entry) defaults to Heap, matching pre-0.14 behavior.
 compile-asm : Arch → Source → C.CompileResult
 compile-asm arch gmod with gmoduleToModule gmod
 ... | nothing = C.Error "GModule → Module conversion failed"
-... | just m  = C.compileFromModule C.Build false (toLegacyArch arch) m
+... | just m  = C.compileFromModule C.Heap C.Build false (toLegacyArch arch) m
 
-compile-cli-asm : C.Stage → Bool → Arch → P.Module → C.CompileResult
-compile-cli-asm stage doOpt arch m =
-  C.compileFromModule stage doOpt (toLegacyArch arch) m
+compile-cli-asm : C.AllocMode → C.Stage → Bool → Arch → P.Module → C.CompileResult
+compile-cli-asm allocMode stage doOpt arch m =
+  C.compileFromModule allocMode stage doOpt (toLegacyArch arch) m
 
 ------------------------------------------------------------------------
 -- Per-stage correctness — named obligations.
@@ -140,7 +142,7 @@ postulate
   -- A buggy codegen surfaces here as an undischarged proof goal.
   module-to-asm-correct :
     ∀ (arch : Arch) (m : P.Module) (asm : String) →
-    C.compileFromModule C.Build false (toLegacyArch arch) m ≡ C.Built asm →
+    C.compileFromModule C.Heap C.Build false (toLegacyArch arch) m ≡ C.Built asm →
     ⟦ arch ⟧A asm ≡ ⟦ m ⟧M
 
   -- Stage 3 correctness — `string-to-bytes` followed by `exec` matches
@@ -166,7 +168,7 @@ correct :
 correct arch src bytes pf with gmoduleToModule src in g-eq
 correct arch src bytes () | nothing
 correct arch src bytes pf | just m
-  with C.compileFromModule C.Build false (toLegacyArch arch) m in c-eq
+  with C.compileFromModule C.Heap C.Build false (toLegacyArch arch) m in c-eq
 correct arch src bytes pf | just m | C.Parsed _ _    with pf
 ... | ()
 correct arch src bytes pf | just m | C.Checked _      with pf

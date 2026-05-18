@@ -3016,17 +3016,19 @@ checkElab-fallback-RBinOp {ctx} op e₁ e₂ T eqInf
 -- Top-level Compilation
 ------------------------------------------------------------------------
 
--- | Compile with type signature
+-- | Compile with type signature. Plan 0.14 follow-up: uses Heap as
+-- the default AllocMode for backwards compatibility with callers that
+-- don't supply one via CLI.
 compileExprTyped : RawExpr → (A : Type) → Maybe (IR Unit A)
 compileExprTyped e A with checkElab emptyCtx e A
 ... | failure _                 = nothing
-... | success Ψ se _ _          = just (elaborate se)
+... | success Ψ se _ _          = just (Elab.elaborate-default se)
 
 -- | Compile without signature
 compileExpr : RawExpr → Maybe (∃[ A ] IR Unit A)
 compileExpr e with inferElab emptyCtx e
 ... | failure _                 = nothing
-... | success A Ψ se _ _        = just (A , elaborate se)
+... | success A Ψ se _ _        = just (A , Elab.elaborate-default se)
 
 ------------------------------------------------------------------------
 -- Plan 0.4 T0 Option B — Verified elaborator

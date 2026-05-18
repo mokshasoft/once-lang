@@ -27,6 +27,8 @@ module Once.Compile.Bridge
   , ImportRef (..)
     -- * One-shot compilation (legacy)
   , compile
+    -- * Allocation mode (Plan 0.14 follow-up — wired from CLI --alloc)
+  , AllocMode (..)
     -- * AST-level pipeline
   , parseSource
   , moduleImports
@@ -41,6 +43,7 @@ import Unsafe.Coerce (unsafeCoerce)
 import qualified MAlonzo.Code.Agda.Builtin.Sigma as MSigma
 import qualified MAlonzo.Code.Data.Sum.Base as MSum
 import qualified MAlonzo.Code.Once.Compile as MC
+import qualified MAlonzo.Code.Once.CCC.IR as MCIR
 import qualified MAlonzo.Code.Once.Verified.Compile as MVC
 import qualified MAlonzo.Code.Once.Verified.CPU.Interface as MVCI
 import qualified MAlonzo.Code.Once.Parser as MP
@@ -97,15 +100,15 @@ data ImportRef = ImportRef
 -- MAlonzo conversion (update suffixes after regenerating)
 ------------------------------------------------------------------------
 
-toMStage :: Stage -> MC.T_Stage_408
-toMStage Parse = MC.C_Parse_410
-toMStage Check = MC.C_Check_412
-toMStage Build = MC.C_Build_414
+toMStage :: Stage -> MC.T_Stage_444
+toMStage Parse = MC.C_Parse_446
+toMStage Check = MC.C_Check_448
+toMStage Build = MC.C_Build_450
 
-toMArch :: Arch -> MC.T_Arch_340
-toMArch X86_64  = MC.C_x86'45'64_342
-toMArch X86_32  = MC.C_x86'45'32_344
-toMArch RiscV64 = MC.C_riscv64_346
+toMArch :: Arch -> MC.T_Arch_376
+toMArch X86_64  = MC.C_x86'45'64_378
+toMArch X86_32  = MC.C_x86'45'32_380
+toMArch RiscV64 = MC.C_riscv64_382
 
 -- Verified Arch (in Once.Verified.CPU.Interface). Same shape as MC.Arch
 -- but a separate Agda type, hence a separate coercion.
@@ -133,12 +136,12 @@ fromMPolyFunInfo pfi = PolyFunSig
   , polyFunSigType = agdaToText (MT.d_showPolyType_456 (MP.d_pfunType_120 pfi))
   }
 
-fromMResult :: MC.T_CompileResult_416 -> CompileResult
-fromMResult (MC.C_Parsed_418 fis pfis) =
+fromMResult :: MC.T_CompileResult_452 -> CompileResult
+fromMResult (MC.C_Parsed_454 fis pfis) =
   Parsed (map fromMFunInfo fis) (map fromMPolyFunInfo pfis)
-fromMResult (MC.C_Checked_420 _)  = Checked
-fromMResult (MC.C_Built_422 asm)  = Built (agdaToText asm)
-fromMResult (MC.C_Error_424 err)  = Error (agdaToText err)
+fromMResult (MC.C_Checked_456 _)  = Checked
+fromMResult (MC.C_Built_458 asm)  = Built (agdaToText asm)
+fromMResult (MC.C_Error_460 err)  = Error (agdaToText err)
 
 ------------------------------------------------------------------------
 -- One-shot legacy pipeline
@@ -146,7 +149,7 @@ fromMResult (MC.C_Error_424 err)  = Error (agdaToText err)
 
 compile :: Stage -> Bool -> Arch -> Text -> CompileResult
 compile stage doOpt arch source =
-  fromMResult (MC.d_compile_450 (toMStage stage) doOpt (toMArch arch) (textToAgda source))
+  fromMResult (MC.d_compile_486 (toMAllocMode AllocHeap) (toMStage stage) doOpt (toMArch arch) (textToAgda source))
 
 ------------------------------------------------------------------------
 -- AST-level pipeline
@@ -160,7 +163,7 @@ compile stage doOpt arch source =
 -- silently producing a module with missing decls.
 parseSource :: Text -> Either Text Module
 parseSource source =
-  case MC.d_parseSourceToModule_300 (textToAgda source) of
+  case MC.d_parseSourceToModule_324 (textToAgda source) of
     MSum.C_inj'8321'_38 err -> Left (agdaToText err)
     MSum.C_inj'8322'_42 m   -> Right (Module (unsafeCoerce m))
 
@@ -206,8 +209,19 @@ resolveImports modMap (Module userMod) =
 -- trusted-base postulate (`string-to-bytes` — GNU `as` conformance,
 -- the B2 stance). When B1 (in-Agda assembler) lands, the postulate
 -- goes away and this binding stays the same.
-compileFromModule :: Stage -> Bool -> Arch -> Module -> CompileResult
-compileFromModule stage doOpt arch (Module m) =
+-- | Default allocation mode for surface-level pair/inl/inr/curry/let.
+-- Threaded from CLI's --alloc flag through to the elaborator. Plan 0.14
+-- follow-up (2026-05-18): previously hardcoded to Heap in the
+-- elaborator, silently dropping the user's CLI choice.
+data AllocMode = AllocStack | AllocHeap
+  deriving (Eq, Show)
+
+toMAllocMode :: AllocMode -> MCIR.T_AllocMode_258
+toMAllocMode AllocStack = MCIR.C_Stack_260
+toMAllocMode AllocHeap  = MCIR.C_Heap_262
+
+compileFromModule :: AllocMode -> Stage -> Bool -> Arch -> Module -> CompileResult
+compileFromModule m stage doOpt arch (Module mod_) =
   fromMResult
     (MVC.d_compile'45'cli'45'asm_70
-       (toMStage stage) doOpt (toMVArch arch) (unsafeCoerce m))
+       (toMAllocMode m) (toMStage stage) doOpt (toMVArch arch) (unsafeCoerce mod_))

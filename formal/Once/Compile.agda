@@ -149,23 +149,25 @@ extendFunCtx ctx name ty = (name , ty) ∷ ctx
 -- Phase 2's `resolveExpr` tree-walk substitutes them with the specialized
 -- body elaborations before the surface-to-IR pass.
 -- Returns IR or error message
-compileFunBody : Bool → FunCtx → PolyCtx → (name : String) (ty : Type) → RawExpr → String ⊎ IR Unit ty
-compileFunBody doOpt ctx polys name ty expr with checkElab (ctxWithImportsAndSelfAndPolys ctx polys name ty) expr ty
+-- Plan 0.14 follow-up: take the default AllocMode from the caller
+-- (threaded from CLI --alloc).
+compileFunBody : AllocMode → Bool → FunCtx → PolyCtx → (name : String) (ty : Type) → RawExpr → String ⊎ IR Unit ty
+compileFunBody m doOpt ctx polys name ty expr with checkElab (ctxWithImportsAndSelfAndPolys ctx polys name ty) expr ty
 ... | TE.failure err = inj₁ ("Type error in " ++ name ++ ": " ++ TE.renderError err)
 ... | TE.success _ surfaceExpr _ _ =
   let resolved = resolveExpr polys ((name , ty) ∷ ctx) 0 surfaceExpr
-      ir = elaborate resolved
+      ir = elaborate m resolved
   in inj₂ (if doOpt then optimize ir else ir)
 
 -- | Compile a function with main validation
 -- For main: validates type is Eff Unit A before compiling
 -- For other functions: compiles directly
-compileFun : Bool → FunCtx → PolyCtx → (name : String) (ty : Type) → RawExpr → String ⊎ IR Unit ty
-compileFun doOpt ctx polys name ty expr with name == "main"
+compileFun : AllocMode → Bool → FunCtx → PolyCtx → (name : String) (ty : Type) → RawExpr → String ⊎ IR Unit ty
+compileFun m doOpt ctx polys name ty expr with name == "main"
 ... | true with validateMain ty
 ...   | inj₁ err = inj₁ err
-...   | inj₂ _   = compileFunBody doOpt ctx polys name ty expr
-compileFun doOpt ctx polys name ty expr | false = compileFunBody doOpt ctx polys name ty expr
+...   | inj₂ _   = compileFunBody m doOpt ctx polys name ty expr
+compileFun m doOpt ctx polys name ty expr | false = compileFunBody m doOpt ctx polys name ty expr
 
 ------------------------------------------------------------------------
 -- Module compilation: source → List (name, IR)
@@ -203,12 +205,12 @@ buildPolyCtx (pfi ∷ rest) =
 -- Each function is compiled with access to all previously defined
 -- functions (ground, via FunCtx) and all polymorphic user defs
 -- (via PolyCtx, plan 0.6.2).
-compileAllFuns : Bool → List FunInfo → PolyCtx → String ⊎ List CompiledFun
-compileAllFuns doOpt funs polys = go funs emptyFunCtx
+compileAllFuns : AllocMode → Bool → List FunInfo → PolyCtx → String ⊎ List CompiledFun
+compileAllFuns m doOpt funs polys = go funs emptyFunCtx
   where
     go : List FunInfo → FunCtx → String ⊎ List CompiledFun
     go [] _ = inj₂ []
-    go (fi ∷ rest) ctx with compileFun doOpt ctx polys (funName fi) (funType fi) (funBody fi)
+    go (fi ∷ rest) ctx with compileFun m doOpt ctx polys (funName fi) (funType fi) (funBody fi)
     ... | inj₁ err = inj₁ err
     ... | inj₂ ir with go rest (extendFunCtx ctx (funName fi) (funType fi))
     ...   | inj₁ err = inj₁ err
@@ -230,15 +232,15 @@ compileAllFuns doOpt funs polys = go funs emptyFunCtx
 -- at call sites expand to their NT-combinator body before typechecking,
 -- at which point the existing bidirectional machinery specializes each
 -- constituent builtin against the call-site expected type.
-compileModule : Bool → String → String ⊎ List CompiledFun
-compileModule doOpt source with parse source
+compileModule : AllocMode → Bool → String → String ⊎ List CompiledFun
+compileModule m doOpt source with parse source
 ... | nothing = inj₁ "Parse error: failed to parse module"
 ... | just mod =
       let aliases = extractAliases mod
       in case extractFunctions aliases mod of λ where
            (inj₁ err)             → inj₁ err
            (inj₂ (funs , polys))  →
-             compileAllFuns doOpt funs (buildPolyCtx polys)
+             compileAllFuns m doOpt funs (buildPolyCtx polys)
 
 -- | Parse source text to a Module AST. Haskell uses this to read
 -- both the user's file and each transitive import before calling
@@ -258,13 +260,13 @@ parseSourceToModule = parseStrict
 -- import-aware pipeline: Haskell parses each file separately, calls
 -- `resolveImports` to flatten imports into owner-tagged primitives,
 -- then hands the flat Module to this entry point.
-compileResolvedModule : Bool → Module → String ⊎ List CompiledFun
-compileResolvedModule doOpt mod =
+compileResolvedModule : AllocMode → Bool → Module → String ⊎ List CompiledFun
+compileResolvedModule m doOpt mod =
   let aliases = extractAliases mod
   in case extractFunctions aliases mod of λ where
        (inj₁ err)             → inj₁ err
        (inj₂ (funs , polys))  →
-         compileAllFuns doOpt funs (buildPolyCtx polys)
+         compileAllFuns m doOpt funs (buildPolyCtx polys)
 
 ------------------------------------------------------------------------
 -- Pipeline composition (SurfaceIR → IR)
@@ -409,8 +411,8 @@ showPolyFunInfos (pfi ∷ rest) = showPolyFunInfo pfi ++ "\n" ++ showPolyFunInfo
 -- doOpt: whether to run optimizer (only relevant for CheckOnly/FullBuild)
 -- arch: target architecture (only relevant for FullBuild)
 -- source: source code text
-compile : Stage → Bool → Arch → String → CompileResult
-compile stage doOpt arch source with parseStrict source
+compile : AllocMode → Stage → Bool → Arch → String → CompileResult
+compile m stage doOpt arch source with parseStrict source
 ... | inj₁ err = Error err
 ... | inj₂ mod =
   let aliases = extractAliases mod
@@ -420,10 +422,10 @@ compile stage doOpt arch source with parseStrict source
          let pctx = buildPolyCtx polys
          in case stage of λ where
            Parse → Parsed funs polys
-           Check → case compileAllFuns doOpt funs pctx of λ where
+           Check → case compileAllFuns m doOpt funs pctx of λ where
              (inj₁ err) → Error err
              (inj₂ compiled) → Checked compiled
-           Build → case compileAllFuns doOpt funs pctx of λ where
+           Build → case compileAllFuns m doOpt funs pctx of λ where
              (inj₁ err) → Error err
              (inj₂ compiled) →
                let target = archTarget arch
@@ -433,8 +435,9 @@ compile stage doOpt arch source with parseStrict source
 -- Haskell uses this after driving transitive-import I/O and calling
 -- `resolveImports` to flatten `DImport` decls into owner-tagged
 -- `DSignature` decls. Skips the `parse source` step of `compile`.
-compileFromModule : Stage → Bool → Arch → Module → CompileResult
-compileFromModule stage doOpt arch mod =
+-- Plan 0.14 follow-up: takes AllocMode from CLI --alloc flag.
+compileFromModule : AllocMode → Stage → Bool → Arch → Module → CompileResult
+compileFromModule m stage doOpt arch mod =
   let aliases = extractAliases mod
   in case extractFunctions aliases mod of λ where
        (inj₁ err)             → Error err
@@ -442,10 +445,10 @@ compileFromModule stage doOpt arch mod =
          let pctx = buildPolyCtx polys
          in case stage of λ where
            Parse → Parsed funs polys
-           Check → case compileAllFuns doOpt funs pctx of λ where
+           Check → case compileAllFuns m doOpt funs pctx of λ where
              (inj₁ err) → Error err
              (inj₂ compiled) → Checked compiled
-           Build → case compileAllFuns doOpt funs pctx of λ where
+           Build → case compileAllFuns m doOpt funs pctx of λ where
              (inj₁ err) → Error err
              (inj₂ compiled) →
                let target = archTarget arch

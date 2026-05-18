@@ -1344,37 +1344,50 @@ d_ir'45'to'45'trace_322 v0 v1 v2
       (coe
          d_ir'45'to'45'trace''_12 (coe v0) (coe v1) (coe (0 :: Integer))
          (coe (0 :: Integer)) (coe v2))
+-- Once.CCC.Codegen.IRToTrace.ir-to-trace-at-frontier
+d_ir'45'to'45'trace'45'at'45'frontier_330 ::
+  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Type.T_Type_108 ->
+  Integer ->
+  MAlonzo.Code.Once.CCC.IR.T_IR_274 ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_1882]
+d_ir'45'to'45'trace'45'at'45'frontier_330 v0 v1 v2 v3
+  = coe
+      d_proj'45'trace_306
+      (coe
+         d_ir'45'to'45'trace''_12 (coe v0) (coe v1) (coe v2)
+         (coe (0 :: Integer)) (coe v3))
 -- Once.CCC.Codegen.IRToTrace.ir-stack-budget
-d_ir'45'stack'45'budget_330 ::
+d_ir'45'stack'45'budget_340 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.CCC.IR.T_IR_274 -> Integer
-d_ir'45'stack'45'budget_330 v0 v1 v2
+d_ir'45'stack'45'budget_340 v0 v1 v2
   = coe
       d_proj'45'budget_314
       (coe
          d_ir'45'to'45'trace''_12 (coe v0) (coe v1) (coe (0 :: Integer))
          (coe (0 :: Integer)) (coe v2))
 -- Once.CCC.Codegen.IRToTrace.ir-to-bodies
-d_ir'45'to'45'bodies_338 ::
+d_ir'45'to'45'bodies_348 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.CCC.IR.T_IR_274 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14]
-d_ir'45'to'45'bodies_338 v0 v1 v2
+d_ir'45'to'45'bodies_348 v0 v1 v2
   = coe
       d_proj'45'bodies_310
       (coe
          d_ir'45'to'45'trace''_12 (coe v0) (coe v1) (coe (0 :: Integer))
          (coe (0 :: Integer)) (coe v2))
 -- Once.CCC.Codegen.IRToTrace.ir-to-trace-from
-d_ir'45'to'45'trace'45'from_346 ::
+d_ir'45'to'45'trace'45'from_356 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   Integer ->
   MAlonzo.Code.Once.CCC.IR.T_IR_274 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_ir'45'to'45'trace'45'from_346 v0 v1 v2 v3
+d_ir'45'to'45'trace'45'from_356 v0 v1 v2 v3
   = coe
       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
       (coe
@@ -1394,24 +1407,24 @@ d_ir'45'to'45'trace'45'from_346 v0 v1 v2 v3
                   d_ir'45'to'45'trace''_12 (coe v0) (coe v1) (coe (0 :: Integer))
                   (coe v2) (coe v3)))))
 -- Once.CCC.Codegen.IRToTrace.ir-stack-budget-from
-d_ir'45'stack'45'budget'45'from_360 ::
+d_ir'45'stack'45'budget'45'from_370 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   Integer -> MAlonzo.Code.Once.CCC.IR.T_IR_274 -> Integer
-d_ir'45'stack'45'budget'45'from_360 v0 v1 v2 v3
+d_ir'45'stack'45'budget'45'from_370 v0 v1 v2 v3
   = coe
       d_proj'45'budget_314
       (coe
          d_ir'45'to'45'trace''_12 (coe v0) (coe v1) (coe (0 :: Integer))
          (coe v2) (coe v3))
 -- Once.CCC.Codegen.IRToTrace.ir-to-bodies-from
-d_ir'45'to'45'bodies'45'from_370 ::
+d_ir'45'to'45'bodies'45'from_380 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   Integer ->
   MAlonzo.Code.Once.CCC.IR.T_IR_274 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_ir'45'to'45'bodies'45'from_370 v0 v1 v2 v3
+d_ir'45'to'45'bodies'45'from_380 v0 v1 v2 v3
   = coe
       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
       (coe
