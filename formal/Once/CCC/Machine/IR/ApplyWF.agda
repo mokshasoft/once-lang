@@ -202,7 +202,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
         { final-state = s'
         ; final-alloc = alloc'
         ; trace = trace
-        ; trace-is-ir-to-trace = SMP.!!
+        ; trace-is-ir-to-trace = SMP.!!  -- TODO: drop instr-alloc-stack alignment
         ; trace-correct = refl  -- BY DEFINITION
         ; alloc-correct = alloc-correct-apply
         ; result-place = result-place-final

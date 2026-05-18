@@ -98,7 +98,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
         { final-state = s-final
         ; final-alloc = alloc-final
         ; trace = pair-trace
-        ; trace-is-ir-to-trace = SMP.!!
+        ; trace-is-ir-to-trace = SMP.!!  -- TODO: drop instr-alloc-stack alignment
         ; trace-correct = refl  -- s-final DEFINED by trace
         ; alloc-correct = alloc-correct-pair
         ; result-place = at-loc pair-loc pair-valid-wf-final pair-before rax-eq pair-valid-wf-final pair-before

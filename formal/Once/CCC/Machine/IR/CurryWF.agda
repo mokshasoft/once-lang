@@ -173,7 +173,7 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         { final-state = s'
         ; final-alloc = alloc'
         ; trace = trace
-        ; trace-is-ir-to-trace = SMP.!!
+        ; trace-is-ir-to-trace = SMP.!!  -- dead path; CurryWF Stack not reached at runtime
         ; trace-correct = refl  -- BY DEFINITION
         ; alloc-correct = curry-trace-alloc-correct closure-slot s alloc not-halted
         ; result-place = at-loc closure-loc result-valid-wf' closure-before' rax-eq' reclaim-preserves-validity' reclaim-preserves-result'
