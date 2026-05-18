@@ -60,7 +60,7 @@ open import Once.Surface.IR public
 
 -- Re-export desugar transformation
 open import Once.Surface.Desugar public
-  using (desugar)
+  using (desugar; desugar-default)
 
 -- Re-export optimizer (includes categorical laws + fusion rules)
 open import Once.Optimize public
@@ -278,15 +278,22 @@ compileResolvedModule doOpt mod =
 --   2. optimize - Apply categorical laws + fusion (beta/eta, fold/unfold, map fusion)
 --   3. escape   - Rewrite Heap → Stack where allocations don't escape
 --
-pipeline : ∀ {A B} → SurfaceIR A B → IR A B
-pipeline ir = escape (optimize (desugar ir))
+-- Plan 0.14 follow-up (2026-05-18): desugar is now parameterized on
+-- the default AllocMode. Callers thread the user's --alloc choice from
+-- the CLI; backwards-compatible aliases (-default suffix) preserve Heap
+-- as the previous hardcoded behavior.
+pipeline : ∀ {A B} → AllocMode → SurfaceIR A B → IR A B
+pipeline m ir = escape (optimize (desugar m ir))
+
+pipeline-default : ∀ {A B} → SurfaceIR A B → IR A B
+pipeline-default = pipeline Heap
 
 -- | Pipeline without escape analysis (for comparison/debugging)
-pipeline-no-escape : ∀ {A B} → SurfaceIR A B → IR A B
-pipeline-no-escape ir = optimize (desugar ir)
+pipeline-no-escape : ∀ {A B} → AllocMode → SurfaceIR A B → IR A B
+pipeline-no-escape m ir = optimize (desugar m ir)
 
 -- | Pipeline without optimization (for debugging)
-pipeline-no-opt : ∀ {A B} → SurfaceIR A B → IR A B
+pipeline-no-opt : ∀ {A B} → AllocMode → SurfaceIR A B → IR A B
 pipeline-no-opt = desugar
 
 ------------------------------------------------------------------------

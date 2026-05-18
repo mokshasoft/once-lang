@@ -42,41 +42,47 @@ sigOp-desugar name = C.SigOp (generic-info name)
 -- Desugar transformation
 ------------------------------------------------------------------------
 
--- | Desugar: Surface IR → Core IR
+-- | Desugar: Surface IR → Core IR (parameterized on default allocation mode)
+--
+-- Plan 0.14 follow-up (2026-05-18): the default allocation mode for
+-- pair/inl/inr/curry constructors is now a parameter, wired up from the
+-- CLI `--alloc` flag. Previously hardcoded to Heap, which silently
+-- dropped the user's CLI choice. The `desugar-default` alias preserves
+-- the historical Heap behavior for callers that don't care.
 --
 -- Structural recursion that:
 -- 1. Passes through all Core IR constructors unchanged
 -- 2. Expands Let to composition + pairing
 -- 3. Converts SigOp to Core's sigOp
 --
-desugar : ∀ {A B} → SurfaceIR A B → C.IR A B
+desugar : ∀ {A B} → C.AllocMode → SurfaceIR A B → C.IR A B
 
 -- Category structure
-desugar S.id = C.id
-desugar (g S.∘ f) = desugar g C.∘ desugar f
+desugar m S.id = C.id
+desugar m (g S.∘ f) = desugar m g C.∘ desugar m f
 
 -- Products
-desugar S.fst = C.fst
-desugar S.snd = C.snd
-desugar S.⟨ f , g ⟩ = C.⟨ desugar f , desugar g ⟩ C.Heap
+desugar m S.fst = C.fst
+desugar m S.snd = C.snd
+desugar m S.⟨ f , g ⟩ = C.⟨ desugar m f , desugar m g ⟩ m
 
 -- Coproducts
-desugar S.inl = C.inl C.Heap
-desugar S.inr = C.inr C.Heap
-desugar S.[ f , g ] = C.case (desugar f) (desugar g)
+desugar m S.inl = C.inl m
+desugar m S.inr = C.inr m
+desugar m S.[ f , g ] = C.case (desugar m f) (desugar m g)
 
 -- Terminal/Initial
-desugar S.terminal = C.terminal
-desugar S.initial = C.initial
+desugar m S.terminal = C.terminal
+desugar m S.initial = C.initial
 
 -- Exponential
-desugar (S.curry f) = C.curry (desugar f) C.Heap
-desugar S.apply = C.apply
+desugar m (S.curry f) = C.curry (desugar m f) m
+desugar m S.apply = C.apply
 
 -- OCP-0003: fold/unfold removed
 
 -- Effects
-desugar S.arr = C.arr
+desugar m S.arr = C.arr
 
 -- | Let binding desugaring
 --
@@ -88,9 +94,14 @@ desugar S.arr = C.arr
 -- - Body e2 : A * B → C receives this pair
 -- - Body uses fst to access original input, snd for bound value
 --
-desugar (Let e1 e2) = desugar e2 C.∘ C.⟨ C.id , desugar e1 ⟩ C.Heap
+desugar m (Let e1 e2) = desugar m e2 C.∘ C.⟨ C.id , desugar m e1 ⟩ m
 
 -- | Primitive passthrough
 --
 -- Primitives are opaque - just convert to Core's SigOp constructor
-desugar (SigOp name) = sigOp-desugar name
+desugar m (SigOp name) = sigOp-desugar name
+
+-- | Historical default: Heap allocation. Preserves pre-Plan-0.14
+-- behavior for callers that don't thread an AllocMode.
+desugar-default : ∀ {A B} → SurfaceIR A B → C.IR A B
+desugar-default = desugar C.Heap
