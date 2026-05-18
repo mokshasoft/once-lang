@@ -1231,26 +1231,21 @@ module AbstractExec {FS : FrameSemantics} where
     exec-restore-input-with-value (readLoc s (AtStack (current-frame alloc) slot)) s alloc
 
   -- instr-alloc-stack: advance stackSlot by n AND advance next-slot frontier
-  -- Plan 0.14 Phase 2A hybrid (2026-05-18): instr-alloc-stack/-dealloc/-reclaim
-  -- no longer modify alloc.next-slot. The function prologue allocates the
-  -- entire frame upfront (subq $stack-budget*8, %rsp); these instructions
-  -- only update regs.stackSlot for runtime bookkeeping. alloc.next-slot
-  -- becomes a proof-side parameter set by producers when dispatching
-  -- sub-IRs, never modified by exec-trace. This decouples runtime alloc
-  -- tracking from proof-side scratch frontier — Bridge A's structural
-  -- gap (synthetic alloc-after-scratch vs runtime alloc) dissolves.
+  -- Capacity was verified by Dispatcher when constructing the trace
+  -- Note: next-slot tracks compile-time allocation frontier (monotonically increasing)
   exec-abstract (instr-alloc-stack n) s alloc =
-    record s { regs = incrStackSlot (regs s) n } , alloc
+    record s { regs = incrStackSlot (regs s) n } ,
+    record alloc { next-slot = next-slot alloc + n }
 
   -- instr-dealloc-stack: reclaim n slots (decrement stackSlot)
   exec-abstract (instr-dealloc-stack n) s alloc =
     record s { regs = decrStackSlot (regs s) n } , alloc
 
-  -- instr-reclaim-to: alloc-no-op (was: set next-slot to given value).
-  -- Reclamation is now purely a proof-side concept; runtime allocator
-  -- doesn't track it.
+  -- instr-reclaim-to: set next-slot to given value (actual reclamation)
+  -- OCP-0003: Used by Sum wrapper allocation to place wrapper at child's reclaimable-slot.
+  -- The LocState is unchanged; only the AllocState's next-slot is updated.
   exec-abstract (instr-reclaim-to n) s alloc =
-    s , alloc
+    s , record alloc { next-slot = n }
 
   -- instr-push-frame: create new frame with given capacity
   -- Resets stackSlot to 0 for the new frame
