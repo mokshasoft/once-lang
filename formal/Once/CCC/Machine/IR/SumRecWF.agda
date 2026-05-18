@@ -376,6 +376,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         { final-state = s-final
         ; final-alloc = alloc₁
         ; trace = inl-trace
+        ; trace-is-ir-to-trace = SMP.!!
         ; trace-correct = inl-inr-trace-state-correct sum-slots 0 (suc (next-slot alloc)) (next-slot alloc) s alloc input-loc sum-loc s-final rdi-eq refl refl not-halted
         ; alloc-correct = inl-inr-trace-alloc-correct sum-slots 0 (suc (next-slot alloc)) (next-slot alloc) s alloc not-halted
         ; result-place = at-loc sum-loc inl-valid-wf-final sum-before rax-eq inl-reclaim-preserves-validity inl-reclaim-preserves-result
@@ -532,6 +533,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         { final-state = s-final
         ; final-alloc = alloc₁
         ; trace = inr-trace
+        ; trace-is-ir-to-trace = SMP.!!
         ; trace-correct = inl-inr-trace-state-correct sum-slots 1 (suc (next-slot alloc)) (next-slot alloc) s alloc input-loc sum-loc s-final rdi-eq refl refl not-halted
         ; alloc-correct = inl-inr-trace-alloc-correct sum-slots 1 (suc (next-slot alloc)) (next-slot alloc) s alloc not-halted
         ; result-place = at-loc sum-loc inr-valid-wf-final sum-before rax-eq inr-reclaim-preserves-validity inr-reclaim-preserves-result
@@ -682,6 +684,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         { final-state = IRResultAWF.final-state result-f
         ; final-alloc = IRResultAWF.final-alloc result-f
         ; trace = case-inl-trace
+        ; trace-is-ir-to-trace = SMP.!!
         ; trace-correct = case-trace-state-correct f-trace s alloc input-loc payload-loc s-setup (IRResultAWF.final-state result-f)
                             rdi-eq
                             (InlValidWF.payload-ptr inl-decomp)
@@ -803,6 +806,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         { final-state = IRResultAWF.final-state result-g
         ; final-alloc = IRResultAWF.final-alloc result-g
         ; trace = case-inr-trace
+        ; trace-is-ir-to-trace = SMP.!!
         ; trace-correct = case-trace-state-correct g-trace s alloc input-loc payload-loc s-setup (IRResultAWF.final-state result-g)
                             rdi-eq
                             (InrValidWF.payload-ptr inr-decomp)
@@ -971,6 +975,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         { final-state = s'
         ; final-alloc = alloc'
         ; trace = in-trace
+        ; trace-is-ir-to-trace = SMP.!!
         ; trace-correct = refl  -- s' DEFINED by trace
         ; alloc-correct =
             let raw = rec-scheme-alloc-correct-4 result-slot s alloc not-halted
@@ -1095,6 +1100,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         { final-state = s'
         ; final-alloc = alloc
         ; trace = out-μ-trace
+        ; trace-is-ir-to-trace = SMP.!!
         ; trace-correct = refl  -- s' DEFINED by trace
         ; alloc-correct = cong proj₂ (exec-trace-single mov-to-output s alloc not-halted)
         ; result-place = at-loc input-loc result-valid input-before rax-eq result-valid input-before
@@ -1183,6 +1189,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         { final-state = s'
         ; final-alloc = alloc
         ; trace = out-trace
+        ; trace-is-ir-to-trace = SMP.!!
         ; trace-correct = refl  -- s' DEFINED by trace
         ; alloc-correct = cong proj₂ (exec-trace-single mov-to-output s alloc not-halted)
         ; result-place = at-loc input-loc result-valid input-before rax-eq result-valid input-before
@@ -1268,6 +1275,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         { final-state = s'
         ; final-alloc = alloc'
         ; trace = in-ν-trace
+        ; trace-is-ir-to-trace = SMP.!!
         ; trace-correct = refl  -- s' DEFINED by trace
         ; alloc-correct =
             let raw = rec-scheme-alloc-correct-4 result-slot s alloc not-halted

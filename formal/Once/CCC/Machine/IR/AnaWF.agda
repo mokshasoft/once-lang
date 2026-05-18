@@ -199,6 +199,7 @@ module AnaWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         { final-state = s'
         ; final-alloc = alloc'
         ; trace = ana-trace
+        ; trace-is-ir-to-trace = SMP.!!
         ; trace-correct = refl
         ; alloc-correct =
             -- rec-scheme-alloc-correct-4 returns the alloc with next-slot bumped via _+_;

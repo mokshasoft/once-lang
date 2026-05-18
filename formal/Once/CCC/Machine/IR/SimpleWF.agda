@@ -80,6 +80,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         { final-state = s'
         ; final-alloc = alloc
         ; trace = trace
+        ; trace-is-ir-to-trace = refl
         ; trace-correct = refl
         ; alloc-correct = cong proj₂ (exec-trace-single mov-to-output s alloc not-halted)
         ; result-place = at-loc input-loc valid-s' input-before rax-eq valid-s' input-before
@@ -160,6 +161,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         { final-state = s'
         ; final-alloc = alloc
         ; trace = trace
+        ; trace-is-ir-to-trace = refl
         ; trace-correct = refl
         ; alloc-correct =
             trans (cong proj₂ (exec-trace-single load-indirect s alloc not-halted))
@@ -267,6 +269,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         { final-state = s'
         ; final-alloc = alloc
         ; trace = trace
+        ; trace-is-ir-to-trace = refl
         ; trace-correct = refl
         ; alloc-correct =
             trans (cong proj₂ (exec-trace-single load-indirect-suc s alloc not-halted))
@@ -373,6 +376,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         { final-state = s
         ; final-alloc = alloc
         ; trace = []
+        ; trace-is-ir-to-trace = refl
         ; trace-correct = refl
         ; alloc-correct = refl
         ; result-place = unit-result
@@ -434,6 +438,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         { final-state = s'
         ; final-alloc = alloc
         ; trace = trace
+        ; trace-is-ir-to-trace = refl
         ; trace-correct = refl
         ; alloc-correct = cong proj₂ (exec-trace-single mov-to-output s alloc not-halted)
         ; result-place = unit-result
@@ -507,6 +512,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         { final-state = s'
         ; final-alloc = alloc
         ; trace = trace
+        ; trace-is-ir-to-trace = refl
         ; trace-correct = refl
         ; alloc-correct = cong proj₂ (exec-trace-single mov-to-output s alloc not-halted)
         ; result-place = at-loc input-loc valid-eff input-before rax-eq valid-eff input-before

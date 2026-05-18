@@ -123,6 +123,7 @@ module CurryHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         { final-state = s-final
         ; final-alloc = alloc-final
         ; trace = curry-heap-trace
+        ; trace-is-ir-to-trace = refl
         ; trace-correct = refl
         ; alloc-correct = SMP.!!  -- Phase A scaffold: discharge in Phase C analogue
         ; result-place = at-loc closure-loc closure-valid-final closure-before-final

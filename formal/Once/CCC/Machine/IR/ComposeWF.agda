@@ -170,6 +170,7 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         { final-state = s-final
         ; final-alloc = alloc₂
         ; trace = compose-trace
+        ; trace-is-ir-to-trace = SMP.!!
         ; trace-correct = refl  -- s-final DEFINED by trace
         ; alloc-correct = alloc-correct-compose
         ; result-place =

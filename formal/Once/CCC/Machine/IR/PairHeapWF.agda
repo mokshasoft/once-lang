@@ -109,6 +109,7 @@ module PairHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         { final-state = s-final
         ; final-alloc = alloc-final
         ; trace = pair-heap-trace
+        ; trace-is-ir-to-trace = SMP.!!  -- TODO: drop instr-alloc-stack from setup-trace to align with IRToTrace
         ; trace-correct = refl
         ; alloc-correct = alloc-correct-pair-heap
         ; result-place = at-loc pair-loc pair-valid-final pair-before-final

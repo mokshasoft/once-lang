@@ -40,6 +40,12 @@ open import Once.CCC.IR.Size
 open import Once.CCC.IR.Stack
 open import Once.CCC.Machine.Allocation hiding (AllocMode)
 
+-- Plan 0.14 structural-gap-elimination (2026-05-18): IRResultBase
+-- references `ir-to-trace-at-frontier` to force each producer's trace
+-- to equal what IRToTrace emits at the alloc's frontier. The previously-
+-- free `trace` field becomes structurally constrained.
+open import Once.CCC.Codegen.IRToTrace using (ir-to-trace-at-frontier)
+
 -- Import μ-type/ν-type and WellFormedF for recursive type validity
 open import Once.Type using (μ-type; ν-type; Functor)
 open import Once.Functor.Translate using (WellFormedF)
@@ -422,6 +428,13 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
         final-state : LocState FS
         final-alloc : AllocState {FS}
         trace : AbstractTrace
+        -- Plan 0.14 (2026-05-18): structural gap elimination. The
+        -- trace MUST equal what IRToTrace emits at this alloc's
+        -- frontier. Spec/runtime divergence becomes a type error.
+        -- Producers discharge with `refl` when shapes match definitionally;
+        -- those needing alignment work surface as visible postulates.
+        trace-is-ir-to-trace :
+          trace ≡ ir-to-trace-at-frontier (next-slot alloc) ir
         trace-correct : proj₁ (exec-trace trace s alloc) ≡ final-state
         -- Plan 0.14: symmetric to trace-correct. Ties final-alloc to
         -- the runtime alloc produced by exec-trace. With this, the

@@ -83,6 +83,7 @@ module SumInrHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         { final-state = s-final
         ; final-alloc = alloc-final
         ; trace = inr-heap-trace
+        ; trace-is-ir-to-trace = refl
         ; trace-correct = refl
         ; alloc-correct = SMP.!!  -- Phase A scaffold
         ; result-place = at-loc sum-loc sum-valid-final sum-before-final

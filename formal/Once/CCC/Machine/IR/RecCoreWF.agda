@@ -353,6 +353,7 @@ module RecCoreWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         { final-state = s'
         ; final-alloc = alloc'
         ; trace = fuse-trace
+        ; trace-is-ir-to-trace = SMP.!!
         ; trace-correct = refl
         ; alloc-correct =
             let raw = rec-scheme-alloc-correct-4 result-slot s alloc not-halted
@@ -465,6 +466,7 @@ module RecCoreWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         { final-state = s'
         ; final-alloc = alloc'
         ; trace = hylo-trace
+        ; trace-is-ir-to-trace = SMP.!!
         ; trace-correct = refl
         ; alloc-correct =
             let raw = rec-scheme-alloc-correct-4 result-slot s alloc not-halted
