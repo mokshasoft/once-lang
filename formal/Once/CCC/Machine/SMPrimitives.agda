@@ -995,6 +995,108 @@ module InstrPrimitives {FS : FrameSemantics} where
   -- absurd precondition.
   exec-abstract-same-frame (instr-alloc-heap _)     s alloc₁ alloc₂ () _
 
+  ----------------------------------------------------------------------
+  -- Plan 0.14 Phase 2A (2026-05-18): next-slot invariance.
+  --
+  -- The state output of exec-abstract is INDEPENDENT of alloc.next-slot
+  -- for EVERY instruction (including instr-alloc-heap, which reads
+  -- next-heap-ref but not next-slot). This is stronger than
+  -- exec-abstract-same-frame (which requires
+  -- EffectStateOnlyDependsOnFrame and excludes eff-heap-alloc).
+  --
+  -- Application: WF specs that want to pass `record alloc { next-slot
+  -- += scratch }` to sub-IR `rec-wf`, while the runtime exec-trace
+  -- runs on `alloc` (unbumped), can bridge via this lemma: the state
+  -- output of the sub-IR's trace is the same regardless of which alloc
+  -- is threaded.
+  --
+  -- The next-slot DELTA of the output alloc IS the same in both runs,
+  -- since instr-alloc-stack/dealloc/reclaim are the only instructions
+  -- that bump next-slot, and they bump by a constant.
+  ----------------------------------------------------------------------
+
+  -- Helper: `record alloc { next-slot = n }` preserves current-frame
+  -- and next-heap-ref. Used in many of the cases below.
+  next-slot-update-preserves-frame : (alloc : AllocState {FS}) (n : ℕ) →
+    current-frame (record alloc { next-slot = n }) ≡ current-frame alloc
+  next-slot-update-preserves-frame _ _ = refl
+
+  next-slot-update-preserves-heap-ref : (alloc : AllocState {FS}) (n : ℕ) →
+    next-heap-ref (record alloc { next-slot = n }) ≡ next-heap-ref alloc
+  next-slot-update-preserves-heap-ref _ _ = refl
+
+  -- The main lemma: state output is independent of alloc.next-slot.
+  exec-abstract-state-next-slot-invariant :
+    ∀ (i : AbstractInstr) (s : LocState FS) (alloc : AllocState {FS}) (n : ℕ) →
+    proj₁ (exec-abstract i s alloc) ≡
+      proj₁ (exec-abstract i s (record alloc { next-slot = n }))
+  -- Reg-only / pure: state ignores alloc entirely.
+  exec-abstract-state-next-slot-invariant mov-to-output           s _ _ = refl
+  exec-abstract-state-next-slot-invariant mov-input2-to-output    s _ _ = refl
+  exec-abstract-state-next-slot-invariant mov-to-input            s _ _ = refl
+  exec-abstract-state-next-slot-invariant mov-output-to-input2    s _ _ = refl
+  -- load-indirect / store-indirect: state depends on sv-as-loc Input1.
+  exec-abstract-state-next-slot-invariant load-indirect s _ _
+    with sv-as-loc (readReg (regs s) Input1)
+  ... | just loc with readLoc s loc
+  ...   | just _  = refl
+  ...   | nothing = refl
+  exec-abstract-state-next-slot-invariant load-indirect s _ _ | nothing = refl
+  exec-abstract-state-next-slot-invariant load-indirect-suc s _ _
+    with sv-as-loc (readReg (regs s) Input1)
+  ... | just loc with readLoc s (sucLoc loc)
+  ...   | just _  = refl
+  ...   | nothing = refl
+  exec-abstract-state-next-slot-invariant load-indirect-suc s _ _ | nothing = refl
+  exec-abstract-state-next-slot-invariant store-indirect s _ _
+    with sv-as-loc (readReg (regs s) Input1)
+  ... | just _ = refl
+  ... | nothing = refl
+  exec-abstract-state-next-slot-invariant store-indirect-suc s _ _
+    with sv-as-loc (readReg (regs s) Input1)
+  ... | just _ = refl
+  ... | nothing = refl
+  -- Stack-slot ops: state uses current-frame, which is preserved by
+  -- the next-slot record update. The with-clauses surface so each
+  -- branch reduces to the same expression on both sides.
+  exec-abstract-state-next-slot-invariant (load-from-slot k) s alloc _
+    with readLoc s (AtStack (current-frame alloc) k)
+  ... | just _  = refl
+  ... | nothing = refl
+  exec-abstract-state-next-slot-invariant (store-at-slot _)  s _ _ = refl
+  exec-abstract-state-next-slot-invariant (lea-slot _)       s _ _ = refl
+  exec-abstract-state-next-slot-invariant (restore-input k) s alloc _
+    with readLoc s (AtStack (current-frame alloc) k)
+  ... | just _  = refl
+  ... | nothing = refl
+  -- Alloc-stack: state updates only regs.stackSlot, ignores alloc.
+  exec-abstract-state-next-slot-invariant (instr-alloc-stack _)   s _ _ = refl
+  exec-abstract-state-next-slot-invariant (instr-dealloc-stack _) s _ _ = refl
+  exec-abstract-state-next-slot-invariant (instr-reclaim-to _)    s _ _ = refl
+  -- Frame ops: don't touch alloc.
+  exec-abstract-state-next-slot-invariant (instr-push-frame _)    s _ _ = refl
+  exec-abstract-state-next-slot-invariant instr-pop-frame         s _ _ = refl
+  exec-abstract-state-next-slot-invariant instr-call-closure      s _ _ = refl
+  -- Worklist: same patterns as stack-slot ops.
+  exec-abstract-state-next-slot-invariant (worklist-init _)   s _ _ = refl
+  exec-abstract-state-next-slot-invariant (worklist-push _)   s _ _ = refl
+  exec-abstract-state-next-slot-invariant (worklist-pop k)   s alloc _
+    with readLoc s (AtStack (current-frame alloc) k)
+  ... | just _  = refl
+  ... | nothing = refl
+  exec-abstract-state-next-slot-invariant (worklist-check _)  s _ _ = refl
+  -- Control / sigop / tag / code-addr: state independent of alloc.
+  exec-abstract-state-next-slot-invariant (instr-sigop _)         s _ _ = refl
+  exec-abstract-state-next-slot-invariant (instr-load-const _ _)  s _ _ = refl
+  exec-abstract-state-next-slot-invariant (instr-load-tag-lit _)  s _ _ = refl
+  exec-abstract-state-next-slot-invariant (instr-load-code-addr _) s _ _ = refl
+  exec-abstract-state-next-slot-invariant instr-save-closure-reg  s _ _ = refl
+  exec-abstract-state-next-slot-invariant (instr-case-on-tag _ _) s _ _ = refl
+  -- instr-alloc-heap: state writes (SV-Ptr (heap-loc (mkHeapRef
+  -- (next-heap-ref alloc)) 0)) to Output. Reads next-heap-ref, NOT
+  -- next-slot. The record update preserves next-heap-ref.
+  exec-abstract-state-next-slot-invariant (instr-alloc-heap _)    s _ _ = refl
+
 ------------------------------------------------------------------------
 -- Level 5: Trace Primitives
 --
@@ -1309,6 +1411,14 @@ module TraceComposition {FS : FrameSemantics} where
     proj₁ (exec-trace (t1 ++ t2) s alloc) ≡
     proj₁ (exec-trace t2 (proj₁ (exec-trace t1 s alloc)) (proj₂ (exec-trace t1 s alloc)))
   exec-trace-append-state t1 t2 s alloc = cong proj₁ (exec-trace-append t1 t2 s alloc)
+
+  -- TODO Phase 2A (2026-05-18): trace-level state-alloc-coherent lemma.
+  -- The per-instruction version (`exec-abstract-state-next-slot-invariant`
+  -- in InstrPrimitives) is in place; lifting to traces requires careful
+  -- induction with the "allocs agree on current-frame + next-heap-ref"
+  -- invariant carried through each step. Deferred until the per-producer
+  -- migration drives concrete need; the existing `exec-abstract-same-frame`
+  -- + per-instr work covers many cases already.
 
   -- Note: exec-abstract-preserves-capacity and exec-trace-preserves-capacity'
   -- have been removed in Phase 3 (frame-capacity removed from AllocState).
