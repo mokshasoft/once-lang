@@ -63,6 +63,7 @@ open import Once.CCC.IR.Size
 open import Once.CCC.IR.Stack
 open import Once.CCC.Machine.Allocation hiding (AllocMode)
 open import Once.CCC.Machine.ClosureWellFormed
+open import Once.CCC.Machine.TraceEvaluator
 
 import Once.CCC.Machine.SMPrimitives as SMP
 import Once.CCC.Machine.SMPrimitives.Heap as SMPH
@@ -82,6 +83,8 @@ module PairHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   open SMP.InstrPrimitives {FS}
   open SMP.TracePrimitives {FS}
   open SMPH.HeapPrimitives {FS}
+
+  open TraceEvaluatorDef {FS}
 
   open ClosureWellFormedDef {FS} program-bound
     using (ValidAtWF; IRResultAWF; ResultPlace; at-loc; valid-pair-wf;
@@ -111,13 +114,18 @@ module PairHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; trace = pair-heap-trace
         ; trace-is-ir-to-trace = SMP.!!  -- TODO: drop instr-alloc-stack from setup-trace to align with IRToTrace
         ; trace-correct = refl
-        ; alloc-correct = alloc-correct-pair-heap
+        -- Plan 0.16 TraceEvaluator: alloc-correct, trace-twf,
+        -- mem-preserved-before, and the not-halted derivation now route
+        -- through `trace-eval`. `exec-alloc-eq` reuses the existing
+        -- alloc-correct-pair-heap discharge (the per-segment walk in
+        -- the where-block is already done).
+        ; alloc-correct = TraceEvaluator.exec-alloc-eq trace-eval
         ; result-place = at-loc pair-loc pair-valid-final pair-before-final
                             pair-rax-eq pair-valid-cont pair-before-cont
-        ; not-halted = not-halted-final
+        ; not-halted = TraceEvaluator.halted-preserved trace-eval not-halted
         ; frame-preserved = refl  -- alloc-final = record alloc { ... } definitionally
-        ; trace-twf = SMP.!!
-        ; mem-preserved-before = λ _ _ → SMP.!!  -- TODO: heap-aware mem-preserved
+        ; trace-twf = TraceEvaluator.trace-wf trace-eval
+        ; mem-preserved-before = TraceEvaluator.mem-preserved-before trace-eval
         ; trace-preserves-halted = exec-trace-preserves-halted-WF pair-heap-trace
         }
       ; stack-inv = record
@@ -845,9 +853,22 @@ module PairHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       alloc-correct-pair-heap =
         trans pair-trace-after-g-alloc-eq (trans post-trace-alloc-correct final-bridge-eq)
 
-      not-halted-final : halted s-final ≡ false
-      not-halted-final = exec-trace-preserves-halted-WF pair-heap-trace s alloc not-halted SMP.!!
-        -- TODO: replace SMP.!! with the trace-twf witness once `trace-twf` discharges
+      ------------------------------------------------------------------
+      -- Plan 0.16 TraceEvaluator: bundles the per-step state trajectory.
+      -- `exec-alloc-eq` reuses the existing `alloc-correct-pair-heap`
+      -- derivation; `trace-wf` and `mem-preserved-before` remain the
+      -- two scaffolded semantic obligations. `halted-preserved`
+      -- (i.e. the old `not-halted-final`) now derives automatically
+      -- from `trace-wf` via `exec-trace-preserves-halted-WF`.
+      ------------------------------------------------------------------
+      trace-eval : TraceEvaluator pair-heap-trace s alloc
+      trace-eval = mk-trace-evaluator
+        s-final
+        alloc-final
+        SMP.!!                       -- trace-wf
+        refl                         -- exec-state-eq (definitional)
+        alloc-correct-pair-heap      -- exec-alloc-eq (already derived)
+        (λ _ _ → SMP.!!)             -- mem-preserved-before
 
       ------------------------------------------------------------------
       -- Pair location (fresh AtDynamic) and validity at final state.
