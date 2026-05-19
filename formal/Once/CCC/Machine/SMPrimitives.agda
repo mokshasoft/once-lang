@@ -3664,6 +3664,38 @@ module RecSchemeSemantics {FS : FrameSemantics} where
   ... | just _  = refl
   ... | nothing = refl
 
+  -- Plan 0.14 follow-up: per-instruction alloc-preservation lemmas used
+  -- by heap-mode WF producers (SumInlHeapWF, SumInrHeapWF, ...) to
+  -- discharge the IRResultBase.alloc-correct obligation. Each preserves
+  -- the full AllocState (proj₂) verbatim.
+
+  exec-abstract-mov-to-output-preserves-alloc : ∀ (s : LocState FS) (alloc : AllocState {FS}) →
+    proj₂ (exec-abstract mov-to-output s alloc) ≡ alloc
+  exec-abstract-mov-to-output-preserves-alloc s alloc = refl
+
+  exec-abstract-store-at-slot-preserves-alloc : ∀ (k : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
+    proj₂ (exec-abstract (store-at-slot k) s alloc) ≡ alloc
+  exec-abstract-store-at-slot-preserves-alloc k s alloc = refl
+
+  exec-abstract-instr-load-tag-lit-preserves-alloc : ∀ (n : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
+    proj₂ (exec-abstract (instr-load-tag-lit n) s alloc) ≡ alloc
+  exec-abstract-instr-load-tag-lit-preserves-alloc n s alloc = refl
+
+  exec-abstract-store-indirect-preserves-alloc : ∀ (s : LocState FS) (alloc : AllocState {FS}) →
+    proj₂ (exec-abstract store-indirect s alloc) ≡ alloc
+  exec-abstract-store-indirect-preserves-alloc s alloc
+    with sv-as-loc (readReg (regs s) Input1)
+  ... | just _  = refl
+  ... | nothing = refl
+
+  exec-abstract-store-indirect-suc-preserves-alloc : ∀ (s : LocState FS) (alloc : AllocState {FS}) →
+    proj₂ (exec-abstract store-indirect-suc s alloc) ≡ alloc
+  exec-abstract-store-indirect-suc-preserves-alloc s alloc
+    with sv-as-loc (readReg (regs s) Input1)
+  ... | just _  = refl
+  ... | nothing = refl
+  ... | nothing = refl
+
   -- exec-trace (restore-input slot ∷ []) preserves alloc when not halted
   restore-trace-preserves-alloc : ∀ (slot : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
     halted s ≡ false →
