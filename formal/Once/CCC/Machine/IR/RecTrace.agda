@@ -804,7 +804,9 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- construction-state TraceWF used internally for chaining).
       trace-twf : TraceWF s alloc trace
       -- Note: trace-preserves-capacity removed in Phase 3 (frame-capacity removed)
-      trace-no-heap-writes : TraceNoHeapWrites trace
+      -- Plan 0.14 follow-up: trace-no-heap-writes removed; mem-preserved-before
+      -- on IRResultBase is the consequence-form invariant. ProcessedLayerResult
+      -- producers prove TraceNoHeapWrites locally if their downstream needs it.
 
   ------------------------------------------------------------------------
   -- Process Layer: Phase 1 of Two-Phase Architecture
@@ -1432,7 +1434,6 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; trace-slot-reads-below = tt
         -- Trace preservation properties
         ; trace-twf = twf-∷ tt twf-[]
-        ; trace-no-heap-writes = tt
         -- scratch-bounded: K case has final-alloc = alloc, so same as max-slot-usage-bound
         ; scratch-bounded = m≤m+n (next-slot alloc) (layer-capacity (wf-K isBase) wfG alg)
         }
@@ -1490,7 +1491,6 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; trace-slot-reads-below = IRResultAWF.trace-slot-reads-below rec-result
         -- Trace preservation properties
         ; trace-twf = IRResultAWF.trace-twf rec-result
-        ; trace-no-heap-writes = IRResultAWF.trace-no-heap-writes rec-result
         -- scratch-bounded (INPUT-relative): Id delegates to Cata
         -- layer-capacity wf-Id = ir-stack-requirement (Cata wfG alg)
         -- Use max-slot-usage-bound which is INPUT-relative
@@ -2130,9 +2130,6 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
               (SMP.trace-slot-reads-below-mono (l-reclaimable +ℕ 2) max-slot-used-inj1 reclaim-wrapper-trace
                  (n≤m⊔n l-max-slot-used (l-reclaimable +ℕ 2)) wrapper-tsrb))
         ; trace-twf = SMP.!!  -- TODO: twf-++ chain (setup-tph + l-result + reclaim-wrapper-tph)
-        ; trace-no-heap-writes = SMP.trace-no-heap-writes-append setup-trace (sub-trace ++ reclaim-wrapper-trace)
-            setup-tnhw (SMP.trace-no-heap-writes-append sub-trace reclaim-wrapper-trace
-                         (ProcessedLayerResult.trace-no-heap-writes l-result) reclaim-wrapper-tnhw)
         -- scratch-bounded = max-slot-usage-bound (same proof, INPUT-relative)
         ; scratch-bounded =
             let child-cap-bound : layer-capacity wfL wfG alg ≤ layer-capacity (wf-Sum wfL wfR) wfG alg
@@ -2653,9 +2650,6 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
               (SMP.trace-slot-reads-below-mono (r-reclaimable +ℕ 2) max-slot-used-inj2 reclaim-wrapper-trace
                  (n≤m⊔n r-max-slot-used (r-reclaimable +ℕ 2)) wrapper-tsrb))
         ; trace-twf = SMP.!!  -- TODO: twf-++ chain (setup-tph + r-result + reclaim-wrapper-tph)
-        ; trace-no-heap-writes = SMP.trace-no-heap-writes-append setup-trace (sub-trace ++ reclaim-wrapper-trace)
-            setup-tnhw (SMP.trace-no-heap-writes-append sub-trace reclaim-wrapper-trace
-                         (ProcessedLayerResult.trace-no-heap-writes r-result) reclaim-wrapper-tnhw)
         -- scratch-bounded = max-slot-usage-bound (same proof, INPUT-relative)
         ; scratch-bounded =
             let child-cap-bound : layer-capacity wfR wfG alg ≤ layer-capacity (wf-Sum wfL wfR) wfG alg
@@ -2759,12 +2753,6 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; trace-slot-reads-above = trace-slot-reads-above-proof
         ; trace-slot-reads-below = trace-slot-reads-below-proof
         ; trace-twf = SMP.!!  -- TODO: twf-++ chain (left-setup + l-result + right-setup + r-result)
-        ; trace-no-heap-writes = SMP.trace-no-heap-writes-append left-setup-trace
-                                    (l-trace ++ right-setup-trace ++ r-trace) tt
-                                    (SMP.trace-no-heap-writes-append l-trace (right-setup-trace ++ r-trace)
-                                       (ProcessedLayerResult.trace-no-heap-writes l-result)
-                                       (SMP.trace-no-heap-writes-append right-setup-trace r-trace tt
-                                          (ProcessedLayerResult.trace-no-heap-writes r-result)))
         -- scratch-bounded: max-slot-used ≤ next-slot alloc + layer-capacity
         -- This is exactly max-slot-usage-bound-prod (INPUT-relative bounds)
         ; scratch-bounded = max-slot-usage-bound-prod
@@ -3769,9 +3757,6 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
             ; max-heap-usage-bound = subst (next-heap-ref (IRResultAWF.final-alloc alg-result) ≤_)
                 (sym (+-identityʳ (next-heap-ref alloc)))
                 (≤-reflexive heap-pres-proof)
-            ; trace-no-heap-writes = SMP.trace-no-heap-writes-append layer-trace (mov-to-input ∷ IRResultAWF.trace alg-result)
-                (ProcessedLayerResult.trace-no-heap-writes layer-result)
-                (IRResultAWF.trace-no-heap-writes alg-result)
             }
           }
 

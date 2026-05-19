@@ -159,7 +159,6 @@ module CurryHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
                                         (n≤1+n (suc (next-heap-ref alloc)))
         -- ARCHITECTURAL: trace-no-heap-writes is structurally false (uses
         -- store-indirect / store-indirect-suc); kept SMP.!! by design.
-        ; trace-no-heap-writes = SMP.!!
         }
       }
     where

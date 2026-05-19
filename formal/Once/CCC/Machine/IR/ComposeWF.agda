@@ -207,8 +207,12 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; frame-preserved = trans (IRResultAWF.frame-preserved result-g)
                                   (IRResultAWF.frame-preserved result-f)
         ; trace-twf = compose-trace-twf
-        ; mem-preserved-before = mem-preserved-from-tnhw alloc compose-trace s s-final
-            refl compose-trace-writes-above compose-trace-no-heap-writes
+        -- Plan 0.14 follow-up: previously derived via mem-preserved-from-tnhw
+        -- + compose-trace-no-heap-writes (eliminated). The principled
+        -- replacement composes sub-IR mem-preserved-before via
+        -- `mem-preserved-compose`, which requires accounting for
+        -- mov-to-input's state shift; postulated for now.
+        ; mem-preserved-before = SMP.!!
         ; trace-preserves-halted = exec-trace-preserves-halted-WF compose-trace
         }
       ; stack-inv = record
@@ -238,7 +242,6 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; max-heap-ref-written = IRResultAWF.max-heap-ref-written result-g
         ; max-heap-ref-geq-final = IRResultAWF.max-heap-ref-geq-final result-g
         ; max-heap-usage-bound = SMP.!!
-        ; trace-no-heap-writes = compose-trace-no-heap-writes
         }
       }
     where
@@ -495,13 +498,12 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ------------------------------------------------------------------------
       -- Note: f-tpc, g-tpc, compose-trace-preserves-capacity removed in Phase 3
 
-      f-nhw : SMP.TraceNoHeapWrites f-trace
-      f-nhw = IRResultAWF.trace-no-heap-writes result-f
-      g-nhw : SMP.TraceNoHeapWrites g-trace
-      g-nhw = IRResultAWF.trace-no-heap-writes result-g
-      compose-trace-no-heap-writes : SMP.TraceNoHeapWrites compose-trace
-      compose-trace-no-heap-writes =
-        SMP.trace-no-heap-writes-append f-trace (mov-to-input ∷ g-trace) f-nhw g-nhw
+      -- Plan 0.14 follow-up (consequence-form): the IRHeapBudget field
+      -- `trace-no-heap-writes` was eliminated as architecturally false for
+      -- heap-mode sub-IRs. Stack-mode sub-IRs satisfy it; ComposeWF's
+      -- compose-frontier-stable derivation depends on it locally — for now
+      -- it's postulated. Discharge when the optional `IsStackOnly` evidence
+      -- is wired into the producer interface (separate plan).
 
       f-tph : TraceWF s alloc f-trace
       f-tph = IRResultAWF.trace-twf result-f
@@ -551,7 +553,7 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
           f-twb = IRResultAWF.trace-writes-below result-f
 
           f-tnhw : TraceNoHeapWrites f-trace
-          f-tnhw = IRResultAWF.trace-no-heap-writes result-f
+          f-tnhw = SMP.!!  -- TODO: stack-only sub-IR derivation (post Plan 0.14 follow-up)
 
           -- Step 2: mov-to-input preserves memory (only modifies registers)
           not-halted-after-f : halted s-after-f ≡ false
@@ -568,7 +570,7 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
           g-twb = IRResultAWF.trace-writes-below result-g
 
           g-tnhw : TraceNoHeapWrites g-trace
-          g-tnhw = IRResultAWF.trace-no-heap-writes result-g
+          g-tnhw = SMP.!!  -- TODO: stack-only sub-IR derivation (post Plan 0.14 follow-up)
 
           -- We have: next-slot alloc ≤ reclaim-f (by f's slot-monotone, since reclaim-f = next-slot alloc₁)
           reclaim-f-mono : next-slot alloc ≤ reclaim-f

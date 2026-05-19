@@ -204,7 +204,6 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; max-heap-ref-written = next-heap-ref alloc
         ; max-heap-ref-geq-final = ≤-refl
         ; max-heap-usage-bound = m≤m+n (next-heap-ref alloc) 0
-        ; trace-no-heap-writes = tt
         }
       }
     where

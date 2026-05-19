@@ -145,7 +145,6 @@ module PairHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         -- pair-heap-trace (contains store-indirect / store-indirect-suc).
         -- mem-preserved-before is the load-bearing consequence-form
         -- invariant; this field stays SMP.!! by design for heap-mode IRs.
-        ; trace-no-heap-writes = SMP.!!
         }
       }
     where

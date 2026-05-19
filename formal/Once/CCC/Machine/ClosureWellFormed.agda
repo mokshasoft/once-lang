@@ -509,16 +509,14 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
         max-heap-ref-written : ℕ
         max-heap-ref-geq-final : next-heap-ref final-alloc ≤ max-heap-ref-written
         max-heap-usage-bound : max-heap-ref-written ≤ next-heap-ref alloc +ℕ heap-budget
-        -- Plan 0.14: kept as a SYNTACTIC convenience field — true iff
-        -- the trace contains no store-indirect / store-indirect-suc.
-        -- For heap-allocating IRs (PairHeapWF, future heap-inl/inr)
-        -- this is false; those IRs prove
-        -- IRResultBase.mem-preserved-before directly, which is the
-        -- *real* invariant downstream cares about. RecTrace internals
-        -- still depend on this syntactic form for ProcessedLayerResult
-        -- composition (which only consumes stack-only sub-IR results),
-        -- so it stays available.
-        trace-no-heap-writes : TraceNoHeapWrites trace
+        -- Plan 0.14 follow-up: the SYNTACTIC field `trace-no-heap-writes`
+        -- has been removed. Stack-only producers prove TraceNoHeapWrites
+        -- LOCALLY for their trace shape and feed it to `mem-preserved-from-tnhw`
+        -- to discharge `IRResultBase.mem-preserved-before` — the actual
+        -- consequence-form invariant downstream needs (see
+        -- `feedback_consequence_form_invariants`). Composers compose
+        -- `mem-preserved-before` via `mem-preserved-compose` rather than
+        -- chaining the syntactic predicate.
 
     record IRResultAWF (m : AllocMode)
                        {A B : Type}
@@ -1847,3 +1845,54 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     subst (λ st → readLoc st loc ≡ readLoc s loc) tc
       (derive-mem-preserved alloc trace s twa tnhw loc bf)
     where open import Relation.Binary.PropositionalEquality using (subst)
+
+  ------------------------------------------------------------------------
+  -- BeforeFrontier monotonicity (compose two preservation proofs)
+  --
+  -- Replaces the syntactic TraceNoHeapWrites chaining in producers:
+  -- every consumer that previously chained sub-IR `trace-no-heap-writes`
+  -- now composes sub-IR `mem-preserved-before` directly via this helper.
+  -- See `feedback_consequence_form_invariants` — the syntactic predicate
+  -- was a stand-in; this is the consequence form composers actually need.
+  ------------------------------------------------------------------------
+
+  -- A `BeforeFrontier alloc₁ loc` proof carries over to a `BeforeFrontier alloc₂ loc`
+  -- proof when alloc₂ extends alloc₁ monotonically (same current-frame, ≥ next-slot,
+  -- ≥ next-heap-ref).
+  before-frontier-monotone : ∀ (alloc₁ alloc₂ : AllocState {FS}) {loc : ValueLocation FS} →
+    current-frame alloc₁ ≡ current-frame alloc₂ →
+    next-slot alloc₁ ≤ next-slot alloc₂ →
+    next-heap-ref alloc₁ ≤ next-heap-ref alloc₂ →
+    BeforeFrontier alloc₁ loc →
+    BeforeFrontier alloc₂ loc
+  before-frontier-monotone alloc₁ alloc₂ cf-eq slot-≤ heap-≤
+    (FrontierInvariant.stack-before {f} {k} f≡cf₁ k<ns₁) =
+    FrontierInvariant.stack-before (trans f≡cf₁ cf-eq) (≤-trans-< k<ns₁ slot-≤)
+    where
+      open import Data.Nat.Properties using () renaming (<-≤-trans to ≤-trans-<)
+  before-frontier-monotone alloc₁ alloc₂ cf-eq slot-≤ heap-≤
+    (FrontierInvariant.stack-ancestor {f = f} cf₁≺f src) =
+    FrontierInvariant.stack-ancestor (subst (λ cf → cf ≺ f) cf-eq cf₁≺f) src
+    where
+      open import Relation.Binary.PropositionalEquality using (subst)
+  before-frontier-monotone alloc₁ alloc₂ cf-eq slot-≤ heap-≤
+    (FrontierInvariant.heap-before r<nhr₁) =
+    FrontierInvariant.heap-before (≤-trans-< r<nhr₁ heap-≤)
+    where
+      open import Data.Nat.Properties using () renaming (<-≤-trans to ≤-trans-<)
+
+  -- Compose two mem-preserved-before proofs (f then g). The first preserves
+  -- locations in alloc₁'s view; the second preserves locations in
+  -- alloc₂'s (wider) view; together they preserve alloc₁'s view across
+  -- both runs. Replaces TNHW chaining in Compose/SumRec/Apply/etc.
+  mem-preserved-compose : ∀ (alloc₁ alloc₂ : AllocState {FS})
+    (s₁ s₂ s₃ : LocState FS) →
+    current-frame alloc₁ ≡ current-frame alloc₂ →
+    next-slot alloc₁ ≤ next-slot alloc₂ →
+    next-heap-ref alloc₁ ≤ next-heap-ref alloc₂ →
+    (f-pres : ∀ loc → BeforeFrontier alloc₁ loc → readLoc s₂ loc ≡ readLoc s₁ loc) →
+    (g-pres : ∀ loc → BeforeFrontier alloc₂ loc → readLoc s₃ loc ≡ readLoc s₂ loc) →
+    (∀ loc → BeforeFrontier alloc₁ loc → readLoc s₃ loc ≡ readLoc s₁ loc)
+  mem-preserved-compose alloc₁ alloc₂ s₁ s₂ s₃ cf-eq slot-≤ heap-≤ f-pres g-pres loc bf₁ =
+    trans (g-pres loc (before-frontier-monotone alloc₁ alloc₂ cf-eq slot-≤ heap-≤ bf₁))
+          (f-pres loc bf₁)

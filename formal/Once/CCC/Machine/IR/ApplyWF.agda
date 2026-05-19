@@ -234,7 +234,6 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
         ; max-heap-ref-written = IRResultAWF.max-heap-ref-written body-result
         ; max-heap-ref-geq-final = IRResultAWF.max-heap-ref-geq-final body-result
         ; max-heap-usage-bound = IRResultAWF.max-heap-usage-bound body-result
-        ; trace-no-heap-writes = trace-no-heap-writes'
         }
       }
     where
@@ -990,15 +989,9 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
 
       -- Note: trace-preserves-capacity' removed in Phase 3
 
-      -- Setup trace has no heap writes (simplified: just tt since no heap-writing instrs)
-      setup-no-heap-writes : TraceNoHeapWrites (apply-setup-trace pair-slot)
-      setup-no-heap-writes = tt
-
-      trace-no-heap-writes' : TraceNoHeapWrites trace
-      trace-no-heap-writes' =
-        trace-no-heap-writes-append (apply-setup-trace pair-slot) body-trace
-          setup-no-heap-writes
-          (IRResultAWF.trace-no-heap-writes body-result)
+      -- Plan 0.14 follow-up: trace-no-heap-writes' local binding removed
+      -- (field eliminated from IRHeapBudget; consequence-form invariant is
+      -- mem-preserved-before on IRResultBase).
 
       -- Plan 0.14: continuation-alloc inherits next-slot AND
       -- next-heap-ref from alloc' (body's final-alloc), reflecting the

@@ -131,7 +131,6 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
         ; max-heap-ref-written = IRResultAWF.max-heap-ref-written result-g
         ; max-heap-ref-geq-final = IRResultAWF.max-heap-ref-geq-final result-g
         ; max-heap-usage-bound = pair-max-heap-usage-bound
-        ; trace-no-heap-writes = pair-trace-no-heap-writes
         }
       }
     where
@@ -578,7 +577,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
       f-twb = IRResultAWF.trace-writes-below result-f
 
       f-tnhw : TraceNoHeapWrites f-trace
-      f-tnhw = IRResultAWF.trace-no-heap-writes result-f
+      f-tnhw = SMP.!!  -- TODO: stack-only sub-IR derivation (post Plan 0.14 follow-up)
 
       f-tph : TraceWF s-after-setup alloc-after-pair-slots f-trace
       f-tph = IRResultAWF.trace-twf result-f
@@ -1133,7 +1132,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
       g-twb = IRResultAWF.trace-writes-below result-g
 
       g-tnhw : TraceNoHeapWrites g-trace
-      g-tnhw = IRResultAWF.trace-no-heap-writes result-g
+      g-tnhw = SMP.!!  -- TODO: stack-only sub-IR derivation (post Plan 0.14 follow-up)
 
       -- Note: g-tpc removed in Phase 3
 

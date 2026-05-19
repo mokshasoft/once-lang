@@ -117,7 +117,6 @@ module SumInlHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; max-heap-usage-bound = subst (suc (next-heap-ref alloc) ≤_)
                                         (+-comm 2 (next-heap-ref alloc))
                                         (n≤1+n (suc (next-heap-ref alloc)))
-        ; trace-no-heap-writes = SMP.!!  -- architecturally false (store-indirect)
         }
       }
     where
