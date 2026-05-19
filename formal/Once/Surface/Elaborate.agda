@@ -298,3 +298,8 @@ elaborate m (morph-app morph x) = morph ∘ elaborate m x
 -- | Historical default: Heap allocation.
 elaborate-default : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A} → Expr Γ Ψ A → IR ⟦ Γ ⟧ᶜ A
 elaborate-default = elaborate Heap
+
+-- | Historical-default distribute (Heap). Used by `Once.Surface.Correct`,
+-- which is Heap-specialized until Plan 0.4.2 C0 generalizes the proofs.
+distribute-default : ∀ {Γ A B} → IR (Γ * (A + B)) ((Γ * A) + (Γ * B))
+distribute-default = distribute Heap

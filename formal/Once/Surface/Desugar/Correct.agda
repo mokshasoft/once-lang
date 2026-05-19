@@ -14,7 +14,11 @@ module Once.Surface.Desugar.Correct where
 
 open import Once.Type
 open import Once.Surface.IR as S
-open import Once.Surface.Desugar
+-- Plan 0.4.2 placeholder: this correctness file is specialized to
+-- `desugar Heap` (`desugar-default`). Generalization to all AllocModes
+-- would parameterize `desugar-correct` on `m` and thread it through.
+open import Once.Surface.Desugar hiding (desugar)
+open import Once.Surface.Desugar using () renaming (desugar-default to desugar)
 open import Once.CCC.IR as C
 open import Once.Semantics.IR using (⟦_⟧; eval′)
 open import Once.Arith.SigOp.Builders using (generic-semI; generic-info)

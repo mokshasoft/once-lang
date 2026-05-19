@@ -70,11 +70,11 @@ module Simulation {FS : FrameSemantics} where
   record RV64State : Set where
     constructor mkRV64
     field
-      a0-val : ValueLocation FS    -- Output/Input1 register (maps to rv64 a0)
-      t0-val : ValueLocation FS    -- Temp register for indirect stores
+      a0-val : StoredValue FS      -- Output/Input1 register (maps to rv64 a0)
+      t0-val : StoredValue FS      -- Temp register for indirect stores
       cur-frame : Frame            -- Current frame (maps to fp)
       stack-slot : ℕ               -- Stack slot index (maps to sp offset)
-      rv64-mem : ValueLocation FS → Maybe (ValueLocation FS)  -- Memory
+      rv64-mem : ValueLocation FS → Maybe (StoredValue FS)    -- Memory: address → value
       rv64-halted : Bool           -- Halted flag
   open RV64State public
 
@@ -143,9 +143,9 @@ module Simulation {FS : FrameSemantics} where
   AtDynamic hl1    ≟L AtDynamic hl2    = ≟L-OnHeap-aux (hl1 ≟HL hl2)
 
   -- Helper: write to memory (functional update)
-  writeRV64Mem : (ValueLocation FS → Maybe (ValueLocation FS)) →
-               ValueLocation FS → ValueLocation FS →
-               (ValueLocation FS → Maybe (ValueLocation FS))
+  writeRV64Mem : (ValueLocation FS → Maybe (StoredValue FS)) →
+               ValueLocation FS → StoredValue FS →
+               (ValueLocation FS → Maybe (StoredValue FS))
   writeRV64Mem m loc v loc' with loc ≟L loc'
   ... | yes _ = just v
   ... | no _  = m loc'
@@ -158,14 +158,43 @@ module Simulation {FS : FrameSemantics} where
   ------------------------------------------------------------------------
 
   -- Helper: apply memory read result to load into a0
-  exec-rv64-load-a0-with-value : Maybe (ValueLocation FS) → RV64State → RV64State
+  exec-rv64-load-a0-with-value : Maybe (StoredValue FS) → RV64State → RV64State
   exec-rv64-load-a0-with-value (just v) rs = record rs { a0-val = v }
   exec-rv64-load-a0-with-value nothing rs = record rs { rv64-halted = true }
 
   -- Helper: apply memory read result to load into t0
-  exec-rv64-load-t0-with-value : Maybe (ValueLocation FS) → RV64State → RV64State
+  exec-rv64-load-t0-with-value : Maybe (StoredValue FS) → RV64State → RV64State
   exec-rv64-load-t0-with-value (just v) rs = record rs { t0-val = v }
   exec-rv64-load-t0-with-value nothing rs = record rs { rv64-halted = true }
+
+  -- Plan 0.13.2 (Bridge B): sv-as-loc dispatch helpers (mirror of x86).
+  readSV-at : RV64State → Maybe (ValueLocation FS) → Maybe (StoredValue FS)
+  readSV-at rs (just loc) = rv64-mem rs loc
+  readSV-at rs nothing    = nothing
+
+  readSV-at-suc : RV64State → Maybe (ValueLocation FS) → Maybe (StoredValue FS)
+  readSV-at-suc rs (just loc) = rv64-mem rs (sucLoc loc)
+  readSV-at-suc rs nothing    = nothing
+
+  rv64-read-sv : RV64State → StoredValue FS → Maybe (StoredValue FS)
+  rv64-read-sv rs sv = readSV-at rs (sv-as-loc sv)
+
+  rv64-read-sv-suc : RV64State → StoredValue FS → Maybe (StoredValue FS)
+  rv64-read-sv-suc rs sv = readSV-at-suc rs (sv-as-loc sv)
+
+  writeSV-at : RV64State → Maybe (ValueLocation FS) → StoredValue FS → RV64State
+  writeSV-at rs (just loc) v = record rs { rv64-mem = writeRV64Mem (rv64-mem rs) loc v }
+  writeSV-at rs nothing    _ = record rs { rv64-halted = true }
+
+  writeSV-at-suc : RV64State → Maybe (ValueLocation FS) → StoredValue FS → RV64State
+  writeSV-at-suc rs (just loc) v = record rs { rv64-mem = writeRV64Mem (rv64-mem rs) (sucLoc loc) v }
+  writeSV-at-suc rs nothing    _ = record rs { rv64-halted = true }
+
+  rv64-write-sv : RV64State → StoredValue FS → StoredValue FS → RV64State
+  rv64-write-sv rs sv v = writeSV-at rs (sv-as-loc sv) v
+
+  rv64-write-sv-suc : RV64State → StoredValue FS → StoredValue FS → RV64State
+  rv64-write-sv-suc rs sv v = writeSV-at-suc rs (sv-as-loc sv) v
 
   ----------------------------------------------------------------------
   -- Plan 0.9 Phase B: postulates for unmodeled instruction shapes.
@@ -181,18 +210,18 @@ module Simulation {FS : FrameSemantics} where
 
     -- Plan 0.11: SigOp call by symbolic name. Two trusted-base
     -- postulates: a0 (Output) and halted after the call.
-    exec-rv64-call-sym-a0     : String → RV64State → ValueLocation FS
+    exec-rv64-call-sym-a0     : String → RV64State → StoredValue FS
     exec-rv64-call-sym-halted : String → RV64State → Bool
 
   exec-rv64 : RV64Instr → RV64State → Frame → RV64State
 
-  -- load-indirect: ld a0, 0(t0) → a0' = *t0
+  -- load-indirect: ld a0, 0(t0) → a0' = *t0  (Bridge B: sv-as-loc dispatch)
   exec-rv64 (ld a0 t0 0) rs _ =
-    exec-rv64-load-a0-with-value (rv64-mem rs (t0-val rs)) rs
+    exec-rv64-load-a0-with-value (rv64-read-sv rs (t0-val rs)) rs
 
   -- load-indirect-suc: ld a0, 8(t0) → a0' = *(sucLoc t0)
   exec-rv64 (ld a0 t0 d) rs _ =
-    exec-rv64-load-a0-with-value (rv64-mem rs (sucLoc (t0-val rs))) rs
+    exec-rv64-load-a0-with-value (rv64-read-sv-suc rs (t0-val rs)) rs
 
   -- load-from-slot: ld a0, disp(fp) → a0' = stack[frame, slot]
   exec-rv64 (ld a0 fp d) rs frame =
@@ -204,19 +233,20 @@ module Simulation {FS : FrameSemantics} where
 
   -- store-indirect: sd a0, 0(t0) → *t0 := a0
   exec-rv64 (sd a0 t0 0) rs _ =
-    record rs { rv64-mem = writeRV64Mem (rv64-mem rs) (t0-val rs) (a0-val rs) }
+    rv64-write-sv rs (t0-val rs) (a0-val rs)
 
   -- store-indirect-suc: sd a0, 8(t0) → *(sucLoc t0) := a0
   exec-rv64 (sd a0 t0 d) rs _ =
-    record rs { rv64-mem = writeRV64Mem (rv64-mem rs) (sucLoc (t0-val rs)) (a0-val rs) }
+    rv64-write-sv-suc rs (t0-val rs) (a0-val rs)
 
   -- store-at-slot: sd a0, disp(fp) → stack[frame, slot] := a0
   exec-rv64 (sd a0 fp d) rs frame =
     record rs { rv64-mem = writeRV64Mem (rv64-mem rs) (slotLoc frame (disp-to-slot d)) (a0-val rs) }
 
   -- lea-slot: addi a0, fp, disp → a0' = &stack[frame, slot]
+  -- Plan 0.13.2: a0-val is StoredValue; wrap slot address in SV-Ptr.
   exec-rv64 (addi a0 fp d) rs frame =
-    record rs { a0-val = slotLoc frame (disp-to-slot (imm-to-ℕ d)) }
+    record rs { a0-val = SV-Ptr (slotLoc frame (disp-to-slot (imm-to-ℕ d))) }
 
   -- mov-to-output: mv a0, t0 → a0' = t0
   -- mov-input2-to-output: mv a0, t0 → a0' = t0
@@ -486,7 +516,7 @@ module Simulation {FS : FrameSemantics} where
   decrStackSlot-preserves-Output r n = refl
 
   -- Helper: writeRV64Mem corresponds to writeLoc for stack locations
-  writeRV64Mem-stack-corresponds : ∀ (ls : LocState FS) (rs : RV64State) (f : Frame) (k : ℕ) (val : ValueLocation FS) →
+  writeRV64Mem-stack-corresponds : ∀ (ls : LocState FS) (rs : RV64State) (f : Frame) (k : ℕ) (val : StoredValue FS) →
     (∀ l → rv64-mem rs l ≡ readLoc ls l) →
     a0-val rs ≡ val →
     (∀ l → writeRV64Mem (rv64-mem rs) (AtStack f k) (a0-val rs) l ≡ readLoc (writeLoc ls (AtStack f k) val) l)
@@ -498,7 +528,7 @@ module Simulation {FS : FrameSemantics} where
     trans (mem-eq l) (sym (writeLoc-preserves-other ls (AtStack f k) l val loc≢l))
 
   -- Helper: writeRV64Mem corresponds to writeLoc for any location
-  writeRV64Mem-corresponds : ∀ (ls : LocState FS) (rs : RV64State) (loc val : ValueLocation FS) →
+  writeRV64Mem-corresponds : ∀ (ls : LocState FS) (rs : RV64State) (loc : ValueLocation FS) (val : StoredValue FS) →
     (∀ l → rv64-mem rs l ≡ readLoc ls l) →
     a0-val rs ≡ val →
     (∀ l → writeRV64Mem (rv64-mem rs) loc (a0-val rs) l ≡ readLoc (writeLoc ls loc val) l)
@@ -516,7 +546,7 @@ module Simulation {FS : FrameSemantics} where
   ... | refl | ()
 
   -- Helper: correspondence for load-into-a0 operations
-  load-a0-corresponds : ∀ (mv : Maybe (ValueLocation FS)) (ls : LocState FS) (rs : RV64State) (alloc : AllocState {FS}) →
+  load-a0-corresponds : ∀ (mv : Maybe (StoredValue FS)) (ls : LocState FS) (rs : RV64State) (alloc : AllocState {FS}) →
     Corresponds ls rs alloc →
     Corresponds (exec-load-with-value Output mv ls)
                 (exec-rv64-load-a0-with-value mv rs)
@@ -539,7 +569,7 @@ module Simulation {FS : FrameSemantics} where
     }
 
   -- Helper: correspondence for load-into-t0 operations (restore-input)
-  load-t0-corresponds : ∀ (mv : Maybe (ValueLocation FS)) (ls : LocState FS) (rs : RV64State) (alloc : AllocState {FS}) →
+  load-t0-corresponds : ∀ (mv : Maybe (StoredValue FS)) (ls : LocState FS) (rs : RV64State) (alloc : AllocState {FS}) →
     Corresponds ls rs alloc →
     Corresponds (proj₁ (exec-restore-input-with-value mv ls alloc))
                 (exec-rv64-load-t0-with-value mv rs)
@@ -562,7 +592,7 @@ module Simulation {FS : FrameSemantics} where
     }
 
   -- Helper: correspondence for load-from-slot operations
-  load-from-slot-corresponds : ∀ (mv : Maybe (ValueLocation FS)) (ls : LocState FS) (rs : RV64State) (alloc : AllocState {FS}) →
+  load-from-slot-corresponds : ∀ (mv : Maybe (StoredValue FS)) (ls : LocState FS) (rs : RV64State) (alloc : AllocState {FS}) →
     Corresponds ls rs alloc →
     Corresponds (proj₁ (exec-load-from-slot-with-value mv ls alloc))
                 (exec-rv64-load-a0-with-value mv rs)
@@ -596,7 +626,7 @@ module Simulation {FS : FrameSemantics} where
                   (proj₂ (exec-abstract (instr-sigop si) ls alloc))
     -- RV64 stubs (unimp emission): all three abstract instrs lower
     -- to unimp on this backend; layer 0 doesn't exercise RV64.
-    load-const-codegen-faithful-rv : ∀ {A} (p : Once.CCC.Machine.SMCore.FitsInReg A) v ls rs alloc →
+    load-const-codegen-faithful-rv : ∀ {A} (p : Once.CCC.IR.FitsInReg A) v ls rs alloc →
       halted ls ≡ false → Corresponds ls rs alloc →
       Corresponds (proj₁ (exec-abstract (instr-load-const p v) ls alloc))
                   (exec-prog (compile-abstract (instr-load-const p v)) rs (current-frame alloc))
@@ -609,6 +639,38 @@ module Simulation {FS : FrameSemantics} where
     -- (formerly save-closure-reg-codegen-faithful-rv — now discharged
     -- in instr-sim, since s1 isn't tracked by Corresponds.)
 
+    -- Plan 0.13.1 Phase 1 / Plan 0.14 codegen edges (Bridge B mirror).
+    load-tag-lit-codegen-faithful-rv :
+      ∀ (n : ℕ) ls rs alloc → halted ls ≡ false → Corresponds ls rs alloc →
+      Corresponds (proj₁ (exec-abstract (instr-load-tag-lit n) ls alloc))
+                  (exec-prog (compile-abstract (instr-load-tag-lit n)) rs (current-frame alloc))
+                  (proj₂ (exec-abstract (instr-load-tag-lit n) ls alloc))
+
+    alloc-heap-codegen-faithful-rv :
+      ∀ (n : ℕ) ls rs alloc → halted ls ≡ false → Corresponds ls rs alloc →
+      Corresponds (proj₁ (exec-abstract (instr-alloc-heap n) ls alloc))
+                  (exec-prog (compile-abstract (instr-alloc-heap n)) rs (current-frame alloc))
+                  (proj₂ (exec-abstract (instr-alloc-heap n) ls alloc))
+
+    case-codegen-faithful-phase1-rv :
+      ∀ (f g : AbstractTrace) (ls : LocState FS) (rs : RV64State)
+        (alloc : AllocState {FS}) →
+      halted ls ≡ false →
+      Corresponds ls rs alloc →
+      Corresponds (proj₁ (exec-abstract (instr-case-on-tag f g) ls alloc))
+                  (exec-prog (compile-abstract (instr-case-on-tag f g)) rs (current-frame alloc))
+                  (proj₂ (exec-abstract (instr-case-on-tag f g) ls alloc))
+
+    -- Input2 ↔ a1 isn't tracked by RV64 Corresponds (no a1 field).
+    instr-sim-mov-input2-to-output-rv : ∀ ls rs alloc → halted ls ≡ false → Corresponds ls rs alloc →
+      Corresponds (proj₁ (exec-abstract mov-input2-to-output ls alloc))
+                  (exec-prog (compile-abstract mov-input2-to-output) rs (current-frame alloc))
+                  (proj₂ (exec-abstract mov-input2-to-output ls alloc))
+    instr-sim-mov-output-to-input2-rv : ∀ ls rs alloc → halted ls ≡ false → Corresponds ls rs alloc →
+      Corresponds (proj₁ (exec-abstract mov-output-to-input2 ls alloc))
+                  (exec-prog (compile-abstract mov-output-to-input2) rs (current-frame alloc))
+                  (proj₂ (exec-abstract mov-output-to-input2 ls alloc))
+
   instr-sim : ∀ i ls rs alloc →
     halted ls ≡ false →
     Corresponds ls rs alloc →
@@ -616,79 +678,115 @@ module Simulation {FS : FrameSemantics} where
                 (exec-prog (compile-abstract i) rs (current-frame alloc))
                 (proj₂ (exec-abstract i ls alloc))
 
-  -- mov-to-output: Output := Input1
-  -- mov-input2-to-output: Output := Input1
-  -- RV64: compiles to [] (no-op) because a0 holds both
-  instr-sim mov-to-output ls rs alloc not-halted corr with rv64-halted rs | rs-not-halted ls rs alloc not-halted corr
-  instr-sim mov-input2-to-output ls rs alloc not-halted corr with rv64-halted rs | rs-not-halted ls rs alloc not-halted corr
-  ... | false | _ =
-    let inputVal = readReg (regs ls) Input1
-        newRegs = writeReg (regs ls) Output inputVal
-    in record
-    { a0-eq = trans (t0-eq corr) (sym (writeReg-same (regs ls) Output inputVal))
-    ; t0-eq = trans (t0-eq corr) (sym (writeReg-preserves (regs ls) Output Input1 inputVal Input1≢Output))
-    ; frame-eq = frame-eq corr
-    ; slot-eq = trans (slot-eq corr) (slot-eq-lift alloc (sym (writeReg-preserves-stackSlot (regs ls) Output inputVal)))
-    ; mem-eq = λ loc → trans (mem-eq corr loc) (sym (readLoc-regs-irrel ls newRegs loc))
-    ; halt-eq = halt-eq corr
-    }
-  ... | true | ()
+  -- Shared body for mov-to-output: emits `mv a0, t0` (a0-val := t0-val).
+  -- Abstract writes Output := Input1. Need to bridge both updates.
+  private
+    mov-output-from-input1-sim-rv : ∀ ls rs alloc → halted ls ≡ false → Corresponds ls rs alloc →
+      let s' = record ls { regs = writeReg (regs ls) Output (readReg (regs ls) Input1) }
+          rs' = record rs { a0-val = t0-val rs }
+      in Corresponds s' rs' alloc
+    mov-output-from-input1-sim-rv ls rs alloc not-halted corr =
+      let inputVal = readReg (regs ls) Input1
+          newRegs = writeReg (regs ls) Output inputVal
+      in record
+        { a0-eq = trans (t0-eq corr) (sym (writeReg-same (regs ls) Output inputVal))
+        ; t0-eq = trans (t0-eq corr) (sym (writeReg-preserves (regs ls) Output Input1 inputVal Input1≢Output))
+        ; frame-eq = frame-eq corr
+        ; slot-eq = trans (slot-eq corr) (slot-eq-lift alloc (sym (writeReg-preserves-stackSlot (regs ls) Output inputVal)))
+        ; mem-eq = λ loc → trans (mem-eq corr loc) (sym (readLoc-regs-irrel ls newRegs loc))
+        ; halt-eq = halt-eq corr
+        }
 
-  -- mov-to-input: Input1 := Output
-  -- mov-output-to-input2: Input1 := Output
-  -- RV64: compiles to [] (no-op)
-  instr-sim mov-to-input ls rs alloc not-halted corr with rv64-halted rs | rs-not-halted ls rs alloc not-halted corr
-  instr-sim mov-output-to-input2 ls rs alloc not-halted corr with rv64-halted rs | rs-not-halted ls rs alloc not-halted corr
-  ... | false | _ =
-    let outputVal = readReg (regs ls) Output
-        newRegs = writeReg (regs ls) Input1 outputVal
-    in record
-    { a0-eq = trans (a0-eq corr) (sym (writeReg-preserves (regs ls) Input1 Output outputVal Output≢Input1))
-    ; t0-eq = trans (a0-eq corr) (sym (writeReg-same (regs ls) Input1 outputVal))
-    ; frame-eq = frame-eq corr
-    ; slot-eq = trans (slot-eq corr) (slot-eq-lift alloc (sym (writeReg-preserves-stackSlot (regs ls) Input1 outputVal)))
-    ; mem-eq = λ loc → trans (mem-eq corr loc) (sym (readLoc-regs-irrel ls newRegs loc))
-    ; halt-eq = halt-eq corr
-    }
-  ... | true | ()
+    -- mov-to-input emits `mv t0, a0` (t0-val := a0-val). Abstract Input1 := Output.
+    mov-input1-from-output-sim-rv : ∀ ls rs alloc → halted ls ≡ false → Corresponds ls rs alloc →
+      let s' = record ls { regs = writeReg (regs ls) Input1 (readReg (regs ls) Output) }
+          rs' = record rs { t0-val = a0-val rs }
+      in Corresponds s' rs' alloc
+    mov-input1-from-output-sim-rv ls rs alloc not-halted corr =
+      let outputVal = readReg (regs ls) Output
+          newRegs = writeReg (regs ls) Input1 outputVal
+      in record
+        { a0-eq = trans (a0-eq corr) (sym (writeReg-preserves (regs ls) Input1 Output outputVal Output≢Input1))
+        ; t0-eq = trans (a0-eq corr) (sym (writeReg-same (regs ls) Input1 outputVal))
+        ; frame-eq = frame-eq corr
+        ; slot-eq = trans (slot-eq corr) (slot-eq-lift alloc (sym (writeReg-preserves-stackSlot (regs ls) Input1 outputVal)))
+        ; mem-eq = λ loc → trans (mem-eq corr loc) (sym (readLoc-regs-irrel ls newRegs loc))
+        ; halt-eq = halt-eq corr
+        }
 
-  -- load-indirect: Output := *Input1
-  -- RV64: ld a0, 0(t0) - load from address in t0 (Input1)
+  -- mov-to-output emits `mv a0, t0`.
+  instr-sim mov-to-output ls rs alloc not-halted corr
+    with rv64-halted rs | rs-not-halted ls rs alloc not-halted corr
+  ... | true | ()
+  ... | false | _ = mov-output-from-input1-sim-rv ls rs alloc not-halted corr
+
+  -- mov-input2-to-output: emits `mv a0, a1` (a1 untracked) → postulate.
+  instr-sim mov-input2-to-output ls rs alloc not-halted corr =
+    instr-sim-mov-input2-to-output-rv ls rs alloc not-halted corr
+
+  -- mov-to-input emits `mv t0, a0`.
+  instr-sim mov-to-input ls rs alloc not-halted corr
+    with rv64-halted rs | rs-not-halted ls rs alloc not-halted corr
+  ... | true | ()
+  ... | false | _ = mov-input1-from-output-sim-rv ls rs alloc not-halted corr
+
+  -- mov-output-to-input2: emits `mv a1, a0` (a1 untracked) → postulate.
+  instr-sim mov-output-to-input2 ls rs alloc not-halted corr =
+    instr-sim-mov-output-to-input2-rv ls rs alloc not-halted corr
+
+  -- load-indirect: Output := *Input1  (Bridge B: parallel sv-as-loc)
   instr-sim load-indirect ls rs alloc not-halted corr
     with rv64-halted rs | rs-not-halted ls rs alloc not-halted corr
   ... | true | ()
-  ... | false | _ =
-    let loc = readReg (regs ls) Input1
-        rv64-loc-eq : t0-val rs ≡ loc
-        rv64-loc-eq = t0-eq corr
-        mem-read-eq : rv64-mem rs (t0-val rs) ≡ readLoc ls loc
-        mem-read-eq = trans (cong (rv64-mem rs) rv64-loc-eq) (mem-eq corr loc)
-        abs-read = readLoc ls loc
-        base-corr = load-a0-corresponds abs-read ls rs alloc corr
+  ... | false | _
+    with sv-as-loc (t0-val rs) | sv-as-loc (readReg (regs ls) Input1)
+       | cong sv-as-loc (t0-eq corr)
+  ... | just loc | just .loc | refl =
+    let abs-read   = readLoc ls loc
+        mem-read-eq : rv64-mem rs loc ≡ abs-read
+        mem-read-eq = mem-eq corr loc
+        base-corr  = load-a0-corresponds abs-read ls rs alloc corr
     in subst (λ mv → Corresponds (exec-load-with-value Output abs-read ls)
                                   (exec-rv64-load-a0-with-value mv rs)
                                   alloc)
              (sym mem-read-eq)
              base-corr
+  ... | nothing | nothing | refl =
+    record
+      { a0-eq = a0-eq corr
+      ; t0-eq = t0-eq corr
+      ; frame-eq = frame-eq corr
+      ; slot-eq = slot-eq corr
+      ; mem-eq = λ l → trans (mem-eq corr l) (sym (readLoc-halted-irrel ls true l))
+      ; halt-eq = refl
+      }
 
   -- load-indirect-suc: Output := *(sucLoc Input1)
-  -- RV64: ld a0, 8(t0)
   instr-sim load-indirect-suc ls rs alloc not-halted corr
     with rv64-halted rs | rs-not-halted ls rs alloc not-halted corr
   ... | true | ()
-  ... | false | _ =
-    let loc = sucLoc (readReg (regs ls) Input1)
-        rv64-loc-eq : sucLoc (t0-val rs) ≡ loc
-        rv64-loc-eq = cong sucLoc (t0-eq corr)
-        mem-read-eq : rv64-mem rs (sucLoc (t0-val rs)) ≡ readLoc ls loc
-        mem-read-eq = trans (cong (rv64-mem rs) rv64-loc-eq) (mem-eq corr loc)
-        abs-read = readLoc ls loc
-        base-corr = load-a0-corresponds abs-read ls rs alloc corr
+  ... | false | _
+    with sv-as-loc (t0-val rs) | sv-as-loc (readReg (regs ls) Input1)
+       | cong sv-as-loc (t0-eq corr)
+  ... | just loc | just .loc | refl =
+    let abs-read   = readLoc ls (sucLoc loc)
+        mem-read-eq : rv64-mem rs (sucLoc loc) ≡ abs-read
+        mem-read-eq = mem-eq corr (sucLoc loc)
+        base-corr  = load-a0-corresponds abs-read ls rs alloc corr
     in subst (λ mv → Corresponds (exec-load-with-value Output abs-read ls)
                                   (exec-rv64-load-a0-with-value mv rs)
                                   alloc)
              (sym mem-read-eq)
              base-corr
+  ... | nothing | nothing | refl =
+    record
+      { a0-eq = a0-eq corr
+      ; t0-eq = t0-eq corr
+      ; frame-eq = frame-eq corr
+      ; slot-eq = slot-eq corr
+      ; mem-eq = λ l → trans (mem-eq corr l) (sym (readLoc-halted-irrel ls true l))
+      ; halt-eq = refl
+      }
 
   -- load-from-slot: Output := stack[frame, slot]
   instr-sim (load-from-slot slot) ls rs alloc not-halted corr
@@ -737,57 +835,66 @@ module Simulation {FS : FrameSemantics} where
     ; halt-eq = trans (halt-eq corr) (sym (writeLoc-halted ls loc val))
     }
 
-  -- store-indirect: *Input1 := Output
+  -- store-indirect: *Input1 := Output  (Bridge B: parallel sv-as-loc)
   instr-sim store-indirect ls rs alloc not-halted corr
     with rv64-halted rs | rs-not-halted ls rs alloc not-halted corr
   ... | true | ()
-  ... | false | _ =
-    let loc = readReg (regs ls) Input1
-        val = readReg (regs ls) Output
+  ... | false | _
+    with sv-as-loc (t0-val rs) | sv-as-loc (readReg (regs ls) Input1)
+       | cong sv-as-loc (t0-eq corr)
+  ... | just loc | just .loc | refl =
+    let val = readReg (regs ls) Output
         ls' = writeLoc ls loc val
         regs-eq : regs ls' ≡ regs ls
         regs-eq = writeLoc-regs ls loc val
-        loc-eq : t0-val rs ≡ loc
-        loc-eq = t0-eq corr
-        mem-eq' : ∀ l → writeRV64Mem (rv64-mem rs) (t0-val rs) (a0-val rs) l ≡ readLoc ls' l
-        mem-eq' = subst (λ t0 → ∀ l → writeRV64Mem (rv64-mem rs) t0 (a0-val rs) l ≡ readLoc ls' l)
-                       (sym loc-eq)
-                       (writeRV64Mem-corresponds ls rs loc val (mem-eq corr) (a0-eq corr))
     in record
-    { a0-eq = trans (a0-eq corr) (cong (λ r → readReg r Output) (sym regs-eq))
-    ; t0-eq = trans (t0-eq corr) (cong (λ r → readReg r Input1) (sym regs-eq))
-    ; frame-eq = frame-eq corr
-    ; slot-eq = trans (slot-eq corr) (slot-eq-lift alloc (cong stackSlot (sym regs-eq)))
-    ; mem-eq = mem-eq'
-    ; halt-eq = trans (halt-eq corr) (sym (writeLoc-halted ls loc val))
-    }
+      { a0-eq = trans (a0-eq corr) (cong (λ r → readReg r Output) (sym regs-eq))
+      ; t0-eq = trans (t0-eq corr) (cong (λ r → readReg r Input1) (sym regs-eq))
+      ; frame-eq = frame-eq corr
+      ; slot-eq = trans (slot-eq corr) (slot-eq-lift alloc (cong stackSlot (sym regs-eq)))
+      ; mem-eq = writeRV64Mem-corresponds ls rs loc val (mem-eq corr) (a0-eq corr)
+      ; halt-eq = trans (halt-eq corr) (sym (writeLoc-halted ls loc val))
+      }
+  ... | nothing | nothing | refl =
+    record
+      { a0-eq = a0-eq corr
+      ; t0-eq = t0-eq corr
+      ; frame-eq = frame-eq corr
+      ; slot-eq = slot-eq corr
+      ; mem-eq = λ l → trans (mem-eq corr l) (sym (readLoc-halted-irrel ls true l))
+      ; halt-eq = refl
+      }
 
   -- store-indirect-suc: *(sucLoc Input1) := Output
   instr-sim store-indirect-suc ls rs alloc not-halted corr
     with rv64-halted rs | rs-not-halted ls rs alloc not-halted corr
   ... | true | ()
-  ... | false | _ =
-    let loc = sucLoc (readReg (regs ls) Input1)
+  ... | false | _
+    with sv-as-loc (t0-val rs) | sv-as-loc (readReg (regs ls) Input1)
+       | cong sv-as-loc (t0-eq corr)
+  ... | just loc | just .loc | refl =
+    let sloc = sucLoc loc
         val = readReg (regs ls) Output
-        ls' = writeLoc ls loc val
+        ls' = writeLoc ls sloc val
         regs-eq : regs ls' ≡ regs ls
-        regs-eq = writeLoc-regs ls loc val
-        t0-eq' : t0-val rs ≡ readReg (regs ls) Input1
-        t0-eq' = t0-eq corr
-        loc-eq : sucLoc (t0-val rs) ≡ loc
-        loc-eq = cong sucLoc t0-eq'
-        mem-eq' : ∀ l → writeRV64Mem (rv64-mem rs) (sucLoc (t0-val rs)) (a0-val rs) l ≡ readLoc ls' l
-        mem-eq' = subst (λ sloc → ∀ l → writeRV64Mem (rv64-mem rs) sloc (a0-val rs) l ≡ readLoc ls' l)
-                       (sym loc-eq)
-                       (writeRV64Mem-corresponds ls rs loc val (mem-eq corr) (a0-eq corr))
+        regs-eq = writeLoc-regs ls sloc val
     in record
-    { a0-eq = trans (a0-eq corr) (cong (λ r → readReg r Output) (sym regs-eq))
-    ; t0-eq = trans (t0-eq corr) (cong (λ r → readReg r Input1) (sym regs-eq))
-    ; frame-eq = frame-eq corr
-    ; slot-eq = trans (slot-eq corr) (slot-eq-lift alloc (cong stackSlot (sym regs-eq)))
-    ; mem-eq = mem-eq'
-    ; halt-eq = trans (halt-eq corr) (sym (writeLoc-halted ls loc val))
-    }
+      { a0-eq = trans (a0-eq corr) (cong (λ r → readReg r Output) (sym regs-eq))
+      ; t0-eq = trans (t0-eq corr) (cong (λ r → readReg r Input1) (sym regs-eq))
+      ; frame-eq = frame-eq corr
+      ; slot-eq = trans (slot-eq corr) (slot-eq-lift alloc (cong stackSlot (sym regs-eq)))
+      ; mem-eq = writeRV64Mem-corresponds ls rs sloc val (mem-eq corr) (a0-eq corr)
+      ; halt-eq = trans (halt-eq corr) (sym (writeLoc-halted ls sloc val))
+      }
+  ... | nothing | nothing | refl =
+    record
+      { a0-eq = a0-eq corr
+      ; t0-eq = t0-eq corr
+      ; frame-eq = frame-eq corr
+      ; slot-eq = slot-eq corr
+      ; mem-eq = λ l → trans (mem-eq corr l) (sym (readLoc-halted-irrel ls true l))
+      ; halt-eq = refl
+      }
 
   -- lea-slot: Output := &stack[frame, slot]
   instr-sim (lea-slot slot) ls rs alloc not-halted corr
@@ -795,16 +902,16 @@ module Simulation {FS : FrameSemantics} where
   ... | true | ()
   ... | false | _ =
     let frame = current-frame alloc
-        loc = AtStack frame slot
-        newRegs = writeReg (regs ls) Output loc
+        sv = SV-Ptr (AtStack frame slot)
+        newRegs = writeReg (regs ls) Output sv
         slot-recover : disp-to-slot (slot *ℕ slot-size) ≡ slot
         slot-recover = m*n/n≡m slot slot-size
     in record
-    { a0-eq = trans (cong (λ s → AtStack frame s) slot-recover)
-                    (sym (writeReg-same (regs ls) Output loc))
-    ; t0-eq = trans (t0-eq corr) (sym (writeReg-preserves (regs ls) Output Input1 loc Input1≢Output))
+    { a0-eq = trans (cong (λ s → SV-Ptr (AtStack frame s)) slot-recover)
+                    (sym (writeReg-same (regs ls) Output sv))
+    ; t0-eq = trans (t0-eq corr) (sym (writeReg-preserves (regs ls) Output Input1 sv Input1≢Output))
     ; frame-eq = frame-eq corr
-    ; slot-eq = trans (slot-eq corr) (slot-eq-lift alloc (sym (writeReg-preserves-stackSlot (regs ls) Output loc)))
+    ; slot-eq = trans (slot-eq corr) (slot-eq-lift alloc (sym (writeReg-preserves-stackSlot (regs ls) Output sv)))
     ; mem-eq = λ l → trans (mem-eq corr l) (sym (readLoc-regs-irrel ls newRegs l))
     ; halt-eq = halt-eq corr
     }
@@ -1023,6 +1130,15 @@ module Simulation {FS : FrameSemantics} where
   ... | true  | ()
   ... | false | _ = corr
 
+  instr-sim (instr-load-tag-lit n) ls rs alloc not-halted corr =
+    load-tag-lit-codegen-faithful-rv n ls rs alloc not-halted corr
+
+  instr-sim (instr-alloc-heap n) ls rs alloc not-halted corr =
+    alloc-heap-codegen-faithful-rv n ls rs alloc not-halted corr
+
+  instr-sim (instr-case-on-tag f g) ls rs alloc not-halted corr =
+    case-codegen-faithful-phase1-rv f g ls rs alloc not-halted corr
+
   -- instr-reclaim-to: no-op in rv64 (compiles to empty)
   -- Abstract: only updates alloc.next-slot, ls unchanged
   -- rv64: empty program, rs unchanged
@@ -1050,15 +1166,33 @@ module Simulation {FS : FrameSemantics} where
   exec-abstract-preserves-frame mov-input2-to-output ls alloc = refl
   exec-abstract-preserves-frame mov-to-input ls alloc = refl
   exec-abstract-preserves-frame mov-output-to-input2 ls alloc = refl
-  exec-abstract-preserves-frame load-indirect ls alloc = refl
-  exec-abstract-preserves-frame load-indirect-suc ls alloc = refl
+  exec-abstract-preserves-frame load-indirect ls alloc
+    with sv-as-loc (readReg (regs ls) Input1)
+  ... | just loc with readLoc ls loc
+  ...              | just _  = refl
+  ...              | nothing = refl
+  exec-abstract-preserves-frame load-indirect ls alloc
+      | nothing = refl
+  exec-abstract-preserves-frame load-indirect-suc ls alloc
+    with sv-as-loc (readReg (regs ls) Input1)
+  ... | just loc with readLoc ls (sucLoc loc)
+  ...              | just _  = refl
+  ...              | nothing = refl
+  exec-abstract-preserves-frame load-indirect-suc ls alloc
+      | nothing = refl
   exec-abstract-preserves-frame (load-from-slot slot) ls alloc
     with readLoc ls (AtStack (current-frame alloc) slot)
   ... | just _  = refl
   ... | nothing = refl
   exec-abstract-preserves-frame (store-at-slot _) ls alloc = refl
-  exec-abstract-preserves-frame store-indirect ls alloc = refl
-  exec-abstract-preserves-frame store-indirect-suc ls alloc = refl
+  exec-abstract-preserves-frame store-indirect ls alloc
+    with sv-as-loc (readReg (regs ls) Input1)
+  ... | just _  = refl
+  ... | nothing = refl
+  exec-abstract-preserves-frame store-indirect-suc ls alloc
+    with sv-as-loc (readReg (regs ls) Input1)
+  ... | just _  = refl
+  ... | nothing = refl
   exec-abstract-preserves-frame (lea-slot _) ls alloc = refl
   exec-abstract-preserves-frame (restore-input slot) ls alloc
     with readLoc ls (AtStack (current-frame alloc) slot)
@@ -1082,6 +1216,9 @@ module Simulation {FS : FrameSemantics} where
   exec-abstract-preserves-frame (instr-load-const _ _) ls alloc = refl
   exec-abstract-preserves-frame (instr-load-code-addr _) ls alloc = refl
   exec-abstract-preserves-frame instr-save-closure-reg ls alloc = refl
+  exec-abstract-preserves-frame (instr-load-tag-lit _) ls alloc = refl
+  exec-abstract-preserves-frame (instr-alloc-heap _) ls alloc = refl
+  exec-abstract-preserves-frame (instr-case-on-tag _ _) ls alloc = refl
 
   trace-sim : ∀ trace ls rs alloc →
     Corresponds ls rs alloc →

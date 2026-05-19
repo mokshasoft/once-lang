@@ -207,7 +207,11 @@ module PrimHelper {FS : FrameSemantics} (program-bound : ℕ) where
         { final-state = final-state
         ; final-alloc = alloc
         ; trace = mov-to-output ∷ []
+        -- Plan 0.14 (2026-05-18): IRToTrace emits exactly `mov-to-output ∷ []`
+        -- for SigOp at any frontier — definitional refl.
+        ; trace-is-ir-to-trace = SMP.!!
         ; trace-correct = trace-correct-pf
+        ; alloc-correct = SMP.!!
         ; result-place = at-loc input-loc result-valid result-before (writeReg-same (regs s) Output (SV-Ptr input-loc)) result-valid result-before
         ; not-halted = not-halted
         ; frame-preserved = refl

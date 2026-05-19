@@ -42,7 +42,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open FrameSemantics using (Frame; _≺_)
-open import Once.CCC.Machine.SMCore using (LocState; ValueLocation; halted; regs; readReg; Input1)
+open import Once.CCC.Machine.SMCore using (LocState; ValueLocation; StoredValue; SV-Ptr; halted; regs; readReg; Input1)
 
 open import Once.Type using (Type)
 open import Once.Semantics.Machine using (⟦_⟧)
@@ -110,7 +110,7 @@ module Correctness
     ir-size ir < program-bound →
     -- Machine is ready to execute (caller must establish)
     halted s ≡ false →
-    readReg (regs s) Input1 ≡ input-loc →
+    readReg (regs s) Input1 ≡ SV-Ptr input-loc →
     -- Phase 3: capacity parameter removed (unbounded stack model)
     -- ...then output represents (eval ir x)
     ∃[ mOut ] ∃[ result-loc ] ∃[ s' ] ∃[ alloc' ]
@@ -119,10 +119,10 @@ module Correctness
     let (mOut , result) = D.run-wf mIn ir ir<bound x input-loc s alloc
           repr before not-halted rdi-eq
     in mOut
-     , CWF.IRResultAWF.result-loc result
+     , CWF.place-loc (CWF.IRResultAWF.result-place result)
      , CWF.IRResultAWF.final-state result
      , CWF.IRResultAWF.final-alloc result
-     , CWF.IRResultAWF.result-valid-wf result
+     , CWF.place-valid (CWF.IRResultAWF.result-place result)
 
 ------------------------------------------------------------------------
 -- LAYER 1: Complete

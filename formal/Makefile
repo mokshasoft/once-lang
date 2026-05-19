@@ -180,8 +180,15 @@ arith-x86-64:
 #-----------------------------------------------------------------------------
 
 .PHONY: compiler-x86-64
-compiler-x86-64: frontend ccc-x86-64 arith-x86-64
-	@echo "X86-64 compiler proofs type-check successfully!"
+# Single entry point: typechecking Once/Compile/EndToEnd.agda transitively
+# pulls in every correctness island (parser, typechecker, desugar/optimize/
+# escape/fusion proofs, arith primitives, codegen+correctness wire-up) AND
+# composes elaborate-correct with compile-correct (the latter under named
+# postulates for the eval′↔eval mismatch; see Plan 0.4.2). If anything
+# the compiler depends on drifts, this fails — no other target needed.
+compiler-x86-64:
+	@echo "Build + verify X86-64 compiler (single entry: Once/Compile/EndToEnd.agda)..."
+	@sh -c '$(AGDA_CMD) Once/Compile/EndToEnd.agda'
 
 .PHONY: compiler-x86-32
 compiler-x86-32: frontend ccc-x86-32

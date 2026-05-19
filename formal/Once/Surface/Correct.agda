@@ -18,7 +18,13 @@ open import Once.Surface.Syntax using (Ctx; ∅; lookup; Usage; zeroUsage; _+ᵘ
 open Once.Surface.Syntax.Usage using ([]; _∷_)
 import Once.Surface.Syntax as S
 open import Once.Surface.Semantics using (Env; ε; _∷_; envLookup; evalSurface)
-open import Once.Surface.Elaborate using (⟦_⟧ᶜ; proj; swap'; distribute; elaborate; intLit; strLit; addIR; subIR; mulIR; divIR; modIR; negIR; ltIR; leIR; gtIR; geIR; eqIR; neIR)
+-- Plan 0.4.2 placeholder: this correctness file is specialized to
+-- `elaborate Heap` (matches `elaborate-default`). When the surface-side
+-- proofs are generalized to all AllocModes, parameterize `elaborate-correct`
+-- on `m : AllocMode` and thread it through every `elaborate _` call below.
+open import Once.Surface.Elaborate using (⟦_⟧ᶜ; proj; swap'; intLit; strLit; addIR; subIR; mulIR; divIR; modIR; negIR; ltIR; leIR; gtIR; geIR; eqIR; neIR)
+open import Once.Surface.Elaborate using ()
+  renaming (elaborate-default to elaborate; distribute-default to distribute)
 
 open import Data.Nat using (ℕ)
 open import Data.Fin using (Fin)

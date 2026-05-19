@@ -443,8 +443,8 @@ module IRTraceCorrectness {FS : FrameSemantics} (program-bound : ℕ)
     -- CurryWF is migrated (or deleted; the elaborator never emits
     -- `curry _ Stack`), Stack-mode curry stays postulated.
     ir-to-trace-correct-curry-stack :
-      ∀ {k A B C} (f : IR (A * B) C) →
-      IRTraceCorrect (curry {k = k} {A} {B} {C} f Stack)
+      ∀ {A B C k} (f : IR (A * B) C) →
+      IRTraceCorrect (curry {A} {B} {C} {k} f Stack)
 
     -- Apply: same RecDispatcherWF threading as curry, plus closure-
     -- invariant + body-correct work. Postulated.
@@ -470,10 +470,10 @@ module IRTraceCorrectness {FS : FrameSemantics} (program-bound : ℕ)
   ----------------------------------------------------------------------
 
   ir-to-trace-correct-curry :
-    ∀ {k A B C} (f : IR (A * B) C) (m : AllocMode) →
-    IRTraceCorrect (curry {k = k} {A} {B} {C} f m)
+    ∀ {A B C k} (f : IR (A * B) C) (m : AllocMode) →
+    IRTraceCorrect (curry {A} {B} {C} {k} f m)
   ir-to-trace-correct-curry f Stack = ir-to-trace-correct-curry-stack f
-  ir-to-trace-correct-curry {k} {A} {B} {C} f Heap ir<bound mIn x input-loc s alloc
+  ir-to-trace-correct-curry {A} {B} {C} {k} f Heap ir<bound mIn x input-loc s alloc
                             valid before not-halted rdi-eq =
     let rec-wf = make-rec-wf ir<bound
         r = run-curry-heap {A} {B} {C} {k} mIn f ir<bound rec-wf x input-loc s alloc

@@ -24,17 +24,24 @@ open FrameSemantics using (Frame)
 open import Once.Type using (Type)
 open import Once.Semantics.Machine using (⟦_⟧)
 open import Once.CCC.IR using (IR; AllocMode)
+open import Once.CCC.IR.Size using (ir-size)
 open import Once.CCC.Eval using (eval)
+open import Induction.WellFounded using (Acc)
+open import Relation.Binary.PropositionalEquality using (subst)
+import Once.CCC.Machine.Dispatcher as DispatcherModule
 
 open import Once.CCC.Machine.SMCore
-  using (LocState; ValueLocation; halted; regs; readReg; Input1;
+  using (LocState; ValueLocation; StoredValue; SV-Ptr; halted; regs; readReg; Input1;
          AbstractTrace)
-open import Once.CCC.Machine.Allocation using (AllocState; current-frame)
+open import Once.CCC.Machine.Allocation using (AllocState; current-frame; next-slot)
 
-open import Once.CCC.Codegen.IRToTrace using (ir-to-trace)
+open import Once.CCC.Codegen.IRToTrace using (ir-to-trace; ir-to-trace-at-frontier)
 open import Once.CCC.Target.X86-32.Syntax using (Program)
 
-module Correctness {FS : FrameSemantics} (program-bound : ℕ) where
+module Correctness {FS : FrameSemantics} (program-bound : ℕ)
+  (acc-pb : Acc _<_ program-bound)
+  (sigOp-proof : DispatcherModule.SigOpContract.Provider {FS} program-bound)
+  where
 
   open Once.CCC.Machine.SMCore.MemOps {FS}
   open Once.CCC.Machine.SMCore.ExecFinal {FS}
@@ -52,7 +59,7 @@ module Correctness {FS : FrameSemantics} (program-bound : ℕ) where
 
   -- Shared, arch-agnostic IR-side correctness (Phase E lives here).
   open import Once.CCC.Codegen.IRTraceCorrect using (module IRTraceCorrectness)
-  open IRTraceCorrectness {FS} program-bound using (ir-to-trace-correct)
+  open IRTraceCorrectness {FS} program-bound acc-pb sigOp-proof using (ir-to-trace-correct)
 
   compile : ∀ {A B} → IR A B → Program
   compile ir = compile-trace (ir-to-trace ir)
@@ -72,14 +79,16 @@ module Correctness {FS : FrameSemantics} (program-bound : ℕ) where
 
   compile-correct :
     ∀ {A B} (ir : IR A B)
+      (ir<bound : ir-size ir < program-bound)
       (mIn : AllocMode) (x : ⟦ A ⟧) (input-loc : ValueLocation FS)
       (s : LocState FS) (alloc : AllocState {FS})
       (xs : X86State) →
+    next-slot alloc ≡ 0 →
     Corresponds s xs alloc →
     ValidAtWF mIn alloc x input-loc s →
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
-    readReg (regs s) Input1 ≡ input-loc →
+    readReg (regs s) Input1 ≡ SV-Ptr input-loc →
     let trace = ir-to-trace ir
         abs-result = exec-trace trace s alloc
         abs-final-s = proj₁ abs-result
@@ -89,11 +98,19 @@ module Correctness {FS : FrameSemantics} (program-bound : ℕ) where
        ×
        (∃[ mOut ] ∃[ result-loc ]
           ValidAtWF mOut abs-final-alloc (eval ir x) result-loc abs-final-s)
-  compile-correct ir mIn x input-loc s alloc xs
-                  corr valid before not-halted rdi-eq =
+  compile-correct ir ir<bound mIn x input-loc s alloc xs
+                  ns≡0 corr valid before not-halted rdi-eq =
     let semantic-side =
-          ir-to-trace-correct ir mIn x input-loc s alloc
+          ir-to-trace-correct ir ir<bound mIn x input-loc s alloc
             valid before not-halted rdi-eq
+        semantic-side' = subst (λ n →
+            ∃[ mOut ] ∃[ result-loc ]
+              ValidAtWF mOut (proj₂ (exec-trace
+                (ir-to-trace-at-frontier n ir) s alloc))
+                (eval ir x) result-loc
+                (proj₁ (exec-trace
+                  (ir-to-trace-at-frontier n ir) s alloc)))
+          ns≡0 semantic-side
         machine-side =
           compile-trace-correct (ir-to-trace ir) s alloc xs corr
-    in machine-side , semantic-side
+    in machine-side , semantic-side'

@@ -100,6 +100,7 @@ module X86-64 where
   open import Once.CCC.Target.X86-64.CompileCorrect as CC
   module CompileCorrect-X86-64 =
     CC.Correctness {FS} (RuntimeContract.program-bound runtime)
+      (RuntimeContract.acc-pb runtime) sigOp-proof
 
   compile-correct-extracted = CompileCorrect-X86-64.compile-correct
   compile-extracted          = CompileCorrect-X86-64.compile
@@ -146,6 +147,7 @@ module X86-32 where
   open import Once.CCC.Target.X86-32.CompileCorrect as CC
   module CompileCorrect-X86-32 =
     CC.Correctness {FS} (RuntimeContract.program-bound runtime)
+      (RuntimeContract.acc-pb runtime) sigOp-proof
 
   compile-correct-extracted = CompileCorrect-X86-32.compile-correct
   compile-extracted          = CompileCorrect-X86-32.compile
@@ -192,6 +194,7 @@ module RiscV64 where
   open import Once.CCC.Target.RiscV64.CompileCorrect as CC
   module CompileCorrect-RiscV64 =
     CC.Correctness {FS} (RuntimeContract.program-bound runtime)
+      (RuntimeContract.acc-pb runtime) sigOp-proof
 
   compile-correct-extracted = CompileCorrect-RiscV64.compile-correct
   compile-extracted          = CompileCorrect-RiscV64.compile
