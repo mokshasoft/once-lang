@@ -48,6 +48,7 @@ open import Once.CCC.Eval using (eval)
 open import Once.CCC.IR.Stack
 open import Once.CCC.Machine.Allocation hiding (AllocMode)
 open import Once.CCC.Machine.ClosureWellFormed
+open import Once.CCC.Machine.TraceEvaluator
 
 import Once.CCC.Machine.SMPrimitives as SMP
 import Once.CCC.Machine.SMPrimitives.Heap as SMPH
@@ -63,6 +64,8 @@ module SumInrHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   open SMP.InstrPrimitives {FS}
   open SMP.TracePrimitives {FS}
   open SMPH.HeapPrimitives {FS}
+
+  open TraceEvaluatorDef {FS}
 
   open ClosureWellFormedDef {FS} program-bound
     using (ValidAtWF; IRResultAWF; ResultPlace; at-loc; valid-inr-wf;
@@ -85,13 +88,16 @@ module SumInrHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; trace = inr-heap-trace
         ; trace-is-ir-to-trace = refl
         ; trace-correct = refl
-        ; alloc-correct = SMP.!!  -- Phase A scaffold
+        -- alloc-correct, trace-twf, mem-preserved-before and the
+        -- not-halted-final argument all derive from `trace-eval`, the
+        -- bundled per-step state trajectory (Plan 0.16, TraceEvaluator).
+        ; alloc-correct = TraceEvaluator.exec-alloc-eq trace-eval
         ; result-place = at-loc sum-loc sum-valid-final sum-before-final
                             sum-rax-eq sum-valid-cont sum-before-cont
-        ; not-halted = not-halted-final
+        ; not-halted = TraceEvaluator.halted-preserved trace-eval not-halted
         ; frame-preserved = refl
-        ; trace-twf = SMP.!!
-        ; mem-preserved-before = λ _ _ → SMP.!!
+        ; trace-twf = TraceEvaluator.trace-wf trace-eval
+        ; mem-preserved-before = TraceEvaluator.mem-preserved-before trace-eval
         ; trace-preserves-halted = exec-trace-preserves-halted-WF inr-heap-trace
         }
       ; stack-inv = record
@@ -171,8 +177,20 @@ module SumInrHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       sum-before-cont : BeforeFrontier sum-cont-alloc sum-loc
       sum-before-cont = heap-before ≤-refl
 
-      not-halted-final : halted s-final ≡ false
-      not-halted-final = exec-trace-preserves-halted-WF inr-heap-trace s alloc not-halted SMP.!!
+      ------------------------------------------------------------------
+      -- Plan 0.16 TraceEvaluator (2026-05-19): mirror of SumInlHeapWF.
+      -- Consolidates per-step state trajectory for alloc-correct,
+      -- trace-twf, mem-preserved-before, not-halted. `halted-preserved`
+      -- derives automatically from `trace-wf`.
+      ------------------------------------------------------------------
+      trace-eval : TraceEvaluator inr-heap-trace s alloc
+      trace-eval = mk-trace-evaluator
+        s-final
+        alloc-final
+        SMP.!!    -- trace-wf : TraceWF s alloc inr-heap-trace
+        refl      -- exec-state-eq (definitional)
+        SMP.!!    -- exec-alloc-eq
+        (λ _ _ → SMP.!!)  -- mem-preserved-before
 
       ------------------------------------------------------------------
       -- Structural slot-bound discharges (Phase C, mirror SumInlHeapWF).
