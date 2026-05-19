@@ -73,6 +73,9 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
            valid-inl-wf; valid-inr-wf;
            decomposeInlWF; decomposeInrWF;
            InlValidWF; InrValidWF)
+
+  open import Once.CCC.Machine.TraceEvaluator
+  open TraceEvaluatorDef {FS}
   -- OCP-0003: valid-fold-wf, decomposeFoldWF, FoldValidWF removed.
   -- Use In/Cata/Out/Ana handlers instead.
 
@@ -683,22 +686,15 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; final-alloc = IRResultAWF.final-alloc result-f
         ; trace = case-inl-trace
         ; trace-is-ir-to-trace = SMP.!!  -- TODO: drop instr-alloc-stack alignment
-        ; trace-correct = case-trace-state-correct f-trace s alloc input-loc payload-loc s-setup (IRResultAWF.final-state result-f)
-                            rdi-eq
-                            (InlValidWF.payload-ptr inl-decomp)
-                            refl
-                            (IRResultAWF.trace-correct result-f) not-halted
-        ; alloc-correct = case-trace-alloc-correct f-trace s alloc input-loc payload-loc s-setup
-                            (IRResultAWF.final-alloc result-f)
-                            rdi-eq
-                            (InlValidWF.payload-ptr inl-decomp)
-                            refl
-                            (IRResultAWF.alloc-correct result-f) not-halted
+        ; trace-correct = case-inl-trace-correct
+        ; alloc-correct = case-inl-alloc-correct
         ; result-place = IRResultAWF.result-place result-f
         ; not-halted = IRResultAWF.not-halted result-f
         ; frame-preserved = IRResultAWF.frame-preserved result-f
-        ; trace-twf = SMP.!!  -- TODO: load-indirect-suc + result-f.trace-twf chained
-        ; mem-preserved-before = λ _ _ → SMP.!!
+        -- Plan 0.16 TraceEvaluator: bundles trace-twf + mem-preserved-before
+        -- for the case-inl trace (load-indirect-suc ∷ mov-to-input ∷ f-trace).
+        ; trace-twf = TraceEvaluator.trace-wf case-inl-trace-eval
+        ; mem-preserved-before = TraceEvaluator.mem-preserved-before case-inl-trace-eval
         ; trace-preserves-halted = exec-trace-preserves-halted-WF case-inl-trace
         }
       ; stack-inv = record
@@ -786,6 +782,43 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
                        mov-to-input ∷       -- Input1 := Output = payload-loc
                        f-trace
 
+      -- Plan 0.16: shared derivations of trace-correct / alloc-correct
+      -- so both the IRResultBase fields and the TraceEvaluator below
+      -- reference the same proof object (avoids duplicating the long
+      -- case-trace-*-correct call sites).
+      case-inl-trace-correct :
+        proj₁ (exec-trace case-inl-trace s alloc) ≡ IRResultAWF.final-state result-f
+      case-inl-trace-correct = case-trace-state-correct f-trace s alloc input-loc
+                                payload-loc s-setup (IRResultAWF.final-state result-f)
+                                rdi-eq
+                                (InlValidWF.payload-ptr inl-decomp)
+                                refl
+                                (IRResultAWF.trace-correct result-f) not-halted
+
+      case-inl-alloc-correct :
+        proj₂ (exec-trace case-inl-trace s alloc) ≡ IRResultAWF.final-alloc result-f
+      case-inl-alloc-correct = case-trace-alloc-correct f-trace s alloc input-loc
+                                 payload-loc s-setup (IRResultAWF.final-alloc result-f)
+                                 rdi-eq
+                                 (InlValidWF.payload-ptr inl-decomp)
+                                 refl
+                                 (IRResultAWF.alloc-correct result-f) not-halted
+
+      ------------------------------------------------------------------
+      -- Plan 0.16 TraceEvaluator: bundles per-step state trajectory
+      -- for the case-inl trace. `exec-state-eq` / `exec-alloc-eq` reuse
+      -- the existing case-trace-*-correct derivations; `trace-wf` and
+      -- `mem-preserved-before` remain scaffolded.
+      ------------------------------------------------------------------
+      case-inl-trace-eval : TraceEvaluator case-inl-trace s alloc
+      case-inl-trace-eval = mk-trace-evaluator
+        (IRResultAWF.final-state result-f)
+        (IRResultAWF.final-alloc result-f)
+        SMP.!!                       -- trace-wf
+        case-inl-trace-correct       -- exec-state-eq
+        case-inl-alloc-correct       -- exec-alloc-eq
+        (λ _ _ → SMP.!!)             -- mem-preserved-before
+
       -- Frontier slot stability for case (inl branch)
       -- Return uncertain (inj₂ (inj₂ tt)) since f may allocate at the frontier slot.
       -- This is safe: compose handles uncertainty correctly by propagating it.
@@ -804,22 +837,15 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; final-alloc = IRResultAWF.final-alloc result-g
         ; trace = case-inr-trace
         ; trace-is-ir-to-trace = SMP.!!  -- TODO: drop instr-alloc-stack alignment
-        ; trace-correct = case-trace-state-correct g-trace s alloc input-loc payload-loc s-setup (IRResultAWF.final-state result-g)
-                            rdi-eq
-                            (InrValidWF.payload-ptr inr-decomp)
-                            refl
-                            (IRResultAWF.trace-correct result-g) not-halted
-        ; alloc-correct = case-trace-alloc-correct g-trace s alloc input-loc payload-loc s-setup
-                            (IRResultAWF.final-alloc result-g)
-                            rdi-eq
-                            (InrValidWF.payload-ptr inr-decomp)
-                            refl
-                            (IRResultAWF.alloc-correct result-g) not-halted
+        ; trace-correct = case-inr-trace-correct
+        ; alloc-correct = case-inr-alloc-correct
         ; result-place = IRResultAWF.result-place result-g
         ; not-halted = IRResultAWF.not-halted result-g
         ; frame-preserved = IRResultAWF.frame-preserved result-g
-        ; trace-twf = SMP.!!  -- TODO: load-indirect-suc + result-g.trace-twf chained
-        ; mem-preserved-before = λ _ _ → SMP.!!
+        -- Plan 0.16 TraceEvaluator: bundles trace-twf + mem-preserved-before
+        -- for the case-inr trace (mirror of case-inl).
+        ; trace-twf = TraceEvaluator.trace-wf case-inr-trace-eval
+        ; mem-preserved-before = TraceEvaluator.mem-preserved-before case-inr-trace-eval
         ; trace-preserves-halted = exec-trace-preserves-halted-WF case-inr-trace
         }
       ; stack-inv = record
@@ -905,6 +931,38 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       case-inr-trace = load-indirect-suc ∷  -- Output := *(Input1+1) = payload-loc
                        mov-to-input ∷       -- Input1 := Output = payload-loc
                        g-trace
+
+      -- Plan 0.16: shared derivations for both the IRResultBase fields
+      -- and the TraceEvaluator below.
+      case-inr-trace-correct :
+        proj₁ (exec-trace case-inr-trace s alloc) ≡ IRResultAWF.final-state result-g
+      case-inr-trace-correct = case-trace-state-correct g-trace s alloc input-loc
+                                payload-loc s-setup (IRResultAWF.final-state result-g)
+                                rdi-eq
+                                (InrValidWF.payload-ptr inr-decomp)
+                                refl
+                                (IRResultAWF.trace-correct result-g) not-halted
+
+      case-inr-alloc-correct :
+        proj₂ (exec-trace case-inr-trace s alloc) ≡ IRResultAWF.final-alloc result-g
+      case-inr-alloc-correct = case-trace-alloc-correct g-trace s alloc input-loc
+                                 payload-loc s-setup (IRResultAWF.final-alloc result-g)
+                                 rdi-eq
+                                 (InrValidWF.payload-ptr inr-decomp)
+                                 refl
+                                 (IRResultAWF.alloc-correct result-g) not-halted
+
+      ------------------------------------------------------------------
+      -- Plan 0.16 TraceEvaluator (mirror of case-inl branch).
+      ------------------------------------------------------------------
+      case-inr-trace-eval : TraceEvaluator case-inr-trace s alloc
+      case-inr-trace-eval = mk-trace-evaluator
+        (IRResultAWF.final-state result-g)
+        (IRResultAWF.final-alloc result-g)
+        SMP.!!                       -- trace-wf
+        case-inr-trace-correct       -- exec-state-eq
+        case-inr-alloc-correct       -- exec-alloc-eq
+        (λ _ _ → SMP.!!)             -- mem-preserved-before
 
       -- Frontier slot stability for case (inr branch)
       -- Return uncertain (inj₂ (inj₂ tt)) since g may allocate at the frontier slot.

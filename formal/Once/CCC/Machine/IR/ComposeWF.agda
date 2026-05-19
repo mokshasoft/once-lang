@@ -61,6 +61,9 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
            validityWF-frontier-advance; validityWF-mem-preserved;
            validityWF-with-bf-transfer; mem-preserved-from-tnhw)
 
+  open import Once.CCC.Machine.TraceEvaluator
+  open TraceEvaluatorDef {FS}
+
   open import Once.CCC.Machine.FrontierLemma
   open FrontierLemmas {FS}
     using (frontier-same-heap)
@@ -172,7 +175,11 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; trace = compose-trace
         ; trace-is-ir-to-trace = SMP.!!  -- TODO: compose decomp lemma
         ; trace-correct = refl  -- s-final DEFINED by trace
-        ; alloc-correct = alloc-correct-compose
+        -- Plan 0.16 TraceEvaluator: alloc-correct + trace-twf +
+        -- mem-preserved-before + not-halted route through `trace-eval`.
+        -- The underlying derivations (`alloc-correct-compose`,
+        -- `compose-trace-twf`, `not-halted-final`) feed into the TE.
+        ; alloc-correct = TraceEvaluator.exec-alloc-eq trace-eval
         ; result-place =
             -- result-g.result-place has continuation built from alloc₁
             -- (the actual input alloc to g). Bridge to compose's claim
@@ -203,16 +210,19 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
                            (eval g (eval f x)) st)
                  (sym s-final-eq)
                  place-at-alloc-frame
+        -- not-halted stays derived from result-g (not routed through TE.halted-preserved
+        -- here, since that path would introduce a dependency on the
+        -- scaffolded trace-wf).
         ; not-halted = not-halted-final
         ; frame-preserved = trans (IRResultAWF.frame-preserved result-g)
                                   (IRResultAWF.frame-preserved result-f)
-        ; trace-twf = compose-trace-twf
+        ; trace-twf = TraceEvaluator.trace-wf trace-eval
         -- Plan 0.14 follow-up: previously derived via mem-preserved-from-tnhw
         -- + compose-trace-no-heap-writes (eliminated). The principled
         -- replacement composes sub-IR mem-preserved-before via
         -- `mem-preserved-compose`, which requires accounting for
-        -- mov-to-input's state shift; postulated for now.
-        ; mem-preserved-before = SMP.!!
+        -- mov-to-input's state shift; postulated for now via TE.
+        ; mem-preserved-before = TraceEvaluator.mem-preserved-before trace-eval
         ; trace-preserves-halted = exec-trace-preserves-halted-WF compose-trace
         }
       ; stack-inv = record
@@ -516,6 +526,21 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       g-tph = SMP.!!  -- TODO: bridge from result-g's trace-twf
       compose-trace-twf : TraceWF s alloc compose-trace
       compose-trace-twf = SMP.!!  -- TODO: twf-++ f-tph (twf-∷ tt g-tph) with state-threading
+
+      ------------------------------------------------------------------
+      -- Plan 0.16 TraceEvaluator: routes alloc-correct, trace-twf and
+      -- mem-preserved-before through a single bundle. `exec-alloc-eq`
+      -- reuses `alloc-correct-compose`; `trace-wf` and
+      -- `mem-preserved-before` remain scaffolded.
+      ------------------------------------------------------------------
+      trace-eval : TraceEvaluator compose-trace s alloc
+      trace-eval = mk-trace-evaluator
+        s-final
+        alloc₂
+        compose-trace-twf            -- trace-wf
+        refl                         -- exec-state-eq (definitional)
+        alloc-correct-compose        -- exec-alloc-eq
+        (λ _ _ → SMP.!!)             -- mem-preserved-before
 
       ------------------------------------------------------------------------
       -- Frontier slot stability
