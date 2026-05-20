@@ -668,24 +668,22 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
   -- Case for inl: dispatch to f
   run-case {m} {A} {B} {C} f g rec-wf (inj₁ a) input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
-    mF , record
-      { base = record
-        { final-state = IRResultAWF.final-state result-f
-        ; final-alloc = IRResultAWF.final-alloc result-f
-        ; trace = case-inl-trace
-        ; trace-is-ir-to-trace = SMP.!!  -- TODO: drop instr-alloc-stack alignment
-        ; trace-correct = case-inl-trace-correct
-        ; alloc-correct = case-inl-alloc-correct
-        ; result-place = IRResultAWF.result-place result-f
-        ; not-halted = IRResultAWF.not-halted result-f
-        ; frame-preserved = IRResultAWF.frame-preserved result-f
-        -- Plan 0.16 TraceEvaluator: bundles trace-twf + mem-preserved-before
-        -- for the case-inl trace (load-indirect-suc ∷ mov-to-input ∷ f-trace).
-        ; trace-twf = TraceEvaluator.trace-wf case-inl-trace-eval
-        ; mem-preserved-before = TraceEvaluator.mem-preserved-before case-inl-trace-eval
-        ; trace-preserves-halted = exec-trace-preserves-halted-WF case-inl-trace
-        }
-      ; stack-inv = record
+    mF ,
+    mk-IRResultAWF-via-bump
+      (IRResultAWF.final-state result-f)
+      (IRResultAWF.final-alloc result-f)
+      case-inl-trace
+      (IRResultAWF.bump result-f)
+      refl
+      SMP.!!                       -- trace-is-ir-to-trace
+      case-inl-trace-correct
+      case-inl-alloc-correct
+      (IRResultAWF.result-place result-f)
+      (IRResultAWF.not-halted result-f)
+      (TraceEvaluator.mem-preserved-before case-inl-trace-eval)
+      (TraceEvaluator.trace-wf case-inl-trace-eval)
+      (exec-trace-preserves-halted-WF case-inl-trace)
+      (record
         { slot-monotone = IRResultAWF.slot-monotone result-f
         ; max-slot-written = IRResultAWF.max-slot-written result-f
         ; max-slot-geq-final = IRResultAWF.max-slot-geq-final result-f
@@ -699,15 +697,14 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; trace-slot-reads-below = IRResultAWF.trace-slot-reads-below result-f
         ; scratch-budget = IRResultAWF.scratch-budget result-f
         ; scratch-bounded = IRResultAWF.scratch-bounded result-f
-        }
-      ; heap-inv = record
+        })
+      (record
         { heap-monotone = IRResultAWF.heap-monotone result-f
         ; heap-budget = IRResultAWF.heap-budget result-f
         ; max-heap-ref-written = IRResultAWF.max-heap-ref-written result-f
         ; max-heap-ref-geq-final = IRResultAWF.max-heap-ref-geq-final result-f
         ; max-heap-usage-bound = IRResultAWF.max-heap-usage-bound result-f
-        }
-      }
+        })
     where
       rf = ir-stack-requirement f
       rg = ir-stack-requirement g
@@ -819,24 +816,22 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
   -- Case for inr: dispatch to g
   run-case {m} {A} {B} {C} f g rec-wf (inj₂ b) input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
-    mG , record
-      { base = record
-        { final-state = IRResultAWF.final-state result-g
-        ; final-alloc = IRResultAWF.final-alloc result-g
-        ; trace = case-inr-trace
-        ; trace-is-ir-to-trace = SMP.!!  -- TODO: drop instr-alloc-stack alignment
-        ; trace-correct = case-inr-trace-correct
-        ; alloc-correct = case-inr-alloc-correct
-        ; result-place = IRResultAWF.result-place result-g
-        ; not-halted = IRResultAWF.not-halted result-g
-        ; frame-preserved = IRResultAWF.frame-preserved result-g
-        -- Plan 0.16 TraceEvaluator: bundles trace-twf + mem-preserved-before
-        -- for the case-inr trace (mirror of case-inl).
-        ; trace-twf = TraceEvaluator.trace-wf case-inr-trace-eval
-        ; mem-preserved-before = TraceEvaluator.mem-preserved-before case-inr-trace-eval
-        ; trace-preserves-halted = exec-trace-preserves-halted-WF case-inr-trace
-        }
-      ; stack-inv = record
+    mG ,
+    mk-IRResultAWF-via-bump
+      (IRResultAWF.final-state result-g)
+      (IRResultAWF.final-alloc result-g)
+      case-inr-trace
+      (IRResultAWF.bump result-g)
+      refl
+      SMP.!!                       -- trace-is-ir-to-trace
+      case-inr-trace-correct
+      case-inr-alloc-correct
+      (IRResultAWF.result-place result-g)
+      (IRResultAWF.not-halted result-g)
+      (TraceEvaluator.mem-preserved-before case-inr-trace-eval)
+      (TraceEvaluator.trace-wf case-inr-trace-eval)
+      (exec-trace-preserves-halted-WF case-inr-trace)
+      (record
         { slot-monotone = IRResultAWF.slot-monotone result-g
         ; max-slot-written = IRResultAWF.max-slot-written result-g
         ; max-slot-geq-final = IRResultAWF.max-slot-geq-final result-g
@@ -850,15 +845,14 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; trace-slot-reads-below = IRResultAWF.trace-slot-reads-below result-g
         ; scratch-budget = IRResultAWF.scratch-budget result-g
         ; scratch-bounded = IRResultAWF.scratch-bounded result-g
-        }
-      ; heap-inv = record
+        })
+      (record
         { heap-monotone = IRResultAWF.heap-monotone result-g
         ; heap-budget = IRResultAWF.heap-budget result-g
         ; max-heap-ref-written = IRResultAWF.max-heap-ref-written result-g
         ; max-heap-ref-geq-final = IRResultAWF.max-heap-ref-geq-final result-g
         ; max-heap-usage-bound = IRResultAWF.max-heap-usage-bound result-g
-        }
-      }
+        })
     where
       rf = ir-stack-requirement f
       rg = ir-stack-requirement g
@@ -1012,26 +1006,20 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     readReg (regs s) Input1 ≡ SV-Ptr input-loc →
     IRResultAWF m (In {F} wf m) x s alloc
   run-In {F} wf mIn m x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
-    record
-      { base = record
-        { final-state = s'
-        ; final-alloc = alloc'
-        ; trace = in-trace
-        ; trace-is-ir-to-trace = SMP.!!  -- TODO: drop instr-alloc-stack alignment
-        ; trace-correct = refl  -- s' DEFINED by trace
-        ; alloc-correct =
-            let raw = rec-scheme-alloc-correct-4 result-slot s alloc not-halted
-                arith : next-slot alloc +ℕ 1 ≡ suc (next-slot alloc)
-                arith = +-comm (next-slot alloc) 1
-            in trans raw (cong (λ k → record alloc { next-slot = k }) arith)
-        ; result-place = at-loc result-loc result-valid result-bf rax-eq result-valid result-bf
-        ; not-halted = not-halted'
-        ; frame-preserved = refl
-        ; trace-twf = twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt twf-[])))
-        ; mem-preserved-before = λ _ _ → SMP.!!
-        ; trace-preserves-halted = exec-trace-preserves-halted-WF in-trace
-        }
-      ; stack-inv = record
+    mk-IRResultAWF-via-bump
+      s' alloc' in-trace (mkBump 1 0) refl
+      SMP.!!                       -- trace-is-ir-to-trace
+      refl
+      (let raw = rec-scheme-alloc-correct-4 result-slot s alloc not-halted
+           arith : next-slot alloc +ℕ 1 ≡ suc (next-slot alloc)
+           arith = +-comm (next-slot alloc) 1
+       in trans raw (cong (λ k → record alloc { next-slot = k }) arith))
+      (at-loc result-loc result-valid result-bf rax-eq result-valid result-bf)
+      not-halted'
+      (λ _ _ → SMP.!!)
+      (twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt twf-[]))))
+      (exec-trace-preserves-halted-WF in-trace)
+      (record
         { slot-monotone = slot-mono
         ; max-slot-written = next-slot alloc'
         ; max-slot-geq-final = ≤-refl
@@ -1045,15 +1033,14 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; trace-slot-reads-below = tt
         ; scratch-budget = ir-scratch-requirement (In {F} wf m)
         ; scratch-bounded = m≤m+n (suc (next-slot alloc)) 1
-        }
-      ; heap-inv = record
+        })
+      (record
         { heap-monotone = ≤-refl
         ; heap-budget = 0
         ; max-heap-ref-written = next-heap-ref alloc
         ; max-heap-ref-geq-final = ≤-refl
         ; max-heap-usage-bound = m≤m+n (next-heap-ref alloc) 0
-        }
-      }
+        })
     where
       -- ir-stack-requirement (In _ _) = 1
       result-slot = next-slot alloc
@@ -1136,22 +1123,17 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     readReg (regs s) Input1 ≡ SV-Ptr input-loc →
     IRResultAWF Heap (out-μ {F} wf) x s alloc
   run-out-μ {F} wf mIn x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
-    record
-      { base = record
-        { final-state = s'
-        ; final-alloc = alloc
-        ; trace = out-μ-trace
-        ; trace-is-ir-to-trace = SMP.!!  -- TODO: drop instr-alloc-stack alignment
-        ; trace-correct = refl  -- s' DEFINED by trace
-        ; alloc-correct = cong proj₂ (exec-trace-single mov-to-output s alloc not-halted)
-        ; result-place = at-loc input-loc result-valid input-before rax-eq result-valid input-before
-        ; not-halted = not-halted'
-        ; frame-preserved = refl
-        ; trace-twf = twf-∷ tt twf-[]
-        ; mem-preserved-before = λ _ _ → SMP.!!
-        ; trace-preserves-halted = exec-trace-preserves-halted-WF out-μ-trace
-        }
-      ; stack-inv = record
+    mk-IRResultAWF-via-bump
+      s' alloc out-μ-trace bump-0 refl
+      SMP.!!                       -- trace-is-ir-to-trace
+      refl
+      (cong proj₂ (exec-trace-single mov-to-output s alloc not-halted))
+      (at-loc input-loc result-valid input-before rax-eq result-valid input-before)
+      not-halted'
+      (λ _ _ → SMP.!!)
+      (twf-∷ tt twf-[])
+      (exec-trace-preserves-halted-WF out-μ-trace)
+      (record
         { slot-monotone = ≤-refl
         ; max-slot-written = next-slot alloc
         ; max-slot-geq-final = ≤-refl
@@ -1165,15 +1147,14 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; trace-slot-reads-below = tt
         ; scratch-budget = ir-scratch-requirement (out-μ {F} wf)
         ; scratch-bounded = m≤m+n (next-slot alloc) 0
-        }
-      ; heap-inv = record
+        })
+      (record
         { heap-monotone = ≤-refl
         ; heap-budget = 0
         ; max-heap-ref-written = next-heap-ref alloc
         ; max-heap-ref-geq-final = ≤-refl
         ; max-heap-usage-bound = m≤m+n (next-heap-ref alloc) 0
-        }
-      }
+        })
     where
       -- ir-stack-requirement (out-μ _) = 0, so no allocation
       -- Trace: just pass through input to output
@@ -1224,22 +1205,17 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     readReg (regs s) Input1 ≡ SV-Ptr input-loc →
     IRResultAWF Heap (Out {F} wf) x s alloc
   run-Out {F} wf mIn x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
-    record
-      { base = record
-        { final-state = s'
-        ; final-alloc = alloc
-        ; trace = out-trace
-        ; trace-is-ir-to-trace = SMP.!!  -- TODO: drop instr-alloc-stack alignment
-        ; trace-correct = refl  -- s' DEFINED by trace
-        ; alloc-correct = cong proj₂ (exec-trace-single mov-to-output s alloc not-halted)
-        ; result-place = at-loc input-loc result-valid input-before rax-eq result-valid input-before
-        ; not-halted = not-halted'
-        ; frame-preserved = refl
-        ; trace-twf = twf-∷ tt twf-[]
-        ; mem-preserved-before = λ _ _ → SMP.!!
-        ; trace-preserves-halted = exec-trace-preserves-halted-WF out-trace
-        }
-      ; stack-inv = record
+    mk-IRResultAWF-via-bump
+      s' alloc out-trace bump-0 refl
+      SMP.!!                       -- trace-is-ir-to-trace
+      refl
+      (cong proj₂ (exec-trace-single mov-to-output s alloc not-halted))
+      (at-loc input-loc result-valid input-before rax-eq result-valid input-before)
+      not-halted'
+      (λ _ _ → SMP.!!)
+      (twf-∷ tt twf-[])
+      (exec-trace-preserves-halted-WF out-trace)
+      (record
         { slot-monotone = ≤-refl
         ; max-slot-written = next-slot alloc
         ; max-slot-geq-final = ≤-refl
@@ -1253,15 +1229,14 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; trace-slot-reads-below = tt
         ; scratch-budget = ir-scratch-requirement (Out {F} wf)
         ; scratch-bounded = m≤m+n (next-slot alloc) 0
-        }
-      ; heap-inv = record
+        })
+      (record
         { heap-monotone = ≤-refl
         ; heap-budget = 0
         ; max-heap-ref-written = next-heap-ref alloc
         ; max-heap-ref-geq-final = ≤-refl
         ; max-heap-usage-bound = m≤m+n (next-heap-ref alloc) 0
-        }
-      }
+        })
     where
       -- ir-stack-requirement (Out _) = 0, so no allocation
       out-trace : AbstractTrace
@@ -1309,26 +1284,20 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     readReg (regs s) Input1 ≡ SV-Ptr input-loc →
     IRResultAWF m (in-ν {F} wf m) x s alloc
   run-in-ν {F} wf mIn m x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
-    record
-      { base = record
-        { final-state = s'
-        ; final-alloc = alloc'
-        ; trace = in-ν-trace
-        ; trace-is-ir-to-trace = SMP.!!  -- TODO: drop instr-alloc-stack alignment
-        ; trace-correct = refl  -- s' DEFINED by trace
-        ; alloc-correct =
-            let raw = rec-scheme-alloc-correct-4 result-slot s alloc not-halted
-                arith : next-slot alloc +ℕ 1 ≡ suc (next-slot alloc)
-                arith = +-comm (next-slot alloc) 1
-            in trans raw (cong (λ k → record alloc { next-slot = k }) arith)
-        ; result-place = at-loc result-loc result-valid result-bf rax-eq result-valid result-bf
-        ; not-halted = not-halted'
-        ; frame-preserved = refl
-        ; trace-twf = twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt twf-[])))
-        ; mem-preserved-before = λ _ _ → SMP.!!
-        ; trace-preserves-halted = exec-trace-preserves-halted-WF in-ν-trace
-        }
-      ; stack-inv = record
+    mk-IRResultAWF-via-bump
+      s' alloc' in-ν-trace (mkBump 1 0) refl
+      SMP.!!                       -- trace-is-ir-to-trace
+      refl
+      (let raw = rec-scheme-alloc-correct-4 result-slot s alloc not-halted
+           arith : next-slot alloc +ℕ 1 ≡ suc (next-slot alloc)
+           arith = +-comm (next-slot alloc) 1
+       in trans raw (cong (λ k → record alloc { next-slot = k }) arith))
+      (at-loc result-loc result-valid result-bf rax-eq result-valid result-bf)
+      not-halted'
+      (λ _ _ → SMP.!!)
+      (twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt twf-[]))))
+      (exec-trace-preserves-halted-WF in-ν-trace)
+      (record
         { slot-monotone = slot-mono
         ; max-slot-written = next-slot alloc'
         ; max-slot-geq-final = ≤-refl
@@ -1342,15 +1311,14 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; trace-slot-reads-below = tt
         ; scratch-budget = ir-scratch-requirement (in-ν {F} wf m)
         ; scratch-bounded = m≤m+n (suc (next-slot alloc)) 1
-        }
-      ; heap-inv = record
+        })
+      (record
         { heap-monotone = ≤-refl
         ; heap-budget = 0
         ; max-heap-ref-written = next-heap-ref alloc
         ; max-heap-ref-geq-final = ≤-refl
         ; max-heap-usage-bound = m≤m+n (next-heap-ref alloc) 0
-        }
-      }
+        })
     where
       -- ir-stack-requirement (in-ν _ _) = 1
       result-slot = next-slot alloc

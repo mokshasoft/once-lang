@@ -196,7 +196,8 @@ module RecCoreWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   open ClosureWellFormedDef {FS} program-bound
     using (ValidAtWF; IRResultAWF; ResultPlace; unit-result; at-loc; RecDispatcherWF;
            validityWF-mem-only; validityWF-frontier-advance;
-           validityWF-alloc-advance; mem-preserved-from-tnhw)
+           validityWF-alloc-advance; mem-preserved-from-tnhw;
+           mk-IRResultAWF-via-bump)
 
   ------------------------------------------------------------------------
   -- Semantic Correctness: TRUST BOUNDARY
@@ -348,27 +349,21 @@ module RecCoreWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     → readReg (regs s) Input1 ≡ SV-Ptr input-loc
     → ∃[ mOut ] IRResultAWF mOut (Fuse wfF wfG alg transform) x s alloc
   run-fuse-core {F} {G} {B} wfF wfG alg transform rec-wf mIn x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
-    Heap , record
-      { base = record
-        { final-state = s'
-        ; final-alloc = alloc'
-        ; trace = fuse-trace
-        ; trace-is-ir-to-trace = SMP.!!
-        ; trace-correct = refl
-        ; alloc-correct =
-            let raw = rec-scheme-alloc-correct-4 result-slot s alloc not-halted
-                arith : next-slot alloc +ℕ 1 ≡ suc (next-slot alloc)
-                arith = +-comm (next-slot alloc) 1
-            in trans raw (cong (λ k → record alloc { next-slot = k }) arith)
-        ; result-place = at-loc result-loc result-valid result-bf rax-eq result-valid result-bf
-        ; not-halted = not-halted'
-        ; frame-preserved = refl
-        ; trace-twf = SMP.!!
-        ; mem-preserved-before = mem-preserved-from-tnhw alloc fuse-trace s s' refl
-            trace-wa tt
-        ; trace-preserves-halted = exec-trace-preserves-halted-WF fuse-trace
-        }
-      ; stack-inv = record
+    Heap ,
+    mk-IRResultAWF-via-bump
+      s' alloc' fuse-trace (mkBump 1 0) refl
+      SMP.!!
+      refl
+      (let raw = rec-scheme-alloc-correct-4 result-slot s alloc not-halted
+           arith : next-slot alloc +ℕ 1 ≡ suc (next-slot alloc)
+           arith = +-comm (next-slot alloc) 1
+       in trans raw (cong (λ k → record alloc { next-slot = k }) arith))
+      (at-loc result-loc result-valid result-bf rax-eq result-valid result-bf)
+      not-halted'
+      (mem-preserved-from-tnhw alloc fuse-trace s s' refl trace-wa tt)
+      SMP.!!
+      (exec-trace-preserves-halted-WF fuse-trace)
+      (record
         { slot-monotone = slot-mono
         ; max-slot-written = next-slot alloc'
         ; max-slot-geq-final = ≤-refl
@@ -382,15 +377,14 @@ module RecCoreWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; trace-slot-reads-below = tt
         ; scratch-budget = ir-scratch-requirement (Fuse wfF wfG alg transform)
         ; scratch-bounded = m≤m+n (suc (next-slot alloc)) (ir-scratch-requirement (Fuse wfF wfG alg transform))
-        }
-      ; heap-inv = record
+        })
+      (record
         { heap-monotone = ≤-refl
         ; heap-budget = 0
         ; max-heap-ref-written = next-heap-ref alloc
         ; max-heap-ref-geq-final = ≤-refl
         ; max-heap-usage-bound = m≤m+n (next-heap-ref alloc) 0
-        }
-      }
+        })
     where
       result-slot = next-slot alloc
       result-loc = AtStack (current-frame alloc) result-slot
@@ -460,27 +454,21 @@ module RecCoreWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     → readReg (regs s) Input1 ≡ SV-Ptr input-loc
     → ∃[ mOut ] IRResultAWF mOut (Hylo wfF wfG alg coalg) x s alloc
   run-hylo-core {F} {G} {B} wfF wfG alg coalg rec-wf mIn x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
-    Heap , record
-      { base = record
-        { final-state = s'
-        ; final-alloc = alloc'
-        ; trace = hylo-trace
-        ; trace-is-ir-to-trace = SMP.!!
-        ; trace-correct = refl
-        ; alloc-correct =
-            let raw = rec-scheme-alloc-correct-4 result-slot s alloc not-halted
-                arith : next-slot alloc +ℕ 1 ≡ suc (next-slot alloc)
-                arith = +-comm (next-slot alloc) 1
-            in trans raw (cong (λ k → record alloc { next-slot = k }) arith)
-        ; result-place = at-loc result-loc result-valid result-bf rax-eq result-valid result-bf
-        ; not-halted = not-halted'
-        ; frame-preserved = refl
-        ; trace-twf = SMP.!!
-        ; mem-preserved-before = mem-preserved-from-tnhw alloc hylo-trace s s' refl
-            trace-wa tt
-        ; trace-preserves-halted = exec-trace-preserves-halted-WF hylo-trace
-        }
-      ; stack-inv = record
+    Heap ,
+    mk-IRResultAWF-via-bump
+      s' alloc' hylo-trace (mkBump 1 0) refl
+      SMP.!!
+      refl
+      (let raw = rec-scheme-alloc-correct-4 result-slot s alloc not-halted
+           arith : next-slot alloc +ℕ 1 ≡ suc (next-slot alloc)
+           arith = +-comm (next-slot alloc) 1
+       in trans raw (cong (λ k → record alloc { next-slot = k }) arith))
+      (at-loc result-loc result-valid result-bf rax-eq result-valid result-bf)
+      not-halted'
+      (mem-preserved-from-tnhw alloc hylo-trace s s' refl trace-wa tt)
+      SMP.!!
+      (exec-trace-preserves-halted-WF hylo-trace)
+      (record
         { slot-monotone = slot-mono
         ; max-slot-written = next-slot alloc'
         ; max-slot-geq-final = ≤-refl
@@ -494,15 +482,14 @@ module RecCoreWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; trace-slot-reads-below = tt
         ; scratch-budget = ir-scratch-requirement (Hylo wfF wfG alg coalg)
         ; scratch-bounded = m≤m+n (suc (next-slot alloc)) (ir-scratch-requirement (Hylo wfF wfG alg coalg))
-        }
-      ; heap-inv = record
+        })
+      (record
         { heap-monotone = ≤-refl
         ; heap-budget = 0
         ; max-heap-ref-written = next-heap-ref alloc
         ; max-heap-ref-geq-final = ≤-refl
         ; max-heap-usage-bound = m≤m+n (next-heap-ref alloc) 0
-        }
-      }
+        })
     where
       result-slot = next-slot alloc
       result-loc = AtStack (current-frame alloc) result-slot

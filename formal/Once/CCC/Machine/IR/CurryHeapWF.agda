@@ -101,7 +101,8 @@ module CurryHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   open ClosureWellFormedDef {FS} program-bound
     using (ValidAtWF; IRResultAWF; ResultPlace; at-loc; valid-closure-wf;
            RecDispatcherWF; BodyCorrect;
-           validityWF-mem-only; validityWF-frontier-advance)
+           validityWF-mem-only; validityWF-frontier-advance;
+           mk-IRResultAWF-via-bump)
 
   ----------------------------------------------------------------------
   -- run-curry-heap: emits the alloc-heap-based trace described above.
@@ -121,26 +122,18 @@ module CurryHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     IRResultAWF Heap (curry {k = k} f Heap) x s alloc
   run-curry-heap {A} {B} {C} {k} mIn f ir<bound rec-wf x input-loc s alloc
                  input-valid-wf input-before not-halted rdi-eq =
-    record
-      { base = record
-        { final-state = s-final
-        ; bump = mkBump 0 1
-        ; trace = curry-heap-trace
-        ; trace-is-ir-to-trace = refl
-        ; trace-correct = refl
-        -- Plan 0.16 TraceEvaluator: trajectory-coupled obligations
-        -- route through `trace-eval` (`halted-preserved` derives from
-        -- `trace-wf`).
-        ; alloc-correct = TraceEvaluator.exec-alloc-eq trace-eval
-        ; result-place = at-loc closure-loc closure-valid-final closure-before-final
-                            closure-rax-eq closure-valid-cont closure-before-cont
-        ; not-halted = TraceEvaluator.halted-preserved trace-eval not-halted
-        ; trace-twf = TraceEvaluator.trace-wf trace-eval
-        ; mem-preserved-before = TraceEvaluator.mem-preserved-before trace-eval
-        ; trace-preserves-halted = exec-trace-preserves-halted-WF curry-heap-trace
-        }
-      ; stack-inv = record
-        { slot-monotone = ≤-refl  -- alloc-final.next-slot = alloc.next-slot (scratch reclaimed)
+    mk-IRResultAWF-via-bump
+      s-final alloc-final curry-heap-trace (mkBump 0 1) refl
+      refl refl
+      (TraceEvaluator.exec-alloc-eq trace-eval)
+      (at-loc closure-loc closure-valid-final closure-before-final
+              closure-rax-eq closure-valid-cont closure-before-cont)
+      (TraceEvaluator.halted-preserved trace-eval not-halted)
+      (TraceEvaluator.mem-preserved-before trace-eval)
+      (TraceEvaluator.trace-wf trace-eval)
+      (exec-trace-preserves-halted-WF curry-heap-trace)
+      (record
+        { slot-monotone = ≤-refl
         ; max-slot-written = next-slot alloc +ℕ closure-heap-scratch
         ; max-slot-geq-final = m≤m+n (next-slot alloc) closure-heap-scratch
         ; stack-budget = closure-heap-scratch
@@ -153,8 +146,8 @@ module CurryHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; trace-slot-reads-below = curry-tsrb
         ; scratch-budget = closure-heap-scratch
         ; scratch-bounded = ≤-refl
-        }
-      ; heap-inv = record
+        })
+      (record
         { heap-monotone = n≤1+n (next-heap-ref alloc)
         ; heap-budget = 2
         ; max-heap-ref-written = next-heap-ref alloc-final
@@ -162,10 +155,7 @@ module CurryHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; max-heap-usage-bound = subst (suc (next-heap-ref alloc) ≤_)
                                         (+-comm 2 (next-heap-ref alloc))
                                         (n≤1+n (suc (next-heap-ref alloc)))
-        -- ARCHITECTURAL: trace-no-heap-writes is structurally false (uses
-        -- store-indirect / store-indirect-suc); kept SMP.!! by design.
-        }
-      }
+        })
     where
       ------------------------------------------------------------------
       -- Slot layout (scratch only; closure lives on the heap)

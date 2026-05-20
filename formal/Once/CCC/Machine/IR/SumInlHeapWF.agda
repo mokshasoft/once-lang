@@ -69,7 +69,7 @@ module SumInlHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
   open ClosureWellFormedDef {FS} program-bound
     using (ValidAtWF; IRResultAWF; ResultPlace; at-loc; valid-inl-wf;
-           RecDispatcherWF; validityWF-mem-only)
+           RecDispatcherWF; validityWF-mem-only; mk-IRResultAWF-via-bump)
 
   -- Heap-mode inl handler.
   run-inl-heap : ∀ {A B} (mIn : AllocMode)
@@ -81,25 +81,17 @@ module SumInlHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     readReg (regs s) Input1 ≡ SV-Ptr input-loc →
     IRResultAWF Heap (inl {A} {B} Heap) x s alloc
   run-inl-heap {A} {B} mIn x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
-    record
-      { base = record
-        { final-state = s-final
-        ; bump = mkBump 0 1
-        ; trace = inl-heap-trace
-        ; trace-is-ir-to-trace = refl
-        ; trace-correct = refl
-        -- alloc-correct, trace-twf, mem-preserved-before and the
-        -- not-halted-final argument all derive from `trace-eval`, the
-        -- bundled per-step state trajectory (Plan 0.16, TraceEvaluator).
-        ; alloc-correct = TraceEvaluator.exec-alloc-eq trace-eval
-        ; result-place = at-loc sum-loc sum-valid-final sum-before-final
-                            sum-rax-eq sum-valid-cont sum-before-cont
-        ; not-halted = TraceEvaluator.halted-preserved trace-eval not-halted
-        ; trace-twf = TraceEvaluator.trace-wf trace-eval
-        ; mem-preserved-before = TraceEvaluator.mem-preserved-before trace-eval
-        ; trace-preserves-halted = exec-trace-preserves-halted-WF inl-heap-trace
-        }
-      ; stack-inv = record
+    mk-IRResultAWF-via-bump
+      s-final alloc-final inl-heap-trace (mkBump 0 1) refl
+      refl refl
+      (TraceEvaluator.exec-alloc-eq trace-eval)
+      (at-loc sum-loc sum-valid-final sum-before-final
+              sum-rax-eq sum-valid-cont sum-before-cont)
+      (TraceEvaluator.halted-preserved trace-eval not-halted)
+      (TraceEvaluator.mem-preserved-before trace-eval)
+      (TraceEvaluator.trace-wf trace-eval)
+      (exec-trace-preserves-halted-WF inl-heap-trace)
+      (record
         { slot-monotone = ≤-refl
         ; max-slot-written = next-slot alloc +ℕ scratch-slots
         ; max-slot-geq-final = m≤m+n (next-slot alloc) scratch-slots
@@ -113,8 +105,8 @@ module SumInlHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; trace-slot-reads-below = inl-tsrb
         ; scratch-budget = scratch-slots
         ; scratch-bounded = ≤-refl
-        }
-      ; heap-inv = record
+        })
+      (record
         { heap-monotone = n≤1+n (next-heap-ref alloc)
         ; heap-budget = 2
         ; max-heap-ref-written = next-heap-ref alloc-final
@@ -122,8 +114,7 @@ module SumInlHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; max-heap-usage-bound = subst (suc (next-heap-ref alloc) ≤_)
                                         (+-comm 2 (next-heap-ref alloc))
                                         (n≤1+n (suc (next-heap-ref alloc)))
-        }
-      }
+        })
     where
       frame = current-frame alloc
       payload-stash = next-slot alloc
