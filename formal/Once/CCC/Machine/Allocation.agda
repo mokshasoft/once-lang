@@ -383,10 +383,20 @@ module FrontierInvariant {FS : FrameSemantics} where
   -- (every instruction preserves current-frame; see
   -- `exec-abstract-preserves-frame`), so the bump only touches
   -- `next-slot` and `next-heap-ref`.
+  --
+  -- Operand order: `delta + next-slot alloc`. Agda's `_+_` is
+  -- left-recursive (`zero + m = m`, `suc n + m = suc (n + m)`), so
+  -- concrete deltas reduce definitionally:
+  --   bump-0           → alloc unchanged (η of record)
+  --   mkBump 0 1       → record alloc { next-heap-ref = suc … }
+  --   mkBump 2 0       → record alloc { next-slot = suc (suc …) }
+  -- This matches the canonical forms produced by SumInlHeapWF,
+  -- CurryHeapWF, etc. Compositional producers (ApplyWF, PairHeapWF,
+  -- ComposeWF) restructure alloc-correct around `apply-bump-compose`.
   apply-bump : AllocBump → AllocState {FS} → AllocState {FS}
   apply-bump bump alloc = record alloc
-    { next-slot     = next-slot alloc +ℕ next-slot-delta bump
-    ; next-heap-ref = next-heap-ref alloc +ℕ next-heap-ref-delta bump
+    { next-slot     = next-slot-delta bump     +ℕ next-slot alloc
+    ; next-heap-ref = next-heap-ref-delta bump +ℕ next-heap-ref alloc
     }
 
   -- Zero bump: pure data-flow IR with no allocation effect.
@@ -407,29 +417,32 @@ module FrontierInvariant {FS : FrameSemantics} where
     current-frame (apply-bump bump alloc) ≡ current-frame alloc
   apply-bump-preserves-frame _ _ = refl
 
-  -- apply-bump composition: applying b1 then b2 is the same as
-  -- applying their sum. This is the key lemma for ComposeWF's
-  -- bump-additivity.
+  -- Composition of bumps: applying b1 then b2 equals applying their
+  -- sum-bump. Uses commutativity + associativity to align the nested
+  -- record-update with the single-bump form.
+  --   b2.s + (b1.s + alloc.s) = (b1.s + b2.s) + alloc.s
+  -- via assoc-then-comm-on-the-deltas. Same for next-heap-ref.
   apply-bump-compose : ∀ (b1 b2 : AllocBump) (alloc : AllocState {FS}) →
     apply-bump b2 (apply-bump b1 alloc) ≡ apply-bump (bump-+ b1 b2) alloc
   apply-bump-compose b1 b2 alloc = cong₂
     (λ s h → record alloc { next-slot = s ; next-heap-ref = h })
-    (+-assoc (next-slot alloc) (next-slot-delta b1) (next-slot-delta b2))
-    (+-assoc (next-heap-ref alloc) (next-heap-ref-delta b1) (next-heap-ref-delta b2))
-    where open import Data.Nat.Properties using (+-assoc)
-          open import Relation.Binary.PropositionalEquality using (cong₂)
+    (compose-eq (next-slot-delta b1) (next-slot-delta b2) (next-slot alloc))
+    (compose-eq (next-heap-ref-delta b1) (next-heap-ref-delta b2) (next-heap-ref alloc))
+    where
+      open import Data.Nat.Properties using (+-assoc; +-comm)
+      open import Relation.Binary.PropositionalEquality using (cong₂; cong)
+      -- d2 + (d1 + x) ≡ (d1 + d2) + x.
+      compose-eq : ∀ d1 d2 x → d2 +ℕ (d1 +ℕ x) ≡ (d1 +ℕ d2) +ℕ x
+      compose-eq d1 d2 x =
+        trans (sym (+-assoc d2 d1 x))
+              (cong (_+ℕ x) (+-comm d2 d1))
 
-  -- apply-bump bump-0 is the identity on next-slot / next-heap-ref
-  -- (but only propositionally — n +ℕ 0 doesn't reduce definitionally).
-  apply-bump-0-next-slot : ∀ (alloc : AllocState {FS}) →
-    next-slot (apply-bump bump-0 alloc) ≡ next-slot alloc
-  apply-bump-0-next-slot alloc = +-identityʳ (next-slot alloc)
-    where open import Data.Nat.Properties using (+-identityʳ)
-
-  apply-bump-0-next-heap-ref : ∀ (alloc : AllocState {FS}) →
-    next-heap-ref (apply-bump bump-0 alloc) ≡ next-heap-ref alloc
-  apply-bump-0-next-heap-ref alloc = +-identityʳ (next-heap-ref alloc)
-    where open import Data.Nat.Properties using (+-identityʳ)
+  -- apply-bump bump-0 reduces to alloc definitionally:
+  -- next-slot-delta bump-0 = 0 and 0 + n = n by Agda's left-recursive
+  -- `_+_`; then record { next-slot = next-slot alloc; … } = alloc by η.
+  apply-bump-0-eq : ∀ (alloc : AllocState {FS}) →
+    apply-bump bump-0 alloc ≡ alloc
+  apply-bump-0-eq _ = refl
 
 ------------------------------------------------------------------------
 -- Frame Push/Pop Operations

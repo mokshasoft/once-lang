@@ -417,6 +417,18 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     -- one new bundle field; the existing two sub-records stay untouched.
     --------------------------------------------------------------------
 
+    -- Plan 0.17: type-level alloc effect.
+    --
+    -- Each producer declares its `bump` (delta on next-slot and
+    -- next-heap-ref). `final-alloc` is a DERIVED projection:
+    -- `final-alloc = apply-bump bump alloc`. Inconsistencies between
+    -- the bump and the trace's actual alloc effect are caught by
+    -- `alloc-correct` (which ties trace to apply-bump). Inconsistencies
+    -- between the heap-result/stack-result discipline (e.g. a
+    -- heap-result producer that bumps next-slot) are caught by
+    -- `result-place`'s BeforeFrontier proofs.
+    --
+    -- See `plans/0.17-type-level-alloc-effect.md`.
     record IRResultBase (m : AllocMode)
                         {A B : Type}
                         (ir : IR A B)
@@ -426,8 +438,11 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       inductive
       field
         final-state : LocState FS
-        final-alloc : AllocState {FS}
         trace : AbstractTrace
+        -- Plan 0.17: declared alloc effect. The single source of truth
+        -- for how this IR transforms the AllocState. `final-alloc` is
+        -- derived from this + alloc (see derived projections below).
+        bump : AllocBump
         -- Plan 0.14 (2026-05-18): structural gap elimination. The
         -- trace MUST equal what IRToTrace emits at this alloc's
         -- frontier. Spec/runtime divergence becomes a type error.
@@ -436,27 +451,23 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
         trace-is-ir-to-trace :
           trace ≡ ir-to-trace-at-frontier (next-slot alloc) ir
         trace-correct : proj₁ (exec-trace trace s alloc) ≡ final-state
-        -- Plan 0.14: symmetric to trace-correct. Ties final-alloc to
-        -- the runtime alloc produced by exec-trace. With this, the
-        -- construction-time vs runtime alloc split disappears: any
-        -- consumer that wants TraceWF / BeforeFrontier at the runtime
-        -- alloc can rewrite via this equality. Producers that already
-        -- construct final-alloc to match exec-trace's output discharge
-        -- this with refl; producers that maintained synthetic allocs
-        -- need to either prove the equality or refactor to use the
-        -- runtime alloc directly.
-        alloc-correct : proj₂ (exec-trace trace s alloc) ≡ final-alloc
+        -- Plan 0.17: alloc-correct ties trace's runtime alloc to
+        -- `apply-bump bump alloc`. A producer whose trace bumps
+        -- next-slot while declaring next-slot-delta = 0 cannot
+        -- discharge this — type error.
+        alloc-correct :
+          proj₂ (exec-trace trace s alloc) ≡ apply-bump bump alloc
         -- continuation-alloc: caller's frame, but next-slot and
-        -- next-heap-ref both inherited from final-alloc (the resources
-        -- the IR consumed). Bumping next-heap-ref here is what makes
-        -- heap-mode pair / inl / inr's fresh AtDynamic result satisfy
-        -- BeforeFrontier on the continuation side.
-        result-place : ResultPlace B m final-alloc
-          (record alloc { next-slot     = next-slot     final-alloc
-                        ; next-heap-ref = next-heap-ref final-alloc })
+        -- next-heap-ref both inherited from apply-bump bump alloc
+        -- (the resources the IR consumed). Bumping next-heap-ref here
+        -- is what makes heap-mode pair / inl / inr's fresh AtDynamic
+        -- result satisfy BeforeFrontier on the continuation side.
+        result-place : ResultPlace B m (apply-bump bump alloc)
+          (record alloc
+            { next-slot     = next-slot     (apply-bump bump alloc)
+            ; next-heap-ref = next-heap-ref (apply-bump bump alloc) })
           (eval ir x) final-state
         not-halted : halted final-state ≡ false
-        frame-preserved : current-frame final-alloc ≡ current-frame alloc
         -- Plan 0.14: consequence-form memory preservation. Locations
         -- valid in the caller's view (BeforeFrontier alloc) read the
         -- same after the IR runs as before. Subsumes the old
@@ -472,6 +483,19 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
           halted s' ≡ false →
           TraceWF s' alloc' trace →
           halted (proj₁ (exec-trace trace s' alloc')) ≡ false
+
+      -- Plan 0.17: derived projection for backward-compat.
+      -- Consumers reading `IRResultBase.final-alloc r` get
+      -- `apply-bump bump alloc` — the same AllocState they got before,
+      -- just constructed from the declared bump rather than free-form.
+      final-alloc : AllocState {FS}
+      final-alloc = apply-bump bump alloc
+
+      -- Plan 0.17: derived (was a field). apply-bump only updates
+      -- next-slot / next-heap-ref via record syntax, so current-frame
+      -- is preserved by definition.
+      frame-preserved : current-frame final-alloc ≡ current-frame alloc
+      frame-preserved = apply-bump-preserves-frame bump alloc
 
     record IRStackBudget (alloc final-alloc : AllocState {FS})
                          (trace : AbstractTrace)

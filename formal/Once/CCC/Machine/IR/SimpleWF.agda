@@ -78,14 +78,13 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     record
       { base = record
         { final-state = s'
-        ; final-alloc = alloc
+        ; bump = bump-0
         ; trace = trace
         ; trace-is-ir-to-trace = refl
         ; trace-correct = refl
         ; alloc-correct = cong proj₂ (exec-trace-single mov-to-output s alloc not-halted)
         ; result-place = at-loc input-loc valid-s' input-before rax-eq valid-s' input-before
         ; not-halted = not-halted'
-        ; frame-preserved = refl
         ; trace-twf = twf-∷ tt twf-[]
         ; mem-preserved-before = mem-preserved-from-tnhw alloc trace s s' refl tt tt
         ; trace-preserves-halted = exec-trace-preserves-halted-WF trace
@@ -158,7 +157,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     mA , record
       { base = record
         { final-state = s'
-        ; final-alloc = alloc
+        ; bump = bump-0
         ; trace = trace
         ; trace-is-ir-to-trace = refl
         ; trace-correct = refl
@@ -167,7 +166,6 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
                   (exec-abstract-load-indirect-preserves-alloc s alloc)
         ; result-place = at-loc fst-loc fst-valid-s' fst-before rax-eq fst-valid-s' fst-before
         ; not-halted = not-halted'
-        ; frame-preserved = refl
         ; trace-twf =
             twf-∷ (input-loc , sv-as-loc-eq , SV-Ptr fst-loc , fst-ptr-eq) twf-[]
         ; mem-preserved-before = mem-preserved-from-tnhw alloc trace s s' refl tt tt
@@ -265,7 +263,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     mB , record
       { base = record
         { final-state = s'
-        ; final-alloc = alloc
+        ; bump = bump-0
         ; trace = trace
         ; trace-is-ir-to-trace = refl
         ; trace-correct = refl
@@ -274,7 +272,6 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
                   (exec-abstract-load-indirect-suc-preserves-alloc s alloc)
         ; result-place = at-loc snd-loc snd-valid-s' snd-before rax-eq snd-valid-s' snd-before
         ; not-halted = not-halted'
-        ; frame-preserved = refl
         ; trace-twf =
             twf-∷ (input-loc , sv-as-loc-eq , SV-Ptr snd-loc , snd-ptr-eq) twf-[]
         ; mem-preserved-before = mem-preserved-from-tnhw alloc trace s s' refl tt tt
@@ -378,7 +375,6 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; alloc-correct = refl
         ; result-place = unit-result
         ; not-halted = not-halted
-        ; frame-preserved = refl
         ; trace-twf = twf-[]
         ; mem-preserved-before = mem-preserved-from-tnhw alloc [] s s refl tt tt
         ; trace-preserves-halted = exec-trace-preserves-halted-WF []
@@ -432,14 +428,13 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     record
       { base = record
         { final-state = s'
-        ; final-alloc = alloc
+        ; bump = bump-0
         ; trace = trace
         ; trace-is-ir-to-trace = refl
         ; trace-correct = refl
         ; alloc-correct = cong proj₂ (exec-trace-single mov-to-output s alloc not-halted)
         ; result-place = unit-result
         ; not-halted = not-halted'
-        ; frame-preserved = refl
         ; trace-twf = twf-∷ tt twf-[]
         ; mem-preserved-before = mem-preserved-from-tnhw alloc trace s s' refl tt tt
         ; trace-preserves-halted = exec-trace-preserves-halted-WF trace
@@ -505,14 +500,13 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     record
       { base = record
         { final-state = s'
-        ; final-alloc = alloc
+        ; bump = bump-0
         ; trace = trace
         ; trace-is-ir-to-trace = refl
         ; trace-correct = refl
         ; alloc-correct = cong proj₂ (exec-trace-single mov-to-output s alloc not-halted)
         ; result-place = at-loc input-loc valid-eff input-before rax-eq valid-eff input-before
         ; not-halted = not-halted'
-        ; frame-preserved = refl
         ; trace-twf = twf-∷ tt twf-[]
         ; mem-preserved-before = mem-preserved-from-tnhw alloc trace s s' refl tt tt
         ; trace-preserves-halted = exec-trace-preserves-halted-WF trace

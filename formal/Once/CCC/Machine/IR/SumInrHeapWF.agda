@@ -84,7 +84,7 @@ module SumInrHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     record
       { base = record
         { final-state = s-final
-        ; final-alloc = alloc-final
+        ; bump = mkBump 0 1
         ; trace = inr-heap-trace
         ; trace-is-ir-to-trace = refl
         ; trace-correct = refl
@@ -95,7 +95,6 @@ module SumInrHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; result-place = at-loc sum-loc sum-valid-final sum-before-final
                             sum-rax-eq sum-valid-cont sum-before-cont
         ; not-halted = TraceEvaluator.halted-preserved trace-eval not-halted
-        ; frame-preserved = refl
         ; trace-twf = TraceEvaluator.trace-wf trace-eval
         ; mem-preserved-before = TraceEvaluator.mem-preserved-before trace-eval
         ; trace-preserves-halted = exec-trace-preserves-halted-WF inr-heap-trace

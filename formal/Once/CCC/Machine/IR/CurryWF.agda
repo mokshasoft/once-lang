@@ -171,14 +171,13 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     record
       { base = record
         { final-state = s'
-        ; final-alloc = alloc'
+        ; bump = mkBump closure-slots 0
         ; trace = trace
         ; trace-is-ir-to-trace = SMP.!!  -- dead path; CurryWF Stack not reached at runtime
         ; trace-correct = refl  -- BY DEFINITION
         ; alloc-correct = curry-trace-alloc-correct closure-slot s alloc not-halted
         ; result-place = at-loc closure-loc result-valid-wf' closure-before' rax-eq' reclaim-preserves-validity' reclaim-preserves-result'
         ; not-halted = not-halted'
-        ; frame-preserved = refl
         ; trace-twf = trace-twf'
         ; mem-preserved-before = mem-preserved-from-tnhw alloc trace s s' refl trace-writes-above' tt
         ; trace-preserves-halted = exec-trace-preserves-halted-WF trace

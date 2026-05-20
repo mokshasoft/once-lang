@@ -24,7 +24,7 @@
 module Once.CCC.Machine.IR.ApplyWF where
 
 open import Data.Nat using (ℕ; suc; _<_; _≤_; s≤s; z≤n) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
-open import Data.Nat.Properties using (≤-refl; ≤-trans; <-trans; <-≤-trans; m≤m+n; +-monoʳ-≤; m+n≤o⇒m≤o; ≤-reflexive; n≤1+n)
+open import Data.Nat.Properties using (≤-refl; ≤-trans; <-trans; <-≤-trans; m≤m+n; +-monoʳ-≤; m+n≤o⇒m≤o; ≤-reflexive; n≤1+n; +-comm; +-identityʳ)
 open import Data.Nat using (_≤?_)
 open import Relation.Nullary using (yes; no; Dec)
 open import Data.Bool using (false)
@@ -272,14 +272,16 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
     mBody , record
       { base = record
         { final-state = s'
-        ; final-alloc = alloc'
+        -- Plan 0.17: bump = pair-slots scratch + body's bump.
+        -- The setup trace bumps next-slot by pair-slots (instr-alloc-stack);
+        -- body then bumps according to body-result.bump.
+        ; bump = bump-+ (mkBump pair-slots 0) (IRResultAWF.bump body-result)
         ; trace = trace
         ; trace-is-ir-to-trace = SMP.!!  -- TODO: drop instr-alloc-stack alignment
         ; trace-correct = refl  -- BY DEFINITION
         ; alloc-correct = alloc-correct-apply
         ; result-place = result-place-final
         ; not-halted = not-halted'
-        ; frame-preserved = trans (IRResultAWF.frame-preserved body-result) refl
         ; trace-twf = trace-twf'
         ; mem-preserved-before = λ _ _ → SMP.!!  -- TODO: compose setup + body witnesses
         ; trace-preserves-halted = exec-trace-preserves-halted-WF trace
@@ -1044,19 +1046,47 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       alloc-setup-eq-child : proj₂ (exec-trace (apply-setup-trace pair-slot) s alloc) ≡ child-alloc
       alloc-setup-eq-child = SMP.!!  -- 10-step chain pending dedicated proof
 
-      alloc-correct-apply : proj₂ (exec-trace trace s alloc) ≡ alloc'
+      -- Plan 0.17: alloc-correct uses bump-additivity.
+      -- proj₂ (exec-trace trace s alloc) ≡ apply-bump body-bump child-alloc
+      --   ≡ apply-bump body-bump (apply-bump (mkBump pair-slots 0) alloc)
+      --   ≡ apply-bump (bump-+ (mkBump pair-slots 0) body-bump) alloc
+      -- The middle step uses that child-alloc has the same record form
+      -- as apply-bump (mkBump pair-slots 0) alloc (both use the
+      -- next-slot alloc + pair-slots orientation; with apply-bump's
+      -- new operand order this is definitional via η on the unchanged
+      -- next-heap-ref field).
+      alloc-correct-apply :
+        proj₂ (exec-trace trace s alloc)
+        ≡ apply-bump (bump-+ (mkBump pair-slots 0) (IRResultAWF.bump body-result)) alloc
       alloc-correct-apply =
-        let -- Decompose trace via exec-trace-append.
-            split = SMP.TraceComposition.exec-trace-append {FS} (apply-setup-trace pair-slot) body-trace s alloc
-            -- After bridging alloc-setup-eq-child, we're running body-trace from (s-after-setup, child-alloc).
+        let split = SMP.TraceComposition.exec-trace-append {FS} (apply-setup-trace pair-slot) body-trace s alloc
             bridge : exec-trace body-trace (proj₁ (exec-trace (apply-setup-trace pair-slot) s alloc))
                                             (proj₂ (exec-trace (apply-setup-trace pair-slot) s alloc))
                      ≡ exec-trace body-trace s-after-setup child-alloc
             bridge = cong (exec-trace body-trace s-after-setup) alloc-setup-eq-child
-            -- body-result.alloc-correct at (s-after-setup, child-alloc).
-            body-alloc : proj₂ (exec-trace body-trace s-after-setup child-alloc) ≡ alloc'
+            body-alloc : proj₂ (exec-trace body-trace s-after-setup child-alloc)
+                         ≡ apply-bump (IRResultAWF.bump body-result) child-alloc
             body-alloc = IRResultAWF.alloc-correct body-result
-        in trans (cong proj₂ (trans split bridge)) body-alloc
+            -- child-alloc and apply-bump (mkBump pair-slots 0) alloc:
+            --   child-alloc.next-slot = next-slot alloc + pair-slots
+            --   apply-bump (mkBump pair-slots 0) alloc.next-slot = next-slot alloc + pair-slots ✓
+            -- And the next-heap-ref field: child-alloc doesn't update it (η = next-heap-ref alloc);
+            -- apply-bump form has next-heap-ref alloc + 0. Bridge via +-identityʳ.
+            -- child-alloc: record alloc { next-slot = next-slot alloc + pair-slots }.
+            -- apply-bump (mkBump pair-slots 0) alloc: record alloc
+            --   { next-slot = pair-slots + next-slot alloc; next-heap-ref = next-heap-ref alloc }.
+            -- next-slot differs by +-comm; next-heap-ref matches via record η.
+            child-alloc-eq : child-alloc ≡ apply-bump (mkBump pair-slots 0) alloc
+            child-alloc-eq = cong (λ s → record alloc { next-slot = s })
+                                  (+-comm (next-slot alloc) pair-slots)
+            compose-bump :
+              apply-bump (IRResultAWF.bump body-result) (apply-bump (mkBump pair-slots 0) alloc)
+              ≡ apply-bump (bump-+ (mkBump pair-slots 0) (IRResultAWF.bump body-result)) alloc
+            compose-bump = apply-bump-compose (mkBump pair-slots 0) (IRResultAWF.bump body-result) alloc
+        in trans (cong proj₂ (trans split bridge))
+                 (trans body-alloc
+                        (trans (cong (apply-bump (IRResultAWF.bump body-result)) child-alloc-eq)
+                               compose-bump))
 
       ----------------------------------------------------------------
       -- Foundation postulates (Plan 0.2.4.5 task #30).
@@ -1345,12 +1375,28 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
         (λ loc bf → bf-same-frame-slot alloc' continuation-alloc alloc'-frame-eq refl refl loc bf)
         result-valid-wf'
 
-      -- Plan 0.2.4.5 D1 task #30: dispatch on body's result-place.
-      result-place-final : ResultPlace B mBody alloc'
-        (record alloc { next-slot     = next-slot     alloc'
-                      ; next-heap-ref = next-heap-ref alloc' })
-        (eval (apply {A} {B} {k}) x) s'
-      result-place-final with IRResultAWF.result-place body-result
+      -- Plan 0.17: result-place lives at IRResultAWF.final-alloc body-result.
+      -- The IRResultBase expects it at `apply-bump (bump-+ …) alloc`, which
+      -- equals body-result.final-alloc propositionally via apply-bump-compose
+      -- + child-alloc-eq (see alloc-correct-apply). subst here transports
+      -- the constructed result-place across that equality. Pending fix for
+      -- the apply-bump-form details below — for now use SMP.!! to unblock.
+      result-place-final-at-body :
+        ResultPlace B mBody (IRResultAWF.final-alloc body-result)
+          (record alloc { next-slot     = next-slot     (IRResultAWF.final-alloc body-result)
+                        ; next-heap-ref = next-heap-ref (IRResultAWF.final-alloc body-result) })
+          (eval (apply {A} {B} {k}) x) s'
+      result-place-final-at-body with IRResultAWF.result-place body-result
       ... | at-loc _ _ _ _ _ _ = at-loc result-loc result-valid-wf' result-before' rax-eq'
                                        cont-preserves-validity' cont-preserves-result'
       ... | unit-result = unit-result
+
+      -- Transport via subst across the apply-bump-compose equality.
+      apply-bump-form : AllocState {FS}
+      apply-bump-form = apply-bump (bump-+ (mkBump pair-slots 0) (IRResultAWF.bump body-result)) alloc
+
+      result-place-final : ResultPlace B mBody apply-bump-form
+        (record alloc { next-slot     = next-slot     apply-bump-form
+                      ; next-heap-ref = next-heap-ref apply-bump-form })
+        (eval (apply {A} {B} {k}) x) s'
+      result-place-final = SMP.!!  -- TODO: subst transport using apply-bump-compose

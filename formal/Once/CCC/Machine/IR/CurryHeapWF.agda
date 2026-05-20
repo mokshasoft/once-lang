@@ -124,7 +124,7 @@ module CurryHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     record
       { base = record
         { final-state = s-final
-        ; final-alloc = alloc-final
+        ; bump = mkBump 0 1
         ; trace = curry-heap-trace
         ; trace-is-ir-to-trace = refl
         ; trace-correct = refl
@@ -135,7 +135,6 @@ module CurryHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; result-place = at-loc closure-loc closure-valid-final closure-before-final
                             closure-rax-eq closure-valid-cont closure-before-cont
         ; not-halted = TraceEvaluator.halted-preserved trace-eval not-halted
-        ; frame-preserved = refl
         ; trace-twf = TraceEvaluator.trace-wf trace-eval
         ; mem-preserved-before = TraceEvaluator.mem-preserved-before trace-eval
         ; trace-preserves-halted = exec-trace-preserves-halted-WF curry-heap-trace
