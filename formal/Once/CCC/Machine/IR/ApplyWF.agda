@@ -107,7 +107,8 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
     using (exec-abstract-load-indirect-suc-preserves-input;
            exec-abstract-load-indirect-suc-preserves-mem;
            exec-abstract-load-indirect-preserves-input;
-           exec-abstract-load-indirect-output)
+           exec-abstract-load-indirect-output;
+           exec-abstract-load-indirect-suc-output)
 
   open import Once.CCC.Machine.ClosureWellFormed
   open ClosureWellFormedDef {FS} program-bound
@@ -409,10 +410,27 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       s1 = proj₁ (exec-trace step1-trace s alloc)
 
       -- After load-indirect-suc, Output = SV-Ptr arg-loc.
-      -- TODO: discharge — proof composes sv-as-loc-SV-Ptr rdi-eq + arg-ptr
-      -- through exec-abstract's load-indirect-suc with-branch.
+      -- Plan 0.16: composes lift-via-alloc-stack-preserves-mem + the
+      -- existing exec-abstract-load-indirect-suc-output lemma. The
+      -- step1-trace is a 2-instr trace (alloc-stack ∷ load-indirect-suc);
+      -- alloc-stack preserves rdi-eq + arg-ptr definitionally / via
+      -- readLoc-stackMem-eq, then load-indirect-suc-output gives Output.
       step1-output : readReg (regs s1) Output ≡ SV-Ptr arg-loc
-      step1-output = SMP.!!
+      step1-output =
+        let s' = proj₁ (exec-abstract (instr-alloc-stack pair-slots) s alloc)
+            alloc' = proj₂ (exec-abstract (instr-alloc-stack pair-slots) s alloc)
+            arg-ptr-s' : readLoc s' (sucLoc input-loc) ≡ just (SV-Ptr arg-loc)
+            arg-ptr-s' = trans (readLoc-stackMem-eq s' s (sucLoc input-loc) refl refl) arg-ptr
+            -- exec-trace step1-trace s alloc unfolds to
+            -- exec-abstract load-indirect-suc s' alloc' via
+            -- exec-trace-cons + exec-trace-single.
+            d1 = exec-trace-cons (instr-alloc-stack pair-slots) (load-indirect-suc ∷ []) s alloc not-halted
+            d2 = exec-trace-single load-indirect-suc s' alloc' not-halted
+            s1-eq : s1 ≡ proj₁ (exec-abstract load-indirect-suc s' alloc')
+            s1-eq = cong proj₁ (trans d1 d2)
+        in trans (cong (λ st → readReg (regs st) Output) s1-eq)
+                 (exec-abstract-load-indirect-suc-output s' alloc' input-loc
+                    (SV-Ptr arg-loc) rdi-eq arg-ptr-s')
 
       -- Step 2: store-at-slot (suc pair-slot)
       -- Writes Output (= arg-loc) to slot (suc pair-slot)
