@@ -483,7 +483,9 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
         (twf-∷ (load-indirect-suc-twf {s = s'} {alloc = alloc'}
                   input-loc (SV-Ptr arg-loc) rdi-eq arg-ptr-s')
         (twf-∷ tt
-        (twf-∷ (SMP.!!)          -- load-indirect: closure-ptr witness (pos 4, see prefix3-tph)
+        (twf-∷ (SMP.!!)          -- TODO pos-4 (same as setup-prefix-tph pos-4;
+                                  --      blocked by Agda forward-ref scoping
+                                  --      in let-body for s12/alloc12/etc.)
         (twf-∷ tt
         (twf-∷ tt
         (twf-∷ (SMP.!!) twf-[])))))) -- load-indirect: env-ptr witness (pos 7, TODO)
@@ -715,9 +717,14 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
                  (trans (writeReg-same (regs s3-partial) Input1 (readReg (regs s3-partial) Output))
                         step3-output)
 
-      -- Step 5: load-indirect reads *Input1 = *closure-loc = env-loc
+      -- Step 5: load-indirect reads *Input1 = *closure-loc = env-loc.
+      -- Plan 0.16 Rec 5: pos 1 (load-indirect at s12, same as prefix3-tph)
+      -- discharged via the helper. Pos 4 (load-indirect at s345) still
+      -- needs lifting through mov-to-input + instr-save-closure-reg.
       prefix345-tph : TraceWF s12 alloc12 prefix345
-      prefix345-tph = twf-∷ (SMP.!!)        -- TODO: load-indirect witness at s12
+      prefix345-tph = twf-∷ (load-indirect-twf {s = s12} {alloc = alloc12}
+                               input-loc (SV-Ptr closure-loc)
+                               input-after-s12 input-loc-readable-after-s12)
                       (twf-∷ tt
                       (twf-∷ tt
                       (twf-∷ (SMP.!!) twf-[])))  -- TODO: load-indirect witness at s345
@@ -758,23 +765,55 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       setup-decomp = refl
 
       -- TracePreservesHalted for the prefix. Pos-2 load-indirect-suc
-      -- discharged via the Plan 0.16 helper; positions 4 & 7 still
-      -- need chain lifting (TODO).
+      -- and pos-4 load-indirect discharged via Plan 0.16 helpers.
+      -- Pos-4 needs a subst from the trace-form (s12) to the chain-form
+      -- state because TraceWF's inductive structure threads via
+      -- exec-abstract, not exec-trace.
       setup-prefix-tph : TraceWF s alloc setup-prefix
       setup-prefix-tph =
         let s' = proj₁ (exec-abstract (instr-alloc-stack pair-slots) s alloc)
             alloc' = proj₂ (exec-abstract (instr-alloc-stack pair-slots) s alloc)
             arg-ptr-s' : readLoc s' (sucLoc input-loc) ≡ just (SV-Ptr arg-loc)
             arg-ptr-s' = trans (readLoc-stackMem-eq s' s (sucLoc input-loc) refl refl) arg-ptr
+            -- Bridge chain-form pos-4 state to s12 / alloc12.
+            chain-state-pos4 = proj₁ (exec-abstract (store-at-slot (suc pair-slot))
+                                       (proj₁ (exec-abstract load-indirect-suc s' alloc'))
+                                       (proj₂ (exec-abstract load-indirect-suc s' alloc')))
+            chain-alloc-pos4 = proj₂ (exec-abstract (store-at-slot (suc pair-slot))
+                                       (proj₁ (exec-abstract load-indirect-suc s' alloc'))
+                                       (proj₂ (exec-abstract load-indirect-suc s' alloc')))
+            not-halted-after-mov : halted (proj₁ (exec-abstract load-indirect-suc s' alloc')) ≡ false
+            not-halted-after-mov = exec-abstract-preserves-halted-WF load-indirect-suc s' alloc' not-halted
+                                     (load-indirect-suc-twf {s = s'} {alloc = alloc'}
+                                        input-loc (SV-Ptr arg-loc) rdi-eq arg-ptr-s')
+            -- s12 = exec-trace prefix12 s alloc unfolds to the chain form
+            -- via two exec-trace-cons + one exec-trace-single.
+            d1 = exec-trace-cons (instr-alloc-stack pair-slots) _ s alloc not-halted
+            d2 = exec-trace-cons load-indirect-suc _ s' alloc' not-halted
+            d3 = exec-trace-single (store-at-slot (suc pair-slot))
+                   (proj₁ (exec-abstract load-indirect-suc s' alloc'))
+                   (proj₂ (exec-abstract load-indirect-suc s' alloc'))
+                   not-halted-after-mov
+            chain-eq : (s12 , alloc12) ≡ (chain-state-pos4 , chain-alloc-pos4)
+            chain-eq = trans d1 (trans d2 d3)
+            -- Transport the pos-4 witness from (s12, alloc12) to the
+            -- chain-form state via subst.
+            pos4-witness-at-s12 : InstrWF s12 alloc12 load-indirect
+            pos4-witness-at-s12 = load-indirect-twf {s = s12} {alloc = alloc12}
+                                    input-loc (SV-Ptr closure-loc)
+                                    input-after-s12 input-loc-readable-after-s12
+            pos4-witness : InstrWF chain-state-pos4 chain-alloc-pos4 load-indirect
+            pos4-witness = subst (λ p → InstrWF (proj₁ p) (proj₂ p) load-indirect)
+                                 chain-eq pos4-witness-at-s12
         in
         twf-∷ tt                 -- instr-alloc-stack: InstrWF = ⊤
         (twf-∷ (load-indirect-suc-twf {s = s'} {alloc = alloc'}
                   input-loc (SV-Ptr arg-loc) rdi-eq arg-ptr-s')
         (twf-∷ tt
-        (twf-∷ (SMP.!!)          -- TODO: load-indirect witness (mid-chain)
+        (twf-∷ pos4-witness      -- load-indirect at chain-form pos-4 (= s12 via subst)
         (twf-∷ tt
         (twf-∷ tt
-        (twf-∷ (SMP.!!)          -- TODO: load-indirect witness (late)
+        (twf-∷ (SMP.!!)          -- TODO: load-indirect witness (late, pos 7)
         (twf-∷ tt twf-[])))))))
 
       not-halted-after-prefix : halted (proj₁ (exec-trace setup-prefix s alloc)) ≡ false
@@ -794,24 +833,50 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
                  (sym eq1) eq2
 
       -- Setup trace preserves halted (used in multiple places).
-      -- Pos-2 load-indirect-suc discharged via Plan 0.16 helper; the
-      -- mid-chain and late load-indirect witnesses (positions 4 and 7)
-      -- still require chain lifting through store-at-slot / mov-to-input.
+      -- Pos-2 load-indirect-suc and pos-4 load-indirect discharged via
+      -- Plan 0.16 helpers; pos-4 uses the subst bridge from
+      -- (s12, alloc12) to the chain-form state. Pos-7 still pending
+      -- (further chain lifting through mov-to-input / save-closure-reg).
       setup-tph : TraceWF s alloc (apply-setup-trace pair-slot)
       setup-tph =
         let s' = proj₁ (exec-abstract (instr-alloc-stack pair-slots) s alloc)
             alloc' = proj₂ (exec-abstract (instr-alloc-stack pair-slots) s alloc)
             arg-ptr-s' : readLoc s' (sucLoc input-loc) ≡ just (SV-Ptr arg-loc)
             arg-ptr-s' = trans (readLoc-stackMem-eq s' s (sucLoc input-loc) refl refl) arg-ptr
+            chain-state-pos4 = proj₁ (exec-abstract (store-at-slot (suc pair-slot))
+                                       (proj₁ (exec-abstract load-indirect-suc s' alloc'))
+                                       (proj₂ (exec-abstract load-indirect-suc s' alloc')))
+            chain-alloc-pos4 = proj₂ (exec-abstract (store-at-slot (suc pair-slot))
+                                       (proj₁ (exec-abstract load-indirect-suc s' alloc'))
+                                       (proj₂ (exec-abstract load-indirect-suc s' alloc')))
+            not-halted-after-mov : halted (proj₁ (exec-abstract load-indirect-suc s' alloc')) ≡ false
+            not-halted-after-mov = exec-abstract-preserves-halted-WF load-indirect-suc s' alloc' not-halted
+                                     (load-indirect-suc-twf {s = s'} {alloc = alloc'}
+                                        input-loc (SV-Ptr arg-loc) rdi-eq arg-ptr-s')
+            d1 = exec-trace-cons (instr-alloc-stack pair-slots) _ s alloc not-halted
+            d2 = exec-trace-cons load-indirect-suc _ s' alloc' not-halted
+            d3 = exec-trace-single (store-at-slot (suc pair-slot))
+                   (proj₁ (exec-abstract load-indirect-suc s' alloc'))
+                   (proj₂ (exec-abstract load-indirect-suc s' alloc'))
+                   not-halted-after-mov
+            chain-eq : (s12 , alloc12) ≡ (chain-state-pos4 , chain-alloc-pos4)
+            chain-eq = trans d1 (trans d2 d3)
+            pos4-witness-at-s12 : InstrWF s12 alloc12 load-indirect
+            pos4-witness-at-s12 = load-indirect-twf {s = s12} {alloc = alloc12}
+                                    input-loc (SV-Ptr closure-loc)
+                                    input-after-s12 input-loc-readable-after-s12
+            pos4-witness : InstrWF chain-state-pos4 chain-alloc-pos4 load-indirect
+            pos4-witness = subst (λ p → InstrWF (proj₁ p) (proj₂ p) load-indirect)
+                                 chain-eq pos4-witness-at-s12
         in
         twf-∷ tt                 -- instr-alloc-stack pair-slots: InstrWF = ⊤
         (twf-∷ (load-indirect-suc-twf {s = s'} {alloc = alloc'}
                   input-loc (SV-Ptr arg-loc) rdi-eq arg-ptr-s')
         (twf-∷ tt
-        (twf-∷ (SMP.!!)          -- TODO: load-indirect witness (mid-chain)
+        (twf-∷ pos4-witness      -- load-indirect at chain-form pos-4 (= s12 via subst)
         (twf-∷ tt
         (twf-∷ tt
-        (twf-∷ (SMP.!!)          -- TODO: load-indirect witness (late)
+        (twf-∷ (SMP.!!)          -- TODO: load-indirect witness (late, pos 7)
         (twf-∷ tt
         (twf-∷ tt
         (twf-∷ tt twf-[])))))))))
