@@ -744,9 +744,8 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       suffix-no-heap-writes = tt
 
       ------------------------------------------------------------------------
-      -- Prove output-after-prefix: Output = env-loc after steps 1-5
-      --
-      -- Step by step:
+      -- Prefix step-by-step (left as documentation for the per-position
+      -- semantic discharges in `prefix-for-env-tph` and friends):
       --   1. load-indirect-suc: Output := *(sucLoc Input1) = arg-loc
       --   2. store-at-slot: Output unchanged
       --   3. load-indirect: Output := *Input1 = closure-loc
@@ -819,20 +818,13 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       not-halted-s345 : halted (proj₁ (exec-trace prefix345 s12 alloc12)) ≡ false
       not-halted-s345 = exec-trace-preserves-halted-WF prefix345 s12 alloc12 not-halted-s12 prefix345-tph
 
-      -- After step 5, Output = *closure-loc = env-loc
-      output-after-prefix : readReg (regs (proj₁ (exec-trace prefix-for-env s alloc))) Output ≡ SV-Ptr env-loc
-      output-after-prefix =
-        let -- Decompose prefix execution
-            prefix-decomp : proj₁ (exec-trace prefix-for-env s alloc) ≡
-                           proj₁ (exec-trace prefix345 s12 alloc12)
-            prefix-decomp = cong proj₁ (exec-trace-append prefix12 prefix345 s alloc)
-        in trans (cong (λ s' → readReg (regs s') Output) prefix-decomp)
-                 (step5-output-final s12 alloc12 not-halted-s12)
-        where
-          step5-output-final : (s₀ : LocState FS) (a₀ : AllocState {FS}) →
-            halted s₀ ≡ false →
-            readReg (regs (proj₁ (exec-trace prefix345 s₀ a₀))) Output ≡ SV-Ptr env-loc
-          step5-output-final s₀ a₀ nh = SMP.!!  -- Final step needs closure memory read
+      -- Plan 0.16 cleanup: `output-after-prefix` / `step5-output-final`
+      -- (previously declared here but never referenced) deleted as
+      -- dead scaffolding. They claimed `readReg s-after-prefix Output
+      -- ≡ SV-Ptr env-loc` but were never consumed by any IRResultBase
+      -- field or downstream proof. The semantic content (Output =
+      -- env-loc after the load ∷ mov ∷ save ∷ load chain) folds into
+      -- pair-env-ptr directly if needed.
 
       -- TODO (post-scaffold): rederive via a TraceWF-shaped
       -- prefix-store-preserve. Original proof used the tph chain.
