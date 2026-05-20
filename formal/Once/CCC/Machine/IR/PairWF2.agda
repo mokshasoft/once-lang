@@ -65,7 +65,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
   -- Types from ClosureWellFormed
   open ClosureWellFormedDef {FS} program-bound
     using (ValidAtWF; IRResultAWF; ResultPlace; unit-result; at-loc;
-           RecDispatcherWF;
+           RecDispatcherWF; mk-IRResultAWF-via-bump;
            valid-pair-wf; valid-unit-wf;
            validityWF-mem-only; validityWF-mem-preserved;
            validityWF-mem-preserved-in-regions;
@@ -93,23 +93,24 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
 
   run-pair {A} {B} {C} mIn f g rec-wf x input-loc s alloc
            input-valid-wf input-before not-halted rdi-eq =
-    record
-      { base = record
-        { final-state = s-final
-        ; final-alloc = alloc-final
-        ; trace = pair-trace
-        ; trace-is-ir-to-trace = SMP.!!  -- TODO: drop instr-alloc-stack alignment
-        ; trace-correct = refl  -- s-final DEFINED by trace
-        ; alloc-correct = alloc-correct-pair
-        ; result-place = at-loc pair-loc pair-valid-wf-final pair-before rax-eq pair-valid-wf-final pair-before
-        ; not-halted = not-halted-final
-        ; frame-preserved = refl
-        ; trace-twf = pair-trace-twf
-        ; mem-preserved-before = mem-preserved-from-tnhw alloc pair-trace s s-final refl
-            pair-trace-writes-above pair-trace-no-heap-writes
-        ; trace-preserves-halted = exec-trace-preserves-halted-WF pair-trace
-        }
-      ; stack-inv = record
+    -- Plan 0.17: use mk-IRResultAWF-via-bump.
+    mk-IRResultAWF-via-bump
+      s-final
+      alloc-final
+      pair-trace
+      pair-bump
+      pair-bump-eq
+      SMP.!!  -- trace-is-ir-to-trace (Pattern 1)
+      refl
+      alloc-correct-pair
+      (at-loc pair-loc pair-valid-wf-final pair-before rax-eq
+              pair-valid-wf-final pair-before)
+      not-halted-final
+      (mem-preserved-from-tnhw alloc pair-trace s s-final refl
+            pair-trace-writes-above pair-trace-no-heap-writes)
+      pair-trace-twf
+      (exec-trace-preserves-halted-WF pair-trace)
+      (record
         { slot-monotone = slot-monotone-pair
         ; max-slot-written = pair-max-slot
         ; max-slot-geq-final = pair-max-slot-geq-final
@@ -123,16 +124,15 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
         ; trace-slot-reads-below = pair-trace-slot-reads-below
         ; scratch-budget = req-pair-scratch
         ; scratch-bounded = pair-scratch-bounded
-        }
-      ; heap-inv = record
+        })
+      (record
         { heap-monotone = ≤-trans (IRResultAWF.heap-monotone result-f)
                                   (IRResultAWF.heap-monotone result-g)
         ; heap-budget = IRResultAWF.heap-budget result-f +ℕ IRResultAWF.heap-budget result-g
         ; max-heap-ref-written = IRResultAWF.max-heap-ref-written result-g
         ; max-heap-ref-geq-final = IRResultAWF.max-heap-ref-geq-final result-g
         ; max-heap-usage-bound = pair-max-heap-usage-bound
-        }
-      }
+        })
     where
       ------------------------------------------------------------------------
       -- Slot Layout (pure arithmetic, no functions)
@@ -1068,6 +1068,15 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
       alloc-final : AllocState {FS}
       alloc-final = record alloc { next-slot     = reclaim-g
                                  ; next-heap-ref = next-heap-ref (IRResultAWF.final-alloc result-g) }
+
+      -- Plan 0.17: pair-bump for stack-mode pair. Both slot and heap
+      -- deltas are non-trivial because pair-reclaim depends on
+      -- sub-IR bumps. Concrete arithmetic via pair-bump-eq below.
+      pair-bump : AllocBump
+      pair-bump = SMP.!!  -- TODO: compose from sub-IR bumps + pair scratch
+
+      pair-bump-eq : alloc-final ≡ apply-bump pair-bump alloc
+      pair-bump-eq = SMP.!!  -- TODO Plan 0.17 Phase 5: concrete arithmetic bridge
 
       pair-reclaim = reclaim-g
 

@@ -56,7 +56,7 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   open import Once.CCC.Machine.ClosureWellFormed
   open ClosureWellFormedDef {FS} program-bound
     using (ValidAtWF; IRResultAWF; ResultPlace; unit-result; at-loc;
-           valid-unit-wf;
+           valid-unit-wf; mk-IRResultAWF-via-bump;
            RecDispatcherWF; validityWF-mem-only;
            validityWF-frontier-advance; validityWF-mem-preserved;
            validityWF-with-bf-transfer; mem-preserved-from-tnhw)
@@ -168,64 +168,46 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     readReg (regs s) Input1 ≡ SV-Ptr input-loc →
     ∃[ mOut ] IRResultAWF mOut (g ∘ f) x s alloc
   run-compose mIn f g rec-wf x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
-    mOut , record
-      { base = record
-        { final-state = s-final
-        ; final-alloc = alloc₂
-        ; trace = compose-trace
-        ; trace-is-ir-to-trace = SMP.!!  -- TODO: compose decomp lemma
-        ; trace-correct = refl  -- s-final DEFINED by trace
-        -- Plan 0.16 TraceEvaluator: alloc-correct + trace-twf +
-        -- mem-preserved-before + not-halted route through `trace-eval`.
-        -- The underlying derivations (`alloc-correct-compose`,
-        -- `compose-trace-twf`, `not-halted-final`) feed into the TE.
-        ; alloc-correct = TraceEvaluator.exec-alloc-eq trace-eval
-        ; result-place =
-            -- result-g.result-place has continuation built from alloc₁
-            -- (the actual input alloc to g). Bridge to compose's claim
-            -- (continuation built from alloc) via subst on current-frame
-            -- using frame-preserved result-f.
-            let result-place-at-alloc₁ : ResultPlace _ mOut alloc₂
-                  (record alloc₁ { next-slot     = next-slot     alloc₂
-                                 ; next-heap-ref = next-heap-ref alloc₂ })
-                  (eval g (eval f x)) s₂
-                result-place-at-alloc₁ = IRResultAWF.result-place result-g
-                place-at-alloc-frame :
-                  ResultPlace _ mOut alloc₂
-                    (record alloc { next-slot     = next-slot     alloc₂
-                                  ; next-heap-ref = next-heap-ref alloc₂ })
-                    (eval g (eval f x)) s₂
-                place-at-alloc-frame =
-                  subst (λ fr → ResultPlace _ mOut alloc₂
-                          (record alloc₁ { current-frame = fr
-                                         ; next-slot     = next-slot     alloc₂
-                                         ; next-heap-ref = next-heap-ref alloc₂ })
-                          (eval g (eval f x)) s₂)
-                        (IRResultAWF.frame-preserved result-f)
-                        result-place-at-alloc₁
-            in subst
-                 (λ st → ResultPlace _ mOut alloc₂
-                           (record alloc { next-slot     = next-slot     alloc₂
-                                         ; next-heap-ref = next-heap-ref alloc₂ })
-                           (eval g (eval f x)) st)
-                 (sym s-final-eq)
-                 place-at-alloc-frame
-        -- not-halted stays derived from result-g (not routed through TE.halted-preserved
-        -- here, since that path would introduce a dependency on the
-        -- scaffolded trace-wf).
-        ; not-halted = not-halted-final
-        ; frame-preserved = trans (IRResultAWF.frame-preserved result-g)
-                                  (IRResultAWF.frame-preserved result-f)
-        ; trace-twf = TraceEvaluator.trace-wf trace-eval
-        -- Plan 0.14 follow-up: previously derived via mem-preserved-from-tnhw
-        -- + compose-trace-no-heap-writes (eliminated). The principled
-        -- replacement composes sub-IR mem-preserved-before via
-        -- `mem-preserved-compose`, which requires accounting for
-        -- mov-to-input's state shift; postulated for now via TE.
-        ; mem-preserved-before = TraceEvaluator.mem-preserved-before trace-eval
-        ; trace-preserves-halted = exec-trace-preserves-halted-WF compose-trace
-        }
-      ; stack-inv = record
+    -- Plan 0.17: bump = bump-+ result-f.bump result-g.bump.
+    mOut , mk-IRResultAWF-via-bump
+      s-final
+      alloc₂
+      compose-trace
+      compose-bump
+      compose-bump-eq
+      SMP.!!  -- trace-is-ir-to-trace
+      refl
+      (TraceEvaluator.exec-alloc-eq trace-eval)
+      (let result-place-at-alloc₁ : ResultPlace _ mOut alloc₂
+             (record alloc₁ { next-slot     = next-slot     alloc₂
+                            ; next-heap-ref = next-heap-ref alloc₂ })
+             (eval g (eval f x)) s₂
+           result-place-at-alloc₁ = IRResultAWF.result-place result-g
+           place-at-alloc-frame :
+             ResultPlace _ mOut alloc₂
+               (record alloc { next-slot     = next-slot     alloc₂
+                             ; next-heap-ref = next-heap-ref alloc₂ })
+               (eval g (eval f x)) s₂
+           place-at-alloc-frame =
+             subst (λ fr → ResultPlace _ mOut alloc₂
+                     (record alloc₁ { current-frame = fr
+                                    ; next-slot     = next-slot     alloc₂
+                                    ; next-heap-ref = next-heap-ref alloc₂ })
+                     (eval g (eval f x)) s₂)
+                   (IRResultAWF.frame-preserved result-f)
+                   result-place-at-alloc₁
+       in subst
+            (λ st → ResultPlace _ mOut alloc₂
+                      (record alloc { next-slot     = next-slot     alloc₂
+                                    ; next-heap-ref = next-heap-ref alloc₂ })
+                      (eval g (eval f x)) st)
+            (sym s-final-eq)
+            place-at-alloc-frame)
+      not-halted-final
+      (TraceEvaluator.mem-preserved-before trace-eval)
+      (TraceEvaluator.trace-wf trace-eval)
+      (exec-trace-preserves-halted-WF compose-trace)
+      (record
         { slot-monotone = slot-mono
         ; max-slot-written = compose-max-slot
         ; max-slot-geq-final = compose-max-slot-geq-final
@@ -239,21 +221,14 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; trace-slot-reads-below = compose-trace-slot-reads-below
         ; scratch-budget = req-compose-scratch
         ; scratch-bounded = compose-scratch-bounded
-        }
-      ; heap-inv = record
+        })
+      (record
         { heap-monotone = heap-mono
         ; heap-budget = IRResultAWF.heap-budget result-f +ℕ IRResultAWF.heap-budget result-g
-        -- For the bound, use result-g's max-heap-ref-written (it's
-        -- the largest since heap-monotone is ≤). The full chain
-        -- (result-g's bound + result-f's contribution) is the right
-        -- thing; for current stack-only sub-IRs both are 0 anyway.
-        -- Phase B.0: defer the composed-bound proof via !!; this is
-        -- mechanical algebra once both sub-budgets are tracked.
         ; max-heap-ref-written = IRResultAWF.max-heap-ref-written result-g
         ; max-heap-ref-geq-final = IRResultAWF.max-heap-ref-geq-final result-g
         ; max-heap-usage-bound = SMP.!!
-        }
-      }
+        })
     where
       -- Plan 0.2.4.5 D1 task #30: dynamic stack-budget composition.
       -- rf / rg / req-compose are defined below after result-f / result-g
@@ -353,6 +328,14 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       s₂ = IRResultAWF.final-state result-g
       alloc₂ = IRResultAWF.final-alloc result-g
       g-trace = IRResultAWF.trace result-g
+
+      -- Plan 0.17: compose-bump = bump-+ result-f.bump result-g.bump.
+      -- (Composition: f's effect then g's effect.)
+      compose-bump : AllocBump
+      compose-bump = bump-+ (IRResultAWF.bump result-f) (IRResultAWF.bump result-g)
+
+      compose-bump-eq : alloc₂ ≡ apply-bump compose-bump alloc
+      compose-bump-eq = SMP.!!  -- TODO: derive from f's and g's alloc-correct + apply-bump-compose
       -- Plan 0.2.4.5 D1 task #28: result-loc-g, result-before-g
       -- removed — the compose's result-place is now constructed by
       -- whole-bundle transport (see line ~175), not by unbundling

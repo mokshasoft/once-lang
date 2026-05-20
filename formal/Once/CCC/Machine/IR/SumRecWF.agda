@@ -66,6 +66,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   open import Once.CCC.Machine.ClosureWellFormed
   open ClosureWellFormedDef {FS} program-bound
     using (ValidAtWF; IRResultAWF; ResultPlace; unit-result; at-loc; RecDispatcherWF; valid-unit-wf;
+           mk-IRResultAWF-via-bump;
            validityWF-mem-only; validityWF-frontier-advance;
            validityWF-alloc-advance; validityWF-mem-preserved;
            validityWF-write-at-frontier; validityWF-write-at-suc-frontier;
@@ -374,22 +375,19 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     IRResultAWF Stack (inl {A} {B} Stack) x s alloc
 
   run-inl {A} {B} mIn x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
-    record
-      { base = record
-        { final-state = s-final
-        ; final-alloc = alloc₁
-        ; trace = inl-trace
-        ; trace-is-ir-to-trace = SMP.!!  -- TODO: drop instr-alloc-stack alignment
-        ; trace-correct = inl-inr-trace-state-correct sum-slots 0 (suc (next-slot alloc)) (next-slot alloc) s alloc input-loc sum-loc s-final rdi-eq refl refl not-halted
-        ; alloc-correct = inl-inr-trace-alloc-correct sum-slots 0 (suc (next-slot alloc)) (next-slot alloc) s alloc not-halted
-        ; result-place = at-loc sum-loc inl-valid-wf-final sum-before rax-eq inl-reclaim-preserves-validity inl-reclaim-preserves-result
-        ; not-halted = not-halted
-        ; frame-preserved = refl
-        ; trace-twf = twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt twf-[])))))
-        ; mem-preserved-before = λ _ _ → SMP.!!
-        ; trace-preserves-halted = exec-trace-preserves-halted-WF inl-trace
-        }
-      ; stack-inv = record
+    -- Plan 0.17: bump = mkBump sum-slots 0 (stack-only). SMP.!! bridge
+    -- left for concrete arithmetic discharge.
+    mk-IRResultAWF-via-bump
+      s-final alloc₁ inl-trace SMP.!! SMP.!!
+      SMP.!!  -- trace-is-ir-to-trace
+      (inl-inr-trace-state-correct sum-slots 0 (suc (next-slot alloc)) (next-slot alloc) s alloc input-loc sum-loc s-final rdi-eq refl refl not-halted)
+      (inl-inr-trace-alloc-correct sum-slots 0 (suc (next-slot alloc)) (next-slot alloc) s alloc not-halted)
+      (at-loc sum-loc inl-valid-wf-final sum-before rax-eq inl-reclaim-preserves-validity inl-reclaim-preserves-result)
+      not-halted
+      (λ _ _ → SMP.!!)
+      (twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt twf-[]))))))
+      (exec-trace-preserves-halted-WF inl-trace)
+      (record
         { slot-monotone = slot-monotone-inl
         ; max-slot-written = next-slot alloc +ℕ sum-slots
         ; max-slot-geq-final = ≤-refl
@@ -404,15 +402,14 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; trace-slot-reads-below = tt
         ; scratch-budget = ir-scratch-requirement (inl {A} {B} Stack)
         ; scratch-bounded = m≤m+n (next-slot alloc +ℕ 2) 2
-        }
-      ; heap-inv = record
+        })
+      (record
         { heap-monotone = ≤-refl
         ; heap-budget = 0
         ; max-heap-ref-written = next-heap-ref alloc
         ; max-heap-ref-geq-final = ≤-refl
         ; max-heap-usage-bound = m≤m+n (next-heap-ref alloc) 0
-        }
-      }
+        })
     where
       -- Stack mode: sum-slots = stack-type-slots (A + B) = 2 (tag + pointer)
       sum-slots : ℕ
@@ -530,22 +527,17 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     IRResultAWF Stack (inr {A} {B} Stack) x s alloc
 
   run-inr {A} {B} mIn x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
-    record
-      { base = record
-        { final-state = s-final
-        ; final-alloc = alloc₁
-        ; trace = inr-trace
-        ; trace-is-ir-to-trace = SMP.!!  -- TODO: drop instr-alloc-stack alignment
-        ; trace-correct = inl-inr-trace-state-correct sum-slots 1 (suc (next-slot alloc)) (next-slot alloc) s alloc input-loc sum-loc s-final rdi-eq refl refl not-halted
-        ; alloc-correct = inl-inr-trace-alloc-correct sum-slots 1 (suc (next-slot alloc)) (next-slot alloc) s alloc not-halted
-        ; result-place = at-loc sum-loc inr-valid-wf-final sum-before rax-eq inr-reclaim-preserves-validity inr-reclaim-preserves-result
-        ; not-halted = not-halted
-        ; frame-preserved = refl
-        ; trace-twf = twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt twf-[])))))
-        ; mem-preserved-before = λ _ _ → SMP.!!
-        ; trace-preserves-halted = exec-trace-preserves-halted-WF inr-trace
-        }
-      ; stack-inv = record
+    mk-IRResultAWF-via-bump
+      s-final alloc₁ inr-trace SMP.!! SMP.!!
+      SMP.!!
+      (inl-inr-trace-state-correct sum-slots 1 (suc (next-slot alloc)) (next-slot alloc) s alloc input-loc sum-loc s-final rdi-eq refl refl not-halted)
+      (inl-inr-trace-alloc-correct sum-slots 1 (suc (next-slot alloc)) (next-slot alloc) s alloc not-halted)
+      (at-loc sum-loc inr-valid-wf-final sum-before rax-eq inr-reclaim-preserves-validity inr-reclaim-preserves-result)
+      not-halted
+      (λ _ _ → SMP.!!)
+      (twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt twf-[]))))))
+      (exec-trace-preserves-halted-WF inr-trace)
+      (record
         { slot-monotone = slot-monotone-inr
         ; max-slot-written = next-slot alloc +ℕ sum-slots
         ; max-slot-geq-final = ≤-refl
@@ -560,26 +552,22 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; trace-slot-reads-below = tt
         ; scratch-budget = ir-scratch-requirement (inr {A} {B} Stack)
         ; scratch-bounded = m≤m+n (next-slot alloc +ℕ 2) 2
-        }
-      ; heap-inv = record
+        })
+      (record
         { heap-monotone = ≤-refl
         ; heap-budget = 0
         ; max-heap-ref-written = next-heap-ref alloc
         ; max-heap-ref-geq-final = ≤-refl
         ; max-heap-usage-bound = m≤m+n (next-heap-ref alloc) 0
-        }
-      }
+        })
     where
-      -- Stack mode: sum-slots = stack-type-slots (A + B) = 2 (tag + pointer)
       sum-slots : ℕ
       sum-slots = 2
 
       sum-loc = AtStack (current-frame alloc) (next-slot alloc)
 
       alloc₁ : AllocState {FS}
-      alloc₁ = record alloc
-        { next-slot = next-slot alloc +ℕ sum-slots
-                }
+      alloc₁ = record alloc { next-slot = next-slot alloc +ℕ sum-slots }
 
       -- Write payload pointer to sucLoc sum-loc
       s₁ = write-loc s (sucLoc sum-loc) input-loc
