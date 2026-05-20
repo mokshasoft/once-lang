@@ -64,6 +64,7 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
            validityWF-alloc-advance; validityWF-frontier-advance;
            validityWF-write-at-frontier; validityWF-write-at-suc-frontier;
            validityWF-with-bf-transfer; validityWF-trace-preserves;
+           mk-IRResultAWF-via-bump;
            mem-preserved-from-tnhw)
 
   -- Import bf-same-frame-slot from BFTransfer module
@@ -168,21 +169,25 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     IRResultAWF Heap (curry {k = k} f m) x s alloc
   run-curry {A} {B} {C} {k} mIn f m ir<bound rec-wf x input-loc s alloc
     input-valid-wf input-before not-halted rdi-eq =
-    record
-      { base = record
-        { final-state = s'
-        ; bump = mkBump closure-slots 0
-        ; trace = trace
-        ; trace-is-ir-to-trace = SMP.!!  -- dead path; CurryWF Stack not reached at runtime
-        ; trace-correct = refl  -- BY DEFINITION
-        ; alloc-correct = curry-trace-alloc-correct closure-slot s alloc not-halted
-        ; result-place = at-loc closure-loc result-valid-wf' closure-before' rax-eq' reclaim-preserves-validity' reclaim-preserves-result'
-        ; not-halted = not-halted'
-        ; trace-twf = trace-twf'
-        ; mem-preserved-before = mem-preserved-from-tnhw alloc trace s s' refl trace-writes-above' tt
-        ; trace-preserves-halted = exec-trace-preserves-halted-WF trace
-        }
-      ; stack-inv = record
+    -- Plan 0.17: use mk-IRResultAWF-via-bump. alloc-correct stays at
+    -- alloc' (= record alloc { next-slot = next-slot alloc + closure-slots });
+    -- bridge to apply-bump (mkBump closure-slots 0) alloc via +-comm.
+    mk-IRResultAWF-via-bump
+      s'
+      alloc'
+      trace
+      (mkBump closure-slots 0)
+      curry-bump-eq
+      SMP.!!  -- trace-is-ir-to-trace (dead path)
+      refl    -- trace-correct
+      (curry-trace-alloc-correct closure-slot s alloc not-halted)
+      (at-loc closure-loc result-valid-wf' closure-before' rax-eq'
+              reclaim-preserves-validity' reclaim-preserves-result')
+      not-halted'
+      (mem-preserved-from-tnhw alloc trace s s' refl trace-writes-above' tt)
+      trace-twf'
+      (exec-trace-preserves-halted-WF trace)
+      (record
         { slot-monotone = m≤m+n (next-slot alloc) closure-slots
         ; max-slot-written = next-slot alloc +ℕ closure-slots
         ; max-slot-geq-final = ≤-refl
@@ -196,16 +201,21 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; trace-slot-reads-below = tt
         ; scratch-budget = ir-scratch-requirement (curry {k = k} f m)
         ; scratch-bounded = m≤m+n (next-slot alloc +ℕ closure-slots) req-curry
-        }
-      ; heap-inv = record
+        })
+      (record
         { heap-monotone = ≤-refl
         ; heap-budget = 0
         ; max-heap-ref-written = next-heap-ref alloc
         ; max-heap-ref-geq-final = ≤-refl
         ; max-heap-usage-bound = m≤m+n (next-heap-ref alloc) 0
-        }
-      }
+        })
     where
+      curry-bump-eq : record alloc { next-slot = next-slot alloc +ℕ closure-slots }
+                      ≡ apply-bump (mkBump closure-slots 0) alloc
+      curry-bump-eq = cong (λ s → record alloc { next-slot = s })
+                           (+-comm (next-slot alloc) closure-slots)
+        where open import Data.Nat.Properties using (+-comm)
+
       -- Closure location and trace
       closure-slot = next-slot alloc
       closure-loc = AtStack (current-frame alloc) closure-slot

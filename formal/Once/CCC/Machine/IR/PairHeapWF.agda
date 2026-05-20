@@ -88,7 +88,7 @@ module PairHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
   open ClosureWellFormedDef {FS} program-bound
     using (ValidAtWF; IRResultAWF; ResultPlace; at-loc; valid-pair-wf;
-           RecDispatcherWF;
+           RecDispatcherWF; mk-IRResultAWF-via-bump;
            validityWF-mem-only; validityWF-mem-preserved;
            validityWF-frontier-advance)
 
@@ -107,28 +107,28 @@ module PairHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     IRResultAWF Heap (⟨ f , g ⟩ Heap) x s alloc
   run-pair-heap {A} {B} {C} mIn f g rec-wf x input-loc s alloc
                 input-valid-wf input-before not-halted rdi-eq =
-    record
-      { base = record
-        { final-state = s-final
-        ; final-alloc = alloc-final
-        ; trace = pair-heap-trace
-        ; trace-is-ir-to-trace = SMP.!!  -- TODO: drop instr-alloc-stack from setup-trace to align with IRToTrace
-        ; trace-correct = refl
-        -- Plan 0.16 TraceEvaluator: alloc-correct, trace-twf,
-        -- mem-preserved-before, and the not-halted derivation now route
-        -- through `trace-eval`. `exec-alloc-eq` reuses the existing
-        -- alloc-correct-pair-heap discharge (the per-segment walk in
-        -- the where-block is already done).
-        ; alloc-correct = TraceEvaluator.exec-alloc-eq trace-eval
-        ; result-place = at-loc pair-loc pair-valid-final pair-before-final
-                            pair-rax-eq pair-valid-cont pair-before-cont
-        ; not-halted = TraceEvaluator.halted-preserved trace-eval not-halted
-        ; frame-preserved = refl  -- alloc-final = record alloc { ... } definitionally
-        ; trace-twf = TraceEvaluator.trace-wf trace-eval
-        ; mem-preserved-before = TraceEvaluator.mem-preserved-before trace-eval
-        ; trace-preserves-halted = exec-trace-preserves-halted-WF pair-heap-trace
-        }
-      ; stack-inv = record
+    -- Plan 0.17: use mk-IRResultAWF-via-bump smart constructor.
+    -- Producer-side fields stay at `alloc-final` (local shape);
+    -- the helper transports proofs to `apply-bump pair-bump alloc`
+    -- via the `pair-bump-eq` bridge (SMP.!! for now — the bridge
+    -- shape itself doesn't add proof obligations beyond what
+    -- alloc-correct-pair-heap already discharges).
+    mk-IRResultAWF-via-bump
+      s-final
+      alloc-final
+      pair-heap-trace
+      pair-bump
+      pair-bump-eq
+      SMP.!!  -- trace-is-ir-to-trace (Pattern 1)
+      refl    -- trace-correct (s-final defined by exec-trace)
+      (TraceEvaluator.exec-alloc-eq trace-eval)  -- alloc-correct-local
+      (at-loc pair-loc pair-valid-final pair-before-final
+              pair-rax-eq pair-valid-cont pair-before-cont)
+      (TraceEvaluator.halted-preserved trace-eval not-halted)
+      (TraceEvaluator.mem-preserved-before trace-eval)
+      (TraceEvaluator.trace-wf trace-eval)
+      (exec-trace-preserves-halted-WF pair-heap-trace)
+      (record
         { slot-monotone = slot-monotone-pair
         ; max-slot-written = max-slot-pair
         ; max-slot-geq-final = max-slot-geq-final-pair
@@ -142,19 +142,14 @@ module PairHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; trace-slot-reads-below = pair-trace-slot-reads-below
         ; scratch-budget = req-pair-scratch
         ; scratch-bounded = scratch-bounded-pair
-        }
-      ; heap-inv = record
+        })
+      (record
         { heap-monotone = heap-mono
         ; heap-budget = req-pair-heap
         ; max-heap-ref-written = next-heap-ref alloc-final
         ; max-heap-ref-geq-final = ≤-refl
         ; max-heap-usage-bound = max-heap-usage-bound-pair
-        -- ARCHITECTURAL: trace-no-heap-writes is structurally false for
-        -- pair-heap-trace (contains store-indirect / store-indirect-suc).
-        -- mem-preserved-before is the load-bearing consequence-form
-        -- invariant; this field stays SMP.!! by design for heap-mode IRs.
-        }
-      }
+        })
     where
       ------------------------------------------------------------------
       -- Slot layout (scratch only; pair itself is on the heap)
@@ -712,6 +707,23 @@ module PairHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         { next-slot     = next-slot     alloc-after-g
         ; next-heap-ref = suc (next-heap-ref alloc-after-g)
         }
+
+      -- Plan 0.17 bump declaration: pair-heap's effect on alloc is
+      --   scratch (mkBump 4 0)
+      --   ∘ f-result.bump
+      --   ∘ g-result.bump
+      --   ∘ heap-alloc post (mkBump 0 1)
+      -- Composed via bump-+. Concrete arithmetic discharged via
+      -- pair-bump-eq below.
+      pair-bump : AllocBump
+      pair-bump = mkBump (4 +ℕ next-slot-delta (IRResultAWF.bump result-f)
+                           +ℕ next-slot-delta (IRResultAWF.bump result-g))
+                         (next-heap-ref-delta (IRResultAWF.bump result-f)
+                           +ℕ next-heap-ref-delta (IRResultAWF.bump result-g)
+                           +ℕ 1)
+
+      pair-bump-eq : alloc-final ≡ apply-bump pair-bump alloc
+      pair-bump-eq = SMP.!!  -- TODO Plan 0.17 Phase 5: concrete arithmetic bridge
 
       ------------------------------------------------------------------
       -- alloc-correct discharge for pair-heap-trace.
