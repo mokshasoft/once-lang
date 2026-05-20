@@ -103,6 +103,10 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
   open SMP.TracePrimitives {FS}
   open SMP.InstrPrimitives {FS}
   open SMP.TraceComposition {FS}
+  open SMP.RecSchemeSemantics {FS}
+    using (exec-abstract-load-indirect-suc-preserves-input;
+           exec-abstract-load-indirect-suc-preserves-mem;
+           exec-abstract-load-indirect-preserves-input)
 
   open import Once.CCC.Machine.ClosureWellFormed
   open ClosureWellFormedDef {FS} program-bound
@@ -536,16 +540,64 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       not-halted-s12 : halted s12 ≡ false
       not-halted-s12 = exec-trace-preserves-halted-WF prefix12 s alloc not-halted prefix12-tph
 
-      -- Input1 is still input-loc after steps 1-2 (neither instruction modifies Input1)
-      -- Step 1 modifies Output only, Step 2 writes to memory only
-      -- Both preserve Input1 register
+      -- Input1 is still input-loc after steps 1-2.
+      -- Plan 0.16 Rec 5 follow-up: chained Input1 preservation through
+      -- prefix12 = instr-alloc-stack ∷ load-indirect-suc ∷ store-at-slot.
+      --   * instr-alloc-stack: regs.Input1 unchanged (record update touches
+      --     only stackSlot) — refl through writeReg-preserves not needed.
+      --   * load-indirect-suc: writes Output, preserves Input1 — via
+      --     exec-abstract-load-indirect-suc-preserves-input.
+      --   * store-at-slot: writes memory, preserves regs — via
+      --     exec-abstract-store-at-slot-preserves-input.
       input-after-s12 : readReg (regs s12) Input1 ≡ SV-Ptr input-loc
-      input-after-s12 = SMP.!!  -- Needs trace infrastructure for register preservation
+      input-after-s12 =
+        let -- State after each instruction.
+            s_a = proj₁ (exec-abstract (instr-alloc-stack pair-slots) s alloc)
+            alloc_a = proj₂ (exec-abstract (instr-alloc-stack pair-slots) s alloc)
+            s_b = proj₁ (exec-abstract load-indirect-suc s_a alloc_a)
+            alloc_b = proj₂ (exec-abstract load-indirect-suc s_a alloc_a)
+            -- Decompose exec-trace.
+            not-halted-a = not-halted   -- alloc-stack preserves halted=false definitionally
+            d1 : exec-trace prefix12 s alloc ≡
+                 exec-trace (load-indirect-suc ∷ store-at-slot (suc pair-slot) ∷ []) s_a alloc_a
+            d1 = exec-trace-cons (instr-alloc-stack pair-slots) _ s alloc not-halted
+            not-halted-b : halted s_b ≡ false
+            not-halted-b = exec-abstract-preserves-halted-WF load-indirect-suc s_a alloc_a not-halted-a
+                             (load-indirect-suc-twf {s = s_a} {alloc = alloc_a}
+                                input-loc (SV-Ptr arg-loc) rdi-eq
+                                (trans (readLoc-stackMem-eq s_a s (sucLoc input-loc) refl refl) arg-ptr))
+            d2 : exec-trace (load-indirect-suc ∷ store-at-slot (suc pair-slot) ∷ []) s_a alloc_a ≡
+                 exec-trace (store-at-slot (suc pair-slot) ∷ []) s_b alloc_b
+            d2 = exec-trace-cons load-indirect-suc _ s_a alloc_a not-halted-a
+            d3 : exec-trace (store-at-slot (suc pair-slot) ∷ []) s_b alloc_b ≡
+                 exec-abstract (store-at-slot (suc pair-slot)) s_b alloc_b
+            d3 = exec-trace-single (store-at-slot (suc pair-slot)) s_b alloc_b not-halted-b
+            s12-eq : s12 ≡ proj₁ (exec-abstract (store-at-slot (suc pair-slot)) s_b alloc_b)
+            s12-eq = cong proj₁ (trans d1 (trans d2 d3))
+            -- Per-step Input1 preservation.
+            -- alloc-stack: regs.Input1 unchanged definitionally — refl.
+            alloc-stack-preserves : readReg (regs s_a) Input1 ≡ readReg (regs s) Input1
+            alloc-stack-preserves = refl
+            -- load-indirect-suc: explicit lemma.
+            load-isuc-preserves : readReg (regs s_b) Input1 ≡ readReg (regs s_a) Input1
+            load-isuc-preserves = exec-abstract-load-indirect-suc-preserves-input s_a alloc_a
+            -- store-at-slot: explicit lemma.
+            store-preserves :
+              readReg (regs (proj₁ (exec-abstract (store-at-slot (suc pair-slot)) s_b alloc_b))) Input1 ≡
+              readReg (regs s_b) Input1
+            store-preserves = exec-abstract-store-at-slot-preserves-input (suc pair-slot) s_b alloc_b
+        in trans (cong (λ st → readReg (regs st) Input1) s12-eq)
+                 (trans store-preserves
+                   (trans load-isuc-preserves
+                     (trans alloc-stack-preserves rdi-eq)))
 
-      -- Memory is preserved for closure-loc: steps 1-2 only write to slot (suc pair-slot)
-      -- which is on stack, not at closure-loc (which is on heap since closure is Heap mode)
+      -- Memory is preserved for closure-loc: steps 1-2 only write to slot
+      -- (suc pair-slot) which is on stack, not at closure-loc (which is
+      -- on heap since closure is Heap mode). Pending: needs closure-loc's
+      -- AtDynamic shape to be propositional (today it's abstract through
+      -- decomposeClosureWF). Tracked separately from Rec 5 packaging.
       closure-readable-after-s12 : readLoc s12 closure-loc ≡ just (SV-Ptr env-loc)
-      closure-readable-after-s12 = SMP.!!  -- Needs frame/heap preservation proof
+      closure-readable-after-s12 = SMP.!!
 
       -- Step 3: load-indirect reads closure-loc, gets env-loc (after step 3)
       prefix3 : AbstractTrace
