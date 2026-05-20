@@ -2195,6 +2195,35 @@ module TracePrimitives {FS : FrameSemantics} where
       readLoc s (AtStack (current-frame alloc) slot) ≡ just v)
   InstrWF _ _     _                        = ⊤
 
+  ------------------------------------------------------------------------
+  -- Plan 0.16 (Recommendation 5): packaged InstrWF witnesses for the
+  -- conditional memory-reading instructions. Producers that have
+  -- `readReg Input1 ≡ SV-Ptr loc` + `readLoc s loc ≡ just v` (or its
+  -- sucLoc variant) in scope can now construct the InstrWF existential
+  -- with a single call instead of expanding the four-tuple inline.
+  --
+  -- This removes the per-instruction `SMP.!!` placeholders that
+  -- previously littered ApplyWF / SumRecWF / ComposeWF setup chains
+  -- whenever the producer had the underlying memory evidence but no
+  -- helper to package it into InstrWF shape.
+  ------------------------------------------------------------------------
+
+  load-indirect-twf : ∀ {s : LocState FS} {alloc : AllocState {FS}}
+    (loc : ValueLocation FS) (v : StoredValue FS) →
+    readReg (regs s) Input1 ≡ SV-Ptr loc →
+    readLoc s loc ≡ just v →
+    InstrWF s alloc load-indirect
+  load-indirect-twf loc v rdi-eq read-eq =
+    loc , cong sv-as-loc rdi-eq , v , read-eq
+
+  load-indirect-suc-twf : ∀ {s : LocState FS} {alloc : AllocState {FS}}
+    (loc : ValueLocation FS) (v : StoredValue FS) →
+    readReg (regs s) Input1 ≡ SV-Ptr loc →
+    readLoc s (sucLoc loc) ≡ just v →
+    InstrWF s alloc load-indirect-suc
+  load-indirect-suc-twf loc v rdi-eq read-eq =
+    loc , cong sv-as-loc rdi-eq , v , read-eq
+
   -- State-threaded chain of per-instruction halt-preservation
   -- preconditions. Each link witnesses InstrWF at the state reached
   -- by running the trace prefix; the next link's state is computed

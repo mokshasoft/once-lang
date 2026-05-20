@@ -353,9 +353,24 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       s2 = proj₁ (exec-trace (step1-trace ++ step2-trace) s alloc)
 
       -- Not halted after step 1
+      -- Plan 0.16 Rec 5: load-indirect-suc InstrWF discharged via helper.
+      -- instr-alloc-stack preserves regs.Input1 and memory definitionally,
+      -- so rdi-eq + arg-ptr at the original state lift to the post-state.
       not-halted-s1 : halted s1 ≡ false
-      not-halted-s1 = exec-trace-preserves-halted-WF step1-trace s alloc not-halted
-                        (twf-∷ tt (twf-∷ (SMP.!!) twf-[]))  -- alloc-stack + load-indirect-suc InstrWF
+      -- instr-alloc-stack only touches regs.stackSlot, so it preserves
+      -- readReg Input1 (definitionally, via record-update projection)
+      -- and stackMem / heapMem (so readLoc lifts via readLoc-stackMem-eq).
+      not-halted-s1 =
+        let s1' = proj₁ (exec-abstract (instr-alloc-stack pair-slots) s alloc)
+            alloc1' = proj₂ (exec-abstract (instr-alloc-stack pair-slots) s alloc)
+            arg-ptr-s1' : readLoc s1' (sucLoc input-loc) ≡ just (SV-Ptr arg-loc)
+            arg-ptr-s1' = trans (readLoc-stackMem-eq s1' s (sucLoc input-loc) refl refl)
+                                arg-ptr
+        in exec-trace-preserves-halted-WF step1-trace s alloc not-halted
+             (twf-∷ tt
+               (twf-∷ (load-indirect-suc-twf {s = s1'} {alloc = alloc1'}
+                         input-loc (SV-Ptr arg-loc) rdi-eq arg-ptr-s1')
+                      twf-[]))
 
       -- Step 2 writes arg-loc to slot (suc pair-slot)
       step2-written : readLoc s2 (AtStack frame (suc pair-slot)) ≡ just (SV-Ptr arg-loc)
@@ -445,11 +460,21 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
                              prefix-for-env ++ store-at-slot pair-slot ∷ suffix-after-env-store
       setup-decomp-for-env = refl
 
-      -- TracePreservesHalted for prefix-for-env
+      -- TracePreservesHalted for prefix-for-env.
+      -- Plan 0.16 Rec 5: first load-indirect-suc (pos 2, after alloc-stack)
+      -- lifts via readLoc-stackMem-eq. Positions 4 and 7 require lifting
+      -- through store-at-slot / mov-to-input / instr-save-closure-reg
+      -- (TODO — needs longer chain reasoning, kept as SMP.!! for now).
       prefix-for-env-tph : TraceWF s alloc prefix-for-env
       prefix-for-env-tph =
+        let s' = proj₁ (exec-abstract (instr-alloc-stack pair-slots) s alloc)
+            alloc' = proj₂ (exec-abstract (instr-alloc-stack pair-slots) s alloc)
+            arg-ptr-s' : readLoc s' (sucLoc input-loc) ≡ just (SV-Ptr arg-loc)
+            arg-ptr-s' = trans (readLoc-stackMem-eq s' s (sucLoc input-loc) refl refl) arg-ptr
+        in
         twf-∷ tt                 -- instr-alloc-stack: InstrWF = ⊤
-        (twf-∷ (SMP.!!)            -- load-indirect-suc: arg-ptr witness
+        (twf-∷ (load-indirect-suc-twf {s = s'} {alloc = alloc'}
+                  input-loc (SV-Ptr arg-loc) rdi-eq arg-ptr-s')
         (twf-∷ tt
         (twf-∷ (SMP.!!)          -- load-indirect: closure-ptr witness
         (twf-∷ tt
@@ -495,9 +520,18 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       alloc12 : AllocState {FS}
       alloc12 = proj₂ (exec-trace prefix12 s alloc)
 
-      -- Steps 1-2 preserve halted
+      -- Steps 1-2 preserve halted. The load-indirect-suc witness is at
+      -- the post-alloc-stack state (Plan 0.16 Rec 5).
       prefix12-tph : TraceWF s alloc prefix12
-      prefix12-tph = twf-∷ tt (twf-∷ (SMP.!!) (twf-∷ tt twf-[]))  -- alloc-stack + load-indirect-suc witness
+      prefix12-tph =
+        let s' = proj₁ (exec-abstract (instr-alloc-stack pair-slots) s alloc)
+            alloc' = proj₂ (exec-abstract (instr-alloc-stack pair-slots) s alloc)
+            arg-ptr-s' : readLoc s' (sucLoc input-loc) ≡ just (SV-Ptr arg-loc)
+            arg-ptr-s' = trans (readLoc-stackMem-eq s' s (sucLoc input-loc) refl refl) arg-ptr
+        in twf-∷ tt
+             (twf-∷ (load-indirect-suc-twf {s = s'} {alloc = alloc'}
+                       input-loc (SV-Ptr arg-loc) rdi-eq arg-ptr-s')
+                    (twf-∷ tt twf-[]))
 
       not-halted-s12 : halted s12 ≡ false
       not-halted-s12 = exec-trace-preserves-halted-WF prefix12 s alloc not-halted prefix12-tph
@@ -590,16 +624,24 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
                      setup-prefix ++ (lea-slot pair-slot ∷ mov-to-input ∷ [])
       setup-decomp = refl
 
-      -- TracePreservesHalted for the prefix
+      -- TracePreservesHalted for the prefix. Pos-2 load-indirect-suc
+      -- discharged via the Plan 0.16 helper; positions 4 & 7 still
+      -- need chain lifting (TODO).
       setup-prefix-tph : TraceWF s alloc setup-prefix
       setup-prefix-tph =
+        let s' = proj₁ (exec-abstract (instr-alloc-stack pair-slots) s alloc)
+            alloc' = proj₂ (exec-abstract (instr-alloc-stack pair-slots) s alloc)
+            arg-ptr-s' : readLoc s' (sucLoc input-loc) ≡ just (SV-Ptr arg-loc)
+            arg-ptr-s' = trans (readLoc-stackMem-eq s' s (sucLoc input-loc) refl refl) arg-ptr
+        in
         twf-∷ tt                 -- instr-alloc-stack: InstrWF = ⊤
-        (twf-∷ (SMP.!!)            -- TODO: load-indirect-suc witness
+        (twf-∷ (load-indirect-suc-twf {s = s'} {alloc = alloc'}
+                  input-loc (SV-Ptr arg-loc) rdi-eq arg-ptr-s')
         (twf-∷ tt
-        (twf-∷ (SMP.!!)          -- TODO: load-indirect witness
+        (twf-∷ (SMP.!!)          -- TODO: load-indirect witness (mid-chain)
         (twf-∷ tt
         (twf-∷ tt
-        (twf-∷ (SMP.!!)          -- TODO: load-indirect witness
+        (twf-∷ (SMP.!!)          -- TODO: load-indirect witness (late)
         (twf-∷ tt twf-[])))))))
 
       not-halted-after-prefix : halted (proj₁ (exec-trace setup-prefix s alloc)) ≡ false
@@ -618,16 +660,25 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
                         SV-Ptr (AtStack (current-frame alloc) pair-slot))
                  (sym eq1) eq2
 
-      -- Setup trace preserves halted (used in multiple places)
+      -- Setup trace preserves halted (used in multiple places).
+      -- Pos-2 load-indirect-suc discharged via Plan 0.16 helper; the
+      -- mid-chain and late load-indirect witnesses (positions 4 and 7)
+      -- still require chain lifting through store-at-slot / mov-to-input.
       setup-tph : TraceWF s alloc (apply-setup-trace pair-slot)
       setup-tph =
+        let s' = proj₁ (exec-abstract (instr-alloc-stack pair-slots) s alloc)
+            alloc' = proj₂ (exec-abstract (instr-alloc-stack pair-slots) s alloc)
+            arg-ptr-s' : readLoc s' (sucLoc input-loc) ≡ just (SV-Ptr arg-loc)
+            arg-ptr-s' = trans (readLoc-stackMem-eq s' s (sucLoc input-loc) refl refl) arg-ptr
+        in
         twf-∷ tt                 -- instr-alloc-stack pair-slots: InstrWF = ⊤
-        (twf-∷ (SMP.!!)            -- TODO: load-indirect-suc witness
+        (twf-∷ (load-indirect-suc-twf {s = s'} {alloc = alloc'}
+                  input-loc (SV-Ptr arg-loc) rdi-eq arg-ptr-s')
         (twf-∷ tt
-        (twf-∷ (SMP.!!)          -- TODO: load-indirect witness
+        (twf-∷ (SMP.!!)          -- TODO: load-indirect witness (mid-chain)
         (twf-∷ tt
         (twf-∷ tt
-        (twf-∷ (SMP.!!)          -- TODO: load-indirect witness
+        (twf-∷ (SMP.!!)          -- TODO: load-indirect witness (late)
         (twf-∷ tt
         (twf-∷ tt
         (twf-∷ tt twf-[])))))))))
