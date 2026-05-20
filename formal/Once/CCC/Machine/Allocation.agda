@@ -296,6 +296,30 @@ module FrontierInvariant {FS : FrameSemantics} where
   ... | refl = ≺⇒≢ cf≺f refl
   fresh-stack-after alloc (AtDynamic hl) (heap-before _) ()
 
+  -- Generalized: any caller-frontier location is disjoint from any
+  -- scratch slot at or above the original frontier. The store-at-slot
+  -- in scratch space cannot alias with closure-loc / input-loc /
+  -- env-loc / etc., regardless of whether they're physical
+  -- stack (AtStack ancestor frame OR current-frame below next-slot) or
+  -- heap (AtDynamic) locations.
+  --
+  -- Plan 0.16: closure-loc shape independence. Heap and Stack closures
+  -- alike satisfy `BeforeFrontier alloc closure-loc` (from
+  -- `decomposeClosureWF.env-before`/`closure-before`), so this lemma
+  -- handles both uniformly — no need to expose `closure-loc`'s
+  -- constructor.
+  before-frontier-stack-disjoint :
+    ∀ (alloc : AllocState {FS}) (loc : ValueLocation FS) (k : ℕ) →
+    BeforeFrontier alloc loc →
+    next-slot alloc ≤ k →
+    loc ≢ AtStack (current-frame alloc) k
+  before-frontier-stack-disjoint alloc _ k (stack-before refl k'<next) next≤k refl =
+    <⇒≢ (<-≤-trans k'<next next≤k) refl
+    where open import Data.Nat.Properties using (<-≤-trans)
+  before-frontier-stack-disjoint alloc _ k (stack-ancestor cf≺f _) next≤k refl =
+    ≺⇒≢ cf≺f refl
+  before-frontier-stack-disjoint alloc _ k (heap-before _) next≤k ()
+
   -- Allocation advances frontier
   stack-alloc-advances : ∀ (alloc : AllocState {FS}) n →
     ∀ loc → BeforeFrontier alloc loc →

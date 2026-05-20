@@ -24,7 +24,7 @@
 module Once.CCC.Machine.IR.ApplyWF where
 
 open import Data.Nat using (ℕ; suc; _<_; _≤_; s≤s; z≤n) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
-open import Data.Nat.Properties using (≤-refl; ≤-trans; <-trans; <-≤-trans; m≤m+n; +-monoʳ-≤; m+n≤o⇒m≤o; ≤-reflexive)
+open import Data.Nat.Properties using (≤-refl; ≤-trans; <-trans; <-≤-trans; m≤m+n; +-monoʳ-≤; m+n≤o⇒m≤o; ≤-reflexive; n≤1+n)
 open import Data.Nat using (_≤?_)
 open import Relation.Nullary using (yes; no; Dec)
 open import Data.Bool using (false)
@@ -106,7 +106,8 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
   open SMP.RecSchemeSemantics {FS}
     using (exec-abstract-load-indirect-suc-preserves-input;
            exec-abstract-load-indirect-suc-preserves-mem;
-           exec-abstract-load-indirect-preserves-input)
+           exec-abstract-load-indirect-preserves-input;
+           exec-abstract-load-indirect-output)
 
   open import Once.CCC.Machine.ClosureWellFormed
   open ClosureWellFormedDef {FS} program-bound
@@ -465,10 +466,12 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       setup-decomp-for-env = refl
 
       -- TracePreservesHalted for prefix-for-env.
-      -- Plan 0.16 Rec 5: first load-indirect-suc (pos 2, after alloc-stack)
-      -- lifts via readLoc-stackMem-eq. Positions 4 and 7 require lifting
-      -- through store-at-slot / mov-to-input / instr-save-closure-reg
-      -- (TODO — needs longer chain reasoning, kept as SMP.!! for now).
+      -- Plan 0.16 Rec 5: positions 2 (load-indirect-suc) and 4 (load-indirect
+      -- on input-loc → closure-loc) discharged via the helper + lift
+      -- machinery. Position 7 (load-indirect on closure-loc → env-loc)
+      -- requires lifting Input1's register state and closure-loc's
+      -- readability through mov-to-input + instr-save-closure-reg
+      -- (TODO — extends the same pattern but needs more lift helpers).
       prefix-for-env-tph : TraceWF s alloc prefix-for-env
       prefix-for-env-tph =
         let s' = proj₁ (exec-abstract (instr-alloc-stack pair-slots) s alloc)
@@ -480,10 +483,10 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
         (twf-∷ (load-indirect-suc-twf {s = s'} {alloc = alloc'}
                   input-loc (SV-Ptr arg-loc) rdi-eq arg-ptr-s')
         (twf-∷ tt
-        (twf-∷ (SMP.!!)          -- load-indirect: closure-ptr witness
+        (twf-∷ (SMP.!!)          -- load-indirect: closure-ptr witness (pos 4, see prefix3-tph)
         (twf-∷ tt
         (twf-∷ tt
-        (twf-∷ (SMP.!!) twf-[])))))) -- load-indirect: env-ptr witness
+        (twf-∷ (SMP.!!) twf-[])))))) -- load-indirect: env-ptr witness (pos 7, TODO)
 
       not-halted-after-prefix-for-env : halted (proj₁ (exec-trace prefix-for-env s alloc)) ≡ false
       not-halted-after-prefix-for-env = exec-trace-preserves-halted-WF prefix-for-env s alloc not-halted prefix-for-env-tph
@@ -591,13 +594,76 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
                    (trans load-isuc-preserves
                      (trans alloc-stack-preserves rdi-eq)))
 
-      -- Memory is preserved for closure-loc: steps 1-2 only write to slot
-      -- (suc pair-slot) which is on stack, not at closure-loc (which is
-      -- on heap since closure is Heap mode). Pending: needs closure-loc's
-      -- AtDynamic shape to be propositional (today it's abstract through
-      -- decomposeClosureWF). Tracked separately from Rec 5 packaging.
+      -- Memory preservation across prefix12 for any BeforeFrontier loc.
+      -- Plan 0.16: shape-independent via BeforeFrontier disjointness.
+      -- prefix12 = instr-alloc-stack ∷ load-indirect-suc ∷ store-at-slot.
+      -- The only write is store-at-slot (suc pair-slot); locations
+      -- BeforeFrontier alloc cannot alias with that scratch slot
+      -- (uniformly for AtStack-lower-slot, AtStack-ancestor-frame,
+      -- and AtDynamic). Reusable for both closure-loc and input-loc.
+      prefix12-preserves-before-frontier :
+        (loc : ValueLocation FS) → BeforeFrontier alloc loc →
+        readLoc s12 loc ≡ readLoc s loc
+      prefix12-preserves-before-frontier loc loc-before =
+        let s_a = proj₁ (exec-abstract (instr-alloc-stack pair-slots) s alloc)
+            alloc_a = proj₂ (exec-abstract (instr-alloc-stack pair-slots) s alloc)
+            s_b = proj₁ (exec-abstract load-indirect-suc s_a alloc_a)
+            alloc_b = proj₂ (exec-abstract load-indirect-suc s_a alloc_a)
+            not-halted-a = not-halted
+            not-halted-b : halted s_b ≡ false
+            not-halted-b = exec-abstract-preserves-halted-WF load-indirect-suc s_a alloc_a not-halted-a
+                             (load-indirect-suc-twf {s = s_a} {alloc = alloc_a}
+                                input-loc (SV-Ptr arg-loc) rdi-eq
+                                (trans (readLoc-stackMem-eq s_a s (sucLoc input-loc) refl refl) arg-ptr))
+            d1 : exec-trace prefix12 s alloc ≡
+                 exec-trace (load-indirect-suc ∷ store-at-slot (suc pair-slot) ∷ []) s_a alloc_a
+            d1 = exec-trace-cons (instr-alloc-stack pair-slots) _ s alloc not-halted
+            d2 : exec-trace (load-indirect-suc ∷ store-at-slot (suc pair-slot) ∷ []) s_a alloc_a ≡
+                 exec-trace (store-at-slot (suc pair-slot) ∷ []) s_b alloc_b
+            d2 = exec-trace-cons load-indirect-suc _ s_a alloc_a not-halted-a
+            d3 : exec-trace (store-at-slot (suc pair-slot) ∷ []) s_b alloc_b ≡
+                 exec-abstract (store-at-slot (suc pair-slot)) s_b alloc_b
+            d3 = exec-trace-single (store-at-slot (suc pair-slot)) s_b alloc_b not-halted-b
+            s12-eq : s12 ≡ proj₁ (exec-abstract (store-at-slot (suc pair-slot)) s_b alloc_b)
+            s12-eq = cong proj₁ (trans d1 (trans d2 d3))
+            alloc-stack-mem-eq : readLoc s_a loc ≡ readLoc s loc
+            alloc-stack-mem-eq = readLoc-stackMem-eq s_a s loc refl refl
+            load-isuc-mem-eq : readLoc s_b loc ≡ readLoc s_a loc
+            load-isuc-mem-eq = exec-abstract-load-indirect-suc-preserves-mem s_a alloc_a loc
+            frame-eq-a : current-frame alloc_a ≡ current-frame alloc
+            frame-eq-a = exec-abstract-preserves-frame (instr-alloc-stack pair-slots) s alloc
+            frame-eq-b : current-frame alloc_b ≡ current-frame alloc_a
+            frame-eq-b = exec-abstract-preserves-frame load-indirect-suc s_a alloc_a
+            frame-eq : current-frame alloc_b ≡ current-frame alloc
+            frame-eq = trans frame-eq-b frame-eq-a
+            loc≢scratch-at-alloc : loc ≢ AtStack (current-frame alloc) (suc pair-slot)
+            loc≢scratch-at-alloc = before-frontier-stack-disjoint
+              alloc loc (suc pair-slot) loc-before
+              (n≤1+n (next-slot alloc))
+            loc≢scratch : loc ≢ AtStack (current-frame alloc_b) (suc pair-slot)
+            loc≢scratch eq = loc≢scratch-at-alloc
+              (trans eq (cong (λ f → AtStack f (suc pair-slot)) frame-eq))
+            store-mem-eq :
+              readLoc (proj₁ (exec-abstract (store-at-slot (suc pair-slot)) s_b alloc_b)) loc ≡
+              readLoc s_b loc
+            store-mem-eq =
+              exec-abstract-store-at-slot-preserves-loc (suc pair-slot) s_b alloc_b loc loc≢scratch
+        in trans (cong (λ st → readLoc st loc) s12-eq)
+                 (trans store-mem-eq
+                   (trans load-isuc-mem-eq alloc-stack-mem-eq))
+
+      -- Specialized: env-ptr lifted through prefix12 to s12.
       closure-readable-after-s12 : readLoc s12 closure-loc ≡ just (SV-Ptr env-loc)
-      closure-readable-after-s12 = SMP.!!
+      closure-readable-after-s12 =
+        trans (prefix12-preserves-before-frontier closure-loc
+                 (PairValidWF.fst-before pair-decomp))
+              env-ptr
+
+      -- Specialized: closure-ptr (readLoc s input-loc) lifted to s12.
+      input-loc-readable-after-s12 : readLoc s12 input-loc ≡ just (SV-Ptr closure-loc)
+      input-loc-readable-after-s12 =
+        trans (prefix12-preserves-before-frontier input-loc input-before)
+              closure-ptr
 
       -- Step 3: load-indirect reads closure-loc, gets env-loc (after step 3)
       prefix3 : AbstractTrace
@@ -606,9 +672,17 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       s3-partial : LocState FS
       s3-partial = proj₁ (exec-trace prefix3 s12 alloc12)
 
-      -- After step 3, Output = *Input1 = *input-loc = closure-loc
+      -- After step 3, Output = *Input1 = *input-loc = closure-loc.
+      -- Plan 0.16: load-indirect's output is just `exec-abstract-load-indirect-output`
+      -- applied to input-after-s12 + input-loc-readable-after-s12.
       step3-output : readReg (regs s3-partial) Output ≡ SV-Ptr closure-loc
-      step3-output = SMP.!!  -- Needs load-indirect result lemma
+      step3-output =
+        let alloc-eq : proj₁ (exec-trace prefix3 s12 alloc12) ≡
+                       proj₁ (exec-abstract load-indirect s12 alloc12)
+            alloc-eq = cong proj₁ (exec-trace-single load-indirect s12 alloc12 not-halted-s12)
+        in trans (cong (λ st → readReg (regs st) Output) alloc-eq)
+                 (exec-abstract-load-indirect-output s12 alloc12 input-loc
+                    (SV-Ptr closure-loc) input-after-s12 input-loc-readable-after-s12)
 
       -- Step 4: mov-to-input sets Input1 := Output = closure-loc, preserves Output
       prefix34 : AbstractTrace
@@ -617,8 +691,15 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       s34-partial : LocState FS
       s34-partial = proj₁ (exec-trace prefix34 s12 alloc12)
 
+      -- Plan 0.16 Rec 5: load-indirect at s12 dereferences Input1 =
+      -- SV-Ptr input-loc (input-after-s12), reading *input-loc = closure-loc
+      -- (input-loc-readable-after-s12). Both lifts are uniform across
+      -- closure modes via BeforeFrontier disjointness.
       prefix3-tph : TraceWF s12 alloc12 prefix3
-      prefix3-tph = twf-∷ (SMP.!!) twf-[]  -- TODO: load-indirect witness at s12
+      prefix3-tph = twf-∷ (load-indirect-twf {s = s12} {alloc = alloc12}
+                             input-loc (SV-Ptr closure-loc)
+                             input-after-s12 input-loc-readable-after-s12)
+                          twf-[]
 
       not-halted-s3 : halted s3-partial ≡ false
       not-halted-s3 = exec-trace-preserves-halted-WF prefix3 s12 alloc12 not-halted-s12 prefix3-tph
