@@ -190,6 +190,72 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
     apply-setup-trace pair-slot ++ body-trace
 
   ------------------------------------------------------------------------
+  -- Plan 0.16 Rec 5 follow-up: chain-form bridge for the load-indirect
+  -- InstrWF at position 4 of run-apply's setup-trace.
+  --
+  -- The TraceWF inductive expects InstrWF at the chain-form state
+  -- (`proj₁ (exec-abstract i_n (proj₁ (exec-abstract i_(n-1) … …)) …)`)
+  -- but the natural producer-side evidence lives at the trace-form
+  -- state (`proj₁ (exec-trace prefix s alloc)`). The two are
+  -- propositionally equal via 3 `exec-trace-cons` / `exec-trace-single`
+  -- unfolds; this lemma packages the bridge so each TraceWF chain in
+  -- ApplyWF can plug it in without re-deriving the equality.
+  --
+  -- Defined at module level (outside `run-apply`'s where-block) so
+  -- the TraceWF chains earlier in the where-block can reference it
+  -- without forward-ref scoping problems.
+  ------------------------------------------------------------------------
+  load-indirect-after-3-prefix :
+    ∀ (i₁ i₂ i₃ : AbstractInstr) (s : LocState FS) (alloc : AllocState {FS})
+      (loc : ValueLocation FS) (v : StoredValue FS) →
+      halted s ≡ false →
+      halted (proj₁ (exec-abstract i₁ s alloc)) ≡ false →
+      halted (proj₁ (exec-abstract i₂
+                       (proj₁ (exec-abstract i₁ s alloc))
+                       (proj₂ (exec-abstract i₁ s alloc)))) ≡ false →
+      readReg (regs (proj₁ (exec-trace (i₁ ∷ i₂ ∷ i₃ ∷ []) s alloc))) Input1
+        ≡ SV-Ptr loc →
+      readLoc (proj₁ (exec-trace (i₁ ∷ i₂ ∷ i₃ ∷ []) s alloc)) loc ≡ just v →
+      InstrWF
+        (proj₁ (exec-abstract i₃
+                  (proj₁ (exec-abstract i₂
+                            (proj₁ (exec-abstract i₁ s alloc))
+                            (proj₂ (exec-abstract i₁ s alloc))))
+                  (proj₂ (exec-abstract i₂
+                            (proj₁ (exec-abstract i₁ s alloc))
+                            (proj₂ (exec-abstract i₁ s alloc))))))
+        (proj₂ (exec-abstract i₃
+                  (proj₁ (exec-abstract i₂
+                            (proj₁ (exec-abstract i₁ s alloc))
+                            (proj₂ (exec-abstract i₁ s alloc))))
+                  (proj₂ (exec-abstract i₂
+                            (proj₁ (exec-abstract i₁ s alloc))
+                            (proj₂ (exec-abstract i₁ s alloc))))))
+        load-indirect
+  load-indirect-after-3-prefix i₁ i₂ i₃ s alloc loc v nh₀ nh₁ nh₂ rdi-eq read-eq =
+    let s₁ = proj₁ (exec-abstract i₁ s alloc)
+        a₁ = proj₂ (exec-abstract i₁ s alloc)
+        s₂ = proj₁ (exec-abstract i₂ s₁ a₁)
+        a₂ = proj₂ (exec-abstract i₂ s₁ a₁)
+        d1 = exec-trace-cons i₁ _ s alloc nh₀
+        d2 = exec-trace-cons i₂ _ s₁ a₁ nh₁
+        d3 = exec-trace-single i₃ s₂ a₂ nh₂
+        chain-eq : (proj₁ (exec-trace (i₁ ∷ i₂ ∷ i₃ ∷ []) s alloc) ,
+                    proj₂ (exec-trace (i₁ ∷ i₂ ∷ i₃ ∷ []) s alloc))
+                 ≡ (proj₁ (exec-abstract i₃ s₂ a₂) , proj₂ (exec-abstract i₃ s₂ a₂))
+        chain-eq = trans d1 (trans d2 d3)
+        witness-at-trace-form :
+          InstrWF (proj₁ (exec-trace (i₁ ∷ i₂ ∷ i₃ ∷ []) s alloc))
+                  (proj₂ (exec-trace (i₁ ∷ i₂ ∷ i₃ ∷ []) s alloc))
+                  load-indirect
+        witness-at-trace-form = load-indirect-twf
+                                  {s = proj₁ (exec-trace (i₁ ∷ i₂ ∷ i₃ ∷ []) s alloc)}
+                                  {alloc = proj₂ (exec-trace (i₁ ∷ i₂ ∷ i₃ ∷ []) s alloc)}
+                                  loc v rdi-eq read-eq
+    in subst (λ p → InstrWF (proj₁ p) (proj₂ p) load-indirect)
+             chain-eq witness-at-trace-form
+
+  ------------------------------------------------------------------------
   -- run-apply: Clean trace-based implementation
   ------------------------------------------------------------------------
 
@@ -465,52 +531,6 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
                              prefix-for-env ++ store-at-slot pair-slot ∷ suffix-after-env-store
       setup-decomp-for-env = refl
 
-      -- TracePreservesHalted for prefix-for-env.
-      -- Plan 0.16 Rec 5: positions 2 (load-indirect-suc) and 4 (load-indirect
-      -- on input-loc → closure-loc) discharged via the helper + lift
-      -- machinery. Position 7 (load-indirect on closure-loc → env-loc)
-      -- requires lifting Input1's register state and closure-loc's
-      -- readability through mov-to-input + instr-save-closure-reg
-      -- (TODO — extends the same pattern but needs more lift helpers).
-      prefix-for-env-tph : TraceWF s alloc prefix-for-env
-      prefix-for-env-tph =
-        let s' = proj₁ (exec-abstract (instr-alloc-stack pair-slots) s alloc)
-            alloc' = proj₂ (exec-abstract (instr-alloc-stack pair-slots) s alloc)
-            arg-ptr-s' : readLoc s' (sucLoc input-loc) ≡ just (SV-Ptr arg-loc)
-            arg-ptr-s' = trans (readLoc-stackMem-eq s' s (sucLoc input-loc) refl refl) arg-ptr
-        in
-        twf-∷ tt                 -- instr-alloc-stack: InstrWF = ⊤
-        (twf-∷ (load-indirect-suc-twf {s = s'} {alloc = alloc'}
-                  input-loc (SV-Ptr arg-loc) rdi-eq arg-ptr-s')
-        (twf-∷ tt
-        (twf-∷ (SMP.!!)          -- TODO pos-4 (same as setup-prefix-tph pos-4;
-                                  --      blocked by Agda forward-ref scoping
-                                  --      in let-body for s12/alloc12/etc.)
-        (twf-∷ tt
-        (twf-∷ tt
-        (twf-∷ (SMP.!!) twf-[])))))) -- load-indirect: env-ptr witness (pos 7, TODO)
-
-      not-halted-after-prefix-for-env : halted (proj₁ (exec-trace prefix-for-env s alloc)) ≡ false
-      not-halted-after-prefix-for-env = exec-trace-preserves-halted-WF prefix-for-env s alloc not-halted prefix-for-env-tph
-
-      -- suffix writes above suc pair-slot (lea-slot and mov-to-input don't write to slots)
-      suffix-writes-above : SMP.TraceWritesAbove (suc pair-slot) suffix-after-env-store
-      suffix-writes-above = tt  -- both instructions have instr-writes-slot = nothing
-
-      suffix-no-heap-writes : SMP.TraceNoHeapWrites suffix-after-env-store
-      suffix-no-heap-writes = tt
-
-      ------------------------------------------------------------------------
-      -- Prove output-after-prefix: Output = env-loc after steps 1-5
-      --
-      -- Step by step:
-      --   1. load-indirect-suc: Output := *(sucLoc Input1) = arg-loc
-      --   2. store-at-slot: Output unchanged
-      --   3. load-indirect: Output := *Input1 = closure-loc
-      --   4. mov-to-input: Input1 := Output = closure-loc, Output unchanged
-      --   5. load-indirect: Output := *Input1 = *closure-loc = env-loc
-      ------------------------------------------------------------------------
-
       -- Decompose prefix-for-env into sub-traces
       -- Plan 0.14: prefix12 includes instr-alloc-stack pair-slots at the start.
       prefix12 : AbstractTrace
@@ -666,6 +686,55 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       input-loc-readable-after-s12 =
         trans (prefix12-preserves-before-frontier input-loc input-before)
               closure-ptr
+
+      -- TracePreservesHalted for prefix-for-env. Plan 0.16 Rec 5:
+      -- positions 2 and 4 discharged via load-indirect-{,suc-}twf +
+      -- load-indirect-after-3-prefix. Position 7 still pending.
+      prefix-for-env-tph : TraceWF s alloc prefix-for-env
+      prefix-for-env-tph =
+        let s' = proj₁ (exec-abstract (instr-alloc-stack pair-slots) s alloc)
+            alloc' = proj₂ (exec-abstract (instr-alloc-stack pair-slots) s alloc)
+            arg-ptr-s' : readLoc s' (sucLoc input-loc) ≡ just (SV-Ptr arg-loc)
+            arg-ptr-s' = trans (readLoc-stackMem-eq s' s (sucLoc input-loc) refl refl) arg-ptr
+            not-halted-after-mov : halted (proj₁ (exec-abstract load-indirect-suc s' alloc')) ≡ false
+            not-halted-after-mov = exec-abstract-preserves-halted-WF load-indirect-suc s' alloc' not-halted
+                                     (load-indirect-suc-twf {s = s'} {alloc = alloc'}
+                                        input-loc (SV-Ptr arg-loc) rdi-eq arg-ptr-s')
+        in
+        twf-∷ tt                 -- instr-alloc-stack: InstrWF = ⊤
+        (twf-∷ (load-indirect-suc-twf {s = s'} {alloc = alloc'}
+                  input-loc (SV-Ptr arg-loc) rdi-eq arg-ptr-s')
+        (twf-∷ tt
+        (twf-∷ (load-indirect-after-3-prefix
+                  (instr-alloc-stack pair-slots) load-indirect-suc
+                  (store-at-slot (suc pair-slot))
+                  s alloc input-loc (SV-Ptr closure-loc)
+                  not-halted not-halted not-halted-after-mov
+                  input-after-s12 input-loc-readable-after-s12)
+        (twf-∷ tt
+        (twf-∷ tt
+        (twf-∷ (SMP.!!) twf-[])))))) -- load-indirect: env-ptr witness (pos 7, TODO)
+
+      not-halted-after-prefix-for-env : halted (proj₁ (exec-trace prefix-for-env s alloc)) ≡ false
+      not-halted-after-prefix-for-env = exec-trace-preserves-halted-WF prefix-for-env s alloc not-halted prefix-for-env-tph
+
+      -- suffix writes above suc pair-slot (lea-slot and mov-to-input don't write to slots)
+      suffix-writes-above : SMP.TraceWritesAbove (suc pair-slot) suffix-after-env-store
+      suffix-writes-above = tt  -- both instructions have instr-writes-slot = nothing
+
+      suffix-no-heap-writes : SMP.TraceNoHeapWrites suffix-after-env-store
+      suffix-no-heap-writes = tt
+
+      ------------------------------------------------------------------------
+      -- Prove output-after-prefix: Output = env-loc after steps 1-5
+      --
+      -- Step by step:
+      --   1. load-indirect-suc: Output := *(sucLoc Input1) = arg-loc
+      --   2. store-at-slot: Output unchanged
+      --   3. load-indirect: Output := *Input1 = closure-loc
+      --   4. mov-to-input: Input1 := Output = closure-loc, Output unchanged
+      --   5. load-indirect: Output := *Input1 = *closure-loc = env-loc
+      ------------------------------------------------------------------------
 
       -- Step 3: load-indirect reads closure-loc, gets env-loc (after step 3)
       prefix3 : AbstractTrace
