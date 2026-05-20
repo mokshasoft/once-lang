@@ -557,6 +557,84 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       open IRStackBudget  stack-inv  public
       open IRHeapBudget   heap-inv   public
 
+    ------------------------------------------------------------------------
+    -- Plan 0.17: smart constructor for producers.
+    --
+    -- Captures the cascade pattern that every compositional producer
+    -- (PairHeapWF, ApplyWF, ComposeWF, ...) hits: the producer has a
+    -- natural `alloc-final-local` (computed from sub-IR results or
+    -- scratch budgets) and constructs all its proofs (alloc-correct,
+    -- result-place, stack-inv, heap-inv) typed against that local
+    -- shape. With the bump-derived `final-alloc = apply-bump bump alloc`,
+    -- those proofs need transporting to the canonical form via subst.
+    --
+    -- This builder takes the producer's local-shape fields PLUS a
+    -- `bump` PLUS a single `final-alloc-eq : alloc-final-local ≡
+    -- apply-bump bump alloc` bridge, and packages all four substs
+    -- internally. Producers add ~3 lines (declare bump, prove the
+    -- equality, call mk-IRResultAWF-via-bump) instead of restructuring
+    -- 5-10 proof sites.
+    ------------------------------------------------------------------------
+
+    mk-IRResultAWF-via-bump :
+      ∀ {m A B} {ir : IR A B} {x : ⟦ A ⟧} {s : LocState FS} {alloc : AllocState {FS}}
+        (final-state : LocState FS)
+        (final-alloc-local : AllocState {FS})
+        (trace : AbstractTrace)
+        (bump : AllocBump)
+        (final-alloc-eq : final-alloc-local ≡ apply-bump bump alloc)
+        (trace-is-ir-to-trace : trace ≡ ir-to-trace-at-frontier (next-slot alloc) ir)
+        (trace-correct : proj₁ (exec-trace trace s alloc) ≡ final-state)
+        (alloc-correct-local : proj₂ (exec-trace trace s alloc) ≡ final-alloc-local)
+        (result-place-local :
+           ResultPlace B m final-alloc-local
+             (record alloc { next-slot     = next-slot     final-alloc-local
+                           ; next-heap-ref = next-heap-ref final-alloc-local })
+             (eval ir x) final-state)
+        (not-halted : halted final-state ≡ false)
+        (mem-preserved-before :
+           (loc : ValueLocation FS) → BeforeFrontier alloc loc →
+           readLoc final-state loc ≡ readLoc s loc)
+        (trace-twf : TraceWF s alloc trace)
+        (trace-preserves-halted :
+           ∀ (s' : LocState FS) (alloc' : AllocState {FS}) →
+           halted s' ≡ false →
+           TraceWF s' alloc' trace →
+           halted (proj₁ (exec-trace trace s' alloc')) ≡ false)
+        (stack-inv-local : IRStackBudget alloc final-alloc-local trace s)
+        (heap-inv-local  : IRHeapBudget  alloc final-alloc-local trace)
+        → IRResultAWF m ir x s alloc
+    mk-IRResultAWF-via-bump {m = m} {ir = ir} {x = x} {s = s} {alloc = alloc}
+                            final-state final-alloc-local trace bump final-alloc-eq
+                            trace-is-ir-to-trace trace-correct alloc-correct-local
+                            result-place-local not-halted mem-preserved-before
+                            trace-twf trace-preserves-halted
+                            stack-inv-local heap-inv-local =
+      record
+        { base = record
+            { final-state = final-state
+            ; trace = trace
+            ; bump = bump
+            ; trace-is-ir-to-trace = trace-is-ir-to-trace
+            ; trace-correct = trace-correct
+            ; alloc-correct = trans alloc-correct-local final-alloc-eq
+            ; result-place =
+                subst (λ a → ResultPlace _ m a
+                              (record alloc { next-slot     = next-slot a
+                                            ; next-heap-ref = next-heap-ref a })
+                              (eval ir x) final-state)
+                      final-alloc-eq result-place-local
+            ; not-halted = not-halted
+            ; mem-preserved-before = mem-preserved-before
+            ; trace-twf = trace-twf
+            ; trace-preserves-halted = trace-preserves-halted
+            }
+        ; stack-inv =
+            subst (λ a → IRStackBudget alloc a trace s) final-alloc-eq stack-inv-local
+        ; heap-inv =
+            subst (λ a → IRHeapBudget  alloc a trace)   final-alloc-eq heap-inv-local
+        }
+
     --------------------------------------------------------------------
     -- BodyCorrect: Pre-computed body execution proof
     --
