@@ -357,6 +357,80 @@ module FrontierInvariant {FS : FrameSemantics} where
     heap-before (<-≤-trans r<heap heap-≤)
     where open import Data.Nat.Properties using (<-≤-trans)
 
+  ----------------------------------------------------------------------
+  -- Plan 0.17 — Type-level Alloc Effect
+  --
+  -- An `AllocBump` declares an IR producer's effect on the allocation
+  -- state: how many stack slots and how many heap refs it consumes,
+  -- relative to the input alloc. Producers declare their bump
+  -- explicitly; `IRResultBase.final-alloc` is derived from
+  -- `apply-bump bump alloc` rather than being a free field. This makes
+  -- inconsistencies (heap-result producer with non-zero next-slot-delta,
+  -- trace bumping next-slot while bump says 0, etc.) into type errors.
+  --
+  -- See `plans/0.17-type-level-alloc-effect.md`.
+  ----------------------------------------------------------------------
+
+  record AllocBump : Set where
+    constructor mkBump
+    field
+      next-slot-delta     : ℕ
+      next-heap-ref-delta : ℕ
+
+  open AllocBump public
+
+  -- Apply a bump to an alloc state. `current-frame` is preserved
+  -- (every instruction preserves current-frame; see
+  -- `exec-abstract-preserves-frame`), so the bump only touches
+  -- `next-slot` and `next-heap-ref`.
+  apply-bump : AllocBump → AllocState {FS} → AllocState {FS}
+  apply-bump bump alloc = record alloc
+    { next-slot     = next-slot alloc +ℕ next-slot-delta bump
+    ; next-heap-ref = next-heap-ref alloc +ℕ next-heap-ref-delta bump
+    }
+
+  -- Zero bump: pure data-flow IR with no allocation effect.
+  bump-0 : AllocBump
+  bump-0 = mkBump 0 0
+
+  -- Bump composition: f then g consumes f.bumps + g.bumps. Used by
+  -- ComposeWF to derive its alloc-correct from sub-IR bumps without
+  -- threading exec-trace state.
+  bump-+ : AllocBump → AllocBump → AllocBump
+  bump-+ b1 b2 = mkBump
+    (next-slot-delta b1 +ℕ next-slot-delta b2)
+    (next-heap-ref-delta b1 +ℕ next-heap-ref-delta b2)
+
+  -- apply-bump preserves current-frame (record-update touches only
+  -- next-slot / next-heap-ref).
+  apply-bump-preserves-frame : ∀ (bump : AllocBump) (alloc : AllocState {FS}) →
+    current-frame (apply-bump bump alloc) ≡ current-frame alloc
+  apply-bump-preserves-frame _ _ = refl
+
+  -- apply-bump composition: applying b1 then b2 is the same as
+  -- applying their sum. This is the key lemma for ComposeWF's
+  -- bump-additivity.
+  apply-bump-compose : ∀ (b1 b2 : AllocBump) (alloc : AllocState {FS}) →
+    apply-bump b2 (apply-bump b1 alloc) ≡ apply-bump (bump-+ b1 b2) alloc
+  apply-bump-compose b1 b2 alloc = cong₂
+    (λ s h → record alloc { next-slot = s ; next-heap-ref = h })
+    (+-assoc (next-slot alloc) (next-slot-delta b1) (next-slot-delta b2))
+    (+-assoc (next-heap-ref alloc) (next-heap-ref-delta b1) (next-heap-ref-delta b2))
+    where open import Data.Nat.Properties using (+-assoc)
+          open import Relation.Binary.PropositionalEquality using (cong₂)
+
+  -- apply-bump bump-0 is the identity on next-slot / next-heap-ref
+  -- (but only propositionally — n +ℕ 0 doesn't reduce definitionally).
+  apply-bump-0-next-slot : ∀ (alloc : AllocState {FS}) →
+    next-slot (apply-bump bump-0 alloc) ≡ next-slot alloc
+  apply-bump-0-next-slot alloc = +-identityʳ (next-slot alloc)
+    where open import Data.Nat.Properties using (+-identityʳ)
+
+  apply-bump-0-next-heap-ref : ∀ (alloc : AllocState {FS}) →
+    next-heap-ref (apply-bump bump-0 alloc) ≡ next-heap-ref alloc
+  apply-bump-0-next-heap-ref alloc = +-identityʳ (next-heap-ref alloc)
+    where open import Data.Nat.Properties using (+-identityʳ)
+
 ------------------------------------------------------------------------
 -- Frame Push/Pop Operations
 --
