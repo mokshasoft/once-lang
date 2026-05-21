@@ -212,6 +212,9 @@ compiler: compiler-x86-64
 
 .PHONY: malonzo
 malonzo:
+	@if [ -z "$$AGDA_SAFE_ACTIVE" ] && [ -z "$$AGDA_SAFE_DISABLE" ]; then \
+	  exec $(CURDIR)/scripts/agda-safe.sh malonzo; \
+	fi
 	@echo "Extracting compiler via MAlonzo..."
 	@mkdir -p _build/malonzo
 	@# Extract from Once/Compiler.agda (the verified instance) which
@@ -305,9 +308,19 @@ postulates-x86-64: postulates-ccc-x86-64 postulates-arith-x86-64
 # Utilities
 #-----------------------------------------------------------------------------
 
+# `make agda` and `make malonzo` are the heaviest targets and can OOM
+# the box (see scripts/agda-safe.sh for context). When invoked directly
+# (AGDA_SAFE_ACTIVE unset), they re-exec themselves through the
+# cgroup-based safety wrapper so a runaway type-check can only kill its
+# own subtree — not the claude-code harness. The wrapper exports
+# AGDA_SAFE_ACTIVE=1 to break the recursion. Set AGDA_SAFE_DISABLE=1 to
+# opt out (e.g. on CI with its own memory controls).
 .PHONY: agda
 agda:
 	@if [ -z "$(MODULE)" ]; then echo "Usage: make agda MODULE=Once/Path/To/File.agda"; exit 1; fi
+	@if [ -z "$$AGDA_SAFE_ACTIVE" ] && [ -z "$$AGDA_SAFE_DISABLE" ]; then \
+	  exec $(CURDIR)/scripts/agda-safe.sh agda MODULE=$(MODULE); \
+	fi
 	@echo "Type-checking $(MODULE)..."
 	@sh -c '$(AGDA_CMD) $(MODULE)'
 
