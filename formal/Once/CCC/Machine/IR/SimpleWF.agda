@@ -10,7 +10,7 @@
 
 module Once.CCC.Machine.IR.SimpleWF where
 
-open import Data.Nat using (ℕ; _<_; _≤_) renaming (_+_ to _+ℕ_)
+open import Data.Nat using (ℕ; _<_; _≤_; z≤n) renaming (_+_ to _+ℕ_)
 open import Data.Nat.Properties using (≤-refl; m≤m+n)
 open import Data.Bool using (false)
 open import Data.List using ([]; _∷_)
@@ -87,12 +87,11 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       (twf-∷ tt twf-[])
       (exec-trace-preserves-halted-WF trace)
       (record
-        { slot-monotone = ≤-refl
-        ; max-slot-written = next-slot alloc
-        ; max-slot-geq-final = ≤-refl
+        { max-slot-written = next-slot alloc
         ; stack-budget = 0
+        ; bump-fits-stack-budget = z≤n
+        ; max-slot-geq-final = ≤-refl
         ; max-slot-usage-bound = m≤m+n (next-slot alloc) 0
-        ; slot-stays-in-budget = m≤m+n (next-slot alloc) 0
         ; frontier-slot-stable = frontier-stable
         ; trace-writes-above = tt
         ; trace-slot-reads-above = tt
@@ -102,9 +101,9 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; scratch-bounded = m≤m+n (next-slot alloc) 0
         })
       (record
-        { heap-monotone = ≤-refl
-        ; heap-budget = 0
+        { heap-budget = 0
         ; max-heap-ref-written = next-heap-ref alloc
+        ; bump-fits-heap-budget = z≤n
         ; max-heap-ref-geq-final = ≤-refl
         ; max-heap-usage-bound = m≤m+n (next-heap-ref alloc) 0
         })
@@ -162,12 +161,11 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       (twf-∷ (input-loc , sv-as-loc-eq , SV-Ptr fst-loc , fst-ptr-eq) twf-[])
       (exec-trace-preserves-halted-WF trace)
       (record
-        { slot-monotone = ≤-refl
-        ; max-slot-written = next-slot alloc
-        ; max-slot-geq-final = ≤-refl
+        { max-slot-written = next-slot alloc
         ; stack-budget = 0
+        ; bump-fits-stack-budget = z≤n
+        ; max-slot-geq-final = ≤-refl
         ; max-slot-usage-bound = m≤m+n (next-slot alloc) 0
-        ; slot-stays-in-budget = m≤m+n (next-slot alloc) 0
         ; frontier-slot-stable = frontier-stable
         ; trace-writes-above = tt
         ; trace-slot-reads-above = tt
@@ -177,9 +175,9 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; scratch-bounded = m≤m+n (next-slot alloc) 0
         })
       (record
-        { heap-monotone = ≤-refl
-        ; heap-budget = 0
+        { heap-budget = 0
         ; max-heap-ref-written = next-heap-ref alloc
+        ; bump-fits-heap-budget = z≤n
         ; max-heap-ref-geq-final = ≤-refl
         ; max-heap-usage-bound = m≤m+n (next-heap-ref alloc) 0
         })
@@ -260,12 +258,11 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       (twf-∷ (input-loc , sv-as-loc-eq , SV-Ptr snd-loc , snd-ptr-eq) twf-[])
       (exec-trace-preserves-halted-WF trace)
       (record
-        { slot-monotone = ≤-refl
-        ; max-slot-written = next-slot alloc
-        ; max-slot-geq-final = ≤-refl
+        { max-slot-written = next-slot alloc
         ; stack-budget = 0
+        ; bump-fits-stack-budget = z≤n
+        ; max-slot-geq-final = ≤-refl
         ; max-slot-usage-bound = m≤m+n (next-slot alloc) 0
-        ; slot-stays-in-budget = m≤m+n (next-slot alloc) 0
         ; frontier-slot-stable = frontier-stable
         ; trace-writes-above = tt
         ; trace-slot-reads-above = tt
@@ -275,9 +272,9 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; scratch-bounded = m≤m+n (next-slot alloc) 0
         })
       (record
-        { heap-monotone = ≤-refl
-        ; heap-budget = 0
+        { heap-budget = 0
         ; max-heap-ref-written = next-heap-ref alloc
+        ; bump-fits-heap-budget = z≤n
         ; max-heap-ref-geq-final = ≤-refl
         ; max-heap-usage-bound = m≤m+n (next-heap-ref alloc) 0
         })
@@ -355,12 +352,11 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       twf-[]
       (exec-trace-preserves-halted-WF [])
       (record
-        { slot-monotone = ≤-refl
-        ; max-slot-written = next-slot alloc
-        ; max-slot-geq-final = ≤-refl
+        { max-slot-written = next-slot alloc
         ; stack-budget = 0
+        ; bump-fits-stack-budget = z≤n
+        ; max-slot-geq-final = ≤-refl
         ; max-slot-usage-bound = m≤m+n (next-slot alloc) 0
-        ; slot-stays-in-budget = m≤m+n (next-slot alloc) 0
         ; frontier-slot-stable = frontier-stable
         ; trace-writes-above = tt
         ; trace-slot-reads-above = tt
@@ -370,9 +366,9 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; scratch-bounded = m≤m+n (next-slot alloc) 0
         })
       (record
-        { heap-monotone = ≤-refl
-        ; heap-budget = 0
+        { heap-budget = 0
         ; max-heap-ref-written = next-heap-ref alloc
+        ; bump-fits-heap-budget = z≤n
         ; max-heap-ref-geq-final = ≤-refl
         ; max-heap-usage-bound = m≤m+n (next-heap-ref alloc) 0
         })
@@ -409,12 +405,11 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       (twf-∷ tt twf-[])
       (exec-trace-preserves-halted-WF trace)
       (record
-        { slot-monotone = ≤-refl
-        ; max-slot-written = next-slot alloc
-        ; max-slot-geq-final = ≤-refl
+        { max-slot-written = next-slot alloc
         ; stack-budget = 0
+        ; bump-fits-stack-budget = z≤n
+        ; max-slot-geq-final = ≤-refl
         ; max-slot-usage-bound = m≤m+n (next-slot alloc) 0
-        ; slot-stays-in-budget = m≤m+n (next-slot alloc) 0
         ; frontier-slot-stable = frontier-stable
         ; trace-writes-above = tt
         ; trace-slot-reads-above = tt
@@ -424,9 +419,9 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; scratch-bounded = m≤m+n (next-slot alloc) 0
         })
       (record
-        { heap-monotone = ≤-refl
-        ; heap-budget = 0
+        { heap-budget = 0
         ; max-heap-ref-written = next-heap-ref alloc
+        ; bump-fits-heap-budget = z≤n
         ; max-heap-ref-geq-final = ≤-refl
         ; max-heap-usage-bound = m≤m+n (next-heap-ref alloc) 0
         })
@@ -475,12 +470,11 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       (twf-∷ tt twf-[])
       (exec-trace-preserves-halted-WF trace)
       (record
-        { slot-monotone = ≤-refl
-        ; max-slot-written = next-slot alloc
-        ; max-slot-geq-final = ≤-refl
+        { max-slot-written = next-slot alloc
         ; stack-budget = 0
+        ; bump-fits-stack-budget = z≤n
+        ; max-slot-geq-final = ≤-refl
         ; max-slot-usage-bound = m≤m+n (next-slot alloc) 0
-        ; slot-stays-in-budget = m≤m+n (next-slot alloc) 0
         ; frontier-slot-stable = frontier-stable
         ; trace-writes-above = tt
         ; trace-slot-reads-above = tt
@@ -490,9 +484,9 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; scratch-bounded = m≤m+n (next-slot alloc) 0
         })
       (record
-        { heap-monotone = ≤-refl
-        ; heap-budget = 0
+        { heap-budget = 0
         ; max-heap-ref-written = next-heap-ref alloc
+        ; bump-fits-heap-budget = z≤n
         ; max-heap-ref-geq-final = ≤-refl
         ; max-heap-usage-bound = m≤m+n (next-heap-ref alloc) 0
         })

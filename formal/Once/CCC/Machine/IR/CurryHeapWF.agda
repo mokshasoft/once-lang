@@ -133,12 +133,11 @@ module CurryHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       (TraceEvaluator.trace-wf trace-eval)
       (exec-trace-preserves-halted-WF curry-heap-trace)
       (record
-        { slot-monotone = ≤-refl
-        ; max-slot-written = next-slot alloc +ℕ closure-heap-scratch
-        ; max-slot-geq-final = m≤m+n (next-slot alloc) closure-heap-scratch
+        { max-slot-written = next-slot alloc +ℕ closure-heap-scratch
         ; stack-budget = closure-heap-scratch
+        ; bump-fits-stack-budget = z≤n
+        ; max-slot-geq-final = m≤m+n (next-slot alloc) closure-heap-scratch
         ; max-slot-usage-bound = ≤-refl
-        ; slot-stays-in-budget = m≤m+n (next-slot alloc) closure-heap-scratch
         ; frontier-slot-stable = λ _ _ _ _ _ → inj₂ (inj₂ tt)
         ; trace-writes-above = curry-twa
         ; trace-slot-reads-above = curry-tsra
@@ -148,9 +147,9 @@ module CurryHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; scratch-bounded = ≤-refl
         })
       (record
-        { heap-monotone = n≤1+n (next-heap-ref alloc)
-        ; heap-budget = 2
+        { heap-budget = 2
         ; max-heap-ref-written = next-heap-ref alloc-final
+        ; bump-fits-heap-budget = s≤s z≤n
         ; max-heap-ref-geq-final = ≤-refl
         ; max-heap-usage-bound = subst (suc (next-heap-ref alloc) ≤_)
                                         (+-comm 2 (next-heap-ref alloc))

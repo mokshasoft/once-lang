@@ -129,25 +129,24 @@ module PairHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       (TraceEvaluator.trace-wf trace-eval)
       (exec-trace-preserves-halted-WF pair-heap-trace)
       (record
-        { slot-monotone = slot-monotone-pair
-        ; max-slot-written = max-slot-pair
-        ; max-slot-geq-final = max-slot-geq-final-pair
+        { max-slot-written = max-slot-pair
         ; stack-budget = req-pair-stack
+        ; bump-fits-stack-budget = pair-bump-fits-stack-budget
+        ; max-slot-geq-final = pair-max-slot-geq-final
         ; max-slot-usage-bound = max-slot-usage-bound-pair
-        ; slot-stays-in-budget = slot-stays-in-budget-pair
         ; frontier-slot-stable = λ _ _ _ _ _ → inj₂ (inj₂ tt)
         ; trace-writes-above = pair-trace-writes-above
         ; trace-slot-reads-above = pair-trace-slot-reads-above
         ; trace-writes-below = pair-trace-writes-below
         ; trace-slot-reads-below = pair-trace-slot-reads-below
         ; scratch-budget = req-pair-scratch
-        ; scratch-bounded = scratch-bounded-pair
+        ; scratch-bounded = pair-scratch-bounded
         })
       (record
-        { heap-monotone = heap-mono
-        ; heap-budget = req-pair-heap
+        { heap-budget = req-pair-heap
         ; max-heap-ref-written = next-heap-ref alloc-final
-        ; max-heap-ref-geq-final = ≤-refl
+        ; bump-fits-heap-budget = pair-bump-fits-heap-budget
+        ; max-heap-ref-geq-final = pair-max-heap-ref-geq-final
         ; max-heap-usage-bound = max-heap-usage-bound-pair
         })
     where
@@ -1298,3 +1297,46 @@ module PairHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ≤-trans (IRResultAWF.heap-monotone result-f)
           (≤-trans (IRResultAWF.heap-monotone result-g)
                    (n≤1+n (next-heap-ref alloc-after-g)))
+
+      ------------------------------------------------------------------
+      -- Plan 0.17.1: discharge the new IRStackBudget / IRHeapBudget
+      -- fields. Each rests on `pair-bump-eq` (the alloc-final ≡
+      -- apply-bump pair-bump alloc bridge); arithmetic chains into the
+      -- existing pair-* lemmas above.
+      ------------------------------------------------------------------
+
+      pair-bump-fits-stack-budget : next-slot-delta pair-bump ≤ req-pair-stack
+      pair-bump-fits-stack-budget =
+        +-mono-≤ (+-mono-≤ (≤-refl {x = 4})
+                            (IRResultAWF.bump-fits-stack-budget result-f))
+                  (IRResultAWF.bump-fits-stack-budget result-g)
+        where open import Data.Nat.Properties using (+-mono-≤)
+
+      pair-max-slot-geq-final :
+        next-slot-delta pair-bump +ℕ next-slot alloc ≤ max-slot-pair
+      pair-max-slot-geq-final =
+        subst (λ a → next-slot a ≤ max-slot-pair)
+              pair-bump-eq
+              max-slot-geq-final-pair
+
+      pair-scratch-bounded :
+        max-slot-pair ≤ next-slot (apply-bump pair-bump alloc) +ℕ req-pair-scratch
+      pair-scratch-bounded =
+        subst (λ a → max-slot-pair ≤ next-slot a +ℕ req-pair-scratch)
+              pair-bump-eq
+              scratch-bounded-pair
+
+      pair-bump-fits-heap-budget : next-heap-ref-delta pair-bump ≤ req-pair-heap
+      pair-bump-fits-heap-budget =
+        ≤-trans
+          (+-monoˡ-≤ 1 (+-mono-≤ (IRResultAWF.bump-fits-heap-budget result-f)
+                                  (IRResultAWF.bump-fits-heap-budget result-g)))
+          (≤-reflexive (+-comm (rf-heap +ℕ rg-heap) 1))
+        where open import Data.Nat.Properties using (+-mono-≤; ≤-reflexive)
+
+      pair-max-heap-ref-geq-final :
+        next-heap-ref-delta pair-bump +ℕ next-heap-ref alloc ≤ next-heap-ref alloc-final
+      pair-max-heap-ref-geq-final =
+        subst (λ a → next-heap-ref-delta pair-bump +ℕ next-heap-ref alloc ≤ next-heap-ref a)
+              (sym pair-bump-eq)
+              ≤-refl

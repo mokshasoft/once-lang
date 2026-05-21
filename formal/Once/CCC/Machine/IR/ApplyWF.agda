@@ -288,26 +288,24 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       trace-twf'
       (exec-trace-preserves-halted-WF trace)
       (record
-        { slot-monotone = ≤-trans (m≤m+n (next-slot alloc) pair-slots)
-                                  (IRResultAWF.slot-monotone body-result)
-        ; stack-budget = pair-slots +ℕ IRResultAWF.stack-budget body-result
+        { stack-budget = pair-slots +ℕ IRResultAWF.stack-budget body-result
         ; max-slot-written = IRResultAWF.max-slot-written body-result
-        ; max-slot-geq-final = IRResultAWF.max-slot-geq-final body-result
+        ; bump-fits-stack-budget = apply-bump-fits-stack-budget
+        ; max-slot-geq-final = apply-max-slot-geq-final
         ; max-slot-usage-bound = max-slot-usage-bound'
-        ; slot-stays-in-budget = slot-stays-in-budget'
         ; frontier-slot-stable = frontier-stable'
         ; trace-writes-above = trace-writes-above'
         ; trace-slot-reads-above = trace-slot-reads-above'
         ; trace-writes-below = trace-writes-below'
         ; trace-slot-reads-below = trace-slot-reads-below'
         ; scratch-budget = IRResultAWF.scratch-budget body-result
-        ; scratch-bounded = IRResultAWF.scratch-bounded body-result
+        ; scratch-bounded = apply-scratch-bounded
         })
       (record
-        { heap-monotone = IRResultAWF.heap-monotone body-result
-        ; heap-budget = IRResultAWF.heap-budget body-result
+        { heap-budget = IRResultAWF.heap-budget body-result
         ; max-heap-ref-written = IRResultAWF.max-heap-ref-written body-result
-        ; max-heap-ref-geq-final = IRResultAWF.max-heap-ref-geq-final body-result
+        ; bump-fits-heap-budget = apply-bump-fits-heap-budget
+        ; max-heap-ref-geq-final = apply-max-heap-ref-geq-final
         ; max-heap-usage-bound = IRResultAWF.max-heap-usage-bound body-result
         })
     where
@@ -1295,6 +1293,50 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
           (+-assoc (next-slot alloc) pair-slots (IRResultAWF.stack-budget body-result))
           (IRResultAWF.slot-stays-in-budget body-result)
         where open import Data.Nat.Properties using (+-assoc)
+
+      ------------------------------------------------------------------
+      -- Plan 0.17.1: discharge the new IRStackBudget / IRHeapBudget
+      -- fields.  apply-bump-value = bump-+ (mkBump pair-slots 0)
+      -- body-bump, and apply-bump-eq : alloc' ≡ apply-bump apply-bump-value
+      -- alloc carries the bridge.  next-slot-delta apply-bump-value
+      -- reduces defequally to pair-slots +ℕ next-slot-delta body-bump,
+      -- and next-heap-ref-delta to next-heap-ref-delta body-bump (via
+      -- 0 + n = n).
+      ------------------------------------------------------------------
+
+      apply-bump-fits-stack-budget :
+        next-slot-delta apply-bump-value ≤ pair-slots +ℕ IRResultAWF.stack-budget body-result
+      apply-bump-fits-stack-budget =
+        +-monoʳ-≤ pair-slots (IRResultAWF.bump-fits-stack-budget body-result)
+        where open import Data.Nat.Properties using (+-monoʳ-≤)
+
+      apply-max-slot-geq-final :
+        next-slot-delta apply-bump-value +ℕ next-slot alloc
+        ≤ IRResultAWF.max-slot-written body-result
+      apply-max-slot-geq-final =
+        subst (λ a → next-slot a ≤ IRResultAWF.max-slot-written body-result)
+              apply-bump-eq
+              (IRResultAWF.max-slot-geq-final body-result)
+
+      apply-scratch-bounded :
+        IRResultAWF.max-slot-written body-result
+        ≤ next-slot (apply-bump apply-bump-value alloc) +ℕ IRResultAWF.scratch-budget body-result
+      apply-scratch-bounded =
+        subst (λ a → IRResultAWF.max-slot-written body-result
+                     ≤ next-slot a +ℕ IRResultAWF.scratch-budget body-result)
+              apply-bump-eq
+              (IRResultAWF.scratch-bounded body-result)
+
+      apply-bump-fits-heap-budget :
+        next-heap-ref-delta apply-bump-value ≤ IRResultAWF.heap-budget body-result
+      apply-bump-fits-heap-budget =
+        IRResultAWF.bump-fits-heap-budget body-result
+
+      apply-max-heap-ref-geq-final :
+        next-heap-ref-delta apply-bump-value +ℕ next-heap-ref alloc
+        ≤ IRResultAWF.max-heap-ref-written body-result
+      apply-max-heap-ref-geq-final =
+        IRResultAWF.max-heap-ref-geq-final body-result
 
       -- trace-writes-below: setup writes at suc pair-slot and pair-slot.
       -- Both < body's max-slot-written (body monotone gives

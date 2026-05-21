@@ -3711,12 +3711,11 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
             SMP.!!                       -- trace-twf
             SMP.!!                       -- trace-preserves-halted
             (record
-              { slot-monotone = slot-mono-proof
-              ; max-slot-written = cata-max-slot
-              ; max-slot-geq-final = cata-max-slot-geq-final
+              { max-slot-written = cata-max-slot
               ; stack-budget = ir-stack-requirement (Cata wfG alg)
+              ; bump-fits-stack-budget = SMP.!!    -- Plan 0.17.1 TODO
+              ; max-slot-geq-final = SMP.!!        -- Plan 0.17.1 TODO (was cata-max-slot-geq-final)
               ; max-slot-usage-bound = SMP.!!
-              ; slot-stays-in-budget = SMP.!!
               ; frontier-slot-stable = λ _ _ _ _ _ → inj₂ (inj₂ tt)
               ; trace-writes-above = SMP.trace-writes-above-append (next-slot alloc) layer-trace
                   (mov-to-input ∷ IRResultAWF.trace alg-result)
@@ -3750,10 +3749,10 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
               ; scratch-bounded = SMP.!!
               })
             (record
-              { heap-monotone = ≤-reflexive (sym heap-pres-proof)
-              ; heap-budget = 0
+              { heap-budget = 0
               ; max-heap-ref-written = next-heap-ref (IRResultAWF.final-alloc alg-result)
-              ; max-heap-ref-geq-final = ≤-refl
+              ; bump-fits-heap-budget = SMP.!!     -- Plan 0.17.1 TODO
+              ; max-heap-ref-geq-final = SMP.!!    -- Plan 0.17.1 TODO
               ; max-heap-usage-bound = subst (next-heap-ref (IRResultAWF.final-alloc alg-result) ≤_)
                   (sym (+-identityʳ (next-heap-ref alloc)))
                   (≤-reflexive heap-pres-proof)

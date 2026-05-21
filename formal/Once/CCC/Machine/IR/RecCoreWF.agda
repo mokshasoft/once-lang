@@ -50,7 +50,7 @@
 
 module Once.CCC.Machine.IR.RecCoreWF where
 
-open import Data.Nat using (ℕ; zero; suc; _<_; _≤_) renaming (_+_ to _+ℕ_)
+open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; z≤n) renaming (_+_ to _+ℕ_)
 open import Data.Nat.Properties using (≤-refl; ≤-trans; m≤m+n; n≤1+n)
 open import Data.Bool using (false)
 open import Data.List using (List; []; _∷_)
@@ -364,12 +364,12 @@ module RecCoreWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       SMP.!!
       (exec-trace-preserves-halted-WF fuse-trace)
       (record
-        { slot-monotone = slot-mono
-        ; max-slot-written = next-slot alloc'
-        ; max-slot-geq-final = ≤-refl
+        { max-slot-written = next-slot alloc'
         ; stack-budget = ir-stack-requirement (Fuse wfF wfG alg transform)
+        ; bump-fits-stack-budget = suc-≤-plus-req-2 0
+            (ir-stack-requirement alg) (ir-stack-requirement transform)
+        ; max-slot-geq-final = ≤-refl
         ; max-slot-usage-bound = reclaim-bound
-        ; slot-stays-in-budget = reclaim-bound
         ; frontier-slot-stable = frontier-stable
         ; trace-writes-above = trace-wa
         ; trace-slot-reads-above = tt
@@ -379,9 +379,9 @@ module RecCoreWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; scratch-bounded = m≤m+n (suc (next-slot alloc)) (ir-scratch-requirement (Fuse wfF wfG alg transform))
         })
       (record
-        { heap-monotone = ≤-refl
-        ; heap-budget = 0
+        { heap-budget = 0
         ; max-heap-ref-written = next-heap-ref alloc
+        ; bump-fits-heap-budget = z≤n
         ; max-heap-ref-geq-final = ≤-refl
         ; max-heap-usage-bound = m≤m+n (next-heap-ref alloc) 0
         })
@@ -469,12 +469,12 @@ module RecCoreWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       SMP.!!
       (exec-trace-preserves-halted-WF hylo-trace)
       (record
-        { slot-monotone = slot-mono
-        ; max-slot-written = next-slot alloc'
-        ; max-slot-geq-final = ≤-refl
+        { max-slot-written = next-slot alloc'
         ; stack-budget = ir-stack-requirement (Hylo wfF wfG alg coalg)
+        ; bump-fits-stack-budget = suc-≤-plus-req-2 0
+            (ir-stack-requirement alg) (ir-stack-requirement coalg)
+        ; max-slot-geq-final = ≤-refl
         ; max-slot-usage-bound = reclaim-bound
-        ; slot-stays-in-budget = reclaim-bound
         ; frontier-slot-stable = frontier-stable
         ; trace-writes-above = trace-wa
         ; trace-slot-reads-above = tt
@@ -484,9 +484,9 @@ module RecCoreWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; scratch-bounded = m≤m+n (suc (next-slot alloc)) (ir-scratch-requirement (Hylo wfF wfG alg coalg))
         })
       (record
-        { heap-monotone = ≤-refl
-        ; heap-budget = 0
+        { heap-budget = 0
         ; max-heap-ref-written = next-heap-ref alloc
+        ; bump-fits-heap-budget = z≤n
         ; max-heap-ref-geq-final = ≤-refl
         ; max-heap-usage-bound = m≤m+n (next-heap-ref alloc) 0
         })

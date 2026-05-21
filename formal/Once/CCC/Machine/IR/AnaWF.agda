@@ -22,7 +22,7 @@
 
 module Once.CCC.Machine.IR.AnaWF where
 
-open import Data.Nat using (ℕ; zero; suc; _<_; _≤_) renaming (_+_ to _+ℕ_)
+open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; z≤n) renaming (_+_ to _+ℕ_)
 open import Data.Nat.Properties using (≤-refl; ≤-trans; m≤m+n; n≤1+n)
 open import Data.Bool using (false)
 open import Data.List using (List; []; _∷_)
@@ -210,12 +210,11 @@ module AnaWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       SMP.!!
       (exec-trace-preserves-halted-WF ana-trace)
       (record
-        { slot-monotone = slot-mono
-        ; max-slot-written = next-slot alloc'
-        ; max-slot-geq-final = ≤-refl
+        { max-slot-written = next-slot alloc'
         ; stack-budget = ir-stack-requirement (Ana wf coalg)
+        ; bump-fits-stack-budget = ≤-trans (s≤s z≤n) (m≤n+m pair-slots (ir-stack-requirement coalg))
+        ; max-slot-geq-final = ≤-refl
         ; max-slot-usage-bound = reclaim-bound
-        ; slot-stays-in-budget = reclaim-bound
         ; frontier-slot-stable = frontier-stable
         ; trace-writes-above = trace-wa
         ; trace-slot-reads-above = tt
@@ -225,9 +224,9 @@ module AnaWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; scratch-bounded = m≤m+n (suc (next-slot alloc)) (ir-scratch-requirement (Ana wf coalg))
         })
       (record
-        { heap-monotone = ≤-refl
-        ; heap-budget = 0
+        { heap-budget = 0
         ; max-heap-ref-written = next-heap-ref alloc
+        ; bump-fits-heap-budget = z≤n
         ; max-heap-ref-geq-final = ≤-refl
         ; max-heap-usage-bound = m≤m+n (next-heap-ref alloc) 0
         })

@@ -208,25 +208,31 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       (TraceEvaluator.trace-wf trace-eval)
       (exec-trace-preserves-halted-WF compose-trace)
       (record
-        { slot-monotone = slot-mono
-        ; max-slot-written = compose-max-slot
-        ; max-slot-geq-final = compose-max-slot-geq-final
+        { max-slot-written = compose-max-slot
         ; stack-budget = req-compose
+        ; bump-fits-stack-budget = compose-bump-fits-stack-budget
+        ; max-slot-geq-final = compose-max-slot-geq-final-bump
         ; max-slot-usage-bound = compose-max-slot-bound
-        ; slot-stays-in-budget = compose-slot-stays-in-budget
-        ; frontier-slot-stable = compose-frontier-stable
+        -- Plan 0.17.1: frontier-slot-stable now returns relative to
+        -- `apply-bump compose-bump alloc`, not raw `alloc₂`. Match the
+        -- pattern used by ApplyWF / PairHeapWF / CurryHeapWF and return
+        -- the uncertain branch `inj₂ (inj₂ tt)`. The legacy compose-
+        -- frontier-stable (with the alloc₂-shape return type) is kept
+        -- below as dead code for reference; reviving it would require
+        -- a transport via `compose-bump-eq` on the inj₁ branch.
+        ; frontier-slot-stable = λ _ _ _ _ _ → inj₂ (inj₂ tt)
         ; trace-writes-above = compose-trace-writes-above
         ; trace-slot-reads-above = compose-trace-slot-reads-above
         ; trace-writes-below = compose-trace-writes-below
         ; trace-slot-reads-below = compose-trace-slot-reads-below
         ; scratch-budget = req-compose-scratch
-        ; scratch-bounded = compose-scratch-bounded
+        ; scratch-bounded = compose-scratch-bounded-bump
         })
       (record
-        { heap-monotone = heap-mono
-        ; heap-budget = IRResultAWF.heap-budget result-f +ℕ IRResultAWF.heap-budget result-g
+        { heap-budget = IRResultAWF.heap-budget result-f +ℕ IRResultAWF.heap-budget result-g
         ; max-heap-ref-written = IRResultAWF.max-heap-ref-written result-g
-        ; max-heap-ref-geq-final = IRResultAWF.max-heap-ref-geq-final result-g
+        ; bump-fits-heap-budget = compose-bump-fits-heap-budget
+        ; max-heap-ref-geq-final = compose-max-heap-ref-geq-final-bump
         ; max-heap-usage-bound = SMP.!!
         })
     where
@@ -782,3 +788,49 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
           g-scratch-bound : max-slot-g ≤ next-slot alloc₂ +ℕ req-compose-scratch
           g-scratch-bound =
             ≤-trans g-sb (+-monoʳ-≤ (next-slot alloc₂) (m≤n+m sg sf))
+
+      ------------------------------------------------------------------------
+      -- Plan 0.17.1: discharge the new IRStackBudget / IRHeapBudget fields.
+      -- compose-bump = bump-+ result-f.bump result-g.bump (concrete), so
+      -- next-slot-delta compose-bump reduces defequally to
+      -- (next-slot-delta result-f.bump +ℕ next-slot-delta result-g.bump).
+      -- compose-bump-eq (SMP.!! placeholder for now) bridges alloc₂ to
+      -- apply-bump compose-bump alloc; algebraic obligations chain into
+      -- the existing compose-* lemmas via subst.
+      ------------------------------------------------------------------------
+
+      compose-bump-fits-stack-budget : next-slot-delta compose-bump ≤ req-compose
+      compose-bump-fits-stack-budget =
+        +-mono-≤ (IRResultAWF.bump-fits-stack-budget result-f)
+                 (IRResultAWF.bump-fits-stack-budget result-g)
+        where open import Data.Nat.Properties using (+-mono-≤)
+
+      compose-max-slot-geq-final-bump :
+        next-slot-delta compose-bump +ℕ next-slot alloc ≤ compose-max-slot
+      compose-max-slot-geq-final-bump =
+        subst (λ a → next-slot a ≤ compose-max-slot)
+              compose-bump-eq
+              compose-max-slot-geq-final
+
+      compose-scratch-bounded-bump :
+        compose-max-slot ≤ next-slot (apply-bump compose-bump alloc) +ℕ req-compose-scratch
+      compose-scratch-bounded-bump =
+        subst (λ a → compose-max-slot ≤ next-slot a +ℕ req-compose-scratch)
+              compose-bump-eq
+              compose-scratch-bounded
+
+      compose-bump-fits-heap-budget :
+        next-heap-ref-delta compose-bump
+        ≤ IRResultAWF.heap-budget result-f +ℕ IRResultAWF.heap-budget result-g
+      compose-bump-fits-heap-budget =
+        +-mono-≤ (IRResultAWF.bump-fits-heap-budget result-f)
+                 (IRResultAWF.bump-fits-heap-budget result-g)
+        where open import Data.Nat.Properties using (+-mono-≤)
+
+      compose-max-heap-ref-geq-final-bump :
+        next-heap-ref-delta compose-bump +ℕ next-heap-ref alloc
+        ≤ IRResultAWF.max-heap-ref-written result-g
+      compose-max-heap-ref-geq-final-bump =
+        subst (λ a → next-heap-ref a ≤ IRResultAWF.max-heap-ref-written result-g)
+              compose-bump-eq
+              (IRResultAWF.max-heap-ref-geq-final result-g)

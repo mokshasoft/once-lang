@@ -13,7 +13,7 @@
 module Once.CCC.Machine.IR.CurryWF where
 
 open import Data.Nat using (ℕ; suc; _<_; _≤_; _≥_; s≤s; z≤n) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
-open import Data.Nat.Properties using (≤-refl; ≤-trans; m≤m+n; m<m+n; m+n≤o⇒m≤o; +-monoʳ-≤; *-monoˡ-≤; m≤m*n; +-assoc; n≤1+n)
+open import Data.Nat.Properties using (≤-refl; ≤-reflexive; ≤-trans; m≤m+n; m<m+n; m+n≤o⇒m≤o; +-monoʳ-≤; *-monoˡ-≤; m≤m*n; +-assoc; n≤1+n; +-comm)
 open import Data.Bool using (false)
 open import Data.Unit using (tt)
 open import Data.List using ([]; _∷_)
@@ -188,24 +188,25 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       trace-twf'
       (exec-trace-preserves-halted-WF trace)
       (record
-        { slot-monotone = m≤m+n (next-slot alloc) closure-slots
-        ; max-slot-written = next-slot alloc +ℕ closure-slots
-        ; max-slot-geq-final = ≤-refl
+        { max-slot-written = next-slot alloc +ℕ closure-slots
         ; stack-budget = ir-stack-requirement (curry {k = k} f m)
+        ; bump-fits-stack-budget = closure-bound
+        ; max-slot-geq-final = ≤-reflexive (+-comm closure-slots (next-slot alloc))
         ; max-slot-usage-bound = +-monoʳ-≤ (next-slot alloc) closure-bound
-        ; slot-stays-in-budget = +-monoʳ-≤ (next-slot alloc) closure-bound
         ; frontier-slot-stable = frontier-stable'
         ; trace-writes-above = trace-writes-above'
         ; trace-slot-reads-above = tt
         ; trace-writes-below = trace-writes-below'
         ; trace-slot-reads-below = tt
         ; scratch-budget = ir-scratch-requirement (curry {k = k} f m)
-        ; scratch-bounded = m≤m+n (next-slot alloc +ℕ closure-slots) req-curry
+        ; scratch-bounded = subst (_≤ (closure-slots +ℕ next-slot alloc) +ℕ req-curry)
+                                  (+-comm closure-slots (next-slot alloc))
+                                  (m≤m+n (closure-slots +ℕ next-slot alloc) req-curry)
         })
       (record
-        { heap-monotone = ≤-refl
-        ; heap-budget = 0
+        { heap-budget = 0
         ; max-heap-ref-written = next-heap-ref alloc
+        ; bump-fits-heap-budget = z≤n
         ; max-heap-ref-geq-final = ≤-refl
         ; max-heap-usage-bound = m≤m+n (next-heap-ref alloc) 0
         })

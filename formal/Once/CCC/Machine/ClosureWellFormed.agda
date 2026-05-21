@@ -22,7 +22,7 @@
 module Once.CCC.Machine.ClosureWellFormed where
 
 open import Data.Nat using (ℕ; _<_; _≤_; _≥_; suc; zero) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
-open import Data.Nat.Properties using (≤-antisym; ≤-trans; +-identityʳ)
+open import Data.Nat.Properties using (≤-antisym; ≤-trans; +-identityʳ; m≤n+m; +-monoʳ-≤; +-comm)
 open import Data.Bool using (false)
 open import Data.Maybe using (just)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
@@ -497,22 +497,26 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       frame-preserved : current-frame final-alloc ≡ current-frame alloc
       frame-preserved = apply-bump-preserves-frame bump alloc
 
-    record IRStackBudget (alloc final-alloc : AllocState {FS})
+    -- Plan 0.17.1: IRStackBudget takes `bump : AllocBump`, not `final-alloc`.
+    -- Algebraic fields (slot-monotone, slot-stays-in-budget) become derived
+    -- projections; semantic fields (budgets, trace shape) remain as fields.
+    record IRStackBudget (alloc : AllocState {FS}) (bump : AllocBump)
                          (trace : AbstractTrace)
                          (s : LocState FS) : Set where
       inductive
       field
-        slot-monotone : next-slot alloc ≤ next-slot final-alloc
         max-slot-written : ℕ
-        max-slot-geq-final : next-slot final-alloc ≤ max-slot-written
         stack-budget : ℕ
+        -- Consistency check: declared stack-budget covers the bump's slot delta.
+        bump-fits-stack-budget : next-slot-delta bump ≤ stack-budget
+        -- max-slot-written must cover the bump-derived final next-slot.
+        max-slot-geq-final : next-slot-delta bump +ℕ next-slot alloc ≤ max-slot-written
         max-slot-usage-bound : max-slot-written ≤ next-slot alloc +ℕ stack-budget
-        slot-stays-in-budget : next-slot final-alloc ≤ next-slot alloc +ℕ stack-budget
         frontier-slot-stable : ∀ (s' : LocState FS) (input-loc : ValueLocation FS) →
           halted s' ≡ false →
           readReg (regs s') Input1 ≡ SV-Ptr input-loc →
           readLoc s' (AtStack (current-frame alloc) (next-slot alloc)) ≡ just (SV-Ptr input-loc) →
-          (next-slot alloc ≡ next-slot final-alloc) ⊎
+          (next-slot alloc ≡ next-slot (apply-bump bump alloc)) ⊎
           ((readLoc (proj₁ (exec-trace trace s' alloc))
                    (AtStack (current-frame alloc) (next-slot alloc)) ≡ just (SV-Ptr input-loc)) ⊎ ⊤)
         trace-writes-above : TraceWritesAbove (next-slot alloc) trace
@@ -520,19 +524,31 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
         trace-writes-below : TraceWritesBelow max-slot-written trace
         trace-slot-reads-below : TraceSlotReadsBelow max-slot-written trace
         scratch-budget : ℕ
-        scratch-bounded : max-slot-written ≤ next-slot final-alloc +ℕ scratch-budget
+        scratch-bounded : max-slot-written ≤ next-slot (apply-bump bump alloc) +ℕ scratch-budget
 
-    record IRHeapBudget (alloc final-alloc : AllocState {FS})
+      -- Derived projections (Plan 0.17.1):
+      slot-monotone : next-slot alloc ≤ next-slot (apply-bump bump alloc)
+      slot-monotone = m≤n+m (next-slot alloc) (next-slot-delta bump)
+
+      slot-stays-in-budget : next-slot (apply-bump bump alloc) ≤ next-slot alloc +ℕ stack-budget
+      slot-stays-in-budget = subst (_≤ next-slot alloc +ℕ stack-budget)
+        (+-comm (next-slot alloc) (next-slot-delta bump))
+        (+-monoʳ-≤ (next-slot alloc) bump-fits-stack-budget)
+
+    record IRHeapBudget (alloc : AllocState {FS}) (bump : AllocBump)
                         (trace : AbstractTrace) : Set where
       inductive
       field
-        -- Plan 0.14: heap-monotone replaces the old heap-preserved (≡).
-        -- ≤ accommodates instr-alloc-heap-bearing traces.
-        heap-monotone : next-heap-ref alloc ≤ next-heap-ref final-alloc
         heap-budget : ℕ
         max-heap-ref-written : ℕ
-        max-heap-ref-geq-final : next-heap-ref final-alloc ≤ max-heap-ref-written
+        -- Consistency check: declared heap-budget covers the bump's heap delta.
+        bump-fits-heap-budget : next-heap-ref-delta bump ≤ heap-budget
+        max-heap-ref-geq-final : next-heap-ref-delta bump +ℕ next-heap-ref alloc ≤ max-heap-ref-written
         max-heap-usage-bound : max-heap-ref-written ≤ next-heap-ref alloc +ℕ heap-budget
+
+      -- Derived projection (Plan 0.17.1):
+      heap-monotone : next-heap-ref alloc ≤ next-heap-ref (apply-bump bump alloc)
+      heap-monotone = m≤n+m (next-heap-ref alloc) (next-heap-ref-delta bump)
         -- Plan 0.14 follow-up: the SYNTACTIC field `trace-no-heap-writes`
         -- has been removed. Stack-only producers prove TraceNoHeapWrites
         -- LOCALLY for their trace shape and feed it to `mem-preserved-from-tnhw`
@@ -551,8 +567,8 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       inductive
       field
         base       : IRResultBase m ir x s alloc
-        stack-inv  : IRStackBudget alloc (IRResultBase.final-alloc base) (IRResultBase.trace base) s
-        heap-inv   : IRHeapBudget  alloc (IRResultBase.final-alloc base) (IRResultBase.trace base)
+        stack-inv  : IRStackBudget alloc (IRResultBase.bump base) (IRResultBase.trace base) s
+        heap-inv   : IRHeapBudget  alloc (IRResultBase.bump base) (IRResultBase.trace base)
       open IRResultBase   base       public
       open IRStackBudget  stack-inv  public
       open IRHeapBudget   heap-inv   public
@@ -601,8 +617,8 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
            halted s' ≡ false →
            TraceWF s' alloc' trace →
            halted (proj₁ (exec-trace trace s' alloc')) ≡ false)
-        (stack-inv-local : IRStackBudget alloc final-alloc-local trace s)
-        (heap-inv-local  : IRHeapBudget  alloc final-alloc-local trace)
+        (stack-inv-local : IRStackBudget alloc bump trace s)
+        (heap-inv-local  : IRHeapBudget  alloc bump trace)
         → IRResultAWF m ir x s alloc
     mk-IRResultAWF-via-bump {m = m} {ir = ir} {x = x} {s = s} {alloc = alloc}
                             final-state final-alloc-local trace bump final-alloc-eq
@@ -629,10 +645,8 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
             ; trace-twf = trace-twf
             ; trace-preserves-halted = trace-preserves-halted
             }
-        ; stack-inv =
-            subst (λ a → IRStackBudget alloc a trace s) final-alloc-eq stack-inv-local
-        ; heap-inv =
-            subst (λ a → IRHeapBudget  alloc a trace)   final-alloc-eq heap-inv-local
+        ; stack-inv = stack-inv-local
+        ; heap-inv  = heap-inv-local
         }
 
     --------------------------------------------------------------------
