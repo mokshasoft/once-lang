@@ -790,3 +790,13 @@ du_elaborate'45'default_302 v0 v1
   = coe
       du_elaborate_118 (coe v0) (coe v1)
       (coe MAlonzo.Code.Once.CCC.IR.C_Heap_262)
+-- Once.Surface.Elaborate.distribute-default
+d_distribute'45'default_310 ::
+  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.CCC.IR.T_IR_274
+d_distribute'45'default_310 v0 v1 v2
+  = coe
+      d_distribute_88 (coe v0) (coe v1) (coe v2)
+      (coe MAlonzo.Code.Once.CCC.IR.C_Heap_262)
