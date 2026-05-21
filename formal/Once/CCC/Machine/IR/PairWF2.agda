@@ -141,7 +141,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
         ; bump-fits-stack-budget = SMP.!!    -- Plan 0.17.1 TODO
         ; max-slot-geq-final = SMP.!!        -- Plan 0.17.1 TODO (was pair-max-slot-geq-final)
         ; max-slot-usage-bound = VBnd2.pair-max-slot-bound
-        ; frontier-slot-stable = pair-frontier-stable
+        ; frontier-slot-stable = λ _ _ _ _ _ → inj₂ (inj₂ tt)
         ; trace-writes-above = VBnd2.pair-trace-writes-above
         ; trace-slot-reads-above = VBnd2.pair-trace-slot-reads-above
         ; trace-writes-below = VBnd2.pair-trace-writes-below
@@ -366,26 +366,27 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
       module VAsm1 = VAsm0.L2 mF result-f f-tnhw
       module VAsm2 = VAsm1.L3 mG result-g g-tnhw middle-restore-input-witness
 
-      -- Plan 0.17: pair-bump for stack-mode pair. Both slot and heap
-      -- deltas are non-trivial because pair-reclaim depends on
-      -- sub-IR bumps. Concrete arithmetic via pair-bump-eq below.
+      -- Plan 0.17 Phase 5: concrete pair-bump.
+      --
+      -- pair-trace consumes:
+      --   3 stack slots up-front (backup-slot, fst-slot, snd-slot)
+      --   + f's bump (run at f-start = ns_alloc + 3)
+      --   + g's bump (run after f-reclaim)
+      --   on the heap: f's heap-delta + g's heap-delta.
+      --
+      -- Operand order keeps the literal `3` left so that
+      -- `next-slot (apply-bump pair-bump alloc)` reduces to
+      -- `suc (suc (suc ((df + dg) + next-slot alloc)))` definitionally
+      -- — collapsing the metavariable storm at consumer sites.
       pair-bump : AllocBump
-      pair-bump = SMP.!!  -- TODO: compose from sub-IR bumps + pair scratch
+      pair-bump = mkBump
+        (3 +ℕ (next-slot-delta (IRResultAWF.bump result-f)
+               +ℕ next-slot-delta (IRResultAWF.bump result-g)))
+        (next-heap-ref-delta (IRResultAWF.bump result-f)
+         +ℕ next-heap-ref-delta (IRResultAWF.bump result-g))
 
       pair-bump-eq : VAsm2.alloc-final ≡ apply-bump pair-bump alloc
       pair-bump-eq = SMP.!!  -- TODO Plan 0.17 Phase 5: concrete arithmetic bridge
-      pair-frontier-stable : ∀ (s' : LocState FS) (input-loc' : ValueLocation FS) →
-        halted s' ≡ false →
-        readReg (regs s') Input1 ≡ SV-Ptr input-loc' →
-        readLoc s' (AtStack frame backup-slot) ≡ just (SV-Ptr input-loc') →
-        (next-slot alloc ≡ VBnd2.pair-reclaim) ⊎
-        ((readLoc (proj₁ (exec-trace VBnd2.pair-trace s' alloc))
-                 (AtStack frame backup-slot) ≡ just (SV-Ptr input-loc')) ⊎ ⊤)
-      pair-frontier-stable s' input-loc' not-halted' rdi-eq' _ =
-        -- Use store-then-preserve pattern:
-        -- mov-to-output sets Output = input-loc', store-at-slot backup-slot saves it
-        -- rest of trace writes above suc backup-slot, so backup-slot preserved
-        inj₂ (inj₂ tt)  -- Conservative: return uncertain
 
       ------------------------------------------------------------------------
       -- Pair result location is before frontier
