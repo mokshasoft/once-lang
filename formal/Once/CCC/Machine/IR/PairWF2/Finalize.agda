@@ -22,7 +22,9 @@ module Once.CCC.Machine.IR.PairWF2.Finalize where
 open import Data.Nat using (ℕ; suc) renaming (_+_ to _+ℕ_)
 open import Data.Bool using (false)
 open import Data.Unit using (⊤; tt)
+open import Data.Product using (proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
+open import Data.List using ([]; _∷_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
@@ -66,6 +68,56 @@ module FinalizeImpl {FS : FrameSemantics} (program-bound : ℕ) where
            mem-preserved-from-tnhw)
 
   ----------------------------------------------------------------------
+  -- Inline state-derivation helpers — top-level functions, NOT module
+  -- members. These reduce definitionally to the same exec-trace
+  -- expressions as VImpl.Validity.s-after-setup / .alloc-after-pair-slots
+  -- etc., so result-f / result-g built via VVal at the call site unify
+  -- with pair-finalize's parameter types without forcing PairWF2 to
+  -- re-elaborate Validity's submodule instantiation.
+  --
+  -- Why this matters: a previous version of pair-finalize's signature
+  -- referenced V0.s-after-setup etc. (V0 = Validity instantiation inside
+  -- the Finalize submodule). Type-checking the call site forced Agda
+  -- to elaborate that V0 in PairWF2's scope, defeating the file-split.
+  ----------------------------------------------------------------------
+  pair-setup-trace : (alloc : AllocState {FS}) → AbstractTrace
+  pair-setup-trace alloc =
+    mov-to-output ∷ store-at-slot (next-slot alloc) ∷
+    instr-alloc-stack (suc pair-slots) ∷ []
+
+  pair-s-after-setup : (s : LocState FS) (alloc : AllocState {FS}) → LocState FS
+  pair-s-after-setup s alloc = proj₁ (exec-trace (pair-setup-trace alloc) s alloc)
+
+  pair-alloc-after-setup : (s : LocState FS) (alloc : AllocState {FS}) → AllocState {FS}
+  pair-alloc-after-setup s alloc = proj₂ (exec-trace (pair-setup-trace alloc) s alloc)
+
+  pair-alloc-after-pair-slots : (alloc : AllocState {FS}) → AllocState {FS}
+  pair-alloc-after-pair-slots alloc =
+    record alloc { next-slot = suc (suc (suc (next-slot alloc))) }
+
+  pair-middle-trace : (alloc : AllocState {FS}) → AbstractTrace
+  pair-middle-trace alloc =
+    store-at-slot (suc (next-slot alloc)) ∷
+    restore-input (next-slot alloc) ∷ []
+
+  pair-s-after-middle :
+    (s : LocState FS) (alloc : AllocState {FS}) (f-trace : AbstractTrace) →
+    LocState FS
+  pair-s-after-middle s alloc f-trace =
+    proj₁ (exec-trace (pair-middle-trace alloc)
+            (proj₁ (exec-trace f-trace (pair-s-after-setup s alloc)
+                                       (pair-alloc-after-setup s alloc)))
+            (proj₂ (exec-trace f-trace (pair-s-after-setup s alloc)
+                                       (pair-alloc-after-setup s alloc))))
+
+  pair-alloc-after-f-reclaim :
+    (alloc : AllocState {FS}) (final-alloc-f : AllocState {FS}) →
+    AllocState {FS}
+  pair-alloc-after-f-reclaim alloc final-alloc-f = record alloc
+    { next-slot     = next-slot     final-alloc-f
+    ; next-heap-ref = next-heap-ref final-alloc-f }
+
+  ----------------------------------------------------------------------
   -- Finalize submodule — parameterized over the run-pair-side base
   -- inputs. Sits at the same nesting level as Validity / Bounds /
   -- Assembly; consumers (PairWF2.run-pair) instantiate it with their
@@ -84,17 +136,17 @@ module FinalizeImpl {FS : FrameSemantics} (program-bound : ℕ) where
     (input-before : BeforeFrontier alloc input-loc)
     where
 
-    -- V0 is the local instantiation of Validity. Members are
-    -- definitionally equal to the caller-side instantiation (same args),
-    -- so result-f / result-g passed in by the caller match the types
-    -- below without bridging.
+    -- V0 is the local instantiation of Validity. Body-only — never
+    -- mentioned in pair-finalize's signature (signature uses the
+    -- pair-s-after-setup / pair-alloc-after-pair-slots helpers above,
+    -- which reduce to the same exec-trace expressions definitionally).
     module V0 = VImpl.Validity mIn f g x input-loc s alloc not-halted rdi-eq
                                 input-valid-wf input-before
-    open V0 using (s-after-setup; alloc-after-pair-slots; pair-loc)
 
     pair-finalize :
       (mF : AllocMode)
-      (result-f : IRResultAWF mF f x s-after-setup alloc-after-pair-slots)
+      (result-f : IRResultAWF mF f x (pair-s-after-setup s alloc)
+                                      (pair-alloc-after-pair-slots alloc))
       (fst-loc : ValueLocation FS)
       (fst-rax-eq :
          readReg (regs (IRResultAWF.final-state result-f)) Output ≡
@@ -106,35 +158,34 @@ module FinalizeImpl {FS : FrameSemantics} (program-bound : ℕ) where
          BeforeFrontier (IRResultAWF.final-alloc result-f) fst-loc)
       (fst-rec-valid-from-f :
          ValidAtWF mF
-           (record alloc-after-pair-slots
+           (record (pair-alloc-after-pair-slots alloc)
               { next-slot     = next-slot     (IRResultAWF.final-alloc result-f)
               ; next-heap-ref = next-heap-ref (IRResultAWF.final-alloc result-f) })
            (eval f x) fst-loc (IRResultAWF.final-state result-f))
       (fst-rec-before-from-f :
          BeforeFrontier
-           (record alloc-after-pair-slots
+           (record (pair-alloc-after-pair-slots alloc)
               { next-slot     = next-slot     (IRResultAWF.final-alloc result-f)
               ; next-heap-ref = next-heap-ref (IRResultAWF.final-alloc result-f) })
            fst-loc)
       (f-tnhw : TraceNoHeapWrites (IRResultAWF.trace result-f)) →
-      let module V2 = V0.L2 mF result-f fst-loc fst-rax-eq fst-valid-from-f
-                            fst-before-pre-from-f fst-rec-valid-from-f
-                            fst-rec-before-from-f f-tnhw in
       (mG : AllocMode)
-      (result-g : IRResultAWF mG g x V2.s-after-middle V2.alloc-after-f-reclaim)
+      (result-g : IRResultAWF mG g x
+                   (pair-s-after-middle s alloc (IRResultAWF.trace result-f))
+                   (pair-alloc-after-f-reclaim alloc (IRResultAWF.final-alloc result-f)))
       (snd-loc : ValueLocation FS)
       (snd-rax-eq :
          readReg (regs (IRResultAWF.final-state result-g)) Output ≡
          SV-Ptr snd-loc)
       (snd-rec-valid-from-g :
          ValidAtWF mG
-           (record V2.alloc-after-f-reclaim
+           (record (pair-alloc-after-f-reclaim alloc (IRResultAWF.final-alloc result-f))
               { next-slot     = next-slot     (IRResultAWF.final-alloc result-g)
               ; next-heap-ref = next-heap-ref (IRResultAWF.final-alloc result-g) })
            (eval g x) snd-loc (IRResultAWF.final-state result-g))
       (snd-rec-before-from-g :
          BeforeFrontier
-           (record V2.alloc-after-f-reclaim
+           (record (pair-alloc-after-f-reclaim alloc (IRResultAWF.final-alloc result-f))
               { next-slot     = next-slot     (IRResultAWF.final-alloc result-g)
               ; next-heap-ref = next-heap-ref (IRResultAWF.final-alloc result-g) })
            snd-loc) →
@@ -155,7 +206,7 @@ module FinalizeImpl {FS : FrameSemantics} (program-bound : ℕ) where
         SMP.!!  -- trace-is-ir-to-trace (Pattern 1, pre-existing hole)
         refl
         A2.alloc-correct-pair
-        (at-loc pair-loc V3.pair-valid-wf-final pair-before A2.rax-eq
+        (at-loc V0.pair-loc V3.pair-valid-wf-final pair-before A2.rax-eq
                 V3.pair-valid-wf-final pair-before)
         A2.not-halted-final
         (mem-preserved-from-tnhw alloc B2.pair-trace s A2.s-final refl
@@ -188,7 +239,7 @@ module FinalizeImpl {FS : FrameSemantics} (program-bound : ℕ) where
                           fst-before-pre-from-f fst-rec-valid-from-f
                           fst-rec-before-from-f f-tnhw
         module B0 = BImpl.Bounds alloc
-        module B1 = B0.L2 f x s-after-setup mF result-f f-tnhw
+        module B1 = B0.L2 f x V0.s-after-setup mF result-f f-tnhw
         module B2 = B1.L3 g V2.s-after-middle mG result-g g-tnhw
         module A0 = AImpl.Assembly f g x s alloc not-halted
         module A1 = A0.L2 mF result-f f-tnhw
@@ -206,5 +257,5 @@ module FinalizeImpl {FS : FrameSemantics} (program-bound : ℕ) where
         pair-bump-eq : A2.alloc-final ≡ apply-bump pair-bump alloc
         pair-bump-eq = SMP.!!  -- pre-existing (Plan 0.17 Phase 5)
 
-        pair-before : BeforeFrontier A2.alloc-final pair-loc
+        pair-before : BeforeFrontier A2.alloc-final V0.pair-loc
         pair-before = stack-before refl B2.fst<reclaim-g
