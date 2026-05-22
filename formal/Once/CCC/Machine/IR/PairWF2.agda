@@ -42,15 +42,15 @@ open import Once.CCC.Machine.ClosureWellFormed
 -- Import SMPrimitives qualified for memory reasoning primitives
 import Once.CCC.Machine.SMPrimitives as SMP
 
--- Plan 0.18: Phases 9-11 (oaf-* / oag-* / validity chains) live in this
--- companion module. run-pair instantiates VImpl.Validity (then .L2) to
--- get setup/middle state derivations needed for the rec-wf calls.
-import Once.CCC.Machine.IR.PairWF2.Validity as PairValidity
-
--- Plan 0.18 Option 2: pair-finalize lives in its own compilation unit
--- (Finalize.agda transitively imports Validity/Bounds/Assembly and runs
--- the heavy 9-instantiation chain). Keeps PairWF2.agda's elaboration
--- budget bounded — the chain typechecks inside Finalize, not here.
+-- Plan 0.18 driver-glue extraction:
+--   Setup     — rec-wf-f-arg bundle (input-valid-wf-after-setup etc.)
+--   Middle    — rec-wf-g-arg bundle (valid-at-s-after-middle etc.)
+--   Finalize  — 9-instantiation chain + IRResultAWF assembly
+-- All three transitively import Validity; PairWF2.agda itself does NOT
+-- need to instantiate VImpl.Validity (the V0 / V2 cost is paid inside
+-- the bundle helpers, where it's cached after first build).
+import Once.CCC.Machine.IR.PairWF2.Setup as PairSetup
+import Once.CCC.Machine.IR.PairWF2.Middle as PairMiddle
 import Once.CCC.Machine.IR.PairWF2.Finalize as PairFinalize
 
 ------------------------------------------------------------------------
@@ -73,11 +73,11 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
   open SMP.TraceComposition {FS}
   open SMP.TraceOutputDeterminism {FS}
 
-  -- Plan 0.18: instantiate Validity (for setup/middle-state derivations
-  -- needed by run-pair's rec-wf calls) and Finalize (for the final
-  -- IRResultAWF assembly). Bounds/Assembly are now consumed only inside
-  -- Finalize.
-  module VImpl = PairValidity.ValidityImpl {FS} program-bound
+  -- Plan 0.18: instantiate Setup / Middle / Finalize once at
+  -- PairWF2Impl level. VImpl.Validity is NOT instantiated here —
+  -- it's consumed only inside the bundle helpers.
+  module SImpl = PairSetup.SetupImpl {FS} program-bound
+  module MImpl = PairMiddle.MiddleImpl {FS} program-bound
   module FImpl = PairFinalize.FinalizeImpl {FS} program-bound
 
   -- Types from ClosureWellFormed
@@ -122,15 +122,20 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
                        mG result-g snd-loc snd-rax-eq
                        snd-rec-valid-from-g snd-rec-before-from-g g-tnhw
     where
-      module VVal = VImpl.Validity mIn f g x input-loc s alloc not-halted rdi-eq
-                                   input-valid-wf input-before
-      open VVal
+      -- Setup-side: rec-wf-f args via SImpl bundle.
+      setup-bundle = SImpl.mk-pair-setup-bundle mIn f g x input-loc s alloc
+                       not-halted rdi-eq input-valid-wf input-before
+      open SImpl.PairSetupBundle setup-bundle
 
       ------------------------------------------------------------------------
       -- Run f via recursive dispatch — at the post-setup state.
       ------------------------------------------------------------------------
-      f-exec-result : ∃[ mOut ] IRResultAWF mOut f x s-after-setup alloc-after-pair-slots
-      f-exec-result = rec-wf mIn f (⟨,⟩-f-smaller f g {Stack}) x input-loc s-after-setup alloc-after-pair-slots
+      f-exec-result : ∃[ mOut ] IRResultAWF mOut f x
+                        (SImpl.pair-s-after-setup s alloc)
+                        (SImpl.pair-alloc-after-pair-slots alloc)
+      f-exec-result = rec-wf mIn f (⟨,⟩-f-smaller f g {Stack}) x input-loc
+                        (SImpl.pair-s-after-setup s alloc)
+                        (SImpl.pair-alloc-after-pair-slots alloc)
                         input-valid-wf-after-setup input-before-at-f-start
                         not-halted-after-setup rdi-eq-after-setup
       mF = proj₁ f-exec-result
@@ -147,11 +152,11 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
           fst-rax-f       : readReg (regs s₁) Output ≡ SV-Ptr fst-loc-f
           fst-valid-f     : ValidAtWF mF (IRResultAWF.final-alloc result-f) (eval f x) fst-loc-f s₁
           fst-before-f    : BeforeFrontier (IRResultAWF.final-alloc result-f) fst-loc-f
-          fst-rec-valid-f : ValidAtWF mF (record alloc-after-pair-slots
+          fst-rec-valid-f : ValidAtWF mF (record (SImpl.pair-alloc-after-pair-slots alloc)
                                             { next-slot     = next-slot     (IRResultAWF.final-alloc result-f)
                                             ; next-heap-ref = next-heap-ref (IRResultAWF.final-alloc result-f) })
                                        (eval f x) fst-loc-f s₁
-          fst-rec-before-f : BeforeFrontier (record alloc-after-pair-slots
+          fst-rec-before-f : BeforeFrontier (record (SImpl.pair-alloc-after-pair-slots alloc)
                                               { next-slot     = next-slot     (IRResultAWF.final-alloc result-f)
                                               ; next-heap-ref = next-heap-ref (IRResultAWF.final-alloc result-f) })
                                             fst-loc-f
@@ -181,7 +186,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
             unit-fst-rax : readReg (regs s₁) Output ≡ SV-Ptr unit-fst-loc
             unit-fst-before : BeforeFrontier (IRResultAWF.final-alloc result-f) unit-fst-loc
             unit-fst-rec-before : BeforeFrontier
-              (record alloc-after-pair-slots
+              (record (SImpl.pair-alloc-after-pair-slots alloc)
                 { next-slot     = next-slot     (IRResultAWF.final-alloc result-f)
                 ; next-heap-ref = next-heap-ref (IRResultAWF.final-alloc result-f) })
               unit-fst-loc
@@ -197,16 +202,25 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
       f-tnhw : TraceNoHeapWrites f-trace
       f-tnhw = SMP.!!  -- TODO: stack-only sub-IR derivation (post Plan 0.14 follow-up)
 
-      module VL2 = VVal.L2 mF result-f fst-loc fst-rax-eq fst-valid-from-f
-                           fst-before-pre-from-f fst-rec-valid-from-f
-                           fst-rec-before-from-f f-tnhw
-      open VL2 hiding (s₁; f-trace)
+      -- Middle-side: rec-wf-g args via MImpl bundle.
+      middle-bundle = MImpl.mk-pair-middle-bundle mIn mF f g x input-loc s alloc
+                        not-halted rdi-eq input-valid-wf input-before result-f
+                        fst-loc fst-rax-eq fst-valid-from-f
+                        fst-before-pre-from-f fst-rec-valid-from-f
+                        fst-rec-before-from-f f-tnhw
+      open MImpl.PairMiddleBundle middle-bundle
 
       ------------------------------------------------------------------------
       -- Run g via recursive dispatch — at runtime state.
       ------------------------------------------------------------------------
-      g-exec-result : ∃[ mOut ] IRResultAWF mOut g x s-after-middle alloc-after-f-reclaim
-      g-exec-result = rec-wf mIn g (⟨,⟩-g-smaller f g {Stack}) x input-loc s-after-middle alloc-after-f-reclaim
+      g-exec-result : ∃[ mOut ] IRResultAWF mOut g x
+                        (MImpl.pair-s-after-middle s alloc (IRResultAWF.trace result-f))
+                        (MImpl.pair-alloc-after-f-reclaim alloc
+                          (IRResultAWF.final-alloc result-f))
+      g-exec-result = rec-wf mIn g (⟨,⟩-g-smaller f g {Stack}) x input-loc
+                        (MImpl.pair-s-after-middle s alloc (IRResultAWF.trace result-f))
+                        (MImpl.pair-alloc-after-f-reclaim alloc
+                          (IRResultAWF.final-alloc result-f))
                         valid-at-s-after-middle input-before-at-reclaim-f
                         not-halted-after-middle rdi-eq-at-s-after-middle
       mG = proj₁ g-exec-result
@@ -232,7 +246,8 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
                                               ; next-heap-ref = next-heap-ref (IRResultAWF.final-alloc result-g) })
                                             snd-loc-g
 
-      g-facts : SndFacts alloc-after-f-reclaim
+      g-facts : SndFacts (MImpl.pair-alloc-after-f-reclaim alloc
+                           (IRResultAWF.final-alloc result-f))
       g-facts with IRResultAWF.result-place result-g
       ... | at-loc loc valid before rax rvalid rbefore = record
               { snd-loc-g        = loc
@@ -256,7 +271,8 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
             unit-snd-rax : readReg (regs s₂) Output ≡ SV-Ptr unit-snd-loc
             unit-snd-before : BeforeFrontier (IRResultAWF.final-alloc result-g) unit-snd-loc
             unit-snd-rec-before : BeforeFrontier
-              (record alloc-after-f-reclaim
+              (record (MImpl.pair-alloc-after-f-reclaim alloc
+                        (IRResultAWF.final-alloc result-f))
                 { next-slot     = next-slot     (IRResultAWF.final-alloc result-g)
                 ; next-heap-ref = next-heap-ref (IRResultAWF.final-alloc result-g) })
               unit-snd-loc
