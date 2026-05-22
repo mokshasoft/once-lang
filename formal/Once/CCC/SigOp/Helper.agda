@@ -49,7 +49,8 @@ module PrimHelper {FS : FrameSemantics} (program-bound : ℕ) where
   open import Once.CCC.Machine.Allocation
     using (module FrontierInvariant)
   open FrontierInvariant {FS}
-    using (BeforeFrontier)
+    using (BeforeFrontier; AllocBump; mkBump;
+           next-slot-delta; next-heap-ref-delta; apply-bump)
   open import Once.CCC.Machine.SMCore using (module MemOps; module ExecLemmas)
   open MemOps {FS} using (readLoc)
   open ExecLemmas {FS} using (readLoc-stackMem-eq)
@@ -205,8 +206,9 @@ module PrimHelper {FS : FrameSemantics} (program-bound : ℕ) where
     in record
       { base = record
         { final-state = final-state
-        ; final-alloc = alloc
         ; trace = mov-to-output ∷ []
+        -- Plan 0.17: SigOp doesn't change next-slot or next-heap-ref.
+        ; bump = mkBump 0 0
         -- Plan 0.14 (2026-05-18): IRToTrace emits exactly `mov-to-output ∷ []`
         -- for SigOp at any frontier — definitional refl.
         ; trace-is-ir-to-trace = SMP.!!
@@ -214,23 +216,17 @@ module PrimHelper {FS : FrameSemantics} (program-bound : ℕ) where
         ; alloc-correct = SMP.!!
         ; result-place = at-loc input-loc result-valid result-before (writeReg-same (regs s) Output (SV-Ptr input-loc)) result-valid result-before
         ; not-halted = not-halted
-        ; frame-preserved = refl
         ; trace-twf = twf-∷ tt twf-[]
         ; mem-preserved-before = mem-preserved-from-tnhw alloc (mov-to-output ∷ []) s final-state
             trace-correct-pf tt tt
         ; trace-preserves-halted = exec-trace-preserves-halted-WF (mov-to-output ∷ [])
         }
       ; stack-inv = record
-        { slot-monotone = ≤-refl
-        ; max-slot-written = next-slot alloc
-        ; max-slot-geq-final = ≤-refl
+        { max-slot-written = next-slot alloc
         ; stack-budget = ir-stack-requirement (SigOp {A} {B} si)
+        ; bump-fits-stack-budget = z≤n
+        ; max-slot-geq-final = ≤-refl
         ; max-slot-usage-bound =
-            let n = next-slot alloc
-                eq : n +ℕ ir-stack-requirement (SigOp {A} {B} si) ≡ n
-                eq = trans (cong (n +ℕ_) (sigOp-stack-req {A} {B} si)) (+-identityʳ n)
-            in subst (n ≤_) (sym eq) ≤-refl
-        ; slot-stays-in-budget =
             let n = next-slot alloc
                 eq : n +ℕ ir-stack-requirement (SigOp {A} {B} si) ≡ n
                 eq = trans (cong (n +ℕ_) (sigOp-stack-req {A} {B} si)) (+-identityʳ n)
@@ -248,9 +244,9 @@ module PrimHelper {FS : FrameSemantics} (program-bound : ℕ) where
             in subst (n ≤_) (sym eq) ≤-refl
         }
       ; heap-inv = record
-        { heap-monotone = ≤-refl
-        ; heap-budget = 0
+        { heap-budget = 0
         ; max-heap-ref-written = next-heap-ref alloc
+        ; bump-fits-heap-budget = z≤n
         ; max-heap-ref-geq-final = ≤-refl
         ; max-heap-usage-bound = m≤m+n (next-heap-ref alloc) 0
         }
