@@ -128,6 +128,11 @@ module PairHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       (TraceEvaluator.mem-preserved-before trace-eval)
       (TraceEvaluator.trace-wf trace-eval)
       (exec-trace-preserves-halted-WF pair-heap-trace)
+      (SMP.trace-no-frame-ops-append setup-trace _ _
+        (SMP.trace-no-frame-ops-append f-trace _ (IRResultAWF.trace-no-frame-ops result-f)
+          (SMP.trace-no-frame-ops-append mid-trace _ _
+            (SMP.trace-no-frame-ops-append g-trace _ (IRResultAWF.trace-no-frame-ops result-g)
+              _))))
       (record
         { max-slot-written = max-slot-pair
         ; stack-budget = req-pair-stack

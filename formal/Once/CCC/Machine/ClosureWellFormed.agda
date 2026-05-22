@@ -483,6 +483,11 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
           halted s' ≡ false →
           TraceWF s' alloc' trace →
           halted (proj₁ (exec-trace trace s' alloc')) ≡ false
+        -- Plan 0.17.3 (frame-op fence): no producer may emit
+        -- instr-push-frame / instr-pop-frame in its trace. Frames are
+        -- vestigial; this turns "no producer uses them" into a typed
+        -- obligation.
+        trace-no-frame-ops : SMP.TraceNoFrameOps trace
 
       -- Plan 0.17: derived projection for backward-compat.
       -- Consumers reading `IRResultBase.final-alloc r` get
@@ -617,6 +622,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
            halted s' ≡ false →
            TraceWF s' alloc' trace →
            halted (proj₁ (exec-trace trace s' alloc')) ≡ false)
+        (trace-no-frame-ops : SMP.TraceNoFrameOps trace)
         (stack-inv-local : IRStackBudget alloc bump trace s)
         (heap-inv-local  : IRHeapBudget  alloc bump trace)
         → IRResultAWF m ir x s alloc
@@ -624,7 +630,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
                             final-state final-alloc-local trace bump final-alloc-eq
                             trace-is-ir-to-trace trace-correct alloc-correct-local
                             result-place-local not-halted mem-preserved-before
-                            trace-twf trace-preserves-halted
+                            trace-twf trace-preserves-halted trace-no-frame-ops
                             stack-inv-local heap-inv-local =
       record
         { base = record
@@ -644,6 +650,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
             ; mem-preserved-before = mem-preserved-before
             ; trace-twf = trace-twf
             ; trace-preserves-halted = trace-preserves-halted
+            ; trace-no-frame-ops = trace-no-frame-ops
             }
         ; stack-inv = stack-inv-local
         ; heap-inv  = heap-inv-local

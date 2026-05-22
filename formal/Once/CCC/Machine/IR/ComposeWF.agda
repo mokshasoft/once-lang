@@ -207,6 +207,8 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       (TraceEvaluator.mem-preserved-before trace-eval)
       (TraceEvaluator.trace-wf trace-eval)
       (exec-trace-preserves-halted-WF compose-trace)
+      (SMP.trace-no-frame-ops-append f-trace _ (IRResultAWF.trace-no-frame-ops result-f)
+        (tt , IRResultAWF.trace-no-frame-ops result-g))
       (record
         { max-slot-written = compose-max-slot
         ; stack-budget = req-compose

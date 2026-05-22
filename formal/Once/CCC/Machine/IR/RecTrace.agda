@@ -3710,6 +3710,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
             (λ _ _ → SMP.!!)
             SMP.!!                       -- trace-twf
             SMP.!!                       -- trace-preserves-halted
+            SMP.!!                       -- trace-no-frame-ops
             (record
               { max-slot-written = cata-max-slot
               ; stack-budget = ir-stack-requirement (Cata wfG alg)

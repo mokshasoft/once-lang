@@ -109,8 +109,6 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
     readReg (regs s) Input1 ≡ SV-Ptr input-loc →
     IRResultAWF Stack (⟨ f , g ⟩ Stack) x s alloc
 
-  run-pair {A} {B} {C} mIn f g rec-wf x input-loc s alloc
-           input-valid-wf input-before not-halted rdi-eq =
     -- Plan 0.18 Option 2: the heavy 9-instantiation chain + final
     -- IRResultAWF assembly lives in PairFinalize.FinalizeImpl.Finalize.
     -- run-pair only handles: setup-state derivation (VVal), rec-wf f,

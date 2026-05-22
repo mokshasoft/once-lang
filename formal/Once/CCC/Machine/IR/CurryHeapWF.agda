@@ -132,6 +132,7 @@ module CurryHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       (TraceEvaluator.mem-preserved-before trace-eval)
       (TraceEvaluator.trace-wf trace-eval)
       (exec-trace-preserves-halted-WF curry-heap-trace)
+      _
       (record
         { max-slot-written = next-slot alloc +ℕ closure-heap-scratch
         ; stack-budget = closure-heap-scratch

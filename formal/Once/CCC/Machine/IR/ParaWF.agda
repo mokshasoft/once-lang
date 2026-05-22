@@ -210,6 +210,7 @@ module ParaWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       (mem-preserved-from-tnhw alloc para-trace s s' refl trace-wa tt)
       SMP.!!
       (exec-trace-preserves-halted-WF para-trace)
+      _
       (record
         { max-slot-written = next-slot alloc'
         ; stack-budget = ir-stack-requirement (Para wf alg)

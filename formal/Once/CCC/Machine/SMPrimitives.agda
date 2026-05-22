@@ -1301,6 +1301,31 @@ trace-no-heap-writes-append (instr-save-closure-reg ∷ t1) t2 tn1 tn2 = trace-n
 trace-no-heap-writes-append (instr-case-on-tag _ _ ∷ t1)  t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
 trace-no-heap-writes-append (instr-alloc-heap _ ∷ t1)     t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
 
+------------------------------------------------------------------------
+-- Plan 0.17.3 (frame-op fence): no IR trace may contain instr-push-frame
+-- or instr-pop-frame. Frames are vestigial in the current design (no
+-- producer emits these), and this predicate type-enforces the
+-- convention so a future regression is a type error, not a runtime
+-- surprise.
+------------------------------------------------------------------------
+
+NoFrameOp : AbstractInstr → Set
+NoFrameOp (instr-push-frame _) = ⊥
+NoFrameOp instr-pop-frame      = ⊥
+{-# CATCHALL #-}
+NoFrameOp _                    = ⊤
+
+TraceNoFrameOps : AbstractTrace → Set
+TraceNoFrameOps []      = ⊤
+TraceNoFrameOps (i ∷ t) = NoFrameOp i × TraceNoFrameOps t
+
+-- Append preserves TraceNoFrameOps.
+trace-no-frame-ops-append : ∀ t1 t2 →
+  TraceNoFrameOps t1 → TraceNoFrameOps t2 →
+  TraceNoFrameOps (t1 ++ t2)
+trace-no-frame-ops-append []       t2 _          tn2 = tn2
+trace-no-frame-ops-append (i ∷ t1) t2 (n , tn1)  tn2 = n , trace-no-frame-ops-append t1 t2 tn1 tn2
+
 -- Append preserves TraceWritesAbove
 trace-writes-above-append : ∀ n t1 t2 →
   TraceWritesAbove n t1 → TraceWritesAbove n t2 →

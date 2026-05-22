@@ -287,6 +287,8 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       (λ _ _ → SMP.!!)  -- mem-preserved-before (TODO)
       trace-twf'
       (exec-trace-preserves-halted-WF trace)
+      (SMP.trace-no-frame-ops-append (apply-setup-trace pair-slot) body-trace _
+        (IRResultAWF.trace-no-frame-ops body-result))
       (record
         { stack-budget = pair-slots +ℕ IRResultAWF.stack-budget body-result
         ; max-slot-written = IRResultAWF.max-slot-written body-result

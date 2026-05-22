@@ -387,6 +387,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       (λ _ _ → SMP.!!)
       (twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt twf-[]))))))
       (exec-trace-preserves-halted-WF inl-trace)
+      _
       (record
         { max-slot-written = next-slot alloc +ℕ sum-slots
         ; stack-budget = ir-stack-requirement (inl {A} {B} Stack)
@@ -538,6 +539,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       (λ _ _ → SMP.!!)
       (twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt twf-[]))))))
       (exec-trace-preserves-halted-WF inr-trace)
+      _
       (record
         { max-slot-written = next-slot alloc +ℕ sum-slots
         ; stack-budget = ir-stack-requirement (inr {A} {B} Stack)
@@ -685,6 +687,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       (TraceEvaluator.mem-preserved-before case-inl-trace-eval)
       (TraceEvaluator.trace-wf case-inl-trace-eval)
       (exec-trace-preserves-halted-WF case-inl-trace)
+      (tt , tt , IRResultAWF.trace-no-frame-ops result-f)
       (record
         { max-slot-written = IRResultAWF.max-slot-written result-f
         ; stack-budget = IRResultAWF.stack-budget result-f
@@ -832,6 +835,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       (TraceEvaluator.mem-preserved-before case-inr-trace-eval)
       (TraceEvaluator.trace-wf case-inr-trace-eval)
       (exec-trace-preserves-halted-WF case-inr-trace)
+      (tt , tt , IRResultAWF.trace-no-frame-ops result-g)
       (record
         { max-slot-written = IRResultAWF.max-slot-written result-g
         ; stack-budget = IRResultAWF.stack-budget result-g
@@ -1019,6 +1023,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       (λ _ _ → SMP.!!)
       (twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt twf-[]))))
       (exec-trace-preserves-halted-WF in-trace)
+      _
       (record
         { max-slot-written = next-slot alloc'
         ; stack-budget = ir-stack-requirement (In {F} wf m)
@@ -1132,6 +1137,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       (λ _ _ → SMP.!!)
       (twf-∷ tt twf-[])
       (exec-trace-preserves-halted-WF out-μ-trace)
+      _
       (record
         { max-slot-written = next-slot alloc
         ; stack-budget = ir-stack-requirement (out-μ {F} wf)
@@ -1213,6 +1219,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       (λ _ _ → SMP.!!)
       (twf-∷ tt twf-[])
       (exec-trace-preserves-halted-WF out-trace)
+      _
       (record
         { max-slot-written = next-slot alloc
         ; stack-budget = ir-stack-requirement (Out {F} wf)
@@ -1294,6 +1301,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       (λ _ _ → SMP.!!)
       (twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt twf-[]))))
       (exec-trace-preserves-halted-WF in-ν-trace)
+      _
       (record
         { max-slot-written = next-slot alloc'
         ; stack-budget = ir-stack-requirement (in-ν {F} wf m)

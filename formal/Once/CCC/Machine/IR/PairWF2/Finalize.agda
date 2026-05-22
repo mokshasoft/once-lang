@@ -213,6 +213,7 @@ module FinalizeImpl {FS : FrameSemantics} (program-bound : ℕ) where
               B2.pair-trace-writes-above B2.pair-trace-no-heap-writes)
         A2.pair-trace-twf
         (exec-trace-preserves-halted-WF B2.pair-trace)
+        B2.pair-trace-no-frame-ops  -- Plan 0.17.3
         (record
           { max-slot-written = B2.pair-max-slot
           ; stack-budget = B2.req-pair

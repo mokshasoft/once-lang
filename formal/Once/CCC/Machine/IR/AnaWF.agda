@@ -209,6 +209,7 @@ module AnaWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       (mem-preserved-from-tnhw alloc ana-trace s s' refl trace-wa tt)
       SMP.!!
       (exec-trace-preserves-halted-WF ana-trace)
+      _
       (record
         { max-slot-written = next-slot alloc'
         ; stack-budget = ir-stack-requirement (Ana wf coalg)

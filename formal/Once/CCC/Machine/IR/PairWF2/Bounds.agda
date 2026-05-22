@@ -372,6 +372,24 @@ module BoundsImpl {FS : FrameSemantics} (program-bound : ℕ) where
                 (trace-no-heap-writes-append g-trace (store-at-slot snd-slot ∷ lea-slot fst-slot ∷ []) g-tnhw tt))
 
         ------------------------------------------------------------------
+        -- Plan 0.17.3 (frame-op fence): TraceNoFrameOps pair-trace.
+        -- Hoisted into Bounds so PairWF2.agda's mk-IRResultAWF-via-bump
+        -- site can pass a single name instead of an inline append tower
+        -- (which forced case-tree fusion at the producer site).
+        ------------------------------------------------------------------
+        abstract
+          pair-trace-no-frame-ops : SMP.TraceNoFrameOps pair-trace
+          pair-trace-no-frame-ops =
+            tt , tt , tt ,
+              SMP.trace-no-frame-ops-append f-trace
+                (store-at-slot fst-slot ∷ restore-input backup-slot ∷ g-trace ++ store-at-slot snd-slot ∷ lea-slot fst-slot ∷ [])
+                (IRResultAWF.trace-no-frame-ops result-f)
+                (tt , tt ,
+                  SMP.trace-no-frame-ops-append g-trace (store-at-slot snd-slot ∷ lea-slot fst-slot ∷ [])
+                    (IRResultAWF.trace-no-frame-ops result-g)
+                    (tt , tt , tt))
+
+        ------------------------------------------------------------------
         -- Slot/scratch budget arithmetic.
         ------------------------------------------------------------------
         abstract

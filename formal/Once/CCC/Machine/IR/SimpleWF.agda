@@ -86,6 +86,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       (mem-preserved-from-tnhw alloc trace s s' refl tt tt)
       (twf-∷ tt twf-[])
       (exec-trace-preserves-halted-WF trace)
+      (tt , tt)
       (record
         { max-slot-written = next-slot alloc
         ; stack-budget = 0
@@ -160,6 +161,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       (mem-preserved-from-tnhw alloc trace s s' refl tt tt)
       (twf-∷ (input-loc , sv-as-loc-eq , SV-Ptr fst-loc , fst-ptr-eq) twf-[])
       (exec-trace-preserves-halted-WF trace)
+      (tt , tt)
       (record
         { max-slot-written = next-slot alloc
         ; stack-budget = 0
@@ -257,6 +259,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       (mem-preserved-from-tnhw alloc trace s s' refl tt tt)
       (twf-∷ (input-loc , sv-as-loc-eq , SV-Ptr snd-loc , snd-ptr-eq) twf-[])
       (exec-trace-preserves-halted-WF trace)
+      (tt , tt)
       (record
         { max-slot-written = next-slot alloc
         ; stack-budget = 0
@@ -351,6 +354,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       (mem-preserved-from-tnhw alloc [] s s refl tt tt)
       twf-[]
       (exec-trace-preserves-halted-WF [])
+      tt
       (record
         { max-slot-written = next-slot alloc
         ; stack-budget = 0
@@ -404,6 +408,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       (mem-preserved-from-tnhw alloc trace s s' refl tt tt)
       (twf-∷ tt twf-[])
       (exec-trace-preserves-halted-WF trace)
+      (tt , tt)
       (record
         { max-slot-written = next-slot alloc
         ; stack-budget = 0
@@ -469,6 +474,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       (mem-preserved-from-tnhw alloc trace s s' refl tt tt)
       (twf-∷ tt twf-[])
       (exec-trace-preserves-halted-WF trace)
+      (tt , tt)
       (record
         { max-slot-written = next-slot alloc
         ; stack-budget = 0

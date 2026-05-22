@@ -187,6 +187,7 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       (mem-preserved-from-tnhw alloc trace s s' refl trace-writes-above' tt)
       trace-twf'
       (exec-trace-preserves-halted-WF trace)
+      _
       (record
         { max-slot-written = next-slot alloc +ℕ closure-slots
         ; stack-budget = ir-stack-requirement (curry {k = k} f m)

@@ -363,6 +363,7 @@ module RecCoreWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       (mem-preserved-from-tnhw alloc fuse-trace s s' refl trace-wa tt)
       SMP.!!
       (exec-trace-preserves-halted-WF fuse-trace)
+      _
       (record
         { max-slot-written = next-slot alloc'
         ; stack-budget = ir-stack-requirement (Fuse wfF wfG alg transform)
@@ -468,6 +469,7 @@ module RecCoreWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       (mem-preserved-from-tnhw alloc hylo-trace s s' refl trace-wa tt)
       SMP.!!
       (exec-trace-preserves-halted-WF hylo-trace)
+      _
       (record
         { max-slot-written = next-slot alloc'
         ; stack-budget = ir-stack-requirement (Hylo wfF wfG alg coalg)
