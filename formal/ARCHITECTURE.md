@@ -191,8 +191,8 @@ ties the trace's final alloc state to the producer's declared
 `bump`, so a trace that grew the stack and forgot to reclaim it
 back to the declared frontier is a type error.
 
-**Allocator usage.** Allocations come in two flavours, with
-different ownership of the matching `free`:
+**Allocator usage.** Allocations come in three flavours by who
+owns the matching `free`:
 
 - **Transient allocations** — internal to a single IR's execution
   (rare; avoided by design — prefer stack scratch). The IR's own
@@ -200,20 +200,67 @@ different ownership of the matching `free`:
   matching `free` inside its own trace. From the caller's view
   these are invisible: by the time the IR returns, the transient
   memory is gone.
-- **Persistent allocations** — an Allocator-mode IR's *output*
-  value. The IR emits the `alloc`, but the value's lifetime
-  extends past the IR's return; the matching `free` belongs to
+- **Locally-consumed sub-IR outputs** — a sub-IR allocates an
+  Allocator-mode output that the surrounding compositional IR
+  (`compose`, `pair`, `case`, …) consumes internally and does not
+  propagate to its own output. The compositional IR sees the
+  whole flow locally, so *it* emits the matching `free` in its
+  own trace at the point of consumption. What the sub-IR
+  considers persistent becomes transient from the parent IR's
+  perspective.
+- **Escaping allocations** — the Allocator-mode output of an IR
+  that survives past its immediate consumer too, eventually
+  becoming part of the surrounding program's output or being
+  held in long-lived data. The matching `free` belongs to
   whatever later point in the program first observes the value
   becoming dead. The Place stage does the cross-IR lifetime
-  analysis and inserts that `free` instruction at the right
-  spot — IRs don't see across their own boundaries, so only Place
-  can decide.
+  analysis and inserts that `free` at the right spot — only
+  Place sees far enough.
 
 **No IR — Stack or Allocator — is allowed to leak memory.** After
 the IR returns, the live allocator memory traceable to this IR is
-exactly its output value (for Allocator-mode IRs) or empty (for
-Stack-mode IRs). After the surrounding program later drops the
-last reference, Place's emitted `free` reclaims it.
+exactly its escaping output value (zero for Stack-mode IRs).
+After the surrounding program later drops the last reference,
+Place's emitted `free` reclaims it.
+
+## Quantities
+
+Each value in Once carries a usage **quantity** drawn from
+`{0, 1, ω}`:
+
+- **0** (erased) — type-level only; the value is not present at
+  runtime and the compiler removes it entirely.
+- **1** (linear) — used exactly once at runtime.
+- **ω** (many) — unrestricted; used any number of times, possibly
+  including zero.
+
+Each quantity unlocks different optimisations. 0-values disappear
+from the runtime — zero memory, zero instructions. 1-values
+support destructive consumption: the consumer can overwrite the
+input's storage in place, a sub-IR result flowing into a linear
+consumer can have its slot reused or its allocation reclaimed
+immediately, no copies or parallel buffers needed. ω-values may
+be read multiple times and need a copy / share / refcount
+strategy.
+
+**Once infers quantities.** The compiler analyses every value
+and picks the most restrictive quantity that fits, then applies
+the corresponding optimisations. The programmer does not declare
+anything for this to happen — if a value is provably linear, it
+is treated as linear; if it is provably erasable, it is erased.
+
+A programmer can **opt in** to a quantity at the type level when
+they want it to be a *contract* — e.g. an interface function that
+requires its callers to consume an argument exactly once, or a
+type-level proof that must be erased at runtime. Annotations are
+purely for type-enforced quantities; they do not change what the
+compiler does with unannotated code.
+
+So Once is **also linear** — and **also erased** — but it is
+*not* a strictly quantitative language where the programmer must
+mark every value's usage discipline up front. Quantities are
+opportunities the compiler exploits, not burdens the programmer
+carries.
 
 ## Proof Architecture
 
