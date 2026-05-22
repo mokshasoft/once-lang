@@ -22,8 +22,8 @@
 
 module Once.CCC.Machine.IR.AnaWF where
 
-open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; z≤n) renaming (_+_ to _+ℕ_)
-open import Data.Nat.Properties using (≤-refl; ≤-trans; m≤m+n; n≤1+n)
+open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; z≤n; s≤s) renaming (_+_ to _+ℕ_)
+open import Data.Nat.Properties using (≤-refl; ≤-trans; m≤m+n; n≤1+n; m≤n+m)
 open import Data.Bool using (false)
 open import Data.List using (List; []; _∷_)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
