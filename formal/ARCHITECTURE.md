@@ -104,7 +104,7 @@ during execution:
 **The mode tag is a *use-site* annotation, not an IR-level
 commitment.** Each value-producing IR has exactly two
 implementations — one for Stack mode, one for Allocator mode (e.g.
-`PairWF2.run-pair` vs `PairHeapWF.run-pair-heap` for `pair`). The
+`PairStackWF.run-pair` vs `PairAllocWF.run-pair-heap` for `pair`). The
 Dispatcher routes by the use-site tag. Simple non-allocating IRs
 (`id`, `fst`, `snd`, ...) are mode-polymorphic — one implementation
 typechecks at any mode.
@@ -300,7 +300,7 @@ execution. The CLI consumes the result via `Once.Compiler`.
 ## Conventions
 
 - **One file per concept**; large files are split into a directory
-  (`PairWF2/Validity.agda`, `Bounds.agda`, `Assembly.agda`,
+  (`PairStackWF/Validity.agda`, `Bounds.agda`, `Assembly.agda`,
   `Setup.agda`, `Middle.agda`, `Finalize.agda`).
 - **No postulates** in producer code. `SMP.!!` placeholders are
   visible debt; the goal state has none.

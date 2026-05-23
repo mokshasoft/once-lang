@@ -154,16 +154,16 @@ module IRTraceCorrectness {FS : FrameSemantics} (program-bound : ℕ)
     using (run-initial; run-out-μ; run-Out; run-inl; run-inr)
 
   -- Heap-mode IR producers — used by the layer-2 heap bridges below.
-  import Once.CCC.Machine.IR.SumInlHeapWF as SumInlHeapWFModule
-  open SumInlHeapWFModule.SumInlHeapWFImpl {FS} program-bound
+  import Once.CCC.Machine.IR.SumInlAllocWF as SumInlAllocWFModule
+  open SumInlAllocWFModule.SumInlAllocWFImpl {FS} program-bound
     using (run-inl-heap)
 
-  import Once.CCC.Machine.IR.SumInrHeapWF as SumInrHeapWFModule
-  open SumInrHeapWFModule.SumInrHeapWFImpl {FS} program-bound
+  import Once.CCC.Machine.IR.SumInrAllocWF as SumInrAllocWFModule
+  open SumInrAllocWFModule.SumInrAllocWFImpl {FS} program-bound
     using (run-inr-heap)
 
-  import Once.CCC.Machine.IR.CurryHeapWF as CurryHeapWFModule
-  open CurryHeapWFModule.CurryHeapWFImpl {FS} program-bound
+  import Once.CCC.Machine.IR.CurryAllocWF as CurryAllocWFModule
+  open CurryAllocWFModule.CurryAllocWFImpl {FS} program-bound
     using (run-curry-heap)
 
   -- Dispatcher: provides run-ir-wf as a well-founded recursive
@@ -416,9 +416,9 @@ module IRTraceCorrectness {FS : FrameSemantics} (program-bound : ℕ)
     -- for these four. The remaining obstacle is per-IR trace-shape alignment
     -- between IRToTrace and the WF spec:
     --
-    --   - PairHeapWF.setup-trace contains `instr-alloc-stack pair-heap-overhead`
+    --   - PairAllocWF.setup-trace contains `instr-alloc-stack pair-heap-overhead`
     --     which IRToTrace omits (function prologue handles slot allocation).
-    --   - CurryHeapWF uses `instr-load-code-addr 0` (placeholder label);
+    --   - CurryAllocWF uses `instr-load-code-addr 0` (placeholder label);
     --     IRToTrace uses `instr-load-code-addr this-label` (the actual
     --     parent-emitted label counter value).
     --   - case's run-case dispatcher chains through SumRecWF.case-dispatch-
@@ -435,12 +435,12 @@ module IRTraceCorrectness {FS : FrameSemantics} (program-bound : ℕ)
     ir-to-trace-correct-pair :
       ∀ {A B C} (m : AllocMode) (f : IR A B) (g : IR A C) →
       IRTraceCorrect (⟨_,_⟩ {A} {B} {C} f g m)
-    -- Stack-mode curry: postulated. CurryWF (Stack) emits
+    -- Stack-mode curry: postulated. CurryStackWF (Stack) emits
     -- `lea-slot closure-stash` for the code-pointer cell, which
     -- produces SV-Ptr (self-reference fiction). After the Option 1
     -- refactor, valid-closure-wf requires SV-Code at closure[1] —
-    -- CurryWF's result-valid-wf' uses SMP.!! at that slot. Until
-    -- CurryWF is migrated (or deleted; the elaborator never emits
+    -- CurryStackWF's result-valid-wf' uses SMP.!! at that slot. Until
+    -- CurryStackWF is migrated (or deleted; the elaborator never emits
     -- `curry _ Stack`), Stack-mode curry stays postulated.
     ir-to-trace-correct-curry-stack :
       ∀ {A B C k} (f : IR (A * B) C) →
@@ -462,7 +462,7 @@ module IRTraceCorrectness {FS : FrameSemantics} (program-bound : ℕ)
 
   ----------------------------------------------------------------------
   -- Plan 0.14 (2026-05-17): curry Heap discharge via run-curry-heap +
-  -- make-rec-wf. The body label `0` in CurryHeapWF.curry-heap-trace
+  -- make-rec-wf. The body label `0` in CurryAllocWF.curry-heap-trace
   -- matches IRToTrace's `this-label = 0` (since ir-to-trace-at-frontier
   -- always passes l=0 at the top), so the traces are definitionally
   -- equal. The bridge then transports place-valid through trace-correct

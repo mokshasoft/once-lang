@@ -31,7 +31,7 @@
 #   5. Fallback to legacy ulimit path if systemd-run is missing.
 #
 # Usage:
-#   formal/scripts/agda-safe.sh MODULE=Once/CCC/Machine/IR/PairWF2.agda
+#   formal/scripts/agda-safe.sh MODULE=Once/CCC/Machine/IR/PairStackWF.agda
 #   formal/scripts/agda-safe.sh malonzo MODULE=Once/CCC/Machine/IR/SimpleWF.agda
 #
 # Environment overrides:

@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson and contributors
 
 ------------------------------------------------------------------------
--- Once.CCC.Machine.IR.SumInrHeapWF
+-- Once.CCC.Machine.IR.SumInlAllocWF
 --
 -- Heap-mode `inl` handler (Plan 0.14 Phase B).
 --
@@ -15,20 +15,20 @@
 --    3. instr-alloc-stack 2            ; reserve scratch
 --    4. instr-alloc-heap 2             ; Output := SV-Ptr (AtDynamic fresh)
 --    5. store-at-slot sum-stash        ; stash sum heap ptr
---    6. instr-load-tag-lit 1           ; Output := SV-Tag 0 (inr tag)
+--    6. instr-load-tag-lit 0           ; Output := SV-Tag 0 (inl tag)
 --    7. mov-to-input                   ; Input1 = ... wait, need input for store-indirect
 --    -- Restructured below to interleave correctly.
 --
 -- Result: SV-Ptr (AtDynamic sum-loc); cell[0] = tag 0, cell[1] = SV-Ptr payload-loc.
 --
--- See also: SumInrHeapWF (symmetric, uses tag 1 for inr).
--- ARCHITECTURAL: valid-inr-wf requires SV-Ptr at sucLoc sum-loc (the
+-- See also: SumInrAllocWF (symmetric, uses tag 1 for inr).
+-- ARCHITECTURAL: valid-inl-wf requires SV-Ptr at sucLoc sum-loc (the
 -- payload pointer), not a tag at sum-loc. The cell[0] tag is for runtime
 -- dispatch (case-on-tag); the proof side just witnesses the payload-loc
 -- pointer at sucLoc sum-loc.
 ------------------------------------------------------------------------
 
-module Once.CCC.Machine.IR.SumInrHeapWF where
+module Once.CCC.Machine.IR.SumInlAllocWF where
 
 open import Data.Nat using (ℕ; suc; _<_; _≤_; s≤s; z≤n) renaming (_+_ to _+ℕ_)
 open import Data.Bool using (false)
@@ -42,7 +42,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore hiding (AllocMode; Stack; Heap)
-open import Once.Semantics.Machine using (⟦_⟧; sem-inr)
+open import Once.Semantics.Machine using (⟦_⟧; sem-inl)
 open import Once.CCC.IR
 open import Once.CCC.Eval using (eval)
 open import Once.CCC.IR.Stack
@@ -53,7 +53,7 @@ open import Once.CCC.Machine.TraceEvaluator
 import Once.CCC.Machine.SMPrimitives as SMP
 import Once.CCC.Machine.SMPrimitives.Heap as SMPH
 
-module SumInrHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
+module SumInlAllocWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   open FrameSemantics FS
   open FrontierInvariant {FS}
   open MemOps {FS}
@@ -68,21 +68,21 @@ module SumInrHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   open TraceEvaluatorDef {FS}
 
   open ClosureWellFormedDef {FS} program-bound
-    using (ValidAtWF; IRResultAWF; ResultPlace; at-loc; valid-inr-wf;
+    using (ValidAtWF; IRResultAWF; ResultPlace; at-loc; valid-inl-wf;
            RecDispatcherWF; validityWF-mem-only; mk-IRResultAWF-via-bump)
 
   -- Heap-mode inl handler.
-  run-inr-heap : ∀ {A B} (mIn : AllocMode)
-    (x : ⟦ B ⟧) (input-loc : ValueLocation FS)
+  run-inl-heap : ∀ {A B} (mIn : AllocMode)
+    (x : ⟦ A ⟧) (input-loc : ValueLocation FS)
     (s : LocState FS) (alloc : AllocState {FS}) →
     ValidAtWF mIn alloc x input-loc s →
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
     readReg (regs s) Input1 ≡ SV-Ptr input-loc →
-    IRResultAWF Heap (inr {A} {B} Heap) x s alloc
-  run-inr-heap {A} {B} mIn x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
+    IRResultAWF Heap (inl {A} {B} Heap) x s alloc
+  run-inl-heap {A} {B} mIn x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     mk-IRResultAWF-via-bump
-      s-final alloc-final inr-heap-trace (mkBump 0 1) refl
+      s-final alloc-final inl-heap-trace (mkBump 0 1) refl
       refl refl
       (TraceEvaluator.exec-alloc-eq trace-eval)
       (at-loc sum-loc sum-valid-final sum-before-final
@@ -90,7 +90,7 @@ module SumInrHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       (TraceEvaluator.halted-preserved trace-eval not-halted)
       (TraceEvaluator.mem-preserved-before trace-eval)
       (TraceEvaluator.trace-wf trace-eval)
-      (exec-trace-preserves-halted-WF inr-heap-trace)
+      (exec-trace-preserves-halted-WF inl-heap-trace)
       _
       (record
         { max-slot-written = next-slot alloc +ℕ scratch-slots
@@ -99,10 +99,10 @@ module SumInrHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; max-slot-geq-final = m≤m+n (next-slot alloc) scratch-slots
         ; max-slot-usage-bound = ≤-refl
         ; frontier-slot-stable = λ _ _ _ _ _ → inj₂ (inj₂ tt)
-        ; trace-writes-above = inr-twa
-        ; trace-slot-reads-above = inr-tsra
-        ; trace-writes-below = inr-twb
-        ; trace-slot-reads-below = inr-tsrb
+        ; trace-writes-above = inl-twa
+        ; trace-slot-reads-above = inl-tsra
+        ; trace-writes-below = inl-twb
+        ; trace-slot-reads-below = inl-tsrb
         ; scratch-budget = scratch-slots
         ; scratch-bounded = ≤-refl
         })
@@ -124,15 +124,17 @@ module SumInrHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       scratch-slots = 2
 
       -- Plan 0.14 SV-Code refactor (2026-05-17): dropped instr-alloc-stack
-      -- to match IRToTrace runtime (function prologue allocates slots).
-      inr-heap-trace : AbstractTrace
-      inr-heap-trace =
+      -- to match IRToTrace runtime. Slot allocation is implicit in the
+      -- function prologue (subq $budget*8, %rsp); the abstract trace
+      -- doesn't bump next-slot. alloc-final tracks only next-heap-ref.
+      inl-heap-trace : AbstractTrace
+      inl-heap-trace =
           mov-to-output
         ∷ store-at-slot payload-stash
         ∷ instr-alloc-heap 2
         ∷ store-at-slot sum-stash
         ∷ mov-to-input                 -- Input1 := SV-Ptr sum-loc
-        ∷ instr-load-tag-lit 1         -- Output := SV-Tag 0 (inr tag)
+        ∷ instr-load-tag-lit 0         -- Output := SV-Tag 0 (inl tag)
         ∷ store-indirect               -- *sum-loc := SV-Tag 0
         ∷ load-from-slot payload-stash -- Output := SV-Ptr payload-loc
         ∷ store-indirect-suc           -- *(sucLoc sum-loc) := SV-Ptr payload-loc
@@ -140,7 +142,7 @@ module SumInrHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ∷ []
 
       s-final : LocState FS
-      s-final = proj₁ (exec-trace inr-heap-trace s alloc)
+      s-final = proj₁ (exec-trace inl-heap-trace s alloc)
 
       sum-loc : ValueLocation FS
       sum-loc = AtDynamic (heap-loc (mkHeapRef (next-heap-ref alloc)) 0)
@@ -148,7 +150,7 @@ module SumInrHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       alloc-final : AllocState {FS}
       alloc-final = record alloc { next-heap-ref = suc (next-heap-ref alloc) }
 
-      sum-valid-final : ValidAtWF Heap alloc-final (sem-inr {A} {B} x) sum-loc s-final
+      sum-valid-final : ValidAtWF Heap alloc-final (sem-inl {A} {B} x) sum-loc s-final
       sum-valid-final = SMP.!!
 
       sum-before-final : BeforeFrontier alloc-final sum-loc
@@ -161,35 +163,47 @@ module SumInrHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       sum-cont-alloc = record alloc { next-slot     = next-slot     alloc-final
                                     ; next-heap-ref = next-heap-ref alloc-final }
 
-      sum-valid-cont : ValidAtWF Heap sum-cont-alloc (sem-inr {A} {B} x) sum-loc s-final
+      sum-valid-cont : ValidAtWF Heap sum-cont-alloc (sem-inl {A} {B} x) sum-loc s-final
       sum-valid-cont = SMP.!!
 
       sum-before-cont : BeforeFrontier sum-cont-alloc sum-loc
       sum-before-cont = heap-before ≤-refl
 
       ------------------------------------------------------------------
-      -- Plan 0.16 TraceEvaluator (2026-05-19): mirror of SumInlHeapWF.
-      -- Consolidates per-step state trajectory for alloc-correct,
-      -- trace-twf, mem-preserved-before, not-halted. `halted-preserved`
-      -- derives automatically from `trace-wf`.
+      -- Plan 0.16 TraceEvaluator (2026-05-19): consolidates the
+      -- per-step state trajectory used by alloc-correct, trace-twf,
+      -- mem-preserved-before, and not-halted. Each of these obligations
+      -- becomes a projection. The three remaining holes
+      -- (trace-wf / exec-alloc-eq / mem-preserved-before) are the
+      -- semantic Phase C work; `mk-trace-evaluator` derives
+      -- halted-preserved automatically from `trace-wf` via
+      -- `exec-trace-preserves-halted-WF`.
       ------------------------------------------------------------------
-      trace-eval : TraceEvaluator inr-heap-trace s alloc
+      trace-eval : TraceEvaluator inl-heap-trace s alloc
       trace-eval = mk-trace-evaluator
         s-final
         alloc-final
-        SMP.!!    -- trace-wf : TraceWF s alloc inr-heap-trace
-        refl      -- exec-state-eq (definitional)
-        SMP.!!    -- exec-alloc-eq
+        SMP.!!    -- trace-wf : TraceWF s alloc inl-heap-trace
+        refl      -- exec-state-eq : proj₁ (exec-trace …) ≡ s-final  (by definition)
+        SMP.!!    -- exec-alloc-eq : proj₂ (exec-trace …) ≡ alloc-final
         (λ _ _ → SMP.!!)  -- mem-preserved-before
 
       ------------------------------------------------------------------
-      -- Structural slot-bound discharges (Phase C, mirror SumInlHeapWF).
+      -- Structural slot-bound discharges (Phase C, 2026-05-17).
+      -- inl-heap-trace writes only to payload-stash = next-slot alloc
+      -- and sum-stash = suc (next-slot alloc). Reads same two slots.
+      -- All other instructions are nothing-writes / nothing-reads at
+      -- the slot level. The four trace-{writes,slot-reads}-{above,below}
+      -- obligations reduce to per-instruction tuples Agda evaluates
+      -- via the with-clauses on instr-{writes,reads}-slot.
       ------------------------------------------------------------------
       open import Relation.Binary.PropositionalEquality using (sym)
 
       max-sw : ℕ
-      max-sw = next-slot alloc +ℕ scratch-slots
+      max-sw = next-slot alloc +ℕ scratch-slots  -- = next-slot alloc + 2
 
+      -- Bridge `next-slot alloc + 2 ≡ suc (suc (next-slot alloc))` via
+      -- +-comm (2 + n reduces because + is left-recursive).
       max-sw-eq : max-sw ≡ suc (suc (next-slot alloc))
       max-sw-eq = +-comm (next-slot alloc) 2
 
@@ -199,14 +213,14 @@ module SumInrHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       payload-stash<max : payload-stash < max-sw
       payload-stash<max = ≤-trans (n≤1+n sum-stash) sum-stash<max
 
-      inr-twa : TraceWritesAbove (next-slot alloc) inr-heap-trace
-      inr-twa = ≤-refl , n≤1+n (next-slot alloc) , tt
+      inl-twa : TraceWritesAbove (next-slot alloc) inl-heap-trace
+      inl-twa = ≤-refl , n≤1+n (next-slot alloc) , tt
 
-      inr-twb : TraceWritesBelow max-sw inr-heap-trace
-      inr-twb = payload-stash<max , sum-stash<max , tt
+      inl-twb : TraceWritesBelow max-sw inl-heap-trace
+      inl-twb = payload-stash<max , sum-stash<max , tt
 
-      inr-tsra : TraceSlotReadsAbove (next-slot alloc) inr-heap-trace
-      inr-tsra = ≤-refl , n≤1+n (next-slot alloc) , tt
+      inl-tsra : TraceSlotReadsAbove (next-slot alloc) inl-heap-trace
+      inl-tsra = ≤-refl , n≤1+n (next-slot alloc) , tt
 
-      inr-tsrb : TraceSlotReadsBelow max-sw inr-heap-trace
-      inr-tsrb = payload-stash<max , sum-stash<max , tt
+      inl-tsrb : TraceSlotReadsBelow max-sw inl-heap-trace
+      inl-tsrb = payload-stash<max , sum-stash<max , tt

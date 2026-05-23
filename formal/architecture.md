@@ -114,7 +114,7 @@ extracted compiler emits.
 
 - `ir-to-trace-correct-compose` — needs structural induction + trace
   decomposition lemma (`exec-trace-append` exists).
-- `ir-to-trace-correct-pair` (both modes) — `PairHeapWF.setup-trace` has
+- `ir-to-trace-correct-pair` (both modes) — `PairAllocWF.setup-trace` has
   `instr-alloc-stack pair-heap-overhead` that `IRToTrace` omits; the spec
   drift makes the bridge non-definitional.
 - `ir-to-trace-correct-apply` — needs closure-invariant threading

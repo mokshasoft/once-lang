@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson and contributors
 
 ------------------------------------------------------------------------
--- Once.CCC.Machine.IR.CurryHeapWF
+-- Once.CCC.Machine.IR.CurryAllocWF
 --
 -- Heap-mode curry handler (Plan 0.14 Phase B).
 --
@@ -12,7 +12,7 @@
 -- final load), but the closure itself lives at a fresh `AtDynamic`
 -- and validity is `heap-before`.
 --
--- Trace skeleton (parallel to PairHeapWF):
+-- Trace skeleton (parallel to PairAllocWF):
 --
 --    1. mov-to-output                  ; Output := SV-Ptr env-loc (= input)
 --    2. store-at-slot env-stash        ; stash env-ptr for re-use after alloc
@@ -31,7 +31,7 @@
 --   `readLoc s (sucLoc closure-loc) ≡ just (SV-Ptr code-loc)` —
 --   an SV-Ptr at closure[1]. But `instr-load-code-addr n` produces
 --   `SV-Code n` (a tag-like value, not a pointer). The existing
---   Stack-mode `CurryWF` sidesteps this by using `lea-slot
+--   Stack-mode `CurryStackWF` sidesteps this by using `lea-slot
 --   (suc closure-slot)` to store a *self-pointer* at closure[1],
 --   which satisfies the type-checker but means code-loc is
 --   semantically the stack-slot address, not a real code address.
@@ -54,7 +54,7 @@
 --   codegen concern that will be addressed in Phase D.
 ------------------------------------------------------------------------
 
-module Once.CCC.Machine.IR.CurryHeapWF where
+module Once.CCC.Machine.IR.CurryAllocWF where
 
 open import Data.Nat using (ℕ; suc; _<_; _≤_; _≥_; s≤s; z≤n; _⊔_) renaming (_+_ to _+ℕ_)
 open import Data.Bool using (false)
@@ -81,10 +81,10 @@ import Once.CCC.Machine.SMPrimitives as SMP
 import Once.CCC.Machine.SMPrimitives.Heap as SMPH
 
 ------------------------------------------------------------------------
--- CurryHeapWF Implementation
+-- CurryAllocWF Implementation
 ------------------------------------------------------------------------
 
-module CurryHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
+module CurryAllocWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   open FrameSemantics FS
   open FrontierInvariant {FS}
   open MemOps {FS}
@@ -214,7 +214,7 @@ module CurryHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
       ------------------------------------------------------------------
       -- Validity, rax-eq, before — all SMP.!! pending Phase C analogue.
-      -- Pattern follows PairHeapWF: step-through proof of the trace.
+      -- Pattern follows PairAllocWF: step-through proof of the trace.
       ------------------------------------------------------------------
       closure-valid-final : ValidAtWF Heap alloc-final
                              (eval (curry {k = k} f Heap) x) closure-loc s-final
@@ -252,7 +252,7 @@ module CurryHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         (λ _ _ → SMP.!!)             -- mem-preserved-before
 
       ------------------------------------------------------------------
-      -- Structural slot-bound discharges (Phase C, mirror SumInlHeapWF).
+      -- Structural slot-bound discharges (Phase C, mirror SumInlAllocWF).
       ------------------------------------------------------------------
       open import Relation.Binary.PropositionalEquality using (sym)
 

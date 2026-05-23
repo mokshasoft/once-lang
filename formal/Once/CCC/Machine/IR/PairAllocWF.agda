@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson and contributors
 
 ------------------------------------------------------------------------
--- Once.CCC.Machine.IR.PairHeapWF
+-- Once.CCC.Machine.IR.PairAllocWF
 --
 -- Heap-mode pair handler (Plan 0.14 Phase B).
 --
@@ -42,7 +42,7 @@
 -- focused commit. See `[[scaffold_then_discharge]]`.
 ------------------------------------------------------------------------
 
-module Once.CCC.Machine.IR.PairHeapWF where
+module Once.CCC.Machine.IR.PairAllocWF where
 
 open import Data.Nat using (ℕ; suc; _<_; _≤_; _≥_; s≤s; z≤n; _⊔_) renaming (_+_ to _+ℕ_)
 open import Data.Bool using (false)
@@ -69,10 +69,10 @@ import Once.CCC.Machine.SMPrimitives as SMP
 import Once.CCC.Machine.SMPrimitives.Heap as SMPH
 
 ------------------------------------------------------------------------
--- PairHeapWF Implementation
+-- PairAllocWF Implementation
 ------------------------------------------------------------------------
 
-module PairHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
+module PairAllocWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   open FrameSemantics FS
   open FrontierInvariant {FS}
   open MemOps {FS}
@@ -167,7 +167,7 @@ module PairHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
       -- Number of scratch slots reserved before f runs (heap-mode):
       -- backup + fst-stash + snd-stash + pair-stash. The pair value
-      -- itself lives on the heap, so unlike PairWF2's pair-overhead
+      -- itself lives on the heap, so unlike PairStackWF's pair-overhead
       -- (which includes the pair's stack-resident pointers) this
       -- counts only scratch.
       pair-heap-overhead : ℕ
@@ -188,7 +188,7 @@ module PairHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Plan 0.14: setup ends with `instr-alloc-stack pair-heap-overhead` so the
       -- runtime next-slot bumps to match `alloc-after-scratch` (= the
       -- construction-time alloc passed to f's rec-wf). Eliminates the
-      -- runtime/construction-time alignment story that PairWF2 had to
+      -- runtime/construction-time alignment story that PairStackWF had to
       -- thread by hand. See [[alloc-construction-vs-runtime]].
       setup-trace : AbstractTrace
       setup-trace = mov-to-output ∷ store-at-slot backup-slot ∷ instr-alloc-stack pair-heap-overhead ∷ []
@@ -343,7 +343,7 @@ module PairHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- is a construction-time bookkeeping alloc that may differ from the
       -- runtime alloc on slot/heap-ref dimensions. Bridge via monotone
       -- lemmas where needed. See [[alloc-construction-vs-runtime]] and the
-      -- PairWF2 stage-A/B pattern.
+      -- PairStackWF stage-A/B pattern.
       s-after-f : LocState FS
       s-after-f = proj₁ (exec-trace f-trace s-after-setup alloc-after-scratch)
       alloc-after-f : AllocState {FS}
@@ -529,7 +529,7 @@ module PairHeapWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         in trans (cong (λ st → readReg (regs st) Input1) s-eq) restore-input-input1
 
       ------------------------------------------------------------------
-      -- Construction-time alloc passed to g-exec. PairWF2's pattern:
+      -- Construction-time alloc passed to g-exec. PairStackWF's pattern:
       -- runtime state + construction-time alloc (with bookkeeping that
       -- reflects result-f's claimed final alloc).
       ------------------------------------------------------------------

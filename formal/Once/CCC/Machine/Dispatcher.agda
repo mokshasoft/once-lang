@@ -64,12 +64,12 @@ open import Once.CCC.Machine.SizeBoundLemma public
 
 import Once.CCC.Machine.IR.SimpleWF as SimpleWFModule
 import Once.CCC.Machine.IR.ComposeWF as ComposeWFModule
-import Once.CCC.Machine.IR.PairWF2 as PairWFModule
-import Once.CCC.Machine.IR.PairHeapWF as PairHeapWFModule
-import Once.CCC.Machine.IR.CurryWF as CurryWFModule
-import Once.CCC.Machine.IR.CurryHeapWF as CurryHeapWFModule
-import Once.CCC.Machine.IR.SumInlHeapWF as SumInlHeapWFModule
-import Once.CCC.Machine.IR.SumInrHeapWF as SumInrHeapWFModule
+import Once.CCC.Machine.IR.PairStackWF as PairWFModule
+import Once.CCC.Machine.IR.PairAllocWF as PairAllocWFModule
+import Once.CCC.Machine.IR.CurryStackWF as CurryStackWFModule
+import Once.CCC.Machine.IR.CurryAllocWF as CurryAllocWFModule
+import Once.CCC.Machine.IR.SumInlAllocWF as SumInlAllocWFModule
+import Once.CCC.Machine.IR.SumInrAllocWF as SumInrAllocWFModule
 import Once.CCC.Machine.IR.ApplyWF as ApplyWFModule
 import Once.CCC.Machine.IR.RecCoreWF as RecCoreWFModule
 import Once.CCC.Machine.IR.ParaWF as ParaWFModule
@@ -167,16 +167,16 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
   open ComposeWFModule.ComposeWFImpl {FS} program-bound
 
   -- Import pair IR implementation. Plan 0.14: Stack-mode pairs go to
-  -- PairWF2.run-pair; Heap-mode pairs go to PairHeapWF.run-pair-heap.
+  -- PairStackWF.run-pair; Heap-mode pairs go to PairAllocWF.run-pair-heap.
   -- Mode is read off the IR (`⟨ f , g ⟩ m`) and case-split in run-ir-wf.
-  open PairWFModule.PairWF2Impl {FS} program-bound
-  open PairHeapWFModule.PairHeapWFImpl {FS} program-bound
+  open PairWFModule.PairStackWFImpl {FS} program-bound
+  open PairAllocWFModule.PairAllocWFImpl {FS} program-bound
 
   -- Import curry IR implementation
-  open CurryWFModule.CurryWFImpl {FS} program-bound
-  open CurryHeapWFModule.CurryHeapWFImpl {FS} program-bound
-  open SumInlHeapWFModule.SumInlHeapWFImpl {FS} program-bound
-  open SumInrHeapWFModule.SumInrHeapWFImpl {FS} program-bound
+  open CurryStackWFModule.CurryStackWFImpl {FS} program-bound
+  open CurryAllocWFModule.CurryAllocWFImpl {FS} program-bound
+  open SumInlAllocWFModule.SumInlAllocWFImpl {FS} program-bound
+  open SumInrAllocWFModule.SumInrAllocWFImpl {FS} program-bound
 
   -- Import apply IR implementation (no-frame model: body inherits
   -- parent's frame; child-frame parameters no longer exist).
@@ -316,7 +316,7 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
 
     -- Sum type: inject left
     -- Plan 0.14 (Camp 2): Stack-mode routes to SumRecWF.run-inl (stack-allocated
-    -- sum); Heap-mode routes to SumInlHeapWF.run-inl-heap (heap-allocated via
+    -- sum); Heap-mode routes to SumInlAllocWF.run-inl-heap (heap-allocated via
     -- instr-alloc-heap).
     run-ir-wf mIn (inl {A} {B} Stack) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ =
       Stack , run-inl {A} {B} mIn x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
@@ -351,7 +351,7 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
       run-compose mIn f g (make-rec-wf ir<bound rs) x input-loc s alloc
         input-valid-wf input-before not-halted rdi-eq
 
-    -- Pair: delegated to PairWF / PairHeapWF based on mode.
+    -- Pair: delegated to PairWF / PairAllocWF based on mode.
     -- Plan 0.14: the IR carries the mode (`⟨ f , g ⟩ m`); Stack routes
     -- to run-pair (stack-allocated pair), Heap routes to run-pair-heap
     -- (heap-allocated pair via instr-alloc-heap).
@@ -363,9 +363,9 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
         input-valid-wf input-before not-halted rdi-eq
 
     -- Curry: case-split on mode.
-    -- Plan 0.14 (Camp 2): Stack-mode routes to CurryWF (closure stored on
+    -- Plan 0.14 (Camp 2): Stack-mode routes to CurryStackWF (closure stored on
     -- stack via instr-alloc-stack closure-slots); Heap-mode routes to
-    -- CurryHeapWF (closure heap-allocated via instr-alloc-heap 2).
+    -- CurryAllocWF (closure heap-allocated via instr-alloc-heap 2).
     run-ir-wf mIn (curry {k = k} f Stack) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq (acc rs) =
       Heap , run-curry {k = k} mIn f Stack ir<bound (make-rec-wf ir<bound rs) x input-loc s alloc
         input-valid-wf input-before not-halted rdi-eq

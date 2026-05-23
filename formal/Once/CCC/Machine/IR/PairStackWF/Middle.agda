@@ -2,11 +2,11 @@
 -- Copyright (C) 2025-2026 Jonas Claesson and contributors
 
 ------------------------------------------------------------------------
--- Once.CCC.Machine.IR.PairWF2.Middle
+-- Once.CCC.Machine.IR.PairStackWF.Middle
 --
 -- Plan 0.18 — driver-glue extraction (companion of Setup.agda).
 --
--- Bundles the four Validity.L2-derived proofs that PairWF2.run-pair
+-- Bundles the four Validity.L2-derived proofs that PairStackWF.run-pair
 -- needs to supply to its rec-wf g call (valid-at-s-after-middle,
 -- input-before-at-reclaim-f, not-halted-after-middle,
 -- rdi-eq-at-s-after-middle).
@@ -18,7 +18,7 @@
 -- internally; that cost is paid once in this file (cached).
 ------------------------------------------------------------------------
 
-module Once.CCC.Machine.IR.PairWF2.Middle where
+module Once.CCC.Machine.IR.PairStackWF.Middle where
 
 open import Data.Nat using (ℕ; suc) renaming (_+_ to _+ℕ_)
 open import Data.Bool using (false)
@@ -36,7 +36,7 @@ open import Once.CCC.Machine.Allocation hiding (AllocMode)
 open import Once.CCC.Machine.ClosureWellFormed
 
 import Once.CCC.Machine.SMPrimitives as SMP
-import Once.CCC.Machine.IR.PairWF2.Validity as PairValidity
+import Once.CCC.Machine.IR.PairStackWF.Validity as PairValidity
 
 module MiddleImpl {FS : FrameSemantics} (program-bound : ℕ) where
   open FrameSemantics FS

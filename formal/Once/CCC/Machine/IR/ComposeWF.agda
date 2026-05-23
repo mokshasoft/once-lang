@@ -217,7 +217,7 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; max-slot-usage-bound = compose-max-slot-bound
         -- Plan 0.17.1: frontier-slot-stable now returns relative to
         -- `apply-bump compose-bump alloc`, not raw `alloc₂`. Match the
-        -- pattern used by ApplyWF / PairHeapWF / CurryHeapWF and return
+        -- pattern used by ApplyWF / PairAllocWF / CurryAllocWF and return
         -- the uncertain branch `inj₂ (inj₂ tt)`. The legacy compose-
         -- frontier-stable (with the alloc₂-shape return type) is kept
         -- below as dead code for reference; reviving it would require
@@ -509,7 +509,7 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       f-tph : TraceWF s alloc f-trace
       f-tph = IRResultAWF.trace-twf result-f
       -- TODO: g-tph runs at a runtime state different from g's construction
-      -- state; same shape as PairWF2's g-tph-runtime. Postulate for the
+      -- state; same shape as PairStackWF's g-tph-runtime. Postulate for the
       -- scaffold pass, discharge in follow-up.
       g-tph : TraceWF (proj₁ (exec-trace (f-trace ++ mov-to-input ∷ []) s alloc))
                       (proj₂ (exec-trace (f-trace ++ mov-to-input ∷ []) s alloc))

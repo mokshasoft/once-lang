@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson and contributors
 
 ------------------------------------------------------------------------
--- Once.CCC.Target.X86-64.IR.CurryWF
+-- Once.CCC.Target.X86-64.IR.CurryStackWF
 --
 -- Curry IR implementation with clean trace-based structure.
 -- Final state defined via exec-trace, making trace-correct = refl.
@@ -10,7 +10,7 @@
 -- RELOCATION APPROACH: No frame manipulation, just stack slot writes.
 ------------------------------------------------------------------------
 
-module Once.CCC.Machine.IR.CurryWF where
+module Once.CCC.Machine.IR.CurryStackWF where
 
 open import Data.Nat using (ℕ; suc; _<_; _≤_; _≥_; s≤s; z≤n) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
 open import Data.Nat.Properties using (≤-refl; ≤-reflexive; ≤-trans; m≤m+n; m<m+n; m+n≤o⇒m≤o; +-monoʳ-≤; *-monoˡ-≤; m≤m*n; +-assoc; n≤1+n; +-comm)
@@ -42,7 +42,7 @@ import Once.ProofObligation as PO
 -- Curry implementation with clean trace-based structure
 ------------------------------------------------------------------------
 
-module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
+module CurryStackWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   open FrontierInvariant {FS}
   open MemOps {FS}
   open WriteOps {FS}
@@ -452,10 +452,10 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- reduces to ⊥. Surfaced as SMP.!! pending either deletion of this path
       -- or actual heap-allocated closure lowering.
       result-valid-wf' : ValidAtWF Heap alloc' (eval (curry {k = k} f m) x) closure-loc s'
-      -- Plan 0.14 SV-Code refactor: CurryWF (Stack-mode) emits
+      -- Plan 0.14 SV-Code refactor: CurryStackWF (Stack-mode) emits
       -- `lea-slot (suc closure-slot)` at closure[1] which produces
       -- SV-Ptr, not SV-Code. valid-closure-wf now requires SV-Code.
-      -- CurryWF is structurally dead (elaborator emits curry Heap
+      -- CurryStackWF is structurally dead (elaborator emits curry Heap
       -- only); SMP.!! pending deletion or trace migration to
       -- instr-load-code-addr (needs label threading).
       result-valid-wf' = valid-closure-wf body<bound {body-label = 0} SMP.!!

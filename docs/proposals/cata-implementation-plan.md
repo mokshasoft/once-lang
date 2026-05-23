@@ -70,7 +70,7 @@ All instructions defined in `SMCore.agda` with complete operational semantics.
 - `SimpleWF.agda` (id, fst, snd, terminal)
 - `ComposeWF.agda`
 - `PairWF.agda`
-- `CurryWF.agda`
+- `CurryStackWF.agda`
 - `ApplyWF.agda`
 - `SumRecWF.agda` (inl, inr, case)
 - `RecCoreWF.agda`

@@ -2,13 +2,13 @@
 -- Copyright (C) 2025-2026 Jonas Claesson and contributors
 
 ------------------------------------------------------------------------
--- Once.CCC.Machine.IR.PairWF2.Bounds
+-- Once.CCC.Machine.IR.PairStackWF.Bounds
 --
 -- Plan 0.17.1 / 0.18 — Cluster B extraction: pair-trace combinatorics
 -- and budget bounds.  Pure structural facts about pair-trace's shape;
 -- does NOT depend on input state, validity, or memory preservation.
 --
--- Exports (used by PairWF2.run-pair via projections):
+-- Exports (used by PairStackWF.run-pair via projections):
 --   pair-trace                       — the composed AbstractTrace
 --   pair-max-slot                    — max-slot-written for the pair
 --   pair-trace-writes-above
@@ -21,7 +21,7 @@
 --   pair-scratch-bounded
 --   pair-max-heap-usage-bound
 --
--- Nesting layout (matches PairWF2/Validity.agda):
+-- Nesting layout (matches PairStackWF/Validity.agda):
 --   Bounds       — layout (slots, alloc-after-pair-slots).
 --   .L2          — adds result-f + f-tnhw; derives reclaim-f,
 --                  alloc-after-f-reclaim, f-trace, f-twa/twb/tsra/tsrb.
@@ -29,7 +29,7 @@
 --                  pair-max-slot, and the bound exports.
 ------------------------------------------------------------------------
 
-module Once.CCC.Machine.IR.PairWF2.Bounds where
+module Once.CCC.Machine.IR.PairStackWF.Bounds where
 
 open import Data.Nat using (ℕ; suc; _<_; _≤_; _≥_; s≤s; z≤n; _⊔_) renaming (_+_ to _+ℕ_)
 open import Data.Nat.Properties using (≤-refl; ≤-trans; m≤m+n; m≤n+m; n≤1+n; +-comm; +-assoc; +-monoˡ-≤; +-monoʳ-≤; <-≤-trans; m≤m⊔n; m≤n⊔m; ⊔-lub; ≤-reflexive)
@@ -373,7 +373,7 @@ module BoundsImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
         ------------------------------------------------------------------
         -- Plan 0.17.3 (frame-op fence): TraceNoFrameOps pair-trace.
-        -- Hoisted into Bounds so PairWF2.agda's mk-IRResultAWF-via-bump
+        -- Hoisted into Bounds so PairStackWF.agda's mk-IRResultAWF-via-bump
         -- site can pass a single name instead of an inline append tower
         -- (which forced case-tree fusion at the producer site).
         ------------------------------------------------------------------

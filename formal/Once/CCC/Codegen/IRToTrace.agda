@@ -41,8 +41,8 @@
 --   terminal     — SimpleWF
 --   initial      — SimpleWF
 --   arr          — SimpleWF
---   ⟨_,_⟩        — PairWF2.pair-trace
---   curry        — CurryWF.curry-trace
+--   ⟨_,_⟩        — PairStackWF.pair-trace
+--   curry        — CurryStackWF.curry-trace
 --   apply        — ApplyWF.apply-setup-trace + instr-call-closure
 --   SigOp        — `instr-sigop name` (per-arch decode)
 --
@@ -145,7 +145,7 @@ ir-to-trace' n l (g ∘ f)   =
 
 -- ────────────────────────────────────────────────────────────────────
 -- ⟨ f , g ⟩ — pair construction.
--- Mirror PairWF2.pair-trace:
+-- Mirror PairStackWF.pair-trace:
 --   backup-slot = next-slot
 --   fst-slot    = suc backup-slot
 --   snd-slot    = suc fst-slot
@@ -174,7 +174,7 @@ ir-to-trace' n l (⟨ f , g ⟩ Stack) =
      (fb ++ gb)
 
 -- Heap mode: pair lives on the heap (2 cells). Mirrors
--- PairHeapWF setup + mid + post. Uses 4 scratch slots:
+-- PairAllocWF setup + mid + post. Uses 4 scratch slots:
 -- backup-slot (input ptr), fst-stash (f-result), snd-stash (g-result),
 -- pair-stash (heap ptr). f starts at n+4.
 ir-to-trace' n l (⟨ f , g ⟩ Heap) =
@@ -203,7 +203,7 @@ ir-to-trace' n l (⟨ f , g ⟩ Heap) =
 
 -- ────────────────────────────────────────────────────────────────────
 -- curry — closure construction.
--- Mirror CurryWF.curry-trace closure-slot:
+-- Mirror CurryStackWF.curry-trace closure-slot:
 --   mov-to-output ∷                       -- Output := Input1 (env ptr)
 --   store-at-slot closure-slot ∷          -- closure[0] := env
 --   lea-slot (suc closure-slot) ∷         -- Output := &closure[1]
@@ -255,7 +255,7 @@ ir-to-trace' n l (curry body Stack) =
 
 -- Heap mode: closure record bump-allocated on the heap (2 cells:
 -- env-ptr at offset 0, code-address at offset 8). Mirrors
--- CurryHeapWF.curry-heap-trace. Uses 2 scratch slots
+-- CurryAllocWF.curry-heap-trace. Uses 2 scratch slots
 -- (env-stash, closure-stash).
 ir-to-trace' n l (curry body Heap) =
   let this-label    = l
@@ -356,7 +356,7 @@ ir-to-trace' n l (inr Stack) =
      []
 
 -- Heap mode: bump-allocate a 2-cell heap block, write [tag, payload-ptr].
--- Mirrors SumInlHeapWF.inl-heap-trace / SumInrHeapWF.inr-heap-trace.
+-- Mirrors SumInlAllocWF.inl-heap-trace / SumInrAllocWF.inr-heap-trace.
 -- Uses 2 scratch slots for stashing: payload-stash = n, sum-stash = n+1.
 ir-to-trace' n l (inl Heap) =
   let payload-stash = n

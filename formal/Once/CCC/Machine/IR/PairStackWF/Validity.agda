@@ -2,13 +2,13 @@
 -- Copyright (C) 2025-2026 Jonas Claesson and contributors
 
 ------------------------------------------------------------------------
--- Once.CCC.Machine.IR.PairWF2.Validity
+-- Once.CCC.Machine.IR.PairStackWF.Validity
 --
--- Plan 0.18 — Option C extraction of PairWF2 phases 9-11.
+-- Plan 0.18 — Option C extraction of PairStackWF phases 9-11.
 --
 -- Phases 9-11 (oaf-*, oag-*, fst/snd preservation, validity chains;
--- originally PairWF2.agda lines 1769-2823) live in this compilation
--- unit. PairWF2.run-pair instantiates the nested chain
+-- originally PairStackWF.agda lines 1769-2823) live in this compilation
+-- unit. PairStackWF.run-pair instantiates the nested chain
 -- `Validity.L2.L3` with its phase-1-to-8 products, then reads off the
 -- single export `pair-valid-wf-final`.
 --
@@ -27,7 +27,7 @@
 --                   validity proofs.
 ------------------------------------------------------------------------
 
-module Once.CCC.Machine.IR.PairWF2.Validity where
+module Once.CCC.Machine.IR.PairStackWF.Validity where
 
 open import Data.Nat using (ℕ; suc; _<_; _≤_; _≥_; s≤s; z≤n; _⊔_) renaming (_+_ to _+ℕ_)
 open import Data.Nat.Properties using (≤-refl; ≤-trans; m≤m+n; m≤n+m; n≤1+n; +-comm; +-assoc; +-suc; +-identityʳ; +-monoˡ-≤; +-monoʳ-≤; <-≤-trans; <⇒≤; <⇒≢; m≤m⊔n; m≤n⊔m; ⊔-lub; _<?_; ≮⇒≥)
@@ -92,7 +92,7 @@ module ValidityImpl {FS : FrameSemantics} (program-bound : ℕ) where
     (s : LocState FS) (alloc : AllocState {FS})
     (not-halted : halted s ≡ false)
     (rdi-eq : readReg (regs s) Input1 ≡ SV-Ptr input-loc)
-    -- Plan 0.18 wire-through: PairWF2 also passes the input validity
+    -- Plan 0.18 wire-through: PairStackWF also passes the input validity
     -- and frontier witnesses so Validity owns ALL setup-time prep
     -- (no run-pair-side duplication).
     (input-valid-wf : ValidAtWF mIn alloc x input-loc s)
@@ -143,7 +143,7 @@ module ValidityImpl {FS : FrameSemantics} (program-bound : ℕ) where
                                not-halted setup-twf
 
     ----------------------------------------------------------------------
-    -- Plan 0.18 prep — derivations PairWF2 used to compute locally.
+    -- Plan 0.18 prep — derivations PairStackWF used to compute locally.
     -- Wrapped in `abstract` so downstream sees only propositional types.
     ----------------------------------------------------------------------
     abstract
@@ -360,7 +360,7 @@ module ValidityImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
       ------------------------------------------------------------------
       -- Plan 0.18 wire-through: derive mri-* + middle-restore-input-witness
-      -- internally (previously passed in as L2 params from PairWF2).
+      -- internally (previously passed in as L2 params from PairStackWF).
       -- Wrapped in `abstract` to keep downstream propositional only.
       ------------------------------------------------------------------
       abstract
@@ -471,7 +471,7 @@ module ValidityImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
       ------------------------------------------------------------------
       -- Plan 0.18 wire-through: rdi-eq-at-s-after-middle derived internally
-      -- (previously passed as L3 param from PairWF2).
+      -- (previously passed as L3 param from PairStackWF).
       ------------------------------------------------------------------
       abstract
         rdi-not-halted-fst-store : halted s-after-fst-store ≡ false
@@ -741,7 +741,7 @@ module ValidityImpl {FS : FrameSemantics} (program-bound : ℕ) where
         -- g-tnhw primitive (others derivable)
         (g-tnhw : TraceNoHeapWrites (IRResultAWF.trace result-g))
         -- Final-state bundle.
-        -- PairWF2 defines s-final via pair-trace (the whole composed trace);
+        -- PairStackWF defines s-final via pair-trace (the whole composed trace);
         -- Validity only needs the equality with the chained version.
         (s-final : LocState FS)
         (s-final-eq-prim :
@@ -881,7 +881,7 @@ module ValidityImpl {FS : FrameSemantics} (program-bound : ℕ) where
         s-after-final-eq = cong proj₁ (trans final-trace-decomp lea-single)
 
         --------------------------------------------------------------------
-        -- Migrated phase 9-11 proofs (PairWF2.agda lines 1769-2823)
+        -- Migrated phase 9-11 proofs (PairStackWF.agda lines 1769-2823)
         --------------------------------------------------------------------
         oaf-frame-eq : current-frame alloc-after-setup ≡ current-frame alloc-after-pair-slots
         oaf-frame-eq = trans (exec-trace-preserves-frame setup-trace s alloc) refl

@@ -12,9 +12,9 @@ This claims that executing the trace produces `final-alloc`. However:
 
 1. **Systematically unprovable**: Almost every IR module has `SMP.!!` (postulate) for this field:
    - SimpleWF.agda (6 holes)
-   - ComposeWF.agda, PairWF.agda, PairWF2.agda
+   - ComposeWF.agda, PairWF.agda, PairStackWF.agda
    - RecCoreWF.agda (2 holes)
-   - ParaWF.agda, AnaWF.agda, CurryWF.agda, ApplyWF.agda
+   - ParaWF.agda, AnaWF.agda, CurryStackWF.agda, ApplyWF.agda
    - SumRecWF.agda (10+ holes)
 
 2. **Root cause**: There's a mismatch between:

@@ -390,8 +390,8 @@ module FrontierInvariant {FS : FrameSemantics} where
   --   bump-0           → alloc unchanged (η of record)
   --   mkBump 0 1       → record alloc { next-heap-ref = suc … }
   --   mkBump 2 0       → record alloc { next-slot = suc (suc …) }
-  -- This matches the canonical forms produced by SumInlHeapWF,
-  -- CurryHeapWF, etc. Compositional producers (ApplyWF, PairHeapWF,
+  -- This matches the canonical forms produced by SumInlAllocWF,
+  -- CurryAllocWF, etc. Compositional producers (ApplyWF, PairAllocWF,
   -- ComposeWF) restructure alloc-correct around `apply-bump-compose`.
   apply-bump : AllocBump → AllocState {FS} → AllocState {FS}
   apply-bump bump alloc = record alloc

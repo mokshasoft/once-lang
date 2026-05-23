@@ -40,8 +40,8 @@ All updated with `slot-stays-in-budget` field:
 | **ApplyWF.agda** | `≤-refl` (allocates exactly `pair-slots`) | ✓ |
 | **SimpleWF.agda** | `m≤m+n (next-slot alloc) 0` (no allocation) | ✓ |
 | **ComposeWF.agda** | Compositional: `result-g.slot-stays-in-budget` composed with `reclaim-f-bound` | ✓ |
-| **CurryWF.agda** | `+-monoʳ-≤ (next-slot alloc) closure-bound` | ✓ |
-| **PairWF2.agda** | Reuses `pair-reclaim-size-bound` | ✓ |
+| **CurryStackWF.agda** | `+-monoʳ-≤ (next-slot alloc) closure-bound` | ✓ |
+| **PairStackWF.agda** | Reuses `pair-reclaim-size-bound` | ✓ |
 
 ### 3. Recursion Schemes (✓ Complete)
 
@@ -124,8 +124,8 @@ next-slot (ProcessedLayerResult.final-alloc ...)
  formal/Once/CCC/Machine/IR/AnaWF.agda          |   4 +
  formal/Once/CCC/Machine/IR/ApplyWF.agda        |   4 +
  formal/Once/CCC/Machine/IR/ComposeWF.agda      |  14 ++
- formal/Once/CCC/Machine/IR/CurryWF.agda        |   4 +
- formal/Once/CCC/Machine/IR/PairWF2.agda        |   8 +
+ formal/Once/CCC/Machine/IR/CurryStackWF.agda        |   4 +
+ formal/Once/CCC/Machine/IR/PairStackWF.agda        |   8 +
  formal/Once/CCC/Machine/IR/ParaWF.agda         |   4 +
  formal/Once/CCC/Machine/IR/RecCoreWF.agda      |   7 +-
  formal/Once/CCC/Machine/IR/RecTrace.agda       | ~150 modified
@@ -363,8 +363,8 @@ formal/
 │       ├── ApplyWF.agda            # Complete (line ~213)
 │       ├── SimpleWF.agda           # Complete (multiple)
 │       ├── ComposeWF.agda          # Complete (line ~190, ~422)
-│       ├── CurryWF.agda            # Complete (line ~153)
-│       ├── PairWF2.agda            # Complete (line ~739)
+│       ├── CurryStackWF.agda            # Complete (line ~153)
+│       ├── PairStackWF.agda            # Complete (line ~739)
 │       ├── ParaWF.agda             # Complete (line ~213)
 │       ├── AnaWF.agda              # Complete (line ~211)
 │       └── SumRecWF.agda           # Complete (6 cases)

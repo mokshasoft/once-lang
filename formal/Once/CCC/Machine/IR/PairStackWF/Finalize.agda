@@ -2,22 +2,22 @@
 -- Copyright (C) 2025-2026 Jonas Claesson and contributors
 
 ------------------------------------------------------------------------
--- Once.CCC.Machine.IR.PairWF2.Finalize
+-- Once.CCC.Machine.IR.PairStackWF.Finalize
 --
 -- Plan 0.18 — Step 1 + Option 2 (multi-file split).
 --
 -- Extracts the heavy module-instantiation chain (Validity.L2.L3 +
 -- Bounds.L2.L3 + Assembly.L2.L3) plus the pair-bump / pair-before /
--- mk-IRResultAWF-via-bump assembly out of PairWF2.run-pair's
+-- mk-IRResultAWF-via-bump assembly out of PairStackWF.run-pair's
 -- where-block. Lives in its own compilation unit so the elaborator's
 -- ambient context for typechecking this chain is just the Finalize
--- submodule parameters, not PairWF2.run-pair's accumulating where.
+-- submodule parameters, not PairStackWF.run-pair's accumulating where.
 --
--- PairWF2.run-pair instantiates this Finalize module once and calls
+-- PairStackWF.run-pair instantiates this Finalize module once and calls
 -- the single `pair-finalize` export to assemble the final IRResultAWF.
 ------------------------------------------------------------------------
 
-module Once.CCC.Machine.IR.PairWF2.Finalize where
+module Once.CCC.Machine.IR.PairStackWF.Finalize where
 
 open import Data.Nat using (ℕ; suc) renaming (_+_ to _+ℕ_)
 open import Data.Bool using (false)
@@ -40,9 +40,9 @@ open import Once.CCC.Machine.ClosureWellFormed
 
 import Once.CCC.Machine.SMPrimitives as SMP
 
-import Once.CCC.Machine.IR.PairWF2.Validity as PairValidity
-import Once.CCC.Machine.IR.PairWF2.Bounds as PairBounds
-import Once.CCC.Machine.IR.PairWF2.Assembly as PairAssembly
+import Once.CCC.Machine.IR.PairStackWF.Validity as PairValidity
+import Once.CCC.Machine.IR.PairStackWF.Bounds as PairBounds
+import Once.CCC.Machine.IR.PairStackWF.Assembly as PairAssembly
 
 module FinalizeImpl {FS : FrameSemantics} (program-bound : ℕ) where
   open FrameSemantics FS
@@ -72,13 +72,13 @@ module FinalizeImpl {FS : FrameSemantics} (program-bound : ℕ) where
   -- members. These reduce definitionally to the same exec-trace
   -- expressions as VImpl.Validity.s-after-setup / .alloc-after-pair-slots
   -- etc., so result-f / result-g built via VVal at the call site unify
-  -- with pair-finalize's parameter types without forcing PairWF2 to
+  -- with pair-finalize's parameter types without forcing PairStackWF to
   -- re-elaborate Validity's submodule instantiation.
   --
   -- Why this matters: a previous version of pair-finalize's signature
   -- referenced V0.s-after-setup etc. (V0 = Validity instantiation inside
   -- the Finalize submodule). Type-checking the call site forced Agda
-  -- to elaborate that V0 in PairWF2's scope, defeating the file-split.
+  -- to elaborate that V0 in PairStackWF's scope, defeating the file-split.
   ----------------------------------------------------------------------
   pair-setup-trace : (alloc : AllocState {FS}) → AbstractTrace
   pair-setup-trace alloc =
@@ -120,7 +120,7 @@ module FinalizeImpl {FS : FrameSemantics} (program-bound : ℕ) where
   ----------------------------------------------------------------------
   -- Finalize submodule — parameterized over the run-pair-side base
   -- inputs. Sits at the same nesting level as Validity / Bounds /
-  -- Assembly; consumers (PairWF2.run-pair) instantiate it with their
+  -- Assembly; consumers (PairStackWF.run-pair) instantiate it with their
   -- own f/g/x/... and then call pair-finalize.
   ----------------------------------------------------------------------
   module Finalize

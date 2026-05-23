@@ -362,7 +362,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   sum-slots-pos {A} {B} = s≤s z≤n
 
   -- Plan 0.14 (Camp 2): run-inl handles Stack-mode only. Heap-mode inl is
-  -- dispatched to SumInlHeapWF. The Heap clause that used to live here
+  -- dispatched to SumInlAllocWF. The Heap clause that used to live here
   -- claimed Heap mode at AtStack sum-loc — a LocMatchesMode violation
   -- only smuggled past via SMP.!!. Now deleted; dispatcher routes by mode.
   run-inl : ∀ {A B} (mIn : AllocMode)
@@ -518,7 +518,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   -- Same pattern as run-inl, but produces inr instead of inl
   ------------------------------------------------------------------------
 
-  -- Plan 0.14 (Camp 2): run-inr handles Stack-mode only; Heap dispatches to SumInrHeapWF.
+  -- Plan 0.14 (Camp 2): run-inr handles Stack-mode only; Heap dispatches to SumInrAllocWF.
   run-inr : ∀ {A B} (mIn : AllocMode)
     (x : ⟦ B ⟧) (input-loc : ValueLocation FS)
     (s : LocState FS) (alloc : AllocState {FS}) →

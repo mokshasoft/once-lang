@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson and contributors
 
 ------------------------------------------------------------------------
--- Once.CCC.Machine.IR.PairWF2
+-- Once.CCC.Machine.IR.PairStackWF
 --
 -- Clean reimplementation of pair IR well-formedness using:
 -- 1. Parameterized validity preservation lemma for both f and g
@@ -14,7 +14,7 @@
 -- ClosureWellFormed handles all cases without gap-unreachability reasoning.
 ------------------------------------------------------------------------
 
-module Once.CCC.Machine.IR.PairWF2 where
+module Once.CCC.Machine.IR.PairStackWF where
 
 open import Data.Nat using (ℕ; suc; _<_; _≤_; _≥_; s≤s; z≤n; _⊔_) renaming (_+_ to _+ℕ_)
 open import Data.Nat.Properties using (≤-refl; ≤-trans; m≤m+n; m≤n+m; n≤1+n; +-comm; +-assoc; +-suc; +-identityʳ; +-monoˡ-≤; +-monoʳ-≤; <-≤-trans; <⇒≤; <⇒≢; m≤m⊔n; m≤n⊔m; ⊔-lub; _<?_; ≮⇒≥)
@@ -46,18 +46,18 @@ import Once.CCC.Machine.SMPrimitives as SMP
 --   Setup     — rec-wf-f-arg bundle (input-valid-wf-after-setup etc.)
 --   Middle    — rec-wf-g-arg bundle (valid-at-s-after-middle etc.)
 --   Finalize  — 9-instantiation chain + IRResultAWF assembly
--- All three transitively import Validity; PairWF2.agda itself does NOT
+-- All three transitively import Validity; PairStackWF.agda itself does NOT
 -- need to instantiate VImpl.Validity (the V0 / V2 cost is paid inside
 -- the bundle helpers, where it's cached after first build).
-import Once.CCC.Machine.IR.PairWF2.Setup as PairSetup
-import Once.CCC.Machine.IR.PairWF2.Middle as PairMiddle
-import Once.CCC.Machine.IR.PairWF2.Finalize as PairFinalize
+import Once.CCC.Machine.IR.PairStackWF.Setup as PairSetup
+import Once.CCC.Machine.IR.PairStackWF.Middle as PairMiddle
+import Once.CCC.Machine.IR.PairStackWF.Finalize as PairFinalize
 
 ------------------------------------------------------------------------
--- PairWF2 Implementation
+-- PairStackWF Implementation
 ------------------------------------------------------------------------
 
-module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
+module PairStackWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   open FrameSemantics FS
   open FrontierInvariant {FS}
   open MemOps {FS}
@@ -74,7 +74,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
   open SMP.TraceOutputDeterminism {FS}
 
   -- Plan 0.18: instantiate Setup / Middle / Finalize once at
-  -- PairWF2Impl level. VImpl.Validity is NOT instantiated here —
+  -- PairStackWFImpl level. VImpl.Validity is NOT instantiated here —
   -- it's consumed only inside the bundle helpers.
   module SImpl = PairSetup.SetupImpl {FS} program-bound
   module MImpl = PairMiddle.MiddleImpl {FS} program-bound
@@ -97,7 +97,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) where
 
   -- Plan 0.14 (Camp 2): run-pair handles the Stack-mode pair only.
   -- pair-loc is AtStack so LocMatchesMode Stack pair-loc = ⊤ (witness tt).
-  -- The Heap-mode pair is handled by PairHeapWF.run-pair-heap; the
+  -- The Heap-mode pair is handled by PairAllocWF.run-pair-heap; the
   -- Dispatcher case-splits on the pair IR's mode to pick the handler.
   run-pair : ∀ {A B C} (mIn : AllocMode) (f : IR A B) (g : IR A C)
     (rec-wf : RecDispatcherWF (ir-size (⟨ f , g ⟩ Heap)))

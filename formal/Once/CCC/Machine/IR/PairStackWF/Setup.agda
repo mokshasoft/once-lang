@@ -2,11 +2,11 @@
 -- Copyright (C) 2025-2026 Jonas Claesson and contributors
 
 ------------------------------------------------------------------------
--- Once.CCC.Machine.IR.PairWF2.Setup
+-- Once.CCC.Machine.IR.PairStackWF.Setup
 --
 -- Plan 0.18 — driver-glue extraction.
 --
--- Bundles the four Validity-derived proofs that PairWF2.run-pair needs
+-- Bundles the four Validity-derived proofs that PairStackWF.run-pair needs
 -- to supply to its rec-wf f call (input-valid-wf-after-setup,
 -- input-before-at-f-start, not-halted-after-setup, rdi-eq-after-setup).
 --
@@ -15,10 +15,10 @@
 -- that reduce to the same exec-trace expressions as VImpl.Validity's
 -- members. Bundle's IMPLEMENTATION instantiates V0 internally; that
 -- cost stays in this file (cached after first build) instead of
--- leaking into PairWF2.agda's elaboration scope.
+-- leaking into PairStackWF.agda's elaboration scope.
 ------------------------------------------------------------------------
 
-module Once.CCC.Machine.IR.PairWF2.Setup where
+module Once.CCC.Machine.IR.PairStackWF.Setup where
 
 open import Data.Nat using (ℕ; suc) renaming (_+_ to _+ℕ_)
 open import Data.Bool using (false)
@@ -35,7 +35,7 @@ open import Once.CCC.Machine.Allocation hiding (AllocMode)
 open import Once.CCC.Machine.ClosureWellFormed
 
 import Once.CCC.Machine.SMPrimitives as SMP
-import Once.CCC.Machine.IR.PairWF2.Validity as PairValidity
+import Once.CCC.Machine.IR.PairStackWF.Validity as PairValidity
 
 module SetupImpl {FS : FrameSemantics} (program-bound : ℕ) where
   open FrameSemantics FS

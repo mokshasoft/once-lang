@@ -162,7 +162,7 @@ Since exec-abstract is now fully defined (no TODOs), we can prove this by:
 4. Keep capacity proofs in Dispatcher's local reasoning
 
 ### Phase 3: Update IR Modules
-1. ComposeWF, PairWF, CurryWF, ApplyWF, SumRecWF
+1. ComposeWF, PairWF, CurryStackWF, ApplyWF, SumRecWF
 2. Construct traces with proper alloc/dealloc instructions
 3. Prove trace-correct for each IR
 

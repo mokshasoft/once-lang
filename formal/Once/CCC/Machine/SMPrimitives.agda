@@ -2560,7 +2560,7 @@ module TracePrimitives {FS : FrameSemantics} where
   ------------------------------------------------------------------------
   -- Approach (a) sketch — Region-aware TraceWF state-transfer.
   --
-  -- GOAL: discharge `g-tph-runtime` in PairWF2 by transferring g-tph
+  -- GOAL: discharge `g-tph-runtime` in PairStackWF by transferring g-tph
   -- (TraceWF at construction state s₁') to the runtime state
   -- (s-after-middle). The state delta is a single writeLoc at
   -- stack[fst-slot] = SV-Ptr fst-loc, since middle-trace's
@@ -2647,7 +2647,7 @@ module TracePrimitives {FS : FrameSemantics} where
   -- Without that, IndirectDisjoint is a load-bearing precondition
   -- that can't be discharged at the call site.
   --
-  -- RECOMMENDATION: pivot to approach (b) — restructure PairWF2 to
+  -- RECOMMENDATION: pivot to approach (b) — restructure PairStackWF to
   -- call rec-wf for g at the runtime state (s-after-middle,
   -- alloc-after-f-reclaim). This dissolves the state-difference
   -- entirely; same hoist pattern Plan 0.13.3 Phase d (option b)
@@ -2657,7 +2657,7 @@ module TracePrimitives {FS : FrameSemantics} where
   -- (a) is left as this sketch; if the reach analysis lands later
   -- (e.g. as part of plan 0.13.x or a separate audit), the lemma
   -- can be finished and used to dissolve g-tph-runtime + the
-  -- compose-frontier-stable analogue with no PairWF2 / ComposeWF
+  -- compose-frontier-stable analogue with no PairStackWF / ComposeWF
   -- refactor.
 
   ------------------------------------------------------------------------
@@ -3033,7 +3033,7 @@ module TracePrimitives {FS : FrameSemantics} where
 --   3. Frame (same frame)
 -- Then executing the trace produces the same Output register value.
 --
--- This is needed for PairWF2 where f-trace is generated from state s,
+-- This is needed for PairStackWF where f-trace is generated from state s,
 -- but executed from s-after-setup. Since they agree on relevant inputs,
 -- the Output should be the same.
 ------------------------------------------------------------------------
@@ -3719,7 +3719,7 @@ module RecSchemeSemantics {FS : FrameSemantics} where
   ... | nothing = refl
 
   -- Plan 0.14 follow-up: per-instruction alloc-preservation lemmas used
-  -- by heap-mode WF producers (SumInlHeapWF, SumInrHeapWF, ...) to
+  -- by heap-mode WF producers (SumInlAllocWF, SumInrAllocWF, ...) to
   -- discharge the IRResultBase.alloc-correct obligation. Each preserves
   -- the full AllocState (proj₂) verbatim.
 
@@ -4026,7 +4026,7 @@ module RecSchemeSemantics {FS : FrameSemantics} where
   --
   -- The corresponding trace-level wrapper below keeps an internal !! for
   -- the instr-alloc-heap cons-case so external callers (6 sites in
-  -- PairWF2/RecTrace) don't need updating. Real fix: weaken the
+  -- PairStackWF/RecTrace) don't need updating. Real fix: weaken the
   -- trace-level wrapper to take TraceEffectsPreservesNextHeapRef and
   -- propagate at the 6 call sites. Deferred to follow-up.
   ------------------------------------------------------------------------

@@ -146,7 +146,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       -- addresses are categorically distinct from data pointers
       -- (StoredValue already reflects this via SV-Code). This change
       -- removes the lying `SV-Ptr code-loc` invariant — the self-
-      -- reference "fiction" CurryWF and CurryHeapWF used to invent
+      -- reference "fiction" CurryStackWF and CurryAllocWF used to invent
       -- a `code-loc` to satisfy the type. Runtime emits
       -- `instr-load-code-addr this-label` which produces SV-Code.
       valid-closure-wf : ∀ {EnvType k A B}
@@ -582,7 +582,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     -- Plan 0.17: smart constructor for producers.
     --
     -- Captures the cascade pattern that every compositional producer
-    -- (PairHeapWF, ApplyWF, ComposeWF, ...) hits: the producer has a
+    -- (PairAllocWF, ApplyWF, ComposeWF, ...) hits: the producer has a
     -- natural `alloc-final-local` (computed from sub-IR results or
     -- scratch budgets) and constructs all its proofs (alloc-correct,
     -- result-place, stack-inv, heap-inv) typed against that local
@@ -1779,7 +1779,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     loc-before _ _ _ _ _ _ (valid-buffer-wf bf) _ = valid-buffer-wf bf
 
   -- UNSAFE version (still postulated): no LocsInRegions hypothesis.
-  -- Existing callers (PairWF2's 5 sites) use this. Migrate to the strong
+  -- Existing callers (PairStackWF's 5 sites) use this. Migrate to the strong
   -- version above (taking a LocsInRegions witness) to discharge this.
   validityWF-mem-preserved-in-regions :
     ∀ {m A} (alloc : AllocState {FS}) (v : ⟦ A ⟧) (loc : ValueLocation FS)

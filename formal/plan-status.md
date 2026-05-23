@@ -22,7 +22,7 @@
 - Removed `mem-preserved-before` field from IRResultAWF in ClosureWellFormed.agda
 - Added `irresult-mem-preserved` derivation function using trace-writes-above and trace-no-heap-writes
 - Updated all IR handlers to remove field assignment (12 files)
-- Updated PairWF2.agda and RecTrace.agda to use `irresult-mem-preserved` instead of field access
+- Updated PairStackWF.agda and RecTrace.agda to use `irresult-mem-preserved` instead of field access
 - Fixed leftover Phase 3 issues in Helper.agda (capacity-eq, trace-preserves-capacity)
 - Added missing fields in Helper.agda (max-slot-written, scratch-bounded, etc.)
 - All builds pass with `timeout 300 make agda MODULE=Once/CCC/Machine/Dispatcher.agda`

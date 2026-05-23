@@ -227,7 +227,7 @@ All IR implementations need to provide the new `max-slot-eq-reclaim` field:
 |-----------|----------------|
 | SimpleWF.agda | `refl` (both defined to same value) |
 | SumRecWF.agda | `refl` (both defined to same value) |
-| CurryWF.agda | `refl` (both defined to same value) |
+| CurryStackWF.agda | `refl` (both defined to same value) |
 | ApplyWF.agda | `refl` (both defined to same value) |
 | ComposeWF.agda | Prove from sub-IR equalities |
 | PairWF.agda | Prove from sub-IR equalities (set max=reclaim) |
@@ -354,7 +354,7 @@ But:
 2. **Fill `max-slot-eq-reclaim` for base IRs**: Add `; max-slot-eq-reclaim = refl` to:
    - SimpleWF.agda (Id, Fst, Snd, etc.)
    - SumRecWF.agda (Inl, Inr, Case variants)
-   - CurryWF.agda
+   - CurryStackWF.agda
    - ApplyWF.agda
 
 3. **Update ComposeWF.agda**:

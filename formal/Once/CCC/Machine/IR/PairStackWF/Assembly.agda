@@ -2,11 +2,11 @@
 -- Copyright (C) 2025-2026 Jonas Claesson and contributors
 
 ------------------------------------------------------------------------
--- Once.CCC.Machine.IR.PairWF2.Assembly
+-- Once.CCC.Machine.IR.PairStackWF.Assembly
 --
 -- Plan 0.17.1 / 0.18 — Cluster A extraction: state-evolution proofs.
 --
--- Exports (used by PairWF2.run-pair via projections):
+-- Exports (used by PairStackWF.run-pair via projections):
 --   s-final, s-final-eq, alloc-final
 --   alloc-correct-pair                 — exec-alloc-eq
 --   pair-trace-twf                     — TraceWF s alloc pair-trace
@@ -16,9 +16,9 @@
 --   s-after-snd-store / alloc-after-snd-store / frame-after-snd-store
 --   frame-preserved-through
 --
--- Depends on PairWF2.Bounds for pair-trace + trace-bound projections.
+-- Depends on PairStackWF.Bounds for pair-trace + trace-bound projections.
 -- The middle-trace's restore-input precondition is passed as a
--- parameter (PairWF2 provides it via Validity.L2's
+-- parameter (PairStackWF provides it via Validity.L2's
 -- middle-restore-input-witness).
 --
 -- Nesting layout:
@@ -29,7 +29,7 @@
 --                  s-final + heavy state-evolution proofs.
 ------------------------------------------------------------------------
 
-module Once.CCC.Machine.IR.PairWF2.Assembly where
+module Once.CCC.Machine.IR.PairStackWF.Assembly where
 
 open import Data.Nat using (ℕ; suc; _<_; _≤_; s≤s; z≤n) renaming (_+_ to _+ℕ_)
 open import Data.Nat.Properties using (≤-refl; ≤-trans; n≤1+n; +-comm)
@@ -52,7 +52,7 @@ open import Once.CCC.Machine.Allocation hiding (AllocMode)
 open import Once.CCC.Machine.ClosureWellFormed
 
 import Once.CCC.Machine.SMPrimitives as SMP
-import Once.CCC.Machine.IR.PairWF2.Bounds as PB
+import Once.CCC.Machine.IR.PairStackWF.Bounds as PB
 
 module AssemblyImpl {FS : FrameSemantics} (program-bound : ℕ) where
   open FrameSemantics FS

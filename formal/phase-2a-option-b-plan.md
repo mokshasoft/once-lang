@@ -10,7 +10,7 @@
 1. **Job A — runtime tracking:** bumped by `instr-alloc-stack` at execution.
 2. **Job B — proof-side slot frontier:** "where this IR's scratch starts," threaded through `rec-wf`.
 
-These got fused because `instr-alloc-stack` happened to update both. When PairHeapWF emits `instr-alloc-stack pair-heap-overhead`, jobs A and B align trivially. When `IRToTrace` drops the instruction (since the function prologue handles slot allocation), jobs A and B diverge but share a field — so the divergence becomes a hidden proof gap.
+These got fused because `instr-alloc-stack` happened to update both. When PairAllocWF emits `instr-alloc-stack pair-heap-overhead`, jobs A and B align trivially. When `IRToTrace` drops the instruction (since the function prologue handles slot allocation), jobs A and B diverge but share a field — so the divergence becomes a hidden proof gap.
 
 **Option B splits them.** Job A's bookkeeping moves to `regs.stackSlot` (already exists). Job B becomes an explicit parameter `start-slot : ℕ` threaded into the proof-side `RecDispatcherWF`. `alloc.next-slot` ceases to exist.
 
@@ -42,10 +42,10 @@ Layered, low-coupling first:
 3. **Migrate producers** (~1 session each, ~12 producers):
    - SimpleWF (simple — minimal next-slot use)
    - ComposeWF
-   - PairWF2, PairHeapWF (heart of the change)
-   - CurryWF, CurryHeapWF
+   - PairStackWF, PairAllocWF (heart of the change)
+   - CurryStackWF, CurryAllocWF
    - ApplyWF
-   - SumRecWF, SumInlHeapWF, SumInrHeapWF
+   - SumRecWF, SumInlAllocWF, SumInrAllocWF
    - AnaWF, ParaWF, RecCoreWF, RecTrace
 
    Per producer:
