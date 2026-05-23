@@ -451,10 +451,10 @@ module CurryStackWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         }
 
       -- Result validity: closure with body-correct embedded
-      -- Plan 0.14 (Camp 2): closure-loc is AtStack but ValidAtWF Heap; lmm
+      -- Plan 0.14 (Camp 2): closure-loc is AtStack but ValidAtWF Stack; lmm
       -- reduces to ⊥. Surfaced as SMP.!! pending either deletion of this path
       -- or actual heap-allocated closure lowering.
-      result-valid-wf' : ValidAtWF Heap alloc' (eval (curry {k = k} f m) x) closure-loc s'
+      result-valid-wf' : ValidAtWF Stack alloc' (eval (curry {k = k} f m) x) closure-loc s'
       -- Plan 0.17.2 follow-up (2026-05-23): valid-closure-wf is now
       -- mode-polymorphic. With CurryStackWF returning IRResultAWF
       -- Stack, the LocMatchesMode obligation becomes `LocMatchesMode
@@ -474,7 +474,7 @@ module CurryStackWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
           refl refl refl closure-loc closure-before'
 
       reclaim-preserves-validity' :
-        ValidAtWF Heap (record alloc { next-slot = next-slot alloc +ℕ closure-slots })
+        ValidAtWF Stack (record alloc { next-slot = next-slot alloc +ℕ closure-slots })
                   (eval (curry {k = k} f m) x) closure-loc s'
       reclaim-preserves-validity' = validityWF-with-bf-transfer
         (eval (curry {k = k} f m) x) closure-loc s' alloc'
