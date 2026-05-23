@@ -149,7 +149,6 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
     using (BodyCorrect; ValidAtWF; IRResultAWF; RecDispatcherWF;
            valid-unit-wf; valid-pair-wf; valid-closure-wf;
            decomposeClosureWF; ClosureValidWF; decomposePairWF; PairValidWF;
-           closure-mode-is-heap-proof;
            validityWF-mem-only;
            validityWF-write-at-frontier; validityWF-write-at-suc-frontier;
            validityWF-alloc-advance; validityWF-frontier-advance;
@@ -367,7 +366,7 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
     -- stack via instr-alloc-stack closure-slots); Heap-mode routes to
     -- CurryAllocWF (closure heap-allocated via instr-alloc-heap 2).
     run-ir-wf mIn (curry {k = k} f Stack) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq (acc rs) =
-      Heap , run-curry {k = k} mIn f Stack ir<bound (make-rec-wf ir<bound rs) x input-loc s alloc
+      Stack , run-curry {k = k} mIn f Stack ir<bound (make-rec-wf ir<bound rs) x input-loc s alloc
         input-valid-wf input-before not-halted rdi-eq
     run-ir-wf mIn (curry {k = k} f Heap) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq (acc rs) =
       Heap , run-curry-heap {k = k} mIn f ir<bound (make-rec-wf ir<bound rs) x input-loc s alloc

@@ -122,8 +122,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
            validityWF-frontier-advance;
            validityWF-with-bf-transfer;
            decomposePairWF; PairValidWF;
-           decomposeClosureWF; ClosureValidWF;
-           closure-mode-is-heap-proof)
+           decomposeClosureWF; ClosureValidWF)
 
   open import Once.CCC.Machine.DispatcherArithmeticLemma
     using (suc<+2)
@@ -329,15 +328,11 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       arg : ⟦ A ⟧
       arg = sem-snd {A ⇒[ k ] B} {A} x
 
-      -- Decompose closure
+      -- Decompose closure (Plan 0.17.2 follow-up: decomposeClosureWF
+      -- is now mode-polymorphic, so the prior Heap-coercion via
+      -- closure-mode-is-heap-proof is gone).
       mClosure = PairValidWF.mA pair-decomp
-      closure-mode-is-heap : mClosure ≡ Heap
-      closure-mode-is-heap = closure-mode-is-heap-proof closure-valid-wf
-      closure-valid-wf-heap : ValidAtWF Heap alloc closure closure-loc s
-      closure-valid-wf-heap = subst (λ m → ValidAtWF m alloc closure closure-loc s)
-        closure-mode-is-heap closure-valid-wf
-
-      closure-decomp = decomposeClosureWF {_} {k} {A} {B} closure-valid-wf-heap
+      closure-decomp = decomposeClosureWF {mClosure} {_} {k} {A} {B} closure-valid-wf
       EnvType = ClosureValidWF.EnvType closure-decomp
       body = ClosureValidWF.body closure-decomp
       env = ClosureValidWF.env closure-decomp

@@ -166,7 +166,10 @@ module CurryStackWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
     readReg (regs s) Input1 ≡ SV-Ptr input-loc →
-    IRResultAWF Heap (curry {k = k} f m) x s alloc
+    -- Plan 0.17.2 follow-up: Stack-mode curry now produces
+    -- IRResultAWF Stack (closure-loc is AtStack). Per the architecture
+    -- doc, mode tag = where the output lives.
+    IRResultAWF Stack (curry {k = k} f m) x s alloc
   run-curry {A} {B} {C} {k} mIn f m ir<bound rec-wf x input-loc s alloc
     input-valid-wf input-before not-halted rdi-eq =
     -- Plan 0.17: use mk-IRResultAWF-via-bump. alloc-correct stays at
@@ -452,13 +455,13 @@ module CurryStackWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- reduces to ⊥. Surfaced as SMP.!! pending either deletion of this path
       -- or actual heap-allocated closure lowering.
       result-valid-wf' : ValidAtWF Heap alloc' (eval (curry {k = k} f m) x) closure-loc s'
-      -- Plan 0.14 SV-Code refactor: CurryStackWF (Stack-mode) emits
-      -- `lea-slot (suc closure-slot)` at closure[1] which produces
-      -- SV-Ptr, not SV-Code. valid-closure-wf now requires SV-Code.
-      -- CurryStackWF is structurally dead (elaborator emits curry Heap
-      -- only); SMP.!! pending deletion or trace migration to
-      -- instr-load-code-addr (needs label threading).
-      result-valid-wf' = valid-closure-wf body<bound {body-label = 0} SMP.!!
+      -- Plan 0.17.2 follow-up (2026-05-23): valid-closure-wf is now
+      -- mode-polymorphic. With CurryStackWF returning IRResultAWF
+      -- Stack, the LocMatchesMode obligation becomes `LocMatchesMode
+      -- Stack (AtStack ...) = ⊤`, witness = tt (was SMP.!!).
+      -- The second SMP.!! is for the SV-Code-at-closure[1] obligation
+      -- — still pending the Stack trace migration to instr-load-code-addr.
+      result-valid-wf' = valid-closure-wf body<bound {body-label = 0} tt
         env-ptr' SMP.!! input-before' code-before'
         input-valid-wf' body-correct
 
