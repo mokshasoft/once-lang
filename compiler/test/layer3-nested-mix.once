@@ -1,0 +1,12 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson and contributors
+
+-- Layer 3 test: deeper mix — pair containing a sum that holds a pair.
+-- Path through: fst of outer pair (selects sum), destruct (Left branch),
+-- then fst of inner pair.
+-- Expected: exit code 42
+
+import I.Linux.Syscalls as S
+
+main : IO Unit
+main = exit@S (destruct (fst (((inl (42, 7)) : (Int * Int) + Int), 99)) of { Left p -> fst p ; Right y -> y })

@@ -1,0 +1,11 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson and contributors
+
+-- Layer 3 test: sum nested inside a pair, --alloc heap
+-- Right branch fires; exercises snd through pair, then destruct on inr
+-- Expected: exit code 42
+
+import I.Linux.Syscalls as S
+
+main : IO Unit
+main = exit@S (destruct (snd (1, ((inr 42) : Int + Int))) of { Left x -> 99 ; Right y -> y })

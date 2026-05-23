@@ -1,0 +1,11 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson and contributors
+
+-- Layer 3 test: pair nested inside a sum, --alloc heap
+-- Exercises: pair construction, inl, destruct, fst (Layer 1 + 2)
+-- Expected: exit code 42
+
+import I.Linux.Syscalls as S
+
+main : IO Unit
+main = exit@S (destruct ((inl (42, 99)) : (Int * Int) + Int) of { Left p -> fst p ; Right y -> y })
