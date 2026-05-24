@@ -51,14 +51,31 @@ postulate
   modℤ : ℤ → ℤ → ℤ
 
 -- Primitive evaluation (external/opaque semantics).
--- After plan 0.2.4.1 Phase A, the elaborator wraps surface `sigOp
--- name` as `SigOp (generic-info name) ∘ terminal`, whose frontend
--- semantics is `generic-semI name`. Defining `evalSurfaceSigOp`
--- in terms of the same postulate keeps Surface-level and IR-level
--- semantics identical by construction, so `sigOp-correct` /
--- `poly-correct` bridge cases remain `refl`.
+--
+-- Plan 0.19: dispatched semantics for `sigOp`. The IR elaboration
+-- dispatches on type shape:
+--   - arrow `A = Dom ⇒[k] Cod`: `curry (SigOp (generic-info name) ∘ snd) m`,
+--     whose eval is `λ y → generic-semI {Dom} {Cod} name y`.
+--   - non-arrow A: `SigOp (generic-info name) ∘ terminal`, whose eval is
+--     `generic-semI {Unit} {A} name tt`.
+--
+-- We define `evalSurfaceSigOp` to match BOTH shapes — at arrow type, the
+-- curry-form expression; otherwise the Unit-wrap. This eliminates the
+-- previous `sigOp-arrow-eta` bridge postulate (`elaborate-correct`'s
+-- arrow case is now `refl` instead of postulated extensional equality).
+--
+-- The non-arrow case is unchanged from before.
 evalSurfaceSigOp : ∀ {A} → String → ⟦ A ⟧
+evalSurfaceSigOp {A = Dom Once.Type.⇒[ k ] Cod} name =
+  λ y → generic-semI {Dom} {Cod} name y
 evalSurfaceSigOp {A} name = generic-semI {Once.Type.Unit} {A} name _
+
+-- Plan 0.19: helper for `closure` / `poly`, whose IR elaboration is
+-- always `SigOp ∘ terminal` regardless of type — i.e. always the
+-- Unit-wrap shape. Distinct from `evalSurfaceSigOp` (which dispatches
+-- at arrow type to match the curry-form elaboration of `sigOp`).
+evalSurfaceClosure : ∀ {A} → String → ⟦ A ⟧
+evalSurfaceClosure {A} name = generic-semI {Once.Type.Unit} {A} name _
 
 -- | Environment: maps variables to values
 --
@@ -157,14 +174,16 @@ evalSurface ρ (arr' f)       = evalSurface ρ f
 -- OCP-0003: roll'/unroll' removed
 -- Primitives: opaque external operations (semantics defined by runtime)
 evalSurface ρ (sigOp name)    = evalSurfaceSigOp name
--- Plan 0.19: user-defined closure reference. Surface semantics is
--- identical to sigOp (same `generic-semI` postulate covers both); the
--- distinction is purely about which elaboration shape is emitted, not
--- about denotational meaning.
-evalSurface ρ (closure name)  = evalSurfaceSigOp name
+-- Plan 0.19: user-defined closure reference. Uses `evalSurfaceClosure`
+-- (Unit-wrap shape, matching `SigOp ∘ terminal` IR eval) — not the
+-- dispatched `evalSurfaceSigOp`, because closure's elaboration is the
+-- Unit-wrap regardless of type.
+evalSurface ρ (closure name)  = evalSurfaceClosure name
 -- Poly placeholder: if one reaches eval, resolver didn't clean it up.
--- Treat as an opaque external ref, same as sigOp.
-evalSurface ρ (poly name _)  = evalSurfaceSigOp name
+-- Like `closure`, poly's IR elaboration is `SigOp ∘ terminal` (Unit-wrap)
+-- regardless of type, so it uses `evalSurfaceClosure`, not the dispatched
+-- `evalSurfaceSigOp`.
+evalSurface ρ (poly name _)  = evalSurfaceClosure name
 -- Plan 0.2.4.5 D2: morphism realm. The Surface value `lift-morphism m`
 -- denotes the function `λ x → eval′ m x`. Since `⟦ A ⇒ B ⟧ = ⟦ A ⟧ → ⟦ B ⟧`
 -- in this denotation (kind annotation dropped — see header warning),

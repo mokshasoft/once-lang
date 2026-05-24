@@ -251,19 +251,17 @@ mutual
   -- OCP-0003: roll'/unroll' removed
   -- Primitives: opaque operations with correctness axiom.
   --
-  -- Plan 0.2.4.2 (Option 3): the elaboration of `sigOp name` is
-  -- type-dispatched. For non-arrow types the elaboration is `SigOp
-  -- ∘ terminal` (refl as before). For arrow types the elaboration
-  -- is `curry (SigOp ∘ snd) Heap` — a closure value.
+  -- Plan 0.19: `sigOp` correctness is now refl at every type,
+  -- INCLUDING arrow type. The previous `sigOp-arrow-eta` inline
+  -- postulate is GONE — eliminated by aligning `evalSurfaceSigOp`'s
+  -- arrow case with the IR's curry-form elaboration. Both sides at
+  -- arrow type are now structurally `λ y → generic-semI {Dom} {Cod}
+  -- name y`.
   --
-  -- The Surface-level `evalSurfaceSigOp` returns
-  -- `generic-semI {Unit} {A} name tt` regardless of A. For arrow
-  -- A = `Dom ⇒[k] Cod` this is some function `Dom → Cod`; the
-  -- elaborated IR's eval is `λ y → generic-semI {Dom} {Cod} name
-  -- y`. Their extensional equality is captured by a trusted-base
-  -- axiom `sigOp-arrow-eta` (defined inline below): both
-  -- functions agree pointwise — they're the runtime function
-  -- named `name` regardless of how Surface vs IR encodes it.
+  -- The non-arrow cases (Unit/Int/Float/…) are unchanged — both
+  -- Surface and IR sides reduce to `generic-semI {Unit} {A} name tt`.
+  --
+  -- Net trusted-base reduction: 1 inline postulate removed.
   elaborate-correct ρ (sigOp {A = Unit} name) = refl
   elaborate-correct ρ (sigOp {A = Int} name) = refl
   elaborate-correct ρ (sigOp {A = Float} name) = refl
@@ -274,14 +272,8 @@ mutual
   elaborate-correct ρ (sigOp {A = _ + _} name) = refl
   elaborate-correct ρ (sigOp {A = μ-type _} name) = refl
   elaborate-correct ρ (sigOp {A = ν-type _} name) = refl
-  -- Arrow case: extensional equality of the two SigOp interpretations.
-  elaborate-correct ρ (sigOp {A = Dom ⇒[ k ] Cod} name) =
-    sigOp-arrow-eta {Dom} {Cod} name
-    where
-      postulate
-        sigOp-arrow-eta : ∀ {Dom Cod} (name : String) →
-          evalSurface ρ (sigOp {A = Dom ⇒[ k ] Cod} name)
-            ≡ eval′ (elaborate (sigOp {A = Dom ⇒[ k ] Cod} name)) (interpEnv ρ)
+  -- Arrow case: refl via Plan 0.19 alignment (was `sigOp-arrow-eta`).
+  elaborate-correct ρ (sigOp {A = Dom ⇒[ k ] Cod} name) = refl
   -- PROVEN: same as sigOp — poly placeholders elaborate to `SigOp name`
   -- (cycle/unresolved fallback), and evalSurface treats them identically.
   elaborate-correct ρ (poly name _) = refl
