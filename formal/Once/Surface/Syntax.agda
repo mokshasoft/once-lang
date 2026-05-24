@@ -236,8 +236,39 @@ data Expr : ∀ {n} → Ctx n → Usage n → Type → Set where
   -- Effect lifting — identity on usage
   arr'  : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A B} → Expr Γ Ψ (A ⇒ B) → Expr Γ Ψ (A ⇒[ mk-kind Many eff ] B)
 
-  -- Primitive reference — uses no variables
+  -- External primitive reference (syscalls, intrinsics) — uses no variables.
+  -- Asm-level `once_<name>` directly implements the declared type `A`: at
+  -- arrow type `A = Dom ⇒[k] Cod`, calling `once_<name>(arg)` produces
+  -- the `Cod` result. The elaborator wraps arrow-typed sigOps in a curry
+  -- so apply chains can invoke them uniformly. This wrapping is correct
+  -- only when `once_<name>` actually implements the declared arrow — a
+  -- contract `sigOp` is intended to enforce by being reserved for
+  -- externally-provided routines (declared via `signature foo : …`).
+  -- User-defined top-level fns use `closure` instead (see below).
   sigOp    : ∀ {n} {Γ : Ctx n} {A} → String → Expr Γ zeroUsage A
+
+  -- Plan 0.19: user-defined top-level fn reference.
+  --
+  -- Distinguished from `sigOp` because the asm-level entry-point ABI
+  -- differs: a user-defined `f = …` compiles to `once_f` whose body is
+  -- a curry-wrapped closure-allocator (asm signature `Unit → Closure(…)`),
+  -- not a direct arrow. Elaboration is therefore `SigOp ∘ terminal`
+  -- regardless of `A` — the result of calling `once_<name>()` is the
+  -- function-value itself (a closure ptr). At use sites, the typechecker
+  -- desugars `f arg` to `apply (closure "f") arg`; the apply invokes the
+  -- closure body with `arg`, matching what the asm routine produces.
+  --
+  -- Crucially: the Surface type `A` here matches the *user-declared
+  -- type* of `f` (e.g. `Int ⇒ Int` for `f : Int → Int`). The asm-level
+  -- Unit-curry shape is recovered by the elaboration, not by the type.
+  -- This keeps user-visible types honest while letting the elaborator
+  -- emit the right calling convention.
+  --
+  -- See `plans/0.19-sigop-closure-split.md` for the diagnosis (session
+  -- 2026-05-23: `myid = id; main = exit@S (myid 42)` exited 80 because
+  -- `sigOp` curry-wrap fed the closure ptr through apply as if it were
+  -- the codomain Int).
+  closure  : ∀ {n} {Γ : Ctx n} {A} → String → Expr Γ zeroUsage A
 
   -- Unresolved polymorphic-def placeholder — Plan 0.6.2 Phase 2.
   -- Phase 1 (checkElab) emits `poly x T` when encountering a reference

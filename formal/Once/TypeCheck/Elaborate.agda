@@ -2540,6 +2540,13 @@ resolveExprWF polys pAcc imps fresh (Surface.ne a b) =
 resolveExprWF polys pAcc imps fresh (Surface.arr' e) = Surface.arr' (resolveExprWF polys pAcc imps fresh e)
 -- SigOp = external primitive. Pass through unchanged; resolver doesn't touch it.
 resolveExprWF polys _ imps _ (Surface.sigOp s) = Surface.sigOp s
+-- Plan 0.19: user-defined closure reference. Pass through unchanged
+-- (the resolver leaves named-entry references intact; the typechecker
+-- already classified user-defined-vs-external when emitting this node).
+-- A future Phase 3 extension will substitute morphism-alias closures
+-- (whose body elaborates to `lift-morphism m`) inline, but the
+-- passthrough below is the safe identity behaviour until then.
+resolveExprWF polys _ imps _ (Surface.closure s) = Surface.closure s
 -- Plan 0.2.4.5 D2: morphism-realm forms carry CCC IR directly (no
 -- polymorphic-def references to splice in). Pass through unchanged.
 resolveExprWF polys _ imps _ (Surface.lift-morphism m) = Surface.lift-morphism m

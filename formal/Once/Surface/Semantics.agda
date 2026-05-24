@@ -31,7 +31,7 @@ module Once.Surface.Semantics where
 open import Once.Type
 open import Once.Semantics.IR using (⟦_⟧; eval′)
 open import Once.Arith.SigOp.Builders using (generic-semI)
-open import Once.Surface.Syntax using (Ctx; ∅; lookup; Usage; Expr; var; lam; app; effApp; pair; fst'; snd'; inl'; inr'; case'; unit; absurd; let'; int; str; add; sub; mul; div; mod'; neg; lt; le; gt; ge; eq; ne; arr'; sigOp; poly; lift-morphism; morph-app) renaming (_,_ to _▸_)
+open import Once.Surface.Syntax using (Ctx; ∅; lookup; Usage; Expr; var; lam; app; effApp; pair; fst'; snd'; inl'; inr'; case'; unit; absurd; let'; int; str; add; sub; mul; div; mod'; neg; lt; le; gt; ge; eq; ne; arr'; sigOp; closure; poly; lift-morphism; morph-app) renaming (_,_ to _▸_)
 
 open import Data.Nat using (ℕ)
 open import Data.Fin using (Fin)
@@ -157,6 +157,11 @@ evalSurface ρ (arr' f)       = evalSurface ρ f
 -- OCP-0003: roll'/unroll' removed
 -- Primitives: opaque external operations (semantics defined by runtime)
 evalSurface ρ (sigOp name)    = evalSurfaceSigOp name
+-- Plan 0.19: user-defined closure reference. Surface semantics is
+-- identical to sigOp (same `generic-semI` postulate covers both); the
+-- distinction is purely about which elaboration shape is emitted, not
+-- about denotational meaning.
+evalSurface ρ (closure name)  = evalSurfaceSigOp name
 -- Poly placeholder: if one reaches eval, resolver didn't clean it up.
 -- Treat as an opaque external ref, same as sigOp.
 evalSurface ρ (poly name _)  = evalSurfaceSigOp name

@@ -14,7 +14,7 @@ open import Once.Type
 open import Once.CCC.IR
 open import Once.Semantics.IR as IR using (⟦_⟧; eval′)
 -- Using eval′ (backward-compatible non-parameterized eval)
-open import Once.Surface.Syntax using (Ctx; ∅; lookup; Usage; zeroUsage; _+ᵘ_; Expr; var; lam; app; effApp; pair; fst'; snd'; inl'; inr'; case'; unit; absurd; let'; int; str; add; sub; mul; div; mod'; neg; lt; le; gt; ge; ne; arr'; sigOp; poly; lift-morphism; morph-app) renaming (_,_ to _▸_; eq to eq')
+open import Once.Surface.Syntax using (Ctx; ∅; lookup; Usage; zeroUsage; _+ᵘ_; Expr; var; lam; app; effApp; pair; fst'; snd'; inl'; inr'; case'; unit; absurd; let'; int; str; add; sub; mul; div; mod'; neg; lt; le; gt; ge; ne; arr'; sigOp; closure; poly; lift-morphism; morph-app) renaming (_,_ to _▸_; eq to eq')
 open Once.Surface.Syntax.Usage using ([]; _∷_)
 import Once.Surface.Syntax as S
 open import Once.Surface.Semantics using (Env; ε; _∷_; envLookup; evalSurface)
@@ -285,6 +285,14 @@ mutual
   -- PROVEN: same as sigOp — poly placeholders elaborate to `SigOp name`
   -- (cycle/unresolved fallback), and evalSurface treats them identically.
   elaborate-correct ρ (poly name _) = refl
+  -- Plan 0.19: user-defined closure reference. Elaboration is
+  -- `SigOp ∘ terminal` (no curry-wrap regardless of type); semantics
+  -- is `generic-semI {Unit} {A} name tt`, identical to what `SigOp ∘
+  -- terminal` denotes. No `sigOp-arrow-eta`-style postulate needed:
+  -- the two interpretations are *structurally* identical, not
+  -- extensionally equal via a bridge axiom. This is the principled
+  -- alternative for user-defined arrow-typed entries.
+  elaborate-correct ρ (closure name) = refl
   -- Plan 0.2.4.5 D2: morphism realm.
   --   LHS: evalSurface ρ (lift-morphism m) = eval′ m
   --   RHS: eval′ (curry (m ∘ snd) Heap) γ

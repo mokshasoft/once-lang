@@ -235,6 +235,9 @@ rename {Δ = Δ} θ (Surface.ne {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) =
   subst (λ Ψ → SExpr Δ Ψ _) (sym (thin-usage-+ᵘ θ Ψ₁ Ψ₂)) (Surface.ne (rename θ a) (rename θ b))
 rename θ (Surface.arr' f) = Surface.arr' (rename θ f)
 rename {Δ = Δ} θ (Surface.sigOp name) = subst (λ Ψ → SExpr Δ Ψ _) (sym (thin-usage-zeroUsage θ)) (Surface.sigOp name)
+-- Plan 0.19: user-defined closure reference. Same shape as sigOp —
+-- closed by construction (zeroUsage), no context dependency.
+rename {Δ = Δ} θ (Surface.closure name) = subst (λ Ψ → SExpr Δ Ψ _) (sym (thin-usage-zeroUsage θ)) (Surface.closure name)
 rename {Δ = Δ} θ (Surface.poly name T) = subst (λ Ψ → SExpr Δ Ψ _) (sym (thin-usage-zeroUsage θ)) (Surface.poly name T)
 -- Plan 0.2.4.5 D2: morphism realm. `lift-morphism` carries no
 -- context dependency (closed by construction, zeroUsage), so renaming

@@ -272,6 +272,20 @@ elaborate m (arr' f) = arr ∘ elaborate m f
 elaborate m (sigOp {A = (Dom ⇒[ k ] Cod)} name) =
   curry {k = k} (SigOp (generic-info name) ∘ snd) m
 elaborate m (sigOp name) = SigOp (generic-info name) ∘ terminal
+-- Plan 0.19: user-defined closure reference.
+--
+-- Unlike `sigOp`, `closure name` does NOT curry-wrap at arrow type.
+-- The asm-level `once_<name>` returns the function-value (a closure
+-- ptr) directly when called with Unit input; `SigOp ∘ terminal`
+-- expresses exactly that: invoke `once_<name>` with terminal (empty)
+-- input, and the result IS the function value. Use sites desugar
+-- `f arg` to `apply (closure "f") arg`, which then invokes the
+-- returned closure's body with `arg` — matching the asm contract.
+--
+-- This is the same shape as `sigOp` at non-arrow type. The split
+-- exists so the elaborator never silently wraps a user-defined
+-- entry in a curry that mismatches its asm signature.
+elaborate m (closure name) = SigOp (generic-info name) ∘ terminal
 -- Unresolved polymorphic placeholder. A well-formed Surface Expr
 -- reaching elaborate has been through `resolveExpr`, so `poly` nodes
 -- only survive when resolution failed (e.g. cycle). Treat as an
