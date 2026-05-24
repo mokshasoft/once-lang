@@ -42,6 +42,8 @@ in `docs/compiler/decision-log.md` for durable records of landed work.
 │   ├── 0.13.2-stored-value-type (WIP commit `73a1a679` — separate `ValueLocation` (address) from `StoredValue` (content). Phase A complete (SMCore lifted, encode-const/encode-code-addr postulates deleted). Phase B partial. Blocked on `iph-load-indirect`-style constructors that turned out to be unsound — see 0.13.3.)
 │   │
 │   └── 0.13.3-honest-instr-preserves-halted (design — drop `iph-load-indirect`/`iph-load-from-slot`/etc. from `InstrPreservesHalted`; the backing `*-preserves-halted = !!` postulates are unsound (load-indirect halts when register holds non-pointer). Validity-aware trace-WF predicate replaces the marker constructors.)
+│
+├── 0.19-sigop-closure-split (design — split Surface `sigOp` into external `sigOp` + user-defined `closure`; align Surface type with asm signature; narrow `sigOp-arrow-eta` postulate. Subsumes morph-app outermost-app open item from 0.2.4.5 + A3 from 0.13 + Gap #4 fix path (b) from 0.12.)
 ```
 
 ## Status Summary
@@ -75,6 +77,7 @@ in `docs/compiler/decision-log.md` for durable records of landed work.
 | `0.13.1-layer2-sums-codegen` | Phase 1 landed (commit `e4de7543`) | Layer 2 sums codegen across proof + abstract + target. Phase 1: `instr-case-on-tag` added to AbstractInstr, halts at abstract level (with named postulate `case-codegen-faithful-phase1` for the per-arch correspondence), per-arch x86-64 lowers to `ud2`. Phases 2-7 (real tag dispatch, SumRecWF traces, IRToTrace, real branches per-arch, tests, DirectSim) **deferred until Plan 0.13.2 lands** — they need a real way to put a tag in memory. |
 | `0.13.2-stored-value-type` | WIP (commit `73a1a679`) | Architectural refactor: separate `ValueLocation` (address) from `StoredValue` (content). Memory cells hold a sum type with `SV-Ptr`/`SV-Tag`/`SV-Lit`/`SV-Code` constructors. Replaces `encode-const`/`encode-code-addr` postulates with real constructors (two trusted-base axioms removed). **Phase A complete** (SMCore.agda lifted; ~400 lines). Phase B (SMPrimitives) partial; blocked on iph-* unsoundness — split out as Plan 0.13.3. |
 | `0.13.3-honest-instr-preserves-halted` | design | Plan 0.13.2 surfaced that `iph-load-indirect` / `iph-load-from-slot` / etc. in `InstrPreservesHalted` are backed by **unsound postulates** (`load-indirect-preserves-halted = !!` is conditionally true at best). Drop them from the enum; replace with a validity-aware `TraceWF` precondition that surfaces the IR-compilation invariant. ~3-5 days proof refactor. Net postulate removal: ~5 unsound `*-preserves-halted` postulates deleted, replaced with real provable lemmas. |
+| `0.19-sigop-closure-split` | design | Split Surface `sigOp` into `sigOp` (external primitive, asm-direct arrow) + `closure` (user-defined entry, asm Unit-curry-returning-closure). User-defined morphism aliases route through `resolveExprWF` substitution; user-defined captures get `closure name` with a Surface type that matches the asm signature. Narrows the inline `sigOp-arrow-eta` postulate in `Once.Surface.Correct` to external primitives only. Subsumes the morph-app outermost-app open item from `0.2.4.5-morphism-realm-split`, A3 from `0.13-layer-survey`, and Gap #4 fix path (b) from `0.12-categorical-layer-1`. Diagnosed session 2026-05-23 from `myid = id; main = exit@S (myid 42)` exiting 80 on heap-only-pivot — not a dangling-pointer bug; a Surface-vs-asm type mismatch the postulate hid. Est. 4-6 days. |
 
 ## Recently Closed (in git history + decision log)
 
@@ -107,7 +110,19 @@ in `docs/compiler/decision-log.md` for durable records of landed work.
 - `(id . id) 42` → exit 42 ✓
 - `(id . id . id) 42` → exit 42 ✓ (was segfaulting at `RIP=0x2a`; fixed by morphism-realm split routing compose chains through pure CCC compose, no `apply`-chain).
 
-The closure-realm `apply`-with-returned-closure path is still buggy (Plan 0.2.4.5 D1 frameless `%rsp` ABI dangles closures returned past `addq %rsp; ret`). No current frontend-accepted program reaches it; closure-realm ABI fix tracked as open work in `0.2.4.5-morphism-realm-split.md`.
+The closure-realm `apply`-with-returned-closure path has two
+distinct sub-issues (diagnosed session 2026-05-23):
+
+- **Surface/asm type mismatch** (causes `myid = id; exit@S (myid 42)`
+  → exit 80 on heap-only-pivot, independent of dangling pointers).
+  Tracked in `0.19-sigop-closure-split.md` — split `sigOp` into
+  external `sigOp` + user-defined `closure`; align Surface type
+  with asm signature; narrow the inline `sigOp-arrow-eta`
+  postulate.
+- **Branch-returned-closure dangling pointer** (Plan 0.2.4.5 D1
+  frameless `%rsp` ABI). Still tracked in
+  `0.2.4.5-morphism-realm-split.md`; orthogonal to 0.19 and not
+  required for user-fn invocation correctness.
 
 ## Notes on Layout
 
