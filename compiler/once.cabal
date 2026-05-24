@@ -438,6 +438,7 @@ test-suite once-test
       Layer0Spec
       Layer1Spec
       Layer2Spec
+      Layer3Spec
       Layer4Spec
       ParseSpec
       TypeCheckSpec
