@@ -1,0 +1,6 @@
+-- Layer 4: applying swap twice returns the original pair. Expected: exit 42.
+import I.Linux.Syscalls as S
+swap : Int * Int -> Int * Int
+swap p = (snd p, fst p)
+main : IO Unit
+main = exit@S (fst (swap (swap (42, 99))))

@@ -1,0 +1,9 @@
+-- Layer 4: morphism alias — myid = id
+-- Plan 0.19 resolveExpr substitution: myid rewrites inline to id
+-- at the use site, so the call goes through morph-app (no closure
+-- allocation). Expected: exit 42.
+import I.Linux.Syscalls as S
+myid : Int -> Int
+myid = id
+main : IO Unit
+main = exit@S (myid 42)

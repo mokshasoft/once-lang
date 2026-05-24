@@ -1,0 +1,5 @@
+-- Layer 4 test: direct id application (no top-level user fn)
+import I.Linux.Syscalls as S
+
+main : IO Unit
+main = exit@S (id 42)

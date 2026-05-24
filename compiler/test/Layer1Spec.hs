@@ -11,11 +11,12 @@
 -- of `snd` morphisms (which collapse through the morphism-realm
 -- bypass, Plan 0.2.4.5 D2, to pure CCC compose).
 --
--- User-defined Layer 1 functions (`swap p = (snd p, fst p)`) compile
--- without the thunk-label collision (Plan 0.12 fix) but still hit
--- the closure-realm dangling-pointer bug at runtime — tracked as the
--- open closure-ABI fix in `plans/0.2.4.5-morphism-realm-split.md`.
--- See `test/layer1-swap.once` for the demonstrating source.
+-- User-defined Layer 1 functions over pairs (`swap p = (snd p, fst p)`)
+-- now work with `--alloc heap` after Plan 0.19 (Surface sigOp/closure
+-- ABI split). They're tested in `Layer4Spec` (closure-realm tests),
+-- not here, because they exercise the user-fn closure path which lives
+-- in Layer 4 conceptually. The original demonstrating source remains
+-- at `test/layer1-swap.once`.
 --
 -- Run with: cabal test --test-option='-p "/Layer1/"'
 

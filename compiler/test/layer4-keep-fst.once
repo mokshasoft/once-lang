@@ -1,0 +1,10 @@
+-- Layer 4: curried fn captures first arg, returns it.
+-- Plan 0.19 closure path: keepFst routes through Surface.closure,
+-- desugared to call once_keepFst() (returns curry'd closure) then
+-- apply that to 42, then apply that result to 99 → 42 (captured x).
+-- Expected: exit 42.
+import I.Linux.Syscalls as S
+keepFst : Int -> Int -> Int
+keepFst x y = x
+main : IO Unit
+main = exit@S (keepFst 42 99)

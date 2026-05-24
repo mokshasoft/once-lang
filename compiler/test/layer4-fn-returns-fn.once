@@ -1,0 +1,7 @@
+-- Layer 4: higher-order — fn explicitly returns a function value.
+-- Expected: exit 42.
+import I.Linux.Syscalls as S
+getId : Int -> (Int -> Int)
+getId n = id
+main : IO Unit
+main = exit@S (getId 99 42)

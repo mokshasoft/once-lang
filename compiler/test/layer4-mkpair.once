@@ -1,0 +1,6 @@
+-- Layer 4: user fn returns a pair, main projects first. Expected: exit 42.
+import I.Linux.Syscalls as S
+mkpair : Int -> Int * Int
+mkpair x = (x, 99)
+main : IO Unit
+main = exit@S (fst (mkpair 42))

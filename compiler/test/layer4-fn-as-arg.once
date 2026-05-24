@@ -1,0 +1,6 @@
+-- Layer 4: higher-order — pass a function as an arg. Expected: exit 42.
+import I.Linux.Syscalls as S
+apply1 : (Int -> Int) -> Int -> Int
+apply1 f x = f x
+main : IO Unit
+main = exit@S (apply1 id 42)

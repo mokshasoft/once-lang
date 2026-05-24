@@ -1,0 +1,10 @@
+-- Layer 4: partial application — `keepFst 42` stored as a top-level
+-- fn, applied later. The closure with captured x=42 survives the
+-- top-level def boundary. Expected: exit 42.
+import I.Linux.Syscalls as S
+keepFst : Int -> Int -> Int
+keepFst x y = x
+partial : Int -> Int
+partial = keepFst 42
+main : IO Unit
+main = exit@S (partial 99)

@@ -1,0 +1,7 @@
+-- Layer 4: three-arg curried fn — deep closure nesting. Returns b.
+-- Expected: exit 42.
+import I.Linux.Syscalls as S
+mid3 : Int -> Int -> Int -> Int
+mid3 a b c = b
+main : IO Unit
+main = exit@S (mid3 99 42 7)

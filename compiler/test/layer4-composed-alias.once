@@ -1,0 +1,7 @@
+-- Layer 4: user fn defined as a compose chain.
+-- Expected: exit 42.
+import I.Linux.Syscalls as S
+tripleId : Int -> Int
+tripleId = id . id . id
+main : IO Unit
+main = exit@S (tripleId 42)

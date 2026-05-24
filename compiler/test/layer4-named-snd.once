@@ -1,0 +1,6 @@
+-- Layer 4: morphism alias for snd. Expected: exit 42.
+import I.Linux.Syscalls as S
+mysnd : Int * Int -> Int
+mysnd = snd
+main : IO Unit
+main = exit@S (mysnd (99, 42))

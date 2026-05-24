@@ -1,0 +1,9 @@
+-- Layer 4: g aliases f aliases id. Both substituted by resolveExpr.
+-- Expected: exit 42.
+import I.Linux.Syscalls as S
+f : Int -> Int
+f = id
+g : Int -> Int
+g = f
+main : IO Unit
+main = exit@S (g 42)

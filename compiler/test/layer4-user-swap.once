@@ -1,0 +1,8 @@
+-- Layer 4: Layer 1 user fn over pairs. Pre-Plan 0.19 this exited 216
+-- (wrong byte of dangling pointer); Plan 0.19's closure constructor
+-- gives the user-fn invocation its correct Unit-curry ABI. Expected: exit 42.
+import I.Linux.Syscalls as S
+swap : Int * Int -> Int * Int
+swap p = (snd p, fst p)
+main : IO Unit
+main = exit@S (fst (swap (99, 42)))

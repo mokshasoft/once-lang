@@ -1,0 +1,6 @@
+-- Layer 2 + Layer 4: user fn destructs a sum. Expected: exit 42.
+import I.Linux.Syscalls as S
+pickFromSum : Int + Int -> Int
+pickFromSum s = destruct s of { Left x -> x ; Right y -> y }
+main : IO Unit
+main = exit@S (pickFromSum (inl 42 : Int + Int))
