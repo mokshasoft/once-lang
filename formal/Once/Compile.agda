@@ -155,7 +155,13 @@ compileFunBody : AllocMode → Bool → FunCtx → PolyCtx → (name : String) (
 compileFunBody m doOpt ctx polys name ty expr with checkElab (ctxWithImportsAndSelfAndPolys ctx polys name ty) expr ty
 ... | TE.failure err = inj₁ ("Type error in " ++ name ++ ": " ++ TE.renderError err)
 ... | TE.success _ surfaceExpr _ _ =
-  let resolved = resolveExpr polys ((name , ty) ∷ ctx) 0 surfaceExpr
+  -- Plan 0.19: pass the user-fn list (= `ctx + self`) twice: once as
+  -- `imps` (preserves the resolver's existing typecheck-context use for
+  -- poly bodies) and once as `userFns` (drives sigOp→closure rewrite
+  -- for user-defined top-level fn references). External syscalls are
+  -- handled via the qualified-name path and never reach this resolver.
+  let userList = (name , ty) ∷ ctx
+      resolved = resolveExpr polys userList userList 0 surfaceExpr
       ir = elaborate m resolved
   in inj₂ (if doOpt then optimize ir else ir)
 
