@@ -100,15 +100,15 @@ data ImportRef = ImportRef
 -- MAlonzo conversion (update suffixes after regenerating)
 ------------------------------------------------------------------------
 
-toMStage :: Stage -> MC.T_Stage_444
-toMStage Parse = MC.C_Parse_446
-toMStage Check = MC.C_Check_448
-toMStage Build = MC.C_Build_450
+toMStage :: Stage -> MC.T_Stage_446
+toMStage Parse = MC.C_Parse_448
+toMStage Check = MC.C_Check_450
+toMStage Build = MC.C_Build_452
 
-toMArch :: Arch -> MC.T_Arch_376
-toMArch X86_64  = MC.C_x86'45'64_378
-toMArch X86_32  = MC.C_x86'45'32_380
-toMArch RiscV64 = MC.C_riscv64_382
+toMArch :: Arch -> MC.T_Arch_378
+toMArch X86_64  = MC.C_x86'45'64_380
+toMArch X86_32  = MC.C_x86'45'32_382
+toMArch RiscV64 = MC.C_riscv64_384
 
 -- Verified Arch (in Once.Verified.CPU.Interface). Same shape as MC.Arch
 -- but a separate Agda type, hence a separate coercion.
@@ -136,12 +136,12 @@ fromMPolyFunInfo pfi = PolyFunSig
   , polyFunSigType = agdaToText (MT.d_showPolyType_456 (MP.d_pfunType_120 pfi))
   }
 
-fromMResult :: MC.T_CompileResult_452 -> CompileResult
-fromMResult (MC.C_Parsed_454 fis pfis) =
+fromMResult :: MC.T_CompileResult_454 -> CompileResult
+fromMResult (MC.C_Parsed_456 fis pfis) =
   Parsed (map fromMFunInfo fis) (map fromMPolyFunInfo pfis)
-fromMResult (MC.C_Checked_456 _)  = Checked
-fromMResult (MC.C_Built_458 asm)  = Built (agdaToText asm)
-fromMResult (MC.C_Error_460 err)  = Error (agdaToText err)
+fromMResult (MC.C_Checked_458 _)  = Checked
+fromMResult (MC.C_Built_460 asm)  = Built (agdaToText asm)
+fromMResult (MC.C_Error_462 err)  = Error (agdaToText err)
 
 ------------------------------------------------------------------------
 -- One-shot legacy pipeline
@@ -149,7 +149,7 @@ fromMResult (MC.C_Error_460 err)  = Error (agdaToText err)
 
 compile :: Stage -> Bool -> Arch -> Text -> CompileResult
 compile stage doOpt arch source =
-  fromMResult (MC.d_compile_486 (toMAllocMode AllocHeap) (toMStage stage) doOpt (toMArch arch) (textToAgda source))
+  fromMResult (MC.d_compile_488 (toMAllocMode AllocHeap) (toMStage stage) doOpt (toMArch arch) (textToAgda source))
 
 ------------------------------------------------------------------------
 -- AST-level pipeline
@@ -163,7 +163,7 @@ compile stage doOpt arch source =
 -- silently producing a module with missing decls.
 parseSource :: Text -> Either Text Module
 parseSource source =
-  case MC.d_parseSourceToModule_324 (textToAgda source) of
+  case MC.d_parseSourceToModule_326 (textToAgda source) of
     MSum.C_inj'8321'_38 err -> Left (agdaToText err)
     MSum.C_inj'8322'_42 m   -> Right (Module (unsafeCoerce m))
 

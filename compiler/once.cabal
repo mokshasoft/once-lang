@@ -237,8 +237,6 @@ library
       MAlonzo.Code.Once.CCC.IR
       MAlonzo.Code.Once.CCC.SigOp.Info
       MAlonzo.Code.Once.CCC.Machine.SMCore
-      MAlonzo.Code.Once.CCC.Memory.Memory
-      MAlonzo.Code.Once.CCC.Memory.MemoryLayoutSemantics
       MAlonzo.Code.Once.CCC.Codegen.IRToTrace
       MAlonzo.Code.Once.CCC.Target.X86Z45Z64.AbstractToX86
       MAlonzo.Code.Once.CCC.Target.X86Z45Z64.CodeGen.Compile
