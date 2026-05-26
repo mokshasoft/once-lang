@@ -93,6 +93,14 @@ layer4Tests = testGroup "Layer4"
     -- Layer 2 + Layer 4
   , testCase "user fn destructs sum (exit 42)" $
       buildAndRun "layer4-sum-and-fn" 42 >>= either assertFailure return
+  , testCase "user fn returns sum, destruct at call site (exit 42)" $
+      buildAndRun "layer4-mksum" 42 >>= either assertFailure return
+
+    -- Closure-as-data-payload (CCT1 inside CCTB / CCT2)
+  , testCase "closure as sum payload: pickFn (inl forty2) (exit 42)" $
+      buildAndRun "layer4-closure-in-sum" 42 >>= either assertFailure return
+  , testCase "closure as pair component: applyFst (forty2, 99) (exit 42)" $
+      buildAndRun "layer4-closure-in-pair" 42 >>= either assertFailure return
   ]
 
 ------------------------------------------------------------------------

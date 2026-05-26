@@ -27,6 +27,7 @@ layer0Tests = testGroup "Layer0"
   [ idTest
   , composeTest
   , constantTest
+  , terminalTest
   ]
 
 -- | Test: id function returns its input
@@ -52,6 +53,17 @@ composeTest = testCase "composition of ids (exit 42)" $ do
 constantTest :: TestTree
 constantTest = testCase "constant function (exit 7)" $ do
   result <- buildAndRun "layer0-neg" 7
+  case result of
+    Left err -> assertFailure err
+    Right () -> return ()
+
+-- | Test: explicit `terminal : A -> Unit`
+-- discard 99 yields Unit, fed into a Unit -> Int returning 42.
+-- Pins down terminal as a first-class user-facing primitive
+-- (previously only exercised implicitly via closure ABI).
+terminalTest :: TestTree
+terminalTest = testCase "terminal collapses Int to Unit (exit 42)" $ do
+  result <- buildAndRun "layer0-terminal" 42
   case result of
     Left err -> assertFailure err
     Right () -> return ()

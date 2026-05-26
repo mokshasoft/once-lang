@@ -1,0 +1,19 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson and contributors
+
+-- Layer 4 test: closure values carried as a SUM payload.
+-- Exercises CCT1 (exponentials) crossed with CCT2 (coproducts):
+--   pickFn : (Unit -> Int) + (Unit -> Int) -> Int
+-- The destruct selects the Left branch and applies the captured fn.
+-- Expected: exit 42.
+
+import I.Linux.Syscalls as S
+
+forty2 : Unit -> Int
+forty2 _ = 42
+
+pickFn : (Unit -> Int) + (Unit -> Int) -> Int
+pickFn s = destruct s of { Left f -> f () ; Right g -> g () }
+
+main : IO Unit
+main = exit@S (pickFn ((inl forty2) : (Unit -> Int) + (Unit -> Int)))

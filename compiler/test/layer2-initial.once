@@ -1,0 +1,21 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson and contributors
+
+-- Layer 2 test: `initial : Void -> A` (the ex falso quodlibet morphism).
+--
+-- Encodes Void as one branch of a sum so the elaborator/typechecker
+-- accepts the program. The Left branch fires at runtime, so `initial`
+-- itself is never invoked dynamically (it cannot be — Void is
+-- uninhabited). The test guards that `initial` continues to typecheck
+-- and link as a CCT2 primitive.
+
+import I.Linux.Syscalls as S
+
+absurdToInt : Void -> Int
+absurdToInt = initial
+
+pickInt : Int + Void -> Int
+pickInt s = destruct s of { Left x -> x ; Right v -> absurdToInt v }
+
+main : IO Unit
+main = exit@S (pickInt ((inl 42) : Int + Void))
