@@ -73,11 +73,61 @@ module X86-64 where
 
   -- Postulates for missing pieces.
   -- (`frame-ops` and `escape-survives` were removed when ApplyWF
-  -- adopted the no-frame model; `runtime` and `sigOp-proof` remain.)
+  -- adopted the no-frame model; `runtime` remains.)
+  --
+  -- Plan 0.20 Phase E (I-arith-7 light): `sigOp-proof` is now built
+  -- as a `ClaimedProvider` chain. Each link declares which SigOp
+  -- name-prefixes it claims to cover; the chain's combined claim is
+  -- the union. `blockClaimed` discharges arith blocks concretely;
+  -- `rest-claimed` is the residual postulate, typed against the
+  -- explicit list of prefixes still without a concrete provider.
+  -- The list shrinks as IntLit, Linux syscalls, etc. land their own
+  -- ClaimedProvider entries.
   postulate
     runtime : RuntimeContract FS
-    sigOp-proof : DispatcherModule.SigOpContract.Provider {FS}
-      (RuntimeContract.program-bound runtime)
+
+  open import Data.List as List using (List; _∷_; []; _++_)
+  open import Data.String using (String)
+  open import Once.Arith.Boundary using (module ArithBlockProvider)
+  open ArithBlockProvider {FS} (RuntimeContract.program-bound runtime)
+    using (blockProvider; blockClaimed; blockClaims)
+  open import Once.CCC.SigOp.Compose
+    using (ClaimedProvider; mk-claimed; _<|>'_; provider)
+
+  -- | Non-arith-block SigOp prefixes still requiring a concrete
+  -- provider. (Documentary list — used as the residual postulate's
+  -- claim index.)
+  rest-claims : List String
+  rest-claims =
+    "lit.int."      ∷
+    "lit.str."      ∷
+    "arith.add.int" ∷
+    "arith.sub.int" ∷
+    "arith.mul.int" ∷
+    "arith.div.int" ∷
+    "arith.mod.int" ∷
+    "arith.neg.int" ∷
+    "arith.lt.int"  ∷
+    "arith.le.int"  ∷
+    "arith.gt.int"  ∷
+    "arith.ge.int"  ∷
+    "arith.eq.int"  ∷
+    "arith.ne.int"  ∷
+    "linux."        ∷
+    []
+
+  postulate
+    rest-claimed : ClaimedProvider {FS} (RuntimeContract.program-bound runtime) rest-claims
+
+  sigOp-proof-claimed :
+    ClaimedProvider {FS} (RuntimeContract.program-bound runtime)
+      (blockClaims ++ rest-claims)
+  sigOp-proof-claimed =
+    _<|>'_ {FS} (RuntimeContract.program-bound runtime) blockClaimed rest-claimed
+
+  sigOp-proof : DispatcherModule.SigOpContract.Provider {FS}
+    (RuntimeContract.program-bound runtime)
+  sigOp-proof = provider sigOp-proof-claimed
 
   -- Instantiate Correctness
   open import Once.CCC.Target.X86-64.Correct as C
@@ -125,10 +175,49 @@ module X86-32 where
   FS = x86-32-frame-semantics
 
   -- Postulates for missing pieces (no-frame model).
+  -- Plan 0.20 Phase E (I-arith-7 light): ClaimedProvider chain.
   postulate
     runtime : RuntimeContract FS
-    sigOp-proof : DispatcherModule.SigOpContract.Provider {FS}
-      (RuntimeContract.program-bound runtime)
+
+  open import Data.List as List using (List; _∷_; []; _++_)
+  open import Data.String using (String)
+  open import Once.Arith.Boundary using (module ArithBlockProvider)
+  open ArithBlockProvider {FS} (RuntimeContract.program-bound runtime)
+    using (blockProvider; blockClaimed; blockClaims)
+  open import Once.CCC.SigOp.Compose
+    using (ClaimedProvider; mk-claimed; _<|>'_; provider)
+
+  rest-claims : List String
+  rest-claims =
+    "lit.int."      ∷
+    "lit.str."      ∷
+    "arith.add.int" ∷
+    "arith.sub.int" ∷
+    "arith.mul.int" ∷
+    "arith.div.int" ∷
+    "arith.mod.int" ∷
+    "arith.neg.int" ∷
+    "arith.lt.int"  ∷
+    "arith.le.int"  ∷
+    "arith.gt.int"  ∷
+    "arith.ge.int"  ∷
+    "arith.eq.int"  ∷
+    "arith.ne.int"  ∷
+    "linux."        ∷
+    []
+
+  postulate
+    rest-claimed : ClaimedProvider {FS} (RuntimeContract.program-bound runtime) rest-claims
+
+  sigOp-proof-claimed :
+    ClaimedProvider {FS} (RuntimeContract.program-bound runtime)
+      (blockClaims ++ rest-claims)
+  sigOp-proof-claimed =
+    _<|>'_ {FS} (RuntimeContract.program-bound runtime) blockClaimed rest-claimed
+
+  sigOp-proof : DispatcherModule.SigOpContract.Provider {FS}
+    (RuntimeContract.program-bound runtime)
+  sigOp-proof = provider sigOp-proof-claimed
 
   -- Instantiate Correctness
   open import Once.CCC.Target.X86-32.Correct as C
@@ -172,10 +261,49 @@ module RiscV64 where
   FS = rv64-frame-semantics
 
   -- Postulates for missing pieces (no-frame model).
+  -- Plan 0.20 Phase E (I-arith-7 light): ClaimedProvider chain.
   postulate
     runtime : RuntimeContract FS
-    sigOp-proof : DispatcherModule.SigOpContract.Provider {FS}
-      (RuntimeContract.program-bound runtime)
+
+  open import Data.List as List using (List; _∷_; []; _++_)
+  open import Data.String using (String)
+  open import Once.Arith.Boundary using (module ArithBlockProvider)
+  open ArithBlockProvider {FS} (RuntimeContract.program-bound runtime)
+    using (blockProvider; blockClaimed; blockClaims)
+  open import Once.CCC.SigOp.Compose
+    using (ClaimedProvider; mk-claimed; _<|>'_; provider)
+
+  rest-claims : List String
+  rest-claims =
+    "lit.int."      ∷
+    "lit.str."      ∷
+    "arith.add.int" ∷
+    "arith.sub.int" ∷
+    "arith.mul.int" ∷
+    "arith.div.int" ∷
+    "arith.mod.int" ∷
+    "arith.neg.int" ∷
+    "arith.lt.int"  ∷
+    "arith.le.int"  ∷
+    "arith.gt.int"  ∷
+    "arith.ge.int"  ∷
+    "arith.eq.int"  ∷
+    "arith.ne.int"  ∷
+    "linux."        ∷
+    []
+
+  postulate
+    rest-claimed : ClaimedProvider {FS} (RuntimeContract.program-bound runtime) rest-claims
+
+  sigOp-proof-claimed :
+    ClaimedProvider {FS} (RuntimeContract.program-bound runtime)
+      (blockClaims ++ rest-claims)
+  sigOp-proof-claimed =
+    _<|>'_ {FS} (RuntimeContract.program-bound runtime) blockClaimed rest-claimed
+
+  sigOp-proof : DispatcherModule.SigOpContract.Provider {FS}
+    (RuntimeContract.program-bound runtime)
+  sigOp-proof = provider sigOp-proof-claimed
 
   -- Instantiate Correctness
   open import Once.CCC.Target.RiscV64.Correct as C
