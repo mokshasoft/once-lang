@@ -24,6 +24,8 @@
 module Once.CCC.SigOp.Compose where
 
 open import Data.Nat using (ℕ)
+open import Data.List using (List; []; _∷_; _++_)
+open import Data.String using (String)
 open import Data.Maybe using (Maybe; just; nothing)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
@@ -48,3 +50,44 @@ module _ {FS : FrameSemantics} (program-bound : ℕ) where
   -- `_<|>_`: `p <|> emptyProvider ≡ p`.
   emptyProvider : Provider
   emptyProvider _ = nothing
+
+------------------------------------------------------------------------
+-- ClaimedProvider: Provider + phantom prefix-set documenting coverage
+--
+-- Plan 0.20 Phase E (I-arith-7): wrapper that records *which*
+-- SigOp name-prefixes a Provider claims to handle. Documentary
+-- (Agda does not check that the inner Provider's `nothing` ↔ name
+-- has-none-of-these-prefixes), but the composed type makes the
+-- still-postulated coverage gaps visible at the entry point.
+--
+-- The strong-form refactor — `Provider` indexed by claims with a
+-- wellformedness witness "returns `just` exactly when name has a
+-- claimed prefix" — is option (a) of the type-level refactor
+-- ladder; this lightweight version is its first rung.
+--
+-- Dispatcher consumes the unwrapped inner `Provider` via
+-- `ClaimedProvider.provider`; the index is invisible to it.
+------------------------------------------------------------------------
+
+module _ {FS : FrameSemantics} (program-bound : ℕ) where
+  open Def {FS} program-bound using (Provider)
+
+  record ClaimedProvider (claims : List String) : Set where
+    constructor mk-claimed
+    field
+      provider : Provider
+
+  open ClaimedProvider public
+
+  -- | The empty claimed provider — claims nothing, recognises nothing.
+  empty-claimed : ClaimedProvider []
+  empty-claimed = mk-claimed (emptyProvider {FS} program-bound)
+
+  -- | Claimed-composition. The composed provider's claim is the
+  -- *concatenation* of its parts' claims. Operationally identical
+  -- to `_<|>_` on the inner Providers; only the index changes.
+  infixr 5 _<|>'_
+  _<|>'_ : ∀ {P Q : List String}
+        → ClaimedProvider P → ClaimedProvider Q → ClaimedProvider (P ++ Q)
+  p <|>' q =
+    mk-claimed (_<|>_ {FS} program-bound (provider p) (provider q))
