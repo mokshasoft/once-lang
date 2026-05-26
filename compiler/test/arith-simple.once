@@ -1,0 +1,15 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson and contributors
+
+-- Arithmetic test: pure Int arithmetic with precedence.
+--   3 + 5 * 2 = 13
+-- Currently fails at link time (`once_arith.add.int` and
+-- `once_arith.mul.int` are recognized at elaboration but no Strata
+-- implementation exposes them as linkable symbols).
+--
+-- When those symbols land, this should build and exit with code 13.
+
+import I.Linux.Syscalls as S
+
+main : IO Unit
+main = exit@S (3 + 5 * 2)

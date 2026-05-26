@@ -3,6 +3,7 @@ module Main (main) where
 import Test.Tasty
 
 import AllocationSpec (allocationStressTests)
+import ArithSpec (arithTests)
 import BackendSpec (backendTests)
 import IRSpec (irTests)
 import Layer0Spec (layer0Tests)
@@ -25,6 +26,7 @@ main = defaultMain $ testGroup "Once"
   , layer2Tests
   , layer3Tests
   , layer4Tests
+  , arithTests
   , backendTests
   , allocationStressTests
   ]

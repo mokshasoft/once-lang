@@ -1,0 +1,21 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson and contributors
+
+-- Layer 4 test: user-defined function RETURNING a sum, then dispatched
+-- by `destruct` at the call site.
+--
+-- The pre-Plan-0.19 Layer2Spec note (lines 11-14) called this out as
+-- broken — sums returned from user-defined fns wouldn't round-trip
+-- through `destruct` because the closure return wrapping clobbered the
+-- (tag, payload) layout. Plan 0.19's sigOp/closure ABI split fixed it;
+-- this test pins down the working behaviour.
+--
+-- Distinct from `layer4-sum-and-fn` which has a user fn CONSUMING a sum.
+
+import I.Linux.Syscalls as S
+
+mkSum : Int -> Int + Int
+mkSum x = inl x
+
+main : IO Unit
+main = exit@S (destruct (mkSum 42) of { Left x -> x ; Right y -> 99 })

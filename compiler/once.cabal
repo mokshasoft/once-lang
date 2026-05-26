@@ -431,6 +431,7 @@ test-suite once-test
   other-modules:
       Paths_once
       AllocationSpec
+      ArithSpec
       Backend.C.Spec
       Backend.Common
       BackendSpec

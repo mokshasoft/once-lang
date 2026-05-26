@@ -38,6 +38,7 @@ layer2Tests :: TestTree
 layer2Tests = testGroup "Layer2"
   [ caseInlTest
   , caseInrTest
+  , initialTest
   ]
 
 -- | destruct ((inl 42) : Int + Int) of { Left x -> x ; Right y -> 99 }
@@ -54,6 +55,18 @@ caseInlTest = testCase "destruct on inl selects Left branch (exit 42)" $ do
 caseInrTest :: TestTree
 caseInrTest = testCase "destruct on inr selects Right branch (exit 99)" $ do
   result <- buildAndRun "layer2-case-inr-direct" 99
+  case result of
+    Left err -> assertFailure err
+    Right () -> return ()
+
+-- | `initial : Void -> A` (ex falso quodlibet), the dual of `terminal`.
+-- Encoded as the Right branch of an `Int + Void` sum so it type-checks;
+-- the Left branch fires at runtime so initial is never called
+-- dynamically (Void has no values). Guards that initial keeps linking
+-- as a CCT2 primitive.
+initialTest :: TestTree
+initialTest = testCase "initial typechecks/links as Void -> A (exit 42)" $ do
+  result <- buildAndRun "layer2-initial" 42
   case result of
     Left err -> assertFailure err
     Right () -> return ()

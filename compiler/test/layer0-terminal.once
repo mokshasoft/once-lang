@@ -1,0 +1,20 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson and contributors
+
+-- Layer 0 test: explicit `terminal : A -> Unit` morphism use.
+--
+-- Previously terminal was only exercised implicitly via the closure
+-- ABI (Plan 0.19 `closure` elaborator path: `SigOp . terminal`). This
+-- test pins down user-facing `terminal` as a Layer-0 primitive: apply
+-- it to an Int, get Unit, feed Unit into a 42-returning fn, exit 42.
+
+import I.Linux.Syscalls as S
+
+discard : Int -> Unit
+discard = terminal
+
+forty2 : Unit -> Int
+forty2 _ = 42
+
+main : IO Unit
+main = exit@S (forty2 (discard 99))

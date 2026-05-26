@@ -1,0 +1,19 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson and contributors
+
+-- Layer 4 test: closure values carried as a PAIR component.
+-- Exercises CCT1 (exponentials) crossed with CCTB (products):
+--   applyFst : (Unit -> Int) * Int -> Int
+-- Projects the fn out via fst, then applies it.
+-- Expected: exit 42.
+
+import I.Linux.Syscalls as S
+
+forty2 : Unit -> Int
+forty2 _ = 42
+
+applyFst : (Unit -> Int) * Int -> Int
+applyFst p = (fst p) ()
+
+main : IO Unit
+main = exit@S (applyFst (forty2, 99))
