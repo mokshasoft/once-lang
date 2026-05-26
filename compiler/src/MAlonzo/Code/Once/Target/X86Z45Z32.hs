@@ -103,9 +103,10 @@ d_x86'45'32'45'irToAsm_26 v0 v1 v2 v3
 d_x86'45'32_36 :: MAlonzo.Code.Once.Target.T_Target_4
 d_x86'45'32_36
   = coe
-      MAlonzo.Code.Once.Target.C_constructor_42
+      MAlonzo.Code.Once.Target.C_constructor_46
       (coe d_x86'45'32'45'irToAsm_26)
       (\ v0 v1 v2 v3 -> coe du_x86'45'32'45'irToBodies_16 v0)
       (coe d_x86'45'32'45'asmHeader_6)
       (coe d_x86'45'32'45'functionPrologue_8)
       (coe d_x86'45'32'45'functionEpilogue_20)
+      (coe (\ v0 -> "" :: Data.Text.Text))

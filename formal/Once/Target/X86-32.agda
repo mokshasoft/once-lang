@@ -78,4 +78,5 @@ x86-32 = record
   ; asmHeader        = x86-32-asmHeader
   ; functionPrologue = x86-32-functionPrologue
   ; functionEpilogue = x86-32-functionEpilogue
+  ; emitArithBlocks  = λ _ → ""
   }

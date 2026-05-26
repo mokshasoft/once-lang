@@ -78,4 +78,5 @@ riscv64 = record
   ; asmHeader        = riscv64-asmHeader
   ; functionPrologue = riscv64-functionPrologue
   ; functionEpilogue = riscv64-functionEpilogue
+  ; emitArithBlocks  = λ _ → ""
   }

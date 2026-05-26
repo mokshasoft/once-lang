@@ -21,6 +21,7 @@ import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Agda.Builtin.String
 import qualified MAlonzo.Code.Data.Nat.Show
 import qualified MAlonzo.Code.Data.String.Base
+import qualified MAlonzo.Code.Once.Arith.Backend.X86.Emit
 import qualified MAlonzo.Code.Once.CCC.Codegen.IRToTrace
 import qualified MAlonzo.Code.Once.CCC.IR
 import qualified MAlonzo.Code.Once.CCC.Target.X86Z45Z64.AbstractToX86
@@ -312,8 +313,10 @@ du_emit'45'bodies_62 v0 v1
 d_x86'45'64_84 :: MAlonzo.Code.Once.Target.T_Target_4
 d_x86'45'64_84
   = coe
-      MAlonzo.Code.Once.Target.C_constructor_42
+      MAlonzo.Code.Once.Target.C_constructor_46
       (coe d_x86'45'64'45'irToAsm_18) (coe d_x86'45'64'45'irToBodies_52)
       (coe d_x86'45'64'45'asmHeader_6)
       (coe d_x86'45'64'45'functionPrologue_8)
       (coe d_x86'45'64'45'functionEpilogue_12)
+      (coe
+         MAlonzo.Code.Once.Arith.Backend.X86.Emit.d_emit'45'arith'45'blocks_78)

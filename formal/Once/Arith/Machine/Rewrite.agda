@@ -1,0 +1,172 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson and contributors
+
+------------------------------------------------------------------------
+-- Once.Arith.Machine.Rewrite
+--
+-- Plan 0.20 Phase G — the IR-rewrite pass.
+--
+-- The elaborator emits per-op arith SigOps (`arith.add.int`, etc.).
+-- For codegen we want each maximal arith subtree replaced by a single
+-- `arith.block.<digest>` SigOp whose body is the recognised
+-- `MArithIR`. This module walks an `IR A B` top-down, tries
+-- recognition at every node, and lifts a subtree into a block SigOp
+-- whenever recognition succeeds AND the recognised IR contains at
+-- least one arithmetic operation. Pure literals / projections are
+-- left untouched; the existing `const` / `fst` / `snd` codegen
+-- handles them better than a one-instruction block.
+--
+-- The pass also returns the list of `ArithBlock`s it produced.
+-- Codegen walks that list to emit each block's body as a standalone
+-- assembly subroutine (`once_arith.block.<digest>:`) after the main
+-- program text.
+------------------------------------------------------------------------
+
+module Once.Arith.Machine.Rewrite where
+
+open import Data.Bool using (Bool; true; false)
+open import Data.List using (List; []; _∷_; _++_)
+open import Data.Maybe using (Maybe; just; nothing)
+open import Data.Product using (Σ; Σ-syntax; _,_; _×_; proj₁; proj₂)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst; cong)
+open import Relation.Nullary using (Dec; yes; no)
+
+open import Once.Type using (Type; Unit; Int; _*_; _+_; _⇒[_]_)
+open import Once.CCC.IR
+open import Once.CCC.SigOp.Info using (SigOpInfo)
+
+open import Once.Arith.Machine.AbsState
+  using (InputShape; shape-unit; shape-int; shape-pair)
+open import Once.Arith.Machine.IR
+  using (MArithIR; alit; ainput; aadd; asub; amul; aneg;
+         ArithBlock; mk-block; shape-as-type)
+open Once.Arith.Machine.IR.ArithBlock using (block-shape; block-body)
+open import Once.Arith.Machine.Recognise using (recognise; recognise-body)
+open import Once.Arith.SigOp.Block using (block-info)
+
+------------------------------------------------------------------------
+-- Type → InputShape, with definitional bridge back to Type
+------------------------------------------------------------------------
+
+-- | If `A` is a tree of `Unit`, `Int`, and `_*_`, return the matching
+-- `InputShape` together with the proof `A ≡ shape-as-type sh`. The
+-- proof lets us coerce a recognised block's SigOp (whose domain is
+-- `shape-as-type sh`) back into the IR's domain `A`.
+shape-of : (A : Type) → Maybe (Σ[ sh ∈ InputShape ] (A ≡ shape-as-type sh))
+shape-of Unit                              = just (shape-unit , refl)
+shape-of Int                               = just (shape-int  , refl)
+shape-of (l * r)                           with shape-of l | shape-of r
+... | just (sl , refl) | just (sr , refl)  = just (shape-pair sl sr , refl)
+... | _                | _                 = nothing
+shape-of _                                 = nothing
+
+------------------------------------------------------------------------
+-- "Worth wrapping" predicate
+------------------------------------------------------------------------
+
+-- | True for arith trees containing at least one arithmetic operation
+-- (`aadd` / `asub` / `amul` / `aneg`). Pure leaves (`alit` / `ainput`)
+-- aren't lifted; the existing `const` / projection codegen produces
+-- tighter code.
+has-op : ∀ {sh} → MArithIR sh → Bool
+has-op (alit _)    = false
+has-op (ainput _)  = false
+has-op (aadd _ _)  = true
+has-op (asub _ _)  = true
+has-op (amul _ _)  = true
+has-op (aneg _)    = true
+
+------------------------------------------------------------------------
+-- Block-as-IR construction
+------------------------------------------------------------------------
+
+-- | Build the `IR A Int` whose runtime behaviour is the recognised
+-- arith block. The domain `A` is whatever `shape-of` returned a
+-- shape for; the body is the recognised `MArithIR sh`.
+block-as-ir : ∀ {A sh} → A ≡ shape-as-type sh → MArithIR sh → IR A Int
+block-as-ir {A} {sh} eq body =
+  subst (λ T → IR T Int) (sym eq) (SigOp (block-info body))
+
+------------------------------------------------------------------------
+-- Recognition attempt parameterised on the IR's domain
+------------------------------------------------------------------------
+
+try-lift : ∀ {A B} → IR A B → Maybe (IR A B × ArithBlock)
+try-lift {A} {Int} ir                              with shape-of A
+... | nothing                                       = nothing
+... | just (sh , eq)                                with recognise-body sh ir
+...   | nothing                                     = nothing
+...   | just body                                   with has-op body
+...     | false                                     = nothing
+...     | true                                      =
+            just (block-as-ir eq body , mk-block sh body)
+-- Codomain is not Int: never lift (arith blocks return Int).
+try-lift {_} {_} _ = nothing
+
+------------------------------------------------------------------------
+-- The rewrite pass
+------------------------------------------------------------------------
+
+-- | Walk the IR, lifting maximal arith subtrees. Returns the rewritten
+-- IR plus the list of `ArithBlock`s discovered (in document order;
+-- caller may dedup by digest).
+--
+-- The walk attempts `try-lift` at every node first. If the lift
+-- succeeds, the entire subtree becomes one block SigOp and recursion
+-- stops there. Otherwise the walk recurses into the IR's children
+-- per-constructor.
+{-# TERMINATING #-}
+rewrite-ir : ∀ {A B} → IR A B → IR A B × List ArithBlock
+rewrite-ir ir with try-lift ir
+... | just (ir' , blk) = ir' , (blk ∷ [])
+... | nothing          = walk ir
+  where
+    walk : ∀ {A B} → IR A B → IR A B × List ArithBlock
+    walk id                = id , []
+    walk (g ∘ f)           =
+      let (g' , bg) = rewrite-ir g
+          (f' , bf) = rewrite-ir f
+      in (g' ∘ f') , (bg ++ bf)
+    walk fst               = fst , []
+    walk snd               = snd , []
+    walk (⟨ f , g ⟩ m)     =
+      let (f' , bf) = rewrite-ir f
+          (g' , bg) = rewrite-ir g
+      in ⟨ f' , g' ⟩ m , (bf ++ bg)
+    walk (inl m)           = inl m , []
+    walk (inr m)           = inr m , []
+    walk (case f g)        =
+      let (f' , bf) = rewrite-ir f
+          (g' , bg) = rewrite-ir g
+      in case f' g' , (bf ++ bg)
+    walk terminal          = terminal , []
+    walk initial           = initial , []
+    walk (curry f m)       =
+      let (f' , bf) = rewrite-ir f
+      in (curry f' m) , bf
+    walk apply             = apply , []
+    walk arr               = arr , []
+    walk (In w m)          = In w m , []
+    walk (out-μ w)         = out-μ w , []
+    walk (Cata w f)        =
+      let (f' , bf) = rewrite-ir f
+      in Cata w f' , bf
+    walk (Para w f)        =
+      let (f' , bf) = rewrite-ir f
+      in Para w f' , bf
+    walk (Out w)           = Out w , []
+    walk (in-ν w m)        = in-ν w m , []
+    walk (Ana w f)         =
+      let (f' , bf) = rewrite-ir f
+      in Ana w f' , bf
+    walk (Hylo w₁ w₂ f g)  =
+      let (f' , bf) = rewrite-ir f
+          (g' , bg) = rewrite-ir g
+      in Hylo w₁ w₂ f' g' , (bf ++ bg)
+    walk (Fuse w₁ w₂ f g)  =
+      let (f' , bf) = rewrite-ir f
+          (g' , bg) = rewrite-ir g
+      in Fuse w₁ w₂ f' g' , (bf ++ bg)
+    walk (free-heap r)     = free-heap r , []
+    walk (const p vI vM)   = const p vI vM , []
+    walk (SigOp si)        = SigOp si , []
