@@ -27,7 +27,7 @@ import Data.Nat as ℕ
 open import Once.Type using (Type; Unit; Int)
 import Once.Type as T
 open import Once.Arith.Machine.AbsState
-  using (InputShape; shape-int; shape-pair; ⟦_⟧S; InputPath;
+  using (InputShape; shape-unit; shape-int; shape-pair; ⟦_⟧S; InputPath;
          Side; Fst; Snd; project)
 
 ------------------------------------------------------------------------
@@ -75,6 +75,7 @@ eval-arith (aneg a)   inp = ℤ.- eval-arith a inp
 -- Used at the boundary so a `MArithIR sh` corresponds to a CCC
 -- morphism `IR (shape-as-type sh) Int`.
 shape-as-type : InputShape → Type
+shape-as-type shape-unit       = Unit
 shape-as-type shape-int        = Int
 shape-as-type (shape-pair l r) = shape-as-type l T.* shape-as-type r
 

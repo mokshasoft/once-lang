@@ -24,9 +24,11 @@
 
 module Once.Arith.SigOp.Block where
 
-open import Data.Integer using (ℤ)
-open import Data.Integer.Show using () renaming (show to showℤ)
-open import Data.Nat using (ℕ)
+open import Data.Bool using (Bool; true; false)
+open import Data.Integer using (ℤ; +_; -[1+_]) renaming (_<?_ to _<ℤ?_)
+import Data.Integer as ℤ
+open import Data.Nat using (ℕ; zero; suc)
+open import Data.Nat.Show using () renaming (show to showℕ)
 open import Data.List using (List; []; _∷_)
 open import Data.String using (String; _++_)
 open import Data.Product using (_,_; _×_; proj₁; proj₂)
@@ -36,7 +38,7 @@ open import Once.Type using (Type; Int)
 open import Once.CCC.SigOp.Info using (SigOpInfo; mk-info; name)
 
 open import Once.Arith.Machine.AbsState
-  using (InputShape; shape-int; shape-pair; ⟦_⟧S; InputPath; Side; Fst; Snd)
+  using (InputShape; shape-unit; shape-int; shape-pair; ⟦_⟧S; InputPath; Side; Fst; Snd)
 open import Once.Arith.Machine.IR
   using (MArithIR; alit; ainput; aadd; asub; amul; aneg;
          eval-arith; shape-as-type; ArithBlock; mk-block)
@@ -48,26 +50,39 @@ import Once.Semantics.Core ℕ as M
 -- Digest computation (deterministic serialisation)
 ------------------------------------------------------------------------
 
--- | Render a path as a compact string ("FS" for Fst, "Sn" for Snd).
+-- | Render a path as alphanumeric-only chars. `F`=Fst, `S`=Snd, `Z`
+-- terminates. The terminator gives a delimiter-free encoding that is
+-- still injective in the path's contents.
 show-side : Side → String
 show-side Fst = "F"
 show-side Snd = "S"
 
 show-path : InputPath → String
-show-path []       = "·"
+show-path []       = "Z"
 show-path (s ∷ p)  = show-side s ++ show-path p
 
--- | Render an MArithIR tree as a stable, deterministic string. Two
--- alpha-equivalent recognised IRs produce the same serialisation
--- (D-arith-3: no names anywhere in MArithIR, so equivalence is
--- syntactic on the tree).
+-- | Render a ℤ literal as alphanumeric chars: positive `+n` → `n_`,
+-- negative `-n` → `n<n>_`. Trailing `_` delimits so the digest is
+-- linearly reconstructible without spaces.
+show-zlit : ℤ → String
+show-zlit (+_ n)         = showℕ n ++ "_"
+show-zlit (-[1+_] n)     = "n" ++ showℕ (suc n) ++ "_"
+
+-- | Render an MArithIR tree as a stable, alphanumeric-only digest.
+-- Plan 0.20 Phase G: the digest is used as the suffix of an assembly
+-- symbol (`once_arith.block.<digest>`), so it must avoid spaces /
+-- parens / arithmetic punctuation that GNU `as` doesn't accept in
+-- symbol names. Operators map to capital-letter mnemonics:
+--   A = add, B = sub, M = mul, G = neg.
+-- Leaves: `L` for literal, `I` for input projection. Terminators
+-- (`_`, `Z`) keep the encoding prefix-free.
 show-arith-ir : ∀ {sh} → MArithIR sh → String
-show-arith-ir (alit z)     = "L" ++ showℤ z
+show-arith-ir (alit z)     = "L" ++ show-zlit z
 show-arith-ir (ainput p)   = "I" ++ show-path p
-show-arith-ir (aadd a b)   = "(+ " ++ show-arith-ir a ++ " " ++ show-arith-ir b ++ ")"
-show-arith-ir (asub a b)   = "(- " ++ show-arith-ir a ++ " " ++ show-arith-ir b ++ ")"
-show-arith-ir (amul a b)   = "(* " ++ show-arith-ir a ++ " " ++ show-arith-ir b ++ ")"
-show-arith-ir (aneg a)     = "(~ " ++ show-arith-ir a ++ ")"
+show-arith-ir (aadd a b)   = "A" ++ show-arith-ir a ++ show-arith-ir b
+show-arith-ir (asub a b)   = "B" ++ show-arith-ir a ++ show-arith-ir b
+show-arith-ir (amul a b)   = "M" ++ show-arith-ir a ++ show-arith-ir b
+show-arith-ir (aneg a)     = "G" ++ show-arith-ir a
 
 -- | The digest is just the serialisation. (A hash function would be
 -- stable across re-renders and shorter; the plan's "64-bit hex digest"
@@ -89,6 +104,8 @@ block-name e = "arith.block." ++ block-digest e
 -- products of ℤs at the proof level; this is a structural identity
 -- that Agda needs help to see definitionally.
 toShape-I : ∀ sh → I.⟦ shape-as-type sh ⟧ → ⟦ sh ⟧S
+toShape-I shape-unit       _       = tt
+  where open import Data.Unit using (tt)
 toShape-I shape-int        z       = z
 toShape-I (shape-pair l r) (x , y) = toShape-I l x , toShape-I r y
 

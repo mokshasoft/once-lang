@@ -229,7 +229,17 @@ library
       -- Frontend modules (extracted via MAlonzo from verified Agda)
       MAlonzo.Code.Once.Allocator.AbstractInstance
       MAlonzo.Code.Once.Allocator.Interface
+      MAlonzo.Code.Once.Arith.Backend.X86.CodeGen
+      MAlonzo.Code.Once.Arith.Backend.X86.Emit
+      MAlonzo.Code.Once.Arith.Backend.X86.Syntax
       MAlonzo.Code.Once.Arith.IR
+      MAlonzo.Code.Once.Arith.Machine.AbsInstr
+      MAlonzo.Code.Once.Arith.Machine.AbsState
+      MAlonzo.Code.Once.Arith.Machine.Compile
+      MAlonzo.Code.Once.Arith.Machine.IR
+      MAlonzo.Code.Once.Arith.Machine.Recognise
+      MAlonzo.Code.Once.Arith.Machine.Rewrite
+      MAlonzo.Code.Once.Arith.SigOp.Block
       MAlonzo.Code.Once.Arith.SigOp.Builders
       MAlonzo.Code.Once.Arith.SigOp.IntLit
       MAlonzo.Code.Once.Arith.Type

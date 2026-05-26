@@ -11,9 +11,11 @@
 module Once.Target where
 
 open import Data.Nat using (ℕ)
+open import Data.List using (List)
 open import Data.Product using (_×_)
 open import Data.String using (String)
 open import Once.CCC.IR using (IR)
+open import Once.Arith.Machine.IR using (ArithBlock)
 
 ------------------------------------------------------------------------
 -- Target Record
@@ -42,5 +44,12 @@ record Target : Set where
     functionPrologue : String → String
     -- | Generate function epilogue (ret instruction)
     functionEpilogue : String
+    -- | Plan 0.20 Phase G: emit per-arith-block subroutines as a
+    -- flat sequence of assembly definitions, concatenated after
+    -- the program's normal text. One block becomes one subroutine
+    -- named `once_arith.block.<digest>` matching the call-site
+    -- symbol from `compile-sigOp`. Targets that don't yet ship a
+    -- block emitter return `""`.
+    emitArithBlocks : List ArithBlock → String
 
 open Target public

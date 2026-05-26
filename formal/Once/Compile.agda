@@ -24,6 +24,7 @@ module Once.Compile where
 
 open import Data.Bool using (Bool; true; false; if_then_else_)
 open import Data.List using (List; []; _∷_; foldr; foldl)
+import Data.List as DL
 open import Data.Nat using (ℕ)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_; ∃; ∃-syntax; proj₁; proj₂)
@@ -74,6 +75,14 @@ open import Once.Escape public
 open import Once.Arith.Type public
 open import Once.Arith.IR public
   hiding (_⊕_)  -- Avoid clash with Once.Type._⊕_ (Functor sum)
+
+-- Plan 0.20 Phase G: import the IR rewrite pass that lifts maximal
+-- arith subtrees to opaque `arith.block.<digest>` SigOps. Codegen
+-- emits `call once_arith.block.<digest>` for those, and the
+-- accumulated `ArithBlock`s are passed to the target's
+-- `emitArithBlocks` after the main program text.
+open import Once.Arith.Machine.IR using (ArithBlock)
+open import Once.Arith.Machine.Rewrite using (rewrite-ir)
 
 -- Re-export Parser (for module loading)
 open import Once.Parser public
@@ -347,16 +356,18 @@ archTarget riscv64 = RiscV64-Target.riscv64
 -- `l` and produce the same `l'` — the calls re-traverse the IR but
 -- agree on the label counter advancement (`ir-to-trace'` is
 -- deterministic in `l`).
-compileFunWithTarget : Target → ℕ → CompiledFun → ℕ × String
+compileFunWithTarget : Target → ℕ → CompiledFun → ℕ × String × List ArithBlock
 compileFunWithTarget target l cf with cfIsPrimitive cf
-... | true  = l , ""  -- primitive: external symbol, no body
+... | true  = l , "" , []  -- primitive: external symbol, no body
 ... | false =
-  let (l₁ , asm)    = irToAsm    target l (cfIR cf)
-      (l₂ , bodies) = irToBodies target l (cfIR cf)
+  let -- Plan 0.20 Phase G: arith-block recognition pass before codegen.
+      (ir' , blks)  = rewrite-ir (cfIR cf)
+      (l₁ , asm)    = irToAsm    target l ir'
+      (l₂ , bodies) = irToBodies target l ir'
   in l₁ , (functionPrologue target (cfName cf) ++
            asm ++
            functionEpilogue target ++
-           bodies)
+           bodies) , blks
   where
     -- l₁ ≡ l₂ by determinism of ir-to-trace'; we pick l₁ for the
     -- threaded result. l₂ is unused but bound for clarity.
@@ -364,17 +375,21 @@ compileFunWithTarget target l cf with cfIsPrimitive cf
 -- | Compile all functions to assembly using a target.
 -- Plan 0.12 Layer 1: left-fold threading the thunk-label counter so
 -- thunks remain globally unique across the module.
+-- Plan 0.20 Phase G: collect ArithBlocks from every function and
+-- append `emitArithBlocks` output after the program text, so each
+-- `arith.block.<digest>` SigOp call site resolves at link time.
 compileAllWithTarget : Target → List CompiledFun → String
-compileAllWithTarget target cfs = proj₂ (foldl step (0 , "") cfs)
+compileAllWithTarget target cfs =
+  let (_ , asm , blks) = foldl step (0 , "" , []) cfs
+  in asm ++ emitArithBlocks target blks
   where
-    step : ℕ × String → CompiledFun → ℕ × String
+    step : ℕ × String × List ArithBlock → CompiledFun → ℕ × String × List ArithBlock
     step p cf =
       let l       = proj₁ p
-          acc     = proj₂ p
-          result  = compileFunWithTarget target l cf
-          l'      = proj₁ result
-          fn-asm  = proj₂ result
-      in l' , (acc ++ fn-asm)
+          acc     = proj₁ (proj₂ p)
+          accBlks = proj₂ (proj₂ p)
+          (l' , fn-asm , blks) = compileFunWithTarget target l cf
+      in l' , (acc ++ fn-asm) , (accBlks DL.++ blks)
 
 ------------------------------------------------------------------------
 -- Unified compilation entry point

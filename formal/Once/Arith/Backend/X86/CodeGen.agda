@@ -18,12 +18,38 @@ open import Data.Nat using (ℕ; zero; suc)
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.Integer using (ℤ)
 open import Data.Maybe using (Maybe; just; nothing)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+open import Relation.Nullary using (Dec; yes; no)
 
 open import Once.Arith.Machine.AbsState using (InputPath; Side; Fst; Snd)
 open import Once.Arith.Machine.AbsInstr
   using (AbstractInstr; load-input; load-imm; add-rrr; sub-rrr; mul-rrr;
          neg-rr; spill; reload; move-to-out)
 open import Once.Arith.Backend.X86.Syntax
+
+------------------------------------------------------------------------
+-- Decidable equality on XReg (needed by the binary-op emit cases to
+-- avoid the dst==b aliasing bug — `mov a → dst; add b → dst` loses
+-- `b` when dst==b).
+------------------------------------------------------------------------
+
+_≟x_ : (a b : XReg) → Dec (a ≡ b)
+XR12 ≟x XR12 = yes refl
+XR13 ≟x XR13 = yes refl
+XR14 ≟x XR14 = yes refl
+XR15 ≟x XR15 = yes refl
+XR12 ≟x XR13 = no λ ()
+XR12 ≟x XR14 = no λ ()
+XR12 ≟x XR15 = no λ ()
+XR13 ≟x XR12 = no λ ()
+XR13 ≟x XR14 = no λ ()
+XR13 ≟x XR15 = no λ ()
+XR14 ≟x XR12 = no λ ()
+XR14 ≟x XR13 = no λ ()
+XR14 ≟x XR15 = no λ ()
+XR15 ≟x XR12 = no λ ()
+XR15 ≟x XR13 = no λ ()
+XR15 ≟x XR14 = no λ ()
 
 ------------------------------------------------------------------------
 -- Register allocation
@@ -58,15 +84,37 @@ emit (load-imm z r) with abs-reg r
 emit (load-input p r) with abs-reg r
 ... | just xr = Xmov-arg xr (path-offset p) ∷ []
 ... | nothing = []
+-- | `add-rrr dst a b` = `dst := a + b`. Addition is commutative, so
+-- when `dst ≡ a` or `dst ≡ b` the move is unnecessary; in both
+-- aliasing cases we collapse to a single in-place `add`.
 emit (add-rrr dst a b) with abs-reg dst | abs-reg a | abs-reg b
-... | just xd | just xa | just xb = Xmov-rr xd xa ∷ Xadd-rr xd xb ∷ []
-... | _       | _       | _       = []
+... | just xd | just xa | just xb        with xd ≟x xa
+...   | yes _                              = Xadd-rr xd xb ∷ []
+...   | no _                               with xd ≟x xb
+...     | yes _                            = Xadd-rr xd xa ∷ []
+...     | no _                             = Xmov-rr xd xa ∷ Xadd-rr xd xb ∷ []
+emit (add-rrr _ _ _) | _ | _ | _           = []
+
+-- | `sub-rrr dst a b` = `dst := a - b`. Subtraction is NOT
+-- commutative. When `dst ≡ b` we'd otherwise lose `b` to the leading
+-- move; emit `neg dst; add a → dst` (= a - b) instead.
 emit (sub-rrr dst a b) with abs-reg dst | abs-reg a | abs-reg b
-... | just xd | just xa | just xb = Xmov-rr xd xa ∷ Xsub-rr xd xb ∷ []
-... | _       | _       | _       = []
+... | just xd | just xa | just xb        with xd ≟x xa
+...   | yes _                              = Xsub-rr xd xb ∷ []
+...   | no _                               with xd ≟x xb
+...     | yes _                            = Xneg-r xd ∷ Xadd-rr xd xa ∷ []
+...     | no _                             = Xmov-rr xd xa ∷ Xsub-rr xd xb ∷ []
+emit (sub-rrr _ _ _) | _ | _ | _           = []
+
+-- | `mul-rrr dst a b` = `dst := a * b`. Commutative; same aliasing
+-- treatment as `add-rrr`.
 emit (mul-rrr dst a b) with abs-reg dst | abs-reg a | abs-reg b
-... | just xd | just xa | just xb = Xmov-rr xd xa ∷ Ximul-rr xd xb ∷ []
-... | _       | _       | _       = []
+... | just xd | just xa | just xb        with xd ≟x xa
+...   | yes _                              = Ximul-rr xd xb ∷ []
+...   | no _                               with xd ≟x xb
+...     | yes _                            = Ximul-rr xd xa ∷ []
+...     | no _                             = Xmov-rr xd xa ∷ Ximul-rr xd xb ∷ []
+emit (mul-rrr _ _ _) | _ | _ | _           = []
 emit (neg-rr dst a) with abs-reg dst | abs-reg a
 ... | just xd | just xa = Xmov-rr xd xa ∷ Xneg-r xd ∷ []
 ... | _       | _       = []

@@ -96,11 +96,11 @@ d_compile_12 v0 v1
                                                -> let v13
                                                         = coe
                                                             MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                                                            (MAlonzo.Code.Once.Target.d_asmHeader_36
+                                                            (MAlonzo.Code.Once.Target.d_asmHeader_38
                                                                (coe
                                                                   MAlonzo.Code.Once.Compile.d_archTarget_386
                                                                   (coe v6)))
-                                                            (MAlonzo.Code.Once.Compile.d_compileAllWithTarget_420
+                                                            (MAlonzo.Code.Once.Compile.d_compileAllWithTarget_424
                                                                (coe
                                                                   MAlonzo.Code.Once.Compile.d_archTarget_386
                                                                   (coe v6))
@@ -118,34 +118,34 @@ d_compile_12 v0 v1
 d_compile'45'asm_50 ::
   MAlonzo.Code.Once.Verified.CPU.Interface.T_Arch_10 ->
   MAlonzo.Code.Once.Grammar.T_GModule_126 ->
-  MAlonzo.Code.Once.Compile.T_CompileResult_454
+  MAlonzo.Code.Once.Compile.T_CompileResult_464
 d_compile'45'asm_50 v0 v1
   = let v2 = coe d_gmoduleToModule_8 v1 in
     coe
       (case coe v2 of
          MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v3
            -> coe
-                MAlonzo.Code.Once.Compile.d_compileFromModule_556
+                MAlonzo.Code.Once.Compile.d_compileFromModule_566
                 (coe MAlonzo.Code.Once.CCC.IR.C_Heap_262)
-                (coe MAlonzo.Code.Once.Compile.C_Build_452)
+                (coe MAlonzo.Code.Once.Compile.C_Build_462)
                 (coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8)
                 (coe d_toLegacyArch_6 (coe v0)) (coe v3)
          MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
            -> coe
-                MAlonzo.Code.Once.Compile.C_Error_462
+                MAlonzo.Code.Once.Compile.C_Error_472
                 (coe ("GModule \8594 Module conversion failed" :: Data.Text.Text))
          _ -> MAlonzo.RTE.mazUnreachableError)
 -- Once.Verified.Compile.compile-cli-asm
 d_compile'45'cli'45'asm_70 ::
   MAlonzo.Code.Once.CCC.IR.T_AllocMode_258 ->
-  MAlonzo.Code.Once.Compile.T_Stage_446 ->
+  MAlonzo.Code.Once.Compile.T_Stage_456 ->
   Bool ->
   MAlonzo.Code.Once.Verified.CPU.Interface.T_Arch_10 ->
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_44 ->
-  MAlonzo.Code.Once.Compile.T_CompileResult_454
+  MAlonzo.Code.Once.Compile.T_CompileResult_464
 d_compile'45'cli'45'asm_70 v0 v1 v2 v3 v4
   = coe
-      MAlonzo.Code.Once.Compile.d_compileFromModule_556 (coe v0) (coe v1)
+      MAlonzo.Code.Once.Compile.d_compileFromModule_566 (coe v0) (coe v1)
       (coe v2) (coe d_toLegacyArch_6 (coe v3)) (coe v4)
 -- Once.Verified.Compile.⟦_⟧M
 d_'10214'_'10215'M_82
