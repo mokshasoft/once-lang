@@ -35,6 +35,8 @@ import Backend.Common (runOnce, cleanupDir)
 arithTests :: TestTree
 arithTests = testGroup "Arith"
   [ arithSimpleTest
+  , arithLambda1Test
+  , arithLambda2Test
   ]
 
 -- | `3 + 5 * 2 = 13`. After Plan 0.20 Phase G this compiles to a
@@ -45,6 +47,27 @@ arithSimpleTest :: TestTree
 arithSimpleTest =
   testCase "3 + 5 * 2 = 13 (arith block lowering)" $ do
     result <- buildAndRun "arith-simple" 13
+    either assertFailure return result
+
+-- | `f x = x + 3 * 5 - 2 * x; main = exit (f 5)`. Exercises a
+-- single-arg arith lambda. The body has `x` at `InputPath = [Snd]`
+-- (a one-hop dereference) so the codegen still emits a direct
+-- `mov dst, 8(%rdi)`. For x = 5: 5 + 15 - 10 = 10.
+arithLambda1Test :: TestTree
+arithLambda1Test =
+  testCase "f x = x + 3*5 - 2*x; f 5 = 10" $ do
+    result <- buildAndRun "arith-lambda-1" 10
+    either assertFailure return result
+
+-- | `g x y = x + 2 * y; main = exit (g 4 19)`. Exercises a two-arg
+-- curried lambda where the captured `x` sits at `InputPath =
+-- [Fst, Snd]` — two hops through the curry env. The X86 path
+-- walker uses `%rax` as the chained-load intermediate. For
+-- (x, y) = (4, 19): 4 + 38 = 42.
+arithLambda2Test :: TestTree
+arithLambda2Test =
+  testCase "g x y = x + 2*y; g 4 19 = 42" $ do
+    result <- buildAndRun "arith-lambda-2" 42
     either assertFailure return result
 
 ------------------------------------------------------------------------

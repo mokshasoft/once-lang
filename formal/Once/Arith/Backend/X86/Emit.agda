@@ -42,6 +42,7 @@ open import Data.String using (String; _++_)
 
 open import Once.Arith.Backend.X86.Syntax
 open import Once.Arith.Backend.X86.CodeGen using (emit-program)
+open import Once.Arith.Machine.AbsState using (InputPath; Side; Fst; Snd)
 open import Once.Arith.Machine.Compile using (compile-abs; required-scratch)
 open import Once.Arith.Machine.IR using (MArithIR; ArithBlock)
 open Once.Arith.Machine.IR.ArithBlock using (block-shape; block-body)
@@ -74,8 +75,45 @@ instr-text (Xmov-imm dst z)   = "    movq $" ++ showℤ z ++ ", " ++ reg-text ds
 instr-text (Xmov-rr dst src)  = "    movq " ++ reg-text src ++ ", " ++ reg-text dst ++ "\n"
 instr-text (Xmov-r-m s src)   = "    movq " ++ reg-text src ++ ", " ++ scratch-text s ++ "\n"
 instr-text (Xmov-m-r dst s)   = "    movq " ++ scratch-text s ++ ", " ++ reg-text dst ++ "\n"
-instr-text (Xmov-arg dst off) =
-  "    movq " ++ showℕ off ++ "(%rdi), " ++ reg-text dst ++ "\n"
+instr-text (Xmov-arg dst path) = path-load-text dst path
+  where
+    -- | Byte offset for one path step. `Fst` is offset 0, `Snd` is
+    -- offset 8 — matching CCC's pair layout (compose `fst`/`snd`
+    -- compile to `mov rax, [rdi]` / `mov rax, [rdi+8]`).
+    side-offset : Side → String
+    side-offset Fst = "0"
+    side-offset Snd = "8"
+
+    -- | Walk an intermediate path step using `%rax` as scratch.
+    -- After the first step `%rax` holds the current "base"; each
+    -- intermediate step reads `offset(%rax)` back into `%rax`. The
+    -- final step lands in `dst`.
+    walk-rax-rest : XReg → InputPath → String
+    walk-rax-rest dst (s ∷ []) =
+      "    movq " ++ side-offset s ++ "(%rax), " ++ reg-text dst ++ "\n"
+    walk-rax-rest dst (s ∷ ss) =
+      "    movq " ++ side-offset s ++ "(%rax), %rax\n" ++ walk-rax-rest dst ss
+    -- Path [] inside an intermediate walk is unreachable for shapes
+    -- that the recogniser produces; treat as a no-op fallback.
+    walk-rax-rest dst []       = ""
+
+    -- | Top-level path walker.
+    --
+    -- - `[]` (whole input): the block's `%rdi` IS the value (Int
+    --   passed by-value through the SigOp call site). Move it to
+    --   `dst`.
+    -- - `[s]` (one hop): direct `mov dst, offset(%rdi)`.
+    -- - `s :: rest` (chained): bootstrap into `%rax`, then walk the
+    --   rest. Each `s :: rest` step does one memory dereference,
+    --   matching CCC's `fst`/`snd` compose chain exactly.
+    path-load-text : XReg → InputPath → String
+    path-load-text dst []         =
+      "    movq %rdi, " ++ reg-text dst ++ "\n"
+    path-load-text dst (s ∷ [])   =
+      "    movq " ++ side-offset s ++ "(%rdi), " ++ reg-text dst ++ "\n"
+    path-load-text dst (s ∷ rest) =
+      "    movq " ++ side-offset s ++ "(%rdi), %rax\n" ++
+      walk-rax-rest dst rest
 instr-text (Xadd-rr dst src)  = "    addq " ++ reg-text src ++ ", " ++ reg-text dst ++ "\n"
 instr-text (Xsub-rr dst src)  = "    subq " ++ reg-text src ++ ", " ++ reg-text dst ++ "\n"
 instr-text (Ximul-rr dst src) = "    imulq " ++ reg-text src ++ ", " ++ reg-text dst ++ "\n"

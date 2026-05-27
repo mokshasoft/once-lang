@@ -1,0 +1,19 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson and contributors
+
+-- Plan 0.20 Phase G: two-arg arith lambda.
+--   g x y = x + 2 * y
+-- For (x, y) = (4, 19): 4 + 38 = 42. Exits 42.
+--
+-- After currying, `g` takes (Int * Int) via the pair-argument
+-- convention. The recognise pass should lift the body into a single
+-- `arith.block.<digest>` SigOp whose input shape is
+-- `shape-pair shape-int shape-int`.
+
+import I.Linux.Syscalls as S
+
+g : Int -> Int -> Int
+g x y = x + 2 * y
+
+main : IO Unit
+main = exit@S (g 4 19)

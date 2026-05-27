@@ -29,6 +29,8 @@ open import Data.Integer using (ℤ)
 open import Data.Nat using (ℕ)
 open import Data.List using (List)
 
+open import Once.Arith.Machine.AbsState using (InputPath)
+
 ------------------------------------------------------------------------
 -- Registers (GPR subset only — arith I64 path)
 ------------------------------------------------------------------------
@@ -70,10 +72,22 @@ data XInstr : Set where
   Xmov-rr   : XReg → XReg → XInstr          -- mov %src, %dst
   Xmov-r-m  : XScratch → XReg → XInstr      -- mov %src, [rsp - …]   (spill)
   Xmov-m-r  : XReg → XScratch → XInstr      -- mov [rsp - …], %dst   (reload)
-  Xmov-arg  : XReg → ℕ → XInstr             -- mov  arg-offset(%rdi), %dst
-                                            -- (load input from the
-                                            -- block's input buffer at
-                                            -- 8-byte stride)
+  Xmov-arg  : XReg → InputPath → XInstr     -- Load value at the
+                                            -- given InputPath from
+                                            -- the block's input
+                                            -- (`%rdi`) into `dst`.
+                                            -- Nested pair inputs
+                                            -- chase pointers via
+                                            -- `%rax` exactly the way
+                                            -- CCC's `fst`/`snd` chain
+                                            -- does: `mov rax,
+                                            -- offset(rdi)` then
+                                            -- `mov rax, offset(rax)`
+                                            -- per intermediate step,
+                                            -- final load into `dst`.
+                                            -- For path length 1 the
+                                            -- chain collapses to one
+                                            -- direct `mov` from rdi.
 
   -- Arithmetic (all in-place: dst := dst ⊙ src)
   Xadd-rr   : XReg → XReg → XInstr          -- add %src, %dst

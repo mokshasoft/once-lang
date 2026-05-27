@@ -1,0 +1,18 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson and contributors
+
+-- Plan 0.20 Phase G: single-arg arith lambda.
+--   f x = x + 3 * 5 - 2 * x
+-- For x = 5: 5 + 15 - 10 = 10. Exits 10.
+--
+-- The recognise pass should lift the body of `f` into a single
+-- `arith.block.<digest>` SigOp whose input shape is `shape-int`,
+-- and the call site `f 5` flows through the standard apply IR.
+
+import I.Linux.Syscalls as S
+
+f : Int -> Int
+f x = x + 3 * 5 - 2 * x
+
+main : IO Unit
+main = exit@S (f 5)
