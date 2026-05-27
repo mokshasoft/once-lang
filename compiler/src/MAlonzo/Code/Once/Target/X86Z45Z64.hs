@@ -319,4 +319,4 @@ d_x86'45'64_84
       (coe d_x86'45'64'45'functionPrologue_8)
       (coe d_x86'45'64'45'functionEpilogue_12)
       (coe
-         MAlonzo.Code.Once.Arith.Backend.X86.Emit.d_emit'45'arith'45'blocks_78)
+         MAlonzo.Code.Once.Arith.Backend.X86.Emit.d_emit'45'arith'45'blocks_112)

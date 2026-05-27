@@ -17,6 +17,7 @@ import MAlonzo.RTE (coe, erased, AgdaAny, addInt, subInt, mulInt,
                     rem64, lt64, eq64, word64FromNat, word64ToNat)
 import qualified MAlonzo.RTE
 import qualified Data.Text
+import qualified MAlonzo.Code.Agda.Builtin.Equality
 import qualified MAlonzo.Code.Agda.Builtin.List
 import qualified MAlonzo.Code.Data.List.Base
 import qualified MAlonzo.Code.Data.Nat.Base
@@ -205,7 +206,33 @@ du_compile'45'abs_64 v0
             MAlonzo.Code.Once.Arith.Machine.AbsInstr.C_move'45'to'45'out_26
             (coe (0 :: Integer)))
          (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16))
--- Once.Arith.Machine.Compile.abs-validity
-d_abs'45'validity_74
+-- Once.Arith.Machine.Compile.abs-validity-alit
+d_abs'45'validity'45'alit_74
   = error
-      "MAlonzo Runtime Error: postulate evaluated: Once.Arith.Machine.Compile.abs-validity"
+      "MAlonzo Runtime Error: postulate evaluated: Once.Arith.Machine.Compile.abs-validity-alit"
+-- Once.Arith.Machine.Compile.abs-validity-ainput
+d_abs'45'validity'45'ainput_82
+  = error
+      "MAlonzo Runtime Error: postulate evaluated: Once.Arith.Machine.Compile.abs-validity-ainput"
+-- Once.Arith.Machine.Compile.abs-validity-aadd
+d_abs'45'validity'45'aadd_92
+  = error
+      "MAlonzo Runtime Error: postulate evaluated: Once.Arith.Machine.Compile.abs-validity-aadd"
+-- Once.Arith.Machine.Compile.abs-validity-asub
+d_abs'45'validity'45'asub_102
+  = error
+      "MAlonzo Runtime Error: postulate evaluated: Once.Arith.Machine.Compile.abs-validity-asub"
+-- Once.Arith.Machine.Compile.abs-validity-amul
+d_abs'45'validity'45'amul_112
+  = error
+      "MAlonzo Runtime Error: postulate evaluated: Once.Arith.Machine.Compile.abs-validity-amul"
+-- Once.Arith.Machine.Compile.abs-validity-aneg
+d_abs'45'validity'45'aneg_120
+  = error
+      "MAlonzo Runtime Error: postulate evaluated: Once.Arith.Machine.Compile.abs-validity-aneg"
+-- Once.Arith.Machine.Compile.abs-validity
+d_abs'45'validity_128 ::
+  MAlonzo.Code.Once.Arith.Machine.AbsState.T_InputShape_8 ->
+  MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
+  AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_abs'45'validity_128 = erased

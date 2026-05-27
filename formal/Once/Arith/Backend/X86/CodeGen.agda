@@ -82,7 +82,7 @@ emit (load-imm z r) with abs-reg r
 ... | just xr = Xmov-imm xr z ∷ []
 ... | nothing = []
 emit (load-input p r) with abs-reg r
-... | just xr = Xmov-arg xr (path-offset p) ∷ []
+... | just xr = Xmov-arg xr p ∷ []
 ... | nothing = []
 -- | `add-rrr dst a b` = `dst := a + b`. Addition is commutative, so
 -- when `dst ≡ a` or `dst ≡ b` the move is unnecessary; in both

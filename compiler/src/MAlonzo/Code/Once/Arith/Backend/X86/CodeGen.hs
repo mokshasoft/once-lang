@@ -176,7 +176,7 @@ d_emit_28 v0
                        MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                        (coe
                           MAlonzo.Code.Once.Arith.Backend.X86.Syntax.C_Xmov'45'arg_38
-                          (coe v4) (coe d_path'45'offset_18 (coe v1)))
+                          (coe v4) (coe v1))
                        (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
                 MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                   -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16

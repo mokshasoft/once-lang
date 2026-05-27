@@ -1091,16 +1091,56 @@ d_toShape'45'I_310 v0 v1
                     (coe d_toShape'45'I_310 (coe v3) (coe v5))
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
--- Once.Arith.SigOp.Block.block-semM
-d_block'45'semM_328
+-- Once.Arith.SigOp.Block.block-semM-alit
+d_block'45'semM'45'alit_328
   = error
-      "MAlonzo Runtime Error: postulate evaluated: Once.Arith.SigOp.Block.block-semM"
+      "MAlonzo Runtime Error: postulate evaluated: Once.Arith.SigOp.Block.block-semM-alit"
+-- Once.Arith.SigOp.Block.block-semM-ainput
+d_block'45'semM'45'ainput_332
+  = error
+      "MAlonzo Runtime Error: postulate evaluated: Once.Arith.SigOp.Block.block-semM-ainput"
+-- Once.Arith.SigOp.Block.block-semM-aadd
+d_block'45'semM'45'aadd_336
+  = error
+      "MAlonzo Runtime Error: postulate evaluated: Once.Arith.SigOp.Block.block-semM-aadd"
+-- Once.Arith.SigOp.Block.block-semM-asub
+d_block'45'semM'45'asub_340
+  = error
+      "MAlonzo Runtime Error: postulate evaluated: Once.Arith.SigOp.Block.block-semM-asub"
+-- Once.Arith.SigOp.Block.block-semM-amul
+d_block'45'semM'45'amul_344
+  = error
+      "MAlonzo Runtime Error: postulate evaluated: Once.Arith.SigOp.Block.block-semM-amul"
+-- Once.Arith.SigOp.Block.block-semM-aneg
+d_block'45'semM'45'aneg_348
+  = error
+      "MAlonzo Runtime Error: postulate evaluated: Once.Arith.SigOp.Block.block-semM-aneg"
+-- Once.Arith.SigOp.Block.block-semM
+d_block'45'semM_352 ::
+  MAlonzo.Code.Once.Arith.Machine.AbsState.T_InputShape_8 ->
+  MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
+  AgdaAny -> Integer
+d_block'45'semM_352 v0 v1
+  = case coe v1 of
+      MAlonzo.Code.Once.Arith.Machine.IR.C_alit_14 v2
+        -> coe d_block'45'semM'45'alit_328 v0 v2
+      MAlonzo.Code.Once.Arith.Machine.IR.C_ainput_16 v2
+        -> coe d_block'45'semM'45'ainput_332 v0 v2
+      MAlonzo.Code.Once.Arith.Machine.IR.C_aadd_18 v2 v3
+        -> coe d_block'45'semM'45'aadd_336 v0 v2 v3
+      MAlonzo.Code.Once.Arith.Machine.IR.C_asub_20 v2 v3
+        -> coe d_block'45'semM'45'asub_340 v0 v2 v3
+      MAlonzo.Code.Once.Arith.Machine.IR.C_amul_22 v2 v3
+        -> coe d_block'45'semM'45'amul_344 v0 v2 v3
+      MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_24 v2
+        -> coe d_block'45'semM'45'aneg_348 v0 v2
+      _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Arith.SigOp.Block.block-info
-d_block'45'info_332 ::
+d_block'45'info_374 ::
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_InputShape_8 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.CCC.SigOp.Info.T_SigOpInfo_264
-d_block'45'info_332 v0 v1
+d_block'45'info_374 v0 v1
   = coe
       MAlonzo.Code.Once.CCC.SigOp.Info.C_mk'45'info_282
       (coe du_block'45'name_304 (coe v1))
@@ -1108,4 +1148,4 @@ d_block'45'info_332 v0 v1
          (\ v2 ->
             MAlonzo.Code.Once.Arith.Machine.IR.d_eval'45'arith_28
               (coe v0) (coe v1) (coe d_toShape'45'I_310 (coe v0) (coe v2))))
-      (coe d_block'45'semM_328 v0 v1)
+      (coe d_block'45'semM_352 (coe v0) (coe v1))
