@@ -24,12 +24,12 @@
 module Once.Arith.Machine.Compile where
 
 open import Data.Nat using (ℕ; zero; suc; _⊔_; _<_; s≤s; z≤n)
-open import Data.Nat.Properties using (<⇒≢)
-open import Data.Integer using (ℤ)
+open import Data.Nat.Properties using (<⇒≢; ≤-refl; m≤n⇒m≤1+n)
+open import Data.Integer using (ℤ; _+_; _-_; _*_; -_)
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂)
 open import Relation.Nullary using (¬_)
 
 open import Once.Arith.Machine.AbsState
@@ -92,7 +92,7 @@ compile-abs : ∀ {sh} → MArithIR sh → List AbstractInstr
 compile-abs e = compile-go 0 e ++ (move-to-out 0 ∷ [])
 
 ------------------------------------------------------------------------
--- Validity (statement; proof postulated for Phase C-discharge follow-up)
+-- Validity
 ------------------------------------------------------------------------
 
 -- The proof is a structural induction on `MArithIR` with the
@@ -102,6 +102,8 @@ compile-abs e = compile-go 0 e ++ (move-to-out 0 ∷ [])
 --     let s' = run-abstract (compile-go d e) s
 --     in (regs s' [ 0 ]) ≡ just (eval-arith e (input s))
 --     ∧ (∀ i < d, scratch s' [ i ] ≡ scratch s [ i ])
+--     ∧ input s' ≡ input s
+--     ∧ output s' ≡ output s
 --
 -- The arith ops in the IH propagate via the `bin-op` Maybe-lift's
 -- `just/just` case, since both children's IHs give `just`. The
@@ -111,18 +113,11 @@ compile-abs e = compile-go 0 e ++ (move-to-out 0 ∷ [])
 -- it to scratch[d]; compile-go (suc d) b ran at depth ≥ d+1 so
 -- scratch[d] is preserved).
 --
--- Discharge ~150 LOC: the binary-op induction step needs the
--- IH for `b` to give a state in which (regs ... [ 0 ]) holds the
--- value of `b`, then chain through `reload d 1` and `add-rrr`.
--- Per [[scaffold-then-discharge]], the postulate ships now and the
--- structural proof lands in a focused follow-up.
---
 -- Structural scaffold (Plan 0.20 follow-up, 2026-05-27): the top-level
 -- `abs-validity` case-splits on `MArithIR` and dispatches to per-ctor
--- postulates. Adding a new `MArithIR` constructor breaks coverage of
--- the dispatcher, forcing the proof scaffold to be extended in lock-
--- step with the operational layer. The per-ctor postulates remain the
--- open obligations.
+-- helpers. Adding a new `MArithIR` constructor breaks coverage of the
+-- dispatcher, forcing the proof scaffold to be extended in lock-step
+-- with the operational layer.
 
 ------------------------------------------------------------------------
 -- Strong invariant on `compile-go`
@@ -178,24 +173,169 @@ compile-go-correct-ainput {sh} d p s = record
   ; output-eq = refl
   }
 
--- Per-binary-op cases: still postulated. Each requires a chain of
--- store-update reasoning (run-abstract-app + the IHs + spill-then-
--- reload algebra). The dispatcher below is type-locked: adding a new
--- `MArithIR` ctor breaks coverage in `compile-go-correct`, forcing
--- both a postulate and a dispatch arm.
-postulate
-  aneg-correct : ∀ {sh} (d : ℕ) (a : MArithIR sh) (s : ArithAbsState sh) →
-    CompileGoInv d (aneg a) s
-  aadd-correct : ∀ {sh} (d : ℕ) (a b : MArithIR sh) (s : ArithAbsState sh) →
-    CompileGoInv d (aadd a b) s
-  asub-correct : ∀ {sh} (d : ℕ) (a b : MArithIR sh) (s : ArithAbsState sh) →
-    CompileGoInv d (asub a b) s
-  amul-correct : ∀ {sh} (d : ℕ) (a b : MArithIR sh) (s : ArithAbsState sh) →
-    CompileGoInv d (amul a b) s
+-- Helpers (private): inequality glue for store-write-other.
+private
+  d≢i : ∀ {i d : ℕ} → i < d → ¬ (d ≡ i)
+  d≢i lt eq = <⇒≢ lt (sym eq)
 
--- | The main inductive lemma — dispatcher.
+  <-suc : ∀ {i d : ℕ} → i < d → i < suc d
+  <-suc lt = m≤n⇒m≤1+n lt
+
+-- Forward declaration so the per-ctor helpers can recurse via the
+-- dispatcher. Termination: each helper structurally decreases on the
+-- `MArithIR` argument before calling back into `compile-go-correct`.
 compile-go-correct : ∀ {sh} (d : ℕ) (e : MArithIR sh) (s : ArithAbsState sh) →
   CompileGoInv d e s
+
+-- | `aneg a`: compile `a`, then negate reg 0 in place.
+aneg-correct : ∀ {sh} (d : ℕ) (a : MArithIR sh) (s : ArithAbsState sh) →
+  CompileGoInv d (aneg a) s
+aneg-correct {sh} d a s = record
+  { reg0      = trans (cong (λ x → regs x [ 0 ]) bridge)
+                      (cong (un-op (-_)) (reg0 ih))
+  ; scratch≤  = λ i lt → trans (cong (λ x → scratch x [ i ]) bridge)
+                               (scratch≤ ih i lt)
+  ; input-eq  = trans (cong input bridge) (input-eq ih)
+  ; output-eq = trans (cong output bridge) (output-eq ih)
+  }
+  where
+    ih : CompileGoInv d a s
+    ih = compile-go-correct d a s
+
+    bridge : run-abstract (compile-go d (aneg a)) s
+           ≡ step (neg-rr 0 0) (run-abstract (compile-go d a) s)
+    bridge = run-abstract-app (compile-go d a) (neg-rr 0 0 ∷ []) s
+
+-- | `aadd a b`: compile `a` into reg 0, spill to scratch[d], compile
+-- `b` into reg 0 at depth (suc d), reload scratch[d] into reg 1, then
+-- `add-rrr 0 1 0` lands `a + b` in reg 0.
+aadd-correct : ∀ {sh} (d : ℕ) (a b : MArithIR sh) (s : ArithAbsState sh) →
+  CompileGoInv d (aadd a b) s
+aadd-correct {sh} d a b s = record
+  { reg0      = trans (cong (λ x → regs x [ 0 ]) bridge)
+                      (cong₂ (bin-op _+_)
+                             (trans scratch-s3-d (reg0 ih-a))
+                             regs-s3-0)
+  ; scratch≤  = λ i lt → trans (cong (λ x → scratch x [ i ]) bridge)
+                          (trans (scratch≤ ih-b i (<-suc lt))
+                          (trans (store-write-other (scratch s1) d i
+                                   (regs s1 [ 0 ]) (d≢i lt))
+                                 (scratch≤ ih-a i lt)))
+  ; input-eq  = trans (cong input bridge)
+                      (trans (input-eq ih-b) (input-eq ih-a))
+  ; output-eq = trans (cong output bridge)
+                      (trans (output-eq ih-b) (output-eq ih-a))
+  }
+  where
+    ih-a = compile-go-correct d a s
+    s1   = run-abstract (compile-go d a) s
+    s2   = step (spill 0 d) s1
+    ih-b = compile-go-correct (suc d) b s2
+    s3   = run-abstract (compile-go (suc d) b) s2
+    s4   = step (reload d 1) s3
+    s5   = step (add-rrr 0 1 0) s4
+
+    bridge : run-abstract (compile-go d (aadd a b)) s ≡ s5
+    bridge = trans
+      (run-abstract-app (compile-go d a)
+        (spill 0 d ∷ compile-go (suc d) b ++ (reload d 1 ∷ add-rrr 0 1 0 ∷ [])) s)
+      (run-abstract-app (compile-go (suc d) b)
+        (reload d 1 ∷ add-rrr 0 1 0 ∷ []) s2)
+
+    scratch-s3-d : scratch s3 [ d ] ≡ regs s1 [ 0 ]
+    scratch-s3-d = trans (scratch≤ ih-b d ≤-refl)
+                         (store-write-same (scratch s1) d (regs s1 [ 0 ]))
+
+    regs-s3-0 : regs s3 [ 0 ] ≡ just (eval-arith b (input s))
+    regs-s3-0 = trans (reg0 ih-b)
+                      (cong (λ x → just (eval-arith b x)) (input-eq ih-a))
+
+-- | `asub a b`: same skeleton as aadd, with `sub-rrr 0 1 0` so the
+-- result is `regs[1] − regs[0]` = `a − b`.
+asub-correct : ∀ {sh} (d : ℕ) (a b : MArithIR sh) (s : ArithAbsState sh) →
+  CompileGoInv d (asub a b) s
+asub-correct {sh} d a b s = record
+  { reg0      = trans (cong (λ x → regs x [ 0 ]) bridge)
+                      (cong₂ (bin-op _-_)
+                             (trans scratch-s3-d (reg0 ih-a))
+                             regs-s3-0)
+  ; scratch≤  = λ i lt → trans (cong (λ x → scratch x [ i ]) bridge)
+                          (trans (scratch≤ ih-b i (<-suc lt))
+                          (trans (store-write-other (scratch s1) d i
+                                   (regs s1 [ 0 ]) (d≢i lt))
+                                 (scratch≤ ih-a i lt)))
+  ; input-eq  = trans (cong input bridge)
+                      (trans (input-eq ih-b) (input-eq ih-a))
+  ; output-eq = trans (cong output bridge)
+                      (trans (output-eq ih-b) (output-eq ih-a))
+  }
+  where
+    ih-a = compile-go-correct d a s
+    s1   = run-abstract (compile-go d a) s
+    s2   = step (spill 0 d) s1
+    ih-b = compile-go-correct (suc d) b s2
+    s3   = run-abstract (compile-go (suc d) b) s2
+    s4   = step (reload d 1) s3
+    s5   = step (sub-rrr 0 1 0) s4
+
+    bridge : run-abstract (compile-go d (asub a b)) s ≡ s5
+    bridge = trans
+      (run-abstract-app (compile-go d a)
+        (spill 0 d ∷ compile-go (suc d) b ++ (reload d 1 ∷ sub-rrr 0 1 0 ∷ [])) s)
+      (run-abstract-app (compile-go (suc d) b)
+        (reload d 1 ∷ sub-rrr 0 1 0 ∷ []) s2)
+
+    scratch-s3-d : scratch s3 [ d ] ≡ regs s1 [ 0 ]
+    scratch-s3-d = trans (scratch≤ ih-b d ≤-refl)
+                         (store-write-same (scratch s1) d (regs s1 [ 0 ]))
+
+    regs-s3-0 : regs s3 [ 0 ] ≡ just (eval-arith b (input s))
+    regs-s3-0 = trans (reg0 ih-b)
+                      (cong (λ x → just (eval-arith b x)) (input-eq ih-a))
+
+-- | `amul a b`: same skeleton as aadd, with `mul-rrr 0 1 0`.
+amul-correct : ∀ {sh} (d : ℕ) (a b : MArithIR sh) (s : ArithAbsState sh) →
+  CompileGoInv d (amul a b) s
+amul-correct {sh} d a b s = record
+  { reg0      = trans (cong (λ x → regs x [ 0 ]) bridge)
+                      (cong₂ (bin-op _*_)
+                             (trans scratch-s3-d (reg0 ih-a))
+                             regs-s3-0)
+  ; scratch≤  = λ i lt → trans (cong (λ x → scratch x [ i ]) bridge)
+                          (trans (scratch≤ ih-b i (<-suc lt))
+                          (trans (store-write-other (scratch s1) d i
+                                   (regs s1 [ 0 ]) (d≢i lt))
+                                 (scratch≤ ih-a i lt)))
+  ; input-eq  = trans (cong input bridge)
+                      (trans (input-eq ih-b) (input-eq ih-a))
+  ; output-eq = trans (cong output bridge)
+                      (trans (output-eq ih-b) (output-eq ih-a))
+  }
+  where
+    ih-a = compile-go-correct d a s
+    s1   = run-abstract (compile-go d a) s
+    s2   = step (spill 0 d) s1
+    ih-b = compile-go-correct (suc d) b s2
+    s3   = run-abstract (compile-go (suc d) b) s2
+    s4   = step (reload d 1) s3
+    s5   = step (mul-rrr 0 1 0) s4
+
+    bridge : run-abstract (compile-go d (amul a b)) s ≡ s5
+    bridge = trans
+      (run-abstract-app (compile-go d a)
+        (spill 0 d ∷ compile-go (suc d) b ++ (reload d 1 ∷ mul-rrr 0 1 0 ∷ [])) s)
+      (run-abstract-app (compile-go (suc d) b)
+        (reload d 1 ∷ mul-rrr 0 1 0 ∷ []) s2)
+
+    scratch-s3-d : scratch s3 [ d ] ≡ regs s1 [ 0 ]
+    scratch-s3-d = trans (scratch≤ ih-b d ≤-refl)
+                         (store-write-same (scratch s1) d (regs s1 [ 0 ]))
+
+    regs-s3-0 : regs s3 [ 0 ] ≡ just (eval-arith b (input s))
+    regs-s3-0 = trans (reg0 ih-b)
+                      (cong (λ x → just (eval-arith b x)) (input-eq ih-a))
+
+-- | The main inductive lemma — dispatcher.
 compile-go-correct d (alit z) s = record
   { reg0      = refl
   ; scratch≤  = λ _ _ → refl
