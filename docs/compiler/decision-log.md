@@ -3693,3 +3693,113 @@ compiles and the resulting binary exits with code 42.
 currently elides effApp closure bodies when it shouldn't, so the
 Layer-0 regression tests pass `--no-optimize` for now. Tracked
 separately.
+
+---
+
+## D054: Parameterised CPU Semantics — Wired, Not Imported (For `--safe`)
+
+**Plan:** 0.23 (Parameterised CPU bridge for `--safe` compile).
+**Date:** 2026-05-27.
+**Status:** Accepted.
+
+### Context
+
+Plan 0.20's machine-int convention is ℕ-with-monus (`a ∸ b`), with
+unsigned subtraction truncated to 0 and negation `_ ↦ 0`. This is a
+placeholder that matches neither x86's two's-complement reality nor
+standard math. The honest fix needs a faithful bridge from x86
+register state to an abstract integer type, which raised three
+options:
+
+1. Encode 64-bit integers as `Fin 2^64`. Type-checker tax on every
+   literal; large refactor across all `M.⟦ Int ⟧` consumers.
+2. Postulate two's-complement = `ℕ` (or `ℤ`) at top level, with
+   no-overflow side conditions the programmer must discharge.
+3. Status quo (ℕ-monus + postulates everywhere).
+
+(2) is what verified-systems-programming traditionally does
+(CompCert / CakeML / seL4): the safe arithmetic subset, with
+overflow as a programmer obligation rather than a type burden.
+
+But (2) has a sub-decision: WHERE the postulate lives. Options:
+
+- **2a (Imported).** A top-level `postulate` block in the
+  semantics layer. Every downstream consumer transitively imports
+  postulates. `compile` cannot be type-checked with `--safe`.
+- **2b (Wired).** An `AxiomsCPU` record. Every module that needs
+  CPU-correctness facts is parameterised over the record. At one
+  designated entry point we instantiate the record from a single
+  top-level postulate. Everything below that point is `--safe`-clean.
+
+### Decision
+
+**Adopt option 2b (wired).** The CPU-correctness bridge is the
+**first** axiom in the codebase to migrate from imported-postulate
+form to parameterised-record form. The global `compile` function
+(and everything below `EntryPointCCC`) will eventually compile with
+`--safe`. The single hatch — `postulate cpu-axioms-x86 :
+AxiomsCPU.X86`, sitting at the top-level driver — is the only place
+that needs `--allow-unsafe` (or its equivalent), and it's
+human-auditable in isolation.
+
+### Rationale
+
+- **Programmer-managed overflow is the right abstraction.** Languages
+  that proved arithmetic correctness via "encode every register
+  exactly" (e.g., CompCert) end up with a heavy bit-level layer that
+  most users will never touch. Once's target — verified userland —
+  doesn't need to model wrap-around to support programs that *don't
+  overflow*. Side conditions like `0 ≤ a + b < 2^64` become a separate
+  obligation, attachable at the surface or proven structurally for
+  programs that obviously don't grow.
+- **Wired beats imported because of `--safe`.** Imported postulates
+  pollute every module transitively. Wiring them into a record
+  parameter localises them to a single dependency-injection point.
+  The `--safe` flag then becomes meaningful for the body of the
+  compiler — anyone reading `compile` knows the unsafe surface area
+  is exactly the records the module abstracts over.
+- **The CPU bridge is the natural first axiom to migrate.** It's
+  needed by exactly one architectural seam (the per-arch backend's
+  refinement layer), so the parameterisation is straightforward.
+  Once it lands, the *pattern* — `record AxiomsX … ; postulate
+  axioms-x : AxiomsX` at the driver, all downstream code parameterised
+  — generalises to the other postulates currently scattered
+  (`extensionality`, `funext`, `generic-semI/M`, etc.) in follow-up
+  plans.
+- **Future axioms must also be wired.** New postulates are
+  prohibited; the canonical pattern is "add a field to the record."
+  Plan 0.23 establishes the discipline.
+
+### Consequences
+
+- A new module `Once/Arith/Backend/X86/Axioms.agda` (or similar)
+  defines `AxiomsCPU.X86`: a record bundling the per-op correctness
+  statements (`reg-add-correct`, `reg-sub-correct`, …) and a
+  no-overflow precondition predicate.
+- `Once/Arith/Backend/X86/Correct.agda` becomes a parameterised
+  module `module XCorrect (ax : AxiomsCPU.X86) where …`. Its
+  `refine-*` lemmas no longer postulate; they consume `ax.reg-*-
+  correct` with the no-overflow side condition the producer carries.
+- `Once.Arith.Boundary` similarly takes the same axioms record,
+  propagating the no-overflow obligation up to `PreservesCCC`.
+- `EntryPointCCC` ultimately instantiates the record from one
+  top-level `postulate ax-x86 : AxiomsCPU.X86`. That postulate is
+  the entire trusted surface for the x86 backend.
+- A `{-# OPTIONS --safe #-}` pragma is added incrementally to modules
+  that no longer transitively depend on unwired postulates. The
+  global driver, the recogniser, the abstract-machine validity layer,
+  and the parameterised refinement/boundary all become `--safe`.
+- The plan's deliverable is a single command — `make agda-safe` —
+  that type-checks the entire `--safe` subtree without flags
+  swallowing postulates silently.
+
+### Open questions deferred to plan 0.23
+
+- Exact wording of the no-overflow predicate: per-op
+  (`add-no-overflow : ℕ → ℕ → Set`) or global (`fits-in-64 : ℕ → Set`
+  applied at each operation)? Lean toward per-op for tighter proofs.
+- Whether `extensionality` (the longest-standing global postulate)
+  migrates to the same pattern in this plan or a follow-up. Lean
+  toward follow-up — keep this plan focused on the CPU bridge.
+- Decision on `M.⟦ Int ⟧` underlying type (ℕ vs ℤ). Independent of
+  the wiring decision; revisit during plan 0.23 Phase B.
