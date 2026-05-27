@@ -23,19 +23,25 @@
 
 module Once.Arith.Machine.Compile where
 
-open import Data.Nat using (ℕ; zero; suc; _⊔_)
+open import Data.Nat using (ℕ; zero; suc; _⊔_; _<_; s≤s; z≤n)
+open import Data.Nat.Properties using (<⇒≢)
 open import Data.Integer using (ℤ)
-open import Data.List using (List; []; _∷_; _++_; [_])
+open import Data.List using (List; []; _∷_; _++_)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+open import Data.Product using (_×_; _,_; proj₁; proj₂)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
+open import Relation.Nullary using (¬_)
 
 open import Once.Arith.Machine.AbsState
-  using (ArithAbsState; InputShape; ⟦_⟧S; init; output-of; InputPath; project)
+  using (ArithAbsState; InputShape; ⟦_⟧S; init; output-of; InputPath; project;
+         Store; empty-store; _[_↦_]; _[_]; store-write-same; store-write-other)
 open import Once.Arith.Machine.AbsInstr
   using (AbstractInstr; load-input; load-imm; add-rrr; sub-rrr; mul-rrr;
-         neg-rr; spill; reload; move-to-out; run-abstract)
+         neg-rr; spill; reload; move-to-out; run-abstract; step;
+         maybe-zero; bin-op; un-op)
 open import Once.Arith.Machine.IR
   using (MArithIR; alit; ainput; aadd; asub; amul; aneg; eval-arith)
+open ArithAbsState
 
 ------------------------------------------------------------------------
 -- Register / scratch budget
@@ -118,38 +124,139 @@ compile-abs e = compile-go 0 e ++ (move-to-out 0 ∷ [])
 -- step with the operational layer. The per-ctor postulates remain the
 -- open obligations.
 
--- | `alit z`: `compile-abs` produces `load-imm z 0 ∷ move-to-out 0 ∷ []`.
--- Running that sets reg 0 to `just z`, then `output` to `reg 0`. The
--- chain `(empty-store [ 0 ↦ just z ]) [ 0 ]` reduces to `just z` by
--- definitional `0 ≟ 0` on the underlying `Store`, which itself
--- matches `just (eval-arith (alit z) env) = just z`. Pure `refl`.
-abs-validity-alit : ∀ {sh} (z : ℤ) (env : ⟦ sh ⟧S) →
-  output-of (run-abstract (compile-abs {sh} (alit z)) (init env)) ≡ just (eval-arith {sh} (alit z) env)
-abs-validity-alit z env = refl
+------------------------------------------------------------------------
+-- Strong invariant on `compile-go`
+--
+-- Used by all `abs-validity-*` cases to package the four facts an
+-- inductive step needs about the inner `compile-go`:
+--   reg0      — output register holds the evaluated subexpression
+--   scratch≤  — scratch slots strictly below `d` are untouched
+--                (the binary case's right operand runs at depth
+--                 `suc d`, so the spilled slot `d` survives across it)
+--   input-eq  — input env never changes during `compile-go`
+--   output-eq — the output slot is only written by the terminating
+--                `move-to-out`; `compile-go` leaves it alone
+------------------------------------------------------------------------
 
--- | `ainput p`: `compile-abs` produces `load-input p 0 ∷ move-to-out 0 ∷ []`.
--- Running it sets reg 0 to `just (maybe-zero (project sh p env))`,
--- which is exactly the value `eval-arith (ainput p) env` reduces to
--- (both branches of the `project` `Maybe` collapse the same way:
--- `maybe-zero (just z) = z = eval-arith` for in-range paths, and
--- `maybe-zero nothing = + 0 = eval-arith` for the fallback). The
--- proof case-splits on `project sh p env` to align the two sides;
--- both branches close by `refl`.
-abs-validity-ainput : ∀ {sh} (p : InputPath) (env : ⟦ sh ⟧S) →
-  output-of (run-abstract (compile-abs {sh} (ainput p)) (init env)) ≡ just (eval-arith {sh} (ainput p) env)
-abs-validity-ainput {sh} p env with project sh p env
+record CompileGoInv {sh} (d : ℕ) (e : MArithIR sh) (s : ArithAbsState sh) : Set where
+  field
+    reg0      : regs (run-abstract (compile-go d e) s) [ 0 ]
+                  ≡ just (eval-arith e (input s))
+    scratch≤  : ∀ i → i < d →
+                scratch (run-abstract (compile-go d e) s) [ i ]
+                  ≡ scratch s [ i ]
+    input-eq  : input (run-abstract (compile-go d e) s) ≡ input s
+    output-eq : output (run-abstract (compile-go d e) s) ≡ output s
+
+open CompileGoInv
+
+-- | `run-abstract` distributes over `_++_` — needed at every binary
+-- step in the validity proof to split the concatenated instruction
+-- list across the two operand traces.
+run-abstract-app : ∀ {sh} (xs ys : List AbstractInstr) (s : ArithAbsState sh) →
+  run-abstract (xs ++ ys) s ≡ run-abstract ys (run-abstract xs s)
+run-abstract-app []       ys s = refl
+run-abstract-app (i ∷ is) ys s = run-abstract-app is ys (step i s)
+
+-- | Lemma: `eval-arith (ainput p) inp ≡ maybe-zero (project sh p inp)`.
+-- Both definitions case-split on `project sh p inp` the same way, so
+-- a single `with` aligns them.
+eval-arith-ainput :
+  ∀ {sh} (p : InputPath) (inp : ⟦ sh ⟧S) →
+  eval-arith {sh} (ainput p) inp ≡ maybe-zero (project sh p inp)
+eval-arith-ainput {sh} p inp with project sh p inp
 ... | just _  = refl
 ... | nothing = refl
 
+-- Helper for the `ainput p` case.
+compile-go-correct-ainput : ∀ {sh} (d : ℕ) (p : InputPath) (s : ArithAbsState sh) →
+  CompileGoInv d (ainput p) s
+compile-go-correct-ainput {sh} d p s = record
+  { reg0      = cong just (sym (eval-arith-ainput p (input s)))
+  ; scratch≤  = λ _ _ → refl
+  ; input-eq  = refl
+  ; output-eq = refl
+  }
+
+-- Per-binary-op cases: still postulated. Each requires a chain of
+-- store-update reasoning (run-abstract-app + the IHs + spill-then-
+-- reload algebra). The dispatcher below is type-locked: adding a new
+-- `MArithIR` ctor breaks coverage in `compile-go-correct`, forcing
+-- both a postulate and a dispatch arm.
 postulate
-  abs-validity-aadd   : ∀ {sh} (a b : MArithIR sh)         (env : ⟦ sh ⟧S) →
-    output-of (run-abstract (compile-abs (aadd a b))      (init env)) ≡ just (eval-arith (aadd a b)      env)
-  abs-validity-asub   : ∀ {sh} (a b : MArithIR sh)         (env : ⟦ sh ⟧S) →
-    output-of (run-abstract (compile-abs (asub a b))      (init env)) ≡ just (eval-arith (asub a b)      env)
-  abs-validity-amul   : ∀ {sh} (a b : MArithIR sh)         (env : ⟦ sh ⟧S) →
-    output-of (run-abstract (compile-abs (amul a b))      (init env)) ≡ just (eval-arith (amul a b)      env)
-  abs-validity-aneg   : ∀ {sh} (a   : MArithIR sh)         (env : ⟦ sh ⟧S) →
-    output-of (run-abstract (compile-abs (aneg a))        (init env)) ≡ just (eval-arith (aneg a)        env)
+  aneg-correct : ∀ {sh} (d : ℕ) (a : MArithIR sh) (s : ArithAbsState sh) →
+    CompileGoInv d (aneg a) s
+  aadd-correct : ∀ {sh} (d : ℕ) (a b : MArithIR sh) (s : ArithAbsState sh) →
+    CompileGoInv d (aadd a b) s
+  asub-correct : ∀ {sh} (d : ℕ) (a b : MArithIR sh) (s : ArithAbsState sh) →
+    CompileGoInv d (asub a b) s
+  amul-correct : ∀ {sh} (d : ℕ) (a b : MArithIR sh) (s : ArithAbsState sh) →
+    CompileGoInv d (amul a b) s
+
+-- | The main inductive lemma — dispatcher.
+compile-go-correct : ∀ {sh} (d : ℕ) (e : MArithIR sh) (s : ArithAbsState sh) →
+  CompileGoInv d e s
+compile-go-correct d (alit z) s = record
+  { reg0      = refl
+  ; scratch≤  = λ _ _ → refl
+  ; input-eq  = refl
+  ; output-eq = refl
+  }
+compile-go-correct {sh} d (ainput p) s = compile-go-correct-ainput {sh} d p s
+compile-go-correct d (aneg a)   s = aneg-correct d a s
+compile-go-correct d (aadd a b) s = aadd-correct d a b s
+compile-go-correct d (asub a b) s = asub-correct d a b s
+compile-go-correct d (amul a b) s = amul-correct d a b s
+
+------------------------------------------------------------------------
+-- Derive `abs-validity` cases from the strong invariant
+------------------------------------------------------------------------
+
+-- Common bridge: `compile-abs e = compile-go 0 e ++ move-to-out 0 ∷ []`.
+-- After `run-abstract` of the prefix, the state's `regs[0]` holds
+-- `just (eval-arith e env)`. The final `move-to-out 0` writes that
+-- to `output`. So `output-of (run-abstract (compile-abs e) (init env))`
+-- equals `just (eval-arith e env)` — derived from `reg0` of the
+-- inductive invariant.
+
+-- | Helper: derive `abs-validity` for any `e` from `compile-go-correct`.
+private
+  abs-validity-from-inv : ∀ {sh} (e : MArithIR sh) (env : ⟦ sh ⟧S) →
+    output-of (run-abstract (compile-abs e) (init env)) ≡ just (eval-arith e env)
+  abs-validity-from-inv {sh} e env =
+    trans (cong output-of (run-abstract-app (compile-go 0 e) (move-to-out 0 ∷ []) (init env)))
+          (reg0 (compile-go-correct 0 e (init env)))
+
+-- All six per-ctor cases derive from `compile-go-correct` via the
+-- shared bridge `abs-validity-from-inv`. The bridge is one line of
+-- `trans (cong output-of run-abstract-app) reg0`, so once any
+-- per-ctor `compile-go-correct` case is discharged (e.g. the alit
+-- and ainput cases above), the corresponding `abs-validity-*`
+-- inherits the discharge automatically.
+
+abs-validity-alit : ∀ {sh} (z : ℤ) (env : ⟦ sh ⟧S) →
+  output-of (run-abstract (compile-abs {sh} (alit z)) (init env)) ≡ just (eval-arith {sh} (alit z) env)
+abs-validity-alit z env = abs-validity-from-inv (alit z) env
+
+abs-validity-ainput : ∀ {sh} (p : InputPath) (env : ⟦ sh ⟧S) →
+  output-of (run-abstract (compile-abs {sh} (ainput p)) (init env)) ≡ just (eval-arith {sh} (ainput p) env)
+abs-validity-ainput p env = abs-validity-from-inv (ainput p) env
+
+abs-validity-aadd : ∀ {sh} (a b : MArithIR sh) (env : ⟦ sh ⟧S) →
+  output-of (run-abstract (compile-abs (aadd a b)) (init env)) ≡ just (eval-arith (aadd a b) env)
+abs-validity-aadd a b env = abs-validity-from-inv (aadd a b) env
+
+abs-validity-asub : ∀ {sh} (a b : MArithIR sh) (env : ⟦ sh ⟧S) →
+  output-of (run-abstract (compile-abs (asub a b)) (init env)) ≡ just (eval-arith (asub a b) env)
+abs-validity-asub a b env = abs-validity-from-inv (asub a b) env
+
+abs-validity-amul : ∀ {sh} (a b : MArithIR sh) (env : ⟦ sh ⟧S) →
+  output-of (run-abstract (compile-abs (amul a b)) (init env)) ≡ just (eval-arith (amul a b) env)
+abs-validity-amul a b env = abs-validity-from-inv (amul a b) env
+
+abs-validity-aneg : ∀ {sh} (a : MArithIR sh) (env : ⟦ sh ⟧S) →
+  output-of (run-abstract (compile-abs (aneg a)) (init env)) ≡ just (eval-arith (aneg a) env)
+abs-validity-aneg a env = abs-validity-from-inv (aneg a) env
 
 abs-validity :
   ∀ {sh} (e : MArithIR sh) (env : ⟦ sh ⟧S) →
