@@ -121,8 +121,27 @@ toShape-I (shape-pair l r) (x , y) = toShape-I l x , toShape-I r y
 -- `Once.Arith.SigOp.Builders` convention this is postulated; the
 -- I-arith-cleanup item is to write a definitional ℕ-eval that
 -- matches the x86 register-level reality.
+--
+-- Structural scaffold (Plan 0.20 follow-up, 2026-05-27): the top-
+-- level `block-semM` case-splits on `MArithIR` and dispatches to a
+-- per-ctor postulate. Adding a new `MArithIR` constructor breaks
+-- coverage here, forcing a new postulate (and a new dispatch case)
+-- in lock-step with the operational layer.
 postulate
-  block-semM : ∀ {sh} → MArithIR sh → M.⟦ shape-as-type sh ⟧ → M.⟦ Int ⟧
+  block-semM-alit   : ∀ {sh} → ℤ          → M.⟦ shape-as-type sh ⟧ → M.⟦ Int ⟧
+  block-semM-ainput : ∀ {sh} → InputPath  → M.⟦ shape-as-type sh ⟧ → M.⟦ Int ⟧
+  block-semM-aadd   : ∀ {sh} → MArithIR sh → MArithIR sh → M.⟦ shape-as-type sh ⟧ → M.⟦ Int ⟧
+  block-semM-asub   : ∀ {sh} → MArithIR sh → MArithIR sh → M.⟦ shape-as-type sh ⟧ → M.⟦ Int ⟧
+  block-semM-amul   : ∀ {sh} → MArithIR sh → MArithIR sh → M.⟦ shape-as-type sh ⟧ → M.⟦ Int ⟧
+  block-semM-aneg   : ∀ {sh} → MArithIR sh                → M.⟦ shape-as-type sh ⟧ → M.⟦ Int ⟧
+
+block-semM : ∀ {sh} → MArithIR sh → M.⟦ shape-as-type sh ⟧ → M.⟦ Int ⟧
+block-semM (alit z)    = block-semM-alit z
+block-semM (ainput p)  = block-semM-ainput p
+block-semM (aadd a b)  = block-semM-aadd a b
+block-semM (asub a b)  = block-semM-asub a b
+block-semM (amul a b)  = block-semM-amul a b
+block-semM (aneg a)    = block-semM-aneg a
 
 -- | The block's `SigOpInfo`.
 --
