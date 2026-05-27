@@ -3707,99 +3707,123 @@ separately.
 Plan 0.20's machine-int convention is ℕ-with-monus (`a ∸ b`), with
 unsigned subtraction truncated to 0 and negation `_ ↦ 0`. This is a
 placeholder that matches neither x86's two's-complement reality nor
-standard math. The honest fix needs a faithful bridge from x86
-register state to an abstract integer type, which raised three
-options:
+standard math. The honest fix needs a faithful bridge from the arith
+abstract machine (ℤ-typed registers) to each target's register state
+(ℕ-typed `Word`).
+
+Three options were considered:
 
 1. Encode 64-bit integers as `Fin 2^64`. Type-checker tax on every
    literal; large refactor across all `M.⟦ Int ⟧` consumers.
-2. Postulate two's-complement = `ℕ` (or `ℤ`) at top level, with
-   no-overflow side conditions the programmer must discharge.
+2. Programmer-managed overflow: machine layer stays ℕ; arithmetic
+   operations carry no-overflow side conditions that propagate from
+   the source. Matches CompCert / CakeML / seL4.
 3. Status quo (ℕ-monus + postulates everywhere).
 
-(2) is what verified-systems-programming traditionally does
-(CompCert / CakeML / seL4): the safe arithmetic subset, with
-overflow as a programmer obligation rather than a type burden.
-
-But (2) has a sub-decision: WHERE the postulate lives. Options:
+(2) was selected. Sub-decision: WHERE the supporting postulates live.
 
 - **2a (Imported).** A top-level `postulate` block in the
   semantics layer. Every downstream consumer transitively imports
   postulates. `compile` cannot be type-checked with `--safe`.
-- **2b (Wired).** An `AxiomsCPU` record. Every module that needs
-  CPU-correctness facts is parameterised over the record. At one
-  designated entry point we instantiate the record from a single
-  top-level postulate. Everything below that point is `--safe`-clean.
+- **2b (Wired).** A `BackendBridge` record. Every module that needs
+  CPU-correctness facts is parameterised over the record. Each
+  target supplies its own instance.
+
+### Key observation
+
+The per-target CPU semantics — `Once.CCC.Target.{X86-64,X86-32,
+RiscV64}.Semantics` — **already exist and are real**, defined
+clause-by-clause against ISA references (CompCert / Sail convention).
+There is no missing CPU semantics module. What's missing is the
+**bridge** from the arith abstract machine to those semantics:
+`concretise : ArithAbsState → State`, the ℤ↔Word encoding, and the
+per-op refinement statements.
+
+For x86-64, the refinement statements should be **real lemmas** (the
+abstract `step (add-rrr ...)` and the concrete `execInstr (add ...)`
+both reduce to ℕ addition; the bridge is a structural proof).
+
+For the stub backends (x86-32 / RiscV64, whose codegen returns
+`notImplemented` per Plan 0.20's scope decision), the refinement
+fields are postulated in their own bridge modules until those
+backends ship real codegen.
 
 ### Decision
 
-**Adopt option 2b (wired).** The CPU-correctness bridge is the
-**first** axiom in the codebase to migrate from imported-postulate
-form to parameterised-record form. The global `compile` function
-(and everything below `EntryPointCCC`) will eventually compile with
-`--safe`. The single hatch — `postulate cpu-axioms-x86 :
-AxiomsCPU.X86`, sitting at the top-level driver — is the only place
-that needs `--allow-unsafe` (or its equivalent), and it's
-human-auditable in isolation.
+**Adopt option 2b (wired) with target-parameterised bridges.** The
+CPU bridge is implemented as `record BackendBridge` whose fields
+include the target's `State`, the bridge `concretise` function, the
+per-target `exec-target` (re-exported from the existing semantics
+module), the no-overflow predicates, and the 9 per-op refinement
+statements. Each target supplies its own `Bridge.agda` instance.
+For x86-64 the bridge's refinement fields are real proofs; for
+stubs they're postulated **inside that target's own Bridge module**.
+
+This is the **first** axiom-shaped artifact in the codebase to use
+the wired-not-imported pattern. The arith pipeline body
+(`Once.Arith.{Machine,Backend.Correct,Boundary}`) becomes generic
+in `BackendBridge` and `--safe`-clean. Only the per-target
+stub-bridge modules carry postulates; only the driver
+(`Once.Compile`) is non-safe (because it imports stub bridges to
+dispatch on target).
 
 ### Rationale
 
-- **Programmer-managed overflow is the right abstraction.** Languages
-  that proved arithmetic correctness via "encode every register
-  exactly" (e.g., CompCert) end up with a heavy bit-level layer that
-  most users will never touch. Once's target — verified userland —
-  doesn't need to model wrap-around to support programs that *don't
-  overflow*. Side conditions like `0 ≤ a + b < 2^64` become a separate
-  obligation, attachable at the surface or proven structurally for
-  programs that obviously don't grow.
+- **No new CPU semantics required.** Per-target `Semantics.agda`
+  modules already exist and are auditable. The plan does not add a
+  parallel CPU semantics layer; it wires the arith abstract machine
+  into the existing ones.
+- **Multi-target by construction.** The compiler compiles to x86-64,
+  x86-32, and RiscV64. The arith pipeline must be generic over the
+  target choice; a record-parameter is the cleanest mechanism.
+- **Programmer-managed overflow is the right abstraction.** Encoding
+  every register exactly (`Fin 2^64`) is a tax most users won't pay.
+  Programs that don't overflow get short, definitional proofs;
+  programs that need wrap-around live outside the safe subset.
 - **Wired beats imported because of `--safe`.** Imported postulates
   pollute every module transitively. Wiring them into a record
-  parameter localises them to a single dependency-injection point.
-  The `--safe` flag then becomes meaningful for the body of the
-  compiler — anyone reading `compile` knows the unsafe surface area
-  is exactly the records the module abstracts over.
-- **The CPU bridge is the natural first axiom to migrate.** It's
-  needed by exactly one architectural seam (the per-arch backend's
-  refinement layer), so the parameterisation is straightforward.
-  Once it lands, the *pattern* — `record AxiomsX … ; postulate
-  axioms-x : AxiomsX` at the driver, all downstream code parameterised
-  — generalises to the other postulates currently scattered
-  (`extensionality`, `funext`, `generic-semI/M`, etc.) in follow-up
-  plans.
-- **Future axioms must also be wired.** New postulates are
-  prohibited; the canonical pattern is "add a field to the record."
-  Plan 0.23 establishes the discipline.
+  localises them to a single dependency-injection point. `--safe`
+  becomes a real invariant for the arith pipeline body.
+- **x86-64 needs no postulates at all.** The existing
+  `X86-64.Semantics.execInstr` is real code; per-op refinement
+  becomes a real proof. The x86-64 `Bridge.agda` is `--safe`-clean
+  on its own.
+- **Stubs honestly postulate.** x86-32 / RiscV64 don't have working
+  codegen. Postulating their bridge correctness in their own files,
+  outside the safe subtree, accurately reflects that state.
 
 ### Consequences
 
-- A new module `Once/Arith/Backend/X86/Axioms.agda` (or similar)
-  defines `AxiomsCPU.X86`: a record bundling the per-op correctness
-  statements (`reg-add-correct`, `reg-sub-correct`, …) and a
-  no-overflow precondition predicate.
-- `Once/Arith/Backend/X86/Correct.agda` becomes a parameterised
-  module `module XCorrect (ax : AxiomsCPU.X86) where …`. Its
-  `refine-*` lemmas no longer postulate; they consume `ax.reg-*-
-  correct` with the no-overflow side condition the producer carries.
-- `Once.Arith.Boundary` similarly takes the same axioms record,
-  propagating the no-overflow obligation up to `PreservesCCC`.
-- `EntryPointCCC` ultimately instantiates the record from one
-  top-level `postulate ax-x86 : AxiomsCPU.X86`. That postulate is
-  the entire trusted surface for the x86 backend.
-- A `{-# OPTIONS --safe #-}` pragma is added incrementally to modules
-  that no longer transitively depend on unwired postulates. The
-  global driver, the recogniser, the abstract-machine validity layer,
-  and the parameterised refinement/boundary all become `--safe`.
-- The plan's deliverable is a single command — `make agda-safe` —
-  that type-checks the entire `--safe` subtree without flags
-  swallowing postulates silently.
+- A new file `formal/Once/Arith/Backend/Bridge.agda` defines
+  `BackendBridge` as the generic interface (`--safe`).
+- `formal/Once/Arith/Backend/X86/Bridge.agda` is the real x86-64
+  instance: `concretise` and the 9 refinement lemmas are real
+  definitions / proofs against `X86-64.Semantics.execInstr`
+  (`--safe`).
+- `formal/Once/Arith/Backend/{X86-32,RiscV64}/Bridge.agda` postulate
+  their refinement fields. Not `--safe`. Future plans replace the
+  postulates with real proofs when those backends mature.
+- `Once.Arith.Backend.Correct` (renamed from `X86.Correct`) and
+  `Once.Arith.Boundary` become parameterised on `BackendBridge`
+  (`--safe`).
+- `Once.Compile` dispatches on the target tag to select the
+  appropriate bridge instance. Not `--safe` (imports stubs).
+- A make target `agda-safe` type-checks the safe subtree explicitly.
+- Future postulate migrations (`extensionality`, `funext`,
+  `generic-semI/M`) follow the same record-parameter pattern; each
+  shrinks the unsafe surface by one record at a time.
 
 ### Open questions deferred to plan 0.23
 
-- Exact wording of the no-overflow predicate: per-op
-  (`add-no-overflow : ℕ → ℕ → Set`) or global (`fits-in-64 : ℕ → Set`
-  applied at each operation)? Lean toward per-op for tighter proofs.
-- Whether `extensionality` (the longest-standing global postulate)
-  migrates to the same pattern in this plan or a follow-up. Lean
-  toward follow-up — keep this plan focused on the CPU bridge.
-- Decision on `M.⟦ Int ⟧` underlying type (ℕ vs ℤ). Independent of
-  the wiring decision; revisit during plan 0.23 Phase B.
+- Exact wording of the no-overflow predicate: `Set`-valued vs
+  `Bool`-valued (decidable). Decidable would let recognition
+  discharge trivially. Lean decidable; revisit Phase B.
+- `BackendBridge.State` universe level: `Set` vs `Set₁`. Each
+  target's `State` is `Set`; bundling them may push to `Set₁`.
+  Test in Phase A.
+- Whether stub backends route their postulates through the same
+  record or postulate directly. Brevity wins for stubs that nobody
+  currently uses; revisit per stub.
+- `M.⟦ Int ⟧` underlying type (ℕ vs ℤ). Independent of wiring;
+  revisit during Phase B if signed-arithmetic side conditions
+  prove unwieldy.
