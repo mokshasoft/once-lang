@@ -22,7 +22,10 @@
 module Once.Arith.SigOp.Builders where
 
 open import Data.Integer using (ℤ)
+import Data.Integer as ℤ
 open import Data.Nat using (ℕ)
+import Data.Nat as ℕ
+open import Data.Product using (_,_)
 open import Data.String using (String; _++_)
 open import Data.Sum using (_⊎_)
 open import Data.Unit using (⊤)
@@ -34,17 +37,59 @@ import Once.Semantics.Core ℤ as I
 import Once.Semantics.Core ℕ as M
 
 ------------------------------------------------------------------------
--- Postulated semantics (placeholders — 0.2.4.2 will make these definitional)
+-- Arithmetic semantics
+--
+-- Plan 0.20 (2026-05-27): the four arith ops we extract into blocks
+-- (add, sub, mul, neg) get their semI/semM definitionally. Recognition
+-- lifts these into `arith.block.<digest>` SigOps for blocked use, but
+-- per-op SigOps remain in the IR for cases recognition can't lift —
+-- those need real semantics too.
+--
+-- semM convention (matches `Once.Arith.SigOp.IntLit`):
+--   - `+` / `*` map to `ℕ._+_` / `ℕ._*_` directly.
+--   - `-` maps to `ℕ._∸_` (monus, truncated to 0). This is conservative
+--     and only accurate when `a ≥ b`. Honest ℕ semantics matching x86
+--     two's-complement is the I-arith-cleanup item.
+--   - `neg` on ℕ has no natural meaning; return `0` (consistent with
+--     `0 ∸ z = 0` for any `z : ℕ`).
+------------------------------------------------------------------------
+
+-- Binary arithmetic — Int * Int → Int
+add-semI : I.⟦ Int * Int ⟧ → I.⟦ Int ⟧
+add-semI (a , b) = a ℤ.+ b
+
+sub-semI : I.⟦ Int * Int ⟧ → I.⟦ Int ⟧
+sub-semI (a , b) = a ℤ.- b
+
+mul-semI : I.⟦ Int * Int ⟧ → I.⟦ Int ⟧
+mul-semI (a , b) = a ℤ.* b
+
+add-semM : M.⟦ Int * Int ⟧ → M.⟦ Int ⟧
+add-semM (a , b) = a ℕ.+ b
+
+sub-semM : M.⟦ Int * Int ⟧ → M.⟦ Int ⟧
+sub-semM (a , b) = a ℕ.∸ b
+
+mul-semM : M.⟦ Int * Int ⟧ → M.⟦ Int ⟧
+mul-semM (a , b) = a ℕ.* b
+
+-- Unary: Int → Int
+neg-semI : I.⟦ Int ⟧ → I.⟦ Int ⟧
+neg-semI z = ℤ.- z
+
+neg-semM : M.⟦ Int ⟧ → M.⟦ Int ⟧
+neg-semM _ = 0
+
+------------------------------------------------------------------------
+-- Postulated semantics (still placeholders — div/mod need a div-by-
+-- zero policy, comparisons need a Bool encoding decision, generic-sem
+-- is the unresolved-SigOp fallback).
 ------------------------------------------------------------------------
 
 postulate
-  -- Binary arithmetic: Int * Int → Int
-  add-semI sub-semI mul-semI div-semI mod-semI : I.⟦ Int * Int ⟧ → I.⟦ Int ⟧
-  add-semM sub-semM mul-semM div-semM mod-semM : M.⟦ Int * Int ⟧ → M.⟦ Int ⟧
-
-  -- Unary: Int → Int
-  neg-semI : I.⟦ Int ⟧ → I.⟦ Int ⟧
-  neg-semM : M.⟦ Int ⟧ → M.⟦ Int ⟧
+  -- Binary arithmetic with division-by-zero edge case still pending
+  div-semI mod-semI : I.⟦ Int * Int ⟧ → I.⟦ Int ⟧
+  div-semM mod-semM : M.⟦ Int * Int ⟧ → M.⟦ Int ⟧
 
   -- Comparisons: Int * Int → (Unit + Unit) ≡ Bool
   lt-semI le-semI gt-semI ge-semI eq-semI ne-semI : I.⟦ Int * Int ⟧ → I.⟦ Unit + Unit ⟧
