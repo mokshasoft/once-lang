@@ -24,12 +24,13 @@
 module Once.Arith.Machine.Compile where
 
 open import Data.Nat using (ℕ; zero; suc; _⊔_)
+open import Data.Integer using (ℤ)
 open import Data.List using (List; []; _∷_; _++_; [_])
 open import Data.Maybe using (Maybe; just; nothing)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.Arith.Machine.AbsState
-  using (ArithAbsState; InputShape; ⟦_⟧S; init; output-of)
+  using (ArithAbsState; InputShape; ⟦_⟧S; init; output-of; InputPath)
 open import Once.Arith.Machine.AbsInstr
   using (AbstractInstr; load-input; load-imm; add-rrr; sub-rrr; mul-rrr;
          neg-rr; spill; reload; move-to-out; run-abstract)
@@ -109,8 +110,34 @@ compile-abs e = compile-go 0 e ++ (move-to-out 0 ∷ [])
 -- value of `b`, then chain through `reload d 1` and `add-rrr`.
 -- Per [[scaffold-then-discharge]], the postulate ships now and the
 -- structural proof lands in a focused follow-up.
+--
+-- Structural scaffold (Plan 0.20 follow-up, 2026-05-27): the top-level
+-- `abs-validity` case-splits on `MArithIR` and dispatches to per-ctor
+-- postulates. Adding a new `MArithIR` constructor breaks coverage of
+-- the dispatcher, forcing the proof scaffold to be extended in lock-
+-- step with the operational layer. The per-ctor postulates remain the
+-- open obligations.
 
 postulate
-  abs-validity :
-    ∀ {sh} (e : MArithIR sh) (env : ⟦ sh ⟧S) →
-    output-of (run-abstract (compile-abs e) (init env)) ≡ just (eval-arith e env)
+  abs-validity-alit   : ∀ {sh} (z : ℤ)        (env : ⟦ sh ⟧S) →
+    output-of (run-abstract (compile-abs {sh} (alit z))   (init env)) ≡ just (eval-arith {sh} (alit z)   env)
+  abs-validity-ainput : ∀ {sh} (p : InputPath) (env : ⟦ sh ⟧S) →
+    output-of (run-abstract (compile-abs {sh} (ainput p)) (init env)) ≡ just (eval-arith {sh} (ainput p) env)
+  abs-validity-aadd   : ∀ {sh} (a b : MArithIR sh)         (env : ⟦ sh ⟧S) →
+    output-of (run-abstract (compile-abs (aadd a b))      (init env)) ≡ just (eval-arith (aadd a b)      env)
+  abs-validity-asub   : ∀ {sh} (a b : MArithIR sh)         (env : ⟦ sh ⟧S) →
+    output-of (run-abstract (compile-abs (asub a b))      (init env)) ≡ just (eval-arith (asub a b)      env)
+  abs-validity-amul   : ∀ {sh} (a b : MArithIR sh)         (env : ⟦ sh ⟧S) →
+    output-of (run-abstract (compile-abs (amul a b))      (init env)) ≡ just (eval-arith (amul a b)      env)
+  abs-validity-aneg   : ∀ {sh} (a   : MArithIR sh)         (env : ⟦ sh ⟧S) →
+    output-of (run-abstract (compile-abs (aneg a))        (init env)) ≡ just (eval-arith (aneg a)        env)
+
+abs-validity :
+  ∀ {sh} (e : MArithIR sh) (env : ⟦ sh ⟧S) →
+  output-of (run-abstract (compile-abs e) (init env)) ≡ just (eval-arith e env)
+abs-validity (alit z)    env = abs-validity-alit z env
+abs-validity (ainput p)  env = abs-validity-ainput p env
+abs-validity (aadd a b)  env = abs-validity-aadd a b env
+abs-validity (asub a b)  env = abs-validity-asub a b env
+abs-validity (amul a b)  env = abs-validity-amul a b env
+abs-validity (aneg a)    env = abs-validity-aneg a env
