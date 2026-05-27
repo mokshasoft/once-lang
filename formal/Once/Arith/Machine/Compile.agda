@@ -30,7 +30,7 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.Arith.Machine.AbsState
-  using (ArithAbsState; InputShape; ⟦_⟧S; init; output-of; InputPath)
+  using (ArithAbsState; InputShape; ⟦_⟧S; init; output-of; InputPath; project)
 open import Once.Arith.Machine.AbsInstr
   using (AbstractInstr; load-input; load-imm; add-rrr; sub-rrr; mul-rrr;
          neg-rr; spill; reload; move-to-out; run-abstract)
@@ -118,11 +118,30 @@ compile-abs e = compile-go 0 e ++ (move-to-out 0 ∷ [])
 -- step with the operational layer. The per-ctor postulates remain the
 -- open obligations.
 
+-- | `alit z`: `compile-abs` produces `load-imm z 0 ∷ move-to-out 0 ∷ []`.
+-- Running that sets reg 0 to `just z`, then `output` to `reg 0`. The
+-- chain `(empty-store [ 0 ↦ just z ]) [ 0 ]` reduces to `just z` by
+-- definitional `0 ≟ 0` on the underlying `Store`, which itself
+-- matches `just (eval-arith (alit z) env) = just z`. Pure `refl`.
+abs-validity-alit : ∀ {sh} (z : ℤ) (env : ⟦ sh ⟧S) →
+  output-of (run-abstract (compile-abs {sh} (alit z)) (init env)) ≡ just (eval-arith {sh} (alit z) env)
+abs-validity-alit z env = refl
+
+-- | `ainput p`: `compile-abs` produces `load-input p 0 ∷ move-to-out 0 ∷ []`.
+-- Running it sets reg 0 to `just (maybe-zero (project sh p env))`,
+-- which is exactly the value `eval-arith (ainput p) env` reduces to
+-- (both branches of the `project` `Maybe` collapse the same way:
+-- `maybe-zero (just z) = z = eval-arith` for in-range paths, and
+-- `maybe-zero nothing = + 0 = eval-arith` for the fallback). The
+-- proof case-splits on `project sh p env` to align the two sides;
+-- both branches close by `refl`.
+abs-validity-ainput : ∀ {sh} (p : InputPath) (env : ⟦ sh ⟧S) →
+  output-of (run-abstract (compile-abs {sh} (ainput p)) (init env)) ≡ just (eval-arith {sh} (ainput p) env)
+abs-validity-ainput {sh} p env with project sh p env
+... | just _  = refl
+... | nothing = refl
+
 postulate
-  abs-validity-alit   : ∀ {sh} (z : ℤ)        (env : ⟦ sh ⟧S) →
-    output-of (run-abstract (compile-abs {sh} (alit z))   (init env)) ≡ just (eval-arith {sh} (alit z)   env)
-  abs-validity-ainput : ∀ {sh} (p : InputPath) (env : ⟦ sh ⟧S) →
-    output-of (run-abstract (compile-abs {sh} (ainput p)) (init env)) ≡ just (eval-arith {sh} (ainput p) env)
   abs-validity-aadd   : ∀ {sh} (a b : MArithIR sh)         (env : ⟦ sh ⟧S) →
     output-of (run-abstract (compile-abs (aadd a b))      (init env)) ≡ just (eval-arith (aadd a b)      env)
   abs-validity-asub   : ∀ {sh} (a b : MArithIR sh)         (env : ⟦ sh ⟧S) →
