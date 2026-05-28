@@ -3696,134 +3696,212 @@ separately.
 
 ---
 
-## D054: Parameterised CPU Semantics — Wired, Not Imported (For `--safe`)
+## D054: `Int` Means the CPU's `add` (Modular `Word`); Mathematical Integers Are a Separate Future `BigInt`
 
-**Plan:** 0.23 (Parameterised CPU bridge for `--safe` compile).
-**Date:** 2026-05-27.
+**Date:** 2026-05-27, revised 2026-05-28.
+**Status:** Accepted.
+
+> Revised 2026-05-28: this decision originally framed the choice as a
+> proof-mechanism question. That was solving a symptom. The underlying
+> question is *what Once's arithmetic means* — the numeric model below.
+> The earlier ℤ-vs-ℕ-vs-`Fin` framing and "programmer-managed overflow"
+> are superseded by it.
+
+### Context
+
+Once's arithmetic needs a denotation. The codebase reflexively used
+Agda's `ℤ` as the meaning of `Int` (`eval-arith`, `semI` are all ℤ)
+while compiling to fixed-width CPU registers, then tried to prove the
+two equal. That straddle is the *root* of the no-overflow side
+conditions, the ℕ-with-monus placeholder, and the
+ℤ↔Word encode/decode mess — not bad luck in the proofs.
+
+The governing fact (arithmetic, not effort): **representation follows
+the promise.**
+
+- Mathematical `+` (unbounded) ⟺ a *growable* representation (bignum).
+- A *fixed-width* representation ⟹ *modular* semantics, `(x+y) mod 2ⁿ`.
+
+There is no third option. You cannot prove fixed-width `add` equals
+unbounded ℤ `+`, because they are different functions (`255 + 1 = 0`
+in a byte, `= 256` in ℤ). The no-overflow precondition is exactly the
+narrow regime where the impossible accidentally holds.
+
+What real verified compilers do — each type's representation matches
+its promise:
+
+- **C / CompCert:** `unsigned` is *defined* modular by the C standard;
+  the runtime value type **is** the modular word. ℤ appears only as
+  scaffolding inside the definition of the modular op (`repr (x+y)`),
+  never as a promise to the programmer.
+- **CakeML:** SML `int` is arbitrary-precision, implemented as
+  **bignums** and proven against that growable representation — not
+  against a single `add`. CakeML *also* has `Word64`/`Word8`, which
+  are modular. Two promises, two representations.
+
+### Decision
+
+**Once's `Int` means exactly "whatever the target CPU's `add` / `sub`
+/ `mul` computes" — modular arithmetic on an n-bit `Word`, where n is
+the target word size. Its denotation is `Word`, not ℤ.**
+
+Wraparound (`255 + 1 = 0`) is *correct, defined* Once semantics — not
+a bug, not undefined behaviour, and not something the programmer or
+the compiler must prove absent. This is the fixed-width-modular camp
+(C, Go, Rust, WASM), as opposed to arbitrary-precision.
+
+**`Int` is signed.** `add` / `sub` / `mul` are bit-identical for
+signed and unsigned under two's complement, so the choice only bites
+at the sign-sensitive ops — and there `Int` takes the **signed**
+instruction: division/remainder → `idiv`, comparison/branch → `jl` /
+`jg` (signed), right-shift → `sar` (arithmetic). Rationale: signed
+matches the `a < b` intuition and avoids unsigned's foot-guns (the
+cliff at zero, `0 - 1` = huge; silent signed↔unsigned comparison
+flips). Java made the same call deliberately.
+
+**Other number types are separate, opt-in, deferred types over the
+same `Word`** — added later, if a real need appears, by the same
+staged discussion this decision came from:
+
+- **`UInt`** — unsigned. Shares `Word` and the `add`/`sub`/`mul`
+  opcodes; differs only by emitting `div` / `jb` / `shr` at the
+  sign-sensitive ops. No new representation work.
+- **`BigInt`** — mathematical (unbounded) integers, with a ℤ
+  denotation over a growable bignum representation (CakeML's road).
+  Real runtime machinery; most programs never need it.
+
+The hard rule for any future type: **no implicit conversion between
+them.** That is what neutralises the actual harm in mixing signed /
+unsigned (and in silently widening to bignum).
+
+**Crucial staging constraint — separate the two number-worlds *by
+type* from day one.** ℤ must stop being the meaning of the fixed `Int`
+*now*, even though `BigInt` does not exist yet. The tempting middle —
+"leave ℤ as `Int`'s meaning for now, add bignum later" — does **not**
+stage cleanly: it keeps the impossible promise on the fixed type and
+preserves every no-overflow hole. The existing ℤ-based `eval-arith` /
+`semI` are not thrown away; they become the *parked spec* of the
+future `BigInt` type.
+
+### Rationale
+
+- **It makes correctness statable and near-trivial.** Source `+` and
+  machine `add` become the *same* operation by definition, so the arith
+  refinement obligations collapse toward `refl` instead of carrying
+  no-overflow preconditions. There is nothing to assume away.
+- **The semantics becomes unconditionally faithful to silicon.**
+  Modeling wraparound means `execInstr (add ...)` is just true,
+  including on overflow — no trusted "within the no-overflow regime"
+  caveat hiding in a header comment.
+- **It is the mainstream, validated choice.** C/CompCert, Go, Rust,
+  WASM all define fixed-width `+` as modular. CakeML shows the other
+  fork (math `+` ⇒ bignum). We are picking a fork deliberately, per
+  type, not straddling.
+- **It defers cost where cost is rare.** Arbitrary-precision integers
+  carry real runtime machinery (heap-allocated, growing). Few Once
+  programs need them; pay for them only when `BigInt` ships.
+
+### Consequences
+
+- `Int`'s machine-path denotation (`eval-arith` / `semI`) is
+  redefined over `Word` (modular). The ℤ versions move *out* of the
+  fixed path and are retained as the seed spec for a future `BigInt`.
+- The no-overflow side conditions, the ℕ-with-monus placeholder, and
+  the ℤ↔Word encode/decode bridge all **disappear** from the fixed
+  path.
+- The earlier ℤ-vs-ℕ-vs-`Fin` question and the "programmer-managed
+  overflow" framing are superseded: the answer is "neither — `Word`,
+  defined identically at source and machine."
+- **Language-spec obligation:** document that Once `Int` arithmetic
+  wraps (modular), so it is a stated promise, not a surprise.
+- `BigInt` is future work: new type, ℤ denotation, bignum runtime
+  representation, proven against the growable representation (not
+  against a CPU `add`).
+
+### Open questions
+
+None. (Division by zero / signed-overflow behaviour is settled in
+D055.)
+
+(Forward pointers, not open questions of this decision: when `UInt`
+and `BigInt` land, and what user-facing types select them over the
+default signed `Int`.)
+
+## D055: Division and Remainder Are Total — RISC-V Semantics (No Trap)
+
+**Date:** 2026-05-28.
 **Status:** Accepted.
 
 ### Context
 
-Plan 0.20's machine-int convention is ℕ-with-monus (`a ∸ b`), with
-unsigned subtraction truncated to 0 and negation `_ ↦ 0`. This is a
-placeholder that matches neither x86's two's-complement reality nor
-standard math. The honest fix needs a faithful bridge from the arith
-abstract machine (ℤ-typed registers) to each target's register state
-(ℕ-typed `Word`).
+D054 fixed `Int` as a signed, modular `Word`, with `+` / `-` / `*`
+**total** (wraparound is a defined value, never a fault). Division is
+the one arithmetic op where the target silicon *disagrees*, so it
+can't simply "be the CPU":
 
-Three options were considered:
+- **x86:** `idiv` **traps** (`#DE` → SIGFPE) on both `a / 0` *and*
+  signed overflow `INT_MIN / -1`. No result value — a control-flow
+  fault.
+- **RISC-V:** by design has **no arithmetic traps**. Division is total
+  and returns defined sentinel values (below). The check is left to
+  software, where it's a single elidable branch.
+- **ARM:** also returns a defined value (no trap).
 
-1. Encode 64-bit integers as `Fin 2^64`. Type-checker tax on every
-   literal; large refactor across all `M.⟦ Int ⟧` consumers.
-2. Programmer-managed overflow: machine layer stays ℕ; arithmetic
-   operations carry no-overflow side conditions that propagate from
-   the source. Matches CompCert / CakeML / seL4.
-3. Status quo (ℕ-monus + postulates everywhere).
-
-(2) was selected. Sub-decision: WHERE the supporting postulates live.
-
-- **2a (Imported).** A top-level `postulate` block in the
-  semantics layer. Every downstream consumer transitively imports
-  postulates. `compile` cannot be type-checked with `--safe`.
-- **2b (Wired).** A `BackendBridge` record. Every module that needs
-  CPU-correctness facts is parameterised over the record. Each
-  target supplies its own instance.
-
-### Key observation
-
-The per-target CPU semantics — `Once.CCC.Target.{X86-64,X86-32,
-RiscV64}.Semantics` — **already exist and are real**, defined
-clause-by-clause against ISA references (CompCert / Sail convention).
-There is no missing CPU semantics module. What's missing is the
-**bridge** from the arith abstract machine to those semantics:
-`concretise : ArithAbsState → State`, the ℤ↔Word encoding, and the
-per-op refinement statements.
-
-For x86-64, the refinement statements should be **real lemmas** (the
-abstract `step (add-rrr ...)` and the concrete `execInstr (add ...)`
-both reduce to ℕ addition; the bridge is a structural proof).
-
-For the stub backends (x86-32 / RiscV64, whose codegen returns
-`notImplemented` per Plan 0.20's scope decision), the refinement
-fields are postulated in their own bridge modules until those
-backends ship real codegen.
+RISC-V is the modern clean-slate design and the one consistent with
+D054's philosophy: arithmetic ops are pure, value-returning, with no
+control-flow side effects.
 
 ### Decision
 
-**Adopt option 2b (wired) with target-parameterised bridges.** The
-CPU bridge is implemented as `record BackendBridge` whose fields
-include the target's `State`, the bridge `concretise` function, the
-per-target `exec-target` (re-exported from the existing semantics
-module), the no-overflow predicates, and the 9 per-op refinement
-statements. Each target supplies its own `Bridge.agda` instance.
-For x86-64 the bridge's refinement fields are real proofs; for
-stubs they're postulated **inside that target's own Bridge module**.
+**Once's `/` and `%` are total functions over `Word`, following
+RISC-V's defined results. No trap, no fault, no partiality.**
 
-This is the **first** axiom-shaped artifact in the codebase to use
-the wired-not-imported pattern. The arith pipeline body
-(`Once.Arith.{Machine,Backend.Correct,Boundary}`) becomes generic
-in `BackendBridge` and `--safe`-clean. Only the per-target
-stub-bridge modules carry postulates; only the driver
-(`Once.Compile`) is non-safe (because it imports stub bridges to
-dispatch on target).
+For signed `Int`:
+
+- `a / 0` = `-1` (all-ones); `a % 0` = `a`. This keeps the division
+  identity `a = (a / b) * b + (a % b)` true even at `b = 0`
+  (`(-1)*0 + a = a`).
+- `INT_MIN / -1` = `INT_MIN`; `INT_MIN % -1` = `0`. (The quotient
+  wraps, matching the `*` wraparound convention.)
+
+Division therefore has the *same shape* as `+`/`-`/`*`: a defined
+value for every input. Code that wants to *detect* a zero divisor does
+so explicitly (test the divisor, or recognise the sentinel), exactly
+as RISC-V software does.
+
+### Backend obligation
+
+- **RISC-V:** native — emit `div` / `rem` directly; behaviour matches
+  by spec.
+- **x86 / ARM (trapping `idiv`):** emit a guard (compare divisor /
+  detect the overflow case, branch) that *produces the RISC-V-defined
+  value* instead of executing the trapping instruction. The guard may
+  be elided wherever the compiler can prove the divisor is nonzero and
+  the operands aren't the `INT_MIN / -1` case.
+
+No Once-compiled program ever raises `#DE` / SIGFPE.
 
 ### Rationale
 
-- **No new CPU semantics required.** Per-target `Semantics.agda`
-  modules already exist and are auditable. The plan does not add a
-  parallel CPU semantics layer; it wires the arith abstract machine
-  into the existing ones.
-- **Multi-target by construction.** The compiler compiles to x86-64,
-  x86-32, and RiscV64. The arith pipeline must be generic over the
-  target choice; a record-parameter is the cleanest mechanism.
-- **Programmer-managed overflow is the right abstraction.** Encoding
-  every register exactly (`Fin 2^64`) is a tax most users won't pay.
-  Programs that don't overflow get short, definitional proofs;
-  programs that need wrap-around live outside the safe subset.
-- **Wired beats imported because of `--safe`.** Imported postulates
-  pollute every module transitively. Wiring them into a record
-  localises them to a single dependency-injection point. `--safe`
-  becomes a real invariant for the arith pipeline body.
-- **x86-64 needs no postulates at all.** The existing
-  `X86-64.Semantics.execInstr` is real code; per-op refinement
-  becomes a real proof. The x86-64 `Bridge.agda` is `--safe`-clean
-  on its own.
-- **Stubs honestly postulate.** x86-32 / RiscV64 don't have working
-  codegen. Postulating their bridge correctness in their own files,
-  outside the safe subtree, accurately reflects that state.
+- **Consistency with D054.** `+`/`-`/`*` are total value-returning
+  ops; division becomes one too. *All* Once arithmetic is then pure —
+  no instruction has a control-flow side effect. That is precisely the
+  RISC-V principle.
+- **Portability.** One uniform semantics across every target, instead
+  of "traps on x86, returns a value on RISC-V." The meaning of `a / 0`
+  doesn't depend on which backend you compiled with.
+- **Principled source.** RISC-V's choice preserves the div/rem
+  identity, uses detectable sentinels, and keeps the cost (a branch)
+  in software and elidable.
+- **Cost lands only where the hardware forces it.** Trapping targets
+  pay for a guard; RISC-V pays nothing; everyone gets the same answer.
 
 ### Consequences
 
-- A new file `formal/Once/Arith/Backend/Bridge.agda` defines
-  `BackendBridge` as the generic interface (`--safe`).
-- `formal/Once/Arith/Backend/X86/Bridge.agda` is the real x86-64
-  instance: `concretise` and the 9 refinement lemmas are real
-  definitions / proofs against `X86-64.Semantics.execInstr`
-  (`--safe`).
-- `formal/Once/Arith/Backend/{X86-32,RiscV64}/Bridge.agda` postulate
-  their refinement fields. Not `--safe`. Future plans replace the
-  postulates with real proofs when those backends mature.
-- `Once.Arith.Backend.Correct` (renamed from `X86.Correct`) and
-  `Once.Arith.Boundary` become parameterised on `BackendBridge`
-  (`--safe`).
-- `Once.Compile` dispatches on the target tag to select the
-  appropriate bridge instance. Not `--safe` (imports stubs).
-- A make target `agda-safe` type-checks the safe subtree explicitly.
-- Future postulate migrations (`extensionality`, `funext`,
-  `generic-semI/M`) follow the same record-parameter pattern; each
-  shrinks the unsafe surface by one record at a time.
-
-### Open questions deferred to plan 0.23
-
-- Exact wording of the no-overflow predicate: `Set`-valued vs
-  `Bool`-valued (decidable). Decidable would let recognition
-  discharge trivially. Lean decidable; revisit Phase B.
-- `BackendBridge.State` universe level: `Set` vs `Set₁`. Each
-  target's `State` is `Set`; bundling them may push to `Set₁`.
-  Test in Phase A.
-- Whether stub backends route their postulates through the same
-  record or postulate directly. Brevity wins for stubs that nobody
-  currently uses; revisit per stub.
-- `M.⟦ Int ⟧` underlying type (ℕ vs ℤ). Independent of wiring;
-  revisit during Phase B if signed-arithmetic side conditions
-  prove unwieldy.
+- The `/` and `%` denotations are total over `Word` — no partial
+  function, no `SigOp` fault event for division.
+- x86 / ARM backends gain a small div-guard codegen step; RISC-V emits
+  the bare instruction.
+- When `UInt` lands (D054), unsigned `/` `%` follow RISC-V's unsigned
+  definitions by the same rule (`a / 0` = all-ones = `2ⁿ-1`,
+  `a % 0` = `a`; no signed-overflow special case).
