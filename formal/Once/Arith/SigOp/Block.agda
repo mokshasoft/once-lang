@@ -11,9 +11,8 @@
 -- single opaque SigOp. It carries
 --   - name = "arith.block." ++ digest of the recognised MArithIR
 --   - semI = eval-arith body (lifted from ⟦sh⟧S to ⟦shape-as-type sh⟧)
---   - semM = postulated for now (matches `Once.Arith.SigOp.Builders`
---           convention; the I-arith-cleanup item lands definitional
---           bodies once the I/M evaluator split lands).
+--   - semM = the definitional modular-`Word` evaluator (D054); the
+--           machine layer denotes `Int` as the CPU's `add`.
 --
 -- The Provider recognises any SigOp whose name starts with
 -- `"arith.block."` and discharges its `Contract` via the same
@@ -42,6 +41,8 @@ open import Once.Arith.Machine.AbsState
 open import Once.Arith.Machine.IR
   using (MArithIR; alit; ainput; aadd; asub; amul; aneg;
          eval-arith; shape-as-type; ArithBlock; mk-block)
+import Once.Word as OnceWord
+module W = OnceWord.Word64
 
 import Once.Semantics.Core ℤ as I
 import Once.Semantics.Core ℕ as M
@@ -113,42 +114,48 @@ toShape-I (shape-pair l r) (x , y) = toShape-I l x , toShape-I r y
 -- SigOpInfo family
 ------------------------------------------------------------------------
 
--- | Machine-level semantics for the block.
+-- | Machine-level semantics for the block (D054).
 --
--- The machine layer uses `ℕ` for `⟦ Int ⟧`, so a definitional
--- machine-level evaluator would need an ℕ-based reinterpretation of
--- subtraction / negation (modular arithmetic). Per the existing
--- `Once.Arith.SigOp.Builders` convention this is postulated; the
--- I-arith-cleanup item is to write a definitional ℕ-eval that
--- matches the x86 register-level reality.
+-- The machine layer denotes `Int` as a modular `Word` (= the CPU's
+-- `add`), so `block-semM` is the definitional `Word` evaluator,
+-- mirroring `eval-arith` (the ℤ spec) op-for-op with the modular
+-- operations from `Once.Arith.Word`. No postulates, no no-overflow
+-- side condition: wraparound is the defined meaning.
 --
--- Structural scaffold (Plan 0.20 follow-up, 2026-05-27): the top-
--- level `block-semM` case-splits on `MArithIR` and dispatches to a
--- per-ctor postulate. Adding a new `MArithIR` constructor breaks
--- coverage here, forcing a new postulate (and a new dispatch case)
--- in lock-step with the operational layer.
-postulate
-  block-semM-alit   : ∀ {sh} → ℤ          → M.⟦ shape-as-type sh ⟧ → M.⟦ Int ⟧
-  block-semM-ainput : ∀ {sh} → InputPath  → M.⟦ shape-as-type sh ⟧ → M.⟦ Int ⟧
-  block-semM-aadd   : ∀ {sh} → MArithIR sh → MArithIR sh → M.⟦ shape-as-type sh ⟧ → M.⟦ Int ⟧
-  block-semM-asub   : ∀ {sh} → MArithIR sh → MArithIR sh → M.⟦ shape-as-type sh ⟧ → M.⟦ Int ⟧
-  block-semM-amul   : ∀ {sh} → MArithIR sh → MArithIR sh → M.⟦ shape-as-type sh ⟧ → M.⟦ Int ⟧
-  block-semM-aneg   : ∀ {sh} → MArithIR sh                → M.⟦ shape-as-type sh ⟧ → M.⟦ Int ⟧
+-- `M.⟦ Int ⟧` is `ℕ` (machine `IntRep`), and `Word` is `ℕ`, so the
+-- result carrier matches definitionally.
+
+-- | Project a `Word` leaf out of a machine-typed input tree. Parallel
+-- to `project` (AbsState) but over `M.⟦ shape-as-type sh ⟧` rather
+-- than `⟦ sh ⟧S`.
+projectM : ∀ (sh : InputShape) → InputPath → M.⟦ shape-as-type sh ⟧ → Maybe W.Word
+projectM shape-unit       _         _       = nothing
+projectM shape-int        []        z       = just z
+projectM shape-int        (_ ∷ _)   _       = nothing
+projectM (shape-pair _ _) []        _       = nothing
+projectM (shape-pair l _) (Fst ∷ p) (x , _) = projectM l p x
+projectM (shape-pair _ r) (Snd ∷ p) (_ , y) = projectM r p y
+
+-- | Default-zero for an out-of-shape path (mirrors `eval-arith`'s
+-- `+ 0` rule; well-formed IRs never hit it).
+maybe-zeroM : Maybe W.Word → W.Word
+maybe-zeroM (just w) = w
+maybe-zeroM nothing  = 0
 
 block-semM : ∀ {sh} → MArithIR sh → M.⟦ shape-as-type sh ⟧ → M.⟦ Int ⟧
-block-semM (alit z)    = block-semM-alit z
-block-semM (ainput p)  = block-semM-ainput p
-block-semM (aadd a b)  = block-semM-aadd a b
-block-semM (asub a b)  = block-semM-asub a b
-block-semM (amul a b)  = block-semM-amul a b
-block-semM (aneg a)    = block-semM-aneg a
+block-semM (alit z)        _   = W.fromℤ z
+block-semM {sh} (ainput p) inp = maybe-zeroM (projectM sh p inp)
+block-semM (aadd a b)      inp = block-semM a inp W.⊕ block-semM b inp
+block-semM (asub a b)      inp = block-semM a inp W.⊖ block-semM b inp
+block-semM (amul a b)      inp = block-semM a inp W.⊗ block-semM b inp
+block-semM (aneg a)        inp = W.⊝ block-semM a inp
 
 -- | The block's `SigOpInfo`.
 --
 -- `semI` is definitional (`eval-arith` lifted through `toShape-I`),
 -- so any downstream evaluator that reduces through proof-level
--- semantics gets the arith result directly. `semM` is postulated as
--- above.
+-- semantics gets the arith result directly. `semM` is the
+-- definitional modular-`Word` evaluator (`block-semM`).
 block-info : ∀ {sh} → MArithIR sh → SigOpInfo (shape-as-type sh) Int
 block-info {sh} e = mk-info
   (block-name e)
