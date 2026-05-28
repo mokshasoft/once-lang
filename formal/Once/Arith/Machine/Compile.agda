@@ -25,7 +25,7 @@ module Once.Arith.Machine.Compile where
 
 open import Data.Nat using (ℕ; zero; suc; _⊔_; _<_; s≤s; z≤n)
 open import Data.Nat.Properties using (<⇒≢; ≤-refl; m≤n⇒m≤1+n)
-open import Data.Integer using (ℤ; _+_; _-_; _*_; -_)
+open import Data.Integer using (ℤ; +_)
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
@@ -40,7 +40,9 @@ open import Once.Arith.Machine.AbsInstr
          neg-rr; spill; reload; move-to-out; run-abstract; step;
          maybe-zero; bin-op; un-op)
 open import Once.Arith.Machine.IR
-  using (MArithIR; alit; ainput; aadd; asub; amul; aneg; eval-arith)
+  using (MArithIR; alit; ainput; aadd; asub; amul; aneg; eval-arith; eval-arith-W)
+open import Once.Word using (module Word64)
+open Word64 using (fromℤ; _⊕_; _⊖_; _⊗_; ⊝_)
 open ArithAbsState
 
 ------------------------------------------------------------------------
@@ -136,7 +138,7 @@ compile-abs e = compile-go 0 e ++ (move-to-out 0 ∷ [])
 record CompileGoInv {sh} (d : ℕ) (e : MArithIR sh) (s : ArithAbsState sh) : Set where
   field
     reg0      : regs (run-abstract (compile-go d e) s) [ 0 ]
-                  ≡ just (eval-arith e (input s))
+                  ≡ just (eval-arith-W e (input s))
     scratch≤  : ∀ i → i < d →
                 scratch (run-abstract (compile-go d e) s) [ i ]
                   ≡ scratch s [ i ]
@@ -153,13 +155,14 @@ run-abstract-app : ∀ {sh} (xs ys : List AbstractInstr) (s : ArithAbsState sh) 
 run-abstract-app []       ys s = refl
 run-abstract-app (i ∷ is) ys s = run-abstract-app is ys (step i s)
 
--- | Lemma: `eval-arith (ainput p) inp ≡ maybe-zero (project sh p inp)`.
--- Both definitions case-split on `project sh p inp` the same way, so
--- a single `with` aligns them.
-eval-arith-ainput :
+-- | Lemma: `eval-arith-W (ainput p) inp ≡ fromℤ (maybe-zero (project sh p inp))`.
+-- The abstract machine's `load-input` lands `fromℤ (maybe-zero (project …))`
+-- in the register; `eval-arith-W (ainput p)` case-splits on `project`
+-- the same way, so a single `with` aligns them.
+eval-arith-W-ainput :
   ∀ {sh} (p : InputPath) (inp : ⟦ sh ⟧S) →
-  eval-arith {sh} (ainput p) inp ≡ maybe-zero (project sh p inp)
-eval-arith-ainput {sh} p inp with project sh p inp
+  eval-arith-W {sh} (ainput p) inp ≡ fromℤ (maybe-zero (project sh p inp))
+eval-arith-W-ainput {sh} p inp with project sh p inp
 ... | just _  = refl
 ... | nothing = refl
 
@@ -167,7 +170,7 @@ eval-arith-ainput {sh} p inp with project sh p inp
 compile-go-correct-ainput : ∀ {sh} (d : ℕ) (p : InputPath) (s : ArithAbsState sh) →
   CompileGoInv d (ainput p) s
 compile-go-correct-ainput {sh} d p s = record
-  { reg0      = cong just (sym (eval-arith-ainput p (input s)))
+  { reg0      = cong just (sym (eval-arith-W-ainput p (input s)))
   ; scratch≤  = λ _ _ → refl
   ; input-eq  = refl
   ; output-eq = refl
@@ -192,7 +195,7 @@ aneg-correct : ∀ {sh} (d : ℕ) (a : MArithIR sh) (s : ArithAbsState sh) →
   CompileGoInv d (aneg a) s
 aneg-correct {sh} d a s = record
   { reg0      = trans (cong (λ x → regs x [ 0 ]) bridge)
-                      (cong (un-op (-_)) (reg0 ih))
+                      (cong (un-op (⊝_)) (reg0 ih))
   ; scratch≤  = λ i lt → trans (cong (λ x → scratch x [ i ]) bridge)
                                (scratch≤ ih i lt)
   ; input-eq  = trans (cong input bridge) (input-eq ih)
@@ -213,7 +216,7 @@ aadd-correct : ∀ {sh} (d : ℕ) (a b : MArithIR sh) (s : ArithAbsState sh) →
   CompileGoInv d (aadd a b) s
 aadd-correct {sh} d a b s = record
   { reg0      = trans (cong (λ x → regs x [ 0 ]) bridge)
-                      (cong₂ (bin-op _+_)
+                      (cong₂ (bin-op _⊕_)
                              (trans scratch-s3-d (reg0 ih-a))
                              regs-s3-0)
   ; scratch≤  = λ i lt → trans (cong (λ x → scratch x [ i ]) bridge)
@@ -246,9 +249,9 @@ aadd-correct {sh} d a b s = record
     scratch-s3-d = trans (scratch≤ ih-b d ≤-refl)
                          (store-write-same (scratch s1) d (regs s1 [ 0 ]))
 
-    regs-s3-0 : regs s3 [ 0 ] ≡ just (eval-arith b (input s))
+    regs-s3-0 : regs s3 [ 0 ] ≡ just (eval-arith-W b (input s))
     regs-s3-0 = trans (reg0 ih-b)
-                      (cong (λ x → just (eval-arith b x)) (input-eq ih-a))
+                      (cong (λ x → just (eval-arith-W b x)) (input-eq ih-a))
 
 -- | `asub a b`: same skeleton as aadd, with `sub-rrr 0 1 0` so the
 -- result is `regs[1] − regs[0]` = `a − b`.
@@ -256,7 +259,7 @@ asub-correct : ∀ {sh} (d : ℕ) (a b : MArithIR sh) (s : ArithAbsState sh) →
   CompileGoInv d (asub a b) s
 asub-correct {sh} d a b s = record
   { reg0      = trans (cong (λ x → regs x [ 0 ]) bridge)
-                      (cong₂ (bin-op _-_)
+                      (cong₂ (bin-op _⊖_)
                              (trans scratch-s3-d (reg0 ih-a))
                              regs-s3-0)
   ; scratch≤  = λ i lt → trans (cong (λ x → scratch x [ i ]) bridge)
@@ -289,16 +292,16 @@ asub-correct {sh} d a b s = record
     scratch-s3-d = trans (scratch≤ ih-b d ≤-refl)
                          (store-write-same (scratch s1) d (regs s1 [ 0 ]))
 
-    regs-s3-0 : regs s3 [ 0 ] ≡ just (eval-arith b (input s))
+    regs-s3-0 : regs s3 [ 0 ] ≡ just (eval-arith-W b (input s))
     regs-s3-0 = trans (reg0 ih-b)
-                      (cong (λ x → just (eval-arith b x)) (input-eq ih-a))
+                      (cong (λ x → just (eval-arith-W b x)) (input-eq ih-a))
 
 -- | `amul a b`: same skeleton as aadd, with `mul-rrr 0 1 0`.
 amul-correct : ∀ {sh} (d : ℕ) (a b : MArithIR sh) (s : ArithAbsState sh) →
   CompileGoInv d (amul a b) s
 amul-correct {sh} d a b s = record
   { reg0      = trans (cong (λ x → regs x [ 0 ]) bridge)
-                      (cong₂ (bin-op _*_)
+                      (cong₂ (bin-op _⊗_)
                              (trans scratch-s3-d (reg0 ih-a))
                              regs-s3-0)
   ; scratch≤  = λ i lt → trans (cong (λ x → scratch x [ i ]) bridge)
@@ -331,9 +334,9 @@ amul-correct {sh} d a b s = record
     scratch-s3-d = trans (scratch≤ ih-b d ≤-refl)
                          (store-write-same (scratch s1) d (regs s1 [ 0 ]))
 
-    regs-s3-0 : regs s3 [ 0 ] ≡ just (eval-arith b (input s))
+    regs-s3-0 : regs s3 [ 0 ] ≡ just (eval-arith-W b (input s))
     regs-s3-0 = trans (reg0 ih-b)
-                      (cong (λ x → just (eval-arith b x)) (input-eq ih-a))
+                      (cong (λ x → just (eval-arith-W b x)) (input-eq ih-a))
 
 -- | The main inductive lemma — dispatcher.
 compile-go-correct d (alit z) s = record
@@ -362,7 +365,7 @@ compile-go-correct d (amul a b) s = amul-correct d a b s
 -- | Helper: derive `abs-validity` for any `e` from `compile-go-correct`.
 private
   abs-validity-from-inv : ∀ {sh} (e : MArithIR sh) (env : ⟦ sh ⟧S) →
-    output-of (run-abstract (compile-abs e) (init env)) ≡ just (eval-arith e env)
+    output-of (run-abstract (compile-abs e) (init env)) ≡ just (eval-arith-W e env)
   abs-validity-from-inv {sh} e env =
     trans (cong output-of (run-abstract-app (compile-go 0 e) (move-to-out 0 ∷ []) (init env)))
           (reg0 (compile-go-correct 0 e (init env)))
@@ -375,32 +378,32 @@ private
 -- inherits the discharge automatically.
 
 abs-validity-alit : ∀ {sh} (z : ℤ) (env : ⟦ sh ⟧S) →
-  output-of (run-abstract (compile-abs {sh} (alit z)) (init env)) ≡ just (eval-arith {sh} (alit z) env)
+  output-of (run-abstract (compile-abs {sh} (alit z)) (init env)) ≡ just (eval-arith-W {sh} (alit z) env)
 abs-validity-alit z env = abs-validity-from-inv (alit z) env
 
 abs-validity-ainput : ∀ {sh} (p : InputPath) (env : ⟦ sh ⟧S) →
-  output-of (run-abstract (compile-abs {sh} (ainput p)) (init env)) ≡ just (eval-arith {sh} (ainput p) env)
+  output-of (run-abstract (compile-abs {sh} (ainput p)) (init env)) ≡ just (eval-arith-W {sh} (ainput p) env)
 abs-validity-ainput p env = abs-validity-from-inv (ainput p) env
 
 abs-validity-aadd : ∀ {sh} (a b : MArithIR sh) (env : ⟦ sh ⟧S) →
-  output-of (run-abstract (compile-abs (aadd a b)) (init env)) ≡ just (eval-arith (aadd a b) env)
+  output-of (run-abstract (compile-abs (aadd a b)) (init env)) ≡ just (eval-arith-W (aadd a b) env)
 abs-validity-aadd a b env = abs-validity-from-inv (aadd a b) env
 
 abs-validity-asub : ∀ {sh} (a b : MArithIR sh) (env : ⟦ sh ⟧S) →
-  output-of (run-abstract (compile-abs (asub a b)) (init env)) ≡ just (eval-arith (asub a b) env)
+  output-of (run-abstract (compile-abs (asub a b)) (init env)) ≡ just (eval-arith-W (asub a b) env)
 abs-validity-asub a b env = abs-validity-from-inv (asub a b) env
 
 abs-validity-amul : ∀ {sh} (a b : MArithIR sh) (env : ⟦ sh ⟧S) →
-  output-of (run-abstract (compile-abs (amul a b)) (init env)) ≡ just (eval-arith (amul a b) env)
+  output-of (run-abstract (compile-abs (amul a b)) (init env)) ≡ just (eval-arith-W (amul a b) env)
 abs-validity-amul a b env = abs-validity-from-inv (amul a b) env
 
 abs-validity-aneg : ∀ {sh} (a : MArithIR sh) (env : ⟦ sh ⟧S) →
-  output-of (run-abstract (compile-abs (aneg a)) (init env)) ≡ just (eval-arith (aneg a) env)
+  output-of (run-abstract (compile-abs (aneg a)) (init env)) ≡ just (eval-arith-W (aneg a) env)
 abs-validity-aneg a env = abs-validity-from-inv (aneg a) env
 
 abs-validity :
   ∀ {sh} (e : MArithIR sh) (env : ⟦ sh ⟧S) →
-  output-of (run-abstract (compile-abs e) (init env)) ≡ just (eval-arith e env)
+  output-of (run-abstract (compile-abs e) (init env)) ≡ just (eval-arith-W e env)
 abs-validity (alit z)    env = abs-validity-alit z env
 abs-validity (ainput p)  env = abs-validity-ainput p env
 abs-validity (aadd a b)  env = abs-validity-aadd a b env
