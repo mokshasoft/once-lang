@@ -34,7 +34,7 @@ d_compile_6 ::
   Maybe [MAlonzo.Code.Data.Fin.Base.T_Fin_10]
 d_compile_6
   = coe
-      MAlonzo.Code.Once.Verified.Compile.d_compile_74
+      MAlonzo.Code.Once.Verified.Compile.d_compile_72
       (coe MAlonzo.Code.Once.Verified.CPU.d_arch'45'semantics_6)
 -- Once.Compiler.VC.correct
 d_correct_8 ::
@@ -50,7 +50,7 @@ d_exec_10 ::
   [MAlonzo.Code.Data.Fin.Base.T_Fin_10] -> Maybe Integer
 d_exec_10
   = coe
-      MAlonzo.Code.Once.Verified.Compile.d_exec_64
+      MAlonzo.Code.Once.Verified.Compile.d_exec_62
       (coe MAlonzo.Code.Once.Verified.CPU.d_arch'45'semantics_6)
 -- Once.Compiler.VC.string-to-bytes
 d_string'45'to'45'bytes_12 ::
@@ -59,7 +59,7 @@ d_string'45'to'45'bytes_12 ::
   [MAlonzo.Code.Data.Fin.Base.T_Fin_10]
 d_string'45'to'45'bytes_12
   = coe
-      MAlonzo.Code.Once.Verified.Compile.d_string'45'to'45'bytes_70
+      MAlonzo.Code.Once.Verified.Compile.d_string'45'to'45'bytes_68
       (coe MAlonzo.Code.Once.Verified.CPU.d_arch'45'semantics_6)
 -- Once.Compiler.VC.string-to-bytes-correct
 d_string'45'to'45'bytes'45'correct_14 ::
@@ -74,7 +74,7 @@ d_once'45'compiler_16
   = coe
       MAlonzo.Code.Once.Verified.C_constructor_50
       MAlonzo.Code.Once.Verified.Behavior.d_'10214'_'10215'_10
-      (MAlonzo.Code.Once.Verified.Compile.d_exec_64
+      (MAlonzo.Code.Once.Verified.Compile.d_exec_62
          (coe MAlonzo.Code.Once.Verified.CPU.d_arch'45'semantics_6))
-      (MAlonzo.Code.Once.Verified.Compile.d_compile_74
+      (MAlonzo.Code.Once.Verified.Compile.d_compile_72
          (coe MAlonzo.Code.Once.Verified.CPU.d_arch'45'semantics_6))
