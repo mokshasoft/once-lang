@@ -266,8 +266,10 @@ library
       MAlonzo.Code.Once.Functor.Base
       MAlonzo.Code.Once.Functor.Translate
       MAlonzo.Code.Once.Grammar
+      MAlonzo.Code.Once.Grammar.ConcreteDec
       MAlonzo.Code.Once.Grammar.Convert
       MAlonzo.Code.Once.Grammar.ExprBridge
+      MAlonzo.Code.Once.Grammar.ModuleConvert
       MAlonzo.Code.Once.Grammar.ExprConvert
       MAlonzo.Code.Once.Grammar.ExprPrinter
       MAlonzo.Code.Once.Grammar.ExprRelRoundtrip
