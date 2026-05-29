@@ -14,6 +14,7 @@ module Once.Verified.CPU.X86-32 where
 open import Data.Bool using (Bool; true; false)
 open import Data.List using (List)
 open import Data.Maybe using (Maybe; just; nothing)
+open import Data.String using (String)
 
 open import Once.Verified.Behavior      using (Behavior)
 open import Once.Verified.CPU.Interface using (Byte; ArchSemantics)
@@ -38,6 +39,8 @@ observe-x86-32 (just s) with X32.State.halted s
 
 postulate
   decode-x86-32 : List Byte → Maybe X32S.Program
+  -- GNU `as --target=x86-32` trust point; removed by B1.
+  assemble-x86-32 : String → List Byte
 
 arch-semantics : ArchSemantics
 arch-semantics = record
@@ -47,4 +50,5 @@ arch-semantics = record
   ; run          = X32.run
   ; observe      = observe-x86-32
   ; decode       = decode-x86-32
+  ; assemble     = assemble-x86-32
   }

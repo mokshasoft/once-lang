@@ -29,6 +29,7 @@ module Once.Verified.CPU.X86-64 where
 open import Data.Bool using (Bool; true; false)
 open import Data.List using (List)
 open import Data.Maybe using (Maybe; just; nothing)
+open import Data.String using (String)
 
 open import Once.Verified.Behavior      using (Behavior)
 open import Once.Verified.CPU.Interface using (Byte; ArchSemantics)
@@ -63,6 +64,10 @@ observe-x86-64 (just s) with X64.State.halted s
 postulate
   decode-x86-64 : List Byte → Maybe X64S.Program
 
+  -- assemble-x86-64 — POSTULATED. GNU `as --target=x86-64` trust point;
+  -- removed when the in-Agda assembler (B1) lands.
+  assemble-x86-64 : String → List Byte
+
 ------------------------------------------------------------------------
 -- The instance.
 ------------------------------------------------------------------------
@@ -75,4 +80,5 @@ arch-semantics = record
   ; run          = X64.run
   ; observe      = observe-x86-64
   ; decode       = decode-x86-64
+  ; assemble     = assemble-x86-64
   }

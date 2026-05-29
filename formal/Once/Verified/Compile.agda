@@ -72,25 +72,11 @@ postulate
   -- from `Once.Grammar.ExprConvert` plus a Decl-level walker.
   gmoduleToModule : G.GModule → Maybe P.Module
 
-  -- ╔══════════════════════════════════════════════════════════════╗
-  -- ║ TRUSTED BASE — current B2 stance.                            ║
-  -- ║                                                              ║
-  -- ║ `string-to-bytes` is THE GNU assembler trust postulate.      ║
-  -- ║ When B1 (in-Agda assembler) lands, this postulate goes away ║
-  -- ║ and replacement bindings keep the same name and signature.  ║
-  -- ╚══════════════════════════════════════════════════════════════╝
-  string-to-bytes : String → List Byte
-
-------------------------------------------------------------------------
--- The compile function — concrete body via the existing pipeline.
-------------------------------------------------------------------------
-
-compile : Arch → Source → Maybe (List Byte)
-compile arch gmod with gmoduleToModule gmod
-... | nothing = nothing
-... | just m  with C.compileFromModule C.Heap C.Build false (toLegacyArch arch) m
-...   | C.Built asm = just (string-to-bytes asm)
-...   | _           = nothing
+-- The assembler (`string-to-bytes`) is the per-arch GNU `as` trust
+-- point. Per D054 wired-not-imported it is NOT a top-level postulate
+-- here; it's a field of the injected per-arch `ArchSemantics` bundle,
+-- consumed inside `WithCPU` below. `compile` (which assembles to bytes)
+-- therefore also lives in `WithCPU`.
 
 ------------------------------------------------------------------------
 -- CLI entry points (called by Bridge.hs / Once.Compiler).
@@ -168,13 +154,27 @@ module WithCPU (arch-sem : Arch → ArchSemantics) where
   exec : Arch → List Byte → Behavior
   exec arch bytes = ArchSemantics.exec-bytes (arch-sem arch) bytes
 
+  -- per-arch assembler, from the injected `ArchSemantics` bundle (the
+  -- GNU `as` trust, confined to the driver's instances).
+  string-to-bytes : Arch → String → List Byte
+  string-to-bytes arch = ArchSemantics.assemble (arch-sem arch)
+
+  -- The compile function — concrete body via the existing pipeline,
+  -- finishing with the injected per-arch assembler.
+  compile : Arch → Source → Maybe (List Byte)
+  compile arch gmod with gmoduleToModule gmod
+  ... | nothing = nothing
+  ... | just m  with C.compileFromModule C.Heap C.Build false (toLegacyArch arch) m
+  ...   | C.Built asm = just (string-to-bytes arch asm)
+  ...   | _           = nothing
+
   postulate
     -- Stage 3 correctness — `string-to-bytes` followed by `exec` matches
     -- the abstract asm-text semantics. This is the B2 trust postulate
     -- (GNU `as` conformance), removable by B1.
     string-to-bytes-correct :
       ∀ (arch : Arch) (asm : String) →
-      exec arch (string-to-bytes asm) ≡ ⟦ arch ⟧A asm
+      exec arch (string-to-bytes arch asm) ≡ ⟦ arch ⟧A asm
 
   --------------------------------------------------------------------
   -- The grand theorem — by composition of the per-stage postulates.

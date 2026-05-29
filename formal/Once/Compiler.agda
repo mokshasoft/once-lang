@@ -29,11 +29,10 @@ open import Once.Verified.Behavior using (Source; Behavior; ⟦_⟧)
 -- free of those imports.
 open import Once.Verified.CPU      using (Arch; Byte; arch-semantics)
 import Once.Verified.Compile as VCompile
-open VCompile using (compile)
 
 -- Instantiate the verified pipeline with the concrete per-arch
--- semantics. `VC.exec` / `VC.correct` are the injected execution and
--- the grand theorem proved against it.
+-- semantics. `VC.compile` / `VC.exec` / `VC.correct` are the compiler,
+-- the injected execution, and the grand theorem proved against them.
 module VC = VCompile.WithCPU arch-semantics
 
 once-compiler : CorrectCompiler
@@ -44,6 +43,6 @@ once-compiler = record
   ; Behavior = Behavior
   ; ⟦_⟧      = ⟦_⟧
   ; exec     = VC.exec
-  ; compile  = compile
+  ; compile  = VC.compile
   ; correct  = VC.correct
   }

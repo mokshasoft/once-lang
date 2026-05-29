@@ -13,6 +13,7 @@ module Once.Verified.CPU.Interface where
 open import Data.Fin using (Fin)
 open import Data.List using (List)
 open import Data.Maybe using (Maybe)
+open import Data.String using (String)
 
 open import Once.Verified.Behavior using (Behavior)
 
@@ -35,6 +36,10 @@ record ArchSemantics : Set₁ where
     run          : Program → State → Maybe State
     observe      : Maybe State → Behavior
     decode       : List Byte → Maybe Program
+    -- Assembler: asm text → bytes. The per-arch GNU `as` trust point
+    -- (D054 wired-not-imported), confined to this injected bundle.
+    -- Removed when the in-Agda assembler (B1) lands.
+    assemble     : String → List Byte
 
   exec-bytes : List Byte → Behavior
   exec-bytes bytes with decode bytes
