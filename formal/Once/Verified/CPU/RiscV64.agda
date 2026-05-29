@@ -26,6 +26,7 @@ module Once.Verified.CPU.RiscV64 where
 open import Data.Bool using (Bool; true; false)
 open import Data.List using (List)
 open import Data.Maybe using (Maybe; just; nothing)
+open import Data.String using (String)
 
 open import Once.Verified.Behavior      using (Behavior)
 open import Once.Verified.CPU.Interface using (Byte; ArchSemantics)
@@ -55,6 +56,8 @@ observe-riscv64 (just s) with RV.State.halted s
 
 postulate
   decode-riscv64 : List Byte → Maybe RVS.Program
+  -- GNU `as` (RISC-V) trust point; removed by B1.
+  assemble-riscv64 : String → List Byte
 
 ------------------------------------------------------------------------
 -- The instance.
@@ -68,4 +71,5 @@ arch-semantics = record
   ; run          = RV.run
   ; observe      = observe-riscv64
   ; decode       = decode-riscv64
+  ; assemble     = assemble-riscv64
   }
