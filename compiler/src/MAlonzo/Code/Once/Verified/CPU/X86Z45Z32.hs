@@ -50,12 +50,17 @@ d_observe'45'x86'45'32_8 v0
 d_decode'45'x86'45'32_20
   = error
       "MAlonzo Runtime Error: postulate evaluated: Once.Verified.CPU.X86-32.decode-x86-32"
+-- Once.Verified.CPU.X86-32.assemble-x86-32
+d_assemble'45'x86'45'32_22
+  = error
+      "MAlonzo Runtime Error: postulate evaluated: Once.Verified.CPU.X86-32.assemble-x86-32"
 -- Once.Verified.CPU.X86-32.arch-semantics
-d_arch'45'semantics_22 ::
+d_arch'45'semantics_24 ::
   MAlonzo.Code.Once.Verified.CPU.Interface.T_ArchSemantics_18
-d_arch'45'semantics_22
+d_arch'45'semantics_24
   = coe
-      MAlonzo.Code.Once.Verified.CPU.Interface.C_constructor_58
+      MAlonzo.Code.Once.Verified.CPU.Interface.C_constructor_62
       MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.d_initState_166
       MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.d_run_504
       d_observe'45'x86'45'32_8 d_decode'45'x86'45'32_20
+      d_assemble'45'x86'45'32_22

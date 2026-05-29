@@ -18,8 +18,10 @@ import MAlonzo.RTE (coe, erased, AgdaAny, addInt, subInt, mulInt,
 import qualified MAlonzo.RTE
 import qualified Data.Text
 import qualified MAlonzo.Code.Agda.Builtin.Equality
+import qualified MAlonzo.Code.Agda.Builtin.Nat
 import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Agda.Builtin.String
+import qualified MAlonzo.Code.Data.Integer.Base
 import qualified MAlonzo.Code.Data.String.Base
 import qualified MAlonzo.Code.Data.Sum.Base
 import qualified MAlonzo.Code.Once.CCC.SigOp.Info
@@ -955,232 +957,260 @@ d_'10214'μ'10215'_256 = erased
 d_'10214'ν'10215'_258 :: MAlonzo.Code.Once.Type.T_Functor_106 -> ()
 d_'10214'ν'10215'_258 = erased
 -- Once.Arith.SigOp.Builders.add-semI
-d_add'45'semI_260
-  = error
-      "MAlonzo Runtime Error: postulate evaluated: Once.Arith.SigOp.Builders.add-semI"
+d_add'45'semI_260 ::
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 -> Integer
+d_add'45'semI_260 v0
+  = case coe v0 of
+      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v1 v2
+        -> coe
+             MAlonzo.Code.Data.Integer.Base.d__'43'__284 (coe v1) (coe v2)
+      _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Arith.SigOp.Builders.sub-semI
-d_sub'45'semI_262
-  = error
-      "MAlonzo Runtime Error: postulate evaluated: Once.Arith.SigOp.Builders.sub-semI"
+d_sub'45'semI_266 ::
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 -> Integer
+d_sub'45'semI_266 v0
+  = case coe v0 of
+      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v1 v2
+        -> coe
+             MAlonzo.Code.Data.Integer.Base.d__'45'__302 (coe v1) (coe v2)
+      _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Arith.SigOp.Builders.mul-semI
-d_mul'45'semI_264
-  = error
-      "MAlonzo Runtime Error: postulate evaluated: Once.Arith.SigOp.Builders.mul-semI"
+d_mul'45'semI_272 ::
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 -> Integer
+d_mul'45'semI_272 v0
+  = case coe v0 of
+      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v1 v2
+        -> coe
+             MAlonzo.Code.Data.Integer.Base.d__'42'__316 (coe v1) (coe v2)
+      _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.Arith.SigOp.Builders.add-semM
+d_add'45'semM_278 ::
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 -> Integer
+d_add'45'semM_278 v0
+  = case coe v0 of
+      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v1 v2
+        -> coe addInt (coe v1) (coe v2)
+      _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.Arith.SigOp.Builders.sub-semM
+d_sub'45'semM_284 ::
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 -> Integer
+d_sub'45'semM_284 v0
+  = case coe v0 of
+      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v1 v2
+        -> coe MAlonzo.Code.Agda.Builtin.Nat.d__'45'__22 v1 v2
+      _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.Arith.SigOp.Builders.mul-semM
+d_mul'45'semM_290 ::
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 -> Integer
+d_mul'45'semM_290 v0
+  = case coe v0 of
+      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v1 v2
+        -> coe mulInt (coe v1) (coe v2)
+      _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.Arith.SigOp.Builders.neg-semI
+d_neg'45'semI_296 :: Integer -> Integer
+d_neg'45'semI_296 v0
+  = coe MAlonzo.Code.Data.Integer.Base.d_'45'__260 (coe v0)
+-- Once.Arith.SigOp.Builders.neg-semM
+d_neg'45'semM_300 :: Integer -> Integer
+d_neg'45'semM_300 ~v0 = du_neg'45'semM_300
+du_neg'45'semM_300 :: Integer
+du_neg'45'semM_300 = coe (0 :: Integer)
 -- Once.Arith.SigOp.Builders.div-semI
-d_div'45'semI_266
+d_div'45'semI_302
   = error
       "MAlonzo Runtime Error: postulate evaluated: Once.Arith.SigOp.Builders.div-semI"
 -- Once.Arith.SigOp.Builders.mod-semI
-d_mod'45'semI_268
+d_mod'45'semI_304
   = error
       "MAlonzo Runtime Error: postulate evaluated: Once.Arith.SigOp.Builders.mod-semI"
--- Once.Arith.SigOp.Builders.add-semM
-d_add'45'semM_270
-  = error
-      "MAlonzo Runtime Error: postulate evaluated: Once.Arith.SigOp.Builders.add-semM"
--- Once.Arith.SigOp.Builders.sub-semM
-d_sub'45'semM_272
-  = error
-      "MAlonzo Runtime Error: postulate evaluated: Once.Arith.SigOp.Builders.sub-semM"
--- Once.Arith.SigOp.Builders.mul-semM
-d_mul'45'semM_274
-  = error
-      "MAlonzo Runtime Error: postulate evaluated: Once.Arith.SigOp.Builders.mul-semM"
 -- Once.Arith.SigOp.Builders.div-semM
-d_div'45'semM_276
+d_div'45'semM_306
   = error
       "MAlonzo Runtime Error: postulate evaluated: Once.Arith.SigOp.Builders.div-semM"
 -- Once.Arith.SigOp.Builders.mod-semM
-d_mod'45'semM_278
+d_mod'45'semM_308
   = error
       "MAlonzo Runtime Error: postulate evaluated: Once.Arith.SigOp.Builders.mod-semM"
--- Once.Arith.SigOp.Builders.neg-semI
-d_neg'45'semI_280
-  = error
-      "MAlonzo Runtime Error: postulate evaluated: Once.Arith.SigOp.Builders.neg-semI"
--- Once.Arith.SigOp.Builders.neg-semM
-d_neg'45'semM_282
-  = error
-      "MAlonzo Runtime Error: postulate evaluated: Once.Arith.SigOp.Builders.neg-semM"
 -- Once.Arith.SigOp.Builders.lt-semI
-d_lt'45'semI_284
+d_lt'45'semI_310
   = error
       "MAlonzo Runtime Error: postulate evaluated: Once.Arith.SigOp.Builders.lt-semI"
 -- Once.Arith.SigOp.Builders.le-semI
-d_le'45'semI_286
+d_le'45'semI_312
   = error
       "MAlonzo Runtime Error: postulate evaluated: Once.Arith.SigOp.Builders.le-semI"
 -- Once.Arith.SigOp.Builders.gt-semI
-d_gt'45'semI_288
+d_gt'45'semI_314
   = error
       "MAlonzo Runtime Error: postulate evaluated: Once.Arith.SigOp.Builders.gt-semI"
 -- Once.Arith.SigOp.Builders.ge-semI
-d_ge'45'semI_290
+d_ge'45'semI_316
   = error
       "MAlonzo Runtime Error: postulate evaluated: Once.Arith.SigOp.Builders.ge-semI"
 -- Once.Arith.SigOp.Builders.eq-semI
-d_eq'45'semI_292
+d_eq'45'semI_318
   = error
       "MAlonzo Runtime Error: postulate evaluated: Once.Arith.SigOp.Builders.eq-semI"
 -- Once.Arith.SigOp.Builders.ne-semI
-d_ne'45'semI_294
+d_ne'45'semI_320
   = error
       "MAlonzo Runtime Error: postulate evaluated: Once.Arith.SigOp.Builders.ne-semI"
 -- Once.Arith.SigOp.Builders.lt-semM
-d_lt'45'semM_296
+d_lt'45'semM_322
   = error
       "MAlonzo Runtime Error: postulate evaluated: Once.Arith.SigOp.Builders.lt-semM"
 -- Once.Arith.SigOp.Builders.le-semM
-d_le'45'semM_298
+d_le'45'semM_324
   = error
       "MAlonzo Runtime Error: postulate evaluated: Once.Arith.SigOp.Builders.le-semM"
 -- Once.Arith.SigOp.Builders.gt-semM
-d_gt'45'semM_300
+d_gt'45'semM_326
   = error
       "MAlonzo Runtime Error: postulate evaluated: Once.Arith.SigOp.Builders.gt-semM"
 -- Once.Arith.SigOp.Builders.ge-semM
-d_ge'45'semM_302
+d_ge'45'semM_328
   = error
       "MAlonzo Runtime Error: postulate evaluated: Once.Arith.SigOp.Builders.ge-semM"
 -- Once.Arith.SigOp.Builders.eq-semM
-d_eq'45'semM_304
+d_eq'45'semM_330
   = error
       "MAlonzo Runtime Error: postulate evaluated: Once.Arith.SigOp.Builders.eq-semM"
 -- Once.Arith.SigOp.Builders.ne-semM
-d_ne'45'semM_306
+d_ne'45'semM_332
   = error
       "MAlonzo Runtime Error: postulate evaluated: Once.Arith.SigOp.Builders.ne-semM"
 -- Once.Arith.SigOp.Builders.str-lit-semI
-d_str'45'lit'45'semI_308
+d_str'45'lit'45'semI_334
   = error
       "MAlonzo Runtime Error: postulate evaluated: Once.Arith.SigOp.Builders.str-lit-semI"
 -- Once.Arith.SigOp.Builders.str-lit-semM
-d_str'45'lit'45'semM_310
+d_str'45'lit'45'semM_336
   = error
       "MAlonzo Runtime Error: postulate evaluated: Once.Arith.SigOp.Builders.str-lit-semM"
 -- Once.Arith.SigOp.Builders.add-info
-d_add'45'info_312 ::
+d_add'45'info_338 ::
   MAlonzo.Code.Once.CCC.SigOp.Info.T_SigOpInfo_264
-d_add'45'info_312
+d_add'45'info_338
   = coe
       MAlonzo.Code.Once.CCC.SigOp.Info.C_mk'45'info_282
       (coe ("arith.add.int" :: Data.Text.Text)) (coe d_add'45'semI_260)
-      (coe d_add'45'semM_270)
+      (coe d_add'45'semM_278)
 -- Once.Arith.SigOp.Builders.sub-info
-d_sub'45'info_314 ::
+d_sub'45'info_340 ::
   MAlonzo.Code.Once.CCC.SigOp.Info.T_SigOpInfo_264
-d_sub'45'info_314
+d_sub'45'info_340
   = coe
       MAlonzo.Code.Once.CCC.SigOp.Info.C_mk'45'info_282
-      (coe ("arith.sub.int" :: Data.Text.Text)) (coe d_sub'45'semI_262)
-      (coe d_sub'45'semM_272)
+      (coe ("arith.sub.int" :: Data.Text.Text)) (coe d_sub'45'semI_266)
+      (coe d_sub'45'semM_284)
 -- Once.Arith.SigOp.Builders.mul-info
-d_mul'45'info_316 ::
+d_mul'45'info_342 ::
   MAlonzo.Code.Once.CCC.SigOp.Info.T_SigOpInfo_264
-d_mul'45'info_316
+d_mul'45'info_342
   = coe
       MAlonzo.Code.Once.CCC.SigOp.Info.C_mk'45'info_282
-      (coe ("arith.mul.int" :: Data.Text.Text)) (coe d_mul'45'semI_264)
-      (coe d_mul'45'semM_274)
+      (coe ("arith.mul.int" :: Data.Text.Text)) (coe d_mul'45'semI_272)
+      (coe d_mul'45'semM_290)
 -- Once.Arith.SigOp.Builders.div-info
-d_div'45'info_318 ::
+d_div'45'info_344 ::
   MAlonzo.Code.Once.CCC.SigOp.Info.T_SigOpInfo_264
-d_div'45'info_318
+d_div'45'info_344
   = coe
       MAlonzo.Code.Once.CCC.SigOp.Info.C_mk'45'info_282
-      (coe ("arith.div.int" :: Data.Text.Text)) (coe d_div'45'semI_266)
-      (coe d_div'45'semM_276)
+      (coe ("arith.div.int" :: Data.Text.Text)) (coe d_div'45'semI_302)
+      (coe d_div'45'semM_306)
 -- Once.Arith.SigOp.Builders.mod-info
-d_mod'45'info_320 ::
+d_mod'45'info_346 ::
   MAlonzo.Code.Once.CCC.SigOp.Info.T_SigOpInfo_264
-d_mod'45'info_320
+d_mod'45'info_346
   = coe
       MAlonzo.Code.Once.CCC.SigOp.Info.C_mk'45'info_282
-      (coe ("arith.mod.int" :: Data.Text.Text)) (coe d_mod'45'semI_268)
-      (coe d_mod'45'semM_278)
+      (coe ("arith.mod.int" :: Data.Text.Text)) (coe d_mod'45'semI_304)
+      (coe d_mod'45'semM_308)
 -- Once.Arith.SigOp.Builders.neg-info
-d_neg'45'info_322 ::
+d_neg'45'info_348 ::
   MAlonzo.Code.Once.CCC.SigOp.Info.T_SigOpInfo_264
-d_neg'45'info_322
+d_neg'45'info_348
   = coe
       MAlonzo.Code.Once.CCC.SigOp.Info.C_mk'45'info_282
-      (coe ("arith.neg.int" :: Data.Text.Text)) (coe d_neg'45'semI_280)
-      (coe d_neg'45'semM_282)
+      (coe ("arith.neg.int" :: Data.Text.Text)) (coe d_neg'45'semI_296)
+      (\ v0 -> coe du_neg'45'semM_300)
 -- Once.Arith.SigOp.Builders.lt-info
-d_lt'45'info_324 ::
+d_lt'45'info_350 ::
   MAlonzo.Code.Once.CCC.SigOp.Info.T_SigOpInfo_264
-d_lt'45'info_324
+d_lt'45'info_350
   = coe
       MAlonzo.Code.Once.CCC.SigOp.Info.C_mk'45'info_282
-      (coe ("arith.lt.int" :: Data.Text.Text)) (coe d_lt'45'semI_284)
-      (coe d_lt'45'semM_296)
+      (coe ("arith.lt.int" :: Data.Text.Text)) (coe d_lt'45'semI_310)
+      (coe d_lt'45'semM_322)
 -- Once.Arith.SigOp.Builders.le-info
-d_le'45'info_326 ::
+d_le'45'info_352 ::
   MAlonzo.Code.Once.CCC.SigOp.Info.T_SigOpInfo_264
-d_le'45'info_326
+d_le'45'info_352
   = coe
       MAlonzo.Code.Once.CCC.SigOp.Info.C_mk'45'info_282
-      (coe ("arith.le.int" :: Data.Text.Text)) (coe d_le'45'semI_286)
-      (coe d_le'45'semM_298)
+      (coe ("arith.le.int" :: Data.Text.Text)) (coe d_le'45'semI_312)
+      (coe d_le'45'semM_324)
 -- Once.Arith.SigOp.Builders.gt-info
-d_gt'45'info_328 ::
+d_gt'45'info_354 ::
   MAlonzo.Code.Once.CCC.SigOp.Info.T_SigOpInfo_264
-d_gt'45'info_328
+d_gt'45'info_354
   = coe
       MAlonzo.Code.Once.CCC.SigOp.Info.C_mk'45'info_282
-      (coe ("arith.gt.int" :: Data.Text.Text)) (coe d_gt'45'semI_288)
-      (coe d_gt'45'semM_300)
+      (coe ("arith.gt.int" :: Data.Text.Text)) (coe d_gt'45'semI_314)
+      (coe d_gt'45'semM_326)
 -- Once.Arith.SigOp.Builders.ge-info
-d_ge'45'info_330 ::
+d_ge'45'info_356 ::
   MAlonzo.Code.Once.CCC.SigOp.Info.T_SigOpInfo_264
-d_ge'45'info_330
+d_ge'45'info_356
   = coe
       MAlonzo.Code.Once.CCC.SigOp.Info.C_mk'45'info_282
-      (coe ("arith.ge.int" :: Data.Text.Text)) (coe d_ge'45'semI_290)
-      (coe d_ge'45'semM_302)
+      (coe ("arith.ge.int" :: Data.Text.Text)) (coe d_ge'45'semI_316)
+      (coe d_ge'45'semM_328)
 -- Once.Arith.SigOp.Builders.eq-info
-d_eq'45'info_332 ::
+d_eq'45'info_358 ::
   MAlonzo.Code.Once.CCC.SigOp.Info.T_SigOpInfo_264
-d_eq'45'info_332
+d_eq'45'info_358
   = coe
       MAlonzo.Code.Once.CCC.SigOp.Info.C_mk'45'info_282
-      (coe ("arith.eq.int" :: Data.Text.Text)) (coe d_eq'45'semI_292)
-      (coe d_eq'45'semM_304)
+      (coe ("arith.eq.int" :: Data.Text.Text)) (coe d_eq'45'semI_318)
+      (coe d_eq'45'semM_330)
 -- Once.Arith.SigOp.Builders.ne-info
-d_ne'45'info_334 ::
+d_ne'45'info_360 ::
   MAlonzo.Code.Once.CCC.SigOp.Info.T_SigOpInfo_264
-d_ne'45'info_334
+d_ne'45'info_360
   = coe
       MAlonzo.Code.Once.CCC.SigOp.Info.C_mk'45'info_282
-      (coe ("arith.ne.int" :: Data.Text.Text)) (coe d_ne'45'semI_294)
-      (coe d_ne'45'semM_306)
+      (coe ("arith.ne.int" :: Data.Text.Text)) (coe d_ne'45'semI_320)
+      (coe d_ne'45'semM_332)
 -- Once.Arith.SigOp.Builders.str-lit-info
-d_str'45'lit'45'info_336 ::
+d_str'45'lit'45'info_362 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Once.CCC.SigOp.Info.T_SigOpInfo_264
-d_str'45'lit'45'info_336 v0
+d_str'45'lit'45'info_362 v0
   = coe
       MAlonzo.Code.Once.CCC.SigOp.Info.C_mk'45'info_282
       (coe
          MAlonzo.Code.Data.String.Base.d__'43''43'__20
          ("lit.str." :: Data.Text.Text) v0)
-      (coe d_str'45'lit'45'semI_308 v0) (coe d_str'45'lit'45'semM_310 v0)
+      (coe d_str'45'lit'45'semI_334 v0) (coe d_str'45'lit'45'semM_336 v0)
 -- Once.Arith.SigOp.Builders.generic-semI
-d_generic'45'semI_344
+d_generic'45'semI_370
   = error
       "MAlonzo Runtime Error: postulate evaluated: Once.Arith.SigOp.Builders.generic-semI"
 -- Once.Arith.SigOp.Builders.generic-semM
-d_generic'45'semM_350
+d_generic'45'semM_376
   = error
       "MAlonzo Runtime Error: postulate evaluated: Once.Arith.SigOp.Builders.generic-semM"
 -- Once.Arith.SigOp.Builders.generic-info
-d_generic'45'info_356 ::
+d_generic'45'info_382 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Once.CCC.SigOp.Info.T_SigOpInfo_264
-d_generic'45'info_356 v0 v1 v2
+d_generic'45'info_382 v0 v1 v2
   = coe
       MAlonzo.Code.Once.CCC.SigOp.Info.C_mk'45'info_282 (coe v2)
-      (coe d_generic'45'semI_344 v0 v1 v2)
-      (coe d_generic'45'semM_350 v0 v1 v2)
+      (coe d_generic'45'semI_370 v0 v1 v2)
+      (coe d_generic'45'semM_376 v0 v1 v2)

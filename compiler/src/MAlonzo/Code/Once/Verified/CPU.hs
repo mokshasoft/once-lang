@@ -31,13 +31,13 @@ d_arch'45'semantics_6 v0
   = case coe v0 of
       MAlonzo.Code.Once.Verified.CPU.Interface.C_x86'45'64_12
         -> coe
-             MAlonzo.Code.Once.Verified.CPU.X86Z45Z64.d_arch'45'semantics_22
+             MAlonzo.Code.Once.Verified.CPU.X86Z45Z64.d_arch'45'semantics_24
       MAlonzo.Code.Once.Verified.CPU.Interface.C_x86'45'32_14
         -> coe
-             MAlonzo.Code.Once.Verified.CPU.X86Z45Z32.d_arch'45'semantics_22
+             MAlonzo.Code.Once.Verified.CPU.X86Z45Z32.d_arch'45'semantics_24
       MAlonzo.Code.Once.Verified.CPU.Interface.C_riscv64_16
         -> coe
-             MAlonzo.Code.Once.Verified.CPU.RiscV64.d_arch'45'semantics_22
+             MAlonzo.Code.Once.Verified.CPU.RiscV64.d_arch'45'semantics_24
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Verified.CPU.exec
 d_exec_8 ::
@@ -45,5 +45,5 @@ d_exec_8 ::
   [MAlonzo.Code.Data.Fin.Base.T_Fin_10] -> Maybe Integer
 d_exec_8 v0 v1
   = coe
-      MAlonzo.Code.Once.Verified.CPU.Interface.d_exec'45'bytes_44
+      MAlonzo.Code.Once.Verified.CPU.Interface.d_exec'45'bytes_48
       (coe d_arch'45'semantics_6 (coe v0)) (coe v1)

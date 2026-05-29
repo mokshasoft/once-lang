@@ -399,13 +399,13 @@ d_recognise_308 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.CCC.IR.T_IR_274 ->
-  Maybe MAlonzo.Code.Once.Arith.Machine.IR.T_ArithBlock_86
+  Maybe MAlonzo.Code.Once.Arith.Machine.IR.T_ArithBlock_140
 d_recognise_308 v0 v1 ~v2 v3 = du_recognise_308 v0 v1 v3
 du_recognise_308 ::
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_InputShape_8 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.CCC.IR.T_IR_274 ->
-  Maybe MAlonzo.Code.Once.Arith.Machine.IR.T_ArithBlock_86
+  Maybe MAlonzo.Code.Once.Arith.Machine.IR.T_ArithBlock_140
 du_recognise_308 v0 v1 v2
   = let v3 = coe du_recognise'45'body_44 (coe v1) (coe v2) in
     coe
@@ -414,7 +414,7 @@ du_recognise_308 v0 v1 v2
            -> coe
                 MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                 (coe
-                   MAlonzo.Code.Once.Arith.Machine.IR.C_mk'45'block_96 (coe v0)
+                   MAlonzo.Code.Once.Arith.Machine.IR.C_mk'45'block_150 (coe v0)
                    (coe v4))
          MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v3
          _ -> MAlonzo.RTE.mazUnreachableError)
