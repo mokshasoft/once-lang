@@ -223,5 +223,5 @@ toMAllocMode AllocHeap  = MCIR.C_Heap_262
 compileFromModule :: AllocMode -> Stage -> Bool -> Arch -> Module -> CompileResult
 compileFromModule m stage doOpt arch (Module mod_) =
   fromMResult
-    (MVC.d_compile'45'cli'45'asm_70
+    (MVC.d_compile'45'cli'45'asm_30
        (toMAllocMode m) (toMStage stage) doOpt (toMVArch arch) (unsafeCoerce mod_))

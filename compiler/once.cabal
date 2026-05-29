@@ -337,6 +337,7 @@ library
       MAlonzo.Code.Once.Verified.CPU.X86Z45Z32
       MAlonzo.Code.Once.Verified.CPU.X86Z45Z64
       MAlonzo.Code.Once.Verified.Compile
+      MAlonzo.Code.Once.Word
       MAlonzo.Code.Once.Compiler
       MAlonzo.Code.Relation.Binary
       MAlonzo.Code.Relation.Binary.Bundles
