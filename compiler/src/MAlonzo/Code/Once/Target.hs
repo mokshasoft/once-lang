@@ -40,7 +40,7 @@ data T_Target_4
                      (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
                       MAlonzo.Code.Agda.Builtin.String.T_String_6)
                      MAlonzo.Code.Agda.Builtin.String.T_String_6
-                     ([MAlonzo.Code.Once.Arith.Machine.IR.T_ArithBlock_86] ->
+                     ([MAlonzo.Code.Once.Arith.Machine.IR.T_ArithBlock_140] ->
                       MAlonzo.Code.Agda.Builtin.String.T_String_6)
 -- Once.Target.Target.irToAsm
 d_irToAsm_30 ::
@@ -92,7 +92,7 @@ d_functionEpilogue_42 v0
 -- Once.Target.Target.emitArithBlocks
 d_emitArithBlocks_44 ::
   T_Target_4 ->
-  [MAlonzo.Code.Once.Arith.Machine.IR.T_ArithBlock_86] ->
+  [MAlonzo.Code.Once.Arith.Machine.IR.T_ArithBlock_140] ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
 d_emitArithBlocks_44 v0
   = case coe v0 of

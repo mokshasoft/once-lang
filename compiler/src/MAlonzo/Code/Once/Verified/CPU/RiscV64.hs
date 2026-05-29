@@ -48,12 +48,17 @@ d_observe'45'riscv64_8 v0
 d_decode'45'riscv64_20
   = error
       "MAlonzo Runtime Error: postulate evaluated: Once.Verified.CPU.RiscV64.decode-riscv64"
+-- Once.Verified.CPU.RiscV64.assemble-riscv64
+d_assemble'45'riscv64_22
+  = error
+      "MAlonzo Runtime Error: postulate evaluated: Once.Verified.CPU.RiscV64.assemble-riscv64"
 -- Once.Verified.CPU.RiscV64.arch-semantics
-d_arch'45'semantics_22 ::
+d_arch'45'semantics_24 ::
   MAlonzo.Code.Once.Verified.CPU.Interface.T_ArchSemantics_18
-d_arch'45'semantics_22
+d_arch'45'semantics_24
   = coe
-      MAlonzo.Code.Once.Verified.CPU.Interface.C_constructor_58
+      MAlonzo.Code.Once.Verified.CPU.Interface.C_constructor_62
       MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_initState_278
       MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_run_712
       d_observe'45'riscv64_8 d_decode'45'riscv64_20
+      d_assemble'45'riscv64_22
