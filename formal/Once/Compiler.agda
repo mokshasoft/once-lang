@@ -22,8 +22,19 @@ open import Data.List using (List)
 
 open import Once.Verified
 open import Once.Verified.Behavior using (Source; Behavior; ⟦_⟧)
-open import Once.Verified.CPU      using (Arch; Byte; exec)
-open import Once.Verified.Compile  using (compile; correct)
+-- The driver is where the per-arch CPU semantics are INJECTED (D054
+-- wired-not-imported). Importing `Once.Verified.CPU` here pulls in the
+-- per-arch instance postulates; that is intentional and confined to
+-- this assembly point. `Once.Verified.Compile.WithCPU` itself stays
+-- free of those imports.
+open import Once.Verified.CPU      using (Arch; Byte; arch-semantics)
+import Once.Verified.Compile as VCompile
+open VCompile using (compile)
+
+-- Instantiate the verified pipeline with the concrete per-arch
+-- semantics. `VC.exec` / `VC.correct` are the injected execution and
+-- the grand theorem proved against it.
+module VC = VCompile.WithCPU arch-semantics
 
 once-compiler : CorrectCompiler
 once-compiler = record
@@ -32,7 +43,7 @@ once-compiler = record
   ; Bytes    = List Byte
   ; Behavior = Behavior
   ; ⟦_⟧      = ⟦_⟧
-  ; exec     = exec
+  ; exec     = VC.exec
   ; compile  = compile
-  ; correct  = correct
+  ; correct  = VC.correct
   }

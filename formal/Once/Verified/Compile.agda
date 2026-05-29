@@ -39,8 +39,13 @@ open import Relation.Binary.PropositionalEquality
   using (_≡_; refl; sym; trans; cong)
 
 open import Once.Verified.Behavior using (Source; Behavior; ⟦_⟧)
-open import Once.Verified.CPU      using (Arch; Byte; exec)
-open import Once.Verified.CPU      using () renaming
+-- D054 wired-not-imported: import only the portable INTERFACE (no
+-- postulates). The per-arch CPU semantics are *injected* via the
+-- `WithCPU` parameter below, never imported here — so this module
+-- doesn't drag in the per-arch instance postulates. The driver
+-- (`Once.Compiler`) supplies `Once.Verified.CPU.arch-semantics`.
+open import Once.Verified.CPU.Interface using (Arch; Byte; ArchSemantics)
+open import Once.Verified.CPU.Interface using () renaming
   (x86-64 to Va-x86-64; x86-32 to Va-x86-32; riscv64 to Va-riscv64)
 
 import Once.Compile as C
@@ -145,41 +150,60 @@ postulate
     C.compileFromModule C.Heap C.Build false (toLegacyArch arch) m ≡ C.Built asm →
     ⟦ arch ⟧A asm ≡ ⟦ m ⟧M
 
-  -- Stage 3 correctness — `string-to-bytes` followed by `exec` matches
-  -- the abstract asm-text semantics. This is the B2 trust postulate
-  -- (GNU `as` conformance), removable by B1.
-  string-to-bytes-correct :
-    ∀ (arch : Arch) (asm : String) →
-    exec arch (string-to-bytes asm) ≡ ⟦ arch ⟧A asm
-
 ------------------------------------------------------------------------
--- The grand theorem — by composition of the per-stage postulates.
+-- CPU semantics injected here (D054 wired-not-imported).
 --
--- This is no longer a wholesale postulate. Reverting any pipeline
--- stage to a known-bad implementation (e.g. dropping the thunk-frame
--- reservation in the codegen) breaks the discharge chain via
--- `module-to-asm-correct` and surfaces in `make typecheck`.
+-- `WithCPU` takes the per-arch CPU semantics as a parameter
+-- (`arch-sem : Arch → ArchSemantics` — the ArchSemantics records
+-- indexed by arch). `exec` is derived from it; `correct` is proved
+-- against it. Because the semantics are PASSED rather than imported,
+-- this module never imports the per-arch instance postulates — the
+-- driver (`Once.Compiler`) instantiates `WithCPU` with
+-- `Once.Verified.CPU.arch-semantics`.
 ------------------------------------------------------------------------
 
-correct :
-  ∀ (arch : Arch) (src : Source) (bytes : List Byte) →
-  compile arch src ≡ just bytes →
-  exec arch bytes ≡ ⟦ src ⟧
-correct arch src bytes pf with gmoduleToModule src in g-eq
-correct arch src bytes () | nothing
-correct arch src bytes pf | just m
-  with C.compileFromModule C.Heap C.Build false (toLegacyArch arch) m in c-eq
-correct arch src bytes pf | just m | C.Parsed _ _    with pf
-... | ()
-correct arch src bytes pf | just m | C.Checked _      with pf
-... | ()
-correct arch src bytes pf | just m | C.Error _        with pf
-... | ()
-correct arch src bytes pf | just m | C.Built asm
-  -- pf : just (string-to-bytes asm) ≡ just bytes
-  -- ⇒ bytes ≡ string-to-bytes asm
-  with bytes | pf
-... | _ | refl =
-  trans (string-to-bytes-correct arch asm)
-        (trans (module-to-asm-correct arch m asm c-eq)
-               (gmoduleToModule-correct src m g-eq))
+module WithCPU (arch-sem : Arch → ArchSemantics) where
+
+  -- bytes-level execution, derived from the injected per-arch semantics.
+  exec : Arch → List Byte → Behavior
+  exec arch bytes = ArchSemantics.exec-bytes (arch-sem arch) bytes
+
+  postulate
+    -- Stage 3 correctness — `string-to-bytes` followed by `exec` matches
+    -- the abstract asm-text semantics. This is the B2 trust postulate
+    -- (GNU `as` conformance), removable by B1.
+    string-to-bytes-correct :
+      ∀ (arch : Arch) (asm : String) →
+      exec arch (string-to-bytes asm) ≡ ⟦ arch ⟧A asm
+
+  --------------------------------------------------------------------
+  -- The grand theorem — by composition of the per-stage postulates.
+  --
+  -- This is no longer a wholesale postulate. Reverting any pipeline
+  -- stage to a known-bad implementation (e.g. dropping the thunk-frame
+  -- reservation in the codegen) breaks the discharge chain via
+  -- `module-to-asm-correct` and surfaces in `make typecheck`.
+  --------------------------------------------------------------------
+
+  correct :
+    ∀ (arch : Arch) (src : Source) (bytes : List Byte) →
+    compile arch src ≡ just bytes →
+    exec arch bytes ≡ ⟦ src ⟧
+  correct arch src bytes pf with gmoduleToModule src in g-eq
+  correct arch src bytes () | nothing
+  correct arch src bytes pf | just m
+    with C.compileFromModule C.Heap C.Build false (toLegacyArch arch) m in c-eq
+  correct arch src bytes pf | just m | C.Parsed _ _    with pf
+  ... | ()
+  correct arch src bytes pf | just m | C.Checked _      with pf
+  ... | ()
+  correct arch src bytes pf | just m | C.Error _        with pf
+  ... | ()
+  correct arch src bytes pf | just m | C.Built asm
+    -- pf : just (string-to-bytes asm) ≡ just bytes
+    -- ⇒ bytes ≡ string-to-bytes asm
+    with bytes | pf
+  ... | _ | refl =
+    trans (string-to-bytes-correct arch asm)
+          (trans (module-to-asm-correct arch m asm c-eq)
+                 (gmoduleToModule-correct src m g-eq))
