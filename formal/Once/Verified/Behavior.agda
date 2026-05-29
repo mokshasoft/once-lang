@@ -110,5 +110,8 @@ Source = G.GModule
 -- NOT just connector plumbing.
 ------------------------------------------------------------------------
 
-postulate
-  ⟦_⟧ : Source → Behavior
+-- `⟦_⟧ : Source → Behavior` is no longer postulated here. It is a real
+-- definition in `Once.Verified.SourceTrace` (the SigOp trace of `main`,
+-- via `obs`, projected to the exit code). It lives there rather than
+-- here because it pulls in the whole compiler front-end (`Once.Compile`)
+-- and this module is kept light (the per-arch CPU instances import it).

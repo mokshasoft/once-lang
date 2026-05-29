@@ -21,7 +21,8 @@ module Once.Compiler where
 open import Data.List using (List)
 
 open import Once.Verified
-open import Once.Verified.Behavior using (Source; Behavior; ⟦_⟧)
+open import Once.Verified.Behavior using (Source; Behavior)
+open import Once.Verified.SourceTrace using (⟦_⟧)
 -- The driver is where the per-arch CPU semantics are INJECTED (D054
 -- wired-not-imported). Importing `Once.Verified.CPU` here pulls in the
 -- per-arch instance postulates; that is intentional and confined to
