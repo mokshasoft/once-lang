@@ -51,6 +51,9 @@ open import Once.Verified.CPU.Interface using () renaming
 import Once.Compile as C
 import Once.Grammar as G
 import Once.Parser.Module.Core as P
+-- Stage 1 adapter, now a real structural conversion (discharges the
+-- former `gmoduleToModule` postulate).
+open import Once.Grammar.ModuleConvert using (gmoduleToModule)
 
 ------------------------------------------------------------------------
 -- Architecture coercion. The two `Arch` types are structurally
@@ -64,13 +67,12 @@ toLegacyArch Va-riscv64 = C.riscv64
 
 ------------------------------------------------------------------------
 -- Per-stage adapters and trust postulates.
+--
+-- Stage 1 (`gmoduleToModule`) is now a real structural conversion
+-- (`Once.Grammar.ModuleConvert`), no longer a postulate. Its
+-- *correctness* (`gmoduleToModule-correct`) remains an obligation
+-- below.
 ------------------------------------------------------------------------
-
-postulate
-  -- Stage 1: GModule (formal grammar) → Module (parser AST).
-  -- Discharge: a structural conversion using the `gexprToRaw` family
-  -- from `Once.Grammar.ExprConvert` plus a Decl-level walker.
-  gmoduleToModule : G.GModule → Maybe P.Module
 
 -- The assembler (`string-to-bytes`) is the per-arch GNU `as` trust
 -- point. Per D054 wired-not-imported it is NOT a top-level postulate
