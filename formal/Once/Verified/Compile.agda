@@ -38,7 +38,8 @@ open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality
   using (_≡_; refl; sym; trans; cong)
 
-open import Once.Verified.Behavior using (Source; Behavior; ⟦_⟧)
+open import Once.Verified.Behavior using (Source; Behavior)
+open import Once.Verified.SourceTrace using (⟦_⟧)
 -- D054 wired-not-imported: import only the portable INTERFACE (no
 -- postulates). The per-arch CPU semantics are *injected* via the
 -- `WithCPU` parameter below, never imported here — so this module
