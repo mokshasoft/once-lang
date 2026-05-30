@@ -1090,111 +1090,124 @@ d_str'45'lit'45'semM_336
       "MAlonzo Runtime Error: postulate evaluated: Once.Arith.SigOp.Builders.str-lit-semM"
 -- Once.Arith.SigOp.Builders.add-info
 d_add'45'info_338 ::
-  MAlonzo.Code.Once.CCC.SigOp.Info.T_SigOpInfo_264
+  MAlonzo.Code.Once.CCC.SigOp.Info.T_SigOpInfo_276
 d_add'45'info_338
   = coe
-      MAlonzo.Code.Once.CCC.SigOp.Info.C_mk'45'info_282
+      MAlonzo.Code.Once.CCC.SigOp.Info.C_mk'45'info_298
       (coe ("arith.add.int" :: Data.Text.Text)) (coe d_add'45'semI_260)
       (coe d_add'45'semM_278)
+      (coe MAlonzo.Code.Once.CCC.SigOp.Info.C_Pure_266)
 -- Once.Arith.SigOp.Builders.sub-info
 d_sub'45'info_340 ::
-  MAlonzo.Code.Once.CCC.SigOp.Info.T_SigOpInfo_264
+  MAlonzo.Code.Once.CCC.SigOp.Info.T_SigOpInfo_276
 d_sub'45'info_340
   = coe
-      MAlonzo.Code.Once.CCC.SigOp.Info.C_mk'45'info_282
+      MAlonzo.Code.Once.CCC.SigOp.Info.C_mk'45'info_298
       (coe ("arith.sub.int" :: Data.Text.Text)) (coe d_sub'45'semI_266)
       (coe d_sub'45'semM_284)
+      (coe MAlonzo.Code.Once.CCC.SigOp.Info.C_Pure_266)
 -- Once.Arith.SigOp.Builders.mul-info
 d_mul'45'info_342 ::
-  MAlonzo.Code.Once.CCC.SigOp.Info.T_SigOpInfo_264
+  MAlonzo.Code.Once.CCC.SigOp.Info.T_SigOpInfo_276
 d_mul'45'info_342
   = coe
-      MAlonzo.Code.Once.CCC.SigOp.Info.C_mk'45'info_282
+      MAlonzo.Code.Once.CCC.SigOp.Info.C_mk'45'info_298
       (coe ("arith.mul.int" :: Data.Text.Text)) (coe d_mul'45'semI_272)
       (coe d_mul'45'semM_290)
+      (coe MAlonzo.Code.Once.CCC.SigOp.Info.C_Pure_266)
 -- Once.Arith.SigOp.Builders.div-info
 d_div'45'info_344 ::
-  MAlonzo.Code.Once.CCC.SigOp.Info.T_SigOpInfo_264
+  MAlonzo.Code.Once.CCC.SigOp.Info.T_SigOpInfo_276
 d_div'45'info_344
   = coe
-      MAlonzo.Code.Once.CCC.SigOp.Info.C_mk'45'info_282
+      MAlonzo.Code.Once.CCC.SigOp.Info.C_mk'45'info_298
       (coe ("arith.div.int" :: Data.Text.Text)) (coe d_div'45'semI_302)
       (coe d_div'45'semM_306)
+      (coe MAlonzo.Code.Once.CCC.SigOp.Info.C_Pure_266)
 -- Once.Arith.SigOp.Builders.mod-info
 d_mod'45'info_346 ::
-  MAlonzo.Code.Once.CCC.SigOp.Info.T_SigOpInfo_264
+  MAlonzo.Code.Once.CCC.SigOp.Info.T_SigOpInfo_276
 d_mod'45'info_346
   = coe
-      MAlonzo.Code.Once.CCC.SigOp.Info.C_mk'45'info_282
+      MAlonzo.Code.Once.CCC.SigOp.Info.C_mk'45'info_298
       (coe ("arith.mod.int" :: Data.Text.Text)) (coe d_mod'45'semI_304)
       (coe d_mod'45'semM_308)
+      (coe MAlonzo.Code.Once.CCC.SigOp.Info.C_Pure_266)
 -- Once.Arith.SigOp.Builders.neg-info
 d_neg'45'info_348 ::
-  MAlonzo.Code.Once.CCC.SigOp.Info.T_SigOpInfo_264
+  MAlonzo.Code.Once.CCC.SigOp.Info.T_SigOpInfo_276
 d_neg'45'info_348
   = coe
-      MAlonzo.Code.Once.CCC.SigOp.Info.C_mk'45'info_282
+      MAlonzo.Code.Once.CCC.SigOp.Info.C_mk'45'info_298
       (coe ("arith.neg.int" :: Data.Text.Text)) (coe d_neg'45'semI_296)
       (\ v0 -> coe du_neg'45'semM_300)
+      (coe MAlonzo.Code.Once.CCC.SigOp.Info.C_Pure_266)
 -- Once.Arith.SigOp.Builders.lt-info
 d_lt'45'info_350 ::
-  MAlonzo.Code.Once.CCC.SigOp.Info.T_SigOpInfo_264
+  MAlonzo.Code.Once.CCC.SigOp.Info.T_SigOpInfo_276
 d_lt'45'info_350
   = coe
-      MAlonzo.Code.Once.CCC.SigOp.Info.C_mk'45'info_282
+      MAlonzo.Code.Once.CCC.SigOp.Info.C_mk'45'info_298
       (coe ("arith.lt.int" :: Data.Text.Text)) (coe d_lt'45'semI_310)
       (coe d_lt'45'semM_322)
+      (coe MAlonzo.Code.Once.CCC.SigOp.Info.C_Pure_266)
 -- Once.Arith.SigOp.Builders.le-info
 d_le'45'info_352 ::
-  MAlonzo.Code.Once.CCC.SigOp.Info.T_SigOpInfo_264
+  MAlonzo.Code.Once.CCC.SigOp.Info.T_SigOpInfo_276
 d_le'45'info_352
   = coe
-      MAlonzo.Code.Once.CCC.SigOp.Info.C_mk'45'info_282
+      MAlonzo.Code.Once.CCC.SigOp.Info.C_mk'45'info_298
       (coe ("arith.le.int" :: Data.Text.Text)) (coe d_le'45'semI_312)
       (coe d_le'45'semM_324)
+      (coe MAlonzo.Code.Once.CCC.SigOp.Info.C_Pure_266)
 -- Once.Arith.SigOp.Builders.gt-info
 d_gt'45'info_354 ::
-  MAlonzo.Code.Once.CCC.SigOp.Info.T_SigOpInfo_264
+  MAlonzo.Code.Once.CCC.SigOp.Info.T_SigOpInfo_276
 d_gt'45'info_354
   = coe
-      MAlonzo.Code.Once.CCC.SigOp.Info.C_mk'45'info_282
+      MAlonzo.Code.Once.CCC.SigOp.Info.C_mk'45'info_298
       (coe ("arith.gt.int" :: Data.Text.Text)) (coe d_gt'45'semI_314)
       (coe d_gt'45'semM_326)
+      (coe MAlonzo.Code.Once.CCC.SigOp.Info.C_Pure_266)
 -- Once.Arith.SigOp.Builders.ge-info
 d_ge'45'info_356 ::
-  MAlonzo.Code.Once.CCC.SigOp.Info.T_SigOpInfo_264
+  MAlonzo.Code.Once.CCC.SigOp.Info.T_SigOpInfo_276
 d_ge'45'info_356
   = coe
-      MAlonzo.Code.Once.CCC.SigOp.Info.C_mk'45'info_282
+      MAlonzo.Code.Once.CCC.SigOp.Info.C_mk'45'info_298
       (coe ("arith.ge.int" :: Data.Text.Text)) (coe d_ge'45'semI_316)
       (coe d_ge'45'semM_328)
+      (coe MAlonzo.Code.Once.CCC.SigOp.Info.C_Pure_266)
 -- Once.Arith.SigOp.Builders.eq-info
 d_eq'45'info_358 ::
-  MAlonzo.Code.Once.CCC.SigOp.Info.T_SigOpInfo_264
+  MAlonzo.Code.Once.CCC.SigOp.Info.T_SigOpInfo_276
 d_eq'45'info_358
   = coe
-      MAlonzo.Code.Once.CCC.SigOp.Info.C_mk'45'info_282
+      MAlonzo.Code.Once.CCC.SigOp.Info.C_mk'45'info_298
       (coe ("arith.eq.int" :: Data.Text.Text)) (coe d_eq'45'semI_318)
       (coe d_eq'45'semM_330)
+      (coe MAlonzo.Code.Once.CCC.SigOp.Info.C_Pure_266)
 -- Once.Arith.SigOp.Builders.ne-info
 d_ne'45'info_360 ::
-  MAlonzo.Code.Once.CCC.SigOp.Info.T_SigOpInfo_264
+  MAlonzo.Code.Once.CCC.SigOp.Info.T_SigOpInfo_276
 d_ne'45'info_360
   = coe
-      MAlonzo.Code.Once.CCC.SigOp.Info.C_mk'45'info_282
+      MAlonzo.Code.Once.CCC.SigOp.Info.C_mk'45'info_298
       (coe ("arith.ne.int" :: Data.Text.Text)) (coe d_ne'45'semI_320)
       (coe d_ne'45'semM_332)
+      (coe MAlonzo.Code.Once.CCC.SigOp.Info.C_Pure_266)
 -- Once.Arith.SigOp.Builders.str-lit-info
 d_str'45'lit'45'info_362 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-  MAlonzo.Code.Once.CCC.SigOp.Info.T_SigOpInfo_264
+  MAlonzo.Code.Once.CCC.SigOp.Info.T_SigOpInfo_276
 d_str'45'lit'45'info_362 v0
   = coe
-      MAlonzo.Code.Once.CCC.SigOp.Info.C_mk'45'info_282
+      MAlonzo.Code.Once.CCC.SigOp.Info.C_mk'45'info_298
       (coe
          MAlonzo.Code.Data.String.Base.d__'43''43'__20
          ("lit.str." :: Data.Text.Text) v0)
       (coe d_str'45'lit'45'semI_334 v0) (coe d_str'45'lit'45'semM_336 v0)
+      (coe MAlonzo.Code.Once.CCC.SigOp.Info.C_Pure_266)
 -- Once.Arith.SigOp.Builders.generic-semI
 d_generic'45'semI_370
   = error
@@ -1203,14 +1216,30 @@ d_generic'45'semI_370
 d_generic'45'semM_376
   = error
       "MAlonzo Runtime Error: postulate evaluated: Once.Arith.SigOp.Builders.generic-semM"
+-- Once.Arith.SigOp.Builders.classify-name
+d_classify'45'name_380 ::
+  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
+  MAlonzo.Code.Once.CCC.SigOp.Info.T_EffectShape_262
+d_classify'45'name_380 v0 v1
+  = let v2 = coe MAlonzo.Code.Once.CCC.SigOp.Info.C_Pure_266 in
+    coe
+      (case coe v0 of
+         MAlonzo.Code.Once.Type.C_Unit_118
+           -> case coe v1 of
+                l | (==) l ("linux.exit" :: Data.Text.Text) ->
+                    coe MAlonzo.Code.Once.CCC.SigOp.Info.C_Halts_270
+                _ -> coe v2
+         _ -> coe v2)
 -- Once.Arith.SigOp.Builders.generic-info
-d_generic'45'info_382 ::
+d_generic'45'info_386 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-  MAlonzo.Code.Once.CCC.SigOp.Info.T_SigOpInfo_264
-d_generic'45'info_382 v0 v1 v2
+  MAlonzo.Code.Once.CCC.SigOp.Info.T_SigOpInfo_276
+d_generic'45'info_386 v0 v1 v2
   = coe
-      MAlonzo.Code.Once.CCC.SigOp.Info.C_mk'45'info_282 (coe v2)
+      MAlonzo.Code.Once.CCC.SigOp.Info.C_mk'45'info_298 (coe v2)
       (coe d_generic'45'semI_370 v0 v1 v2)
       (coe d_generic'45'semM_376 v0 v1 v2)
+      (coe d_classify'45'name_380 (coe v1) (coe v2))

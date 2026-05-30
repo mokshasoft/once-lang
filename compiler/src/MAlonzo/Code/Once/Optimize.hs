@@ -2342,16 +2342,16 @@ du_'8799'IRH'45'diag_628 v0 v1 v2 v3 v4 v5
                             (\ v12 ->
                                coe
                                  MAlonzo.Code.Data.String.Properties.du_'8776''45'reflexive_8
-                                 (coe MAlonzo.Code.Once.CCC.SigOp.Info.d_name_276 (coe v8)))
+                                 (coe MAlonzo.Code.Once.CCC.SigOp.Info.d_name_290 (coe v8)))
                             (coe
                                MAlonzo.Code.Data.List.Relation.Binary.Pointwise.Properties.du_decidable_112
                                (coe MAlonzo.Code.Data.Char.Properties.d__'8799'__14)
                                (coe
                                   MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12
-                                  (MAlonzo.Code.Once.CCC.SigOp.Info.d_name_276 (coe v8)))
+                                  (MAlonzo.Code.Once.CCC.SigOp.Info.d_name_290 (coe v8)))
                                (coe
                                   MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12
-                                  (MAlonzo.Code.Once.CCC.SigOp.Info.d_name_276 (coe v11)))) in
+                                  (MAlonzo.Code.Once.CCC.SigOp.Info.d_name_290 (coe v11)))) in
                   coe
                     (case coe v12 of
                        MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v13 v14

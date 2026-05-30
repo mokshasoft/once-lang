@@ -22,10 +22,10 @@ import qualified MAlonzo.Code.Agda.Builtin.String
 import qualified MAlonzo.Code.Data.Fin.Base
 import qualified MAlonzo.Code.Once.Grammar
 import qualified MAlonzo.Code.Once.Verified
-import qualified MAlonzo.Code.Once.Verified.Behavior
 import qualified MAlonzo.Code.Once.Verified.CPU
 import qualified MAlonzo.Code.Once.Verified.CPU.Interface
 import qualified MAlonzo.Code.Once.Verified.Compile
+import qualified MAlonzo.Code.Once.Verified.SourceTrace
 
 -- Once.Compiler.VC.compile
 d_compile_6 ::
@@ -73,7 +73,7 @@ d_once'45'compiler_16 ::
 d_once'45'compiler_16
   = coe
       MAlonzo.Code.Once.Verified.C_constructor_50
-      MAlonzo.Code.Once.Verified.Behavior.d_'10214'_'10215'_10
+      MAlonzo.Code.Once.Verified.SourceTrace.d_'10214'_'10215'_56
       (MAlonzo.Code.Once.Verified.Compile.d_exec_62
          (coe MAlonzo.Code.Once.Verified.CPU.d_arch'45'semantics_6))
       (MAlonzo.Code.Once.Verified.Compile.d_compile_72

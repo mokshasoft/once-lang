@@ -955,57 +955,66 @@ d_'10214'μ'10215'_256 = erased
 -- Once.CCC.SigOp.Info.M.⟦ν⟧
 d_'10214'ν'10215'_258 :: MAlonzo.Code.Once.Type.T_Functor_106 -> ()
 d_'10214'ν'10215'_258 = erased
+-- Once.CCC.SigOp.Info.EffectShape
+d_EffectShape_262 a0 = ()
+data T_EffectShape_262 = C_Pure_266 | C_Emits_268 | C_Halts_270
 -- Once.CCC.SigOp.Info.SigOpInfo
-d_SigOpInfo_264 a0 a1 = ()
-data T_SigOpInfo_264
-  = C_mk'45'info_282 MAlonzo.Code.Agda.Builtin.String.T_String_6
-                     (AgdaAny -> AgdaAny) (AgdaAny -> AgdaAny)
+d_SigOpInfo_276 a0 a1 = ()
+data T_SigOpInfo_276
+  = C_mk'45'info_298 MAlonzo.Code.Agda.Builtin.String.T_String_6
+                     (AgdaAny -> AgdaAny) (AgdaAny -> AgdaAny) T_EffectShape_262
 -- Once.CCC.SigOp.Info.SigOpInfo.name
-d_name_276 ::
-  T_SigOpInfo_264 -> MAlonzo.Code.Agda.Builtin.String.T_String_6
-d_name_276 v0
+d_name_290 ::
+  T_SigOpInfo_276 -> MAlonzo.Code.Agda.Builtin.String.T_String_6
+d_name_290 v0
   = case coe v0 of
-      C_mk'45'info_282 v1 v2 v3 -> coe v1
+      C_mk'45'info_298 v1 v2 v3 v4 -> coe v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.SigOp.Info.SigOpInfo.semI
-d_semI_278 :: T_SigOpInfo_264 -> AgdaAny -> AgdaAny
-d_semI_278 v0
+d_semI_292 :: T_SigOpInfo_276 -> AgdaAny -> AgdaAny
+d_semI_292 v0
   = case coe v0 of
-      C_mk'45'info_282 v1 v2 v3 -> coe v2
+      C_mk'45'info_298 v1 v2 v3 v4 -> coe v2
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.SigOp.Info.SigOpInfo.semM
-d_semM_280 :: T_SigOpInfo_264 -> AgdaAny -> AgdaAny
-d_semM_280 v0
+d_semM_294 :: T_SigOpInfo_276 -> AgdaAny -> AgdaAny
+d_semM_294 v0
   = case coe v0 of
-      C_mk'45'info_282 v1 v2 v3 -> coe v3
+      C_mk'45'info_298 v1 v2 v3 v4 -> coe v3
+      _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.CCC.SigOp.Info.SigOpInfo.effect
+d_effect_296 :: T_SigOpInfo_276 -> T_EffectShape_262
+d_effect_296 v0
+  = case coe v0 of
+      C_mk'45'info_298 v1 v2 v3 v4 -> coe v4
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.SigOp.Info._≟SigOpInfo-name_
-d__'8799'SigOpInfo'45'name__292 ::
-  T_SigOpInfo_264 ->
-  T_SigOpInfo_264 ->
+d__'8799'SigOpInfo'45'name__308 ::
+  T_SigOpInfo_276 ->
+  T_SigOpInfo_276 ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20
-d__'8799'SigOpInfo'45'name__292 v0 v1
+d__'8799'SigOpInfo'45'name__308 v0 v1
   = coe
       MAlonzo.Code.Data.String.Properties.d__'8799'__54
-      (coe d_name_276 (coe v0)) (coe d_name_276 (coe v1))
+      (coe d_name_290 (coe v0)) (coe d_name_290 (coe v1))
 -- Once.CCC.SigOp.Info.sigOpInfo-name-coherence
-d_sigOpInfo'45'name'45'coherence_306
+d_sigOpInfo'45'name'45'coherence_322
   = error
       "MAlonzo Runtime Error: postulate evaluated: Once.CCC.SigOp.Info.sigOpInfo-name-coherence"
 -- Once.CCC.SigOp.Info._≟SigOpInfo_
-d__'8799'SigOpInfo__316 ::
+d__'8799'SigOpInfo__332 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
-  T_SigOpInfo_264 ->
-  T_SigOpInfo_264 ->
+  T_SigOpInfo_276 ->
+  T_SigOpInfo_276 ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20
-d__'8799'SigOpInfo__316 ~v0 ~v1 v2 v3
-  = du__'8799'SigOpInfo__316 v2 v3
-du__'8799'SigOpInfo__316 ::
-  T_SigOpInfo_264 ->
-  T_SigOpInfo_264 ->
+d__'8799'SigOpInfo__332 ~v0 ~v1 v2 v3
+  = du__'8799'SigOpInfo__332 v2 v3
+du__'8799'SigOpInfo__332 ::
+  T_SigOpInfo_276 ->
+  T_SigOpInfo_276 ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20
-du__'8799'SigOpInfo__316 v0 v1
+du__'8799'SigOpInfo__332 v0 v1
   = let v2
           = coe
               MAlonzo.Code.Relation.Nullary.Decidable.Core.du_map'8242'_178
@@ -1013,10 +1022,10 @@ du__'8799'SigOpInfo__316 v0 v1
               (\ v2 ->
                  coe
                    MAlonzo.Code.Data.String.Properties.du_'8776''45'reflexive_8
-                   (coe d_name_276 (coe v0)))
+                   (coe d_name_290 (coe v0)))
               (coe
                  MAlonzo.Code.Data.String.Properties.d__'8776''63'__28
-                 (coe d_name_276 (coe v0)) (coe d_name_276 (coe v1))) in
+                 (coe d_name_290 (coe v0)) (coe d_name_290 (coe v1))) in
     coe
       (case coe v2 of
          MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v3 v4

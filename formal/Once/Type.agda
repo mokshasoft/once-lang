@@ -350,6 +350,17 @@ data FitsInReg : Type → Set where
   fits-int   : FitsInReg Int
   fits-float : FitsInReg Float
 
+-- | Decider for `FitsInReg` (Plan 0.26). The single point in the
+-- codebase that pattern-matches on `Type` constructors for the
+-- "register-resident" classification — downstream consumers (CCC's
+-- per-class SigOp dispatch in `SMCore`/`IRTraceCorrect`) import
+-- `FitsInReg` + `fits-in-reg?` and never name primitive type
+-- constructors themselves.
+fits-in-reg? : (B : Type) → Maybe (FitsInReg B)
+fits-in-reg? Int   = just fits-int
+fits-in-reg? Float = just fits-float
+fits-in-reg? _     = nothing
+
 ------------------------------------------------------------------------
 -- Type Pretty Printing
 ------------------------------------------------------------------------

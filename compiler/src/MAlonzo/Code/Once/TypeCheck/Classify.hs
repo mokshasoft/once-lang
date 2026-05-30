@@ -508,7 +508,7 @@ d_composeArgB_458 v0 v1 v2
                              -> case coe v6 of
                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v7 v8
                                     -> coe
-                                         MAlonzo.Code.Once.Type.d_schemaArrowCodomain_848 (coe v7)
+                                         MAlonzo.Code.Once.Type.d_schemaArrowCodomain_852 (coe v7)
                                          (coe v2)
                                   _ -> MAlonzo.RTE.mazUnreachableError
                            MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v5

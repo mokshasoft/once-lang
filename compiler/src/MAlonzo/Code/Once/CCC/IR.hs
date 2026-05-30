@@ -1002,4 +1002,4 @@ data T_IR_274
     C_free'45'heap_412 MAlonzo.Code.Once.Memory.HeapAddress.T_HeapRef_8 |
     C_const_416 MAlonzo.Code.Once.Type.T_FitsInReg_188 AgdaAny
                 AgdaAny |
-    C_SigOp_422 MAlonzo.Code.Once.CCC.SigOp.Info.T_SigOpInfo_264
+    C_SigOp_422 MAlonzo.Code.Once.CCC.SigOp.Info.T_SigOpInfo_276

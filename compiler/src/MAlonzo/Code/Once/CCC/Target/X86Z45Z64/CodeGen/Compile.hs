@@ -897,7 +897,7 @@ d_compile'45'ir''_104 v0 v1 v2 v3
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
              (coe
                 d_compile'45'sigOp_48
-                (coe MAlonzo.Code.Once.CCC.SigOp.Info.d_name_276 (coe v6)))
+                (coe MAlonzo.Code.Once.CCC.SigOp.Info.d_name_290 (coe v6)))
              (coe v2)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Target.X86-64.CodeGen.Compile.compile-ir
