@@ -407,7 +407,12 @@ ir-to-trace' n l (case f g) =
       g-dispatch = load-indirect-suc ∷ mov-to-input ∷ gt
   in n2 , l2 , (instr-case-on-tag f-dispatch g-dispatch ∷ []) , (fb ++ gb)
 
-ir-to-trace' n l (In _ _)       = n , l , [] , []
+-- In: μ Lambek constructor. Heap-identity — the F-layer node IS the
+-- μ-value (same pointer). `mov-to-output` (Output := Input1) passes the
+-- pointer through, matching `out-μ` (its inverse) and the heap-identity
+-- `run-In` (SumRecWF). Plan 0.27 Phase B: was `[]` (a stub correct only
+-- when Output happened to be pre-loaded by a preceding sub-IR).
+ir-to-trace' n l (In _ _)       = n , l , (mov-to-output ∷ []) , []
 -- out-μ and Out: ν/μ Lambek inverses; semantically Output := Input1.
 -- run-X uses `mov-to-output ∷ []`; mirror it so the discharge falls
 -- out via the same `transport-trivial` pattern as id/arr/free-heap.
