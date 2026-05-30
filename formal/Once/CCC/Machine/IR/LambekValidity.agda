@@ -37,15 +37,13 @@ open import Once.CCC.IR
 open import Once.CCC.Eval using (eval)
 open import Once.CCC.Machine.Allocation hiding (AllocMode)
 open import Once.Type using (Type; Functor; μ-type; ν-type; ⟦_⟧T)
-open import Once.Functor.Translate using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod;
-                                          IsBaseType; base-Unit; base-Void; base-Int;
-                                          base-Float; base-Str; base-Buffer;
-                                          base-Prod; base-Sum)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; subst; sym)
+open import Once.Functor.Translate using (WellFormedF)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; subst; sym; trans)
 
 -- Semantic operations
 open import Once.Semantics.Core ℕ using (sem-In; sem-Out; sem-CoIn; sem-CoOut;
-                                          coerce-functor; coerce-functor⁻¹; sem-Out-In)
+                                          coerce-functor; coerce-functor⁻¹; sem-Out-In;
+                                          coerce-round-trip)
 
 ------------------------------------------------------------------------
 -- LambekValidityImpl
@@ -60,102 +58,35 @@ module LambekValidityImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
   open import Once.CCC.Machine.ClosureWellFormed
   open ClosureWellFormedDef {FS} program-bound
-    using (ValidAtWF; valid-unit-wf; valid-int-wf; valid-float-wf;
-           valid-str-wf; valid-buffer-wf; valid-coerce-kind-wf;
-           valid-inl-wf; valid-inr-wf; valid-pair-wf; valid-μ-wf; valid-ν-wf)
-
-  import Once.CCC.Machine.IR.MuValidity as MV
-  open MV.MuValidityImpl {FS} program-bound
-    using (μValid; μ-valid; μLayerValid;
-           μlayer-K; μlayer-Id; μlayer-inl; μlayer-inr; μlayer-prod)
+    using (ValidAtWF; valid-μ-wf; valid-ν-wf)
 
   ------------------------------------------------------------------------
-  -- Plan 0.27 POC-1: the load-bearing forward correspondence.
+  -- Plan 0.27 Option 3: `In` validity is now TRIVIAL.
   --
-  -- `μLayerValid` (MuValidity) and the `valid-{inl,inr,pair}-wf`
-  -- constructors describe the SAME heap layout (identical sucLoc offsets
-  -- and pointer chains). So a valid F-layer of μ-values IS a valid
-  -- μLayerValid — by structural induction on `WellFormedF F`. This
-  -- discharges the *representational* Lambek transfer (the basis for
-  -- In/out-μ being real, not postulated).
-  --
-  -- `BeforeFrontier alloc loc` is threaded explicitly: parent
-  -- constructors (valid-inl/inr/pair-wf) carry each child loc's
-  -- frontier-membership, so the recursion supplies it; only the K leaf
-  -- consumes it (its payload structure is irrelevant to μlayer-K, the
-  -- forward direction weakens — K-of-compound is handled by ignoring
-  -- the richer ValidAtWF, see the `_` in the wf-K clause).
+  -- `valid-μ-wf` carries the layer's own `ValidAtWF` directly, so `In`
+  -- is just "wrap": given the F-layer's validity at `loc`, the μ-value
+  -- `eval (In wf mode) x` is valid at the SAME loc and SAME mode
+  -- (μ-value mode = its layer's memory mode — mode-rigid, hence sound
+  -- and cross-mode-safe). We transport the layer validity along the
+  -- Lambek round-trip `out-μ ∘ In ≡ id` (sem-Out-In + coerce-round-trip).
+  -- No `BeforeFrontier`, no `μLayerValid`, no forward kernel.
   ------------------------------------------------------------------------
-
-  -- WellFormedF / IsBaseType are singletons (structural on the
-  -- functor/type), so proofs are irrelevant. Needed to align the `wf`
-  -- carried by a recursive μ-value's `valid-μ-wf` with the ambient one.
-  mutual
-    wf-irrel : ∀ {F} (p q : WellFormedF F) → p ≡ q
-    wf-irrel (wf-K b1)     (wf-K b2)     = cong wf-K (isbase-irrel b1 b2)
-    wf-irrel wf-Id         wf-Id         = refl
-    wf-irrel (wf-Sum p1 p2)  (wf-Sum q1 q2)  = cong₂ wf-Sum (wf-irrel p1 q1) (wf-irrel p2 q2)
-    wf-irrel (wf-Prod p1 p2) (wf-Prod q1 q2) = cong₂ wf-Prod (wf-irrel p1 q1) (wf-irrel p2 q2)
-
-    isbase-irrel : ∀ {A} (p q : IsBaseType A) → p ≡ q
-    isbase-irrel base-Unit   base-Unit   = refl
-    isbase-irrel base-Void   base-Void   = refl
-    isbase-irrel base-Int    base-Int    = refl
-    isbase-irrel base-Float  base-Float  = refl
-    isbase-irrel base-Str    base-Str    = refl
-    isbase-irrel base-Buffer base-Buffer = refl
-    isbase-irrel (base-Prod p1 p2) (base-Prod q1 q2) = cong₂ base-Prod (isbase-irrel p1 q1) (isbase-irrel p2 q2)
-    isbase-irrel (base-Sum  p1 p2) (base-Sum  q1 q2) = cong₂ base-Sum  (isbase-irrel p1 q1) (isbase-irrel p2 q2)
-
-  layer→μlayer : ∀ {m F G} (wfF : WellFormedF F) (wfG : WellFormedF G)
-    {alloc : AllocState {FS}} {loc : ValueLocation FS} {s : LocState FS}
-    {x : ⟦ ⟦ F ⟧T (μ-type G) ⟧} →
-    BeforeFrontier alloc loc →
-    ValidAtWF m alloc {⟦ F ⟧T (μ-type G)} x loc s →
-    μLayerValid alloc wfF wfG (coerce-functor F (μ-type G) x) loc s
-  layer→μlayer (wf-K isBase) wfG bf _ = μlayer-K bf
-  layer→μlayer wf-Id wfG bf (valid-μ-wf wf' _ μv) =
-    μlayer-Id (subst (λ w → μValid _ w _ _ _) (wf-irrel wf' wfG) μv)
-  layer→μlayer (wf-Sum wfF1 wfF2) wfG bf
-    (valid-inl-wf lmm read-suc bf-pay bf-suc sub-v) =
-    μlayer-inl read-suc bf-pay bf-suc (layer→μlayer wfF1 wfG bf-pay sub-v)
-  layer→μlayer (wf-Sum wfF1 wfF2) wfG bf
-    (valid-inr-wf lmm read-suc bf-pay bf-suc sub-v) =
-    μlayer-inr read-suc bf-pay bf-suc (layer→μlayer wfF2 wfG bf-pay sub-v)
-  layer→μlayer (wf-Prod wfF1 wfF2) wfG bf
-    (valid-pair-wf lmm read-fst read-snd bf-fst bf-snd bf-suc sub-v1 sub-v2) =
-    μlayer-prod read-fst read-snd bf-fst bf-snd bf-suc
-      (layer→μlayer wfF1 wfG bf-fst sub-v1)
-      (layer→μlayer wfF2 wfG bf-snd sub-v2)
-
-  ------------------------------------------------------------------------
-  -- Plan 0.27 Phase B: `In` validity, REAL (not postulated).
-  --
-  -- `In` is representational identity (heap pointer-identity): the
-  -- F-layer node at `loc` IS the μ-value at `loc`. Given the F-layer's
-  -- validity + `loc`'s frontier-membership, the μ-value is valid at the
-  -- same `loc`, via `valid-μ-wf` + `μ-valid` + the forward kernel
-  -- `layer→μlayer` (with `sem-Out-In` collapsing the Lambek round-trip).
-  --
-  -- This replaces the hypothesis-free `In-trace-valid` postulate: the
-  -- heap-identity `run-In` (SumRecWF) supplies `input-before` +
-  -- `input-valid-wf`, both already in its parameter list.
-  ------------------------------------------------------------------------
-  -- Modes are decoupled: μ-values are mode-agnostic (valid-μ-wf is
-  -- ∀{m}), so the input F-layer may be validated at any mode mIn while
-  -- the In-result is produced at the producer's mode mOut.
-  In-valid-bf : ∀ {mIn mOut F} (wf : WellFormedF F) (mode : AllocMode)
+  In-valid-bf : ∀ {m F} (wf : WellFormedF F) (mode : AllocMode)
     {alloc : AllocState {FS}} {loc : ValueLocation FS} {s : LocState FS}
     (x : ⟦ ⟦ F ⟧T (μ-type F) ⟧) →
-    BeforeFrontier alloc loc →
-    ValidAtWF mIn alloc {⟦ F ⟧T (μ-type F)} x loc s →
-    ValidAtWF mOut alloc {μ-type F} (eval (In wf mode) x) loc s
-  In-valid-bf {mIn} {mOut} {F} wf mode {alloc} {loc} {s} x bf v =
-    valid-μ-wf wf (sem-In F (coerce-functor F (μ-type F) x))
-      (μ-valid bf
-        (subst (λ y → μLayerValid alloc wf wf y loc s)
-               (sym (sem-Out-In wf (coerce-functor F (μ-type F) x)))
-               (layer→μlayer wf wf bf v)))
+    ValidAtWF m alloc {⟦ F ⟧T (μ-type F)} x loc s →
+    ValidAtWF m alloc {μ-type F} (eval (In wf mode) x) loc s
+  In-valid-bf {m} {F} wf mode {alloc} {loc} {s} x v =
+    valid-μ-wf wf (eval (In wf mode) x)
+      (subst (λ y → ValidAtWF m alloc {⟦ F ⟧T (μ-type F)} y loc s)
+             (sym roundtrip) v)
+    where
+      -- out-μ ∘ In ≡ id at the value level (Lambek).
+      roundtrip : eval (out-μ wf) (eval (In wf mode) x) ≡ x
+      roundtrip =
+        trans (cong (coerce-functor⁻¹ F (μ-type F))
+                    (sem-Out-In wf (coerce-functor F (μ-type F) x)))
+              (coerce-round-trip F (μ-type F) x)
 
   ------------------------------------------------------------------------
   -- μ-type Validity Transfer

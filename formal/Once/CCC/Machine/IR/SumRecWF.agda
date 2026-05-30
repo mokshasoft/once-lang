@@ -1009,7 +1009,9 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
     readReg (regs s) Input1 ≡ SV-Ptr input-loc →
-    IRResultAWF m (In {F} wf m) x s alloc
+    -- Option 3: In is mode-rigid identity — the μ-value lives at the
+    -- layer's location and mode (mIn), so the result mode is mIn.
+    IRResultAWF mIn (In {F} wf m) x s alloc
   run-In {F} wf mIn m x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     mk-IRResultAWF-via-bump
       s' alloc in-trace bump-0 refl
@@ -1061,11 +1063,11 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- In is representational identity; the F-layer's validity +
       -- frontier-membership give the μ-value's validity at the SAME loc,
       -- transported across mov-to-output (memory-preserving).
-      result-valid : ValidAtWF m alloc (eval (In wf m) x) input-loc s'
+      result-valid : ValidAtWF mIn alloc (eval (In wf m) x) input-loc s'
       result-valid =
-        subst (λ st → ValidAtWF m alloc (eval (In wf m) x) input-loc st) (sym s'-eq)
+        subst (λ st → ValidAtWF mIn alloc (eval (In wf m) x) input-loc st) (sym s'-eq)
           (validityWF-mem-only (eval (In wf m) x) input-loc s (exec (mov Output Input1) s)
-            refl refl (In-valid-bf wf m x input-before input-valid-wf))
+            refl refl (In-valid-bf wf m x input-valid-wf))
 
       rax-eq : readReg (regs s') Output ≡ SV-Ptr input-loc
       rax-eq = trans (passthrough-output-is-input s alloc not-halted) rdi-eq

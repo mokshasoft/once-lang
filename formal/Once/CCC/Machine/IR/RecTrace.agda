@@ -118,6 +118,22 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
            μLayerValid-mem-preserved; μValid-frontier-advance)
 
   ------------------------------------------------------------------------
+  -- Plan 0.27 Option 3 — TEMPORARY bridges (Phase-C discharge targets).
+  --
+  -- `valid-μ-wf` now stores the layer's ValidAtWF directly (no μValid).
+  -- RecTrace's Cata-validity machinery is still μValid-based; until it is
+  -- reworked to thread ValidAtWF (Phase C), these two named bridges
+  -- connect the worlds. They are strictly NARROWER than the blanket
+  -- `out-μ-trace-valid`/`rec-scheme-semantic` they sit alongside, and the
+  -- `In` path is now postulate-free.
+  postulate
+    μValid→μValidAtWF : ∀ {m G} (wfG : WellFormedF G)
+      {alloc : AllocState {FS}} {x : ⟦μ⟧ G}
+      {loc : ValueLocation FS} {s : LocState FS} →
+      μValid alloc wfG x loc s →
+      ValidAtWF m alloc x loc s
+
+  ------------------------------------------------------------------------
   -- Plan 0.2.4.5 D1: Cata result-place transport postulate
   --
   -- The cata loop chains alg-result's `result-place` (at alg-input
@@ -1500,7 +1516,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
       where
         -- Validity for μ-val (extracted from μLayerValid for Id)
         μ-val-valid : ValidAtWF mIn alloc μ-val input-loc s
-        μ-val-valid = valid-μ-wf wfG μ-val μ-val-μvalid
+        μ-val-valid = μValid→μValidAtWF wfG μ-val-μvalid
 
         -- Recursive call: compute cata on μ-val
         cata-call = cata-dispatched-new wfG alg dispatch μ-val mIn input-loc s alloc
@@ -3429,16 +3445,17 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
     exec-mov-to-input-state s alloc target-loc output-eq =
       cong (λ loc → record s { regs = writeReg (regs s) Input1 loc }) output-eq
 
-    extract-μLayerValid : ∀ {G m} (wfG : WellFormedF G)
-      {alloc : AllocState {FS}} {x : ⟦μ⟧ G}
-      {input-loc : ValueLocation FS} {s : LocState FS}
-      → ValidAtWF m alloc x input-loc s
-      → μLayerValid alloc wfG wfG (sem-Out wfG x) input-loc s
-    -- Uses WellFormedF-irrelevant to transport layer validity from wf to wfG
-    extract-μLayerValid {G} wfG (valid-μ-wf wf x (μ-valid bf lv)) =
-      subst (λ w → μLayerValid _ w w (sem-Out w x) _ _)
-            (WellFormedF-irrelevant wf wfG)
-            lv
+    -- Plan 0.27 Option 3 TEMPORARY bridge (Phase-C target): with
+    -- valid-μ-wf now storing the layer's ValidAtWF, exposing μLayerValid
+    -- is the forward correspondence (ValidAtWF {layer} → μLayerValid).
+    -- Postulated until RecTrace threads ValidAtWF directly. Narrower than
+    -- the blanket rec-scheme-semantic alongside it.
+    postulate
+      extract-μLayerValid : ∀ {G m} (wfG : WellFormedF G)
+        {alloc : AllocState {FS}} {x : ⟦μ⟧ G}
+        {input-loc : ValueLocation FS} {s : LocState FS}
+        → ValidAtWF m alloc x input-loc s
+        → μLayerValid alloc wfG wfG (sem-Out wfG x) input-loc s
 
     -- cata-dispatched-new delegates to process-layer for layer handling
     -- and to dispatcher for algebra execution
