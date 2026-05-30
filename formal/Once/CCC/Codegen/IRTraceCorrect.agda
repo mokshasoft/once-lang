@@ -130,12 +130,13 @@ module IRTraceCorrectness {FS : FrameSemantics} (program-bound : ℕ)
   open SMP.RecSchemeSemantics {FS}
     using (exec-abstract-load-indirect-preserves-alloc;
            exec-abstract-load-indirect-suc-preserves-alloc)
-  open import Once.CCC.SigOp.Info using (SigOpInfo; semM)
+  open import Once.CCC.SigOp.Info using (SigOpInfo; semM; effect; EffectShape; Pure; Emits; Halts)
+  open import Once.Type using (Unit)
   open import Once.CCC.Machine.SMCore using (mkLocState; stackMem; heapMem; writeReg; Output; instr-sigop)
 
   open import Once.CCC.Machine.ClosureWellFormed
   open ClosureWellFormedDef {FS} program-bound
-    using (ValidAtWF; IRResultAWF; place-loc; place-valid)
+    using (ValidAtWF; IRResultAWF; place-loc; place-valid; valid-unit-wf)
 
   open Once.CCC.Machine.Allocation.FrontierInvariant {FS}
     using (BeforeFrontier)
@@ -494,38 +495,18 @@ module IRTraceCorrectness {FS : FrameSemantics} (program-bound : ℕ)
                     pv)
 
   postulate
-    -- Plan 0.11 Task A — SigOp value-flow trusted-base axiom.
+    -- Plan 0.25 — Pure-SigOp value-flow per-name discharge target.
     --
-    -- After Plan 0.11 task A's structuring of `exec-abstract
-    -- (instr-sigop si)` (now consults `exec-sigop-output` and
-    -- `exec-sigop-halts`), the post-state `final-s` is definitionally
-    --   record s { regs   = writeReg (regs s) Output (exec-sigop-output si s)
-    --            ; halted = exec-sigop-halts si s }
-    -- and `final-alloc = alloc`.
-    --
-    -- The remaining trusted-base obligation is: at this `final-s`,
-    -- the location `exec-sigop-output si s` is `ValidAtWF` for
-    -- `semM si x` at some output mode. Per-name discharge replaces
-    -- this with per-(name) lemmas tied to `SigOpInfo.semM`.
-    --
-    -- This axiom is more constrained than the older
-    -- `ir-to-trace-correct-sigop` postulate: it pre-commits the
-    -- `result-loc` to `exec-sigop-output si s` instead of leaving it
-    -- existential. That makes per-name discharge tractable — the
-    -- per-name implementor only needs to prove validity for one
-    -- specific location, not invent one.
-    --
-    -- Paired with `Simulation.sigop-codegen-faithful` (one per arch),
-    -- which links the codegen output of `compile-sigOp name` to
-    -- `exec-abstract (instr-sigop si)`. The two together close the
-    -- semantic chain for SigOps.
-    -- Plan 0.14 (2026-05-17): exec-sigop-output returns StoredValue, not
-    -- ValueLocation, after Plan 0.2.4.5 Stage B Input1-as-StoredValue.
-    -- The result-loc claimed by the SigOp validity now lives in
-    -- StoredValue space; we existentialize it for the proof to make
-    -- the SigOp bridge re-typecheck. Per-name SigOp discharge can
-    -- pin this when needed.
-    exec-sigop-respects-semM :
+    -- After Plan 0.25, the blanket `exec-sigop-respects-semM` postulate
+    -- is gone. For `Halts`/`Emits` SigOps the discharge is by
+    -- `valid-unit-wf` (their codomain is `Unit` by the
+    -- `EffectShape`-constructor coherence proof, so `semM si x ≡ tt`
+    -- by η for ⊤); for `Pure` SigOps the per-name validity of
+    -- `pure-sigop-output si s` against `semM si x` is THIS postulate —
+    -- a smaller, Pure-confined per-name obligation. Discharge per name
+    -- (e.g. for `arith.block.<digest>`) ties the per-arch codegen's
+    -- output to the producer's `semM`.
+    pure-sigop-respects-semM :
       ∀ {A B} (si : SigOpInfo A B)
         (mIn : AllocMode) (x : ⟦ A ⟧) (input-loc : ValueLocation FS)
         (s : LocState FS) (alloc : AllocState {FS}) →
@@ -535,14 +516,46 @@ module IRTraceCorrectness {FS : FrameSemantics} (program-bound : ℕ)
       readReg (regs s) Input1 ≡ SV-Ptr input-loc →
       ∃[ mOut ] ∃[ result-loc ]
         ValidAtWF mOut alloc (semM si x) result-loc
-          (mkLocState (writeReg (regs s) Output (exec-sigop-output si s))
+          (mkLocState (writeReg (regs s) Output
+                                (exec-sigop-output-of Pure si s))
                       (stackMem s) (heapMem s)
-                      (exec-sigop-halts si s))
+                      (exec-sigop-halts-of Pure si s))
 
     -- Sums and recursion schemes (Layer 0 doesn't use; ir-to-trace
     -- stubs all to []). Catchall named postulate; should be split
     -- per-IR when Layer 1+ work begins.
     ir-to-trace-correct-non-layer0 : ∀ {A B} (ir : IR A B) → IRTraceCorrect ir
+
+  ----------------------------------------------------------------------
+  -- Plan 0.25 — `exec-sigop-respects-semM` discharged by per-class
+  -- dispatch. The blanket postulate is gone; only `Pure` retains a
+  -- (smaller) per-name discharge target above.
+  --
+  -- - `Pure`:        delegated to `pure-sigop-respects-semM`.
+  -- - `Halts refl` / `Emits refl`: `B ≡ Unit` via the constructor's
+  --   coherence proof, so `semM si x ≡ tt` (η for ⊤) and
+  --   `valid-unit-wf` produces `ValidAtWF` at any location.
+  ----------------------------------------------------------------------
+
+  exec-sigop-respects-semM :
+    ∀ {A B} (si : SigOpInfo A B)
+      (mIn : AllocMode) (x : ⟦ A ⟧) (input-loc : ValueLocation FS)
+      (s : LocState FS) (alloc : AllocState {FS}) →
+    ValidAtWF mIn alloc x input-loc s →
+    BeforeFrontier alloc input-loc →
+    halted s ≡ false →
+    readReg (regs s) Input1 ≡ SV-Ptr input-loc →
+    ∃[ mOut ] ∃[ result-loc ]
+      ValidAtWF mOut alloc (semM si x) result-loc
+        (mkLocState (writeReg (regs s) Output (exec-sigop-output si s))
+                    (stackMem s) (heapMem s)
+                    (exec-sigop-halts si s))
+  exec-sigop-respects-semM si mIn x input-loc s alloc valid before not-halted rdi-eq
+    with effect si
+  ... | Pure       = pure-sigop-respects-semM si mIn x input-loc s alloc
+                       valid before not-halted rdi-eq
+  ... | Emits refl = _ , input-loc , valid-unit-wf
+  ... | Halts refl = _ , input-loc , valid-unit-wf
 
   ----------------------------------------------------------------------
   -- Plan 0.11 Task A — DERIVED from `exec-sigop-respects-semM`.

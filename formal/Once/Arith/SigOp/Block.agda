@@ -34,7 +34,7 @@ open import Data.Product using (_,_; _×_; proj₁; proj₂)
 open import Data.Maybe using (Maybe; just; nothing)
 
 open import Once.Type using (Type; Int)
-open import Once.CCC.SigOp.Info using (SigOpInfo; mk-info; name)
+open import Once.CCC.SigOp.Info using (SigOpInfo; mk-info; name; Pure)
 
 open import Once.Arith.Machine.AbsState
   using (InputShape; shape-unit; shape-int; shape-pair; ⟦_⟧S; InputPath; Side; Fst; Snd)
@@ -161,3 +161,4 @@ block-info {sh} e = mk-info
   (block-name e)
   (λ x → eval-arith e (toShape-I sh x))
   (block-semM e)
+  Pure  -- arith blocks are observably pure (no event, no halt)

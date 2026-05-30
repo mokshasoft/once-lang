@@ -30,13 +30,13 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.Type using (Int; Unit; fits-int)
 open import Once.CCC.IR using (IR; _∘_; const; SigOp)
-open import Once.CCC.SigOp.Info using (SigOpInfo; mk-info)
+open import Once.CCC.SigOp.Info using (SigOpInfo; mk-info; Halts)
 open import Once.Verified.Trace using (exitCodeOf)
 open import Once.Verified.TraceDenote using (obs)
 
 -- A synthetic `linux.exit : Int → Unit` SigOp (effect ignores its arg).
 exitInfo : SigOpInfo Int Unit
-exitInfo = mk-info "linux.exit" (λ _ → tt) (λ _ → tt)
+exitInfo = mk-info "linux.exit" (λ _ → tt) (λ _ → tt) (Halts refl)
 
 -- "exit 13" as a tiny `IR Unit Unit`: feed the constant 13 to linux.exit.
 testIR : IR Unit Unit
