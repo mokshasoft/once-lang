@@ -31,43 +31,43 @@ import qualified MAlonzo.Code.Once.Type
 -- Once.Grammar.ModuleConvert.gtypeToPolyType
 d_gtypeToPolyType_6 ::
   MAlonzo.Code.Once.Grammar.T_GType_8 ->
-  MAlonzo.Code.Once.Type.T_PolyType_232
+  MAlonzo.Code.Once.Type.T_PolyType_236
 d_gtypeToPolyType_6 v0
   = case coe v0 of
       MAlonzo.Code.Once.Grammar.C_TUnit_10
-        -> coe MAlonzo.Code.Once.Type.C_PUnit_242
+        -> coe MAlonzo.Code.Once.Type.C_PUnit_246
       MAlonzo.Code.Once.Grammar.C_TVoid_12
-        -> coe MAlonzo.Code.Once.Type.C_PVoid_244
+        -> coe MAlonzo.Code.Once.Type.C_PVoid_248
       MAlonzo.Code.Once.Grammar.C_TInt_14
-        -> coe MAlonzo.Code.Once.Type.C_PInt_258
+        -> coe MAlonzo.Code.Once.Type.C_PInt_262
       MAlonzo.Code.Once.Grammar.C_TFloat_16
-        -> coe MAlonzo.Code.Once.Type.C_PFloat_260
+        -> coe MAlonzo.Code.Once.Type.C_PFloat_264
       MAlonzo.Code.Once.Grammar.C_TBuffer_18
-        -> coe MAlonzo.Code.Once.Type.C_PBuffer_264
+        -> coe MAlonzo.Code.Once.Type.C_PBuffer_268
       MAlonzo.Code.Once.Grammar.C_TString_20
-        -> coe MAlonzo.Code.Once.Type.C_PStr_262
+        -> coe MAlonzo.Code.Once.Type.C_PStr_266
       MAlonzo.Code.Once.Grammar.C__'8658''91'_'93'__22 v1 v2 v3
         -> coe
-             MAlonzo.Code.Once.Type.C__P'8658''91'_'93'__250
+             MAlonzo.Code.Once.Type.C__P'8658''91'_'93'__254
              (coe d_gtypeToPolyType_6 (coe v1)) (coe v2)
              (coe d_gtypeToPolyType_6 (coe v3))
       MAlonzo.Code.Once.Grammar.C__'8855'__24 v1 v2
         -> coe
-             MAlonzo.Code.Once.Type.C__P'42'__246
+             MAlonzo.Code.Once.Type.C__P'42'__250
              (coe d_gtypeToPolyType_6 (coe v1))
              (coe d_gtypeToPolyType_6 (coe v2))
       MAlonzo.Code.Once.Grammar.C__'8853'__26 v1 v2
         -> coe
-             MAlonzo.Code.Once.Type.C__P'43'__248
+             MAlonzo.Code.Once.Type.C__P'43'__252
              (coe d_gtypeToPolyType_6 (coe v1))
              (coe d_gtypeToPolyType_6 (coe v2))
       MAlonzo.Code.Once.Grammar.C_TEff_28 v1 v2
         -> coe
-             MAlonzo.Code.Once.Type.C_PEff_252
+             MAlonzo.Code.Once.Type.C_PEff_256
              (coe d_gtypeToPolyType_6 (coe v1))
              (coe d_gtypeToPolyType_6 (coe v2))
       MAlonzo.Code.Once.Grammar.C_TVar_30 v1
-        -> coe MAlonzo.Code.Once.Type.C_PTVar_266 (coe v1)
+        -> coe MAlonzo.Code.Once.Type.C_PTVar_270 (coe v1)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Grammar.ModuleConvert.gAllocToAlloc
 d_gAllocToAlloc_28 ::

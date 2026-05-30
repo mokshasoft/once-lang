@@ -14575,7 +14575,7 @@ d_applySplice_10826 ::
   Integer ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.T_PolyType_232 ->
+  MAlonzo.Code.Once.Type.T_PolyType_236 ->
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   T_CheckElabResult_262 ->
@@ -15037,7 +15037,7 @@ d_applySplice'45'eq'45'irrel_12026 ::
   Integer ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.T_PolyType_232 ->
+  MAlonzo.Code.Once.Type.T_PolyType_236 ->
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
@@ -15055,7 +15055,7 @@ d_resolveExpr'45'poly'45'match_12094 ::
   Integer ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.T_PolyType_232 ->
+  MAlonzo.Code.Once.Type.T_PolyType_236 ->
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_174 ->
   Integer ->
@@ -15069,7 +15069,7 @@ d_checkElab'45'fallback'45'RVar'45'poly_12140 ::
   MAlonzo.Code.Once.TypeCheck.Classify.T_NamedCtx_136 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.T_PolyType_232 ->
+  MAlonzo.Code.Once.Type.T_PolyType_236 ->
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_174 ->
   Integer ->

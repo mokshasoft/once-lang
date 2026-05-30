@@ -43,7 +43,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 -- info (name + semI + semM), not just the name. This unlocks per-name
 -- discharge of `ir-to-trace-correct-sigop` and per-(arch, name)
 -- discharge of `sigop-codegen-faithful`.
-open import Once.Type using (Type; FitsInReg; fits-int)
+open import Once.Type using (Type; FitsInReg; fits-int; fits-in-reg?)
 open import Once.Semantics.Machine using (⟦_⟧)
 open import Once.CCC.SigOp.Info using (SigOpInfo; effect; EffectShape; Pure; Emits; Halts)
 
@@ -1160,11 +1160,28 @@ module AbstractExec {FS : FrameSemantics} where
   unit-storedvalue : StoredValue FS
   unit-storedvalue = SV-Lit fits-int 0
 
+  -- Plan 0.26 — `pure-sigop-output` discharged via `FitsInReg`.
+  --
+  -- For codomains satisfying `FitsInReg` (i.e. `Int`, `Float`), the
+  -- abstract `ValidAtWF` is location-only (see `valid-primitive-wf`
+  -- in `ClosureWellFormed`), so the content of `Output` is irrelevant
+  -- at this layer — we return `unit-storedvalue` as a canonical
+  -- sentinel. The per-arch concrete machine's actual primitive value
+  -- is established by the Simulation lemma. For non-FitsInReg
+  -- codomains a narrower per-name postulate fires.
   postulate
-    -- Per-name output for `Pure` SigOps (per-name discharge target).
-    -- Not invoked for `Halts`/`Emits` SigOps.
-    pure-sigop-output : ∀ {A B} → SigOpInfo A B → LocState FS →
-                        StoredValue FS
+    -- Narrower per-name discharge target: only for `Pure` SigOps whose
+    -- codomain is not `FitsInReg`-classified (Sum/Pair/μ/ν/→/Unit/Str/
+    -- Buffer/…). Layer-0 hit: `arith.{lt,…,ne}.int` (Unit + Unit) and
+    -- `str.lit.<s>` (Str) — neither fires at runtime in Layer 0.
+    structured-pure-sigop-output : ∀ {A B} → SigOpInfo A B → LocState FS →
+                                   StoredValue FS
+
+  pure-sigop-output : ∀ {A B} → SigOpInfo A B → LocState FS →
+                      StoredValue FS
+  pure-sigop-output {A} {B} si s with fits-in-reg? B
+  ... | just _  = unit-storedvalue
+  ... | nothing = structured-pure-sigop-output si s
 
   -- | Shape-direct output dispatch. Pattern-matches on EffectShape
   -- directly, so `with effect si` in downstream proofs reduces the

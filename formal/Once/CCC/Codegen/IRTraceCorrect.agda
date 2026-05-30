@@ -131,12 +131,14 @@ module IRTraceCorrectness {FS : FrameSemantics} (program-bound : ℕ)
     using (exec-abstract-load-indirect-preserves-alloc;
            exec-abstract-load-indirect-suc-preserves-alloc)
   open import Once.CCC.SigOp.Info using (SigOpInfo; semM; effect; EffectShape; Pure; Emits; Halts)
-  open import Once.Type using (Unit)
+  open import Once.Type using (Unit; fits-in-reg?)
+  open import Data.Maybe using (just; nothing)
   open import Once.CCC.Machine.SMCore using (mkLocState; stackMem; heapMem; writeReg; Output; instr-sigop)
 
   open import Once.CCC.Machine.ClosureWellFormed
   open ClosureWellFormedDef {FS} program-bound
-    using (ValidAtWF; IRResultAWF; place-loc; place-valid; valid-unit-wf)
+    using (ValidAtWF; IRResultAWF; place-loc; place-valid;
+           valid-unit-wf; valid-primitive-wf)
 
   open Once.CCC.Machine.Allocation.FrontierInvariant {FS}
     using (BeforeFrontier)
@@ -495,18 +497,17 @@ module IRTraceCorrectness {FS : FrameSemantics} (program-bound : ℕ)
                     pv)
 
   postulate
-    -- Plan 0.25 — Pure-SigOp value-flow per-name discharge target.
-    --
-    -- After Plan 0.25, the blanket `exec-sigop-respects-semM` postulate
-    -- is gone. For `Halts`/`Emits` SigOps the discharge is by
-    -- `valid-unit-wf` (their codomain is `Unit` by the
-    -- `EffectShape`-constructor coherence proof, so `semM si x ≡ tt`
-    -- by η for ⊤); for `Pure` SigOps the per-name validity of
-    -- `pure-sigop-output si s` against `semM si x` is THIS postulate —
-    -- a smaller, Pure-confined per-name obligation. Discharge per name
-    -- (e.g. for `arith.block.<digest>`) ties the per-arch codegen's
-    -- output to the producer's `semM`.
-    pure-sigop-respects-semM :
+    -- Plan 0.26 — narrower per-name discharge target for `Pure`
+    -- SigOps whose codomain is **not** `FitsInReg`-classified
+    -- (Sum/Pair/μ/ν/→/Unit/Str/Buffer/…). FitsInReg-codomain Pure
+    -- SigOps are discharged definitionally below via
+    -- `valid-primitive-wf` (location-only `ValidAtWF` for primitives
+    -- makes the obligation vacuous at the abstract layer; concrete
+    -- value content is established by the per-arch Simulation lemma).
+    -- Layer-0 hit: `arith.{lt,…,ne}.int` (Unit + Unit) — structured
+    -- anyway; `str.lit` (Str) — not lowered via `instr-sigop`. Neither
+    -- fires at runtime in Layer 0.
+    structured-pure-sigop-respects-semM :
       ∀ {A B} (si : SigOpInfo A B)
         (mIn : AllocMode) (x : ⟦ A ⟧) (input-loc : ValueLocation FS)
         (s : LocState FS) (alloc : AllocState {FS}) →
@@ -525,6 +526,39 @@ module IRTraceCorrectness {FS : FrameSemantics} (program-bound : ℕ)
     -- stubs all to []). Catchall named postulate; should be split
     -- per-IR when Layer 1+ work begins.
     ir-to-trace-correct-non-layer0 : ∀ {A B} (ir : IR A B) → IRTraceCorrect ir
+
+  ----------------------------------------------------------------------
+  -- Plan 0.26 — `pure-sigop-respects-semM` discharged via `FitsInReg`.
+  --
+  -- Dispatches on `fits-in-reg? B`:
+  --   - `just fitness`: discharge trivially via `valid-primitive-wf
+  --     fitness before` (location-only validity for primitives).
+  --   - `nothing`: fall through to the narrower per-name postulate.
+  --
+  -- CCC's type knowledge stays concentrated in `FitsInReg` /
+  -- `fits-in-reg?` (in `Once.Type`); this site never names primitive
+  -- type constructors directly.
+  ----------------------------------------------------------------------
+
+  pure-sigop-respects-semM :
+    ∀ {A B} (si : SigOpInfo A B)
+      (mIn : AllocMode) (x : ⟦ A ⟧) (input-loc : ValueLocation FS)
+      (s : LocState FS) (alloc : AllocState {FS}) →
+    ValidAtWF mIn alloc x input-loc s →
+    BeforeFrontier alloc input-loc →
+    halted s ≡ false →
+    readReg (regs s) Input1 ≡ SV-Ptr input-loc →
+    ∃[ mOut ] ∃[ result-loc ]
+      ValidAtWF mOut alloc (semM si x) result-loc
+        (mkLocState (writeReg (regs s) Output
+                              (exec-sigop-output-of Pure si s))
+                    (stackMem s) (heapMem s)
+                    (exec-sigop-halts-of Pure si s))
+  pure-sigop-respects-semM {A} {B} si mIn x input-loc s alloc valid before nh rdi-eq
+    with fits-in-reg? B
+  ... | just fitness = _ , input-loc , valid-primitive-wf fitness before
+  ... | nothing      = structured-pure-sigop-respects-semM si mIn x input-loc s alloc
+                         valid before nh rdi-eq
 
   ----------------------------------------------------------------------
   -- Plan 0.25 — `exec-sigop-respects-semM` discharged by per-class

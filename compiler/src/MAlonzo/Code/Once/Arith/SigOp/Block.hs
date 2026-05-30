@@ -1207,13 +1207,14 @@ d_block'45'semM_370 v0 v1 v2
 d_block'45'info_404 ::
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_InputShape_8 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
-  MAlonzo.Code.Once.CCC.SigOp.Info.T_SigOpInfo_264
+  MAlonzo.Code.Once.CCC.SigOp.Info.T_SigOpInfo_276
 d_block'45'info_404 v0 v1
   = coe
-      MAlonzo.Code.Once.CCC.SigOp.Info.C_mk'45'info_282
+      MAlonzo.Code.Once.CCC.SigOp.Info.C_mk'45'info_298
       (coe du_block'45'name_324 (coe v1))
       (coe
          (\ v2 ->
             MAlonzo.Code.Once.Arith.Machine.IR.d_eval'45'arith_28
               (coe v0) (coe v1) (coe d_toShape'45'I_330 (coe v0) (coe v2))))
       (coe d_block'45'semM_370 (coe v0) (coe v1))
+      (coe MAlonzo.Code.Once.CCC.SigOp.Info.C_Pure_266)

@@ -24,7 +24,3 @@ d_Behavior_6 = erased
 -- Once.Verified.Behavior.Source
 d_Source_8 :: ()
 d_Source_8 = erased
--- Once.Verified.Behavior.⟦_⟧
-d_'10214'_'10215'_10
-  = error
-      "MAlonzo Runtime Error: postulate evaluated: Once.Verified.Behavior.\10214_\10215"
