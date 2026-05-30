@@ -421,7 +421,7 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
     -- By Lambek's Lemma, In : F(μF) → μF is an isomorphism at runtime.
     -- Implementation: allocates 1 slot and stores the pointer.
     run-ir-wf mIn (In {F} wf m) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ =
-      m , run-In wf mIn m x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
+      mIn , run-In wf mIn m x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
 
     -- out-μ: destruct μ-type (Lambek inverse of In)
     -- By Lambek's Lemma, this is identity at runtime (just pass-through).
