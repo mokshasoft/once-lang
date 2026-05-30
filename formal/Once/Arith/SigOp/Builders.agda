@@ -31,7 +31,8 @@ open import Data.Sum using (_⊎_)
 open import Data.Unit using (⊤)
 
 open import Once.Type using (Type; Unit; Int; Str; _*_; _+_)
-open import Once.CCC.SigOp.Info using (SigOpInfo; mk-info)
+open import Once.CCC.SigOp.Info using (SigOpInfo; mk-info; EffectShape; Pure; Halts)
+open import Relation.Binary.PropositionalEquality using (refl)
 
 import Once.Semantics.Core ℤ as I
 import Once.Semantics.Core ℕ as M
@@ -106,46 +107,46 @@ postulate
 
 -- Binary arithmetic
 add-info : SigOpInfo (Int * Int) Int
-add-info = mk-info "arith.add.int" add-semI add-semM
+add-info = mk-info "arith.add.int" add-semI add-semM Pure
 
 sub-info : SigOpInfo (Int * Int) Int
-sub-info = mk-info "arith.sub.int" sub-semI sub-semM
+sub-info = mk-info "arith.sub.int" sub-semI sub-semM Pure
 
 mul-info : SigOpInfo (Int * Int) Int
-mul-info = mk-info "arith.mul.int" mul-semI mul-semM
+mul-info = mk-info "arith.mul.int" mul-semI mul-semM Pure
 
 div-info : SigOpInfo (Int * Int) Int
-div-info = mk-info "arith.div.int" div-semI div-semM
+div-info = mk-info "arith.div.int" div-semI div-semM Pure
 
 mod-info : SigOpInfo (Int * Int) Int
-mod-info = mk-info "arith.mod.int" mod-semI mod-semM
+mod-info = mk-info "arith.mod.int" mod-semI mod-semM Pure
 
 -- Unary arithmetic
 neg-info : SigOpInfo Int Int
-neg-info = mk-info "arith.neg.int" neg-semI neg-semM
+neg-info = mk-info "arith.neg.int" neg-semI neg-semM Pure
 
 -- Comparisons
 lt-info : SigOpInfo (Int * Int) (Unit + Unit)
-lt-info = mk-info "arith.lt.int" lt-semI lt-semM
+lt-info = mk-info "arith.lt.int" lt-semI lt-semM Pure
 
 le-info : SigOpInfo (Int * Int) (Unit + Unit)
-le-info = mk-info "arith.le.int" le-semI le-semM
+le-info = mk-info "arith.le.int" le-semI le-semM Pure
 
 gt-info : SigOpInfo (Int * Int) (Unit + Unit)
-gt-info = mk-info "arith.gt.int" gt-semI gt-semM
+gt-info = mk-info "arith.gt.int" gt-semI gt-semM Pure
 
 ge-info : SigOpInfo (Int * Int) (Unit + Unit)
-ge-info = mk-info "arith.ge.int" ge-semI ge-semM
+ge-info = mk-info "arith.ge.int" ge-semI ge-semM Pure
 
 eq-info : SigOpInfo (Int * Int) (Unit + Unit)
-eq-info = mk-info "arith.eq.int" eq-semI eq-semM
+eq-info = mk-info "arith.eq.int" eq-semI eq-semM Pure
 
 ne-info : SigOpInfo (Int * Int) (Unit + Unit)
-ne-info = mk-info "arith.ne.int" ne-semI ne-semM
+ne-info = mk-info "arith.ne.int" ne-semI ne-semM Pure
 
 -- String literal family
 str-lit-info : String → SigOpInfo Unit Str
-str-lit-info s = mk-info ("lit.str." ++ s) (str-lit-semI s) (str-lit-semM s)
+str-lit-info s = mk-info ("lit.str." ++ s) (str-lit-semI s) (str-lit-semM s) Pure
 
 ------------------------------------------------------------------------
 -- Generic placeholder for unresolved / user-imported SigOps
@@ -160,5 +161,20 @@ postulate
   generic-semI : ∀ {A B} → String → I.⟦ A ⟧ → I.⟦ B ⟧
   generic-semM : ∀ {A B} → String → M.⟦ A ⟧ → M.⟦ B ⟧
 
+-- | Per-name effect classification for the unresolved-SigOp placeholder.
+-- Layer-0 known names get their real shape here (e.g. `linux.exit → Halts`
+-- when its codomain is `Unit`); unknown names default to `Pure`. This is
+-- the small registry that discharges the "what effect does this name
+-- have?" question for SigOps whose `SigOpInfo` is materialised only at
+-- elaboration time.
+--
+-- The pattern-match on `B` is what enforces the coherence: `Halts refl`
+-- only constructs when `B ≡ Unit`. A `linux.exit` parsed with a non-Unit
+-- codomain (impossible by the elaborator's type-checking) silently falls
+-- through to `Pure`.
+classify-name : ∀ {B} → String → EffectShape B
+classify-name {Unit} "linux.exit" = Halts refl
+classify-name _                   = Pure
+
 generic-info : ∀ {A B} → String → SigOpInfo A B
-generic-info name = mk-info name (generic-semI name) (generic-semM name)
+generic-info name = mk-info name (generic-semI name) (generic-semM name) (classify-name name)

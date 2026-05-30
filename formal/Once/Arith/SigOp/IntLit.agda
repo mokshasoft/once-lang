@@ -31,7 +31,7 @@ open import Data.String using (String; _++_)
 open import Data.Unit using (⊤; tt)
 
 open import Once.Type using (Type; Unit; Int)
-open import Once.CCC.SigOp.Info using (SigOpInfo; mk-info)
+open import Once.CCC.SigOp.Info using (SigOpInfo; mk-info; Pure)
 
 ------------------------------------------------------------------------
 -- The literal-family builder
@@ -53,3 +53,4 @@ lit-int-info n = mk-info
   (lit-int-name n)
   (λ _ → n)      -- semI : ⊤ → ℤ
   (λ _ → ∣ n ∣)  -- semM : ⊤ → ℕ
+  Pure           -- effect: constants are observably pure

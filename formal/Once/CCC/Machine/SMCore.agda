@@ -43,9 +43,9 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 -- info (name + semI + semM), not just the name. This unlocks per-name
 -- discharge of `ir-to-trace-correct-sigop` and per-(arch, name)
 -- discharge of `sigop-codegen-faithful`.
-open import Once.Type using (Type; FitsInReg)
+open import Once.Type using (Type; FitsInReg; fits-int)
 open import Once.Semantics.Machine using (⟦_⟧)
-open import Once.CCC.SigOp.Info using (SigOpInfo)
+open import Once.CCC.SigOp.Info using (SigOpInfo; effect; EffectShape; Pure; Emits; Halts)
 
 private
   -- Helper: just is injective (private to avoid name clashes)
@@ -1124,32 +1124,73 @@ module AbstractExec {FS : FrameSemantics} where
   exec-restore-input-nothing _ _ = refl
 
   ------------------------------------------------------------------------
-  -- Plan 0.11 Task A — SigOp trusted-base axioms
+  -- Plan 0.25 — SigOp dispatch via EffectClass.
   --
-  -- The abstract semantics of `instr-sigop si` is structured around
-  -- two named axioms. Per-(arch, name) discharge replaces these with
-  -- per-name implementations (e.g. `linux.exit` halts; `lit.int.<N>`
-  -- writes a constant). Until then they are trusted-base entries —
-  -- visible to `make postulates-grep` and live in the same place as
-  -- the other CCC-layer axioms.
+  -- The abstract semantics of `instr-sigop si` is now derived from
+  -- `effect si : EffectClass` rather than per-SigOp postulates:
   --
-  -- Note: by structuring the abstract semantics this way (only Output
-  -- and halted may change), the relaxed CCC discipline contract holds
+  --   - `Halts` → halted := true; output := unit-storedvalue
+  --   - `Emits` → halted := false; output := unit-storedvalue
+  --   - `Pure`  → halted := false; output := pure-sigop-output si s
+  --
+  -- The `exec-sigop-halts` postulate is GONE: halting is now a
+  -- definitional consequence of the effect class. The output of
+  -- `Halts`/`Emits` is unit-shaped (their `R ≡ Unit` coherence law
+  -- means the value in Output is observably irrelevant), so the
+  -- old `exec-sigop-output` postulate is GONE for those classes too.
+  --
+  -- The remaining `pure-sigop-output` postulate covers only `Pure`
+  -- SigOps. It is the per-name discharge target (e.g. for
+  -- `arith.block.<digest>` SigOps whose machine output is
+  -- `SV-Lit fits-int (semM si <input>)`). Pure outputs are
+  -- type-dependent (Int wraps as SV-Lit; Sums require allocation)
+  -- so a generic `wrap : M.⟦B⟧ → StoredValue` does not exist at
+  -- this layer — per-name discharge stays. The trusted base is now
+  -- *classified* (Pure-only) rather than blanket (every SigOp).
+  --
+  -- The relaxed CCC discipline contract continues to hold
   -- *definitionally* for `instr-sigop si`: frame, alloc, memory,
-  -- Input1 register, and stackSlot are all unchanged by the body of
-  -- `exec-abstract (instr-sigop si)` below.
+  -- Input1 register, and stackSlot are all unchanged.
   ------------------------------------------------------------------------
 
+  -- | A "unit-shaped" StoredValue for Halts/Emits SigOps whose
+  -- `R ≡ Unit`. The concrete bytes don't matter (the consumer never
+  -- inspects Output for Unit-typed values); we pick `SV-Lit fits-int 0`
+  -- as a canonical sentinel.
+  unit-storedvalue : StoredValue FS
+  unit-storedvalue = SV-Lit fits-int 0
+
   postulate
-    -- The new value placed in Output after the SigOp runs.
-    -- Plan 0.13.2: returns `StoredValue` (was `ValueLocation`) since
-    -- a SigOp's output could be any kind of value.
-    exec-sigop-output : ∀ {A B} → SigOpInfo A B → LocState FS →
+    -- Per-name output for `Pure` SigOps (per-name discharge target).
+    -- Not invoked for `Halts`/`Emits` SigOps.
+    pure-sigop-output : ∀ {A B} → SigOpInfo A B → LocState FS →
                         StoredValue FS
 
-    -- Whether the SigOp halts. `linux.exit` returns `true`; pure
-    -- SigOps return `false`.
-    exec-sigop-halts  : ∀ {A B} → SigOpInfo A B → LocState FS → Bool
+  -- | Shape-direct output dispatch. Pattern-matches on EffectShape
+  -- directly, so `with effect si` in downstream proofs reduces the
+  -- goal cleanly (no with-abstraction nesting that would block
+  -- `pure-sigop-output`'s definitional reductions). Wrapper below.
+  exec-sigop-output-of : ∀ {A B} → EffectShape B → SigOpInfo A B →
+                         LocState FS → StoredValue FS
+  exec-sigop-output-of Pure      si s = pure-sigop-output si s
+  exec-sigop-output-of (Emits _) _  _ = unit-storedvalue
+  exec-sigop-output-of (Halts _) _  _ = unit-storedvalue
+
+  -- | Dispatch-derived output (wrapper that unfolds to the
+  -- shape-direct helper).
+  exec-sigop-output : ∀ {A B} → SigOpInfo A B → LocState FS →
+                      StoredValue FS
+  exec-sigop-output si s = exec-sigop-output-of (effect si) si s
+
+  -- | Shape-direct halt-flag dispatch.
+  exec-sigop-halts-of : ∀ {A B} → EffectShape B → SigOpInfo A B →
+                        LocState FS → Bool
+  exec-sigop-halts-of (Halts _) _ _ = true
+  exec-sigop-halts-of _         _ _ = false
+
+  -- | Dispatch-derived halt-flag (wrapper).
+  exec-sigop-halts : ∀ {A B} → SigOpInfo A B → LocState FS → Bool
+  exec-sigop-halts si s = exec-sigop-halts-of (effect si) si s
 
   -- Plan 0.13.2: `encode-const` and `encode-code-addr` deleted —
   -- their roles are now real `StoredValue` constructors.

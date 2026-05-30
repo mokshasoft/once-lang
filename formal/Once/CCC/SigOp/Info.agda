@@ -38,13 +38,48 @@ open import Data.String using (String; _≟_)
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
 
-open import Once.Type using (Type)
+open import Once.Type using (Type; Unit)
 
 -- | Frontend / proof-level interpretation (Int ≡ ℤ).
 import Once.Semantics.Core ℤ as I
 
 -- | Machine-level interpretation (Int ≡ ℕ).
 import Once.Semantics.Core ℕ as M
+
+------------------------------------------------------------------------
+-- EffectShape — the SigOp's effect *shape*, indexed by codomain
+-- (Plan 0.25).
+--
+-- Classifies what a SigOp does observably. CCC's abstract machine
+-- dispatches per shape to derive machine output, halt-flag, and
+-- trace-event payload from `semM` + the tag — so per-SigOp facts
+-- (formerly `exec-sigop-output` / `exec-sigop-halts` postulates) are
+-- no longer needed at this layer.
+--
+-- The coherence requirement `Emits`/`Halts` ⇒ `R ≡ Unit` is built
+-- INTO the constructors: those two carry a `B ≡ Unit` proof, so a
+-- producer cannot declare a non-Unit-codomain SigOp as `Emits`/`Halts`
+-- (the constructor simply won't construct). For `Pure`, B is
+-- unconstrained.
+--
+-- Layer 0 needs `Pure` + `Halts` (`Emits` is reserved for the next
+-- syscall layer). New shapes (e.g. `ReadsWorld` for `linux.read`)
+-- grow the type additively; each new constructor earns one generic
+-- CCC dispatch case + one `respects-semM` lemma — the closed type
+-- is what enforces "faithful classification" as a discipline.
+------------------------------------------------------------------------
+
+data EffectShape (B : Type) : Set where
+  -- | Pure value computation. No trace event, no halt; the machine
+  -- output is `wrap (semM x)`. Codomain unrestricted.
+  Pure  : EffectShape B
+  -- | Observable event, continues. The event records the SigOp's
+  -- input; codomain must be `Unit` (reserved for `linux.write` etc.).
+  Emits : B ≡ Unit → EffectShape B
+  -- | Observable event, ends the program. The event records the
+  -- SigOp's input (e.g. the exit code); codomain must be `Unit`.
+  -- Used by `linux.exit`.
+  Halts : B ≡ Unit → EffectShape B
 
 ------------------------------------------------------------------------
 -- SigOpInfo
@@ -55,12 +90,19 @@ import Once.Semantics.Core ℕ as M
 -- Decoupled from the CCC structure: every `SigOp` in the IR carries
 -- an info value, making the IR self-describing. No `SigOpSem`
 -- parameter threading through eval / desugar / correctness proofs.
+--
+-- The `effect` tag (Plan 0.25) classifies the SigOp's observable
+-- shape and is consumed by CCC's per-class abstract-machine dispatch
+-- and `respects-semM` lemmas — replacing the per-SigOp
+-- `exec-sigop-output` / `exec-sigop-halts` / `exec-sigop-respects-semM`
+-- postulates with proven facts.
 record SigOpInfo (A B : Type) : Set where
   constructor mk-info
   field
-    name : String
-    semI : I.⟦ A ⟧ → I.⟦ B ⟧     -- proof-level semantics
-    semM : M.⟦ A ⟧ → M.⟦ B ⟧     -- machine-level semantics
+    name   : String
+    semI   : I.⟦ A ⟧ → I.⟦ B ⟧     -- proof-level semantics
+    semM   : M.⟦ A ⟧ → M.⟦ B ⟧     -- machine-level semantics
+    effect : EffectShape B           -- observable effect shape (Plan 0.25)
 
 open SigOpInfo public
 
