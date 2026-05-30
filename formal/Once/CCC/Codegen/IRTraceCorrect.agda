@@ -507,6 +507,12 @@ module IRTraceCorrectness {FS : FrameSemantics} (program-bound : ℕ)
     -- Layer-0 hit: `arith.{lt,…,ne}.int` (Unit + Unit) — structured
     -- anyway; `str.lit` (Str) — not lowered via `instr-sigop`. Neither
     -- fires at runtime in Layer 0.
+    -- Output/halts stated as the actual `nothing`-branch values
+    -- (`structured-pure-sigop-output`, halts `false`) so this matches the
+    -- `fits-in-reg? B = nothing` clause's reduced goal. (Was
+    -- `exec-sigop-output-of Pure si s`, whose internal `with fits-in-reg? B`
+    -- stays stuck under the outer `with`, causing UnequalTerms — a
+    -- pre-existing Plan 0.26 with-abstraction bug surfaced on recompile.)
     structured-pure-sigop-respects-semM :
       ∀ {A B} (si : SigOpInfo A B)
         (mIn : AllocMode) (x : ⟦ A ⟧) (input-loc : ValueLocation FS)
@@ -518,9 +524,9 @@ module IRTraceCorrectness {FS : FrameSemantics} (program-bound : ℕ)
       ∃[ mOut ] ∃[ result-loc ]
         ValidAtWF mOut alloc (semM si x) result-loc
           (mkLocState (writeReg (regs s) Output
-                                (exec-sigop-output-of Pure si s))
+                                (structured-pure-sigop-output si s))
                       (stackMem s) (heapMem s)
-                      (exec-sigop-halts-of Pure si s))
+                      false)
 
     -- Sums and recursion schemes (Layer 0 doesn't use; ir-to-trace
     -- stubs all to []). Catchall named postulate; should be split
@@ -556,7 +562,7 @@ module IRTraceCorrectness {FS : FrameSemantics} (program-bound : ℕ)
                     (exec-sigop-halts-of Pure si s))
   pure-sigop-respects-semM {A} {B} si mIn x input-loc s alloc valid before nh rdi-eq
     with fits-in-reg? B
-  ... | just fitness = _ , input-loc , valid-primitive-wf fitness before
+  ... | just fitness = mIn , input-loc , valid-primitive-wf fitness before
   ... | nothing      = structured-pure-sigop-respects-semM si mIn x input-loc s alloc
                          valid before nh rdi-eq
 
@@ -588,8 +594,8 @@ module IRTraceCorrectness {FS : FrameSemantics} (program-bound : ℕ)
     with effect si
   ... | Pure       = pure-sigop-respects-semM si mIn x input-loc s alloc
                        valid before not-halted rdi-eq
-  ... | Emits refl = _ , input-loc , valid-unit-wf
-  ... | Halts refl = _ , input-loc , valid-unit-wf
+  ... | Emits refl = mIn , input-loc , valid-unit-wf
+  ... | Halts refl = mIn , input-loc , valid-unit-wf
 
   ----------------------------------------------------------------------
   -- Plan 0.11 Task A — DERIVED from `exec-sigop-respects-semM`.
