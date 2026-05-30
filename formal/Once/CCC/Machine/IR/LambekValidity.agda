@@ -41,11 +41,11 @@ open import Once.Functor.Translate using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-P
                                           IsBaseType; base-Unit; base-Void; base-Int;
                                           base-Float; base-Str; base-Buffer;
                                           base-Prod; base-Sum)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; subst; sym)
 
 -- Semantic operations
 open import Once.Semantics.Core ℕ using (sem-In; sem-Out; sem-CoIn; sem-CoOut;
-                                          coerce-functor; coerce-functor⁻¹)
+                                          coerce-functor; coerce-functor⁻¹; sem-Out-In)
 
 ------------------------------------------------------------------------
 -- LambekValidityImpl
@@ -127,6 +127,35 @@ module LambekValidityImpl {FS : FrameSemantics} (program-bound : ℕ) where
     μlayer-prod read-fst read-snd bf-fst bf-snd bf-suc
       (layer→μlayer wfF1 wfG bf-fst sub-v1)
       (layer→μlayer wfF2 wfG bf-snd sub-v2)
+
+  ------------------------------------------------------------------------
+  -- Plan 0.27 Phase B: `In` validity, REAL (not postulated).
+  --
+  -- `In` is representational identity (heap pointer-identity): the
+  -- F-layer node at `loc` IS the μ-value at `loc`. Given the F-layer's
+  -- validity + `loc`'s frontier-membership, the μ-value is valid at the
+  -- same `loc`, via `valid-μ-wf` + `μ-valid` + the forward kernel
+  -- `layer→μlayer` (with `sem-Out-In` collapsing the Lambek round-trip).
+  --
+  -- This replaces the hypothesis-free `In-trace-valid` postulate: the
+  -- heap-identity `run-In` (SumRecWF) supplies `input-before` +
+  -- `input-valid-wf`, both already in its parameter list.
+  ------------------------------------------------------------------------
+  -- Modes are decoupled: μ-values are mode-agnostic (valid-μ-wf is
+  -- ∀{m}), so the input F-layer may be validated at any mode mIn while
+  -- the In-result is produced at the producer's mode mOut.
+  In-valid-bf : ∀ {mIn mOut F} (wf : WellFormedF F) (mode : AllocMode)
+    {alloc : AllocState {FS}} {loc : ValueLocation FS} {s : LocState FS}
+    (x : ⟦ ⟦ F ⟧T (μ-type F) ⟧) →
+    BeforeFrontier alloc loc →
+    ValidAtWF mIn alloc {⟦ F ⟧T (μ-type F)} x loc s →
+    ValidAtWF mOut alloc {μ-type F} (eval (In wf mode) x) loc s
+  In-valid-bf {mIn} {mOut} {F} wf mode {alloc} {loc} {s} x bf v =
+    valid-μ-wf wf (sem-In F (coerce-functor F (μ-type F) x))
+      (μ-valid bf
+        (subst (λ y → μLayerValid alloc wf wf y loc s)
+               (sym (sem-Out-In wf (coerce-functor F (μ-type F) x)))
+               (layer→μlayer wf wf bf v)))
 
   ------------------------------------------------------------------------
   -- μ-type Validity Transfer

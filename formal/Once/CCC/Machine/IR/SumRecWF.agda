@@ -987,7 +987,8 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   -- See LambekValidity.agda for documentation and justification.
   ------------------------------------------------------------------------
   open LV.LambekValidityImpl {FS} program-bound
-    using (In-trace-valid; out-μ-trace-valid; in-ν-trace-valid; Out-trace-valid)
+    using (In-trace-valid; out-μ-trace-valid; in-ν-trace-valid; Out-trace-valid;
+           In-valid-bf)
 
   ------------------------------------------------------------------------
   -- In: wrap functor layer into μ-type
@@ -1011,32 +1012,29 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     IRResultAWF m (In {F} wf m) x s alloc
   run-In {F} wf mIn m x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     mk-IRResultAWF-via-bump
-      s' alloc' in-trace (mkBump 1 0) refl
-      SMP.!!                       -- trace-is-ir-to-trace
+      s' alloc in-trace bump-0 refl
+      SMP.!!                       -- trace-is-ir-to-trace (mov-to-output; upgrade to refl once proj-trace frontier reduces)
       refl
-      (let raw = rec-scheme-alloc-correct-4 result-slot s alloc not-halted
-           arith : next-slot alloc +ℕ 1 ≡ suc (next-slot alloc)
-           arith = +-comm (next-slot alloc) 1
-       in trans raw (cong (λ k → record alloc { next-slot = k }) arith))
-      (at-loc result-loc result-valid result-bf rax-eq result-valid result-bf)
+      (cong proj₂ (exec-trace-single mov-to-output s alloc not-halted))
+      (at-loc input-loc result-valid input-before rax-eq result-valid input-before)
       not-halted'
       (λ _ _ → SMP.!!)
-      (twf-∷ tt (twf-∷ tt (twf-∷ tt (twf-∷ tt twf-[]))))
+      (twf-∷ tt twf-[])
       (exec-trace-preserves-halted-WF in-trace)
       _
       (record
-        { max-slot-written = next-slot alloc'
+        { max-slot-written = next-slot alloc
         ; stack-budget = ir-stack-requirement (In {F} wf m)
-        ; bump-fits-stack-budget = ≤-refl
+        ; bump-fits-stack-budget = z≤n
         ; max-slot-geq-final = ≤-refl
-        ; max-slot-usage-bound = reclaim-bound
+        ; max-slot-usage-bound = m≤m+n (next-slot alloc) (ir-stack-requirement (In {F} wf m))
         ; frontier-slot-stable = frontier-stable
-        ; trace-writes-above = trace-wa
+        ; trace-writes-above = tt
         ; trace-slot-reads-above = tt
-        ; trace-writes-below = trace-wb
+        ; trace-writes-below = tt
         ; trace-slot-reads-below = tt
         ; scratch-budget = ir-scratch-requirement (In {F} wf m)
-        ; scratch-bounded = m≤m+n (suc (next-slot alloc)) 1
+        ; scratch-bounded = m≤m+n (next-slot alloc) (ir-scratch-requirement (In {F} wf m))
         })
       (record
         { heap-budget = 0
@@ -1046,70 +1044,41 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; max-heap-usage-bound = m≤m+n (next-heap-ref alloc) 0
         })
     where
-      -- ir-stack-requirement (In _ _) = 1
-      result-slot = next-slot alloc
-      result-loc = AtStack (current-frame alloc) result-slot
-
-      alloc' : AllocState {FS}
-      alloc' = record alloc { next-slot = suc (next-slot alloc) }
-
-      -- suc n ≤ n + 1: ir-stack-requirement (In wf m) ≡ 1 definitionally
-      -- +-comm 1 n : 1 + n ≡ n + 1 where 1 + n = suc n
-      -- So we get: suc n ≡ n + 1
-      n = next-slot alloc
-      suc-n≡n+1 : suc n ≡ n +ℕ 1
-      suc-n≡n+1 = +-comm 1 n
-
-      reclaim-bound : suc n ≤ n +ℕ ir-stack-requirement (In {F} wf m)
-      reclaim-bound = ≤-reflexive suc-n≡n+1
-
-      -- Trace: store input at slot, return slot address
-      -- 1. mov-to-output: Output := Input1
-      -- 2. store-at-slot: slot[n] := Output
-      -- 3. lea-slot: Output := &slot[n] (result location)
+      -- Plan 0.27 Phase B: heap-identity In. The F-layer node IS the
+      -- μ-value (same pointer); `mov-to-output` passes it through — no
+      -- slot, no allocation (bump-0), result at the input loc. Validity
+      -- is now REAL (In-valid-bf via the layer→μlayer kernel), replacing
+      -- the hypothesis-free In-trace-valid postulate.
       in-trace : AbstractTrace
-      in-trace = rec-scheme-trace-4 result-slot
+      in-trace = mov-to-output ∷ []
 
       s' : LocState FS
       s' = proj₁ (exec-trace in-trace s alloc)
 
-      slot-mono : next-slot alloc ≤ next-slot alloc'
-      slot-mono = n≤1+n (next-slot alloc)
+      s'-eq : s' ≡ exec (mov Output Input1) s
+      s'-eq = cong proj₁ (exec-trace-single mov-to-output s alloc not-halted)
 
-      result-bf : BeforeFrontier alloc' result-loc
-      result-bf = stack-before refl (n<1+n (next-slot alloc))
+      -- In is representational identity; the F-layer's validity +
+      -- frontier-membership give the μ-value's validity at the SAME loc,
+      -- transported across mov-to-output (memory-preserving).
+      result-valid : ValidAtWF m alloc (eval (In wf m) x) input-loc s'
+      result-valid =
+        subst (λ st → ValidAtWF m alloc (eval (In wf m) x) input-loc st) (sym s'-eq)
+          (validityWF-mem-only (eval (In wf m) x) input-loc s (exec (mov Output Input1) s)
+            refl refl (In-valid-bf wf m x input-before input-valid-wf))
 
-      -- Result validity: In semantically is identity, so input validity transfers
-      -- The semantic eval (In wf m) x = InS x, which is representationally same as x
-      result-valid : ValidAtWF m alloc' (eval (In wf m) x) result-loc s'
-      result-valid = In-trace-valid wf m x
-
-      rax-eq : readReg (regs s') Output ≡ SV-Ptr result-loc
-      rax-eq = rec-scheme-output-is-slot-4 result-slot s alloc not-halted
+      rax-eq : readReg (regs s') Output ≡ SV-Ptr input-loc
+      rax-eq = trans (passthrough-output-is-input s alloc not-halted) rdi-eq
 
       not-halted' : halted s' ≡ false
-      not-halted' = rec-scheme-preserves-halted-4 result-slot s alloc not-halted
-
-      mem-preserved : ∀ loc → BeforeFrontier alloc loc → readLoc s' loc ≡ readLoc s loc
-      mem-preserved (AtStack f k) (stack-before refl k<n) =
-        rec-scheme-preserves-slot-below-4 result-slot k s alloc not-halted k<n
-      mem-preserved (AtStack f k) (stack-ancestor cf≺f _) =
-        rec-scheme-preserves-ancestor-4 result-slot s alloc f k not-halted (λ eq → ≺⇒≢ cf≺f (sym eq))
-      mem-preserved (AtDynamic hl) (heap-before _) =
-        rec-scheme-preserves-heap-4 result-slot s alloc hl not-halted
-
-      trace-wa : SMP.TraceWritesAbove (next-slot alloc) in-trace
-      trace-wa = ≤-refl , tt
-
-      trace-wb : SMP.TraceWritesBelow (suc (next-slot alloc)) in-trace
-      trace-wb = n<1+n (next-slot alloc) , tt
+      not-halted' = passthrough-preserves-halted s alloc not-halted
 
       frontier-stable : ∀ (s'' : LocState FS) (input-loc' : ValueLocation FS) →
         halted s'' ≡ false →
         readReg (regs s'') Input1 ≡ SV-Ptr input-loc' →
         readLoc s'' (AtStack (current-frame alloc) (next-slot alloc)) ≡ just (SV-Ptr input-loc') →
         _
-      frontier-stable s'' input-loc' _ _ _ = inj₂ (inj₂ tt)
+      frontier-stable _ _ _ _ _ = inj₁ refl
 
   ------------------------------------------------------------------------
   -- out-μ: destruct μ-type to get functor layer (Lambek inverse of In)
