@@ -26,7 +26,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore hiding (AllocMode; Stack; Heap)
 open import Once.Semantics.Machine using (⟦_⟧)
 open import Once.CCC.IR
-open import Once.Type using (Functor; K; Id; _⊕_; _⊗_)
+open import Once.Type using (Functor; K; Id; _⊕_; _⊗_; μ-type; ⟦_⟧T)
 open import Once.Functor.Translate using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod; IsBaseType;
   base-Unit; base-Void; base-Int; base-Float; base-Str; base-Buffer; base-Prod; base-Sum;
   WellFormedF-irrelevant)
@@ -46,10 +46,12 @@ import Once.CCC.Machine.SMPrimitives as SMP
 open import Once.CCC.Machine.SMCore using (TreeTrace; ε; instr; _▸_; branch; call-sub; flat)
 
 -- Import semantic operations
-open import Once.Semantics.Core ℕ using (⟦μ⟧; ⟦_⟧F; sem-In; sem-Out; sem-In-Out; sem-cata; sem-cata-compute; sem-fmap; coerce-struct⁻¹)
+open import Once.Semantics.Core ℕ using (⟦μ⟧; ⟦_⟧F; sem-In; sem-Out; sem-In-Out; sem-cata; sem-cata-compute; sem-fmap; coerce-struct⁻¹; coerce-functor; coerce-functor⁻¹; coerce-round-trip; coerce⁻¹-round-trip)
 
 -- RecTrace provides ProcessedLayerResult + trace helpers + bridges.
 open import Once.CCC.Machine.IR.RecTrace
+-- LambekValidity provides out-μ-valid (unwrap the μ-value's ValidAtWF).
+import Once.CCC.Machine.IR.LambekValidity as LV
 
 module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
   open FrontierInvariant {FS}
@@ -86,6 +88,7 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
   -- Reusable infrastructure (ProcessedLayerResult, helpers, bridges).
   open RecTraceImpl {FS} program-bound
+  open LV.LambekValidityImpl {FS} program-bound using (out-μ-valid)
 
   private
     -- Helper for Sum left branch: proves reclaimable-slot ≤ start + layer-capacity
@@ -191,7 +194,7 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
     -- For Sum: layer-capacity (wf-Sum L R) = 2 + max(L, R) - wrapper + child
     -- For Id: layer-capacity wf-Id wfG = ir-stack-requirement (Cata wfG alg)
     -- For K: layer-capacity (wf-K _) = ir-stack-requirement alg + pair-slots
-    process-layer : ∀ {F G A}
+    process-layer : ∀ {mv F G A}
       (wfF : WellFormedF F) (wfG : WellFormedF G)
       (alg : IR (⟦ G ⟧T A) A)
       (dispatch : RecDispatcherWF (ir-size (Cata wfG alg)))
@@ -199,7 +202,10 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
       (mIn : AllocMode)
       (input-loc : ValueLocation FS)
       (s : LocState FS) (alloc : AllocState {FS})
-      → μLayerValid alloc wfF wfG layer input-loc s  -- Layer validity
+      -- Plan 0.27: layer validity is the layer's OWN ValidAtWF (mode-poly
+      -- `mv`), not the lossy mode-agnostic μLayerValid. coerce-functor⁻¹
+      -- bridges the Set-level layer to its Type-interp form.
+      → ValidAtWF mv alloc {⟦ F ⟧T (μ-type G)} (coerce-functor⁻¹ F (μ-type G) layer) input-loc s
       → BeforeFrontier alloc input-loc
       → halted s ≡ false
       → readReg (regs s) Input1 ≡ SV-Ptr input-loc
@@ -208,7 +214,7 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
     -- K case: constant layer, no recursion
     -- The processed layer is just the constant value itself
     process-layer (wf-K {T} isBase) wfG alg dispatch k-val mIn input-loc s alloc
-      (μlayer-K layer-bf) input-before not-halted rdi-eq =
+      _ input-before not-halted rdi-eq =
       -- For K T: ⟦ K T ⟧F X = ⟦ T ⟧ for any X
       -- The processed layer is the same constant: k-val : ⟦ T ⟧
       -- sem-fmap (K T) f k-val = k-val (fmap for K is identity)
@@ -264,7 +270,7 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
     -- Id case: recursive position, compute cata on μ-value
     -- The processed layer is the cata result
     process-layer wf-Id wfG alg dispatch μ-val mIn input-loc s alloc
-      (μlayer-Id μ-val-μvalid) input-before not-halted rdi-eq =
+      μ-val-valid input-before not-halted rdi-eq =
       mRec , record
         { processed = rec-val  -- The cata result
         ; trace = rec-trace
@@ -314,9 +320,9 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
             (IRResultAWF.max-slot-usage-bound rec-result)
         }
       where
-        -- Validity for μ-val (extracted from μLayerValid for Id)
-        μ-val-valid : ValidAtWF mIn alloc μ-val input-loc s
-        μ-val-valid = μValid→μValidAtWF wfG μ-val-μvalid
+        -- Plan 0.27: μ-val-valid is now the layer validity itself (the Id
+        -- position IS the μ-value, ValidAtWF{μ-type G} directly) — no
+        -- μValid→μValidAtWF bridge needed.
 
         -- Recursive call: compute cata on μ-val
         cata-call = cata-dispatched-new wfG alg dispatch μ-val mIn input-loc s alloc
@@ -376,8 +382,8 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
     --
     -- Result: result-loc = input-loc (the Sum container with updated pointer)
     --
-    process-layer (wf-Sum wfL wfR) wfG alg dispatch (inj₁ l-layer) mIn input-loc s alloc
-      (μlayer-inl {payload-loc = payload-loc} payload-ptr payload-bf sucLoc-bf l-layer-valid) input-before not-halted rdi-eq =
+    process-layer {G = G} (wf-Sum {FL} {FR} wfL wfR) wfG alg dispatch (inj₁ l-layer) mIn input-loc s alloc
+      (valid-inl-wf {payload-loc = payload-loc} lmm payload-ptr payload-bf sucLoc-bf l-layer-valid) input-before not-halted rdi-eq =
       let
         -- Step 1: Setup trace - load payload pointer and set Input1
         -- This transforms s (where Input1 = input-loc) to s-setup (where Input1 = payload-loc)
@@ -414,7 +420,7 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
         -- TODO (post-scaffold): re-route under StoredValue (load-indirect-suc
         -- now case-splits on sv-as-loc; setup-trace-preserves-alloc needs
         -- the InstrWF witness to discharge the halt case).
-        l-layer-valid-setup : μLayerValid alloc-setup wfL wfG l-layer payload-loc s-setup
+        l-layer-valid-setup : ValidAtWF mIn alloc-setup {⟦ FL ⟧T (μ-type G)} (coerce-functor⁻¹ FL (μ-type G) l-layer) payload-loc s-setup
         l-layer-valid-setup = SMP.!!
 
         payload-bf-setup : BeforeFrontier alloc-setup payload-loc
@@ -974,8 +980,8 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
     --   2. sub-trace: process payload recursively
     --   3. wrapper-trace: allocate Sum wrapper at frontier
     ------------------------------------------------------------------------
-    process-layer (wf-Sum wfL wfR) wfG alg dispatch (inj₂ r-layer) mIn input-loc s alloc
-      (μlayer-inr {payload-loc = payload-loc} payload-ptr payload-bf sucLoc-bf r-layer-valid) input-before not-halted rdi-eq =
+    process-layer {G = G} (wf-Sum {FL} {FR} wfL wfR) wfG alg dispatch (inj₂ r-layer) mIn input-loc s alloc
+      (valid-inr-wf {payload-loc = payload-loc} lmm payload-ptr payload-bf sucLoc-bf r-layer-valid) input-before not-halted rdi-eq =
       let
         -- Step 1: Setup trace - load payload pointer and set Input1
         -- This transforms s (where Input1 = input-loc) to s-setup (where Input1 = payload-loc)
@@ -1002,7 +1008,7 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
         -- TODO (post-scaffold): same alloc-setup non-reduction issue as
         -- left-layer above. Postulate the three transfers.
-        r-layer-valid-setup : μLayerValid alloc-setup wfR wfG r-layer payload-loc s-setup
+        r-layer-valid-setup : ValidAtWF mIn alloc-setup {⟦ FR ⟧T (μ-type G)} (coerce-functor⁻¹ FR (μ-type G) r-layer) payload-loc s-setup
         r-layer-valid-setup = SMP.!!
 
         payload-bf-setup : BeforeFrontier alloc-setup payload-loc
@@ -1485,7 +1491,7 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
     -- Product case: delegate to helper (enables where clauses)
     process-layer (wf-Prod wfL wfR) wfG alg dispatch (l-comp , r-comp) mIn input-loc s alloc
-      (μlayer-prod {fst-loc = fst-loc} {snd-loc = snd-loc} fst-ptr snd-ptr fst-bf snd-bf sucLoc-bf l-layer-valid r-layer-valid) input-before not-halted rdi-eq =
+      (valid-pair-wf {fst-loc = fst-loc} {snd-loc = snd-loc} lmm fst-ptr snd-ptr fst-bf snd-bf sucLoc-bf l-layer-valid r-layer-valid) input-before not-halted rdi-eq =
       process-layer-prod wfL wfR wfG alg dispatch l-comp r-comp mIn
         input-loc fst-loc snd-loc s alloc
         fst-ptr snd-ptr fst-bf snd-bf sucLoc-bf l-layer-valid r-layer-valid
@@ -1498,7 +1504,7 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
     -- The let-block limitation in Agda prevents where clauses inside let.
     ------------------------------------------------------------------------
 
-    process-layer-prod : ∀ {FL FR G A}
+    process-layer-prod : ∀ {mvL mvR FL FR G A}
       (wfL : WellFormedF FL) (wfR : WellFormedF FR) (wfG : WellFormedF G)
       (alg : IR (⟦ G ⟧T A) A)
       (dispatch : RecDispatcherWF (ir-size (Cata wfG alg)))
@@ -1511,13 +1517,13 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
       (fst-bf : BeforeFrontier alloc fst-loc)
       (snd-bf : BeforeFrontier alloc snd-loc)
       (sucLoc-bf : BeforeFrontier alloc (sucLoc input-loc))
-      (l-layer-valid : μLayerValid alloc wfL wfG l-comp fst-loc s)
-      (r-layer-valid : μLayerValid alloc wfR wfG r-comp snd-loc s)
+      (l-layer-valid : ValidAtWF mvL alloc {⟦ FL ⟧T (μ-type G)} (coerce-functor⁻¹ FL (μ-type G) l-comp) fst-loc s)
+      (r-layer-valid : ValidAtWF mvR alloc {⟦ FR ⟧T (μ-type G)} (coerce-functor⁻¹ FR (μ-type G) r-comp) snd-loc s)
       (input-before : BeforeFrontier alloc input-loc)
       (not-halted : halted s ≡ false)
       (rdi-eq : readReg (regs s) Input1 ≡ SV-Ptr input-loc)
       → ∃[ mOut ] ProcessedLayerResult wfG alg mOut (wf-Prod wfL wfR) (l-comp , r-comp) s alloc
-    process-layer-prod {FL} {FR} {G} {A} wfL wfR wfG alg dispatch l-comp r-comp mIn
+    process-layer-prod {mvL} {mvR} {FL} {FR} {G} {A} wfL wfR wfG alg dispatch l-comp r-comp mIn
       input-loc fst-loc snd-loc s alloc
       fst-ptr snd-ptr fst-bf snd-bf sucLoc-bf l-layer-valid r-layer-valid
       input-before not-halted rdi-eq =
@@ -1608,12 +1614,12 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
         -- Transfer l-layer-valid through setup
         -- Now we can use a proper proof with where clause helpers
-        l-layer-valid-setup : μLayerValid alloc-for-left wfL wfG l-comp fst-loc s-left-setup
+        l-layer-valid-setup : ValidAtWF mvL alloc-for-left {⟦ FL ⟧T (μ-type G)} (coerce-functor⁻¹ FL (μ-type G) l-comp) fst-loc s-left-setup
         l-layer-valid-setup = l-layer-valid-setup-proof
           where
-            -- Step 1: Transfer through state change using μLayerValid-mem-preserved
-            l-layer-valid-state : μLayerValid alloc wfL wfG l-comp fst-loc s-left-setup
-            l-layer-valid-state = μLayerValid-mem-preserved alloc wfL wfG l-comp fst-loc s s-left-setup
+            -- Step 1: Transfer through state change using validityWF-mem-preserved
+            l-layer-valid-state : ValidAtWF mvL alloc {⟦ FL ⟧T (μ-type G)} (coerce-functor⁻¹ FL (μ-type G) l-comp) fst-loc s-left-setup
+            l-layer-valid-state = validityWF-mem-preserved (coerce-functor⁻¹ FL (μ-type G) l-comp) fst-loc s s-left-setup
               fst-bf mem-eq l-layer-valid
               where
                 mem-eq : ∀ loc' → BeforeFrontier alloc loc' → readLoc s-left-setup loc' ≡ readLoc s loc'
@@ -1624,9 +1630,9 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
                     loc'-neq-slot : loc' ≢ AtStack (current-frame alloc) save-slot
                     loc'-neq-slot eq = Data.Nat.Properties.<-irrefl refl (bf-slot-contradiction alloc loc' save-slot bf' eq)
 
-            -- Step 2: Transfer through alloc change using μLayerValid-frontier-advance
-            l-layer-valid-setup-proof : μLayerValid alloc-for-left wfL wfG l-comp fst-loc s-left-setup
-            l-layer-valid-setup-proof = μLayerValid-frontier-advance alloc alloc-for-left wfL wfG l-comp fst-loc s-left-setup
+            -- Step 2: Transfer through alloc change using validityWF-frontier-advance
+            l-layer-valid-setup-proof : ValidAtWF mvL alloc-for-left {⟦ FL ⟧T (μ-type G)} (coerce-functor⁻¹ FL (μ-type G) l-comp) fst-loc s-left-setup
+            l-layer-valid-setup-proof = validityWF-frontier-advance (coerce-functor⁻¹ FL (μ-type G) l-comp) fst-loc s-left-setup
               refl (incr-next-slot-mono alloc) ≤-refl l-layer-valid-state
 
         fst-bf-setup : BeforeFrontier alloc-for-left fst-loc
@@ -1715,11 +1721,11 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
         l-slot-usage : l-reclaimable ≤ next-slot alloc-for-left +ℕ layer-capacity wfL wfG alg
         l-slot-usage = ProcessedLayerResult.slot-usage-bound l-result
 
-        r-layer-valid-transferred : μLayerValid alloc-for-right wfR wfG r-comp snd-loc s-l
+        r-layer-valid-transferred : ValidAtWF mvR alloc-for-right {⟦ FR ⟧T (μ-type G)} (coerce-functor⁻¹ FR (μ-type G) r-comp) snd-loc s-l
         r-layer-valid-transferred =
           -- Transfer through alloc → alloc-for-right using frontier-advance
           -- Chain: next-slot alloc < next-slot alloc-for-left ≤ l-reclaimable = next-slot alloc-for-right
-          μLayerValid-frontier-advance alloc alloc-for-right wfR wfG r-comp snd-loc s-l
+          validityWF-frontier-advance (coerce-functor⁻¹ FR (μ-type G) r-comp) snd-loc s-l
             alloc-for-right-frame
             slot-mono-to-right
             heap-mono-to-right
@@ -1734,16 +1740,16 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
             heap-mono-to-right = subst (next-heap-ref alloc ≤_) (sym alloc-for-right-heap) ≤-refl
 
             -- First transfer r-layer-valid through the state changes
-            r-layer-valid-at-s-left-setup : μLayerValid alloc wfR wfG r-comp snd-loc s-left-setup
-            r-layer-valid-at-s-left-setup = μLayerValid-mem-preserved alloc wfR wfG r-comp snd-loc s s-left-setup
+            r-layer-valid-at-s-left-setup : ValidAtWF mvR alloc {⟦ FR ⟧T (μ-type G)} (coerce-functor⁻¹ FR (μ-type G) r-comp) snd-loc s-left-setup
+            r-layer-valid-at-s-left-setup = validityWF-mem-preserved (coerce-functor⁻¹ FR (μ-type G) r-comp) snd-loc s s-left-setup
               snd-bf
               (λ loc' bf' → prod-left-setup-mem-eq save-slot s alloc loc' not-halted
                 (λ eq → Data.Nat.Properties.<-irrefl refl (bf-slot-contradiction alloc loc' save-slot bf' eq)))
               r-layer-valid
 
             -- Then through left processing
-            r-layer-valid-at-s-l : μLayerValid alloc wfR wfG r-comp snd-loc s-l
-            r-layer-valid-at-s-l = μLayerValid-mem-preserved alloc wfR wfG r-comp snd-loc s-left-setup s-l
+            r-layer-valid-at-s-l : ValidAtWF mvR alloc {⟦ FR ⟧T (μ-type G)} (coerce-functor⁻¹ FR (μ-type G) r-comp) snd-loc s-l
+            r-layer-valid-at-s-l = validityWF-mem-preserved (coerce-functor⁻¹ FR (μ-type G) r-comp) snd-loc s-left-setup s-l
               snd-bf
               (λ loc' bf' → ProcessedLayerResult.mem-preserved l-result loc'
                 (frontier-monotone alloc alloc-for-left refl (incr-next-slot-mono alloc) ≤-refl loc' bf'))
@@ -1807,8 +1813,8 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
                                    (twf-∷ (SMP.!!) (twf-∷ tt
                                      (twf-∷ (SMP.!!) (twf-∷ tt twf-[]))))
 
-        r-layer-valid-right-setup : μLayerValid alloc-for-right wfR wfG r-comp snd-loc s-right-setup
-        r-layer-valid-right-setup = μLayerValid-mem-preserved alloc-for-right wfR wfG r-comp snd-loc s-l s-right-setup
+        r-layer-valid-right-setup : ValidAtWF mvR alloc-for-right {⟦ FR ⟧T (μ-type G)} (coerce-functor⁻¹ FR (μ-type G) r-comp) snd-loc s-right-setup
+        r-layer-valid-right-setup = validityWF-mem-preserved (coerce-functor⁻¹ FR (μ-type G) r-comp) snd-loc s-l s-right-setup
           r-snd-bf
           (λ loc' bf' → SMP.RecSchemeSemantics.prod-right-setup-mem-helper save-slot s-l alloc-for-right loc' l-not-halted
             (λ _ → SMP.!!))  -- The constraint is not used by the helper
@@ -2245,21 +2251,12 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
     exec-mov-to-input-state s alloc target-loc output-eq =
       cong (λ loc → record s { regs = writeReg (regs s) Input1 loc }) output-eq
 
-    -- Plan 0.27 Option 3 TEMPORARY bridge (Phase-C target): with
-    -- valid-μ-wf now storing the layer's ValidAtWF, exposing μLayerValid
-    -- is the forward correspondence (ValidAtWF {layer} → μLayerValid).
-    -- Postulated until RecTrace threads ValidAtWF directly. Narrower than
-    -- the blanket rec-scheme-semantic alongside it.
-    postulate
-      extract-μLayerValid : ∀ {G m} (wfG : WellFormedF G)
-        {alloc : AllocState {FS}} {x : ⟦μ⟧ G}
-        {input-loc : ValueLocation FS} {s : LocState FS}
-        → ValidAtWF m alloc x input-loc s
-        → μLayerValid alloc wfG wfG (sem-Out wfG x) input-loc s
-
     -- cata-dispatched-new delegates to process-layer for layer handling
-    -- and to dispatcher for algebra execution
-    cata-dispatched-new : ∀ {G A}
+    -- and to dispatcher for algebra execution.
+    -- Plan 0.27: validity is mode-polymorphic (mv) and the layer validity
+    -- is the μ-value's own ValidAtWF unwrapped via out-μ-valid — NO
+    -- extract-μLayerValid / μValid→μValidAtWF bridges.
+    cata-dispatched-new : ∀ {mv G A}
       (wfG : WellFormedF G)
       (alg : IR (⟦ G ⟧T A) A)
       (dispatch : RecDispatcherWF (ir-size (Cata wfG alg)))
@@ -2267,22 +2264,23 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
       (mIn : AllocMode)
       (input-loc : ValueLocation FS)
       (s : LocState FS) (alloc : AllocState {FS})
-      → ValidAtWF mIn alloc x input-loc s
+      → ValidAtWF mv alloc x input-loc s
       → BeforeFrontier alloc input-loc
       → halted s ≡ false
       → readReg (regs s) Input1 ≡ SV-Ptr input-loc
       → ∃[ mOut ] IRResultAWF mOut (Cata wfG alg) x s alloc
-    cata-dispatched-new {G} {A} wfG alg dispatch x mIn input-loc s alloc
+    cata-dispatched-new {mv} {G} {A} wfG alg dispatch x mIn input-loc s alloc
       x-valid input-before not-halted rdi-eq =
       let
         -- Step 1: Destruct to get layer
         layer : ⟦ G ⟧F (⟦μ⟧ G)
         layer = sem-Out wfG x
 
-        -- Step 1b: Get layer validity from μ-value validity
-        -- Extract the μLayerValid from μValid for the layer
-        layer-valid : μLayerValid alloc wfG wfG layer input-loc s
-        layer-valid = extract-μLayerValid wfG x-valid
+        -- Step 1b: layer validity = the μ-value's own ValidAtWF, unwrapped
+        -- to the layer via out-μ-valid (eval (out-μ wfG) x ≡ coerce⁻¹ layer
+        -- definitionally). No extract-μLayerValid bridge.
+        layer-valid : ValidAtWF mv alloc {⟦ G ⟧T (μ-type G)} (coerce-functor⁻¹ G (μ-type G) layer) input-loc s
+        layer-valid = out-μ-valid wfG x x-valid
 
         -- Step 2: Process layer to get ⟦ G ⟧F A
         (mLayer , layer-result) = process-layer wfG wfG alg dispatch layer mIn input-loc s alloc
