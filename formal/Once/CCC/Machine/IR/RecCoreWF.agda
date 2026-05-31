@@ -81,6 +81,9 @@ import Once.CCC.Machine.SMPrimitives as SMP
 -- CataLayer for the extracted Cata mutual block (Plan 0.27 split).
 import Once.CCC.Machine.IR.RecTrace as RecTrace
 import Once.CCC.Machine.IR.CataLayer as CataLayer
+-- Plan 0.27 Option B: well-founded recursion seed for Cata.
+open import Data.Nat.Induction using (<-wellFounded)
+open import Once.CCC.Machine.IR.MuSize using (μ-size)
 
 ------------------------------------------------------------------------
 -- RecConfig: Configuration record for the unified recursive core
@@ -331,9 +334,10 @@ module RecCoreWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     → ∃[ mOut ] IRResultAWF mOut (Cata wf alg) x s alloc
   run-cata-core wf alg rec-wf mIn x input-loc s alloc
     input-valid-wf input-before not-halted rdi-eq =
-    -- Delegate to cata-dispatched-new which provides the structural recursion proof
+    -- Delegate to cata-dispatched-new; seed its well-founded recursion
+    -- with accessibility of the μ-value's size (Plan 0.27 Option B).
     cata-dispatched-new wf alg rec-wf x mIn input-loc s alloc
-      input-valid-wf input-before not-halted rdi-eq
+      (<-wellFounded (μ-size wf x)) input-valid-wf input-before not-halted rdi-eq
 
   -- | Fuse: μ-anchored fusion (transform then fold)
   -- Structural recursion on μG, applying transform and algebra
