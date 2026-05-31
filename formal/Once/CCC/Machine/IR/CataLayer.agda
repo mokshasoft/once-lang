@@ -56,8 +56,10 @@ import Once.CCC.Machine.IR.LambekValidity as LV
 -- the {-# TERMINATING #-} pragma).
 open import Induction.WellFounded using (Acc; acc)
 open import Data.Nat.Induction using (<-wellFounded)
-open import Once.CCC.Machine.IR.MuSize using (μ-size; sum-Id; child-sum-<;
-  prod-bound-left; prod-bound-right)
+open import Once.CCC.Machine.IR.MuSize using (μ-size; child-measure; child-sum-<;
+  child-bound-Id; child-bound-inj₁; child-bound-inj₂;
+  child-bound-prod-left; child-bound-prod-right;
+  functor-size; fsize-inj-left; fsize-inj-right; fsize-prod-left; fsize-prod-right)
 
 module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
   open FrontierInvariant {FS}
@@ -186,6 +188,60 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
   acc-rs : ∀ {n m} → Acc _<_ n → m < n → Acc _<_ m
   acc-rs (acc rs) lt = rs lt
 
+  ------------------------------------------------------------------------
+  -- Plan 0.27 perf: REIFIED cata-recursion capability (Dispatcher pattern).
+  --
+  -- The well-founded recursion used to be a single mutual block of
+  -- process-layer / process-layer-prod / cata-dispatched-new. Removing the
+  -- {-# TERMINATING #-} pragma made Agda's termination checker (foetus)
+  -- analyse that whole block: 3 huge functions + ~17 with-generated
+  -- auxiliaries in one SCC. That blew the typecheck past 26 min (type-
+  -- checking the same module WITH the pragma is ~2 min — the cost is
+  -- foetus on the oversized mixed Acc+structural SCC).
+  --
+  -- Fix (mirrors Dispatcher.make-rec-wf / run-ir-wf): process-layer no
+  -- longer calls cata-dispatched-new directly; it takes this reified
+  -- capability "run the catamorphism on any μ-value of size < n". That
+  -- breaks the call cycle, so foetus sees TWO small independent SCCs:
+  -- {process-layer, process-layer-prod} (structural on the functor) and
+  -- {make-cata-rec, cata-dispatched-new} (the Acc recursion). SCCs are
+  -- computed from the call graph, not the `mutual` grouping, so no block
+  -- split is needed — only the cycle has to be cut.
+  ------------------------------------------------------------------------
+  CataRecBound : ∀ {G A} (wfG : WellFormedF G) (alg : IR (⟦ G ⟧T A) A) (n : ℕ) → Set
+  CataRecBound {G} {A} wfG alg n =
+    ∀ {mv} (c : ⟦μ⟧ G) → μ-size wfG c < n
+    → (mIn : AllocMode) (input-loc : ValueLocation FS)
+      (s : LocState FS) (alloc : AllocState {FS})
+    → ValidAtWF mv alloc c input-loc s
+    → BeforeFrontier alloc input-loc
+    → halted s ≡ false
+    → readReg (regs s) Input1 ≡ SV-Ptr input-loc
+    → ∃[ mOut ] IRResultAWF mOut (Cata wfG alg) c s alloc
+
+  ------------------------------------------------------------------------
+  -- Plan 0.27 perf: REIFIED FUNCTOR-recursion capability. process-layer
+  -- descends FL/FR structurally; routing those calls through this
+  -- capability (built by make-proc-rec from an `Acc _<_ (functor-size F)`)
+  -- makes process-layer/process-layer-prod NON-recursive to foetus — their
+  -- heavy clause bodies (passing big setup expressions like s-setup) leave
+  -- the termination SCC, which was the Termination.Graph blow-up. `nf`
+  -- bounds the functor-size of the sub-layers this capability may process;
+  -- `n` is the shared μ-children measure bound (unchanged across the
+  -- functor descent). Mirrors CataRecBound + the Dispatcher's make-rec-wf.
+  ------------------------------------------------------------------------
+  ProcLayerCap : ∀ {G A} (wfG : WellFormedF G) (alg : IR (⟦ G ⟧T A) A) (n nf : ℕ) → Set
+  ProcLayerCap {G} {A} wfG alg n nf =
+    ∀ {mv F} (wfF : WellFormedF F) → functor-size F < nf
+    → (layer : ⟦ F ⟧F (⟦μ⟧ G)) (mIn : AllocMode) (input-loc : ValueLocation FS)
+      (s : LocState FS) (alloc : AllocState {FS})
+    → child-measure F wfG layer < n
+    → ValidAtWF mv alloc {⟦ F ⟧T (μ-type G)} (coerce-functor⁻¹ F (μ-type G) layer) input-loc s
+    → BeforeFrontier alloc input-loc
+    → halted s ≡ false
+    → readReg (regs s) Input1 ≡ SV-Ptr input-loc
+    → ∃[ mOut ] ProcessedLayerResult wfG alg mOut wfF layer s alloc
+
   mutual
     -- | Process an F-layer within μG context
     --
@@ -214,11 +270,16 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
       (s : LocState FS) (alloc : AllocState {FS})
       -- Plan 0.27 Option B: well-founded recursion on μ-value size.
       -- `n` bounds the total size of the children at this layer's Id
-      -- positions; `wf-acc : Acc _<_ n` is the accessibility witness the
-      -- Id case decreases on. State-independent (size is a function of
-      -- the μ-value, not the machine state).
-      (n : ℕ) (wf-acc : Acc _<_ n)
-      (size-bound : sum-Id F (sem-fmap F (μ-size wfG) layer) < n)
+      -- positions; `rec` is the reified capability to run the cata on any
+      -- child of size < n (the Id case's decrease lives inside it). Taking
+      -- the capability instead of recursing into cata-dispatched-new keeps
+      -- process-layer out of the Acc recursion's SCC (see CataRecBound).
+      (n : ℕ) (rec : CataRecBound wfG alg n)
+      -- Functor-recursion capability: process sub-layers (FL/FR) of strictly
+      -- smaller functor-size. Routing the Sum/Prod descent through it keeps
+      -- process-layer out of the termination SCC (see ProcLayerCap).
+      (procRec : ProcLayerCap wfG alg n (functor-size F))
+      (size-bound : child-measure F wfG layer < n)
       -- Plan 0.27: layer validity is the layer's OWN ValidAtWF (mode-poly
       -- `mv`), not the lossy mode-agnostic μLayerValid. coerce-functor⁻¹
       -- bridges the Set-level layer to its Type-interp form.
@@ -231,7 +292,7 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
     -- K case: constant layer, no recursion
     -- The processed layer is just the constant value itself
     process-layer (wf-K {T} isBase) wfG alg dispatch k-val mIn input-loc s alloc
-      n wf-acc size-bound _ input-before not-halted rdi-eq =
+      n rec procRec size-bound _ input-before not-halted rdi-eq =
       -- For K T: ⟦ K T ⟧F X = ⟦ T ⟧ for any X
       -- The processed layer is the same constant: k-val : ⟦ T ⟧
       -- sem-fmap (K T) f k-val = k-val (fmap for K is identity)
@@ -287,7 +348,7 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
     -- Id case: recursive position, compute cata on μ-value
     -- The processed layer is the cata result
     process-layer wf-Id wfG alg dispatch μ-val mIn input-loc s alloc
-      n wf-acc size-bound μ-val-valid input-before not-halted rdi-eq =
+      n rec procRec size-bound μ-val-valid input-before not-halted rdi-eq =
       mRec , record
         { processed = rec-val  -- The cata result
         ; trace = rec-trace
@@ -341,9 +402,11 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
         -- position IS the μ-value, ValidAtWF{μ-type G} directly) — no
         -- μValid→μValidAtWF bridge needed.
 
-        -- Recursive call: compute cata on μ-val
-        cata-call = cata-dispatched-new wfG alg dispatch μ-val mIn input-loc s alloc
-                      (acc-rs wf-acc size-bound) μ-val-valid input-before not-halted rdi-eq
+        -- Recursive call: compute cata on μ-val via the reified capability
+        -- (the Id position's μ-value has size < n by child-bound-Id; `rec`
+        -- supplies the structurally-smaller Acc internally).
+        cata-call = rec μ-val (child-bound-Id wfG μ-val size-bound) mIn input-loc s alloc
+                      μ-val-valid input-before not-halted rdi-eq
         mRec = proj₁ cata-call
         rec-result = proj₂ cata-call
 
@@ -400,7 +463,7 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
     -- Result: result-loc = input-loc (the Sum container with updated pointer)
     --
     process-layer {G = G} (wf-Sum {FL} {FR} wfL wfR) wfG alg dispatch (inj₁ l-layer) mIn input-loc s alloc
-      n wf-acc size-bound (valid-inl-wf {payload-loc = payload-loc} lmm payload-ptr payload-bf sucLoc-bf l-layer-valid) input-before not-halted rdi-eq =
+      n rec procRec size-bound (valid-inl-wf {payload-loc = payload-loc} lmm payload-ptr payload-bf sucLoc-bf l-layer-valid) input-before not-halted rdi-eq =
       let
         -- Step 1: Setup trace - load payload pointer and set Input1
         -- This transforms s (where Input1 = input-loc) to s-setup (where Input1 = payload-loc)
@@ -448,8 +511,8 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
         not-halted-setup = setup-trace-preserves-halted s alloc input-loc (SV-Ptr payload-loc) not-halted rdi-eq payload-ptr
 
         -- Step 2: Process left sub-layer (recursive call)
-        (mL , l-result) = process-layer wfL wfG alg dispatch l-layer mIn payload-loc s-setup alloc-setup
-                            n wf-acc size-bound l-layer-valid-setup payload-bf-setup not-halted-setup rdi-setup
+        (mL , l-result) = procRec wfL (fsize-inj-left _ _) l-layer mIn payload-loc s-setup alloc-setup
+                            (child-bound-inj₁ wfG l-layer size-bound) l-layer-valid-setup payload-bf-setup not-halted-setup rdi-setup
 
         -- Extract recursive results
         l-processed = ProcessedLayerResult.processed l-result
@@ -998,7 +1061,7 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
     --   3. wrapper-trace: allocate Sum wrapper at frontier
     ------------------------------------------------------------------------
     process-layer {G = G} (wf-Sum {FL} {FR} wfL wfR) wfG alg dispatch (inj₂ r-layer) mIn input-loc s alloc
-      n wf-acc size-bound (valid-inr-wf {payload-loc = payload-loc} lmm payload-ptr payload-bf sucLoc-bf r-layer-valid) input-before not-halted rdi-eq =
+      n rec procRec size-bound (valid-inr-wf {payload-loc = payload-loc} lmm payload-ptr payload-bf sucLoc-bf r-layer-valid) input-before not-halted rdi-eq =
       let
         -- Step 1: Setup trace - load payload pointer and set Input1
         -- This transforms s (where Input1 = input-loc) to s-setup (where Input1 = payload-loc)
@@ -1035,8 +1098,8 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
         not-halted-setup = setup-trace-preserves-halted s alloc input-loc (SV-Ptr payload-loc) not-halted rdi-eq payload-ptr
 
         -- Step 2: Process right sub-layer (recursive call)
-        (mR , r-result) = process-layer wfR wfG alg dispatch r-layer mIn payload-loc s-setup alloc-setup
-                            n wf-acc size-bound r-layer-valid-setup payload-bf-setup not-halted-setup rdi-setup
+        (mR , r-result) = procRec wfR (fsize-inj-right _ _) r-layer mIn payload-loc s-setup alloc-setup
+                            (child-bound-inj₂ wfG r-layer size-bound) r-layer-valid-setup payload-bf-setup not-halted-setup rdi-setup
 
         -- Extract recursive results
         r-processed = ProcessedLayerResult.processed r-result
@@ -1508,9 +1571,9 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
     -- Product case: delegate to helper (enables where clauses)
     process-layer (wf-Prod wfL wfR) wfG alg dispatch (l-comp , r-comp) mIn input-loc s alloc
-      n wf-acc size-bound (valid-pair-wf {fst-loc = fst-loc} {snd-loc = snd-loc} lmm fst-ptr snd-ptr fst-bf snd-bf sucLoc-bf l-layer-valid r-layer-valid) input-before not-halted rdi-eq =
+      n rec procRec size-bound (valid-pair-wf {fst-loc = fst-loc} {snd-loc = snd-loc} lmm fst-ptr snd-ptr fst-bf snd-bf sucLoc-bf l-layer-valid r-layer-valid) input-before not-halted rdi-eq =
       process-layer-prod wfL wfR wfG alg dispatch l-comp r-comp mIn
-        input-loc fst-loc snd-loc s alloc n wf-acc size-bound
+        input-loc fst-loc snd-loc s alloc n rec procRec size-bound
         fst-ptr snd-ptr fst-bf snd-bf sucLoc-bf l-layer-valid r-layer-valid
         input-before not-halted rdi-eq
 
@@ -1529,8 +1592,9 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
       (mIn : AllocMode)
       (input-loc fst-loc snd-loc : ValueLocation FS)
       (s : LocState FS) (alloc : AllocState {FS})
-      (n : ℕ) (wf-acc : Acc _<_ n)
-      (size-bound : sum-Id (FL ⊗ FR) (sem-fmap (FL ⊗ FR) (μ-size wfG) (l-comp , r-comp)) < n)
+      (n : ℕ) (rec : CataRecBound wfG alg n)
+      (procRec : ProcLayerCap wfG alg n (functor-size (FL ⊗ FR)))
+      (size-bound : child-measure (FL ⊗ FR) wfG (l-comp , r-comp) < n)
       (fst-ptr : readLoc s input-loc ≡ just (SV-Ptr fst-loc))
       (snd-ptr : readLoc s (sucLoc input-loc) ≡ just (SV-Ptr snd-loc))
       (fst-bf : BeforeFrontier alloc fst-loc)
@@ -1543,7 +1607,7 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
       (rdi-eq : readReg (regs s) Input1 ≡ SV-Ptr input-loc)
       → ∃[ mOut ] ProcessedLayerResult wfG alg mOut (wf-Prod wfL wfR) (l-comp , r-comp) s alloc
     process-layer-prod {mvL} {mvR} {FL} {FR} {G} {A} wfL wfR wfG alg dispatch l-comp r-comp mIn
-      input-loc fst-loc snd-loc s alloc n wf-acc size-bound
+      input-loc fst-loc snd-loc s alloc n rec procRec size-bound
       fst-ptr snd-ptr fst-bf snd-bf sucLoc-bf l-layer-valid r-layer-valid
       input-before not-halted rdi-eq =
       mR , record
@@ -1665,8 +1729,8 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
         -- Phase 2: Left Processing
         ------------------------------------------------------------------------
         l-result-pair : ∃[ mOut ] ProcessedLayerResult wfG alg mOut wfL l-comp s-left-setup alloc-for-left
-        l-result-pair = process-layer wfL wfG alg dispatch l-comp mIn fst-loc s-left-setup alloc-for-left
-                          n wf-acc (prod-bound-left _ _ size-bound) l-layer-valid-setup fst-bf-setup not-halted-left-setup rdi-left-setup
+        l-result-pair = procRec wfL (fsize-prod-left _ _) l-comp mIn fst-loc s-left-setup alloc-for-left
+                          (child-bound-prod-left wfG l-comp r-comp size-bound) l-layer-valid-setup fst-bf-setup not-halted-left-setup rdi-left-setup
 
         mL : AllocMode
         mL = proj₁ l-result-pair
@@ -1843,8 +1907,8 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
         -- Phase 4: Right Processing
         ------------------------------------------------------------------------
         r-result-pair : ∃[ mOut ] ProcessedLayerResult wfG alg mOut wfR r-comp s-right-setup alloc-for-right
-        r-result-pair = process-layer wfR wfG alg dispatch r-comp mIn snd-loc s-right-setup alloc-for-right
-                          n wf-acc (prod-bound-right _ _ size-bound) r-layer-valid-right-setup r-snd-bf not-halted-right-setup rdi-right-setup
+        r-result-pair = procRec wfR (fsize-prod-right _ _) r-comp mIn snd-loc s-right-setup alloc-for-right
+                          (child-bound-prod-right wfG l-comp r-comp size-bound) r-layer-valid-right-setup r-snd-bf not-halted-right-setup rdi-right-setup
 
         mR : AllocMode
         mR = proj₁ r-result-pair
@@ -2246,6 +2310,32 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
               (SMP.trace-slot-reads-below-append max-slot-used-prod right-setup-trace r-trace
                 right-setup-tsrb r-trace-tsrb))
 
+  ------------------------------------------------------------------------
+  -- make-proc-rec: builds the functor-recursion capability from an
+  -- accessibility witness on functor-size. process-layer/process-layer-prod
+  -- (above) call the `procRec` PARAMETER for sub-layer descent, so foetus
+  -- treats them as NON-recursive (it does not track parameter applications)
+  -- — their heavy bodies leave the termination SCC. The only recursive SCC
+  -- here is {make-proc-rec} itself (self-recursive on the structurally
+  -- smaller Acc `rs fs<`), which is tiny. Standalone (not in a mutual
+  -- block): it calls process-layer, which never calls back.
+  ------------------------------------------------------------------------
+  make-proc-rec : ∀ {G A} {wfG : WellFormedF G} {alg : IR (⟦ G ⟧T A) A} {n : ℕ}
+    (dispatch : RecDispatcherWF (ir-size (Cata wfG alg)))
+    (rec : CataRecBound wfG alg n)
+    → ∀ {nf} → Acc _<_ nf → ProcLayerCap wfG alg n nf
+  make-proc-rec {wfG = wfG} {alg = alg} {n = n} dispatch rec (acc rs)
+    wfF fs< layer mIn input-loc s alloc sb validity bf nh rdi =
+    process-layer wfF wfG alg dispatch layer mIn input-loc s alloc n rec
+      (make-proc-rec dispatch rec (rs fs<)) sb validity bf nh rdi
+
+  ------------------------------------------------------------------------
+  -- Plan 0.27 perf: SEPARATE mutual block for the μ-Acc recursion
+  -- {make-cata-rec, cata-dispatched-new} + cata-only helpers. process-layer
+  -- /process-layer-prod are above (their own non-recursive defs). No
+  -- forward-ref break: process-layer/-prod use none of these.
+  ------------------------------------------------------------------------
+  mutual
     ------------------------------------------------------------------------
     -- Cata Dispatched (New Architecture)
     --
@@ -2269,6 +2359,18 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
       proj₁ (exec-abstract mov-to-input s alloc) ≡ record s { regs = writeReg (regs s) Input1 (SV-Ptr target-loc) }
     exec-mov-to-input-state s alloc target-loc output-eq =
       cong (λ loc → record s { regs = writeReg (regs s) Input1 loc }) output-eq
+
+    -- Builds the reified cata-recursion capability from an accessibility
+    -- witness: a child of size < n yields a structurally-smaller Acc
+    -- (rs lt), which justifies the recursive cata-dispatched-new call.
+    -- {make-cata-rec, cata-dispatched-new} is the ONLY SCC foetus analyses
+    -- for the well-founded recursion — process-layer/process-layer-prod are
+    -- out of it (they take the capability as a parameter).
+    make-cata-rec : ∀ {G A} {wfG : WellFormedF G} {alg : IR (⟦ G ⟧T A) A} {n : ℕ}
+      (dispatch : RecDispatcherWF (ir-size (Cata wfG alg)))
+      → Acc _<_ n → CataRecBound wfG alg n
+    make-cata-rec {wfG = wfG} {alg = alg} dispatch (acc rs) c lt mIn input-loc s alloc valid bf nh rdi =
+      cata-dispatched-new wfG alg dispatch c mIn input-loc s alloc (rs lt) valid bf nh rdi
 
     -- cata-dispatched-new delegates to process-layer for layer handling
     -- and to dispatcher for algebra execution.
@@ -2306,7 +2408,9 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
         -- Step 2: Process layer to get ⟦ G ⟧F A
         (mLayer , layer-result) = process-layer wfG wfG alg dispatch layer mIn input-loc s alloc
-                                    (μ-size wfG x) wf-acc (child-sum-< wfG x) layer-valid input-before not-halted rdi-eq
+                                    (μ-size wfG x) (make-cata-rec dispatch wf-acc)
+                                    (make-proc-rec dispatch (make-cata-rec dispatch wf-acc) (<-wellFounded (functor-size G)))
+                                    (child-sum-< wfG x) layer-valid input-before not-halted rdi-eq
 
         -- Extract layer processing results
         processed-layer = ProcessedLayerResult.processed layer-result
