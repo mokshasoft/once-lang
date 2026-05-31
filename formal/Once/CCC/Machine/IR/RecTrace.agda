@@ -118,22 +118,6 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
            μLayerValid-mem-preserved; μValid-frontier-advance)
 
   ------------------------------------------------------------------------
-  -- Plan 0.27 Option 3 — TEMPORARY bridges (Phase-C discharge targets).
-  --
-  -- `valid-μ-wf` now stores the layer's ValidAtWF directly (no μValid).
-  -- RecTrace's Cata-validity machinery is still μValid-based; until it is
-  -- reworked to thread ValidAtWF (Phase C), these two named bridges
-  -- connect the worlds. They are strictly NARROWER than the blanket
-  -- `out-μ-trace-valid`/`rec-scheme-semantic` they sit alongside, and the
-  -- `In` path is now postulate-free.
-  postulate
-    μValid→μValidAtWF : ∀ {m G} (wfG : WellFormedF G)
-      {alloc : AllocState {FS}} {x : ⟦μ⟧ G}
-      {loc : ValueLocation FS} {s : LocState FS} →
-      μValid alloc wfG x loc s →
-      ValidAtWF m alloc x loc s
-
-  ------------------------------------------------------------------------
   -- Plan 0.2.4.5 D1: Cata result-place transport postulate
   --
   -- The cata loop chains alg-result's `result-place` (at alg-input
