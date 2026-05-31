@@ -52,6 +52,12 @@ open import Once.Semantics.Core ℕ using (⟦μ⟧; ⟦_⟧F; sem-In; sem-Out; 
 open import Once.CCC.Machine.IR.RecTrace
 -- LambekValidity provides out-μ-valid (unwrap the μ-value's ValidAtWF).
 import Once.CCC.Machine.IR.LambekValidity as LV
+-- Plan 0.27 Option B: well-founded recursion on μ-value size (replaces
+-- the {-# TERMINATING #-} pragma).
+open import Induction.WellFounded using (Acc; acc)
+open import Data.Nat.Induction using (<-wellFounded)
+open import Once.CCC.Machine.IR.MuSize using (μ-size; sum-Id; child-sum-<;
+  prod-bound-left; prod-bound-right)
 
 module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
   open FrontierInvariant {FS}
@@ -175,7 +181,11 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
           combined-eq = trans step4 step5
       in ≤-trans r-slot-budget (subst (l-reclaimable +ℕ capR ≤_) combined-eq step3)
 
-  {-# TERMINATING #-}
+  -- Plan 0.27 Option B: accessibility predecessor — the structural step
+  -- the μ-value recursion decreases on (replaces {-# TERMINATING #-}).
+  acc-rs : ∀ {n m} → Acc _<_ n → m < n → Acc _<_ m
+  acc-rs (acc rs) lt = rs lt
+
   mutual
     -- | Process an F-layer within μG context
     --
@@ -202,6 +212,13 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
       (mIn : AllocMode)
       (input-loc : ValueLocation FS)
       (s : LocState FS) (alloc : AllocState {FS})
+      -- Plan 0.27 Option B: well-founded recursion on μ-value size.
+      -- `n` bounds the total size of the children at this layer's Id
+      -- positions; `wf-acc : Acc _<_ n` is the accessibility witness the
+      -- Id case decreases on. State-independent (size is a function of
+      -- the μ-value, not the machine state).
+      (n : ℕ) (wf-acc : Acc _<_ n)
+      (size-bound : sum-Id F (sem-fmap F (μ-size wfG) layer) < n)
       -- Plan 0.27: layer validity is the layer's OWN ValidAtWF (mode-poly
       -- `mv`), not the lossy mode-agnostic μLayerValid. coerce-functor⁻¹
       -- bridges the Set-level layer to its Type-interp form.
@@ -214,7 +231,7 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
     -- K case: constant layer, no recursion
     -- The processed layer is just the constant value itself
     process-layer (wf-K {T} isBase) wfG alg dispatch k-val mIn input-loc s alloc
-      _ input-before not-halted rdi-eq =
+      n wf-acc size-bound _ input-before not-halted rdi-eq =
       -- For K T: ⟦ K T ⟧F X = ⟦ T ⟧ for any X
       -- The processed layer is the same constant: k-val : ⟦ T ⟧
       -- sem-fmap (K T) f k-val = k-val (fmap for K is identity)
@@ -270,7 +287,7 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
     -- Id case: recursive position, compute cata on μ-value
     -- The processed layer is the cata result
     process-layer wf-Id wfG alg dispatch μ-val mIn input-loc s alloc
-      μ-val-valid input-before not-halted rdi-eq =
+      n wf-acc size-bound μ-val-valid input-before not-halted rdi-eq =
       mRec , record
         { processed = rec-val  -- The cata result
         ; trace = rec-trace
@@ -326,7 +343,7 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
         -- Recursive call: compute cata on μ-val
         cata-call = cata-dispatched-new wfG alg dispatch μ-val mIn input-loc s alloc
-                      μ-val-valid input-before not-halted rdi-eq
+                      (acc-rs wf-acc size-bound) μ-val-valid input-before not-halted rdi-eq
         mRec = proj₁ cata-call
         rec-result = proj₂ cata-call
 
@@ -383,7 +400,7 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
     -- Result: result-loc = input-loc (the Sum container with updated pointer)
     --
     process-layer {G = G} (wf-Sum {FL} {FR} wfL wfR) wfG alg dispatch (inj₁ l-layer) mIn input-loc s alloc
-      (valid-inl-wf {payload-loc = payload-loc} lmm payload-ptr payload-bf sucLoc-bf l-layer-valid) input-before not-halted rdi-eq =
+      n wf-acc size-bound (valid-inl-wf {payload-loc = payload-loc} lmm payload-ptr payload-bf sucLoc-bf l-layer-valid) input-before not-halted rdi-eq =
       let
         -- Step 1: Setup trace - load payload pointer and set Input1
         -- This transforms s (where Input1 = input-loc) to s-setup (where Input1 = payload-loc)
@@ -432,7 +449,7 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
         -- Step 2: Process left sub-layer (recursive call)
         (mL , l-result) = process-layer wfL wfG alg dispatch l-layer mIn payload-loc s-setup alloc-setup
-                            l-layer-valid-setup payload-bf-setup not-halted-setup rdi-setup
+                            n wf-acc size-bound l-layer-valid-setup payload-bf-setup not-halted-setup rdi-setup
 
         -- Extract recursive results
         l-processed = ProcessedLayerResult.processed l-result
@@ -981,7 +998,7 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
     --   3. wrapper-trace: allocate Sum wrapper at frontier
     ------------------------------------------------------------------------
     process-layer {G = G} (wf-Sum {FL} {FR} wfL wfR) wfG alg dispatch (inj₂ r-layer) mIn input-loc s alloc
-      (valid-inr-wf {payload-loc = payload-loc} lmm payload-ptr payload-bf sucLoc-bf r-layer-valid) input-before not-halted rdi-eq =
+      n wf-acc size-bound (valid-inr-wf {payload-loc = payload-loc} lmm payload-ptr payload-bf sucLoc-bf r-layer-valid) input-before not-halted rdi-eq =
       let
         -- Step 1: Setup trace - load payload pointer and set Input1
         -- This transforms s (where Input1 = input-loc) to s-setup (where Input1 = payload-loc)
@@ -1019,7 +1036,7 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
         -- Step 2: Process right sub-layer (recursive call)
         (mR , r-result) = process-layer wfR wfG alg dispatch r-layer mIn payload-loc s-setup alloc-setup
-                            r-layer-valid-setup payload-bf-setup not-halted-setup rdi-setup
+                            n wf-acc size-bound r-layer-valid-setup payload-bf-setup not-halted-setup rdi-setup
 
         -- Extract recursive results
         r-processed = ProcessedLayerResult.processed r-result
@@ -1491,9 +1508,9 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
     -- Product case: delegate to helper (enables where clauses)
     process-layer (wf-Prod wfL wfR) wfG alg dispatch (l-comp , r-comp) mIn input-loc s alloc
-      (valid-pair-wf {fst-loc = fst-loc} {snd-loc = snd-loc} lmm fst-ptr snd-ptr fst-bf snd-bf sucLoc-bf l-layer-valid r-layer-valid) input-before not-halted rdi-eq =
+      n wf-acc size-bound (valid-pair-wf {fst-loc = fst-loc} {snd-loc = snd-loc} lmm fst-ptr snd-ptr fst-bf snd-bf sucLoc-bf l-layer-valid r-layer-valid) input-before not-halted rdi-eq =
       process-layer-prod wfL wfR wfG alg dispatch l-comp r-comp mIn
-        input-loc fst-loc snd-loc s alloc
+        input-loc fst-loc snd-loc s alloc n wf-acc size-bound
         fst-ptr snd-ptr fst-bf snd-bf sucLoc-bf l-layer-valid r-layer-valid
         input-before not-halted rdi-eq
 
@@ -1512,6 +1529,8 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
       (mIn : AllocMode)
       (input-loc fst-loc snd-loc : ValueLocation FS)
       (s : LocState FS) (alloc : AllocState {FS})
+      (n : ℕ) (wf-acc : Acc _<_ n)
+      (size-bound : sum-Id (FL ⊗ FR) (sem-fmap (FL ⊗ FR) (μ-size wfG) (l-comp , r-comp)) < n)
       (fst-ptr : readLoc s input-loc ≡ just (SV-Ptr fst-loc))
       (snd-ptr : readLoc s (sucLoc input-loc) ≡ just (SV-Ptr snd-loc))
       (fst-bf : BeforeFrontier alloc fst-loc)
@@ -1524,7 +1543,7 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
       (rdi-eq : readReg (regs s) Input1 ≡ SV-Ptr input-loc)
       → ∃[ mOut ] ProcessedLayerResult wfG alg mOut (wf-Prod wfL wfR) (l-comp , r-comp) s alloc
     process-layer-prod {mvL} {mvR} {FL} {FR} {G} {A} wfL wfR wfG alg dispatch l-comp r-comp mIn
-      input-loc fst-loc snd-loc s alloc
+      input-loc fst-loc snd-loc s alloc n wf-acc size-bound
       fst-ptr snd-ptr fst-bf snd-bf sucLoc-bf l-layer-valid r-layer-valid
       input-before not-halted rdi-eq =
       mR , record
@@ -1647,7 +1666,7 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ------------------------------------------------------------------------
         l-result-pair : ∃[ mOut ] ProcessedLayerResult wfG alg mOut wfL l-comp s-left-setup alloc-for-left
         l-result-pair = process-layer wfL wfG alg dispatch l-comp mIn fst-loc s-left-setup alloc-for-left
-                          l-layer-valid-setup fst-bf-setup not-halted-left-setup rdi-left-setup
+                          n wf-acc (prod-bound-left _ _ size-bound) l-layer-valid-setup fst-bf-setup not-halted-left-setup rdi-left-setup
 
         mL : AllocMode
         mL = proj₁ l-result-pair
@@ -1825,7 +1844,7 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ------------------------------------------------------------------------
         r-result-pair : ∃[ mOut ] ProcessedLayerResult wfG alg mOut wfR r-comp s-right-setup alloc-for-right
         r-result-pair = process-layer wfR wfG alg dispatch r-comp mIn snd-loc s-right-setup alloc-for-right
-                          r-layer-valid-right-setup r-snd-bf not-halted-right-setup rdi-right-setup
+                          n wf-acc (prod-bound-right _ _ size-bound) r-layer-valid-right-setup r-snd-bf not-halted-right-setup rdi-right-setup
 
         mR : AllocMode
         mR = proj₁ r-result-pair
@@ -2264,13 +2283,16 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
       (mIn : AllocMode)
       (input-loc : ValueLocation FS)
       (s : LocState FS) (alloc : AllocState {FS})
+      -- Plan 0.27 Option B: accessibility on the μ-value's size — the
+      -- well-foundedness witness (replaces {-# TERMINATING #-}).
+      (wf-acc : Acc _<_ (μ-size wfG x))
       → ValidAtWF mv alloc x input-loc s
       → BeforeFrontier alloc input-loc
       → halted s ≡ false
       → readReg (regs s) Input1 ≡ SV-Ptr input-loc
       → ∃[ mOut ] IRResultAWF mOut (Cata wfG alg) x s alloc
     cata-dispatched-new {mv} {G} {A} wfG alg dispatch x mIn input-loc s alloc
-      x-valid input-before not-halted rdi-eq =
+      wf-acc x-valid input-before not-halted rdi-eq =
       let
         -- Step 1: Destruct to get layer
         layer : ⟦ G ⟧F (⟦μ⟧ G)
@@ -2284,7 +2306,7 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
         -- Step 2: Process layer to get ⟦ G ⟧F A
         (mLayer , layer-result) = process-layer wfG wfG alg dispatch layer mIn input-loc s alloc
-                                    layer-valid input-before not-halted rdi-eq
+                                    (μ-size wfG x) wf-acc (child-sum-< wfG x) layer-valid input-before not-halted rdi-eq
 
         -- Extract layer processing results
         processed-layer = ProcessedLayerResult.processed layer-result
