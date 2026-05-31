@@ -43,7 +43,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; subs
 -- Semantic operations
 open import Once.Semantics.Core ℕ using (sem-In; sem-Out; sem-CoIn; sem-CoOut;
                                           coerce-functor; coerce-functor⁻¹; sem-Out-In;
-                                          coerce-round-trip)
+                                          sem-CoOut-CoIn; coerce-round-trip)
 
 ------------------------------------------------------------------------
 -- LambekValidityImpl
@@ -169,23 +169,39 @@ module LambekValidityImpl {FS : FrameSemantics} (program-bound : ℕ) where
           (WellFormedF-irrelevant wf' wf)
           layerV
 
-  -- | ValidAtWF for eval (in-ν wf m) x, given ValidAtWF for x
+  -- | ValidAtWF for eval (in-ν wf m) x — Plan 0.27 Option 3: REAL (dual
+  -- of In-valid-bf). in-ν is "wrap"; transport the layer validity along
+  -- the ν Lambek round-trip `Out ∘ in-ν ≡ id` (sem-CoOut-CoIn + coerce).
   in-ν-valid : ∀ {m F} (wf : WellFormedF F) (mode : AllocMode)
     {alloc : AllocState {FS}}
     {loc : ValueLocation FS} {s : LocState FS}
     (x : ⟦ ⟦ F ⟧T (ν-type F) ⟧)
     → ValidAtWF m alloc {⟦ F ⟧T (ν-type F)} x loc s
     → ValidAtWF m alloc {ν-type F} (eval (in-ν wf mode) x) loc s
-  in-ν-valid wf mode x valid = layer-to-ν-valid wf x valid
+  in-ν-valid {m} {F} wf mode {alloc} {loc} {s} x v =
+    valid-ν-wf wf (eval (in-ν wf mode) x)
+      (subst (λ y → ValidAtWF m alloc {⟦ F ⟧T (ν-type F)} y loc s)
+             (sym roundtrip) v)
+    where
+      roundtrip : eval (Out wf) (eval (in-ν wf mode) x) ≡ x
+      roundtrip =
+        trans (cong (coerce-functor⁻¹ F (ν-type F))
+                    (sem-CoOut-CoIn wf (coerce-functor F (ν-type F) x)))
+              (coerce-round-trip F (ν-type F) x)
 
-  -- | ValidAtWF for eval (Out wf) x, given ValidAtWF for x
+  -- | ValidAtWF for eval (Out wf) x — Plan 0.27 Option 3: REAL (dual of
+  -- out-μ-valid). Out is "unwrap": invert valid-ν-wf, transport along
+  -- WellFormedF-irrelevant.
   Out-valid : ∀ {m F} (wf : WellFormedF F)
     {alloc : AllocState {FS}}
     {loc : ValueLocation FS} {s : LocState FS}
     (x : ⟦ ν-type F ⟧)
     → ValidAtWF m alloc {ν-type F} x loc s
     → ValidAtWF m alloc {⟦ F ⟧T (ν-type F)} (eval (Out wf) x) loc s
-  Out-valid wf x valid = ν-to-layer-valid wf x valid
+  Out-valid {m} {F} wf {alloc} {loc} {s} x (valid-ν-wf wf' .x layerV) =
+    subst (λ w → ValidAtWF m alloc {⟦ F ⟧T (ν-type F)} (eval (Out w) x) loc s)
+          (WellFormedF-irrelevant wf' wf)
+          layerV
 
   ------------------------------------------------------------------------
   -- Trace-level validity: accounts for state changes
