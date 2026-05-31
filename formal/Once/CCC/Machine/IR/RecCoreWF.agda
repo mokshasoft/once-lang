@@ -77,8 +77,10 @@ open import Once.CCC.Machine.IR.FunctorDispatch
 -- Import SMPrimitives for trace predicates
 import Once.CCC.Machine.SMPrimitives as SMP
 
--- Import RecTrace for structural cata implementation
+-- Import RecTrace for ProcessedLayerResult + infrastructure, and
+-- CataLayer for the extracted Cata mutual block (Plan 0.27 split).
 import Once.CCC.Machine.IR.RecTrace as RecTrace
+import Once.CCC.Machine.IR.CataLayer as CataLayer
 
 ------------------------------------------------------------------------
 -- RecConfig: Configuration record for the unified recursive core
@@ -183,9 +185,12 @@ module RecCoreWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   open import Data.Nat using (z≤n; s≤s)
   open import Data.List using (_++_)
 
-  -- Open RecTrace implementation for structural cata proofs
+  -- Open RecTrace for ProcessedLayerResult; CataLayer for the Cata block.
   open RecTrace.RecTraceImpl {FS} program-bound
-    using (cata-dispatched-new; process-layer; ProcessedLayerResult)
+    using (ProcessedLayerResult)
+    public
+  open CataLayer.CataLayerImpl {FS} program-bound
+    using (cata-dispatched-new; process-layer)
     public
 
   -- Open SMPrimitives modules
