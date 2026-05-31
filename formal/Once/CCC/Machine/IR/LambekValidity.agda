@@ -89,70 +89,13 @@ module LambekValidityImpl {FS : FrameSemantics} (program-bound : ℕ) where
               (coerce-round-trip F (μ-type F) x)
 
   ------------------------------------------------------------------------
-  -- μ-type Validity Transfer
-  --
-  -- JUSTIFICATION: In wraps F(μF) → μF without changing memory layout.
-  -- If the F-layer is valid at a location, the wrapped μ-value is valid
-  -- at the same location because no memory is modified.
+  -- Plan 0.27 Option 3: the four representational-transfer postulates
+  -- (layer-to-μ-valid, μ-to-layer-valid, layer-to-ν-valid,
+  -- ν-to-layer-valid) and the `In-valid` wrapper were REMOVED — they are
+  -- subsumed by the real `In-valid-bf` / `out-μ-valid` / `in-ν-valid` /
+  -- `Out-valid` below (valid-μ-wf/valid-ν-wf now carry the layer's own
+  -- ValidAtWF, so In/out-μ/in-ν/Out are wrap/unwrap, not postulates).
   ------------------------------------------------------------------------
-
-  -- | If F-layer is valid, then In-wrapped μ-value is valid
-  postulate
-    layer-to-μ-valid : ∀ {m F} (wf : WellFormedF F)
-      {alloc : AllocState {FS}}
-      {loc : ValueLocation FS} {s : LocState FS}
-      (x : ⟦ ⟦ F ⟧T (μ-type F) ⟧)
-      → ValidAtWF m alloc {⟦ F ⟧T (μ-type F)} x loc s
-      → ValidAtWF m alloc {μ-type F} (sem-In F (coerce-functor F (μ-type F) x)) loc s
-
-  -- | If μ-value is valid, then Out-unwrapped F-layer is valid
-  postulate
-    μ-to-layer-valid : ∀ {m F} (wf : WellFormedF F)
-      {alloc : AllocState {FS}}
-      {loc : ValueLocation FS} {s : LocState FS}
-      (x : ⟦ μ-type F ⟧)
-      → ValidAtWF m alloc {μ-type F} x loc s
-      → ValidAtWF m alloc {⟦ F ⟧T (μ-type F)} (coerce-functor⁻¹ F (μ-type F) (sem-Out wf x)) loc s
-
-  ------------------------------------------------------------------------
-  -- ν-type Validity Transfer
-  --
-  -- JUSTIFICATION: Same as μ-type, but for coinductive types.
-  -- in-ν wraps F(νF) → νF, Out unwraps νF → F(νF).
-  ------------------------------------------------------------------------
-
-  -- | If F-layer is valid, then in-ν-wrapped ν-value is valid
-  postulate
-    layer-to-ν-valid : ∀ {m F} (wf : WellFormedF F)
-      {alloc : AllocState {FS}}
-      {loc : ValueLocation FS} {s : LocState FS}
-      (x : ⟦ ⟦ F ⟧T (ν-type F) ⟧)
-      → ValidAtWF m alloc {⟦ F ⟧T (ν-type F)} x loc s
-      → ValidAtWF m alloc {ν-type F} (sem-CoIn F (coerce-functor F (ν-type F) x)) loc s
-
-  -- | If ν-value is valid, then Out-unwrapped F-layer is valid
-  postulate
-    ν-to-layer-valid : ∀ {m F} (wf : WellFormedF F)
-      {alloc : AllocState {FS}}
-      {loc : ValueLocation FS} {s : LocState FS}
-      (x : ⟦ ν-type F ⟧)
-      → ValidAtWF m alloc {ν-type F} x loc s
-      → ValidAtWF m alloc {⟦ F ⟧T (ν-type F)} (coerce-functor⁻¹ F (ν-type F) (sem-CoOut wf x)) loc s
-
-  ------------------------------------------------------------------------
-  -- Convenience: eval-based versions
-  --
-  -- These match the form used in SumRecWF and other modules.
-  ------------------------------------------------------------------------
-
-  -- | ValidAtWF for eval (In wf m) x, given ValidAtWF for x
-  In-valid : ∀ {m F} (wf : WellFormedF F) (mode : AllocMode)
-    {alloc : AllocState {FS}}
-    {loc : ValueLocation FS} {s : LocState FS}
-    (x : ⟦ ⟦ F ⟧T (μ-type F) ⟧)
-    → ValidAtWF m alloc {⟦ F ⟧T (μ-type F)} x loc s
-    → ValidAtWF m alloc {μ-type F} (eval (In wf mode) x) loc s
-  In-valid wf mode x valid = layer-to-μ-valid wf x valid
 
   -- | ValidAtWF for eval (out-μ wf) x — Plan 0.27 Option 3: REAL, not via
   -- the μ-to-layer-valid postulate. out-μ is "unwrap": invert valid-μ-wf
@@ -204,42 +147,10 @@ module LambekValidityImpl {FS : FrameSemantics} (program-bound : ℕ) where
           layerV
 
   ------------------------------------------------------------------------
-  -- Trace-level validity: accounts for state changes
-  --
-  -- These postulates match the form used in SumRecWF where trace
-  -- execution changes the state and result location differs from input.
-  --
-  -- JUSTIFICATION: The trace stores a pointer to the input at a new slot.
-  -- Since In/Out are representational identity, the pointer chains are
-  -- equivalent - the value accessible via result-loc in s' is the same
-  -- as the value that was at input-loc in s.
+  -- Plan 0.27 Option 3: the four hypothesis-free trace-level postulates
+  -- (In-trace-valid, out-μ-trace-valid, in-ν-trace-valid, Out-trace-valid)
+  -- were REMOVED. The heap-identity producers in SumRecWF (run-In,
+  -- run-out-μ, run-in-ν, run-Out) now establish the result validity for
+  -- real via the wrap/unwrap lemmas above, transported across
+  -- mov-to-output by validityWF-mem-only.
   ------------------------------------------------------------------------
-
-  postulate
-    -- | Validity for In after trace execution
-    In-trace-valid : ∀ {m F} (wf : WellFormedF F) (mode : AllocMode)
-      {alloc : AllocState {FS}}
-      {result-loc : ValueLocation FS} {s' : LocState FS}
-      (x : ⟦ ⟦ F ⟧T (μ-type F) ⟧)
-      → ValidAtWF m alloc {μ-type F} (eval (In wf mode) x) result-loc s'
-
-    -- | Validity for out-μ after trace execution
-    out-μ-trace-valid : ∀ {F} (wf : WellFormedF F)
-      {alloc : AllocState {FS}}
-      {result-loc : ValueLocation FS} {s' : LocState FS}
-      (x : ⟦ μ-type F ⟧)
-      → ValidAtWF Heap alloc {⟦ F ⟧T (μ-type F)} (eval (out-μ wf) x) result-loc s'
-
-    -- | Validity for in-ν after trace execution
-    in-ν-trace-valid : ∀ {m F} (wf : WellFormedF F) (mode : AllocMode)
-      {alloc : AllocState {FS}}
-      {result-loc : ValueLocation FS} {s' : LocState FS}
-      (x : ⟦ ⟦ F ⟧T (ν-type F) ⟧)
-      → ValidAtWF m alloc {ν-type F} (eval (in-ν wf mode) x) result-loc s'
-
-    -- | Validity for Out after trace execution
-    Out-trace-valid : ∀ {F} (wf : WellFormedF F)
-      {alloc : AllocState {FS}}
-      {result-loc : ValueLocation FS} {s' : LocState FS}
-      (x : ⟦ ν-type F ⟧)
-      → ValidAtWF Heap alloc {⟦ F ⟧T (ν-type F)} (eval (Out wf) x) result-loc s'
