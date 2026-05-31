@@ -444,12 +444,12 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
     -- Out: observe ν-type (final coalgebra destructor)
     -- By dual Lambek's Lemma, Out : νF → F(νF) is identity at runtime.
     run-ir-wf mIn (Out {F} wf) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ =
-      Heap , run-Out wf mIn x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
+      mIn , run-Out wf mIn x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
 
     -- in-ν: construct ν-type (Lambek inverse of Out)
     -- By dual Lambek's Lemma, this allocates 1 slot (like In).
     run-ir-wf mIn (in-ν {F} wf m) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ =
-      m , run-in-ν wf mIn m x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
+      mIn , run-in-ν wf mIn m x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
 
     -- Ana: anamorphism (unfold to build ν-type)
     -- Takes coalgebra: IR A (⟦ F ⟧T A), corecursively builds νF
