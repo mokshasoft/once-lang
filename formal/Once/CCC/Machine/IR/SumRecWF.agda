@@ -987,8 +987,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   -- See LambekValidity.agda for documentation and justification.
   ------------------------------------------------------------------------
   open LV.LambekValidityImpl {FS} program-bound
-    using (In-trace-valid; out-μ-trace-valid; in-ν-trace-valid; Out-trace-valid;
-           In-valid-bf; out-μ-valid; in-ν-valid; Out-valid)
+    using (In-valid-bf; out-μ-valid; in-ν-valid; Out-valid)
 
   ------------------------------------------------------------------------
   -- In: wrap functor layer into μ-type
