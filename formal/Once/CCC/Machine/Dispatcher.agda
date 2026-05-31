@@ -426,7 +426,7 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
     -- out-μ: destruct μ-type (Lambek inverse of In)
     -- By Lambek's Lemma, this is identity at runtime (just pass-through).
     run-ir-wf mIn (out-μ {F} wf) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ =
-      Heap , run-out-μ wf mIn x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
+      mIn , run-out-μ wf mIn x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
 
     -- Cata: catamorphism (fold over μ-type)
     -- Uses unified RecCoreWF with Cata configuration
