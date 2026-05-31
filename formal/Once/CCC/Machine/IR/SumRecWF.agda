@@ -988,7 +988,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   ------------------------------------------------------------------------
   open LV.LambekValidityImpl {FS} program-bound
     using (In-trace-valid; out-μ-trace-valid; in-ν-trace-valid; Out-trace-valid;
-           In-valid-bf)
+           In-valid-bf; out-μ-valid)
 
   ------------------------------------------------------------------------
   -- In: wrap functor layer into μ-type
@@ -1096,7 +1096,8 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
     readReg (regs s) Input1 ≡ SV-Ptr input-loc →
-    IRResultAWF Heap (out-μ {F} wf) x s alloc
+    -- Option 3: out-μ is mode-rigid identity — result mode = input mode.
+    IRResultAWF mIn (out-μ {F} wf) x s alloc
   run-out-μ {F} wf mIn x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     mk-IRResultAWF-via-bump
       s' alloc out-μ-trace bump-0 refl
@@ -1139,9 +1140,17 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       s' : LocState FS
       s' = proj₁ (exec-trace out-μ-trace s alloc)
 
-      -- Result validity: out-μ extracts F(μF) from μF, representationally same
-      result-valid : ValidAtWF Heap alloc (eval (out-μ wf) x) input-loc s'
-      result-valid = out-μ-trace-valid wf x
+      s'-eq : s' ≡ exec (mov Output Input1) s
+      s'-eq = cong proj₁ (exec-trace-single mov-to-output s alloc not-halted)
+
+      -- Option 3: out-μ is representational identity (unwrap). The input
+      -- μ-value's stored layer ValidAtWF IS the result, transported across
+      -- mov-to-output (memory-preserving). Replaces out-μ-trace-valid.
+      result-valid : ValidAtWF mIn alloc (eval (out-μ wf) x) input-loc s'
+      result-valid =
+        subst (λ st → ValidAtWF mIn alloc (eval (out-μ wf) x) input-loc st) (sym s'-eq)
+          (validityWF-mem-only (eval (out-μ wf) x) input-loc s (exec (mov Output Input1) s)
+            refl refl (out-μ-valid wf x input-valid-wf))
 
       -- mov-to-output sets Output := Input1 = SV-Ptr input-loc
       rax-eq : readReg (regs s') Output ≡ SV-Ptr input-loc

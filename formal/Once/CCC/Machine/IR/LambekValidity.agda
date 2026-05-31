@@ -37,7 +37,7 @@ open import Once.CCC.IR
 open import Once.CCC.Eval using (eval)
 open import Once.CCC.Machine.Allocation hiding (AllocMode)
 open import Once.Type using (Type; Functor; μ-type; ν-type; ⟦_⟧T)
-open import Once.Functor.Translate using (WellFormedF)
+open import Once.Functor.Translate using (WellFormedF; WellFormedF-irrelevant)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; subst; sym; trans)
 
 -- Semantic operations
@@ -154,14 +154,20 @@ module LambekValidityImpl {FS : FrameSemantics} (program-bound : ℕ) where
     → ValidAtWF m alloc {μ-type F} (eval (In wf mode) x) loc s
   In-valid wf mode x valid = layer-to-μ-valid wf x valid
 
-  -- | ValidAtWF for eval (out-μ wf) x, given ValidAtWF for x
+  -- | ValidAtWF for eval (out-μ wf) x — Plan 0.27 Option 3: REAL, not via
+  -- the μ-to-layer-valid postulate. out-μ is "unwrap": invert valid-μ-wf
+  -- (the only constructor for μ-type) and transport the stored layer
+  -- ValidAtWF along WellFormedF-irrelevant (stored wf ≡ out-μ's wf).
   out-μ-valid : ∀ {m F} (wf : WellFormedF F)
     {alloc : AllocState {FS}}
     {loc : ValueLocation FS} {s : LocState FS}
     (x : ⟦ μ-type F ⟧)
     → ValidAtWF m alloc {μ-type F} x loc s
     → ValidAtWF m alloc {⟦ F ⟧T (μ-type F)} (eval (out-μ wf) x) loc s
-  out-μ-valid wf x valid = μ-to-layer-valid wf x valid
+  out-μ-valid {m} {F} wf {alloc} {loc} {s} x (valid-μ-wf wf' .x layerV) =
+    subst (λ w → ValidAtWF m alloc {⟦ F ⟧T (μ-type F)} (eval (out-μ w) x) loc s)
+          (WellFormedF-irrelevant wf' wf)
+          layerV
 
   -- | ValidAtWF for eval (in-ν wf m) x, given ValidAtWF for x
   in-ν-valid : ∀ {m F} (wf : WellFormedF F) (mode : AllocMode)
