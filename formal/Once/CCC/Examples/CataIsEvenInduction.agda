@@ -80,3 +80,66 @@ descend-iter R s child pc-eq hs tag-eq child-eq =
                    ; flags = updateFlags (readReg (regs s4) rbx + 1) (readReg (regs s4) rbx)
                    ; pc = pc s4 + 1 }
     s6 = record s5 { regs = writeReg (regs s5) rdi child ; pc = pc s5 + 1 }
+
+------------------------------------------------------------------------
+-- base phase (pc 8 → pc 46): build zero-layer, run alg (tag 0 → true).
+-- 17 steps; reads the just-written layer cells via the memory algebra.
+------------------------------------------------------------------------
+-- per-step states of the base phase (top-level so the conclusion can name
+-- the final state). H = heap top = readReg (regs s) r14.
+module _ (s : State) where
+  b1  = record s   { pc = pc s + 1 }
+  b2  = record b1  { regs = writeReg (regs b1) rdi (readReg (regs b1) r14) ; pc = pc b1 + 1 }
+  b3  = record b2  { memory = writeMem (memory b2) (readReg (regs b2) r14) 0 ; pc = pc b2 + 1 }
+  b4  = record b3  { memory = writeMem (memory b3) (readReg (regs b3) r14 + 8) 0 ; pc = pc b3 + 1 }
+  b5  = record b4  { regs = writeReg (regs b4) r14 (readReg (regs b4) r14 + 16)
+                   ; flags = updateFlags (readReg (regs b4) r14 + 16) (readReg (regs b4) r14)
+                   ; pc = pc b4 + 1 }
+  b6  = record b5  { pc = 19 }
+  b7  = record b6  { pc = pc b6 + 1 }
+  b8  = record b7  { regs = writeReg (regs b7) rcx 0 ; pc = pc b7 + 1 }
+  b9  = record b8  { regs = writeReg (regs b8) rdi 0 ; pc = pc b8 + 1 }
+  b10 = record b9  { flags = mkflags (readReg (regs b9) rcx ≡ᵇ 0) (readReg (regs b9) rcx <ᵇ 0) false
+                   ; pc = pc b9 + 1 }
+  b11 = record b10 { pc = pc b10 + 1 }
+  b12 = record b11 { regs = writeReg (regs b11) rax (readReg (regs b11) r14) ; pc = pc b11 + 1 }
+  b13 = record b12 { memory = writeMem (memory b12) (readReg (regs b12) r14) 0 ; pc = pc b12 + 1 }
+  b14 = record b13 { memory = writeMem (memory b13) (readReg (regs b13) r14 + 8) (readReg (regs b13) rdi)
+                   ; pc = pc b13 + 1 }
+  b15 = record b14 { regs = writeReg (regs b14) r14 (readReg (regs b14) r14 + 16)
+                   ; flags = updateFlags (readReg (regs b14) r14 + 16) (readReg (regs b14) r14)
+                   ; pc = pc b14 + 1 }
+  b16 = record b15 { pc = 45 }
+  base-out = record b16 { pc = pc b16 + 1 }
+
+base-phase : ∀ (R : ℕ) (s : State)
+  → pc s ≡ 8
+  → halted s ≡ false
+  → exec (17 + R) prog s ≡ exec R prog (base-out s)
+base-phase R s pc-eq hs =
+  exec-steps R
+    ( (hs , step-label  {prog} {s}      (cong (fetch prog) pc-eq) , hs)
+    ∷ (hs , step-mov-rr {prog} {b1 s}   (cong (λ p → fetch prog (p + 1)) pc-eq) , hs)
+    ∷ (hs , step-mov-mi {prog} {b2 s}   (cong (λ p → fetch prog (p + 1 + 1)) pc-eq) , hs)
+    ∷ (hs , step-mov-mi {prog} {b3 s}   (cong (λ p → fetch prog (p + 1 + 1 + 1)) pc-eq) , hs)
+    ∷ (hs , step-add-ri {prog} {b4 s}   (cong (λ p → fetch prog (p + 1 + 1 + 1 + 1)) pc-eq) , hs)
+    ∷ (hs , step-jmp    {prog} {b5 s}   (cong (λ p → fetch prog (p + 1 + 1 + 1 + 1 + 1)) pc-eq) refl , hs)
+    ∷ (hs , step-label  {prog} {b6 s}   refl , hs)
+    ∷ (hs , step-mov-rm {prog} {b7 s}   refl rd-tag , hs)
+    ∷ (hs , step-mov-rm {prog} {b8 s}   refl rd-pay , hs)
+    ∷ (hs , step-cmp-ri {prog} {b9 s}   refl , hs)
+    ∷ (hs , step-jne-not {prog} {b10 s} refl refl , hs)
+    ∷ (hs , step-mov-rr {prog} {b11 s}  refl , hs)
+    ∷ (hs , step-mov-mi {prog} {b12 s}  refl , hs)
+    ∷ (hs , step-mov-mr {prog} {b13 s}  refl , hs)
+    ∷ (hs , step-add-ri {prog} {b14 s}  refl , hs)
+    ∷ (hs , step-jmp    {prog} {b15 s}  refl refl , hs)
+    ∷ (hs , step-label  {prog} {b16 s}  refl , hs)
+    ∷ [])
+  where
+    H = readReg (regs s) r14
+    rd-tag : readMem (memory (b7 s)) (readReg (regs (b7 s)) rdi) ≡ just 0
+    rd-tag = trans (read-write-diff (writeMem (memory s) H 0) H (H + 8) 0 (self≢plus H 7))
+                   (read-write-same (memory s) H 0)
+    rd-pay : readMem (memory (b8 s)) (readReg (regs (b8 s)) rdi + 8) ≡ just 0
+    rd-pay = read-write-same (writeMem (memory s) H 0) (H + 8) 0
