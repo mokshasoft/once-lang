@@ -98,6 +98,53 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
   open RecTraceImpl {FS} program-bound
   open LV.LambekValidityImpl {FS} program-bound using (out-μ-valid)
 
+  -- An AllocState is determined by its three fields (via record-η), so an
+  -- AllocState equality follows from per-field equalities. Used to discharge
+  -- the bump-tracked `final-alloc-eq` fields of ProcessedLayerResult.
+  cong₃-alloc : ∀ {A B C : Set} (f : A → B → C → AllocState {FS}) {x y u v p q}
+              → x ≡ y → u ≡ v → p ≡ q → f x u p ≡ f y v q
+  cong₃-alloc f {x} {y} {u} {v} {p} {q} ex eu ep =
+    trans (cong (λ z → f z u p) ex)
+          (trans (cong (λ z → f y z p) eu) (cong (λ z → f y v z) ep))
+
+  alloc-≡-by-fields : ∀ {a1 a2 : AllocState {FS}}
+    → current-frame a1 ≡ current-frame a2
+    → next-slot a1 ≡ next-slot a2
+    → next-heap-ref a1 ≡ next-heap-ref a2
+    → a1 ≡ a2
+  alloc-≡-by-fields ef es eh = cong₃-alloc mkAllocState ef es eh
+
+  -- The Sum case's bump: the sub-layer's slots are reclaimed (back to the
+  -- sub-layer's final next-slot) then a 2-slot wrapper is allocated, so the
+  -- net AllocBump is `bump-+ sub-bump (mkBump 2 0)`. Given the sub-layer's
+  -- bump-eq and the wrapper's per-field preservation, this rebuilds the
+  -- whole `final-alloc ≡ apply-bump bump alloc` field. Reused by inl and inr.
+  sum-bump-eq : ∀ (sub-bump : AllocBump)
+                  (alloc alloc-sub alloc-wrap alloc-setup : AllocState {FS})
+    → alloc-setup ≡ alloc
+    → alloc-sub ≡ apply-bump sub-bump alloc-setup
+    → current-frame alloc-wrap ≡ current-frame alloc-sub
+    → next-slot alloc-wrap ≡ next-slot alloc-sub +ℕ 2
+    → next-heap-ref alloc-wrap ≡ next-heap-ref alloc-sub
+    → alloc-wrap ≡ apply-bump (bump-+ sub-bump (mkBump 2 0)) alloc
+  sum-bump-eq sub-bump alloc alloc-sub alloc-wrap alloc-setup
+              setup-eq sub-eq wframe wslot wheap =
+    alloc-≡-by-fields
+      (trans wframe (trans (cong current-frame sub-eq) (cong current-frame setup-eq)))
+      (trans wslot
+        (trans (cong (_+ℕ 2) sub-slot)
+          (trans (+-assoc d ns 2)
+            (trans (cong (d +ℕ_) (+-comm ns 2)) (sym (+-assoc d 2 ns))))))
+      (trans wheap (trans sub-heap (cong (_+ℕ next-heap-ref alloc) (sym (+-identityʳ hd)))))
+    where
+      d  = next-slot-delta sub-bump
+      ns = next-slot alloc
+      hd = next-heap-ref-delta sub-bump
+      sub-slot : next-slot alloc-sub ≡ d +ℕ ns
+      sub-slot = trans (cong next-slot sub-eq) (cong (λ a → d +ℕ next-slot a) setup-eq)
+      sub-heap : next-heap-ref alloc-sub ≡ hd +ℕ next-heap-ref alloc
+      sub-heap = trans (cong next-heap-ref sub-eq) (cong (λ a → hd +ℕ next-heap-ref a) setup-eq)
+
   private
     -- Helper for Sum left branch: proves reclaimable-slot ≤ start + layer-capacity
     -- Used for both slot-usage-bound and slot-stays-in-budget (they're identical when reclaimable-slot = next-slot final-alloc)
@@ -301,6 +348,9 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; trace = k-trace
         ; final-state = s-after
         ; final-alloc = alloc
+        ; bump = bump-0
+        ; final-alloc-eq = refl
+        ; trace-no-frame-ops = tt , tt
         ; trace-correct = cong proj₁ (exec-trace-single mov-to-output s alloc not-halted)
         ; alloc-correct = cong proj₂ (exec-trace-single mov-to-output s alloc not-halted)
         ; result-place = at-loc input-loc
@@ -353,6 +403,9 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; trace = rec-trace
         ; final-state = s-rec
         ; final-alloc = alloc-rec
+        ; bump = IRResultAWF.bump rec-result
+        ; final-alloc-eq = refl
+        ; trace-no-frame-ops = IRResultAWF.trace-no-frame-ops rec-result
         ; trace-correct = IRResultAWF.trace-correct rec-result
         ; alloc-correct = IRResultAWF.alloc-correct rec-result
         ; result-place = at-loc rec-loc rec-valid rec-before rec-rax rec-valid rec-before
@@ -950,6 +1003,18 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; trace = full-trace
         ; final-state = s-after-wrapper
         ; final-alloc = alloc-after-wrapper
+        ; bump = bump-+ (ProcessedLayerResult.bump l-result) (mkBump 2 0)
+        ; final-alloc-eq = sum-bump-eq (ProcessedLayerResult.bump l-result)
+            alloc alloc-after-sub alloc-after-wrapper alloc-setup
+            (setup-trace-preserves-alloc s alloc)
+            (ProcessedLayerResult.final-alloc-eq l-result)
+            wrapper-frame-preserved wrapper-next-slot-eq wrapper-heap-preserved
+        ; trace-no-frame-ops =
+            SMP.trace-no-frame-ops-append setup-trace (sub-trace ++ reclaim-wrapper-trace)
+              (tt , tt , tt)
+              (SMP.trace-no-frame-ops-append sub-trace reclaim-wrapper-trace
+                (ProcessedLayerResult.trace-no-frame-ops l-result)
+                (tt , tt , tt , tt , tt))
         ; trace-correct = trace-correct-inj1
         ; alloc-correct = alloc-correct-inj1
         ; result-place = at-loc wrapper-loc processed-valid-proof result-before-proof wrapper-rax-result processed-valid-proof result-before-proof
@@ -1478,6 +1543,18 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; trace = full-trace
         ; final-state = s-after-wrapper
         ; final-alloc = alloc-after-wrapper
+        ; bump = bump-+ (ProcessedLayerResult.bump r-result) (mkBump 2 0)
+        ; final-alloc-eq = sum-bump-eq (ProcessedLayerResult.bump r-result)
+            alloc alloc-after-sub alloc-after-wrapper alloc-setup
+            (setup-trace-preserves-alloc s alloc)
+            (ProcessedLayerResult.final-alloc-eq r-result)
+            wrapper-frame-preserved wrapper-next-slot-eq wrapper-heap-preserved
+        ; trace-no-frame-ops =
+            SMP.trace-no-frame-ops-append setup-trace (sub-trace ++ reclaim-wrapper-trace)
+              (tt , tt , tt)
+              (SMP.trace-no-frame-ops-append sub-trace reclaim-wrapper-trace
+                (ProcessedLayerResult.trace-no-frame-ops r-result)
+                (tt , tt , tt , tt , tt))
         ; trace-correct = trace-correct-inj2
         ; alloc-correct = alloc-correct-inj2
         ; result-place = at-loc wrapper-loc processed-valid-proof
@@ -1625,6 +1702,16 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; trace = full-trace
         ; final-state = ProcessedLayerResult.final-state r-result
         ; final-alloc = final-alloc
+        ; bump = SMP.!!          -- Prod bump: needs left+setup+right bump composition (future)
+        ; final-alloc-eq = SMP.!!
+        ; trace-no-frame-ops =
+            SMP.trace-no-frame-ops-append left-setup-trace (l-trace ++ right-setup-trace ++ r-trace)
+              (tt , tt , tt , tt , tt)
+              (SMP.trace-no-frame-ops-append l-trace (right-setup-trace ++ r-trace)
+                (ProcessedLayerResult.trace-no-frame-ops l-result)
+                (SMP.trace-no-frame-ops-append right-setup-trace r-trace
+                  (tt , tt , tt , tt , tt)
+                  (ProcessedLayerResult.trace-no-frame-ops r-result)))
         ; trace-correct = trace-correct-proof
         ; alloc-correct = SMP.!!  -- Plan 0.14: complete migration in dedicated pass
         ; result-place = at-loc (place-loc (ProcessedLayerResult.result-place r-result))
@@ -2630,33 +2717,19 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
         cata-max-slot-geq-final : next-slot (IRResultAWF.final-alloc alg-result) ≤ cata-max-slot
         cata-max-slot-geq-final = ≤-trans (IRResultAWF.max-slot-geq-final alg-result) (n≤m⊔n layer-max-slot alg-max-slot)
 
-        -- Plan 0.17.1: reconstruct the cata's AllocBump.  The layer's
-        -- allocation (alloc → alloc-layer) isn't bump-tracked, so rebuild it
-        -- by ∸ (justified by slot/heap-monotone), then compose with the
-        -- algebra's bump via the apply-bump/bump-+ homomorphism.
-        cong₃ : ∀ {A B C D : Set} (f : A → B → C → D) {x y u v p q}
-              → x ≡ y → u ≡ v → p ≡ q → f x u p ≡ f y v q
-        cong₃ f {x} {y} {u} {v} {p} {q} ex eu ep =
-          trans (cong (λ z → f z u p) ex)
-                (trans (cong (λ z → f y z p) eu) (cong (λ z → f y v z) ep))
-
-        layer-bump : AllocBump
-        layer-bump = mkBump (next-slot alloc-layer ∸ next-slot alloc)
-                            (next-heap-ref alloc-layer ∸ next-heap-ref alloc)
-
-        layer-bump-eq : alloc-layer ≡ apply-bump layer-bump alloc
-        layer-bump-eq = cong₃ mkAllocState
-                          (ProcessedLayerResult.frame-preserved layer-result)
-                          (sym (m∸n+n≡m (ProcessedLayerResult.slot-monotone layer-result)))
-                          (sym (m∸n+n≡m (ProcessedLayerResult.heap-monotone layer-result)))
-
+        -- Plan 0.17.x: the cata's AllocBump composes the layer's bump (now a
+        -- ProcessedLayerResult field) with the algebra's bump, via the
+        -- apply-bump/bump-+ homomorphism. (Was an ∸-reconstruction; the bump
+        -- field makes it clean and exact.)
         cata-bump : AllocBump
-        cata-bump = bump-+ layer-bump (IRResultAWF.bump alg-result)
+        cata-bump = bump-+ (ProcessedLayerResult.bump layer-result) (IRResultAWF.bump alg-result)
 
         cata-final-alloc-eq : IRResultAWF.final-alloc alg-result ≡ apply-bump cata-bump alloc
         cata-final-alloc-eq =
-          trans (cong (apply-bump (IRResultAWF.bump alg-result)) layer-bump-eq)
-                (apply-bump-compose layer-bump (IRResultAWF.bump alg-result) alloc)
+          trans (cong (apply-bump (IRResultAWF.bump alg-result))
+                      (ProcessedLayerResult.final-alloc-eq layer-result))
+                (apply-bump-compose (ProcessedLayerResult.bump layer-result)
+                                    (IRResultAWF.bump alg-result) alloc)
 
         -- NOTE: With IRResultAWF field types changed to use max-slot-written,
         -- we can now prove TraceWritesBelow cata-max-slot final-trace where
@@ -2700,7 +2773,9 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
                               (twf-∷ tt third))
              in twf-++ not-halted (ProcessedLayerResult.trace-twf layer-result) second)
             (exec-trace-preserves-halted-WF final-trace)
-            SMP.!!                       -- trace-no-frame-ops
+            (SMP.trace-no-frame-ops-append layer-trace (mov-to-input ∷ alg-trace)
+              (ProcessedLayerResult.trace-no-frame-ops layer-result)
+              (tt , IRResultAWF.trace-no-frame-ops alg-result))
             (record
               { max-slot-written = cata-max-slot
               ; stack-budget = ir-stack-requirement (Cata wfG alg)
