@@ -19,7 +19,7 @@
 
 module Once.CCC.Target.X86-64.CodeGen.Compile where
 
-open import Data.Nat using (ℕ) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
+open import Data.Nat using (ℕ; suc) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
 open import Data.Nat.Properties using (+-assoc)
 open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.List.Properties using (length-++)
@@ -263,6 +263,31 @@ compile-const-length fits-int   _ = refl
 compile-const-length fits-float _ = refl
 
 ------------------------------------------------------------------------
+-- case (sum elimination) — heap tag dispatch (Plan 0.27).
+--
+-- Input rdi = pointer to a tagged sum node: [rdi] = tag (0=inl, 1=inr),
+-- [rdi+8] = payload. Read the tag, set rdi := payload (both branches run
+-- on the payload), then dispatch: tag 0 → f, tag 1 → g. Branch result in
+-- rax. Block lengths are independent of the label arguments (the label
+-- only occupies the jump's operand), so length is constant.
+--   dispatch: mov rcx,[rdi] ; mov rdi,[rdi+8] ; cmp rcx,0 ; jne lblg   (4)
+--   middle:   jmp lblend ; label lblg                                   (2)
+--   suffix:   label lblend                                             (1)
+------------------------------------------------------------------------
+case-dispatch : ℕ → Program
+case-dispatch lblg =
+  mov (reg rcx) (mem (base rdi)) ∷
+  mov (reg rdi) (mem (base+disp rdi slot-size)) ∷
+  cmp (reg rcx) (imm 0) ∷
+  jne lblg ∷ []
+
+case-middle : ℕ → ℕ → Program
+case-middle lblend lblg = jmp lblend ∷ label lblg ∷ []
+
+case-suffix : ℕ → Program
+case-suffix lblend = label lblend ∷ []
+
+------------------------------------------------------------------------
 -- Code generation
 ------------------------------------------------------------------------
 
@@ -285,7 +310,9 @@ compile-length apply = length apply-instrs
 -- Sum type operations (placeholder lengths)
 compile-length (inl _) = 1  -- placeholder
 compile-length (inr _) = 1  -- placeholder
-compile-length (case f g) = compile-length f +ℕ compile-length g  -- placeholder: no dispatch yet
+compile-length (case f g) = length (case-dispatch 0) +ℕ compile-length f +ℕ
+                            length (case-middle 0 0) +ℕ compile-length g +ℕ
+                            length (case-suffix 0)
 compile-length initial = 1      -- absurd elimination
 -- OCP-0003: Recursion scheme operations (placeholder lengths)
 compile-length (In _ _) = 1     -- wrap μ-type constructor
@@ -340,7 +367,10 @@ compile-ir' n (inr _) = ud2 ∷ [] , n
 compile-ir' n (case f g) =
   let (pf , n1) = compile-ir' n f
       (pg , n2) = compile-ir' n1 g
-  in (pf ++ pg) , n2
+      lblg   = n2          -- label for the inr (tag 1) branch
+      lblend = suc n2      -- label after both branches
+  in (case-dispatch lblg ++ pf ++ case-middle lblend lblg ++ pg ++ case-suffix lblend)
+   , suc (suc n2)
 compile-ir' n initial = ud2 ∷ [] , n
 -- OCP-0003: Recursion scheme operations (placeholders)
 compile-ir' n (In _ _) = id-instrs , n
@@ -461,7 +491,21 @@ compile-ir'-length n (case f g) =
       (pg , n2) = compile-ir' n1 g
       lf = compile-ir'-length n f
       lg = compile-ir'-length n1 g
-  in trans (length-++ pf) (trans (cong (_+ℕ length pg) lf) (cong (compile-length f +ℕ_) lg))
+      ps = case-dispatch n2
+      pm = case-middle (suc n2) n2
+      pc = case-suffix (suc n2)
+      step1 = length-++ ps {pf ++ pm ++ pg ++ pc}
+      step2 = length-++ pf {pm ++ pg ++ pc}
+      step3 = length-++ pm {pg ++ pc}
+      step4 = length-++ pg {pc}
+      subst-lg = cong (length pm +ℕ_) (cong (_+ℕ length pc) lg)
+      subst-lf = cong (_+ℕ (length pm +ℕ (compile-length g +ℕ length pc))) lf
+      assoc1 = sym (+-assoc (length ps) (compile-length f) _)
+      assoc2 = sym (+-assoc (length ps +ℕ compile-length f) (length pm) _)
+      assoc3 = sym (+-assoc ((length ps +ℕ compile-length f) +ℕ length pm) (compile-length g) (length pc))
+  in trans step1 (trans (cong (length ps +ℕ_) (trans step2 (trans (cong (length pf +ℕ_)
+       (trans step3 (trans (cong (length pm +ℕ_) step4) subst-lg))) subst-lf)))
+       (trans assoc1 (trans assoc2 assoc3)))
 
 compile-ir'-length n initial = refl
 compile-ir'-length n (In _ _) = refl
