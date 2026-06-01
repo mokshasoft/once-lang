@@ -81,6 +81,24 @@ terminal-instrs = mov (reg rax) (imm 0) ∷ []
 compose-bridge : Program
 compose-bridge = mov (reg rdi) (reg rax) ∷ []
 
+-- inl / inr: build a heap sum node [tag, payload] and return its pointer.
+-- Heap-top register = r14 (bump allocator; r15 is the closure reg in this
+-- path). Input rdi = the payload value/pointer; output rax = node pointer.
+--   mov rax, r14 ; mov [r14], <tag> ; mov [r14+8], rdi ; add r14, 16
+inl-instrs : Program
+inl-instrs =
+  mov (reg rax) (reg r14) ∷
+  mov (mem (base r14)) (imm 0) ∷
+  mov (mem (base+disp r14 slot-size)) (reg rdi) ∷
+  add (reg r14) (imm (slots 2)) ∷ []
+
+inr-instrs : Program
+inr-instrs =
+  mov (reg rax) (reg r14) ∷
+  mov (mem (base r14)) (imm 1) ∷
+  mov (mem (base+disp r14 slot-size)) (reg rdi) ∷
+  add (reg r14) (imm (slots 2)) ∷ []
+
 ------------------------------------------------------------------------
 -- Pair construction (FRAMELESS)
 --
@@ -308,8 +326,8 @@ compile-length (curry f _) =
   compile-length f +ℕ length (curry-thunk-cleanup' 0)
 compile-length apply = length apply-instrs
 -- Sum type operations (placeholder lengths)
-compile-length (inl _) = 1  -- placeholder
-compile-length (inr _) = 1  -- placeholder
+compile-length (inl _) = length inl-instrs
+compile-length (inr _) = length inr-instrs
 compile-length (case f g) = length (case-dispatch 0) +ℕ compile-length f +ℕ
                             length (case-middle 0 0) +ℕ compile-length g +ℕ
                             length (case-suffix 0)
@@ -362,8 +380,8 @@ compile-ir' n (curry f _) =
 compile-ir' n apply = apply-instrs , n
 
 -- Sum type operations (TODO: implement)
-compile-ir' n (inl _) = ud2 ∷ [] , n
-compile-ir' n (inr _) = ud2 ∷ [] , n
+compile-ir' n (inl _) = inl-instrs , n
+compile-ir' n (inr _) = inr-instrs , n
 compile-ir' n (case f g) =
   let (pf , n1) = compile-ir' n f
       (pg , n2) = compile-ir' n1 g
