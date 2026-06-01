@@ -342,8 +342,12 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       compose-bump : AllocBump
       compose-bump = bump-+ (IRResultAWF.bump result-f) (IRResultAWF.bump result-g)
 
+      -- alloc₂ = final-alloc result-g = apply-bump (bump g) alloc₁ (derived
+      -- field, definitional), and alloc₁ = apply-bump (bump f) alloc, so this
+      -- is exactly the apply-bump/bump-+ homomorphism.
       compose-bump-eq : alloc₂ ≡ apply-bump compose-bump alloc
-      compose-bump-eq = SMP.!!  -- TODO: derive from f's and g's alloc-correct + apply-bump-compose
+      compose-bump-eq =
+        apply-bump-compose (IRResultAWF.bump result-f) (IRResultAWF.bump result-g) alloc
       -- Plan 0.2.4.5 D1 task #28: result-loc-g, result-before-g
       -- removed — the compose's result-place is now constructed by
       -- whole-bundle transport (see line ~175), not by unbundling
