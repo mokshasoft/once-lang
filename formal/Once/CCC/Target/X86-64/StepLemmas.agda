@@ -208,6 +208,7 @@ step-jne-not ft zf-eq rewrite ft | zf-eq = refl
 -- only the phase's final state must be written. `exec-steps` discharges
 -- the fuel split. (Build on `exec-1`; never touches a memory pattern.)
 ------------------------------------------------------------------------
+infixr 5 _∷_
 data Steps (prog : Program) : ℕ → State → State → Set where
   [] : ∀ {s} → Steps prog 0 s s
   _∷_ : ∀ {k s s' s''}
