@@ -631,6 +631,22 @@ module ExecFinal {FS : FrameSemantics} where
   exec-store-via-resolved (just loc) v s = writeLoc s loc v
   exec-store-via-resolved nothing    _ s = record s { halted = true }
 
+  -- Plan 0.27: `-suc` variants of the resolved load/store helpers, dispatching
+  -- on the resolved Maybe address EXPLICITLY (no `with`). exec-abstract's
+  -- load-indirect-suc / store-indirect-suc route through these so that a
+  -- `sv-as-loc … ≡ just loc` hypothesis can be `rewrite`-n to reduce the
+  -- result transparently — the old `with sv-as-loc …` froze that behind a
+  -- generated auxiliary (the StoredValue-with-block reduction problem).
+  exec-load-suc-via-resolved : AbstractReg → Maybe (ValueLocation FS) →
+                               LocState FS → LocState FS
+  exec-load-suc-via-resolved dst (just loc) s = exec-load-with-value dst (readLoc s (sucLoc loc)) s
+  exec-load-suc-via-resolved dst nothing    s = record s { halted = true }
+
+  exec-store-suc-via-resolved : Maybe (ValueLocation FS) → StoredValue FS →
+                                LocState FS → LocState FS
+  exec-store-suc-via-resolved (just loc) v s = writeLoc s (sucLoc loc) v
+  exec-store-suc-via-resolved nothing    _ s = record s { halted = true }
+
   exec : Instr FS → LocState FS → LocState FS
 
   exec (load dst src) s =
@@ -1246,16 +1262,14 @@ module AbstractExec {FS : FrameSemantics} where
   -- load-indirect: Output := *Input1.
   -- Plan 0.13.2: Input1 holds StoredValue; only succeeds when it's
   -- a pointer. sv-as-loc returns the address or `nothing`.
-  exec-abstract load-indirect s alloc
-    with sv-as-loc (readReg (regs s) Input1)
-  ... | just loc = exec-load-with-value Output (readLoc s loc) s , alloc
-  ... | nothing  = record s { halted = true } , alloc
+  -- Plan 0.27: `with`-free (routes through exec-load-via-resolved) so a
+  -- `sv-as-loc … ≡ just loc` hypothesis reduces the result transparently.
+  exec-abstract load-indirect s alloc =
+    exec-load-via-resolved Output (sv-as-loc (readReg (regs s) Input1)) s , alloc
 
   -- load-indirect-suc: Output := *(sucLoc Input1)
-  exec-abstract load-indirect-suc s alloc
-    with sv-as-loc (readReg (regs s) Input1)
-  ... | just loc = exec-load-with-value Output (readLoc s (sucLoc loc)) s , alloc
-  ... | nothing  = record s { halted = true } , alloc
+  exec-abstract load-indirect-suc s alloc =
+    exec-load-suc-via-resolved Output (sv-as-loc (readReg (regs s) Input1)) s , alloc
 
   -- load-from-slot: Output := stack[frame, slot]
   exec-abstract (load-from-slot slot) s alloc =
@@ -1267,17 +1281,15 @@ module AbstractExec {FS : FrameSemantics} where
 
   -- store-indirect: *Input1 := Output.
   -- Plan 0.13.2: Input1 holds StoredValue; only succeeds when it's
-  -- a pointer.
-  exec-abstract store-indirect s alloc
-    with sv-as-loc (readReg (regs s) Input1)
-  ... | just loc = writeLoc s loc (readReg (regs s) Output) , alloc
-  ... | nothing  = record s { halted = true } , alloc
+  -- a pointer.  Plan 0.27: `with`-free (exec-store-via-resolved).
+  exec-abstract store-indirect s alloc =
+    exec-store-via-resolved (sv-as-loc (readReg (regs s) Input1))
+                            (readReg (regs s) Output) s , alloc
 
   -- store-indirect-suc: *(sucLoc Input1) := Output
-  exec-abstract store-indirect-suc s alloc
-    with sv-as-loc (readReg (regs s) Input1)
-  ... | just loc = writeLoc s (sucLoc loc) (readReg (regs s) Output) , alloc
-  ... | nothing  = record s { halted = true } , alloc
+  exec-abstract store-indirect-suc s alloc =
+    exec-store-suc-via-resolved (sv-as-loc (readReg (regs s) Input1))
+                                (readReg (regs s) Output) s , alloc
 
   -- lea-slot: Output := &stack[frame, slot].
   -- Plan 0.13.2: Output gets a `SV-Ptr` to the slot's address.
