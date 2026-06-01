@@ -1030,7 +1030,12 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
                  (ProcessedLayerResult.trace-slot-reads-below l-result))
               (SMP.trace-slot-reads-below-mono (l-reclaimable +ℕ 2) max-slot-used-inj1 reclaim-wrapper-trace
                  (n≤m⊔n l-max-slot-used (l-reclaimable +ℕ 2)) wrapper-tsrb))
-        ; trace-twf = SMP.!!  -- TODO: twf-++ chain (setup-tph + l-result + reclaim-wrapper-tph)
+        ; trace-twf = twf-++ not-halted setup-tph
+            (subst (λ st → TraceWF st (proj₂ (exec-trace setup-trace s alloc)) (sub-trace ++ reclaim-wrapper-trace))
+                   (sym (cong proj₁ setup-exec-eq))
+              (subst (λ al → TraceWF s-setup al (sub-trace ++ reclaim-wrapper-trace))
+                     (sym (cong proj₂ setup-exec-eq))
+                (twf-++ not-halted-setup (ProcessedLayerResult.trace-twf l-result) reclaim-wrapper-tph)))
         -- scratch-bounded = max-slot-usage-bound (same proof, INPUT-relative)
         ; scratch-bounded =
             let child-cap-bound : layer-capacity wfL wfG alg ≤ layer-capacity (wf-Sum wfL wfR) wfG alg
@@ -1551,7 +1556,12 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
                  (ProcessedLayerResult.trace-slot-reads-below r-result))
               (SMP.trace-slot-reads-below-mono (r-reclaimable +ℕ 2) max-slot-used-inj2 reclaim-wrapper-trace
                  (n≤m⊔n r-max-slot-used (r-reclaimable +ℕ 2)) wrapper-tsrb))
-        ; trace-twf = SMP.!!  -- TODO: twf-++ chain (setup-tph + r-result + reclaim-wrapper-tph)
+        ; trace-twf = twf-++ not-halted setup-tph
+            (subst (λ st → TraceWF st (proj₂ (exec-trace setup-trace s alloc)) (sub-trace ++ reclaim-wrapper-trace))
+                   (sym (cong proj₁ setup-exec-eq))
+              (subst (λ al → TraceWF s-setup al (sub-trace ++ reclaim-wrapper-trace))
+                     (sym (cong proj₂ setup-exec-eq))
+                (twf-++ not-halted-setup (ProcessedLayerResult.trace-twf r-result) reclaim-wrapper-tph)))
         -- scratch-bounded = max-slot-usage-bound (same proof, INPUT-relative)
         ; scratch-bounded =
             let child-cap-bound : layer-capacity wfR wfG alg ≤ layer-capacity (wf-Sum wfL wfR) wfG alg
