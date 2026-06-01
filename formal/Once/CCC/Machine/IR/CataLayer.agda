@@ -2657,9 +2657,9 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
             alloc-correct-proof
             cata-result-place-stub
             (IRResultAWF.not-halted alg-result)
-            (λ _ _ → SMP.!!)
+            mem-preserved-proof
             SMP.!!                       -- trace-twf
-            SMP.!!                       -- trace-preserves-halted
+            (exec-trace-preserves-halted-WF final-trace)
             SMP.!!                       -- trace-no-frame-ops
             (record
               { max-slot-written = cata-max-slot
