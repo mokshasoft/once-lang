@@ -502,7 +502,8 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
         l-layer-valid-setup = SMP.!!
 
         payload-bf-setup : BeforeFrontier alloc-setup payload-loc
-        payload-bf-setup = SMP.!!
+        payload-bf-setup = subst (λ a → BeforeFrontier a payload-loc)
+                             (sym (setup-trace-preserves-alloc s alloc)) payload-bf
 
         -- Halted preserved through setup
         not-halted-setup : halted s-setup ≡ false
@@ -1090,7 +1091,8 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
         r-layer-valid-setup = SMP.!!
 
         payload-bf-setup : BeforeFrontier alloc-setup payload-loc
-        payload-bf-setup = SMP.!!
+        payload-bf-setup = subst (λ a → BeforeFrontier a payload-loc)
+                             (sym (setup-trace-preserves-alloc s alloc)) payload-bf
 
         not-halted-setup : halted s-setup ≡ false
         not-halted-setup = setup-trace-preserves-halted s alloc input-loc (SV-Ptr payload-loc) not-halted rdi-eq payload-ptr
