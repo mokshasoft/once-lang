@@ -301,7 +301,6 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; trace = k-trace
         ; final-state = s-after
         ; final-alloc = alloc
-        ; trace-is-ir-to-trace = SMP.!!
         ; trace-correct = cong proj₁ (exec-trace-single mov-to-output s alloc not-halted)
         ; alloc-correct = cong proj₂ (exec-trace-single mov-to-output s alloc not-halted)
         ; result-place = at-loc input-loc
@@ -354,7 +353,6 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; trace = rec-trace
         ; final-state = s-rec
         ; final-alloc = alloc-rec
-        ; trace-is-ir-to-trace = SMP.!!
         ; trace-correct = IRResultAWF.trace-correct rec-result
         ; alloc-correct = IRResultAWF.alloc-correct rec-result
         ; result-place = at-loc rec-loc rec-valid rec-before rec-rax rec-valid rec-before
@@ -766,7 +764,8 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
         setup-tsrb = tt  -- Neither instruction reads slots
 
         setup-tph : TraceWF s alloc setup-trace
-        setup-tph = twf-∷ (SMP.!!) (twf-∷ tt twf-[])
+        setup-tph = twf-∷ (load-indirect-suc-twf {alloc = alloc} input-loc (SV-Ptr payload-loc) rdi-eq payload-ptr)
+                          (twf-∷ tt twf-[])
 
         -- Note: setup-tpc removed in Phase 3
 
@@ -950,7 +949,6 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; trace = full-trace
         ; final-state = s-after-wrapper
         ; final-alloc = alloc-after-wrapper
-        ; trace-is-ir-to-trace = SMP.!!
         ; trace-correct = trace-correct-inj1
         ; alloc-correct = alloc-correct-inj1
         ; result-place = at-loc wrapper-loc processed-valid-proof result-before-proof wrapper-rax-result processed-valid-proof result-before-proof
@@ -1298,7 +1296,8 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
         setup-tsrb = tt  -- Neither instruction reads slots
 
         setup-tph : TraceWF s alloc setup-trace
-        setup-tph = twf-∷ (SMP.!!) (twf-∷ tt twf-[])
+        setup-tph = twf-∷ (load-indirect-suc-twf {alloc = alloc} input-loc (SV-Ptr payload-loc) rdi-eq payload-ptr)
+                          (twf-∷ tt twf-[])
 
         -- Note: setup-tpc removed in Phase 3
 
@@ -1472,7 +1471,6 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; trace = full-trace
         ; final-state = s-after-wrapper
         ; final-alloc = alloc-after-wrapper
-        ; trace-is-ir-to-trace = SMP.!!
         ; trace-correct = trace-correct-inj2
         ; alloc-correct = alloc-correct-inj2
         ; result-place = at-loc wrapper-loc processed-valid-proof
@@ -1615,7 +1613,6 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; trace = full-trace
         ; final-state = ProcessedLayerResult.final-state r-result
         ; final-alloc = final-alloc
-        ; trace-is-ir-to-trace = SMP.!!
         ; trace-correct = trace-correct-proof
         ; alloc-correct = SMP.!!  -- Plan 0.14: complete migration in dedicated pass
         ; result-place = at-loc (place-loc (ProcessedLayerResult.result-place r-result))
