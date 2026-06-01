@@ -31,7 +31,7 @@ open import Once.CCC.Target.X86-64.Syntax
   using (Reg; rax; rbx; rcx; rdx; rdi; rsi; rbp; rsp; r8; r9; r10; r11; r12; r13; r14; r15;
          Mem; base; base+disp; rip+disp;
          Operand; reg; mem; imm;
-         Instr; mov; lea; add; sub; cmp; push; pop; call; call-sym; ret; jmp; jne; label; ud2;
+         Instr; mov; lea; add; sub; cmp; push; pop; call; call-sym; ret; jmp; je; jne; label; ud2;
          syscall;
          Program; slot-size; slots)
 
@@ -98,6 +98,57 @@ inr-instrs =
   mov (mem (base r14)) (imm 1) ∷
   mov (mem (base+disp r14 slot-size)) (reg rdi) ∷
   add (reg r14) (imm (slots 2)) ∷ []
+
+------------------------------------------------------------------------
+-- Cata loop (Plan 0.27, C2) — for the payload-free linear functor NatF =
+-- K Unit ⊕ Id (zero | suc). A heap μ-node is [tag] (0=zero, 1=suc) with
+-- [node+8] = child pointer for suc. The catamorphism folds bottom-up:
+--   cata alg (In layer) = alg (fmap (cata alg) layer)
+-- Since NatF nodes carry no payload and alg only needs the child RESULT,
+-- we COUNT the `suc`s (rbx) on the way down, then apply alg that many
+-- times on the way back up — no worklist needed. `alg` is spliced ONCE
+-- (at `lapply`); both the base (inl tt layer) and each suc step (inr
+-- child-result layer) flow through it. rbx is never touched by compiled
+-- IR (only rax/rdi/rcx/r14/rsp are), so it survives the algebra.
+--
+--   mov rbx,0
+--   ldesc:  mov rcx,[rdi]; cmp rcx,0; je lbase; add rbx,1; mov rdi,[rdi+8]; jmp ldesc
+--   lbase:  build inl layer [0, 0(unit)]; rdi:=layer; jmp lapply
+--   lcomb:  build inr layer [1, rax(prev result)]; rdi:=layer
+--   lapply: <alg>   (rdi=layer → rax=result)
+--           cmp rbx,0; je ldone; sub rbx,1; jmp lcomb
+--   ldone:
+------------------------------------------------------------------------
+cata-loop-prefix : (ldesc lbase lapply lcomb : ℕ) → Program
+cata-loop-prefix ldesc lbase lapply lcomb =
+  mov (reg rbx) (imm 0) ∷
+  label ldesc ∷
+  mov (reg rcx) (mem (base rdi)) ∷
+  cmp (reg rcx) (imm 0) ∷
+  je lbase ∷
+  add (reg rbx) (imm 1) ∷
+  mov (reg rdi) (mem (base+disp rdi slot-size)) ∷
+  jmp ldesc ∷
+  label lbase ∷
+  mov (reg rdi) (reg r14) ∷
+  mov (mem (base r14)) (imm 0) ∷
+  mov (mem (base+disp r14 slot-size)) (imm 0) ∷
+  add (reg r14) (imm (slots 2)) ∷
+  jmp lapply ∷
+  label lcomb ∷
+  mov (reg rdi) (reg r14) ∷
+  mov (mem (base r14)) (imm 1) ∷
+  mov (mem (base+disp r14 slot-size)) (reg rax) ∷
+  add (reg r14) (imm (slots 2)) ∷
+  label lapply ∷ []
+
+cata-loop-suffix : (lcomb ldone : ℕ) → Program
+cata-loop-suffix lcomb ldone =
+  cmp (reg rbx) (imm 0) ∷
+  je ldone ∷
+  sub (reg rbx) (imm 1) ∷
+  jmp lcomb ∷
+  label ldone ∷ []
 
 ------------------------------------------------------------------------
 -- Pair construction (FRAMELESS)
@@ -335,7 +386,8 @@ compile-length initial = 1      -- absurd elimination
 -- OCP-0003: Recursion scheme operations (placeholder lengths)
 compile-length (In _ _) = 1     -- wrap μ-type constructor
 compile-length (out-μ _) = 1    -- unwrap μ-type destructor
-compile-length (Cata _ _) = 1   -- placeholder: iterative loop (ud2)
+compile-length (Cata _ alg) = length (cata-loop-prefix 0 0 0 0) +ℕ compile-length alg +ℕ
+                              length (cata-loop-suffix 0 0)
 compile-length (Para _ _) = 1   -- placeholder: paramorphism (ud2)
 compile-length (Out _) = 1      -- observe ν-type
 compile-length (in-ν _ _) = 1   -- wrap ν-type constructor
@@ -393,7 +445,15 @@ compile-ir' n initial = ud2 ∷ [] , n
 -- OCP-0003: Recursion scheme operations (placeholders)
 compile-ir' n (In _ _) = id-instrs , n
 compile-ir' n (out-μ _) = id-instrs , n
-compile-ir' n (Cata _ _) = ud2 ∷ [] , n
+compile-ir' n (Cata _ alg) =
+  let (palg , n2) = compile-ir' n alg
+      ldesc  = n2
+      lbase  = suc n2
+      lapply = suc (suc n2)
+      lcomb  = suc (suc (suc n2))
+      ldone  = suc (suc (suc (suc n2)))
+  in (cata-loop-prefix ldesc lbase lapply lcomb ++ palg ++ cata-loop-suffix lcomb ldone)
+   , suc (suc (suc (suc (suc n2))))
 compile-ir' n (Para _ _) = ud2 ∷ [] , n
 compile-ir' n (Out _) = id-instrs , n
 compile-ir' n (in-ν _ _) = id-instrs , n
@@ -528,7 +588,15 @@ compile-ir'-length n (case f g) =
 compile-ir'-length n initial = refl
 compile-ir'-length n (In _ _) = refl
 compile-ir'-length n (out-μ _) = refl
-compile-ir'-length n (Cata _ _) = refl
+compile-ir'-length n (Cata _ alg) =
+  let (palg , n2) = compile-ir' n alg
+      la = compile-ir'-length n alg
+      pre = cata-loop-prefix n2 (suc n2) (suc (suc n2)) (suc (suc (suc n2)))
+      suf = cata-loop-suffix (suc (suc (suc n2))) (suc (suc (suc (suc n2))))
+  in trans (length-++ pre {palg ++ suf})
+           (trans (cong (length pre +ℕ_)
+                        (trans (length-++ palg {suf}) (cong (_+ℕ length suf) la)))
+                  (sym (+-assoc (length pre) (compile-length alg) (length suf))))
 compile-ir'-length n (Para _ _) = refl
 compile-ir'-length n (Out _) = refl
 compile-ir'-length n (in-ν _ _) = refl
