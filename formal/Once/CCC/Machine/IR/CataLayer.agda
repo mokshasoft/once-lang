@@ -514,7 +514,7 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
     -- Result: result-loc = input-loc (the Sum container with updated pointer)
     --
     process-layer {G = G} (wf-Sum {FL} {FR} wfL wfR) wfG alg dispatch (inj₁ l-layer) mIn input-loc s alloc
-      n rec procRec size-bound (valid-inl-wf {payload-loc = payload-loc} lmm payload-ptr payload-bf sucLoc-bf l-layer-valid) input-before not-halted rdi-eq =
+      n rec procRec size-bound (valid-inl-wf {payload-loc = payload-loc} {mA = mA} lmm payload-ptr payload-bf sucLoc-bf l-layer-valid) input-before not-halted rdi-eq =
       let
         -- Step 1: Setup trace - load payload pointer and set Input1
         -- This transforms s (where Input1 = input-loc) to s-setup (where Input1 = payload-loc)
@@ -548,11 +548,20 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
         rdi-setup : readReg (regs s-setup) Input1 ≡ SV-Ptr payload-loc
         rdi-setup = setup-trace-sets-input s alloc input-loc (SV-Ptr payload-loc) not-halted rdi-eq payload-ptr
 
-        -- TODO (post-scaffold): re-route under StoredValue (load-indirect-suc
-        -- now case-splits on sv-as-loc; setup-trace-preserves-alloc needs
-        -- the InstrWF witness to discharge the halt case).
-        l-layer-valid-setup : ValidAtWF mIn alloc-setup {⟦ FL ⟧T (μ-type G)} (coerce-functor⁻¹ FL (μ-type G) l-layer) payload-loc s-setup
-        l-layer-valid-setup = SMP.!!
+        -- The setup trace (load-indirect-suc ; mov-to-input) writes only
+        -- registers, so it preserves memory and alloc.  Transfer the left
+        -- payload's validity along the state change (mem-preserved) and the
+        -- alloc identity (subst).  Mode = the payload's own mode mA (as in
+        -- the Prod case), independent of the explicit recursion mode.
+        l-layer-valid-setup : ValidAtWF mA alloc-setup {⟦ FL ⟧T (μ-type G)} (coerce-functor⁻¹ FL (μ-type G) l-layer) payload-loc s-setup
+        l-layer-valid-setup =
+          subst (λ al → ValidAtWF mA al (coerce-functor⁻¹ FL (μ-type G) l-layer) payload-loc s-setup)
+            (sym (setup-trace-preserves-alloc s alloc))
+            (validityWF-mem-preserved (coerce-functor⁻¹ FL (μ-type G) l-layer) payload-loc s s-setup
+              payload-bf
+              (λ loc' _ → trans (exec-abstract-mov-to-input-preserves-mem s-after-load alloc-after-load loc')
+                                (exec-abstract-load-indirect-suc-preserves-mem s alloc loc'))
+              l-layer-valid)
 
         payload-bf-setup : BeforeFrontier alloc-setup payload-loc
         payload-bf-setup = subst (λ a → BeforeFrontier a payload-loc)
@@ -1130,7 +1139,7 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
     --   3. wrapper-trace: allocate Sum wrapper at frontier
     ------------------------------------------------------------------------
     process-layer {G = G} (wf-Sum {FL} {FR} wfL wfR) wfG alg dispatch (inj₂ r-layer) mIn input-loc s alloc
-      n rec procRec size-bound (valid-inr-wf {payload-loc = payload-loc} lmm payload-ptr payload-bf sucLoc-bf r-layer-valid) input-before not-halted rdi-eq =
+      n rec procRec size-bound (valid-inr-wf {payload-loc = payload-loc} {mB = mB} lmm payload-ptr payload-bf sucLoc-bf r-layer-valid) input-before not-halted rdi-eq =
       let
         -- Step 1: Setup trace - load payload pointer and set Input1
         -- This transforms s (where Input1 = input-loc) to s-setup (where Input1 = payload-loc)
@@ -1157,8 +1166,15 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
         -- TODO (post-scaffold): same alloc-setup non-reduction issue as
         -- left-layer above. Postulate the three transfers.
-        r-layer-valid-setup : ValidAtWF mIn alloc-setup {⟦ FR ⟧T (μ-type G)} (coerce-functor⁻¹ FR (μ-type G) r-layer) payload-loc s-setup
-        r-layer-valid-setup = SMP.!!
+        r-layer-valid-setup : ValidAtWF mB alloc-setup {⟦ FR ⟧T (μ-type G)} (coerce-functor⁻¹ FR (μ-type G) r-layer) payload-loc s-setup
+        r-layer-valid-setup =
+          subst (λ al → ValidAtWF mB al (coerce-functor⁻¹ FR (μ-type G) r-layer) payload-loc s-setup)
+            (sym (setup-trace-preserves-alloc s alloc))
+            (validityWF-mem-preserved (coerce-functor⁻¹ FR (μ-type G) r-layer) payload-loc s s-setup
+              payload-bf
+              (λ loc' _ → trans (exec-abstract-mov-to-input-preserves-mem s-after-load alloc-after-load loc')
+                                (exec-abstract-load-indirect-suc-preserves-mem s alloc loc'))
+              r-layer-valid)
 
         payload-bf-setup : BeforeFrontier alloc-setup payload-loc
         payload-bf-setup = subst (λ a → BeforeFrontier a payload-loc)
