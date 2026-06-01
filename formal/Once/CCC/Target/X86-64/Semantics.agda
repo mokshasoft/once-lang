@@ -184,6 +184,28 @@ suc _ <ᵇ zero  = false
 suc m <ᵇ suc n = m <ᵇ n
 
 ------------------------------------------------------------------------
+-- Label resolution for jumps.
+--
+-- Plan 0.27: jumps are LABEL-based (matching Emit, which renders `jmp n`
+-- as `jmp .L<n>` and lets the assembler resolve the target). The previous
+-- semantics treated the operand as a forward-relative offset
+-- (`pc + 1 + target`), which (a) did not match Emit and (b) made BACKWARD
+-- jumps — i.e. loops — inexpressible. `find-label prog n` scans the
+-- program for `label n` and returns its absolute pc, so a jump can target
+-- a label appearing EARLIER in the program (a loop back-edge) as well as
+-- later. This is the control-flow needed for the recursion-scheme
+-- worklist loops (A2).
+------------------------------------------------------------------------
+
+find-label : Program → ℕ → Maybe ℕ
+find-label prog target = go prog 0
+  where
+    go : Program → ℕ → Maybe ℕ
+    go []             _ = nothing
+    go (label m ∷ is) i = if m ≡ᵇ target then just i else go is (suc i)
+    go (_       ∷ is) i = go is (suc i)
+
+------------------------------------------------------------------------
 -- Instruction semantics
 ------------------------------------------------------------------------
 
@@ -238,15 +260,25 @@ execInstr prog s (test op1 op2) =
         just (record s { pc    = pc s + 1
                        ; flags = mkflags (v1 ≡ᵇ 0) false false })
 
--- Jumps use PC-relative offsets (target = offset from next instr).
+-- Jumps target a LABEL (resolved by find-label to its absolute pc),
+-- matching Emit (`jmp .L<n>`). Backward targets (loop back-edges) are
+-- supported; an unresolved label halts (a malformed program).
 execInstr prog s (jmp target) =
-  just (record s { pc = pc s + 1 + target })
+  case find-label prog target of λ where
+    (just pc') → just (record s { pc = pc' })
+    nothing    → just (record s { halted = true })
 
-execInstr prog s (je target) =
-  just (record s { pc = if zf (flags s) then pc s + 1 + target else pc s + 1 })
+execInstr prog s (je target) with zf (flags s)
+... | true  = case find-label prog target of λ where
+                (just pc') → just (record s { pc = pc' })
+                nothing    → just (record s { halted = true })
+... | false = just (record s { pc = pc s + 1 })
 
-execInstr prog s (jne target) =
-  just (record s { pc = if zf (flags s) then pc s + 1 else pc s + 1 + target })
+execInstr prog s (jne target) with zf (flags s)
+... | true  = just (record s { pc = pc s + 1 })
+... | false = case find-label prog target of λ where
+                (just pc') → just (record s { pc = pc' })
+                nothing    → just (record s { halted = true })
 
 -- call: push return address, jump to target
 execInstr prog s (call target) =
