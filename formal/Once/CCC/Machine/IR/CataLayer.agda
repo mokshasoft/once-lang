@@ -12,8 +12,8 @@
 
 module Once.CCC.Machine.IR.CataLayer where
 
-open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; _⊔_; s≤s; z≤n) renaming (_+_ to _+ℕ_)
-open import Data.Nat.Properties using (≤-refl; ≤-trans; ≤-reflexive; <-≤-trans; ≤-<-trans; m≤m+n; m<m+n; m≤n+m; n≤1+n; n<1+n; m≤m⊔n; m≤n⊔m; n≤m⊔n; ⊔-lub; ⊔-monoˡ-≤; ⊔-monoʳ-≤; +-monoʳ-≤; +-monoˡ-≤; <⇒≢; +-comm; +-assoc; +-suc; +-identityʳ)
+open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; _⊔_; _∸_; s≤s; z≤n) renaming (_+_ to _+ℕ_)
+open import Data.Nat.Properties using (≤-refl; ≤-trans; ≤-reflexive; <-≤-trans; ≤-<-trans; m≤m+n; m<m+n; m≤n+m; n≤1+n; n<1+n; m≤m⊔n; m≤n⊔m; n≤m⊔n; ⊔-lub; ⊔-monoˡ-≤; ⊔-monoʳ-≤; +-monoʳ-≤; +-monoˡ-≤; <⇒≢; +-comm; +-assoc; +-suc; +-identityʳ; m∸n+n≡m)
 open import Data.Bool using (false)
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.Maybe using (Maybe; just; nothing)
@@ -2630,6 +2630,34 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
         cata-max-slot-geq-final : next-slot (IRResultAWF.final-alloc alg-result) ≤ cata-max-slot
         cata-max-slot-geq-final = ≤-trans (IRResultAWF.max-slot-geq-final alg-result) (n≤m⊔n layer-max-slot alg-max-slot)
 
+        -- Plan 0.17.1: reconstruct the cata's AllocBump.  The layer's
+        -- allocation (alloc → alloc-layer) isn't bump-tracked, so rebuild it
+        -- by ∸ (justified by slot/heap-monotone), then compose with the
+        -- algebra's bump via the apply-bump/bump-+ homomorphism.
+        cong₃ : ∀ {A B C D : Set} (f : A → B → C → D) {x y u v p q}
+              → x ≡ y → u ≡ v → p ≡ q → f x u p ≡ f y v q
+        cong₃ f {x} {y} {u} {v} {p} {q} ex eu ep =
+          trans (cong (λ z → f z u p) ex)
+                (trans (cong (λ z → f y z p) eu) (cong (λ z → f y v z) ep))
+
+        layer-bump : AllocBump
+        layer-bump = mkBump (next-slot alloc-layer ∸ next-slot alloc)
+                            (next-heap-ref alloc-layer ∸ next-heap-ref alloc)
+
+        layer-bump-eq : alloc-layer ≡ apply-bump layer-bump alloc
+        layer-bump-eq = cong₃ mkAllocState
+                          (ProcessedLayerResult.frame-preserved layer-result)
+                          (sym (m∸n+n≡m (ProcessedLayerResult.slot-monotone layer-result)))
+                          (sym (m∸n+n≡m (ProcessedLayerResult.heap-monotone layer-result)))
+
+        cata-bump : AllocBump
+        cata-bump = bump-+ layer-bump (IRResultAWF.bump alg-result)
+
+        cata-final-alloc-eq : IRResultAWF.final-alloc alg-result ≡ apply-bump cata-bump alloc
+        cata-final-alloc-eq =
+          trans (cong (apply-bump (IRResultAWF.bump alg-result)) layer-bump-eq)
+                (apply-bump-compose layer-bump (IRResultAWF.bump alg-result) alloc)
+
         -- NOTE: With IRResultAWF field types changed to use max-slot-written,
         -- we can now prove TraceWritesBelow cata-max-slot final-trace where
         -- cata-max-slot = layer-max-slot ⊔ alg-max-slot.
@@ -2650,8 +2678,8 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
             (IRResultAWF.final-state alg-result)
             (IRResultAWF.final-alloc alg-result)
             final-trace
-            SMP.!!                       -- bump
-            SMP.!!                       -- final-alloc-eq
+            cata-bump
+            cata-final-alloc-eq
             SMP.!!                       -- trace-is-ir-to-trace
             trace-correct-proof
             alloc-correct-proof
@@ -2677,7 +2705,8 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
               { max-slot-written = cata-max-slot
               ; stack-budget = ir-stack-requirement (Cata wfG alg)
               ; bump-fits-stack-budget = SMP.!!    -- Plan 0.17.1 TODO
-              ; max-slot-geq-final = SMP.!!        -- Plan 0.17.1 TODO (was cata-max-slot-geq-final)
+              ; max-slot-geq-final =
+                  subst (_≤ cata-max-slot) (cong next-slot cata-final-alloc-eq) cata-max-slot-geq-final
               ; max-slot-usage-bound = SMP.!!
               ; frontier-slot-stable = λ _ _ _ _ _ → inj₂ (inj₂ tt)
               ; trace-writes-above = SMP.trace-writes-above-append (next-slot alloc) layer-trace
@@ -2715,7 +2744,9 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
               { heap-budget = 0
               ; max-heap-ref-written = next-heap-ref (IRResultAWF.final-alloc alg-result)
               ; bump-fits-heap-budget = SMP.!!     -- Plan 0.17.1 TODO
-              ; max-heap-ref-geq-final = SMP.!!    -- Plan 0.17.1 TODO
+              ; max-heap-ref-geq-final =
+                  subst (_≤ next-heap-ref (IRResultAWF.final-alloc alg-result))
+                    (cong next-heap-ref cata-final-alloc-eq) ≤-refl
               ; max-heap-usage-bound = subst (next-heap-ref (IRResultAWF.final-alloc alg-result) ≤_)
                   (sym (+-identityʳ (next-heap-ref alloc)))
                   (≤-reflexive heap-pres-proof)
