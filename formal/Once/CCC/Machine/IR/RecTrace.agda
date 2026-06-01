@@ -630,6 +630,13 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
       final-state : LocState FS
       final-alloc : AllocState {FS}
 
+      -- Plan 0.17.x: bump-tracked allocation (mirrors IRResultBase). final-alloc
+      -- equals apply-bump bump alloc, so compositional producers can build their
+      -- own bump as bump-+ of sub-layer bumps (apply-bump-compose) instead of
+      -- reconstructing it via ∸ from the opaque final-alloc.
+      bump : AllocBump
+      final-alloc-eq : final-alloc ≡ apply-bump bump alloc
+
       -- Trace execution correctness: executing trace from s produces final-state/alloc
       trace-correct : proj₁ (exec-trace trace s alloc) ≡ final-state
       -- Plan 0.14: symmetric alloc-correct, parallel to IRResultBase.alloc-correct.
@@ -719,6 +726,9 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Option U rename: trace-preserves-halted → trace-twf (the
       -- construction-state TraceWF used internally for chaining).
       trace-twf : TraceWF s alloc trace
+      -- Plan 0.17.x: the layer trace contains no frame push/pop ops, so
+      -- cata-result can compose its own TraceNoFrameOps without re-deriving it.
+      trace-no-frame-ops : SMP.TraceNoFrameOps trace
       -- Note: trace-preserves-capacity removed in Phase 3 (frame-capacity removed)
       -- Plan 0.14 follow-up: trace-no-heap-writes removed; mem-preserved-before
       -- on IRResultBase is the consequence-form invariant. ProcessedLayerResult
