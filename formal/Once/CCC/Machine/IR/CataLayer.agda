@@ -2658,7 +2658,19 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
             cata-result-place-stub
             (IRResultAWF.not-halted alg-result)
             mem-preserved-proof
-            SMP.!!                       -- trace-twf
+            (let third : TraceWF (proj₁ (exec-abstract mov-to-input s-layer alloc-layer))
+                                 (proj₂ (exec-abstract mov-to-input s-layer alloc-layer)) alg-trace
+                 third = subst (λ st → TraceWF st alloc-layer alg-trace)
+                           (sym s-after-mov-eq-bridged) (IRResultAWF.trace-twf alg-result)
+                 second : TraceWF (proj₁ (exec-trace layer-trace s alloc))
+                                  (proj₂ (exec-trace layer-trace s alloc)) (mov-to-input ∷ alg-trace)
+                 second = subst (λ st → TraceWF st (proj₂ (exec-trace layer-trace s alloc))
+                                          (mov-to-input ∷ alg-trace))
+                            (sym (ProcessedLayerResult.trace-correct layer-result))
+                            (subst (λ al → TraceWF s-layer al (mov-to-input ∷ alg-trace))
+                              (sym (ProcessedLayerResult.alloc-correct layer-result))
+                              (twf-∷ tt third))
+             in twf-++ not-halted (ProcessedLayerResult.trace-twf layer-result) second)
             (exec-trace-preserves-halted-WF final-trace)
             SMP.!!                       -- trace-no-frame-ops
             (record
