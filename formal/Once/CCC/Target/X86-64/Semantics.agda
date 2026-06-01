@@ -356,19 +356,25 @@ step-not-halted prog s = case fetch prog (pc s) of λ where
   (just instr) → execInstr prog s instr
 
 step : Program → State → Maybe State
-step prog s with halted s
-... | true  = just s
-... | false = step-not-halted prog s
+step prog s = if halted s then just s else step-not-halted prog s
 
-exec : ℕ → Program → State → Maybe State
+-- Plan 0.27 (C3): `exec` is written with `if_then_else_` + an explicit
+-- `exec-cont` (which pattern-matches the `Maybe` directly) rather than the
+-- nested `with halted s | step prog s | halted s'` it used before. The two
+-- are DEFINITIONALLY equal on every input (so all `run`-by-`refl` examples
+-- are unaffected), but the `with`-free form reduces TRANSPARENTLY: a
+-- `rewrite` of a memory/register read inside `execInstr` now fires through
+-- `exec`, instead of being frozen behind a generated `with`-auxiliary.
+-- This is what makes the structured-recursion loop refinement proofs
+-- (reading freshly-written heap cells) tractable.
+exec      : ℕ → Program → State → Maybe State
+exec-cont : ℕ → Program → Maybe State → Maybe State
+
 exec zero    _    s = just s
-exec (suc n) prog s with halted s
-... | true  = just s
-... | false with step prog s
-...   | nothing  = nothing
-...   | just s' with halted s'
-...     | true  = just s'
-...     | false = exec n prog s'
+exec (suc n) prog s = if halted s then just s else exec-cont n prog (step-not-halted prog s)
+
+exec-cont _ _    nothing   = nothing
+exec-cont n prog (just s') = if halted s' then just s' else exec n prog s'
 
 defaultFuel : ℕ
 defaultFuel = 10000
