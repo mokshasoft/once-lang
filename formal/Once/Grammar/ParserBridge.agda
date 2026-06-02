@@ -37,7 +37,8 @@ open import Relation.Binary.PropositionalEquality using
   (_≡_; refl; cong; cong₂; sym; trans; subst)
 
 open import Once.Type using (Type; Unit; _*_; _+_; _⇒[_]_;
-                             Quantity; Zero; One; Many)
+                             Quantity; Zero; One; Many;
+                             Functor; K; Id; _⊕_; _⊗_; μ-type)
 open import Once.Parser.Token
 open import Once.Parser.Type
 open import Once.Parser.AccIrrelevant using (Acc-irrelevant)
@@ -197,6 +198,33 @@ mutual
     → ∃ λ (d' : ParsesType toks T rest)
     → parseTypeWF toks a ≡ just (T , rest , d')
 
+  complete-functorAtomWFraw :
+    ∀ {toks F rest} (d : ParsesFunctorAtom toks F rest) (a : Acc _<_ (length toks))
+    → ∃ λ (d' : ParsesFunctorAtom toks F rest)
+    → parseFunctorAtomWF toks a ≡ just (F , rest , d')
+
+  complete-functorProdWFraw :
+    ∀ {toks F rest} (d : ParsesFunctorProd toks F rest) (a : Acc _<_ (length toks))
+    → ∃ λ (d' : ParsesFunctorProd toks F rest)
+    → parseFunctorProdWF toks a ≡ just (F , rest , d')
+
+  complete-functorProdTailWFraw :
+    ∀ {left toks F rest} (d : ParsesFunctorProdTail left toks F rest)
+      (a : Acc _<_ (length toks))
+    → ∃ λ (d' : ParsesFunctorProdTail left toks F rest)
+    → parseFunctorProdTailWF left toks a ≡ just (F , rest , d')
+
+  complete-functorSumWFraw :
+    ∀ {toks F rest} (d : ParsesFunctorSum toks F rest) (a : Acc _<_ (length toks))
+    → ∃ λ (d' : ParsesFunctorSum toks F rest)
+    → parseFunctorSumWF toks a ≡ just (F , rest , d')
+
+  complete-functorSumTailWFraw :
+    ∀ {left toks F rest} (d : ParsesFunctorSumTail left toks F rest)
+      (a : Acc _<_ (length toks))
+    → ∃ λ (d' : ParsesFunctorSumTail left toks F rest)
+    → parseFunctorSumTailWF left toks a ≡ just (F , rest , d')
+
   -- Base atom cases
   complete-atomWFraw (pa-unit   rest) _ = _ , refl
   complete-atomWFraw (pa-void   rest) _ = _ , refl
@@ -229,6 +257,13 @@ mutual
     with complete-typeWFraw dT (rec (s≤s ≤-refl))
   ... | bT , eqT
     rewrite eqT
+    = _ , refl
+
+  -- Mu F: functor-sum recursion.
+  complete-atomWFraw (pa-mu dF) (acc rec)
+    with complete-functorSumWFraw dF (rec (s≤s ≤-refl))
+  ... | dF' , eqF
+    rewrite eqF
     = _ , refl
 
   -- Product level
@@ -412,6 +447,133 @@ mutual
     with complete-arrowTailWFraw dA (rec (ParsesSum-shrinks dS'))
   ... | dA' , eqA
     rewrite eqA
+    = _ , refl
+
+  ----------------------------------------------------------------------
+  -- Functor sub-grammar completeness (mirrors the type levels).
+  ----------------------------------------------------------------------
+
+  -- Functor atom: Id / K atom / ( fSum ).
+  complete-functorAtomWFraw (pfa-id rest) _ = _ , refl
+  complete-functorAtomWFraw (pfa-k dA) (acc rec)
+    with complete-atomWFraw dA (rec (s≤s ≤-refl))
+  ... | dA' , eqA
+    rewrite eqA
+    = _ , refl
+  complete-functorAtomWFraw (pfa-paren dF refl) (acc rec)
+    with complete-functorSumWFraw dF (rec (s≤s ≤-refl))
+  ... | dF' , eqF
+    rewrite eqF
+    = _ , refl
+
+  -- Functor product level.
+  complete-functorProdWFraw (pfp-mk dA dTail) (acc rec)
+    with complete-functorAtomWFraw dA (acc rec)
+  ... | dA' , eqA
+    rewrite eqA
+    with complete-functorProdTailWFraw dTail (rec (ParsesFunctorAtom-shrinks dA'))
+  ... | dT' , eqT
+    rewrite eqT
+    = _ , refl
+
+  -- Functor product-tail done cases (NotStar witnesses first token ≠ TStar).
+  complete-functorProdTailWFraw (pfpt-done {toks = []} _) _ = _ , refl
+  complete-functorProdTailWFraw (pfpt-done {toks = TLParen    ∷ _} _) _ = _ , refl
+  complete-functorProdTailWFraw (pfpt-done {toks = TRParen    ∷ _} _) _ = _ , refl
+  complete-functorProdTailWFraw (pfpt-done {toks = TLBrace    ∷ _} _) _ = _ , refl
+  complete-functorProdTailWFraw (pfpt-done {toks = TRBrace    ∷ _} _) _ = _ , refl
+  complete-functorProdTailWFraw (pfpt-done {toks = TColon     ∷ _} _) _ = _ , refl
+  complete-functorProdTailWFraw (pfpt-done {toks = TEquals    ∷ _} _) _ = _ , refl
+  complete-functorProdTailWFraw (pfpt-done {toks = TArrow     ∷ _} _) _ = _ , refl
+  complete-functorProdTailWFraw (pfpt-done {toks = TCaret0    ∷ _} _) _ = _ , refl
+  complete-functorProdTailWFraw (pfpt-done {toks = TCaret1    ∷ _} _) _ = _ , refl
+  complete-functorProdTailWFraw (pfpt-done {toks = TCaretW    ∷ _} _) _ = _ , refl
+  complete-functorProdTailWFraw (pfpt-done {toks = TLambda    ∷ _} _) _ = _ , refl
+  complete-functorProdTailWFraw (pfpt-done {toks = TComma     ∷ _} _) _ = _ , refl
+  complete-functorProdTailWFraw (pfpt-done {toks = TSemicolon ∷ _} _) _ = _ , refl
+  complete-functorProdTailWFraw (pfpt-done {toks = TAt        ∷ _} _) _ = _ , refl
+  complete-functorProdTailWFraw (pfpt-done {toks = TPipe      ∷ _} _) _ = _ , refl
+  complete-functorProdTailWFraw (pfpt-done {toks = TDot       ∷ _} _) _ = _ , refl
+  complete-functorProdTailWFraw (pfpt-done {toks = TPlus      ∷ _} _) _ = _ , refl
+  complete-functorProdTailWFraw (pfpt-done {toks = TMinus     ∷ _} _) _ = _ , refl
+  complete-functorProdTailWFraw (pfpt-done {toks = TSlash     ∷ _} _) _ = _ , refl
+  complete-functorProdTailWFraw (pfpt-done {toks = TPercent   ∷ _} _) _ = _ , refl
+  complete-functorProdTailWFraw (pfpt-done {toks = TAmpersand ∷ _} _) _ = _ , refl
+  complete-functorProdTailWFraw (pfpt-done {toks = TLt        ∷ _} _) _ = _ , refl
+  complete-functorProdTailWFraw (pfpt-done {toks = TLe        ∷ _} _) _ = _ , refl
+  complete-functorProdTailWFraw (pfpt-done {toks = TGt        ∷ _} _) _ = _ , refl
+  complete-functorProdTailWFraw (pfpt-done {toks = TGe        ∷ _} _) _ = _ , refl
+  complete-functorProdTailWFraw (pfpt-done {toks = TEqEq      ∷ _} _) _ = _ , refl
+  complete-functorProdTailWFraw (pfpt-done {toks = TNeq       ∷ _} _) _ = _ , refl
+  complete-functorProdTailWFraw (pfpt-done {toks = TNewline   ∷ _} _) _ = _ , refl
+  complete-functorProdTailWFraw (pfpt-done {toks = TEOF       ∷ _} _) _ = _ , refl
+  complete-functorProdTailWFraw (pfpt-done {toks = TWord _    ∷ _} _) _ = _ , refl
+  complete-functorProdTailWFraw (pfpt-done {toks = TInt _     ∷ _} _) _ = _ , refl
+  complete-functorProdTailWFraw (pfpt-done {toks = TString _  ∷ _} _) _ = _ , refl
+  complete-functorProdTailWFraw (pfpt-done {toks = TStar ∷ _} ()) _
+
+  complete-functorProdTailWFraw (pfpt-star dB dTail) (acc rec)
+    with complete-functorAtomWFraw dB (rec (s≤s ≤-refl))
+  ... | dB' , eqB
+    rewrite eqB
+    with complete-functorProdTailWFraw dTail (rec (<-trans (ParsesFunctorAtom-shrinks dB') (s≤s ≤-refl)))
+  ... | dT' , eqT
+    rewrite eqT
+    = _ , refl
+
+  -- Functor sum level.
+  complete-functorSumWFraw (pfs-mk dA dTail) (acc rec)
+    with complete-functorProdWFraw dA (acc rec)
+  ... | dA' , eqA
+    rewrite eqA
+    with complete-functorSumTailWFraw dTail (rec (ParsesFunctorProd-shrinks dA'))
+  ... | dT' , eqT
+    rewrite eqT
+    = _ , refl
+
+  -- Functor sum-tail done cases (NotStarPlus witnesses first token ≠ TPlus).
+  complete-functorSumTailWFraw (pfst-done {toks = []} _) _ = _ , refl
+  complete-functorSumTailWFraw (pfst-done {toks = TLParen    ∷ _} _) _ = _ , refl
+  complete-functorSumTailWFraw (pfst-done {toks = TRParen    ∷ _} _) _ = _ , refl
+  complete-functorSumTailWFraw (pfst-done {toks = TLBrace    ∷ _} _) _ = _ , refl
+  complete-functorSumTailWFraw (pfst-done {toks = TRBrace    ∷ _} _) _ = _ , refl
+  complete-functorSumTailWFraw (pfst-done {toks = TColon     ∷ _} _) _ = _ , refl
+  complete-functorSumTailWFraw (pfst-done {toks = TEquals    ∷ _} _) _ = _ , refl
+  complete-functorSumTailWFraw (pfst-done {toks = TArrow     ∷ _} _) _ = _ , refl
+  complete-functorSumTailWFraw (pfst-done {toks = TCaret0    ∷ _} _) _ = _ , refl
+  complete-functorSumTailWFraw (pfst-done {toks = TCaret1    ∷ _} _) _ = _ , refl
+  complete-functorSumTailWFraw (pfst-done {toks = TCaretW    ∷ _} _) _ = _ , refl
+  complete-functorSumTailWFraw (pfst-done {toks = TLambda    ∷ _} _) _ = _ , refl
+  complete-functorSumTailWFraw (pfst-done {toks = TComma     ∷ _} _) _ = _ , refl
+  complete-functorSumTailWFraw (pfst-done {toks = TSemicolon ∷ _} _) _ = _ , refl
+  complete-functorSumTailWFraw (pfst-done {toks = TAt        ∷ _} _) _ = _ , refl
+  complete-functorSumTailWFraw (pfst-done {toks = TPipe      ∷ _} _) _ = _ , refl
+  complete-functorSumTailWFraw (pfst-done {toks = TDot       ∷ _} _) _ = _ , refl
+  complete-functorSumTailWFraw (pfst-done {toks = TMinus     ∷ _} _) _ = _ , refl
+  complete-functorSumTailWFraw (pfst-done {toks = TStar      ∷ _} _) _ = _ , refl
+  complete-functorSumTailWFraw (pfst-done {toks = TSlash     ∷ _} _) _ = _ , refl
+  complete-functorSumTailWFraw (pfst-done {toks = TPercent   ∷ _} _) _ = _ , refl
+  complete-functorSumTailWFraw (pfst-done {toks = TAmpersand ∷ _} _) _ = _ , refl
+  complete-functorSumTailWFraw (pfst-done {toks = TLt        ∷ _} _) _ = _ , refl
+  complete-functorSumTailWFraw (pfst-done {toks = TLe        ∷ _} _) _ = _ , refl
+  complete-functorSumTailWFraw (pfst-done {toks = TGt        ∷ _} _) _ = _ , refl
+  complete-functorSumTailWFraw (pfst-done {toks = TGe        ∷ _} _) _ = _ , refl
+  complete-functorSumTailWFraw (pfst-done {toks = TEqEq      ∷ _} _) _ = _ , refl
+  complete-functorSumTailWFraw (pfst-done {toks = TNeq       ∷ _} _) _ = _ , refl
+  complete-functorSumTailWFraw (pfst-done {toks = TNewline   ∷ _} _) _ = _ , refl
+  complete-functorSumTailWFraw (pfst-done {toks = TEOF       ∷ _} _) _ = _ , refl
+  complete-functorSumTailWFraw (pfst-done {toks = TWord _    ∷ _} _) _ = _ , refl
+  complete-functorSumTailWFraw (pfst-done {toks = TInt _     ∷ _} _) _ = _ , refl
+  complete-functorSumTailWFraw (pfst-done {toks = TString _  ∷ _} _) _ = _ , refl
+  complete-functorSumTailWFraw (pfst-done {toks = TPlus ∷ _} ()) _
+
+  complete-functorSumTailWFraw (pfst-plus dB dTail) (acc rec)
+    with complete-functorProdWFraw dB (rec (s≤s ≤-refl))
+  ... | dB' , eqB
+    rewrite eqB
+    with complete-functorSumTailWFraw dTail (rec (<-trans (ParsesFunctorProd-shrinks dB') (s≤s ≤-refl)))
+  ... | dT' , eqT
+    rewrite eqT
     = _ , refl
 
 ------------------------------------------------------------------------

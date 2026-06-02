@@ -45,7 +45,9 @@ UpperIdent = String
 -- Grade annotations are only allowed as arrow-argument grades — they
 -- are parse errors in any other position, so the grammar's `GType` does
 -- not carry grades inside products, sums, or on outputs.
-data GType : Set where
+mutual
+
+ data GType : Set where
   -- Primitive types
   TUnit   : GType
   TVoid   : GType
@@ -60,8 +62,19 @@ data GType : Set where
   _⊕_     : GType → GType → GType              -- Sum: A + B
   TEff    : GType → GType → GType              -- Effect: Eff A B
 
+  -- Initial algebra of a polynomial functor: Mu F.
+  GMu     : GFunctor → GType
+
   -- Type variable (for polymorphism and aliases)
   TVar    : UpperIdent → GType
+
+ -- | Grammar-level polynomial functor (body of `Mu`).
+ -- Mirrors `Once.Type.Functor` (K / Id / ⊕ / ⊗).
+ data GFunctor : Set where
+  GFK    : GType → GFunctor               -- constant functor: K T
+  GFId   : GFunctor                        -- identity functor: Id
+  GFSum  : GFunctor → GFunctor → GFunctor  -- functor sum: F + G
+  GFProd : GFunctor → GFunctor → GFunctor  -- functor product: F * G
 
 -- | Convenience alias for the unrestricted (Many) arrow, matching
 -- the common `A -> B` surface form.
