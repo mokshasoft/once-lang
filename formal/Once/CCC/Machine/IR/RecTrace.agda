@@ -838,12 +838,12 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
     halted s ≡ false →
     readReg (regs s) Input1 ≡ SV-Ptr input-loc →
     readLoc s input-loc ≡ just (SV-Ptr fst-loc) →
+    input-loc ≢ AtStack (current-frame alloc) save-slot →
     let (s' , _) = exec-trace (prod-left-setup-trace save-slot) s alloc
     in readReg (regs s') Input1 ≡ SV-Ptr fst-loc
-  prod-left-setup-input save-slot s alloc input-loc fst-loc not-halted rdi-eq fst-ptr =
-    -- TODO (post-scaffold): re-route via prod-left-setup-input-helper
-    -- with the StoredValue-lifted signature.
-    SMP.!!
+  prod-left-setup-input save-slot s alloc input-loc fst-loc not-halted rdi-eq fst-ptr input-≢-slot =
+    SMP.RecSchemeSemantics.prod-left-setup-input-helper save-slot s alloc input-loc (SV-Ptr fst-loc)
+      not-halted rdi-eq fst-ptr input-≢-slot
 
   -- | After prod-left-setup-trace, alloc unchanged
   --

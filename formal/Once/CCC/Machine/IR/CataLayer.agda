@@ -1825,7 +1825,11 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
         rdi-left-setup : readReg (regs s-left-setup) Input1 ≡ SV-Ptr fst-loc
         rdi-left-setup = prod-left-setup-input save-slot s alloc input-loc fst-loc
-                           not-halted rdi-eq fst-ptr
+                           not-halted rdi-eq fst-ptr input-≢-slot-l
+          where
+            input-≢-slot-l : input-loc ≢ AtStack (current-frame alloc) save-slot
+            input-≢-slot-l eq = Data.Nat.Properties.<-irrefl refl
+                                  (bf-slot-contradiction alloc input-loc save-slot input-before eq)
 
         alloc-left-setup-eq : alloc-left-setup ≡ alloc
         alloc-left-setup-eq = prod-left-setup-alloc save-slot s alloc not-halted
@@ -1861,7 +1865,13 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
                          refl (incr-next-slot-mono alloc) ≤-refl fst-loc fst-bf
 
         not-halted-left-setup : halted s-left-setup ≡ false
-        not-halted-left-setup = SMP.!!  -- TODO: prod-left-setup-halted-helper under StoredValue
+        not-halted-left-setup =
+          prod-left-setup-halted-helper save-slot s alloc input-loc (SV-Ptr fst-loc)
+            not-halted rdi-eq fst-ptr input-≢-slot
+          where
+            input-≢-slot : input-loc ≢ AtStack (current-frame alloc) save-slot
+            input-≢-slot eq = Data.Nat.Properties.<-irrefl refl
+                                (bf-slot-contradiction alloc input-loc save-slot input-before eq)
 
         ------------------------------------------------------------------------
         -- Phase 2: Left Processing
@@ -1996,7 +2006,9 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
         -- Input1 = SV-Ptr snd-loc after right setup
         rdi-right-setup : readReg (regs s-right-setup) Input1 ≡ SV-Ptr snd-loc
-        rdi-right-setup = SMP.!!  -- TODO: prod-right-setup-input under StoredValue
+        rdi-right-setup =
+          SMP.RecSchemeSemantics.prod-right-setup-input-helper save-slot s-l alloc-for-right input-loc
+            (SV-Ptr snd-loc) (ProcessedLayerResult.not-halted l-result) stack-at-s-l-fr snd-ptr-at-s-l
           where
             -- Stack at save-slot still contains input-loc (preserved through left processing)
             stack-preserved : readLoc s-l (AtStack (current-frame alloc) save-slot) ≡
@@ -2023,10 +2035,10 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
                 (λ eq → Data.Nat.Properties.<-irrefl refl (bf-slot-contradiction alloc (sucLoc input-loc) save-slot sucLoc-bf eq)))
                 snd-ptr)
 
-            -- TODO (post-scaffold): rederive once prod-right-setup-input-helper
-            -- signature is restated under StoredValue.
-            rdi-right-setup-proof : readReg (regs s-right-setup) Input1 ≡ SV-Ptr snd-loc
-            rdi-right-setup-proof = SMP.!!
+            -- transport the stack fact to alloc-for-right's frame (= alloc's).
+            stack-at-s-l-fr : readLoc s-l (AtStack (current-frame alloc-for-right) save-slot) ≡ just (SV-Ptr input-loc)
+            stack-at-s-l-fr = subst (λ fr → readLoc s-l (AtStack fr save-slot) ≡ just (SV-Ptr input-loc))
+                                    (sym alloc-for-right-frame) stack-at-s-l
 
         not-halted-right-setup : halted s-right-setup ≡ false
         not-halted-right-setup = SMP.TracePrimitives.exec-trace-preserves-halted-WF
