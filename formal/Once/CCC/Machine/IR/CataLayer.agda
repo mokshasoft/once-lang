@@ -956,12 +956,16 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
         --    With actual reclamation, l-result-loc's slot < l-reclaimable = wrapper-base
         --    Since next-slot alloc-after-wrapper = l-reclaimable + 2 > l-reclaimable,
         --    l-result-loc is still before the new frontier.
-        -- TODO (post-scaffold): alloc-setup-eq chain doesn't reduce under
-        -- StoredValue because exec-abstract load-indirect-suc has a
-        -- non-trivial with-block on sv-as-loc Input1. The proof composes
-        -- but cong needs an explicit witness from the InstrWF chain.
+        -- l-result-loc is before alloc-after-sub's frontier; alloc-after-wrapper
+        -- only grows it (next-slot += 2, heap unchanged, frame preserved), so
+        -- transfer via frontier-monotone.
         l-before-wrapper : BeforeFrontier alloc-after-wrapper l-result-loc
-        l-before-wrapper = SMP.!!
+        l-before-wrapper = frontier-monotone alloc-after-sub alloc-after-wrapper
+          (sym wrapper-frame-preserved)
+          (subst (next-slot alloc-after-sub ≤_) (sym wrapper-next-slot-eq)
+                 (m≤m+n (next-slot alloc-after-sub) 2))
+          (subst (next-heap-ref alloc-after-sub ≤_) (sym wrapper-heap-preserved) ≤-refl)
+          l-result-loc l-before
 
         -- 2. BeforeFrontier alloc-after-wrapper (sucLoc wrapper-loc)
         --    sucLoc wrapper-loc = AtStack frame (suc wrapper-base) = AtStack frame (suc l-reclaimable)
@@ -982,13 +986,26 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
         --    l-result-loc's slot < l-reclaimable (child result is before child's reclaimable-slot),
         --    so it's disjoint from the wrapper write at suc l-reclaimable.
 
+        -- Transfer the child result's validity through the reclaim+wrapper:
+        -- the state changes (reclaim no-op on mem; wrapper writes at suc
+        -- wrapper-base, disjoint from l-result-loc which is < wrapper-base =
+        -- next-slot alloc-after-sub) and the frontier advances by 2.
+        -- alloc-reclaimed ≡ alloc-after-sub (record-η, l-reclaimable =
+        -- next-slot alloc-after-sub), so BeforeFrontier alloc-after-sub is
+        -- accepted directly as BeforeFrontier alloc-reclaimed.
         l-valid-wrapper : ValidAtWF mL alloc-after-wrapper l-processed l-result-loc s-after-wrapper
-        l-valid-wrapper =
-          -- Strategy:
-          -- TODO (post-scaffold): alloc-setup-eq chain doesn't reduce
-          -- under StoredValue (load-indirect-suc has a with-block on
-          -- sv-as-loc Input1); rederive once that propagates.
-          SMP.!!
+        l-valid-wrapper = validityWF-frontier-advance l-processed l-result-loc s-after-wrapper
+          wrapper-frame-preserved
+          (subst (next-slot alloc-after-sub ≤_) (sym wrapper-next-slot-eq)
+                 (m≤m+n (next-slot alloc-after-sub) 2))
+          (subst (next-heap-ref alloc-after-sub ≤_) (sym wrapper-heap-preserved) ≤-refl)
+          (validityWF-mem-preserved l-processed l-result-loc s-after-sub s-after-wrapper
+            l-before
+            (λ loc' bf' → trans (cong (λ p → readLoc (proj₁ p) loc')
+                                (exec-trace-cons reclaim-instr wrapper-trace s-after-sub alloc-after-sub l-not-halted))
+                              (wrapper-trace-mem-preserved wrapper-base s-after-sub alloc-reclaimed loc'
+                                l-not-halted refl bf'))
+            l-valid)
 
         -- Plan 0.14 (Camp 2): wrapper-loc is AtStack so wrapper-mode = Stack
         -- (matching the function's returned mode). lmm = tt then.
@@ -1514,7 +1531,12 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
         --    r-result-loc is still before the new frontier.
         -- TODO (post-scaffold): same alloc-setup non-reduction issue.
         r-before-wrapper : BeforeFrontier alloc-after-wrapper r-result-loc
-        r-before-wrapper = SMP.!!
+        r-before-wrapper = frontier-monotone alloc-after-sub alloc-after-wrapper
+          (sym wrapper-frame-preserved)
+          (subst (next-slot alloc-after-sub ≤_) (sym wrapper-next-slot-eq)
+                 (m≤m+n (next-slot alloc-after-sub) 2))
+          (subst (next-heap-ref alloc-after-sub ≤_) (sym wrapper-heap-preserved) ≤-refl)
+          r-result-loc r-before
 
         -- 2. BeforeFrontier alloc-after-wrapper (sucLoc wrapper-loc)
         --    sucLoc wrapper-loc = AtStack frame (suc wrapper-base) = AtStack frame (suc r-reclaimable)
@@ -1537,7 +1559,18 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
         -- TODO (post-scaffold): same alloc-setup non-reduction issue.
         r-valid-wrapper : ValidAtWF mR alloc-after-wrapper r-processed r-result-loc s-after-wrapper
-        r-valid-wrapper = SMP.!!
+        r-valid-wrapper = validityWF-frontier-advance r-processed r-result-loc s-after-wrapper
+          wrapper-frame-preserved
+          (subst (next-slot alloc-after-sub ≤_) (sym wrapper-next-slot-eq)
+                 (m≤m+n (next-slot alloc-after-sub) 2))
+          (subst (next-heap-ref alloc-after-sub ≤_) (sym wrapper-heap-preserved) ≤-refl)
+          (validityWF-mem-preserved r-processed r-result-loc s-after-sub s-after-wrapper
+            r-before
+            (λ loc' bf' → trans (cong (λ p → readLoc (proj₁ p) loc')
+                                (exec-trace-cons reclaim-instr wrapper-trace s-after-sub alloc-after-sub r-not-halted))
+                              (wrapper-trace-mem-preserved wrapper-base s-after-sub alloc-reclaimed loc'
+                                r-not-halted refl bf'))
+            r-valid)
 
         -- Plan 0.14 (Camp 2): wrapper-loc is AtStack so wrapper-mode = Stack.
         processed-valid-proof : ValidAtWF Stack alloc-after-wrapper processed wrapper-loc s-after-wrapper
