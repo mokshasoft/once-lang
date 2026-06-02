@@ -2004,53 +2004,51 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
         s-right-setup : LocState FS
         s-right-setup = proj₁ (exec-trace right-setup-trace s-l alloc-for-right)
 
+        -- Stack at save-slot still contains input-loc (preserved through left processing)
+        stack-preserved : readLoc s-l (AtStack (current-frame alloc) save-slot) ≡
+                          readLoc s-left-setup (AtStack (current-frame alloc) save-slot)
+        stack-preserved = ProcessedLayerResult.mem-preserved l-result
+          (AtStack (current-frame alloc) save-slot)
+          (slot-at-next-bf alloc)
+
+        -- After left-setup, stack[save-slot] = input-loc
+        stack-has-input : readLoc s-left-setup (AtStack (current-frame alloc) save-slot) ≡ just (SV-Ptr input-loc)
+        stack-has-input = SMP.RecSchemeSemantics.prod-left-setup-saves-input save-slot s alloc input-loc not-halted rdi-eq
+
+        -- So s-l still has input-loc at save-slot
+        stack-at-s-l : readLoc s-l (AtStack (current-frame alloc) save-slot) ≡ just (SV-Ptr input-loc)
+        stack-at-s-l = trans stack-preserved stack-has-input
+
+        -- sucLoc input-loc still points to SV-Ptr snd-loc (memory preserved)
+        snd-ptr-at-s-l : readLoc s-l (sucLoc input-loc) ≡ just (SV-Ptr snd-loc)
+        snd-ptr-at-s-l = trans
+          (ProcessedLayerResult.mem-preserved l-result (sucLoc input-loc)
+            (frontier-monotone alloc alloc-for-left refl (incr-next-slot-mono alloc) ≤-refl
+              (sucLoc input-loc) sucLoc-bf))
+          (trans (prod-left-setup-mem-eq save-slot s alloc (sucLoc input-loc) not-halted
+            (λ eq → Data.Nat.Properties.<-irrefl refl (bf-slot-contradiction alloc (sucLoc input-loc) save-slot sucLoc-bf eq)))
+            snd-ptr)
+
+        -- transport the stack fact to alloc-for-right's frame (= alloc's).
+        stack-at-s-l-fr : readLoc s-l (AtStack (current-frame alloc-for-right) save-slot) ≡ just (SV-Ptr input-loc)
+        stack-at-s-l-fr = subst (λ fr → readLoc s-l (AtStack fr save-slot) ≡ just (SV-Ptr input-loc))
+                                (sym alloc-for-right-frame) stack-at-s-l
+
         -- Input1 = SV-Ptr snd-loc after right setup
         rdi-right-setup : readReg (regs s-right-setup) Input1 ≡ SV-Ptr snd-loc
         rdi-right-setup =
           SMP.RecSchemeSemantics.prod-right-setup-input-helper save-slot s-l alloc-for-right input-loc
             (SV-Ptr snd-loc) (ProcessedLayerResult.not-halted l-result) stack-at-s-l-fr snd-ptr-at-s-l
-          where
-            -- Stack at save-slot still contains input-loc (preserved through left processing)
-            stack-preserved : readLoc s-l (AtStack (current-frame alloc) save-slot) ≡
-                              readLoc s-left-setup (AtStack (current-frame alloc) save-slot)
-            stack-preserved = ProcessedLayerResult.mem-preserved l-result
-              (AtStack (current-frame alloc) save-slot)
-              (slot-at-next-bf alloc)
-
-            -- After left-setup, stack[save-slot] = input-loc
-            stack-has-input : readLoc s-left-setup (AtStack (current-frame alloc) save-slot) ≡ just (SV-Ptr input-loc)
-            stack-has-input = SMP.RecSchemeSemantics.prod-left-setup-saves-input save-slot s alloc input-loc not-halted rdi-eq
-
-            -- So s-l still has input-loc at save-slot
-            stack-at-s-l : readLoc s-l (AtStack (current-frame alloc) save-slot) ≡ just (SV-Ptr input-loc)
-            stack-at-s-l = trans stack-preserved stack-has-input
-
-            -- sucLoc input-loc still points to SV-Ptr snd-loc (memory preserved)
-            snd-ptr-at-s-l : readLoc s-l (sucLoc input-loc) ≡ just (SV-Ptr snd-loc)
-            snd-ptr-at-s-l = trans
-              (ProcessedLayerResult.mem-preserved l-result (sucLoc input-loc)
-                (frontier-monotone alloc alloc-for-left refl (incr-next-slot-mono alloc) ≤-refl
-                  (sucLoc input-loc) sucLoc-bf))
-              (trans (prod-left-setup-mem-eq save-slot s alloc (sucLoc input-loc) not-halted
-                (λ eq → Data.Nat.Properties.<-irrefl refl (bf-slot-contradiction alloc (sucLoc input-loc) save-slot sucLoc-bf eq)))
-                snd-ptr)
-
-            -- transport the stack fact to alloc-for-right's frame (= alloc's).
-            stack-at-s-l-fr : readLoc s-l (AtStack (current-frame alloc-for-right) save-slot) ≡ just (SV-Ptr input-loc)
-            stack-at-s-l-fr = subst (λ fr → readLoc s-l (AtStack fr save-slot) ≡ just (SV-Ptr input-loc))
-                                    (sym alloc-for-right-frame) stack-at-s-l
 
         not-halted-right-setup : halted s-right-setup ≡ false
-        not-halted-right-setup = SMP.TracePrimitives.exec-trace-preserves-halted-WF
-                                   right-setup-trace s-l alloc-for-right l-not-halted
-                                   (twf-∷ (SMP.!!) (twf-∷ tt
-                                     (twf-∷ (SMP.!!) (twf-∷ tt twf-[]))))
+        not-halted-right-setup =
+          SMP.RecSchemeSemantics.prod-right-setup-halted-helper save-slot s-l alloc-for-right input-loc
+            (SV-Ptr snd-loc) (ProcessedLayerResult.not-halted l-result) stack-at-s-l-fr snd-ptr-at-s-l
 
         r-layer-valid-right-setup : ValidAtWF mvR alloc-for-right {⟦ FR ⟧T (μ-type G)} (coerce-functor⁻¹ FR (μ-type G) r-comp) snd-loc s-right-setup
         r-layer-valid-right-setup = validityWF-mem-preserved (coerce-functor⁻¹ FR (μ-type G) r-comp) snd-loc s-l s-right-setup
           r-snd-bf
-          (λ loc' bf' → SMP.RecSchemeSemantics.prod-right-setup-mem-helper save-slot s-l alloc-for-right loc' l-not-halted
-            (λ _ → SMP.!!))  -- The constraint is not used by the helper
+          (λ loc' bf' → SMP.RecSchemeSemantics.prod-right-setup-mem-helper save-slot s-l alloc-for-right loc' l-not-halted)
           r-layer-valid-transferred
 
         ------------------------------------------------------------------------
@@ -2295,7 +2293,6 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
             step3 : readLoc s-right-setup loc ≡ readLoc s-l loc
             step3 = SMP.RecSchemeSemantics.prod-right-setup-mem-helper save-slot s-l alloc-for-right loc l-not-halted
-              (λ _ → SMP.!!)  -- The callback is ignored in the implementation
 
             -- Preserved through right processing
             step4 : readLoc (ProcessedLayerResult.final-state r-result) loc ≡ readLoc s-right-setup loc
@@ -2310,14 +2307,9 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
                                   (ProcessedLayerResult.final-state r-result)
         processed-valid-proof = SMP.!!  -- BLOCKED: missing pair container allocation
 
-        -- Setup trace halted preservation proofs
-        left-setup-tph : ∀ {s alloc} → TraceWF s alloc left-setup-trace
-        left-setup-tph = twf-∷ tt (twf-∷ tt
-                          (twf-∷ (SMP.!!) (twf-∷ tt twf-[])))
-
-        right-setup-tph : ∀ {s alloc} → TraceWF s alloc right-setup-trace
-        right-setup-tph = twf-∷ (SMP.!!) (twf-∷ tt
-                            (twf-∷ (SMP.!!) (twf-∷ tt twf-[])))
+        -- (left-setup-tph / right-setup-tph removed: they were dead `∀{s alloc}`
+        -- generic TraceWFs — the actual setup proofs go through the proven
+        -- prod-{left,right}-setup-halted-helper at concrete states.)
 
         -- Note: left-setup-tpc and right-setup-tpc removed in Phase 3
 
