@@ -426,10 +426,8 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
         --   next-slot final-alloc ≤ next-slot alloc + ir-stack-requirement (Cata wfG alg)
         ; slot-stays-in-budget = bridge-slot-bound (next-slot alloc-rec ≤_)
             (IRResultAWF.slot-stays-in-budget rec-result)
-        -- Plan 0.14 Phase B.0: IRResultAWF.heap-preserved removed; rec-result
-        -- comes from Cata which is stack-only (heap-budget = 0), so heap-preserved
-        -- is derivable via CWF.heap-preserved-of. SMP.!! placeholder until the
-        -- "stack-only sub-IR" precondition is wired through.
+        -- Id: heap grows through the recursive cata (heap mode); only
+        -- heap-monotone holds (the old heap-preserved field was removed).
         ; heap-monotone = IRResultAWF.heap-monotone rec-result
         ; mem-preserved = irresult-mem-preserved rec-result
         -- Trace region bounds from IRResultAWF
