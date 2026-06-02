@@ -1,0 +1,30 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson and contributors
+
+-- Layer 5 test: a catamorphism, end-to-end.
+--
+-- Nat = Mu (K Unit + Id):  zero = In (inl unit) ; suc n = In (inr n).
+-- isEven via cata: zero -> inl unit (even) ; suc b -> not b.
+-- two is even, so isEven two = inl unit, and case picks even42 = exit 42.
+
+import I.Linux.Syscalls as S
+
+-- two = suc (suc zero)
+two : Mu (K Unit + Id)
+two = In (inr (In (inr (In (inl unit)))))
+
+-- isEven : Nat -> Unit + Unit   (inl = even, inr = odd)
+-- algebra : Unit + (Unit + Unit) -> Unit + Unit
+--   inl tt        (zero layer)        -> inl unit        (even)
+--   inr b         (suc layer, b=prev) -> not b           (flip)
+isEven : Mu (K Unit + Id) -> Unit + Unit
+isEven = cata (case (inl unit) (case (inr unit) (inl unit)))
+
+even42 : Unit -> Int
+even42 _ = 42
+
+odd99 : Unit -> Int
+odd99 _ = 99
+
+main : IO Unit
+main = exit@S (case even42 odd99 (isEven two))

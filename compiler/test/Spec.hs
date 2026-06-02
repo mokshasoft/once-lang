@@ -11,6 +11,7 @@ import Layer1Spec (layer1Tests)
 import Layer2Spec (layer2Tests)
 import Layer3Spec (layer3Tests)
 import Layer4Spec (layer4Tests)
+import Layer5Spec (layer5Tests)
 import ParseSpec (parseTests)
 import TypeCheckSpec (typeCheckTests)
 import TypeErrorSpec (typeErrorTests)
@@ -26,6 +27,7 @@ main = defaultMain $ testGroup "Once"
   , layer2Tests
   , layer3Tests
   , layer4Tests
+  , layer5Tests
   , arithTests
   , backendTests
   , allocationStressTests

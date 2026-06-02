@@ -454,6 +454,7 @@ test-suite once-test
       Layer2Spec
       Layer3Spec
       Layer4Spec
+      Layer5Spec
       ParseSpec
       TypeCheckSpec
       TypeErrorSpec
