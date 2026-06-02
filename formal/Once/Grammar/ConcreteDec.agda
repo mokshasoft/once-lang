@@ -26,7 +26,7 @@ open import Once.Grammar as G
   using ( GExpr; GType
         ; EUnit; EInt; EString; EVar; EQualified; ELam; EApp; EPair
         ; EAnnot; EBinOp; EUnaryOp; ECompose; ELet; EDestruct
-        ; TUnit; TVoid; TInt; TFloat; TBuffer; TString; TEff; TVar
+        ; TUnit; TVoid; TInt; TFloat; TBuffer; TString; TEff; TVar; GMu
         ; _⊗_; _⊕_; _⇒[_]_ )
 open import Once.Grammar.Printer using
   ( Concrete; c-unit; c-void; c-int; c-float; c-buffer; c-string
@@ -61,6 +61,10 @@ concreteType? (TEff a b) with concreteType? a | concreteType? b
 ... | just ca | just cb = just (c-eff ca cb)
 ... | _       | _       = nothing
 concreteType? (TVar _) = nothing
+-- `GMu` is outside the round-trip `Concrete` domain (no c-mu constructor):
+-- recursion-scheme types are handled by the parser/elaborator directly,
+-- not via the printed-GType round-trip.
+concreteType? (GMu _) = nothing
 
 ------------------------------------------------------------------------
 -- Expression concreteness (no `TVar` in annotations, no reserved-word

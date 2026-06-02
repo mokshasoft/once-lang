@@ -32,9 +32,9 @@ open import Once.Grammar as G
 open import Once.Parser.Module.Core as P
   using ( Decl; Module; Import; mkImport; mkModule )
 open import Once.Type
-  using ( Type; PolyType
+  using ( Type; PolyType; PolyFunctor
         ; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; PInt; PFloat; PStr
-        ; PBuffer; PTVar )
+        ; PBuffer; PTVar; Pμ-type; PK; PId; _P⊕_; _P⊗_ )
 open import Once.Grammar.Convert    using (gtypeToType)
 open import Once.Grammar.ExprConvert using (gexprToRaw)
 open import Once.Grammar.ConcreteDec using (concrete?)
@@ -44,6 +44,7 @@ open import Once.Grammar.ConcreteDec using (concrete?)
 ------------------------------------------------------------------------
 
 gtypeToPolyType : GType → PolyType
+gtypeToPolyFunctor : G.GFunctor → PolyFunctor
 gtypeToPolyType G.TUnit          = PUnit
 gtypeToPolyType G.TVoid          = PVoid
 gtypeToPolyType G.TInt           = PInt
@@ -55,6 +56,12 @@ gtypeToPolyType (a G.⊗ b)        = gtypeToPolyType a P* gtypeToPolyType b
 gtypeToPolyType (a G.⊕ b)        = gtypeToPolyType a P+ gtypeToPolyType b
 gtypeToPolyType (a G.⇒[ q ] b)   = gtypeToPolyType a P⇒[ q ] gtypeToPolyType b
 gtypeToPolyType (G.TEff a b)     = PEff (gtypeToPolyType a) (gtypeToPolyType b)
+gtypeToPolyType (G.GMu gf)       = Pμ-type (gtypeToPolyFunctor gf)
+
+gtypeToPolyFunctor (G.GFK g)      = PK (gtypeToPolyType g)
+gtypeToPolyFunctor G.GFId         = PId
+gtypeToPolyFunctor (G.GFSum f g)  = gtypeToPolyFunctor f P⊕ gtypeToPolyFunctor g
+gtypeToPolyFunctor (G.GFProd f g) = gtypeToPolyFunctor f P⊗ gtypeToPolyFunctor g
 
 ------------------------------------------------------------------------
 -- AllocStrategy: the two enums have identical constructors in

@@ -47,6 +47,7 @@ quantityToken Many = TCaretW
 -- | Print a GType as a canonical token stream with explicit parens
 -- around every compound type. Base types print as a single token.
 printGType : GType → List Token
+printGFunctor : G.GFunctor → List Token
 printGType G.TUnit   = TWord "Unit"   ∷ []
 printGType G.TVoid   = TWord "Void"   ∷ []
 printGType G.TInt    = TWord "Int"    ∷ []
@@ -62,6 +63,17 @@ printGType (A G.⇒[ q ] B) =
   TLParen ∷ printGType A ++ quantityToken q ∷ TArrow ∷ printGType B ++ TRParen ∷ []
 printGType (G.TEff A B) =
   TLParen ∷ TWord "Eff" ∷ printGType A ++ printGType B ++ TRParen ∷ []
+printGType (G.GMu gf) =
+  TWord "Mu" ∷ TLParen ∷ printGFunctor gf ++ TRParen ∷ []
+
+-- | Print a grammar-level functor (canonical, fully parenthesised).
+printGFunctor (G.GFK g) =
+  TLParen ∷ TWord "K" ∷ printGType g ++ TRParen ∷ []
+printGFunctor G.GFId = TWord "Id" ∷ []
+printGFunctor (G.GFSum f g) =
+  TLParen ∷ printGFunctor f ++ TPlus ∷ printGFunctor g ++ TRParen ∷ []
+printGFunctor (G.GFProd f g) =
+  TLParen ∷ printGFunctor f ++ TStar ∷ printGFunctor g ++ TRParen ∷ []
 
 ------------------------------------------------------------------------
 -- Round-trip theorems: parseGType ∘ printGType ≡ just
