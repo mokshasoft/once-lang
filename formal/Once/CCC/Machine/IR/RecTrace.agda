@@ -694,12 +694,11 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Key property: combines with layer-cap-bound to prove algebra fits
       slot-stays-in-budget : next-slot final-alloc ≤ next-slot alloc +ℕ layer-capacity wfF wfG alg
 
+      -- Heap mode: the layer can GROW the heap (Id positions recurse and build
+      -- nodes), so only heap-monotone holds — the old `heap-preserved`
+      -- (next-heap-ref final ≡ next-heap-ref alloc) was a stack-mode artifact,
+      -- false here, and removed.
       heap-monotone : next-heap-ref alloc ≤ next-heap-ref final-alloc
-      -- heap-preserved: For polynomial functors (K, Sum, Prod without Id), heap is unchanged.
-      -- This enables validity transfer during reclamation where we need frame+slot equality
-      -- but heap refs might differ. With heap-preserved, we can use frontier-same-heap.
-      -- Note: Id case delegates to algorithm which might allocate heap, marked SMP.!!
-      heap-preserved : next-heap-ref final-alloc ≡ next-heap-ref alloc
       -- Note: capacity-preserved removed in Phase 3 (frame-capacity removed from AllocState)
 
       -- Memory preservation: locations before frontier are unchanged
