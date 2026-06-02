@@ -374,7 +374,6 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
         -- slot-stays-in-budget: K doesn't allocate, final-alloc = alloc
         ; slot-stays-in-budget = m≤m+n (next-slot alloc) (layer-capacity (wf-K isBase) wfG alg)
         ; heap-monotone = ≤-refl
-        ; heap-preserved = refl  -- final-alloc = alloc, so heap unchanged
         ; mem-preserved = λ loc _ → exec-abstract-mov-to-output-preserves-mem s alloc loc
         -- Trace region bounds: mov-to-output writes/reads no slots
         ; trace-writes-above = tt
@@ -432,7 +431,6 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
         -- is derivable via CWF.heap-preserved-of. SMP.!! placeholder until the
         -- "stack-only sub-IR" precondition is wired through.
         ; heap-monotone = IRResultAWF.heap-monotone rec-result
-        ; heap-preserved = SMP.!!
         ; mem-preserved = irresult-mem-preserved rec-result
         -- Trace region bounds from IRResultAWF
         -- IRResultAWF uses max-slot-written as bound, which equals our max-slot-used
@@ -793,11 +791,11 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
                 alloc-setup-eq
                 (ProcessedLayerResult.heap-monotone l-result)
 
-        -- heap-preserved: chains through sub-result and setup-alloc equality
-        heap-preserved-inj1 : next-heap-ref alloc-after-sub ≡ next-heap-ref alloc
-        heap-preserved-inj1 =
-          trans (ProcessedLayerResult.heap-preserved l-result)
-                (cong next-heap-ref alloc-setup-eq)
+        -- heap GROWS through the sub-layer (heap mode); only monotonicity holds.
+        heap-mono-inj1 : next-heap-ref alloc ≤ next-heap-ref alloc-after-sub
+        heap-mono-inj1 =
+          subst (_≤ next-heap-ref alloc-after-sub) (cong next-heap-ref alloc-setup-eq)
+                (ProcessedLayerResult.heap-monotone l-result)
 
         -- Note: capacity-preserved-inj1 removed in Phase 3
 
@@ -944,7 +942,7 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
               bf-reclaimed = frontier-monotone alloc alloc-reclaimed
                                (sym frame-preserved-inj1)
                                reclaim-mono-inj1
-                               (subst (next-heap-ref alloc ≤_) (sym heap-preserved-inj1) ≤-refl)
+                               heap-mono-inj1
                                loc bf
               -- wrapper-trace preserves memory at bf-reclaimed locations
               mem-eq = wrapper-trace-mem-preserved wrapper-base s-after-sub alloc-reclaimed loc l-not-halted refl bf-reclaimed
@@ -1082,8 +1080,6 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; slot-stays-in-budget = slot-usage-and-budget-proof
         -- heap-monotone: heap unchanged by wrapper trace
         ; heap-monotone = subst (λ x → next-heap-ref alloc ≤ x) (sym wrapper-heap-preserved) heap-monotone-inj1
-        -- heap-preserved: chain through wrapper (preserves heap) and sub-result (heap-preserved-inj1)
-        ; heap-preserved = trans wrapper-heap-preserved heap-preserved-inj1
         -- mem-preserved: memory below original frontier preserved through full trace
         -- Chain: wrapper-mem-preserved ∘ mem-preserved-inj1
         -- wrapper-mem-preserved now takes BeforeFrontier alloc directly
@@ -1368,11 +1364,11 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
                 alloc-setup-eq
                 (ProcessedLayerResult.heap-monotone r-result)
 
-        -- heap-preserved: chains through sub-result and setup-alloc equality
-        heap-preserved-inj2 : next-heap-ref alloc-after-sub ≡ next-heap-ref alloc
-        heap-preserved-inj2 =
-          trans (ProcessedLayerResult.heap-preserved r-result)
-                (cong next-heap-ref alloc-setup-eq)
+        -- heap GROWS through the sub-layer (heap mode); only monotonicity holds.
+        heap-mono-inj2 : next-heap-ref alloc ≤ next-heap-ref alloc-after-sub
+        heap-mono-inj2 =
+          subst (_≤ next-heap-ref alloc-after-sub) (cong next-heap-ref alloc-setup-eq)
+                (ProcessedLayerResult.heap-monotone r-result)
 
         -- Note: capacity-preserved-inj2 removed in Phase 3
 
@@ -1518,7 +1514,7 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
               bf-reclaimed = frontier-monotone alloc alloc-reclaimed
                                (sym frame-preserved-inj2)
                                reclaim-mono-inj2
-                               (subst (next-heap-ref alloc ≤_) (sym heap-preserved-inj2) ≤-refl)
+                               heap-mono-inj2
                                loc bf
               -- wrapper-trace preserves memory at bf-reclaimed locations
               mem-eq = wrapper-trace-mem-preserved wrapper-base s-after-sub alloc-reclaimed loc r-not-halted refl bf-reclaimed
@@ -1648,8 +1644,6 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; slot-stays-in-budget = slot-usage-and-budget-proof-inj2
         -- heap-monotone: heap unchanged by wrapper trace
         ; heap-monotone = subst (λ x → next-heap-ref alloc ≤ x) (sym wrapper-heap-preserved) heap-monotone-inj2
-        -- heap-preserved: chain through wrapper (preserves heap) and sub-result (heap-preserved-inj2)
-        ; heap-preserved = trans wrapper-heap-preserved heap-preserved-inj2
         -- mem-preserved: memory below original frontier preserved through full trace
         ; mem-preserved = λ loc bf → trans (wrapper-mem-preserved loc bf) (mem-preserved-inj2 loc bf)
         -- Trace region bounds: full-trace = setup-trace ++ sub-trace ++ reclaim-wrapper-trace
@@ -1796,7 +1790,6 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; heap-monotone = subst (λ h → h ≤ next-heap-ref final-alloc) alloc-for-right-heap
                                 (ProcessedLayerResult.heap-monotone r-result)
         -- heap-preserved: chain through r-result.heap-preserved and alloc-for-right-heap
-        ; heap-preserved = trans (ProcessedLayerResult.heap-preserved r-result) alloc-for-right-heap
         ; mem-preserved = mem-preserved-proof
         ; trace-writes-above = trace-writes-above-proof
         ; trace-writes-below = trace-writes-below-proof
@@ -2639,14 +2632,9 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
         slot-mono-proof : next-slot alloc ≤ next-slot (IRResultAWF.final-alloc alg-result)
         slot-mono-proof = ≤-trans layer-slot-mono (IRResultAWF.slot-monotone alg-result)
 
-        -- heap-pres-proof: chain alg-result.heap-preserved + layer-heap-preserved.
-        -- alg-result runs on alloc-layer, so gives ≡ between alg-final and alloc-layer.
-        -- layer-heap-preserved gives ≡ between alloc-layer and alloc.
-        -- Plan 0.14 Phase B.0: IRResultAWF.heap-preserved removed; alg-result
-        -- comes from a stack-only sub-IR (heap-budget = 0), so derivable via
-        -- CWF.heap-preserved-of. SMP.!! placeholder pending the "stack-only" hypothesis.
-        heap-pres-proof : next-heap-ref (IRResultAWF.final-alloc alg-result) ≡ next-heap-ref alloc
-        heap-pres-proof = SMP.!!
+        -- (heap-pres-proof removed: it asserted heap is UNCHANGED, which is
+        -- false in heap mode — the algebra builds result nodes on the heap.
+        -- The heap-inv now tracks the real heap delta via cata-bump.)
 
         -- Note: cap-preserved-proof removed in Phase 3
 
@@ -2661,8 +2649,6 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
         -- For alloc-layer: use ProcessedLayerResult.heap-preserved
         -- For polynomial functors (K, Sum, Prod), heap is unchanged
-        layer-heap-preserved : next-heap-ref alloc-layer ≡ next-heap-ref alloc
-        layer-heap-preserved = ProcessedLayerResult.heap-preserved layer-result
 
         -- Memory preservation composition
         layer-mem-pres = ProcessedLayerResult.mem-preserved layer-result
@@ -2864,16 +2850,19 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
               ; scratch-budget = ir-scratch-requirement (Cata wfG alg)
               ; scratch-bounded = SMP.!!
               })
+            -- Heap mode: the cata GROWS the heap (the algebra's inl/inr build
+            -- result nodes), so heap-budget is the actual heap delta of
+            -- cata-bump, not 0.  (Was heap-budget=0 + a false heap-pres-proof.)
             (record
-              { heap-budget = 0
+              { heap-budget = next-heap-ref-delta cata-bump
               ; max-heap-ref-written = next-heap-ref (IRResultAWF.final-alloc alg-result)
-              ; bump-fits-heap-budget = SMP.!!     -- Plan 0.17.1 TODO
+              ; bump-fits-heap-budget = ≤-refl
               ; max-heap-ref-geq-final =
                   subst (_≤ next-heap-ref (IRResultAWF.final-alloc alg-result))
                     (cong next-heap-ref cata-final-alloc-eq) ≤-refl
-              ; max-heap-usage-bound = subst (next-heap-ref (IRResultAWF.final-alloc alg-result) ≤_)
-                  (sym (+-identityʳ (next-heap-ref alloc)))
-                  (≤-reflexive heap-pres-proof)
+              ; max-heap-usage-bound =
+                  ≤-reflexive (trans (cong next-heap-ref cata-final-alloc-eq)
+                                     (+-comm (next-heap-ref-delta cata-bump) (next-heap-ref alloc)))
               })
 
       in
