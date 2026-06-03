@@ -16,8 +16,10 @@ module Once.CCC.Target.X86-64.AbstractToX86 where
 open import Data.Nat using (ℕ; suc) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
 open import Data.List using (List; []; _∷_; _++_)
 
--- Plan 0.10 Phase B: SigOp dispatch.
-import Once.CCC.Target.X86-64.CodeGen.Compile as CompileX86-64
+-- Plan 0.10 Phase B: SigOp dispatch. Plan 0.30 cleanup: the two live
+-- emitters now live in CodeGen.Primitives (decoupled from the dead
+-- compile-ir in CodeGen.Compile).
+import Once.CCC.Target.X86-64.CodeGen.Primitives as CompileX86-64
 
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 
