@@ -1172,6 +1172,7 @@ module Simulation {FS : FrameSemantics} where
   -- Routes through `case-codegen-faithful-phase1` (named postulate
   -- alongside `sigop-codegen-faithful` above). Phase 5 replaces this
   -- with real dispatch + a proper proof.
+  instr-sim (instr-reg-op _) ls xs alloc not-halted corr = SMP.!!  -- Plan 0.29 M3: rbx/rsi not tracked by Corresponds yet
   instr-sim (instr-loop _) ls xs alloc not-halted corr = SMP.!!  -- Plan 0.29 M3: real exec-loop vs ud2 sentinel; fuel-Corresponds discharge
   instr-sim (instr-case-on-tag f g) ls xs alloc not-halted corr =
     case-codegen-faithful-phase1 f g ls xs alloc not-halted corr
@@ -1260,6 +1261,7 @@ module Simulation {FS : FrameSemantics} where
   exec-abstract-preserves-frame (instr-load-const _ _) ls alloc = refl
   exec-abstract-preserves-frame (instr-load-code-addr _) ls alloc = refl
   exec-abstract-preserves-frame instr-save-closure-reg ls alloc = refl
+  exec-abstract-preserves-frame (instr-reg-op _) ls alloc = refl
   exec-abstract-preserves-frame (instr-loop body) ls alloc = SMP.InstrPrimitives.exec-loop-preserves-frame 1000000 body ls alloc
   exec-abstract-preserves-frame (instr-case-on-tag _ _) ls alloc = refl
   exec-abstract-preserves-frame (instr-reclaim-to _) ls alloc = refl

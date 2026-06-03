@@ -359,6 +359,24 @@ writeReg-overwrite regs Input2 x y = refl
 writeReg-overwrite regs Output x y = refl
 writeReg-overwrite regs Scratch x y = refl
 
+-- Plan 0.29 (M5): register pokes for recursion-scheme loop bodies.
+data RegOp : Set where
+  scratch-one        : RegOp  -- Scratch := SV-Tag 1   (descend continue flag)
+  scratch-zero       : RegOp  -- Scratch := SV-Tag 0   (stop / break)
+  scratch-dec        : RegOp  -- Scratch := pred Scratch (ascend countdown)
+  scratch-load-count : RegOp  -- Scratch := Input2      (count → counter)
+  input2-zero        : RegOp  -- Input2  := SV-Tag 0    (descend tally init)
+  input2-inc         : RegOp  -- Input2  := succ Input2 (descend count++)
+
+-- Plan 0.29 (M5): SV-Tag counter arithmetic for instr-reg-op.
+sv-succ : ∀ {FS} → StoredValue FS → StoredValue FS
+sv-succ (SV-Tag n) = SV-Tag (suc n)
+sv-succ _          = SV-Tag 1
+
+sv-pred : ∀ {FS} → StoredValue FS → StoredValue FS
+sv-pred (SV-Tag (suc n)) = SV-Tag n
+sv-pred _                = SV-Tag 0
+
 ------------------------------------------------------------------------
 -- LocState: Abstract Machine State
 ------------------------------------------------------------------------
@@ -372,6 +390,22 @@ record LocState (FS : FrameSemantics) : Set where
     halted : Bool
 
 open LocState public
+
+-- Plan 0.29 (M5): LocState-only effect of a reg-op (alloc untouched —
+-- kept separate so `proj₂ (exec-abstract (instr-reg-op op)) ≡ alloc`
+-- holds uniformly, without case-splitting on `op`).
+setReg : ∀ {FS} → RegOp → Registers FS → Registers FS
+setReg scratch-one        r = writeReg r Scratch (SV-Tag 1)
+setReg scratch-zero       r = writeReg r Scratch (SV-Tag 0)
+setReg scratch-dec        r = writeReg r Scratch (sv-pred (readReg r Scratch))
+setReg scratch-load-count r = writeReg r Scratch (readReg r Input2)
+setReg input2-zero        r = writeReg r Input2 (SV-Tag 0)
+setReg input2-inc         r = writeReg r Input2 (sv-succ (readReg r Input2))
+
+-- Uniform record-update on `regs`: heapMem/stackMem/halted preserved
+-- definitionally for ANY op (the op case-split lives inside setReg).
+exec-reg-op : ∀ {FS} → RegOp → LocState FS → LocState FS
+exec-reg-op op s = record s { regs = setReg op (regs s) }
 
 ------------------------------------------------------------------------
 -- Allocation Mode
@@ -1004,6 +1038,12 @@ data AbstractInstr : Set where
   -- ctor-index stability.
   instr-loop : List AbstractInstr → AbstractInstr
 
+  -- Plan 0.29 (M5): register-only counter pokes for the recursion-scheme
+  -- loop bodies (Scratch = loop counter/flag, Input2 = descend tally).
+  -- No heap, no slot, frame-preserving — its whole cascade mirrors
+  -- `mov-to-output`. x86: mov/add/sub on rbx (Scratch) / rsi (Input2).
+  instr-reg-op : RegOp → AbstractInstr
+
 -- | A trace is a sequence of abstract instructions
 AbstractTrace : Set
 AbstractTrace = List AbstractInstr
@@ -1490,6 +1530,10 @@ module AbstractExec {FS : FrameSemantics} where
   -- counter, fuel-bounded (1e6 ≥ any real iteration count; out-of-fuel
   -- halts, matching the x86 `Semantics.exec` out-of-fuel `just s`).
   exec-abstract (instr-loop body) s alloc = exec-loop 1000000 body s alloc
+
+  -- Plan 0.29 (M5): register pokes (no heap, no slot, frame-preserving).
+  -- alloc is returned unchanged (uniform proj₂).
+  exec-abstract (instr-reg-op op) s alloc = exec-reg-op op s , alloc
 
   -- | Execute a trace (sequence of abstract instructions)
   -- Signature declared above with exec-abstract for mutual recursion.
