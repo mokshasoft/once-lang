@@ -271,6 +271,8 @@ data PolyBuiltinApp : Set where
   pba-case-applied : PolyBuiltinApp                     -- `RApp (RVar "case") _` head, check mode (copair)
   pba-curry : PolyBuiltinApp                            -- 1-arg `curry f`, check mode
   pba-apply : PolyBuiltinApp                            -- 1-arg `apply p`, infer / check mode
+  pba-In : PolyBuiltinApp                               -- 1-arg `In arg`, check mode (μ intro)
+  pba-cata : PolyBuiltinApp                             -- 1-arg `cata alg`, check mode (fold)
 
 -- | Classify an application head. `just <pba>` iff the head is an
 -- `RVar` bound to one of the seven polymorphic builtins; `nothing`
@@ -296,7 +298,11 @@ classifyAppHead (Raw.RVar x) with StrProp._≟_ x "id"
 ...                 | yes _ = just pba-curry
 ...                 | no  _ with StrProp._≟_ x "apply"
 ...                   | yes _ = just pba-apply
-...                   | no  _ = nothing
+...                   | no  _ with StrProp._≟_ x "In"
+...                     | yes _ = just pba-In
+...                     | no  _ with StrProp._≟_ x "cata"
+...                       | yes _ = just pba-cata
+...                       | no  _ = nothing
 -- Applied-form heads: `RApp (RVar "pair" | "compose") _`. Plan 0.6
 -- Phase C.7 POC-2 / POC-3.
 classifyAppHead (Raw.RApp (Raw.RVar x) _) with StrProp._≟_ x "pair"
@@ -352,6 +358,8 @@ data AppHeadView : RawExpr → Set where
   ahv-arr      : AppHeadView (Raw.RVar "arr")
   ahv-curry    : AppHeadView (Raw.RVar "curry")
   ahv-apply    : AppHeadView (Raw.RVar "apply")
+  ahv-In       : AppHeadView (Raw.RVar "In")
+  ahv-cata     : AppHeadView (Raw.RVar "cata")
   ahv-pair-applied    : ∀ {f'} → AppHeadView (Raw.RApp (Raw.RVar "pair") f')
   ahv-compose-applied : ∀ {f'} → AppHeadView (Raw.RApp (Raw.RVar "compose") f')
   ahv-case-applied    : ∀ {f'} → AppHeadView (Raw.RApp (Raw.RVar "case") f')
@@ -378,7 +386,11 @@ classifyAppHeadView (Raw.RVar x) with StrProp._≟_ x "id"
 ...                 | yes refl = ahv-curry
 ...                 | no  _ with StrProp._≟_ x "apply"
 ...                   | yes refl = ahv-apply
-...                   | no  _ = ahv-other
+...                   | no  _ with StrProp._≟_ x "In"
+...                     | yes refl = ahv-In
+...                     | no  _ with StrProp._≟_ x "cata"
+...                       | yes refl = ahv-cata
+...                       | no  _ = ahv-other
 classifyAppHeadView (Raw.RApp (Raw.RVar x) _) with StrProp._≟_ x "pair"
 ... | yes refl = ahv-pair-applied
 ... | no  _    with StrProp._≟_ x "compose"
@@ -498,7 +510,15 @@ classifyAppHead-nothing⇒view-other {Raw.RVar s} p | no _ | no _ | no _ | no _ 
   with StrProp._≟_ s "apply"
 ... | yes _ with p
 ...   | ()
-classifyAppHead-nothing⇒view-other {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ = refl
+classifyAppHead-nothing⇒view-other {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _
+  with StrProp._≟_ s "In"
+... | yes _ with p
+...   | ()
+classifyAppHead-nothing⇒view-other {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _
+  with StrProp._≟_ s "cata"
+... | yes _ with p
+...   | ()
+classifyAppHead-nothing⇒view-other {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ = refl
 
 -- Reverse bridge (Plan 0.4 T0 Option A): from view ≡ ahv-other to
 -- classifyAppHead ≡ nothing. Needed by `infer-sound`'s ahv-other
@@ -578,7 +598,15 @@ view-other⇒classifyAppHead-nothing {Raw.RVar s} p | no _ | no _ | no _ | no _ 
   with StrProp._≟_ s "apply"
 ... | yes refl with p
 ...   | ()
-view-other⇒classifyAppHead-nothing {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ = refl
+view-other⇒classifyAppHead-nothing {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _
+  with StrProp._≟_ s "In"
+... | yes refl with p
+...   | ()
+view-other⇒classifyAppHead-nothing {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _
+  with StrProp._≟_ s "cata"
+... | yes refl with p
+...   | ()
+view-other⇒classifyAppHead-nothing {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ = refl
 data BareBuiltinClass : String → Set where
   bbc-id       : BareBuiltinClass "id"
   bbc-fst      : BareBuiltinClass "fst"

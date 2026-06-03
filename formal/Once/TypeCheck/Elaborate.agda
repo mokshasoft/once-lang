@@ -56,6 +56,9 @@ open import Once.Surface.Properties using (+ᵘ-identityˡ; +ᵘ-identityʳ; *�
 open import Once.Surface.Elaborate as Elab using (elaborate)
 
 open import Once.TypeCheck.Classify public
+import Once.Functor.Translate
+open import Once.Functor.Decide using (wellFormedF?)
+open import Once.TypeCheck.Morph using (MorphRaw; morphRaw?; morphToIR)
 open import Once.TypeCheck.Judgment
 
 ------------------------------------------------------------------------
@@ -743,6 +746,33 @@ mutual
              → VerifiedCheckResult ctx (Raw.RApp (Raw.RVar "curry") arg) T
   checkApply : (ctx : NamedCtx) → (arg : RawExpr) → (T : Type)
              → VerifiedCheckResult ctx (Raw.RApp (Raw.RVar "apply") arg) T
+  -- Recursion-scheme generators (Plan 0.28 Commit 2). The `…Go`/`…A/B/C`
+  -- helpers take each decidable result as an explicit argument with its
+  -- `refl` witness (no `with … in`), so the completeness fallbacks
+  -- reduce them with plain nested `with | eq` — like `checkPair`.
+  checkIn : (ctx : NamedCtx) → (arg : RawExpr) → (T : Type)
+          → VerifiedCheckResult ctx (Raw.RApp (Raw.RVar "In") arg) T
+  checkInGo : (ctx : NamedCtx) (arg : RawExpr) (F : Once.Type.Functor)
+            → (mw : Maybe (Once.Functor.Translate.WellFormedF F))
+            → wellFormedF? F ≡ mw
+            → VerifiedCheckResult ctx (Raw.RApp (Raw.RVar "In") arg) (Once.Type.μ-type F)
+  checkCata : (ctx : NamedCtx) → (arg : RawExpr) → (T : Type)
+            → VerifiedCheckResult ctx (Raw.RApp (Raw.RVar "cata") arg) T
+  checkCataA : (ctx : NamedCtx) (alg : RawExpr) (F : Once.Type.Functor) (A : Type)
+             → (mm : Maybe (MorphRaw alg)) → morphRaw? alg ≡ mm
+             → VerifiedCheckResult ctx (Raw.RApp (Raw.RVar "cata") alg)
+                                       (Once.Type.μ-type F Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] A)
+  checkCataB : (ctx : NamedCtx) (alg : RawExpr) (F : Once.Type.Functor) (A : Type)
+             → (mr : MorphRaw alg) → morphRaw? alg ≡ just mr
+             → (mw : Maybe (Once.Functor.Translate.WellFormedF F)) → wellFormedF? F ≡ mw
+             → VerifiedCheckResult ctx (Raw.RApp (Raw.RVar "cata") alg)
+                                       (Once.Type.μ-type F Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] A)
+  checkCataC : (ctx : NamedCtx) (alg : RawExpr) (F : Once.Type.Functor) (A : Type)
+             → (mr : MorphRaw alg) → morphRaw? alg ≡ just mr
+             → (wfF : Once.Functor.Translate.WellFormedF F) → wellFormedF? F ≡ just wfF
+             → (ma : Maybe (IR (Once.Type.⟦ F ⟧T A) A)) → morphToIR mr (Once.Type.⟦ F ⟧T A) A ≡ ma
+             → VerifiedCheckResult ctx (Raw.RApp (Raw.RVar "cata") alg)
+                                       (Once.Type.μ-type F Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] A)
 
   -- Plan 0.4 T0 Option A: hoist the `ahv-other` (generic application)
   -- branch of `inferElab RApp` into its own top-level mutual member.
@@ -1195,6 +1225,41 @@ mutual
   checkApply ctx arg T | success (Once.Type.μ-type _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
   checkApply ctx arg T | success (Once.Type.ν-type _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
 
+  -- Plan 0.28 Commit 2: `In arg` (μ-introduction) check-mode at `μ-type F`.
+  -- Read F from the expected μ-type, gate on `wellFormedF? F` (threaded
+  -- through `checkInGo`), check the argument at the functor layer, emit
+  -- `morph-app (IR.In wfF Heap) argE`.
+  checkIn ctx arg (Once.Type.μ-type F) = checkInGo ctx arg F (wellFormedF? F) refl
+  checkIn _ _ _ = failure (BuiltinTypeMismatch "In") , tt
+
+  checkInGo ctx arg F nothing _ = failure (BuiltinTypeMismatch "In") , tt
+  checkInGo ctx arg F (just wfF) eqW with checkElabV ctx arg (⟦ F ⟧T (Once.Type.μ-type F))
+  ... | failure err , _ = failure err , tt
+  ... | success Ψ argE d fr , wArg =
+        success _ (Surface.morph-app (IR.In wfF IR.Heap) argE) (suc d) fr , t-In-app-check eqW wArg
+
+  -- Plan 0.28 Commit 2: `cata alg` (catamorphism) check-mode at
+  -- `μ-type F ⇒[Many] A`. The algebra is compiled by the self-contained
+  -- `morphRaw?`/`morphToIR` (no elaborator extraction); the three
+  -- decidable results are threaded through `checkCataA/B/C` so the
+  -- witness carries the equations and completeness reduces cleanly.
+  -- Emits `lift-morphism (IR.Cata wfF algIR)`.
+  checkCata ctx alg (Once.Type.μ-type F Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] A) =
+    checkCataA ctx alg F A (morphRaw? alg) refl
+  checkCata _ _ _ = failure (BuiltinTypeMismatch "cata") , tt
+
+  checkCataA ctx alg F A nothing _ = failure (BuiltinTypeMismatch "cata") , tt
+  checkCataA ctx alg F A (just mr) eqM = checkCataB ctx alg F A mr eqM (wellFormedF? F) refl
+
+  checkCataB ctx alg F A mr eqM nothing _ = failure (BuiltinTypeMismatch "cata") , tt
+  checkCataB ctx alg F A mr eqM (just wfF) eqW =
+    checkCataC ctx alg F A mr eqM wfF eqW (morphToIR mr (⟦ F ⟧T A) A) refl
+
+  checkCataC ctx alg F A mr eqM wfF eqW nothing _ = failure (BuiltinTypeMismatch "cata") , tt
+  checkCataC ctx alg F A mr eqM wfF eqW (just algIR) eqI =
+    success _ (Surface.lift-morphism (IR.Cata wfF algIR)) 1 (NamedCtx.freshCounter ctx)
+      , t-cata-check eqM eqW eqI
+
   -- Body for the hoisted `ahv-other` (generic application) branch.
   inferElab-RApp-other ctx f x with asFun (inferElab ctx f)
   ... | notFun err = failure err
@@ -1586,6 +1651,8 @@ mutual
   inferElabV-RApp-dispatch ctx f arg ahv-pair-applied    _ = failure (BuiltinTypeMismatch "pair") , tt
   inferElabV-RApp-dispatch ctx f arg ahv-compose-applied _ = failure (BuiltinTypeMismatch "compose") , tt
   inferElabV-RApp-dispatch ctx f arg ahv-case-applied    _ = failure (BuiltinTypeMismatch "case") , tt
+  inferElabV-RApp-dispatch ctx f arg ahv-In              _ = failure (BuiltinTypeMismatch "In") , tt
+  inferElabV-RApp-dispatch ctx f arg ahv-cata            _ = failure (BuiltinTypeMismatch "cata") , tt
   inferElabV-RApp-dispatch ctx f arg ahv-curry           _ = failure (BuiltinTypeMismatch "curry") , tt
   -- ahv-other : generic application via `inferElabV-RApp-other`.
   inferElabV-RApp-dispatch ctx f arg ahv-other _ = inferElabV-RApp-other ctx f arg
@@ -1672,6 +1739,8 @@ mutual
   checkElabV-RApp-dispatch ctx f arg T ahv-pair-applied _ = checkPair ctx f arg T
   checkElabV-RApp-dispatch ctx f arg T ahv-compose-applied _ = checkCompose ctx f arg T
   checkElabV-RApp-dispatch ctx f arg T ahv-case-applied _ = checkCase ctx f arg T
+  checkElabV-RApp-dispatch ctx f arg T ahv-In _ = checkIn ctx arg T
+  checkElabV-RApp-dispatch ctx f arg T ahv-cata _ = checkCata ctx arg T
   checkElabV-RApp-dispatch ctx f arg T ahv-curry _ = checkCurry ctx arg T
   checkElabV-RApp-dispatch ctx f arg T ahv-apply _ = checkApply ctx arg T
   -- ahv-other: try infer-then-match; on failure, arg-driven application.
@@ -2472,6 +2541,96 @@ checkElab-fallback-RApp-case {ctx} f g A B C eq_f eq_g
 ...       | just _  | nothing = _ , _ , _ , refl
 ...       | nothing | just _  = _ , _ , _ , refl
 ...       | nothing | nothing = _ , _ , _ , refl
+
+-- Plan 0.28 Commit 2: J-bridges aligning the elaborator's
+-- `checkInGo`/`checkCata{A,B,C}` (called with the live decidable result
+-- + `refl`) with a specific `just`-branch + its equation. Same shape as
+-- `checkComposeWithB-J`: pattern-matching the explicit result arg as
+-- `.(decider …) refl` collapses both sides to the same call.
+checkInGo-J :
+  ∀ (ctx : NamedCtx) (arg : RawExpr) (F : Once.Type.Functor)
+    (mw : Maybe (Once.Functor.Translate.WellFormedF F)) (eq : wellFormedF? F ≡ mw)
+  → Data.Product.proj₁ (checkInGo ctx arg F (wellFormedF? F) refl)
+      ≡ Data.Product.proj₁ (checkInGo ctx arg F mw eq)
+checkInGo-J ctx arg F .(wellFormedF? F) refl = refl
+
+checkCataA-J :
+  ∀ (ctx : NamedCtx) (alg : RawExpr) (F : Once.Type.Functor) (A : Type)
+    (mm : Maybe (MorphRaw alg)) (eq : morphRaw? alg ≡ mm)
+  → Data.Product.proj₁ (checkCataA ctx alg F A (morphRaw? alg) refl)
+      ≡ Data.Product.proj₁ (checkCataA ctx alg F A mm eq)
+checkCataA-J ctx alg F A .(morphRaw? alg) refl = refl
+
+checkCataB-J :
+  ∀ (ctx : NamedCtx) (alg : RawExpr) (F : Once.Type.Functor) (A : Type)
+    (mr : MorphRaw alg) (eqM : morphRaw? alg ≡ just mr)
+    (mw : Maybe (Once.Functor.Translate.WellFormedF F)) (eq : wellFormedF? F ≡ mw)
+  → Data.Product.proj₁ (checkCataB ctx alg F A mr eqM (wellFormedF? F) refl)
+      ≡ Data.Product.proj₁ (checkCataB ctx alg F A mr eqM mw eq)
+checkCataB-J ctx alg F A mr eqM .(wellFormedF? F) refl = refl
+
+checkCataC-J :
+  ∀ (ctx : NamedCtx) (alg : RawExpr) (F : Once.Type.Functor) (A : Type)
+    (mr : MorphRaw alg) (eqM : morphRaw? alg ≡ just mr)
+    (wfF : Once.Functor.Translate.WellFormedF F) (eqW : wellFormedF? F ≡ just wfF)
+    (ma : Maybe (IR (Once.Type.⟦ F ⟧T A) A)) (eq : morphToIR mr (Once.Type.⟦ F ⟧T A) A ≡ ma)
+  → Data.Product.proj₁ (checkCataC ctx alg F A mr eqM wfF eqW (morphToIR mr (Once.Type.⟦ F ⟧T A) A) refl)
+      ≡ Data.Product.proj₁ (checkCataC ctx alg F A mr eqM wfF eqW ma eq)
+checkCataC-J ctx alg F A mr eqM wfF eqW .(morphToIR mr (Once.Type.⟦ F ⟧T A) A) refl = refl
+
+-- Plan 0.28 Commit 2: applied `In arg` (μ intro) check-mode at
+-- `μ-type F`. Given the well-formedness equation + the argument's
+-- check-mode success, `checkInGo` reduces to the `morph-app (IR.In …)`
+-- emission (via the J-bridge + a plain-`with` success lemma).
+checkInGo-just-success :
+  ∀ (ctx : NamedCtx) (arg : RawExpr) (F : Once.Type.Functor)
+    (wfF : Once.Functor.Translate.WellFormedF F) (eqW : wellFormedF? F ≡ just wfF)
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {argE : SExpr (NamedCtx.debruijn ctx) Ψ (Once.Type.⟦ F ⟧T (Once.Type.μ-type F))}
+    {d fr : ℕ}
+  → checkElab ctx arg (Once.Type.⟦ F ⟧T (Once.Type.μ-type F)) ≡ success Ψ argE d fr
+  → ∃-syntax (λ eE → ∃-syntax (λ d' → ∃-syntax (λ fr' →
+      Data.Product.proj₁ (checkInGo ctx arg F (just wfF) eqW)
+        ≡ success (Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ)) eE d' fr')))
+checkInGo-just-success ctx arg F wfF eqW eqArg
+  with checkElabV ctx arg (Once.Type.⟦ F ⟧T (Once.Type.μ-type F)) | eqArg
+... | success _ _ _ _ , _ | refl = _ , _ , _ , refl
+
+checkElab-fallback-RApp-In :
+  ∀ {ctx : NamedCtx} (arg : RawExpr) (F : Once.Type.Functor)
+    {wfF : Once.Functor.Translate.WellFormedF F}
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {argE : SExpr (NamedCtx.debruijn ctx) Ψ (Once.Type.⟦ F ⟧T (Once.Type.μ-type F))}
+    {d fr : ℕ}
+  → wellFormedF? F ≡ just wfF
+  → checkElab ctx arg (Once.Type.⟦ F ⟧T (Once.Type.μ-type F)) ≡ success Ψ argE d fr
+  → ∃-syntax (λ eE → ∃-syntax (λ d' → ∃-syntax (λ fr' →
+      checkElab ctx (Raw.RApp (Raw.RVar "In") arg) (Once.Type.μ-type F)
+        ≡ success (Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ)) eE d' fr')))
+checkElab-fallback-RApp-In {ctx} arg F {wfF} eqWF eqArg =
+  let (_ , _ , _ , eqGo) = checkInGo-just-success ctx arg F wfF eqWF eqArg
+  in _ , _ , _ , trans (checkInGo-J ctx arg F (just wfF) eqWF) eqGo
+
+-- Plan 0.28 Commit 2: applied `cata alg` (fold) check-mode at
+-- `μ-type F ⇒[Many] A`. The algebra is compiled syntactically, so the
+-- three decidable equations fully determine `checkCata`'s reduction —
+-- chained through the three J-bridges.
+checkElab-fallback-RApp-cata :
+  ∀ {ctx : NamedCtx} (alg : RawExpr) (F : Once.Type.Functor) (A : Type)
+    {mr : MorphRaw alg} {wfF : Once.Functor.Translate.WellFormedF F}
+    {algIR : IR (Once.Type.⟦ F ⟧T A) A}
+  → morphRaw? alg ≡ just mr
+  → wellFormedF? F ≡ just wfF
+  → morphToIR mr (Once.Type.⟦ F ⟧T A) A ≡ just algIR
+  → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ fr →
+      checkElab ctx (Raw.RApp (Raw.RVar "cata") alg)
+                    (Once.Type.μ-type F Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] A)
+        ≡ success Surface.zeroUsage eE d fr)))
+checkElab-fallback-RApp-cata {ctx} alg F A {mr} {wfF} {algIR} eqMR eqWF eqIR =
+  _ , _ , _ ,
+  trans (checkCataA-J ctx alg F A (just mr) eqMR)
+  (trans (checkCataB-J ctx alg F A mr eqMR (just wfF) eqWF)
+         (checkCataC-J ctx alg F A mr eqMR wfF eqWF (just algIR) eqIR))
 
 -- Plan 0.4 T2 follow-up (rule-split, 2026-05-03): checkCompose now
 -- requires composeArgB-resolved B; the proof composes the two
