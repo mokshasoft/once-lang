@@ -242,6 +242,14 @@ compile-abstract (instr-case-on-tag _ _) =
 compile-abstract (instr-loop _) =
   ud2 ∷ []
 
+-- Plan 0.29 (M5): register pokes. Scratch=rbx, Input2=rsi.
+compile-abstract (instr-reg-op scratch-one)        = mov (reg rbx) (imm 1) ∷ []
+compile-abstract (instr-reg-op scratch-zero)       = mov (reg rbx) (imm 0) ∷ []
+compile-abstract (instr-reg-op scratch-dec)        = sub (reg rbx) (imm 1) ∷ []
+compile-abstract (instr-reg-op scratch-load-count) = mov (reg rbx) (reg rsi) ∷ []
+compile-abstract (instr-reg-op input2-zero)        = mov (reg rsi) (imm 0) ∷ []
+compile-abstract (instr-reg-op input2-inc)         = add (reg rsi) (imm 1) ∷ []
+
 ------------------------------------------------------------------------
 -- Trace compilation: compile a whole trace to x86
 --

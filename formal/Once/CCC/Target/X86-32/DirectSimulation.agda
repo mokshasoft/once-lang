@@ -1079,6 +1079,7 @@ module Simulation {FS : FrameSemantics} where
   instr-sim (instr-alloc-heap n) ls xs alloc not-halted corr =
     alloc-heap-codegen-faithful-32 n ls xs alloc not-halted corr
 
+  instr-sim (instr-reg-op _) ls xs alloc not-halted corr = SMP.!!  -- Plan 0.29 M3: rbx/rsi not tracked by Corresponds yet
   instr-sim (instr-loop _) ls xs alloc not-halted corr = SMP.!!  -- Plan 0.29 M3: real exec-loop vs ud2 sentinel; fuel-Corresponds discharge
   instr-sim (instr-case-on-tag f g) ls xs alloc not-halted corr =
     case-codegen-faithful-phase1-32 f g ls xs alloc not-halted corr
@@ -1167,6 +1168,7 @@ module Simulation {FS : FrameSemantics} where
   exec-abstract-preserves-frame instr-save-closure-reg ls alloc = refl
   exec-abstract-preserves-frame (instr-load-tag-lit _) ls alloc = refl
   exec-abstract-preserves-frame (instr-alloc-heap _) ls alloc = refl
+  exec-abstract-preserves-frame (instr-reg-op _) ls alloc = refl
   exec-abstract-preserves-frame (instr-loop body) ls alloc = SMP.InstrPrimitives.exec-loop-preserves-frame 1000000 body ls alloc
   exec-abstract-preserves-frame (instr-case-on-tag _ _) ls alloc = refl
 
