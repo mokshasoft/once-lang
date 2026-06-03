@@ -38,7 +38,12 @@ open import Relation.Binary.PropositionalEquality using (_≡_)
 
 import Once.Type
 open Once.Type using (Type; Unit; Int; Str; Void; Float; Buffer;
-                      _*_; _+_; _⇒[_]_; Quantity)
+                      _*_; _+_; _⇒[_]_; Quantity;
+                      Functor; μ-type; ⟦_⟧T)
+open import Once.Functor.Translate using (WellFormedF)
+open import Once.Functor.Decide using (wellFormedF?)
+open import Once.CCC.IR using (IR)
+open import Once.TypeCheck.Morph using (MorphRaw; morphRaw?; morphToIR)
 open import Data.Bool using (true)
 open import Relation.Nullary using (¬_)
 open import Once.TypeCheck.Raw as Raw
@@ -379,6 +384,37 @@ mutual
                                  ∶ ((A Once.Type.+ B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C)
                                  ⨾ ((Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ₁))
                                      Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ₂))
+
+    -- | Applied `In arg` (μ-introduction) in check mode at `μ-type F`.
+    -- Plan 0.28 Commit 2. Reads `F` from the expected `μ-type F`, checks
+    -- the argument at the functor layer `⟦F⟧T (μ-type F)`, and gates on
+    -- the well-formedness decider (so the rule fires iff `IR.In` does).
+    -- Emits `morph-app (IR.In wfF Heap) argE` — usage as `inl`-app.
+    t-In-app-check : ∀ {ctx : NamedCtx} {arg : RawExpr} {F : Functor}
+                     {wfF : WellFormedF F}
+                     {Ψ : Surface.Usage (NamedCtx.size ctx)}
+                   → wellFormedF? F ≡ just wfF
+                   → ctx ⊢ᶜ arg ∶ ⟦ F ⟧T (μ-type F) ⨾ Ψ
+                   → ctx ⊢ᶜ RApp (RVar "In") arg ∶ μ-type F
+                           ⨾ (Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ))
+
+    -- | Applied `cata alg` (catamorphism) in check mode at the canonical
+    -- `μ-type F ⇒[Many] A` shape. Plan 0.28 Commit 2. The algebra is a
+    -- closed point-free morphism: `morphRaw?`/`morphToIR` (a self-
+    -- contained syntactic compiler in `Once.TypeCheck.Morph`) recognise
+    -- it and produce the closed `IR (⟦F⟧T A) A`; the rule's premises are
+    -- the decidable equations, so completeness is total + postulate-free
+    -- (the IR comes from `morphToIR`, not from extracting the
+    -- elaboration). Emits `lift-morphism (IR.Cata wfF algIR)`.
+    t-cata-check : ∀ {ctx : NamedCtx} {alg : RawExpr} {F : Functor} {A : Type}
+                   {mr : MorphRaw alg} {wfF : WellFormedF F}
+                   {algIR : IR (⟦ F ⟧T A) A}
+                 → morphRaw? alg ≡ just mr
+                 → wellFormedF? F ≡ just wfF
+                 → morphToIR mr (⟦ F ⟧T A) A ≡ just algIR
+                 → ctx ⊢ᶜ RApp (RVar "cata") alg
+                         ∶ (μ-type F Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] A)
+                         ⨾ Surface.zeroUsage
 
     -- | Applied `compose f g` in check mode at `A ⇒[Many] C`. Plan
     -- 0.6 Phase C.7 POC-3. Intermediate type B is inferred from g.
