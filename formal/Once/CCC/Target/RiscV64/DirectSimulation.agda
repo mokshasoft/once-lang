@@ -1136,10 +1136,12 @@ module Simulation {FS : FrameSemantics} where
   instr-sim (instr-alloc-heap n) ls rs alloc not-halted corr =
     alloc-heap-codegen-faithful-rv n ls rs alloc not-halted corr
 
-  instr-sim (instr-reg-op _) ls rs alloc not-halted corr = SMP.!!  -- Plan 0.29 M3: rbx/rsi not tracked by Corresponds yet
-  instr-sim (instr-loop _) ls rs alloc not-halted corr = SMP.!!  -- Plan 0.29 M3: real exec-loop vs ud2 sentinel; fuel-Corresponds discharge
-  instr-sim (instr-case-on-tag f g) ls rs alloc not-halted corr =
-    case-codegen-faithful-phase1-rv f g ls rs alloc not-halted corr
+  -- Plan 0.30: control-flow instrs — honest holes (see X86-64 note).
+  -- The old `case-codegen-faithful-phase1-rv` postulate is now false
+  -- (abstract branches, straight-line target sentinel halts).
+  instr-sim (instr-reg-op _) ls rs alloc not-halted corr = SMP.!!
+  instr-sim (instr-loop _) ls rs alloc not-halted corr = SMP.!!
+  instr-sim (instr-case-on-tag f g) ls rs alloc not-halted corr = SMP.!!
 
   -- instr-reclaim-to: no-op in rv64 (compiles to empty)
   -- Abstract: only updates alloc.next-slot, ls unchanged

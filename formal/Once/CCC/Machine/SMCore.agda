@@ -1313,6 +1313,13 @@ module AbstractExec {FS : FrameSemantics} where
   ------------------------------------------------------------------------
 
   -- | Execute one abstract instruction
+  -- Plan 0.30: read the scrutinee tag at `*Input1` (a heap/stack cell).
+  -- Non-recursive (no exec call), so defined ahead of the mutual block.
+  case-tag-at : LocState FS → Maybe (StoredValue FS)
+  case-tag-at s with sv-as-loc (readReg (regs s) Input1)
+  ... | just loc = readLoc s loc
+  ... | nothing  = nothing
+
   -- Plan 0.13.1: mutually recursive with exec-trace (case-on-tag
   -- dispatches into one of two sub-traces).
   exec-abstract : AbstractInstr → LocState FS → AllocState {FS} →
@@ -1329,6 +1336,12 @@ module AbstractExec {FS : FrameSemantics} where
   -- argument the x86 `Semantics.exec` fuel model relies on.
   exec-loop : ℕ → AbstractTrace → LocState FS → AllocState {FS} →
               LocState FS × AllocState {FS}
+  -- Plan 0.30: branch dispatcher for case-on-tag. Mutually recursive with
+  -- exec-trace (it runs one of the two sub-traces). Split off as a named
+  -- helper (rather than an inline `with`) so external proofs can case on
+  -- the tag read explicitly — see SMPrimitives' instruction-or-trace lift.
+  exec-case-dispatch : Maybe (StoredValue FS) → AbstractTrace → AbstractTrace →
+                       LocState FS → AllocState {FS} → LocState FS × AllocState {FS}
 
   -- mov-to-output: Output := Input1
   exec-abstract mov-to-output s alloc =
@@ -1503,15 +1516,15 @@ module AbstractExec {FS : FrameSemantics} where
   exec-abstract (instr-load-tag-lit n) s alloc =
     record s { regs = writeReg (regs s) Output (SV-Tag n) } , alloc
 
-  -- Plan 0.13.1 Phase 1: case-on-tag — TEMPORARILY halts at the
-  -- abstract level. Making this tag-aware (dispatching into f or g
-  -- based on `*Input1`) requires lifting ~12 SMPrimitives lemmas
-  -- (TraceNoHeapWrites, instr-writes-slot, InstrPreservesFrame,
-  -- etc.) from "per-instruction" to "instruction-or-trace" shape,
-  -- since case-on-tag's effect becomes the union of two sub-traces.
-  -- See Plan 0.13.1 Phase 1.5 for the coordinated lift.
+  -- Plan 0.30: case-on-tag now BRANCHES on the scrutinee tag at `*Input1`,
+  -- matching the x86 `compile-trace-cnt` dispatch
+  --   `cmp [rdi],0 ; je inl ; <g> ; jmp end ; inl: <f>`:
+  -- tag 0 → f (inl), tag ≥ 1 → g (inr), malformed scrutinee → halt.
+  -- `f`/`g` are strict subterms, so the exec-trace recursion is
+  -- structural (no new TERMINATING). This makes `exec-loop` fold a
+  -- heap-μ-value for real (see Examples.AbstractCataFold).
   exec-abstract (instr-case-on-tag f g) s alloc =
-    record s { halted = true } , alloc
+    exec-case-dispatch (case-tag-at s) f g s alloc
 
   -- Plan 0.14: heap allocation routed through the abstract-allocator
   -- interface (Once.Allocator.AbstractInstance). The `next-heap-ref`
@@ -1567,6 +1580,15 @@ module AbstractExec {FS : FrameSemantics} where
                                      { current-frame = current-frame alloc
                                      ; next-slot     = next-slot alloc }
                      in exec-loop n body s'' alloc''
+
+  -- Plan 0.30: dispatch on the tag read. tag 0 → f, tag ≥ 1 → g,
+  -- anything else (no pointer / non-tag cell) → halt (malformed input).
+  exec-case-dispatch (just (SV-Tag 0))       f g s alloc = exec-trace f s alloc
+  exec-case-dispatch (just (SV-Tag (suc _))) f g s alloc = exec-trace g s alloc
+  exec-case-dispatch (just (SV-Ptr _))       f g s alloc = record s { halted = true } , alloc
+  exec-case-dispatch (just (SV-Lit _ _))     f g s alloc = record s { halted = true } , alloc
+  exec-case-dispatch (just (SV-Code _))      f g s alloc = record s { halted = true } , alloc
+  exec-case-dispatch nothing                 f g s alloc = record s { halted = true } , alloc
 
 
   -- | Reduction lemma: when not halted, exec-trace reduces

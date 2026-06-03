@@ -647,18 +647,12 @@ module Simulation {FS : FrameSemantics} where
                   (exec-prog (compile-abstract (instr-sigop si)) xs (current-frame alloc))
                   (proj₂ (exec-abstract (instr-sigop si) ls alloc))
 
-    -- Plan 0.13.1 Phase 1: case-on-tag — both sides halt.
-    -- Mechanical proof gap (record-update eta misalignment); Phase 5
-    -- supersedes by emitting real branches and proving correspondence
-    -- through the meta-tag-driven branch.
-    case-codegen-faithful-phase1 :
-      ∀ (f g : AbstractTrace) (ls : LocState FS) (xs : X86State)
-        (alloc : AllocState {FS}) →
-      halted ls ≡ false →
-      Corresponds ls xs alloc →
-      Corresponds (proj₁ (exec-abstract (instr-case-on-tag f g) ls alloc))
-                  (exec-prog (compile-abstract (instr-case-on-tag f g)) xs (current-frame alloc))
-                  (proj₂ (exec-abstract (instr-case-on-tag f g) ls alloc))
+    -- Plan 0.30: `case-codegen-faithful-phase1` REMOVED. It asserted a
+    -- per-instruction Corresponds for case-on-tag in the straight-line
+    -- `exec-prog` model; once the abstract machine branches, that is a
+    -- FALSE statement (abstract branches, x86 `ud2` sentinel halts).
+    -- Replaced by an honest `SMP.!!` hole pending the structured
+    -- fuel-induction simulation (Plan 0.30 N5).
 
     -- Plan 0.11: const literal codegen↔abstract correspondence.
     -- Per-primitive immediate load. Trusted-base axiom: the encoding
@@ -1167,15 +1161,21 @@ module Simulation {FS : FrameSemantics} where
   ... | true  | ()
   ... | false | _ = corr
 
-  -- Plan 0.13.1 Phase 1: case-on-tag — both sides halt.
-  -- Abstract: instr-case-on-tag halts ls. x86: ud2 sets x86-halted = true.
-  -- Routes through `case-codegen-faithful-phase1` (named postulate
-  -- alongside `sigop-codegen-faithful` above). Phase 5 replaces this
-  -- with real dispatch + a proper proof.
-  instr-sim (instr-reg-op _) ls xs alloc not-halted corr = SMP.!!  -- Plan 0.29 M3: rbx/rsi not tracked by Corresponds yet
-  instr-sim (instr-loop _) ls xs alloc not-halted corr = SMP.!!  -- Plan 0.29 M3: real exec-loop vs ud2 sentinel; fuel-Corresponds discharge
-  instr-sim (instr-case-on-tag f g) ls xs alloc not-halted corr =
-    case-codegen-faithful-phase1 f g ls xs alloc not-halted corr
+  -- Plan 0.30: case-on-tag / instr-loop are CONTROL-FLOW instructions.
+  -- The abstract machine now BRANCHES/LOOPS (exec-case-dispatch / exec-loop),
+  -- but this per-instruction simulation runs the x86 side via `exec-prog`
+  -- (straight-line, `compile-abstract` emits a `ud2` sentinel that halts).
+  -- A straight-line evaluator cannot model control flow, so a real
+  -- per-instruction `Corresponds` here is impossible — and the old
+  -- `case-codegen-faithful-phase1` postulate, true when both sides halted,
+  -- is now FALSE (abstract branches, x86 sentinel halts). Honest holes
+  -- until the structured fuel-induction simulation (Plan 0.30 N5) — which
+  -- recurses on the AbstractTrace, mirroring exec-loop/exec-case-dispatch
+  -- 1-to-1 and reusing the leaf per-instruction Corresponds — replaces
+  -- all three at once.
+  instr-sim (instr-reg-op _) ls xs alloc not-halted corr = SMP.!!
+  instr-sim (instr-loop _) ls xs alloc not-halted corr = SMP.!!
+  instr-sim (instr-case-on-tag f g) ls xs alloc not-halted corr = SMP.!!
 
   instr-sim (instr-load-tag-lit n) ls xs alloc not-halted corr =
     load-tag-lit-codegen-faithful n ls xs alloc not-halted corr
@@ -1263,7 +1263,10 @@ module Simulation {FS : FrameSemantics} where
   exec-abstract-preserves-frame instr-save-closure-reg ls alloc = refl
   exec-abstract-preserves-frame (instr-reg-op _) ls alloc = refl
   exec-abstract-preserves-frame (instr-loop body) ls alloc = SMP.InstrPrimitives.exec-loop-preserves-frame 1000000 body ls alloc
-  exec-abstract-preserves-frame (instr-case-on-tag _ _) ls alloc = refl
+  -- Plan 0.30: case-on-tag branches → delegate to the SMPrimitives mutual
+  -- frame lemma (exec-case-dispatch-preserves-frame under the hood).
+  exec-abstract-preserves-frame (instr-case-on-tag f g) ls alloc =
+    SMP.InstrPrimitives.exec-abstract-preserves-frame (instr-case-on-tag f g) ls alloc
   exec-abstract-preserves-frame (instr-reclaim-to _) ls alloc = refl
   exec-abstract-preserves-frame (instr-load-tag-lit _) ls alloc = refl
   exec-abstract-preserves-frame (instr-alloc-heap _) ls alloc = refl
