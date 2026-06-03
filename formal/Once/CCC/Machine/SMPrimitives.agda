@@ -422,10 +422,10 @@ data InstrNoHeapWrite : AbstractInstr → Set where
   -- Plan 0.2.4.2 Phase A: code-addr load only writes Output register
   nhw-instr-load-code-addr : ∀ {n} → InstrNoHeapWrite (instr-load-code-addr n)
   nhw-instr-save-closure-reg : InstrNoHeapWrite instr-save-closure-reg
-  -- Plan 0.13.1 Phase 1: case-on-tag halts at the abstract level —
-  -- no heap writes (sub-traces' effects accounted for at per-arch
-  -- level via case-codegen-faithful).
-  nhw-instr-case-on-tag    : ∀ {f g} → InstrNoHeapWrite (instr-case-on-tag f g)
+  -- Plan 0.30: case-on-tag BRANCHES (runs a sub-trace that may write
+  -- heap), so it has NO InstrNoHeapWrite witness — like instr-loop, it
+  -- is excluded from the flat no-heap-write characterisation. Per-instr
+  -- preservation lemmas discharge its clause by absurdity on this hole.
   -- Plan 0.14 Phase A: alloc-heap bumps next-heap-ref but doesn't
   -- write to an existing heap cell (the new cell starts uninitialised).
   nhw-instr-alloc-heap     : ∀ {n} → InstrNoHeapWrite (instr-alloc-heap n)
@@ -537,7 +537,11 @@ instr-effect (instr-load-const _ _)  = eff-reg-only
 instr-effect (instr-load-tag-lit _)  = eff-reg-only
 instr-effect (instr-load-code-addr _) = eff-reg-only
 instr-effect instr-save-closure-reg  = eff-reg-only
-instr-effect (instr-case-on-tag _ _) = eff-control
+-- Plan 0.30: case-on-tag now runs a sub-trace that may allocate/mutate
+-- heap and whose state effect is not frame-only — classify like
+-- instr-alloc-heap (eff-heap-alloc) so the effect-keyed preservation
+-- lemmas (heap-ref, same-frame, state-frame-eq) discharge it by absurdity.
+instr-effect (instr-case-on-tag _ _) = eff-heap-alloc
 instr-effect (instr-alloc-heap _)    = eff-heap-alloc
 instr-effect (instr-loop _)          = eff-heap-alloc  -- changes next-heap-ref like alloc
 
@@ -727,6 +731,14 @@ module InstrPrimitives {FS : FrameSemantics} where
   exec-abstract-preserves-frame : ∀ (i : AbstractInstr) (s : LocState FS)
     (alloc : AllocState {FS}) →
     current-frame (proj₂ (exec-abstract i s alloc)) ≡ current-frame alloc
+  -- Plan 0.30: case-on-tag now runs a sub-trace, so frame preservation
+  -- lifts to trace shape (every instruction preserves the frame).
+  exec-trace-preserves-frame : ∀ (tr : AbstractTrace) (s : LocState FS)
+    (alloc : AllocState {FS}) →
+    current-frame (proj₂ (exec-trace tr s alloc)) ≡ current-frame alloc
+  exec-case-dispatch-preserves-frame : ∀ (mt : Maybe (StoredValue FS))
+    (f g : AbstractTrace) (s : LocState FS) (alloc : AllocState {FS}) →
+    current-frame (proj₂ (exec-case-dispatch mt f g s alloc)) ≡ current-frame alloc
   exec-abstract-preserves-frame (instr-loop body) s alloc =
     exec-loop-preserves-frame 1000000 body s alloc
   exec-abstract-preserves-frame mov-to-output s alloc = refl
@@ -784,8 +796,29 @@ module InstrPrimitives {FS : FrameSemantics} where
   exec-abstract-preserves-frame (instr-load-tag-lit _) s alloc = refl
   exec-abstract-preserves-frame (instr-load-code-addr _) s alloc = refl
   exec-abstract-preserves-frame instr-save-closure-reg   s alloc = refl
-  exec-abstract-preserves-frame (instr-case-on-tag _ _)  s alloc = refl
+  exec-abstract-preserves-frame (instr-case-on-tag f g)  s alloc =
+    exec-case-dispatch-preserves-frame (case-tag-at s) f g s alloc
   exec-abstract-preserves-frame (instr-alloc-heap _)     s alloc = refl
+
+  -- Plan 0.30: trace-level frame preservation (mutual with the per-instr
+  -- and dispatch versions). Folds the per-instruction guarantee along the
+  -- trace; the `halted` short-circuit returns `alloc` untouched.
+  exec-trace-preserves-frame [] s alloc = refl
+  exec-trace-preserves-frame (i ∷ is) s alloc with halted s
+  ... | true  = refl
+  ... | false =
+    trans (exec-trace-preserves-frame is (proj₁ (exec-abstract i s alloc))
+                                          (proj₂ (exec-abstract i s alloc)))
+          (exec-abstract-preserves-frame i s alloc)
+
+  -- Plan 0.30: dispatch-level frame preservation. tag 0 → f, tag≥1 → g
+  -- (both via the trace lemma); malformed scrutinee halts with `alloc`.
+  exec-case-dispatch-preserves-frame (just (SV-Tag 0))       f g s alloc = exec-trace-preserves-frame f s alloc
+  exec-case-dispatch-preserves-frame (just (SV-Tag (suc _))) f g s alloc = exec-trace-preserves-frame g s alloc
+  exec-case-dispatch-preserves-frame (just (SV-Ptr _))       f g s alloc = refl
+  exec-case-dispatch-preserves-frame (just (SV-Lit _ _))     f g s alloc = refl
+  exec-case-dispatch-preserves-frame (just (SV-Code _))      f g s alloc = refl
+  exec-case-dispatch-preserves-frame nothing                 f g s alloc = refl
 
   -- (E) HEAP PRESERVATION
   -- Instructions that don't write to heap preserve heapMem
@@ -841,7 +874,7 @@ module InstrPrimitives {FS : FrameSemantics} where
   exec-abstract-preserves-heapMem (instr-load-tag-lit _) s alloc nhw-instr-load-tag-lit = refl
   exec-abstract-preserves-heapMem (instr-load-code-addr _) s alloc nhw-instr-load-code-addr = refl
   exec-abstract-preserves-heapMem instr-save-closure-reg   s alloc nhw-instr-save-closure-reg = refl
-  exec-abstract-preserves-heapMem (instr-case-on-tag _ _)  s alloc nhw-instr-case-on-tag    = refl
+  exec-abstract-preserves-heapMem (instr-case-on-tag _ _)  s alloc ()  -- Plan 0.30: no nhw witness
   -- Plan 0.14 Phase A: instr-alloc-heap bumps next-heap-ref but
   -- doesn't write to a heap cell — heapMem unchanged.
   exec-abstract-preserves-heapMem (instr-alloc-heap _)     s alloc nhw-instr-alloc-heap     = refl
@@ -912,7 +945,7 @@ module InstrPrimitives {FS : FrameSemantics} where
   exec-abstract-preserves-stack-slot (instr-load-tag-lit _) s alloc f slot _ _ = refl
   exec-abstract-preserves-stack-slot (instr-load-code-addr _) s alloc f slot _ _ = refl
   exec-abstract-preserves-stack-slot instr-save-closure-reg   s alloc f slot _ _ = refl
-  exec-abstract-preserves-stack-slot (instr-case-on-tag _ _)  s alloc f slot _ _ = refl
+  exec-abstract-preserves-stack-slot (instr-case-on-tag _ _)  s alloc f slot () _  -- Plan 0.30: no nhw witness
   exec-abstract-preserves-stack-slot (instr-alloc-heap _)     s alloc f slot _ _ = refl
 
   -- store-at-slot k preserves slot j when j < k (positive ordering)
@@ -1028,7 +1061,7 @@ module InstrPrimitives {FS : FrameSemantics} where
   exec-abstract-same-frame (instr-load-tag-lit _) s alloc₁ alloc₂ _ _ = refl
   exec-abstract-same-frame (instr-load-code-addr _) s alloc₁ alloc₂ _ _ = refl
   exec-abstract-same-frame instr-save-closure-reg   s alloc₁ alloc₂ _ _ = refl
-  exec-abstract-same-frame (instr-case-on-tag _ _)  s alloc₁ alloc₂ _ _ = refl
+  exec-abstract-same-frame (instr-case-on-tag _ _)  s alloc₁ alloc₂ () _  -- Plan 0.30: eff-heap-alloc ⇒ ⊥
   -- instr-alloc-heap: EffectStateOnlyDependsOnFrame eff-heap-alloc = ⊥,
   -- absurd precondition.
   exec-abstract-same-frame (instr-loop _)           s alloc₁ alloc₂ () _
@@ -1131,7 +1164,12 @@ module InstrPrimitives {FS : FrameSemantics} where
   exec-abstract-state-next-slot-invariant (instr-load-tag-lit _)  s _ _ = refl
   exec-abstract-state-next-slot-invariant (instr-load-code-addr _) s _ _ = refl
   exec-abstract-state-next-slot-invariant instr-save-closure-reg  s _ _ = refl
-  exec-abstract-state-next-slot-invariant (instr-case-on-tag _ _) s _ _ = refl
+  -- Plan 0.30: case-on-tag runs a sub-trace, so (like instr-loop below)
+  -- its state-next-slot-independence reduces to the trace-level induction
+  -- `exec-trace-state-next-slot-invariant` — the SAME obligation as the
+  -- pre-existing instr-loop hole (Plan 0.29 M4). Both discharge together
+  -- once that 4-way mutual induction (trace/abstract/dispatch/loop) lands.
+  exec-abstract-state-next-slot-invariant (instr-case-on-tag _ _) s _ _ = !!
   -- instr-alloc-heap: state writes (SV-Ptr (heap-loc (mkHeapRef
   -- (next-heap-ref alloc)) 0)) to Output. Reads next-heap-ref, NOT
   -- next-slot. The record update preserves next-heap-ref.
@@ -1288,7 +1326,10 @@ TraceNoHeapWrites (instr-load-const _ _ ∷ t)      = TraceNoHeapWrites t
 TraceNoHeapWrites (instr-load-tag-lit _ ∷ t)      = TraceNoHeapWrites t
 TraceNoHeapWrites (instr-load-code-addr _ ∷ t)    = TraceNoHeapWrites t
 TraceNoHeapWrites (instr-save-closure-reg ∷ t)    = TraceNoHeapWrites t
-TraceNoHeapWrites (instr-case-on-tag _ _ ∷ t)     = TraceNoHeapWrites t
+-- Plan 0.30: case-on-tag now BRANCHES (runs a sub-trace that may
+-- store-indirect / alloc), so — like instr-loop — it is non-local and
+-- excluded from the flat no-heap-write characterisation.
+TraceNoHeapWrites (instr-case-on-tag _ _ ∷ t)     = ⊥
 TraceNoHeapWrites (instr-alloc-heap _ ∷ t)        = TraceNoHeapWrites t
 TraceNoHeapWrites (instr-loop _ ∷ t)              = ⊥  -- loop writes heap
 
@@ -1344,7 +1385,7 @@ trace-no-heap-writes-append (instr-load-const _ _ ∷ t1) t2 tn1 tn2 = trace-no-
 trace-no-heap-writes-append (instr-load-tag-lit _ ∷ t1) t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
 trace-no-heap-writes-append (instr-load-code-addr _ ∷ t1) t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
 trace-no-heap-writes-append (instr-save-closure-reg ∷ t1) t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
-trace-no-heap-writes-append (instr-case-on-tag _ _ ∷ t1)  t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
+trace-no-heap-writes-append (instr-case-on-tag _ _ ∷ t1)  t2 () tn2  -- Plan 0.30: ⊥
 trace-no-heap-writes-append (instr-loop _ ∷ t1)          t2 () tn2
 trace-no-heap-writes-append (instr-alloc-heap _ ∷ t1)     t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
 
@@ -1556,7 +1597,7 @@ module TracePrimitives {FS : FrameSemantics} where
     tnhw-head (instr-load-tag-lit _) _ _ = nhw-instr-load-tag-lit
     tnhw-head (instr-load-code-addr _) _ _ = nhw-instr-load-code-addr
     tnhw-head instr-save-closure-reg   _ _ = nhw-instr-save-closure-reg
-    tnhw-head (instr-case-on-tag _ _)  _ _ = nhw-instr-case-on-tag
+    tnhw-head (instr-case-on-tag _ _)  _ ()  -- Plan 0.30: case-on-tag excluded (⊥)
     tnhw-head (instr-loop _)           _ ()
     tnhw-head (instr-alloc-heap _)     _ _ = nhw-instr-alloc-heap
 
@@ -1590,7 +1631,7 @@ module TracePrimitives {FS : FrameSemantics} where
     tnhw-tail (instr-load-tag-lit _) rest tnhw = tnhw
     tnhw-tail (instr-load-code-addr _) rest tnhw = tnhw
     tnhw-tail instr-save-closure-reg   rest tnhw = tnhw
-    tnhw-tail (instr-case-on-tag _ _)  rest tnhw = tnhw
+    tnhw-tail (instr-case-on-tag _ _)  rest ()  -- Plan 0.30: case-on-tag excluded (⊥)
     tnhw-tail (instr-loop _)           rest ()
     tnhw-tail (instr-alloc-heap _)     rest tnhw = tnhw
 
@@ -1695,10 +1736,8 @@ module TracePrimitives {FS : FrameSemantics} where
       exec-trace-preserves-slot-below-nonwrite (instr-load-code-addr k) rest s alloc n slot twa tnhw slot<n nhw-instr-load-code-addr refl
     exec-trace-preserves-slot-below (instr-save-closure-reg ∷ rest) s alloc n slot twa tnhw slot<n =
       exec-trace-preserves-slot-below-nonwrite instr-save-closure-reg rest s alloc n slot twa tnhw slot<n nhw-instr-save-closure-reg refl
-    -- Plan 0.13.1 Phase 1: case-on-tag halts at the abstract level —
-    -- no slot writes (sub-traces' effects deferred to per-arch).
-    exec-trace-preserves-slot-below (instr-case-on-tag f g ∷ rest) s alloc n slot twa tnhw slot<n =
-      exec-trace-preserves-slot-below-nonwrite (instr-case-on-tag f g) rest s alloc n slot twa tnhw slot<n nhw-instr-case-on-tag refl
+    -- Plan 0.30: case-on-tag branches (non-local) → TraceNoHeapWrites = ⊥.
+    exec-trace-preserves-slot-below (instr-case-on-tag f g ∷ rest) s alloc n slot twa () slot<n
     exec-trace-preserves-slot-below (instr-loop _ ∷ rest) s alloc n slot twa () slot<n
     exec-trace-preserves-slot-below (instr-alloc-heap k ∷ rest) s alloc n slot twa tnhw slot<n =
       exec-trace-preserves-slot-below-nonwrite (instr-alloc-heap k) rest s alloc n slot twa tnhw slot<n nhw-instr-alloc-heap refl
@@ -1831,8 +1870,7 @@ module TracePrimitives {FS : FrameSemantics} where
       exec-trace-preserves-slot-above-nonwrite (instr-load-code-addr k) rest s alloc m slot twb tnhw m≤slot nhw-instr-load-code-addr refl
     exec-trace-preserves-slot-above (instr-save-closure-reg ∷ rest) s alloc m slot twb tnhw m≤slot =
       exec-trace-preserves-slot-above-nonwrite instr-save-closure-reg rest s alloc m slot twb tnhw m≤slot nhw-instr-save-closure-reg refl
-    exec-trace-preserves-slot-above (instr-case-on-tag f g ∷ rest) s alloc m slot twb tnhw m≤slot =
-      exec-trace-preserves-slot-above-nonwrite (instr-case-on-tag f g) rest s alloc m slot twb tnhw m≤slot nhw-instr-case-on-tag refl
+    exec-trace-preserves-slot-above (instr-case-on-tag f g ∷ rest) s alloc m slot twb () m≤slot
     exec-trace-preserves-slot-above (instr-loop _ ∷ rest) s alloc m slot twb () m≤slot
     exec-trace-preserves-slot-above (instr-alloc-heap k ∷ rest) s alloc m slot twb tnhw m≤slot =
       exec-trace-preserves-slot-above-nonwrite (instr-alloc-heap k) rest s alloc m slot twb tnhw m≤slot nhw-instr-alloc-heap refl
@@ -1954,8 +1992,7 @@ module TracePrimitives {FS : FrameSemantics} where
       exec-trace-preserves-ancestor-nonwrite (instr-load-code-addr k) rest s alloc f slot cf≺f tnhw nhw-instr-load-code-addr refl
     exec-trace-preserves-ancestor (instr-save-closure-reg ∷ rest) s alloc f slot cf≺f tnhw =
       exec-trace-preserves-ancestor-nonwrite instr-save-closure-reg rest s alloc f slot cf≺f tnhw nhw-instr-save-closure-reg refl
-    exec-trace-preserves-ancestor (instr-case-on-tag f' g' ∷ rest) s alloc f slot cf≺f tnhw =
-      exec-trace-preserves-ancestor-nonwrite (instr-case-on-tag f' g') rest s alloc f slot cf≺f tnhw nhw-instr-case-on-tag refl
+    exec-trace-preserves-ancestor (instr-case-on-tag f' g' ∷ rest) s alloc f slot cf≺f ()
     exec-trace-preserves-ancestor (instr-loop _ ∷ rest) s alloc f slot cf≺f ()
     exec-trace-preserves-ancestor (instr-alloc-heap k ∷ rest) s alloc f slot cf≺f tnhw =
       exec-trace-preserves-ancestor-nonwrite (instr-alloc-heap k) rest s alloc f slot cf≺f tnhw nhw-instr-alloc-heap refl
@@ -2065,18 +2102,9 @@ module TracePrimitives {FS : FrameSemantics} where
   exec-trace-deterministic = !!
 
   -- (D) FRAME PRESERVATION - trace version
-  -- NO predicate needed - all instructions preserve current-frame!
-  exec-trace-preserves-frame : ∀ (trace : AbstractTrace) (s : LocState FS) (alloc : AllocState {FS}) →
-    current-frame (proj₂ (exec-trace trace s alloc)) ≡ current-frame alloc
-  exec-trace-preserves-frame [] s alloc = refl
-  exec-trace-preserves-frame (i ∷ rest) s alloc with halted s
-  ... | true = refl
-  ... | false =
-    let s' = proj₁ (exec-abstract i s alloc)
-        alloc' = proj₂ (exec-abstract i s alloc)
-        step-preserves = exec-abstract-preserves-frame i s alloc
-        rest-preserves = exec-trace-preserves-frame rest s' alloc'
-    in trans rest-preserves step-preserves
+  -- Plan 0.30: moved up into the mutual block with
+  -- exec-abstract-preserves-frame / exec-case-dispatch-preserves-frame
+  -- (case-on-tag's frame preservation recurses through the sub-trace).
 
   -- (E) HEAP PRESERVATION - trace version
   exec-trace-preserves-heapMem : ∀ (trace : AbstractTrace) (s : LocState FS) (alloc : AllocState {FS}) →
@@ -2569,7 +2597,7 @@ module TracePrimitives {FS : FrameSemantics} where
   exec-abstract-state-frame-eq (instr-load-const _ _)  s _ _ _ _ = refl
   exec-abstract-state-frame-eq (instr-load-tag-lit _)  s _ _ _ _ = refl
   exec-abstract-state-frame-eq (instr-load-code-addr _) s _ _ _ _ = refl
-  exec-abstract-state-frame-eq (instr-case-on-tag _ _) s _ _ _ _ = refl
+  exec-abstract-state-frame-eq (instr-case-on-tag _ _) s _ _ () _  -- Plan 0.30: eff-heap-alloc ⇒ ⊥
   -- instr-alloc-heap: absurd precondition (EffectStateOnlyDependsOnFrame eff-heap-alloc = ⊥).
   exec-abstract-state-frame-eq (instr-loop _)          s _ _ () _
   exec-abstract-state-frame-eq (instr-alloc-heap _)    s _ _ () _
@@ -4157,7 +4185,7 @@ module RecSchemeSemantics {FS : FrameSemantics} where
   exec-abstract-preserves-heap-ref (instr-load-tag-lit _) s alloc _ = refl
   exec-abstract-preserves-heap-ref (instr-load-code-addr _) s alloc _ = refl
   exec-abstract-preserves-heap-ref instr-save-closure-reg   s alloc _ = refl
-  exec-abstract-preserves-heap-ref (instr-case-on-tag _ _)  s alloc _ = refl
+  exec-abstract-preserves-heap-ref (instr-case-on-tag _ _)  s alloc ()  -- Plan 0.30: eff-heap-alloc ⇒ ⊥
   -- instr-alloc-heap: EffectPreservesNextHeapRef eff-heap-alloc = ⊥,
   -- so the precondition is uninhabited and this clause is absurd.
   exec-abstract-preserves-heap-ref (instr-loop _)           s alloc ()
@@ -4287,10 +4315,10 @@ module RecSchemeSemantics {FS : FrameSemantics} where
   ... | true = refl
   ... | false = trans (exec-trace-preserves-heap-ref t _ _)
                       (exec-abstract-preserves-heap-ref instr-save-closure-reg s alloc tt)
-  exec-trace-preserves-heap-ref (instr-case-on-tag f g ∷ t) s alloc with halted s
-  ... | true = refl
-  ... | false = trans (exec-trace-preserves-heap-ref t _ _)
-                      (exec-abstract-preserves-heap-ref (instr-case-on-tag f g) s alloc tt)
+  -- Plan 0.30: case-on-tag (now eff-heap-alloc) bumps next-heap-ref via
+  -- its branch, so this trace-level claim is genuinely false here — same
+  -- localised !! as instr-alloc-heap / instr-loop below.
+  exec-trace-preserves-heap-ref (instr-case-on-tag f g ∷ t) s alloc = !!
   -- instr-alloc-heap: this trace-level claim is genuinely false here
   -- (the instruction bumps next-heap-ref). Localised !!.
   -- Real fix: trace-level precondition + caller migration.
