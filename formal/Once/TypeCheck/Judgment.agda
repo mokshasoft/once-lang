@@ -361,6 +361,25 @@ mutual
                           ⨾ ((Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ₁))
                               Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ₂))
 
+    -- | Applied `case f g` (categorical copair) in check mode at the
+    -- canonical `(A + B) ⇒[Many] C` shape. Plan 0.28 Commit 1.
+    -- Disjoint from `t-embed (t-app …)` by construction: t-app's
+    -- `classifyAppHead f ≡ nothing` premise fails for the
+    -- `RApp (RVar "case") _` head shape (classifyAppHead returns
+    -- `just pba-case-applied`). Mirrors `t-pair-check`: the two
+    -- premises thread check-mode derivations for each arm, and the
+    -- conclusion's Ψ matches the Surface IR `app (app specCase fE) gE`
+    -- (specCase contributes zero usage), collapsing to `zeroUsage`
+    -- when both arms are morphism-realm values.
+    t-case-copair-check : ∀ {ctx : NamedCtx} {f g : RawExpr} {A B C : Type}
+                          {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
+                        → ctx ⊢ᶜ f ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C) ⨾ Ψ₁
+                        → ctx ⊢ᶜ g ∶ (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C) ⨾ Ψ₂
+                        → ctx ⊢ᶜ RApp (RApp (RVar "case") f) g
+                                 ∶ ((A Once.Type.+ B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C)
+                                 ⨾ ((Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ₁))
+                                     Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ₂))
+
     -- | Applied `compose f g` in check mode at `A ⇒[Many] C`. Plan
     -- 0.6 Phase C.7 POC-3. Intermediate type B is inferred from g.
     -- Ψ follows the elab emission `app (app specCompose fE) gE`

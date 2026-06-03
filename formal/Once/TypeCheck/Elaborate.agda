@@ -450,6 +450,19 @@ specCompose A B C =
     (Surface.app (Surface.var (suc (suc zero)))
                  (Surface.app (Surface.var (suc zero)) (Surface.var zero)))))
 
+-- case (copair) : (a → c) → (b → c) → (a + b) → c
+-- Closure-realm fallback for `case f g` when the arms are not
+-- morphism-realm values (the morphism-realm fast-path emits
+-- `lift-morphism (IR.case m_f m_g)` directly; see `checkCase`).
+-- Body: λ f. λ g. λ s. case' s (f x) (g y).
+specCase : (A B C : Type)
+         → SExpr S∅ Surface.zeroUsage ((A ⇒ C) ⇒ (B ⇒ C) ⇒ (A Once.Type.+ B) ⇒ C)
+specCase A B C =
+  Surface.lam Many refl (Surface.lam Many refl (Surface.lam Many refl
+    (Surface.case' (Surface.var zero)
+      (Surface.app (Surface.var (suc (suc (suc zero)))) (Surface.var zero))
+      (Surface.app (Surface.var (suc (suc zero))) (Surface.var zero)))))
+
 ------------------------------------------------------------------------
 -- Plan 0.2.4.5 D2: morphism-realm extractor
 --
@@ -712,6 +725,11 @@ mutual
   -- `A ⇒[Many] (B * C)` shape.
   checkPair : (ctx : NamedCtx) → (pairHead arg : RawExpr) → (T : Type)
             → VerifiedCheckResult ctx (Raw.RApp pairHead arg) T
+  -- Case (copair) classifier helper (Plan 0.28 Commit 1). Checks a
+  -- 2-arg `case f g` expression in check mode against the canonical
+  -- `(A + B) ⇒[Many] C` shape.
+  checkCase : (ctx : NamedCtx) → (caseHead arg : RawExpr) → (T : Type)
+            → VerifiedCheckResult ctx (Raw.RApp caseHead arg) T
   -- Compose / curry / apply classifier helpers (plan 0.6 Phase C.7
   -- POC-3).
   checkCompose : (ctx : NamedCtx) → (composeHead arg : RawExpr) → (T : Type)
@@ -1015,6 +1033,50 @@ mutual
   -- Any other shape falls through to failure. Consistent with
   -- ahv-inl's per-shape exhaustive enumeration pattern.
   checkPair _ _ _ _ = failure (BuiltinTypeMismatch "pair") , tt
+
+  -- Plan 0.28 Commit 1: bare `case f g` (categorical copair) check-mode.
+  -- Expected type must be `(A + B) ⇒[Many] C`. Each arm is checked at
+  -- its sum-projected arrow shape. Morphism-realm fast-path: when both
+  -- arms are `lift-morphism m`, emit `lift-morphism (IR.case m_f m_g)`
+  -- directly — a closed CCC morphism usable as a `cata` algebra
+  -- (`extract-morph` succeeds on it). Otherwise fall through to the
+  -- closure-realm `app (app specCase fE) gE` form. Mirrors the
+  -- `checkComposeWithBg` morphism-realm bypass but with no dependent
+  -- `composeArgB` premise (so completeness stays postulate-free).
+  checkCase ctx (Raw.RApp (Raw.RVar "case") f_inner) arg
+            ((A Once.Type.+ B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C)
+    with checkElabV ctx f_inner (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C)
+  ... | failure err , _ = failure err , tt
+  ... | success Ψf fE df frf , wF
+        with checkElabV ctx arg (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C)
+  ...     | failure err , _ = failure err , tt
+  ...     | success Ψg gE dg frg , wG
+            with extract-morph fE | extract-morph gE
+  ...         | just (m_f , eqf) | just (m_g , eqg) =
+                let
+                  wF' : ctx ⊢ᶜ f_inner ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C) ⨾ Surface.zeroUsage
+                  wF' = subst (λ Ψ → ctx ⊢ᶜ f_inner ∶ _ ⨾ Ψ) eqf wF
+                  wG' : ctx ⊢ᶜ arg ∶ (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C) ⨾ Surface.zeroUsage
+                  wG' = subst (λ Ψ → ctx ⊢ᶜ arg ∶ _ ⨾ Ψ) eqg wG
+                  collapse : (Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Surface.zeroUsage))
+                             Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Surface.zeroUsage)
+                           ≡ Surface.zeroUsage {NamedCtx.size ctx}
+                  collapse =
+                    trans (cong₂ Surface._+ᵘ_
+                                 (trans (cong (Surface.zeroUsage Surface.+ᵘ_) (*ᵘ-zeroʳ Once.Type.Many))
+                                        (+ᵘ-identityʳ Surface.zeroUsage))
+                                 (*ᵘ-zeroʳ Once.Type.Many))
+                          (+ᵘ-identityʳ Surface.zeroUsage)
+                in success _
+                    (Surface.lift-morphism (IR.case m_f m_g))
+                    (suc (df Data.Nat.⊔ dg)) frf
+                  , subst (λ Ψ → ctx ⊢ᶜ _ ∶ _ ⨾ Ψ) collapse
+                          (t-case-copair-check wF' wG')
+  ...         | _        | _        =
+                success _
+                  (Surface.app (Surface.app (weakenFromEmpty (specCase A B C)) fE) gE)
+                  (suc (df Data.Nat.⊔ dg)) frg , t-case-copair-check wF wG
+  checkCase _ _ _ _ = failure (BuiltinTypeMismatch "case") , tt
 
   -- Plan 0.6 Phase C.7 POC-3 + 0.6.2 Phase 3b: bare `compose f g`
   -- check-mode. Expected `A ⇒[Many] C`. Primary path: infer g's type
@@ -1523,6 +1585,7 @@ mutual
   -- ahv-pair-applied / ahv-compose-applied / ahv-curry : check-only.
   inferElabV-RApp-dispatch ctx f arg ahv-pair-applied    _ = failure (BuiltinTypeMismatch "pair") , tt
   inferElabV-RApp-dispatch ctx f arg ahv-compose-applied _ = failure (BuiltinTypeMismatch "compose") , tt
+  inferElabV-RApp-dispatch ctx f arg ahv-case-applied    _ = failure (BuiltinTypeMismatch "case") , tt
   inferElabV-RApp-dispatch ctx f arg ahv-curry           _ = failure (BuiltinTypeMismatch "curry") , tt
   -- ahv-other : generic application via `inferElabV-RApp-other`.
   inferElabV-RApp-dispatch ctx f arg ahv-other _ = inferElabV-RApp-other ctx f arg
@@ -1608,6 +1671,7 @@ mutual
   -- Helper-applied branches.
   checkElabV-RApp-dispatch ctx f arg T ahv-pair-applied _ = checkPair ctx f arg T
   checkElabV-RApp-dispatch ctx f arg T ahv-compose-applied _ = checkCompose ctx f arg T
+  checkElabV-RApp-dispatch ctx f arg T ahv-case-applied _ = checkCase ctx f arg T
   checkElabV-RApp-dispatch ctx f arg T ahv-curry _ = checkCurry ctx arg T
   checkElabV-RApp-dispatch ctx f arg T ahv-apply _ = checkApply ctx arg T
   -- ahv-other: try infer-then-match; on failure, arg-driven application.
@@ -2369,6 +2433,45 @@ checkElab-fallback-RApp-pair {ctx} f g A B C eq_f eq_g
 ... | success _ _ _ _ , _ | refl
     with checkElabV ctx g (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C) | eq_g
 ...   | success _ _ _ _ , _ | refl = _ , _ , _ , refl
+
+-- Plan 0.28 Commit 1: applied `case f g` (copair) check-mode at the
+-- canonical `(A + B) ⇒[Many] C` shape. Given check-mode elab successes
+-- for both arms, `checkCase` either takes the morphism-realm fast-path
+-- (both arms `lift-morphism`) or the closure-realm `app (app specCase
+-- fE) gE` form. Both paths produce the same conclusion usage
+-- `(zeroUsage +ᵘ Many *ᵘ Ψ₁) +ᵘ Many *ᵘ Ψ₂` — in the fast-path the
+-- arms' usages are `zeroUsage`, so this collapses to the
+-- `lift-morphism`'s `zeroUsage`. Postulate-free (no `composeArgB`
+-- dependent premise, unlike compose).
+checkElab-fallback-RApp-case :
+  ∀ {ctx : NamedCtx} (f g : RawExpr) (A B C : Type)
+    {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
+    {eE_f : SExpr (NamedCtx.debruijn ctx) Ψ₁ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C)}
+    {eE_g : SExpr (NamedCtx.debruijn ctx) Ψ₂ (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C)}
+    {d_f f_f d_g f_g : ℕ}
+  → checkElab ctx f (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C) ≡ success Ψ₁ eE_f d_f f_f
+  → checkElab ctx g (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C) ≡ success Ψ₂ eE_g d_g f_g
+  → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ fr →
+      checkElab ctx (Raw.RApp (Raw.RApp (Raw.RVar "case") f) g)
+                    ((A Once.Type.+ B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C)
+        ≡ success ((Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ₁))
+                    Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ₂)) eE d fr)))
+checkElab-fallback-RApp-case {ctx} f g A B C eq_f eq_g
+  with checkElabV ctx f (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C) | eq_f
+... | success _ eE_f _ _ , _ | refl
+    with checkElabV ctx g (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C) | eq_g
+...   | success _ eE_g _ _ , _ | refl
+        with extract-morph eE_f | extract-morph eE_g
+...       | just (m_f , refl) | just (m_g , refl)
+            rewrite trans (cong₂ Surface._+ᵘ_
+                            (trans (cong (Surface.zeroUsage Surface.+ᵘ_) (*ᵘ-zeroʳ Once.Type.Many))
+                                   (+ᵘ-identityʳ Surface.zeroUsage))
+                            (*ᵘ-zeroʳ Once.Type.Many))
+                          (+ᵘ-identityʳ (Surface.zeroUsage {NamedCtx.size ctx}))
+            = _ , _ , _ , refl
+...       | just _  | nothing = _ , _ , _ , refl
+...       | nothing | just _  = _ , _ , _ , refl
+...       | nothing | nothing = _ , _ , _ , refl
 
 -- Plan 0.4 T2 follow-up (rule-split, 2026-05-03): checkCompose now
 -- requires composeArgB-resolved B; the proof composes the two

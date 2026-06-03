@@ -596,6 +596,7 @@ open Once.TypeCheck.Judgment
          t-id-check; t-fst-check; t-snd-check; t-terminal-check;
          t-initial-check; t-inl-check; t-inr-check; t-arr-check;
          t-pair-check; t-compose-check; t-curry-check; t-apply-check;
+         t-case-copair-check;
          t-var-poly-instantiate)
 
 
@@ -616,6 +617,7 @@ open Once.TypeCheck.Elaborate
          checkElab-fallback-RVar-initial; checkElab-fallback-RVar-inl;
          checkElab-fallback-RVar-inr; checkElab-fallback-RVar-arr;
          checkElab-fallback-RApp-pair; checkElab-fallback-RApp-compose;
+         checkElab-fallback-RApp-case;
          checkElab-fallback-RApp-curry; checkElab-fallback-RApp-apply;
          checkElab-fallback-RApp-arr;
          checkElab-fallback-RVar-poly;
@@ -978,6 +980,10 @@ mutual
     let (_ , _ , _ , eq₁) = check-complete d₁
         (_ , _ , _ , eq₂) = check-complete d₂
     in checkElab-fallback-RApp-pair f g A B C eq₁ eq₂
+  check-complete (t-case-copair-check {f = f} {g = g} {A = A} {B = B} {C = C} d₁ d₂) =
+    let (_ , _ , _ , eq₁) = check-complete d₁
+        (_ , _ , _ , eq₂) = check-complete d₂
+    in checkElab-fallback-RApp-case f g A B C eq₁ eq₂
   check-complete (t-compose-check {f = f} {g = g} {A = A} {B = B} {C = C} eqArgB d₁ d₂) =
     let (_ , _ , _ , eq₁) = check-complete d₁
         (_ , _ , _ , eq₂) = check-complete d₂
