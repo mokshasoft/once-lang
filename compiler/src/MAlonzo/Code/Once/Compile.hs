@@ -26,6 +26,7 @@ import qualified MAlonzo.Code.Data.Bool.Base
 import qualified MAlonzo.Code.Data.Char.Properties
 import qualified MAlonzo.Code.Data.List.Base
 import qualified MAlonzo.Code.Data.List.Relation.Binary.Pointwise.Properties
+import qualified MAlonzo.Code.Data.Nat.Base
 import qualified MAlonzo.Code.Data.Nat.Properties
 import qualified MAlonzo.Code.Data.String.Base
 import qualified MAlonzo.Code.Data.String.Properties
@@ -813,15 +814,27 @@ d_compileFunWithTarget_388 v0 v1 v2
          else coe
                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                 (coe
-                   MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
+                   MAlonzo.Code.Data.Nat.Base.d__'8852'__208
                    (coe
-                      MAlonzo.Code.Once.Target.d_irToAsm_30 v0 v1
-                      (coe MAlonzo.Code.Once.Type.C_Unit_118) (d_cfType_198 (coe v2))
-                      (MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
-                         (coe
-                            MAlonzo.Code.Once.Arith.Machine.Rewrite.d_rewrite'45'ir_130
-                            (coe MAlonzo.Code.Once.Type.C_Unit_118) (coe d_cfType_198 (coe v2))
-                            (coe d_cfIR_200 (coe v2))))))
+                      MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
+                      (coe
+                         MAlonzo.Code.Once.Target.d_irToAsm_30 v0 v1
+                         (coe MAlonzo.Code.Once.Type.C_Unit_118) (d_cfType_198 (coe v2))
+                         (MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
+                            (coe
+                               MAlonzo.Code.Once.Arith.Machine.Rewrite.d_rewrite'45'ir_130
+                               (coe MAlonzo.Code.Once.Type.C_Unit_118) (coe d_cfType_198 (coe v2))
+                               (coe d_cfIR_200 (coe v2))))))
+                   (coe
+                      MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
+                      (coe
+                         MAlonzo.Code.Once.Target.d_irToBodies_36 v0 v1
+                         (coe MAlonzo.Code.Once.Type.C_Unit_118) (d_cfType_198 (coe v2))
+                         (MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
+                            (coe
+                               MAlonzo.Code.Once.Arith.Machine.Rewrite.d_rewrite'45'ir_130
+                               (coe MAlonzo.Code.Once.Type.C_Unit_118) (coe d_cfType_198 (coe v2))
+                               (coe d_cfIR_200 (coe v2)))))))
                 (coe
                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                    (coe
