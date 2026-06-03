@@ -1502,6 +1502,15 @@ module AbstractExec {FS : FrameSemantics} where
   -- Plan 0.29: fuel-bounded loop body execution. Break when `Scratch`
   -- reaches `SV-Tag 0`; otherwise run `body` (which must decrement /
   -- update `Scratch`) and recurse on fuel.
+  --
+  -- FRAME-BALANCE BY CONSTRUCTION: after each iteration the loop RESTORES
+  -- the stack state (`stackMem`, `current-frame`, `next-slot`), keeping
+  -- only register progress (`regs` — `Scratch` counter, `Output` result,
+  -- `Input1` cursor) and heap progress (`heapMem`, `next-heap-ref` grow
+  -- monotonically). So `instr-loop` preserves the frame/slots regardless
+  -- of `body` — the ~50 per-instruction invariant lemmas hold without a
+  -- body hypothesis. Sound in heap mode (the body never uses the stack;
+  -- its data lives on the heap). See Plan 0.29 D1b.
   {-# TERMINATING #-}
   exec-loop zero    _    s alloc = record s { halted = true } , alloc
   exec-loop (suc n) body s alloc with halted s
@@ -1509,7 +1518,11 @@ module AbstractExec {FS : FrameSemantics} where
   ... | false with readReg (regs s) Scratch
   ...   | SV-Tag 0 = s , alloc
   ...   | _        = let (s' , alloc') = exec-trace body s alloc
-                     in exec-loop n body s' alloc'
+                         s''     = record s' { stackMem = stackMem s }
+                         alloc'' = record alloc'
+                                     { current-frame = current-frame alloc
+                                     ; next-slot     = next-slot alloc }
+                     in exec-loop n body s'' alloc''
 
 
   -- | Reduction lemma: when not halted, exec-trace reduces
