@@ -268,6 +268,7 @@ data PolyBuiltinApp : Set where
   pba-arr : PolyBuiltinApp                              -- Eff lift, infer mode
   pba-pair-applied : PolyBuiltinApp                     -- `RApp (RVar "pair") _` head, check mode
   pba-compose-applied : PolyBuiltinApp                  -- `RApp (RVar "compose") _` head, check mode
+  pba-case-applied : PolyBuiltinApp                     -- `RApp (RVar "case") _` head, check mode (copair)
   pba-curry : PolyBuiltinApp                            -- 1-arg `curry f`, check mode
   pba-apply : PolyBuiltinApp                            -- 1-arg `apply p`, infer / check mode
 
@@ -302,7 +303,9 @@ classifyAppHead (Raw.RApp (Raw.RVar x) _) with StrProp._≟_ x "pair"
 ... | yes _ = just pba-pair-applied
 ... | no  _ with StrProp._≟_ x "compose"
 ...   | yes _ = just pba-compose-applied
-...   | no  _ = nothing
+...   | no  _ with StrProp._≟_ x "case"
+...     | yes _ = just pba-case-applied
+...     | no  _ = nothing
 -- RApp with non-RVar head: not a builtin reference.
 classifyAppHead (Raw.RApp (Raw.RApp _ _) _)         = nothing
 classifyAppHead (Raw.RApp (Raw.RQualified _ _) _)   = nothing
@@ -351,6 +354,7 @@ data AppHeadView : RawExpr → Set where
   ahv-apply    : AppHeadView (Raw.RVar "apply")
   ahv-pair-applied    : ∀ {f'} → AppHeadView (Raw.RApp (Raw.RVar "pair") f')
   ahv-compose-applied : ∀ {f'} → AppHeadView (Raw.RApp (Raw.RVar "compose") f')
+  ahv-case-applied    : ∀ {f'} → AppHeadView (Raw.RApp (Raw.RVar "case") f')
   ahv-other    : ∀ {f} → AppHeadView f
 
 classifyAppHeadView : (f : RawExpr) → AppHeadView f
@@ -379,7 +383,9 @@ classifyAppHeadView (Raw.RApp (Raw.RVar x) _) with StrProp._≟_ x "pair"
 ... | yes refl = ahv-pair-applied
 ... | no  _    with StrProp._≟_ x "compose"
 ...   | yes refl = ahv-compose-applied
-...   | no  _    = ahv-other
+...   | no  _    with StrProp._≟_ x "case"
+...     | yes refl = ahv-case-applied
+...     | no  _    = ahv-other
 -- RApp with non-RVar head: ahv-other.
 classifyAppHeadView (Raw.RApp (Raw.RApp _ _) _)         = ahv-other
 classifyAppHeadView (Raw.RApp (Raw.RQualified _ _) _)   = ahv-other
@@ -424,7 +430,10 @@ classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RVar s) _} p with StrProp._�
 classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RVar s) _} p | no _ with StrProp._≟_ s "compose"
 ... | yes _ with p
 ...   | ()
-classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RVar _) _} _ | no _ | no _ = refl
+classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RVar s) _} p | no _ | no _ with StrProp._≟_ s "case"
+... | yes _ with p
+...   | ()
+classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RVar _) _} _ | no _ | no _ | no _ = refl
 classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RApp _ _) _}       _ = refl
 classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RQualified _ _) _} _ = refl
 classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RLam _ _) _}       _ = refl
@@ -503,7 +512,10 @@ view-other⇒classifyAppHead-nothing {Raw.RApp (Raw.RVar s) _} p with StrProp._�
 view-other⇒classifyAppHead-nothing {Raw.RApp (Raw.RVar s) _} p | no _ with StrProp._≟_ s "compose"
 ... | yes refl with p
 ...   | ()
-view-other⇒classifyAppHead-nothing {Raw.RApp (Raw.RVar _) _} _ | no _ | no _ = refl
+view-other⇒classifyAppHead-nothing {Raw.RApp (Raw.RVar s) _} p | no _ | no _ with StrProp._≟_ s "case"
+... | yes refl with p
+...   | ()
+view-other⇒classifyAppHead-nothing {Raw.RApp (Raw.RVar _) _} _ | no _ | no _ | no _ = refl
 view-other⇒classifyAppHead-nothing {Raw.RApp (Raw.RApp _ _) _}       _ = refl
 view-other⇒classifyAppHead-nothing {Raw.RApp (Raw.RQualified _ _) _} _ = refl
 view-other⇒classifyAppHead-nothing {Raw.RApp (Raw.RLam _ _) _}       _ = refl
