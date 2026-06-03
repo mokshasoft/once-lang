@@ -22,7 +22,7 @@ import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Data.List.Base
 import qualified MAlonzo.Code.Once.CCC.Machine.SMCore
 import qualified MAlonzo.Code.Once.CCC.SigOp.Info
-import qualified MAlonzo.Code.Once.CCC.Target.X86Z45Z64.CodeGen.Compile
+import qualified MAlonzo.Code.Once.CCC.Target.X86Z45Z64.CodeGen.Primitives
 import qualified MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax
 
 -- Once.CCC.Target.X86-64.AbstractToX86.slot-to-disp
@@ -329,11 +329,11 @@ d_compile'45'abstract_14 v0
         -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
       MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'sigop_2080 v1 v2 v3
         -> coe
-             MAlonzo.Code.Once.CCC.Target.X86Z45Z64.CodeGen.Compile.d_compile'45'sigOp_80
+             MAlonzo.Code.Once.CCC.Target.X86Z45Z64.CodeGen.Primitives.d_compile'45'sigOp_12
              (coe MAlonzo.Code.Once.CCC.SigOp.Info.d_name_290 (coe v3))
       MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'load'45'const_2084 v1 v2 v3
         -> coe
-             MAlonzo.Code.Once.CCC.Target.X86Z45Z64.CodeGen.Compile.du_compile'45'const_92
+             MAlonzo.Code.Once.CCC.Target.X86Z45Z64.CodeGen.Primitives.du_compile'45'const_24
              (coe v2) (coe v3)
       MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'load'45'code'45'addr_2086 v1
         -> coe
