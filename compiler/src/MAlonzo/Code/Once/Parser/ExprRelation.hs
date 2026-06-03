@@ -1454,7 +1454,7 @@ du_ParsesParenCont'45'shrinks_1284 v0 v1 v2 v3
                               MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
                               (coe MAlonzo.Code.Data.List.Base.du_length_268 v10)
                               (coe
-                                 MAlonzo.Code.Once.Parser.TypeRelation.d_ParsesType'45'shrinks_328
+                                 MAlonzo.Code.Once.Parser.TypeRelation.d_ParsesType'45'shrinks_432
                                  (coe v10) (coe v12)
                                  (coe
                                     MAlonzo.Code.Agda.Builtin.List.C__'8759'__22

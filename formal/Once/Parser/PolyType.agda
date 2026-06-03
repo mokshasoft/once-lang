@@ -75,6 +75,15 @@ PolyParser A = List Token → Maybe (A × List Token)
 -- pending the plan 0.7 Phase 2 relational+WF rewrite.
 ------------------------------------------------------------------------
 
+-- Result wrappers, to keep the functor cases free of nested `with`.
+pkOf : Maybe (PolyType × List Token) → Maybe (PolyFunctor × List Token)
+pkOf nothing          = nothing
+pkOf (just (A , rest)) = just (PK A , rest)
+
+pmuOf : Maybe (PolyFunctor × List Token) → Maybe (PolyType × List Token)
+pmuOf nothing          = nothing
+pmuOf (just (F , rest)) = just (Pμ-type F , rest)
+
 {-# TERMINATING #-}
 parsePolyTypeImpl     : PolyParser PolyType
 parsePolySumImpl      : PolyParser PolyType
@@ -83,6 +92,14 @@ parsePolyAtomImpl     : PolyParser PolyType
 parsePolyArrowTail    : PolyType → PolyParser PolyType
 parsePolySumTail      : PolyType → PolyParser PolyType
 parsePolyProdTail     : PolyType → PolyParser PolyType
+-- Functor sub-grammar (for `Mu F` μ-type atoms). Mirrors the type
+-- levels: funcSum (⊕) over funcProd (⊗) over funcAtom (`Id` | `K`
+-- typeAtom | `(` funcSum `)`). `K`'s argument is a (poly)type atom.
+parsePolyFuncSum      : PolyParser PolyFunctor
+parsePolyFuncProd     : PolyParser PolyFunctor
+parsePolyFuncAtom     : PolyParser PolyFunctor
+parsePolyFuncSumTail  : PolyFunctor → PolyParser PolyFunctor
+parsePolyFuncProdTail : PolyFunctor → PolyParser PolyFunctor
 
 -- parsePolyType: sum-level + optional arrow tail
 parsePolyTypeImpl toks with parsePolySumImpl toks
@@ -154,6 +171,10 @@ parsePolyAtomImpl (TWord name ∷ rest) | no _ | no _ | no _ | no _ | no _ | no 
 -- real error rather than silently becoming a TVar).
 parsePolyAtomImpl (TWord name ∷ rest)
    | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _
+   with name ≟ "Mu"
+... | yes _ = pmuOf (parsePolyFuncAtom rest)
+parsePolyAtomImpl (TWord name ∷ rest)
+   | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _
    with isLowerWord name
 ...   | true  = just (PTVar name , rest)
 ...   | false = nothing
@@ -195,6 +216,36 @@ parsePolyAtomImpl (TEqEq ∷ _)      = nothing
 parsePolyAtomImpl (TNeq ∷ _)       = nothing
 parsePolyAtomImpl (TNewline ∷ _)   = nothing
 parsePolyAtomImpl (TEOF ∷ _)       = nothing
+
+-- Functor sub-grammar bodies (for `Mu F`).
+parsePolyFuncSum toks with parsePolyFuncProd toks
+... | nothing = nothing
+... | just (F , rest) = parsePolyFuncSumTail F rest
+
+parsePolyFuncSumTail F (TPlus ∷ rest) with parsePolyFuncProd rest
+... | nothing = nothing
+... | just (G , rest') = parsePolyFuncSumTail (F P⊕ G) rest'
+parsePolyFuncSumTail F toks = just (F , toks)
+
+parsePolyFuncProd toks with parsePolyFuncAtom toks
+... | nothing = nothing
+... | just (F , rest) = parsePolyFuncProdTail F rest
+
+parsePolyFuncProdTail F (TStar ∷ rest) with parsePolyFuncAtom rest
+... | nothing = nothing
+... | just (G , rest') = parsePolyFuncProdTail (F P⊗ G) rest'
+parsePolyFuncProdTail F toks = just (F , toks)
+
+-- funcAtom: `Id` | `K` typeAtom | `(` funcSum `)`.
+parsePolyFuncAtom (TWord name ∷ rest) with name ≟ "Id" | name ≟ "K"
+... | yes _ | _     = just (PId , rest)
+... | no _  | yes _ = pkOf (parsePolyAtomImpl rest)
+... | no _  | no _  = nothing
+parsePolyFuncAtom (TLParen ∷ rest) with parsePolyFuncSum rest
+... | nothing = nothing
+... | just (F , TRParen ∷ rest') = just (F , rest')
+... | just _ = nothing
+parsePolyFuncAtom _ = nothing
 
 -- | Top-level PolyType parser.
 parsePolyType : Parser PolyType
