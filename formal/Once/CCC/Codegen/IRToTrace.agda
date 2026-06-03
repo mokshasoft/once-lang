@@ -79,7 +79,10 @@ open import Once.CCC.Machine.SMCore
          instr-push-frame; instr-pop-frame; instr-call-closure;
          instr-sigop; instr-load-const; instr-load-code-addr;
          instr-save-closure-reg;
-         instr-load-tag-lit; instr-case-on-tag)
+         instr-load-tag-lit; instr-case-on-tag;
+         instr-loop; instr-reg-op;
+         scratch-one; scratch-zero; scratch-dec; scratch-load-count;
+         input2-zero; input2-inc)
 
 ------------------------------------------------------------------------
 -- IR → AbstractTrace, state-passing
@@ -417,7 +420,36 @@ ir-to-trace' n l (In _ _)       = n , l , (mov-to-output ∷ []) , []
 -- run-X uses `mov-to-output ∷ []`; mirror it so the discharge falls
 -- out via the same `transport-trivial` pattern as id/arr/free-heap.
 ir-to-trace' n l (out-μ _)      = n , l , (mov-to-output ∷ []) , []
-ir-to-trace' n l (Cata _ _)     = n , l , [] , []
+-- Plan 0.29 (M5): NatF catamorphism via the generic fuel loop.
+-- descend (count `inr` depth into Input2, Scratch = continue flag) →
+-- Scratch := depth → base inl layer + alg → ascend (rebuild inr layer
+-- with prev result, alg, Scratch--). Scratch (rbx) survives `alg` (CCC
+-- code never touches rbx). Layer builds mirror the inl/inr Heap codegen.
+ir-to-trace' n l (Cata _ alg) =
+  let (n1 , l1 , at , ab) = ir-to-trace' n l alg
+      pstash = n1
+      sstash = suc n1
+      next   = suc (suc n1)
+      build-layer : ℕ → AbstractTrace
+      build-layer tag =
+        mov-to-output ∷ store-at-slot pstash ∷ instr-alloc-heap 2 ∷
+        store-at-slot sstash ∷ mov-to-input ∷ instr-load-tag-lit tag ∷
+        store-indirect ∷ load-from-slot pstash ∷ store-indirect-suc ∷
+        load-from-slot sstash ∷ []
+      descend-body =
+        instr-case-on-tag
+          (instr-reg-op scratch-zero ∷ [])                              -- inl: stop
+          (instr-reg-op input2-inc ∷ load-indirect-suc ∷ mov-to-input ∷ [])  -- inr: count++, follow child
+          ∷ []
+      ascend-body =
+        mov-to-input ∷ (build-layer 1 ++ (mov-to-input ∷ at ++ (instr-reg-op scratch-dec ∷ [])))
+      trace =
+        instr-reg-op scratch-one ∷ instr-reg-op input2-zero ∷
+        instr-loop descend-body ∷
+        instr-reg-op scratch-load-count ∷
+        instr-load-tag-lit 0 ∷ mov-to-input ∷
+        (build-layer 0 ++ (mov-to-input ∷ at ++ (instr-loop ascend-body ∷ [])))
+  in next , l1 , trace , ab
 ir-to-trace' n l (Para _ _)     = n , l , [] , []
 ir-to-trace' n l (Out _)        = n , l , (mov-to-output ∷ []) , []
 ir-to-trace' n l (in-ν _ _)     = n , l , [] , []
