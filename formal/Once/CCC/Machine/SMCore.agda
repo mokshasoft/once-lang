@@ -131,6 +131,12 @@ data AbstractReg : Set where
   Input1 : AbstractReg    -- first argument location
   Input2 : AbstractReg    -- second argument location
   Output : AbstractReg    -- result location
+  -- Plan 0.29: loop-private scratch register (maps to callee-saved rbx).
+  -- Used only by the recursion-scheme loop construct (`instr-loop`) to
+  -- hold the iteration counter/flag across algebra invocations. No CCC
+  -- primitive or SigOp ever writes it (see `exec-abstract`), so it is
+  -- preserved by every loop-body instruction for free.
+  Scratch : AbstractReg
 
 data ValueLocation (FS : FrameSemantics) : Set where
   AtStack   : FrameSemantics.Frame FS → Slot → ValueLocation FS
@@ -258,6 +264,13 @@ Input2 ≟R Output = no (λ ())
 Output ≟R Input1 = no (λ ())
 Output ≟R Input2 = no (λ ())
 Output ≟R Output = yes refl
+Input1 ≟R Scratch = no (λ ())
+Input2 ≟R Scratch = no (λ ())
+Output ≟R Scratch = no (λ ())
+Scratch ≟R Input1 = no (λ ())
+Scratch ≟R Input2 = no (λ ())
+Scratch ≟R Output = no (λ ())
+Scratch ≟R Scratch = yes refl
 
 -- Plan 0.13.2: registers hold `StoredValue`, not `ValueLocation`.
 -- Real machines load tags / ints / pointers into the same registers
@@ -268,6 +281,7 @@ record Registers (FS : FrameSemantics) : Set where
   field
     input1 input2 output : StoredValue FS
     stackSlot : ℕ  -- current stack slot index (like rsp, but as slot count)
+    scratch : StoredValue FS  -- Plan 0.29: loop-private (rbx); see AbstractReg.Scratch
 
 open Registers public
 
@@ -275,11 +289,13 @@ readReg : ∀ {FS} → Registers FS → AbstractReg → StoredValue FS
 readReg r Input1 = input1 r
 readReg r Input2 = input2 r
 readReg r Output = output r
+readReg r Scratch = scratch r
 
 writeReg : ∀ {FS} → Registers FS → AbstractReg → StoredValue FS → Registers FS
 writeReg r Input1 v = record r { input1 = v }
 writeReg r Input2 v = record r { input2 = v }
 writeReg r Output v = record r { output = v }
+writeReg r Scratch v = record r { scratch = v }
 
 -- | Update stackSlot
 writeStackSlot : ∀ {FS} → Registers FS → ℕ → Registers FS
@@ -310,6 +326,14 @@ writeReg-preserves regs Output Input1 v r≢dst = refl
 writeReg-preserves regs Output Input2 v r≢dst = refl
 writeReg-preserves regs Output Output v r≢dst = ⊥-elim (r≢dst refl)
   where open import Data.Empty using (⊥-elim)
+writeReg-preserves regs Input1 Scratch v r≢dst = refl
+writeReg-preserves regs Input2 Scratch v r≢dst = refl
+writeReg-preserves regs Output Scratch v r≢dst = refl
+writeReg-preserves regs Scratch Input1 v r≢dst = refl
+writeReg-preserves regs Scratch Input2 v r≢dst = refl
+writeReg-preserves regs Scratch Output v r≢dst = refl
+writeReg-preserves regs Scratch Scratch v r≢dst = ⊥-elim (r≢dst refl)
+  where open import Data.Empty using (⊥-elim)
 
 -- Key lemma: writing to a register and reading it back gives the written value
 writeReg-same : ∀ {FS} (regs : Registers FS) dst v →
@@ -317,6 +341,7 @@ writeReg-same : ∀ {FS} (regs : Registers FS) dst v →
 writeReg-same regs Input1 v = refl
 writeReg-same regs Input2 v = refl
 writeReg-same regs Output v = refl
+writeReg-same regs Scratch v = refl
 
 -- Key lemma: writeReg preserves stackSlot
 writeReg-preserves-stackSlot : ∀ {FS} (regs : Registers FS) dst v →
@@ -324,6 +349,7 @@ writeReg-preserves-stackSlot : ∀ {FS} (regs : Registers FS) dst v →
 writeReg-preserves-stackSlot regs Input1 v = refl
 writeReg-preserves-stackSlot regs Input2 v = refl
 writeReg-preserves-stackSlot regs Output v = refl
+writeReg-preserves-stackSlot regs Scratch v = refl
 
 -- Key lemma: writing twice to same register is same as writing once
 writeReg-overwrite : ∀ {FS} (regs : Registers FS) dst x y →
@@ -331,6 +357,7 @@ writeReg-overwrite : ∀ {FS} (regs : Registers FS) dst x y →
 writeReg-overwrite regs Input1 x y = refl
 writeReg-overwrite regs Input2 x y = refl
 writeReg-overwrite regs Output x y = refl
+writeReg-overwrite regs Scratch x y = refl
 
 ------------------------------------------------------------------------
 -- LocState: Abstract Machine State
@@ -967,6 +994,16 @@ data AbstractInstr : Set where
   -- indices remain stable.
   instr-alloc-heap : ℕ → AbstractInstr
 
+  -- Plan 0.29: generic fuel-bounded loop. `instr-loop body` re-runs
+  -- `body` while the loop-private `Scratch` register is nonzero (the
+  -- body updates `Scratch` each iteration); execution is fuel-bounded
+  -- (see `exec-loop`). This is the reusable control-flow primitive for
+  -- structural-recursion schemes (Cata first; Para/Ana/Hylo later) — the
+  -- per-scheme descend/ascend logic lives in `body`, the loop/back-edge
+  -- and fuel are shared. Added AFTER all prior constructors for MAlonzo
+  -- ctor-index stability.
+  instr-loop : List AbstractInstr → AbstractInstr
+
 -- | A trace is a sequence of abstract instructions
 AbstractTrace : Set
 AbstractTrace = List AbstractInstr
@@ -1242,6 +1279,16 @@ module AbstractExec {FS : FrameSemantics} where
                   LocState FS × AllocState {FS}
   exec-trace : AbstractTrace → LocState FS → AllocState {FS} →
                LocState FS × AllocState {FS}
+  -- Plan 0.29: fuel-bounded execution of a loop body. Re-runs `body`
+  -- while the `Scratch` register is a nonzero counter; the body updates
+  -- `Scratch` each iteration. `TERMINATING`: the function DOES terminate
+  -- (every call has finite fuel and `exec-trace`/`exec-abstract` are
+  -- structural), but foetus can't see it — the fuel decrease is lost
+  -- across the `exec-trace body` boundary (it doesn't carry fuel), and
+  -- a nested `instr-loop` resets fuel to `loopFuel`. Sound by the same
+  -- argument the x86 `Semantics.exec` fuel model relies on.
+  exec-loop : ℕ → AbstractTrace → LocState FS → AllocState {FS} →
+              LocState FS × AllocState {FS}
 
   -- mov-to-output: Output := Input1
   exec-abstract mov-to-output s alloc =
@@ -1439,6 +1486,11 @@ module AbstractExec {FS : FrameSemantics} where
     in record s { regs = writeReg (regs s) Output (SV-Ptr (AtDynamic addr)) } ,
        record alloc { next-heap-ref = new-state }
 
+  -- Plan 0.29: generic loop — run `body` while `Scratch` is a nonzero
+  -- counter, fuel-bounded (1e6 ≥ any real iteration count; out-of-fuel
+  -- halts, matching the x86 `Semantics.exec` out-of-fuel `just s`).
+  exec-abstract (instr-loop body) s alloc = exec-loop 1000000 body s alloc
+
   -- | Execute a trace (sequence of abstract instructions)
   -- Signature declared above with exec-abstract for mutual recursion.
   exec-trace [] s alloc = s , alloc
@@ -1446,6 +1498,18 @@ module AbstractExec {FS : FrameSemantics} where
   ... | true  = s , alloc
   ... | false = let (s' , alloc') = exec-abstract i s alloc
                 in exec-trace is s' alloc'
+
+  -- Plan 0.29: fuel-bounded loop body execution. Break when `Scratch`
+  -- reaches `SV-Tag 0`; otherwise run `body` (which must decrement /
+  -- update `Scratch`) and recurse on fuel.
+  {-# TERMINATING #-}
+  exec-loop zero    _    s alloc = record s { halted = true } , alloc
+  exec-loop (suc n) body s alloc with halted s
+  ... | true  = s , alloc
+  ... | false with readReg (regs s) Scratch
+  ...   | SV-Tag 0 = s , alloc
+  ...   | _        = let (s' , alloc') = exec-trace body s alloc
+                     in exec-loop n body s' alloc'
 
 
   -- | Reduction lemma: when not halted, exec-trace reduces
