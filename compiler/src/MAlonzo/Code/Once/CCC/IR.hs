@@ -962,7 +962,7 @@ data T_AllocMode_258 = C_Stack_260 | C_Heap_262
 d_LocMatchesMode_266 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   T_AllocMode_258 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_ValueLocation_66 -> ()
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_ValueLocation_68 -> ()
 d_LocMatchesMode_266 = erased
 -- Once.CCC.IR.Allocator
 d_Allocator_268 = ()

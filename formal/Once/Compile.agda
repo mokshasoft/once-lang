@@ -25,7 +25,7 @@ module Once.Compile where
 open import Data.Bool using (Bool; true; false; if_then_else_)
 open import Data.List using (List; []; _∷_; foldr; foldl)
 import Data.List as DL
-open import Data.Nat using (ℕ)
+open import Data.Nat using (ℕ; _⊔_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_; ∃; ∃-syntax; proj₁; proj₂)
 open import Data.String using (String; _++_; _==_)
@@ -364,13 +364,23 @@ compileFunWithTarget target l cf with cfIsPrimitive cf
       (ir' , blks)  = rewrite-ir (cfIR cf)
       (l₁ , asm)    = irToAsm    target l ir'
       (l₂ , bodies) = irToBodies target l ir'
-  in l₁ , (functionPrologue target (cfName cf) ++
+  in (l₁ ⊔ l₂) , (functionPrologue target (cfName cf) ++
            asm ++
            functionEpilogue target ++
            bodies) , blks
   where
-    -- l₁ ≡ l₂ by determinism of ir-to-trace'; we pick l₁ for the
-    -- threaded result. l₂ is unused but bound for clarity.
+    -- Plan 0.29: irToAsm and irToBodies share the thunk-label phase
+    -- (l→l', deterministic, so thunk labels agree between call sites
+    -- and bodies). But the CASE-label phase diverges: irToAsm's l₁
+    -- counts case-on-tags in the MAIN trace, while irToBodies' l₂
+    -- counts case-on-tags inside the thunk BODIES. A cata's algebra
+    -- case-on-tags live in the closure body (l₂ > l₁), so threading
+    -- l₁ alone leaks body case labels into the next function. Thread
+    -- `l₁ ⊔ l₂` so the next function starts past BOTH ranges.
+    -- (Invariant preserved: per function, main cases ⊆ [l', l₁) and
+    -- body cases ⊆ [l', l₂); these overlap only if a function has
+    -- case-on-tag in both main trace and a body — not produced by any
+    -- current IR, since closure-valued IRs put all dispatch in bodies.)
 
 -- | Compile all functions to assembly using a target.
 -- Plan 0.12 Layer 1: left-fold threading the thunk-label counter so
