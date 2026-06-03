@@ -51,7 +51,7 @@ open import Once.CCC.Machine.SMCore
          worklist-init; worklist-push; worklist-pop; worklist-check;
          instr-reclaim-to; instr-sigop; instr-load-const; instr-load-code-addr;
          instr-save-closure-reg;
-         instr-load-tag-lit; instr-case-on-tag)
+         instr-load-tag-lit; instr-case-on-tag; instr-loop)
 
 ------------------------------------------------------------------------
 -- Slot to displacement conversion
@@ -221,6 +221,7 @@ compile-abstract instr-save-closure-reg =
 compile-abstract (instr-load-tag-lit _) = ud2 ∷ []
 -- Plan 0.13.1: case-on-tag — X86-32 stub. Sub-traces not lowered.
 compile-abstract (instr-case-on-tag _ _) = ud2 ∷ []
+compile-abstract (instr-loop _) = ud2 ∷ []  -- Plan 0.29: loop lowering is x86-64-only for now
 
 ------------------------------------------------------------------------
 -- Trace compilation: compile a whole trace to x86-32

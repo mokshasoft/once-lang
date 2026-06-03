@@ -236,6 +236,12 @@ compile-abstract (instr-load-tag-lit n) =
 compile-abstract (instr-case-on-tag _ _) =
   ud2 ∷ []
 
+-- Plan 0.29: generic loop. Single-instruction view is a ud2 sentinel;
+-- the real lowering (label + cmp rbx,0 + je end + body + jmp top) is in
+-- compile-trace-cnt (which threads labels). Scratch ↔ rbx (callee-saved).
+compile-abstract (instr-loop _) =
+  ud2 ∷ []
+
 ------------------------------------------------------------------------
 -- Trace compilation: compile a whole trace to x86
 --
@@ -258,6 +264,19 @@ compile-abstract (instr-case-on-tag _ _) =
 compile-trace-cnt : ℕ → AbstractTrace → ℕ × Program
 
 compile-trace-cnt n [] = n , []
+compile-trace-cnt n (instr-loop body ∷ rest) =
+  let l-top = n
+      l-end = suc n
+      (n1 , pbody) = compile-trace-cnt (suc (suc n)) body
+      (n2 , pr)    = compile-trace-cnt n1 rest
+      -- Scratch (rbx) is the loop counter; break when it hits 0.
+      loop = label l-top ∷
+             cmp (reg rbx) (imm 0) ∷
+             je l-end ∷
+             pbody ++
+             jmp l-top ∷
+             label l-end ∷ []
+  in n2 , loop ++ pr
 compile-trace-cnt n (instr-case-on-tag f g ∷ rest) =
   let lbl-inl = n
       lbl-end = suc n
