@@ -105,7 +105,7 @@ d_parseTypeB'45'adapt_82 v0 v1
                               (coe
                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v5)
                                  (coe
-                                    MAlonzo.Code.Once.Parser.TypeRelation.d_ParsesType'45'shrinks_328
+                                    MAlonzo.Code.Once.Parser.TypeRelation.d_ParsesType'45'shrinks_432
                                     (coe v0) (coe v3) (coe v5) (coe v6))))
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
@@ -118,7 +118,7 @@ d_parseTypeB_92 ::
 d_parseTypeB_92 v0
   = coe
       d_parseTypeB'45'adapt_82 (coe v0)
-      (coe MAlonzo.Code.Once.Parser.Type.du_parseTypeWF_90 (coe v0))
+      (coe MAlonzo.Code.Once.Parser.Type.du_parseTypeWF_134 (coe v0))
 -- Once.Parser.Module.Core.parseExprB-adapt
 d_parseExprB'45'adapt_102 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->

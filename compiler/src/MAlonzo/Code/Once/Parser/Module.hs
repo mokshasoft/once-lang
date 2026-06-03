@@ -1254,7 +1254,7 @@ d_parseDeclB_8 v0
                                                                                                                        v20 of
                                                                                                                   MAlonzo.Code.Once.Parser.Token.C_TColon_22
                                                                                                                     -> let v22
-                                                                                                                             = MAlonzo.Code.Once.Parser.PolyType.d_parsePolyAtomImpl_30
+                                                                                                                             = MAlonzo.Code.Once.Parser.PolyType.d_parsePolyAtomImpl_42
                                                                                                                                  (coe
                                                                                                                                     v21) in
                                                                                                                        coe
@@ -1265,7 +1265,7 @@ d_parseDeclB_8 v0
                                                                                                                                         v23 of
                                                                                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v24 v25
                                                                                                                                      -> let v26
-                                                                                                                                              = MAlonzo.Code.Once.Parser.PolyType.d_parsePolyProdTail_36
+                                                                                                                                              = MAlonzo.Code.Once.Parser.PolyType.d_parsePolyProdTail_48
                                                                                                                                                   (coe
                                                                                                                                                      v24)
                                                                                                                                                   (coe
@@ -1278,7 +1278,7 @@ d_parseDeclB_8 v0
                                                                                                                                                          v27 of
                                                                                                                                                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v28 v29
                                                                                                                                                       -> let v30
-                                                                                                                                                               = MAlonzo.Code.Once.Parser.PolyType.d_parsePolySumTail_34
+                                                                                                                                                               = MAlonzo.Code.Once.Parser.PolyType.d_parsePolySumTail_46
                                                                                                                                                                    (coe
                                                                                                                                                                       v28)
                                                                                                                                                                    (coe
@@ -1291,7 +1291,7 @@ d_parseDeclB_8 v0
                                                                                                                                                                           v31 of
                                                                                                                                                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v32 v33
                                                                                                                                                                        -> let v34
-                                                                                                                                                                                = MAlonzo.Code.Once.Parser.PolyType.d_parsePolyArrowTail_32
+                                                                                                                                                                                = MAlonzo.Code.Once.Parser.PolyType.d_parsePolyArrowTail_44
                                                                                                                                                                                     (coe
                                                                                                                                                                                        v32)
                                                                                                                                                                                     (coe
@@ -2483,7 +2483,7 @@ d_parseDeclB_8 v0
                                                                                                                                                                 v27 of
                                                                                                                                                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v28 v29
                                                                                                                                                              -> let v30
-                                                                                                                                                                      = MAlonzo.Code.Once.Parser.PolyType.d_parsePolyArrowTail_32
+                                                                                                                                                                      = MAlonzo.Code.Once.Parser.PolyType.d_parsePolyArrowTail_44
                                                                                                                                                                           (coe
                                                                                                                                                                              v28)
                                                                                                                                                                           (coe
@@ -3676,7 +3676,7 @@ d_parseDeclB_8 v0
                                                                                                                                                v23 of
                                                                                                                                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v24 v25
                                                                                                                                             -> let v26
-                                                                                                                                                     = MAlonzo.Code.Once.Parser.PolyType.d_parsePolySumTail_34
+                                                                                                                                                     = MAlonzo.Code.Once.Parser.PolyType.d_parsePolySumTail_46
                                                                                                                                                          (coe
                                                                                                                                                             v24)
                                                                                                                                                          (coe
@@ -3689,7 +3689,7 @@ d_parseDeclB_8 v0
                                                                                                                                                                 v27 of
                                                                                                                                                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v28 v29
                                                                                                                                                              -> let v30
-                                                                                                                                                                      = MAlonzo.Code.Once.Parser.PolyType.d_parsePolyArrowTail_32
+                                                                                                                                                                      = MAlonzo.Code.Once.Parser.PolyType.d_parsePolyArrowTail_44
                                                                                                                                                                           (coe
                                                                                                                                                                              v28)
                                                                                                                                                                           (coe
@@ -4881,7 +4881,7 @@ d_parseDeclB_8 v0
                                                                                                                                                       v23 of
                                                                                                                                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v24 v25
                                                                                                                                                    -> let v26
-                                                                                                                                                            = MAlonzo.Code.Once.Parser.PolyType.d_parsePolyArrowTail_32
+                                                                                                                                                            = MAlonzo.Code.Once.Parser.PolyType.d_parsePolyArrowTail_44
                                                                                                                                                                 (coe
                                                                                                                                                                    v24)
                                                                                                                                                                 (coe
@@ -6146,7 +6146,7 @@ d_parseDeclB_8 v0
                                                                                                v14 of
                                                                                           MAlonzo.Code.Once.Parser.Token.C_TColon_22
                                                                                             -> let v16
-                                                                                                     = MAlonzo.Code.Once.Parser.PolyType.d_parsePolyAtomImpl_30
+                                                                                                     = MAlonzo.Code.Once.Parser.PolyType.d_parsePolyAtomImpl_42
                                                                                                          (coe
                                                                                                             v15) in
                                                                                                coe
@@ -6157,7 +6157,7 @@ d_parseDeclB_8 v0
                                                                                                                 v17 of
                                                                                                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v18 v19
                                                                                                              -> let v20
-                                                                                                                      = MAlonzo.Code.Once.Parser.PolyType.d_parsePolyProdTail_36
+                                                                                                                      = MAlonzo.Code.Once.Parser.PolyType.d_parsePolyProdTail_48
                                                                                                                           (coe
                                                                                                                              v18)
                                                                                                                           (coe
@@ -6170,7 +6170,7 @@ d_parseDeclB_8 v0
                                                                                                                                  v21 of
                                                                                                                             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v22 v23
                                                                                                                               -> let v24
-                                                                                                                                       = MAlonzo.Code.Once.Parser.PolyType.d_parsePolySumTail_34
+                                                                                                                                       = MAlonzo.Code.Once.Parser.PolyType.d_parsePolySumTail_46
                                                                                                                                            (coe
                                                                                                                                               v22)
                                                                                                                                            (coe
@@ -6183,7 +6183,7 @@ d_parseDeclB_8 v0
                                                                                                                                                   v25 of
                                                                                                                                              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v26 v27
                                                                                                                                                -> let v28
-                                                                                                                                                        = MAlonzo.Code.Once.Parser.PolyType.d_parsePolyArrowTail_32
+                                                                                                                                                        = MAlonzo.Code.Once.Parser.PolyType.d_parsePolyArrowTail_44
                                                                                                                                                             (coe
                                                                                                                                                                v26)
                                                                                                                                                             (coe
@@ -7061,7 +7061,7 @@ d_parseDeclB_8 v0
                                                                                                                                         v21 of
                                                                                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v22 v23
                                                                                                                                      -> let v24
-                                                                                                                                              = MAlonzo.Code.Once.Parser.PolyType.d_parsePolyArrowTail_32
+                                                                                                                                              = MAlonzo.Code.Once.Parser.PolyType.d_parsePolyArrowTail_44
                                                                                                                                                   (coe
                                                                                                                                                      v22)
                                                                                                                                                   (coe
@@ -7940,7 +7940,7 @@ d_parseDeclB_8 v0
                                                                                                                        v17 of
                                                                                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v18 v19
                                                                                                                     -> let v20
-                                                                                                                             = MAlonzo.Code.Once.Parser.PolyType.d_parsePolySumTail_34
+                                                                                                                             = MAlonzo.Code.Once.Parser.PolyType.d_parsePolySumTail_46
                                                                                                                                  (coe
                                                                                                                                     v18)
                                                                                                                                  (coe
@@ -7953,7 +7953,7 @@ d_parseDeclB_8 v0
                                                                                                                                         v21 of
                                                                                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v22 v23
                                                                                                                                      -> let v24
-                                                                                                                                              = MAlonzo.Code.Once.Parser.PolyType.d_parsePolyArrowTail_32
+                                                                                                                                              = MAlonzo.Code.Once.Parser.PolyType.d_parsePolyArrowTail_44
                                                                                                                                                   (coe
                                                                                                                                                      v22)
                                                                                                                                                   (coe
@@ -8831,7 +8831,7 @@ d_parseDeclB_8 v0
                                                                                                                               v17 of
                                                                                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v18 v19
                                                                                                                            -> let v20
-                                                                                                                                    = MAlonzo.Code.Once.Parser.PolyType.d_parsePolyArrowTail_32
+                                                                                                                                    = MAlonzo.Code.Once.Parser.PolyType.d_parsePolyArrowTail_44
                                                                                                                                         (coe
                                                                                                                                            v18)
                                                                                                                                         (coe

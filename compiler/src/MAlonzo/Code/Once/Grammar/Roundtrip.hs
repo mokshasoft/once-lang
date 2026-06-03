@@ -24,6 +24,6 @@ import qualified MAlonzo.Code.Once.Grammar.Printer
 -- Once.Grammar.Roundtrip.round-trip-concrete
 d_round'45'trip'45'concrete_10 ::
   MAlonzo.Code.Once.Grammar.T_GType_8 ->
-  MAlonzo.Code.Once.Grammar.Printer.T_Concrete_60 ->
+  MAlonzo.Code.Once.Grammar.Printer.T_Concrete_74 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_round'45'trip'45'concrete_10 = erased

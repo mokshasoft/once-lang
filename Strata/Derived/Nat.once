@@ -1,0 +1,47 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson and contributors
+
+-- | Nat - the natural numbers as the initial algebra of `K Unit + Id`.
+--
+-- `Nat = Mu (K Unit + Id)`, so a Nat is one layer of `Unit + Nat`:
+--   * `In (inl unit)`  — zero
+--   * `In (inr n)`     — successor of n
+--
+-- Built entirely from the structured-recursion generators (`In`, `cata`)
+-- and the CCC morphism builtins — no primitives, no SigOps. This is the
+-- `Strata/Derived` companion to the Layer 5 catamorphism codegen
+-- (Plan 0.28): a real recursion scheme reachable from surface syntax.
+
+------------------------------------------------------------------------
+-- Constructors
+------------------------------------------------------------------------
+
+-- | zero : Nat
+zero : Mu (K Unit + Id)
+zero = In (inl unit)
+
+-- | suc : Nat -> Nat
+suc : Mu (K Unit + Id) -> Mu (K Unit + Id)
+suc n = In (inr n)
+
+-- A few small literals.
+one : Mu (K Unit + Id)
+one = suc zero
+
+two : Mu (K Unit + Id)
+two = suc one
+
+three : Mu (K Unit + Id)
+three = suc two
+
+------------------------------------------------------------------------
+-- Folds (catamorphisms)
+------------------------------------------------------------------------
+
+-- | isEven : Nat -> Unit + Unit   (inl = even, inr = odd)
+--
+-- algebra : Unit + (Unit + Unit) -> Unit + Unit
+--   inl _ (zero layer)        -> inl   (zero is even)
+--   inr b (suc layer, b=prev) -> not b = `case inr inl` (flip even/odd)
+isEven : Mu (K Unit + Id) -> Unit + Unit
+isEven = cata (case inl (case inr inl))

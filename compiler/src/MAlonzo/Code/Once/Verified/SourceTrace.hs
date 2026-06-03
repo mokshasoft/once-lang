@@ -95,12 +95,12 @@ d_findMain_10 v0
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Verified.SourceTrace.sourceToIR
 d_sourceToIR_28 ::
-  MAlonzo.Code.Once.Grammar.T_GModule_126 ->
+  MAlonzo.Code.Once.Grammar.T_GModule_138 ->
   Maybe MAlonzo.Code.Once.CCC.IR.T_IR_274
 d_sourceToIR_28 v0
   = let v1
-          = MAlonzo.Code.Once.Grammar.ModuleConvert.d_mapDecls_108
-              (coe MAlonzo.Code.Once.Grammar.d_decls_130 (coe v0)) in
+          = MAlonzo.Code.Once.Grammar.ModuleConvert.d_mapDecls_122
+              (coe MAlonzo.Code.Once.Grammar.d_decls_142 (coe v0)) in
     coe
       (case coe v1 of
          MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v2
@@ -189,11 +189,11 @@ d_sourceToIR_28 v0
          _ -> MAlonzo.RTE.mazUnreachableError)
 -- Once.Verified.SourceTrace.⟦_⟧
 d_'10214'_'10215'_56 ::
-  MAlonzo.Code.Once.Grammar.T_GModule_126 -> Maybe Integer
+  MAlonzo.Code.Once.Grammar.T_GModule_138 -> Maybe Integer
 d_'10214'_'10215'_56 v0
   = let v1
-          = MAlonzo.Code.Once.Grammar.ModuleConvert.d_mapDecls_108
-              (coe MAlonzo.Code.Once.Grammar.d_decls_130 (coe v0)) in
+          = MAlonzo.Code.Once.Grammar.ModuleConvert.d_mapDecls_122
+              (coe MAlonzo.Code.Once.Grammar.d_decls_142 (coe v0)) in
     coe
       (case coe v1 of
          MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v2

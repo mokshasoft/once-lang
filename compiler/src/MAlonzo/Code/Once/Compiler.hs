@@ -30,7 +30,7 @@ import qualified MAlonzo.Code.Once.Verified.SourceTrace
 -- Once.Compiler.VC.compile
 d_compile_6 ::
   MAlonzo.Code.Once.Verified.CPU.Interface.T_Arch_10 ->
-  MAlonzo.Code.Once.Grammar.T_GModule_126 ->
+  MAlonzo.Code.Once.Grammar.T_GModule_138 ->
   Maybe [MAlonzo.Code.Data.Fin.Base.T_Fin_10]
 d_compile_6
   = coe
@@ -39,7 +39,7 @@ d_compile_6
 -- Once.Compiler.VC.correct
 d_correct_8 ::
   MAlonzo.Code.Once.Verified.CPU.Interface.T_Arch_10 ->
-  MAlonzo.Code.Once.Grammar.T_GModule_126 ->
+  MAlonzo.Code.Once.Grammar.T_GModule_138 ->
   [MAlonzo.Code.Data.Fin.Base.T_Fin_10] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12

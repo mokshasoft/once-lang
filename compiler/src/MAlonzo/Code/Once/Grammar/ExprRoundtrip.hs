@@ -126,7 +126,7 @@ d_round'45'trip'45'c'45'e'45'string_66 ::
 d_round'45'trip'45'c'45'e'45'string_66 = erased
 -- Once.Grammar.ExprRoundtrip.round-trip-concrete-expr
 d_round'45'trip'45'concrete'45'expr_72 ::
-  MAlonzo.Code.Once.Grammar.T_GExpr_70 ->
+  MAlonzo.Code.Once.Grammar.T_GExpr_82 ->
   MAlonzo.Code.Once.Grammar.ExprPrinter.T_ConcreteExpr_78 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_round'45'trip'45'concrete'45'expr_72 = erased

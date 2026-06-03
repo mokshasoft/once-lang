@@ -14,11 +14,12 @@ two : Mu (K Unit + Id)
 two = In (inr (In (inr (In (inl unit)))))
 
 -- isEven : Nat -> Unit + Unit   (inl = even, inr = odd)
--- algebra : Unit + (Unit + Unit) -> Unit + Unit
---   inl tt        (zero layer)        -> inl unit        (even)
---   inr b         (suc layer, b=prev) -> not b           (flip)
+-- algebra : Unit + (Unit + Unit) -> Unit + Unit, point-free (copair of
+-- closed morphisms):
+--   inl tt (zero layer)        -> inl    (zero is even)
+--   inr b  (suc layer, b=prev) -> not b  = case inr inl  (flip even/odd)
 isEven : Mu (K Unit + Id) -> Unit + Unit
-isEven = cata (case (inl unit) (case (inr unit) (inl unit)))
+isEven = cata (case inl (case inr inl))
 
 even42 : Unit -> Int
 even42 _ = 42

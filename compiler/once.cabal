@@ -264,6 +264,7 @@ library
       MAlonzo.Code.Once.Compile
       MAlonzo.Code.Once.Escape
       MAlonzo.Code.Once.Functor.Base
+      MAlonzo.Code.Once.Functor.Decide
       MAlonzo.Code.Once.Functor.Translate
       MAlonzo.Code.Once.Grammar
       MAlonzo.Code.Once.Grammar.ConcreteDec
@@ -330,6 +331,7 @@ library
       MAlonzo.Code.Once.TypeCheck.Elaborate
       MAlonzo.Code.Once.TypeCheck.Error
       MAlonzo.Code.Once.TypeCheck.Judgment
+      MAlonzo.Code.Once.TypeCheck.Morph
       MAlonzo.Code.Once.TypeCheck.Raw
       MAlonzo.Code.Once.Verified
       MAlonzo.Code.Once.Verified.Behavior

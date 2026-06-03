@@ -50,12 +50,12 @@ d_toLegacyArch_6 v0
 -- Once.Verified.Compile.compile-asm
 d_compile'45'asm_8 ::
   MAlonzo.Code.Once.Verified.CPU.Interface.T_Arch_10 ->
-  MAlonzo.Code.Once.Grammar.T_GModule_126 ->
+  MAlonzo.Code.Once.Grammar.T_GModule_138 ->
   MAlonzo.Code.Once.Compile.T_CompileResult_464
 d_compile'45'asm_8 v0 v1
   = let v2
-          = MAlonzo.Code.Once.Grammar.ModuleConvert.d_mapDecls_108
-              (coe MAlonzo.Code.Once.Grammar.d_decls_130 (coe v1)) in
+          = MAlonzo.Code.Once.Grammar.ModuleConvert.d_mapDecls_122
+              (coe MAlonzo.Code.Once.Grammar.d_decls_142 (coe v1)) in
     coe
       (case coe v2 of
          MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v3
@@ -137,12 +137,12 @@ d_compile_72 ::
   (MAlonzo.Code.Once.Verified.CPU.Interface.T_Arch_10 ->
    MAlonzo.Code.Once.Verified.CPU.Interface.T_ArchSemantics_18) ->
   MAlonzo.Code.Once.Verified.CPU.Interface.T_Arch_10 ->
-  MAlonzo.Code.Once.Grammar.T_GModule_126 ->
+  MAlonzo.Code.Once.Grammar.T_GModule_138 ->
   Maybe [MAlonzo.Code.Data.Fin.Base.T_Fin_10]
 d_compile_72 v0 v1 v2
   = let v3
-          = MAlonzo.Code.Once.Grammar.ModuleConvert.d_mapDecls_108
-              (coe MAlonzo.Code.Once.Grammar.d_decls_130 (coe v2)) in
+          = MAlonzo.Code.Once.Grammar.ModuleConvert.d_mapDecls_122
+              (coe MAlonzo.Code.Once.Grammar.d_decls_142 (coe v2)) in
     coe
       (case coe v3 of
          MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v4
@@ -267,7 +267,7 @@ d_correct_122 ::
   (MAlonzo.Code.Once.Verified.CPU.Interface.T_Arch_10 ->
    MAlonzo.Code.Once.Verified.CPU.Interface.T_ArchSemantics_18) ->
   MAlonzo.Code.Once.Verified.CPU.Interface.T_Arch_10 ->
-  MAlonzo.Code.Once.Grammar.T_GModule_126 ->
+  MAlonzo.Code.Once.Grammar.T_GModule_138 ->
   [MAlonzo.Code.Data.Fin.Base.T_Fin_10] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
