@@ -19,11 +19,13 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 module Once.CCC.Target.X86-64.FlatComposition (FS : FrameSemantics) where
 
 open import Data.Nat using (ℕ; zero; suc; _+_; _≡ᵇ_)
-open import Data.Nat.Properties using (+-identityʳ; +-suc)
+open import Data.Nat.Properties using (+-identityʳ; +-suc; +-assoc)
 open import Data.Bool using (Bool; true; false)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.List using (List; []; _∷_; _++_; length)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; sym; trans)
+open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
+open import Data.List.Relation.Unary.All using (All; []; _∷_)
 
 open import Once.CCC.Machine.SMCore
 open import Once.CCC.Label using (Label; once)
@@ -181,3 +183,64 @@ headView (instr-ctrl (c-jmp m)) = hv-plain refl (λ _ _ _ → refl)
 headView (instr-ctrl (c-je m)) = hv-plain refl (λ _ _ _ → refl)
 headView (instr-ctrl c-test-tag) = hv-plain refl (λ _ _ _ → refl)
 headView (instr-ctrl c-test-scratch) = hv-plain refl (λ _ _ _ → refl)
+
+------------------------------------------------------------------------
+-- find-label preservation: a flat jump landing at flat index j lands at
+-- x86 index `x86-off prog j` in the compiled program. The flat target is
+-- a ℕ; the x86 target is `once target` (compiler provenance), so SigOp
+-- labels (sigop _ _) never interfere — definitional via `_≡ᵇᴸ_`.
+-- Structural over `All HeadView prog` (enumeration lives in headView).
+------------------------------------------------------------------------
+just-inj : ∀ {a b : ℕ} → (just a) ≡ (just b) → a ≡ b
+just-inj refl = refl
+
+find-label-pres : ∀ (prog : AbstractTrace) (target acc xi j : ℕ)
+  → All HeadView prog
+  → fl-go prog target acc ≡ just j
+  → Σ ℕ (λ d → (j ≡ acc + d)
+        × (X.find-label-go (once target) (compile-trace prog) xi ≡ just (xi + x86-off prog d)))
+find-label-pres [] target acc xi j _ ()
+find-label-pres (i ∷ rest) target acc xi j (hv-plain hl fl-p ∷ all-rest) fl-eq =
+  let ih = find-label-pres rest target (suc acc) (xi + x86-len i) j all-rest
+             (trans (sym (fl-p rest target acc)) fl-eq)
+      d' = proj₁ ih
+  in suc d'
+   , trans (proj₁ (proj₂ ih)) (sym (+-suc acc d'))
+   , trans (find-label-go-skip (once target) (compile-abstract i) (compile-trace rest) xi hl)
+           (trans (proj₂ (proj₂ ih)) (cong just (+-assoc xi (x86-len i) (x86-off rest d'))))
+find-label-pres (i ∷ rest) target acc xi j (hv-clabel m ca-eq fl-c ∷ all-rest) fl-eq
+  with m ≡ᵇ target in meq
+... | true rewrite ca-eq | meq = 0 , comp1 , cong just (sym (+-identityʳ xi))
+  where
+    acc≡j : acc ≡ j
+    acc≡j = just-inj (trans (sym (cong (λ b → fl-label-match b rest target acc) meq))
+                            (trans (sym (fl-c rest target acc)) fl-eq))
+    comp1 : j ≡ acc + 0
+    comp1 = trans (sym acc≡j) (sym (+-identityʳ acc))
+... | false rewrite ca-eq | meq =
+  let ih = find-label-pres rest target (suc acc) (suc xi) j all-rest
+             (trans (sym (cong (λ b → fl-label-match b rest target acc) meq))
+                    (trans (sym (fl-c rest target acc)) fl-eq))
+      d' = proj₁ ih
+  in suc d'
+   , trans (proj₁ (proj₂ ih)) (sym (+-suc acc d'))
+   , trans (proj₂ (proj₂ ih))
+           (cong just (trans (sym (+-suc xi (x86-off rest d')))
+                             (cong (λ L → xi + (L + x86-off rest d')) (sym (cong length ca-eq)))))
+
+-- headView is total (every current instruction is either a c-label or a
+-- label-free block — `compile-sigOp` = call-sym, no labels), so the
+-- All-HeadView side-condition is always dischargeable. (Plan 0.33 S2 will
+-- generalize the hv-plain evidence to `no once-label` so this stays total
+-- when label-using SigOps are inlined; today it holds outright.)
+all-headView : ∀ (prog : AbstractTrace) → All HeadView prog
+all-headView []         = []
+all-headView (i ∷ rest) = headView i ∷ all-headView rest
+
+-- find-label preservation, side-condition discharged: a flat jump to flat
+-- index j corresponds to the x86 jump to block-offset index x86-off prog j.
+find-label-corr : ∀ (prog : AbstractTrace) (target xi j : ℕ)
+  → fl-go prog target 0 ≡ just j
+  → X.find-label-go (once target) (compile-trace prog) xi ≡ just (xi + x86-off prog j)
+find-label-corr prog target xi j fl-eq with find-label-pres prog target 0 xi j (all-headView prog) fl-eq
+... | (d , j≡0+d , x86-eq) rewrite j≡0+d = x86-eq
