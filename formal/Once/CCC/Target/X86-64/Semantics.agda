@@ -197,13 +197,15 @@ suc m <ᵇ suc n = m <ᵇ n
 -- worklist loops (A2).
 ------------------------------------------------------------------------
 
+-- find-label's scanner, lifted to top-level so the abstract↔x86
+-- correspondence proofs can induct on it (Plan 0.32 Phase D composition).
+find-label-go : ℕ → Program → ℕ → Maybe ℕ
+find-label-go target []             _ = nothing
+find-label-go target (label m ∷ is) i = if m ≡ᵇ target then just i else find-label-go target is (suc i)
+find-label-go target (_       ∷ is) i = find-label-go target is (suc i)
+
 find-label : Program → ℕ → Maybe ℕ
-find-label prog target = go prog 0
-  where
-    go : Program → ℕ → Maybe ℕ
-    go []             _ = nothing
-    go (label m ∷ is) i = if m ≡ᵇ target then just i else go is (suc i)
-    go (_       ∷ is) i = go is (suc i)
+find-label prog target = find-label-go target prog 0
 
 ------------------------------------------------------------------------
 -- Instruction semantics
