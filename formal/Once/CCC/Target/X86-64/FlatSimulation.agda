@@ -31,7 +31,8 @@
 ------------------------------------------------------------------------
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
-open import Once.Memory.HeapAddress using (HeapLocation)
+open import Once.Memory.HeapAddress using (HeapLocation; sucHL)
+open import Once.CCC.Target.X86-64.Syntax using (slot-size)
 open import Data.Nat using (ℕ; _+_; _≡ᵇ_)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
@@ -39,6 +40,8 @@ module Once.CCC.Target.X86-64.FlatSimulation
   (FS : FrameSemantics)
   (enc-hl : HeapLocation → ℕ)
   (enc-hl-inj : ∀ {a b : HeapLocation} → enc-hl a ≡ enc-hl b → a ≡ b)
+  -- heap layout successor law: a cell's successor sits one slot higher.
+  (enc-hl-suc : ∀ (hl : HeapLocation) → enc-hl (sucHL hl) ≡ enc-hl hl + slot-size)
   where
 
 open import Once.CCC.Machine.SMCore
@@ -49,7 +52,7 @@ open X using (mkstate; execInstr; mkflags; _<ᵇ_)
   renaming (readReg to xreadReg; writeReg to xwriteReg; readMem to xreadMem)
 open X.State using (memory; flags; pc) renaming (regs to xregs; halted to xhalted)
 open import Once.CCC.Target.X86-64.Syntax
-  using (rax; rbx; rsi; rdi; Reg; Operand; Program; reg; imm; mem; mov; add; sub; cmp; label; jmp)
+  using (rax; rbx; rsi; rdi; Reg; Operand; Program; reg; imm; mem; mov; add; sub; cmp; label; jmp; base; base+disp)
 open import Data.Maybe using (just)
 open import Data.Bool using (false)
 open import Data.List using (_∷_; []; _++_; drop; length)
@@ -60,7 +63,7 @@ module C = FC FS enc-hl enc-hl-inj          -- enc-sv / FlatCorr data fields
 open import Once.CCC.Label using (once)
 open import Once.CCC.Target.X86-64.FlatComposition FS
   using (x86-off; x86-len; x86-off-suc; fetch-block-head; find-label-corr)
-open import Once.CCC.Target.X86-64.StepLemmas using (exec-1; step-mov-rr; step-mov-ri; step-label; step-jmp)
+open import Once.CCC.Target.X86-64.StepLemmas using (exec-1; step-mov-rr; step-mov-ri; step-label; step-jmp; step-mov-rm)
 open import Once.CCC.Target.X86-64.AbstractToX86 using (compile-trace; compile-abstract)
 open import Data.Nat using (zero; suc)
 open import Data.Product using (Σ; _×_; _,_)
@@ -290,3 +293,65 @@ block-step-c-jmp prog fs s n j cc h ft fl-eq = block-step
                           ; rax-eq = C.rax-eq dc ; rbx-eq = C.rbx-eq dc
                           ; halt-eq = C.halt-eq dc ; heap-eq = C.heap-eq dc }
       ; pc-off = refl }
+
+-- load-indirect: Output := *Input1 ↔ `mov rax, [rdi]`. The read VALUE comes
+-- from heap-eq (memory s at enc-hl hl = enc-sv w), the ADDRESS from rdi-eq
+-- (rdi = enc-hl hl since Input1 = SV-Ptr (AtDynamic hl)).
+block-step-load-indirect : ∀ prog fs s hl w → CompiledCorr prog fs s → halted (floc fs) ≡ false
+  → fetch prog (fpc fs) ≡ just load-indirect
+  → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
+  → heapMem (floc fs) hl ≡ just w
+  → BlockStep prog fs s load-indirect
+block-step-load-indirect prog fs s hl w cc h ft i-eq h-eq =
+  post , exec-eq , record { dataCorr = C.sim-load-indirect hl w fs s dc i-eq h-eq ; pc-off = pco' }
+  where
+    dc = dataCorr cc ; po = pc-off cc
+    halt-s : X.State.halted s ≡ false
+    halt-s = trans (C.halt-eq dc) h
+    fetch-x86 : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (mov (reg rax) (mem (base rdi)))
+    fetch-x86 = trans (cong (X.fetch (compile-trace prog)) po)
+                      (fetch-block-head prog (fpc fs) load-indirect ft)
+    rdi-val : xreadReg (xregs s) rdi ≡ enc-hl hl
+    rdi-val = trans (C.rdi-eq dc) (cong C.enc-sv i-eq)
+    rd : X.readMem (memory s) (X.effectiveAddr s (base rdi)) ≡ just (C.enc-sv w)
+    rd = trans (cong (X.readMem (memory s)) rdi-val) (trans (C.heap-eq dc hl) (cong C.enc-maybe h-eq))
+    post : X.State
+    post = record s { regs = xwriteReg (xregs s) rax (C.enc-sv w) ; pc = pc s + 1 }
+    snh : X.step-not-halted (compile-trace prog) s ≡ just post
+    snh = step-mov-rm {compile-trace prog} {s} {rax} {base rdi} {C.enc-sv w} fetch-x86 rd
+    exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
+    exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
+    pco' : X.State.pc post ≡ x86-off prog (fpc (flat-exec-instr load-indirect prog fs))
+    pco' = trans (cong (_+ 1) po) (sym (x86-off-suc prog (fpc fs) load-indirect ft))
+
+-- load-indirect-suc: Output := *(sucLoc Input1) ↔ `mov rax, [rdi + slot]`.
+-- The address law enc-hl-suc bridges the x86 effective address (enc-hl hl +
+-- slot-size) to the heap cell at sucHL hl (enc-hl (sucHL hl)).
+block-step-load-indirect-suc : ∀ prog fs s hl w → CompiledCorr prog fs s → halted (floc fs) ≡ false
+  → fetch prog (fpc fs) ≡ just load-indirect-suc
+  → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
+  → heapMem (floc fs) (sucHL hl) ≡ just w
+  → BlockStep prog fs s load-indirect-suc
+block-step-load-indirect-suc prog fs s hl w cc h ft i-eq h-eq =
+  post , exec-eq , record { dataCorr = C.sim-load-indirect-suc hl w fs s dc i-eq h-eq ; pc-off = pco' }
+  where
+    dc = dataCorr cc ; po = pc-off cc
+    halt-s : X.State.halted s ≡ false
+    halt-s = trans (C.halt-eq dc) h
+    fetch-x86 : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (mov (reg rax) (mem (base+disp rdi slot-size)))
+    fetch-x86 = trans (cong (X.fetch (compile-trace prog)) po)
+                      (fetch-block-head prog (fpc fs) load-indirect-suc ft)
+    rdi-val : xreadReg (xregs s) rdi ≡ enc-hl hl
+    rdi-val = trans (C.rdi-eq dc) (cong C.enc-sv i-eq)
+    addr-eq : X.effectiveAddr s (base+disp rdi slot-size) ≡ enc-hl (sucHL hl)
+    addr-eq = trans (cong (_+ slot-size) rdi-val) (sym (enc-hl-suc hl))
+    rd : X.readMem (memory s) (X.effectiveAddr s (base+disp rdi slot-size)) ≡ just (C.enc-sv w)
+    rd = trans (cong (X.readMem (memory s)) addr-eq) (trans (C.heap-eq dc (sucHL hl)) (cong C.enc-maybe h-eq))
+    post : X.State
+    post = record s { regs = xwriteReg (xregs s) rax (C.enc-sv w) ; pc = pc s + 1 }
+    snh : X.step-not-halted (compile-trace prog) s ≡ just post
+    snh = step-mov-rm {compile-trace prog} {s} {rax} {base+disp rdi slot-size} {C.enc-sv w} fetch-x86 rd
+    exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
+    exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
+    pco' : X.State.pc post ≡ x86-off prog (fpc (flat-exec-instr load-indirect-suc prog fs))
+    pco' = trans (cong (_+ 1) po) (sym (x86-off-suc prog (fpc fs) load-indirect-suc ft))
