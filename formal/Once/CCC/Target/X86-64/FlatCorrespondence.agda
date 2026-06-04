@@ -34,7 +34,7 @@ module Once.CCC.Target.X86-64.FlatCorrespondence
   (enc-hl-inj : ∀ {a b : HeapLocation} → enc-hl a ≡ enc-hl b → a ≡ b)
   where
 
-open import Data.Nat using (zero; suc; _+_; _≡ᵇ_)
+open import Data.Nat using (zero; suc; _+_; _∸_; _≡ᵇ_)
 open import Data.Nat.Properties using (+-comm)
 open import Data.Bool using (Bool; true; false)
 open import Data.Empty using (⊥; ⊥-elim)
@@ -347,3 +347,34 @@ sim-store-indirect-suc hl fs s corr i-eq guard =
       { rdi-eq = rdi-eq corr ; rsi-eq = rsi-eq corr ; rax-eq = rax-eq corr ; rbx-eq = rbx-eq corr
       ; halt-eq = halt-eq corr
       ; heap-eq = store-heap-eq (sucHL hl) v s (floc fs) (heap-eq corr) }
+
+------------------------------------------------------------------------
+-- Arithmetic reg-ops (Plan 0.34: flag-free, so the post is parametric over
+-- the x86 flags). input2-inc / scratch-dec increment/decrement a TAG.
+------------------------------------------------------------------------
+inc-enc : ∀ (v : StoredValue FS) (k : ℕ) → v ≡ SV-Tag k → enc-sv v + 1 ≡ enc-sv (sv-succ v)
+inc-enc .(SV-Tag k) k refl = +-comm k 1
+
+dec-enc : ∀ (v : StoredValue FS) (k : ℕ) → v ≡ SV-Tag k → enc-sv v ∸ 1 ≡ enc-sv (sv-pred v)
+dec-enc .(SV-Tag zero)    zero    refl = refl
+dec-enc .(SV-Tag (suc m)) (suc m) refl = refl
+
+sim-reg-input2-inc : ∀ (k : ℕ) (newFlags : X.Flags) (fs : FlatState) (s : X.State) → FlatCorr fs s
+  → readReg (regs (floc fs)) Input2 ≡ SV-Tag k
+  → FlatCorr (flat-exec-instr (instr-reg-op input2-inc) [] fs)
+             (mkstate (xwriteReg (xregs s) rsi (xreadReg (xregs s) rsi + 1))
+                      (memory s) newFlags (pc s + 1) (xhalted s))
+sim-reg-input2-inc k newFlags fs s corr i2-eq = record
+  { rdi-eq = rdi-eq corr ; rax-eq = rax-eq corr ; rbx-eq = rbx-eq corr
+  ; rsi-eq = trans (cong (_+ 1) (rsi-eq corr)) (inc-enc (readReg (regs (floc fs)) Input2) k i2-eq)
+  ; halt-eq = halt-eq corr ; heap-eq = heap-eq corr }
+
+sim-reg-scratch-dec : ∀ (k : ℕ) (newFlags : X.Flags) (fs : FlatState) (s : X.State) → FlatCorr fs s
+  → readReg (regs (floc fs)) Scratch ≡ SV-Tag k
+  → FlatCorr (flat-exec-instr (instr-reg-op scratch-dec) [] fs)
+             (mkstate (xwriteReg (xregs s) rbx (xreadReg (xregs s) rbx ∸ 1))
+                      (memory s) newFlags (pc s + 1) (xhalted s))
+sim-reg-scratch-dec k newFlags fs s corr sc-eq = record
+  { rdi-eq = rdi-eq corr ; rsi-eq = rsi-eq corr ; rax-eq = rax-eq corr
+  ; rbx-eq = trans (cong (_∸ 1) (rbx-eq corr)) (dec-enc (readReg (regs (floc fs)) Scratch) k sc-eq)
+  ; halt-eq = halt-eq corr ; heap-eq = heap-eq corr }

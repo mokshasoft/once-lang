@@ -33,7 +33,7 @@
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.Memory.HeapAddress using (HeapLocation; sucHL)
 open import Once.CCC.Target.X86-64.Syntax using (slot-size)
-open import Data.Nat using (ℕ; _+_; _≡ᵇ_)
+open import Data.Nat using (ℕ; _+_; _∸_; _≡ᵇ_)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
 module Once.CCC.Target.X86-64.FlatSimulation
@@ -48,7 +48,7 @@ open import Once.CCC.Machine.SMCore
 open import Once.CCC.Machine.Flat
 open FlatMachine {FS}
 import Once.CCC.Target.X86-64.Semantics as X
-open X using (mkstate; execInstr; mkflags; _<ᵇ_; writeMem)
+open X using (mkstate; execInstr; mkflags; _<ᵇ_; writeMem; updateFlags)
   renaming (readReg to xreadReg; writeReg to xwriteReg; readMem to xreadMem)
 open X.State using (memory; flags; pc) renaming (regs to xregs; halted to xhalted)
 open import Once.CCC.Target.X86-64.Syntax
@@ -63,7 +63,7 @@ module C = FC FS enc-hl enc-hl-inj          -- enc-sv / FlatCorr data fields
 open import Once.CCC.Label using (once)
 open import Once.CCC.Target.X86-64.FlatComposition FS
   using (x86-off; x86-len; x86-off-suc; fetch-block-head; find-label-corr)
-open import Once.CCC.Target.X86-64.StepLemmas using (exec-1; step-mov-rr; step-mov-ri; step-label; step-jmp; step-mov-rm; step-mov-mr)
+open import Once.CCC.Target.X86-64.StepLemmas using (exec-1; step-mov-rr; step-mov-ri; step-label; step-jmp; step-mov-rm; step-mov-mr; step-add-ri; step-sub-ri)
 open import Once.CCC.Target.X86-64.AbstractToX86 using (compile-trace; compile-abstract)
 open import Data.Nat using (zero; suc)
 open import Data.Product using (Σ; _×_; _,_)
@@ -433,3 +433,57 @@ block-step-store-indirect-suc prog fs s hl cc h ft i-eq guard =
                      (C.sim-store-indirect-suc hl fs s dc i-eq guard)
     pco' : X.State.pc post ≡ x86-off prog (fpc (flat-exec-instr store-indirect-suc prog fs))
     pco' = trans (cong (_+ 1) po) (sym (x86-off-suc prog (fpc fs) store-indirect-suc ft))
+
+-- Arithmetic reg-ops: input2-inc (add rsi,1) / scratch-dec (sub rbx,1).
+-- x86 add/sub set flags as a side effect, but CompiledCorr/FlatCorr are
+-- flag-free (Plan 0.34), so the flag clobber is invisible — the sim-* lemma
+-- is parametric over the post flags (instantiated with updateFlags here).
+block-step-input2-inc : ∀ prog fs s k → CompiledCorr prog fs s → halted (floc fs) ≡ false
+  → fetch prog (fpc fs) ≡ just (instr-reg-op input2-inc)
+  → readReg (regs (floc fs)) Input2 ≡ SV-Tag k
+  → BlockStep prog fs s (instr-reg-op input2-inc)
+block-step-input2-inc prog fs s k cc h ft i2-eq =
+  post , exec-eq , record
+    { dataCorr = C.sim-reg-input2-inc k (updateFlags (xreadReg (xregs s) rsi + 1) (xreadReg (xregs s) rsi)) fs s dc i2-eq
+    ; pc-off = pco' }
+  where
+    dc = dataCorr cc ; po = pc-off cc
+    halt-s : X.State.halted s ≡ false
+    halt-s = trans (C.halt-eq dc) h
+    fetch-x86 : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (add (reg rsi) (imm 1))
+    fetch-x86 = trans (cong (X.fetch (compile-trace prog)) po)
+                      (fetch-block-head prog (fpc fs) (instr-reg-op input2-inc) ft)
+    post : X.State
+    post = record s { regs = xwriteReg (xregs s) rsi (xreadReg (xregs s) rsi + 1)
+                    ; flags = updateFlags (xreadReg (xregs s) rsi + 1) (xreadReg (xregs s) rsi) ; pc = pc s + 1 }
+    snh : X.step-not-halted (compile-trace prog) s ≡ just post
+    snh = step-add-ri {compile-trace prog} {s} {rsi} {1} fetch-x86
+    exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
+    exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
+    pco' : X.State.pc post ≡ x86-off prog (fpc (flat-exec-instr (instr-reg-op input2-inc) prog fs))
+    pco' = trans (cong (_+ 1) po) (sym (x86-off-suc prog (fpc fs) (instr-reg-op input2-inc) ft))
+
+block-step-scratch-dec : ∀ prog fs s k → CompiledCorr prog fs s → halted (floc fs) ≡ false
+  → fetch prog (fpc fs) ≡ just (instr-reg-op scratch-dec)
+  → readReg (regs (floc fs)) Scratch ≡ SV-Tag k
+  → BlockStep prog fs s (instr-reg-op scratch-dec)
+block-step-scratch-dec prog fs s k cc h ft sc-eq =
+  post , exec-eq , record
+    { dataCorr = C.sim-reg-scratch-dec k (updateFlags (xreadReg (xregs s) rbx ∸ 1) (xreadReg (xregs s) rbx)) fs s dc sc-eq
+    ; pc-off = pco' }
+  where
+    dc = dataCorr cc ; po = pc-off cc
+    halt-s : X.State.halted s ≡ false
+    halt-s = trans (C.halt-eq dc) h
+    fetch-x86 : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (sub (reg rbx) (imm 1))
+    fetch-x86 = trans (cong (X.fetch (compile-trace prog)) po)
+                      (fetch-block-head prog (fpc fs) (instr-reg-op scratch-dec) ft)
+    post : X.State
+    post = record s { regs = xwriteReg (xregs s) rbx (xreadReg (xregs s) rbx ∸ 1)
+                    ; flags = updateFlags (xreadReg (xregs s) rbx ∸ 1) (xreadReg (xregs s) rbx) ; pc = pc s + 1 }
+    snh : X.step-not-halted (compile-trace prog) s ≡ just post
+    snh = step-sub-ri {compile-trace prog} {s} {rbx} {1} fetch-x86
+    exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
+    exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
+    pco' : X.State.pc post ≡ x86-off prog (fpc (flat-exec-instr (instr-reg-op scratch-dec) prog fs))
+    pco' = trans (cong (_+ 1) po) (sym (x86-off-suc prog (fpc fs) (instr-reg-op scratch-dec) ft))
