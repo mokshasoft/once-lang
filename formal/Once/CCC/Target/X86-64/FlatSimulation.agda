@@ -59,24 +59,16 @@ module C = FC FS enc-hl enc-hl-inj          -- enc-sv / FlatCorr data fields
 open import Once.CCC.Target.X86-64.FlatComposition FS using (x86-off)
 
 ------------------------------------------------------------------------
--- The compiled correspondence: FlatCorr's DATA fields + a block-offset pc.
--- (Reuses C.enc-sv / C.enc-maybe for the value/heap encodings.)
+-- The compiled correspondence = the DATA correspondence (FlatCorr, now
+-- pc-free) ⊕ the block-offset pc relation. block-step gets the data from
+-- the sim-* lemmas (which produce FlatCorr) and the pc from x86-off-suc /
+-- find-label-corr — cleanly separated. (Plan 0.34: no zf-eq.)
 ------------------------------------------------------------------------
 record CompiledCorr (prog : AbstractTrace) (fs : FlatState) (s : X.State) : Set where
   field
-    rdi-eq  : X.readReg (X.State.regs s) rdi ≡ C.enc-sv (readReg (regs (floc fs)) Input1)
-    rsi-eq  : X.readReg (X.State.regs s) rsi ≡ C.enc-sv (readReg (regs (floc fs)) Input2)
-    rax-eq  : X.readReg (X.State.regs s) rax ≡ C.enc-sv (readReg (regs (floc fs)) Output)
-    rbx-eq  : X.readReg (X.State.regs s) rbx ≡ C.enc-sv (readReg (regs (floc fs)) Scratch)
+    dataCorr : C.FlatCorr fs s
     -- CONTROL: x86 pc sits at the block offset of the flat pc (NOT fpc fs).
-    pc-off  : X.State.pc s ≡ x86-off prog (fpc fs)
-    -- Plan 0.34: NO zf-eq — the flat machine has no flag; a conditional
-    -- branch computes + consumes its condition inside one step, so the x86
-    -- flags register is never a shared invariant (and add/sub clobbering zf
-    -- is invisible to the correspondence).
-    halt-eq : X.State.halted s ≡ halted (floc fs)
-    heap-eq : ∀ (hl : HeapLocation) →
-              X.readMem (X.State.memory s) (enc-hl hl) ≡ C.enc-maybe (heapMem (floc fs) hl)
+    pc-off   : X.State.pc s ≡ x86-off prog (fpc fs)
 open CompiledCorr public
 
 ------------------------------------------------------------------------

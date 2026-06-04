@@ -87,7 +87,6 @@ record FlatCorr (fs : FlatState) (s : X.State) : Set where
     rsi-eq  : X.readReg (X.State.regs s) rsi ≡ enc-sv (readReg (regs (floc fs)) Input2)
     rax-eq  : X.readReg (X.State.regs s) rax ≡ enc-sv (readReg (regs (floc fs)) Output)
     rbx-eq  : X.readReg (X.State.regs s) rbx ≡ enc-sv (readReg (regs (floc fs)) Scratch)
-    pc-eq   : X.State.pc s ≡ fpc fs
     halt-eq : X.State.halted s ≡ halted (floc fs)
     heap-eq : ∀ (hl : HeapLocation) →
               X.readMem (X.State.memory s) (enc-hl hl) ≡ enc-maybe (heapMem (floc fs) hl)
@@ -114,7 +113,6 @@ sim-mov-to-output fs s corr = record
   ; rax-eq  = rdi-eq corr
   ; rsi-eq  = rsi-eq corr
   ; rbx-eq  = rbx-eq corr
-  ; pc-eq   = trans (cong (_+ 1) (pc-eq corr)) (+-comm (fpc fs) 1)
   ; halt-eq = halt-eq corr
   ; heap-eq = heap-eq corr
   }
@@ -125,7 +123,6 @@ sim-mov-to-input : ∀ (fs : FlatState) (s : X.State) → FlatCorr fs s
              (mkstate (xwriteReg (xregs s) rdi (xreadReg (xregs s) rax)) (memory s) (flags s) (pc s + 1) (xhalted s))
 sim-mov-to-input fs s corr = record
   { rdi-eq = rax-eq corr ; rsi-eq = rsi-eq corr ; rax-eq = rax-eq corr ; rbx-eq = rbx-eq corr
-  ; pc-eq = trans (cong (_+ 1) (pc-eq corr)) (+-comm (fpc fs) 1)
   ; halt-eq = halt-eq corr ; heap-eq = heap-eq corr }
 
 -- mov-input2-to-output (Output := Input2) ↔ `mov rax, rsi`.
@@ -134,7 +131,6 @@ sim-mov-input2-to-output : ∀ (fs : FlatState) (s : X.State) → FlatCorr fs s
              (mkstate (xwriteReg (xregs s) rax (xreadReg (xregs s) rsi)) (memory s) (flags s) (pc s + 1) (xhalted s))
 sim-mov-input2-to-output fs s corr = record
   { rdi-eq = rdi-eq corr ; rsi-eq = rsi-eq corr ; rax-eq = rsi-eq corr ; rbx-eq = rbx-eq corr
-  ; pc-eq = trans (cong (_+ 1) (pc-eq corr)) (+-comm (fpc fs) 1)
   ; halt-eq = halt-eq corr ; heap-eq = heap-eq corr }
 
 -- mov-output-to-input2 (Input2 := Output) ↔ `mov rsi, rax`.
@@ -143,7 +139,6 @@ sim-mov-output-to-input2 : ∀ (fs : FlatState) (s : X.State) → FlatCorr fs s
              (mkstate (xwriteReg (xregs s) rsi (xreadReg (xregs s) rax)) (memory s) (flags s) (pc s + 1) (xhalted s))
 sim-mov-output-to-input2 fs s corr = record
   { rdi-eq = rdi-eq corr ; rsi-eq = rax-eq corr ; rax-eq = rax-eq corr ; rbx-eq = rbx-eq corr
-  ; pc-eq = trans (cong (_+ 1) (pc-eq corr)) (+-comm (fpc fs) 1)
   ; halt-eq = halt-eq corr ; heap-eq = heap-eq corr }
 
 -- instr-load-tag-lit n (Output := SV-Tag n) ↔ `mov rax, n`. enc(SV-Tag n)=n ⟹ rax-eq=refl.
@@ -152,7 +147,6 @@ sim-load-tag-lit : ∀ (n : ℕ) (fs : FlatState) (s : X.State) → FlatCorr fs 
              (mkstate (xwriteReg (xregs s) rax n) (memory s) (flags s) (pc s + 1) (xhalted s))
 sim-load-tag-lit n fs s corr = record
   { rdi-eq = rdi-eq corr ; rsi-eq = rsi-eq corr ; rax-eq = refl ; rbx-eq = rbx-eq corr
-  ; pc-eq = trans (cong (_+ 1) (pc-eq corr)) (+-comm (fpc fs) 1)
   ; halt-eq = halt-eq corr ; heap-eq = heap-eq corr }
 
 -- instr-reg-op scratch-one (Scratch := SV-Tag 1) ↔ `mov rbx, 1`. rbx-eq=refl.
@@ -161,7 +155,6 @@ sim-reg-scratch-one : ∀ (fs : FlatState) (s : X.State) → FlatCorr fs s
              (mkstate (xwriteReg (xregs s) rbx 1) (memory s) (flags s) (pc s + 1) (xhalted s))
 sim-reg-scratch-one fs s corr = record
   { rdi-eq = rdi-eq corr ; rsi-eq = rsi-eq corr ; rax-eq = rax-eq corr ; rbx-eq = refl
-  ; pc-eq = trans (cong (_+ 1) (pc-eq corr)) (+-comm (fpc fs) 1)
   ; halt-eq = halt-eq corr ; heap-eq = heap-eq corr }
 
 -- instr-reg-op scratch-zero (Scratch := SV-Tag 0) ↔ `mov rbx, 0`. rbx-eq=refl.
@@ -170,7 +163,6 @@ sim-reg-scratch-zero : ∀ (fs : FlatState) (s : X.State) → FlatCorr fs s
              (mkstate (xwriteReg (xregs s) rbx 0) (memory s) (flags s) (pc s + 1) (xhalted s))
 sim-reg-scratch-zero fs s corr = record
   { rdi-eq = rdi-eq corr ; rsi-eq = rsi-eq corr ; rax-eq = rax-eq corr ; rbx-eq = refl
-  ; pc-eq = trans (cong (_+ 1) (pc-eq corr)) (+-comm (fpc fs) 1)
   ; halt-eq = halt-eq corr ; heap-eq = heap-eq corr }
 
 -- instr-reg-op input2-zero (Input2 := SV-Tag 0) ↔ `mov rsi, 0`. rsi-eq=refl.
@@ -179,7 +171,6 @@ sim-reg-input2-zero : ∀ (fs : FlatState) (s : X.State) → FlatCorr fs s
              (mkstate (xwriteReg (xregs s) rsi 0) (memory s) (flags s) (pc s + 1) (xhalted s))
 sim-reg-input2-zero fs s corr = record
   { rdi-eq = rdi-eq corr ; rsi-eq = refl ; rax-eq = rax-eq corr ; rbx-eq = rbx-eq corr
-  ; pc-eq = trans (cong (_+ 1) (pc-eq corr)) (+-comm (fpc fs) 1)
   ; halt-eq = halt-eq corr ; heap-eq = heap-eq corr }
 
 -- instr-reg-op scratch-load-count (Scratch := Input2) ↔ `mov rbx, rsi`. rbx-eq=rsi-eq.
@@ -188,7 +179,6 @@ sim-reg-scratch-load-count : ∀ (fs : FlatState) (s : X.State) → FlatCorr fs 
              (mkstate (xwriteReg (xregs s) rbx (xreadReg (xregs s) rsi)) (memory s) (flags s) (pc s + 1) (xhalted s))
 sim-reg-scratch-load-count fs s corr = record
   { rdi-eq = rdi-eq corr ; rsi-eq = rsi-eq corr ; rax-eq = rax-eq corr ; rbx-eq = rsi-eq corr
-  ; pc-eq = trans (cong (_+ 1) (pc-eq corr)) (+-comm (fpc fs) 1)
   ; halt-eq = halt-eq corr ; heap-eq = heap-eq corr }
 
 ------------------------------------------------------------------------
@@ -237,7 +227,6 @@ sim-load-indirect-suc hl w fs s corr i-eq h-eq =
     corr-clean : FlatCorr cleanFlat xpost
     corr-clean = record
       { rdi-eq = rdi-eq corr ; rsi-eq = rsi-eq corr ; rax-eq = refl ; rbx-eq = rbx-eq corr
-      ; pc-eq = trans (cong (_+ 1) (pc-eq corr)) (+-comm (fpc fs) 1)
       ; halt-eq = halt-eq corr ; heap-eq = heap-eq corr }
 
 ------------------------------------------------------------------------
@@ -267,7 +256,6 @@ sim-load-indirect hl w fs s corr i-eq h-eq =
     corr-clean : FlatCorr cleanFlat xpost
     corr-clean = record
       { rdi-eq = rdi-eq corr ; rsi-eq = rsi-eq corr ; rax-eq = refl ; rbx-eq = rbx-eq corr
-      ; pc-eq = trans (cong (_+ 1) (pc-eq corr)) (+-comm (fpc fs) 1)
       ; halt-eq = halt-eq corr ; heap-eq = heap-eq corr }
 
 ------------------------------------------------------------------------
@@ -329,7 +317,6 @@ sim-store-indirect hl fs s corr i-eq guard =
     corr-clean : FlatCorr cleanFlat xpost
     corr-clean = record
       { rdi-eq = rdi-eq corr ; rsi-eq = rsi-eq corr ; rax-eq = rax-eq corr ; rbx-eq = rbx-eq corr
-      ; pc-eq = trans (cong (_+ 1) (pc-eq corr)) (+-comm (fpc fs) 1)
       ; halt-eq = halt-eq corr
       ; heap-eq = store-heap-eq hl v s (floc fs) (heap-eq corr) }
 
@@ -358,6 +345,5 @@ sim-store-indirect-suc hl fs s corr i-eq guard =
     corr-clean : FlatCorr cleanFlat xpost
     corr-clean = record
       { rdi-eq = rdi-eq corr ; rsi-eq = rsi-eq corr ; rax-eq = rax-eq corr ; rbx-eq = rbx-eq corr
-      ; pc-eq = trans (cong (_+ 1) (pc-eq corr)) (+-comm (fpc fs) 1)
       ; halt-eq = halt-eq corr
       ; heap-eq = store-heap-eq (sucHL hl) v s (floc fs) (heap-eq corr) }
