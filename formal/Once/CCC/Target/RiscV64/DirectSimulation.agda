@@ -1140,6 +1140,7 @@ module Simulation {FS : FrameSemantics} where
   -- The old `case-codegen-faithful-phase1-rv` postulate is now false
   -- (abstract branches, straight-line target sentinel halts).
   instr-sim (instr-reg-op _) ls rs alloc not-halted corr = SMP.!!
+  instr-sim (instr-ctrl _) ls rs alloc not-halted corr = SMP.!!  -- Plan 0.32: flat control, real bridge is the flat machine
   instr-sim (instr-loop _) ls rs alloc not-halted corr = SMP.!!
   instr-sim (instr-case-on-tag f g) ls rs alloc not-halted corr = SMP.!!
 
@@ -1223,6 +1224,7 @@ module Simulation {FS : FrameSemantics} where
   exec-abstract-preserves-frame (instr-load-tag-lit _) ls alloc = refl
   exec-abstract-preserves-frame (instr-alloc-heap _) ls alloc = refl
   exec-abstract-preserves-frame (instr-reg-op _) ls alloc = refl
+  exec-abstract-preserves-frame (instr-ctrl _) ls alloc = refl  -- Plan 0.32
   exec-abstract-preserves-frame (instr-loop body) ls alloc = SMP.InstrPrimitives.exec-loop-preserves-frame 1000000 body ls alloc
   exec-abstract-preserves-frame (instr-case-on-tag _ _) ls alloc = refl
 

@@ -879,6 +879,20 @@ module ExecLemmas {FS : FrameSemantics} where
 -- which compiles to x86 and has per-instruction simulation proofs.
 ------------------------------------------------------------------------
 
+-- Plan 0.32 (M3, flatten): FLAT control flow for the abstract machine,
+-- mirroring the target (pc + label/je/jmp). Wrapped in a single
+-- `instr-ctrl` AbstractInstr constructor to bound the exhaustive-match
+-- cascade to one clause per function. Run by the pc/fuel flat `exec`
+-- (a FlatState carries the pc + zero-flag); the legacy structured
+-- `exec-trace`/`exec-abstract` (no pc) simply HALT on these — they are
+-- never emitted into a structured trace, only into a flat program.
+data FlatCtrl : Set where
+  c-label        : ℕ → FlatCtrl   -- label marker (pc passes through)
+  c-jmp          : ℕ → FlatCtrl   -- unconditional jump to label
+  c-je           : ℕ → FlatCtrl   -- jump to label if zero-flag set
+  c-test-tag     : FlatCtrl       -- zf := (*Input1 tag ≟ SV-Tag 0)
+  c-test-scratch : FlatCtrl       -- zf := (Scratch ≟ SV-Tag 0)
+
 data AbstractInstr : Set where
   -- Register operations
   mov-to-output      : AbstractInstr              -- Output := Input1
@@ -1043,6 +1057,11 @@ data AbstractInstr : Set where
   -- No heap, no slot, frame-preserving — its whole cascade mirrors
   -- `mov-to-output`. x86: mov/add/sub on rbx (Scratch) / rsi (Input2).
   instr-reg-op : RegOp → AbstractInstr
+
+  -- Plan 0.32 (M3): flat control flow (label/jump/test). Added LAST for
+  -- MAlonzo ctor-index stability. Structured exec halts on these; the
+  -- flat pc/fuel exec interprets them. See FlatCtrl above.
+  instr-ctrl : FlatCtrl → AbstractInstr
 
 -- | A trace is a sequence of abstract instructions
 AbstractTrace : Set
@@ -1547,6 +1566,13 @@ module AbstractExec {FS : FrameSemantics} where
   -- Plan 0.29 (M5): register pokes (no heap, no slot, frame-preserving).
   -- alloc is returned unchanged (uniform proj₂).
   exec-abstract (instr-reg-op op) s alloc = exec-reg-op op s , alloc
+
+  -- Plan 0.32 (M3): flat control flow is NEVER in a structured trace
+  -- (it has no pc) — only the flat pc/fuel exec interprets it. Its
+  -- structured semantics is therefore irrelevant; IDENTITY is the
+  -- cascade-friendliest placeholder (preserves frame/heap/slot/halted/
+  -- alloc, so every per-instruction invariant clause is trivial).
+  exec-abstract (instr-ctrl _) s alloc = s , alloc
 
   -- | Execute a trace (sequence of abstract instructions)
   -- Signature declared above with exec-abstract for mutual recursion.

@@ -1174,6 +1174,10 @@ module Simulation {FS : FrameSemantics} where
   -- 1-to-1 and reusing the leaf per-instruction Corresponds — replaces
   -- all three at once.
   instr-sim (instr-reg-op _) ls xs alloc not-halted corr = SMP.!!
+  -- Plan 0.32: flat control flow — the straight-line exec-prog can't model
+  -- it (that's WHY we flatten); the real correspondence is the flat-machine
+  -- bridge (exec-flat ↔ Semantics.exec). Honest hole here.
+  instr-sim (instr-ctrl _) ls xs alloc not-halted corr = SMP.!!
   instr-sim (instr-loop _) ls xs alloc not-halted corr = SMP.!!
   instr-sim (instr-case-on-tag f g) ls xs alloc not-halted corr = SMP.!!
 
@@ -1262,6 +1266,7 @@ module Simulation {FS : FrameSemantics} where
   exec-abstract-preserves-frame (instr-load-code-addr _) ls alloc = refl
   exec-abstract-preserves-frame instr-save-closure-reg ls alloc = refl
   exec-abstract-preserves-frame (instr-reg-op _) ls alloc = refl
+  exec-abstract-preserves-frame (instr-ctrl _) ls alloc = refl  -- Plan 0.32: identity preserves frame
   exec-abstract-preserves-frame (instr-loop body) ls alloc = SMP.InstrPrimitives.exec-loop-preserves-frame 1000000 body ls alloc
   -- Plan 0.30: case-on-tag branches → delegate to the SMPrimitives mutual
   -- frame lemma (exec-case-dispatch-preserves-frame under the hood).
