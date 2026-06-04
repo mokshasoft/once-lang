@@ -88,7 +88,6 @@ record FlatCorr (fs : FlatState) (s : X.State) : Set where
     rax-eq  : X.readReg (X.State.regs s) rax ≡ enc-sv (readReg (regs (floc fs)) Output)
     rbx-eq  : X.readReg (X.State.regs s) rbx ≡ enc-sv (readReg (regs (floc fs)) Scratch)
     pc-eq   : X.State.pc s ≡ fpc fs
-    zf-eq   : X.Flags.zf (X.State.flags s) ≡ fzf fs
     halt-eq : X.State.halted s ≡ halted (floc fs)
     heap-eq : ∀ (hl : HeapLocation) →
               X.readMem (X.State.memory s) (enc-hl hl) ≡ enc-maybe (heapMem (floc fs) hl)
@@ -116,7 +115,6 @@ sim-mov-to-output fs s corr = record
   ; rsi-eq  = rsi-eq corr
   ; rbx-eq  = rbx-eq corr
   ; pc-eq   = trans (cong (_+ 1) (pc-eq corr)) (+-comm (fpc fs) 1)
-  ; zf-eq   = zf-eq corr
   ; halt-eq = halt-eq corr
   ; heap-eq = heap-eq corr
   }
@@ -128,7 +126,7 @@ sim-mov-to-input : ∀ (fs : FlatState) (s : X.State) → FlatCorr fs s
 sim-mov-to-input fs s corr = record
   { rdi-eq = rax-eq corr ; rsi-eq = rsi-eq corr ; rax-eq = rax-eq corr ; rbx-eq = rbx-eq corr
   ; pc-eq = trans (cong (_+ 1) (pc-eq corr)) (+-comm (fpc fs) 1)
-  ; zf-eq = zf-eq corr ; halt-eq = halt-eq corr ; heap-eq = heap-eq corr }
+  ; halt-eq = halt-eq corr ; heap-eq = heap-eq corr }
 
 -- mov-input2-to-output (Output := Input2) ↔ `mov rax, rsi`.
 sim-mov-input2-to-output : ∀ (fs : FlatState) (s : X.State) → FlatCorr fs s
@@ -137,7 +135,7 @@ sim-mov-input2-to-output : ∀ (fs : FlatState) (s : X.State) → FlatCorr fs s
 sim-mov-input2-to-output fs s corr = record
   { rdi-eq = rdi-eq corr ; rsi-eq = rsi-eq corr ; rax-eq = rsi-eq corr ; rbx-eq = rbx-eq corr
   ; pc-eq = trans (cong (_+ 1) (pc-eq corr)) (+-comm (fpc fs) 1)
-  ; zf-eq = zf-eq corr ; halt-eq = halt-eq corr ; heap-eq = heap-eq corr }
+  ; halt-eq = halt-eq corr ; heap-eq = heap-eq corr }
 
 -- mov-output-to-input2 (Input2 := Output) ↔ `mov rsi, rax`.
 sim-mov-output-to-input2 : ∀ (fs : FlatState) (s : X.State) → FlatCorr fs s
@@ -146,7 +144,7 @@ sim-mov-output-to-input2 : ∀ (fs : FlatState) (s : X.State) → FlatCorr fs s
 sim-mov-output-to-input2 fs s corr = record
   { rdi-eq = rdi-eq corr ; rsi-eq = rax-eq corr ; rax-eq = rax-eq corr ; rbx-eq = rbx-eq corr
   ; pc-eq = trans (cong (_+ 1) (pc-eq corr)) (+-comm (fpc fs) 1)
-  ; zf-eq = zf-eq corr ; halt-eq = halt-eq corr ; heap-eq = heap-eq corr }
+  ; halt-eq = halt-eq corr ; heap-eq = heap-eq corr }
 
 -- instr-load-tag-lit n (Output := SV-Tag n) ↔ `mov rax, n`. enc(SV-Tag n)=n ⟹ rax-eq=refl.
 sim-load-tag-lit : ∀ (n : ℕ) (fs : FlatState) (s : X.State) → FlatCorr fs s
@@ -155,7 +153,7 @@ sim-load-tag-lit : ∀ (n : ℕ) (fs : FlatState) (s : X.State) → FlatCorr fs 
 sim-load-tag-lit n fs s corr = record
   { rdi-eq = rdi-eq corr ; rsi-eq = rsi-eq corr ; rax-eq = refl ; rbx-eq = rbx-eq corr
   ; pc-eq = trans (cong (_+ 1) (pc-eq corr)) (+-comm (fpc fs) 1)
-  ; zf-eq = zf-eq corr ; halt-eq = halt-eq corr ; heap-eq = heap-eq corr }
+  ; halt-eq = halt-eq corr ; heap-eq = heap-eq corr }
 
 -- instr-reg-op scratch-one (Scratch := SV-Tag 1) ↔ `mov rbx, 1`. rbx-eq=refl.
 sim-reg-scratch-one : ∀ (fs : FlatState) (s : X.State) → FlatCorr fs s
@@ -164,7 +162,7 @@ sim-reg-scratch-one : ∀ (fs : FlatState) (s : X.State) → FlatCorr fs s
 sim-reg-scratch-one fs s corr = record
   { rdi-eq = rdi-eq corr ; rsi-eq = rsi-eq corr ; rax-eq = rax-eq corr ; rbx-eq = refl
   ; pc-eq = trans (cong (_+ 1) (pc-eq corr)) (+-comm (fpc fs) 1)
-  ; zf-eq = zf-eq corr ; halt-eq = halt-eq corr ; heap-eq = heap-eq corr }
+  ; halt-eq = halt-eq corr ; heap-eq = heap-eq corr }
 
 -- instr-reg-op scratch-zero (Scratch := SV-Tag 0) ↔ `mov rbx, 0`. rbx-eq=refl.
 sim-reg-scratch-zero : ∀ (fs : FlatState) (s : X.State) → FlatCorr fs s
@@ -173,7 +171,7 @@ sim-reg-scratch-zero : ∀ (fs : FlatState) (s : X.State) → FlatCorr fs s
 sim-reg-scratch-zero fs s corr = record
   { rdi-eq = rdi-eq corr ; rsi-eq = rsi-eq corr ; rax-eq = rax-eq corr ; rbx-eq = refl
   ; pc-eq = trans (cong (_+ 1) (pc-eq corr)) (+-comm (fpc fs) 1)
-  ; zf-eq = zf-eq corr ; halt-eq = halt-eq corr ; heap-eq = heap-eq corr }
+  ; halt-eq = halt-eq corr ; heap-eq = heap-eq corr }
 
 -- instr-reg-op input2-zero (Input2 := SV-Tag 0) ↔ `mov rsi, 0`. rsi-eq=refl.
 sim-reg-input2-zero : ∀ (fs : FlatState) (s : X.State) → FlatCorr fs s
@@ -182,7 +180,7 @@ sim-reg-input2-zero : ∀ (fs : FlatState) (s : X.State) → FlatCorr fs s
 sim-reg-input2-zero fs s corr = record
   { rdi-eq = rdi-eq corr ; rsi-eq = refl ; rax-eq = rax-eq corr ; rbx-eq = rbx-eq corr
   ; pc-eq = trans (cong (_+ 1) (pc-eq corr)) (+-comm (fpc fs) 1)
-  ; zf-eq = zf-eq corr ; halt-eq = halt-eq corr ; heap-eq = heap-eq corr }
+  ; halt-eq = halt-eq corr ; heap-eq = heap-eq corr }
 
 -- instr-reg-op scratch-load-count (Scratch := Input2) ↔ `mov rbx, rsi`. rbx-eq=rsi-eq.
 sim-reg-scratch-load-count : ∀ (fs : FlatState) (s : X.State) → FlatCorr fs s
@@ -191,15 +189,14 @@ sim-reg-scratch-load-count : ∀ (fs : FlatState) (s : X.State) → FlatCorr fs 
 sim-reg-scratch-load-count fs s corr = record
   { rdi-eq = rdi-eq corr ; rsi-eq = rsi-eq corr ; rax-eq = rax-eq corr ; rbx-eq = rsi-eq corr
   ; pc-eq = trans (cong (_+ 1) (pc-eq corr)) (+-comm (fpc fs) 1)
-  ; zf-eq = zf-eq corr ; halt-eq = halt-eq corr ; heap-eq = heap-eq corr }
+  ; halt-eq = halt-eq corr ; heap-eq = heap-eq corr }
 
 ------------------------------------------------------------------------
--- Control test: instr-ctrl c-test-scratch (fzf := Scratch≟0) ↔ `cmp rbx,0`.
--- This is the FLAT-CONTROL correspondence — the loop's conditional branch.
--- Needs "Scratch holds a tag" (always true for the cata's loop flag).
--- Boolean bridge: the typed `sv-is-zero (SV-Tag n)` and the untyped
--- `n ≡ᵇ 0` agree (both decide n=0). The `<ᵇ` (sign flag) is irrelevant —
--- FlatCorr only tracks `zf` (the `≡ᵇ` result).
+-- Boolean bridge for the conditional-branch correspondence (Plan 0.34):
+-- the typed `sv-is-zero (SV-Tag n)` and the untyped `n ≡ᵇ 0` agree.
+-- (sim-test-scratch / sim-test-tag retired — c-test-*/c-je folded into the
+-- single c-branch-* instruction; the branch correspondence is built in the
+-- Stage-2 block-step. sv-tag-zero / enc-zero retained for reuse there.)
 ------------------------------------------------------------------------
 sv-tag-zero : ∀ (n : ℕ) → sv-is-zero (SV-Tag {FS} n) ≡ (n ≡ᵇ 0)
 sv-tag-zero zero    = refl
@@ -207,55 +204,6 @@ sv-tag-zero (suc _) = refl
 
 enc-zero : ∀ (v : StoredValue FS) (n : ℕ) → v ≡ SV-Tag n → (enc-sv v ≡ᵇ 0) ≡ sv-is-zero v
 enc-zero .(SV-Tag n) n refl = sym (sv-tag-zero n)
-
-sim-test-scratch : ∀ (n : ℕ) (fs : FlatState) (s : X.State) → FlatCorr fs s
-  → readReg (regs (floc fs)) Scratch ≡ SV-Tag n
-  → FlatCorr (flat-exec-instr (instr-ctrl c-test-scratch) [] fs)
-             (mkstate (xregs s) (memory s)
-                      (mkflags (xreadReg (xregs s) rbx ≡ᵇ 0) (xreadReg (xregs s) rbx <ᵇ 0) false)
-                      (pc s + 1) (xhalted s))
-sim-test-scratch n fs s corr sc-eq = record
-  { rdi-eq = rdi-eq corr ; rsi-eq = rsi-eq corr ; rax-eq = rax-eq corr ; rbx-eq = rbx-eq corr
-  ; pc-eq = trans (cong (_+ 1) (pc-eq corr)) (+-comm (fpc fs) 1)
-  ; zf-eq = trans (cong (_≡ᵇ 0) (rbx-eq corr)) (enc-zero (readReg (regs (floc fs)) Scratch) n sc-eq)
-  ; halt-eq = halt-eq corr ; heap-eq = heap-eq corr }
-
-------------------------------------------------------------------------
--- Control test on a HEAP tag: instr-ctrl c-test-tag (fzf := *Input1 ≟0)
--- ↔ `cmp [rdi], 0`. Like c-test-scratch but the tag lives in the heap
--- cell Input1 points to. Hypotheses (true on every cata step — the
--- cursor points to a live cell holding a tag):
---   Input1 = SV-Ptr (AtDynamic hl),  heapMem hl = just (SV-Tag k).
--- The abstract-halt vs x86-`nothing` Maybe mismatch dissolves: the read
--- succeeds on both sides, so neither halts. We reduce the (stuck) flat
--- step under the hypotheses, then transport the clean correspondence.
-------------------------------------------------------------------------
-sim-test-tag : ∀ (hl : HeapLocation) (k : ℕ) (fs : FlatState) (s : X.State) → FlatCorr fs s
-  → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
-  → heapMem (floc fs) hl ≡ just (SV-Tag k)
-  → FlatCorr (flat-exec-instr (instr-ctrl c-test-tag) [] fs)
-             (mkstate (xregs s) (memory s)
-                      (mkflags (k ≡ᵇ 0) (k <ᵇ 0) false) (pc s + 1) (xhalted s))
-sim-test-tag hl k fs s corr i-eq h-eq =
-  subst (λ z → FlatCorr z xpost) (sym reduces) corr-clean
-  where
-    xpost : X.State
-    xpost = mkstate (xregs s) (memory s) (mkflags (k ≡ᵇ 0) (k <ᵇ 0) false) (pc s + 1) (xhalted s)
-    cleanFlat : FlatState
-    cleanFlat = record fs { fpc = suc (fpc fs) ; fzf = sv-is-zero (SV-Tag {FS} k) }
-    -- Reduce the (stuck) heap read via cong/trans (NOT rewrite: `readReg
-    -- _ Input1` reduces to the `input1` projection, so a syntactic rewrite
-    -- can't match — cong checks definitional equality and goes through).
-    fzf-eq : tag-zf (flat-read-tag (floc fs)) ≡ sv-is-zero (SV-Tag {FS} k)
-    fzf-eq = cong tag-zf (trans (cong (flat-read-at (floc fs)) (cong sv-as-loc i-eq)) h-eq)
-    reduces : flat-exec-instr (instr-ctrl c-test-tag) [] fs ≡ cleanFlat
-    reduces = cong (λ b → record fs { fpc = suc (fpc fs) ; fzf = b }) fzf-eq
-    corr-clean : FlatCorr cleanFlat xpost
-    corr-clean = record
-      { rdi-eq = rdi-eq corr ; rsi-eq = rsi-eq corr ; rax-eq = rax-eq corr ; rbx-eq = rbx-eq corr
-      ; pc-eq = trans (cong (_+ 1) (pc-eq corr)) (+-comm (fpc fs) 1)
-      ; zf-eq = sym (sv-tag-zero k)
-      ; halt-eq = halt-eq corr ; heap-eq = heap-eq corr }
 
 ------------------------------------------------------------------------
 -- Heap load: load-indirect-suc (Output := *(sucLoc Input1)) ↔
@@ -290,7 +238,7 @@ sim-load-indirect-suc hl w fs s corr i-eq h-eq =
     corr-clean = record
       { rdi-eq = rdi-eq corr ; rsi-eq = rsi-eq corr ; rax-eq = refl ; rbx-eq = rbx-eq corr
       ; pc-eq = trans (cong (_+ 1) (pc-eq corr)) (+-comm (fpc fs) 1)
-      ; zf-eq = zf-eq corr ; halt-eq = halt-eq corr ; heap-eq = heap-eq corr }
+      ; halt-eq = halt-eq corr ; heap-eq = heap-eq corr }
 
 ------------------------------------------------------------------------
 -- Heap load (no offset): load-indirect (Output := *Input1) ↔
@@ -320,7 +268,7 @@ sim-load-indirect hl w fs s corr i-eq h-eq =
     corr-clean = record
       { rdi-eq = rdi-eq corr ; rsi-eq = rsi-eq corr ; rax-eq = refl ; rbx-eq = rbx-eq corr
       ; pc-eq = trans (cong (_+ 1) (pc-eq corr)) (+-comm (fpc fs) 1)
-      ; zf-eq = zf-eq corr ; halt-eq = halt-eq corr ; heap-eq = heap-eq corr }
+      ; halt-eq = halt-eq corr ; heap-eq = heap-eq corr }
 
 ------------------------------------------------------------------------
 -- Heap STORES (Plan 0.32 Phase D). A heap write ↔ x86 `mov [addr], reg`.
@@ -382,7 +330,7 @@ sim-store-indirect hl fs s corr i-eq guard =
     corr-clean = record
       { rdi-eq = rdi-eq corr ; rsi-eq = rsi-eq corr ; rax-eq = rax-eq corr ; rbx-eq = rbx-eq corr
       ; pc-eq = trans (cong (_+ 1) (pc-eq corr)) (+-comm (fpc fs) 1)
-      ; zf-eq = zf-eq corr ; halt-eq = halt-eq corr
+      ; halt-eq = halt-eq corr
       ; heap-eq = store-heap-eq hl v s (floc fs) (heap-eq corr) }
 
 -- store-indirect-suc: *(sucLoc Input1) := Output ↔ `mov [rdi+slot], rax`.
@@ -411,5 +359,5 @@ sim-store-indirect-suc hl fs s corr i-eq guard =
     corr-clean = record
       { rdi-eq = rdi-eq corr ; rsi-eq = rsi-eq corr ; rax-eq = rax-eq corr ; rbx-eq = rbx-eq corr
       ; pc-eq = trans (cong (_+ 1) (pc-eq corr)) (+-comm (fpc fs) 1)
-      ; zf-eq = zf-eq corr ; halt-eq = halt-eq corr
+      ; halt-eq = halt-eq corr
       ; heap-eq = store-heap-eq (sucHL hl) v s (floc fs) (heap-eq corr) }

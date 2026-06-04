@@ -81,7 +81,7 @@ open import Once.CCC.Machine.SMCore
          instr-save-closure-reg;
          instr-load-tag-lit; instr-case-on-tag;
          instr-loop; instr-reg-op;
-         instr-ctrl; c-label; c-jmp; c-je; c-test-tag; c-test-scratch;
+         instr-ctrl; c-label; c-jmp; c-branch-scratch-zero; c-branch-tag-zero;
          scratch-one; scratch-zero; scratch-dec; scratch-load-count;
          input2-zero; input2-inc)
 
@@ -447,8 +447,8 @@ ir-to-trace' n l (Cata _ alg) =
       -- descend loop, flat: while Scratch≠0 { if tag0 stop else depth++,follow }
       descend-flat =
         instr-ctrl (c-label ld-top) ∷
-        instr-ctrl c-test-scratch ∷ instr-ctrl (c-je ld-end) ∷
-        instr-ctrl c-test-tag ∷ instr-ctrl (c-je ld-inl) ∷
+        instr-ctrl (c-branch-scratch-zero ld-end) ∷   -- exit when Scratch=0
+        instr-ctrl (c-branch-tag-zero ld-inl) ∷       -- base case (inl)
         instr-reg-op input2-inc ∷ load-indirect-suc ∷ mov-to-input ∷   -- inr
         instr-ctrl (c-jmp ld-de) ∷
         instr-ctrl (c-label ld-inl) ∷ instr-reg-op scratch-zero ∷       -- inl: stop
@@ -459,7 +459,7 @@ ir-to-trace' n l (Cata _ alg) =
       -- ascend loop, flat: while Scratch≠0 { rebuild layer, run alg, Scratch-- }
       ascend-flat =
         instr-ctrl (c-label la-top) ∷
-        instr-ctrl c-test-scratch ∷ instr-ctrl (c-je la-end) ∷
+        instr-ctrl (c-branch-scratch-zero la-end) ∷   -- exit when Scratch=0
         (ascend-body ++ (instr-ctrl (c-jmp la-top) ∷ instr-ctrl (c-label la-end) ∷ []))
       trace =
         instr-reg-op scratch-one ∷ instr-reg-op input2-zero ∷

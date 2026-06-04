@@ -20,6 +20,7 @@ import qualified Data.Text
 import qualified MAlonzo.Code.Agda.Builtin.String
 import qualified MAlonzo.Code.Data.List.Base
 import qualified MAlonzo.Code.Data.Nat.Base
+import qualified MAlonzo.Code.Once.CCC.Label
 
 -- Once.CCC.Target.X86-64.Syntax.Reg
 d_Reg_10 = ()
@@ -43,11 +44,15 @@ data T_Instr_62
     C_add_68 T_Operand_54 T_Operand_54 |
     C_sub_70 T_Operand_54 T_Operand_54 |
     C_cmp_72 T_Operand_54 T_Operand_54 |
-    C_test_74 T_Operand_54 T_Operand_54 | C_jmp_76 Integer |
-    C_je_78 Integer | C_jne_80 Integer | C_call_82 T_Operand_54 |
+    C_test_74 T_Operand_54 T_Operand_54 |
+    C_jmp_76 MAlonzo.Code.Once.CCC.Label.T_Label_6 |
+    C_je_78 MAlonzo.Code.Once.CCC.Label.T_Label_6 |
+    C_jne_80 MAlonzo.Code.Once.CCC.Label.T_Label_6 |
+    C_call_82 T_Operand_54 |
     C_call'45'sym_84 MAlonzo.Code.Agda.Builtin.String.T_String_6 |
     C_ret_86 | C_push_88 T_Operand_54 | C_pop_90 T_Reg_10 | C_nop_92 |
-    C_ud2_94 | C_syscall_96 | C_label_98 Integer
+    C_ud2_94 | C_syscall_96 |
+    C_label_98 MAlonzo.Code.Once.CCC.Label.T_Label_6
 -- Once.CCC.Target.X86-64.Syntax.Program
 d_Program_100 :: ()
 d_Program_100 = erased

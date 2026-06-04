@@ -180,9 +180,8 @@ headView (instr-case-on-tag f g) = hv-plain refl (λ _ _ _ → refl)
 headView (instr-reg-op op) = hv-plain (reg-op-no-label op) (λ _ _ _ → refl)
 headView (instr-ctrl (c-label m)) = hv-clabel m refl (λ _ _ _ → refl)
 headView (instr-ctrl (c-jmp m)) = hv-plain refl (λ _ _ _ → refl)
-headView (instr-ctrl (c-je m)) = hv-plain refl (λ _ _ _ → refl)
-headView (instr-ctrl c-test-tag) = hv-plain refl (λ _ _ _ → refl)
-headView (instr-ctrl c-test-scratch) = hv-plain refl (λ _ _ _ → refl)
+headView (instr-ctrl (c-branch-scratch-zero m)) = hv-plain refl (λ _ _ _ → refl)
+headView (instr-ctrl (c-branch-tag-zero m)) = hv-plain refl (λ _ _ _ → refl)
 
 ------------------------------------------------------------------------
 -- find-label preservation: a flat jump landing at flat index j lands at
