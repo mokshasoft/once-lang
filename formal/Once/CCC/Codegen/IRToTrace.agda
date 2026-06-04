@@ -81,6 +81,7 @@ open import Once.CCC.Machine.SMCore
          instr-save-closure-reg;
          instr-load-tag-lit; instr-case-on-tag;
          instr-loop; instr-reg-op;
+         instr-ctrl; c-label; c-jmp; c-je; c-test-tag; c-test-scratch;
          scratch-one; scratch-zero; scratch-dec; scratch-load-count;
          input2-zero; input2-inc)
 
@@ -430,26 +431,43 @@ ir-to-trace' n l (Cata _ alg) =
       pstash = n1
       sstash = suc n1
       next   = suc (suc n1)
+      -- Plan 0.32 (M3 Phase C): FLAT control. 6 loop labels from the label
+      -- counter l1; return l1+6 so compile-trace-cnt's label counter (which
+      -- starts AFTER ir-to-trace's) stays disjoint. descend: 4 labels
+      -- (top/end/inl/dispatch-end); ascend: 2 (top/end).
+      ld-top = l1 ; ld-end = suc l1 ; ld-inl = suc (suc l1) ; ld-de = suc (suc (suc l1))
+      la-top = suc (suc (suc (suc l1))) ; la-end = suc (suc (suc (suc (suc l1))))
+      l2 = suc (suc (suc (suc (suc (suc l1)))))
       build-layer : ℕ → AbstractTrace
       build-layer tag =
         mov-to-output ∷ store-at-slot pstash ∷ instr-alloc-heap 2 ∷
         store-at-slot sstash ∷ mov-to-input ∷ instr-load-tag-lit tag ∷
         store-indirect ∷ load-from-slot pstash ∷ store-indirect-suc ∷
         load-from-slot sstash ∷ []
-      descend-body =
-        instr-case-on-tag
-          (instr-reg-op scratch-zero ∷ [])                              -- inl: stop
-          (instr-reg-op input2-inc ∷ load-indirect-suc ∷ mov-to-input ∷ [])  -- inr: count++, follow child
-          ∷ []
+      -- descend loop, flat: while Scratch≠0 { if tag0 stop else depth++,follow }
+      descend-flat =
+        instr-ctrl (c-label ld-top) ∷
+        instr-ctrl c-test-scratch ∷ instr-ctrl (c-je ld-end) ∷
+        instr-ctrl c-test-tag ∷ instr-ctrl (c-je ld-inl) ∷
+        instr-reg-op input2-inc ∷ load-indirect-suc ∷ mov-to-input ∷   -- inr
+        instr-ctrl (c-jmp ld-de) ∷
+        instr-ctrl (c-label ld-inl) ∷ instr-reg-op scratch-zero ∷       -- inl: stop
+        instr-ctrl (c-label ld-de) ∷ instr-ctrl (c-jmp ld-top) ∷
+        instr-ctrl (c-label ld-end) ∷ []
       ascend-body =
         mov-to-input ∷ (build-layer 1 ++ (mov-to-input ∷ at ++ (instr-reg-op scratch-dec ∷ [])))
+      -- ascend loop, flat: while Scratch≠0 { rebuild layer, run alg, Scratch-- }
+      ascend-flat =
+        instr-ctrl (c-label la-top) ∷
+        instr-ctrl c-test-scratch ∷ instr-ctrl (c-je la-end) ∷
+        (ascend-body ++ (instr-ctrl (c-jmp la-top) ∷ instr-ctrl (c-label la-end) ∷ []))
       trace =
         instr-reg-op scratch-one ∷ instr-reg-op input2-zero ∷
-        instr-loop descend-body ∷
-        instr-reg-op scratch-load-count ∷
-        instr-load-tag-lit 0 ∷ mov-to-input ∷
-        (build-layer 0 ++ (mov-to-input ∷ at ++ (instr-loop ascend-body ∷ [])))
-  in next , l1 , trace , ab
+        (descend-flat ++
+         (instr-reg-op scratch-load-count ∷
+          instr-load-tag-lit 0 ∷ mov-to-input ∷
+          (build-layer 0 ++ (mov-to-input ∷ at ++ ascend-flat))))
+  in next , l2 , trace , ab
 ir-to-trace' n l (Para _ _)     = n , l , [] , []
 ir-to-trace' n l (Out _)        = n , l , (mov-to-output ∷ []) , []
 ir-to-trace' n l (in-ν _ _)     = n , l , [] , []
