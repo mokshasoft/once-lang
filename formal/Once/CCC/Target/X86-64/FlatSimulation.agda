@@ -48,7 +48,7 @@ open import Once.CCC.Machine.SMCore
 open import Once.CCC.Machine.Flat
 open FlatMachine {FS}
 import Once.CCC.Target.X86-64.Semantics as X
-open X using (mkstate; execInstr; mkflags; _<ᵇ_)
+open X using (mkstate; execInstr; mkflags; _<ᵇ_; writeMem)
   renaming (readReg to xreadReg; writeReg to xwriteReg; readMem to xreadMem)
 open X.State using (memory; flags; pc) renaming (regs to xregs; halted to xhalted)
 open import Once.CCC.Target.X86-64.Syntax
@@ -63,11 +63,12 @@ module C = FC FS enc-hl enc-hl-inj          -- enc-sv / FlatCorr data fields
 open import Once.CCC.Label using (once)
 open import Once.CCC.Target.X86-64.FlatComposition FS
   using (x86-off; x86-len; x86-off-suc; fetch-block-head; find-label-corr)
-open import Once.CCC.Target.X86-64.StepLemmas using (exec-1; step-mov-rr; step-mov-ri; step-label; step-jmp; step-mov-rm)
+open import Once.CCC.Target.X86-64.StepLemmas using (exec-1; step-mov-rr; step-mov-ri; step-label; step-jmp; step-mov-rm; step-mov-mr)
 open import Once.CCC.Target.X86-64.AbstractToX86 using (compile-trace; compile-abstract)
 open import Data.Nat using (zero; suc)
 open import Data.Product using (Σ; _×_; _,_)
-open import Relation.Binary.PropositionalEquality using (sym; trans; cong)
+open import Relation.Binary.PropositionalEquality using (sym; trans; cong; cong₂; subst)
+open MemOps {FS} using (writeLoc; writeLocToHeap)
 
 ------------------------------------------------------------------------
 -- The compiled correspondence = the DATA correspondence (FlatCorr, now
@@ -355,3 +356,80 @@ block-step-load-indirect-suc prog fs s hl w cc h ft i-eq h-eq =
     exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
     pco' : X.State.pc post ≡ x86-off prog (fpc (flat-exec-instr load-indirect-suc prog fs))
     pco' = trans (cong (_+ 1) po) (sym (x86-off-suc prog (fpc fs) load-indirect-suc ft))
+
+-- store-indirect: *Input1 := Output ↔ `mov [rdi], rax`. step-mov-mr writes
+-- the RAW register values (readReg rdi / readReg rax); sim-store-indirect's
+-- post has the ENCODED values (enc-hl hl / enc-sv Output) — bridge the two
+-- post-states via rdi-eq + rax-eq, then transport the data correspondence.
+block-step-store-indirect : ∀ prog fs s hl → CompiledCorr prog fs s → halted (floc fs) ≡ false
+  → fetch prog (fpc fs) ≡ just store-indirect
+  → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
+  → writeLoc (floc fs) (AtDynamic hl) (readReg (regs (floc fs)) Output)
+    ≡ writeLocToHeap (floc fs) hl (readReg (regs (floc fs)) Output)
+  → BlockStep prog fs s store-indirect
+block-step-store-indirect prog fs s hl cc h ft i-eq guard =
+  post , exec-eq , record { dataCorr = dataPost ; pc-off = pco' }
+  where
+    dc = dataCorr cc ; po = pc-off cc
+    halt-s : X.State.halted s ≡ false
+    halt-s = trans (C.halt-eq dc) h
+    fetch-x86 : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (mov (mem (base rdi)) (reg rax))
+    fetch-x86 = trans (cong (X.fetch (compile-trace prog)) po)
+                      (fetch-block-head prog (fpc fs) store-indirect ft)
+    rdi-val : xreadReg (xregs s) rdi ≡ enc-hl hl
+    rdi-val = trans (C.rdi-eq dc) (cong C.enc-sv i-eq)
+    post : X.State
+    post = record s { memory = writeMem (memory s) (X.effectiveAddr s (base rdi)) (xreadReg (xregs s) rax)
+                    ; pc = pc s + 1 }
+    snh : X.step-not-halted (compile-trace prog) s ≡ just post
+    snh = step-mov-mr {compile-trace prog} {s} {base rdi} {rax} fetch-x86
+    exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
+    exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
+    -- bridge post (raw) ≡ sim-post (encoded)
+    post-eq : post ≡ mkstate (xregs s) (writeMem (memory s) (enc-hl hl) (C.enc-sv (readReg (regs (floc fs)) Output)))
+                             (flags s) (pc s + 1) (xhalted s)
+    post-eq = cong (λ m → mkstate (xregs s) m (flags s) (pc s + 1) (xhalted s))
+                   (cong₂ (writeMem (memory s)) rdi-val (C.rax-eq dc))
+    dataPost : C.FlatCorr (flat-exec-instr store-indirect prog fs) post
+    dataPost = subst (C.FlatCorr (flat-exec-instr store-indirect prog fs)) (sym post-eq)
+                     (C.sim-store-indirect hl fs s dc i-eq guard)
+    pco' : X.State.pc post ≡ x86-off prog (fpc (flat-exec-instr store-indirect prog fs))
+    pco' = trans (cong (_+ 1) po) (sym (x86-off-suc prog (fpc fs) store-indirect ft))
+
+-- store-indirect-suc: *(sucLoc Input1) := Output ↔ `mov [rdi+slot], rax`.
+-- Like store-indirect + the address law enc-hl-suc for the +slot offset.
+block-step-store-indirect-suc : ∀ prog fs s hl → CompiledCorr prog fs s → halted (floc fs) ≡ false
+  → fetch prog (fpc fs) ≡ just store-indirect-suc
+  → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
+  → writeLoc (floc fs) (AtDynamic (sucHL hl)) (readReg (regs (floc fs)) Output)
+    ≡ writeLocToHeap (floc fs) (sucHL hl) (readReg (regs (floc fs)) Output)
+  → BlockStep prog fs s store-indirect-suc
+block-step-store-indirect-suc prog fs s hl cc h ft i-eq guard =
+  post , exec-eq , record { dataCorr = dataPost ; pc-off = pco' }
+  where
+    dc = dataCorr cc ; po = pc-off cc
+    halt-s : X.State.halted s ≡ false
+    halt-s = trans (C.halt-eq dc) h
+    fetch-x86 : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (mov (mem (base+disp rdi slot-size)) (reg rax))
+    fetch-x86 = trans (cong (X.fetch (compile-trace prog)) po)
+                      (fetch-block-head prog (fpc fs) store-indirect-suc ft)
+    rdi-val : xreadReg (xregs s) rdi ≡ enc-hl hl
+    rdi-val = trans (C.rdi-eq dc) (cong C.enc-sv i-eq)
+    addr-val : xreadReg (xregs s) rdi + slot-size ≡ enc-hl (sucHL hl)
+    addr-val = trans (cong (_+ slot-size) rdi-val) (sym (enc-hl-suc hl))
+    post : X.State
+    post = record s { memory = writeMem (memory s) (X.effectiveAddr s (base+disp rdi slot-size)) (xreadReg (xregs s) rax)
+                    ; pc = pc s + 1 }
+    snh : X.step-not-halted (compile-trace prog) s ≡ just post
+    snh = step-mov-mr {compile-trace prog} {s} {base+disp rdi slot-size} {rax} fetch-x86
+    exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
+    exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
+    post-eq : post ≡ mkstate (xregs s) (writeMem (memory s) (enc-hl (sucHL hl)) (C.enc-sv (readReg (regs (floc fs)) Output)))
+                             (flags s) (pc s + 1) (xhalted s)
+    post-eq = cong (λ m → mkstate (xregs s) m (flags s) (pc s + 1) (xhalted s))
+                   (cong₂ (writeMem (memory s)) addr-val (C.rax-eq dc))
+    dataPost : C.FlatCorr (flat-exec-instr store-indirect-suc prog fs) post
+    dataPost = subst (C.FlatCorr (flat-exec-instr store-indirect-suc prog fs)) (sym post-eq)
+                     (C.sim-store-indirect-suc hl fs s dc i-eq guard)
+    pco' : X.State.pc post ≡ x86-off prog (fpc (flat-exec-instr store-indirect-suc prog fs))
+    pco' = trans (cong (_+ 1) po) (sym (x86-off-suc prog (fpc fs) store-indirect-suc ft))
