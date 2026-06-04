@@ -251,6 +251,13 @@ compile-abstract (instr-reg-op scratch-dec)        = sub (reg rbx) (imm 1) ∷ [
 compile-abstract (instr-reg-op scratch-load-count) = mov (reg rbx) (reg rsi) ∷ []
 compile-abstract (instr-reg-op input2-zero)        = mov (reg rsi) (imm 0) ∷ []
 compile-abstract (instr-reg-op input2-inc)         = add (reg rsi) (imm 1) ∷ []
+-- Plan 0.32 (M3): flat control flow lowers 1-to-1 to x86 (the whole point
+-- of flattening — abstract jump ↔ target jump, no structured expansion).
+compile-abstract (instr-ctrl (c-label n))          = label n ∷ []
+compile-abstract (instr-ctrl (c-jmp n))            = jmp n ∷ []
+compile-abstract (instr-ctrl (c-je n))             = je n ∷ []
+compile-abstract (instr-ctrl c-test-tag)           = cmp (mem (base+disp rdi 0)) (imm 0) ∷ []
+compile-abstract (instr-ctrl c-test-scratch)       = cmp (reg rbx) (imm 0) ∷ []
 
 ------------------------------------------------------------------------
 -- Trace compilation: compile a whole trace to x86

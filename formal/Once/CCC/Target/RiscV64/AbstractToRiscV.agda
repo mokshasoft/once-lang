@@ -60,7 +60,7 @@ open import Once.CCC.Machine.SMCore
          worklist-init; worklist-push; worklist-pop; worklist-check;
          instr-reclaim-to; instr-sigop; instr-load-const; instr-load-code-addr;
          instr-save-closure-reg;
-         instr-load-tag-lit; instr-case-on-tag; instr-loop; instr-reg-op)
+         instr-load-tag-lit; instr-case-on-tag; instr-loop; instr-reg-op; instr-ctrl)
 
 ------------------------------------------------------------------------
 -- Slot to displacement conversion
@@ -249,6 +249,7 @@ compile-abstract (instr-load-tag-lit _) = unimp ∷ []
 compile-abstract (instr-case-on-tag _ _) = unimp ∷ []
 compile-abstract (instr-loop _) = unimp ∷ []  -- Plan 0.29: loop lowering is x86-64-only for now
 compile-abstract (instr-reg-op _) = unimp ∷ []  -- Plan 0.29 M5
+compile-abstract (instr-ctrl _) = unimp ∷ []  -- Plan 0.32: flat control x86-64-only for now
 
 ------------------------------------------------------------------------
 -- Trace compilation: compile a whole trace to RISC-V

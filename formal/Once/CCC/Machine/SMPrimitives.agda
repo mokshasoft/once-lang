@@ -242,6 +242,7 @@ instr-writes-slot (store-at-slot k)      = just k
 instr-writes-slot (worklist-push k)      = just k  -- OCP-0003
 instr-writes-slot mov-to-output          = nothing
 instr-writes-slot (instr-reg-op _)       = nothing
+instr-writes-slot (instr-ctrl _)       = nothing
 instr-writes-slot mov-input2-to-output          = nothing
 instr-writes-slot mov-to-input           = nothing
 instr-writes-slot mov-output-to-input2           = nothing
@@ -280,6 +281,7 @@ instr-reads-slot (restore-input k)       = just k
 instr-reads-slot (worklist-pop k)        = just k  -- OCP-0003
 instr-reads-slot mov-to-output           = nothing
 instr-reads-slot (instr-reg-op _)        = nothing
+instr-reads-slot (instr-ctrl _)        = nothing
 instr-reads-slot mov-input2-to-output           = nothing
 instr-reads-slot mov-to-input            = nothing
 instr-reads-slot mov-output-to-input2            = nothing
@@ -338,6 +340,7 @@ instr-writes-heap store-indirect          s = instr-writes-heap-indirect-aux (re
 instr-writes-heap store-indirect-suc      s = instr-writes-heap-indirect-suc-aux (readReg (regs s) Input1)
 instr-writes-heap mov-to-output           _ = nothing
 instr-writes-heap (instr-reg-op _)        _ = nothing
+instr-writes-heap (instr-ctrl _)        _ = nothing
 instr-writes-heap mov-input2-to-output           _ = nothing
 instr-writes-heap mov-to-input            _ = nothing
 instr-writes-heap mov-output-to-input2            _ = nothing
@@ -392,6 +395,7 @@ data InstrWritesWithinOwned (i : AbstractInstr) (s : LocState FS) (owned : HeapO
 data InstrNoHeapWrite : AbstractInstr → Set where
   nhw-mov-to-output         : InstrNoHeapWrite mov-to-output
   nhw-instr-reg-op          : ∀ {op} → InstrNoHeapWrite (instr-reg-op op)
+  nhw-instr-ctrl          : ∀ {op} → InstrNoHeapWrite (instr-ctrl op)
   nhw-mov-input2-to-output  : InstrNoHeapWrite mov-input2-to-output
   nhw-mov-to-input          : InstrNoHeapWrite mov-to-input
   nhw-mov-output-to-input2  : InstrNoHeapWrite mov-output-to-input2
@@ -438,6 +442,7 @@ InstrPreservesFrame instr-pop-frame      = ⊥
   where open import Data.Empty using (⊥)
 InstrPreservesFrame mov-to-output          = ⊤
 InstrPreservesFrame (instr-reg-op _)       = ⊤
+InstrPreservesFrame (instr-ctrl _)       = ⊤
 InstrPreservesFrame mov-input2-to-output          = ⊤
 InstrPreservesFrame mov-to-input           = ⊤
 InstrPreservesFrame mov-output-to-input2           = ⊤
@@ -511,6 +516,7 @@ data InstrEffect : Set where
 instr-effect : AbstractInstr → InstrEffect
 instr-effect mov-to-output           = eff-reg-only
 instr-effect (instr-reg-op _)        = eff-reg-only
+instr-effect (instr-ctrl _)        = eff-reg-only
 instr-effect mov-input2-to-output    = eff-reg-only
 instr-effect mov-to-input            = eff-reg-only
 instr-effect mov-output-to-input2    = eff-reg-only
@@ -585,6 +591,7 @@ EffectStateOnlyDependsOnFrame eff-control        = ⊤
 instr-reads-mem : AbstractInstr → LocState FS → AllocState {FS} → Maybe (ValueLocation FS)
 instr-reads-mem mov-to-output s alloc = nothing  -- register only
 instr-reads-mem (instr-reg-op _) s alloc = nothing
+instr-reads-mem (instr-ctrl _) s alloc = nothing
 instr-reads-mem mov-input2-to-output s alloc = nothing  -- register only
 instr-reads-mem mov-to-input s alloc = nothing   -- register only
 instr-reads-mem mov-output-to-input2 s alloc = nothing   -- register only
@@ -625,6 +632,7 @@ instr-reads-mem (instr-loop _)           s alloc = nothing
 instr-writes-mem : AbstractInstr → LocState FS → AllocState {FS} → Maybe (ValueLocation FS)
 instr-writes-mem mov-to-output s alloc = nothing  -- register only
 instr-writes-mem (instr-reg-op _) s alloc = nothing
+instr-writes-mem (instr-ctrl _) s alloc = nothing
 instr-writes-mem mov-input2-to-output s alloc = nothing  -- register only
 instr-writes-mem mov-to-input s alloc = nothing   -- register only
 instr-writes-mem mov-output-to-input2 s alloc = nothing   -- register only
@@ -743,6 +751,7 @@ module InstrPrimitives {FS : FrameSemantics} where
     exec-loop-preserves-frame 1000000 body s alloc
   exec-abstract-preserves-frame mov-to-output s alloc = refl
   exec-abstract-preserves-frame (instr-reg-op _) s alloc = refl
+  exec-abstract-preserves-frame (instr-ctrl _) s alloc = refl
   exec-abstract-preserves-frame mov-input2-to-output s alloc = refl
   exec-abstract-preserves-frame mov-to-input s alloc = refl
   exec-abstract-preserves-frame mov-output-to-input2 s alloc = refl
@@ -828,6 +837,7 @@ module InstrPrimitives {FS : FrameSemantics} where
     heapMem (proj₁ (exec-abstract i s alloc)) ≡ heapMem s
   exec-abstract-preserves-heapMem mov-to-output s alloc nhw-mov-to-output = refl
   exec-abstract-preserves-heapMem (instr-reg-op _) s alloc nhw-instr-reg-op = refl
+  exec-abstract-preserves-heapMem (instr-ctrl _) s alloc nhw-instr-ctrl = refl
   exec-abstract-preserves-heapMem mov-input2-to-output s alloc nhw-mov-input2-to-output = refl
   exec-abstract-preserves-heapMem mov-to-input s alloc nhw-mov-to-input = refl
   exec-abstract-preserves-heapMem mov-output-to-input2 s alloc nhw-mov-output-to-input2 = refl
@@ -896,6 +906,7 @@ module InstrPrimitives {FS : FrameSemantics} where
   -- Register-only instructions
   exec-abstract-preserves-stack-slot mov-to-output s alloc f slot _ _ = refl
   exec-abstract-preserves-stack-slot (instr-reg-op _) s alloc f slot _ _ = refl
+  exec-abstract-preserves-stack-slot (instr-ctrl _) s alloc f slot _ _ = refl
   exec-abstract-preserves-stack-slot mov-input2-to-output s alloc f slot _ _ = refl
   exec-abstract-preserves-stack-slot mov-to-input s alloc f slot _ _ = refl
   exec-abstract-preserves-stack-slot mov-output-to-input2 s alloc f slot _ _ = refl
@@ -992,6 +1003,7 @@ module InstrPrimitives {FS : FrameSemantics} where
   -- Instructions that don't use alloc at all
   exec-abstract-same-frame mov-to-output s alloc₁ alloc₂ _ _ = refl
   exec-abstract-same-frame (instr-reg-op _) s alloc₁ alloc₂ _ _ = refl
+  exec-abstract-same-frame (instr-ctrl _) s alloc₁ alloc₂ _ _ = refl
   exec-abstract-same-frame mov-input2-to-output s alloc₁ alloc₂ _ _ = refl
   exec-abstract-same-frame mov-to-input s alloc₁ alloc₂ _ _ = refl
   exec-abstract-same-frame mov-output-to-input2 s alloc₁ alloc₂ _ _ = refl
@@ -1105,6 +1117,7 @@ module InstrPrimitives {FS : FrameSemantics} where
   -- Reg-only / pure: state ignores alloc entirely.
   exec-abstract-state-next-slot-invariant mov-to-output           s _ _ = refl
   exec-abstract-state-next-slot-invariant (instr-reg-op _)         s _ _ = refl
+  exec-abstract-state-next-slot-invariant (instr-ctrl _)         s _ _ = refl
   exec-abstract-state-next-slot-invariant mov-input2-to-output    s _ _ = refl
   exec-abstract-state-next-slot-invariant mov-to-input            s _ _ = refl
   exec-abstract-state-next-slot-invariant mov-output-to-input2    s _ _ = refl
@@ -1266,6 +1279,7 @@ InstrWritesToHeap store-indirect           = ⊤
 InstrWritesToHeap store-indirect-suc       = ⊤
 InstrWritesToHeap mov-to-output            = ⊥
 InstrWritesToHeap (instr-reg-op _)         = ⊥
+InstrWritesToHeap (instr-ctrl _)         = ⊥
 InstrWritesToHeap mov-input2-to-output            = ⊥
 InstrWritesToHeap mov-to-input             = ⊥
 InstrWritesToHeap mov-output-to-input2             = ⊥
@@ -1302,6 +1316,7 @@ TraceNoHeapWrites (store-indirect ∷ _)            = ⊥
 TraceNoHeapWrites (store-indirect-suc ∷ _)        = ⊥
 TraceNoHeapWrites (mov-to-output ∷ t)             = TraceNoHeapWrites t
 TraceNoHeapWrites (instr-reg-op _ ∷ t)            = TraceNoHeapWrites t
+TraceNoHeapWrites (instr-ctrl _ ∷ t)            = TraceNoHeapWrites t
 TraceNoHeapWrites (mov-input2-to-output ∷ t)             = TraceNoHeapWrites t
 TraceNoHeapWrites (mov-to-input ∷ t)              = TraceNoHeapWrites t
 TraceNoHeapWrites (mov-output-to-input2 ∷ t)              = TraceNoHeapWrites t
@@ -1358,6 +1373,7 @@ trace-no-heap-writes-append : ∀ t1 t2 →
 trace-no-heap-writes-append [] t2 _ tn2 = tn2
 trace-no-heap-writes-append (mov-to-output ∷ t1) t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
 trace-no-heap-writes-append (instr-reg-op _ ∷ t1) t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
+trace-no-heap-writes-append (instr-ctrl _ ∷ t1) t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
 trace-no-heap-writes-append (mov-input2-to-output ∷ t1) t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
 trace-no-heap-writes-append (mov-to-input ∷ t1) t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
 trace-no-heap-writes-append (mov-output-to-input2 ∷ t1) t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
@@ -1572,6 +1588,7 @@ module TracePrimitives {FS : FrameSemantics} where
       TraceNoHeapWrites (i ∷ rest) → InstrNoHeapWrite i
     tnhw-head mov-to-output _ _ = nhw-mov-to-output
     tnhw-head (instr-reg-op _) _ _ = nhw-instr-reg-op
+    tnhw-head (instr-ctrl _) _ _ = nhw-instr-ctrl
     tnhw-head mov-input2-to-output _ _ = nhw-mov-input2-to-output
     tnhw-head mov-to-input _ _ = nhw-mov-to-input
     tnhw-head mov-output-to-input2 _ _ = nhw-mov-output-to-input2
@@ -1606,6 +1623,7 @@ module TracePrimitives {FS : FrameSemantics} where
       TraceNoHeapWrites (i ∷ rest) → TraceNoHeapWrites rest
     tnhw-tail mov-to-output rest tnhw = tnhw
     tnhw-tail (instr-reg-op _) rest tnhw = tnhw
+    tnhw-tail (instr-ctrl _) rest tnhw = tnhw
     tnhw-tail mov-input2-to-output rest tnhw = tnhw
     tnhw-tail mov-to-input rest tnhw = tnhw
     tnhw-tail mov-output-to-input2 rest tnhw = tnhw
@@ -1670,6 +1688,8 @@ module TracePrimitives {FS : FrameSemantics} where
     -- Non-writing instructions (instr-writes-slot = nothing)
     exec-trace-preserves-slot-below (instr-reg-op _ ∷ rest) s alloc n slot twa tnhw slot<n =
       exec-trace-preserves-slot-below-nonwrite (instr-reg-op _) rest s alloc n slot twa tnhw slot<n nhw-instr-reg-op refl
+    exec-trace-preserves-slot-below (instr-ctrl _ ∷ rest) s alloc n slot twa tnhw slot<n =
+      exec-trace-preserves-slot-below-nonwrite (instr-ctrl _) rest s alloc n slot twa tnhw slot<n nhw-instr-ctrl refl
     exec-trace-preserves-slot-below (mov-to-output ∷ rest) s alloc n slot twa tnhw slot<n =
       exec-trace-preserves-slot-below-nonwrite mov-to-output rest s alloc n slot twa tnhw slot<n nhw-mov-to-output refl
     exec-trace-preserves-slot-below (mov-input2-to-output ∷ rest) s alloc n slot twa tnhw slot<n =
@@ -1803,6 +1823,8 @@ module TracePrimitives {FS : FrameSemantics} where
     -- Non-writing instructions (instr-writes-slot = nothing)
     exec-trace-preserves-slot-above (instr-reg-op _ ∷ rest) s alloc m slot twb tnhw m≤slot =
       exec-trace-preserves-slot-above-nonwrite (instr-reg-op _) rest s alloc m slot twb tnhw m≤slot nhw-instr-reg-op refl
+    exec-trace-preserves-slot-above (instr-ctrl _ ∷ rest) s alloc m slot twb tnhw m≤slot =
+      exec-trace-preserves-slot-above-nonwrite (instr-ctrl _) rest s alloc m slot twb tnhw m≤slot nhw-instr-ctrl refl
     exec-trace-preserves-slot-above (mov-to-output ∷ rest) s alloc m slot twb tnhw m≤slot =
       exec-trace-preserves-slot-above-nonwrite mov-to-output rest s alloc m slot twb tnhw m≤slot nhw-mov-to-output refl
     exec-trace-preserves-slot-above (mov-input2-to-output ∷ rest) s alloc m slot twb tnhw m≤slot =
@@ -1931,6 +1953,8 @@ module TracePrimitives {FS : FrameSemantics} where
     -- Non-writing instructions: use exec-abstract-preserves-stack-slot
     exec-trace-preserves-ancestor (instr-reg-op _ ∷ rest) s alloc f slot cf≺f tnhw =
       exec-trace-preserves-ancestor-nonwrite (instr-reg-op _) rest s alloc f slot cf≺f tnhw nhw-instr-reg-op refl
+    exec-trace-preserves-ancestor (instr-ctrl _ ∷ rest) s alloc f slot cf≺f tnhw =
+      exec-trace-preserves-ancestor-nonwrite (instr-ctrl _) rest s alloc f slot cf≺f tnhw nhw-instr-ctrl refl
     exec-trace-preserves-ancestor (mov-to-output ∷ rest) s alloc f slot cf≺f tnhw =
       exec-trace-preserves-ancestor-nonwrite mov-to-output rest s alloc f slot cf≺f tnhw nhw-mov-to-output refl
     exec-trace-preserves-ancestor (mov-input2-to-output ∷ rest) s alloc f slot cf≺f tnhw =
@@ -2179,6 +2203,7 @@ module TracePrimitives {FS : FrameSemantics} where
   data InstrPreservesHalted : AbstractInstr → Set where
     iph-mov-to-output         : InstrPreservesHalted mov-to-output
     iph-instr-reg-op          : ∀ {op} → InstrPreservesHalted (instr-reg-op op)
+    iph-instr-ctrl          : ∀ {op} → InstrPreservesHalted (instr-ctrl op)
     iph-mov-input2-to-output  : InstrPreservesHalted mov-input2-to-output
     iph-mov-to-input          : InstrPreservesHalted mov-to-input
     iph-mov-output-to-input2  : InstrPreservesHalted mov-output-to-input2
@@ -2206,6 +2231,7 @@ module TracePrimitives {FS : FrameSemantics} where
     halted (proj₁ (exec-abstract i s alloc)) ≡ false
   exec-abstract-preserves-halted mov-to-output s alloc h-eq _ = h-eq
   exec-abstract-preserves-halted (instr-reg-op _) s alloc h-eq _ = h-eq
+  exec-abstract-preserves-halted (instr-ctrl _) s alloc h-eq _ = h-eq
   exec-abstract-preserves-halted mov-input2-to-output s alloc h-eq _ = h-eq
   exec-abstract-preserves-halted mov-to-input s alloc h-eq _ = h-eq
   exec-abstract-preserves-halted mov-output-to-input2 s alloc h-eq _ = h-eq
@@ -2360,6 +2386,7 @@ module TracePrimitives {FS : FrameSemantics} where
     halted (proj₁ (exec-abstract i s alloc)) ≡ false
   exec-abstract-preserves-halted-WF mov-to-output           s alloc h-eq _ = h-eq
   exec-abstract-preserves-halted-WF (instr-reg-op _)        s alloc h-eq _ = h-eq
+  exec-abstract-preserves-halted-WF (instr-ctrl _)        s alloc h-eq _ = h-eq
   exec-abstract-preserves-halted-WF mov-input2-to-output    s alloc h-eq _ = h-eq
   exec-abstract-preserves-halted-WF mov-to-input            s alloc h-eq _ = h-eq
   exec-abstract-preserves-halted-WF mov-output-to-input2    s alloc h-eq _ = h-eq
@@ -2489,6 +2516,7 @@ module TracePrimitives {FS : FrameSemantics} where
     InstrWF s alloc i → InstrWF s alloc' i
   InstrWF-frame-eq mov-to-output           s _ _ _  iwf = iwf
   InstrWF-frame-eq (instr-reg-op _)        s _ _ _  iwf = iwf
+  InstrWF-frame-eq (instr-ctrl _)        s _ _ _  iwf = iwf
   InstrWF-frame-eq mov-input2-to-output    s _ _ _  iwf = iwf
   InstrWF-frame-eq mov-to-input            s _ _ _  iwf = iwf
   InstrWF-frame-eq mov-output-to-input2    s _ _ _  iwf = iwf
@@ -2538,6 +2566,7 @@ module TracePrimitives {FS : FrameSemantics} where
     proj₁ (exec-abstract i s alloc) ≡ proj₁ (exec-abstract i s alloc')
   exec-abstract-state-frame-eq mov-to-output           s _ _ _ _ = refl
   exec-abstract-state-frame-eq (instr-reg-op _)        s _ _ _ _ = refl
+  exec-abstract-state-frame-eq (instr-ctrl _)        s _ _ _ _ = refl
   exec-abstract-state-frame-eq mov-input2-to-output    s _ _ _ _ = refl
   exec-abstract-state-frame-eq mov-to-input            s _ _ _ _ = refl
   exec-abstract-state-frame-eq mov-output-to-input2    s _ _ _ _ = refl
@@ -4135,6 +4164,7 @@ module RecSchemeSemantics {FS : FrameSemantics} where
     next-heap-ref (proj₂ (exec-abstract i s alloc)) ≡ next-heap-ref alloc
   exec-abstract-preserves-heap-ref mov-to-output s alloc _ = refl
   exec-abstract-preserves-heap-ref (instr-reg-op _) s alloc _ = refl
+  exec-abstract-preserves-heap-ref (instr-ctrl _) s alloc _ = refl
   exec-abstract-preserves-heap-ref mov-input2-to-output s alloc _ = refl
   exec-abstract-preserves-heap-ref mov-to-input s alloc _ = refl
   exec-abstract-preserves-heap-ref mov-output-to-input2 s alloc _ = refl
@@ -4207,6 +4237,10 @@ module RecSchemeSemantics {FS : FrameSemantics} where
   ... | true = refl
   ... | false = trans (exec-trace-preserves-heap-ref t _ _)
                       (exec-abstract-preserves-heap-ref (instr-reg-op op) s alloc tt)
+  exec-trace-preserves-heap-ref (instr-ctrl c ∷ t) s alloc with halted s
+  ... | true = refl
+  ... | false = trans (exec-trace-preserves-heap-ref t _ _)
+                      (exec-abstract-preserves-heap-ref (instr-ctrl c) s alloc tt)
   exec-trace-preserves-heap-ref (mov-to-output ∷ t) s alloc with halted s
   ... | true = refl
   ... | false = trans (exec-trace-preserves-heap-ref t _ _)
