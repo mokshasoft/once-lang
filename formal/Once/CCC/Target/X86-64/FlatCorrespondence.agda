@@ -33,7 +33,7 @@ open import Data.Nat.Properties using (+-comm)
 open import Data.Bool using (Bool; false)
 open import Data.List using ([])
 open import Data.Maybe using (Maybe; just; nothing)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 
 import Once.CCC.Target.X86-64.Semantics as X
 open X using (mkstate; mkflags; _<ᵇ_)
@@ -41,6 +41,7 @@ open X using (mkstate; mkflags; _<ᵇ_)
 open X.State using (memory; flags; pc) renaming (regs to xregs; halted to xhalted)
 open import Once.CCC.Target.X86-64.Syntax using (rax; rbx; rsi; rdi)
 open import Once.CCC.Machine.SMCore
+open ExecFinal {FS} using (exec-load-via-resolved; exec-load-suc-via-resolved; exec-load-with-value)
 open import Once.CCC.Machine.Flat
 open FlatMachine {FS}
 
@@ -208,3 +209,105 @@ sim-test-scratch n fs s corr sc-eq = record
   ; pc-eq = trans (cong (_+ 1) (pc-eq corr)) (+-comm (fpc fs) 1)
   ; zf-eq = trans (cong (_≡ᵇ 0) (rbx-eq corr)) (enc-zero (readReg (regs (floc fs)) Scratch) n sc-eq)
   ; halt-eq = halt-eq corr ; heap-eq = heap-eq corr }
+
+------------------------------------------------------------------------
+-- Control test on a HEAP tag: instr-ctrl c-test-tag (fzf := *Input1 ≟0)
+-- ↔ `cmp [rdi], 0`. Like c-test-scratch but the tag lives in the heap
+-- cell Input1 points to. Hypotheses (true on every cata step — the
+-- cursor points to a live cell holding a tag):
+--   Input1 = SV-Ptr (AtDynamic hl),  heapMem hl = just (SV-Tag k).
+-- The abstract-halt vs x86-`nothing` Maybe mismatch dissolves: the read
+-- succeeds on both sides, so neither halts. We reduce the (stuck) flat
+-- step under the hypotheses, then transport the clean correspondence.
+------------------------------------------------------------------------
+sim-test-tag : ∀ (hl : HeapLocation) (k : ℕ) (fs : FlatState) (s : X.State) → FlatCorr fs s
+  → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
+  → heapMem (floc fs) hl ≡ just (SV-Tag k)
+  → FlatCorr (flat-exec-instr (instr-ctrl c-test-tag) [] fs)
+             (mkstate (xregs s) (memory s)
+                      (mkflags (k ≡ᵇ 0) (k <ᵇ 0) false) (pc s + 1) (xhalted s))
+sim-test-tag hl k fs s corr i-eq h-eq =
+  subst (λ z → FlatCorr z xpost) (sym reduces) corr-clean
+  where
+    xpost : X.State
+    xpost = mkstate (xregs s) (memory s) (mkflags (k ≡ᵇ 0) (k <ᵇ 0) false) (pc s + 1) (xhalted s)
+    cleanFlat : FlatState
+    cleanFlat = record fs { fpc = suc (fpc fs) ; fzf = sv-is-zero (SV-Tag {FS} k) }
+    -- Reduce the (stuck) heap read via cong/trans (NOT rewrite: `readReg
+    -- _ Input1` reduces to the `input1` projection, so a syntactic rewrite
+    -- can't match — cong checks definitional equality and goes through).
+    fzf-eq : tag-zf (flat-read-tag (floc fs)) ≡ sv-is-zero (SV-Tag {FS} k)
+    fzf-eq = cong tag-zf (trans (cong (flat-read-at (floc fs)) (cong sv-as-loc i-eq)) h-eq)
+    reduces : flat-exec-instr (instr-ctrl c-test-tag) [] fs ≡ cleanFlat
+    reduces = cong (λ b → record fs { fpc = suc (fpc fs) ; fzf = b }) fzf-eq
+    corr-clean : FlatCorr cleanFlat xpost
+    corr-clean = record
+      { rdi-eq = rdi-eq corr ; rsi-eq = rsi-eq corr ; rax-eq = rax-eq corr ; rbx-eq = rbx-eq corr
+      ; pc-eq = trans (cong (_+ 1) (pc-eq corr)) (+-comm (fpc fs) 1)
+      ; zf-eq = sym (sv-tag-zero k)
+      ; halt-eq = halt-eq corr ; heap-eq = heap-eq corr }
+
+------------------------------------------------------------------------
+-- Heap load: load-indirect-suc (Output := *(sucLoc Input1)) ↔
+-- `mov rax, [rdi + slot-size]`. Hypotheses (cata cursor + live child
+-- cell): Input1 = SV-Ptr (AtDynamic hl),  heapMem (sucHL hl) = just w.
+-- The x86 ADDRESS law (enc-hl (sucHL hl) = enc-hl hl + slot-size) is a
+-- separate concern (proving execInstr REACHES this post-state); here we
+-- relate the read VALUES: new rax = enc-sv w = enc-sv (new Output).
+------------------------------------------------------------------------
+sim-load-indirect-suc : ∀ (hl : HeapLocation) (w : StoredValue FS) (fs : FlatState) (s : X.State) → FlatCorr fs s
+  → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
+  → heapMem (floc fs) (sucHL hl) ≡ just w
+  → FlatCorr (flat-exec-instr load-indirect-suc [] fs)
+             (mkstate (xwriteReg (xregs s) rax (enc-sv w)) (memory s) (flags s) (pc s + 1) (xhalted s))
+sim-load-indirect-suc hl w fs s corr i-eq h-eq =
+  subst (λ z → FlatCorr z xpost) (sym reduces) corr-clean
+  where
+    xpost : X.State
+    xpost = mkstate (xwriteReg (xregs s) rax (enc-sv w)) (memory s) (flags s) (pc s + 1) (xhalted s)
+    cleanFlat : FlatState
+    cleanFlat = record fs { floc = record (floc fs) { regs = writeReg (regs (floc fs)) Output w }
+                          ; falloc = falloc fs ; fpc = suc (fpc fs) }
+    -- cong/trans (not rewrite) so the `readReg _ Input1 → input1` and
+    -- `heapMem` reductions go through definitionally.
+    floc-eq : exec-load-suc-via-resolved Output (sv-as-loc (readReg (regs (floc fs)) Input1)) (floc fs)
+              ≡ record (floc fs) { regs = writeReg (regs (floc fs)) Output w }
+    floc-eq = trans (cong (λ m → exec-load-suc-via-resolved Output m (floc fs)) (cong sv-as-loc i-eq))
+                    (cong (λ mv → exec-load-with-value Output mv (floc fs)) h-eq)
+    reduces : flat-exec-instr load-indirect-suc [] fs ≡ cleanFlat
+    reduces = cong (λ fl → record fs { floc = fl ; falloc = falloc fs ; fpc = suc (fpc fs) }) floc-eq
+    corr-clean : FlatCorr cleanFlat xpost
+    corr-clean = record
+      { rdi-eq = rdi-eq corr ; rsi-eq = rsi-eq corr ; rax-eq = refl ; rbx-eq = rbx-eq corr
+      ; pc-eq = trans (cong (_+ 1) (pc-eq corr)) (+-comm (fpc fs) 1)
+      ; zf-eq = zf-eq corr ; halt-eq = halt-eq corr ; heap-eq = heap-eq corr }
+
+------------------------------------------------------------------------
+-- Heap load (no offset): load-indirect (Output := *Input1) ↔
+-- `mov rax, [rdi]`. Sibling of load-indirect-suc; reads the cell Input1
+-- points to directly. Same reduce-then-correspond structure.
+------------------------------------------------------------------------
+sim-load-indirect : ∀ (hl : HeapLocation) (w : StoredValue FS) (fs : FlatState) (s : X.State) → FlatCorr fs s
+  → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
+  → heapMem (floc fs) hl ≡ just w
+  → FlatCorr (flat-exec-instr load-indirect [] fs)
+             (mkstate (xwriteReg (xregs s) rax (enc-sv w)) (memory s) (flags s) (pc s + 1) (xhalted s))
+sim-load-indirect hl w fs s corr i-eq h-eq =
+  subst (λ z → FlatCorr z xpost) (sym reduces) corr-clean
+  where
+    xpost : X.State
+    xpost = mkstate (xwriteReg (xregs s) rax (enc-sv w)) (memory s) (flags s) (pc s + 1) (xhalted s)
+    cleanFlat : FlatState
+    cleanFlat = record fs { floc = record (floc fs) { regs = writeReg (regs (floc fs)) Output w }
+                          ; falloc = falloc fs ; fpc = suc (fpc fs) }
+    floc-eq : exec-load-via-resolved Output (sv-as-loc (readReg (regs (floc fs)) Input1)) (floc fs)
+              ≡ record (floc fs) { regs = writeReg (regs (floc fs)) Output w }
+    floc-eq = trans (cong (λ m → exec-load-via-resolved Output m (floc fs)) (cong sv-as-loc i-eq))
+                    (cong (λ mv → exec-load-with-value Output mv (floc fs)) h-eq)
+    reduces : flat-exec-instr load-indirect [] fs ≡ cleanFlat
+    reduces = cong (λ fl → record fs { floc = fl ; falloc = falloc fs ; fpc = suc (fpc fs) }) floc-eq
+    corr-clean : FlatCorr cleanFlat xpost
+    corr-clean = record
+      { rdi-eq = rdi-eq corr ; rsi-eq = rsi-eq corr ; rax-eq = refl ; rbx-eq = rbx-eq corr
+      ; pc-eq = trans (cong (_+ 1) (pc-eq corr)) (+-comm (fpc fs) 1)
+      ; zf-eq = zf-eq corr ; halt-eq = halt-eq corr ; heap-eq = heap-eq corr }
