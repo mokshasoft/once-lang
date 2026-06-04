@@ -27,6 +27,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; sym;
 
 open import Once.CCC.Machine.SMCore
   using (AbstractInstr; AbstractTrace; instr-ctrl; c-label)
+open import Once.CCC.Label using (Label)
 open import Once.CCC.Machine.Flat
 open FlatMachine {FS}
 import Once.CCC.Target.X86-64.Semantics as X
@@ -57,7 +58,7 @@ has-label []            = false
 has-label (label _ ∷ _) = true
 has-label (_ ∷ is)      = has-label is
 
-find-label-go-skip : ∀ (target : ℕ) (block rest : Program) (xi : ℕ)
+find-label-go-skip : ∀ (target : Label) (block rest : Program) (xi : ℕ)
   → has-label block ≡ false
   → X.find-label-go target (block ++ rest) xi ≡ X.find-label-go target rest (xi + length block)
 find-label-go-skip target []             rest xi _  =

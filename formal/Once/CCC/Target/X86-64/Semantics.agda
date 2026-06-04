@@ -23,6 +23,7 @@
 module Once.CCC.Target.X86-64.Semantics where
 
 open import Once.CCC.Target.X86-64.Syntax
+open import Once.CCC.Label using (Label; _≡ᵇᴸ_)
 
 open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _≡ᵇ_; _≟_)
 open import Data.Bool using (Bool; true; false; if_then_else_)
@@ -199,12 +200,12 @@ suc m <ᵇ suc n = m <ᵇ n
 
 -- find-label's scanner, lifted to top-level so the abstract↔x86
 -- correspondence proofs can induct on it (Plan 0.32 Phase D composition).
-find-label-go : ℕ → Program → ℕ → Maybe ℕ
+find-label-go : Label → Program → ℕ → Maybe ℕ
 find-label-go target []             _ = nothing
-find-label-go target (label m ∷ is) i = if m ≡ᵇ target then just i else find-label-go target is (suc i)
+find-label-go target (label m ∷ is) i = if m ≡ᵇᴸ target then just i else find-label-go target is (suc i)
 find-label-go target (_       ∷ is) i = find-label-go target is (suc i)
 
-find-label : Program → ℕ → Maybe ℕ
+find-label : Program → Label → Maybe ℕ
 find-label prog target = find-label-go target prog 0
 
 ------------------------------------------------------------------------

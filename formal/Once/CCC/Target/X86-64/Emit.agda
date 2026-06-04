@@ -18,6 +18,7 @@ open import Data.List using (List; []; _∷_; foldr)
 
 -- Import X86-64 syntax
 open import Once.CCC.Target.X86-64.Syntax
+open import Once.CCC.Label using (Label; once; sigop)
 
 ------------------------------------------------------------------------
 -- Register names
@@ -64,6 +65,12 @@ showOperand (imm n) = "$" ++ showNat n
 -- Instructions (AT&T syntax: src, dst order)
 ------------------------------------------------------------------------
 
+-- Plan 0.33: render provenance into the assembly symbol so compiler
+-- (`once`) and SigOp (`sigop`) labels never collide in the object file.
+showLabel : Label → String
+showLabel (once n)       = "once_" ++ showNat n
+showLabel (sigop nm k)   = "sigops_" ++ nm ++ "_" ++ showNat k
+
 showInstr : Instr → String
 showInstr (mov dst src) =
   "    movq " ++ showOperand src ++ ", " ++ showOperand dst
@@ -78,11 +85,11 @@ showInstr (cmp op1 op2) =
 showInstr (test op1 op2) =
   "    testq " ++ showOperand op2 ++ ", " ++ showOperand op1
 showInstr (jmp n) =
-  "    jmp .L" ++ showNat n
+  "    jmp .L" ++ showLabel n
 showInstr (je n) =
-  "    je .L" ++ showNat n
+  "    je .L" ++ showLabel n
 showInstr (jne n) =
-  "    jne .L" ++ showNat n
+  "    jne .L" ++ showLabel n
 showInstr (call (reg r)) =
   "    call *" ++ showReg r
 showInstr (call (mem m)) =
@@ -108,7 +115,7 @@ showInstr ud2 =
 showInstr syscall =
   "    syscall"
 showInstr (label n) =
-  ".L" ++ showNat n ++ ":"
+  ".L" ++ showLabel n ++ ":"
 
 ------------------------------------------------------------------------
 -- Program emission
