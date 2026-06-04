@@ -500,26 +500,21 @@ module MemOps {FS : FrameSemantics} where
   writeStackMem mem f k v f' k' = writeStackMem-aux (f ≟F f') (k ≟ k') (mem f' k') v
 
   -- | Write a StoredValue to heap memory.
+  -- with-FREE (mirrors writeStackMem): route on the explicit ≟HL result
+  -- through a helper instead of an internal `with`. Consequence: an
+  -- external `with hl ≟HL hl'` reduces writeHeapMem too (the helper sees
+  -- the same Dec), so no opaque case tree and no special read-after-write
+  -- accessor lemmas are needed — callers just case-split on ≟HL.
+  writeHeapMem-aux : ∀ {hl hl' : HeapLocation}
+                   → Dec (hl ≡ hl')
+                   → Maybe (StoredValue FS)  -- existing value at hl'
+                   → StoredValue FS           -- new value
+                   → Maybe (StoredValue FS)
+  writeHeapMem-aux (yes _) _   v = just v
+  writeHeapMem-aux (no _)  old _ = old
+
   writeHeapMem : HeapMem FS → HeapLocation → StoredValue FS → HeapMem FS
-  writeHeapMem mem hl v hl' with hl ≟HL hl'
-  ... | yes _ = just v
-  ... | no _  = mem hl'
-
-  -- Read-after-write spec for writeHeapMem (the internal `with ≟HL` is
-  -- only reducible here, in MemOps). Used by the heap-store correspondence.
-  writeHeapMem-same : ∀ (mem : HeapMem FS) (hl : HeapLocation) (v : StoredValue FS) →
-    writeHeapMem mem hl v hl ≡ just v
-  writeHeapMem-same mem hl v with hl ≟HL hl
-  ... | yes _  = refl
-  ... | no ¬p  = ⊥-elim (¬p refl)
-    where open import Data.Empty using (⊥-elim)
-
-  writeHeapMem-diff : ∀ (mem : HeapMem FS) (hl hl' : HeapLocation) (v : StoredValue FS) →
-    (hl ≡ hl' → ⊥) → writeHeapMem mem hl v hl' ≡ mem hl'
-  writeHeapMem-diff mem hl hl' v ¬p with hl ≟HL hl'
-  ... | yes p = ⊥-elim (¬p p)
-    where open import Data.Empty using (⊥-elim)
-  ... | no _  = refl
+  writeHeapMem mem hl v hl' = writeHeapMem-aux (hl ≟HL hl') (mem hl') v
 
   -- | Write a value (StoredValue) to stack memory at a slot.
   -- Plan 0.13.2.

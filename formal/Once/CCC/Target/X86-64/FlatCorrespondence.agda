@@ -49,7 +49,7 @@ open X using (mkstate; mkflags; _<ᵇ_; writeMem)
 open X.State using (memory; flags; pc) renaming (regs to xregs; halted to xhalted)
 open import Once.CCC.Target.X86-64.Syntax using (rax; rbx; rsi; rdi)
 open import Once.CCC.Machine.SMCore
-open MemOps {FS} using (writeLoc; writeLocToHeap; writeHeapMem; writeHeapMem-same; writeHeapMem-diff)
+open MemOps {FS} using (writeLoc; writeLocToHeap; writeHeapMem)
 open ExecFinal {FS} using (exec-load-via-resolved; exec-load-suc-via-resolved; exec-load-with-value
                           ; exec-store-via-resolved; exec-store-suc-via-resolved)
 open import Once.CCC.Machine.Flat
@@ -346,10 +346,11 @@ store-heap-eq : ∀ (hl : HeapLocation) (v : StoredValue FS) (s : X.State) (ls :
   → (∀ hl' → X.readMem (memory s) (enc-hl hl') ≡ enc-maybe (heapMem ls hl'))
   → ∀ hl' → X.readMem (writeMem (memory s) (enc-hl hl) (enc-sv v)) (enc-hl hl')
             ≡ enc-maybe (writeHeapMem (heapMem ls) hl v hl')
+-- (writeHeapMem is with-free now, so the `with hl ≟HL hl'` below reduces
+-- it directly — no read-after-write accessor lemmas needed.)
 store-heap-eq hl v s ls pre hl' with hl ≟HL hl'
-... | yes refl rewrite ≡ᵇ-refl (enc-hl hl) | writeHeapMem-same (heapMem ls) hl v = refl
-... | no ¬p rewrite ≢→≡ᵇfalse {enc-hl hl'} {enc-hl hl} (λ q → ¬p (sym (enc-hl-inj q)))
-                  | writeHeapMem-diff (heapMem ls) hl hl' v ¬p = pre hl'
+... | yes refl rewrite ≡ᵇ-refl (enc-hl hl) = refl
+... | no ¬p rewrite ≢→≡ᵇfalse {enc-hl hl'} {enc-hl hl} (λ q → ¬p (sym (enc-hl-inj q))) = pre hl'
 
 -- store-indirect: *Input1 := Output ↔ `mov [rdi], rax`. Hypotheses:
 --   Input1 = SV-Ptr (AtDynamic hl)   (destination is a heap cell)
