@@ -32,7 +32,7 @@
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.Memory.HeapAddress using (HeapLocation)
-open import Data.Nat using (ℕ)
+open import Data.Nat using (ℕ; _+_; _≡ᵇ_)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
 module Once.CCC.Target.X86-64.FlatSimulation
@@ -45,7 +45,14 @@ open import Once.CCC.Machine.SMCore
 open import Once.CCC.Machine.Flat
 open FlatMachine {FS}
 import Once.CCC.Target.X86-64.Semantics as X
-open import Once.CCC.Target.X86-64.Syntax using (rax; rbx; rsi; rdi)
+open X using (mkstate; execInstr; mkflags; _<ᵇ_)
+  renaming (readReg to xreadReg; writeReg to xwriteReg; readMem to xreadMem)
+open X.State using (memory; flags; pc) renaming (regs to xregs; halted to xhalted)
+open import Once.CCC.Target.X86-64.Syntax
+  using (rax; rbx; rsi; rdi; Reg; Operand; Program; reg; imm; mem; mov; add; sub; cmp)
+open import Data.Maybe using (just)
+open import Data.Bool using (false)
+open import Relation.Binary.PropositionalEquality using (refl)
 
 import Once.CCC.Target.X86-64.FlatCorrespondence as FC
 module C = FC FS enc-hl enc-hl-inj          -- enc-sv / FlatCorr data fields
@@ -68,3 +75,34 @@ record CompiledCorr (prog : AbstractTrace) (fs : FlatState) (s : X.State) : Set 
     heap-eq : ∀ (hl : HeapLocation) →
               X.readMem (X.State.memory s) (enc-hl hl) ≡ C.enc-maybe (heapMem (floc fs) hl)
 open CompiledCorr public
+
+------------------------------------------------------------------------
+-- (B) execInstr-reduces facts. For each x86 instruction the codegen
+-- emits, `execInstr` reduces to the exact post-state the FlatCorrespondence
+-- `sim-*` lemmas assume. The PURE ones (register/imm/arith/cmp) are stated
+-- standalone here; the memory ones (loads/stores) depend on the heap
+-- correspondence and are discharged inside block-step.
+------------------------------------------------------------------------
+-- mov (reg dst) (reg src): rax↔rdi register shuffles (mov-to-output, …).
+b-mov-reg-reg : ∀ (prog : Program) (s : X.State) (dst src : Reg)
+  → execInstr prog s (mov (reg dst) (reg src))
+    ≡ just (mkstate (xwriteReg (xregs s) dst (xreadReg (xregs s) src))
+                    (memory s) (flags s) (pc s + 1) (xhalted s))
+b-mov-reg-reg prog s dst src = refl
+
+-- mov (reg dst) (imm n): tag/reg-op immediate loads (load-tag-lit, …).
+b-mov-reg-imm : ∀ (prog : Program) (s : X.State) (dst : Reg) (n : ℕ)
+  → execInstr prog s (mov (reg dst) (imm n))
+    ≡ just (mkstate (xwriteReg (xregs s) dst n)
+                    (memory s) (flags s) (pc s + 1) (xhalted s))
+b-mov-reg-imm prog s dst n = refl
+
+-- cmp (reg dst) (imm n): the control test (c-test-scratch). Like the flat
+-- test, it SETS zf (= the dst≟n result) — so it preserves zf-eq, unlike
+-- the arithmetic ops below.
+b-cmp-reg-imm : ∀ (prog : Program) (s : X.State) (dst : Reg) (n : ℕ)
+  → execInstr prog s (cmp (reg dst) (imm n))
+    ≡ just (mkstate (xregs s) (memory s)
+                    (mkflags (xreadReg (xregs s) dst ≡ᵇ n) (xreadReg (xregs s) dst <ᵇ n) false)
+                    (pc s + 1) (xhalted s))
+b-cmp-reg-imm prog s dst n = refl
