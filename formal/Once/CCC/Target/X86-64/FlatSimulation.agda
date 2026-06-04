@@ -63,10 +63,10 @@ module C = FC FS enc-hl enc-hl-inj          -- enc-sv / FlatCorr data fields
 open import Once.CCC.Label using (once)
 open import Once.CCC.Target.X86-64.FlatComposition FS
   using (x86-off; x86-len; x86-off-suc; fetch-block-head; find-label-corr; fetch-block-2nd)
-open import Once.CCC.Target.X86-64.StepLemmas using (exec-1; step-mov-rr; step-mov-ri; step-label; step-jmp; step-mov-rm; step-mov-mr; step-add-ri; step-sub-ri; step-cmp-ri; step-je-taken; step-je-not)
+open import Once.CCC.Target.X86-64.StepLemmas using (exec-1; step-mov-rr; step-mov-ri; step-label; step-jmp; step-mov-rm; step-mov-mr; step-add-ri; step-sub-ri; step-cmp-ri; step-cmp-mi; step-je-taken; step-je-not)
 open import Once.CCC.Target.X86-64.AbstractToX86 using (compile-trace; compile-abstract)
 open import Data.Nat using (zero; suc)
-open import Data.Nat.Properties using (+-assoc)
+open import Data.Nat.Properties using (+-assoc; +-identityʳ)
 open import Data.Product using (Σ; _×_; _,_)
 open import Relation.Binary.PropositionalEquality using (sym; trans; cong; cong₂; subst)
 open MemOps {FS} using (writeLoc; writeLocToHeap)
@@ -565,6 +565,87 @@ block-step-c-branch-scratch-zero prog fs s n (suc m) j cc h ft sc-eq fl-eq = res
     pco' = trans (+-assoc (pc s) 1 1) (trans (cong (_+ 2) po) (sym (x86-off-suc prog (fpc fs) (instr-ctrl (c-branch-scratch-zero n)) ft)))
     result : BlockStep prog fs s (instr-ctrl (c-branch-scratch-zero n))
     result rewrite sc-eq = post-je , exec-eq , record
+      { dataCorr = record { rdi-eq = C.rdi-eq dc ; rsi-eq = C.rsi-eq dc ; rax-eq = C.rax-eq dc
+                          ; rbx-eq = C.rbx-eq dc ; halt-eq = C.halt-eq dc ; heap-eq = C.heap-eq dc }
+      ; pc-off = pco' }
+
+-- c-branch-tag-zero: cmp [rdi],0 ; je n. Like scratch-zero but the condition
+-- is the heap tag at *Input1 (cond-eq reduces it to sv-is-zero (SV-Tag k)
+-- like sim-test-tag); the x86 cmp reads the same value via heap-eq. The
+-- address is base+disp rdi 0, so effectiveAddr carries a +0.
+block-step-c-branch-tag-zero : ∀ prog fs s n hl k j → CompiledCorr prog fs s → halted (floc fs) ≡ false
+  → fetch prog (fpc fs) ≡ just (instr-ctrl (c-branch-tag-zero n))
+  → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
+  → heapMem (floc fs) hl ≡ just (SV-Tag k)
+  → find-label prog n ≡ just j
+  → BlockStep prog fs s (instr-ctrl (c-branch-tag-zero n))
+block-step-c-branch-tag-zero prog fs s n hl zero j cc h ft i-eq h-eq fl-eq = result
+  where
+    dc = dataCorr cc ; po = pc-off cc
+    halt-s : X.State.halted s ≡ false
+    halt-s = trans (C.halt-eq dc) h
+    fetch-cmp : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (cmp (mem (base+disp rdi 0)) (imm 0))
+    fetch-cmp = trans (cong (X.fetch (compile-trace prog)) po)
+                      (fetch-block-head prog (fpc fs) (instr-ctrl (c-branch-tag-zero n)) ft)
+    addr-val : xreadReg (xregs s) rdi + 0 ≡ enc-hl hl
+    addr-val = trans (+-identityʳ (xreadReg (xregs s) rdi)) (trans (C.rdi-eq dc) (cong C.enc-sv i-eq))
+    rd : X.readMem (memory s) (X.effectiveAddr s (base+disp rdi 0)) ≡ just 0
+    rd = trans (cong (X.readMem (memory s)) addr-val) (trans (C.heap-eq dc hl) (cong C.enc-maybe h-eq))
+    post-cmp : X.State
+    post-cmp = record s { flags = mkflags (0 ≡ᵇ 0) (0 <ᵇ 0) false ; pc = pc s + 1 }
+    step-cmp : X.step-not-halted (compile-trace prog) s ≡ just post-cmp
+    step-cmp = step-cmp-mi {compile-trace prog} {s} {base+disp rdi 0} {0} {0} fetch-cmp rd
+    fetch-je : X.fetch (compile-trace prog) (X.State.pc post-cmp) ≡ just (je (once n))
+    fetch-je = trans (cong (λ p → X.fetch (compile-trace prog) (p + 1)) po)
+                     (fetch-block-2nd prog (fpc fs) (instr-ctrl (c-branch-tag-zero n)) ft)
+    fl-x86 : X.find-label (compile-trace prog) (once n) ≡ just (x86-off prog j)
+    fl-x86 = find-label-corr prog n 0 j fl-eq
+    post-je : X.State
+    post-je = record post-cmp { pc = x86-off prog j }
+    step-je : X.step-not-halted (compile-trace prog) post-cmp ≡ just post-je
+    step-je = step-je-taken {compile-trace prog} {post-cmp} {once n} {x86-off prog j} fetch-je refl fl-x86
+    exec-eq : X.exec 2 (compile-trace prog) s ≡ just post-je
+    exec-eq = trans (exec-1 {compile-trace prog} {1} {s} {post-cmp} halt-s step-cmp halt-s)
+                    (exec-1 {compile-trace prog} {0} {post-cmp} {post-je} halt-s step-je halt-s)
+    cond-eq : tag-zf (flat-read-tag (floc fs)) ≡ sv-is-zero (SV-Tag {FS} zero)
+    cond-eq = cong tag-zf (trans (cong (flat-read-at (floc fs)) (cong sv-as-loc i-eq)) h-eq)
+    result : BlockStep prog fs s (instr-ctrl (c-branch-tag-zero n))
+    result rewrite cond-eq | fl-eq = post-je , exec-eq , record
+      { dataCorr = record { rdi-eq = C.rdi-eq dc ; rsi-eq = C.rsi-eq dc ; rax-eq = C.rax-eq dc
+                          ; rbx-eq = C.rbx-eq dc ; halt-eq = C.halt-eq dc ; heap-eq = C.heap-eq dc }
+      ; pc-off = refl }
+block-step-c-branch-tag-zero prog fs s n hl (suc m) j cc h ft i-eq h-eq fl-eq = result
+  where
+    dc = dataCorr cc ; po = pc-off cc
+    halt-s : X.State.halted s ≡ false
+    halt-s = trans (C.halt-eq dc) h
+    fetch-cmp : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (cmp (mem (base+disp rdi 0)) (imm 0))
+    fetch-cmp = trans (cong (X.fetch (compile-trace prog)) po)
+                      (fetch-block-head prog (fpc fs) (instr-ctrl (c-branch-tag-zero n)) ft)
+    addr-val : xreadReg (xregs s) rdi + 0 ≡ enc-hl hl
+    addr-val = trans (+-identityʳ (xreadReg (xregs s) rdi)) (trans (C.rdi-eq dc) (cong C.enc-sv i-eq))
+    rd : X.readMem (memory s) (X.effectiveAddr s (base+disp rdi 0)) ≡ just (suc m)
+    rd = trans (cong (X.readMem (memory s)) addr-val) (trans (C.heap-eq dc hl) (cong C.enc-maybe h-eq))
+    post-cmp : X.State
+    post-cmp = record s { flags = mkflags (suc m ≡ᵇ 0) (suc m <ᵇ 0) false ; pc = pc s + 1 }
+    step-cmp : X.step-not-halted (compile-trace prog) s ≡ just post-cmp
+    step-cmp = step-cmp-mi {compile-trace prog} {s} {base+disp rdi 0} {0} {suc m} fetch-cmp rd
+    fetch-je : X.fetch (compile-trace prog) (X.State.pc post-cmp) ≡ just (je (once n))
+    fetch-je = trans (cong (λ p → X.fetch (compile-trace prog) (p + 1)) po)
+                     (fetch-block-2nd prog (fpc fs) (instr-ctrl (c-branch-tag-zero n)) ft)
+    post-je : X.State
+    post-je = record post-cmp { pc = X.State.pc post-cmp + 1 }
+    step-je : X.step-not-halted (compile-trace prog) post-cmp ≡ just post-je
+    step-je = step-je-not {compile-trace prog} {post-cmp} {once n} fetch-je refl
+    exec-eq : X.exec 2 (compile-trace prog) s ≡ just post-je
+    exec-eq = trans (exec-1 {compile-trace prog} {1} {s} {post-cmp} halt-s step-cmp halt-s)
+                    (exec-1 {compile-trace prog} {0} {post-cmp} {post-je} halt-s step-je halt-s)
+    cond-eq : tag-zf (flat-read-tag (floc fs)) ≡ sv-is-zero (SV-Tag {FS} (suc m))
+    cond-eq = cong tag-zf (trans (cong (flat-read-at (floc fs)) (cong sv-as-loc i-eq)) h-eq)
+    pco' : X.State.pc post-je ≡ x86-off prog (suc (fpc fs))
+    pco' = trans (+-assoc (pc s) 1 1) (trans (cong (_+ 2) po) (sym (x86-off-suc prog (fpc fs) (instr-ctrl (c-branch-tag-zero n)) ft)))
+    result : BlockStep prog fs s (instr-ctrl (c-branch-tag-zero n))
+    result rewrite cond-eq = post-je , exec-eq , record
       { dataCorr = record { rdi-eq = C.rdi-eq dc ; rsi-eq = C.rsi-eq dc ; rax-eq = C.rax-eq dc
                           ; rbx-eq = C.rbx-eq dc ; halt-eq = C.halt-eq dc ; heap-eq = C.heap-eq dc }
       ; pc-off = pco' }
