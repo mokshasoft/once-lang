@@ -245,6 +245,7 @@ library
       MAlonzo.Code.Once.Arith.Type
       MAlonzo.Code.Once.CCC.FrameSemantics
       MAlonzo.Code.Once.CCC.IR
+      MAlonzo.Code.Once.CCC.Label
       MAlonzo.Code.Once.CCC.SigOp.Info
       MAlonzo.Code.Once.CCC.Machine.SMCore
       MAlonzo.Code.Once.CCC.Codegen.IRToTrace
