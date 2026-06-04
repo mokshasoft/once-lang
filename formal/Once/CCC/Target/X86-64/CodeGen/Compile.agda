@@ -28,6 +28,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 
 -- Import X86 syntax
 open import Once.CCC.Target.X86-64.Syntax
+open import Once.CCC.Label using (once)
   using (Reg; rax; rbx; rcx; rdx; rdi; rsi; rbp; rsp; r8; r9; r10; r11; r12; r13; r14; r15;
          Mem; base; base+disp; rip+disp;
          Operand; reg; mem; imm;
@@ -112,43 +113,43 @@ inr-instrs =
 -- IR (only rax/rdi/rcx/r14/rsp are), so it survives the algebra.
 --
 --   mov rbx,0
---   ldesc:  mov rcx,[rdi]; cmp rcx,0; je lbase; add rbx,1; mov rdi,[rdi+8]; jmp ldesc
---   lbase:  build inl layer [0, 0(unit)]; rdi:=layer; jmp lapply
+--   ldesc:  mov rcx,[rdi]; cmp rcx,0; je (once lbase); add rbx,1; mov rdi,[rdi+8]; jmp (once ldesc)
+--   lbase:  build inl layer [0, 0(unit)]; rdi:=layer; jmp (once lapply)
 --   lcomb:  build inr layer [1, rax(prev result)]; rdi:=layer
 --   lapply: <alg>   (rdi=layer → rax=result)
---           cmp rbx,0; je ldone; sub rbx,1; jmp lcomb
+--           cmp rbx,0; je (once ldone); sub rbx,1; jmp (once lcomb)
 --   ldone:
 ------------------------------------------------------------------------
 cata-loop-prefix : (ldesc lbase lapply lcomb : ℕ) → Program
 cata-loop-prefix ldesc lbase lapply lcomb =
   mov (reg rbx) (imm 0) ∷
-  label ldesc ∷
+  label (once ldesc) ∷
   mov (reg rcx) (mem (base rdi)) ∷
   cmp (reg rcx) (imm 0) ∷
-  je lbase ∷
+  je (once lbase) ∷
   add (reg rbx) (imm 1) ∷
   mov (reg rdi) (mem (base+disp rdi slot-size)) ∷
-  jmp ldesc ∷
-  label lbase ∷
+  jmp (once ldesc) ∷
+  label (once lbase) ∷
   mov (reg rdi) (reg r14) ∷
   mov (mem (base r14)) (imm 0) ∷
   mov (mem (base+disp r14 slot-size)) (imm 0) ∷
   add (reg r14) (imm (slots 2)) ∷
-  jmp lapply ∷
-  label lcomb ∷
+  jmp (once lapply) ∷
+  label (once lcomb) ∷
   mov (reg rdi) (reg r14) ∷
   mov (mem (base r14)) (imm 1) ∷
   mov (mem (base+disp r14 slot-size)) (reg rax) ∷
   add (reg r14) (imm (slots 2)) ∷
-  label lapply ∷ []
+  label (once lapply) ∷ []
 
 cata-loop-suffix : (lcomb ldone : ℕ) → Program
 cata-loop-suffix lcomb ldone =
   cmp (reg rbx) (imm 0) ∷
-  je ldone ∷
+  je (once ldone) ∷
   sub (reg rbx) (imm 1) ∷
-  jmp lcomb ∷
-  label ldone ∷ []
+  jmp (once lcomb) ∷
+  label (once ldone) ∷ []
 
 ------------------------------------------------------------------------
 -- Pair construction (FRAMELESS)
@@ -206,7 +207,7 @@ curry-closure-setup lbl body-len =
   lea r9 (rip+disp 4) ∷                 -- r9 = thunk address (rip + 4)
   mov (mem (base+disp rsp slot-size)) (reg r9) ∷  -- [closure+8] = code-ptr
   mov (reg rax) (reg rsp) ∷             -- rax = closure address
-  jmp (lbl +ℕ 1) ∷ []                    -- jump to end label (lbl+1)
+  jmp (once (lbl +ℕ 1)) ∷ []                    -- jump to end label (lbl+1)
 
 -- | Thunk code prefix: called with arg in rdi, env in r12
 -- lbl: unique label base for this curry expression
@@ -217,7 +218,7 @@ curry-closure-setup lbl body-len =
 -- (see ir-to-trace' (curry body _)).
 curry-thunk-setup' : ℕ → Program
 curry-thunk-setup' lbl =
-  label lbl ∷                           -- thunk entry point (lbl)
+  label (once lbl) ∷                           -- thunk entry point (lbl)
   push (reg r15) ∷                      -- save r15 (closure-reg, may be reused)
   sub (reg rsp) (imm (slots 2)) ∷       -- allocate (env, arg) pair on top of stack
   mov (mem (base rsp)) (reg r12) ∷      -- [pair] = env
@@ -231,7 +232,7 @@ curry-thunk-cleanup' lbl =
   add (reg rsp) (imm (slots 2)) ∷       -- deallocate (env, arg) pair
   pop r15 ∷                             -- restore r15
   ret ∷                                 -- return to caller
-  label (lbl +ℕ 1) ∷ []                  -- end label (lbl+1)
+  label (once (lbl +ℕ 1)) ∷ []                  -- end label (lbl+1)
 
 -- Legacy wrappers for backward compatibility (used by compile-length)
 curry-thunk-setup : Program
@@ -339,22 +340,22 @@ compile-const-length fits-float _ = refl
 -- on the payload), then dispatch: tag 0 → f, tag 1 → g. Branch result in
 -- rax. Block lengths are independent of the label arguments (the label
 -- only occupies the jump's operand), so length is constant.
---   dispatch: mov rcx,[rdi] ; mov rdi,[rdi+8] ; cmp rcx,0 ; jne lblg   (4)
---   middle:   jmp lblend ; label lblg                                   (2)
---   suffix:   label lblend                                             (1)
+--   dispatch: mov rcx,[rdi] ; mov rdi,[rdi+8] ; cmp rcx,0 ; jne (once lblg)   (4)
+--   middle:   jmp (once lblend) ; label (once lblg)                                   (2)
+--   suffix:   label (once lblend)                                             (1)
 ------------------------------------------------------------------------
 case-dispatch : ℕ → Program
 case-dispatch lblg =
   mov (reg rcx) (mem (base rdi)) ∷
   mov (reg rdi) (mem (base+disp rdi slot-size)) ∷
   cmp (reg rcx) (imm 0) ∷
-  jne lblg ∷ []
+  jne (once lblg) ∷ []
 
 case-middle : ℕ → ℕ → Program
-case-middle lblend lblg = jmp lblend ∷ label lblg ∷ []
+case-middle lblend lblg = jmp (once lblend) ∷ label (once lblg) ∷ []
 
 case-suffix : ℕ → Program
-case-suffix lblend = label lblend ∷ []
+case-suffix lblend = label (once lblend) ∷ []
 
 ------------------------------------------------------------------------
 -- Code generation

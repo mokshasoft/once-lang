@@ -16,6 +16,7 @@ open import Data.Nat using (ℕ; zero; suc) renaming (_+_ to _+ℕ_; _*_ to _*�
 open import Data.Fin using (Fin)
 open import Data.List using (List; []; _∷_; foldr)
 open import Data.String using (String)
+open import Once.CCC.Label using (Label)
 
 ------------------------------------------------------------------------
 -- Registers
@@ -118,9 +119,9 @@ data Instr : Set where
   test   : Operand → Operand → Instr    -- test op1, op2 (AND, sets flags)
 
   -- Control flow
-  jmp    : ℕ → Instr                    -- jmp label (unconditional)
-  je     : ℕ → Instr                    -- je label (jump if equal/zero)
-  jne    : ℕ → Instr                    -- jne label (jump if not equal/not zero)
+  jmp    : Label → Instr                -- jmp label (unconditional)
+  je     : Label → Instr                -- je label (jump if equal/zero)
+  jne    : Label → Instr                -- jne label (jump if not equal/not zero)
   call   : Operand → Instr              -- call target (direct or indirect)
   -- Plan 0.11: SigOp call by symbolic name. The argument is a
   -- relocation symbol resolved by the linker — typically the SigOpInfo's
@@ -142,7 +143,7 @@ data Instr : Set where
                                         -- args in rdi, rsi, rdx, r10, r8, r9)
 
   -- Label (pseudo-instruction for assembly)
-  label  : ℕ → Instr                    -- label n:
+  label  : Label → Instr                -- label n:
 
 ------------------------------------------------------------------------
 -- Programs

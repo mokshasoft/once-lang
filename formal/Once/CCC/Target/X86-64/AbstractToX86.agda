@@ -34,6 +34,7 @@ open import Once.CCC.Target.X86-64.Syntax
 -- Import AbstractInstr from SMCore
 open import Once.CCC.Machine.SMCore
 open import Once.CCC.SigOp.Info using (SigOpInfo)
+open import Once.CCC.Label using (Label; once)
   using (AbstractInstr; AbstractTrace; Slot;
          mov-to-output; mov-to-input;
          mov-output-to-input2; mov-input2-to-output;
@@ -253,9 +254,9 @@ compile-abstract (instr-reg-op input2-zero)        = mov (reg rsi) (imm 0) ∷ [
 compile-abstract (instr-reg-op input2-inc)         = add (reg rsi) (imm 1) ∷ []
 -- Plan 0.32 (M3): flat control flow lowers 1-to-1 to x86 (the whole point
 -- of flattening — abstract jump ↔ target jump, no structured expansion).
-compile-abstract (instr-ctrl (c-label n))          = label n ∷ []
-compile-abstract (instr-ctrl (c-jmp n))            = jmp n ∷ []
-compile-abstract (instr-ctrl (c-je n))             = je n ∷ []
+compile-abstract (instr-ctrl (c-label n))          = label (once n) ∷ []
+compile-abstract (instr-ctrl (c-jmp n))            = jmp (once n) ∷ []
+compile-abstract (instr-ctrl (c-je n))             = je (once n) ∷ []
 compile-abstract (instr-ctrl c-test-tag)           = cmp (mem (base+disp rdi 0)) (imm 0) ∷ []
 compile-abstract (instr-ctrl c-test-scratch)       = cmp (reg rbx) (imm 0) ∷ []
 
@@ -287,12 +288,12 @@ compile-trace-cnt n (instr-loop body ∷ rest) =
       (n1 , pbody) = compile-trace-cnt (suc (suc n)) body
       (n2 , pr)    = compile-trace-cnt n1 rest
       -- Scratch (rbx) is the loop counter; break when it hits 0.
-      loop = label l-top ∷
+      loop = label (once l-top) ∷
              cmp (reg rbx) (imm 0) ∷
-             je l-end ∷
+             je (once l-end) ∷
              pbody ++
-             jmp l-top ∷
-             label l-end ∷ []
+             jmp (once l-top) ∷
+             label (once l-end) ∷ []
   in n2 , loop ++ pr
 compile-trace-cnt n (instr-case-on-tag f g ∷ rest) =
   let lbl-inl = n
@@ -301,12 +302,12 @@ compile-trace-cnt n (instr-case-on-tag f g ∷ rest) =
       (n2 , pg) = compile-trace-cnt n1 g
       (n3 , pr) = compile-trace-cnt n2 rest
       dispatch  = cmp (mem (base+disp rdi 0)) (imm 0) ∷
-                  je lbl-inl ∷
+                  je (once lbl-inl) ∷
                   pg ++
-                  jmp lbl-end ∷
-                  label lbl-inl ∷
+                  jmp (once lbl-end) ∷
+                  label (once lbl-inl) ∷
                   pf ++
-                  label lbl-end ∷ []
+                  label (once lbl-end) ∷ []
   in n3 , dispatch ++ pr
 compile-trace-cnt n (i ∷ rest) =
   let (n1 , pr) = compile-trace-cnt n rest
