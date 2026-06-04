@@ -653,7 +653,7 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
         -- Bridge: runtime and compile-time allocs have same frame
         runtime-compile-frame-eq : current-frame alloc-after-sub-runtime ≡ current-frame alloc-after-sub
         runtime-compile-frame-eq =
-          trans (SMP.TracePrimitives.exec-trace-preserves-frame sub-trace s-setup alloc-setup)
+          trans (SMP.InstrPrimitives.exec-trace-preserves-frame sub-trace s-setup alloc-setup)
                 (trans (cong current-frame alloc-setup-eq)
                        (sym frame-preserved-inj1))
 
@@ -878,7 +878,7 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
         -- Final alloc after reclaim + wrapper: next-slot = l-reclaimable + 2
         -- Frame is preserved, heap is preserved, capacity is preserved
         wrapper-frame-preserved : current-frame alloc-after-wrapper ≡ current-frame alloc-after-sub
-        wrapper-frame-preserved = SMP.TracePrimitives.exec-trace-preserves-frame reclaim-wrapper-trace s-after-sub alloc-after-sub
+        wrapper-frame-preserved = SMP.InstrPrimitives.exec-trace-preserves-frame reclaim-wrapper-trace s-after-sub alloc-after-sub
 
         wrapper-heap-preserved : next-heap-ref alloc-after-wrapper ≡ next-heap-ref alloc-after-sub
         wrapper-heap-preserved = SMP.RecSchemeSemantics.exec-trace-preserves-heap-ref reclaim-wrapper-trace s-after-sub alloc-after-sub
@@ -1242,7 +1242,7 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
         -- Bridge: runtime and compile-time allocs have same frame
         runtime-compile-frame-eq : current-frame alloc-after-sub-runtime ≡ current-frame alloc-after-sub
         runtime-compile-frame-eq =
-          trans (SMP.TracePrimitives.exec-trace-preserves-frame sub-trace s-setup alloc-setup)
+          trans (SMP.InstrPrimitives.exec-trace-preserves-frame sub-trace s-setup alloc-setup)
                 (trans (cong current-frame alloc-setup-eq)
                        (sym frame-preserved-inj2))
 
@@ -1450,7 +1450,7 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
         -- Final alloc after reclaim + wrapper: next-slot = r-reclaimable + 2
         -- Frame is preserved, heap is preserved, capacity is preserved
         wrapper-frame-preserved : current-frame alloc-after-wrapper ≡ current-frame alloc-after-sub
-        wrapper-frame-preserved = SMP.TracePrimitives.exec-trace-preserves-frame reclaim-wrapper-trace s-after-sub alloc-after-sub
+        wrapper-frame-preserved = SMP.InstrPrimitives.exec-trace-preserves-frame reclaim-wrapper-trace s-after-sub alloc-after-sub
 
         wrapper-heap-preserved : next-heap-ref alloc-after-wrapper ≡ next-heap-ref alloc-after-sub
         wrapper-heap-preserved = SMP.RecSchemeSemantics.exec-trace-preserves-heap-ref reclaim-wrapper-trace s-after-sub alloc-after-sub
@@ -2221,7 +2221,7 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
             -- The frames are preserved through l-trace
             frame-after-l-alloc : current-frame alloc-after-l ≡ current-frame alloc
-            frame-after-l-alloc = SMP.TracePrimitives.exec-trace-preserves-frame l-trace s-left-setup alloc
+            frame-after-l-alloc = SMP.InstrPrimitives.exec-trace-preserves-frame l-trace s-left-setup alloc
 
             frame-after-l-eq : current-frame alloc-after-l ≡ current-frame alloc-l
             frame-after-l-eq = trans frame-after-l-alloc
@@ -2709,7 +2709,7 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
         -- Bridge runtime to compile-time alloc via frame preservation
         layer-runtime-frame-eq : current-frame layer-runtime-alloc ≡ current-frame alloc-layer
         layer-runtime-frame-eq =
-          trans (SMP.TracePrimitives.exec-trace-preserves-frame layer-trace s alloc)
+          trans (SMP.InstrPrimitives.exec-trace-preserves-frame layer-trace s alloc)
                 (sym (ProcessedLayerResult.frame-preserved layer-result))
 
         alloc-frame-eq : current-frame alloc-after-mov ≡ current-frame alloc-layer
