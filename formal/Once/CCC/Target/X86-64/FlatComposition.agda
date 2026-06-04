@@ -22,7 +22,7 @@ open import Data.Nat using (ℕ; zero; suc; _+_; _≡ᵇ_)
 open import Data.Nat.Properties using (+-identityʳ; +-suc; +-assoc)
 open import Data.Bool using (Bool; true; false)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.List using (List; []; _∷_; _++_; length)
+open import Data.List using (List; []; _∷_; _++_; length; drop)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; sym; trans)
 open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
@@ -243,3 +243,56 @@ find-label-corr : ∀ (prog : AbstractTrace) (target xi j : ℕ)
   → X.find-label-go (once target) (compile-trace prog) xi ≡ just (xi + x86-off prog j)
 find-label-corr prog target xi j fl-eq with find-label-pres prog target 0 xi j (all-headView prog) fl-eq
 ... | (d , j≡0+d , x86-eq) rewrite j≡0+d = x86-eq
+
+------------------------------------------------------------------------
+-- Fetch preservation (Plan 0.32 Stage 2): the x86 program, viewed from a
+-- block offset, is the compiled tail of the flat program. So fetching the
+-- compiled program at `x86-off prog k` gives the start of block k.
+------------------------------------------------------------------------
+drop-len-++ : ∀ {A : Set} (xs ys : List A) → drop (length xs) (xs ++ ys) ≡ ys
+drop-len-++ []       ys = refl
+drop-len-++ (x ∷ xs) ys = drop-len-++ xs ys
+
+drop-[] : ∀ {A : Set} (n : ℕ) → drop {A = A} n [] ≡ []
+drop-[] zero    = refl
+drop-[] (suc n) = refl
+
+drop-+ : ∀ {A : Set} (m n : ℕ) (xs : List A) → drop (m + n) xs ≡ drop n (drop m xs)
+drop-+ zero    n xs       = refl
+drop-+ (suc m) n []       = sym (drop-[] n)
+drop-+ (suc m) n (x ∷ xs) = drop-+ m n xs
+
+-- drop the first k flat blocks ⟺ drop the first (x86-off k) x86 instrs.
+drop-compile : ∀ (prog : AbstractTrace) (k : ℕ)
+  → drop (x86-off prog k) (compile-trace prog) ≡ compile-trace (drop k prog)
+drop-compile prog       zero    = refl
+drop-compile []         (suc k) = refl
+drop-compile (i ∷ is)   (suc k) =
+  trans (drop-+ (x86-len i) (x86-off is k) (compile-abstract i ++ compile-trace is))
+        (trans (cong (drop (x86-off is k)) (drop-len-++ (compile-abstract i) (compile-trace is)))
+               (drop-compile is k))
+
+-- fetch indexes by dropping: fetch xs n = fetch (drop n xs) 0.
+fetch-drop : ∀ (xs : Program) (n : ℕ) → X.fetch xs n ≡ X.fetch (drop n xs) 0
+fetch-drop []       n       = sym (cong (λ ys → X.fetch ys 0) (drop-[] n))
+fetch-drop (x ∷ xs) zero    = refl
+fetch-drop (x ∷ xs) (suc n) = fetch-drop xs n
+
+-- The x86 instruction at the block offset = the head of block k.
+fetch-at-offset : ∀ (prog : AbstractTrace) (k : ℕ)
+  → X.fetch (compile-trace prog) (x86-off prog k) ≡ X.fetch (compile-trace (drop k prog)) 0
+fetch-at-offset prog k =
+  trans (fetch-drop (compile-trace prog) (x86-off prog k))
+        (cong (λ xs → X.fetch xs 0) (drop-compile prog k))
+
+-- pc advance: the x86 offset of the NEXT flat pc = current offset + the
+-- block length of the instruction at the current pc. (block-step's
+-- straight-line pc bookkeeping.)
+x86-off-suc : ∀ (prog : AbstractTrace) (k : ℕ) (i : AbstractInstr)
+  → fetch prog k ≡ just i
+  → x86-off prog (suc k) ≡ x86-off prog k + x86-len i
+x86-off-suc []       k       i ()
+x86-off-suc (j ∷ js) zero    .j refl = +-identityʳ (x86-len j)
+x86-off-suc (j ∷ js) (suc k) i  eq   =
+  trans (cong (x86-len j +_) (x86-off-suc js k i eq))
+        (sym (+-assoc (x86-len j) (x86-off js k) (x86-len i)))
