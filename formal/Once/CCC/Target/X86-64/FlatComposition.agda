@@ -296,3 +296,33 @@ x86-off-suc (j ∷ js) zero    .j refl = +-identityʳ (x86-len j)
 x86-off-suc (j ∷ js) (suc k) i  eq   =
   trans (cong (x86-len j +_) (x86-off-suc js k i eq))
         (sym (+-assoc (x86-len j) (x86-off js k) (x86-len i)))
+
+-- drop at a fetched position exposes the instruction as the head.
+drop-fetch : ∀ (prog : AbstractTrace) (k : ℕ) (i : AbstractInstr)
+  → fetch prog k ≡ just i → drop k prog ≡ i ∷ drop (suc k) prog
+drop-fetch []       k       i ()
+drop-fetch (j ∷ js) zero    .j refl = refl
+drop-fetch (j ∷ js) (suc k) i  eq   = drop-fetch js k i eq
+
+-- The x86 instruction at block offset k is the head of compile-abstract i
+-- (where i is the flat instruction at flat index k).
+fetch-block-head : ∀ (prog : AbstractTrace) (k : ℕ) (i : AbstractInstr)
+  → fetch prog k ≡ just i
+  → X.fetch (compile-trace prog) (x86-off prog k)
+    ≡ X.fetch (compile-abstract i ++ compile-trace (drop (suc k) prog)) 0
+fetch-block-head prog k i ft =
+  trans (fetch-at-offset prog k)
+        (cong (λ p → X.fetch (compile-trace p) 0) (drop-fetch prog k i ft))
+
+-- The SECOND x86 instruction of block k (for 2-instr blocks: c-branch's je,
+-- alloc-heap's add). At offset x86-off prog k + 1.
+fetch-block-2nd : ∀ (prog : AbstractTrace) (k : ℕ) (i : AbstractInstr)
+  → fetch prog k ≡ just i
+  → X.fetch (compile-trace prog) (x86-off prog k + 1)
+    ≡ X.fetch (drop 1 (compile-abstract i ++ compile-trace (drop (suc k) prog))) 0
+fetch-block-2nd prog k i ft =
+  trans (fetch-drop (compile-trace prog) (x86-off prog k + 1))
+        (cong (λ xs → X.fetch xs 0)
+              (trans (drop-+ (x86-off prog k) 1 (compile-trace prog))
+                     (trans (cong (drop 1) (drop-compile prog k))
+                            (cong (λ p → drop 1 (compile-trace p)) (drop-fetch prog k i ft)))))
