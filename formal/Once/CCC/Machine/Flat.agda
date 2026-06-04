@@ -75,18 +75,31 @@ module FlatMachine {FS : FrameSemantics} where
   sv-is-zero (SV-Tag 0) = true
   sv-is-zero _          = false
 
-  -- Read the tag cell at *Input1 (heap/stack), or nothing if Input1 isn't
-  -- a pointer. (Leaf `with` localized here; callers dispatch on the Maybe.)
+  -- zero-flag from a (Maybe) tag read; `nothing` (bad ptr) ≠ zero.
+  -- Top-level (not a `where`) so it reduces under read rewrites.
+  tag-zf : Maybe (StoredValue FS) → Bool
+  tag-zf (just v) = sv-is-zero v
+  tag-zf nothing  = false
+
+  -- `with`-FREE indirect reads: route the `sv-as-loc` result through a
+  -- helper taking it explicitly, so a `readLoc … ≡ …` rewrite reduces
+  -- transparently (SMCore `exec-load-via-resolved` pattern; a `with` here
+  -- freezes the read behind a case tree and breaks the M2 rewrites).
+  flat-read-at : LocState FS → Maybe (ValueLocation FS) → Maybe (StoredValue FS)
+  flat-read-at s (just loc) = readLoc s loc
+  flat-read-at s nothing    = nothing
+
+  flat-read-at-suc : LocState FS → Maybe (ValueLocation FS) → Maybe (StoredValue FS)
+  flat-read-at-suc s (just loc) = readLoc s (sucLoc loc)
+  flat-read-at-suc s nothing    = nothing
+
+  -- Read the tag cell at *Input1, or nothing if Input1 isn't a pointer.
   flat-read-tag : LocState FS → Maybe (StoredValue FS)
-  flat-read-tag s with sv-as-loc (readReg (regs s) Input1)
-  ... | just loc = readLoc s loc
-  ... | nothing  = nothing
+  flat-read-tag s = flat-read-at s (sv-as-loc (readReg (regs s) Input1))
 
   -- Read the successor cell at *(sucLoc Input1).
   flat-read-suc : LocState FS → Maybe (StoredValue FS)
-  flat-read-suc s with sv-as-loc (readReg (regs s) Input1)
-  ... | just loc = readLoc s (sucLoc loc)
-  ... | nothing  = nothing
+  flat-read-suc s = flat-read-at-suc s (sv-as-loc (readReg (regs s) Input1))
 
   -- Apply a Maybe-read to Output (nothing → halt), with-free for callers.
   load-output : Maybe (StoredValue FS) → LocState FS → LocState FS
@@ -94,19 +107,19 @@ module FlatMachine {FS : FrameSemantics} where
   load-output nothing  s = record s { halted = true }
 
   -- find-label: scan for `fi-label target`, returning its index. with-free
-  -- (structural recursion + a per-instruction matcher).
-  fl-go : FlatProgram → ℕ → ℕ → Maybe ℕ
+  -- and where-free (top-level helpers, so jumps reduce cleanly).
+  ℕ-eqb : ℕ → ℕ → Bool
+  ℕ-eqb zero    zero    = true
+  ℕ-eqb (suc a) (suc b) = ℕ-eqb a b
+  ℕ-eqb _       _       = false
+
+  fl-go            : FlatProgram → ℕ → ℕ → Maybe ℕ
+  fl-label-match   : Bool → FlatProgram → ℕ → ℕ → Maybe ℕ
   fl-go []                 _      _ = nothing
-  fl-go (fi-label m ∷ is)  target i = fl-label-match (m-eq m target) is target i
-    where
-      m-eq : ℕ → ℕ → Bool
-      m-eq zero    zero    = true
-      m-eq (suc a) (suc b) = m-eq a b
-      m-eq _       _       = false
-      fl-label-match : Bool → FlatProgram → ℕ → ℕ → Maybe ℕ
-      fl-label-match true  _  _      i = just i
-      fl-label-match false is target i = fl-go is target (suc i)
+  fl-go (fi-label m ∷ is)  target i = fl-label-match (ℕ-eqb m target) is target i
   fl-go (_ ∷ is)           target i = fl-go is target (suc i)
+  fl-label-match true  _  _      i = just i
+  fl-label-match false is target i = fl-go is target (suc i)
 
   find-label : FlatProgram → ℕ → Maybe ℕ
   find-label prog target = fl-go prog target 0
@@ -132,20 +145,15 @@ module FlatMachine {FS : FrameSemantics} where
   do-je true  target prog fs = do-jump (find-label prog target) fs
   do-je false _      _    fs = record fs { fpc = suc (fpc fs) }
 
-  -- advance pc, updating the LocState by `f`.
-  step-loc : (LocState FS → LocState FS) → FlatState → FlatState
-  step-loc f fs = record fs { floc = f (floc fs) ; fpc = suc (fpc fs) }
-
   flat-exec-instr : FlatInstr → FlatProgram → FlatState → FlatState
-  flat-exec-instr (fi-reg-op op)   _    fs = step-loc (λ s → record s { regs = setReg op (regs s) }) fs
-  flat-exec-instr fi-load-suc      _    fs = step-loc (λ s → load-output (flat-read-suc s) s) fs
-  flat-exec-instr fi-mov-to-input  _    fs = step-loc (λ s → record s { regs = writeReg (regs s) Input1 (readReg (regs s) Output) }) fs
+  -- lambda-FREE per-instruction effects: the heap-reading ops apply their
+  -- read to the concrete `floc fs` directly (no `step-loc` binder), so the
+  -- read result `h (sucHL hl)` is in a position the M2 rewrite can reach.
+  flat-exec-instr (fi-reg-op op)   _    fs = record fs { floc = record (floc fs) { regs = setReg op (regs (floc fs)) } ; fpc = suc (fpc fs) }
+  flat-exec-instr fi-load-suc      _    fs = record fs { floc = load-output (flat-read-suc (floc fs)) (floc fs) ; fpc = suc (fpc fs) }
+  flat-exec-instr fi-mov-to-input  _    fs = record fs { floc = record (floc fs) { regs = writeReg (regs (floc fs)) Input1 (readReg (regs (floc fs)) Output) } ; fpc = suc (fpc fs) }
   flat-exec-instr fi-test-scratch  _    fs = record fs { fpc = suc (fpc fs) ; fzf = sv-is-zero (readReg (regs (floc fs)) Scratch) }
-  flat-exec-instr fi-test-tag      _    fs = record fs { fpc = suc (fpc fs) ; fzf = flat-tag-zf (flat-read-tag (floc fs)) }
-    where
-      flat-tag-zf : Maybe (StoredValue FS) → Bool
-      flat-tag-zf (just v) = sv-is-zero v
-      flat-tag-zf nothing  = false
+  flat-exec-instr fi-test-tag      _    fs = record fs { fpc = suc (fpc fs) ; fzf = tag-zf (flat-read-tag (floc fs)) }
   flat-exec-instr (fi-label _)     _    fs = record fs { fpc = suc (fpc fs) }
   flat-exec-instr (fi-je target)   prog fs = do-je (fzf fs) target prog fs
   flat-exec-instr (fi-jmp target)  prog fs = do-jump (find-label prog target) fs
