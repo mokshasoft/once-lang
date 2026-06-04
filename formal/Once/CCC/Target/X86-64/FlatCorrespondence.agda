@@ -28,15 +28,15 @@ module Once.CCC.Target.X86-64.FlatCorrespondence
   (enc-hl : HeapLocation → ℕ)   -- heap-address layout (Word = ℕ)
   where
 
-open import Data.Nat using (suc; _+_)
+open import Data.Nat using (zero; suc; _+_; _≡ᵇ_)
 open import Data.Nat.Properties using (+-comm)
-open import Data.Bool using (Bool)
+open import Data.Bool using (Bool; false)
 open import Data.List using ([])
 open import Data.Maybe using (Maybe; just; nothing)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; cong)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
 
 import Once.CCC.Target.X86-64.Semantics as X
-open X using (mkstate)
+open X using (mkstate; mkflags; _<ᵇ_)
   renaming (readReg to xreadReg; writeReg to xwriteReg; readMem to xreadMem)
 open X.State using (memory; flags; pc) renaming (regs to xregs; halted to xhalted)
 open import Once.CCC.Target.X86-64.Syntax using (rax; rbx; rsi; rdi)
@@ -181,3 +181,30 @@ sim-reg-scratch-load-count fs s corr = record
   { rdi-eq = rdi-eq corr ; rsi-eq = rsi-eq corr ; rax-eq = rax-eq corr ; rbx-eq = rsi-eq corr
   ; pc-eq = trans (cong (_+ 1) (pc-eq corr)) (+-comm (fpc fs) 1)
   ; zf-eq = zf-eq corr ; halt-eq = halt-eq corr ; heap-eq = heap-eq corr }
+
+------------------------------------------------------------------------
+-- Control test: instr-ctrl c-test-scratch (fzf := Scratch≟0) ↔ `cmp rbx,0`.
+-- This is the FLAT-CONTROL correspondence — the loop's conditional branch.
+-- Needs "Scratch holds a tag" (always true for the cata's loop flag).
+-- Boolean bridge: the typed `sv-is-zero (SV-Tag n)` and the untyped
+-- `n ≡ᵇ 0` agree (both decide n=0). The `<ᵇ` (sign flag) is irrelevant —
+-- FlatCorr only tracks `zf` (the `≡ᵇ` result).
+------------------------------------------------------------------------
+sv-tag-zero : ∀ (n : ℕ) → sv-is-zero (SV-Tag {FS} n) ≡ (n ≡ᵇ 0)
+sv-tag-zero zero    = refl
+sv-tag-zero (suc _) = refl
+
+enc-zero : ∀ (v : StoredValue FS) (n : ℕ) → v ≡ SV-Tag n → (enc-sv v ≡ᵇ 0) ≡ sv-is-zero v
+enc-zero .(SV-Tag n) n refl = sym (sv-tag-zero n)
+
+sim-test-scratch : ∀ (n : ℕ) (fs : FlatState) (s : X.State) → FlatCorr fs s
+  → readReg (regs (floc fs)) Scratch ≡ SV-Tag n
+  → FlatCorr (flat-exec-instr (instr-ctrl c-test-scratch) [] fs)
+             (mkstate (xregs s) (memory s)
+                      (mkflags (xreadReg (xregs s) rbx ≡ᵇ 0) (xreadReg (xregs s) rbx <ᵇ 0) false)
+                      (pc s + 1) (xhalted s))
+sim-test-scratch n fs s corr sc-eq = record
+  { rdi-eq = rdi-eq corr ; rsi-eq = rsi-eq corr ; rax-eq = rax-eq corr ; rbx-eq = rbx-eq corr
+  ; pc-eq = trans (cong (_+ 1) (pc-eq corr)) (+-comm (fpc fs) 1)
+  ; zf-eq = trans (cong (_≡ᵇ 0) (rbx-eq corr)) (enc-zero (readReg (regs (floc fs)) Scratch) n sc-eq)
+  ; halt-eq = halt-eq corr ; heap-eq = heap-eq corr }
