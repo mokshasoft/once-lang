@@ -129,3 +129,35 @@ module FlatMachine {FS : FrameSemantics} where
 
   fetch-dispatch nothing  _ _    fs = record fs { floc = record (floc fs) { halted = true } }
   fetch-dispatch (just i) n prog fs = exec-flat n prog (flat-exec-instr i prog fs)
+
+  ----------------------------------------------------------------------
+  -- Plan 0.32 M3 Phase D: with-FREE reduction API over OPAQUE states.
+  -- This is the real-path tool the exec-flat ↔ Semantics.exec
+  -- correspondence proof uses (mirrors the x86 StepLemmas) — every lemma
+  -- takes the decision value (halted / fetched instr) explicitly and is
+  -- stated for an arbitrary `fs`, never a concrete construction.
+  ----------------------------------------------------------------------
+  open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+
+  -- A halted state is a fixpoint of exec-flat.
+  exec-flat-halted : ∀ (n : ℕ) (prog : AbstractTrace) (fs : FlatState)
+    → halted (floc fs) ≡ true
+    → exec-flat n prog fs ≡ fs
+  exec-flat-halted zero    _    fs _ = refl
+  exec-flat-halted (suc n) prog fs h-eq rewrite h-eq = refl
+
+  -- One fuel step: when not halted and the pc fetches `i`, exec-flat peels
+  -- the instruction's effect and recurses. (The single reduction lemma the
+  -- correspondence inducts on — one decision per rewrite, no `with`.)
+  exec-flat-step : ∀ (n : ℕ) (prog : AbstractTrace) (fs : FlatState) (i : AbstractInstr)
+    → halted (floc fs) ≡ false
+    → fetch prog (fpc fs) ≡ just i
+    → exec-flat (suc n) prog fs ≡ exec-flat n prog (flat-exec-instr i prog fs)
+  exec-flat-step n prog fs i h-eq f-eq rewrite h-eq | f-eq = refl
+
+  -- pc past the end halts.
+  exec-flat-offend : ∀ (n : ℕ) (prog : AbstractTrace) (fs : FlatState)
+    → halted (floc fs) ≡ false
+    → fetch prog (fpc fs) ≡ nothing
+    → exec-flat (suc n) prog fs ≡ record fs { floc = record (floc fs) { halted = true } }
+  exec-flat-offend n prog fs h-eq f-eq rewrite h-eq | f-eq = refl
