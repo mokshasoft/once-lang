@@ -35,14 +35,15 @@ module FlatMachine {FS : FrameSemantics} where
   open MemOps {FS}
   open AbstractExec {FS} using (exec-abstract)
 
-  -- Flat machine state: the typed LocState + allocator + pc + zero-flag.
+  -- Flat machine state: the typed LocState + allocator + pc.
+  -- Plan 0.34: no zero-flag — a conditional branch is one unit that
+  -- computes its condition inline, so there is no persisting flag.
   record FlatState : Set where
     constructor mkFlat
     field
       floc   : LocState FS
       falloc : AllocState {FS}
       fpc    : ℕ
-      fzf    : Bool
   open FlatState public
 
   ----------------------------------------------------------------------
@@ -91,9 +92,11 @@ module FlatMachine {FS : FrameSemantics} where
   do-jump (just pc') fs = record fs { fpc = pc' }
   do-jump nothing    fs = record fs { floc = record (floc fs) { halted = true } }
 
-  do-je : Bool → ℕ → AbstractTrace → FlatState → FlatState
-  do-je true  target prog fs = do-jump (find-label prog target) fs
-  do-je false _      _    fs = record fs { fpc = suc (fpc fs) }
+  -- Conditional branch (Plan 0.34): if the (inline-computed) condition
+  -- holds, jump to the target label; else fall through. No flag state.
+  do-branch : Bool → ℕ → AbstractTrace → FlatState → FlatState
+  do-branch true  target prog fs = do-jump (find-label prog target) fs
+  do-branch false _      _    fs = record fs { fpc = suc (fpc fs) }
 
   -- straight-line: thread the LocState/AllocState through exec-abstract,
   -- advance pc. (Lambda-free read positions: applied to floc fs directly.)
@@ -104,12 +107,13 @@ module FlatMachine {FS : FrameSemantics} where
               ; fpc    = suc (fpc fs) }
 
   flat-exec-instr : AbstractInstr → AbstractTrace → FlatState → FlatState
-  flat-exec-instr (instr-ctrl (c-label _))    _    fs = record fs { fpc = suc (fpc fs) }
-  flat-exec-instr (instr-ctrl (c-jmp n))      prog fs = do-jump (find-label prog n) fs
-  flat-exec-instr (instr-ctrl (c-je n))       prog fs = do-je (fzf fs) n prog fs
-  flat-exec-instr (instr-ctrl c-test-tag)     _    fs = record fs { fpc = suc (fpc fs) ; fzf = tag-zf (flat-read-tag (floc fs)) }
-  flat-exec-instr (instr-ctrl c-test-scratch) _    fs = record fs { fpc = suc (fpc fs) ; fzf = sv-is-zero (readReg (regs (floc fs)) Scratch) }
-  flat-exec-instr i                           _    fs = flat-step-straight i fs
+  flat-exec-instr (instr-ctrl (c-label _))               _    fs = record fs { fpc = suc (fpc fs) }
+  flat-exec-instr (instr-ctrl (c-jmp n))                 prog fs = do-jump (find-label prog n) fs
+  flat-exec-instr (instr-ctrl (c-branch-scratch-zero n)) prog fs =
+    do-branch (sv-is-zero (readReg (regs (floc fs)) Scratch)) n prog fs
+  flat-exec-instr (instr-ctrl (c-branch-tag-zero n))     prog fs =
+    do-branch (tag-zf (flat-read-tag (floc fs))) n prog fs
+  flat-exec-instr i                                      _    fs = flat-step-straight i fs
 
   ----------------------------------------------------------------------
   -- Fuel-bounded execution (with-free: dispatch on halted / fetch).

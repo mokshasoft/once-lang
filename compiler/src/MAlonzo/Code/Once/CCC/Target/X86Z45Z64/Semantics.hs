@@ -21,6 +21,7 @@ import qualified MAlonzo.Code.Agda.Builtin.Bool
 import qualified MAlonzo.Code.Agda.Builtin.Maybe
 import qualified MAlonzo.Code.Agda.Builtin.Nat
 import qualified MAlonzo.Code.Data.Bool.Base
+import qualified MAlonzo.Code.Once.CCC.Label
 import qualified MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax
 
 -- Once.CCC.Target.X86-64.Semantics.Word
@@ -584,50 +585,46 @@ d__'60''7495'__302 v0 v1
                 0 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
                 _ -> let v3 = subInt (coe v1) (coe (1 :: Integer)) in
                      coe (coe d__'60''7495'__302 (coe v2) (coe v3)))
--- Once.CCC.Target.X86-64.Semantics.find-label
-d_find'45'label_308 ::
+-- Once.CCC.Target.X86-64.Semantics.find-label-go
+d_find'45'label'45'go_308 ::
+  MAlonzo.Code.Once.CCC.Label.T_Label_6 ->
   [MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.T_Instr_62] ->
   Integer -> Maybe Integer
-d_find'45'label_308 v0 v1
-  = coe du_go_318 (coe v1) (coe v0) (coe (0 :: Integer))
--- Once.CCC.Target.X86-64.Semantics._.go
-d_go_318 ::
-  [MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.T_Instr_62] ->
-  Integer ->
-  [MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.T_Instr_62] ->
-  Integer -> Maybe Integer
-d_go_318 ~v0 v1 v2 v3 = du_go_318 v1 v2 v3
-du_go_318 ::
-  Integer ->
-  [MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.T_Instr_62] ->
-  Integer -> Maybe Integer
-du_go_318 v0 v1 v2
+d_find'45'label'45'go_308 v0 v1 v2
   = case coe v1 of
       [] -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
       (:) v3 v4
         -> let v5
-                 = coe
-                     du_go_318 (coe v0) (coe v4)
-                     (coe addInt (coe (1 :: Integer)) (coe v2)) in
+                 = d_find'45'label'45'go_308
+                     (coe v0) (coe v4) (coe addInt (coe (1 :: Integer)) (coe v2)) in
            coe
              (case coe v3 of
                 MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_label_98 v6
                   -> coe
                        MAlonzo.Code.Data.Bool.Base.du_if_then_else__44
-                       (coe eqInt (coe v6) (coe v0))
+                       (coe
+                          MAlonzo.Code.Once.CCC.Label.d__'8801''7495''7480'__12 (coe v6)
+                          (coe v0))
                        (coe MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe v2))
                        (coe
-                          du_go_318 (coe v0) (coe v4)
+                          d_find'45'label'45'go_308 (coe v0) (coe v4)
                           (coe addInt (coe (1 :: Integer)) (coe v2)))
                 _ -> coe v5)
       _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.CCC.Target.X86-64.Semantics.find-label
+d_find'45'label_326 ::
+  [MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.T_Instr_62] ->
+  MAlonzo.Code.Once.CCC.Label.T_Label_6 -> Maybe Integer
+d_find'45'label_326 v0 v1
+  = coe
+      d_find'45'label'45'go_308 (coe v1) (coe v0) (coe (0 :: Integer))
 -- Once.CCC.Target.X86-64.Semantics.execInstr
-d_execInstr_330 ::
+d_execInstr_332 ::
   [MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.T_Instr_62] ->
   T_State_214 ->
   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.T_Instr_62 ->
   Maybe T_State_214
-d_execInstr_330 v0 v1 v2
+d_execInstr_332 v0 v1 v2
   = case coe v2 of
       MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mov_64 v3 v4
         -> let v5 = d_readOperand_268 (coe v1) (coe v4) in
@@ -768,7 +765,7 @@ d_execInstr_330 v0 v1 v2
                 MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v5
                 _ -> MAlonzo.RTE.mazUnreachableError)
       MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_jmp_76 v3
-        -> let v4 = d_find'45'label_308 (coe v0) (coe v3) in
+        -> let v4 = d_find'45'label_326 (coe v0) (coe v3) in
            coe
              (case coe v4 of
                 MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v5
@@ -789,7 +786,7 @@ d_execInstr_330 v0 v1 v2
         -> let v4 = d_zf_206 (coe d_flags_230 (coe v1)) in
            coe
              (if coe v4
-                then let v5 = d_find'45'label_308 (coe v0) (coe v3) in
+                then let v5 = d_find'45'label_326 (coe v0) (coe v3) in
                      coe
                        (case coe v5 of
                           MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v6
@@ -825,7 +822,7 @@ d_execInstr_330 v0 v1 v2
                           (coe d_flags_230 (coe v1))
                           (coe addInt (coe (1 :: Integer)) (coe d_pc_232 (coe v1)))
                           (coe d_halted_234 (coe v1)))
-                else (let v5 = d_find'45'label_308 (coe v0) (coe v3) in
+                else (let v5 = d_find'45'label_326 (coe v0) (coe v3) in
                       coe
                         (case coe v5 of
                            MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v6
@@ -1000,29 +997,29 @@ d_execInstr_330 v0 v1 v2
                 (coe d_halted_234 (coe v1)))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Target.X86-64.Semantics.fetch
-d_fetch_552 ::
+d_fetch_554 ::
   [MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.T_Instr_62] ->
   Integer ->
   Maybe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.T_Instr_62
-d_fetch_552 v0 v1
+d_fetch_554 v0 v1
   = case coe v0 of
       [] -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
       (:) v2 v3
         -> case coe v1 of
              0 -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe v2)
              _ -> let v4 = subInt (coe v1) (coe (1 :: Integer)) in
-                  coe (coe d_fetch_552 (coe v3) (coe v4))
+                  coe (coe d_fetch_554 (coe v3) (coe v4))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Target.X86-64.Semantics.step-not-halted
-d_step'45'not'45'halted_560 ::
+d_step'45'not'45'halted_562 ::
   [MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.T_Instr_62] ->
   T_State_214 -> Maybe T_State_214
-d_step'45'not'45'halted_560 v0 v1
-  = let v2 = d_fetch_552 (coe v0) (coe d_pc_232 (coe v1)) in
+d_step'45'not'45'halted_562 v0 v1
+  = let v2 = d_fetch_554 (coe v0) (coe d_pc_232 (coe v1)) in
     coe
       (case coe v2 of
          MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v3
-           -> coe d_execInstr_330 (coe v0) (coe v1) (coe v3)
+           -> coe d_execInstr_332 (coe v0) (coe v1) (coe v3)
          MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
            -> coe
                 MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
@@ -1032,21 +1029,21 @@ d_step'45'not'45'halted_560 v0 v1
                    (coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10))
          _ -> MAlonzo.RTE.mazUnreachableError)
 -- Once.CCC.Target.X86-64.Semantics.step
-d_step_570 ::
+d_step_572 ::
   [MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.T_Instr_62] ->
   T_State_214 -> Maybe T_State_214
-d_step_570 v0 v1
+d_step_572 v0 v1
   = coe
       MAlonzo.Code.Data.Bool.Base.du_if_then_else__44
       (coe d_halted_234 (coe v1))
       (coe MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe v1))
-      (coe d_step'45'not'45'halted_560 (coe v0) (coe v1))
+      (coe d_step'45'not'45'halted_562 (coe v0) (coe v1))
 -- Once.CCC.Target.X86-64.Semantics.exec
-d_exec_576 ::
+d_exec_578 ::
   Integer ->
   [MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.T_Instr_62] ->
   T_State_214 -> Maybe T_State_214
-d_exec_576 v0 v1 v2
+d_exec_578 v0 v1 v2
   = case coe v0 of
       0 -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe v2)
       _ -> let v3 = subInt (coe v0) (coe (1 :: Integer)) in
@@ -1056,27 +1053,27 @@ d_exec_576 v0 v1 v2
                 (coe d_halted_234 (coe v2))
                 (coe MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe v2))
                 (coe
-                   d_exec'45'cont_578 (coe v3) (coe v1)
-                   (coe d_step'45'not'45'halted_560 (coe v1) (coe v2))))
+                   d_exec'45'cont_580 (coe v3) (coe v1)
+                   (coe d_step'45'not'45'halted_562 (coe v1) (coe v2))))
 -- Once.CCC.Target.X86-64.Semantics.exec-cont
-d_exec'45'cont_578 ::
+d_exec'45'cont_580 ::
   Integer ->
   [MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.T_Instr_62] ->
   Maybe T_State_214 -> Maybe T_State_214
-d_exec'45'cont_578 v0 v1 v2
+d_exec'45'cont_580 v0 v1 v2
   = case coe v2 of
       MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v3
         -> coe
              MAlonzo.Code.Data.Bool.Base.du_if_then_else__44
              (coe d_halted_234 (coe v3)) (coe v2)
-             (coe d_exec_576 (coe v0) (coe v1) (coe v3))
+             (coe d_exec_578 (coe v0) (coe v1) (coe v3))
       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v2
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Target.X86-64.Semantics.defaultFuel
-d_defaultFuel_594 :: Integer
-d_defaultFuel_594 = coe (10000 :: Integer)
+d_defaultFuel_596 :: Integer
+d_defaultFuel_596 = coe (10000 :: Integer)
 -- Once.CCC.Target.X86-64.Semantics.run
-d_run_596 ::
+d_run_598 ::
   [MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.T_Instr_62] ->
   T_State_214 -> Maybe T_State_214
-d_run_596 = coe d_exec_576 (coe d_defaultFuel_594)
+d_run_598 = coe d_exec_578 (coe d_defaultFuel_596)

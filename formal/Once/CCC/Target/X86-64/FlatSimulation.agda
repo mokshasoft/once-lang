@@ -70,7 +70,10 @@ record CompiledCorr (prog : AbstractTrace) (fs : FlatState) (s : X.State) : Set 
     rbx-eq  : X.readReg (X.State.regs s) rbx ≡ C.enc-sv (readReg (regs (floc fs)) Scratch)
     -- CONTROL: x86 pc sits at the block offset of the flat pc (NOT fpc fs).
     pc-off  : X.State.pc s ≡ x86-off prog (fpc fs)
-    zf-eq   : X.Flags.zf (X.State.flags s) ≡ fzf fs
+    -- Plan 0.34: NO zf-eq — the flat machine has no flag; a conditional
+    -- branch computes + consumes its condition inside one step, so the x86
+    -- flags register is never a shared invariant (and add/sub clobbering zf
+    -- is invisible to the correspondence).
     halt-eq : X.State.halted s ≡ halted (floc fs)
     heap-eq : ∀ (hl : HeapLocation) →
               X.readMem (X.State.memory s) (enc-hl hl) ≡ C.enc-maybe (heapMem (floc fs) hl)

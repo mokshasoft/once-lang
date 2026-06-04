@@ -61,6 +61,6 @@ d_arch'45'semantics_24
   = coe
       MAlonzo.Code.Once.Verified.CPU.Interface.C_constructor_62
       MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Semantics.d_initState_246
-      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Semantics.d_run_596
+      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Semantics.d_run_598
       d_observe'45'x86'45'64_8 d_decode'45'x86'45'64_20
       d_assemble'45'x86'45'64_22

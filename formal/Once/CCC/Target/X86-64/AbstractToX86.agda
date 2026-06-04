@@ -256,9 +256,12 @@ compile-abstract (instr-reg-op input2-inc)         = add (reg rsi) (imm 1) ∷ [
 -- of flattening — abstract jump ↔ target jump, no structured expansion).
 compile-abstract (instr-ctrl (c-label n))          = label (once n) ∷ []
 compile-abstract (instr-ctrl (c-jmp n))            = jmp (once n) ∷ []
-compile-abstract (instr-ctrl (c-je n))             = je (once n) ∷ []
-compile-abstract (instr-ctrl c-test-tag)           = cmp (mem (base+disp rdi 0)) (imm 0) ∷ []
-compile-abstract (instr-ctrl c-test-scratch)       = cmp (reg rbx) (imm 0) ∷ []
+-- Plan 0.34: a conditional branch lowers to cmp+je (2 instrs). On a
+-- flag-less target (RISC-V) this would be a single compare-and-branch.
+compile-abstract (instr-ctrl (c-branch-scratch-zero n)) =
+  cmp (reg rbx) (imm 0) ∷ je (once n) ∷ []
+compile-abstract (instr-ctrl (c-branch-tag-zero n)) =
+  cmp (mem (base+disp rdi 0)) (imm 0) ∷ je (once n) ∷ []
 
 ------------------------------------------------------------------------
 -- Trace compilation: compile a whole trace to x86

@@ -898,11 +898,14 @@ module ExecLemmas {FS : FrameSemantics} where
 -- `exec-trace`/`exec-abstract` (no pc) simply HALT on these — they are
 -- never emitted into a structured trace, only into a flat program.
 data FlatCtrl : Set where
-  c-label        : ℕ → FlatCtrl   -- label marker (pc passes through)
-  c-jmp          : ℕ → FlatCtrl   -- unconditional jump to label
-  c-je           : ℕ → FlatCtrl   -- jump to label if zero-flag set
-  c-test-tag     : FlatCtrl       -- zf := (*Input1 tag ≟ SV-Tag 0)
-  c-test-scratch : FlatCtrl       -- zf := (Scratch ≟ SV-Tag 0)
+  c-label              : ℕ → FlatCtrl  -- label marker (pc passes through)
+  c-jmp                : ℕ → FlatCtrl  -- unconditional jump to label
+  -- Plan 0.34: a conditional branch is ONE portable unit (condition +
+  -- target), lowered per target (x86: cmp+je = 2 instrs; RISC-V: beqz = 1).
+  -- No flags register in the abstract machine — the condition is computed
+  -- and consumed inside this single step.
+  c-branch-scratch-zero : ℕ → FlatCtrl -- if Scratch ≟ SV-Tag 0, jump to label
+  c-branch-tag-zero     : ℕ → FlatCtrl -- if *Input1 tag ≟ SV-Tag 0, jump
 
 data AbstractInstr : Set where
   -- Register operations
