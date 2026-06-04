@@ -22,7 +22,7 @@
 
 module Once.CCC.Machine.Flat where
 
-open import Data.Nat using (ℕ; zero; suc)
+open import Data.Nat using (ℕ; zero; suc; _≡ᵇ_)
 open import Data.Bool using (Bool; true; false)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.List using (List; []; _∷_)
@@ -65,15 +65,12 @@ module FlatMachine {FS : FrameSemantics} where
   flat-read-tag s = flat-read-at s (sv-as-loc (readReg (regs s) Input1))
 
   -- find-label: scan the trace for `instr-ctrl (c-label target)`.
-  ℕ-eqb : ℕ → ℕ → Bool
-  ℕ-eqb zero    zero    = true
-  ℕ-eqb (suc a) (suc b) = ℕ-eqb a b
-  ℕ-eqb _       _       = false
-
+  -- Uses the library `_≡ᵇ_` (= the target `Semantics.find-label`'s
+  -- comparison) so label resolution is 1-to-1 with x86-64.
   fl-go          : AbstractTrace → ℕ → ℕ → Maybe ℕ
   fl-label-match : Bool → AbstractTrace → ℕ → ℕ → Maybe ℕ
   fl-go []                              _      _ = nothing
-  fl-go (instr-ctrl (c-label m) ∷ is)   target i = fl-label-match (ℕ-eqb m target) is target i
+  fl-go (instr-ctrl (c-label m) ∷ is)   target i = fl-label-match (m ≡ᵇ target) is target i
   fl-go (_ ∷ is)                        target i = fl-go is target (suc i)
   fl-label-match true  _  _      i = just i
   fl-label-match false is target i = fl-go is target (suc i)
