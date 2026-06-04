@@ -147,6 +147,14 @@ step-cmp-ri : ∀ {prog s r n}
                                ; pc = pc s + 1 })
 step-cmp-ri ft rewrite ft = refl
 
+-- cmp [mem], imm (reads memory — needs the read value).
+step-cmp-mi : ∀ {prog s m n v}
+            → fetch prog (pc s) ≡ just (cmp (mem m) (imm n))
+            → readMem (memory s) (effectiveAddr s m) ≡ just v
+            → step-not-halted prog s
+              ≡ just (record s { flags = mkflags (v ≡ᵇ n) (v <ᵇ n) false ; pc = pc s + 1 })
+step-cmp-mi ft rd rewrite ft | rd = refl
+
 -- add reg, imm
 step-add-ri : ∀ {prog s r n}
             → fetch prog (pc s) ≡ just (add (reg r) (imm n))
