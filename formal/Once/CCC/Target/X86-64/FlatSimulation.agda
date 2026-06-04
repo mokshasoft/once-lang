@@ -120,7 +120,7 @@ b-cmp-reg-imm prog s dst n = refl
 ------------------------------------------------------------------------
 BlockStep : AbstractTrace → FlatState → X.State → AbstractInstr → Set
 BlockStep prog fs s i =
-  Σ X.State (λ s' → (X.exec 1 (compile-trace prog) s ≡ just s')
+  Σ X.State (λ s' → (X.exec (x86-len i) (compile-trace prog) s ≡ just s')
                   × CompiledCorr prog (flat-exec-instr i prog fs) s')
 
 -- Generic single-`mov reg,reg` block-step: any straight-line instruction
@@ -139,7 +139,7 @@ block-step-mov-rr : ∀ (prog : AbstractTrace) (fs : FlatState) (s : X.State)
                (record s { regs = xwriteReg (xregs s) dst (xreadReg (xregs s) src) ; pc = pc s + 1 })
   → BlockStep prog fs s i
 block-step-mov-rr prog fs s i dst src cc h-flat ft ca fpc-eq dataPost =
-  post , exec-eq , record { dataCorr = dataPost ; pc-off = pco' }
+  post , exec-eq-len , record { dataCorr = dataPost ; pc-off = pco' }
   where
     dc = dataCorr cc ; po = pc-off cc
     halt-s : X.State.halted s ≡ false
@@ -154,6 +154,8 @@ block-step-mov-rr prog fs s i dst src cc h-flat ft ca fpc-eq dataPost =
     snh = step-mov-rr {compile-trace prog} {s} {dst} {src} fetch-x86
     exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
     exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
+    exec-eq-len : X.exec (x86-len i) (compile-trace prog) s ≡ just post
+    exec-eq-len = trans (cong (λ m → X.exec m (compile-trace prog) s) (cong length ca)) exec-eq
     pco' : X.State.pc post ≡ x86-off prog (fpc (flat-exec-instr i prog fs))
     pco' rewrite fpc-eq =
       trans (cong (_+ 1) po)
@@ -193,7 +195,7 @@ block-step-mov-ri : ∀ (prog : AbstractTrace) (fs : FlatState) (s : X.State)
                (record s { regs = xwriteReg (xregs s) dst n ; pc = pc s + 1 })
   → BlockStep prog fs s i
 block-step-mov-ri prog fs s i dst n cc h-flat ft ca fpc-eq dataPost =
-  post , exec-eq , record { dataCorr = dataPost ; pc-off = pco' }
+  post , exec-eq-len , record { dataCorr = dataPost ; pc-off = pco' }
   where
     dc = dataCorr cc ; po = pc-off cc
     halt-s : X.State.halted s ≡ false
@@ -208,6 +210,8 @@ block-step-mov-ri prog fs s i dst n cc h-flat ft ca fpc-eq dataPost =
     snh = step-mov-ri {compile-trace prog} {s} {dst} {n} fetch-x86
     exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
     exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
+    exec-eq-len : X.exec (x86-len i) (compile-trace prog) s ≡ just post
+    exec-eq-len = trans (cong (λ m → X.exec m (compile-trace prog) s) (cong length ca)) exec-eq
     pco' : X.State.pc post ≡ x86-off prog (fpc (flat-exec-instr i prog fs))
     pco' rewrite fpc-eq =
       trans (cong (_+ 1) po)
