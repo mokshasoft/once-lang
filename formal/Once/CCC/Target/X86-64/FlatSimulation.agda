@@ -49,7 +49,7 @@ open X using (mkstate; execInstr; mkflags; _<ᵇ_)
   renaming (readReg to xreadReg; writeReg to xwriteReg; readMem to xreadMem)
 open X.State using (memory; flags; pc) renaming (regs to xregs; halted to xhalted)
 open import Once.CCC.Target.X86-64.Syntax
-  using (rax; rbx; rsi; rdi; Reg; Operand; Program; reg; imm; mem; mov; add; sub; cmp)
+  using (rax; rbx; rsi; rdi; Reg; Operand; Program; reg; imm; mem; mov; add; sub; cmp; label; jmp)
 open import Data.Maybe using (just)
 open import Data.Bool using (false)
 open import Data.List using (_∷_; []; _++_; drop; length)
@@ -57,9 +57,10 @@ open import Relation.Binary.PropositionalEquality using (refl)
 
 import Once.CCC.Target.X86-64.FlatCorrespondence as FC
 module C = FC FS enc-hl enc-hl-inj          -- enc-sv / FlatCorr data fields
+open import Once.CCC.Label using (once)
 open import Once.CCC.Target.X86-64.FlatComposition FS
-  using (x86-off; x86-len; x86-off-suc; fetch-block-head)
-open import Once.CCC.Target.X86-64.StepLemmas using (exec-1; step-mov-rr; step-mov-ri)
+  using (x86-off; x86-len; x86-off-suc; fetch-block-head; find-label-corr)
+open import Once.CCC.Target.X86-64.StepLemmas using (exec-1; step-mov-rr; step-mov-ri; step-label; step-jmp)
 open import Once.CCC.Target.X86-64.AbstractToX86 using (compile-trace; compile-abstract)
 open import Data.Nat using (zero; suc)
 open import Data.Product using (Σ; _×_; _,_)
@@ -233,3 +234,59 @@ block-step-scratch-load-count : ∀ prog fs s → CompiledCorr prog fs s → hal
   → fetch prog (fpc fs) ≡ just (instr-reg-op scratch-load-count) → BlockStep prog fs s (instr-reg-op scratch-load-count)
 block-step-scratch-load-count prog fs s cc h ft =
   block-step-mov-rr prog fs s (instr-reg-op scratch-load-count) rbx rsi cc h ft refl refl (C.sim-reg-scratch-load-count fs s (dataCorr cc))
+
+-- c-label: pc passes through (x86 `label` is a 1-instr no-op). The flat
+-- step only bumps fpc, so the DATA correspondence transports unchanged
+-- (no sim-* needed — floc/regs are untouched on both sides).
+block-step-c-label : ∀ prog fs s n → CompiledCorr prog fs s → halted (floc fs) ≡ false
+  → fetch prog (fpc fs) ≡ just (instr-ctrl (c-label n)) → BlockStep prog fs s (instr-ctrl (c-label n))
+block-step-c-label prog fs s n cc h ft = post , exec-eq , record
+  { dataCorr = record { rdi-eq = C.rdi-eq (dataCorr cc) ; rsi-eq = C.rsi-eq (dataCorr cc)
+                      ; rax-eq = C.rax-eq (dataCorr cc) ; rbx-eq = C.rbx-eq (dataCorr cc)
+                      ; halt-eq = C.halt-eq (dataCorr cc) ; heap-eq = C.heap-eq (dataCorr cc) }
+  ; pc-off = pco' }
+  where
+    dc = dataCorr cc ; po = pc-off cc
+    halt-s : X.State.halted s ≡ false
+    halt-s = trans (C.halt-eq dc) h
+    fetch-x86 : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (label (once n))
+    fetch-x86 = trans (cong (X.fetch (compile-trace prog)) po)
+                      (fetch-block-head prog (fpc fs) (instr-ctrl (c-label n)) ft)
+    post : X.State
+    post = record s { pc = pc s + 1 }
+    snh : X.step-not-halted (compile-trace prog) s ≡ just post
+    snh = step-label {compile-trace prog} {s} {once n} fetch-x86
+    exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
+    exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
+    pco' : X.State.pc post ≡ x86-off prog (fpc (flat-exec-instr (instr-ctrl (c-label n)) prog fs))
+    pco' = trans (cong (_+ 1) po) (sym (x86-off-suc prog (fpc fs) (instr-ctrl (c-label n)) ft))
+
+-- c-jmp: unconditional jump. find-label-corr maps the flat label index to
+-- the x86 block-offset, so the x86 `jmp` lands at the same place. Data
+-- unchanged (jmp touches only the pc). Hypothesis: the target exists.
+block-step-c-jmp : ∀ prog fs s n j → CompiledCorr prog fs s → halted (floc fs) ≡ false
+  → fetch prog (fpc fs) ≡ just (instr-ctrl (c-jmp n))
+  → find-label prog n ≡ just j
+  → BlockStep prog fs s (instr-ctrl (c-jmp n))
+block-step-c-jmp prog fs s n j cc h ft fl-eq = block-step
+  where
+    dc = dataCorr cc ; po = pc-off cc
+    halt-s : X.State.halted s ≡ false
+    halt-s = trans (C.halt-eq dc) h
+    fetch-x86 : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (jmp (once n))
+    fetch-x86 = trans (cong (X.fetch (compile-trace prog)) po)
+                      (fetch-block-head prog (fpc fs) (instr-ctrl (c-jmp n)) ft)
+    fl-x86 : X.find-label (compile-trace prog) (once n) ≡ just (x86-off prog j)
+    fl-x86 = find-label-corr prog n 0 j fl-eq
+    post : X.State
+    post = record s { pc = x86-off prog j }
+    snh : X.step-not-halted (compile-trace prog) s ≡ just post
+    snh = step-jmp {compile-trace prog} {s} {once n} {x86-off prog j} fetch-x86 fl-x86
+    exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
+    exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
+    block-step : BlockStep prog fs s (instr-ctrl (c-jmp n))
+    block-step rewrite fl-eq = post , exec-eq , record
+      { dataCorr = record { rdi-eq = C.rdi-eq dc ; rsi-eq = C.rsi-eq dc
+                          ; rax-eq = C.rax-eq dc ; rbx-eq = C.rbx-eq dc
+                          ; halt-eq = C.halt-eq dc ; heap-eq = C.heap-eq dc }
+      ; pc-off = refl }
