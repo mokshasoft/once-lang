@@ -18,7 +18,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 
 module Once.CCC.Target.X86-64.FlatComposition (FS : FrameSemantics) where
 
-open import Data.Nat using (ℕ; zero; suc; _+_)
+open import Data.Nat using (ℕ; zero; suc; _+_; _≡ᵇ_)
 open import Data.Nat.Properties using (+-identityʳ; +-suc)
 open import Data.Bool using (Bool; true; false)
 open import Data.Maybe using (Maybe; just; nothing)
@@ -26,8 +26,8 @@ open import Data.List using (List; []; _∷_; _++_; length)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; sym; trans)
 
 open import Once.CCC.Machine.SMCore
-  using (AbstractInstr; AbstractTrace; instr-ctrl; c-label)
-open import Once.CCC.Label using (Label)
+open import Once.CCC.Label using (Label; once)
+open import Once.Type using (FitsInReg; fits-int; fits-float)
 open import Once.CCC.Machine.Flat
 open FlatMachine {FS}
 import Once.CCC.Target.X86-64.Semantics as X
@@ -115,3 +115,69 @@ find-label-go-skip target (ud2 ∷ bs) rest xi nl =
 find-label-go-skip target (syscall ∷ bs) rest xi nl =
   trans (find-label-go-skip target bs rest (suc xi) nl)
         (cong (X.find-label-go target rest) (sym (+-suc xi (length bs))))
+
+------------------------------------------------------------------------
+-- HeadView: per-instruction evidence that confines the constructor
+-- enumeration to `headView`, so `find-label-pres` stays structural.
+-- Either the head is `instr-ctrl (c-label m)` (compiles to a single
+-- `label (once m)`) or its x86 block is label-free; in both cases we
+-- record how flat `fl-go` reduces on the head.
+------------------------------------------------------------------------
+data HeadView (i : AbstractInstr) : Set where
+  hv-clabel : (m : ℕ)
+    → compile-abstract i ≡ label (once m) ∷ []
+    → (∀ rest tgt acc → fl-go (i ∷ rest) tgt acc ≡ fl-label-match (m ≡ᵇ tgt) rest tgt acc)
+    → HeadView i
+  hv-plain : has-label (compile-abstract i) ≡ false
+    → (∀ rest tgt acc → fl-go (i ∷ rest) tgt acc ≡ fl-go rest tgt (suc acc))
+    → HeadView i
+
+reg-op-no-label : ∀ (op : RegOp) → has-label (compile-abstract (instr-reg-op op)) ≡ false
+reg-op-no-label scratch-one = refl
+reg-op-no-label scratch-zero = refl
+reg-op-no-label scratch-dec = refl
+reg-op-no-label scratch-load-count = refl
+reg-op-no-label input2-zero = refl
+reg-op-no-label input2-inc = refl
+
+const-no-label : ∀ {A} (p : FitsInReg A) (v : _) → has-label (compile-abstract (instr-load-const p v)) ≡ false
+const-no-label fits-int   v = refl
+const-no-label fits-float v = refl
+
+headView : ∀ (i : AbstractInstr) → HeadView i
+headView mov-to-output = hv-plain refl (λ _ _ _ → refl)
+headView mov-to-input = hv-plain refl (λ _ _ _ → refl)
+headView mov-output-to-input2 = hv-plain refl (λ _ _ _ → refl)
+headView mov-input2-to-output = hv-plain refl (λ _ _ _ → refl)
+headView load-indirect = hv-plain refl (λ _ _ _ → refl)
+headView load-indirect-suc = hv-plain refl (λ _ _ _ → refl)
+headView store-indirect = hv-plain refl (λ _ _ _ → refl)
+headView store-indirect-suc = hv-plain refl (λ _ _ _ → refl)
+headView instr-pop-frame = hv-plain refl (λ _ _ _ → refl)
+headView instr-call-closure = hv-plain refl (λ _ _ _ → refl)
+headView instr-save-closure-reg = hv-plain refl (λ _ _ _ → refl)
+headView (load-from-slot _) = hv-plain refl (λ _ _ _ → refl)
+headView (store-at-slot _) = hv-plain refl (λ _ _ _ → refl)
+headView (lea-slot _) = hv-plain refl (λ _ _ _ → refl)
+headView (restore-input _) = hv-plain refl (λ _ _ _ → refl)
+headView (instr-alloc-stack _) = hv-plain refl (λ _ _ _ → refl)
+headView (instr-dealloc-stack _) = hv-plain refl (λ _ _ _ → refl)
+headView (instr-reclaim-to _) = hv-plain refl (λ _ _ _ → refl)
+headView (instr-push-frame _) = hv-plain refl (λ _ _ _ → refl)
+headView (worklist-init _) = hv-plain refl (λ _ _ _ → refl)
+headView (worklist-push _) = hv-plain refl (λ _ _ _ → refl)
+headView (worklist-pop _) = hv-plain refl (λ _ _ _ → refl)
+headView (worklist-check _) = hv-plain refl (λ _ _ _ → refl)
+headView (instr-load-code-addr _) = hv-plain refl (λ _ _ _ → refl)
+headView (instr-load-tag-lit _) = hv-plain refl (λ _ _ _ → refl)
+headView (instr-alloc-heap _) = hv-plain refl (λ _ _ _ → refl)
+headView (instr-loop _) = hv-plain refl (λ _ _ _ → refl)
+headView (instr-sigop si) = hv-plain refl (λ _ _ _ → refl)
+headView (instr-load-const p v) = hv-plain (const-no-label p v) (λ _ _ _ → refl)
+headView (instr-case-on-tag f g) = hv-plain refl (λ _ _ _ → refl)
+headView (instr-reg-op op) = hv-plain (reg-op-no-label op) (λ _ _ _ → refl)
+headView (instr-ctrl (c-label m)) = hv-clabel m refl (λ _ _ _ → refl)
+headView (instr-ctrl (c-jmp m)) = hv-plain refl (λ _ _ _ → refl)
+headView (instr-ctrl (c-je m)) = hv-plain refl (λ _ _ _ → refl)
+headView (instr-ctrl c-test-tag) = hv-plain refl (λ _ _ _ → refl)
+headView (instr-ctrl c-test-scratch) = hv-plain refl (λ _ _ _ → refl)
