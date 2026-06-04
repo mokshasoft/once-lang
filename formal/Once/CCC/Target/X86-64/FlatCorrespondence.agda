@@ -22,26 +22,36 @@
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.Memory.HeapAddress using (HeapLocation)
 open import Data.Nat using (ℕ)
+open import Relation.Binary.PropositionalEquality using (_≡_)
 
 module Once.CCC.Target.X86-64.FlatCorrespondence
   (FS : FrameSemantics)
   (enc-hl : HeapLocation → ℕ)   -- heap-address layout (Word = ℕ)
+  -- The address layout is INJECTIVE (CompCert-style memory injection):
+  -- distinct heap cells map to distinct x86 addresses. This is what lets
+  -- a heap write correspond to an x86 `mov [addr], _` — `writeHeapMem`
+  -- (≟HL) and `writeMem` (≡ᵇ) agree only because enc-hl is injective.
+  (enc-hl-inj : ∀ {a b : HeapLocation} → enc-hl a ≡ enc-hl b → a ≡ b)
   where
 
 open import Data.Nat using (zero; suc; _+_; _≡ᵇ_)
 open import Data.Nat.Properties using (+-comm)
-open import Data.Bool using (Bool; false)
+open import Data.Bool using (Bool; true; false)
+open import Data.Empty using (⊥; ⊥-elim)
+open import Relation.Nullary using (yes; no)
 open import Data.List using ([])
 open import Data.Maybe using (Maybe; just; nothing)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
+open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong; subst)
 
 import Once.CCC.Target.X86-64.Semantics as X
-open X using (mkstate; mkflags; _<ᵇ_)
+open X using (mkstate; mkflags; _<ᵇ_; writeMem)
   renaming (readReg to xreadReg; writeReg to xwriteReg; readMem to xreadMem)
 open X.State using (memory; flags; pc) renaming (regs to xregs; halted to xhalted)
 open import Once.CCC.Target.X86-64.Syntax using (rax; rbx; rsi; rdi)
 open import Once.CCC.Machine.SMCore
-open ExecFinal {FS} using (exec-load-via-resolved; exec-load-suc-via-resolved; exec-load-with-value)
+open MemOps {FS} using (writeLoc; writeLocToHeap; writeHeapMem; writeHeapMem-same; writeHeapMem-diff)
+open ExecFinal {FS} using (exec-load-via-resolved; exec-load-suc-via-resolved; exec-load-with-value
+                          ; exec-store-via-resolved; exec-store-suc-via-resolved)
 open import Once.CCC.Machine.Flat
 open FlatMachine {FS}
 
@@ -311,3 +321,94 @@ sim-load-indirect hl w fs s corr i-eq h-eq =
       { rdi-eq = rdi-eq corr ; rsi-eq = rsi-eq corr ; rax-eq = refl ; rbx-eq = rbx-eq corr
       ; pc-eq = trans (cong (_+ 1) (pc-eq corr)) (+-comm (fpc fs) 1)
       ; zf-eq = zf-eq corr ; halt-eq = halt-eq corr ; heap-eq = heap-eq corr }
+
+------------------------------------------------------------------------
+-- Heap STORES (Plan 0.32 Phase D). A heap write ↔ x86 `mov [addr], reg`.
+-- The crux: relate the typed heap update `writeHeapMem` (decides cells by
+-- ≟HL) to the x86 memory update `writeMem` (decides addresses by ≡ᵇ).
+-- They agree because enc-hl is INJECTIVE (the memory injection).
+------------------------------------------------------------------------
+≡ᵇ-refl : ∀ (n : ℕ) → (n ≡ᵇ n) ≡ true
+≡ᵇ-refl zero    = refl
+≡ᵇ-refl (suc n) = ≡ᵇ-refl n
+
+≢→≡ᵇfalse : ∀ {m n : ℕ} → (m ≡ n → ⊥) → (m ≡ᵇ n) ≡ false
+≢→≡ᵇfalse {zero}  {zero}  ¬p = ⊥-elim (¬p refl)
+≢→≡ᵇfalse {zero}  {suc n} _  = refl
+≢→≡ᵇfalse {suc m} {zero}  _  = refl
+≢→≡ᵇfalse {suc m} {suc n} ¬p = ≢→≡ᵇfalse {m} {n} (λ p → ¬p (cong suc p))
+
+-- The store correspondence: writing `v` at heap cell `hl` (x86: enc-hl hl)
+-- preserves the heap agreement at every other cell, and installs enc-sv v
+-- at `hl`. Case-split on ≟HL; enc-hl-inj turns cell-distinctness into
+-- address-distinctness so the x86 `≡ᵇ` test resolves the same way.
+store-heap-eq : ∀ (hl : HeapLocation) (v : StoredValue FS) (s : X.State) (ls : LocState FS)
+  → (∀ hl' → X.readMem (memory s) (enc-hl hl') ≡ enc-maybe (heapMem ls hl'))
+  → ∀ hl' → X.readMem (writeMem (memory s) (enc-hl hl) (enc-sv v)) (enc-hl hl')
+            ≡ enc-maybe (writeHeapMem (heapMem ls) hl v hl')
+store-heap-eq hl v s ls pre hl' with hl ≟HL hl'
+... | yes refl rewrite ≡ᵇ-refl (enc-hl hl) | writeHeapMem-same (heapMem ls) hl v = refl
+... | no ¬p rewrite ≢→≡ᵇfalse {enc-hl hl'} {enc-hl hl} (λ q → ¬p (sym (enc-hl-inj q)))
+                  | writeHeapMem-diff (heapMem ls) hl hl' v ¬p = pre hl'
+
+-- store-indirect: *Input1 := Output ↔ `mov [rdi], rax`. Hypotheses:
+--   Input1 = SV-Ptr (AtDynamic hl)   (destination is a heap cell)
+--   the value is heap-storable (writeLoc reduces to writeLocToHeap) — the
+--   caller discharges this by `refl` for any non-stack-pointer value (all
+--   cata-stored values: tags + heap pointers).
+sim-store-indirect : ∀ (hl : HeapLocation) (fs : FlatState) (s : X.State) → FlatCorr fs s
+  → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
+  → writeLoc (floc fs) (AtDynamic hl) (readReg (regs (floc fs)) Output)
+    ≡ writeLocToHeap (floc fs) hl (readReg (regs (floc fs)) Output)
+  → FlatCorr (flat-exec-instr store-indirect [] fs)
+             (mkstate (xregs s)
+                      (writeMem (memory s) (enc-hl hl) (enc-sv (readReg (regs (floc fs)) Output)))
+                      (flags s) (pc s + 1) (xhalted s))
+sim-store-indirect hl fs s corr i-eq guard =
+  subst (λ z → FlatCorr z xpost) (sym reduces) corr-clean
+  where
+    v = readReg (regs (floc fs)) Output
+    xpost : X.State
+    xpost = mkstate (xregs s) (writeMem (memory s) (enc-hl hl) (enc-sv v)) (flags s) (pc s + 1) (xhalted s)
+    cleanFlat : FlatState
+    cleanFlat = record fs { floc = writeLocToHeap (floc fs) hl v ; falloc = falloc fs ; fpc = suc (fpc fs) }
+    floc-eq : exec-store-via-resolved (sv-as-loc (readReg (regs (floc fs)) Input1)) v (floc fs)
+              ≡ writeLocToHeap (floc fs) hl v
+    floc-eq = trans (cong (λ m → exec-store-via-resolved m v (floc fs)) (cong sv-as-loc i-eq)) guard
+    reduces : flat-exec-instr store-indirect [] fs ≡ cleanFlat
+    reduces = cong (λ fl → record fs { floc = fl ; falloc = falloc fs ; fpc = suc (fpc fs) }) floc-eq
+    corr-clean : FlatCorr cleanFlat xpost
+    corr-clean = record
+      { rdi-eq = rdi-eq corr ; rsi-eq = rsi-eq corr ; rax-eq = rax-eq corr ; rbx-eq = rbx-eq corr
+      ; pc-eq = trans (cong (_+ 1) (pc-eq corr)) (+-comm (fpc fs) 1)
+      ; zf-eq = zf-eq corr ; halt-eq = halt-eq corr
+      ; heap-eq = store-heap-eq hl v s (floc fs) (heap-eq corr) }
+
+-- store-indirect-suc: *(sucLoc Input1) := Output ↔ `mov [rdi+slot], rax`.
+sim-store-indirect-suc : ∀ (hl : HeapLocation) (fs : FlatState) (s : X.State) → FlatCorr fs s
+  → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
+  → writeLoc (floc fs) (AtDynamic (sucHL hl)) (readReg (regs (floc fs)) Output)
+    ≡ writeLocToHeap (floc fs) (sucHL hl) (readReg (regs (floc fs)) Output)
+  → FlatCorr (flat-exec-instr store-indirect-suc [] fs)
+             (mkstate (xregs s)
+                      (writeMem (memory s) (enc-hl (sucHL hl)) (enc-sv (readReg (regs (floc fs)) Output)))
+                      (flags s) (pc s + 1) (xhalted s))
+sim-store-indirect-suc hl fs s corr i-eq guard =
+  subst (λ z → FlatCorr z xpost) (sym reduces) corr-clean
+  where
+    v = readReg (regs (floc fs)) Output
+    xpost : X.State
+    xpost = mkstate (xregs s) (writeMem (memory s) (enc-hl (sucHL hl)) (enc-sv v)) (flags s) (pc s + 1) (xhalted s)
+    cleanFlat : FlatState
+    cleanFlat = record fs { floc = writeLocToHeap (floc fs) (sucHL hl) v ; falloc = falloc fs ; fpc = suc (fpc fs) }
+    floc-eq : exec-store-suc-via-resolved (sv-as-loc (readReg (regs (floc fs)) Input1)) v (floc fs)
+              ≡ writeLocToHeap (floc fs) (sucHL hl) v
+    floc-eq = trans (cong (λ m → exec-store-suc-via-resolved m v (floc fs)) (cong sv-as-loc i-eq)) guard
+    reduces : flat-exec-instr store-indirect-suc [] fs ≡ cleanFlat
+    reduces = cong (λ fl → record fs { floc = fl ; falloc = falloc fs ; fpc = suc (fpc fs) }) floc-eq
+    corr-clean : FlatCorr cleanFlat xpost
+    corr-clean = record
+      { rdi-eq = rdi-eq corr ; rsi-eq = rsi-eq corr ; rax-eq = rax-eq corr ; rbx-eq = rbx-eq corr
+      ; pc-eq = trans (cong (_+ 1) (pc-eq corr)) (+-comm (fpc fs) 1)
+      ; zf-eq = zf-eq corr ; halt-eq = halt-eq corr
+      ; heap-eq = store-heap-eq (sucHL hl) v s (floc fs) (heap-eq corr) }

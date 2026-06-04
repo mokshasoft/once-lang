@@ -505,6 +505,22 @@ module MemOps {FS : FrameSemantics} where
   ... | yes _ = just v
   ... | no _  = mem hl'
 
+  -- Read-after-write spec for writeHeapMem (the internal `with ≟HL` is
+  -- only reducible here, in MemOps). Used by the heap-store correspondence.
+  writeHeapMem-same : ∀ (mem : HeapMem FS) (hl : HeapLocation) (v : StoredValue FS) →
+    writeHeapMem mem hl v hl ≡ just v
+  writeHeapMem-same mem hl v with hl ≟HL hl
+  ... | yes _  = refl
+  ... | no ¬p  = ⊥-elim (¬p refl)
+    where open import Data.Empty using (⊥-elim)
+
+  writeHeapMem-diff : ∀ (mem : HeapMem FS) (hl hl' : HeapLocation) (v : StoredValue FS) →
+    (hl ≡ hl' → ⊥) → writeHeapMem mem hl v hl' ≡ mem hl'
+  writeHeapMem-diff mem hl hl' v ¬p with hl ≟HL hl'
+  ... | yes p = ⊥-elim (¬p p)
+    where open import Data.Empty using (⊥-elim)
+  ... | no _  = refl
+
   -- | Write a value (StoredValue) to stack memory at a slot.
   -- Plan 0.13.2.
   writeLocToStack : LocState FS → Frame → Slot → StoredValue FS → LocState FS
