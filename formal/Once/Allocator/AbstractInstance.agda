@@ -22,7 +22,7 @@ module Once.Allocator.AbstractInstance where
 
 open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; s≤s; z≤n)
 open import Data.Nat.Properties using (≤-refl; <-irrefl)
-open import Data.Product using (_×_; _,_; ∃; ∃-syntax)
+open import Data.Product using (_×_; _,_; ∃; ∃-syntax; proj₁)
 open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality
   using (_≡_; _≢_; refl; cong; sym)
@@ -102,6 +102,36 @@ blocks-disjoint-impl {addr₁ = .(heap-loc (mkHeapRef _) 0)} {addr₂ = .(heap-l
   addr-≢ (cong (λ r → heap-loc r 0) (cong heap-ref slot-≡))
 
 ------------------------------------------------------------------------
+-- Deallocation (Plan 0.35 M1).
+--
+-- The bump counter cannot reclaim, so `free` is a no-op — the abstract
+-- heap leaks. This honestly satisfies the interface today; Plan 0.35 M7
+-- upgrades it to a reusing free-list once net-zero conservation is proved
+-- (that change reshapes `State` from a counter and is intentionally NOT
+-- done here, as it cascades into SMCore's AllocState).
+------------------------------------------------------------------------
+
+free-impl : HeapLocation → State → State
+free-impl _ s = s
+
+------------------------------------------------------------------------
+-- Liveness-aware freshness (Plan 0.35 M1).
+--
+-- The address `alloc-impl` hands out at state s — `heap-loc (mkHeapRef s) 0`
+-- — differs from every block live in the pre-state (its ref-id < s). Since
+-- the counter never reuses, "live" = "allocated" and the fresh ref = s
+-- exceeds all prior refs. Discharges the interface's `alloc-fresh`; no
+-- postulate.
+------------------------------------------------------------------------
+
+alloc-fresh-impl :
+  ∀ {n s addr' n'} →
+  Allocated s addr' n' →
+  proj₁ (alloc-impl n s) ≢ addr'
+alloc-fresh-impl (mkAllocated ref' refl ref'<s) eq =
+  <-irrefl (sym (cong (λ h → ref-id (heap-ref h)) eq)) ref'<s
+
+------------------------------------------------------------------------
 -- Package as an AllocatorInterface instance.
 ------------------------------------------------------------------------
 
@@ -112,8 +142,10 @@ abstract-allocator = record
   ; init            = initial
   ; Allocated       = Allocated
   ; alloc           = alloc-impl
+  ; free            = free-impl
   ; block-in-region = block-in-region-impl
   ; blocks-disjoint = blocks-disjoint-impl
+  ; alloc-fresh     = λ {n} {s} {addr'} {n'} → alloc-fresh-impl {n} {s} {addr'} {n'}
   }
 
 ------------------------------------------------------------------------
