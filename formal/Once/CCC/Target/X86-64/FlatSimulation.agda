@@ -56,7 +56,13 @@ open import Relation.Binary.PropositionalEquality using (refl)
 
 import Once.CCC.Target.X86-64.FlatCorrespondence as FC
 module C = FC FS enc-hl enc-hl-inj          -- enc-sv / FlatCorr data fields
-open import Once.CCC.Target.X86-64.FlatComposition FS using (x86-off)
+open import Once.CCC.Target.X86-64.FlatComposition FS
+  using (x86-off; x86-len; x86-off-suc; fetch-block-head)
+open import Once.CCC.Target.X86-64.StepLemmas using (exec-1; step-mov-rr)
+open import Once.CCC.Target.X86-64.AbstractToX86 using (compile-trace)
+open import Data.Nat using (zero; suc)
+open import Data.Product using (Σ; _×_; _,_)
+open import Relation.Binary.PropositionalEquality using (sym; trans; cong)
 
 ------------------------------------------------------------------------
 -- The compiled correspondence = the DATA correspondence (FlatCorr, now
@@ -101,3 +107,36 @@ b-cmp-reg-imm : ∀ (prog : Program) (s : X.State) (dst : Reg) (n : ℕ)
                     (mkflags (xreadReg (xregs s) dst ≡ᵇ n) (xreadReg (xregs s) dst <ᵇ n) false)
                     (pc s + 1) (xhalted s))
 b-cmp-reg-imm prog s dst n = refl
+
+------------------------------------------------------------------------
+-- block-step (Plan 0.32 Stage 2): one flat step ↔ X.exec (x86-len i) of
+-- its compiled block, preserving CompiledCorr. First case: mov-to-output
+-- (straight-line, blen=1). Establishes the assembly: fetch-block-head +
+-- step-mov-rr + exec-1 (x86 side), sim-mov-to-output (data), pc-off +
+-- x86-off-suc (pc). No zf — Plan 0.34.
+------------------------------------------------------------------------
+block-step-mov-to-output : ∀ (prog : AbstractTrace) (fs : FlatState) (s : X.State)
+  → CompiledCorr prog fs s
+  → halted (floc fs) ≡ false
+  → fetch prog (fpc fs) ≡ just mov-to-output
+  → Σ X.State (λ s' → (X.exec 1 (compile-trace prog) s ≡ just s')
+                    × CompiledCorr prog (flat-exec-instr mov-to-output prog fs) s')
+block-step-mov-to-output prog fs s cc h-flat ft = post , exec-eq , record { dataCorr = dc' ; pc-off = pco' }
+  where
+    dc  = dataCorr cc
+    po  = pc-off cc
+    halt-s : X.State.halted s ≡ false
+    halt-s = trans (C.halt-eq dc) h-flat
+    -- the x86 fetches `mov rax, rdi` at pc s (= the block offset)
+    fetch-x86 : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (mov (reg rax) (reg rdi))
+    fetch-x86 rewrite po = fetch-block-head prog (fpc fs) mov-to-output ft
+    post : X.State
+    post = record s { regs = xwriteReg (xregs s) rax (xreadReg (xregs s) rdi) ; pc = pc s + 1 }
+    snh : X.step-not-halted (compile-trace prog) s ≡ just post
+    snh = step-mov-rr {compile-trace prog} {s} {rax} {rdi} fetch-x86
+    exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
+    exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
+    dc' : C.FlatCorr (flat-exec-instr mov-to-output prog fs) post
+    dc' = C.sim-mov-to-output fs s dc
+    pco' : X.State.pc post ≡ x86-off prog (fpc (flat-exec-instr mov-to-output prog fs))
+    pco' = trans (cong (_+ 1) po) (sym (x86-off-suc prog (fpc fs) mov-to-output ft))
