@@ -28,11 +28,17 @@ module Once.CCC.Target.X86-64.FlatCorrespondence
   (enc-hl : HeapLocation → ℕ)   -- heap-address layout (Word = ℕ)
   where
 
+open import Data.Nat using (suc; _+_)
+open import Data.Nat.Properties using (+-comm)
 open import Data.Bool using (Bool)
+open import Data.List using ([])
 open import Data.Maybe using (Maybe; just; nothing)
-open import Relation.Binary.PropositionalEquality using (_≡_)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; cong)
 
 import Once.CCC.Target.X86-64.Semantics as X
+open X using (mkstate)
+  renaming (readReg to xreadReg; writeReg to xwriteReg; readMem to xreadMem)
+open X.State using (memory; flags; pc) renaming (regs to xregs; halted to xhalted)
 open import Once.CCC.Target.X86-64.Syntax using (rax; rbx; rsi; rdi)
 open import Once.CCC.Machine.SMCore
 open import Once.CCC.Machine.Flat
@@ -76,3 +82,30 @@ record FlatCorr (fs : FlatState) (s : X.State) : Set where
     heap-eq : ∀ (hl : HeapLocation) →
               X.readMem (X.State.memory s) (enc-hl hl) ≡ enc-maybe (heapMem (floc fs) hl)
 open FlatCorr public
+
+------------------------------------------------------------------------
+-- Per-instruction simulation (Plan 0.32 M3 Phase D). Each lemma: one
+-- exec-flat step on `i` corresponds to running compile-abstract i on the
+-- x86 state, preserving FlatCorr. Because both machines are flat, the
+-- value encoding is preserved field-by-field. (1-to-1 instructions;
+-- multi-x86 `alloc-heap` + the jump pc-offset are the continuation.)
+--
+-- First: mov-to-output (Output := Input1) ↔ `mov rax, rdi`.
+-- new rax (= old rdi) corresponds to new Output (= old Input1), so
+-- rax-eq is exactly the old rdi-eq.
+------------------------------------------------------------------------
+sim-mov-to-output : ∀ (fs : FlatState) (s : X.State)
+  → FlatCorr fs s
+  → FlatCorr (flat-exec-instr mov-to-output [] fs)
+             (mkstate (xwriteReg (xregs s) rax (xreadReg (xregs s) rdi))
+                      (memory s) (flags s) (pc s + 1) (xhalted s))
+sim-mov-to-output fs s corr = record
+  { rdi-eq  = rdi-eq corr
+  ; rax-eq  = rdi-eq corr
+  ; rsi-eq  = rsi-eq corr
+  ; rbx-eq  = rbx-eq corr
+  ; pc-eq   = trans (cong (_+ 1) (pc-eq corr)) (+-comm (fpc fs) 1)
+  ; zf-eq   = zf-eq corr
+  ; halt-eq = halt-eq corr
+  ; heap-eq = heap-eq corr
+  }
