@@ -25,7 +25,7 @@ module Once.CCC.Machine.Flat where
 open import Data.Nat using (ℕ; zero; suc; _≡ᵇ_)
 open import Data.Bool using (Bool; true; false)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.List using (List; []; _∷_)
+open import Data.List using (List; []; _∷_; length)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
@@ -33,7 +33,7 @@ open import Once.CCC.Machine.SMCore
 
 module FlatMachine {FS : FrameSemantics} where
   open MemOps {FS}
-  open AbstractExec {FS} using (exec-abstract)
+  open AbstractExec {FS} using (exec-abstract; exec-trace; exec-trace-cons)
 
   -- Flat machine state: the typed LocState + allocator + pc.
   -- Plan 0.34: no zero-flag — a conditional branch is one unit that
@@ -138,7 +138,8 @@ module FlatMachine {FS : FrameSemantics} where
   -- takes the decision value (halted / fetched instr) explicitly and is
   -- stated for an arbitrary `fs`, never a concrete construction.
   ----------------------------------------------------------------------
-  open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; cong)
+  open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
+  open import Data.List.Relation.Unary.All using (All; []; _∷_)
 
   -- A halted state is a fixpoint of exec-flat.
   exec-flat-halted : ∀ (n : ℕ) (prog : AbstractTrace) (fs : FlatState)
@@ -191,3 +192,83 @@ module FlatMachine {FS : FrameSemantics} where
   exec-flat-straight-step n prog fs i h-eq f-eq straight =
     trans (exec-flat-step n prog fs i h-eq f-eq)
           (cong (exec-flat n prog) (straight prog fs))
+
+  -- A jump-free trace: every instruction is straight.
+  Straight : AbstractTrace → Set
+  Straight = All StraightStep
+
+  -- `fetch` into a straight trace yields a straight instruction.
+  fetch-Straight : ∀ {prog k i} → Straight prog → fetch prog k ≡ just i → StraightStep i
+  fetch-Straight {[]}      _          ()
+  fetch-Straight {x ∷ xs} {zero}  (px ∷ _)  refl = px
+  fetch-Straight {x ∷ xs} {suc k} (_ ∷ pxs) eq   = fetch-Straight pxs eq
+
+  -- Shift lemma: on a straight tail, exec-flat over `i ∷ rest` from pc
+  -- `suc k` agrees with exec-flat over `rest` from pc `k` on the data
+  -- (floc/falloc) — the pc differs by 1 throughout but the threaded
+  -- LocState/AllocState are identical. By induction on fuel.
+  shift-loc : ∀ (fuel : ℕ) (i : AbstractInstr) (rest : AbstractTrace)
+                (loc : LocState FS) (alloc : AllocState {FS}) (k : ℕ)
+    → Straight rest
+    → floc   (exec-flat fuel (i ∷ rest) (mkFlat loc alloc (suc k)))
+        ≡ floc   (exec-flat fuel rest (mkFlat loc alloc k))
+    × falloc (exec-flat fuel (i ∷ rest) (mkFlat loc alloc (suc k)))
+        ≡ falloc (exec-flat fuel rest (mkFlat loc alloc k))
+  shift-loc zero    i rest loc alloc k straight = refl , refl
+  shift-loc (suc n) i rest loc alloc k straight with halted loc in h-eq
+  ... | true  rewrite exec-flat-halted (suc n) (i ∷ rest) (mkFlat loc alloc (suc k)) h-eq
+                    | exec-flat-halted (suc n) rest        (mkFlat loc alloc k)       h-eq
+                    = refl , refl
+  ... | false with fetch rest k in f-eq
+  ...   | nothing rewrite exec-flat-offend n (i ∷ rest) (mkFlat loc alloc (suc k)) h-eq f-eq
+                        | exec-flat-offend n rest        (mkFlat loc alloc k)       h-eq f-eq
+                        = refl , refl
+  ...   | just j  rewrite fetch-Straight straight f-eq (i ∷ rest) (mkFlat loc alloc (suc k))
+                        | fetch-Straight straight f-eq rest        (mkFlat loc alloc k)
+                        = shift-loc n i rest
+                            (proj₁ (exec-abstract j loc alloc))
+                            (proj₂ (exec-abstract j loc alloc))
+                            (suc k) straight
+
+  -- A halted state is left at (s , alloc) by exec-trace (no instruction runs).
+  exec-trace-halted : ∀ (prog : AbstractTrace) (s : LocState FS) (alloc : AllocState {FS})
+    → halted s ≡ true
+    → exec-trace prog s alloc ≡ (s , alloc)
+  exec-trace-halted []       s alloc _  = refl
+  exec-trace-halted (x ∷ xs) s alloc ht rewrite ht = refl
+
+  -- THE BRIDGE (Plan 0.32 choice a): on a jump-free trace, the flat machine's
+  -- data output (floc/falloc, up to the terminal `halted` flag) IS exec-trace's
+  -- output. `exec-flat` always halts at end-of-program, so we compare both
+  -- floc's `forced` to halted=true — making the base + mid-halt cases refl and
+  -- isolating the inductive content in the straight-step + shift lemmas.
+  forced : LocState FS → LocState FS
+  forced x = record x { halted = true }
+
+  exec-trace-is-flat : ∀ (prog : AbstractTrace) (s : LocState FS) (alloc : AllocState {FS})
+    → Straight prog
+    → forced (floc (exec-flat (suc (length prog)) prog (mkFlat s alloc 0)))
+        ≡ forced (proj₁ (exec-trace prog s alloc))
+    × falloc (exec-flat (suc (length prog)) prog (mkFlat s alloc 0))
+        ≡ proj₂ (exec-trace prog s alloc)
+  exec-trace-is-flat prog s alloc straight with halted s in hs
+  ... | true
+        rewrite exec-flat-halted (suc (length prog)) prog (mkFlat s alloc 0) hs
+              | exec-trace-halted prog s alloc hs = refl , refl
+  exec-trace-is-flat [] s alloc straight | false
+        rewrite exec-flat-offend 0 [] (mkFlat s alloc 0) hs refl = refl , refl
+  -- `with halted s | false` already peeled ONE exec-flat step (-> flat-exec-instr i)
+  -- and reduced exec-trace (i∷rest) -> exec-trace rest s' alloc'. Convert the
+  -- stuck `flat-exec-instr i` to `flat-step-straight i` (= mkFlat s' alloc' 1)
+  -- via the StraightStep evidence `pi`; then shift-loc + IH align directly.
+  exec-trace-is-flat (i ∷ rest) s alloc (pi ∷ prest) | false
+        rewrite pi (i ∷ rest) (mkFlat s alloc 0) =
+    let s'     = proj₁ (exec-abstract i s alloc)
+        alloc' = proj₂ (exec-abstract i s alloc)
+        sl     = shift-loc (suc (length rest)) i rest s' alloc' 0 prest
+        ih     = exec-trace-is-flat rest s' alloc' prest
+        ctr    = exec-trace-cons i rest s alloc hs
+    in trans (cong forced (proj₁ sl))
+             (trans (proj₁ ih) (cong (λ p → forced (proj₁ p)) (sym ctr)))
+     , trans (proj₂ sl)
+             (trans (proj₂ ih) (cong proj₂ (sym ctr)))
