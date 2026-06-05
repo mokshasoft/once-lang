@@ -138,7 +138,7 @@ module FlatMachine {FS : FrameSemantics} where
   -- takes the decision value (halted / fetched instr) explicitly and is
   -- stated for an arbitrary `fs`, never a concrete construction.
   ----------------------------------------------------------------------
-  open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+  open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; cong)
 
   -- A halted state is a fixpoint of exec-flat.
   exec-flat-halted : ∀ (n : ℕ) (prog : AbstractTrace) (fs : FlatState)
@@ -162,3 +162,32 @@ module FlatMachine {FS : FrameSemantics} where
     → fetch prog (fpc fs) ≡ nothing
     → exec-flat (suc n) prog fs ≡ record fs { floc = record (floc fs) { halted = true } }
   exec-flat-offend n prog fs h-eq f-eq rewrite h-eq | f-eq = refl
+
+  ----------------------------------------------------------------------
+  -- Plan 0.32 choice (a): the exec-flat ↔ exec-trace bridge (jump-free).
+  --
+  -- `exec-flat` is THE abstract semantics; `exec-trace` survives only as a
+  -- theorem about it on straight-line (jump-free) traces. The atom below:
+  -- a "straight" instruction is any non-`instr-ctrl`. Its `flat-exec-instr`
+  -- never consults `prog` (no `find-label`), so it equals `flat-step-straight`
+  -- — i.e. it threads `exec-abstract` and bumps the pc, exactly as
+  -- `exec-trace` threads `exec-abstract` over the suffix.
+  --
+  -- Evidence is carried per instruction (`λ _ _ → refl` at every concrete
+  -- non-ctrl constructor; `instr-ctrl` has none). This sidesteps splitting
+  -- the ~20 non-ctrl constructors — `flat-exec-instr`'s catch-all will not
+  -- reduce for an abstract `i`.
+  ----------------------------------------------------------------------
+  StraightStep : AbstractInstr → Set
+  StraightStep i = ∀ prog fs → flat-exec-instr i prog fs ≡ flat-step-straight i fs
+
+  -- One straight step under fuel: peel the fetched instruction and advance,
+  -- threading `exec-abstract` (built on the with-free `exec-flat-step`).
+  exec-flat-straight-step : ∀ (n : ℕ) (prog : AbstractTrace) (fs : FlatState) (i : AbstractInstr)
+    → halted (floc fs) ≡ false
+    → fetch prog (fpc fs) ≡ just i
+    → StraightStep i
+    → exec-flat (suc n) prog fs ≡ exec-flat n prog (flat-step-straight i fs)
+  exec-flat-straight-step n prog fs i h-eq f-eq straight =
+    trans (exec-flat-step n prog fs i h-eq f-eq)
+          (cong (exec-flat n prog) (straight prog fs))
