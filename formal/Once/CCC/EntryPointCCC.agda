@@ -65,7 +65,6 @@ module X86-64 where
   open import Once.CCC.Target.X86-64.RuntimeContract as RC
     using (RuntimeContract; FrameOps)
   open import Once.CCC.Target.X86-64.Syntax as Syntax using (Program)
-  open import Once.CCC.Target.X86-64.CodeGen.Compile using (compile-ir)
 
   -- The concrete frame semantics
   FS : FrameSemantics
@@ -133,15 +132,12 @@ module X86-64 where
   open import Once.CCC.Target.X86-64.Correct as C
   module Correct = C.Correctness {FS} runtime sigOp-proof
 
-  -- Code generation
-  compile : ∀ {A B} → IR A B → Program
-  compile = compile-ir
-
-  -- Correctness theorem (entry point for dead code analysis).
-  -- Plan 0.10: this is the verified-path theorem (about D.run-wf).
-  -- The new extracted-path theorem lives in `compile-correct-extracted`
-  -- below, which says the same thing about `compile-trace ∘ ir-to-trace`
-  -- (the function we'll switch the extractor to in Phase C).
+  -- Correctness theorem (verified-path, about D.run-wf / the Dispatcher).
+  -- The extracted-path theorem lives in `compile-correct-extracted` below,
+  -- which says the same thing about the LIVE `compile-trace ∘ ir-to-trace`.
+  -- (Plan 0.31-0b: the dead structural `compile = compile-ir` second codegen
+  -- and its module `CodeGen.Compile` were retired here — a standalone codegen
+  -- not bridged to the binary.)
   compile-correct = Correct.compile-correct
 
   -- Plan 0.10 Phase A: theorem about the EXTRACTED compile.
