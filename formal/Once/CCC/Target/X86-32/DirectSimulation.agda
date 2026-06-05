@@ -1174,7 +1174,8 @@ module Simulation {FS : FrameSemantics} where
   exec-abstract-preserves-frame (instr-reg-op _) ls alloc = refl
   exec-abstract-preserves-frame (instr-ctrl _) ls alloc = refl  -- Plan 0.32
   exec-abstract-preserves-frame (instr-loop body) ls alloc = SMP.InstrPrimitives.exec-loop-preserves-frame 1000000 body ls alloc
-  exec-abstract-preserves-frame (instr-case-on-tag _ _) ls alloc = refl
+  exec-abstract-preserves-frame (instr-case-on-tag f g) ls alloc =
+    SMP.InstrPrimitives.exec-abstract-preserves-frame (instr-case-on-tag f g) ls alloc
 
   -- Trace simulation follows from instr-sim by induction
   -- With proper structure (parallel with-patterns), this is trivial
