@@ -175,7 +175,8 @@ module Correctness
 
 -- Import DirectSimulation module (Simulation submodule contains X86State, Corresponds)
 -- Currently imported for documentation; actual use pending Layer 2 integration
-import Once.CCC.Target.X86-64.DirectSimulation as DS
+-- Plan 0.32 (a): DirectSimulation (loop-blind) retired; the extracted
+-- correspondence is `Once.CCC.Target.X86-64.CompileCorrectFlat`.
 
 ------------------------------------------------------------------------
 -- FULL CHAIN: IR → eval semantics → x86 execution

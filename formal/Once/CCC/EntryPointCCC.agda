@@ -148,7 +148,11 @@ module X86-64 where
     CC.Correctness {FS} (RuntimeContract.program-bound runtime)
       (RuntimeContract.acc-pb runtime) sigOp-proof
 
-  compile-correct-extracted = CompileCorrect-X86-64.compile-correct
+  -- Plan 0.32 (a): the extracted correctness theorem moved to the flat
+  -- machine (`CompileCorrectFlat.compile-correct-flat`, parametric in the
+  -- heap encoding `enc-hl`); the old DirectSimulation-based
+  -- `compile-correct` was deleted. `compile-extracted` (the live codegen)
+  -- is unchanged.
   compile-extracted          = CompileCorrect-X86-64.compile
 
 ------------------------------------------------------------------------
