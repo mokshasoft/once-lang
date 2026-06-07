@@ -1,0 +1,28 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson and contributors
+
+-- Plan 0.36 Phase-0 north-star test. RED until the functor-general cata
+-- codegen (Phase 2) lands.
+--
+-- Functor shape #4 (non-empty list): Mu (K Int + (K Int * Id)) — ONE
+-- recursive position; payload Int in BOTH constructors (no K Unit base).
+--
+-- Expected observable: exit code 42 (40 + 2).
+
+import I.Linux.Syscalls as S
+
+-- algebra : (Int + (Int * Int)) -> Int
+--   base (last element)  : Int -> Int       = id
+--   cons (head, foldedTail) : Int * Int -> Int = (+)
+addPair : Int * Int -> Int
+addPair p = fst p + snd p
+
+sumNE : Mu (K Int + (K Int * Id)) -> Int
+sumNE = cata (case id addPair)
+
+-- 40 :: [2]   (2 is the base element)
+xs : Mu (K Int + (K Int * Id))
+xs = In (inr (40, In (inl 2)))
+
+main : IO Unit
+main = exit@S (sumNE xs)

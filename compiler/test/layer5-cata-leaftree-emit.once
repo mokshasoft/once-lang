@@ -1,0 +1,43 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson and contributors
+
+-- Plan 0.36 Phase-0 north-star test (EFFECTFUL — THE CROWN CASE). RED
+-- until (a) the test-local `emit.int` Emits SigOp is wired (Phase 0
+-- prerequisite) and (b) functor-general cata codegen + trace-valued
+-- exec-flat land.
+--
+-- Functor shape #5 (leaf binary tree, TWO recursive positions),
+-- EFFECT-EMITTING: emit each leaf. This is the crown test — it combines
+-- the case the legacy codegen cannot do (two recursive children) with
+-- effect ORDERING across those two children.
+--
+-- `emit@E` is a TEST-LOCAL Emits SigOp (signature emit : Eff Int Unit;
+-- runtime nop; PreservesCCC postulated). See layer5-cata-list-emit.once.
+--
+-- cata folds the left subtree before the right, so node(leaf 40, leaf 2)
+-- emits 40 then 2.
+--
+-- Expected observable TRACE (asserted at `obs` level, not stdout):
+--   [ emit.int 40 , emit.int 2 , linux.exit 7 ]
+-- exit 7 = run-completed sentinel; the emit sequence is the real observable.
+
+import I.Linux.Syscalls as S
+import I.Test.Emit as E
+
+-- algebra : (Int + (Unit * Unit)) -> Unit
+--   leaf : Int -> Unit            = emit the leaf value
+--   node : Unit * Unit -> Unit    = const unit (children already emitted)
+emitLeaf : Int -> Unit
+emitLeaf n = emit@E n
+emitNode : Unit * Unit -> Unit
+emitNode _ = unit
+
+emitTree : Mu (K Int + (Id * Id)) -> Unit
+emitTree = cata (case emitLeaf emitNode)
+
+-- node(leaf 40, leaf 2)
+t : Mu (K Int + (Id * Id))
+t = In (inr (In (inl 40), In (inl 2)))
+
+main : IO Unit
+main = exit@S (const 7 (emitTree t))

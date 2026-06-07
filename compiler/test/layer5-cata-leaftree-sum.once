@@ -1,0 +1,30 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson and contributors
+
+-- Plan 0.36 Phase-0 north-star test. RED until the functor-general cata
+-- codegen (Phase 2) lands.
+--
+-- Functor shape #5 (leaf-valued binary tree): Mu (K Int + (Id * Id)) —
+-- TWO recursive positions. THE DECISIVE CASE: the legacy Nat-shaped
+-- codegen follows only ONE recursive child and provably cannot compile
+-- this.
+--
+-- Expected observable: exit code 42 (sum-of-leaves of node(leaf 40, leaf 2)).
+
+import I.Linux.Syscalls as S
+
+-- algebra : (Int + (Int * Int)) -> Int
+--   leaf : Int -> Int          = id
+--   node : Int * Int -> Int    = (+)  (sum of the two folded children)
+addPair : Int * Int -> Int
+addPair p = fst p + snd p
+
+sumTree : Mu (K Int + (Id * Id)) -> Int
+sumTree = cata (case id addPair)
+
+-- node(leaf 40, leaf 2)
+t : Mu (K Int + (Id * Id))
+t = In (inr (In (inl 40), In (inl 2)))
+
+main : IO Unit
+main = exit@S (sumTree t)

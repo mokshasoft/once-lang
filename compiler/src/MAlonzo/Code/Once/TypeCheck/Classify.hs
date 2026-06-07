@@ -418,7 +418,7 @@ d_lookupLocal'45'go_272 v0 v1 v2 v3
                                                                                MAlonzo.Code.Once.Type.C_Zero_6)
                                                                             v18)
                                                                          (coe
-                                                                            MAlonzo.Code.Once.Surface.Thinning.du_weaken_938
+                                                                            MAlonzo.Code.Once.Surface.Thinning.du_weaken_948
                                                                             (coe v7) (coe v8)
                                                                             (coe v16) (coe v9)
                                                                             (coe v19))))

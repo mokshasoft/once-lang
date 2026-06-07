@@ -51,6 +51,9 @@ open import Once.TypeCheck.Elaborate
          bbc-id; bbc-fst; bbc-snd; bbc-terminal; bbc-initial;
          bbc-inl; bbc-inr; bbc-arr; bbc-other)
 open import Once.TypeCheck.Judgment
+open import Once.Functor.Translate using (WellFormedF)
+open import Once.Functor.Decide using (wellFormedF?)
+open import Once.TypeCheck.Classify using (ctxWithImportsAndPolys)
 
 open import Once.Surface.Syntax as Surface using (zeroUsage; _+ᵘ_; _*ᵘ_)
   renaming (Expr to SExpr)
@@ -618,7 +621,7 @@ open Once.TypeCheck.Elaborate
          checkElab-fallback-RVar-inr; checkElab-fallback-RVar-arr;
          checkElab-fallback-RApp-pair; checkElab-fallback-RApp-compose;
          checkElab-fallback-RApp-case;
-         checkElab-fallback-RApp-In; checkElab-fallback-RApp-cata;
+         checkElab-fallback-RApp-In;
          checkElab-fallback-RApp-curry; checkElab-fallback-RApp-apply;
          checkElab-fallback-RApp-arr;
          checkElab-fallback-RVar-poly;
@@ -864,6 +867,23 @@ mutual
         (_ , _ , _ , eqX) = check-complete dX
     in infer-complete-RApp-eff f x A notPoly eqF eqX
 
+  -- Plan 0.36 Phase 2a — TRANSIENT, PROVABLE: cata completeness bridge.
+  -- `checkCataGo` elaborates the algebra in the EMPTY context and emits
+  -- the `cata` node; given the well-formedness equation + the algebra's
+  -- check-mode derivation, `checkElab` on `cata alg` reduces to that
+  -- emission (rebuild over `checkCataGo`, mirroring the kept
+  -- `checkElab-fallback-RApp-In`). Discharge with Correct's cata clause.
+  postulate
+    cata-check-complete : ∀ {ctx : NamedCtx} {alg : RawExpr}
+      {F : T.Functor} {A : Type} {wfF : WellFormedF F}
+      → wellFormedF? F ≡ just wfF
+      → ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx)
+          ⊢ᶜ alg ∶ (T.⟦ F ⟧T A T.⇒ A) ⨾ Surface.zeroUsage
+      → ∃[ eE ] ∃[ d ] ∃[ f ]
+          checkElab ctx (Raw.RApp (Raw.RVar "cata") alg)
+            (T.μ-type F T.⇒[ T.mk-kind T.Many T.pure ] A)
+              ≡ success Surface.zeroUsage eE d f
+
   -- Full ⊢ᶜ walk: handles t-lam recursively and delegates t-embed
   -- to the per-shape fallback lemma.
   check-complete :
@@ -988,8 +1008,8 @@ mutual
   check-complete (t-In-app-check {arg = arg} {F = F} eqWF dArg) =
     let (_ , _ , _ , eqA) = check-complete dArg
     in checkElab-fallback-RApp-In arg F eqWF eqA
-  check-complete (t-cata-check {alg = alg} {F = F} {A = A} eqMR eqWF eqIR) =
-    checkElab-fallback-RApp-cata alg F A eqMR eqWF eqIR
+  check-complete (t-cata-check {alg = alg} {F = F} {A = A} eqWF wArg) =
+    cata-check-complete eqWF wArg
   check-complete (t-compose-check {f = f} {g = g} {A = A} {B = B} {C = C} eqArgB d₁ d₂) =
     let (_ , _ , _ , eq₁) = check-complete d₁
         (_ , _ , _ , eq₂) = check-complete d₂

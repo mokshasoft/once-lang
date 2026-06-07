@@ -1,0 +1,29 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson and contributors
+
+-- Plan 0.36 Phase-0 north-star test. RED until the functor-general cata
+-- codegen (Phase 2) lands.
+--
+-- Functor shape #7 (ternary tree): Mu (K Int + (Id * Id * Id)) — THREE
+-- recursive positions (n-ary product of Id, n > 2). `*` is right-assoc,
+-- so the layer over A is Int + (A * (A * A)).
+--
+-- Expected observable: exit code 42 (sum-of-leaves of node(40, 0, 2)).
+
+import I.Linux.Syscalls as S
+
+-- algebra : (Int + (Int * (Int * Int))) -> Int
+--   leaf : Int -> Int                  = id
+--   node : Int * (Int * Int) -> Int    = a + b + c
+triOp : Int * (Int * Int) -> Int
+triOp t = fst t + (fst (snd t) + snd (snd t))
+
+sumTri : Mu (K Int + (Id * Id * Id)) -> Int
+sumTri = cata (case id triOp)
+
+-- node(leaf 40, leaf 0, leaf 2)
+t : Mu (K Int + (Id * Id * Id))
+t = In (inr (In (inl 40), (In (inl 0), In (inl 2))))
+
+main : IO Unit
+main = exit@S (sumTri t)

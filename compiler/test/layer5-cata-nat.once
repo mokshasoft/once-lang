@@ -1,0 +1,27 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson and contributors
+
+-- Plan 0.36 Phase-0 north-star test. RED until the functor-general cata
+-- codegen (Phase 2) lands.
+--
+-- Functor shape #2 (Nat): Mu (K Unit + Id) — ONE recursive position,
+-- bare Id successor. `toInt` counts the layers.
+--
+-- Expected observable: exit code 3 (three = suc (suc (suc zero))).
+
+import I.Linux.Syscalls as S
+
+-- algebra : (Unit + Int) -> Int
+zeroI : Unit -> Int
+zeroI _ = 0
+incI : Int -> Int
+incI n = n + 1
+
+toInt : Mu (K Unit + Id) -> Int
+toInt = cata (case zeroI incI)
+
+three : Mu (K Unit + Id)
+three = In (inr (In (inr (In (inr (In (inl unit)))))))
+
+main : IO Unit
+main = exit@S (toInt three)

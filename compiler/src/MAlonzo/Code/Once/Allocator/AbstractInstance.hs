@@ -114,28 +114,46 @@ d_blocks'45'disjoint'45'impl_84 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20
 d_blocks'45'disjoint'45'impl_84 = erased
+-- Once.Allocator.AbstractInstance.free-impl
+d_free'45'impl_100 ::
+  MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_42 ->
+  Integer -> Integer
+d_free'45'impl_100 ~v0 v1 = du_free'45'impl_100 v1
+du_free'45'impl_100 :: Integer -> Integer
+du_free'45'impl_100 v0 = coe v0
+-- Once.Allocator.AbstractInstance.alloc-fresh-impl
+d_alloc'45'fresh'45'impl_112 ::
+  Integer ->
+  Integer ->
+  MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_42 ->
+  Integer ->
+  T_Allocated_22 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20
+d_alloc'45'fresh'45'impl_112 = erased
 -- Once.Allocator.AbstractInstance.abstract-allocator
-d_abstract'45'allocator_102 ::
+d_abstract'45'allocator_124 ::
   MAlonzo.Code.Once.Allocator.Interface.T_AllocatorInterface_12
-d_abstract'45'allocator_102
+d_abstract'45'allocator_124
   = coe
-      MAlonzo.Code.Once.Allocator.Interface.C_constructor_108
+      MAlonzo.Code.Once.Allocator.Interface.C_constructor_132
       d_initial_14 (\ v0 v1 -> coe du_alloc'45'impl_52 v1)
+      (\ v0 v1 -> v1)
       (\ v0 v1 v2 v3 v4 v5 -> coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
 -- Once.Allocator.AbstractInstance.fresh-loc-disjoint
-d_fresh'45'loc'45'disjoint_108 ::
+d_fresh'45'loc'45'disjoint_138 ::
   Integer ->
   MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_42 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20
-d_fresh'45'loc'45'disjoint_108 = erased
+d_fresh'45'loc'45'disjoint_138 = erased
 -- Once.Allocator.AbstractInstance.fresh-cell-disjoint
-d_fresh'45'cell'45'disjoint_128 ::
+d_fresh'45'cell'45'disjoint_158 ::
   Integer ->
   MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_42 ->
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20
-d_fresh'45'cell'45'disjoint_128 = erased
+d_fresh'45'cell'45'disjoint_158 = erased

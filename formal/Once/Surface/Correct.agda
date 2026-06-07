@@ -12,9 +12,10 @@ module Once.Surface.Correct where
 
 open import Once.Type
 open import Once.CCC.IR
+open import Once.Functor.Translate using (WellFormedF)
 open import Once.Semantics.IR as IR using (⟦_⟧; eval′)
 -- Using eval′ (backward-compatible non-parameterized eval)
-open import Once.Surface.Syntax using (Ctx; ∅; lookup; Usage; zeroUsage; _+ᵘ_; Expr; var; lam; app; effApp; pair; fst'; snd'; inl'; inr'; case'; unit; absurd; let'; int; str; add; sub; mul; div; mod'; neg; lt; le; gt; ge; ne; arr'; sigOp; closure; poly; lift-morphism; morph-app) renaming (_,_ to _▸_; eq to eq')
+open import Once.Surface.Syntax using (Ctx; ∅; lookup; Usage; zeroUsage; _+ᵘ_; Expr; var; lam; app; effApp; pair; fst'; snd'; inl'; inr'; case'; unit; absurd; let'; int; str; add; sub; mul; div; mod'; neg; lt; le; gt; ge; ne; arr'; sigOp; closure; poly; lift-morphism; morph-app; cata) renaming (_,_ to _▸_; eq to eq')
 open Once.Surface.Syntax.Usage using ([]; _∷_)
 import Once.Surface.Syntax as S
 open import Once.Surface.Semantics using (Env; ε; _∷_; envLookup; evalSurface)
@@ -158,6 +159,17 @@ case-analysis-inr ρ s l r b eq with evalSurface ρ s | eq
 -- We use mutual recursion because the case proof needs the IH for
 -- subexpressions, and the main theorem needs the case lemmas.
 
+-- Plan 0.36 Phase 2a — TRANSIENT, PROVABLE: cata elaborate-correctness.
+-- `evalSurface (cata wfF alg) = sem-cata wfF (evalSurface ε alg ∘ coerce⁻¹)`
+-- and `elaborate (cata wfF alg) = Cata wfF algIR` with `algIR` the
+-- empty-context extraction; the bridge is `elaborate-correct ε alg` (IH)
+-- + `sem-cata` congruence + the apply/⟨⟩/terminal extraction reduction.
+-- Discharge alongside the Completeness cata bridge (plan 0.36).
+postulate
+  cata-elaborate-correct : ∀ {n} {Γ : Ctx n} {F : Functor} {A}
+    (ρ : Env Γ) (wfF : WellFormedF F) (alg : Expr ∅ zeroUsage (⟦ F ⟧T A ⇒ A))
+    → evalSurface ρ (cata wfF alg) ≡ eval′ (elaborate (cata wfF alg)) (interpEnv ρ)
+
 mutual
   -- Main theorem: elaboration preserves semantics
   elaborate-correct : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A} (ρ : Env Γ) (e : Expr Γ Ψ A) →
@@ -295,6 +307,8 @@ mutual
   -- (Agda has function-eta, but we go through extensionality to keep
   -- the proof robust against η-flag changes.)
   elaborate-correct ρ (lift-morphism m) = extensionality (λ x → refl)
+  -- Plan 0.36 Phase 2a: cata via the transient `cata-elaborate-correct`.
+  elaborate-correct ρ (cata wfF alg) = cata-elaborate-correct ρ wfF alg
   -- Plan 0.2.4.5 D2: morphism-realm application.
   --   LHS: evalSurface ρ (morph-app m x) = eval′ m (evalSurface ρ x)
   --   RHS: eval′ (m ∘ elaborate x) γ    = eval′ m (eval′ (elaborate x) γ)

@@ -758,21 +758,12 @@ mutual
             → VerifiedCheckResult ctx (Raw.RApp (Raw.RVar "In") arg) (Once.Type.μ-type F)
   checkCata : (ctx : NamedCtx) → (arg : RawExpr) → (T : Type)
             → VerifiedCheckResult ctx (Raw.RApp (Raw.RVar "cata") arg) T
-  checkCataA : (ctx : NamedCtx) (alg : RawExpr) (F : Once.Type.Functor) (A : Type)
-             → (mm : Maybe (MorphRaw alg)) → morphRaw? alg ≡ mm
-             → VerifiedCheckResult ctx (Raw.RApp (Raw.RVar "cata") alg)
-                                       (Once.Type.μ-type F Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] A)
-  checkCataB : (ctx : NamedCtx) (alg : RawExpr) (F : Once.Type.Functor) (A : Type)
-             → (mr : MorphRaw alg) → morphRaw? alg ≡ just mr
-             → (mw : Maybe (Once.Functor.Translate.WellFormedF F)) → wellFormedF? F ≡ mw
-             → VerifiedCheckResult ctx (Raw.RApp (Raw.RVar "cata") alg)
-                                       (Once.Type.μ-type F Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] A)
-  checkCataC : (ctx : NamedCtx) (alg : RawExpr) (F : Once.Type.Functor) (A : Type)
-             → (mr : MorphRaw alg) → morphRaw? alg ≡ just mr
-             → (wfF : Once.Functor.Translate.WellFormedF F) → wellFormedF? F ≡ just wfF
-             → (ma : Maybe (IR (Once.Type.⟦ F ⟧T A) A)) → morphToIR mr (Once.Type.⟦ F ⟧T A) A ≡ ma
-             → VerifiedCheckResult ctx (Raw.RApp (Raw.RVar "cata") alg)
-                                       (Once.Type.μ-type F Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] A)
+  -- Plan 0.36 Phase 2a: dispatch on `wellFormedF? F`; the algebra is
+  -- elaborated as an ordinary function in the EMPTY context (see clause).
+  checkCataGo : (ctx : NamedCtx) (alg : RawExpr) (F : Once.Type.Functor) (A : Type)
+              → (mw : Maybe (Once.Functor.Translate.WellFormedF F)) → wellFormedF? F ≡ mw
+              → VerifiedCheckResult ctx (Raw.RApp (Raw.RVar "cata") alg)
+                                        (Once.Type.μ-type F Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] A)
 
   -- Plan 0.4 T0 Option A: hoist the `ahv-other` (generic application)
   -- branch of `inferElab RApp` into its own top-level mutual member.
@@ -1245,20 +1236,25 @@ mutual
   -- witness carries the equations and completeness reduces cleanly.
   -- Emits `lift-morphism (IR.Cata wfF algIR)`.
   checkCata ctx alg (Once.Type.μ-type F Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] A) =
-    checkCataA ctx alg F A (morphRaw? alg) refl
+    checkCataGo ctx alg F A (wellFormedF? F) refl
   checkCata _ _ _ = failure (BuiltinTypeMismatch "cata") , tt
 
-  checkCataA ctx alg F A nothing _ = failure (BuiltinTypeMismatch "cata") , tt
-  checkCataA ctx alg F A (just mr) eqM = checkCataB ctx alg F A mr eqM (wellFormedF? F) refl
-
-  checkCataB ctx alg F A mr eqM nothing _ = failure (BuiltinTypeMismatch "cata") , tt
-  checkCataB ctx alg F A mr eqM (just wfF) eqW =
-    checkCataC ctx alg F A mr eqM wfF eqW (morphToIR mr (⟦ F ⟧T A) A) refl
-
-  checkCataC ctx alg F A mr eqM wfF eqW nothing _ = failure (BuiltinTypeMismatch "cata") , tt
-  checkCataC ctx alg F A mr eqM wfF eqW (just algIR) eqI =
-    success _ (Surface.lift-morphism (IR.Cata wfF algIR)) 1 (NamedCtx.freshCounter ctx)
-      , t-cata-check eqM eqW eqI
+  -- Plan 0.36 Phase 2a: the algebra is ANY closed function `⟦F⟧T A → A`.
+  -- Elaborate it in the EMPTY debruijn context (closed ⇔ empty ctx),
+  -- keeping the ambient imports/polys so named/arith/effectful refs
+  -- resolve. The result `algE : Expr ∅ zeroUsage (⟦F⟧T A ⇒ A)` rides the
+  -- `Surface.cata` node past `resolveExpr` (which inlines it); the closed
+  -- `IR.Cata` is built later by `Surface.Elaborate.elaborate`. The empty
+  -- context forces closedness: a non-closed algebra fails to elaborate
+  -- here (true runtime closures are out of scope — see plan 0.36).
+  checkCataGo ctx alg F A nothing _ = failure (BuiltinTypeMismatch "cata") , tt
+  checkCataGo ctx alg F A (just wfF) eqW
+    with checkElabV (ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx))
+                    alg (⟦ F ⟧T A ⇒ A)
+  ... | failure err , _ = failure err , tt
+  ... | success Surface.[] algE d fr , wArg =
+        success _ (Surface.cata wfF algE) (suc d) (NamedCtx.freshCounter ctx)
+          , t-cata-check eqW wArg
 
   -- Body for the hoisted `ahv-other` (generic application) branch.
   inferElab-RApp-other ctx f x with asFun (inferElab ctx f)
@@ -2554,29 +2550,10 @@ checkInGo-J :
       ≡ Data.Product.proj₁ (checkInGo ctx arg F mw eq)
 checkInGo-J ctx arg F .(wellFormedF? F) refl = refl
 
-checkCataA-J :
-  ∀ (ctx : NamedCtx) (alg : RawExpr) (F : Once.Type.Functor) (A : Type)
-    (mm : Maybe (MorphRaw alg)) (eq : morphRaw? alg ≡ mm)
-  → Data.Product.proj₁ (checkCataA ctx alg F A (morphRaw? alg) refl)
-      ≡ Data.Product.proj₁ (checkCataA ctx alg F A mm eq)
-checkCataA-J ctx alg F A .(morphRaw? alg) refl = refl
-
-checkCataB-J :
-  ∀ (ctx : NamedCtx) (alg : RawExpr) (F : Once.Type.Functor) (A : Type)
-    (mr : MorphRaw alg) (eqM : morphRaw? alg ≡ just mr)
-    (mw : Maybe (Once.Functor.Translate.WellFormedF F)) (eq : wellFormedF? F ≡ mw)
-  → Data.Product.proj₁ (checkCataB ctx alg F A mr eqM (wellFormedF? F) refl)
-      ≡ Data.Product.proj₁ (checkCataB ctx alg F A mr eqM mw eq)
-checkCataB-J ctx alg F A mr eqM .(wellFormedF? F) refl = refl
-
-checkCataC-J :
-  ∀ (ctx : NamedCtx) (alg : RawExpr) (F : Once.Type.Functor) (A : Type)
-    (mr : MorphRaw alg) (eqM : morphRaw? alg ≡ just mr)
-    (wfF : Once.Functor.Translate.WellFormedF F) (eqW : wellFormedF? F ≡ just wfF)
-    (ma : Maybe (IR (Once.Type.⟦ F ⟧T A) A)) (eq : morphToIR mr (Once.Type.⟦ F ⟧T A) A ≡ ma)
-  → Data.Product.proj₁ (checkCataC ctx alg F A mr eqM wfF eqW (morphToIR mr (Once.Type.⟦ F ⟧T A) A) refl)
-      ≡ Data.Product.proj₁ (checkCataC ctx alg F A mr eqM wfF eqW ma eq)
-checkCataC-J ctx alg F A mr eqM wfF eqW .(morphToIR mr (Once.Type.⟦ F ⟧T A) A) refl = refl
+-- Plan 0.36 Phase 2a: the old morphRaw J-bridges (checkCataA/B/C-J) are
+-- gone with checkCataA/B/C. The cata completeness bridge is rebuilt over
+-- `checkCataGo` (empty-context algebra elaboration) when `Completeness`
+-- is migrated — mirrors the `checkInGo-just-success` template below.
 
 -- Plan 0.28 Commit 2: applied `In arg` (μ intro) check-mode at
 -- `μ-type F`. Given the well-formedness equation + the argument's
@@ -2611,26 +2588,11 @@ checkElab-fallback-RApp-In {ctx} arg F {wfF} eqWF eqArg =
   let (_ , _ , _ , eqGo) = checkInGo-just-success ctx arg F wfF eqWF eqArg
   in _ , _ , _ , trans (checkInGo-J ctx arg F (just wfF) eqWF) eqGo
 
--- Plan 0.28 Commit 2: applied `cata alg` (fold) check-mode at
--- `μ-type F ⇒[Many] A`. The algebra is compiled syntactically, so the
--- three decidable equations fully determine `checkCata`'s reduction —
--- chained through the three J-bridges.
-checkElab-fallback-RApp-cata :
-  ∀ {ctx : NamedCtx} (alg : RawExpr) (F : Once.Type.Functor) (A : Type)
-    {mr : MorphRaw alg} {wfF : Once.Functor.Translate.WellFormedF F}
-    {algIR : IR (Once.Type.⟦ F ⟧T A) A}
-  → morphRaw? alg ≡ just mr
-  → wellFormedF? F ≡ just wfF
-  → morphToIR mr (Once.Type.⟦ F ⟧T A) A ≡ just algIR
-  → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ fr →
-      checkElab ctx (Raw.RApp (Raw.RVar "cata") alg)
-                    (Once.Type.μ-type F Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] A)
-        ≡ success Surface.zeroUsage eE d fr)))
-checkElab-fallback-RApp-cata {ctx} alg F A {mr} {wfF} {algIR} eqMR eqWF eqIR =
-  _ , _ , _ ,
-  trans (checkCataA-J ctx alg F A (just mr) eqMR)
-  (trans (checkCataB-J ctx alg F A mr eqMR (just wfF) eqWF)
-         (checkCataC-J ctx alg F A mr eqMR wfF eqWF (just algIR) eqIR))
+-- Plan 0.36 Phase 2a: the cata completeness bridge is rebuilt over
+-- `checkCataGo` (empty-context algebra elaboration) in the `Completeness`
+-- migration step, mirroring `checkElab-fallback-RApp-In` above
+-- (checkCataGo-J + a checkCataGo-just-success lemma). Removed here with
+-- the morphRaw J-bridges it depended on.
 
 -- Plan 0.4 T2 follow-up (rule-split, 2026-05-03): checkCompose now
 -- requires composeArgB-resolved B; the proof composes the two
@@ -2819,6 +2781,11 @@ resolveExprWF polys _ imps userFns _ (Surface.closure s) = Surface.closure s
 resolveExprWF polys _ imps userFns _ (Surface.lift-morphism m) = Surface.lift-morphism m
 resolveExprWF polys pAcc imps userFns fresh (Surface.morph-app m a) =
   Surface.morph-app m (resolveExprWF polys pAcc imps userFns fresh a)
+-- Plan 0.36 Phase 2a: recurse into the cata algebra (empty-context Expr)
+-- so its named/poly refs get inlined like any expression. Context-
+-- polymorphic, so the ∅-context algebra resolves fine.
+resolveExprWF polys pAcc imps userFns fresh (Surface.cata wfF alg) =
+  Surface.cata wfF (resolveExprWF polys pAcc imps userFns fresh alg)
 -- Poly = unresolved placeholder from Phase 1. Delegate to helper that
 -- takes the lookup result + equation explicitly, so external proofs
 -- about the sigOp case can `rewrite` the premise cleanly.

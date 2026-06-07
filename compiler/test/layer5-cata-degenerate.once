@@ -1,0 +1,23 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson and contributors
+
+-- Plan 0.36 Phase-0 north-star test. RED until the functor-general cata
+-- codegen (Phase 2) lands.
+--
+-- Functor shape #1 (degenerate): Mu (K Int) — ZERO recursive positions,
+-- no loop. `cata id` just reads the single K-Int layer.
+--
+-- Expected observable: exit code 42.
+
+import I.Linux.Syscalls as S
+
+-- The one and only layer: In 42 : Mu (K Int)
+val : Mu (K Int)
+val = In 42
+
+-- algebra : (K Int applied to Int) -> Int  =  Int -> Int  = id
+getInt : Mu (K Int) -> Int
+getInt = cata id
+
+main : IO Unit
+main = exit@S (getInt val)
