@@ -29,9 +29,9 @@
 module Once.Surface.Semantics where
 
 open import Once.Type
-open import Once.Semantics.IR using (⟦_⟧; eval′)
+open import Once.Semantics.IR using (⟦_⟧; eval′; sem-cata; coerce-functor⁻¹)
 open import Once.Arith.SigOp.Builders using (generic-semI)
-open import Once.Surface.Syntax using (Ctx; ∅; lookup; Usage; Expr; var; lam; app; effApp; pair; fst'; snd'; inl'; inr'; case'; unit; absurd; let'; int; str; add; sub; mul; div; mod'; neg; lt; le; gt; ge; eq; ne; arr'; sigOp; closure; poly; lift-morphism; morph-app) renaming (_,_ to _▸_)
+open import Once.Surface.Syntax using (Ctx; ∅; lookup; Usage; Expr; var; lam; app; effApp; pair; fst'; snd'; inl'; inr'; case'; unit; absurd; let'; int; str; add; sub; mul; div; mod'; neg; lt; le; gt; ge; eq; ne; arr'; sigOp; closure; poly; lift-morphism; morph-app; cata) renaming (_,_ to _▸_)
 
 open import Data.Nat using (ℕ)
 open import Data.Fin using (Fin)
@@ -192,3 +192,9 @@ evalSurface ρ (lift-morphism m) = eval′ m
 -- Plan 0.2.4.5 D2: morphism-realm application — eagerly run the
 -- morphism on the (Surface-evaluated) argument.
 evalSurface ρ (morph-app m x)   = eval′ m (evalSurface ρ x)
+-- Plan 0.36 Phase 2a: cata's denotation mirrors `eval (Cata …)` — the
+-- categorical catamorphism `sem-cata`, with the (closed, empty-context)
+-- algebra evaluated in the empty environment `ε`. Matches the elaborated
+-- `IR.Cata`'s `eval′` so `Surface.Correct` goes through.
+evalSurface ρ (cata {F = F} wfF alg) =
+  sem-cata wfF (λ fa → evalSurface ε alg (coerce-functor⁻¹ F _ fa))

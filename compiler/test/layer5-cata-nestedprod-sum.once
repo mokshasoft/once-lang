@@ -1,0 +1,29 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson and contributors
+
+-- Plan 0.36 Phase-0 north-star test. RED until the functor-general cata
+-- codegen (Phase 2) lands.
+--
+-- Functor shape #9 (nested-product payload): Mu (K Unit + ((K Int * K Int) * Id))
+-- — ONE recursive position; the cons payload is itself a PAIR (nested `*`
+-- on the non-recursive side).
+--
+-- Expected observable: exit code 42 (sum of all pair components of [(20,22)]).
+
+import I.Linux.Syscalls as S
+
+-- algebra : (Unit + ((Int * Int) * Int)) -> Int
+zeroI : Unit -> Int
+zeroI _ = 0
+consOp : (Int * Int) * Int -> Int
+consOp t = (fst (fst t) + snd (fst t)) + snd t
+
+sumPairs : Mu (K Unit + ((K Int * K Int) * Id)) -> Int
+sumPairs = cata (case zeroI consOp)
+
+-- [(20, 22)]
+xs : Mu (K Unit + ((K Int * K Int) * Id))
+xs = In (inr ((20, 22), In (inl unit)))
+
+main : IO Unit
+main = exit@S (sumPairs xs)

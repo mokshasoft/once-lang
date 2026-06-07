@@ -1,0 +1,28 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson and contributors
+
+-- Plan 0.36 Phase-0 north-star test. RED until the functor-general cata
+-- codegen (Phase 2) lands.
+--
+-- Functor shape #3 (List Int): Mu (K Unit + (K Int * Id)) — ONE recursive
+-- position living inside a product with an Int payload (foldr shape).
+--
+-- Expected observable: exit code 42 (sum [10, 20, 12]).
+
+import I.Linux.Syscalls as S
+
+-- algebra : (Unit + (Int * Int)) -> Int   (cons's Id position is the folded tail)
+zeroI : Unit -> Int
+zeroI _ = 0
+addPair : Int * Int -> Int
+addPair p = fst p + snd p
+
+sumList : Mu (K Unit + (K Int * Id)) -> Int
+sumList = cata (case zeroI addPair)
+
+-- [10, 20, 12]
+xs : Mu (K Unit + (K Int * Id))
+xs = In (inr (10, In (inr (20, In (inr (12, In (inl unit)))))))
+
+main : IO Unit
+main = exit@S (sumList xs)

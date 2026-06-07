@@ -309,6 +309,18 @@ elaborate m (lift-morphism morph) = curry (morph ∘ snd) m
 -- compose chains, primitives). See `plans/0.2.4.5-morphism-realm-split.md`.
 elaborate m (morph-app morph x) = morph ∘ elaborate m x
 
+-- Plan 0.36 Phase 2a: catamorphism with an ARBITRARY closed algebra.
+-- The algebra `alg` lives in the empty context, so `elaborate m alg :
+-- IR ⟦ ∅ ⟧ᶜ (⟦F⟧T A ⇒ A) = IR Unit (⟦F⟧T A ⇒ A)`. Extract the closed
+-- algebra morphism `IR (⟦F⟧T A) A` by feeding a `terminal` env and
+-- applying:  `apply ∘ ⟨ algClosure ∘ terminal , id ⟩`. Then build the
+-- closed `Cata`, lifted to the surrounding realm exactly like
+-- `lift-morphism` (`curry (· ∘ snd) m`). No morphism vocabulary, no
+-- parallel lowering — `elaborate` already handles arith/SigOps inside
+-- `alg`. See plans/0.36 "two axes of generality".
+elaborate m (cata {F = F} wfF alg) =
+  curry (Cata wfF (apply ∘ ⟨ elaborate m alg ∘ terminal , id ⟩ m) ∘ snd) m
+
 -- | Historical default: Heap allocation.
 elaborate-default : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A} → Expr Γ Ψ A → IR ⟦ Γ ⟧ᶜ A
 elaborate-default = elaborate Heap

@@ -12,6 +12,7 @@ module Once.Surface.Syntax where
 
 open import Once.Type
 open import Once.CCC.IR using (IR)
+open import Once.Functor.Translate using (WellFormedF)
 
 open import Data.Nat using (ℕ)
 open import Data.Fin using (Fin)
@@ -311,3 +312,15 @@ data Expr : ∀ {n} → Ctx n → Usage n → Type → Set where
   -- emission lets us swap call sites without touching judgment rules.
   morph-app : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A B}
             → IR A B → Expr Γ Ψ A → Expr Γ (zeroUsage +ᵘ (Many *ᵘ Ψ)) B
+
+  -- Plan 0.36 Phase 2a: catamorphism whose algebra is an ARBITRARY closed
+  -- function (named/arith/effectful — not a fixed point-free vocabulary).
+  -- The algebra rides as a Surface `Expr` in the EMPTY context (`∅`,
+  -- `zeroUsage`): "closed ⇔ empty context" — this type-enforces closedness
+  -- (true runtime closures, being non-zero-usage, are rejected here; they
+  -- are expressible in fold-to-function form, see plan 0.36 "two axes").
+  -- `resolveExpr` inlines the algebra's named refs; `elaborate` builds the
+  -- closed `IR.Cata` (empty-context extraction). See plans/0.36.
+  cata : ∀ {n} {Γ : Ctx n} {F : Functor} {A}
+       → WellFormedF F → Expr ∅ zeroUsage (⟦ F ⟧T A ⇒ A)
+       → Expr Γ zeroUsage (μ-type F ⇒ A)

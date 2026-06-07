@@ -1,0 +1,33 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson and contributors
+
+-- Plan 0.36 Phase-0 north-star test. RED until the functor-general cata
+-- codegen (Phase 2) lands.
+--
+-- Functor shape #6 (node-valued binary tree): Mu (K Unit + (Id * (K Int * Id)))
+-- — TWO recursive positions with an Int payload BETWEEN them.
+--
+-- Expected observable: exit code 42 (node(leaf, 42, leaf)).
+
+import I.Linux.Syscalls as S
+
+-- algebra : (Unit + (Int * (Int * Int))) -> Int
+--   leaf : Unit -> Int                       = const 0
+--   node : Int * (Int * Int) -> Int          = left + value + right
+zeroI : Unit -> Int
+zeroI _ = 0
+nodeOp : Int * (Int * Int) -> Int
+nodeOp t = fst t + (fst (snd t) + snd (snd t))
+
+sumNode : Mu (K Unit + (Id * (K Int * Id))) -> Int
+sumNode = cata (case zeroI nodeOp)
+
+leaf : Mu (K Unit + (Id * (K Int * Id)))
+leaf = In (inl unit)
+
+-- node(leaf, 42, leaf)
+t : Mu (K Unit + (Id * (K Int * Id)))
+t = In (inr (leaf, (42, leaf)))
+
+main : IO Unit
+main = exit@S (sumNode t)

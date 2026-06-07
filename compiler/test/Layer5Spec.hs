@@ -24,12 +24,52 @@ import Backend.Common (runOnce, cleanupDir)
 layer5Tests :: TestTree
 layer5Tests = testGroup "Layer5"
   [ isEvenTest
+  , testGroup "cata-general (Plan 0.36 Phase 0 — RED until functor-general codegen)"
+      [ exitTest name code | (name, code) <- cataGeneralCases ]
+  , testGroup "cata-effectful (Plan 0.36 Phase 0 — RED; needs emit.int + trace-valued exec)"
+      [ exitTest name code | (name, code) <- cataEffectfulCases ]
   ]
 
 -- | isEven (two) is even, mapped to exit code 42 via case.
 isEvenTest :: TestTree
 isEvenTest = testCase "cata isEven of an even Nat (exit 42)" $ do
   result <- buildAndRun "layer5-iseven" 42
+  case result of
+    Left err -> assertFailure err
+    Right () -> return ()
+
+-- | Plan 0.36 Phase-0 north-star matrix: one cata per polynomial-functor
+-- shape (K/Id/+/*), each fold's value observed as the `exit` argument.
+-- All RED until the functor-general cata codegen (Phase 2) lands; shape #5
+-- (leaf tree, two recursive positions) is the decisive non-Nat case.
+cataGeneralCases :: [(String, Int)]
+cataGeneralCases =
+  [ ("layer5-cata-degenerate",      42)  -- #1 Mu (K Int), 0 rec positions
+  , ("layer5-cata-nat",              3)  -- #2 Mu (K Unit + Id), 1 rec, bare Id
+  , ("layer5-cata-list-sum",        42)  -- #3 Mu (K Unit + (K Int * Id))
+  , ("layer5-cata-nelist-sum",      42)  -- #4 Mu (K Int + (K Int * Id))
+  , ("layer5-cata-leaftree-sum",    42)  -- #5 Mu (K Int + (Id * Id))  <- decisive
+  , ("layer5-cata-nodetree-sum",    42)  -- #6 Mu (K Unit + (Id * (K Int * Id)))
+  , ("layer5-cata-ternarytree-sum", 42)  -- #7 Mu (K Int + (Id * Id * Id))
+  , ("layer5-cata-multictor-size",   4)  -- #8 Mu (K Unit + (Id + (Id * Id)))
+  , ("layer5-cata-nestedprod-sum",  42)  -- #9 Mu (K Unit + ((K Int * K Int) * Id))
+  ]
+
+-- | Effect-emitting catas (algebra calls the test-local `emit.int` Emits
+-- SigOp). The exit code here is only a run-completed sentinel (7); the real
+-- observable is the emit TRACE, asserted at the `obs` level once emit.int +
+-- trace-valued exec-flat land (Phase 1). For now this just checks the
+-- program builds and runs to the sentinel.
+cataEffectfulCases :: [(String, Int)]
+cataEffectfulCases =
+  [ ("layer5-cata-list-emit",     7)  -- trace [emit 5, emit 3, exit 7]
+  , ("layer5-cata-leaftree-emit", 7)  -- crown: trace [emit 40, emit 2, exit 7]
+  ]
+
+-- | Build a `.once` program and assert it exits with the given code.
+exitTest :: String -> Int -> TestTree
+exitTest name code = testCase (name ++ " (exit " ++ show code ++ ")") $ do
+  result <- buildAndRun name code
   case result of
     Left err -> assertFailure err
     Right () -> return ()

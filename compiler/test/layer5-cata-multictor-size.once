@@ -1,0 +1,38 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson and contributors
+
+-- Plan 0.36 Phase-0 north-star test. RED until the functor-general cata
+-- codegen (Phase 2) lands.
+--
+-- Functor shape #8 (multi-constructor / nested sum): Mu (K Unit + (Id + (Id * Id)))
+-- — THREE constructors with DIFFERENT recursive-position counts:
+--   empty  (0 rec),  unary (1 rec),  binary (2 rec).
+-- Exercises nested-sum tag dispatch (>2 tags) + per-branch arity differences.
+--
+-- `size` counts nodes: empty=1, unary=child+1, binary=left+right+1.
+-- t = binary(unary(empty), empty) = (1+1) + 1 + 1 = 4.
+--
+-- Expected observable: exit code 4.
+
+import I.Linux.Syscalls as S
+
+-- algebra : (Unit + (Int + (Int * Int))) -> Int
+oneI : Unit -> Int
+oneI _ = 1
+incI : Int -> Int
+incI n = n + 1
+addPlus1 : Int * Int -> Int
+addPlus1 p = fst p + snd p + 1
+
+size : Mu (K Unit + (Id + (Id * Id))) -> Int
+size = cata (case oneI (case incI addPlus1))
+
+empty : Mu (K Unit + (Id + (Id * Id)))
+empty = In (inl unit)
+
+-- binary(unary(empty), empty)
+t : Mu (K Unit + (Id + (Id * Id)))
+t = In (inr (inr (In (inr (inl empty)), empty)))
+
+main : IO Unit
+main = exit@S (size t)

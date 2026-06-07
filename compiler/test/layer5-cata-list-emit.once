@@ -1,0 +1,42 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson and contributors
+
+-- Plan 0.36 Phase-0 north-star test (EFFECTFUL). RED until (a) the
+-- test-local `emit.int` Emits SigOp is wired (Phase 0 prerequisite) and
+-- (b) the functor-general cata codegen + trace-valued exec-flat land.
+--
+-- Functor shape #3 (List Int), EFFECT-EMITTING: the algebra invokes the
+-- `emit.int` Emits SigOp at each cons layer. This tests EFFECT ORDERING.
+--
+-- `emit@E` comes from a TEST-LOCAL interpretation module (NOT real Strata):
+--   signature emit : Eff Int Unit     -- name "test.emit" → classify-name = Emits
+--   runtime = nop; PreservesCCC postulated (trivial for a nop).
+--
+-- cata folds bottom-up (tail folded before the cons combines), so for
+-- [3, 5] the emission order is 5 then 3.
+--
+-- Expected observable TRACE (asserted at the `obs` level, not stdout):
+--   [ emit.int 5 , emit.int 3 , linux.exit 7 ]
+-- The exit code 7 is just a run-completed sentinel; the real observable
+-- is the emit sequence.
+
+import I.Linux.Syscalls as S
+import I.Test.Emit as E
+
+-- algebra : (Unit + (Int * Unit)) -> Unit
+--   nil  : Unit -> Unit          = const unit
+--   cons : Int * Unit -> Unit    = emit the head (Id position = folded tail = unit)
+emitNil : Unit -> Unit
+emitNil _ = unit
+emitCons : Int * Unit -> Unit
+emitCons p = emit@E (fst p)
+
+emitAll : Mu (K Unit + (K Int * Id)) -> Unit
+emitAll = cata (case emitNil emitCons)
+
+-- [3, 5]
+xs : Mu (K Unit + (K Int * Id))
+xs = In (inr (3, In (inr (5, In (inl unit)))))
+
+main : IO Unit
+main = exit@S (const 7 (emitAll xs))

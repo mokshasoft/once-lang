@@ -244,6 +244,11 @@ rename {Δ = Δ} θ (Surface.poly name T) = subst (λ Ψ → SExpr Δ Ψ _) (sym
 -- threads through unchanged modulo the `thin-usage-zeroUsage` adjustment.
 rename {Δ = Δ} θ (Surface.lift-morphism m) =
   subst (λ Ψ → SExpr Δ Ψ _) (sym (thin-usage-zeroUsage θ)) (Surface.lift-morphism m)
+-- Plan 0.36 Phase 2a: cata is zeroUsage and its algebra lives in the
+-- EMPTY context (`∅`), so the thinning θ : Γ ⊆ Δ never touches it —
+-- same shape as `lift-morphism`.
+rename {Δ = Δ} θ (Surface.cata wfF alg) =
+  subst (λ Ψ → SExpr Δ Ψ _) (sym (thin-usage-zeroUsage θ)) (Surface.cata wfF alg)
 -- Plan 0.2.4.5 D2: morphism-realm application. Usage shape mirrors
 -- `Surface.app` (with f-usage = zeroUsage, q = Many): renaming the
 -- argument propagates through `+ᵘ` and `*ᵘ` and `zeroUsage`.

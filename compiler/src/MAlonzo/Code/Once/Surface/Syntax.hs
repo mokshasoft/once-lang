@@ -23,6 +23,7 @@ import qualified MAlonzo.Code.Agda.Builtin.String
 import qualified MAlonzo.Code.Data.Bool.Base
 import qualified MAlonzo.Code.Data.Fin.Base
 import qualified MAlonzo.Code.Once.CCC.IR
+import qualified MAlonzo.Code.Once.Functor.Translate
 import qualified MAlonzo.Code.Once.Type
 
 -- Once.Surface.Syntax.Ctx
@@ -252,4 +253,6 @@ data T_Expr_174
     C_poly_512 MAlonzo.Code.Agda.Builtin.String.T_String_6 |
     C_lift'45'morphism_522 MAlonzo.Code.Once.CCC.IR.T_IR_274 |
     C_morph'45'app_534 T_Usage_50 MAlonzo.Code.Once.Type.T_Type_108
-                       MAlonzo.Code.Once.CCC.IR.T_IR_274 T_Expr_174
+                       MAlonzo.Code.Once.CCC.IR.T_IR_274 T_Expr_174 |
+    C_cata_544 MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174
+               T_Expr_174

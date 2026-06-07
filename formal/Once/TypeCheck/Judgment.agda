@@ -38,7 +38,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_)
 
 import Once.Type
 open Once.Type using (Type; Unit; Int; Str; Void; Float; Buffer;
-                      _*_; _+_; _⇒[_]_; Quantity;
+                      _*_; _+_; _⇒_; _⇒[_]_; Quantity;
                       Functor; μ-type; ⟦_⟧T)
 open import Once.Functor.Translate using (WellFormedF)
 open import Once.Functor.Decide using (wellFormedF?)
@@ -406,12 +406,17 @@ mutual
     -- the decidable equations, so completeness is total + postulate-free
     -- (the IR comes from `morphToIR`, not from extracting the
     -- elaboration). Emits `lift-morphism (IR.Cata wfF algIR)`.
+    -- Plan 0.36 Phase 2a: the algebra is an ARBITRARY closed function,
+    -- checked in the EMPTY context (closed ⇔ empty context — the algebra
+    -- captures no ambient term vars). Premise is the sub-derivation
+    -- (mirrors `t-In-app-check`), NOT the morphRaw?/morphToIR equations.
+    -- `checkCata` builds the algebra IR in the lowering pass from this
+    -- sub-elaboration; the algebra may be named/arith/effectful.
     t-cata-check : ∀ {ctx : NamedCtx} {alg : RawExpr} {F : Functor} {A : Type}
-                   {mr : MorphRaw alg} {wfF : WellFormedF F}
-                   {algIR : IR (⟦ F ⟧T A) A}
-                 → morphRaw? alg ≡ just mr
+                   {wfF : WellFormedF F}
                  → wellFormedF? F ≡ just wfF
-                 → morphToIR mr (⟦ F ⟧T A) A ≡ just algIR
+                 → ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx)
+                     ⊢ᶜ alg ∶ (⟦ F ⟧T A ⇒ A) ⨾ Surface.zeroUsage
                  → ctx ⊢ᶜ RApp (RVar "cata") alg
                          ∶ (μ-type F Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] A)
                          ⨾ Surface.zeroUsage
