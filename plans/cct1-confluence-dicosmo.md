@@ -1,6 +1,34 @@
 # CCT1 βη-Confluence: Pivot to Di Cosmo Factorisation
 
-## Status
+## STATUS (2026-06-08): GOAL DISPROVEN — DO NOT RE-ATTEMPT
+
+Full βη confluence at CCT1 is **false**, proved (zero postulates) in
+`formal/Theory/Syntax/StrongCCL/CCT1/NonConfluenceWitness.agda` (`¬confluent`).
+The term `curry (apply ∘ ⟨ fst ∘ fst , snd ⟩) ∘ snd` reduces to two distinct
+βη-NFs (via curry-η; and via curry-compose+assoc) that cannot be joined because
+`assoc` is one-directional and `curry-η` needs the rigid shape `f ∘ fst`. This is
+the typed-combinator instance of the Klop/Curien-Hardin phenomenon. Everything
+below this section is the superseded pursuit, kept as a research log.
+
+**Resolution (see `bootstrap/theory/normalizer-vs-compiler-path.md`):** confluent
+β-fragment *core* (Curien1985) for conversion + `≈βη`-preserving passes for the
+optimizer; for the bootstrap, an evaluator/NbE normalizer where determinism +
+totality replace confluence. η is handled by *expansion*, never contraction.
+
+**Removed (orphaned, all rested on the disproven goal; recover via
+`git show <pre-cleanup-commit>:<path>`):** `CCT1/{ConfluenceFull, ConfluenceFullViaHR,
+ConfluenceFullViaDiCosmoHardin, LocalConfluence, HardinSplit, HardinWN,
+ParallelReductionSplit, Diamond1, Diamond2, Commute12, NFClosedAnalysis,
+RuleSplit}` and `Derived/DiCosmoFactor`. `LocalConfluence` housed the false
+`local-confluent-rest` postulate from which the old `cct1-confluence` was derived.
+
+**Kept (reusable):** `CCT1/Tait` (strong normalization), `CCT1/Diamond` +
+`CCT1/DecidableEquality` + `CCT1/ParallelReduction` (β-fragment parallel-reduction
+work), and the confluent `Curien1985` core.
+
+---
+
+## Status (historical)
 
 Strategic pivot from Newman+Tait and Hindley-Rosen+Takahashi to **Di Cosmo's
 Lemma 2.7** (factorisation of confluence into a SN inner system + outer

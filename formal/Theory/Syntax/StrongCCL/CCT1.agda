@@ -8,13 +8,20 @@
 --   η:  curry-η, curry-apply, curry-compose
 -- on top of Hardin1989's 9 CCTB rules.
 --
--- Confluence is proven via Newman's lemma (SN via Tait + local
--- confluence) in the Hardin1989/{Tait,LocalConfluence,ConfluenceFull}
--- proof chain.
+-- NOTE: this full βη system is NOT confluent. See
+-- CCT1.NonConfluenceWitness for a machine-checked counter-witness
+-- (curry-η vs curry-compose+assoc land on two distinct βη-NFs). The
+-- earlier "Newman via Tait + local confluence" proof chain
+-- (ConfluenceFull / LocalConfluence / ...) rested on a FALSE postulate
+-- (local-confluent-rest) and has been removed; SN alone survives in
+-- Tait. Use the confluent β-fragment core (Curien1985) for conversion;
+-- treat the η/structural rules as ≈βη-preserving equations, not as a
+-- confluent rewrite system.
 --
 -- Sibling syntaxes at the CCT1 level:
 --   - Curien1985 : the original β-only CCL at CCT1 (β rules + curry-β),
 --                  proven confluent via Takahashi's parallel-reduction.
+--                  This is the confluent CORE.
 --
 -- This module also builds:
 --   (a) the Systems.CCT1.CCT1Structure instance whose `_≈_` is the
@@ -80,7 +87,7 @@ infix 4 _⟶β_
 
 ------------------------------------------------------------------------
 -- Full β ∪ η ∪ structural reduction — Hardin1989's single reduction.
--- Confluence via Newman (SN via Tait + local confluence).
+-- NOT confluent (see CCT1.NonConfluenceWitness); SN holds (Tait).
 ------------------------------------------------------------------------
 
 data _⟶βη-rules_ : ∀ {A B} → Term A B → Term A B → Set where
