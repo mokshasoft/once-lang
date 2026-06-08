@@ -40,9 +40,8 @@
 module Theory.RanzowFixpoint.EvalCorrectness where
 
 open import Theory.CCTower using (TowerLevel; CCT3)
-open import Theory.Systems.CCT3
 open import Theory.Syntax.Evaluable using (Evaluable)
-open import Theory.RanzowFixpoint using (EncodingScheme)
+open import Theory.RanzowFixpoint.SelfEncoding using (SelfEncoding)
 open import Relation.Binary.PropositionalEquality using (_≡_; sym; trans)
 open import Data.Product
   using (Σ; _,_; proj₁; proj₂) renaming (_×_ to _∧_)
@@ -57,18 +56,16 @@ applies-to = CCT3
 ------------------------------------------------------------------------
 -- The evaluator-form correctness fragment
 --
--- Parameterized over:
---   - S  : a CCT3 structure (equational carrier)
---   - Ev : an Evaluable carrier on S (big-step evaluation)
---   - E  : an encoding scheme for S
+-- Parameterized over exactly what the proof uses (Theory.RanzowFixpoint.
+-- SelfEncoding):
+--   - SE : a self-encoding carrier (Obj/Hom/∘/Unit/Code/encode)
+--   - Ev : an Evaluable carrier on it (big-step evaluation)
 ------------------------------------------------------------------------
 
-module _ (S  : CCT3Structure)
-         (Ev : Evaluable (CCT3Structure.Obj S) (CCT3Structure.Hom S))
-         (E  : EncodingScheme S) where
-  open CCT3Structure S
+module _ (SE : SelfEncoding)
+         (Ev : Evaluable (SelfEncoding.Obj SE) (SelfEncoding.Hom SE)) where
+  open SelfEncoding SE
   open Evaluable Ev
-  open EncodingScheme E
 
   ----------------------------------------------------------------------
   -- The Ranzow Fixpoint property, evaluator form.

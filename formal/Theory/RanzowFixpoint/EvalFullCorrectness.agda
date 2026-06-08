@@ -48,9 +48,8 @@
 module Theory.RanzowFixpoint.EvalFullCorrectness where
 
 open import Theory.CCTower using (TowerLevel; CCT3)
-open import Theory.Systems.CCT3
 open import Theory.Syntax.Evaluable using (Evaluable)
-open import Theory.RanzowFixpoint using (EncodingScheme)
+open import Theory.RanzowFixpoint.SelfEncoding using (SelfEncoding)
 import Theory.RanzowFixpoint.EvalCorrectness as EC
 open import Relation.Binary.PropositionalEquality using (_≡_; sym; subst)
 open import Data.Product using (Σ; _,_) renaming (_×_ to _∧_)
@@ -63,16 +62,14 @@ applies-to : TowerLevel
 applies-to = CCT3
 
 ------------------------------------------------------------------------
--- Parameterized over a CCT3 structure, an Evaluable carrier, and an
--- encoding scheme — as in EvalCorrectness.
+-- Parameterized over a self-encoding carrier and an Evaluable carrier —
+-- as in EvalCorrectness.
 ------------------------------------------------------------------------
 
-module _ (S  : CCT3Structure)
-         (Ev : Evaluable (CCT3Structure.Obj S) (CCT3Structure.Hom S))
-         (E  : EncodingScheme S) where
-  open CCT3Structure S
+module _ (SE : SelfEncoding)
+         (Ev : Evaluable (SelfEncoding.Obj SE) (SelfEncoding.Hom SE)) where
+  open SelfEncoding SE
   open Evaluable Ev
-  open EncodingScheme E
 
   ----------------------------------------------------------------------
   -- Value-level encoding laws (definitional; the eval-form analogue of
@@ -132,7 +129,7 @@ module _ (S  : CCT3Structure)
 
       private
         fixpoint-at-spec :
-          EC.HasEvalRanzowFixpoint S Ev E N →
+          EC.HasEvalRanzowFixpoint SE Ev N →
           spec N ≡ N →
           (N ∘ encode N) ⇓ encVal (spec N)
         fixpoint-at-spec (v , lhs⇓v , rhs⇓v) spec≡ =
@@ -149,7 +146,7 @@ module _ (S  : CCT3Structure)
       ----------------------------------------------------------------
 
       fixpoint-implies-correctness :
-        EC.HasEvalRanzowFixpoint S Ev E N →
+        EC.HasEvalRanzowFixpoint SE Ev N →
         spec N ≡ N →
         Correct spec N
       fixpoint-implies-correctness rf spec≡ =

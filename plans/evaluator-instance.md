@@ -22,7 +22,17 @@ fixpoint⟹correctness chain into a postulate-free concrete theorem.
    depends on NOTHING, own prelude) do not import each other.
    ⇒ An architecture decision is required (below) before wiring.
 
-## Architecture decision (OPEN — pick before module 3)
+## Architecture decision — RESOLVED: (B) + SelfEncoding re-parameterization
+
+Chosen: **(B)** `bootstrap` depends on `Once` (no duplication, forced inline),
+made possible by re-parameterizing the two eval modules over the minimal
+`Theory.RanzowFixpoint.SelfEncoding` record (Obj/Hom/∘/Unit/Code/encode) instead
+of the full higher-order-`μ` `CCT3Structure` (which bootstrap's first-order `Func`
+syntax cannot fill). `fromCCT3` adapts existing `CCT3Structure`+`EncodingScheme`
+users for free. Done + typechecks. Remaining for B: `bootstrap` `depend: Once`
++ build wiring; then rewrite the instance modules against the formal theorems.
+
+Original options (for the record):
 
 Where do the abstract evaluator-form theorems meet the concrete model?
 
