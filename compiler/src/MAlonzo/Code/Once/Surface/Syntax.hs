@@ -30,14 +30,14 @@ import qualified MAlonzo.Code.Once.Type
 d_Ctx_6 a0 = ()
 data T_Ctx_6
   = C_'8709'_8 |
-    C__'44'_'94'__12 T_Ctx_6 MAlonzo.Code.Once.Type.T_Type_108
+    C__'44'_'94'__12 T_Ctx_6 MAlonzo.Code.Once.Type.T_Type_112
                      MAlonzo.Code.Once.Type.T_Quantity_4
 -- Once.Surface.Syntax._,_
 d__'44'__16 ::
-  Integer -> T_Ctx_6 -> MAlonzo.Code.Once.Type.T_Type_108 -> T_Ctx_6
+  Integer -> T_Ctx_6 -> MAlonzo.Code.Once.Type.T_Type_112 -> T_Ctx_6
 d__'44'__16 ~v0 v1 v2 = du__'44'__16 v1 v2
 du__'44'__16 ::
-  T_Ctx_6 -> MAlonzo.Code.Once.Type.T_Type_108 -> T_Ctx_6
+  T_Ctx_6 -> MAlonzo.Code.Once.Type.T_Type_112 -> T_Ctx_6
 du__'44'__16 v0 v1
   = coe C__'44'_'94'__12 v0 v1 (coe MAlonzo.Code.Once.Type.C_Many_10)
 -- Once.Surface.Syntax.lookup
@@ -45,12 +45,12 @@ d_lookup_24 ::
   Integer ->
   T_Ctx_6 ->
   MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
-  MAlonzo.Code.Once.Type.T_Type_108
+  MAlonzo.Code.Once.Type.T_Type_112
 d_lookup_24 ~v0 v1 v2 = du_lookup_24 v1 v2
 du_lookup_24 ::
   T_Ctx_6 ->
   MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
-  MAlonzo.Code.Once.Type.T_Type_108
+  MAlonzo.Code.Once.Type.T_Type_112
 du_lookup_24 v0 v1
   = case coe v0 of
       C__'44'_'94'__12 v3 v4 v5
@@ -216,23 +216,23 @@ d_Expr_174 a0 a1 a2 a3 = ()
 data T_Expr_174
   = C_var_182 MAlonzo.Code.Data.Fin.Base.T_Fin_10 |
     C_lam_198 MAlonzo.Code.Once.Type.T_Quantity_4 T_Expr_174 |
-    C_app_214 T_Usage_50 T_Usage_50 MAlonzo.Code.Once.Type.T_Type_108
+    C_app_214 T_Usage_50 T_Usage_50 MAlonzo.Code.Once.Type.T_Type_112
               MAlonzo.Code.Once.Type.T_Quantity_4 T_Expr_174 T_Expr_174 |
     C_effApp_228 T_Usage_50 T_Usage_50
-                 MAlonzo.Code.Once.Type.T_Type_108 T_Expr_174 T_Expr_174 |
+                 MAlonzo.Code.Once.Type.T_Type_112 T_Expr_174 T_Expr_174 |
     C_pair_242 T_Usage_50 T_Usage_50 T_Expr_174 T_Expr_174 |
-    C_fst''_254 MAlonzo.Code.Once.Type.T_Type_108 T_Expr_174 |
-    C_snd''_266 MAlonzo.Code.Once.Type.T_Type_108 T_Expr_174 |
+    C_fst''_254 MAlonzo.Code.Once.Type.T_Type_112 T_Expr_174 |
+    C_snd''_266 MAlonzo.Code.Once.Type.T_Type_112 T_Expr_174 |
     C_inl''_278 T_Expr_174 | C_inr''_290 T_Expr_174 |
     C_case''_312 T_Usage_50 T_Usage_50 T_Usage_50
                  MAlonzo.Code.Once.Type.T_Quantity_4
                  MAlonzo.Code.Once.Type.T_Quantity_4
-                 MAlonzo.Code.Once.Type.T_Type_108 MAlonzo.Code.Once.Type.T_Type_108
+                 MAlonzo.Code.Once.Type.T_Type_112 MAlonzo.Code.Once.Type.T_Type_112
                  T_Expr_174 T_Expr_174 T_Expr_174 |
     C_unit_318 | C_absurd_328 T_Expr_174 |
     C_let''_344 T_Usage_50 T_Usage_50
                 MAlonzo.Code.Once.Type.T_Quantity_4
-                MAlonzo.Code.Once.Type.T_Type_108 T_Expr_174 T_Expr_174 |
+                MAlonzo.Code.Once.Type.T_Type_112 T_Expr_174 T_Expr_174 |
     C_int_350 Integer |
     C_str_356 MAlonzo.Code.Agda.Builtin.String.T_String_6 |
     C_add_366 T_Usage_50 T_Usage_50 T_Expr_174 T_Expr_174 |
@@ -251,8 +251,8 @@ data T_Expr_174
     C_sigOp_494 MAlonzo.Code.Agda.Builtin.String.T_String_6 |
     C_closure_502 MAlonzo.Code.Agda.Builtin.String.T_String_6 |
     C_poly_512 MAlonzo.Code.Agda.Builtin.String.T_String_6 |
-    C_lift'45'morphism_522 MAlonzo.Code.Once.CCC.IR.T_IR_274 |
-    C_morph'45'app_534 T_Usage_50 MAlonzo.Code.Once.Type.T_Type_108
+    C_lift'45'morphism_524 MAlonzo.Code.Once.CCC.IR.T_IR_274 |
+    C_morph'45'app_536 T_Usage_50 MAlonzo.Code.Once.Type.T_Type_112
                        MAlonzo.Code.Once.CCC.IR.T_IR_274 T_Expr_174 |
-    C_cata_544 MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174
+    C_cata_548 MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174
                T_Expr_174

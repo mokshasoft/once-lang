@@ -239,6 +239,10 @@ composeArgB ctx (Raw.RApp (Raw.RApp (Raw.RVar "compose") f') g') A with composeA
 ... | just B' with composeArgB ctx f' B'
 ...   | nothing = nothing
 ...   | just C  = just C
+-- Plan 0.36 Phase 1: `arr g` (effect lift) preserves the underlying arrow's
+-- domain/codomain, so B-recovery sees through it. Lets a pure morphism be
+-- lifted into an effectful compose (single-π: `compose emit (arr fst)`).
+composeArgB ctx (Raw.RApp (Raw.RVar "arr") g') A = composeArgB ctx g' A
 -- Other shapes: compose can't proceed.
 composeArgB _ _ _ = nothing
 

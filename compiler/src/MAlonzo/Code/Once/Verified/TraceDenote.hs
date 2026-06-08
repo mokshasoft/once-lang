@@ -31,15 +31,15 @@ import qualified MAlonzo.Code.Once.Verified.Trace
 
 -- Once.Verified.TraceDenote.obs
 d_obs_10 ::
-  MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Type.T_Type_112 ->
+  MAlonzo.Code.Once.Type.T_Type_112 ->
   Integer ->
   MAlonzo.Code.Once.CCC.IR.T_IR_274 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_obs_10 v0 v1 ~v2 v3 v4 = du_obs_10 v0 v1 v3 v4
 du_obs_10 ::
-  MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Type.T_Type_112 ->
+  MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.CCC.IR.T_IR_274 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_obs_10 v0 v1 v2 v3
@@ -77,7 +77,7 @@ du_obs_10 v0 v1 v2 v3
                    _ -> MAlonzo.RTE.mazUnreachableError)
          MAlonzo.Code.Once.CCC.IR.C_'10216'_'44'_'10217'_294 v8 v9 v10
            -> case coe v1 of
-                MAlonzo.Code.Once.Type.C__'42'__122 v11 v12
+                MAlonzo.Code.Once.Type.C__'42'__126 v11 v12
                   -> let v13 = coe du_obs_10 (coe v0) (coe v11) (coe v8) (coe v3) in
                      coe
                        (case coe v13 of
@@ -116,7 +116,7 @@ du_obs_10 v0 v1 v2 v3
                 _ -> coe v4
          MAlonzo.Code.Once.CCC.IR.C_case_326 v8 v9
            -> case coe v0 of
-                MAlonzo.Code.Once.Type.C__'43'__124 v10 v11
+                MAlonzo.Code.Once.Type.C__'43'__128 v10 v11
                   -> case coe v3 of
                        MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v12
                          -> coe du_obs_10 (coe v10) (coe v1) (coe v8) (coe v12)

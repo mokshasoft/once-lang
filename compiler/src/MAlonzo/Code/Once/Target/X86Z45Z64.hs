@@ -120,8 +120,8 @@ d_x86'45'64'45'functionEpilogue_12
 -- Once.Target.X86-64.x86-64-irToAsm
 d_x86'45'64'45'irToAsm_18 ::
   Integer ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Type.T_Type_112 ->
+  MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.CCC.IR.T_IR_274 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_x86'45'64'45'irToAsm_18 v0 v1 v2 v3
@@ -248,8 +248,8 @@ d_emit'45'thunk'45'body_34 v0 v1
 -- Once.Target.X86-64.x86-64-irToBodies
 d_x86'45'64'45'irToBodies_52 ::
   Integer ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Type.T_Type_112 ->
+  MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.CCC.IR.T_IR_274 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_x86'45'64'45'irToBodies_52 v0 v1 v2 v3
@@ -268,8 +268,8 @@ d_x86'45'64'45'irToBodies_52 v0 v1 v2 v3
 -- Once.Target.X86-64._.emit-bodies
 d_emit'45'bodies_62 ::
   Integer ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Type.T_Type_112 ->
+  MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.CCC.IR.T_IR_274 ->
   Integer ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
