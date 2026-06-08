@@ -1,67 +1,120 @@
 ------------------------------------------------------------------------
 -- normalizer.Theory.Eval.Instance
 --
--- A concrete Evaluable carrier for the normalizer syntax, built on the
--- existing denotational evaluator (Testing.Evaluator.eval).
+-- Concrete instantiation of the FORMAL evaluator-form Ranzow correctness
+-- (Theory.RanzowFixpoint.EvalCorrectness, in the `Once` library) at the
+-- normalizer syntax, using the existing denotational evaluator
+-- (Testing.Evaluator.eval).
 --
--- This discharges — FOR FREE — the two hypotheses that the abstract
--- evaluator-form Ranzow correctness (Theory.RanzowFixpoint.EvalCorrectness)
--- requires:
+-- This is decision (B) of plans/evaluator-instance.md: bootstrap depends
+-- on Once, so the abstract theorem and the concrete model stay inline
+-- (no duplication). The theorems are parameterised over the minimal
+-- `SelfEncoding` interface, which the normalizer's first-order Func-based
+-- syntax CAN supply (a full CCT3Structure, with higher-order μ, it could
+-- not).
 --
---   determinism : a term evaluates to at most one value
---   totality    : a term evaluates to at least one value
+-- determinism + totality are discharged FOR FREE — `eval` is a total,
+-- deterministic Agda function — so neither the confluence obligation
+-- (cf. NonConfluenceWitness) nor the strong-normalization obligation
+-- (cf. WeakNormalizationFails) appears. That is the whole point of the
+-- evaluator route.
 --
--- Both are immediate because `eval` is a total, deterministic Agda
--- function. No confluence obligation (cf. NonConfluenceWitness) and no
--- strong-normalization obligation (cf. WeakNormalizationFails) — the two
--- false postulates the rewriting developments rest on are simply not
--- needed here. This is the concrete payoff of the evaluator route.
---
--- Step 4 of plans/evaluator-instance.md, architecture option (A): the
--- instance lives in the bootstrap lib, where the model already exists.
+-- Build: bootstrap/check.sh normalizer/Theory/Eval/Instance.agda
 ------------------------------------------------------------------------
 
 module normalizer.Theory.Eval.Instance where
 
-open import normalizer.Syntax.Types
-open import normalizer.Syntax.CCC using (Term)
+-- bootstrap side (own prelude / syntax / model)
+open import normalizer.Syntax.Types using (Ty; Unit)
+open import normalizer.Syntax.CCC using (Term; _∘_)
+open import normalizer.Encoding.Encoding using (TermCode'; encode)
 open import normalizer.Testing.Evaluator using (⟦_⟧T; eval)
 
-------------------------------------------------------------------------
--- The Evaluable carrier (bootstrap-local mirror of
--- Theory.Syntax.Evaluable, against the bootstrap prelude).
-------------------------------------------------------------------------
+-- Once side (abstract theorems)
+open import Theory.Syntax.Evaluable using (Evaluable)
+open import Theory.RanzowFixpoint.SelfEncoding using (SelfEncoding)
+import Theory.RanzowFixpoint.EvalCorrectness as EC
 
-record Evaluable : Set₁ where
-  field
-    Value : Ty → Ty → Set
-    _⇓_   : ∀ {A B} → Term A B → Value A B → Set
-  infix 4 _⇓_
+-- stdlib (available via the Once dependency)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
+open import Data.Product using (Σ; _,_; _×_)
 
 ------------------------------------------------------------------------
--- The denotational instance: a value is a model function, and a term
--- "evaluates to" the function it denotes.
+-- The denotational value domain + evaluation relation, as NAMED
+-- definitions (not record-field lambdas) so their types match EC's
+-- parameters rigidly.
 ------------------------------------------------------------------------
 
-Denotational : Evaluable
-Denotational = record
-  { Value = λ A B → ⟦ A ⟧T → ⟦ B ⟧T
-  ; _⇓_   = λ t v → eval t ≡ v
-  }
+-- The value domain is wrapped in a record (not a bare function type) so
+-- that value equality `v ≡ w` does not reduce to pointwise function
+-- equality. Note also: in `t ⇓ᵈ v` the term `t` occurs only under the
+-- non-injective `eval`, so the implicit `{t}` of `determinism` is not
+-- recoverable from the goal — it is supplied explicitly at the use sites
+-- below.
+record DenValue (A B : Ty) : Set where
+  constructor mkVal
+  field unVal : ⟦ A ⟧T → ⟦ B ⟧T
+open DenValue
 
-open Evaluable Denotational public
+_⇓ᵈ_ : ∀ {A B} → Term A B → DenValue A B → Set
+t ⇓ᵈ v = eval t ≡ unVal v
+
+infix 4 _⇓ᵈ_
 
 ------------------------------------------------------------------------
--- determinism — free: eval is a function.
+-- The self-encoding carrier and the Evaluable carrier.
 ------------------------------------------------------------------------
 
-determinism : ∀ {A B} {t : Term A B} {v w : Value A B} →
-              t ⇓ v → t ⇓ w → v ≡ w
-determinism p q = trans (sym p) q
+NormSE : SelfEncoding
+NormSE = record
+  { Obj = Ty ; Hom = Term ; _∘_ = _∘_
+  ; Unit = Unit ; Code = TermCode' ; encode = encode }
+
+NormEv : Evaluable Ty Term
+NormEv = record { Value = DenValue ; _⇓_ = _⇓ᵈ_ }
 
 ------------------------------------------------------------------------
--- totality — free: eval is total.
+-- determinism + totality — free.
 ------------------------------------------------------------------------
 
-totality : ∀ {A B} (t : Term A B) → ∃[ v ] (t ⇓ v)
-totality t = eval t , refl
+determinism : ∀ {A B} {t : Term A B} {v w : DenValue A B} →
+              t ⇓ᵈ v → t ⇓ᵈ w → v ≡ w
+determinism p q = cong mkVal (trans (sym p) q)
+
+totality : ∀ {A B} (t : Term A B) → Σ (DenValue A B) (λ v → t ⇓ᵈ v)
+totality t = mkVal (eval t) , refl
+
+------------------------------------------------------------------------
+-- Concrete canonicity / uniqueness of the Ranzow fixpoint VALUE,
+-- obtained by instantiating the abstract Once theorem with the model.
+-- These are the first concrete (postulate-free, evaluator-backed)
+-- consequences of the fixpoint property for the normalizer syntax.
+------------------------------------------------------------------------
+
+-- The Ranzow fixpoint property itself is reused verbatim from the formal
+-- module (this is the cross-lib instantiation via SelfEncoding):
+module Fix = EC.Fixpoint NormSE NormEv
+open Fix public using (HasEvalRanzowFixpoint)
+
+-- Its two consequences are EC.Fixpoint.Canonical.{eval-fixpoint-is-canonical,
+-- eval-fixpoint-is-unique}. We re-prove them here directly from `determinism`
+-- (the same one-liners) rather than instantiate EC.Canonical by module
+-- application: with this function-based model, instantiating Canonical forces
+-- `canonical-value`'s `with totality t`, where the `{t}` hidden under `eval`
+-- cannot be solved. Proving the two theorems directly lets us pass `{t}`
+-- explicitly; the proofs are otherwise identical to EC's.
+
+-- Any observed value of (N ∘ ⌜N⌝) equals ⌜N⌝'s value.
+eval-fixpoint-is-canonical :
+  ∀ (T : Term TermCode' TermCode') →
+  HasEvalRanzowFixpoint T →
+  ∀ {u} → (T ∘ encode T) ⇓ᵈ u →
+  Σ (DenValue Unit TermCode') (λ w → ((encode T) ⇓ᵈ w) × (u ≡ w))
+eval-fixpoint-is-canonical T (v , fix-lhs , fix-rhs) p =
+  v , fix-rhs , determinism {t = T ∘ encode T} p fix-lhs
+
+-- The fixpoint value is unique (pure determinism).
+eval-fixpoint-is-unique :
+  ∀ (T : Term TermCode' TermCode') →
+  ∀ {u w} → (T ∘ encode T) ⇓ᵈ u → (T ∘ encode T) ⇓ᵈ w → u ≡ w
+eval-fixpoint-is-unique T p q = determinism {t = T ∘ encode T} p q

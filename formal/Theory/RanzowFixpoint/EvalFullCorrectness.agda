@@ -129,7 +129,7 @@ module _ (SE : SelfEncoding)
 
       private
         fixpoint-at-spec :
-          EC.HasEvalRanzowFixpoint SE Ev N →
+          EC.Fixpoint.HasEvalRanzowFixpoint SE Ev N →
           spec N ≡ N →
           (N ∘ encode N) ⇓ encVal (spec N)
         fixpoint-at-spec (v , lhs⇓v , rhs⇓v) spec≡ =
@@ -146,7 +146,7 @@ module _ (SE : SelfEncoding)
       ----------------------------------------------------------------
 
       fixpoint-implies-correctness :
-        EC.HasEvalRanzowFixpoint SE Ev N →
+        EC.Fixpoint.HasEvalRanzowFixpoint SE Ev N →
         spec N ≡ N →
         Correct spec N
       fixpoint-implies-correctness rf spec≡ =

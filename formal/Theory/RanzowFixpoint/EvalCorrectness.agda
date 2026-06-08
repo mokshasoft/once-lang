@@ -62,8 +62,8 @@ applies-to = CCT3
 --   - Ev : an Evaluable carrier on it (big-step evaluation)
 ------------------------------------------------------------------------
 
-module _ (SE : SelfEncoding)
-         (Ev : Evaluable (SelfEncoding.Obj SE) (SelfEncoding.Hom SE)) where
+module Fixpoint (SE : SelfEncoding)
+                (Ev : Evaluable (SelfEncoding.Obj SE) (SelfEncoding.Hom SE)) where
   open SelfEncoding SE
   open Evaluable Ev
 
@@ -79,7 +79,7 @@ module _ (SE : SelfEncoding)
   HasEvalRanzowFixpoint T =
     Σ (Value Unit Code) (λ v → ((T ∘ encode T) ⇓ v) ∧ (encode T ⇓ v))
 
-  module _
+  module Canonical
     ------------------------------------------------------------------
     -- HYPOTHESIS (determinism):
     --   A term evaluates to at most one value. Free for a functional
