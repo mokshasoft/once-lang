@@ -1,5 +1,45 @@
 # Plan: concrete Evaluable instance → discharge the evaluator-route gaps
 
+## STATUS (2026-06-08): foundation mechanised end-to-end (postulate-free)
+
+Modules 1–7 + capstone are DONE, all building under `bootstrap/check.sh`:
+- `Once`: `SelfEncoding` + `EvalCorrectness`/`EvalFullCorrectness`
+  re-parameterised over it, modules named (`Fixpoint`/`Canonical`,
+  `FullFixpoint`/`Laws`/`Theorem`).
+- `bootstrap`: `depend: Once`; `normalizer.Theory.Eval.Instance`
+  (`NormSE`, `NormEv`, determinism + totality FREE, canonicity);
+  `…Eval.RefoldFixpoint` (cata-reflection ⟹ the refold normalizer
+  `cata TermF In` has the Ranzow fixpoint, fed through the formal
+  canonicity theorem); `…Eval.RefoldFullCorrectness` (correct on ALL
+  inputs for spec = id).
+
+Zero postulates anywhere in the chain; NO confluence and NO
+strong-normalization obligation — the evaluator route's whole point.
+
+CAVEAT: the witness N = refold is DENOTATIONALLY THE IDENTITY (spec = id),
+so the result is degenerate-but-real. The genuinely meaningful normalizer
+needs module 8 below.
+
+Recurring Agda note: wherever the candidate term sits only under the
+non-injective `eval`, the unifier can't recover it — pass it explicitly
+(`determinism {t = …}`, `mkFixpoint {N} …`), or prove the conclusion
+directly instead of instantiating a hypothesis-bearing module (the
+function-based `_⇓_` trips function-eta otherwise).
+
+## Remaining (the real work)
+- **Module 8 — adequacy / faithfulness on encodings (HARD KERNEL).** Needed
+  to lift denotational results to the actual syntactic normal form, and to
+  use a non-trivial N. Hits the SAME composition-middle-type obstruction as
+  the erased encoding's faithfulness (see normalizer-vs-compiler-path.md):
+  `eval (encode (id{A})) = eval (encode (id{B}))`, so the erased model is
+  not faithful — this needs the typed two-layer encoding. Genuine
+  multi-session NbE-adequacy work; principled but large.
+- A real dispatch normalizer (not the refold) instantiated through the
+  full chain, once module 8 exists.
+
+---
+
+
 Goal: instantiate the abstract evaluator-form theorems
 (`Theory.RanzowFixpoint.EvalCorrectness` / `EvalFullCorrectness`) with a
 *concrete* evaluator, discharging `determinism`, `totality`, `encVal`,
