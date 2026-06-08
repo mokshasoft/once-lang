@@ -129,6 +129,21 @@ compile-abstract (lea-slot n) =
 compile-abstract (restore-input n) =
   mov (reg rdi) (mem (base+disp rsp (slot-to-disp n))) ∷ []
 
+-- lea-indexed: Input1 := &(base + idx), base = SV-Ptr at slot, idx = Scratch.
+-- No scaled-index addressing mode in this model, so synthesize idx*8 in a
+-- temp (rcx) by three doublings, then add to the base pointer. Plan 0.36 2b.
+--   mov rdi, [rsp + slot*8]   ; rdi := base ptr
+--   mov rcx, rbx              ; rcx := idx (Scratch)
+--   add rcx, rcx ×3           ; rcx := 8*idx
+--   add rdi, rcx              ; rdi := base + 8*idx
+compile-abstract (lea-indexed n) =
+  mov (reg rdi) (mem (base+disp rsp (slot-to-disp n))) ∷
+  mov (reg rcx) (reg rbx) ∷
+  add (reg rcx) (reg rcx) ∷
+  add (reg rcx) (reg rcx) ∷
+  add (reg rcx) (reg rcx) ∷
+  add (reg rdi) (reg rcx) ∷ []
+
 -- instr-alloc-stack: allocate N slots on stack
 -- x86: sub rsp, N*8
 compile-abstract (instr-alloc-stack n) =

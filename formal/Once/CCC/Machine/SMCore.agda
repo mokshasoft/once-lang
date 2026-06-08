@@ -377,6 +377,13 @@ sv-pred : ∀ {FS} → StoredValue FS → StoredValue FS
 sv-pred (SV-Tag (suc n)) = SV-Tag n
 sv-pred _                = SV-Tag 0
 
+-- Plan 0.36 Phase 2b: read a count register (SV-Tag n) as the ℕ index
+-- for `lea-indexed`'s `offsetLoc`. Non-tags index 0 (never reached when
+-- the index register holds the descend/ascend counter).
+sv-tag-val : ∀ {FS} → StoredValue FS → ℕ
+sv-tag-val (SV-Tag n) = n
+sv-tag-val _          = 0
+
 ------------------------------------------------------------------------
 -- LocState: Abstract Machine State
 ------------------------------------------------------------------------
@@ -702,6 +709,18 @@ module ExecFinal {FS : FrameSemantics} where
                             LocState FS → LocState FS
   exec-store-via-resolved (just loc) v s = writeLoc s loc v
   exec-store-via-resolved nothing    _ s = record s { halted = true }
+
+  -- Plan 0.36 Phase 2b: `lea-indexed` helpers (with-free). `slot-base`
+  -- resolves the base pointer read from a slot; `exec-lea-indexed-via`
+  -- writes `&(base + idx)` into Input1 (halts if the base isn't a ptr).
+  slot-base : Maybe (StoredValue FS) → Maybe (ValueLocation FS)
+  slot-base (just sv) = sv-as-loc sv
+  slot-base nothing   = nothing
+
+  exec-lea-indexed-via : Maybe (ValueLocation FS) → ℕ → LocState FS → LocState FS
+  exec-lea-indexed-via (just loc) idx s =
+    record s { regs = writeReg (regs s) Input1 (SV-Ptr (offsetLoc loc idx)) }
+  exec-lea-indexed-via nothing    idx s = record s { halted = true }
 
   -- Plan 0.27: `-suc` variants of the resolved load/store helpers, dispatching
   -- on the resolved Maybe address EXPLICITLY (no `with`). exec-abstract's
@@ -1077,6 +1096,13 @@ data AbstractInstr : Set where
   -- flat pc/fuel exec interprets them. See FlatCtrl above.
   instr-ctrl : FlatCtrl → AbstractInstr
 
+  -- Plan 0.36 Phase 2b: indexed-pointer compute for the cata payload/work
+  -- stack. `lea-indexed slot`: Input1 := &(base + idx), where base is the
+  -- array pointer held at stack `slot` and idx = the count in `Scratch`
+  -- (reuses `offsetLoc`). The subsequent `load-indirect`/`store-indirect`
+  -- then access `array[idx]`. Added LAST for MAlonzo ctor-index stability.
+  lea-indexed : ℕ → AbstractInstr
+
 -- | A trace is a sequence of abstract instructions
 AbstractTrace : Set
 AbstractTrace = List AbstractInstr
@@ -1432,6 +1458,12 @@ module AbstractExec {FS : FrameSemantics} where
   -- restore-input: Input1 := stack[frame, slot]
   exec-abstract (restore-input slot) s alloc =
     exec-restore-input-with-value (readLoc s (AtStack (current-frame alloc) slot)) s alloc
+
+  -- lea-indexed slot: Input1 := &(base + idx), base = SV-Ptr at `slot`,
+  -- idx = Scratch's count (via offsetLoc). Plan 0.36 Phase 2b.
+  exec-abstract (lea-indexed slot) s alloc =
+    exec-lea-indexed-via (slot-base (readLoc s (AtStack (current-frame alloc) slot)))
+                         (sv-tag-val (readReg (regs s) Scratch)) s , alloc
 
   -- instr-alloc-stack: advance stackSlot by n AND advance next-slot frontier
   -- Capacity was verified by Dispatcher when constructing the trace
