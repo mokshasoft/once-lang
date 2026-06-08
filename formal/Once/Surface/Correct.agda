@@ -166,8 +166,9 @@ case-analysis-inr ρ s l r b eq with evalSurface ρ s | eq
 -- + `sem-cata` congruence + the apply/⟨⟩/terminal extraction reduction.
 -- Discharge alongside the Completeness cata bridge (plan 0.36).
 postulate
-  cata-elaborate-correct : ∀ {n} {Γ : Ctx n} {F : Functor} {A}
-    (ρ : Env Γ) (wfF : WellFormedF F) (alg : Expr ∅ zeroUsage (⟦ F ⟧T A ⇒ A))
+  cata-elaborate-correct : ∀ {n} {Γ : Ctx n} {F : Functor} {A} {π : Once.Type.Purity}
+    (ρ : Env Γ) (wfF : WellFormedF F)
+    (alg : Expr ∅ zeroUsage (⟦ F ⟧T A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A))
     → evalSurface ρ (cata wfF alg) ≡ eval′ (elaborate (cata wfF alg)) (interpEnv ρ)
 
 mutual
