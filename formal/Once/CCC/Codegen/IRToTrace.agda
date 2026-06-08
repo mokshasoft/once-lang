@@ -56,7 +56,7 @@
 
 module Once.CCC.Codegen.IRToTrace where
 
-open import Data.Nat using (ℕ; zero; suc; _⊔_) renaming (_+_ to _+ℕ_)
+open import Data.Nat using (ℕ; zero; suc; _⊔_; _*_) renaming (_+_ to _+ℕ_)
 open import Data.Bool using (Bool; true; false; if_then_else_; _∨_)
 open import Data.Product using (_×_; _,_; proj₂)
 open import Data.List using (List; []; _∷_; _++_)
@@ -132,7 +132,7 @@ data CataStrategy : Set where
   strat-const     : CataStrategy   -- 0 rec positions: cata = alg on the In-layer
   strat-nat       : CataStrategy   -- 1 bare-Id rec position, no payload (Nat)
   strat-linear    : CataStrategy   -- 1 rec position + payload (Tier 1)
-  strat-branching : CataStrategy   -- ≥2 rec positions (Tier 2, TODO)
+  strat-branching : Functor → CataStrategy  -- ≥2 rec positions (Tier 2); carries F
 
 -- `has-id F` — does `Id` occur anywhere in `F`? `id-under-product F` — does
 -- some `Id` sit INSIDE a `⊗`? A single-recursive functor with `Id` under a
@@ -159,7 +159,7 @@ cata-strategy : Functor → CataStrategy
 cata-strategy F with rec-count F
 ... | 0           = strat-const
 ... | 1           = if id-under-product F then strat-linear else strat-nat
-... | suc (suc _) = strat-branching
+... | suc (suc _) = strat-branching F
 
 -- The current (Nat-shaped) codegen body, extracted so the dispatch can
 -- pick it. Takes the post-`alg` frontier/label counters + alg's main
@@ -271,15 +271,147 @@ cata-trace-linear n1 l1 at =
          (at ++ ascend))                                  -- base alg on Input1=base node
   in next , l2 , trace
 
+-- ────────────────────────────────────────────────────────────────────
+-- Plan 0.36 Phase 2b Tier 2: functor-general BRANCHING cata codegen
+-- (≥2 recursive positions: leaf/node/ternary trees, multi-constructor).
+-- Iterative POST-ORDER over two heap-linked stacks (same no-ISA principle
+-- as Tier 1; NOT lea-indexed):
+--   * todo stack — nodes to flatten;
+--   * eval stack — post-order node sequence (children before parents);
+--   * value stack — folded `A` results awaiting their parent's combine.
+-- Pass 1 (flatten): pop a node off todo, push it to eval, push its Id
+--   children to todo (`visit-walk`, RIGHT-to-LEFT). Pass 2 (fold): pop a
+--   node off eval, rebuild its `⟦F⟧A` layer popping one value-stack result
+--   per Id position (`rebuild-walk`, LEFT-to-RIGHT — the LIFO value stack
+--   inverts visit's order, so positions line up), run `alg`, push result.
+-- visit-walk / rebuild-walk are COMPILE-TIME recursions over F that emit
+-- runtime tag-dispatched node walks (nested `instr-case-on-tag` for sums;
+-- `instr-case-on-tag` carries no labels — its x86 labels are assigned
+-- downstream by compile-trace-cnt, so this codegen's own label count is
+-- just the 4 loop labels). The per-node walk is bounded by F's size and so
+-- is unrolled into straight-line code; only the tree-sized stacks are
+-- heap-linked. Stacks share a sentinel block `[SV-Tag 0, _]` so emptiness
+-- is detected by `c-branch-tag-zero` on the popped block's cell-0.
+-- ────────────────────────────────────────────────────────────────────
+
+-- size bound (≥ nesting depth) — drives the structural-walk slot budget.
+fsize : Functor → ℕ
+fsize (K _)   = 1
+fsize Id      = 1
+fsize (F ⊕ G) = suc (fsize F +ℕ fsize G)
+fsize (F ⊗ G) = suc (fsize F +ℕ fsize G)
+
+-- push the value in Output onto a 2-cell linked stack at `topSlot`
+-- (`[value, prev]`), using scratch slots `tv` (value) and `tb` (block).
+push2 : (topSlot tv tb : ℕ) → AbstractTrace
+push2 topSlot tv tb =
+  store-at-slot tv ∷ instr-alloc-heap 2 ∷ store-at-slot tb ∷ mov-to-input ∷
+  load-from-slot tv ∷ store-indirect ∷
+  load-from-slot topSlot ∷ store-indirect-suc ∷
+  load-from-slot tb ∷ store-at-slot topSlot ∷ []
+
+-- pop a 2-cell linked stack at `topSlot`; popped value → Output, advance
+-- top to its `prev`. (Clobbers Input1 — caller re-establishes.)
+pop2 : (topSlot : ℕ) → AbstractTrace
+pop2 topSlot =
+  load-from-slot topSlot ∷ mov-to-input ∷
+  load-indirect-suc ∷ store-at-slot topSlot ∷
+  load-indirect ∷ []
+
+-- wrap the payload repr in Output into a sum node `[tag, payload]` (Output
+-- := new block); scratch slots `s` (payload) and `s+1` (block).
+wrap-sum : (tag s : ℕ) → AbstractTrace
+wrap-sum tag s =
+  store-at-slot s ∷ instr-alloc-heap 2 ∷ store-at-slot (suc s) ∷ mov-to-input ∷
+  instr-load-tag-lit tag ∷ store-indirect ∷
+  load-from-slot s ∷ store-indirect-suc ∷
+  load-from-slot (suc s) ∷ []
+
+-- VISIT walk: Input1 = repr(G); push every Id child (a μF pointer) of G
+-- onto the todo stack, RIGHT-to-LEFT. `s` = structural-walk slot base
+-- (stride 4 per level, so a level's own slots [s..s+3] never overlap its
+-- children's [s+4..]).
+visit-walk : (todoSlot tv tb : ℕ) → Functor → (s : ℕ) → AbstractTrace
+visit-walk todoSlot tv tb (K _) s = []
+visit-walk todoSlot tv tb Id    s = mov-to-output ∷ push2 todoSlot tv tb
+visit-walk todoSlot tv tb (F ⊕ G) s =
+  instr-case-on-tag
+    ((load-indirect-suc ∷ mov-to-input ∷ []) ++ visit-walk todoSlot tv tb F (s +ℕ 4))
+    ((load-indirect-suc ∷ mov-to-input ∷ []) ++ visit-walk todoSlot tv tb G (s +ℕ 4))
+   ∷ []
+visit-walk todoSlot tv tb (F ⊗ G) s =
+  (mov-to-output ∷ store-at-slot s ∷ load-indirect-suc ∷ mov-to-input ∷ []) ++
+  visit-walk todoSlot tv tb G (s +ℕ 4) ++
+  (restore-input s ∷ load-indirect ∷ mov-to-input ∷ []) ++
+  visit-walk todoSlot tv tb F (s +ℕ 4)
+
+-- REBUILD walk: Input1 = repr(G) (the node sublayer); build the ⟦G⟧A layer
+-- in Output, popping one value-stack result per Id position, LEFT-to-RIGHT.
+rebuild-walk : (valSlot tv tb : ℕ) → Functor → (s : ℕ) → AbstractTrace
+rebuild-walk valSlot tv tb (K _) s = mov-to-output ∷ []
+rebuild-walk valSlot tv tb Id    s = pop2 valSlot
+rebuild-walk valSlot tv tb (F ⊕ G) s =
+  instr-case-on-tag
+    ((load-indirect-suc ∷ mov-to-input ∷ []) ++ rebuild-walk valSlot tv tb F (s +ℕ 4) ++ wrap-sum 0 s)
+    ((load-indirect-suc ∷ mov-to-input ∷ []) ++ rebuild-walk valSlot tv tb G (s +ℕ 4) ++ wrap-sum 1 s)
+   ∷ []
+rebuild-walk valSlot tv tb (F ⊗ G) s =
+  (mov-to-output ∷ store-at-slot s ∷ load-indirect ∷ mov-to-input ∷ []) ++
+  rebuild-walk valSlot tv tb F (s +ℕ 4) ++
+  (store-at-slot (suc s) ∷ restore-input s ∷ load-indirect-suc ∷ mov-to-input ∷ []) ++
+  rebuild-walk valSlot tv tb G (s +ℕ 4) ++
+  (store-at-slot (s +ℕ 2) ∷ instr-alloc-heap 2 ∷ store-at-slot (s +ℕ 3) ∷ mov-to-input ∷
+   load-from-slot (suc s) ∷ store-indirect ∷
+   load-from-slot (s +ℕ 2) ∷ store-indirect-suc ∷
+   load-from-slot (s +ℕ 3) ∷ [])
+
+-- The branching codegen. Precondition: Input1 = root μ-value; `at` = alg
+-- trace (Input1 = ⟦F⟧A layer → Output = A). Output := root fold.
+cata-trace-branching : Functor → ℕ → ℕ → AbstractTrace → ℕ × ℕ × AbstractTrace
+cata-trace-branching F n1 l1 at =
+  let s-todo = n1 ; s-eval = suc n1 ; s-val = n1 +ℕ 2 ; s-node = n1 +ℕ 3
+      t0 = n1 +ℕ 4 ; t1 = n1 +ℕ 5 ; t2 = n1 +ℕ 6
+      wb   = n1 +ℕ 7
+      next = wb +ℕ (4 * fsize F) +ℕ 4
+      f-top = l1 ; f-end = suc l1 ; g-top = l1 +ℕ 2 ; g-end = l1 +ℕ 3
+      l2    = l1 +ℕ 4
+      init =
+        (mov-to-output ∷ store-at-slot s-node ∷
+         instr-alloc-heap 2 ∷ store-at-slot t2 ∷ mov-to-input ∷
+         instr-load-tag-lit 0 ∷ store-indirect ∷
+         load-from-slot t2 ∷ store-at-slot s-eval ∷
+         load-from-slot t2 ∷ store-at-slot s-val ∷
+         load-from-slot t2 ∷ store-at-slot s-todo ∷
+         load-from-slot s-node ∷ []) ++ push2 s-todo t0 t1
+      flatten =
+        (instr-ctrl (c-label f-top) ∷
+         load-from-slot s-todo ∷ mov-to-input ∷
+         instr-ctrl (c-branch-tag-zero f-end) ∷
+         load-indirect-suc ∷ store-at-slot s-todo ∷
+         load-indirect ∷ mov-to-input ∷ store-at-slot s-node ∷
+         load-from-slot s-node ∷ []) ++ push2 s-eval t0 t1 ++
+        (load-from-slot s-node ∷ mov-to-input ∷ []) ++ visit-walk s-todo t0 t1 F wb ++
+        (instr-ctrl (c-jmp f-top) ∷ instr-ctrl (c-label f-end) ∷ [])
+      fold =
+        (instr-ctrl (c-label g-top) ∷
+         load-from-slot s-eval ∷ mov-to-input ∷
+         instr-ctrl (c-branch-tag-zero g-end) ∷
+         load-indirect-suc ∷ store-at-slot s-eval ∷
+         load-indirect ∷ mov-to-input ∷ []) ++ rebuild-walk s-val t0 t1 F wb ++
+        (mov-to-input ∷ []) ++ at ++ push2 s-val t0 t1 ++
+        (instr-ctrl (c-jmp g-top) ∷ instr-ctrl (c-label g-end) ∷ [])
+      final-read = load-from-slot s-val ∷ mov-to-input ∷ load-indirect ∷ []
+  in next , l2 , (init ++ flatten ++ fold ++ final-read)
+
 -- Dispatch the strategy. Nat / branching still route to the Nat codegen
 -- (branching = Tier 2, still segfaults); linear gets the Tier-1 codegen.
 cata-dispatch : CataStrategy → ℕ → ℕ → AbstractTrace → ℕ × ℕ × AbstractTrace
 -- 0 rec positions (`Mu (K _)`): `In` is heap-identity, so the μ-value IS the
 -- `⟦F⟧A` layer; `cata alg = alg` on it. No descend/ascend, no slots/labels.
 cata-dispatch strat-const     n1 l1 at = n1 , l1 , at
-cata-dispatch strat-nat       n1 l1 at = cata-trace-nat n1 l1 at
-cata-dispatch strat-linear    n1 l1 at = cata-trace-linear n1 l1 at
-cata-dispatch strat-branching n1 l1 at = cata-trace-nat n1 l1 at  -- TODO Tier 2
+cata-dispatch strat-nat            n1 l1 at = cata-trace-nat n1 l1 at
+cata-dispatch strat-linear         n1 l1 at = cata-trace-linear n1 l1 at
+cata-dispatch (strat-branching F)  n1 l1 at = cata-trace-branching F n1 l1 at
 
 ir-to-trace' : ∀ {A B} → ℕ → ℕ → IR A B
               → ℕ × ℕ × AbstractTrace × List (ℕ × ℕ × AbstractTrace)
