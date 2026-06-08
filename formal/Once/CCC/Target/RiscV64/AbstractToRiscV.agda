@@ -54,7 +54,7 @@ open import Once.CCC.Machine.SMCore
          mov-output-to-input2; mov-input2-to-output;
          load-indirect; load-indirect-suc;
          load-from-slot; store-at-slot; store-indirect; store-indirect-suc;
-         lea-slot; restore-input;
+         lea-slot; restore-input; lea-indexed;
          instr-alloc-stack; instr-alloc-heap; instr-dealloc-stack;
          instr-push-frame; instr-pop-frame; instr-call-closure;
          worklist-init; worklist-push; worklist-pop; worklist-check;
@@ -151,6 +151,12 @@ compile-abstract (lea-slot n) =
 -- RV64: ld t0, slot*8(fp)
 compile-abstract (restore-input n) =
   ld t0 fp (slot-to-disp n) ∷ []
+
+-- lea-indexed: indexed-pointer compute for the cata payload stack
+-- (Plan 0.36 2b). DEAD on this backend — Tier-1 cata codegen uses a linked
+-- stack, not lea-indexed; the live verified target is x86-64. Stubbed like
+-- the other unimplemented RV64 ops (instr-reg-op).
+compile-abstract (lea-indexed _) = unimp ∷ []
 
 -- instr-alloc-stack: allocate N slots on stack
 -- RV64: addi sp, sp, -N*8
