@@ -488,15 +488,20 @@ specCase A B C =
 -- Callers use the equation to discharge usage-mismatch obligations
 -- when bridging the bypass form to a judgment whose claimed usage
 -- depends on the discarded inputs' Ψ.
+-- Plan 0.36 Phase 1: grade-polymorphic — extracts the IR from a
+-- `lift-morphism m` at ANY purity π (pure callers infer π = pure). The grade
+-- rides in the arrow; the extracted `IR A B` is grade-erased.
 extract-morph-aux : ∀ {n} {Γ : SCtx n} {Ψ : Surface.Usage n} {T : Type} {A B : Type}
+                    {π : Once.Type.Purity}
                   → SExpr Γ Ψ T
-                  → T ≡ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)
+                  → T ≡ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B)
                   → Maybe (∃-syntax (λ (m : IR A B) → Ψ ≡ Surface.zeroUsage))
 extract-morph-aux (Surface.lift-morphism m) refl = just (m , refl)
 extract-morph-aux _ _ = nothing
 
 extract-morph : ∀ {n} {Γ : SCtx n} {Ψ : Surface.Usage n} {A B : Type}
-              → SExpr Γ Ψ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)
+                {π : Once.Type.Purity}
+              → SExpr Γ Ψ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B)
               → Maybe (∃-syntax (λ (m : IR A B) → Ψ ≡ Surface.zeroUsage))
 extract-morph e = extract-morph-aux e refl
 
