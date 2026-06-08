@@ -57,6 +57,7 @@
 module Once.CCC.Codegen.IRToTrace where
 
 open import Data.Nat using (ℕ; zero; suc; _⊔_) renaming (_+_ to _+ℕ_)
+open import Data.Bool using (Bool; true; false; if_then_else_; _∨_)
 open import Data.Product using (_×_; _,_; proj₂)
 open import Data.List using (List; []; _∷_; _++_)
 
@@ -132,12 +133,31 @@ data CataStrategy : Set where
   strat-linear    : CataStrategy   -- ≤1 rec position + payload (Tier 1, TODO)
   strat-branching : CataStrategy   -- ≥2 rec positions (Tier 2, TODO)
 
--- For now the classifier routes ≤1-rec functors to the Nat path and
--- ≥2-rec to branching; Tier 1 (linear+payload) will refine the split.
+-- `has-id F` — does `Id` occur anywhere in `F`? `id-under-product F` — does
+-- some `Id` sit INSIDE a `⊗`? A single-recursive functor with `Id` under a
+-- product (List `K Unit + (K Int * Id)`, nelist, nested-product payload) is
+-- "linear with payload": the rec arm is `_ ⊗ Id`, so each layer carries a
+-- payload word the fold must stash (Tier 1). A single-recursive functor with a
+-- bare `Id` arm (Nat `K Unit + Id`) carries no payload (Tier nat).
+has-id : Functor → Bool
+has-id (K _)   = false
+has-id Id      = true
+has-id (F ⊕ G) = has-id F ∨ has-id G
+has-id (F ⊗ G) = has-id F ∨ has-id G
+
+id-under-product : Functor → Bool
+id-under-product (K _)   = false
+id-under-product Id      = false
+id-under-product (F ⊕ G) = id-under-product F ∨ id-under-product G
+id-under-product (F ⊗ G) = has-id F ∨ has-id G ∨ id-under-product F ∨ id-under-product G
+
+-- The classifier: no recursion → Nat (no loop); one recursive position →
+-- linear (with payload) vs Nat (bare Id) per `id-under-product`; two or more →
+-- branching (Tier 2, still TODO).
 cata-strategy : Functor → CataStrategy
 cata-strategy F with rec-count F
 ... | 0           = strat-nat
-... | 1           = strat-nat
+... | 1           = if id-under-product F then strat-linear else strat-nat
 ... | suc (suc _) = strat-branching
 
 -- The current (Nat-shaped) codegen body, extracted so the dispatch can
@@ -180,13 +200,81 @@ cata-trace-nat n1 l1 at =
           (build-layer 0 ++ (mov-to-input ∷ at ++ ascend-flat))))
   in next , l2 , trace
 
--- Dispatch the strategy. Skeleton: all tiers route to the Nat codegen
--- (so the Nat path is unchanged + non-Nat is no worse than before —
--- still segfaults). Tier 1/2 fill in the strat-linear/strat-branching
--- branches.
+-- Plan 0.36 Phase 2b Tier 1: functor-general LINEAR (single recursive
+-- position, with payload) cata codegen via a SIMPLE 2-cell linked payload
+-- stack on the heap (Plan 0.37 chunks it later — needs an ISA extension).
+--
+-- Layouts the frontend emits (`In`/`inr`/pair codegen):
+--   cons node `In (inr (x, child))` = `[1, pair-ptr]`, pair = `[x, child-ptr]`
+--     ⇒ payload x = node[1][0], recursive child = node[1][1].
+--   base node `In (inl b)`          = `[0, b]` (b = unit for K Unit, the
+--     terminal Int for K Int) — fed to `alg` directly (uniform base handling).
+--
+-- Three phases (Scratch survives `alg` — CCC code never touches rbx):
+--   DESCEND+PUSH: Input2 counts depth n; for each cons, push x onto the
+--     payload stack (`[x, prev-top]`, top in `stack-top`); advance to child.
+--     Ends with Input1 at the base node.
+--   BASE: Scratch := n; run `alg` on the base node → Output = base acc.
+--   ASCEND+POP: while Scratch ≠ 0, pop x (top := top[1]), build pair `[x,acc]`,
+--     build layer `[1, pair]`, run `alg` → acc'; Scratch--. LIFO pop gives
+--     reverse (innermost-first = foldr) order. Output = final fold result.
+cata-trace-linear : ℕ → ℕ → AbstractTrace → ℕ × ℕ × AbstractTrace
+cata-trace-linear n1 l1 at =
+  let pstash    = n1                                      -- node temp (build layer)
+      sstash    = suc n1                                  -- block temp
+      node-cur  = suc (suc n1)                            -- descend child cursor
+      stack-top = suc (suc (suc n1))                      -- payload-stack top ptr
+      acc-slot  = suc (suc (suc (suc n1)))                -- acc across pop work
+      xstash    = suc (suc (suc (suc (suc n1))))          -- popped/read payload
+      next      = suc (suc (suc (suc (suc (suc n1)))))    -- n1 + 6
+      ld-top = l1 ; ld-end = suc l1
+      la-top = suc (suc l1) ; la-end = suc (suc (suc l1))
+      l2     = suc (suc (suc (suc l1)))                   -- l1 + 4
+      descend =
+        instr-reg-op input2-zero ∷
+        instr-load-tag-lit 0 ∷ store-at-slot stack-top ∷
+        instr-ctrl (c-label ld-top) ∷
+        instr-ctrl (c-branch-tag-zero ld-end) ∷
+        instr-reg-op input2-inc ∷
+        load-indirect-suc ∷ mov-to-input ∷                -- Input1 := pair
+        load-indirect ∷ store-at-slot xstash ∷            -- xstash := x = pair[0]
+        load-indirect-suc ∷ store-at-slot node-cur ∷      -- node-cur := child = pair[1]
+        instr-alloc-heap 2 ∷ store-at-slot sstash ∷ mov-to-input ∷
+        load-from-slot xstash ∷ store-indirect ∷          -- block[0] := x
+        load-from-slot stack-top ∷ store-indirect-suc ∷   -- block[1] := old top
+        load-from-slot sstash ∷ store-at-slot stack-top ∷ -- top := block
+        load-from-slot node-cur ∷ mov-to-input ∷          -- Input1 := child
+        instr-ctrl (c-jmp ld-top) ∷
+        instr-ctrl (c-label ld-end) ∷ []
+      ascend =
+        instr-ctrl (c-label la-top) ∷
+        instr-ctrl (c-branch-scratch-zero la-end) ∷
+        store-at-slot acc-slot ∷                          -- acc-slot := acc
+        load-from-slot stack-top ∷ mov-to-input ∷         -- Input1 := stack node
+        load-indirect ∷ store-at-slot xstash ∷            -- xstash := x = node[0]
+        load-indirect-suc ∷ store-at-slot stack-top ∷     -- top := node[1] = prev
+        instr-alloc-heap 2 ∷ store-at-slot sstash ∷ mov-to-input ∷
+        load-from-slot xstash ∷ store-indirect ∷          -- pair[0] := x
+        load-from-slot acc-slot ∷ store-indirect-suc ∷    -- pair[1] := acc
+        instr-alloc-heap 2 ∷ store-at-slot pstash ∷ mov-to-input ∷
+        instr-load-tag-lit 1 ∷ store-indirect ∷           -- layer[0] := 1
+        load-from-slot sstash ∷ store-indirect-suc ∷      -- layer[1] := pair
+        load-from-slot pstash ∷ mov-to-input ∷            -- Input1 := layer
+        (at ++
+         (instr-reg-op scratch-dec ∷
+          instr-ctrl (c-jmp la-top) ∷
+          instr-ctrl (c-label la-end) ∷ []))
+      trace =
+        descend ++
+        (instr-reg-op scratch-load-count ∷
+         (at ++ ascend))                                  -- base alg on Input1=base node
+  in next , l2 , trace
+
+-- Dispatch the strategy. Nat / branching still route to the Nat codegen
+-- (branching = Tier 2, still segfaults); linear gets the Tier-1 codegen.
 cata-dispatch : CataStrategy → ℕ → ℕ → AbstractTrace → ℕ × ℕ × AbstractTrace
 cata-dispatch strat-nat       n1 l1 at = cata-trace-nat n1 l1 at
-cata-dispatch strat-linear    n1 l1 at = cata-trace-nat n1 l1 at  -- TODO Tier 1
+cata-dispatch strat-linear    n1 l1 at = cata-trace-linear n1 l1 at
 cata-dispatch strat-branching n1 l1 at = cata-trace-nat n1 l1 at  -- TODO Tier 2
 
 ir-to-trace' : ∀ {A B} → ℕ → ℕ → IR A B
