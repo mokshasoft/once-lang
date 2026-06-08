@@ -1086,6 +1086,9 @@ module Simulation {FS : FrameSemantics} where
   instr-sim (instr-ctrl _) ls xs alloc not-halted corr = SMP.!!  -- Plan 0.32: flat control, real bridge is the flat machine
   instr-sim (instr-loop _) ls xs alloc not-halted corr = SMP.!!
   instr-sim (instr-case-on-tag f g) ls xs alloc not-halted corr = SMP.!!
+  -- Plan 0.36: lea-indexed is DEAD (cata uses linked stacks) and lowers to
+  -- `ud2` on x86-32 — its simulation joins the unimplemented-op stubs above.
+  instr-sim (lea-indexed _) ls xs alloc not-halted corr = SMP.!!
 
   -- instr-reclaim-to: no-op in x86 (compiles to empty)
   -- Abstract: only updates alloc.next-slot, ls unchanged
@@ -1146,6 +1149,10 @@ module Simulation {FS : FrameSemantics} where
   ... | just _  = refl
   ... | nothing = refl
   exec-abstract-preserves-frame (lea-slot _) ls alloc = refl
+  exec-abstract-preserves-frame (lea-indexed slot) ls alloc
+    with slot-base (readLoc ls (AtStack (current-frame alloc) slot))
+  ... | just _  = refl
+  ... | nothing = refl
   -- restore-input uses exec-restore-input-with-value which always returns alloc unchanged
   exec-abstract-preserves-frame (restore-input slot) ls alloc
     with readLoc ls (AtStack (current-frame alloc) slot)

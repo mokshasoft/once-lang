@@ -1143,6 +1143,10 @@ module Simulation {FS : FrameSemantics} where
   instr-sim (instr-ctrl _) ls rs alloc not-halted corr = SMP.!!  -- Plan 0.32: flat control, real bridge is the flat machine
   instr-sim (instr-loop _) ls rs alloc not-halted corr = SMP.!!
   instr-sim (instr-case-on-tag f g) ls rs alloc not-halted corr = SMP.!!
+  -- Plan 0.36: lea-indexed is DEAD (Tier-1/2 cata use linked stacks) and
+  -- lowers to `unimp` on RiscV64 — its simulation joins the other
+  -- unimplemented-op stubs above.
+  instr-sim (lea-indexed _) ls rs alloc not-halted corr = SMP.!!
 
   -- instr-reclaim-to: no-op in rv64 (compiles to empty)
   -- Abstract: only updates alloc.next-slot, ls unchanged
@@ -1199,6 +1203,10 @@ module Simulation {FS : FrameSemantics} where
   ... | just _  = refl
   ... | nothing = refl
   exec-abstract-preserves-frame (lea-slot _) ls alloc = refl
+  exec-abstract-preserves-frame (lea-indexed slot) ls alloc
+    with slot-base (readLoc ls (AtStack (current-frame alloc) slot))
+  ... | just _  = refl
+  ... | nothing = refl
   exec-abstract-preserves-frame (restore-input slot) ls alloc
     with readLoc ls (AtStack (current-frame alloc) slot)
   ... | just _  = refl
