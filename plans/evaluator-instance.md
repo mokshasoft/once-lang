@@ -16,9 +16,23 @@ Modules 1–7 + capstone are DONE, all building under `bootstrap/check.sh`:
 Zero postulates anywhere in the chain; NO confluence and NO
 strong-normalization obligation — the evaluator route's whole point.
 
-CAVEAT: the witness N = refold is DENOTATIONALLY THE IDENTITY (spec = id),
-so the result is degenerate-but-real. The genuinely meaningful normalizer
-needs module 8 below.
+UPDATE (2026-06-08, cont.): obligation (1) — a REAL normalizer — is now
+done, NOT degenerate:
+- `…Eval.CataTerminates`: structural cata terminates, no pragma (totality
+  is rigorous, not just `{-# TERMINATING #-}`-asserted).
+- `…Eval.EvalSound`: `eval` respects reduction (`t ⟶ u ⟹ ∀x. eval t x ≡
+  eval u x`), all 25 rule cases; one axiom (funext, for `⟶-curry`).
+- `…Eval.RealNormalizerFixpoint`: the REAL `normalize = cata TermF
+  normalize-step` has the denotational Ranzow fixpoint — its constructive,
+  axiom-free syntactic fixpoint (TCB0 `fixpoint-from-noredex`) lifted via
+  eval-soundness, fed through the formal canonicity theorem. Plus
+  `normalize-correct-on-noredex`: denotationally correct on the whole
+  class of already-normal inputs.
+
+So the refold modules are the toy; the real normalizer is the genuine
+witness. Trust: zero confluence, zero SN, no false postulates; one clean
+axiom (funext) + the model's pre-existing pragmas (both dischargeable /
+avoidable, see CataTerminates).
 
 Recurring Agda note: wherever the candidate term sits only under the
 non-injective `eval`, the unifier can't recover it — pass it explicitly
@@ -26,16 +40,21 @@ non-injective `eval`, the unifier can't recover it — pass it explicitly
 directly instead of instantiating a hypothesis-bearing module (the
 function-based `_⇓_` trips function-eta otherwise).
 
-## Remaining (the real work)
-- **Module 8 — adequacy / faithfulness on encodings (HARD KERNEL).** Needed
-  to lift denotational results to the actual syntactic normal form, and to
-  use a non-trivial N. Hits the SAME composition-middle-type obstruction as
-  the erased encoding's faithfulness (see normalizer-vs-compiler-path.md):
-  `eval (encode (id{A})) = eval (encode (id{B}))`, so the erased model is
-  not faithful — this needs the typed two-layer encoding. Genuine
-  multi-session NbE-adequacy work; principled but large.
-- A real dispatch normalizer (not the refold) instantiated through the
-  full chain, once module 8 exists.
+## Remaining (the real work) — now just ONE deep kernel
+
+Obligations (1) real normalizer + totality are DONE (above). What remains:
+
+- **Full correctness on ALL inputs (transparency with spec = nf).** We have
+  it on the NoRedex class (`normalize-correct-on-noredex`); the general case
+  `∀ g. eval (normalize ∘ ⌜g⌝) ≡ eval ⌜nf g⌝` is the deep kernel. It needs
+  an INDEPENDENT normal-form notion `nf` plus a proof connecting normalize's
+  denotation to it — i.e. either the general *syntactic* correctness
+  (`normalize ∘ ⌜g⌝ ⟶* ⌜nf g⌝`, which in the existing TCB0 dev rests on the
+  FALSE `strong-normalization`/confluence axioms and would need redoing) or a
+  *denotational* correctness proof of the `normalize-step` algebra
+  per-constructor. This is the genuine NbE-adequacy content; multi-session.
+- Faithfulness on encodings (the composition-middle-type wall, typed
+  two-layer encoding) is the same deep kernel from the syntactic side.
 
 ---
 
