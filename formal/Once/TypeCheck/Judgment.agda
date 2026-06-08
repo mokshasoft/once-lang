@@ -366,6 +366,16 @@ mutual
                           ⨾ ((Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ₁))
                               Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ₂))
 
+    -- Plan 0.36 Phase 2a follow-up: check-mode for the pair LITERAL
+    -- `(a , b)` at a product type. Checks the components bidirectionally
+    -- (vs. the infer-then-compare fallback), so check-only constructs —
+    -- notably `In` — work inside pair positions (`In (inr (x , tail))`).
+    t-pair-lit-check : ∀ {ctx : NamedCtx} {a b : RawExpr} {A B : Type}
+                       {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
+                     → ctx ⊢ᶜ a ∶ A ⨾ Ψ₁
+                     → ctx ⊢ᶜ b ∶ B ⨾ Ψ₂
+                     → ctx ⊢ᶜ RPair a b ∶ (A * B) ⨾ (Ψ₁ Surface.+ᵘ Ψ₂)
+
     -- | Applied `case f g` (categorical copair) in check mode at the
     -- canonical `(A + B) ⇒[Many] C` shape. Plan 0.28 Commit 1.
     -- Disjoint from `t-embed (t-app …)` by construction: t-app's
