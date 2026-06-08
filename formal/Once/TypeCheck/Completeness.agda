@@ -598,7 +598,7 @@ open Once.TypeCheck.Judgment
          t-embed; t-lam;
          t-id-check; t-fst-check; t-snd-check; t-terminal-check;
          t-initial-check; t-inl-check; t-inr-check; t-arr-check;
-         t-pair-check; t-compose-check; t-curry-check; t-apply-check;
+         t-pair-check; t-pair-lit-check; t-compose-check; t-curry-check; t-apply-check;
          t-case-copair-check; t-In-app-check; t-cata-check;
          t-var-poly-instantiate)
 
@@ -626,7 +626,7 @@ open Once.TypeCheck.Elaborate
          checkElab-fallback-RApp-arr;
          checkElab-fallback-RVar-poly;
          checkElab-fallback-RQualified; checkElab-fallback-RAnnot;
-         checkElab-fallback-RPair; checkElab-fallback-RLet;
+         checkElab-fallback-RLet;
          checkElab-fallback-RDestruct; checkElab-fallback-RUnaryOp;
          checkElab-fallback-RBinOp;
          checkElab-fallback-RApp-id; checkElab-fallback-RApp-fst;
@@ -883,6 +883,17 @@ mutual
           checkElab ctx (Raw.RApp (Raw.RVar "cata") alg)
             (T.μ-type F T.⇒[ T.mk-kind T.Many T.pure ] A)
               ≡ success Surface.zeroUsage eE d f
+    -- Plan 0.36 Phase 2a follow-up — TRANSIENT, PROVABLE: pair-literal
+    -- check-mode completeness. `checkElabV (RPair a b) (A * B)` reduces
+    -- via `checkPairLit` to `success (Surface.pair …)` given the two
+    -- component check-mode derivations.
+    pair-lit-check-complete : ∀ {ctx : NamedCtx} {a b : RawExpr} {A B : Type}
+      {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
+      → ctx ⊢ᶜ a ∶ A ⨾ Ψ₁
+      → ctx ⊢ᶜ b ∶ B ⨾ Ψ₂
+      → ∃[ eE ] ∃[ d ] ∃[ f ]
+          checkElab ctx (Raw.RPair a b) (A * B)
+            ≡ success (Ψ₁ +ᵘ Ψ₂) eE d f
 
   -- Full ⊢ᶜ walk: handles t-lam recursively and delegates t-embed
   -- to the per-shape fallback lemma.
@@ -918,9 +929,11 @@ mutual
   check-complete (t-embed (t-annot {e = e} {T = T} d)) =
     let (_ , _ , _ , eqI) = infer-complete (t-annot d)
     in checkElab-fallback-RAnnot e T eqI
+  -- Plan 0.36 Phase 2a: RPair check-mode now goes through `checkPairLit`
+  -- (bidirectional). Route the embedded-infer pair through the same
+  -- pair-literal bridge by re-embedding the component infer derivations.
   check-complete (t-embed (t-pair {a = a} {b = b} {A = A} {B = B} d₁ d₂)) =
-    let (_ , _ , _ , eqI) = infer-complete (t-pair d₁ d₂)
-    in checkElab-fallback-RPair a b (A T.* B) eqI
+    pair-lit-check-complete (t-embed d₁) (t-embed d₂)
   check-complete (t-embed (t-neg {e = e} d)) =
     let (_ , _ , _ , eqI) = infer-complete (t-neg d)
     in checkElab-fallback-RUnaryOp Raw.OpNeg e T.Int eqI
@@ -1010,6 +1023,8 @@ mutual
     in checkElab-fallback-RApp-In arg F eqWF eqA
   check-complete (t-cata-check {alg = alg} {F = F} {A = A} eqWF wArg) =
     cata-check-complete eqWF wArg
+  check-complete (t-pair-lit-check {a = a} {b = b} {A = A} {B = B} dA dB) =
+    pair-lit-check-complete dA dB
   check-complete (t-compose-check {f = f} {g = g} {A = A} {B = B} {C = C} eqArgB d₁ d₂) =
     let (_ , _ , _ , eq₁) = check-complete d₁
         (_ , _ , _ , eq₂) = check-complete d₂

@@ -728,6 +728,10 @@ mutual
   -- `A ⇒[Many] (B * C)` shape.
   checkPair : (ctx : NamedCtx) → (pairHead arg : RawExpr) → (T : Type)
             → VerifiedCheckResult ctx (Raw.RApp pairHead arg) T
+  -- Plan 0.36 Phase 2a follow-up: check-mode for the pair LITERAL
+  -- `(a , b)` at a product type — checks components bidirectionally.
+  checkPairLit : (ctx : NamedCtx) → (a b : RawExpr) → (A B : Type)
+               → VerifiedCheckResult ctx (Raw.RPair a b) (A Once.Type.* B)
   -- Case (copair) classifier helper (Plan 0.28 Commit 1). Checks a
   -- 2-arg `case f g` expression in check mode against the canonical
   -- `(A + B) ⇒[Many] C` shape.
@@ -1054,6 +1058,16 @@ mutual
   -- Any other shape falls through to failure. Consistent with
   -- ahv-inl's per-shape exhaustive enumeration pattern.
   checkPair _ _ _ _ = failure (BuiltinTypeMismatch "pair") , tt
+
+  -- Plan 0.36 Phase 2a follow-up: pair literal `(a , b)` at `A * B`.
+  -- CHECK each component against its expected type (so check-only
+  -- constructs like `In` get a type), emit the same `Surface.pair`.
+  checkPairLit ctx a b A B with checkElabV ctx a A
+  ... | failure err , _ = failure err , tt
+  ... | success Ψ₁ aE da fa , wA with checkElabV ctx b B
+  ...   | failure err , _ = failure err , tt
+  ...   | success Ψ₂ bE db fb , wB =
+          success _ (Surface.pair aE bE) (da Data.Nat.⊔ db) fb , t-pair-lit-check wA wB
 
   -- Plan 0.28 Commit 1: bare `case f g` (categorical copair) check-mode.
   -- Expected type must be `(A + B) ⇒[Many] C`. Each arm is checked at
@@ -1487,6 +1501,12 @@ mutual
   ... | bbc-inr      | rInfV = checkElabV-RVar-bbc-inr-aux ctx T rInfV
   ... | bbc-arr      | rInfV = checkElabV-RVar-bbc-arr-aux ctx T rInfV
   ... | bbc-other    | rInfV = checkElabV-RVar-bbc-other-aux ctx x T rInfV
+
+  -- Plan 0.36 Phase 2a follow-up: pair literal `(a , b)` at a product
+  -- type — check components bidirectionally so check-only constructs
+  -- (notably `In`) work in pair slots (`In (inr (x , tail))`). Falls to
+  -- the generic clause below for non-product target types.
+  checkElabV ctx (Raw.RPair a b) (A Once.Type.* B) = checkPairLit ctx a b A B
 
   -- Generic infer-and-match fallback — covers RInt, RStringLit, RUnit,
   -- RPair, RBinOp, RUnaryOp, RLet, RDestruct, RAnnot, RQualified.
@@ -2170,24 +2190,11 @@ checkElab-fallback-RAnnot {ctx} e T eqInf
 ...   | yes refl = _ , _ , _ , refl
 ...   | no ¬eq   = ⊥-elim (¬eq refl)
 
--- RPair: check-mode at `A * B` falls to generic fallback.
-checkElab-fallback-RPair :
-  ∀ {ctx : NamedCtx} (a b : RawExpr) (T : Type)
-    {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {eE : SExpr (NamedCtx.debruijn ctx) Ψ T}
-    {d f : ℕ}
-  → inferElab ctx (Raw.RPair a b) ≡ success T Ψ eE d f
-  → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
-      checkElab ctx (Raw.RPair a b) T ≡ success Ψ eE' d' f')))
-checkElab-fallback-RPair {ctx} a b T eqInf
-  with inferElabV ctx (Raw.RPair a b)
-... | failure _ , _ with eqInf
-...   | ()
-checkElab-fallback-RPair {ctx} a b T eqInf
-  | success T' Ψ' eE' d' fr' , w with eqInf
-... | refl with T ≟T T
-...   | yes refl = _ , _ , _ , refl
-...   | no ¬eq   = ⊥-elim (¬eq refl)
+-- Plan 0.36 Phase 2a: `checkElab-fallback-RPair` removed. RPair check-mode
+-- now goes through the bidirectional `checkPairLit` clause, so the old
+-- infer→check bridge (which assumed the generic infer-then-compare path)
+-- no longer applies. Completeness routes embedded-infer pairs through the
+-- pair-literal bridge directly (re-embedding the component derivations).
 
 -- RLet: no specialised check clause.
 checkElab-fallback-RLet :
