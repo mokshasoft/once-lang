@@ -129,8 +129,9 @@ rec-count (F ⊕ G) = rec-count F ⊔ rec-count G
 rec-count (F ⊗ G) = rec-count F +ℕ rec-count G
 
 data CataStrategy : Set where
-  strat-nat       : CataStrategy   -- ≤1 rec position, fast path (current)
-  strat-linear    : CataStrategy   -- ≤1 rec position + payload (Tier 1, TODO)
+  strat-const     : CataStrategy   -- 0 rec positions: cata = alg on the In-layer
+  strat-nat       : CataStrategy   -- 1 bare-Id rec position, no payload (Nat)
+  strat-linear    : CataStrategy   -- 1 rec position + payload (Tier 1)
   strat-branching : CataStrategy   -- ≥2 rec positions (Tier 2, TODO)
 
 -- `has-id F` — does `Id` occur anywhere in `F`? `id-under-product F` — does
@@ -156,7 +157,7 @@ id-under-product (F ⊗ G) = has-id F ∨ has-id G ∨ id-under-product F ∨ id
 -- branching (Tier 2, still TODO).
 cata-strategy : Functor → CataStrategy
 cata-strategy F with rec-count F
-... | 0           = strat-nat
+... | 0           = strat-const
 ... | 1           = if id-under-product F then strat-linear else strat-nat
 ... | suc (suc _) = strat-branching
 
@@ -273,6 +274,9 @@ cata-trace-linear n1 l1 at =
 -- Dispatch the strategy. Nat / branching still route to the Nat codegen
 -- (branching = Tier 2, still segfaults); linear gets the Tier-1 codegen.
 cata-dispatch : CataStrategy → ℕ → ℕ → AbstractTrace → ℕ × ℕ × AbstractTrace
+-- 0 rec positions (`Mu (K _)`): `In` is heap-identity, so the μ-value IS the
+-- `⟦F⟧A` layer; `cata alg = alg` on it. No descend/ascend, no slots/labels.
+cata-dispatch strat-const     n1 l1 at = n1 , l1 , at
 cata-dispatch strat-nat       n1 l1 at = cata-trace-nat n1 l1 at
 cata-dispatch strat-linear    n1 l1 at = cata-trace-linear n1 l1 at
 cata-dispatch strat-branching n1 l1 at = cata-trace-nat n1 l1 at  -- TODO Tier 2
