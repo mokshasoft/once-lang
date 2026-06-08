@@ -268,6 +268,38 @@ The slogan: *the discipline that makes Once well-behaved as a language
 (totality + productivity) is exactly the discipline that makes its normalizer
 well-defined as an evaluator.*
 
+## Concrete assets, and where the two evaluator-route gaps actually close
+
+A survey of the existing tree (so this is reuse, not greenfield):
+
+- `bootstrap/normalizer/` (51 files, builds): a concrete normalizer that already
+  proves the Ranzow fixpoint on its own encoding (`fixpoint-from-noredex`), with a
+  15-way dispatch, an evaluator, `NormalizerSpec`/`SatisfiesSpec`, and uniqueness —
+  but in the **rewriting** paradigm, resting on `Axioms/` postulates. Its reduction
+  has **two-way `assoc`**, so it dodges `NonConfluenceWitness` (the two stuck NFs
+  re-associate and join) at the cost of normalization: `strong-normalization` is
+  **false**, mechanised in `normalizer.Theory.WeakNormalizationFails`
+  (`weak-normalization-fails`; a 3-way projection composition loops under
+  `assoc-l`/`assoc-r`). This is the **dual** of the formal side — one-way assoc → SN
+  holds, confluence fails; two-way → confluence salvageable, SN fails. Each rewriting
+  development sacrifices one of {confluence, termination} and postulates it back; the
+  evaluator route (determinism + totality) needs neither.
+- `formal/Theory/Models/StrongCCL3/`: a concrete erased `encode` (tag00–15) with
+  **`encode-is-nf` proven** (`NormalForm.agda`) and the typed layer's **type-recovery
+  faithfulness** (`Typed/Faithful`). Full term-level faithfulness is **still open**:
+  the erased encoding loses a composition's middle type, so
+  `encode g ≡ encode h → g ≡ h` is not provable at the erased layer alone.
+
+**Where the two `EvalFullCorrectness` gaps close.** Both `encoding-completeness` and
+`transparency` are stated over the evaluator's `_⇓_` (`encVal`, `encode-⇓`, the
+branch-exercise, NbE adequacy). They are therefore discharged **by the concrete
+evaluator, not before it** — there is no sound way to close them while `_⇓_` is
+abstract. (Term-level faithfulness is a *rewriting*-track `EncodingInductive` field,
+not required by the evaluator theorems, and is independently open.) So the honest
+next step for the evaluator route is the concrete `Evaluable` instance itself —
+reusing `bootstrap/normalizer`'s evaluator + dispatch as the blueprint and
+`StrongCCL3`'s `encode` / `encode-is-nf`.
+
 ## Bottom line
 
 Build the **evaluator CCC-VM + certified normalizer core first** — that is where
