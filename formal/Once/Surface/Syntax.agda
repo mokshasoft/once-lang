@@ -321,6 +321,9 @@ data Expr : ∀ {n} → Ctx n → Usage n → Type → Set where
   -- are expressible in fold-to-function form, see plan 0.36 "two axes").
   -- `resolveExpr` inlines the algebra's named refs; `elaborate` builds the
   -- closed `IR.Cata` (empty-context extraction). See plans/0.36.
-  cata : ∀ {n} {Γ : Ctx n} {F : Functor} {A}
-       → WellFormedF F → Expr ∅ zeroUsage (⟦ F ⟧T A ⇒ A)
-       → Expr Γ zeroUsage (μ-type F ⇒ A)
+  -- Plan 0.36 Phase 1: grade-polymorphic — the algebra's purity π flows to
+  -- the cata's realm (D032 uniform composition). π = pure is the value fold;
+  -- π = eff is the effect-emitting fold.
+  cata : ∀ {n} {Γ : Ctx n} {F : Functor} {A} {π : Purity}
+       → WellFormedF F → Expr ∅ zeroUsage (⟦ F ⟧T A ⇒[ mk-kind Many π ] A)
+       → Expr Γ zeroUsage (μ-type F ⇒[ mk-kind Many π ] A)
