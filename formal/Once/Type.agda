@@ -185,6 +185,17 @@ pureK q = mk-kind q pure
 effK : ArrowKind
 effK = mk-kind Many eff
 
+-- | Purity join (Plan 0.36 Phase 1): the 2-point lattice `pure ≤ eff`.
+-- Composition of morphisms takes the join of their grades — `pure` is the
+-- unit (a pure factor adds no effect), `eff` absorbs. This is D032's
+-- single-category "uniform composition": one composition, the grade is a
+-- tracked property, not a separate structure.
+_⊔p_ : Purity → Purity → Purity
+pure ⊔p p = p
+eff  ⊔p _ = eff
+
+infixr 5 _⊔p_
+
 -- | Decidable equality on Purity (plan 0.5.1)
 _≟p_ : (p₁ p₂ : Purity) → Dec (p₁ ≡ p₂)
 pure ≟p pure = yes refl
