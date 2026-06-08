@@ -300,38 +300,40 @@ next step for the evaluator route is the concrete `Evaluable` instance itself �
 reusing `bootstrap/normalizer`'s evaluator + dispatch as the blueprint and
 `StrongCCL3`'s `encode` / `encode-is-nf`.
 
-## Caveat the denotational model surfaces: the fixpoint can trivialise
+## What the refold witness does and does not show
 
 Mechanising the evaluator route end-to-end (`normalizer.Theory.Eval.*`,
-postulate-free, no confluence/SN) exposed a subtlety. With a **denotational**
-evaluator (`eval : Term → Agda function`), the Ranzow fixpoint check
-`eval(N ∘ ⌜N⌝) ≡ eval(⌜N⌝)` is satisfied by **any denotation-preserving N** —
-including `N = id` and `N = cata In` (the refold, which is denotationally the
-identity). So observing the denotational fixpoint does **not**, on its own,
-certify that N is a *correct normalizer*: a meaning-preserving but non-normalising
-N passes too.
+postulate-free, no confluence/SN) clarified what the denotational fixpoint
+certifies. Two facts, kept distinct:
 
-Why: the discriminating content of the Ranzow fixpoint is **syntactic** —
-`N ∘ ⌜N⌝ →* ⌜N⌝` demands N produce the exact *normal-form syntax*, not merely the
-same meaning. A denotational model quotients by the equational theory, so it
-cannot see the difference between "rebuild" and "normalise".
+- **The model IS discriminating.** `eval N : Fix TermF → Fix TermF` is a value of
+  first-order `Code` data, and the fixpoint check `eval(N ∘ ⌜N⌝) ≡ eval(⌜N⌝)`
+  compares such values. For a *real* normaliser — `N = cata TermF step` whose
+  denotation maps an encoded term to the encoding of its normal form — the check
+  is non-trivial: it forces `normalise(⌜N⌝) = ⌜N⌝`, i.e. N's own code is already
+  normal. (An earlier draft wrongly said the model "cannot distinguish rebuild
+  from normalise"; it can — they are different functions.)
+- **The refold witness is degenerate.** `N = cata TermF In` (and `N = id`) is
+  denotationally the *identity* on `Fix TermF`, so it fixes *every* value and
+  passes the check trivially. That is a property of this WITNESS (its step is
+  "rebuild", not "reduce"), not of the model. So `RefoldFixpoint` /
+  `RefoldFullCorrectness` are a postulate-free *proof that the wiring closes*, not
+  a certified normaliser.
 
-The fixpoint becomes discriminating again only when **N's denotation actually
-normalises code values** — i.e. `eval N : Fix TermF → Fix TermF` maps an encoded
-term to the encoding of its normal form. That requires N = `cata TermF step` with
-`step` the real normaliser algebra (decode → reduce → re-encode), *not* the refold
-`cata TermF In`. Recovering "produces ⌜nf g⌝" from "denotes the same as ⌜nf g⌝"
-is exactly the **adequacy / faithfulness** kernel (module 8 of
-`plans/evaluator-instance.md`), which hits the composition-middle-type wall and
-needs the typed two-layer encoding.
+Two obligations remain for a genuinely-certified result, and they are shared by
+the operational and denotational presentations:
 
-Consequence for the strategy: the evaluator route's "determinism + totality for
-free" is real and valuable, but the *value-equality fixpoint check* of
-`cccvm-sketch.md` must be over a representation where the check is discriminating —
-either an **operational** evaluator that produces the normal-form syntax as data
-(so equality is syntactic on `Code`), or the denotational model **plus** the
-adequacy kernel. The refold results are a postulate-free *witness that the wiring
-closes*, not a certified normaliser.
+1. **A real normaliser algebra** `cata TermF step` (decode → reduce → re-encode),
+   whose fixpoint is therefore non-trivial.
+2. **Transparency** — the `fixpoint ⟹ correct-on-all-inputs` step
+   (`EvalFullCorrectness`'s second half), the genuine NbE-adequacy content.
+
+Totality is **not** among the open obligations: its only non-trivial part is that
+the catamorphism fold terminates, now proven structurally with no pragma in
+`normalizer.Theory.Eval.CataTerminates` (so `cata-Set`'s `{-# TERMINATING #-}` is
+dischargeable, and the `NO_POSITIVITY_CHECK` on `Fix` is avoidable since the
+bootstrap's `TermF` is strictly positive). So the denotational model is rigorous on
+determinism + totality; the remaining work is (1) + (2) above.
 
 ## Bottom line
 
