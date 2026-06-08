@@ -524,8 +524,18 @@ extract-morph-eff-aux : ∀ {n} {Γ : SCtx n} {Ψ : Surface.Usage n} {T : Type} 
                       → T ≡ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B)
                       → Maybe (∃-syntax (λ (m : IR A B) → Ψ ≡ Surface.zeroUsage))
 extract-morph-eff-aux (Surface.lift-morphism m) refl = just (m , refl)
-extract-morph-eff-aux (Surface.sigOp name)      refl = just (IR.SigOp (generic-info name) , refl)
+-- NOTE (Plan 0.36): NO `sigOp name → IR.SigOp (generic-info name)` clause.
+-- That would launder an INTERNAL user function (which pre-resolve is also a
+-- `Surface.sigOp "name"`) through the POSTULATED `generic-semI/semM`, claiming
+-- it denotes an opaque external SigOp — typechecks but miscompiles (e.g.
+-- `once_seven` is a closure-returner, not that SigOp). Extraction stays
+-- faithful: only genuine `lift-morphism`s (and `arr'`/`cata` over them).
 extract-morph-eff-aux (Surface.arr' e)          refl = extract-morph-eff-aux e refl
+-- A `cata` IS a direct morphism `μF → A`. Recover the bare `Cata` IR (the same
+-- un-curried form `Surface.Elaborate.elaborate` builds) so it fuses into an
+-- effectful compose/case like any other morphism (e.g. `compose emitAll …`).
+extract-morph-eff-aux (Surface.cata {F = F} wfF algE) refl =
+  just (IR.Cata wfF (IR.apply IR.∘ IR.⟨ Elab.elaborate IR.Heap algE IR.∘ IR.terminal , IR.id ⟩ IR.Heap) , refl)
 extract-morph-eff-aux _ _ = nothing
 
 extract-morph-eff : ∀ {n} {Γ : SCtx n} {Ψ : Surface.Usage n} {A B : Type}
