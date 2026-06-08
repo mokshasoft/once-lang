@@ -1718,7 +1718,7 @@ mutual
   ... | failure err , _ = failure err , tt
   ... | success (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) Ψ argE d fr , w =
     success (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B) _
-            (Surface.app (weakenFromEmpty (specArr A B)) argE) (suc d) fr , t-arr-app-infer w
+            (Surface.arr' argE) (suc d) fr , t-arr-app-infer w
   ... | success Unit _ _ _ _ , _ = failure ArrNeedsFunction , tt
   ... | success Void _ _ _ _ , _ = failure ArrNeedsFunction , tt
   ... | success Int _ _ _ _ , _ = failure ArrNeedsFunction , tt
@@ -1841,7 +1841,7 @@ mutual
         with checkElabV ctx arg (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)
   ...   | failure err , _ = failure err , tt
   ...   | success Ψ argE d fr , w =
-          success _ (Surface.app (weakenFromEmpty (specArr A B)) argE) (suc d) fr , t-arr-app-check w
+          success _ (Surface.arr' argE) (suc d) fr , t-arr-app-check w
   checkElabV-RApp-dispatch ctx f arg T ahv-arr _ | Unit = failure (TypeMismatch T T) , tt
   checkElabV-RApp-dispatch ctx f arg T ahv-arr _ | Void = failure (TypeMismatch T T) , tt
   checkElabV-RApp-dispatch ctx f arg T ahv-arr _ | Int = failure (TypeMismatch T T) , tt
@@ -2788,7 +2788,7 @@ checkElab-fallback-RApp-arr :
   → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
       checkElab ctx (Raw.RApp (Raw.RVar "arr") e)
                     (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B)
-        ≡ success (Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ)) eE' d' f')))
+        ≡ success Ψ eE' d' f')))
 checkElab-fallback-RApp-arr {ctx} e A B eqC
   with checkElabV ctx e (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) | eqC
 ... | success _ _ _ _ , _ | refl = _ , _ , _ , refl

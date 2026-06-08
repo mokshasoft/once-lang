@@ -263,7 +263,7 @@ infer-complete-RApp-arr :
   → inferElab ctx arg ≡ success (A T.⇒[ T.mk-kind T.Many T.pure ] B) Ψ argE d' f'
   → ∃[ eE ] ∃[ d ] ∃[ f ]
       inferElab ctx (Raw.RApp (RVar "arr") arg)
-        ≡ success (A T.⇒[ T.mk-kind T.Many T.eff ] B) (zeroUsage +ᵘ (T.Many *ᵘ Ψ)) eE d f
+        ≡ success (A T.⇒[ T.mk-kind T.Many T.eff ] B) Ψ eE d f
 infer-complete-RApp-arr {ctx} arg eqArg
   with inferElabV ctx arg | eqArg
 ... | success (_ T.⇒[ T.mk-kind T.Many T.pure ] _) _ _ _ _ , _ | refl = _ , _ , _ , refl
@@ -757,7 +757,7 @@ completeness-gap-arr-app-check-eq :
   → ∃[ eE' ] ∃[ d' ] ∃[ f' ]
       checkElab ctx (Raw.RApp (RVar "arr") arg)
                     (A T.⇒[ T.mk-kind T.Many T.eff ] B)
-        ≡ success (zeroUsage +ᵘ (T.Many *ᵘ Ψ)) eE' d' f'
+        ≡ success Ψ eE' d' f'
 completeness-gap-arr-app-check-eq {ctx} arg A B eqC
   with checkElabV ctx arg (A T.⇒[ T.mk-kind T.Many T.pure ] B) | eqC
 ... | success _ _ _ _ , _ | refl = _ , _ , _ , refl
@@ -770,7 +770,7 @@ postulate
     → ∃[ eE ] ∃[ d ] ∃[ f ]
         checkElab ctx (Raw.RApp (RVar "arr") e)
                       (A T.⇒[ T.mk-kind T.Many T.eff ] B)
-          ≡ success (zeroUsage +ᵘ (T.Many *ᵘ Ψ)) eE d f
+          ≡ success Ψ eE d f
   completeness-gap-apply-check :
     ∀ {ctx : NamedCtx} {p : RawExpr} {A B : Type}
       {Ψ : Surface.Usage (NamedCtx.size ctx)}

@@ -214,9 +214,11 @@ mutual
     t-arr-app-infer : ∀ {ctx : NamedCtx} {e : RawExpr} {A B : Type}
                       {Ψ : Surface.Usage (NamedCtx.size ctx)}
                     → ctx ⊢ᵢ e ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) ⨾ Ψ
+                    -- Plan 0.36 Phase 1: arr is a LINEAR effect lift (`arr' e`,
+                    -- usage-preserving), not the unrestricted closure app.
                     → ctx ⊢ᵢ RApp (RVar "arr") e
                               ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B)
-                              ⨾ (zeroUsage +ᵘ (Once.Type.Many *ᵘ Ψ))
+                              ⨾ Ψ
 
     -- | `apply p` — eliminate a pair-of-function. p must infer at
     -- (A ⇒[Many] B) * A. Plan 0.4 T0 spec rule (2026-04-30): closes
@@ -518,9 +520,10 @@ mutual
     t-arr-app-check : ∀ {ctx : NamedCtx} {arg : RawExpr} {A B : Type}
                       {Ψ : Surface.Usage (NamedCtx.size ctx)}
                     → ctx ⊢ᶜ arg ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) ⨾ Ψ
+                    -- Plan 0.36 Phase 1: arr is a LINEAR effect lift (usage-preserving).
                     → ctx ⊢ᶜ RApp (RVar "arr") arg
                              ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B)
-                             ⨾ (Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ))
+                             ⨾ Ψ
 
     -- | Argument-driven application in check mode. Plan 0.4 T1
     -- changes 2+4. When `f` cannot be inferred as a function (the
