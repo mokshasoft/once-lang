@@ -191,8 +191,16 @@ build the evaluator route for the bootstrap foundation.
   canonicity/uniqueness fragment is mechanised (zero postulates) in
   `Theory.RanzowFixpoint.EvalCorrectness` over the `Theory.Syntax.Evaluable`
   carrier — determinism alone gives canonicity; totality gives a defined
-  canonical value. Still owed: `transparency` + `encoding-completeness` for the
-  full jump to "correct on all inputs."
+  canonical value. The full "fixpoint ⟹ correct on all inputs" jump is in
+  `Theory.RanzowFixpoint.EvalFullCorrectness` (zero postulates): rather than the
+  rewriting version's single monolithic Established postulate, it **decomposes**
+  the gap into the two halves of Appendix A — `encoding-completeness` (A.4/A.5)
+  and `transparency` (A.3) — joined by a **constructive** assembly proof through
+  an explicit branch-wise-correctness certificate. Remaining depth: `transparency`
+  is the standard **NbE adequacy** lemma (ADHS 2001; Balat–Di Cosmo–Fiore 2004) —
+  re-based from "folklore" onto a published, provable result, to be discharged by
+  the concrete VM's adequacy proof; `encoding-completeness` is largely definitional
+  (⌜N⌝ exposes every branch).
 - Certify N by running `eval(N ∘ ⌜N⌝) == eval(⌜N⌝)` on the VM.
 
 **Layer 1+ — the Once compiler, stratified on the trusted core:**
