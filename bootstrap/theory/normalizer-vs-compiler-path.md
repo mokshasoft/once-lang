@@ -187,7 +187,12 @@ build the evaluator route for the bootstrap foundation.
   faithfulness / isolation / memory-safety). Trusted by inspection.
 - Fixpoint theorem in **evaluator form**: determinism + totality (SN, already
   have) + transparency + encoding-completeness ⟹ fixpoint implies correct. Pure
-  math, refereeable / machine-checked, **no confluence obligation**.
+  math, refereeable / machine-checked, **no confluence obligation**. The
+  canonicity/uniqueness fragment is mechanised (zero postulates) in
+  `Theory.RanzowFixpoint.EvalCorrectness` over the `Theory.Syntax.Evaluable`
+  carrier — determinism alone gives canonicity; totality gives a defined
+  canonical value. Still owed: `transparency` + `encoding-completeness` for the
+  full jump to "correct on all inputs."
 - Certify N by running `eval(N ∘ ⌜N⌝) == eval(⌜N⌝)` on the VM.
 
 **Layer 1+ — the Once compiler, stratified on the trusted core:**
