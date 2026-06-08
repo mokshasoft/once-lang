@@ -1,0 +1,9 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson and contributors
+
+-- | Test-harness-local Emits SigOp (Plan 0.36 Phase 0/1 prerequisite).
+-- NOT a real Strata interpretation — exists only so the effect-emitting
+-- cata north-star tests can invoke an effectful op. Runtime = nop (the
+-- companion Emit.x86_64's once_<sym> just returns); the observable is the
+-- SigOp trace (asserted at the Agda `obs` level), not stdout.
+signature emit : Eff Int Unit

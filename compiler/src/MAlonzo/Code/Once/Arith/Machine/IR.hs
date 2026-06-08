@@ -113,16 +113,16 @@ d_eval'45'arith'45'W_82 v0 v1 v2
 -- Once.Arith.Machine.IR.shape-as-type
 d_shape'45'as'45'type_134 ::
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_InputShape_8 ->
-  MAlonzo.Code.Once.Type.T_Type_108
+  MAlonzo.Code.Once.Type.T_Type_112
 d_shape'45'as'45'type_134 v0
   = case coe v0 of
       MAlonzo.Code.Once.Arith.Machine.AbsState.C_shape'45'unit_10
-        -> coe MAlonzo.Code.Once.Type.C_Unit_118
+        -> coe MAlonzo.Code.Once.Type.C_Unit_122
       MAlonzo.Code.Once.Arith.Machine.AbsState.C_shape'45'int_12
-        -> coe MAlonzo.Code.Once.Type.C_Int_132
+        -> coe MAlonzo.Code.Once.Type.C_Int_136
       MAlonzo.Code.Once.Arith.Machine.AbsState.C_shape'45'pair_14 v1 v2
         -> coe
-             MAlonzo.Code.Once.Type.C__'42'__122
+             MAlonzo.Code.Once.Type.C__'42'__126
              (coe d_shape'45'as'45'type_134 (coe v1))
              (coe d_shape'45'as'45'type_134 (coe v2))
       _ -> MAlonzo.RTE.mazUnreachableError
