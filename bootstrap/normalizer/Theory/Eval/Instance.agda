@@ -118,3 +118,11 @@ eval-fixpoint-is-unique :
   ∀ (T : Term TermCode' TermCode') →
   ∀ {u w} → (T ∘ encode T) ⇓ᵈ u → (T ∘ encode T) ⇓ᵈ w → u ≡ w
 eval-fixpoint-is-unique T p q = determinism {t = T ∘ encode T} p q
+
+-- Convenience: a term whose self-application is denotationally the identity
+-- (i.e. eval (T ∘ ⌜T⌝) ≡ eval ⌜T⌝) has the Ranzow fixpoint property.
+mkFixpoint :
+  ∀ {T : Term TermCode' TermCode'} →
+  eval (T ∘ encode T) ≡ eval (encode T) →
+  HasEvalRanzowFixpoint T
+mkFixpoint {T} eq = mkVal (eval (encode T)) , eq , refl
