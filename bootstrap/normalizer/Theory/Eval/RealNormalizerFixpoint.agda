@@ -24,8 +24,9 @@ open import normalizer.Syntax.Types using (Unit; ⊤; tt)
 open import normalizer.Syntax.CCC using (Term; _∘_)
 open import normalizer.Encoding.Encoding using (TermCode'; encode)
 open import normalizer.Testing.Evaluator using (eval)
-open import normalizer.TCB0.Normalizer.Definition using (normalize)
+open import normalizer.TCB0.Normalizer.Definition using (normalize; noredex-fixpoint)
 open import normalizer.TCB0.Normalizer.NoRedexFixpoint using (fixpoint-from-noredex)
+open import normalizer.Syntax.NoRedex using (NoRedex)
 open import normalizer.Theory.Eval.Instance
   using (HasEvalRanzowFixpoint; mkFixpoint; eval-fixpoint-is-canonical;
          DenValue; mkVal; _⇓ᵈ_)
@@ -49,6 +50,14 @@ real-fixpoint-fn = cong (λ z → λ (_ : ⊤) → z) real-fixpoint-at-tt
 
 normalize-has-fixpoint : HasEvalRanzowFixpoint normalize
 normalize-has-fixpoint = mkFixpoint {normalize} real-fixpoint-fn
+
+-- More than the single fixpoint: the real normalizer is denotationally
+-- the identity on EVERY already-normal input — a whole class, not one
+-- term. Constructive (noredex-fixpoint is axiom-free) modulo eval's funext.
+normalize-correct-on-noredex :
+  ∀ {A B} (t : Term A B) → NoRedex t →
+  eval (normalize ∘ encode t) tt ≡ eval (encode t) tt
+normalize-correct-on-noredex t nr = eval-sound* (noredex-fixpoint t nr) tt
 
 ------------------------------------------------------------------------
 -- End-to-end: feed the real normalizer + its fixpoint through the formal
