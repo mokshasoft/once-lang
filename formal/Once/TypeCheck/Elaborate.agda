@@ -34,6 +34,10 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; con
 open import Once.Type
 open Once.Type using (showQuantity; showType) public
 open import Once.CCC.IR as IR
+-- Plan 0.36 Phase 1: `generic-info` reconstructs a SigOp's `SigOpInfo` from its
+-- name, so `extract-morph-eff` can recover the direct `IR.SigOp` morphism of an
+-- effectful sigOp used point-free (it elaborates as a closure otherwise).
+open import Once.Arith.SigOp.Builders using (generic-info)
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Raw as Raw
 open import Once.TypeCheck.Error using (TypeError; renderError;
@@ -505,6 +509,31 @@ extract-morph : ∀ {n} {Γ : SCtx n} {Ψ : Surface.Usage n} {A B : Type}
               → Maybe (∃-syntax (λ (m : IR A B) → Ψ ≡ Surface.zeroUsage))
 extract-morph e = extract-morph-aux e refl
 
+-- Plan 0.36 Phase 1: effectful morphism extraction. An eff point-free morphism
+-- has more surface forms than a pure `lift-morphism`: `arr' e` (a pure morphism
+-- lifted to eff) and a bare `sigOp name` (an effectful primitive used as a
+-- morphism — which otherwise elaborates to a closure `curry (SigOp ∘ snd)`).
+-- This recovers the underlying grade-erased `IR A B` from all of them, so the
+-- eff `case`/`compose` clauses can fuse to `lift-morphism {eff} (IR.case / ∘)`
+-- exactly like the pure path. Faithful extensionally (arr' is identity on the
+-- morphism; `SigOp si` is what the closure form applies); the residual
+-- semantic equality is discharged in the scaffolded eff completeness bridges.
+extract-morph-eff-aux : ∀ {n} {Γ : SCtx n} {Ψ : Surface.Usage n} {T : Type} {A B : Type}
+                        {π : Once.Type.Purity}
+                      → SExpr Γ Ψ T
+                      → T ≡ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B)
+                      → Maybe (∃-syntax (λ (m : IR A B) → Ψ ≡ Surface.zeroUsage))
+extract-morph-eff-aux (Surface.lift-morphism m) refl = just (m , refl)
+extract-morph-eff-aux (Surface.sigOp name)      refl = just (IR.SigOp (generic-info name) , refl)
+extract-morph-eff-aux (Surface.arr' e)          refl = extract-morph-eff-aux e refl
+extract-morph-eff-aux _ _ = nothing
+
+extract-morph-eff : ∀ {n} {Γ : SCtx n} {Ψ : Surface.Usage n} {A B : Type}
+                    {π : Once.Type.Purity}
+                  → SExpr Γ Ψ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B)
+                  → Maybe (∃-syntax (λ (m : IR A B) → Ψ ≡ Surface.zeroUsage))
+extract-morph-eff e = extract-morph-eff-aux e refl
+
 -- arr : (a → b) → Eff a b
 specArr : (A B : Type) → SExpr S∅ Surface.zeroUsage ((A ⇒ B) ⇒ (A ⇒[ mk-kind Many eff ] B))
 specArr A B = Surface.lam Many refl (Surface.arr' (Surface.var zero))
@@ -770,9 +799,10 @@ mutual
   -- Plan 0.36 Phase 2a: dispatch on `wellFormedF? F`; the algebra is
   -- elaborated as an ordinary function in the EMPTY context (see clause).
   checkCataGo : (ctx : NamedCtx) (alg : RawExpr) (F : Once.Type.Functor) (A : Type)
+                (π : Once.Type.Purity)
               → (mw : Maybe (Once.Functor.Translate.WellFormedF F)) → wellFormedF? F ≡ mw
               → VerifiedCheckResult ctx (Raw.RApp (Raw.RVar "cata") alg)
-                                        (Once.Type.μ-type F Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] A)
+                                        (Once.Type.μ-type F Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A)
 
   -- Plan 0.4 T0 Option A: hoist the `ahv-other` (generic application)
   -- branch of `inferElab RApp` into its own top-level mutual member.
@@ -1116,6 +1146,39 @@ mutual
                 success _
                   (Surface.app (Surface.app (weakenFromEmpty (specCase A B C)) fE) gE)
                   (suc (df Data.Nat.⊔ dg)) frg , t-case-copair-check wF wG
+  -- Plan 0.36 Phase 1: effectful copair (D032 single-π). Both arms extracted as
+  -- IR morphisms (lift-morphism / arr' / bare sigOp) and fused to the SAME
+  -- grade-erased `IR.case`, wrapped at eff. Fused, not closures.
+  checkCase ctx (Raw.RApp (Raw.RVar "case") f_inner) arg
+            ((A Once.Type.+ B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] C)
+    with checkElabV ctx f_inner (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] C)
+  ... | failure err , _ = failure err , tt
+  ... | success Ψf fE df frf , wF
+        with checkElabV ctx arg (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] C)
+  ...     | failure err , _ = failure err , tt
+  ...     | success Ψg gE dg frg , wG
+            with extract-morph-eff fE | extract-morph-eff gE
+  ...         | just (m_f , eqf) | just (m_g , eqg) =
+                let
+                  wF' : ctx ⊢ᶜ f_inner ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] C) ⨾ Surface.zeroUsage
+                  wF' = subst (λ Ψ → ctx ⊢ᶜ f_inner ∶ _ ⨾ Ψ) eqf wF
+                  wG' : ctx ⊢ᶜ arg ∶ (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] C) ⨾ Surface.zeroUsage
+                  wG' = subst (λ Ψ → ctx ⊢ᶜ arg ∶ _ ⨾ Ψ) eqg wG
+                  collapse : (Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Surface.zeroUsage))
+                             Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Surface.zeroUsage)
+                           ≡ Surface.zeroUsage {NamedCtx.size ctx}
+                  collapse =
+                    trans (cong₂ Surface._+ᵘ_
+                                 (trans (cong (Surface.zeroUsage Surface.+ᵘ_) (*ᵘ-zeroʳ Once.Type.Many))
+                                        (+ᵘ-identityʳ Surface.zeroUsage))
+                                 (*ᵘ-zeroʳ Once.Type.Many))
+                          (+ᵘ-identityʳ Surface.zeroUsage)
+                in success _
+                    (Surface.lift-morphism (IR.case m_f m_g))
+                    (suc (df Data.Nat.⊔ dg)) frf
+                  , subst (λ Ψ → ctx ⊢ᶜ _ ∶ _ ⨾ Ψ) collapse
+                          (t-case-copair-check wF' wG')
+  ...         | _ | _ = failure (BuiltinTypeMismatch "case") , tt
   checkCase _ _ _ _ = failure (BuiltinTypeMismatch "case") , tt
 
   -- Plan 0.6 Phase C.7 POC-3 + 0.6.2 Phase 3b: bare `compose f g`
@@ -1133,6 +1196,42 @@ mutual
                (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C) =
     checkComposeWithB ctx f_inner arg A C
       (composeArgB ctx arg A) refl
+  -- Plan 0.36 Phase 1: effectful composition (D032 single-π). Both factors
+  -- extracted (lift-morphism / arr' / bare sigOp) and fused to the SAME
+  -- grade-erased `IR.∘`, wrapped at eff.
+  checkCompose ctx (Raw.RApp (Raw.RVar "compose") f_inner) arg
+               (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] C)
+    with composeArgB ctx arg A in eqAB
+  ... | nothing = failure (BuiltinTypeMismatch "compose") , tt
+  ... | just B
+        with checkElabV ctx arg (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B)
+  ...     | failure err , _ = failure err , tt
+  ...     | success Ψg gE dg frg , wG
+            with checkElabV ctx f_inner (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] C)
+  ...         | failure err , _ = failure err , tt
+  ...         | success Ψf fE df frf , wF
+                with extract-morph-eff fE | extract-morph-eff gE
+  ...             | just (m_f , eqf) | just (m_g , eqg) =
+                    let
+                      wF' : ctx ⊢ᶜ f_inner ∶ (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] C) ⨾ Surface.zeroUsage
+                      wF' = subst (λ Ψ → ctx ⊢ᶜ f_inner ∶ _ ⨾ Ψ) eqf wF
+                      wG' : ctx ⊢ᶜ arg ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B) ⨾ Surface.zeroUsage
+                      wG' = subst (λ Ψ → ctx ⊢ᶜ arg ∶ _ ⨾ Ψ) eqg wG
+                      collapse : (Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Surface.zeroUsage))
+                                 Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Surface.zeroUsage)
+                               ≡ Surface.zeroUsage {NamedCtx.size ctx}
+                      collapse =
+                        trans (cong₂ Surface._+ᵘ_
+                                     (trans (cong (Surface.zeroUsage Surface.+ᵘ_) (*ᵘ-zeroʳ Once.Type.Many))
+                                            (+ᵘ-identityʳ Surface.zeroUsage))
+                                     (*ᵘ-zeroʳ Once.Type.Many))
+                              (+ᵘ-identityʳ Surface.zeroUsage)
+                    in success _
+                        (Surface.lift-morphism (m_f IR.∘ m_g))
+                        (suc (df Data.Nat.⊔ dg)) frf
+                      , subst (λ Ψ → ctx ⊢ᶜ _ ∶ _ ⨾ Ψ) collapse
+                              (t-compose-check eqAB wF' wG')
+  ...             | _ | _ = failure (BuiltinTypeMismatch "compose") , tt
   checkCompose _ _ _ _ = failure (BuiltinTypeMismatch "compose") , tt
 
   -- Helper that takes the composeArgB result + checkElabV results as
@@ -1254,8 +1353,8 @@ mutual
   -- decidable results are threaded through `checkCataA/B/C` so the
   -- witness carries the equations and completeness reduces cleanly.
   -- Emits `lift-morphism (IR.Cata wfF algIR)`.
-  checkCata ctx alg (Once.Type.μ-type F Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] A) =
-    checkCataGo ctx alg F A (wellFormedF? F) refl
+  checkCata ctx alg (Once.Type.μ-type F Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A) =
+    checkCataGo ctx alg F A π (wellFormedF? F) refl
   checkCata _ _ _ = failure (BuiltinTypeMismatch "cata") , tt
 
   -- Plan 0.36 Phase 2a: the algebra is ANY closed function `⟦F⟧T A → A`.
@@ -1266,10 +1365,10 @@ mutual
   -- `IR.Cata` is built later by `Surface.Elaborate.elaborate`. The empty
   -- context forces closedness: a non-closed algebra fails to elaborate
   -- here (true runtime closures are out of scope — see plan 0.36).
-  checkCataGo ctx alg F A nothing _ = failure (BuiltinTypeMismatch "cata") , tt
-  checkCataGo ctx alg F A (just wfF) eqW
+  checkCataGo ctx alg F A π nothing _ = failure (BuiltinTypeMismatch "cata") , tt
+  checkCataGo ctx alg F A π (just wfF) eqW
     with checkElabV (ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx))
-                    alg (⟦ F ⟧T A ⇒ A)
+                    alg (⟦ F ⟧T A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A)
   ... | failure err , _ = failure err , tt
   ... | success Surface.[] algE d fr , wArg =
         success _ (Surface.cata wfF algE) (suc d) (NamedCtx.freshCounter ctx)

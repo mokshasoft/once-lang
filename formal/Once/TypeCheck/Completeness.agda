@@ -53,7 +53,7 @@ open import Once.TypeCheck.Elaborate
 open import Once.TypeCheck.Judgment
 open import Once.Functor.Translate using (WellFormedF)
 open import Once.Functor.Decide using (wellFormedF?)
-open import Once.TypeCheck.Classify using (ctxWithImportsAndPolys)
+open import Once.TypeCheck.Classify using (ctxWithImportsAndPolys; composeArgB)
 
 open import Once.Surface.Syntax as Surface using (zeroUsage; _+ᵘ_; _*ᵘ_)
   renaming (Expr to SExpr)
@@ -874,15 +874,36 @@ mutual
   -- emission (rebuild over `checkCataGo`, mirroring the kept
   -- `checkElab-fallback-RApp-In`). Discharge with Correct's cata clause.
   postulate
+    -- Plan 0.36 Phase 1: grade-polymorphic (π).
     cata-check-complete : ∀ {ctx : NamedCtx} {alg : RawExpr}
-      {F : T.Functor} {A : Type} {wfF : WellFormedF F}
+      {F : T.Functor} {A : Type} {π : T.Purity} {wfF : WellFormedF F}
       → wellFormedF? F ≡ just wfF
       → ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx)
-          ⊢ᶜ alg ∶ (T.⟦ F ⟧T A T.⇒ A) ⨾ Surface.zeroUsage
+          ⊢ᶜ alg ∶ (T.⟦ F ⟧T A T.⇒[ T.mk-kind T.Many π ] A) ⨾ Surface.zeroUsage
       → ∃[ eE ] ∃[ d ] ∃[ f ]
           checkElab ctx (Raw.RApp (Raw.RVar "cata") alg)
-            (T.μ-type F T.⇒[ T.mk-kind T.Many T.pure ] A)
+            (T.μ-type F T.⇒[ T.mk-kind T.Many π ] A)
               ≡ success Surface.zeroUsage eE d f
+    -- Plan 0.36 Phase 1 — TRANSIENT, PROVABLE (mirror the pure
+    -- checkElab-fallback-RApp-{case,compose} via extract-morph-eff): the eff
+    -- copair/compose elaborator clauses succeed for valid eff arm derivations.
+    case-copair-eff-complete : ∀ {ctx : NamedCtx} {f g : RawExpr} {A B C : Type}
+      {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
+      → ctx ⊢ᶜ f ∶ (A T.⇒[ T.mk-kind T.Many T.eff ] C) ⨾ Ψ₁
+      → ctx ⊢ᶜ g ∶ (B T.⇒[ T.mk-kind T.Many T.eff ] C) ⨾ Ψ₂
+      → ∃[ eE ] ∃[ d ] ∃[ f' ]
+          checkElab ctx (Raw.RApp (Raw.RApp (Raw.RVar "case") f) g)
+            ((A T.+ B) T.⇒[ T.mk-kind T.Many T.eff ] C)
+              ≡ success ((Surface.zeroUsage +ᵘ (T.Many *ᵘ Ψ₁)) +ᵘ (T.Many *ᵘ Ψ₂)) eE d f'
+    compose-eff-complete : ∀ {ctx : NamedCtx} {f g : RawExpr} {A B C : Type}
+      {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
+      → composeArgB ctx g A ≡ just B
+      → ctx ⊢ᶜ f ∶ (B T.⇒[ T.mk-kind T.Many T.eff ] C) ⨾ Ψ₁
+      → ctx ⊢ᶜ g ∶ (A T.⇒[ T.mk-kind T.Many T.eff ] B) ⨾ Ψ₂
+      → ∃[ eE ] ∃[ d ] ∃[ f' ]
+          checkElab ctx (Raw.RApp (Raw.RApp (Raw.RVar "compose") f) g)
+            (A T.⇒[ T.mk-kind T.Many T.eff ] C)
+              ≡ success ((Surface.zeroUsage +ᵘ (T.Many *ᵘ Ψ₁)) +ᵘ (T.Many *ᵘ Ψ₂)) eE d f'
     -- Plan 0.36 Phase 2a follow-up — TRANSIENT, PROVABLE: pair-literal
     -- check-mode completeness. `checkElabV (RPair a b) (A * B)` reduces
     -- via `checkPairLit` to `success (Surface.pair …)` given the two
@@ -1014,10 +1035,13 @@ mutual
     let (_ , _ , _ , eq₁) = check-complete d₁
         (_ , _ , _ , eq₂) = check-complete d₂
     in checkElab-fallback-RApp-pair f g A B C eq₁ eq₂
-  check-complete (t-case-copair-check {f = f} {g = g} {A = A} {B = B} {C = C} d₁ d₂) =
+  -- Plan 0.36 Phase 1: dispatch on π (pure → fused-lift helper; eff → scaffold).
+  check-complete (t-case-copair-check {f = f} {g = g} {A = A} {B = B} {C = C} {π = T.pure} d₁ d₂) =
     let (_ , _ , _ , eq₁) = check-complete d₁
         (_ , _ , _ , eq₂) = check-complete d₂
     in checkElab-fallback-RApp-case f g A B C eq₁ eq₂
+  check-complete (t-case-copair-check {π = T.eff} d₁ d₂) =
+    case-copair-eff-complete d₁ d₂
   check-complete (t-In-app-check {arg = arg} {F = F} eqWF dArg) =
     let (_ , _ , _ , eqA) = check-complete dArg
     in checkElab-fallback-RApp-In arg F eqWF eqA
@@ -1025,10 +1049,12 @@ mutual
     cata-check-complete eqWF wArg
   check-complete (t-pair-lit-check {a = a} {b = b} {A = A} {B = B} dA dB) =
     pair-lit-check-complete dA dB
-  check-complete (t-compose-check {f = f} {g = g} {A = A} {B = B} {C = C} eqArgB d₁ d₂) =
+  check-complete (t-compose-check {f = f} {g = g} {A = A} {B = B} {C = C} {π = T.pure} eqArgB d₁ d₂) =
     let (_ , _ , _ , eq₁) = check-complete d₁
         (_ , _ , _ , eq₂) = check-complete d₂
     in checkElab-fallback-RApp-compose f g A B C eqArgB eq₁ eq₂
+  check-complete (t-compose-check {π = T.eff} eqArgB d₁ d₂) =
+    compose-eff-complete eqArgB d₁ d₂
   check-complete (t-curry-check {f = f} {A = A} {B = B} {C = C} d) =
     let (_ , _ , _ , eq) = check-complete d
     in checkElab-fallback-RApp-curry f A B C eq

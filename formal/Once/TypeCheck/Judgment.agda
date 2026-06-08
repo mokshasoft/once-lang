@@ -386,12 +386,14 @@ mutual
     -- conclusion's Ψ matches the Surface IR `app (app specCase fE) gE`
     -- (specCase contributes zero usage), collapsing to `zeroUsage`
     -- when both arms are morphism-realm values.
+    -- Plan 0.36 Phase 1: grade-polymorphic (D032 single-π; both arms + result share π).
     t-case-copair-check : ∀ {ctx : NamedCtx} {f g : RawExpr} {A B C : Type}
+                          {π : Once.Type.Purity}
                           {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
-                        → ctx ⊢ᶜ f ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C) ⨾ Ψ₁
-                        → ctx ⊢ᶜ g ∶ (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C) ⨾ Ψ₂
+                        → ctx ⊢ᶜ f ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] C) ⨾ Ψ₁
+                        → ctx ⊢ᶜ g ∶ (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] C) ⨾ Ψ₂
                         → ctx ⊢ᶜ RApp (RApp (RVar "case") f) g
-                                 ∶ ((A Once.Type.+ B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C)
+                                 ∶ ((A Once.Type.+ B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] C)
                                  ⨾ ((Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ₁))
                                      Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ₂))
 
@@ -422,13 +424,15 @@ mutual
     -- (mirrors `t-In-app-check`), NOT the morphRaw?/morphToIR equations.
     -- `checkCata` builds the algebra IR in the lowering pass from this
     -- sub-elaboration; the algebra may be named/arith/effectful.
+    -- Plan 0.36 Phase 1: grade-polymorphic — cata's realm follows the algebra's π.
     t-cata-check : ∀ {ctx : NamedCtx} {alg : RawExpr} {F : Functor} {A : Type}
+                   {π : Once.Type.Purity}
                    {wfF : WellFormedF F}
                  → wellFormedF? F ≡ just wfF
                  → ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx)
-                     ⊢ᶜ alg ∶ (⟦ F ⟧T A ⇒ A) ⨾ Surface.zeroUsage
+                     ⊢ᶜ alg ∶ (⟦ F ⟧T A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A) ⨾ Surface.zeroUsage
                  → ctx ⊢ᶜ RApp (RVar "cata") alg
-                         ∶ (μ-type F Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] A)
+                         ∶ (μ-type F Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A)
                          ⨾ Surface.zeroUsage
 
     -- | Applied `compose f g` in check mode at `A ⇒[Many] C`. Plan
@@ -446,13 +450,15 @@ mutual
     -- elaborator. Cases supported by composeArgB: id, fst, snd,
     -- terminal, polymorphic names (schema-instantiated), nested
     -- compose. Other g shapes are not composable in check mode.
+    -- Plan 0.36 Phase 1: grade-polymorphic (D032 single-π; both factors + result share π).
     t-compose-check : ∀ {ctx : NamedCtx} {f g : RawExpr} {A B C : Type}
+                      {π : Once.Type.Purity}
                       {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
                     → composeArgB ctx g A ≡ just B
-                    → ctx ⊢ᶜ f ∶ (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C) ⨾ Ψ₁
-                    → ctx ⊢ᶜ g ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) ⨾ Ψ₂
+                    → ctx ⊢ᶜ f ∶ (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] C) ⨾ Ψ₁
+                    → ctx ⊢ᶜ g ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B) ⨾ Ψ₂
                     → ctx ⊢ᶜ RApp (RApp (RVar "compose") f) g
-                             ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C)
+                             ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] C)
                              ⨾ ((Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ₁))
                                  Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ₂))
 
