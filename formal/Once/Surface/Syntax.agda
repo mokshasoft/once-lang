@@ -289,8 +289,12 @@ data Expr : ∀ {n} → Ctx n → Usage n → Type → Set where
   -- (closure realm), and direct application is expressed via the
   -- `morph-app` constructor (below) which bypasses apply entirely.
   -- See `plans/0.2.4.5-morphism-realm-split.md`.
-  lift-morphism : ∀ {n} {Γ : Ctx n} {A B}
-                → IR A B → Expr Γ zeroUsage (A ⇒ B)
+  -- Plan 0.36 Phase 1: grade-indexed (purity as an index, like quantity).
+  -- The wrapped `IR A B` is grade-erased; the surface arrow carries the
+  -- threaded purity π. Pure sites infer π = pure (byte-identical to the old
+  -- `A ⇒ B`); the effectful fused morphisms (cata algebras) use π = eff.
+  lift-morphism : ∀ {n} {Γ : Ctx n} {A B} {π : Purity}
+                → IR A B → Expr Γ zeroUsage (A ⇒[ mk-kind Many π ] B)
 
   -- Plan 0.2.4.5 D2: morphism-realm application.
   --
