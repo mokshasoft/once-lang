@@ -56,7 +56,7 @@
 
 module Once.CCC.Codegen.IRToTrace where
 
-open import Data.Nat using (ℕ; zero; suc) renaming (_+_ to _+ℕ_)
+open import Data.Nat using (ℕ; zero; suc; _⊔_) renaming (_+_ to _+ℕ_)
 open import Data.Product using (_×_; _,_; proj₂)
 open import Data.List using (List; []; _∷_; _++_)
 
@@ -68,6 +68,8 @@ open import Once.CCC.IR using (IR; AllocMode; Stack; Heap;
   curry; apply; arr;
   In; out-μ; Cata; Para; Out; in-ν; Ana; Hylo; Fuse;
   free-heap; SigOp; const)
+-- Plan 0.36 Phase 2b: functor structure drives the cata codegen strategy.
+open import Once.Type using (Functor; K; Id; _⊕_; _⊗_)
 
 open import Once.CCC.Machine.SMCore
   using (AbstractInstr; AbstractTrace;
@@ -111,6 +113,82 @@ open import Once.CCC.Machine.SMCore
 --
 -- The `curry` clause is the only one that allocates a new label.
 -- Other clauses thread the counter and accumulate body lists.
+-- ────────────────────────────────────────────────────────────────────
+-- Plan 0.36 Phase 2b: cata codegen STRATEGY, dispatched at compile time
+-- on the (statically-known) functor `F`. Keeps the fast Nat path; linear
+-- functors get an upfront-allocated payload stack (count pre-pass);
+-- branching functors need a dynamic worklist. `rec-count` = the max
+-- number of recursive (`Id`) positions reachable in a single constructor
+-- (sum = distinct constructors → max; product = same constructor → sum).
+-- ────────────────────────────────────────────────────────────────────
+rec-count : Functor → ℕ
+rec-count (K _)   = 0
+rec-count Id      = 1
+rec-count (F ⊕ G) = rec-count F ⊔ rec-count G
+rec-count (F ⊗ G) = rec-count F +ℕ rec-count G
+
+data CataStrategy : Set where
+  strat-nat       : CataStrategy   -- ≤1 rec position, fast path (current)
+  strat-linear    : CataStrategy   -- ≤1 rec position + payload (Tier 1, TODO)
+  strat-branching : CataStrategy   -- ≥2 rec positions (Tier 2, TODO)
+
+-- For now the classifier routes ≤1-rec functors to the Nat path and
+-- ≥2-rec to branching; Tier 1 (linear+payload) will refine the split.
+cata-strategy : Functor → CataStrategy
+cata-strategy F with rec-count F
+... | 0           = strat-nat
+... | 1           = strat-nat
+... | suc (suc _) = strat-branching
+
+-- The current (Nat-shaped) codegen body, extracted so the dispatch can
+-- pick it. Takes the post-`alg` frontier/label counters + alg's main
+-- trace `at`; returns (frontier-after , label-after , main-trace).
+cata-trace-nat : ℕ → ℕ → AbstractTrace → ℕ × ℕ × AbstractTrace
+cata-trace-nat n1 l1 at =
+  let pstash = n1
+      sstash = suc n1
+      next   = suc (suc n1)
+      ld-top = l1 ; ld-end = suc l1 ; ld-inl = suc (suc l1) ; ld-de = suc (suc (suc l1))
+      la-top = suc (suc (suc (suc l1))) ; la-end = suc (suc (suc (suc (suc l1))))
+      l2 = suc (suc (suc (suc (suc (suc l1)))))
+      build-layer : ℕ → AbstractTrace
+      build-layer tag =
+        mov-to-output ∷ store-at-slot pstash ∷ instr-alloc-heap 2 ∷
+        store-at-slot sstash ∷ mov-to-input ∷ instr-load-tag-lit tag ∷
+        store-indirect ∷ load-from-slot pstash ∷ store-indirect-suc ∷
+        load-from-slot sstash ∷ []
+      descend-flat =
+        instr-ctrl (c-label ld-top) ∷
+        instr-ctrl (c-branch-scratch-zero ld-end) ∷
+        instr-ctrl (c-branch-tag-zero ld-inl) ∷
+        instr-reg-op input2-inc ∷ load-indirect-suc ∷ mov-to-input ∷
+        instr-ctrl (c-jmp ld-de) ∷
+        instr-ctrl (c-label ld-inl) ∷ instr-reg-op scratch-zero ∷
+        instr-ctrl (c-label ld-de) ∷ instr-ctrl (c-jmp ld-top) ∷
+        instr-ctrl (c-label ld-end) ∷ []
+      ascend-body =
+        mov-to-input ∷ (build-layer 1 ++ (mov-to-input ∷ at ++ (instr-reg-op scratch-dec ∷ [])))
+      ascend-flat =
+        instr-ctrl (c-label la-top) ∷
+        instr-ctrl (c-branch-scratch-zero la-end) ∷
+        (ascend-body ++ (instr-ctrl (c-jmp la-top) ∷ instr-ctrl (c-label la-end) ∷ []))
+      trace =
+        instr-reg-op scratch-one ∷ instr-reg-op input2-zero ∷
+        (descend-flat ++
+         (instr-reg-op scratch-load-count ∷
+          instr-load-tag-lit 0 ∷ mov-to-input ∷
+          (build-layer 0 ++ (mov-to-input ∷ at ++ ascend-flat))))
+  in next , l2 , trace
+
+-- Dispatch the strategy. Skeleton: all tiers route to the Nat codegen
+-- (so the Nat path is unchanged + non-Nat is no worse than before —
+-- still segfaults). Tier 1/2 fill in the strat-linear/strat-branching
+-- branches.
+cata-dispatch : CataStrategy → ℕ → ℕ → AbstractTrace → ℕ × ℕ × AbstractTrace
+cata-dispatch strat-nat       n1 l1 at = cata-trace-nat n1 l1 at
+cata-dispatch strat-linear    n1 l1 at = cata-trace-nat n1 l1 at  -- TODO Tier 1
+cata-dispatch strat-branching n1 l1 at = cata-trace-nat n1 l1 at  -- TODO Tier 2
+
 ir-to-trace' : ∀ {A B} → ℕ → ℕ → IR A B
               → ℕ × ℕ × AbstractTrace × List (ℕ × ℕ × AbstractTrace)
 
@@ -426,47 +504,11 @@ ir-to-trace' n l (out-μ _)      = n , l , (mov-to-output ∷ []) , []
 -- Scratch := depth → base inl layer + alg → ascend (rebuild inr layer
 -- with prev result, alg, Scratch--). Scratch (rbx) survives `alg` (CCC
 -- code never touches rbx). Layer builds mirror the inl/inr Heap codegen.
-ir-to-trace' n l (Cata _ alg) =
+-- Plan 0.36 Phase 2b: dispatch on the functor's strategy (compile-time).
+-- Today every strategy routes to `cata-trace-nat`; Tier 1/2 refine it.
+ir-to-trace' n l (Cata {F} _ alg) =
   let (n1 , l1 , at , ab) = ir-to-trace' n l alg
-      pstash = n1
-      sstash = suc n1
-      next   = suc (suc n1)
-      -- Plan 0.32 (M3 Phase C): FLAT control. 6 loop labels from the label
-      -- counter l1; return l1+6 so compile-trace-cnt's label counter (which
-      -- starts AFTER ir-to-trace's) stays disjoint. descend: 4 labels
-      -- (top/end/inl/dispatch-end); ascend: 2 (top/end).
-      ld-top = l1 ; ld-end = suc l1 ; ld-inl = suc (suc l1) ; ld-de = suc (suc (suc l1))
-      la-top = suc (suc (suc (suc l1))) ; la-end = suc (suc (suc (suc (suc l1))))
-      l2 = suc (suc (suc (suc (suc (suc l1)))))
-      build-layer : ℕ → AbstractTrace
-      build-layer tag =
-        mov-to-output ∷ store-at-slot pstash ∷ instr-alloc-heap 2 ∷
-        store-at-slot sstash ∷ mov-to-input ∷ instr-load-tag-lit tag ∷
-        store-indirect ∷ load-from-slot pstash ∷ store-indirect-suc ∷
-        load-from-slot sstash ∷ []
-      -- descend loop, flat: while Scratch≠0 { if tag0 stop else depth++,follow }
-      descend-flat =
-        instr-ctrl (c-label ld-top) ∷
-        instr-ctrl (c-branch-scratch-zero ld-end) ∷   -- exit when Scratch=0
-        instr-ctrl (c-branch-tag-zero ld-inl) ∷       -- base case (inl)
-        instr-reg-op input2-inc ∷ load-indirect-suc ∷ mov-to-input ∷   -- inr
-        instr-ctrl (c-jmp ld-de) ∷
-        instr-ctrl (c-label ld-inl) ∷ instr-reg-op scratch-zero ∷       -- inl: stop
-        instr-ctrl (c-label ld-de) ∷ instr-ctrl (c-jmp ld-top) ∷
-        instr-ctrl (c-label ld-end) ∷ []
-      ascend-body =
-        mov-to-input ∷ (build-layer 1 ++ (mov-to-input ∷ at ++ (instr-reg-op scratch-dec ∷ [])))
-      -- ascend loop, flat: while Scratch≠0 { rebuild layer, run alg, Scratch-- }
-      ascend-flat =
-        instr-ctrl (c-label la-top) ∷
-        instr-ctrl (c-branch-scratch-zero la-end) ∷   -- exit when Scratch=0
-        (ascend-body ++ (instr-ctrl (c-jmp la-top) ∷ instr-ctrl (c-label la-end) ∷ []))
-      trace =
-        instr-reg-op scratch-one ∷ instr-reg-op input2-zero ∷
-        (descend-flat ++
-         (instr-reg-op scratch-load-count ∷
-          instr-load-tag-lit 0 ∷ mov-to-input ∷
-          (build-layer 0 ++ (mov-to-input ∷ at ++ ascend-flat))))
+      (next , l2 , trace) = cata-dispatch (cata-strategy F) n1 l1 at
   in next , l2 , trace , ab
 ir-to-trace' n l (Para _ _)     = n , l , [] , []
 ir-to-trace' n l (Out _)        = n , l , (mov-to-output ∷ []) , []
