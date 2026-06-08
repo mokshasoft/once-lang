@@ -66,8 +66,8 @@ applies-to = CCT3
 -- as in EvalCorrectness.
 ------------------------------------------------------------------------
 
-module _ (SE : SelfEncoding)
-         (Ev : Evaluable (SelfEncoding.Obj SE) (SelfEncoding.Hom SE)) where
+module FullFixpoint (SE : SelfEncoding)
+                    (Ev : Evaluable (SelfEncoding.Obj SE) (SelfEncoding.Hom SE)) where
   open SelfEncoding SE
   open Evaluable Ev
 
@@ -79,7 +79,7 @@ module _ (SE : SelfEncoding)
   -- plus determinism of evaluation (as in EvalCorrectness).
   ----------------------------------------------------------------------
 
-  module _ (encVal      : ∀ {A B} → Hom A B → Value Unit Code)
+  module Laws (encVal      : ∀ {A B} → Hom A B → Value Unit Code)
            (encode-⇓    : ∀ {A B} (g : Hom A B) → encode g ⇓ encVal g)
            (determinism : ∀ {A B} {t : Hom A B} {v w} → t ⇓ v → t ⇓ w → v ≡ w)
     where
@@ -109,7 +109,7 @@ module _ (SE : SelfEncoding)
     --                        every input — the NbE adequacy lemma.
     ------------------------------------------------------------------
 
-    module _ (spec : ∀ {A B} → Hom A B → Hom A B)
+    module Theorem (spec : ∀ {A B} → Hom A B → Hom A B)
              (N    : Hom Code Code)
              (BranchwiseCorrect : Set)
              (encoding-completeness :
