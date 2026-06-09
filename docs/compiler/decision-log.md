@@ -3905,3 +3905,77 @@ No Once-compiled program ever raises `#DE` / SIGFPE.
 - When `UInt` lands (D054), unsigned `/` `%` follow RISC-V's unsigned
   definitions by the same rule (`a / 0` = all-ones = `2ⁿ-1`,
   `a % 0` = `a`; no signed-overflow special case).
+
+---
+
+## D056: One Realm — Morphism-Realm Composition for the Effectful Path and Values
+
+**Date**: 2026-06-09
+**Status**: Accepted (design); implementation in Plan 0.40
+**Supersedes**: the closure-fallback / `effCompose` framing in `docs/design/effect-composition.md`
+**Completes**: D044 + D045 for the effectful path and for value injection
+
+### Context
+
+D044/D045 moved composition onto the **morphism-realm classifier**: `compose`/
+`case`/`pair` elaborate to direct `IR.compose`/`IR.case`/`IR.pair` (via `spec*`),
+the parser-level desugaring was removed (`Parser.Inline` empty, −891 LoC), and
+`composeArgB` + `PolyCtx` recover middle types without a desugaring fallback.
+"Direct IR emission, no optimizer β/η dependency" was the explicit win.
+
+Two residuals remained, and both block Plan 0.36's effectful cata:
+
+1. The **effectful** `compose`/`case` were never folded into that path — they
+   are a separate elaborator clause that only fuses (`extract-morph-eff`), with
+   no fallback, duplicating the pure path.
+2. `composeArgB` recovers the middle type from poly schemas, bare-builtin
+   canonical types, and arrow-typed imports — but **returns `nothing` for a
+   value-typed name**. So `compose emitAll xs` with `xs : Mu` (a value) fails,
+   even though the cata algebra itself fuses.
+
+Plan 0.39 separately found the optimizer **unsound** (it dropped effectful
+SigOps), which retroactively confirms D044/D045's "no optimizer dependency" as
+a *soundness* requirement, not a convenience.
+
+### Decision
+
+One realm — **morphism** — for composition **and** values:
+
+1. **Unify pure and effectful `compose`/`case` into one grade-polymorphic
+   classifier path.** The IR is grade-erased (`eff ∘` *is* `pure ∘`), so per
+   D046 this is one mechanism, not two. Delete the bespoke eff clauses.
+2. **`composeArgB` and the point-free check-mode use D018's value-lift.** A
+   value `v : B` used where a morphism is expected is the constant morphism
+   `const v : Unit → B` (codomain `B`). Value-typed defs inject like any morphism.
+3. **`curry`/`apply` stay as exponentials** (higher-order, partial application;
+   D053 calling convention). They are *not* a parallel composition realm.
+   First-order functions are morphisms; a first-order lambda should not become a
+   `curry`-closure.
+4. **No `effCompose`** (D032: one category, one `compose`). The closure-realm
+   *as a composition path* is retired; what remains of "closures" is exponentials.
+
+### Rationale
+
+D032 (one unified category), D046 (don't duplicate a mechanism identical at the
+grade-erased IR), D044/D045 (the morphism/classifier route was already the
+chosen direction), D018 (values are constant morphisms), and Plan 0.39 (optimizer-
+independence is now required for soundness). The effectful path being a
+fallback-less copy of the pure path is exactly the D046 anti-pattern at the
+elaborator level.
+
+### Consequences
+
+- Delete the bespoke effectful `compose`/`case` elaborator clauses; route eff
+  through the grade-poly classifier path.
+- Extend `composeArgB` (and the consuming check-mode path) with the value-lift.
+- Unblocks Plan 0.36's eff cata `main` with no closure fallback and no second
+  structure.
+- **Proof obligation:** effectful `∘` sequences effects in source order
+  (run `g`, then `f`) — discharged against the trace semantics, not assumed.
+
+### See Also
+
+- D018 (value lift), D032 (arrow effects), D043/D044/D045 (the migration this
+  completes), D046 (kind-unified arrow), D053 (closure calling convention)
+- Plan 0.36 (the eff cata this unblocks), Plan 0.39 (trace-correct optimizer),
+  Plan 0.40 (implementation)
