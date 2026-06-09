@@ -149,14 +149,30 @@ VALUE-LEVEL `nf` is sound here and value-correctness ⟹ trace-correctness.
 If the normalizer ever takes on drop rewrites, the spec must become
 trace-aware (`obs`) — flagged in NfSpec's header.
 
-What's NOT yet done (the remaining deep kernel — the faithfulness WALL):
-the ADEQUACY `eval (normalize ∘ encode g) ≡ eval (encode (nf g))`, i.e. the
-code-level normalizer on ⌜g⌝ yields the code of ⌜nf g⌝. By induction on the
-Term `g`: the comp case uses `normalize-comp` + the IH + the KEY lemma
-`is-id (eval (encode t)) ⟺ IsId? t` (encode maps `id`→inj₁ id-code, every
-other constructor→inj₂…), aligning `handle-comp`'s trichotomy with `comp-nf`.
-This discharges `RanzowFixpoint.EvalFullCorrectness.Correct nf normalize` —
-the actual `transparency` obligation (NON-degenerate, unlike spec=id).
+UPDATE (2026-06-09, cont.): the ADEQUACY / faithfulness WALL is CROSSED and
+VERIFIED — `…Eval.Adequacy.adequacy` (exit 0, postulate-free, with-free):
+
+    adequacy : ∀ g → eval normalize (code-of g) ≡ code-of (nf g)
+             (code-of g = eval (encode g) tt : Fix TermF)
+
+The code-level normalizer on ⌜g⌝ yields the code of ⌜nf g⌝ — the NON-
+degenerate transparency content (spec = nf, not the trivial spec = id).
+Structure:
+- encode→code commutation is DEFINITIONAL (refl), so the induction on the
+  Term g mirrors idem-step: leaves refl, recursive rebuilds close by
+  cong/cong₂ over the IH, comp via `comp-adequacy`.
+- `idView` / `comp-adequacy` — the encode-faithfulness of id-detection:
+  `is-id (code-of t) ⟺ IsId? t` (encode maps id→inj₁ id-code, every other
+  constructor→inj₂…), aligning handle-comp's code trichotomy with comp-nf.
+  Subtlety: `isId? x ≡ yes-id` is ill-typed for general x (yes-id forces the
+  type eq), so all yes-id reasoning is done inside `caux` where `idView`
+  refines the term to `id`; `comp-elim` is public for the no-id rewrites.
+
+This is the semantic core of `RanzowFixpoint.EvalFullCorrectness.Correct nf
+normalize`. REMAINING (assembly only, #11): wire `adequacy` through the
+abstract `⇓`/`encVal` interface (mirror RefoldFullCorrectness's spec=id
+discharge) to land the literal `Correct nf normalize` / instantiate the
+EvalFullCorrectness.Theorem with spec = nf. The deep content is now DONE.
 
 Obligations (1) real normalizer + totality are DONE (above). What remains:
 

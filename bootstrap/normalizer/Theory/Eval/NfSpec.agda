@@ -28,6 +28,7 @@
 
 module normalizer.Theory.Eval.NfSpec where
 
+open import normalizer.Syntax.Types using (_≡_; refl; trans; cong)
 open import normalizer.Syntax.CCC
   using (Term; id; _∘_; fst; snd; ⟨_,_⟩; inl; inr; [_,_];
          terminal; initial; curry; apply; In; Out; cata)
@@ -62,13 +63,12 @@ isId? In          = no-id
 isId? Out         = no-id
 isId? (cata F alg) = no-id
 
-private
-  -- id ∘ g → g  (yes-id on f forces B = C);  f ∘ id → f  (yes-id on g
-  -- forces A = B);  else rebuild f ∘ g.
-  comp-elim : ∀ {A B C} (f : Term B C) (g : Term A B) → IsId? f → IsId? g → Term A C
-  comp-elim f g yes-id _      = g
-  comp-elim f g no-id  yes-id = f
-  comp-elim f g no-id  no-id  = f ∘ g
+-- PUBLIC (used by Adequacy's comp bridge). `yes-id` on f forces B = C
+-- (id ∘ g → g); `yes-id` on g forces A = B (f ∘ id → f); else rebuild.
+comp-elim : ∀ {A B C} (f : Term B C) (g : Term A B) → IsId? f → IsId? g → Term A C
+comp-elim f g yes-id _      = g
+comp-elim f g no-id  yes-id = f
+comp-elim f g no-id  no-id  = f ∘ g
 
 comp-nf : ∀ {A B C} → Term B C → Term A B → Term A C
 comp-nf f g = comp-elim f g (isId? f) (isId? g)
