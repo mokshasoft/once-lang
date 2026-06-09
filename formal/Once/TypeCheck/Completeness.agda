@@ -104,8 +104,13 @@ infer-complete-RQualified :
   → lookupImport (NamedCtx.imports ctx) (alias ++ "." ++ name) ≡ just T
   → ∃[ eE ] ∃[ d ] ∃[ f ]
       inferElab ctx (RQualified name alias) ≡ success T zeroUsage eE d f
-infer-complete-RQualified {ctx} {name} {alias} {T} eq =
-  _ , _ , _ , cong proj₁ (helper _ eq)
+-- Plan 0.36: `inferElabV-RQualified-aux` splits on the looked-up type (a
+-- `Many`-arrow → `lift-morphism (SigOp …)`, else `sigOp`), so the aux no
+-- longer reduces for an abstract `T`. `go` mirrors the split over `T`'s
+-- shape so the reduction is determined in each branch; the proof term is
+-- uniform (`cong proj₁ (helper _ eq')`) — only the elaborated surface expr
+-- differs, and it is existentially bound.
+infer-complete-RQualified {ctx} {name} {alias} {T} eq = go T eq
   where
     open Once.TypeCheck.Elaborate using (inferElabV-RQualified-aux)
     helper : ∀ (lhs : Maybe Type)
@@ -114,6 +119,23 @@ infer-complete-RQualified {ctx} {name} {alias} {T} eq =
                (lookupImport (NamedCtx.imports ctx) (alias ++ "." ++ name)) refl
              ≡ inferElabV-RQualified-aux ctx name alias lhs eq'
     helper _ refl = refl
+    go : ∀ (T' : Type)
+       → (eq' : lookupImport (NamedCtx.imports ctx) (alias ++ "." ++ name) ≡ just T')
+       → ∃[ eE ] ∃[ d ] ∃[ f ]
+           inferElab ctx (RQualified name alias) ≡ success T' zeroUsage eE d f
+    go (A ⇒[ T.mk-kind Many π ] B) eq' = _ , _ , _ , cong proj₁ (helper _ eq')
+    go (A ⇒[ T.mk-kind One  π ] B) eq' = _ , _ , _ , cong proj₁ (helper _ eq')
+    go (A ⇒[ T.mk-kind Zero π ] B) eq' = _ , _ , _ , cong proj₁ (helper _ eq')
+    go Unit          eq' = _ , _ , _ , cong proj₁ (helper _ eq')
+    go Void          eq' = _ , _ , _ , cong proj₁ (helper _ eq')
+    go Int           eq' = _ , _ , _ , cong proj₁ (helper _ eq')
+    go Float         eq' = _ , _ , _ , cong proj₁ (helper _ eq')
+    go Str           eq' = _ , _ , _ , cong proj₁ (helper _ eq')
+    go Buffer        eq' = _ , _ , _ , cong proj₁ (helper _ eq')
+    go (A * B)       eq' = _ , _ , _ , cong proj₁ (helper _ eq')
+    go (A + B)       eq' = _ , _ , _ , cong proj₁ (helper _ eq')
+    go (T.μ-type F)  eq' = _ , _ , _ , cong proj₁ (helper _ eq')
+    go (T.ν-type F)  eq' = _ , _ , _ , cong proj₁ (helper _ eq')
 
 ------------------------------------------------------------------------
 -- Sub-expression composition completeness.
