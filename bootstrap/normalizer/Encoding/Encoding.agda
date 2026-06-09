@@ -26,29 +26,31 @@ open import normalizer.Syntax.CCC
 --   - Types: Void, Unit, A * B, A + B, A ⇒ B, μ F
 --   - Functors: Id, K A, F ⊕ G, F ⊗ G
 --
--- Encoding scheme (10 type/functor alternatives):
---   0: Void type      (K Unit)
---   1: Unit type      (K Unit)
---   2: Product type   (Id ⊗ Id) - two type codes
---   3: Sum type       (Id ⊗ Id) - two type codes
---   4: Exponential    (Id ⊗ Id) - two type codes (A ⇒ B)
---   5: Mu type        (Id)      - one functor code
---   6: Id functor     (K Unit)
---   7: K functor      (Id)      - one type code
---   8: Sum functor    (Id ⊗ Id) - two functor codes
---   9: Product functor(Id ⊗ Id) - two functor codes
+-- Encoding scheme (11 type/functor alternatives):
+--   0: Void type       (One)
+--   1: Unit type       (One)
+--   2: Product type    (Id ⊗ Id) - two type codes
+--   3: Sum type        (Id ⊗ Id) - two type codes
+--   4: Exponential     (Id ⊗ Id) - two type codes (A ⇒ B)
+--   5: Mu type         (Id)      - one functor code
+--   6: Id functor      (One)
+--   7: One functor     (One)
+--   8: Kc functor      (Id)      - one functor code
+--   9: Sum functor     (Id ⊗ Id) - two functor codes
+--  10: Product functor (Id ⊗ Id) - two functor codes
 
 TyFuncF : Func
-TyFuncF = K Unit          -- 0: Void type
-        ⊕ K Unit          -- 1: Unit type
+TyFuncF = One             -- 0: Void type
+        ⊕ One             -- 1: Unit type
         ⊕ (Id ⊗ Id)       -- 2: A * B
         ⊕ (Id ⊗ Id)       -- 3: A + B
         ⊕ (Id ⊗ Id)       -- 4: A ⇒ B (exponential)
         ⊕ Id              -- 5: μ F
-        ⊕ K Unit          -- 6: Id functor
-        ⊕ Id              -- 7: K A
-        ⊕ (Id ⊗ Id)       -- 8: F ⊕ G
-        ⊕ (Id ⊗ Id)       -- 9: F ⊗ G
+        ⊕ One             -- 6: Id functor
+        ⊕ One             -- 7: One functor
+        ⊕ Id              -- 8: Kc functor (one functor code)
+        ⊕ (Id ⊗ Id)       -- 9: F ⊕ G
+        ⊕ (Id ⊗ Id)       -- 10: F ⊗ G
 
 TyFuncCode : Ty
 TyFuncCode = μ TyFuncF
@@ -84,14 +86,17 @@ TyFuncCode = μ TyFuncF
 -- Id functor: In ∘ inr^6 ∘ inl ∘ terminal (position 6)
 ⌜ Id ⌝Func = In ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl ∘ terminal
 
--- K functor: In ∘ inr^7 ∘ inl ∘ ⌜A⌝ (position 7)
-⌜ K A ⌝Func = In ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl ∘ ⌜ A ⌝Ty
+-- One functor: In ∘ inr^7 ∘ inl ∘ terminal (position 7)
+⌜ One ⌝Func = In ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl ∘ terminal
 
--- ⊕ functor: In ∘ inr^8 ∘ inl ∘ ⟨...⟩ (position 8)
-⌜ F ⊕ G ⌝Func = In ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl ∘ ⟨ ⌜ F ⌝Func , ⌜ G ⌝Func ⟩
+-- Kc functor: In ∘ inr^8 ∘ inl ∘ ⌜G⌝ (position 8) — stores one functor code
+⌜ Kc G ⌝Func = In ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl ∘ ⌜ G ⌝Func
 
--- ⊗ functor: In ∘ inr^9 (position 9, last alternative)
-⌜ F ⊗ G ⌝Func = In ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ ⟨ ⌜ F ⌝Func , ⌜ G ⌝Func ⟩
+-- ⊕ functor: In ∘ inr^9 ∘ inl ∘ ⟨...⟩ (position 9)
+⌜ F ⊕ G ⌝Func = In ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl ∘ ⟨ ⌜ F ⌝Func , ⌜ G ⌝Func ⟩
+
+-- ⊗ functor: In ∘ inr^10 (position 10, last alternative)
+⌜ F ⊗ G ⌝Func = In ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ ⟨ ⌜ F ⌝Func , ⌜ G ⌝Func ⟩
 
 ------------------------------------------------------------------------
 -- Part 3: Term Code Definition
@@ -120,21 +125,21 @@ TyFuncCode = μ TyFuncF
 -- Term code functor (binary sums)
 -- Each constructor stores its subterms (if any) and type info.
 TermF : Func
-TermF = (K TyFuncCode)                              -- 0: id A
+TermF = (Kc TyFuncF)                              -- 0: id A
       ⊕ (Id ⊗ Id)                                   -- 1: f ∘ g
-      ⊕ (K TyFuncCode ⊗ K TyFuncCode)              -- 2: fst A B
-      ⊕ (K TyFuncCode ⊗ K TyFuncCode)              -- 3: snd A B
+      ⊕ (Kc TyFuncF ⊗ Kc TyFuncF)              -- 2: fst A B
+      ⊕ (Kc TyFuncF ⊗ Kc TyFuncF)              -- 3: snd A B
       ⊕ (Id ⊗ Id)                                   -- 4: ⟨f, g⟩
-      ⊕ (K TyFuncCode ⊗ K TyFuncCode)              -- 5: inl A B
-      ⊕ (K TyFuncCode ⊗ K TyFuncCode)              -- 6: inr A B
+      ⊕ (Kc TyFuncF ⊗ Kc TyFuncF)              -- 5: inl A B
+      ⊕ (Kc TyFuncF ⊗ Kc TyFuncF)              -- 6: inr A B
       ⊕ (Id ⊗ Id)                                   -- 7: [f, g]
-      ⊕ (K TyFuncCode)                              -- 8: terminal A
-      ⊕ (K TyFuncCode)                              -- 9: initial A
-      ⊕ (K TyFuncCode)                              -- 10: In F (store functor code)
-      ⊕ (K TyFuncCode)                              -- 11: Out F (store functor code)
-      ⊕ (K TyFuncCode ⊗ Id)                        -- 12: cata F alg (functor + algebra)
-      ⊕ ((K TyFuncCode ⊗ K TyFuncCode) ⊗ (K TyFuncCode ⊗ Id))  -- 13: curry f (A, B, C, body)
-      ⊕ (K TyFuncCode ⊗ K TyFuncCode)              -- 14: apply A B
+      ⊕ (Kc TyFuncF)                              -- 8: terminal A
+      ⊕ (Kc TyFuncF)                              -- 9: initial A
+      ⊕ (Kc TyFuncF)                              -- 10: In F (store functor code)
+      ⊕ (Kc TyFuncF)                              -- 11: Out F (store functor code)
+      ⊕ (Kc TyFuncF ⊗ Id)                        -- 12: cata F alg (functor + algebra)
+      ⊕ ((Kc TyFuncF ⊗ Kc TyFuncF) ⊗ (Kc TyFuncF ⊗ Id))  -- 13: curry f (A, B, C, body)
+      ⊕ (Kc TyFuncF ⊗ Kc TyFuncF)              -- 14: apply A B
 
 TermCode' : Ty
 TermCode' = μ TermF

@@ -32,30 +32,16 @@ case-⊎ f g (inj₂ b) = g b
 -- Semantic Domain: Interpret Types as Agda Sets
 ------------------------------------------------------------------------
 
--- Mutual definition: types, functor action, and fixpoints
---
--- Note: We need NO_POSITIVITY_CHECK because ⟦ A ⇒ B ⟧T = ⟦ A ⟧T → ⟦ B ⟧T
--- causes Fix F to appear to the left of an arrow when A or B involves μ.
--- This is safe for our use case (empirical testing), not formal proofs.
+-- Functor action + fixpoint. Func is now Ty-INDEPENDENT (Id/One/Kc/⊕/⊗),
+-- so ⟦_⟧FS never mentions ⟦_⟧T — Fix is therefore strictly positive with NO
+-- pragma. ⟦_⟧T (with its necessary negative ⇒) is a plain function defined
+-- AFTER Fix, so it cannot taint Fix's positivity.
 mutual
-  -- Code interpretation: the FIRST-ORDER, strictly-positive interpretation
-  -- used to BUILD Fix (it is what a K-payload denotes inside a fixpoint).
-  -- It has NO `⇒ → →` case (that negative occurrence is exactly what made
-  -- the old generic Fix non-positive); for the first-order codes that are
-  -- the only K-payloads we ever store it coincides definitionally with the
-  -- full ⟦_⟧T below. So Fix is now strictly positive — no pragma.
-  ⟦_⟧Tᶜ : Ty → Set
-  ⟦ Void ⟧Tᶜ = ⊥
-  ⟦ Unit ⟧Tᶜ = ⊤
-  ⟦ A * B ⟧Tᶜ = ⟦ A ⟧Tᶜ × ⟦ B ⟧Tᶜ
-  ⟦ A + B ⟧Tᶜ = ⟦ A ⟧Tᶜ ⊎ ⟦ B ⟧Tᶜ
-  ⟦ A ⇒ B ⟧Tᶜ = ⊤                     -- never reached for first-order codes
-  ⟦ μ F ⟧Tᶜ = Fix F
-
   -- Interpret functors acting on Agda types
   ⟦_⟧FS : Func → Set → Set
   ⟦ Id ⟧FS X = X
-  ⟦ K A ⟧FS X = ⟦ A ⟧Tᶜ
+  ⟦ One ⟧FS X = ⊤
+  ⟦ Kc G ⟧FS X = Fix G
   ⟦ F ⊕ G ⟧FS X = ⟦ F ⟧FS X ⊎ ⟦ G ⟧FS X
   ⟦ F ⊗ G ⟧FS X = ⟦ F ⟧FS X × ⟦ G ⟧FS X
 
@@ -64,8 +50,6 @@ mutual
     fix : ⟦ F ⟧FS (Fix F) → Fix F
 
 -- Full type interpretation (with real function spaces) for term evaluation.
--- Defined as a plain recursive FUNCTION after Fix, so its necessary negative
--- `⇒` case does not enter Fix's positivity check.
 ⟦_⟧T : Ty → Set
 ⟦ Void ⟧T = ⊥
 ⟦ Unit ⟧T = ⊤
@@ -84,7 +68,8 @@ unfix (fix x) = x
 
 fmap-Set : ∀ F {A B : Set} → (A → B) → ⟦ F ⟧FS A → ⟦ F ⟧FS B
 fmap-Set Id f x = f x
-fmap-Set (K _) f x = x
+fmap-Set One _ x = x
+fmap-Set (Kc _) _ x = x
 fmap-Set (F ⊕ G) f (inj₁ x) = inj₁ (fmap-Set F f x)
 fmap-Set (F ⊕ G) f (inj₂ y) = inj₂ (fmap-Set G f y)
 fmap-Set (F ⊗ G) f (x , y) = (fmap-Set F f x , fmap-Set G f y)
@@ -93,19 +78,22 @@ fmap-Set (F ⊗ G) f (x , y) = (fmap-Set F f x , fmap-Set G f y)
 -- Semantic catamorphism: Fold over fixpoints
 ------------------------------------------------------------------------
 
--- The key operation: given an algebra, fold over Fix F
---
--- TERMINATING: the recursive call sits under the higher-order `fmap-Set`,
--- which the termination checker can't see through. The pragma-free version
--- needs the mutual `cata`/`map-cata` inline (see Theory.Eval.CataTerminates,
--- and the proof-level FixInduction.induct) — but swapping the definition
--- here changes the model's REDUCTION (`refl` proofs about `eval` across
--- RefoldFixpoint / EvalSound / StepTransparency are stated via `fmap-Set`),
--- so it is part of the larger --safe model refactor (with NO_POSITIVITY),
--- not a local change.
-{-# TERMINATING #-}
-cata-Set : ∀ F {A : Set} → (⟦ F ⟧FS A → A) → Fix F → A
-cata-Set F alg (fix x) = alg (fmap-Set F (cata-Set F alg) x)
+-- The key operation: given an algebra, fold over Fix F. Structurally
+-- terminating with NO pragma — the mutual cata-Set/map-cata-Set descent
+-- (cata-Set recurses fix x ↦ x; map-cata-Set recurses on the functor CODE
+-- until Id/Kc, where it calls cata-Set on a strictly-smaller sub-Fix).
+-- `map-cata-Set F F alg` is the inlined `fmap-Set F (cata-Set F alg)`.
+mutual
+  cata-Set : ∀ F {A : Set} → (⟦ F ⟧FS A → A) → Fix F → A
+  cata-Set F alg (fix x) = alg (map-cata-Set F F alg x)
+
+  map-cata-Set : ∀ F G {A : Set} → (⟦ F ⟧FS A → A) → ⟦ G ⟧FS (Fix F) → ⟦ G ⟧FS A
+  map-cata-Set F Id      alg y        = cata-Set F alg y
+  map-cata-Set F One     alg y        = y
+  map-cata-Set F (Kc _)  alg y        = y
+  map-cata-Set F (G ⊕ H) alg (inj₁ y) = inj₁ (map-cata-Set F G alg y)
+  map-cata-Set F (G ⊕ H) alg (inj₂ z) = inj₂ (map-cata-Set F H alg z)
+  map-cata-Set F (G ⊗ H) alg (y , z)  = (map-cata-Set F G alg y , map-cata-Set F H alg z)
 
 ------------------------------------------------------------------------
 -- Coherence: ⟦ ⟦ F ⟧F A ⟧T ≅ ⟦ F ⟧FS ⟦ A ⟧T
@@ -118,7 +106,8 @@ cata-Set F alg (fix x) = alg (fmap-Set F (cata-Set F alg) x)
 -- Coerce from Ty interpretation to Set interpretation
 coherence : ∀ F A → ⟦ ⟦ F ⟧F A ⟧T → ⟦ F ⟧FS ⟦ A ⟧T
 coherence Id A x = x
-coherence (K B) A x = x
+coherence One A x = x
+coherence (Kc G) A x = x
 coherence (F ⊕ G) A (inj₁ x) = inj₁ (coherence F A x)
 coherence (F ⊕ G) A (inj₂ y) = inj₂ (coherence G A y)
 coherence (F ⊗ G) A (x , y) = (coherence F A x , coherence G A y)
@@ -126,7 +115,8 @@ coherence (F ⊗ G) A (x , y) = (coherence F A x , coherence G A y)
 -- Coerce back
 coherence⁻¹ : ∀ F A → ⟦ F ⟧FS ⟦ A ⟧T → ⟦ ⟦ F ⟧F A ⟧T
 coherence⁻¹ Id A x = x
-coherence⁻¹ (K B) A x = x
+coherence⁻¹ One A x = x
+coherence⁻¹ (Kc G) A x = x
 coherence⁻¹ (F ⊕ G) A (inj₁ x) = inj₁ (coherence⁻¹ F A x)
 coherence⁻¹ (F ⊕ G) A (inj₂ y) = inj₂ (coherence⁻¹ G A y)
 coherence⁻¹ (F ⊗ G) A (x , y) = (coherence⁻¹ F A x , coherence⁻¹ G A y)
@@ -259,38 +249,20 @@ mutual
   eq-TyFuncCode : ⟦ TyFuncCode ⟧T → ⟦ TyFuncCode ⟧T → Bool
   eq-TyFuncCode (fix x) (fix y) = eq-TyFuncCodeFS x y
 
-  -- TyFuncF has 10 positions:
-  -- 0: Void (K Unit), 1: Unit (K Unit), 2: * (Id⊗Id), 3: + (Id⊗Id), 4: ⇒ (Id⊗Id)
-  -- 5: μ (Id), 6: Id func (K Unit), 7: K func (Id), 8: ⊕ func (Id⊗Id), 9: ⊗ func (Id⊗Id)
+  -- TyFuncF has 11 positions (One leaves carry tt):
+  -- 0:Void 1:Unit 2:* 3:+ 4:⇒ 5:μ 6:Id-func 7:One-func 8:Kc-func 9:⊕-func 10:⊗-func
   eq-TyFuncCodeFS : ⟦ TyFuncF ⟧FS (Fix TyFuncF) → ⟦ TyFuncF ⟧FS (Fix TyFuncF) → Bool
-  -- Position 0: Void type
   eq-TyFuncCodeFS (inj₁ tt) (inj₁ tt) = true
-  -- Position 1: Unit type
   eq-TyFuncCodeFS (inj₂ (inj₁ tt)) (inj₂ (inj₁ tt)) = true
-  -- Position 2: * type
-  eq-TyFuncCodeFS (inj₂ (inj₂ (inj₁ (a , b)))) (inj₂ (inj₂ (inj₁ (c , d)))) =
-    eq-TyFuncCode a c ∧ eq-TyFuncCode b d
-  -- Position 3: + type
-  eq-TyFuncCodeFS (inj₂ (inj₂ (inj₂ (inj₁ (a , b))))) (inj₂ (inj₂ (inj₂ (inj₁ (c , d))))) =
-    eq-TyFuncCode a c ∧ eq-TyFuncCode b d
-  -- Position 4: ⇒ type
-  eq-TyFuncCodeFS (inj₂ (inj₂ (inj₂ (inj₂ (inj₁ (a , b)))))) (inj₂ (inj₂ (inj₂ (inj₂ (inj₁ (c , d)))))) =
-    eq-TyFuncCode a c ∧ eq-TyFuncCode b d
-  -- Position 5: μ type
-  eq-TyFuncCodeFS (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₁ x)))))) (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₁ y)))))) =
-    eq-TyFuncCode x y
-  -- Position 6: Id functor
+  eq-TyFuncCodeFS (inj₂ (inj₂ (inj₁ (a , b)))) (inj₂ (inj₂ (inj₁ (c , d)))) = eq-TyFuncCode a c ∧ eq-TyFuncCode b d
+  eq-TyFuncCodeFS (inj₂ (inj₂ (inj₂ (inj₁ (a , b))))) (inj₂ (inj₂ (inj₂ (inj₁ (c , d))))) = eq-TyFuncCode a c ∧ eq-TyFuncCode b d
+  eq-TyFuncCodeFS (inj₂ (inj₂ (inj₂ (inj₂ (inj₁ (a , b)))))) (inj₂ (inj₂ (inj₂ (inj₂ (inj₁ (c , d)))))) = eq-TyFuncCode a c ∧ eq-TyFuncCode b d
+  eq-TyFuncCodeFS (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₁ x)))))) (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₁ y)))))) = eq-TyFuncCode x y
   eq-TyFuncCodeFS (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₁ tt))))))) (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₁ tt))))))) = true
-  -- Position 7: K functor
-  eq-TyFuncCodeFS (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₁ x)))))))) (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₁ y)))))))) =
-    eq-TyFuncCode x y
-  -- Position 8: ⊕ functor
-  eq-TyFuncCodeFS (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₁ (a , b)))))))))) (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₁ (c , d)))))))))) =
-    eq-TyFuncCode a c ∧ eq-TyFuncCode b d
-  -- Position 9: ⊗ functor (last element, no inj₁)
-  eq-TyFuncCodeFS (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (a , b)))))))))) (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (c , d)))))))))) =
-    eq-TyFuncCode a c ∧ eq-TyFuncCode b d
-  -- Different constructors
+  eq-TyFuncCodeFS (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₁ tt)))))))) (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₁ tt)))))))) = true
+  eq-TyFuncCodeFS (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₁ x))))))))) (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₁ y))))))))) = eq-TyFuncCode x y
+  eq-TyFuncCodeFS (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₁ (a , b))))))))))) (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₁ (c , d))))))))))) = eq-TyFuncCode a c ∧ eq-TyFuncCode b d
+  eq-TyFuncCodeFS (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ ((a , b)))))))))))) (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ ((c , d)))))))))))) = eq-TyFuncCode a c ∧ eq-TyFuncCode b d
   eq-TyFuncCodeFS _ _ = false
 
   -- Equality on type pairs

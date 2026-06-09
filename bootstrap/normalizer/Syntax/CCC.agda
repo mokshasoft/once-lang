@@ -46,7 +46,8 @@ infixr 9 _∘_
 -- fmap: lift morphism through functor
 fmap : ∀ F {A B} → Term A B → Term (⟦ F ⟧F A) (⟦ F ⟧F B)
 fmap Id f = f
-fmap (K _) _ = id
+fmap One _ = id
+fmap (Kc _) _ = id
 fmap (F ⊕ G) f = [ inl ∘ fmap F f , inr ∘ fmap G f ]
 fmap (F ⊗ G) f = ⟨ fmap F f ∘ fst , fmap G f ∘ snd ⟩
 
@@ -295,7 +296,8 @@ data _⟹*_ : ∀ {A B} → Term A B → Term A B → Set where
 fmap-⟶* : ∀ F {A B} {f f' : Term A B} →
           f ⟶* f' → fmap F f ⟶* fmap F f'
 fmap-⟶* Id rs = rs
-fmap-⟶* (K _) _ = done
+fmap-⟶* One _ = done
+fmap-⟶* (Kc _) _ = done
 fmap-⟶* (F ⊕ G) rs = ⟶*-case (⟶*-∘-r inl (fmap-⟶* F rs)) (⟶*-∘-r inr (fmap-⟶* G rs))
 fmap-⟶* (F ⊗ G) rs = ⟶*-pair (⟶*-∘-l fst (fmap-⟶* F rs)) (⟶*-∘-l snd (fmap-⟶* G rs))
 

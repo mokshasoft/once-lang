@@ -70,20 +70,6 @@ case-code c₁ c₂ =
   fix (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₁ (c₁ , c₂)))))))))
 
 ------------------------------------------------------------------------
--- The cata-unfolding lemma — the crux.
---
--- `eval normalize (fix x)` reduces to `normalize-step` on the layer with
--- normalized children. Definitional (cata-Set's computation rule + η).
-------------------------------------------------------------------------
-
-normalize-unfold :
-  ∀ (x : ⟦ TermF ⟧FS (Fix TermF)) →
-  eval normalize (fix x)
-    ≡ eval normalize-step
-        (coherence⁻¹ TermF (μ TermF) (fmap-Set TermF (eval normalize) x))
-normalize-unfold x = refl
-
-------------------------------------------------------------------------
 -- Specialisation to the composition position.
 ------------------------------------------------------------------------
 

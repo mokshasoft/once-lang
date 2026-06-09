@@ -61,7 +61,8 @@ open import normalizer.Syntax.CCC public
 
 fmap-id⟹* : ∀ F {A} → fmap F (id {A}) ⟹* id
 fmap-id⟹* Id = done⟹  -- fmap Id id = id definitionally
-fmap-id⟹* (K _) = done⟹  -- fmap (K _) _ = id definitionally
+fmap-id⟹* One = done⟹  -- fmap One _ = id definitionally
+fmap-id⟹* (Kc _) = done⟹  -- fmap (Kc _) _ = id definitionally
 fmap-id⟹* (F ⊕ G) =
   -- fmap (F ⊕ G) id = [ inl ∘ fmap F id , inr ∘ fmap G id ]
   -- Goal: [ inl ∘ fmap F id , inr ∘ fmap G id ] ⟹* id
@@ -130,11 +131,11 @@ fmap-through-inr : ∀ {A B} F G (f : Term A B) →
                    (fmap (F ⊕ G) f ∘ inr) ⟶* (inr ∘ fmap G f)
 fmap-through-inr F G f = step case-inr done
 
--- K-pair reduces to identity via eta-pair
--- fmap (K X ⊗ K Y) f = ⟨ id ∘ fst , id ∘ snd ⟩ ⟶* id
-fmap-KK-id : ∀ {A B} X Y (f : Term A B) → fmap (K X ⊗ K Y) f ⟶* id
+-- Kc-pair reduces to identity via eta-pair
+-- fmap (Kc X ⊗ Kc Y) f = ⟨ id ∘ fst , id ∘ snd ⟩ ⟶* id
+fmap-KK-id : ∀ {A B} X Y (f : Term A B) → fmap (Kc X ⊗ Kc Y) f ⟶* id
 fmap-KK-id X Y f =
-  -- fmap (K X ⊗ K Y) f = ⟨ fmap (K X) f ∘ fst , fmap (K Y) f ∘ snd ⟩
+  -- fmap (Kc X ⊗ Kc Y) f = ⟨ fmap (Kc X) f ∘ fst , fmap (Kc Y) f ∘ snd ⟩
   --                    = ⟨ id ∘ fst , id ∘ snd ⟩
   -- ⟶ ⟨ fst , snd ⟩ by id-left (twice)
   -- ⟶ id by eta-pair

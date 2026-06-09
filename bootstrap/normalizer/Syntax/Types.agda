@@ -96,9 +96,17 @@ data Ty where
   _⇒_  : Ty → Ty → Ty  -- Exponential (function type)
   μ_   : Func → Ty
 
+-- Func is FIRST-ORDER and Ty-INDEPENDENT: its only constant payloads are
+-- `One` (the Unit leaf) and `Kc G` (a code = the fixpoint of another
+-- functor G). It can no longer hold an arbitrary `Ty` (in particular not a
+-- function type), so `Fix` (Testing.Evaluator) is strictly positive with NO
+-- pragma, and the model's coherence has no `⇒` case to (impossibly) invert.
+-- This matches reality: codes only ever store sub-codes and Unit leaves;
+-- the `⇒` type-former is encoded as DATA, never as an actual function.
 data Func where
   Id  : Func
-  K   : Ty → Func
+  One : Func              -- constant Unit leaf            (was `K Unit`)
+  Kc  : Func → Func       -- constant code (fixpoint of G)  (was `K (μ G)`)
   _⊕_ : Func → Func → Func
   _⊗_ : Func → Func → Func
 
@@ -109,7 +117,8 @@ infixr 5 _⇒_
 -- Functor interpretation: apply functor to a type
 ⟦_⟧F : Func → Ty → Ty
 ⟦ Id ⟧F X = X
-⟦ K A ⟧F X = A
+⟦ One ⟧F X = Unit
+⟦ Kc G ⟧F X = μ G
 ⟦ F ⊕ G ⟧F X = ⟦ F ⟧F X + ⟦ G ⟧F X
 ⟦ F ⊗ G ⟧F X = ⟦ F ⟧F X * ⟦ G ⟧F X
 
@@ -177,19 +186,28 @@ Unit ≟Ty (μ _) = no (λ ())
 
 -- Decidable equality for Func
 Id ≟Func Id = yes refl
-Id ≟Func (K _) = no (λ ())
+Id ≟Func One = no (λ ())
+Id ≟Func (Kc _) = no (λ ())
 Id ≟Func (_ ⊕ _) = no (λ ())
 Id ≟Func (_ ⊗ _) = no (λ ())
 
-(K A) ≟Func Id = no (λ ())
-(K A) ≟Func (K B) with A ≟Ty B
+One ≟Func Id = no (λ ())
+One ≟Func One = yes refl
+One ≟Func (Kc _) = no (λ ())
+One ≟Func (_ ⊕ _) = no (λ ())
+One ≟Func (_ ⊗ _) = no (λ ())
+
+(Kc F) ≟Func Id = no (λ ())
+(Kc F) ≟Func One = no (λ ())
+(Kc F) ≟Func (Kc G) with F ≟Func G
 ... | yes refl = yes refl
 ... | no neq = no (λ { refl → neq refl })
-(K A) ≟Func (_ ⊕ _) = no (λ ())
-(K A) ≟Func (_ ⊗ _) = no (λ ())
+(Kc F) ≟Func (_ ⊕ _) = no (λ ())
+(Kc F) ≟Func (_ ⊗ _) = no (λ ())
 
 (F ⊕ G) ≟Func Id = no (λ ())
-(F ⊕ G) ≟Func (K _) = no (λ ())
+(F ⊕ G) ≟Func One = no (λ ())
+(F ⊕ G) ≟Func (Kc _) = no (λ ())
 (F ⊕ G) ≟Func (H ⊕ I) with F ≟Func H | G ≟Func I
 ... | yes refl | yes refl = yes refl
 ... | yes refl | no neq = no (λ { refl → neq refl })
@@ -197,7 +215,8 @@ Id ≟Func (_ ⊗ _) = no (λ ())
 (F ⊕ G) ≟Func (_ ⊗ _) = no (λ ())
 
 (F ⊗ G) ≟Func Id = no (λ ())
-(F ⊗ G) ≟Func (K _) = no (λ ())
+(F ⊗ G) ≟Func One = no (λ ())
+(F ⊗ G) ≟Func (Kc _) = no (λ ())
 (F ⊗ G) ≟Func (_ ⊕ _) = no (λ ())
 (F ⊗ G) ≟Func (H ⊗ I) with F ≟Func H | G ≟Func I
 ... | yes refl | yes refl = yes refl
