@@ -330,3 +330,35 @@ the cccvm-sketch insight: the check is a first-order value tree-walk.
   (`strong-normalization` — see `WeakNormalizationFails`; and
   confluence-via-triangle). This evaluator-route instance must NOT import
   `Axioms/`; it replaces them with determinism + totality.
+
+---
+
+## --safe HEAVEN (2026-06-09): the transparency + idempotence chains are machine-verified --safe
+
+The evaluator-route's REAL theorems now typecheck under Agda `--safe` (clean
+cache, per-module `{-# OPTIONS --safe #-}`), with NO postulates, NO
+NO_POSITIVITY_CHECK, NO TERMINATING anywhere in their chains:
+
+- `NormalizeFullCorrectness.normalize-correct-all` = `Correct nf normalize`
+  (the transparency obligation) — 18 bootstrap modules + 10 formal Once-lib
+  modules, all --safe.
+- `Idempotence.idempotent` — via the structural recursor `FixInduction`.
+
+The model refactor that made this possible:
+- `Func` is now FIRST-ORDER (`Id/One/Kc/⊕/⊗`, Ty-independent) — so `Fix` is
+  strictly positive with no pragma and coherence/coherence⁻¹ are total.
+- `cata-Set` is the mutual structural `cata-Set`/`map-cata-Set` (no pragma).
+- `Encoding` grammar (`TyFuncF`) grew One/Kc functor positions (10→11);
+  `TermF` uses `Kc TyFuncF` (structurally identical, 15 positions).
+- Flagged the 10 postulate-free formal/ abstract-tower modules `--safe`.
+
+DISTURBED by the foundational change (NOT in the --safe target chains, to be
+migrated separately if a fully-green tree is wanted):
+- `CataTerminates` — now REDUNDANT (the model's `cata-Set` IS the structural
+  version it used to demonstrate); migrate to One/Kc or retire.
+- `RefoldFixpoint` / `RefoldFullCorrectness` — the DEGENERATE spec=id witness,
+  superseded by the real transparency chain; used the old fmap-Set reduction.
+- `EvalSound` (+ dependent `RealNormalizerFixpoint`) — carries the funext
+  postulate, so it can never be `--safe`; the eval-soundness route.
+- TCB0 syntactic `fmap-KK-id` callers (DispatchCombinators, RefoldIdempotent,
+  Base*, SelfFixpoint, DispatchLemmas) — the K→One/Kc rename; mechanical.
