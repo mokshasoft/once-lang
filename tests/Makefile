@@ -9,14 +9,17 @@
 #   make test-lib    - test library mode
 #   make test-target - test --target flag
 #   make test-strata - test --strata flag
+#
+# Convention: every phony target carries its own `.PHONY: <target>` line
+# immediately above it (not one shared list) so adding/removing a target
+# touches only its own block and never collides in merges.
 
 ONCE = cd ../compiler && cabal run --verbose=0 once --
 GCC = gcc
 BUILD = .build
 TESTS_DIR = $(shell pwd)
 
-.PHONY: all test clean test-exe test-lib test-target test-strata test-poly test-heap-exit
-
+.PHONY: all
 all: test
 
 # Create build directory
@@ -27,9 +30,11 @@ $(BUILD):
 # Test: Executable mode (--exe)
 #-----------------------------------------------------------------------------
 
+.PHONY: test-exe
 test-exe: $(BUILD) test-exe-simple test-exe-import
 	@echo "==> --exe tests passed"
 
+.PHONY: test-exe-simple
 test-exe-simple: $(BUILD)
 	@echo "Testing: simple.once --exe"
 	$(ONCE) build --exe --strata $(TESTS_DIR)/Strata $(TESTS_DIR)/simple.once -o $(TESTS_DIR)/$(BUILD)/simple
@@ -37,6 +42,7 @@ test-exe-simple: $(BUILD)
 	$(BUILD)/simple
 	@echo "  OK"
 
+.PHONY: test-exe-import
 test-exe-import: $(BUILD)
 	@echo "Testing: with-import.once --exe --strata"
 	$(ONCE) build --exe --strata $(TESTS_DIR)/Strata $(TESTS_DIR)/with-import.once -o $(TESTS_DIR)/$(BUILD)/with-import
@@ -48,9 +54,11 @@ test-exe-import: $(BUILD)
 # Test: Library mode (--lib)
 #-----------------------------------------------------------------------------
 
+.PHONY: test-lib
 test-lib: $(BUILD) test-lib-basic
 	@echo "==> --lib tests passed"
 
+.PHONY: test-lib-basic
 test-lib-basic: $(BUILD)
 	@echo "Testing: lib-test.once --lib"
 	$(ONCE) build --lib $(TESTS_DIR)/lib-test.once -o $(TESTS_DIR)/$(BUILD)/lib-test
@@ -62,9 +70,11 @@ test-lib-basic: $(BUILD)
 # Test: Target flag (--target)
 #-----------------------------------------------------------------------------
 
+.PHONY: test-target
 test-target: $(BUILD) test-target-c test-target-invalid test-target-unimplemented
 	@echo "==> --target tests passed"
 
+.PHONY: test-target-c
 test-target-c: $(BUILD)
 	@echo "Testing: --target c"
 	$(ONCE) build --exe --target c --strata $(TESTS_DIR)/Strata $(TESTS_DIR)/simple.once -o $(TESTS_DIR)/$(BUILD)/target-c
@@ -72,11 +82,13 @@ test-target-c: $(BUILD)
 	$(BUILD)/target-c
 	@echo "  OK"
 
+.PHONY: test-target-invalid
 test-target-invalid: $(BUILD)
 	@echo "Testing: --target invalid (should fail)"
 	@! ($(ONCE) build --exe --target invalid --strata $(TESTS_DIR)/Strata $(TESTS_DIR)/simple.once -o $(TESTS_DIR)/$(BUILD)/target-invalid 2>/dev/null)
 	@echo "  OK (rejected as expected)"
 
+.PHONY: test-target-unimplemented
 test-target-unimplemented: $(BUILD)
 	@echo "Testing: --target x86_64 (should fail gracefully)"
 	$(ONCE) build --exe --target x86_64 --strata $(TESTS_DIR)/Strata $(TESTS_DIR)/simple.once -o $(TESTS_DIR)/$(BUILD)/target-x86 2>&1 | grep -q "not yet implemented"
@@ -86,15 +98,18 @@ test-target-unimplemented: $(BUILD)
 # Test: Strata flag (--strata)
 #-----------------------------------------------------------------------------
 
+.PHONY: test-strata
 test-strata: $(BUILD) test-strata-explicit test-strata-import
 	@echo "==> --strata tests passed"
 
+.PHONY: test-strata-explicit
 test-strata-explicit: $(BUILD)
 	@echo "Testing: --strata explicit path"
 	$(ONCE) build --exe --strata $(TESTS_DIR)/Strata $(TESTS_DIR)/with-import.once -o $(TESTS_DIR)/$(BUILD)/strata-explicit
 	@test -f $(BUILD)/strata-explicit.c
 	@echo "  OK"
 
+.PHONY: test-strata-import
 test-strata-import: $(BUILD)
 	@echo "Testing: import with D. abbreviation"
 	$(ONCE) build --exe --strata $(TESTS_DIR)/Strata $(TESTS_DIR)/with-import.once -o $(TESTS_DIR)/$(BUILD)/strata-import
@@ -105,20 +120,11 @@ test-strata-import: $(BUILD)
 # Test: Polymorphic user defs + NT desugaring (plan 0.6 Phase C.6)
 #-----------------------------------------------------------------------------
 
+.PHONY: test-poly
 test-poly: $(BUILD)
 	@echo "Testing: poly-defs.once --check"
 	$(ONCE) check $(TESTS_DIR)/poly-defs.once | grep -q "Typecheck OK"
 	@echo "  OK"
-
-#-----------------------------------------------------------------------------
-# Run all tests
-#-----------------------------------------------------------------------------
-
-test: test-exe test-lib test-target test-strata test-poly test-heap-exit
-	@echo ""
-	@echo "=========================================="
-	@echo "All integration tests passed!"
-	@echo "=========================================="
 
 #-----------------------------------------------------------------------------
 # Test: Heap-mode exit-code suite (layer0-4 + pure catas)
@@ -130,13 +136,26 @@ test: test-exe test-lib test-target test-strata test-poly test-heap-exit
 # optimizer's →Unit ⇒ terminal rule) stays green there but is caught here.
 #-----------------------------------------------------------------------------
 
+.PHONY: test-heap-exit
 test-heap-exit:
 	@echo "Testing: heap-mode exit-code suite (--alloc heap --no-optimize)"
 	$(TESTS_DIR)/run-exit-tests.sh
 
 #-----------------------------------------------------------------------------
+# Run all tests
+#-----------------------------------------------------------------------------
+
+.PHONY: test
+test: test-exe test-lib test-target test-strata test-poly test-heap-exit
+	@echo ""
+	@echo "=========================================="
+	@echo "All integration tests passed!"
+	@echo "=========================================="
+
+#-----------------------------------------------------------------------------
 # Clean
 #-----------------------------------------------------------------------------
 
+.PHONY: clean
 clean:
 	rm -rf $(BUILD)
