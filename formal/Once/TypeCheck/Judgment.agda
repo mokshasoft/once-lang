@@ -277,6 +277,34 @@ mutual
   --   * `t-embed` promoting any infer derivation to check mode.
   --     This is the bidirectional discipline's core "synthesis
   --     subsumes checking" rule.
+  -- | Plan 0.41: a CLOSED global-element value of type A. This is the
+  -- extractable value family — every derivation elaborates to a
+  -- `lift-morphism` (a closed CCC morphism), so `extract-morph` always
+  -- succeeds on it (unlike a general `⊢ᶜ` derivation, which may be a named
+  -- ref `t-embed` → `sigOp`, not extractable). The structure mirrors the
+  -- value constructors; leaves carry the per-type encoding. The bridge
+  -- `t-value-lift` lifts it to a pure morphism `X ⇒[pure] A`. No usage index:
+  -- a closed value is `zeroUsage` by construction.
+  data _⊢ᵍ_∶_ : (ctx : NamedCtx) → RawExpr → Type → Set where
+    g-int  : ∀ {ctx : NamedCtx} (n : ℤ) → ctx ⊢ᵍ RInt n ∶ Int
+    -- The Unit leaf is the bare `terminal` morphism (avoids a special `RVar`
+    -- elaborator clause that would block the general `RVar` reduction); its
+    -- top-level bridge routes through the existing `t-terminal-check`.
+    g-terminal : ∀ {ctx : NamedCtx} → ctx ⊢ᵍ RVar "terminal" ∶ Once.Type.Unit
+    g-pair : ∀ {ctx : NamedCtx} {a b : RawExpr} {A B : Type}
+           → ctx ⊢ᵍ a ∶ A → ctx ⊢ᵍ b ∶ B
+           → ctx ⊢ᵍ RPair a b ∶ (A Once.Type.* B)
+    g-inl  : ∀ {ctx : NamedCtx} {arg : RawExpr} {A B : Type}
+           → ctx ⊢ᵍ arg ∶ A
+           → ctx ⊢ᵍ RApp (RVar "inl") arg ∶ (A Once.Type.+ B)
+    g-inr  : ∀ {ctx : NamedCtx} {arg : RawExpr} {A B : Type}
+           → ctx ⊢ᵍ arg ∶ B
+           → ctx ⊢ᵍ RApp (RVar "inr") arg ∶ (A Once.Type.+ B)
+    g-In   : ∀ {ctx : NamedCtx} {arg : RawExpr} {F : Functor} {wfF : WellFormedF F}
+           → wellFormedF? F ≡ just wfF
+           → ctx ⊢ᵍ arg ∶ (⟦ F ⟧T (μ-type F))
+           → ctx ⊢ᵍ RApp (RVar "In") arg ∶ (μ-type F)
+
   data _⊢ᶜ_∶_⨾_ : (ctx : NamedCtx) → RawExpr → (A : Type)
                  → Surface.Usage (NamedCtx.size ctx) → Set where
 
@@ -326,14 +354,14 @@ mutual
                      → ctx ⊢ᶜ RVar "terminal" ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] Once.Type.Unit) ⨾ Surface.zeroUsage
 
     -- | Plan 0.41 / D018: a closed value IS its pure global element
-    -- (`Hom(1,A) ≅ A`), expressed STRUCTURALLY (one rule per value-shape,
-    -- mirroring `t-pair-check`/`t-In-app-check`/`t-compose-check`) so
-    -- completeness recurses on sub-derivations — not a post-elaboration pass.
-    -- Leaves carry the per-type encoding; structure recurses at the lifted
-    -- arrow type. PURE-only — masquerade-safe (D046's grade is the guard).
-    -- Leaf: an integer literal at a pure arrow is `const n ∘ terminal`.
-    t-int-lift : ∀ {ctx : NamedCtx} {X : Type} (n : ℤ)
-               → ctx ⊢ᶜ RInt n ∶ (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] Int) ⨾ Surface.zeroUsage
+    -- (`Hom(1,A) ≅ A`). The bridge from the `⊢ᵍ` value family (above) to a
+    -- pure morphism `X ⇒[Many pure] A`. Because `⊢ᵍ` is the extractable
+    -- family by construction, completeness recurses on the `⊢ᵍ` derivation
+    -- (no over-generality — a named ref `t-embed` is not a `⊢ᵍ` value, so it
+    -- can't reach this rule). PURE-only — masquerade-safe (D046's grade).
+    t-value-lift : ∀ {ctx : NamedCtx} {e : RawExpr} {A X : Type}
+                 → ctx ⊢ᵍ e ∶ A
+                 → ctx ⊢ᶜ e ∶ (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] A) ⨾ Surface.zeroUsage
 
     -- | Bare `initial` check-mode at canonical `Void → A` shape.
     t-initial-check : ∀ {ctx : NamedCtx} {A : Type}

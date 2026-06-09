@@ -926,6 +926,15 @@ mutual
           checkElab ctx (Raw.RApp (Raw.RApp (Raw.RVar "compose") f) g)
             (A T.⇒[ T.mk-kind T.Many T.eff ] C)
               ≡ success ((Surface.zeroUsage +ᵘ (T.Many *ᵘ Ψ₁)) +ᵘ (T.Many *ᵘ Ψ₂)) eE d f'
+    -- Plan 0.41 — TRANSIENT (TRUE by construction; discharge by induction on
+    -- the ⊢ᵍ derivation + a checkG-success lemma): a closed global-element
+    -- value elaborates at a pure arrow. `⊢ᵍ` is the extractable family, so
+    -- `checkG` always succeeds on it and the value-lift clauses fire.
+    gd-complete : ∀ {ctx : NamedCtx} {e : RawExpr} {A : Type} (X : Type)
+                → ctx ⊢ᵍ e ∶ A
+                → ∃[ eE ] ∃[ d ] ∃[ f' ]
+                    checkElab ctx e (X T.⇒[ T.mk-kind T.Many T.pure ] A)
+                      ≡ success Surface.zeroUsage eE d f'
     -- Plan 0.36 Phase 2a follow-up — TRANSIENT, PROVABLE: pair-literal
     -- check-mode completeness. `checkElabV (RPair a b) (A * B)` reduces
     -- via `checkPairLit` to `success (Surface.pair …)` given the two
@@ -1049,11 +1058,10 @@ mutual
     checkElab-fallback-RVar-inr {ctx} A B localN importN
   check-complete {ctx} (t-arr-check {A = A} {B = B} localN importN) =
     checkElab-fallback-RVar-arr {ctx} A B localN importN
-  -- Plan 0.41 / D018: integer-literal global-element coercion. The
-  -- `checkElabV (RInt n) (A ⇒[Many pure] Int)` clause matches directly
-  -- (no lookup `with`), so the elaborator reduces to the lifted success
-  -- definitionally — `refl` closes it.
-  check-complete {ctx} (t-int-lift {X = X} n) = _ , _ , _ , refl
+  -- Plan 0.41: the value-lift bridge. A closed global-element value (`⊢ᵍ`)
+  -- elaborates at the pure arrow — recurses on the `⊢ᵍ` derivation via
+  -- `gd-complete` (the extractable family always elaborates).
+  check-complete {ctx} (t-value-lift {X = X} gd) = gd-complete X gd
   -- Plan 0.6 Phase C.7 POC-2: applied `pair f g` check-mode. The
   -- recursive check-complete calls on f and g give the
   -- inferElab-success equations threaded through the fallback
