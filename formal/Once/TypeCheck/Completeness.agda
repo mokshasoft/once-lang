@@ -53,7 +53,7 @@ open import Once.TypeCheck.Elaborate
 open import Once.TypeCheck.Judgment
 open import Once.Functor.Translate using (WellFormedF)
 open import Once.Functor.Decide using (wellFormedF?)
-open import Once.TypeCheck.Classify using (ctxWithImportsAndPolys; composeArgB)
+open import Once.TypeCheck.Classify using (ctxWithImportsAndPolys; composeArgB; composeMid)
 
 open import Once.Surface.Syntax as Surface using (zeroUsage; _+ᵘ_; _*ᵘ_)
   renaming (Expr to SExpr)
@@ -919,7 +919,7 @@ mutual
               ≡ success ((Surface.zeroUsage +ᵘ (T.Many *ᵘ Ψ₁)) +ᵘ (T.Many *ᵘ Ψ₂)) eE d f'
     compose-eff-complete : ∀ {ctx : NamedCtx} {f g : RawExpr} {A B C : Type}
       {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
-      → composeArgB ctx g A ≡ just B
+      → composeMid ctx f g A ≡ just B
       → ctx ⊢ᶜ f ∶ (B T.⇒[ T.mk-kind T.Many T.eff ] C) ⨾ Ψ₁
       → ctx ⊢ᶜ g ∶ (A T.⇒[ T.mk-kind T.Many T.eff ] B) ⨾ Ψ₂
       → ∃[ eE ] ∃[ d ] ∃[ f' ]
@@ -1053,7 +1053,7 @@ mutual
   -- `checkElabV (RInt n) (A ⇒[Many pure] Int)` clause matches directly
   -- (no lookup `with`), so the elaborator reduces to the lifted success
   -- definitionally — `refl` closes it.
-  check-complete {ctx} (t-int-lift {A = A} n) = _ , _ , _ , refl
+  check-complete {ctx} (t-int-lift {X = X} n) = _ , _ , _ , refl
   -- Plan 0.6 Phase C.7 POC-2: applied `pair f g` check-mode. The
   -- recursive check-complete calls on f and g give the
   -- inferElab-success equations threaded through the fallback
