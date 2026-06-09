@@ -1030,6 +1030,49 @@ inlInrView (SigOp si)      = iiv-other (SigOp si)
 inlInrView (const p vI vM) = iiv-other (const p vI vM)
 
 -- Helper: beta reduction for fst ∘ f (verified given view)
+-- | Does this IR contain an observable effect (a SigOp or a heap free)?
+--
+-- The degenerate optimizer rules (`B ≡ Unit → terminal`, `terminal ∘ f →
+-- terminal`, `fst/snd ∘ ⟨g,h⟩ → g/h`) are sound ONLY at the VALUE level:
+-- every `_ → Unit` morphism denotes `tt`, and a projection discards a
+-- component — both fine for the value, but they DROP any observable SigOp
+-- trace the discarded sub-term would emit (e.g. `linux.exit`, a test
+-- `emit`), so the binary silently exits 0. We gate those drops on this
+-- predicate: an effectful sub-term is never dropped (it falls through to a
+-- structural form that preserves it). (`Void`-source → `initial` stays
+-- unconditional: a `Void`-source morphism is never invoked.)
+has-effect? : ∀ {A B} → IR A B → Bool
+has-effect? id              = false
+has-effect? (g ∘ f)         = has-effect? g ∨ has-effect? f
+has-effect? fst             = false
+has-effect? snd             = false
+has-effect? (⟨ f , g ⟩ _)   = has-effect? f ∨ has-effect? g
+has-effect? (inl _)         = false
+has-effect? (inr _)         = false
+has-effect? (case f g)      = has-effect? f ∨ has-effect? g
+has-effect? terminal        = false
+has-effect? initial         = false
+has-effect? (curry f _)     = has-effect? f
+-- `apply` invokes a closure that is only known at runtime; that closure may
+-- contain any SigOp (e.g. an `exit`/`emit` action threaded through a thunk),
+-- so an `apply` is conservatively treated as potentially effectful. This is
+-- what stops the optimizer collapsing an effect-bearing action thunk
+-- (`applyEff ∘ ⟨closure,x⟩ : _ → Unit`) to `terminal`.
+has-effect? apply           = true
+has-effect? arr             = false
+has-effect? (SigOp _)       = true
+has-effect? (const _ _ _)   = false
+has-effect? (free-heap _)   = true
+has-effect? (In _ _)        = false
+has-effect? (out-μ _)       = false
+has-effect? (Cata _ alg)    = has-effect? alg
+has-effect? (Para _ alg)    = has-effect? alg
+has-effect? (Out _)         = false
+has-effect? (in-ν _ _)      = false
+has-effect? (Ana _ coalg)   = has-effect? coalg
+has-effect? (Hylo _ _ alg coalg) = has-effect? alg ∨ has-effect? coalg
+has-effect? (Fuse _ _ alg tr)    = has-effect? alg ∨ has-effect? tr
+
 optimize-fst : ∀ {A B C} → IR A (B * C) → IR A B
 optimize-fst f with pairView f
 ... | is-pair g _ _ = g
@@ -1057,7 +1100,13 @@ optimize-compose-second g f with composeSecondView f
 ... | cs-other f = g ∘ f
 
 optimize-compose : ∀ {A B C} → IR B C → IR A B → IR A C
-optimize-compose g f with composeFirstView g
+-- If `f` carries an observable effect, never drop it or its components:
+-- the dead-code/beta rules below (`terminal ∘ f → terminal`, `fst/snd ∘
+-- ⟨g,h⟩ → g/h`) are value-correct but would erase `f`'s SigOp trace. Keep
+-- `g ∘ f` verbatim (still value-correct, and the effect is preserved).
+optimize-compose g f with has-effect? f
+... | true = g ∘ f
+optimize-compose g f | false with composeFirstView g
 ... | cf-id = f                                    -- id ∘ f = f
 ... | cf-terminal = terminal                       -- terminal ∘ f = terminal
 ... | cf-fst = optimize-fst f                      -- fst ∘ f (beta reduction)
@@ -1177,9 +1226,11 @@ mutual
   -- | Type-directed optimization
   optimize-once : ∀ {A B} → IR A B → IR A B
   optimize-once {A} {B} ir with B ≟Type Unit
-  ... | yes refl = terminal                    -- Target is Unit → terminal
-  ... | no _ with A ≟Type Void
-  ...   | yes refl = initial                   -- Source is Void → initial
+  ... | yes refl with has-effect? ir
+  ...   | false = terminal                     -- pure morphism to Unit → terminal
+  ...   | true  = optimize-once-structural ir  -- EFFECTFUL (SigOp/free-heap) → keep; collapsing would drop the observable effect
+  optimize-once {A} {B} ir | no _ with A ≟Type Void
+  ...   | yes refl = initial                   -- Source is Void → initial (vacuous: never invoked)
   ...   | no _ = optimize-once-structural ir   -- Otherwise → structural rules
 
 ------------------------------------------------------------------------

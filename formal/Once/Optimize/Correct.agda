@@ -76,7 +76,9 @@ optimize-compose-second-correct g f x | cs-other f' = refl
 
 optimize-compose-correct : ∀ {A B C} (g : IR B C) (f : IR A B) (x : ⟦ A ⟧)
                          → eval′ (optimize-compose g f) x ≡ eval′ (g ∘ f) x
-optimize-compose-correct g f x with composeFirstView g
+optimize-compose-correct g f x with has-effect? f
+... | true = refl                                  -- kept as `g ∘ f`
+optimize-compose-correct g f x | false with composeFirstView g
 ... | cf-id = refl
 ... | cf-terminal = refl
 ... | cf-fst = optimize-fst-correct f x
@@ -280,8 +282,10 @@ mutual
   optimize-once-correct : ∀ {A B} (f : IR A B) (x : ⟦ A ⟧)
                         → eval′ (optimize-once f) x ≡ eval′ f x
   optimize-once-correct {A} {B} f x with B ≟Type Unit
-  ... | yes refl = sym (eval-unit-unique f x)
-  ... | no _ with A ≟Type Void
+  ... | yes refl with has-effect? f
+  ...   | false = sym (eval-unit-unique f x)        -- collapsed to terminal (value-correct; no effect to lose)
+  ...   | true  = optimize-once-structural-correct f x   -- effectful: kept structurally
+  optimize-once-correct {A} {B} f x | no _ with A ≟Type Void
   ...   | yes refl = ⊥-elim x
   ...   | no _ = optimize-once-structural-correct f x
 
