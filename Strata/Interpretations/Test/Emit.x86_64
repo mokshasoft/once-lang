@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2025-2026 Jonas Claesson and contributors
+#
+# Test-harness-local Emits SigOp `emit : Eff Int Unit` (Plan 0.36).
+# Runtime = NOP: the observable is the SigOp trace (asserted at the Agda
+# `obs` level), not stdout. Takes its Int argument in %rdi (Once SysV
+# convention), returns Unit; touches no callee-saved register.
+
+.text
+.align 16
+.global once_emit
+.type once_emit, @function
+once_emit:
+    ret
+.size once_emit, .-once_emit

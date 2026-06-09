@@ -74,8 +74,7 @@ data T__'8866''7522'_'8758'_'10814'__10
     C_t'45'terminal'45'app_222 MAlonzo.Code.Once.Type.T_Type_112
                                MAlonzo.Code.Once.Surface.Syntax.T_Usage_50
                                T__'8866''7522'_'8758'_'10814'__10 |
-    C_t'45'arr'45'app'45'infer_234 MAlonzo.Code.Once.Surface.Syntax.T_Usage_50
-                                   T__'8866''7522'_'8758'_'10814'__10 |
+    C_t'45'arr'45'app'45'infer_234 T__'8866''7522'_'8758'_'10814'__10 |
     C_t'45'apply'45'app'45'infer_246 MAlonzo.Code.Once.Type.T_Type_112
                                      MAlonzo.Code.Once.Surface.Syntax.T_Usage_50
                                      T__'8866''7522'_'8758'_'10814'__10 |
@@ -133,8 +132,7 @@ data T__'8866''7580'_'8758'_'10814'__16
                                    T__'8866''7580'_'8758'_'10814'__16 |
     C_t'45'initial'45'app'45'check_526 MAlonzo.Code.Once.Surface.Syntax.T_Usage_50
                                        T__'8866''7580'_'8758'_'10814'__16 |
-    C_t'45'arr'45'app'45'check_538 MAlonzo.Code.Once.Surface.Syntax.T_Usage_50
-                                   T__'8866''7580'_'8758'_'10814'__16 |
+    C_t'45'arr'45'app'45'check_538 T__'8866''7580'_'8758'_'10814'__16 |
     C_t'45'arg'45'driven'45'app'45'check_554 MAlonzo.Code.Once.Type.T_Type_112
                                              MAlonzo.Code.Once.Surface.Syntax.T_Usage_50
                                              MAlonzo.Code.Once.Surface.Syntax.T_Usage_50
