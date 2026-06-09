@@ -325,6 +325,13 @@ mutual
                      → lookupImport (NamedCtx.imports ctx) "terminal" ≡ nothing
                      → ctx ⊢ᶜ RVar "terminal" ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] Once.Type.Unit) ⨾ Surface.zeroUsage
 
+    -- | Plan 0.41 / D018: an integer literal IS the constant morphism
+    -- `const n ∘ terminal : A → Int` (a global element; `Hom(1,Int) ≅ Int`).
+    -- PURE-only — masquerade-safe: a value coerces only to a *pure* arrow
+    -- (D046's grade is the guard); effectful use goes through `arr`.
+    t-int-lift : ∀ {ctx : NamedCtx} {A : Type} (n : ℤ)
+               → ctx ⊢ᶜ RInt n ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] Int) ⨾ Surface.zeroUsage
+
     -- | Bare `initial` check-mode at canonical `Void → A` shape.
     t-initial-check : ∀ {ctx : NamedCtx} {A : Type}
                     → lookupLocal ctx "initial" ≡ nothing
