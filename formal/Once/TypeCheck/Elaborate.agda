@@ -1646,6 +1646,20 @@ mutual
   -- Aux helper bodies (placed after all main mutual members so that the
   -- `... | pat` continuations of inferElabV/checkElabV clauses don't
   -- conflict with the aux's own clauses).
+  -- A qualified ref `name@alias` is ALWAYS genuinely external (from an
+  -- import, never a local userFn). Used as a value at a `Many`-arrow type it
+  -- IS the external `SigOp (generic-info name)`; emit it as `lift-morphism`
+  -- so `extract-morph`/`extract-morph-eff` recover it BY CONSTRUCTION and the
+  -- eff `case`/`compose` fuse the algebra to a DIRECT morphism (no apply, no
+  -- effApp suspension). The distinguisher the laundering bug lacked: internal
+  -- `seven` is unqualified → stays `sigOp` → resolver → closure; only genuine
+  -- externals become `lift-morphism (SigOp …)`.
+  inferElabV-RQualified-aux ctx name alias
+    (just (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B)) eq =
+    success (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B) _
+      (Surface.lift-morphism {π = π} (IR.SigOp (generic-info name)))
+      0 (NamedCtx.freshCounter ctx)
+    , t-var-qualified eq
   inferElabV-RQualified-aux ctx name alias (just ty) eq =
     success ty _ (Surface.sigOp name) 0 (NamedCtx.freshCounter ctx) , t-var-qualified eq
   inferElabV-RQualified-aux ctx name alias nothing _ =

@@ -202,7 +202,7 @@ d_compileFunBody_42 v0 v1 v2 v3 v4 v5 v6
                          MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_118
                          (coe MAlonzo.Code.Once.Surface.Syntax.C_'8709'_8) (coe v5) (coe v0)
                          (coe
-                            MAlonzo.Code.Once.TypeCheck.Elaborate.du_resolveExpr_12524
+                            MAlonzo.Code.Once.TypeCheck.Elaborate.du_resolveExpr_12538
                             (coe (0 :: Integer))
                             (coe MAlonzo.Code.Once.Surface.Syntax.C_'8709'_8) (coe v5) (coe v3)
                             (coe
@@ -218,7 +218,7 @@ d_compileFunBody_42 v0 v1 v2 v3 v4 v5 v6
                       MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_118
                       (coe MAlonzo.Code.Once.Surface.Syntax.C_'8709'_8) (coe v5) (coe v0)
                       (coe
-                         MAlonzo.Code.Once.TypeCheck.Elaborate.du_resolveExpr_12524
+                         MAlonzo.Code.Once.TypeCheck.Elaborate.du_resolveExpr_12538
                          (coe (0 :: Integer))
                          (coe MAlonzo.Code.Once.Surface.Syntax.C_'8709'_8) (coe v5) (coe v3)
                          (coe
