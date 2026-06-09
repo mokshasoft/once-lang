@@ -38,26 +38,41 @@ case-⊎ f g (inj₂ b) = g b
 -- causes Fix F to appear to the left of an arrow when A or B involves μ.
 -- This is safe for our use case (empirical testing), not formal proofs.
 mutual
-  -- Interpret CCC types as Agda types
-  ⟦_⟧T : Ty → Set
-  ⟦ Void ⟧T = ⊥
-  ⟦ Unit ⟧T = ⊤
-  ⟦ A * B ⟧T = ⟦ A ⟧T × ⟦ B ⟧T
-  ⟦ A + B ⟧T = ⟦ A ⟧T ⊎ ⟦ B ⟧T
-  ⟦ A ⇒ B ⟧T = ⟦ A ⟧T → ⟦ B ⟧T
-  ⟦ μ F ⟧T = Fix F
+  -- Code interpretation: the FIRST-ORDER, strictly-positive interpretation
+  -- used to BUILD Fix (it is what a K-payload denotes inside a fixpoint).
+  -- It has NO `⇒ → →` case (that negative occurrence is exactly what made
+  -- the old generic Fix non-positive); for the first-order codes that are
+  -- the only K-payloads we ever store it coincides definitionally with the
+  -- full ⟦_⟧T below. So Fix is now strictly positive — no pragma.
+  ⟦_⟧Tᶜ : Ty → Set
+  ⟦ Void ⟧Tᶜ = ⊥
+  ⟦ Unit ⟧Tᶜ = ⊤
+  ⟦ A * B ⟧Tᶜ = ⟦ A ⟧Tᶜ × ⟦ B ⟧Tᶜ
+  ⟦ A + B ⟧Tᶜ = ⟦ A ⟧Tᶜ ⊎ ⟦ B ⟧Tᶜ
+  ⟦ A ⇒ B ⟧Tᶜ = ⊤                     -- never reached for first-order codes
+  ⟦ μ F ⟧Tᶜ = Fix F
 
   -- Interpret functors acting on Agda types
   ⟦_⟧FS : Func → Set → Set
   ⟦ Id ⟧FS X = X
-  ⟦ K A ⟧FS X = ⟦ A ⟧T
+  ⟦ K A ⟧FS X = ⟦ A ⟧Tᶜ
   ⟦ F ⊕ G ⟧FS X = ⟦ F ⟧FS X ⊎ ⟦ G ⟧FS X
   ⟦ F ⊗ G ⟧FS X = ⟦ F ⟧FS X × ⟦ G ⟧FS X
 
-  -- Fixpoint of a functor (initial algebra as Agda data)
-  {-# NO_POSITIVITY_CHECK #-}
+  -- Fixpoint of a functor (initial algebra as Agda data) — strictly positive.
   data Fix (F : Func) : Set where
     fix : ⟦ F ⟧FS (Fix F) → Fix F
+
+-- Full type interpretation (with real function spaces) for term evaluation.
+-- Defined as a plain recursive FUNCTION after Fix, so its necessary negative
+-- `⇒` case does not enter Fix's positivity check.
+⟦_⟧T : Ty → Set
+⟦ Void ⟧T = ⊥
+⟦ Unit ⟧T = ⊤
+⟦ A * B ⟧T = ⟦ A ⟧T × ⟦ B ⟧T
+⟦ A + B ⟧T = ⟦ A ⟧T ⊎ ⟦ B ⟧T
+⟦ A ⇒ B ⟧T = ⟦ A ⟧T → ⟦ B ⟧T
+⟦ μ F ⟧T = Fix F
 
 -- Destructor for Fix
 unfix : ∀ {F} → Fix F → ⟦ F ⟧FS (Fix F)
