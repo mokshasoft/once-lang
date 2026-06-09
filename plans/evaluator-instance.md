@@ -42,6 +42,73 @@ function-based `_⇓_` trips function-eta otherwise).
 
 ## Remaining (the real work) — now just ONE deep kernel
 
+UPDATE (2026-06-09): transparency-kernel FEASIBILITY PROBE done.
+`…Eval.HandlerCorrectness` proves the denotational correctness of the one
+NON-TRIVIAL constructor of `normalize-step` — the comp handler — on both
+implemented redexes:
+- `handle-comp-id-left` / `handle-comp-correct-on-id-left`: `id ∘ g ⟶ g`,
+  schematically and on real `encode`-images.
+- `handle-comp-correct-on-id-right`: `f ∘ id ⟶ f` (exercises the second
+  `check-g-handler` dispatch tier; concrete non-`id` left child).
+All hold by `refl` — the `is-id`/`Out`/`distrib`/`caseWithCtx` cascade
+computes in the model with no stuck redex. NO axioms, NO postulates (not
+even funext). Confirms `eval` of a step branch "does the right thing on
+that tag"; the path to all 15 constructors is mechanical for the rebuild
+handlers and the same shape for the rewriting ones.
+
+UPDATE (2026-06-09, cont.): transparency-kernel ASSEMBLY started.
+`…Eval.StepTransparency` wires the per-constructor facts into the recursive
+`normalize = cata TermF normalize-step` structure. All `refl`, axiom-free:
+- `normalize-unfold` — the CRUX: `eval normalize (fix x) ≡ eval normalize-step
+  (coherence⁻¹ TermF _ (fmap-Set TermF (eval normalize) x))` (cata-Set's
+  computation rule + η for `eval`). This is the hook every constructor
+  result plugs into.
+- `normalize-comp` — specialisation: `eval normalize (comp-code c₁ c₂) ≡
+  eval handle-comp (eval normalize c₁ , eval normalize c₂)`.
+- `normalize-id-left` — FIRST transparency result PAST the NoRedex class:
+  `eval normalize (comp-code (id-code A) c₂) ≡ eval normalize c₂` for
+  ARBITRARY c₂ (the `id ∘ h ⟶ h` rewrite carried through the model on
+  non-normal subterms; RealNormalizerFixpoint only had already-normal ones).
+- Rebuild sweep: `normalize-fst` (leaf fixpoint), `normalize-pair` /
+  `normalize-case` (recursive CONGRUENCES — the reusable inductive-step
+  lemmas). The other 11 rebuild positions are the same one-liner.
+
+UPDATE (2026-06-09, cont.): the COMP CASE of transparency is now CLOSED and
+VERIFIED (both modules genuinely typecheck; interfaces re-emitted under
+`bootstrap/check.sh`, exit 0):
+- `HandlerCorrectness.handle-comp-trichotomy` — the COMPLETE case analysis
+  of `handle-comp` on an arbitrary value pair, `is-id` decisions discharged
+  internally: `(≡ v₂) ⊎ (≡ v₁) ⊎ (≡ rebuilt comp)`. This subsumes the
+  `f ∘ id` redex the previous round could NOT reach as `refl` — it is now
+  carried by the `is-id-correct` case split inside the lemma, on ARBITRARY
+  normalized children.
+- `StepTransparency.normalize-comp-complete` — lifts that trichotomy up to
+  the comp-code via `normalize-comp`: `normalize (comp-code c₁ c₂)` always
+  lands in exactly one of {right, left, rebuilt-congruence}. NO hypotheses,
+  NO axioms.
+
+MEMORY/TOOLING NOTE (standing rule for this dev): these proofs OOM-killed
+agda (4.9–7+ GB) until rewritten WITHOUT `with`. `with e` forces agda to
+normalise the whole goal, re-expanding the giant `eval handle-comp` /
+`eval normalize` normal forms several times. RULE: avoid `with` on anything
+mentioning `eval …`; instead LIFT the case analysis into a top-level
+`private` helper that abstracts the giant term behind a plain variable `r`
+(+ a `refl` witness) and PATTERN-MATCHES the small decision `⊎` (see
+`tri-aux`, `ncc-lift`). `bootstrap/check.sh` now runs agda in a 5.5G/2G
+cgroup scope (claude survives any OOM via oom_score_adj) and LOUDLY reports
+signal-kills (exit 137) — trust the interface timestamp / real exit code,
+never a wrapper's exit 0.
+
+What's NOT yet done (still the deep kernel): the structural INDUCTION over
+`Fix TermF` that combines these into a full theorem. The natural next
+target is denotational IDEMPOTENCE `eval normalize (eval normalize c) ≡
+eval normalize c` (= "output is a normal form"), or transparency vs an
+independent `nf`. The comp case's per-layer fact is now in hand
+(`normalize-comp-complete`); what remains is the structural recursor for the
+NO_POSITIVITY `Fix TermF` (mirror CataTerminates' `cata`/`map-cata` descent)
+to drive the induction, plus the result-shape/normality reasoning in the
+comp branch.
+
 Obligations (1) real normalizer + totality are DONE (above). What remains:
 
 - **Full correctness on ALL inputs (transparency with spec = nf).** We have
