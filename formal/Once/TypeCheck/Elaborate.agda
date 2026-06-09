@@ -544,6 +544,33 @@ extract-morph-eff : ∀ {n} {Γ : SCtx n} {Ψ : Surface.Usage n} {A B : Type}
                   → Maybe (∃-syntax (λ (m : IR A B) → Ψ ≡ Surface.zeroUsage))
 extract-morph-eff e = extract-morph-eff-aux e refl
 
+-- Plan 0.41: elaborate a closed global-element value. Recurses on the raw
+-- value-shape, producing the parametric global element `IR X A` *together
+-- with* its `⊢ᵍ` derivation — so the `t-value-lift` bridge gets both the IR
+-- (for `lift-morphism`) and the soundness witness, and completeness can
+-- recurse on the `⊢ᵍ` derivation. Per-type knowledge at the leaves
+-- (`intLit`/`terminal`); structure via the generic generators. `nothing` for
+-- non-value shapes — `⊢ᵍ` is the extractable family by construction.
+checkG : (ctx : NamedCtx) (X : Type) (e : RawExpr) (A : Type)
+       → Maybe (IR X A × (ctx ⊢ᵍ e ∶ A))
+checkG ctx X (Raw.RInt n) Once.Type.Int = just (intLit n , g-int n)
+checkG ctx X (Raw.RVar "terminal") Once.Type.Unit = just (IR.terminal , g-terminal)
+checkG ctx X (Raw.RPair a b) (A Once.Type.* B) with checkG ctx X a A | checkG ctx X b B
+... | just (ma , ga) | just (mb , gb) = just (IR.⟨ ma , mb ⟩ IR.Heap , g-pair ga gb)
+... | _ | _ = nothing
+checkG ctx X (Raw.RApp (Raw.RVar "inl") arg) (A Once.Type.+ B) with checkG ctx X arg A
+... | just (ma , ga) = just (IR.inl IR.Heap IR.∘ ma , g-inl ga)
+... | nothing = nothing
+checkG ctx X (Raw.RApp (Raw.RVar "inr") arg) (A Once.Type.+ B) with checkG ctx X arg B
+... | just (mb , gb) = just (IR.inr IR.Heap IR.∘ mb , g-inr gb)
+... | nothing = nothing
+checkG ctx X (Raw.RApp (Raw.RVar "In") arg) (Once.Type.μ-type F) with wellFormedF? F in eqWF
+... | nothing = nothing
+... | just wfF with checkG ctx X arg (⟦ F ⟧T (Once.Type.μ-type F))
+...   | just (marg , garg) = just (IR.In wfF IR.Heap IR.∘ marg , g-In eqWF garg)
+...   | nothing = nothing
+checkG _ _ _ _ = nothing
+
 
 -- arr : (a → b) → Eff a b
 specArr : (A B : Type) → SExpr S∅ Surface.zeroUsage ((A ⇒ B) ⇒ (A ⇒[ mk-kind Many eff ] B))
@@ -1350,6 +1377,14 @@ mutual
   -- through `checkInGo`), check the argument at the functor layer, emit
   -- `morph-app (IR.In wfF Heap) argE`.
   checkIn ctx arg (Once.Type.μ-type F) = checkInGo ctx arg F (wellFormedF? F) refl
+  -- Plan 0.41 structural value-lift: `In arg` at a pure arrow to `μ-type F`
+  -- is a closed global-element value — route through `checkG`.
+  checkIn ctx arg (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] (Once.Type.μ-type F))
+    with checkG ctx X (Raw.RApp (Raw.RVar "In") arg) (Once.Type.μ-type F)
+  ... | nothing = failure (BuiltinTypeMismatch "In") , tt
+  ... | just (m , gd) =
+          success Surface.zeroUsage (Surface.lift-morphism m) 0 (NamedCtx.freshCounter ctx)
+          , t-value-lift gd
   checkIn _ _ _ = failure (BuiltinTypeMismatch "In") , tt
 
   checkInGo ctx arg F nothing _ = failure (BuiltinTypeMismatch "In") , tt
@@ -1625,12 +1660,23 @@ mutual
 
   -- Plan 0.41 / D018 leaf: an integer literal at a pure-arrow position is its
   -- constant morphism (global element `const n ∘ terminal`, via `intLit`).
-  -- Structural value-lift; the per-type encoding lives here at the leaf.
+  -- The `g-int` leaf of `⊢ᵍ`, bridged by `t-value-lift`.
   checkElabV ctx (Raw.RInt n)
     (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] Int) =
     success Surface.zeroUsage (Surface.lift-morphism (intLit n)) 0
       (NamedCtx.freshCounter ctx)
-    , t-int-lift n
+    , t-value-lift (g-int n)
+
+  -- Plan 0.41: a pair literal `(a , b)` at a pure-arrow to a product is a
+  -- closed global-element value — route through `checkG`.
+  checkElabV ctx (Raw.RPair a b)
+    (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] (A Once.Type.* B))
+    with checkG ctx X (Raw.RPair a b) (A Once.Type.* B)
+  ... | nothing = failure (TypeMismatch (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] (A Once.Type.* B))
+                                        (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] (A Once.Type.* B))) , tt
+  ... | just (m , gd) =
+          success Surface.zeroUsage (Surface.lift-morphism m) 0 (NamedCtx.freshCounter ctx)
+          , t-value-lift gd
 
   -- Generic infer-and-match fallback — covers RInt, RStringLit, RUnit,
   -- RPair, RBinOp, RUnaryOp, RLet, RDestruct, RAnnot, RQualified.
@@ -1833,6 +1879,24 @@ mutual
   ...   | yes refl = success Ψ eE d fr , t-embed w
   ...   | no _     = failure (TypeMismatch T T') , tt
   -- ahv-inl: T must be sum type A+B; check arg at A.
+  -- Plan 0.41 structural value-lift: `inl arg` / `inr arg` at a *pure arrow*
+  -- to a sum is a closed global-element value — route through `checkG`, which
+  -- yields the IR and the `⊢ᵍ` derivation for the `t-value-lift` bridge.
+  -- Specific clauses before the value-type `with T` dispatch (first-match).
+  checkElabV-RApp-dispatch ctx f arg
+    (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] (A Once.Type.+ B)) ahv-inl _
+    with checkG ctx X (Raw.RApp (Raw.RVar "inl") arg) (A Once.Type.+ B)
+  ... | nothing = failure InlNeedsSumType , tt
+  ... | just (m , gd) =
+          success Surface.zeroUsage (Surface.lift-morphism m) 0 (NamedCtx.freshCounter ctx)
+          , t-value-lift gd
+  checkElabV-RApp-dispatch ctx f arg
+    (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] (A Once.Type.+ B)) ahv-inr _
+    with checkG ctx X (Raw.RApp (Raw.RVar "inr") arg) (A Once.Type.+ B)
+  ... | nothing = failure InrNeedsSumType , tt
+  ... | just (m , gd) =
+          success Surface.zeroUsage (Surface.lift-morphism m) 0 (NamedCtx.freshCounter ctx)
+          , t-value-lift gd
   checkElabV-RApp-dispatch ctx f arg T ahv-inl _ with T
   ... | (A Once.Type.+ B) with checkElabV ctx arg A
   ...   | failure err , _ = failure err , tt
