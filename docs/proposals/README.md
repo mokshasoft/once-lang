@@ -25,3 +25,7 @@ For smaller decisions, use the [Decision Log](../compiler/decision-log.md) inste
 |-----|-------|--------|
 | 0000 | Template | N/A |
 | 0001 | [Orthogonal Arithmetic Compiler](OCP-0001-arithmetic-compiler.md) | Draft |
+| 0002 | [Infix Operators](OCP-0002-infix-operators.md) | Draft |
+| 0003 | [Total Productive IR](OCP-0003-total-productive-ir.md) | Draft |
+| 0004 | [Zero-Trust Verification](OCP-0004-zero-trust-verification.md) | Draft |
+| 0005 | [Decision State & Invariant Encoding](OCP-0005-decision-state-and-invariant-encoding.md) | Draft |
