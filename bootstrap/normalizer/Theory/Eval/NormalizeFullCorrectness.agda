@@ -26,6 +26,7 @@
 -- Build: bootstrap/check.sh normalizer/Theory/Eval/NormalizeFullCorrectness.agda
 ------------------------------------------------------------------------
 
+{-# OPTIONS --safe #-}
 module normalizer.Theory.Eval.NormalizeFullCorrectness where
 
 open import normalizer.Syntax.Types using (⊤; tt)

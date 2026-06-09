@@ -12,6 +12,7 @@
 --   3. ⌜_⌝Ty, ⌜_⌝Func, encode - the encoding functions
 ------------------------------------------------------------------------
 
+{-# OPTIONS --safe #-}
 module normalizer.Encoding.Encoding where
 
 open import normalizer.Syntax.Types

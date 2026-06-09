@@ -31,6 +31,7 @@
 -- Build: bootstrap/check.sh normalizer/Theory/Eval/StepTransparency.agda
 ------------------------------------------------------------------------
 
+{-# OPTIONS --safe #-}
 module normalizer.Theory.Eval.StepTransparency where
 
 open import normalizer.Syntax.Types

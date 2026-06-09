@@ -7,6 +7,7 @@
 -- independent of any particular normalizer implementation.
 ------------------------------------------------------------------------
 
+{-# OPTIONS --safe #-}
 module normalizer.Syntax.NoRedex where
 
 open import normalizer.Syntax.Types

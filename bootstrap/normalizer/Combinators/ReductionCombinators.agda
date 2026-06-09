@@ -5,6 +5,7 @@
 -- without pulling in heavy dependencies.
 ------------------------------------------------------------------------
 
+{-# OPTIONS --safe #-}
 module normalizer.Combinators.ReductionCombinators where
 
 open import normalizer.Syntax.CCC

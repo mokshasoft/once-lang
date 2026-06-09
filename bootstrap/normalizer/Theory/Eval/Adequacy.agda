@@ -20,6 +20,7 @@
 -- Build: bootstrap/check.sh normalizer/Theory/Eval/Adequacy.agda
 ------------------------------------------------------------------------
 
+{-# OPTIONS --safe #-}
 module normalizer.Theory.Eval.Adequacy where
 
 open import normalizer.Syntax.Types

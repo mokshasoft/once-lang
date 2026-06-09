@@ -17,6 +17,7 @@
 --   13: curry, 14: apply
 ------------------------------------------------------------------------
 
+{-# OPTIONS --safe #-}
 module normalizer.TCB0.Normalizer.Dispatch where
 
 open import normalizer.TCB0.Normalizer.Rebuild public

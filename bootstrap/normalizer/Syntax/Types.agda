@@ -9,6 +9,7 @@
 -- SELF-CONTAINED: This is the bootstrap foundation.
 ------------------------------------------------------------------------
 
+{-# OPTIONS --safe #-}
 module normalizer.Syntax.Types where
 
 ------------------------------------------------------------------------

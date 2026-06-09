@@ -5,6 +5,7 @@
 -- caseWithCtx. These are generic CCC lemmas used across the codebase.
 ------------------------------------------------------------------------
 
+{-# OPTIONS --safe #-}
 module normalizer.Combinators.Chain where
 
 open import normalizer.Syntax.Types public

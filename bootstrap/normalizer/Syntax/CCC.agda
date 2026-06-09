@@ -9,6 +9,7 @@
 -- Imports Types module for the foundation (prelude, types, functors).
 ------------------------------------------------------------------------
 
+{-# OPTIONS --safe #-}
 module normalizer.Syntax.CCC where
 
 open import normalizer.Syntax.Types public

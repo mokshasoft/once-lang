@@ -26,6 +26,7 @@
 -- Build: bootstrap/check.sh normalizer/Theory/Eval/NfSpec.agda
 ------------------------------------------------------------------------
 
+{-# OPTIONS --safe #-}
 module normalizer.Theory.Eval.NfSpec where
 
 open import normalizer.Syntax.Types using (_≡_; refl; trans; cong)

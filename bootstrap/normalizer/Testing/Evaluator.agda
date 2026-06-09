@@ -11,6 +11,7 @@
 --   3. Running the normalizer demonstrates the fixpoint property
 ------------------------------------------------------------------------
 
+{-# OPTIONS --safe #-}
 module normalizer.Testing.Evaluator where
 
 open import normalizer.Syntax.Types

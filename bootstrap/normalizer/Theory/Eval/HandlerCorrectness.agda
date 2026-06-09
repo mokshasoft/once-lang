@@ -32,6 +32,7 @@
 -- Build: bootstrap/check.sh normalizer/Theory/Eval/HandlerCorrectness.agda
 ------------------------------------------------------------------------
 
+{-# OPTIONS --safe #-}
 module normalizer.Theory.Eval.HandlerCorrectness where
 
 open import normalizer.Syntax.Types

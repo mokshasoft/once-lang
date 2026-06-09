@@ -7,6 +7,7 @@
 -- - ret-no-N: rebuild and return inr for "not matched" case
 ------------------------------------------------------------------------
 
+{-# OPTIONS --safe #-}
 module normalizer.TCB0.Normalizer.Rebuild where
 
 open import normalizer.Syntax.Types public

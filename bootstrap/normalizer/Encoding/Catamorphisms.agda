@@ -10,6 +10,7 @@
 -- (normalizers, compilers, optimizers).
 ------------------------------------------------------------------------
 
+{-# OPTIONS --safe #-}
 module normalizer.Encoding.Catamorphisms where
 
 open import normalizer.Syntax.CCC public

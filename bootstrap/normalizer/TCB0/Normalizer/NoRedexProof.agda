@@ -9,6 +9,7 @@
 -- but currently all NoRedex-related content is foundational.
 ------------------------------------------------------------------------
 
+{-# OPTIONS --safe #-}
 module normalizer.TCB0.Normalizer.NoRedexProof where
 
 -- Re-export everything from Syntax.NoRedex

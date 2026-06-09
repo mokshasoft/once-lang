@@ -7,6 +7,7 @@
 -- - handle-pair and handle-case check for eta reduction
 ------------------------------------------------------------------------
 
+{-# OPTIONS --safe #-}
 module normalizer.TCB0.Normalizer.Handlers where
 
 open import normalizer.Combinators.Chain public

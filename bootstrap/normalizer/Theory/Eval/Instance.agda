@@ -22,6 +22,7 @@
 -- Build: bootstrap/check.sh normalizer/Theory/Eval/Instance.agda
 ------------------------------------------------------------------------
 
+{-# OPTIONS --safe #-}
 module normalizer.Theory.Eval.Instance where
 
 -- bootstrap side (own prelude / syntax / model)
