@@ -544,6 +544,17 @@ extract-morph-eff : ∀ {n} {Γ : SCtx n} {Ψ : Surface.Usage n} {A B : Type}
                   → Maybe (∃-syntax (λ (m : IR A B) → Ψ ≡ Surface.zeroUsage))
 extract-morph-eff e = extract-morph-eff-aux e refl
 
+-- View bundling `wellFormedF? F`'s outcome with its equation (mirrors
+-- `inspectLookupLocal`) so proofs sidestep the `with … in` opacity.
+data WellFormedFView (F : Once.Type.Functor) : Set where
+  wfv-yes : ∀ {wfF} → wellFormedF? F ≡ just wfF → WellFormedFView F
+  wfv-no  : wellFormedF? F ≡ nothing → WellFormedFView F
+
+inspectWellFormedF : (F : Once.Type.Functor) → WellFormedFView F
+inspectWellFormedF F with wellFormedF? F in eq
+... | just wfF = wfv-yes eq
+... | nothing  = wfv-no eq
+
 -- Plan 0.41: elaborate a closed global-element value. Recurses on the raw
 -- value-shape, producing the parametric global element `IR X A` *together
 -- with* its `⊢ᵍ` derivation — so the `t-value-lift` bridge gets both the IR
@@ -554,7 +565,10 @@ extract-morph-eff e = extract-morph-eff-aux e refl
 checkG : (ctx : NamedCtx) (X : Type) (e : RawExpr) (A : Type)
        → Maybe (IR X A × (ctx ⊢ᵍ e ∶ A))
 checkG ctx X (Raw.RInt n) Once.Type.Int = just (intLit n , g-int n)
-checkG ctx X (Raw.RVar "terminal") Once.Type.Unit = just (IR.terminal , g-terminal)
+checkG ctx X (Raw.RVar "terminal") Once.Type.Unit
+  with inspectLookupLocal ctx "terminal" | inspectLookupImport ctx "terminal"
+... | llv-not-found eqL | liv-not-found eqI = just (IR.terminal , g-terminal eqL eqI)
+... | _                 | _                 = nothing
 checkG ctx X (Raw.RPair a b) (A Once.Type.* B) with checkG ctx X a A | checkG ctx X b B
 ... | just (ma , ga) | just (mb , gb) = just (IR.⟨ ma , mb ⟩ IR.Heap , g-pair ga gb)
 ... | _ | _ = nothing
@@ -564,9 +578,9 @@ checkG ctx X (Raw.RApp (Raw.RVar "inl") arg) (A Once.Type.+ B) with checkG ctx X
 checkG ctx X (Raw.RApp (Raw.RVar "inr") arg) (A Once.Type.+ B) with checkG ctx X arg B
 ... | just (mb , gb) = just (IR.inr IR.Heap IR.∘ mb , g-inr gb)
 ... | nothing = nothing
-checkG ctx X (Raw.RApp (Raw.RVar "In") arg) (Once.Type.μ-type F) with wellFormedF? F in eqWF
-... | nothing = nothing
-... | just wfF with checkG ctx X arg (⟦ F ⟧T (Once.Type.μ-type F))
+checkG ctx X (Raw.RApp (Raw.RVar "In") arg) (Once.Type.μ-type F) with inspectWellFormedF F
+... | wfv-no _ = nothing
+... | wfv-yes {wfF} eqWF with checkG ctx X arg (⟦ F ⟧T (Once.Type.μ-type F))
 ...   | just (marg , garg) = just (IR.In wfF IR.Heap IR.∘ marg , g-In eqWF garg)
 ...   | nothing = nothing
 checkG _ _ _ _ = nothing

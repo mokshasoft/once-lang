@@ -47,13 +47,14 @@ open import Once.TypeCheck.Elaborate
          inferElabV; checkElabV; _≟T_;
          classifyAppHead; classifyAppHeadView; ahv-other;
          classifyAppHead-nothing⇒view-other; AppHeadView;
-         classifyBareBuiltin;
+         classifyBareBuiltin; checkG; inspectWellFormedF; wfv-yes; wfv-no;
          bbc-id; bbc-fst; bbc-snd; bbc-terminal; bbc-initial;
          bbc-inl; bbc-inr; bbc-arr; bbc-other)
 open import Once.TypeCheck.Judgment
 open import Once.Functor.Translate using (WellFormedF)
 open import Once.Functor.Decide using (wellFormedF?)
-open import Once.TypeCheck.Classify using (ctxWithImportsAndPolys; composeArgB; composeMid)
+open import Once.TypeCheck.Classify using (ctxWithImportsAndPolys; composeArgB; composeMid;
+  inspectLookupLocal; inspectLookupImport; llv-found; llv-not-found; liv-found; liv-not-found)
 
 open import Once.Surface.Syntax as Surface using (zeroUsage; _+ᵘ_; _*ᵘ_)
   renaming (Expr to SExpr)
@@ -926,15 +927,6 @@ mutual
           checkElab ctx (Raw.RApp (Raw.RApp (Raw.RVar "compose") f) g)
             (A T.⇒[ T.mk-kind T.Many T.eff ] C)
               ≡ success ((Surface.zeroUsage +ᵘ (T.Many *ᵘ Ψ₁)) +ᵘ (T.Many *ᵘ Ψ₂)) eE d f'
-    -- Plan 0.41 — TRANSIENT (TRUE by construction; discharge by induction on
-    -- the ⊢ᵍ derivation + a checkG-success lemma — see reassessment note).
-    -- NB: the Unit leaf (`g-terminal`) needs lookup premises to avoid a
-    -- name-shadowing over-generality, and `checkG` must check them.
-    gd-complete : ∀ {ctx : NamedCtx} {e : RawExpr} {A : Type} (X : Type)
-                → ctx ⊢ᵍ e ∶ A
-                → ∃[ eE ] ∃[ d ] ∃[ f' ]
-                    checkElab ctx e (X T.⇒[ T.mk-kind T.Many T.pure ] A)
-                      ≡ success Surface.zeroUsage eE d f'
     -- Plan 0.36 Phase 2a follow-up — TRANSIENT, PROVABLE: pair-literal
     -- check-mode completeness. `checkElabV (RPair a b) (A * B)` reduces
     -- via `checkPairLit` to `success (Surface.pair …)` given the two
@@ -946,6 +938,70 @@ mutual
       → ∃[ eE ] ∃[ d ] ∃[ f ]
           checkElab ctx (Raw.RPair a b) (A * B)
             ≡ success (Ψ₁ +ᵘ Ψ₂) eE d f
+
+  -- `nothing ≡ just _` is absurd — returns any goal type (no `⊥` import needed).
+  nothing≢just : ∀ {ℓ} {A : Set ℓ} {x : A} {C : Set} → nothing ≡ just x → C
+  nothing≢just ()
+
+  -- Plan 0.42: `checkG` succeeds on any closed global-element value. By
+  -- induction on the `⊢ᵍ` derivation: leaves reduce directly; structural cases
+  -- `rewrite` the recursive equations so `checkG`'s `with checkG …` reduces to
+  -- `just`. The extractable family is total under `checkG` — load-bearing for
+  -- `gd-complete`.
+  checkG-just : ∀ {ctx : NamedCtx} {e : RawExpr} {A : Type} (X : Type)
+              → (gd : ctx ⊢ᵍ e ∶ A)
+              → ∃[ m ] ∃[ gd' ] checkG ctx X e A ≡ just (m , gd')
+  checkG-just X (g-int n) = _ , _ , refl
+  checkG-just {ctx = ctx} X (g-terminal eqL eqI)
+    with inspectLookupLocal ctx "terminal" | inspectLookupImport ctx "terminal"
+  ... | llv-not-found _ | liv-not-found _ = _ , _ , refl
+  ... | llv-found eqL2  | _               = nothing≢just (trans (sym eqL) eqL2)
+  ... | llv-not-found _ | liv-found eqI2  = nothing≢just (trans (sym eqI) eqI2)
+  checkG-just X (g-pair ga gb) with checkG-just X ga | checkG-just X gb
+  ... | _ , _ , eqa | _ , _ , eqb rewrite eqa | eqb = _ , _ , refl
+  checkG-just X (g-inl ga) with checkG-just X ga
+  ... | _ , _ , eqa rewrite eqa = _ , _ , refl
+  checkG-just X (g-inr gb) with checkG-just X gb
+  ... | _ , _ , eqb rewrite eqb = _ , _ , refl
+  checkG-just X (g-In {F = F} eqWF garg) with inspectWellFormedF F | checkG-just X garg
+  ... | wfv-yes _   | _ , _ , eqarg rewrite eqarg = _ , _ , refl
+  ... | wfv-no eqNo | _                           = nothing≢just (trans (sym eqNo) eqWF)
+
+  -- Plan 0.42 — TRANSIENT (TRUE; discharge via checkInGo-J-style bridges that
+  -- reduce the RApp dispatch). When `checkG` succeeds on `e`, the value-lift
+  -- elaborator clause/dispatch for `e` fires to a `lift-morphism` success.
+  -- Needed only for the RApp-dispatched shapes (`inl`/`inr`/`In`), whose
+  -- `classifyAppHead` + nested-`with checkG` opacity blocks a direct `rewrite`
+  -- (the direct `RInt`/`RPair` clauses don't need it). Mirrors the existing
+  -- `checkComposeWithB-just-success` dispatch-reduction postulate.
+  postulate
+    lift-dispatch-complete : ∀ {ctx : NamedCtx} {e : RawExpr} {A : Type} (X : Type) {m gd}
+      → checkG ctx X e A ≡ just (m , gd)
+      → ∃[ eE ] ∃[ d ] ∃[ f' ]
+          checkElab ctx e (X T.⇒[ T.mk-kind T.Many T.pure ] A)
+            ≡ success Surface.zeroUsage eE d f'
+
+  -- Plan 0.42: the `⊢ᵍ` completeness — a closed global-element value elaborates
+  -- at a pure arrow. `g-int` is the direct `RInt` value-lift clause; the
+  -- structural shapes reduce their value-lift clause's `with checkG …` via
+  -- `checkG-just`; `g-terminal` routes through the existing bare-`terminal`
+  -- fallback. Discharges the former `gd-complete` postulate.
+  gd-complete : ∀ {ctx : NamedCtx} {e : RawExpr} {A : Type} (X : Type)
+              → ctx ⊢ᵍ e ∶ A
+              → ∃[ eE ] ∃[ d ] ∃[ f' ]
+                  checkElab ctx e (X T.⇒[ T.mk-kind T.Many T.pure ] A)
+                    ≡ success Surface.zeroUsage eE d f'
+  gd-complete X (g-int n) = _ , _ , _ , refl
+  gd-complete {ctx = ctx} X (g-terminal eqL eqI) =
+    checkElab-fallback-RVar-terminal {ctx} X eqL eqI
+  gd-complete X (g-pair ga gb) with checkG-just X (g-pair ga gb)
+  ... | _ , _ , eq rewrite eq = _ , _ , _ , refl
+  gd-complete X (g-inl ga) =
+    let (_ , _ , eq) = checkG-just X (g-inl ga) in lift-dispatch-complete X eq
+  gd-complete X (g-inr gb) =
+    let (_ , _ , eq) = checkG-just X (g-inr gb) in lift-dispatch-complete X eq
+  gd-complete X (g-In eqWF garg) =
+    let (_ , _ , eq) = checkG-just X (g-In eqWF garg) in lift-dispatch-complete X eq
 
   -- Full ⊢ᶜ walk: handles t-lam recursively and delegates t-embed
   -- to the per-shape fallback lemma.

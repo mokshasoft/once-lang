@@ -289,8 +289,13 @@ mutual
     g-int  : ∀ {ctx : NamedCtx} (n : ℤ) → ctx ⊢ᵍ RInt n ∶ Int
     -- The Unit leaf is the bare `terminal` morphism (avoids a special `RVar`
     -- elaborator clause that would block the general `RVar` reduction); its
-    -- top-level bridge routes through the existing `t-terminal-check`.
-    g-terminal : ∀ {ctx : NamedCtx} → ctx ⊢ᵍ RVar "terminal" ∶ Once.Type.Unit
+    -- top-level bridge routes through the existing `t-terminal-check`. The
+    -- lookup premises (cf. `t-terminal-check`) rule out a shadowing local/import
+    -- `terminal`, so the rule is not over-general (Plan 0.42).
+    g-terminal : ∀ {ctx : NamedCtx}
+               → lookupLocal ctx "terminal" ≡ nothing
+               → lookupImport (NamedCtx.imports ctx) "terminal" ≡ nothing
+               → ctx ⊢ᵍ RVar "terminal" ∶ Once.Type.Unit
     g-pair : ∀ {ctx : NamedCtx} {a b : RawExpr} {A B : Type}
            → ctx ⊢ᵍ a ∶ A → ctx ⊢ᵍ b ∶ B
            → ctx ⊢ᵍ RPair a b ∶ (A Once.Type.* B)
