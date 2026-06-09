@@ -57,7 +57,7 @@ open import Once.Surface.Syntax as Surface using (lookupUsage; tailUsage; _+ᵘ_
 open Surface.Usage using () renaming (_∷_ to _∷ᵘ_)
 open import Once.Surface.Thinning using (weaken; weakenFromEmpty)
 open import Once.Surface.Properties using (+ᵘ-identityˡ; +ᵘ-identityʳ; *ᵘ-zeroʳ)
-open import Once.Surface.Elaborate as Elab using (elaborate; intLit)
+open import Once.Surface.Elaborate as Elab using (elaborate; intLit; strLit)
 
 open import Once.TypeCheck.Classify public
 import Once.Functor.Translate
@@ -543,6 +543,43 @@ extract-morph-eff : ∀ {n} {Γ : SCtx n} {Ψ : Surface.Usage n} {A B : Type}
                   → SExpr Γ Ψ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B)
                   → Maybe (∃-syntax (λ (m : IR A B) → Ψ ≡ Surface.zeroUsage))
 extract-morph-eff e = extract-morph-eff-aux e refl
+
+-- Plan 0.41: the parametric global element of a closed value. In a CCC a value
+-- `v : A` IS a morphism `X → A` for any `X` (Hom(1,A) ≅ A). Per-type knowledge
+-- lives only in the leaves (`intLit` knows Int/FitsInReg, `strLit` knows Str) —
+-- reused, never re-derived; the structure is the generic categorical generators
+-- (`⟨_,_⟩`/`inl`/`inr`, and `morph-app`'s morphism for `In` and friends).
+-- `nothing` for non-value shapes (var/app/sigOp/closure/…) — so it accepts only
+-- closed values (no value-def laundering: a name is never coerced).
+-- Carries the closedness proof `Ψ ≡ zeroUsage` alongside the IR: a value
+-- accepted here IS closed, which is exactly what `lift-morphism` (correctly)
+-- requires. `lift-morphism` forcing `zeroUsage` is the soundness guard — only
+-- closed values are global elements — so we prove the value meets it rather
+-- than weaken the morphism realm.
+globalElem : ∀ {n} {Γ : SCtx n} {Ψ : Surface.Usage n} {A : Type}
+           → (X : Type) → SExpr Γ Ψ A → Maybe (IR X A × Ψ ≡ Surface.zeroUsage)
+globalElem X (Surface.int n) = just (intLit n , refl)
+globalElem X (Surface.str s) = just (strLit s , refl)
+globalElem X Surface.unit    = just (IR.terminal , refl)
+globalElem X (Surface.pair a b) with globalElem X a | globalElem X b
+... | just (ma , pa) | just (mb , pb) =
+      just (IR.⟨ ma , mb ⟩ IR.Heap
+           , trans (cong₂ Surface._+ᵘ_ pa pb) (+ᵘ-identityˡ Surface.zeroUsage))
+... | _ | _ = nothing
+globalElem X (Surface.inl' a) with globalElem X a
+... | just (ma , pa) = just (IR.inl IR.Heap IR.∘ ma , pa)
+... | nothing        = nothing
+globalElem X (Surface.inr' b) with globalElem X b
+... | just (mb , pb) = just (IR.inr IR.Heap IR.∘ mb , pb)
+... | nothing        = nothing
+globalElem X (Surface.morph-app m e) with globalElem X e
+... | just (me , pe) =
+      just (m IR.∘ me
+           , trans (cong (λ z → Surface.zeroUsage Surface.+ᵘ (Many Surface.*ᵘ z)) pe)
+                   (trans (cong (λ z → Surface.zeroUsage Surface.+ᵘ z) (*ᵘ-zeroʳ Many))
+                          (+ᵘ-identityˡ Surface.zeroUsage)))
+... | nothing        = nothing
+globalElem _ _ = nothing
 
 -- arr : (a → b) → Eff a b
 specArr : (A B : Type) → SExpr S∅ Surface.zeroUsage ((A ⇒ B) ⇒ (A ⇒[ mk-kind Many eff ] B))
