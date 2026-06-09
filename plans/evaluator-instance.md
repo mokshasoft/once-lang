@@ -130,10 +130,33 @@ structural recursor. Structure:
   over the IHs; comp delegates to `comp-idem`.
 Confirmed all-rebuild-except-comp by reading `TCB0/Normalizer/Handlers`.
 
-What's NOT yet done (the remaining deep kernel): transparency vs an
-INDEPENDENT normal-form notion `nf` (full correctness on ALL inputs, below).
-Idempotence shows the output is SOME normal form; it does not yet show it is
-THE spec normal form. That connection is the genuine NbE-adequacy content.
+UPDATE (2026-06-09, cont.): the SPEC `nf` is now DEFINED and VERIFIED —
+`…Eval.NfSpec.nf : Term A B → Term A B` (exit 0, total, no pragma). It is
+STRUCTURAL id-elimination (congruence everywhere; sole rewrite = id-comp
+collapse via `comp-nf`), mirroring `normalize-step` EXACTLY — NOT the full
+`_⟶_` (the β/drop rules are excluded). Detecting `id` in a Term arg trips
+Agda coverage unification on the rich indices (Out/cata), so it routes
+through a value-level `IsId?` detector (no `with`).
+
+SCOPE DECISION (recorded): the bootstrap normalizer stays id-elimination-
+ONLY. Rationale: its purpose is a correct/total normalizer WITH the Ranzow
+fixpoint (transparency), not an optimizer; drop rewrites (dead-code elim)
+are never needed for that. Per origin/heap-only-pivot-2 Plan 0.39, Once's
+real correctness is SigOp-TRACE correctness and value-level proofs are
+effect-blind — but ONLY drop rewrites can drop a SigOp. id-elimination is
+trace-transparent (`id∘f=f`, `f∘id=f` preserve `obs` by construction), so a
+VALUE-LEVEL `nf` is sound here and value-correctness ⟹ trace-correctness.
+If the normalizer ever takes on drop rewrites, the spec must become
+trace-aware (`obs`) — flagged in NfSpec's header.
+
+What's NOT yet done (the remaining deep kernel — the faithfulness WALL):
+the ADEQUACY `eval (normalize ∘ encode g) ≡ eval (encode (nf g))`, i.e. the
+code-level normalizer on ⌜g⌝ yields the code of ⌜nf g⌝. By induction on the
+Term `g`: the comp case uses `normalize-comp` + the IH + the KEY lemma
+`is-id (eval (encode t)) ⟺ IsId? t` (encode maps `id`→inj₁ id-code, every
+other constructor→inj₂…), aligning `handle-comp`'s trichotomy with `comp-nf`.
+This discharges `RanzowFixpoint.EvalFullCorrectness.Correct nf normalize` —
+the actual `transparency` obligation (NON-degenerate, unlike spec=id).
 
 Obligations (1) real normalizer + totality are DONE (above). What remains:
 
