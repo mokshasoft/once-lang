@@ -230,9 +230,14 @@ composeArgB ctx (Raw.RVar "id") A = just A
 -- terminal : X → Unit, so B = Unit.
 composeArgB ctx (Raw.RVar "terminal") _ = just Unit
 -- User poly name: look up schema, match domain, extract codomain.
+-- Plan 0.36 Phase 1: fall back to the monomorphic named-def type (`imports`)
+-- and read off its codomain, so point-free composes of named morphisms
+-- (e.g. `compose exit (arr seven)`, `compose emitAll (arr getXs)`) recover B.
 composeArgB ctx (Raw.RVar name) A with lookupPoly (NamedCtx.polys ctx) name
 ... | just (schema , _) = schemaArrowCodomain schema A
-... | nothing = nothing
+... | nothing with lookupImport (NamedCtx.imports ctx) name
+...   | just (_ Once.Type.⇒[ _ ] C) = just C
+...   | _ = nothing
 -- Nested compose: recurse.
 composeArgB ctx (Raw.RApp (Raw.RApp (Raw.RVar "compose") f') g') A with composeArgB ctx g' A
 ... | nothing = nothing
