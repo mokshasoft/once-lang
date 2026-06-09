@@ -20,6 +20,7 @@
 -- Build: bootstrap/check.sh normalizer/Theory/Eval/Idempotence.agda
 ------------------------------------------------------------------------
 
+{-# OPTIONS --safe #-}
 module normalizer.Theory.Eval.Idempotence where
 
 open import normalizer.Syntax.Types

@@ -24,10 +24,11 @@
 -- Build: bootstrap/check.sh normalizer/Theory/Eval/FixInduction.agda
 ------------------------------------------------------------------------
 
+{-# OPTIONS --safe #-}
 module normalizer.Theory.Eval.FixInduction where
 
 open import normalizer.Syntax.Types
-  using (Func; Id; K; _⊕_; _⊗_; ⊤; tt; _×_; _,_; inj₁; inj₂)
+  using (Func; Id; One; Kc; _⊕_; _⊗_; ⊤; tt; _×_; _,_; inj₁; inj₂)
 open import normalizer.Testing.Evaluator using (⟦_⟧FS; Fix; fix)
 
 ------------------------------------------------------------------------
@@ -36,7 +37,8 @@ open import normalizer.Testing.Evaluator using (⟦_⟧FS; Fix; fix)
 
 All-rec : ∀ F G → (Fix F → Set) → ⟦ G ⟧FS (Fix F) → Set
 All-rec F Id      P y        = P y
-All-rec F (K _)   P _        = ⊤
+All-rec F One     P _        = ⊤
+All-rec F (Kc _)  P _        = ⊤
 All-rec F (G ⊕ H) P (inj₁ y) = All-rec F G P y
 All-rec F (G ⊕ H) P (inj₂ z) = All-rec F H P z
 All-rec F (G ⊗ H) P (y , z)  = All-rec F G P y × All-rec F H P z
@@ -59,7 +61,8 @@ mutual
                (∀ x → All-rec F F P x → P (fix x)) →
                (y : ⟦ G ⟧FS (Fix F)) → All-rec F G P y
   induct-map F Id      P method y        = induct F P method y
-  induct-map F (K _)   P method _        = tt
+  induct-map F One     P method _        = tt
+  induct-map F (Kc _)  P method _        = tt
   induct-map F (G ⊕ H) P method (inj₁ y) = induct-map F G P method y
   induct-map F (G ⊕ H) P method (inj₂ z) = induct-map F H P method z
   induct-map F (G ⊗ H) P method (y , z)  =
