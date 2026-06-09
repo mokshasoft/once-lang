@@ -111,17 +111,29 @@ VERIFIED — `…Eval.FixInduction` (exit 0, no pragma):
 
 So structural induction over `Fix TermF` is rigorous and reusable.
 
-What's NOT yet done (still the deep kernel): APPLY `induct` to combine
-`normalize-comp-complete` + the rebuild congruences (`normalize-pair` /
-`normalize-case` / `normalize-fst`, …) into a full theorem. The natural
-target is denotational IDEMPOTENCE `eval normalize (eval normalize c) ≡
-eval normalize c` (= "output is a normal form"), or transparency vs an
-independent `nf`. The induction skeleton is now mechanical (instantiate `P`,
-discharge each of the 15 TermF positions with the matching per-layer fact);
-the remaining CONTENT is the result-shape/normality reasoning in the comp
-branch (showing the rebuilt/collapsed composition is itself normal). Keep
-all of it `with`-free (lift to top-level `private`, abstract giant `eval`
-terms behind variables) — see the MEMORY/TOOLING NOTE above.
+UPDATE (2026-06-09, cont.): denotational IDEMPOTENCE is now DONE and
+VERIFIED — `…Eval.Idempotence.idempotent` (exit 0, interface emitted):
+
+    idempotent : ∀ c → eval normalize (eval normalize c) ≡ eval normalize c
+
+i.e. `normalize`'s output is always a normal form (a normalize-fixpoint).
+Proved by `induct TermF Idem idem-step`, the FIRST real application of the
+structural recursor. Structure:
+- `handle-comp-normal` — the CRUX, with-free: `handle-comp` of two
+  normalize-fixpoints is itself a normalize-fixpoint (all three trichotomy
+  branches land on an already-normal term; the rebuild branch re-normalises
+  to itself via `normalize-comp` + children-normal + the rebuild spec).
+- `comp-idem` — the comp position, from idempotence on both children.
+- `idem-step` — 15 clauses (one per TermF position): every NON-comp handler
+  is a plain rebuild (verified in Handlers: `rebuild-k`, incl. cata/curry),
+  so leaves are `refl` and the recursive rebuilds close by `cong`/`cong₂`
+  over the IHs; comp delegates to `comp-idem`.
+Confirmed all-rebuild-except-comp by reading `TCB0/Normalizer/Handlers`.
+
+What's NOT yet done (the remaining deep kernel): transparency vs an
+INDEPENDENT normal-form notion `nf` (full correctness on ALL inputs, below).
+Idempotence shows the output is SOME normal form; it does not yet show it is
+THE spec normal form. That connection is the genuine NbE-adequacy content.
 
 Obligations (1) real normalizer + totality are DONE (above). What remains:
 
