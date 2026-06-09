@@ -169,10 +169,26 @@ Structure:
   refines the term to `id`; `comp-elim` is public for the no-id rewrites.
 
 This is the semantic core of `RanzowFixpoint.EvalFullCorrectness.Correct nf
-normalize`. REMAINING (assembly only, #11): wire `adequacy` through the
-abstract `⇓`/`encVal` interface (mirror RefoldFullCorrectness's spec=id
-discharge) to land the literal `Correct nf normalize` / instantiate the
-EvalFullCorrectness.Theorem with spec = nf. The deep content is now DONE.
+normalize`.
+
+UPDATE (2026-06-09, cont.): CAPSTONE LANDED — `…Eval.NormalizeFullCorrectness`
+(exit 0):
+
+    normalize-correct-all :
+      ∀ g → (normalize ∘ encode g) ⇓ᵈ mkVal (eval (encode (nf g)))
+
+This IS `RanzowFixpoint.EvalFullCorrectness.Correct nf normalize` (N =
+normalize, encVal g = mkVal (eval (encode g))) — full correctness on ALL
+inputs for the REAL normalizer with spec = nf, NON-degenerate. Proof =
+`adequacy` lifted via ⊤/function eta (`cong (λ z → λ _ → z)`, exactly as
+RefoldFullCorrectness), plus a one-line `toStd` transporting the bootstrap-
+prelude `_≡_` (adequacy) to the stdlib `_≡_` that the abstract `_⇓ᵈ_` uses.
+Postulate-free; NO confluence, NO strong normalization.
+
+The evaluator-route transparency obligation is DISCHARGED non-degenerately.
+(The optional `EvalFullCorrectness.Theorem` MODULE instantiation is the same
+eval-eta unifier story as Instance/RefoldFullCorrectness — the conclusion and
+its type here are identical to that theorem's output, proved directly.)
 
 Obligations (1) real normalizer + totality are DONE (above). What remains:
 
