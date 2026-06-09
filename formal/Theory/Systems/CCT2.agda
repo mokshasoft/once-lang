@@ -22,6 +22,7 @@
 -- Syntax level.
 ------------------------------------------------------------------------
 
+{-# OPTIONS --safe #-}
 module Theory.Systems.CCT2 where
 
 open import Theory.Systems.CCT1

@@ -24,6 +24,7 @@
 -- Internal language: simply-typed λ-calculus.
 ------------------------------------------------------------------------
 
+{-# OPTIONS --safe #-}
 module Theory.Systems.CCT1 where
 
 open import Theory.Systems.CCTB

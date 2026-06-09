@@ -25,6 +25,7 @@
 -- laws — typically by showing reductions imply the equational _≈_.
 ------------------------------------------------------------------------
 
+{-# OPTIONS --safe #-}
 module Theory.Syntax.Reducible where
 
 ------------------------------------------------------------------------

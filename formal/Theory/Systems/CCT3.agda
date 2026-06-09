@@ -27,6 +27,7 @@
 -- Directed rewriting belongs at the Syntax level.
 ------------------------------------------------------------------------
 
+{-# OPTIONS --safe #-}
 module Theory.Systems.CCT3 where
 
 open import Theory.Systems.CCT2

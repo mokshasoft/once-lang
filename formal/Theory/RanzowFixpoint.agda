@@ -21,6 +21,7 @@
 -- Self-encoding requires μ-types; RF is not meaningful below CCT3.
 ------------------------------------------------------------------------
 
+{-# OPTIONS --safe #-}
 module Theory.RanzowFixpoint where
 
 open import Theory.CCTower using (TowerLevel; CCT3)

@@ -37,6 +37,7 @@
 -- completeness, which are not formalised here.
 ------------------------------------------------------------------------
 
+{-# OPTIONS --safe #-}
 module Theory.RanzowFixpoint.EvalCorrectness where
 
 open import Theory.CCTower using (TowerLevel; CCT3)

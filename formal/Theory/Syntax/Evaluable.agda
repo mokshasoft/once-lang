@@ -30,6 +30,7 @@
 -- determinism/totality from the evaluator's functional/total character.
 ------------------------------------------------------------------------
 
+{-# OPTIONS --safe #-}
 module Theory.Syntax.Evaluable where
 
 ------------------------------------------------------------------------

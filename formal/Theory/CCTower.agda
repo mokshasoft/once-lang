@@ -25,6 +25,7 @@
 -- Each level EXTENDS the previous with new structure.
 ------------------------------------------------------------------------
 
+{-# OPTIONS --safe #-}
 module Theory.CCTower where
 
 ------------------------------------------------------------------------
