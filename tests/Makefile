@@ -15,7 +15,7 @@ GCC = gcc
 BUILD = .build
 TESTS_DIR = $(shell pwd)
 
-.PHONY: all test clean test-exe test-lib test-target test-strata test-poly
+.PHONY: all test clean test-exe test-lib test-target test-strata test-poly test-heap-exit
 
 all: test
 
@@ -114,11 +114,25 @@ test-poly: $(BUILD)
 # Run all tests
 #-----------------------------------------------------------------------------
 
-test: test-exe test-lib test-target test-strata test-poly
+test: test-exe test-lib test-target test-strata test-poly test-heap-exit
 	@echo ""
 	@echo "=========================================="
 	@echo "All integration tests passed!"
 	@echo "=========================================="
+
+#-----------------------------------------------------------------------------
+# Test: Heap-mode exit-code suite (layer0-4 + pure catas)
+#
+# Builds every compiler/test/*.once with a declared expected exit code using
+# the canonical heap-mode params (--alloc heap --no-optimize), runs the
+# binary, and checks the exit code. This is the RUNTIME net: the Agda proofs
+# are value-level, so a pass that drops an observable SigOp (e.g. the
+# optimizer's →Unit ⇒ terminal rule) stays green there but is caught here.
+#-----------------------------------------------------------------------------
+
+test-heap-exit:
+	@echo "Testing: heap-mode exit-code suite (--alloc heap --no-optimize)"
+	$(TESTS_DIR)/run-exit-tests.sh
 
 #-----------------------------------------------------------------------------
 # Clean

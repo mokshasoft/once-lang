@@ -1,6 +1,11 @@
 -- SPDX-License-Identifier: AGPL-3.0-or-later
 -- Copyright (C) 2025-2026 Jonas Claesson and contributors
 
+-- PENDING: point-free effectful cata. Does not compile yet — needs the
+-- eff-frontend (grade-polymorphic compose/case + faithful external-SigOp
+-- extraction, Plan 0.36). Tracked by [[project_effectful_cata_blocker]].
+-- Expected once it compiles: exit 7, observable TRACE [emit 5, emit 3, linux.exit 7].
+
 -- Plan 0.36 north-star (EFFECTFUL). Functor #3 (List Int), effect-emitting:
 -- the cata algebra invokes the test-local `emit` Emits SigOp once per cons
 -- layer. Tests effect ORDERING (cata folds bottom-up: [3,5] emits 5 then 3).
