@@ -1,0 +1,13 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson and contributors
+
+-- D018 value-lift regression test: an integer literal applied to a syscall.
+-- `42` elaborates to the constant morphism `const 42 ∘ terminal` (intLit,
+-- Once/Surface/Elaborate.agda) and is fed to exit. If the literal→const-
+-- morphism lift regresses, this test catches it (previously UNCOVERED).
+-- Expected: exit code 42.
+
+import I.Linux.Syscalls as S
+
+main : IO Unit
+main = exit@S 42
