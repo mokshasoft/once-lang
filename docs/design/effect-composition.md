@@ -1,8 +1,36 @@
 # Design Document: Effect Composition in Once
 
+> **RESOLVED — read this first (2026-06-09).** This document was an early
+> exploration (pre-D046) and several of its options and premises are now
+> **superseded**. The settled answer:
+>
+> - **One unified category; one `compose`.** Composition is the same operator
+>   for pure and effectful morphisms — `compose` (`>>>`). There is **no
+>   `effCompose`** (D032). Purity is a *grade* on the arrow, not a separate
+>   structure (D046: `Eff A B` ≡ `A ⇒[ mk-kind Many eff ] B`; `applyEff`
+>   eliminated). Below, "`compose` only works with pure arrows" / "`TArrow`
+>   and `TEff` do not unify" describe the *pre-D046* type system and no longer
+>   hold.
+> - **One realm — morphism — for composition.** `compose`/`case`/`pair`
+>   elaborate to **direct IR** via the classifier (D044), with the
+>   parser-level closure desugaring (`compose f g → λx.f(g x)`) **removed**
+>   (D045). The morphism realm has no optimizer dependency — which matters
+>   because the optimizer was found unsound (Plan 0.39).
+> - **Values lift to constant morphisms** (D018), so `puts "hello"` / `exit 7`
+>   are morphism-realm by construction (`puts ∘ const-"hello"`).
+> - **`curry`/`apply` are exponentials** (higher-order, partial application) —
+>   kept in the IR, but **not** a parallel composition realm.
+> - **Effectful composition** is the same grade-polymorphic path; the
+>   remaining work is folding the effectful `compose`/`case` into it and wiring
+>   the value-lift through `composeArgB` — see **D056** and **Plan 0.40**.
+>
+> The "closure-fallback" framing some options below imply is the duplication
+> we are explicitly *retiring*; it is **not** the design. The historical
+> analysis is kept below for context only.
+
 ## Executive Summary
 
-D032 introduced a strict separation between pure functions (`A -> B`) and effectful morphisms (`Eff A B`). This document examines whether there's a real usability gap, and what design choices exist.
+D032 introduced a strict separation between pure functions (`A -> B`) and effectful morphisms (`Eff A B`). This document examines whether there's a real usability gap, and what design choices exist. *(Superseded — see the resolution banner above; D046 later unified the two arrows into one graded arrow.)*
 
 **Key Question**: Is `compose puts "hello"` a valid use case, or should Once programs use `puts "hello"` directly?
 
