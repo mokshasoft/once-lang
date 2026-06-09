@@ -57,7 +57,7 @@ open import Once.Surface.Syntax as Surface using (lookupUsage; tailUsage; _+ᵘ_
 open Surface.Usage using () renaming (_∷_ to _∷ᵘ_)
 open import Once.Surface.Thinning using (weaken; weakenFromEmpty)
 open import Once.Surface.Properties using (+ᵘ-identityˡ; +ᵘ-identityʳ; *ᵘ-zeroʳ)
-open import Once.Surface.Elaborate as Elab using (elaborate)
+open import Once.Surface.Elaborate as Elab using (elaborate; intLit)
 
 open import Once.TypeCheck.Classify public
 import Once.Functor.Translate
@@ -1621,6 +1621,17 @@ mutual
   -- (notably `In`) work in pair slots (`In (inr (x , tail))`). Falls to
   -- the generic clause below for non-product target types.
   checkElabV ctx (Raw.RPair a b) (A Once.Type.* B) = checkPairLit ctx a b A B
+
+  -- Plan 0.41 / D018: an integer literal at a pure-arrow position is its
+  -- constant morphism (global element `const n ∘ terminal`, via `intLit`).
+  -- Lets a value be used as a (pure) morphism — `compose f 7`, `arr 7` — so
+  -- the eff cata composes values point-free. PURE-only (masquerade-safe);
+  -- effectful use lifts through `arr`.
+  checkElabV ctx (Raw.RInt n)
+    (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] Int) =
+    success Surface.zeroUsage (Surface.lift-morphism (intLit n)) 0
+      (NamedCtx.freshCounter ctx)
+    , t-int-lift n
 
   -- Generic infer-and-match fallback — covers RInt, RStringLit, RUnit,
   -- RPair, RBinOp, RUnaryOp, RLet, RDestruct, RAnnot, RQualified.

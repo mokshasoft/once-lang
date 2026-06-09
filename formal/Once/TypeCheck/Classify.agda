@@ -248,6 +248,9 @@ composeArgB ctx (Raw.RApp (Raw.RApp (Raw.RVar "compose") f') g') A with composeA
 -- domain/codomain, so B-recovery sees through it. Lets a pure morphism be
 -- lifted into an effectful compose (single-π: `compose emit (arr fst)`).
 composeArgB ctx (Raw.RApp (Raw.RVar "arr") g') A = composeArgB ctx g' A
+-- Plan 0.41 / D018: an integer literal is the const morphism `_ → Int`
+-- (a global element), so as a `compose`-arm its codomain is `Int`.
+composeArgB ctx (Raw.RInt _) _ = just Int
 -- Other shapes: compose can't proceed.
 composeArgB _ _ _ = nothing
 

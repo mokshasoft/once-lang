@@ -1049,6 +1049,11 @@ mutual
     checkElab-fallback-RVar-inr {ctx} A B localN importN
   check-complete {ctx} (t-arr-check {A = A} {B = B} localN importN) =
     checkElab-fallback-RVar-arr {ctx} A B localN importN
+  -- Plan 0.41 / D018: integer-literal global-element coercion. The
+  -- `checkElabV (RInt n) (A ⇒[Many pure] Int)` clause matches directly
+  -- (no lookup `with`), so the elaborator reduces to the lifted success
+  -- definitionally — `refl` closes it.
+  check-complete {ctx} (t-int-lift {A = A} n) = _ , _ , _ , refl
   -- Plan 0.6 Phase C.7 POC-2: applied `pair f g` check-mode. The
   -- recursive check-complete calls on f and g give the
   -- inferElab-success equations threaded through the fallback
