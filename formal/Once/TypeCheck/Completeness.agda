@@ -927,9 +927,9 @@ mutual
             (A T.⇒[ T.mk-kind T.Many T.eff ] C)
               ≡ success ((Surface.zeroUsage +ᵘ (T.Many *ᵘ Ψ₁)) +ᵘ (T.Many *ᵘ Ψ₂)) eE d f'
     -- Plan 0.41 — TRANSIENT (TRUE by construction; discharge by induction on
-    -- the ⊢ᵍ derivation + a checkG-success lemma): a closed global-element
-    -- value elaborates at a pure arrow. `⊢ᵍ` is the extractable family, so
-    -- `checkG` always succeeds on it and the value-lift clauses fire.
+    -- the ⊢ᵍ derivation + a checkG-success lemma — see reassessment note).
+    -- NB: the Unit leaf (`g-terminal`) needs lookup premises to avoid a
+    -- name-shadowing over-generality, and `checkG` must check them.
     gd-complete : ∀ {ctx : NamedCtx} {e : RawExpr} {A : Type} (X : Type)
                 → ctx ⊢ᵍ e ∶ A
                 → ∃[ eE ] ∃[ d ] ∃[ f' ]
