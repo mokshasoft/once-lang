@@ -190,6 +190,19 @@ The evaluator-route transparency obligation is DISCHARGED non-degenerately.
 eval-eta unifier story as Instance/RefoldFullCorrectness — the conclusion and
 its type here are identical to that theorem's output, proved directly.)
 
+--safe STATUS (2026-06-09): the 7 evaluator-route proof modules use NO
+postulates/pragmas (verified). The chain is NOT yet `--safe`-buildable, blocked
+ONLY by `Testing/Evaluator.agda`'s 3 model pragmas. QUICK WIN DONE: `eq-Term`'s
+`{-# TERMINATING #-}` removed — the mutual eq-Term/eq-TermFS/eq-TyFuncCode
+recursion is structural and Agda accepts it pragma-free. REMAINING (substantive,
+one batch): (a) `cata-Set`'s `{-# TERMINATING #-}` — the pragma-free mutual
+`cata`/`map-cata` form EXISTS (CataTerminates / FixInduction.induct) but swapping
+it changes the model's REDUCTION, breaking the `fmap-Set`-stated `refl` proofs in
+RefoldFixpoint / EvalSound / StepTransparency.normalize-unfold (unused) — so all
+those must be restated via `map-cata`; (b) `Fix`'s `NO_POSITIVITY_CHECK` — restrict
+the model to the strictly-positive `Func` universe (no `K` of an arrow), the real
+work. (a)+(b) together, not piecemeal, since both touch the model's core.
+
 Obligations (1) real normalizer + totality are DONE (above). What remains:
 
 - **Full correctness on ALL inputs (transparency with spec = nf).** We have

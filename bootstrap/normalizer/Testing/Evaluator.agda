@@ -80,12 +80,14 @@ fmap-Set (F ⊗ G) f (x , y) = (fmap-Set F f x , fmap-Set G f y)
 
 -- The key operation: given an algebra, fold over Fix F
 --
--- Note on TERMINATING: We don't need to prove termination in general.
--- For our verification, we only need ONE execution to complete:
--- running the normalizer on its own encoding. If that evaluation
--- finishes (which it does - RunTest.agda type-checks), then we have
--- empirically verified termination for that specific case, which is
--- all we need for the fixpoint property.
+-- TERMINATING: the recursive call sits under the higher-order `fmap-Set`,
+-- which the termination checker can't see through. The pragma-free version
+-- needs the mutual `cata`/`map-cata` inline (see Theory.Eval.CataTerminates,
+-- and the proof-level FixInduction.induct) — but swapping the definition
+-- here changes the model's REDUCTION (`refl` proofs about `eval` across
+-- RefoldFixpoint / EvalSound / StepTransparency are stated via `fmap-Set`),
+-- so it is part of the larger --safe model refactor (with NO_POSITIVITY),
+-- not a local change.
 {-# TERMINATING #-}
 cata-Set : ∀ F {A : Set} → (⟦ F ⟧FS A → A) → Fix F → A
 cata-Set F alg (fix x) = alg (fmap-Set F (cata-Set F alg) x)
@@ -189,10 +191,10 @@ _ ∧ _ = false
 -- Boolean equality for encoded terms (Fix TermF)
 -- Specialized for TermF to avoid complex type matching
 --
--- Note on TERMINATING: Same reasoning as cata-Set above.
--- If the equality check completes, we've verified termination
--- for that input. RunTest.agda type-checking proves this.
-{-# TERMINATING #-}
+-- Structurally terminating: eq-Term (fix x)(fix y) recurses into eq-TermFS
+-- on the strictly-smaller layers x, y, which calls eq-Term back only on
+-- their sub-components. Agda's termination checker accepts the mutual block
+-- with NO pragma (so this is --safe-clean).
 mutual
   -- Equality on encoded terms
   eq-Term : Fix TermF → Fix TermF → Bool
