@@ -99,15 +99,29 @@ cgroup scope (claude survives any OOM via oom_score_adj) and LOUDLY reports
 signal-kills (exit 137) — trust the interface timestamp / real exit code,
 never a wrapper's exit 0.
 
-What's NOT yet done (still the deep kernel): the structural INDUCTION over
-`Fix TermF` that combines these into a full theorem. The natural next
+UPDATE (2026-06-09, cont.): the structural RECURSOR is now BUILT and
+VERIFIED — `…Eval.FixInduction` (exit 0, no pragma):
+- `induct : ∀ F (P : Fix F → Set) → (∀ x → All-rec F F P x → P (fix x)) →
+  ∀ c → P c` — the proof-level mirror of CataTerminates' `cata`/`map-cata`,
+  a mutual structural descent (`induct` peels `fix x ↦ x`; `induct-map`
+  recurses on the functor CODE until `Id`, where it calls `induct` on a
+  strictly-smaller sub-`Fix`). Termination accepted WITHOUT pragma.
+- `All-rec F G P y` — the induction hypotheses at the recursive (`Id`)
+  positions of one functor layer; `⊤` at `K` (constant) positions.
+
+So structural induction over `Fix TermF` is rigorous and reusable.
+
+What's NOT yet done (still the deep kernel): APPLY `induct` to combine
+`normalize-comp-complete` + the rebuild congruences (`normalize-pair` /
+`normalize-case` / `normalize-fst`, …) into a full theorem. The natural
 target is denotational IDEMPOTENCE `eval normalize (eval normalize c) ≡
 eval normalize c` (= "output is a normal form"), or transparency vs an
-independent `nf`. The comp case's per-layer fact is now in hand
-(`normalize-comp-complete`); what remains is the structural recursor for the
-NO_POSITIVITY `Fix TermF` (mirror CataTerminates' `cata`/`map-cata` descent)
-to drive the induction, plus the result-shape/normality reasoning in the
-comp branch.
+independent `nf`. The induction skeleton is now mechanical (instantiate `P`,
+discharge each of the 15 TermF positions with the matching per-layer fact);
+the remaining CONTENT is the result-shape/normality reasoning in the comp
+branch (showing the rebuilt/collapsed composition is itself normal). Keep
+all of it `with`-free (lift to top-level `private`, abstract giant `eval`
+terms behind variables) — see the MEMORY/TOOLING NOTE above.
 
 Obligations (1) real normalizer + totality are DONE (above). What remains:
 
