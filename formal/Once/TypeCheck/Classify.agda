@@ -254,6 +254,27 @@ composeArgB ctx (Raw.RInt _) _ = just Int
 -- Other shapes: compose can't proceed.
 composeArgB _ _ _ = nothing
 
+-- | Recover the DOMAIN of a compose-head `f`. In `compose f g : A → C`, the
+-- middle type `B` is the shared type of `f : B → C` and `g : A → B`, so it is
+-- determined by *either* arm. `composeArgB` reads it off `g`'s codomain; this
+-- is the symmetric partner that reads it off `f`'s domain (by lookup). Needed
+-- when `g` is a value-shape whose type `composeArgB` can't reveal (e.g. an
+-- `In(…)` construction) but `f` is a named morphism (e.g. `emitAll : Mu → Unit`).
+domainOfHead : NamedCtx → RawExpr → Maybe Type
+domainOfHead ctx (Raw.RVar name) with lookupImport (NamedCtx.imports ctx) name
+... | just (D Once.Type.⇒[ _ ] _) = just D
+... | _ = nothing
+domainOfHead ctx (Raw.RApp (Raw.RVar "arr") f') = domainOfHead ctx f'
+domainOfHead _ _ = nothing
+
+-- | Symmetric B-recovery for `compose f g` at `A → C`: try `g`'s codomain
+-- (`composeArgB`), else fall back to `f`'s domain (`domainOfHead`). Fixes
+-- `composeArgB`'s g-only asymmetry — `B` is recoverable from either arm.
+composeMid : NamedCtx → RawExpr → RawExpr → Type → Maybe Type
+composeMid ctx f g A with composeArgB ctx g A
+... | just B  = just B
+... | nothing = domainOfHead ctx f
+
 -- | Find a local variable's de Bruijn position and declared quantity.
 findLocalVarUsage : (ctx : NamedCtx) → String → Maybe (Fin (NamedCtx.size ctx) × Quantity)
 findLocalVarUsage (mkCtx n Γ Δ _ _ _) x = go Γ Δ

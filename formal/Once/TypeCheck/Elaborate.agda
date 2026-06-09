@@ -544,42 +544,6 @@ extract-morph-eff : ∀ {n} {Γ : SCtx n} {Ψ : Surface.Usage n} {A B : Type}
                   → Maybe (∃-syntax (λ (m : IR A B) → Ψ ≡ Surface.zeroUsage))
 extract-morph-eff e = extract-morph-eff-aux e refl
 
--- Plan 0.41: the parametric global element of a closed value. In a CCC a value
--- `v : A` IS a morphism `X → A` for any `X` (Hom(1,A) ≅ A). Per-type knowledge
--- lives only in the leaves (`intLit` knows Int/FitsInReg, `strLit` knows Str) —
--- reused, never re-derived; the structure is the generic categorical generators
--- (`⟨_,_⟩`/`inl`/`inr`, and `morph-app`'s morphism for `In` and friends).
--- `nothing` for non-value shapes (var/app/sigOp/closure/…) — so it accepts only
--- closed values (no value-def laundering: a name is never coerced).
--- Carries the closedness proof `Ψ ≡ zeroUsage` alongside the IR: a value
--- accepted here IS closed, which is exactly what `lift-morphism` (correctly)
--- requires. `lift-morphism` forcing `zeroUsage` is the soundness guard — only
--- closed values are global elements — so we prove the value meets it rather
--- than weaken the morphism realm.
-globalElem : ∀ {n} {Γ : SCtx n} {Ψ : Surface.Usage n} {A : Type}
-           → (X : Type) → SExpr Γ Ψ A → Maybe (IR X A × Ψ ≡ Surface.zeroUsage)
-globalElem X (Surface.int n) = just (intLit n , refl)
-globalElem X (Surface.str s) = just (strLit s , refl)
-globalElem X Surface.unit    = just (IR.terminal , refl)
-globalElem X (Surface.pair a b) with globalElem X a | globalElem X b
-... | just (ma , pa) | just (mb , pb) =
-      just (IR.⟨ ma , mb ⟩ IR.Heap
-           , trans (cong₂ Surface._+ᵘ_ pa pb) (+ᵘ-identityˡ Surface.zeroUsage))
-... | _ | _ = nothing
-globalElem X (Surface.inl' a) with globalElem X a
-... | just (ma , pa) = just (IR.inl IR.Heap IR.∘ ma , pa)
-... | nothing        = nothing
-globalElem X (Surface.inr' b) with globalElem X b
-... | just (mb , pb) = just (IR.inr IR.Heap IR.∘ mb , pb)
-... | nothing        = nothing
-globalElem X (Surface.morph-app m e) with globalElem X e
-... | just (me , pe) =
-      just (m IR.∘ me
-           , trans (cong (λ z → Surface.zeroUsage Surface.+ᵘ (Many Surface.*ᵘ z)) pe)
-                   (trans (cong (λ z → Surface.zeroUsage Surface.+ᵘ z) (*ᵘ-zeroʳ Many))
-                          (+ᵘ-identityˡ Surface.zeroUsage)))
-... | nothing        = nothing
-globalElem _ _ = nothing
 
 -- arr : (a → b) → Eff a b
 specArr : (A B : Type) → SExpr S∅ Surface.zeroUsage ((A ⇒ B) ⇒ (A ⇒[ mk-kind Many eff ] B))
@@ -824,7 +788,7 @@ mutual
                → VerifiedCheckResult ctx (Raw.RApp composeHead arg) T
   checkComposeWithB : (ctx : NamedCtx) (f_inner arg : RawExpr) (A C : Type)
                     → (mb : Maybe Type)
-                    → composeArgB ctx arg A ≡ mb
+                    → composeMid ctx f_inner arg A ≡ mb
                     → VerifiedCheckResult ctx (Raw.RApp (Raw.RApp (Raw.RVar "compose") f_inner) arg)
                                               (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C)
   checkCurry : (ctx : NamedCtx) → (arg : RawExpr) → (T : Type)
@@ -871,7 +835,7 @@ mutual
   -- premises into the dispatch chain without navigating opaque
   -- `with`-helpers.
   checkComposeWithBg : (ctx : NamedCtx) (f_inner arg : RawExpr) (A B C : Type)
-                     → composeArgB ctx arg A ≡ just B
+                     → composeMid ctx f_inner arg A ≡ just B
                      → (rg : VerifiedCheckResult ctx arg
                                                   (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B))
                      → checkElabV ctx arg (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) ≡ rg
@@ -1242,13 +1206,13 @@ mutual
   checkCompose ctx (Raw.RApp (Raw.RVar "compose") f_inner) arg
                (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C) =
     checkComposeWithB ctx f_inner arg A C
-      (composeArgB ctx arg A) refl
+      (composeMid ctx f_inner arg A) refl
   -- Plan 0.36 Phase 1: effectful composition (D032 single-π). Both factors
   -- extracted (lift-morphism / arr' / bare sigOp) and fused to the SAME
   -- grade-erased `IR.∘`, wrapped at eff.
   checkCompose ctx (Raw.RApp (Raw.RVar "compose") f_inner) arg
                (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] C)
-    with composeArgB ctx arg A in eqAB
+    with composeMid ctx f_inner arg A in eqAB
   ... | nothing = failure (BuiltinTypeMismatch "compose") , tt
   ... | just B
         with checkElabV ctx arg (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B)
@@ -1659,13 +1623,11 @@ mutual
   -- the generic clause below for non-product target types.
   checkElabV ctx (Raw.RPair a b) (A Once.Type.* B) = checkPairLit ctx a b A B
 
-  -- Plan 0.41 / D018: an integer literal at a pure-arrow position is its
+  -- Plan 0.41 / D018 leaf: an integer literal at a pure-arrow position is its
   -- constant morphism (global element `const n ∘ terminal`, via `intLit`).
-  -- Lets a value be used as a (pure) morphism — `compose f 7`, `arr 7` — so
-  -- the eff cata composes values point-free. PURE-only (masquerade-safe);
-  -- effectful use lifts through `arr`.
+  -- Structural value-lift; the per-type encoding lives here at the leaf.
   checkElabV ctx (Raw.RInt n)
-    (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] Int) =
+    (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] Int) =
     success Surface.zeroUsage (Surface.lift-morphism (intLit n)) 0
       (NamedCtx.freshCounter ctx)
     , t-int-lift n
@@ -2786,7 +2748,7 @@ checkElab-fallback-RApp-compose :
     {eE_f : SExpr (NamedCtx.debruijn ctx) Ψ₁ (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C)}
     {eE_g : SExpr (NamedCtx.debruijn ctx) Ψ₂ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)}
     {d_f f_f d_g f_g : ℕ}
-  → composeArgB ctx g A ≡ just B
+  → composeMid ctx f g A ≡ just B
   → checkElab ctx f (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C) ≡ success Ψ₁ eE_f d_f f_f
   → checkElab ctx g (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) ≡ success Ψ₂ eE_g d_g f_g
   → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ fr →
@@ -2799,10 +2761,10 @@ checkElab-fallback-RApp-compose :
 -- `(just B) , eqArgB` pair.
 checkComposeWithB-J :
   ∀ ctx f_inner arg A C
-  → (mb : Maybe Type) (eq : composeArgB ctx arg A ≡ mb)
-  → Data.Product.proj₁ (checkComposeWithB ctx f_inner arg A C (composeArgB ctx arg A) refl)
+  → (mb : Maybe Type) (eq : composeMid ctx f_inner arg A ≡ mb)
+  → Data.Product.proj₁ (checkComposeWithB ctx f_inner arg A C (composeMid ctx f_inner arg A) refl)
       ≡ Data.Product.proj₁ (checkComposeWithB ctx f_inner arg A C mb eq)
-checkComposeWithB-J ctx f_inner arg A C .(composeArgB ctx arg A) refl = refl
+checkComposeWithB-J ctx f_inner arg A C .(composeMid ctx f_inner arg A) refl = refl
 
 -- Reduce checkComposeWithB on (just B) when both checkElabV calls
 -- succeed. Postulated due to Agda with-abstraction limitation that
@@ -2817,7 +2779,7 @@ checkComposeWithB-J ctx f_inner arg A C .(composeArgB ctx arg A) refl = refl
 postulate
   checkComposeWithB-just-success :
     ∀ ctx f_inner arg A B C
-    → (eqArgB : composeArgB ctx arg A ≡ just B)
+    → (eqArgB : composeMid ctx f_inner arg A ≡ just B)
     → ∀ {Ψg Ψf eE_g eE_f d_g f_g d_f f_f}
     → checkElab ctx arg (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)
         ≡ success Ψg eE_g d_g f_g

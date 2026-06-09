@@ -53,7 +53,7 @@ open import Once.TypeCheck.Raw as Raw
 open import Once.TypeCheck.Classify
   using (NamedCtx; lookupLocal; lookupImport; lookupPoly; removePoly;
          ctxWithImportsAndPolys; extendNamedCtx; classifyAppHead;
-         composeArgB)
+         composeArgB; composeMid)
 
 open import Data.String using (_++_)
 
@@ -325,12 +325,15 @@ mutual
                      → lookupImport (NamedCtx.imports ctx) "terminal" ≡ nothing
                      → ctx ⊢ᶜ RVar "terminal" ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] Once.Type.Unit) ⨾ Surface.zeroUsage
 
-    -- | Plan 0.41 / D018: an integer literal IS the constant morphism
-    -- `const n ∘ terminal : A → Int` (a global element; `Hom(1,Int) ≅ Int`).
-    -- PURE-only — masquerade-safe: a value coerces only to a *pure* arrow
-    -- (D046's grade is the guard); effectful use goes through `arr`.
-    t-int-lift : ∀ {ctx : NamedCtx} {A : Type} (n : ℤ)
-               → ctx ⊢ᶜ RInt n ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] Int) ⨾ Surface.zeroUsage
+    -- | Plan 0.41 / D018: a closed value IS its pure global element
+    -- (`Hom(1,A) ≅ A`), expressed STRUCTURALLY (one rule per value-shape,
+    -- mirroring `t-pair-check`/`t-In-app-check`/`t-compose-check`) so
+    -- completeness recurses on sub-derivations — not a post-elaboration pass.
+    -- Leaves carry the per-type encoding; structure recurses at the lifted
+    -- arrow type. PURE-only — masquerade-safe (D046's grade is the guard).
+    -- Leaf: an integer literal at a pure arrow is `const n ∘ terminal`.
+    t-int-lift : ∀ {ctx : NamedCtx} {X : Type} (n : ℤ)
+               → ctx ⊢ᶜ RInt n ∶ (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] Int) ⨾ Surface.zeroUsage
 
     -- | Bare `initial` check-mode at canonical `Void → A` shape.
     t-initial-check : ∀ {ctx : NamedCtx} {A : Type}
@@ -463,7 +466,7 @@ mutual
     t-compose-check : ∀ {ctx : NamedCtx} {f g : RawExpr} {A B C : Type}
                       {π : Once.Type.Purity}
                       {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
-                    → composeArgB ctx g A ≡ just B
+                    → composeMid ctx f g A ≡ just B
                     → ctx ⊢ᶜ f ∶ (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] C) ⨾ Ψ₁
                     → ctx ⊢ᶜ g ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B) ⨾ Ψ₂
                     → ctx ⊢ᶜ RApp (RApp (RVar "compose") f) g
