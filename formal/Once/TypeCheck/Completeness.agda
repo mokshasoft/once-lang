@@ -48,6 +48,7 @@ open import Once.TypeCheck.Elaborate
          classifyAppHead; classifyAppHeadView; ahv-other;
          classifyAppHead-nothing⇒view-other; AppHeadView;
          classifyBareBuiltin; checkG; inspectWellFormedF; wfv-yes; wfv-no;
+         inspectCheckG; cgv-just; cgv-nothing;
          bbc-id; bbc-fst; bbc-snd; bbc-terminal; bbc-initial;
          bbc-inl; bbc-inr; bbc-arr; bbc-other)
 open import Once.TypeCheck.Judgment
@@ -967,25 +968,13 @@ mutual
   ... | wfv-yes _   | _ , _ , eqarg rewrite eqarg = _ , _ , refl
   ... | wfv-no eqNo | _                           = nothing≢just (trans (sym eqNo) eqWF)
 
-  -- Plan 0.42 — TRANSIENT (TRUE; discharge via checkInGo-J-style bridges that
-  -- reduce the RApp dispatch). When `checkG` succeeds on `e`, the value-lift
-  -- elaborator clause/dispatch for `e` fires to a `lift-morphism` success.
-  -- Needed only for the RApp-dispatched shapes (`inl`/`inr`/`In`), whose
-  -- `classifyAppHead` + nested-`with checkG` opacity blocks a direct `rewrite`
-  -- (the direct `RInt`/`RPair` clauses don't need it). Mirrors the existing
-  -- `checkComposeWithB-just-success` dispatch-reduction postulate.
-  postulate
-    lift-dispatch-complete : ∀ {ctx : NamedCtx} {e : RawExpr} {A : Type} (X : Type) {m gd}
-      → checkG ctx X e A ≡ just (m , gd)
-      → ∃[ eE ] ∃[ d ] ∃[ f' ]
-          checkElab ctx e (X T.⇒[ T.mk-kind T.Many T.pure ] A)
-            ≡ success Surface.zeroUsage eE d f'
-
   -- Plan 0.42: the `⊢ᵍ` completeness — a closed global-element value elaborates
-  -- at a pure arrow. `g-int` is the direct `RInt` value-lift clause; the
-  -- structural shapes reduce their value-lift clause's `with checkG …` via
-  -- `checkG-just`; `g-terminal` routes through the existing bare-`terminal`
-  -- fallback. Discharges the former `gd-complete` postulate.
+  -- at a pure arrow. POSTULATE-FREE. `g-int` is the direct `RInt` clause;
+  -- `g-terminal` routes through the existing bare-`terminal` fallback; the
+  -- structural shapes (`g-pair`/`g-inl`/`g-inr`/`g-In`) scrutinise the SAME
+  -- `inspectCheckG` view as their value-lift `checkElabV` clauses, so the
+  -- elaborator reduces (no `with checkG` opacity). `checkG-just` rules out the
+  -- `cgv-nothing` branch (the value IS a `checkG`-success).
   gd-complete : ∀ {ctx : NamedCtx} {e : RawExpr} {A : Type} (X : Type)
               → ctx ⊢ᵍ e ∶ A
               → ∃[ eE ] ∃[ d ] ∃[ f' ]
@@ -994,14 +983,22 @@ mutual
   gd-complete X (g-int n) = _ , _ , _ , refl
   gd-complete {ctx = ctx} X (g-terminal eqL eqI) =
     checkElab-fallback-RVar-terminal {ctx} X eqL eqI
-  gd-complete X (g-pair ga gb) with checkG-just X (g-pair ga gb)
-  ... | _ , _ , eq rewrite eq = _ , _ , _ , refl
-  gd-complete X (g-inl ga) =
-    let (_ , _ , eq) = checkG-just X (g-inl ga) in lift-dispatch-complete X eq
-  gd-complete X (g-inr gb) =
-    let (_ , _ , eq) = checkG-just X (g-inr gb) in lift-dispatch-complete X eq
-  gd-complete X (g-In eqWF garg) =
-    let (_ , _ , eq) = checkG-just X (g-In eqWF garg) in lift-dispatch-complete X eq
+  gd-complete {ctx = ctx} X (g-pair {a = a} {b = b} {A = A} {B = B} ga gb)
+    with inspectCheckG ctx X (Raw.RPair a b) (A T.* B) | checkG-just X (g-pair ga gb)
+  ... | cgv-just _      | _              = _ , _ , _ , refl
+  ... | cgv-nothing eqN | _ , _ , eqJ    = nothing≢just (trans (sym eqN) eqJ)
+  gd-complete {ctx = ctx} X (g-inl {arg = arg} {A = A} {B = B} ga)
+    with inspectCheckG ctx X (Raw.RApp (Raw.RVar "inl") arg) (A T.+ B) | checkG-just X (g-inl ga)
+  ... | cgv-just _      | _              = _ , _ , _ , refl
+  ... | cgv-nothing eqN | _ , _ , eqJ    = nothing≢just (trans (sym eqN) eqJ)
+  gd-complete {ctx = ctx} X (g-inr {arg = arg} {A = A} {B = B} gb)
+    with inspectCheckG ctx X (Raw.RApp (Raw.RVar "inr") arg) (A T.+ B) | checkG-just X (g-inr gb)
+  ... | cgv-just _      | _              = _ , _ , _ , refl
+  ... | cgv-nothing eqN | _ , _ , eqJ    = nothing≢just (trans (sym eqN) eqJ)
+  gd-complete {ctx = ctx} X (g-In {arg = arg} {F = F} eqWF garg)
+    with inspectCheckG ctx X (Raw.RApp (Raw.RVar "In") arg) (T.μ-type F) | checkG-just X (g-In eqWF garg)
+  ... | cgv-just _      | _              = _ , _ , _ , refl
+  ... | cgv-nothing eqN | _ , _ , eqJ    = nothing≢just (trans (sym eqN) eqJ)
 
   -- Full ⊢ᶜ walk: handles t-lam recursively and delegates t-embed
   -- to the per-shape fallback lemma.

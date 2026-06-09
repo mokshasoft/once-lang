@@ -585,6 +585,20 @@ checkG ctx X (Raw.RApp (Raw.RVar "In") arg) (Once.Type.μ-type F) with inspectWe
 ...   | nothing = nothing
 checkG _ _ _ _ = nothing
 
+-- View bundling `checkG`'s outcome with its equation (mirrors
+-- `inspectLookupLocal`/`inspectWellFormedF`). The value-lift `checkElabV`
+-- clauses scrutinise this instead of `checkG` directly, so completeness
+-- connects to the same view and reduces — no `with checkG` opacity, no
+-- dispatch-reduction postulate.
+data CheckGView (ctx : NamedCtx) (X : Type) (e : RawExpr) (A : Type) : Set where
+  cgv-just    : ∀ {m gd} → checkG ctx X e A ≡ just (m , gd) → CheckGView ctx X e A
+  cgv-nothing : checkG ctx X e A ≡ nothing → CheckGView ctx X e A
+
+inspectCheckG : (ctx : NamedCtx) (X : Type) (e : RawExpr) (A : Type) → CheckGView ctx X e A
+inspectCheckG ctx X e A with checkG ctx X e A in eq
+... | just (m , gd) = cgv-just eq
+... | nothing       = cgv-nothing eq
+
 
 -- arr : (a → b) → Eff a b
 specArr : (A B : Type) → SExpr S∅ Surface.zeroUsage ((A ⇒ B) ⇒ (A ⇒[ mk-kind Many eff ] B))
@@ -1394,9 +1408,9 @@ mutual
   -- Plan 0.41 structural value-lift: `In arg` at a pure arrow to `μ-type F`
   -- is a closed global-element value — route through `checkG`.
   checkIn ctx arg (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] (Once.Type.μ-type F))
-    with checkG ctx X (Raw.RApp (Raw.RVar "In") arg) (Once.Type.μ-type F)
-  ... | nothing = failure (BuiltinTypeMismatch "In") , tt
-  ... | just (m , gd) =
+    with inspectCheckG ctx X (Raw.RApp (Raw.RVar "In") arg) (Once.Type.μ-type F)
+  ... | cgv-nothing _    = failure (BuiltinTypeMismatch "In") , tt
+  ... | cgv-just {m} {gd} _ =
           success Surface.zeroUsage (Surface.lift-morphism m) 0 (NamedCtx.freshCounter ctx)
           , t-value-lift gd
   checkIn _ _ _ = failure (BuiltinTypeMismatch "In") , tt
@@ -1685,10 +1699,10 @@ mutual
   -- closed global-element value — route through `checkG`.
   checkElabV ctx (Raw.RPair a b)
     (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] (A Once.Type.* B))
-    with checkG ctx X (Raw.RPair a b) (A Once.Type.* B)
-  ... | nothing = failure (TypeMismatch (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] (A Once.Type.* B))
+    with inspectCheckG ctx X (Raw.RPair a b) (A Once.Type.* B)
+  ... | cgv-nothing _ = failure (TypeMismatch (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] (A Once.Type.* B))
                                         (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] (A Once.Type.* B))) , tt
-  ... | just (m , gd) =
+  ... | cgv-just {m} {gd} _ =
           success Surface.zeroUsage (Surface.lift-morphism m) 0 (NamedCtx.freshCounter ctx)
           , t-value-lift gd
 
@@ -1899,16 +1913,16 @@ mutual
   -- Specific clauses before the value-type `with T` dispatch (first-match).
   checkElabV-RApp-dispatch ctx f arg
     (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] (A Once.Type.+ B)) ahv-inl _
-    with checkG ctx X (Raw.RApp (Raw.RVar "inl") arg) (A Once.Type.+ B)
-  ... | nothing = failure InlNeedsSumType , tt
-  ... | just (m , gd) =
+    with inspectCheckG ctx X (Raw.RApp (Raw.RVar "inl") arg) (A Once.Type.+ B)
+  ... | cgv-nothing _ = failure InlNeedsSumType , tt
+  ... | cgv-just {m} {gd} _ =
           success Surface.zeroUsage (Surface.lift-morphism m) 0 (NamedCtx.freshCounter ctx)
           , t-value-lift gd
   checkElabV-RApp-dispatch ctx f arg
     (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] (A Once.Type.+ B)) ahv-inr _
-    with checkG ctx X (Raw.RApp (Raw.RVar "inr") arg) (A Once.Type.+ B)
-  ... | nothing = failure InrNeedsSumType , tt
-  ... | just (m , gd) =
+    with inspectCheckG ctx X (Raw.RApp (Raw.RVar "inr") arg) (A Once.Type.+ B)
+  ... | cgv-nothing _ = failure InrNeedsSumType , tt
+  ... | cgv-just {m} {gd} _ =
           success Surface.zeroUsage (Surface.lift-morphism m) 0 (NamedCtx.freshCounter ctx)
           , t-value-lift gd
   checkElabV-RApp-dispatch ctx f arg T ahv-inl _ with T
