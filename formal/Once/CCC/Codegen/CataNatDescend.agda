@@ -19,7 +19,7 @@
 
 module Once.CCC.Codegen.CataNatDescend where
 
-open import Data.Nat using (ℕ; suc)
+open import Data.Nat using (ℕ; suc; _+_; _*_)
 open import Data.Bool using (false; true)
 open import Data.Maybe using (just)
 open import Data.Product using (_,_; proj₁)
@@ -258,3 +258,18 @@ module CataNatDescend {FS : FrameSemantics} where
       st8 = flat-step1 hf fLt2 (flat-label prog A7 ld-top)
       st9 = flat-step1 hf fBs2 (trans (flat-scratch-branch-yes prog A8 ld-end szcond)
                                       (cong (λ m → do-jump m A8) el-res))
+
+  -- THE DESCEND PHASE, assembled: descend a Nat value of cons-depth `n` by
+  -- chaining `n` continue iterations (each `descend-iter-flat` at its
+  -- depth, supplied as `iters d`) then the base/exit path (`base`,
+  -- `descend-base-flat` at the base node). One `FlatSteps` chain of
+  -- `n * 9 + 9` steps from the head state `st 0` to the descend-done state
+  -- `final`. The combinators compose over the Nat recursion via
+  -- `chain-steps`; the heap model (`ValidAtWF` for the Nat value) supplies
+  -- the loop-head state family `st` and discharges each `iters d` / `base`.
+  descend-loop-runs : ∀ (prog : AbstractTrace) (n : ℕ) (st : ℕ → FlatState) (final : FlatState)
+                    → (∀ d → FlatSteps prog 9 (st d) (st (suc d)))
+                    → FlatSteps prog 9 (st n) final
+                    → FlatSteps prog (n * 9 + 9) (st 0) final
+  descend-loop-runs prog n st final iters base =
+    FlatSteps-++ (chain-steps 9 n st iters) base
