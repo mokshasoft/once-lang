@@ -22,6 +22,7 @@
 module Once.Verified.PureCata where
 
 open import Data.List using (List; []; _++_)
+open import Data.Maybe using (just; nothing)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
@@ -30,15 +31,18 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong₂)
 
 open import Once.Type using (Functor; K; Id; _⊕_; _⊗_; μ-type; ⟦_⟧T)
 open import Once.Functor.Base
-  using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF; μS; ⟨_⟩; cataS; sfmapCata)
+  using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF; μS; cataS; sfmapCata)
 open import Once.Functor.Translate
   using (translateF; WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod)
 open import Once.Functor.Induction using (All-SF; μS-ind)
 open import Once.Semantics.Machine
   using (⟦_⟧; ⟦_⟧F; sem-fmap; coerce-functor⁻¹; coerce-μ-out)
-open import Once.CCC.IR using (IR; Cata)
+open import Once.CCC.IR
+  using (IR; id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal; initial;
+         curry; apply; arr; In; out-μ; Cata; Para; Out; in-ν; Ana; Hylo; Fuse;
+         free-heap; const; SigOp)
 open import Once.Verified.Trace using (SigOpEvent)
-open import Once.Verified.TraceDenote using (obs; cata-ev-alg; events-F)
+open import Once.Verified.TraceDenote using (obs; cata-ev-alg; events-F; EmitsNoSigOp)
 
 ------------------------------------------------------------------------
 -- Bridge 1: `All-SF` (every recursive child satisfies the property)
@@ -115,3 +119,57 @@ pure-cata-emits-[] {F} {C} n wf alg alg-pure x =
       rewrite events-coerce-[] {⟦ C ⟧} wf w allW
             | alg-pure (coerce-functor⁻¹ F C (sem-fmap F proj₂ (coerce-μ-out wf W w)))
       = refl
+
+------------------------------------------------------------------------
+-- General: a `SigOp`-free IR (`EmitsNoSigOp ir`) emits no events.
+--
+-- `SigOp` is excluded by ⊥; `∘`/`⟨,⟩`/`case` thread their sub-IR IHs
+-- (mirroring `obs`'s `with`-structure); `Cata` delegates to
+-- `pure-cata-emits-[]` (feeding it the algebra's IH); every other
+-- constructor is value-pure in `obs` (catchall), so `proj₁ (obs …) ≡ []`
+-- holds definitionally (`refl`). This is the spec-side gate `pure-refines`
+-- consumes for the non-cata fragment.
+------------------------------------------------------------------------
+
+pure-emits-[] : ∀ {A B} (n : ℕ) (ir : IR A B)
+              → EmitsNoSigOp ir → ∀ (x : ⟦ A ⟧) → proj₁ (obs n ir x) ≡ []
+pure-emits-[] n (SigOp si) ()
+pure-emits-[] n (g ∘ f) (eg , ef) x with obs n f x | pure-emits-[] n f ef x
+pure-emits-[] n (g ∘ f) (eg , ef) x | ev₁ , just y | ihf
+  with obs n g y | pure-emits-[] n g eg y
+pure-emits-[] n (g ∘ f) (eg , ef) x | ev₁ , just y | ihf | ev₂ , r | ihg =
+  cong₂ _++_ ihf ihg
+pure-emits-[] n (g ∘ f) (eg , ef) x | ev₁ , nothing | ihf = ihf
+pure-emits-[] n (⟨ f , g ⟩ m) (ef , eg) x with obs n f x | pure-emits-[] n f ef x
+pure-emits-[] n (⟨ f , g ⟩ m) (ef , eg) x | ev₁ , just b | ihf
+  with obs n g x | pure-emits-[] n g eg x
+pure-emits-[] n (⟨ f , g ⟩ m) (ef , eg) x | ev₁ , just b | ihf | ev₂ , just c | ihg =
+  cong₂ _++_ ihf ihg
+pure-emits-[] n (⟨ f , g ⟩ m) (ef , eg) x | ev₁ , just b | ihf | ev₂ , nothing | ihg =
+  cong₂ _++_ ihf ihg
+pure-emits-[] n (⟨ f , g ⟩ m) (ef , eg) x | ev₁ , nothing | ihf = ihf
+pure-emits-[] n (case f g) (ef , eg) (inj₁ a) = pure-emits-[] n f ef a
+pure-emits-[] n (case f g) (ef , eg) (inj₂ b) = pure-emits-[] n g eg b
+pure-emits-[] n (Cata wf alg) ealg x =
+  pure-cata-emits-[] n wf alg (λ z → pure-emits-[] n alg ealg z) x
+-- value-pure constructors (obs catchall): no events
+pure-emits-[] n id            _ x = refl
+pure-emits-[] n fst           _ x = refl
+pure-emits-[] n snd           _ x = refl
+pure-emits-[] n (inl _)       _ x = refl
+pure-emits-[] n (inr _)       _ x = refl
+pure-emits-[] n terminal      _ x = refl
+pure-emits-[] n initial       _ x = refl
+pure-emits-[] n (curry _ _)   _ x = refl
+pure-emits-[] n apply         _ x = refl
+pure-emits-[] n arr           _ x = refl
+pure-emits-[] n (In _ _)      _ x = refl
+pure-emits-[] n (out-μ _)     _ x = refl
+pure-emits-[] n (Para _ _)    _ x = refl
+pure-emits-[] n (Out _)       _ x = refl
+pure-emits-[] n (in-ν _ _)    _ x = refl
+pure-emits-[] n (Ana _ _)     _ x = refl
+pure-emits-[] n (Hylo _ _ _ _) _ x = refl
+pure-emits-[] n (Fuse _ _ _ _) _ x = refl
+pure-emits-[] n (free-heap _) _ x = refl
+pure-emits-[] n (const _ _ _) _ x = refl
