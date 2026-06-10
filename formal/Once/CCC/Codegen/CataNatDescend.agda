@@ -20,7 +20,7 @@
 module Once.CCC.Codegen.CataNatDescend where
 
 open import Data.Nat using (ℕ; suc)
-open import Data.Bool using (false)
+open import Data.Bool using (false; true)
 open import Data.Maybe using (just)
 open import Data.Product using (_,_; proj₁)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; cong)
@@ -30,7 +30,7 @@ open import Once.CCC.Machine.SMCore
   using (LocState; AllocState; halted; regs; readReg; Input1; Output; Scratch;
          sv-as-loc; sucLoc; StoredValue; ValueLocation; AtStack; AtDynamic;
          RegOp; exec-reg-op; AbstractTrace;
-         instr-reg-op; input2-inc; load-indirect-suc; mov-to-input;
+         instr-reg-op; input2-inc; load-indirect-suc; mov-to-input; scratch-zero;
          instr-ctrl; c-label; c-jmp; c-branch-scratch-zero; c-branch-tag-zero;
          module AbstractExec; module MemOps)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
@@ -203,3 +203,58 @@ module CataNatDescend {FS : FrameSemantics} where
     where
       fsB : FlatState
       fsB = record fs { fpc = suc (suc (suc (fpc fs))) }
+
+  -- The descend loop's BASE/EXIT path, for a base (inl, tag = 0) node with
+  -- the depth counter still nonzero: `c-label ld-top` → `branch-scratch`
+  -- (not taken) → `branch-tag` TAKEN (jump `ld-inl`) → `c-label ld-inl` →
+  -- `scratch-zero` (Scratch := 0, the only state change) → `c-label ld-de`
+  -- → `c-jmp ld-top` → `c-label ld-top` → `branch-scratch` TAKEN now
+  -- (Scratch = 0, jump `ld-end`). 9 steps, ending poised at `ld-end`
+  -- (descend done) with the depth counter frozen. `halted` threads through
+  -- `scratch-zero` definitionally (`exec-reg-op` touches only `regs`). The
+  -- post-`scratch-zero` Scratch = 0 fact drives the exit branch.
+  descend-base-flat : ∀ (prog : AbstractTrace) (fs : FlatState)
+                        (ld-top ld-end ld-inl ld-de q-inl q-top q-end : ℕ)
+    → halted (floc fs) ≡ false
+    → sv-is-zero (readReg (regs (floc fs)) Scratch) ≡ false
+    → tag-zf (flat-read-tag (floc fs)) ≡ true
+    → sv-is-zero (readReg (regs (exec-reg-op scratch-zero (floc fs))) Scratch) ≡ true
+    → fetch prog (fpc fs)             ≡ just (instr-ctrl (c-label ld-top))
+    → fetch prog (suc (fpc fs))       ≡ just (instr-ctrl (c-branch-scratch-zero ld-end))
+    → fetch prog (suc (suc (fpc fs))) ≡ just (instr-ctrl (c-branch-tag-zero ld-inl))
+    → find-label prog ld-inl          ≡ just q-inl
+    → fetch prog q-inl                ≡ just (instr-ctrl (c-label ld-inl))
+    → fetch prog (suc q-inl)          ≡ just (instr-reg-op scratch-zero)
+    → fetch prog (suc (suc q-inl))    ≡ just (instr-ctrl (c-label ld-de))
+    → fetch prog (suc (suc (suc q-inl))) ≡ just (instr-ctrl (c-jmp ld-top))
+    → find-label prog ld-top          ≡ just q-top
+    → fetch prog q-top                ≡ just (instr-ctrl (c-label ld-top))
+    → fetch prog (suc q-top)          ≡ just (instr-ctrl (c-branch-scratch-zero ld-end))
+    → find-label prog ld-end          ≡ just q-end
+    → FlatSteps prog 9 fs (record (record fs { floc = exec-reg-op scratch-zero (floc fs) }) { fpc = q-end })
+  descend-base-flat prog fs ld-top ld-end ld-inl ld-de q-inl q-top q-end
+                    hf scond tcond szcond fL fBs fBt il-res fLi fSz fLd fJt tl-res fLt2 fBs2 el-res =
+    FlatSteps-++ st1 (FlatSteps-++ st2 (FlatSteps-++ st3 (FlatSteps-++ st4
+      (FlatSteps-++ st5 (FlatSteps-++ st6 (FlatSteps-++ st7 (FlatSteps-++ st8 st9)))))))
+    where
+      s1 : LocState FS
+      s1 = exec-reg-op scratch-zero (floc fs)
+      A1 = record fs { fpc = suc (fpc fs) }
+      A2 = record fs { fpc = suc (suc (fpc fs)) }
+      A3 = record fs { fpc = q-inl }
+      A5 = record (record fs { floc = s1 }) { fpc = suc (suc q-inl) }
+      A6 = record (record fs { floc = s1 }) { fpc = suc (suc (suc q-inl)) }
+      A7 = record (record fs { floc = s1 }) { fpc = q-top }
+      A8 = record (record fs { floc = s1 }) { fpc = suc q-top }
+      st1 = flat-step1 hf fL   (flat-label prog fs ld-top)
+      st2 = flat-step1 hf fBs  (flat-scratch-branch-not prog A1 ld-end scond)
+      st3 = flat-step1 hf fBt  (trans (flat-tag-branch-yes prog A2 ld-inl tcond)
+                                      (cong (λ m → do-jump m A2) il-res))
+      st4 = flat-step1 hf fLi  (flat-label prog A3 ld-inl)
+      st5 = flat-step1 hf fSz  refl
+      st6 = flat-step1 hf fLd  (flat-label prog A5 ld-de)
+      st7 = flat-step1 hf fJt  (trans (flat-jmp prog A6 ld-top)
+                                      (cong (λ m → do-jump m A6) tl-res))
+      st8 = flat-step1 hf fLt2 (flat-label prog A7 ld-top)
+      st9 = flat-step1 hf fBs2 (trans (flat-scratch-branch-yes prog A8 ld-end szcond)
+                                      (cong (λ m → do-jump m A8) el-res))
