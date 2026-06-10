@@ -30,7 +30,7 @@ open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Data.Product using (_×_; _,_)
 open import Data.Empty using (⊥-elim)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 open import Relation.Nullary using (¬_)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
@@ -69,6 +69,22 @@ module FlatStepsAPI {FS : FrameSemantics} where
   exec-flat-steps []                           b = refl
   exec-flat-steps (_∷_ {k = k} {i = i} (h , f) rest) b =
     trans (exec-flat-step (k + b) _ _ i h f) (exec-flat-steps rest b)
+
+  -- A single step whose RESULT state is named via a step-lemma equation,
+  -- rather than left as the (possibly stuck) `flat-exec-instr i prog fs`.
+  -- This is the abstraction that makes a BRANCH step first-class: its
+  -- result `flat-exec-instr (c-branch…) prog fs` reduces to a stuck
+  -- `do-branch …`, but the control-flow lemmas (`flat-scratch-branch-not`
+  -- etc.) prove it equals the clean `record fs { fpc = … }`. `flat-step1`
+  -- lets that proof name the chain link's result, so branches compose with
+  -- straight steps via `FlatSteps-++` without per-site `rewrite`/`subst`.
+  flat-step1 : ∀ {prog fs fs'} {i : AbstractInstr}
+             → halted (floc fs) ≡ false
+             → fetch prog (fpc fs) ≡ just i
+             → flat-exec-instr i prog fs ≡ fs'
+             → FlatSteps prog 1 fs fs'
+  flat-step1 {prog} {fs} {fs'} h f eq =
+    subst (FlatSteps prog 1 fs) eq ((h , f) ∷ [])
 
   ----------------------------------------------------------------------
   -- Control-flow step-lemmas: name `flat-exec-instr`'s reductions for the
