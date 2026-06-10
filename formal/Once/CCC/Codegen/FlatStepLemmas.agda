@@ -160,3 +160,13 @@ module FlatStepsAPI {FS : FrameSemantics} where
   ... | nothing =
           trans (fl-go-skip xs' ys target (suc i) pxs)
                 (cong (fl-go ys target) (sym (+-suc i (length xs'))))
+
+  ----------------------------------------------------------------------
+  -- Compose two step-chains (so a phase = pre ++ body ++ post reuses
+  -- sub-chains like `descend-body-flat`). Induction on the first chain.
+  ----------------------------------------------------------------------
+  FlatSteps-++ : ∀ {prog k₁ k₂ fs₁ fs₂ fs₃}
+               → FlatSteps prog k₁ fs₁ fs₂ → FlatSteps prog k₂ fs₂ fs₃
+               → FlatSteps prog (k₁ + k₂) fs₁ fs₃
+  FlatSteps-++ []       ys = ys
+  FlatSteps-++ (x ∷ xs) ys = x ∷ FlatSteps-++ xs ys
