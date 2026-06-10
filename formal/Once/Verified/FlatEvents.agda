@@ -35,7 +35,7 @@ open import Data.List using (List; []; _∷_; _++_)
 open import Data.List.Properties using (++-assoc)
 open import Data.Nat using (_+_)
 open import Data.Product using (_,_)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 
 open import Once.Type using (Int)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
@@ -129,3 +129,27 @@ module FlatEventTrace {FS : FrameSemantics} where
     rewrite h | f =
       trans (cong (event-of i fs ++_) (flat-events-steps rest b))
             (sym (++-assoc (event-of i fs) (chain-events rest) (flat-events b _ _)))
+
+  -- `chain-events` is COMPOSITIONAL: the two lemmas that make it survive
+  -- the way `FlatSteps` chains are actually built (`flat-step1` retypes a
+  -- link's result via a `subst` along a step-lemma equality, and phases
+  -- compose via `FlatSteps-++`). Without them `chain-events` is stuck on
+  -- the opaque `subst`. With them, the events of any composite/retyped
+  -- chain reduce to the obvious concatenation — so a silent phase's
+  -- events provably vanish even though its chain is full of substs.
+
+  -- Distributes over `FlatSteps-++`.
+  chain-events-++ : ∀ {prog k₁ k₂ fs₁ fs₂ fs₃}
+                      (xs : FlatSteps prog k₁ fs₁ fs₂) (ys : FlatSteps prog k₂ fs₂ fs₃)
+                  → chain-events (FlatSteps-++ xs ys) ≡ chain-events xs ++ chain-events ys
+  chain-events-++ []                            ys = refl
+  chain-events-++ (_∷_ {fs = fs} {i = i} _ xs) ys =
+    trans (cong (event-of i fs ++_) (chain-events-++ xs ys))
+          (sym (++-assoc (event-of i fs) (chain-events xs) (chain-events ys)))
+
+  -- Invariant under the index `subst` (it transports the chain's END
+  -- state, which `chain-events` never reads — events depend only on each
+  -- link's FROM state + instruction, both preserved by the transport).
+  chain-events-subst : ∀ {prog k fs fs₁ fs₂} (eq : fs₁ ≡ fs₂) (stp : FlatSteps prog k fs fs₁)
+                     → chain-events (subst (FlatSteps prog k fs) eq stp) ≡ chain-events stp
+  chain-events-subst refl stp = refl
