@@ -56,10 +56,10 @@ module _ {FS : FrameSemantics} (program-bound : ℕ) where
   validAtWF-set-halted {s = s} b (valid-closure-wf body<bound {closure-loc = cl} lm r1 r2 bf1 bf2 venv bodyc) =
     valid-closure-wf body<bound lm (trans (rl s b cl) r1) (trans (rl s b (sucLoc cl)) r2) bf1 bf2
       (validAtWF-set-halted b venv) bodyc
-  validAtWF-set-halted {s = s} b (valid-inl-wf {sum-loc = sl} lm r bf1 bf2 va) =
-    valid-inl-wf lm (trans (rl s b (sucLoc sl)) r) bf1 bf2 (validAtWF-set-halted b va)
-  validAtWF-set-halted {s = s} b (valid-inr-wf {sum-loc = sl} lm r bf1 bf2 vb) =
-    valid-inr-wf lm (trans (rl s b (sucLoc sl)) r) bf1 bf2 (validAtWF-set-halted b vb)
+  validAtWF-set-halted {s = s} b (valid-inl-wf {sum-loc = sl} lm tg r bf1 bf2 va) =
+    valid-inl-wf lm (trans (rl s b sl) tg) (trans (rl s b (sucLoc sl)) r) bf1 bf2 (validAtWF-set-halted b va)
+  validAtWF-set-halted {s = s} b (valid-inr-wf {sum-loc = sl} lm tg r bf1 bf2 vb) =
+    valid-inr-wf lm (trans (rl s b sl) tg) (trans (rl s b (sucLoc sl)) r) bf1 bf2 (validAtWF-set-halted b vb)
   validAtWF-set-halted b (valid-μ-wf wf x v) =
     valid-μ-wf wf x (validAtWF-set-halted b v)
   validAtWF-set-halted b (valid-ν-wf wf x v) =

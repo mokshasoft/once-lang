@@ -510,7 +510,7 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
     -- Result: result-loc = input-loc (the Sum container with updated pointer)
     --
     process-layer {G = G} (wf-Sum {FL} {FR} wfL wfR) wfG alg dispatch (inj₁ l-layer) mIn input-loc s alloc
-      n rec procRec size-bound (valid-inl-wf {payload-loc = payload-loc} {mA = mA} lmm payload-ptr payload-bf sucLoc-bf l-layer-valid) input-before not-halted rdi-eq =
+      n rec procRec size-bound (valid-inl-wf {payload-loc = payload-loc} {mA = mA} lmm _ payload-ptr payload-bf sucLoc-bf l-layer-valid) input-before not-halted rdi-eq =
       let
         -- Step 1: Setup trace - load payload pointer and set Input1
         -- This transforms s (where Input1 = input-loc) to s-setup (where Input1 = payload-loc)
@@ -1006,7 +1006,7 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
         -- Plan 0.14 (Camp 2): wrapper-loc is AtStack so wrapper-mode = Stack
         -- (matching the function's returned mode). lmm = tt then.
         processed-valid-proof : ValidAtWF Stack alloc-after-wrapper processed wrapper-loc s-after-wrapper
-        processed-valid-proof = valid-inl-wf tt wrapper-ptr-written l-before-wrapper suc-wrapper-before l-valid-wrapper
+        processed-valid-proof = valid-inl-wf tt tt wrapper-ptr-written l-before-wrapper suc-wrapper-before l-valid-wrapper
 
         -- result-before: wrapper-base = l-reclaimable < l-reclaimable + 2 = next-slot alloc-after-wrapper
         result-before-proof : BeforeFrontier alloc-after-wrapper wrapper-loc
@@ -1150,7 +1150,7 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
     --   3. wrapper-trace: allocate Sum wrapper at frontier
     ------------------------------------------------------------------------
     process-layer {G = G} (wf-Sum {FL} {FR} wfL wfR) wfG alg dispatch (inj₂ r-layer) mIn input-loc s alloc
-      n rec procRec size-bound (valid-inr-wf {payload-loc = payload-loc} {mB = mB} lmm payload-ptr payload-bf sucLoc-bf r-layer-valid) input-before not-halted rdi-eq =
+      n rec procRec size-bound (valid-inr-wf {payload-loc = payload-loc} {mB = mB} lmm _ payload-ptr payload-bf sucLoc-bf r-layer-valid) input-before not-halted rdi-eq =
       let
         -- Step 1: Setup trace - load payload pointer and set Input1
         -- This transforms s (where Input1 = input-loc) to s-setup (where Input1 = payload-loc)
@@ -1568,7 +1568,7 @@ module CataLayerImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
         -- Plan 0.14 (Camp 2): wrapper-loc is AtStack so wrapper-mode = Stack.
         processed-valid-proof : ValidAtWF Stack alloc-after-wrapper processed wrapper-loc s-after-wrapper
-        processed-valid-proof = valid-inr-wf tt wrapper-ptr-written r-before-wrapper suc-wrapper-before r-valid-wrapper
+        processed-valid-proof = valid-inr-wf tt tt wrapper-ptr-written r-before-wrapper suc-wrapper-before r-valid-wrapper
 
         -- result-before: wrapper-base < next-slot alloc-after-wrapper
         result-before-proof : BeforeFrontier alloc-after-wrapper wrapper-loc
