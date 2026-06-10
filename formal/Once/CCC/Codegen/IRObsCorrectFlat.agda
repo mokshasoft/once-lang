@@ -28,7 +28,7 @@
 module Once.CCC.Codegen.IRObsCorrectFlat where
 
 open import Data.Nat using (ℕ; suc; _<_)
-open import Data.Bool using (false)
+open import Data.Bool using (false; true)
 open import Data.List using (length)
 open import Data.Product using (_×_; _,_; ∃; ∃-syntax; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_)
@@ -56,23 +56,36 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   open ClosureWellFormedDef {FS} program-bound using (ValidAtWF)
   open FlatEventTrace {FS} using (flat-events)
 
-  -- The flat run of `ir` from `s`/`alloc` (frontier 0, fuel = trace length).
-  flat-run : ∀ {A B} → IR A B → LocState FS → AllocState {FS} → FlatState
-  flat-run ir s alloc =
-    exec-flat (suc (length (ir-to-trace ir))) (ir-to-trace ir) (mkFlat s alloc 0)
+  -- The flat run of `ir` from `s`/`alloc` at a given fuel (frontier 0).
+  flat-run : ℕ → ∀ {A B} → IR A B → LocState FS → AllocState {FS} → FlatState
+  flat-run fuel ir s alloc = exec-flat fuel (ir-to-trace ir) (mkFlat s alloc 0)
 
   -- Observable refinement over the flat machine.
+  --
+  -- FUEL = "just enough", not a step-index. A `Cata` is a TOTAL inductive
+  -- fold over a finite μ-value, so its compiled loop TERMINATES: `enough-fuel`
+  -- is a (finite, input-dependent) WITNESS that the run completes
+  -- (`run-halts`), provable from totality. Every cata is verified with its
+  -- OWN sufficient fuel — no fixed constant, so no program is left unverified.
+  -- (A fixed `n` like `defaultFuel = 10000` is only the executable's runtime
+  -- guard, never the correctness fuel.) The single step-INDEXED loop in a
+  -- total+productive program is the top-level event loop = an `Ana`
+  -- coinductive unfold (∀ n: first-n events match); a non-terminating loop
+  -- nested inside another can't be productive. So `Cata` carries a termination
+  -- witness; only `Ana` carries a step-index.
   record MachineRefinesObsF {A B} (ir : IR A B) (x : ⟦ A ⟧)
                              (s : LocState FS) (alloc : AllocState {FS}) : Set where
     field
+      enough-fuel  : ℕ
+      run-halts    : halted (floc (flat-run enough-fuel ir s alloc)) ≡ true
       traces-agree :
-        flat-events (suc (length (ir-to-trace ir))) (ir-to-trace ir) (mkFlat s alloc 0)
+        flat-events enough-fuel (ir-to-trace ir) (mkFlat s alloc 0)
           ≡ proj₁ (obs program-bound ir x)
       value-realized :
         ∃[ mOut ] ∃[ result-loc ]
-          ValidAtWF mOut (falloc (flat-run ir s alloc))
+          ValidAtWF mOut (falloc (flat-run enough-fuel ir s alloc))
             (eval ir x) result-loc
-            (forced (floc (flat-run ir s alloc)))
+            (forced (floc (flat-run enough-fuel ir s alloc)))
 
   -- Same preconditions as `compile-correct-flat`'s semantic side (entry
   -- frontier 0), minus `StraightIR` (loops are allowed); conclusion is
@@ -89,47 +102,17 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
     readReg (regs s) Input1 ≡ SV-Ptr input-loc →
     MachineRefinesObsF ir x s alloc
 
-  -- `cata-correct` decomposed top-down into its two honest halves, each a
-  -- named postulate pointing at its discharge path. These are the SINGLE
-  -- pair of trust boundaries the cata collapses into (Plan 0.36 Phase 4
-  -- then deletes the old `ir-to-trace-correct-non-layer0` catchall and
-  -- `rec-scheme-semantic`).
+  -- `cata-correct`: the single named obligation; the record FIELDS name the
+  -- parts the discharge must provide (all sharing one `enough-fuel`):
+  --   * `enough-fuel`/`run-halts` — the cata terminates (totality witness).
+  --   * `traces-agree`  — loop↔fold: discharge by `μS-ind` over the events
+  --                       fold + per-`instr-sigop` `respects-semM`. (Pure-cata
+  --                       sub-case already dischargeable: `flat-events-[]` +
+  --                       `pure-cata-emits-[]`, both `[]`.)
+  --   * `value-realized`— looping flat-semantic value correctness (= the
+  --                       existing `rec-scheme-semantic` trust boundary).
+  -- These are the boundaries the cata collapses into; Phase 4 then deletes the
+  -- old `ir-to-trace-correct-non-layer0` catchall + `rec-scheme-semantic`.
   postulate
-    -- TRACE half: the compiled cata loop emits exactly `obs`'s events, in
-    -- fold order. Discharge: μ-induction (`μS-ind`) over the events fold +
-    -- per-`instr-sigop` `respects-semM`, relating `exec-flat`'s loop
-    -- traversal to `obs`'s `cata-ev-alg` fold. (Pure-cata sub-case already
-    -- dischargeable: `flat-events-[]` + `pure-cata-emits-[]`, both `[]`.)
-    cata-traces-agree :
-      ∀ {F} (wf : WellFormedF F) {A} (alg : IR (⟦ F ⟧T A) A)
-      → ir-size (Cata wf alg) < program-bound
-      → (mIn : AllocMode) (x : ⟦ μ-type F ⟧) (input-loc : ValueLocation FS)
-        (s : LocState FS) (alloc : AllocState {FS})
-      → next-slot alloc ≡ 0
-      → ValidAtWF mIn alloc x input-loc s → BeforeFrontier alloc input-loc
-      → halted s ≡ false → readReg (regs s) Input1 ≡ SV-Ptr input-loc
-      → flat-events (suc (length (ir-to-trace (Cata wf alg)))) (ir-to-trace (Cata wf alg))
-                    (mkFlat s alloc 0)
-          ≡ proj₁ (obs program-bound (Cata wf alg) x)
-
-    -- VALUE half: the looping flat-semantic correctness (= the existing
-    -- `rec-scheme-semantic` trust boundary, restated over `exec-flat`).
-    cata-value-realized :
-      ∀ {F} (wf : WellFormedF F) {A} (alg : IR (⟦ F ⟧T A) A)
-      → ir-size (Cata wf alg) < program-bound
-      → (mIn : AllocMode) (x : ⟦ μ-type F ⟧) (input-loc : ValueLocation FS)
-        (s : LocState FS) (alloc : AllocState {FS})
-      → next-slot alloc ≡ 0
-      → ValidAtWF mIn alloc x input-loc s → BeforeFrontier alloc input-loc
-      → halted s ≡ false → readReg (regs s) Input1 ≡ SV-Ptr input-loc
-      → ∃[ mOut ] ∃[ result-loc ]
-          ValidAtWF mOut (falloc (flat-run (Cata wf alg) s alloc))
-            (eval (Cata wf alg) x) result-loc
-            (forced (floc (flat-run (Cata wf alg) s alloc)))
-
-  -- The single theorem, built from its two halves (no longer a bare postulate).
-  cata-correct : ∀ {F} (wf : WellFormedF F) {A} (alg : IR (⟦ F ⟧T A) A)
-               → IRObsCorrectF (Cata wf alg)
-  cata-correct wf alg ir<b mIn x il s alloc ns valid bf nh rdi =
-    record { traces-agree   = cata-traces-agree   wf alg ir<b mIn x il s alloc ns valid bf nh rdi
-           ; value-realized = cata-value-realized wf alg ir<b mIn x il s alloc ns valid bf nh rdi }
+    cata-correct : ∀ {F} (wf : WellFormedF F) {A} (alg : IR (⟦ F ⟧T A) A)
+                 → IRObsCorrectF (Cata wf alg)
