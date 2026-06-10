@@ -23,7 +23,7 @@ open import Data.Nat using (ℕ; suc)
 open import Data.Bool using (false)
 open import Data.Maybe using (just)
 open import Data.Product using (_,_; proj₁)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; cong)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore
@@ -31,7 +31,7 @@ open import Once.CCC.Machine.SMCore
          sv-as-loc; sucLoc; StoredValue; ValueLocation; AtStack; AtDynamic;
          RegOp; exec-reg-op; AbstractTrace;
          instr-reg-op; input2-inc; load-indirect-suc; mov-to-input;
-         instr-ctrl; c-label; c-branch-scratch-zero; c-branch-tag-zero;
+         instr-ctrl; c-label; c-jmp; c-branch-scratch-zero; c-branch-tag-zero;
          module AbstractExec; module MemOps)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
@@ -115,3 +115,30 @@ module CataNatDescend {FS : FrameSemantics} where
       (FlatSteps-++
         (flat-step1 hf fB1 (flat-scratch-branch-not  prog _  ld-end  scond))
         (flat-step1 hf fB2 (flat-tag-branch-not      prog _  ld-base tcond)))
+
+  -- The descend iteration's POST-control, for the continue (inr/cons)
+  -- path: `c-jmp ld-de` (skip the inl handler) → `c-label ld-de` → `c-jmp
+  -- ld-top` (loop back). The two jumps resolve via `find-label`, so this
+  -- is parameterized over the label-RESOLUTION facts (`find-label prog ld
+  -- ≡ just q` + the `fetch`es at `q`); `find-label` computation is
+  -- localized to the concrete-prog assembly, NOT spread through the step
+  -- reasoning. Result pc = `q-top` (the resolved loop head) — so the
+  -- iteration returns to where it began (the fixpoint the μ-induction
+  -- folds over). State stays `fs` (jumps/labels touch only `fpc`).
+  descend-post-flat : ∀ (prog : AbstractTrace) (fs : FlatState)
+                        (ld-de ld-top q-de q-top : ℕ)
+    → halted (floc fs) ≡ false
+    → fetch prog (fpc fs)        ≡ just (instr-ctrl (c-jmp ld-de))
+    → find-label prog ld-de      ≡ just q-de
+    → fetch prog q-de            ≡ just (instr-ctrl (c-label ld-de))
+    → fetch prog (suc q-de)      ≡ just (instr-ctrl (c-jmp ld-top))
+    → find-label prog ld-top     ≡ just q-top
+    → FlatSteps prog 3 fs (record fs { fpc = q-top })
+  descend-post-flat prog fs ld-de ld-top q-de q-top hf fJ1 de-res fL fJ2 top-res =
+    FlatSteps-++
+      (flat-step1 hf  fJ1 (trans (flat-jmp prog fs ld-de)
+                                 (cong (λ m → do-jump m fs) de-res)))
+      (FlatSteps-++
+        (flat-step1 hf fL  (flat-label prog (record fs { fpc = q-de }) ld-de))
+        (flat-step1 hf fJ2 (trans (flat-jmp prog (record fs { fpc = suc q-de }) ld-top)
+                                  (cong (λ m → do-jump m (record fs { fpc = suc q-de })) top-res))))
