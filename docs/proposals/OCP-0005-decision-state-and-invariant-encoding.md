@@ -11,11 +11,13 @@
 The decision log (`docs/compiler/decision-log.md`, 56 entries D001–D056) is the
 project's design memory, but it is **prose** — not enforced. Decisions get
 superseded, partially revised, or quietly contradicted by code, and nothing
-catches the drift. This OCP proposes two things: (1) compute a **decision
-state** — the accumulated, currently-in-force set of decisions, with
-supersessions and revisions resolved; and (2) **encode** those decisions as
-compiler-enforced invariants (types, proof obligations, or structural checks)
-so the compiler *cannot* silently violate them. It also recognises a third
+catches the drift. This OCP proposes two things: (1) maintain a **decision
+state** — a separate, *living* `decision-state.md` holding only the
+currently-in-force decisions (supersessions/revisions resolved), each pointing
+back to its decision-log lineage and kept current as decisions land; and (2)
+**encode** those in-force decisions as compiler-enforced invariants (types,
+proof obligations, or structural checks) so the compiler *cannot* silently
+violate them. It also recognises a third
 category — **design choices that are not proper decisions** (e.g. the
 completeness-view rule below) — which are worth pinning the same way.
 
@@ -51,20 +53,41 @@ So: encoding turns "we decided X" into "the compiler rejects ¬X."
 
 ## Proposal
 
-### Phase 1 — Decision State
+### Phase 1 — Decision State (a living `decision-state.md`)
 
-Walk D001–D056 and produce a **decision state**: the set of decisions currently
-in force, each tagged with its lineage. For every entry, classify:
+Produce a **separate, living document** — `docs/compiler/decision-state.md`,
+beside the log — that is the *current truth*: only the decisions in force *now*,
+with the supersession chain already resolved. The decision **log stays as it is**
+— append-only narrative/history; the **state document is the resolved snapshot**.
 
-- **In force** — still the rule.
-- **Superseded** — replaced (record by what: D043 → D044/D045).
-- **Revised** — narrowed/refined (D018 reinstated under D046's grade).
-- **Vestige** — formally retracted but still load-bearing as a smaller
-  guarantee (D032's separation → the grade does the masquerade job).
+**Two roles, not one source.** The log records *what happened and why* (D043 was
+chosen, then superseded). `decision-state.md` records *what is true now* (the
+current compose-desugaring rule), so future work reads one resolved document
+instead of re-deriving the truth from the chain.
 
-Output: a single document (or generated artifact) listing only the in-force
-decisions, each with a one-line statement of the current rule and pointers to
-its lineage. This is the thing future work reads — not the raw chain.
+**Structure.** Each entry in `decision-state.md` is a *current rule*:
+
+- a one-line statement of the rule as it stands today;
+- **a pointer (back-link) to the decision-log entry/entries** it derives from —
+  including the supersession lineage (e.g. "compose desugaring: direct `IR.∘`
+  classifier route, no optimizer dependency — D044/D045, superseding D043");
+- optionally, its enforcement mechanism once Phase 2 assigns one (the type /
+  theorem / lint that pins it — so the state entry doubles as the index into the
+  encoded invariants).
+
+To build it initially, walk D001–D056 and classify each: **in force**,
+**superseded** (→ by what), **revised** (narrowed/refined — D018 under D046's
+grade), **vestige** (retracted but still load-bearing as a smaller guarantee —
+D032's separation → the grade does the masquerade job). In-force + the surviving
+content of revised/vestige entries become `decision-state.md` rules; superseded
+ones do not (their successors do).
+
+**Always current — the maintenance invariant.** `decision-state.md` must be
+updated *in the same change* that lands a new decision or supersedes/revises an
+old one. A new log entry that changes the in-force set is incomplete until the
+state document reflects it. (This is itself a candidate Phase-3 design rule, and
+a natural lint: "a decision-log diff that adds/supersedes a decision must touch
+`decision-state.md`.")
 
 ### Phase 2 — Encode the in-force decisions
 
@@ -158,10 +181,13 @@ extends that safety net.
 
 ## Open Questions
 
-- **Decision state: manual or tooled?** A one-time manual walk is feasible for
-  56 entries; keeping it current as new decisions land argues for a lightweight
-  convention (a `Status:` field that points to the superseding decision, machine-
-  readable) or a small generator.
+- **Building & maintaining `decision-state.md`: manual or tooled?** The initial
+  walk of 56 entries is feasible by hand. Keeping it current is the harder part —
+  options: a lightweight convention (a machine-readable `Status:`/`Superseded-by:`
+  field in the log so the state can be regenerated), a small generator, or a lint
+  enforcing the maintenance invariant ("a log diff that changes the in-force set
+  must touch `decision-state.md`"). Manual-with-a-lint is likely the cheapest
+  start.
 - **Encoding taxonomy granularity.** Are four mechanism classes (type / proof /
   lint / docs) the right cut? Where's the line between a proof obligation and a
   structural check?
