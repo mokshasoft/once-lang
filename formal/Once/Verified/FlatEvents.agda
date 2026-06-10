@@ -32,7 +32,10 @@ open import Data.Nat using (ℕ; zero; suc)
 open import Data.Bool using (Bool; true; false)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.List using (List; []; _∷_; _++_)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+open import Data.List.Properties using (++-assoc)
+open import Data.Nat using (_+_)
+open import Data.Product using (_,_)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
 
 open import Once.Type using (Int)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
@@ -42,10 +45,12 @@ open import Once.CCC.Machine.SMCore
          StoredValue; SV-Lit;
          AbstractTrace; AbstractInstr; instr-sigop)
 open import Once.CCC.Machine.Flat
+open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 open import Once.Verified.Trace using (SigOpEvent; mk-event; isInt?)
 
 module FlatEventTrace {FS : FrameSemantics} where
   open FlatMachine {FS}
+  open FlatStepsAPI {FS}
 
   -- Decode a register cell to a ℕ argument (only `Int` literals decode).
   decode-ℕ : StoredValue FS → Maybe ℕ
@@ -100,3 +105,27 @@ module FlatEventTrace {FS : FrameSemantics} where
   ...   | nothing = refl
   ...   | just i  rewrite H (fpc fs) i eq fs =
             flat-events-[] prog H n (flat-exec-instr i prog fs)
+
+  ----------------------------------------------------------------------
+  -- Events analogue of `exec-flat-steps`: peel a whole `FlatSteps` chain
+  -- off `flat-events`, accumulating each link's emitted events. The
+  -- emitted events of a chain are `chain-events` — the concatenation of
+  -- `event-of` at each link's start state. This lets the cata's
+  -- per-iteration reasoning REUSE the `FlatSteps` chains already built in
+  -- CataNatDescend/CataNatAscend (descend-iter-flat etc.) for the trace,
+  -- not just the state. For a SILENT chain (control/reg/load/build-layer
+  -- — no `instr-sigop`), `chain-events` reduces to `[]` definitionally,
+  -- so `flat-events` simply skips it to the chain's end state.
+  ----------------------------------------------------------------------
+  chain-events : ∀ {prog k fs fs'} → FlatSteps prog k fs fs' → List SigOpEvent
+  chain-events []                            = []
+  chain-events (_∷_ {fs = fs} {i = i} _ rest) = event-of i fs ++ chain-events rest
+
+  flat-events-steps : ∀ {prog k fs fs'} (steps : FlatSteps prog k fs fs')
+                    → ∀ b → flat-events (k + b) prog fs
+                              ≡ chain-events steps ++ flat-events b prog fs'
+  flat-events-steps []                              b = refl
+  flat-events-steps (_∷_ {fs = fs} {i = i} (h , f) rest) b
+    rewrite h | f =
+      trans (cong (event-of i fs ++_) (flat-events-steps rest b))
+            (sym (++-assoc (event-of i fs) (chain-events rest) (flat-events b _ _)))
