@@ -23,13 +23,15 @@
 module Once.CCC.Codegen.FlatStepLemmas where
 
 open import Data.Nat using (ℕ; zero; suc; _+_)
-open import Data.Bool using (false)
+open import Data.Bool using (false; true)
 open import Data.Maybe using (just)
 open import Data.Product using (_×_; _,_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
-open import Once.CCC.Machine.SMCore using (halted; AbstractInstr; AbstractTrace)
+open import Once.CCC.Machine.SMCore
+  using (halted; regs; readReg; Scratch; AbstractInstr; AbstractTrace;
+         instr-ctrl; c-label; c-jmp; c-branch-scratch-zero; c-branch-tag-zero)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 
 module FlatStepsAPI {FS : FrameSemantics} where
@@ -55,3 +57,51 @@ module FlatStepsAPI {FS : FrameSemantics} where
   exec-flat-steps []                           b = refl
   exec-flat-steps (_∷_ {k = k} {i = i} (h , f) rest) b =
     trans (exec-flat-step (k + b) _ _ i h f) (exec-flat-steps rest b)
+
+  ----------------------------------------------------------------------
+  -- Control-flow step-lemmas: name `flat-exec-instr`'s reductions for the
+  -- jumps/branches the cata loop uses. The descend/ascend `FlatSteps`
+  -- chains compose these (the straight instrs reduce definitionally via
+  -- `flat-step-straight`, so they need no lemma). All over OPAQUE `fs`;
+  -- the branch condition is read off the (opaque) register/tag.
+  ----------------------------------------------------------------------
+
+  -- label: pc passes through.
+  flat-label : ∀ (prog : AbstractTrace) (fs : FlatState) (n : ℕ)
+             → flat-exec-instr (instr-ctrl (c-label n)) prog fs
+                 ≡ record fs { fpc = suc (fpc fs) }
+  flat-label prog fs n = refl
+
+  -- unconditional jump: pc ← find-label target.
+  flat-jmp : ∀ (prog : AbstractTrace) (fs : FlatState) (n : ℕ)
+           → flat-exec-instr (instr-ctrl (c-jmp n)) prog fs
+               ≡ do-jump (find-label prog n) fs
+  flat-jmp prog fs n = refl
+
+  -- scratch-branch NOT taken (Scratch ≠ 0, the descend-continue path): fall through.
+  flat-scratch-branch-not : ∀ (prog : AbstractTrace) (fs : FlatState) (n : ℕ)
+    → sv-is-zero (readReg (regs (floc fs)) Scratch) ≡ false
+    → flat-exec-instr (instr-ctrl (c-branch-scratch-zero n)) prog fs
+        ≡ record fs { fpc = suc (fpc fs) }
+  flat-scratch-branch-not prog fs n cond rewrite cond = refl
+
+  -- scratch-branch taken (Scratch = 0, exit): pc ← find-label target.
+  flat-scratch-branch-yes : ∀ (prog : AbstractTrace) (fs : FlatState) (n : ℕ)
+    → sv-is-zero (readReg (regs (floc fs)) Scratch) ≡ true
+    → flat-exec-instr (instr-ctrl (c-branch-scratch-zero n)) prog fs
+        ≡ do-jump (find-label prog n) fs
+  flat-scratch-branch-yes prog fs n cond rewrite cond = refl
+
+  -- tag-branch NOT taken (tag ≠ 0, the inr/cons path): fall through.
+  flat-tag-branch-not : ∀ (prog : AbstractTrace) (fs : FlatState) (n : ℕ)
+    → tag-zf (flat-read-tag (floc fs)) ≡ false
+    → flat-exec-instr (instr-ctrl (c-branch-tag-zero n)) prog fs
+        ≡ record fs { fpc = suc (fpc fs) }
+  flat-tag-branch-not prog fs n cond rewrite cond = refl
+
+  -- tag-branch taken (tag = 0, the inl/base path): pc ← find-label target.
+  flat-tag-branch-yes : ∀ (prog : AbstractTrace) (fs : FlatState) (n : ℕ)
+    → tag-zf (flat-read-tag (floc fs)) ≡ true
+    → flat-exec-instr (instr-ctrl (c-branch-tag-zero n)) prog fs
+        ≡ do-jump (find-label prog n) fs
+  flat-tag-branch-yes prog fs n cond rewrite cond = refl
