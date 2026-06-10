@@ -89,6 +89,47 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
     readReg (regs s) Input1 ≡ SV-Ptr input-loc →
     MachineRefinesObsF ir x s alloc
 
+  -- `cata-correct` decomposed top-down into its two honest halves, each a
+  -- named postulate pointing at its discharge path. These are the SINGLE
+  -- pair of trust boundaries the cata collapses into (Plan 0.36 Phase 4
+  -- then deletes the old `ir-to-trace-correct-non-layer0` catchall and
+  -- `rec-scheme-semantic`).
   postulate
-    cata-correct : ∀ {F} (wf : WellFormedF F) {A} (alg : IR (⟦ F ⟧T A) A)
-                 → IRObsCorrectF (Cata wf alg)
+    -- TRACE half: the compiled cata loop emits exactly `obs`'s events, in
+    -- fold order. Discharge: μ-induction (`μS-ind`) over the events fold +
+    -- per-`instr-sigop` `respects-semM`, relating `exec-flat`'s loop
+    -- traversal to `obs`'s `cata-ev-alg` fold. (Pure-cata sub-case already
+    -- dischargeable: `flat-events-[]` + `pure-cata-emits-[]`, both `[]`.)
+    cata-traces-agree :
+      ∀ {F} (wf : WellFormedF F) {A} (alg : IR (⟦ F ⟧T A) A)
+      → ir-size (Cata wf alg) < program-bound
+      → (mIn : AllocMode) (x : ⟦ μ-type F ⟧) (input-loc : ValueLocation FS)
+        (s : LocState FS) (alloc : AllocState {FS})
+      → next-slot alloc ≡ 0
+      → ValidAtWF mIn alloc x input-loc s → BeforeFrontier alloc input-loc
+      → halted s ≡ false → readReg (regs s) Input1 ≡ SV-Ptr input-loc
+      → flat-events (suc (length (ir-to-trace (Cata wf alg)))) (ir-to-trace (Cata wf alg))
+                    (mkFlat s alloc 0)
+          ≡ proj₁ (obs program-bound (Cata wf alg) x)
+
+    -- VALUE half: the looping flat-semantic correctness (= the existing
+    -- `rec-scheme-semantic` trust boundary, restated over `exec-flat`).
+    cata-value-realized :
+      ∀ {F} (wf : WellFormedF F) {A} (alg : IR (⟦ F ⟧T A) A)
+      → ir-size (Cata wf alg) < program-bound
+      → (mIn : AllocMode) (x : ⟦ μ-type F ⟧) (input-loc : ValueLocation FS)
+        (s : LocState FS) (alloc : AllocState {FS})
+      → next-slot alloc ≡ 0
+      → ValidAtWF mIn alloc x input-loc s → BeforeFrontier alloc input-loc
+      → halted s ≡ false → readReg (regs s) Input1 ≡ SV-Ptr input-loc
+      → ∃[ mOut ] ∃[ result-loc ]
+          ValidAtWF mOut (falloc (flat-run (Cata wf alg) s alloc))
+            (eval (Cata wf alg) x) result-loc
+            (forced (floc (flat-run (Cata wf alg) s alloc)))
+
+  -- The single theorem, built from its two halves (no longer a bare postulate).
+  cata-correct : ∀ {F} (wf : WellFormedF F) {A} (alg : IR (⟦ F ⟧T A) A)
+               → IRObsCorrectF (Cata wf alg)
+  cata-correct wf alg ir<b mIn x il s alloc ns valid bf nh rdi =
+    record { traces-agree   = cata-traces-agree   wf alg ir<b mIn x il s alloc ns valid bf nh rdi
+           ; value-realized = cata-value-realized wf alg ir<b mIn x il s alloc ns valid bf nh rdi }
