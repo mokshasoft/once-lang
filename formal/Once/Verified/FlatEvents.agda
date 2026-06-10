@@ -32,6 +32,7 @@ open import Data.Nat using (ℕ; zero; suc)
 open import Data.Bool using (Bool; true; false)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.List using (List; []; _∷_; _++_)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.Type using (Int)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
@@ -79,3 +80,23 @@ module FlatEventTrace {FS : FrameSemantics} where
   flat-events-fetch nothing  _ _    fs = []
   flat-events-fetch (just i) n prog fs =
     event-of i fs ++ flat-events n prog (flat-exec-instr i prog fs)
+
+  ----------------------------------------------------------------------
+  -- Machine-side "no SigOp ⇒ empty trace": if every instruction the run
+  -- can fetch emits nothing (`event-of … ≡ []` — i.e. no `instr-sigop`),
+  -- the whole `flat-events` trace is `[]`. By fuel induction, mirroring
+  -- `flat-events`'s dispatch. This discharges `traces-agree` for a PURE
+  -- cata (with `pure-cata-emits-[]`: both sides `[]`) and is what
+  -- `pure-refines` consumes for straight-line IRs.
+  ----------------------------------------------------------------------
+
+  flat-events-[] : ∀ (prog : AbstractTrace)
+                 → (∀ pc i → fetch prog pc ≡ just i → ∀ fs → event-of i fs ≡ [])
+                 → ∀ (fuel : ℕ) (fs : FlatState) → flat-events fuel prog fs ≡ []
+  flat-events-[] prog H zero    fs = refl
+  flat-events-[] prog H (suc n) fs with halted (floc fs)
+  ... | true  = refl
+  ... | false with fetch prog (fpc fs) in eq
+  ...   | nothing = refl
+  ...   | just i  rewrite H (fpc fs) i eq fs =
+            flat-events-[] prog H n (flat-exec-instr i prog fs)
