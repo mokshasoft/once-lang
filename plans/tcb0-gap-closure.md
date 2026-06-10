@@ -39,6 +39,33 @@ or SN** — denotationally, axiom-free. So:
 That substitution is the core contribution this dev brings to OCP-0004, and it
 is what the phases below operationalise.
 
+### Resolution of the linchpin: soundness carries correctness (2026-06-10)
+Pushing harder, the critical path needs LESS than first stated. Separate the
+two claims a verified trace can carry:
+
+- **Claim A — semantic correctness:** "`R` means the same as `t₀`" (same
+  morphism). Each `_⟶_` rule IS a CCC equational axiom (definitional, per
+  OCP-0004's "the laws are the definitions"), so a verified trace is a
+  derivation in the CCC equational theory ⟹ `t₀ = R` in EVERY CCC. This needs
+  **soundness only** — NO confluence (one witnessing path suffices), NO SN
+  (the trace is finite, *observed*), NO uniqueness/injectivity, and (for
+  Claim A) not even `eval`/funext, since it is purely equational.
+- **Claim B — canonicity:** "`R` is THE form `⌜nf t₀⌝`." Strictly stronger,
+  and OPTIONAL. Obtained from `eval`-soundness + adequacy + **injectivity of
+  `eval` on ENCODINGS** (encodings are syntactically rigid; `Encoding` proves
+  it) — i.e. "unique normal forms" is replaced by encoding-injectivity, NEVER
+  by confluence/SN.
+
+The Thompson defense ("result = verified trace content") rests on **Claim A**,
+hence on soundness alone. So: **drop confluence, SN, AND uniqueness from the
+critical path.** The denotational/`--safe` work earns its keep in two other
+roles: (1) the `eval` model is the machine-checked **consistency witness** that
+keeps trace-equality NON-VACUOUS (without a non-degenerate model the rules
+could collapse and traces would prove nothing); (2) adequacy + encoding-
+injectivity are the **opt-in canonicity layer** (Claim B). This is strictly
+better-founded than "fixpoint ⟹ unique ⟹ correct," and is the concrete payoff
+of the evaluator route.
+
 ### A trust-axiom taxonomy we must keep straight
 - **`--safe` (no postulates)** = the *exploration* standard. Achieved for the
   correctness chain.
@@ -79,7 +106,7 @@ in place of re-reading every trace by hand.
 
 | # | Gap | From → To |
 |---|-----|-----------|
-| G1 | **Denotational → syntactic bridge.** Our correctness is about `eval` (morphism equality). TCB0 verifies `_⟶_` traces. | `Adequacy` (eval) + `EvalSound` (`t ⟶ u ⟹ eval t ≡ eval u`) + `encode` injectivity ⟹ "verified `⌜g⌝ ⟶* R`, `R` normal ⟹ `R = ⌜nf g⌝`". |
+| G1 | **Trace-soundness grounding (RESOLVED).** What does a verified trace prove? | **Claim A (correctness):** rules ARE CCC axioms ⟹ `t₀ = R` semantically — *soundness only*, no confluence/SN/uniqueness. **Consistency:** the `eval` model (`--safe`) witnesses non-triviality. **Claim B (canonical `= ⌜nf g⌝`, optional):** adequacy + encoding-injectivity. |
 | G2 | **Trace machinery absent.** No trace emission, no verifier `V`. | Build `CCC → (CCC,Trace)`; build `V`/micro-verifiers as BCCR terms; prove each has the fixpoint. |
 | G3 | **Human bootstrap absent.** No meta-trace format, no protocol. | Readable meta-trace renderer; the one-time human verification of `V`. |
 | G4 | **RF of the *real* normalizer is not axiom-free.** `RealNormalizerFixpoint` rests on `EvalSound`'s funext (and is currently not migrated to One/Kc). | Re-establish the self-fixpoint of `normalize`; decide whether funext stays (OK for TCB0) or is avoidable. |
@@ -101,23 +128,41 @@ in place of re-reading every trace by hand.
 - **Exit:** one clean, `--safe`, axiom-free statement of "the CCC normalizer
   computes `nf`," with the model expressed as plain category theory.
 
-### Phase 1 — The syntactic bridge (G1, G4)
-Connect the denotational result to the `_⟶_` reduction system the trace lives
-in. Pieces, all already partially present:
-- `EvalSound` (soundness of `_⟶_` w.r.t. `eval`) — **migrate to One/Kc**; keep
-  funext but LABEL it as a TCB0-legitimate axiom (not `--safe`). This is the
-  hinge lemma: a verified trace preserves denotation.
-- `encode` injectivity / canonicity (already in `Encoding.agda` + the formal
-  `…EvalCorrectness` canonicity) — assemble into: *a normal `R` denotationally
-  equal to `⌜nf g⌝` IS `⌜nf g⌝`*.
-- **Target theorem:** `∀ g. normalize ∘ ⌜g⌝ ⟶* ⌜nf g⌝` (syntactic), proved
-  from (adequacy + eval-soundness + injectivity) — NOT from confluence/SN.
-- Re-establish the **self-fixpoint** `normalize ∘ ⌜normalize⌝ ⟶* ⌜normalize⌝`
-  on the same axiom-free-modulo-funext footing (this is the runtime
-  self-consistency witness; recall it proves well-formedness, *not*
-  correctness — correctness is the ∀-g theorem above).
-- **Exit:** correctness and self-consistency both stated over `_⟶*_` (traces),
-  grounded in the evaluator route, with the residual axiom being funext only.
+### Phase 1 — The grounding (G1 RESOLVED, G4)
+Per the linchpin resolution, this splits into a CHEAP load-bearing core and an
+OPTIONAL canonicity layer.
+
+**1a. Correctness core (Claim A) — soundness only.**
+- State the `_⟶_` rules explicitly as instances of the CCC equational axioms
+  (`id-left`, `fst-pair`, `cata-β`, …). This is definitional; a verified trace
+  is then a CCC-derivation ⟹ `t₀ = R` in every CCC. NO confluence/SN/uniqueness,
+  and (for this claim) no `eval`/funext.
+- **Exit 1a:** "a verified trace ⟹ output is semantically equal to input,"
+  grounded in the CCC axioms alone — the Thompson-defense property.
+
+**1b. Consistency witness — the role of the model.**
+- Keep the `--safe` `eval` model as the machine-checked proof that this exact
+  calculus has a NON-DEGENERATE CCC model (so trace-equality is not vacuous).
+  Nothing new to prove — this is exactly what the current branch already gives;
+  just RECORD it as the consistency obligation it discharges.
+- **Exit 1b:** documented "the equational theory is consistent, `--safe`."
+
+**1c. Canonicity layer (Claim B) — OPTIONAL.**
+- `EvalSound` (soundness of `_⟶_` w.r.t. `eval`) — migrate to One/Kc; funext is
+  fine here (TCB0-math, only the canonicity bonus, not the core).
+- `encode` injectivity (in `Encoding.agda` + formal `…EvalCorrectness`
+  canonicity) ⟹ *a `R` with `eval R ≡ eval ⌜nf g⌝` and in the encoding image
+  IS `⌜nf g⌝`* — uniqueness via injectivity, NOT confluence.
+- **Target theorem (optional):** `∀ g. normalize ∘ ⌜g⌝ ⟶* ⌜nf g⌝`.
+
+**1d. Self-fixpoint (G4).** Re-establish `normalize ∘ ⌜normalize⌝ ⟶* ⌜normalize⌝`
+as the runtime self-consistency witness (well-formedness, OBSERVED — not a
+uniqueness theorem). Decide funext stays (fine) or restrict to its first-order
+fragment.
+
+- **Exit:** correctness rests on soundness (1a) + a consistency model (1b);
+  canonicity (1c) and self-consistency (1d) are layered on top. Confluence, SN,
+  and uniqueness are OUT of the dependency graph.
 
 ### Phase 2 — Trace machinery (G2)
 - **Trace-emitting normalize:** instrument the reducer to emit `[(rule,before,
@@ -167,8 +212,10 @@ in. Pieces, all already partially present:
 ```
 Phase 0  : removes Agda escape-hatches (NO_POSITIVITY/TERMINATING) + false confluence/SN
            from the *correctness* story → "math, modulo Agda+funext".
-Phase 1  : removes confluence/SN entirely from the trace-soundness argument
-           (evaluator route replaces them) → residual axiom = funext.
+Phase 1  : core correctness rests on rule-soundness ALONE (rules = CCC axioms);
+           confluence/SN/uniqueness leave the dependency graph; eval model = the
+           consistency witness; canonicity (optional) via injectivity, funext
+           only on that optional layer.
 Phase 2-3: removes Agda-the-checker → V + human-checked meta-trace.
 Phase 4  : removes "trust the CPU computed right" → read bytes / C3PU semantics.
 Phase 5  : Agda fully out of the TCB.
@@ -180,11 +227,14 @@ Final TCB: mathematics (incl. funext) + encoding faithfulness + human reasoning
 
 ## 5. Open questions / risks (be honest)
 
-1. **Denotational ↔ syntactic ↔ trace coherence (G1).** The cleanest open
-   question: does the trace-verifier's soundness need *only* eval-soundness +
-   injectivity (our axiom-free-modulo-funext kit), or does some step still
-   want a confluence-like uniqueness? Must be nailed before Phase 2 — it is the
-   linchpin that lets us drop confluence/SN.
+1. **Linchpin (G1) — RESOLVED (2026-06-10).** Trace-soundness for the
+   load-bearing claim (semantic correctness / Thompson defense) needs
+   **soundness only** — the rules are CCC axioms — with NO confluence, SN, or
+   uniqueness. The `eval` model is demoted to the consistency witness;
+   adequacy + encoding-injectivity are the optional canonicity layer. See the
+   "Resolution of the linchpin" section. Remaining sub-question: confirm the
+   first-order fragment is funext-free so even the canonicity layer can be
+   `--safe` if desired.
 2. **funext (G4).** It is fine for TCB0 (real math) but not `--safe`. Decide
    whether to (a) accept it as a labelled TCB0 axiom, or (b) avoid it by
    restricting the trace rules to the first-order fragment (no `curry-η`
@@ -203,9 +253,12 @@ Final TCB: mathematics (incl. funext) + encoding faithfulness + human reasoning
 
 ## 6. One-line summary
 
-We hold an **axiom-free, machine-checked proof that the CCC normalizer is
-functionally correct** — the hard mathematical core. TCB0 is reached by
-(1) re-expressing that as a statement about `_⟶_` traces grounded in the
-evaluator route (dropping confluence/SN), (2) building the tiny self-verifying
-`V` and its human-checked bootstrap, and (3) optionally closing the execution
-layer with the C3PU. Agda was the ladder; the meta-trace is the floor.
+TCB0's load-bearing trust is **rule-soundness** (the `_⟶_` rules ARE CCC
+axioms) — a verified trace is a CCC derivation, so the output is semantically
+correct, with **no confluence, SN, or uniqueness**. Our `--safe` evaluator-route
+work supplies the two supporting roles: the `eval` model is the machine-checked
+**consistency witness** (trace-equality is non-vacuous), and adequacy +
+encoding-injectivity are the **optional canonicity layer**. TCB0 is then reached
+by building the tiny self-verifying `V` and its human-checked bootstrap, and
+optionally the C3PU execution closure. Agda was the ladder; the meta-trace is
+the floor.
