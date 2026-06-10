@@ -68,11 +68,22 @@ module FlatMachine {FS : FrameSemantics} where
   -- find-label: scan the trace for `instr-ctrl (c-label target)`.
   -- Uses the library `_≡ᵇ_` (= the target `Semantics.find-label`'s
   -- comparison) so label resolution is 1-to-1 with x86-64.
+  -- Plan 0.36: dispatch label detection through `label-of?` (a `Maybe`,
+  -- not a `c-label` pattern in `fl-go`) so proofs that scan PAST an
+  -- abstract trace segment (e.g. the cata algebra's trace `at` in the
+  -- ascend phase) case on `label-of? x`'s 2-valued result, not
+  -- `AbstractInstr`'s ~30 constructors. Behavior-preserving: `label-of?`
+  -- is `just m` exactly on `instr-ctrl (c-label m)`, `nothing` elsewhere.
+  label-of? : AbstractInstr → Maybe ℕ
+  label-of? (instr-ctrl (c-label m)) = just m
+  label-of? _                        = nothing
+
   fl-go          : AbstractTrace → ℕ → ℕ → Maybe ℕ
   fl-label-match : Bool → AbstractTrace → ℕ → ℕ → Maybe ℕ
-  fl-go []                              _      _ = nothing
-  fl-go (instr-ctrl (c-label m) ∷ is)   target i = fl-label-match (m ≡ᵇ target) is target i
-  fl-go (_ ∷ is)                        target i = fl-go is target (suc i)
+  fl-go []       _      _ = nothing
+  fl-go (x ∷ is) target i with label-of? x
+  ... | just m  = fl-label-match (m ≡ᵇ target) is target i
+  ... | nothing = fl-go is target (suc i)
   fl-label-match true  _  _      i = just i
   fl-label-match false is target i = fl-go is target (suc i)
 
