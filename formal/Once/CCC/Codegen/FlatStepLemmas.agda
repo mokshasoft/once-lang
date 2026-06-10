@@ -25,6 +25,7 @@ module Once.CCC.Codegen.FlatStepLemmas where
 open import Data.Nat using (ℕ; zero; suc; _+_)
 open import Data.Bool using (false; true)
 open import Data.Maybe using (just)
+open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.Product using (_×_; _,_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans)
 
@@ -105,3 +106,24 @@ module FlatStepsAPI {FS : FrameSemantics} where
     → flat-exec-instr (instr-ctrl (c-branch-tag-zero n)) prog fs
         ≡ do-jump (find-label prog n) fs
   flat-tag-branch-yes prog fs n cond rewrite cond = refl
+
+  ----------------------------------------------------------------------
+  -- `fetch` distributes over `++` (the clean half of label/position
+  -- reasoning over a concatenated trace — `fetch` indexes the list, it
+  -- does NOT inspect instructions, so no AbstractInstr catchall). This
+  -- lets the ASCEND phase fetch its instructions relative to the
+  -- abstract base offset `length prefix` (prefix = descend+base+`at`,
+  -- `at` abstract): `fetch (prefix ++ ascend) (length prefix + j)`
+  -- reduces to `fetch ascend j` (concrete). Reusable; mirrors the
+  -- intent of the X86 `StepLemmas` fetch reasoning.
+  --
+  -- (The `find-label` distribution — its dual — DOES hit the catchall,
+  -- since `fl-go` inspects `c-label`; that's the ascend-only decision
+  -- deferred to the ascend build. The descend phase needs neither: its
+  -- labels sit in the concrete prefix, so `find-label`/`fetch` reduce
+  -- directly there.)
+  ----------------------------------------------------------------------
+  fetch-++ : ∀ (xs ys : AbstractTrace) (j : ℕ)
+           → fetch (xs ++ ys) (length xs + j) ≡ fetch ys j
+  fetch-++ []        ys j = refl
+  fetch-++ (i ∷ xs') ys j = fetch-++ xs' ys j
