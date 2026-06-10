@@ -17,14 +17,16 @@
 
 module Once.CCC.Codegen.CataConstWarmup where
 
-open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong₂)
 open import Data.Nat using (ℕ)
+open import Data.Bool using (Bool; true; false; _∨_)
+open import Data.Product using (_×_; _,_)
 
-open import Once.Type using (⟦_⟧T; Functor)
+open import Once.Type using (⟦_⟧T; Functor; K; Id; _⊕_; _⊗_; _+_; _*_)
 open import Once.Functor.Translate using (WellFormedF)
 open import Once.CCC.IR using (IR; Cata)
 open import Once.CCC.Codegen.IRToTrace
-  using (ir-to-trace-at-frontier; cata-strategy; strat-const)
+  using (ir-to-trace-at-frontier; cata-strategy; strat-const; has-id)
 
 -- The compiled `strat-const` cata's trace IS the algebra's trace (at any
 -- frontier `n`): `cata-dispatch strat-const` is the identity on `at`. So
@@ -36,3 +38,23 @@ cata-const-trace-eq : ∀ {F} (wf : WellFormedF F) {A} (alg : IR (⟦ F ⟧T A) 
                     → ir-to-trace-at-frontier n (Cata wf alg)
                         ≡ ir-to-trace-at-frontier n alg
 cata-const-trace-eq wf alg n sc rewrite sc = refl
+
+------------------------------------------------------------------------
+-- No-`Id` type equality: a functor with no recursive position
+-- interprets the SAME at any carrier (`X` never appears). This is the
+-- type-level half of "strat-const ⇒ the algebra's input `⟦F⟧T A` IS the
+-- destructured μ-layer `⟦F⟧T (μ-type F)`", which the value/obs
+-- reductions need to feed the layer to `alg`.
+------------------------------------------------------------------------
+
+∨≡false : ∀ {a b : Bool} → a ∨ b ≡ false → a ≡ false × b ≡ false
+∨≡false {false} eq = refl , eq
+∨≡false {true} ()
+
+⟦⟧T-no-id : ∀ F {X Y} → has-id F ≡ false → ⟦ F ⟧T X ≡ ⟦ F ⟧T Y
+⟦⟧T-no-id (K A)   _    = refl
+⟦⟧T-no-id Id      ()
+⟦⟧T-no-id (F ⊕ G) noid = let (nf , ng) = ∨≡false noid
+                          in cong₂ _+_ (⟦⟧T-no-id F nf) (⟦⟧T-no-id G ng)
+⟦⟧T-no-id (F ⊗ G) noid = let (nf , ng) = ∨≡false noid
+                          in cong₂ _*_ (⟦⟧T-no-id F nf) (⟦⟧T-no-id G ng)
