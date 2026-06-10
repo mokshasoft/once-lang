@@ -35,9 +35,10 @@ open import Relation.Binary.PropositionalEquality using (_≡_)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.Type using (Type; ⟦_⟧T; μ-type)
-open import Once.Functor.Translate using (WellFormedF)
+open import Once.Functor.Translate using (WellFormedF; WellFormedF-irrelevant)
 open import Once.Semantics.Machine using (⟦_⟧)
-open import Once.CCC.IR using (IR; AllocMode; Cata)
+open import Once.CCC.IR using (IR; AllocMode; Cata; out-μ)
+open import Relation.Binary.PropositionalEquality using (refl)
 open import Once.CCC.IR.Size using (ir-size)
 open import Once.CCC.Eval using (eval)
 open import Once.CCC.Machine.SMCore
@@ -53,8 +54,22 @@ open import Once.Verified.FlatEvents using (module FlatEventTrace)
 module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   open FlatMachine {FS}
   open FrontierInvariant {FS} using (BeforeFrontier)
-  open ClosureWellFormedDef {FS} program-bound using (ValidAtWF)
+  open ClosureWellFormedDef {FS} program-bound using (ValidAtWF; valid-μ-wf)
   open FlatEventTrace {FS} using (flat-events)
+
+  -- μ↔layer iso (the strat-const crux), general in F. A μ-value's
+  -- validity at `loc` IS its destructured layer's validity at the SAME
+  -- `loc` — `valid-μ-wf` (Plan 0.27 Option 3) bakes this in by carrying
+  -- the layer's own `ValidAtWF`. Inverting it yields the layer validity
+  -- the algebra consumes. (For a `strat-const` functor, `rec-count F = 0`
+  -- ⇒ `⟦F⟧T (μ-type F) ≡ ⟦F⟧T A`, so this layer IS `alg`'s input.)
+  -- `WellFormedF-irrelevant` bridges the lemma's `wf` and the proof's.
+  μ-layer-iso : ∀ {m F} (wf : WellFormedF F) (x : ⟦ μ-type F ⟧)
+                {alloc : AllocState {FS}} {loc : ValueLocation FS} {s : LocState FS}
+              → ValidAtWF m alloc {μ-type F} x loc s
+              → ValidAtWF m alloc {⟦ F ⟧T (μ-type F)} (eval (out-μ wf) x) loc s
+  μ-layer-iso wf x (valid-μ-wf wf′ .x layer-v)
+    rewrite WellFormedF-irrelevant wf wf′ = layer-v
 
   -- The flat run of `ir` from `s`/`alloc` at a given fuel (frontier 0).
   flat-run : ℕ → ∀ {A B} → IR A B → LocState FS → AllocState {FS} → FlatState
