@@ -75,6 +75,14 @@ events-F (F ⊕ G) p (inj₁ x) = events-F F p x
 events-F (F ⊕ G) p (inj₂ y) = events-F G p y
 events-F (F ⊗ G) p (x , y)  = events-F F p x ++ events-F G p y
 
+-- Writer algebra for the effectful-cata events fold. Lifted to top
+-- level (rather than a `where` inside `obs`) so the correctness proofs
+-- can name it; mutually recursive with `obs` (the `obs n alg` call is
+-- on the structurally-smaller algebra). Carrier pairs each folded child
+-- value with the events emitted producing it.
+cata-ev-alg : ∀ {F C} → ℕ → IR (⟦ F ⟧T C) C
+            → ⟦ F ⟧F (List SigOpEvent × ⟦ C ⟧) → List SigOpEvent × ⟦ C ⟧
+
 obs : ∀ {A B} → ℕ → IR A B → ⟦ A ⟧ → List SigOpEvent × Maybe ⟦ B ⟧
 obs n (SigOp si) x = (mkEvent si x ∷ [] , just (semM si x))
 obs n (g ∘ f) x with obs n f x
@@ -96,13 +104,13 @@ obs n (case f g) (inj₂ b) = obs n g b
 -- post-order (children's events first, then this layer's). For a
 -- `SigOp`-free `alg` every layer emits `[]`, recovering `([] , just …)`.
 obs n (Cata {F} wf {C} alg) x =
-  (proj₁ (sem-cata wf evAlg x) , just (eval (Cata wf alg) x))
-  where
-    evAlg : ⟦ F ⟧F (List SigOpEvent × ⟦ C ⟧) → List SigOpEvent × ⟦ C ⟧
-    evAlg fc = let z = coerce-functor⁻¹ F C (sem-fmap F proj₂ fc)
-               in (events-F F proj₁ fc ++ proj₁ (obs n alg z) , eval alg z)
+  (proj₁ (sem-cata wf (cata-ev-alg {F} {C} n alg) x) , just (eval (Cata wf alg) x))
 -- value-pure constructors (no SigOp of their own): no events.
 obs n c x = ([] , just (eval c x))
+
+cata-ev-alg {F} {C} n alg fc =
+  (events-F F proj₁ fc ++ proj₁ (obs n alg z) , eval alg z)
+  where z = coerce-functor⁻¹ F C (sem-fmap F proj₂ fc)
 
 ------------------------------------------------------------------------
 -- `EmitsNoSigOp ir` — the structural "pure coincidence" gate.
