@@ -22,18 +22,29 @@
 
 module Once.CCC.Codegen.FlatStepLemmas where
 
-open import Data.Nat using (ℕ; zero; suc; _+_)
+open import Data.Nat using (ℕ; zero; suc; _+_; _≡ᵇ_)
+open import Data.Nat.Properties using (+-suc; +-identityʳ)
 open import Data.Bool using (false; true)
-open import Data.Maybe using (just)
+open import Data.Maybe using (Maybe; just; nothing)
 open import Data.List using (List; []; _∷_; _++_; length)
+open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Data.Product using (_×_; _,_)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans)
+open import Data.Empty using (⊥-elim)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
+open import Relation.Nullary using (¬_)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore
   using (halted; regs; readReg; Scratch; AbstractInstr; AbstractTrace;
          instr-ctrl; c-label; c-jmp; c-branch-scratch-zero; c-branch-tag-zero)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
+
+-- `m ≢ n` ⇒ the boolean `m ≡ᵇ n` is `false` (induction on m,n, matching `≡ᵇ`).
+≢⇒≡ᵇfalse : ∀ (m n : ℕ) → ¬ (m ≡ n) → (m ≡ᵇ n) ≡ false
+≢⇒≡ᵇfalse zero    zero    ne = ⊥-elim (ne refl)
+≢⇒≡ᵇfalse zero    (suc n) ne = refl
+≢⇒≡ᵇfalse (suc m) zero    ne = refl
+≢⇒≡ᵇfalse (suc m) (suc n) ne = ≢⇒≡ᵇfalse m n (λ eq → ne (cong suc eq))
 
 module FlatStepsAPI {FS : FrameSemantics} where
   open FlatMachine {FS}
@@ -127,3 +138,25 @@ module FlatStepsAPI {FS : FrameSemantics} where
            → fetch (xs ++ ys) (length xs + j) ≡ fetch ys j
   fetch-++ []        ys j = refl
   fetch-++ (i ∷ xs') ys j = fetch-++ xs' ys j
+
+  ----------------------------------------------------------------------
+  -- `find-label`-skip: `fl-go` scans PAST a prefix `xs` containing no
+  -- matching label, continuing into `ys` with the accumulator advanced
+  -- by `length xs`. The refactor pays off here — we case on `label-of?
+  -- x`'s 2-valued result, NOT AbstractInstr's ~30 constructors, so the
+  -- abstract algebra trace `at` (in the ascend prefix) is handled
+  -- uniformly. (Hypothesis: every element's label, if any, differs from
+  -- the target — `All`.)
+  ----------------------------------------------------------------------
+  fl-go-skip : ∀ (xs ys : AbstractTrace) (target i : ℕ)
+             → All (λ x → ¬ (label-of? x ≡ just target)) xs
+             → fl-go (xs ++ ys) target i ≡ fl-go ys target (i + length xs)
+  fl-go-skip []        ys target i []          =
+          cong (fl-go ys target) (sym (+-identityʳ i))
+  fl-go-skip (x ∷ xs') ys target i (px ∷ pxs) with label-of? x
+  ... | just m  rewrite ≢⇒≡ᵇfalse m target (λ m≡t → px (cong just m≡t)) =
+          trans (fl-go-skip xs' ys target (suc i) pxs)
+                (cong (fl-go ys target) (sym (+-suc i (length xs'))))
+  ... | nothing =
+          trans (fl-go-skip xs' ys target (suc i) pxs)
+                (cong (fl-go ys target) (sym (+-suc i (length xs'))))
