@@ -103,6 +103,22 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
   -- ValidAtWF to discover the mode, and return the same mode.
   ------------------------------------------------------------------------
 
+  -- The sum-tag invariant the cata descend reads (`c-branch-tag-zero`).
+  -- HEAP-mode sums store the tag at `sum-loc` (run-inl/inr's `store-
+  -- indirect`); STACK-mode sums are reference-based and don't, so the
+  -- obligation is vacuous there. Mode-conditional so each producer
+  -- discharges what its representation actually guarantees.
+  SumTag : AllocMode → ℕ → LocState FS → ValueLocation FS → Set
+  SumTag Heap  t s loc = readLoc s loc ≡ just (SV-Tag t)
+  SumTag Stack t s loc = ⊤
+
+  -- Transport `SumTag` across a state change preserving the cell's read.
+  transport-SumTag : ∀ {m t s₁ s₂ loc}
+                   → readLoc s₂ loc ≡ readLoc s₁ loc
+                   → SumTag m t s₁ loc → SumTag m t s₂ loc
+  transport-SumTag {Heap}  eq tg = trans eq tg
+  transport-SumTag {Stack} eq tg = tt
+
   mutual
     --------------------------------------------------------------------
     -- ValidAtWF: Mode-indexed validity
@@ -175,6 +191,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
         {sum-loc payload-loc : ValueLocation FS} {s : LocState FS}
         {mA : AllocMode} →
         LocMatchesMode m sum-loc →
+        SumTag m 0 s sum-loc →                           -- inl tag (Heap: stored by run-inl)
         readLoc s (sucLoc sum-loc) ≡ just (SV-Ptr payload-loc) →
         BeforeFrontier alloc payload-loc →
         BeforeFrontier alloc (sucLoc sum-loc) →
@@ -186,6 +203,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
         {sum-loc payload-loc : ValueLocation FS} {s : LocState FS}
         {mB : AllocMode} →
         LocMatchesMode m sum-loc →
+        SumTag m 1 s sum-loc →                           -- inr tag (Heap: stored by run-inr)
         readLoc s (sucLoc sum-loc) ≡ just (SV-Ptr payload-loc) →
         BeforeFrontier alloc payload-loc →
         BeforeFrontier alloc (sucLoc sum-loc) →
@@ -928,7 +946,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
 
   decomposeInlWF : ∀ {m alloc A B} {a : ⟦ A ⟧} {loc s} →
     ValidAtWF m alloc {A + B} (sem-inl a) loc s → InlValidWF alloc {A} {B} (sem-inl a) loc s
-  decomposeInlWF {A = A} {B = B} (valid-inl-wf {_} {_} {_} {a} {_} {_} {pl} {_} {mA} lmm pp pb slb pv) = record
+  decomposeInlWF {A = A} {B = B} (valid-inl-wf {_} {_} {_} {a} {_} {_} {pl} {_} {mA} lmm _ pp pb slb pv) = record
     { a = a
     ; mA = mA
     ; payload-loc = pl
@@ -941,7 +959,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
 
   decomposeInrWF : ∀ {m alloc A B} {b : ⟦ B ⟧} {loc s} →
     ValidAtWF m alloc {A + B} (sem-inr b) loc s → InrValidWF alloc {A} {B} (sem-inr b) loc s
-  decomposeInrWF {A = A} {B = B} (valid-inr-wf {_} {_} {_} {b} {_} {_} {pl} {_} {mB} lmm pp pb slb pv) = record
+  decomposeInrWF {A = A} {B = B} (valid-inr-wf {_} {_} {_} {b} {_} {_} {pl} {_} {mB} lmm _ pp pb slb pv) = record
     { b = b
     ; mB = mB
     ; payload-loc = pl
@@ -1018,9 +1036,10 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
 
   -- inl (any mode)
   validityWF-mem-only {m} {alloc} {A + B} .(sem-inl a) loc s₁ s₂ stack-eq heap-eq
-    (valid-inl-wf {a = a} {payload-loc = pl} lmm pp pb slb pv) =
-    valid-inl-wf lmm pp' pb slb pv'
+    (valid-inl-wf {a = a} {payload-loc = pl} lmm tg pp pb slb pv) =
+    valid-inl-wf lmm tg' pp' pb slb pv'
     where
+      tg' = transport-SumTag (readLoc-stack-heap-eq s₂ s₁ loc stack-eq heap-eq) tg
       pp' : readLoc s₂ (sucLoc loc) ≡ just (SV-Ptr pl)
       pp' = trans (readLoc-stack-heap-eq s₂ s₁ (sucLoc loc) stack-eq heap-eq) pp
 
@@ -1028,9 +1047,10 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
 
   -- inr (any mode)
   validityWF-mem-only {m} {alloc} {A + B} .(sem-inr b) loc s₁ s₂ stack-eq heap-eq
-    (valid-inr-wf {b = b} {payload-loc = pl} lmm pp pb slb pv) =
-    valid-inr-wf lmm pp' pb slb pv'
+    (valid-inr-wf {b = b} {payload-loc = pl} lmm tg pp pb slb pv) =
+    valid-inr-wf lmm tg' pp' pb slb pv'
     where
+      tg' = transport-SumTag (readLoc-stack-heap-eq s₂ s₁ loc stack-eq heap-eq) tg
       pp' : readLoc s₂ (sucLoc loc) ≡ just (SV-Ptr pl)
       pp' = trans (readLoc-stack-heap-eq s₂ s₁ (sucLoc loc) stack-eq heap-eq) pp
 
@@ -1098,17 +1118,19 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
 
   -- inl (any mode)
   validityWF-write-at-frontier {m} {alloc} {A + B} .(sem-inl a) loc s val loc-before
-    (valid-inl-wf {a = a} {payload-loc = pl} lmm pp pb slb pv) =
-    valid-inl-wf lmm pp' pb slb pv'
+    (valid-inl-wf {a = a} {payload-loc = pl} lmm tg pp pb slb pv) =
+    valid-inl-wf lmm tg' pp' pb slb pv'
     where
+      tg' = transport-SumTag (write-at-frontier-preserves-before s alloc loc val loc-before) tg
       pp' = trans (write-at-frontier-preserves-before s alloc (sucLoc loc) val slb) pp
       pv' = validityWF-write-at-frontier a pl s val pb pv
 
   -- inr (any mode)
   validityWF-write-at-frontier {m} {alloc} {A + B} .(sem-inr b) loc s val loc-before
-    (valid-inr-wf {b = b} {payload-loc = pl} lmm pp pb slb pv) =
-    valid-inr-wf lmm pp' pb slb pv'
+    (valid-inr-wf {b = b} {payload-loc = pl} lmm tg pp pb slb pv) =
+    valid-inr-wf lmm tg' pp' pb slb pv'
     where
+      tg' = transport-SumTag (write-at-frontier-preserves-before s alloc loc val loc-before) tg
       pp' = trans (write-at-frontier-preserves-before s alloc (sucLoc loc) val slb) pp
       pv' = validityWF-write-at-frontier b pl s val pb pv
 
@@ -1164,17 +1186,19 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
 
   -- inl (any mode)
   validityWF-write-at-suc-frontier {m} {alloc} {A + B} .(sem-inl a) loc s val loc-before
-    (valid-inl-wf {a = a} {payload-loc = pl} lmm pp pb slb pv) =
-    valid-inl-wf lmm pp' pb slb pv'
+    (valid-inl-wf {a = a} {payload-loc = pl} lmm tg pp pb slb pv) =
+    valid-inl-wf lmm tg' pp' pb slb pv'
     where
+      tg' = transport-SumTag (write-at-suc-frontier-preserves-before s alloc loc val loc-before) tg
       pp' = trans (write-at-suc-frontier-preserves-before s alloc (sucLoc loc) val slb) pp
       pv' = validityWF-write-at-suc-frontier a pl s val pb pv
 
   -- inr (any mode)
   validityWF-write-at-suc-frontier {m} {alloc} {A + B} .(sem-inr b) loc s val loc-before
-    (valid-inr-wf {b = b} {payload-loc = pl} lmm pp pb slb pv) =
-    valid-inr-wf lmm pp' pb slb pv'
+    (valid-inr-wf {b = b} {payload-loc = pl} lmm tg pp pb slb pv) =
+    valid-inr-wf lmm tg' pp' pb slb pv'
     where
+      tg' = transport-SumTag (write-at-suc-frontier-preserves-before s alloc loc val loc-before) tg
       pp' = trans (write-at-suc-frontier-preserves-before s alloc (sucLoc loc) val slb) pp
       pv' = validityWF-write-at-suc-frontier b pl s val pb pv
 
@@ -1240,8 +1264,8 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
 
   -- inl (any mode)
   validityWF-alloc-advance {m} {alloc} {A + B} .(sem-inl a) loc s n
-    (valid-inl-wf {a = a} {payload-loc = pl} lmm pp pb slb pv) =
-    valid-inl-wf lmm pp pb' slb' pv'
+    (valid-inl-wf {a = a} {payload-loc = pl} lmm tg pp pb slb pv) =
+    valid-inl-wf lmm tg pp pb' slb' pv'
     where
       pb' = stack-alloc-advances alloc n pl pb
       slb' = stack-alloc-advances alloc n (sucLoc loc) slb
@@ -1249,8 +1273,8 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
 
   -- inr (any mode)
   validityWF-alloc-advance {m} {alloc} {A + B} .(sem-inr b) loc s n
-    (valid-inr-wf {b = b} {payload-loc = pl} lmm pp pb slb pv) =
-    valid-inr-wf lmm pp pb' slb' pv'
+    (valid-inr-wf {b = b} {payload-loc = pl} lmm tg pp pb slb pv) =
+    valid-inr-wf lmm tg pp pb' slb' pv'
     where
       pb' = stack-alloc-advances alloc n pl pb
       slb' = stack-alloc-advances alloc n (sucLoc loc) slb
@@ -1316,8 +1340,8 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
 
   -- inl (any mode)
   validityWF-frontier-advance {m} {alloc} {alloc'} {A + B} .(sem-inl a) loc s cf-eq slot-≤ heap-≤
-    (valid-inl-wf {a = a} {payload-loc = pl} lmm pp pb slb pv) =
-    valid-inl-wf lmm pp pb' slb' pv'
+    (valid-inl-wf {a = a} {payload-loc = pl} lmm tg pp pb slb pv) =
+    valid-inl-wf lmm tg pp pb' slb' pv'
     where
       pb' = frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤ pl pb
       slb' = frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤ (sucLoc loc) slb
@@ -1325,8 +1349,8 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
 
   -- inr (any mode)
   validityWF-frontier-advance {m} {alloc} {alloc'} {A + B} .(sem-inr b) loc s cf-eq slot-≤ heap-≤
-    (valid-inr-wf {b = b} {payload-loc = pl} lmm pp pb slb pv) =
-    valid-inr-wf lmm pp pb' slb' pv'
+    (valid-inr-wf {b = b} {payload-loc = pl} lmm tg pp pb slb pv) =
+    valid-inr-wf lmm tg pp pb' slb' pv'
     where
       pb' = frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤ pl pb
       slb' = frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤ (sucLoc loc) slb
@@ -1386,14 +1410,14 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
 
   -- inl (any mode)
   validityWF-with-bf-transfer {m} {A + B} .(sem-inl a) loc s a₁ a₂ bf
-    (valid-inl-wf {a = a} {payload-loc = pl} lmm pp pb slb pv) =
-    valid-inl-wf lmm pp (bf pl pb) (bf (sucLoc loc) slb)
+    (valid-inl-wf {a = a} {payload-loc = pl} lmm tg pp pb slb pv) =
+    valid-inl-wf lmm tg pp (bf pl pb) (bf (sucLoc loc) slb)
       (validityWF-with-bf-transfer a pl s a₁ a₂ bf pv)
 
   -- inr (any mode)
   validityWF-with-bf-transfer {m} {A + B} .(sem-inr b) loc s a₁ a₂ bf
-    (valid-inr-wf {b = b} {payload-loc = pl} lmm pp pb slb pv) =
-    valid-inr-wf lmm pp (bf pl pb) (bf (sucLoc loc) slb)
+    (valid-inr-wf {b = b} {payload-loc = pl} lmm tg pp pb slb pv) =
+    valid-inr-wf lmm tg pp (bf pl pb) (bf (sucLoc loc) slb)
       (validityWF-with-bf-transfer b pl s a₁ a₂ bf pv)
 
   -- OCP-0003: μ-type and ν-type cases - using proven lemmas from MuValidity
@@ -1457,17 +1481,19 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
 
   -- inl (any mode)
   validityWF-mem-preserved {m} {alloc} {A + B} .(sem-inl a) loc s₁ s₂ loc-before mem-eq
-    (valid-inl-wf {a = a} {payload-loc = pl} lmm pp pb slb pv) =
-    valid-inl-wf lmm pp' pb slb pv'
+    (valid-inl-wf {a = a} {payload-loc = pl} lmm tg pp pb slb pv) =
+    valid-inl-wf lmm tg' pp' pb slb pv'
     where
+      tg' = transport-SumTag (mem-eq loc loc-before) tg
       pp' = trans (mem-eq (sucLoc loc) slb) pp
       pv' = validityWF-mem-preserved a pl s₁ s₂ pb mem-eq pv
 
   -- inr (any mode)
   validityWF-mem-preserved {m} {alloc} {A + B} .(sem-inr b) loc s₁ s₂ loc-before mem-eq
-    (valid-inr-wf {b = b} {payload-loc = pl} lmm pp pb slb pv) =
-    valid-inr-wf lmm pp' pb slb pv'
+    (valid-inr-wf {b = b} {payload-loc = pl} lmm tg pp pb slb pv) =
+    valid-inr-wf lmm tg' pp' pb slb pv'
     where
+      tg' = transport-SumTag (mem-eq loc loc-before) tg
       pp' = trans (mem-eq (sucLoc loc) slb) pp
       pv' = validityWF-mem-preserved b pl s₁ s₂ pb mem-eq pv
 
@@ -1607,11 +1633,13 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     LocsInRegions ib fs ev
   LocsInRegions ib fs (valid-coerce-kind-wf cv) = LocsInRegions ib fs cv
   LocsInRegions {alloc = alloc} ib fs
-    (valid-inl-wf {sum-loc = sl} lmm pp pb slb pv) =
+    (valid-inl-wf {sum-loc = sl} lmm _ pp pb slb pv) =
+    LocInRegions alloc ib fs sl ×                  -- tag slot
     LocInRegions alloc ib fs (sucLoc sl) ×
     LocsInRegions ib fs pv
   LocsInRegions {alloc = alloc} ib fs
-    (valid-inr-wf {sum-loc = sl} lmm pp pb slb pv) =
+    (valid-inr-wf {sum-loc = sl} lmm _ pp pb slb pv) =
+    LocInRegions alloc ib fs sl ×                  -- tag slot
     LocInRegions alloc ib fs (sucLoc sl) ×
     LocsInRegions ib fs pv
   LocsInRegions ib fs (valid-μ-wf wf x μv) = ⊤    -- handled via μ-stub
@@ -1729,10 +1757,11 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
 
   validityWF-mem-preserved-in-regions-strong alloc .(sem-inl a) loc ib fs s₁ s₂
     loc-before ib≤fs fs≤next ir fr hr ar
-    (valid-inl-wf {a = a} {payload-loc = pl} lmm pp pb slb pv)
-    (sl-ir , plocs) =
-    valid-inl-wf lmm pp' pb slb pv'
+    (valid-inl-wf {a = a} {payload-loc = pl} lmm tg pp pb slb pv)
+    (tag-ir , sl-ir , plocs) =
+    valid-inl-wf lmm tg' pp' pb slb pv'
     where
+      tg'   = transport-SumTag (loc-mem-eq-from-regions ir fr hr ar tag-ir) tg
       sl-eq = loc-mem-eq-from-regions ir fr hr ar sl-ir
       pp'   = trans sl-eq pp
       pv'   = validityWF-mem-preserved-in-regions-strong alloc a pl ib fs s₁ s₂
@@ -1740,10 +1769,11 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
 
   validityWF-mem-preserved-in-regions-strong alloc .(sem-inr b) loc ib fs s₁ s₂
     loc-before ib≤fs fs≤next ir fr hr ar
-    (valid-inr-wf {b = b} {payload-loc = pl} lmm pp pb slb pv)
-    (sl-ir , plocs) =
-    valid-inr-wf lmm pp' pb slb pv'
+    (valid-inr-wf {b = b} {payload-loc = pl} lmm tg pp pb slb pv)
+    (tag-ir , sl-ir , plocs) =
+    valid-inr-wf lmm tg' pp' pb slb pv'
     where
+      tg'   = transport-SumTag (loc-mem-eq-from-regions ir fr hr ar tag-ir) tg
       sl-eq = loc-mem-eq-from-regions ir fr hr ar sl-ir
       pp'   = trans sl-eq pp
       pv'   = validityWF-mem-preserved-in-regions-strong alloc b pl ib fs s₁ s₂
