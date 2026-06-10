@@ -29,6 +29,7 @@ open import Data.Maybe using (Maybe; just; nothing; map)
 open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Data.Product using (_×_; _,_)
+open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Empty using (⊥-elim)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 open import Relation.Nullary using (¬_)
@@ -233,6 +234,39 @@ module FlatStepsAPI {FS : FrameSemantics} where
   -- Compose two step-chains (so a phase = pre ++ body ++ post reuses
   -- sub-chains like `descend-body-flat`). Induction on the first chain.
   ----------------------------------------------------------------------
+  ----------------------------------------------------------------------
+  -- REIFY a halting `exec-flat` run as a `FlatSteps` chain (the bridge
+  -- from `IRObsCorrectF`'s `exec-flat`/`flat-events` level to the
+  -- relocation machinery, which consumes `FlatSteps`). A run that halts
+  -- within fuel `n` decomposes into its instruction-steps (a `FlatSteps`
+  -- chain to a SETTLED state — halted, or nothing left to fetch) plus the
+  -- leftover fuel. `n ≡ steps-len + rest-fuel` lets downstream rewrite the
+  -- original fuel as `steps-len + b` to peel the chain off `flat-events`/
+  -- `exec-flat`. Settling by fetch-nothing is `at`'s case (a morphism
+  -- trace runs off its end); settling by `halted` covers explicit halts.
+  ----------------------------------------------------------------------
+  record RunReified (prog : AbstractTrace) (fs : FlatState) (n : ℕ) : Set where
+    constructor reified
+    field
+      steps-len  : ℕ
+      rest-fuel  : ℕ
+      settle     : FlatState
+      chain      : FlatSteps prog steps-len fs settle
+      settled    : (halted (floc settle) ≡ true) ⊎ (fetch prog (fpc settle) ≡ nothing)
+      fuel-split : n ≡ steps-len + rest-fuel
+
+  reify-run : ∀ (n : ℕ) (prog : AbstractTrace) (fs : FlatState)
+            → halted (floc (exec-flat n prog fs)) ≡ true
+            → RunReified prog fs n
+  reify-run zero    prog fs h = reified 0 0 fs [] (inj₁ h) refl
+  reify-run (suc n) prog fs h with halted (floc fs) in heq
+  ... | true  = reified 0 (suc n) fs [] (inj₁ heq) refl
+  ... | false with fetch prog (fpc fs) in feq
+  ...   | nothing = reified 0 (suc n) fs [] (inj₂ feq) refl
+  ...   | just i  with reify-run n prog (flat-exec-instr i prog fs) h
+  ...     | reified N r fs' ch st fsp =
+              reified (suc N) r fs' ((heq , feq) ∷ ch) st (cong suc fsp)
+
   FlatSteps-++ : ∀ {prog k₁ k₂ fs₁ fs₂ fs₃}
                → FlatSteps prog k₁ fs₁ fs₂ → FlatSteps prog k₂ fs₂ fs₃
                → FlatSteps prog (k₁ + k₂) fs₁ fs₃
