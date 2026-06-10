@@ -62,9 +62,36 @@ module CataNatDescend {FS : FrameSemantics} where
   reg-op-keeps-readLoc op s (AtStack f k) = refl
   reg-op-keeps-readLoc op s (AtDynamic hl) = refl
 
+  -- The descend body's resulting state: `input2-inc` (depth++) then
+  -- `load-indirect-suc` (Output := child) then `mov-to-input` (Input1 :=
+  -- child), all straight. Named so it can appear in result types.
+  body-result : AbstractTrace → FlatState → FlatState
+  body-result prog fs =
+    flat-exec-instr mov-to-input prog
+      (flat-exec-instr load-indirect-suc prog
+        (flat-exec-instr (instr-reg-op input2-inc) prog fs))
+
+  -- The whole 3-instr body preserves `halted` (given Input1 a pointer +
+  -- the child cell present, so `load-indirect-suc` doesn't halt). `mov-to
+  -- -input`/`input2-inc` are reg-ops (preserve `halted` definitionally);
+  -- the `load` goes through `load-suc-keeps-halted` at the post-`input2-
+  -- inc` state, where `ptr`/`child` (about `fs`) transfer (input2-inc
+  -- leaves Input1 + memory). Reused as `descend-post`'s `halted` premise.
+  body-keeps-halted : ∀ (prog : AbstractTrace) (fs : FlatState)
+                        (loc : ValueLocation FS) (v : StoredValue FS)
+    → sv-as-loc (readReg (regs (floc fs)) Input1) ≡ just loc
+    → readLoc (floc fs) (sucLoc loc) ≡ just v
+    → halted (floc (body-result prog fs)) ≡ halted (floc fs)
+  body-keeps-halted prog fs loc v ptr child =
+    load-suc-keeps-halted
+      (floc (flat-exec-instr (instr-reg-op input2-inc) prog fs))
+      (falloc (flat-exec-instr (instr-reg-op input2-inc) prog fs))
+      loc v ptr
+      (trans (reg-op-keeps-readLoc input2-inc (floc fs) (sucLoc loc)) child)
+
   -- The descend body's three straight steps, as a `FlatSteps`-of-3.
   -- Links 1,2 preserve `halted` definitionally (reg/mem updates);
-  -- link 3 (after `load`) goes through `load-suc-keeps-halted`. `ptr`/
+  -- link 3 (after `load`) goes through `body-keeps-halted`. `ptr`/
   -- `child` are about `fs`, but `input2-inc` preserves Input1 and memory,
   -- so they reduce to the post-`input2-inc` state's reads.
   descend-body-flat : ∀ (prog : AbstractTrace) (fs : FlatState)
@@ -75,19 +102,11 @@ module CataNatDescend {FS : FrameSemantics} where
     → fetch prog (fpc fs)             ≡ just (instr-reg-op input2-inc)
     → fetch prog (suc (fpc fs))       ≡ just load-indirect-suc
     → fetch prog (suc (suc (fpc fs))) ≡ just mov-to-input
-    → FlatSteps prog 3 fs
-        (flat-exec-instr mov-to-input prog
-          (flat-exec-instr load-indirect-suc prog
-            (flat-exec-instr (instr-reg-op input2-inc) prog fs)))
+    → FlatSteps prog 3 fs (body-result prog fs)
   descend-body-flat prog fs loc v hf ptr child f0 f1 f2 =
       (hf , f0)
     ∷ (hf , f1)
-    ∷ (trans (load-suc-keeps-halted
-                (floc (flat-exec-instr (instr-reg-op input2-inc) prog fs))
-                (falloc (flat-exec-instr (instr-reg-op input2-inc) prog fs))
-                loc v ptr
-                (trans (reg-op-keeps-readLoc input2-inc (floc fs) (sucLoc loc)) child)) hf
-      , f2)
+    ∷ (trans (body-keeps-halted prog fs loc v ptr child) hf , f2)
     ∷ []
 
   -- The descend iteration's PRE-control: the three control instructions a
@@ -142,3 +161,45 @@ module CataNatDescend {FS : FrameSemantics} where
         (flat-step1 hf fL  (flat-label prog (record fs { fpc = q-de }) ld-de))
         (flat-step1 hf fJ2 (trans (flat-jmp prog (record fs { fpc = suc q-de }) ld-top)
                                   (cong (λ m → do-jump m (record fs { fpc = suc q-de })) top-res))))
+
+  -- ONE continue (inr/cons) descend iteration: pre-control (3) ++ body
+  -- (3) ++ post-control (3) = 9 steps, from the loop head `fs` back to
+  -- the loop head (`fpc = q-top`, the resolved `ld-top`) with depth++ and
+  -- Input1 := child (the `body-result` state). The three pieces compose
+  -- via `FlatSteps-++`: end-of-pre = `record fs {fpc = +3}` = body's
+  -- start; end-of-body = `body-result …` = post's start (its `halted`
+  -- premise via `body-keeps-halted`). The result `record (body-result …)
+  -- {fpc = q-top}` is the next iteration's input — the fixpoint the
+  -- μ-induction over the cons-depth folds across.
+  descend-iter-flat : ∀ (prog : AbstractTrace) (fs : FlatState)
+                        (ld-top ld-end ld-inl ld-de q-de q-top : ℕ)
+                        (loc : ValueLocation FS) (v : StoredValue FS)
+    → halted (floc fs) ≡ false
+    → sv-is-zero (readReg (regs (floc fs)) Scratch) ≡ false
+    → tag-zf (flat-read-tag (floc fs)) ≡ false
+    → sv-as-loc (readReg (regs (floc fs)) Input1) ≡ just loc
+    → readLoc (floc fs) (sucLoc loc) ≡ just v
+    → fetch prog (fpc fs)                               ≡ just (instr-ctrl (c-label ld-top))
+    → fetch prog (suc (fpc fs))                         ≡ just (instr-ctrl (c-branch-scratch-zero ld-end))
+    → fetch prog (suc (suc (fpc fs)))                   ≡ just (instr-ctrl (c-branch-tag-zero ld-inl))
+    → fetch prog (suc (suc (suc (fpc fs))))             ≡ just (instr-reg-op input2-inc)
+    → fetch prog (suc (suc (suc (suc (fpc fs)))))       ≡ just load-indirect-suc
+    → fetch prog (suc (suc (suc (suc (suc (fpc fs)))))) ≡ just mov-to-input
+    → fetch prog (suc (suc (suc (suc (suc (suc (fpc fs))))))) ≡ just (instr-ctrl (c-jmp ld-de))
+    → find-label prog ld-de   ≡ just q-de
+    → fetch prog q-de         ≡ just (instr-ctrl (c-label ld-de))
+    → fetch prog (suc q-de)   ≡ just (instr-ctrl (c-jmp ld-top))
+    → find-label prog ld-top  ≡ just q-top
+    → FlatSteps prog 9 fs (record (body-result prog (record fs { fpc = suc (suc (suc (fpc fs))) })) { fpc = q-top })
+  descend-iter-flat prog fs ld-top ld-end ld-inl ld-de q-de q-top loc v
+                    hf scond tcond ptr child fL0 fB0 fB1 fi fl fm fJ1 de-res fLde fJ2 top-res =
+    FlatSteps-++
+      (descend-pre-flat prog fs ld-top ld-end ld-inl hf scond tcond fL0 fB0 fB1)
+      (FlatSteps-++
+        (descend-body-flat prog fsB loc v hf ptr child fi fl fm)
+        (descend-post-flat prog (body-result prog fsB) ld-de ld-top q-de q-top
+          (trans (body-keeps-halted prog fsB loc v ptr child) hf)
+          fJ1 de-res fLde fJ2 top-res))
+    where
+      fsB : FlatState
+      fsB = record fs { fpc = suc (suc (suc (fpc fs))) }
