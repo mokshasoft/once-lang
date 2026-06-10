@@ -35,7 +35,17 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore
   using (halted; regs; readReg; Scratch; AbstractInstr; AbstractTrace;
-         instr-ctrl; c-label; c-jmp; c-branch-scratch-zero; c-branch-tag-zero)
+         instr-ctrl; c-label; c-jmp; c-branch-scratch-zero; c-branch-tag-zero;
+         -- the non-ctrl constructors (each relocates by `refl` via the
+         -- `flat-step-straight` catch-all) — enumerated for `instr-reloc`.
+         mov-to-output; mov-to-input; mov-output-to-input2; mov-input2-to-output;
+         load-indirect; load-indirect-suc; load-from-slot; store-at-slot;
+         store-indirect; store-indirect-suc; lea-slot; restore-input;
+         instr-alloc-stack; instr-dealloc-stack; instr-reclaim-to; instr-push-frame;
+         instr-pop-frame; instr-call-closure; worklist-init; worklist-push;
+         worklist-pop; worklist-check; instr-sigop; instr-load-const;
+         instr-load-code-addr; instr-save-closure-reg; instr-load-tag-lit;
+         instr-case-on-tag; instr-alloc-heap; instr-loop; instr-reg-op; lea-indexed)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 
 module CataAtRelocate {FS : FrameSemantics} where
@@ -98,3 +108,53 @@ module CataAtRelocate {FS : FrameSemantics} where
     with tag-zf (flat-read-tag (floc fs))
   ... | true  = flat-relocate-jmp prog seg k fs n lr
   ... | false = refl
+
+  -- Relocation for an ARBITRARY instruction: dispatch the 4 control forms
+  -- to the per-class lemmas (carrying the target's relocation fact `lr n`),
+  -- and every non-ctrl instruction to `refl` (`flat-exec-instr` falls
+  -- through to `flat-step-straight`, which `shift-pc` commutes with
+  -- definitionally — same enumeration style as `straight-trace'` and the
+  -- X86 `FlatComposition`). `lr` is the GLOBAL label-relocation fact
+  -- (every label of `seg` resolves offset by `k` in `prog`), discharged at
+  -- the concrete-program assembly via `find-label-distrib`.
+  instr-reloc : ∀ (prog seg : AbstractTrace) (k : ℕ) (fs : FlatState) (i : AbstractInstr)
+              → (∀ n → find-label prog n ≡ map (_+ k) (find-label seg n))
+              → flat-exec-instr i prog (shift-pc k fs) ≡ shift-pc k (flat-exec-instr i seg fs)
+  -- control forms → the per-class relocation lemmas
+  instr-reloc prog seg k fs (instr-ctrl (c-label n))               lr = flat-relocate-label          prog seg k fs n
+  instr-reloc prog seg k fs (instr-ctrl (c-jmp n))                 lr = flat-relocate-jmp            prog seg k fs n (lr n)
+  instr-reloc prog seg k fs (instr-ctrl (c-branch-scratch-zero n)) lr = flat-relocate-branch-scratch prog seg k fs n (lr n)
+  instr-reloc prog seg k fs (instr-ctrl (c-branch-tag-zero n))     lr = flat-relocate-branch-tag     prog seg k fs n (lr n)
+  -- every non-ctrl instruction relocates by `refl`
+  instr-reloc prog seg k fs mov-to-output           lr = refl
+  instr-reloc prog seg k fs mov-to-input            lr = refl
+  instr-reloc prog seg k fs mov-output-to-input2    lr = refl
+  instr-reloc prog seg k fs mov-input2-to-output    lr = refl
+  instr-reloc prog seg k fs load-indirect           lr = refl
+  instr-reloc prog seg k fs load-indirect-suc       lr = refl
+  instr-reloc prog seg k fs (load-from-slot _)      lr = refl
+  instr-reloc prog seg k fs (store-at-slot _)       lr = refl
+  instr-reloc prog seg k fs store-indirect          lr = refl
+  instr-reloc prog seg k fs store-indirect-suc      lr = refl
+  instr-reloc prog seg k fs (lea-slot _)            lr = refl
+  instr-reloc prog seg k fs (restore-input _)       lr = refl
+  instr-reloc prog seg k fs (instr-alloc-stack _)   lr = refl
+  instr-reloc prog seg k fs (instr-dealloc-stack _) lr = refl
+  instr-reloc prog seg k fs (instr-reclaim-to _)    lr = refl
+  instr-reloc prog seg k fs (instr-push-frame _)    lr = refl
+  instr-reloc prog seg k fs instr-pop-frame         lr = refl
+  instr-reloc prog seg k fs instr-call-closure      lr = refl
+  instr-reloc prog seg k fs (worklist-init _)       lr = refl
+  instr-reloc prog seg k fs (worklist-push _)       lr = refl
+  instr-reloc prog seg k fs (worklist-pop _)        lr = refl
+  instr-reloc prog seg k fs (worklist-check _)      lr = refl
+  instr-reloc prog seg k fs (instr-sigop _)         lr = refl
+  instr-reloc prog seg k fs (instr-load-const _ _)  lr = refl
+  instr-reloc prog seg k fs (instr-load-code-addr _) lr = refl
+  instr-reloc prog seg k fs instr-save-closure-reg  lr = refl
+  instr-reloc prog seg k fs (instr-load-tag-lit _)  lr = refl
+  instr-reloc prog seg k fs (instr-case-on-tag _ _) lr = refl
+  instr-reloc prog seg k fs (instr-alloc-heap _)    lr = refl
+  instr-reloc prog seg k fs (instr-loop _)          lr = refl
+  instr-reloc prog seg k fs (instr-reg-op _)        lr = refl
+  instr-reloc prog seg k fs (lea-indexed _)         lr = refl
