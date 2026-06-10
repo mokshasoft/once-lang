@@ -27,10 +27,11 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore
-  using (LocState; AllocState; halted; regs; readReg; Input1; Output;
+  using (LocState; AllocState; halted; regs; readReg; Input1; Output; Scratch;
          sv-as-loc; sucLoc; StoredValue; ValueLocation; AtStack; AtDynamic;
          RegOp; exec-reg-op; AbstractTrace;
          instr-reg-op; input2-inc; load-indirect-suc; mov-to-input;
+         instr-ctrl; c-label; c-branch-scratch-zero; c-branch-tag-zero;
          module AbstractExec; module MemOps)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
@@ -88,3 +89,29 @@ module CataNatDescend {FS : FrameSemantics} where
                 (trans (reg-op-keeps-readLoc input2-inc (floc fs) (sucLoc loc)) child)) hf
       , f2)
     ∷ []
+
+  -- The descend iteration's PRE-control: the three control instructions a
+  -- continue (non-base, non-exhausted) step runs before the body —
+  -- `c-label ld-top` (loop head), `c-branch-scratch-zero ld-end` (NOT
+  -- taken: depth ≠ 0), `c-branch-tag-zero ld-base` (NOT taken: tag ≠ 0,
+  -- i.e. an `inr`/cons node). All control instrs touch only `fpc`, so the
+  -- state stays `fs` with the pc advanced 3×, and the branch conditions
+  -- (over the VARIABLE `floc fs`) transfer to each intermediate state
+  -- definitionally. Each step names its clean result via the matching
+  -- `FlatStepsAPI` control-flow lemma (`flat-step1`) — no per-site
+  -- `rewrite`/`subst` fights with the stuck `do-branch` reductions.
+  descend-pre-flat : ∀ (prog : AbstractTrace) (fs : FlatState)
+                       (ld-top ld-end ld-base : ℕ)
+    → halted (floc fs) ≡ false
+    → sv-is-zero (readReg (regs (floc fs)) Scratch) ≡ false
+    → tag-zf (flat-read-tag (floc fs)) ≡ false
+    → fetch prog (fpc fs)                   ≡ just (instr-ctrl (c-label ld-top))
+    → fetch prog (suc (fpc fs))             ≡ just (instr-ctrl (c-branch-scratch-zero ld-end))
+    → fetch prog (suc (suc (fpc fs)))       ≡ just (instr-ctrl (c-branch-tag-zero ld-base))
+    → FlatSteps prog 3 fs (record fs { fpc = suc (suc (suc (fpc fs))) })
+  descend-pre-flat prog fs ld-top ld-end ld-base hf scond tcond fL fB1 fB2 =
+    FlatSteps-++
+      (flat-step1 hf  fL  (flat-label                prog fs ld-top))
+      (FlatSteps-++
+        (flat-step1 hf fB1 (flat-scratch-branch-not  prog _  ld-end  scond))
+        (flat-step1 hf fB2 (flat-tag-branch-not      prog _  ld-base tcond)))
