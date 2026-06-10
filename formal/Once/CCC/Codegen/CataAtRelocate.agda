@@ -31,10 +31,12 @@ open import Data.Nat using (ℕ; suc; _+_)
 open import Data.Bool using (true; false)
 open import Data.Maybe using (map; just; nothing)
 open import Data.Product using (_,_)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst)
+open import Data.List using (_++_)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
+open import Once.Verified.FlatEvents using (module FlatEventTrace)
 open import Once.CCC.Machine.SMCore
   using (halted; regs; readReg; Scratch; AbstractInstr; AbstractTrace;
          instr-ctrl; c-label; c-jmp; c-branch-scratch-zero; c-branch-tag-zero;
@@ -53,6 +55,7 @@ open import Once.CCC.Machine.Flat using (module FlatMachine)
 module CataAtRelocate {FS : FrameSemantics} where
   open FlatMachine {FS}
   open FlatStepsAPI {FS}
+  open FlatEventTrace {FS}
 
   -- The relocation invariant: same state, pc shifted RIGHT by `k`.
   shift-pc : ℕ → FlatState → FlatState
@@ -182,3 +185,22 @@ module CataAtRelocate {FS : FrameSemantics} where
       ∷ subst (λ s → FlatSteps prog _ s (shift-pc k _))
               (sym (instr-reloc prog seg k fs₀ i lr))
               (relocate-steps prog seg k lr fe rest)
+
+  -- The relocated chain emits exactly the same SigOp events as the
+  -- standalone one: `event-of` reads the instruction + `Input1` (off
+  -- `floc`), and `shift-pc` preserves `floc`, so each link's events are
+  -- definitionally unchanged; the tail's start-state `subst` is invisible
+  -- to `chain-events` (`chain-events-subst-start`). This is the
+  -- trace-side of relocation — what carries `at`'s `traces-agree` from
+  -- standalone into the embedded cata run.
+  chain-events-relocate : ∀ {N : ℕ} {fs₀ fs₁ : FlatState} (prog seg : AbstractTrace) (k : ℕ)
+                            (lr : ∀ n → find-label prog n ≡ map (_+ k) (find-label seg n))
+                            (fe : ∀ pc i → fetch seg pc ≡ just i → fetch prog (pc + k) ≡ just i)
+                            (steps : FlatSteps seg N fs₀ fs₁)
+                        → chain-events (relocate-steps prog seg k lr fe steps) ≡ chain-events steps
+  chain-events-relocate prog seg k lr fe []                                = refl
+  chain-events-relocate prog seg k lr fe (_∷_ {fs = fs₀} {i = i} (h , f) rest) =
+    cong (event-of i (shift-pc k fs₀) ++_)
+         (trans (chain-events-subst-start (sym (instr-reloc prog seg k fs₀ i lr))
+                                          (relocate-steps prog seg k lr fe rest))
+                (chain-events-relocate prog seg k lr fe rest))

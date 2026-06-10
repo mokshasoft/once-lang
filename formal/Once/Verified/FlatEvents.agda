@@ -66,10 +66,18 @@ module FlatEventTrace {FS : FrameSemantics} where
   ... | just _  = mk-event (name si) (decode-ℕ sv)
   ... | nothing = mk-event (name si) nothing
 
+  -- Events emitted by executing one instruction depend on the
+  -- instruction + the LOCATION state only (the `Input1` register).
+  -- Factored through `floc` so any transform preserving `floc` (e.g. the
+  -- relocation `shift-pc`, which only bumps the pc) leaves events
+  -- definitionally unchanged — no per-constructor enumeration needed.
+  ev-of-loc : AbstractInstr → LocState FS → List SigOpEvent
+  ev-of-loc (instr-sigop si) loc = machine-event si (readReg (regs loc) Input1) ∷ []
+  ev-of-loc _                _   = []
+
   -- Events emitted by executing one instruction from state `fs`.
   event-of : AbstractInstr → FlatState → List SigOpEvent
-  event-of (instr-sigop si) fs = machine-event si (readReg (regs (floc fs)) Input1) ∷ []
-  event-of _                _  = []
+  event-of i fs = ev-of-loc i (floc fs)
 
   -- The SigOp-event trace, mirroring `exec-flat`'s fuel/fetch dispatch.
   flat-events       : ℕ → AbstractTrace → FlatState → List SigOpEvent
@@ -153,3 +161,9 @@ module FlatEventTrace {FS : FrameSemantics} where
   chain-events-subst : ∀ {prog k fs fs₁ fs₂} (eq : fs₁ ≡ fs₂) (stp : FlatSteps prog k fs fs₁)
                      → chain-events (subst (FlatSteps prog k fs) eq stp) ≡ chain-events stp
   chain-events-subst refl stp = refl
+
+  -- Invariant under transport of the START state too (the relocation's
+  -- `subst` realigns the tail's start state, not its end). Same `refl`.
+  chain-events-subst-start : ∀ {prog k fs₁ fs₂ fs'} (eq : fs₁ ≡ fs₂) (stp : FlatSteps prog k fs₁ fs')
+                           → chain-events (subst (λ s → FlatSteps prog k s fs') eq stp) ≡ chain-events stp
+  chain-events-subst-start refl stp = refl
