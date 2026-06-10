@@ -30,9 +30,11 @@ module Once.CCC.Codegen.CataAtRelocate where
 open import Data.Nat using (ℕ; suc; _+_)
 open import Data.Bool using (true; false)
 open import Data.Maybe using (map; just; nothing)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+open import Data.Product using (_,_)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
+open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 open import Once.CCC.Machine.SMCore
   using (halted; regs; readReg; Scratch; AbstractInstr; AbstractTrace;
          instr-ctrl; c-label; c-jmp; c-branch-scratch-zero; c-branch-tag-zero;
@@ -50,6 +52,7 @@ open import Once.CCC.Machine.Flat using (module FlatMachine)
 
 module CataAtRelocate {FS : FrameSemantics} where
   open FlatMachine {FS}
+  open FlatStepsAPI {FS}
 
   -- The relocation invariant: same state, pc shifted RIGHT by `k`.
   shift-pc : ℕ → FlatState → FlatState
@@ -158,3 +161,24 @@ module CataAtRelocate {FS : FrameSemantics} where
   instr-reloc prog seg k fs (instr-loop _)          lr = refl
   instr-reloc prog seg k fs (instr-reg-op _)        lr = refl
   instr-reloc prog seg k fs (lea-indexed _)         lr = refl
+
+  -- RELOCATE A WHOLE STEP-CHAIN: a standalone run of `seg` (a `FlatSteps`
+  -- chain from `fs₀` to `fs₁`) lifts to a run of the big program `prog`
+  -- from the offset-shifted states, given the two embedding facts —
+  -- labels relocate (`lr`, for jumps/branches) and fetch relocates
+  -- (`fe`, every fetched instruction sits `k` higher in `prog`). Each link
+  -- relocates by `instr-reloc`; the `subst` realigns the chain tail's start
+  -- state (`flat-exec-instr i prog (shift-pc k fs₀)` ≡ the shifted
+  -- standalone next state). `halted` transfers (shift-pc preserves `floc`),
+  -- `fetch` via `fe` (`fpc (shift-pc k fs₀) = fpc fs₀ + k`).
+  relocate-steps : ∀ {N : ℕ} {fs₀ fs₁ : FlatState} (prog seg : AbstractTrace) (k : ℕ)
+                 → (∀ n → find-label prog n ≡ map (_+ k) (find-label seg n))
+                 → (∀ pc i → fetch seg pc ≡ just i → fetch prog (pc + k) ≡ just i)
+                 → FlatSteps seg N fs₀ fs₁
+                 → FlatSteps prog N (shift-pc k fs₀) (shift-pc k fs₁)
+  relocate-steps prog seg k lr fe []                                = []
+  relocate-steps prog seg k lr fe (_∷_ {fs = fs₀} {i = i} (h , f) rest) =
+    (h , fe (fpc fs₀) i f)
+      ∷ subst (λ s → FlatSteps prog _ s (shift-pc k _))
+              (sym (instr-reloc prog seg k fs₀ i lr))
+              (relocate-steps prog seg k lr fe rest)
