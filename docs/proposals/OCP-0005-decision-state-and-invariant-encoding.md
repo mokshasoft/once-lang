@@ -123,6 +123,48 @@ worth pinning. Seed the catalogue with the one this work surfaced:
 > Enforcement candidate: a lint over elaborator functions referenced by
 > Completeness, flagging `with <decidable> in` without a corresponding view.
 
+Two more surfaced by the Plan 0.36 cata-correctness work:
+
+> **The "name must match the type's strongest claim" rule — encode the headline
+> guarantee, demote lemmas to fields.** A correctness predicate must be *typed*
+> as the guarantee its *name* asserts; supporting lemmas become **fields** of
+> that type, so the theorem cannot be inhabited by proving only a lemma. A
+> program is `Eff Unit Unit`, so its only observable is the SigOp trace —
+> trace-correctness is *the* correctness and value-correctness (`ValidAtWF`) is
+> its *engine*, not a peer. Encoded as `record MachineRefinesObs` with
+> `traces-agree` (the mandatory trace obligation) + `value-realized` (`ValidAtWF`
+> as a field). **Anti-pattern it kills:** `IRTraceCorrect` was *named* for the
+> trace but *typed* as `ValidAtWF` — nothing forced name and type to agree, and
+> Layer-0 purity (trace = f(value)) let the gap hide indefinitely; a names-only
+> trace would even "verify" a program that exits with the *wrong* code.
+> Mechanism: type-level (tier 1) + proof obligation (tier 2). Lint candidate: a
+> predicate named `…Correct`/`…Trace…` whose conclusion omits the named
+> observable.
+
+> **The gated-shortcut rule — make a side condition an explicit predicate that
+> gates the shortcut.** When a proof step is valid only under a side condition,
+> encode the condition as a predicate the shortcut *requires*, rather than
+> relying on an implicit coincidence. `EmitsNoSigOp ir` gates the value-only
+> `pure-refines`: an effectful constructor (a `Cata` whose algebra contains a
+> `SigOp`) *fails* the predicate, so the type-checker refuses the shortcut and
+> forces the real trace proof. Anti-pattern: "these constructors all happen to
+> emit nothing" relied on silently, which breaks the moment a new constructor
+> violates it. Mechanism: type-level / structural.
+
+> **The top-down named-postulate rule — state the obligation first, paper gaps
+> with *named* postulates, discharge downward.** Never reconnoiter internals to
+> decide whether you may state the top — that is middle-out and hides the gap.
+> A named postulate keeps the tree green while the structure is locked
+> (scaffold-first) and makes "what's still unproven" a grep-able list. It also
+> lets the type-checker reveal the *real shape* of each discharge: stating
+> `cata-correct : IRObsCorrect (Cata …)` and merely *thinking about* discharging
+> `emitted-events` immediately surfaced that the cata's machine must be the
+> looping `exec-flat`, not the straight-line `exec-trace` the scaffold had
+> inherited — *before* any `flat-events` code was written against the wrong
+> machine. The dual of the with-opacity rule: both make the proof *proceed
+> through* explicit structure instead of opaque guesses. Mechanism: process +
+> proof obligation.
+
 ---
 
 ## Impact
