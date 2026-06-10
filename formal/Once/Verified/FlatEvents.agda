@@ -32,9 +32,10 @@ open import Data.Nat using (ℕ; zero; suc)
 open import Data.Bool using (Bool; true; false)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.List using (List; []; _∷_; _++_)
-open import Data.List.Properties using (++-assoc)
+open import Data.List.Properties using (++-assoc; ++-identityʳ)
 open import Data.Nat using (_+_)
 open import Data.Product using (_,_)
+open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 
 open import Once.Type using (Int)
@@ -167,3 +168,28 @@ module FlatEventTrace {FS : FrameSemantics} where
   chain-events-subst-start : ∀ {prog k fs₁ fs₂ fs'} (eq : fs₁ ≡ fs₂) (stp : FlatSteps prog k fs₁ fs')
                            → chain-events (subst (λ s → FlatSteps prog k s fs') eq stp) ≡ chain-events stp
   chain-events-subst-start refl stp = refl
+
+  -- A SETTLED state (halted, or nothing to fetch) emits no events for any
+  -- fuel — the run is over. (`flat-events`'s first dispatch returns `[]`.)
+  flat-events-settled : ∀ (prog : AbstractTrace) (fs : FlatState) (r : ℕ)
+                      → (halted (floc fs) ≡ true) ⊎ (fetch prog (fpc fs) ≡ nothing)
+                      → flat-events r prog fs ≡ []
+  flat-events-settled prog fs zero    _        = refl
+  flat-events-settled prog fs (suc r) (inj₁ h) rewrite h = refl
+  flat-events-settled prog fs (suc r) (inj₂ f) with halted (floc fs)
+  ... | true  = refl
+  ... | false rewrite f = refl
+
+  -- The trace of a HALTING run equals the events of its reified chain:
+  -- peel the chain off the fuel (`flat-events-steps`, via `fuel-split`),
+  -- and the settled tail contributes nothing (`flat-events-settled`). This
+  -- is what lets `at`'s standalone `traces-agree` (stated over `flat-
+  -- events`) feed the chain-level relocation (`chain-events-relocate`).
+  flat-events-reify : ∀ (n : ℕ) (prog : AbstractTrace) (fs : FlatState)
+                        (rr : RunReified prog fs n)
+                    → flat-events n prog fs ≡ chain-events (RunReified.chain rr)
+  flat-events-reify n prog fs (reified N r fs' ch st fsp) =
+    trans (cong (λ m → flat-events m prog fs) fsp)
+          (trans (flat-events-steps ch r)
+                 (trans (cong (chain-events ch ++_) (flat-events-settled prog fs' r st))
+                        (++-identityʳ (chain-events ch))))
