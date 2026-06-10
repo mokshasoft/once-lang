@@ -22,7 +22,7 @@
 
 module Once.CCC.Codegen.FlatStepLemmas where
 
-open import Data.Nat using (ℕ; zero; suc; _+_; _≡ᵇ_)
+open import Data.Nat using (ℕ; zero; suc; _+_; _*_; _≡ᵇ_)
 open import Data.Nat.Properties using (+-suc; +-identityʳ)
 open import Data.Bool using (Bool; false; true)
 open import Data.Maybe using (Maybe; just; nothing; map)
@@ -272,3 +272,20 @@ module FlatStepsAPI {FS : FrameSemantics} where
                → FlatSteps prog (k₁ + k₂) fs₁ fs₃
   FlatSteps-++ []       ys = ys
   FlatSteps-++ (x ∷ xs) ys = x ∷ FlatSteps-++ xs ys
+
+  ----------------------------------------------------------------------
+  -- Chain a UNIFORM FAMILY of `k`-step blocks indexed by depth: given a
+  -- block from state `st d` to `st (suc d)` at every `d`, compose `n` of
+  -- them into one `k*n`-step chain from `st 0` to `st n`. Induction on `n`.
+  -- This is the inductive backbone of the cata descend/ascend loops: the
+  -- per-depth block is `descend-iter-flat` (resp. an ascend iteration)
+  -- applied with depth `d`'s heap facts, and `st` is the loop-head state at
+  -- each depth. The heap model supplies `st`/the family; `chain-steps` is
+  -- where the combinators compose over the recursion.
+  ----------------------------------------------------------------------
+  chain-steps : ∀ {prog : AbstractTrace} (k n : ℕ) (st : ℕ → FlatState)
+              → (∀ d → FlatSteps prog k (st d) (st (suc d)))
+              → FlatSteps prog (n * k) (st 0) (st n)
+  chain-steps k zero    st f = []
+  chain-steps k (suc m) st f =
+    FlatSteps-++ (f 0) (chain-steps k m (λ d → st (suc d)) (λ d → f (suc d)))
