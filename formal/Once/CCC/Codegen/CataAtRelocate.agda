@@ -31,8 +31,10 @@ open import Data.Nat using (ℕ; suc; _+_)
 open import Data.Bool using (true; false)
 open import Data.Maybe using (map; just; nothing)
 open import Data.Product using (_,_)
-open import Data.List using (_++_)
+open import Data.List using (List; _++_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
+
+open import Once.Verified.Trace using (SigOpEvent)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
@@ -204,3 +206,25 @@ module CataAtRelocate {FS : FrameSemantics} where
          (trans (chain-events-subst-start (sym (instr-reloc prog seg k fs₀ i lr))
                                           (relocate-steps prog seg k lr fe rest))
                 (chain-events-relocate prog seg k lr fe rest))
+
+  -- CAPSTONE (trace side of the at-algebra correspondence): the relocated
+  -- `at`-chain emits exactly `alg`'s source events `E`. Combines the whole
+  -- bridge — `alg`'s standalone halting run reifies to a chain
+  -- (`reify-run`), whose events are `alg`'s trace (`flat-events-reify` +
+  -- `alg`'s `traces-agree`, here `at-traces`), preserved under embedding
+  -- (`chain-events-relocate`). The embedding facts `lr`/`fe` (labels +
+  -- fetch relocate by `k`) are discharged at the concrete cata-program
+  -- assembly (`find-label-distrib` + `fetch-++`). So splicing `at` into the
+  -- cata loop contributes precisely `alg`'s events to `traces-agree`.
+  at-relocated-emits : ∀ (prog at : AbstractTrace) (k F : ℕ) (init : FlatState)
+                         (E : List SigOpEvent)
+                         (at-halts : halted (floc (exec-flat F at init)) ≡ true)
+                         (lr : ∀ n → find-label prog n ≡ map (_+ k) (find-label at n))
+                         (fe : ∀ pc i → fetch at pc ≡ just i → fetch prog (pc + k) ≡ just i)
+                     → flat-events F at init ≡ E
+                     → chain-events (relocate-steps prog at k lr fe
+                                       (RunReified.chain (reify-run F at init at-halts)))
+                         ≡ E
+  at-relocated-emits prog at k F init E at-halts lr fe at-traces =
+    trans (chain-events-relocate prog at k lr fe (RunReified.chain (reify-run F at init at-halts)))
+          (trans (sym (flat-events-reify F at init (reify-run F at init at-halts))) at-traces)
