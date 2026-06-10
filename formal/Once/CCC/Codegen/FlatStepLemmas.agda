@@ -24,8 +24,8 @@ module Once.CCC.Codegen.FlatStepLemmas where
 
 open import Data.Nat using (ℕ; zero; suc; _+_; _≡ᵇ_)
 open import Data.Nat.Properties using (+-suc; +-identityʳ)
-open import Data.Bool using (false; true)
-open import Data.Maybe using (Maybe; just; nothing)
+open import Data.Bool using (Bool; false; true)
+open import Data.Maybe using (Maybe; just; nothing; map)
 open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Data.Product using (_×_; _,_)
@@ -176,6 +176,58 @@ module FlatStepsAPI {FS : FrameSemantics} where
   ... | nothing =
           trans (fl-go-skip xs' ys target (suc i) pxs)
                 (cong (fl-go ys target) (sym (+-suc i (length xs'))))
+
+  ----------------------------------------------------------------------
+  -- `find-label` RELOCATION foundation (toward embedding `at = ir-to-trace
+  -- alg` at an offset inside the cata program). Dual of `fl-go-skip`: where
+  -- skip handles labels SCANNED PAST, shift handles a label FOUND within a
+  -- segment whose scan started at a shifted index.
+  --
+  -- `fl-go`'s accumulator is a pure offset: starting the scan at `b + a`
+  -- instead of `b` shifts the found position by `a`. No arithmetic lemmas
+  -- needed — the recursion uses `suc (b + a) = suc b + a` definitionally
+  -- and the match case is `refl` (`b + a` on both sides).
+  ----------------------------------------------------------------------
+  fl-go-shift : ∀ (xs : AbstractTrace) (target a b : ℕ)
+              → fl-go xs target (b + a) ≡ map (_+ a) (fl-go xs target b)
+  flm-shift   : ∀ (cmp : Bool) (xs : AbstractTrace) (target a b : ℕ)
+              → fl-label-match cmp xs target (b + a) ≡ map (_+ a) (fl-label-match cmp xs target b)
+  fl-go-shift []       target a b = refl
+  fl-go-shift (x ∷ xs) target a b with label-of? x
+  ... | just m  = flm-shift (m ≡ᵇ target) xs target a b
+  ... | nothing = fl-go-shift xs target a (suc b)
+  flm-shift true  xs target a b = refl
+  flm-shift false xs target a b = fl-go-shift xs target a (suc b)
+
+  -- A label found in a prefix segment is found at the same index in the
+  -- segment extended by any suffix (the scan stops before reaching it).
+  -- The dual fact the relocation needs alongside `fl-go-shift`/`fl-go-skip`.
+  fl-go-prefix : ∀ (seg post : AbstractTrace) (target i p : ℕ)
+               → fl-go seg target i ≡ just p → fl-go (seg ++ post) target i ≡ just p
+  flm-prefix   : ∀ (cmp : Bool) (seg post : AbstractTrace) (target i p : ℕ)
+               → fl-label-match cmp seg target i ≡ just p → fl-label-match cmp (seg ++ post) target i ≡ just p
+  fl-go-prefix []        post target i p ()
+  fl-go-prefix (x ∷ seg) post target i p h with label-of? x
+  ... | just m  = flm-prefix (m ≡ᵇ target) seg post target i p h
+  ... | nothing = fl-go-prefix seg post target (suc i) p h
+  flm-prefix true  seg post target i p h = h
+  flm-prefix false seg post target i p h = fl-go-prefix seg post target (suc i) p h
+
+  -- `find-label` distribution: a label found at relative index `p` in a
+  -- segment `seg` embedded after a label-free prefix `pre` (and before any
+  -- suffix `post`) resolves to absolute index `p + length pre` in the full
+  -- program. This is what relocates `at = ir-to-trace alg`'s internal jump
+  -- targets when `at` is embedded in the cata program: skip past `pre`
+  -- (`fl-go-skip`), the accumulator becomes the offset (`fl-go-shift`), and
+  -- the suffix is unreached (`fl-go-prefix`).
+  find-label-distrib : ∀ (pre seg post : AbstractTrace) (target p : ℕ)
+                     → All (λ x → ¬ (label-of? x ≡ just target)) pre
+                     → fl-go seg target 0 ≡ just p
+                     → find-label (pre ++ seg ++ post) target ≡ just (p + length pre)
+  find-label-distrib pre seg post target p pre-no h =
+    trans (fl-go-skip pre (seg ++ post) target 0 pre-no)
+          (trans (fl-go-shift (seg ++ post) target (length pre) 0)
+                 (cong (map (_+ length pre)) (fl-go-prefix seg post target 0 p h)))
 
   ----------------------------------------------------------------------
   -- Compose two step-chains (so a phase = pre ++ body ++ post reuses
