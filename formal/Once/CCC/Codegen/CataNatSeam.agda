@@ -22,6 +22,7 @@ module Once.CCC.Codegen.CataNatSeam where
 
 open import Data.Nat using (ℕ)
 open import Data.Maybe using (just)
+open import Data.Product using (∃-syntax; _,_)
 open import Relation.Binary.PropositionalEquality using (_≡_; subst)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
@@ -32,13 +33,13 @@ open import Once.CCC.IR using (out-μ; Heap)
 open import Once.Functor.Translate using (WellFormedF; WellFormedF-irrelevant)
 open import Once.CCC.Machine.Allocation using (AllocState)
 open import Once.CCC.Machine.SMCore
-  using (LocState; ValueLocation; SV-Tag; module MemOps)
+  using (LocState; ValueLocation; SV-Tag; SV-Ptr; sucLoc; module MemOps)
 open import Once.CCC.Machine.ClosureWellFormed using (module ClosureWellFormedDef)
 open import Once.CCC.Codegen.CataNatHeapExtract using (module CataNatHeapExtract)
 
 module CataNatSeam {FS : FrameSemantics} (program-bound : ℕ) where
   open MemOps {FS} using (readLoc)
-  open ClosureWellFormedDef {FS} program-bound using (ValidAtWF; valid-μ-wf)
+  open ClosureWellFormedDef {FS} program-bound using (ValidAtWF; valid-μ-wf; valid-inr-wf)
   open CataNatHeapExtract {FS} program-bound using (inr-tag; inl-tag)
 
   -- Peel `valid-μ-wf`: the μ-value's validity at `loc` IS its F-layer's
@@ -70,3 +71,16 @@ module CataNatSeam {FS : FrameSemantics} (program-bound : ℕ) where
                → readLoc s loc ≡ just (SV-Tag 0)
   nat-base-tag {alloc} {x = x} {u} {loc} {s} wf base-shape v =
     inl-tag (subst (λ w → ValidAtWF Heap alloc {Unit + μ-type NatF} w loc s) base-shape (peel-μ wf v))
+
+  -- SEAM (child pointer): a Nat cons value's validity gives the child
+  -- pointer at `sucLoc loc` (the descend's `child` step fact). Same peel,
+  -- then match `valid-inr-wf` and project its payload-pointer field.
+  nat-cons-child : ∀ {alloc} {x : ⟦ μ-type NatF ⟧} {child : ⟦ μ-type NatF ⟧}
+                     {loc : ValueLocation FS} {s : LocState FS}
+                     (wf : WellFormedF NatF)
+                 → eval (out-μ wf) x ≡ sem-inr {Unit} {μ-type NatF} child
+                 → ValidAtWF Heap alloc {μ-type NatF} x loc s
+                 → ∃[ child-loc ] (readLoc s (sucLoc loc) ≡ just (SV-Ptr child-loc))
+  nat-cons-child {alloc} {x = x} {child} {loc} {s} wf cons-shape v
+    with subst (λ w → ValidAtWF Heap alloc {Unit + μ-type NatF} w loc s) cons-shape (peel-μ wf v)
+  ... | valid-inr-wf {payload-loc = cl} lmm tag cp pb slb cv = cl , cp
