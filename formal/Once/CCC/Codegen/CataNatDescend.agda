@@ -28,7 +28,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; con
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore
   using (LocState; AllocState; halted; regs; readReg; Input1; Input2; Output; Scratch;
-         writeReg-same; writeReg-preserves; sv-succ;
+         writeReg; writeReg-same; writeReg-preserves; sv-succ;
          sv-as-loc; sucLoc; StoredValue; ValueLocation; AtStack; AtDynamic;
          RegOp; exec-reg-op; AbstractTrace;
          instr-reg-op; input2-inc; load-indirect-suc; mov-to-input; scratch-zero;
@@ -93,6 +93,28 @@ module CataNatDescend {FS : FrameSemantics} where
   body-input1 prog fs loc v ptr child
     rewrite trans (cong sv-as-loc (input2-keeps-input1 (floc fs))) ptr
           | trans (reg-op-keeps-readLoc input2-inc (floc fs) (sucLoc loc)) child = refl
+
+  -- The body PRESERVES the Scratch register (it writes only Input2 /
+  -- Output / Input1) — so the descend's depth-counter condition (Scratch ≠
+  -- 0, set by `scratch-one`) holds across every continue iteration. After
+  -- the same load-reducing rewrites, three `writeReg-preserves` peel
+  -- Input1 / Output / Input2 off the Scratch read.
+  body-scratch : ∀ (prog : AbstractTrace) (fs : FlatState)
+                   (loc : ValueLocation FS) (v : StoredValue FS)
+    → sv-as-loc (readReg (regs (floc fs)) Input1) ≡ just loc
+    → readLoc (floc fs) (sucLoc loc) ≡ just v
+    → readReg (regs (floc (body-result prog fs))) Scratch ≡ readReg (regs (floc fs)) Scratch
+  body-scratch prog fs loc v ptr child
+    rewrite trans (cong sv-as-loc (input2-keeps-input1 (floc fs))) ptr
+          | trans (reg-op-keeps-readLoc input2-inc (floc fs) (sucLoc loc)) child =
+    trans (writeReg-preserves R2 Input1 Scratch v (λ ()))
+          (trans (writeReg-preserves R1 Output Scratch v (λ ()))
+                 (writeReg-preserves R0 Input2 Scratch succ-v (λ ())))
+    where
+      R0 = regs (floc fs)
+      succ-v = sv-succ (readReg R0 Input2)
+      R1 = writeReg R0 Input2 succ-v
+      R2 = writeReg R1 Output v
 
   -- The whole 3-instr body preserves `halted` (given Input1 a pointer +
   -- the child cell present, so `load-indirect-suc` doesn't halt). `mov-to
