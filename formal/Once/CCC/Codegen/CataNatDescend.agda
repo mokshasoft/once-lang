@@ -28,7 +28,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; con
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore
   using (LocState; AllocState; halted; regs; readReg; Input1; Input2; Output; Scratch;
-         writeReg; writeReg-same; writeReg-preserves; sv-succ;
+         writeReg; writeReg-same; writeReg-preserves; sv-succ; SV-Tag;
          sv-as-loc; sucLoc; StoredValue; ValueLocation; AtStack; AtDynamic;
          RegOp; exec-reg-op; AbstractTrace;
          instr-reg-op; input2-inc; load-indirect-suc; mov-to-input; scratch-zero;
@@ -195,6 +195,13 @@ module CataNatDescend {FS : FrameSemantics} where
     → readLoc (floc (desc-step prog q-top fs)) loc' ≡ readLoc (floc fs) loc'
   desc-step-readLoc prog q-top fs loc v loc' ptr child =
     body-readLoc prog (record fs { fpc = suc (suc (suc (fpc fs))) }) loc v loc' ptr child
+
+  -- `scratch-zero` sets Scratch := SV-Tag 0, so the descend-base exit
+  -- branch fires: `sv-is-zero (SV-Tag 0) = true`. (The `szcond` premise of
+  -- `descend-base-flat`.)
+  scratch-zeroed : ∀ (ls : LocState FS)
+    → sv-is-zero (readReg (regs (exec-reg-op scratch-zero ls)) Scratch) ≡ true
+  scratch-zeroed ls = cong sv-is-zero (writeReg-same (regs ls) Scratch (SV-Tag 0))
 
   -- The descend body's three straight steps, as a `FlatSteps`-of-3.
   -- Links 1,2 preserve `halted` definitionally (reg/mem updates);
