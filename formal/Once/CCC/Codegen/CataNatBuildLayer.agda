@@ -179,3 +179,53 @@ module CataNatBuildLayer {FS : FrameSemantics} where
     → readLoc (floc (flat-exec-instr (load-from-slot slot) prog fs)) loc ≡ readLoc (floc fs) loc
   load-from-slot-keeps-readLoc prog fs slot v loc slotfull rewrite slotfull =
     readLoc-regs-irrelevant (floc fs) _ loc
+
+  -- The build-layer SUFFIX (load-tag, store-indirect, load pstash,
+  -- store-indirect-suc, load sstash) runs as a 5-step chain. Given the
+  -- self-generated entry state (Input1 = the alloc'd heap pointer, pstash
+  -- populated by the prefix's first stash), the store-indirects fire
+  -- (Input1 a pointer) and the pstash load fires (slot populated); these
+  -- facts thread through the steps via the keeps-* helpers. The final
+  -- load-sstash needs no precondition (it is the last step — its result
+  -- being halted-or-not is no later step's concern).
+  build-layer-suffix : ∀ (prog : AbstractTrace) (fs : FlatState)
+                         (hl : HeapLocation) (tag pstash sstash : ℕ) (vp : StoredValue FS)
+    → halted (floc fs) ≡ false
+    → sv-as-loc (readReg (regs (floc fs)) Input1) ≡ just (AtDynamic hl)
+    → readLoc (floc fs) (AtStack (current-frame (falloc fs)) pstash) ≡ just vp
+    → fetch prog (fpc fs)                         ≡ just (instr-load-tag-lit tag)
+    → fetch prog (suc (fpc fs))                   ≡ just store-indirect
+    → fetch prog (suc (suc (fpc fs)))             ≡ just (load-from-slot pstash)
+    → fetch prog (suc (suc (suc (fpc fs))))       ≡ just store-indirect-suc
+    → fetch prog (suc (suc (suc (suc (fpc fs))))) ≡ just (load-from-slot sstash)
+    → FlatSteps prog 5 fs
+        (flat-exec-instr (load-from-slot sstash) prog
+         (flat-exec-instr store-indirect-suc prog
+          (flat-exec-instr (load-from-slot pstash) prog
+           (flat-exec-instr store-indirect prog
+            (flat-exec-instr (instr-load-tag-lit tag) prog fs)))))
+  build-layer-suffix prog fs hl tag pstash sstash vp hf p1 hp f6 f7 f8 f9 f10 =
+      (hf , f6)
+    ∷ (hf , f7)
+    ∷ (h8 , f8)
+    ∷ (h9 , f9)
+    ∷ (h10 , f10)
+    ∷ []
+    where
+      S6 = flat-exec-instr (instr-load-tag-lit tag) prog fs
+      S7 = flat-exec-instr store-indirect prog S6
+      S8 = flat-exec-instr (load-from-slot pstash) prog S7
+      ptr-S6 : sv-as-loc (readReg (regs (floc S6)) Input1) ≡ just (AtDynamic hl)
+      ptr-S6 = trans (cong sv-as-loc (load-tag-keeps-input1 prog fs tag)) p1
+      slot-pstash-S7 : readLoc (floc S7) (AtStack (current-frame (falloc fs)) pstash) ≡ just vp
+      slot-pstash-S7 =
+        trans (store-indirect-keeps-stack-readLoc prog S6 hl (current-frame (falloc fs)) pstash ptr-S6)
+              (trans (load-tag-keeps-readLoc prog fs tag (AtStack (current-frame (falloc fs)) pstash)) hp)
+      ptr-S8 : sv-as-loc (readReg (regs (floc S8)) Input1) ≡ just (AtDynamic hl)
+      ptr-S8 = trans (cong sv-as-loc
+                 (trans (load-from-slot-keeps-input1 prog S7 pstash vp slot-pstash-S7)
+                   (trans (store-indirect-keeps-input1 prog S6 (AtDynamic hl) ptr-S6)
+                     (load-tag-keeps-input1 prog fs tag)))) p1
+      h8  = trans (store-indirect-keeps-halted prog S6 (AtDynamic hl) ptr-S6) hf
+      h9  = trans (load-from-slot-keeps-halted prog S7 pstash vp slot-pstash-S7) h8
+      h10 = trans (store-indirect-suc-keeps-halted prog S8 (AtDynamic hl) ptr-S8) h9
