@@ -32,8 +32,10 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Allocation using (current-frame)
 open import Once.CCC.Machine.SMCore
-  using (halted; regs; readReg; Output; AtStack; AbstractTrace;
+  using (halted; regs; readReg; Output; Input1; AtStack; AbstractTrace;
+         sv-as-loc; sucLoc; ValueLocation; StoredValue;
          mov-to-output; mov-to-input; store-at-slot; instr-alloc-heap;
+         store-indirect; store-indirect-suc; load-from-slot;
          module MemOps)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
@@ -41,7 +43,27 @@ open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 module CataNatBuildLayer {FS : FrameSemantics} where
   open FlatMachine {FS}
   open FlatStepsAPI {FS}
-  open MemOps {FS} using (writeLoc-halted)
+  open MemOps {FS} using (writeLoc-halted; readLoc)
+
+  -- store-indirect preserves halted given Input1 is a pointer.
+  store-indirect-keeps-halted : ∀ (prog : AbstractTrace) (fs : FlatState) (loc : ValueLocation FS)
+    → sv-as-loc (readReg (regs (floc fs)) Input1) ≡ just loc
+    → halted (floc (flat-exec-instr store-indirect prog fs)) ≡ halted (floc fs)
+  store-indirect-keeps-halted prog fs loc ptr rewrite ptr =
+    writeLoc-halted (floc fs) loc (readReg (regs (floc fs)) Output)
+
+  -- store-indirect-suc preserves halted given Input1 is a pointer.
+  store-indirect-suc-keeps-halted : ∀ (prog : AbstractTrace) (fs : FlatState) (loc : ValueLocation FS)
+    → sv-as-loc (readReg (regs (floc fs)) Input1) ≡ just loc
+    → halted (floc (flat-exec-instr store-indirect-suc prog fs)) ≡ halted (floc fs)
+  store-indirect-suc-keeps-halted prog fs loc ptr rewrite ptr =
+    writeLoc-halted (floc fs) (sucLoc loc) (readReg (regs (floc fs)) Output)
+
+  -- load-from-slot preserves halted given the slot is populated.
+  load-from-slot-keeps-halted : ∀ (prog : AbstractTrace) (fs : FlatState) (slot : ℕ) (v : StoredValue FS)
+    → readLoc (floc fs) (AtStack (current-frame (falloc fs)) slot) ≡ just v
+    → halted (floc (flat-exec-instr (load-from-slot slot) prog fs)) ≡ halted (floc fs)
+  load-from-slot-keeps-halted prog fs slot v slotfull rewrite slotfull = refl
 
   -- `store-at-slot` preserves `halted` (it `writeLoc`s a stack slot).
   store-at-slot-keeps-halted : ∀ (prog : AbstractTrace) (fs : FlatState) (slot : ℕ)
