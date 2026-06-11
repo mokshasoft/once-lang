@@ -27,7 +27,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; con
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore
-  using (LocState; AllocState; halted; regs; readReg; Input1; Output; Scratch;
+  using (LocState; AllocState; halted; regs; readReg; Input1; Input2; Output; Scratch;
+         writeReg-same; writeReg-preserves; sv-succ;
          sv-as-loc; sucLoc; StoredValue; ValueLocation; AtStack; AtDynamic;
          RegOp; exec-reg-op; AbstractTrace;
          instr-reg-op; input2-inc; load-indirect-suc; mov-to-input; scratch-zero;
@@ -70,6 +71,28 @@ module CataNatDescend {FS : FrameSemantics} where
     flat-exec-instr mov-to-input prog
       (flat-exec-instr load-indirect-suc prog
         (flat-exec-instr (instr-reg-op input2-inc) prog fs))
+
+  -- `input2-inc` preserves the Input1 register (it writes Input2).
+  input2-keeps-input1 : ∀ (s : LocState FS)
+                      → readReg (regs (exec-reg-op input2-inc s)) Input1 ≡ readReg (regs s) Input1
+  input2-keeps-input1 s =
+    writeReg-preserves (regs s) Input2 Input1 (sv-succ (readReg (regs s) Input2)) (λ ())
+
+  -- The body leaves Input1 pointing at the child: `input2-inc` preserves
+  -- Input1, `load-indirect-suc` puts the child (`*(Input1+1)`) in Output,
+  -- `mov-to-input` copies Output to Input1. So `body-result`'s Input1 = the
+  -- child pointer `v`. This is the REGISTER INVARIANT the descend loop
+  -- maintains (Input1 advances to the next cell each iteration). The two
+  -- rewrites relocate the cons facts across `input2-inc` (Input1-read +
+  -- memory preserved); the load + mov then reduce definitionally.
+  body-input1 : ∀ (prog : AbstractTrace) (fs : FlatState)
+                  (loc : ValueLocation FS) (v : StoredValue FS)
+    → sv-as-loc (readReg (regs (floc fs)) Input1) ≡ just loc
+    → readLoc (floc fs) (sucLoc loc) ≡ just v
+    → readReg (regs (floc (body-result prog fs))) Input1 ≡ v
+  body-input1 prog fs loc v ptr child
+    rewrite trans (cong sv-as-loc (input2-keeps-input1 (floc fs))) ptr
+          | trans (reg-op-keeps-readLoc input2-inc (floc fs) (sucLoc loc)) child = refl
 
   -- The whole 3-instr body preserves `halted` (given Input1 a pointer +
   -- the child cell present, so `load-indirect-suc` doesn't halt). `mov-to
