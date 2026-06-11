@@ -23,18 +23,18 @@
 
 module Once.CCC.Codegen.CataNatBuildLayer where
 
-open import Data.Nat using (ℕ; suc)
+open import Data.Nat using (ℕ; zero; suc)
 open import Data.Bool using (false)
 open import Data.Maybe using (just)
-open import Data.Product using (_,_)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; cong)
+open import Data.Product using (Σ-syntax; _,_)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Allocation using (current-frame)
 open import Once.CCC.Machine.SMCore
   using (halted; regs; readReg; Output; Input1; AtStack; AtDynamic; AbstractTrace;
          sv-as-loc; sucLoc; ValueLocation; StoredValue; Registers; LocState; HeapLocation;
-         SV-Tag; SV-Ptr; writeReg-preserves;
+         SV-Tag; SV-Ptr; writeReg-preserves; writeReg-same;
          mov-to-output; mov-to-input; store-at-slot; instr-alloc-heap;
          instr-load-tag-lit; store-indirect; store-indirect-suc; load-from-slot;
          module MemOps)
@@ -44,7 +44,8 @@ open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 module CataNatBuildLayer {FS : FrameSemantics} where
   open FlatMachine {FS}
   open FlatStepsAPI {FS}
-  open MemOps {FS} using (writeLoc-halted; readLoc; writeLoc-preserves-other; writeLoc-regs)
+  open MemOps {FS} using (writeLoc-halted; readLoc; writeLoc-preserves-other; writeLoc-regs;
+                          writeLoc-read-same-stack)
 
   -- A regs-only update preserves every memory read (`readLoc` reads
   -- stackMem/heapMem, never regs).
@@ -229,3 +230,64 @@ module CataNatBuildLayer {FS : FrameSemantics} where
       h8  = trans (store-indirect-keeps-halted prog S6 (AtDynamic hl) ptr-S6) hf
       h9  = trans (load-from-slot-keeps-halted prog S7 pstash vp slot-pstash-S7) h8
       h10 = trans (store-indirect-suc-keeps-halted prog S8 (AtDynamic hl) ptr-S8) h9
+
+  -- Slot projection (for the pstash ≠ sstash disjointness obligation).
+  slot-of : ValueLocation FS → ℕ
+  slot-of (AtStack _ k) = k
+  slot-of (AtDynamic _) = zero
+
+  -- The WHOLE build-layer block (10 instructions) runs as a 10-step chain:
+  -- the prefix (build-layer-prefix) constructs the alloc + stashes; the
+  -- suffix (build-layer-suffix) consumes them. The suffix's entry facts
+  -- (Input1 = the alloc'd heap pointer; the pstash slot populated) are
+  -- DERIVED from the prefix's effect — the moment the self-contained
+  -- block closes on itself. Disjoint stash slots (`pstash ≢ sstash`) keep
+  -- the first stash alive across the second.
+  build-layer-runs : ∀ (prog : AbstractTrace) (fs : FlatState) (tag pstash sstash : ℕ)
+    → halted (floc fs) ≡ false
+    → pstash ≢ sstash
+    → fetch prog (fpc fs)                                                       ≡ just mov-to-output
+    → fetch prog (suc (fpc fs))                                                 ≡ just (store-at-slot pstash)
+    → fetch prog (suc (suc (fpc fs)))                                           ≡ just (instr-alloc-heap 2)
+    → fetch prog (suc (suc (suc (fpc fs))))                                     ≡ just (store-at-slot sstash)
+    → fetch prog (suc (suc (suc (suc (fpc fs)))))                               ≡ just mov-to-input
+    → fetch prog (suc (suc (suc (suc (suc (fpc fs))))))                         ≡ just (instr-load-tag-lit tag)
+    → fetch prog (suc (suc (suc (suc (suc (suc (fpc fs)))))))                   ≡ just store-indirect
+    → fetch prog (suc (suc (suc (suc (suc (suc (suc (fpc fs))))))))             ≡ just (load-from-slot pstash)
+    → fetch prog (suc (suc (suc (suc (suc (suc (suc (suc (fpc fs)))))))))       ≡ just store-indirect-suc
+    → fetch prog (suc (suc (suc (suc (suc (suc (suc (suc (suc (fpc fs)))))))))) ≡ just (load-from-slot sstash)
+    → Σ[ final ∈ FlatState ] FlatSteps prog 10 fs final
+  build-layer-runs prog fs tag pstash sstash hf ps≢ss f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 =
+    _ , FlatSteps-++ prefix suffix
+    where
+      A1 = flat-exec-instr mov-to-output prog fs
+      A2 = flat-exec-instr (store-at-slot pstash) prog A1
+      A3 = flat-exec-instr (instr-alloc-heap 2) prog A2
+      A4 = flat-exec-instr (store-at-slot sstash) prog A3
+      A5 = flat-exec-instr mov-to-input prog A4
+      prefix = build-layer-prefix prog fs pstash sstash hf f1 f2 f3 f4 f5
+      -- Input1 (at A5) = the value Output held at A3 = the alloc'd pointer.
+      pinput1 : readReg (regs (floc A5)) Input1 ≡ readReg (regs (floc A3)) Output
+      pinput1 = trans (writeReg-same (regs (floc A4)) Input1 (readReg (regs (floc A4)) Output))
+                      (cong (λ r → readReg r Output)
+                        (writeLoc-regs (floc A3) (AtStack (current-frame (falloc A3)) sstash)
+                                       (readReg (regs (floc A3)) Output)))
+      p1 : sv-as-loc (readReg (regs (floc A5)) Input1) ≡ just (AtDynamic _)
+      p1 = cong sv-as-loc (trans pinput1 (writeReg-same (regs (floc A2)) Output _))
+      -- pstash slot (stashed at A2) survives to A5: alloc/mov are reg/heap,
+      -- the sstash store hits a DIFFERENT slot (pstash ≢ sstash).
+      php : readLoc (floc A5) (AtStack (current-frame (falloc A5)) pstash)
+            ≡ just (readReg (regs (floc A1)) Output)
+      php = trans (readLoc-regs-irrelevant (floc A4) (regs (floc A5)) (AtStack (current-frame (falloc fs)) pstash))
+              (trans (writeLoc-preserves-other (floc A3)
+                        (AtStack (current-frame (falloc fs)) sstash)
+                        (AtStack (current-frame (falloc fs)) pstash)
+                        (readReg (regs (floc A3)) Output)
+                        (λ eq → ps≢ss (sym (cong slot-of eq))))
+                (trans (readLoc-regs-irrelevant (floc A2) (regs (floc A3)) (AtStack (current-frame (falloc fs)) pstash))
+                  (writeLoc-read-same-stack (floc A1) (current-frame (falloc fs)) pstash
+                                            (readReg (regs (floc A1)) Output))))
+      phalt : halted (floc A5) ≡ false
+      phalt = trans (store-at-slot-keeps-halted prog A3 sstash)
+                    (trans (store-at-slot-keeps-halted prog A1 pstash) hf)
+      suffix = build-layer-suffix prog A5 _ tag pstash sstash _ phalt p1 php f6 f7 f8 f9 f10
