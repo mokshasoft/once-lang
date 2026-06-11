@@ -134,6 +134,42 @@ module CataNatDescend {FS : FrameSemantics} where
       loc v ptr
       (trans (reg-op-keeps-readLoc input2-inc (floc fs) (sucLoc loc)) child)
 
+  -- The descend loop-head→loop-head state transform: one continue
+  -- iteration's result state (= `descend-iter-flat`'s result). `fpc` is
+  -- reset to the loop head `q-top` by construction; `floc` is the body's.
+  desc-step : AbstractTrace → ℕ → FlatState → FlatState
+  desc-step prog q-top fs =
+    record (body-result prog (record fs { fpc = suc (suc (suc (fpc fs))) })) { fpc = q-top }
+
+  -- The state family's INVARIANT MAINTENANCE: across one iteration, Input1
+  -- advances to the child pointer, Scratch is preserved (depth counter),
+  -- and halted stays false. (`floc (desc-step …) = floc (body-result …)`
+  -- since the `{fpc = q-top}` update preserves `floc`; then the body
+  -- lemmas, whose `fs` is `record fs {fpc = …}` with the same `floc`.)
+  desc-step-input1 : ∀ (prog : AbstractTrace) (q-top : ℕ) (fs : FlatState)
+                       (loc : ValueLocation FS) (v : StoredValue FS)
+    → sv-as-loc (readReg (regs (floc fs)) Input1) ≡ just loc
+    → readLoc (floc fs) (sucLoc loc) ≡ just v
+    → readReg (regs (floc (desc-step prog q-top fs))) Input1 ≡ v
+  desc-step-input1 prog q-top fs loc v ptr child =
+    body-input1 prog (record fs { fpc = suc (suc (suc (fpc fs))) }) loc v ptr child
+
+  desc-step-scratch : ∀ (prog : AbstractTrace) (q-top : ℕ) (fs : FlatState)
+                        (loc : ValueLocation FS) (v : StoredValue FS)
+    → sv-as-loc (readReg (regs (floc fs)) Input1) ≡ just loc
+    → readLoc (floc fs) (sucLoc loc) ≡ just v
+    → readReg (regs (floc (desc-step prog q-top fs))) Scratch ≡ readReg (regs (floc fs)) Scratch
+  desc-step-scratch prog q-top fs loc v ptr child =
+    body-scratch prog (record fs { fpc = suc (suc (suc (fpc fs))) }) loc v ptr child
+
+  desc-step-halted : ∀ (prog : AbstractTrace) (q-top : ℕ) (fs : FlatState)
+                       (loc : ValueLocation FS) (v : StoredValue FS)
+    → sv-as-loc (readReg (regs (floc fs)) Input1) ≡ just loc
+    → readLoc (floc fs) (sucLoc loc) ≡ just v
+    → halted (floc (desc-step prog q-top fs)) ≡ halted (floc fs)
+  desc-step-halted prog q-top fs loc v ptr child =
+    body-keeps-halted prog (record fs { fpc = suc (suc (suc (fpc fs))) }) loc v ptr child
+
   -- The descend body's three straight steps, as a `FlatSteps`-of-3.
   -- Links 1,2 preserve `halted` definitionally (reg/mem updates);
   -- link 3 (after `load`) goes through `body-keeps-halted`. `ptr`/
