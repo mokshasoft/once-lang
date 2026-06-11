@@ -116,6 +116,22 @@ module CataNatDescend {FS : FrameSemantics} where
       R1 = writeReg R0 Input2 succ-v
       R2 = writeReg R1 Output v
 
+  -- The body PRESERVES memory (`readLoc` at any location): all three
+  -- instructions write only registers. After the load-reducing rewrites,
+  -- `floc (body-result …)` is a chain of register updates over `floc fs`,
+  -- so it agrees on `stackMem`/`heapMem` — `refl` per location shape.
+  body-readLoc : ∀ (prog : AbstractTrace) (fs : FlatState)
+                   (loc : ValueLocation FS) (v : StoredValue FS) (loc' : ValueLocation FS)
+    → sv-as-loc (readReg (regs (floc fs)) Input1) ≡ just loc
+    → readLoc (floc fs) (sucLoc loc) ≡ just v
+    → readLoc (floc (body-result prog fs)) loc' ≡ readLoc (floc fs) loc'
+  body-readLoc prog fs loc v loc' ptr child
+    rewrite trans (cong sv-as-loc (input2-keeps-input1 (floc fs))) ptr
+          | trans (reg-op-keeps-readLoc input2-inc (floc fs) (sucLoc loc)) child
+    with loc'
+  ... | AtStack f k = refl
+  ... | AtDynamic hl = refl
+
   -- The whole 3-instr body preserves `halted` (given Input1 a pointer +
   -- the child cell present, so `load-indirect-suc` doesn't halt). `mov-to
   -- -input`/`input2-inc` are reg-ops (preserve `halted` definitionally);
@@ -169,6 +185,16 @@ module CataNatDescend {FS : FrameSemantics} where
     → halted (floc (desc-step prog q-top fs)) ≡ halted (floc fs)
   desc-step-halted prog q-top fs loc v ptr child =
     body-keeps-halted prog (record fs { fpc = suc (suc (suc (fpc fs))) }) loc v ptr child
+
+  -- desc-step preserves memory — the memory-invariance the loop's
+  -- HeapNatChain transfer (`HeapNatChain-cong`) consumes.
+  desc-step-readLoc : ∀ (prog : AbstractTrace) (q-top : ℕ) (fs : FlatState)
+                        (loc : ValueLocation FS) (v : StoredValue FS) (loc' : ValueLocation FS)
+    → sv-as-loc (readReg (regs (floc fs)) Input1) ≡ just loc
+    → readLoc (floc fs) (sucLoc loc) ≡ just v
+    → readLoc (floc (desc-step prog q-top fs)) loc' ≡ readLoc (floc fs) loc'
+  desc-step-readLoc prog q-top fs loc v loc' ptr child =
+    body-readLoc prog (record fs { fpc = suc (suc (suc (fpc fs))) }) loc v loc' ptr child
 
   -- The descend body's three straight steps, as a `FlatSteps`-of-3.
   -- Links 1,2 preserve `halted` definitionally (reg/mem updates);
