@@ -26,7 +26,7 @@ open import Data.Nat using (ℕ; zero; suc)
 open import Data.Bool using (true; false)
 open import Data.Maybe using (just)
 open import Data.Product using (_×_; _,_; Σ-syntax; proj₁; proj₂)
-open import Relation.Binary.PropositionalEquality using (_≡_)
+open import Relation.Binary.PropositionalEquality using (_≡_; trans)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore
@@ -66,3 +66,17 @@ module CataNatChain {FS : FrameSemantics} where
                    → HeapNatChain zero loc (floc fs)
                    → tag-zf (flat-read-tag (floc fs)) ≡ true
   chain-base-tcond fs loc ptr chain = base-tcond fs loc ptr chain
+
+  -- HeapNatChain is preserved under any state change that preserves
+  -- `readLoc` (e.g. the descend body, which writes only registers). Lets
+  -- the chain transfer from `floc fs` to `floc (desc-step … fs)`. Induction
+  -- on the depth; each tag/child read transported by the `readLoc` equality.
+  HeapNatChain-cong : ∀ (m : ℕ) (loc : ValueLocation FS) (s s' : LocState FS)
+                    → (∀ loc' → readLoc s' loc' ≡ readLoc s loc')
+                    → HeapNatChain m loc s → HeapNatChain m loc s'
+  HeapNatChain-cong zero    loc s s' eq chain = trans (eq loc) chain
+  HeapNatChain-cong (suc m) loc s s' eq (tag , cl , cp , rest) =
+      trans (eq loc) tag
+    , cl
+    , trans (eq (sucLoc loc)) cp
+    , HeapNatChain-cong m cl s s' eq rest
