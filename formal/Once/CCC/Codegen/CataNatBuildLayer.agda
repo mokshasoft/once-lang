@@ -31,7 +31,7 @@ open import Data.List using ([])
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
-open import Once.CCC.Machine.Allocation using (current-frame; AllocState)
+open import Once.CCC.Machine.Allocation using (current-frame; next-slot; AllocState)
 open import Once.CCC.Machine.SMCore
   using (halted; regs; readReg; Output; Input1; AtStack; AtDynamic; AbstractTrace;
          sv-as-loc; sucLoc; ValueLocation; StoredValue; Registers; LocState; HeapLocation;
@@ -231,6 +231,12 @@ module CataNatBuildLayer {FS : FrameSemantics} where
           (flat-exec-instr (load-from-slot pstash) prog
            (flat-exec-instr store-indirect prog
             (flat-exec-instr (instr-load-tag-lit tag) prog fs)))))) ≡ false
+      × next-slot (falloc (flat-exec-instr (load-from-slot sstash) prog
+         (flat-exec-instr store-indirect-suc prog
+          (flat-exec-instr (load-from-slot pstash) prog
+           (flat-exec-instr store-indirect prog
+            (flat-exec-instr (instr-load-tag-lit tag) prog fs))))))
+          ≡ next-slot (falloc fs)
   build-layer-suffix prog fs hl tag pstash sstash vp vs hf p1 hp hs f6 f7 f8 f9 f10 =
       ( (hf , f6)
       ∷ (hf , f7)
@@ -242,6 +248,10 @@ module CataNatBuildLayer {FS : FrameSemantics} where
                  (subst (λ a → readLoc (floc S9) (AtStack (current-frame a) sstash) ≡ just vs)
                         (sym (load-from-slot-keeps-falloc prog S7 pstash)) slot-sstash-S9))
               h10
+      -- next-slot survives: load-tag/store-indirect(-suc) preserve falloc
+      -- definitionally; the two loads via load-from-slot-keeps-falloc.
+      , trans (cong next-slot (load-from-slot-keeps-falloc prog S9 sstash))
+              (cong next-slot (load-from-slot-keeps-falloc prog S7 pstash))
     where
       S6 = flat-exec-instr (instr-load-tag-lit tag) prog fs
       S7 = flat-exec-instr store-indirect prog S6
@@ -297,11 +307,13 @@ module CataNatBuildLayer {FS : FrameSemantics} where
     → fetch prog (suc (suc (suc (suc (suc (suc (suc (suc (fpc fs)))))))))       ≡ just store-indirect-suc
     → fetch prog (suc (suc (suc (suc (suc (suc (suc (suc (suc (fpc fs)))))))))) ≡ just (load-from-slot sstash)
     → Σ[ final ∈ FlatState ] Σ[ steps ∈ FlatSteps prog 10 fs final ]
-        (halted (floc final) ≡ false × chain-events steps ≡ [])
+        (halted (floc final) ≡ false × chain-events steps ≡ []
+         × next-slot (falloc final) ≡ next-slot (falloc fs))
   build-layer-runs prog fs tag pstash sstash hf ps≢ss f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 =
     _ , FlatSteps-++ prefix (proj₁ suffix)
-      , proj₂ suffix
+      , proj₁ (proj₂ suffix)
       , chain-events-++ prefix (proj₁ suffix)
+      , proj₂ (proj₂ suffix)
     where
       A1 = flat-exec-instr mov-to-output prog fs
       A2 = flat-exec-instr (store-at-slot pstash) prog A1
