@@ -11,9 +11,8 @@
 
 module Once.Verified.CPU.X86-32 where
 
-open import Data.Bool using (Bool; true; false)
 open import Data.List using (List)
-open import Data.Maybe using (Maybe; just; nothing)
+open import Data.Maybe using (Maybe)
 open import Data.String using (String)
 
 open import Once.Verified.Behavior      using (Behavior)
@@ -23,21 +22,15 @@ import Once.CCC.Target.X86-32.Semantics as X32
 import Once.CCC.Target.X86-32.Syntax    as X32S
 
 ------------------------------------------------------------------------
--- observe-x86-32 — concrete.
---
--- Linux i386 syscall ABI: `exit N` puts N in `%ebx` then invokes
--- int 0x80 / sysenter. After halt, `%ebx` holds the exit code.
--- Our `call-sym "linux.exit"` halts; whatever was in ebx is the
--- exit code.
+-- Postulated gaps (named).
 ------------------------------------------------------------------------
 
-observe-x86-32 : Maybe X32.State → Behavior
-observe-x86-32 nothing  = nothing
-observe-x86-32 (just s) with X32.State.halted s
-... | false = nothing
-... | true  = just (X32.readReg (X32.State.regs s) X32S.ebx)
-
 postulate
+  -- run-trace-x86-32 — the OBSERVABLE (Plan 0.44): step-indexed SigOp
+  -- trace of executing `prog`. Replaces the value-shaped `observe`
+  -- (final `%ebx` exit code). Derived from X32.run's step semantics once
+  -- syscalls emit-and-continue; postulated until then.
+  run-trace-x86-32 : X32S.Program → X32.State → Behavior
   decode-x86-32 : List Byte → Maybe X32S.Program
   -- GNU `as --target=x86-32` trust point; removed by B1.
   assemble-x86-32 : String → List Byte
@@ -48,7 +41,7 @@ arch-semantics = record
   ; State        = X32.State
   ; initialState = X32.initState
   ; run          = X32.run
-  ; observe      = observe-x86-32
+  ; run-trace    = run-trace-x86-32
   ; decode       = decode-x86-32
   ; assemble     = assemble-x86-32
   }
