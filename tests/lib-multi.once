@@ -1,0 +1,17 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson and contributors
+
+-- lib-multi.once: a LIBRARY with several concrete interface functions (no
+-- `main`). Each concrete signature is an anchor (the "concrete = interface"
+-- model); the polymorphic builtins (`fst`, `snd`, `pair`, `id`) are
+-- instantiated at each signature's type. No polymorphic signatures, no entry
+-- point. Compiled to x86_64 assembly.
+
+firstOf : Int * Int -> Int
+firstOf = fst
+
+secondOf : Int * Int -> Int
+secondOf = snd
+
+dupInt : Int -> Int * Int
+dupInt = pair id id
