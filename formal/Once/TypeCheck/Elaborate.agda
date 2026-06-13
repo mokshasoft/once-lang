@@ -141,6 +141,20 @@ open import Once.TypeCheck.Judgment
 ≟T-ν-aux (yes refl) = yes refl
 ≟T-ν-aux (no ¬p)    = no λ { refl → ¬p refl }
 
+-- | Decide whether `T` is a pure-arrow-to-`Int` — the value-lift target for
+-- an integer literal (Plan 0.41 / D018). Returning the equality witness as a
+-- `just`/`nothing` gives `checkElabV (RInt n) T` ONE named scrutinee to route
+-- through, instead of a specific-arrow clause overlapping the generic
+-- catch-all (which left `checkElabV (RInt n) T` stuck for variable `T`, and
+-- made `ErrorProofs`' "RInt at T≠Int fails" claim false). Proofs — and the
+-- Plan 0.45 frontend trace induction — `with isRIntVliftTarget? T` to dispatch.
+isRIntVliftTarget? :
+  (T : Type) →
+  Maybe (∃-syntax (λ X → T ≡ (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] Int)))
+isRIntVliftTarget? (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] Int) =
+  just (X , refl)
+isRIntVliftTarget? _ = nothing
+
 -- | Decidable functor and type equality (mutually recursive)
 mutual
   -- | Decidable functor equality
@@ -1011,6 +1025,13 @@ mutual
     ∀ (ctx : NamedCtx) (x : String) (T : Type)
     → VerifiedInferResult ctx (Raw.RVar x)
     → VerifiedCheckResult ctx (Raw.RVar x) T
+  -- RInt check-mode dispatch, taking the value-lift decision explicitly
+  -- (`just (X , refl)` ⇒ pure-arrow-to-Int target ⇒ value-lift; `nothing` ⇒
+  -- the generic infer-and-match). One scrutinee, no clause overlap.
+  checkElabV-RInt-aux :
+    ∀ (ctx : NamedCtx) (n : ℤ) (T : Type)
+    → Maybe (∃-syntax (λ X → T ≡ (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] Int)))
+    → VerifiedCheckResult ctx (Raw.RInt n) T
 
   -- ===== inferElab =====
 
@@ -1687,13 +1708,12 @@ mutual
   checkElabV ctx (Raw.RPair a b) (A Once.Type.* B) = checkPairLit ctx a b A B
 
   -- Plan 0.41 / D018 leaf: an integer literal at a pure-arrow position is its
-  -- constant morphism (global element `const n ∘ terminal`, via `intLit`).
-  -- The `g-int` leaf of `⊢ᵍ`, bridged by `t-value-lift`.
-  checkElabV ctx (Raw.RInt n)
-    (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] Int) =
-    success Surface.zeroUsage (Surface.lift-morphism (intLit n)) 0
-      (NamedCtx.freshCounter ctx)
-    , t-value-lift (g-int n)
+  -- constant morphism (global element `const n ∘ terminal`, via `intLit`),
+  -- the `g-int` leaf of `⊢ᵍ` bridged by `t-value-lift`; otherwise the generic
+  -- infer-and-match. Routed through ONE scrutinee (`isRIntVliftTarget? T`) so
+  -- the two outcomes don't overlap (no stuck `checkElabV (RInt n) T` for
+  -- variable `T`). Behaviour is unchanged; the dispatch is now analysable.
+  checkElabV ctx (Raw.RInt n) T = checkElabV-RInt-aux ctx n T (isRIntVliftTarget? T)
 
   -- Plan 0.41: a pair literal `(a , b)` at a pure-arrow to a product is a
   -- closed global-element value — route through `checkG`.
@@ -2276,6 +2296,18 @@ mutual
   checkElabV-RVar-bbc-arr-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.One Once.Type.pure ] _) err _ _ = failure err , tt
   checkElabV-RVar-bbc-arr-failure-aux ctx (Once.Type.μ-type _) err _ _ = failure err , tt
   checkElabV-RVar-bbc-arr-failure-aux ctx (Once.Type.ν-type _) err _ _ = failure err , tt
+
+  -- RInt: value-lift on a pure-arrow-to-Int target, else generic infer+match.
+  -- `refl` refines `T` to the arrow so `t-value-lift (g-int n)` types; the
+  -- `nothing` branch reproduces the old generic clause for RInt verbatim.
+  checkElabV-RInt-aux ctx n T (just (X , refl)) =
+    success Surface.zeroUsage (Surface.lift-morphism (intLit n)) 0 (NamedCtx.freshCounter ctx)
+    , t-value-lift (g-int n)
+  checkElabV-RInt-aux ctx n T nothing with inferElabV ctx (Raw.RInt n)
+  ... | failure err , _ = failure err , tt
+  ... | success T' Ψ eE d fr , w with T ≟T T'
+  ...   | yes refl = success Ψ eE d fr , t-embed w
+  ...   | no _     = failure (TypeMismatch T T') , tt
 
   -- Per-bbc-X auxes: pattern-match on the verified inferElabV result
   -- (Σ-pair). The success path uses t-embed of the witness; the
