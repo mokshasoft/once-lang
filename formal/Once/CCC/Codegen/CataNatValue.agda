@@ -30,16 +30,23 @@ module Once.CCC.Codegen.CataNatValue where
 
 open import Data.Nat using (ℕ; zero; suc)
 open import Data.Sum using (inj₂)
-open import Relation.Binary.PropositionalEquality using (_≡_)
+open import Data.Product using (∃-syntax; _,_)
+open import Relation.Binary.PropositionalEquality using (_≡_; sym; subst)
 
 open import Once.Type using (Functor; _⊕_; Id; μ-type; ⟦_⟧T)
 open import Once.Semantics.Machine
   using (⟦_⟧; sem-In; sem-cata; sem-cata-compute; coerce-functor⁻¹)
-open import Once.CCC.IR using (IR; Cata)
+open import Once.CCC.IR using (IR; Cata; AllocMode)
 open import Once.CCC.Eval using (eval)
 open import Once.Functor.Translate using (WellFormedF)
+open import Once.CCC.FrameSemantics using (FrameSemantics)
+open import Once.CCC.Machine.Allocation using (AllocState)
+open import Once.CCC.Machine.SMCore using (LocState; ValueLocation)
+open import Once.CCC.Machine.ClosureWellFormed using (module ClosureWellFormedDef)
 
-module CataNatValue (G : Functor) where
+module CataNatValue {FS : FrameSemantics} (program-bound : ℕ) (G : Functor) where
+  open ClosureWellFormedDef {FS} program-bound using (ValidAtWF)
+
   F : Functor
   F = G ⊕ Id
 
@@ -75,3 +82,31 @@ module CataNatValue (G : Functor) where
   cata-value-loop Realizes base base-real vstep zero    = base-real
   cata-value-loop Realizes base base-real vstep (suc k) =
     vstep (nat-spine k base) (cata-value-loop Realizes base base-real vstep k)
+
+  ------------------------------------------------------------------------
+  -- Discharging `vstep` — the value connection.
+  --
+  -- `RealizesV v` = "the machine has a state realizing the A-value `v`"
+  -- (the `value-realized` shape, witnessing state existentially packed).
+  -- `Realizes x` (for the loop) is then `RealizesV (eval (Cata wf alg) x)`.
+  --
+  -- `vstep-from-alg` discharges the VALUE side of `vstep`: the deep
+  -- per-layer obligation is that the machine (build-layer then the algebra
+  -- `alg`) realizes the A-value `eval alg (inr acc)` where `acc = eval
+  -- (Cata) child`. `nat-fold-cons` says THAT A-value IS `eval (Cata)
+  -- (In (inr child))`, so the realization transfers by `subst` — exactly
+  -- the value-side analogue of how `at-relocated-emits` carries the
+  -- algebra's events into the cata trace. What remains (the per-layer
+  -- algebra realization itself) is the genuine `rec-scheme-semantic` core:
+  -- build-layer's `inr`-node `ValidAtWF` + the algebra's `value-realized`
+  -- IH lifted past the build-layer allocator.
+  RealizesV : ∀ {A : _} → ⟦ A ⟧ → Set
+  RealizesV {A} v =
+    ∃[ mOut ] ∃[ alloc ] ∃[ loc ] ∃[ s ] ValidAtWF mOut alloc {A} v loc s
+
+  vstep-from-alg : ∀ (wf : WellFormedF F) {A} (alg : IR (⟦ F ⟧T A) A)
+                     (child : ⟦ μ-type F ⟧)
+    → RealizesV {A} (eval alg (coerce-functor⁻¹ F A (inj₂ (eval (Cata wf alg) child))))
+    → RealizesV {A} (eval (Cata wf alg) (sem-In F (inj₂ child)))
+  vstep-from-alg wf alg child r =
+    subst (RealizesV) (sym (nat-fold-cons wf alg child)) r
