@@ -138,38 +138,35 @@ pure-cata-emits-[] {F} {C} n wf alg alg-pure x =
 
 pure-emits-[] : ∀ {A B} (n : ℕ) (ir : IR A B)
               → EmitsNoSigOp ir → ∀ (x : ⟦ A ⟧) → proj₁ (obs n ir x) ≡ []
--- Fuel 0 observes nothing, for ANY `ir` (`obs zero _ = ([] , _)`).
-pure-emits-[] zero    ir            _          x = refl
-pure-emits-[] (suc n) (SigOp si)    ()
--- `suc n`: structural, recursing at the predecessor fuel `n` (matching
--- `obs (suc n)`'s clauses). The value is now the denotational `eval`, so the
--- compose recursion is on `eval f x` (no `with` on the obs value).
-pure-emits-[] (suc n) (g ∘ f) (eg , ef) x =
-  cong₂ _++_ (pure-emits-[] n f ef x) (pure-emits-[] n g eg (eval f x))
-pure-emits-[] (suc n) (⟨ f , g ⟩ m) (ef , eg) x =
-  cong₂ _++_ (pure-emits-[] n f ef x) (pure-emits-[] n g eg x)
-pure-emits-[] (suc n) (case f g) (ef , eg) (inj₁ a) = pure-emits-[] n f ef a
-pure-emits-[] (suc n) (case f g) (ef , eg) (inj₂ b) = pure-emits-[] n g eg b
-pure-emits-[] (suc n) (Cata wf alg) ealg x =
+-- All clauses are `n`-free (obs now splits on the IR first, via `sig1`): SigOp
+-- is excluded by ⊥; `∘`/`⟨,⟩` thread their sub-IR IHs — `rewrite` the first
+-- sub's `≡ []` so the remaining budget `n ∸ length [] = n` feeds the second;
+-- `case` recurses; `Cata` delegates to `pure-cata-emits-[]`; the rest are
+-- value-pure (`obs … = ([] , _)`).
+pure-emits-[] n (SigOp si)    ()
+pure-emits-[] n (g ∘ f) (eg , ef) x rewrite pure-emits-[] n f ef x = pure-emits-[] n g eg (eval f x)
+pure-emits-[] n (⟨ f , g ⟩ m) (ef , eg) x rewrite pure-emits-[] n f ef x = pure-emits-[] n g eg x
+pure-emits-[] n (case f g) (ef , eg) (inj₁ a) = pure-emits-[] n f ef a
+pure-emits-[] n (case f g) (ef , eg) (inj₂ b) = pure-emits-[] n g eg b
+pure-emits-[] n (Cata wf alg) ealg x =
   pure-cata-emits-[] n wf alg (λ z → pure-emits-[] n alg ealg z) x
--- value-pure constructors (obs catchall): no events
-pure-emits-[] (suc n) id            _ x = refl
-pure-emits-[] (suc n) fst           _ x = refl
-pure-emits-[] (suc n) snd           _ x = refl
-pure-emits-[] (suc n) (inl _)       _ x = refl
-pure-emits-[] (suc n) (inr _)       _ x = refl
-pure-emits-[] (suc n) terminal      _ x = refl
-pure-emits-[] (suc n) initial       _ x = refl
-pure-emits-[] (suc n) (curry _ _)   _ x = refl
-pure-emits-[] (suc n) apply         _ x = refl
-pure-emits-[] (suc n) arr           _ x = refl
-pure-emits-[] (suc n) (In _ _)      _ x = refl
-pure-emits-[] (suc n) (out-μ _)     _ x = refl
-pure-emits-[] (suc n) (Para _ _)    _ x = refl
-pure-emits-[] (suc n) (Out _)       _ x = refl
-pure-emits-[] (suc n) (in-ν _ _)    _ x = refl
-pure-emits-[] (suc n) (Ana _ _)     _ x = refl
-pure-emits-[] (suc n) (Hylo _ _ _ _) _ x = refl
-pure-emits-[] (suc n) (Fuse _ _ _ _) _ x = refl
-pure-emits-[] (suc n) (free-heap _) _ x = refl
-pure-emits-[] (suc n) (const _ _ _) _ x = refl
+pure-emits-[] n id            _ x = refl
+pure-emits-[] n fst           _ x = refl
+pure-emits-[] n snd           _ x = refl
+pure-emits-[] n (inl _)       _ x = refl
+pure-emits-[] n (inr _)       _ x = refl
+pure-emits-[] n terminal      _ x = refl
+pure-emits-[] n initial       _ x = refl
+pure-emits-[] n (curry _ _)   _ x = refl
+pure-emits-[] n apply         _ x = refl
+pure-emits-[] n arr           _ x = refl
+pure-emits-[] n (In _ _)      _ x = refl
+pure-emits-[] n (out-μ _)     _ x = refl
+pure-emits-[] n (Para _ _)    _ x = refl
+pure-emits-[] n (Out _)       _ x = refl
+pure-emits-[] n (in-ν _ _)    _ x = refl
+pure-emits-[] n (Ana _ _)     _ x = refl
+pure-emits-[] n (Hylo _ _ _ _) _ x = refl
+pure-emits-[] n (Fuse _ _ _ _) _ x = refl
+pure-emits-[] n (free-heap _) _ x = refl
+pure-emits-[] n (const _ _ _) _ x = refl
