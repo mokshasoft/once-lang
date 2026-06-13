@@ -35,7 +35,7 @@ open import Once.Verified.Trace using (SigOpEvent)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore
   using (halted; regs; readReg; Scratch; SV-Tag; AbstractTrace;
-         mov-to-input; instr-reg-op; scratch-dec;
+         mov-to-input; instr-reg-op; scratch-dec; scratch-load-count; instr-load-tag-lit;
          instr-ctrl; c-label; c-jmp; c-branch-scratch-zero)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
@@ -289,3 +289,56 @@ module CataNatAscend {FS : FrameSemantics} where
     in final , m + m' , FlatSteps-++ steps steps'
        , trans (chain-events-++ steps steps') (cong₂ _++_ ev ev')
        , fpc-final
+
+  ----------------------------------------------------------------------
+  -- The BASE phase (between descend and ascend, IRToTrace:199):
+  --   scratch-load-count ∷ instr-load-tag-lit 0 ∷ mov-to-input ∷
+  --   build-layer 0 ∷ mov-to-input ∷ at
+  -- It sets `Scratch := Input2` (the depth count → SV-Tag n), builds the
+  -- base layer node `[0, SV-Tag 0]` (tag-0, the inl/base), and runs the
+  -- algebra `at` on it → Output = alg(base), emitting `E_base`. Control
+  -- then flows into the ascend loop (the `at`-chain ends at the loop head).
+  -- Structurally like `ascend-body-runs` minus the scratch-dec, with the
+  -- scratch-load-count + load-tag prefix; the three prefix reg/mov steps,
+  -- build-layer, and the post-build mov are all silent, so the base phase
+  -- emits exactly E_base.
+  base-phase-runs : ∀ (prog : AbstractTrace) (fs blf : FlatState) {N : ℕ} {at-end : FlatState}
+                      (E : List SigOpEvent)
+    → halted (floc fs) ≡ false
+    → fetch prog (fpc fs)             ≡ just (instr-reg-op scratch-load-count)
+    → fetch prog (suc (fpc fs))       ≡ just (instr-load-tag-lit 0)
+    → fetch prog (suc (suc (fpc fs))) ≡ just mov-to-input
+    → (bl-steps : FlatSteps prog 10
+        (flat-exec-instr mov-to-input prog
+          (flat-exec-instr (instr-load-tag-lit 0) prog
+            (flat-exec-instr (instr-reg-op scratch-load-count) prog fs))) blf)
+    → chain-events bl-steps ≡ []
+    → halted (floc blf) ≡ false
+    → fetch prog (fpc blf) ≡ just mov-to-input
+    → (at-chain : FlatSteps prog N (flat-exec-instr mov-to-input prog blf) at-end)
+    → chain-events at-chain ≡ E
+    → Σ[ n ∈ ℕ ] Σ[ final ∈ FlatState ]
+        Σ[ steps ∈ FlatSteps prog n fs final ] (chain-events steps ≡ E)
+  base-phase-runs prog fs blf E hf fSc fT fM1 bl-steps bl-silent bl-halted fM2 at-chain at-events =
+    _ , _ , chain , events
+    where
+      L1 = (hf , fSc) ∷ []
+      L2 = (hf , fT)  ∷ []
+      L3 = (hf , fM1) ∷ []
+      L4 = (bl-halted , fM2) ∷ []
+      R4 = FlatSteps-++ L4 at-chain
+      R3 = FlatSteps-++ bl-steps R4
+      R2 = FlatSteps-++ L3 R3
+      R1 = FlatSteps-++ L2 R2
+      chain = FlatSteps-++ L1 R1
+      ev-R4 : chain-events R4 ≡ E
+      ev-R4 = trans (chain-events-++ L4 at-chain) at-events
+      ev-R3 : chain-events R3 ≡ E
+      ev-R3 = trans (chain-events-++ bl-steps R4)
+                    (trans (cong (_++ chain-events R4) bl-silent) ev-R4)
+      ev-R2 : chain-events R2 ≡ E
+      ev-R2 = trans (chain-events-++ L3 R3) ev-R3
+      ev-R1 : chain-events R1 ≡ E
+      ev-R1 = trans (chain-events-++ L2 R2) ev-R2
+      events : chain-events chain ≡ E
+      events = trans (chain-events-++ L1 R1) ev-R1
