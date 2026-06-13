@@ -289,3 +289,11 @@ module FlatStepsAPI {FS : FrameSemantics} where
   chain-steps k zero    st f = []
   chain-steps k (suc m) st f =
     FlatSteps-++ (f 0) (chain-steps k m (λ d → st (suc d)) (λ d → f (suc d)))
+
+  -- `chain-steps` at depth 0 is the empty chain. `refl` HERE (inside
+  -- `FlatStepsAPI`, where `chain-steps` reduces); exported so downstream
+  -- callers under `open FlatStepsAPI` can rewrite the depth-0 chain to `[]`.
+  chain-steps-nil : ∀ {prog : AbstractTrace} (k : ℕ) (st : ℕ → FlatState)
+                      (f : ∀ d → FlatSteps prog k (st d) (st (suc d)))
+                  → chain-steps k zero st f ≡ []
+  chain-steps-nil k st f = refl
