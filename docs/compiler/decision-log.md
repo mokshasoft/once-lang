@@ -3979,3 +3979,72 @@ elaborator level.
   completes), D046 (kind-unified arrow), D053 (closure calling convention)
 - Plan 0.36 (the eff cata this unblocks), Plan 0.39 (trace-correct optimizer),
   Plan 0.40 (implementation)
+
+## D057: Correctness Is Anchored at a Source-Level Reference Semantics (Not the IR)
+
+**Date**: 2026-06-13
+**Status**: Accepted; Plan 0.45 (Part A landed; Part B = the discharge)
+**Supersedes**: the IR-pivot meaning `⟦ src ⟧ := obs (elaborate src)` (Plan 0.24 Phase C, `Once.Verified.SourceTrace`)
+
+### Context
+
+A Once program returns nothing; its only observable is the ordered sequence of
+SigOp calls it makes (Plan 0.44: `Behavior = ℕ → List SigOpEvent`). Plan 0.44
+fixed the observable *type* and the apex statement (`exec arch bytes ≈ ⟦ src ⟧`),
+but the *meaning* stayed `⟦ src ⟧ := obs (elaborate src)` — defining the source's
+meaning **as the elaborator's output**. That anchors the spec at the IR: the
+~2400-line elaborator is baked into the spec, so a meaning-changing elaboration
+moves *both* sides of `correct` together and cannot be caught. The typechecker
+was **not load-bearing** — which is why its proof-structure problems never showed
+up as a constraint.
+
+CCC+SR is a fine denotational semantics *of the IR*, but the surface→CCC
+translation (the elaborator) is non-trivial and could map a program to a morphism
+that doesn't mean what the program says. Trusting it as the spec is an
+*assumption*, not a *theorem*.
+
+### Decision
+
+Anchor `⟦ src ⟧` at a small **source-level reference semantics**, computed
+independently of the elaborator. `sourceTrace : Source → Behavior`
+(`Once.Verified.SourceSemantics`, **154 code lines**) is a direct fuel-bounded
+interpreter over `RawExpr` that emits the SigOp trace. The full `compile`
+(typechecker included) is then *proven* to preserve it (`elaborate-preserves-
+trace`, inside `Compile.module-to-asm-correct`) — making the elaborator
+**load-bearing**.
+
+Reference design:
+- Untyped `Value` with **defunctionalised** closures — a HOAS `Vfun : (Value →
+  Value) → Value` is not strictly positive. **Fuel** for termination; the fuel is
+  `Behavior`'s step index.
+- **SigOp application is the sole emitter** (mirrors `obs`); **arith is pure**
+  (the arith→SigOp lowering is internal optimisation only); events in eval order.
+- `cata` folds via `In`-position detection (recursive positions are exactly
+  `Vin`-wrapped) — no functor witness needed at runtime.
+
+### Rationale
+
+The reference must be *much* smaller than the elaborator (154 vs ~2400 lines,
+~16×) and structurally unlike it (no type inference / closure records / codegen),
+or it just moves the trust. Anchoring below the parser, above the elaborator
+(`Source = GModule`; text→`GModule` stays trusted) verifies the typechecker while
+keeping a trustworthy reference.
+
+### Consequences
+
+- The IR pivot is gone; `module-to-asm-correct` now spans the elaborator. **Part
+  B** is `elaborate-preserves-trace` — an untyped-source ↔ typed-IR bridge
+  (CompCert-style), and the place the frontend's proof-structure issues (value-
+  lift clause overlap, `with`-opacity) surface *inside the grand theorem* and get
+  resolved, rather than as an isolated `ErrorProofs` island.
+- The typed layers (`evalSurface` on `Expr`, `obs` on IR) keep their typed/HOAS
+  semantics; the untyped defunctionalised reference is local to `sourceTrace` and
+  forecloses nothing about future dependent types.
+- Faithfulness obligations (Part B): `divℤ`/`modℤ` agree with the value
+  semantics'; multi-argument SigOps (the reference treats SigOps as 1-arg).
+
+### See Also
+
+- Plan 0.44 (Behavior = the SigOp trace), Plan 0.45 (this), Plan 0.24 (`obs` and
+  the superseded IR pivot)
+- D054 (`Int` semantics), D055 (div/mod totality)
