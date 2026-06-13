@@ -141,7 +141,7 @@ postulate
   module-to-asm-correct :
     ∀ (arch : Arch) (m : P.Module) (asm : String) →
     C.compileFromModule C.Heap C.Build false (toLegacyArch arch) m ≡ C.Built asm →
-    ∀ (n : ℕ) → ⟦ arch ⟧A asm n ≡ ⟦ m ⟧M n
+    ∀ (n : ℕ) → (⟦ arch ⟧A asm) n ≡ ⟦ m ⟧M n
 
 ------------------------------------------------------------------------
 -- CPU semantics injected here (D054 wired-not-imported).
@@ -181,7 +181,7 @@ module WithCPU (arch-sem : Arch → ArchSemantics) where
     -- (GNU `as` conformance), removable by B1.
     string-to-bytes-correct :
       ∀ (arch : Arch) (asm : String) →
-      ∀ (n : ℕ) → exec arch (string-to-bytes arch asm) n ≡ ⟦ arch ⟧A asm n
+      ∀ (n : ℕ) → exec arch (string-to-bytes arch asm) n ≡ (⟦ arch ⟧A asm) n
 
   --------------------------------------------------------------------
   -- The grand theorem — by composition of the per-stage postulates.
