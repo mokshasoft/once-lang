@@ -32,6 +32,7 @@
 module Once.Verified.Compile where
 
 open import Data.Bool using (Bool; false)
+open import Data.Nat using (ℕ)
 open import Data.List using (List)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.String using (String)
@@ -117,10 +118,13 @@ postulate
 
   -- Stage 1 correctness — GModule → Module preserves observable
   -- behavior. Discharge: structural conversion is observably trivial.
+  -- Pointwise in the observation depth `n` (Plan 0.44): the traces agree
+  -- up to every prefix length. Avoids funext; matches the `ℕ`-indexed
+  -- `obs`/`flat-events` the discharge will provide.
   gmoduleToModule-correct :
     ∀ (src : Source) (m : P.Module) →
     gmoduleToModule src ≡ just m →
-    ⟦ m ⟧M ≡ ⟦ src ⟧
+    ∀ (n : ℕ) → ⟦ m ⟧M n ≡ ⟦ src ⟧ n
 
   -- Stage 2 correctness — Module → asm preserves observable behavior.
   --
@@ -137,7 +141,7 @@ postulate
   module-to-asm-correct :
     ∀ (arch : Arch) (m : P.Module) (asm : String) →
     C.compileFromModule C.Heap C.Build false (toLegacyArch arch) m ≡ C.Built asm →
-    ⟦ arch ⟧A asm ≡ ⟦ m ⟧M
+    ∀ (n : ℕ) → ⟦ arch ⟧A asm n ≡ ⟦ m ⟧M n
 
 ------------------------------------------------------------------------
 -- CPU semantics injected here (D054 wired-not-imported).
@@ -177,7 +181,7 @@ module WithCPU (arch-sem : Arch → ArchSemantics) where
     -- (GNU `as` conformance), removable by B1.
     string-to-bytes-correct :
       ∀ (arch : Arch) (asm : String) →
-      exec arch (string-to-bytes arch asm) ≡ ⟦ arch ⟧A asm
+      ∀ (n : ℕ) → exec arch (string-to-bytes arch asm) n ≡ ⟦ arch ⟧A asm n
 
   --------------------------------------------------------------------
   -- The grand theorem — by composition of the per-stage postulates.
@@ -188,10 +192,14 @@ module WithCPU (arch-sem : Arch → ArchSemantics) where
   -- `module-to-asm-correct` and surfaces in `make typecheck`.
   --------------------------------------------------------------------
 
+  -- Trace preservation, pointwise in the observation depth `n`: for every
+  -- prefix length, the bytes' SigOp-trace equals the source's. (At
+  -- `Behavior = ℕ → List SigOpEvent` this is exactly "the compiled program
+  -- makes the same SigOp calls, in order, as the source denotes.")
   correct :
     ∀ (arch : Arch) (src : Source) (bytes : List Byte) →
     compile arch src ≡ just bytes →
-    exec arch bytes ≡ ⟦ src ⟧
+    ∀ (n : ℕ) → exec arch bytes n ≡ ⟦ src ⟧ n
   correct arch src bytes pf with gmoduleToModule src in g-eq
   correct arch src bytes () | nothing
   correct arch src bytes pf | just m
@@ -206,7 +214,7 @@ module WithCPU (arch-sem : Arch → ArchSemantics) where
     -- pf : just (string-to-bytes asm) ≡ just bytes
     -- ⇒ bytes ≡ string-to-bytes asm
     with bytes | pf
-  ... | _ | refl =
-    trans (string-to-bytes-correct arch asm)
-          (trans (module-to-asm-correct arch m asm c-eq)
-                 (gmoduleToModule-correct src m g-eq))
+  ... | _ | refl = λ n →
+    trans (string-to-bytes-correct arch asm n)
+          (trans (module-to-asm-correct arch m asm c-eq n)
+                 (gmoduleToModule-correct src m g-eq n))
