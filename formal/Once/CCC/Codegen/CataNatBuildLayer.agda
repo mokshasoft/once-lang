@@ -27,6 +27,7 @@ open import Data.Nat using (ℕ; zero; suc)
 open import Data.Bool using (false)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (Σ-syntax; _×_; _,_; proj₁; proj₂)
+open import Data.List using ([])
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
@@ -41,10 +42,12 @@ open import Once.CCC.Machine.SMCore
 open import Once.CCC.Machine.SMCore using (module AbstractExec)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
+open import Once.Verified.FlatEvents using (module FlatEventTrace)
 
 module CataNatBuildLayer {FS : FrameSemantics} where
   open FlatMachine {FS}
   open FlatStepsAPI {FS}
+  open FlatEventTrace {FS}
   open MemOps {FS} using (writeLoc-halted; readLoc; writeLoc-preserves-other; writeLoc-regs;
                           writeLoc-read-same-stack)
   open AbstractExec {FS} using (exec-load-from-slot-with-value)
@@ -293,9 +296,12 @@ module CataNatBuildLayer {FS : FrameSemantics} where
     → fetch prog (suc (suc (suc (suc (suc (suc (suc (fpc fs))))))))             ≡ just (load-from-slot pstash)
     → fetch prog (suc (suc (suc (suc (suc (suc (suc (suc (fpc fs)))))))))       ≡ just store-indirect-suc
     → fetch prog (suc (suc (suc (suc (suc (suc (suc (suc (suc (fpc fs)))))))))) ≡ just (load-from-slot sstash)
-    → Σ[ final ∈ FlatState ] (FlatSteps prog 10 fs final × halted (floc final) ≡ false)
+    → Σ[ final ∈ FlatState ] Σ[ steps ∈ FlatSteps prog 10 fs final ]
+        (halted (floc final) ≡ false × chain-events steps ≡ [])
   build-layer-runs prog fs tag pstash sstash hf ps≢ss f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 =
-    _ , FlatSteps-++ prefix (proj₁ suffix) , proj₂ suffix
+    _ , FlatSteps-++ prefix (proj₁ suffix)
+      , proj₂ suffix
+      , chain-events-++ prefix (proj₁ suffix)
     where
       A1 = flat-exec-instr mov-to-output prog fs
       A2 = flat-exec-instr (store-at-slot pstash) prog A1
