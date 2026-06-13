@@ -36,6 +36,7 @@ open import Data.String using (String) renaming (_≟_ to _≟str_)
 open import Relation.Nullary using (yes; no; Dec)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans)
 open import Once.TypeCheck.Raw using (RawExpr)
+open import Data.List.Relation.Unary.Any using (Any; here; there)
 
 open import Once.Type using (Type; Unit)
 open import Once.CCC.IR using (IR)
@@ -73,6 +74,18 @@ findMain : List C.CompiledFun → Maybe (IR Unit Unit)
 findMain []         = nothing
 findMain (cf ∷ rest) =
   findMain-here cf (cfName cf ≟str "main") (isUnit? (cfType cf)) (findMain rest)
+
+-- Link 1 of main-exists-align: a successful `findMain` means a `main`-named
+-- (Unit-typed) function is present in the compiled list.
+findMain-name :
+  ∀ (funs : List C.CompiledFun) (ir : IR Unit Unit)
+  → findMain funs ≡ just ir
+  → Any (λ cf → cfName cf ≡ "main") funs
+findMain-name [] ir ()
+findMain-name (cf ∷ rest) ir eq with cfName cf ≟str "main" | isUnit? (cfType cf)
+... | yes p | just refl = here p
+... | yes _ | nothing   = there (findMain-name rest ir eq)
+... | no  _ | _         = there (findMain-name rest ir eq)
 
 -- Explicit dispatch on the compile result (no `with`-opacity), so the IR side
 -- of `elaborate-preserves-trace` can be characterised (analogous to the
