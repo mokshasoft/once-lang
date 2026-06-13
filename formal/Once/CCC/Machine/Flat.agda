@@ -208,11 +208,39 @@ module FlatMachine {FS : FrameSemantics} where
   Straight : AbstractTrace → Set
   Straight = All StraightStep
 
+  -- `fetch` into a trace all of whose instructions satisfy `P` yields a
+  -- `P`-instruction. The general lookup-into-`All`; proven HERE inside
+  -- `FlatMachine` where `fetch` reduces on the cons pattern (it refuses to
+  -- under a downstream `open FlatMachine {FS}`). Downstream invariants
+  -- (e.g. `CataNextSlot`'s next-slot preservation) instantiate `P`.
+  fetch-All : ∀ {P : AbstractInstr → Set} {prog k i}
+            → All P prog → fetch prog k ≡ just i → P i
+  fetch-All {prog = []}             _          ()
+  fetch-All {prog = x ∷ xs} {zero}  (px ∷ _)   refl = px
+  fetch-All {prog = x ∷ xs} {suc k} (_  ∷ pxs) eq   = fetch-All pxs eq
+
   -- `fetch` into a straight trace yields a straight instruction.
   fetch-Straight : ∀ {prog k i} → Straight prog → fetch prog k ≡ just i → StraightStep i
-  fetch-Straight {[]}      _          ()
-  fetch-Straight {x ∷ xs} {zero}  (px ∷ _)  refl = px
-  fetch-Straight {x ∷ xs} {suc k} (_ ∷ pxs) eq   = fetch-Straight pxs eq
+  fetch-Straight = fetch-All
+
+  -- A projection `f` invariant under exec-flat, given it is preserved by
+  -- every `P`-instruction's step (`pi`) and by the off-end halt (`ph`), on
+  -- a trace all of whose instructions satisfy `P`. Proven HERE (where
+  -- `exec-flat` reduces; downstream `open FlatMachine {FS}` makes the
+  -- recursive `exec-flat`/`fetch` opaque). The frame-discipline invariant
+  -- (`next-slot` preserved) is the `f = next-slot ∘ falloc` instance.
+  exec-flat-invariant : ∀ {A : Set} (f : FlatState → A) (P : AbstractInstr → Set)
+    → (∀ i prog fs → P i → f (flat-exec-instr i prog fs) ≡ f fs)
+    → (∀ fs → f (record fs { floc = record (floc fs) { halted = true } }) ≡ f fs)
+    → ∀ (prog : AbstractTrace) → All P prog → ∀ (n : ℕ) (fs : FlatState)
+    → f (exec-flat n prog fs) ≡ f fs
+  exec-flat-invariant f P pi ph prog allp zero    fs = refl
+  exec-flat-invariant f P pi ph prog allp (suc n) fs with halted (floc fs)
+  ... | true  = refl
+  ... | false with fetch prog (fpc fs) in feq
+  ...   | nothing = ph fs
+  ...   | just i  = trans (exec-flat-invariant f P pi ph prog allp n (flat-exec-instr i prog fs))
+                          (pi i prog fs (fetch-All allp feq))
 
   -- Shift lemma: on a straight tail, exec-flat over `i ∷ rest` from pc
   -- `suc k` agrees with exec-flat over `rest` from pc `k` on the data
