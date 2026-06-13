@@ -40,7 +40,8 @@ open import Relation.Binary.PropositionalEquality
   using (_≡_; refl; sym; trans; cong)
 
 open import Once.Verified.Behavior using (Source; Behavior)
-open import Once.Verified.SourceTrace using (⟦_⟧; ⟦⟧-via-module)
+open import Once.Verified.SourceTrace
+  using (⟦_⟧; ⟦⟧-via-module; moduleToIR; ⟦_⟧IR; elaborate-preserves-trace)
 -- D054 wired-not-imported: import only the portable INTERFACE (no
 -- postulates). The per-arch CPU semantics are *injected* via the
 -- `WithCPU` parameter below, never imported here — so this module
@@ -120,22 +121,29 @@ postulate
   -- `Program` semantics through `programToText`.
   ⟦_⟧A_ : Arch → String → Behavior
 
-  -- Stage 2 correctness — Module → asm preserves observable behavior.
-  --
-  -- This is THE LOAD-BEARING postulate. Discharge composes:
-  --   - typechecker correctness (T0/T2): the elaborated IR realises
-  --     the source's intended SigOp trace;
-  --   - CCC.compile-correct-extracted: `compile-trace ∘ ir-to-trace`
-  --     produces a `Program` whose execution corresponds to the IR's
-  --     abstract semantics;
-  --   - asm-emission-correct: `programToText` + thunk wrapping
-  --     preserves `Program` semantics.
-  --
-  -- A buggy codegen surfaces here as an undischarged proof goal.
-  module-to-asm-correct :
+  -- FACTOR 2 of `module-to-asm-correct` (codegen + asm-emission): the
+  -- asm-text semantics equals `obs` of `main`'s IR. Discharge composes
+  --   - CCC.compile-correct-flat: the flat machine / real x86 corresponds
+  --     to the IR's abstract semantics;
+  --   - asm-emission: `programToText` + thunk wrapping preserves it.
+  -- Backend-side; partly proven via `flat-sim`. A buggy codegen surfaces
+  -- as an undischarged goal here (NOT in the frontend half).
+  codegen-asm-correct :
     ∀ (arch : Arch) (m : P.Module) (asm : String) →
     C.compileFromModule C.Heap C.Build false (toLegacyArch arch) m ≡ C.Built asm →
-    ∀ (n : ℕ) → (⟦ arch ⟧A asm) n ≡ ⟦ m ⟧M n
+    ∀ (n : ℕ) → (⟦ arch ⟧A asm) n ≡ ⟦ moduleToIR m ⟧IR n
+
+-- Stage 2 correctness — now a THEOREM (Plan 0.45 Part B), no longer a
+-- monolithic postulate: the asm trace equals the SOURCE trace, by composing
+-- the codegen half (factor 2) with the frontend half (factor 1,
+-- `elaborate-preserves-trace`). `⟦ m ⟧M = runTrace m` definitionally, so the
+-- chain closes. The frontend's correctness is now a SEPARATE, named obligation.
+module-to-asm-correct :
+  ∀ (arch : Arch) (m : P.Module) (asm : String) →
+  C.compileFromModule C.Heap C.Build false (toLegacyArch arch) m ≡ C.Built asm →
+  ∀ (n : ℕ) → (⟦ arch ⟧A asm) n ≡ ⟦ m ⟧M n
+module-to-asm-correct arch m asm eq n =
+  trans (codegen-asm-correct arch m asm eq n) (elaborate-preserves-trace m n)
 
 -- Stage 1 correctness — DISCHARGED (Plan 0.45 Part B), no longer a
 -- postulate. `⟦ m ⟧M = runTrace m` definitionally, and `⟦⟧-via-module`

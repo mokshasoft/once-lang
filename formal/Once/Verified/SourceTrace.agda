@@ -63,12 +63,35 @@ findMain (cf ∷ rest) with cfName cf ≟str "main" | isUnit? (cfType cf)
 ... | yes _ | just refl = just (cfIR cf)
 ... | _     | _         = findMain rest
 
+moduleToIR : P.Module → Maybe (IR Unit Unit)
+moduleToIR mod with C.compileResolvedModule C.Heap false mod
+... | inj₁ _    = nothing
+... | inj₂ funs = findMain funs
+
 sourceToIR : Source → Maybe (IR Unit Unit)
 sourceToIR src with gmoduleToModule src
 ... | nothing  = nothing
-... | just mod with C.compileResolvedModule C.Heap false mod
-...   | inj₁ _    = nothing
-...   | inj₂ funs = findMain funs
+... | just mod = moduleToIR mod
+
+------------------------------------------------------------------------
+-- IR-level meaning and the FRONTEND obligation (Plan 0.45 Part B, factor 1).
+------------------------------------------------------------------------
+
+-- The SigOp trace `obs` reads off `main`'s IR (the elaborated meaning).
+⟦_⟧IR : Maybe (IR Unit Unit) → Behavior
+⟦ just ir ⟧IR = λ n → proj₁ (obs n ir tt)
+⟦ nothing ⟧IR = λ _ → []
+
+-- FACTOR 1 of `module-to-asm-correct`: typecheck + elaborate preserve the
+-- source trace — `obs` of `main`'s IR equals the source-level reference. THE
+-- load-bearing frontend obligation, now NAMED (Plan 0.45 Phase 2 deliverable).
+-- Discharge = structural induction over `checkElabV` + `Surface.Elaborate`
+-- (the ~2700-line frontend); this is where the typechecker becomes
+-- load-bearing and the `ErrorProofs`-class proof structure surfaces.
+-- Multi-session.
+postulate
+  elaborate-preserves-trace :
+    ∀ (m : P.Module) (n : ℕ) → ⟦ moduleToIR m ⟧IR n ≡ SS.runTrace m n
 
 ------------------------------------------------------------------------
 -- The source semantics (discharges the `Behavior.⟦_⟧` postulate).
