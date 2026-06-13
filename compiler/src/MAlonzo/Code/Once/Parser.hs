@@ -466,7 +466,7 @@ du_go_72 v0
 d_FunInfo_84 = ()
 data T_FunInfo_84
   = C_mkFunInfo_106 MAlonzo.Code.Agda.Builtin.String.T_String_6
-                    MAlonzo.Code.Once.Type.T_Type_112
+                    (Maybe MAlonzo.Code.Once.Type.T_Type_112)
                     (Maybe MAlonzo.Code.Once.Parser.Module.Core.T_AllocStrategy_8)
                     MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 Bool
 -- Once.Parser.FunInfo.funName
@@ -477,7 +477,8 @@ d_funName_96 v0
       C_mkFunInfo_106 v1 v2 v3 v4 v5 -> coe v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Parser.FunInfo.funType
-d_funType_98 :: T_FunInfo_84 -> MAlonzo.Code.Once.Type.T_Type_112
+d_funType_98 ::
+  T_FunInfo_84 -> Maybe MAlonzo.Code.Once.Type.T_Type_112
 d_funType_98 v0
   = case coe v0 of
       C_mkFunInfo_106 v1 v2 v3 v4 v5 -> coe v2
@@ -735,7 +736,10 @@ du_go_188 v0 v1 v2
                                                                       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18))
                                                                 (coe
                                                                    C_mkFunInfo_106 (coe v6)
-                                                                   (coe v12) (coe v7) (coe v8)
+                                                                   (coe
+                                                                      MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                      (coe v12))
+                                                                   (coe v7) (coe v8)
                                                                    (coe
                                                                       MAlonzo.Code.Agda.Builtin.Bool.C_false_8)))
                                                       else coe
@@ -782,7 +786,11 @@ du_go_188 v0 v1 v2
                                      _ -> MAlonzo.RTE.mazUnreachableError
                               _ -> MAlonzo.RTE.mazUnreachableError
                        MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
-                         -> coe du_go_188 (coe v0) (coe v4) (coe v2)
+                         -> coe
+                              du_consFun_168 (coe du_go_188 (coe v0) (coe v4) (coe v2))
+                              (coe
+                                 C_mkFunInfo_106 (coe v6) (coe v2) (coe v7) (coe v8)
+                                 (coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8))
                        _ -> MAlonzo.RTE.mazUnreachableError
                 MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38 v6 v7 v8
                   -> case coe v7 of
@@ -817,7 +825,9 @@ du_go_188 v0 v1 v2
                                                     (coe
                                                        MAlonzo.Code.Data.String.Base.d__'43''43'__20
                                                        ("." :: Data.Text.Text) v6))
-                                                 (coe v13)
+                                                 (coe
+                                                    MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                    (coe v13))
                                                  (coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18)
                                                  (coe
                                                     MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36
@@ -874,7 +884,11 @@ du_go_188 v0 v1 v2
                                         (coe
                                            du_consFun_168 (coe du_go_188 (coe v0) (coe v4) (coe v7))
                                            (coe
-                                              C_mkFunInfo_106 (coe v6) (coe v11) (coe v7)
+                                              C_mkFunInfo_106 (coe v6)
+                                              (coe
+                                                 MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                 (coe v11))
+                                              (coe v7)
                                               (coe
                                                  MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36 (coe v6))
                                               (coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10)))

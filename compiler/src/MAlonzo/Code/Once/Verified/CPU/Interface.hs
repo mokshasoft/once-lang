@@ -17,9 +17,11 @@ import MAlonzo.RTE (coe, erased, AgdaAny, addInt, subInt, mulInt,
                     rem64, lt64, eq64, word64FromNat, word64ToNat)
 import qualified MAlonzo.RTE
 import qualified Data.Text
+import qualified MAlonzo.Code.Agda.Builtin.List
 import qualified MAlonzo.Code.Agda.Builtin.Maybe
 import qualified MAlonzo.Code.Agda.Builtin.String
 import qualified MAlonzo.Code.Data.Fin.Base
+import qualified MAlonzo.Code.Once.Verified.Trace
 
 -- Once.Verified.CPU.Interface.Byte
 d_Byte_8 :: ()
@@ -30,8 +32,10 @@ data T_Arch_10 = C_x86'45'64_12 | C_x86'45'32_14 | C_riscv64_16
 -- Once.Verified.CPU.Interface.ArchSemantics
 d_ArchSemantics_18 = ()
 data T_ArchSemantics_18
-  = C_constructor_62 AgdaAny (AgdaAny -> AgdaAny -> Maybe AgdaAny)
-                     (Maybe AgdaAny -> Maybe Integer)
+  = C_constructor_64 AgdaAny (AgdaAny -> AgdaAny -> Maybe AgdaAny)
+                     (AgdaAny ->
+                      AgdaAny ->
+                      Integer -> [MAlonzo.Code.Once.Verified.Trace.T_SigOpEvent_136])
                      ([MAlonzo.Code.Data.Fin.Base.T_Fin_10] -> Maybe AgdaAny)
                      (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
                       [MAlonzo.Code.Data.Fin.Base.T_Fin_10])
@@ -45,21 +49,24 @@ d_State_36 = erased
 d_initialState_38 :: T_ArchSemantics_18 -> AgdaAny
 d_initialState_38 v0
   = case coe v0 of
-      C_constructor_62 v3 v4 v5 v6 v7 -> coe v3
+      C_constructor_64 v3 v4 v5 v6 v7 -> coe v3
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Verified.CPU.Interface.ArchSemantics.run
 d_run_40 ::
   T_ArchSemantics_18 -> AgdaAny -> AgdaAny -> Maybe AgdaAny
 d_run_40 v0
   = case coe v0 of
-      C_constructor_62 v3 v4 v5 v6 v7 -> coe v4
+      C_constructor_64 v3 v4 v5 v6 v7 -> coe v4
       _ -> MAlonzo.RTE.mazUnreachableError
--- Once.Verified.CPU.Interface.ArchSemantics.observe
-d_observe_42 ::
-  T_ArchSemantics_18 -> Maybe AgdaAny -> Maybe Integer
-d_observe_42 v0
+-- Once.Verified.CPU.Interface.ArchSemantics.run-trace
+d_run'45'trace_42 ::
+  T_ArchSemantics_18 ->
+  AgdaAny ->
+  AgdaAny ->
+  Integer -> [MAlonzo.Code.Once.Verified.Trace.T_SigOpEvent_136]
+d_run'45'trace_42 v0
   = case coe v0 of
-      C_constructor_62 v3 v4 v5 v6 v7 -> coe v5
+      C_constructor_64 v3 v4 v5 v6 v7 -> coe v5
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Verified.CPU.Interface.ArchSemantics.decode
 d_decode_44 ::
@@ -67,7 +74,7 @@ d_decode_44 ::
   [MAlonzo.Code.Data.Fin.Base.T_Fin_10] -> Maybe AgdaAny
 d_decode_44 v0
   = case coe v0 of
-      C_constructor_62 v3 v4 v5 v6 v7 -> coe v6
+      C_constructor_64 v3 v4 v5 v6 v7 -> coe v6
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Verified.CPU.Interface.ArchSemantics.assemble
 d_assemble_46 ::
@@ -76,19 +83,19 @@ d_assemble_46 ::
   [MAlonzo.Code.Data.Fin.Base.T_Fin_10]
 d_assemble_46 v0
   = case coe v0 of
-      C_constructor_62 v3 v4 v5 v6 v7 -> coe v7
+      C_constructor_64 v3 v4 v5 v6 v7 -> coe v7
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Verified.CPU.Interface.ArchSemantics.exec-bytes
 d_exec'45'bytes_48 ::
   T_ArchSemantics_18 ->
-  [MAlonzo.Code.Data.Fin.Base.T_Fin_10] -> Maybe Integer
+  [MAlonzo.Code.Data.Fin.Base.T_Fin_10] ->
+  Integer -> [MAlonzo.Code.Once.Verified.Trace.T_SigOpEvent_136]
 d_exec'45'bytes_48 v0 v1
   = let v2 = coe d_decode_44 v0 v1 in
     coe
       (case coe v2 of
          MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v3
-           -> coe
-                d_observe_42 v0 (coe d_run_40 v0 v3 (d_initialState_38 (coe v0)))
+           -> coe d_run'45'trace_42 v0 v3 (d_initialState_38 (coe v0))
          MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
-           -> coe d_observe_42 v0 v2
+           -> coe (\ v3 -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
          _ -> MAlonzo.RTE.mazUnreachableError)

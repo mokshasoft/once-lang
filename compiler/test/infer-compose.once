@@ -9,7 +9,11 @@
 --   `run`  : Int -> Eff Unit Unit   (inferred from the composition)
 --   `main` : Eff Unit Unit          (inferred)
 --
--- Expected: exits with status 5.
+-- Expected: exit code 5
+-- PENDING: needs sig-less POLYMORPHIC inference. `compose exit@S id` infers the
+-- bare `id` in infer mode, which the elaborator rejects (poly builtins must be
+-- applied or in check mode). D007 GROUND inference works (see infer-literal /
+-- infer-applied); inferring through composition with a bare poly arg is future work.
 
 import I.Linux.Syscalls as S
 
