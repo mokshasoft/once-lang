@@ -5,12 +5,13 @@
 -- Once "hello world" - a pure library with C interface
 --
 -- Demonstrates:
---   - Products (A * B)
+--   - Products (a * b)
 --   - Projections (fst, snd)
 --   - Pairing (pair)
---   - Polymorphism (A, B are type variables)
+--   - Polymorphism (a, b are type variables — LOWERCASE; uppercase names like
+--     Int/Unit are concrete types)
 --
 -- No primitives - pure natural transformations only.
 
-swap : A * B -> B * A
+swap : a * b -> b * a
 swap = pair snd fst

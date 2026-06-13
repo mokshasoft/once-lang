@@ -3,18 +3,15 @@
 
 -- lib-test.once: a LIBRARY (no `main`).
 --
--- D008 + "concrete = interface" (the anchor model): a program is anchored by
--- `main : Eff Unit Unit`, which monomorphizes everything composing up to it. A
--- library has no `main`, so its CONCRETE-typed top-level functions ARE the
--- anchors — each signature is a contract that instantiates the polymorphic
--- builtins it uses. Polymorphism is inferred and internal; a library's
--- interface is its concrete signatures.
+-- `swap` is polymorphic. Per D007 (Structural Type Matching), a signature is
+-- an ASSERTION that structurally matches the inferred type (modulo variable
+-- renaming) — so a polymorphic signature is valid; it documents the programmer's
+-- understanding without changing meaning. Type variables are LOWERCASE (`a`,
+-- `b`); uppercase names (`Int`, `Unit`, …) are concrete types.
 --
--- (Was `swap : A * B -> B * A` — a polymorphic *signature*, which is ill-formed:
--- signatures are concrete contracts, polymorphism is inferred, never written.)
---
--- Compiled to x86_64 assembly (no entry point); the C library backend
--- (`--lib`) is not yet implemented.
+-- A library has no `main`, so the mode is inferred as a library (no entry
+-- point) and it compiles to x86_64 assembly. (The C `--lib` backend is not yet
+-- implemented; native asm is the active backend.)
 
-swapII : Int * Int -> Int * Int
-swapII = pair snd fst
+swap : a * b -> b * a
+swap = pair snd fst
