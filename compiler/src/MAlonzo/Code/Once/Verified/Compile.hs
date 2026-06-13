@@ -191,8 +191,8 @@ d_compile_158 v0 v1 v2
                        coe
                          (let v9
                                 = coe
-                                    MAlonzo.Code.Once.Parser.du_go_188
-                                    (coe MAlonzo.Code.Once.Parser.d_extractAliases_64 (coe v5))
+                                    MAlonzo.Code.Once.Parser.du_go_216
+                                    (coe MAlonzo.Code.Once.Parser.d_extractAliases_92 (coe v5))
                                     (coe MAlonzo.Code.Once.Parser.Module.Core.d_decls_48 (coe v5))
                                     (coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18) in
                           coe
@@ -245,8 +245,8 @@ d_compile_158 v0 v1 v2
                            coe
                              (let v8
                                     = coe
-                                        MAlonzo.Code.Once.Parser.du_go_188
-                                        (coe MAlonzo.Code.Once.Parser.d_extractAliases_64 (coe v4))
+                                        MAlonzo.Code.Once.Parser.du_go_216
+                                        (coe MAlonzo.Code.Once.Parser.d_extractAliases_92 (coe v4))
                                         (coe
                                            MAlonzo.Code.Once.Parser.Module.Core.d_decls_48 (coe v4))
                                         (coe v3) in

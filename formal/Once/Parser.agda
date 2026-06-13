@@ -10,21 +10,21 @@
 
 module Once.Parser where
 
-open import Data.Bool using (Bool; true; false)
+open import Data.Bool using (Bool; true; false; not; _∧_; _∨_)
 open import Data.List using (List; []; _∷_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_; proj₁)
 open import Data.String using (String; _≟_; _++_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Nat using (ℕ)
-open import Relation.Nullary using (yes; no)
+open import Relation.Nullary using (yes; no; does)
 
 open import Once.Type using (Type; PolyType; isGround; extractGround; showPolyType)
 open import Once.TypeCheck.Raw using (RawExpr; RVar)
 open import Once.Parser.Token
 open import Once.Parser.Lexer using (tokenizeString)
 open import Once.Parser.Core using (Parser)
-open import Once.Parser.Type using (parseType) public
+open import Once.Parser.Type using (parseType; isUpperWord) public
 open import Once.Parser.PolyType using (parsePolyType) public
 open import Once.Parser.Expr using (parseExpr) public
 open import Once.Parser.Module public
@@ -153,7 +153,24 @@ parseStrict source with parseModule (tokenizeString source)
 ... | nothing       = inj₁ "Parse error: module failed to parse"
 ... | just (m , r) with allTrailing r
 ...   | true  = inj₂ m
-...   | false = inj₁ ("Parse error: unexpected tokens remaining after last parsed decl (starting at: " ++ showTokenPrefix r ++ ")")
+...   | false = inj₁ ("Parse error: unexpected tokens remaining after last parsed decl (starting at: "
+                       ++ showTokenPrefix r ++ ")" ++ tvarHint r)
+  where
+  -- The leftover often starts at a type signature using an uppercase word for
+  -- a type *variable* (e.g. `swap : A * B -> B * A`) — uppercase names are
+  -- concrete types (Int/Unit/…), type variables are lowercase. Detect that and
+  -- add a hint instead of the bare "unexpected tokens".
+  knownType : String → Bool
+  knownType w = does (w ≟ "Unit") ∨ does (w ≟ "Void") ∨ does (w ≟ "Int")
+              ∨ does (w ≟ "Float") ∨ does (w ≟ "Buffer") ∨ does (w ≟ "String")
+  hasUpperTVar : List Token → Bool
+  hasUpperTVar []              = false
+  hasUpperTVar (TWord w  ∷ ts) = (isUpperWord w ∧ not (knownType w)) ∨ hasUpperTVar ts
+  hasUpperTVar (_        ∷ ts) = hasUpperTVar ts
+  tvarHint : List Token → String
+  tvarHint toks with hasUpperTVar toks
+  ... | true  = "\n  hint: type variables must be lowercase (e.g. `a`, not `A`); uppercase names like `Int`/`Unit` are concrete types"
+  ... | false = ""
 
 ------------------------------------------------------------------------
 -- Processing Pipeline Helpers

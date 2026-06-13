@@ -1161,3 +1161,11 @@ d_runTrace'45'no'45'main_768 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_runTrace'45'no'45'main_768 = erased
+-- Once.Verified.SourceSemantics.runTrace-main
+d_runTrace'45'main_786 ::
+  MAlonzo.Code.Once.Parser.Module.Core.T_Module_44 ->
+  Integer ->
+  MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_runTrace'45'main_786 = erased
