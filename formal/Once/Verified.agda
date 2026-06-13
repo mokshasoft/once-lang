@@ -54,17 +54,22 @@ record CorrectCompiler : Set₁ where
     Bytes    : Set
     Behavior : Set
 
-    -- Source and target semantics. Equality of behaviours is what
-    -- "the compiled program does the same thing as the source"
-    -- ultimately reduces to.
+    -- Source and target semantics. Behavioural EQUIVALENCE (`_≈_`) is
+    -- what "the compiled program does the same thing as the source"
+    -- ultimately reduces to — stated as an abstract relation, not raw
+    -- `≡`, so the certificate stays observable-agnostic AND funext-free:
+    -- for the SigOp-trace observable (`Behavior = ℕ → List SigOpEvent`)
+    -- the instance picks pointwise / up-to-`n` prefix equality (Plan 0.44).
     ⟦_⟧  : Source → Behavior
     exec : Arch → Bytes → Behavior
+    _≈_  : Behavior → Behavior → Set
 
     -- The compiler. May fail (parse error, typecheck error, etc.).
     compile : Arch → Source → Maybe Bytes
 
     -- The claim. Whenever the compiler returns bytes, those bytes'
-    -- execution on the target equals the source's denotation.
+    -- execution on the target is behaviourally equivalent to the
+    -- source's denotation (the SigOp trace it intends).
     correct : ∀ arch src bytes →
               compile arch src ≡ just bytes →
-              exec arch bytes ≡ ⟦ src ⟧
+              exec arch bytes ≈ ⟦ src ⟧
