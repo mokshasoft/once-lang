@@ -29,12 +29,13 @@ open import Data.Bool using (false)
 open import Data.Nat using (ℕ)
 open import Data.List using (List; []; _∷_)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Product using (proj₁)
+open import Data.Product using (proj₁; ∃; _,_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (tt)
 open import Data.String using (String) renaming (_≟_ to _≟str_)
 open import Relation.Nullary using (yes; no)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans)
+open import Once.TypeCheck.Raw using (RawExpr)
 
 open import Once.Type using (Type; Unit)
 open import Once.CCC.IR using (IR)
@@ -111,11 +112,40 @@ sourceToIR src with gmoduleToModule src
 -- non-empty trace. `correct` only claims compiling programs (its hypothesis
 -- `compile ≡ just bytes`), so the `just ir` condition is exactly available
 -- (threaded by `Compile.module-to-asm-correct` via `built⇒moduleToIR-just`).
+-- Factored (Plan 0.45 #10) into two precise obligations + a connecting proof
+-- that uses the proven source-side reduction `runTrace-main`.
 postulate
-  elaborate-preserves-trace :
-    ∀ (m : P.Module) (ir : IR Unit Unit) (n : ℕ)
-    → moduleToIR m ≡ just ir
-    → proj₁ (obs n ir tt) ≡ SS.runTrace m n
+  -- (#9) Main-finding alignment: a compiled module HAS a source `main`. If
+  -- `moduleToIR m` produced an entry IR, the source module also has a `main`
+  -- definition (so `runTrace` runs `main`, not the empty trace). Discharge:
+  -- extractFunctions / compileAllFuns / findMain ↔ extractDefs / lookupDef.
+  main-exists-align :
+    ∀ (m : P.Module) (ir : IR Unit Unit) → moduleToIR m ≡ just ir
+    → ∃ λ (body : RawExpr) →
+        SS.lookupDef (SS.extractDefs (P.Module.decls m)) "main" ≡ just body
+
+  -- (#10) The obs↔eval CORE: the compiled entry IR's SigOp trace equals the
+  -- source interpreter's trace of the SAME `main` body. THE load-bearing
+  -- obligation — the `obs(elaborate(checkElab …)) ≈ eval` induction over the
+  -- elaborate pipeline, where checkElab's proof structure becomes load-bearing.
+  compiled-main-trace :
+    ∀ (m : P.Module) (ir : IR Unit Unit) → moduleToIR m ≡ just ir
+    → ∀ (body : RawExpr)
+    → SS.lookupDef (SS.extractDefs (P.Module.decls m)) "main" ≡ just body
+    → ∀ (n : ℕ)
+    → proj₁ (obs n ir tt)
+        ≡ SS.runTraceEval (SS.eval n (SS.extractDefs (P.Module.decls m)) [] body)
+
+-- Factor 1, now a THEOREM: compose the main-finding alignment, the obs↔eval
+-- core, and the proven `runTrace-main` reduction. The monolithic frontend
+-- postulate is gone; the remaining work is the two named obligations above.
+elaborate-preserves-trace :
+  ∀ (m : P.Module) (ir : IR Unit Unit) (n : ℕ)
+  → moduleToIR m ≡ just ir
+  → proj₁ (obs n ir tt) ≡ SS.runTrace m n
+elaborate-preserves-trace m ir n mj with main-exists-align m ir mj
+... | (body , lk) =
+  trans (compiled-main-trace m ir mj body lk n) (sym (SS.runTrace-main m n body lk))
 
 ------------------------------------------------------------------------
 -- The source semantics (discharges the `Behavior.⟦_⟧` postulate).
