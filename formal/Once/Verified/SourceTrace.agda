@@ -33,7 +33,7 @@ open import Data.Product using (proj₁; ∃; _,_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (tt)
 open import Data.String using (String) renaming (_≟_ to _≟str_)
-open import Relation.Nullary using (yes; no)
+open import Relation.Nullary using (yes; no; Dec)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans)
 open import Once.TypeCheck.Raw using (RawExpr)
 
@@ -58,11 +58,21 @@ isUnit? _    = nothing
 
 open C.CompiledFun using (cfName; cfType; cfIR)
 
+-- Explicit dispatch on the two decisions (no `with`-opacity, no dependent
+-- `just refl` buried in a `with`), so `findMain`'s "is this the entry?" choice
+-- is analyzable. `just refl` refines `cfType cf` to `Unit`, coercing
+-- `cfIR cf : IR Unit (cfType cf)` to `IR Unit Unit`.
+findMain-here :
+  (cf : C.CompiledFun) → Dec (cfName cf ≡ "main") → Maybe (cfType cf ≡ Unit)
+  → Maybe (IR Unit Unit) → Maybe (IR Unit Unit)
+findMain-here cf (yes _) (just refl) cont = just (cfIR cf)
+findMain-here cf (yes _) nothing     cont = cont
+findMain-here cf (no  _) _           cont = cont
+
 findMain : List C.CompiledFun → Maybe (IR Unit Unit)
 findMain []         = nothing
-findMain (cf ∷ rest) with cfName cf ≟str "main" | isUnit? (cfType cf)
-... | yes _ | just refl = just (cfIR cf)
-... | _     | _         = findMain rest
+findMain (cf ∷ rest) =
+  findMain-here cf (cfName cf ≟str "main") (isUnit? (cfType cf)) (findMain rest)
 
 -- Explicit dispatch on the compile result (no `with`-opacity), so the IR side
 -- of `elaborate-preserves-trace` can be characterised (analogous to the
