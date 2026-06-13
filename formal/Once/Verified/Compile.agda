@@ -37,7 +37,8 @@ open import Data.List using (List)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality
-  using (_≡_; refl; sym; trans; cong)
+  using (_≡_; refl; sym; trans; cong; subst)
+open import Data.Product using (∃-syntax; _,_)
 
 open import Once.Verified.Behavior using (Source; Behavior)
 open import Once.Verified.SourceTrace
@@ -133,17 +134,29 @@ postulate
     C.compileFromModule C.Heap C.Build false (toLegacyArch arch) m ≡ C.Built asm →
     ∀ (n : ℕ) → (⟦ arch ⟧A asm) n ≡ ⟦ moduleToIR m ⟧IR n
 
+  -- A `Built asm` means the module compiled and has a `main`; `moduleToIR m`
+  -- (the same `compileResolvedModule` + `findMain`) is therefore `just ir`.
+  -- This supplies factor 1's soundness condition from the compile success.
+  built⇒moduleToIR-just :
+    ∀ (arch : Arch) (m : P.Module) (asm : String) →
+    C.compileFromModule C.Heap C.Build false (toLegacyArch arch) m ≡ C.Built asm →
+    ∃[ ir ] moduleToIR m ≡ just ir
+
 -- Stage 2 correctness — now a THEOREM (Plan 0.45 Part B), no longer a
 -- monolithic postulate: the asm trace equals the SOURCE trace, by composing
 -- the codegen half (factor 2) with the frontend half (factor 1,
--- `elaborate-preserves-trace`). `⟦ m ⟧M = runTrace m` definitionally, so the
--- chain closes. The frontend's correctness is now a SEPARATE, named obligation.
+-- `elaborate-preserves-trace`). The `Built` evidence yields `moduleToIR m ≡
+-- just ir` (`built⇒moduleToIR-just`), which (a) rewrites factor 2's `⟦⟧IR` to
+-- `obs … ir` and (b) discharges factor 1's compile condition soundly.
+-- `⟦ m ⟧M = runTrace m` definitionally, so the chain closes.
 module-to-asm-correct :
   ∀ (arch : Arch) (m : P.Module) (asm : String) →
   C.compileFromModule C.Heap C.Build false (toLegacyArch arch) m ≡ C.Built asm →
   ∀ (n : ℕ) → (⟦ arch ⟧A asm) n ≡ ⟦ m ⟧M n
-module-to-asm-correct arch m asm eq n =
-  trans (codegen-asm-correct arch m asm eq n) (elaborate-preserves-trace m n)
+module-to-asm-correct arch m asm eq n with built⇒moduleToIR-just arch m asm eq
+... | ir , mj =
+  trans (subst (λ z → (⟦ arch ⟧A asm) n ≡ ⟦ z ⟧IR n) mj (codegen-asm-correct arch m asm eq n))
+        (elaborate-preserves-trace m ir n mj)
 
 -- Stage 1 correctness — DISCHARGED (Plan 0.45 Part B), no longer a
 -- postulate. `⟦ m ⟧M = runTrace m` definitionally, and `⟦⟧-via-module`

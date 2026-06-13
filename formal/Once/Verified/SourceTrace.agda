@@ -89,9 +89,19 @@ sourceToIR src with gmoduleToModule src
 -- (the ~2700-line frontend); this is where the typechecker becomes
 -- load-bearing and the `ErrorProofs`-class proof structure surfaces.
 -- Multi-session.
+--
+-- CONDITIONED on the module compiling (`moduleToIR m ≡ just ir`). The
+-- unconditional `∀ m n → ⟦ moduleToIR m ⟧IR n ≡ runTrace m n` is UNSOUND: a
+-- type-erroring program with a `main` has `moduleToIR m ≡ nothing`
+-- (`⟦⟧IR = []`), yet `runTrace` (untyped) still evaluates its `main` to a
+-- non-empty trace. `correct` only claims compiling programs (its hypothesis
+-- `compile ≡ just bytes`), so the `just ir` condition is exactly available
+-- (threaded by `Compile.module-to-asm-correct` via `built⇒moduleToIR-just`).
 postulate
   elaborate-preserves-trace :
-    ∀ (m : P.Module) (n : ℕ) → ⟦ moduleToIR m ⟧IR n ≡ SS.runTrace m n
+    ∀ (m : P.Module) (ir : IR Unit Unit) (n : ℕ)
+    → moduleToIR m ≡ just ir
+    → proj₁ (obs n ir tt) ≡ SS.runTrace m n
 
 ------------------------------------------------------------------------
 -- The source semantics (discharges the `Behavior.⟦_⟧` postulate).
