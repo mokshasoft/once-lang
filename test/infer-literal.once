@@ -1,0 +1,17 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson and contributors
+
+-- Type inference (D007): NO signatures. Each definition's type is fully
+-- determined by the composition / the generators' fixed types — no
+-- specialization, no ambiguity.
+--
+--   `code` : Int           (inferred from the integer literal)
+--   `main` : Eff Unit Unit (inferred; `main` is canonically Eff Unit Unit)
+--
+-- Expected: exits with status 7.
+
+import I.Linux.Syscalls as S
+
+code = 7
+
+main = exit@S code

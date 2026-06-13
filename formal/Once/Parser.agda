@@ -175,7 +175,12 @@ record FunInfo : Set where
   constructor mkFunInfo
   field
     funName  : String
-    funType  : Type
+    -- | D007: signatures are OPTIONAL. `just ty` = explicit signature;
+    -- `nothing` = no explicit signature, so the type is INFERRED from the
+    -- body's composition during compilation (`Compile.inferType`). Primitives
+    -- always carry `just`. (Was `Type`; the `nothing` case was previously
+    -- DROPPED in `extractFunctions`, contradicting D007.)
+    funType  : Maybe Type
     funAlloc : Maybe AllocStrategy
     funBody  : RawExpr
     -- | Plan 0.11: `true` for signatures (external declarations
@@ -248,13 +253,16 @@ extractFunctions aliases (mkModule ds) = go ds nothing
   ... | inj₂ _  = go rest (just (name , inj₂ ty))
   -- DFunDef with matching ground sig → FunInfo (user-defined; not primitive)
   go (DFunDef name alloc body ∷ rest) (just (sigName , inj₁ gty)) with sigName ≟ name
-  ... | yes _ = consFun (go rest nothing) (mkFunInfo name gty alloc body false)
+  ... | yes _ = consFun (go rest nothing) (mkFunInfo name (just gty) alloc body false)
   ... | no  _ = go rest nothing
   -- DFunDef with matching polymorphic sig → PolyFunInfo
   go (DFunDef name alloc body ∷ rest) (just (sigName , inj₂ pty)) with sigName ≟ name
   ... | yes _ = consPoly (go rest nothing) (mkPolyFunInfo name pty alloc body)
   ... | no  _ = go rest nothing
-  go (DFunDef _ _ _ ∷ rest) nothing = go rest nothing  -- no sig: definition dropped
+  -- D007: NO explicit signature → KEEP the definition (was dropped). Its type
+  -- is `nothing` here and INFERRED from the body during compilation.
+  go (DFunDef name alloc body ∷ rest) nothing =
+    consFun (go rest nothing) (mkFunInfo name nothing alloc body false)
   -- Primitives: use RVar as placeholder body (actual impl is external).
   -- Owned primitives (from resolved imports) get qualified names
   -- `alias.name` — same textual form that the typechecker's
@@ -264,12 +272,12 @@ extractFunctions aliases (mkModule ds) = go ds nothing
   -- `projectSig`.
   go (DSignature name nothing ty ∷ rest) _ with projectSig aliases name ty
   ... | inj₁ err  = inj₁ err
-  ... | inj₂ gty  = consFun (go rest nothing) (mkFunInfo name gty nothing (RVar name) true)
+  ... | inj₂ gty  = consFun (go rest nothing) (mkFunInfo name (just gty) nothing (RVar name) true)
   go (DSignature name (just owner) ty ∷ rest) _ with projectSig aliases (owner ++ "." ++ name) ty
   ... | inj₁ err  = inj₁ err
   ... | inj₂ gty  =
            let qname = owner ++ "." ++ name
-           in consFun (go rest nothing) (mkFunInfo qname gty nothing (RVar qname) true)
+           in consFun (go rest nothing) (mkFunInfo qname (just gty) nothing (RVar qname) true)
   go (_ ∷ rest) pending = go rest pending
 
 -- Plan 0.6.2: `inlineAll`, `inlineAllWithPoly`, `polySeedDefs` all

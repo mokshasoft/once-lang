@@ -1,0 +1,19 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson and contributors
+
+-- Type inference (D007): the canonical example. `myId = id` has no signature;
+-- `id` has the fixed type `A -> A`, so `myId : A -> A` is inferred (NOT
+-- specialized to a narrower type — D007 forbids signature specialization, but
+-- composition/usage still determines the concrete type at each use site).
+--
+--   `myId`  : A -> A          (inferred from `id`)
+--   `myId 0`: Int             (A determined = Int by applying to the literal)
+--   `main`  : Eff Unit Unit   (inferred)
+--
+-- Expected: exits with status 0.
+
+import I.Linux.Syscalls as S
+
+myId = id
+
+main = exit@S (myId 0)

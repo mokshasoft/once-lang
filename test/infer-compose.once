@@ -1,0 +1,18 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson and contributors
+
+-- Type inference (D007): the type flows THROUGH a composition. `run` has no
+-- signature; `compose exit@S id` is `exit@S ∘ id`, and the composition forces
+-- `id`'s type to `Int -> Int` here (because `exit@S` consumes `Int`). The type
+-- of `run` is fully determined — no signature, no specialization choice.
+--
+--   `run`  : Int -> Eff Unit Unit   (inferred from the composition)
+--   `main` : Eff Unit Unit          (inferred)
+--
+-- Expected: exits with status 5.
+
+import I.Linux.Syscalls as S
+
+run = compose exit@S id
+
+main = run 5
