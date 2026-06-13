@@ -19,6 +19,8 @@
 module Once.Compiler where
 
 open import Data.List using (List)
+open import Data.Nat using (ℕ)
+open import Relation.Binary.PropositionalEquality using (_≡_)
 
 open import Once.Verified
 open import Once.Verified.Behavior using (Source; Behavior)
@@ -44,6 +46,10 @@ once-compiler = record
   ; Behavior = Behavior
   ; ⟦_⟧      = ⟦_⟧
   ; exec     = VC.exec
+  -- Behavioural equivalence = pointwise / up-to-`n` SigOp-trace prefix
+  -- equality (Plan 0.44). `VC.correct` is already this `∀ n → … n ≡ … n`,
+  -- so `correct` slots in with no funext.
+  ; _≈_      = λ b₁ b₂ → ∀ (n : ℕ) → b₁ n ≡ b₂ n
   ; compile  = VC.compile
   ; correct  = VC.correct
   }
