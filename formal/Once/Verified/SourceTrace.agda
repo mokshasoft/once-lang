@@ -17,12 +17,10 @@
 -- as the per-arch CPU instances import it) because `sourceToIR` pulls
 -- in the whole compiler front-end via `Once.Compile`.
 --
--- NOTE (Phase C scope): `Behavior` is currently `Maybe ℕ` (the exit
--- code), shared with the machine side `exec`. So `⟦_⟧` here is the
--- full trace **projected** to the exit code (`exitCodeOf`). Widening
--- `Behavior` to the trace-prefix family — and making `exec` trace-
--- valued — is Phases D/E. `⟦_⟧` is already *defined via the trace*;
--- only the observable is projected for now.
+-- Plan 0.44: `Behavior = ℕ → List SigOpEvent` (the step-indexed SigOp
+-- trace). `⟦ src ⟧ n` is the trace prefix `obs` observes within `n` steps
+-- — no projection. (Was `exitCodeOf (proj₁ (obs 0 …))` under the old
+-- `Behavior = Maybe ℕ`; the projection is gone with the observable.)
 ------------------------------------------------------------------------
 
 module Once.Verified.SourceTrace where
@@ -42,7 +40,6 @@ open import Once.CCC.IR using (IR)
 import Once.Compile as C
 open import Once.Grammar.ModuleConvert using (gmoduleToModule)
 open import Once.Verified.Behavior using (Source; Behavior)
-open import Once.Verified.Trace using (exitCodeOf)
 open import Once.Verified.TraceDenote using (obs)
 
 ------------------------------------------------------------------------
@@ -84,5 +81,5 @@ sourceToIR src with gmoduleToModule src
 abstract
   ⟦_⟧ : Source → Behavior
   ⟦ src ⟧ with sourceToIR src
-  ... | just ir = exitCodeOf (proj₁ (obs 0 ir tt))
-  ... | nothing = nothing
+  ... | just ir = λ n → proj₁ (obs n ir tt)
+  ... | nothing = λ _ → []
