@@ -1,0 +1,266 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson and contributors
+
+------------------------------------------------------------------------
+-- Once.CCC.Codegen.CataIRSlotStable — the codegen-image half of the
+-- frame-discipline invariant (Plan 0.36 task #8): every trace
+-- `ir-to-trace` emits is slot-stable (`AllSlotStable`).
+--
+-- Combined with `CataNextSlot.exec-flat-keeps-next-slot` (exec-flat over
+-- a slot-stable trace preserves next-slot), this discharges the algebra's
+-- frame discipline: the compiled algebra leaves `next-slot` fixed, so the
+-- algebra IH's `next-slot ≡ 0` precondition holds at every cata layer.
+--
+-- Structural induction on the IR. Almost every constructor emits a list
+-- of slot-stable instructions (control / reg-ops / loads / stores / mov /
+-- alloc-heap) plus recursively-compiled sub-traces; `case` wraps its
+-- branches in `instr-case-on-tag` (slot-stable iff the branches are —
+-- `AllI`, via `All→AllI`); `Cata` routes through `cata-dispatch`
+-- (`cata-dispatch-slot-stable`).
+------------------------------------------------------------------------
+
+module Once.CCC.Codegen.CataIRSlotStable where
+
+open import Data.Nat using (ℕ)
+open import Data.Bool using (Bool; true; false; _∧_)
+open import Data.Unit using (⊤; tt)
+open import Data.Empty using (⊥-elim)
+open import Data.Product using (_×_; _,_; proj₁; proj₂)
+open import Data.List using (List; _∷_; [])
+open import Data.List.Relation.Unary.All using (All) renaming ([] to []ᴬ; _∷_ to _∷ᴬ_)
+open import Data.List.Relation.Unary.All.Properties using (++⁺)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+
+open import Once.CCC.FrameSemantics using (FrameSemantics)
+open import Once.CCC.IR
+open import Once.Type using (Functor; K; Id; _⊕_; _⊗_)
+open import Once.CCC.Machine.SMCore using (AbstractTrace; AbstractInstr;
+         mov-to-output; mov-to-input; mov-output-to-input2; mov-input2-to-output;
+         load-indirect; load-indirect-suc; load-from-slot; store-at-slot;
+         store-indirect; store-indirect-suc; lea-slot; restore-input;
+         instr-alloc-stack; instr-dealloc-stack; instr-reclaim-to;
+         instr-push-frame; instr-pop-frame; instr-call-closure;
+         worklist-init; worklist-push; worklist-pop; worklist-check;
+         instr-sigop; instr-load-const; instr-load-code-addr; instr-save-closure-reg;
+         instr-load-tag-lit; instr-case-on-tag; instr-alloc-heap; instr-loop;
+         instr-reg-op; instr-ctrl; lea-indexed;
+         module AbstractExec)
+open import Once.CCC.Codegen.IRToTrace
+  using (ir-to-trace; ir-to-trace'; cata-strategy; cata-dispatch;
+         CataStrategy; strat-const; strat-nat; strat-linear; strat-branching;
+         cata-trace-nat; cata-trace-linear; cata-trace-branching;
+         visit-walk; rebuild-walk)
+
+module CataIRSlotStable {FS : FrameSemantics} where
+  open import Once.CCC.Codegen.CataNextSlot using (module CataNextSlot)
+  open CataNextSlot {FS} using (SlotStable; AllSlotStable)
+  open AbstractExec {FS} using (AllI)
+
+  -- the trace component of `ir-to-trace'`'s 4-tuple (proj-trace is private
+  -- in IRToTrace; this is the same extraction, definitionally).
+  trc : ℕ × ℕ × AbstractTrace × List (ℕ × ℕ × AbstractTrace) → AbstractTrace
+  trc (_ , _ , t , _) = t
+
+  -- stdlib `All SlotStable` → SMCore's custom `AllI SlotStable` (used by
+  -- `case`/`SlotStable (case-on-tag …)`). A genuine conversion between the
+  -- two all-encodings (no stdlib equivalent — `AllI` is custom).
+  All→AllI : ∀ {t} → All SlotStable t → AllI SlotStable t
+  All→AllI []ᴬ        = tt
+  All→AllI (px ∷ᴬ ps) = px , All→AllI ps
+
+  ----------------------------------------------------------------------
+  -- A boolean decider mirroring `SlotStable` (mutually with `all-stable?`
+  -- over traces) + its soundness. This centralises the per-instruction
+  -- enumeration ONCE: every fully-concrete trace `ir-to-trace` emits then
+  -- discharges via `all-stable?-sound refl` (the decider computes to
+  -- `true`), instead of a hand-written `All`-of-`tt`s per trace.
+  ----------------------------------------------------------------------
+  stable?     : AbstractInstr → Bool
+  all-stable? : AbstractTrace → Bool
+  stable? (instr-alloc-stack _)   = false
+  stable? (instr-reclaim-to _)    = false
+  stable? (instr-loop _)          = false
+  stable? (instr-case-on-tag f g) = all-stable? f ∧ all-stable? g
+  stable? _                       = true
+  all-stable? []       = true
+  all-stable? (i ∷ is) = stable? i ∧ all-stable? is
+
+  -- split a `_∧_ ≡ true` (no `with` — pattern on the left bool).
+  ∧-split : ∀ {a b} → (a ∧ b) ≡ true → (a ≡ true) × (b ≡ true)
+  ∧-split {true}  {true}  _  = refl , refl
+  ∧-split {false}         ()
+  ∧-split {true}  {false} ()
+
+  stable?-sound     : ∀ i → stable? i ≡ true → SlotStable i
+  all-stable?-sound : ∀ t → all-stable? t ≡ true → AllSlotStable t
+  -- the only non-`true` instructions (alloc-stack/reclaim-to/loop) get an
+  -- absurd `()`; case-on-tag recurses through the sub-traces; the catch-all
+  -- maps `true → tt` for the slot-stable instructions.
+  stable?-sound (instr-alloc-stack _)   ()
+  stable?-sound (instr-reclaim-to _)    ()
+  stable?-sound (instr-loop _)          ()
+  stable?-sound (instr-case-on-tag f g) eq =
+    let (ef , eg) = ∧-split eq
+    in All→AllI (all-stable?-sound f ef) , All→AllI (all-stable?-sound g eg)
+  stable?-sound mov-to-output           _ = tt
+  stable?-sound mov-to-input            _ = tt
+  stable?-sound mov-output-to-input2    _ = tt
+  stable?-sound mov-input2-to-output    _ = tt
+  stable?-sound load-indirect           _ = tt
+  stable?-sound load-indirect-suc       _ = tt
+  stable?-sound (load-from-slot _)      _ = tt
+  stable?-sound (store-at-slot _)       _ = tt
+  stable?-sound store-indirect          _ = tt
+  stable?-sound store-indirect-suc      _ = tt
+  stable?-sound (lea-slot _)            _ = tt
+  stable?-sound (restore-input _)       _ = tt
+  stable?-sound (instr-dealloc-stack _) _ = tt
+  stable?-sound (instr-push-frame _)    _ = tt
+  stable?-sound instr-pop-frame         _ = tt
+  stable?-sound instr-call-closure      _ = tt
+  stable?-sound (worklist-init _)       _ = tt
+  stable?-sound (worklist-push _)       _ = tt
+  stable?-sound (worklist-pop _)        _ = tt
+  stable?-sound (worklist-check _)      _ = tt
+  stable?-sound (instr-sigop _)         _ = tt
+  stable?-sound (instr-load-const _ _)  _ = tt
+  stable?-sound (instr-load-code-addr _) _ = tt
+  stable?-sound instr-save-closure-reg  _ = tt
+  stable?-sound (instr-load-tag-lit _)  _ = tt
+  stable?-sound (instr-alloc-heap _)    _ = tt
+  stable?-sound (instr-reg-op _)        _ = tt
+  stable?-sound (instr-ctrl _)          _ = tt
+  stable?-sound (lea-indexed _)         _ = tt
+  all-stable?-sound []       _  = []ᴬ
+  all-stable?-sound (i ∷ is) eq =
+    let (ei , eis) = ∧-split eq
+    in stable?-sound i ei ∷ᴬ all-stable?-sound is eis
+
+  ----------------------------------------------------------------------
+  -- Tier-2 structural walks (`visit-walk` / `rebuild-walk`) are functor-
+  -- recursive and carry nested `instr-case-on-tag`; AllSlotStable by
+  -- induction on the functor F (each concrete chunk via `all-stable?-sound
+  -- refl`; the case-on-tag branches recurse, converted with `All→AllI`).
+  ----------------------------------------------------------------------
+  visit-walk-stable : ∀ td tv tb F s → AllSlotStable (visit-walk td tv tb F s)
+  visit-walk-stable td tv tb (K _)   s = []ᴬ
+  visit-walk-stable td tv tb Id      s = all-stable?-sound _ refl
+  visit-walk-stable td tv tb (F ⊕ G) s =
+    ((tt , tt , All→AllI (visit-walk-stable td tv tb F _)) ,
+     (tt , tt , All→AllI (visit-walk-stable td tv tb G _))) ∷ᴬ []ᴬ
+  visit-walk-stable td tv tb (F ⊗ G) s =
+    tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ
+    ++⁺ (visit-walk-stable td tv tb G _)
+      (tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ visit-walk-stable td tv tb F _)
+
+  rebuild-walk-stable : ∀ vs tv tb F s → AllSlotStable (rebuild-walk vs tv tb F s)
+  rebuild-walk-stable vs tv tb (K _)   s = all-stable?-sound _ refl
+  rebuild-walk-stable vs tv tb Id      s = all-stable?-sound _ refl
+  rebuild-walk-stable vs tv tb (F ⊕ G) s =
+    ((tt , tt , All→AllI (++⁺ (rebuild-walk-stable vs tv tb F _) (all-stable?-sound _ refl))) ,
+     (tt , tt , All→AllI (++⁺ (rebuild-walk-stable vs tv tb G _) (all-stable?-sound _ refl)))) ∷ᴬ []ᴬ
+  rebuild-walk-stable vs tv tb (F ⊗ G) s =
+    tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ
+    ++⁺ (rebuild-walk-stable vs tv tb F _)
+      (tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ
+       ++⁺ (rebuild-walk-stable vs tv tb G _) (all-stable?-sound _ refl))
+
+  ----------------------------------------------------------------------
+  -- The three non-degenerate cata strategy traces. Concrete scaffold
+  -- chunks (descend/ascend control, build-layer, push2/pop2/wrap-sum)
+  -- discharge via `all-stable?-sound refl`; the spliced algebra trace
+  -- `at` uses the hypothesis `sat`; `++⁺` mirrors each concatenation.
+  ----------------------------------------------------------------------
+  -- NatF (Tier-0): scratch-one ∷ input2-zero ∷ descend-flat(12) ∷
+  -- scratch-load-count ∷ load-tag ∷ mov ∷ build-layer-0(10) ∷ mov ∷
+  -- (at ++ ascend-flat); ascend-flat = la-top ∷ la-end ∷ mov ∷
+  -- build-layer-1(10) ∷ mov ∷ ((at ++ [scratch-dec]) ++ [jmp,label]).
+  cata-trace-nat-stable : ∀ n1 l1 at → AllSlotStable at
+                        → AllSlotStable (proj₂ (proj₂ (cata-trace-nat n1 l1 at)))
+  cata-trace-nat-stable n1 l1 at sat =
+    tt ∷ᴬ tt ∷ᴬ
+    tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ  -- descend-flat (12)
+    tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ                                                          -- scratch-load-count, load-tag, mov
+    tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ                -- build-layer 0 (10)
+    tt ∷ᴬ                                                                       -- mov
+    ++⁺ sat                                                                     -- at (base)
+      (tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ                                                        -- la-top, la-end, mov
+       tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ              -- build-layer 1 (10)
+       tt ∷ᴬ                                                                    -- mov
+       ++⁺ (++⁺ sat (tt ∷ᴬ []ᴬ))                                                -- at ++ [scratch-dec]
+         (all-stable?-sound _ refl))                                            -- [jmp, label]
+
+  -- Tier-1 linear: descend(25) ∷ scratch-load-count ∷ (at ++ ascend);
+  -- ascend = (25 concrete) ∷ (at ++ [scratch-dec, jmp, label]).
+  cata-trace-linear-stable : ∀ n1 l1 at → AllSlotStable at
+                           → AllSlotStable (proj₂ (proj₂ (cata-trace-linear n1 l1 at)))
+  cata-trace-linear-stable n1 l1 at sat =
+    tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ
+    tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ
+    tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ                                              -- descend (25)
+    tt ∷ᴬ                                                                       -- scratch-load-count
+    ++⁺ sat                                                                     -- at (base)
+      (tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ
+       tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ
+       tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ                                            -- ascend prefix (25)
+       ++⁺ sat (all-stable?-sound _ refl))                                      -- at (ascend) ++ [scratch-dec,jmp,label]
+
+  -- Tier-2 branching: blocked on the `++⁺` route (the trace shape
+  -- `(rebuild-walk F ++ Rest) ++ final-read` is a neutral `++` that Agda
+  -- cannot split). Discharged via the boolean route below.
+  postulate
+    cata-trace-branching-stable : ∀ F n1 l1 at → AllSlotStable at
+                                → AllSlotStable (proj₂ (proj₂ (cata-trace-branching F n1 l1 at)))
+
+  cata-dispatch-slot-stable : ∀ (strat : CataStrategy) (n l : ℕ) (at : AbstractTrace)
+                            → AllSlotStable at
+                            → AllSlotStable (proj₂ (proj₂ (cata-dispatch strat n l at)))
+  cata-dispatch-slot-stable strat-const         n l at sat = sat
+  cata-dispatch-slot-stable strat-nat           n l at sat = cata-trace-nat-stable n l at sat
+  cata-dispatch-slot-stable strat-linear        n l at sat = cata-trace-linear-stable n l at sat
+  cata-dispatch-slot-stable (strat-branching F) n l at sat = cata-trace-branching-stable F n l at sat
+
+  ----------------------------------------------------------------------
+  -- The theorem: every trace `ir-to-trace` emits is slot-stable.
+  -- Concrete-trace constructors discharge uniformly via `all-stable?-sound
+  -- refl`; the four sub-trace-carrying constructors (∘ / pair / case /
+  -- Cata) recurse + `++⁺` / `All→AllI` / `cata-dispatch-slot-stable`.
+  ----------------------------------------------------------------------
+  ir-stable : ∀ {A B} (ir : IR A B) (n l : ℕ) → AllSlotStable (trc (ir-to-trace' n l ir))
+  ir-stable id              n l = all-stable?-sound _ refl
+  ir-stable fst             n l = all-stable?-sound _ refl
+  ir-stable snd             n l = all-stable?-sound _ refl
+  ir-stable terminal        n l = all-stable?-sound _ refl
+  ir-stable initial         n l = all-stable?-sound _ refl
+  ir-stable arr             n l = all-stable?-sound _ refl
+  ir-stable apply           n l = all-stable?-sound _ refl
+  ir-stable (curry _ Stack) n l = all-stable?-sound _ refl
+  ir-stable (curry _ Heap)  n l = all-stable?-sound _ refl
+  ir-stable (SigOp _)       n l = all-stable?-sound _ refl
+  ir-stable (const _ _ _)   n l = all-stable?-sound _ refl
+  ir-stable (inl Stack)     n l = all-stable?-sound _ refl
+  ir-stable (inr Stack)     n l = all-stable?-sound _ refl
+  ir-stable (inl Heap)      n l = all-stable?-sound _ refl
+  ir-stable (inr Heap)      n l = all-stable?-sound _ refl
+  ir-stable (In _ _)        n l = all-stable?-sound _ refl
+  ir-stable (out-μ _)       n l = all-stable?-sound _ refl
+  ir-stable (Para _ _)      n l = all-stable?-sound _ refl
+  ir-stable (Out _)         n l = all-stable?-sound _ refl
+  ir-stable (in-ν _ _)      n l = all-stable?-sound _ refl
+  ir-stable (Ana _ _)       n l = all-stable?-sound _ refl
+  ir-stable (Hylo _ _ _ _)  n l = all-stable?-sound _ refl
+  ir-stable (Fuse _ _ _ _)  n l = all-stable?-sound _ refl
+  ir-stable (free-heap _)   n l = all-stable?-sound _ refl
+  ir-stable (g ∘ f)         n l = ++⁺ (ir-stable f n l) (tt ∷ᴬ ir-stable g _ _)
+  ir-stable (⟨ f , g ⟩ Stack) n l =
+    tt ∷ᴬ tt ∷ᴬ ++⁺ (ir-stable f _ _) (tt ∷ᴬ tt ∷ᴬ ++⁺ (ir-stable g _ _) (tt ∷ᴬ tt ∷ᴬ []ᴬ))
+  ir-stable (⟨ f , g ⟩ Heap) n l =
+    tt ∷ᴬ tt ∷ᴬ ++⁺ (ir-stable f _ _) (tt ∷ᴬ tt ∷ᴬ ++⁺ (ir-stable g _ _) (all-stable?-sound _ refl))
+  ir-stable (case f g)      n l =
+    ((tt , tt , All→AllI (ir-stable f n l)) , (tt , tt , All→AllI (ir-stable g _ _))) ∷ᴬ []ᴬ
+  ir-stable (Cata {F} _ alg) n l =
+    cata-dispatch-slot-stable (cata-strategy F) _ _ _ (ir-stable alg n l)
+
+  -- top-level: the trace `ir-to-trace ir` (= `trc (ir-to-trace' 0 0 ir)`).
+  ir-to-trace-slot-stable : ∀ {A B} (ir : IR A B) → AllSlotStable (ir-to-trace ir)
+  ir-to-trace-slot-stable ir = ir-stable ir 0 0
