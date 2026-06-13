@@ -35,6 +35,7 @@ open import Data.String using (String) renaming (_≟_ to _≟str_)
 open import Data.Product using (_×_; _,_)
 open import Data.Unit using (⊤; tt)
 open import Relation.Nullary using (yes; no; does)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.TypeCheck.Raw as Raw
   using (RawExpr; RVar; RQualified; RApp; RLam; RLet; RPair; RDestruct;
@@ -279,3 +280,12 @@ runTrace : Module → ℕ → List SigOpEvent
 runTrace m n =
   let defs = extractDefs (Mod.Module.decls m)
   in runTraceMain n defs (lookupDef defs "main")
+
+-- Source side of `no-main-empty` (Plan 0.45 Part B): no `main` definition ⇒
+-- the empty trace, for every fuel. `runTraceMain … nothing` reduces to `[]`
+-- (explicit-`Maybe` helper, no with-opacity).
+runTrace-no-main :
+  ∀ (m : Module) (n : ℕ)
+  → lookupDef (extractDefs (Mod.Module.decls m)) "main" ≡ nothing
+  → runTrace m n ≡ []
+runTrace-no-main m n eq rewrite eq = refl
