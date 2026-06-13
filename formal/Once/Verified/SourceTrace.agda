@@ -26,6 +26,7 @@
 module Once.Verified.SourceTrace where
 
 open import Data.Bool using (false)
+open import Data.Nat using (ℕ)
 open import Data.List using (List; []; _∷_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (proj₁)
@@ -33,11 +34,12 @@ open import Data.Sum using (inj₁; inj₂)
 open import Data.Unit using (tt)
 open import Data.String using () renaming (_≟_ to _≟str_)
 open import Relation.Nullary using (yes; no)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym)
 
 open import Once.Type using (Type; Unit)
 open import Once.CCC.IR using (IR)
 import Once.Compile as C
+import Once.Parser.Module.Core as P
 open import Once.Grammar.ModuleConvert using (gmoduleToModule)
 open import Once.Verified.Behavior using (Source; Behavior)
 open import Once.Verified.TraceDenote using (obs)
@@ -87,10 +89,14 @@ sourceToIR src with gmoduleToModule src
 -- `sourceTrace` is DECLARED here and DEFINED in Part A (Plan 0.45 Phase 2).
 -- Leaving it undefined deliberately breaks the build: the honest spec, with
 -- the gap explicit (definition-first, as in Plan 0.44).
+-- J-style dispatch on the parse result (explicit `Maybe`, no `with`), so
+-- `⟦⟧-via-module` below can `rewrite` the parse equation through it.
+sourceTrace-aux : Maybe P.Module → Behavior
+sourceTrace-aux (just m) = SS.runTrace m
+sourceTrace-aux nothing  = λ _ → []
+
 sourceTrace : Source → Behavior
-sourceTrace src with gmoduleToModule src
-... | just m  = SS.runTrace m
-... | nothing = λ _ → []
+sourceTrace src = sourceTrace-aux (gmoduleToModule src)
 
 -- `abstract`: keep `⟦_⟧` opaque downstream. Otherwise `⟦ src ⟧` unfolds
 -- to `sourceTrace src`'s `with gmoduleToModule src …`, and
@@ -100,3 +106,13 @@ sourceTrace src with gmoduleToModule src
 abstract
   ⟦_⟧ : Source → Behavior
   ⟦ src ⟧ = sourceTrace src
+
+  -- Reduction lemma (exported): when `src` parses to module `m`, its meaning
+  -- IS `m`'s source trace. Proven INSIDE the `abstract` block (where `⟦_⟧`
+  -- reduces to `sourceTrace`); the J-style `sourceTrace-aux` makes the parse
+  -- equation `rewrite`-able with no `with`-opacity. This discharges
+  -- `Compile.gmoduleToModule-correct`.
+  ⟦⟧-via-module :
+    ∀ (src : Source) (m : P.Module) → gmoduleToModule src ≡ just m →
+    ∀ (n : ℕ) → ⟦ src ⟧ n ≡ SS.runTrace m n
+  ⟦⟧-via-module src m eq n rewrite eq = refl
