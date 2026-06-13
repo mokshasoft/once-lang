@@ -31,12 +31,16 @@ open import Once.Verified.SourceTrace using (⟦_⟧)
 -- this assembly point. `Once.Verified.Compile.WithCPU` itself stays
 -- free of those imports.
 open import Once.Verified.CPU      using (Arch; Byte; arch-semantics)
+open import Once.Verified.ArchCorrectness using (arch-correctness)
 import Once.Verified.Compile as VCompile
 
 -- Instantiate the verified pipeline with the concrete per-arch
--- semantics. `VC.compile` / `VC.exec` / `VC.correct` are the compiler,
--- the injected execution, and the grand theorem proved against them.
-module VC = VCompile.WithCPU arch-semantics
+-- semantics AND the per-arch backend-correctness witnesses. `VC.compile` /
+-- `VC.exec` / `VC.correct` are the compiler, the injected execution, and the
+-- grand theorem proved against them. `arch-correctness` forces every target
+-- to supply its `ArchCorrect` (proof or postulate) — the assembly point for
+-- the per-arch trusted base.
+module VC = VCompile.WithCPU arch-semantics arch-correctness
 
 once-compiler : CorrectCompiler
 once-compiler = record
