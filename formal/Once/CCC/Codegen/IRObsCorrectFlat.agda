@@ -158,3 +158,28 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   postulate
     cata-correct : ∀ {F} (wf : WellFormedF F) {A} (alg : IR (⟦ F ⟧T A) A)
                  → IRObsCorrectF (Cata wf alg)
+
+  -- ════════════════════════════════════════════════════════════════════
+  -- `ir-obs-correct` — the GENERIC IR-observable theorem: a TOTAL dispatch
+  -- over the IR giving every shape its observable-correctness witness. This
+  -- is the connection to ALL CCC IRs: the per-arch `ir-flat-correct` (in
+  -- `Verified.Compile.ArchCorrect`) is discharged THROUGH it (via the
+  -- entry-state + ∀-fuel adapter). Being total, the type-checker forces every
+  -- IR constructor to be accounted for — a new constructor cannot slip
+  -- through unproven.
+  --
+  --   * `Cata` routes to `cata-correct` (the loop obligation, discharged by
+  --     the descend/base/ascend μ-induction — CataNat*).
+  --   * everything else is `obs-correct-rest` — a NAMED scaffold bundling the
+  --     straight constructors (id/∘/⟨,⟩/fst/snd/inl/inr/case/terminal/curry/
+  --     apply/arr/SigOp — pure cases via `flat-events-[]`, SigOp via the
+  --     per-SigOp value correspondence) AND the other recursion schemes
+  --     (Para/Hylo/Fuse folds, Ana/Out/in-ν unfolds). To be split per
+  --     constructor and discharged; deferred as one obligation for now.
+  -- ════════════════════════════════════════════════════════════════════
+  postulate
+    obs-correct-rest : ∀ {A B} (ir : IR A B) → IRObsCorrectF ir
+
+  ir-obs-correct : ∀ {A B} (ir : IR A B) → IRObsCorrectF ir
+  ir-obs-correct (Cata wf alg) = cata-correct wf alg
+  ir-obs-correct ir            = obs-correct-rest ir
