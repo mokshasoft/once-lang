@@ -136,11 +136,12 @@ postulate
     C.compileFromModule C.Heap C.Build false (toLegacyArch arch) m ≡ C.Built asm →
     ∀ (n : ℕ) → (⟦ arch ⟧A asm) n ≡ ⟦ moduleToIR m ⟧IR n
 
-  -- A `Built asm` means `compileResolvedModule` succeeded. If it nonetheless
-  -- has no `main` (`moduleToIR m ≡ nothing`), there is no `main` DFunDef, so
-  -- the source reference also produces the empty trace. (The compile-FAIL
-  -- cause of `nothing` is excluded by `Built`.) Handles the no-main case of
-  -- `module-to-asm-correct`; the `just ir` case is factor 1 proper.
+  -- The LIBRARY case (D008: code without a `main` is a library, not a
+  -- program). A `Built asm` means `compileResolvedModule` succeeded; if it has
+  -- no `main` (`moduleToIR m ≡ nothing`) then there is no `main` DFunDef, so the
+  -- source reference produces the empty trace too — a library run as a program
+  -- does nothing. (The compile-FAIL cause of `nothing` is excluded by `Built`.)
+  -- The `just ir` case is the PROGRAM case (factor 1 proper).
   no-main-empty :
     ∀ (arch : Arch) (m : P.Module) (asm : String) (n : ℕ) →
     C.compileFromModule C.Heap C.Build false (toLegacyArch arch) m ≡ C.Built asm →

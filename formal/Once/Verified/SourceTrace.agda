@@ -115,10 +115,12 @@ sourceToIR src with gmoduleToModule src
 -- Factored (Plan 0.45 #10) into two precise obligations + a connecting proof
 -- that uses the proven source-side reduction `runTrace-main`.
 postulate
-  -- (#9) Main-finding alignment: a compiled module HAS a source `main`. If
-  -- `moduleToIR m` produced an entry IR, the source module also has a `main`
-  -- definition (so `runTrace` runs `main`, not the empty trace). Discharge:
-  -- extractFunctions / compileAllFuns / findMain ↔ extractDefs / lookupDef.
+  -- (#9) Main-finding alignment — the PROGRAM case (D008: `--exe` needs a
+  -- `main`; a library `--lib`, with no `main`, gives `moduleToIR m ≡ nothing`
+  -- and the empty-trace `no-main-empty` branch instead). When `moduleToIR m`
+  -- produces an entry IR the module IS a program, so it has a source `main`
+  -- definition and `runTrace` runs it. Discharge: extractFunctions /
+  -- compileAllFuns / findMain ↔ extractDefs / lookupDef.
   main-exists-align :
     ∀ (m : P.Module) (ir : IR Unit Unit) → moduleToIR m ≡ just ir
     → ∃ λ (body : RawExpr) →
