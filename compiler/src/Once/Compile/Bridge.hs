@@ -46,7 +46,7 @@ import qualified MAlonzo.Code.Data.Sum.Base as MSum
 import qualified MAlonzo.Code.Once.Compile as MC
 import qualified MAlonzo.Code.Once.CCC.IR as MCIR
 import qualified MAlonzo.Code.Once.Verified.Compile as MVC
-import qualified MAlonzo.Code.Once.Verified.CPU.Interface as MVCI
+import qualified MAlonzo.Code.Once.Target.Arch as MTA
 import qualified MAlonzo.Code.Once.Parser as MP
 import qualified MAlonzo.Code.Once.Parser.Module.Core as MMC
 import qualified MAlonzo.Code.Once.Parser.Module.Resolve as MMR
@@ -101,22 +101,18 @@ data ImportRef = ImportRef
 -- MAlonzo conversion (update suffixes after regenerating)
 ------------------------------------------------------------------------
 
-toMStage :: Stage -> MC.T_Stage_542
-toMStage Parse = MC.C_Parse_544
-toMStage Check = MC.C_Check_546
-toMStage Build = MC.C_Build_548
+toMStage :: Stage -> MC.T_Stage_534
+toMStage Parse = MC.C_Parse_536
+toMStage Check = MC.C_Check_538
+toMStage Build = MC.C_Build_540
 
-toMArch :: Arch -> MC.T_Arch_464
-toMArch X86_64  = MC.C_x86'45'64_466
-toMArch X86_32  = MC.C_x86'45'32_468
-toMArch RiscV64 = MC.C_riscv64_470
-
--- Verified Arch (in Once.Verified.CPU.Interface). Same shape as MC.Arch
--- but a separate Agda type, hence a separate coercion.
-toMVArch :: Arch -> MVCI.T_Arch_10
-toMVArch X86_64  = MVCI.C_x86'45'64_12
-toMVArch X86_32  = MVCI.C_x86'45'32_14
-toMVArch RiscV64 = MVCI.C_riscv64_16
+-- Single shared `Arch` enum (Once.Target.Arch). The compiler and the verified
+-- pipeline now use the SAME type, so one converter serves both call sites
+-- (formerly `toMArch` + `toMVArch` over two isomorphic Agda enums).
+toMArch :: Arch -> MTA.T_Arch_6
+toMArch X86_64  = MTA.C_x86'45'64_8
+toMArch X86_32  = MTA.C_x86'45'32_10
+toMArch RiscV64 = MTA.C_riscv64_12
 
 -- | Agda strings are Haskell `Text` at runtime (MAlonzo primitive binding).
 agdaToText :: a -> Text
@@ -141,12 +137,12 @@ fromMPolyFunInfo pfi = PolyFunSig
   , polyFunSigType = agdaToText (MT.d_showPolyType_464 (MP.d_pfunType_148 pfi))
   }
 
-fromMResult :: MC.T_CompileResult_550 -> CompileResult
-fromMResult (MC.C_Parsed_552 fis pfis) =
+fromMResult :: MC.T_CompileResult_542 -> CompileResult
+fromMResult (MC.C_Parsed_544 fis pfis) =
   Parsed (map fromMFunInfo fis) (map fromMPolyFunInfo pfis)
-fromMResult (MC.C_Checked_554 _)  = Checked
-fromMResult (MC.C_Built_556 asm)  = Built (agdaToText asm)
-fromMResult (MC.C_Error_558 err)  = Error (agdaToText err)
+fromMResult (MC.C_Checked_546 _)  = Checked
+fromMResult (MC.C_Built_548 asm)  = Built (agdaToText asm)
+fromMResult (MC.C_Error_550 err)  = Error (agdaToText err)
 
 ------------------------------------------------------------------------
 -- One-shot legacy pipeline
@@ -154,7 +150,7 @@ fromMResult (MC.C_Error_558 err)  = Error (agdaToText err)
 
 compile :: Stage -> Bool -> Arch -> Text -> CompileResult
 compile stage doOpt arch source =
-  fromMResult (MC.d_compile_594 (toMAllocMode AllocHeap) (toMStage stage) doOpt (toMArch arch) (textToAgda source))
+  fromMResult (MC.d_compile_586 (toMAllocMode AllocHeap) (toMStage stage) doOpt (toMArch arch) (textToAgda source))
 
 ------------------------------------------------------------------------
 -- AST-level pipeline
@@ -237,5 +233,5 @@ toMAllocMode AllocHeap  = MCIR.C_Heap_262
 compileFromModule :: AllocMode -> Stage -> Bool -> Arch -> Module -> CompileResult
 compileFromModule m stage doOpt arch (Module mod_) =
   fromMResult
-    (MVC.d_compile'45'cli'45'asm_28
-       (toMAllocMode m) (toMStage stage) doOpt (toMVArch arch) (unsafeCoerce mod_))
+    (MVC.d_compile'45'cli'45'asm_26
+       (toMAllocMode m) (toMStage stage) doOpt (toMArch arch) (unsafeCoerce mod_))

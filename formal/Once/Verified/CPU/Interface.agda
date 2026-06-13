@@ -21,11 +21,8 @@ open import Once.Verified.Behavior using (Behavior)
 Byte : Set
 Byte = Fin 256
 
--- Supported architectures
-data Arch : Set where
-  x86-64  : Arch
-  x86-32  : Arch
-  riscv64 : Arch
+-- Supported architectures — the single shared enum (re-exported).
+open import Once.Target.Arch public
 
 -- The portable per-arch interface.
 record ArchSemantics : Set₁ where
