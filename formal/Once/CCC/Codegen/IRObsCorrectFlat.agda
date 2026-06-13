@@ -38,7 +38,7 @@ open import Once.Type using (Type; ⟦_⟧T; μ-type)
 open import Once.Functor.Translate using (WellFormedF; WellFormedF-irrelevant)
 open import Once.Semantics.Machine using (⟦_⟧)
 open import Once.CCC.IR using (IR; AllocMode; Cata; out-μ)
-open import Relation.Binary.PropositionalEquality using (refl)
+open import Relation.Binary.PropositionalEquality using (refl; trans)
 open import Once.CCC.IR.Size using (ir-size)
 open import Once.CCC.Eval using (eval)
 open import Once.CCC.Machine.SMCore
@@ -46,6 +46,8 @@ open import Once.CCC.Machine.SMCore
 open import Once.CCC.Machine.Allocation using (AllocState; next-slot; module FrontierInvariant)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Codegen.IRToTrace using (ir-to-trace)
+open import Once.CCC.Codegen.CataNextSlot using (module CataNextSlot)
+open import Once.CCC.Codegen.CataIRSlotStable using (module CataIRSlotStable)
 open import Once.CCC.Machine.ClosureWellFormed using (module ClosureWellFormedDef)
 open import Once.Verified.Trace using (SigOpEvent)
 open import Once.Verified.TraceDenote using (obs)
@@ -56,6 +58,8 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   open FrontierInvariant {FS} using (BeforeFrontier)
   open ClosureWellFormedDef {FS} program-bound using (ValidAtWF; valid-μ-wf)
   open FlatEventTrace {FS} using (flat-events)
+  open CataNextSlot {FS} using (exec-flat-keeps-next-slot)
+  open CataIRSlotStable {FS} using (ir-to-trace-slot-stable)
 
   -- μ↔layer iso (the strat-const crux), general in F. A μ-value's
   -- validity at `loc` IS its destructured layer's validity at the SAME
@@ -74,6 +78,29 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   -- The flat run of `ir` from `s`/`alloc` at a given fuel (frontier 0).
   flat-run : ℕ → ∀ {A B} → IR A B → LocState FS → AllocState {FS} → FlatState
   flat-run fuel ir s alloc = exec-flat fuel (ir-to-trace ir) (mkFlat s alloc 0)
+
+  -- Frame discipline (codegen-image half + machine half wired together):
+  -- running any compiled IR preserves the stack-frame frontier `next-slot`.
+  -- `ir-to-trace-slot-stable` (no trace touches next-slot) + `exec-flat-
+  -- keeps-next-slot` (exec-flat preserves it for slot-stable traces). This
+  -- is what `value-realized` needs to apply the algebra's `IRObsCorrectF`
+  -- IH at every cata layer: the cata scaffold keeps `next-slot ≡ 0`, so the
+  -- algebra's `next-slot alloc ≡ 0` precondition holds at each layer's run.
+  flat-run-keeps-next-slot :
+    ∀ (fuel : ℕ) {A B} (ir : IR A B) (s : LocState FS) (alloc : AllocState {FS})
+    → next-slot (falloc (flat-run fuel ir s alloc)) ≡ next-slot alloc
+  flat-run-keeps-next-slot fuel ir s alloc =
+    exec-flat-keeps-next-slot (ir-to-trace ir) (ir-to-trace-slot-stable ir) fuel (mkFlat s alloc 0)
+
+  -- The cata corollary `value-realized` consumes directly: an algebra run
+  -- from a 0-frontier entry alloc still sees `next-slot ≡ 0` afterwards, so
+  -- the next layer's algebra call meets its `IRObsCorrectF` precondition.
+  alg-run-keeps-frontier-0 :
+    ∀ (fuel : ℕ) {A B} (ir : IR A B) (s : LocState FS) (alloc : AllocState {FS})
+    → next-slot alloc ≡ 0
+    → next-slot (falloc (flat-run fuel ir s alloc)) ≡ 0
+  alg-run-keeps-frontier-0 fuel ir s alloc eq =
+    trans (flat-run-keeps-next-slot fuel ir s alloc) eq
 
   -- Observable refinement over the flat machine.
   --
