@@ -26,6 +26,7 @@ import qualified MAlonzo.Code.Once.Verified.CPU
 import qualified MAlonzo.Code.Once.Verified.CPU.Interface
 import qualified MAlonzo.Code.Once.Verified.Compile
 import qualified MAlonzo.Code.Once.Verified.SourceTrace
+import qualified MAlonzo.Code.Once.Verified.Trace
 
 -- Once.Compiler.VC.compile
 d_compile_6 ::
@@ -34,7 +35,7 @@ d_compile_6 ::
   Maybe [MAlonzo.Code.Data.Fin.Base.T_Fin_10]
 d_compile_6
   = coe
-      MAlonzo.Code.Once.Verified.Compile.d_compile_72
+      MAlonzo.Code.Once.Verified.Compile.d_compile_158
       (coe MAlonzo.Code.Once.Verified.CPU.d_arch'45'semantics_6)
 -- Once.Compiler.VC.correct
 d_correct_8 ::
@@ -42,15 +43,16 @@ d_correct_8 ::
   MAlonzo.Code.Once.Grammar.T_GModule_138 ->
   [MAlonzo.Code.Data.Fin.Base.T_Fin_10] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+  Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_correct_8 = erased
 -- Once.Compiler.VC.exec
 d_exec_10 ::
   MAlonzo.Code.Once.Verified.CPU.Interface.T_Arch_10 ->
-  [MAlonzo.Code.Data.Fin.Base.T_Fin_10] -> Maybe Integer
+  [MAlonzo.Code.Data.Fin.Base.T_Fin_10] ->
+  Integer -> [MAlonzo.Code.Once.Verified.Trace.T_SigOpEvent_136]
 d_exec_10
   = coe
-      MAlonzo.Code.Once.Verified.Compile.d_exec_62
+      MAlonzo.Code.Once.Verified.Compile.d_exec_148
       (coe MAlonzo.Code.Once.Verified.CPU.d_arch'45'semantics_6)
 -- Once.Compiler.VC.string-to-bytes
 d_string'45'to'45'bytes_12 ::
@@ -59,22 +61,23 @@ d_string'45'to'45'bytes_12 ::
   [MAlonzo.Code.Data.Fin.Base.T_Fin_10]
 d_string'45'to'45'bytes_12
   = coe
-      MAlonzo.Code.Once.Verified.Compile.d_string'45'to'45'bytes_68
+      MAlonzo.Code.Once.Verified.Compile.d_string'45'to'45'bytes_154
       (coe MAlonzo.Code.Once.Verified.CPU.d_arch'45'semantics_6)
 -- Once.Compiler.VC.string-to-bytes-correct
 d_string'45'to'45'bytes'45'correct_14 ::
   MAlonzo.Code.Once.Verified.CPU.Interface.T_Arch_10 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+  Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_string'45'to'45'bytes'45'correct_14 = erased
 -- Once.Compiler.once-compiler
 d_once'45'compiler_16 ::
   MAlonzo.Code.Once.Verified.T_CorrectCompiler_4
 d_once'45'compiler_16
   = coe
-      MAlonzo.Code.Once.Verified.C_constructor_50
-      MAlonzo.Code.Once.Verified.SourceTrace.d_'10214'_'10215'_56
-      (MAlonzo.Code.Once.Verified.Compile.d_exec_62
+      MAlonzo.Code.Once.Verified.C_constructor_54
+      MAlonzo.Code.Once.Verified.SourceTrace.d_'10214'_'10215'_82
+      (MAlonzo.Code.Once.Verified.Compile.d_exec_148
          (coe MAlonzo.Code.Once.Verified.CPU.d_arch'45'semantics_6))
-      (MAlonzo.Code.Once.Verified.Compile.d_compile_72
+      (MAlonzo.Code.Once.Verified.Compile.d_compile_158
          (coe MAlonzo.Code.Once.Verified.CPU.d_arch'45'semantics_6))
+      erased
