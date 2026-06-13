@@ -43,6 +43,9 @@ testIR : IR Unit Unit
 testIR = SigOp exitInfo ∘ const fits-int (+ 13) 13
 
 -- Non-vacuity: `obs` actually traces the program (a `linux.exit` event
--- carrying 13), and `exitCodeOf` recovers 13.
-obs-exit-13 : exitCodeOf (proj₁ (obs 0 testIR tt)) ≡ just 13
+-- carrying 13), and `exitCodeOf` recovers 13. `obs` is now step-indexed
+-- (`Behavior n` = the prefix within `n` steps), so we observe with enough
+-- fuel to reach the event: `testIR = SigOp ∘ const` needs 2 steps (`obs 0`
+-- correctly yields the empty prefix).
+obs-exit-13 : exitCodeOf (proj₁ (obs 2 testIR tt)) ≡ just 13
 obs-exit-13 = refl
