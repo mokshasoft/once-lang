@@ -32,9 +32,9 @@
 
 module Once.Verified.TraceDenote where
 
-open import Data.List using (List; []; _∷_; _++_)
+open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Nat using (ℕ; zero; suc)
+open import Data.Nat using (ℕ; zero; suc; _∸_)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (inj₁; inj₂)
 open import Data.Unit using (⊤)
@@ -83,36 +83,44 @@ events-F (F ⊗ G) p (x , y)  = events-F F p x ++ events-F G p y
 cata-ev-alg : ∀ {F C} → ℕ → IR (⟦ F ⟧T C) C
             → ⟦ F ⟧F (List SigOpEvent × ⟦ C ⟧) → List SigOpEvent × ⟦ C ⟧
 
--- STEP-INDEXED to match the top-level observable: `Behavior n` is "the
--- prefix observed within `n` steps" (Once.Verified.Behavior). So the fuel
--- `n` decrements per evaluation step exactly as `eval` does, and `obs 0`
--- observes nothing. ONLY the trace (`proj₁`) is step-bounded; the VALUE
--- (`proj₂`) stays the denotational `eval ir x` — it is internal plumbing
--- (composition threads it), and the apex observes only the trace. So
--- `proj₂ (obs n ir x) = just (eval ir x)` for every `n`, while `proj₁`
--- accumulates only the events reachable within `n` steps. This makes
--- `obs ↔ eval` (`compiled-main-trace`) and `flat-events ↔ obs`
--- (`ir-flat-correct`) provable ∀ n for both finite (Cata) and productive
--- (Ana) traces — no stabilization or termination baked in.
+-- EVENT-INDEXED to match the top-level observable: `Behavior n` is "the first
+-- `n` SigOp events" (Once.Verified.Behavior). `SigOp` is the ONLY IR that
+-- produces something observable; every other constructor emits nothing and just
+-- THREADS the budget `n` (the count of SigOps still to observe). So a `SigOp`
+-- spends one unit; `∘`/`⟨,⟩` give the second sub-IR the budget remaining after
+-- the first (`n ∸ length` of the events it emitted); value-pure constructors
+-- spend nothing. ONLY the trace (`proj₁`) is bounded; the VALUE (`proj₂`) stays
+-- the denotational `eval ir x` (internal plumbing — the apex observes only the
+-- trace). The clock is the SigOp count, NOT internal eval/machine steps, so the
+-- apex `exec n ≡ ⟦src⟧ n` is a calibration-free SigOp-prefix equality — true ∀ n
+-- for finite (Cata) and productive (Ana) traces, no termination assumed.
+-- One SigOp event costs one budget unit: emitted iff budget ≥ 1. Kept as a
+-- helper (not an `n`-pattern in `obs`'s LHS) so `obs` splits on the IR FIRST —
+-- otherwise every downstream proof would have to case on `n` to reduce `obs`.
+sig1 : ℕ → SigOpEvent → List SigOpEvent
+sig1 zero    _ = []
+sig1 (suc _) e = e ∷ []
+
 obs : ∀ {A B} → ℕ → IR A B → ⟦ A ⟧ → List SigOpEvent × Maybe ⟦ B ⟧
-obs zero    ir x = ([] , just (eval ir x))
-obs (suc n) (SigOp si) x = (mkEvent si x ∷ [] , just (semM si x))
-obs (suc n) (g ∘ f) x =
-  (proj₁ (obs n f x) ++ proj₁ (obs n g (eval f x)) , just (eval (g ∘ f) x))
-obs (suc n) (⟨ f , g ⟩ m) x =
-  (proj₁ (obs n f x) ++ proj₁ (obs n g x) , just (eval (⟨ f , g ⟩ m) x))
-obs (suc n) (case f g) (inj₁ a) = (proj₁ (obs n f a) , just (eval (case f g) (inj₁ a)))
-obs (suc n) (case f g) (inj₂ b) = (proj₁ (obs n g b) , just (eval (case f g) (inj₂ b)))
--- effectful catamorphism. VALUE is `eval`'s cata value directly; EVENTS are
--- the real fold (`sem-cata` over the carrier `List SigOpEvent × ⟦C⟧`, running
--- `obs n alg` per layer in post-order). NOTE: this clause's FOLD structure is
--- not yet fully fuel-bounded — it is the LAST clause to be made step-conforming
--- (the general constructors above conform first, top-down); the fold's own
--- fuel-bounding lands when the cata leaf is wired to the ∀-n bridge.
-obs (suc n) (Cata {F} wf {C} alg) x =
+obs n (SigOp si) x = (sig1 n (mkEvent si x) , just (semM si x))    -- spend one (iff n ≥ 1)
+obs n (g ∘ f) x =
+  let ef = proj₁ (obs n f x)
+  in (ef ++ proj₁ (obs (n ∸ length ef) g (eval f x)) , just (eval (g ∘ f) x))
+obs n (⟨ f , g ⟩ m) x =
+  let ef = proj₁ (obs n f x)
+  in (ef ++ proj₁ (obs (n ∸ length ef) g x) , just (eval (⟨ f , g ⟩ m) x))
+obs n (case f g) (inj₁ a) = (proj₁ (obs n f a) , just (eval (case f g) (inj₁ a)))
+obs n (case f g) (inj₂ b) = (proj₁ (obs n g b) , just (eval (case f g) (inj₂ b)))
+-- effectful catamorphism. VALUE is `eval`'s cata value directly; EVENTS are the
+-- real fold (`sem-cata` over the carrier `List SigOpEvent × ⟦C⟧`, running
+-- `obs n alg` per layer in post-order). NOTE: this clause's FOLD does not yet
+-- thread the SigOp budget through the layers — it is the LAST clause to conform
+-- (the general constructors above conform first, top-down); the budget-threaded
+-- fold lands when the cata leaf is wired to the ∀-n bridge.
+obs n (Cata {F} wf {C} alg) x =
   (proj₁ (sem-cata wf (cata-ev-alg {F} {C} n alg) x) , just (eval (Cata wf alg) x))
--- value-pure constructors (no SigOp of their own): no events.
-obs (suc n) c x = ([] , just (eval c x))
+-- value-pure constructors (no SigOp of their own): no events, budget untouched.
+obs n c x = ([] , just (eval c x))
 
 cata-ev-alg {F} {C} n alg fc =
   (events-F F proj₁ fc ++ proj₁ (obs n alg z) , eval alg z)
@@ -145,8 +153,7 @@ cata-ev-alg {F} {C} n alg fc =
 obs-cata-value : ∀ {F C} (n : ℕ) (wf : WellFormedF F)
                  (alg : IR (⟦ F ⟧T C) C) (x : ⟦ μ-type F ⟧)
                → proj₂ (obs n (Cata wf alg) x) ≡ just (eval (Cata wf alg) x)
-obs-cata-value zero    wf alg x = refl
-obs-cata-value (suc n) wf alg x = refl
+obs-cata-value n wf alg x = refl
 
 EmitsNoSigOp : ∀ {A B} → IR A B → Set
 EmitsNoSigOp (SigOp si)               = ⊥
