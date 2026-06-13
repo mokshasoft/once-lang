@@ -38,7 +38,9 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality
   using (_≡_; refl; sym; trans; cong; subst)
-open import Data.Product using (∃-syntax; _,_)
+open import Data.List using ([])
+open import Once.CCC.IR using (IR)
+open import Once.Type using (Unit)
 
 open import Once.Verified.Behavior using (Source; Behavior)
 open import Once.Verified.SourceTrace
@@ -134,13 +136,16 @@ postulate
     C.compileFromModule C.Heap C.Build false (toLegacyArch arch) m ≡ C.Built asm →
     ∀ (n : ℕ) → (⟦ arch ⟧A asm) n ≡ ⟦ moduleToIR m ⟧IR n
 
-  -- A `Built asm` means the module compiled and has a `main`; `moduleToIR m`
-  -- (the same `compileResolvedModule` + `findMain`) is therefore `just ir`.
-  -- This supplies factor 1's soundness condition from the compile success.
-  built⇒moduleToIR-just :
-    ∀ (arch : Arch) (m : P.Module) (asm : String) →
+  -- A `Built asm` means `compileResolvedModule` succeeded. If it nonetheless
+  -- has no `main` (`moduleToIR m ≡ nothing`), there is no `main` DFunDef, so
+  -- the source reference also produces the empty trace. (The compile-FAIL
+  -- cause of `nothing` is excluded by `Built`.) Handles the no-main case of
+  -- `module-to-asm-correct`; the `just ir` case is factor 1 proper.
+  no-main-empty :
+    ∀ (arch : Arch) (m : P.Module) (asm : String) (n : ℕ) →
     C.compileFromModule C.Heap C.Build false (toLegacyArch arch) m ≡ C.Built asm →
-    ∃[ ir ] moduleToIR m ≡ just ir
+    moduleToIR m ≡ nothing →
+    runTrace m n ≡ []
 
 -- Stage 2 correctness — now a THEOREM (Plan 0.45 Part B), no longer a
 -- monolithic postulate: the asm trace equals the SOURCE trace, by composing
@@ -153,10 +158,21 @@ module-to-asm-correct :
   ∀ (arch : Arch) (m : P.Module) (asm : String) →
   C.compileFromModule C.Heap C.Build false (toLegacyArch arch) m ≡ C.Built asm →
   ∀ (n : ℕ) → (⟦ arch ⟧A asm) n ≡ ⟦ m ⟧M n
-module-to-asm-correct arch m asm eq n with built⇒moduleToIR-just arch m asm eq
-... | ir , mj =
-  trans (subst (λ z → (⟦ arch ⟧A asm) n ≡ ⟦ z ⟧IR n) mj (codegen-asm-correct arch m asm eq n))
-        (elaborate-preserves-trace m ir n mj)
+-- Explicit-`Maybe` helper (no `with`-opacity on `moduleToIR m`): match the
+-- compiled-IR option directly, threading its equation so factor 1's `just ir`
+-- condition (and the no-main case) discharge. `cg` is factor 2's
+-- `codegen-asm-correct`, already at `⟦ mi ⟧IR` for the passed `mi`.
+mta-aux :
+  ∀ (arch : Arch) (m : P.Module) (asm : String) (n : ℕ) (mi : Maybe (IR Unit Unit)) →
+  C.compileFromModule C.Heap C.Build false (toLegacyArch arch) m ≡ C.Built asm →
+  moduleToIR m ≡ mi →
+  (⟦ arch ⟧A asm) n ≡ ⟦ mi ⟧IR n →
+  (⟦ arch ⟧A asm) n ≡ runTrace m n
+mta-aux arch m asm n (just ir) eq mi-eq cg = trans cg (elaborate-preserves-trace m ir n mi-eq)
+mta-aux arch m asm n nothing  eq mi-eq cg = trans cg (sym (no-main-empty arch m asm n eq mi-eq))
+
+module-to-asm-correct arch m asm eq n =
+  mta-aux arch m asm n (moduleToIR m) eq refl (codegen-asm-correct arch m asm eq n)
 
 -- Stage 1 correctness — DISCHARGED (Plan 0.45 Part B), no longer a
 -- postulate. `⟦ m ⟧M = runTrace m` definitionally, and `⟦⟧-via-module`
