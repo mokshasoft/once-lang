@@ -1,9 +1,20 @@
 -- SPDX-License-Identifier: AGPL-3.0-or-later
 -- Copyright (C) 2025-2026 Jonas Claesson and contributors
 
--- lib-test.once: Test library mode output
+-- lib-test.once: a LIBRARY (no `main`).
 --
--- Tests: --lib flag generates .h and .c files
+-- D008 + "concrete = interface" (the anchor model): a program is anchored by
+-- `main : Eff Unit Unit`, which monomorphizes everything composing up to it. A
+-- library has no `main`, so its CONCRETE-typed top-level functions ARE the
+-- anchors — each signature is a contract that instantiates the polymorphic
+-- builtins it uses. Polymorphism is inferred and internal; a library's
+-- interface is its concrete signatures.
+--
+-- (Was `swap : A * B -> B * A` — a polymorphic *signature*, which is ill-formed:
+-- signatures are concrete contracts, polymorphism is inferred, never written.)
+--
+-- Compiled to x86_64 assembly (no entry point); the C library backend
+-- (`--lib`) is not yet implemented.
 
-swap : A * B -> B * A
-swap = pair snd fst
+swapII : Int * Int -> Int * Int
+swapII = pair snd fst

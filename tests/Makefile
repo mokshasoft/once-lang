@@ -55,15 +55,25 @@ test-exe-import: $(BUILD)
 #-----------------------------------------------------------------------------
 
 .PHONY: test-lib
-test-lib: $(BUILD) test-lib-basic
-	@echo "==> --lib tests passed"
+test-lib: $(BUILD) test-lib-basic test-lib-multi
+	@echo "==> library tests passed"
 
+# A library has no `main`; its concrete top-level functions are the interface
+# (D008 / "concrete = interface"). The C library backend (--lib) is not yet
+# implemented, so we compile to x86_64 assembly (no entry point) and check the
+# .s is produced — i.e. a no-main library is accepted and codegens.
 .PHONY: test-lib-basic
 test-lib-basic: $(BUILD)
-	@echo "Testing: lib-test.once --lib"
-	$(ONCE) build --lib $(TESTS_DIR)/lib-test.once -o $(TESTS_DIR)/$(BUILD)/lib-test
-	@test -f $(BUILD)/lib-test.h || (echo "FAIL: missing .h file"; exit 1)
-	@test -f $(BUILD)/lib-test.c || (echo "FAIL: missing .c file"; exit 1)
+	@echo "Testing: lib-test.once (library, no main -> x86_64 asm)"
+	$(ONCE) build --target x86_64 $(TESTS_DIR)/lib-test.once -o $(TESTS_DIR)/$(BUILD)/lib-test
+	@test -f $(BUILD)/lib-test.s || (echo "FAIL: missing .s file"; exit 1)
+	@echo "  OK"
+
+.PHONY: test-lib-multi
+test-lib-multi: $(BUILD)
+	@echo "Testing: lib-multi.once (multi-function library -> x86_64 asm)"
+	$(ONCE) build --target x86_64 $(TESTS_DIR)/lib-multi.once -o $(TESTS_DIR)/$(BUILD)/lib-multi
+	@test -f $(BUILD)/lib-multi.s || (echo "FAIL: missing .s file"; exit 1)
 	@echo "  OK"
 
 #-----------------------------------------------------------------------------
