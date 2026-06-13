@@ -289,3 +289,13 @@ runTrace-no-main :
   → lookupDef (extractDefs (Mod.Module.decls m)) "main" ≡ nothing
   → runTrace m n ≡ []
 runTrace-no-main m n eq rewrite eq = refl
+
+-- With-main characterization (the dual): when `main` is defined, `runTrace`
+-- is exactly the trace of evaluating its body. Together with `runTrace-no-main`
+-- this fully reduces `runTrace` to `eval` of the main body — the source-side
+-- half of `elaborate-preserves-trace` (Plan 0.45 #10).
+runTrace-main :
+  ∀ (m : Module) (n : ℕ) (body : RawExpr)
+  → lookupDef (extractDefs (Mod.Module.decls m)) "main" ≡ just body
+  → runTrace m n ≡ runTraceEval (eval n (extractDefs (Mod.Module.decls m)) [] body)
+runTrace-main m n body eq rewrite eq = refl
