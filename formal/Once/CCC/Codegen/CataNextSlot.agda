@@ -142,15 +142,19 @@ module CataNextSlot {FS : FrameSemantics} where
   AllSlotStable : AbstractTrace → Set
   AllSlotStable = All SlotStable
 
-  -- LIFTING TO exec-flat (DEFERRED): the fuel induction over a slot-stable
-  -- trace — `next-slot (falloc (exec-flat n prog fs)) ≡ next-slot (falloc
-  -- fs)` for `AllSlotStable prog` — is mechanical (mutual with the
-  -- step/fetch dispatchers, applying `flat-keeps-next-slot` to each fetched
-  -- instruction). It is blocked only by a reduction anomaly: `fetch`
-  -- refuses to reduce on a VARIABLE cons (`fetch (x ∷ xs) zero` ↛ `just x`)
-  -- under the `FlatMachine {FS}` instantiation, though it reduces on
-  -- concrete traces — so the `fetch`→`SlotStable` lookup (`fetch-stable`)
-  -- can't be discharged here. The fix is to prove the `fetch` reductions
-  -- as lemmas inside `Flat.agda` (where `fetch` reduces) and import them.
-  -- The SUBSTANCE — that NO emitted instruction changes `next-slot`
-  -- (`flat-keeps-next-slot`) — is complete above.
+  -- exec-flat over a slot-stable trace preserves next-slot — the frame
+  -- -discipline invariant. The fuel induction lives in `Flat.agda`'s
+  -- `exec-flat-invariant` (where the recursive `exec-flat`/`fetch` reduce;
+  -- `open FlatMachine {FS}` makes them opaque here). We instantiate the
+  -- projection `next-slot ∘ falloc`, the predicate `SlotStable`, and the
+  -- per-instruction fact `flat-keeps-next-slot`; the off-end halt changes
+  -- only `floc`, so it preserves `next-slot` (`refl`). Since the cata
+  -- algebra's `ir-to-trace` emits only slot-stable instructions, its
+  -- `exec-flat` leaves `next-slot` fixed — the algebra IH's `next-slot ≡ 0`
+  -- precondition survives every cata layer.
+  exec-flat-keeps-next-slot :
+    ∀ (prog : AbstractTrace) → AllSlotStable prog → ∀ (n : ℕ) (fs : FlatState)
+    → next-slot (falloc (exec-flat n prog fs)) ≡ next-slot (falloc fs)
+  exec-flat-keeps-next-slot prog ss n fs =
+    exec-flat-invariant (λ s → next-slot (falloc s)) SlotStable
+      (λ i p f' si → flat-keeps-next-slot p f' i si) (λ _ → refl) prog ss n fs
