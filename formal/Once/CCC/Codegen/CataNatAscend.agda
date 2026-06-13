@@ -27,8 +27,11 @@ open import Data.Nat using (ℕ; suc)
 open import Data.Bool using (false)
 open import Data.Maybe using (just)
 open import Data.Product using (Σ-syntax; _,_)
-open import Relation.Binary.PropositionalEquality using (_≡_; trans; cong)
+open import Data.List using (List; []; _++_)
+open import Data.List.Properties using (++-identityʳ)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; cong)
 
+open import Once.Verified.Trace using (SigOpEvent)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore
   using (halted; regs; readReg; Scratch; AbstractTrace;
@@ -36,10 +39,12 @@ open import Once.CCC.Machine.SMCore
          instr-ctrl; c-label; c-jmp; c-branch-scratch-zero)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
+open import Once.Verified.FlatEvents using (module FlatEventTrace)
 
 module CataNatAscend {FS : FrameSemantics} where
   open FlatMachine {FS}
   open FlatStepsAPI {FS}
+  open FlatEventTrace {FS}
 
   -- The ascend iteration's PRE-control (continue path, depth ≠ 0):
   -- `c-label la-top` (loop head) then `c-branch-scratch-zero la-end` NOT
@@ -82,20 +87,40 @@ module CataNatAscend {FS : FrameSemantics} where
   -- non-halting steps; `halted` threads from `fs` through `bl-halted` and
   -- `at-end-nh`. `blf` is the build-layer result state; `S12` the post-2nd-
   -- mov state at which `at` starts.
-  ascend-body-steps : ∀ (prog : AbstractTrace) (fs blf : FlatState) {N : ℕ} {at-end : FlatState}
+  ascend-body-runs : ∀ (prog : AbstractTrace) (fs blf : FlatState) {N : ℕ} {at-end : FlatState}
+                       (E : List SigOpEvent)
     → halted (floc fs) ≡ false
     → fetch prog (fpc fs) ≡ just mov-to-input
-    → FlatSteps prog 10 (flat-exec-instr mov-to-input prog fs) blf
+    → (bl-steps : FlatSteps prog 10 (flat-exec-instr mov-to-input prog fs) blf)
+    → chain-events bl-steps ≡ []
     → halted (floc blf) ≡ false
     → fetch prog (fpc blf) ≡ just mov-to-input
-    → FlatSteps prog N (flat-exec-instr mov-to-input prog blf) at-end
+    → (at-chain : FlatSteps prog N (flat-exec-instr mov-to-input prog blf) at-end)
+    → chain-events at-chain ≡ E
     → halted (floc at-end) ≡ false
     → fetch prog (fpc at-end) ≡ just (instr-reg-op scratch-dec)
-    → Σ[ n ∈ ℕ ] Σ[ final ∈ FlatState ] FlatSteps prog n fs final
-  ascend-body-steps prog fs blf hf mov1 bl-steps bl-halted mov2 at-chain at-end-nh scrd =
-    _ , _ ,
-    FlatSteps-++ ((hf , mov1) ∷ [])
-      (FlatSteps-++ bl-steps
-        (FlatSteps-++ ((bl-halted , mov2) ∷ [])
-          (FlatSteps-++ at-chain
-            ((at-end-nh , scrd) ∷ []))))
+    → Σ[ n ∈ ℕ ] Σ[ final ∈ FlatState ]
+        Σ[ steps ∈ FlatSteps prog n fs final ] (chain-events steps ≡ E)
+  ascend-body-runs prog fs blf E hf mov1 bl-steps bl-silent bl-halted mov2 at-chain at-events at-end-nh scrd =
+    _ , _ , chain , events
+    where
+      mov1L = (hf , mov1) ∷ []
+      mov2L = (bl-halted , mov2) ∷ []
+      scrL  = (at-end-nh , scrd) ∷ []
+      R3    = FlatSteps-++ at-chain scrL
+      R2    = FlatSteps-++ mov2L R3
+      R1    = FlatSteps-++ bl-steps R2
+      chain = FlatSteps-++ mov1L R1
+      -- the two movs + scratch-dec emit nothing (event-of of a non-sigop
+      -- reduces to [] definitionally), build-layer is silent by hypothesis,
+      -- and the algebra `at` contributes exactly E.
+      ev-R3 : chain-events R3 ≡ E
+      ev-R3 = trans (chain-events-++ at-chain scrL)
+                    (trans (++-identityʳ (chain-events at-chain)) at-events)
+      ev-R2 : chain-events R2 ≡ E
+      ev-R2 = trans (chain-events-++ mov2L R3) ev-R3
+      ev-R1 : chain-events R1 ≡ E
+      ev-R1 = trans (chain-events-++ bl-steps R2)
+                    (trans (cong (_++ chain-events R2) bl-silent) ev-R2)
+      events : chain-events chain ≡ E
+      events = trans (chain-events-++ mov1L R1) ev-R1
