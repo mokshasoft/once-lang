@@ -30,9 +30,9 @@ open import Data.Nat using (ℕ)
 open import Data.List using (List; []; _∷_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (proj₁)
-open import Data.Sum using (inj₁; inj₂)
+open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (tt)
-open import Data.String using () renaming (_≟_ to _≟str_)
+open import Data.String using (String) renaming (_≟_ to _≟str_)
 open import Relation.Nullary using (yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym)
 
@@ -63,10 +63,24 @@ findMain (cf ∷ rest) with cfName cf ≟str "main" | isUnit? (cfType cf)
 ... | yes _ | just refl = just (cfIR cf)
 ... | _     | _         = findMain rest
 
+-- Explicit dispatch on the compile result (no `with`-opacity), so the IR side
+-- of `elaborate-preserves-trace` can be characterised (analogous to the
+-- `runTraceMain`/`runTraceEval` source-side helpers).
+moduleToIR-aux : String ⊎ List C.CompiledFun → Maybe (IR Unit Unit)
+moduleToIR-aux (inj₁ _)    = nothing
+moduleToIR-aux (inj₂ funs) = findMain funs
+
 moduleToIR : P.Module → Maybe (IR Unit Unit)
-moduleToIR mod with C.compileResolvedModule C.Heap false mod
-... | inj₁ _    = nothing
-... | inj₂ funs = findMain funs
+moduleToIR mod = moduleToIR-aux (C.compileResolvedModule C.Heap false mod)
+
+-- IR-side characterization: when the module compiles to `funs`, `moduleToIR` is
+-- exactly `findMain funs`. The IR-side analog of `runTrace-main`; reduces the
+-- IR side of `elaborate-preserves-trace` to `findMain` of the compiled funs.
+moduleToIR-compiled :
+  ∀ (mod : P.Module) (funs : List C.CompiledFun)
+  → C.compileResolvedModule C.Heap false mod ≡ inj₂ funs
+  → moduleToIR mod ≡ findMain funs
+moduleToIR-compiled mod funs eq rewrite eq = refl
 
 sourceToIR : Source → Maybe (IR Unit Unit)
 sourceToIR src with gmoduleToModule src
