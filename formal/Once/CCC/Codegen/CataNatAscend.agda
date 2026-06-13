@@ -26,7 +26,7 @@ module Once.CCC.Codegen.CataNatAscend where
 open import Data.Nat using (ℕ; suc)
 open import Data.Bool using (false)
 open import Data.Maybe using (just)
-open import Data.Product using (Σ-syntax; _,_)
+open import Data.Product using (Σ-syntax; _×_; _,_)
 open import Data.List using (List; []; _++_)
 open import Data.List.Properties using (++-identityʳ)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; cong)
@@ -124,3 +124,84 @@ module CataNatAscend {FS : FrameSemantics} where
                     (trans (cong (_++ chain-events R2) bl-silent) ev-R2)
       events : chain-events chain ≡ E
       events = trans (chain-events-++ mov1L R1) ev-R1
+
+  ----------------------------------------------------------------------
+  -- One full ascend ITERATION = pre-control (label + branch-not) ++ body
+  -- ++ post-control (jmp back to head). The control wraps are silent, so
+  -- the iteration's events = the body's events = E.
+  ----------------------------------------------------------------------
+
+  -- generic silence helpers (a control/reg step emits nothing).
+  step1-silent : ∀ {prog fs fs'} {i} (h : halted (floc fs) ≡ false)
+                   (f : fetch prog (fpc fs) ≡ just i) (eq : flat-exec-instr i prog fs ≡ fs')
+               → event-of i fs ≡ [] → chain-events (flat-step1 h f eq) ≡ []
+  step1-silent {fs = fs} {i = i} h f eq ev =
+    trans (chain-events-subst eq ((h , f) ∷ [])) (cong (_++ []) ev)
+
+  ++-silent : ∀ {prog k₁ k₂ fs₁ fs₂ fs₃}
+                (xs : FlatSteps prog k₁ fs₁ fs₂) (ys : FlatSteps prog k₂ fs₂ fs₃)
+            → chain-events xs ≡ [] → chain-events ys ≡ []
+            → chain-events (FlatSteps-++ xs ys) ≡ []
+  ++-silent xs ys px py =
+    trans (chain-events-++ xs ys) (trans (cong (_++ chain-events ys) px) py)
+
+  -- The ascend pre-control (label la-top + branch-scratch-zero not taken)
+  -- is silent.
+  ascend-pre-silent : ∀ (prog : AbstractTrace) (fs : FlatState) (la-top la-end : ℕ)
+    → (hf : halted (floc fs) ≡ false)
+    → (scond : sv-is-zero (readReg (regs (floc fs)) Scratch) ≡ false)
+    → (fL : fetch prog (fpc fs)       ≡ just (instr-ctrl (c-label la-top)))
+    → (fB : fetch prog (suc (fpc fs)) ≡ just (instr-ctrl (c-branch-scratch-zero la-end)))
+    → chain-events (ascend-pre-flat prog fs la-top la-end hf scond fL fB) ≡ []
+  ascend-pre-silent prog fs la-top la-end hf scond fL fB =
+    ++-silent (flat-step1 {prog = prog} hf fL eqL) (flat-step1 {prog = prog} hf fB eqB)
+      (step1-silent {prog = prog} hf fL eqL refl)
+      (step1-silent {prog = prog} {fs = record fs { fpc = suc (fpc fs) }} hf fB eqB refl)
+    where
+      eqL = flat-label              prog fs la-top
+      eqB = flat-scratch-branch-not prog (record fs { fpc = suc (fpc fs) }) la-end scond
+
+  -- The ascend post-control (jmp back to la-top) is silent.
+  ascend-post-silent : ∀ (prog : AbstractTrace) (fs : FlatState) (la-top q-latop : ℕ)
+    → (hf : halted (floc fs) ≡ false)
+    → (fJ : fetch prog (fpc fs)    ≡ just (instr-ctrl (c-jmp la-top)))
+    → (top-res : find-label prog la-top ≡ just q-latop)
+    → chain-events (ascend-post-flat prog fs la-top q-latop hf fJ top-res) ≡ []
+  ascend-post-silent prog fs la-top q-latop hf fJ top-res =
+    step1-silent {prog = prog} hf fJ
+      (trans (flat-jmp prog fs la-top) (cong (λ m → do-jump m fs) top-res)) refl
+
+  -- One continue iteration runs (pre ++ body ++ post) and emits exactly
+  -- the body's events E; it ends back at the loop head `q-latop`, non-
+  -- halted, ready for the next iteration. The body run is a hypothesis
+  -- (supplied via `ascend-body-runs`).
+  ascend-iter-runs : ∀ (prog : AbstractTrace) (fs : FlatState) (la-top la-end q-latop : ℕ)
+                       {N : ℕ} {final-body : FlatState} (E : List SigOpEvent)
+    → halted (floc fs) ≡ false
+    → sv-is-zero (readReg (regs (floc fs)) Scratch) ≡ false
+    → fetch prog (fpc fs)       ≡ just (instr-ctrl (c-label la-top))
+    → fetch prog (suc (fpc fs)) ≡ just (instr-ctrl (c-branch-scratch-zero la-end))
+    → (body-steps : FlatSteps prog N (record fs { fpc = suc (suc (fpc fs)) }) final-body)
+    → chain-events body-steps ≡ E
+    → halted (floc final-body) ≡ false
+    → fetch prog (fpc final-body) ≡ just (instr-ctrl (c-jmp la-top))
+    → find-label prog la-top ≡ just q-latop
+    → Σ[ n ∈ ℕ ] Σ[ final ∈ FlatState ]
+        Σ[ steps ∈ FlatSteps prog n fs final ] (chain-events steps ≡ E × halted (floc final) ≡ false)
+  ascend-iter-runs prog fs la-top la-end q-latop E hf scond fL fB
+                   body-steps body-events body-halted fJ top-res =
+    _ , _ , chain , events , body-halted
+    where
+      PRE   = ascend-pre-flat  prog fs la-top la-end hf scond fL fB
+      POST  = ascend-post-flat prog _ la-top q-latop body-halted fJ top-res
+      chain = FlatSteps-++ PRE (FlatSteps-++ body-steps POST)
+      ev-bp : chain-events (FlatSteps-++ body-steps POST) ≡ E
+      ev-bp = trans (chain-events-++ body-steps POST)
+                    (trans (cong (chain-events body-steps ++_)
+                                 (ascend-post-silent prog _ la-top q-latop body-halted fJ top-res))
+                           (trans (++-identityʳ (chain-events body-steps)) body-events))
+      events : chain-events chain ≡ E
+      events = trans (chain-events-++ PRE (FlatSteps-++ body-steps POST))
+                     (trans (cong (_++ chain-events (FlatSteps-++ body-steps POST))
+                                  (ascend-pre-silent prog fs la-top la-end hf scond fL fB))
+                            ev-bp)
