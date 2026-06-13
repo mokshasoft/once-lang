@@ -25,12 +25,12 @@ module Once.CCC.Codegen.CataNatBuildLayer where
 
 open import Data.Nat using (ℕ; zero; suc)
 open import Data.Bool using (false)
-open import Data.Maybe using (just)
-open import Data.Product using (Σ-syntax; _,_)
-open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong)
+open import Data.Maybe using (Maybe; just; nothing)
+open import Data.Product using (Σ-syntax; _×_; _,_; proj₁; proj₂)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
-open import Once.CCC.Machine.Allocation using (current-frame)
+open import Once.CCC.Machine.Allocation using (current-frame; AllocState)
 open import Once.CCC.Machine.SMCore
   using (halted; regs; readReg; Output; Input1; AtStack; AtDynamic; AbstractTrace;
          sv-as-loc; sucLoc; ValueLocation; StoredValue; Registers; LocState; HeapLocation;
@@ -38,6 +38,7 @@ open import Once.CCC.Machine.SMCore
          mov-to-output; mov-to-input; store-at-slot; instr-alloc-heap;
          instr-load-tag-lit; store-indirect; store-indirect-suc; load-from-slot;
          module MemOps)
+open import Once.CCC.Machine.SMCore using (module AbstractExec)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 
@@ -46,6 +47,22 @@ module CataNatBuildLayer {FS : FrameSemantics} where
   open FlatStepsAPI {FS}
   open MemOps {FS} using (writeLoc-halted; readLoc; writeLoc-preserves-other; writeLoc-regs;
                           writeLoc-read-same-stack)
+  open AbstractExec {FS} using (exec-load-from-slot-with-value)
+
+  -- load-from-slot returns the allocator unchanged in both Maybe branches.
+  -- (Plain `refl` per case reduces — unlike `cong proj₂`/`rewrite`, which
+  -- stall on the pair's eta-expansion.)
+  elfs-keeps-alloc : ∀ (m : Maybe (StoredValue FS)) (s : LocState FS) (alloc : AllocState {FS})
+    → proj₂ (exec-load-from-slot-with-value m s alloc) ≡ alloc
+  elfs-keeps-alloc (just v) s alloc = refl
+  elfs-keeps-alloc nothing  s alloc = refl
+
+  -- Hence the falloc survives a load (NOT definitional — the read is a
+  -- stuck `Maybe` — so `current-frame (falloc …)` past a load needs this).
+  load-from-slot-keeps-falloc : ∀ (prog : AbstractTrace) (fs : FlatState) (slot : ℕ)
+    → falloc (flat-exec-instr (load-from-slot slot) prog fs) ≡ falloc fs
+  load-from-slot-keeps-falloc prog fs slot =
+    elfs-keeps-alloc (readLoc (floc fs) (AtStack (current-frame (falloc fs)) slot)) (floc fs) (falloc fs)
 
   -- A regs-only update preserves every memory read (`readLoc` reads
   -- stackMem/heapMem, never regs).
@@ -190,10 +207,11 @@ module CataNatBuildLayer {FS : FrameSemantics} where
   -- load-sstash needs no precondition (it is the last step — its result
   -- being halted-or-not is no later step's concern).
   build-layer-suffix : ∀ (prog : AbstractTrace) (fs : FlatState)
-                         (hl : HeapLocation) (tag pstash sstash : ℕ) (vp : StoredValue FS)
+                         (hl : HeapLocation) (tag pstash sstash : ℕ) (vp vs : StoredValue FS)
     → halted (floc fs) ≡ false
     → sv-as-loc (readReg (regs (floc fs)) Input1) ≡ just (AtDynamic hl)
     → readLoc (floc fs) (AtStack (current-frame (falloc fs)) pstash) ≡ just vp
+    → readLoc (floc fs) (AtStack (current-frame (falloc fs)) sstash) ≡ just vs
     → fetch prog (fpc fs)                         ≡ just (instr-load-tag-lit tag)
     → fetch prog (suc (fpc fs))                   ≡ just store-indirect
     → fetch prog (suc (suc (fpc fs)))             ≡ just (load-from-slot pstash)
@@ -205,17 +223,27 @@ module CataNatBuildLayer {FS : FrameSemantics} where
           (flat-exec-instr (load-from-slot pstash) prog
            (flat-exec-instr store-indirect prog
             (flat-exec-instr (instr-load-tag-lit tag) prog fs)))))
-  build-layer-suffix prog fs hl tag pstash sstash vp hf p1 hp f6 f7 f8 f9 f10 =
-      (hf , f6)
-    ∷ (hf , f7)
-    ∷ (h8 , f8)
-    ∷ (h9 , f9)
-    ∷ (h10 , f10)
-    ∷ []
+      × halted (floc (flat-exec-instr (load-from-slot sstash) prog
+         (flat-exec-instr store-indirect-suc prog
+          (flat-exec-instr (load-from-slot pstash) prog
+           (flat-exec-instr store-indirect prog
+            (flat-exec-instr (instr-load-tag-lit tag) prog fs)))))) ≡ false
+  build-layer-suffix prog fs hl tag pstash sstash vp vs hf p1 hp hs f6 f7 f8 f9 f10 =
+      ( (hf , f6)
+      ∷ (hf , f7)
+      ∷ (h8 , f8)
+      ∷ (h9 , f9)
+      ∷ (h10 , f10)
+      ∷ [] )
+      , trans (load-from-slot-keeps-halted prog S9 sstash vs
+                 (subst (λ a → readLoc (floc S9) (AtStack (current-frame a) sstash) ≡ just vs)
+                        (sym (load-from-slot-keeps-falloc prog S7 pstash)) slot-sstash-S9))
+              h10
     where
       S6 = flat-exec-instr (instr-load-tag-lit tag) prog fs
       S7 = flat-exec-instr store-indirect prog S6
       S8 = flat-exec-instr (load-from-slot pstash) prog S7
+      S9 = flat-exec-instr store-indirect-suc prog S8
       ptr-S6 : sv-as-loc (readReg (regs (floc S6)) Input1) ≡ just (AtDynamic hl)
       ptr-S6 = trans (cong sv-as-loc (load-tag-keeps-input1 prog fs tag)) p1
       slot-pstash-S7 : readLoc (floc S7) (AtStack (current-frame (falloc fs)) pstash) ≡ just vp
@@ -230,6 +258,15 @@ module CataNatBuildLayer {FS : FrameSemantics} where
       h8  = trans (store-indirect-keeps-halted prog S6 (AtDynamic hl) ptr-S6) hf
       h9  = trans (load-from-slot-keeps-halted prog S7 pstash vp slot-pstash-S7) h8
       h10 = trans (store-indirect-suc-keeps-halted prog S8 (AtDynamic hl) ptr-S8) h9
+      -- sstash (stashed by the prefix) likewise survives to S9, so the
+      -- final load-sstash fires and the whole block ends non-halted. The
+      -- frame is bridged across the S8 load by load-from-slot-keeps-falloc.
+      slot-sstash-S9 : readLoc (floc S9) (AtStack (current-frame (falloc fs)) sstash) ≡ just vs
+      slot-sstash-S9 =
+        trans (store-indirect-suc-keeps-stack-readLoc prog S8 hl (current-frame (falloc fs)) sstash ptr-S8)
+          (trans (load-from-slot-keeps-readLoc prog S7 pstash vp (AtStack (current-frame (falloc fs)) sstash) slot-pstash-S7)
+            (trans (store-indirect-keeps-stack-readLoc prog S6 hl (current-frame (falloc fs)) sstash ptr-S6)
+              (trans (load-tag-keeps-readLoc prog fs tag (AtStack (current-frame (falloc fs)) sstash)) hs)))
 
   -- Slot projection (for the pstash ≠ sstash disjointness obligation).
   slot-of : ValueLocation FS → ℕ
@@ -256,9 +293,9 @@ module CataNatBuildLayer {FS : FrameSemantics} where
     → fetch prog (suc (suc (suc (suc (suc (suc (suc (fpc fs))))))))             ≡ just (load-from-slot pstash)
     → fetch prog (suc (suc (suc (suc (suc (suc (suc (suc (fpc fs)))))))))       ≡ just store-indirect-suc
     → fetch prog (suc (suc (suc (suc (suc (suc (suc (suc (suc (fpc fs)))))))))) ≡ just (load-from-slot sstash)
-    → Σ[ final ∈ FlatState ] FlatSteps prog 10 fs final
+    → Σ[ final ∈ FlatState ] (FlatSteps prog 10 fs final × halted (floc final) ≡ false)
   build-layer-runs prog fs tag pstash sstash hf ps≢ss f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 =
-    _ , FlatSteps-++ prefix suffix
+    _ , FlatSteps-++ prefix (proj₁ suffix) , proj₂ suffix
     where
       A1 = flat-exec-instr mov-to-output prog fs
       A2 = flat-exec-instr (store-at-slot pstash) prog A1
@@ -290,4 +327,10 @@ module CataNatBuildLayer {FS : FrameSemantics} where
       phalt : halted (floc A5) ≡ false
       phalt = trans (store-at-slot-keeps-halted prog A3 sstash)
                     (trans (store-at-slot-keeps-halted prog A1 pstash) hf)
-      suffix = build-layer-suffix prog A5 _ tag pstash sstash _ phalt p1 php f6 f7 f8 f9 f10
+      -- sstash slot (stashed at A4 = the alloc'd pointer) survives to A5.
+      phs : readLoc (floc A5) (AtStack (current-frame (falloc A5)) sstash)
+            ≡ just (readReg (regs (floc A3)) Output)
+      phs = trans (readLoc-regs-irrelevant (floc A4) (regs (floc A5)) (AtStack (current-frame (falloc fs)) sstash))
+                  (writeLoc-read-same-stack (floc A3) (current-frame (falloc fs)) sstash
+                                            (readReg (regs (floc A3)) Output))
+      suffix = build-layer-suffix prog A5 _ tag pstash sstash _ _ phalt p1 php phs f6 f7 f8 f9 f10
