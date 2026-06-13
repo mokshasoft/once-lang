@@ -155,6 +155,25 @@ isRIntVliftTarget? (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.
   just (X , refl)
 isRIntVliftTarget? _ = nothing
 
+-- | Classify a check-mode target type for a pair literal: a product `A * B`
+-- (bidirectional component check), a pure-arrow-to-product
+-- `X ⇒[Many,pure] (A * B)` (value-lift / global element via `checkG`), or
+-- anything else (generic infer-and-match). One named view so
+-- `checkElabV (RPair a b) T` routes through a single scrutinee instead of two
+-- specific clauses overlapping the catch-all (same gate as RInt; Plan 0.45).
+data RPairTarget : Type → Set where
+  rpt-prod  : (A B : Type) → RPairTarget (A Once.Type.* B)
+  rpt-vlift : (X A B : Type) →
+              RPairTarget (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] (A Once.Type.* B))
+  rpt-other : (T : Type) → RPairTarget T
+
+classifyRPairTarget : (T : Type) → RPairTarget T
+classifyRPairTarget (A Once.Type.* B) = rpt-prod A B
+classifyRPairTarget
+  (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] (A Once.Type.* B)) =
+  rpt-vlift X A B
+classifyRPairTarget T = rpt-other T
+
 -- | Decidable functor and type equality (mutually recursive)
 mutual
   -- | Decidable functor equality
@@ -1032,6 +1051,12 @@ mutual
     ∀ (ctx : NamedCtx) (n : ℤ) (T : Type)
     → Maybe (∃-syntax (λ X → T ≡ (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] Int)))
     → VerifiedCheckResult ctx (Raw.RInt n) T
+  -- RPair check-mode dispatch, taking the target classification explicitly
+  -- (product / pure-arrow-to-product / other). One scrutinee, no overlap.
+  checkElabV-RPair-aux :
+    ∀ (ctx : NamedCtx) (a b : RawExpr) (T : Type)
+    → RPairTarget T
+    → VerifiedCheckResult ctx (Raw.RPair a b) T
 
   -- ===== inferElab =====
 
@@ -1705,7 +1730,7 @@ mutual
   -- type — check components bidirectionally so check-only constructs
   -- (notably `In`) work in pair slots (`In (inr (x , tail))`). Falls to
   -- the generic clause below for non-product target types.
-  checkElabV ctx (Raw.RPair a b) (A Once.Type.* B) = checkPairLit ctx a b A B
+  checkElabV ctx (Raw.RPair a b) T = checkElabV-RPair-aux ctx a b T (classifyRPairTarget T)
 
   -- Plan 0.41 / D018 leaf: an integer literal at a pure-arrow position is its
   -- constant morphism (global element `const n ∘ terminal`, via `intLit`),
@@ -1714,17 +1739,6 @@ mutual
   -- the two outcomes don't overlap (no stuck `checkElabV (RInt n) T` for
   -- variable `T`). Behaviour is unchanged; the dispatch is now analysable.
   checkElabV ctx (Raw.RInt n) T = checkElabV-RInt-aux ctx n T (isRIntVliftTarget? T)
-
-  -- Plan 0.41: a pair literal `(a , b)` at a pure-arrow to a product is a
-  -- closed global-element value — route through `checkG`.
-  checkElabV ctx (Raw.RPair a b)
-    (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] (A Once.Type.* B))
-    with inspectCheckG ctx X (Raw.RPair a b) (A Once.Type.* B)
-  ... | cgv-nothing _ = failure (TypeMismatch (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] (A Once.Type.* B))
-                                        (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] (A Once.Type.* B))) , tt
-  ... | cgv-just {m} {gd} _ =
-          success Surface.zeroUsage (Surface.lift-morphism m) 0 (NamedCtx.freshCounter ctx)
-          , t-value-lift gd
 
   -- Generic infer-and-match fallback — covers RInt, RStringLit, RUnit,
   -- RPair, RBinOp, RUnaryOp, RLet, RDestruct, RAnnot, RQualified.
@@ -2304,6 +2318,23 @@ mutual
     success Surface.zeroUsage (Surface.lift-morphism (intLit n)) 0 (NamedCtx.freshCounter ctx)
     , t-value-lift (g-int n)
   checkElabV-RInt-aux ctx n T nothing with inferElabV ctx (Raw.RInt n)
+  ... | failure err , _ = failure err , tt
+  ... | success T' Ψ eE d fr , w with T ≟T T'
+  ...   | yes refl = success Ψ eE d fr , t-embed w
+  ...   | no _     = failure (TypeMismatch T T') , tt
+
+  -- RPair: product → bidirectional component check (checkPairLit);
+  -- pure-arrow-to-product → value-lift via checkG (inspectCheckG); else the
+  -- generic infer+match. The latter two are the old clauses verbatim.
+  checkElabV-RPair-aux ctx a b _ (rpt-prod A B) = checkPairLit ctx a b A B
+  checkElabV-RPair-aux ctx a b _ (rpt-vlift X A B)
+    with inspectCheckG ctx X (Raw.RPair a b) (A Once.Type.* B)
+  ... | cgv-nothing _ = failure (TypeMismatch (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] (A Once.Type.* B))
+                                        (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] (A Once.Type.* B))) , tt
+  ... | cgv-just {m} {gd} _ =
+          success Surface.zeroUsage (Surface.lift-morphism m) 0 (NamedCtx.freshCounter ctx)
+          , t-value-lift gd
+  checkElabV-RPair-aux ctx a b _ (rpt-other T) with inferElabV ctx (Raw.RPair a b)
   ... | failure err , _ = failure err , tt
   ... | success T' Ψ eE d fr , w with T ≟T T'
   ...   | yes refl = success Ψ eE d fr , t-embed w
