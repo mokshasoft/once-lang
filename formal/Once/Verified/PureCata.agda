@@ -26,7 +26,7 @@ open import Data.Maybe using (just; nothing)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
-open import Data.Nat using (ℕ)
+open import Data.Nat using (ℕ; zero; suc)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong₂)
 
 open import Once.Type using (Functor; K; Id; _⊕_; _⊗_; μ-type; ⟦_⟧T)
@@ -36,7 +36,8 @@ open import Once.Functor.Translate
   using (translateF; WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod)
 open import Once.Functor.Induction using (All-SF; μS-ind)
 open import Once.Semantics.Machine
-  using (⟦_⟧; ⟦_⟧F; sem-fmap; coerce-functor⁻¹; coerce-μ-out)
+  using (⟦_⟧; ⟦_⟧F; sem-fmap; coerce-functor⁻¹; coerce-μ-out; sem-cata)
+open import Once.CCC.Eval using (eval)
 open import Once.CCC.IR
   using (IR; id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal; initial;
          curry; apply; arr; In; out-μ; Cata; Para; Out; in-ν; Ana; Hylo; Fuse;
@@ -104,9 +105,13 @@ events-coerce-[] (wf-Prod wfF wfG) (w , v) (hw , hv) =
 -- `proj₁ (obs n (Cata wf alg) x) ≡ proj₁ (cataS g x)` definitionally.
 ------------------------------------------------------------------------
 
+-- States the result over the FOLD (`sem-cata … (cata-ev-alg n alg)`) directly,
+-- not `obs n (Cata …)` — `obs` now step-cases on `n` (the cata clause is
+-- `obs (suc n) (Cata …) = proj₁ (sem-cata … (cata-ev-alg n alg) …)`), so the
+-- caller (`pure-emits-[]`'s `suc` case) feeds this at the predecessor fuel.
 pure-cata-emits-[] : ∀ {F C} (n : ℕ) (wf : WellFormedF F) (alg : IR (⟦ F ⟧T C) C)
                    → (∀ z → proj₁ (obs n alg z) ≡ [])
-                   → ∀ (x : ⟦ μ-type F ⟧) → proj₁ (obs n (Cata wf alg) x) ≡ []
+                   → ∀ (x : ⟦ μ-type F ⟧) → proj₁ (sem-cata wf (cata-ev-alg {F} {C} n alg) x) ≡ []
 pure-cata-emits-[] {F} {C} n wf alg alg-pure x =
   cataS-events-[] proj₁ g g-pure x
   where
@@ -133,43 +138,38 @@ pure-cata-emits-[] {F} {C} n wf alg alg-pure x =
 
 pure-emits-[] : ∀ {A B} (n : ℕ) (ir : IR A B)
               → EmitsNoSigOp ir → ∀ (x : ⟦ A ⟧) → proj₁ (obs n ir x) ≡ []
-pure-emits-[] n (SigOp si) ()
-pure-emits-[] n (g ∘ f) (eg , ef) x with obs n f x | pure-emits-[] n f ef x
-pure-emits-[] n (g ∘ f) (eg , ef) x | ev₁ , just y | ihf
-  with obs n g y | pure-emits-[] n g eg y
-pure-emits-[] n (g ∘ f) (eg , ef) x | ev₁ , just y | ihf | ev₂ , r | ihg =
-  cong₂ _++_ ihf ihg
-pure-emits-[] n (g ∘ f) (eg , ef) x | ev₁ , nothing | ihf = ihf
-pure-emits-[] n (⟨ f , g ⟩ m) (ef , eg) x with obs n f x | pure-emits-[] n f ef x
-pure-emits-[] n (⟨ f , g ⟩ m) (ef , eg) x | ev₁ , just b | ihf
-  with obs n g x | pure-emits-[] n g eg x
-pure-emits-[] n (⟨ f , g ⟩ m) (ef , eg) x | ev₁ , just b | ihf | ev₂ , just c | ihg =
-  cong₂ _++_ ihf ihg
-pure-emits-[] n (⟨ f , g ⟩ m) (ef , eg) x | ev₁ , just b | ihf | ev₂ , nothing | ihg =
-  cong₂ _++_ ihf ihg
-pure-emits-[] n (⟨ f , g ⟩ m) (ef , eg) x | ev₁ , nothing | ihf = ihf
-pure-emits-[] n (case f g) (ef , eg) (inj₁ a) = pure-emits-[] n f ef a
-pure-emits-[] n (case f g) (ef , eg) (inj₂ b) = pure-emits-[] n g eg b
-pure-emits-[] n (Cata wf alg) ealg x =
+-- Fuel 0 observes nothing, for ANY `ir` (`obs zero _ = ([] , _)`).
+pure-emits-[] zero    ir            _          x = refl
+pure-emits-[] (suc n) (SigOp si)    ()
+-- `suc n`: structural, recursing at the predecessor fuel `n` (matching
+-- `obs (suc n)`'s clauses). The value is now the denotational `eval`, so the
+-- compose recursion is on `eval f x` (no `with` on the obs value).
+pure-emits-[] (suc n) (g ∘ f) (eg , ef) x =
+  cong₂ _++_ (pure-emits-[] n f ef x) (pure-emits-[] n g eg (eval f x))
+pure-emits-[] (suc n) (⟨ f , g ⟩ m) (ef , eg) x =
+  cong₂ _++_ (pure-emits-[] n f ef x) (pure-emits-[] n g eg x)
+pure-emits-[] (suc n) (case f g) (ef , eg) (inj₁ a) = pure-emits-[] n f ef a
+pure-emits-[] (suc n) (case f g) (ef , eg) (inj₂ b) = pure-emits-[] n g eg b
+pure-emits-[] (suc n) (Cata wf alg) ealg x =
   pure-cata-emits-[] n wf alg (λ z → pure-emits-[] n alg ealg z) x
 -- value-pure constructors (obs catchall): no events
-pure-emits-[] n id            _ x = refl
-pure-emits-[] n fst           _ x = refl
-pure-emits-[] n snd           _ x = refl
-pure-emits-[] n (inl _)       _ x = refl
-pure-emits-[] n (inr _)       _ x = refl
-pure-emits-[] n terminal      _ x = refl
-pure-emits-[] n initial       _ x = refl
-pure-emits-[] n (curry _ _)   _ x = refl
-pure-emits-[] n apply         _ x = refl
-pure-emits-[] n arr           _ x = refl
-pure-emits-[] n (In _ _)      _ x = refl
-pure-emits-[] n (out-μ _)     _ x = refl
-pure-emits-[] n (Para _ _)    _ x = refl
-pure-emits-[] n (Out _)       _ x = refl
-pure-emits-[] n (in-ν _ _)    _ x = refl
-pure-emits-[] n (Ana _ _)     _ x = refl
-pure-emits-[] n (Hylo _ _ _ _) _ x = refl
-pure-emits-[] n (Fuse _ _ _ _) _ x = refl
-pure-emits-[] n (free-heap _) _ x = refl
-pure-emits-[] n (const _ _ _) _ x = refl
+pure-emits-[] (suc n) id            _ x = refl
+pure-emits-[] (suc n) fst           _ x = refl
+pure-emits-[] (suc n) snd           _ x = refl
+pure-emits-[] (suc n) (inl _)       _ x = refl
+pure-emits-[] (suc n) (inr _)       _ x = refl
+pure-emits-[] (suc n) terminal      _ x = refl
+pure-emits-[] (suc n) initial       _ x = refl
+pure-emits-[] (suc n) (curry _ _)   _ x = refl
+pure-emits-[] (suc n) apply         _ x = refl
+pure-emits-[] (suc n) arr           _ x = refl
+pure-emits-[] (suc n) (In _ _)      _ x = refl
+pure-emits-[] (suc n) (out-μ _)     _ x = refl
+pure-emits-[] (suc n) (Para _ _)    _ x = refl
+pure-emits-[] (suc n) (Out _)       _ x = refl
+pure-emits-[] (suc n) (in-ν _ _)    _ x = refl
+pure-emits-[] (suc n) (Ana _ _)     _ x = refl
+pure-emits-[] (suc n) (Hylo _ _ _ _) _ x = refl
+pure-emits-[] (suc n) (Fuse _ _ _ _) _ x = refl
+pure-emits-[] (suc n) (free-heap _) _ x = refl
+pure-emits-[] (suc n) (const _ _ _) _ x = refl

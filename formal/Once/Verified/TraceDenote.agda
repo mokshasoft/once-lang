@@ -34,7 +34,7 @@ module Once.Verified.TraceDenote where
 
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Nat using (ℕ)
+open import Data.Nat using (ℕ; zero; suc)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (inj₁; inj₂)
 open import Data.Unit using (⊤)
@@ -83,30 +83,36 @@ events-F (F ⊗ G) p (x , y)  = events-F F p x ++ events-F G p y
 cata-ev-alg : ∀ {F C} → ℕ → IR (⟦ F ⟧T C) C
             → ⟦ F ⟧F (List SigOpEvent × ⟦ C ⟧) → List SigOpEvent × ⟦ C ⟧
 
+-- STEP-INDEXED to match the top-level observable: `Behavior n` is "the
+-- prefix observed within `n` steps" (Once.Verified.Behavior). So the fuel
+-- `n` decrements per evaluation step exactly as `eval` does, and `obs 0`
+-- observes nothing. ONLY the trace (`proj₁`) is step-bounded; the VALUE
+-- (`proj₂`) stays the denotational `eval ir x` — it is internal plumbing
+-- (composition threads it), and the apex observes only the trace. So
+-- `proj₂ (obs n ir x) = just (eval ir x)` for every `n`, while `proj₁`
+-- accumulates only the events reachable within `n` steps. This makes
+-- `obs ↔ eval` (`compiled-main-trace`) and `flat-events ↔ obs`
+-- (`ir-flat-correct`) provable ∀ n for both finite (Cata) and productive
+-- (Ana) traces — no stabilization or termination baked in.
 obs : ∀ {A B} → ℕ → IR A B → ⟦ A ⟧ → List SigOpEvent × Maybe ⟦ B ⟧
-obs n (SigOp si) x = (mkEvent si x ∷ [] , just (semM si x))
-obs n (g ∘ f) x with obs n f x
-... | ev₁ , just y  with obs n g y
-...   | ev₂ , r = (ev₁ ++ ev₂ , r)
-obs n (g ∘ f) x | ev₁ , nothing = (ev₁ , nothing)
-obs n (⟨ f , g ⟩ _) x with obs n f x
-... | ev₁ , just b  with obs n g x
-...   | ev₂ , just c  = (ev₁ ++ ev₂ , just (sem-pair b c))
-...   | ev₂ , nothing = (ev₁ ++ ev₂ , nothing)
-obs n (⟨ f , g ⟩ _) x | ev₁ , nothing = (ev₁ , nothing)
-obs n (case f g) (inj₁ a) = obs n f a
-obs n (case f g) (inj₂ b) = obs n g b
--- effectful catamorphism. The VALUE component is `eval`'s cata value
--- directly (so `obs-cata-value` is `refl`, matching the value-pure
--- convention); the EVENTS are the real fold: a `sem-cata` over the
--- carrier `List SigOpEvent × ⟦C⟧` pairing each folded child value with
--- the events emitted producing it, running `obs n alg` at each layer in
--- post-order (children's events first, then this layer's). For a
--- `SigOp`-free `alg` every layer emits `[]`, recovering `([] , just …)`.
-obs n (Cata {F} wf {C} alg) x =
+obs zero    ir x = ([] , just (eval ir x))
+obs (suc n) (SigOp si) x = (mkEvent si x ∷ [] , just (semM si x))
+obs (suc n) (g ∘ f) x =
+  (proj₁ (obs n f x) ++ proj₁ (obs n g (eval f x)) , just (eval (g ∘ f) x))
+obs (suc n) (⟨ f , g ⟩ m) x =
+  (proj₁ (obs n f x) ++ proj₁ (obs n g x) , just (eval (⟨ f , g ⟩ m) x))
+obs (suc n) (case f g) (inj₁ a) = (proj₁ (obs n f a) , just (eval (case f g) (inj₁ a)))
+obs (suc n) (case f g) (inj₂ b) = (proj₁ (obs n g b) , just (eval (case f g) (inj₂ b)))
+-- effectful catamorphism. VALUE is `eval`'s cata value directly; EVENTS are
+-- the real fold (`sem-cata` over the carrier `List SigOpEvent × ⟦C⟧`, running
+-- `obs n alg` per layer in post-order). NOTE: this clause's FOLD structure is
+-- not yet fully fuel-bounded — it is the LAST clause to be made step-conforming
+-- (the general constructors above conform first, top-down); the fold's own
+-- fuel-bounding lands when the cata leaf is wired to the ∀-n bridge.
+obs (suc n) (Cata {F} wf {C} alg) x =
   (proj₁ (sem-cata wf (cata-ev-alg {F} {C} n alg) x) , just (eval (Cata wf alg) x))
 -- value-pure constructors (no SigOp of their own): no events.
-obs n c x = ([] , just (eval c x))
+obs (suc n) c x = ([] , just (eval c x))
 
 cata-ev-alg {F} {C} n alg fc =
   (events-F F proj₁ fc ++ proj₁ (obs n alg z) , eval alg z)
@@ -134,10 +140,13 @@ cata-ev-alg {F} {C} n alg fc =
 -- of the `obs` clause above. This is the value half of the cata's
 -- `MachineRefinesObs` bridge (Plan 0.36): it lets `value-realized`
 -- reuse the existing `ValidAtWF (eval …)` machinery unchanged.
+-- (`obs`'s value is the denotational `eval` value at every fuel — `obs 0`
+-- and `obs (suc n)` both deliver it — so this holds for all `n`.)
 obs-cata-value : ∀ {F C} (n : ℕ) (wf : WellFormedF F)
                  (alg : IR (⟦ F ⟧T C) C) (x : ⟦ μ-type F ⟧)
                → proj₂ (obs n (Cata wf alg) x) ≡ just (eval (Cata wf alg) x)
-obs-cata-value n wf alg x = refl
+obs-cata-value zero    wf alg x = refl
+obs-cata-value (suc n) wf alg x = refl
 
 EmitsNoSigOp : ∀ {A B} → IR A B → Set
 EmitsNoSigOp (SigOp si)               = ⊥
