@@ -41,6 +41,7 @@ import Once.Compile as C
 open import Once.Grammar.ModuleConvert using (gmoduleToModule)
 open import Once.Verified.Behavior using (Source; Behavior)
 open import Once.Verified.TraceDenote using (obs)
+open import Once.Verified.SourceSemantics as SS using (runTrace)
 
 ------------------------------------------------------------------------
 -- Source → IR of `main` (option (a): reuse the compiler's elaborator).
@@ -87,6 +88,15 @@ sourceToIR src with gmoduleToModule src
 -- Leaving it undefined deliberately breaks the build: the honest spec, with
 -- the gap explicit (definition-first, as in Plan 0.44).
 sourceTrace : Source → Behavior
+sourceTrace src with gmoduleToModule src
+... | just m  = SS.runTrace m
+... | nothing = λ _ → []
 
-⟦_⟧ : Source → Behavior
-⟦ src ⟧ = sourceTrace src
+-- `abstract`: keep `⟦_⟧` opaque downstream. Otherwise `⟦ src ⟧` unfolds
+-- to `sourceTrace src`'s `with gmoduleToModule src …`, and
+-- `Verified.Compile.correct`'s own `with gmoduleToModule src in g-eq`
+-- reduces the goal's `⟦ src ⟧` while the per-stage postulate's stays
+-- unreduced → `UnequalTerms`. Opacity makes both sides the same term.
+abstract
+  ⟦_⟧ : Source → Behavior
+  ⟦ src ⟧ = sourceTrace src
