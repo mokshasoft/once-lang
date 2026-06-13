@@ -23,18 +23,18 @@
 
 module Once.CCC.Codegen.CataNatAscend where
 
-open import Data.Nat using (ℕ; suc)
+open import Data.Nat using (ℕ; zero; suc; _+_)
 open import Data.Bool using (true; false)
 open import Data.Maybe using (just)
 open import Data.Product using (Σ-syntax; _×_; _,_)
 open import Data.List using (List; []; _++_)
 open import Data.List.Properties using (++-identityʳ)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; cong)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 
 open import Once.Verified.Trace using (SigOpEvent)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore
-  using (halted; regs; readReg; Scratch; AbstractTrace;
+  using (halted; regs; readReg; Scratch; SV-Tag; AbstractTrace;
          mov-to-input; instr-reg-op; scratch-dec;
          instr-ctrl; c-label; c-jmp; c-branch-scratch-zero)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
@@ -238,3 +238,54 @@ module CataNatAscend {FS : FrameSemantics} where
                      (trans (cong (_++ chain-events (FlatSteps-++ body-steps POST))
                                   (ascend-pre-silent prog fs la-top la-end hf scond fL fB))
                             ev-bp)
+
+  ----------------------------------------------------------------------
+  -- The ASCEND LOOP: μ-induction over the depth counter `Scratch = SV-Tag
+  -- n`, chaining `n` continue iterations then the exit. Each iteration's
+  -- run is supplied by `step` (the caller builds it from `ascend-iter-runs`
+  -- + the algebra IH); `step k` consumes one layer (Scratch SV-Tag (suc k)
+  -- → SV-Tag k) emitting that layer's events `E k`. The loop accumulates
+  -- `loop-events E n = E (n-1) ++ … ++ E 0` — the fold's events in
+  -- innermost-first order, matching `obs(Cata)`'s post-order fold.
+  ----------------------------------------------------------------------
+
+  loop-events : (ℕ → List SigOpEvent) → ℕ → List SigOpEvent
+  loop-events E zero    = []
+  loop-events E (suc k) = E k ++ loop-events E k
+
+  ascend-loop-runs : ∀ (prog : AbstractTrace) (la-top la-end qh q-laend : ℕ)
+                       (E : ℕ → List SigOpEvent)
+    → (step : ∀ (k : ℕ) (entry : FlatState)
+              → halted (floc entry) ≡ false
+              → readReg (regs (floc entry)) Scratch ≡ SV-Tag (suc k)
+              → fpc entry ≡ qh
+              → Σ[ exit ∈ FlatState ] Σ[ m ∈ ℕ ] Σ[ steps ∈ FlatSteps prog m entry exit ]
+                  (chain-events steps ≡ E k × halted (floc exit) ≡ false
+                   × readReg (regs (floc exit)) Scratch ≡ SV-Tag k × fpc exit ≡ qh))
+    → fetch prog qh       ≡ just (instr-ctrl (c-label la-top))
+    → fetch prog (suc qh) ≡ just (instr-ctrl (c-branch-scratch-zero la-end))
+    → find-label prog la-end ≡ just q-laend
+    → ∀ (n : ℕ) (fs : FlatState)
+    → halted (floc fs) ≡ false
+    → readReg (regs (floc fs)) Scratch ≡ SV-Tag n
+    → fpc fs ≡ qh
+    → Σ[ final ∈ FlatState ] Σ[ m ∈ ℕ ] Σ[ steps ∈ FlatSteps prog m fs final ]
+        (chain-events steps ≡ loop-events E n × fpc final ≡ q-laend)
+  ascend-loop-runs prog la-top la-end qh q-laend E step fLq fBq end-res zero fs hf scr fpc-eq =
+    record fs { fpc = q-laend } , 2 , exit-steps , exit-silent , refl
+    where
+      scond : sv-is-zero (readReg (regs (floc fs)) Scratch) ≡ true
+      scond = cong sv-is-zero scr
+      fL : fetch prog (fpc fs)       ≡ just (instr-ctrl (c-label la-top))
+      fL = subst (λ p → fetch prog p       ≡ just (instr-ctrl (c-label la-top)))            (sym fpc-eq) fLq
+      fB : fetch prog (suc (fpc fs)) ≡ just (instr-ctrl (c-branch-scratch-zero la-end))
+      fB = subst (λ p → fetch prog (suc p) ≡ just (instr-ctrl (c-branch-scratch-zero la-end))) (sym fpc-eq) fBq
+      exit-steps  = ascend-exit-flat   prog fs la-top la-end q-laend hf scond fL fB end-res
+      exit-silent = ascend-exit-silent prog fs la-top la-end q-laend hf scond fL fB end-res
+  ascend-loop-runs prog la-top la-end qh q-laend E step fLq fBq end-res (suc k) fs hf scr fpc-eq =
+    let (exit , m , steps , ev , he , se , fe) = step k fs hf scr fpc-eq
+        (final , m' , steps' , ev' , fpc-final) =
+          ascend-loop-runs prog la-top la-end qh q-laend E step fLq fBq end-res k exit he se fe
+    in final , m + m' , FlatSteps-++ steps steps'
+       , trans (chain-events-++ steps steps') (cong₂ _++_ ev ev')
+       , fpc-final
