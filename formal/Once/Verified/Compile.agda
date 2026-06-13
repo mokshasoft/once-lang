@@ -118,42 +118,46 @@ compile-cli-asm allocMode stage doOpt arch m =
 ⟦_⟧M : P.Module → Behavior
 ⟦ m ⟧M = runTrace m
 
+-- ════════════════════════════════════════════════════════════════════
+-- Per-arch backend correctness — `correct` is GENERIC over the target
+-- `Arch`, but each target must SUPPLY its own backend correctness as an
+-- `ArchCorrect` record. Per-arch coverage is type-enforced: you cannot
+-- register an arch in the driver without confronting every field (a blanket
+-- `∀ arch` postulate would silently cover new arches).
+--
+-- The record states only OBLIGATIONS — all phrased as `…-correct`. It bakes
+-- in NO trust: whether a field is discharged by a PROOF or by a POSTULATE is
+-- the INSTANCE's choice (`Once.Verified.CPU.<arch>`), not a property of the
+-- spec. Today `assemble-correct` (GNU `as`) and `asm-trace-correct` (our
+-- `programToText`/`irToAsm` printer + `_start`/loader entry) are postulated
+-- per arch — but they are PROVABLE in principle (an in-Agda assembler / a
+-- verified printer); nothing here assumes they cannot be proved later.
+-- `ir-flat-correct` is the SigOp-trace obligation (flat trace ≡ `obs`) — the
+-- connection to ALL CCC IRs, dispatched structurally over the IR (→
+-- IRObsCorrectFlat, cata-correct the loop case).
+-- ════════════════════════════════════════════════════════════════════
+record ArchCorrect (arch : Arch) (as : ArchSemantics) : Set where
+  field
+    -- the abstract meaning of an emitted asm string on this arch
+    asm-sem    : String → Behavior
+    -- this arch's flat-machine SigOp trace of the compiled `main` IR
+    -- (`nothing` ⇒ a library, no entry ⇒ []); def = `flat-events ∘
+    -- ir-to-trace` from the loader entry (rides the per-target flat-sim).
+    flat-trace : Maybe (IR Unit Unit) → Behavior
+    -- assemble-then-execute reproduces the asm-text meaning.
+    assemble-correct :
+      ∀ (asm : String) (n : ℕ) →
+      ArchSemantics.exec-bytes as (ArchSemantics.assemble as asm) n ≡ asm-sem asm n
+    -- the emitted asm's meaning equals the flat trace of the compiled IR.
+    asm-trace-correct :
+      ∀ (m : P.Module) (asm : String) →
+      C.compileFromModule C.Heap C.Build false (toLegacyArch arch) m ≡ C.Built asm →
+      ∀ (n : ℕ) → asm-sem asm n ≡ flat-trace (moduleToIR m) n
+    -- the flat machine's SigOp trace of a compiled IR equals its `obs`.
+    ir-flat-correct :
+      ∀ (mir : Maybe (IR Unit Unit)) (n : ℕ) → flat-trace mir n ≡ ⟦ mir ⟧IR n
+
 postulate
-  -- Asm-text-level behavior: the abstract semantics of an asm string
-  -- when run on a chosen architecture. Discharge bridges to CCC's
-  -- `Program` semantics through `programToText`.
-  ⟦_⟧A_ : Arch → String → Behavior
-
-  -- The per-arch flat-machine SigOp trace of the compiled `main` IR: run
-  -- `ir-to-trace ir` on the target's flat machine from the loader entry
-  -- state, reading off the SigOp events; `nothing` (a library, no `main`)
-  -- ⇒ the empty trace. Per-target definition is `flat-events ∘ ir-to-trace`
-  -- from the entry — DEFERRED (it rides the per-target flat-sim bridge,
-  -- which is FrameSemantics-level while this module is Arch-level).
-  ir-flat-trace : Arch → Maybe (IR Unit Unit) → Behavior
-
-  -- (Stage C — TRUSTED, named.) The emitted asm's observable equals the flat
-  -- machine's SigOp trace of the compiled IR. Bundles two trust points:
-  --   (1) `programToText`/`irToAsm` printer faithfulness — blessed trust,
-  --       alongside `string-to-bytes` (GNU `as`); and
-  --   (2) the `_start`/loader entry-state setup (input `tt` in place, pc 0).
-  asm-trace-faithful :
-    ∀ (arch : Arch) (m : P.Module) (asm : String) →
-    C.compileFromModule C.Heap C.Build false (toLegacyArch arch) m ≡ C.Built asm →
-    ∀ (n : ℕ) → (⟦ arch ⟧A asm) n ≡ ir-flat-trace arch (moduleToIR m) n
-
-  -- (Stage B — the substantive backend obligation, was the codegen-asm-correct
-  -- monolith.) The GENERIC IR-observable theorem: the flat machine's trace of a
-  -- compiled IR equals its `obs`. This is the connection to ALL CCC IRs — it is
-  -- discharged by structural dispatch over the IR (per-target flat-sim →
-  -- `IRObsCorrectFlat`'s `traces-agree`), with `cata-correct` the loop case and
-  -- the straight constructors via `flat-events-[]` / per-SigOp correspondence.
-  -- A backend bug now surfaces as a specific undischarged IR-constructor case
-  -- here, never as a hidden blanket.
-  ir-flat-correct :
-    ∀ (arch : Arch) (mir : Maybe (IR Unit Unit)) →
-    ∀ (n : ℕ) → ir-flat-trace arch mir n ≡ ⟦ mir ⟧IR n
-
   -- The LIBRARY case (D008: code without a `main` is a library, not a
   -- program). A `Built asm` means `compileResolvedModule` succeeded; if it has
   -- no `main` (`moduleToIR m ≡ nothing`) then there is no `main` DFunDef, so the
@@ -166,43 +170,11 @@ postulate
     moduleToIR m ≡ nothing →
     runTrace m n ≡ []
 
--- FACTOR 2 — now a THEOREM (no longer a monolithic postulate): the trusted
--- asm/printer bridge (`asm-trace-faithful`) composed with the generic
--- IR-observable theorem (`ir-flat-correct`). Covers both the program (`just
--- ir`) and library (`nothing`, `⟦⟧IR = []`) cases uniformly via `⟦_⟧IR`.
-codegen-asm-correct :
-  ∀ (arch : Arch) (m : P.Module) (asm : String) →
-  C.compileFromModule C.Heap C.Build false (toLegacyArch arch) m ≡ C.Built asm →
-  ∀ (n : ℕ) → (⟦ arch ⟧A asm) n ≡ ⟦ moduleToIR m ⟧IR n
-codegen-asm-correct arch m asm eq n =
-  trans (asm-trace-faithful arch m asm eq n) (ir-flat-correct arch (moduleToIR m) n)
-
--- Stage 2 correctness — now a THEOREM (Plan 0.45 Part B), no longer a
--- monolithic postulate: the asm trace equals the SOURCE trace, by composing
--- the codegen half (factor 2) with the frontend half (factor 1,
--- `elaborate-preserves-trace`). The `Built` evidence yields `moduleToIR m ≡
--- just ir` (`built⇒moduleToIR-just`), which (a) rewrites factor 2's `⟦⟧IR` to
--- `obs … ir` and (b) discharges factor 1's compile condition soundly.
--- `⟦ m ⟧M = runTrace m` definitionally, so the chain closes.
-module-to-asm-correct :
-  ∀ (arch : Arch) (m : P.Module) (asm : String) →
-  C.compileFromModule C.Heap C.Build false (toLegacyArch arch) m ≡ C.Built asm →
-  ∀ (n : ℕ) → (⟦ arch ⟧A asm) n ≡ ⟦ m ⟧M n
--- Explicit-`Maybe` helper (no `with`-opacity on `moduleToIR m`): match the
--- compiled-IR option directly, threading its equation so factor 1's `just ir`
--- condition (and the no-main case) discharge. `cg` is factor 2's
--- `codegen-asm-correct`, already at `⟦ mi ⟧IR` for the passed `mi`.
-mta-aux :
-  ∀ (arch : Arch) (m : P.Module) (asm : String) (n : ℕ) (mi : Maybe (IR Unit Unit)) →
-  C.compileFromModule C.Heap C.Build false (toLegacyArch arch) m ≡ C.Built asm →
-  moduleToIR m ≡ mi →
-  (⟦ arch ⟧A asm) n ≡ ⟦ mi ⟧IR n →
-  (⟦ arch ⟧A asm) n ≡ runTrace m n
-mta-aux arch m asm n (just ir) eq mi-eq cg = trans cg (elaborate-preserves-trace m ir n mi-eq)
-mta-aux arch m asm n nothing  eq mi-eq cg = trans cg (sym (no-main-empty arch m asm n eq mi-eq))
-
-module-to-asm-correct arch m asm eq n =
-  mta-aux arch m asm n (moduleToIR m) eq refl (codegen-asm-correct arch m asm eq n)
+-- FACTOR 2 (`codegen-asm-correct`) and Stage 2 (`module-to-asm-correct`) +
+-- its `mta-aux` helper now live INSIDE `WithCPU` (below), where the per-arch
+-- `arch-correct : ∀ arch → ArchCorrect …` witness is in scope — they consume
+-- its `asm-trace-faithful`/`ir-flat-correct` fields. (Moved here from the
+-- top level so each arch's obligations are type-enforced via `ArchCorrect`.)
 
 -- Stage 1 correctness — DISCHARGED (Plan 0.45 Part B), no longer a
 -- postulate. `⟦ m ⟧M = runTrace m` definitionally, and `⟦⟧-via-module`
@@ -226,7 +198,8 @@ gmoduleToModule-correct src m eq n = sym (⟦⟧-via-module src m eq n)
 -- `Once.Verified.CPU.arch-semantics`.
 ------------------------------------------------------------------------
 
-module WithCPU (arch-sem : Arch → ArchSemantics) where
+module WithCPU (arch-sem : Arch → ArchSemantics)
+               (arch-correct : ∀ (arch : Arch) → ArchCorrect arch (arch-sem arch)) where
 
   -- bytes-level execution, derived from the injected per-arch semantics.
   exec : Arch → List Byte → Behavior
@@ -246,13 +219,47 @@ module WithCPU (arch-sem : Arch → ArchSemantics) where
   ...   | C.Built asm = just (string-to-bytes arch asm)
   ...   | _           = nothing
 
-  postulate
-    -- Stage 3 correctness — `string-to-bytes` followed by `exec` matches
-    -- the abstract asm-text semantics. This is the B2 trust postulate
-    -- (GNU `as` conformance), removable by B1.
-    string-to-bytes-correct :
-      ∀ (arch : Arch) (asm : String) →
-      ∀ (n : ℕ) → exec arch (string-to-bytes arch asm) n ≡ (⟦ arch ⟧A asm) n
+  -- This arch's asm-text meaning, read off the injected `arch-correct` witness.
+  ⟦_⟧A_ : Arch → String → Behavior
+  ⟦ arch ⟧A asm = ArchCorrect.asm-sem (arch-correct arch) asm
+
+  -- Stage 3 — assemble-then-execute matches the asm-text meaning. NOT a
+  -- postulate here: it is the per-arch `assemble-correct` obligation, which the
+  -- arch's instance discharges or (today, GNU `as`) postulates.
+  string-to-bytes-correct :
+    ∀ (arch : Arch) (asm : String) →
+    ∀ (n : ℕ) → exec arch (string-to-bytes arch asm) n ≡ (⟦ arch ⟧A asm) n
+  string-to-bytes-correct arch asm n = ArchCorrect.assemble-correct (arch-correct arch) asm n
+
+  -- FACTOR 2 — the per-arch asm/printer bridge (`asm-trace-correct`) composed
+  -- with the per-arch IR-observable theorem (`ir-flat-correct`). A theorem here;
+  -- the obligations live (and are discharged or postulated) in the arch instance.
+  codegen-asm-correct :
+    ∀ (arch : Arch) (m : P.Module) (asm : String) →
+    C.compileFromModule C.Heap C.Build false (toLegacyArch arch) m ≡ C.Built asm →
+    ∀ (n : ℕ) → (⟦ arch ⟧A asm) n ≡ ⟦ moduleToIR m ⟧IR n
+  codegen-asm-correct arch m asm eq n =
+    trans (ArchCorrect.asm-trace-correct (arch-correct arch) m asm eq n)
+          (ArchCorrect.ir-flat-correct  (arch-correct arch) (moduleToIR m) n)
+
+  -- Stage 2 — asm trace = SOURCE trace, composing factor 2 with the frontend
+  -- (`elaborate-preserves-trace`). `mta-aux` threads `moduleToIR m`'s shape
+  -- explicitly (no `with`-opacity); the `nothing`/library case via `no-main-empty`.
+  mta-aux :
+    ∀ (arch : Arch) (m : P.Module) (asm : String) (n : ℕ) (mi : Maybe (IR Unit Unit)) →
+    C.compileFromModule C.Heap C.Build false (toLegacyArch arch) m ≡ C.Built asm →
+    moduleToIR m ≡ mi →
+    (⟦ arch ⟧A asm) n ≡ ⟦ mi ⟧IR n →
+    (⟦ arch ⟧A asm) n ≡ runTrace m n
+  mta-aux arch m asm n (just ir) eq mi-eq cg = trans cg (elaborate-preserves-trace m ir n mi-eq)
+  mta-aux arch m asm n nothing  eq mi-eq cg = trans cg (sym (no-main-empty arch m asm n eq mi-eq))
+
+  module-to-asm-correct :
+    ∀ (arch : Arch) (m : P.Module) (asm : String) →
+    C.compileFromModule C.Heap C.Build false (toLegacyArch arch) m ≡ C.Built asm →
+    ∀ (n : ℕ) → (⟦ arch ⟧A asm) n ≡ ⟦ m ⟧M n
+  module-to-asm-correct arch m asm eq n =
+    mta-aux arch m asm n (moduleToIR m) eq refl (codegen-asm-correct arch m asm eq n)
 
   --------------------------------------------------------------------
   -- The grand theorem — by composition of the per-stage postulates.
