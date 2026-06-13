@@ -1682,6 +1682,46 @@ module AbstractExec {FS : FrameSemantics} where
   ... | false = refl
   ... | true with () ← not-halted
 
+  -- A projection `f` of the allocator that every `P`-instruction's step
+  -- preserves is preserved by `exec-trace` over an all-`P` trace. Proven
+  -- HERE (where `exec-trace` reduces; it goes opaque under a downstream
+  -- `open AbstractExec {FS}`). Used by the frame-discipline invariant to
+  -- handle `instr-case-on-tag`, whose `exec-abstract` runs `exec-trace` on
+  -- its (slot-stable) sub-traces. `AllI` is a local all-predicate (⊤/×) to
+  -- avoid importing `Data.List`'s `All` constructors into this module.
+  AllI : (AbstractInstr → Set) → AbstractTrace → Set
+  AllI P []       = ⊤
+  AllI P (i ∷ is) = P i × AllI P is
+
+  exec-trace-alloc-invariant : ∀ {A : Set} (f : AllocState {FS} → A) (P : AbstractInstr → Set)
+    → (∀ i s alloc → P i → f (proj₂ (exec-abstract i s alloc)) ≡ f alloc)
+    → ∀ (t : AbstractTrace) → AllI P t → ∀ (s : LocState FS) (alloc : AllocState {FS})
+    → f (proj₂ (exec-trace t s alloc)) ≡ f alloc
+  exec-trace-alloc-invariant f P pi []       _          s alloc = refl
+  exec-trace-alloc-invariant f P pi (i ∷ is) (px , pxs) s alloc with halted s
+  ... | true  = refl
+  ... | false = trans (exec-trace-alloc-invariant f P pi is pxs
+                         (proj₁ (exec-abstract i s alloc)) (proj₂ (exec-abstract i s alloc)))
+                      (pi i s alloc px)
+
+  -- `instr-case-on-tag` preserves the allocator projection `f`: its
+  -- `exec-abstract` dispatches on the scrutinee tag to `exec-trace` on one
+  -- of its (all-`P`) sub-traces (or halts, leaving the allocator). Reduces
+  -- HERE (downstream the recursive `exec-abstract`/`exec-case-dispatch` go
+  -- opaque). This is the only `ir-to-trace`-emitted instruction whose
+  -- slot-stability is recursive in its sub-traces.
+  exec-abstract-case-invariant : ∀ {A : Set} (f : AllocState {FS} → A) (P : AbstractInstr → Set)
+    → (∀ i s alloc → P i → f (proj₂ (exec-abstract i s alloc)) ≡ f alloc)
+    → ∀ (ft gt : AbstractTrace) → AllI P ft → AllI P gt → ∀ (s : LocState FS) (alloc : AllocState {FS})
+    → f (proj₂ (exec-abstract (instr-case-on-tag ft gt) s alloc)) ≡ f alloc
+  exec-abstract-case-invariant f P pi ft gt aft agt s alloc with case-tag-at s
+  ... | just (SV-Tag 0)       = exec-trace-alloc-invariant f P pi ft aft s alloc
+  ... | just (SV-Tag (suc _)) = exec-trace-alloc-invariant f P pi gt agt s alloc
+  ... | just (SV-Ptr _)       = refl
+  ... | just (SV-Lit _ _)     = refl
+  ... | just (SV-Code _)      = refl
+  ... | nothing               = refl
+
   ------------------------------------------------------------------------
   -- Tree-Structured Trace Execution (OCP-0003)
   --
