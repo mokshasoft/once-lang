@@ -26,19 +26,21 @@
 module Once.Verified.SourceSemantics where
 
 open import Data.Nat using (ℕ; zero; suc)
-open import Data.Integer using (ℤ; _+_; _-_; _*_; -_) renaming (∣_∣ to absℤ)
-open import Data.Bool using (Bool; true; false)
+open import Data.Integer using (ℤ; _+_; _-_; _*_; -_; _≤ᵇ_) renaming (∣_∣ to absℤ)
+open import Data.Integer.Properties using (_≟_)
+open import Data.Bool using (Bool; true; false; not)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.String using (String) renaming (_≟_ to _≟str_)
 open import Data.Product using (_×_; _,_)
 open import Data.Unit using (⊤; tt)
-open import Relation.Nullary using (yes; no)
+open import Relation.Nullary using (yes; no; does)
 
 open import Once.TypeCheck.Raw as Raw
   using (RawExpr; RVar; RQualified; RApp; RLam; RLet; RPair; RDestruct;
          RUnit; RInt; RStringLit; RAnnot; RBinOp; RUnaryOp;
-         BinOp; OpAdd; OpSub; OpMul; UnaryOp; OpNeg)
+         BinOp; OpAdd; OpSub; OpMul; OpDiv; OpMod;
+         OpLt; OpLe; OpGt; OpGe; OpEq; OpNe; UnaryOp; OpNeg)
 open import Once.Parser.Module.Core as Mod using (Module; Decl; DFunDef)
 open import Once.Verified.Trace using (SigOpEvent; mk-event)
 
@@ -107,15 +109,32 @@ prependEv e₁ (just (v , e₂)) = just (v , e₁ ++ e₂)
 
 ------------------------------------------------------------------------
 -- Arithmetic — PURE (no event; the arith→SigOp lowering is an internal
--- optimisation only). NOTE (Plan 0.45 follow-up): div/mod and the
--- comparison ops are placeholders for now — only +,-,* are faithful.
+-- optimisation only). Mirrors `evalSurface`: comparisons return a sum
+-- (`Vinl tt` = true / `Vinr tt` = false). `divℤ`/`modℤ` are the language's
+-- div/mod primitives — postulated here as in `Surface.Semantics`
+-- ("axiom — actual impl handles div-by-zero"); their agreement with the
+-- value semantics' is a Part-B faithfulness obligation.
 ------------------------------------------------------------------------
+
+postulate
+  divℤ modℤ : ℤ → ℤ → ℤ
+
+boolToSum : Bool → Value
+boolToSum true  = Vinl Vunit
+boolToSum false = Vinr Vunit
 
 binResult : BinOp → Value → Value → Result
 binResult OpAdd (Vint a) (Vint b) = just (Vint (a + b) , [])
 binResult OpSub (Vint a) (Vint b) = just (Vint (a - b) , [])
 binResult OpMul (Vint a) (Vint b) = just (Vint (a * b) , [])
-binResult _     (Vint a) (Vint b) = just (Vint (a + b) , [])   -- TODO: div/mod/compare
+binResult OpDiv (Vint a) (Vint b) = just (Vint (divℤ a b) , [])
+binResult OpMod (Vint a) (Vint b) = just (Vint (modℤ a b) , [])
+binResult OpLt  (Vint a) (Vint b) = just (boolToSum (not (b ≤ᵇ a)) , [])  -- a<b ≡ ¬(b≤a)
+binResult OpLe  (Vint a) (Vint b) = just (boolToSum (a ≤ᵇ b) , [])
+binResult OpGt  (Vint a) (Vint b) = just (boolToSum (not (a ≤ᵇ b)) , [])  -- a>b ≡ ¬(a≤b)
+binResult OpGe  (Vint a) (Vint b) = just (boolToSum (b ≤ᵇ a) , [])        -- a≥b ≡ b≤a
+binResult OpEq  (Vint a) (Vint b) = just (boolToSum (does (a ≟ b)) , [])
+binResult OpNe  (Vint a) (Vint b) = just (boolToSum (not (does (a ≟ b))) , [])
 binResult _     _        _        = nothing
 
 ------------------------------------------------------------------------
