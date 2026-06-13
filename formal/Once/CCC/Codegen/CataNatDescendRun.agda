@@ -21,7 +21,7 @@
 module Once.CCC.Codegen.CataNatDescendRun where
 
 open import Data.Nat using (ℕ; zero; suc; _+_; _*_)
-open import Data.Product using (Σ-syntax; _,_; proj₁; proj₂)
+open import Data.Product using (Σ-syntax; _×_; _,_; proj₁; proj₂)
 open import Data.Maybe using (just)
 open import Data.Bool using (false)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; cong)
@@ -34,6 +34,7 @@ open import Once.CCC.Machine.SMCore
          instr-reg-op; input2-inc; load-indirect-suc; mov-to-input;
          instr-ctrl; c-label; c-jmp; c-branch-scratch-zero; c-branch-tag-zero;
          module MemOps)
+open import Once.CCC.Machine.Allocation using (next-slot)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 open import Once.CCC.Codegen.CataNatDescend using (module CataNatDescend)
@@ -81,7 +82,9 @@ module CataNatDescendRun {FS : FrameSemantics} where
                      → readReg (regs ls) Scratch ≡ SV-Tag 1
                      → halted ls ≡ false
                      → HeapNatChain m loc ls
-                     → Σ[ final ∈ FlatState ] FlatSteps prog (m * 9 + 9) (mkFlat ls alloc q-top) final
+                     → Σ[ final ∈ FlatState ]
+                         (FlatSteps prog (m * 9 + 9) (mkFlat ls alloc q-top) final
+                          × next-slot (falloc final) ≡ next-slot alloc)
   descend-chain-runs prog ld-top ld-end ld-inl ld-de q-top q-de q-inl q-end code
                      zero ls alloc loc ptr sc hlt chain =
     _ , descend-base-flat prog (mkFlat ls alloc q-top) ld-top ld-end ld-inl ld-de q-inl q-top q-end
@@ -91,6 +94,8 @@ module CataNatDescendRun {FS : FrameSemantics} where
           (DescendCode.ilR code) (DescendCode.cLi code) (DescendCode.cSz code)
           (DescendCode.cLd code) (DescendCode.cJt code) (DescendCode.topR code)
           (DescendCode.cL code) (DescendCode.cBs code) (DescendCode.elR code)
+      , refl    -- descend allocates nothing; base-flat's result is `record …
+                -- {floc; fpc}`, so falloc = alloc definitionally.
   descend-chain-runs prog ld-top ld-end ld-inl ld-de q-top q-de q-inl q-end code
                      (suc m) ls alloc loc ptr sc hlt (tag , child-loc , child-ptr , child-chain) =
     let fs = mkFlat ls alloc q-top
@@ -112,4 +117,8 @@ module CataNatDescendRun {FS : FrameSemantics} where
                    child-chain
         rec = descend-chain-runs prog ld-top ld-end ld-inl ld-de q-top q-de q-inl q-end code
                 m ls' alloc' child-loc ptr' sc' hlt' chain'
-    in proj₁ rec , FlatSteps-++ iter (proj₂ rec)
+    -- `alloc' = falloc (desc-step …) = alloc` definitionally (the descend
+    -- body preserves falloc: input2-inc reg, load-indirect-suc `, alloc`,
+    -- mov reg), so the recursion's next-slot fact is already `≡ next-slot
+    -- alloc`. Descend allocates nothing.
+    in proj₁ rec , FlatSteps-++ iter (proj₁ (proj₂ rec)) , proj₂ (proj₂ rec)

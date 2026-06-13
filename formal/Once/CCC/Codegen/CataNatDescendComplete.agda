@@ -16,7 +16,7 @@
 module Once.CCC.Codegen.CataNatDescendComplete where
 
 open import Data.Nat using (ℕ; _+_; _*_)
-open import Data.Product using (∃-syntax; Σ-syntax; _,_)
+open import Data.Product using (∃-syntax; Σ-syntax; _×_; _,_)
 open import Data.Maybe using (just)
 open import Data.Bool using (false)
 open import Relation.Binary.PropositionalEquality using (_≡_)
@@ -28,6 +28,7 @@ open import Once.CCC.IR using (Heap)
 open import Once.CCC.Machine.SMCore
   using (LocState; AllocState; halted; regs; readReg; Input1; Scratch;
          sv-as-loc; SV-Tag; ValueLocation; AbstractTrace)
+open import Once.CCC.Machine.Allocation using (next-slot)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 open import Once.CCC.Machine.ClosureWellFormed using (module ClosureWellFormedDef)
@@ -51,10 +52,12 @@ module CataNatDescendComplete {FS : FrameSemantics} (program-bound : ℕ) (G : F
       → readReg (regs s) Scratch ≡ SV-Tag 1
       → halted s ≡ false
       → (v : ValidAtWF Heap alloc {μ-type F} x loc s) → AllHeap v
-      → ∃[ n ] Σ[ final ∈ FlatState ] FlatSteps prog (n * 9 + 9) (mkFlat s alloc q-top) final
+      → ∃[ n ] Σ[ final ∈ FlatState ]
+          (FlatSteps prog (n * 9 + 9) (mkFlat s alloc q-top) final
+           × next-slot (falloc final) ≡ next-slot alloc)
   descend-runs-on-value prog ld-top ld-end ld-inl ld-de q-top q-de q-inl q-end code
                         {alloc = alloc} {loc = loc} {s = s} ptr sc hlt v ah =
-    let (n , chain)     = valid→chain v ah
-        (final , steps) = descend-chain-runs prog ld-top ld-end ld-inl ld-de q-top q-de q-inl q-end
-                            code n s alloc loc ptr sc hlt chain
-    in n , final , steps
+    let (n , chain)        = valid→chain v ah
+        (final , steps , ns) = descend-chain-runs prog ld-top ld-end ld-inl ld-de q-top q-de q-inl q-end
+                                 code n s alloc loc ptr sc hlt chain
+    in n , final , steps , ns
