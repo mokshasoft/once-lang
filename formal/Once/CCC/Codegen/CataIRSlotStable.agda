@@ -21,15 +21,16 @@
 
 module Once.CCC.Codegen.CataIRSlotStable where
 
-open import Data.Nat using (ℕ)
+open import Data.Nat using (ℕ) renaming (_+_ to _+ℕ_)
 open import Data.Bool using (Bool; true; false; _∧_)
+open import Data.Bool.Properties using (∧-assoc)
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥-elim)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
-open import Data.List using (List; _∷_; [])
+open import Data.List using (List; _∷_; []; _++_)
 open import Data.List.Relation.Unary.All using (All) renaming ([] to []ᴬ; _∷_ to _∷ᴬ_)
 open import Data.List.Relation.Unary.All.Properties using (++⁺)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; sym; trans)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.IR
@@ -137,6 +138,65 @@ module CataIRSlotStable {FS : FrameSemantics} where
     in stable?-sound i ei ∷ᴬ all-stable?-sound is eis
 
   ----------------------------------------------------------------------
+  -- Completeness (the converse) + `all-stable?` distributes over `++`.
+  -- Needed for the Tier-2 branching trace, whose `(rebuild-walk F ++
+  -- Rest) ++ final-read` shape is a NEUTRAL `++` that `++⁺` cannot split;
+  -- the boolean equation navigates associativity cleanly instead.
+  ----------------------------------------------------------------------
+  AllI→All : ∀ {t} → AllI SlotStable t → All SlotStable t
+  AllI→All {[]}     _        = []ᴬ
+  AllI→All {_ ∷ _} (px , ps) = px ∷ᴬ AllI→All ps
+
+  ∧-intro : ∀ {a b} → a ≡ true → b ≡ true → a ∧ b ≡ true
+  ∧-intro {a} {b} pa pb = trans (cong (_∧ b) pa) pb
+
+  all-stable?-++ : ∀ xs ys → all-stable? (xs ++ ys) ≡ all-stable? xs ∧ all-stable? ys
+  all-stable?-++ []       ys = refl
+  all-stable?-++ (i ∷ is) ys =
+    trans (cong (stable? i ∧_) (all-stable?-++ is ys))
+          (sym (∧-assoc (stable? i) (all-stable? is) (all-stable? ys)))
+
+  stable?-complete     : ∀ i → SlotStable i → stable? i ≡ true
+  all-stable?-complete : ∀ t → AllSlotStable t → all-stable? t ≡ true
+  stable?-complete (instr-alloc-stack _)   ()
+  stable?-complete (instr-reclaim-to _)    ()
+  stable?-complete (instr-loop _)          ()
+  stable?-complete (instr-case-on-tag f g) (af , ag) =
+    ∧-intro (all-stable?-complete f (AllI→All af)) (all-stable?-complete g (AllI→All ag))
+  stable?-complete mov-to-output           _ = refl
+  stable?-complete mov-to-input            _ = refl
+  stable?-complete mov-output-to-input2    _ = refl
+  stable?-complete mov-input2-to-output    _ = refl
+  stable?-complete load-indirect           _ = refl
+  stable?-complete load-indirect-suc       _ = refl
+  stable?-complete (load-from-slot _)      _ = refl
+  stable?-complete (store-at-slot _)       _ = refl
+  stable?-complete store-indirect          _ = refl
+  stable?-complete store-indirect-suc      _ = refl
+  stable?-complete (lea-slot _)            _ = refl
+  stable?-complete (restore-input _)       _ = refl
+  stable?-complete (instr-dealloc-stack _) _ = refl
+  stable?-complete (instr-push-frame _)    _ = refl
+  stable?-complete instr-pop-frame         _ = refl
+  stable?-complete instr-call-closure      _ = refl
+  stable?-complete (worklist-init _)       _ = refl
+  stable?-complete (worklist-push _)       _ = refl
+  stable?-complete (worklist-pop _)        _ = refl
+  stable?-complete (worklist-check _)      _ = refl
+  stable?-complete (instr-sigop _)         _ = refl
+  stable?-complete (instr-load-const _ _)  _ = refl
+  stable?-complete (instr-load-code-addr _) _ = refl
+  stable?-complete instr-save-closure-reg  _ = refl
+  stable?-complete (instr-load-tag-lit _)  _ = refl
+  stable?-complete (instr-alloc-heap _)    _ = refl
+  stable?-complete (instr-reg-op _)        _ = refl
+  stable?-complete (instr-ctrl _)          _ = refl
+  stable?-complete (lea-indexed _)         _ = refl
+  all-stable?-complete []       _          = refl
+  all-stable?-complete (i ∷ is) (px ∷ᴬ ps) =
+    ∧-intro (stable?-complete i px) (all-stable?-complete is ps)
+
+  ----------------------------------------------------------------------
   -- Tier-2 structural walks (`visit-walk` / `rebuild-walk`) are functor-
   -- recursive and carry nested `instr-case-on-tag`; AllSlotStable by
   -- induction on the functor F (each concrete chunk via `all-stable?-sound
@@ -205,12 +265,32 @@ module CataIRSlotStable {FS : FrameSemantics} where
        tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ                                            -- ascend prefix (25)
        ++⁺ sat (all-stable?-sound _ refl))                                      -- at (ascend) ++ [scratch-dec,jmp,label]
 
-  -- Tier-2 branching: blocked on the `++⁺` route (the trace shape
-  -- `(rebuild-walk F ++ Rest) ++ final-read` is a neutral `++` that Agda
-  -- cannot split). Discharged via the boolean route below.
-  postulate
-    cata-trace-branching-stable : ∀ F n1 l1 at → AllSlotStable at
-                                → AllSlotStable (proj₂ (proj₂ (cata-trace-branching F n1 l1 at)))
+  -- Tier-2 branching via the boolean route: `all-stable? (branching-trace)
+  -- ≡ true` (then `all-stable?-sound`). The concrete scaffold reduces away;
+  -- `all-stable?-++` peels each neutral (visit-walk F / rebuild-walk F / at)
+  -- and `all-stable?-complete` / the `at` hypothesis discharge them.
+  branching-true : ∀ F n1 l1 at → all-stable? at ≡ true
+                 → all-stable? (proj₂ (proj₂ (cata-trace-branching F n1 l1 at))) ≡ true
+  branching-true F n1 l1 at sa =
+    trans (all-stable?-++ (visit-walk n1 (n1 +ℕ 4) (n1 +ℕ 5) F (n1 +ℕ 7) ++ _) _)
+      (∧-intro
+        -- all-stable? (visit-walk F ++ [jmp,label])  (the [jmp,label] reduces to true)
+        (trans (all-stable?-++ (visit-walk n1 (n1 +ℕ 4) (n1 +ℕ 5) F (n1 +ℕ 7)) _)
+          (∧-intro (all-stable?-complete _ (visit-walk-stable n1 (n1 +ℕ 4) (n1 +ℕ 5) F (n1 +ℕ 7))) refl))
+        -- all-stable? (fold ++ final-read)  (fold head reduces; final-read reduces to true)
+        (trans (all-stable?-++ (rebuild-walk (n1 +ℕ 2) (n1 +ℕ 4) (n1 +ℕ 5) F (n1 +ℕ 7) ++ _) _)
+          (∧-intro
+            -- all-stable? (rebuild-walk F ++ Rest)
+            (trans (all-stable?-++ (rebuild-walk (n1 +ℕ 2) (n1 +ℕ 4) (n1 +ℕ 5) F (n1 +ℕ 7)) _)
+              (∧-intro (all-stable?-complete _ (rebuild-walk-stable (n1 +ℕ 2) (n1 +ℕ 4) (n1 +ℕ 5) F (n1 +ℕ 7)))
+                -- all-stable? (mov ∷ (at ++ push2 ++ [jmp,label]))  → all-stable? (at ++ …)
+                (trans (all-stable?-++ at _) (∧-intro sa refl))))
+            refl)))
+
+  cata-trace-branching-stable : ∀ F n1 l1 at → AllSlotStable at
+                              → AllSlotStable (proj₂ (proj₂ (cata-trace-branching F n1 l1 at)))
+  cata-trace-branching-stable F n1 l1 at sat =
+    all-stable?-sound _ (branching-true F n1 l1 at (all-stable?-complete at sat))
 
   cata-dispatch-slot-stable : ∀ (strat : CataStrategy) (n l : ℕ) (at : AbstractTrace)
                             → AllSlotStable at
