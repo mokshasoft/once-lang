@@ -75,7 +75,7 @@ d_once'45'compiler_16 ::
 d_once'45'compiler_16
   = coe
       MAlonzo.Code.Once.Verified.C_constructor_54
-      MAlonzo.Code.Once.Verified.SourceTrace.d_'10214'_'10215'_82
+      MAlonzo.Code.Once.Verified.SourceTrace.d_'10214'_'10215'_186
       (MAlonzo.Code.Once.Verified.Compile.d_exec_148
          (coe MAlonzo.Code.Once.Verified.CPU.d_arch'45'semantics_6))
       (MAlonzo.Code.Once.Verified.Compile.d_compile_158
