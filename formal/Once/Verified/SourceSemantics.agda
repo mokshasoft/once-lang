@@ -264,10 +264,18 @@ mutual
 -- emitted SigOp events. `Behavior = ℕ → List SigOpEvent`.
 ------------------------------------------------------------------------
 
+-- Explicit-`Maybe` helpers (no nested `with`), so reduction reasoning about
+-- `runTrace` — `no-main-empty` (lookupDef nothing ⇒ []) and the per-RawExpr
+-- trace core — can match the option directly instead of fighting with-opacity.
+runTraceEval : Result → List SigOpEvent
+runTraceEval nothing        = []
+runTraceEval (just (_ , ev)) = ev
+
+runTraceMain : ℕ → Defs → Maybe RawExpr → List SigOpEvent
+runTraceMain n defs nothing     = []
+runTraceMain n defs (just body) = runTraceEval (eval n defs [] body)
+
 runTrace : Module → ℕ → List SigOpEvent
-runTrace m n with extractDefs (Mod.Module.decls m)
-... | defs with lookupDef defs "main"
-...   | nothing   = []
-...   | just body with eval n defs [] body
-...     | nothing       = []
-...     | just (_ , ev) = ev
+runTrace m n =
+  let defs = extractDefs (Mod.Module.decls m)
+  in runTraceMain n defs (lookupDef defs "main")
