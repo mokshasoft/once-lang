@@ -24,7 +24,7 @@
 module Once.CCC.Codegen.CataNatAscend where
 
 open import Data.Nat using (ℕ; suc)
-open import Data.Bool using (false)
+open import Data.Bool using (true; false)
 open import Data.Maybe using (just)
 open import Data.Product using (Σ-syntax; _×_; _,_)
 open import Data.List using (List; []; _++_)
@@ -170,6 +170,39 @@ module CataNatAscend {FS : FrameSemantics} where
   ascend-post-silent prog fs la-top q-latop hf fJ top-res =
     step1-silent {prog = prog} hf fJ
       (trans (flat-jmp prog fs la-top) (cong (λ m → do-jump m fs) top-res)) refl
+
+  -- The ascend EXIT (Scratch = 0): `c-label la-top` then `c-branch-
+  -- scratch-zero la-end` TAKEN, jumping to the resolved loop-end. This is
+  -- the loop's base case (depth 0 = the fold is done). State stays `fs`
+  -- (control only); ends at `q-laend`.
+  ascend-exit-flat : ∀ (prog : AbstractTrace) (fs : FlatState) (la-top la-end q-laend : ℕ)
+    → halted (floc fs) ≡ false
+    → sv-is-zero (readReg (regs (floc fs)) Scratch) ≡ true
+    → fetch prog (fpc fs)       ≡ just (instr-ctrl (c-label la-top))
+    → fetch prog (suc (fpc fs)) ≡ just (instr-ctrl (c-branch-scratch-zero la-end))
+    → find-label prog la-end ≡ just q-laend
+    → FlatSteps prog 2 fs (record fs { fpc = q-laend })
+  ascend-exit-flat prog fs la-top la-end q-laend hf scond fL fB end-res =
+    FlatSteps-++ (flat-step1 hf fL (flat-label prog fs la-top))
+                 (flat-step1 hf fB
+                   (trans (flat-scratch-branch-yes prog (record fs { fpc = suc (fpc fs) }) la-end scond)
+                          (cong (λ m → do-jump m (record fs { fpc = suc (fpc fs) })) end-res)))
+
+  ascend-exit-silent : ∀ (prog : AbstractTrace) (fs : FlatState) (la-top la-end q-laend : ℕ)
+    → (hf : halted (floc fs) ≡ false)
+    → (scond : sv-is-zero (readReg (regs (floc fs)) Scratch) ≡ true)
+    → (fL : fetch prog (fpc fs)       ≡ just (instr-ctrl (c-label la-top)))
+    → (fB : fetch prog (suc (fpc fs)) ≡ just (instr-ctrl (c-branch-scratch-zero la-end)))
+    → (end-res : find-label prog la-end ≡ just q-laend)
+    → chain-events (ascend-exit-flat prog fs la-top la-end q-laend hf scond fL fB end-res) ≡ []
+  ascend-exit-silent prog fs la-top la-end q-laend hf scond fL fB end-res =
+    ++-silent (flat-step1 {prog = prog} hf fL eqL) (flat-step1 {prog = prog} hf fB eqB)
+      (step1-silent {prog = prog} hf fL eqL refl)
+      (step1-silent {prog = prog} {fs = record fs { fpc = suc (fpc fs) }} hf fB eqB refl)
+    where
+      eqL = flat-label prog fs la-top
+      eqB = trans (flat-scratch-branch-yes prog (record fs { fpc = suc (fpc fs) }) la-end scond)
+                  (cong (λ m → do-jump m (record fs { fpc = suc (fpc fs) })) end-res)
 
   -- One continue iteration runs (pre ++ body ++ post) and emits exactly
   -- the body's events E; it ends back at the loop head `q-latop`, non-
