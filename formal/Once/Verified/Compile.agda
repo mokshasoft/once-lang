@@ -56,6 +56,7 @@ import Once.Parser.Module.Core as P
 -- Stage 1 adapter, now a real structural conversion (discharges the
 -- former `gmoduleToModule` postulate).
 open import Once.Grammar.ModuleConvert using (gmoduleToModule)
+open import Once.Verified.SourceSemantics using (runTrace)
 
 ------------------------------------------------------------------------
 -- Architecture coercion. The two `Arch` types are structurally
@@ -106,11 +107,14 @@ compile-cli-asm allocMode stage doOpt arch m =
 -- new trusted-base axioms, they are spec-level connectors).
 ------------------------------------------------------------------------
 
-postulate
-  -- Module-level behavior: source semantics after the GModule→Module
-  -- adapter. Discharged together with `gmoduleToModule-correct`.
-  ⟦_⟧M : P.Module → Behavior
+-- Module-level behavior: the SOURCE semantics of the parsed module
+-- (Plan 0.45 Part B) — `runTrace`, the module's SigOp trace, NOT an opaque
+-- postulate. So `module-to-asm-correct`'s obligation is now "the compiled
+-- trace equals the SOURCE trace," and the typechecker is load-bearing.
+⟦_⟧M : P.Module → Behavior
+⟦ m ⟧M = runTrace m
 
+postulate
   -- Asm-text-level behavior: the abstract semantics of an asm string
   -- when run on a chosen architecture. Discharge bridges to CCC's
   -- `Program` semantics through `programToText`.
