@@ -34,10 +34,10 @@ d_assemble'45'x86'45'64_12
       "MAlonzo Runtime Error: postulate evaluated: Once.Verified.CPU.X86-64.assemble-x86-64"
 -- Once.Verified.CPU.X86-64.arch-semantics
 d_arch'45'semantics_14 ::
-  MAlonzo.Code.Once.Verified.CPU.Interface.T_ArchSemantics_18
+  MAlonzo.Code.Once.Verified.CPU.Interface.T_ArchSemantics_10
 d_arch'45'semantics_14
   = coe
-      MAlonzo.Code.Once.Verified.CPU.Interface.C_constructor_64
+      MAlonzo.Code.Once.Verified.CPU.Interface.C_constructor_56
       MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Semantics.d_initState_246
       MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Semantics.d_run_598
       d_run'45'trace'45'x86'45'64_8 d_decode'45'x86'45'64_10

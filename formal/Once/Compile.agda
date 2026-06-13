@@ -347,11 +347,9 @@ import Once.Target.X86-64 as X86-64-Target
 import Once.Target.X86-32 as X86-32-Target
 import Once.Target.RiscV64 as RiscV64-Target
 
--- | Supported architectures
-data Arch : Set where
-  x86-64  : Arch
-  x86-32  : Arch
-  riscv64 : Arch
+-- | Supported architectures — the single shared enum (re-exported so
+-- existing `C.Arch` references downstream are unchanged).
+open import Once.Target.Arch public
 
 -- | Get target implementation for an architecture
 archTarget : Arch → Target

@@ -51,8 +51,6 @@ open import Once.Verified.SourceTrace
 -- doesn't drag in the per-arch instance postulates. The driver
 -- (`Once.Compiler`) supplies `Once.Verified.CPU.arch-semantics`.
 open import Once.Verified.CPU.Interface using (Arch; Byte; ArchSemantics)
-open import Once.Verified.CPU.Interface using () renaming
-  (x86-64 to Va-x86-64; x86-32 to Va-x86-32; riscv64 to Va-riscv64)
 
 import Once.Compile as C
 import Once.Grammar as G
@@ -62,15 +60,9 @@ import Once.Parser.Module.Core as P
 open import Once.Grammar.ModuleConvert using (gmoduleToModule)
 open import Once.Verified.SourceSemantics using (runTrace)
 
-------------------------------------------------------------------------
--- Architecture coercion. The two `Arch` types are structurally
--- identical but live in different modules.
-------------------------------------------------------------------------
-
-toLegacyArch : Arch → C.Arch
-toLegacyArch Va-x86-64  = C.x86-64
-toLegacyArch Va-x86-32  = C.x86-32
-toLegacyArch Va-riscv64 = C.riscv64
+-- `Arch` (here, via `Once.Verified.CPU.Interface`) and `C.Arch` (via
+-- `Once.Compile`) are now the SAME type — both re-export `Once.Target.Arch`
+-- — so `compileFromModule` takes `arch` directly; no coercion needed.
 
 ------------------------------------------------------------------------
 -- Per-stage adapters and trust postulates.
@@ -96,11 +88,11 @@ toLegacyArch Va-riscv64 = C.riscv64
 compile-asm : Arch → Source → C.CompileResult
 compile-asm arch gmod with gmoduleToModule gmod
 ... | nothing = C.Error "GModule → Module conversion failed"
-... | just m  = C.compileFromModule C.Heap C.Build false (toLegacyArch arch) m
+... | just m  = C.compileFromModule C.Heap C.Build false arch m
 
 compile-cli-asm : C.AllocMode → C.Stage → Bool → Arch → P.Module → C.CompileResult
 compile-cli-asm allocMode stage doOpt arch m =
-  C.compileFromModule allocMode stage doOpt (toLegacyArch arch) m
+  C.compileFromModule allocMode stage doOpt arch m
 
 ------------------------------------------------------------------------
 -- Per-stage correctness — named obligations.
@@ -151,7 +143,7 @@ record ArchCorrect (arch : Arch) (as : ArchSemantics) : Set where
     -- the emitted asm's meaning equals the flat trace of the compiled IR.
     asm-trace-correct :
       ∀ (m : P.Module) (asm : String) →
-      C.compileFromModule C.Heap C.Build false (toLegacyArch arch) m ≡ C.Built asm →
+      C.compileFromModule C.Heap C.Build false arch m ≡ C.Built asm →
       ∀ (n : ℕ) → asm-sem asm n ≡ flat-trace (moduleToIR m) n
     -- the flat machine's SigOp trace of a compiled IR equals its `obs`.
     ir-flat-correct :
@@ -166,7 +158,7 @@ postulate
   -- The `just ir` case is the PROGRAM case (factor 1 proper).
   no-main-empty :
     ∀ (arch : Arch) (m : P.Module) (asm : String) (n : ℕ) →
-    C.compileFromModule C.Heap C.Build false (toLegacyArch arch) m ≡ C.Built asm →
+    C.compileFromModule C.Heap C.Build false arch m ≡ C.Built asm →
     moduleToIR m ≡ nothing →
     runTrace m n ≡ []
 
@@ -215,7 +207,7 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   compile : Arch → Source → Maybe (List Byte)
   compile arch gmod with gmoduleToModule gmod
   ... | nothing = nothing
-  ... | just m  with C.compileFromModule C.Heap C.Build false (toLegacyArch arch) m
+  ... | just m  with C.compileFromModule C.Heap C.Build false arch m
   ...   | C.Built asm = just (string-to-bytes arch asm)
   ...   | _           = nothing
 
@@ -236,7 +228,7 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   -- the obligations live (and are discharged or postulated) in the arch instance.
   codegen-asm-correct :
     ∀ (arch : Arch) (m : P.Module) (asm : String) →
-    C.compileFromModule C.Heap C.Build false (toLegacyArch arch) m ≡ C.Built asm →
+    C.compileFromModule C.Heap C.Build false arch m ≡ C.Built asm →
     ∀ (n : ℕ) → (⟦ arch ⟧A asm) n ≡ ⟦ moduleToIR m ⟧IR n
   codegen-asm-correct arch m asm eq n =
     trans (ArchCorrect.asm-trace-correct (arch-correct arch) m asm eq n)
@@ -247,7 +239,7 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   -- explicitly (no `with`-opacity); the `nothing`/library case via `no-main-empty`.
   mta-aux :
     ∀ (arch : Arch) (m : P.Module) (asm : String) (n : ℕ) (mi : Maybe (IR Unit Unit)) →
-    C.compileFromModule C.Heap C.Build false (toLegacyArch arch) m ≡ C.Built asm →
+    C.compileFromModule C.Heap C.Build false arch m ≡ C.Built asm →
     moduleToIR m ≡ mi →
     (⟦ arch ⟧A asm) n ≡ ⟦ mi ⟧IR n →
     (⟦ arch ⟧A asm) n ≡ runTrace m n
@@ -256,7 +248,7 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
 
   module-to-asm-correct :
     ∀ (arch : Arch) (m : P.Module) (asm : String) →
-    C.compileFromModule C.Heap C.Build false (toLegacyArch arch) m ≡ C.Built asm →
+    C.compileFromModule C.Heap C.Build false arch m ≡ C.Built asm →
     ∀ (n : ℕ) → (⟦ arch ⟧A asm) n ≡ ⟦ m ⟧M n
   module-to-asm-correct arch m asm eq n =
     mta-aux arch m asm n (moduleToIR m) eq refl (codegen-asm-correct arch m asm eq n)
@@ -281,7 +273,7 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   correct arch src bytes pf with gmoduleToModule src in g-eq
   correct arch src bytes () | nothing
   correct arch src bytes pf | just m
-    with C.compileFromModule C.Heap C.Build false (toLegacyArch arch) m in c-eq
+    with C.compileFromModule C.Heap C.Build false arch m in c-eq
   correct arch src bytes pf | just m | C.Parsed _ _    with pf
   ... | ()
   correct arch src bytes pf | just m | C.Checked _      with pf
