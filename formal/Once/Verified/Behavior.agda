@@ -77,18 +77,26 @@
 
 module Once.Verified.Behavior where
 
-open import Data.Maybe using (Maybe)
 open import Data.Nat using (ℕ)
+open import Data.List using (List)
 
+open import Once.Verified.Trace using (SigOpEvent)
 import Once.Grammar as G
 
 ------------------------------------------------------------------------
--- Behavior — Layer 0 observable: the argument of the final
--- `linux.exit` SigOp call (if any). NOT a "return value."
+-- Behavior — THE observable: the ordered sequence of SigOp invocations
+-- a program makes (name + arguments). A Once program returns nothing;
+-- this trace is the only thing observable. `linux.exit N` is just one
+-- SigOp whose argument is `N` — there is no privileged "exit code."
+--
+-- STEP-INDEXED: a (possibly infinite) trace is represented as the family
+-- of its finite prefixes — `Behavior n` is the prefix observed within `n`
+-- steps. Correctness is "agree up to arbitrary n" (Plan 0.24/0.44): plain
+-- induction on `n`, no co-data, no productive bind, no funext.
 ------------------------------------------------------------------------
 
 Behavior : Set
-Behavior = Maybe ℕ
+Behavior = ℕ → List SigOpEvent
 
 ------------------------------------------------------------------------
 -- Source — anchored at the formal grammar.
