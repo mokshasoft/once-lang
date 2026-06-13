@@ -124,17 +124,35 @@ postulate
   -- `Program` semantics through `programToText`.
   ⟦_⟧A_ : Arch → String → Behavior
 
-  -- FACTOR 2 of `module-to-asm-correct` (codegen + asm-emission): the
-  -- asm-text semantics equals `obs` of `main`'s IR. Discharge composes
-  --   - CCC.compile-correct-flat: the flat machine / real x86 corresponds
-  --     to the IR's abstract semantics;
-  --   - asm-emission: `programToText` + thunk wrapping preserves it.
-  -- Backend-side; partly proven via `flat-sim`. A buggy codegen surfaces
-  -- as an undischarged goal here (NOT in the frontend half).
-  codegen-asm-correct :
+  -- The per-arch flat-machine SigOp trace of the compiled `main` IR: run
+  -- `ir-to-trace ir` on the target's flat machine from the loader entry
+  -- state, reading off the SigOp events; `nothing` (a library, no `main`)
+  -- ⇒ the empty trace. Per-target definition is `flat-events ∘ ir-to-trace`
+  -- from the entry — DEFERRED (it rides the per-target flat-sim bridge,
+  -- which is FrameSemantics-level while this module is Arch-level).
+  ir-flat-trace : Arch → Maybe (IR Unit Unit) → Behavior
+
+  -- (Stage C — TRUSTED, named.) The emitted asm's observable equals the flat
+  -- machine's SigOp trace of the compiled IR. Bundles two trust points:
+  --   (1) `programToText`/`irToAsm` printer faithfulness — blessed trust,
+  --       alongside `string-to-bytes` (GNU `as`); and
+  --   (2) the `_start`/loader entry-state setup (input `tt` in place, pc 0).
+  asm-trace-faithful :
     ∀ (arch : Arch) (m : P.Module) (asm : String) →
     C.compileFromModule C.Heap C.Build false (toLegacyArch arch) m ≡ C.Built asm →
-    ∀ (n : ℕ) → (⟦ arch ⟧A asm) n ≡ ⟦ moduleToIR m ⟧IR n
+    ∀ (n : ℕ) → (⟦ arch ⟧A asm) n ≡ ir-flat-trace arch (moduleToIR m) n
+
+  -- (Stage B — the substantive backend obligation, was the codegen-asm-correct
+  -- monolith.) The GENERIC IR-observable theorem: the flat machine's trace of a
+  -- compiled IR equals its `obs`. This is the connection to ALL CCC IRs — it is
+  -- discharged by structural dispatch over the IR (per-target flat-sim →
+  -- `IRObsCorrectFlat`'s `traces-agree`), with `cata-correct` the loop case and
+  -- the straight constructors via `flat-events-[]` / per-SigOp correspondence.
+  -- A backend bug now surfaces as a specific undischarged IR-constructor case
+  -- here, never as a hidden blanket.
+  ir-flat-correct :
+    ∀ (arch : Arch) (mir : Maybe (IR Unit Unit)) →
+    ∀ (n : ℕ) → ir-flat-trace arch mir n ≡ ⟦ mir ⟧IR n
 
   -- The LIBRARY case (D008: code without a `main` is a library, not a
   -- program). A `Built asm` means `compileResolvedModule` succeeded; if it has
@@ -147,6 +165,17 @@ postulate
     C.compileFromModule C.Heap C.Build false (toLegacyArch arch) m ≡ C.Built asm →
     moduleToIR m ≡ nothing →
     runTrace m n ≡ []
+
+-- FACTOR 2 — now a THEOREM (no longer a monolithic postulate): the trusted
+-- asm/printer bridge (`asm-trace-faithful`) composed with the generic
+-- IR-observable theorem (`ir-flat-correct`). Covers both the program (`just
+-- ir`) and library (`nothing`, `⟦⟧IR = []`) cases uniformly via `⟦_⟧IR`.
+codegen-asm-correct :
+  ∀ (arch : Arch) (m : P.Module) (asm : String) →
+  C.compileFromModule C.Heap C.Build false (toLegacyArch arch) m ≡ C.Built asm →
+  ∀ (n : ℕ) → (⟦ arch ⟧A asm) n ≡ ⟦ moduleToIR m ⟧IR n
+codegen-asm-correct arch m asm eq n =
+  trans (asm-trace-faithful arch m asm eq n) (ir-flat-correct arch (moduleToIR m) n)
 
 -- Stage 2 correctness — now a THEOREM (Plan 0.45 Part B), no longer a
 -- monolithic postulate: the asm trace equals the SOURCE trace, by composing
