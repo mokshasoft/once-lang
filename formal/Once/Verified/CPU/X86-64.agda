@@ -26,9 +26,8 @@
 
 module Once.Verified.CPU.X86-64 where
 
-open import Data.Bool using (Bool; true; false)
 open import Data.List using (List)
-open import Data.Maybe using (Maybe; just; nothing)
+open import Data.Maybe using (Maybe)
 open import Data.String using (String)
 
 open import Once.Verified.Behavior      using (Behavior)
@@ -38,30 +37,20 @@ import Once.CCC.Target.X86-64.Semantics as X64
 import Once.CCC.Target.X86-64.Syntax    as X64S
 
 ------------------------------------------------------------------------
--- observe-x86-64 — concrete projection.
---
--- Linux/SysV calling convention: `exit N` puts N in `%rdi` then
--- invokes the `linux.exit` SigOp (which our abstract semantics
--- handles by halting). So at halt, `%rdi` holds the exit code.
---
--- Reads:
---   - `nothing`  if no final state (run failed / out of fuel)
---   - `nothing`  if halted = false (didn't terminate)
---   - `just (rdi-value)`  otherwise
-------------------------------------------------------------------------
-
-observe-x86-64 : Maybe X64.State → Behavior
-observe-x86-64 nothing  = nothing
-observe-x86-64 (just s) with X64.State.halted s
-... | false = nothing
-... | true  = just (X64.readReg (X64.State.regs s) X64S.rdi)
-
-------------------------------------------------------------------------
--- decode-x86-64 — POSTULATED. Concrete byte-encoder/decoder per the
--- Intel SDM is significant work; left as a named gap for now.
+-- Postulated gaps (named, alongside the existing decode/assemble ones).
 ------------------------------------------------------------------------
 
 postulate
+  -- run-trace-x86-64 — the OBSERVABLE (Plan 0.44): the step-indexed SigOp
+  -- trace produced by executing `prog` from `state`. Replaces the old
+  -- value-shaped `observe` (final `%rdi` at halt — an exit code, which
+  -- cannot represent a multi-SigOp trace). To be DERIVED from `X64.run`'s
+  -- step semantics once syscall/call-sym record the invocation and
+  -- continue (the emit-and-continue machine); postulated until then.
+  run-trace-x86-64 : X64S.Program → X64.State → Behavior
+
+  -- decode-x86-64 — POSTULATED. Concrete byte-encoder/decoder per the
+  -- Intel SDM is significant work; left as a named gap for now.
   decode-x86-64 : List Byte → Maybe X64S.Program
 
   -- assemble-x86-64 — POSTULATED. GNU `as --target=x86-64` trust point;
@@ -78,7 +67,7 @@ arch-semantics = record
   ; State        = X64.State
   ; initialState = X64.initState
   ; run          = X64.run
-  ; observe      = observe-x86-64
+  ; run-trace    = run-trace-x86-64
   ; decode       = decode-x86-64
   ; assemble     = assemble-x86-64
   }
