@@ -110,3 +110,29 @@ module CataNatValue {FS : FrameSemantics} (program-bound : ℕ) (G : Functor) wh
     → RealizesV {A} (eval (Cata wf alg) (sem-In F (inj₂ child)))
   vstep-from-alg wf alg child r =
     subst (RealizesV) (sym (nat-fold-cons wf alg child)) r
+
+  ------------------------------------------------------------------------
+  -- `cata-nat-value-realized` — the VALUE side of `value-realized` for a
+  -- strat-nat cata, assembled. The fold over a depth-`n` spine is realized
+  -- by iterating the per-layer step `cata-value-loop`, where each step is
+  -- `vstep-from-alg` fed the per-layer ALGEBRA realization `alg-real`. So
+  -- the whole-spine realization reduces to exactly two obligations:
+  --   * `base-real`  — the machine realizes the fold of the base layer
+  --                    (`eval alg` on the `inl` base node), and
+  --   * `alg-real`   — the per-layer core: given a machine state realizing
+  --                    `acc = eval (Cata) child`, build-layer's `inr` node
+  --                    + the algebra's `IRObsCorrectF` IH (applied at
+  --                    frontier 0 via `alg-run-keeps-frontier-0`) realize
+  --                    `eval alg (inr acc)`.
+  -- This is the genuine `rec-scheme-semantic` content, now isolated to one
+  -- per-layer hypothesis instead of a whole-loop trust boundary.
+  cata-nat-value-realized : ∀ (wf : WellFormedF F) {A} (alg : IR (⟦ F ⟧T A) A)
+      (base : ⟦ μ-type F ⟧) (n : ℕ)
+    → RealizesV {A} (eval (Cata wf alg) base)
+    → (∀ (child : ⟦ μ-type F ⟧)
+         → RealizesV {A} (eval (Cata wf alg) child)
+         → RealizesV {A} (eval alg (coerce-functor⁻¹ F A (inj₂ (eval (Cata wf alg) child)))))
+    → RealizesV {A} (eval (Cata wf alg) (nat-spine n base))
+  cata-nat-value-realized wf alg base n base-real alg-real =
+    cata-value-loop (λ x → RealizesV (eval (Cata wf alg) x)) base base-real
+      (λ child r → vstep-from-alg wf alg child (alg-real child r)) n
