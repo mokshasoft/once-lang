@@ -71,15 +71,22 @@ sourceToIR src with gmoduleToModule src
 -- The source semantics (discharges the `Behavior.⟦_⟧` postulate).
 ------------------------------------------------------------------------
 
--- `abstract`: `⟦_⟧` is a real definition, but opaque to downstream
--- proofs. Without this, `⟦ src ⟧` unfolds to `… with gmoduleToModule
--- src …`, and `Verified.Compile.correct`'s own `with gmoduleToModule
--- src in g-eq` would reduce the goal's `⟦ src ⟧` while the per-stage
--- postulate's `⟦ src ⟧` stays unreduced → `UnequalTerms`. Keeping
--- `⟦_⟧` opaque means both sides see the same term. (It still reduces
--- *inside* this module, e.g. for the Layer-0 evaluation check.)
-abstract
-  ⟦_⟧ : Source → Behavior
-  ⟦ src ⟧ with sourceToIR src
-  ... | just ir = λ n → proj₁ (obs n ir tt)
-  ... | nothing = λ _ → []
+-- Plan 0.45 Phase 1 — re-anchor the source meaning at the SOURCE level.
+--
+-- WAS: `⟦ src ⟧ = obs (elaborate src)` (the IR pivot) — the spec moved with
+-- the elaborator, so the typechecker could elaborate to the wrong IR and
+-- `correct` still held. The typechecker was NOT load-bearing.
+--
+-- NOW: `⟦ src ⟧ = sourceTrace src`, where `sourceTrace` is a SOURCE-LEVEL
+-- SigOp-trace reference computed INDEPENDENTLY of the elaborator. The full
+-- `compile` (typechecker included) must then be proven to preserve it
+-- (`elaborate-preserves-trace`, inside `Compile.module-to-asm-correct`) — so
+-- the typechecker becomes load-bearing.
+--
+-- `sourceTrace` is DECLARED here and DEFINED in Part A (Plan 0.45 Phase 2).
+-- Leaving it undefined deliberately breaks the build: the honest spec, with
+-- the gap explicit (definition-first, as in Plan 0.44).
+sourceTrace : Source → Behavior
+
+⟦_⟧ : Source → Behavior
+⟦ src ⟧ = sourceTrace src
