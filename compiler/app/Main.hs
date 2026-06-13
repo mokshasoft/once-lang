@@ -66,7 +66,7 @@ data BuildConfig = BuildConfig
 defaultBuildConfig :: BuildConfig
 defaultBuildConfig = BuildConfig
   { bcOutput    = Nothing
-  , bcMode      = Library
+  , bcMode      = Infer  -- program iff the module defines `main`, else library
   , bcTarget    = TargetC
   , bcSaveTemps = False
   , bcOptimize  = True
@@ -147,8 +147,9 @@ usage = do
   TIO.putStrLn ""
   TIO.putStrLn "Build options:"
   TIO.putStrLn "  -o OUTPUT           Output base name (default: input file name)"
-  TIO.putStrLn "  --lib               Generate library [default]"
-  TIO.putStrLn "  --exe               Generate standalone executable"
+  TIO.putStrLn "  (default)           Infer: executable if the module defines `main`, else library"
+  TIO.putStrLn "  --lib               Force library output (no entry point)"
+  TIO.putStrLn "  --exe               Force standalone executable (requires a `main`)"
   TIO.putStrLn "  --target ARCH       Target architecture (c|x86_64|x86_32|arm64|riscv64) [default: c]"
   TIO.putStrLn "  --save-temps        Keep intermediate files (.s, .o)"
   TIO.putStrLn "  --no-optimize       Skip optimizer"

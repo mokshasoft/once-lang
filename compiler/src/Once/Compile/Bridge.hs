@@ -32,6 +32,7 @@ module Once.Compile.Bridge
     -- * AST-level pipeline
   , parseSource
   , moduleImports
+  , moduleHasMain
   , resolveImports
   , compileFromModule
   ) where
@@ -179,6 +180,15 @@ moduleImports (Module m) =
               (fmap agdaToText (MMC.d_alias_28 i))
   | MMC.C_DImport_42 i <- MMC.d_decls_48 m
   ]
+
+-- | Does the module define a top-level `main`? This — not a CLI flag — is what
+-- distinguishes a PROGRAM (has `main`, gets an entry point via `maybeWrapMain`)
+-- from a LIBRARY (no `main`). Mirrors `moduleImports`' decl inspection.
+moduleHasMain :: Module -> Bool
+moduleHasMain (Module m) = any isMain (MMC.d_decls_48 m)
+  where
+    isMain (MMC.C_DFunDef_36 name _ _) = agdaToText name == T.pack "main"
+    isMain _                           = False
 
 -- | Flatten imports: for each `DImport path (just alias)` in the
 -- user's module, substitute the primitives of the imported module

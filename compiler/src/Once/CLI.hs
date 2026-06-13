@@ -63,10 +63,14 @@ data StageOptions = StageOptions
   , stageOutput :: Maybe FilePath
   } deriving (Eq, Show)
 
--- | Output mode for build command
+-- | Output mode for build command.
+-- The DEFAULT is `Infer`: program-vs-library is determined by whether the
+-- module defines `main` (the anchor), not by a flag. `--lib`/`--exe` are
+-- explicit overrides (with `--exe` asserting a `main` exists).
 data OutputMode
-  = Library     -- ^ Generate assembly library
-  | Executable  -- ^ Generate standalone executable with main()
+  = Library     -- ^ Generate assembly library (no entry point)
+  | Executable  -- ^ Generate standalone executable (requires a `main`)
+  | Infer       -- ^ Default: Executable iff the module defines `main`, else Library
   deriving (Eq, Show)
 
 -- | Target architecture
@@ -343,7 +347,16 @@ runVerifiedBuild opts outputBase arch mod_ strataDir importPaths =
       -- Write assembly file
       TIO.writeFile asmPath asmText
 
-      case buildMode opts of
+      let hasMain = Bridge.moduleHasMain mod_
+      effMode <- case buildMode opts of
+        Infer   -> pure (if hasMain then Executable else Library)
+        Library -> pure Library
+        Executable
+          | hasMain   -> pure Executable
+          | otherwise -> do
+              TIO.putStrLn "Error: --exe requires a `main` function, but this module defines none (it is a library). Use --lib, or omit the flag to infer the mode."
+              exitFailure
+      case effMode of
         Library -> do
           TIO.putStrLn $ "Generated: " <> T.pack asmPath
           exitSuccess
@@ -383,6 +396,9 @@ runVerifiedBuild opts outputBase arch mod_ strataDir importPaths =
                           mapM_ removeFile implObjs
                           TIO.putStrLn $ "Generated: " <> T.pack exePath
                       exitSuccess
+
+        -- unreachable: `Infer` is resolved to Library/Executable above
+        Infer -> exitFailure
 
     Error err -> do
       TIO.putStrLn $ "Compilation error: " <> err
