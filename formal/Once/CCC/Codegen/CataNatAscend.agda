@@ -26,11 +26,13 @@ module Once.CCC.Codegen.CataNatAscend where
 open import Data.Nat using (ℕ; suc)
 open import Data.Bool using (false)
 open import Data.Maybe using (just)
+open import Data.Product using (Σ-syntax; _,_)
 open import Relation.Binary.PropositionalEquality using (_≡_; trans; cong)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore
   using (halted; regs; readReg; Scratch; AbstractTrace;
+         mov-to-input; instr-reg-op; scratch-dec;
          instr-ctrl; c-label; c-jmp; c-branch-scratch-zero)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
@@ -68,3 +70,32 @@ module CataNatAscend {FS : FrameSemantics} where
   ascend-post-flat prog fs la-top q-latop hf fJ top-res =
     flat-step1 hf fJ (trans (flat-jmp prog fs la-top)
                             (cong (λ m → do-jump m fs) top-res))
+
+  -- The ascend iteration's BODY runs as one FlatSteps chain:
+  --   mov-to-input ∷ build-layer 1 (10) ∷ mov-to-input ∷ at (N) ∷ scratch-dec
+  -- The build-layer run (`bl-steps` + its completion `bl-halted`) and the
+  -- algebra run (`at-chain`, ending non-halted at the scratch-dec position,
+  -- since spliced `at` flows on rather than halting) are taken as decoupled
+  -- hypotheses — the caller supplies them via `build-layer-runs` and
+  -- `at-relocated-emits`. The two movs (set Input1 := the accumulator, then
+  -- Input1 := the freshly-built layer node) and scratch-dec are straight
+  -- non-halting steps; `halted` threads from `fs` through `bl-halted` and
+  -- `at-end-nh`. `blf` is the build-layer result state; `S12` the post-2nd-
+  -- mov state at which `at` starts.
+  ascend-body-steps : ∀ (prog : AbstractTrace) (fs blf : FlatState) {N : ℕ} {at-end : FlatState}
+    → halted (floc fs) ≡ false
+    → fetch prog (fpc fs) ≡ just mov-to-input
+    → FlatSteps prog 10 (flat-exec-instr mov-to-input prog fs) blf
+    → halted (floc blf) ≡ false
+    → fetch prog (fpc blf) ≡ just mov-to-input
+    → FlatSteps prog N (flat-exec-instr mov-to-input prog blf) at-end
+    → halted (floc at-end) ≡ false
+    → fetch prog (fpc at-end) ≡ just (instr-reg-op scratch-dec)
+    → Σ[ n ∈ ℕ ] Σ[ final ∈ FlatState ] FlatSteps prog n fs final
+  ascend-body-steps prog fs blf hf mov1 bl-steps bl-halted mov2 at-chain at-end-nh scrd =
+    _ , _ ,
+    FlatSteps-++ ((hf , mov1) ∷ [])
+      (FlatSteps-++ bl-steps
+        (FlatSteps-++ ((bl-halted , mov2) ∷ [])
+          (FlatSteps-++ at-chain
+            ((at-end-nh , scrd) ∷ []))))
