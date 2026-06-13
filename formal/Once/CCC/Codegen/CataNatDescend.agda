@@ -19,11 +19,12 @@
 
 module Once.CCC.Codegen.CataNatDescend where
 
-open import Data.Nat using (ℕ; suc; _+_; _*_)
+open import Data.Nat using (ℕ; zero; suc; _+_; _*_)
 open import Data.Bool using (false; true)
 open import Data.Maybe using (just)
 open import Data.Product using (_,_; proj₁)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; cong)
+open import Data.List using (List; []; _∷_; _++_)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore
@@ -36,12 +37,14 @@ open import Once.CCC.Machine.SMCore
          module AbstractExec; module MemOps)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
+open import Once.Verified.FlatEvents using (module FlatEventTrace)
 
 module CataNatDescend {FS : FrameSemantics} where
   open FlatMachine {FS}
   open AbstractExec {FS} using (exec-abstract)
   open MemOps {FS} using (readLoc)
   open FlatStepsAPI {FS}
+  open FlatEventTrace {FS}
 
   -- `load-indirect-suc` preserves `halted` when Input1 is a pointer
   -- (`loc`) AND the child cell `*(loc+1)` exists (`v`). Stated over a
@@ -387,3 +390,178 @@ module CataNatDescend {FS : FrameSemantics} where
                     → FlatSteps prog (n * 9 + 9) (st 0) final
   descend-loop-runs prog n st final iters base =
     FlatSteps-++ (chain-steps 9 n st iters) base
+
+  ----------------------------------------------------------------------
+  -- The DESCEND phase emits NO SigOp events (trace-side `traces-agree`).
+  --
+  -- Every descend instruction (labels, branches, `input2-inc`, `load-
+  -- indirect-suc`, `mov-to-input`, jumps, `scratch-zero`) is non-`instr-
+  -- sigop`, so `event-of … ≡ []` DEFINITIONALLY. We prove silence per-
+  -- CHAIN (not via `flat-events-[]`): the surrounding `prog` also holds
+  -- the algebra `at`, which DOES emit in the ascend phase, so `prog` is
+  -- not globally silent. Mirrors `CataNatAscend`'s `ascend-pre-silent`
+  -- idiom: `step1-silent` (one non-sigop step) + `++-silent` (compose).
+  ----------------------------------------------------------------------
+
+  -- A single non-`instr-sigop` step contributes nothing to the trace.
+  step1-silent : ∀ {prog fs fs'} {i} (h : halted (floc fs) ≡ false)
+                   (f : fetch prog (fpc fs) ≡ just i) (eq : flat-exec-instr i prog fs ≡ fs')
+               → event-of i fs ≡ [] → chain-events (flat-step1 h f eq) ≡ []
+  step1-silent {fs = fs} {i = i} h f eq ev =
+    trans (chain-events-subst eq ((h , f) ∷ [])) (cong (_++ []) ev)
+
+  -- The concatenation of two silent chains is silent.
+  ++-silent : ∀ {prog k₁ k₂ fs₁ fs₂ fs₃}
+                (xs : FlatSteps prog k₁ fs₁ fs₂) (ys : FlatSteps prog k₂ fs₂ fs₃)
+            → chain-events xs ≡ [] → chain-events ys ≡ []
+            → chain-events (FlatSteps-++ xs ys) ≡ []
+  ++-silent xs ys px py =
+    trans (chain-events-++ xs ys) (trans (cong (_++ chain-events ys) px) py)
+
+  -- The descend body's three straight steps (`input2-inc`, `load-
+  -- indirect-suc`, `mov-to-input`) all emit `[]` — `chain-events` of the
+  -- raw cons-list reduces directly (no `subst` to step over).
+  descend-body-silent : ∀ (prog : AbstractTrace) (fs : FlatState)
+                          (loc : ValueLocation FS) (v : StoredValue FS)
+    → (hf : halted (floc fs) ≡ false)
+    → (ptr : sv-as-loc (readReg (regs (floc fs)) Input1) ≡ just loc)
+    → (child : readLoc (floc fs) (sucLoc loc) ≡ just v)
+    → (f0 : fetch prog (fpc fs)             ≡ just (instr-reg-op input2-inc))
+    → (f1 : fetch prog (suc (fpc fs))       ≡ just load-indirect-suc)
+    → (f2 : fetch prog (suc (suc (fpc fs))) ≡ just mov-to-input)
+    → chain-events (descend-body-flat prog fs loc v hf ptr child f0 f1 f2) ≡ []
+  descend-body-silent prog fs loc v hf ptr child f0 f1 f2 = refl
+
+  -- The descend PRE-control (label + two not-taken branches) is silent.
+  descend-pre-silent : ∀ (prog : AbstractTrace) (fs : FlatState) (ld-top ld-end ld-base : ℕ)
+    → (hf : halted (floc fs) ≡ false)
+    → (scond : sv-is-zero (readReg (regs (floc fs)) Scratch) ≡ false)
+    → (tcond : tag-zf (flat-read-tag (floc fs)) ≡ false)
+    → (fL  : fetch prog (fpc fs)             ≡ just (instr-ctrl (c-label ld-top)))
+    → (fB1 : fetch prog (suc (fpc fs))       ≡ just (instr-ctrl (c-branch-scratch-zero ld-end)))
+    → (fB2 : fetch prog (suc (suc (fpc fs))) ≡ just (instr-ctrl (c-branch-tag-zero ld-base)))
+    → chain-events (descend-pre-flat prog fs ld-top ld-end ld-base hf scond tcond fL fB1 fB2) ≡ []
+  descend-pre-silent prog fs ld-top ld-end ld-base hf scond tcond fL fB1 fB2 =
+    trans (chain-events-++ S1 S23)
+      (trans (cong (_++ chain-events S23) (step1-silent {prog = prog} hf fL eqL refl))
+        (trans (chain-events-++ S2 S3)
+          (cong₂ _++_
+            (step1-silent {prog = prog} {fs = record fs { fpc = suc (fpc fs) }} hf fB1 eqB1 refl)
+            (step1-silent {prog = prog} {fs = record fs { fpc = suc (suc (fpc fs)) }} hf fB2 eqB2 refl))))
+    where
+      eqL  = flat-label              prog fs ld-top
+      eqB1 = flat-scratch-branch-not prog (record fs { fpc = suc (fpc fs) }) ld-end scond
+      eqB2 = flat-tag-branch-not     prog (record fs { fpc = suc (suc (fpc fs)) }) ld-base tcond
+      S1  = flat-step1 {prog = prog} hf fL eqL
+      S2  = flat-step1 {prog = prog} hf fB1 eqB1
+      S3  = flat-step1 {prog = prog} hf fB2 eqB2
+      S23 = FlatSteps-++ S2 S3
+
+  -- The descend POST-control (jmp ld-de → label ld-de → jmp ld-top) is silent.
+  descend-post-silent : ∀ (prog : AbstractTrace) (fs : FlatState) (ld-de ld-top q-de q-top : ℕ)
+    → (hf : halted (floc fs) ≡ false)
+    → (fJ1 : fetch prog (fpc fs)        ≡ just (instr-ctrl (c-jmp ld-de)))
+    → (de-res : find-label prog ld-de   ≡ just q-de)
+    → (fL : fetch prog q-de             ≡ just (instr-ctrl (c-label ld-de)))
+    → (fJ2 : fetch prog (suc q-de)      ≡ just (instr-ctrl (c-jmp ld-top)))
+    → (top-res : find-label prog ld-top ≡ just q-top)
+    → chain-events (descend-post-flat prog fs ld-de ld-top q-de q-top hf fJ1 de-res fL fJ2 top-res) ≡ []
+  descend-post-silent prog fs ld-de ld-top q-de q-top hf fJ1 de-res fL fJ2 top-res =
+    trans (chain-events-++ S1 S23)
+      (trans (cong (_++ chain-events S23) (step1-silent {prog = prog} hf fJ1 eq1 refl))
+        (trans (chain-events-++ S2 S3)
+          (cong₂ _++_
+            (step1-silent {prog = prog} {fs = record fs { fpc = q-de }} hf fL eq2 refl)
+            (step1-silent {prog = prog} {fs = record fs { fpc = suc q-de }} hf fJ2 eq3 refl))))
+    where
+      eq1 = trans (flat-jmp prog fs ld-de) (cong (λ m → do-jump m fs) de-res)
+      eq2 = flat-label prog (record fs { fpc = q-de }) ld-de
+      eq3 = trans (flat-jmp prog (record fs { fpc = suc q-de }) ld-top)
+                  (cong (λ m → do-jump m (record fs { fpc = suc q-de })) top-res)
+      S1  = flat-step1 {prog = prog} hf fJ1 eq1
+      S2  = flat-step1 {prog = prog} hf fL eq2
+      S3  = flat-step1 {prog = prog} hf fJ2 eq3
+      S23 = FlatSteps-++ S2 S3
+
+  -- ONE continue descend iteration (pre ++ body ++ post) is silent.
+  descend-iter-silent : ∀ (prog : AbstractTrace) (fs : FlatState)
+                          (ld-top ld-end ld-inl ld-de q-de q-top : ℕ)
+                          (loc : ValueLocation FS) (v : StoredValue FS)
+    → (hf : halted (floc fs) ≡ false)
+    → (scond : sv-is-zero (readReg (regs (floc fs)) Scratch) ≡ false)
+    → (tcond : tag-zf (flat-read-tag (floc fs)) ≡ false)
+    → (ptr : sv-as-loc (readReg (regs (floc fs)) Input1) ≡ just loc)
+    → (child : readLoc (floc fs) (sucLoc loc) ≡ just v)
+    → (fL0 : fetch prog (fpc fs)                               ≡ just (instr-ctrl (c-label ld-top)))
+    → (fB0 : fetch prog (suc (fpc fs))                         ≡ just (instr-ctrl (c-branch-scratch-zero ld-end)))
+    → (fB1 : fetch prog (suc (suc (fpc fs)))                   ≡ just (instr-ctrl (c-branch-tag-zero ld-inl)))
+    → (fi : fetch prog (suc (suc (suc (fpc fs))))             ≡ just (instr-reg-op input2-inc))
+    → (fl : fetch prog (suc (suc (suc (suc (fpc fs)))))       ≡ just load-indirect-suc)
+    → (fm : fetch prog (suc (suc (suc (suc (suc (fpc fs)))))) ≡ just mov-to-input)
+    → (fJ1 : fetch prog (suc (suc (suc (suc (suc (suc (fpc fs))))))) ≡ just (instr-ctrl (c-jmp ld-de)))
+    → (de-res : find-label prog ld-de   ≡ just q-de)
+    → (fLde : fetch prog q-de           ≡ just (instr-ctrl (c-label ld-de)))
+    → (fJ2 : fetch prog (suc q-de)      ≡ just (instr-ctrl (c-jmp ld-top)))
+    → (top-res : find-label prog ld-top ≡ just q-top)
+    → chain-events (descend-iter-flat prog fs ld-top ld-end ld-inl ld-de q-de q-top loc v
+                      hf scond tcond ptr child fL0 fB0 fB1 fi fl fm fJ1 de-res fLde fJ2 top-res) ≡ []
+  descend-iter-silent prog fs ld-top ld-end ld-inl ld-de q-de q-top loc v
+                      hf scond tcond ptr child fL0 fB0 fB1 fi fl fm fJ1 de-res fLde fJ2 top-res =
+    ++-silent PRE (FlatSteps-++ BODY POST)
+      (descend-pre-silent prog fs ld-top ld-end ld-inl hf scond tcond fL0 fB0 fB1)
+      (++-silent BODY POST
+        (descend-body-silent prog fsB loc v hf ptr child fi fl fm)
+        (descend-post-silent prog (body-result prog fsB) ld-de ld-top q-de q-top
+          (trans (body-keeps-halted prog fsB loc v ptr child) hf) fJ1 de-res fLde fJ2 top-res))
+    where
+      fsB : FlatState
+      fsB = record fs { fpc = suc (suc (suc (fpc fs))) }
+      PRE  = descend-pre-flat prog fs ld-top ld-end ld-inl hf scond tcond fL0 fB0 fB1
+      BODY = descend-body-flat prog fsB loc v hf ptr child fi fl fm
+      POST = descend-post-flat prog (body-result prog fsB) ld-de ld-top q-de q-top
+               (trans (body-keeps-halted prog fsB loc v ptr child) hf) fJ1 de-res fLde fJ2 top-res
+
+  -- `zero * k ≡ 0` for the CONSTRUCTOR `zero` (chain-steps's depth-0 length
+  -- index). `*-zeroˡ` only covers the literal `0`, which reduces differently
+  -- under this (2nd-argument-recursive) `_*_`; here we induct on `k` so each
+  -- step reduces (`zero * suc k = zero + zero * k = zero * k`).
+  zero-mul : ∀ (k : ℕ) → zero * k ≡ 0
+  zero-mul zero    = refl
+  zero-mul (suc k) = zero-mul k
+
+  -- `chain-steps` of `n` silent iterations is silent (μ-induction on `n`).
+  -- Length `k` is kept a VARIABLE (not the literal `9`): the depth-0 chain
+  -- has length `zero * k`, and `*-zeroˡ k` reduces that uniformly — whereas
+  -- a literal `zero * 9` stays stuck under this (2nd-argument-recursive)
+  -- `_*_`. The base then retypes the length to `0` (`chain-events-subst-
+  -- len`) so `chain-events-len0` applies.
+  chain-steps-silent : ∀ (prog : AbstractTrace) (k n : ℕ) (st : ℕ → FlatState)
+                         (iters : ∀ d → FlatSteps prog k (st d) (st (suc d)))
+                     → (∀ d → chain-events (iters d) ≡ [])
+                     → chain-events (chain-steps k n st iters) ≡ []
+  chain-steps-silent prog k zero    st iters isil =
+    trans (sym (chain-events-subst-len eq (chain-steps k zero st iters)))
+          (chain-events-len0
+            (subst (λ m → FlatSteps prog m (st 0) (st zero)) eq
+                   (chain-steps k zero st iters)))
+    where
+      eq : zero * k ≡ 0
+      eq = zero-mul k
+  chain-steps-silent prog k (suc m) st iters isil =
+    ++-silent (iters 0) (chain-steps k m (λ d → st (suc d)) (λ d → iters (suc d)))
+      (isil 0)
+      (chain-steps-silent prog k m (λ d → st (suc d)) (λ d → iters (suc d)) (λ d → isil (suc d)))
+
+  -- THE DESCEND PHASE emits no events: `n` silent continue iterations
+  -- (`chain-steps-silent`) ++ the silent base/exit path (hypothesis,
+  -- supplied by the full-cata assembly via `descend-base-flat` silence).
+  descend-loop-silent : ∀ (prog : AbstractTrace) (n : ℕ) (st : ℕ → FlatState) (final : FlatState)
+                          (iters : ∀ d → FlatSteps prog 9 (st d) (st (suc d)))
+                          (base : FlatSteps prog 9 (st n) final)
+                      → (∀ d → chain-events (iters d) ≡ [])
+                      → chain-events base ≡ []
+                      → chain-events (descend-loop-runs prog n st final iters base) ≡ []
+  descend-loop-silent prog n st final iters base isil bsil =
+    ++-silent (chain-steps 9 n st iters) base
+      (chain-steps-silent prog 9 n st iters isil)
+      bsil

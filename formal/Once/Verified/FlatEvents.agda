@@ -130,6 +130,34 @@ module FlatEventTrace {FS : FrameSemantics} where
   chain-events []                            = []
   chain-events (_∷_ {fs = fs} {i = i} _ rest) = event-of i fs ++ chain-events rest
 
+  -- The empty chain emits no events. Trivially `refl` HERE (inside the
+  -- defining module, where `chain-events` reduces); exported so downstream
+  -- callers — under `open FlatEventTrace`, where the recursive `chain-
+  -- events` does not unfold to `refl` — can still close `chain-events [] ≡ []`
+  -- base cases.
+  chain-events-nil : ∀ {prog fs} → chain-events {prog} {0} {fs} {fs} [] ≡ []
+  chain-events-nil = refl
+
+  -- ANY length-0 chain emits no events. Stated over a VARIABLE chain `c`
+  -- (not a reducible application), so the exported type stays neutral —
+  -- `chain-events c ≡ []` — instead of normalising to `[] ≡ []`. Downstream
+  -- it applies to any concrete length-0 chain (e.g. the descend-loop
+  -- μ-induction base `chain-steps k zero st f`, whose length index `zero * k`
+  -- is `0`), closing `chain-events that ≡ []` directly — sidestepping the
+  -- cross-module reduction that `open` blocks. The `∷` constructor has
+  -- length `suc`, so the `[]` clause is the only cover.
+  chain-events-len0 : ∀ {prog fs fs'} (c : FlatSteps prog 0 fs fs') → chain-events c ≡ []
+  chain-events-len0 [] = refl
+
+  -- `chain-events` is invariant under transport of the LENGTH index (it
+  -- pattern-matches the chain's structure, never reading its length).
+  -- Lets a depth-0 chain whose length is a stuck application (e.g. `zero *
+  -- k` from `chain-steps`'s `n * k` return index) be retyped to literal `0`
+  -- so `chain-events-len0` applies, then bridged back.
+  chain-events-subst-len : ∀ {prog n m fs fs'} (eq : n ≡ m) (c : FlatSteps prog n fs fs')
+                         → chain-events (subst (λ k → FlatSteps prog k fs fs') eq c) ≡ chain-events c
+  chain-events-subst-len refl c = refl
+
   flat-events-steps : ∀ {prog k fs fs'} (steps : FlatSteps prog k fs fs')
                     → ∀ b → flat-events (k + b) prog fs
                               ≡ chain-events steps ++ flat-events b prog fs'
