@@ -94,6 +94,8 @@ open PolyFunInfo
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Elaborate using (ctxWithImportsAndSelf; ctxWithImportsAndSelfAndPolys; PolyCtx; emptyPolyCtx; checkElab; resolveExpr)
 open import Once.TypeCheck.Elaborate as TE using (CheckElabResult)
+-- D007 inference: the self-less context for inferring a sig-less def's type.
+open import Once.TypeCheck.Classify using (ctxWithImportsAndPolys)
 
 -- Surface → IR elaboration
 open import Once.Surface.Elaborate using (elaborate)
@@ -207,7 +209,9 @@ open CompiledFun
 -- | Build context from list of FunInfo (for previously processed functions)
 buildFunCtx : List FunInfo → FunCtx
 buildFunCtx [] = emptyFunCtx
-buildFunCtx (fi ∷ rest) = extendFunCtx (buildFunCtx rest) (funName fi) (funType fi)
+buildFunCtx (fi ∷ rest) with funType fi
+... | just ty = extendFunCtx (buildFunCtx rest) (funName fi) ty
+... | nothing = buildFunCtx rest
 
 -- | Build a `PolyCtx` from the list of `PolyFunInfo`s extracted
 -- from a module. Plan 0.6.2.
@@ -215,6 +219,20 @@ buildPolyCtx : List PolyFunInfo → PolyCtx
 buildPolyCtx [] = emptyPolyCtx
 buildPolyCtx (pfi ∷ rest) =
   (pfunName pfi , pfunType pfi , pfunBody pfi) ∷ buildPolyCtx rest
+
+-- | D007 type inference: a definition without an explicit signature has its
+-- type fully determined by the composition of its body (no specialization,
+-- no ambiguity — D007). Inferred in a SELF-LESS context (Once has no
+-- recursion). `inferElab`'s `success` carries the inferred type `A`.
+inferType : FunCtx → PolyCtx → RawExpr → String ⊎ Type
+inferType ctx polys body with TE.inferElab (ctxWithImportsAndPolys ctx polys) body
+... | TE.success A _ _ _ _ = inj₂ A
+... | TE.failure err       = inj₁ ("Cannot infer type: " ++ TE.renderError err)
+
+-- | The explicit signature if given, otherwise the inferred type (D007).
+resolveFunType : FunCtx → PolyCtx → Maybe Type → RawExpr → String ⊎ Type
+resolveFunType ctx polys (just ty) body = inj₂ ty
+resolveFunType ctx polys nothing   body = inferType ctx polys body
 
 -- | Compile all functions from parsed module, accumulating context
 -- Each function is compiled with access to all previously defined
@@ -225,19 +243,23 @@ compileAllFuns m doOpt funs polys = go funs emptyFunCtx
   where
     go : List FunInfo → FunCtx → String ⊎ List CompiledFun
     go [] _ = inj₂ []
-    go (fi ∷ rest) ctx with compileFun m doOpt ctx polys (funName fi) (funType fi) (funBody fi)
+    -- D007: resolve the function's type FIRST (explicit sig, or inferred from
+    -- the body), then compile / extend the context / wrap-main with it.
+    go (fi ∷ rest) ctx with resolveFunType ctx polys (funType fi) (funBody fi)
     ... | inj₁ err = inj₁ err
-    ... | inj₂ ir with go rest (extendFunCtx ctx (funName fi) (funType fi))
+    ... | inj₂ ty with compileFun m doOpt ctx polys (funName fi) ty (funBody fi)
     ...   | inj₁ err = inj₁ err
-    ...   | inj₂ compiled =
-              -- Plan 0.2.4.5 D1: for main, wrap as `apply ∘ ⟨ main , terminal ⟩`
-              -- so codegen produces a Unit→Unit entry point that does the
-              -- closure invocation via the verified apply IR. _start no longer
-              -- needs hand-written closure-call ABI (which drifted at Stage C).
-              let wrapped = maybeWrapMain (funName fi) (funType fi) ir
-                  ty'     = proj₁ wrapped
-                  ir'     = proj₂ wrapped
-              in inj₂ (mkCompiledFun (funName fi) ty' ir' (funIsPrimitive fi) ∷ compiled)
+    ...   | inj₂ ir with go rest (extendFunCtx ctx (funName fi) ty)
+    ...     | inj₁ err = inj₁ err
+    ...     | inj₂ compiled =
+                -- Plan 0.2.4.5 D1: for main, wrap as `apply ∘ ⟨ main , terminal ⟩`
+                -- so codegen produces a Unit→Unit entry point that does the
+                -- closure invocation via the verified apply IR. _start no longer
+                -- needs hand-written closure-call ABI (which drifted at Stage C).
+                let wrapped = maybeWrapMain (funName fi) ty ir
+                    ty'     = proj₁ wrapped
+                    ir'     = proj₂ wrapped
+                in inj₂ (mkCompiledFun (funName fi) ty' ir' (funIsPrimitive fi) ∷ compiled)
 
 -- | Compile source text to list of compiled functions
 -- Returns: Left error | Right list of (name, type, IR)
@@ -420,7 +442,9 @@ data CompileResult : Set where
 
 -- | Show a FunInfo as "name : type"
 showFunInfo : FunInfo → String
-showFunInfo fi = funName fi ++ " : " ++ showType (funType fi)
+showFunInfo fi with funType fi
+... | just ty = funName fi ++ " : " ++ showType ty
+... | nothing = funName fi ++ " : <inferred>"
 
 -- | Show a PolyFunInfo as "name : polytype"
 showPolyFunInfo : PolyFunInfo → String
