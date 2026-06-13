@@ -40,7 +40,7 @@ open import Relation.Binary.PropositionalEquality
   using (_≡_; refl; sym; trans; cong)
 
 open import Once.Verified.Behavior using (Source; Behavior)
-open import Once.Verified.SourceTrace using (⟦_⟧)
+open import Once.Verified.SourceTrace using (⟦_⟧; ⟦⟧-via-module)
 -- D054 wired-not-imported: import only the portable INTERFACE (no
 -- postulates). The per-arch CPU semantics are *injected* via the
 -- `WithCPU` parameter below, never imported here — so this module
@@ -120,16 +120,6 @@ postulate
   -- `Program` semantics through `programToText`.
   ⟦_⟧A_ : Arch → String → Behavior
 
-  -- Stage 1 correctness — GModule → Module preserves observable
-  -- behavior. Discharge: structural conversion is observably trivial.
-  -- Pointwise in the observation depth `n` (Plan 0.44): the traces agree
-  -- up to every prefix length. Avoids funext; matches the `ℕ`-indexed
-  -- `obs`/`flat-events` the discharge will provide.
-  gmoduleToModule-correct :
-    ∀ (src : Source) (m : P.Module) →
-    gmoduleToModule src ≡ just m →
-    ∀ (n : ℕ) → ⟦ m ⟧M n ≡ ⟦ src ⟧ n
-
   -- Stage 2 correctness — Module → asm preserves observable behavior.
   --
   -- This is THE LOAD-BEARING postulate. Discharge composes:
@@ -146,6 +136,16 @@ postulate
     ∀ (arch : Arch) (m : P.Module) (asm : String) →
     C.compileFromModule C.Heap C.Build false (toLegacyArch arch) m ≡ C.Built asm →
     ∀ (n : ℕ) → (⟦ arch ⟧A asm) n ≡ ⟦ m ⟧M n
+
+-- Stage 1 correctness — DISCHARGED (Plan 0.45 Part B), no longer a
+-- postulate. `⟦ m ⟧M = runTrace m` definitionally, and `⟦⟧-via-module`
+-- reduces `⟦ src ⟧` to `runTrace m` given the parse (J-style dispatch in
+-- `SourceTrace`, no `with`-opacity). The two meanings coincide.
+gmoduleToModule-correct :
+  ∀ (src : Source) (m : P.Module) →
+  gmoduleToModule src ≡ just m →
+  ∀ (n : ℕ) → ⟦ m ⟧M n ≡ ⟦ src ⟧ n
+gmoduleToModule-correct src m eq n = sym (⟦⟧-via-module src m eq n)
 
 ------------------------------------------------------------------------
 -- CPU semantics injected here (D054 wired-not-imported).
