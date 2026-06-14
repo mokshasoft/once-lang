@@ -4097,16 +4097,22 @@ Non-negotiables:
 - **INDEX = effectful-EVENT count.** `n` counts effectful SigOps emitted. It is
   **never** execution steps.
 - **CONTENT = effectful SigOps only.** Pure SigOps contribute `[]`.
-- **The trace IS co-data; `∀ n`/`take n` is how we OBSERVE it.** The effectful-
-  event trace of a total+productive program is a stream (per OCP-0003: `ana` →
-  *"Stream of events"*; productivity = guarded corecursion). `Behavior n = take n`
-  of that stream; "same trace" = `∀ n, take n` agree (the inductive observation
-  of stream bisimilarity). **Nothing is assumed finite.** *(CORRECTED 2026-06-14:
-  an earlier draft of this line said "no co-data is required" — that was wrong and
-  was the productivity-avoidance creeping back: denying the trace its co-structure
-  is exactly what forces a step-fuel/"enough-fuel"/monotonicity reconstruction.
-  The trace is co-data, defined structurally by `cata` (finite prefix) + `ana`
-  (productive tail) — NO step-fuel, NO enough-fuel plumbing.)*
+- **The trace is a finite-prefix FAMILY indexed by events — NOT co-data.** A
+  possibly-infinite effectful trace is represented as `Behavior = ℕ → List
+  SigOpEvent`, where `Behavior n` = the first `n` effectful events. "Same trace" =
+  `∀ n, Behavior n` agree — the inductive form of trace-equality (≡ Colist
+  bisimilarity *as observed through its finite prefixes*). **Nothing is assumed
+  finite.** *Why not an actual `Colist`/stream:* sequencing effects in a
+  coinductive trace needs a **productive monadic bind**, which is not definable
+  under plain `--guardedness` and would force `--sized-types` (rejected — has
+  bitten this project; Plan 0.24/0.44). The finite-prefix family avoids co-data,
+  bind, and funext entirely. *(CORRECTION TRAIL, 2026-06-14: an even-earlier draft
+  said "no co-data required"; I then over-corrected to "the trace IS co-data" —
+  **both framings were noise.** The settled position: no co-data (bind problem,
+  Plan 0.24), finite-prefix family, and the index counts EVENTS not steps. What
+  the original "no co-data" draft got wrong was only the steps-vs-events index —
+  NOT the absence of co-data. OCP-0003's `ana` "Stream of events" is the
+  *intuition*; the formal observable is its event-indexed prefix family.)*
 - **NO completion / NO "run halts".** `Behavior n` is well-defined because the
   system is **productive**: the first `n` effectful events fire after finitely
   much work. A terminating program's trace stabilises (`take n` of `k<n` events =
