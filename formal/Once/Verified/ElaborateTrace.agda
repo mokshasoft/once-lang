@@ -25,14 +25,15 @@
 
 module Once.Verified.ElaborateTrace where
 
-open import Data.Nat using (ℕ; zero; suc; _≤_; z≤n; s≤s)
-open import Data.List using (List; []; _∷_; take)
+open import Data.Nat using (ℕ; zero; suc; _≤_; z≤n; s≤s; _⊔_)
+open import Data.Nat.Properties using (m≤m⊔n; n≤m⊔n; ≤-trans)
+open import Data.List using (List; []; _∷_; _++_; take)
 open import Data.Maybe using (just; nothing)
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃-syntax)
 open import Data.Sum using (inj₁; inj₂)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong₂)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
 open import Data.List.Properties using (∷-injective)
 open import Data.Integer using () renaming (∣_∣ to absℤ)
 open import Data.String using (String)
@@ -40,9 +41,9 @@ open import Data.String using (String)
 open import Once.Type
   using (Type; Unit; Void; _*_; _+_; _⇒[_]_; μ-type; ν-type;
          Int; Float; Str; Buffer)
-open import Once.CCC.IR using (terminal)
+open import Once.CCC.IR using (IR; terminal; ⟨_,_⟩; AllocMode)
 open import Once.Surface.Elaborate using (intLit; strLit)
-open import Once.TypeCheck.Raw using (RUnit; RInt; RStringLit)
+open import Once.TypeCheck.Raw using (RawExpr; RUnit; RInt; RStringLit; RPair)
 open import Once.Verified.SourceSemantics
   using (Value; Vpair; Vinl; Vinr; Vint; Vstr;
          apply; eval; Env; Result; Defs; runTraceEval)
@@ -169,3 +170,28 @@ module _ (defs : Defs) where
   cs-str : ∀ {Γ} (s : _) (dγ : ⟦ Γ ⟧ᴰ) (ρ : Env)
          → CompSim Str (evalᴰ (strLit s {Γ}) dγ) (λ z → eval z defs ρ (RStringLit s))
   cs-str s dγ ρ = suc zero , λ { (suc s') _ → refl , tt }
+
+  -- STRUCTURAL composition: `pair`. `elaborate (pair a b) = ⟨ a' , b' ⟩`,
+  -- `SS.eval (RPair ea eb) = eval ea >>=ᵣ λ va → eval eb >>=ᵣ λ vb → just (Vpair…)`.
+  -- Given CompSim for both sub-computations, the pair's CompSim holds: threshold
+  -- `suc (sa ⊔ sb)` (the `suc` for `RPair`'s fuel-decrement); at `suc k` the
+  -- sub-evals run at `k ≥ sa,sb` (via `≤-trans`/`m≤m⊔n`), each `just` (from
+  -- ResultRel ≢ ⊥), the full sub-traces concatenate (`cong₂ _++_`), and the value
+  -- is `(Vpair … ) ~⟨ B * C ⟩ (dfa , dgb)` from the two sub value-sims.
+  cs-pair : ∀ {Γ B C} (a' : IR Γ B) (b' : IR Γ C) (m : AllocMode)
+            (x : ⟦ Γ ⟧ᴰ) (ρ : Env) (ea eb : RawExpr)
+          → CompSim B (evalᴰ a' x) (λ s → eval s defs ρ ea)
+          → CompSim C (evalᴰ b' x) (λ s → eval s defs ρ eb)
+          → CompSim (B * C) (evalᴰ (⟨ a' , b' ⟩ m) x) (λ s → eval s defs ρ (RPair ea eb))
+  cs-pair {Γ} {B} {C} a' b' m x ρ ea eb (sa , pa) (sb , pb) = suc (sa ⊔ sb) , go
+    where
+    go : ∀ s' → suc (sa ⊔ sb) ≤ s' →
+         (proj₁ (evalᴰ (⟨ a' , b' ⟩ m) x 0) ≡ runTraceEval (eval s' defs ρ (RPair ea eb)))
+         × ResultRel (B * C) (eval s' defs ρ (RPair ea eb)) (valueT (evalᴰ (⟨ a' , b' ⟩ m) x) 0)
+    go (suc k) (s≤s le)
+       with eval k defs ρ ea | pa k (≤-trans (m≤m⊔n sa sb) le)
+          | eval k defs ρ eb | pb k (≤-trans (n≤m⊔n sa sb) le)
+    ... | just (va , ea-evs) | (tr-a , rr-a) | just (vb , eb-evs) | (tr-b , rr-b) =
+          cong₂ _++_ tr-a (cong₂ _++_ tr-b refl) , rr-a , rr-b
+    ... | nothing            | (_ , ())      | _                 | _
+    ... | just _             | _             | nothing           | (_ , ())
