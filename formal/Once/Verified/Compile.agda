@@ -60,7 +60,6 @@ import Once.Parser.Module.Core as P
 -- Stage 1 adapter, now a real structural conversion (discharges the
 -- former `gmoduleToModule` postulate).
 open import Once.Grammar.ModuleConvert using (gmoduleToModule)
-open import Once.Verified.SourceSemantics using (runTrace)
 
 -- `Arch` (here, via `Once.Verified.CPU.Interface`) and `C.Arch` (via
 -- `Once.Compile`) are now the SAME type — both re-export `Once.Target.Arch`
@@ -105,10 +104,11 @@ compile-cli-asm allocMode stage doOpt arch m =
 -- new trusted-base axioms, they are spec-level connectors).
 ------------------------------------------------------------------------
 
--- Module-level behavior: the SOURCE semantics of the parsed module
--- (Plan 0.45 Part B) — `runTrace`, the module's SigOp trace, NOT an opaque
--- postulate. So `module-to-asm-correct`'s obligation is now "the compiled
--- trace equals the SOURCE trace," and the typechecker is load-bearing.
+-- Module-level behavior: the DENOTATIONAL meaning of the parsed module
+-- (D059) — `⟦ moduleToIR m ⟧IR` (= `evalᴰ`), the observation-depth SigOp trace.
+-- So `module-to-asm-correct`'s obligation is "the compiled trace equals the
+-- denotational source meaning"; the independent `SS.eval` cross-check
+-- (`elaborate-faithful`) is the separate, required conjunct of `compiler-correct`.
 ⟦_⟧M : P.Module → Behavior
 ⟦ m ⟧M = ⟦ moduleToIR m ⟧IR
 
@@ -151,21 +151,13 @@ record ArchCorrect (arch : Arch) (as : ArchSemantics) : Set where
     ir-flat-correct :
       ∀ (mir : Maybe (IR Unit Unit)) (n : ℕ) → flat-trace mir n ≡ ⟦ mir ⟧IR n
 
-postulate
-  -- The LIBRARY case (D008: code without a `main` is a library, not a
-  -- program). A `Built asm` means `compileResolvedModule` succeeded; if it has
-  -- no `main` (`moduleToIR m ≡ nothing`) then there is no `main` DFunDef, so the
-  -- source reference produces the empty trace too — a library run as a program
-  -- does nothing. (The compile-FAIL cause of `nothing` is excluded by `Built`.)
-  -- The `just ir` case is the PROGRAM case (factor 1 proper).
-  no-main-empty :
-    ∀ (arch : Arch) (m : P.Module) (asm : String) (n : ℕ) →
-    C.compileFromModule C.Heap C.Build false arch m ≡ C.Built asm →
-    moduleToIR m ≡ nothing →
-    runTrace m n ≡ []
+-- (The former `no-main-empty` library-case postulate is gone: with
+-- `⟦_⟧M = ⟦ moduleToIR m ⟧IR`, the library case `moduleToIR m ≡ nothing` is
+-- handled definitionally by `⟦ nothing ⟧IR = []` inside `codegen-asm-correct`,
+-- so no separate axiom is needed.)
 
--- FACTOR 2 (`codegen-asm-correct`) and Stage 2 (`module-to-asm-correct`) +
--- its `mta-aux` helper now live INSIDE `WithCPU` (below), where the per-arch
+-- FACTOR 2 (`codegen-asm-correct`) and Stage 2 (`module-to-asm-correct`) now
+-- live INSIDE `WithCPU` (below), where the per-arch
 -- `arch-correct : ∀ arch → ArchCorrect …` witness is in scope — they consume
 -- its `asm-trace-faithful`/`ir-flat-correct` fields. (Moved here from the
 -- top level so each arch's obligations are type-enforced via `ArchCorrect`.)
