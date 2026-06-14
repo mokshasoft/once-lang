@@ -27,14 +27,14 @@ module Once.Verified.SourceTrace where
 
 open import Data.Bool using (Bool; false; true)
 open import Data.Nat using (ℕ)
-open import Data.List using (List; []; _∷_)
+open import Data.List using (List; []; _∷_; take)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (proj₁; ∃; ∃-syntax; _,_; _×_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (tt)
 open import Data.String using (String) renaming (_≟_ to _≟str_)
 open import Relation.Nullary using (yes; no; Dec)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Data.List.Relation.Unary.Any using (Any; here; there)
 
@@ -183,24 +183,31 @@ postulate
   -- `main` body. THE load-bearing obligation — the `⟦elaborate(checkElab …)⟧ᴰ ≈
   -- SS.eval` induction over the elaborate pipeline; a meaning-changing
   -- elaborator bug breaks this proof, keeping the elaborator load-bearing.
+  -- FORM (1) — existential productivity (D059 cross-meter). For every
+  -- event-prefix length `k`, `evalᴰ` at observation depth `k` and `SS.eval` at
+  -- SOME step-fuel `s` agree on the first `k` effectful events. `∃ s` is the
+  -- productivity witness for `SS.eval`'s step meter (rooted in untyped-λ `apply`);
+  -- the observable is the event prefix; neither meter is the index. Same idiom
+  -- as the machine's `traces-agree`.
   compiled-main-trace :
     ∀ (m : P.Module) (ir : IR Unit Unit) → moduleToIR m ≡ just ir
     → ∀ (body : RawExpr)
     → SS.lookupDef (SS.extractDefs (P.Module.decls m)) "main" ≡ just body
-    → ∀ (n : ℕ)
-    → projTrace (evalᴰ ir tt) n
-        ≡ SS.runTraceEval (SS.eval n (SS.extractDefs (P.Module.decls m)) [] body)
+    → ∀ (k : ℕ)
+    → ∃[ s ] take k (projTrace (evalᴰ ir tt) k)
+               ≡ take k (SS.runTraceEval (SS.eval s (SS.extractDefs (P.Module.decls m)) [] body))
 
--- Factor 1, now a THEOREM: compose the main-finding alignment, the obs↔eval
--- core, and the proven `runTrace-main` reduction. The monolithic frontend
--- postulate is gone; the remaining work is the two named obligations above.
+-- Factor 1 (`elaborate-faithful`), a REQUIRED CONJUNCT of the grand theorem
+-- (D059): the elaborated IR's denotational trace agrees, event-prefix-wise, with
+-- the independent `SS.eval` reference. Composes the main-finding alignment, the
+-- `#10` core, and the proven `runTrace-main` reduction (threaded at the
+-- productivity witness `s`).
 elaborate-preserves-trace :
-  ∀ (m : P.Module) (ir : IR Unit Unit) (n : ℕ)
-  → moduleToIR m ≡ just ir
-  → projTrace (evalᴰ ir tt) n ≡ SS.runTrace m n
-elaborate-preserves-trace m ir n mj with main-exists-align m ir mj
-... | (body , lk) =
-  trans (compiled-main-trace m ir mj body lk n) (sym (SS.runTrace-main m n body lk))
+  ∀ (m : P.Module) (ir : IR Unit Unit) → moduleToIR m ≡ just ir
+  → ∀ (k : ℕ) → ∃[ s ] take k (projTrace (evalᴰ ir tt) k) ≡ take k (SS.runTrace m s)
+elaborate-preserves-trace m ir mj k with main-exists-align m ir mj
+... | (body , lk) with compiled-main-trace m ir mj body lk k
+...   | (s , eq) = (s , trans eq (sym (cong (take k) (SS.runTrace-main m s body lk))))
 
 ------------------------------------------------------------------------
 -- The source semantics (discharges the `Behavior.⟦_⟧` postulate).
