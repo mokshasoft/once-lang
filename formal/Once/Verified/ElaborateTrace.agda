@@ -26,7 +26,7 @@
 module Once.Verified.ElaborateTrace where
 
 open import Data.Nat using (ℕ)
-open import Data.List using (List; []; take)
+open import Data.List using (List; []; _∷_; take)
 open import Data.Maybe using (just; nothing)
 open import Data.Unit using (⊤)
 open import Data.Empty using (⊥)
@@ -34,6 +34,7 @@ open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃-syntax)
 open import Data.Sum using (inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Data.Integer using () renaming (∣_∣ to absℤ)
+open import Data.String using (String)
 
 open import Once.Type
   using (Type; Unit; Void; _*_; _+_; _⇒[_]_; μ-type; ν-type;
@@ -43,6 +44,8 @@ open import Once.Verified.SourceSemantics
          apply; Result; Defs; runTraceEval)
 open import Once.Verified.DenotTrace using (⟦_⟧ᴰ)
 open import Once.Verified.TraceMonad using (T; projTrace; valueT)
+open import Once.Surface.Syntax using (Ctx; ∅; _,_^_)
+open import Once.Surface.Elaborate using (⟦_⟧ᶜ)
 
 module _ (defs : Defs) where
   mutual
@@ -94,3 +97,19 @@ module _ (defs : Defs) where
     ResultRel : (B : Type) → Result → ⟦ B ⟧ᴰ → Set
     ResultRel B (just (v , _)) d = v ~⟨ B ⟩ d
     ResultRel B nothing        _ = ⊥
+
+  ------------------------------------------------------------------
+  -- ENVIRONMENT relation: an untyped `SS.eval` environment `ρ`
+  -- (most-recent binding first) simulates a denotational environment
+  -- `⟦ ⟦Γ⟧ᶜ ⟧ᴰ` at the typed context `Γ`, pointwise via the value-sim.
+  -- The context interpretation is the nested product
+  -- `⟦ ∅ ⟧ᶜ = Unit`, `⟦ Γ , A ⟧ᶜ = ⟦Γ⟧ᶜ * A`, so `⟦ ⟦Γ,A⟧ᶜ ⟧ᴰ`
+  -- reduces to `⟦ ⟦Γ⟧ᶜ ⟧ᴰ × ⟦A⟧ᴰ` definitionally (proj₁ = the rest,
+  -- proj₂ = the most-recent binding `A`). This is the de-Bruijn(`Γ`)
+  -- ↔ named(`ρ`) bridge for the `var`/`lam` cases.
+  ------------------------------------------------------------------
+  EnvRel : List (String × Value) → ∀ {n} (Γ : Ctx n) → ⟦ ⟦ Γ ⟧ᶜ ⟧ᴰ → Set
+  EnvRel _              ∅           _  = ⊤
+  EnvRel []             (Γ , A ^ q) _  = ⊥
+  EnvRel ((_ , v) ∷ ρ') (Γ , A ^ q) dγ =
+    EnvRel ρ' Γ (proj₁ dγ) × (v ~⟨ A ⟩ proj₂ dγ)
