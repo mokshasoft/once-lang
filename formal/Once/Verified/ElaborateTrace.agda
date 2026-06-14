@@ -47,7 +47,7 @@ open import Agda.Builtin.String.Properties using (primStringFromListInjective)
 open import Once.Type
   using (Type; Unit; Void; _*_; _+_; _⇒[_]_; μ-type; ν-type;
          Int; Float; Str; Buffer)
-open import Once.CCC.IR using (IR; id; _∘_; terminal; ⟨_,_⟩; AllocMode; case; fst; snd; curry; inl; inr)
+open import Once.CCC.IR using (IR; id; _∘_; terminal; initial; ⟨_,_⟩; AllocMode; case; fst; snd; curry; inl; inr)
   renaming (apply to applyᴵ)
 open import Once.Surface.Elaborate using (intLit; strLit; distribute; proj)
 open import Once.TypeCheck.Raw using (RawExpr; RVar; RLam; RUnit; RInt; RStringLit; RPair; RLet; RApp; RDestruct)
@@ -560,3 +560,13 @@ module _ (defs : Defs) where
         op-eq-builtin1 "inr" (Vbuiltin bInr []) ρ re se ve (Vinr ve) ee-evs
           nameres ope (λ _ → refl) ,
         trans (++-identityʳ (proj₁ (evalᴰ e' x 0))) tre , rre
+
+  -- `absurd`: `elaborate (absurd v) = initial ∘ elaborate v`, `v : … Void`.
+  -- `⟦ Void ⟧ᴰ = ⊥`, so the sub-computation's denotational value
+  -- `valueT (evalᴰ e' x) 0 : ⊥` — the whole case is vacuous (no source program
+  -- ever produces a `Void` value). The conclusion's raw is just the sub-raw `re`
+  -- (`absurd` has no raw constructor of its own).
+  cs-absurd : ∀ {Γ A} (e' : IR Γ Void) (x : ⟦ Γ ⟧ᴰ) (ρ : Env) (re : RawExpr)
+            → CompSim Void (evalᴰ e' x) (λ z → eval z defs ρ re)
+            → CompSim A (evalᴰ (initial {A} ∘ e') x) (λ z → eval z defs ρ re)
+  cs-absurd e' x ρ re _ = ⊥-elim (valueT (evalᴰ e' x) 0)
