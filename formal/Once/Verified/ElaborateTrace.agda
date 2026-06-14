@@ -47,10 +47,10 @@ open import Agda.Builtin.String.Properties using (primStringFromListInjective)
 open import Once.Type
   using (Type; Unit; Void; _*_; _+_; _⇒[_]_; μ-type; ν-type;
          Int; Float; Str; Buffer)
-open import Once.CCC.IR using (IR; id; _∘_; terminal; ⟨_,_⟩; AllocMode; case; fst; snd)
+open import Once.CCC.IR using (IR; id; _∘_; terminal; ⟨_,_⟩; AllocMode; case; fst; snd; curry)
   renaming (apply to applyᴵ)
 open import Once.Surface.Elaborate using (intLit; strLit; distribute; proj)
-open import Once.TypeCheck.Raw using (RawExpr; RVar; RUnit; RInt; RStringLit; RPair; RLet; RApp; RDestruct)
+open import Once.TypeCheck.Raw using (RawExpr; RVar; RLam; RUnit; RInt; RStringLit; RPair; RLet; RApp; RDestruct)
 open import Once.Verified.SourceSemantics
   using (Value; Vunit; Vpair; Vinl; Vinr; Vint; Vstr; Vclos; Vbuiltin; Vsigop; Vin;
          apply; eval; Env; Result; Defs; runTraceEval; lookupEnv)
@@ -243,6 +243,33 @@ module _ (defs : Defs) where
     op-eq : ∀ z → suc zero ≤ z
           → eval z defs ρ (RVar (cname (n ∸ suc (toℕ i)))) ≡ just (v , [])
     op-eq (suc k) _ rewrite lk = refl
+
+  ------------------------------------------------------------------
+  -- LAMBDA case (`lam`). `elaborate (lam q _ e) = curry (elaborate e) m`,
+  -- `evalᴰ (curry f m) dγ = returnT (λ b → evalᴰ f (dγ,b))` (a Kleisli
+  -- closure, trace `[]`); `SS.eval (RLam x re) = just (Vclos ρ x re, [])`.
+  -- The value-sim arrow clause `Vclos … ~⟨A⇒B⟩ (λ b → …)` is EXACTLY the
+  -- body's bridge IH: applying the operational closure runs `eval` in the
+  -- extended env (`apply (suc k) (Vclos ρ x body) w = eval k ((x,w)∷ρ) body`),
+  -- so the IH's computation-sim transfers after a one-step fuel shift.
+  cs-lam : ∀ {n} {Γ : Ctx n} {A B kk} (e' : IR (⟦ Γ ⟧ᶜ * A) B) (m : AllocMode)
+           (dγ : ⟦ ⟦ Γ ⟧ᶜ ⟧ᴰ) (ρ : Env) (re-body : RawExpr)
+         → (∀ (w : Value) (a : ⟦ A ⟧ᴰ) → w ~⟨ A ⟩ a
+              → CompSim B (evalᴰ e' (dγ , a))
+                        (λ z → eval z defs ((cname n , w) ∷ ρ) re-body))
+         → CompSim (A ⇒[ kk ] B) (evalᴰ (curry {k = kk} e' m) dγ)
+                   (λ z → eval z defs ρ (RLam (cname n) re-body))
+  cs-lam {n} {Γ} {A} {B} {kk} e' m dγ ρ re-body hyp =
+    suc zero , Vclos ρ (cname n) re-body , [] , op-eq , refl , vsim
+    where
+    op-eq : ∀ z → suc zero ≤ z
+          → eval z defs ρ (RLam (cname n) re-body)
+            ≡ just (Vclos ρ (cname n) re-body , [])
+    op-eq (suc k) _ = refl
+    vsim : Vclos ρ (cname n) re-body ~⟨ A ⇒[ kk ] B ⟩ (λ b → evalᴰ e' (dγ , b))
+    vsim w a rel with hyp w a rel
+    ... | (s , v , evs , op , tr , rr) =
+          suc s , v , evs , (λ { (suc k) (s≤s le) → op k le }) , tr , rr
 
   ------------------------------------------------------------------
   -- Phase A — first leaf, end-to-end (validates the foundation).
