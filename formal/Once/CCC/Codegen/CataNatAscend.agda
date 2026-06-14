@@ -23,12 +23,13 @@
 
 module Once.CCC.Codegen.CataNatAscend where
 
-open import Data.Nat using (ℕ; zero; suc; _+_)
+open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _<_; s≤s)
+open import Data.Nat.Properties using (n∸n≡0; <-trans; n<1+n)
 open import Data.Bool using (true; false)
 open import Data.Maybe using (just)
 open import Data.Product using (Σ-syntax; _×_; _,_)
 open import Data.List using (List; []; _++_)
-open import Data.List.Properties using (++-identityʳ)
+open import Data.List.Properties using (++-identityʳ; ++-assoc)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 
 open import Once.Verified.Trace using (SigOpEvent)
@@ -252,6 +253,61 @@ module CataNatAscend {FS : FrameSemantics} where
   loop-events : (ℕ → List SigOpEvent) → ℕ → List SigOpEvent
   loop-events E zero    = []
   loop-events E (suc k) = E k ++ loop-events E k
+
+  ----------------------------------------------------------------------
+  -- The REVERSE-INDEX BRIDGE between the denotational obs-fold (which
+  -- builds its events by APPEND, innermost→outermost — `CataNatValue.
+  -- fwd-events`) and the machine's ascend loop (which PREPENDS the newest
+  -- iteration — `loop-events E n = E (n-1) ++ … ++ E 0`). Both are the SAME
+  -- innermost-first sequence; only the index convention differs (from-base
+  -- position `j` vs remaining-count `k`, related by `j = n-1-k`). This is
+  -- pure list/nat algebra — no machine — so it lives here next to
+  -- `loop-events`, decoupled from the per-layer machine-run correspondence.
+
+  -- forward concat: `L 0 ++ L 1 ++ … ++ L (k-1)` (reads `L` only on `0…k-1`).
+  fwd-concat : (ℕ → List SigOpEvent) → ℕ → List SigOpEvent
+  fwd-concat L zero    = []
+  fwd-concat L (suc k) = fwd-concat L k ++ L k
+
+  -- bounded pointwise congruence (only the used prefix `0…k-1` matters).
+  fwd-concat-cong : ∀ (L L' : ℕ → List SigOpEvent) (k : ℕ)
+    → (∀ j → j < k → L j ≡ L' j)
+    → fwd-concat L k ≡ fwd-concat L' k
+  fwd-concat-cong L L' zero    h = refl
+  fwd-concat-cong L L' (suc p) h =
+    cong₂ _++_ (fwd-concat-cong L L' p (λ j j<p → h j (<-trans j<p (n<1+n p))))
+               (h p (n<1+n p))
+
+  -- arithmetic: for `j < m`, `suc (m ∸ suc j) ≡ m ∸ j`.
+  ∸-shift : ∀ (m j : ℕ) → j < m → suc (m ∸ suc j) ≡ m ∸ j
+  ∸-shift (suc m) zero    _        = refl
+  ∸-shift (suc m) (suc j) (s≤s le) = ∸-shift m j le
+
+  -- the loop accumulator's shift identity: peeling the deepest layer `E 0`
+  -- off a `(E ∘ suc)`-loop is the same as prepending `E m` to an `E`-loop.
+  loop-shift : ∀ (E : ℕ → List SigOpEvent) (m : ℕ)
+    → loop-events (λ k → E (suc k)) m ++ E 0 ≡ E m ++ loop-events E m
+  loop-shift E zero    = sym (++-identityʳ (E 0))
+  loop-shift E (suc p) =
+    trans (++-assoc (E (suc p)) (loop-events (λ k → E (suc k)) p) (E 0))
+          (cong (E (suc p) ++_) (loop-shift E p))
+
+  -- THE BRIDGE: the forward concat of the reverse-indexed `E` is the loop.
+  fwd-loop-bridge : ∀ (E : ℕ → List SigOpEvent) (n : ℕ)
+    → fwd-concat (λ j → E (n ∸ suc j)) n ≡ loop-events E n
+  fwd-loop-bridge E zero    = refl
+  fwd-loop-bridge E (suc m) =
+    trans (cong (fwd-concat (λ j → E (m ∸ j)) m ++_) (cong E (n∸n≡0 m)))
+    (trans (cong (_++ E 0) step-eq)
+           (loop-shift E m))
+    where
+      -- fwd-concat (λ j → E (m ∸ j)) m ≡ loop-events (E ∘ suc) m, via the
+      -- reindex `m ∸ j = suc (m ∸ suc j)` (for j < m) + the bridge IH at m.
+      step-eq : fwd-concat (λ j → E (m ∸ j)) m ≡ loop-events (λ k → E (suc k)) m
+      step-eq =
+        trans (fwd-concat-cong (λ j → E (m ∸ j)) (λ j → E (suc (m ∸ suc j))) m
+                 (λ j j<m → cong E (sym (∸-shift m j j<m))))
+              (fwd-loop-bridge (λ k → E (suc k)) m)
 
   ascend-loop-runs : ∀ (prog : AbstractTrace) (la-top la-end qh q-laend : ℕ)
                        (E : ℕ → List SigOpEvent)
