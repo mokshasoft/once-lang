@@ -4097,9 +4097,16 @@ Non-negotiables:
 - **INDEX = effectful-EVENT count.** `n` counts effectful SigOps emitted. It is
   **never** execution steps.
 - **CONTENT = effectful SigOps only.** Pure SigOps contribute `[]`.
-- **`∀ n` IS trace-equality for total+productive systems.** "Same (possibly
-  infinite) sequence" ⟺ "first `n` agree for every `n`" — the *inductive form* of
-  Colist bisimilarity. No co-data is required, and **nothing is assumed finite**.
+- **The trace IS co-data; `∀ n`/`take n` is how we OBSERVE it.** The effectful-
+  event trace of a total+productive program is a stream (per OCP-0003: `ana` →
+  *"Stream of events"*; productivity = guarded corecursion). `Behavior n = take n`
+  of that stream; "same trace" = `∀ n, take n` agree (the inductive observation
+  of stream bisimilarity). **Nothing is assumed finite.** *(CORRECTED 2026-06-14:
+  an earlier draft of this line said "no co-data is required" — that was wrong and
+  was the productivity-avoidance creeping back: denying the trace its co-structure
+  is exactly what forces a step-fuel/"enough-fuel"/monotonicity reconstruction.
+  The trace is co-data, defined structurally by `cata` (finite prefix) + `ana`
+  (productive tail) — NO step-fuel, NO enough-fuel plumbing.)*
 - **NO completion / NO "run halts".** `Behavior n` is well-defined because the
   system is **productive**: the first `n` effectful events fire after finitely
   much work. A terminating program's trace stabilises (`take n` of `k<n` events =
