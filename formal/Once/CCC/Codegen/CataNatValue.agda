@@ -42,6 +42,8 @@ open import Once.CCC.IR using (IR; Cata; AllocMode)
 open import Once.CCC.Eval using (eval)
 open import Once.Verified.Trace using (SigOpEvent)
 open import Once.Verified.TraceDenote using (obs; cata-ev-alg)
+open import Once.Verified.OpTrace using (otrace; otrace-cata-alg; sem→ov?)
+open import Data.Maybe using (maybe)
 open import Once.Functor.Translate using (WellFormedF)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Allocation using (AllocState)
@@ -144,6 +146,56 @@ module CataNatValue {FS : FrameSemantics} (program-bound : ℕ) (G : Functor) wh
            (++-assoc (proj₁ (sem-cata wf (cata-ev-alg {F} {A} n alg) base))
                      (fwd-events wf {A} alg n base k)
                      (layer-events wf {A} alg n base k)))
+
+  ------------------------------------------------------------------------
+  -- OPERATIONAL recast of the obs-fold match (Plan 0.45 solution 2): the same
+  -- four lemmas over `otrace-cata-alg` (the operational cata algebra) instead
+  -- of `cata-ev-alg`. Structurally identical — `otrace-cata-alg`'s per-layer
+  -- shape is `events-F F proj₁ fc ++ <otrace-algebra-events>` exactly like
+  -- `cata-ev-alg`'s `… ++ proj₁ (obs n alg z)`, so `cong proj₁` of the same
+  -- `sem-cata-compute` closes the cons step and the same μ-induction gives the
+  -- forward structure. Only the per-layer events differ: `obs n alg z` ↦
+  -- `maybe (λ ov → proj₁ (otrace n alg ov)) [] (sem→ov? z)` (run the algebra
+  -- OPERATIONALLY on the boxed layer, so a closure effect in `alg` fires). The
+  -- machine side (`cata-nat-flat-events`) + the `fwd-loop-bridge` reindex are
+  -- obs/otrace-independent and reused unchanged.
+  cata-events-cons-op : ∀ (wf : WellFormedF F) {A} (alg : IR (⟦ F ⟧T A) A)
+                          (n : ℕ) (child : ⟦ μ-type F ⟧)
+    → proj₁ (sem-cata wf (otrace-cata-alg {F} {A} n alg) (sem-In F (inj₂ child)))
+        ≡ proj₁ (sem-cata wf (otrace-cata-alg {F} {A} n alg) child)
+          ++ maybe (λ ov → proj₁ (otrace n alg ov)) []
+               (sem→ov? (coerce-functor⁻¹ F A
+                 (inj₂ (proj₂ (sem-cata wf (otrace-cata-alg {F} {A} n alg) child)))))
+  cata-events-cons-op wf {A} alg n child =
+    cong proj₁ (sem-cata-compute wf (otrace-cata-alg {F} {A} n alg) (inj₂ child))
+
+  layer-events-op : ∀ (wf : WellFormedF F) {A} (alg : IR (⟦ F ⟧T A) A)
+                      (n : ℕ) (base : ⟦ μ-type F ⟧) (k : ℕ) → List SigOpEvent
+  layer-events-op wf {A} alg n base k =
+    maybe (λ ov → proj₁ (otrace n alg ov)) []
+      (sem→ov? (coerce-functor⁻¹ F A
+        (inj₂ (proj₂ (sem-cata wf (otrace-cata-alg {F} {A} n alg) (nat-spine k base))))))
+
+  fwd-events-op : ∀ (wf : WellFormedF F) {A} (alg : IR (⟦ F ⟧T A) A)
+                    (n : ℕ) (base : ⟦ μ-type F ⟧) (k : ℕ) → List SigOpEvent
+  fwd-events-op wf alg n base zero    = []
+  fwd-events-op wf alg n base (suc k) =
+    fwd-events-op wf alg n base k ++ layer-events-op wf alg n base k
+
+  cata-nat-otrace-fold : ∀ (wf : WellFormedF F) {A} (alg : IR (⟦ F ⟧T A) A)
+                           (n : ℕ) (base : ⟦ μ-type F ⟧) (k : ℕ)
+    → proj₁ (sem-cata wf (otrace-cata-alg {F} {A} n alg) (nat-spine k base))
+        ≡ proj₁ (sem-cata wf (otrace-cata-alg {F} {A} n alg) base)
+          ++ fwd-events-op wf alg n base k
+  cata-nat-otrace-fold wf {A} alg n base zero =
+    sym (++-identityʳ (proj₁ (sem-cata wf (otrace-cata-alg {F} {A} n alg) base)))
+  cata-nat-otrace-fold wf {A} alg n base (suc k) =
+    trans (cata-events-cons-op wf {A} alg n (nat-spine k base))
+    (trans (cong (_++ layer-events-op wf {A} alg n base k)
+                 (cata-nat-otrace-fold wf {A} alg n base k))
+           (++-assoc (proj₁ (sem-cata wf (otrace-cata-alg {F} {A} n alg) base))
+                     (fwd-events-op wf {A} alg n base k)
+                     (layer-events-op wf {A} alg n base k)))
 
   ------------------------------------------------------------------------
   -- Discharging `vstep` — the value connection.
