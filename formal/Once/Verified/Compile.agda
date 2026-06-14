@@ -108,7 +108,7 @@ compile-cli-asm allocMode stage doOpt arch m =
 -- postulate. So `module-to-asm-correct`'s obligation is now "the compiled
 -- trace equals the SOURCE trace," and the typechecker is load-bearing.
 ⟦_⟧M : P.Module → Behavior
-⟦ m ⟧M = runTrace m
+⟦ m ⟧M = ⟦ moduleToIR m ⟧IR
 
 -- ════════════════════════════════════════════════════════════════════
 -- Per-arch backend correctness — `correct` is GENERIC over the target
@@ -234,24 +234,18 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
     trans (ArchCorrect.asm-trace-correct (arch-correct arch) m asm eq n)
           (ArchCorrect.ir-flat-correct  (arch-correct arch) (moduleToIR m) n)
 
-  -- Stage 2 — asm trace = SOURCE trace, composing factor 2 with the frontend
-  -- (`elaborate-preserves-trace`). `mta-aux` threads `moduleToIR m`'s shape
-  -- explicitly (no `with`-opacity); the `nothing`/library case via `no-main-empty`.
-  mta-aux :
-    ∀ (arch : Arch) (m : P.Module) (asm : String) (n : ℕ) (mi : Maybe (IR Unit Unit)) →
-    C.compileFromModule C.Heap C.Build false arch m ≡ C.Built asm →
-    moduleToIR m ≡ mi →
-    (⟦ arch ⟧A asm) n ≡ ⟦ mi ⟧IR n →
-    (⟦ arch ⟧A asm) n ≡ runTrace m n
-  mta-aux arch m asm n (just ir) eq mi-eq cg = trans cg (elaborate-preserves-trace m ir n mi-eq)
-  mta-aux arch m asm n nothing  eq mi-eq cg = trans cg (sym (no-main-empty arch m asm n eq mi-eq))
-
+  -- Stage 2 — asm trace = SOURCE trace. With `⟦_⟧M = ⟦ moduleToIR m ⟧IR`
+  -- (D059: the source meaning IS the denotational `evalᴰ`), this is
+  -- `codegen-asm-correct` DIRECTLY — the frontend `elaborate-preserves-trace`
+  -- (#10) is no longer in the meter chain; it is the separately-required
+  -- cross-check (the `compiler-correct` conjunction below). The library
+  -- (`moduleToIR m ≡ nothing`) case is handled by `codegen-asm-correct` via
+  -- `⟦ nothing ⟧IR = []` (no `mta-aux`/`no-main-empty` needed).
   module-to-asm-correct :
     ∀ (arch : Arch) (m : P.Module) (asm : String) →
     C.compileFromModule C.Heap C.Build false arch m ≡ C.Built asm →
     ∀ (n : ℕ) → (⟦ arch ⟧A asm) n ≡ ⟦ m ⟧M n
-  module-to-asm-correct arch m asm eq n =
-    mta-aux arch m asm n (moduleToIR m) eq refl (codegen-asm-correct arch m asm eq n)
+  module-to-asm-correct arch m asm eq n = codegen-asm-correct arch m asm eq n
 
   --------------------------------------------------------------------
   -- The grand theorem — by composition of the per-stage postulates.
