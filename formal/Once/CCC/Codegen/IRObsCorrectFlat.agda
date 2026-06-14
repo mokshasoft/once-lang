@@ -40,7 +40,7 @@ open import Once.Semantics.Machine using (⟦_⟧)
 open import Once.CCC.IR using (IR; AllocMode; Cata; out-μ)
 open import Relation.Binary.PropositionalEquality using (refl; trans)
 open import Once.CCC.IR.Size using (ir-size)
-open import Once.CCC.Eval using (eval)
+open import Once.CCC.Eval using (eval; ⟦_⟧)
 open import Once.CCC.Machine.SMCore
   using (LocState; ValueLocation; SV-Ptr; halted; regs; readReg; Input1)
 open import Once.CCC.Machine.Allocation using (AllocState; next-slot; module FrontierInvariant)
@@ -50,7 +50,8 @@ open import Once.CCC.Codegen.CataNextSlot using (module CataNextSlot)
 open import Once.CCC.Codegen.CataIRSlotStable using (module CataIRSlotStable)
 open import Once.CCC.Machine.ClosureWellFormed using (module ClosureWellFormedDef)
 open import Once.Verified.Trace using (SigOpEvent)
-open import Once.Verified.OpTrace using (otrace; OVal; ov→sem)
+open import Once.Verified.DenotTrace using (evalᴰ; inject)
+open import Once.Verified.TraceMonad using (projTrace)
 open import Once.Verified.FlatEvents using (module FlatEventTrace)
 
 module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
@@ -115,26 +116,25 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   -- coinductive unfold (∀ n: first-n events match); a non-terminating loop
   -- nested inside another can't be productive. So `Cata` carries a termination
   -- witness; only `Ana` carries a step-index.
-  record MachineRefinesObsF {A B} (ir : IR A B) (ov : OVal A)
+  record MachineRefinesObsF {A B} (ir : IR A B) (x : ⟦ A ⟧)
                              (s : LocState FS) (alloc : AllocState {FS}) : Set where
     field
       enough-fuel  : ℕ
       run-halts    : halted (floc (flat-run enough-fuel ir s alloc)) ≡ true
-      -- ∀-n (SigOp-event-indexed): for every observation depth `k`, the first
-      -- `k` SigOps the machine emits equal `obs k` (the source's first `k`).
-      -- `enough-fuel` is the run's completion (`run-halts`), so `flat-events
-      -- enough-fuel` is the FULL machine trace and `take k` of it is the first
-      -- `k` SigOps — matching the event-indexed `obs`. This is the apex's
-      -- `∀ n` SigOp-prefix shape directly (no single-fuel cap); the `take k`
-      -- lifts the finite cata's full-sequence agreement to every `k`.
+      -- ∀-n (observation depth `k`): the first `k` effectful SigOps the machine
+      -- emits equal the source's denotational trace `evalᴰ` at depth `k`. The
+      -- source observable is now the monadic `⟦_⟧ᴰ` (Plan 0.46), so the machine
+      -- REFINES `evalᴰ` directly (`otrace` retired). `enough-fuel`/`run-halts`
+      -- are the (provisional) completion device — to be replaced by the
+      -- depth-simulation in the completion-field drop (M3).
       traces-agree :
         ∀ (k : ℕ) →
         take k (flat-events enough-fuel (ir-to-trace ir) (mkFlat s alloc 0))
-          ≡ proj₁ (otrace k ir ov)
+          ≡ projTrace (evalᴰ ir (inject x)) k
       value-realized :
         ∃[ mOut ] ∃[ result-loc ]
           ValidAtWF mOut (falloc (flat-run enough-fuel ir s alloc))
-            (eval ir (ov→sem ov)) result-loc
+            (eval ir x) result-loc
             (forced (floc (flat-run enough-fuel ir s alloc)))
 
   -- Same preconditions as `compile-correct-flat`'s semantic side (entry
@@ -143,14 +143,14 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   IRObsCorrectF : ∀ {A B} → IR A B → Set
   IRObsCorrectF {A} {B} ir =
     ir-size ir < program-bound →
-    ∀ (mIn : AllocMode) (ov : OVal A) (input-loc : ValueLocation FS)
+    ∀ (mIn : AllocMode) (x : ⟦ A ⟧) (input-loc : ValueLocation FS)
       (s : LocState FS) (alloc : AllocState {FS}) →
     next-slot alloc ≡ 0 →
-    ValidAtWF mIn alloc (ov→sem ov) input-loc s →
+    ValidAtWF mIn alloc x input-loc s →
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
     readReg (regs s) Input1 ≡ SV-Ptr input-loc →
-    MachineRefinesObsF ir ov s alloc
+    MachineRefinesObsF ir x s alloc
 
   -- `cata-correct`: the single named obligation; the record FIELDS name the
   -- parts the discharge must provide (all sharing one `enough-fuel`):
