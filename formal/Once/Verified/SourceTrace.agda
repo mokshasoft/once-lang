@@ -44,7 +44,8 @@ import Once.Compile as C
 import Once.Parser.Module.Core as P
 open import Once.Grammar.ModuleConvert using (gmoduleToModule)
 open import Once.Verified.Behavior using (Source; Behavior)
-open import Once.Verified.OpTrace using (otrace; ovUnit)
+open import Once.Verified.DenotTrace using (evalᴰ)
+open import Once.Verified.TraceMonad using (projTrace)
 open import Once.Verified.SourceSemantics as SS using (runTrace)
 import Once.Verified.MainAlign as MA
 
@@ -128,9 +129,11 @@ sourceToIR src with gmoduleToModule src
 -- IR-level meaning and the FRONTEND obligation (Plan 0.45 Part B, factor 1).
 ------------------------------------------------------------------------
 
--- The SigOp trace `obs` reads off `main`'s IR (the elaborated meaning).
+-- The SigOp trace the denotational `evalᴰ` reads off `main`'s IR (the
+-- elaborated meaning), at observation depth `n` (Plan 0.46: the monadic
+-- `⟦_⟧ᴰ` is THE source observable; the operational `otrace` is retired).
 ⟦_⟧IR : Maybe (IR Unit Unit) → Behavior
-⟦ just ir ⟧IR = λ n → proj₁ (otrace n ir ovUnit)
+⟦ just ir ⟧IR = λ n → projTrace (evalᴰ ir tt) n
 ⟦ nothing ⟧IR = λ _ → []
 
 -- FACTOR 1 of `module-to-asm-correct`: typecheck + elaborate preserve the
@@ -175,16 +178,17 @@ main-exists-align m ir mj = aux (C.compileResolvedModule C.Heap false m) refl mj
         (MA.compileResolvedModule-main m C.Heap false funs crm (findMain-name funs ir fm))
 
 postulate
-  -- (#10) The obs↔eval CORE: the compiled entry IR's SigOp trace equals the
-  -- source interpreter's trace of the SAME `main` body. THE load-bearing
-  -- obligation — the `obs(elaborate(checkElab …)) ≈ eval` induction over the
-  -- elaborate pipeline, where checkElab's proof structure becomes load-bearing.
+  -- (#10) The ⟦_⟧ᴰ↔eval CORE (M4, D057 load-bearing): the compiled entry IR's
+  -- denotational SigOp trace equals the source interpreter's trace of the SAME
+  -- `main` body. THE load-bearing obligation — the `⟦elaborate(checkElab …)⟧ᴰ ≈
+  -- SS.eval` induction over the elaborate pipeline; a meaning-changing
+  -- elaborator bug breaks this proof, keeping the elaborator load-bearing.
   compiled-main-trace :
     ∀ (m : P.Module) (ir : IR Unit Unit) → moduleToIR m ≡ just ir
     → ∀ (body : RawExpr)
     → SS.lookupDef (SS.extractDefs (P.Module.decls m)) "main" ≡ just body
     → ∀ (n : ℕ)
-    → proj₁ (otrace n ir ovUnit)
+    → projTrace (evalᴰ ir tt) n
         ≡ SS.runTraceEval (SS.eval n (SS.extractDefs (P.Module.decls m)) [] body)
 
 -- Factor 1, now a THEOREM: compose the main-finding alignment, the obs↔eval
@@ -193,7 +197,7 @@ postulate
 elaborate-preserves-trace :
   ∀ (m : P.Module) (ir : IR Unit Unit) (n : ℕ)
   → moduleToIR m ≡ just ir
-  → proj₁ (otrace n ir ovUnit) ≡ SS.runTrace m n
+  → projTrace (evalᴰ ir tt) n ≡ SS.runTrace m n
 elaborate-preserves-trace m ir n mj with main-exists-align m ir mj
 ... | (body , lk) =
   trans (compiled-main-trace m ir mj body lk n) (sym (SS.runTrace-main m n body lk))
