@@ -44,7 +44,7 @@ import Once.Compile as C
 import Once.Parser.Module.Core as P
 open import Once.Grammar.ModuleConvert using (gmoduleToModule)
 open import Once.Verified.Behavior using (Source; Behavior)
-open import Once.Verified.TraceDenote using (obs)
+open import Once.Verified.OpTrace using (otrace; ovUnit)
 open import Once.Verified.SourceSemantics as SS using (runTrace)
 import Once.Verified.MainAlign as MA
 
@@ -130,7 +130,7 @@ sourceToIR src with gmoduleToModule src
 
 -- The SigOp trace `obs` reads off `main`'s IR (the elaborated meaning).
 ⟦_⟧IR : Maybe (IR Unit Unit) → Behavior
-⟦ just ir ⟧IR = λ n → proj₁ (obs n ir tt)
+⟦ just ir ⟧IR = λ n → proj₁ (otrace n ir ovUnit)
 ⟦ nothing ⟧IR = λ _ → []
 
 -- FACTOR 1 of `module-to-asm-correct`: typecheck + elaborate preserve the
@@ -184,7 +184,7 @@ postulate
     → ∀ (body : RawExpr)
     → SS.lookupDef (SS.extractDefs (P.Module.decls m)) "main" ≡ just body
     → ∀ (n : ℕ)
-    → proj₁ (obs n ir tt)
+    → proj₁ (otrace n ir ovUnit)
         ≡ SS.runTraceEval (SS.eval n (SS.extractDefs (P.Module.decls m)) [] body)
 
 -- Factor 1, now a THEOREM: compose the main-finding alignment, the obs↔eval
@@ -193,7 +193,7 @@ postulate
 elaborate-preserves-trace :
   ∀ (m : P.Module) (ir : IR Unit Unit) (n : ℕ)
   → moduleToIR m ≡ just ir
-  → proj₁ (obs n ir tt) ≡ SS.runTrace m n
+  → proj₁ (otrace n ir ovUnit) ≡ SS.runTrace m n
 elaborate-preserves-trace m ir n mj with main-exists-align m ir mj
 ... | (body , lk) =
   trans (compiled-main-trace m ir mj body lk n) (sym (SS.runTrace-main m n body lk))
