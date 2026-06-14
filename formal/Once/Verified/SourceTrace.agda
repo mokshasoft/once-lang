@@ -209,6 +209,15 @@ elaborate-preserves-trace m ir mj k with main-exists-align m ir mj
 ... | (body , lk) with compiled-main-trace m ir mj body lk k
 ...   | (s , eq) = (s , trans eq (sym (cong (take k) (SS.runTrace-main m s body lk))))
 
+-- The load-bearing cross-check as a NAMED type (D059): the elaborated IR's
+-- denotational trace agrees, event-prefix-wise, with the independent `SS.eval`
+-- reference. `Compile.compiler-correct` bundles this as a REQUIRED CONJUNCT of
+-- the grand theorem so it cannot be dropped (silently losing load-bearing).
+-- `elaborate-preserves-trace m ir mj : ElaborateFaithful ir m` definitionally.
+ElaborateFaithful : IR Unit Unit → P.Module → Set
+ElaborateFaithful ir m =
+  ∀ (k : ℕ) → ∃[ s ] take k (projTrace (evalᴰ ir tt) k) ≡ take k (SS.runTrace m s)
+
 ------------------------------------------------------------------------
 -- The source semantics (discharges the `Behavior.⟦_⟧` postulate).
 ------------------------------------------------------------------------
