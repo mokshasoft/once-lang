@@ -25,24 +25,26 @@
 
 module Once.Verified.ElaborateTrace where
 
-open import Data.Nat using (ℕ)
+open import Data.Nat using (ℕ; zero; suc)
 open import Data.List using (List; []; _∷_; take)
 open import Data.Maybe using (just; nothing)
-open import Data.Unit using (⊤)
+open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃-syntax)
 open import Data.Sum using (inj₁; inj₂)
-open import Relation.Binary.PropositionalEquality using (_≡_)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Data.Integer using () renaming (∣_∣ to absℤ)
 open import Data.String using (String)
 
 open import Once.Type
   using (Type; Unit; Void; _*_; _+_; _⇒[_]_; μ-type; ν-type;
          Int; Float; Str; Buffer)
+open import Once.CCC.IR using (terminal)
+open import Once.TypeCheck.Raw using (RUnit)
 open import Once.Verified.SourceSemantics
   using (Value; Vpair; Vinl; Vinr; Vint; Vstr;
-         apply; Result; Defs; runTraceEval)
-open import Once.Verified.DenotTrace using (⟦_⟧ᴰ)
+         apply; eval; Env; Result; Defs; runTraceEval)
+open import Once.Verified.DenotTrace using (⟦_⟧ᴰ; evalᴰ)
 open import Once.Verified.TraceMonad using (T; projTrace; valueT)
 open import Once.Surface.Syntax using (Ctx; ∅; _,_^_)
 open import Once.Surface.Elaborate using (⟦_⟧ᶜ)
@@ -113,3 +115,14 @@ module _ (defs : Defs) where
   EnvRel []             (Γ , A ^ q) _  = ⊥
   EnvRel ((_ , v) ∷ ρ') (Γ , A ^ q) dγ =
     EnvRel ρ' Γ (proj₁ dγ) × (v ~⟨ A ⟩ proj₂ dγ)
+
+  ------------------------------------------------------------------
+  -- Phase A — first leaf, end-to-end (validates the foundation).
+  -- The `unit` SExpr: `elaborate unit = terminal`, `evalᴰ terminal =
+  -- returnT tt` (no events), and `SS.eval RUnit = just (Vunit , [])`.
+  -- So at every depth `j`, one step of `SS.eval` (`s = 1`) matches:
+  -- both traces are `[]` (`refl`) and `Vunit ~⟨ Unit ⟩ tt` holds (`tt`).
+  ------------------------------------------------------------------
+  cs-unit : ∀ {A} (dγ : ⟦ A ⟧ᴰ) (ρ : Env)
+          → CompSim Unit (evalᴰ (terminal {A}) dγ) (λ s → eval s defs ρ RUnit)
+  cs-unit dγ ρ j = suc zero , refl , tt
