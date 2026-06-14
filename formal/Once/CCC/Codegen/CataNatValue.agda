@@ -30,14 +30,18 @@ module Once.CCC.Codegen.CataNatValue where
 
 open import Data.Nat using (ℕ; zero; suc)
 open import Data.Sum using (inj₂)
-open import Data.Product using (∃-syntax; _,_)
-open import Relation.Binary.PropositionalEquality using (_≡_; sym; subst)
+open import Data.Product using (∃-syntax; _,_; proj₁; proj₂; _×_)
+open import Data.List using (List; []; _++_)
+open import Data.List.Properties using (++-assoc; ++-identityʳ)
+open import Relation.Binary.PropositionalEquality using (_≡_; sym; trans; subst; cong)
 
 open import Once.Type using (Functor; _⊕_; Id; μ-type; ⟦_⟧T)
 open import Once.Semantics.Machine
   using (⟦_⟧; sem-In; sem-cata; sem-cata-compute; coerce-functor⁻¹)
 open import Once.CCC.IR using (IR; Cata; AllocMode)
 open import Once.CCC.Eval using (eval)
+open import Once.Verified.Trace using (SigOpEvent)
+open import Once.Verified.TraceDenote using (obs; cata-ev-alg)
 open import Once.Functor.Translate using (WellFormedF)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Allocation using (AllocState)
@@ -61,6 +65,23 @@ module CataNatValue {FS : FrameSemantics} (program-bound : ℕ) (G : Functor) wh
   nat-fold-cons wf alg child =
     sem-cata-compute wf (λ fa → eval alg (coerce-functor⁻¹ F _ fa)) (inj₂ child)
 
+  -- The EVENTS analogue (the obs-fold's per-cons-layer step): the events of
+  -- folding `In (inr child)` are the CHILD's fold-events followed by THIS
+  -- layer's algebra events. Same `sem-cata-compute` as `nat-fold-cons`, on the
+  -- events algebra `cata-ev-alg`; the `events-F (G ⊕ Id) proj₁ (inj₂ _) =
+  -- proj₁ _` (Id position carries the child's events) and `sem-fmap … (inj₂) =
+  -- inj₂ …` reductions are definitional, so `cong proj₁` of the compute rule
+  -- closes it. This is the recurrence the obs-fold match inducts over.
+  cata-events-cons : ∀ (wf : WellFormedF F) {A} (alg : IR (⟦ F ⟧T A) A)
+                       (n : ℕ) (child : ⟦ μ-type F ⟧)
+    → proj₁ (sem-cata wf (cata-ev-alg {F} {A} n alg) (sem-In F (inj₂ child)))
+        ≡ proj₁ (sem-cata wf (cata-ev-alg {F} {A} n alg) child)
+          ++ proj₁ (obs n alg
+               (coerce-functor⁻¹ F A
+                 (inj₂ (proj₂ (sem-cata wf (cata-ev-alg {F} {A} n alg) child)))))
+  cata-events-cons wf {A} alg n child =
+    cong proj₁ (sem-cata-compute wf (cata-ev-alg {F} {A} n alg) (inj₂ child))
+
   -- A depth-`n` Nat spine over a base value: `n` cons (`inr`) layers.
   nat-spine : ℕ → ⟦ μ-type F ⟧ → ⟦ μ-type F ⟧
   nat-spine zero    base = base
@@ -82,6 +103,47 @@ module CataNatValue {FS : FrameSemantics} (program-bound : ℕ) (G : Functor) wh
   cata-value-loop Realizes base base-real vstep zero    = base-real
   cata-value-loop Realizes base base-real vstep (suc k) =
     vstep (nat-spine k base) (cata-value-loop Realizes base base-real vstep k)
+
+  ------------------------------------------------------------------------
+  -- The TRACE-side analogue of `cata-value-loop`: the OBS-FOLD MATCH.
+  --
+  -- `layer-events k` = the obs-algebra events emitted folding the (suc k)-th
+  -- cons layer (`alg` run on `inr (fold of nat-spine k base)`), and `E_base`
+  -- (= the base layer's fold events) is the deepest. The denotational fold of
+  -- a depth-`n` spine emits, post-order, `E_base` then the layers INNERMOST→
+  -- outermost: `E_base ++ layer 0 ++ layer 1 ++ … ++ layer (n-1)`. This is the
+  -- FORWARD (append) structure, proved by μ-induction over the spine using the
+  -- per-layer step `cata-events-cons`. (The remaining bridge to the machine's
+  -- `loop-events E n` — same sequence, built by PREPEND in the ascend loop — is
+  -- the per-layer machine↔denotational correspondence `layer k = E (n∸1∸k)`.)
+  layer-events : ∀ (wf : WellFormedF F) {A} (alg : IR (⟦ F ⟧T A) A)
+                   (n : ℕ) (base : ⟦ μ-type F ⟧) (k : ℕ) → List SigOpEvent
+  layer-events wf {A} alg n base k =
+    proj₁ (obs n alg
+      (coerce-functor⁻¹ F A
+        (inj₂ (proj₂ (sem-cata wf (cata-ev-alg {F} {A} n alg) (nat-spine k base))))))
+
+  -- the first `k` layers' events, innermost→outermost (forward append order).
+  fwd-events : ∀ (wf : WellFormedF F) {A} (alg : IR (⟦ F ⟧T A) A)
+                 (n : ℕ) (base : ⟦ μ-type F ⟧) (k : ℕ) → List SigOpEvent
+  fwd-events wf alg n base zero    = []
+  fwd-events wf alg n base (suc k) =
+    fwd-events wf alg n base k ++ layer-events wf alg n base k
+
+  cata-nat-obs-fold : ∀ (wf : WellFormedF F) {A} (alg : IR (⟦ F ⟧T A) A)
+                        (n : ℕ) (base : ⟦ μ-type F ⟧) (k : ℕ)
+    → proj₁ (sem-cata wf (cata-ev-alg {F} {A} n alg) (nat-spine k base))
+        ≡ proj₁ (sem-cata wf (cata-ev-alg {F} {A} n alg) base)
+          ++ fwd-events wf alg n base k
+  cata-nat-obs-fold wf {A} alg n base zero =
+    sym (++-identityʳ (proj₁ (sem-cata wf (cata-ev-alg {F} {A} n alg) base)))
+  cata-nat-obs-fold wf {A} alg n base (suc k) =
+    trans (cata-events-cons wf {A} alg n (nat-spine k base))
+    (trans (cong (_++ layer-events wf {A} alg n base k)
+                 (cata-nat-obs-fold wf {A} alg n base k))
+           (++-assoc (proj₁ (sem-cata wf (cata-ev-alg {F} {A} n alg) base))
+                     (fwd-events wf {A} alg n base k)
+                     (layer-events wf {A} alg n base k)))
 
   ------------------------------------------------------------------------
   -- Discharging `vstep` — the value connection.
