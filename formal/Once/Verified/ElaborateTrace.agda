@@ -25,34 +25,40 @@
 
 module Once.Verified.ElaborateTrace where
 
-open import Data.Nat using (ℕ; zero; suc; _≤_; z≤n; s≤s; _⊔_)
-open import Data.Nat.Properties using (m≤m⊔n; n≤m⊔n; ≤-trans)
+open import Data.Nat using (ℕ; zero; suc; _≤_; z≤n; s≤s; _⊔_; _∸_)
+open import Data.Nat.Properties using (m≤m⊔n; n≤m⊔n; ≤-trans; m∸n≤m; 1+n≰n)
+open import Data.Fin using (Fin; toℕ) renaming (zero to fzero; suc to fsuc)
 open import Data.List using (List; []; _∷_; _++_; take)
+open import Data.List.Base using (replicate; length)
 open import Data.Maybe using (just; nothing)
 open import Data.Unit using (⊤; tt)
-open import Data.Empty using (⊥)
+open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃-syntax; Σ-syntax)
 open import Data.Sum using (inj₁; inj₂)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; cong; cong₂)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; cong₂; subst)
 open import Relation.Binary.PropositionalEquality using (module ≡-Reasoning)
-open import Data.List.Properties using (∷-injective; ++-identityʳ; ++-assoc)
+open import Relation.Nullary using (yes; no)
+open import Data.List.Properties using (∷-injective; ++-identityʳ; ++-assoc; length-replicate)
 open import Data.Integer using () renaming (∣_∣ to absℤ)
-open import Data.String using (String)
+open import Data.Char using (Char)
+open import Data.String using (String; fromList) renaming (_≟_ to _≟str_)
+open import Agda.Builtin.String.Properties using (primStringFromListInjective)
 
 open import Once.Type
   using (Type; Unit; Void; _*_; _+_; _⇒[_]_; μ-type; ν-type;
          Int; Float; Str; Buffer)
-open import Once.CCC.IR using (IR; id; _∘_; terminal; ⟨_,_⟩; AllocMode; case)
+open import Once.CCC.IR using (IR; id; _∘_; terminal; ⟨_,_⟩; AllocMode; case; fst; snd)
   renaming (apply to applyᴵ)
-open import Once.Surface.Elaborate using (intLit; strLit; distribute)
-open import Once.TypeCheck.Raw using (RawExpr; RUnit; RInt; RStringLit; RPair; RLet; RApp; RDestruct)
+open import Once.Surface.Elaborate using (intLit; strLit; distribute; proj)
+open import Once.TypeCheck.Raw using (RawExpr; RVar; RUnit; RInt; RStringLit; RPair; RLet; RApp; RDestruct)
 open import Once.Verified.SourceSemantics
   using (Value; Vunit; Vpair; Vinl; Vinr; Vint; Vstr; Vclos; Vbuiltin; Vsigop; Vin;
-         apply; eval; Env; Result; Defs; runTraceEval)
+         apply; eval; Env; Result; Defs; runTraceEval; lookupEnv)
 open import Once.Verified.Trace using (SigOpEvent)
 open import Once.Verified.DenotTrace using (⟦_⟧ᴰ; evalᴰ)
 open import Once.Verified.TraceMonad using (T; returnT; projTrace; valueT)
-open import Once.Surface.Syntax using (Ctx; ∅; _,_^_)
+open import Once.Surface.Syntax using (Ctx; ∅; _,_^_; lookup)
+open import Once.CCC.IR using (fst; snd)
 open import Once.Surface.Elaborate using (⟦_⟧ᶜ)
 
 -- A list is determined by all its `take`-prefixes. The key lemma for
@@ -75,6 +81,39 @@ take-determines (x ∷ xs) (y ∷ ys) h =
 distribute-inl-probe : ∀ {Γ A B} (m : AllocMode) (x : ⟦ Γ ⟧ᴰ) (da : ⟦ A ⟧ᴰ)
   → evalᴰ (distribute {Γ} {A} {B} m) (x , inj₁ da) ≡ returnT (inj₁ (x , da))
 distribute-inl-probe m x da = refl
+
+-- CANONICAL VARIABLE NAMES (D-bridge, option 1). A binder at de-Bruijn LEVEL
+-- `k` (absolute position from the outermost binder) is named `cname k`. Levels
+-- are stable under context extension, so a variable's canonical name never
+-- changes, and DISTINCT levels give DISTINCT names (`cname` injective via
+-- `primStringFromListInjective` + `length-replicate`) — so `lookupEnv` (which
+-- searches most-recent-first by string equality) resolves a canonical name to
+-- exactly its de-Bruijn position, NO shadowing. The α-renaming between a real
+-- source `body` and its canonical erasure is a SEPARATE invariance lemma.
+cname : ℕ → String
+cname k = fromList (replicate k 'a')
+
+-- A binder's LEVEL `n ∸ suc (toℕ i)` is strictly below the head level `n`
+-- (it equals `m ∸ toℕ i ≤ m < suc m` for `n = suc m`), so they differ.
+n∸si≢n : ∀ {n} (i : Fin n) → n ∸ suc (toℕ i) ≢ n
+n∸si≢n {suc m} i eq = 1+n≰n (subst (_≤ m) eq (m∸n≤m m (toℕ i)))
+
+cname-inj : ∀ {a b} → cname a ≡ cname b → a ≡ b
+cname-inj {a} {b} eq =
+  trans (sym (length-replicate a))
+        (trans (cong length
+                  (primStringFromListInjective (replicate a 'a') (replicate b 'a') eq))
+               (length-replicate b))
+
+cname-≢ : ∀ {a b} → a ≢ b → cname a ≢ cname b
+cname-≢ a≢b eq = a≢b (cname-inj eq)
+
+-- `lookupEnv` skips a head binding whose name differs from the query.
+lookupEnv-skip : ∀ (ρ : Env) (x y : String) (v : Value)
+               → x ≢ y → lookupEnv ((y , v) ∷ ρ) x ≡ lookupEnv ρ x
+lookupEnv-skip ρ x y v x≢y with x ≟str y
+... | yes p = ⊥-elim (x≢y p)
+... | no  _ = refl
 
 module _ (defs : Defs) where
   mutual
@@ -157,11 +196,53 @@ module _ (defs : Defs) where
   -- proj₂ = the most-recent binding `A`). This is the de-Bruijn(`Γ`)
   -- ↔ named(`ρ`) bridge for the `var`/`lam` cases.
   ------------------------------------------------------------------
+  -- The head binding's NAME is fixed to `cname n` (the de-Bruijn LEVEL of the
+  -- most-recent binder in a context of length `suc n`), so `lookupEnv` resolves
+  -- canonical names positionally (`cname` injective ⇒ no shadowing).
   EnvRel : List (String × Value) → ∀ {n} (Γ : Ctx n) → ⟦ ⟦ Γ ⟧ᶜ ⟧ᴰ → Set
-  EnvRel _              ∅           _  = ⊤
-  EnvRel []             (Γ , A ^ q) _  = ⊥
-  EnvRel ((_ , v) ∷ ρ') (Γ , A ^ q) dγ =
-    EnvRel ρ' Γ (proj₁ dγ) × (v ~⟨ A ⟩ proj₂ dγ)
+  EnvRel _              ∅                       _  = ⊤
+  EnvRel []             (Γ , A ^ q)             _  = ⊥
+  EnvRel ((y , v) ∷ ρ') (_,_^_ {n} Γ A q)       dγ =
+    (y ≡ cname n) × EnvRel ρ' Γ (proj₁ dγ) × (v ~⟨ A ⟩ proj₂ dγ)
+
+  ------------------------------------------------------------------
+  -- VARIABLE case (`var i`). `elaborate (var i) = proj i` (a pure nest
+  -- of `fst`/`snd`, trace `[]`); `SS.eval (RVar (cname level))` resolves
+  -- by name. `proj-trace`: the projection emits no events. `envrel-lookup`:
+  -- given `EnvRel`, the canonical name at the variable's LEVEL
+  -- (`n ∸ suc (toℕ i)`) looks up to a value that simulates the projection.
+  ------------------------------------------------------------------
+  proj-trace : ∀ {n} {Γ : Ctx n} (i : Fin n) (dγ : ⟦ ⟦ Γ ⟧ᶜ ⟧ᴰ)
+             → proj₁ (evalᴰ (proj {Γ = Γ} i) dγ 0) ≡ []
+  proj-trace {Γ = Γ , A ^ q} fzero    dγ = refl
+  proj-trace {Γ = Γ , A ^ q} (fsuc i) dγ = proj-trace {Γ = Γ} i (proj₁ dγ)
+
+  envrel-lookup : ∀ {n} {Γ : Ctx n} (i : Fin n) (dγ : ⟦ ⟦ Γ ⟧ᶜ ⟧ᴰ) (ρ : Env)
+                → EnvRel ρ Γ dγ
+                → Σ[ v ∈ Value ]
+                    (lookupEnv ρ (cname (n ∸ suc (toℕ i))) ≡ just v)
+                    × (v ~⟨ lookup Γ i ⟩ valueT (evalᴰ (proj {Γ = Γ} i) dγ) 0)
+  envrel-lookup {suc n} {Γ , A ^ q} fzero dγ ((y , v) ∷ ρ') (refl , env' , vsim)
+    with cname n ≟str cname n
+  ... | yes _ = v , refl , vsim
+  ... | no ¬p = ⊥-elim (¬p refl)
+  envrel-lookup {suc n} {Γ , A ^ q} (fsuc i) dγ ((y , v) ∷ ρ') (refl , env' , vsim)
+    with envrel-lookup {n} {Γ} i (proj₁ dγ) ρ' env'
+  ... | (v' , lk , vsim') =
+        v' , trans (lookupEnv-skip ρ' (cname (n ∸ suc (toℕ i))) (cname n) v
+                      (cname-≢ (n∸si≢n i))) lk , vsim'
+
+  cs-var : ∀ {n} {Γ : Ctx n} (i : Fin n) (dγ : ⟦ ⟦ Γ ⟧ᶜ ⟧ᴰ) (ρ : Env)
+         → EnvRel ρ Γ dγ
+         → CompSim (lookup Γ i) (evalᴰ (proj {Γ = Γ} i) dγ)
+                   (λ z → eval z defs ρ (RVar (cname (n ∸ suc (toℕ i)))))
+  cs-var {n} {Γ} i dγ ρ env with envrel-lookup {n} {Γ} i dγ ρ env
+  ... | (v , lk , vsim) =
+        suc zero , v , [] , op-eq , proj-trace {Γ = Γ} i dγ , vsim
+    where
+    op-eq : ∀ z → suc zero ≤ z
+          → eval z defs ρ (RVar (cname (n ∸ suc (toℕ i)))) ≡ just (v , [])
+    op-eq (suc k) _ rewrite lk = refl
 
   ------------------------------------------------------------------
   -- Phase A — first leaf, end-to-end (validates the foundation).
