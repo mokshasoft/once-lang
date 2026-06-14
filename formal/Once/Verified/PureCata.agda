@@ -21,13 +21,13 @@
 
 module Once.Verified.PureCata where
 
-open import Data.List using (List; []; _++_)
+open import Data.List using (List; []; _++_; take)
 open import Data.Maybe using (just; nothing)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
 open import Data.Nat using (ℕ; zero; suc)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong₂)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; trans)
 
 open import Once.Type using (Functor; K; Id; _⊕_; _⊗_; μ-type; ⟦_⟧T)
 open import Once.Functor.Base
@@ -136,6 +136,13 @@ pure-cata-emits-[] {F} {C} n wf alg alg-pure x =
 -- consumes for the non-cata fragment.
 ------------------------------------------------------------------------
 
+-- `take n []` reduces to `[]` only after casing on `n` (Agda splits `take` on
+-- its first arg); named so the `Cata` clause — whose `obs` now `take n`s — can
+-- close `take n [] ≡ []` for a free `n`.
+take-[] : (n : ℕ) → take n ([] {A = SigOpEvent}) ≡ []
+take-[] zero    = refl
+take-[] (suc n) = refl
+
 pure-emits-[] : ∀ {A B} (n : ℕ) (ir : IR A B)
               → EmitsNoSigOp ir → ∀ (x : ⟦ A ⟧) → proj₁ (obs n ir x) ≡ []
 -- All clauses are `n`-free (obs now splits on the IR first, via `sig1`): SigOp
@@ -149,7 +156,8 @@ pure-emits-[] n (⟨ f , g ⟩ m) (ef , eg) x rewrite pure-emits-[] n f ef x = p
 pure-emits-[] n (case f g) (ef , eg) (inj₁ a) = pure-emits-[] n f ef a
 pure-emits-[] n (case f g) (ef , eg) (inj₂ b) = pure-emits-[] n g eg b
 pure-emits-[] n (Cata wf alg) ealg x =
-  pure-cata-emits-[] n wf alg (λ z → pure-emits-[] n alg ealg z) x
+  trans (cong (take n) (pure-cata-emits-[] n wf alg (λ z → pure-emits-[] n alg ealg z) x))
+        (take-[] n)
 pure-emits-[] n id            _ x = refl
 pure-emits-[] n fst           _ x = refl
 pure-emits-[] n snd           _ x = refl

@@ -32,7 +32,7 @@
 
 module Once.Verified.TraceDenote where
 
-open import Data.List using (List; []; _∷_; _++_; length)
+open import Data.List using (List; []; _∷_; _++_; length; take)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Nat using (ℕ; zero; suc; _∸_)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
@@ -112,13 +112,13 @@ obs n (⟨ f , g ⟩ m) x =
 obs n (case f g) (inj₁ a) = (proj₁ (obs n f a) , just (eval (case f g) (inj₁ a)))
 obs n (case f g) (inj₂ b) = (proj₁ (obs n g b) , just (eval (case f g) (inj₂ b)))
 -- effectful catamorphism. VALUE is `eval`'s cata value directly; EVENTS are the
--- real fold (`sem-cata` over the carrier `List SigOpEvent × ⟦C⟧`, running
--- `obs n alg` per layer in post-order). NOTE: this clause's FOLD does not yet
--- thread the SigOp budget through the layers — it is the LAST clause to conform
--- (the general constructors above conform first, top-down); the budget-threaded
--- fold lands when the cata leaf is wired to the ∀-n bridge.
+-- first `n` SigOps of the fold: `sem-cata` produces the full post-order SigOp
+-- sequence (each layer running `obs n alg`), and `take n` keeps the first-`n`
+-- prefix — the SigOp-event-indexed view, matching `Behavior n`. (No budget-
+-- threaded fold needed: `take n` of the post-order trace IS the first-`n`
+-- prefix, and the per-layer budget `n` is ≥ each contributing layer's share.)
 obs n (Cata {F} wf {C} alg) x =
-  (proj₁ (sem-cata wf (cata-ev-alg {F} {C} n alg) x) , just (eval (Cata wf alg) x))
+  (take n (proj₁ (sem-cata wf (cata-ev-alg {F} {C} n alg) x)) , just (eval (Cata wf alg) x))
 -- value-pure constructors (no SigOp of their own): no events, budget untouched.
 obs n c x = ([] , just (eval c x))
 
