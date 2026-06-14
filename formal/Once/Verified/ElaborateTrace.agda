@@ -31,7 +31,7 @@ open import Data.List using (List; []; _∷_; _++_; take)
 open import Data.Maybe using (just; nothing)
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥)
-open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃-syntax)
+open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃-syntax; Σ-syntax)
 open import Data.Sum using (inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
 open import Data.List.Properties using (∷-injective)
@@ -45,8 +45,9 @@ open import Once.CCC.IR using (IR; terminal; ⟨_,_⟩; AllocMode)
 open import Once.Surface.Elaborate using (intLit; strLit)
 open import Once.TypeCheck.Raw using (RawExpr; RUnit; RInt; RStringLit; RPair)
 open import Once.Verified.SourceSemantics
-  using (Value; Vpair; Vinl; Vinr; Vint; Vstr;
+  using (Value; Vunit; Vpair; Vinl; Vinr; Vint; Vstr;
          apply; eval; Env; Result; Defs; runTraceEval)
+open import Once.Verified.Trace using (SigOpEvent)
 open import Once.Verified.DenotTrace using (⟦_⟧ᴰ; evalᴰ)
 open import Once.Verified.TraceMonad using (T; projTrace; valueT)
 open import Once.Surface.Syntax using (Ctx; ∅; _,_^_)
@@ -119,11 +120,18 @@ module _ (defs : Defs) where
     -- for all of Phase A/B; the productive `Ana` (Phase C) — whose trace is NOT
     -- budget-independent, `c 0 = []` ≠ its events — gets a separate sim. The
     -- top-level `take k` observable follows from full equality + budget-independence.)
+    -- TERMINATING form: beyond a threshold `s`, the operational run STABILISES
+    -- to a fixed result `just (v , evs)`; the trace `evs` equals the
+    -- denotational trace (`proj₁ (c 0)`) and the value `v` simulates. Exposing
+    -- the fixed `(v , evs)` is what the value-DEPENDENT structural cases
+    -- (`let`/`app`/`case`) need — they reuse `v` in the continuation. (Finite
+    -- form; `Ana` (Phase C) gets a separate productive sim.)
     CompSim : (B : Type) → T ⟦ B ⟧ᴰ → (ℕ → Result) → Set
     CompSim B c op =
-      ∃[ s ] (∀ (s' : ℕ) → s ≤ s' →
-          (proj₁ (c 0) ≡ runTraceEval (op s'))
-          × ResultRel B (op s') (valueT c 0))
+      ∃[ s ] Σ[ v ∈ Value ] Σ[ evs ∈ List SigOpEvent ]
+        ((∀ (s' : ℕ) → s ≤ s' → op s' ≡ just (v , evs))
+         × (proj₁ (c 0) ≡ evs)
+         × (v ~⟨ B ⟩ valueT c 0))
 
     -- The operational result (which must succeed, `just`) carries a
     -- value simulating the denotational value.
@@ -156,20 +164,20 @@ module _ (defs : Defs) where
   ------------------------------------------------------------------
   cs-unit : ∀ {A} (dγ : ⟦ A ⟧ᴰ) (ρ : Env)
           → CompSim Unit (evalᴰ (terminal {A}) dγ) (λ s → eval s defs ρ RUnit)
-  cs-unit dγ ρ = suc zero , λ { (suc s') _ → refl , tt }
+  cs-unit dγ ρ = suc zero , Vunit , [] , (λ { (suc s') _ → refl }) , refl , tt
 
   -- `int n`: `elaborate (int n) = intLit n = const fits-int n ∣n∣ ∘ terminal`
   -- (pure ⇒ no events), `SS.eval (RInt n) = just (Vint n , [])`. Traces both
   -- `[]`; value `Vint n ~⟨ Int ⟩ ∣n∣ = (absℤ n ≡ ∣n∣)` = refl.
   cs-int : ∀ {Γ} (n : _) (dγ : ⟦ Γ ⟧ᴰ) (ρ : Env)
          → CompSim Int (evalᴰ (intLit n {Γ}) dγ) (λ s → eval s defs ρ (RInt n))
-  cs-int n dγ ρ = suc zero , λ { (suc s') _ → refl , refl }
+  cs-int n dγ ρ = suc zero , Vint n , [] , (λ { (suc s') _ → refl }) , refl , refl
 
   -- `str s`: `elaborate (str s) = strLit s = SigOp (str-lit-info s) ∘ terminal`
   -- (str-lit-info is Pure ⇒ no events), `SS.eval (RStringLit s) = just (Vstr s , [])`.
   cs-str : ∀ {Γ} (s : _) (dγ : ⟦ Γ ⟧ᴰ) (ρ : Env)
          → CompSim Str (evalᴰ (strLit s {Γ}) dγ) (λ z → eval z defs ρ (RStringLit s))
-  cs-str s dγ ρ = suc zero , λ { (suc s') _ → refl , tt }
+  cs-str s dγ ρ = suc zero , Vstr s , [] , (λ { (suc s') _ → refl }) , refl , tt
 
   -- STRUCTURAL composition: `pair`. `elaborate (pair a b) = ⟨ a' , b' ⟩`,
   -- `SS.eval (RPair ea eb) = eval ea >>=ᵣ λ va → eval eb >>=ᵣ λ vb → just (Vpair…)`.
@@ -183,15 +191,14 @@ module _ (defs : Defs) where
           → CompSim B (evalᴰ a' x) (λ s → eval s defs ρ ea)
           → CompSim C (evalᴰ b' x) (λ s → eval s defs ρ eb)
           → CompSim (B * C) (evalᴰ (⟨ a' , b' ⟩ m) x) (λ s → eval s defs ρ (RPair ea eb))
-  cs-pair {Γ} {B} {C} a' b' m x ρ ea eb (sa , pa) (sb , pb) = suc (sa ⊔ sb) , go
+  cs-pair {Γ} {B} {C} a' b' m x ρ ea eb
+          (sa , va , ea-evs , opa-eq , tra , rra)
+          (sb , vb , eb-evs , opb-eq , trb , rrb) =
+    suc (sa ⊔ sb) , Vpair va vb , ea-evs ++ (eb-evs ++ []) ,
+    op-eq , cong₂ _++_ tra (cong₂ _++_ trb refl) , (rra , rrb)
     where
-    go : ∀ s' → suc (sa ⊔ sb) ≤ s' →
-         (proj₁ (evalᴰ (⟨ a' , b' ⟩ m) x 0) ≡ runTraceEval (eval s' defs ρ (RPair ea eb)))
-         × ResultRel (B * C) (eval s' defs ρ (RPair ea eb)) (valueT (evalᴰ (⟨ a' , b' ⟩ m) x) 0)
-    go (suc k) (s≤s le)
-       with eval k defs ρ ea | pa k (≤-trans (m≤m⊔n sa sb) le)
-          | eval k defs ρ eb | pb k (≤-trans (n≤m⊔n sa sb) le)
-    ... | just (va , ea-evs) | (tr-a , rr-a) | just (vb , eb-evs) | (tr-b , rr-b) =
-          cong₂ _++_ tr-a (cong₂ _++_ tr-b refl) , rr-a , rr-b
-    ... | nothing            | (_ , ())      | _                 | _
-    ... | just _             | _             | nothing           | (_ , ())
+    op-eq : ∀ s' → suc (sa ⊔ sb) ≤ s' →
+            eval s' defs ρ (RPair ea eb) ≡ just (Vpair va vb , ea-evs ++ (eb-evs ++ []))
+    op-eq (suc k) (s≤s le)
+      rewrite opa-eq k (≤-trans (m≤m⊔n sa sb) le)
+            | opb-eq k (≤-trans (n≤m⊔n sa sb) le) = refl
