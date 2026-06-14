@@ -31,11 +31,21 @@ module Once.Verified.OpTrace where
 open import Data.Unit using (⊤; tt)
 open import Data.Product using (_×_; _,_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
+open import Data.Nat using (ℕ; zero; suc)
+open import Data.List using (List; []; _∷_; _++_)
+open import Data.Maybe using (Maybe; just; nothing; map)
+open import Data.Empty using (⊥-elim)
 
 open import Once.Type
-  using (Type; Unit; Void; _*_; _+_; _⇒[_]_; μ-type; ν-type; Int; Float; Str; Buffer)
-open import Once.CCC.IR using (IR)
+  using (Type; Unit; Void; _*_; _+_; _⇒[_]_; μ-type; ν-type; Int; Float; Str; Buffer;
+         mk-kind; Many; eff)
+open import Once.CCC.IR
 open import Once.CCC.Eval using (eval; ⟦_⟧)
+open import Once.CCC.SigOp.Info using (SigOpInfo; mk-info; Emits)
+open import Once.Verified.Trace using (SigOpEvent; mk-event)
+open import Once.Verified.TraceDenote using (emit-eff)
+open import Data.Product using (proj₁)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 ------------------------------------------------------------------------
 -- The operational value domain.
@@ -85,3 +95,85 @@ ov→sem (ovStr v)     = v
 ov→sem (ovBuf v)     = v
 ov→sem (ovMu v)      = v
 ov→sem (ovNu v)      = v
+
+------------------------------------------------------------------------
+-- Reflect a denotational value back to `OVal` — PARTIAL: an arrow value is
+-- an Agda function with no IR body to defunctionalize, so it has no `OVal`
+-- (returns `nothing` = "outside the first-order model"). Total on the
+-- first-order types, which is exactly where `SigOp`/`const` results live
+-- (external primitives are first-order). Used to box those results.
+------------------------------------------------------------------------
+
+sem→ov? : ∀ {A} → ⟦ A ⟧ → Maybe (OVal A)
+sem→ov? {Unit}        _        = just ovUnit
+sem→ov? {Void}        ()
+sem→ov? {A * B}       (a , b)  with sem→ov? a | sem→ov? b
+... | just oa | just ob = just (ovPair oa ob)
+... | _       | _       = nothing
+sem→ov? {A + B}       (inj₁ a) = map ovInl (sem→ov? a)
+sem→ov? {A + B}       (inj₂ b) = map ovInr (sem→ov? b)
+sem→ov? {A ⇒[ k ] B}  _        = nothing
+sem→ov? {Int}         v        = just (ovInt v)
+sem→ov? {Float}       v        = just (ovFlt v)
+sem→ov? {Str}         v        = just (ovStr v)
+sem→ov? {Buffer}      v        = just (ovBuf v)
+sem→ov? {μ-type F}    v        = just (ovMu v)
+sem→ov? {ν-type F}    v        = just (ovNu v)
+
+------------------------------------------------------------------------
+-- The operational interpreter. Fuel-bounded (decrements on every recursive
+-- call — `n = 0` is out-of-fuel `nothing`). Fires a SigOp event WHEN THE
+-- SigOp EXECUTES, including inside an applied closure — the clause
+--   otrace apply (ovPair (ovClos h γ) a) = otrace h (ovPair γ a)
+-- RUNS the closure body, so its effects appear in order. (Pure-fn `obs`
+-- could not do this; the machine, being operational, already does.)
+--
+-- WIP: the recursion-scheme constructors (In/Out/out-μ/in-ν/Ana/Cata/Para/
+-- Hylo/Fuse) + `free-heap` are DEFERRED to the catch-all (`nothing`) — they
+-- must fire their algebra/coalgebra effects operationally (the operational
+-- cata fold is the next sub-step). This module is not yet imported anywhere,
+-- so the placeholder is safe WIP.
+------------------------------------------------------------------------
+
+otrace : ∀ {A B} → ℕ → IR A B → OVal A → List SigOpEvent × Maybe (OVal B)
+otrace zero    _              _                       = ([] , nothing)
+otrace (suc n) id             x                       = ([] , just x)
+otrace (suc n) (g ∘ f)        x with otrace n f x
+... | (e₁ , nothing) = (e₁ , nothing)
+... | (e₁ , just v)  with otrace n g v
+...   | (e₂ , w) = (e₁ ++ e₂ , w)
+otrace (suc n) fst            (ovPair a b)            = ([] , just a)
+otrace (suc n) snd            (ovPair a b)            = ([] , just b)
+otrace (suc n) (⟨ f , g ⟩ m)  x with otrace n f x
+... | (e₁ , nothing) = (e₁ , nothing)
+... | (e₁ , just a)  with otrace n g x
+...   | (e₂ , nothing) = (e₁ ++ e₂ , nothing)
+...   | (e₂ , just b)  = (e₁ ++ e₂ , just (ovPair a b))
+otrace (suc n) (inl m)        x                       = ([] , just (ovInl x))
+otrace (suc n) (inr m)        x                       = ([] , just (ovInr x))
+otrace (suc n) (case f g)     (ovInl a)               = otrace n f a
+otrace (suc n) (case f g)     (ovInr b)               = otrace n g b
+otrace (suc n) terminal       x                       = ([] , just ovUnit)
+otrace (suc n) (curry h m)    x                       = ([] , just (ovClos h x))
+otrace (suc n) apply          (ovPair (ovClos h γ) a) = otrace n h (ovPair γ a)
+otrace (suc n) arr            (ovClos h γ)            = ([] , just (ovClos h γ))
+otrace (suc n) (SigOp si)     x                       =
+  (emit-eff si (suc n) (ov→sem x) , sem→ov? (eval (SigOp si) (ov→sem x)))
+otrace (suc n) (const f iv mv) x                      = ([] , sem→ov? mv)
+otrace (suc n) ir             x                       = ([] , nothing)   -- recursion schemes / heap: deferred
+
+------------------------------------------------------------------------
+-- Non-vacuity / the POINT of solution 2: an effect INSIDE an applied
+-- closure fires. `λ _ → tick ()` is `ovClos (SigOp tickInfo ∘ snd) ovUnit`;
+-- applying it runs the body and emits the `io.tick` event. The denotational
+-- `obs` returns `[]` here (its `apply`/`curry` clauses are value-pure) — this
+-- is exactly the gap the operational semantics closes.
+------------------------------------------------------------------------
+
+tickInfo : SigOpInfo Unit Unit
+tickInfo = mk-info "io.tick" (λ _ → tt) (λ _ → tt) (Emits refl)
+
+op-apply-fires-closure-effect :
+  proj₁ (otrace 5 (apply {k = mk-kind Many eff}) (ovPair (ovClos (SigOp tickInfo ∘ snd) ovUnit) ovUnit))
+    ≡ mk-event "io.tick" nothing ∷ []
+op-apply-fires-closure-effect = refl
