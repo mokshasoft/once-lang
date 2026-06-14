@@ -50,7 +50,7 @@ open import Once.CCC.Codegen.CataNextSlot using (module CataNextSlot)
 open import Once.CCC.Codegen.CataIRSlotStable using (module CataIRSlotStable)
 open import Once.CCC.Machine.ClosureWellFormed using (module ClosureWellFormedDef)
 open import Once.Verified.Trace using (SigOpEvent)
-open import Once.Verified.TraceDenote using (obs)
+open import Once.Verified.OpTrace using (otrace; OVal; ov→sem)
 open import Once.Verified.FlatEvents using (module FlatEventTrace)
 
 module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
@@ -115,7 +115,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   -- coinductive unfold (∀ n: first-n events match); a non-terminating loop
   -- nested inside another can't be productive. So `Cata` carries a termination
   -- witness; only `Ana` carries a step-index.
-  record MachineRefinesObsF {A B} (ir : IR A B) (x : ⟦ A ⟧)
+  record MachineRefinesObsF {A B} (ir : IR A B) (ov : OVal A)
                              (s : LocState FS) (alloc : AllocState {FS}) : Set where
     field
       enough-fuel  : ℕ
@@ -130,11 +130,11 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
       traces-agree :
         ∀ (k : ℕ) →
         take k (flat-events enough-fuel (ir-to-trace ir) (mkFlat s alloc 0))
-          ≡ proj₁ (obs k ir x)
+          ≡ proj₁ (otrace k ir ov)
       value-realized :
         ∃[ mOut ] ∃[ result-loc ]
           ValidAtWF mOut (falloc (flat-run enough-fuel ir s alloc))
-            (eval ir x) result-loc
+            (eval ir (ov→sem ov)) result-loc
             (forced (floc (flat-run enough-fuel ir s alloc)))
 
   -- Same preconditions as `compile-correct-flat`'s semantic side (entry
@@ -143,14 +143,14 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   IRObsCorrectF : ∀ {A B} → IR A B → Set
   IRObsCorrectF {A} {B} ir =
     ir-size ir < program-bound →
-    ∀ (mIn : AllocMode) (x : ⟦ A ⟧) (input-loc : ValueLocation FS)
+    ∀ (mIn : AllocMode) (ov : OVal A) (input-loc : ValueLocation FS)
       (s : LocState FS) (alloc : AllocState {FS}) →
     next-slot alloc ≡ 0 →
-    ValidAtWF mIn alloc x input-loc s →
+    ValidAtWF mIn alloc (ov→sem ov) input-loc s →
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
     readReg (regs s) Input1 ≡ SV-Ptr input-loc →
-    MachineRefinesObsF ir x s alloc
+    MachineRefinesObsF ir ov s alloc
 
   -- `cata-correct`: the single named obligation; the record FIELDS name the
   -- parts the discharge must provide (all sharing one `enough-fuel`):
