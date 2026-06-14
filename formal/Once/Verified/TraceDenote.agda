@@ -44,7 +44,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Once.Type using (Functor; K; Id; _⊕_; _⊗_; μ-type; ⟦_⟧T)
 open import Once.CCC.IR
 open import Once.CCC.Eval using (eval; ⟦_⟧)
-open import Once.CCC.SigOp.Info using (semM)
+open import Once.CCC.SigOp.Info using (SigOpInfo; semM; effect; EffectShape; Pure; Emits; Halts)
 open import Once.Functor.Translate using (WellFormedF)
 open import Once.Semantics.Machine
   using (sem-pair; sem-cata; sem-fmap; coerce-functor⁻¹; ⟦_⟧F)
@@ -101,8 +101,20 @@ sig1 : ℕ → SigOpEvent → List SigOpEvent
 sig1 zero    _ = []
 sig1 (suc _) e = e ∷ []
 
+-- ONLY effectful SigOps are observable (`main : Eff Unit Unit` produces nothing
+-- but effects, and effects come only from effectful SigOps). A `Pure` SigOp
+-- (arith, literals — the arith.block lowering is an optimization, not an
+-- observable) emits NOTHING; `Emits`/`Halts` (e.g. `linux.exit`) emit the event.
+-- Matches the source interpreter `SS.eval`, which emits only on effectful sigop
+-- application, and the machine `flat-events`, made effect-aware in lockstep.
+emit-eff : ∀ {A B} → SigOpInfo A B → ℕ → ⟦ A ⟧ → List SigOpEvent
+emit-eff si n x with effect si
+... | Pure    = []
+... | Emits _ = sig1 n (mkEvent si x)
+... | Halts _ = sig1 n (mkEvent si x)
+
 obs : ∀ {A B} → ℕ → IR A B → ⟦ A ⟧ → List SigOpEvent × Maybe ⟦ B ⟧
-obs n (SigOp si) x = (sig1 n (mkEvent si x) , just (semM si x))    -- spend one (iff n ≥ 1)
+obs n (SigOp si) x = (emit-eff si n x , just (semM si x))    -- effectful ⇒ spend one (iff n ≥ 1); pure ⇒ nothing
 obs n (g ∘ f) x =
   let ef = proj₁ (obs n f x)
   in (ef ++ proj₁ (obs (n ∸ length ef) g (eval f x)) , just (eval (g ∘ f) x))

@@ -40,7 +40,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 
 open import Once.Type using (Int)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
-open import Once.CCC.SigOp.Info using (SigOpInfo; name)
+open import Once.CCC.SigOp.Info using (SigOpInfo; name; effect; EffectShape; Pure; Emits; Halts)
 open import Once.CCC.Machine.SMCore
   using (LocState; halted; regs; readReg; Input1;
          StoredValue; SV-Lit;
@@ -72,8 +72,15 @@ module FlatEventTrace {FS : FrameSemantics} where
   -- Factored through `floc` so any transform preserving `floc` (e.g. the
   -- relocation `shift-pc`, which only bumps the pc) leaves events
   -- definitionally unchanged — no per-constructor enumeration needed.
+  -- ONLY effectful SigOps are observable (lockstep with `obs`/`emit-eff`): a
+  -- `Pure` `instr-sigop` (arith.block etc.) is computed in registers, NOT a
+  -- syscall, so it emits no observable event; `Emits`/`Halts` (e.g.
+  -- `linux.exit`) emit the machine event.
   ev-of-loc : AbstractInstr → LocState FS → List SigOpEvent
-  ev-of-loc (instr-sigop si) loc = machine-event si (readReg (regs loc) Input1) ∷ []
+  ev-of-loc (instr-sigop si) loc with effect si
+  ... | Pure    = []
+  ... | Emits _ = machine-event si (readReg (regs loc) Input1) ∷ []
+  ... | Halts _ = machine-event si (readReg (regs loc) Input1) ∷ []
   ev-of-loc _                _   = []
 
   -- Events emitted by executing one instruction from state `fs`.
