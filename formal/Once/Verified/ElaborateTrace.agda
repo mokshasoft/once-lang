@@ -108,16 +108,21 @@ module _ (defs : Defs) where
     -- productivity witness for the step meter; the observable is the
     -- event prefix.
     ------------------------------------------------------------------
-    -- FUEL-STABLE form: at every observation depth `j`, SOME threshold fuel `s`
-    -- exists such that for ALL `s' ≥ s` the event prefixes agree and the value
-    -- simulates. Baking the `∀ s' ≥ s` into `CompSim` makes it COMPOSITIONAL:
-    -- structural cases combine sub-witnesses by `max`, with no separate
-    -- fuel-monotonicity lemma (each `CompSim` carries its own stability).
+    -- FULL-TRACE (finite) form: SOME threshold fuel `s` exists such that for ALL
+    -- `s' ≥ s` the operational trace EQUALS the denotational trace and the value
+    -- simulates. The denotational side is read at budget `0`: for a FINITE
+    -- computation (no `Ana`) the trace is budget-independent, so `c 0` is the
+    -- full trace. This composes DIRECTLY under `++` (no `take`, no monotonicity,
+    -- no per-`j` reconciliation): `>>=T` at index `0` concatenates definitionally,
+    -- and full sub-trace equalities concatenate. (This is the finite form, valid
+    -- for all of Phase A/B; the productive `Ana` (Phase C) — whose trace is NOT
+    -- budget-independent, `c 0 = []` ≠ its events — gets a separate sim. The
+    -- top-level `take k` observable follows from full equality + budget-independence.)
     CompSim : (B : Type) → T ⟦ B ⟧ᴰ → (ℕ → Result) → Set
     CompSim B c op =
-      ∀ (j : ℕ) → ∃[ s ] (∀ (s' : ℕ) → s ≤ s' →
-          (take j (projTrace c j) ≡ take j (runTraceEval (op s')))
-          × ResultRel B (op s') (valueT c j))
+      ∃[ s ] (∀ (s' : ℕ) → s ≤ s' →
+          (proj₁ (c 0) ≡ runTraceEval (op s'))
+          × ResultRel B (op s') (valueT c 0))
 
     -- The operational result (which must succeed, `just`) carries a
     -- value simulating the denotational value.
@@ -150,17 +155,17 @@ module _ (defs : Defs) where
   ------------------------------------------------------------------
   cs-unit : ∀ {A} (dγ : ⟦ A ⟧ᴰ) (ρ : Env)
           → CompSim Unit (evalᴰ (terminal {A}) dγ) (λ s → eval s defs ρ RUnit)
-  cs-unit dγ ρ j = suc zero , λ { (suc s') _ → refl , tt }
+  cs-unit dγ ρ = suc zero , λ { (suc s') _ → refl , tt }
 
   -- `int n`: `elaborate (int n) = intLit n = const fits-int n ∣n∣ ∘ terminal`
   -- (pure ⇒ no events), `SS.eval (RInt n) = just (Vint n , [])`. Traces both
   -- `[]`; value `Vint n ~⟨ Int ⟩ ∣n∣ = (absℤ n ≡ ∣n∣)` = refl.
   cs-int : ∀ {Γ} (n : _) (dγ : ⟦ Γ ⟧ᴰ) (ρ : Env)
          → CompSim Int (evalᴰ (intLit n {Γ}) dγ) (λ s → eval s defs ρ (RInt n))
-  cs-int n dγ ρ j = suc zero , λ { (suc s') _ → refl , refl }
+  cs-int n dγ ρ = suc zero , λ { (suc s') _ → refl , refl }
 
   -- `str s`: `elaborate (str s) = strLit s = SigOp (str-lit-info s) ∘ terminal`
   -- (str-lit-info is Pure ⇒ no events), `SS.eval (RStringLit s) = just (Vstr s , [])`.
   cs-str : ∀ {Γ} (s : _) (dγ : ⟦ Γ ⟧ᴰ) (ρ : Env)
          → CompSim Str (evalᴰ (strLit s {Γ}) dγ) (λ z → eval z defs ρ (RStringLit s))
-  cs-str s dγ ρ j = suc zero , λ { (suc s') _ → refl , tt }
+  cs-str s dγ ρ = suc zero , λ { (suc s') _ → refl , tt }
