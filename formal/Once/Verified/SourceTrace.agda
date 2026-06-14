@@ -46,6 +46,7 @@ open import Once.Grammar.ModuleConvert using (gmoduleToModule)
 open import Once.Verified.Behavior using (Source; Behavior)
 open import Once.Verified.TraceDenote using (obs)
 open import Once.Verified.SourceSemantics as SS using (runTrace)
+import Once.Verified.MainAlign as MA
 
 ------------------------------------------------------------------------
 -- Source → IR of `main` (option (a): reuse the compiler's elaborator).
@@ -149,18 +150,31 @@ sourceToIR src with gmoduleToModule src
 -- (threaded by `Compile.module-to-asm-correct` via `built⇒moduleToIR-just`).
 -- Factored (Plan 0.45 #10) into two precise obligations + a connecting proof
 -- that uses the proven source-side reduction `runTrace-main`.
-postulate
-  -- (#9) Main-finding alignment — the PROGRAM case (D008: `--exe` needs a
-  -- `main`; a library `--lib`, with no `main`, gives `moduleToIR m ≡ nothing`
-  -- and the empty-trace `no-main-empty` branch instead). When `moduleToIR m`
-  -- produces an entry IR the module IS a program, so it has a source `main`
-  -- definition and `runTrace` runs it. Discharge: extractFunctions /
-  -- compileAllFuns / findMain ↔ extractDefs / lookupDef.
-  main-exists-align :
-    ∀ (m : P.Module) (ir : IR Unit Unit) → moduleToIR m ≡ just ir
-    → ∃ λ (body : RawExpr) →
-        SS.lookupDef (SS.extractDefs (P.Module.decls m)) "main" ≡ just body
+-- (#9) Main-finding alignment — DISCHARGED (Plan 0.45). The PROGRAM case
+-- (D008: `--exe` needs a `main`; a library `--lib`, with no `main`, gives
+-- `moduleToIR m ≡ nothing` and the empty-trace `no-main-empty` branch). When
+-- `moduleToIR m` produces an entry IR the module IS a program, so it has a
+-- source `main` `DFunDef` and `runTrace` runs it. Chains the compiler-side
+-- correspondence (`MainAlign.compileResolvedModule-main`: a non-primitive entry
+-- traces back to a `DFunDef "main"`) with the source-side
+-- (`SS.lookup-main-of-dfundef`). The J-style `aux` unfolds `moduleToIR` =
+-- `moduleToIR-aux (compileResolvedModule …)` so its result is analysable.
+main-exists-align :
+  ∀ (m : P.Module) (ir : IR Unit Unit) → moduleToIR m ≡ just ir
+  → ∃ λ (body : RawExpr) →
+      SS.lookupDef (SS.extractDefs (P.Module.decls m)) "main" ≡ just body
+main-exists-align m ir mj = aux (C.compileResolvedModule C.Heap false m) refl mj
+  where
+    aux : (r : String ⊎ List C.CompiledFun)
+        → C.compileResolvedModule C.Heap false m ≡ r
+        → moduleToIR-aux r ≡ just ir
+        → ∃ λ body → SS.lookupDef (SS.extractDefs (P.Module.decls m)) "main" ≡ just body
+    aux (inj₁ _)    crm ()
+    aux (inj₂ funs) crm fm =
+      SS.lookup-main-of-dfundef (P.Module.decls m)
+        (MA.compileResolvedModule-main m C.Heap false funs crm (findMain-name funs ir fm))
 
+postulate
   -- (#10) The obs↔eval CORE: the compiled entry IR's SigOp trace equals the
   -- source interpreter's trace of the SAME `main` body. THE load-bearing
   -- obligation — the `obs(elaborate(checkElab …)) ≈ eval` induction over the
