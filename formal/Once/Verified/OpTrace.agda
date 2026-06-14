@@ -38,13 +38,16 @@ open import Data.Empty using (⊥-elim)
 
 open import Once.Type
   using (Type; Unit; Void; _*_; _+_; _⇒[_]_; μ-type; ν-type; Int; Float; Str; Buffer;
-         mk-kind; Many; eff)
+         Functor; ⟦_⟧T; mk-kind; Many; eff)
 open import Once.CCC.IR
 open import Once.CCC.Eval using (eval; ⟦_⟧)
 open import Once.CCC.SigOp.Info using (SigOpInfo; mk-info; Emits)
+open import Once.Functor.Translate using (WellFormedF)
+open import Once.Semantics.Machine using (sem-cata; sem-fmap; coerce-functor⁻¹; ⟦_⟧F)
 open import Once.Verified.Trace using (SigOpEvent; mk-event)
-open import Once.Verified.TraceDenote using (emit-eff)
-open import Data.Product using (proj₁)
+open import Once.Verified.TraceDenote using (emit-eff; events-F)
+open import Data.Maybe using (maybe)
+open import Data.Product using (proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 ------------------------------------------------------------------------
@@ -135,7 +138,17 @@ sem→ov? {ν-type F}    v        = just (ovNu v)
 -- so the placeholder is safe WIP.
 ------------------------------------------------------------------------
 
-otrace : ∀ {A B} → ℕ → IR A B → OVal A → List SigOpEvent × Maybe (OVal B)
+otrace          : ∀ {A B} → ℕ → IR A B → OVal A → List SigOpEvent × Maybe (OVal B)
+-- the cata fold's per-layer step: children's events (`events-F`) then THIS
+-- layer's algebra events, run OPERATIONALLY (`otrace n alg`, so a closure
+-- effect inside `alg` fires). Carrier is the denotational `List × ⟦C⟧` (the
+-- fold value stays `eval`); only the trace uses `otrace`. Mirrors the
+-- denotational `cata-ev-alg`, swapping `obs`→`otrace` (+ the `sem→ov?` box of
+-- the rebuilt layer for `otrace`'s `OVal` input). First-order `F`/`C` ⇒ the
+-- box is `just`; a higher-order layer would be `nothing` (outside the model).
+otrace-cata-alg : ∀ {F C} → ℕ → IR (⟦ F ⟧T C) C
+                → ⟦ F ⟧F (List SigOpEvent × ⟦ C ⟧) → List SigOpEvent × ⟦ C ⟧
+
 otrace zero    _              _                       = ([] , nothing)
 otrace (suc n) id             x                       = ([] , just x)
 otrace (suc n) (g ∘ f)        x with otrace n f x
@@ -160,7 +173,17 @@ otrace (suc n) arr            (ovClos h γ)            = ([] , just (ovClos h γ
 otrace (suc n) (SigOp si)     x                       =
   (emit-eff si (suc n) (ov→sem x) , sem→ov? (eval (SigOp si) (ov→sem x)))
 otrace (suc n) (const f iv mv) x                      = ([] , sem→ov? mv)
-otrace (suc n) ir             x                       = ([] , nothing)   -- recursion schemes / heap: deferred
+-- the operational CATA fold: traverse the (finite) μ-value with the SPF
+-- `sem-cata` (structural, terminating), running `otrace n alg` per layer for
+-- the trace (`otrace-cata-alg`); the value is the denotational `eval`.
+otrace (suc n) (Cata {F} wf {A} alg) (ovMu x)         =
+  (proj₁ (sem-cata wf (otrace-cata-alg {F} {A} n alg) x) , sem→ov? (eval (Cata wf alg) x))
+otrace (suc n) ir             x                       = ([] , nothing)   -- Ana/Para/Hylo/Fuse/In/Out/heap: deferred
+
+otrace-cata-alg {F} {C} n alg fc =
+  ( events-F F proj₁ fc ++ maybe (λ ov → proj₁ (otrace n alg ov)) [] (sem→ov? z)
+  , eval alg z )
+  where z = coerce-functor⁻¹ F C (sem-fmap F proj₂ fc)
 
 ------------------------------------------------------------------------
 -- Non-vacuity / the POINT of solution 2: an effect INSIDE an applied
