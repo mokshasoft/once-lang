@@ -27,16 +27,24 @@
 
 module Once.Verified.DenotTrace where
 
-open import Data.Unit using (⊤)
+open import Data.Nat using (ℕ; zero)
+open import Data.List using (List; []; _∷_)
+open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥)
-open import Data.Product using (_×_)
-open import Data.Sum using (_⊎_)
+open import Data.Product using (_×_; _,_; proj₁; proj₂)
+open import Data.Sum using (_⊎_; inj₁; inj₂)
 
 open import Once.Type
   using (Type; Unit; Void; _*_; _+_; _⇒[_]_; μ-type; ν-type;
          Int; Float; Str; Buffer)
-open import Once.CCC.Eval as Val using ()   -- pure value domain `Val.⟦_⟧`
-open import Once.Verified.TraceMonad using (T)
+open import Once.CCC.IR
+  using (IR; id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal;
+         initial; curry; apply; arr; SigOp)
+open import Once.CCC.Eval as Val using (eval)   -- pure value domain `Val.⟦_⟧` + `eval`
+open import Once.CCC.SigOp.Info
+  using (SigOpInfo; semM; effect; EffectShape; Pure; Emits; Halts)
+open import Once.Verified.Trace using (SigOpEvent; mkEvent)
+open import Once.Verified.TraceMonad using (T; returnT; _>>=T_; valueT)
 
 ------------------------------------------------------------------------
 -- The monadic value domain. Mirrors `Val.⟦_⟧` EXCEPT at the arrow, which
@@ -55,3 +63,89 @@ open import Once.Verified.TraceMonad using (T)
 ⟦ Float ⟧ᴰ      = Val.⟦ Float ⟧
 ⟦ Str ⟧ᴰ        = Val.⟦ Str ⟧
 ⟦ Buffer ⟧ᴰ     = Val.⟦ Buffer ⟧
+
+------------------------------------------------------------------------
+-- Forgetful coercions between the monadic and the pure value domains.
+-- They are the identity on every type EXCEPT the arrow: `forget` runs a
+-- closure and drops its trace; `inject` lifts a pure function to a
+-- trace-less (pure) closure. Closure runs use observation depth `zero` —
+-- a closure is a TOTAL function, so its value is depth-independent.
+-- Needed to interface with the pure `semM`/`eval` for base operations.
+------------------------------------------------------------------------
+
+mutual
+  forget : ∀ {A} → ⟦ A ⟧ᴰ → Val.⟦ A ⟧
+  forget {Unit}       x        = x
+  forget {Void}       ()
+  forget {A * B}      (a , b)  = (forget a , forget b)
+  forget {A + B}      (inj₁ a) = inj₁ (forget a)
+  forget {A + B}      (inj₂ b) = inj₂ (forget b)
+  forget {A ⇒[ _ ] B} clo      = λ va → forget (valueT (clo (inject va)) zero)
+  forget {μ-type F}   x        = x
+  forget {ν-type F}   x        = x
+  forget {Int}        x        = x
+  forget {Float}      x        = x
+  forget {Str}        x        = x
+  forget {Buffer}     x        = x
+
+  inject : ∀ {A} → Val.⟦ A ⟧ → ⟦ A ⟧ᴰ
+  inject {Unit}       x        = x
+  inject {Void}       ()
+  inject {A * B}      (a , b)  = (inject a , inject b)
+  inject {A + B}      (inj₁ a) = inj₁ (inject a)
+  inject {A + B}      (inj₂ b) = inj₂ (inject b)
+  inject {A ⇒[ _ ] B} pf       = λ da → returnT (inject (pf (forget da)))
+  inject {μ-type F}   x        = x
+  inject {ν-type F}   x        = x
+  inject {Int}        x        = x
+  inject {Float}      x        = x
+  inject {Str}        x        = x
+  inject {Buffer}     x        = x
+
+------------------------------------------------------------------------
+-- The effectful-SigOp emission (unconditional: the budget is consumed by
+-- `Ana`, not by individual SigOps; the first-`n` prefix is taken at the
+-- top). Pure SigOps emit nothing, in lockstep with the machine.
+------------------------------------------------------------------------
+
+emit-D : ∀ {A B} → SigOpInfo A B → Val.⟦ A ⟧ → List SigOpEvent
+emit-D si x with effect si
+... | Pure    = []
+... | Emits _ = mkEvent si x ∷ []
+... | Halts _ = mkEvent si x ∷ []
+
+------------------------------------------------------------------------
+-- The trace of a recursion-scheme node (Cata/Para/Ana/Hylo/Fuse, and
+-- In/Out) in the T-convention. The remaining M1c work: a
+-- `cata-ev-alg`-style fold running `evalᴰ alg` per layer, and the `Ana`
+-- budget-unfold. Named (not silently dropped); `In`/`Out` reduce to `[]`.
+------------------------------------------------------------------------
+
+postulate
+  rec-trace-D : ∀ {A B} → IR A B → Val.⟦ A ⟧ → ℕ → List SigOpEvent
+
+------------------------------------------------------------------------
+-- `evalᴰ` — the monadic IR interpretation (the source observable). The
+-- structural cases are NATIVE (so `curry`/`apply` build/run genuine
+-- Kleisli closures, closing the closure-effect gap fuel-free); `SigOp`
+-- tells its event; recursion schemes delegate their trace to
+-- `rec-trace-D` with the value via the pure `eval`.
+------------------------------------------------------------------------
+
+evalᴰ : ∀ {A B} → IR A B → ⟦ A ⟧ᴰ → T ⟦ B ⟧ᴰ
+evalᴰ id            a        = returnT a
+evalᴰ (g ∘ f)       a        = evalᴰ f a >>=T evalᴰ g
+evalᴰ (⟨ f , g ⟩ _) a        = evalᴰ f a >>=T λ b → evalᴰ g a >>=T λ c → returnT (b , c)
+evalᴰ fst           p        = returnT (proj₁ p)
+evalᴰ snd           p        = returnT (proj₂ p)
+evalᴰ (inl _)       a        = returnT (inj₁ a)
+evalᴰ (inr _)       b        = returnT (inj₂ b)
+evalᴰ (case f g)    (inj₁ a) = evalᴰ f a
+evalᴰ (case f g)    (inj₂ b) = evalᴰ g b
+evalᴰ terminal      _        = returnT tt
+evalᴰ initial       ()
+evalᴰ (curry f _)   a        = returnT (λ b → evalᴰ f (a , b))
+evalᴰ apply         p        = proj₁ p (proj₂ p)
+evalᴰ arr           f        = returnT f
+evalᴰ (SigOp si)    a        = λ n → (emit-D si (forget a) , inject (semM si (forget a)))
+evalᴰ ir            a        = λ n → (rec-trace-D ir (forget a) n , inject (eval ir (forget a)))
