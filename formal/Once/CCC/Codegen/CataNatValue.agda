@@ -33,7 +33,7 @@ open import Data.Sum using (inj₂)
 open import Data.Product using (∃-syntax; _,_; proj₁; proj₂; _×_)
 open import Data.List using (List; []; _++_)
 open import Data.List.Properties using (++-assoc; ++-identityʳ)
-open import Relation.Binary.PropositionalEquality using (_≡_; sym; trans; subst; cong)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst; cong)
 
 open import Once.Type using (Functor; _⊕_; Id; μ-type; ⟦_⟧T)
 open import Once.Semantics.Machine
@@ -42,8 +42,8 @@ open import Once.CCC.IR using (IR; Cata; AllocMode)
 open import Once.CCC.Eval using (eval)
 open import Once.Verified.Trace using (SigOpEvent)
 open import Once.Verified.TraceDenote using (obs; cata-ev-alg)
-open import Once.Verified.OpTrace using (otrace; otrace-cata-alg; sem→ov?)
-open import Data.Maybe using (maybe)
+open import Once.Verified.OpTrace using (otrace; otrace-cata-alg; sem→ov?; OVal)
+open import Data.Maybe using (maybe; just)
 open import Once.Functor.Translate using (WellFormedF)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Allocation using (AllocState)
@@ -196,6 +196,34 @@ module CataNatValue {FS : FrameSemantics} (program-bound : ℕ) (G : Functor) wh
            (++-assoc (proj₁ (sem-cata wf (otrace-cata-alg {F} {A} n alg) base))
                      (fwd-events-op wf {A} alg n base k)
                      (layer-events-op wf {A} alg n base k)))
+
+  ------------------------------------------------------------------------
+  -- PER-LAYER machine↔otrace correspondence (spec-side link). The per-layer
+  -- correspondence "machine ascend iteration emits ≡ layer-events-op"
+  -- decomposes into three links:
+  --   (1) machine-iteration-emits ≡ flat-events (compiled alg)  — PROVEN,
+  --       machine-side (`CataAtRelocate.at-relocated-emits` carries the
+  --       relocated algebra chain's events; `CataNatAscend.ascend-body-runs`
+  --       wraps it).
+  --   (2) flat-events (compiled alg) ≡ proj₁ (otrace n alg ov)  — the
+  --       ALGEBRA's OWN `IRObsCorrectF.traces-agree` (the recursive IH; the
+  --       per-layer correspondence inherently bottoms out at the algebra's
+  --       own correctness — `alg` is arbitrary closed IR, so nothing weaker
+  --       than its IH suffices).
+  --   (3) proj₁ (otrace n alg ov) ≡ layer-events-op  — THIS lemma: when the
+  --       rebuilt layer boxes to `ov` (`sem→ov? z ≡ just ov`, total on the
+  --       first-order layer), `layer-events-op` IS exactly the algebra's
+  --       operational trace. A `maybe`-of-`just` reduction.
+  -- Composing (1)·(2)·(3) discharges the per-layer correspondence down to the
+  -- algebra IH — which `ir-obs-correct` supplies by recursing on `alg ⊂ Cata`.
+  layer-events-op-is-otrace :
+    ∀ (wf : WellFormedF F) {A} (alg : IR (⟦ F ⟧T A) A)
+      (n : ℕ) (base : ⟦ μ-type F ⟧) (k : ℕ) (ov : OVal (⟦ F ⟧T A))
+    → sem→ov? (coerce-functor⁻¹ F A
+        (inj₂ (proj₂ (sem-cata wf (otrace-cata-alg {F} {A} n alg) (nat-spine k base)))))
+        ≡ just ov
+    → layer-events-op wf alg n base k ≡ proj₁ (otrace n alg ov)
+  layer-events-op-is-otrace wf {A} alg n base k ov eq rewrite eq = refl
 
   ------------------------------------------------------------------------
   -- Discharging `vstep` — the value connection.
