@@ -32,7 +32,8 @@ open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃-syntax)
 open import Data.Sum using (inj₁; inj₂)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong₂)
+open import Data.List.Properties using (∷-injective)
 open import Data.Integer using () renaming (∣_∣ to absℤ)
 open import Data.String using (String)
 
@@ -49,6 +50,21 @@ open import Once.Verified.DenotTrace using (⟦_⟧ᴰ; evalᴰ)
 open import Once.Verified.TraceMonad using (T; projTrace; valueT)
 open import Once.Surface.Syntax using (Ctx; ∅; _,_^_)
 open import Once.Surface.Elaborate using (⟦_⟧ᶜ)
+
+-- A list is determined by all its `take`-prefixes. The key lemma for
+-- composing `CompSim` under `++`: `CompSim` holds at EVERY depth `j`, so
+-- prefix-agreement at all `j` yields FULL trace equality, which then
+-- concatenates. (Generic; independent of `defs`.)
+take-determines : ∀ {ℓ} {A : Set ℓ} (xs ys : List A)
+                → (∀ j → take j xs ≡ take j ys) → xs ≡ ys
+take-determines []       []       h = refl
+take-determines []       (y ∷ ys) h with h 1
+... | ()
+take-determines (x ∷ xs) []       h with h 1
+... | ()
+take-determines (x ∷ xs) (y ∷ ys) h =
+  cong₂ _∷_ (proj₁ (∷-injective (h 1)))
+            (take-determines xs ys (λ j → proj₂ (∷-injective (h (suc j)))))
 
 module _ (defs : Defs) where
   mutual
