@@ -25,11 +25,11 @@
 
 module Once.Verified.SourceTrace where
 
-open import Data.Bool using (false)
+open import Data.Bool using (Bool; false; true)
 open import Data.Nat using (ℕ)
 open import Data.List using (List; []; _∷_)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Product using (proj₁; ∃; _,_)
+open import Data.Product using (proj₁; ∃; ∃-syntax; _,_; _×_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (tt)
 open import Data.String using (String) renaming (_≟_ to _≟str_)
@@ -57,35 +57,47 @@ isUnit? : (T : Type) → Maybe (T ≡ Unit)
 isUnit? Unit = just refl
 isUnit? _    = nothing
 
-open C.CompiledFun using (cfName; cfType; cfIR)
+open C.CompiledFun using (cfName; cfType; cfIR; cfIsPrimitive)
 
--- Explicit dispatch on the two decisions (no `with`-opacity, no dependent
+-- Explicit dispatch on the three decisions (no `with`-opacity, no dependent
 -- `just refl` buried in a `with`), so `findMain`'s "is this the entry?" choice
 -- is analyzable. `just refl` refines `cfType cf` to `Unit`, coercing
 -- `cfIR cf : IR Unit (cfType cf)` to `IR Unit Unit`.
+--
+-- The FIRST argument is `cfIsPrimitive cf`: a PRIMITIVE is never the entry —
+-- its body is not emitted at codegen (`CompiledFun.cfIsPrimitive`), so it has
+-- no real `_start` to run. Skipping primitives (a) aligns this spec with the
+-- backend and (b) makes the entry provably trace back to a `DFunDef` (a
+-- primitive `main` would be a `DSignature`, leaving no source `main` body —
+-- the soundness gap `main-exists-align` would otherwise hit).
 findMain-here :
-  (cf : C.CompiledFun) → Dec (cfName cf ≡ "main") → Maybe (cfType cf ≡ Unit)
+  (cf : C.CompiledFun) → Bool → Dec (cfName cf ≡ "main") → Maybe (cfType cf ≡ Unit)
   → Maybe (IR Unit Unit) → Maybe (IR Unit Unit)
-findMain-here cf (yes _) (just refl) cont = just (cfIR cf)
-findMain-here cf (yes _) nothing     cont = cont
-findMain-here cf (no  _) _           cont = cont
+findMain-here cf false (yes _) (just refl) cont = just (cfIR cf)
+findMain-here cf false (yes _) nothing     cont = cont
+findMain-here cf false (no  _) _           cont = cont
+findMain-here cf true  _       _           cont = cont   -- primitive: never the entry
 
 findMain : List C.CompiledFun → Maybe (IR Unit Unit)
 findMain []         = nothing
 findMain (cf ∷ rest) =
-  findMain-here cf (cfName cf ≟str "main") (isUnit? (cfType cf)) (findMain rest)
+  findMain-here cf (cfIsPrimitive cf) (cfName cf ≟str "main") (isUnit? (cfType cf)) (findMain rest)
 
--- Link 1 of main-exists-align: a successful `findMain` means a `main`-named
--- (Unit-typed) function is present in the compiled list.
+-- Link 1 of main-exists-align: a successful `findMain` means a `main`-named,
+-- Unit-typed, NON-PRIMITIVE function is present in the compiled list. The
+-- `cfIsPrimitive ≡ false` is what lets the compiler side conclude the entry
+-- came from a `DFunDef` (not a `DSignature` primitive).
 findMain-name :
   ∀ (funs : List C.CompiledFun) (ir : IR Unit Unit)
   → findMain funs ≡ just ir
-  → Any (λ cf → cfName cf ≡ "main") funs
+  → Any (λ cf → cfName cf ≡ "main" × cfIsPrimitive cf ≡ false) funs
 findMain-name [] ir ()
-findMain-name (cf ∷ rest) ir eq with cfName cf ≟str "main" | isUnit? (cfType cf)
-... | yes p | just refl = here p
-... | yes _ | nothing   = there (findMain-name rest ir eq)
-... | no  _ | _         = there (findMain-name rest ir eq)
+findMain-name (cf ∷ rest) ir eq
+  with cfIsPrimitive cf in primEq | cfName cf ≟str "main" | isUnit? (cfType cf)
+... | false | yes p | just refl = here (p , primEq)
+... | false | yes _ | nothing   = there (findMain-name rest ir eq)
+... | false | no  _ | _         = there (findMain-name rest ir eq)
+... | true  | _     | _         = there (findMain-name rest ir eq)
 
 -- Explicit dispatch on the compile result (no `with`-opacity), so the IR side
 -- of `elaborate-preserves-trace` can be characterised (analogous to the
