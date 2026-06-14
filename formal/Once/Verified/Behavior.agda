@@ -89,10 +89,17 @@ import Once.Grammar as G
 -- this trace is the only thing observable. `linux.exit N` is just one
 -- SigOp whose argument is `N` — there is no privileged "exit code."
 --
--- STEP-INDEXED: a (possibly infinite) trace is represented as the family
--- of its finite prefixes — `Behavior n` is the prefix observed within `n`
--- steps. Correctness is "agree up to arbitrary n" (Plan 0.24/0.44): plain
--- induction on `n`, no co-data, no productive bind, no funext.
+-- EVENT-COUNT-INDEXED (D058): `Behavior n` = the first `n` EFFECTFUL SigOp
+-- events, in order. The `n` counts effectful SigOps emitted — NOT execution
+-- steps. A (possibly infinite) trace is the family of its event-prefixes;
+-- `correct : ∀ n → exec n ≡ ⟦ src ⟧ n` is then "the same effectful SigOps in
+-- the same order at every depth" — the inductive form of trace-equality for
+-- TOTAL+PRODUCTIVE systems (≡ Colist bisimilarity; no co-data, nothing assumed
+-- finite, NO completion). `Behavior n` is well-defined because the system is
+-- PRODUCTIVE (the first `n` events fire after finitely much work); any step-fuel
+-- inside an interpreter is an INTERNAL totality device, never this index.
+-- (Was wrongly documented "prefix within `n` STEPS"; step-indexing was a
+-- productivity-avoidance compromise — see D058.)
 ------------------------------------------------------------------------
 
 Behavior : Set

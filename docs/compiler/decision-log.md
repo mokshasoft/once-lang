@@ -4015,8 +4015,10 @@ trace`, inside `Compile.module-to-asm-correct`) — making the elaborator
 
 Reference design:
 - Untyped `Value` with **defunctionalised** closures — a HOAS `Vfun : (Value →
-  Value) → Value` is not strictly positive. **Fuel** for termination; the fuel is
-  `Behavior`'s step index.
+  Value) → Value` is not strictly positive. **Fuel** for termination — an
+  *internal* device only. (~~the fuel is `Behavior`'s step index~~ **CORRECTED by
+  D058**: `Behavior`'s index is the effectful-EVENT count, not a step count; the
+  fuel never appears in the observable.)
 - **SigOp application is the sole emitter** (mirrors `obs`); **arith is pure**
   (the arith→SigOp lowering is internal optimisation only); events in eval order.
 - `cata` folds via `In`-position detection (recursive positions are exactly
@@ -4048,3 +4050,95 @@ keeping a trustworthy reference.
 - Plan 0.44 (Behavior = the SigOp trace), Plan 0.45 (this), Plan 0.24 (`obs` and
   the superseded IR pivot)
 - D054 (`Int` semantics), D055 (div/mod totality)
+
+## D058: Correctness Is the Effectful-SigOp Trace, EVENT-Count-Indexed (Not Step-Indexed)
+
+**Date**: 2026-06-14
+**Status**: Accepted; **corrects the index framing** of D057, Plan 0.24, Plan 0.44
+**Supersedes**: "the fuel is `Behavior`'s step index" (D057); "`Behavior n` = the
+prefix observed within `n` steps" (`Once.Verified.Behavior`, Plan 0.24/0.44)
+
+### Context — the misunderstanding this exists to prevent
+
+`Behavior = ℕ → List SigOpEvent` has **two independent dimensions**, and they
+were repeatedly conflated:
+
+1. **The list ELEMENTS** — *which* events are observable. Settled: **EFFECTFUL
+   SigOps only** (`linux.exit`, `print`, …). Pure SigOps (the arith→SigOp
+   lowering) are an *internal optimisation* and emit **nothing**. *(the content)*
+2. **The INDEX `n`** — what "the prefix at `n`" *means*. **The type
+   `ℕ → List SigOpEvent` says nothing about what `n` counts** — "first `n`
+   events" and "events within `n` execution steps" have the *identical type*.
+   *(the index)*
+
+The **content** was always specified correctly (effectful SigOps). But the
+**index** silently drifted to **step-count** — an early *productivity-avoidance*
+compromise (`Behavior`'s doc: *"prefix within `n` steps … plain induction on `n`,
+no co-data, no productive bind"*), chosen because event-count indexing of a
+possibly-infinite (productive) trace *seems* to need co-data while step-count is
+finite-by-fiat. The drift was **invisible** (the type masks it) and **harmless
+for terminating Layer-0 programs** (a single `exit`: step-prefix = event-prefix
+for large `n`), so no test or proof ever distinguished the two indices — until an
+*operational* interpreter made step-fuel load-bearing for `apply`, and the
+step-vs-event conflict surfaced as bogus "completion / `take` / fuel"
+reconciliation. Nothing slipped past the *stated* spec; an unlabelled `ℕ` quietly
+meant a different thing from day one.
+
+### Decision — the correctness meaning, crystal clear
+
+> **`Behavior n` = the first `n` EFFECTFUL SigOp events, in order.**
+>
+> **`correct : ∀ n → exec arch bytes n ≡ ⟦ src ⟧ n`** — the compiled binary
+> invokes *exactly* the same effectful SigOps, in the same order, as the
+> source reference, at every observation depth `n`.
+
+Non-negotiables:
+
+- **INDEX = effectful-EVENT count.** `n` counts effectful SigOps emitted. It is
+  **never** execution steps.
+- **CONTENT = effectful SigOps only.** Pure SigOps contribute `[]`.
+- **`∀ n` IS trace-equality for total+productive systems.** "Same (possibly
+  infinite) sequence" ⟺ "first `n` agree for every `n`" — the *inductive form* of
+  Colist bisimilarity. No co-data is required, and **nothing is assumed finite**.
+- **NO completion / NO "run halts".** `Behavior n` is well-defined because the
+  system is **productive**: the first `n` effectful events fire after finitely
+  much work. A terminating program's trace stabilises (`take n` of `k<n` events =
+  the `k`); a productive one keeps emitting. "Enough work to emit `n` events" is a
+  **productivity** fact — never a completion/termination one.
+- **STEP-FUEL is an internal termination device, never the observable index.**
+  Any interpreter (the source reference, `otrace`, the machine) may carry fuel to
+  satisfy Agda's totality checker *for its pure part*; that fuel must not appear
+  in `Behavior`/`correct` and must not be read as a completion assumption. The
+  **event count** bounds the effectful/productive part; the **pure part
+  terminates structurally** (totality of CCC+SR — e.g. `Cata` via `sem-cata`,
+  closures via a structural/Kleisli representation, not a fuel crutch).
+
+### Rationale
+
+Splitting the two dimensions makes the invisible visible: the type can only carry
+the content honestly, so the index meaning must be stated *in words* and pinned
+top-down. Event-count is the only index that is calibration-free (no machine-step
+↔ source-step lockstep) and faithful for productive programs. Productivity — not
+co-data avoidance, not termination — is the correct justification for "first `n`
+events exists"; embracing it removes the step-index hack at its root.
+
+### Consequences
+
+- The index is fixed **top-down**: `Behavior` → `⟦src⟧`/source reference →
+  `exec` → `⟦_⟧IR`/`otrace` → `flat-events` **all index by effectful-event
+  count**. Nothing below may redefine the index.
+- The source reference (D057) and `otrace` must *deliver* "first `n` effectful
+  events"; their internal step-fuel is not the index.
+- Pure-part termination (e.g. `apply` of a closure) is **structural** (Kleisli /
+  build-at-`curry`, apply-by-application), not a fuel crutch. A fuel index that
+  leaks into the observable is **forbidden**.
+- **D057 correction:** its "Fuel for termination; the fuel is `Behavior`'s step
+  index" is wrong on the second clause — the fuel is an *internal* termination
+  device; `Behavior`'s index is the **effectful-event count**.
+
+### See Also
+
+- D057 (source-level reference; **step-index framing corrected here**)
+- Plan 0.44 (Behavior type), 0.45 (source meaning), 0.46 (denotational layer)
+- `Once.Verified.Behavior` doc comment — to be updated from "within `n` steps" to
+  "first `n` effectful events"
