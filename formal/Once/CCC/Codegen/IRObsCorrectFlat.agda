@@ -163,8 +163,13 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   --                       existing `rec-scheme-semantic` trust boundary).
   -- These are the boundaries the cata collapses into; Phase 4 then deletes the
   -- old `ir-to-trace-correct-non-layer0` catchall + `rec-scheme-semantic`.
+  -- `cata-correct` now RECEIVES the algebra's `IRObsCorrectF` (the IH) — this
+  -- is what discharges the per-layer machine↔otrace correspondence's link (2)
+  -- (`flat-events(alg) ≡ otrace(alg)`), the algebra's OWN trace correctness.
+  -- `ir-obs-correct` supplies it by recursing on `alg ⊂ Cata wf alg`.
   postulate
     cata-correct : ∀ {F} (wf : WellFormedF F) {A} (alg : IR (⟦ F ⟧T A) A)
+                 → IRObsCorrectF alg
                  → IRObsCorrectF (Cata wf alg)
 
   -- ════════════════════════════════════════════════════════════════════
@@ -189,5 +194,5 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
     obs-correct-rest : ∀ {A B} (ir : IR A B) → IRObsCorrectF ir
 
   ir-obs-correct : ∀ {A B} (ir : IR A B) → IRObsCorrectF ir
-  ir-obs-correct (Cata wf alg) = cata-correct wf alg
+  ir-obs-correct (Cata wf alg) = cata-correct wf alg (ir-obs-correct alg)
   ir-obs-correct ir            = obs-correct-rest ir
