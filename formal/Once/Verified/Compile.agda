@@ -44,7 +44,9 @@ open import Once.Type using (Unit)
 
 open import Once.Verified.Behavior using (Source; Behavior)
 open import Once.Verified.SourceTrace
-  using (⟦_⟧; ⟦⟧-via-module; moduleToIR; ⟦_⟧IR; elaborate-preserves-trace)
+  using (⟦_⟧; ⟦⟧-via-module; moduleToIR; ⟦_⟧IR; elaborate-preserves-trace;
+         ElaborateFaithful)
+open import Data.Product using (_×_; _,_)
 -- D054 wired-not-imported: import only the portable INTERFACE (no
 -- postulates). The per-arch CPU semantics are *injected* via the
 -- `WithCPU` parameter below, never imported here — so this module
@@ -282,3 +284,24 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
     trans (string-to-bytes-correct arch asm n)
           (trans (module-to-asm-correct arch m asm c-eq n)
                  (gmoduleToModule-correct src m g-eq n))
+
+  -- ════════════════════════════════════════════════════════════════════
+  -- The GRAND THEOREM (D059): correctness is the CONJUNCTION of
+  --   (1) trace-correctness — the compiled bytes make the SigOp calls the
+  --       source DENOTES (`exec ≡ ⟦src⟧ = evalᴰ`, observation-depth), and
+  --   (2) elaborator-faithfulness — `evalᴰ` agrees with the INDEPENDENT
+  --       `SS.eval` reference (`ElaborateFaithful`), keeping the elaborator
+  --       load-bearing (D057).
+  -- BOTH are required: dropping (2) silently loses load-bearing. Together they
+  -- yield `exec ≡ SS.eval` (the fully-independent claim). This bundling is what
+  -- makes (2) a non-droppable conjunct rather than a floating lemma.
+  -- ════════════════════════════════════════════════════════════════════
+  compiler-correct :
+    ∀ (arch : Arch) (src : Source) (bytes : List Byte) →
+    compile arch src ≡ just bytes →
+    (∀ (n : ℕ) → exec arch bytes n ≡ ⟦ src ⟧ n)
+    × (∀ (m : P.Module) (ir : IR Unit Unit) →
+         gmoduleToModule src ≡ just m → moduleToIR m ≡ just ir → ElaborateFaithful ir m)
+  compiler-correct arch src bytes pf =
+    correct arch src bytes pf
+    , λ m ir _ mj → elaborate-preserves-trace m ir mj
