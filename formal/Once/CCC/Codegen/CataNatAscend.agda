@@ -241,6 +241,69 @@ module CataNatAscend {FS : FrameSemantics} where
                             ev-bp)
 
   ----------------------------------------------------------------------
+  -- The STEP ADAPTER: package one ascend iteration into EXACTLY the `step`
+  -- signature `ascend-loop-runs` consumes. `ascend-iter-runs` proves the
+  -- iteration runs and emits `Ek`, but omits the loop-invariant exit facts
+  -- (`readReg exit Scratch ≡ SV-Tag k`, `fpc exit ≡ qh`) that the loop
+  -- threads. This builds pre ++ body ++ post DIRECTLY so the exit state is
+  -- the literal `record final-body { fpc = qh }` — its `Scratch` is
+  -- `final-body`'s (the jump touches only `fpc`, so `body-scr` transfers)
+  -- and its `fpc` is `qh` by construction (`refl`). The branch-not
+  -- condition `sv-is-zero (SV-Tag (suc k)) = false` is definitional.
+  --
+  -- What's left per iteration is exactly the BODY: a run from the post-
+  -- branch state (fpc = suc (suc qh)) that (a) emits `Ek`, (b) ends non-
+  -- halted at the `c-jmp` with `Scratch ≡ SV-Tag k`. That body is
+  -- `mov ∷ build-layer ∷ mov ∷ at ∷ scratch-dec` — `ascend-body-runs` fed
+  -- `build-layer-runs` (silent) + `at-relocated-emits` (the algebra's
+  -- `traces-agree`, giving `Ek = layer-events`), with `scratch-dec`
+  -- decrementing `SV-Tag (suc k) → SV-Tag k`. THIS is the remaining cata
+  -- core (the per-layer machine↔denotational correspondence).
+  cata-ascend-step : ∀ (prog : AbstractTrace) (qh la-top la-end : ℕ)
+                       (k : ℕ) (entry : FlatState)
+                       {N : ℕ} {final-body : FlatState} (Ek : List SigOpEvent)
+    → halted (floc entry) ≡ false
+    → readReg (regs (floc entry)) Scratch ≡ SV-Tag (suc k)
+    → fpc entry ≡ qh
+    → fetch prog qh       ≡ just (instr-ctrl (c-label la-top))
+    → fetch prog (suc qh) ≡ just (instr-ctrl (c-branch-scratch-zero la-end))
+    → (body-steps : FlatSteps prog N
+         (record entry { fpc = suc (suc (fpc entry)) }) final-body)
+    → chain-events body-steps ≡ Ek
+    → halted (floc final-body) ≡ false
+    → readReg (regs (floc final-body)) Scratch ≡ SV-Tag k
+    → fetch prog (fpc final-body) ≡ just (instr-ctrl (c-jmp la-top))
+    → find-label prog la-top ≡ just qh
+    → Σ[ exit ∈ FlatState ] Σ[ m ∈ ℕ ] Σ[ steps ∈ FlatSteps prog m entry exit ]
+        (chain-events steps ≡ Ek × halted (floc exit) ≡ false
+         × readReg (regs (floc exit)) Scratch ≡ SV-Tag k × fpc exit ≡ qh)
+  cata-ascend-step prog qh la-top la-end k entry {final-body = final-body} Ek hf scr fpc-eq fL fB
+                   body-steps body-ev body-halted body-scr fJ top-res =
+    record final-body { fpc = qh } , _ , chain , events , body-halted , body-scr , refl
+    where
+      scond : sv-is-zero (readReg (regs (floc entry)) Scratch) ≡ false
+      scond = cong sv-is-zero scr
+      fL' : fetch prog (fpc entry) ≡ just (instr-ctrl (c-label la-top))
+      fL' = subst (λ p → fetch prog p ≡ just (instr-ctrl (c-label la-top)))
+                  (sym fpc-eq) fL
+      fB' : fetch prog (suc (fpc entry)) ≡ just (instr-ctrl (c-branch-scratch-zero la-end))
+      fB' = subst (λ p → fetch prog (suc p) ≡ just (instr-ctrl (c-branch-scratch-zero la-end)))
+                  (sym fpc-eq) fB
+      PRE  = ascend-pre-flat  prog entry la-top la-end hf scond fL' fB'
+      POST = ascend-post-flat prog _ la-top qh body-halted fJ top-res
+      chain = FlatSteps-++ PRE (FlatSteps-++ body-steps POST)
+      ev-bp : chain-events (FlatSteps-++ body-steps POST) ≡ Ek
+      ev-bp = trans (chain-events-++ body-steps POST)
+                    (trans (cong (chain-events body-steps ++_)
+                                 (ascend-post-silent prog _ la-top qh body-halted fJ top-res))
+                           (trans (++-identityʳ (chain-events body-steps)) body-ev))
+      events : chain-events chain ≡ Ek
+      events = trans (chain-events-++ PRE (FlatSteps-++ body-steps POST))
+                     (trans (cong (_++ chain-events (FlatSteps-++ body-steps POST))
+                                  (ascend-pre-silent prog entry la-top la-end hf scond fL' fB'))
+                            ev-bp)
+
+  ----------------------------------------------------------------------
   -- The ASCEND LOOP: μ-induction over the depth counter `Scratch = SV-Tag
   -- n`, chaining `n` continue iterations then the exit. Each iteration's
   -- run is supplied by `step` (the caller builds it from `ascend-iter-runs`
