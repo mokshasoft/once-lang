@@ -29,7 +29,7 @@ module Once.CCC.Codegen.IRObsCorrectFlat where
 
 open import Data.Nat using (ℕ; suc; _<_)
 open import Data.Bool using (false; true)
-open import Data.List using (length)
+open import Data.List using (length; take)
 open import Data.Product using (_×_; _,_; ∃; ∃-syntax; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
@@ -120,9 +120,17 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
     field
       enough-fuel  : ℕ
       run-halts    : halted (floc (flat-run enough-fuel ir s alloc)) ≡ true
+      -- ∀-n (SigOp-event-indexed): for every observation depth `k`, the first
+      -- `k` SigOps the machine emits equal `obs k` (the source's first `k`).
+      -- `enough-fuel` is the run's completion (`run-halts`), so `flat-events
+      -- enough-fuel` is the FULL machine trace and `take k` of it is the first
+      -- `k` SigOps — matching the event-indexed `obs`. This is the apex's
+      -- `∀ n` SigOp-prefix shape directly (no single-fuel cap); the `take k`
+      -- lifts the finite cata's full-sequence agreement to every `k`.
       traces-agree :
-        flat-events enough-fuel (ir-to-trace ir) (mkFlat s alloc 0)
-          ≡ proj₁ (obs program-bound ir x)
+        ∀ (k : ℕ) →
+        take k (flat-events enough-fuel (ir-to-trace ir) (mkFlat s alloc 0))
+          ≡ proj₁ (obs k ir x)
       value-realized :
         ∃[ mOut ] ∃[ result-loc ]
           ValidAtWF mOut (falloc (flat-run enough-fuel ir s alloc))
