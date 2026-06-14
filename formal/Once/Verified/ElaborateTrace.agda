@@ -42,16 +42,16 @@ open import Data.String using (String)
 open import Once.Type
   using (Type; Unit; Void; _*_; _+_; _⇒[_]_; μ-type; ν-type;
          Int; Float; Str; Buffer)
-open import Once.CCC.IR using (IR; id; _∘_; terminal; ⟨_,_⟩; AllocMode)
+open import Once.CCC.IR using (IR; id; _∘_; terminal; ⟨_,_⟩; AllocMode; case)
   renaming (apply to applyᴵ)
-open import Once.Surface.Elaborate using (intLit; strLit)
-open import Once.TypeCheck.Raw using (RawExpr; RUnit; RInt; RStringLit; RPair; RLet; RApp)
+open import Once.Surface.Elaborate using (intLit; strLit; distribute)
+open import Once.TypeCheck.Raw using (RawExpr; RUnit; RInt; RStringLit; RPair; RLet; RApp; RDestruct)
 open import Once.Verified.SourceSemantics
-  using (Value; Vunit; Vpair; Vinl; Vinr; Vint; Vstr;
+  using (Value; Vunit; Vpair; Vinl; Vinr; Vint; Vstr; Vclos; Vbuiltin; Vsigop; Vin;
          apply; eval; Env; Result; Defs; runTraceEval)
 open import Once.Verified.Trace using (SigOpEvent)
 open import Once.Verified.DenotTrace using (⟦_⟧ᴰ; evalᴰ)
-open import Once.Verified.TraceMonad using (T; projTrace; valueT)
+open import Once.Verified.TraceMonad using (T; returnT; projTrace; valueT)
 open import Once.Surface.Syntax using (Ctx; ∅; _,_^_)
 open import Once.Surface.Elaborate using (⟦_⟧ᶜ)
 
@@ -69,6 +69,12 @@ take-determines (x ∷ xs) []       h with h 1
 take-determines (x ∷ xs) (y ∷ ys) h =
   cong₂ _∷_ (proj₁ (∷-injective (h 1)))
             (take-determines xs ys (λ j → proj₂ (∷-injective (h (suc j)))))
+
+-- PROBE: does `evalᴰ` reduce definitionally through the `distribute` machinery
+-- (apply/curry/swap closures)? If `refl` typechecks, `cs-case` is tractable.
+distribute-inl-probe : ∀ {Γ A B} (m : AllocMode) (x : ⟦ Γ ⟧ᴰ) (da : ⟦ A ⟧ᴰ)
+  → evalᴰ (distribute {Γ} {A} {B} m) (x , inj₁ da) ≡ returnT (inj₁ (x , da))
+distribute-inl-probe m x da = refl
 
 module _ (defs : Defs) where
   mutual
@@ -268,3 +274,80 @@ module _ (defs : Defs) where
       f-evs ++ (x-evs ++ app-evs)
         ∎
       where open ≡-Reasoning
+
+  -- STRUCTURAL composition: `case`. `elaborate (case' s l r) = case l' r' ∘
+  -- distribute m ∘ ⟨ id , s' ⟩ m`; `SS.eval (RDestruct s xl l yr r)` evaluates
+  -- `s`, then branches on `Vinl a`/`Vinr b`, running `l`/`r` in the env extended
+  -- with the payload. The denotational side ROUTES through `distribute` (which
+  -- reduces definitionally, per `distribute-inl-probe`): `(x, inj₁ da) ↦ inl
+  -- (x, da)`, then `case l' r'` picks `l'`. The branch is forced to agree by the
+  -- value-sim (`Vinl a ~⟨A+B⟩ ds` ⟹ `ds = inj₁ da`); non-`Vinl`/`Vinr` `s` is ⊥.
+  cs-case : ∀ {Γ A B C} (s' : IR Γ (A + B)) (l' : IR (Γ * A) C) (r' : IR (Γ * B) C)
+            (m : AllocMode) (x : ⟦ Γ ⟧ᴰ) (ρ : Env) (xl yr : String) (rs rl rr : RawExpr)
+          → CompSim (A + B) (evalᴰ s' x) (λ z → eval z defs ρ rs)
+          → (∀ (a : Value) (da : ⟦ A ⟧ᴰ) → a ~⟨ A ⟩ da
+               → CompSim C (evalᴰ l' (x , da)) (λ z → eval z defs ((xl , a) ∷ ρ) rl))
+          → (∀ (b : Value) (db : ⟦ B ⟧ᴰ) → b ~⟨ B ⟩ db
+               → CompSim C (evalᴰ r' (x , db)) (λ z → eval z defs ((yr , b) ∷ ρ) rr))
+          → CompSim C (evalᴰ (case l' r' ∘ distribute m ∘ ⟨ id , s' ⟩ m) x)
+                      (λ z → eval z defs ρ (RDestruct rs xl rl yr rr))
+  -- `op-eq` for the two branches, extracted to top-level so the dispatching
+  -- `with` needs NO nested `with` (which would clash with the `...` column
+  -- count of the sibling/absurd clauses). Their types name only `eval`, so
+  -- they are unaffected by the `evalᴰ s' x 0` abstraction in `cs-case`.
+  op-eq-destruct-l :
+    ∀ (ρ : Env) (xl yr : String) (rs rl rr : RawExpr)
+      (ss sl : ℕ) (a vl : Value) (s-evs l-evs : List SigOpEvent)
+    → (∀ z → ss ≤ z → eval z defs ρ rs ≡ just (Vinl a , s-evs))
+    → (∀ z → sl ≤ z → eval z defs ((xl , a) ∷ ρ) rl ≡ just (vl , l-evs))
+    → ∀ z → suc (ss ⊔ sl) ≤ z
+    → eval z defs ρ (RDestruct rs xl rl yr rr) ≡ just (vl , s-evs ++ l-evs)
+  op-eq-destruct-l ρ xl yr rs rl rr ss sl a vl s-evs l-evs ops opl (suc k) (s≤s le)
+    rewrite ops k (≤-trans (m≤m⊔n ss sl) le)
+          | opl k (≤-trans (n≤m⊔n ss sl) le) = refl
+
+  op-eq-destruct-r :
+    ∀ (ρ : Env) (xl yr : String) (rs rl rr : RawExpr)
+      (ss sr : ℕ) (b vr : Value) (s-evs r-evs : List SigOpEvent)
+    → (∀ z → ss ≤ z → eval z defs ρ rs ≡ just (Vinr b , s-evs))
+    → (∀ z → sr ≤ z → eval z defs ((yr , b) ∷ ρ) rr ≡ just (vr , r-evs))
+    → ∀ z → suc (ss ⊔ sr) ≤ z
+    → eval z defs ρ (RDestruct rs xl rl yr rr) ≡ just (vr , s-evs ++ r-evs)
+  op-eq-destruct-r ρ xl yr rs rl rr ss sr b vr s-evs r-evs ops opr (suc k) (s≤s le)
+    rewrite ops k (≤-trans (m≤m⊔n ss sr) le)
+          | opr k (≤-trans (n≤m⊔n ss sr) le) = refl
+
+  -- The full pair `evalᴰ s' x 0` (NOT just `valueT … 0`) is abstracted, so
+  -- BOTH its trace half (`proj₁`) AND its value half (`proj₂`, which DRIVES
+  -- the `distribute`/`case` branch) become concrete in the goal — the trace
+  -- term then reduces. The branch hypothesis is destructured by an irrefutable
+  -- `let` (no nested `with`), and `tr-eq` is inline (the goal is already in the
+  -- reduced/abstracted form). `trs : se ≡ s-evs` bridges the abstracted trace
+  -- `se` to the CompSim's `s-evs`.
+  cs-case {Γ} {A} {B} {C} s' l' r' m x ρ xl yr rs rl rr
+          (ss , vs , s-evs , ops , trs , rrs) lh rh
+    with evalᴰ s' x 0 | vs | rrs
+  ... | (se , inj₁ da) | Vinl a | rra =
+        let (sl , vl , l-evs , opl , trl , rrl) = lh a da rra in
+        suc (ss ⊔ sl) , vl , s-evs ++ l-evs ,
+        op-eq-destruct-l ρ xl yr rs rl rr ss sl a vl s-evs l-evs ops opl ,
+        trans (cong (((se ++ []) ++ []) ++_) trl)
+              (cong (_++ l-evs) (trans (++-identityʳ (se ++ [])) (trans (++-identityʳ se) trs))) ,
+        rrl
+  ... | (se , inj₂ db) | Vinr b | rrb =
+        let (sr , vr , r-evs , opr , trr , rrr) = rh b db rrb in
+        suc (ss ⊔ sr) , vr , s-evs ++ r-evs ,
+        op-eq-destruct-r ρ xl yr rs rl rr ss sr b vr s-evs r-evs ops opr ,
+        trans (cong (((se ++ []) ++ []) ++_) trr)
+              (cong (_++ r-evs) (trans (++-identityʳ (se ++ [])) (trans (++-identityʳ se) trs))) ,
+        rrr
+  ... | (_ , inj₂ _) | Vinl _      | ()
+  ... | (_ , inj₁ _) | Vinr _      | ()
+  ... | (_ , _)      | Vunit       | ()
+  ... | (_ , _)      | Vpair _ _   | ()
+  ... | (_ , _)      | Vint _      | ()
+  ... | (_ , _)      | Vstr _      | ()
+  ... | (_ , _)      | Vclos _ _ _ | ()
+  ... | (_ , _)      | Vbuiltin _ _ | ()
+  ... | (_ , _)      | Vsigop _ _  | ()
+  ... | (_ , _)      | Vin _       | ()
