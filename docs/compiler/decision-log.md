@@ -4155,3 +4155,61 @@ events exists"; embracing it removes the step-index hack at its root.
 - Plan 0.44 (Behavior type), 0.45 (source meaning), 0.46 (denotational layer)
 - `Once.Verified.Behavior` doc comment — to be updated from "within `n` steps" to
   "first `n` effectful events"
+
+## D059: Source Meaning Is the Denotational `evalᴰ`; `SS.eval` Is the Load-Bearing Cross-Check
+
+**Date**: 2026-06-14
+**Status**: Accepted; **updates D057** (which set `⟦src⟧ := SS.eval`)
+**Implements**: Plan 0.46 (the role-inverted rewrite)
+
+### Context — the meter, rooted in `apply`
+
+Two source-level trace semantics now exist:
+- **`evalᴰ`** (`Once.Verified.DenotTrace`) — the *compositional, monadic,
+  denotational* trace. Indexed by **observation depth** (Cata emits its full
+  finite trace; only `Ana` consumes the depth). `apply` is **fuel-free**:
+  `⟦apply⟧(clo,a) = clo a`, the monadic arrow carries the trace.
+- **`SS.eval`** (`Once.Verified.SourceSemantics`) — the *untyped, operational*
+  reference (D057). Indexed by **step-fuel**, *because* untyped-λ `apply` (running
+  a closure body) is non-structural and needs fuel for Agda totality.
+
+So the depth-vs-step meter mismatch is rooted in **`apply`**: `evalᴰ` pays no fuel
+for it, `SS.eval` must. The two are incommensurable as a same-`n` equality.
+
+### Decision
+
+- **`⟦src⟧ := evalᴰ`** — the apex source meaning is the denotational, depth-indexed
+  `evalᴰ`. This makes the apex `exec n ≡ ⟦src⟧ n` **commensurable** (both at the
+  machine's/source's shared observation depth, via `traces-agree`), and it is the
+  **compositional** meaning needed to *reason about Once programs* (`⟦g∘f⟧ᴰ =
+  ⟦g⟧ᴰ ∘ₖ ⟦f⟧ᴰ`; equational theory, Plan 0.46 M6). `SS.eval`, being an operational
+  interpreter, is *not* compositional and cannot serve program reasoning.
+- **`SS.eval` is a SEPARATELY-REQUIRED cross-check** (`#10`/`elaborate-preserves-
+  trace`: `SS.eval ≡ evalᴰ`), **not** the apex's definitional meaning.
+
+### Why load-bearing is preserved (the invariant)
+
+D057's purpose — keep the elaborator load-bearing by anchoring at a reference
+*independent of `elaborate`* — is preserved: `evalᴰ` is elaborator-dependent (it
+is the IR's meaning), but a meaning-changing elaborator bug moves `evalᴰ` *and*
+the machine together (so `exec ≡ evalᴰ` survives) while **breaking
+`SS.eval ≡ evalᴰ`** (`SS.eval` is independent, untyped, pre-elaborate). So the bug
+is caught — **provided `#10` remains a REQUIRED component of the grand theorem.**
+That is the standing invariant: dropping `#10` from the required set silently
+loses load-bearing. (`SS.eval` thus keeps its D057 role as the independent anchor;
+only its *position* changes — cross-check, not apex meaning.)
+
+### Consequences
+
+- `Once.Verified.SourceTrace.⟦_⟧`/`sourceTrace` flips from `SS.runTrace` to
+  `evalᴰ`-based (`⟦ moduleToIR m ⟧IR`); the apex chain reaches `⟦src⟧ = evalᴰ`
+  directly (no `#10` in the chain). `#10` becomes a standalone required theorem.
+- `#10` is a **cross-meter** statement (`evalᴰ`-depth ↔ `SS.eval`-step), proven as
+  a source-side simulation — structurally like the machine `traces-agree`/`flat-sim`,
+  but implementation-independent (no codegen). The meter on each side is an
+  internal totality device; the observable is the effectful-SigOp event sequence.
+
+### See Also
+
+- D057 (independent source reference — role updated), D058 (event/observation-depth
+  observable), Plan 0.46 (denotational `evalᴰ` as the observable + reasoning layer)
