@@ -119,23 +119,27 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   record MachineRefinesObsF {A B} (ir : IR A B) (x : ⟦ A ⟧)
                              (s : LocState FS) (alloc : AllocState {FS}) : Set where
     field
-      enough-fuel  : ℕ
-      run-halts    : halted (floc (flat-run enough-fuel ir s alloc)) ≡ true
-      -- ∀-n (observation depth `k`): the first `k` effectful SigOps the machine
-      -- emits equal the source's denotational trace `evalᴰ` at depth `k`. The
-      -- source observable is now the monadic `⟦_⟧ᴰ` (Plan 0.46), so the machine
-      -- REFINES `evalᴰ` directly (`otrace` retired). `enough-fuel`/`run-halts`
-      -- are the (provisional) completion device — to be replaced by the
-      -- depth-simulation in the completion-field drop (M3).
+      -- NO completion fields (M3, D058: "productivity — not termination").
+      -- `run-halts` ("the run halts") is exactly what excludes `Ana`; instead,
+      -- the machine REFINES the denotational `evalᴰ` at each observation depth
+      -- `k` PRODUCTIVELY: there EXISTS a fuel `f` that emits the first `k`
+      -- effectful events, matching `evalᴰ`'s depth-`k` event-prefix. The `∃ f`
+      -- is the productivity witness, never the observable index (which is `k`).
+      -- (Cata emits a full finite trace; Ana grows with depth — both composed
+      -- correctly in `evalᴰ`, observed by the `take k` event-prefix.)
       traces-agree :
-        ∀ (k : ℕ) →
-        take k (flat-events enough-fuel (ir-to-trace ir) (mkFlat s alloc 0))
-          ≡ take k (projTrace (evalᴰ ir (inject x)) k)
+        ∀ (k : ℕ) → ∃[ f ]
+          take k (flat-events f (ir-to-trace ir) (mkFlat s alloc 0))
+            ≡ take k (projTrace (evalᴰ ir (inject x)) k)
+      -- The value device (`ValidAtWF` — "the value the next effectful SigOp
+      -- reads is right", Behavior.agda). Final-value form (terminating
+      -- specialization, its own fuel `f`); the per-effectful-SigOp form for
+      -- productive `Ana` (no final value) is the next value-device refinement.
       value-realized :
-        ∃[ mOut ] ∃[ result-loc ]
-          ValidAtWF mOut (falloc (flat-run enough-fuel ir s alloc))
+        ∃[ f ] ∃[ mOut ] ∃[ result-loc ]
+          ValidAtWF mOut (falloc (flat-run f ir s alloc))
             (eval ir x) result-loc
-            (forced (floc (flat-run enough-fuel ir s alloc)))
+            (forced (floc (flat-run f ir s alloc)))
 
   -- Same preconditions as `compile-correct-flat`'s semantic side (entry
   -- frontier 0), minus `StraightIR` (loops are allowed); conclusion is
