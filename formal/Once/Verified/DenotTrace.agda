@@ -27,7 +27,7 @@
 
 module Once.Verified.DenotTrace where
 
-open import Data.Nat using (ℕ; zero)
+open import Data.Nat using (ℕ; zero; suc)
 open import Data.List using (List; []; _∷_; _++_; take)
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥)
@@ -39,13 +39,13 @@ open import Once.Type
          Int; Float; Str; Buffer; Functor; ⟦_⟧T)
 open import Once.CCC.IR
   using (IR; id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal;
-         initial; curry; apply; arr; SigOp; Cata; In; Out)
+         initial; curry; apply; arr; SigOp; Cata; In; Out; Ana)
 open import Once.CCC.Eval as Val using (eval)   -- pure value domain `Val.⟦_⟧` + `eval`
 open import Once.CCC.SigOp.Info
   using (SigOpInfo; semM; effect; EffectShape; Pure; Emits; Halts)
 open import Once.Functor.Translate using (WellFormedF)
 open import Once.Semantics.Machine
-  using (sem-cata; sem-fmap; coerce-functor⁻¹; ⟦_⟧F)
+  using (sem-cata; sem-fmap; coerce-functor; coerce-functor⁻¹; ⟦_⟧F)
 open import Once.Verified.Trace using (SigOpEvent; mkEvent)
 open import Once.Verified.TraceMonad using (T; returnT; _>>=T_; valueT; projTrace)
 open import Once.Verified.TraceDenote using (events-F)
@@ -119,13 +119,19 @@ emit-D si x with effect si
 ... | Halts _ = mkEvent si x ∷ []
 
 ------------------------------------------------------------------------
--- The recursion-scheme trace in the T-convention. `Cata` is REAL: a
--- `cata-ev-alg`-style post-order fold (`sem-cata`) whose per-layer events
--- come from running the NATIVE `evalᴰ alg` (so effects hidden inside a
--- fold algebra — even behind closures — are captured, strictly better
--- than the old `obs`). `In`/`Out` are pure constructors (`[]`). The
--- remaining schemes (`Para`/`Ana`/`Hylo`/`Fuse`) are one NAMED hole
--- `rec-trace-rest` (the `Ana` budget-unfold + para/hylo/fuse folds).
+-- The recursion-scheme trace in the T-convention.
+--   * `Cata` — a `cata-ev-alg`-style post-order fold (`sem-cata`) whose
+--     per-layer events come from the NATIVE `evalᴰ alg` (effects hidden
+--     inside a fold algebra, even behind closures, are captured).
+--   * `Ana` — the depth-bounded unfold (`ana-events`): at depth `suc m`,
+--     emit the coalgebra step's events (`evalᴰ coalg`) then recurse at `m`
+--     on the functor's recursive positions in canonical order (`events-F`).
+--     The observation depth is the unfold depth — a semantic, commensurable
+--     notion (one machine loop iteration per layer), NOT machine steps.
+--     Total by structural recursion on the depth; handles silent/sparse
+--     unfolds (no "accumulate until n events" divergence).
+--   * `In`/`Out` — pure constructor/destructor (`[]`).
+-- Remaining NAMED hole `rec-trace-rest`: `Para`/`Hylo`/`Fuse` only.
 ------------------------------------------------------------------------
 
 postulate
@@ -146,6 +152,9 @@ rec-trace-D  : ∀ {A B} → IR A B → Val.⟦ A ⟧ → ℕ → List SigOpEven
 -- injected functor layer). Value carried in the pure domain (via `eval`).
 cata-ev-algᴰ : ∀ {F C} → ℕ → IR (⟦ F ⟧T C) C
              → ⟦ F ⟧F (List SigOpEvent × Val.⟦ C ⟧) → List SigOpEvent × Val.⟦ C ⟧
+-- The depth-bounded unfold trace: events of the first `n` unfold layers,
+-- in canonical (functor left-to-right) order, from the seed `a`.
+ana-events   : ∀ {F A} → IR A (⟦ F ⟧T A) → Val.⟦ A ⟧ → ℕ → List SigOpEvent
 
 evalᴰ id            a        = returnT a
 evalᴰ (g ∘ f)       a        = evalᴰ f a >>=T evalᴰ g
@@ -164,12 +173,19 @@ evalᴰ arr           f        = returnT f
 evalᴰ (SigOp si)    a        = λ n → (emit-D si (forget a) , inject (semM si (forget a)))
 evalᴰ ir            a        = λ n → (rec-trace-D ir (forget a) n , inject (eval ir (forget a)))
 
-rec-trace-D (Cata {F} wf {C} alg) x n =
-  take n (proj₁ (sem-cata wf (cata-ev-algᴰ {F} {C} n alg) x))
-rec-trace-D (In wf m) x n = []
-rec-trace-D (Out wf)  x n = []
-rec-trace-D ir        x n = rec-trace-rest ir x n
+rec-trace-D (Cata {F} wf {C} alg)   x n = take n (proj₁ (sem-cata wf (cata-ev-algᴰ {F} {C} n alg) x))
+rec-trace-D (Ana {F} wf {A} coalg)  x n = ana-events {F} {A} coalg x n
+rec-trace-D (In wf m)               x n = []
+rec-trace-D (Out wf)                x n = []
+rec-trace-D ir                      x n = rec-trace-rest ir x n
 
 cata-ev-algᴰ {F} {C} n alg fc =
   (events-F F proj₁ fc ++ projTrace (evalᴰ alg (inject z)) n , eval alg z)
   where z = coerce-functor⁻¹ F C (sem-fmap F proj₂ fc)
+
+ana-events         coalg a zero    = []
+ana-events {F} {A} coalg a (suc m) =
+  projTrace step m ++ events-F F (λ seed → ana-events {F} {A} coalg seed m) layer
+  where
+    step  = evalᴰ coalg (inject a)
+    layer = coerce-functor F A (forget (valueT step m))
