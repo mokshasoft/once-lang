@@ -28,8 +28,13 @@ module Once.Verified.ArchCorrectness where
 open import Once.Verified.CPU using (Arch; x86-64; x86-32; riscv64; arch-semantics)
 open import Once.Verified.Compile using (ArchCorrect)
 
+-- x86-64's witness is DISCHARGED THROUGH the generic IR-observable theorem
+-- (`ir-obs-correct` → `cata-correct`) — see `…ArchCorrectness.X86-64`. So
+-- `cata-correct` is load-bearing for the apex on this target. The other two
+-- targets remain whole-record postulates (no flat-sim / FS instance wired yet).
+open import Once.Verified.ArchCorrectness.X86-64 using (x86-64-correct)
+
 postulate
-  x86-64-correct  : ArchCorrect x86-64  (arch-semantics x86-64)
   x86-32-correct  : ArchCorrect x86-32  (arch-semantics x86-32)
   riscv64-correct : ArchCorrect riscv64 (arch-semantics riscv64)
 
