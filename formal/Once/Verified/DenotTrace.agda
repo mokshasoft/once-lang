@@ -39,7 +39,8 @@ open import Once.Type
          Int; Float; Str; Buffer; Functor; ⟦_⟧T)
 open import Once.CCC.IR
   using (IR; id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal;
-         initial; curry; apply; arr; SigOp; Cata; In; Out; Ana)
+         initial; curry; apply; arr; SigOp; Cata; In; Out; Ana;
+         out-μ; free-heap; const)
 open import Once.CCC.Eval as Val using (eval)   -- pure value domain `Val.⟦_⟧` + `eval`
 open import Once.CCC.SigOp.Info
   using (SigOpInfo; semM; effect; EffectShape; Pure; Emits; Halts)
@@ -182,6 +183,10 @@ rec-trace-D (Cata {F} wf {C} alg)   x n = proj₁ (sem-cata wf (cata-ev-algᴰ {
 rec-trace-D (Ana {F} wf {A} coalg)  x n = ana-events {F} {A} coalg x n
 rec-trace-D (In wf m)               x n = []
 rec-trace-D (Out wf)                x n = []
+-- Pure non-recursion-scheme constructors: no observable SigOp ⇒ no events.
+rec-trace-D (out-μ wf)              x n = []
+rec-trace-D (free-heap r)           x n = []
+rec-trace-D (const f iv mv)         x n = []
 rec-trace-D ir                      x n = rec-trace-rest ir x n
 
 cata-ev-algᴰ {F} {C} n alg fc =

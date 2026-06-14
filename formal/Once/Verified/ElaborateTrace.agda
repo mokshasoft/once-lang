@@ -40,7 +40,8 @@ open import Once.Type
   using (Type; Unit; Void; _*_; _+_; _⇒[_]_; μ-type; ν-type;
          Int; Float; Str; Buffer)
 open import Once.CCC.IR using (terminal)
-open import Once.TypeCheck.Raw using (RUnit)
+open import Once.Surface.Elaborate using (intLit; strLit)
+open import Once.TypeCheck.Raw using (RUnit; RInt; RStringLit)
 open import Once.Verified.SourceSemantics
   using (Value; Vpair; Vinl; Vinr; Vint; Vstr;
          apply; eval; Env; Result; Defs; runTraceEval)
@@ -70,8 +71,11 @@ module _ (defs : Defs) where
     _         ~⟨ A + B ⟩       _        = ⊥
     Vint n    ~⟨ Int ⟩         d        = absℤ n ≡ d
     _         ~⟨ Int ⟩         _        = ⊥
-    Vstr s    ~⟨ Str ⟩         d        = s ≡ d
-    _         ~⟨ Str ⟩         _        = ⊥
+    -- `Str` values are NOT observable (events carry only int args via `argℕ`,
+    -- which ignores `Vstr`), and literal/arith values get no value spec
+    -- (`feedback_arith_no_value_spec`: `str-lit-semM` is abstract). So the
+    -- relation does not track string values.
+    _         ~⟨ Str ⟩         _        = ⊤
     fv        ~⟨ A ⇒[ k ] B ⟩  f        =
       ∀ (w : Value) (a : ⟦ A ⟧ᴰ) → w ~⟨ A ⟩ a → CompSim B (f a) (λ s → apply s defs fv w)
     _         ~⟨ μ-type F ⟩    _        = ⊤
@@ -126,3 +130,16 @@ module _ (defs : Defs) where
   cs-unit : ∀ {A} (dγ : ⟦ A ⟧ᴰ) (ρ : Env)
           → CompSim Unit (evalᴰ (terminal {A}) dγ) (λ s → eval s defs ρ RUnit)
   cs-unit dγ ρ j = suc zero , refl , tt
+
+  -- `int n`: `elaborate (int n) = intLit n = const fits-int n ∣n∣ ∘ terminal`
+  -- (pure ⇒ no events), `SS.eval (RInt n) = just (Vint n , [])`. Traces both
+  -- `[]`; value `Vint n ~⟨ Int ⟩ ∣n∣ = (absℤ n ≡ ∣n∣)` = refl.
+  cs-int : ∀ {Γ} (n : _) (dγ : ⟦ Γ ⟧ᴰ) (ρ : Env)
+         → CompSim Int (evalᴰ (intLit n {Γ}) dγ) (λ s → eval s defs ρ (RInt n))
+  cs-int n dγ ρ j = suc zero , refl , refl
+
+  -- `str s`: `elaborate (str s) = strLit s = SigOp (str-lit-info s) ∘ terminal`
+  -- (str-lit-info is Pure ⇒ no events), `SS.eval (RStringLit s) = just (Vstr s , [])`.
+  cs-str : ∀ {Γ} (s : _) (dγ : ⟦ Γ ⟧ᴰ) (ρ : Env)
+         → CompSim Str (evalᴰ (strLit s {Γ}) dγ) (λ z → eval z defs ρ (RStringLit s))
+  cs-str s dγ ρ j = suc zero , refl , tt
