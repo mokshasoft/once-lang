@@ -25,7 +25,7 @@
 
 module Once.Verified.ElaborateTrace where
 
-open import Data.Nat using (ℕ; zero; suc)
+open import Data.Nat using (ℕ; zero; suc; _≤_; z≤n; s≤s)
 open import Data.List using (List; []; _∷_; take)
 open import Data.Maybe using (just; nothing)
 open import Data.Unit using (⊤; tt)
@@ -92,11 +92,16 @@ module _ (defs : Defs) where
     -- productivity witness for the step meter; the observable is the
     -- event prefix.
     ------------------------------------------------------------------
+    -- FUEL-STABLE form: at every observation depth `j`, SOME threshold fuel `s`
+    -- exists such that for ALL `s' ≥ s` the event prefixes agree and the value
+    -- simulates. Baking the `∀ s' ≥ s` into `CompSim` makes it COMPOSITIONAL:
+    -- structural cases combine sub-witnesses by `max`, with no separate
+    -- fuel-monotonicity lemma (each `CompSim` carries its own stability).
     CompSim : (B : Type) → T ⟦ B ⟧ᴰ → (ℕ → Result) → Set
     CompSim B c op =
-      ∀ (j : ℕ) → ∃[ s ]
-        (take j (projTrace c j) ≡ take j (runTraceEval (op s)))
-        × ResultRel B (op s) (valueT c j)
+      ∀ (j : ℕ) → ∃[ s ] (∀ (s' : ℕ) → s ≤ s' →
+          (take j (projTrace c j) ≡ take j (runTraceEval (op s')))
+          × ResultRel B (op s') (valueT c j))
 
     -- The operational result (which must succeed, `just`) carries a
     -- value simulating the denotational value.
@@ -129,17 +134,17 @@ module _ (defs : Defs) where
   ------------------------------------------------------------------
   cs-unit : ∀ {A} (dγ : ⟦ A ⟧ᴰ) (ρ : Env)
           → CompSim Unit (evalᴰ (terminal {A}) dγ) (λ s → eval s defs ρ RUnit)
-  cs-unit dγ ρ j = suc zero , refl , tt
+  cs-unit dγ ρ j = suc zero , λ { (suc s') _ → refl , tt }
 
   -- `int n`: `elaborate (int n) = intLit n = const fits-int n ∣n∣ ∘ terminal`
   -- (pure ⇒ no events), `SS.eval (RInt n) = just (Vint n , [])`. Traces both
   -- `[]`; value `Vint n ~⟨ Int ⟩ ∣n∣ = (absℤ n ≡ ∣n∣)` = refl.
   cs-int : ∀ {Γ} (n : _) (dγ : ⟦ Γ ⟧ᴰ) (ρ : Env)
          → CompSim Int (evalᴰ (intLit n {Γ}) dγ) (λ s → eval s defs ρ (RInt n))
-  cs-int n dγ ρ j = suc zero , refl , refl
+  cs-int n dγ ρ j = suc zero , λ { (suc s') _ → refl , refl }
 
   -- `str s`: `elaborate (str s) = strLit s = SigOp (str-lit-info s) ∘ terminal`
   -- (str-lit-info is Pure ⇒ no events), `SS.eval (RStringLit s) = just (Vstr s , [])`.
   cs-str : ∀ {Γ} (s : _) (dγ : ⟦ Γ ⟧ᴰ) (ρ : Env)
          → CompSim Str (evalᴰ (strLit s {Γ}) dγ) (λ z → eval z defs ρ (RStringLit s))
-  cs-str s dγ ρ j = suc zero , refl , tt
+  cs-str s dγ ρ j = suc zero , λ { (suc s') _ → refl , tt }
