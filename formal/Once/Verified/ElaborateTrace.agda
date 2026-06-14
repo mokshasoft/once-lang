@@ -33,17 +33,17 @@ open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃-syntax; Σ-syntax)
 open import Data.Sum using (inj₁; inj₂)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
-open import Data.List.Properties using (∷-injective)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; cong; cong₂)
+open import Data.List.Properties using (∷-injective; ++-identityʳ)
 open import Data.Integer using () renaming (∣_∣ to absℤ)
 open import Data.String using (String)
 
 open import Once.Type
   using (Type; Unit; Void; _*_; _+_; _⇒[_]_; μ-type; ν-type;
          Int; Float; Str; Buffer)
-open import Once.CCC.IR using (IR; terminal; ⟨_,_⟩; AllocMode)
+open import Once.CCC.IR using (IR; id; _∘_; terminal; ⟨_,_⟩; AllocMode)
 open import Once.Surface.Elaborate using (intLit; strLit)
-open import Once.TypeCheck.Raw using (RawExpr; RUnit; RInt; RStringLit; RPair)
+open import Once.TypeCheck.Raw using (RawExpr; RUnit; RInt; RStringLit; RPair; RLet)
 open import Once.Verified.SourceSemantics
   using (Value; Vunit; Vpair; Vinl; Vinr; Vint; Vstr;
          apply; eval; Env; Result; Defs; runTraceEval)
@@ -202,3 +202,31 @@ module _ (defs : Defs) where
     op-eq (suc k) (s≤s le)
       rewrite opa-eq k (≤-trans (m≤m⊔n sa sb) le)
             | opb-eq k (≤-trans (n≤m⊔n sa sb) le) = refl
+
+  -- STRUCTURAL composition: `let`. `elaborate (let' e1 e2) = e2' ∘ ⟨ id , e1' ⟩`,
+  -- `SS.eval (RLet x e1 e2) = eval e1 >>=ᵣ λ v1 → eval ((x,v1)∷ρ) e2`. The
+  -- continuation `e2` runs in the environment EXTENDED with `e1`'s value, so its
+  -- CompSim is supplied parameterized by the bound value `(v1, dv1)` and their
+  -- relation (the bridge IH). `e1`'s exposed result `v1` is reused both to
+  -- extend `ρ` operationally and to instantiate the continuation.
+  cs-let : ∀ {Γ A B} (e1' : IR Γ A) (e2' : IR (Γ * A) B) (m : AllocMode)
+           (x : ⟦ Γ ⟧ᴰ) (ρ : Env) (xn : String) (re1 re2 : RawExpr)
+         → CompSim A (evalᴰ e1' x) (λ s → eval s defs ρ re1)
+         → (∀ (v1 : Value) (dv1 : ⟦ A ⟧ᴰ) → v1 ~⟨ A ⟩ dv1
+              → CompSim B (evalᴰ e2' (x , dv1)) (λ s → eval s defs ((xn , v1) ∷ ρ) re2))
+         → CompSim B (evalᴰ (e2' ∘ ⟨ id , e1' ⟩ m) x) (λ s → eval s defs ρ (RLet xn re1 re2))
+  cs-let {Γ} {A} {B} e1' e2' m x ρ xn re1 re2
+         (s1 , v1 , e1-evs , op1 , tr1 , rr1)
+         hyp2 with hyp2 v1 (valueT (evalᴰ e1' x) 0) rr1
+  ... | (s2 , v2 , e2-evs , op2 , tr2 , rr2) =
+        suc (s1 ⊔ s2) , v2 , e1-evs ++ e2-evs ,
+        op-eq ,
+        trans (cong₂ (λ p q → (p ++ []) ++ q) tr1 tr2)
+              (cong (_++ e2-evs) (++-identityʳ e1-evs)) ,
+        rr2
+    where
+    op-eq : ∀ s' → suc (s1 ⊔ s2) ≤ s' →
+            eval s' defs ρ (RLet xn re1 re2) ≡ just (v2 , e1-evs ++ e2-evs)
+    op-eq (suc k) (s≤s le)
+      rewrite op1 k (≤-trans (m≤m⊔n s1 s2) le)
+            | op2 k (≤-trans (n≤m⊔n s1 s2) le) = refl
