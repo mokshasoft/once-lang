@@ -133,7 +133,7 @@ sourceToIR src with gmoduleToModule src
 -- elaborated meaning), at observation depth `n` (Plan 0.46: the monadic
 -- `⟦_⟧ᴰ` is THE source observable; the operational `otrace` is retired).
 ⟦_⟧IR : Maybe (IR Unit Unit) → Behavior
-⟦ just ir ⟧IR = λ n → projTrace (evalᴰ ir tt) n
+⟦ just ir ⟧IR = λ n → take n (projTrace (evalᴰ ir tt) n)
 ⟦ nothing ⟧IR = λ _ → []
 
 -- FACTOR 1 of `module-to-asm-correct`: typecheck + elaborate preserve the
@@ -230,8 +230,12 @@ elaborate-preserves-trace m ir mj k with main-exists-align m ir mj
 -- the gap explicit (definition-first, as in Plan 0.44).
 -- J-style dispatch on the parse result (explicit `Maybe`, no `with`), so
 -- `⟦⟧-via-module` below can `rewrite` the parse equation through it.
+-- D059: the source meaning is the DENOTATIONAL `evalᴰ` (compositional →
+-- reasons about Once programs; observation-depth → commensurable apex meter),
+-- via `⟦_⟧IR ∘ moduleToIR`. `SS.eval`/`SS.runTrace` is NOT the apex meaning —
+-- it is the required cross-check (`elaborate-preserves-trace`, the #10 conjunct).
 sourceTrace-aux : Maybe P.Module → Behavior
-sourceTrace-aux (just m) = SS.runTrace m
+sourceTrace-aux (just m) = ⟦ moduleToIR m ⟧IR
 sourceTrace-aux nothing  = λ _ → []
 
 sourceTrace : Source → Behavior
@@ -253,5 +257,5 @@ abstract
   -- `Compile.gmoduleToModule-correct`.
   ⟦⟧-via-module :
     ∀ (src : Source) (m : P.Module) → gmoduleToModule src ≡ just m →
-    ∀ (n : ℕ) → ⟦ src ⟧ n ≡ SS.runTrace m n
+    ∀ (n : ℕ) → ⟦ src ⟧ n ≡ ⟦ moduleToIR m ⟧IR n
   ⟦⟧-via-module src m eq n rewrite eq = refl
