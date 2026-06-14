@@ -26,7 +26,7 @@
 module Once.Verified.ElaborateTrace where
 
 open import Data.Nat using (ℕ; zero; suc; _≤_; z≤n; s≤s; _⊔_; _∸_)
-open import Data.Nat.Properties using (m≤m⊔n; n≤m⊔n; ≤-trans; m∸n≤m; 1+n≰n)
+open import Data.Nat.Properties using (m≤m⊔n; n≤m⊔n; ≤-trans; m∸n≤m; 1+n≰n; n≤1+n)
 open import Data.Fin using (Fin; toℕ) renaming (zero to fzero; suc to fsuc)
 open import Data.List using (List; []; _∷_; _++_; take)
 open import Data.List.Base using (replicate; length)
@@ -47,13 +47,14 @@ open import Agda.Builtin.String.Properties using (primStringFromListInjective)
 open import Once.Type
   using (Type; Unit; Void; _*_; _+_; _⇒[_]_; μ-type; ν-type;
          Int; Float; Str; Buffer)
-open import Once.CCC.IR using (IR; id; _∘_; terminal; ⟨_,_⟩; AllocMode; case; fst; snd; curry)
+open import Once.CCC.IR using (IR; id; _∘_; terminal; ⟨_,_⟩; AllocMode; case; fst; snd; curry; inl; inr)
   renaming (apply to applyᴵ)
 open import Once.Surface.Elaborate using (intLit; strLit; distribute; proj)
 open import Once.TypeCheck.Raw using (RawExpr; RVar; RLam; RUnit; RInt; RStringLit; RPair; RLet; RApp; RDestruct)
 open import Once.Verified.SourceSemantics
   using (Value; Vunit; Vpair; Vinl; Vinr; Vint; Vstr; Vclos; Vbuiltin; Vsigop; Vin;
-         apply; eval; Env; Result; Defs; runTraceEval; lookupEnv)
+         apply; eval; Env; Result; Defs; runTraceEval; lookupEnv;
+         bFst; bSnd; bInl; bInr)
 open import Once.Verified.Trace using (SigOpEvent)
 open import Once.Verified.DenotTrace using (⟦_⟧ᴰ; evalᴰ)
 open import Once.Verified.TraceMonad using (T; returnT; projTrace; valueT)
@@ -459,3 +460,103 @@ module _ (defs : Defs) where
   ... | (_ , _)      | Vbuiltin _ _ | ()
   ... | (_ , _)      | Vsigop _ _  | ()
   ... | (_ , _)      | Vin _       | ()
+
+  ------------------------------------------------------------------
+  -- BUILTIN-APPLICATION cases (`fst'`/`snd'`/`inl'`/`inr'`). These typed
+  -- constructors have NO raw constructor — `checkElab` produces them from
+  -- `RApp (RVar "fst"/"snd"/"inl"/"inr") e`, and `SS.eval` routes through
+  -- `resolveName name = Vbuiltin bName []` + `applyBuiltin`. The
+  -- no-shadowing-of-builtin-names invariant (user-confirmed) is carried as
+  -- the hypothesis `∀ z → eval (suc z) defs ρ (RVar name) ≡ just (Vbuiltin
+  -- bName [] , [])` — the bridge discharges it from `lookupEnv`/`lookupDef`
+  -- both `nothing` (canonical `"aaa…"` env names never collide with a
+  -- builtin name; `defs` does not redefine builtins).
+  --
+  -- `op-eq-builtin1`: the operational `RApp (RVar name) re` evaluates the
+  -- name to its builtin, `re` to its (single) argument, then applies — three
+  -- definitional `>>=ᵣ` steps; threshold `suc (suc se)` (one `suc` for the
+  -- `RApp` decrement, one so the `RVar name` lookup sees a `suc` fuel).
+  op-eq-builtin1 :
+    ∀ (nm : String) (bval : Value) (ρ : Env) (re : RawExpr)
+      (se : ℕ) (varg vres : Value) (evs : List SigOpEvent)
+    → (∀ z → eval (suc z) defs ρ (RVar nm) ≡ just (bval , []))
+    → (∀ z → se ≤ z → eval z defs ρ re ≡ just (varg , evs))
+    → (∀ f → apply (suc f) defs bval varg ≡ just (vres , []))
+    → ∀ z → suc (suc se) ≤ z → eval z defs ρ (RApp (RVar nm) re) ≡ just (vres , evs)
+  op-eq-builtin1 nm bval ρ re se varg vres evs nameres opre appres
+                 (suc (suc k)) (s≤s (s≤s le))
+    rewrite nameres k
+          | opre (suc k) (≤-trans le (n≤1+n k))
+          | appres k
+          | ++-identityʳ evs = refl
+
+  -- `fst'`: `elaborate (fst' e) = fst ∘ elaborate e`; `evalᴰ (fst ∘ e') x`
+  -- has value `proj₁ (e'-value)`, trace `e'-trace`. The value-sim at `A * B`
+  -- FORCES the operational value to be `Vpair va vb` (non-`Vpair` ⇒ ⊥), and
+  -- `applyBuiltin bFst (Vpair va vb ∷ []) = just (va , [])`.
+  cs-fst : ∀ {Γ A B} (e' : IR Γ (A * B)) (x : ⟦ Γ ⟧ᴰ) (ρ : Env) (re : RawExpr)
+         → (∀ z → eval (suc z) defs ρ (RVar "fst") ≡ just (Vbuiltin bFst [] , []))
+         → CompSim (A * B) (evalᴰ e' x) (λ z → eval z defs ρ re)
+         → CompSim A (evalᴰ (fst ∘ e') x) (λ z → eval z defs ρ (RApp (RVar "fst") re))
+  cs-fst {Γ} {A} {B} e' x ρ re nameres (se , ve , ee-evs , ope , tre , rre)
+    with ve | rre
+  ... | Vpair va vb | (rra , rrb) =
+        suc (suc se) , va , ee-evs ,
+        op-eq-builtin1 "fst" (Vbuiltin bFst []) ρ re se (Vpair va vb) va ee-evs
+          nameres ope (λ _ → refl) ,
+        trans (++-identityʳ (proj₁ (evalᴰ e' x 0))) tre , rra
+  ... | Vunit       | ()
+  ... | Vinl _      | ()
+  ... | Vinr _      | ()
+  ... | Vint _      | ()
+  ... | Vstr _      | ()
+  ... | Vclos _ _ _ | ()
+  ... | Vbuiltin _ _ | ()
+  ... | Vsigop _ _  | ()
+  ... | Vin _       | ()
+
+  -- `snd'`: symmetric to `cs-fst`, second projection.
+  cs-snd : ∀ {Γ A B} (e' : IR Γ (A * B)) (x : ⟦ Γ ⟧ᴰ) (ρ : Env) (re : RawExpr)
+         → (∀ z → eval (suc z) defs ρ (RVar "snd") ≡ just (Vbuiltin bSnd [] , []))
+         → CompSim (A * B) (evalᴰ e' x) (λ z → eval z defs ρ re)
+         → CompSim B (evalᴰ (snd ∘ e') x) (λ z → eval z defs ρ (RApp (RVar "snd") re))
+  cs-snd {Γ} {A} {B} e' x ρ re nameres (se , ve , ee-evs , ope , tre , rre)
+    with ve | rre
+  ... | Vpair va vb | (rra , rrb) =
+        suc (suc se) , vb , ee-evs ,
+        op-eq-builtin1 "snd" (Vbuiltin bSnd []) ρ re se (Vpair va vb) vb ee-evs
+          nameres ope (λ _ → refl) ,
+        trans (++-identityʳ (proj₁ (evalᴰ e' x 0))) tre , rrb
+  ... | Vunit       | ()
+  ... | Vinl _      | ()
+  ... | Vinr _      | ()
+  ... | Vint _      | ()
+  ... | Vstr _      | ()
+  ... | Vclos _ _ _ | ()
+  ... | Vbuiltin _ _ | ()
+  ... | Vsigop _ _  | ()
+  ... | Vin _       | ()
+
+  -- `inl'`: `elaborate (inl' a) = inl m ∘ elaborate a`; `evalᴰ (inl m ∘ e') x`
+  -- has value `inj₁ (e'-value)`. `Vinl ve ~⟨A+B⟩ inj₁ d` reduces to `ve ~⟨A⟩ d`,
+  -- which is the sub-value-sim `rre` — no value-casing needed.
+  cs-inl : ∀ {Γ A B} (e' : IR Γ A) (m : AllocMode) (x : ⟦ Γ ⟧ᴰ) (ρ : Env) (re : RawExpr)
+         → (∀ z → eval (suc z) defs ρ (RVar "inl") ≡ just (Vbuiltin bInl [] , []))
+         → CompSim A (evalᴰ e' x) (λ z → eval z defs ρ re)
+         → CompSim (A + B) (evalᴰ (inl {A} {B} m ∘ e') x) (λ z → eval z defs ρ (RApp (RVar "inl") re))
+  cs-inl {Γ} {A} {B} e' m x ρ re nameres (se , ve , ee-evs , ope , tre , rre) =
+        suc (suc se) , Vinl ve , ee-evs ,
+        op-eq-builtin1 "inl" (Vbuiltin bInl []) ρ re se ve (Vinl ve) ee-evs
+          nameres ope (λ _ → refl) ,
+        trans (++-identityʳ (proj₁ (evalᴰ e' x 0))) tre , rre
+
+  -- `inr'`: symmetric, right injection.
+  cs-inr : ∀ {Γ A B} (e' : IR Γ B) (m : AllocMode) (x : ⟦ Γ ⟧ᴰ) (ρ : Env) (re : RawExpr)
+         → (∀ z → eval (suc z) defs ρ (RVar "inr") ≡ just (Vbuiltin bInr [] , []))
+         → CompSim B (evalᴰ e' x) (λ z → eval z defs ρ re)
+         → CompSim (A + B) (evalᴰ (inr {A} {B} m ∘ e') x) (λ z → eval z defs ρ (RApp (RVar "inr") re))
+  cs-inr {Γ} {A} {B} e' m x ρ re nameres (se , ve , ee-evs , ope , tre , rre) =
+        suc (suc se) , Vinr ve , ee-evs ,
+        op-eq-builtin1 "inr" (Vbuiltin bInr []) ρ re se ve (Vinr ve) ee-evs
+          nameres ope (λ _ → refl) ,
+        trans (++-identityʳ (proj₁ (evalᴰ e' x 0))) tre , rre
