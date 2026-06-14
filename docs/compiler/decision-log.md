@@ -4202,8 +4202,15 @@ only its *position* changes — cross-check, not apex meaning.)
 ### Consequences
 
 - `Once.Verified.SourceTrace.⟦_⟧`/`sourceTrace` flips from `SS.runTrace` to
-  `evalᴰ`-based (`⟦ moduleToIR m ⟧IR`); the apex chain reaches `⟦src⟧ = evalᴰ`
-  directly (no `#10` in the chain). `#10` becomes a standalone required theorem.
+  `evalᴰ`-based (`⟦ moduleToIR m ⟧IR`); the apex `correct : exec n ≡ evalᴰ n`
+  reaches `⟦src⟧ = evalᴰ` directly (commensurable; no `#10` in the *meter* chain).
+- **`#10` is NOT a standalone/floating lemma — it is a REQUIRED CONJUNCT of the
+  grand theorem.** The claimed correctness is `correct × elaborate-faithful`
+  (`exec ≡ evalᴰ` AND `evalᴰ ≡ SS.eval`), which together yield `exec ≡ SS.eval`
+  (the truly-independent claim). Dropping `#10` must break the stated correctness
+  — otherwise load-bearing is silently lost (the D057 failure mode). It is
+  separate from the *meter chain* only to confine the cross-meter awkwardness to
+  `#10`; it is structurally required.
 - `#10` is a **cross-meter** statement (`evalᴰ`-depth ↔ `SS.eval`-step), proven as
   a source-side simulation — structurally like the machine `traces-agree`/`flat-sim`,
   but implementation-independent (no codegen). The meter on each side is an
