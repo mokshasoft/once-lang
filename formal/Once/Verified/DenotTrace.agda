@@ -173,7 +173,12 @@ evalᴰ arr           f        = returnT f
 evalᴰ (SigOp si)    a        = λ n → (emit-D si (forget a) , inject (semM si (forget a)))
 evalᴰ ir            a        = λ n → (rec-trace-D ir (forget a) n , inject (eval ir (forget a)))
 
-rec-trace-D (Cata {F} wf {C} alg)   x n = take n (proj₁ (sem-cata wf (cata-ev-algᴰ {F} {C} n alg) x))
+-- Cata is FINITE: emit its FULL fold trace (the observation depth `n` never
+-- truncates a terminating fold — it bounds only the productive `Ana`). This is
+-- what makes Cata and Ana COMPOSE: a Cata nested in an Ana layer emits fully,
+-- matching the machine that runs that layer's fold to completion. The
+-- event-prefix `take` is applied once, at the observable (⟦_⟧IR / traces-agree).
+rec-trace-D (Cata {F} wf {C} alg)   x n = proj₁ (sem-cata wf (cata-ev-algᴰ {F} {C} n alg) x)
 rec-trace-D (Ana {F} wf {A} coalg)  x n = ana-events {F} {A} coalg x n
 rec-trace-D (In wf m)               x n = []
 rec-trace-D (Out wf)                x n = []

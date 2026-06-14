@@ -130,7 +130,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
       traces-agree :
         ∀ (k : ℕ) →
         take k (flat-events enough-fuel (ir-to-trace ir) (mkFlat s alloc 0))
-          ≡ projTrace (evalᴰ ir (inject x)) k
+          ≡ take k (projTrace (evalᴰ ir (inject x)) k)
       value-realized :
         ∃[ mOut ] ∃[ result-loc ]
           ValidAtWF mOut (falloc (flat-run enough-fuel ir s alloc))
