@@ -238,28 +238,32 @@ resolveFunType ctx polys nothing   body = inferType ctx polys body
 -- Each function is compiled with access to all previously defined
 -- functions (ground, via FunCtx) and all polymorphic user defs
 -- (via PolyCtx, plan 0.6.2).
+-- `go` lifted to TOP LEVEL (was a `where`-local of `compileAllFuns`) so the
+-- verified frontend can induct on it (`main-exists-align`'s compiler side: a
+-- compiled `main` traces back to its `FunInfo`). The `ctx` accumulator is now
+-- an explicit parameter; `compileAllFuns` seeds it with `emptyFunCtx`.
+compileAllFuns-go : AllocMode → Bool → PolyCtx → List FunInfo → FunCtx → String ⊎ List CompiledFun
+compileAllFuns-go m doOpt polys [] _ = inj₂ []
+-- D007: resolve the function's type FIRST (explicit sig, or inferred from
+-- the body), then compile / extend the context / wrap-main with it.
+compileAllFuns-go m doOpt polys (fi ∷ rest) ctx with resolveFunType ctx polys (funType fi) (funBody fi)
+... | inj₁ err = inj₁ err
+... | inj₂ ty with compileFun m doOpt ctx polys (funName fi) ty (funBody fi)
+...   | inj₁ err = inj₁ err
+...   | inj₂ ir with compileAllFuns-go m doOpt polys rest (extendFunCtx ctx (funName fi) ty)
+...     | inj₁ err = inj₁ err
+...     | inj₂ compiled =
+            -- Plan 0.2.4.5 D1: for main, wrap as `apply ∘ ⟨ main , terminal ⟩`
+            -- so codegen produces a Unit→Unit entry point that does the
+            -- closure invocation via the verified apply IR. _start no longer
+            -- needs hand-written closure-call ABI (which drifted at Stage C).
+            let wrapped = maybeWrapMain (funName fi) ty ir
+                ty'     = proj₁ wrapped
+                ir'     = proj₂ wrapped
+            in inj₂ (mkCompiledFun (funName fi) ty' ir' (funIsPrimitive fi) ∷ compiled)
+
 compileAllFuns : AllocMode → Bool → List FunInfo → PolyCtx → String ⊎ List CompiledFun
-compileAllFuns m doOpt funs polys = go funs emptyFunCtx
-  where
-    go : List FunInfo → FunCtx → String ⊎ List CompiledFun
-    go [] _ = inj₂ []
-    -- D007: resolve the function's type FIRST (explicit sig, or inferred from
-    -- the body), then compile / extend the context / wrap-main with it.
-    go (fi ∷ rest) ctx with resolveFunType ctx polys (funType fi) (funBody fi)
-    ... | inj₁ err = inj₁ err
-    ... | inj₂ ty with compileFun m doOpt ctx polys (funName fi) ty (funBody fi)
-    ...   | inj₁ err = inj₁ err
-    ...   | inj₂ ir with go rest (extendFunCtx ctx (funName fi) ty)
-    ...     | inj₁ err = inj₁ err
-    ...     | inj₂ compiled =
-                -- Plan 0.2.4.5 D1: for main, wrap as `apply ∘ ⟨ main , terminal ⟩`
-                -- so codegen produces a Unit→Unit entry point that does the
-                -- closure invocation via the verified apply IR. _start no longer
-                -- needs hand-written closure-call ABI (which drifted at Stage C).
-                let wrapped = maybeWrapMain (funName fi) ty ir
-                    ty'     = proj₁ wrapped
-                    ir'     = proj₂ wrapped
-                in inj₂ (mkCompiledFun (funName fi) ty' ir' (funIsPrimitive fi) ∷ compiled)
+compileAllFuns m doOpt funs polys = compileAllFuns-go m doOpt polys funs emptyFunCtx
 
 -- | Compile source text to list of compiled functions
 -- Returns: Left error | Right list of (name, type, IR)
