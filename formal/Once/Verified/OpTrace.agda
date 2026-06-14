@@ -178,7 +178,15 @@ otrace (suc n) (const f iv mv) x                      = ([] , sem→ov? mv)
 -- the trace (`otrace-cata-alg`); the value is the denotational `eval`.
 otrace (suc n) (Cata {F} wf {A} alg) (ovMu x)         =
   (proj₁ (sem-cata wf (otrace-cata-alg {F} {A} n alg) x) , sem→ov? (eval (Cata wf alg) x))
-otrace (suc n) ir             x                       = ([] , nothing)   -- Ana/Para/Hylo/Fuse/In/Out/heap: deferred
+-- pure (μ/ν) constructors: no effect of their own; value via `eval`, trace [].
+otrace (suc n) (In wf m)      x                       = ([] , sem→ov? (eval (In wf m) (ov→sem x)))
+otrace (suc n) (out-μ wf)     x                       = ([] , sem→ov? (eval (out-μ wf) (ov→sem x)))
+otrace (suc n) (Out wf)       x                       = ([] , sem→ov? (eval (Out wf) (ov→sem x)))
+otrace (suc n) (in-ν wf m)    x                       = ([] , sem→ov? (eval (in-ν wf m) (ov→sem x)))
+-- Ana (productive coalgebra) / Para / Hylo / Fuse / free-heap: effectful or
+-- productive — must fire operationally; DEFERRED (honest `nothing`, not a
+-- value-with-[] that would silently drop their effects).
+otrace (suc n) ir             x                       = ([] , nothing)
 
 otrace-cata-alg {F} {C} n alg fc =
   ( events-F F proj₁ fc ++ maybe (λ ov → proj₁ (otrace n alg ov)) [] (sem→ov? z)
