@@ -32,8 +32,10 @@ open import Data.Bool using (Bool; true; false; not)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.String using (String) renaming (_≟_ to _≟str_)
-open import Data.Product using (_×_; _,_)
+open import Data.Product using (_×_; _,_; ∃; ∃-syntax)
 open import Data.Unit using (⊤; tt)
+open import Data.Empty using (⊥-elim)
+open import Data.List.Relation.Unary.Any using (Any; here; there)
 open import Relation.Nullary using (yes; no; does)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
@@ -42,7 +44,8 @@ open import Once.TypeCheck.Raw as Raw
          RUnit; RInt; RStringLit; RAnnot; RBinOp; RUnaryOp;
          BinOp; OpAdd; OpSub; OpMul; OpDiv; OpMod;
          OpLt; OpLe; OpGt; OpGe; OpEq; OpNe; UnaryOp; OpNeg)
-open import Once.Parser.Module.Core as Mod using (Module; Decl; DFunDef)
+open import Once.Parser.Module.Core as Mod
+  using (Module; Decl; DFunDef; DTypeSig; DSignature; DTypeAlias; DImport)
 open import Once.Verified.Trace using (SigOpEvent; mk-event)
 
 ------------------------------------------------------------------------
@@ -180,6 +183,28 @@ lookupDef []            _ = nothing
 lookupDef ((y , b) ∷ ds) x with x ≟str y
 ... | yes _ = just b
 ... | no  _ = lookupDef ds x
+
+-- SOURCE-SIDE half of `main-exists-align`: a `DFunDef "main"` present in the
+-- decls ⇒ `lookupDef (extractDefs ds) "main"` finds a body. Pure induction over
+-- the decls — prepending any decl can only ADD a front hit, never remove the
+-- tail hit, and `extractDefs` skips every non-`DFunDef`. The compiler side
+-- (`main-exists-align`) supplies the `Any` witness (a "main" `CompiledFun`
+-- traces back to a `DFunDef "main"` in `decls`).
+lookup-main-of-dfundef :
+  ∀ (ds : List Decl)
+  → Any (λ d → ∃[ al ] ∃[ bd ] d ≡ DFunDef "main" al bd) ds
+  → ∃[ body ] lookupDef (extractDefs ds) "main" ≡ just body
+lookup-main-of-dfundef [] ()
+lookup-main-of-dfundef (d ∷ ds) (here (al , bd , refl)) with "main" ≟str "main"
+... | yes _  = bd , refl
+... | no ¬p  = ⊥-elim (¬p refl)
+lookup-main-of-dfundef (DFunDef nm al bd  ∷ ds) (there a') with "main" ≟str nm
+... | yes _  = bd , refl
+... | no  _  = lookup-main-of-dfundef ds a'
+lookup-main-of-dfundef (DTypeSig _ _      ∷ ds) (there a') = lookup-main-of-dfundef ds a'
+lookup-main-of-dfundef (DSignature _ _ _  ∷ ds) (there a') = lookup-main-of-dfundef ds a'
+lookup-main-of-dfundef (DTypeAlias _ _ _  ∷ ds) (there a') = lookup-main-of-dfundef ds a'
+lookup-main-of-dfundef (DImport _         ∷ ds) (there a') = lookup-main-of-dfundef ds a'
 
 ------------------------------------------------------------------------
 -- The interpreter. Fuel-bounded; `Behavior = ℕ → List SigOpEvent` uses
