@@ -34,7 +34,8 @@ open import Data.Empty using (⊥)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃-syntax; Σ-syntax)
 open import Data.Sum using (inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; cong; cong₂)
-open import Data.List.Properties using (∷-injective; ++-identityʳ)
+open import Relation.Binary.PropositionalEquality using (module ≡-Reasoning)
+open import Data.List.Properties using (∷-injective; ++-identityʳ; ++-assoc)
 open import Data.Integer using () renaming (∣_∣ to absℤ)
 open import Data.String using (String)
 
@@ -42,8 +43,9 @@ open import Once.Type
   using (Type; Unit; Void; _*_; _+_; _⇒[_]_; μ-type; ν-type;
          Int; Float; Str; Buffer)
 open import Once.CCC.IR using (IR; id; _∘_; terminal; ⟨_,_⟩; AllocMode)
+  renaming (apply to applyᴵ)
 open import Once.Surface.Elaborate using (intLit; strLit)
-open import Once.TypeCheck.Raw using (RawExpr; RUnit; RInt; RStringLit; RPair; RLet)
+open import Once.TypeCheck.Raw using (RawExpr; RUnit; RInt; RStringLit; RPair; RLet; RApp)
 open import Once.Verified.SourceSemantics
   using (Value; Vunit; Vpair; Vinl; Vinr; Vint; Vstr;
          apply; eval; Env; Result; Defs; runTraceEval)
@@ -230,3 +232,39 @@ module _ (defs : Defs) where
     op-eq (suc k) (s≤s le)
       rewrite op1 k (≤-trans (m≤m⊔n s1 s2) le)
             | op2 k (≤-trans (n≤m⊔n s1 s2) le) = refl
+
+  -- STRUCTURAL composition: `app`. `elaborate (app f x) = apply ∘ ⟨ f' , x' ⟩`,
+  -- `SS.eval (RApp rf rx) = eval rf >>=ᵣ λ vg → eval rx >>=ᵣ λ vx → apply vg vx`.
+  -- The `apply` step's CompSim comes from `f`'s value-sim — `vg ~⟨ A ⇒ B ⟩ dclo`
+  -- IS the logical-relation clause `∀ w a → w~a → CompSim B (dclo a)(apply·vg·w)`,
+  -- instantiated at `x`'s result `(vx , dx)`. Three-way trace `f ++ (x ++ apply)`.
+  cs-app : ∀ {Γ A B kk} (f' : IR Γ (A ⇒[ kk ] B)) (x' : IR Γ A) (m : AllocMode)
+           (xenv : ⟦ Γ ⟧ᴰ) (ρ : Env) (rf rx : RawExpr)
+         → CompSim (A ⇒[ kk ] B) (evalᴰ f' xenv) (λ s → eval s defs ρ rf)
+         → CompSim A (evalᴰ x' xenv) (λ s → eval s defs ρ rx)
+         → CompSim B (evalᴰ (applyᴵ ∘ ⟨ f' , x' ⟩ m) xenv) (λ s → eval s defs ρ (RApp rf rx))
+  cs-app {Γ} {A} {B} {kk} f' x' m xenv ρ rf rx
+         (sf , vg , f-evs , opf , trf , rrf)
+         (sx , vx , x-evs , opx , trx , rrx)
+         with rrf vx (valueT (evalᴰ x' xenv) 0) rrx
+  ... | (sapp , vapp , app-evs , opapp , trapp , rrapp) =
+        suc (sf ⊔ (sx ⊔ sapp)) , vapp , f-evs ++ (x-evs ++ app-evs) ,
+        op-eq , tr-eq , rrapp
+    where
+    op-eq : ∀ s' → suc (sf ⊔ (sx ⊔ sapp)) ≤ s' →
+            eval s' defs ρ (RApp rf rx) ≡ just (vapp , f-evs ++ (x-evs ++ app-evs))
+    op-eq (suc k) (s≤s le)
+      rewrite opf   k (≤-trans (m≤m⊔n sf (sx ⊔ sapp)) le)
+            | opx   k (≤-trans (≤-trans (m≤m⊔n sx sapp) (n≤m⊔n sf (sx ⊔ sapp))) le)
+            | opapp k (≤-trans (≤-trans (n≤m⊔n sx sapp) (n≤m⊔n sf (sx ⊔ sapp))) le) = refl
+    tr-eq : proj₁ (evalᴰ (applyᴵ ∘ ⟨ f' , x' ⟩ m) xenv 0) ≡ f-evs ++ (x-evs ++ app-evs)
+    tr-eq = begin
+      proj₁ (evalᴰ (applyᴵ ∘ ⟨ f' , x' ⟩ m) xenv 0)
+        ≡⟨ cong₂ _++_ (cong₂ _++_ trf (cong (_++ []) trx)) trapp ⟩
+      (f-evs ++ (x-evs ++ [])) ++ app-evs
+        ≡⟨ cong (_++ app-evs) (cong (f-evs ++_) (++-identityʳ x-evs)) ⟩
+      (f-evs ++ x-evs) ++ app-evs
+        ≡⟨ ++-assoc f-evs x-evs app-evs ⟩
+      f-evs ++ (x-evs ++ app-evs)
+        ∎
+      where open ≡-Reasoning
