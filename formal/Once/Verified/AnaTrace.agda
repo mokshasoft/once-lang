@@ -39,19 +39,26 @@ open import Once.Type using (Type; Functor; ⟦_⟧T)
 open import Once.CCC.IR using (IR)
 open import Once.CCC.Eval as Val using ()
 open import Once.Verified.Trace using (SigOpEvent)
-open import Once.Verified.DenotTrace using (ana-events)
+open import Once.Verified.DenotTrace using (ana-events; evalᴰ; inject)
 open import Once.Verified.SourceSemantics
-  using (Value; Defs; Result; runTraceEval; anaUnfold)
+  using (Value; Defs; Result; runTraceEval; anaUnfold; apply)
+import Once.Verified.ElaborateTrace as ET
 
 module _ (defs : Defs) where
 
-  postulate
-    -- The coalgebra + seed correspondence. Abstract; its concrete definition is
-    -- the bridge value-sim at the coalgebra `A → F(A)` + the seed value-sim. It
-    -- is what makes the denotational and operational unfolds track at all.
-    CoalgSeedCorr :
-      ∀ {F : Functor} {A : Type} → IR A (⟦ F ⟧T A) → Value → Val.⟦ A ⟧ → Value → Set
+  -- The coalgebra + seed correspondence, CONCRETE: the coalgebra `A → F(A)` is a
+  -- FINITE morphism, so its correspondence is exactly the finite bridge's CompSim
+  -- at the coalgebra — `evalᴰ coalgD` (denotationally, from the seed) simulates
+  -- `apply coalgV` (operationally). Its value-sim component sits at `⟦F⟧T A`, which
+  -- IS the per-layer correspondence the unfold recursion consumes (it recurses the
+  -- type structure of `F`, relating seeds at the `Id`/`A` positions). The seed
+  -- relation is folded in via the closed coalgebra applied to `inject a` / `av`.
+  CoalgSeedCorr :
+    ∀ {F : Functor} {A : Type} → IR A (⟦ F ⟧T A) → Value → Val.⟦ A ⟧ → Value → Set
+  CoalgSeedCorr {F} {A} coalgD coalgV a av =
+    ET.CompSim defs (⟦ F ⟧T A) (evalᴰ coalgD (inject a)) (λ s → apply s defs coalgV av)
 
+  postulate
     -- THE PRODUCTIVE INDUCTIVE STEP — the genuine hard core. Given the operands
     -- correspond, at depth `suc k` the take-`(suc k)` event prefixes agree at SOME
     -- operational fuel `s`. TAKE-based (the operational fuel ≠ the denotational
