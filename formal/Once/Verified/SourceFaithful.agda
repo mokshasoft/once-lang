@@ -39,6 +39,7 @@ open import Once.Verified.DenotTrace using (⟦_⟧ᴰ; evalᴰ; inject)
 open import Once.CCC.Eval as Val using ()
 import Once.Verified.SourceDenote as SD
 import Once.Compile as C
+open import Once.Postulates using (extensionality)
 
 open Once.Surface.Syntax.Expr
 
@@ -78,6 +79,10 @@ faithful :
   → evalᴰ (elaborate C.Heap e) dγ k ≡ SD.⟦ e ⟧ˢ dγ k
 -- `unit` ↦ `terminal`; both sides reduce to `returnT tt` ⇒ refl.
 faithful (var {Γ = Γ} i) dγ k = proj-lookup {Γ = Γ} i dγ k
+-- lam ↦ curry: both sides are `returnT <closure>`; the closures are equal by
+-- extensionality over the argument (and over the depth, via the body IH).
+faithful (lam q _ e) dγ k =
+  cong (_,_ []) (extensionality (λ a → extensionality (λ k′ → faithful e (dγ , a) k′)))
 faithful unit    dγ k = refl
 faithful (int n) dγ k = refl   -- intLit's semM reduces to `absℤ n`, matching ⟦int n⟧ˢ
 -- str: `str-lit-semM s tt` does NOT reduce to `s` definitionally → needs the
