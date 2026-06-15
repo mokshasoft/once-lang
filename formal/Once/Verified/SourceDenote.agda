@@ -37,7 +37,8 @@ open import Once.Type
 open import Once.Surface.Syntax using (Expr; Ctx; Usage; lookup; _,_^_; ∅)
 open import Once.Surface.Elaborate using (⟦_⟧ᶜ)
 open import Once.Verified.TraceMonad using (T; returnT; _>>=T_)
-open import Once.Verified.DenotTrace using (⟦_⟧ᴰ)
+open import Once.Verified.DenotTrace using (⟦_⟧ᴰ; evalᴰ)
+open import Once.CCC.IR using (IR)
 open import Once.CCC.SigOp.Info using (semM)
 open import Once.Arith.SigOp.Builders
   using (add-info; sub-info; mul-info; div-info; mod-info; neg-info;
@@ -106,4 +107,10 @@ postulate
 -- immediate-vs-suspended mismatch was SS.eval (retired) vs the IR; one semantics
 -- now, and the Eff type IS suspended.
 ⟦ effApp f x ⟧ˢ   dγ = returnT (λ _ → ⟦ f ⟧ˢ dγ >>=T λ vf → ⟦ x ⟧ˢ dγ >>=T λ vx → vf vx)
+-- IR embedding: `lift-morphism`/`morph-app` inject a PRE-BUILT CCC morphism into
+-- the surface; their meaning IS the IR's denotation `evalᴰ ir` (definitionally
+-- matching elaborate, which maps them straight to `ir`). Not the IR-pivot — these
+-- are leaves embedding a fixed morphism, not the elaboration of a user subterm.
+⟦ lift-morphism ir ⟧ˢ dγ = returnT (evalᴰ ir)
+⟦ morph-app ir e ⟧ˢ   dγ = ⟦ e ⟧ˢ dγ >>=T λ v → evalᴰ ir v
 ⟦ e ⟧ˢ            dγ = ⟦⟧ˢ-todo e dγ
