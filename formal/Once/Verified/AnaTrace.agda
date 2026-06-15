@@ -30,10 +30,27 @@
 
 module Once.Verified.AnaTrace where
 
-open import Data.Nat using (ℕ; zero; suc)
-open import Data.List using (List; []; take)
-open import Data.Product using (∃-syntax; _,_)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+open import Data.Nat using (ℕ; zero; suc; _∸_; _≤_; _⊔_)
+open import Data.List using (List; []; _∷_; _++_; take; length)
+open import Data.Product using (∃-syntax; Σ-syntax; _×_; _,_; proj₁; proj₂)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; sym; trans)
+open import Data.Nat.Properties using (0∸n≡0)
+
+-- `take n (p ++ x) = take n p ++ take (n ∸ |p|) x` (no stdlib lemma). The list
+-- glue for the prefix simulation: the coalgebra-trace prefix `p` is consumed,
+-- leaving a `(n ∸ |p|)`-budget on the functor-recursion tail.
+take-++ : ∀ {ℓ} {X : Set ℓ} (n : ℕ) (p x : List X)
+        → take n (p ++ x) ≡ take n p ++ take (n ∸ length p) x
+take-++ zero    p        x rewrite 0∸n≡0 (length p) = refl
+take-++ (suc n) []       x = refl
+take-++ (suc n) (y ∷ p)  x = cong (y ∷_) (take-++ n p x)
+
+-- If the tails agree up to the leftover budget, the full prefixes agree.
+take-++-cong : ∀ {ℓ} {X : Set ℓ} (n : ℕ) (p x y : List X)
+             → take (n ∸ length p) x ≡ take (n ∸ length p) y
+             → take n (p ++ x) ≡ take n (p ++ y)
+take-++-cong n p x y eq =
+  trans (take-++ n p x) (trans (cong (take n p ++_) eq) (sym (take-++ n p y)))
 
 open import Once.Type using (Type; Functor; ⟦_⟧T)
 open import Once.CCC.IR using (IR)
