@@ -191,12 +191,19 @@ main-exists-align m ir mj = aux (C.compileResolvedModule C.Heap false m) refl mj
 --     runs (under `SS.eval`) like the source `main` body. Bundles the compiler
 --     identity (`ir = elaborate Heap (checkElab body)`, a lemma over
 --     `compileResolvedModule`) with α-invariance (raw body ↔ canonical erasure).
---   * the compiled IR is FINITE / budget-STABLE: `evalᴰ ir tt n ≡ evalᴰ ir tt 0`
---     for all `n` (the observation budget is consumed only by `Ana`; a
---     non-recursive `main` ignores it). This is a CONJUNCT of `compiler-faithful`
---     (the elaboration of a non-recursive source is Ana-free), NOT a standalone
---     `∀ ir` claim — which would be UNSOUND, since the productive `Ana` (Phase C)
---     grows the trace with the budget. The apex reads it via a trivial `cong`.
+--   * `elaborate-trace-correct` — the PRODUCTIVE trace correspondence: for the
+--     elaboration of a closed `Expr`, the depth-`k` denotational trace prefix
+--     agrees with `SS.eval` of its canonical erasure at SOME fuel `s`. This is
+--     the genuine load-bearing statement and it is TRUE for BOTH finite mains
+--     (the trace stabilises) AND productive `Ana` mains (the trace grows with
+--     `k`, matched by a larger `s`) — it bakes in NO finiteness. (Earlier draft
+--     folded a `budget-stable` conjunct into `compiler-faithful`; that was
+--     UNSOUND — productive programs compile, and for them budget-stability is
+--     false, so the postulate would prove ⊥. The `∀ k → ∃ s` shape IS the
+--     productive form; that is where `Ana` is handled, not assumed away.) The
+--     finite fragment of this is what `ET.bridge-main`'s terminating CompSim
+--     proves; the `Ana` case is the productive sim — both discharge THIS, with
+--     no finiteness baked into the apex.
 postulate
   compiler-faithful :
     ∀ (m : P.Module) (ir : IR Unit Unit) → moduleToIR m ≡ just ir
@@ -207,7 +214,11 @@ postulate
         × (∀ s → SS.eval s (SS.extractDefs (P.Module.decls m)) [] body
                  ≡ SS.eval s (SS.extractDefs (P.Module.decls m)) []
                             (ET.erase (SS.extractDefs (P.Module.decls m)) eE))
-        × (∀ n → evalᴰ ir tt n ≡ evalᴰ ir tt 0)
+
+  elaborate-trace-correct :
+    ∀ {Ψ : Usage 0} (eE : Expr ∅ Ψ Unit) (defs : SS.Defs) (k : ℕ)
+    → ∃[ s ] take k (proj₁ (evalᴰ (Surface.elaborate C.Heap eE) tt k))
+               ≡ take k (SS.runTraceEval (SS.eval s defs [] (ET.erase defs eE)))
 
 compiled-main-trace :
   ∀ (m : P.Module) (ir : IR Unit Unit) → moduleToIR m ≡ just ir
@@ -216,25 +227,15 @@ compiled-main-trace :
   → ∀ (k : ℕ)
   → ∃[ s ] take k (projTrace (evalᴰ ir tt) k)
              ≡ take k (SS.runTraceEval (SS.eval s (SS.extractDefs (P.Module.decls m)) [] body))
+-- `ir = elaborate eE` (compiler identity); the depth-`k` trace prefix matches
+-- `SS.eval (erase eE)` at fuel `s` (`elaborate-trace-correct`); and `erase eE`
+-- runs like the source `body` (α-invariance). No budget-stability, no finiteness.
 compiled-main-trace m ir mj body lk k
   with compiler-faithful m ir mj body lk
-... | (Ψ , eE , refl , α , stable)
-    with ET.bridge-main (SS.extractDefs (P.Module.decls m)) C.Heap eE
-...   | (s , v , evs , op-eq , tr-eq , _) = s , goal
-  where
-  defsM = SS.extractDefs (P.Module.decls m)
-  -- LHS trace: budget-stability (depth k → 0, from `compiler-faithful`) then the
-  -- bridge's `tr-eq`.
-  lhs : take k (projTrace (evalᴰ (Surface.elaborate C.Heap eE) tt) k) ≡ take k evs
-  lhs = trans (cong (λ r → take k (proj₁ r)) (stable k))
-              (cong (take k) tr-eq)
-  -- RHS trace: α-invariance (body ↔ erasure) then the bridge's `op-eq` at `s`,
-  -- then `runTraceEval (just (v , evs)) = evs`.
-  rhs : take k (SS.runTraceEval (SS.eval s defsM [] body)) ≡ take k evs
-  rhs = cong (take k) (cong SS.runTraceEval (trans (α s) (op-eq s ≤-refl)))
-  goal : take k (projTrace (evalᴰ ir tt) k)
-         ≡ take k (SS.runTraceEval (SS.eval s defsM [] body))
-  goal = trans lhs (sym rhs)
+... | (Ψ , eE , refl , α)
+    with elaborate-trace-correct eE (SS.extractDefs (P.Module.decls m)) k
+...   | (s , eq) =
+      s , trans eq (cong (λ r → take k (SS.runTraceEval r)) (sym (α s)))
 
 -- Factor 1 (`elaborate-faithful`), a REQUIRED CONJUNCT of the grand theorem
 -- (D059): the elaborated IR's denotational trace agrees, event-prefix-wise, with
