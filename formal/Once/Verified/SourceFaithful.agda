@@ -27,6 +27,7 @@ open import Data.Nat using (ℕ)
 open import Data.Fin using (Fin; zero; suc)
 open import Data.List using (List; []; _++_)
 open import Data.Sum using (inj₁; inj₂)
+open import Data.Empty using (⊥-elim)
 open import Data.Product using (_,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
 open import Data.List.Properties using (++-identityʳ; ++-assoc)
@@ -94,6 +95,8 @@ faithful (lam q _ e) dγ k =
 faithful (app f x) dγ n rewrite faithful f dγ n | faithful x dγ n =
   cong₂ _,_ (app-trace (proj₁ (SD.⟦ f ⟧ˢ dγ n)) (proj₁ (SD.⟦ x ⟧ˢ dγ n))
                        (proj₁ (proj₂ (SD.⟦ f ⟧ˢ dγ n) (proj₂ (SD.⟦ x ⟧ˢ dγ n)) n))) refl
+-- absurd v : v has type Void, so `proj₂ (⟦v⟧ˢ dγ n) : ⊥` — vacuous.
+faithful (absurd v) dγ n = ⊥-elim (proj₂ (SD.⟦ v ⟧ˢ dγ n))
 faithful unit    dγ k = refl
 faithful (int n) dγ k = refl   -- intLit's semM reduces to `absℤ n`, matching ⟦int n⟧ˢ
 -- str: `str-lit-semM s tt` does NOT reduce to `s` definitionally → needs the
