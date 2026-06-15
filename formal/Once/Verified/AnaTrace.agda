@@ -67,14 +67,34 @@ take-mono (suc d) (suc k) (x ∷ xs) []       (s≤s _) ()
 take-mono (suc d) (suc k) (x ∷ xs) (y ∷ ys) (s≤s le) eq =
   cong₂ _∷_ (proj₁ (∷-injective eq)) (take-mono d k xs ys le (proj₂ (∷-injective eq)))
 
-open import Once.Type using (Type; Functor; ⟦_⟧T)
+open import Data.Unit using (⊤; tt)
+open import Data.Empty using (⊥)
+open import Data.Sum using (inj₁; inj₂)
+open import Once.Type using (Type; Functor; ⟦_⟧T; K; Id; _⊕_; _⊗_)
 open import Once.CCC.IR using (IR)
 open import Once.CCC.Eval as Val using ()
+open import Once.Semantics.Machine using (⟦_⟧F)
+open import Once.Verified.SourceSemantics using (Vinl; Vinr; Vpair)
 open import Once.Verified.Trace using (SigOpEvent)
 open import Once.Verified.DenotTrace using (ana-events; evalᴰ; inject)
 open import Once.Verified.SourceSemantics
   using (Value; Defs; Result; runTraceEval; anaUnfold; apply)
 import Once.Verified.ElaborateTrace as ET
+
+-- The per-layer correspondence, by recursion on the functor. A layer `⟦F⟧F A`
+-- (denotational) corresponds to a `Value` (operational) when their seeds at the
+-- `Id` positions are `R`-related; constant (`K`) data carries no seeds (hence no
+-- trace), so it is unconstrained. This is what the functor-recursive unfold walk
+-- consumes: at each `Id` it pulls an `R`-related sub-seed to recurse on.
+LayerRel : ∀ {A : Type} (R : Val.⟦ A ⟧ → Value → Set)
+           (F : Functor) → ⟦ F ⟧F Val.⟦ A ⟧ → Value → Set
+LayerRel R (K T)     d         v             = ⊤
+LayerRel R Id        d         v             = R d v
+LayerRel R (F₁ ⊕ F₂) (inj₁ d)  (Vinl v)      = LayerRel R F₁ d v
+LayerRel R (F₁ ⊕ F₂) (inj₂ d)  (Vinr v)      = LayerRel R F₂ d v
+LayerRel R (F₁ ⊕ F₂) _         _             = ⊥
+LayerRel R (F₁ ⊗ F₂) (d₁ , d₂) (Vpair v₁ v₂) = LayerRel R F₁ d₁ v₁ × LayerRel R F₂ d₂ v₂
+LayerRel R (F₁ ⊗ F₂) _         _             = ⊥
 
 module _ (defs : Defs) where
 
