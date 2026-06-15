@@ -48,7 +48,7 @@ open import Agda.Builtin.String.Properties using (primStringFromListInjective)
 open import Once.Type
   using (Type; Unit; Void; _*_; _+_; _⇒[_]_; μ-type; ν-type;
          Int; Float; Str; Buffer)
-open import Once.CCC.IR using (IR; id; _∘_; terminal; initial; ⟨_,_⟩; AllocMode; case; fst; snd; curry; inl; inr)
+open import Once.CCC.IR using (IR; id; _∘_; terminal; initial; ⟨_,_⟩; AllocMode; case; fst; snd; curry; inl; inr; arr)
   renaming (apply to applyᴵ)
 open import Once.Surface.Elaborate using (intLit; strLit; distribute; proj; addIR; subIR; mulIR; negIR; elaborate)
 open import Once.TypeCheck.Raw using (RawExpr; RVar; RQualified; RLam; RUnit; RInt; RStringLit; RPair; RLet; RApp; RDestruct;
@@ -675,6 +675,17 @@ module _ (defs : Defs) where
             → eval z defs ρ (RUnaryOp OpNeg re) ≡ just (Vint 0 , ev)
       op-eq (suc k) (s≤s le) rewrite op k le | ++-identityʳ ev = refl
 
+  -- `arr'` (effect lifting): `elaborate (arr' f) = arr ∘ elaborate f`,
+  -- `evalᴰ arr g = returnT g` — `arr` is value-identity (trace `[]`), and the
+  -- arrow value-sim `_~⟨A⇒[k]B⟩_` is PARAMETRIC in the kind `k`, so the
+  -- sub-computation's `CompSim` transfers unchanged (only the trace gets `++[]`).
+  cs-arr : ∀ {Γ A B q} (e' : IR Γ (A ⇒[ Once.Type.pureK q ] B))
+             (x : ⟦ Γ ⟧ᴰ) (ρ : Env) (re : RawExpr)
+         → CompSim (A ⇒[ Once.Type.pureK q ] B) (evalᴰ e' x) (λ s → eval s defs ρ re)
+         → CompSim (A ⇒[ Once.Type.effK ] B) (evalᴰ (arr ∘ e') x) (λ s → eval s defs ρ re)
+  cs-arr e' x ρ re (s , ve , evs , op , tr , rr) =
+    s , ve , evs , op , trans (++-identityʳ _) tr , rr
+
   ------------------------------------------------------------------
   -- THE BRIDGE SPINE (top-down). `erase` turns a typed `Expr` into the raw
   -- form `SS.eval` runs (canonical de-Bruijn-LEVEL names for binders); `bridge`
@@ -797,6 +808,8 @@ module _ (defs : Defs) where
       (bridge m a dγ ρ env) (bridge m b dγ ρ env)
   bridge m (neg e)              dγ ρ env =
     cs-neg (elaborate m e) dγ ρ (erase e) (bridge m e dγ ρ env)
+  bridge m (arr' f)             dγ ρ env =
+    cs-arr (elaborate m f) dγ ρ (erase f) (bridge m f dγ ρ env)
   -- Holes (see header) — one catch-all covers every not-yet-discharged
   -- constructor (effApp, div, mod', lt..ne, arr', sigOp/closure/poly,
   -- lift-morphism/morph-app, cata). It does NOT destructure `e`, so the free
