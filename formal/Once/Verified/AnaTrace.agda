@@ -32,9 +32,11 @@ module Once.Verified.AnaTrace where
 
 open import Data.Nat using (ℕ; zero; suc; _∸_; _≤_; _⊔_)
 open import Data.List using (List; []; _∷_; _++_; take; length)
+open import Data.Nat using (z≤n; s≤s)
 open import Data.Product using (∃-syntax; Σ-syntax; _×_; _,_; proj₁; proj₂)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; sym; trans)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; sym; trans)
 open import Data.Nat.Properties using (0∸n≡0)
+open import Data.List.Properties using (∷-injective)
 
 -- `take n (p ++ x) = take n p ++ take (n ∸ |p|) x` (no stdlib lemma). The list
 -- glue for the prefix simulation: the coalgebra-trace prefix `p` is consumed,
@@ -51,6 +53,19 @@ take-++-cong : ∀ {ℓ} {X : Set ℓ} (n : ℕ) (p x y : List X)
              → take n (p ++ x) ≡ take n (p ++ y)
 take-++-cong n p x y eq =
   trans (take-++ n p x) (trans (cong (take n p ++_) eq) (sym (take-++ n p y)))
+
+-- A SHORTER prefix follows from a longer one. This is how the depth IH discharges
+-- a functor `Id` position: the recursion's IH gives `take k`, and the leftover
+-- budget there is `d ≤ k` (because the coalgebra already consumed ≥ 1 event), so
+-- `take d` follows. (`take d xs = take d (take k xs)` for `d ≤ k`.)
+take-mono : ∀ {ℓ} {X : Set ℓ} (d k : ℕ) (xs ys : List X)
+          → d ≤ k → take k xs ≡ take k ys → take d xs ≡ take d ys
+take-mono zero    k       xs       ys       _       _  = refl
+take-mono (suc d) (suc k) []       []       _       _  = refl
+take-mono (suc d) (suc k) []       (y ∷ ys) (s≤s _) ()
+take-mono (suc d) (suc k) (x ∷ xs) []       (s≤s _) ()
+take-mono (suc d) (suc k) (x ∷ xs) (y ∷ ys) (s≤s le) eq =
+  cong₂ _∷_ (proj₁ (∷-injective eq)) (take-mono d k xs ys le (proj₂ (∷-injective eq)))
 
 open import Once.Type using (Type; Functor; ⟦_⟧T)
 open import Once.CCC.IR using (IR)
