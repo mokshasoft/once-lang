@@ -48,7 +48,7 @@ open import Once.Semantics.Machine
 open import Once.CCC.SigOp.Info using (semM)
 open import Once.Arith.SigOp.Builders
   using (add-info; sub-info; mul-info; div-info; mod-info; neg-info;
-         lt-info; le-info; gt-info; ge-info; eq-info; ne-info; generic-info)
+         lt-info; le-info; gt-info; ge-info; eq-info; ne-info; generic-info; str-lit-info)
 
 open Once.Surface.Syntax.Expr
 
@@ -113,7 +113,10 @@ ana-eventsˢ {F} {A} coalgClo a (suc m) =
 ⟦ absurd e ⟧ˢ     dγ = ⟦ e ⟧ˢ dγ >>=T λ v → ⊥-elim v
 ⟦ let' e1 e2 ⟧ˢ   dγ = ⟦ e1 ⟧ˢ dγ >>=T λ v1 → ⟦ e2 ⟧ˢ (dγ , v1)
 ⟦ int n ⟧ˢ        dγ = returnT (absℤ n)
-⟦ str s ⟧ˢ        dγ = returnT s
+-- str: `str-lit-semM` is ABSTRACT (postulated, unlike the computing lit-int-semM),
+-- so the literal's value can't be the clean `s`; denote via its own SigOp `semM`
+-- (= `strLit`'s evalᴰ), matching the IR by construction (like arith).
+⟦ str s ⟧ˢ        dγ = returnT (semM (str-lit-info s) tt)
 -- Arith / comparison / div-mod: all elaborate to `SigOp <op>-info` (Pure), so
 -- denote them through the SAME `semM` — `⟦ op a b ⟧ˢ` is then DEFINITIONALLY the
 -- IR side `⟦ <op>IR ∘ ⟨a,b⟩ ⟧ᴰ`, making M3's elaborate-correctness trivial here.

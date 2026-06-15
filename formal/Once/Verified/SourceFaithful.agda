@@ -99,8 +99,7 @@ faithful (app f x) dγ n rewrite faithful f dγ n | faithful x dγ n =
 faithful (absurd v) dγ n = ⊥-elim (proj₂ (SD.⟦ v ⟧ˢ dγ n))
 faithful unit    dγ k = refl
 faithful (int n) dγ k = refl   -- intLit's semM reduces to `absℤ n`, matching ⟦int n⟧ˢ
--- str: `str-lit-semM s tt` does NOT reduce to `s` definitionally → needs the
--- literal-semantics lemma (`str-lit-semM s tt ≡ s`); deferred to faithful-todo.
+faithful (str s) dγ k = refl   -- ⟦str s⟧ˢ now denotes via str-lit-info's semM = strLit's evalᴰ
 -- Single-subterm projections/injections: `elaborate (op e) = <prim> ∘ elaborate e`
 -- and `⟦ op e ⟧ˢ = ⟦e⟧ˢ >>=T (λv → returnT (<prim> v))`; `_>>=T_` sees the same
 -- depth on both sides, so the trace+value at `n` is a function of the SUBTERM's
