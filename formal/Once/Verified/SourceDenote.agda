@@ -22,10 +22,10 @@
 
 module Once.Verified.SourceDenote where
 
-open import Data.Fin using (Fin; zero; suc)
-open import Data.Nat using (ℕ)
+open import Data.Fin using (Fin) renaming (zero to fzero; suc to fsuc)
+open import Data.Nat using (ℕ; zero; suc)
 open import Data.Integer using (ℤ) renaming (∣_∣ to absℤ)
-open import Data.List using (List)
+open import Data.List using (List; []; _++_)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂; [_,_]′)
 open import Data.Unit using (⊤; tt)
@@ -33,12 +33,18 @@ open import Data.Empty using (⊥; ⊥-elim)
 open import Data.String using (String)
 
 open import Once.Type
-  using (Type; Unit; Void; Int; Str; _*_; _+_; _⇒[_]_)
+  using (Type; Unit; Void; Int; Str; _*_; _+_; _⇒[_]_; Functor; ⟦_⟧T; μ-type)
 open import Once.Surface.Syntax using (Expr; Ctx; Usage; lookup; _,_^_; ∅)
 open import Once.Surface.Elaborate using (⟦_⟧ᶜ)
-open import Once.Verified.TraceMonad using (T; returnT; _>>=T_)
-open import Once.Verified.DenotTrace using (⟦_⟧ᴰ; evalᴰ)
+open import Once.Verified.TraceMonad using (T; returnT; _>>=T_; projTrace; valueT)
+open import Once.Verified.DenotTrace using (⟦_⟧ᴰ; evalᴰ; forget; inject)
+open import Once.Verified.TraceDenote using (events-F)
+open import Once.Verified.Trace using (SigOpEvent)
 open import Once.CCC.IR using (IR)
+open import Once.CCC.Eval as Val using ()
+open import Once.Functor.Translate using (WellFormedF)
+open import Once.Semantics.Machine
+  using (sem-cata; sem-ana; sem-fmap; coerce-functor; coerce-functor⁻¹; ⟦_⟧F)
 open import Once.CCC.SigOp.Info using (semM)
 open import Once.Arith.SigOp.Builders
   using (add-info; sub-info; mul-info; div-info; mod-info; neg-info;
@@ -53,8 +59,38 @@ open Once.Surface.Syntax.Expr
 ------------------------------------------------------------------------
 
 lookupᴰ : ∀ {n} (Γ : Ctx n) (i : Fin n) → ⟦ ⟦ Γ ⟧ᶜ ⟧ᴰ → ⟦ lookup Γ i ⟧ᴰ
-lookupᴰ (Γ , A ^ q) zero    dγ = proj₂ dγ
-lookupᴰ (Γ , A ^ q) (suc i) dγ = lookupᴰ Γ i (proj₁ dγ)
+lookupᴰ (Γ , A ^ q) fzero    dγ = proj₂ dγ
+lookupᴰ (Γ , A ^ q) (fsuc i) dγ = lookupᴰ Γ i (proj₁ dγ)
+
+------------------------------------------------------------------------
+-- The `Cata` fold's per-layer trace+value algebra, over a ⟦_⟧ˢ algebra
+-- CLOSURE (`⟦⟦F⟧T C⟧ᴰ → T ⟦C⟧ᴰ`) rather than an IR — the elaborate-free
+-- analogue of `DenotTrace.cata-ev-algᴰ`. Carrier pairs the post-order
+-- event trace with the folded (pure) value; children's events precede this
+-- layer's algebra events (`projTrace (algClo …)`), value via `forget ∘ valueT`.
+------------------------------------------------------------------------
+
+cata-ev-algˢ : ∀ {F C} → ℕ → (⟦ ⟦ F ⟧T C ⟧ᴰ → T ⟦ C ⟧ᴰ)
+             → ⟦ F ⟧F (List SigOpEvent × Val.⟦ C ⟧) → List SigOpEvent × Val.⟦ C ⟧
+cata-ev-algˢ {F} {C} n algClo fc =
+  ( events-F F proj₁ fc ++ projTrace (algClo (inject z)) n
+  , forget (valueT (algClo (inject z)) n) )
+  where z = coerce-functor⁻¹ F C (sem-fmap F proj₂ fc)
+
+------------------------------------------------------------------------
+-- The `Ana` depth-bounded unfold TRACE over a ⟦_⟧ˢ coalgebra CLOSURE — the
+-- elaborate-free analogue of `DenotTrace.ana-events`. At depth `suc m`: emit the
+-- coalgebra step's events then recurse at `m` on the functor's recursive
+-- positions (`events-F`). Structural on `m` (Agda certifies termination of the
+-- TRACE prefix; the produced codata is productive — `sem-ana` for the value).
+------------------------------------------------------------------------
+
+ana-eventsˢ : ∀ {F A} → (⟦ A ⟧ᴰ → T ⟦ ⟦ F ⟧T A ⟧ᴰ) → Val.⟦ A ⟧ → ℕ → List SigOpEvent
+ana-eventsˢ coalgClo a zero    = []
+ana-eventsˢ {F} {A} coalgClo a (suc m) =
+  projTrace (coalgClo (inject a)) m
+    ++ events-F F (λ seed → ana-eventsˢ {F} {A} coalgClo seed m) layer
+  where layer = coerce-functor F A (forget (valueT (coalgClo (inject a)) m))
 
 ------------------------------------------------------------------------
 -- THE SOURCE SEMANTICS. Structural on `Expr`; arrows are Kleisli arrows
@@ -113,4 +149,19 @@ postulate
 -- are leaves embedding a fixed morphism, not the elaboration of a user subterm.
 ⟦ lift-morphism ir ⟧ˢ dγ = returnT (evalᴰ ir)
 ⟦ morph-app ir e ⟧ˢ   dγ = ⟦ e ⟧ˢ dγ >>=T λ v → evalᴰ ir v
+-- Cata: the structural fold. The algebra is CLOSED (∅), so `⟦alg⟧ˢ tt` is the
+-- algebra closure; fold via `sem-cata` over `cata-ev-algˢ` (trace+value carrier),
+-- mirroring `evalᴰ (Cata …)` but elaborate-free (uses `⟦alg⟧ˢ`, not `evalᴰ alg`).
+⟦ cata {F = F} {A = A} wf alg ⟧ˢ dγ =
+  returnT (λ x → λ n →
+    let r = sem-cata wf (cata-ev-algˢ {F} {A} n (valueT (⟦ alg ⟧ˢ tt) 0)) x
+    in (proj₁ r , inject (proj₂ r)))
+-- Ana: the productive unfold. Coalgebra CLOSED (∅) → `⟦coalg⟧ˢ tt` is the
+-- closure. TRACE via `ana-eventsˢ` (depth-bounded prefix, the SOLE T-ℕ consumer);
+-- VALUE via `sem-ana` (the codata), mirroring `eval (Ana …)` but elaborate-free.
+⟦ ana {F = F} {A = A} wf coalg ⟧ˢ dγ =
+  returnT (λ a → λ n →
+    ( ana-eventsˢ {F} {A} (valueT (⟦ coalg ⟧ˢ tt) 0) (forget a) n
+    , inject (sem-ana F (λ a' → coerce-functor F _
+                  (forget (valueT (valueT (⟦ coalg ⟧ˢ tt) 0 (inject a')) 0))) (forget a)) ))
 ⟦ e ⟧ˢ            dγ = ⟦⟧ˢ-todo e dγ
