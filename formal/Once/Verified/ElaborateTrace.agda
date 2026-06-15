@@ -135,7 +135,7 @@ module _ (defs : Defs) where
     Vinl a    ~⟨ A + B ⟩       (inj₁ x) = a ~⟨ A ⟩ x
     Vinr b    ~⟨ A + B ⟩       (inj₂ y) = b ~⟨ B ⟩ y
     _         ~⟨ A + B ⟩       _        = ⊥
-    Vint n    ~⟨ Int ⟩         d        = absℤ n ≡ d
+    Vint n    ~⟨ Int ⟩         d        = n ≡ d
     _         ~⟨ Int ⟩         _        = ⊥
     -- `Str` values are NOT observable (events carry only int args via `argℕ`,
     -- which ignores `Vstr`), and literal/arith values get no value spec
@@ -284,11 +284,12 @@ module _ (defs : Defs) where
   cs-unit dγ ρ = suc zero , Vunit , [] , (λ { (suc s') _ → refl }) , refl , tt
 
   -- `int n`: `elaborate (int n) = intLit n = const fits-int n ∣n∣ ∘ terminal`
-  -- (pure ⇒ no events), `SS.eval (RInt n) = just (Vint n , [])`. Traces both
-  -- `[]`; value `Vint n ~⟨ Int ⟩ ∣n∣ = (absℤ n ≡ ∣n∣)` = refl.
+  -- (pure ⇒ no events), `SS.eval (RInt n) = just (Vint ∣n∣ , [])` (D054/B:
+  -- `absℤ`-converted to the ℕ machine rep). Both traces `[]`; the IR value is
+  -- `∣n∣` and the operational value `Vint ∣n∣`, so `∣n∣ ≡ ∣n∣` = refl.
   cs-int : ∀ {Γ} (n : _) (dγ : ⟦ Γ ⟧ᴰ) (ρ : Env)
          → CompSim Int (evalᴰ (intLit n {Γ}) dγ) (λ s → eval s defs ρ (RInt n))
-  cs-int n dγ ρ = suc zero , Vint n , [] , (λ { (suc s') _ → refl }) , refl , refl
+  cs-int n dγ ρ = suc zero , Vint (absℤ n) , [] , (λ { (suc s') _ → refl }) , refl , refl
 
   -- `str s`: `elaborate (str s) = strLit s = SigOp (str-lit-info s) ∘ terminal`
   -- (str-lit-info is Pure ⇒ no events), `SS.eval (RStringLit s) = just (Vstr s , [])`.
