@@ -33,7 +33,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong
 open import Data.List.Properties using (++-identityʳ; ++-assoc)
 open import Once.Verified.Trace using (SigOpEvent)
 
-open import Once.Type using (Type; Unit; _+_; _⇒[_]_)
+open import Once.Type using (Type; Unit; Void; Int; Str; Float; Buffer; _*_; _+_; _⇒[_]_; μ-type; ν-type)
 open import Once.Surface.Syntax using (Expr; Ctx; Usage; lookup; _,_^_)
 open import Once.Surface.Elaborate using (elaborate; ⟦_⟧ᶜ; proj)
 open import Once.Verified.TraceMonad using (T; returnT)
@@ -149,7 +149,18 @@ faithful (let' e1 e2) dγ n
 faithful (sigOp {A = (Dom ⇒[ kk ] Cod)} name) dγ k = refl
 faithful (closure name) dγ k = refl
 faithful (poly name PT) dγ k = refl
--- NON-ARROW `sigOp name`: `elaborate`/`⟦_⟧ˢ` both dispatch on `A`'s shape (arrow →
--- curry, else → SigOp∘terminal), so neither reduces for abstract non-arrow `A` —
--- the type-dispatch wall (would need to case on every non-arrow `A`). Stays todo.
+-- NON-ARROW `sigOp`: `elaborate`/`⟦_⟧ˢ` dispatch on `A`'s shape (it stays stuck for
+-- ABSTRACT `A`), so case-split the non-arrow type constructors — each is the pure
+-- `SigOp(generic-info name)∘terminal` shape ⇒ refl. No SigOp purity semantics added;
+-- effect lives in the (absent here) arrow kind, so non-arrow is pure by absence.
+faithful (sigOp {A = Unit}     name) dγ k = refl
+faithful (sigOp {A = Void}     name) dγ k = refl
+faithful (sigOp {A = Int}      name) dγ k = refl
+faithful (sigOp {A = Str}      name) dγ k = refl
+faithful (sigOp {A = Float}    name) dγ k = refl
+faithful (sigOp {A = Buffer}   name) dγ k = refl
+faithful (sigOp {A = _ * _}    name) dγ k = refl
+faithful (sigOp {A = _ + _}    name) dγ k = refl
+faithful (sigOp {A = μ-type _} name) dγ k = refl
+faithful (sigOp {A = ν-type _} name) dγ k = refl
 faithful e       dγ k = faithful-todo e dγ k
