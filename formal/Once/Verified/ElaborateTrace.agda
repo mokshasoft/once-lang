@@ -50,17 +50,22 @@ open import Once.Type
          Int; Float; Str; Buffer)
 open import Once.CCC.IR using (IR; id; _∘_; terminal; initial; ⟨_,_⟩; AllocMode; case; fst; snd; curry; inl; inr)
   renaming (apply to applyᴵ)
-open import Once.Surface.Elaborate using (intLit; strLit; distribute; proj; addIR; subIR; mulIR; negIR)
-open import Once.TypeCheck.Raw using (RawExpr; RVar; RLam; RUnit; RInt; RStringLit; RPair; RLet; RApp; RDestruct;
-         RBinOp; RUnaryOp; BinOp; OpAdd; OpSub; OpMul; UnaryOp; OpNeg)
+open import Once.Surface.Elaborate using (intLit; strLit; distribute; proj; addIR; subIR; mulIR; negIR; elaborate)
+open import Once.TypeCheck.Raw using (RawExpr; RVar; RQualified; RLam; RUnit; RInt; RStringLit; RPair; RLet; RApp; RDestruct;
+         RBinOp; RUnaryOp; BinOp; OpAdd; OpSub; OpMul; OpDiv; OpMod;
+         OpLt; OpLe; OpGt; OpGe; OpEq; OpNe; UnaryOp; OpNeg)
 open import Once.Verified.SourceSemantics
   using (Value; Vunit; Vpair; Vinl; Vinr; Vint; Vstr; Vclos; Vbuiltin; Vsigop; Vin;
          apply; eval; Env; Result; Defs; runTraceEval; lookupEnv;
-         bFst; bSnd; bInl; bInr; binResult)
+         bFst; bSnd; bInl; bInr; binResult; classifyB; BTag)
 open import Once.Verified.Trace using (SigOpEvent)
 open import Once.Verified.DenotTrace using (⟦_⟧ᴰ; evalᴰ)
 open import Once.Verified.TraceMonad using (T; returnT; projTrace; valueT)
-open import Once.Surface.Syntax using (Ctx; ∅; _,_^_; lookup)
+open import Once.Surface.Syntax using (Ctx; ∅; _,_^_; lookup; Usage; Expr;
+         var; lam; app; effApp; pair; fst'; snd'; inl'; inr'; case'; unit; absurd;
+         let'; int; str; add; sub; mul; div; mod'; neg;
+         arr'; sigOp; closure; poly; lift-morphism; morph-app; cata)
+  renaming (lt to Elt; le to Ele; gt to Egt; ge to Ege; eq to Eeq; ne to Ene)
 open import Once.CCC.IR using (fst; snd)
 open import Once.Surface.Elaborate using (⟦_⟧ᶜ)
 
@@ -669,3 +674,133 @@ module _ (defs : Defs) where
       op-eq : ∀ z → suc se ≤ z
             → eval z defs ρ (RUnaryOp OpNeg re) ≡ just (Vint 0 , ev)
       op-eq (suc k) (s≤s le) rewrite op k le | ++-identityʳ ev = refl
+
+  ------------------------------------------------------------------
+  -- THE BRIDGE SPINE (top-down). `erase` turns a typed `Expr` into the raw
+  -- form `SS.eval` runs (canonical de-Bruijn-LEVEL names for binders); `bridge`
+  -- is the structural induction relating `evalᴰ (elaborate m e)` to
+  -- `SS.eval (erase e)`, dispatching to the per-constructor `cs-*` lemmas. The
+  -- recursive cases pass the IH as the continuation hypothesis (lam/let/case),
+  -- with the bound var named `cname n` (the level of the new binder), matching
+  -- `EnvRel`'s head-name discipline.
+  --
+  -- Not-yet-discharged constructors route through `bridge-hole`: `effApp`
+  -- (D018 suspension FORK — needs a decision), `div`/`mod` (div-by-zero policy,
+  -- D054-deferred), comparisons `lt..ne` (concrete `semM` — determined, pending),
+  -- `arr'` (determined), `sigOp`/`closure`/`poly` (effect/fn primitives),
+  -- `lift-morphism`/`morph-app`/`cata` (morphism realm + Cata phase).
+  ------------------------------------------------------------------
+  erase : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A} → Expr Γ Ψ A → RawExpr
+  erase {n} (var i)        = RVar (cname (n ∸ suc (toℕ i)))
+  erase {n} (lam q _ e)    = RLam (cname n) (erase e)
+  erase (app f x)          = RApp (erase f) (erase x)
+  erase (effApp f x)       = RApp (erase f) (erase x)
+  erase (pair a b)         = RPair (erase a) (erase b)
+  erase (fst' e)           = RApp (RVar "fst") (erase e)
+  erase (snd' e)           = RApp (RVar "snd") (erase e)
+  erase (inl' e)           = RApp (RVar "inl") (erase e)
+  erase (inr' e)           = RApp (RVar "inr") (erase e)
+  erase {n} (case' s l r)  = RDestruct (erase s) (cname n) (erase l) (cname n) (erase r)
+  erase unit               = RUnit
+  erase (absurd e)         = erase e
+  erase {n} (let' e1 e2)   = RLet (cname n) (erase e1) (erase e2)
+  erase (int x)            = RInt x
+  erase (str s)            = RStringLit s
+  erase (add a b)          = RBinOp OpAdd (erase a) (erase b)
+  erase (sub a b)          = RBinOp OpSub (erase a) (erase b)
+  erase (mul a b)          = RBinOp OpMul (erase a) (erase b)
+  erase (div a b)          = RBinOp OpDiv (erase a) (erase b)
+  erase (mod' a b)         = RBinOp OpMod (erase a) (erase b)
+  erase (neg e)            = RUnaryOp OpNeg (erase e)
+  erase (Elt a b)          = RBinOp OpLt (erase a) (erase b)
+  erase (Ele a b)          = RBinOp OpLe (erase a) (erase b)
+  erase (Egt a b)          = RBinOp OpGt (erase a) (erase b)
+  erase (Ege a b)          = RBinOp OpGe (erase a) (erase b)
+  erase (Eeq a b)          = RBinOp OpEq (erase a) (erase b)
+  erase (Ene a b)          = RBinOp OpNe (erase a) (erase b)
+  erase (arr' f)           = erase f
+  erase (sigOp name)       = RVar name
+  erase (closure name)     = RVar name
+  erase (poly name T)      = RVar name
+  erase (lift-morphism _)  = RUnit
+  erase (morph-app _ e)    = erase e
+  erase (cata _ _)         = RUnit
+
+  postulate
+    -- No-shadow obligation (user-confirmed): a canonical env never binds a
+    -- builtin name and `defs` doesn't redefine one, so `RVar name` resolves to
+    -- its `Vbuiltin`. Discharge: `cname k ≢ <builtin>` + `lookupDef defs name ≡
+    -- nothing`.
+    canonical-no-shadow :
+      ∀ {n} {Γ : Ctx n} {dγ : ⟦ ⟦ Γ ⟧ᶜ ⟧ᴰ} (ρ : Env) → EnvRel ρ Γ dγ
+      → (name : String) (bt : BTag) → classifyB name ≡ just bt
+      → ∀ z → eval (suc z) defs ρ (RVar name) ≡ just (Vbuiltin bt [] , [])
+
+  bridge : ∀ (m : AllocMode) {n} {Γ : Ctx n} {Ψ : Usage n} {A} (e : Expr Γ Ψ A)
+             (dγ : ⟦ ⟦ Γ ⟧ᶜ ⟧ᴰ) (ρ : Env) → EnvRel ρ Γ dγ
+         → CompSim A (evalᴰ (elaborate m e) dγ) (λ z → eval z defs ρ (erase e))
+
+  postulate
+    -- The not-yet-discharged constructors (see the header above). Each clause
+    -- below instantiates this at its constructor; replacing a clause with a real
+    -- `cs-*` lemma discharges that hole.
+    bridge-hole :
+      ∀ (m : AllocMode) {n} {Γ : Ctx n} {Ψ : Usage n} {A} (e : Expr Γ Ψ A)
+        (dγ : ⟦ ⟦ Γ ⟧ᶜ ⟧ᴰ) (ρ : Env) → EnvRel ρ Γ dγ
+      → CompSim A (evalᴰ (elaborate m e) dγ) (λ z → eval z defs ρ (erase e))
+
+  bridge m {n} {Γ} (var i)      dγ ρ env = cs-var i dγ ρ env
+  bridge m {n} (lam q _ e)      dγ ρ env =
+    cs-lam {kk = Once.Type.pureK q} (elaborate m e) m dγ ρ (erase e)
+      (λ w a rel → bridge m e (dγ , a) ((cname n , w) ∷ ρ) (refl , env , rel))
+  bridge m (app f x)            dγ ρ env =
+    cs-app (elaborate m f) (elaborate m x) m dγ ρ (erase f) (erase x)
+      (bridge m f dγ ρ env) (bridge m x dγ ρ env)
+  bridge m (pair a b)           dγ ρ env =
+    cs-pair (elaborate m a) (elaborate m b) m dγ ρ (erase a) (erase b)
+      (bridge m a dγ ρ env) (bridge m b dγ ρ env)
+  bridge m (fst' e)             dγ ρ env =
+    cs-fst (elaborate m e) dγ ρ (erase e)
+      (canonical-no-shadow ρ env "fst" bFst refl) (bridge m e dγ ρ env)
+  bridge m (snd' e)             dγ ρ env =
+    cs-snd (elaborate m e) dγ ρ (erase e)
+      (canonical-no-shadow ρ env "snd" bSnd refl) (bridge m e dγ ρ env)
+  bridge m (inl' e)             dγ ρ env =
+    cs-inl (elaborate m e) m dγ ρ (erase e)
+      (canonical-no-shadow ρ env "inl" bInl refl) (bridge m e dγ ρ env)
+  bridge m (inr' e)             dγ ρ env =
+    cs-inr (elaborate m e) m dγ ρ (erase e)
+      (canonical-no-shadow ρ env "inr" bInr refl) (bridge m e dγ ρ env)
+  bridge m {n} (case' s l r)    dγ ρ env =
+    cs-case (elaborate m s) (elaborate m l) (elaborate m r) m dγ ρ
+      (cname n) (cname n) (erase s) (erase l) (erase r)
+      (bridge m s dγ ρ env)
+      (λ a da rel → bridge m l (dγ , da) ((cname n , a) ∷ ρ) (refl , env , rel))
+      (λ b db rel → bridge m r (dγ , db) ((cname n , b) ∷ ρ) (refl , env , rel))
+  bridge m {n} {Γ} unit         dγ ρ env = cs-unit {⟦ Γ ⟧ᶜ} dγ ρ
+  bridge m (absurd e)           dγ ρ env =
+    cs-absurd (elaborate m e) dγ ρ (erase e) (bridge m e dγ ρ env)
+  bridge m {n} (let' e1 e2)     dγ ρ env =
+    cs-let (elaborate m e1) (elaborate m e2) m dγ ρ (cname n) (erase e1) (erase e2)
+      (bridge m e1 dγ ρ env)
+      (λ v1 dv1 rel → bridge m e2 (dγ , dv1) ((cname n , v1) ∷ ρ) (refl , env , rel))
+  bridge m {n} {Γ} (int x)      dγ ρ env = cs-int {⟦ Γ ⟧ᶜ} x dγ ρ
+  bridge m {n} {Γ} (str s)      dγ ρ env = cs-str {⟦ Γ ⟧ᶜ} s dγ ρ
+  bridge m (add a b)            dγ ρ env =
+    cs-add (elaborate m a) (elaborate m b) m dγ ρ (erase a) (erase b)
+      (bridge m a dγ ρ env) (bridge m b dγ ρ env)
+  bridge m (sub a b)            dγ ρ env =
+    cs-sub (elaborate m a) (elaborate m b) m dγ ρ (erase a) (erase b)
+      (bridge m a dγ ρ env) (bridge m b dγ ρ env)
+  bridge m (mul a b)            dγ ρ env =
+    cs-mul (elaborate m a) (elaborate m b) m dγ ρ (erase a) (erase b)
+      (bridge m a dγ ρ env) (bridge m b dγ ρ env)
+  bridge m (neg e)              dγ ρ env =
+    cs-neg (elaborate m e) dγ ρ (erase e) (bridge m e dγ ρ env)
+  -- Holes (see header) — one catch-all covers every not-yet-discharged
+  -- constructor (effApp, div, mod', lt..ne, arr', sigOp/closure/poly,
+  -- lift-morphism/morph-app, cata). It does NOT destructure `e`, so the free
+  -- result-type implicits of `sigOp`/`closure`/`poly` (where `elaborate`
+  -- dispatches on the type shape) stay abstract. Discharge = peel a constructor
+  -- off into a real clause above.
+  bridge m e                    dγ ρ env = bridge-hole m e dγ ρ env
