@@ -96,4 +96,10 @@ faithful (eq a b)   dγ n rewrite faithful a dγ n | faithful b dγ n = cong₂ 
 faithful (ne a b)   dγ n rewrite faithful a dγ n | faithful b dγ n = cong₂ _,_ (++-identityʳ _) (inj-uu _)
 -- neg: single subterm; IR `negIR ∘ ee` and ⟦_⟧ˢ share the bind+cont, so refl post-IH.
 faithful (neg e)    dγ n rewrite faithful e dγ n = refl
+-- pair: `elaborate = ⟨ea,eb⟩`, same bind structure as ⟦_⟧ˢ (ends in returnT(va,vb),
+-- no trailing SigOp bind) ⇒ refl post both IHs.
+faithful (pair a b) dγ n rewrite faithful a dγ n | faithful b dγ n = refl
+-- arr': `elaborate = arr ∘ ef` adds one `returnT` bind (an extra ++[]); the kind
+-- change is erased by ⟦_⟧ᴰ, value unchanged ⇒ ++-identityʳ.
+faithful (arr' f)   dγ n rewrite faithful f dγ n = cong₂ _,_ (++-identityʳ _) refl
 faithful e       dγ k = faithful-todo e dγ k
