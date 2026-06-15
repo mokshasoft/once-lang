@@ -46,12 +46,13 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.TypeCheck.Raw as Raw
   using (RawExpr; RVar; RQualified; RApp; RLam; RLet; RPair; RDestruct;
-         RUnit; RInt; RStringLit; RAnnot; RBinOp; RUnaryOp;
+         RUnit; RInt; RStringLit; RAnnot; RBinOp; RUnaryOp; RAna;
          BinOp; OpAdd; OpSub; OpMul; OpDiv; OpMod;
          OpLt; OpLe; OpGt; OpGe; OpEq; OpNe; UnaryOp; OpNeg)
 open import Once.Parser.Module.Core as Mod
   using (Module; Decl; DFunDef; DTypeSig; DSignature; DTypeAlias; DImport)
 open import Once.Verified.Trace using (SigOpEvent; mk-event)
+open import Once.Type using (Functor; K; Id; _⊕_; _⊗_)
 
 ------------------------------------------------------------------------
 -- Runtime values. Defunctionalised: a function is a closure (captured
@@ -76,6 +77,10 @@ data Value : Set where
   -- a partially-applied builtin / SigOp: head + args collected so far
   Vbuiltin : BTag → List Value → Value
   Vsigop   : String → List Value → Value
+  -- The anamorphism unfold function, carrying its functor `F` (the untyped
+  -- unfold needs `F` to locate recursive positions — `ana`'s seeds are unmarked).
+  -- `apply (Vana F coalg) seed` runs the fuel-bounded unfold.
+  Vana     : Functor → Value → Value
 
 Env : Set
 Env = List (String × Value)
@@ -252,12 +257,18 @@ mutual
           -- ℕ has no negation; matches `neg-semM _ = 0` (the current placeholder).
           neg (Vint z) = just (Vint 0 , [])
           neg _        = nothing
+  -- `ana`: evaluate the coalgebra to a value, wrap it with its functor `F` into
+  -- the `Vana` unfold function. Applying it to a seed runs the fuel-bounded
+  -- unfold (`anaUnfold`).
+  eval (suc f) defs ρ (RAna F coalg) =
+    eval f defs ρ coalg >>=ᵣ λ cv → just (Vana F cv , [])
 
   apply : ℕ → Defs → Value → Value → Result
   apply zero    _    _ _ = nothing
   apply (suc f) defs (Vclos ρ x body)  v = eval f defs ((x , v) ∷ ρ) body
   apply (suc f) defs (Vbuiltin t args) v = applyBuiltin f defs t (args ++ (v ∷ []))
   apply (suc f) defs (Vsigop nm _)     v = just (Vunit , mk-event nm (argℕ v) ∷ [])
+  apply (suc f) defs (Vana F coalg)    v = anaUnfold f defs F coalg v
   apply (suc f) defs _                 _ = nothing
 
   -- Builtins compute at saturation, else collect the arg (partial app).
@@ -293,6 +304,32 @@ mutual
   mapIn (suc f) defs alg (Vinl a)    = mapIn f defs alg a >>=ᵣ λ a′ → just (Vinl a′ , [])
   mapIn (suc f) defs alg (Vinr a)    = mapIn f defs alg a >>=ᵣ λ a′ → just (Vinr a′ , [])
   mapIn (suc f) defs _   v           = just (v , [])
+
+  -- Anamorphism: the fuel-bounded unfold (dual of cataFold). Apply the
+  -- coalgebra to the seed → one functor layer `F(A)`; `mapAnaF` recurses the
+  -- unfold into `F`'s recursive (`Id`) positions — the operational dual of
+  -- `events-F`/`sem-fmap`, functor-directed since `ana`'s seeds are unmarked;
+  -- wrap the result `Vin` (one `νF` layer). At fuel `n` it produces `n` layers,
+  -- and the coalgebra's per-layer events are the productive trace.
+  anaUnfold : ℕ → Defs → Functor → Value → Value → Result
+  anaUnfold zero    _    _ _     _    = nothing
+  anaUnfold (suc f) defs F coalg seed =
+    apply f defs coalg seed >>=ᵣ λ flayer →
+    mapAnaF f defs F F coalg flayer >>=ᵣ λ layer′ → just (Vin layer′ , [])
+
+  -- Walk the sub-functor `Fc` over one layer value, recursing `anaUnfold` (with
+  -- the OUTER functor `Fo`) at recursive `Id` positions; `K` keeps data.
+  mapAnaF : ℕ → Defs → Functor → Functor → Value → Value → Result
+  mapAnaF f defs Fo (K _)     coalg v          = just (v , [])
+  mapAnaF f defs Fo Id        coalg seed       = anaUnfold f defs Fo coalg seed
+  mapAnaF f defs Fo (F₁ ⊕ F₂) coalg (Vinl v)   =
+    mapAnaF f defs Fo F₁ coalg v >>=ᵣ λ v′ → just (Vinl v′ , [])
+  mapAnaF f defs Fo (F₁ ⊕ F₂) coalg (Vinr v)   =
+    mapAnaF f defs Fo F₂ coalg v >>=ᵣ λ v′ → just (Vinr v′ , [])
+  mapAnaF f defs Fo (F₁ ⊗ F₂) coalg (Vpair a b) =
+    mapAnaF f defs Fo F₁ coalg a >>=ᵣ λ a′ →
+    mapAnaF f defs Fo F₂ coalg b >>=ᵣ λ b′ → just (Vpair a′ b′ , [])
+  mapAnaF f defs Fo _         coalg v          = nothing
 
 ------------------------------------------------------------------------
 -- The trace of a module: run `main`'s body with fuel `n`, return the
