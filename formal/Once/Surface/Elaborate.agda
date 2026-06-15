@@ -321,6 +321,13 @@ elaborate m (morph-app morph x) = morph ∘ elaborate m x
 elaborate m (cata {F = F} wfF alg) =
   curry (Cata wfF (apply ∘ ⟨ elaborate m alg ∘ terminal , id ⟩ m) ∘ snd) m
 
+-- Anamorphism (dual of cata): a closed `Ana`, lifted to the surrounding realm
+-- exactly like `cata`. Coalgebra `A → ⟦F⟧T A` built from the closed `coalg`;
+-- `Ana wfF coalgebra : IR A (νF)`; `∘ snd` projects the seed from the curry's
+-- `(env, seed)`; `curry … m : IR Γ (A ⇒ νF)`.
+elaborate m (ana {F = F} wfF coalg) =
+  curry (Ana wfF (apply ∘ ⟨ elaborate m coalg ∘ terminal , id ⟩ m) ∘ snd) m
+
 -- | Historical default: Heap allocation.
 elaborate-default : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A} → Expr Γ Ψ A → IR ⟦ Γ ⟧ᶜ A
 elaborate-default = elaborate Heap

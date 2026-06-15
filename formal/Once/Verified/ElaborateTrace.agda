@@ -64,7 +64,7 @@ open import Once.Verified.TraceMonad using (T; returnT; projTrace; valueT)
 open import Once.Surface.Syntax using (Ctx; ∅; _,_^_; lookup; Usage; Expr;
          var; lam; app; effApp; pair; fst'; snd'; inl'; inr'; case'; unit; absurd;
          let'; int; str; add; sub; mul; div; mod'; neg;
-         arr'; sigOp; closure; poly; lift-morphism; morph-app; cata)
+         arr'; sigOp; closure; poly; lift-morphism; morph-app; cata; ana)
   renaming (lt to Elt; le to Ele; gt to Egt; ge to Ege; eq to Eeq; ne to Ene)
 open import Once.CCC.IR using (fst; snd)
 open import Once.Surface.Elaborate using (⟦_⟧ᶜ)
@@ -220,7 +220,7 @@ module _ (defs : Defs) where
   -- given `EnvRel`, the canonical name at the variable's LEVEL
   -- (`n ∸ suc (toℕ i)`) looks up to a value that simulates the projection.
   ------------------------------------------------------------------
-  proj-trace : ∀ {n} {Γ : Ctx n} (i : Fin n) (dγ : ⟦ ⟦ Γ ⟧ᶜ ⟧ᴰ)
+  proj-trace : ∀ {len} {Γ : Ctx len} (i : Fin len) (dγ : ⟦ ⟦ Γ ⟧ᶜ ⟧ᴰ)
              → proj₁ (evalᴰ (proj {Γ = Γ} i) dγ 0) ≡ []
   proj-trace {Γ = Γ , A ^ q} fzero    dγ = refl
   proj-trace {Γ = Γ , A ^ q} (fsuc i) dγ = proj-trace {Γ = Γ} i (proj₁ dγ)
@@ -736,6 +736,7 @@ module _ (defs : Defs) where
   erase (lift-morphism _)  = RUnit
   erase (morph-app _ e)    = erase e
   erase (cata _ _)         = RUnit
+  erase (ana _ _)          = RUnit
 
   postulate
     -- No-shadow obligation (user-confirmed): a canonical env never binds a
