@@ -45,6 +45,7 @@ import Once.Parser.Module.Core as P
 open import Once.Grammar.ModuleConvert using (gmoduleToModule)
 open import Once.Verified.Behavior using (Source; Behavior)
 open import Once.Verified.DenotTrace using (evalᴰ)
+open import Once.Verified.Trace using (SigOpEvent)
 open import Once.Verified.TraceMonad using (projTrace)
 open import Once.Verified.SourceSemantics as SS using (runTrace)
 import Once.Verified.MainAlign as MA
@@ -215,10 +216,39 @@ postulate
                  ≡ SS.eval s (SS.extractDefs (P.Module.decls m)) []
                             (ET.erase (SS.extractDefs (P.Module.decls m)) eE))
 
-  elaborate-trace-correct :
-    ∀ {Ψ : Usage 0} (eE : Expr ∅ Ψ Unit) (defs : SS.Defs) (k : ℕ)
-    → ∃[ s ] take k (proj₁ (evalᴰ (Surface.elaborate C.Heap eE) tt k))
-               ≡ take k (SS.runTraceEval (SS.eval s defs [] (ET.erase defs eE)))
+-- THE PRODUCTIVE CORRESPONDENCE, NAMED (Plan 0.46, 2026-06-15). `ProdSim c op`:
+-- at every observation depth `k`, SOME operational fuel `s` makes the first-`k`
+-- SigOp prefixes agree. This is the ONE relation: it bakes in NO finiteness, so
+-- it is true for finite mains (the trace stabilises) AND productive `ana` mains
+-- (the trace grows with `k`, matched by larger `s`). `CompSim` (the terminating
+-- bridge's relation) is its `k`-STABILISED special case — termination is not a
+-- separate world but the consequence of totality at an inductive type. The apex
+-- routes through `ProdSim`, never through `CompSim`+budget-stability (which is
+-- FALSE for `ana`). Value-sim is omitted here (parametric `X`): the closed `Unit`
+-- top needs only the trace; a value component enters only when the productive
+-- bridge's COMPOSITION cases demand it.
+ProdSim : ∀ {X : Set} → (ℕ → List SigOpEvent × X) → (ℕ → SS.Result) → Set
+ProdSim c op = ∀ k → ∃[ s ] take k (proj₁ (c k)) ≡ take k (SS.runTraceEval (op s))
+
+postulate
+  -- The PRODUCTIVE BRIDGE, the sole honest obligation under the apex: discharge
+  -- by structural induction on `eE` — finite subterms via the existing CompSim
+  -- bridge (a derived view; stabilisation = totality@inductive), the `ana`
+  -- constructor via `AnaTrace.ana-trace-correct` (productive, sound — NOT a
+  -- CompSim hole). This REPLACES the raw `elaborate-trace-correct` postulate with
+  -- the explicitly-productive relation; building its induction is the work.
+  prod-bridge :
+    ∀ {Ψ : Usage 0} (eE : Expr ∅ Ψ Unit) (defs : SS.Defs)
+    → ProdSim (evalᴰ (Surface.elaborate C.Heap eE) tt)
+              (λ s → SS.eval s defs [] (ET.erase defs eE))
+
+-- `elaborate-trace-correct` is now a DEFINITION (projection of `prod-bridge`),
+-- not a postulate — anchoring the apex at the productive relation.
+elaborate-trace-correct :
+  ∀ {Ψ : Usage 0} (eE : Expr ∅ Ψ Unit) (defs : SS.Defs) (k : ℕ)
+  → ∃[ s ] take k (proj₁ (evalᴰ (Surface.elaborate C.Heap eE) tt k))
+             ≡ take k (SS.runTraceEval (SS.eval s defs [] (ET.erase defs eE)))
+elaborate-trace-correct eE defs k = prod-bridge eE defs k
 
 compiled-main-trace :
   ∀ (m : P.Module) (ir : IR Unit Unit) → moduleToIR m ≡ just ir
