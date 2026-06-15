@@ -37,7 +37,7 @@ open import Once.Type
 open import Once.Surface.Syntax using (Expr; Ctx; Usage; lookup; _,_^_; ∅)
 open import Once.Surface.Elaborate using (⟦_⟧ᶜ)
 open import Once.Verified.TraceMonad using (T; returnT; _>>=T_; projTrace; valueT)
-open import Once.Verified.DenotTrace using (⟦_⟧ᴰ; evalᴰ; forget; inject)
+open import Once.Verified.DenotTrace using (⟦_⟧ᴰ; evalᴰ; forget; inject; emit-D)
 open import Once.Verified.TraceDenote using (events-F)
 open import Once.Verified.Trace using (SigOpEvent)
 open import Once.CCC.IR using (IR)
@@ -48,7 +48,7 @@ open import Once.Semantics.Machine
 open import Once.CCC.SigOp.Info using (semM)
 open import Once.Arith.SigOp.Builders
   using (add-info; sub-info; mul-info; div-info; mod-info; neg-info;
-         lt-info; le-info; gt-info; ge-info; eq-info; ne-info)
+         lt-info; le-info; gt-info; ge-info; eq-info; ne-info; generic-info)
 
 open Once.Surface.Syntax.Expr
 
@@ -96,13 +96,6 @@ ana-eventsˢ {F} {A} coalgClo a (suc m) =
 -- THE SOURCE SEMANTICS. Structural on `Expr`; arrows are Kleisli arrows
 -- into `T`; `apply`/`let`/`case` thread the trace via `_>>=T_`.
 ------------------------------------------------------------------------
-
-postulate
-  -- TOP-DOWN HOLE (Plan 0.46 M1): the effect (sigOp/closure/poly/effApp/lift-
-  -- morphism/morph-app), comparison (lt..ne), div/mod, and recursion-scheme
-  -- (cata/ana) constructors. Each is an explicit obligation the elaborate-
-  -- correctness proof (M3) will demand; discharge in place, NOT as islands.
-  ⟦⟧ˢ-todo : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A} → Expr Γ Ψ A → ⟦ ⟦ Γ ⟧ᶜ ⟧ᴰ → T ⟦ A ⟧ᴰ
 
 ⟦_⟧ˢ : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A}
      → Expr Γ Ψ A → ⟦ ⟦ Γ ⟧ᶜ ⟧ᴰ → T ⟦ A ⟧ᴰ
@@ -164,4 +157,15 @@ postulate
     ( ana-eventsˢ {F} {A} (valueT (⟦ coalg ⟧ˢ tt) 0) (forget a) n
     , inject (sem-ana F (λ a' → coerce-functor F _
                   (forget (valueT (valueT (⟦ coalg ⟧ˢ tt) 0 (inject a')) 0))) (forget a)) ))
-⟦ e ⟧ˢ            dγ = ⟦⟧ˢ-todo e dγ
+-- Effect primitives (sigOp/closure/poly): named external ops resolved to
+-- `generic-info name`, emitting + valued via the SAME emit-D/semM the IR uses
+-- (definitionally = elaborate's `SigOp (generic-info name) ∘ terminal`). sigOp
+-- DISPATCHES ON RESULT-TYPE SHAPE (matching elaborate): at an arrow it is a
+-- CLOSURE applying the SigOp to its arg (so the effect fires at apply, not at
+-- pair-build); at non-arrow it runs on terminal `tt`. closure/poly never wrap.
+⟦ sigOp {A = (Dom ⇒[ k ] Cod)} name ⟧ˢ dγ =
+  returnT (λ arg → λ n → ( emit-D (generic-info {Dom} {Cod} name) (forget arg)
+                         , inject (semM (generic-info {Dom} {Cod} name) (forget arg)) ))
+⟦ sigOp {A = A} name ⟧ˢ   dγ = λ n → (emit-D (generic-info {Unit} {A} name) tt , inject (semM (generic-info {Unit} {A} name) tt))
+⟦ closure {A = A} name ⟧ˢ dγ = λ n → (emit-D (generic-info {Unit} {A} name) tt , inject (semM (generic-info {Unit} {A} name) tt))
+⟦ poly name PT ⟧ˢ         dγ = λ n → (emit-D (generic-info {Unit} {PT} name) tt , inject (semM (generic-info {Unit} {PT} name) tt))
