@@ -29,7 +29,8 @@ open import Data.List using (List; []; _++_)
 open import Data.Sum using (inj₁; inj₂)
 open import Data.Product using (_,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
-open import Data.List.Properties using (++-identityʳ)
+open import Data.List.Properties using (++-identityʳ; ++-assoc)
+open import Once.Verified.Trace using (SigOpEvent)
 
 open import Once.Type using (Type; Unit; _+_)
 open import Once.Surface.Syntax using (Expr; Ctx; Usage; lookup; _,_^_)
@@ -73,6 +74,11 @@ proj-lookup : ∀ {n} {Γ : Ctx n} (i : Fin n) (dγ : ⟦ ⟦ Γ ⟧ᶜ ⟧ᴰ) 
 proj-lookup {Γ = Γ , A ^ q} zero    dγ k = refl
 proj-lookup {Γ = Γ , A ^ q} (suc i) dγ k = proj-lookup {Γ = Γ} i (proj₁ dγ) k
 
+-- app/effApp trace shape: the `⟨ef,ex⟩` pair leaves `B ++ []`, and `apply`
+-- re-associates `((A ++ (B ++ [])) ++ C)` vs ⟦_⟧ˢ's `A ++ (B ++ C)`.
+app-trace : ∀ (A B C : List SigOpEvent) → (A ++ (B ++ [])) ++ C ≡ A ++ (B ++ C)
+app-trace A B C rewrite ++-identityʳ B = ++-assoc A B C
+
 faithful :
   ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A} (e : Expr Γ Ψ A)
     (dγ : ⟦ ⟦ Γ ⟧ᶜ ⟧ᴰ) (k : ℕ)
@@ -83,6 +89,11 @@ faithful (var {Γ = Γ} i) dγ k = proj-lookup {Γ = Γ} i dγ k
 -- extensionality over the argument (and over the depth, via the body IH).
 faithful (lam q _ e) dγ k =
   cong (_,_ []) (extensionality (λ a → extensionality (λ k′ → faithful e (dγ , a) k′)))
+-- app: `apply ∘ ⟨ef,ex⟩`. Rewrite both IHs; the closures/args align so `apply`
+-- runs the SAME `vf vx` ⇒ value refl; trace re-associates (app-trace).
+faithful (app f x) dγ n rewrite faithful f dγ n | faithful x dγ n =
+  cong₂ _,_ (app-trace (proj₁ (SD.⟦ f ⟧ˢ dγ n)) (proj₁ (SD.⟦ x ⟧ˢ dγ n))
+                       (proj₁ (proj₂ (SD.⟦ f ⟧ˢ dγ n) (proj₂ (SD.⟦ x ⟧ˢ dγ n)) n))) refl
 faithful unit    dγ k = refl
 faithful (int n) dγ k = refl   -- intLit's semM reduces to `absℤ n`, matching ⟦int n⟧ˢ
 -- str: `str-lit-semM s tt` does NOT reduce to `s` definitionally → needs the
