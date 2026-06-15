@@ -56,5 +56,8 @@ faithful :
     (dγ : ⟦ ⟦ Γ ⟧ᶜ ⟧ᴰ) (k : ℕ)
   → evalᴰ (elaborate C.Heap e) dγ k ≡ SD.⟦ e ⟧ˢ dγ k
 -- `unit` ↦ `terminal`; both sides reduce to `returnT tt` ⇒ refl.
-faithful unit dγ k = refl
-faithful e    dγ k = faithful-todo e dγ k
+faithful unit    dγ k = refl
+faithful (int n) dγ k = refl   -- intLit's semM reduces to `absℤ n`, matching ⟦int n⟧ˢ
+-- str: `str-lit-semM s tt` does NOT reduce to `s` definitionally → needs the
+-- literal-semantics lemma (`str-lit-semM s tt ≡ s`); deferred to faithful-todo.
+faithful e       dγ k = faithful-todo e dγ k
