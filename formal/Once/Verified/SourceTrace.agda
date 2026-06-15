@@ -29,7 +29,7 @@ open import Data.Bool using (Bool; false; true)
 open import Data.Nat using (ℕ)
 open import Data.List using (List; []; _∷_; take)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Product using (proj₁; ∃; ∃-syntax; _,_; _×_)
+open import Data.Product using (proj₁; proj₂; ∃; ∃-syntax; Σ-syntax; _,_; _×_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (tt)
 open import Data.String using (String) renaming (_≟_ to _≟str_)
@@ -48,6 +48,10 @@ open import Once.Verified.DenotTrace using (evalᴰ)
 open import Once.Verified.TraceMonad using (projTrace)
 open import Once.Verified.SourceSemantics as SS using (runTrace)
 import Once.Verified.MainAlign as MA
+import Once.Verified.ElaborateTrace as ET
+import Once.Surface.Elaborate as Surface
+open import Once.Surface.Syntax using (Expr; ∅; Usage)
+open import Data.Nat.Properties using (≤-refl)
 
 ------------------------------------------------------------------------
 -- Source → IR of `main` (option (a): reuse the compiler's elaborator).
@@ -177,25 +181,58 @@ main-exists-align m ir mj = aux (C.compileResolvedModule C.Heap false m) refl mj
       SS.lookup-main-of-dfundef (P.Module.decls m)
         (MA.compileResolvedModule-main m C.Heap false funs crm (findMain-name funs ir fm))
 
+-- (#10), now TOP-DOWN: the monolithic `compiled-main-trace` postulate becomes a
+-- THEOREM assembled from `ET.bridge-main` (the proven `evalᴰ (elaborate …) ↔
+-- SS.eval (erase …)` bridge over the typed `Expr`) and two smaller, named
+-- obligations:
+--
+--   * `compiler-faithful` — the compiled entry IR IS the elaboration of a closed
+--     typed `Expr` (`checkElab` of `main`), and that expr's canonical erasure
+--     runs (under `SS.eval`) like the source `main` body. Bundles the compiler
+--     identity (`ir = elaborate Heap (checkElab body)`, a lemma over
+--     `compileResolvedModule`) with α-invariance (raw body ↔ canonical erasure).
+--   * `budget-independent` — `evalᴰ` on a finite (`Ana`-free) IR ignores the
+--     observation budget; its trace at depth `k` equals the trace at `0`. (The
+--     `Ana` case, where the budget IS consumed, is the Ana phase.)
 postulate
-  -- (#10) The ⟦_⟧ᴰ↔eval CORE (M4, D057 load-bearing): the compiled entry IR's
-  -- denotational SigOp trace equals the source interpreter's trace of the SAME
-  -- `main` body. THE load-bearing obligation — the `⟦elaborate(checkElab …)⟧ᴰ ≈
-  -- SS.eval` induction over the elaborate pipeline; a meaning-changing
-  -- elaborator bug breaks this proof, keeping the elaborator load-bearing.
-  -- FORM (1) — existential productivity (D059 cross-meter). For every
-  -- event-prefix length `k`, `evalᴰ` at observation depth `k` and `SS.eval` at
-  -- SOME step-fuel `s` agree on the first `k` effectful events. `∃ s` is the
-  -- productivity witness for `SS.eval`'s step meter (rooted in untyped-λ `apply`);
-  -- the observable is the event prefix; neither meter is the index. Same idiom
-  -- as the machine's `traces-agree`.
-  compiled-main-trace :
+  compiler-faithful :
     ∀ (m : P.Module) (ir : IR Unit Unit) → moduleToIR m ≡ just ir
-    → ∀ (body : RawExpr)
+    → (body : RawExpr)
     → SS.lookupDef (SS.extractDefs (P.Module.decls m)) "main" ≡ just body
-    → ∀ (k : ℕ)
-    → ∃[ s ] take k (projTrace (evalᴰ ir tt) k)
-               ≡ take k (SS.runTraceEval (SS.eval s (SS.extractDefs (P.Module.decls m)) [] body))
+    → Σ[ Ψ ∈ Usage 0 ] Σ[ eE ∈ Expr ∅ Ψ Unit ]
+        (ir ≡ Surface.elaborate C.Heap eE)
+        × (∀ s → SS.eval s (SS.extractDefs (P.Module.decls m)) [] body
+                 ≡ SS.eval s (SS.extractDefs (P.Module.decls m)) []
+                            (ET.erase (SS.extractDefs (P.Module.decls m)) eE))
+
+  budget-independent :
+    ∀ (ir : IR Unit Unit) (k : ℕ) → proj₁ (evalᴰ ir tt k) ≡ proj₁ (evalᴰ ir tt 0)
+
+compiled-main-trace :
+  ∀ (m : P.Module) (ir : IR Unit Unit) → moduleToIR m ≡ just ir
+  → ∀ (body : RawExpr)
+  → SS.lookupDef (SS.extractDefs (P.Module.decls m)) "main" ≡ just body
+  → ∀ (k : ℕ)
+  → ∃[ s ] take k (projTrace (evalᴰ ir tt) k)
+             ≡ take k (SS.runTraceEval (SS.eval s (SS.extractDefs (P.Module.decls m)) [] body))
+compiled-main-trace m ir mj body lk k
+  with compiler-faithful m ir mj body lk
+... | (Ψ , eE , refl , α)
+    with ET.bridge-main (SS.extractDefs (P.Module.decls m)) C.Heap eE
+...   | (s , v , evs , op-eq , tr-eq , _) = s , goal
+  where
+  defsM = SS.extractDefs (P.Module.decls m)
+  -- LHS trace: budget-independence (depth k → 0) then the bridge's `tr-eq`.
+  lhs : take k (projTrace (evalᴰ (Surface.elaborate C.Heap eE) tt) k) ≡ take k evs
+  lhs = trans (cong (take k) (budget-independent (Surface.elaborate C.Heap eE) k))
+              (cong (take k) tr-eq)
+  -- RHS trace: α-invariance (body ↔ erasure) then the bridge's `op-eq` at `s`,
+  -- then `runTraceEval (just (v , evs)) = evs`.
+  rhs : take k (SS.runTraceEval (SS.eval s defsM [] body)) ≡ take k evs
+  rhs = cong (take k) (cong SS.runTraceEval (trans (α s) (op-eq s ≤-refl)))
+  goal : take k (projTrace (evalᴰ ir tt) k)
+         ≡ take k (SS.runTraceEval (SS.eval s defsM [] body))
+  goal = trans lhs (sym rhs)
 
 -- Factor 1 (`elaborate-faithful`), a REQUIRED CONJUNCT of the grand theorem
 -- (D059): the elaborated IR's denotational trace agrees, event-prefix-wise, with
