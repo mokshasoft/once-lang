@@ -54,6 +54,7 @@ import Once.Verified.ElaborateTrace as ET
 import Once.Surface.Elaborate as Surface
 open import Once.Surface.Syntax using (Expr; ∅; Usage)
 import Once.Verified.SourceDenote as SD
+import Once.Verified.SourceFaithful as SF
 open import Data.Nat.Properties using (≤-refl)
 
 ------------------------------------------------------------------------
@@ -269,10 +270,13 @@ postulate
 -- arith/comparison/sigOp/lift-morphism — are DEFINITIONALLY equal, since `⟦_⟧ˢ`
 -- denotes them through the same `semM`/`evalᴰ` the IR side uses). Supersedes the
 -- `SS.eval`-based `prod-bridge`/`ProdSim` chain above (retired with `SS.eval`, M4).
-postulate
-  elaborate-faithful :
-    ∀ {Ψ : Usage 0} (eE : Expr ∅ Ψ Unit) (k : ℕ)
-    → proj₁ (evalᴰ (Surface.elaborate C.Heap eE) tt k) ≡ proj₁ (SD.⟦ eE ⟧ˢ tt k)
+-- A DEFINITION now (closed-`Unit` projection of the general `SF.faithful`
+-- induction), not a postulate — the apex obligation is structurally connected to
+-- the per-constructor elaborate-correctness cases (M3 discharges those).
+elaborate-faithful :
+  ∀ {Ψ : Usage 0} (eE : Expr ∅ Ψ Unit) (k : ℕ)
+  → proj₁ (evalᴰ (Surface.elaborate C.Heap eE) tt k) ≡ proj₁ (SD.⟦ eE ⟧ˢ tt k)
+elaborate-faithful eE k = cong proj₁ (SF.faithful eE tt k)
 
 -- `elaborate-trace-correct` is now a DEFINITION (projection of `prod-bridge`),
 -- not a postulate — anchoring the apex at the productive relation.
