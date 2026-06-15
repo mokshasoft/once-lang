@@ -67,6 +67,19 @@ take-mono (suc d) (suc k) (x ∷ xs) []       (s≤s _) ()
 take-mono (suc d) (suc k) (x ∷ xs) (y ∷ ys) (s≤s le) eq =
   cong₂ _∷_ (proj₁ (∷-injective eq)) (take-mono d k xs ys le (proj₂ (∷-injective eq)))
 
+-- Equal `take d` prefixes ⇒ equal leftover budgets `d ∸ length`. This is what
+-- aligns the split point in the functor `⊗` case: `take d (A ++ B) ≡ take d (C ++ D)`
+-- from sub-prefix matches needs the offsets `d ∸ |A|` and `d ∸ |C|` to coincide,
+-- which they do precisely because the `take d` prefixes match (both ≥ d, or both
+-- full with equal length).
+take-len : ∀ {ℓ} {X : Set ℓ} (d : ℕ) (A C : List X)
+         → take d A ≡ take d C → d ∸ length A ≡ d ∸ length C
+take-len zero    A        C        _  = trans (0∸n≡0 (length A)) (sym (0∸n≡0 (length C)))
+take-len (suc d) []       []       _  = refl
+take-len (suc d) []       (c ∷ C)  ()
+take-len (suc d) (a ∷ A)  []       ()
+take-len (suc d) (a ∷ A)  (c ∷ C)  eq = take-len d A C (proj₂ (∷-injective eq))
+
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥)
 open import Data.Sum using (inj₁; inj₂)
