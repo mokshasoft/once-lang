@@ -29,7 +29,7 @@ open import Data.List using (List; []; _++_)
 open import Data.Sum using (inj₁; inj₂)
 open import Data.Empty using (⊥-elim)
 open import Data.Product using (_,_; proj₁; proj₂)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; trans)
 open import Data.List.Properties using (++-identityʳ; ++-assoc)
 open import Once.Verified.Trace using (SigOpEvent)
 
@@ -86,6 +86,11 @@ app-trace A B C rewrite ++-identityʳ B = ++-assoc A B C
 -- the `rewrite` happens OUTSIDE any `extensionality` lambda. After rewriting both
 -- IHs the closures/args align (apply runs the SAME `vf vx`, value refl) and the
 -- trace re-associates (app-trace).
+-- case' trace shape: `⟨id, es⟩` + `distribute` leave two empty traces before the
+-- chosen branch: `((W ++ []) ++ []) ++ Z ≡ W ++ Z`.
+case-trace : ∀ (W Z : List SigOpEvent) → ((W ++ []) ++ []) ++ Z ≡ W ++ Z
+case-trace W Z = cong (_++ Z) (trans (++-identityʳ (W ++ [])) (++-identityʳ W))
+
 app-body : ∀ {m} {Γ : Ctx m} {Ψ₁ Ψ₂ : Usage m} {A B} {kk}
              (f : Expr Γ Ψ₁ (A ⇒[ kk ] B)) (x : Expr Γ Ψ₂ A)
              (dγ : ⟦ ⟦ Γ ⟧ᶜ ⟧ᴰ) (n : ℕ)
@@ -184,4 +189,9 @@ faithful (sigOp {A = _ * _}    name) dγ k = refl
 faithful (sigOp {A = _ + _}    name) dγ k = refl
 faithful (sigOp {A = μ-type _} name) dγ k = refl
 faithful (sigOp {A = ν-type _} name) dγ k = refl
+faithful (case' s l r) dγ n rewrite faithful s dγ n with proj₂ (SD.⟦ s ⟧ˢ dγ n)
+... | inj₁ a rewrite faithful l (dγ , a) n =
+        cong₂ _,_ (case-trace (proj₁ (SD.⟦ s ⟧ˢ dγ n)) (proj₁ (SD.⟦ l ⟧ˢ (dγ , a) n))) refl
+... | inj₂ b rewrite faithful r (dγ , b) n =
+        cong₂ _,_ (case-trace (proj₁ (SD.⟦ s ⟧ˢ dγ n)) (proj₁ (SD.⟦ r ⟧ˢ (dγ , b) n))) refl
 faithful e       dγ k = faithful-todo e dγ k
