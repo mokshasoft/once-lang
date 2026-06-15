@@ -27,13 +27,15 @@ open import Data.Nat using (ℕ)
 open import Data.List using (List; []; _++_)
 open import Data.Sum using (inj₁; inj₂)
 open import Data.Product using (_,_; proj₁; proj₂)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
+open import Data.List.Properties using (++-identityʳ)
 
-open import Once.Type using (Type)
+open import Once.Type using (Type; Unit; _+_)
 open import Once.Surface.Syntax using (Expr; Ctx; Usage)
 open import Once.Surface.Elaborate using (elaborate; ⟦_⟧ᶜ)
 open import Once.Verified.TraceMonad using (T)
-open import Once.Verified.DenotTrace using (⟦_⟧ᴰ; evalᴰ)
+open import Once.Verified.DenotTrace using (⟦_⟧ᴰ; evalᴰ; inject)
+open import Once.CCC.Eval as Val using ()
 import Once.Verified.SourceDenote as SD
 import Once.Compile as C
 
@@ -53,6 +55,14 @@ postulate
       (dγ : ⟦ ⟦ Γ ⟧ᶜ ⟧ᴰ) (k : ℕ)
     → evalᴰ (elaborate C.Heap e) dγ k ≡ SD.⟦ e ⟧ˢ dγ k
 
+-- `inject` is the identity on the comparison codomain `Unit + Unit` (it recurses
+-- on the sum, `inject {Unit}` = id) — but NOT definitionally, so the comparison
+-- cases need this one-liner. (`Int`-codomain arith has `inject {Int}` = id
+-- definitionally, hence `refl` there.) Keeps `⟦_⟧ˢ` clean (no `inject` pollution).
+inj-uu : (y : Val.⟦ Unit + Unit ⟧) → inject {Unit + Unit} y ≡ y
+inj-uu (inj₁ _) = refl
+inj-uu (inj₂ _) = refl
+
 faithful :
   ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A} (e : Expr Γ Ψ A)
     (dγ : ⟦ ⟦ Γ ⟧ᶜ ⟧ᴰ) (k : ℕ)
@@ -70,4 +80,20 @@ faithful (fst' e) dγ n = cong (λ r → (proj₁ r ++ [] , proj₁ (proj₂ r))
 faithful (snd' e) dγ n = cong (λ r → (proj₁ r ++ [] , proj₂ (proj₂ r))) (faithful e dγ n)
 faithful (inl' e) dγ n = cong (λ r → (proj₁ r ++ [] , inj₁ (proj₂ r))) (faithful e dγ n)
 faithful (inr' e) dγ n = cong (λ r → (proj₁ r ++ [] , inj₂ (proj₂ r))) (faithful e dγ n)
+-- Two-subterm arith (elaborate = `<op>IR ∘ ⟨ea,eb⟩`, ⟦_⟧ˢ via the same `semM`):
+-- rewrite both IHs; the only residual is the IR `SigOp`-bind's extra empty trace
+-- (`(W ++ []) ≡ W`, ++-identityʳ); the value is identical (same `semM`).
+faithful (add a b)  dγ n rewrite faithful a dγ n | faithful b dγ n = cong₂ _,_ (++-identityʳ _) refl
+faithful (sub a b)  dγ n rewrite faithful a dγ n | faithful b dγ n = cong₂ _,_ (++-identityʳ _) refl
+faithful (mul a b)  dγ n rewrite faithful a dγ n | faithful b dγ n = cong₂ _,_ (++-identityʳ _) refl
+faithful (div a b)  dγ n rewrite faithful a dγ n | faithful b dγ n = cong₂ _,_ (++-identityʳ _) refl
+faithful (mod' a b) dγ n rewrite faithful a dγ n | faithful b dγ n = cong₂ _,_ (++-identityʳ _) refl
+faithful (lt a b)   dγ n rewrite faithful a dγ n | faithful b dγ n = cong₂ _,_ (++-identityʳ _) (inj-uu _)
+faithful (le a b)   dγ n rewrite faithful a dγ n | faithful b dγ n = cong₂ _,_ (++-identityʳ _) (inj-uu _)
+faithful (gt a b)   dγ n rewrite faithful a dγ n | faithful b dγ n = cong₂ _,_ (++-identityʳ _) (inj-uu _)
+faithful (ge a b)   dγ n rewrite faithful a dγ n | faithful b dγ n = cong₂ _,_ (++-identityʳ _) (inj-uu _)
+faithful (eq a b)   dγ n rewrite faithful a dγ n | faithful b dγ n = cong₂ _,_ (++-identityʳ _) (inj-uu _)
+faithful (ne a b)   dγ n rewrite faithful a dγ n | faithful b dγ n = cong₂ _,_ (++-identityʳ _) (inj-uu _)
+-- neg: single subterm; IR `negIR ∘ ee` and ⟦_⟧ˢ share the bind+cont, so refl post-IH.
+faithful (neg e)    dγ n rewrite faithful e dγ n = refl
 faithful e       dγ k = faithful-todo e dγ k
