@@ -817,3 +817,14 @@ module _ (defs : Defs) where
   -- dispatches on the type shape) stay abstract. Discharge = peel a constructor
   -- off into a real clause above.
   bridge m e                    dγ ρ env = bridge-hole m e dγ ρ env
+
+  -- Closed-program specialisation (the entry the `#10` connection needs): a
+  -- CLOSED `Expr ∅ ∅ A` (the shape of `main`) elaborated in the empty env. The
+  -- empty environment trivially relates (`EnvRel [] ∅ tt = ⊤`), and `⟦ ⟦ ∅ ⟧ᶜ ⟧ᴰ
+  -- = ⊤`, so `dγ = tt`. This is `evalᴰ (elaborate m e) tt` ↔ `SS.eval [] (erase e)`,
+  -- one step from `compiled-main-trace` (which still needs: the compiler identity
+  -- `ir = elaborate (checkElab body)`, α-invariance `SS.eval body ≈ SS.eval
+  -- (erase (checkElab body))`, and the CompSim → take-k reading).
+  bridge-main : ∀ (m : AllocMode) {Ψ : Usage 0} {A} (e : Expr ∅ Ψ A)
+              → CompSim A (evalᴰ (elaborate m e) tt) (λ z → eval z defs [] (erase e))
+  bridge-main m e = bridge m e tt [] tt
