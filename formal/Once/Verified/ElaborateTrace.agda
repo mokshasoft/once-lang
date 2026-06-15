@@ -26,6 +26,7 @@
 module Once.Verified.ElaborateTrace where
 
 open import Data.Nat using (ℕ; zero; suc; _≤_; z≤n; s≤s; _⊔_; _∸_)
+  renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
 open import Data.Nat.Properties using (m≤m⊔n; n≤m⊔n; ≤-trans; m∸n≤m; 1+n≰n; n≤1+n)
 open import Data.Fin using (Fin; toℕ) renaming (zero to fzero; suc to fsuc)
 open import Data.List using (List; []; _∷_; _++_; take)
@@ -49,12 +50,13 @@ open import Once.Type
          Int; Float; Str; Buffer)
 open import Once.CCC.IR using (IR; id; _∘_; terminal; initial; ⟨_,_⟩; AllocMode; case; fst; snd; curry; inl; inr)
   renaming (apply to applyᴵ)
-open import Once.Surface.Elaborate using (intLit; strLit; distribute; proj)
-open import Once.TypeCheck.Raw using (RawExpr; RVar; RLam; RUnit; RInt; RStringLit; RPair; RLet; RApp; RDestruct)
+open import Once.Surface.Elaborate using (intLit; strLit; distribute; proj; addIR; subIR; mulIR; negIR)
+open import Once.TypeCheck.Raw using (RawExpr; RVar; RLam; RUnit; RInt; RStringLit; RPair; RLet; RApp; RDestruct;
+         RBinOp; RUnaryOp; BinOp; OpAdd; OpSub; OpMul; UnaryOp; OpNeg)
 open import Once.Verified.SourceSemantics
   using (Value; Vunit; Vpair; Vinl; Vinr; Vint; Vstr; Vclos; Vbuiltin; Vsigop; Vin;
          apply; eval; Env; Result; Defs; runTraceEval; lookupEnv;
-         bFst; bSnd; bInl; bInr)
+         bFst; bSnd; bInl; bInr; binResult)
 open import Once.Verified.Trace using (SigOpEvent)
 open import Once.Verified.DenotTrace using (⟦_⟧ᴰ; evalᴰ)
 open import Once.Verified.TraceMonad using (T; returnT; projTrace; valueT)
@@ -571,3 +573,99 @@ module _ (defs : Defs) where
             → CompSim Void (evalᴰ e' x) (λ z → eval z defs ρ re)
             → CompSim A (evalᴰ (initial {A} ∘ e') x) (λ z → eval z defs ρ re)
   cs-absurd e' x ρ re _ = ⊥-elim (valueT (evalᴰ e' x) 0)
+
+  ------------------------------------------------------------------
+  -- ARITHMETIC (`add`/`sub`/`mul`/`neg`). `elaborate (add a b) = addIR ∘
+  -- ⟨a',b'⟩ m`, `addIR = SigOp add-info` (Pure ⇒ NO trace events). Per D054/B
+  -- the value domain is ℕ on both sides and the SigOp `add-semM = a +ℕ b` is
+  -- the SAME ℕ op `SS.eval`'s `binResult OpAdd = Vint (a +ℕ b)` uses — so the
+  -- value-sim composes as `cong₂ _+_`. (`div`/`mod`/comparisons await their
+  -- still-postulated `semM`s being shared/defined.)
+  --
+  -- `int-val`: the `Int` value-sim forces the operational value to be a `Vint`.
+  int-val : ∀ (v : Value) (d : ⟦ Int ⟧ᴰ) → v ~⟨ Int ⟩ d
+          → Σ[ n ∈ ℕ ] (v ≡ Vint n) × (n ≡ d)
+  int-val (Vint n)      d eq = n , refl , eq
+  int-val Vunit         d ()
+  int-val (Vpair _ _)   d ()
+  int-val (Vinl _)      d ()
+  int-val (Vinr _)      d ()
+  int-val (Vin _)       d ()
+  int-val (Vstr _)      d ()
+  int-val (Vclos _ _ _) d ()
+  int-val (Vbuiltin _ _) d ()
+  int-val (Vsigop _ _)  d ()
+
+  -- The operational `RBinOp` step, threshold `suc (sa ⊔ sb)` (one `suc` for
+  -- the decrement). Both args evaluated, then `binResult` (which emits `[]`).
+  op-eq-binop :
+    ∀ (op : BinOp) (ρ : Env) (ea eb : RawExpr) (sa sb : ℕ)
+      (van vbn vr : ℕ) (ea-evs eb-evs : List SigOpEvent)
+    → (∀ z → sa ≤ z → eval z defs ρ ea ≡ just (Vint van , ea-evs))
+    → (∀ z → sb ≤ z → eval z defs ρ eb ≡ just (Vint vbn , eb-evs))
+    → binResult op (Vint van) (Vint vbn) ≡ just (Vint vr , [])
+    → ∀ z → suc (sa ⊔ sb) ≤ z
+    → eval z defs ρ (RBinOp op ea eb) ≡ just (Vint vr , ea-evs ++ (eb-evs ++ []))
+  op-eq-binop op ρ ea eb sa sb van vbn vr ea-evs eb-evs opa opb bres (suc k) (s≤s le)
+    rewrite opa k (≤-trans (m≤m⊔n sa sb) le)
+          | opb k (≤-trans (n≤m⊔n sa sb) le)
+          | bres = refl
+
+  -- Common shape for the three binary arith lemmas: differs only in the IR
+  -- `SigOp`, the raw `BinOp`, and the ℕ operation (passed as `⊕` with proof
+  -- that `binResult op = Vint (van ⊕ vbn)` and the denotational value reduces
+  -- to `va_d ⊕ vb_d`).
+  cs-add : ∀ {Γ} (a' b' : IR Γ Int) (m : AllocMode) (x : ⟦ Γ ⟧ᴰ) (ρ : Env) (ea eb : RawExpr)
+         → CompSim Int (evalᴰ a' x) (λ s → eval s defs ρ ea)
+         → CompSim Int (evalᴰ b' x) (λ s → eval s defs ρ eb)
+         → CompSim Int (evalᴰ (addIR ∘ ⟨ a' , b' ⟩ m) x)
+                       (λ s → eval s defs ρ (RBinOp OpAdd ea eb))
+  cs-add {Γ} a' b' m x ρ ea eb
+         (sa , va , ea-evs , opa , tra , rra) (sb , vb , eb-evs , opb , trb , rrb)
+    with int-val va _ rra | int-val vb _ rrb
+  ... | (van , refl , rran) | (vbn , refl , rrbn) =
+        suc (sa ⊔ sb) , Vint (van +ℕ vbn) , ea-evs ++ (eb-evs ++ []) ,
+        op-eq-binop OpAdd ρ ea eb sa sb van vbn (van +ℕ vbn) ea-evs eb-evs opa opb refl ,
+        trans (++-identityʳ _) (cong₂ (λ p q → p ++ (q ++ [])) tra trb) ,
+        cong₂ _+ℕ_ rran rrbn
+
+  cs-sub : ∀ {Γ} (a' b' : IR Γ Int) (m : AllocMode) (x : ⟦ Γ ⟧ᴰ) (ρ : Env) (ea eb : RawExpr)
+         → CompSim Int (evalᴰ a' x) (λ s → eval s defs ρ ea)
+         → CompSim Int (evalᴰ b' x) (λ s → eval s defs ρ eb)
+         → CompSim Int (evalᴰ (subIR ∘ ⟨ a' , b' ⟩ m) x)
+                       (λ s → eval s defs ρ (RBinOp OpSub ea eb))
+  cs-sub {Γ} a' b' m x ρ ea eb
+         (sa , va , ea-evs , opa , tra , rra) (sb , vb , eb-evs , opb , trb , rrb)
+    with int-val va _ rra | int-val vb _ rrb
+  ... | (van , refl , rran) | (vbn , refl , rrbn) =
+        suc (sa ⊔ sb) , Vint (van ∸ vbn) , ea-evs ++ (eb-evs ++ []) ,
+        op-eq-binop OpSub ρ ea eb sa sb van vbn (van ∸ vbn) ea-evs eb-evs opa opb refl ,
+        trans (++-identityʳ _) (cong₂ (λ p q → p ++ (q ++ [])) tra trb) ,
+        cong₂ _∸_ rran rrbn
+
+  cs-mul : ∀ {Γ} (a' b' : IR Γ Int) (m : AllocMode) (x : ⟦ Γ ⟧ᴰ) (ρ : Env) (ea eb : RawExpr)
+         → CompSim Int (evalᴰ a' x) (λ s → eval s defs ρ ea)
+         → CompSim Int (evalᴰ b' x) (λ s → eval s defs ρ eb)
+         → CompSim Int (evalᴰ (mulIR ∘ ⟨ a' , b' ⟩ m) x)
+                       (λ s → eval s defs ρ (RBinOp OpMul ea eb))
+  cs-mul {Γ} a' b' m x ρ ea eb
+         (sa , va , ea-evs , opa , tra , rra) (sb , vb , eb-evs , opb , trb , rrb)
+    with int-val va _ rra | int-val vb _ rrb
+  ... | (van , refl , rran) | (vbn , refl , rrbn) =
+        suc (sa ⊔ sb) , Vint (van *ℕ vbn) , ea-evs ++ (eb-evs ++ []) ,
+        op-eq-binop OpMul ρ ea eb sa sb van vbn (van *ℕ vbn) ea-evs eb-evs opa opb refl ,
+        trans (++-identityʳ _) (cong₂ (λ p q → p ++ (q ++ [])) tra trb) ,
+        cong₂ _*ℕ_ rran rrbn
+
+  -- `neg`: `elaborate (neg e) = negIR ∘ e'`, `neg-semM _ = 0` (placeholder),
+  -- and `SS.eval`'s `neg (Vint _) = Vint 0` — both 0, value-sim `refl`.
+  cs-neg : ∀ {Γ} (e' : IR Γ Int) (x : ⟦ Γ ⟧ᴰ) (ρ : Env) (re : RawExpr)
+         → CompSim Int (evalᴰ e' x) (λ s → eval s defs ρ re)
+         → CompSim Int (evalᴰ (negIR ∘ e') x) (λ s → eval s defs ρ (RUnaryOp OpNeg re))
+  cs-neg {Γ} e' x ρ re (se , ve , ev , op , tr , rr) with int-val ve _ rr
+  ... | (vn , refl , rrn) =
+        suc se , Vint 0 , ev , op-eq , trans (++-identityʳ _) tr , refl
+      where
+      op-eq : ∀ z → suc se ≤ z
+            → eval z defs ρ (RUnaryOp OpNeg re) ≡ just (Vint 0 , ev)
+      op-eq (suc k) (s≤s le) rewrite op k le | ++-identityʳ ev = refl
