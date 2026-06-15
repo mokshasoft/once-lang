@@ -3086,6 +3086,9 @@ resolveExprWF polys pAcc imps userFns fresh (Surface.morph-app m a) =
 -- polymorphic, so the ∅-context algebra resolves fine.
 resolveExprWF polys pAcc imps userFns fresh (Surface.cata wfF alg) =
   Surface.cata wfF (resolveExprWF polys pAcc imps userFns fresh alg)
+-- `ana` (dual of cata): recurse into the coalgebra likewise.
+resolveExprWF polys pAcc imps userFns fresh (Surface.ana wfF coalg) =
+  Surface.ana wfF (resolveExprWF polys pAcc imps userFns fresh coalg)
 -- Poly = unresolved placeholder from Phase 1. Delegate to helper that
 -- takes the lookup result + equation explicitly, so external proofs
 -- about the sigOp case can `rewrite` the premise cleanly.

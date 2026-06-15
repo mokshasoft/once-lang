@@ -331,3 +331,13 @@ data Expr : ∀ {n} → Ctx n → Usage n → Type → Set where
   cata : ∀ {n} {Γ : Ctx n} {F : Functor} {A} {π : Purity}
        → WellFormedF F → Expr ∅ zeroUsage (⟦ F ⟧T A ⇒[ mk-kind Many π ] A)
        → Expr Γ zeroUsage (μ-type F ⇒[ mk-kind Many π ] A)
+
+  -- Anamorphism (dual of `cata`): given a coalgebra `A → F(A)`, produce the
+  -- unfold `A → νF`. This is the PRODUCTIVE / corecursive scheme — `νF` is
+  -- codata, so the unfold can run forever (a TP program: an effect loop whose
+  -- coalgebra emits a SigOp per layer). Mathematical definition only; the
+  -- operational `SS.eval` runs it fuel-bounded (n layers at fuel n), and the
+  -- denotational `evalᴰ` reads its budget-`n` event prefix (`ana-events`).
+  ana : ∀ {n} {Γ : Ctx n} {F : Functor} {A} {π : Purity}
+      → WellFormedF F → Expr ∅ zeroUsage (A ⇒[ mk-kind Many π ] ⟦ F ⟧T A)
+      → Expr Γ zeroUsage (A ⇒[ mk-kind Many π ] ν-type F)

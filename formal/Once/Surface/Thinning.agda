@@ -249,6 +249,10 @@ rename {Δ = Δ} θ (Surface.lift-morphism m) =
 -- same shape as `lift-morphism`.
 rename {Δ = Δ} θ (Surface.cata wfF alg) =
   subst (λ Ψ → SExpr Δ Ψ _) (sym (thin-usage-zeroUsage θ)) (Surface.cata wfF alg)
+-- `ana` (dual of `cata`): also zeroUsage with a coalgebra in `∅`, so θ never
+-- touches it.
+rename {Δ = Δ} θ (Surface.ana wfF coalg) =
+  subst (λ Ψ → SExpr Δ Ψ _) (sym (thin-usage-zeroUsage θ)) (Surface.ana wfF coalg)
 -- Plan 0.2.4.5 D2: morphism-realm application. Usage shape mirrors
 -- `Surface.app` (with f-usage = zeroUsage, q = Many): renaming the
 -- argument propagates through `+ᵘ` and `*ᵘ` and `zeroUsage`.
