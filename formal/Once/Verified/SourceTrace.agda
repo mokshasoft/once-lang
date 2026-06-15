@@ -191,9 +191,12 @@ main-exists-align m ir mj = aux (C.compileResolvedModule C.Heap false m) refl mj
 --     runs (under `SS.eval`) like the source `main` body. Bundles the compiler
 --     identity (`ir = elaborate Heap (checkElab body)`, a lemma over
 --     `compileResolvedModule`) with α-invariance (raw body ↔ canonical erasure).
---   * `budget-independent` — `evalᴰ` on a finite (`Ana`-free) IR ignores the
---     observation budget; its trace at depth `k` equals the trace at `0`. (The
---     `Ana` case, where the budget IS consumed, is the Ana phase.)
+--   * the compiled IR is FINITE / budget-STABLE: `evalᴰ ir tt n ≡ evalᴰ ir tt 0`
+--     for all `n` (the observation budget is consumed only by `Ana`; a
+--     non-recursive `main` ignores it). This is a CONJUNCT of `compiler-faithful`
+--     (the elaboration of a non-recursive source is Ana-free), NOT a standalone
+--     `∀ ir` claim — which would be UNSOUND, since the productive `Ana` (Phase C)
+--     grows the trace with the budget. The apex reads it via a trivial `cong`.
 postulate
   compiler-faithful :
     ∀ (m : P.Module) (ir : IR Unit Unit) → moduleToIR m ≡ just ir
@@ -204,9 +207,7 @@ postulate
         × (∀ s → SS.eval s (SS.extractDefs (P.Module.decls m)) [] body
                  ≡ SS.eval s (SS.extractDefs (P.Module.decls m)) []
                             (ET.erase (SS.extractDefs (P.Module.decls m)) eE))
-
-  budget-independent :
-    ∀ (ir : IR Unit Unit) (k : ℕ) → proj₁ (evalᴰ ir tt k) ≡ proj₁ (evalᴰ ir tt 0)
+        × (∀ n → evalᴰ ir tt n ≡ evalᴰ ir tt 0)
 
 compiled-main-trace :
   ∀ (m : P.Module) (ir : IR Unit Unit) → moduleToIR m ≡ just ir
@@ -217,14 +218,15 @@ compiled-main-trace :
              ≡ take k (SS.runTraceEval (SS.eval s (SS.extractDefs (P.Module.decls m)) [] body))
 compiled-main-trace m ir mj body lk k
   with compiler-faithful m ir mj body lk
-... | (Ψ , eE , refl , α)
+... | (Ψ , eE , refl , α , stable)
     with ET.bridge-main (SS.extractDefs (P.Module.decls m)) C.Heap eE
 ...   | (s , v , evs , op-eq , tr-eq , _) = s , goal
   where
   defsM = SS.extractDefs (P.Module.decls m)
-  -- LHS trace: budget-independence (depth k → 0) then the bridge's `tr-eq`.
+  -- LHS trace: budget-stability (depth k → 0, from `compiler-faithful`) then the
+  -- bridge's `tr-eq`.
   lhs : take k (projTrace (evalᴰ (Surface.elaborate C.Heap eE) tt) k) ≡ take k evs
-  lhs = trans (cong (take k) (budget-independent (Surface.elaborate C.Heap eE) k))
+  lhs = trans (cong (λ r → take k (proj₁ r)) (stable k))
               (cong (take k) tr-eq)
   -- RHS trace: α-invariance (body ↔ erasure) then the bridge's `op-eq` at `s`,
   -- then `runTraceEval (just (v , evs)) = evs`.
