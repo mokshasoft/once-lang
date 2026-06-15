@@ -36,7 +36,8 @@ open import Data.Nat using (z≤n; s≤s)
 open import Data.Product using (∃-syntax; Σ-syntax; _×_; _,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; sym; trans)
 open import Data.Nat.Properties using (0∸n≡0)
-open import Data.List.Properties using (∷-injective)
+open import Data.List.Properties using (∷-injective; ++-identityʳ)
+open import Data.Maybe using (Maybe; just; nothing)
 
 -- `take n (p ++ x) = take n p ++ take (n ∸ |p|) x` (no stdlib lemma). The list
 -- glue for the prefix simulation: the coalgebra-trace prefix `p` is consumed,
@@ -81,18 +82,27 @@ take-len (suc d) (a ∷ A)  []       ()
 take-len (suc d) (a ∷ A)  (c ∷ C)  eq = take-len d A C (proj₂ (∷-injective eq))
 
 open import Data.Unit using (⊤; tt)
-open import Data.Empty using (⊥)
+open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Sum using (inj₁; inj₂)
 open import Once.Type using (Type; Functor; ⟦_⟧T; K; Id; _⊕_; _⊗_)
 open import Once.CCC.IR using (IR)
 open import Once.CCC.Eval as Val using ()
 open import Once.Semantics.Machine using (⟦_⟧F)
-open import Once.Verified.SourceSemantics using (Vinl; Vinr; Vpair)
 open import Once.Verified.Trace using (SigOpEvent)
 open import Once.Verified.DenotTrace using (ana-events; evalᴰ; inject)
 open import Once.Verified.SourceSemantics
-  using (Value; Defs; Result; runTraceEval; anaUnfold; apply)
+  using (Value; Vint; Vstr; Vunit; Vpair; Vinl; Vinr; Vin; Vclos; Vbuiltin; Vsigop; Vana
+        ; Defs; Result; runTraceEval; anaUnfold; mapAnaF; apply; _>>=ᵣ_)
+open import Once.Verified.TraceDenote using (events-F)
 import Once.Verified.ElaborateTrace as ET
+
+-- `>>=ᵣ`-ing with a PURE `just (g x , [])` preserves the trace: the functor `⊕`
+-- walk wraps each sub-walk's result in `Vinl`/`Vinr` and emits no events of its
+-- own, so its trace is exactly the sub-walk's trace (modulo `e ++ [] ≡ e`).
+rte-mapj : (g : Value → Value) (m : Result)
+         → runTraceEval (m >>=ᵣ λ x → just (g x , [])) ≡ runTraceEval m
+rte-mapj g nothing        = refl
+rte-mapj g (just (v , e)) = ++-identityʳ e
 
 -- The per-layer correspondence, by recursion on the functor. A layer `⟦F⟧F A`
 -- (denotational) corresponds to a `Value` (operational) when their seeds at the
@@ -122,6 +132,90 @@ module _ (defs : Defs) where
     ∀ {F : Functor} {A : Type} → IR A (⟦ F ⟧T A) → Value → Val.⟦ A ⟧ → Value → Set
   CoalgSeedCorr {F} {A} coalgD coalgV a av =
     ET.CompSim defs (⟦ F ⟧T A) (evalᴰ coalgD (inject a)) (λ s → apply s defs coalgV av)
+
+  -- The functor-recursive unfold walk: ONE layer `⟦G⟧F A` is walked structurally,
+  -- recursing the OUTER unfold (`coalgD`/`coalgV` at depth `k`) at each `Id`. The
+  -- depth IH (`IH`) and the coalgebra-uniformity (`coalgU`, turning an `R`-related
+  -- seed into the seed's correspondence) are fixed as module parameters; the walk
+  -- is structural on `G`. Proves K / Id / ⊕ outright; the genuine productivity
+  -- core is isolated to the ⊗ case (`functor-walk-pair`).
+  module FunctorWalk
+    {F : Functor} {A : Type}
+    (coalgD : IR A (⟦ F ⟧T A)) (coalgV : Value) (k : ℕ)
+    (R : Val.⟦ A ⟧ → Value → Set)
+    (coalgU : ∀ a' av' → R a' av' → CoalgSeedCorr {F} {A} coalgD coalgV a' av')
+    (IH : ∀ a' av' → CoalgSeedCorr {F} {A} coalgD coalgV a' av'
+         → ∃[ s ] take k (ana-events {F} {A} coalgD a' k)
+                    ≡ take k (runTraceEval (anaUnfold s defs F coalgV av')))
+    where
+
+    postulate
+      -- THE PRODUCTIVE CORE (⊗). The two sub-walks run at a COMMON operational
+      -- fuel, so combining their per-sub-walk ∃-fuels needs fuel-stabilization
+      -- (more fuel → the same observed prefix, once stabilized); the split itself
+      -- is `take-++-cong` + `take-len`. This is the genuine corecursion content
+      -- and the last honest hole of the structural walk. [open]
+      functor-walk-pair :
+        ∀ (G₁ G₂ : Functor) (d : ℕ) → d ≤ k
+        → (ld₁ : ⟦ G₁ ⟧F Val.⟦ A ⟧) (ld₂ : ⟦ G₂ ⟧F Val.⟦ A ⟧) (lv₁ lv₂ : Value)
+        → LayerRel R G₁ ld₁ lv₁ → LayerRel R G₂ ld₂ lv₂
+        → ∃[ s ] take d (events-F (G₁ ⊗ G₂) (λ seed → ana-events {F} {A} coalgD seed k) (ld₁ , ld₂))
+                   ≡ take d (runTraceEval (mapAnaF s defs F (G₁ ⊗ G₂) coalgV (Vpair lv₁ lv₂)))
+
+    functor-walk : (G : Functor) (d : ℕ) → d ≤ k
+                 → (ld : ⟦ G ⟧F Val.⟦ A ⟧) (lv : Value)
+                 → LayerRel R G ld lv
+                 → ∃[ s ] take d (events-F G (λ seed → ana-events {F} {A} coalgD seed k) ld)
+                            ≡ take d (runTraceEval (mapAnaF s defs F G coalgV lv))
+    -- K: constant data — no events on either side.
+    functor-walk (K T) d d≤k ld lv lr = zero , refl
+    -- Id: this position IS a sub-seed; recurse the OUTER unfold via the depth IH,
+    -- and shrink the prefix from `take k` to `take d` (d ≤ k by density) via take-mono.
+    functor-walk Id d d≤k ld lv lr =
+      let (s , eq) = IH ld lv (coalgU ld lv lr)
+      in s , take-mono d k _ _ d≤k eq
+    -- ⊕: the operational walk wraps the sub-walk in Vinl/Vinr (no events of its
+    -- own), so its trace = the sub-walk's trace (rte-mapj). Recurse.
+    functor-walk (G₁ ⊕ G₂) d d≤k (inj₁ ld) (Vinl lv) lr =
+      let (s , eq) = functor-walk G₁ d d≤k ld lv lr
+      in s , trans eq (sym (cong (take d) (rte-mapj Vinl (mapAnaF s defs F G₁ coalgV lv))))
+    functor-walk (G₁ ⊕ G₂) d d≤k (inj₂ ld) (Vinr lv) lr =
+      let (s , eq) = functor-walk G₂ d d≤k ld lv lr
+      in s , trans eq (sym (cong (take d) (rte-mapj Vinr (mapAnaF s defs F G₂ coalgV lv))))
+    -- ⊗: the productive core.
+    functor-walk (G₁ ⊗ G₂) d d≤k (ld₁ , ld₂) (Vpair lv₁ lv₂) (lr₁ , lr₂) =
+      functor-walk-pair G₁ G₂ d d≤k ld₁ ld₂ lv₁ lv₂ lr₁ lr₂
+    -- ⊕/⊗ shape mismatches: LayerRel = ⊥.
+    functor-walk (G₁ ⊕ G₂) d d≤k (inj₁ ld) (Vint _)     ()
+    functor-walk (G₁ ⊕ G₂) d d≤k (inj₁ ld) (Vstr _)     ()
+    functor-walk (G₁ ⊕ G₂) d d≤k (inj₁ ld) Vunit        ()
+    functor-walk (G₁ ⊕ G₂) d d≤k (inj₁ ld) (Vpair _ _)  ()
+    functor-walk (G₁ ⊕ G₂) d d≤k (inj₁ ld) (Vinr _)     ()
+    functor-walk (G₁ ⊕ G₂) d d≤k (inj₁ ld) (Vin _)      ()
+    functor-walk (G₁ ⊕ G₂) d d≤k (inj₁ ld) (Vclos _ _ _) ()
+    functor-walk (G₁ ⊕ G₂) d d≤k (inj₁ ld) (Vbuiltin _ _) ()
+    functor-walk (G₁ ⊕ G₂) d d≤k (inj₁ ld) (Vsigop _ _) ()
+    functor-walk (G₁ ⊕ G₂) d d≤k (inj₁ ld) (Vana _ _)   ()
+    functor-walk (G₁ ⊕ G₂) d d≤k (inj₂ ld) (Vint _)     ()
+    functor-walk (G₁ ⊕ G₂) d d≤k (inj₂ ld) (Vstr _)     ()
+    functor-walk (G₁ ⊕ G₂) d d≤k (inj₂ ld) Vunit        ()
+    functor-walk (G₁ ⊕ G₂) d d≤k (inj₂ ld) (Vpair _ _)  ()
+    functor-walk (G₁ ⊕ G₂) d d≤k (inj₂ ld) (Vinl _)     ()
+    functor-walk (G₁ ⊕ G₂) d d≤k (inj₂ ld) (Vin _)      ()
+    functor-walk (G₁ ⊕ G₂) d d≤k (inj₂ ld) (Vclos _ _ _) ()
+    functor-walk (G₁ ⊕ G₂) d d≤k (inj₂ ld) (Vbuiltin _ _) ()
+    functor-walk (G₁ ⊕ G₂) d d≤k (inj₂ ld) (Vsigop _ _) ()
+    functor-walk (G₁ ⊕ G₂) d d≤k (inj₂ ld) (Vana _ _)   ()
+    functor-walk (G₁ ⊗ G₂) d d≤k (ld₁ , ld₂) (Vint _)     ()
+    functor-walk (G₁ ⊗ G₂) d d≤k (ld₁ , ld₂) (Vstr _)     ()
+    functor-walk (G₁ ⊗ G₂) d d≤k (ld₁ , ld₂) Vunit        ()
+    functor-walk (G₁ ⊗ G₂) d d≤k (ld₁ , ld₂) (Vinl _)     ()
+    functor-walk (G₁ ⊗ G₂) d d≤k (ld₁ , ld₂) (Vinr _)     ()
+    functor-walk (G₁ ⊗ G₂) d d≤k (ld₁ , ld₂) (Vin _)      ()
+    functor-walk (G₁ ⊗ G₂) d d≤k (ld₁ , ld₂) (Vclos _ _ _) ()
+    functor-walk (G₁ ⊗ G₂) d d≤k (ld₁ , ld₂) (Vbuiltin _ _) ()
+    functor-walk (G₁ ⊗ G₂) d d≤k (ld₁ , ld₂) (Vsigop _ _) ()
+    functor-walk (G₁ ⊗ G₂) d d≤k (ld₁ , ld₂) (Vana _ _)   ()
 
   postulate
     -- THE PRODUCTIVE INDUCTIVE STEP — the genuine hard core. Given the operands
