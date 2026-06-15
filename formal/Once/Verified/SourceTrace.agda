@@ -44,7 +44,8 @@ import Once.Compile as C
 import Once.Parser.Module.Core as P
 open import Once.Grammar.ModuleConvert using (gmoduleToModule)
 open import Once.Verified.Behavior using (Source; Behavior)
-open import Once.Verified.DenotTrace using (evalᴰ)
+open import Once.Verified.DenotTrace using (evalᴰ; ⟦_⟧ᴰ)
+open import Once.Verified.TraceMonad using (T)
 open import Once.Verified.Trace using (SigOpEvent)
 open import Once.Verified.TraceMonad using (projTrace)
 open import Once.Verified.SourceSemantics as SS using (runTrace)
@@ -229,6 +230,23 @@ postulate
 -- bridge's COMPOSITION cases demand it.
 ProdSim : ∀ {X : Set} → (ℕ → List SigOpEvent × X) → (ℕ → SS.Result) → Set
 ProdSim c op = ∀ k → ∃[ s ] take k (proj₁ (c k)) ≡ take k (SS.runTraceEval (op s))
+
+-- DISCOVERED by attempting the finite path of `prod-bridge`: `CompSim ⟹ ProdSim`,
+-- given budget-stability. This is the user's "CompSim is a lemma ProdSim uses" made
+-- literal — the terminating relation is a *view* onto the productive one. The proof
+-- exposes the EXACT gap: `CompSim` pins the trace only at depth 0 (`proj₁ (c 0) ≡
+-- evs`), so converting to the depth-`k` `ProdSim` needs `proj₁ (c k) ≡ proj₁ (c 0)`
+-- — budget-stability. For finite/inductive IR that is structural (totality: the
+-- trace is a fixed finite list, depth-independent); it is FALSE for `ana`, which is
+-- exactly why `ana` is NOT routed here but through the productive `ana-trace-correct`.
+compsim⇒prodsim :
+  ∀ {B : Type} (defs : SS.Defs) (c : T ⟦ B ⟧ᴰ) (op : ℕ → SS.Result)
+  → ET.CompSim defs B c op
+  → (∀ k → proj₁ (c k) ≡ proj₁ (c 0))           -- ◀ the discovered gap: budget-stability
+  → ProdSim c op
+compsim⇒prodsim defs c op (s , v , evs , op-eq , tr-eq , _) stable k =
+  s , trans (cong (take k) (trans (stable k) tr-eq))
+            (sym (cong (λ r → take k (SS.runTraceEval r)) (op-eq s ≤-refl)))
 
 postulate
   -- The PRODUCTIVE BRIDGE, the sole honest obligation under the apex: discharge
