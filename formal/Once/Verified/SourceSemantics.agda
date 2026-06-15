@@ -25,9 +25,14 @@
 
 module Once.Verified.SourceSemantics where
 
-open import Data.Nat using (ℕ; zero; suc)
-open import Data.Integer using (ℤ; _+_; _-_; _*_; -_; _≤ᵇ_) renaming (∣_∣ to absℤ)
-open import Data.Integer.Properties using (_≟_)
+open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _*_; _≤ᵇ_)
+open import Data.Nat.Properties using (_≟_)
+-- D054/B: `Int` values are the machine representation (ℕ — the current `Word`
+-- placeholder, `Once.Word.Word = ℕ`), NOT mathematical ℤ. `+`/`−`/`*` are the
+-- ℕ ops the SigOp `semM` uses, so `SS.eval` agrees with `evalᴰ` definitionally.
+-- ℤ survives only as the raw literal type (`RInt : ℤ`), `absℤ`-converted at the
+-- `RInt` clause exactly as the frontend's `intLit` does.
+open import Data.Integer using (ℤ) renaming (∣_∣ to absℤ)
 open import Data.Bool using (Bool; true; false; not)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.List using (List; []; _∷_; _++_)
@@ -60,7 +65,7 @@ data BTag : Set where
   bId bFst bSnd bInl bInr bIn bOut bCompose bCase bCata bTerminal : BTag
 
 data Value : Set where
-  Vint   : ℤ → Value
+  Vint   : ℕ → Value
   Vstr   : String → Value
   Vunit  : Value
   Vpair  : Value → Value → Value
@@ -94,7 +99,7 @@ lookupEnv ((y , v) ∷ ρ) x with x ≟str y
 -- an Int argument is observed as its ℕ magnitude, anything else as
 -- `nothing` (mirrors `mkEvent`, which records `just n` only for `Int`).
 argℕ : Value → Maybe ℕ
-argℕ (Vint z) = just (absℤ z)
+argℕ (Vint z) = just z
 argℕ _        = nothing
 
 ------------------------------------------------------------------------
@@ -120,8 +125,11 @@ prependEv e₁ (just (v , e₂)) = just (v , e₁ ++ e₂)
 -- value semantics' is a Part-B faithfulness obligation.
 ------------------------------------------------------------------------
 
+-- div/mod: ℕ placeholders (the SigOp `div-semM`/`mod-semM` are likewise
+-- postulated, pending a div-by-zero policy — D054). Their `cs-*` await sharing
+-- these with the SigOp `semM`; `+`/`−`/`*` (concrete ℕ ops below) already agree.
 postulate
-  divℤ modℤ : ℤ → ℤ → ℤ
+  divℕ modℕ : ℕ → ℕ → ℕ
 
 boolToSum : Bool → Value
 boolToSum true  = Vinl Vunit
@@ -129,10 +137,10 @@ boolToSum false = Vinr Vunit
 
 binResult : BinOp → Value → Value → Result
 binResult OpAdd (Vint a) (Vint b) = just (Vint (a + b) , [])
-binResult OpSub (Vint a) (Vint b) = just (Vint (a - b) , [])
+binResult OpSub (Vint a) (Vint b) = just (Vint (a ∸ b) , [])
 binResult OpMul (Vint a) (Vint b) = just (Vint (a * b) , [])
-binResult OpDiv (Vint a) (Vint b) = just (Vint (divℤ a b) , [])
-binResult OpMod (Vint a) (Vint b) = just (Vint (modℤ a b) , [])
+binResult OpDiv (Vint a) (Vint b) = just (Vint (divℕ a b) , [])
+binResult OpMod (Vint a) (Vint b) = just (Vint (modℕ a b) , [])
 binResult OpLt  (Vint a) (Vint b) = just (boolToSum (not (b ≤ᵇ a)) , [])  -- a<b ≡ ¬(b≤a)
 binResult OpLe  (Vint a) (Vint b) = just (boolToSum (a ≤ᵇ b) , [])
 binResult OpGt  (Vint a) (Vint b) = just (boolToSum (not (a ≤ᵇ b)) , [])  -- a>b ≡ ¬(a≤b)
@@ -233,7 +241,7 @@ mutual
   ... | just (Vinr b , e₁) = prependEv e₁ (eval f defs ((yr , b) ∷ ρ) r)
   ... | just (_ , _)       = nothing
   eval (suc f) defs ρ RUnit          = just (Vunit , [])
-  eval (suc f) defs ρ (RInt n)       = just (Vint n , [])
+  eval (suc f) defs ρ (RInt n)       = just (Vint (absℤ n) , [])
   eval (suc f) defs ρ (RStringLit s) = just (Vstr s , [])
   eval (suc f) defs ρ (RAnnot e _)   = eval f defs ρ e
   eval (suc f) defs ρ (RBinOp op a b) =
@@ -241,7 +249,8 @@ mutual
   eval (suc f) defs ρ (RUnaryOp OpNeg e) =
     eval f defs ρ e >>=ᵣ λ v → neg v
     where neg : Value → Result
-          neg (Vint z) = just (Vint (- z) , [])
+          -- ℕ has no negation; matches `neg-semM _ = 0` (the current placeholder).
+          neg (Vint z) = just (Vint 0 , [])
           neg _        = nothing
 
   apply : ℕ → Defs → Value → Value → Result
