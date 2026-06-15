@@ -24,6 +24,7 @@
 module Once.Verified.SourceFaithful where
 
 open import Data.Nat using (ℕ)
+open import Data.Fin using (Fin; zero; suc)
 open import Data.List using (List; []; _++_)
 open import Data.Sum using (inj₁; inj₂)
 open import Data.Product using (_,_; proj₁; proj₂)
@@ -31,9 +32,9 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong
 open import Data.List.Properties using (++-identityʳ)
 
 open import Once.Type using (Type; Unit; _+_)
-open import Once.Surface.Syntax using (Expr; Ctx; Usage)
-open import Once.Surface.Elaborate using (elaborate; ⟦_⟧ᶜ)
-open import Once.Verified.TraceMonad using (T)
+open import Once.Surface.Syntax using (Expr; Ctx; Usage; lookup; _,_^_)
+open import Once.Surface.Elaborate using (elaborate; ⟦_⟧ᶜ; proj)
+open import Once.Verified.TraceMonad using (T; returnT)
 open import Once.Verified.DenotTrace using (⟦_⟧ᴰ; evalᴰ; inject)
 open import Once.CCC.Eval as Val using ()
 import Once.Verified.SourceDenote as SD
@@ -63,11 +64,20 @@ inj-uu : (y : Val.⟦ Unit + Unit ⟧) → inject {Unit + Unit} y ≡ y
 inj-uu (inj₁ _) = refl
 inj-uu (inj₂ _) = refl
 
+-- `var i` ↦ `proj i` (`proj zero = snd`, `proj (suc i) = proj i ∘ fst`), which
+-- mirrors `lookupᴰ`; `∘`/`fst` reduce (returnT, []++X) so `proj (suc i)` peels to
+-- the sub-env. Pure structural induction on the de-Bruijn index.
+proj-lookup : ∀ {n} {Γ : Ctx n} (i : Fin n) (dγ : ⟦ ⟦ Γ ⟧ᶜ ⟧ᴰ) (k : ℕ)
+            → evalᴰ (proj {Γ = Γ} i) dγ k ≡ returnT (SD.lookupᴰ Γ i dγ) k
+proj-lookup {Γ = Γ , A ^ q} zero    dγ k = refl
+proj-lookup {Γ = Γ , A ^ q} (suc i) dγ k = proj-lookup {Γ = Γ} i (proj₁ dγ) k
+
 faithful :
   ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A} (e : Expr Γ Ψ A)
     (dγ : ⟦ ⟦ Γ ⟧ᶜ ⟧ᴰ) (k : ℕ)
   → evalᴰ (elaborate C.Heap e) dγ k ≡ SD.⟦ e ⟧ˢ dγ k
 -- `unit` ↦ `terminal`; both sides reduce to `returnT tt` ⇒ refl.
+faithful (var {Γ = Γ} i) dγ k = proj-lookup {Γ = Γ} i dγ k
 faithful unit    dγ k = refl
 faithful (int n) dγ k = refl   -- intLit's semM reduces to `absℤ n`, matching ⟦int n⟧ˢ
 -- str: `str-lit-semM s tt` does NOT reduce to `s` definitionally → needs the
