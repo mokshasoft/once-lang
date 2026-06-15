@@ -33,7 +33,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong
 open import Data.List.Properties using (++-identityʳ; ++-assoc)
 open import Once.Verified.Trace using (SigOpEvent)
 
-open import Once.Type using (Type; Unit; _+_)
+open import Once.Type using (Type; Unit; _+_; _⇒[_]_)
 open import Once.Surface.Syntax using (Expr; Ctx; Usage; lookup; _,_^_)
 open import Once.Surface.Elaborate using (elaborate; ⟦_⟧ᶜ; proj)
 open import Once.Verified.TraceMonad using (T; returnT)
@@ -143,4 +143,13 @@ faithful (let' e1 e2) dγ n
     (cong (_++ proj₁ (SD.⟦ e2 ⟧ˢ (dγ , proj₂ (SD.⟦ e1 ⟧ˢ dγ n)) n))
           (++-identityʳ (proj₁ (SD.⟦ e1 ⟧ˢ dγ n))))
     refl
+-- Effect primitives: ⟦_⟧ˢ denotes them through generic-info/emit-D/semM exactly
+-- as elaborate's `SigOp(generic-info name)∘terminal` (non-arrow) / `curry(SigOp∘
+-- snd)` (arrow) reduce ([]++X, returnT, eta) ⇒ refl.
+faithful (sigOp {A = (Dom ⇒[ kk ] Cod)} name) dγ k = refl
+faithful (closure name) dγ k = refl
+faithful (poly name PT) dγ k = refl
+-- NON-ARROW `sigOp name`: `elaborate`/`⟦_⟧ˢ` both dispatch on `A`'s shape (arrow →
+-- curry, else → SigOp∘terminal), so neither reduces for abstract non-arrow `A` —
+-- the type-dispatch wall (would need to case on every non-arrow `A`). Stays todo.
 faithful e       dγ k = faithful-todo e dγ k
