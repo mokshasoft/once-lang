@@ -53,6 +53,7 @@ import Once.Verified.MainAlign as MA
 import Once.Verified.ElaborateTrace as ET
 import Once.Surface.Elaborate as Surface
 open import Once.Surface.Syntax using (Expr; ∅; Usage)
+import Once.Verified.SourceDenote as SD
 open import Data.Nat.Properties using (≤-refl)
 
 ------------------------------------------------------------------------
@@ -259,6 +260,19 @@ postulate
     ∀ {Ψ : Usage 0} (eE : Expr ∅ Ψ Unit) (defs : SS.Defs)
     → ProdSim (evalᴰ (Surface.elaborate C.Heap eE) tt)
               (λ s → SS.eval s defs [] (ET.erase defs eE))
+
+-- OCP-0006 (Plan 0.46, 2026-06-15): THE elaborator-faithfulness obligation, over
+-- the typed source semantics `SD.⟦_⟧ˢ`. BOTH sides are denotational (the same
+-- monad `T`), so this is a PLAIN trace equality at each depth — no `∃s`, no fuel,
+-- no `SS.eval`. The elaborator is load-bearing: a meaning-changing elaboration
+-- breaks this. Discharged in M3 by structural induction on `eE` (leaf cases —
+-- arith/comparison/sigOp/lift-morphism — are DEFINITIONALLY equal, since `⟦_⟧ˢ`
+-- denotes them through the same `semM`/`evalᴰ` the IR side uses). Supersedes the
+-- `SS.eval`-based `prod-bridge`/`ProdSim` chain above (retired with `SS.eval`, M4).
+postulate
+  elaborate-faithful :
+    ∀ {Ψ : Usage 0} (eE : Expr ∅ Ψ Unit) (k : ℕ)
+    → proj₁ (evalᴰ (Surface.elaborate C.Heap eE) tt k) ≡ proj₁ (SD.⟦ eE ⟧ˢ tt k)
 
 -- `elaborate-trace-correct` is now a DEFINITION (projection of `prod-bridge`),
 -- not a postulate — anchoring the apex at the productive relation.
