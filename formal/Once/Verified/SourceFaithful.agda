@@ -121,4 +121,13 @@ faithful (arr' f)   dγ n rewrite faithful f dγ n = cong₂ _,_ (++-identityʳ 
 -- `curry (morph ∘ snd)` / `morph ∘ ex` reduce to the same (returnT/[]++X + eta).
 faithful (lift-morphism morph) dγ k = refl
 faithful (morph-app morph e)   dγ n rewrite faithful e dγ n = refl
+-- let': `elaborate = ee2 ∘ ⟨id, ee1⟩`. Rewrite the e1 IH, then the e2 IH at the
+-- extended env (dγ , v1); residual is the ⟨id,…⟩/pair empty traces:
+-- `(W ++ []) ++ Z ≡ W ++ Z`. Value identical.
+faithful (let' e1 e2) dγ n
+  rewrite faithful e1 dγ n | faithful e2 (dγ , proj₂ (SD.⟦ e1 ⟧ˢ dγ n)) n =
+  cong₂ _,_
+    (cong (_++ proj₁ (SD.⟦ e2 ⟧ˢ (dγ , proj₂ (SD.⟦ e1 ⟧ˢ dγ n)) n))
+          (++-identityʳ (proj₁ (SD.⟦ e1 ⟧ˢ dγ n))))
+    refl
 faithful e       dγ k = faithful-todo e dγ k
