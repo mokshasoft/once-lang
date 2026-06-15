@@ -24,6 +24,8 @@
 module Once.Verified.SourceFaithful where
 
 open import Data.Nat using (ℕ)
+open import Data.List using (List; []; _++_)
+open import Data.Sum using (inj₁; inj₂)
 open import Data.Product using (_,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
 
@@ -60,4 +62,12 @@ faithful unit    dγ k = refl
 faithful (int n) dγ k = refl   -- intLit's semM reduces to `absℤ n`, matching ⟦int n⟧ˢ
 -- str: `str-lit-semM s tt` does NOT reduce to `s` definitionally → needs the
 -- literal-semantics lemma (`str-lit-semM s tt ≡ s`); deferred to faithful-todo.
+-- Single-subterm projections/injections: `elaborate (op e) = <prim> ∘ elaborate e`
+-- and `⟦ op e ⟧ˢ = ⟦e⟧ˢ >>=T (λv → returnT (<prim> v))`; `_>>=T_` sees the same
+-- depth on both sides, so the trace+value at `n` is a function of the SUBTERM's
+-- (trace,value) at `n` — one `cong` over the IH (`faithful e`).
+faithful (fst' e) dγ n = cong (λ r → (proj₁ r ++ [] , proj₁ (proj₂ r))) (faithful e dγ n)
+faithful (snd' e) dγ n = cong (λ r → (proj₁ r ++ [] , proj₂ (proj₂ r))) (faithful e dγ n)
+faithful (inl' e) dγ n = cong (λ r → (proj₁ r ++ [] , inj₁ (proj₂ r))) (faithful e dγ n)
+faithful (inr' e) dγ n = cong (λ r → (proj₁ r ++ [] , inj₂ (proj₂ r))) (faithful e dγ n)
 faithful e       dγ k = faithful-todo e dγ k
