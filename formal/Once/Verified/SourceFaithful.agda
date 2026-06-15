@@ -36,7 +36,8 @@ open import Once.Verified.Trace using (SigOpEvent)
 open import Once.Type using (Type; Unit; Void; Int; Str; Float; Buffer; _*_; _+_; _⇒[_]_; μ-type; ν-type)
 open import Once.Surface.Syntax using (Expr; Ctx; Usage; lookup; _,_^_)
 open import Once.Surface.Elaborate using (elaborate; ⟦_⟧ᶜ; proj)
-open import Once.Verified.TraceMonad using (T; returnT)
+open import Once.Verified.TraceMonad using (T; returnT; _>>=T_)
+open import Once.CCC.IR using (_∘_; ⟨_,_⟩; apply)
 open import Once.Verified.DenotTrace using (⟦_⟧ᴰ; evalᴰ; inject)
 open import Once.CCC.Eval as Val using ()
 import Once.Verified.SourceDenote as SD
@@ -80,6 +81,22 @@ proj-lookup {Γ = Γ , A ^ q} (suc i) dγ k = proj-lookup {Γ = Γ} i (proj₁ d
 app-trace : ∀ (A B C : List SigOpEvent) → (A ++ (B ++ [])) ++ C ≡ A ++ (B ++ C)
 app-trace A B C rewrite ++-identityʳ B = ++-assoc A B C
 
+-- The application body, shared by `app` and `effApp` (whose suspended closure has
+-- the same body). Generic over the arrow kind; takes the sub-IHs as arguments so
+-- the `rewrite` happens OUTSIDE any `extensionality` lambda. After rewriting both
+-- IHs the closures/args align (apply runs the SAME `vf vx`, value refl) and the
+-- trace re-associates (app-trace).
+app-body : ∀ {m} {Γ : Ctx m} {Ψ₁ Ψ₂ : Usage m} {A B} {kk}
+             (f : Expr Γ Ψ₁ (A ⇒[ kk ] B)) (x : Expr Γ Ψ₂ A)
+             (dγ : ⟦ ⟦ Γ ⟧ᶜ ⟧ᴰ) (n : ℕ)
+           → evalᴰ (elaborate C.Heap f) dγ n ≡ SD.⟦ f ⟧ˢ dγ n
+           → evalᴰ (elaborate C.Heap x) dγ n ≡ SD.⟦ x ⟧ˢ dγ n
+           → evalᴰ (apply ∘ ⟨ elaborate C.Heap f , elaborate C.Heap x ⟩ C.Heap) dγ n
+             ≡ (SD.⟦ f ⟧ˢ dγ >>=T (λ vf → SD.⟦ x ⟧ˢ dγ >>=T (λ vx → vf vx))) n
+app-body f x dγ n ihf ihx rewrite ihf | ihx =
+  cong₂ _,_ (app-trace (proj₁ (SD.⟦ f ⟧ˢ dγ n)) (proj₁ (SD.⟦ x ⟧ˢ dγ n))
+                       (proj₁ (proj₂ (SD.⟦ f ⟧ˢ dγ n) (proj₂ (SD.⟦ x ⟧ˢ dγ n)) n))) refl
+
 faithful :
   ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A} (e : Expr Γ Ψ A)
     (dγ : ⟦ ⟦ Γ ⟧ᶜ ⟧ᴰ) (k : ℕ)
@@ -92,9 +109,13 @@ faithful (lam q _ e) dγ k =
   cong (_,_ []) (extensionality (λ a → extensionality (λ k′ → faithful e (dγ , a) k′)))
 -- app: `apply ∘ ⟨ef,ex⟩`. Rewrite both IHs; the closures/args align so `apply`
 -- runs the SAME `vf vx` ⇒ value refl; trace re-associates (app-trace).
-faithful (app f x) dγ n rewrite faithful f dγ n | faithful x dγ n =
-  cong₂ _,_ (app-trace (proj₁ (SD.⟦ f ⟧ˢ dγ n)) (proj₁ (SD.⟦ x ⟧ˢ dγ n))
-                       (proj₁ (proj₂ (SD.⟦ f ⟧ˢ dγ n) (proj₂ (SD.⟦ x ⟧ˢ dγ n)) n))) refl
+faithful (app f x) dγ n = app-body f x dγ n (faithful f dγ n) (faithful x dγ n)
+-- effApp: a SUSPENDED closure whose body is the (effectful) application of f to x.
+-- Both sides are `returnT <closure>` (the Unit-thunk); the closure body is exactly
+-- app-body, lifted through extensionality (over the discarded Unit arg + depth).
+faithful (effApp f x) dγ k =
+  cong (_,_ []) (extensionality (λ _ →
+    extensionality (λ n → app-body f x dγ n (faithful f dγ n) (faithful x dγ n))))
 -- absurd v : v has type Void, so `proj₂ (⟦v⟧ˢ dγ n) : ⊥` — vacuous.
 faithful (absurd v) dγ n = ⊥-elim (proj₂ (SD.⟦ v ⟧ˢ dγ n))
 faithful unit    dγ k = refl
