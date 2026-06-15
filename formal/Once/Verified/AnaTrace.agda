@@ -35,7 +35,7 @@ open import Data.List using (List; []; _∷_; _++_; take; length)
 open import Data.Nat using (z≤n; s≤s)
 open import Data.Product using (∃-syntax; Σ-syntax; _×_; _,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; sym; trans)
-open import Data.Nat.Properties using (0∸n≡0)
+open import Data.Nat.Properties using (0∸n≡0; m≤n⇒m∸n≡0)
 open import Data.List.Properties using (∷-injective; ++-identityʳ)
 open import Data.Maybe using (Maybe; just; nothing)
 
@@ -80,6 +80,18 @@ take-len (suc d) []       []       _  = refl
 take-len (suc d) []       (c ∷ C)  ()
 take-len (suc d) (a ∷ A)  []       ()
 take-len (suc d) (a ∷ A)  (c ∷ C)  eq = take-len d A C (proj₂ (∷-injective eq))
+
+-- Monotonicity foundation: when `ys` extends `xs` (xs is a prefix) and the
+-- observation `n` already fits inside `xs`, `take n` is stable — deeper
+-- unfolds (which only EXTEND the trace) don't change the observed prefix.
+-- This is what lifts the per-depth correspondence to "sufficient depth": once
+-- depth `k` has produced ≥ n SigOps, no deeper depth changes `take n`.
+prefix-take : ∀ {ℓ} {X : Set ℓ} (n : ℕ) (xs ys : List X)
+            → (∃[ zs ] ys ≡ xs ++ zs) → n ≤ length xs → take n xs ≡ take n ys
+prefix-take n xs ys (zs , refl) le =
+  sym (trans (take-++ n xs zs)
+             (trans (cong (λ m → take n xs ++ take m zs) (m≤n⇒m∸n≡0 le))
+                    (++-identityʳ (take n xs))))
 
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥; ⊥-elim)
