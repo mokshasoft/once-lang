@@ -23,7 +23,7 @@
 module Once.Verified.SourceDenote where
 
 open import Data.Fin using (Fin; zero; suc)
-open import Data.Nat using (ℕ) renaming (_+_ to _+ℕ_; _∸_ to _∸ℕ_; _*_ to _*ℕ_)
+open import Data.Nat using (ℕ)
 open import Data.Integer using (ℤ) renaming (∣_∣ to absℤ)
 open import Data.List using (List)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
@@ -38,6 +38,10 @@ open import Once.Surface.Syntax using (Expr; Ctx; Usage; lookup; _,_^_; ∅)
 open import Once.Surface.Elaborate using (⟦_⟧ᶜ)
 open import Once.Verified.TraceMonad using (T; returnT; _>>=T_)
 open import Once.Verified.DenotTrace using (⟦_⟧ᴰ)
+open import Once.CCC.SigOp.Info using (semM)
+open import Once.Arith.SigOp.Builders
+  using (add-info; sub-info; mul-info; div-info; mod-info; neg-info;
+         lt-info; le-info; gt-info; ge-info; eq-info; ne-info)
 
 open Once.Surface.Syntax.Expr
 
@@ -80,9 +84,26 @@ postulate
 ⟦ let' e1 e2 ⟧ˢ   dγ = ⟦ e1 ⟧ˢ dγ >>=T λ v1 → ⟦ e2 ⟧ˢ (dγ , v1)
 ⟦ int n ⟧ˢ        dγ = returnT (absℤ n)
 ⟦ str s ⟧ˢ        dγ = returnT s
-⟦ add a b ⟧ˢ      dγ = ⟦ a ⟧ˢ dγ >>=T λ va → ⟦ b ⟧ˢ dγ >>=T λ vb → returnT (va +ℕ vb)
-⟦ sub a b ⟧ˢ      dγ = ⟦ a ⟧ˢ dγ >>=T λ va → ⟦ b ⟧ˢ dγ >>=T λ vb → returnT (va ∸ℕ vb)
-⟦ mul a b ⟧ˢ      dγ = ⟦ a ⟧ˢ dγ >>=T λ va → ⟦ b ⟧ˢ dγ >>=T λ vb → returnT (va *ℕ vb)
-⟦ neg e ⟧ˢ        dγ = ⟦ e ⟧ˢ dγ >>=T λ v → returnT 0
+-- Arith / comparison / div-mod: all elaborate to `SigOp <op>-info` (Pure), so
+-- denote them through the SAME `semM` — `⟦ op a b ⟧ˢ` is then DEFINITIONALLY the
+-- IR side `⟦ <op>IR ∘ ⟨a,b⟩ ⟧ᴰ`, making M3's elaborate-correctness trivial here.
+⟦ add a b ⟧ˢ      dγ = ⟦ a ⟧ˢ dγ >>=T λ va → ⟦ b ⟧ˢ dγ >>=T λ vb → returnT (semM add-info (va , vb))
+⟦ sub a b ⟧ˢ      dγ = ⟦ a ⟧ˢ dγ >>=T λ va → ⟦ b ⟧ˢ dγ >>=T λ vb → returnT (semM sub-info (va , vb))
+⟦ mul a b ⟧ˢ      dγ = ⟦ a ⟧ˢ dγ >>=T λ va → ⟦ b ⟧ˢ dγ >>=T λ vb → returnT (semM mul-info (va , vb))
+⟦ div a b ⟧ˢ      dγ = ⟦ a ⟧ˢ dγ >>=T λ va → ⟦ b ⟧ˢ dγ >>=T λ vb → returnT (semM div-info (va , vb))
+⟦ mod' a b ⟧ˢ     dγ = ⟦ a ⟧ˢ dγ >>=T λ va → ⟦ b ⟧ˢ dγ >>=T λ vb → returnT (semM mod-info (va , vb))
+⟦ neg e ⟧ˢ        dγ = ⟦ e ⟧ˢ dγ >>=T λ v → returnT (semM neg-info v)
+⟦ lt a b ⟧ˢ       dγ = ⟦ a ⟧ˢ dγ >>=T λ va → ⟦ b ⟧ˢ dγ >>=T λ vb → returnT (semM lt-info (va , vb))
+⟦ le a b ⟧ˢ       dγ = ⟦ a ⟧ˢ dγ >>=T λ va → ⟦ b ⟧ˢ dγ >>=T λ vb → returnT (semM le-info (va , vb))
+⟦ gt a b ⟧ˢ       dγ = ⟦ a ⟧ˢ dγ >>=T λ va → ⟦ b ⟧ˢ dγ >>=T λ vb → returnT (semM gt-info (va , vb))
+⟦ ge a b ⟧ˢ       dγ = ⟦ a ⟧ˢ dγ >>=T λ va → ⟦ b ⟧ˢ dγ >>=T λ vb → returnT (semM ge-info (va , vb))
+⟦ eq a b ⟧ˢ       dγ = ⟦ a ⟧ˢ dγ >>=T λ va → ⟦ b ⟧ˢ dγ >>=T λ vb → returnT (semM eq-info (va , vb))
+⟦ ne a b ⟧ˢ       dγ = ⟦ a ⟧ˢ dγ >>=T λ va → ⟦ b ⟧ˢ dγ >>=T λ vb → returnT (semM ne-info (va , vb))
 ⟦ arr' f ⟧ˢ       dγ = ⟦ f ⟧ˢ dγ
+-- effApp: a SUSPENDED effect (`Unit ⇒[eff] B`) — the Eff design (D018). The
+-- effectful application is deferred into the Unit-thunk; its trace fires when the
+-- thunk is applied (at the top-level main run), threaded by `T`. No fork: the old
+-- immediate-vs-suspended mismatch was SS.eval (retired) vs the IR; one semantics
+-- now, and the Eff type IS suspended.
+⟦ effApp f x ⟧ˢ   dγ = returnT (λ _ → ⟦ f ⟧ˢ dγ >>=T λ vf → ⟦ x ⟧ˢ dγ >>=T λ vx → vf vx)
 ⟦ e ⟧ˢ            dγ = ⟦⟧ˢ-todo e dγ
