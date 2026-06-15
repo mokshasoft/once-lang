@@ -681,6 +681,7 @@ spineOf e = go e []
     go (Raw.RAnnot e t)      args = mkSpine (Raw.RAnnot e t) args
     go (Raw.RBinOp op x y)   args = mkSpine (Raw.RBinOp op x y) args
     go (Raw.RUnaryOp op x)   args = mkSpine (Raw.RUnaryOp op x) args
+    go (Raw.RAna F c)        args = mkSpine (Raw.RAna F c) args
 
 -- | Is this name one of the 13 polymorphic builtins?
 isPolyBuiltin : String → Bool
@@ -1547,6 +1548,11 @@ mutual
 
   inferElabV ctx (Raw.RLam _ _) =
     failure LambdaInInferMode , tt
+
+  -- `RAna` is INTERNAL (erase of an already-elaborated `ana`); the parser never
+  -- produces it, so `inferElabV` never legitimately sees it — reject for totality.
+  inferElabV ctx (Raw.RAna _ _) =
+    failure (BuiltinTypeMismatch "ana") , tt
 
   inferElabV ctx (Raw.RAnnot e T) with checkElabV ctx e T
   ... | success Ψ eE d fr , witness = success T Ψ eE d fr , t-annot witness

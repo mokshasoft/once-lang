@@ -14,7 +14,7 @@ module Once.TypeCheck.Raw where
 
 open import Data.String using (String)
 open import Data.Integer using (ℤ)
-open import Once.Type using (Type)
+open import Once.Type using (Type; Functor)
 
 ------------------------------------------------------------------------
 -- Binary Operators (OCP-0002)
@@ -96,6 +96,14 @@ data RawExpr : Set where
 
   -- Unary operator application (OCP-0002)
   RUnaryOp  : UnaryOp → RawExpr → RawExpr
+
+  -- Anamorphism (the corecursive unfold) carrying its functor `F`. Unlike `cata`
+  -- (whose μ-value self-marks recursion with `Vin`, so the untyped fold finds the
+  -- recursive positions), `ana`'s coalgebra output `F(A)` has UNMARKED seeds — so
+  -- the untyped operational unfold needs `F` to know where to recurse. The
+  -- elaboration erases `ana wfF coalg` to `RAna F (erase coalg)`. (Internal: not
+  -- yet surface-parseable; the parser never produces it.)
+  RAna      : Functor → RawExpr → RawExpr
 
 ------------------------------------------------------------------------
 -- Raw Types (with type variable names)
