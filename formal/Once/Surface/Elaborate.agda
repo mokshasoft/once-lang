@@ -39,7 +39,7 @@ open import Once.Arith.SigOp.IntLit using (lit-int-info)
 open import Once.Arith.SigOp.Builders
   using (str-lit-info; add-info; sub-info; mul-info; div-info; mod-info;
          neg-info; lt-info; le-info; gt-info; ge-info; eq-info; ne-info;
-         generic-info)
+         generic-info; value-info)
 
 -- Literals: constant morphisms that ignore input environment.
 --
@@ -271,7 +271,7 @@ elaborate m (arr' f) = arr ∘ elaborate m f
 -- now value-equivalent under apply.
 elaborate m (sigOp {A = (Dom ⇒[ k ] Cod)} name) =
   curry {k = k} (SigOp (generic-info name) ∘ snd) m
-elaborate m (sigOp name) = SigOp (generic-info name) ∘ terminal
+elaborate m (sigOp name) = SigOp (value-info name) ∘ terminal
 -- Plan 0.19: user-defined closure reference.
 --
 -- Unlike `sigOp`, `closure name` does NOT curry-wrap at arrow type.
@@ -285,13 +285,13 @@ elaborate m (sigOp name) = SigOp (generic-info name) ∘ terminal
 -- This is the same shape as `sigOp` at non-arrow type. The split
 -- exists so the elaborator never silently wraps a user-defined
 -- entry in a curry that mismatches its asm signature.
-elaborate m (closure name) = SigOp (generic-info name) ∘ terminal
+elaborate m (closure name) = SigOp (value-info name) ∘ terminal
 -- Unresolved polymorphic placeholder. A well-formed Surface Expr
 -- reaching elaborate has been through `resolveExpr`, so `poly` nodes
 -- only survive when resolution failed (e.g. cycle). Treat as an
 -- external SigOp with the unqualified name — matches evalSurface for
 -- the correctness theorem, and codegen will catch it as unresolved.
-elaborate m (poly name _) = SigOp (generic-info name) ∘ terminal
+elaborate m (poly name _) = SigOp (value-info name) ∘ terminal
 
 -- Plan 0.2.4.5 D2: morphism realm.
 -- A `lift-morphism morph` used as a value (e.g. assigned to a variable
