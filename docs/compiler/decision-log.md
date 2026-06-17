@@ -4220,3 +4220,72 @@ only its *position* changes — cross-check, not apex meaning.)
 
 - D057 (independent source reference — role updated), D058 (event/observation-depth
   observable), Plan 0.46 (denotational `evalᴰ` as the observable + reasoning layer)
+
+## D060: One Denotational Meaning (Surface + IR); `SS.eval` Retired; Value Model at the Machine `Word`
+
+**Date**: 2026-06-17
+**Status**: Accepted
+**Supersedes**: D059 (retires the `SS.eval` cross-check; keeps its denotational-meaning core)
+**Updates**: D057 (the source reference is no longer `SS.eval`); D058 (observation-depth observable retained)
+**Implements**: Plan 0.46 / OCP-0006.2 (branch `clean-semantics`)
+
+### Context
+
+Once *is* CCC + structured recursion with an effect-carrying arrow, so a program *is* a
+morphism and has exactly **one** mathematical meaning. The tree had accumulated ~10
+overlapping semantics joined by drift-prone bridges; D059 codified one — keeping `SS.eval`
+(untyped, fuel-bounded) as a "load-bearing cross-check" against `evalᴰ` via `#10`
+(`SS.eval ≡ evalᴰ`). That coexistence **is** the island problem: two semantics that can
+drift, joined by a bridge that papers over the drift — and `SS.eval`'s fuel re-admits the
+general recursion OCP-0003 removed.
+
+### Decision
+
+The semantics is **five objects and one theorem**:
+1. **Model** — `Semantics.Core : CCC+SR → Set`, instantiated at the **machine `Word`**
+   (signed modular per D054; total division per D055; width threaded from the architecture,
+   never hard-coded — reuse `Once.Word`/`Width bits`). Not ℤ, not unbounded ℕ.
+2. **Meaning** — `⟦_⟧ : CCC+SR → T` (observation monad, D058); value from the Model, trace
+   from `emit`. ONE meaning, two presentations: `⟦_⟧ˢ` over the typed surface `Expr` (the
+   programmer's meaning) and `⟦_⟧ᴰ` over IR (the compiler's), proven equal by
+   `faithful : ⟦elab e⟧ᴰ ≡ ⟦e⟧ˢ`.
+3. **Machine** — `exec` (abstract machine → targets).
+4. **Adequacy** — the apex: `machine-trace (compile src) ≡ projTrace ⟦src⟧ˢ`.
+
+**`SS.eval` is deleted**, not repositioned. The `CompSim`/`ProdSim`/`prod-bridge`/`AnaTrace`
+scaffolding and the **ℤ value model** (`Semantics.IR` / `eval′` / `SigOpInfo.semI`) go with it.
+
+### Why load-bearing survives without `SS.eval` (the crux — answers D059's worry)
+
+D059 kept `SS.eval` to catch a buggy elaborator via an *independent, pre-`elaborate`*
+reference. That job is done by two properties, **neither a trace cross-check**:
+- **Soundness (output well-typed):** intrinsic typing. `checkElab : RawExpr → Maybe (typed
+  Expr Γ Ψ A)` *cannot* emit an ill-typed term — Agda rejects it by construction.
+- **Faithfulness (output is the *right* term for the source):** the **syntactic `erase`
+  round-trip** `erase (checkElab raw) ≡ raw`. A well-typed-but-wrong elaboration breaks it.
+  Syntactic, fuel-free, trace-independent.
+
+And surface→IR `elaborate` stays load-bearing by **`faithful`** (`⟦elaborate e⟧ᴰ ≡ ⟦e⟧ˢ`),
+because `⟦_⟧ˢ` is defined *directly* on the surface, independent of `elaborate` — so a
+meaning-changing elaboration breaks `faithful`. `SS.eval` was a redundant *third* mechanism;
+removing it loses no coverage.
+
+### Consequences
+
+- D059's standing invariant ("`#10` is a required conjunct or load-bearing is silently
+  lost") is **void** — there is no `#10` and no `SS.eval`. Load-bearing = intrinsic typing +
+  `erase` round-trip + `faithful`.
+- Value model migrates ℤ → `Word`. **A rule true in ℤ but false under wrap is unsound on
+  hardware** — surface it as an explicit `postulate` tagged *unsound + the precise wrap case*
+  (a visible bug backlog), never hidden behind the ℤ instantiation. (The D054 straddle,
+  closed.)
+- Process (branch `clean-semantics`, Plan 0.46): top-down, layer by layer (Model → Meaning →
+  Machine → Adequacy); **delete conflicts, don't bridge them**; scaffold downstream breaks as
+  downward-pointing postulates to bound the red; never descend a layer until it is
+  postulate-free among itself.
+
+### See Also
+
+- D059 (superseded — `SS.eval` cross-check retired), D057/D058 (source-reference role
+  updated; observation depth retained), D054 (`Int` = signed modular `Word`), D055 (total
+  division), Plan 0.46 + `plans/0.46-HANDOFF.md`.
