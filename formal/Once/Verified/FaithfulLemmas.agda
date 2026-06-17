@@ -21,6 +21,7 @@ open import Data.List using (List; []; _++_)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Nat using (ℕ; zero; suc)
+open import Data.List.Properties using (++-identityʳ)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; trans)
 
 open import Once.Type using (Type; Unit; Void; Int; Str; Float; Buffer;
@@ -29,12 +30,12 @@ open import Once.Type using (Type; Unit; Void; Int; Str; Float; Buffer;
 open import Once.CCC.Eval as Val using ()
 open import Once.CCC.IR using (IR; _∘_; ⟨_,_⟩; apply; curry; terminal; id; snd; Cata; Ana)
 open import Once.Functor.Translate using (WellFormedF)
-open import Once.Semantics.Machine using (sem-cata; sem-ana; coerce-functor)
+open import Once.Semantics.Machine using (sem-cata; sem-ana; coerce-functor; coerce-functor⁻¹; sem-fmap)
 open import Once.Surface.Syntax using (Expr; Ctx; Usage; ∅; zeroUsage)
 open import Once.Surface.Elaborate using (elaborate; ⟦_⟧ᶜ)
 import Once.Compile as C
 open import Once.Verified.Trace using (SigOpEvent)
-open import Once.Verified.TraceMonad using (T; returnT; valueT; projTrace)
+open import Once.Verified.TraceMonad using (T; returnT; valueT; projTrace; _>>=T_)
 open import Once.Verified.DenotTrace using (⟦_⟧ᴰ; evalᴰ; cata-ev-algᴰ; ana-events; forget; inject)
 open import Once.Verified.TraceDenote using (events-F)
 import Once.Verified.SourceDenote as SD
@@ -69,27 +70,41 @@ forget-inject {A ⇒[ k ] B} pf   =
           (forget-inject {B} (pf va)))
 
 ------------------------------------------------------------------------
--- Construction-purity (`build-pure`). Building a function VALUE is pure
--- and depth-independent: a closed (∅) arrow-typed expression denotes
--- `returnT <closure>` — it emits NOTHING and its value does not depend on
--- the observation depth. Effects are DEFERRED into the closure body (the
--- D018 suspended-Eff design) and fire only when the closure is APPLIED
--- (captured inside the fold's trace), never at build time. UNIFORM over
--- π = pure and π = eff. (TODO: discharge by purity-soundness induction on
--- the closed expression — the one remaining obligation under `cata`/`ana`.)
+-- Closure-bridge — replaces the retired `build-pure`. The elaborated
+-- closed-morphism IR (`apply ∘ ⟨ elab morph ∘ terminal , id ⟩`) applied to
+-- `w` equals BINDING the source morphism computation `⟦morph⟧ˢ tt` and
+-- applying it to `w`. Pure monad reduction (the `returnT`/`terminal`
+-- left-identities are definitional; the only residual is `++ []`, i.e.
+-- `++-identityʳ`), given the morphism IH. NO purity assumption — the
+-- algebra's build trace is THREADED, not discarded. This is exactly what
+-- lets `cata`/`ana` drop `build-pure` once `⟦_⟧ˢ` threads the algebra
+-- computation per layer (matching `evalᴰ`'s per-layer `evalᴰ alg`).
 ------------------------------------------------------------------------
 
-postulate
-  build-pure : ∀ {A B kk} (e : Expr ∅ zeroUsage (A ⇒[ kk ] B)) (n : ℕ)
-             → SD.⟦ e ⟧ˢ tt n ≡ ([] , proj₂ (SD.⟦ e ⟧ˢ tt zero))
+morph-app-bridge : ∀ {D E kk} (morph : Expr ∅ zeroUsage (D ⇒[ kk ] E))
+                     (ih : ∀ j → evalᴰ (elaborate C.Heap morph) tt j ≡ SD.⟦ morph ⟧ˢ tt j)
+                     (w : ⟦ D ⟧ᴰ) (n : ℕ)
+                   → evalᴰ (apply ∘ ⟨ elaborate C.Heap morph ∘ terminal , id ⟩ C.Heap) w n
+                     ≡ (SD.⟦ morph ⟧ˢ tt >>=T (λ clo → clo w)) n
+morph-app-bridge morph ih w n rewrite ih n =
+  cong₂ _,_
+    (cong (_++ proj₁ (proj₂ (SD.⟦ morph ⟧ˢ tt n) w n))
+          (++-identityʳ (proj₁ (SD.⟦ morph ⟧ˢ tt n))))
+    refl
+
+-- … and its function form (equal as `T`-values, ∀ depth).
+morph-app-bridge-fun : ∀ {D E kk} (morph : Expr ∅ zeroUsage (D ⇒[ kk ] E))
+                         (ih : ∀ j → evalᴰ (elaborate C.Heap morph) tt j ≡ SD.⟦ morph ⟧ˢ tt j)
+                         (w : ⟦ D ⟧ᴰ)
+                       → evalᴰ (apply ∘ ⟨ elaborate C.Heap morph ∘ terminal , id ⟩ C.Heap) w
+                         ≡ (SD.⟦ morph ⟧ˢ tt >>=T (λ clo → clo w))
+morph-app-bridge-fun morph ih w = extensionality (morph-app-bridge morph ih w)
 
 ------------------------------------------------------------------------
--- `cata`-faithfulness, shared body (takes the algebra IH as an argument,
--- mirroring `app-body`). After the `⟦_⟧ᴰ` value-model fix, `cata-ev-algᴰ
--- n algIR` is DEFINITIONALLY `cata-ev-algˢ n (evalᴰ algIR)`, so the whole
--- case reduces to the closure-bridge `evalᴰ algIR ≡ valueT (⟦alg⟧ˢ tt) 0`
--- — and that follows from the IH + `build-pure` (the closure built per
--- fold-layer by the IR equals the source's once-built closure).
+-- `cata`-faithfulness. Both sides fold with `sem-cata` over a per-layer
+-- algebra; after the `⟦_⟧ˢ` threading restructure, `cata-ev-algᴰ n algIR`
+-- and `cata-ev-algˢ n (⟦alg⟧ˢ tt)` agree per layer by the closure-bridge —
+-- the case reduces to the algebra IH + monad reduction, NO `build-pure`.
 ------------------------------------------------------------------------
 
 cata-body : ∀ {m} {Γ : Ctx m} {F : Functor} {A} {π : Purity}
@@ -107,36 +122,43 @@ cata-body {Γ = Γ} {F = F} {A = A} wf alg ih dγ k =
     algIR : IR (⟦ F ⟧T A) A
     algIR = apply ∘ ⟨ elaborate C.Heap alg ∘ terminal , id ⟩ C.Heap
 
-    -- The closure-bridge, pointwise in the fold input `w` and depth `n`.
-    cb : ∀ (w : ⟦ ⟦ F ⟧T A ⟧ᴰ) (n : ℕ)
-       → evalᴰ algIR w n ≡ valueT (SD.⟦ alg ⟧ˢ tt) zero w n
-    cb w n rewrite ih n | build-pure alg n = refl
-
-    -- Lift to the algebra equality used by both the trace and the value.
+    -- Per layer, the two algebras' `step`s agree by the closure-bridge.
     alg-eq : ∀ (n : ℕ)
            → cata-ev-algᴰ {F} {A} n algIR
-             ≡ SD.cata-ev-algˢ {F} {A} n (valueT (SD.⟦ alg ⟧ˢ tt) zero)
-    alg-eq n = cong (SD.cata-ev-algˢ {F} {A} n)
-                    (extensionality (λ w → extensionality (λ n′ → cb w n′)))
+             ≡ SD.cata-ev-algˢ {F} {A} n (SD.⟦ alg ⟧ˢ tt)
+    alg-eq n = extensionality (λ fc →
+      cong (λ s → (events-F F proj₁ fc ++ projTrace s n , forget (valueT s n)))
+           (morph-app-bridge-fun alg ih (inject (coerce-functor⁻¹ F A (sem-fmap F proj₂ fc)))))
 
 ------------------------------------------------------------------------
--- `ana`-faithfulness. Dual of `cata`; the value-model fix makes `evalᴰ`'s
--- `Ana` value `sem-ana` over the coalgebra's OWN trace-value, mirroring
--- `⟦_⟧ˢ`. Needs one extra structural lemma (`ana-ev-bridge`) because the
--- trace `ana-events` recurses on the IR coalgebra while the source's
--- `ana-eventsˢ` recurses on the closure — they agree by induction on the
--- unfold depth, then the closure-bridge ties IR-closure to source-closure.
+-- `ana`-faithfulness. Dual of `cata`. The TRACE side bridges
+-- `ana-events` (IR coalgebra, `DenotTrace`) to the threaded `ana-eventsˢ`
+-- (`⟦coalg⟧ˢ tt`, `SourceDenote`) by induction on the unfold depth, using
+-- the per-layer closure-bridge; the VALUE side (`sem-ana`) matches because
+-- `valueT … 0` of the threaded `step` reduces to the once-built closure
+-- value. NO `build-pure`.
 ------------------------------------------------------------------------
 
--- `ana-events` on an IR coalgebra equals `ana-eventsˢ` on its `evalᴰ`
--- closure — both unfold identically; induction on the depth `m`.
-ana-ev-bridge : ∀ {F A} (ir : IR A (⟦ F ⟧T A)) (a : Val.⟦ A ⟧) (m : ℕ)
-              → ana-events {F} {A} ir a m ≡ SD.ana-eventsˢ {F} {A} (evalᴰ ir) a m
-ana-ev-bridge ir a zero        = refl
-ana-ev-bridge {F} {A} ir a (suc m) =
-  cong (projTrace (evalᴰ ir (inject a)) m ++_)
-       (cong (λ g → events-F F g (coerce-functor F A (forget (valueT (evalᴰ ir (inject a)) m))))
-             (extensionality (λ seed → ana-ev-bridge ir seed m)))
+ana-ev-bridge : ∀ {F A kk} (coalg : Expr ∅ zeroUsage (A ⇒[ kk ] ⟦ F ⟧T A))
+                  (ih : ∀ j → evalᴰ (elaborate C.Heap coalg) tt j ≡ SD.⟦ coalg ⟧ˢ tt j)
+                  (a : Val.⟦ A ⟧) (m : ℕ)
+              → ana-events {F} {A} (apply ∘ ⟨ elaborate C.Heap coalg ∘ terminal , id ⟩ C.Heap) a m
+                ≡ SD.ana-eventsˢ {F} {A} (SD.⟦ coalg ⟧ˢ tt) a m
+ana-ev-bridge coalg ih a zero        = refl
+ana-ev-bridge {F} {A} coalg ih a (suc m) =
+  cong₂ _++_
+    (cong (λ s → projTrace s m) step-eq)
+    (trans (cong (λ s → events-F F (λ seed → ana-events {F} {A} coalgIR seed m)
+                          (coerce-functor F A (forget (valueT s m)))) step-eq)
+           (cong (λ g → events-F F g (coerce-functor F A (forget (valueT stepˢ m))))
+                 (extensionality (λ seed → ana-ev-bridge coalg ih seed m))))
+  where
+    coalgIR : IR A (⟦ F ⟧T A)
+    coalgIR = apply ∘ ⟨ elaborate C.Heap coalg ∘ terminal , id ⟩ C.Heap
+    stepˢ : T ⟦ ⟦ F ⟧T A ⟧ᴰ
+    stepˢ = SD.⟦ coalg ⟧ˢ tt >>=T (λ clo → clo (inject a))
+    step-eq : evalᴰ coalgIR (inject a) ≡ stepˢ
+    step-eq = morph-app-bridge-fun coalg ih (inject a)
 
 ana-body : ∀ {mm} {Γ : Ctx mm} {F : Functor} {A} {π : Purity}
              (wf : WellFormedF F)
@@ -148,15 +170,8 @@ ana-body : ∀ {mm} {Γ : Ctx mm} {F : Functor} {A} {π : Purity}
 ana-body {Γ = Γ} {F = F} {A = A} wf coalg ih dγ k =
   cong (_,_ []) (extensionality (λ a → extensionality (λ n →
     cong₂ _,_
-      (trans (ana-ev-bridge coalgIR (forget a) n)
-             (cong (λ c → SD.ana-eventsˢ {F} {A} c (forget a) n) cb-fun))
+      (ana-ev-bridge coalg ih (forget a) n)
       (cong (λ f → inject (sem-ana F f (forget a)))
             (extensionality (λ a' →
-              cong (λ c → coerce-functor F A (forget (valueT (c (inject a')) zero))) cb-fun))))))
-  where
-    coalgIR : IR A (⟦ F ⟧T A)
-    coalgIR = apply ∘ ⟨ elaborate C.Heap coalg ∘ terminal , id ⟩ C.Heap
-    cb : ∀ (w : ⟦ A ⟧ᴰ) (n : ℕ) → evalᴰ coalgIR w n ≡ valueT (SD.⟦ coalg ⟧ˢ tt) zero w n
-    cb w n rewrite ih n | build-pure coalg n = refl
-    cb-fun : evalᴰ coalgIR ≡ valueT (SD.⟦ coalg ⟧ˢ tt) zero
-    cb-fun = extensionality (λ w → extensionality (λ n → cb w n))
+              cong (λ s → coerce-functor F A (forget (valueT s zero)))
+                   (morph-app-bridge-fun coalg ih (inject a'))))))))

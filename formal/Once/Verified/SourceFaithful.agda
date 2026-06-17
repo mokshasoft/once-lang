@@ -187,9 +187,10 @@ faithful (case' s l r) dγ n rewrite faithful s dγ n with proj₂ (SD.⟦ s ⟧
         cong₂ _,_ (case-trace (proj₁ (SD.⟦ s ⟧ˢ dγ n)) (proj₁ (SD.⟦ l ⟧ˢ (dγ , a) n))) refl
 ... | inj₂ b rewrite faithful r (dγ , b) n =
         cong₂ _,_ (case-trace (proj₁ (SD.⟦ s ⟧ˢ dγ n)) (proj₁ (SD.⟦ r ⟧ˢ (dγ , b) n))) refl
--- cata: after the `⟦_⟧ᴰ` value-model fix, both sides fold with structurally
--- identical algebras; reduces to the closure-bridge (`cata-body` + `build-pure`).
+-- cata: both sides fold with per-layer-threaded algebras; reduces to the
+-- closure-bridge (`cata-body`) — the algebra IH + a monad reduction, no
+-- purity assumption (the build trace is threaded, not discarded).
 faithful {Γ = Γ} (cata wf alg) dγ k = FL.cata-body {Γ = Γ} wf alg (λ j → faithful alg tt j) dγ k
--- ana: dual of cata; reduces to the same closure-bridge via `ana-body` (+ the
--- `ana-ev-bridge` trace lemma) + `build-pure`.
+-- ana: dual of cata; reduces to the same closure-bridge via `ana-body`
+-- (+ the `ana-ev-bridge` trace lemma). Postulate-free.
 faithful {Γ = Γ} (ana wf coalg) dγ k = FL.ana-body {Γ = Γ} wf coalg (λ j → faithful coalg tt j) dγ k
