@@ -28,8 +28,10 @@ open import Relation.Binary.PropositionalEquality using (_≡_)
 
 open import Once.Arith.Machine.AbsState using (ArithAbsState; InputShape; ⟦_⟧S; InputPath)
 open import Once.Arith.Machine.AbsInstr
-  using (AbstractInstr; step; load-input; load-imm; add-rrr; sub-rrr;
-         mul-rrr; neg-rr; spill; reload; move-to-out)
+  using (AbstractInstr; load-input; load-imm; add-rrr; sub-rrr;
+         mul-rrr; neg-rr; spill; reload; move-to-out; module Exec)
+-- L1: executor `step` is width-parameterised; x86-64 backend → 64.
+open Exec 64 using (step)
 open import Once.Arith.Backend.X86.Syntax using (XInstr; XProgram)
 open import Once.Arith.Backend.X86.CodeGen using (emit)
 

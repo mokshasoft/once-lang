@@ -13,6 +13,12 @@
 -- ops. Compile-abs's structural lemma in Phase C will show "all reg
 -- reads return just" — that's the only place where index discipline
 -- comes back as a proof obligation.
+--
+-- clean-semantics L1 (D054): the instruction set and the Maybe-lifters
+-- are width-AGNOSTIC (the register carrier is `ℕ` at every width); only
+-- the executor `step`/`run-abstract`, which applies the modular ops,
+-- is parameterised by the word width `bits` (module `Exec`). The
+-- architecture supplies `bits`; nothing here hard-codes 64.
 ------------------------------------------------------------------------
 
 module Once.Arith.Machine.AbsInstr where
@@ -23,8 +29,7 @@ open import Data.List using (List; []; _∷_)
 open import Data.Maybe using (Maybe; just; nothing)
 
 open import Once.Arith.Machine.AbsState
-open import Once.Word using (module Word64)
-open Word64 using (Word; fromℤ; _⊕_; _⊖_; _⊗_; ⊝_)
+open import Once.Word using (module Width)
 
 ------------------------------------------------------------------------
 -- Abstract instruction set
@@ -59,18 +64,19 @@ data AbstractInstr : Set where
   move-to-out : ℕ → AbstractInstr
 
 ------------------------------------------------------------------------
--- Single-step interpreter
+-- Maybe-lifters (width-agnostic: register carrier is ℕ at every width)
 ------------------------------------------------------------------------
 
--- | Lift a binary operation over `Maybe Word`, propagating `nothing`.
-bin-op : (Word → Word → Word) → Maybe Word → Maybe Word → Maybe Word
+-- | Lift a binary operation over `Maybe` register values, propagating
+-- `nothing`. `Exec` supplies the modular op (`_⊕_` etc.).
+bin-op : (ℕ → ℕ → ℕ) → Maybe ℕ → Maybe ℕ → Maybe ℕ
 bin-op f (just x) (just y) = just (f x y)
 bin-op _ (just _) nothing  = nothing
 bin-op _ nothing  (just _) = nothing
 bin-op _ nothing  nothing  = nothing
 
--- | Lift a unary operation over `Maybe Word`.
-un-op : (Word → Word) → Maybe Word → Maybe Word
+-- | Lift a unary operation over `Maybe` register values.
+un-op : (ℕ → ℕ) → Maybe ℕ → Maybe ℕ
 un-op f (just x) = just (f x)
 un-op _ nothing  = nothing
 
@@ -85,38 +91,43 @@ maybe-zero : Maybe ℤ → ℤ
 maybe-zero (just z) = z
 maybe-zero nothing  = + 0
 
--- | One abstract step.
-step : ∀ {sh} → AbstractInstr → ArithAbsState sh → ArithAbsState sh
-step {sh} (load-input p r) s = record s
-  { regs = ArithAbsState.regs s [ r ↦
-      just (fromℤ (maybe-zero (project sh p (ArithAbsState.input s)))) ] }
-step (load-imm z r) s = record s
-  { regs = ArithAbsState.regs s [ r ↦ just (fromℤ z) ] }
-step (add-rrr dst a b) s = record s
-  { regs = ArithAbsState.regs s [ dst ↦
-      bin-op _⊕_ (ArithAbsState.regs s [ a ]) (ArithAbsState.regs s [ b ]) ] }
-step (sub-rrr dst a b) s = record s
-  { regs = ArithAbsState.regs s [ dst ↦
-      bin-op _⊖_ (ArithAbsState.regs s [ a ]) (ArithAbsState.regs s [ b ]) ] }
-step (mul-rrr dst a b) s = record s
-  { regs = ArithAbsState.regs s [ dst ↦
-      bin-op _⊗_ (ArithAbsState.regs s [ a ]) (ArithAbsState.regs s [ b ]) ] }
-step (neg-rr dst a) s = record s
-  { regs = ArithAbsState.regs s [ dst ↦
-      un-op ⊝_ (ArithAbsState.regs s [ a ]) ] }
-step (spill src slot) s = record s
-  { scratch = ArithAbsState.scratch s [ slot ↦
-      ArithAbsState.regs s [ src ] ] }
-step (reload slot dst) s = record s
-  { regs = ArithAbsState.regs s [ dst ↦
-      ArithAbsState.scratch s [ slot ] ] }
-step (move-to-out src) s = record s
-  { output = ArithAbsState.regs s [ src ] }
-
 ------------------------------------------------------------------------
--- Trace interpreter
+-- Single-step + trace interpreter — WIDTH-PARAMETERISED (D054).
+-- The architecture supplies `bits`; the carrier stays ℕ, only the
+-- modular ops vary.
 ------------------------------------------------------------------------
 
-run-abstract : ∀ {sh} → List AbstractInstr → ArithAbsState sh → ArithAbsState sh
-run-abstract []       s = s
-run-abstract (i ∷ is) s = run-abstract is (step i s)
+module Exec (bits : ℕ) where
+  open Width bits using (fromℤ; _⊕_; _⊖_; _⊗_; ⊝_)
+
+  -- | One abstract step.
+  step : ∀ {sh} → AbstractInstr → ArithAbsState sh → ArithAbsState sh
+  step {sh} (load-input p r) s = record s
+    { regs = ArithAbsState.regs s [ r ↦
+        just (fromℤ (maybe-zero (project sh p (ArithAbsState.input s)))) ] }
+  step (load-imm z r) s = record s
+    { regs = ArithAbsState.regs s [ r ↦ just (fromℤ z) ] }
+  step (add-rrr dst a b) s = record s
+    { regs = ArithAbsState.regs s [ dst ↦
+        bin-op _⊕_ (ArithAbsState.regs s [ a ]) (ArithAbsState.regs s [ b ]) ] }
+  step (sub-rrr dst a b) s = record s
+    { regs = ArithAbsState.regs s [ dst ↦
+        bin-op _⊖_ (ArithAbsState.regs s [ a ]) (ArithAbsState.regs s [ b ]) ] }
+  step (mul-rrr dst a b) s = record s
+    { regs = ArithAbsState.regs s [ dst ↦
+        bin-op _⊗_ (ArithAbsState.regs s [ a ]) (ArithAbsState.regs s [ b ]) ] }
+  step (neg-rr dst a) s = record s
+    { regs = ArithAbsState.regs s [ dst ↦
+        un-op ⊝_ (ArithAbsState.regs s [ a ]) ] }
+  step (spill src slot) s = record s
+    { scratch = ArithAbsState.scratch s [ slot ↦
+        ArithAbsState.regs s [ src ] ] }
+  step (reload slot dst) s = record s
+    { regs = ArithAbsState.regs s [ dst ↦
+        ArithAbsState.scratch s [ slot ] ] }
+  step (move-to-out src) s = record s
+    { output = ArithAbsState.regs s [ src ] }
+
+  run-abstract : ∀ {sh} → List AbstractInstr → ArithAbsState sh → ArithAbsState sh
+  run-abstract []       s = s
+  run-abstract (i ∷ is) s = run-abstract is (step i s)

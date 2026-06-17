@@ -37,8 +37,12 @@ open import Once.Arith.Machine.AbsState
          Store; empty-store; _[_↦_]; _[_]; store-write-same; store-write-other)
 open import Once.Arith.Machine.AbsInstr
   using (AbstractInstr; load-input; load-imm; add-rrr; sub-rrr; mul-rrr;
-         neg-rr; spill; reload; move-to-out; run-abstract; step;
-         maybe-zero; bin-op; un-op)
+         neg-rr; spill; reload; move-to-out;
+         maybe-zero; bin-op; un-op; module Exec)
+-- L1: the executor `step`/`run-abstract` is width-parameterised; this
+-- validity proof is the 64-bit instantiation site (pinned at 64, matching
+-- `Word64`/`Sem 64` above) until the proof itself is parameterised.
+open Exec 64 using (step; run-abstract)
 open import Once.Arith.Machine.IR
   using (MArithIR; alit; ainput; aadd; asub; amul; aneg; eval-arith)
 open import Once.Word using (module Word64)
