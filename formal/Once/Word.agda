@@ -29,17 +29,23 @@
 -- the typechecker won't catch. Type-enforced width would need a
 -- wrapper/`Fin`, i.e. the subst tax D054 deliberately avoids.
 --
--- Division / remainder (D055, RISC-V total semantics) are NOT defined
--- here yet; they land with the division guard in the bridge phase.
+-- Division / remainder (D055, RISC-V total semantics) and signed
+-- comparisons (D054) are defined below: division is TOTAL (a/0 = -1,
+-- a%0 = a, INT_MIN/-1 = INT_MIN, INT_MIN%-1 = 0) and comparisons are
+-- SIGNED (two's complement). No trap, no side condition.
 ------------------------------------------------------------------------
 
 module Once.Word where
 
 import Data.Nat as ℕ
 open ℕ using (ℕ; zero; suc; _∸_; _^_)
-open import Data.Nat.DivMod using (_%_)
+open import Data.Nat.DivMod using (_%_; _/_)
 open import Data.Nat.Properties using (m^n≢0)
-open import Data.Integer using (ℤ; +_; -[1+_])
+open import Data.Integer using (ℤ; +_; -[1+_]; ∣_∣; sign; _◃_; _-_)
+open import Data.Integer.Properties using (_<?_)
+import Data.Sign as Sign
+open import Data.Bool using (Bool; true; false; if_then_else_; _∧_)
+open import Relation.Nullary using (does)
 
 module Width (bits : ℕ) where
 
@@ -84,6 +90,69 @@ module Width (bits : ℕ) where
   -- | Modular negation: `modulus − x` (so `⊝ 0 = 0`, `⊝ 1 = modulus−1`).
   ⊝_ : Word → Word
   ⊝ x = norm (modulus ∸ x)
+
+  ----------------------------------------------------------------------
+  -- Signed view (D054: `Int` is SIGNED — two's complement).
+  ----------------------------------------------------------------------
+
+  -- | `2^(bits−1)` — the most-negative word `intMin` (signed −2^(bits−1)).
+  half : ℕ
+  half = 2 ^ (bits ∸ 1)
+
+  -- | Signed interpretation: `[0, half)` is non-negative; `[half, modulus)`
+  -- is negative (value − modulus). Two's complement.
+  toℤ : Word → ℤ
+  toℤ w = if w ℕ.<ᵇ half then + w else (+ w) - (+ modulus)
+
+  intMin : Word           -- signed −2^(bits−1)
+  intMin = half
+
+  negOne : Word           -- all-ones; signed −1
+  negOne = modulus ∸ 1
+
+  ----------------------------------------------------------------------
+  -- Signed comparisons (D054). Bool-valued; the SigOp layer maps Bool to
+  -- the `Unit + Unit` comparison codomain.
+  ----------------------------------------------------------------------
+
+  infix 4 _<ˢ_ _≡ʷ_
+
+  _<ˢ_ : Word → Word → Bool          -- signed less-than
+  x <ˢ y = does (toℤ x <? toℤ y)
+
+  _≡ʷ_ : Word → Word → Bool          -- bit-equality (sign-agnostic)
+  x ≡ʷ y = x ℕ.≡ᵇ y
+
+  ----------------------------------------------------------------------
+  -- Total signed division / remainder (D055, RISC-V — NO trap):
+  --   a / 0 = −1 ;  a % 0 = a ;  INT_MIN / −1 = INT_MIN ;  INT_MIN % −1 = 0 ;
+  -- otherwise truncated-toward-zero signed division.
+  ----------------------------------------------------------------------
+
+  private
+    -- total ℕ div/mod (zero divisor returns a dummy; guarded away below)
+    _divℕ_ _modℕ_ : ℕ → ℕ → ℕ
+    n divℕ zero    = zero
+    n divℕ (suc d) = n / suc d
+    n modℕ zero    = n
+    n modℕ (suc d) = n % suc d
+
+    -- truncated-toward-zero signed div/mod on ℤ (divisor ≠ 0 by guard)
+    tdivℤ tmodℤ : ℤ → ℤ → ℤ
+    tdivℤ a b = (sign a Sign.* sign b) ◃ (∣ a ∣ divℕ ∣ b ∣)
+    tmodℤ a b = sign a ◃ (∣ a ∣ modℕ ∣ b ∣)
+
+  infixl 7 _/ˢ_ _%ˢ_
+
+  _/ˢ_ : Word → Word → Word
+  a /ˢ b = if b ℕ.≡ᵇ 0 then negOne
+           else if (a ℕ.≡ᵇ intMin) ∧ (b ℕ.≡ᵇ negOne) then intMin
+           else fromℤ (tdivℤ (toℤ a) (toℤ b))
+
+  _%ˢ_ : Word → Word → Word
+  a %ˢ b = if b ℕ.≡ᵇ 0 then a
+           else if (a ℕ.≡ᵇ intMin) ∧ (b ℕ.≡ᵇ negOne) then 0
+           else fromℤ (tmodℤ (toℤ a) (toℤ b))
 
 ------------------------------------------------------------------------
 -- Standard instantiations
