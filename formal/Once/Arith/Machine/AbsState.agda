@@ -22,7 +22,6 @@ module Once.Arith.Machine.AbsState where
 
 open import Data.Nat using (ℕ; zero; suc; _≟_)
 open import Data.Integer using (ℤ)
-import Once.Word as OnceWord
 open import Data.List using (List; []; _∷_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
@@ -41,11 +40,13 @@ open import Once.Arith.Machine.Shape public
 ------------------------------------------------------------------------
 
 -- | Numeric value flowing through the abstract machine. Per D054 the
--- machine registers hold modular `Word`s, not ℤ. (The block *input*
--- stays `⟦ sh ⟧S` = the ℤ spec view; `load-input` applies `fromℤ` when
--- it lands a value in a register — see `Once.Arith.Machine.AbsInstr`.)
+-- machine registers hold modular `Word`s — whose carrier is `ℕ` at
+-- every width (residue rep), so the STATE is width-agnostic. The width
+-- enters only through the OPERATIONS (`Once.Arith.Machine.AbsInstr` /
+-- `WordSem`), which the architecture instantiates; `NumValue` itself
+-- carries no width.
 NumValue : Set
-NumValue = OnceWord.Word64.Word
+NumValue = ℕ
 
 -- | Total partial function from index to optional value. `nothing`
 -- means "no value written here yet." Used for both the register file
