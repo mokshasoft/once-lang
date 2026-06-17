@@ -46,7 +46,7 @@ open import Once.CCC.SigOp.Info
   using (SigOpInfo; semM; effect; EffectShape; Pure; Emits; Halts)
 open import Once.Functor.Translate using (WellFormedF)
 open import Once.Semantics.Machine
-  using (sem-cata; sem-fmap; coerce-functor; coerce-functor⁻¹; ⟦_⟧F)
+  using (sem-cata; sem-ana; sem-fmap; coerce-functor; coerce-functor⁻¹; ⟦_⟧F)
 open import Once.Verified.Trace using (SigOpEvent; mkEvent)
 open import Once.Verified.TraceMonad using (T; returnT; _>>=T_; valueT; projTrace)
 open import Once.Verified.TraceDenote using (events-F)
@@ -172,6 +172,20 @@ evalᴰ (curry f _)   a        = returnT (λ b → evalᴰ f (a , b))
 evalᴰ apply         p        = proj₁ p (proj₂ p)
 evalᴰ arr           f        = returnT f
 evalᴰ (SigOp si)    a        = λ n → (emit-D si (forget a) , inject (semM si (forget a)))
+-- Recursion schemes: VALUE comes from this denotation's OWN trace-fold, NOT a
+-- parallel pure `eval` — `⟦_⟧ᴰ` has ONE model (the trace semantics), exactly
+-- like `⟦_⟧ˢ`. (The old catch-all routed `Cata`/`Ana` values through the pure
+-- `eval`, a second value model that diverged from the trace for EFFECTFUL
+-- algebras — the same category-error as the retired ℤ proof-model.) `Cata`'s
+-- value is `proj₂` of its post-order fold; `Ana`'s is `sem-ana` over the
+-- coalgebra's OWN (forgotten) trace-value. Structurally identical to `⟦_⟧ˢ`.
+evalᴰ (Cata {F} wf {C} alg)  a = λ n →
+  let r = sem-cata wf (cata-ev-algᴰ {F} {C} n alg) (forget a)
+  in (proj₁ r , inject (proj₂ r))
+evalᴰ (Ana {F} wf {A} coalg) a = λ n →
+  ( ana-events {F} {A} coalg (forget a) n
+  , inject (sem-ana F (λ a' → coerce-functor F _
+              (forget (valueT (evalᴰ coalg (inject a')) 0))) (forget a)) )
 evalᴰ ir            a        = λ n → (rec-trace-D ir (forget a) n , inject (eval ir (forget a)))
 
 -- Cata is FINITE: emit its FULL fold trace (the observation depth `n` never
@@ -190,7 +204,8 @@ rec-trace-D (const f iv mv)         x n = []
 rec-trace-D ir                      x n = rec-trace-rest ir x n
 
 cata-ev-algᴰ {F} {C} n alg fc =
-  (events-F F proj₁ fc ++ projTrace (evalᴰ alg (inject z)) n , eval alg z)
+  ( events-F F proj₁ fc ++ projTrace (evalᴰ alg (inject z)) n
+  , forget (valueT (evalᴰ alg (inject z)) n) )
   where z = coerce-functor⁻¹ F C (sem-fmap F proj₂ fc)
 
 ana-events         coalg a zero    = []
