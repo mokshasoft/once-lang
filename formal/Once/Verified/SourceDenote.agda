@@ -70,12 +70,22 @@ lookupᴰ (Γ , A ^ q) (fsuc i) dγ = lookupᴰ Γ i (proj₁ dγ)
 -- layer's algebra events (`projTrace (algClo …)`), value via `forget ∘ valueT`.
 ------------------------------------------------------------------------
 
-cata-ev-algˢ : ∀ {F C} → ℕ → (⟦ ⟦ F ⟧T C ⟧ᴰ → T ⟦ C ⟧ᴰ)
+-- Takes the algebra COMPUTATION `T (closure)` (= `⟦alg⟧ˢ tt`) and binds it
+-- per layer (`algComp >>=T λ algClo → algClo (inject z)`), THREADING the
+-- algebra's build trace per layer — mirroring exactly what `DenotTrace`'s
+-- `cata-ev-algᴰ` does with `evalᴰ alg (inject z)`. (It does NOT pre-extract a
+-- closure and drop its build trace; that discard was the flaw that forced a
+-- `build-pure` assumption + a `morph-app` purity constraint. Threading makes
+-- `faithful`'s cata case follow from the algebra IH + monad-assoc alone, and
+-- handles an effectful build correctly — the trace agrees per layer on both
+-- sides.)
+cata-ev-algˢ : ∀ {F C} → ℕ → T (⟦ ⟦ F ⟧T C ⟧ᴰ → T ⟦ C ⟧ᴰ)
              → ⟦ F ⟧F (List SigOpEvent × Val.⟦ C ⟧) → List SigOpEvent × Val.⟦ C ⟧
-cata-ev-algˢ {F} {C} n algClo fc =
-  ( events-F F proj₁ fc ++ projTrace (algClo (inject z)) n
-  , forget (valueT (algClo (inject z)) n) )
-  where z = coerce-functor⁻¹ F C (sem-fmap F proj₂ fc)
+cata-ev-algˢ {F} {C} n algComp fc =
+  ( events-F F proj₁ fc ++ projTrace step n
+  , forget (valueT step n) )
+  where z    = coerce-functor⁻¹ F C (sem-fmap F proj₂ fc)
+        step = algComp >>=T λ algClo → algClo (inject z)
 
 ------------------------------------------------------------------------
 -- The `Ana` depth-bounded unfold TRACE over a ⟦_⟧ˢ coalgebra CLOSURE — the
@@ -85,12 +95,17 @@ cata-ev-algˢ {F} {C} n algClo fc =
 -- TRACE prefix; the produced codata is productive — `sem-ana` for the value).
 ------------------------------------------------------------------------
 
-ana-eventsˢ : ∀ {F A} → (⟦ A ⟧ᴰ → T ⟦ ⟦ F ⟧T A ⟧ᴰ) → Val.⟦ A ⟧ → ℕ → List SigOpEvent
-ana-eventsˢ coalgClo a zero    = []
-ana-eventsˢ {F} {A} coalgClo a (suc m) =
-  projTrace (coalgClo (inject a)) m
-    ++ events-F F (λ seed → ana-eventsˢ {F} {A} coalgClo seed m) layer
-  where layer = coerce-functor F A (forget (valueT (coalgClo (inject a)) m))
+-- Threads the coalgebra COMPUTATION `T (closure)` (= `⟦coalg⟧ˢ tt`) per step
+-- (`coalgComp >>=T λ coalgClo → coalgClo (inject a)`), mirroring `DenotTrace`'s
+-- `ana-events` (`evalᴰ coalg (inject a)`) — same per-layer build threading as
+-- `cata-ev-algˢ`, removing the discard that forced `build-pure`.
+ana-eventsˢ : ∀ {F A} → T (⟦ A ⟧ᴰ → T ⟦ ⟦ F ⟧T A ⟧ᴰ) → Val.⟦ A ⟧ → ℕ → List SigOpEvent
+ana-eventsˢ coalgComp a zero    = []
+ana-eventsˢ {F} {A} coalgComp a (suc m) =
+  projTrace step m
+    ++ events-F F (λ seed → ana-eventsˢ {F} {A} coalgComp seed m) layer
+  where step  = coalgComp >>=T λ coalgClo → coalgClo (inject a)
+        layer = coerce-functor F A (forget (valueT step m))
 
 ------------------------------------------------------------------------
 -- THE SOURCE SEMANTICS. Structural on `Expr`; arrows are Kleisli arrows
@@ -150,14 +165,14 @@ ana-eventsˢ {F} {A} coalgClo a (suc m) =
 -- mirroring `evalᴰ (Cata …)` but elaborate-free (uses `⟦alg⟧ˢ`, not `evalᴰ alg`).
 ⟦ cata {F = F} {A = A} wf alg ⟧ˢ dγ =
   returnT (λ x → λ n →
-    let r = sem-cata wf (cata-ev-algˢ {F} {A} n (valueT (⟦ alg ⟧ˢ tt) 0)) x
+    let r = sem-cata wf (cata-ev-algˢ {F} {A} n (⟦ alg ⟧ˢ tt)) x
     in (proj₁ r , inject (proj₂ r)))
 -- Ana: the productive unfold. Coalgebra CLOSED (∅) → `⟦coalg⟧ˢ tt` is the
 -- closure. TRACE via `ana-eventsˢ` (depth-bounded prefix, the SOLE T-ℕ consumer);
 -- VALUE via `sem-ana` (the codata), mirroring `eval (Ana …)` but elaborate-free.
 ⟦ ana {F = F} {A = A} wf coalg ⟧ˢ dγ =
   returnT (λ a → λ n →
-    ( ana-eventsˢ {F} {A} (valueT (⟦ coalg ⟧ˢ tt) 0) (forget a) n
+    ( ana-eventsˢ {F} {A} (⟦ coalg ⟧ˢ tt) (forget a) n
     , inject (sem-ana F (λ a' → coerce-functor F _
                   (forget (valueT (valueT (⟦ coalg ⟧ˢ tt) 0 (inject a')) 0))) (forget a)) ))
 -- Effect primitives (sigOp/closure/poly): named external ops resolved to
