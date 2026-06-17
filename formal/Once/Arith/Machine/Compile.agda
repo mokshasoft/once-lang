@@ -40,9 +40,14 @@ open import Once.Arith.Machine.AbsInstr
          neg-rr; spill; reload; move-to-out; run-abstract; step;
          maybe-zero; bin-op; un-op)
 open import Once.Arith.Machine.IR
-  using (MArithIR; alit; ainput; aadd; asub; amul; aneg; eval-arith; eval-arith-W)
+  using (MArithIR; alit; ainput; aadd; asub; amul; aneg; eval-arith)
 open import Once.Word using (module Word64)
 open Word64 using (fromℤ; _⊕_; _⊖_; _⊗_; ⊝_)
+-- L1: the modular-`Word` evaluator is now width-parameterised; the arch
+-- supplies the width. This validity proof is the 64-bit instantiation
+-- site — pinned at 64 (matching `Word64` above) until C+D threads `bits`.
+open import Once.Arith.Machine.WordSem using (module Sem)
+open Sem 64 using (eval-arith-W)
 open ArithAbsState
 
 ------------------------------------------------------------------------

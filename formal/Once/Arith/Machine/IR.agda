@@ -26,11 +26,9 @@ import Data.Nat as ℕ
 
 open import Once.Type using (Type; Unit; Int)
 import Once.Type as T
-open import Once.Arith.Machine.AbsState
+open import Once.Arith.Machine.Shape
   using (InputShape; shape-unit; shape-int; shape-pair; ⟦_⟧S; InputPath;
          Side; Fst; Snd; project)
-open import Once.Word using (module Word64)
-open Word64 using (Word; fromℤ; _⊕_; _⊖_; _⊗_; ⊝_)
 
 ------------------------------------------------------------------------
 -- MArithIR: machine-level arith expression tree
@@ -69,21 +67,9 @@ eval-arith (asub a b) inp = eval-arith a inp ℤ.- eval-arith b inp
 eval-arith (amul a b) inp = eval-arith a inp ℤ.* eval-arith b inp
 eval-arith (aneg a)   inp = ℤ.- eval-arith a inp
 
--- | Modular `Word` evaluator (D054): the machine-level denotation of
--- an arith tree over the ℤ spec input. Mirrors `eval-arith` op-for-op
--- with `Once.Word`'s modular operations, applying `fromℤ` at the
--- leaves. This is the target of the abstract machine's Validity proof
--- (`Once.Arith.Machine.Compile`): `run-abstract` computes exactly this.
--- (`eval-arith` (ℤ) survives as the *spec* denotation for `semI`.)
-eval-arith-W : ∀ {sh} → MArithIR sh → ⟦ sh ⟧S → Word
-eval-arith-W {sh} (alit z)   _   = fromℤ z
-eval-arith-W {sh} (ainput p) inp with project sh p inp
-... | just z   = fromℤ z
-... | nothing  = fromℤ (+ 0)
-eval-arith-W (aadd a b) inp = eval-arith-W a inp ⊕ eval-arith-W b inp
-eval-arith-W (asub a b) inp = eval-arith-W a inp ⊖ eval-arith-W b inp
-eval-arith-W (amul a b) inp = eval-arith-W a inp ⊗ eval-arith-W b inp
-eval-arith-W (aneg a)   inp = ⊝ eval-arith-W a inp
+-- (The machine-level modular-`Word` evaluator `eval-arith-W` is now in
+-- the width-parameterised `Once.Arith.Machine.WordSem`, so this module
+-- and `ArithBlock` stay width-agnostic — D054 width is the arch's choice.)
 
 ------------------------------------------------------------------------
 -- Shape ↔ CCC Type bridge
