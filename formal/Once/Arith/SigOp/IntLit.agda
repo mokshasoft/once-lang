@@ -51,6 +51,5 @@ lit-int-name n = "lit.int." ++ showℤ n
 lit-int-info : ℤ → SigOpInfo Unit Int
 lit-int-info n = mk-info
   (lit-int-name n)
-  (λ _ → n)      -- semI : ⊤ → ℤ
-  (λ _ → ∣ n ∣)  -- semM : ⊤ → ℕ
+  (λ _ → ∣ n ∣)  -- semM : ⊤ → ℕ (the value; ℕ/Word)
   Pure           -- effect: constants are observably pure

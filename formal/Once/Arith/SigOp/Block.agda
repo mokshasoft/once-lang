@@ -40,12 +40,12 @@ open import Once.Arith.Machine.AbsState
   using (InputShape; shape-unit; shape-int; shape-pair; ⟦_⟧S; InputPath; Side; Fst; Snd)
 open import Once.Arith.Machine.IR
   using (MArithIR; alit; ainput; aadd; asub; amul; aneg;
-         eval-arith; shape-as-type; ArithBlock; mk-block)
+         shape-as-type; ArithBlock; mk-block)
 import Once.Word as OnceWord
 module W = OnceWord.Word64
 
-import Once.Semantics.Core ℤ as I
 import Once.Semantics.Core ℕ as M
+-- (Core ℤ as I removed: block-info's semI deleted — block-semM is the meaning.)
 
 ------------------------------------------------------------------------
 -- Digest computation (deterministic serialisation)
@@ -100,16 +100,6 @@ block-name e = "arith.block." ++ block-digest e
 -- Bridge: ⟦ shape-as-type sh ⟧ ↔ ⟦ sh ⟧S
 ------------------------------------------------------------------------
 
--- | Convert a CCC-typed input value (`I.⟦ shape-as-type sh ⟧`) into
--- the AbsState-typed shape value (`⟦ sh ⟧S`). Both are tree-nested
--- products of ℤs at the proof level; this is a structural identity
--- that Agda needs help to see definitionally.
-toShape-I : ∀ sh → I.⟦ shape-as-type sh ⟧ → ⟦ sh ⟧S
-toShape-I shape-unit       _       = tt
-  where open import Data.Unit using (tt)
-toShape-I shape-int        z       = z
-toShape-I (shape-pair l r) (x , y) = toShape-I l x , toShape-I r y
-
 ------------------------------------------------------------------------
 -- SigOpInfo family
 ------------------------------------------------------------------------
@@ -159,6 +149,5 @@ block-semM (aneg a)        inp = W.⊝ block-semM a inp
 block-info : ∀ {sh} → MArithIR sh → SigOpInfo (shape-as-type sh) Int
 block-info {sh} e = mk-info
   (block-name e)
-  (λ x → eval-arith e (toShape-I sh x))
   (block-semM e)
   Pure  -- arith blocks are observably pure (no event, no halt)

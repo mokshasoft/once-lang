@@ -41,7 +41,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
 open import Once.Type using (Type; Unit)
 
 -- | Frontend / proof-level interpretation (Int ≡ ℤ).
-import Once.Semantics.Core ℤ as I
+-- (Core ℤ `as I` removed: semI deleted — the machine `semM` is the meaning.)
 
 -- | Machine-level interpretation (Int ≡ ℕ).
 import Once.Semantics.Core ℕ as M
@@ -100,8 +100,7 @@ record SigOpInfo (A B : Type) : Set where
   constructor mk-info
   field
     name   : String
-    semI   : I.⟦ A ⟧ → I.⟦ B ⟧     -- proof-level semantics
-    semM   : M.⟦ A ⟧ → M.⟦ B ⟧     -- machine-level semantics
+    semM   : M.⟦ A ⟧ → M.⟦ B ⟧     -- machine-level semantics (the meaning; ℕ/Word)
     effect : EffectShape B           -- observable effect shape (Plan 0.25)
 
 open SigOpInfo public

@@ -46,7 +46,7 @@ import Once.Semantics.Core ℕ as M
 
 -- SigOpInfo: the descriptor carried by every signature operation.
 open import Once.CCC.SigOp.Info public
-  using (SigOpInfo; mk-info; name; semI; semM; effect;
+  using (SigOpInfo; mk-info; name; semM; effect;
          EffectShape; Pure; Emits; Halts)
 
 ------------------------------------------------------------------------

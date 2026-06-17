@@ -28,13 +28,13 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; sym;
 
 open import Once.Type using (Type; Functor; K; Id; _⊕_; _⊗_;
                                Unit; Void; Int; Float; Str; Buffer; _*_; _+_)
-open import Once.Semantics.IR using (⟦_⟧; ⟦_⟧F; sem-fmap)
+open import Once.Semantics.Machine using (⟦_⟧; ⟦_⟧F; sem-fmap)
 import Once.SPF as SPF
 open import Once.Functor.Translate using (IsBaseType; WellFormedF; ⟦_⟧-base; ⟦_⟧F-base;
                                           base-Unit; base-Void; base-Int; base-Float;
                                           base-Str; base-Buffer; base-Prod; base-Sum;
                                           wf-K; wf-Id; wf-Sum; wf-Prod)
-open import Data.Integer using (ℤ)
+open import Data.Nat using (ℕ)
 
 ------------------------------------------------------------------------
 -- Base Type Interpretation Coherence (PROVEN)
@@ -47,7 +47,7 @@ open import Data.Integer using (ℤ)
 --
 -- Proof by induction on the IsBaseType predicate.
 --
-base-interp-coherence : ∀ A → IsBaseType A → ⟦ ℤ ⟧-base A ≡ ⟦ A ⟧
+base-interp-coherence : ∀ A → IsBaseType A → ⟦ ℕ ⟧-base A ≡ ⟦ A ⟧
 base-interp-coherence .Unit base-Unit = refl
 base-interp-coherence .Void base-Void = refl
 base-interp-coherence .Int base-Int = refl
@@ -69,7 +69,7 @@ base-interp-coherence (A + B) (base-Sum pA pB) =
 --
 -- Proof by induction on the WellFormedF predicate.
 --
-functor-interp-coherence : ∀ F → WellFormedF F → ∀ X → ⟦ ℤ ⟧F-base F X ≡ ⟦ F ⟧F X
+functor-interp-coherence : ∀ F → WellFormedF F → ∀ X → ⟦ ℕ ⟧F-base F X ≡ ⟦ F ⟧F X
 functor-interp-coherence (K A) (wf-K pA) X = base-interp-coherence A pA
 functor-interp-coherence Id wf-Id X = refl
 functor-interp-coherence (F ⊕ G) (wf-Sum pF pG) X =
@@ -142,8 +142,8 @@ sem-fmap-comp F f g x =
 -- This module provides fully PROVEN coherence lemmas (no postulates):
 --
 -- 1. Base Type Interpretation Coherence:
---    - base-interp-coherence: ⟦ ℤ ⟧-base A ≡ ⟦ A ⟧ for IsBaseType A
---    - functor-interp-coherence: ⟦ ℤ ⟧F-base F X ≡ ⟦ F ⟧F X for WellFormedF F
+--    - base-interp-coherence: ⟦ ℕ ⟧-base A ≡ ⟦ A ⟧ for IsBaseType A
+--    - functor-interp-coherence: ⟦ ℕ ⟧F-base F X ≡ ⟦ F ⟧F X for WellFormedF F
 --
 -- 2. Functor Map Coherence:
 --    - fmap-coherence: sem-fmap F f x ≡ SPF.fmap F f x
