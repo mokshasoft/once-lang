@@ -31,43 +31,10 @@ open import Data.Empty using (⊥-elim)
 open import Relation.Nullary using (¬_; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
-------------------------------------------------------------------------
--- InputShape: tree-shape of an arith block's input
---
--- Plan 0.20 Phase G: shape-unit added so closed arith expressions
--- (`exit (3 + 5*2)`) — whose CCC type is `IR Unit Int` — can be
--- lifted into a block. With shape-int / shape-pair only, recognition
--- could never produce a SigOpInfo whose A matched Unit.
-------------------------------------------------------------------------
-
-data InputShape : Set where
-  shape-unit : InputShape
-  shape-int  : InputShape
-  shape-pair : InputShape → InputShape → InputShape
-
-⟦_⟧S : InputShape → Set
-⟦ shape-unit      ⟧S = ⊤
-⟦ shape-int       ⟧S = ℤ
-⟦ shape-pair l r  ⟧S = ⟦ l ⟧S × ⟦ r ⟧S
-
-------------------------------------------------------------------------
--- InputPath
-------------------------------------------------------------------------
-
-data Side : Set where
-  Fst : Side
-  Snd : Side
-
-InputPath : Set
-InputPath = List Side
-
-project : ∀ (sh : InputShape) → InputPath → ⟦ sh ⟧S → Maybe ℤ
-project shape-unit       _        _       = nothing
-project shape-int        []       z       = just z
-project shape-int        (_ ∷ _)  _       = nothing
-project (shape-pair _ _) []       _       = nothing
-project (shape-pair l _) (Fst ∷ p) (x , _) = project l p x
-project (shape-pair _ r) (Snd ∷ p) (_ , y) = project r p y
+-- The width-agnostic shape/path core now lives in `Shape` and is
+-- re-exported here, so existing consumers of `AbsState` are unaffected
+-- while the width-bearing state below gains a `bits` parameter (L1).
+open import Once.Arith.Machine.Shape public
 
 ------------------------------------------------------------------------
 -- Register file and scratch (Option 2: function-based, unbounded)
