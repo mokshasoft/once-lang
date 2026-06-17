@@ -21,7 +21,7 @@ open import Once.Optimize using (_≟Type_; _≟IR_; optimize; optimize-once;
   optimize-once-structural; optimize-compose; optimize-compose-structural;
   optimize-pair; optimize-case; safe-pair-distrib; optimize-n)
 open import Once.Optimize.Correct using (optimize-correct)
-open import Once.Semantics.IR using (eval′; ⟦_⟧)
+open import Once.CCC.Eval using (eval; ⟦_⟧)
 open import Once.Optimizer.Cost using (cost)
 open import Once.Optimizer.IRReducible public
 
@@ -706,7 +706,7 @@ optimize-normal t = optimize-n-suc-normal 9 t
 postulate
   normal-unique : ∀ {A B} (t t' : IR A B) →
     IsNormal t → IsNormal t' →
-    (∀ x → eval′ t x ≡ eval′ t' x) →
+    (∀ x → eval t x ≡ eval t' x) →
     t ≡ t'
 
 ------------------------------------------------------------------------
@@ -850,11 +850,11 @@ optimize-cost-le t = optimize-n-cost-le 10 t
 -- 5. Therefore: cost t ≤ cost t'
 normal-minimal : ∀ {A B} (t t' : IR A B) →
   IsNormal t →
-  (∀ x → eval′ t x ≡ eval′ t' x) →
+  (∀ x → eval t x ≡ eval t' x) →
   cost t ≤ cost t'
 normal-minimal t t' nt eq =
     let -- optimize t' is semantically equivalent to t
-      opt-equiv : ∀ x → eval′ (optimize t') x ≡ eval′ t x
+      opt-equiv : ∀ x → eval (optimize t') x ≡ eval t x
       opt-equiv = λ x → trans (optimize-correct t' x) (sym (eq x))
       -- By normal-unique, optimize t' ≡ t
       opt-eq-t : optimize t' ≡ t
@@ -873,7 +873,7 @@ normal-minimal t t' nt eq =
 --   1. optimize produces normal forms (optimize-normal)
 --   2. normal forms are unique per equivalence class (normal-unique)
 coherence : ∀ {A B} (t t' : IR A B) →
-  (∀ x → eval′ t x ≡ eval′ t' x) →
+  (∀ x → eval t x ≡ eval t' x) →
   optimize t ≡ optimize t'
 coherence t t' eq = normal-unique (optimize t) (optimize t')
   (optimize-normal t)
@@ -967,27 +967,27 @@ open import Data.Nat.Induction using (<-wellFounded)
 postulate
   -- fst ∘ ⟨ f , g ⟩ ≈ f
   fst-pair-beta : ∀ {A B C} (f : IR C A) (g : IR C B) (m : AllocMode) →
-    ∀ x → eval′ (fst ∘ (⟨ f , g ⟩ m)) x ≡ eval′ f x
+    ∀ x → eval (fst ∘ (⟨ f , g ⟩ m)) x ≡ eval f x
 
   -- snd ∘ ⟨ f , g ⟩ ≈ g
   snd-pair-beta : ∀ {A B C} (f : IR C A) (g : IR C B) (m : AllocMode) →
-    ∀ x → eval′ (snd ∘ (⟨ f , g ⟩ m)) x ≡ eval′ g x
+    ∀ x → eval (snd ∘ (⟨ f , g ⟩ m)) x ≡ eval g x
 
   -- (case f g) ∘ inl ≈ f
   case-inl-beta : ∀ {A B C} (f : IR A C) (g : IR B C) (m : AllocMode) →
-    ∀ x → eval′ ((case f g) ∘ (inl m)) x ≡ eval′ f x
+    ∀ x → eval ((case f g) ∘ (inl m)) x ≡ eval f x
 
   -- (case f g) ∘ inr ≈ g
   case-inr-beta : ∀ {A B C} (f : IR A C) (g : IR B C) (m : AllocMode) →
-    ∀ x → eval′ ((case f g) ∘ (inr m)) x ≡ eval′ g x
+    ∀ x → eval ((case f g) ∘ (inr m)) x ≡ eval g x
 
   -- id ∘ f ≈ f
   id-left-beta : ∀ {A B} (f : IR A B) →
-    ∀ x → eval′ (id ∘ f) x ≡ eval′ f x
+    ∀ x → eval (id ∘ f) x ≡ eval f x
 
   -- f ∘ id ≈ f
   id-right-beta : ∀ {A B} (f : IR A B) →
-    ∀ x → eval′ (f ∘ id) x ≡ eval′ f x
+    ∀ x → eval (f ∘ id) x ≡ eval f x
 
 ------------------------------------------------------------------------
 -- Cost optimization lemmas
@@ -1070,13 +1070,13 @@ postulate
 
 {-# TERMINATING #-}  -- Termination via lexicographic (cost, size) - see measure and <ₗ above
 optimize-complete : ∀ {A B} (t : IR A B) (t' : IR A B) →
-  (∀ x → eval′ t x ≡ eval′ t' x) →
+  (∀ x → eval t x ≡ eval t' x) →
   cost (optimize t) ≤ cost t'
 optimize-complete {A} {B} t t' eq = go t' eq
   where
     -- Recursive on t' with semantic equivalence proof
     go : (t' : IR A B) →
-         (∀ x → eval′ t x ≡ eval′ t' x) →
+         (∀ x → eval t x ≡ eval t' x) →
          cost (optimize t) ≤ cost t'
 
     -- COMPOSITION cases
@@ -1170,21 +1170,21 @@ optimize-complete {A} {B} t t' eq = go t' eq
     -- NON-DEGENERATE base cases (cost 0, always normal)
     -- Key insight: use normal-unique to show optimize t ≡ t'
     go id eq' =
-      let opt-equiv : ∀ x → eval′ (optimize t) x ≡ eval′ id x
+      let opt-equiv : ∀ x → eval (optimize t) x ≡ eval id x
           opt-equiv x = trans (optimize-correct t x) (eq' x)
           opt-eq : optimize t ≡ id
           opt-eq = normal-unique (optimize t) id (optimize-normal t) normal-id opt-equiv
       in ≤-reflexive (cong cost opt-eq)
 
     go fst eq' =
-      let opt-equiv : ∀ x → eval′ (optimize t) x ≡ eval′ fst x
+      let opt-equiv : ∀ x → eval (optimize t) x ≡ eval fst x
           opt-equiv x = trans (optimize-correct t x) (eq' x)
           opt-eq : optimize t ≡ fst
           opt-eq = normal-unique (optimize t) fst (optimize-normal t) normal-fst opt-equiv
       in ≤-reflexive (cong cost opt-eq)
 
     go snd eq' =
-      let opt-equiv : ∀ x → eval′ (optimize t) x ≡ eval′ snd x
+      let opt-equiv : ∀ x → eval (optimize t) x ≡ eval snd x
           opt-equiv x = trans (optimize-correct t x) (eq' x)
           opt-eq : optimize t ≡ snd
           opt-eq = normal-unique (optimize t) snd (optimize-normal t) normal-snd opt-equiv
@@ -1193,21 +1193,21 @@ optimize-complete {A} {B} t t' eq = go t' eq
     go (apply {A} {B'} {q}) eq' =
       let t' : IR ((A ⇒[ q ] B') * A) B'
           t' = apply
-          opt-equiv : ∀ x → eval′ (optimize t) x ≡ eval′ t' x
+          opt-equiv : ∀ x → eval (optimize t) x ≡ eval t' x
           opt-equiv x = trans (optimize-correct t x) (eq' x)
           opt-eq : optimize t ≡ t'
           opt-eq = normal-unique (optimize t) t' (optimize-normal t) normal-apply opt-equiv
       in ≤-reflexive (cong cost opt-eq)
 
     go unfold eq' =
-      let opt-equiv : ∀ x → eval′ (optimize t) x ≡ eval′ unfold x
+      let opt-equiv : ∀ x → eval (optimize t) x ≡ eval unfold x
           opt-equiv x = trans (optimize-correct t x) (eq' x)
           opt-eq : optimize t ≡ unfold
           opt-eq = normal-unique (optimize t) unfold (optimize-normal t) normal-unfold opt-equiv
       in ≤-reflexive (cong cost opt-eq)
 
     go arr eq' =
-      let opt-equiv : ∀ x → eval′ (optimize t) x ≡ eval′ arr x
+      let opt-equiv : ∀ x → eval (optimize t) x ≡ eval arr x
           opt-equiv x = trans (optimize-correct t x) (eq' x)
           opt-eq : optimize t ≡ arr
           opt-eq = normal-unique (optimize t) arr (optimize-normal t) normal-arr opt-equiv
@@ -1237,22 +1237,22 @@ optimize-complete {A} {B} t t' eq = go t' eq
 
 -- Then coherent-cost follows from completeness applied both directions
 optimize-coherent-cost : ∀ {A B} (t t' : IR A B) →
-  (∀ x → eval′ t x ≡ eval′ t' x) →
+  (∀ x → eval t x ≡ eval t' x) →
   cost (optimize t) ≡ cost (optimize t')
 optimize-coherent-cost t t' eq =
   let -- t ≈ t' ≈ optimize t'  (so optimize-complete t (optimize t') works)
-      t≈opt-t' : ∀ x → eval′ t x ≡ eval′ (optimize t') x
+      t≈opt-t' : ∀ x → eval t x ≡ eval (optimize t') x
       t≈opt-t' x = trans (eq x) (sym (optimize-correct t' x))
 
       -- t' ≈ t ≈ optimize t  (so optimize-complete t' (optimize t) works)
-      t'≈opt-t : ∀ x → eval′ t' x ≡ eval′ (optimize t) x
+      t'≈opt-t : ∀ x → eval t' x ≡ eval (optimize t) x
       t'≈opt-t x = trans (sym (eq x)) (sym (optimize-correct t x))
   in ≤-antisym
        (optimize-complete t (optimize t') t≈opt-t')
        (optimize-complete t' (optimize t) t'≈opt-t)
 
 optimize-optimal : ∀ {A B} (t t' : IR A B) →
-  (∀ x → eval′ t x ≡ eval′ t' x) →
+  (∀ x → eval t x ≡ eval t' x) →
   cost (optimize t) ≤ cost t'
 optimize-optimal t t' eq =
   let opt-t'-cost : cost (optimize t') ≤ cost t'

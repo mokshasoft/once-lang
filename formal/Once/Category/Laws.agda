@@ -15,7 +15,7 @@ module Once.Category.Laws where
 open import Once.Type
 open import Once.CCC.IR
 open import Once.Functor.Translate using (WellFormedF)
-open import Once.Semantics.IR using (⟦_⟧; eval′)
+open import Once.CCC.Eval using (⟦_⟧; eval)
 
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; sym; trans; subst)
 open import Data.Product using (_,_; proj₁; proj₂)
@@ -34,7 +34,7 @@ open import Function using (_∘′_)
 -- gives back f.
 --
 eval-id-left : ∀ {A B} (f : IR A B) (x : ⟦ A ⟧)
-             → eval′ (id ∘ f) x ≡ eval′ f x
+             → eval (id ∘ f) x ≡ eval f x
 eval-id-left f x = refl
 
 -- | Right identity: f ∘ id ≡ f (semantically)
@@ -43,7 +43,7 @@ eval-id-left f x = refl
 -- gives back f.
 --
 eval-id-right : ∀ {A B} (f : IR A B) (x : ⟦ A ⟧)
-              → eval′ (f ∘ id) x ≡ eval′ f x
+              → eval (f ∘ id) x ≡ eval f x
 eval-id-right f x = refl
 
 -- | Associativity: (f ∘ g) ∘ h ≡ f ∘ (g ∘ h) (semantically)
@@ -51,7 +51,7 @@ eval-id-right f x = refl
 -- Composition is associative.
 --
 eval-assoc : ∀ {A B C D} (f : IR C D) (g : IR B C) (h : IR A B) (x : ⟦ A ⟧)
-           → eval′ ((f ∘ g) ∘ h) x ≡ eval′ (f ∘ (g ∘ h)) x
+           → eval ((f ∘ g) ∘ h) x ≡ eval (f ∘ (g ∘ h)) x
 eval-assoc f g h x = refl
 
 ------------------------------------------------------------------------
@@ -63,7 +63,7 @@ eval-assoc f g h x = refl
 -- Projecting the first component of a pair gives the first morphism.
 --
 eval-fst-pair : ∀ {A B C} (f : IR C A) (g : IR C B) (m : AllocMode) (x : ⟦ C ⟧)
-              → eval′ (fst ∘ ⟨ f , g ⟩ m) x ≡ eval′ f x
+              → eval (fst ∘ ⟨ f , g ⟩ m) x ≡ eval f x
 eval-fst-pair f g m x = refl
 
 -- | snd ∘ ⟨ f , g ⟩ ≡ g
@@ -71,7 +71,7 @@ eval-fst-pair f g m x = refl
 -- Projecting the second component of a pair gives the second morphism.
 --
 eval-snd-pair : ∀ {A B C} (f : IR C A) (g : IR C B) (m : AllocMode) (x : ⟦ C ⟧)
-              → eval′ (snd ∘ ⟨ f , g ⟩ m) x ≡ eval′ g x
+              → eval (snd ∘ ⟨ f , g ⟩ m) x ≡ eval g x
 eval-snd-pair f g m x = refl
 
 ------------------------------------------------------------------------
@@ -83,7 +83,7 @@ eval-snd-pair f g m x = refl
 -- Pairing the projections gives back the identity on products.
 --
 eval-pair-eta : ∀ {A B} (m : AllocMode) (x : ⟦ A * B ⟧)
-              → eval′ (⟨ fst , snd ⟩ m) x ≡ x
+              → eval (⟨ fst , snd ⟩ m) x ≡ x
 eval-pair-eta m (a , b) = refl
 
 -- | Product uniqueness: ⟨ fst ∘ h , snd ∘ h ⟩ ≡ h (semantically)
@@ -92,8 +92,8 @@ eval-pair-eta m (a , b) = refl
 -- This is the universal property of products.
 --
 eval-pair-unique : ∀ {A B C} (h : IR C (A * B)) (m : AllocMode) (x : ⟦ C ⟧)
-                 → eval′ (⟨ fst ∘ h , snd ∘ h ⟩ m) x ≡ eval′ h x
-eval-pair-unique h m x with eval′ h x
+                 → eval (⟨ fst ∘ h , snd ∘ h ⟩ m) x ≡ eval h x
+eval-pair-unique h m x with eval h x
 ... | (a , b) = refl
 
 ------------------------------------------------------------------------
@@ -105,7 +105,7 @@ eval-pair-unique h m x with eval′ h x
 -- Case analysis on a left injection gives the left branch.
 --
 eval-case-inl : ∀ {A B C} (f : IR A C) (g : IR B C) (m : AllocMode) (x : ⟦ A ⟧)
-              → eval′ ((case f g) ∘ inl m) x ≡ eval′ f x
+              → eval ((case f g) ∘ inl m) x ≡ eval f x
 eval-case-inl f g m x = refl
 
 -- | (case f g) ∘ inr ≡ g
@@ -113,7 +113,7 @@ eval-case-inl f g m x = refl
 -- Case analysis on a right injection gives the right branch.
 --
 eval-case-inr : ∀ {A B C} (f : IR A C) (g : IR B C) (m : AllocMode) (x : ⟦ B ⟧)
-              → eval′ ((case f g) ∘ inr m) x ≡ eval′ g x
+              → eval ((case f g) ∘ inr m) x ≡ eval g x
 eval-case-inr f g m x = refl
 
 ------------------------------------------------------------------------
@@ -125,7 +125,7 @@ eval-case-inr f g m x = refl
 -- Case analysis that re-injects gives back identity on coproducts.
 --
 eval-case-eta : ∀ {A B} (m : AllocMode) (x : ⟦ A + B ⟧)
-              → eval′ (case (inl m) (inr m)) x ≡ x
+              → eval (case (inl m) (inr m)) x ≡ x
 eval-case-eta m (inj₁ a) = refl
 eval-case-eta m (inj₂ b) = refl
 
@@ -135,7 +135,7 @@ eval-case-eta m (inj₂ b) = refl
 -- This is the universal property of coproducts.
 --
 eval-case-unique : ∀ {A B C} (h : IR (A + B) C) (m : AllocMode) (x : ⟦ A + B ⟧)
-                 → eval′ (case (h ∘ inl m) (h ∘ inr m)) x ≡ eval′ h x
+                 → eval (case (h ∘ inl m) (h ∘ inr m)) x ≡ eval h x
 eval-case-unique h m (inj₁ a) = refl
 eval-case-unique h m (inj₂ b) = refl
 
@@ -148,8 +148,8 @@ eval-case-unique h m (inj₂ b) = refl
 -- Unit is terminal: there's a unique morphism from any object to Unit.
 --
 eval-terminal-unique : ∀ {A} (f : IR A Unit) (x : ⟦ A ⟧)
-                     → eval′ f x ≡ eval′ terminal x
-eval-terminal-unique f x with eval′ f x
+                     → eval f x ≡ eval terminal x
+eval-terminal-unique f x with eval f x
 ... | tt = refl
 
 ------------------------------------------------------------------------
@@ -162,7 +162,7 @@ eval-terminal-unique f x with eval′ f x
 -- This is vacuously true since Void is empty.
 --
 eval-initial-unique : ∀ {A} (f : IR Void A) (x : ⟦ Void ⟧)
-                    → eval′ f x ≡ eval′ initial x
+                    → eval f x ≡ eval initial x
 eval-initial-unique f ()
 
 ------------------------------------------------------------------------
@@ -175,7 +175,7 @@ eval-initial-unique f ()
 -- The quantity {q} is phantom; the law holds for any quantity.
 --
 eval-curry-apply : ∀ {A B C k} (f : IR (A * B) C) (m₁ m₂ : AllocMode) (x : ⟦ A * B ⟧)
-                 → eval′ (apply {k = k} ∘ ⟨ curry {k = k} f m₁ ∘ fst , snd ⟩ m₂) x ≡ eval′ f x
+                 → eval (apply {k = k} ∘ ⟨ curry {k = k} f m₁ ∘ fst , snd ⟩ m₂) x ≡ eval f x
 eval-curry-apply f m₁ m₂ (a , b) = refl
 
 -- | curry (apply ∘ ⟨ g ∘ fst , snd ⟩) ≡ g (semantically, for functions)
@@ -187,7 +187,7 @@ eval-curry-apply f m₁ m₂ (a , b) = refl
 -- With plain functions, application is direct function application.
 -- The quantity {q} is phantom; the law holds for any quantity.
 eval-curry-eta : ∀ {A B C k} (g : IR A (B ⇒[ k ] C)) (m₁ m₂ : AllocMode) (a : ⟦ A ⟧) (b : ⟦ B ⟧)
-               → eval′ (curry {k = k} (apply {k = k} ∘ ⟨ g ∘ fst , snd ⟩ m₁) m₂) a b ≡ eval′ g a b
+               → eval (curry {k = k} (apply {k = k} ∘ ⟨ g ∘ fst , snd ⟩ m₁) m₂) a b ≡ eval g a b
 eval-curry-eta g m₁ m₂ a b = refl
 
 ------------------------------------------------------------------------
@@ -204,7 +204,7 @@ eval-curry-eta g m₁ m₂ a b = refl
 -- | bimap f g = ⟨ f ∘ fst , g ∘ snd ⟩ preserves identity
 --
 eval-bimap-id : ∀ {A B} (m : AllocMode) (x : ⟦ A * B ⟧)
-              → eval′ (⟨ id ∘ fst , id ∘ snd ⟩ m) x ≡ x
+              → eval (⟨ id ∘ fst , id ∘ snd ⟩ m) x ≡ x
 eval-bimap-id m (a , b) = refl
 
 -- | bimap preserves composition
@@ -212,14 +212,14 @@ eval-bimap-id m (a , b) = refl
 eval-bimap-compose : ∀ {A B C D E F}
                      (f : IR B C) (g : IR A B) (h : IR E F) (i : IR D E)
                      (m₁ m₂ : AllocMode) (x : ⟦ A * D ⟧)
-                   → eval′ (⟨ (f ∘ g) ∘ fst , (h ∘ i) ∘ snd ⟩ m₁) x
-                     ≡ eval′ (⟨ f ∘ fst , h ∘ snd ⟩ m₁ ∘ ⟨ g ∘ fst , i ∘ snd ⟩ m₂) x
+                   → eval (⟨ (f ∘ g) ∘ fst , (h ∘ i) ∘ snd ⟩ m₁) x
+                     ≡ eval (⟨ f ∘ fst , h ∘ snd ⟩ m₁ ∘ ⟨ g ∘ fst , i ∘ snd ⟩ m₂) x
 eval-bimap-compose f g h i m₁ m₂ (a , d) = refl
 
 -- | bicase f g = [ inl ∘ f , inr ∘ g ] preserves identity
 --
 eval-bicase-id : ∀ {A B} (m : AllocMode) (x : ⟦ A + B ⟧)
-               → eval′ (case (inl m ∘ id) (inr m ∘ id)) x ≡ x
+               → eval (case (inl m ∘ id) (inr m ∘ id)) x ≡ x
 eval-bicase-id m (inj₁ a) = refl
 eval-bicase-id m (inj₂ b) = refl
 
@@ -266,7 +266,7 @@ eval-bicase-id m (inj₂ b) = refl
 -- is semantically the same as A ⇒ B.
 --
 eval-arr-identity : ∀ {A B} (f : ⟦ A ⇒ B ⟧)
-                  → eval′ (arr {q = Many}) f ≡ f
+                  → eval (arr {q = Many}) f ≡ f
 eval-arr-identity f = refl
 
 -- | arr ∘ curry ≡ curry with effectful codomain (conceptually)
@@ -294,8 +294,8 @@ eval-arr-identity f = refl
 ------------------------------------------------------------------------
 
 -- Note: We import from IR (not Machine) to match the ℤ interpretation
--- used by eval′. Machine uses ℕ which would cause type mismatches.
-open import Once.Semantics.IR
+-- used by eval. Machine uses ℕ which would cause type mismatches.
+open import Once.Semantics.Machine
   using (sem-In; sem-Out; sem-cata; sem-CoOut; sem-ana; sem-hylo; sem-fuse;
          sem-fmap; sem-ana-Out-id; sem-hylo-is-fuse;
          coerce-functor; coerce-functor⁻¹; coerce-round-trip; coerce⁻¹-round-trip;
@@ -328,8 +328,8 @@ open import Once.Postulates using (extensionality)
 -- This is the canonical way to express that μF ≅ F(μF) at the IR level.
 --
 -- Derivation from semantic laws:
---   eval′ (Cata (In m)) x
---   = sem-cata F (λ fa → eval′ (In m) (coerce⁻¹ fa)) x
+--   eval (Cata (In m)) x
+--   = sem-cata F (λ fa → eval (In m) (coerce⁻¹ fa)) x
 --   = sem-cata F (λ fa → sem-In F (coerce (coerce⁻¹ fa))) x
 --   = sem-cata F (λ fa → sem-In F fa) x           (by coerce⁻¹-round-trip)
 --   = sem-cata F sem-In x                          (by funext)
@@ -341,9 +341,9 @@ open import Once.Postulates using (extensionality)
 -- Note: Requires WellFormedF proof for postulate-free verification.
 --
 eval-cata-In-id : ∀ {F : Functor} → (wf : WellFormedF F) → (m : AllocMode) (x : ⟦ μ-type F ⟧)
-                → eval′ (Cata {F} wf (In {F} wf m)) x ≡ x
+                → eval (Cata {F} wf (In {F} wf m)) x ≡ x
 eval-cata-In-id {F} wf m x =
-  let -- The algebra used by Cata evaluation: λ fa → eval′ (In m) (coerce⁻¹ fa)
+  let -- The algebra used by Cata evaluation: λ fa → eval (In m) (coerce⁻¹ fa)
       -- which equals λ fa → sem-In F (coerce (coerce⁻¹ fa))
       -- By round-trip, coerce (coerce⁻¹ fa) = fa
       alg-pointwise : ∀ fa → sem-In F (coerce-functor F (μ-type F) (coerce-functor⁻¹ F (μ-type F) fa)) ≡ sem-In F fa
@@ -406,7 +406,7 @@ fmap-Type (F ⊗ G) f (x , y) = (fmap-Type F f x , fmap-Type G f y)
 -- 3. For base functors (K, Id), coercions are definitionally refl
 --
 -- Import coherence lemmas from Core (coerce-struct = coerce-functor now)
-open import Once.Semantics.IR
+open import Once.Semantics.Machine
   using (fmap-struct-coherence; fmap-struct-coherence′; sem-fmap-Type)
 
 -- | fmap-Type equals sem-fmap-Type (both defined identically)
@@ -441,22 +441,22 @@ fmap-coerce-coherence′ F f y = trans (fmap-struct-coherence′ F f y) (sym (fm
 -- first recursively fold all substructures, then apply the algebra.
 --
 -- Proof:
---   eval′ (Cata alg ∘ In m) x
---   = eval′ (Cata alg) (sem-In F (coerce x))      (by eval composition and In)
---   = sem-cata F alg′ (sem-In F (coerce x))       (by eval Cata, where alg′ = λ fa → eval′ alg (coerce⁻¹ fa))
+--   eval (Cata alg ∘ In m) x
+--   = eval (Cata alg) (sem-In F (coerce x))      (by eval composition and In)
+--   = sem-cata F alg′ (sem-In F (coerce x))       (by eval Cata, where alg′ = λ fa → eval alg (coerce⁻¹ fa))
 --   = alg′ (sem-fmap F (sem-cata F alg′) (coerce x))    (by sem-cata-compute)
---   = eval′ alg (coerce⁻¹ (sem-fmap F (sem-cata F alg′) (coerce x)))
---   = eval′ alg (fmap-Type F (sem-cata F alg′) x)       (by fmap-coerce-coherence)
---   = eval′ alg (fmap-Type F (eval′ (Cata alg)) x)      (by def of eval′ (Cata alg))
+--   = eval alg (coerce⁻¹ (sem-fmap F (sem-cata F alg′) (coerce x)))
+--   = eval alg (fmap-Type F (sem-cata F alg′) x)       (by fmap-coerce-coherence)
+--   = eval alg (fmap-Type F (eval (Cata alg)) x)      (by def of eval (Cata alg))
 --
 eval-cata-In : ∀ {F : Functor} → (wf : WellFormedF F) → ∀ {A : Type} (alg : IR (⟦ F ⟧T A) A) (m : AllocMode)
                (x : ⟦ ⟦ F ⟧T (μ-type F) ⟧)
-             → eval′ (Cata {F} wf alg ∘ In {F} wf m) x ≡
-               eval′ alg (fmap-Type F (eval′ (Cata {F} wf alg)) x)
+             → eval (Cata {F} wf alg ∘ In {F} wf m) x ≡
+               eval alg (fmap-Type F (eval (Cata {F} wf alg)) x)
 eval-cata-In {F} wf {A} alg m x =
   let -- The algebra lifted to Set level
       alg′ : ⟦ F ⟧F ⟦ A ⟧ → ⟦ A ⟧
-      alg′ = λ fa → eval′ alg (coerce-functor⁻¹ F A fa)
+      alg′ = λ fa → eval alg (coerce-functor⁻¹ F A fa)
 
       -- Step 1: Apply sem-cata-compute (well-formed, no postulates)
       -- sem-cata wf alg′ (sem-In F (coerce x)) = alg′ (sem-fmap F (sem-cata wf alg′) (coerce x))
@@ -470,11 +470,11 @@ eval-cata-In {F} wf {A} alg m x =
             ≡ fmap-Type F (sem-cata wf alg′) x
       step2 = fmap-coerce-coherence F (sem-cata wf alg′) x
 
-      -- Step 3: Combine - alg′ of step1 = eval′ alg (coerce⁻¹ ...)
-      -- eval′ alg (coerce⁻¹ (sem-fmap F ...)) = eval′ alg (fmap-Type F ... x)
-      step3 : eval′ alg (coerce-functor⁻¹ F A (sem-fmap F (sem-cata wf alg′) (coerce-functor F (μ-type F) x)))
-            ≡ eval′ alg (fmap-Type F (sem-cata wf alg′) x)
-      step3 = cong (eval′ alg) step2
+      -- Step 3: Combine - alg′ of step1 = eval alg (coerce⁻¹ ...)
+      -- eval alg (coerce⁻¹ (sem-fmap F ...)) = eval alg (fmap-Type F ... x)
+      step3 : eval alg (coerce-functor⁻¹ F A (sem-fmap F (sem-cata wf alg′) (coerce-functor F (μ-type F) x)))
+            ≡ eval alg (fmap-Type F (sem-cata wf alg′) x)
+      step3 = cong (eval alg) step2
 
   in trans step1 step3
 
@@ -501,16 +501,16 @@ eval-cata-In {F} wf {A} alg m x =
 -- being the coalgebra composed with In.
 --
 -- PROOF: The key insight is that the coercions cancel out:
---   eval′ (In wfG Heap) y = sem-In G (coerce-functor G (μ-type G) y)
---   So eval′ (coalg ∘ In wfG Heap) (coerce-functor⁻¹ G (μ-type G) gx)
---    = eval′ coalg (sem-In G (coerce-functor G ... (coerce-functor⁻¹ G ... gx)))
---    = eval′ coalg (sem-In G gx)  [by coerce⁻¹-round-trip]
+--   eval (In wfG Heap) y = sem-In G (coerce-functor G (μ-type G) y)
+--   So eval (coalg ∘ In wfG Heap) (coerce-functor⁻¹ G (μ-type G) gx)
+--    = eval coalg (sem-In G (coerce-functor G ... (coerce-functor⁻¹ G ... gx)))
+--    = eval coalg (sem-In G gx)  [by coerce⁻¹-round-trip]
 --
 eval-hylo-is-fuse : ∀ {F G : Functor} → (wfF : WellFormedF F) → (wfG : WellFormedF G)
                     → ∀ {B : Type} (alg : IR (⟦ F ⟧T B) B) (coalg : IR (μ-type G) (⟦ F ⟧T (μ-type G)))
                     → (x : ⟦ μ-type G ⟧)
-                    → eval′ (Hylo wfF wfG alg coalg) x ≡
-                      eval′ (Fuse wfF wfG alg (coalg ∘ In wfG Heap)) x
+                    → eval (Hylo wfF wfG alg coalg) x ≡
+                      eval (Fuse wfF wfG alg (coalg ∘ In wfG Heap)) x
 eval-hylo-is-fuse {F} {G} wfF wfG {B} alg coalg x =
   -- LHS unfolds to: sem-hylo ... alg-set coalg-set x
   -- By sem-hylo definition: = sem-fuse ... alg-set (coalg-set ∘ sem-In G) x
@@ -520,29 +520,29 @@ eval-hylo-is-fuse {F} {G} wfF wfG {B} alg coalg x =
   where
     -- The algebra for both sides (identical)
     alg-set : ⟦ F ⟧F ⟦ B ⟧ → ⟦ B ⟧
-    alg-set = λ fb → eval′ alg (coerce-functor⁻¹ F B fb)
+    alg-set = λ fb → eval alg (coerce-functor⁻¹ F B fb)
 
     -- The coalgebra used in Hylo (via sem-hylo)
     coalg-set : ⟦ μ-type G ⟧ → ⟦ F ⟧F ⟦ μ-type G ⟧
-    coalg-set = λ μg → coerce-functor F (μ-type G) (eval′ coalg μg)
+    coalg-set = λ μg → coerce-functor F (μ-type G) (eval coalg μg)
 
     -- The transform used in Fuse
     transform-set : ⟦ G ⟧F ⟦ μ-type G ⟧ → ⟦ F ⟧F ⟦ μ-type G ⟧
     transform-set = λ gx → coerce-functor F (μ-type G)
-                             (eval′ (coalg ∘ In wfG Heap) (coerce-functor⁻¹ G (μ-type G) gx))
+                             (eval (coalg ∘ In wfG Heap) (coerce-functor⁻¹ G (μ-type G) gx))
 
     -- Key: show the transforms are pointwise equal
     transform-pointwise : ∀ gx → (coalg-set ∘′ sem-In G) gx ≡ transform-set gx
     transform-pointwise gx =
       -- (coalg-set ∘ sem-In G) gx
-      -- = coerce-functor F ... (eval′ coalg (sem-In G gx))
+      -- = coerce-functor F ... (eval coalg (sem-In G gx))
       --
       -- transform-set gx
-      -- = coerce-functor F ... (eval′ (coalg ∘ In wfG Heap) (coerce-functor⁻¹ G ... gx))
-      -- = coerce-functor F ... (eval′ coalg (eval′ (In wfG Heap) (coerce-functor⁻¹ G ... gx)))
-      -- = coerce-functor F ... (eval′ coalg (sem-In G (coerce-functor G ... (coerce-functor⁻¹ G ... gx))))
-      -- = coerce-functor F ... (eval′ coalg (sem-In G gx))  [by coerce⁻¹-round-trip]
-      cong (λ y → coerce-functor F (μ-type G) (eval′ coalg (sem-In G y)))
+      -- = coerce-functor F ... (eval (coalg ∘ In wfG Heap) (coerce-functor⁻¹ G ... gx))
+      -- = coerce-functor F ... (eval coalg (eval (In wfG Heap) (coerce-functor⁻¹ G ... gx)))
+      -- = coerce-functor F ... (eval coalg (sem-In G (coerce-functor G ... (coerce-functor⁻¹ G ... gx))))
+      -- = coerce-functor F ... (eval coalg (sem-In G gx))  [by coerce⁻¹-round-trip]
+      cong (λ y → coerce-functor F (μ-type G) (eval coalg (sem-In G y)))
            (sym (coerce⁻¹-round-trip G (μ-type G) gx))
 
     -- Function extensionality gives us equality of transforms
@@ -573,7 +573,7 @@ eval-hylo-is-fuse {F} {G} wfF wfG {B} alg coalg x =
 --   = x                            [by sem-ana-Out-id]
 --
 eval-ana-Out-id : ∀ {F : Functor} → (wf : WellFormedF F) (x : ⟦ ν-type F ⟧)
-                → eval′ (Ana {F} wf (Out {F} wf)) x ≡ x
+                → eval (Ana {F} wf (Out {F} wf)) x ≡ x
 eval-ana-Out-id {F} wf x =
   let -- The actual coalgebra from eval (with round-trip coercions)
       actual-coalg : ⟦ ν-type F ⟧ → ⟦ F ⟧F ⟦ ν-type F ⟧
