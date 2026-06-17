@@ -24,6 +24,7 @@
 module Once.Verified.SourceFaithful where
 
 open import Data.Nat using (ℕ)
+open import Data.Unit using (tt)
 open import Data.Fin using (Fin; zero; suc)
 open import Data.List using (List; []; _++_)
 open import Data.Sum using (inj₁; inj₂)
@@ -42,6 +43,7 @@ open import Once.Verified.DenotTrace using (⟦_⟧ᴰ; evalᴰ; inject)
 open import Once.CCC.Eval as Val using ()
 import Once.Verified.SourceDenote as SD
 import Once.Compile as C
+import Once.Verified.FaithfulLemmas as FL
 open import Once.Postulates using (extensionality)
 
 open Once.Surface.Syntax.Expr
@@ -50,15 +52,6 @@ open Once.Surface.Syntax.Expr
 -- The elaborator-faithfulness lemma (general — over any context/env, so the
 -- induction can recurse into open subterms). Pointwise in the depth `k`.
 ------------------------------------------------------------------------
-
-postulate
-  -- TOP-DOWN HOLE (M3): the not-yet-discharged constructors. Each is an obligation
-  -- the apex demands; discharge in place (leaf cases definitional via the shared
-  -- semM/evalᴰ, composition cases via the IH + the monad-combinator reduction).
-  faithful-todo :
-    ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A} (e : Expr Γ Ψ A)
-      (dγ : ⟦ ⟦ Γ ⟧ᶜ ⟧ᴰ) (k : ℕ)
-    → evalᴰ (elaborate C.Heap e) dγ k ≡ SD.⟦ e ⟧ˢ dγ k
 
 -- `inject` is the identity on the comparison codomain `Unit + Unit` (it recurses
 -- on the sum, `inject {Unit}` = id) — but NOT definitionally, so the comparison
@@ -194,4 +187,9 @@ faithful (case' s l r) dγ n rewrite faithful s dγ n with proj₂ (SD.⟦ s ⟧
         cong₂ _,_ (case-trace (proj₁ (SD.⟦ s ⟧ˢ dγ n)) (proj₁ (SD.⟦ l ⟧ˢ (dγ , a) n))) refl
 ... | inj₂ b rewrite faithful r (dγ , b) n =
         cong₂ _,_ (case-trace (proj₁ (SD.⟦ s ⟧ˢ dγ n)) (proj₁ (SD.⟦ r ⟧ˢ (dγ , b) n))) refl
-faithful e       dγ k = faithful-todo e dγ k
+-- cata: after the `⟦_⟧ᴰ` value-model fix, both sides fold with structurally
+-- identical algebras; reduces to the closure-bridge (`cata-body` + `build-pure`).
+faithful {Γ = Γ} (cata wf alg) dγ k = FL.cata-body {Γ = Γ} wf alg (λ j → faithful alg tt j) dγ k
+-- ana: dual of cata; reduces to the same closure-bridge via `ana-body` (+ the
+-- `ana-ev-bridge` trace lemma) + `build-pure`.
+faithful {Γ = Γ} (ana wf coalg) dγ k = FL.ana-body {Γ = Γ} wf coalg (λ j → faithful coalg tt j) dγ k
