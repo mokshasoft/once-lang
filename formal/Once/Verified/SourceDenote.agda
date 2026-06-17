@@ -48,7 +48,7 @@ open import Once.Semantics.Machine
 open import Once.CCC.SigOp.Info using (semM)
 open import Once.Arith.SigOp.Builders
   using (add-info; sub-info; mul-info; div-info; mod-info; neg-info;
-         lt-info; le-info; gt-info; ge-info; eq-info; ne-info; generic-info; value-info; str-lit-info)
+         lt-info; le-info; gt-info; ge-info; eq-info; ne-info; generic-info; value-info; arrow-info; str-lit-info)
 
 open Once.Surface.Syntax.Expr
 
@@ -167,8 +167,8 @@ ana-eventsˢ {F} {A} coalgClo a (suc m) =
 -- CLOSURE applying the SigOp to its arg (so the effect fires at apply, not at
 -- pair-build); at non-arrow it runs on terminal `tt`. closure/poly never wrap.
 ⟦ sigOp {A = (Dom ⇒[ k ] Cod)} name ⟧ˢ dγ =
-  returnT (λ arg → λ n → ( emit-D (generic-info {Dom} {Cod} name) (forget arg)
-                         , inject (semM (generic-info {Dom} {Cod} name) (forget arg)) ))
+  returnT (λ arg → λ n → ( emit-D (arrow-info {Dom} {Cod} k name) (forget arg)
+                         , inject (semM (arrow-info {Dom} {Cod} k name) (forget arg)) ))
 -- VALUE-position references (non-arrow sigOp, closure, poly): `Pure` via
 -- `value-info` (effects live on arrows, fire on application — D018), so they
 -- emit `[]` at build. This is what makes `build-pure` hold for these leaves;

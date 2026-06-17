@@ -30,7 +30,8 @@ open import Data.String using (String; _++_)
 open import Data.Sum using (_⊎_)
 open import Data.Unit using (⊤)
 
-open import Once.Type using (Type; Unit; Int; Str; _*_; _+_)
+open import Once.Type using (Type; Unit; Int; Str; _*_; _+_;
+                              ArrowKind; mk-kind; Purity; pure; eff)
 open import Once.CCC.SigOp.Info using (SigOpInfo; mk-info; EffectShape; Pure; Halts)
 open import Relation.Binary.PropositionalEquality using (refl)
 
@@ -178,3 +179,13 @@ generic-info name = mk-info name (generic-semM name) (classify-name name)
 -- remaining laundering, orthogonal to the effect.)
 value-info : ∀ {A B} → String → SigOpInfo A B
 value-info name = mk-info name (generic-semM name) Pure
+
+-- | The info for an external op at an ARROW type, dispatched on the arrow's
+-- purity `π` so the effect is COHERENT with the type: a `pure` arrow op is
+-- `Pure` (applying it emits nothing — what `app` needs in `build-pure`); an
+-- `eff` arrow op carries the deferred per-application effect (`generic-info`,
+-- the `classify-name` stand-in to be replaced by the interpretation contract,
+-- Plan 0.38/D061). This confines `classify-name` to `eff` arrows only.
+arrow-info : ∀ {A B} → ArrowKind → String → SigOpInfo A B
+arrow-info (mk-kind _ pure) name = value-info name
+arrow-info (mk-kind _ eff)  name = generic-info name

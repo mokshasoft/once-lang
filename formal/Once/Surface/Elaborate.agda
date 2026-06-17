@@ -39,7 +39,7 @@ open import Once.Arith.SigOp.IntLit using (lit-int-info)
 open import Once.Arith.SigOp.Builders
   using (str-lit-info; add-info; sub-info; mul-info; div-info; mod-info;
          neg-info; lt-info; le-info; gt-info; ge-info; eq-info; ne-info;
-         generic-info; value-info)
+         generic-info; value-info; arrow-info)
 
 -- Literals: constant morphisms that ignore input environment.
 --
@@ -270,7 +270,7 @@ elaborate m (arr' f) = arr ∘ elaborate m f
 -- `λ x → f x` would elaborate, so SigOps and user closures are
 -- now value-equivalent under apply.
 elaborate m (sigOp {A = (Dom ⇒[ k ] Cod)} name) =
-  curry {k = k} (SigOp (generic-info name) ∘ snd) m
+  curry {k = k} (SigOp (arrow-info k name) ∘ snd) m
 elaborate m (sigOp name) = SigOp (value-info name) ∘ terminal
 -- Plan 0.19: user-defined closure reference.
 --
