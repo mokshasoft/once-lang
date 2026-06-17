@@ -160,5 +160,21 @@ classify-name : ∀ {B} → String → EffectShape B
 classify-name {Unit} "linux.exit" = Halts refl
 classify-name _                   = Pure
 
+-- | Effect at the ARROW (deferred-application) position. `generic-info` is
+-- the per-application effect of an external op invoked through its arrow —
+-- the only legitimate place an effect lives (it fires when the closure is
+-- applied). `classify-name`'s string guess here is the stand-in to be
+-- replaced by the interpretation's declared contract (Plan 0.38 / D061).
 generic-info : ∀ {A B} → String → SigOpInfo A B
 generic-info name = mk-info name (generic-semM name) (classify-name name)
+
+-- | A SigOp referenced as a VALUE — at non-arrow type, or as a `closure` /
+-- `poly` reference. Its effect is `Pure`: an effect lives on an *arrow*
+-- (realized only on application, D018 suspended-Eff), so a bare value
+-- reference emits nothing at build. This is the structural fact behind
+-- `build-pure` (a closed value builds with an empty trace), and it is
+-- interpretation-AGNOSTIC — no `classify-name` guess. (The `semM` value is
+-- still `generic-semM`; sourcing it from the interpretation contract is the
+-- remaining laundering, orthogonal to the effect.)
+value-info : ∀ {A B} → String → SigOpInfo A B
+value-info name = mk-info name (generic-semM name) Pure

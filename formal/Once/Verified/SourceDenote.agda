@@ -48,7 +48,7 @@ open import Once.Semantics.Machine
 open import Once.CCC.SigOp.Info using (semM)
 open import Once.Arith.SigOp.Builders
   using (add-info; sub-info; mul-info; div-info; mod-info; neg-info;
-         lt-info; le-info; gt-info; ge-info; eq-info; ne-info; generic-info; str-lit-info)
+         lt-info; le-info; gt-info; ge-info; eq-info; ne-info; generic-info; value-info; str-lit-info)
 
 open Once.Surface.Syntax.Expr
 
@@ -169,6 +169,11 @@ ana-eventsˢ {F} {A} coalgClo a (suc m) =
 ⟦ sigOp {A = (Dom ⇒[ k ] Cod)} name ⟧ˢ dγ =
   returnT (λ arg → λ n → ( emit-D (generic-info {Dom} {Cod} name) (forget arg)
                          , inject (semM (generic-info {Dom} {Cod} name) (forget arg)) ))
-⟦ sigOp {A = A} name ⟧ˢ   dγ = λ n → (emit-D (generic-info {Unit} {A} name) tt , inject (semM (generic-info {Unit} {A} name) tt))
-⟦ closure {A = A} name ⟧ˢ dγ = λ n → (emit-D (generic-info {Unit} {A} name) tt , inject (semM (generic-info {Unit} {A} name) tt))
-⟦ poly name PT ⟧ˢ         dγ = λ n → (emit-D (generic-info {Unit} {PT} name) tt , inject (semM (generic-info {Unit} {PT} name) tt))
+-- VALUE-position references (non-arrow sigOp, closure, poly): `Pure` via
+-- `value-info` (effects live on arrows, fire on application — D018), so they
+-- emit `[]` at build. This is what makes `build-pure` hold for these leaves;
+-- interpretation-agnostic (no `classify-name`). Matches elaborate's
+-- `SigOp (value-info name) ∘ terminal` ⇒ `faithful` stays `refl`.
+⟦ sigOp {A = A} name ⟧ˢ   dγ = λ n → (emit-D (value-info {Unit} {A} name) tt , inject (semM (value-info {Unit} {A} name) tt))
+⟦ closure {A = A} name ⟧ˢ dγ = λ n → (emit-D (value-info {Unit} {A} name) tt , inject (semM (value-info {Unit} {A} name) tt))
+⟦ poly name PT ⟧ˢ         dγ = λ n → (emit-D (value-info {Unit} {PT} name) tt , inject (semM (value-info {Unit} {PT} name) tt))
