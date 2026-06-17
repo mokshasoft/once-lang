@@ -4289,3 +4289,63 @@ removing it loses no coverage.
 - D059 (superseded — `SS.eval` cross-check retired), D057/D058 (source-reference role
   updated; observation depth retained), D054 (`Int` = signed modular `Word`), D055 (total
   division), Plan 0.46 + `plans/0.46-HANDOFF.md`.
+
+## D061: A SigOp's Contract Comes From Its Interpretation (Off-Line, All Equal); the Core Is Interpretation-Agnostic
+
+**Date**: 2026-06-17
+**Status**: Accepted
+**Implements**: Plan 0.38 (`0.38-core`) + Plan 0.11 (the SigOp slice); branch `clean-semantics`
+**Triggered by**: D060's `faithful` proof — its last obligation `build-pure` is false while a
+SigOp's effect is guessed by a hardcoded `classify-name` string-match.
+
+### Context
+
+A `SigOp` is just a morphism `A → B` that escapes CCC structure but **not soundness**: it
+carries a contract (machine semantics `semM` + observable `EffectShape` + `impl ⊨ semM`) its
+producer must discharge. Today the external contract is laundered: `classify-name {Unit}
+"linux.exit" = Halts` (effect from a **string**, decoupled from the type) plus a
+`generic-semM : String → …` postulate materialise a `SigOpInfo` for *any* name at *any* type.
+This (a) bakes a specific interpretation (Linux) into the compiler core, (b) lets a contractless
+SigOp be minted (the Plan 0.36 effectful-cata bug), and (c) makes `build-pure` false — a
+non-arrow `sigOp {Unit} "linux.exit"` "emits" at build (the third mask of the parallel-truth
+disease, after the ℤ-model and the parallel `eval` value-model).
+
+### Decision
+
+**A SigOp's contract is supplied by its *interpretation*, and the verified core is parameterized
+over an abstract interpretation — no concrete interpretation is baked in.**
+
+1. **Two compile times.** (i) *Once program-compile-time* — the extracted `once` binary; **no
+   Agda in it**; it does not know which interpretation will be linked; it sees only declared
+   signatures + effects and **cannot check contract proofs**. (ii) *Interpretation-verification-
+   time* — **off-line**, in Agda, where each SigOp's contract is discharged.
+2. **All interpretations are equal — none is special, NOT Linux.** There is no "built-in
+   interpretation verified when we build Once." Linux, seL4, and a user's own interpretation are
+   all verified off-line by their authors, identically.
+3. **Discharge is proof-OR-postulate, per (SigOp × target)** — NOT "external ⟹ axiom". An
+   unverified kernel (Linux) **postulates** its contracts; a verified one (seL4) can **prove**
+   them, connected to its refinement theorems; internal producers (the arith compiler) prove
+   theirs. The `TrustedBase` shrinks automatically as targets become verified.
+4. **The core (`elaborate`/`⟦_⟧ˢ`/`⟦_⟧ᴰ`/`faithful`/compile-correctness) is parameterized over an
+   abstract `Interpretation`** (per-name `SigOpInfo` + a well-formedness condition: a non-arrow /
+   bare-value op is `Pure`, since effects are deferred onto arrows). `classify-name` /
+   `generic-info` / `generic-semM` are deleted — they were a hardcoded stand-in for that
+   parameter. This is the SigOp slice of Plan 0.11's `TrustedBase` parameterization.
+
+### Consequences
+
+- `build-pure` (and a postulate-free meaning layer / `faithful`) is provable **relative to a
+  well-formed abstract interpretation** — nothing emits at build, so the IR's per-fold-layer
+  algebra rebuild matches the denotational build-once.
+- A contractless or mis-typed external SigOp becomes **unconstructible** (no `String → SigOpInfo`
+  catch-all) — closing the Plan 0.36 laundering class, not just making it visible.
+- Concrete interpretation instances (Linux, seL4) and **dog-fooding** a user-proven interpretation
+  (the acceptance test that a third party can author + verify one) are off-line, equal, and
+  **deferred** — the core must not import any of them.
+
+### See Also
+
+- Plan 0.38 (per-producer SigOp contracts; `0.38-core` = M0), Plan 0.11 (parameterized
+  `TrustedBase` / `--safe`), D060 (the `faithful` proof that triggered this), D025-era
+  `EffectShape` contract, D047 (`SigOp` rename). Decision-log D-entry on primitives-are-external
+  (2025-12-08) is the original "interpretations live outside the compiler".
