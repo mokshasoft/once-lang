@@ -34,7 +34,7 @@ open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; sym)
 
 open import Once.Type using (Functor; K; Id; _⊕_; _⊗_)
-open import Once.Semantics.IR using (⟦_⟧F)
+open import Once.Semantics.Machine using (⟦_⟧F)
 
 ------------------------------------------------------------------------
 -- Functor map (copied from SPF to avoid import issues)
