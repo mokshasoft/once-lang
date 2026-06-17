@@ -83,9 +83,12 @@ postulate
   -- Comparisons: Int * Int → (Unit + Unit) ≡ Bool
   lt-semM le-semM gt-semM ge-semM eq-semM ne-semM : M.⟦ Int * Int ⟧ → M.⟦ Unit + Unit ⟧
 
-  -- String literal semantics (the value is the string; type ⟦Str⟧ is
-  -- abstract at both layers).
-  str-lit-semM : String → M.⟦ Unit ⟧ → M.⟦ Str ⟧
+-- | String literal semantics. `M.⟦ Str ⟧ = String` (Semantics.Core), so a
+-- string literal denotes ITSELF — concrete, no postulate. (The machine's
+-- byte/pointer representation is a codegen concern, a different layer; the
+-- denotational value is the string.)
+str-lit-semM : String → M.⟦ Unit ⟧ → M.⟦ Str ⟧
+str-lit-semM s _ = s
 
 ------------------------------------------------------------------------
 -- SigOpInfo builders
