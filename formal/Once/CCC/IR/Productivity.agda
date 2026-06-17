@@ -31,7 +31,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Once.Type using (Type; Functor; ν-type; ⟦_⟧T)
 open import Once.Functor.Translate using (WellFormedF)
 open import Once.CCC.IR
-open import Once.Semantics.IR using (⟦_⟧; eval′)
+open import Once.CCC.Eval using (⟦_⟧; eval)
 
 -- Import totality foundation
 open import Once.CCC.IR.Totality using (eval-total; coalg-produces-layer)
@@ -50,7 +50,7 @@ open import Once.CCC.IR.Totality using (eval-total; coalg-produces-layer)
 -- This IS productivity: each observation produces a value in finite time.
 --
 observation-terminates : ∀ {F A} (wf : WellFormedF F) (c : IR A (⟦ F ⟧T A)) (a : ⟦ A ⟧)
-                       → ∃[ v ] (eval′ (Out wf ∘ Ana wf c) a ≡ v)
+                       → ∃[ v ] (eval (Out wf ∘ Ana wf c) a ≡ v)
 observation-terminates wf c a = eval-total (Out wf ∘ Ana wf c) a
 
 ------------------------------------------------------------------------
@@ -67,7 +67,7 @@ observation-terminates wf c a = eval-total (Out wf ∘ Ana wf c) a
 -- This is "guardedness" — but it's automatic, not checked.
 --
 guardedness-automatic : ∀ {F A} (c : IR A (⟦ F ⟧T A)) (a : ⟦ A ⟧)
-                      → ∃[ layer ] (eval′ c a ≡ layer)
+                      → ∃[ layer ] (eval c a ≡ layer)
 guardedness-automatic {F} {A} c a = coalg-produces-layer {F} {A} c a
 
 ------------------------------------------------------------------------

@@ -24,7 +24,7 @@ module Once.Fusion.Correct where
 
 open import Once.Type
 open import Once.CCC.IR
-open import Once.Semantics.IR using (⟦_⟧; eval′)
+open import Once.CCC.Eval using (⟦_⟧; eval)
 open import Once.Fusion
 open import Once.Postulates using (extensionality)
 
@@ -46,7 +46,7 @@ funext = extensionality
 ------------------------------------------------------------------------
 
 fusion-compose-correct : ∀ {A B C} (g : IR B C) (f : IR A B) (x : ⟦ A ⟧)
-                       → eval′ (fusion-compose g f) x ≡ eval′ (g ∘ f) x
+                       → eval (fusion-compose g f) x ≡ eval (g ∘ f) x
 fusion-compose-correct g f x = refl
 
 ------------------------------------------------------------------------
@@ -54,23 +54,23 @@ fusion-compose-correct g f x = refl
 ------------------------------------------------------------------------
 
 open import Data.Integer using (ℤ)
-open import Once.Semantics.Core ℤ using (sem-cata; sem-para; sem-ana; sem-hylo; sem-fuse; coerce-functor; coerce-functor⁻¹)
+open import Once.Semantics.Core ℕ using (sem-cata; sem-para; sem-ana; sem-hylo; sem-fuse; coerce-functor; coerce-functor⁻¹)
 
 fusion-Cata-cong : ∀ {F A} (wf : _) (alg alg' : IR (⟦ F ⟧T A) A) (x : ⟦ μ-type F ⟧)
-                 → eval′ alg ≡ eval′ alg'
-                 → eval′ (Cata wf alg) x ≡ eval′ (Cata wf alg') x
+                 → eval alg ≡ eval alg'
+                 → eval (Cata wf alg) x ≡ eval (Cata wf alg') x
 fusion-Cata-cong {F} wf alg alg' x eq =
   cong (λ ev → sem-cata wf (λ fa → ev (coerce-functor⁻¹ F _ fa)) x) eq
 
 fusion-Para-cong : ∀ {F A} (wf : _) (alg alg' : IR (⟦ F ⟧T (μ-type F * A)) A) (x : ⟦ μ-type F ⟧)
-                 → eval′ alg ≡ eval′ alg'
-                 → eval′ (Para wf alg) x ≡ eval′ (Para wf alg') x
+                 → eval alg ≡ eval alg'
+                 → eval (Para wf alg) x ≡ eval (Para wf alg') x
 fusion-Para-cong {F} wf alg alg' x eq =
   cong (λ ev → sem-para wf (λ fx → ev (coerce-functor⁻¹ F _ fx)) x) eq
 
 fusion-Ana-cong : ∀ {F A} (wf : _) (coalg coalg' : IR A (⟦ F ⟧T A)) (x : ⟦ A ⟧)
-                → eval′ coalg ≡ eval′ coalg'
-                → eval′ (Ana wf coalg) x ≡ eval′ (Ana wf coalg') x
+                → eval coalg ≡ eval coalg'
+                → eval (Ana wf coalg) x ≡ eval (Ana wf coalg') x
 fusion-Ana-cong {F} {A} wf coalg coalg' x eq =
   cong (λ ev → sem-ana F (λ a → coerce-functor F A (ev a)) x) eq
 
@@ -78,23 +78,23 @@ fusion-Hylo-cong-alg : ∀ {F G B} (wfF : _) (wfG : _)
                        (alg alg' : IR (⟦ F ⟧T B) B)
                        (coalg : IR (μ-type G) (⟦ F ⟧T (μ-type G)))
                        (x : ⟦ μ-type G ⟧)
-                     → eval′ alg ≡ eval′ alg'
-                     → eval′ (Hylo wfF wfG alg coalg) x ≡ eval′ (Hylo wfF wfG alg' coalg) x
+                     → eval alg ≡ eval alg'
+                     → eval (Hylo wfF wfG alg coalg) x ≡ eval (Hylo wfF wfG alg' coalg) x
 fusion-Hylo-cong-alg {F} {G} wfF wfG alg alg' coalg x eq =
   cong (λ ev → sem-hylo F G wfF wfG
                          (λ fb → ev (coerce-functor⁻¹ F _ fb))
-                         (λ μg → coerce-functor F (μ-type G) (eval′ coalg μg))
+                         (λ μg → coerce-functor F (μ-type G) (eval coalg μg))
                          x) eq
 
 fusion-Hylo-cong-coalg : ∀ {F G B} (wfF : _) (wfG : _)
                          (alg : IR (⟦ F ⟧T B) B)
                          (coalg coalg' : IR (μ-type G) (⟦ F ⟧T (μ-type G)))
                          (x : ⟦ μ-type G ⟧)
-                       → eval′ coalg ≡ eval′ coalg'
-                       → eval′ (Hylo wfF wfG alg coalg) x ≡ eval′ (Hylo wfF wfG alg coalg') x
+                       → eval coalg ≡ eval coalg'
+                       → eval (Hylo wfF wfG alg coalg) x ≡ eval (Hylo wfF wfG alg coalg') x
 fusion-Hylo-cong-coalg {F} {G} wfF wfG alg coalg coalg' x eq =
   cong (λ ev → sem-hylo F G wfF wfG
-                         (λ fb → eval′ alg (coerce-functor⁻¹ F _ fb))
+                         (λ fb → eval alg (coerce-functor⁻¹ F _ fb))
                          (λ μg → coerce-functor F (μ-type G) (ev μg))
                          x) eq
 
@@ -102,23 +102,23 @@ fusion-Fuse-cong-alg : ∀ {F G B} (wfF : _) (wfG : _)
                        (alg alg' : IR (⟦ F ⟧T B) B)
                        (tr : IR (⟦ G ⟧T (μ-type G)) (⟦ F ⟧T (μ-type G)))
                        (x : ⟦ μ-type G ⟧)
-                     → eval′ alg ≡ eval′ alg'
-                     → eval′ (Fuse wfF wfG alg tr) x ≡ eval′ (Fuse wfF wfG alg' tr) x
+                     → eval alg ≡ eval alg'
+                     → eval (Fuse wfF wfG alg tr) x ≡ eval (Fuse wfF wfG alg' tr) x
 fusion-Fuse-cong-alg {F} {G} wfF wfG alg alg' tr x eq =
   cong (λ ev → sem-fuse F G wfF wfG
                          (λ fb → ev (coerce-functor⁻¹ F _ fb))
-                         (λ gx → coerce-functor F _ (eval′ tr (coerce-functor⁻¹ G _ gx)))
+                         (λ gx → coerce-functor F _ (eval tr (coerce-functor⁻¹ G _ gx)))
                          x) eq
 
 fusion-Fuse-cong-tr : ∀ {F G B} (wfF : _) (wfG : _)
                       (alg : IR (⟦ F ⟧T B) B)
                       (tr tr' : IR (⟦ G ⟧T (μ-type G)) (⟦ F ⟧T (μ-type G)))
                       (x : ⟦ μ-type G ⟧)
-                    → eval′ tr ≡ eval′ tr'
-                    → eval′ (Fuse wfF wfG alg tr) x ≡ eval′ (Fuse wfF wfG alg tr') x
+                    → eval tr ≡ eval tr'
+                    → eval (Fuse wfF wfG alg tr) x ≡ eval (Fuse wfF wfG alg tr') x
 fusion-Fuse-cong-tr {F} {G} wfF wfG alg tr tr' x eq =
   cong (λ ev → sem-fuse F G wfF wfG
-                         (λ fb → eval′ alg (coerce-functor⁻¹ F _ fb))
+                         (λ fb → eval alg (coerce-functor⁻¹ F _ fb))
                          (λ gx → coerce-functor F _ (ev (coerce-functor⁻¹ G _ gx)))
                          x) eq
 
@@ -127,12 +127,12 @@ fusion-Fuse-cong-tr {F} {G} wfF wfG alg tr tr' x eq =
 ------------------------------------------------------------------------
 
 fusion-once-correct : ∀ {A B} (f : IR A B) (x : ⟦ A ⟧)
-                    → eval′ (fusion-once f) x ≡ eval′ f x
+                    → eval (fusion-once f) x ≡ eval f x
 fusion-once-correct id x = refl
 fusion-once-correct (g ∘ f) x =
   trans (fusion-compose-correct (fusion-once g) (fusion-once f) x)
-        (trans (cong (eval′ (fusion-once g)) (fusion-once-correct f x))
-               (fusion-once-correct g (eval′ f x)))
+        (trans (cong (eval (fusion-once g)) (fusion-once-correct f x))
+               (fusion-once-correct g (eval f x)))
 fusion-once-correct fst x = refl
 fusion-once-correct snd x = refl
 fusion-once-correct (⟨ f , g ⟩ m) x =
@@ -179,7 +179,7 @@ fusion-once-correct (Fuse wfF wfG alg tr) x =
 ------------------------------------------------------------------------
 
 fusion-n-correct : ∀ {A B} (n : ℕ) (f : IR A B) (x : ⟦ A ⟧)
-                 → eval′ (fusion-n n f) x ≡ eval′ f x
+                 → eval (fusion-n n f) x ≡ eval f x
 fusion-n-correct zero f x = refl
 fusion-n-correct (suc n) f x =
   trans (fusion-n-correct n (fusion-once f) x)
@@ -190,5 +190,5 @@ fusion-n-correct (suc n) f x =
 ------------------------------------------------------------------------
 
 fusion-correct : ∀ {A B} (f : IR A B) (x : ⟦ A ⟧)
-               → eval′ (fusion f) x ≡ eval′ f x
+               → eval (fusion f) x ≡ eval f x
 fusion-correct f x = fusion-n-correct 10 f x

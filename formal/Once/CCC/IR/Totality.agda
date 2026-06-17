@@ -32,7 +32,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.Type
 open import Once.CCC.IR
-open import Once.Semantics.IR using (⟦_⟧; eval′)
+open import Once.CCC.Eval using (⟦_⟧; eval)
 
 ------------------------------------------------------------------------
 -- Totality of IR Evaluation
@@ -59,7 +59,7 @@ open import Once.Semantics.IR using (⟦_⟧; eval′)
 --
 postulate
   eval-total : ∀ {A B} (f : IR A B) (a : ⟦ A ⟧)
-             → ∃[ b ] (eval′ f a ≡ b)
+             → ∃[ b ] (eval f a ≡ b)
 
 ------------------------------------------------------------------------
 -- Coalgebra Termination
@@ -76,7 +76,7 @@ postulate
 -- exactly one layer of functor structure.
 --
 coalg-produces-layer : ∀ {F A} (c : IR A (⟦ F ⟧T A)) (a : ⟦ A ⟧)
-                     → ∃[ v ] (eval′ c a ≡ v)
+                     → ∃[ v ] (eval c a ≡ v)
 coalg-produces-layer c a = eval-total c a
 
 ------------------------------------------------------------------------
@@ -95,7 +95,7 @@ coalg-produces-layer c a = eval-total c a
 -- If f and g both terminate, then (g ∘ f) terminates.
 --
 comp-total : ∀ {A B C} (f : IR A B) (g : IR B C) (a : ⟦ A ⟧)
-           → ∃[ c ] (eval′ (g ∘ f) a ≡ c)
+           → ∃[ c ] (eval (g ∘ f) a ≡ c)
 comp-total f g a = eval-total (g ∘ f) a
 
 ------------------------------------------------------------------------

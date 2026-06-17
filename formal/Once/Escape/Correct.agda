@@ -19,7 +19,7 @@ module Once.Escape.Correct where
 
 open import Once.Type
 open import Once.CCC.IR
-open import Once.Semantics.IR using (⟦_⟧; eval′)
+open import Once.CCC.Eval using (⟦_⟧; eval)
 open import Once.Escape
 open import Once.Postulates using (extensionality)
 
@@ -41,7 +41,7 @@ funext = extensionality
 ------------------------------------------------------------------------
 
 escape-compose-correct : ∀ {A B C} (g : IR B C) (f : IR A B) (x : ⟦ A ⟧)
-                       → eval′ (escape-compose g f) x ≡ eval′ (g ∘ f) x
+                       → eval (escape-compose g f) x ≡ eval (g ∘ f) x
 escape-compose-correct g f x = refl
 
 ------------------------------------------------------------------------
@@ -49,23 +49,23 @@ escape-compose-correct g f x = refl
 ------------------------------------------------------------------------
 
 open import Data.Integer using (ℤ)
-open import Once.Semantics.Core ℤ using (sem-cata; sem-para; sem-ana; sem-hylo; sem-fuse; coerce-functor; coerce-functor⁻¹)
+open import Once.Semantics.Core ℕ using (sem-cata; sem-para; sem-ana; sem-hylo; sem-fuse; coerce-functor; coerce-functor⁻¹)
 
 escape-Cata-cong : ∀ {F A} (wf : _) (alg alg' : IR (⟦ F ⟧T A) A) (x : ⟦ μ-type F ⟧)
-                 → eval′ alg ≡ eval′ alg'
-                 → eval′ (Cata wf alg) x ≡ eval′ (Cata wf alg') x
+                 → eval alg ≡ eval alg'
+                 → eval (Cata wf alg) x ≡ eval (Cata wf alg') x
 escape-Cata-cong {F} wf alg alg' x eq =
   cong (λ ev → sem-cata wf (λ fa → ev (coerce-functor⁻¹ F _ fa)) x) eq
 
 escape-Para-cong : ∀ {F A} (wf : _) (alg alg' : IR (⟦ F ⟧T (μ-type F * A)) A) (x : ⟦ μ-type F ⟧)
-                 → eval′ alg ≡ eval′ alg'
-                 → eval′ (Para wf alg) x ≡ eval′ (Para wf alg') x
+                 → eval alg ≡ eval alg'
+                 → eval (Para wf alg) x ≡ eval (Para wf alg') x
 escape-Para-cong {F} wf alg alg' x eq =
   cong (λ ev → sem-para wf (λ fx → ev (coerce-functor⁻¹ F _ fx)) x) eq
 
 escape-Ana-cong : ∀ {F A} (wf : _) (coalg coalg' : IR A (⟦ F ⟧T A)) (x : ⟦ A ⟧)
-                → eval′ coalg ≡ eval′ coalg'
-                → eval′ (Ana wf coalg) x ≡ eval′ (Ana wf coalg') x
+                → eval coalg ≡ eval coalg'
+                → eval (Ana wf coalg) x ≡ eval (Ana wf coalg') x
 escape-Ana-cong {F} {A} wf coalg coalg' x eq =
   cong (λ ev → sem-ana F (λ a → coerce-functor F A (ev a)) x) eq
 
@@ -73,23 +73,23 @@ escape-Hylo-cong-alg : ∀ {F G B} (wfF : _) (wfG : _)
                        (alg alg' : IR (⟦ F ⟧T B) B)
                        (coalg : IR (μ-type G) (⟦ F ⟧T (μ-type G)))
                        (x : ⟦ μ-type G ⟧)
-                     → eval′ alg ≡ eval′ alg'
-                     → eval′ (Hylo wfF wfG alg coalg) x ≡ eval′ (Hylo wfF wfG alg' coalg) x
+                     → eval alg ≡ eval alg'
+                     → eval (Hylo wfF wfG alg coalg) x ≡ eval (Hylo wfF wfG alg' coalg) x
 escape-Hylo-cong-alg {F} {G} wfF wfG alg alg' coalg x eq =
   cong (λ ev → sem-hylo F G wfF wfG
                          (λ fb → ev (coerce-functor⁻¹ F _ fb))
-                         (λ μg → coerce-functor F (μ-type G) (eval′ coalg μg))
+                         (λ μg → coerce-functor F (μ-type G) (eval coalg μg))
                          x) eq
 
 escape-Hylo-cong-coalg : ∀ {F G B} (wfF : _) (wfG : _)
                          (alg : IR (⟦ F ⟧T B) B)
                          (coalg coalg' : IR (μ-type G) (⟦ F ⟧T (μ-type G)))
                          (x : ⟦ μ-type G ⟧)
-                       → eval′ coalg ≡ eval′ coalg'
-                       → eval′ (Hylo wfF wfG alg coalg) x ≡ eval′ (Hylo wfF wfG alg coalg') x
+                       → eval coalg ≡ eval coalg'
+                       → eval (Hylo wfF wfG alg coalg) x ≡ eval (Hylo wfF wfG alg coalg') x
 escape-Hylo-cong-coalg {F} {G} wfF wfG alg coalg coalg' x eq =
   cong (λ ev → sem-hylo F G wfF wfG
-                         (λ fb → eval′ alg (coerce-functor⁻¹ F _ fb))
+                         (λ fb → eval alg (coerce-functor⁻¹ F _ fb))
                          (λ μg → coerce-functor F (μ-type G) (ev μg))
                          x) eq
 
@@ -97,23 +97,23 @@ escape-Fuse-cong-alg : ∀ {F G B} (wfF : _) (wfG : _)
                        (alg alg' : IR (⟦ F ⟧T B) B)
                        (tr : IR (⟦ G ⟧T (μ-type G)) (⟦ F ⟧T (μ-type G)))
                        (x : ⟦ μ-type G ⟧)
-                     → eval′ alg ≡ eval′ alg'
-                     → eval′ (Fuse wfF wfG alg tr) x ≡ eval′ (Fuse wfF wfG alg' tr) x
+                     → eval alg ≡ eval alg'
+                     → eval (Fuse wfF wfG alg tr) x ≡ eval (Fuse wfF wfG alg' tr) x
 escape-Fuse-cong-alg {F} {G} wfF wfG alg alg' tr x eq =
   cong (λ ev → sem-fuse F G wfF wfG
                          (λ fb → ev (coerce-functor⁻¹ F _ fb))
-                         (λ gx → coerce-functor F _ (eval′ tr (coerce-functor⁻¹ G _ gx)))
+                         (λ gx → coerce-functor F _ (eval tr (coerce-functor⁻¹ G _ gx)))
                          x) eq
 
 escape-Fuse-cong-tr : ∀ {F G B} (wfF : _) (wfG : _)
                       (alg : IR (⟦ F ⟧T B) B)
                       (tr tr' : IR (⟦ G ⟧T (μ-type G)) (⟦ F ⟧T (μ-type G)))
                       (x : ⟦ μ-type G ⟧)
-                    → eval′ tr ≡ eval′ tr'
-                    → eval′ (Fuse wfF wfG alg tr) x ≡ eval′ (Fuse wfF wfG alg tr') x
+                    → eval tr ≡ eval tr'
+                    → eval (Fuse wfF wfG alg tr) x ≡ eval (Fuse wfF wfG alg tr') x
 escape-Fuse-cong-tr {F} {G} wfF wfG alg tr tr' x eq =
   cong (λ ev → sem-fuse F G wfF wfG
-                         (λ fb → eval′ alg (coerce-functor⁻¹ F _ fb))
+                         (λ fb → eval alg (coerce-functor⁻¹ F _ fb))
                          (λ gx → coerce-functor F _ (ev (coerce-functor⁻¹ G _ gx)))
                          x) eq
 
@@ -125,12 +125,12 @@ escape-Fuse-cong-tr {F} {G} wfF wfG alg tr tr' x eq =
 ------------------------------------------------------------------------
 
 escape-once-correct : ∀ {A B} (f : IR A B) (x : ⟦ A ⟧)
-                    → eval′ (escape-once f) x ≡ eval′ f x
+                    → eval (escape-once f) x ≡ eval f x
 escape-once-correct id x = refl
 escape-once-correct (g ∘ f) x =
   trans (escape-compose-correct (escape-once g) (escape-once f) x)
-        (trans (cong (eval′ (escape-once g)) (escape-once-correct f x))
-               (escape-once-correct g (eval′ f x)))
+        (trans (cong (eval (escape-once g)) (escape-once-correct f x))
+               (escape-once-correct g (eval f x)))
 escape-once-correct fst x = refl
 escape-once-correct snd x = refl
 escape-once-correct (⟨ f , g ⟩ m) x =
@@ -177,7 +177,7 @@ escape-once-correct (Fuse wfF wfG alg tr) x =
 ------------------------------------------------------------------------
 
 escape-n-correct : ∀ {A B} (n : ℕ) (f : IR A B) (x : ⟦ A ⟧)
-                 → eval′ (escape-n n f) x ≡ eval′ f x
+                 → eval (escape-n n f) x ≡ eval f x
 escape-n-correct zero f x = refl
 escape-n-correct (suc n) f x =
   trans (escape-n-correct n (escape-once f) x)
@@ -188,5 +188,5 @@ escape-n-correct (suc n) f x =
 ------------------------------------------------------------------------
 
 escape-correct : ∀ {A B} (f : IR A B) (x : ⟦ A ⟧)
-               → eval′ (escape f) x ≡ eval′ f x
+               → eval (escape f) x ≡ eval f x
 escape-correct f x = escape-n-correct 10 f x
