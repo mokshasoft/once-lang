@@ -1,4 +1,4 @@
 name: Once
 include: .
 depend: standard-library-2.3
-flags: --exact-split
+flags: --exact-split --guardedness

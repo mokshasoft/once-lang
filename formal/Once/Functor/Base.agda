@@ -22,7 +22,7 @@ open import Data.Empty using (⊥)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Function using (_∘_)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; sym)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; sym; subst)
 
 ------------------------------------------------------------------------
 -- Semantic Functor (Set-level)
@@ -147,15 +147,21 @@ mutual
 
 -- | Anamorphism (unfold)
 --
--- NOTE (D062): this `TERMINATING` is the *coinductive/productivity* pragma — a
--- TRUE assertion (`anaS` is genuinely productive: each `unfoldS` emits one
--- layer), unlike `fuseW`'s `TERMINATING`, which is FALSE for value-synthesizing
--- coalgebras. Removing it via a guarded mutual `sfmapAna` needs `--guardedness`
--- (not enabled here; the original `TERMINATING` is exactly why). Deferred —
--- the `fuseW` gap (the dishonest one) is the priority.
-{-# TERMINATING #-}
-anaS : ∀ {F} {A : Set} → (A → ⟦ F ⟧SF A) → A → νS F
-unfoldS (anaS {F} coalg a) = sfmap F (anaS coalg) (coalg a)
+-- D062: guardedness-CHECKED corecursion (global `--guardedness`) — the
+-- corecursive `anaS` calls are placed structurally at `SId` leaves by the
+-- mutual `sfmapAna` (the coinductive dual of `cataS`'s `sfmapCata`), so Agda
+-- sees the guard. No `TERMINATING` assertion: productivity is verified.
+mutual
+  anaS : ∀ {F} {A : Set} → (A → ⟦ F ⟧SF A) → A → νS F
+  unfoldS (anaS {F} coalg a) = sfmapAna F coalg (coalg a)
+
+  sfmapAna : ∀ {F : SFunctor} (H : SFunctor) {A : Set}
+           → (A → ⟦ F ⟧SF A) → ⟦ H ⟧SF A → ⟦ H ⟧SF (νS F)
+  sfmapAna (SK B)     coalg x        = x
+  sfmapAna SId        coalg a        = anaS coalg a
+  sfmapAna (H₁ S⊕ H₂) coalg (inj₁ x) = inj₁ (sfmapAna H₁ coalg x)
+  sfmapAna (H₁ S⊕ H₂) coalg (inj₂ y) = inj₂ (sfmapAna H₂ coalg y)
+  sfmapAna (H₁ S⊗ H₂) coalg (x , y)  = (sfmapAna H₁ coalg x , sfmapAna H₂ coalg y)
 
 ------------------------------------------------------------------------
 -- Lambek's Lemma
@@ -213,10 +219,28 @@ mutual
 -- Anamorphism Laws
 ------------------------------------------------------------------------
 
--- | ana-unfold (computation)
+-- | The mutual `sfmapAna` IS `sfmap` of the corecursor (D062): structural
+-- induction on the functor code, refl at every leaf. Lets the laws below stay
+-- in terms of `sfmap` even though `unfoldS (anaS …)` reduces via `sfmapAna`.
+-- `F` (the target) is EXPLICIT: it appears only under the non-injective
+-- `⟦ F ⟧SF` in `coalg`, so it can't be inferred.
+sfmapAna-is-sfmap : ∀ (F : SFunctor) (H : SFunctor) {A : Set}
+                    (coalg : A → ⟦ F ⟧SF A) (x : ⟦ H ⟧SF A)
+                  → sfmapAna {F} H coalg x ≡ sfmap H (anaS coalg) x
+sfmapAna-is-sfmap F (SK B)     coalg x        = refl
+sfmapAna-is-sfmap F SId        coalg a        = refl
+sfmapAna-is-sfmap F (H₁ S⊕ H₂) coalg (inj₁ x) = cong inj₁ (sfmapAna-is-sfmap F H₁ coalg x)
+sfmapAna-is-sfmap F (H₁ S⊕ H₂) coalg (inj₂ y) = cong inj₂ (sfmapAna-is-sfmap F H₂ coalg y)
+sfmapAna-is-sfmap F (H₁ S⊗ H₂) coalg (x , y)  =
+  cong₂ _,_ (sfmapAna-is-sfmap F H₁ coalg x) (sfmapAna-is-sfmap F H₂ coalg y)
+  where cong₂ : ∀ {A B C : Set} (f : A → B → C) {x x' y y'} → x ≡ x' → y ≡ y' → f x y ≡ f x' y'
+        cong₂ f refl refl = refl
+
+-- | ana-unfold (computation). No longer refl: `unfoldS (anaS …)` reduces via
+-- `sfmapAna`, bridged to `sfmap` by `sfmapAna-is-sfmap`.
 anaS-unfold : ∀ (F : SFunctor) {A : Set} (coalg : A → ⟦ F ⟧SF A) (a : A)
             → unfoldS (anaS {F} coalg a) ≡ sfmap F (anaS coalg) (coalg a)
-anaS-unfold F coalg a = refl
+anaS-unfold F coalg a = sfmapAna-is-sfmap F F coalg (coalg a)
 
 ------------------------------------------------------------------------
 -- Paramorphism
@@ -476,7 +500,11 @@ sfmap-f-rel (F S⊗ G) hyp (x₁ , x₂) = sfmap-f-rel F hyp x₁ , sfmap-f-rel 
 --
 {-# TERMINATING #-}
 anaS-unfoldS-bisim : ∀ {F : SFunctor} (x : νS F) → anaS {F} unfoldS x ∼S x
-unfoldS-∼ (anaS-unfoldS-bisim {F} x) = sfmap-f-rel F (anaS-unfoldS-bisim {F}) (unfoldS x)
+unfoldS-∼ (anaS-unfoldS-bisim {F} x) =
+  -- `unfoldS (anaS unfoldS x)` now reduces via `sfmapAna`; bridge to `sfmap`.
+  subst (λ z → ⟦ F ⟧SF-rel _∼S_ z (unfoldS x))
+        (sym (sfmapAna-is-sfmap F F unfoldS (unfoldS x)))
+        (sfmap-f-rel F (anaS-unfoldS-bisim {F}) (unfoldS x))
 
 -- | Identity anamorphism: anaS unfoldS ≡ id (PROVEN via bisimulation)
 --

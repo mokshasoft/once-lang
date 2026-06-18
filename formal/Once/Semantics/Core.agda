@@ -88,7 +88,7 @@ open import Once.Functor.Translate
         ; base-Prod; base-Sum; wf-K; wf-Id; wf-Sum; wf-Prod)
 open import Once.Functor.Base
   using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF; μS; ⟨_⟩; outS; νS; unfoldS;
-         sfmap; cataS; sfmapCata; sfmapCata-is-sfmap; anaS; fuseS; fuseW; fuseNatS;
+         sfmap; cataS; sfmapCata; sfmapCata-is-sfmap; anaS; sfmapAna; sfmapAna-is-sfmap; fuseS; fuseW; fuseNatS;
          fold-unfoldS; unfold-foldS; cataS-computation; cataS-In-id; anaS-Out-id;
          -- Bisimulation machinery
          ⟦_⟧SF-rel; _∼S_; bisimS-to-eq; sfmap-rel; sfmap-f-rel)
@@ -933,12 +933,20 @@ _∼S_.unfoldS-∼ (sem-ana-bisim-anaS {F} wf x) =
       -- RHS observation: sfmap TF (anaS unfoldS) (unfoldS x)
       -- By obs-eq, LHS = sfmap TF (sem-ana F (sem-CoOut wf)) (unfoldS x)
       -- By sfmap-bisim with coinductive hypothesis, they are related
-  in subst (λ z → ⟦ TF ⟧SF-rel (_∼S_)
-                    (sfmap TF (sem-ana F (sem-CoOut wf)) z)
-                    (sfmap TF (anaS unfoldS) (unfoldS x)))
-           (sym obs-eq)
-           (sfmap-bisim TF (sem-ana F (sem-CoOut wf)) (anaS unfoldS)
-                        (sem-ana-bisim-anaS wf) (unfoldS x))
+      -- D062: `unfoldS (anaS unfoldS x)` now reduces via `sfmapAna`; bridge the
+      -- anaS side of the relation back to `sfmap` form.
+      ana-eq : sfmapAna TF unfoldS (unfoldS x) ≡ sfmap TF (anaS unfoldS) (unfoldS x)
+      ana-eq = sfmapAna-is-sfmap TF TF unfoldS (unfoldS x)
+  in subst (λ w → ⟦ TF ⟧SF-rel (_∼S_)
+                    (sfmap TF (sem-ana F (sem-CoOut wf)) (coerce-ν-in F (⟦ν⟧ F) (sem-CoOut wf x)))
+                    w)
+           (sym ana-eq)
+           (subst (λ z → ⟦ TF ⟧SF-rel (_∼S_)
+                      (sfmap TF (sem-ana F (sem-CoOut wf)) z)
+                      (sfmap TF (anaS unfoldS) (unfoldS x)))
+                  (sym obs-eq)
+                  (sfmap-bisim TF (sem-ana F (sem-CoOut wf)) (anaS unfoldS)
+                               (sem-ana-bisim-anaS wf) (unfoldS x)))
 
 -- | sem-ana F (sem-CoOut wf) equals anaS unfoldS (PROVEN via bisimulation)
 --
