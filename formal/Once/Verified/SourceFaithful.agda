@@ -10,15 +10,17 @@
 --     evalᴰ (elaborate Heap e) dγ k  ≡  ⟦ e ⟧ˢ dγ k
 --
 -- Both sides live in the SAME trace monad `T`, so this is a plain equality (no
--- `∃s`, no fuel, no `SS.eval`) — the OCP-0006 payoff. It is the elaborator-
--- load-bearing obligation under the apex (`SourceTrace.elaborate-faithful` is its
--- closed-`Unit` projection via `cong proj₁`).
+-- `∃s`, no fuel, no `SS.eval`) — the OCP-0006 payoff. It is THE standalone
+-- elaborator-load-bearing fact (D060): the surface and IR presentations of the
+-- one denotational meaning agree. No longer a conjunct of the compiler theorem;
+-- the closed-`Unit` projection (`cong proj₁`) is what the apex relies on.
 --
 -- TOP-DOWN: structural induction on `e`; each constructor is a hole the apex
 -- demanded. Leaf cases (`unit`, the `semM`-routed arith/comparison, the
 -- `evalᴰ`-routed `lift-morphism`) are near-definitional because `⟦_⟧ˢ` denotes
--- them through the SAME `semM`/`evalᴰ` the elaborated IR uses. Undischarged
--- constructors route to `faithful-todo` (an explicit obligation, NOT an island).
+-- them through the SAME `semM`/`evalᴰ` the elaborated IR uses. `faithful` is
+-- now TOTAL and postulate-free: every constructor (including `cata`/`ana` via
+-- `FaithfulLemmas.cata-body`/`ana-body`) is discharged.
 ------------------------------------------------------------------------
 
 module Once.Verified.SourceFaithful where

@@ -44,8 +44,7 @@ open import Once.Type using (Unit)
 
 open import Once.Verified.Behavior using (Source; Behavior)
 open import Once.Verified.SourceTrace
-  using (⟦_⟧; ⟦⟧-via-module; moduleToIR; ⟦_⟧IR; elaborate-preserves-trace;
-         ElaborateFaithful)
+  using (⟦_⟧; ⟦⟧-via-module; moduleToIR; ⟦_⟧IR)
 open import Data.Product using (_×_; _,_)
 -- D054 wired-not-imported: import only the portable INTERFACE (no
 -- postulates). The per-arch CPU semantics are *injected* via the
@@ -107,8 +106,8 @@ compile-cli-asm allocMode stage doOpt arch m =
 -- Module-level behavior: the DENOTATIONAL meaning of the parsed module
 -- (D059) — `⟦ moduleToIR m ⟧IR` (= `evalᴰ`), the observation-depth SigOp trace.
 -- So `module-to-asm-correct`'s obligation is "the compiled trace equals the
--- denotational source meaning"; the independent `SS.eval` cross-check
--- (`elaborate-faithful`) is the separate, required conjunct of `compiler-correct`.
+-- denotational source meaning". The surface/IR presentations are tied by the
+-- standalone `faithful` fact (D060), not a conjunct of the compiler theorem.
 ⟦_⟧M : P.Module → Behavior
 ⟦ m ⟧M = ⟦ moduleToIR m ⟧IR
 
@@ -229,10 +228,9 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
           (ArchCorrect.ir-flat-correct  (arch-correct arch) (moduleToIR m) n)
 
   -- Stage 2 — asm trace = SOURCE trace. With `⟦_⟧M = ⟦ moduleToIR m ⟧IR`
-  -- (D059: the source meaning IS the denotational `evalᴰ`), this is
-  -- `codegen-asm-correct` DIRECTLY — the frontend `elaborate-preserves-trace`
-  -- (#10) is no longer in the meter chain; it is the separately-required
-  -- cross-check (the `compiler-correct` conjunction below). The library
+  -- (D059/D060: the source meaning IS the denotational `evalᴰ`), this is
+  -- `codegen-asm-correct` DIRECTLY — there is no separate `SS.eval` chain to
+  -- bridge; the surface/IR presentations are tied by `faithful` (D060). The library
   -- (`moduleToIR m ≡ nothing`) case is handled by `codegen-asm-correct` via
   -- `⟦ nothing ⟧IR = []` (no `mta-aux`/`no-main-empty` needed).
   module-to-asm-correct :
@@ -278,22 +276,12 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
                  (gmoduleToModule-correct src m g-eq n))
 
   -- ════════════════════════════════════════════════════════════════════
-  -- The GRAND THEOREM (D059): correctness is the CONJUNCTION of
-  --   (1) trace-correctness — the compiled bytes make the SigOp calls the
-  --       source DENOTES (`exec ≡ ⟦src⟧ = evalᴰ`, observation-depth), and
-  --   (2) elaborator-faithfulness — `evalᴰ` agrees with the INDEPENDENT
-  --       `SS.eval` reference (`ElaborateFaithful`), keeping the elaborator
-  --       load-bearing (D057).
-  -- BOTH are required: dropping (2) silently loses load-bearing. Together they
-  -- yield `exec ≡ SS.eval` (the fully-independent claim). This bundling is what
-  -- makes (2) a non-droppable conjunct rather than a floating lemma.
+  -- The GRAND THEOREM (D060): `correct` above IS the whole statement.
+  -- There is now ONE denotational meaning: the surface `⟦_⟧ˢ` and the IR
+  -- `⟦_⟧ᴰ` are two presentations of it, tied by `faithful` (proven,
+  -- postulate-free, in `Once.Verified.SourceFaithful`). The old second
+  -- conjunct compared `evalᴰ` against an INDEPENDENT `SS.eval` reference;
+  -- with `SS.eval` retired (D060) that comparison collapses to `faithful`,
+  -- a standalone load-bearing fact rather than a conjunct bolted onto the
+  -- compiler theorem. So the compiler theorem is exactly trace-correctness.
   -- ════════════════════════════════════════════════════════════════════
-  compiler-correct :
-    ∀ (arch : Arch) (src : Source) (bytes : List Byte) →
-    compile arch src ≡ just bytes →
-    (∀ (n : ℕ) → exec arch bytes n ≡ ⟦ src ⟧ n)
-    × (∀ (m : P.Module) (ir : IR Unit Unit) →
-         gmoduleToModule src ≡ just m → moduleToIR m ≡ just ir → ElaborateFaithful ir m)
-  compiler-correct arch src bytes pf =
-    correct arch src bytes pf
-    , λ m ir _ mj → elaborate-preserves-trace m ir mj

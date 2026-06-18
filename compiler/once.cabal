@@ -390,13 +390,10 @@ library
       MAlonzo.Code.Once.Verified.CPU.X86Z45Z32
       MAlonzo.Code.Once.Verified.CPU.X86Z45Z64
       MAlonzo.Code.Once.Verified.DenotTrace
-      MAlonzo.Code.Once.Verified.ElaborateTrace
       MAlonzo.Code.Once.Verified.FaithfulLemmas
       MAlonzo.Code.Once.Verified.FlatEvents
-      MAlonzo.Code.Once.Verified.MainAlign
       MAlonzo.Code.Once.Verified.SourceDenote
       MAlonzo.Code.Once.Verified.SourceFaithful
-      MAlonzo.Code.Once.Verified.SourceSemantics
       MAlonzo.Code.Once.Verified.SourceTrace
       MAlonzo.Code.Once.Verified.Trace
       MAlonzo.Code.Once.Verified.TraceDenote
