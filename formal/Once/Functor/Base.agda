@@ -147,6 +147,12 @@ mutual
 
 -- | Anamorphism (unfold)
 --
+-- NOTE (D062): this `TERMINATING` is the *coinductive/productivity* pragma — a
+-- TRUE assertion (`anaS` is genuinely productive: each `unfoldS` emits one
+-- layer), unlike `fuseW`'s `TERMINATING`, which is FALSE for value-synthesizing
+-- coalgebras. Removing it via a guarded mutual `sfmapAna` needs `--guardedness`
+-- (not enabled here; the original `TERMINATING` is exactly why). Deferred —
+-- the `fuseW` gap (the dishonest one) is the priority.
 {-# TERMINATING #-}
 anaS : ∀ {F} {A : Set} → (A → ⟦ F ⟧SF A) → A → νS F
 unfoldS (anaS {F} coalg a) = sfmap F (anaS coalg) (coalg a)
