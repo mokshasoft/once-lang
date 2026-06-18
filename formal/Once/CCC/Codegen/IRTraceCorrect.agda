@@ -90,7 +90,6 @@ open import Once.CCC.IR
          free-heap; SigOp)
 open import Once.CCC.Eval using (eval)
 open import Once.Verified.Trace using (SigOpEvent)
-open import Once.Verified.TraceDenote using (obs)
 
 open import Once.CCC.Machine.SMCore
   using (LocState; ValueLocation; halted; regs; readReg; Input1;
@@ -233,63 +232,6 @@ module IRTraceCorrectness {FS : FrameSemantics} (program-bound : ℕ)
     in ∃[ mOut ] ∃[ result-loc ]
        ValidAtWF mOut final-alloc (eval ir x) result-loc final-s
 
-  ----------------------------------------------------------------------
-  -- Plan 0.36: the observable-correctness encoding (top-down scaffold).
-  --
-  -- A program is `Eff Unit Unit`, so its ONLY observable is the SigOp
-  -- trace. `MachineRefinesObs` makes that the headline obligation and
-  -- demotes value-correctness (`ValidAtWF`) to a FIELD — the two are a
-  -- lemma and its consequence, not two correctnesses. The name now
-  -- tells the truth: you cannot inhabit it by proving only the value.
-  --
-  -- Two named postulates paper the two gaps, keeping the tree green
-  -- while the structure is locked (genuine top-down):
-  --   `emitted-events` — the machine SigOp-event trace (Plan 0.36 step 2;
-  --                      discharged by a `flat-events` traversal over the
-  --                      flat machine — its event payloads come through
-  --                      the per-SigOp value-correspondence, which is why
-  --                      `traces-agree` and `value-realized` belong in ONE
-  --                      record).
-  --   `cata-correct`   — `IRObsCorrect (Cata …)` (Plan 0.36 step 3;
-  --                      `traces-agree` via `μS-ind`, `value-realized` via
-  --                      the existing `ValidAtWF` machinery).
-  ----------------------------------------------------------------------
-
-  postulate
-    -- The events a compiled trace emits when run from `s`/`alloc`.
-    emitted-events : AbstractTrace → LocState FS → AllocState {FS}
-                   → List SigOpEvent
-
-  -- Observable refinement of `obs`: the machine emits exactly `obs`'s
-  -- events (mandatory), and its final state is `ValidAtWF` at the value.
-  record MachineRefinesObs {A B} (ir : IR A B) (x : ⟦ A ⟧)
-                            (s : LocState FS) (alloc : AllocState {FS}) : Set where
-    field
-      traces-agree :
-        emitted-events (ir-to-trace-at-frontier (next-slot alloc) ir) s alloc
-          ≡ proj₁ (obs program-bound ir x)
-      value-realized :
-        ∃[ mOut ] ∃[ result-loc ]
-          ValidAtWF mOut
-            (proj₂ (exec-trace (ir-to-trace-at-frontier (next-slot alloc) ir) s alloc))
-            (eval ir x) result-loc
-            (proj₁ (exec-trace (ir-to-trace-at-frontier (next-slot alloc) ir) s alloc))
-
-  -- Same preconditions as `IRTraceCorrect`; conclusion is the refinement.
-  IRObsCorrect : ∀ {A B} → IR A B → Set
-  IRObsCorrect {A} {B} ir =
-    ir-size ir < program-bound →
-    ∀ (mIn : AllocMode) (x : ⟦ A ⟧) (input-loc : ValueLocation FS)
-      (s : LocState FS) (alloc : AllocState {FS}) →
-    ValidAtWF mIn alloc x input-loc s →
-    BeforeFrontier alloc input-loc →
-    halted s ≡ false →
-    readReg (regs s) Input1 ≡ SV-Ptr input-loc →
-    MachineRefinesObs ir x s alloc
-
-  postulate
-    cata-correct : ∀ {F} (wf : WellFormedF F) {A} (alg : IR (⟦ F ⟧T A) A)
-                 → IRObsCorrect (Cata wf alg)
 
   ----------------------------------------------------------------------
   -- Trivial discharges via SimpleWFImpl + the transport helper.
