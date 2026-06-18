@@ -241,8 +241,10 @@ mutual
 -- Uses Agda's coinductive records with copatterns.
 -- The 'unfold' field gives F (ν F) from ν F.
 --
--- Productivity of operations on ν F is justified by a separate
--- sized-types proof in Once.SPF.SizedProof.
+-- Productivity of operations on ν F is genuine — each unfold produces one
+-- F-layer before recursive calls — and asserted by the TERMINATING pragmas
+-- below. Per D062 the sound replacement is `--guardedness`-checked corecursion
+-- (deferred); the sized-types proof is deleted (the flag is unsound-flagged).
 --
 record ν (F : Functor) : Set where
   coinductive
@@ -264,7 +266,8 @@ open ν public
 -- TERMINATING justification: The recursive call (ana coalg) appears inside
 -- fmap F, which only applies it to recursive positions of F. This is
 -- productive because each unfold produces one F-layer before recursive calls.
--- See Once.SPF.SizedProof for a machine-checked proof using sized types.
+-- (D062: TERMINATING here is an honest productivity assertion; the sound
+-- replacement is `--guardedness` — deferred, see the anaS note in Functor.Base.)
 --
 {-# TERMINATING #-}
 ana : ∀ {F} {A : Set} → (A → ⟦ F ⟧F A) → A → ν F
@@ -307,7 +310,7 @@ ana-unfold F coalg a = refl
 -- Two coinductive values are bisimilar if their unfoldings are related
 -- through the relational interpretation, with bisimilarity at recursive positions.
 --
--- Productivity justified by Once.SPF.SizedProof.
+-- Productivity is genuine (one F-layer per unfold); see the D062 note above.
 --
 record _∼_ {F : Functor} (x y : ν F) : Set where
   coinductive
@@ -369,7 +372,7 @@ fmap-f-rel (F ⊗ G) hyp (x₁ , x₂) = fmap-f-rel F hyp x₁ , fmap-f-rel G hy
 --   By fmap-f-rel with coinductive hypothesis (ana unfold y ∼ y), this holds.
 --
 -- TERMINATING justification: Same as ana - recursive calls are guarded by fmap.
--- See Once.SPF.SizedProof for machine-checked proof.
+-- (D062: honest productivity assertion; sound replacement is `--guardedness`.)
 --
 {-# TERMINATING #-}
 ana-unfold-bisim : ∀ (F : Functor) (x : ν F) → ana {F} unfold x ∼ x
