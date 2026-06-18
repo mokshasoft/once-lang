@@ -46,8 +46,8 @@ open import Once.CCC.SigOp.Info
   using (SigOpInfo; semM; effect; EffectShape; Pure; Emits; Halts)
 open import Once.Functor.Translate using (WellFormedF)
 open import Once.Semantics.Machine
-  using (sem-cata; sem-ana; sem-para; sem-In; sem-fuse; sem-hylo; sem-fmap;
-         coerce-functor; coerce-functor⁻¹; ⟦_⟧F)
+  using (sem-cata; sem-ana; sem-para; sem-In; sem-fuse-events; sem-hylo-events;
+         sem-fmap; coerce-functor; coerce-functor⁻¹; ⟦_⟧F)
 open import Once.Verified.Trace using (SigOpEvent; mkEvent)
 open import Once.Verified.TraceMonad using (T; returnT; _>>=T_; valueT; projTrace)
 open import Once.Verified.TraceDenote using (events-F)
@@ -217,12 +217,27 @@ rec-trace-D (out-μ wf)              x n = []
 -- DERIVED schemes — the trace of the `cata`/`fuse` fold that DEFINES them
 -- (reusing the value side's `sem-para`/`sem-fuse`/`sem-hylo`), `proj₁` = trace.
 rec-trace-D (Para {F} wf {C} alg)   x n = proj₁ (sem-para wf (para-ev-algᴰ {F} {C} n alg) x)
-rec-trace-D (Hylo {F} {G} wfF wfG alg coalg) x n =
-  proj₁ (sem-hylo F G wfF wfG (cata-ev-algᴰ {F} n alg)
-           (λ μg → coerce-functor F (μ-type G) (eval coalg μg)) x)
-rec-trace-D (Fuse {F} {G} wfF wfG alg transform) x n =
-  proj₁ (sem-fuse F G wfF wfG (cata-ev-algᴰ {F} n alg)
-           (λ gx → coerce-functor F (μ-type G) (eval transform (coerce-functor⁻¹ G (μ-type G) gx))) x)
+-- Hylo/Fuse thread BOTH the algebra's AND the coalgebra/transform's events
+-- (in fused depth-first order) via the monoid fold `sem-hylo/fuse-events` at
+-- `M = List SigOpEvent` — the correct SigOp trace, with each morphism run
+-- through `evalᴰ`. (Earlier this reused `cata-ev-algᴰ` + `sem-fuse`, which
+-- silently DROPPED the coalgebra/transform events — only valid when it is
+-- pure. Threading both is correct whenever fusion is — i.e. when either side
+-- is pure — and is the deforested computation's trace otherwise.)
+rec-trace-D (Hylo {F} {G} wfF wfG {B} alg coalg) x n =
+  proj₁ (sem-hylo-events _++_ [] F G wfF wfG
+    (λ fb → let r = evalᴰ alg (inject (coerce-functor⁻¹ F B fb))
+            in (projTrace r n , forget (valueT r n)))
+    (λ μg → let r = evalᴰ coalg (inject μg)
+            in (projTrace r n , coerce-functor F (μ-type G) (forget (valueT r n))))
+    x)
+rec-trace-D (Fuse {F} {G} wfF wfG {B} alg transform) x n =
+  proj₁ (sem-fuse-events _++_ [] F G wfF wfG
+    (λ fb → let r = evalᴰ alg (inject (coerce-functor⁻¹ F B fb))
+            in (projTrace r n , forget (valueT r n)))
+    (λ gx → let r = evalᴰ transform (inject (coerce-functor⁻¹ G (μ-type G) gx))
+            in (projTrace r n , coerce-functor F (μ-type G) (forget (valueT r n))))
+    x)
 rec-trace-D (free-heap r)           x n = []
 rec-trace-D (const f iv mv)         x n = []
 -- Structural / pure constructors: never reached here (they have explicit

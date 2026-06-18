@@ -88,7 +88,7 @@ open import Once.Functor.Translate
         ; base-Prod; base-Sum; wf-K; wf-Id; wf-Sum; wf-Prod)
 open import Once.Functor.Base
   using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF; μS; ⟨_⟩; outS; νS; unfoldS;
-         sfmap; cataS; sfmapCata; sfmapCata-is-sfmap; anaS; fuseS; fuseNatS;
+         sfmap; cataS; sfmapCata; sfmapCata-is-sfmap; anaS; fuseS; fuseW; fuseNatS;
          fold-unfoldS; unfold-foldS; cataS-computation; cataS-In-id; anaS-Out-id;
          -- Bisimulation machinery
          ⟦_⟧SF-rel; _∼S_; bisimS-to-eq; sfmap-rel; sfmap-f-rel)
@@ -729,6 +729,30 @@ sem-hylo : ∀ (F G : Functor) → WellFormedF F → WellFormedF G → {B : Set}
          → ⟦μ⟧ G → B
 sem-hylo F G wfF wfG {B} alg coalg =
   sem-fuse F G wfF wfG alg (coalg ∘ sem-In G)
+
+-- | Monoid-accumulating fuse/hylo (the `fuseW` wrappers). Same coercions as
+-- `sem-fuse`/`sem-hylo`, but the algebra and transform/coalgebra return a
+-- `(monoid , value)` pair, threaded by `fuseW` in fused depth-first order
+-- (transform pre, children, algebra post). With `M = List SigOpEvent` this is
+-- the SigOp trace of the fused hylomorphism; with `M = ⊤` it is `sem-fuse`.
+sem-fuse-events : ∀ {M : Set} (_·_ : M → M → M) (ε : M)
+                  (F G : Functor) → WellFormedF F → WellFormedF G → {B : Set}
+                → (⟦ F ⟧F B → M × B)
+                → (⟦ G ⟧F (⟦μ⟧ G) → M × ⟦ F ⟧F (⟦μ⟧ G))
+                → ⟦μ⟧ G → M × B
+sem-fuse-events {M} _·_ ε F G wfF wfG {B} alg transform =
+  fuseW {translateF IntRep F} {translateF IntRep G} {B} {M} _·_ ε
+    (λ sfb → alg (coerce-μ-out wfF B sfb))
+    (λ sg → let r = transform (coerce-μ-out wfG (⟦μ⟧ G) sg)
+            in (proj₁ r , coerce-μ-in F (⟦μ⟧ G) (proj₂ r)))
+
+sem-hylo-events : ∀ {M : Set} (_·_ : M → M → M) (ε : M)
+                  (F G : Functor) → WellFormedF F → WellFormedF G → {B : Set}
+                → (⟦ F ⟧F B → M × B)
+                → (⟦μ⟧ G → M × ⟦ F ⟧F (⟦μ⟧ G))
+                → ⟦μ⟧ G → M × B
+sem-hylo-events {M} _·_ ε F G wfF wfG {B} alg coalg =
+  sem-fuse-events {M} _·_ ε F G wfF wfG {B} alg (λ gμG → coalg (sem-In G gμG))
 
 ------------------------------------------------------------------------
 -- μ-Coercion Round-Trip Properties (OCP-0003)
