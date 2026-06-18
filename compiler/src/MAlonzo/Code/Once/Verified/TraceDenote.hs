@@ -29,13 +29,13 @@ import qualified MAlonzo.Code.Once.Verified.Trace
 d_events'45'F_10 ::
   MAlonzo.Code.Once.Type.T_Functor_110 ->
   () ->
-  (AgdaAny -> [MAlonzo.Code.Once.Verified.Trace.T_SigOpEvent_140]) ->
-  AgdaAny -> [MAlonzo.Code.Once.Verified.Trace.T_SigOpEvent_140]
+  (AgdaAny -> [MAlonzo.Code.Once.Verified.Trace.T_SigOpEvent_138]) ->
+  AgdaAny -> [MAlonzo.Code.Once.Verified.Trace.T_SigOpEvent_138]
 d_events'45'F_10 v0 ~v1 v2 v3 = du_events'45'F_10 v0 v2 v3
 du_events'45'F_10 ::
   MAlonzo.Code.Once.Type.T_Functor_110 ->
-  (AgdaAny -> [MAlonzo.Code.Once.Verified.Trace.T_SigOpEvent_140]) ->
-  AgdaAny -> [MAlonzo.Code.Once.Verified.Trace.T_SigOpEvent_140]
+  (AgdaAny -> [MAlonzo.Code.Once.Verified.Trace.T_SigOpEvent_138]) ->
+  AgdaAny -> [MAlonzo.Code.Once.Verified.Trace.T_SigOpEvent_138]
 du_events'45'F_10 v0 v1 v2
   = case coe v0 of
       MAlonzo.Code.Once.Type.C_K_114 v3
@@ -60,8 +60,8 @@ du_events'45'F_10 v0 v1 v2
 -- Once.Verified.TraceDenote.sig1
 d_sig1_46 ::
   Integer ->
-  MAlonzo.Code.Once.Verified.Trace.T_SigOpEvent_140 ->
-  [MAlonzo.Code.Once.Verified.Trace.T_SigOpEvent_140]
+  MAlonzo.Code.Once.Verified.Trace.T_SigOpEvent_138 ->
+  [MAlonzo.Code.Once.Verified.Trace.T_SigOpEvent_138]
 d_sig1_46 v0 v1
   = case coe v0 of
       0 -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
@@ -72,32 +72,32 @@ d_sig1_46 v0 v1
 d_emit'45'eff_54 ::
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
-  MAlonzo.Code.Once.CCC.SigOp.Info.T_SigOpInfo_154 ->
+  MAlonzo.Code.Once.CCC.SigOp.Info.T_SigOpInfo_152 ->
   Integer ->
-  AgdaAny -> [MAlonzo.Code.Once.Verified.Trace.T_SigOpEvent_140]
+  AgdaAny -> [MAlonzo.Code.Once.Verified.Trace.T_SigOpEvent_138]
 d_emit'45'eff_54 v0 ~v1 v2 v3 v4 = du_emit'45'eff_54 v0 v2 v3 v4
 du_emit'45'eff_54 ::
   MAlonzo.Code.Once.Type.T_Type_112 ->
-  MAlonzo.Code.Once.CCC.SigOp.Info.T_SigOpInfo_154 ->
+  MAlonzo.Code.Once.CCC.SigOp.Info.T_SigOpInfo_152 ->
   Integer ->
-  AgdaAny -> [MAlonzo.Code.Once.Verified.Trace.T_SigOpEvent_140]
+  AgdaAny -> [MAlonzo.Code.Once.Verified.Trace.T_SigOpEvent_138]
 du_emit'45'eff_54 v0 v1 v2 v3
   = let v4
-          = MAlonzo.Code.Once.CCC.SigOp.Info.d_effect_170 (coe v1) in
+          = MAlonzo.Code.Once.CCC.SigOp.Info.d_effect_168 (coe v1) in
     coe
       (case coe v4 of
-         MAlonzo.Code.Once.CCC.SigOp.Info.C_Pure_144
+         MAlonzo.Code.Once.CCC.SigOp.Info.C_Pure_142
            -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
-         MAlonzo.Code.Once.CCC.SigOp.Info.C_Emits_146
+         MAlonzo.Code.Once.CCC.SigOp.Info.C_Emits_144
            -> coe
                 d_sig1_46 (coe v2)
                 (coe
-                   MAlonzo.Code.Once.Verified.Trace.du_mkEvent_156 (coe v0) (coe v1)
+                   MAlonzo.Code.Once.Verified.Trace.du_mkEvent_154 (coe v0) (coe v1)
                    (coe v3))
-         MAlonzo.Code.Once.CCC.SigOp.Info.C_Halts_148
+         MAlonzo.Code.Once.CCC.SigOp.Info.C_Halts_146
            -> coe
                 d_sig1_46 (coe v2)
                 (coe
-                   MAlonzo.Code.Once.Verified.Trace.du_mkEvent_156 (coe v0) (coe v1)
+                   MAlonzo.Code.Once.Verified.Trace.du_mkEvent_154 (coe v0) (coe v1)
                    (coe v3))
          _ -> MAlonzo.RTE.mazUnreachableError)

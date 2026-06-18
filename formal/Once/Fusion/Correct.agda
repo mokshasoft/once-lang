@@ -24,7 +24,7 @@ module Once.Fusion.Correct where
 
 open import Once.Type
 open import Once.CCC.IR
-open import Once.CCC.Eval using (⟦_⟧; eval)
+open import Once.CCC.Eval using (⟦_⟧; eval; appNatTr-F)
 open import Once.Fusion
 open import Once.Postulates using (extensionality)
 
@@ -54,7 +54,7 @@ fusion-compose-correct g f x = refl
 ------------------------------------------------------------------------
 
 open import Data.Integer using (ℤ)
-open import Once.Semantics.Core ℕ using (sem-cata; sem-para; sem-ana; sem-hylo; sem-fuse; coerce-functor; coerce-functor⁻¹)
+open import Once.Semantics.Core ℕ using (sem-cata; sem-para; sem-ana; sem-fuseNat; sem-fuseNat-cong; ⟦_⟧F; coerce-functor; coerce-functor⁻¹)
 
 fusion-Cata-cong : ∀ {F A} (wf : _) (alg alg' : IR (⟦ F ⟧T A) A) (x : ⟦ μ-type F ⟧)
                  → eval alg ≡ eval alg'
@@ -74,53 +74,6 @@ fusion-Ana-cong : ∀ {F A} (wf : _) (coalg coalg' : IR A (⟦ F ⟧T A)) (x : �
 fusion-Ana-cong {F} {A} wf coalg coalg' x eq =
   cong (λ ev → sem-ana F (λ a → coerce-functor F A (ev a)) x) eq
 
-fusion-Hylo-cong-alg : ∀ {F G B} (wfF : _) (wfG : _)
-                       (alg alg' : IR (⟦ F ⟧T B) B)
-                       (coalg : IR (μ-type G) (⟦ F ⟧T (μ-type G)))
-                       (x : ⟦ μ-type G ⟧)
-                     → eval alg ≡ eval alg'
-                     → eval (Hylo wfF wfG alg coalg) x ≡ eval (Hylo wfF wfG alg' coalg) x
-fusion-Hylo-cong-alg {F} {G} wfF wfG alg alg' coalg x eq =
-  cong (λ ev → sem-hylo F G wfF wfG
-                         (λ fb → ev (coerce-functor⁻¹ F _ fb))
-                         (λ μg → coerce-functor F (μ-type G) (eval coalg μg))
-                         x) eq
-
-fusion-Hylo-cong-coalg : ∀ {F G B} (wfF : _) (wfG : _)
-                         (alg : IR (⟦ F ⟧T B) B)
-                         (coalg coalg' : IR (μ-type G) (⟦ F ⟧T (μ-type G)))
-                         (x : ⟦ μ-type G ⟧)
-                       → eval coalg ≡ eval coalg'
-                       → eval (Hylo wfF wfG alg coalg) x ≡ eval (Hylo wfF wfG alg coalg') x
-fusion-Hylo-cong-coalg {F} {G} wfF wfG alg coalg coalg' x eq =
-  cong (λ ev → sem-hylo F G wfF wfG
-                         (λ fb → eval alg (coerce-functor⁻¹ F _ fb))
-                         (λ μg → coerce-functor F (μ-type G) (ev μg))
-                         x) eq
-
-fusion-Fuse-cong-alg : ∀ {F G B} (wfF : _) (wfG : _)
-                       (alg alg' : IR (⟦ F ⟧T B) B)
-                       (tr : IR (⟦ G ⟧T (μ-type G)) (⟦ F ⟧T (μ-type G)))
-                       (x : ⟦ μ-type G ⟧)
-                     → eval alg ≡ eval alg'
-                     → eval (Fuse wfF wfG alg tr) x ≡ eval (Fuse wfF wfG alg' tr) x
-fusion-Fuse-cong-alg {F} {G} wfF wfG alg alg' tr x eq =
-  cong (λ ev → sem-fuse F G wfF wfG
-                         (λ fb → ev (coerce-functor⁻¹ F _ fb))
-                         (λ gx → coerce-functor F _ (eval tr (coerce-functor⁻¹ G _ gx)))
-                         x) eq
-
-fusion-Fuse-cong-tr : ∀ {F G B} (wfF : _) (wfG : _)
-                      (alg : IR (⟦ F ⟧T B) B)
-                      (tr tr' : IR (⟦ G ⟧T (μ-type G)) (⟦ F ⟧T (μ-type G)))
-                      (x : ⟦ μ-type G ⟧)
-                    → eval tr ≡ eval tr'
-                    → eval (Fuse wfF wfG alg tr) x ≡ eval (Fuse wfF wfG alg tr') x
-fusion-Fuse-cong-tr {F} {G} wfF wfG alg tr tr' x eq =
-  cong (λ ev → sem-fuse F G wfF wfG
-                         (λ fb → eval alg (coerce-functor⁻¹ F _ fb))
-                         (λ gx → coerce-functor F _ (ev (coerce-functor⁻¹ G _ gx)))
-                         x) eq
 
 ------------------------------------------------------------------------
 -- Correctness of fusion-once
@@ -128,6 +81,9 @@ fusion-Fuse-cong-tr {F} {G} wfF wfG alg tr tr' x eq =
 
 fusion-once-correct : ∀ {A B} (f : IR A B) (x : ⟦ A ⟧)
                     → eval (fusion-once f) x ≡ eval f x
+-- D062: `fusion-nt` preserves the natural transform's meaning, pointwise.
+appNatTr-fusion : ∀ {G F} (t : NatTr G F) {X : Set} (g : ⟦ G ⟧F X)
+                → appNatTr-F (fusion-nt t) g ≡ appNatTr-F t g
 fusion-once-correct id x = refl
 fusion-once-correct (g ∘ f) x =
   trans (fusion-compose-correct (fusion-once g) (fusion-once f) x)
@@ -163,16 +119,33 @@ fusion-once-correct (in-ν wf m) x = refl
 fusion-once-correct (Ana wf coalg) x =
   fusion-Ana-cong wf (fusion-once coalg) coalg x
                    (funext (λ y → fusion-once-correct coalg y))
-fusion-once-correct (Hylo wfF wfG alg coalg) x =
-  trans (fusion-Hylo-cong-alg wfF wfG (fusion-once alg) alg (fusion-once coalg) x
-                              (funext (λ y → fusion-once-correct alg y)))
-        (fusion-Hylo-cong-coalg wfF wfG alg (fusion-once coalg) coalg x
-                              (funext (λ y → fusion-once-correct coalg y)))
-fusion-once-correct (Fuse wfF wfG alg tr) x =
-  trans (fusion-Fuse-cong-alg wfF wfG (fusion-once alg) alg (fusion-once tr) x
-                              (funext (λ y → fusion-once-correct alg y)))
-        (fusion-Fuse-cong-tr wfF wfG alg (fusion-once tr) tr x
-                              (funext (λ y → fusion-once-correct tr y)))
+fusion-once-correct (Hylo {F} {G} wfF wfG alg t) x =
+  sem-fuseNat-cong F G wfF wfG
+    (appNatTr-F (fusion-nt t)) (appNatTr-F t)
+    (λ fb → eval (fusion-once alg) (coerce-functor⁻¹ F _ fb))
+    (λ fb → eval alg (coerce-functor⁻¹ F _ fb))
+    (λ g → appNatTr-fusion t g)
+    (λ fb → fusion-once-correct alg (coerce-functor⁻¹ F _ fb))
+    x
+fusion-once-correct (Fuse {F} {G} wfF wfG alg t) x =
+  sem-fuseNat-cong F G wfF wfG
+    (appNatTr-F (fusion-nt t)) (appNatTr-F t)
+    (λ fb → eval (fusion-once alg) (coerce-functor⁻¹ F _ fb))
+    (λ fb → eval alg (coerce-functor⁻¹ F _ fb))
+    (λ g → appNatTr-fusion t g)
+    (λ fb → fusion-once-correct alg (coerce-functor⁻¹ F _ fb))
+    x
+
+appNatTr-fusion ntId         g        = refl
+appNatTr-fusion (ntK ir)     g        = fusion-once-correct ir g
+appNatTr-fusion (ntFst t)    (x , _)  = appNatTr-fusion t x
+appNatTr-fusion (ntSnd t)    (_ , y)  = appNatTr-fusion t y
+appNatTr-fusion (ntCase t u) (inj₁ x) = appNatTr-fusion t x
+appNatTr-fusion (ntCase t u) (inj₂ y) = appNatTr-fusion u y
+appNatTr-fusion (ntInl t)    g        = cong inj₁ (appNatTr-fusion t g)
+appNatTr-fusion (ntInr t)    g        = cong inj₂ (appNatTr-fusion t g)
+appNatTr-fusion (ntPair t u) g        =
+  cong₂ _,_ (appNatTr-fusion t g) (appNatTr-fusion u g)
 
 ------------------------------------------------------------------------
 -- Correctness of bounded iteration

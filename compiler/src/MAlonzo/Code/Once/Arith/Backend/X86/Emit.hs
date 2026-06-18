@@ -363,7 +363,7 @@ d_arith'45'block'45'symbol_108 v0
   = coe
       MAlonzo.Code.Once.Target.Symbol.d_once'45'symbol_8
       (coe
-         MAlonzo.Code.Once.Arith.SigOp.Block.du_block'45'name_218
+         MAlonzo.Code.Once.Arith.SigOp.Block.du_block'45'name_216
          (coe
             MAlonzo.Code.Once.Arith.Machine.IR.d_block'45'body_94 (coe v0)))
 -- Once.Arith.Backend.X86.Emit.emit-arith-blocks

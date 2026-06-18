@@ -22,7 +22,7 @@ open import Data.Empty using (⊥)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Function using (_∘_)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; sym; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; sym; trans; subst)
 
 ------------------------------------------------------------------------
 -- Semantic Functor (Set-level)
@@ -199,6 +199,25 @@ mutual
   sfmapCata-In-id (F S⊗ G) (x , y) =
     cong₂ _,_ (sfmapCata-In-id F x) (sfmapCata-In-id G y)
 
+-- | Catamorphism congruence: pointwise-equal algebras give equal folds.
+-- (D062: lifts `appNatTr-F`/transform congruence through `sem-fuseNat`.)
+mutual
+  cataS-cong : ∀ {F} {A : Set} {alg₁ alg₂ : ⟦ F ⟧SF A → A}
+             → (∀ y → alg₁ y ≡ alg₂ y) → (x : μS F)
+             → cataS alg₁ x ≡ cataS alg₂ x
+  cataS-cong {F} {A} {alg₁} {alg₂} eq ⟨ x ⟩ =
+    trans (cong alg₁ (sfmapCata-cong F eq x)) (eq (sfmapCata F alg₂ x))
+
+  sfmapCata-cong : ∀ F {G} {A : Set} {alg₁ alg₂ : ⟦ G ⟧SF A → A}
+                 → (∀ y → alg₁ y ≡ alg₂ y) → (x : ⟦ F ⟧SF (μS G))
+                 → sfmapCata F alg₁ x ≡ sfmapCata F alg₂ x
+  sfmapCata-cong (SK B) eq x = refl
+  sfmapCata-cong SId eq x = cataS-cong eq x
+  sfmapCata-cong (F S⊕ G) eq (inj₁ x) = cong inj₁ (sfmapCata-cong F eq x)
+  sfmapCata-cong (F S⊕ G) eq (inj₂ y) = cong inj₂ (sfmapCata-cong G eq y)
+  sfmapCata-cong (F S⊗ G) eq (x , y) =
+    cong₂ _,_ (sfmapCata-cong F eq x) (sfmapCata-cong G eq y)
+
 ------------------------------------------------------------------------
 -- Anamorphism Laws
 ------------------------------------------------------------------------
@@ -330,7 +349,7 @@ fuseNatW {F} {G} {B} {M} _·_ ε transform alg = cataS {G} φ
 -- This is exactly the transform Fuse/Hylo should carry (D062, approach A):
 -- a *structural* deforestation, total-by-construction. Transforms that run
 -- effects or synthesize substructure are NOT natural — they are the
--- value-synthesizing divergent hylos `fuseW`'s `{-# TERMINATING #-}` was
+-- value-synthesizing divergent hylos `fuseW`'s the termination pragma was
 -- (dishonestly) covering, and belong to the layer-3 well-founded-loop story,
 -- not the meaning of a finite fold.
 ------------------------------------------------------------------------
@@ -384,7 +403,7 @@ appNatSF-natural (ntPair t u) h g        =
   cong₂ _,_ (appNatSF-natural t h g) (appNatSF-natural u h g)
 
 -- | Fusion through a container morphism — the value fold. Total: `fuseNatS`
--- is `cataS (alg ∘ appNatSF t)`, no `{-# TERMINATING #-}`.
+-- is `cataS (alg ∘ appNatSF t)`, no the termination pragma.
 fuseNT : ∀ {F G} {B : Set}
        → NatSF G F → (⟦ F ⟧SF B → B) → μS G → B
 fuseNT {F} {G} {B} t alg = fuseNatS {F} {G} {B} (appNatSF t) alg
@@ -399,91 +418,15 @@ fuseNTW : ∀ {F G} {B M : Set}
 fuseNTW {F} {G} {B} {M} _·_ ε t alg =
   fuseNatW {F} {G} {B} {M} _·_ ε (λ {A} g → (ε , appNatSF t g)) alg
 
--- | Fusion: deforestation via shape transformation (general version)
---
--- fuseS alg transform x = alg (sfmap F (fuseS alg transform) (transform (outS x)))
---
--- This is a μ-anchored hylomorphism where:
--- - Input1 is μS G (well-founded)
--- - Transform maps G-layers to F-layers: G(μG) → F(μG)
--- - Recursion is on the μG values in the F-layer
---
--- Termination argument:
--- - The μG values in `transform (outS x)` come from `outS x`
--- - outS x returns the immediate subterms of x
--- - Therefore recursive calls are on strict subterms
---
--- NOTE: Agda's termination checker cannot verify this because transform
--- is opaque. However, when transform is an IR morphism (as in sem-fuse),
--- it cannot create new μG values - it can only rearrange existing ones.
--- This makes the termination argument valid.
---
-
--- | Structured fusion combinator (general transform)
---
--- TERMINATING justification: Unlike Hylo where the coalgebra could ignore
--- its μ-component and loop forever, here transform is constrained:
--- - Input1: ⟦ G ⟧SF (μS G) containing μS G subterms from out-μ
--- - Output: ⟦ F ⟧SF (μS G) containing (some of) those same subterms
--- - Transform cannot CREATE new μS G values, only rearrange existing ones
--- - Therefore all recursive calls are on strict subterms of the input
---
--- When transform comes from evaluating an IR morphism, this property
--- is guaranteed since IR morphisms are total and cannot synthesize values.
---
--- For transforms known to be natural, use fuseNatS instead (no TERMINATING).
---
--- | Monoid-generalized fusion fold. Threads a monoid `M` (⊕/ε) through the
--- SAME recursion as `fuseS`, accumulating at each node: the transform's `M`
--- (pre-order), the children's (in functor order), then the algebra's
--- (post-order). The plain value fold `fuseS` is its trivial (`⊤`-monoid)
--- instance; a SigOp-trace fold is the `List SigOpEvent` instance — ONE fold,
--- the accumulant chosen by the caller. This per-node order is exactly the
--- order a fused hylomorphism emits in, so the `List SigOpEvent` instance IS
--- the SigOp trace.
-{-# TERMINATING #-}
-fuseW : ∀ {F G} {B M : Set}
-      → (M → M → M) → M                            -- monoid: `⊕` and `ε`
-      → (⟦ F ⟧SF B → M × B)                        -- algebra: F(B) → (M , B)
-      → (⟦ G ⟧SF (μS G) → M × ⟦ F ⟧SF (μS G))      -- transform: G(μG) → (M , F(μG))
-      → μS G → M × B
-fuseW {F} {G} {B} {M} _·_ ε alg transform ⟨ x ⟩ =
-  let tr = transform x
-      ch = sfmapFuseW F (proj₂ tr)
-      al = alg (proj₂ ch)
-  in ((proj₁ tr · proj₁ ch) · proj₁ al , proj₂ al)
-  where
-    sfmapFuseW : ∀ H → ⟦ H ⟧SF (μS G) → M × ⟦ H ⟧SF B
-    sfmapFuseW (SK A) y = (ε , y)
-    sfmapFuseW SId y = fuseW {F = F} {G = G} {B = B} {M = M} _·_ ε alg transform y
-    sfmapFuseW (H₁ S⊕ H₂) (inj₁ y) = let r = sfmapFuseW H₁ y in (proj₁ r , inj₁ (proj₂ r))
-    sfmapFuseW (H₁ S⊕ H₂) (inj₂ y) = let r = sfmapFuseW H₂ y in (proj₁ r , inj₂ (proj₂ r))
-    sfmapFuseW (H₁ S⊗ H₂) (y₁ , y₂) =
-      let r₁ = sfmapFuseW H₁ y₁ ; r₂ = sfmapFuseW H₂ y₂
-      in (proj₁ r₁ · proj₁ r₂ , (proj₂ r₁ , proj₂ r₂))
-
--- | Value fold = `fuseW` at the trivial `⊤`-monoid (accumulant discarded).
-fuseS : ∀ {F G} {B : Set}
-      → (⟦ F ⟧SF B → B)                        -- algebra: F(B) → B
-      → (⟦ G ⟧SF (μS G) → ⟦ F ⟧SF (μS G))      -- transform: G(μG) → F(μG)
-      → μS G → B
-fuseS {F} {G} {B} alg transform x =
-  proj₂ (fuseW {F = F} {G = G} {B = B} {M = ⊤} (λ _ _ → tt) tt
-               (λ fb → (tt , alg fb)) (λ gx → (tt , transform gx)) x)
-
-------------------------------------------------------------------------
--- Fusion Equivalence (fuseNatS = fuseS when transform is natural)
-------------------------------------------------------------------------
-
--- | When transform is natural, fuseS and fuseNatS compute the same result.
---
--- This is expected since both compute: alg ∘ fmap (fuse alg transform) ∘ transform
--- For fuseNatS, this simplifies to: cataS (alg ∘ transform)
--- For fuseS, it's computed directly via sfmapFuse.
---
--- The proof would require showing that sfmapFuse H = sfmap H (fuseS alg transform)
--- which follows from the mutual recursion structure.
---
+-- D062 / approach A: the monomorphic `fuseW`/`fuseS` (the the termination pragma
+-- fusion folds whose transform `⟦ G ⟧SF (μS G) → ⟦ F ⟧SF (μS G)` could inspect
+-- or synthesize μ-substructure — the assertion being FALSE for value-
+-- synthesizing divergent hylos) have been DELETED. Structural fusion is now
+-- carried by a natural transformation (`NatSF` above / `NatTr` at the IR level)
+-- and folded by the total, `cataS`-derived `fuseNatS`/`fuseNatW`/`fuseNT`/
+-- `fuseNTW`. This was the last `TERMINATING` in the denotational meaning's
+-- use-chain. The measured (well-founded-coalgebra) hylo is a separate,
+-- deferred layer-3 concern with an explicit termination certificate.
 
 ------------------------------------------------------------------------
 -- Bisimulation for Coinductive Types

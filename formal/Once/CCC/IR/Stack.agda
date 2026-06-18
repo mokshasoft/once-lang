@@ -84,6 +84,8 @@ sum-depth (wf-Prod wfL wfR) = sum-depth wfL ⊔ sum-depth wfR
 ------------------------------------------------------------------------
 
 ir-stack-requirement : ∀ {A B} → IR A B → ℕ
+-- D062: stack requirement of a Fuse/Hylo's natural transform.
+ir-stack-requirement-nt : ∀ {G F} → NatTr G F → ℕ
 ir-stack-requirement id = 0
 ir-stack-requirement (g ∘ f) = ir-stack-requirement f +ℕ ir-stack-requirement g
 ir-stack-requirement (⟨ f , g ⟩ _) = 1 +ℕ ir-stack-requirement f +ℕ ir-stack-requirement g +ℕ pair-slots
@@ -119,14 +121,23 @@ ir-stack-requirement (in-ν _ _) = 1
 -- Ana: produces ν-value lazily, needs stack for coalgebra
 ir-stack-requirement (Ana _ coalg) = ir-stack-requirement coalg +ℕ pair-slots
 -- Hylo: fused cata ∘ ana, combines both requirements
-ir-stack-requirement (Hylo _ _ alg coalg) = ir-stack-requirement alg +ℕ ir-stack-requirement coalg +ℕ pair-slots
+ir-stack-requirement (Hylo _ _ alg t) = ir-stack-requirement alg +ℕ ir-stack-requirement-nt t +ℕ pair-slots
 -- Fuse: μ-anchored fusion (correct by construction)
-ir-stack-requirement (Fuse _ _ alg transform) = ir-stack-requirement alg +ℕ ir-stack-requirement transform +ℕ pair-slots
+ir-stack-requirement (Fuse _ _ alg t) = ir-stack-requirement alg +ℕ ir-stack-requirement-nt t +ℕ pair-slots
 -- Guard/Unguard removed: productivity follows from IR totality
 -- Other
 ir-stack-requirement (free-heap _) = 0
 ir-stack-requirement (SigOp _) = 0  -- Primitives manage own stack
 ir-stack-requirement (const _ _ _) = 0  -- Pure register write, no stack
+
+ir-stack-requirement-nt ntId         = 0
+ir-stack-requirement-nt (ntK ir)     = ir-stack-requirement ir
+ir-stack-requirement-nt (ntFst t)    = ir-stack-requirement-nt t
+ir-stack-requirement-nt (ntSnd t)    = ir-stack-requirement-nt t
+ir-stack-requirement-nt (ntCase t u) = ir-stack-requirement-nt t +ℕ ir-stack-requirement-nt u
+ir-stack-requirement-nt (ntInl t)    = ir-stack-requirement-nt t
+ir-stack-requirement-nt (ntInr t)    = ir-stack-requirement-nt t
+ir-stack-requirement-nt (ntPair t u) = ir-stack-requirement-nt t +ℕ ir-stack-requirement-nt u
 
 ------------------------------------------------------------------------
 -- Scratch Requirement (alias for stack requirement)

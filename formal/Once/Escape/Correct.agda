@@ -19,7 +19,7 @@ module Once.Escape.Correct where
 
 open import Once.Type
 open import Once.CCC.IR
-open import Once.CCC.Eval using (⟦_⟧; eval)
+open import Once.CCC.Eval using (⟦_⟧; eval; appNatTr-F)
 open import Once.Escape
 open import Once.Postulates using (extensionality)
 
@@ -49,7 +49,7 @@ escape-compose-correct g f x = refl
 ------------------------------------------------------------------------
 
 open import Data.Integer using (ℤ)
-open import Once.Semantics.Core ℕ using (sem-cata; sem-para; sem-ana; sem-hylo; sem-fuse; coerce-functor; coerce-functor⁻¹)
+open import Once.Semantics.Core ℕ using (sem-cata; sem-para; sem-ana; sem-fuseNat; sem-fuseNat-cong; ⟦_⟧F; coerce-functor; coerce-functor⁻¹)
 
 escape-Cata-cong : ∀ {F A} (wf : _) (alg alg' : IR (⟦ F ⟧T A) A) (x : ⟦ μ-type F ⟧)
                  → eval alg ≡ eval alg'
@@ -69,53 +69,6 @@ escape-Ana-cong : ∀ {F A} (wf : _) (coalg coalg' : IR A (⟦ F ⟧T A)) (x : �
 escape-Ana-cong {F} {A} wf coalg coalg' x eq =
   cong (λ ev → sem-ana F (λ a → coerce-functor F A (ev a)) x) eq
 
-escape-Hylo-cong-alg : ∀ {F G B} (wfF : _) (wfG : _)
-                       (alg alg' : IR (⟦ F ⟧T B) B)
-                       (coalg : IR (μ-type G) (⟦ F ⟧T (μ-type G)))
-                       (x : ⟦ μ-type G ⟧)
-                     → eval alg ≡ eval alg'
-                     → eval (Hylo wfF wfG alg coalg) x ≡ eval (Hylo wfF wfG alg' coalg) x
-escape-Hylo-cong-alg {F} {G} wfF wfG alg alg' coalg x eq =
-  cong (λ ev → sem-hylo F G wfF wfG
-                         (λ fb → ev (coerce-functor⁻¹ F _ fb))
-                         (λ μg → coerce-functor F (μ-type G) (eval coalg μg))
-                         x) eq
-
-escape-Hylo-cong-coalg : ∀ {F G B} (wfF : _) (wfG : _)
-                         (alg : IR (⟦ F ⟧T B) B)
-                         (coalg coalg' : IR (μ-type G) (⟦ F ⟧T (μ-type G)))
-                         (x : ⟦ μ-type G ⟧)
-                       → eval coalg ≡ eval coalg'
-                       → eval (Hylo wfF wfG alg coalg) x ≡ eval (Hylo wfF wfG alg coalg') x
-escape-Hylo-cong-coalg {F} {G} wfF wfG alg coalg coalg' x eq =
-  cong (λ ev → sem-hylo F G wfF wfG
-                         (λ fb → eval alg (coerce-functor⁻¹ F _ fb))
-                         (λ μg → coerce-functor F (μ-type G) (ev μg))
-                         x) eq
-
-escape-Fuse-cong-alg : ∀ {F G B} (wfF : _) (wfG : _)
-                       (alg alg' : IR (⟦ F ⟧T B) B)
-                       (tr : IR (⟦ G ⟧T (μ-type G)) (⟦ F ⟧T (μ-type G)))
-                       (x : ⟦ μ-type G ⟧)
-                     → eval alg ≡ eval alg'
-                     → eval (Fuse wfF wfG alg tr) x ≡ eval (Fuse wfF wfG alg' tr) x
-escape-Fuse-cong-alg {F} {G} wfF wfG alg alg' tr x eq =
-  cong (λ ev → sem-fuse F G wfF wfG
-                         (λ fb → ev (coerce-functor⁻¹ F _ fb))
-                         (λ gx → coerce-functor F _ (eval tr (coerce-functor⁻¹ G _ gx)))
-                         x) eq
-
-escape-Fuse-cong-tr : ∀ {F G B} (wfF : _) (wfG : _)
-                      (alg : IR (⟦ F ⟧T B) B)
-                      (tr tr' : IR (⟦ G ⟧T (μ-type G)) (⟦ F ⟧T (μ-type G)))
-                      (x : ⟦ μ-type G ⟧)
-                    → eval tr ≡ eval tr'
-                    → eval (Fuse wfF wfG alg tr) x ≡ eval (Fuse wfF wfG alg tr') x
-escape-Fuse-cong-tr {F} {G} wfF wfG alg tr tr' x eq =
-  cong (λ ev → sem-fuse F G wfF wfG
-                         (λ fb → eval alg (coerce-functor⁻¹ F _ fb))
-                         (λ gx → coerce-functor F _ (ev (coerce-functor⁻¹ G _ gx)))
-                         x) eq
 
 ------------------------------------------------------------------------
 -- Correctness of escape-once
@@ -126,6 +79,9 @@ escape-Fuse-cong-tr {F} {G} wfF wfG alg tr tr' x eq =
 
 escape-once-correct : ∀ {A B} (f : IR A B) (x : ⟦ A ⟧)
                     → eval (escape-once f) x ≡ eval f x
+-- D062: `escape-nt` preserves the natural transform's meaning, pointwise.
+appNatTr-escape : ∀ {G F} (t : NatTr G F) {X : Set} (g : ⟦ G ⟧F X)
+                → appNatTr-F (escape-nt t) g ≡ appNatTr-F t g
 escape-once-correct id x = refl
 escape-once-correct (g ∘ f) x =
   trans (escape-compose-correct (escape-once g) (escape-once f) x)
@@ -161,16 +117,33 @@ escape-once-correct (in-ν wf m) x = refl
 escape-once-correct (Ana wf coalg) x =
   escape-Ana-cong wf (escape-once coalg) coalg x
                    (funext (λ y → escape-once-correct coalg y))
-escape-once-correct (Hylo wfF wfG alg coalg) x =
-  trans (escape-Hylo-cong-alg wfF wfG (escape-once alg) alg (escape-once coalg) x
-                              (funext (λ y → escape-once-correct alg y)))
-        (escape-Hylo-cong-coalg wfF wfG alg (escape-once coalg) coalg x
-                              (funext (λ y → escape-once-correct coalg y)))
-escape-once-correct (Fuse wfF wfG alg tr) x =
-  trans (escape-Fuse-cong-alg wfF wfG (escape-once alg) alg (escape-once tr) x
-                              (funext (λ y → escape-once-correct alg y)))
-        (escape-Fuse-cong-tr wfF wfG alg (escape-once tr) tr x
-                              (funext (λ y → escape-once-correct tr y)))
+escape-once-correct (Hylo {F} {G} wfF wfG alg t) x =
+  sem-fuseNat-cong F G wfF wfG
+    (appNatTr-F (escape-nt t)) (appNatTr-F t)
+    (λ fb → eval (escape-once alg) (coerce-functor⁻¹ F _ fb))
+    (λ fb → eval alg (coerce-functor⁻¹ F _ fb))
+    (λ g → appNatTr-escape t g)
+    (λ fb → escape-once-correct alg (coerce-functor⁻¹ F _ fb))
+    x
+escape-once-correct (Fuse {F} {G} wfF wfG alg t) x =
+  sem-fuseNat-cong F G wfF wfG
+    (appNatTr-F (escape-nt t)) (appNatTr-F t)
+    (λ fb → eval (escape-once alg) (coerce-functor⁻¹ F _ fb))
+    (λ fb → eval alg (coerce-functor⁻¹ F _ fb))
+    (λ g → appNatTr-escape t g)
+    (λ fb → escape-once-correct alg (coerce-functor⁻¹ F _ fb))
+    x
+
+appNatTr-escape ntId         g        = refl
+appNatTr-escape (ntK ir)     g        = escape-once-correct ir g
+appNatTr-escape (ntFst t)    (x , _)  = appNatTr-escape t x
+appNatTr-escape (ntSnd t)    (_ , y)  = appNatTr-escape t y
+appNatTr-escape (ntCase t u) (inj₁ x) = appNatTr-escape t x
+appNatTr-escape (ntCase t u) (inj₂ y) = appNatTr-escape u y
+appNatTr-escape (ntInl t)    g        = cong inj₁ (appNatTr-escape t g)
+appNatTr-escape (ntInr t)    g        = cong inj₂ (appNatTr-escape t g)
+appNatTr-escape (ntPair t u) g        =
+  cong₂ _,_ (appNatTr-escape t g) (appNatTr-escape u g)
 
 ------------------------------------------------------------------------
 -- Correctness of bounded iteration

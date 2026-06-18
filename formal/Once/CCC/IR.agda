@@ -120,7 +120,17 @@ data Allocator : Set where
 -- CCC-based intermediate representation.
 ------------------------------------------------------------------------
 
-data IR : Type → Type → Set where
+-- D062 / approach A: `NatTr` (defined mutually below) is the IR-level
+-- container-morphism syntax — a natural transformation `G ⇒ F` between the
+-- polynomial functors. The structural recursion schemes `Fuse`/`Hylo` carry
+-- their transform AS a `NatTr`, so naturality — hence totality of the fold —
+-- is by construction (a divergent / value-synthesizing transform is
+-- unrepresentable). The meaning translates `NatTr` to `Once.Functor.Base.NatSF`
+-- and folds it with the pragma-free `fuseNT`/`fuseNTW`; no `fuseW`.
+data IR   : Type → Type → Set
+data NatTr : Functor → Functor → Set
+
+data IR where
   -- Category structure
   id : ∀ {A} → IR A A
   _∘_ : ∀ {A B C} → IR B C → IR A B → IR A C
@@ -227,7 +237,7 @@ data IR : Type → Type → Set where
   --
   Hylo : ∀ {F G} → WellFormedF F → WellFormedF G → ∀ {B}
        → IR (⟦ F ⟧T B) B                          -- algebra: F(B) → B
-       → IR (μ-type G) (⟦ F ⟧T (μ-type G))        -- coalgebra: μG → F(μG)
+       → NatTr G F                                  -- structural coalgebra: μG --out-μ--> G ⇒ F
        → IR (μ-type G) B
 
   -- Fuse: μ-anchored fusion (deforestation) - CORRECT BY CONSTRUCTION
@@ -248,7 +258,7 @@ data IR : Type → Type → Set where
   --
   Fuse : ∀ {F G} → WellFormedF F → WellFormedF G → ∀ {B}
        → IR (⟦ F ⟧T B) B                              -- algebra: F(B) → B
-       → IR (⟦ G ⟧T (μ-type G)) (⟦ F ⟧T (μ-type G))   -- transform: G(μG) → F(μG)
+       → NatTr G F                                      -- natural transform: G ⇒ F
        → IR (μ-type G) B
 
   -- Explicit heap deallocation
@@ -280,6 +290,32 @@ data IR : Type → Type → Set where
   -- Carries a `SigOpInfo` (name + sem at both levels) so the IR
   -- is self-describing; no external `SigOpSem` parameter needed.
   SigOp : ∀ {A B} → SigOpInfo A B → IR A B
+
+------------------------------------------------------------------------
+-- NatTr — IR-level natural transformations between polynomial functors
+--
+-- The compilable, manifestly-natural witness carried by `Fuse`/`Hylo`.
+-- Mirrors `Once.Functor.Base.NatSF` one level up (over the object-language
+-- `Functor`/`Type` rather than `SFunctor`/`Set`), so the IR stays
+-- interpretation-agnostic. Source eliminators (`ntFst`/`ntSnd`/`ntCase`)
+-- and target introductions (`ntInl`/`ntInr`/`ntPair`) interleave; leaves are
+-- the identity on the recursive position (`ntId`) and a pure constant map,
+-- itself an IR morphism (`ntK`) — the reason `NatTr` is mutual with `IR`.
+--
+-- By construction a `NatTr` only routes/copies/discards the recursive
+-- positions, never inspecting or synthesizing μ-substructure; its meaning
+-- (`Once.Functor.Base.appNatSF` after translation) is a genuine natural
+-- transformation (`appNatSF-natural`), hence the folds `fuseNT`/`fuseNTW`
+-- that consume it are total without any the termination pragma.
+data NatTr where
+  ntId   : NatTr Id Id
+  ntK    : ∀ {A B} → IR A B → NatTr (K A) (K B)
+  ntFst  : ∀ {G₁ G₂ F} → NatTr G₁ F → NatTr (G₁ ⊗ G₂) F
+  ntSnd  : ∀ {G₁ G₂ F} → NatTr G₂ F → NatTr (G₁ ⊗ G₂) F
+  ntCase : ∀ {G₁ G₂ F} → NatTr G₁ F → NatTr G₂ F → NatTr (G₁ ⊕ G₂) F
+  ntInl  : ∀ {G F₁ F₂} → NatTr G F₁ → NatTr G (F₁ ⊕ F₂)
+  ntInr  : ∀ {G F₁ F₂} → NatTr G F₂ → NatTr G (F₁ ⊕ F₂)
+  ntPair : ∀ {G F₁ F₂} → NatTr G F₁ → NatTr G F₂ → NatTr G (F₁ ⊗ F₂)
 
 infixr 9 _∘_
 infixr 4 ⟨_,_⟩

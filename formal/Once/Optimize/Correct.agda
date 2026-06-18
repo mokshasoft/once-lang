@@ -16,7 +16,7 @@ module Once.Optimize.Correct where
 
 open import Once.Type
 open import Once.CCC.IR
-open import Once.CCC.Eval using (⟦_⟧; eval)
+open import Once.CCC.Eval using (⟦_⟧; eval; appNatTr-F)
 open import Once.Optimize
 open import Once.Category.Laws
 open import Once.Postulates using (extensionality)
@@ -142,7 +142,7 @@ eval-unit-unique f x with eval f x
 
 open import Once.CCC.IR using (IR)
 open import Data.Integer using (ℤ)
-open import Once.Semantics.Core ℕ using (sem-cata; sem-para; sem-ana; sem-hylo; sem-fuse; coerce-functor; coerce-functor⁻¹)
+open import Once.Semantics.Core ℕ using (sem-cata; sem-para; sem-ana; sem-fuseNat; sem-fuseNat-cong; ⟦_⟧F; coerce-functor; coerce-functor⁻¹)
 
 -- Cata: if two algebras evaluate equally (pointwise), so do their Cata applications.
 -- Proved by cong over the lambda inside the sem-cata call.
@@ -164,55 +164,27 @@ eval-Ana-cong : ∀ {F A} (wf : _) (coalg coalg' : IR A (⟦ F ⟧T A)) (x : ⟦
 eval-Ana-cong {F} {A} wf coalg coalg' x eq =
   cong (λ ev → sem-ana F (λ a → coerce-functor F A (ev a)) x) eq
 
-eval-Hylo-cong-alg : ∀ {F G B} (wfF : _) (wfG : _)
-                     (alg alg' : IR (⟦ F ⟧T B) B)
-                     (coalg : IR (μ-type G) (⟦ F ⟧T (μ-type G)))
-                     (x : ⟦ μ-type G ⟧)
-                   → eval alg ≡ eval alg'
-                   → eval (Hylo wfF wfG alg coalg) x ≡ eval (Hylo wfF wfG alg' coalg) x
-eval-Hylo-cong-alg {F} {G} wfF wfG alg alg' coalg x eq =
-  cong (λ ev → sem-hylo F G wfF wfG
-                         (λ fb → ev (coerce-functor⁻¹ F _ fb))
-                         (λ μg → coerce-functor F (μ-type G) (eval coalg μg))
-                         x) eq
-
-eval-Hylo-cong-coalg : ∀ {F G B} (wfF : _) (wfG : _)
-                       (alg : IR (⟦ F ⟧T B) B)
-                       (coalg coalg' : IR (μ-type G) (⟦ F ⟧T (μ-type G)))
-                       (x : ⟦ μ-type G ⟧)
-                     → eval coalg ≡ eval coalg'
-                     → eval (Hylo wfF wfG alg coalg) x ≡ eval (Hylo wfF wfG alg coalg') x
-eval-Hylo-cong-coalg {F} {G} wfF wfG alg coalg coalg' x eq =
-  cong (λ ev → sem-hylo F G wfF wfG
-                         (λ fb → eval alg (coerce-functor⁻¹ F _ fb))
-                         (λ μg → coerce-functor F (μ-type G) (ev μg))
-                         x) eq
-
-eval-Fuse-cong-alg : ∀ {F G B} (wfF : _) (wfG : _)
-                     (alg alg' : IR (⟦ F ⟧T B) B)
-                     (tr : IR (⟦ G ⟧T (μ-type G)) (⟦ F ⟧T (μ-type G)))
-                     (x : ⟦ μ-type G ⟧)
-                   → eval alg ≡ eval alg'
-                   → eval (Fuse wfF wfG alg tr) x ≡ eval (Fuse wfF wfG alg' tr) x
-eval-Fuse-cong-alg {F} {G} wfF wfG alg alg' tr x eq =
-  cong (λ ev → sem-fuse F G wfF wfG
-                         (λ fb → ev (coerce-functor⁻¹ F _ fb))
-                         (λ gx → coerce-functor F _ (eval tr (coerce-functor⁻¹ G _ gx)))
-                         x) eq
-
-eval-Fuse-cong-tr : ∀ {F G B} (wfF : _) (wfG : _)
-                    (alg : IR (⟦ F ⟧T B) B)
-                    (tr tr' : IR (⟦ G ⟧T (μ-type G)) (⟦ F ⟧T (μ-type G)))
-                    (x : ⟦ μ-type G ⟧)
-                  → eval tr ≡ eval tr'
-                  → eval (Fuse wfF wfG alg tr) x ≡ eval (Fuse wfF wfG alg tr') x
-eval-Fuse-cong-tr {F} {G} wfF wfG alg tr tr' x eq =
-  cong (λ ev → sem-fuse F G wfF wfG
-                         (λ fb → eval alg (coerce-functor⁻¹ F _ fb))
-                         (λ gx → coerce-functor F _ (ev (coerce-functor⁻¹ G _ gx)))
-                         x) eq
+-- D062: Hylo/Fuse now carry a NATURAL transform (`NatTr`); both denote the
+-- total `sem-fuseNat (appNatTr-F t) alg`. Their optimizer-correctness uses
+-- `sem-fuseNat-cong` directly (below), so the old IR-coalgebra cong lemmas
+-- (`eval-{Hylo,Fuse}-cong-*`, built on the deleted `sem-hylo`/`sem-fuse`) are
+-- gone. `appNatTr-optimize` lifts `optimize-nt` through the transform.
 
 mutual
+  -- | `optimize-nt` preserves the natural transform's meaning, pointwise.
+  appNatTr-optimize : ∀ {G F} (t : NatTr G F) {X : Set} (g : ⟦ G ⟧F X)
+                    → appNatTr-F (optimize-nt t) g ≡ appNatTr-F t g
+  appNatTr-optimize ntId         g        = refl
+  appNatTr-optimize (ntK ir)     g        = optimize-once-correct ir g
+  appNatTr-optimize (ntFst t)    (x , _)  = appNatTr-optimize t x
+  appNatTr-optimize (ntSnd t)    (_ , y)  = appNatTr-optimize t y
+  appNatTr-optimize (ntCase t u) (inj₁ x) = appNatTr-optimize t x
+  appNatTr-optimize (ntCase t u) (inj₂ y) = appNatTr-optimize u y
+  appNatTr-optimize (ntInl t)    g        = cong inj₁ (appNatTr-optimize t g)
+  appNatTr-optimize (ntInr t)    g        = cong inj₂ (appNatTr-optimize t g)
+  appNatTr-optimize (ntPair t u) g        =
+    cong₂ _,_ (appNatTr-optimize t g) (appNatTr-optimize u g)
+
   optimize-once-structural-correct :
     ∀ {A B} (f : IR A B) (x : ⟦ A ⟧)
     → eval (optimize-once-structural f) x ≡ eval f x
@@ -268,16 +240,22 @@ mutual
   optimize-once-structural-correct (Ana {F} wf coalg) x =
     eval-Ana-cong wf (optimize-once coalg) coalg x
                    (funext (λ y → optimize-once-correct coalg y))
-  optimize-once-structural-correct (Hylo wfF wfG alg coalg) x =
-    trans (eval-Hylo-cong-alg wfF wfG (optimize-once alg) alg (optimize-once coalg) x
-                              (funext (λ y → optimize-once-correct alg y)))
-          (eval-Hylo-cong-coalg wfF wfG alg (optimize-once coalg) coalg x
-                              (funext (λ y → optimize-once-correct coalg y)))
-  optimize-once-structural-correct (Fuse wfF wfG alg tr) x =
-    trans (eval-Fuse-cong-alg wfF wfG (optimize-once alg) alg (optimize-once tr) x
-                              (funext (λ y → optimize-once-correct alg y)))
-          (eval-Fuse-cong-tr wfF wfG alg (optimize-once tr) tr x
-                              (funext (λ y → optimize-once-correct tr y)))
+  optimize-once-structural-correct (Hylo {F} {G} wfF wfG alg t) x =
+    sem-fuseNat-cong F G wfF wfG
+      (appNatTr-F (optimize-nt t)) (appNatTr-F t)
+      (λ fb → eval (optimize-once alg) (coerce-functor⁻¹ F _ fb))
+      (λ fb → eval alg (coerce-functor⁻¹ F _ fb))
+      (λ g → appNatTr-optimize t g)
+      (λ fb → optimize-once-correct alg (coerce-functor⁻¹ F _ fb))
+      x
+  optimize-once-structural-correct (Fuse {F} {G} wfF wfG alg t) x =
+    sem-fuseNat-cong F G wfF wfG
+      (appNatTr-F (optimize-nt t)) (appNatTr-F t)
+      (λ fb → eval (optimize-once alg) (coerce-functor⁻¹ F _ fb))
+      (λ fb → eval alg (coerce-functor⁻¹ F _ fb))
+      (λ g → appNatTr-optimize t g)
+      (λ fb → optimize-once-correct alg (coerce-functor⁻¹ F _ fb))
+      x
 
   optimize-once-correct : ∀ {A B} (f : IR A B) (x : ⟦ A ⟧)
                         → eval (optimize-once f) x ≡ eval f x

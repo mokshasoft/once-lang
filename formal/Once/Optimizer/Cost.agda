@@ -36,6 +36,9 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong
 -- Non-allocating operations have cost 0.
 --
 cost : ∀ {A B} → IR A B → ℕ
+-- D062: cost of the natural transform a Fuse/Hylo carries = Σ of its
+-- constant-leaf (ntK) IR costs.
+cost-nt : ∀ {G F} → NatTr G F → ℕ
 cost id            = 0
 cost (g ∘ f)       = cost g ℕ+ cost f
 cost fst           = 0
@@ -57,11 +60,21 @@ cost (Para _ alg)  = cost alg                 -- cost of algebra
 cost (Out _)       = 0                        -- observation is free
 cost (in-ν _ _)    = 1                        -- ν-type wrapper allocation
 cost (Ana _ coalg) = cost coalg               -- cost of coalgebra
-cost (Hylo _ _ alg coalg) = cost alg ℕ+ cost coalg  -- fusion: both algebra and coalgebra
-cost (Fuse _ _ alg trans) = cost alg ℕ+ cost trans  -- fusion: algebra + transform
+cost (Hylo _ _ alg t) = cost alg ℕ+ cost-nt t  -- fusion: algebra + natural transform
+cost (Fuse _ _ alg t) = cost alg ℕ+ cost-nt t  -- fusion: algebra + natural transform
 -- Memory and primitives
 cost (free-heap _) = 0                        -- deallocation doesn't allocate
 cost (SigOp _)      = 0                        -- primitives are opaque
+cost (const _ _ _)  = 0                        -- literal global element
+
+cost-nt ntId         = 0
+cost-nt (ntK ir)     = cost ir
+cost-nt (ntFst t)    = cost-nt t
+cost-nt (ntSnd t)    = cost-nt t
+cost-nt (ntCase t u) = cost-nt t ℕ+ cost-nt u
+cost-nt (ntInl t)    = cost-nt t
+cost-nt (ntInr t)    = cost-nt t
+cost-nt (ntPair t u) = cost-nt t ℕ+ cost-nt u
 
 ------------------------------------------------------------------------
 -- Basic properties

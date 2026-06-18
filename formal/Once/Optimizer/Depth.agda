@@ -31,6 +31,8 @@ open import Relation.Nullary using (Dec; yes; no)
 -- Compositions and compound forms add 1 to max subterm depth.
 --
 depth : ∀ {A B} → IR A B → ℕ
+-- D062: depth of the natural transform a Fuse/Hylo carries.
+depth-nt : ∀ {G F} → NatTr G F → ℕ
 depth id            = 0
 depth (g ∘ f)       = suc (depth g ⊔ depth f)
 depth fst           = 0
@@ -52,11 +54,21 @@ depth (Para _ alg)  = suc (depth alg)
 depth (Out _)       = 0
 depth (in-ν _ _)    = 0
 depth (Ana _ coalg) = suc (depth coalg)
-depth (Hylo _ _ alg coalg) = suc (depth alg ⊔ depth coalg)
-depth (Fuse _ _ alg trans) = suc (depth alg ⊔ depth trans)
+depth (Hylo _ _ alg t) = suc (depth alg ⊔ depth-nt t)
+depth (Fuse _ _ alg t) = suc (depth alg ⊔ depth-nt t)
 -- Memory and primitives
 depth (free-heap _) = 0
 depth (SigOp _)      = 0
+depth (const _ _ _)  = 0
+
+depth-nt ntId         = 0
+depth-nt (ntK ir)     = depth ir
+depth-nt (ntFst t)    = depth-nt t
+depth-nt (ntSnd t)    = depth-nt t
+depth-nt (ntCase t u) = suc (depth-nt t ⊔ depth-nt u)
+depth-nt (ntInl t)    = depth-nt t
+depth-nt (ntInr t)    = depth-nt t
+depth-nt (ntPair t u) = suc (depth-nt t ⊔ depth-nt u)
 
 ------------------------------------------------------------------------
 -- Bounded depth predicate

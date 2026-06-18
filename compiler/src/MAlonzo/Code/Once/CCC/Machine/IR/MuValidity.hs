@@ -23,6 +23,7 @@ import qualified MAlonzo.Code.Data.Nat.Base
 import qualified MAlonzo.Code.Data.Sum.Base
 import qualified MAlonzo.Code.Once.CCC.FrameSemantics
 import qualified MAlonzo.Code.Once.CCC.Machine.Allocation
+import qualified MAlonzo.Code.Once.CCC.Machine.Locations
 import qualified MAlonzo.Code.Once.CCC.Machine.SMCore
 import qualified MAlonzo.Code.Once.Functor.Base
 import qualified MAlonzo.Code.Once.Functor.Translate
@@ -33,27 +34,27 @@ import qualified MAlonzo.Code.Once.Type
 -- Once.CCC.Machine.IR.MuValidity._.sem-CoIn
 d_sem'45'CoIn_12 ::
   MAlonzo.Code.Once.Type.T_Functor_110 ->
-  AgdaAny -> MAlonzo.Code.Once.Functor.Base.T_νS_246
+  AgdaAny -> MAlonzo.Code.Once.Functor.Base.T_νS_198
 d_sem'45'CoIn_12
   = coe MAlonzo.Code.Once.Semantics.Core.du_sem'45'CoIn_1014
 -- Once.CCC.Machine.IR.MuValidity._.sem-CoOut
 d_sem'45'CoOut_14 ::
   MAlonzo.Code.Once.Type.T_Functor_110 ->
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
-  MAlonzo.Code.Once.Functor.Base.T_νS_246 -> AgdaAny
+  MAlonzo.Code.Once.Functor.Base.T_νS_198 -> AgdaAny
 d_sem'45'CoOut_14
   = coe MAlonzo.Code.Once.Semantics.Core.du_sem'45'CoOut_1004
 -- Once.CCC.Machine.IR.MuValidity._.sem-In
 d_sem'45'In_16 ::
   MAlonzo.Code.Once.Type.T_Functor_110 ->
-  AgdaAny -> MAlonzo.Code.Once.Functor.Base.T_μS_230
+  AgdaAny -> MAlonzo.Code.Once.Functor.Base.T_μS_182
 d_sem'45'In_16
   = coe MAlonzo.Code.Once.Semantics.Core.du_sem'45'In_934
 -- Once.CCC.Machine.IR.MuValidity._.sem-Out
 d_sem'45'Out_18 ::
   MAlonzo.Code.Once.Type.T_Functor_110 ->
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
-  MAlonzo.Code.Once.Functor.Base.T_μS_230 -> AgdaAny
+  MAlonzo.Code.Once.Functor.Base.T_μS_182 -> AgdaAny
 d_sem'45'Out_18
   = coe MAlonzo.Code.Once.Semantics.Core.du_sem'45'Out_942
 -- Once.CCC.Machine.IR.MuValidity._.⟦_⟧F
@@ -72,31 +73,31 @@ d_BeforeFrontier_38 a0 a1 a2 a3 = ()
 d_readLoc_106 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_468 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_ValueLocation_68 ->
-  Maybe MAlonzo.Code.Once.CCC.Machine.SMCore.T_StoredValue_78
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456 ->
+  MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
+  Maybe MAlonzo.Code.Once.CCC.Machine.SMCore.T_StoredValue_66
 d_readLoc_106 ~v0 ~v1 = du_readLoc_106
 du_readLoc_106 ::
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_468 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_ValueLocation_68 ->
-  Maybe MAlonzo.Code.Once.CCC.Machine.SMCore.T_StoredValue_78
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456 ->
+  MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
+  Maybe MAlonzo.Code.Once.CCC.Machine.SMCore.T_StoredValue_66
 du_readLoc_106
-  = coe MAlonzo.Code.Once.CCC.Machine.SMCore.du_readLoc_630
+  = coe MAlonzo.Code.Once.CCC.Machine.SMCore.du_readLoc_618
 -- Once.CCC.Machine.IR.MuValidity.MuValidityImpl.μLayerValid
 d_μLayerValid_172 a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 = ()
 data T_μLayerValid_172
   = C_μlayer'45'K_196 MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_610 |
     C_μlayer'45'Id_208 T_μValid_178 |
-    C_μlayer'45'inl_230 MAlonzo.Code.Once.CCC.Machine.SMCore.T_ValueLocation_68
+    C_μlayer'45'inl_230 MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12
                         MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_610
                         MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_610
                         T_μLayerValid_172 |
-    C_μlayer'45'inr_252 MAlonzo.Code.Once.CCC.Machine.SMCore.T_ValueLocation_68
+    C_μlayer'45'inr_252 MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12
                         MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_610
                         MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_610
                         T_μLayerValid_172 |
-    C_μlayer'45'prod_278 MAlonzo.Code.Once.CCC.Machine.SMCore.T_ValueLocation_68
-                         MAlonzo.Code.Once.CCC.Machine.SMCore.T_ValueLocation_68
+    C_μlayer'45'prod_278 MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12
+                         MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12
                          MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_610
                          MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_610
                          MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_610
@@ -111,16 +112,16 @@ d_νLayerValid_300 a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 = ()
 data T_νLayerValid_300
   = C_νlayer'45'K_324 MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_610 |
     C_νlayer'45'Id_336 T_νValid_306 |
-    C_νlayer'45'inl_358 MAlonzo.Code.Once.CCC.Machine.SMCore.T_ValueLocation_68
+    C_νlayer'45'inl_358 MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12
                         MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_610
                         MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_610
                         T_νLayerValid_300 |
-    C_νlayer'45'inr_380 MAlonzo.Code.Once.CCC.Machine.SMCore.T_ValueLocation_68
+    C_νlayer'45'inr_380 MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12
                         MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_610
                         MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_610
                         T_νLayerValid_300 |
-    C_νlayer'45'prod_406 MAlonzo.Code.Once.CCC.Machine.SMCore.T_ValueLocation_68
-                         MAlonzo.Code.Once.CCC.Machine.SMCore.T_ValueLocation_68
+    C_νlayer'45'prod_406 MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12
+                         MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12
                          MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_610
                          MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_610
                          MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_610
@@ -136,13 +137,13 @@ d_μLayerValid'45'mem'45'only_440 ::
   Integer ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_522 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_510 ->
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
   AgdaAny ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_ValueLocation_68 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_468 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_468 ->
+  MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   T_μLayerValid_172 -> T_μLayerValid_172
@@ -155,13 +156,13 @@ du_μLayerValid'45'mem'45'only_440 ::
   Integer ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_522 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_510 ->
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
   AgdaAny ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_ValueLocation_68 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_468 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_468 ->
+  MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456 ->
   T_μLayerValid_172 -> T_μLayerValid_172
 du_μLayerValid'45'mem'45'only_440 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
                                   v11
@@ -230,13 +231,13 @@ du_μLayerValid'45'mem'45'only_440 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
 d_μValid'45'mem'45'only_456 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_522 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_510 ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
-  MAlonzo.Code.Once.Functor.Base.T_μS_230 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_ValueLocation_68 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_468 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_468 ->
+  MAlonzo.Code.Once.Functor.Base.T_μS_182 ->
+  MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   T_μValid_178 -> T_μValid_178
@@ -245,13 +246,13 @@ d_μValid'45'mem'45'only_456 v0 v1 v2 v3 v4 v5 v6 v7 v8 ~v9 ~v10 v11
 du_μValid'45'mem'45'only_456 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_522 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_510 ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
-  MAlonzo.Code.Once.Functor.Base.T_μS_230 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_ValueLocation_68 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_468 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_468 ->
+  MAlonzo.Code.Once.Functor.Base.T_μS_182 ->
+  MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456 ->
   T_μValid_178 -> T_μValid_178
 du_μValid'45'mem'45'only_456 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
   = case coe v9 of
@@ -272,13 +273,13 @@ d_νLayerValid'45'mem'45'only_624 ::
   Integer ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_522 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_510 ->
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
   AgdaAny ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_ValueLocation_68 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_468 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_468 ->
+  MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   T_νLayerValid_300 -> T_νLayerValid_300
@@ -291,13 +292,13 @@ du_νLayerValid'45'mem'45'only_624 ::
   Integer ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_522 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_510 ->
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
   AgdaAny ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_ValueLocation_68 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_468 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_468 ->
+  MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456 ->
   T_νLayerValid_300 -> T_νLayerValid_300
 du_νLayerValid'45'mem'45'only_624 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
                                   v11
@@ -366,13 +367,13 @@ du_νLayerValid'45'mem'45'only_624 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
 d_νValid'45'mem'45'only_640 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_522 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_510 ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
-  MAlonzo.Code.Once.Functor.Base.T_νS_246 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_ValueLocation_68 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_468 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_468 ->
+  MAlonzo.Code.Once.Functor.Base.T_νS_198 ->
+  MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   T_νValid_306 -> T_νValid_306
@@ -381,13 +382,13 @@ d_νValid'45'mem'45'only_640 v0 v1 v2 v3 v4 v5 v6 v7 v8 ~v9 ~v10 v11
 du_νValid'45'mem'45'only_640 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_522 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_510 ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
-  MAlonzo.Code.Once.Functor.Base.T_νS_246 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_ValueLocation_68 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_468 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_468 ->
+  MAlonzo.Code.Once.Functor.Base.T_νS_198 ->
+  MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456 ->
   T_νValid_306 -> T_νValid_306
 du_νValid'45'mem'45'only_640 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
   = case coe v9 of
@@ -408,13 +409,13 @@ d_μLayerValid'45'frontier'45'advance_808 ::
   Integer ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_522 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_522 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_510 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_510 ->
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
   AgdaAny ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_ValueLocation_68 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_468 ->
+  MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
@@ -428,13 +429,13 @@ du_μLayerValid'45'frontier'45'advance_808 ::
   Integer ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_522 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_522 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_510 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_510 ->
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
   AgdaAny ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_ValueLocation_68 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_468 ->
+  MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   T_μLayerValid_172 -> T_μLayerValid_172
@@ -476,7 +477,7 @@ du_μLayerValid'45'frontier'45'advance_808 v0 v1 v2 v3 v4 v5 v6 v7
                                      MAlonzo.Code.Once.CCC.Machine.Allocation.du_frontier'45'monotone_814
                                      (coe v11) (coe v12)
                                      (coe
-                                        MAlonzo.Code.Once.CCC.Machine.SMCore.du_sucLoc_94 (coe v9))
+                                        MAlonzo.Code.Once.CCC.Machine.SMCore.du_sucLoc_82 (coe v9))
                                      (coe v33))
                                   (coe
                                      du_μLayerValid'45'frontier'45'advance_808 (coe v0) (coe v1)
@@ -495,7 +496,7 @@ du_μLayerValid'45'frontier'45'advance_808 v0 v1 v2 v3 v4 v5 v6 v7
                                      MAlonzo.Code.Once.CCC.Machine.Allocation.du_frontier'45'monotone_814
                                      (coe v11) (coe v12)
                                      (coe
-                                        MAlonzo.Code.Once.CCC.Machine.SMCore.du_sucLoc_94 (coe v9))
+                                        MAlonzo.Code.Once.CCC.Machine.SMCore.du_sucLoc_82 (coe v9))
                                      (coe v33))
                                   (coe
                                      du_μLayerValid'45'frontier'45'advance_808 (coe v0) (coe v1)
@@ -523,7 +524,7 @@ du_μLayerValid'45'frontier'45'advance_808 v0 v1 v2 v3 v4 v5 v6 v7
                                      MAlonzo.Code.Once.CCC.Machine.Allocation.du_frontier'45'monotone_814
                                      (coe v11) (coe v12)
                                      (coe
-                                        MAlonzo.Code.Once.CCC.Machine.SMCore.du_sucLoc_94 (coe v9))
+                                        MAlonzo.Code.Once.CCC.Machine.SMCore.du_sucLoc_82 (coe v9))
                                      (coe v38))
                                   (coe
                                      du_μLayerValid'45'frontier'45'advance_808 (coe v0) (coe v1)
@@ -541,13 +542,13 @@ du_μLayerValid'45'frontier'45'advance_808 v0 v1 v2 v3 v4 v5 v6 v7
 d_μValid'45'frontier'45'advance_824 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_522 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_522 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_510 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_510 ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
-  MAlonzo.Code.Once.Functor.Base.T_μS_230 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_ValueLocation_68 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_468 ->
+  MAlonzo.Code.Once.Functor.Base.T_μS_182 ->
+  MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
@@ -559,13 +560,13 @@ d_μValid'45'frontier'45'advance_824 v0 v1 v2 v3 v4 v5 v6 v7 v8 ~v9
 du_μValid'45'frontier'45'advance_824 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_522 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_522 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_510 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_510 ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
-  MAlonzo.Code.Once.Functor.Base.T_μS_230 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_ValueLocation_68 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_468 ->
+  MAlonzo.Code.Once.Functor.Base.T_μS_182 ->
+  MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   T_μValid_178 -> T_μValid_178
@@ -592,13 +593,13 @@ d_νLayerValid'45'frontier'45'advance_1004 ::
   Integer ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_522 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_522 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_510 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_510 ->
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
   AgdaAny ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_ValueLocation_68 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_468 ->
+  MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
@@ -612,13 +613,13 @@ du_νLayerValid'45'frontier'45'advance_1004 ::
   Integer ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_522 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_522 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_510 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_510 ->
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
   AgdaAny ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_ValueLocation_68 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_468 ->
+  MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   T_νLayerValid_300 -> T_νLayerValid_300
@@ -660,7 +661,7 @@ du_νLayerValid'45'frontier'45'advance_1004 v0 v1 v2 v3 v4 v5 v6 v7
                                      MAlonzo.Code.Once.CCC.Machine.Allocation.du_frontier'45'monotone_814
                                      (coe v11) (coe v12)
                                      (coe
-                                        MAlonzo.Code.Once.CCC.Machine.SMCore.du_sucLoc_94 (coe v9))
+                                        MAlonzo.Code.Once.CCC.Machine.SMCore.du_sucLoc_82 (coe v9))
                                      (coe v33))
                                   (coe
                                      du_νLayerValid'45'frontier'45'advance_1004 (coe v0) (coe v1)
@@ -679,7 +680,7 @@ du_νLayerValid'45'frontier'45'advance_1004 v0 v1 v2 v3 v4 v5 v6 v7
                                      MAlonzo.Code.Once.CCC.Machine.Allocation.du_frontier'45'monotone_814
                                      (coe v11) (coe v12)
                                      (coe
-                                        MAlonzo.Code.Once.CCC.Machine.SMCore.du_sucLoc_94 (coe v9))
+                                        MAlonzo.Code.Once.CCC.Machine.SMCore.du_sucLoc_82 (coe v9))
                                      (coe v33))
                                   (coe
                                      du_νLayerValid'45'frontier'45'advance_1004 (coe v0) (coe v1)
@@ -707,7 +708,7 @@ du_νLayerValid'45'frontier'45'advance_1004 v0 v1 v2 v3 v4 v5 v6 v7
                                      MAlonzo.Code.Once.CCC.Machine.Allocation.du_frontier'45'monotone_814
                                      (coe v11) (coe v12)
                                      (coe
-                                        MAlonzo.Code.Once.CCC.Machine.SMCore.du_sucLoc_94 (coe v9))
+                                        MAlonzo.Code.Once.CCC.Machine.SMCore.du_sucLoc_82 (coe v9))
                                      (coe v38))
                                   (coe
                                      du_νLayerValid'45'frontier'45'advance_1004 (coe v0) (coe v1)
@@ -725,13 +726,13 @@ du_νLayerValid'45'frontier'45'advance_1004 v0 v1 v2 v3 v4 v5 v6 v7
 d_νValid'45'frontier'45'advance_1020 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_522 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_522 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_510 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_510 ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
-  MAlonzo.Code.Once.Functor.Base.T_νS_246 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_ValueLocation_68 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_468 ->
+  MAlonzo.Code.Once.Functor.Base.T_νS_198 ->
+  MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
@@ -743,13 +744,13 @@ d_νValid'45'frontier'45'advance_1020 v0 v1 v2 v3 v4 v5 v6 v7 v8 ~v9
 du_νValid'45'frontier'45'advance_1020 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_522 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_522 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_510 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_510 ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
-  MAlonzo.Code.Once.Functor.Base.T_νS_246 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_ValueLocation_68 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_468 ->
+  MAlonzo.Code.Once.Functor.Base.T_νS_198 ->
+  MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   T_νValid_306 -> T_νValid_306
@@ -776,14 +777,14 @@ d_μLayerValid'45'bf'45'transfer_1204 ::
   Integer ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_522 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_522 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_510 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_510 ->
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
   AgdaAny ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_ValueLocation_68 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_468 ->
-  (MAlonzo.Code.Once.CCC.Machine.SMCore.T_ValueLocation_68 ->
+  MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456 ->
+  (MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
    MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_610 ->
    MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_610) ->
   T_μLayerValid_172 -> T_μLayerValid_172
@@ -815,7 +816,7 @@ d_μLayerValid'45'bf'45'transfer_1204 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                                   (coe
                                      v11
                                      (coe
-                                        MAlonzo.Code.Once.CCC.Machine.SMCore.du_sucLoc_94 (coe v9))
+                                        MAlonzo.Code.Once.CCC.Machine.SMCore.du_sucLoc_82 (coe v9))
                                      v32)
                                   (d_μLayerValid'45'bf'45'transfer_1204
                                      (coe v0) (coe v1) (coe v17) (coe v3) (coe v4) (coe v5)
@@ -830,7 +831,7 @@ d_μLayerValid'45'bf'45'transfer_1204 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                                   (coe
                                      v11
                                      (coe
-                                        MAlonzo.Code.Once.CCC.Machine.SMCore.du_sucLoc_94 (coe v9))
+                                        MAlonzo.Code.Once.CCC.Machine.SMCore.du_sucLoc_82 (coe v9))
                                      v32)
                                   (d_μLayerValid'45'bf'45'transfer_1204
                                      (coe v0) (coe v1) (coe v18) (coe v3) (coe v4) (coe v5)
@@ -851,7 +852,7 @@ d_μLayerValid'45'bf'45'transfer_1204 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                                   (coe
                                      v11
                                      (coe
-                                        MAlonzo.Code.Once.CCC.Machine.SMCore.du_sucLoc_94 (coe v9))
+                                        MAlonzo.Code.Once.CCC.Machine.SMCore.du_sucLoc_82 (coe v9))
                                      v37)
                                   (d_μLayerValid'45'bf'45'transfer_1204
                                      (coe v0) (coe v1) (coe v17) (coe v3) (coe v4) (coe v5)
@@ -869,14 +870,14 @@ d_μLayerValid'45'bf'45'transfer_1204 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
 d_μValid'45'bf'45'transfer_1224 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_522 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_522 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_510 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_510 ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
-  MAlonzo.Code.Once.Functor.Base.T_μS_230 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_ValueLocation_68 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_468 ->
-  (MAlonzo.Code.Once.CCC.Machine.SMCore.T_ValueLocation_68 ->
+  MAlonzo.Code.Once.Functor.Base.T_μS_182 ->
+  MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456 ->
+  (MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
    MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_610 ->
    MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_610) ->
   T_μValid_178 -> T_μValid_178
@@ -899,14 +900,14 @@ d_νLayerValid'45'bf'45'transfer_1384 ::
   Integer ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_522 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_522 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_510 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_510 ->
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
   AgdaAny ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_ValueLocation_68 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_468 ->
-  (MAlonzo.Code.Once.CCC.Machine.SMCore.T_ValueLocation_68 ->
+  MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456 ->
+  (MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
    MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_610 ->
    MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_610) ->
   T_νLayerValid_300 -> T_νLayerValid_300
@@ -938,7 +939,7 @@ d_νLayerValid'45'bf'45'transfer_1384 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                                   (coe
                                      v11
                                      (coe
-                                        MAlonzo.Code.Once.CCC.Machine.SMCore.du_sucLoc_94 (coe v9))
+                                        MAlonzo.Code.Once.CCC.Machine.SMCore.du_sucLoc_82 (coe v9))
                                      v32)
                                   (d_νLayerValid'45'bf'45'transfer_1384
                                      (coe v0) (coe v1) (coe v17) (coe v3) (coe v4) (coe v5)
@@ -953,7 +954,7 @@ d_νLayerValid'45'bf'45'transfer_1384 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                                   (coe
                                      v11
                                      (coe
-                                        MAlonzo.Code.Once.CCC.Machine.SMCore.du_sucLoc_94 (coe v9))
+                                        MAlonzo.Code.Once.CCC.Machine.SMCore.du_sucLoc_82 (coe v9))
                                      v32)
                                   (d_νLayerValid'45'bf'45'transfer_1384
                                      (coe v0) (coe v1) (coe v18) (coe v3) (coe v4) (coe v5)
@@ -974,7 +975,7 @@ d_νLayerValid'45'bf'45'transfer_1384 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                                   (coe
                                      v11
                                      (coe
-                                        MAlonzo.Code.Once.CCC.Machine.SMCore.du_sucLoc_94 (coe v9))
+                                        MAlonzo.Code.Once.CCC.Machine.SMCore.du_sucLoc_82 (coe v9))
                                      v37)
                                   (d_νLayerValid'45'bf'45'transfer_1384
                                      (coe v0) (coe v1) (coe v17) (coe v3) (coe v4) (coe v5)
@@ -992,14 +993,14 @@ d_νLayerValid'45'bf'45'transfer_1384 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
 d_νValid'45'bf'45'transfer_1404 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_522 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_522 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_510 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_510 ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
-  MAlonzo.Code.Once.Functor.Base.T_νS_246 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_ValueLocation_68 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_468 ->
-  (MAlonzo.Code.Once.CCC.Machine.SMCore.T_ValueLocation_68 ->
+  MAlonzo.Code.Once.Functor.Base.T_νS_198 ->
+  MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456 ->
+  (MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
    MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_610 ->
    MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_610) ->
   T_νValid_306 -> T_νValid_306
@@ -1022,15 +1023,15 @@ d_μLayerValid'45'mem'45'preserved_1562 ::
   Integer ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_522 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_510 ->
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
   AgdaAny ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_ValueLocation_68 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_468 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_468 ->
+  MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456 ->
   MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_610 ->
-  (MAlonzo.Code.Once.CCC.Machine.SMCore.T_ValueLocation_68 ->
+  (MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
    MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_610 ->
    MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
   T_μLayerValid_172 -> T_μLayerValid_172
@@ -1043,13 +1044,13 @@ du_μLayerValid'45'mem'45'preserved_1562 ::
   Integer ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_522 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_510 ->
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
   AgdaAny ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_ValueLocation_68 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_468 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_468 ->
+  MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456 ->
   MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_610 ->
   T_μLayerValid_172 -> T_μLayerValid_172
 du_μLayerValid'45'mem'45'preserved_1562 v0 v1 v2 v3 v4 v5 v6 v7 v8
@@ -1120,15 +1121,15 @@ du_μLayerValid'45'mem'45'preserved_1562 v0 v1 v2 v3 v4 v5 v6 v7 v8
 d_μValid'45'mem'45'preserved_1580 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_522 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_510 ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
-  MAlonzo.Code.Once.Functor.Base.T_μS_230 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_ValueLocation_68 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_468 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_468 ->
+  MAlonzo.Code.Once.Functor.Base.T_μS_182 ->
+  MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456 ->
   MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_610 ->
-  (MAlonzo.Code.Once.CCC.Machine.SMCore.T_ValueLocation_68 ->
+  (MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
    MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_610 ->
    MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
   T_μValid_178 -> T_μValid_178
@@ -1139,13 +1140,13 @@ d_μValid'45'mem'45'preserved_1580 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
 du_μValid'45'mem'45'preserved_1580 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_522 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_510 ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
-  MAlonzo.Code.Once.Functor.Base.T_μS_230 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_ValueLocation_68 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_468 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_468 ->
+  MAlonzo.Code.Once.Functor.Base.T_μS_182 ->
+  MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456 ->
   MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_610 ->
   T_μValid_178 -> T_μValid_178
 du_μValid'45'mem'45'preserved_1580 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
@@ -1168,15 +1169,15 @@ d_νLayerValid'45'mem'45'preserved_1750 ::
   Integer ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_522 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_510 ->
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
   AgdaAny ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_ValueLocation_68 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_468 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_468 ->
+  MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456 ->
   MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_610 ->
-  (MAlonzo.Code.Once.CCC.Machine.SMCore.T_ValueLocation_68 ->
+  (MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
    MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_610 ->
    MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
   T_νLayerValid_300 -> T_νLayerValid_300
@@ -1189,13 +1190,13 @@ du_νLayerValid'45'mem'45'preserved_1750 ::
   Integer ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_522 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_510 ->
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
   AgdaAny ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_ValueLocation_68 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_468 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_468 ->
+  MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456 ->
   MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_610 ->
   T_νLayerValid_300 -> T_νLayerValid_300
 du_νLayerValid'45'mem'45'preserved_1750 v0 v1 v2 v3 v4 v5 v6 v7 v8
@@ -1266,15 +1267,15 @@ du_νLayerValid'45'mem'45'preserved_1750 v0 v1 v2 v3 v4 v5 v6 v7 v8
 d_νValid'45'mem'45'preserved_1768 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_522 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_510 ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
-  MAlonzo.Code.Once.Functor.Base.T_νS_246 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_ValueLocation_68 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_468 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_468 ->
+  MAlonzo.Code.Once.Functor.Base.T_νS_198 ->
+  MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456 ->
   MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_610 ->
-  (MAlonzo.Code.Once.CCC.Machine.SMCore.T_ValueLocation_68 ->
+  (MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
    MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_610 ->
    MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
   T_νValid_306 -> T_νValid_306
@@ -1285,13 +1286,13 @@ d_νValid'45'mem'45'preserved_1768 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
 du_νValid'45'mem'45'preserved_1768 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_522 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_510 ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
-  MAlonzo.Code.Once.Functor.Base.T_νS_246 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_ValueLocation_68 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_468 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_468 ->
+  MAlonzo.Code.Once.Functor.Base.T_νS_198 ->
+  MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456 ->
   MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_610 ->
   T_νValid_306 -> T_νValid_306
 du_νValid'45'mem'45'preserved_1768 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9

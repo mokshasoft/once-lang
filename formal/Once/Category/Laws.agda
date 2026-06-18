@@ -296,8 +296,8 @@ eval-arr-identity f = refl
 -- Note: We import from IR (not Machine) to match the ℤ interpretation
 -- used by eval. Machine uses ℕ which would cause type mismatches.
 open import Once.Semantics.Machine
-  using (sem-In; sem-Out; sem-cata; sem-CoOut; sem-ana; sem-hylo; sem-fuse;
-         sem-fmap; sem-ana-Out-id; sem-hylo-is-fuse;
+  using (sem-In; sem-Out; sem-cata; sem-CoOut; sem-ana;
+         sem-fmap; sem-ana-Out-id;
          coerce-functor; coerce-functor⁻¹; coerce-round-trip; coerce⁻¹-round-trip;
          ⟦_⟧F;
          -- Proven for well-formed functors (no postulates)
@@ -491,63 +491,18 @@ eval-cata-In {F} wf {A} alg m x =
 -- The hylo is the primitive operation; cata and ana are special cases.
 ------------------------------------------------------------------------
 
--- | Hylo is equivalent to Fuse (OCP-0003)
+-- | Hylo is equivalent to Fuse (OCP-0003 / D062)
 --
--- OCP-0003: Hylo is now defined in terms of Fuse:
---   sem-hylo alg coalg = sem-fuse alg (coalg ∘ sem-In)
---
--- This is proven at the semantic level by sem-hylo-is-fuse.
--- At the IR level, Hylo can be understood as Fuse with the transform
--- being the coalgebra composed with In.
---
--- PROOF: The key insight is that the coercions cancel out:
---   eval (In wfG Heap) y = sem-In G (coerce-functor G (μ-type G) y)
---   So eval (coalg ∘ In wfG Heap) (coerce-functor⁻¹ G (μ-type G) gx)
---    = eval coalg (sem-In G (coerce-functor G ... (coerce-functor⁻¹ G ... gx)))
---    = eval coalg (sem-In G gx)  [by coerce⁻¹-round-trip]
---
+-- D062: `Hylo`/`Fuse` now carry the SAME natural transformation (`NatTr`), and
+-- `eval` denotes both by the identical total fold `sem-fuseNat (appNatTr-F t)`.
+-- So `fuse ≡ hylo` is definitional — one structural scheme, two packagings.
+-- (The old IR-coalgebra bridge `eval (Hylo alg coalg) ≡ eval (Fuse alg (coalg
+-- ∘ In))` is gone: the coalgebra is no longer a general IR morphism.)
 eval-hylo-is-fuse : ∀ {F G : Functor} → (wfF : WellFormedF F) → (wfG : WellFormedF G)
-                    → ∀ {B : Type} (alg : IR (⟦ F ⟧T B) B) (coalg : IR (μ-type G) (⟦ F ⟧T (μ-type G)))
+                    → ∀ {B : Type} (alg : IR (⟦ F ⟧T B) B) (t : NatTr G F)
                     → (x : ⟦ μ-type G ⟧)
-                    → eval (Hylo wfF wfG alg coalg) x ≡
-                      eval (Fuse wfF wfG alg (coalg ∘ In wfG Heap)) x
-eval-hylo-is-fuse {F} {G} wfF wfG {B} alg coalg x =
-  -- LHS unfolds to: sem-hylo ... alg-set coalg-set x
-  -- By sem-hylo definition: = sem-fuse ... alg-set (coalg-set ∘ sem-In G) x
-  -- RHS unfolds to: sem-fuse ... alg-set transform-set x
-  -- We show: coalg-set ∘ sem-In G ≡ transform-set
-  cong (λ t → sem-fuse F G wfF wfG alg-set t x) transform-eq
-  where
-    -- The algebra for both sides (identical)
-    alg-set : ⟦ F ⟧F ⟦ B ⟧ → ⟦ B ⟧
-    alg-set = λ fb → eval alg (coerce-functor⁻¹ F B fb)
-
-    -- The coalgebra used in Hylo (via sem-hylo)
-    coalg-set : ⟦ μ-type G ⟧ → ⟦ F ⟧F ⟦ μ-type G ⟧
-    coalg-set = λ μg → coerce-functor F (μ-type G) (eval coalg μg)
-
-    -- The transform used in Fuse
-    transform-set : ⟦ G ⟧F ⟦ μ-type G ⟧ → ⟦ F ⟧F ⟦ μ-type G ⟧
-    transform-set = λ gx → coerce-functor F (μ-type G)
-                             (eval (coalg ∘ In wfG Heap) (coerce-functor⁻¹ G (μ-type G) gx))
-
-    -- Key: show the transforms are pointwise equal
-    transform-pointwise : ∀ gx → (coalg-set ∘′ sem-In G) gx ≡ transform-set gx
-    transform-pointwise gx =
-      -- (coalg-set ∘ sem-In G) gx
-      -- = coerce-functor F ... (eval coalg (sem-In G gx))
-      --
-      -- transform-set gx
-      -- = coerce-functor F ... (eval (coalg ∘ In wfG Heap) (coerce-functor⁻¹ G ... gx))
-      -- = coerce-functor F ... (eval coalg (eval (In wfG Heap) (coerce-functor⁻¹ G ... gx)))
-      -- = coerce-functor F ... (eval coalg (sem-In G (coerce-functor G ... (coerce-functor⁻¹ G ... gx))))
-      -- = coerce-functor F ... (eval coalg (sem-In G gx))  [by coerce⁻¹-round-trip]
-      cong (λ y → coerce-functor F (μ-type G) (eval coalg (sem-In G y)))
-           (sym (coerce⁻¹-round-trip G (μ-type G) gx))
-
-    -- Function extensionality gives us equality of transforms
-    transform-eq : (coalg-set ∘′ sem-In G) ≡ transform-set
-    transform-eq = extensionality transform-pointwise
+                    → eval (Hylo wfF wfG alg t) x ≡ eval (Fuse wfF wfG alg t) x
+eval-hylo-is-fuse wfF wfG alg t x = refl
 
 ------------------------------------------------------------------------
 -- Ana-Out Identity Law (Coinductive)

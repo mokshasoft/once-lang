@@ -448,6 +448,60 @@ _≟IR_ : ∀ {A B} → (f g : IR A B) → Dec (f ≡ g)
 f ≟IR g = ≟IRH f g refl refl
 
 ------------------------------------------------------------------------
+-- D062: decidable equality for the natural transform (`NatTr`) carried by
+-- Fuse/Hylo. Same head-tag dispatch as `≟IRH`: off-diagonal pairs inside
+-- `≟NatTr-diag` are pruned by Agda because the `heq` premise is an absurd
+-- ℕ-equation there. The functor indices are constructor-headed, so the
+-- recursive subterms always share their index (no hidden existentials).
+------------------------------------------------------------------------
+
+nt-headTag : ∀ {G F} → NatTr G F → ℕ
+nt-headTag ntId         = 0
+nt-headTag (ntK _)      = 1
+nt-headTag (ntFst _)    = 2
+nt-headTag (ntSnd _)    = 3
+nt-headTag (ntCase _ _) = 4
+nt-headTag (ntInl _)    = 5
+nt-headTag (ntInr _)    = 6
+nt-headTag (ntPair _ _) = 7
+
+_≟NatTr_    : ∀ {G F} (t₁ t₂ : NatTr G F) → Dec (t₁ ≡ t₂)
+≟NatTr-aux  : ∀ {G F} (t₁ t₂ : NatTr G F)
+            → Dec (nt-headTag t₁ ≡ nt-headTag t₂) → Dec (t₁ ≡ t₂)
+≟NatTr-diag : ∀ {G F} (t₁ t₂ : NatTr G F)
+            → nt-headTag t₁ ≡ nt-headTag t₂ → Dec (t₁ ≡ t₂)
+
+t₁ ≟NatTr t₂ = ≟NatTr-aux t₁ t₂ (nt-headTag t₁ Data.Nat.Properties.≟ nt-headTag t₂)
+
+≟NatTr-aux t₁ t₂ (yes heq) = ≟NatTr-diag t₁ t₂ heq
+≟NatTr-aux t₁ t₂ (no hne)  = no (λ eq → hne (cong nt-headTag eq))
+
+≟NatTr-diag ntId ntId _ = yes refl
+≟NatTr-diag (ntK i) (ntK j) _ with ≟IRH i j refl refl
+... | yes refl = yes refl
+... | no ne    = no (λ { refl → ne refl })
+≟NatTr-diag (ntFst t) (ntFst u) _ with t ≟NatTr u
+... | yes refl = yes refl
+... | no ne    = no (λ { refl → ne refl })
+≟NatTr-diag (ntSnd t) (ntSnd u) _ with t ≟NatTr u
+... | yes refl = yes refl
+... | no ne    = no (λ { refl → ne refl })
+≟NatTr-diag (ntCase t₁ u₁) (ntCase t₂ u₂) _ with t₁ ≟NatTr t₂ | u₁ ≟NatTr u₂
+... | yes refl | yes refl = yes refl
+... | no ne    | _        = no (λ { refl → ne refl })
+... | _        | no ne    = no (λ { refl → ne refl })
+≟NatTr-diag (ntInl t) (ntInl u) _ with t ≟NatTr u
+... | yes refl = yes refl
+... | no ne    = no (λ { refl → ne refl })
+≟NatTr-diag (ntInr t) (ntInr u) _ with t ≟NatTr u
+... | yes refl = yes refl
+... | no ne    = no (λ { refl → ne refl })
+≟NatTr-diag (ntPair t₁ u₁) (ntPair t₂ u₂) _ with t₁ ≟NatTr t₂ | u₁ ≟NatTr u₂
+... | yes refl | yes refl = yes refl
+... | no ne    | _        = no (λ { refl → ne refl })
+... | _        | no ne    = no (λ { refl → ne refl })
+
+------------------------------------------------------------------------
 -- Index-injectivity helpers for diagonal cases involving recursive types.
 ------------------------------------------------------------------------
 
@@ -513,7 +567,7 @@ f ≟IR g = ≟IRH f g refl refl
 ≟IRH-Hylo-inner : ∀ {F G B}
                 → (wfF₁ wfF₂ : _) (wfG₁ wfG₂ : _)
                 → (alg₁ alg₂ : IR (⟦ F ⟧T B) B)
-                → (coalg₁ coalg₂ : IR (μ-type G) (⟦ F ⟧T (μ-type G)))
+                → (coalg₁ coalg₂ : NatTr G F)
                 → Dec (alg₁ ≡ alg₂) → Dec (coalg₁ ≡ coalg₂)
                 → Dec (Hylo {F} {G} wfF₁ wfG₁ alg₁ coalg₁
                        ≡ Hylo wfF₂ wfG₂ alg₂ coalg₂)
@@ -527,7 +581,7 @@ f ≟IR g = ≟IRH f g refl refl
 ≟IRH-Fuse-inner : ∀ {F G B}
                 → (wfF₁ wfF₂ : _) (wfG₁ wfG₂ : _)
                 → (alg₁ alg₂ : IR (⟦ F ⟧T B) B)
-                → (tr₁ tr₂ : IR (⟦ G ⟧T (μ-type G)) (⟦ F ⟧T (μ-type G)))
+                → (tr₁ tr₂ : NatTr G F)
                 → Dec (alg₁ ≡ alg₂) → Dec (tr₁ ≡ tr₂)
                 → Dec (Fuse {F} {G} wfF₁ wfG₁ alg₁ tr₁
                        ≡ Fuse wfF₂ wfG₂ alg₂ tr₂)
@@ -645,7 +699,7 @@ f ≟IR g = ≟IRH f g refl refl
 ...     | no fne  = no (λ { refl → fne refl })
 ...     | yes refl =
             ≟IRH-Hylo-inner wfF₁ wfF₂ wfG₁ wfG₂ alg₁ alg₂ coalg₁ coalg₂
-              (≟IRH alg₁ alg₂ refl refl) (≟IRH coalg₁ coalg₂ refl refl)
+              (≟IRH alg₁ alg₂ refl refl) (coalg₁ ≟NatTr coalg₂)
 
 -- Fuse: similar shape to Hylo
 ≟IRH-diag (Fuse {F} {G} wfF₁ wfG₁ alg₁ tr₁)
@@ -657,7 +711,7 @@ f ≟IR g = ≟IRH f g refl refl
 ...     | no fne = no (λ { refl → fne refl })
 ...     | yes refl =
             ≟IRH-Fuse-inner wfF₁ wfF₂ wfG₁ wfG₂ alg₁ alg₂ tr₁ tr₂
-              (≟IRH alg₁ alg₂ refl refl) (≟IRH tr₁ tr₂ refl refl)
+              (≟IRH alg₁ alg₂ refl refl) (tr₁ ≟NatTr tr₂)
 
 ≟IRH-diag (free-heap h₁) (free-heap h₂) _ refl refl with h₁ ≟H h₂
 ... | yes refl = yes refl
@@ -1042,6 +1096,9 @@ inlInrView (const p vI vM) = iiv-other (const p vI vM)
 -- structural form that preserves it). (`Void`-source → `initial` stays
 -- unconditional: a `Void`-source morphism is never invoked.)
 has-effect? : ∀ {A B} → IR A B → Bool
+-- D062: a Fuse/Hylo's natural transform may carry effectful constant-leaf
+-- (ntK) IRs; recurse into them.
+has-effect?-nt : ∀ {G F} → NatTr G F → Bool
 has-effect? id              = false
 has-effect? (g ∘ f)         = has-effect? g ∨ has-effect? f
 has-effect? fst             = false
@@ -1070,8 +1127,17 @@ has-effect? (Para _ alg)    = has-effect? alg
 has-effect? (Out _)         = false
 has-effect? (in-ν _ _)      = false
 has-effect? (Ana _ coalg)   = has-effect? coalg
-has-effect? (Hylo _ _ alg coalg) = has-effect? alg ∨ has-effect? coalg
-has-effect? (Fuse _ _ alg tr)    = has-effect? alg ∨ has-effect? tr
+has-effect? (Hylo _ _ alg t) = has-effect? alg ∨ has-effect?-nt t
+has-effect? (Fuse _ _ alg t) = has-effect? alg ∨ has-effect?-nt t
+
+has-effect?-nt ntId         = false
+has-effect?-nt (ntK ir)     = has-effect? ir
+has-effect?-nt (ntFst t)    = has-effect?-nt t
+has-effect?-nt (ntSnd t)    = has-effect?-nt t
+has-effect?-nt (ntCase t u) = has-effect?-nt t ∨ has-effect?-nt u
+has-effect?-nt (ntInl t)    = has-effect?-nt t
+has-effect?-nt (ntInr t)    = has-effect?-nt t
+has-effect?-nt (ntPair t u) = has-effect?-nt t ∨ has-effect?-nt u
 
 optimize-fst : ∀ {A B C} → IR A (B * C) → IR A B
 optimize-fst f with pairView f
@@ -1217,9 +1283,9 @@ mutual
   optimize-once-structural (Out wf) = Out wf
   optimize-once-structural (in-ν wf m) = in-ν wf m
   optimize-once-structural (Ana {F} wf coalg) = Ana {F} wf (optimize-once coalg)
-  optimize-once-structural (Hylo {F} wf term alg coalg) = Hylo {F} wf term (optimize-once alg) (optimize-once coalg)
+  optimize-once-structural (Hylo {F} {G} wfF wfG alg t) = Hylo {F} {G} wfF wfG (optimize-once alg) (optimize-nt t)
   -- Fuse: μ-anchored fusion (correct by construction)
-  optimize-once-structural (Fuse {F} {G} wfF wfG alg transform) = Fuse {F} {G} wfF wfG (optimize-once alg) (optimize-once transform)
+  optimize-once-structural (Fuse {F} {G} wfF wfG alg t) = Fuse {F} {G} wfF wfG (optimize-once alg) (optimize-nt t)
   -- Guard/Unguard removed: productivity follows from IR totality
   -- out-μ/in-ν: Lambek isomorphisms (potential fusion: out-μ ∘ In = id, In ∘ out-μ = id)
 
@@ -1232,6 +1298,17 @@ mutual
   optimize-once {A} {B} ir | no _ with A ≟Type Void
   ...   | yes refl = initial                   -- Source is Void → initial (vacuous: never invoked)
   ...   | no _ = optimize-once-structural ir   -- Otherwise → structural rules
+
+  -- D062: optimization descends into a natural transform's constant-leaf IRs.
+  optimize-nt : ∀ {G F} → NatTr G F → NatTr G F
+  optimize-nt ntId         = ntId
+  optimize-nt (ntK ir)     = ntK (optimize-once ir)
+  optimize-nt (ntFst t)    = ntFst (optimize-nt t)
+  optimize-nt (ntSnd t)    = ntSnd (optimize-nt t)
+  optimize-nt (ntCase t u) = ntCase (optimize-nt t) (optimize-nt u)
+  optimize-nt (ntInl t)    = ntInl (optimize-nt t)
+  optimize-nt (ntInr t)    = ntInr (optimize-nt t)
+  optimize-nt (ntPair t u) = ntPair (optimize-nt t) (optimize-nt u)
 
 ------------------------------------------------------------------------
 -- Bounded Iteration
