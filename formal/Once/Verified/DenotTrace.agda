@@ -40,13 +40,14 @@ open import Once.Type
 open import Once.CCC.IR
   using (IR; id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal;
          initial; curry; apply; arr; SigOp; Cata; In; Out; Ana;
-         out-μ; free-heap; const)
+         out-μ; free-heap; const; Para; Hylo; Fuse)
 open import Once.CCC.Eval as Val using (eval)   -- pure value domain `Val.⟦_⟧` + `eval`
 open import Once.CCC.SigOp.Info
   using (SigOpInfo; semM; effect; EffectShape; Pure; Emits; Halts)
 open import Once.Functor.Translate using (WellFormedF)
 open import Once.Semantics.Machine
-  using (sem-cata; sem-ana; sem-fmap; coerce-functor; coerce-functor⁻¹; ⟦_⟧F)
+  using (sem-cata; sem-ana; sem-para; sem-In; sem-fuse; sem-hylo; sem-fmap;
+         coerce-functor; coerce-functor⁻¹; ⟦_⟧F)
 open import Once.Verified.Trace using (SigOpEvent; mkEvent)
 open import Once.Verified.TraceMonad using (T; returnT; _>>=T_; valueT; projTrace)
 open import Once.Verified.TraceDenote using (events-F)
@@ -132,11 +133,18 @@ emit-D si x with effect si
 --     Total by structural recursion on the depth; handles silent/sparse
 --     unfolds (no "accumulate until n events" divergence).
 --   * `In`/`Out` — pure constructor/destructor (`[]`).
--- Remaining NAMED hole `rec-trace-rest`: `Para`/`Hylo`/`Fuse` only.
+--   * `Para`/`Hylo`/`Fuse` — DERIVED schemes, defined DENOTATIONALLY by their
+--     `cata`/`ana` composition (they are not structured-recursion primitives;
+--     `Cata`+`Ana` are the basis). Their trace is the trace of that fold,
+--     reusing the SAME `cata`-trace algebra the value side already uses
+--     (`sem-para`/`sem-fuse`/`sem-hylo` are `sem-cata`/`fuseS`-based): `Para`
+--     via `sem-cata` over `para-ev-algᴰ`; `Hylo`/`Fuse` via `sem-hylo`/
+--     `sem-fuse` with `cata-ev-algᴰ` as the (trace-carrying) F-algebra. The
+--     `transform`/`coalg` is treated as the pure value-function, exactly as
+--     `eval` does (its own events — absent for the structural deforestation
+--     transforms these schemes carry — are not separately threaded). This
+--     retires the `rec-trace-rest` postulate with no IR change.
 ------------------------------------------------------------------------
-
-postulate
-  rec-trace-rest : ∀ {A B} → IR A B → Val.⟦ A ⟧ → ℕ → List SigOpEvent
 
 ------------------------------------------------------------------------
 -- `evalᴰ` — the monadic IR interpretation (the source observable). The
@@ -153,6 +161,13 @@ rec-trace-D  : ∀ {A B} → IR A B → Val.⟦ A ⟧ → ℕ → List SigOpEven
 -- injected functor layer). Value carried in the pure domain (via `eval`).
 cata-ev-algᴰ : ∀ {F C} → ℕ → IR (⟦ F ⟧T C) C
              → ⟦ F ⟧F (List SigOpEvent × Val.⟦ C ⟧) → List SigOpEvent × Val.⟦ C ⟧
+-- `Para`'s trace algebra. `sem-para`'s algebra sees `⟦F⟧F (μF × A)` (each
+-- child: its substructure `μF` + its folded result `A`); we fold into
+-- `A = List × value`, applying the para-algebra `alg` to the `(μF , value)`
+-- layer per node and collecting its events.
+para-ev-algᴰ : ∀ {F C} → ℕ → IR (⟦ F ⟧T (μ-type F * C)) C
+             → ⟦ F ⟧F (Val.⟦ μ-type F ⟧ × (List SigOpEvent × Val.⟦ C ⟧))
+             → List SigOpEvent × Val.⟦ C ⟧
 -- The depth-bounded unfold trace: events of the first `n` unfold layers,
 -- in canonical (functor left-to-right) order, from the seed `a`.
 ana-events   : ∀ {F A} → IR A (⟦ F ⟧T A) → Val.⟦ A ⟧ → ℕ → List SigOpEvent
@@ -199,14 +214,34 @@ rec-trace-D (In wf m)               x n = []
 rec-trace-D (Out wf)                x n = []
 -- Pure non-recursion-scheme constructors: no observable SigOp ⇒ no events.
 rec-trace-D (out-μ wf)              x n = []
+-- DERIVED schemes — the trace of the `cata`/`fuse` fold that DEFINES them
+-- (reusing the value side's `sem-para`/`sem-fuse`/`sem-hylo`), `proj₁` = trace.
+rec-trace-D (Para {F} wf {C} alg)   x n = proj₁ (sem-para wf (para-ev-algᴰ {F} {C} n alg) x)
+rec-trace-D (Hylo {F} {G} wfF wfG alg coalg) x n =
+  proj₁ (sem-hylo F G wfF wfG (cata-ev-algᴰ {F} n alg)
+           (λ μg → coerce-functor F (μ-type G) (eval coalg μg)) x)
+rec-trace-D (Fuse {F} {G} wfF wfG alg transform) x n =
+  proj₁ (sem-fuse F G wfF wfG (cata-ev-algᴰ {F} n alg)
+           (λ gx → coerce-functor F (μ-type G) (eval transform (coerce-functor⁻¹ G (μ-type G) gx))) x)
 rec-trace-D (free-heap r)           x n = []
 rec-trace-D (const f iv mv)         x n = []
-rec-trace-D ir                      x n = rec-trace-rest ir x n
+-- Structural / pure constructors: never reached here (they have explicit
+-- `evalᴰ` clauses), and emit no recursion-scheme events ⇒ `[]`.
+rec-trace-D _                       x n = []
 
 cata-ev-algᴰ {F} {C} n alg fc =
   ( events-F F proj₁ fc ++ projTrace (evalᴰ alg (inject z)) n
   , forget (valueT (evalᴰ alg (inject z)) n) )
   where z = coerce-functor⁻¹ F C (sem-fmap F proj₂ fc)
+
+-- `Para`'s fold. Children events come from each child's `List` part
+-- (`proj₁ ∘ proj₂`); the algebra runs on the `(μF , value)` layer
+-- (`(proj₁ , proj₂ ∘ proj₂)` per position) and its events follow.
+para-ev-algᴰ {F} {C} n alg fc =
+  ( events-F F (λ p → proj₁ (proj₂ p)) fc ++ projTrace (evalᴰ alg (inject z)) n
+  , forget (valueT (evalᴰ alg (inject z)) n) )
+  where z = coerce-functor⁻¹ F (μ-type F * C)
+              (sem-fmap F (λ p → (proj₁ p , proj₂ (proj₂ p))) fc)
 
 ana-events         coalg a zero    = []
 ana-events {F} {A} coalg a (suc m) =
