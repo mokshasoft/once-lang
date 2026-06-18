@@ -260,6 +260,43 @@ fuseNatS : ∀ {F G} {B : Set}
          → μS G → B
 fuseNatS {F} {G} {B} transform alg = cataS {G} (alg ∘ transform)
 
+-- | Monoid-threaded natural fusion — the *Writer-carrier catamorphism*.
+--
+-- This is the generalization of `fuseNatS`: when the transform is a (monoidal)
+-- NATURAL transformation — parametric in the recursive position, with a
+-- shape-determined monoid annotation — the whole fold is just `cataS` at the
+-- carrier `M × B`, so it needs NO TERMINATING pragma (unlike the monomorphic
+-- `fuseW`). The recursion is `cataS`'s structural descent; the per-layer monoid
+-- is accumulated in fused depth-first order — transform (pre), children (in
+-- functor order, via `collectM`), algebra (post) — matching `fuseW` exactly but
+-- provably structural. `fuseNatS` is its `⊤`-monoid instance.
+--
+-- The naming discipline (D06x): `cataS` (the catamorphism) is THE sanctioned
+-- structural μ-recursion primitive — its mutual `sfmapCata` is the one place
+-- the functor-map is defunctionalized so foetus sees the descent. Every
+-- genuinely-structural fold should be a `cataS`-derivative (as `paraS`,
+-- `fuseNatS`, and now `fuseNatW` are) rather than hand-writing `sfmap F recfn`.
+fuseNatW : ∀ {F G} {B M : Set}
+         → (M → M → M) → M                              -- monoid: `⊕` and `ε`
+         → (∀ {A} → ⟦ G ⟧SF A → M × ⟦ F ⟧SF A)          -- monoidal natural transform
+         → (⟦ F ⟧SF B → M × B)                          -- algebra: F(B) → (M , B)
+         → μS G → M × B
+fuseNatW {F} {G} {B} {M} _·_ ε transform alg = cataS {G} φ
+  where
+    -- accumulate the children's monoid out of one F-layer (structural on F).
+    collectM : ∀ H → ⟦ H ⟧SF (M × B) → M
+    collectM (SK A)     _         = ε
+    collectM SId        (m , _)   = m
+    collectM (H₁ S⊕ H₂) (inj₁ y)  = collectM H₁ y
+    collectM (H₁ S⊕ H₂) (inj₂ y)  = collectM H₂ y
+    collectM (H₁ S⊗ H₂) (y₁ , y₂) = collectM H₁ y₁ · collectM H₂ y₂
+
+    φ : ⟦ G ⟧SF (M × B) → M × B
+    φ gmb = let tr   = transform gmb            -- (M , ⟦F⟧SF (M × B))
+                m-ch = collectM F (proj₂ tr)
+                al   = alg (sfmap F proj₂ (proj₂ tr))   -- (M , B)
+            in ((proj₁ tr · m-ch) · proj₁ al , proj₂ al)
+
 -- | Fusion: deforestation via shape transformation (general version)
 --
 -- fuseS alg transform x = alg (sfmap F (fuseS alg transform) (transform (outS x)))
