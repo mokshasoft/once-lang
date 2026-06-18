@@ -52,12 +52,9 @@ private
   just-injective : ∀ {A : Set} {x y : A} → just x ≡ just y → x ≡ y
   just-injective refl = refl
 
-------------------------------------------------------------------------
--- Slot
-------------------------------------------------------------------------
-
-Slot : Set
-Slot = ℕ
+-- D062: `Slot` and `ValueLocation` moved to Once.CCC.Machine.Locations so the
+-- categorical IR can use the location TYPES without importing the machine.
+-- Re-exported below (after HeapAddress, on which Locations depends).
 
 ------------------------------------------------------------------------
 -- Heap addresses (HeapRef, HeapOffset, HeapLocation)
@@ -70,6 +67,10 @@ open import Once.Memory.HeapAddress public
   using (HeapOffset; HeapRef; mkHeapRef; ref-id;
          HeapLocation; heap-loc; heap-ref; heap-offset;
          _≟H_; _≟HL_; ≟HL-aux; hl-ref)
+
+-- D062: shared location types (Slot, ValueLocation/AtStack/AtDynamic), defined
+-- below the machine so the IR can import them without the machine. Re-exported.
+open import Once.CCC.Machine.Locations public
 
 -- Plan 0.14: the abstract-trace allocator instance lives in
 -- Once.Allocator.AbstractInstance. SMCore consumes it for the
@@ -138,9 +139,8 @@ data AbstractReg : Set where
   -- preserved by every loop-body instruction for free.
   Scratch : AbstractReg
 
-data ValueLocation (FS : FrameSemantics) : Set where
-  AtStack   : FrameSemantics.Frame FS → Slot → ValueLocation FS
-  AtDynamic : HeapLocation → ValueLocation FS
+-- `ValueLocation` (AtStack / AtDynamic) is defined in
+-- Once.CCC.Machine.Locations (D062) and re-exported above.
 
 -- Plan 0.13.2 — separation of address from value.
 --

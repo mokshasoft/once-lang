@@ -31,9 +31,12 @@ open import Once.Type public
 -- Import WellFormedF for recursion scheme constructors
 open import Once.Functor.Translate using (WellFormedF)
 
--- HeapRef and ValueLocation: needed for the LocMatchesMode predicate below.
-open import Once.CCC.Machine.SMCore
-  using (HeapRef; ValueLocation; AtStack; AtDynamic)
+-- HeapRef and ValueLocation: needed for the `free-heap` constructor and the
+-- `LocMatchesMode` predicate below. D062: these come from the shared location
+-- types / HeapAddress, NOT the machine (SMCore) — the categorical IR must not
+-- depend on the abstract machine's execution.
+open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
+open import Once.Memory.HeapAddress using (HeapRef)
 
 -- Eval semantics universes — `const` carries values at BOTH levels,
 -- mirroring `SigOpInfo`'s `semI` + `semM` pattern. The proof-level
