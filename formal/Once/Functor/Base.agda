@@ -22,7 +22,7 @@ open import Data.Empty using (⊥)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Function using (_∘_)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; sym; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; sym; subst)
 
 ------------------------------------------------------------------------
 -- Semantic Functor (Set-level)
@@ -81,10 +81,6 @@ sfmap-id SId x = refl
 sfmap-id (F S⊕ G) (inj₁ x) = cong inj₁ (sfmap-id F x)
 sfmap-id (F S⊕ G) (inj₂ y) = cong inj₂ (sfmap-id G y)
 sfmap-id (F S⊗ G) (x , y) = cong₂ _,_ (sfmap-id F x) (sfmap-id G y)
-  where
-    cong₂ : ∀ {A B C : Set} (f : A → B → C) {x x' : A} {y y' : B}
-          → x ≡ x' → y ≡ y' → f x y ≡ f x' y'
-    cong₂ f refl refl = refl
 
 -- | sfmap preserves composition
 sfmap-comp : ∀ F {X Y Z : Set} (f : X → Y) (g : Y → Z) (x : ⟦ F ⟧SF X)
@@ -94,10 +90,6 @@ sfmap-comp SId f g x = refl
 sfmap-comp (F S⊕ G) f g (inj₁ x) = cong inj₁ (sfmap-comp F f g x)
 sfmap-comp (F S⊕ G) f g (inj₂ y) = cong inj₂ (sfmap-comp G f g y)
 sfmap-comp (F S⊗ G) f g (x , y) = cong₂ _,_ (sfmap-comp F f g x) (sfmap-comp G f g y)
-  where
-    cong₂ : ∀ {A B C : Set} (h : A → B → C) {x x' : A} {y y' : B}
-          → x ≡ x' → y ≡ y' → h x y ≡ h x' y'
-    cong₂ h refl refl = refl
 
 ------------------------------------------------------------------------
 -- Fixed Points
@@ -188,10 +180,6 @@ mutual
   sfmapCata-is-sfmap (F S⊕ G) alg (inj₂ y) = cong inj₂ (sfmapCata-is-sfmap G alg y)
   sfmapCata-is-sfmap (F S⊗ G) alg (x , y) =
     cong₂ _,_ (sfmapCata-is-sfmap F alg x) (sfmapCata-is-sfmap G alg y)
-    where
-      cong₂ : ∀ {A B C : Set} (f : A → B → C) {x x' : A} {y y' : B}
-            → x ≡ x' → y ≡ y' → f x y ≡ f x' y'
-      cong₂ f refl refl = refl
 
 -- | Catamorphism computation law
 cataS-computation : ∀ (F : SFunctor) {A : Set} (alg : ⟦ F ⟧SF A → A) (x : ⟦ F ⟧SF (μS F))
@@ -210,10 +198,6 @@ mutual
   sfmapCata-In-id (F S⊕ G) (inj₂ y) = cong inj₂ (sfmapCata-In-id G y)
   sfmapCata-In-id (F S⊗ G) (x , y) =
     cong₂ _,_ (sfmapCata-In-id F x) (sfmapCata-In-id G y)
-    where
-      cong₂ : ∀ {A B C : Set} (f : A → B → C) {x x' : A} {y y' : B}
-            → x ≡ x' → y ≡ y' → f x y ≡ f x' y'
-      cong₂ f refl refl = refl
 
 ------------------------------------------------------------------------
 -- Anamorphism Laws
@@ -233,8 +217,6 @@ sfmapAna-is-sfmap F (H₁ S⊕ H₂) coalg (inj₁ x) = cong inj₁ (sfmapAna-is
 sfmapAna-is-sfmap F (H₁ S⊕ H₂) coalg (inj₂ y) = cong inj₂ (sfmapAna-is-sfmap F H₂ coalg y)
 sfmapAna-is-sfmap F (H₁ S⊗ H₂) coalg (x , y)  =
   cong₂ _,_ (sfmapAna-is-sfmap F H₁ coalg x) (sfmapAna-is-sfmap F H₂ coalg y)
-  where cong₂ : ∀ {A B C : Set} (f : A → B → C) {x x' y y'} → x ≡ x' → y ≡ y' → f x y ≡ f x' y'
-        cong₂ f refl refl = refl
 
 -- | ana-unfold (computation). No longer refl: `unfoldS (anaS …)` reduces via
 -- `sfmapAna`, bridged to `sfmap` by `sfmapAna-is-sfmap`.
@@ -326,6 +308,96 @@ fuseNatW {F} {G} {B} {M} _·_ ε transform alg = cataS {G} φ
                 m-ch = collectM F (proj₂ tr)
                 al   = alg (sfmap F proj₂ (proj₂ tr))   -- (M , B)
             in ((proj₁ tr · m-ch) · proj₁ al , proj₂ al)
+
+------------------------------------------------------------------------
+-- Natural-transformation calculus  (D062 / approach A, M1)
+--
+-- `fuseNatS`/`fuseNatW` are total because their transform is a NATURAL
+-- transformation `∀ {X} → ⟦ G ⟧SF X → ⟦ F ⟧SF X` — parametric in the
+-- recursive position, hence unable to inspect or synthesize μ-substructure.
+-- But a bare polymorphic Agda function of that type is neither *manifestly*
+-- natural (Agda has no internal parametricity to lean on) nor compilable.
+--
+-- `NatSF G F` is the manifestly-natural, first-order, compilable witness:
+-- a polynomial-functor (container) morphism `G ⇒ F`. By construction its
+-- interpretation `appNatSF` NEVER touches the `X`-positions — it only
+-- routes/copies/discards them (`ntId`, structural ctors) and runs a pure
+-- map on the constant parts (`ntK`). So:
+--   * naturality holds definitionally-up-to-induction (`appNatSF-natural`);
+--   * it is total data (finite syntax, no recursion-position access);
+--   * it compiles to straight-line data-flow (M5): case/project/inject/dup.
+--
+-- This is exactly the transform Fuse/Hylo should carry (D062, approach A):
+-- a *structural* deforestation, total-by-construction. Transforms that run
+-- effects or synthesize substructure are NOT natural — they are the
+-- value-synthesizing divergent hylos `fuseW`'s `{-# TERMINATING #-}` was
+-- (dishonestly) covering, and belong to the layer-3 well-founded-loop story,
+-- not the meaning of a finite fold.
+------------------------------------------------------------------------
+
+-- | Container morphism `G ⇒ F`: the syntax of natural transformations
+-- between the polynomial functors `⟦ G ⟧SF` and `⟦ F ⟧SF`.
+--
+-- Source eliminators (`ntFst`/`ntSnd`/`ntCase`) and target introductions
+-- (`ntInl`/`ntInr`/`ntPair`) interleave; leaves are the identity on the
+-- recursive position (`ntId`) and a pure map on constants (`ntK`).
+data NatSF : SFunctor → SFunctor → Set₁ where
+  ntId   : NatSF SId SId
+  ntK    : ∀ {A B : Set} → (A → B) → NatSF (SK A) (SK B)
+  ntFst  : ∀ {G₁ G₂ F} → NatSF G₁ F → NatSF (G₁ S⊗ G₂) F
+  ntSnd  : ∀ {G₁ G₂ F} → NatSF G₂ F → NatSF (G₁ S⊗ G₂) F
+  ntCase : ∀ {G₁ G₂ F} → NatSF G₁ F → NatSF G₂ F → NatSF (G₁ S⊕ G₂) F
+  ntInl  : ∀ {G F₁ F₂} → NatSF G F₁ → NatSF G (F₁ S⊕ F₂)
+  ntInr  : ∀ {G F₁ F₂} → NatSF G F₂ → NatSF G (F₁ S⊕ F₂)
+  ntPair : ∀ {G F₁ F₂} → NatSF G F₁ → NatSF G F₂ → NatSF G (F₁ S⊗ F₂)
+
+-- | The witnessed natural transformation. Manifestly parametric in `X`:
+-- the `X`-positions are only routed, never inspected.
+appNatSF : ∀ {G F} → NatSF G F → ∀ {X : Set} → ⟦ G ⟧SF X → ⟦ F ⟧SF X
+appNatSF ntId          x         = x
+appNatSF (ntK f)       a         = f a
+appNatSF (ntFst t)     (x , _)   = appNatSF t x
+appNatSF (ntSnd t)     (_ , y)   = appNatSF t y
+appNatSF (ntCase t u)  (inj₁ x)  = appNatSF t x
+appNatSF (ntCase t u)  (inj₂ y)  = appNatSF u y
+appNatSF (ntInl t)     g         = inj₁ (appNatSF t g)
+appNatSF (ntInr t)     g         = inj₂ (appNatSF t g)
+appNatSF (ntPair t u)  g         = (appNatSF t g , appNatSF u g)
+
+-- | Naturality: `appNatSF` commutes with `sfmap` — it is a genuine natural
+-- transformation, not merely a polymorphically-typed function. This is the
+-- correctness justification for denoting Fuse/Hylo via `fuseNat*` (the
+-- container morphism never depends on the carrier, so reindexing the
+-- recursive positions and applying it commute).
+appNatSF-natural : ∀ {G F} (t : NatSF G F) {X Y : Set} (h : X → Y)
+                 → (g : ⟦ G ⟧SF X)
+                 → appNatSF t (sfmap G h g) ≡ sfmap F h (appNatSF t g)
+appNatSF-natural ntId         h x        = refl
+appNatSF-natural (ntK f)      h a        = refl
+appNatSF-natural (ntFst t)    h (x , _)  = appNatSF-natural t h x
+appNatSF-natural (ntSnd t)    h (_ , y)  = appNatSF-natural t h y
+appNatSF-natural (ntCase t u) h (inj₁ x) = appNatSF-natural t h x
+appNatSF-natural (ntCase t u) h (inj₂ y) = appNatSF-natural u h y
+appNatSF-natural (ntInl t)    h g        = cong inj₁ (appNatSF-natural t h g)
+appNatSF-natural (ntInr t)    h g        = cong inj₂ (appNatSF-natural t h g)
+appNatSF-natural (ntPair t u) h g        =
+  cong₂ _,_ (appNatSF-natural t h g) (appNatSF-natural u h g)
+
+-- | Fusion through a container morphism — the value fold. Total: `fuseNatS`
+-- is `cataS (alg ∘ appNatSF t)`, no `{-# TERMINATING #-}`.
+fuseNT : ∀ {F G} {B : Set}
+       → NatSF G F → (⟦ F ⟧SF B → B) → μS G → B
+fuseNT {F} {G} {B} t alg = fuseNatS {F} {G} {B} (appNatSF t) alg
+
+-- | Fusion through a container morphism — the monoid-threaded fold (the trace
+-- carrier). A *natural* transform realizes no effects, so it contributes the
+-- monoid unit `ε` per layer; all accumulation comes from `alg`. Total via
+-- `fuseNatW`.
+fuseNTW : ∀ {F G} {B M : Set}
+        → (M → M → M) → M
+        → NatSF G F → (⟦ F ⟧SF B → M × B) → μS G → M × B
+fuseNTW {F} {G} {B} {M} _·_ ε t alg =
+  fuseNatW {F} {G} {B} {M} _·_ ε (λ {A} g → (ε , appNatSF t g)) alg
 
 -- | Fusion: deforestation via shape transformation (general version)
 --
