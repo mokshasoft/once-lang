@@ -43,7 +43,7 @@ open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥)
 open import Data.Float using () renaming (Float to AgdaFloat)
 open import Data.String using (String)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; trans; sym; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; trans; sym; subst; subst₂)
 open import Function using (_∘_)
 
 open import Once.Type
@@ -653,12 +653,34 @@ sem-CoIn-CoOut {F} wf x = bisimS-to-eq (sem-CoIn F (sem-CoOut wf x)) x (CoIn-CoO
 
 -- | Anamorphism: given coalgebra A → F(A), unfold A → νF
 --
--- OCP-0003: Defined via SPF's anaS with coercions.
--- The coalgebra is lifted through coercions.
---
-{-# TERMINATING #-}
-sem-ana : ∀ (F : Functor) {A : Set} → (A → ⟦ F ⟧F A) → A → ⟦ν⟧ F
-unfoldS (sem-ana F {A} coalg a) = sfmap (translateF IntRep F) (sem-ana F coalg) (coerce-ν-in F A (coalg a))
+-- D062: guardedness-CHECKED corecursion (global --guardedness) — the mutual
+-- `sfmapSemAna` places the corecursive `sem-ana` calls structurally at SId, so
+-- Agda sees the guard. No TERMINATING. Bridged to `sfmap` by `sfmapSemAna-is-sfmap`.
+mutual
+  sem-ana : ∀ (F : Functor) {A : Set} → (A → ⟦ F ⟧F A) → A → ⟦ν⟧ F
+  unfoldS (sem-ana F {A} coalg a) =
+    sfmapSemAna F (translateF IntRep F) coalg (coerce-ν-in F A (coalg a))
+
+  sfmapSemAna : ∀ (F : Functor) (H : SFunctor) {A : Set}
+              → (A → ⟦ F ⟧F A) → ⟦ H ⟧SF A → ⟦ H ⟧SF (⟦ν⟧ F)
+  sfmapSemAna F (SK B)     coalg x        = x
+  sfmapSemAna F SId        coalg a        = sem-ana F coalg a
+  sfmapSemAna F (H₁ S⊕ H₂) coalg (inj₁ x) = inj₁ (sfmapSemAna F H₁ coalg x)
+  sfmapSemAna F (H₁ S⊕ H₂) coalg (inj₂ y) = inj₂ (sfmapSemAna F H₂ coalg y)
+  sfmapSemAna F (H₁ S⊗ H₂) coalg (x , y)  = (sfmapSemAna F H₁ coalg x , sfmapSemAna F H₂ coalg y)
+
+-- | The mutual `sfmapSemAna` IS `sfmap` of the corecursor (D062): structural
+-- induction on the functor code, refl at the leaves. `F` explicit (non-injective
+-- `⟦ F ⟧F` in coalg).
+sfmapSemAna-is-sfmap : ∀ (F : Functor) (H : SFunctor) {A : Set}
+                       (coalg : A → ⟦ F ⟧F A) (x : ⟦ H ⟧SF A)
+                     → sfmapSemAna F H coalg x ≡ sfmap H (sem-ana F coalg) x
+sfmapSemAna-is-sfmap F (SK B)     coalg x        = refl
+sfmapSemAna-is-sfmap F SId        coalg a        = refl
+sfmapSemAna-is-sfmap F (H₁ S⊕ H₂) coalg (inj₁ x) = cong inj₁ (sfmapSemAna-is-sfmap F H₁ coalg x)
+sfmapSemAna-is-sfmap F (H₁ S⊕ H₂) coalg (inj₂ y) = cong inj₂ (sfmapSemAna-is-sfmap F H₂ coalg y)
+sfmapSemAna-is-sfmap F (H₁ S⊗ H₂) coalg (x , y)  =
+  cong₂ _,_ (sfmapSemAna-is-sfmap F H₁ coalg x) (sfmapSemAna-is-sfmap F H₂ coalg y)
 
 -- | Structured Fusion: μ-anchored hylomorphism (correct by construction)
 --
@@ -926,27 +948,22 @@ sem-ana-bisim-anaS : ∀ {F} → (wf : WellFormedF F) → (x : ⟦ν⟧ F)
                    → sem-ana F (sem-CoOut wf) x ∼S anaS unfoldS x
 _∼S_.unfoldS-∼ (sem-ana-bisim-anaS {F} wf x) =
   let TF = translateF IntRep F
-      -- The coercion round-trip gives us the key equality
       obs-eq : coerce-ν-in F (⟦ν⟧ F) (sem-CoOut wf x) ≡ unfoldS x
       obs-eq = coerce-ν-in-sem-CoOut wf x
-      -- LHS observation: sfmap TF (sem-ana F (sem-CoOut wf)) (coerce-ν-in F (sem-CoOut wf x))
-      -- RHS observation: sfmap TF (anaS unfoldS) (unfoldS x)
-      -- By obs-eq, LHS = sfmap TF (sem-ana F (sem-CoOut wf)) (unfoldS x)
-      -- By sfmap-bisim with coinductive hypothesis, they are related
-      -- D062: `unfoldS (anaS unfoldS x)` now reduces via `sfmapAna`; bridge the
-      -- anaS side of the relation back to `sfmap` form.
-      ana-eq : sfmapAna TF unfoldS (unfoldS x) ≡ sfmap TF (anaS unfoldS) (unfoldS x)
-      ana-eq = sfmapAna-is-sfmap TF TF unfoldS (unfoldS x)
-  in subst (λ w → ⟦ TF ⟧SF-rel (_∼S_)
-                    (sfmap TF (sem-ana F (sem-CoOut wf)) (coerce-ν-in F (⟦ν⟧ F) (sem-CoOut wf x)))
-                    w)
-           (sym ana-eq)
-           (subst (λ z → ⟦ TF ⟧SF-rel (_∼S_)
-                      (sfmap TF (sem-ana F (sem-CoOut wf)) z)
-                      (sfmap TF (anaS unfoldS) (unfoldS x)))
-                  (sym obs-eq)
-                  (sfmap-bisim TF (sem-ana F (sem-CoOut wf)) (anaS unfoldS)
-                               (sem-ana-bisim-anaS wf) (unfoldS x)))
+      -- D062: BOTH `unfoldS (sem-ana …)` and `unfoldS (anaS …)` now reduce via
+      -- the mutual maps (`sfmapSemAna`/`sfmapAna`); bridge each back to `sfmap`
+      -- so the `sfmap-bisim` core applies.
+      lhs-eq : sfmapSemAna F TF (sem-CoOut wf) (coerce-ν-in F (⟦ν⟧ F) (sem-CoOut wf x))
+             ≡ sfmap TF (sem-ana F (sem-CoOut wf)) (unfoldS x)
+      lhs-eq = trans (sfmapSemAna-is-sfmap F TF (sem-CoOut wf)
+                        (coerce-ν-in F (⟦ν⟧ F) (sem-CoOut wf x)))
+                     (cong (sfmap TF (sem-ana F (sem-CoOut wf))) obs-eq)
+      rhs-eq : sfmapAna TF unfoldS (unfoldS x) ≡ sfmap TF (anaS unfoldS) (unfoldS x)
+      rhs-eq = sfmapAna-is-sfmap TF TF unfoldS (unfoldS x)
+  in subst₂ (λ l r → ⟦ TF ⟧SF-rel (_∼S_) l r)
+            (sym lhs-eq) (sym rhs-eq)
+            (sfmap-bisim TF (sem-ana F (sem-CoOut wf)) (anaS unfoldS)
+                         (sem-ana-bisim-anaS wf) (unfoldS x))
 
 -- | sem-ana F (sem-CoOut wf) equals anaS unfoldS (PROVEN via bisimulation)
 --
