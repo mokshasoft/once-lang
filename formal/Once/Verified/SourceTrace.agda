@@ -6,21 +6,28 @@
 -- Phase C). Discharges the former `Once.Verified.Behavior.⟦_⟧`
 -- postulate.
 --
--- `⟦ src ⟧` is the SigOp trace of the source program (its meaning),
--- read off its IR via `obs`. Option (a) "IR pivot": `sourceToIR` reuses
--- the compiler's own front-end (`gmoduleToModule` →
+-- `⟦ src ⟧` is the SigOp trace of the source program (its meaning), read
+-- off its IR via the DENOTATIONAL `evalᴰ`. Option (a) "IR pivot":
+-- `moduleToIR` reuses the compiler's own front-end (`gmoduleToModule` →
 -- `compileResolvedModule` → the IR of `main`). The front-end is thus a
 -- shared/trusted reference; `correct` verifies the backend against this
 -- IR-level meaning (see plan 0.24's TCB section).
 --
 -- This module lives separately from `Behavior.agda` (which stays light,
--- as the per-arch CPU instances import it) because `sourceToIR` pulls
--- in the whole compiler front-end via `Once.Compile`.
+-- as the per-arch CPU instances import it) because `moduleToIR` pulls in
+-- the whole compiler front-end via `Once.Compile`.
+--
+-- D060 (2026-06-16): there is now ONE denotational meaning. The surface
+-- `⟦_⟧ˢ` and IR `⟦_⟧ᴰ` are two presentations of it, tied by the proven
+-- `faithful` (`Once.Verified.SourceFaithful`). The old independent
+-- `SS.eval`/`runTrace` reference (and the `ElaborateFaithful` conjunct it
+-- backed) is retired: `SourceSemantics`/`AnaTrace`/`ElaborateTrace` are
+-- gone, and `faithful` is the standalone load-bearing fact rather than a
+-- conjunct bolted onto the compiler theorem.
 --
 -- Plan 0.44: `Behavior = ℕ → List SigOpEvent` (the step-indexed SigOp
--- trace). `⟦ src ⟧ n` is the trace prefix `obs` observes within `n` steps
--- — no projection. (Was `exitCodeOf (proj₁ (obs 0 …))` under the old
--- `Behavior = Maybe ℕ`; the projection is gone with the observable.)
+-- trace). `⟦ src ⟧ n` is the trace prefix `evalᴰ` observes within `n`
+-- steps — no projection.
 ------------------------------------------------------------------------
 
 module Once.Verified.SourceTrace where
@@ -29,14 +36,11 @@ open import Data.Bool using (Bool; false; true)
 open import Data.Nat using (ℕ)
 open import Data.List using (List; []; _∷_; take)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Product using (proj₁; proj₂; ∃; ∃-syntax; Σ-syntax; _,_; _×_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (tt)
 open import Data.String using (String) renaming (_≟_ to _≟str_)
 open import Relation.Nullary using (yes; no; Dec)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
-open import Once.TypeCheck.Raw using (RawExpr)
-open import Data.List.Relation.Unary.Any using (Any; here; there)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.Type using (Type; Unit)
 open import Once.CCC.IR using (IR)
@@ -44,18 +48,8 @@ import Once.Compile as C
 import Once.Parser.Module.Core as P
 open import Once.Grammar.ModuleConvert using (gmoduleToModule)
 open import Once.Verified.Behavior using (Source; Behavior)
-open import Once.Verified.DenotTrace using (evalᴰ; ⟦_⟧ᴰ)
-open import Once.Verified.TraceMonad using (T)
-open import Once.Verified.Trace using (SigOpEvent)
+open import Once.Verified.DenotTrace using (evalᴰ)
 open import Once.Verified.TraceMonad using (projTrace)
-open import Once.Verified.SourceSemantics as SS using (runTrace)
-import Once.Verified.MainAlign as MA
-import Once.Verified.ElaborateTrace as ET
-import Once.Surface.Elaborate as Surface
-open import Once.Surface.Syntax using (Expr; ∅; Usage)
-import Once.Verified.SourceDenote as SD
-import Once.Verified.SourceFaithful as SF
-open import Data.Nat.Properties using (≤-refl)
 
 ------------------------------------------------------------------------
 -- Source → IR of `main` (option (a): reuse the compiler's elaborator).
@@ -76,10 +70,8 @@ open C.CompiledFun using (cfName; cfType; cfIR; cfIsPrimitive)
 --
 -- The FIRST argument is `cfIsPrimitive cf`: a PRIMITIVE is never the entry —
 -- its body is not emitted at codegen (`CompiledFun.cfIsPrimitive`), so it has
--- no real `_start` to run. Skipping primitives (a) aligns this spec with the
--- backend and (b) makes the entry provably trace back to a `DFunDef` (a
--- primitive `main` would be a `DSignature`, leaving no source `main` body —
--- the soundness gap `main-exists-align` would otherwise hit).
+-- no real `_start` to run. Skipping primitives aligns this spec with the
+-- backend and makes the entry provably trace back to a `DFunDef`.
 findMain-here :
   (cf : C.CompiledFun) → Bool → Dec (cfName cf ≡ "main") → Maybe (cfType cf ≡ Unit)
   → Maybe (IR Unit Unit) → Maybe (IR Unit Unit)
@@ -93,25 +85,7 @@ findMain []         = nothing
 findMain (cf ∷ rest) =
   findMain-here cf (cfIsPrimitive cf) (cfName cf ≟str "main") (isUnit? (cfType cf)) (findMain rest)
 
--- Link 1 of main-exists-align: a successful `findMain` means a `main`-named,
--- Unit-typed, NON-PRIMITIVE function is present in the compiled list. The
--- `cfIsPrimitive ≡ false` is what lets the compiler side conclude the entry
--- came from a `DFunDef` (not a `DSignature` primitive).
-findMain-name :
-  ∀ (funs : List C.CompiledFun) (ir : IR Unit Unit)
-  → findMain funs ≡ just ir
-  → Any (λ cf → cfName cf ≡ "main" × cfIsPrimitive cf ≡ false) funs
-findMain-name [] ir ()
-findMain-name (cf ∷ rest) ir eq
-  with cfIsPrimitive cf in primEq | cfName cf ≟str "main" | isUnit? (cfType cf)
-... | false | yes p | just refl = here (p , primEq)
-... | false | yes _ | nothing   = there (findMain-name rest ir eq)
-... | false | no  _ | _         = there (findMain-name rest ir eq)
-... | true  | _     | _         = there (findMain-name rest ir eq)
-
--- Explicit dispatch on the compile result (no `with`-opacity), so the IR side
--- of `elaborate-preserves-trace` can be characterised (analogous to the
--- `runTraceMain`/`runTraceEval` source-side helpers).
+-- Explicit dispatch on the compile result (no `with`-opacity).
 moduleToIR-aux : String ⊎ List C.CompiledFun → Maybe (IR Unit Unit)
 moduleToIR-aux (inj₁ _)    = nothing
 moduleToIR-aux (inj₂ funs) = findMain funs
@@ -119,22 +93,8 @@ moduleToIR-aux (inj₂ funs) = findMain funs
 moduleToIR : P.Module → Maybe (IR Unit Unit)
 moduleToIR mod = moduleToIR-aux (C.compileResolvedModule C.Heap false mod)
 
--- IR-side characterization: when the module compiles to `funs`, `moduleToIR` is
--- exactly `findMain funs`. The IR-side analog of `runTrace-main`; reduces the
--- IR side of `elaborate-preserves-trace` to `findMain` of the compiled funs.
-moduleToIR-compiled :
-  ∀ (mod : P.Module) (funs : List C.CompiledFun)
-  → C.compileResolvedModule C.Heap false mod ≡ inj₂ funs
-  → moduleToIR mod ≡ findMain funs
-moduleToIR-compiled mod funs eq rewrite eq = refl
-
-sourceToIR : Source → Maybe (IR Unit Unit)
-sourceToIR src with gmoduleToModule src
-... | nothing  = nothing
-... | just mod = moduleToIR mod
-
 ------------------------------------------------------------------------
--- IR-level meaning and the FRONTEND obligation (Plan 0.45 Part B, factor 1).
+-- IR-level meaning (the source observable).
 ------------------------------------------------------------------------
 
 -- The SigOp trace the denotational `evalᴰ` reads off `main`'s IR (the
@@ -144,211 +104,17 @@ sourceToIR src with gmoduleToModule src
 ⟦ just ir ⟧IR = λ n → take n (projTrace (evalᴰ ir tt) n)
 ⟦ nothing ⟧IR = λ _ → []
 
--- FACTOR 1 of `module-to-asm-correct`: typecheck + elaborate preserve the
--- source trace — `obs` of `main`'s IR equals the source-level reference. THE
--- load-bearing frontend obligation, now NAMED (Plan 0.45 Phase 2 deliverable).
--- Discharge = structural induction over `checkElabV` + `Surface.Elaborate`
--- (the ~2700-line frontend); this is where the typechecker becomes
--- load-bearing and the `ErrorProofs`-class proof structure surfaces.
--- Multi-session.
---
--- CONDITIONED on the module compiling (`moduleToIR m ≡ just ir`). The
--- unconditional `∀ m n → ⟦ moduleToIR m ⟧IR n ≡ runTrace m n` is UNSOUND: a
--- type-erroring program with a `main` has `moduleToIR m ≡ nothing`
--- (`⟦⟧IR = []`), yet `runTrace` (untyped) still evaluates its `main` to a
--- non-empty trace. `correct` only claims compiling programs (its hypothesis
--- `compile ≡ just bytes`), so the `just ir` condition is exactly available
--- (threaded by `Compile.module-to-asm-correct` via `built⇒moduleToIR-just`).
--- Factored (Plan 0.45 #10) into two precise obligations + a connecting proof
--- that uses the proven source-side reduction `runTrace-main`.
--- (#9) Main-finding alignment — DISCHARGED (Plan 0.45). The PROGRAM case
--- (D008: `--exe` needs a `main`; a library `--lib`, with no `main`, gives
--- `moduleToIR m ≡ nothing` and the empty-trace `no-main-empty` branch). When
--- `moduleToIR m` produces an entry IR the module IS a program, so it has a
--- source `main` `DFunDef` and `runTrace` runs it. Chains the compiler-side
--- correspondence (`MainAlign.compileResolvedModule-main`: a non-primitive entry
--- traces back to a `DFunDef "main"`) with the source-side
--- (`SS.lookup-main-of-dfundef`). The J-style `aux` unfolds `moduleToIR` =
--- `moduleToIR-aux (compileResolvedModule …)` so its result is analysable.
-main-exists-align :
-  ∀ (m : P.Module) (ir : IR Unit Unit) → moduleToIR m ≡ just ir
-  → ∃ λ (body : RawExpr) →
-      SS.lookupDef (SS.extractDefs (P.Module.decls m)) "main" ≡ just body
-main-exists-align m ir mj = aux (C.compileResolvedModule C.Heap false m) refl mj
-  where
-    aux : (r : String ⊎ List C.CompiledFun)
-        → C.compileResolvedModule C.Heap false m ≡ r
-        → moduleToIR-aux r ≡ just ir
-        → ∃ λ body → SS.lookupDef (SS.extractDefs (P.Module.decls m)) "main" ≡ just body
-    aux (inj₁ _)    crm ()
-    aux (inj₂ funs) crm fm =
-      SS.lookup-main-of-dfundef (P.Module.decls m)
-        (MA.compileResolvedModule-main m C.Heap false funs crm (findMain-name funs ir fm))
-
--- (#10), now TOP-DOWN: the monolithic `compiled-main-trace` postulate becomes a
--- THEOREM assembled from `ET.bridge-main` (the proven `evalᴰ (elaborate …) ↔
--- SS.eval (erase …)` bridge over the typed `Expr`) and two smaller, named
--- obligations:
---
---   * `compiler-faithful` — the compiled entry IR IS the elaboration of a closed
---     typed `Expr` (`checkElab` of `main`), and that expr's canonical erasure
---     runs (under `SS.eval`) like the source `main` body. Bundles the compiler
---     identity (`ir = elaborate Heap (checkElab body)`, a lemma over
---     `compileResolvedModule`) with α-invariance (raw body ↔ canonical erasure).
---   * `elaborate-trace-correct` — the PRODUCTIVE trace correspondence: for the
---     elaboration of a closed `Expr`, the depth-`k` denotational trace prefix
---     agrees with `SS.eval` of its canonical erasure at SOME fuel `s`. This is
---     the genuine load-bearing statement and it is TRUE for BOTH finite mains
---     (the trace stabilises) AND productive `Ana` mains (the trace grows with
---     `k`, matched by a larger `s`) — it bakes in NO finiteness. (Earlier draft
---     folded a `budget-stable` conjunct into `compiler-faithful`; that was
---     UNSOUND — productive programs compile, and for them budget-stability is
---     false, so the postulate would prove ⊥. The `∀ k → ∃ s` shape IS the
---     productive form; that is where `Ana` is handled, not assumed away.) The
---     finite fragment of this is what `ET.bridge-main`'s terminating CompSim
---     proves; the `Ana` case is the productive sim — both discharge THIS, with
---     no finiteness baked into the apex.
-postulate
-  compiler-faithful :
-    ∀ (m : P.Module) (ir : IR Unit Unit) → moduleToIR m ≡ just ir
-    → (body : RawExpr)
-    → SS.lookupDef (SS.extractDefs (P.Module.decls m)) "main" ≡ just body
-    → Σ[ Ψ ∈ Usage 0 ] Σ[ eE ∈ Expr ∅ Ψ Unit ]
-        (ir ≡ Surface.elaborate C.Heap eE)
-        × (∀ s → SS.eval s (SS.extractDefs (P.Module.decls m)) [] body
-                 ≡ SS.eval s (SS.extractDefs (P.Module.decls m)) []
-                            (ET.erase (SS.extractDefs (P.Module.decls m)) eE))
-
--- THE PRODUCTIVE CORRESPONDENCE, NAMED (Plan 0.46, 2026-06-15). `ProdSim c op`:
--- at every observation depth `k`, SOME operational fuel `s` makes the first-`k`
--- SigOp prefixes agree. This is the ONE relation: it bakes in NO finiteness, so
--- it is true for finite mains (the trace stabilises) AND productive `ana` mains
--- (the trace grows with `k`, matched by larger `s`). `CompSim` (the terminating
--- bridge's relation) is its `k`-STABILISED special case — termination is not a
--- separate world but the consequence of totality at an inductive type. The apex
--- routes through `ProdSim`, never through `CompSim`+budget-stability (which is
--- FALSE for `ana`). Value-sim is omitted here (parametric `X`): the closed `Unit`
--- top needs only the trace; a value component enters only when the productive
--- bridge's COMPOSITION cases demand it.
-ProdSim : ∀ {X : Set} → (ℕ → List SigOpEvent × X) → (ℕ → SS.Result) → Set
-ProdSim c op = ∀ k → ∃[ s ] take k (proj₁ (c k)) ≡ take k (SS.runTraceEval (op s))
-
--- DISCOVERED by attempting the finite path of `prod-bridge`: `CompSim ⟹ ProdSim`,
--- given budget-stability. This is the user's "CompSim is a lemma ProdSim uses" made
--- literal — the terminating relation is a *view* onto the productive one. The proof
--- exposes the EXACT gap: `CompSim` pins the trace only at depth 0 (`proj₁ (c 0) ≡
--- evs`), so converting to the depth-`k` `ProdSim` needs `proj₁ (c k) ≡ proj₁ (c 0)`
--- — budget-stability. For finite/inductive IR that is structural (totality: the
--- trace is a fixed finite list, depth-independent); it is FALSE for `ana`, which is
--- exactly why `ana` is NOT routed here but through the productive `ana-trace-correct`.
-compsim⇒prodsim :
-  ∀ {B : Type} (defs : SS.Defs) (c : T ⟦ B ⟧ᴰ) (op : ℕ → SS.Result)
-  → ET.CompSim defs B c op
-  → (∀ k → proj₁ (c k) ≡ proj₁ (c 0))           -- ◀ the discovered gap: budget-stability
-  → ProdSim c op
-compsim⇒prodsim defs c op (s , v , evs , op-eq , tr-eq , _) stable k =
-  s , trans (cong (take k) (trans (stable k) tr-eq))
-            (sym (cong (λ r → take k (SS.runTraceEval r)) (op-eq s ≤-refl)))
-
-postulate
-  -- The PRODUCTIVE BRIDGE, the sole honest obligation under the apex: discharge
-  -- by structural induction on `eE` — finite subterms via the existing CompSim
-  -- bridge (a derived view; stabilisation = totality@inductive), the `ana`
-  -- constructor via `AnaTrace.ana-trace-correct` (productive, sound — NOT a
-  -- CompSim hole). This REPLACES the raw `elaborate-trace-correct` postulate with
-  -- the explicitly-productive relation; building its induction is the work.
-  prod-bridge :
-    ∀ {Ψ : Usage 0} (eE : Expr ∅ Ψ Unit) (defs : SS.Defs)
-    → ProdSim (evalᴰ (Surface.elaborate C.Heap eE) tt)
-              (λ s → SS.eval s defs [] (ET.erase defs eE))
-
--- OCP-0006 (Plan 0.46, 2026-06-15): THE elaborator-faithfulness obligation, over
--- the typed source semantics `SD.⟦_⟧ˢ`. BOTH sides are denotational (the same
--- monad `T`), so this is a PLAIN trace equality at each depth — no `∃s`, no fuel,
--- no `SS.eval`. The elaborator is load-bearing: a meaning-changing elaboration
--- breaks this. Discharged in M3 by structural induction on `eE` (leaf cases —
--- arith/comparison/sigOp/lift-morphism — are DEFINITIONALLY equal, since `⟦_⟧ˢ`
--- denotes them through the same `semM`/`evalᴰ` the IR side uses). Supersedes the
--- `SS.eval`-based `prod-bridge`/`ProdSim` chain above (retired with `SS.eval`, M4).
--- A DEFINITION now (closed-`Unit` projection of the general `SF.faithful`
--- induction), not a postulate — the apex obligation is structurally connected to
--- the per-constructor elaborate-correctness cases (M3 discharges those).
-elaborate-faithful :
-  ∀ {Ψ : Usage 0} (eE : Expr ∅ Ψ Unit) (k : ℕ)
-  → proj₁ (evalᴰ (Surface.elaborate C.Heap eE) tt k) ≡ proj₁ (SD.⟦ eE ⟧ˢ tt k)
-elaborate-faithful eE k = cong proj₁ (SF.faithful eE tt k)
-
--- `elaborate-trace-correct` is now a DEFINITION (projection of `prod-bridge`),
--- not a postulate — anchoring the apex at the productive relation.
-elaborate-trace-correct :
-  ∀ {Ψ : Usage 0} (eE : Expr ∅ Ψ Unit) (defs : SS.Defs) (k : ℕ)
-  → ∃[ s ] take k (proj₁ (evalᴰ (Surface.elaborate C.Heap eE) tt k))
-             ≡ take k (SS.runTraceEval (SS.eval s defs [] (ET.erase defs eE)))
-elaborate-trace-correct eE defs k = prod-bridge eE defs k
-
-compiled-main-trace :
-  ∀ (m : P.Module) (ir : IR Unit Unit) → moduleToIR m ≡ just ir
-  → ∀ (body : RawExpr)
-  → SS.lookupDef (SS.extractDefs (P.Module.decls m)) "main" ≡ just body
-  → ∀ (k : ℕ)
-  → ∃[ s ] take k (projTrace (evalᴰ ir tt) k)
-             ≡ take k (SS.runTraceEval (SS.eval s (SS.extractDefs (P.Module.decls m)) [] body))
--- `ir = elaborate eE` (compiler identity); the depth-`k` trace prefix matches
--- `SS.eval (erase eE)` at fuel `s` (`elaborate-trace-correct`); and `erase eE`
--- runs like the source `body` (α-invariance). No budget-stability, no finiteness.
-compiled-main-trace m ir mj body lk k
-  with compiler-faithful m ir mj body lk
-... | (Ψ , eE , refl , α)
-    with elaborate-trace-correct eE (SS.extractDefs (P.Module.decls m)) k
-...   | (s , eq) =
-      s , trans eq (cong (λ r → take k (SS.runTraceEval r)) (sym (α s)))
-
--- Factor 1 (`elaborate-faithful`), a REQUIRED CONJUNCT of the grand theorem
--- (D059): the elaborated IR's denotational trace agrees, event-prefix-wise, with
--- the independent `SS.eval` reference. Composes the main-finding alignment, the
--- `#10` core, and the proven `runTrace-main` reduction (threaded at the
--- productivity witness `s`).
-elaborate-preserves-trace :
-  ∀ (m : P.Module) (ir : IR Unit Unit) → moduleToIR m ≡ just ir
-  → ∀ (k : ℕ) → ∃[ s ] take k (projTrace (evalᴰ ir tt) k) ≡ take k (SS.runTrace m s)
-elaborate-preserves-trace m ir mj k with main-exists-align m ir mj
-... | (body , lk) with compiled-main-trace m ir mj body lk k
-...   | (s , eq) = (s , trans eq (sym (cong (take k) (SS.runTrace-main m s body lk))))
-
--- The load-bearing cross-check as a NAMED type (D059): the elaborated IR's
--- denotational trace agrees, event-prefix-wise, with the independent `SS.eval`
--- reference. `Compile.compiler-correct` bundles this as a REQUIRED CONJUNCT of
--- the grand theorem so it cannot be dropped (silently losing load-bearing).
--- `elaborate-preserves-trace m ir mj : ElaborateFaithful ir m` definitionally.
-ElaborateFaithful : IR Unit Unit → P.Module → Set
-ElaborateFaithful ir m =
-  ∀ (k : ℕ) → ∃[ s ] take k (projTrace (evalᴰ ir tt) k) ≡ take k (SS.runTrace m s)
-
 ------------------------------------------------------------------------
 -- The source semantics (discharges the `Behavior.⟦_⟧` postulate).
 ------------------------------------------------------------------------
 
--- Plan 0.45 Phase 1 — re-anchor the source meaning at the SOURCE level.
---
--- WAS: `⟦ src ⟧ = obs (elaborate src)` (the IR pivot) — the spec moved with
--- the elaborator, so the typechecker could elaborate to the wrong IR and
--- `correct` still held. The typechecker was NOT load-bearing.
---
--- NOW: `⟦ src ⟧ = sourceTrace src`, where `sourceTrace` is a SOURCE-LEVEL
--- SigOp-trace reference computed INDEPENDENTLY of the elaborator. The full
--- `compile` (typechecker included) must then be proven to preserve it
--- (`elaborate-preserves-trace`, inside `Compile.module-to-asm-correct`) — so
--- the typechecker becomes load-bearing.
---
--- `sourceTrace` is DECLARED here and DEFINED in Part A (Plan 0.45 Phase 2).
--- Leaving it undefined deliberately breaks the build: the honest spec, with
--- the gap explicit (definition-first, as in Plan 0.44).
+-- D059/D060: the source meaning is the DENOTATIONAL `evalᴰ` (compositional →
+-- reasons about Once programs; observation-depth → commensurable apex meter),
+-- via `⟦_⟧IR ∘ moduleToIR`. The surface presentation `⟦_⟧ˢ` agrees with this
+-- IR presentation by the proven `faithful` (a standalone fact, no longer a
+-- conjunct of the compiler theorem).
 -- J-style dispatch on the parse result (explicit `Maybe`, no `with`), so
 -- `⟦⟧-via-module` below can `rewrite` the parse equation through it.
--- D059: the source meaning is the DENOTATIONAL `evalᴰ` (compositional →
--- reasons about Once programs; observation-depth → commensurable apex meter),
--- via `⟦_⟧IR ∘ moduleToIR`. `SS.eval`/`SS.runTrace` is NOT the apex meaning —
--- it is the required cross-check (`elaborate-preserves-trace`, the #10 conjunct).
 sourceTrace-aux : Maybe P.Module → Behavior
 sourceTrace-aux (just m) = ⟦ moduleToIR m ⟧IR
 sourceTrace-aux nothing  = λ _ → []

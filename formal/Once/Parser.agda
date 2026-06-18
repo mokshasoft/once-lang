@@ -248,9 +248,9 @@ PendingSig : Set
 PendingSig = String × (Type ⊎ PolyType)
 
 -- `consFun`/`consPoly`/`go` lifted to TOP LEVEL (were `where`-locals of
--- `extractFunctions`) so the verified frontend can induct on them
--- (`main-exists-align`'s compiler side: a non-primitive "main" `FunInfo`
--- traces back to a `DFunDef "main"`). `aliases` is now an explicit parameter.
+-- `extractFunctions`) so the verified frontend can induct on them (a
+-- non-primitive "main" `FunInfo` traces back to a `DFunDef "main"`).
+-- `aliases` is now an explicit parameter.
 EFResult : Set
 EFResult = String ⊎ (List FunInfo × List PolyFunInfo)
 

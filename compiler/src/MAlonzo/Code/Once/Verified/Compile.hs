@@ -90,9 +90,9 @@ d_'10214'_'10215'M_38 ::
   Integer -> [MAlonzo.Code.Once.Verified.Trace.T_SigOpEvent_140]
 d_'10214'_'10215'M_38 v0
   = coe
-      MAlonzo.Code.Once.Verified.SourceTrace.d_'10214'_'10215'IR_132
+      MAlonzo.Code.Once.Verified.SourceTrace.d_'10214'_'10215'IR_44
       (coe
-         MAlonzo.Code.Once.Verified.SourceTrace.d_moduleToIR_98 (coe v0))
+         MAlonzo.Code.Once.Verified.SourceTrace.d_moduleToIR_40 (coe v0))
 -- Once.Verified.Compile.ArchCorrect
 d_ArchCorrect_46 a0 a1 = ()
 data T_ArchCorrect_46
@@ -367,25 +367,3 @@ d_correct_242 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_correct_242 = erased
--- Once.Verified.Compile.WithCPU.compiler-correct
-d_compiler'45'correct_394 ::
-  (MAlonzo.Code.Once.Target.Arch.T_Arch_6 ->
-   MAlonzo.Code.Once.Verified.CPU.Interface.T_ArchSemantics_10) ->
-  (MAlonzo.Code.Once.Target.Arch.T_Arch_6 -> T_ArchCorrect_46) ->
-  MAlonzo.Code.Once.Target.Arch.T_Arch_6 ->
-  MAlonzo.Code.Once.Grammar.T_GModule_138 ->
-  [MAlonzo.Code.Data.Fin.Base.T_Fin_10] ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_compiler'45'correct_394 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5
-  = du_compiler'45'correct_394
-du_compiler'45'correct_394 ::
-  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_compiler'45'correct_394
-  = coe
-      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 erased
-      (coe
-         (\ v0 v1 v2 v3 v4 ->
-            coe
-              MAlonzo.Code.Once.Verified.SourceTrace.du_elaborate'45'preserves'45'trace_354
-              (coe v0) (coe v1) v4))

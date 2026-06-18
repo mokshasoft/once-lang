@@ -239,8 +239,8 @@ resolveFunType ctx polys nothing   body = inferType ctx polys body
 -- functions (ground, via FunCtx) and all polymorphic user defs
 -- (via PolyCtx, plan 0.6.2).
 -- `go` lifted to TOP LEVEL (was a `where`-local of `compileAllFuns`) so the
--- verified frontend can induct on it (`main-exists-align`'s compiler side: a
--- compiled `main` traces back to its `FunInfo`). The `ctx` accumulator is now
+-- verified frontend can induct on it (a compiled `main` traces back to its
+-- `FunInfo`). The `ctx` accumulator is now
 -- an explicit parameter; `compileAllFuns` seeds it with `emptyFunCtx`.
 compileAllFuns-go : AllocMode → Bool → PolyCtx → List FunInfo → FunCtx → String ⊎ List CompiledFun
 compileAllFuns-go m doOpt polys [] _ = inj₂ []
