@@ -119,6 +119,9 @@ fusion-compose g f = g ∘ f
 -- Descend into all subterms, applying fusion-compose at composition points.
 --
 fusion-once : ∀ {A B} → IR A B → IR A B
+-- D062: fusion descends into the constant-leaf IRs of a Fuse/Hylo's natural
+-- transform; the structural routing is unchanged.
+fusion-nt : ∀ {G F} → NatTr G F → NatTr G F
 
 -- Identity: nothing to fuse
 fusion-once id = id
@@ -170,10 +173,10 @@ fusion-once (Para {F} wf alg) = Para {F} wf (fusion-once alg)
 fusion-once (Out wf) = Out wf
 fusion-once (in-ν wf m) = in-ν wf m
 fusion-once (Ana {F} wf coalg) = Ana {F} wf (fusion-once coalg)
-fusion-once (Hylo {F} wf term alg coalg) = Hylo {F} wf term (fusion-once alg) (fusion-once coalg)
+fusion-once (Hylo {F} {G} wfF wfG alg t) = Hylo {F} {G} wfF wfG (fusion-once alg) (fusion-nt t)
 -- Fuse: μ-anchored fusion (correct by construction)
 -- No fusion opportunities here - Fuse is already the fused form
-fusion-once (Fuse {F} {G} wfF wfG alg transform) = Fuse {F} {G} wfF wfG (fusion-once alg) (fusion-once transform)
+fusion-once (Fuse {F} {G} wfF wfG alg t) = Fuse {F} {G} wfF wfG (fusion-once alg) (fusion-nt t)
 -- Guard/Unguard removed: productivity follows from IR totality
 -- out-μ/in-ν: Lambek isomorphisms, pass through (potential fusion with In/Out)
 
@@ -188,6 +191,15 @@ fusion-once (const p vI vM) = const p vI vM
 
 -- free-heap: opaque, pass through
 fusion-once (free-heap h) = free-heap h
+
+fusion-nt ntId         = ntId
+fusion-nt (ntK ir)     = ntK (fusion-once ir)
+fusion-nt (ntFst t)    = ntFst (fusion-nt t)
+fusion-nt (ntSnd t)    = ntSnd (fusion-nt t)
+fusion-nt (ntCase t u) = ntCase (fusion-nt t) (fusion-nt u)
+fusion-nt (ntInl t)    = ntInl (fusion-nt t)
+fusion-nt (ntInr t)    = ntInr (fusion-nt t)
+fusion-nt (ntPair t u) = ntPair (fusion-nt t) (fusion-nt u)
 
 ------------------------------------------------------------------------
 -- Fusion: Bounded Iteration

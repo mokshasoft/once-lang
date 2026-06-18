@@ -41,12 +41,12 @@ open import Once.CCC.IR
   using (IR; id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal;
          initial; curry; apply; arr; SigOp; Cata; In; Out; Ana;
          out-μ; free-heap; const; Para; Hylo; Fuse)
-open import Once.CCC.Eval as Val using (eval)   -- pure value domain `Val.⟦_⟧` + `eval`
+open import Once.CCC.Eval as Val using (eval; appNatTr-F)   -- pure value domain `Val.⟦_⟧` + `eval`
 open import Once.CCC.SigOp.Info
   using (SigOpInfo; semM; effect; EffectShape; Pure; Emits; Halts)
 open import Once.Functor.Translate using (WellFormedF)
 open import Once.Semantics.Machine
-  using (sem-cata; sem-ana; sem-para; sem-In; sem-fuse-events; sem-hylo-events;
+  using (sem-cata; sem-ana; sem-para; sem-In; sem-fuseNat-events;
          sem-fmap; coerce-functor; coerce-functor⁻¹; ⟦_⟧F)
 open import Once.Verified.Trace using (SigOpEvent; mkEvent)
 open import Once.Verified.TraceMonad using (T; returnT; _>>=T_; valueT; projTrace)
@@ -217,26 +217,23 @@ rec-trace-D (out-μ wf)              x n = []
 -- DERIVED schemes — the trace of the `cata`/`fuse` fold that DEFINES them
 -- (reusing the value side's `sem-para`/`sem-fuse`/`sem-hylo`), `proj₁` = trace.
 rec-trace-D (Para {F} wf {C} alg)   x n = proj₁ (sem-para wf (para-ev-algᴰ {F} {C} n alg) x)
--- Hylo/Fuse thread BOTH the algebra's AND the coalgebra/transform's events
--- (in fused depth-first order) via the monoid fold `sem-hylo/fuse-events` at
--- `M = List SigOpEvent` — the correct SigOp trace, with each morphism run
--- through `evalᴰ`. (Earlier this reused `cata-ev-algᴰ` + `sem-fuse`, which
--- silently DROPPED the coalgebra/transform events — only valid when it is
--- pure. Threading both is correct whenever fusion is — i.e. when either side
--- is pure — and is the deforested computation's trace otherwise.)
-rec-trace-D (Hylo {F} {G} wfF wfG {B} alg coalg) x n =
-  proj₁ (sem-hylo-events _++_ [] F G wfF wfG
+-- D062 / approach A: Hylo/Fuse carry a NATURAL transformation (`NatTr`), so
+-- the transform realizes no effects — its event contribution is `[]` per layer
+-- (threaded as the monoid unit by `sem-fuseNat-events`), and all accumulation
+-- is the algebra's, folded structurally in post-order over the total
+-- `fuseNatW`. The transform's VALUE still reshapes each layer, via the
+-- (effect-free) `appNatTr-F`. This is the trace of the total structural fold
+-- `cataS (alg ∘ transform)` — and `fuseW` is gone from the meaning's use-chain.
+-- (fuse ≡ hylo: both clauses are identical.)
+rec-trace-D (Hylo {F} {G} wfF wfG {B} alg t) x n =
+  proj₁ (sem-fuseNat-events _++_ [] F G wfF wfG (appNatTr-F t)
     (λ fb → let r = evalᴰ alg (inject (coerce-functor⁻¹ F B fb))
             in (projTrace r n , forget (valueT r n)))
-    (λ μg → let r = evalᴰ coalg (inject μg)
-            in (projTrace r n , coerce-functor F (μ-type G) (forget (valueT r n))))
     x)
-rec-trace-D (Fuse {F} {G} wfF wfG {B} alg transform) x n =
-  proj₁ (sem-fuse-events _++_ [] F G wfF wfG
+rec-trace-D (Fuse {F} {G} wfF wfG {B} alg t) x n =
+  proj₁ (sem-fuseNat-events _++_ [] F G wfF wfG (appNatTr-F t)
     (λ fb → let r = evalᴰ alg (inject (coerce-functor⁻¹ F B fb))
             in (projTrace r n , forget (valueT r n)))
-    (λ gx → let r = evalᴰ transform (inject (coerce-functor⁻¹ G (μ-type G) gx))
-            in (projTrace r n , coerce-functor F (μ-type G) (forget (valueT r n))))
     x)
 rec-trace-D (free-heap r)           x n = []
 rec-trace-D (const f iv mv)         x n = []

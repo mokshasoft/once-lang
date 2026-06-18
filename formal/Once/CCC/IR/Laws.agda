@@ -66,7 +66,7 @@ alloc-mode-independent-curry ps f m₁ m₂ x = refl
 
 -- Import recursion scheme semantic operations
 open import Once.Semantics.Machine
-  using (sem-In; sem-cata; sem-para; sem-CoOut; sem-ana; sem-hylo;
+  using (sem-In; sem-cata; sem-para; sem-CoOut; sem-ana;
          coerce-functor; coerce-functor⁻¹)
 open import Once.Type using (Functor; μ-type; ν-type; ⟦_⟧T)
 open import Once.Functor.Translate using (WellFormedF)

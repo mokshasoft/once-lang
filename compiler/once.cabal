@@ -280,6 +280,7 @@ library
       MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed
       MAlonzo.Code.Once.CCC.Machine.Flat
       MAlonzo.Code.Once.CCC.Machine.IR.MuValidity
+      MAlonzo.Code.Once.CCC.Machine.Locations
       MAlonzo.Code.Once.CCC.Machine.SMCore
       MAlonzo.Code.Once.CCC.Machine.SMPrimitives
       MAlonzo.Code.Once.CCC.Machine.Validity

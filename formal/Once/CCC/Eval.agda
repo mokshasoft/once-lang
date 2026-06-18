@@ -18,17 +18,18 @@ module Once.CCC.Eval where
 
 open import Data.Unit using (⊤; tt)
 open import Data.Product using (_,_)
+open import Data.Sum using (inj₁; inj₂)
 
 open import Once.Type
 open import Once.CCC.IR
 
 -- Import semantic interpretation of types from Once.Sem
 open import Once.Semantics.Machine
-  using (⟦_⟧; sem-pair; sem-fst; sem-snd; sem-inl; sem-inr; sem-case;
+  using (⟦_⟧; ⟦_⟧F; sem-pair; sem-fst; sem-snd; sem-inl; sem-inr; sem-case;
          -- OCP-0003: fold/unfold removed. Use recursion scheme semantics:
-         sem-In; sem-Out; sem-cata; sem-para; sem-CoOut; sem-CoIn; sem-ana; sem-hylo;
-         -- OCP-0003: Structured fusion (correct by construction)
-         sem-fuse;
+         sem-In; sem-Out; sem-cata; sem-para; sem-CoOut; sem-CoIn; sem-ana;
+         -- D062: structural fusion via the natural transform (NatTr) — total
+         sem-fuseNat;
          coerce-functor; coerce-functor⁻¹)
 
 -- Re-export ⟦_⟧ for convenience
@@ -43,6 +44,12 @@ open import Once.Semantics.Machine public using (⟦_⟧)
 ------------------------------------------------------------------------
 
 eval : ∀ {A B} → IR A B → ⟦ A ⟧ → ⟦ B ⟧
+-- D062: the natural transformation a `Fuse`/`Hylo` carries, interpreted at the
+-- functor level. Manifestly parametric in the recursive position `X` (it is
+-- never inspected) — routes/copies positions and evaluates the constant-leaf
+-- IR (`ntK`). Mutual with `eval` only through `ntK`.
+appNatTr-F : ∀ {G F} → NatTr G F → ∀ {X} → ⟦ G ⟧F X → ⟦ F ⟧F X
+
 eval id x = x
 eval (g ∘ f) x = eval g (eval f x)
 eval (⟨ f , g ⟩ _) x = sem-pair (eval f x) (eval g x)
@@ -72,13 +79,19 @@ eval (Para {F} wf alg) x = sem-para wf (λ fx → eval alg (coerce-functor⁻¹ 
 eval (Out {F} wf) x = coerce-functor⁻¹ F (ν-type F) (sem-CoOut wf x)
 eval (in-ν {F} _ _) x = sem-CoIn F (coerce-functor F (ν-type F) x)
 eval (Ana {F} wf coalg) x = sem-ana F (λ a → coerce-functor F _ (eval coalg a)) x
-eval (Hylo {F} {G} wfF wfG alg coalg) x =
-  sem-hylo F G wfF wfG
-    (λ fb → eval alg (coerce-functor⁻¹ F _ fb))
-    (λ μg → coerce-functor F (μ-type G) (eval coalg μg))
-    x
-eval (Fuse {F} {G} wfF wfG alg transform) x =
-  sem-fuse F G wfF wfG
-    (λ fb → eval alg (coerce-functor⁻¹ F _ fb))
-    (λ gx → coerce-functor F _ (eval transform (coerce-functor⁻¹ G _ gx)))
-    x
+-- D062: Hylo/Fuse both carry a natural transform (NatTr); both denote the
+-- total structural fold `sem-fuseNat (appNatTr-F t) alg` (fuse ≡ hylo).
+eval (Hylo {F} {G} wfF wfG alg t) x =
+  sem-fuseNat F G wfF wfG (appNatTr-F t) (λ fb → eval alg (coerce-functor⁻¹ F _ fb)) x
+eval (Fuse {F} {G} wfF wfG alg t) x =
+  sem-fuseNat F G wfF wfG (appNatTr-F t) (λ fb → eval alg (coerce-functor⁻¹ F _ fb)) x
+
+appNatTr-F ntId         x        = x
+appNatTr-F (ntK ir)     a        = eval ir a
+appNatTr-F (ntFst t)    (x , _)  = appNatTr-F t x
+appNatTr-F (ntSnd t)    (_ , y)  = appNatTr-F t y
+appNatTr-F (ntCase t u) (inj₁ x) = appNatTr-F t x
+appNatTr-F (ntCase t u) (inj₂ y) = appNatTr-F u y
+appNatTr-F (ntInl t)    g        = inj₁ (appNatTr-F t g)
+appNatTr-F (ntInr t)    g        = inj₂ (appNatTr-F t g)
+appNatTr-F (ntPair t u) g        = (appNatTr-F t g , appNatTr-F u g)

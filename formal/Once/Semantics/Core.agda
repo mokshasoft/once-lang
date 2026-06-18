@@ -88,7 +88,7 @@ open import Once.Functor.Translate
         ; base-Prod; base-Sum; wf-K; wf-Id; wf-Sum; wf-Prod)
 open import Once.Functor.Base
   using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF; μS; ⟨_⟩; outS; νS; unfoldS;
-         sfmap; cataS; sfmapCata; sfmapCata-is-sfmap; anaS; sfmapAna; sfmapAna-is-sfmap; fuseS; fuseW; fuseNatS;
+         sfmap; cataS; cataS-cong; sfmapCata; sfmapCata-is-sfmap; anaS; sfmapAna; sfmapAna-is-sfmap; fuseNatS; fuseNatW;
          fold-unfoldS; unfold-foldS; cataS-computation; cataS-In-id; anaS-Out-id;
          -- Bisimulation machinery
          ⟦_⟧SF-rel; _∼S_; bisimS-to-eq; sfmap-rel; sfmap-f-rel)
@@ -699,15 +699,6 @@ sfmapSemAna-is-sfmap F (H₁ S⊗ H₂) coalg (x , y)  =
 -- Equivalence: fuse alg transform = cata (alg ∘ fmap fuse ∘ transform)
 -- But computed directly for deforestation (no intermediate structure).
 --
-sem-fuse : ∀ (F G : Functor) → WellFormedF F → WellFormedF G → {B : Set}
-         → (⟦ F ⟧F B → B)                    -- algebra: F(B) → B
-         → (⟦ G ⟧F (⟦μ⟧ G) → ⟦ F ⟧F (⟦μ⟧ G))  -- transform: G(μG) → F(μG)
-         → ⟦μ⟧ G → B
-sem-fuse F G wfF wfG {B} alg transform =
-  fuseS {translateF IntRep F} {translateF IntRep G} {B}
-    (alg ∘ coerce-μ-out wfF B)
-    (coerce-μ-in F (⟦μ⟧ G) ∘ transform ∘ coerce-μ-out wfG (⟦μ⟧ G))
-
 -- | Natural Transformation Fusion (TERMINATING-free)
 --
 -- OCP-0003: When the transform is a NATURAL TRANSFORMATION (parametric in
@@ -732,49 +723,46 @@ sem-fuseNat F G wfF wfG {B} transform alg =
     (coerce-μ-in F _ ∘ transform ∘ coerce-μ-out wfG _)
     (alg ∘ coerce-μ-out wfF B)
 
--- | Hylomorphism: fused cata ∘ ana (CORRECT BY CONSTRUCTION)
---
--- OCP-0003: Hylo is now based on Fuse, removing the need for TerminatesOn.
--- Termination is guaranteed by requiring μG as input:
--- - Input1 is μG (well-founded inductive type)
--- - Coalgebra produces F-layers from μG values
--- - Recursion is structural on μG
---
--- Semantically: sem-hylo alg coalg = sem-fuse alg (coalg ∘ sem-In)
--- The coalgebra wraps sem-In to convert the pre-destructed G-layer to F-layer.
---
--- NO TERMINATING PRAGMA NEEDED - termination follows from sem-fuse!
---
-sem-hylo : ∀ (F G : Functor) → WellFormedF F → WellFormedF G → {B : Set}
-         → (⟦ F ⟧F B → B)              -- algebra: F(B) → B
-         → (⟦μ⟧ G → ⟦ F ⟧F (⟦μ⟧ G))    -- coalgebra: μG → F(μG)
-         → ⟦μ⟧ G → B
-sem-hylo F G wfF wfG {B} alg coalg =
-  sem-fuse F G wfF wfG alg (coalg ∘ sem-In G)
+-- | Congruence for `sem-fuseNat`: pointwise-equal natural transforms and
+-- pointwise-equal algebras give equal folds. (D062: lets the optimizer/escape/
+-- fusion correctness proofs lift `appNatTr-F (map-nt t) ≡ appNatTr-F t` and the
+-- algebra correctness through the `Fuse`/`Hylo` meaning.) Reduces to
+-- `cataS-cong` since `sem-fuseNat … = cataS (alg ∘ transform ∘ coercions)`.
+sem-fuseNat-cong : ∀ (F G : Functor) (wfF : WellFormedF F) (wfG : WellFormedF G) {B : Set}
+                 → (φ ψ : ∀ {A} → ⟦ G ⟧F A → ⟦ F ⟧F A)
+                 → (alg₁ alg₂ : ⟦ F ⟧F B → B)
+                 → (∀ {A} (g : ⟦ G ⟧F A) → φ g ≡ ψ g)
+                 → (∀ y → alg₁ y ≡ alg₂ y)
+                 → (x : ⟦μ⟧ G)
+                 → sem-fuseNat F G wfF wfG φ alg₁ x ≡ sem-fuseNat F G wfF wfG ψ alg₂ x
+sem-fuseNat-cong F G wfF wfG {B} φ ψ alg₁ alg₂ φψ-eq alg-eq x =
+  cataS-cong Φ-eq x
+  where
+    Φ-eq : ∀ (z : ⟦ translateF IntRep G ⟧SF B)
+         → alg₁ (coerce-μ-out wfF B (coerce-μ-in F B (φ (coerce-μ-out wfG B z))))
+         ≡ alg₂ (coerce-μ-out wfF B (coerce-μ-in F B (ψ (coerce-μ-out wfG B z))))
+    Φ-eq z =
+      trans (cong (λ w → alg₁ (coerce-μ-out wfF B (coerce-μ-in F B w)))
+                  (φψ-eq (coerce-μ-out wfG B z)))
+            (alg-eq (coerce-μ-out wfF B (coerce-μ-in F B (ψ (coerce-μ-out wfG B z)))))
 
--- | Monoid-accumulating fuse/hylo (the `fuseW` wrappers). Same coercions as
--- `sem-fuse`/`sem-hylo`, but the algebra and transform/coalgebra return a
--- `(monoid , value)` pair, threaded by `fuseW` in fused depth-first order
--- (transform pre, children, algebra post). With `M = List SigOpEvent` this is
--- the SigOp trace of the fused hylomorphism; with `M = ⊤` it is `sem-fuse`.
-sem-fuse-events : ∀ {M : Set} (_·_ : M → M → M) (ε : M)
-                  (F G : Functor) → WellFormedF F → WellFormedF G → {B : Set}
-                → (⟦ F ⟧F B → M × B)
-                → (⟦ G ⟧F (⟦μ⟧ G) → M × ⟦ F ⟧F (⟦μ⟧ G))
-                → ⟦μ⟧ G → M × B
-sem-fuse-events {M} _·_ ε F G wfF wfG {B} alg transform =
-  fuseW {translateF IntRep F} {translateF IntRep G} {B} {M} _·_ ε
+-- | Monoid-accumulating natural fusion (the `fuseNatW` wrapper, D062). The
+-- trace counterpart of `sem-fuseNat`: same coercions, but the algebra returns
+-- a `(monoid , value)` pair threaded by `fuseNatW` in fused depth-first order
+-- (children, then algebra post). The transform is a NATURAL transformation, so
+-- it realizes no effects and contributes the monoid unit `ε` per layer — all
+-- accumulation comes from the algebra. With `M = List SigOpEvent` this is the
+-- SigOp trace of the (structural, total) fused hylomorphism. Pragma-free:
+-- `fuseNatW` is `cataS`-derived. Replaces the `fuseW`-based `sem-fuse-events`.
+sem-fuseNat-events : ∀ {M : Set} (_·_ : M → M → M) (ε : M)
+                     (F G : Functor) → WellFormedF F → WellFormedF G → {B : Set}
+                   → (∀ {A} → ⟦ G ⟧F A → ⟦ F ⟧F A)   -- natural transform: G ⇒ F
+                   → (⟦ F ⟧F B → M × B)               -- algebra: F(B) → (M , B)
+                   → ⟦μ⟧ G → M × B
+sem-fuseNat-events {M} _·_ ε F G wfF wfG {B} transform alg =
+  fuseNatW {translateF IntRep F} {translateF IntRep G} {B} {M} _·_ ε
+    (λ {A} sg → (ε , coerce-μ-in F A (transform (coerce-μ-out wfG A sg))))
     (λ sfb → alg (coerce-μ-out wfF B sfb))
-    (λ sg → let r = transform (coerce-μ-out wfG (⟦μ⟧ G) sg)
-            in (proj₁ r , coerce-μ-in F (⟦μ⟧ G) (proj₂ r)))
-
-sem-hylo-events : ∀ {M : Set} (_·_ : M → M → M) (ε : M)
-                  (F G : Functor) → WellFormedF F → WellFormedF G → {B : Set}
-                → (⟦ F ⟧F B → M × B)
-                → (⟦μ⟧ G → M × ⟦ F ⟧F (⟦μ⟧ G))
-                → ⟦μ⟧ G → M × B
-sem-hylo-events {M} _·_ ε F G wfF wfG {B} alg coalg =
-  sem-fuse-events {M} _·_ ε F G wfF wfG {B} alg (λ gμG → coalg (sem-In G gμG))
 
 ------------------------------------------------------------------------
 -- μ-Coercion Round-Trip Properties (OCP-0003)
@@ -983,15 +971,10 @@ sem-ana-Out-id {F} wf x = trans (sem-ana-is-anaS-unfoldS wf x) (anaS-Out-id (tra
 
 ------------------------------------------------------------------------
 -- Hylomorphism Laws (OCP-0003 Phase 10)
+--
+-- D062: `sem-hylo`/`sem-fuse` (the `fuseW`-based folds) are GONE; `Fuse`/
+-- `Hylo` now carry a natural transformation (`NatTr`) and denote via the
+-- total `sem-fuseNat`/`sem-fuseNat-events`. By `fuse ≡ hylo` the two schemes
+-- coincide definitionally (both fold `cataS (alg ∘ transform)`), so the old
+-- `sem-hylo-is-fuse` bridge is vacuous and has been removed.
 ------------------------------------------------------------------------
-
--- | Hylomorphism is equivalent to Fuse with composed transform
---
--- sem-hylo alg coalg = sem-fuse alg (coalg ∘ sem-In)
---
--- This is exactly how sem-hylo is defined, so the proof is refl.
---
-sem-hylo-is-fuse : ∀ (F G : Functor) (wfF : WellFormedF F) (wfG : WellFormedF G) {B : Set}
-                 → (alg : ⟦ F ⟧F B → B) (coalg : ⟦μ⟧ G → ⟦ F ⟧F (⟦μ⟧ G)) (x : ⟦μ⟧ G)
-                 → sem-hylo F G wfF wfG alg coalg x ≡ sem-fuse F G wfF wfG alg (coalg ∘ sem-In G) x
-sem-hylo-is-fuse F G wfF wfG alg coalg x = refl

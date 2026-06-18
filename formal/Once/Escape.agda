@@ -65,6 +65,9 @@ escape-compose g f = g ∘ f
 -- points to identify stack-allocatable values.
 --
 escape-once : ∀ {A B} → IR A B → IR A B
+-- D062: escape analysis descends into the constant-leaf IRs of a Fuse/Hylo's
+-- natural transform; the structural routing (ntId/ntFst/…) is unchanged.
+escape-nt : ∀ {G F} → NatTr G F → NatTr G F
 
 -- Identity: nothing to optimize
 escape-once id = id
@@ -121,11 +124,20 @@ escape-once (Para {F} wf alg) = Para {F} wf (escape-once alg)
 escape-once (Out wf) = Out wf
 escape-once (in-ν wf m) = in-ν wf m
 escape-once (Ana {F} wf coalg) = Ana {F} wf (escape-once coalg)
-escape-once (Hylo {F} {G} wfF wfG alg coalg) = Hylo {F} {G} wfF wfG (escape-once alg) (escape-once coalg)
+escape-once (Hylo {F} {G} wfF wfG alg t) = Hylo {F} {G} wfF wfG (escape-once alg) (escape-nt t)
 -- Fuse: μ-anchored fusion (correct by construction)
-escape-once (Fuse {F} {G} wfF wfG alg transform) = Fuse {F} {G} wfF wfG (escape-once alg) (escape-once transform)
+escape-once (Fuse {F} {G} wfF wfG alg t) = Fuse {F} {G} wfF wfG (escape-once alg) (escape-nt t)
 -- Guard/Unguard removed: productivity follows from IR totality
 -- out-μ/in-ν: Lambek isomorphisms, pass through
+
+escape-nt ntId         = ntId
+escape-nt (ntK ir)     = ntK (escape-once ir)
+escape-nt (ntFst t)    = ntFst (escape-nt t)
+escape-nt (ntSnd t)    = ntSnd (escape-nt t)
+escape-nt (ntCase t u) = ntCase (escape-nt t) (escape-nt u)
+escape-nt (ntInl t)    = ntInl (escape-nt t)
+escape-nt (ntInr t)    = ntInr (escape-nt t)
+escape-nt (ntPair t u) = ntPair (escape-nt t) (escape-nt u)
 
 ------------------------------------------------------------------------
 -- Escape Analysis: Bounded Iteration
