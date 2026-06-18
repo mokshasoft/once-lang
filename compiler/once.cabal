@@ -52,15 +52,20 @@ library
       MAlonzo.Code.Agda.Builtin.Char
       MAlonzo.Code.Agda.Builtin.Char.Properties
       MAlonzo.Code.Agda.Builtin.Equality
+      MAlonzo.Code.Agda.Builtin.Float
+      MAlonzo.Code.Agda.Builtin.Float.Properties
       MAlonzo.Code.Agda.Builtin.Int
       MAlonzo.Code.Agda.Builtin.List
       MAlonzo.Code.Agda.Builtin.Maybe
       MAlonzo.Code.Agda.Builtin.Nat
       MAlonzo.Code.Agda.Builtin.Sigma
       MAlonzo.Code.Agda.Builtin.Size
+      MAlonzo.Code.Agda.Builtin.Strict
       MAlonzo.Code.Agda.Builtin.String
       MAlonzo.Code.Agda.Builtin.String.Properties
       MAlonzo.Code.Agda.Builtin.Unit
+      MAlonzo.Code.Agda.Builtin.Word
+      MAlonzo.Code.Agda.Builtin.Word.Properties
       MAlonzo.Code.Agda.Primitive
       MAlonzo.Code.Algebra
       MAlonzo.Code.Algebra.Bundles
@@ -101,6 +106,7 @@ library
       MAlonzo.Code.Data.Bool.Base
       MAlonzo.Code.Data.Bool.ListAction
       MAlonzo.Code.Data.Bool.Properties
+      MAlonzo.Code.Data.Char
       MAlonzo.Code.Data.Char.Base
       MAlonzo.Code.Data.Char.Properties
       MAlonzo.Code.Data.Digit
@@ -110,6 +116,9 @@ library
       MAlonzo.Code.Data.Fin.Base
       MAlonzo.Code.Data.Fin.Patterns
       MAlonzo.Code.Data.Fin.Properties
+      MAlonzo.Code.Data.Float
+      MAlonzo.Code.Data.Float.Base
+      MAlonzo.Code.Data.Float.Properties
       MAlonzo.Code.Data.Integer
       MAlonzo.Code.Data.Integer.Base
       MAlonzo.Code.Data.Integer.Properties
@@ -143,13 +152,17 @@ library
       MAlonzo.Code.Data.List.Relation.Unary.All
       MAlonzo.Code.Data.List.Relation.Unary.AllPairs
       MAlonzo.Code.Data.List.Relation.Unary.AllPairs.Core
+      MAlonzo.Code.Data.List.Relation.Unary.All.Properties
       MAlonzo.Code.Data.List.Relation.Unary.All.Properties.Core
       MAlonzo.Code.Data.List.Relation.Unary.Any
       MAlonzo.Code.Data.List.Relation.Unary.Any.Properties
       MAlonzo.Code.Data.List.Relation.Unary.Unique.Setoid
       MAlonzo.Code.Data.List.Scans.Base
+      MAlonzo.Code.Data.Maybe
       MAlonzo.Code.Data.Maybe.Base
       MAlonzo.Code.Data.Maybe.Effectful
+      MAlonzo.Code.Data.Maybe.Properties
+      MAlonzo.Code.Data.Maybe.Relation.Unary.All
       MAlonzo.Code.Data.Maybe.Relation.Unary.Any
       MAlonzo.Code.Data.Nat
       MAlonzo.Code.Data.Nat.Base
@@ -171,6 +184,7 @@ library
       MAlonzo.Code.Data.Product.Properties
       MAlonzo.Code.Data.Product.Relation.Binary.Pointwise.NonDependent
       MAlonzo.Code.Data.Product.Relation.Unary.All
+      MAlonzo.Code.Data.Sign
       MAlonzo.Code.Data.Sign.Base
       MAlonzo.Code.Data.Sign.Properties
       MAlonzo.Code.Data.String
@@ -184,16 +198,21 @@ library
       MAlonzo.Code.Data.Sum.Properties
       MAlonzo.Code.Data.Sum.Relation.Binary.Pointwise
       MAlonzo.Code.Data.These.Base
+      MAlonzo.Code.Data.Unit
       MAlonzo.Code.Data.Unit.Base
       MAlonzo.Code.Data.Unit.Polymorphic
       MAlonzo.Code.Data.Unit.Polymorphic.Base
       MAlonzo.Code.Data.Unit.Polymorphic.Properties
+      MAlonzo.Code.Data.Unit.Properties
       MAlonzo.Code.Data.Vec.Base
+      MAlonzo.Code.Data.Word64.Base
+      MAlonzo.Code.Data.Word64.Properties
       MAlonzo.Code.Effect.Applicative
       MAlonzo.Code.Effect.Choice
       MAlonzo.Code.Effect.Empty
       MAlonzo.Code.Effect.Functor
       MAlonzo.Code.Effect.Monad
+      MAlonzo.Code.Function
       MAlonzo.Code.Function.Base
       MAlonzo.Code.Function.Bundles
       MAlonzo.Code.Function.Consequences
@@ -222,11 +241,12 @@ library
       MAlonzo.Code.Function.Properties.Surjection
       MAlonzo.Code.Function.Related.Propositional
       MAlonzo.Code.Function.Related.TypeIsomorphisms
+      MAlonzo.Code.Function.Strict
       MAlonzo.Code.Function.Structures
+      MAlonzo.Code.Function.Structures.Biased
       MAlonzo.Code.Induction
       MAlonzo.Code.Induction.WellFounded
       MAlonzo.Code.Level
-      -- Frontend modules (extracted via MAlonzo from verified Agda)
       MAlonzo.Code.Once.Allocator.AbstractInstance
       MAlonzo.Code.Once.Allocator.Interface
       MAlonzo.Code.Once.Arith.Backend.X86.CodeGen
@@ -239,30 +259,51 @@ library
       MAlonzo.Code.Once.Arith.Machine.IR
       MAlonzo.Code.Once.Arith.Machine.Recognise
       MAlonzo.Code.Once.Arith.Machine.Rewrite
+      MAlonzo.Code.Once.Arith.Machine.Shape
+      MAlonzo.Code.Once.Arith.Machine.WordSem
       MAlonzo.Code.Once.Arith.SigOp.Block
       MAlonzo.Code.Once.Arith.SigOp.Builders
       MAlonzo.Code.Once.Arith.SigOp.IntLit
       MAlonzo.Code.Once.Arith.Type
+      MAlonzo.Code.Once.CCC.Codegen.CataIRSlotStable
+      MAlonzo.Code.Once.CCC.Codegen.CataNextSlot
+      MAlonzo.Code.Once.CCC.Codegen.FlatStepLemmas
+      MAlonzo.Code.Once.CCC.Codegen.IRObsCorrectFlat
+      MAlonzo.Code.Once.CCC.Codegen.IRToTrace
+      MAlonzo.Code.Once.CCC.Eval
       MAlonzo.Code.Once.CCC.FrameSemantics
       MAlonzo.Code.Once.CCC.IR
+      MAlonzo.Code.Once.CCC.IR.Size
+      MAlonzo.Code.Once.CCC.IR.Stack
       MAlonzo.Code.Once.CCC.Label
-      MAlonzo.Code.Once.CCC.SigOp.Info
+      MAlonzo.Code.Once.CCC.Machine.Allocation
+      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed
+      MAlonzo.Code.Once.CCC.Machine.Flat
+      MAlonzo.Code.Once.CCC.Machine.IR.MuValidity
       MAlonzo.Code.Once.CCC.Machine.SMCore
-      MAlonzo.Code.Once.CCC.Codegen.IRToTrace
-      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.AbstractToX86
-      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.CodeGen.Primitives
-      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Emit
-      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax
-      MAlonzo.Code.Once.CCC.Target.X86Z45Z32.AbstractToX86Z45Z32
-      MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Emit
-      MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics
-      MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Syntax
-      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Semantics
+      MAlonzo.Code.Once.CCC.Machine.SMPrimitives
+      MAlonzo.Code.Once.CCC.Machine.Validity
+      MAlonzo.Code.Once.CCC.Machine.WriteOps
+      MAlonzo.Code.Once.CCC.SigOp.Info
       MAlonzo.Code.Once.CCC.Target.RiscV64.AbstractToRiscV
       MAlonzo.Code.Once.CCC.Target.RiscV64.Emit
       MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics
       MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax
+      MAlonzo.Code.Once.CCC.Target.X86Z45Z32.AbstractToX86Z45Z32
+      MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Emit
+      MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics
+      MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Syntax
+      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.AbstractToX86
+      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.CodeGen.Primitives
+      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Emit
+      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.FrameInstantiation
+      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Layout
+      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.RuntimeParams
+      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Semantics
+      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.StackGrowth
+      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax
       MAlonzo.Code.Once.Compile
+      MAlonzo.Code.Once.Compiler
       MAlonzo.Code.Once.Escape
       MAlonzo.Code.Once.Functor.Base
       MAlonzo.Code.Once.Functor.Decide
@@ -271,20 +312,24 @@ library
       MAlonzo.Code.Once.Grammar.ConcreteDec
       MAlonzo.Code.Once.Grammar.Convert
       MAlonzo.Code.Once.Grammar.ExprBridge
-      MAlonzo.Code.Once.Grammar.ModuleConvert
       MAlonzo.Code.Once.Grammar.ExprConvert
       MAlonzo.Code.Once.Grammar.ExprPrinter
       MAlonzo.Code.Once.Grammar.ExprRelRoundtrip
       MAlonzo.Code.Once.Grammar.ExprRoundtrip
+      MAlonzo.Code.Once.Grammar.ModuleConvert
       MAlonzo.Code.Once.Grammar.ParserBridge
       MAlonzo.Code.Once.Grammar.ParserInvariant
       MAlonzo.Code.Once.Grammar.ParserRelation
       MAlonzo.Code.Once.Grammar.Printer
       MAlonzo.Code.Once.Grammar.RelRoundtrip
       MAlonzo.Code.Once.Grammar.Roundtrip
+      MAlonzo.Code.Once.Memory.FrameOps
       MAlonzo.Code.Once.Memory.HeapAddress
       MAlonzo.Code.Once.Memory.Memory
       MAlonzo.Code.Once.Memory.MemoryLayoutSemantics
+      MAlonzo.Code.Once.Memory.Regions
+      MAlonzo.Code.Once.Memory.RuntimeContract
+      MAlonzo.Code.Once.Memory.StackSlots
       MAlonzo.Code.Once.Optimize
       MAlonzo.Code.Once.Parser
       MAlonzo.Code.Once.Parser.AccIrrelevant
@@ -305,28 +350,27 @@ library
       MAlonzo.Code.Once.Parser.Module.Import
       MAlonzo.Code.Once.Parser.Module.OpName
       MAlonzo.Code.Once.Parser.Module.Resolve
+      MAlonzo.Code.Once.Parser.PolyType
       MAlonzo.Code.Once.Parser.Tests
       MAlonzo.Code.Once.Parser.Token
-      MAlonzo.Code.Once.Parser.PolyType
       MAlonzo.Code.Once.Parser.Type
       MAlonzo.Code.Once.Parser.TypeAlias
       MAlonzo.Code.Once.Parser.TypeRelation
       MAlonzo.Code.Once.Postulates
       MAlonzo.Code.Once.Semantics.Core
-      MAlonzo.Code.Once.Semantics.IR
       MAlonzo.Code.Once.Semantics.Machine
       MAlonzo.Code.Once.Surface.Desugar
-      MAlonzo.Code.Once.Surface.Properties
       MAlonzo.Code.Once.Surface.Elaborate
       MAlonzo.Code.Once.Surface.IR
+      MAlonzo.Code.Once.Surface.Properties
       MAlonzo.Code.Once.Surface.Syntax
       MAlonzo.Code.Once.Surface.Thinning
       MAlonzo.Code.Once.Target
       MAlonzo.Code.Once.Target.Arch
-      MAlonzo.Code.Once.Target.Symbol
-      MAlonzo.Code.Once.Target.X86Z45Z64
-      MAlonzo.Code.Once.Target.X86Z45Z32
       MAlonzo.Code.Once.Target.RiscV64
+      MAlonzo.Code.Once.Target.Symbol
+      MAlonzo.Code.Once.Target.X86Z45Z32
+      MAlonzo.Code.Once.Target.X86Z45Z64
       MAlonzo.Code.Once.Type
       MAlonzo.Code.Once.TypeCheck.Classify
       MAlonzo.Code.Once.TypeCheck.Context
@@ -336,15 +380,28 @@ library
       MAlonzo.Code.Once.TypeCheck.Morph
       MAlonzo.Code.Once.TypeCheck.Raw
       MAlonzo.Code.Once.Verified
+      MAlonzo.Code.Once.Verified.ArchCorrectness
+      MAlonzo.Code.Once.Verified.ArchCorrectness.X86Z45Z64
       MAlonzo.Code.Once.Verified.Behavior
+      MAlonzo.Code.Once.Verified.Compile
       MAlonzo.Code.Once.Verified.CPU
       MAlonzo.Code.Once.Verified.CPU.Interface
       MAlonzo.Code.Once.Verified.CPU.RiscV64
       MAlonzo.Code.Once.Verified.CPU.X86Z45Z32
       MAlonzo.Code.Once.Verified.CPU.X86Z45Z64
-      MAlonzo.Code.Once.Verified.Compile
+      MAlonzo.Code.Once.Verified.DenotTrace
+      MAlonzo.Code.Once.Verified.ElaborateTrace
+      MAlonzo.Code.Once.Verified.FaithfulLemmas
+      MAlonzo.Code.Once.Verified.FlatEvents
+      MAlonzo.Code.Once.Verified.MainAlign
+      MAlonzo.Code.Once.Verified.SourceDenote
+      MAlonzo.Code.Once.Verified.SourceFaithful
+      MAlonzo.Code.Once.Verified.SourceSemantics
+      MAlonzo.Code.Once.Verified.SourceTrace
+      MAlonzo.Code.Once.Verified.Trace
+      MAlonzo.Code.Once.Verified.TraceDenote
+      MAlonzo.Code.Once.Verified.TraceMonad
       MAlonzo.Code.Once.Word
-      MAlonzo.Code.Once.Compiler
       MAlonzo.Code.Relation.Binary
       MAlonzo.Code.Relation.Binary.Bundles
       MAlonzo.Code.Relation.Binary.Bundles.Raw

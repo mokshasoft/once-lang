@@ -101,10 +101,10 @@ data ImportRef = ImportRef
 -- MAlonzo conversion (update suffixes after regenerating)
 ------------------------------------------------------------------------
 
-toMStage :: Stage -> MC.T_Stage_534
-toMStage Parse = MC.C_Parse_536
-toMStage Check = MC.C_Check_538
-toMStage Build = MC.C_Build_540
+toMStage :: Stage -> MC.T_Stage_578
+toMStage Parse = MC.C_Parse_580
+toMStage Check = MC.C_Check_582
+toMStage Build = MC.C_Build_584
 
 -- Single shared `Arch` enum (Once.Target.Arch). The compiler and the verified
 -- pipeline now use the SAME type, so one converter serves both call sites
@@ -137,12 +137,12 @@ fromMPolyFunInfo pfi = PolyFunSig
   , polyFunSigType = agdaToText (MT.d_showPolyType_464 (MP.d_pfunType_148 pfi))
   }
 
-fromMResult :: MC.T_CompileResult_542 -> CompileResult
-fromMResult (MC.C_Parsed_544 fis pfis) =
+fromMResult :: MC.T_CompileResult_586 -> CompileResult
+fromMResult (MC.C_Parsed_588 fis pfis) =
   Parsed (map fromMFunInfo fis) (map fromMPolyFunInfo pfis)
-fromMResult (MC.C_Checked_546 _)  = Checked
-fromMResult (MC.C_Built_548 asm)  = Built (agdaToText asm)
-fromMResult (MC.C_Error_550 err)  = Error (agdaToText err)
+fromMResult (MC.C_Checked_590 _)  = Checked
+fromMResult (MC.C_Built_592 asm)  = Built (agdaToText asm)
+fromMResult (MC.C_Error_594 err)  = Error (agdaToText err)
 
 ------------------------------------------------------------------------
 -- One-shot legacy pipeline
@@ -150,7 +150,7 @@ fromMResult (MC.C_Error_550 err)  = Error (agdaToText err)
 
 compile :: Stage -> Bool -> Arch -> Text -> CompileResult
 compile stage doOpt arch source =
-  fromMResult (MC.d_compile_586 (toMAllocMode AllocHeap) (toMStage stage) doOpt (toMArch arch) (textToAgda source))
+  fromMResult (MC.d_compile_630 (toMAllocMode AllocHeap) (toMStage stage) doOpt (toMArch arch) (textToAgda source))
 
 ------------------------------------------------------------------------
 -- AST-level pipeline
@@ -164,7 +164,7 @@ compile stage doOpt arch source =
 -- silently producing a module with missing decls.
 parseSource :: Text -> Either Text Module
 parseSource source =
-  case MC.d_parseSourceToModule_412 (textToAgda source) of
+  case MC.d_parseSourceToModule_456 (textToAgda source) of
     MSum.C_inj'8321'_38 err -> Left (agdaToText err)
     MSum.C_inj'8322'_42 m   -> Right (Module (unsafeCoerce m))
 
@@ -226,9 +226,9 @@ resolveImports modMap (Module userMod) =
 data AllocMode = AllocStack | AllocHeap
   deriving (Eq, Show)
 
-toMAllocMode :: AllocMode -> MCIR.T_AllocMode_258
-toMAllocMode AllocStack = MCIR.C_Stack_260
-toMAllocMode AllocHeap  = MCIR.C_Heap_262
+toMAllocMode :: AllocMode -> MCIR.T_AllocMode_266
+toMAllocMode AllocStack = MCIR.C_Stack_268
+toMAllocMode AllocHeap  = MCIR.C_Heap_270
 
 compileFromModule :: AllocMode -> Stage -> Bool -> Arch -> Module -> CompileResult
 compileFromModule m stage doOpt arch (Module mod_) =

@@ -19,12 +19,13 @@ import qualified MAlonzo.RTE
 import qualified Data.Text
 import qualified MAlonzo.Code.Agda.Builtin.Maybe
 import qualified MAlonzo.Code.Once.Arith.Machine.AbsState
+import qualified MAlonzo.Code.Once.Arith.Machine.Shape
 import qualified MAlonzo.Code.Once.Word
 
 -- Once.Arith.Machine.AbsInstr.AbstractInstr
 d_AbstractInstr_8 = ()
 data T_AbstractInstr_8
-  = C_load'45'input_10 [MAlonzo.Code.Once.Arith.Machine.AbsState.T_Side_22]
+  = C_load'45'input_10 [MAlonzo.Code.Once.Arith.Machine.Shape.T_Side_22]
                        Integer |
     C_load'45'imm_12 Integer Integer |
     C_add'45'rrr_14 Integer Integer Integer |
@@ -63,224 +64,222 @@ d_maybe'45'zero_42 v0
       MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v1 -> coe v1
       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe (0 :: Integer)
       _ -> MAlonzo.RTE.mazUnreachableError
--- Once.Arith.Machine.AbsInstr.step
-d_step_48 ::
-  MAlonzo.Code.Once.Arith.Machine.AbsState.T_InputShape_8 ->
+-- Once.Arith.Machine.AbsInstr.Exec.step
+d_step_64 ::
+  Integer ->
+  MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
   T_AbstractInstr_8 ->
-  MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_170 ->
-  MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_170
-d_step_48 v0 v1
-  = case coe v1 of
-      C_load'45'input_10 v2 v3
+  MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
+d_step_64 v0 v1 v2
+  = case coe v2 of
+      C_load'45'input_10 v3 v4
         -> coe
-             (\ v4 ->
+             (\ v5 ->
                 coe
-                  MAlonzo.Code.Once.Arith.Machine.AbsState.C_mk'45'state_190
+                  MAlonzo.Code.Once.Arith.Machine.AbsState.C_mk'45'state_150
                   (coe
-                     MAlonzo.Code.Once.Arith.Machine.AbsState.d__'91'_'8614'_'93'_54
-                     (coe MAlonzo.Code.Once.Arith.Machine.AbsState.d_regs_182 (coe v4))
-                     (coe v3)
+                     MAlonzo.Code.Once.Arith.Machine.AbsState.d__'91'_'8614'_'93'_14
+                     (coe MAlonzo.Code.Once.Arith.Machine.AbsState.d_regs_142 (coe v5))
+                     (coe v4)
                      (coe
                         MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                         (coe
-                           MAlonzo.Code.Once.Word.d_fromℤ_18 (coe (64 :: Integer))
+                           MAlonzo.Code.Once.Word.d_fromℤ_18 (coe v0)
                            (coe
                               d_maybe'45'zero_42
                               (coe
-                                 MAlonzo.Code.Once.Arith.Machine.AbsState.d_project_32 (coe v0)
-                                 (coe v2)
+                                 MAlonzo.Code.Once.Arith.Machine.Shape.d_project_32 (coe v1)
+                                 (coe v3)
                                  (coe
-                                    MAlonzo.Code.Once.Arith.Machine.AbsState.d_input_188
-                                    (coe v4)))))))
+                                    MAlonzo.Code.Once.Arith.Machine.AbsState.d_input_148
+                                    (coe v5)))))))
                   (coe
-                     MAlonzo.Code.Once.Arith.Machine.AbsState.d_scratch_184 (coe v4))
+                     MAlonzo.Code.Once.Arith.Machine.AbsState.d_scratch_144 (coe v5))
                   (coe
-                     MAlonzo.Code.Once.Arith.Machine.AbsState.d_output_186 (coe v4))
+                     MAlonzo.Code.Once.Arith.Machine.AbsState.d_output_146 (coe v5))
                   (coe
-                     MAlonzo.Code.Once.Arith.Machine.AbsState.d_input_188 (coe v4)))
-      C_load'45'imm_12 v2 v3
+                     MAlonzo.Code.Once.Arith.Machine.AbsState.d_input_148 (coe v5)))
+      C_load'45'imm_12 v3 v4
         -> coe
-             (\ v4 ->
+             (\ v5 ->
                 coe
-                  MAlonzo.Code.Once.Arith.Machine.AbsState.C_mk'45'state_190
+                  MAlonzo.Code.Once.Arith.Machine.AbsState.C_mk'45'state_150
                   (coe
-                     MAlonzo.Code.Once.Arith.Machine.AbsState.d__'91'_'8614'_'93'_54
-                     (coe MAlonzo.Code.Once.Arith.Machine.AbsState.d_regs_182 (coe v4))
-                     (coe v3)
+                     MAlonzo.Code.Once.Arith.Machine.AbsState.d__'91'_'8614'_'93'_14
+                     (coe MAlonzo.Code.Once.Arith.Machine.AbsState.d_regs_142 (coe v5))
+                     (coe v4)
                      (coe
                         MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                        (coe
-                           MAlonzo.Code.Once.Word.d_fromℤ_18 (coe (64 :: Integer)) (coe v2))))
+                        (coe MAlonzo.Code.Once.Word.d_fromℤ_18 (coe v0) (coe v3))))
                   (coe
-                     MAlonzo.Code.Once.Arith.Machine.AbsState.d_scratch_184 (coe v4))
+                     MAlonzo.Code.Once.Arith.Machine.AbsState.d_scratch_144 (coe v5))
                   (coe
-                     MAlonzo.Code.Once.Arith.Machine.AbsState.d_output_186 (coe v4))
+                     MAlonzo.Code.Once.Arith.Machine.AbsState.d_output_146 (coe v5))
                   (coe
-                     MAlonzo.Code.Once.Arith.Machine.AbsState.d_input_188 (coe v4)))
-      C_add'45'rrr_14 v2 v3 v4
+                     MAlonzo.Code.Once.Arith.Machine.AbsState.d_input_148 (coe v5)))
+      C_add'45'rrr_14 v3 v4 v5
         -> coe
-             (\ v5 ->
+             (\ v6 ->
                 coe
-                  MAlonzo.Code.Once.Arith.Machine.AbsState.C_mk'45'state_190
+                  MAlonzo.Code.Once.Arith.Machine.AbsState.C_mk'45'state_150
                   (coe
-                     MAlonzo.Code.Once.Arith.Machine.AbsState.d__'91'_'8614'_'93'_54
-                     (coe MAlonzo.Code.Once.Arith.Machine.AbsState.d_regs_182 (coe v5))
-                     (coe v2)
-                     (coe
-                        d_bin'45'op_28
-                        (coe MAlonzo.Code.Once.Word.d__'8853'__24 (coe (64 :: Integer)))
-                        (coe
-                           MAlonzo.Code.Once.Arith.Machine.AbsState.d__'91'_'93'_84
-                           (coe MAlonzo.Code.Once.Arith.Machine.AbsState.d_regs_182 (coe v5))
-                           (coe v3))
-                        (coe
-                           MAlonzo.Code.Once.Arith.Machine.AbsState.d__'91'_'93'_84
-                           (coe MAlonzo.Code.Once.Arith.Machine.AbsState.d_regs_182 (coe v5))
-                           (coe v4))))
-                  (coe
-                     MAlonzo.Code.Once.Arith.Machine.AbsState.d_scratch_184 (coe v5))
-                  (coe
-                     MAlonzo.Code.Once.Arith.Machine.AbsState.d_output_186 (coe v5))
-                  (coe
-                     MAlonzo.Code.Once.Arith.Machine.AbsState.d_input_188 (coe v5)))
-      C_sub'45'rrr_16 v2 v3 v4
-        -> coe
-             (\ v5 ->
-                coe
-                  MAlonzo.Code.Once.Arith.Machine.AbsState.C_mk'45'state_190
-                  (coe
-                     MAlonzo.Code.Once.Arith.Machine.AbsState.d__'91'_'8614'_'93'_54
-                     (coe MAlonzo.Code.Once.Arith.Machine.AbsState.d_regs_182 (coe v5))
-                     (coe v2)
-                     (coe
-                        d_bin'45'op_28
-                        (coe MAlonzo.Code.Once.Word.d__'8854'__30 (coe (64 :: Integer)))
-                        (coe
-                           MAlonzo.Code.Once.Arith.Machine.AbsState.d__'91'_'93'_84
-                           (coe MAlonzo.Code.Once.Arith.Machine.AbsState.d_regs_182 (coe v5))
-                           (coe v3))
-                        (coe
-                           MAlonzo.Code.Once.Arith.Machine.AbsState.d__'91'_'93'_84
-                           (coe MAlonzo.Code.Once.Arith.Machine.AbsState.d_regs_182 (coe v5))
-                           (coe v4))))
-                  (coe
-                     MAlonzo.Code.Once.Arith.Machine.AbsState.d_scratch_184 (coe v5))
-                  (coe
-                     MAlonzo.Code.Once.Arith.Machine.AbsState.d_output_186 (coe v5))
-                  (coe
-                     MAlonzo.Code.Once.Arith.Machine.AbsState.d_input_188 (coe v5)))
-      C_mul'45'rrr_18 v2 v3 v4
-        -> coe
-             (\ v5 ->
-                coe
-                  MAlonzo.Code.Once.Arith.Machine.AbsState.C_mk'45'state_190
-                  (coe
-                     MAlonzo.Code.Once.Arith.Machine.AbsState.d__'91'_'8614'_'93'_54
-                     (coe MAlonzo.Code.Once.Arith.Machine.AbsState.d_regs_182 (coe v5))
-                     (coe v2)
-                     (coe
-                        d_bin'45'op_28
-                        (coe MAlonzo.Code.Once.Word.d__'8855'__36 (coe (64 :: Integer)))
-                        (coe
-                           MAlonzo.Code.Once.Arith.Machine.AbsState.d__'91'_'93'_84
-                           (coe MAlonzo.Code.Once.Arith.Machine.AbsState.d_regs_182 (coe v5))
-                           (coe v3))
-                        (coe
-                           MAlonzo.Code.Once.Arith.Machine.AbsState.d__'91'_'93'_84
-                           (coe MAlonzo.Code.Once.Arith.Machine.AbsState.d_regs_182 (coe v5))
-                           (coe v4))))
-                  (coe
-                     MAlonzo.Code.Once.Arith.Machine.AbsState.d_scratch_184 (coe v5))
-                  (coe
-                     MAlonzo.Code.Once.Arith.Machine.AbsState.d_output_186 (coe v5))
-                  (coe
-                     MAlonzo.Code.Once.Arith.Machine.AbsState.d_input_188 (coe v5)))
-      C_neg'45'rr_20 v2 v3
-        -> coe
-             (\ v4 ->
-                coe
-                  MAlonzo.Code.Once.Arith.Machine.AbsState.C_mk'45'state_190
-                  (coe
-                     MAlonzo.Code.Once.Arith.Machine.AbsState.d__'91'_'8614'_'93'_54
-                     (coe MAlonzo.Code.Once.Arith.Machine.AbsState.d_regs_182 (coe v4))
-                     (coe v2)
-                     (coe
-                        d_un'45'op_36
-                        (coe MAlonzo.Code.Once.Word.d_'8861'__42 (coe (64 :: Integer)))
-                        (coe
-                           MAlonzo.Code.Once.Arith.Machine.AbsState.d__'91'_'93'_84
-                           (coe MAlonzo.Code.Once.Arith.Machine.AbsState.d_regs_182 (coe v4))
-                           (coe v3))))
-                  (coe
-                     MAlonzo.Code.Once.Arith.Machine.AbsState.d_scratch_184 (coe v4))
-                  (coe
-                     MAlonzo.Code.Once.Arith.Machine.AbsState.d_output_186 (coe v4))
-                  (coe
-                     MAlonzo.Code.Once.Arith.Machine.AbsState.d_input_188 (coe v4)))
-      C_spill_22 v2 v3
-        -> coe
-             (\ v4 ->
-                coe
-                  MAlonzo.Code.Once.Arith.Machine.AbsState.C_mk'45'state_190
-                  (coe MAlonzo.Code.Once.Arith.Machine.AbsState.d_regs_182 (coe v4))
-                  (coe
-                     MAlonzo.Code.Once.Arith.Machine.AbsState.d__'91'_'8614'_'93'_54
-                     (coe
-                        MAlonzo.Code.Once.Arith.Machine.AbsState.d_scratch_184 (coe v4))
+                     MAlonzo.Code.Once.Arith.Machine.AbsState.d__'91'_'8614'_'93'_14
+                     (coe MAlonzo.Code.Once.Arith.Machine.AbsState.d_regs_142 (coe v6))
                      (coe v3)
                      (coe
-                        MAlonzo.Code.Once.Arith.Machine.AbsState.d__'91'_'93'_84
-                        (coe MAlonzo.Code.Once.Arith.Machine.AbsState.d_regs_182 (coe v4))
-                        (coe v2)))
+                        d_bin'45'op_28 (coe MAlonzo.Code.Once.Word.d__'8853'__24 (coe v0))
+                        (coe
+                           MAlonzo.Code.Once.Arith.Machine.AbsState.d__'91'_'93'_44
+                           (coe MAlonzo.Code.Once.Arith.Machine.AbsState.d_regs_142 (coe v6))
+                           (coe v4))
+                        (coe
+                           MAlonzo.Code.Once.Arith.Machine.AbsState.d__'91'_'93'_44
+                           (coe MAlonzo.Code.Once.Arith.Machine.AbsState.d_regs_142 (coe v6))
+                           (coe v5))))
                   (coe
-                     MAlonzo.Code.Once.Arith.Machine.AbsState.d_output_186 (coe v4))
+                     MAlonzo.Code.Once.Arith.Machine.AbsState.d_scratch_144 (coe v6))
                   (coe
-                     MAlonzo.Code.Once.Arith.Machine.AbsState.d_input_188 (coe v4)))
-      C_reload_24 v2 v3
+                     MAlonzo.Code.Once.Arith.Machine.AbsState.d_output_146 (coe v6))
+                  (coe
+                     MAlonzo.Code.Once.Arith.Machine.AbsState.d_input_148 (coe v6)))
+      C_sub'45'rrr_16 v3 v4 v5
+        -> coe
+             (\ v6 ->
+                coe
+                  MAlonzo.Code.Once.Arith.Machine.AbsState.C_mk'45'state_150
+                  (coe
+                     MAlonzo.Code.Once.Arith.Machine.AbsState.d__'91'_'8614'_'93'_14
+                     (coe MAlonzo.Code.Once.Arith.Machine.AbsState.d_regs_142 (coe v6))
+                     (coe v3)
+                     (coe
+                        d_bin'45'op_28 (coe MAlonzo.Code.Once.Word.d__'8854'__30 (coe v0))
+                        (coe
+                           MAlonzo.Code.Once.Arith.Machine.AbsState.d__'91'_'93'_44
+                           (coe MAlonzo.Code.Once.Arith.Machine.AbsState.d_regs_142 (coe v6))
+                           (coe v4))
+                        (coe
+                           MAlonzo.Code.Once.Arith.Machine.AbsState.d__'91'_'93'_44
+                           (coe MAlonzo.Code.Once.Arith.Machine.AbsState.d_regs_142 (coe v6))
+                           (coe v5))))
+                  (coe
+                     MAlonzo.Code.Once.Arith.Machine.AbsState.d_scratch_144 (coe v6))
+                  (coe
+                     MAlonzo.Code.Once.Arith.Machine.AbsState.d_output_146 (coe v6))
+                  (coe
+                     MAlonzo.Code.Once.Arith.Machine.AbsState.d_input_148 (coe v6)))
+      C_mul'45'rrr_18 v3 v4 v5
+        -> coe
+             (\ v6 ->
+                coe
+                  MAlonzo.Code.Once.Arith.Machine.AbsState.C_mk'45'state_150
+                  (coe
+                     MAlonzo.Code.Once.Arith.Machine.AbsState.d__'91'_'8614'_'93'_14
+                     (coe MAlonzo.Code.Once.Arith.Machine.AbsState.d_regs_142 (coe v6))
+                     (coe v3)
+                     (coe
+                        d_bin'45'op_28 (coe MAlonzo.Code.Once.Word.d__'8855'__36 (coe v0))
+                        (coe
+                           MAlonzo.Code.Once.Arith.Machine.AbsState.d__'91'_'93'_44
+                           (coe MAlonzo.Code.Once.Arith.Machine.AbsState.d_regs_142 (coe v6))
+                           (coe v4))
+                        (coe
+                           MAlonzo.Code.Once.Arith.Machine.AbsState.d__'91'_'93'_44
+                           (coe MAlonzo.Code.Once.Arith.Machine.AbsState.d_regs_142 (coe v6))
+                           (coe v5))))
+                  (coe
+                     MAlonzo.Code.Once.Arith.Machine.AbsState.d_scratch_144 (coe v6))
+                  (coe
+                     MAlonzo.Code.Once.Arith.Machine.AbsState.d_output_146 (coe v6))
+                  (coe
+                     MAlonzo.Code.Once.Arith.Machine.AbsState.d_input_148 (coe v6)))
+      C_neg'45'rr_20 v3 v4
+        -> coe
+             (\ v5 ->
+                coe
+                  MAlonzo.Code.Once.Arith.Machine.AbsState.C_mk'45'state_150
+                  (coe
+                     MAlonzo.Code.Once.Arith.Machine.AbsState.d__'91'_'8614'_'93'_14
+                     (coe MAlonzo.Code.Once.Arith.Machine.AbsState.d_regs_142 (coe v5))
+                     (coe v3)
+                     (coe
+                        d_un'45'op_36 (coe MAlonzo.Code.Once.Word.d_'8861'__42 (coe v0))
+                        (coe
+                           MAlonzo.Code.Once.Arith.Machine.AbsState.d__'91'_'93'_44
+                           (coe MAlonzo.Code.Once.Arith.Machine.AbsState.d_regs_142 (coe v5))
+                           (coe v4))))
+                  (coe
+                     MAlonzo.Code.Once.Arith.Machine.AbsState.d_scratch_144 (coe v5))
+                  (coe
+                     MAlonzo.Code.Once.Arith.Machine.AbsState.d_output_146 (coe v5))
+                  (coe
+                     MAlonzo.Code.Once.Arith.Machine.AbsState.d_input_148 (coe v5)))
+      C_spill_22 v3 v4
+        -> coe
+             (\ v5 ->
+                coe
+                  MAlonzo.Code.Once.Arith.Machine.AbsState.C_mk'45'state_150
+                  (coe MAlonzo.Code.Once.Arith.Machine.AbsState.d_regs_142 (coe v5))
+                  (coe
+                     MAlonzo.Code.Once.Arith.Machine.AbsState.d__'91'_'8614'_'93'_14
+                     (coe
+                        MAlonzo.Code.Once.Arith.Machine.AbsState.d_scratch_144 (coe v5))
+                     (coe v4)
+                     (coe
+                        MAlonzo.Code.Once.Arith.Machine.AbsState.d__'91'_'93'_44
+                        (coe MAlonzo.Code.Once.Arith.Machine.AbsState.d_regs_142 (coe v5))
+                        (coe v3)))
+                  (coe
+                     MAlonzo.Code.Once.Arith.Machine.AbsState.d_output_146 (coe v5))
+                  (coe
+                     MAlonzo.Code.Once.Arith.Machine.AbsState.d_input_148 (coe v5)))
+      C_reload_24 v3 v4
+        -> coe
+             (\ v5 ->
+                coe
+                  MAlonzo.Code.Once.Arith.Machine.AbsState.C_mk'45'state_150
+                  (coe
+                     MAlonzo.Code.Once.Arith.Machine.AbsState.d__'91'_'8614'_'93'_14
+                     (coe MAlonzo.Code.Once.Arith.Machine.AbsState.d_regs_142 (coe v5))
+                     (coe v4)
+                     (coe
+                        MAlonzo.Code.Once.Arith.Machine.AbsState.d__'91'_'93'_44
+                        (coe
+                           MAlonzo.Code.Once.Arith.Machine.AbsState.d_scratch_144 (coe v5))
+                        (coe v3)))
+                  (coe
+                     MAlonzo.Code.Once.Arith.Machine.AbsState.d_scratch_144 (coe v5))
+                  (coe
+                     MAlonzo.Code.Once.Arith.Machine.AbsState.d_output_146 (coe v5))
+                  (coe
+                     MAlonzo.Code.Once.Arith.Machine.AbsState.d_input_148 (coe v5)))
+      C_move'45'to'45'out_26 v3
         -> coe
              (\ v4 ->
                 coe
-                  MAlonzo.Code.Once.Arith.Machine.AbsState.C_mk'45'state_190
+                  MAlonzo.Code.Once.Arith.Machine.AbsState.C_mk'45'state_150
+                  (coe MAlonzo.Code.Once.Arith.Machine.AbsState.d_regs_142 (coe v4))
                   (coe
-                     MAlonzo.Code.Once.Arith.Machine.AbsState.d__'91'_'8614'_'93'_54
-                     (coe MAlonzo.Code.Once.Arith.Machine.AbsState.d_regs_182 (coe v4))
-                     (coe v3)
-                     (coe
-                        MAlonzo.Code.Once.Arith.Machine.AbsState.d__'91'_'93'_84
-                        (coe
-                           MAlonzo.Code.Once.Arith.Machine.AbsState.d_scratch_184 (coe v4))
-                        (coe v2)))
+                     MAlonzo.Code.Once.Arith.Machine.AbsState.d_scratch_144 (coe v4))
                   (coe
-                     MAlonzo.Code.Once.Arith.Machine.AbsState.d_scratch_184 (coe v4))
+                     MAlonzo.Code.Once.Arith.Machine.AbsState.d__'91'_'93'_44
+                     (coe MAlonzo.Code.Once.Arith.Machine.AbsState.d_regs_142 (coe v4))
+                     (coe v3))
                   (coe
-                     MAlonzo.Code.Once.Arith.Machine.AbsState.d_output_186 (coe v4))
-                  (coe
-                     MAlonzo.Code.Once.Arith.Machine.AbsState.d_input_188 (coe v4)))
-      C_move'45'to'45'out_26 v2
-        -> coe
-             (\ v3 ->
-                coe
-                  MAlonzo.Code.Once.Arith.Machine.AbsState.C_mk'45'state_190
-                  (coe MAlonzo.Code.Once.Arith.Machine.AbsState.d_regs_182 (coe v3))
-                  (coe
-                     MAlonzo.Code.Once.Arith.Machine.AbsState.d_scratch_184 (coe v3))
-                  (coe
-                     MAlonzo.Code.Once.Arith.Machine.AbsState.d__'91'_'93'_84
-                     (coe MAlonzo.Code.Once.Arith.Machine.AbsState.d_regs_182 (coe v3))
-                     (coe v2))
-                  (coe
-                     MAlonzo.Code.Once.Arith.Machine.AbsState.d_input_188 (coe v3)))
+                     MAlonzo.Code.Once.Arith.Machine.AbsState.d_input_148 (coe v4)))
       _ -> MAlonzo.RTE.mazUnreachableError
--- Once.Arith.Machine.AbsInstr.run-abstract
-d_run'45'abstract_112 ::
-  MAlonzo.Code.Once.Arith.Machine.AbsState.T_InputShape_8 ->
+-- Once.Arith.Machine.AbsInstr.Exec.run-abstract
+d_run'45'abstract_128 ::
+  Integer ->
+  MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
   [T_AbstractInstr_8] ->
-  MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_170 ->
-  MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_170
-d_run'45'abstract_112 v0 v1 v2
-  = case coe v1 of
-      [] -> coe v2
-      (:) v3 v4
+  MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
+  MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
+d_run'45'abstract_128 v0 v1 v2 v3
+  = case coe v2 of
+      [] -> coe v3
+      (:) v4 v5
         -> coe
-             d_run'45'abstract_112 (coe v0) (coe v4) (coe d_step_48 v0 v3 v2)
+             d_run'45'abstract_128 (coe v0) (coe v1) (coe v5)
+             (coe d_step_64 v0 v1 v4 v3)
       _ -> MAlonzo.RTE.mazUnreachableError

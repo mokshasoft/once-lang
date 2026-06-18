@@ -331,7 +331,7 @@ d_compile'45'abstract_14 v0
       MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'sigop_2110 v1 v2 v3
         -> coe
              MAlonzo.Code.Once.CCC.Target.X86Z45Z64.CodeGen.Primitives.d_compile'45'sigOp_12
-             (coe MAlonzo.Code.Once.CCC.SigOp.Info.d_name_290 (coe v3))
+             (coe MAlonzo.Code.Once.CCC.SigOp.Info.d_name_166 (coe v3))
       MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'load'45'const_2114 v1 v2 v3
         -> coe
              MAlonzo.Code.Once.CCC.Target.X86Z45Z64.CodeGen.Primitives.du_compile'45'const_24
