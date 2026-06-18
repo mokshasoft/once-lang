@@ -637,11 +637,33 @@ d_anaS'45'unfoldS'45'bisim_1170 v0 v1
   = coe
       C_constructor_1028
       (coe
-         du_sfmap'45'f'45'rel_1130 (coe v0)
-         (coe d_anaS'45'unfoldS'45'bisim_1170 (coe v0))
+         d_sfmapAna'45'bisim_1178 (coe v0) (coe v0)
          (coe d_unfoldS_204 (coe v1)))
+-- Once.Functor.Base.sfmapAna-bisim
+d_sfmapAna'45'bisim_1178 ::
+  T_SFunctor_6 -> T_SFunctor_6 -> AgdaAny -> AgdaAny
+d_sfmapAna'45'bisim_1178 v0 v1 v2
+  = case coe v1 of
+      C_SK_8 -> erased
+      C_SId_10 -> coe d_anaS'45'unfoldS'45'bisim_1170 (coe v0) (coe v2)
+      C__S'8853'__12 v3 v4
+        -> case coe v2 of
+             MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v5
+               -> coe d_sfmapAna'45'bisim_1178 (coe v0) (coe v3) (coe v5)
+             MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v5
+               -> coe d_sfmapAna'45'bisim_1178 (coe v0) (coe v4) (coe v5)
+             _ -> MAlonzo.RTE.mazUnreachableError
+      C__S'8855'__14 v3 v4
+        -> case coe v2 of
+             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v5 v6
+               -> coe
+                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                    (coe d_sfmapAna'45'bisim_1178 (coe v0) (coe v3) (coe v5))
+                    (coe d_sfmapAna'45'bisim_1178 (coe v0) (coe v4) (coe v6))
+             _ -> MAlonzo.RTE.mazUnreachableError
+      _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Functor.Base.anaS-Out-id
-d_anaS'45'Out'45'id_1182 ::
+d_anaS'45'Out'45'id_1212 ::
   T_SFunctor_6 ->
   T_νS_198 -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_anaS'45'Out'45'id_1182 = erased
+d_anaS'45'Out'45'id_1212 = erased

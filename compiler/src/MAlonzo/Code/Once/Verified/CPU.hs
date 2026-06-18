@@ -45,7 +45,7 @@ d_arch'45'semantics_6 v0
 d_exec_8 ::
   MAlonzo.Code.Once.Target.Arch.T_Arch_6 ->
   [MAlonzo.Code.Data.Fin.Base.T_Fin_10] ->
-  Integer -> [MAlonzo.Code.Once.Verified.Trace.T_SigOpEvent_138]
+  Integer -> [MAlonzo.Code.Once.Verified.Trace.T_SigOpEvent_136]
 d_exec_8 v0 v1
   = coe
       MAlonzo.Code.Once.Verified.CPU.Interface.d_exec'45'bytes_40
