@@ -10,12 +10,14 @@
 -- "programs don't return values"). The exit code is just the argument
 -- of the program's `linux.exit` call, recovered from the event list.
 --
--- A (possibly infinite) trace is represented by the STEP/FUEL-INDEXED
--- denotation `Once.Verified.TraceDenote.obs` as the family of its
--- finite prefixes (a `List SigOpEvent` per fuel bound). This avoids
--- coinduction and sized types; productive programs are handled by
--- proving agreement at every bound (the take-lemma). This module
--- defines the finite event vocabulary; `obs` is in `TraceDenote`.
+-- A (possibly infinite) trace is represented by the OBSERVATION-DEPTH-
+-- INDEXED denotation `Once.Verified.DenotTrace.evalᴰ` (via `projTrace`)
+-- as the family of its finite prefixes (a `List SigOpEvent` per depth
+-- bound). This avoids coinduction and sized types; productive programs
+-- are handled by proving agreement at every bound (the take-lemma). This
+-- module defines the finite event vocabulary; the denotation is in
+-- `DenotTrace` (the retired operational `obs` reader once lived in
+-- `TraceDenote`, now reduced to shared event helpers).
 ------------------------------------------------------------------------
 
 module Once.Verified.Trace where
