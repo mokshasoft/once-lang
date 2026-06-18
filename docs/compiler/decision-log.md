@@ -4354,7 +4354,7 @@ over an abstract interpretation — no concrete interpretation is baked in.**
 
 **Date**: 2026-06-18
 **Status**: Accepted
-**Implements**: branch `heap-only-pivot-2` (the meaning-layer TP cleanup); supersedes the
+**Implements**: branch `clean-semantics` (the meaning-layer TP cleanup); supersedes the
 OCP-0003 "input is `μG` ⟹ well-founded" assumption.
 **Triggered by**: trying to *prove* termination while retiring the `TERMINATING` pragmas — the
 attempt exposed that the meaning's `Hylo`/`Fuse` assert totality by fiat for coalgebras that can
