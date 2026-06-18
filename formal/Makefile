@@ -305,6 +305,32 @@ postulates-x86-64: postulates-ccc-x86-64 postulates-arith-x86-64
 	@echo "Postulate check complete for X86-64."
 
 #-----------------------------------------------------------------------------
+# Denotational-semantics TP-cleanliness gate (D062)
+#-----------------------------------------------------------------------------
+
+# Fast iteration tracker (grep only, no Agda run): scans the denotational
+# meaning's transitive import closure for TERMINATING / trustMe / --sized-types
+# / postulate. Pass roots as args; default = the semantic core (evalᴰ + ⟦_⟧ˢ).
+# NOTE: this is import-closure, a CONSERVATIVE over-approximation of the
+# use-chain — it also surfaces in-closure-but-unused pragmas (e.g. the abstract
+# machine's exec-loop, pulled via CCC.IR). GREEN ⟹ definitely TP-clean.
+.PHONY: denot-audit
+denot-audit:
+	@bash scripts/denot-audit.sh
+
+# Rigorous machine-enforced gate: typecheck Once.Verified.DenotClean under
+# {-# OPTIONS --safe #-}. GREEN ⟹ the whole import closure is free of
+# TERMINATING / trustMe / --sized-types. Slow while dirty (--safe re-elaborates
+# cold and can't cache until clean); fast + green once clean. Run at milestones.
+.PHONY: denot-safe
+denot-safe:
+	@if [ -z "$$AGDA_SAFE_ACTIVE" ] && [ -z "$$AGDA_SAFE_DISABLE" ]; then \
+	  exec $(CURDIR)/scripts/agda-safe.sh agda MODULE=Once/Verified/DenotClean.agda; \
+	fi
+	@echo "Type-checking Once.Verified.DenotClean under --safe..."
+	@sh -c '$(AGDA_CMD) Once/Verified/DenotClean.agda'
+
+#-----------------------------------------------------------------------------
 # Utilities
 #-----------------------------------------------------------------------------
 
