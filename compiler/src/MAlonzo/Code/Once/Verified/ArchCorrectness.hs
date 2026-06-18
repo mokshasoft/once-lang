@@ -18,30 +18,28 @@ import MAlonzo.RTE (coe, erased, AgdaAny, addInt, subInt, mulInt,
 import qualified MAlonzo.RTE
 import qualified Data.Text
 import qualified MAlonzo.Code.Once.Target.Arch
+import qualified MAlonzo.Code.Once.Verified.ArchCorrectness.X86Z45Z64
 import qualified MAlonzo.Code.Once.Verified.Compile
 
--- Once.Verified.ArchCorrectness.x86-64-correct
-d_x86'45'64'45'correct_6
-  = error
-      "MAlonzo Runtime Error: postulate evaluated: Once.Verified.ArchCorrectness.x86-64-correct"
 -- Once.Verified.ArchCorrectness.x86-32-correct
-d_x86'45'32'45'correct_8
+d_x86'45'32'45'correct_6
   = error
       "MAlonzo Runtime Error: postulate evaluated: Once.Verified.ArchCorrectness.x86-32-correct"
 -- Once.Verified.ArchCorrectness.riscv64-correct
-d_riscv64'45'correct_10
+d_riscv64'45'correct_8
   = error
       "MAlonzo Runtime Error: postulate evaluated: Once.Verified.ArchCorrectness.riscv64-correct"
 -- Once.Verified.ArchCorrectness.arch-correctness
-d_arch'45'correctness_14 ::
+d_arch'45'correctness_12 ::
   MAlonzo.Code.Once.Target.Arch.T_Arch_6 ->
   MAlonzo.Code.Once.Verified.Compile.T_ArchCorrect_46
-d_arch'45'correctness_14 v0
+d_arch'45'correctness_12 v0
   = case coe v0 of
       MAlonzo.Code.Once.Target.Arch.C_x86'45'64_8
-        -> coe d_x86'45'64'45'correct_6
+        -> coe
+             MAlonzo.Code.Once.Verified.ArchCorrectness.X86Z45Z64.d_x86'45'64'45'correct_24
       MAlonzo.Code.Once.Target.Arch.C_x86'45'32_10
-        -> coe d_x86'45'32'45'correct_8
+        -> coe d_x86'45'32'45'correct_6
       MAlonzo.Code.Once.Target.Arch.C_riscv64_12
-        -> coe d_riscv64'45'correct_10
+        -> coe d_riscv64'45'correct_8
       _ -> MAlonzo.RTE.mazUnreachableError

@@ -61,7 +61,7 @@ d_x86'45'32'45'irToBodies_16 ::
   Integer ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
-  MAlonzo.Code.Once.CCC.IR.T_IR_274 ->
+  MAlonzo.Code.Once.CCC.IR.T_IR_282 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_x86'45'32'45'irToBodies_16 v0 ~v1 ~v2 ~v3
   = du_x86'45'32'45'irToBodies_16 v0
@@ -81,7 +81,7 @@ d_x86'45'32'45'irToAsm_26 ::
   Integer ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
-  MAlonzo.Code.Once.CCC.IR.T_IR_274 ->
+  MAlonzo.Code.Once.CCC.IR.T_IR_282 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_x86'45'32'45'irToAsm_26 v0 v1 v2 v3
   = coe

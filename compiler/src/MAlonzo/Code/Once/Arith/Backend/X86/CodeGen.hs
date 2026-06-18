@@ -23,7 +23,7 @@ import qualified MAlonzo.Code.Agda.Builtin.Maybe
 import qualified MAlonzo.Code.Data.List.Base
 import qualified MAlonzo.Code.Once.Arith.Backend.X86.Syntax
 import qualified MAlonzo.Code.Once.Arith.Machine.AbsInstr
-import qualified MAlonzo.Code.Once.Arith.Machine.AbsState
+import qualified MAlonzo.Code.Once.Arith.Machine.Shape
 import qualified MAlonzo.Code.Relation.Nullary.Decidable.Core
 import qualified MAlonzo.Code.Relation.Nullary.Reflects
 
@@ -148,15 +148,15 @@ d_abs'45'reg_16 v0
       _ -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
 -- Once.Arith.Backend.X86.CodeGen.path-offset
 d_path'45'offset_18 ::
-  [MAlonzo.Code.Once.Arith.Machine.AbsState.T_Side_22] -> Integer
+  [MAlonzo.Code.Once.Arith.Machine.Shape.T_Side_22] -> Integer
 d_path'45'offset_18 v0
   = case coe v0 of
       [] -> coe (0 :: Integer)
       (:) v1 v2
         -> case coe v1 of
-             MAlonzo.Code.Once.Arith.Machine.AbsState.C_Fst_24
+             MAlonzo.Code.Once.Arith.Machine.Shape.C_Fst_24
                -> coe d_path'45'offset_18 (coe v2)
-             MAlonzo.Code.Once.Arith.Machine.AbsState.C_Snd_26
+             MAlonzo.Code.Once.Arith.Machine.Shape.C_Snd_26
                -> coe
                     addInt (coe (8 :: Integer)) (coe d_path'45'offset_18 (coe v2))
              _ -> MAlonzo.RTE.mazUnreachableError

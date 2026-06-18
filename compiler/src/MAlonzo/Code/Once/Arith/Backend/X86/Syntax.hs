@@ -17,7 +17,7 @@ import MAlonzo.RTE (coe, erased, AgdaAny, addInt, subInt, mulInt,
                     rem64, lt64, eq64, word64FromNat, word64ToNat)
 import qualified MAlonzo.RTE
 import qualified Data.Text
-import qualified MAlonzo.Code.Once.Arith.Machine.AbsState
+import qualified MAlonzo.Code.Once.Arith.Machine.Shape
 
 -- Once.Arith.Backend.X86.Syntax.XReg
 d_XReg_10 = ()
@@ -39,7 +39,7 @@ data T_XInstr_28
     C_Xmov'45'r'45'm_34 T_XScratch_20 T_XReg_10 |
     C_Xmov'45'm'45'r_36 T_XReg_10 T_XScratch_20 |
     C_Xmov'45'arg_38 T_XReg_10
-                     [MAlonzo.Code.Once.Arith.Machine.AbsState.T_Side_22] |
+                     [MAlonzo.Code.Once.Arith.Machine.Shape.T_Side_22] |
     C_Xadd'45'rr_40 T_XReg_10 T_XReg_10 |
     C_Xsub'45'rr_42 T_XReg_10 T_XReg_10 |
     C_Ximul'45'rr_44 T_XReg_10 T_XReg_10 | C_Xneg'45'r_46 T_XReg_10 |

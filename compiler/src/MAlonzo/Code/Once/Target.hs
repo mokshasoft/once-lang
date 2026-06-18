@@ -29,18 +29,18 @@ data T_Target_4
   = C_constructor_46 (Integer ->
                       MAlonzo.Code.Once.Type.T_Type_112 ->
                       MAlonzo.Code.Once.Type.T_Type_112 ->
-                      MAlonzo.Code.Once.CCC.IR.T_IR_274 ->
+                      MAlonzo.Code.Once.CCC.IR.T_IR_282 ->
                       MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14)
                      (Integer ->
                       MAlonzo.Code.Once.Type.T_Type_112 ->
                       MAlonzo.Code.Once.Type.T_Type_112 ->
-                      MAlonzo.Code.Once.CCC.IR.T_IR_274 ->
+                      MAlonzo.Code.Once.CCC.IR.T_IR_282 ->
                       MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14)
                      MAlonzo.Code.Agda.Builtin.String.T_String_6
                      (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
                       MAlonzo.Code.Agda.Builtin.String.T_String_6)
                      MAlonzo.Code.Agda.Builtin.String.T_String_6
-                     ([MAlonzo.Code.Once.Arith.Machine.IR.T_ArithBlock_140] ->
+                     ([MAlonzo.Code.Once.Arith.Machine.IR.T_ArithBlock_86] ->
                       MAlonzo.Code.Agda.Builtin.String.T_String_6)
 -- Once.Target.Target.irToAsm
 d_irToAsm_30 ::
@@ -48,7 +48,7 @@ d_irToAsm_30 ::
   Integer ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
-  MAlonzo.Code.Once.CCC.IR.T_IR_274 ->
+  MAlonzo.Code.Once.CCC.IR.T_IR_282 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_irToAsm_30 v0
   = case coe v0 of
@@ -60,7 +60,7 @@ d_irToBodies_36 ::
   Integer ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
-  MAlonzo.Code.Once.CCC.IR.T_IR_274 ->
+  MAlonzo.Code.Once.CCC.IR.T_IR_282 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_irToBodies_36 v0
   = case coe v0 of
@@ -92,7 +92,7 @@ d_functionEpilogue_42 v0
 -- Once.Target.Target.emitArithBlocks
 d_emitArithBlocks_44 ::
   T_Target_4 ->
-  [MAlonzo.Code.Once.Arith.Machine.IR.T_ArithBlock_140] ->
+  [MAlonzo.Code.Once.Arith.Machine.IR.T_ArithBlock_86] ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
 d_emitArithBlocks_44 v0
   = case coe v0 of
