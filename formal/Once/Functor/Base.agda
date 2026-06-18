@@ -508,18 +508,22 @@ sfmap-f-rel (F S⊗ G) hyp (x₁ , x₂) = sfmap-f-rel F hyp x₁ , sfmap-f-rel 
 
 -- | anaS unfoldS is bisimilar to id (coinductive proof)
 --
--- Proof by coinduction:
---   unfoldS (anaS unfoldS x) = sfmap F (anaS unfoldS) (unfoldS x)  [by ana def]
---   We need: ⟦ F ⟧SF-rel _∼S_ (sfmap F (anaS unfoldS) (unfoldS x)) (unfoldS x)
---   By sfmap-f-rel with coinductive hypothesis (anaS unfoldS y ∼S y), this holds.
---
-{-# TERMINATING #-}
-anaS-unfoldS-bisim : ∀ {F : SFunctor} (x : νS F) → anaS {F} unfoldS x ∼S x
-unfoldS-∼ (anaS-unfoldS-bisim {F} x) =
-  -- `unfoldS (anaS unfoldS x)` now reduces via `sfmapAna`; bridge to `sfmap`.
-  subst (λ z → ⟦ F ⟧SF-rel _∼S_ z (unfoldS x))
-        (sym (sfmapAna-is-sfmap F F unfoldS (unfoldS x)))
-        (sfmap-f-rel F (anaS-unfoldS-bisim {F}) (unfoldS x))
+-- D062: guardedness-CHECKED (global `--guardedness`). `unfoldS (anaS unfoldS x)`
+-- reduces via the mutual `sfmapAna`; the dual mutual `sfmapAna-bisim` places the
+-- corecursive `anaS-unfoldS-bisim` call structurally at `SId`, so Agda sees the
+-- guard WITHOUT the `subst`-over-`sfmapAna-is-sfmap` that previously needed a
+-- termination-pragma assertion. No proof weakening — same theorem.
+mutual
+  anaS-unfoldS-bisim : ∀ {F : SFunctor} (x : νS F) → anaS {F} unfoldS x ∼S x
+  unfoldS-∼ (anaS-unfoldS-bisim {F} x) = sfmapAna-bisim F (unfoldS x)
+
+  sfmapAna-bisim : ∀ {F : SFunctor} (H : SFunctor) (v : ⟦ H ⟧SF (νS F))
+                 → ⟦ H ⟧SF-rel (_∼S_ {F}) (sfmapAna H unfoldS v) v
+  sfmapAna-bisim (SK _)     v        = refl
+  sfmapAna-bisim SId        v        = anaS-unfoldS-bisim v
+  sfmapAna-bisim (H₁ S⊕ H₂) (inj₁ v) = sfmapAna-bisim H₁ v
+  sfmapAna-bisim (H₁ S⊕ H₂) (inj₂ v) = sfmapAna-bisim H₂ v
+  sfmapAna-bisim (H₁ S⊗ H₂) (v₁ , v₂) = sfmapAna-bisim H₁ v₁ , sfmapAna-bisim H₂ v₂
 
 -- | Identity anamorphism: anaS unfoldS ≡ id (PROVEN via bisimulation)
 --

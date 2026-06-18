@@ -625,7 +625,8 @@ sem-CoOut-CoIn {F} wf x = coerce-μ-round-trip wf (⟦ν⟧ F) x
 private
   open _∼S_
 
-  {-# TERMINATING #-}
+  -- D062: guardedness-CHECKED — `sfmap-∼S-refl` places the corecursive
+  -- `∼S-refl-at` call structurally at `SId`, so the guard is visible (no pragma).
   ∼S-refl-at : ∀ {F} → (y : ⟦ν⟧ F) → y ∼S y
   sfmap-∼S-refl : ∀ {F} G (v : ⟦ G ⟧SF (⟦ν⟧ F)) → ⟦ G ⟧SF-rel (_∼S_ {translateF IntRep F}) v v
 
@@ -637,8 +638,9 @@ private
   sfmap-∼S-refl (G₁ S⊕ G₂) (inj₂ v) = sfmap-∼S-refl G₂ v
   sfmap-∼S-refl (G₁ S⊗ G₂) (v₁ , v₂) = sfmap-∼S-refl G₁ v₁ , sfmap-∼S-refl G₂ v₂
 
-  -- | Bisimulation proof for CoIn-CoOut law
-  {-# TERMINATING #-}
+  -- | Bisimulation proof for CoIn-CoOut law.
+  -- D062: non-recursive (delegates to `sfmap-∼S-refl`), so no guardedness
+  -- obligation — the termination pragma was spurious and is removed.
   CoIn-CoOut-bisim : ∀ {F} (wf : WellFormedF F) (y : ⟦ν⟧ F)
                    → sem-CoIn F (sem-CoOut wf y) ∼S y
   unfoldS-∼ (CoIn-CoOut-bisim {F} wf y) =
@@ -898,76 +900,51 @@ coerce-ν-in-sem-CoOut : ∀ {F} → (wf : WellFormedF F) → (x : ⟦ν⟧ F)
                       → coerce-ν-in F (⟦ν⟧ F) (sem-CoOut wf x) ≡ unfoldS x
 coerce-ν-in-sem-CoOut wf x = coerce-μ⁻¹-round-trip wf _ (unfoldS x)
 
--- | Helper: relate sfmap applied to same value with different functions
+-- | sem-ana with the destructor coalgebra (`sem-CoOut`) is the identity,
+-- proven by a DIRECT guarded bisimulation (D062 — no `anaS` bridge, no pragma).
 --
--- If f y ∼S g y for all y in positions of v, then
--- sfmap F f v is related to sfmap F g v.
---
-sfmap-bisim : ∀ G {F : Functor} (f g : ⟦ν⟧ F → ⟦ν⟧ F)
-            → (∀ y → f y ∼S g y)
-            → (v : ⟦ G ⟧SF (⟦ν⟧ F))
-            → ⟦ G ⟧SF-rel (_∼S_) (sfmap G f v) (sfmap G g v)
-sfmap-bisim (SK _) f g hyp v = refl
-sfmap-bisim SId f g hyp v = hyp v
-sfmap-bisim (G₁ S⊕ G₂) f g hyp (inj₁ v) = sfmap-bisim G₁ f g hyp v
-sfmap-bisim (G₁ S⊕ G₂) f g hyp (inj₂ v) = sfmap-bisim G₂ f g hyp v
-sfmap-bisim (G₁ S⊗ G₂) f g hyp (v₁ , v₂) =
-  sfmap-bisim G₁ f g hyp v₁ , sfmap-bisim G₂ f g hyp v₂
+-- `unfoldS (sem-ana F (sem-CoOut wf) v)` reduces (via the mutual `sfmapSemAna`)
+-- to `sfmapSemAna F TF (sem-CoOut wf) (coerce-ν-in F _ (sem-CoOut wf v))`, whose
+-- data differs from `unfoldS w` only by the propositional round-trip
+-- `coerce-ν-in-sem-CoOut`. The textbook `subst` over that equality kills
+-- guardedness; instead we thread the equality as a DATA argument (`v≡w`) through
+-- the mutual structural `sem-ana-Out-rel`, whose `SId` leaf places the
+-- corecursive `sem-ana-Out-bisim` call STRUCTURALLY (no `subst` wrapping it).
+private
+  ⊎injˡ : ∀ {A B : Set} {x y : A} → _≡_ {A = A ⊎ B} (inj₁ x) (inj₁ y) → x ≡ y
+  ⊎injˡ refl = refl
+  ⊎injʳ : ∀ {A B : Set} {x y : B} → _≡_ {A = A ⊎ B} (inj₂ x) (inj₂ y) → x ≡ y
+  ⊎injʳ refl = refl
+  ×injˡ : ∀ {A B : Set} {x₁ y₁ : A} {x₂ y₂ : B} → _≡_ {A = A × B} (x₁ , x₂) (y₁ , y₂) → x₁ ≡ y₁
+  ×injˡ refl = refl
+  ×injʳ : ∀ {A B : Set} {x₁ y₁ : A} {x₂ y₂ : B} → _≡_ {A = A × B} (x₁ , x₂) (y₁ , y₂) → x₂ ≡ y₂
+  ×injʳ refl = refl
 
--- | sem-ana F (sem-CoOut wf) is bisimilar to anaS unfoldS (coinductive proof)
---
--- Both functions satisfy the same corecursive equation:
---   unfoldS (f x) = sfmap TF f (unfoldS x)
---
--- Proof by coinduction:
--- 1. unfoldS (sem-ana F (sem-CoOut wf) x)
---    = sfmap TF (sem-ana F (sem-CoOut wf)) (coerce-ν-in F (sem-CoOut wf x))  [by def]
---    = sfmap TF (sem-ana F (sem-CoOut wf)) (unfoldS x)                       [by round-trip]
---
--- 2. unfoldS (anaS unfoldS x)
---    = sfmap TF (anaS unfoldS) (unfoldS x)                                   [by def]
---
--- Both observations are sfmap TF applied to the same underlying value (unfoldS x)
--- but with different functions. By sfmap-bisim with the coinductive hypothesis
--- (sem-ana F (sem-CoOut wf) y ∼S anaS unfoldS y for all y), they are related.
---
-{-# TERMINATING #-}
-sem-ana-bisim-anaS : ∀ {F} → (wf : WellFormedF F) → (x : ⟦ν⟧ F)
-                   → sem-ana F (sem-CoOut wf) x ∼S anaS unfoldS x
-_∼S_.unfoldS-∼ (sem-ana-bisim-anaS {F} wf x) =
-  let TF = translateF IntRep F
-      obs-eq : coerce-ν-in F (⟦ν⟧ F) (sem-CoOut wf x) ≡ unfoldS x
-      obs-eq = coerce-ν-in-sem-CoOut wf x
-      -- D062: BOTH `unfoldS (sem-ana …)` and `unfoldS (anaS …)` now reduce via
-      -- the mutual maps (`sfmapSemAna`/`sfmapAna`); bridge each back to `sfmap`
-      -- so the `sfmap-bisim` core applies.
-      lhs-eq : sfmapSemAna F TF (sem-CoOut wf) (coerce-ν-in F (⟦ν⟧ F) (sem-CoOut wf x))
-             ≡ sfmap TF (sem-ana F (sem-CoOut wf)) (unfoldS x)
-      lhs-eq = trans (sfmapSemAna-is-sfmap F TF (sem-CoOut wf)
-                        (coerce-ν-in F (⟦ν⟧ F) (sem-CoOut wf x)))
-                     (cong (sfmap TF (sem-ana F (sem-CoOut wf))) obs-eq)
-      rhs-eq : sfmapAna TF unfoldS (unfoldS x) ≡ sfmap TF (anaS unfoldS) (unfoldS x)
-      rhs-eq = sfmapAna-is-sfmap TF TF unfoldS (unfoldS x)
-  in subst₂ (λ l r → ⟦ TF ⟧SF-rel (_∼S_) l r)
-            (sym lhs-eq) (sym rhs-eq)
-            (sfmap-bisim TF (sem-ana F (sem-CoOut wf)) (anaS unfoldS)
-                         (sem-ana-bisim-anaS wf) (unfoldS x))
+mutual
+  sem-ana-Out-bisim : ∀ {F} (wf : WellFormedF F) (v w : ⟦ν⟧ F)
+                    → v ≡ w → sem-ana F (sem-CoOut wf) v ∼S w
+  unfoldS-∼ (sem-ana-Out-bisim {F} wf v w v≡w) =
+    sem-ana-Out-rel wf (translateF IntRep F)
+      (coerce-ν-in F (⟦ν⟧ F) (sem-CoOut wf v)) (unfoldS w)
+      (trans (coerce-ν-in-sem-CoOut wf v) (cong unfoldS v≡w))
 
--- | sem-ana F (sem-CoOut wf) equals anaS unfoldS (PROVEN via bisimulation)
---
--- Proof: Show bisimilarity via sem-ana-bisim-anaS, then apply bisimS-to-eq.
---
-sem-ana-is-anaS-unfoldS : ∀ {F} → (wf : WellFormedF F) → (x : ⟦ν⟧ F)
-                        → sem-ana F (sem-CoOut wf) x ≡ anaS unfoldS x
-sem-ana-is-anaS-unfoldS wf x =
-  bisimS-to-eq (sem-ana _ (sem-CoOut wf) x) (anaS unfoldS x) (sem-ana-bisim-anaS wf x)
+  sem-ana-Out-rel : ∀ {F} (wf : WellFormedF F) (H : SFunctor)
+                    (a b : ⟦ H ⟧SF (⟦ν⟧ F)) → a ≡ b
+                  → ⟦ H ⟧SF-rel (_∼S_ {translateF IntRep F})
+                      (sfmapSemAna F H (sem-CoOut wf) a) b
+  sem-ana-Out-rel wf (SK _)     a b a≡b = a≡b
+  sem-ana-Out-rel wf SId        a b a≡b = sem-ana-Out-bisim wf a b a≡b
+  sem-ana-Out-rel wf (H₁ S⊕ H₂) (inj₁ a) (inj₁ b) eq = sem-ana-Out-rel wf H₁ a b (⊎injˡ eq)
+  sem-ana-Out-rel wf (H₁ S⊕ H₂) (inj₁ a) (inj₂ b) ()
+  sem-ana-Out-rel wf (H₁ S⊕ H₂) (inj₂ a) (inj₁ b) ()
+  sem-ana-Out-rel wf (H₁ S⊕ H₂) (inj₂ a) (inj₂ b) eq = sem-ana-Out-rel wf H₂ a b (⊎injʳ eq)
+  sem-ana-Out-rel wf (H₁ S⊗ H₂) (a₁ , a₂) (b₁ , b₂) eq =
+    sem-ana-Out-rel wf H₁ a₁ b₁ (×injˡ eq) , sem-ana-Out-rel wf H₂ a₂ b₂ (×injʳ eq)
 
--- | Identity anamorphism: ana with CoOut coalgebra is identity (PROVEN)
---
--- Proof: Combine sem-ana-is-anaS-unfoldS with anaS-Out-id.
---
+-- | Identity anamorphism: ana with CoOut coalgebra is identity (PROVEN).
 sem-ana-Out-id : ∀ {F : Functor} → (wf : WellFormedF F) → (x : ⟦ν⟧ F) → sem-ana F (sem-CoOut wf) x ≡ x
-sem-ana-Out-id {F} wf x = trans (sem-ana-is-anaS-unfoldS wf x) (anaS-Out-id (translateF IntRep F) x)
+sem-ana-Out-id {F} wf x =
+  bisimS-to-eq (sem-ana F (sem-CoOut wf) x) x (sem-ana-Out-bisim wf x x refl)
 
 ------------------------------------------------------------------------
 -- Hylomorphism Laws (OCP-0003 Phase 10)
