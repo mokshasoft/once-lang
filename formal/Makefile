@@ -318,17 +318,18 @@ postulates-x86-64: postulates-ccc-x86-64 postulates-arith-x86-64
 denot-audit:
 	@bash scripts/denot-audit.sh
 
-# Rigorous machine-enforced gate: typecheck Once.Verified.DenotClean under
-# {-# OPTIONS --safe #-}. GREEN ⟹ the whole import closure is free of
-# TERMINATING / trustMe / --sized-types. Slow while dirty (--safe re-elaborates
-# cold and can't cache until clean); fast + green once clean. Run at milestones.
+# Rigorous machine-enforced gate: typecheck the REAL meaning module (no
+# scaffold/island) under --safe (passed on the command line). GREEN ⟹ the whole
+# import closure is free of TERMINATING / trustMe / --sized-types. Becomes a
+# meaningful denotational gate only AFTER the CCC.IR→SMCore decouple (D062) — until
+# then the closure still pulls the abstract machine. Slow while dirty.
 .PHONY: denot-safe
 denot-safe:
 	@if [ -z "$$AGDA_SAFE_ACTIVE" ] && [ -z "$$AGDA_SAFE_DISABLE" ]; then \
-	  exec $(CURDIR)/scripts/agda-safe.sh agda MODULE=Once/Verified/DenotClean.agda; \
+	  exec $(CURDIR)/scripts/agda-safe.sh denot-safe; \
 	fi
-	@echo "Type-checking Once.Verified.DenotClean under --safe..."
-	@sh -c '$(AGDA_CMD) Once/Verified/DenotClean.agda'
+	@echo "Type-checking the denotational meaning (Once.Verified.DenotTrace) under --safe..."
+	@sh -c '$(AGDA_CMD) --safe Once/Verified/DenotTrace.agda'
 
 #-----------------------------------------------------------------------------
 # Utilities
