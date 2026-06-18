@@ -4349,3 +4349,92 @@ over an abstract interpretation — no concrete interpretation is baked in.**
   `TrustedBase` / `--safe`), D060 (the `faithful` proof that triggered this), D025-era
   `EffectShape` contract, D047 (`SigOp` rename). Decision-log D-entry on primitives-are-external
   (2025-12-08) is the original "interpretations live outside the compiler".
+
+## D062: Total+Productive by Construction — No Unwitnessed Recursion; the Recursive-Coalgebra Certificate
+
+**Date**: 2026-06-18
+**Status**: Accepted
+**Implements**: branch `heap-only-pivot-2` (the meaning-layer TP cleanup); supersedes the
+OCP-0003 "input is `μG` ⟹ well-founded" assumption.
+**Triggered by**: trying to *prove* termination while retiring the `TERMINATING` pragmas — the
+attempt exposed that the meaning's `Hylo`/`Fuse` assert totality by fiat for coalgebras that can
+diverge.
+
+### Context
+
+Once is meant to be **total + productive (TP)**: every `μ`-recursion terminates, every
+`ν`-production is productive, no `⊥`. The denotational layer (`⟦_⟧ˢ`/`⟦_⟧ᴰ`/`faithful`) is
+postulate-free *except* for `TERMINATING` pragmas it inherits from `fuseW` (used by
+`sem-fuse`/`sem-hylo`) and the coinductive `sem-ana`. A `TERMINATING` pragma is a
+**postulate-in-disguise**: it asserts termination the checker can't see. The key finding: a
+hylomorphism `hylo = cata ∘ ana` is total **iff its coalgebra is a recursive (well-founded)
+coalgebra**; `cata` (consumes finite `μ`) and `ana` (productive into `ν`) being individually TP
+does **not** transfer through the composition, because it crosses the `μ`/`ν` boundary via a
+coercion that is only total when the unfold bottoms out. OCP-0003 anchored `Hylo`/`Fuse` at a
+`μG` *input* believing that ensured termination — **false**: a coalgebra that synthesizes new
+`μG` via `In` at a recursive position grows without bound despite the `μG` input. That false
+assumption is the source of the dishonest pragma.
+
+### Decision
+
+**TP is a type-level invariant carried by the recursion combinators; there is no
+unwitnessed-recursion escape hatch. The `TERMINATING` pragma is removed and replaced by an
+explicit recursive-coalgebra certificate.**
+
+1. **The schemes, by role.** `cata`/`para` consume `μ` (structural, total-free); `ana` produces
+   `ν` (productive corecursion, total-free); `hylo` generates-then-consumes. `para` is a derived
+   `cata`; `fuse ≡ hylo` (Lambek's `In`/`out-μ` iso — same scheme, coalgebra-packaging difference
+   only, **not** two principles). So the meaning has **one** generate-then-consume scheme; `fuse`
+   is its destructed-layer face.
+2. **The certificate ladder.** Totality of `hylo` requires a *recursive (well-founded) coalgebra*
+   (Capretta–Uustalu–Vene; Adámek–Milius–Moss — for our polynomial functors *recursive* =
+   *well-founded*). Three rungs by how the certificate is discharged: `cata`/`para`/`ana` — free;
+   `hyloS` — trivial/structural certificate, auto-derived (the deforestation/natural case);
+   `hyloW` — a programmer-supplied **measure + descent** witness (the measured case, e.g.
+   quicksort). `cata` = `hylo` at `out-μ` with the always-derivable certificate.
+3. **`μG`-anchoring is NOT a termination certificate** (corrects OCP-0003). The real certificate
+   is *subterm-preservation* (natural ⟹ structural ⟹ `hyloS`) or a *measure* (`hyloW`). `In` at a
+   recursive position is the unique well-foundedness breaker, and `In` is the algebra structure
+   map — **not** a natural transformation — so the natural fragment excludes exactly it.
+4. **`hylo`'s type carries the certificate as an inferred argument:**
+   `hylo alg c {{Recursive c}} → X → A`, where `Recursive c` = a measure into a well-founded order
+   + a per-recursive-position descent proof (or the `Acc` form). Auto-resolved when structural,
+   supplied as a measure when measured.
+
+### Consequences
+
+- **Surface vocabulary** is `cata`/`ana`/`para`/`hylo` — **one** `hylo` keyword; the
+  structural/well-founded (S/W) grading lives entirely internally (`hyloS`/`hyloW`). The Once
+  programmer sees `hylo`, and supplies a measure only for genuine divide-and-conquer.
+- **The elaborator fills the certificate** via a *syntactic* natural-fragment check (the coalgebra
+  IR is `In`-free at recursive positions) — a decidable structural traversal, **not** a general
+  termination prover — whose soundness (natural ⟹ recursive ⟹ total) is proven once, so it adds
+  **no postulate**. A non-structural coalgebra is rejected ("needs a measure") until Phase 2.
+- **Once syntax is unchanged now:** `hylo`/`fuse` are elaborator/optimizer-produced, so the
+  certificate is internal; a measure annotation is a Phase-2 addition only when a real program
+  needs measured recursion.
+- **Deforestation stays an optimization:** a verified pass *transports* the source's certificate
+  (never invents one); `fuse` is re-added to the IR only as a refinement proven equal to `hylo`
+  (denotation = `hylo`, codegen = fused loop, correctness = the deforestation law).
+- **`para`/`fuse` are derived, not primitive**, so the IR's five-scheme zoo collapses toward
+  `cata`/`ana`/`hylo`. Internal `fuseS`/`fuseW` (SFunctor/Writer *carrier* axis) are renamed so the
+  S/W letters mean *structural/well-founded* (certificate axis) consistently.
+- **TP becomes a theorem, not a checker pass:** once the `TERMINATING`s are gone and every
+  recursion justifies itself in its type, "the denotational layer is postulate-free" *is* a proof
+  that Once is total+productive (an OCP-6-class invariant).
+
+### Phasing
+
+- **Phase 1 (now):** structural-only. Remove the `TERMINATING`s; route `Hylo`/`Fuse` through the
+  certificate-graded `hylo` (natural fragment ⟹ `cata`-derived `hyloS`); elaborator auto-fills the
+  structural certificate and rejects non-structural coalgebras. Zero programmer burden.
+- **Phase 2 (deferred):** measured `hyloW` — surface measure annotation + descent verification —
+  added only when a program needs divide-and-conquer that rebuilds (quicksort/mergesort).
+
+### See Also
+
+- D060 (one denotational meaning; the postulate-free target this completes), D058 (productivity,
+  not termination — `ana` is the reactive loop), the recursion-scheme reify work
+  (`reify-recursion-for-foetus-perf`). Literature: Capretta–Uustalu–Vene *Recursive coalgebras
+  from comonads*; Adámek–Milius–Moss–Sousa *On Well-Founded and Recursive Coalgebras* (FoSSaCS
+  2020); Bove–Capretta (well-founded recursion); Meijer–Fokkinga–Paterson (the morphism zoo).
