@@ -1,8 +1,8 @@
 ------------------------------------------------------------------------
--- Once.Functor.Base.Laws
+-- Once.Semantics.Functor.Laws
 --
 -- Coinductive equational LAWS over the polynomial-functor kernel
--- (`Once.Functor.Base`), separated from the definitions module so the
+-- (`Once.Semantics.Functor`), separated from the definitions module so the
 -- denotational meaning can import the kernel *functions* without dragging
 -- in the coalgebraic-extensionality axiom `bisimS-to-eq` (Plan 0.47 step 3).
 --
@@ -11,14 +11,14 @@
 -- the relational-map lemmas, and the identity-anamorphism law `anaS-Out-id`.
 ------------------------------------------------------------------------
 
-module Once.Functor.Base.Laws where
+module Once.Semantics.Functor.Laws where
 
 open import Data.Empty using (⊥)
 open import Data.Product using (_×_; _,_)
 open import Data.Sum using (inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
-open import Once.Functor.Base
+open import Once.Semantics.Functor
 
 -- | Relational interpretation of semantic functors
 --

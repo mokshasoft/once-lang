@@ -5,7 +5,7 @@
 --
 -- This module provides the bridge between:
 --   - Once.Type.Functor (K takes Type)
---   - Once.Functor.Base.SFunctor (K takes Set)
+--   - Once.Semantics.Functor.SFunctor (K takes Set)
 --
 -- The translation uses a base type interpretation that handles only
 -- base types (Unit, Int, etc.), avoiding dependency on ⟦μ⟧.
@@ -24,7 +24,7 @@ open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
 
 open import Once.Type
-open import Once.Functor.Base
+open import Once.Semantics.Functor
 
 ------------------------------------------------------------------------
 -- Base Type Interpretation

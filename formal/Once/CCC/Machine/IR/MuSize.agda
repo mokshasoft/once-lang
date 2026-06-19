@@ -23,7 +23,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 
 open import Once.Type using (Functor; K; Id; _⊕_; _⊗_)
 open import Once.Functor.Translate using (WellFormedF)
-open import Once.Semantics.Core ℕ using (⟦_⟧F; ⟦μ⟧; sem-cata; sem-fmap;
+open import Once.Semantics.Value ℕ using (⟦_⟧F; ⟦μ⟧; sem-cata; sem-fmap;
   sem-Out; sem-In; sem-In-Out; sem-cata-compute)
 
 ------------------------------------------------------------------------

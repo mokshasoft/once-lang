@@ -10,7 +10,7 @@
 
 {-# OPTIONS_GHC -Wno-overlapping-patterns #-}
 
-module MAlonzo.Code.Once.Functor.Base where
+module MAlonzo.Code.Once.Semantics.Functor where
 
 import MAlonzo.RTE (coe, erased, AgdaAny, addInt, subInt, mulInt,
                     quotInt, remInt, geqInt, ltInt, eqInt, add64, sub64, mul64, quot64,
@@ -21,15 +21,15 @@ import qualified MAlonzo.Code.Agda.Builtin.Equality
 import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Data.Sum.Base
 
--- Once.Functor.Base.SFunctor
+-- Once.Semantics.Functor.SFunctor
 d_SFunctor_6 = ()
 data T_SFunctor_6
   = C_SK_8 | C_SId_10 | C__S'8853'__12 T_SFunctor_6 T_SFunctor_6 |
     C__S'8855'__14 T_SFunctor_6 T_SFunctor_6
--- Once.Functor.Base.⟦_⟧SF
+-- Once.Semantics.Functor.⟦_⟧SF
 d_'10214'_'10215'SF_16 :: T_SFunctor_6 -> () -> ()
 d_'10214'_'10215'SF_16 = erased
--- Once.Functor.Base.sfmap
+-- Once.Semantics.Functor.sfmap
 d_sfmap_42 ::
   T_SFunctor_6 ->
   () -> () -> (AgdaAny -> AgdaAny) -> AgdaAny -> AgdaAny
@@ -60,12 +60,12 @@ du_sfmap_42 v0 v1 v2
                     (coe du_sfmap_42 (coe v4) (coe v1) (coe v6))
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
--- Once.Functor.Base.sfmap-id
+-- Once.Semantics.Functor.sfmap-id
 d_sfmap'45'id_88 ::
   T_SFunctor_6 ->
   () -> AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_sfmap'45'id_88 = erased
--- Once.Functor.Base.sfmap-comp
+-- Once.Semantics.Functor.sfmap-comp
 d_sfmap'45'comp_132 ::
   T_SFunctor_6 ->
   () ->
@@ -75,25 +75,25 @@ d_sfmap'45'comp_132 ::
   (AgdaAny -> AgdaAny) ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_sfmap'45'comp_132 = erased
--- Once.Functor.Base.μS
+-- Once.Semantics.Functor.μS
 d_μS_182 a0 = ()
 newtype T_μS_182 = C_'10216'_'10217'_186 AgdaAny
--- Once.Functor.Base.outS
+-- Once.Semantics.Functor.outS
 d_outS_190 :: T_μS_182 -> AgdaAny
 d_outS_190 v0
   = case coe v0 of
       C_'10216'_'10217'_186 v1 -> coe v1
       _ -> MAlonzo.RTE.mazUnreachableError
--- Once.Functor.Base.νS
+-- Once.Semantics.Functor.νS
 d_νS_198 a0 = ()
 data T_νS_198 = C_constructor_206 AgdaAny
--- Once.Functor.Base.νS.unfoldS
+-- Once.Semantics.Functor.νS.unfoldS
 d_unfoldS_204 :: T_νS_198 -> AgdaAny
 d_unfoldS_204 v0
   = case coe v0 of
       C_constructor_206 v1 -> coe v1
       _ -> MAlonzo.RTE.mazUnreachableError
--- Once.Functor.Base.cataS
+-- Once.Semantics.Functor.cataS
 d_cataS_212 ::
   T_SFunctor_6 -> () -> (AgdaAny -> AgdaAny) -> T_μS_182 -> AgdaAny
 d_cataS_212 v0 ~v1 v2 v3 = du_cataS_212 v0 v2 v3
@@ -105,7 +105,7 @@ du_cataS_212 v0 v1 v2
         -> coe
              v1 (coe du_sfmapCata_220 (coe v0) (coe v0) (coe v1) (coe v3))
       _ -> MAlonzo.RTE.mazUnreachableError
--- Once.Functor.Base.sfmapCata
+-- Once.Semantics.Functor.sfmapCata
 d_sfmapCata_220 ::
   T_SFunctor_6 ->
   T_SFunctor_6 -> () -> (AgdaAny -> AgdaAny) -> AgdaAny -> AgdaAny
@@ -137,7 +137,7 @@ du_sfmapCata_220 v0 v1 v2 v3
                     (coe du_sfmapCata_220 (coe v5) (coe v1) (coe v2) (coe v7))
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
--- Once.Functor.Base.anaS
+-- Once.Semantics.Functor.anaS
 d_anaS_268 ::
   T_SFunctor_6 -> () -> (AgdaAny -> AgdaAny) -> AgdaAny -> T_νS_198
 d_anaS_268 v0 ~v1 v2 v3 = du_anaS_268 v0 v2 v3
@@ -147,7 +147,7 @@ du_anaS_268 v0 v1 v2
   = coe
       C_constructor_206
       (coe du_sfmapAna_276 (coe v0) (coe v0) (coe v1) (coe v1 v2))
--- Once.Functor.Base.sfmapAna
+-- Once.Semantics.Functor.sfmapAna
 d_sfmapAna_276 ::
   T_SFunctor_6 ->
   T_SFunctor_6 -> () -> (AgdaAny -> AgdaAny) -> AgdaAny -> AgdaAny
@@ -179,17 +179,17 @@ du_sfmapAna_276 v0 v1 v2 v3
                     (coe du_sfmapAna_276 (coe v0) (coe v5) (coe v2) (coe v7))
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
--- Once.Functor.Base.fold-unfoldS
+-- Once.Semantics.Functor.fold-unfoldS
 d_fold'45'unfoldS_324 ::
   T_SFunctor_6 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_fold'45'unfoldS_324 = erased
--- Once.Functor.Base.unfold-foldS
+-- Once.Semantics.Functor.unfold-foldS
 d_unfold'45'foldS_334 ::
   T_SFunctor_6 ->
   T_μS_182 -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_unfold'45'foldS_334 = erased
--- Once.Functor.Base.sfmapCata-is-sfmap
+-- Once.Semantics.Functor.sfmapCata-is-sfmap
 d_sfmapCata'45'is'45'sfmap_350 ::
   T_SFunctor_6 ->
   T_SFunctor_6 ->
@@ -197,25 +197,25 @@ d_sfmapCata'45'is'45'sfmap_350 ::
   (AgdaAny -> AgdaAny) ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_sfmapCata'45'is'45'sfmap_350 = erased
--- Once.Functor.Base.cataS-computation
+-- Once.Semantics.Functor.cataS-computation
 d_cataS'45'computation_396 ::
   T_SFunctor_6 ->
   () ->
   (AgdaAny -> AgdaAny) ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_cataS'45'computation_396 = erased
--- Once.Functor.Base.cataS-In-id
+-- Once.Semantics.Functor.cataS-In-id
 d_cataS'45'In'45'id_410 ::
   T_SFunctor_6 ->
   T_μS_182 -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_cataS'45'In'45'id_410 = erased
--- Once.Functor.Base.sfmapCata-In-id
+-- Once.Semantics.Functor.sfmapCata-In-id
 d_sfmapCata'45'In'45'id_418 ::
   T_SFunctor_6 ->
   T_SFunctor_6 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_sfmapCata'45'In'45'id_418 = erased
--- Once.Functor.Base.cataS-cong
+-- Once.Semantics.Functor.cataS-cong
 d_cataS'45'cong_462 ::
   T_SFunctor_6 ->
   () ->
@@ -224,7 +224,7 @@ d_cataS'45'cong_462 ::
   (AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
   T_μS_182 -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_cataS'45'cong_462 = erased
--- Once.Functor.Base.sfmapCata-cong
+-- Once.Semantics.Functor.sfmapCata-cong
 d_sfmapCata'45'cong_478 ::
   T_SFunctor_6 ->
   T_SFunctor_6 ->
@@ -234,7 +234,7 @@ d_sfmapCata'45'cong_478 ::
   (AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_sfmapCata'45'cong_478 = erased
--- Once.Functor.Base.sfmapAna-is-sfmap
+-- Once.Semantics.Functor.sfmapAna-is-sfmap
 d_sfmapAna'45'is'45'sfmap_538 ::
   T_SFunctor_6 ->
   T_SFunctor_6 ->
@@ -242,14 +242,14 @@ d_sfmapAna'45'is'45'sfmap_538 ::
   (AgdaAny -> AgdaAny) ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_sfmapAna'45'is'45'sfmap_538 = erased
--- Once.Functor.Base.anaS-unfold
+-- Once.Semantics.Functor.anaS-unfold
 d_anaS'45'unfold_594 ::
   T_SFunctor_6 ->
   () ->
   (AgdaAny -> AgdaAny) ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_anaS'45'unfold_594 = erased
--- Once.Functor.Base.paraS
+-- Once.Semantics.Functor.paraS
 d_paraS_606 ::
   T_SFunctor_6 -> () -> (AgdaAny -> AgdaAny) -> T_μS_182 -> AgdaAny
 d_paraS_606 v0 ~v1 v2 v3 = du_paraS_606 v0 v2 v3
@@ -261,7 +261,7 @@ du_paraS_606 v0 v1 v2
       (coe
          du_cataS_212 (coe v0) (coe du_alg''_620 (coe v0) (coe v1))
          (coe v2))
--- Once.Functor.Base._.alg'
+-- Once.Semantics.Functor._.alg'
 d_alg''_620 ::
   T_SFunctor_6 ->
   () ->
@@ -282,7 +282,7 @@ du_alg''_620 v0 v1 v2
             (coe (\ v3 -> MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28 (coe v3)))
             (coe v2)))
       (coe v1 v2)
--- Once.Functor.Base.fuseNatS
+-- Once.Semantics.Functor.fuseNatS
 d_fuseNatS_632 ::
   T_SFunctor_6 ->
   T_SFunctor_6 ->
@@ -297,7 +297,7 @@ du_fuseNatS_632 ::
   (AgdaAny -> AgdaAny) -> T_μS_182 -> AgdaAny
 du_fuseNatS_632 v0 v1 v2 v3
   = coe du_cataS_212 (coe v0) (coe (\ v4 -> coe v3 (coe v2 v1 v4)))
--- Once.Functor.Base.fuseNatW
+-- Once.Semantics.Functor.fuseNatW
 d_fuseNatW_654 ::
   T_SFunctor_6 ->
   T_SFunctor_6 ->
@@ -322,7 +322,7 @@ du_fuseNatW_654 v0 v1 v2 v3 v4 v5
   = coe
       du_cataS_212 (coe v1)
       (coe du_φ_704 (coe v0) (coe v2) (coe v3) (coe v4) (coe v5))
--- Once.Functor.Base._.collectM
+-- Once.Semantics.Functor._.collectM
 d_collectM_678 ::
   T_SFunctor_6 ->
   T_SFunctor_6 ->
@@ -360,7 +360,7 @@ du_collectM_678 v0 v1 v2 v3
                     (coe du_collectM_678 (coe v0) (coe v1) (coe v5) (coe v7))
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
--- Once.Functor.Base._.φ
+-- Once.Semantics.Functor._.φ
 d_φ_704 ::
   T_SFunctor_6 ->
   T_SFunctor_6 ->
@@ -406,14 +406,14 @@ du_φ_704 v0 v1 v2 v3 v4 v5
                (coe (\ v6 -> MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30 (coe v6)))
                (coe
                   MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30 (coe v3 erased v5)))))
--- Once.Functor.Base.NatSF
+-- Once.Semantics.Functor.NatSF
 d_NatSF_714 a0 a1 = ()
 data T_NatSF_714
   = C_ntId_716 | C_ntK_722 (AgdaAny -> AgdaAny) |
     C_ntFst_730 T_NatSF_714 | C_ntSnd_738 T_NatSF_714 |
     C_ntCase_746 T_NatSF_714 T_NatSF_714 | C_ntInl_754 T_NatSF_714 |
     C_ntInr_762 T_NatSF_714 | C_ntPair_770 T_NatSF_714 T_NatSF_714
--- Once.Functor.Base.appNatSF
+-- Once.Semantics.Functor.appNatSF
 d_appNatSF_778 ::
   T_SFunctor_6 ->
   T_SFunctor_6 -> T_NatSF_714 -> () -> AgdaAny -> AgdaAny
@@ -473,7 +473,7 @@ du_appNatSF_778 v0 v1 v2 v3
                     (coe du_appNatSF_778 (coe v0) (coe v10) (coe v8) (coe v3))
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
--- Once.Functor.Base.appNatSF-natural
+-- Once.Semantics.Functor.appNatSF-natural
 d_appNatSF'45'natural_834 ::
   T_SFunctor_6 ->
   T_SFunctor_6 ->
@@ -483,7 +483,7 @@ d_appNatSF'45'natural_834 ::
   (AgdaAny -> AgdaAny) ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_appNatSF'45'natural_834 = erased
--- Once.Functor.Base.fuseNT
+-- Once.Semantics.Functor.fuseNT
 d_fuseNT_900 ::
   T_SFunctor_6 ->
   T_SFunctor_6 ->
@@ -498,7 +498,7 @@ du_fuseNT_900 v0 v1 v2 v3
       du_fuseNatS_632 (coe v1) erased
       (\ v4 v5 -> coe du_appNatSF_778 (coe v1) (coe v0) (coe v2) v5)
       (coe v3)
--- Once.Functor.Base.fuseNTW
+-- Once.Semantics.Functor.fuseNTW
 d_fuseNTW_920 ::
   T_SFunctor_6 ->
   T_SFunctor_6 ->

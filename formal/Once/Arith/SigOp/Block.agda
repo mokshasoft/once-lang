@@ -44,7 +44,7 @@ open import Once.Arith.Machine.IR
 import Once.Word as OnceWord
 module W = OnceWord.Word64
 
-import Once.Semantics.Core ℕ as M
+import Once.Semantics.Value ℕ as M
 -- (Core ℤ as I removed: block-info's semI deleted — block-semM is the meaning.)
 
 ------------------------------------------------------------------------

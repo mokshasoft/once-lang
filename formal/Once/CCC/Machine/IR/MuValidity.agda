@@ -33,7 +33,7 @@ open import Once.Functor.Translate using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-P
 open import Once.CCC.Machine.Allocation hiding (AllocMode)
 
 -- Import semantic operations
-open import Once.Semantics.Core ℕ using (⟦μ⟧; ⟦ν⟧; ⟦_⟧F; sem-In; sem-Out; sem-CoIn; sem-CoOut)
+open import Once.Semantics.Value ℕ using (⟦μ⟧; ⟦ν⟧; ⟦_⟧F; sem-In; sem-Out; sem-CoIn; sem-CoOut)
 
 -- Import SigOpSem for Validity module
 open import Once.CCC.Eval using ()

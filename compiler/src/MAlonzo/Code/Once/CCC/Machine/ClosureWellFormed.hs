@@ -33,9 +33,9 @@ import qualified MAlonzo.Code.Once.CCC.Machine.Allocation
 import qualified MAlonzo.Code.Once.CCC.Machine.Locations
 import qualified MAlonzo.Code.Once.CCC.Machine.SMCore
 import qualified MAlonzo.Code.Once.CCC.Machine.SMPrimitives
-import qualified MAlonzo.Code.Once.Functor.Base
 import qualified MAlonzo.Code.Once.Functor.Translate
 import qualified MAlonzo.Code.Once.Memory.HeapAddress
+import qualified MAlonzo.Code.Once.Semantics.Functor
 import qualified MAlonzo.Code.Once.Type
 
 -- Once.CCC.Machine.ClosureWellFormed.ClosureWellFormedDef._.AllocBump

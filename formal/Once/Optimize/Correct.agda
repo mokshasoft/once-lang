@@ -142,7 +142,7 @@ eval-unit-unique f x with eval f x
 
 open import Once.CCC.IR using (IR)
 open import Data.Integer using (ℤ)
-open import Once.Semantics.Core ℕ using (sem-cata; sem-para; sem-ana; sem-fuseNat; sem-fuseNat-cong; ⟦_⟧F; coerce-functor; coerce-functor⁻¹)
+open import Once.Semantics.Value ℕ using (sem-cata; sem-para; sem-ana; sem-fuseNat; sem-fuseNat-cong; ⟦_⟧F; coerce-functor; coerce-functor⁻¹)
 
 -- Cata: if two algebras evaluate equally (pointwise), so do their Cata applications.
 -- Proved by cong over the lambda inside the sem-cata call.

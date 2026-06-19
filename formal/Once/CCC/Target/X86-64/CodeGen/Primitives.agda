@@ -23,7 +23,7 @@ open import Once.CCC.Target.X86-64.Syntax
   using (rax; reg; imm; mov; ud2; call-sym; Program)
 open import Once.Target.Symbol using (once-symbol)
 open import Once.Type using (FitsInReg; fits-int; fits-float)
-import Once.Semantics.Core as SC
+import Once.Semantics.Value as SC
 
 ------------------------------------------------------------------------
 -- Plan 0.11: SigOp call by symbolic name.

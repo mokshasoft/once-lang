@@ -18,4 +18,4 @@ module Once.Semantics.Machine where
 open import Data.Nat using (ℕ)
 
 -- Instantiate Core with ℕ for integers
-open import Once.Semantics.Core ℕ public
+open import Once.Semantics.Value ℕ public

@@ -31,7 +31,7 @@ import qualified MAlonzo.Code.Once.Denotation.DenotTrace
 import qualified MAlonzo.Code.Once.Denotation.Trace
 import qualified MAlonzo.Code.Once.Denotation.TraceDenote
 import qualified MAlonzo.Code.Once.Denotation.TraceMonad
-import qualified MAlonzo.Code.Once.Semantics.Core
+import qualified MAlonzo.Code.Once.Semantics.Value
 import qualified MAlonzo.Code.Once.Surface.Syntax
 import qualified MAlonzo.Code.Once.Type
 
@@ -92,10 +92,10 @@ du_z_52 ::
   MAlonzo.Code.Once.Type.T_Functor_110 -> AgdaAny -> AgdaAny
 du_z_52 v0 v1
   = coe
-      MAlonzo.Code.Once.Semantics.Core.du_coerce'45'functor'8315''185'_136
+      MAlonzo.Code.Once.Semantics.Value.du_coerce'45'functor'8315''185'_136
       (coe v0)
       (coe
-         MAlonzo.Code.Once.Semantics.Core.du_sem'45'fmap_418 (coe v0)
+         MAlonzo.Code.Once.Semantics.Value.du_sem'45'fmap_418 (coe v0)
          (coe (\ v2 -> MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30 (coe v2)))
          (coe v1))
 -- Once.Denotation.SourceDenote._.step
@@ -177,7 +177,7 @@ d_layer_86 ::
   AgdaAny -> Integer -> AgdaAny
 d_layer_86 v0 v1 v2 v3 v4
   = coe
-      MAlonzo.Code.Once.Semantics.Core.du_coerce'45'functor_94 (coe v0)
+      MAlonzo.Code.Once.Semantics.Value.du_coerce'45'functor_94 (coe v0)
       (coe
          MAlonzo.Code.Once.Denotation.DenotTrace.d_forget_26
          (coe
@@ -806,7 +806,7 @@ du_'10214'_'10215''738'_98 v0 v1 v2 v3
                                                (coe
                                                   MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                                                   (coe
-                                                     MAlonzo.Code.Once.Semantics.Core.du_sem'45'cata_940
+                                                     MAlonzo.Code.Once.Semantics.Value.du_sem'45'cata_940
                                                      v14 v9
                                                      (d_cata'45'ev'45'alg'738'_36
                                                         (coe v14) (coe v13) (coe v19)
@@ -835,7 +835,7 @@ du_'10214'_'10215''738'_98 v0 v1 v2 v3
                                                   (coe
                                                      MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                                                      (coe
-                                                        MAlonzo.Code.Once.Semantics.Core.du_sem'45'cata_940
+                                                        MAlonzo.Code.Once.Semantics.Value.du_sem'45'cata_940
                                                         v14 v9
                                                         (d_cata'45'ev'45'alg'738'_36
                                                            (coe v14) (coe v13) (coe v19)
@@ -902,12 +902,12 @@ du_'10214'_'10215''738'_98 v0 v1 v2 v3
                                                   MAlonzo.Code.Once.Denotation.DenotTrace.d_inject_30
                                                   (coe v13)
                                                   (coe
-                                                     MAlonzo.Code.Once.Semantics.Core.du_sem'45'ana_1024
+                                                     MAlonzo.Code.Once.Semantics.Value.du_sem'45'ana_1024
                                                      (coe v16)
                                                      (coe
                                                         (\ v20 ->
                                                            coe
-                                                             MAlonzo.Code.Once.Semantics.Core.du_coerce'45'functor_94
+                                                             MAlonzo.Code.Once.Semantics.Value.du_coerce'45'functor_94
                                                              (coe v16)
                                                              (coe
                                                                 MAlonzo.Code.Once.Denotation.DenotTrace.d_forget_26

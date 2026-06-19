@@ -12,7 +12,7 @@
 -- layer `z`; `μS-ind` is the resulting induction principle.
 --
 -- This is the missing tool (Plan 0.36, Phase 3): no `All`/`□` lifting
--- nor general `sem-cata` fusion is exposed by `Once.Functor.Base`
+-- nor general `sem-cata` fusion is exposed by `Once.Semantics.Functor`
 -- (only natural-transformation fusion `fuseNatS`). With `μS-ind`,
 -- properties of `sem-cata`/`cataS` folds (e.g. "a SigOp-free cata emits
 -- no events", and the cata trace-correspondence) become provable by
@@ -25,7 +25,7 @@ open import Data.Unit using (⊤; tt)
 open import Data.Product using (_×_; _,_)
 open import Data.Sum using (inj₁; inj₂)
 
-open import Once.Functor.Base
+open import Once.Semantics.Functor
   using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF; μS; ⟨_⟩)
 
 ------------------------------------------------------------------------

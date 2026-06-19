@@ -18,7 +18,7 @@ import MAlonzo.RTE (coe, erased, AgdaAny, addInt, subInt, mulInt,
 import qualified MAlonzo.RTE
 import qualified Data.Text
 import qualified MAlonzo.Code.Agda.Builtin.Equality
-import qualified MAlonzo.Code.Once.Functor.Base
+import qualified MAlonzo.Code.Once.Semantics.Functor
 import qualified MAlonzo.Code.Once.Type
 
 -- Once.Functor.Translate.⟦_⟧-base
@@ -29,24 +29,24 @@ d_'10214'_'10215''45'base_6 = erased
 d_translateF_38 ::
   () ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
-  MAlonzo.Code.Once.Functor.Base.T_SFunctor_6
+  MAlonzo.Code.Once.Semantics.Functor.T_SFunctor_6
 d_translateF_38 ~v0 v1 = du_translateF_38 v1
 du_translateF_38 ::
   MAlonzo.Code.Once.Type.T_Functor_110 ->
-  MAlonzo.Code.Once.Functor.Base.T_SFunctor_6
+  MAlonzo.Code.Once.Semantics.Functor.T_SFunctor_6
 du_translateF_38 v0
   = case coe v0 of
       MAlonzo.Code.Once.Type.C_K_114 v1
-        -> coe MAlonzo.Code.Once.Functor.Base.C_SK_8
+        -> coe MAlonzo.Code.Once.Semantics.Functor.C_SK_8
       MAlonzo.Code.Once.Type.C_Id_116
-        -> coe MAlonzo.Code.Once.Functor.Base.C_SId_10
+        -> coe MAlonzo.Code.Once.Semantics.Functor.C_SId_10
       MAlonzo.Code.Once.Type.C__'8853'__118 v1 v2
         -> coe
-             MAlonzo.Code.Once.Functor.Base.C__S'8853'__12
+             MAlonzo.Code.Once.Semantics.Functor.C__S'8853'__12
              (coe du_translateF_38 (coe v1)) (coe du_translateF_38 (coe v2))
       MAlonzo.Code.Once.Type.C__'8855'__120 v1 v2
         -> coe
-             MAlonzo.Code.Once.Functor.Base.C__S'8855'__14
+             MAlonzo.Code.Once.Semantics.Functor.C__S'8855'__14
              (coe du_translateF_38 (coe v1)) (coe du_translateF_38 (coe v2))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Functor.Translate.μ-sem

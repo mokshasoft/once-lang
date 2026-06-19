@@ -338,7 +338,7 @@ open import Once.Postulates using (extensionality)
 --   = x                                            (by sem-cata-In-id)
 --
 -- Proven using function extensionality.
--- The semantic foundation is sem-cata-In-id in Once.Semantics.Core (postulate-free).
+-- The semantic foundation is sem-cata-In-id in Once.Semantics.Value (postulate-free).
 --
 -- Note: Requires WellFormedF proof for postulate-free verification.
 --

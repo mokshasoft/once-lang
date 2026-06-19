@@ -5,7 +5,7 @@
 -- Once.Semantics.Machine.Laws
 --
 -- Machine-level (ℕ) instance of the value-semantics LAWS — the `ℕ`
--- counterpart of `Once.Semantics.Machine` for `Once.Semantics.Core.Laws`.
+-- counterpart of `Once.Semantics.Machine` for `Once.Semantics.Value.Laws`.
 -- Consumers that need the identity laws (`sem-cata-In-id`, `sem-ana-Out-id`,
 -- `sem-CoIn-CoOut`) import this; the axiom-free definitions stay in
 -- `Once.Semantics.Machine` (Plan 0.47 step 3).
@@ -15,4 +15,4 @@ module Once.Semantics.Machine.Laws where
 
 open import Data.Nat using (ℕ)
 
-open import Once.Semantics.Core.Laws ℕ public
+open import Once.Semantics.Value.Laws ℕ public

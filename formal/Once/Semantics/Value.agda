@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson and contributors
 
 ------------------------------------------------------------------------
--- Once.Semantics.Core
+-- Once.Semantics.Value
 --
 -- Core semantic interpretation, parameterized by integer representation.
 --
@@ -35,7 +35,7 @@
 -- ╚══════════════════════════════════════════════════════════════════╝
 ------------------------------------------------------------------------
 
-module Once.Semantics.Core (IntRep : Set) where
+module Once.Semantics.Value (IntRep : Set) where
 
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
@@ -62,7 +62,7 @@ open import Once.Type
 -- Polynomial Functor Semantics (via Once.Functor.Translate)
 --
 -- OCP-0003 Phase 6: Instead of postulating ⟦μ⟧ and ⟦ν⟧, we now define
--- them using Once.Functor.Base's μS and νS via translation.
+-- them using Once.Semantics.Functor's μS and νS via translation.
 --
 -- This breaks the circular dependency:
 --   Old: ⟦_⟧ → ⟦_⟧F → SPF.μ → ⟦μ⟧ → ⟦_⟧ (circular!)
@@ -77,13 +77,13 @@ open import Once.Functor.Translate using (μ-sem; ν-sem; translateF; ⟦_⟧-ba
 open import Once.Functor.Translate
   using ( base-Unit; base-Void; base-Int; base-Float; base-Str; base-Buffer
         ; base-Prod; base-Sum; wf-K; wf-Id; wf-Sum; wf-Prod)
-open import Once.Functor.Base
+open import Once.Semantics.Functor
   using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF; μS; ⟨_⟩; outS; νS; unfoldS;
          sfmap; cataS; cataS-cong; sfmapCata; sfmapCata-is-sfmap; anaS; sfmapAna; sfmapAna-is-sfmap; fuseNatS; fuseNatW;
          fold-unfoldS; unfold-foldS; cataS-computation; cataS-In-id)
 -- D062/0.47: the bisimulation machinery (⟦_⟧SF-rel, _∼S_, bisimS-to-eq, …) and
--- the axiom-using identity laws moved to `Once.Functor.Base.Laws` /
--- `Once.Semantics.Core.Laws`, so this definitions module is axiom-free.
+-- the axiom-using identity laws moved to `Once.Semantics.Functor.Laws` /
+-- `Once.Semantics.Value.Laws`, so this definitions module is axiom-free.
 
 -- | Semantic interpretation of μ-type (initial algebra)
 --
