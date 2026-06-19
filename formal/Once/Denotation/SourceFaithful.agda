@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson and contributors
 
 ------------------------------------------------------------------------
--- Once.Verified.SourceFaithful — `faithful` (Plan 0.46 / OCP-0006, M3).
+-- Once.Denotation.SourceFaithful — `faithful` (Plan 0.46 / OCP-0006, M3).
 --
 -- The elaborator is meaning-preserving: the denotation of the ELABORATED IR
 -- agrees, pointwise in the observation depth, with THE source semantics `⟦_⟧ˢ`:
@@ -23,7 +23,7 @@
 -- `FaithfulLemmas.cata-body`/`ana-body`) is discharged.
 ------------------------------------------------------------------------
 
-module Once.Verified.SourceFaithful where
+module Once.Denotation.SourceFaithful where
 
 open import Data.Nat using (ℕ)
 open import Data.Unit using (tt)
@@ -34,18 +34,18 @@ open import Data.Empty using (⊥-elim)
 open import Data.Product using (_,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; trans)
 open import Data.List.Properties using (++-identityʳ; ++-assoc)
-open import Once.Verified.Trace using (SigOpEvent)
+open import Once.Denotation.Trace using (SigOpEvent)
 
 open import Once.Type using (Type; Unit; Void; Int; Str; Float; Buffer; _*_; _+_; _⇒[_]_; μ-type; ν-type)
 open import Once.Surface.Syntax using (Expr; Ctx; Usage; lookup; _,_^_)
 open import Once.Surface.Elaborate using (elaborate; ⟦_⟧ᶜ; proj)
-open import Once.Verified.TraceMonad using (T; returnT; _>>=T_)
+open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_)
 open import Once.CCC.IR using (_∘_; ⟨_,_⟩; apply)
-open import Once.Verified.DenotTrace using (⟦_⟧ᴰ; evalᴰ; inject)
+open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ; evalᴰ; inject)
 open import Once.CCC.Eval as Val using ()
-import Once.Verified.SourceDenote as SD
+import Once.Denotation.SourceDenote as SD
 import Once.Compile as C
-import Once.Verified.FaithfulLemmas as FL
+import Once.Denotation.FaithfulLemmas as FL
 open import Once.Postulates using (extensionality)
 
 open Once.Surface.Syntax.Expr

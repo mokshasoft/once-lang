@@ -10,7 +10,7 @@
 
 {-# OPTIONS_GHC -Wno-overlapping-patterns #-}
 
-module MAlonzo.Code.Once.Verified.SourceFaithful where
+module MAlonzo.Code.Once.Denotation.SourceFaithful where
 
 import MAlonzo.RTE (coe, erased, AgdaAny, addInt, subInt, mulInt,
                     quotInt, remInt, geqInt, ltInt, eqInt, add64, sub64, mul64, quot64,
@@ -20,16 +20,16 @@ import qualified Data.Text
 import qualified MAlonzo.Code.Agda.Builtin.Equality
 import qualified MAlonzo.Code.Data.Fin.Base
 import qualified MAlonzo.Code.Data.Sum.Base
+import qualified MAlonzo.Code.Once.Denotation.Trace
 import qualified MAlonzo.Code.Once.Surface.Syntax
 import qualified MAlonzo.Code.Once.Type
-import qualified MAlonzo.Code.Once.Verified.Trace
 
--- Once.Verified.SourceFaithful.inj-uu
+-- Once.Denotation.SourceFaithful.inj-uu
 d_inj'45'uu_8 ::
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_inj'45'uu_8 = erased
--- Once.Verified.SourceFaithful.proj-lookup
+-- Once.Denotation.SourceFaithful.proj-lookup
 d_proj'45'lookup_20 ::
   Integer ->
   MAlonzo.Code.Once.Surface.Syntax.T_Ctx_6 ->
@@ -37,20 +37,20 @@ d_proj'45'lookup_20 ::
   AgdaAny ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_proj'45'lookup_20 = erased
--- Once.Verified.SourceFaithful.app-trace
+-- Once.Denotation.SourceFaithful.app-trace
 d_app'45'trace_50 ::
-  [MAlonzo.Code.Once.Verified.Trace.T_SigOpEvent_136] ->
-  [MAlonzo.Code.Once.Verified.Trace.T_SigOpEvent_136] ->
-  [MAlonzo.Code.Once.Verified.Trace.T_SigOpEvent_136] ->
+  [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_136] ->
+  [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_136] ->
+  [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_136] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_app'45'trace_50 = erased
--- Once.Verified.SourceFaithful.case-trace
+-- Once.Denotation.SourceFaithful.case-trace
 d_case'45'trace_66 ::
-  [MAlonzo.Code.Once.Verified.Trace.T_SigOpEvent_136] ->
-  [MAlonzo.Code.Once.Verified.Trace.T_SigOpEvent_136] ->
+  [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_136] ->
+  [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_136] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_case'45'trace_66 = erased
--- Once.Verified.SourceFaithful.app-body
+-- Once.Denotation.SourceFaithful.app-body
 d_app'45'body_100 ::
   Integer ->
   MAlonzo.Code.Once.Surface.Syntax.T_Ctx_6 ->
@@ -67,7 +67,7 @@ d_app'45'body_100 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_app'45'body_100 = erased
--- Once.Verified.SourceFaithful.faithful
+-- Once.Denotation.SourceFaithful.faithful
 d_faithful_136 ::
   Integer ->
   MAlonzo.Code.Once.Surface.Syntax.T_Ctx_6 ->

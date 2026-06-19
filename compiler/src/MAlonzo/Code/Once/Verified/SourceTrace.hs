@@ -27,13 +27,13 @@ import qualified MAlonzo.Code.Data.String.Properties
 import qualified MAlonzo.Code.Data.Sum.Base
 import qualified MAlonzo.Code.Once.CCC.IR
 import qualified MAlonzo.Code.Once.Compile
+import qualified MAlonzo.Code.Once.Denotation.DenotTrace
+import qualified MAlonzo.Code.Once.Denotation.Trace
+import qualified MAlonzo.Code.Once.Denotation.TraceMonad
 import qualified MAlonzo.Code.Once.Grammar
 import qualified MAlonzo.Code.Once.Grammar.ModuleConvert
 import qualified MAlonzo.Code.Once.Parser.Module.Core
 import qualified MAlonzo.Code.Once.Type
-import qualified MAlonzo.Code.Once.Verified.DenotTrace
-import qualified MAlonzo.Code.Once.Verified.Trace
-import qualified MAlonzo.Code.Once.Verified.TraceMonad
 import qualified MAlonzo.Code.Relation.Nullary.Decidable.Core
 
 -- Once.Verified.SourceTrace.isUnit?
@@ -118,7 +118,7 @@ d_moduleToIR_40 v0
 -- Once.Verified.SourceTrace.⟦_⟧IR
 d_'10214'_'10215'IR_44 ::
   Maybe MAlonzo.Code.Once.CCC.IR.T_IR_274 ->
-  Integer -> [MAlonzo.Code.Once.Verified.Trace.T_SigOpEvent_136]
+  Integer -> [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_136]
 d_'10214'_'10215'IR_44 v0
   = case coe v0 of
       MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v1
@@ -127,9 +127,9 @@ d_'10214'_'10215'IR_44 v0
                 coe
                   MAlonzo.Code.Data.List.Base.du_take_530 (coe v2)
                   (coe
-                     MAlonzo.Code.Once.Verified.TraceMonad.du_projTrace_62
+                     MAlonzo.Code.Once.Denotation.TraceMonad.du_projTrace_62
                      (coe
-                        MAlonzo.Code.Once.Verified.DenotTrace.d_eval'7472'_154
+                        MAlonzo.Code.Once.Denotation.DenotTrace.d_eval'7472'_154
                         (coe MAlonzo.Code.Once.Type.C_Unit_122)
                         (coe MAlonzo.Code.Once.Type.C_Unit_122) (coe v1)
                         (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8))
@@ -140,7 +140,7 @@ d_'10214'_'10215'IR_44 v0
 -- Once.Verified.SourceTrace.sourceTrace-aux
 d_sourceTrace'45'aux_52 ::
   Maybe MAlonzo.Code.Once.Parser.Module.Core.T_Module_44 ->
-  Integer -> [MAlonzo.Code.Once.Verified.Trace.T_SigOpEvent_136]
+  Integer -> [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_136]
 d_sourceTrace'45'aux_52 v0
   = case coe v0 of
       MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v1
@@ -151,7 +151,7 @@ d_sourceTrace'45'aux_52 v0
 -- Once.Verified.SourceTrace.sourceTrace
 d_sourceTrace_58 ::
   MAlonzo.Code.Once.Grammar.T_GModule_138 ->
-  Integer -> [MAlonzo.Code.Once.Verified.Trace.T_SigOpEvent_136]
+  Integer -> [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_136]
 d_sourceTrace_58 v0
   = coe
       d_sourceTrace'45'aux_52
@@ -161,7 +161,7 @@ d_sourceTrace_58 v0
 -- Once.Verified.SourceTrace.⟦_⟧
 d_'10214'_'10215'_62 ::
   MAlonzo.Code.Once.Grammar.T_GModule_138 ->
-  Integer -> [MAlonzo.Code.Once.Verified.Trace.T_SigOpEvent_136]
+  Integer -> [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_136]
 d_'10214'_'10215'_62 v0 = coe d_sourceTrace_58 (coe v0)
 -- Once.Verified.SourceTrace.⟦⟧-via-module
 d_'10214''10215''45'via'45'module_72 ::

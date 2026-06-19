@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson and contributors
 
 ------------------------------------------------------------------------
--- Once.Verified.TraceMonad — the metatheoretic trace monad `T`.
+-- Once.Denotation.TraceMonad — the metatheoretic trace monad `T`.
 --
 -- Plan 0.46 (M1). `T` is the codomain of the denotational trace
 -- semantics `⟦_⟧ᴰ`: an effectful arrow `A ⇒[ eff ] B` denotes the Kleisli
@@ -27,14 +27,14 @@
 -- no co-data. The observable is `projTrace`.
 ------------------------------------------------------------------------
 
-module Once.Verified.TraceMonad where
+module Once.Denotation.TraceMonad where
 
 open import Data.Nat using (ℕ)
 open import Data.List using (List; []; _++_)
 open import Data.Unit using (⊤; tt)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 
-open import Once.Verified.Trace using (SigOpEvent)
+open import Once.Denotation.Trace using (SigOpEvent)
 
 ------------------------------------------------------------------------
 -- The monad.

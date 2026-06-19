@@ -42,7 +42,7 @@ open import Data.List using ([])
 open import Once.CCC.IR using (IR)
 open import Once.Type using (Unit)
 
-open import Once.Verified.Behavior using (Source; Behavior)
+open import Once.Denotation.Behavior using (Source; Behavior)
 open import Once.Verified.SourceTrace
   using (⟦_⟧; ⟦⟧-via-module; moduleToIR; ⟦_⟧IR)
 open import Data.Product using (_×_; _,_)
@@ -279,7 +279,7 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   -- The GRAND THEOREM (D060): `correct` above IS the whole statement.
   -- There is now ONE denotational meaning: the surface `⟦_⟧ˢ` and the IR
   -- `⟦_⟧ᴰ` are two presentations of it, tied by `faithful` (proven,
-  -- postulate-free, in `Once.Verified.SourceFaithful`). The old second
+  -- postulate-free, in `Once.Denotation.SourceFaithful`). The old second
   -- conjunct compared `evalᴰ` against an INDEPENDENT `SS.eval` reference;
   -- with `SS.eval` retired (D060) that comparison collapses to `faithful`,
   -- a standalone load-bearing fact rather than a conjunct bolted onto the

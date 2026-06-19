@@ -15,7 +15,7 @@ cd "$(dirname "$0")/.."   # -> formal/
 # and `⟦_⟧ˢ` (SourceDenote) + their recursion-scheme math. NOT the frontend:
 # `faithful`/`⟦ src ⟧` additionally use `elaborate`/`moduleToIR` (parser +
 # elaborator), whose termination is a separate concern. Override with args.
-ROOTS="${*:-Once/Verified/DenotTrace Once/Verified/SourceDenote}"
+ROOTS="${*:-Once/Denotation/DenotTrace Once/Denotation/SourceDenote}"
 
 declare -A seen
 queue=()

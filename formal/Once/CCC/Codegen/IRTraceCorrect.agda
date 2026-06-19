@@ -89,7 +89,7 @@ open import Once.CCC.IR
          In; out-μ; Cata; Para; Out; in-ν; Ana; Hylo; Fuse;
          free-heap; SigOp)
 open import Once.CCC.Eval using (eval)
-open import Once.Verified.Trace using (SigOpEvent)
+open import Once.Denotation.Trace using (SigOpEvent)
 
 open import Once.CCC.Machine.SMCore
   using (LocState; ValueLocation; halted; regs; readReg; Input1;

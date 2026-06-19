@@ -27,6 +27,7 @@ import qualified MAlonzo.Code.Data.String.Base
 import qualified MAlonzo.Code.Data.Sum.Base
 import qualified MAlonzo.Code.Once.CCC.IR
 import qualified MAlonzo.Code.Once.Compile
+import qualified MAlonzo.Code.Once.Denotation.Trace
 import qualified MAlonzo.Code.Once.Grammar
 import qualified MAlonzo.Code.Once.Grammar.ModuleConvert
 import qualified MAlonzo.Code.Once.Parser
@@ -35,7 +36,6 @@ import qualified MAlonzo.Code.Once.Target
 import qualified MAlonzo.Code.Once.Target.Arch
 import qualified MAlonzo.Code.Once.Verified.CPU.Interface
 import qualified MAlonzo.Code.Once.Verified.SourceTrace
-import qualified MAlonzo.Code.Once.Verified.Trace
 
 -- Once.Verified.Compile.compile-asm
 d_compile'45'asm_6 ::
@@ -87,7 +87,7 @@ d_compile'45'cli'45'asm_26 v0 v1 v2 v3 v4
 -- Once.Verified.Compile.⟦_⟧M
 d_'10214'_'10215'M_38 ::
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_44 ->
-  Integer -> [MAlonzo.Code.Once.Verified.Trace.T_SigOpEvent_136]
+  Integer -> [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_136]
 d_'10214'_'10215'M_38 v0
   = coe
       MAlonzo.Code.Once.Verified.SourceTrace.d_'10214'_'10215'IR_44
@@ -97,14 +97,14 @@ d_'10214'_'10215'M_38 v0
 d_ArchCorrect_46 a0 a1 = ()
 data T_ArchCorrect_46
   = C_constructor_100 (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-                       Integer -> [MAlonzo.Code.Once.Verified.Trace.T_SigOpEvent_136])
+                       Integer -> [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_136])
                       (Maybe MAlonzo.Code.Once.CCC.IR.T_IR_274 ->
-                       Integer -> [MAlonzo.Code.Once.Verified.Trace.T_SigOpEvent_136])
+                       Integer -> [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_136])
 -- Once.Verified.Compile.ArchCorrect.asm-sem
 d_asm'45'sem_76 ::
   T_ArchCorrect_46 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-  Integer -> [MAlonzo.Code.Once.Verified.Trace.T_SigOpEvent_136]
+  Integer -> [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_136]
 d_asm'45'sem_76 v0
   = case coe v0 of
       C_constructor_100 v1 v2 -> coe v1
@@ -113,7 +113,7 @@ d_asm'45'sem_76 v0
 d_flat'45'trace_78 ::
   T_ArchCorrect_46 ->
   Maybe MAlonzo.Code.Once.CCC.IR.T_IR_274 ->
-  Integer -> [MAlonzo.Code.Once.Verified.Trace.T_SigOpEvent_136]
+  Integer -> [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_136]
 d_flat'45'trace_78 v0
   = case coe v0 of
       C_constructor_100 v1 v2 -> coe v2
@@ -152,14 +152,14 @@ d_exec_126 ::
   (MAlonzo.Code.Once.Target.Arch.T_Arch_6 -> T_ArchCorrect_46) ->
   MAlonzo.Code.Once.Target.Arch.T_Arch_6 ->
   [MAlonzo.Code.Data.Fin.Base.T_Fin_10] ->
-  Integer -> [MAlonzo.Code.Once.Verified.Trace.T_SigOpEvent_136]
+  Integer -> [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_136]
 d_exec_126 v0 ~v1 v2 v3 = du_exec_126 v0 v2 v3
 du_exec_126 ::
   (MAlonzo.Code.Once.Target.Arch.T_Arch_6 ->
    MAlonzo.Code.Once.Verified.CPU.Interface.T_ArchSemantics_10) ->
   MAlonzo.Code.Once.Target.Arch.T_Arch_6 ->
   [MAlonzo.Code.Data.Fin.Base.T_Fin_10] ->
-  Integer -> [MAlonzo.Code.Once.Verified.Trace.T_SigOpEvent_136]
+  Integer -> [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_136]
 du_exec_126 v0 v1 v2
   = coe
       MAlonzo.Code.Once.Verified.CPU.Interface.d_exec'45'bytes_40
@@ -315,14 +315,14 @@ d_'10214'_'10215'A__174 ::
   (MAlonzo.Code.Once.Target.Arch.T_Arch_6 -> T_ArchCorrect_46) ->
   MAlonzo.Code.Once.Target.Arch.T_Arch_6 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-  Integer -> [MAlonzo.Code.Once.Verified.Trace.T_SigOpEvent_136]
+  Integer -> [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_136]
 d_'10214'_'10215'A__174 ~v0 v1 v2 v3
   = du_'10214'_'10215'A__174 v1 v2 v3
 du_'10214'_'10215'A__174 ::
   (MAlonzo.Code.Once.Target.Arch.T_Arch_6 -> T_ArchCorrect_46) ->
   MAlonzo.Code.Once.Target.Arch.T_Arch_6 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-  Integer -> [MAlonzo.Code.Once.Verified.Trace.T_SigOpEvent_136]
+  Integer -> [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_136]
 du_'10214'_'10215'A__174 v0 v1 v2
   = coe d_asm'45'sem_76 (coe v0 v1) v2
 -- Once.Verified.Compile.WithCPU.string-to-bytes-correct

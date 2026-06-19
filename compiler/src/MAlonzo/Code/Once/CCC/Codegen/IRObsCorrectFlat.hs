@@ -30,12 +30,12 @@ import qualified MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed
 import qualified MAlonzo.Code.Once.CCC.Machine.Flat
 import qualified MAlonzo.Code.Once.CCC.Machine.Locations
 import qualified MAlonzo.Code.Once.CCC.Machine.SMCore
+import qualified MAlonzo.Code.Once.Denotation.Trace
 import qualified MAlonzo.Code.Once.Functor.Base
 import qualified MAlonzo.Code.Once.Functor.Translate
 import qualified MAlonzo.Code.Once.Memory.HeapAddress
 import qualified MAlonzo.Code.Once.Type
 import qualified MAlonzo.Code.Once.Verified.FlatEvents
-import qualified MAlonzo.Code.Once.Verified.Trace
 
 -- Once.CCC.Codegen.IRObsCorrectFlat.IRObsCorrectFlatness._.FlatState
 d_FlatState_16 a0 a1 = ()
@@ -78,14 +78,14 @@ d_flat'45'events_140 ::
   Integer ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2048] ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_56 ->
-  [MAlonzo.Code.Once.Verified.Trace.T_SigOpEvent_136]
+  [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_136]
 d_flat'45'events_140 v0 ~v1 = du_flat'45'events_140 v0
 du_flat'45'events_140 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2048] ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_56 ->
-  [MAlonzo.Code.Once.Verified.Trace.T_SigOpEvent_136]
+  [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_136]
 du_flat'45'events_140 v0
   = coe
       MAlonzo.Code.Once.Verified.FlatEvents.d_flat'45'events_222 (coe v0)

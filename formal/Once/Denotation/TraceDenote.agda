@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson and contributors
 
 ------------------------------------------------------------------------
--- Once.Verified.TraceDenote — shared trace helpers for the SigOp-event
+-- Once.Denotation.TraceDenote — shared trace helpers for the SigOp-event
 -- observable (Plan 0.24, Phase B).
 --
 -- D060/Plan 0.46 (2026-06-18): the operational `obs` trace reader is
@@ -19,7 +19,7 @@
 --                   `FlatEvents`.
 ------------------------------------------------------------------------
 
-module Once.Verified.TraceDenote where
+module Once.Denotation.TraceDenote where
 
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.Nat using (ℕ; zero; suc)
@@ -30,7 +30,7 @@ open import Once.Type using (Functor; K; Id; _⊕_; _⊗_)
 open import Once.CCC.Eval using (⟦_⟧)
 open import Once.CCC.SigOp.Info using (SigOpInfo; effect; Pure; Emits; Halts)
 open import Once.Semantics.Machine using (⟦_⟧F)
-open import Once.Verified.Trace using (SigOpEvent; mkEvent)
+open import Once.Denotation.Trace using (SigOpEvent; mkEvent)
 
 -- `events-F F p fc` foldMaps the children of one functor layer into a
 -- single event list, left-to-right (functor order = fold order). For
@@ -44,7 +44,7 @@ events-F (F ⊕ G) p (inj₂ y) = events-F G p y
 events-F (F ⊗ G) p (x , y)  = events-F F p x ++ events-F G p y
 
 -- EVENT-INDEXED to match the top-level observable: `Behavior n` is "the first
--- `n` SigOp events" (Once.Verified.Behavior). A `SigOp` is the ONLY IR that
+-- `n` SigOp events" (Once.Denotation.Behavior). A `SigOp` is the ONLY IR that
 -- produces something observable; it spends one budget unit, emitted iff the
 -- budget `n ≥ 1`. Kept as a helper so callers split on the IR first.
 sig1 : ℕ → SigOpEvent → List SigOpEvent

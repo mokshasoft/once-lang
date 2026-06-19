@@ -10,7 +10,7 @@
 
 {-# OPTIONS_GHC -Wno-overlapping-patterns #-}
 
-module MAlonzo.Code.Once.Verified.FaithfulLemmas where
+module MAlonzo.Code.Once.Denotation.FaithfulLemmas where
 
 import MAlonzo.RTE (coe, erased, AgdaAny, addInt, subInt, mulInt,
                     quotInt, remInt, geqInt, ltInt, eqInt, add64, sub64, mul64, quot64,
@@ -21,20 +21,20 @@ import qualified MAlonzo.Code.Agda.Builtin.Equality
 import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Agda.Builtin.Unit
 import qualified MAlonzo.Code.Once.CCC.IR
+import qualified MAlonzo.Code.Once.Denotation.DenotTrace
+import qualified MAlonzo.Code.Once.Denotation.SourceDenote
+import qualified MAlonzo.Code.Once.Denotation.TraceMonad
 import qualified MAlonzo.Code.Once.Functor.Translate
 import qualified MAlonzo.Code.Once.Surface.Elaborate
 import qualified MAlonzo.Code.Once.Surface.Syntax
 import qualified MAlonzo.Code.Once.Type
-import qualified MAlonzo.Code.Once.Verified.DenotTrace
-import qualified MAlonzo.Code.Once.Verified.SourceDenote
-import qualified MAlonzo.Code.Once.Verified.TraceMonad
 
--- Once.Verified.FaithfulLemmas.forget-inject
+-- Once.Denotation.FaithfulLemmas.forget-inject
 d_forget'45'inject_10 ::
   MAlonzo.Code.Once.Type.T_Type_112 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_forget'45'inject_10 = erased
--- Once.Verified.FaithfulLemmas.morph-app-bridge
+-- Once.Denotation.FaithfulLemmas.morph-app-bridge
 d_morph'45'app'45'bridge_80 ::
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
@@ -44,7 +44,7 @@ d_morph'45'app'45'bridge_80 ::
   AgdaAny ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_morph'45'app'45'bridge_80 = erased
--- Once.Verified.FaithfulLemmas.morph-app-bridge-fun
+-- Once.Denotation.FaithfulLemmas.morph-app-bridge-fun
 d_morph'45'app'45'bridge'45'fun_112 ::
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
@@ -53,7 +53,7 @@ d_morph'45'app'45'bridge'45'fun_112 ::
   (Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_morph'45'app'45'bridge'45'fun_112 = erased
--- Once.Verified.FaithfulLemmas.cata-body
+-- Once.Denotation.FaithfulLemmas.cata-body
 d_cata'45'body_142 ::
   Integer ->
   MAlonzo.Code.Once.Surface.Syntax.T_Ctx_6 ->
@@ -66,7 +66,7 @@ d_cata'45'body_142 ::
   AgdaAny ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_cata'45'body_142 = erased
--- Once.Verified.FaithfulLemmas._.algIR
+-- Once.Denotation.FaithfulLemmas._.algIR
 d_algIR_164 ::
   Integer ->
   MAlonzo.Code.Once.Surface.Syntax.T_Ctx_6 ->
@@ -123,7 +123,7 @@ du_algIR_164 v0 v1 v2 v3
             (coe MAlonzo.Code.Once.CCC.IR.C_terminal_332))
          (coe MAlonzo.Code.Once.CCC.IR.C_id_280)
          (coe MAlonzo.Code.Once.CCC.IR.C_Heap_262))
--- Once.Verified.FaithfulLemmas._.alg-eq
+-- Once.Denotation.FaithfulLemmas._.alg-eq
 d_alg'45'eq_168 ::
   Integer ->
   MAlonzo.Code.Once.Surface.Syntax.T_Ctx_6 ->
@@ -137,7 +137,7 @@ d_alg'45'eq_168 ::
   Integer ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_alg'45'eq_168 = erased
--- Once.Verified.FaithfulLemmas.ana-ev-bridge
+-- Once.Denotation.FaithfulLemmas.ana-ev-bridge
 d_ana'45'ev'45'bridge_200 ::
   MAlonzo.Code.Once.Type.T_Functor_110 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
@@ -147,7 +147,7 @@ d_ana'45'ev'45'bridge_200 ::
   AgdaAny ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_ana'45'ev'45'bridge_200 = erased
--- Once.Verified.FaithfulLemmas._.coalgIR
+-- Once.Denotation.FaithfulLemmas._.coalgIR
 d_coalgIR_224 ::
   MAlonzo.Code.Once.Type.T_Functor_110 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
@@ -191,7 +191,7 @@ du_coalgIR_224 v0 v1 v2 v3
             (coe MAlonzo.Code.Once.CCC.IR.C_terminal_332))
          (coe MAlonzo.Code.Once.CCC.IR.C_id_280)
          (coe MAlonzo.Code.Once.CCC.IR.C_Heap_262))
--- Once.Verified.FaithfulLemmas._.stepˢ
+-- Once.Denotation.FaithfulLemmas._.stepˢ
 d_step'738'_226 ::
   MAlonzo.Code.Once.Type.T_Functor_110 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
@@ -210,9 +210,9 @@ du_step'738'_226 ::
   AgdaAny -> Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_step'738'_226 v0 v1 v2 v3 v4
   = coe
-      MAlonzo.Code.Once.Verified.TraceMonad.du__'62''62''61'T__20
+      MAlonzo.Code.Once.Denotation.TraceMonad.du__'62''62''61'T__20
       (coe
-         MAlonzo.Code.Once.Verified.SourceDenote.du_'10214'_'10215''738'_98
+         MAlonzo.Code.Once.Denotation.SourceDenote.du_'10214'_'10215''738'_98
          (coe MAlonzo.Code.Once.Surface.Syntax.C_'8709'_8)
          (coe
             MAlonzo.Code.Once.Type.C__'8658''91'_'93'__130 (coe v1) (coe v2)
@@ -223,9 +223,9 @@ du_step'738'_226 v0 v1 v2 v3 v4
          (\ v5 ->
             coe
               v5
-              (MAlonzo.Code.Once.Verified.DenotTrace.d_inject_30
+              (MAlonzo.Code.Once.Denotation.DenotTrace.d_inject_30
                  (coe v1) (coe v4))))
--- Once.Verified.FaithfulLemmas._.step-eq
+-- Once.Denotation.FaithfulLemmas._.step-eq
 d_step'45'eq_230 ::
   MAlonzo.Code.Once.Type.T_Functor_110 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
@@ -235,7 +235,7 @@ d_step'45'eq_230 ::
   AgdaAny ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_step'45'eq_230 = erased
--- Once.Verified.FaithfulLemmas.ana-body
+-- Once.Denotation.FaithfulLemmas.ana-body
 d_ana'45'body_264 ::
   Integer ->
   MAlonzo.Code.Once.Surface.Syntax.T_Ctx_6 ->

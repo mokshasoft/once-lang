@@ -28,7 +28,7 @@
 -- ║  `⊤ → ⊤` (the constant function). Programs DO NOT RETURN A      ║
 -- ║  VALUE — they invoke SigOps. Any observable based on those       ║
 -- ║  SigOps (syscall trace, exit code as the linux.exit argument)   ║
--- ║  lives ELSEWHERE; see `Once.Verified.Behavior`.                  ║
+-- ║  lives ELSEWHERE; see `Once.Denotation.Behavior`.                  ║
 -- ║                                                                  ║
 -- ║  Use `⟦_⟧` for value-level reasoning only (CCC laws, structural  ║
 -- ║  recursion). Don't try to project effects from it.               ║
