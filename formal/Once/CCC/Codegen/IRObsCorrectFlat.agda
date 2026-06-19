@@ -52,7 +52,7 @@ open import Once.CCC.Machine.ClosureWellFormed using (module ClosureWellFormedDe
 open import Once.Denotation.Trace using (SigOpEvent)
 open import Once.Denotation.DenotTrace using (evalᴰ; inject)
 open import Once.Denotation.TraceMonad using (projTrace)
-open import Once.Verified.FlatEvents using (module FlatEventTrace)
+open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
 
 module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   open FlatMachine {FS}

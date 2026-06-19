@@ -5,10 +5,10 @@
 -- Once.Compiler — ASSEMBLY POINT
 --
 -- This module wires together:
---   - the abstract spec     (`Once.Verified`)
+--   - the abstract spec     (`Once.Adequacy`)
 --   - the meaning           (`Once.Denotation.Behavior`)
---   - the trusted CPU base  (`Once.Verified.CPU`)
---   - the proof + compile   (`Once.Verified.Compile`)
+--   - the trusted CPU base  (`Once.Adequacy.CPU`)
+--   - the proof + compile   (`Once.Adequacy.Compile`)
 --
 -- and constructs a single `CorrectCompiler` value the CLI consumes.
 -- This file should be one record literal — no logic, no postulates
@@ -22,17 +22,17 @@ open import Data.List using (List)
 open import Data.Nat using (ℕ)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
-open import Once.Verified
+open import Once.Adequacy
 open import Once.Denotation.Behavior using (Source; Behavior)
-open import Once.Verified.SourceTrace using (⟦_⟧)
+open import Once.Adequacy.SourceTrace using (⟦_⟧)
 -- The driver is where the per-arch CPU semantics are INJECTED (D054
--- wired-not-imported). Importing `Once.Verified.CPU` here pulls in the
+-- wired-not-imported). Importing `Once.Adequacy.CPU` here pulls in the
 -- per-arch instance postulates; that is intentional and confined to
--- this assembly point. `Once.Verified.Compile.WithCPU` itself stays
+-- this assembly point. `Once.Adequacy.Compile.WithCPU` itself stays
 -- free of those imports.
-open import Once.Verified.CPU      using (Arch; Byte; arch-semantics)
-open import Once.Verified.ArchCorrectness using (arch-correctness)
-import Once.Verified.Compile as VCompile
+open import Once.Adequacy.CPU      using (Arch; Byte; arch-semantics)
+open import Once.Adequacy.ArchCorrectness using (arch-correctness)
+import Once.Adequacy.Compile as VCompile
 
 -- Instantiate the verified pipeline with the concrete per-arch
 -- semantics AND the per-arch backend-correctness witnesses. `VC.compile` /

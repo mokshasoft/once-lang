@@ -381,22 +381,22 @@ library
       MAlonzo.Code.Once.TypeCheck.Judgment
       MAlonzo.Code.Once.TypeCheck.Morph
       MAlonzo.Code.Once.TypeCheck.Raw
-      MAlonzo.Code.Once.Verified
-      MAlonzo.Code.Once.Verified.ArchCorrectness
-      MAlonzo.Code.Once.Verified.ArchCorrectness.X86Z45Z64
+      MAlonzo.Code.Once.Adequacy
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z64
       MAlonzo.Code.Once.Denotation.Behavior
-      MAlonzo.Code.Once.Verified.Compile
-      MAlonzo.Code.Once.Verified.CPU
-      MAlonzo.Code.Once.Verified.CPU.Interface
-      MAlonzo.Code.Once.Verified.CPU.RiscV64
-      MAlonzo.Code.Once.Verified.CPU.X86Z45Z32
-      MAlonzo.Code.Once.Verified.CPU.X86Z45Z64
+      MAlonzo.Code.Once.Adequacy.Compile
+      MAlonzo.Code.Once.Adequacy.CPU
+      MAlonzo.Code.Once.Adequacy.CPU.Interface
+      MAlonzo.Code.Once.Adequacy.CPU.RiscV64
+      MAlonzo.Code.Once.Adequacy.CPU.X86Z45Z32
+      MAlonzo.Code.Once.Adequacy.CPU.X86Z45Z64
       MAlonzo.Code.Once.Denotation.DenotTrace
-      MAlonzo.Code.Once.Denotation.FaithfulLemmas
-      MAlonzo.Code.Once.Verified.FlatEvents
+      MAlonzo.Code.Once.Adequacy.FaithfulLemmas
+      MAlonzo.Code.Once.Adequacy.FlatEvents
       MAlonzo.Code.Once.Denotation.SourceDenote
-      MAlonzo.Code.Once.Denotation.SourceFaithful
-      MAlonzo.Code.Once.Verified.SourceTrace
+      MAlonzo.Code.Once.Adequacy.SourceFaithful
+      MAlonzo.Code.Once.Adequacy.SourceTrace
       MAlonzo.Code.Once.Denotation.Trace
       MAlonzo.Code.Once.Denotation.TraceDenote
       MAlonzo.Code.Once.Denotation.TraceMonad

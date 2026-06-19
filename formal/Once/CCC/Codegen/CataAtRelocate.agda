@@ -38,7 +38,7 @@ open import Once.Denotation.Trace using (SigOpEvent)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
-open import Once.Verified.FlatEvents using (module FlatEventTrace)
+open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
 open import Once.CCC.Machine.SMCore
   using (halted; regs; readReg; Scratch; AbstractInstr; AbstractTrace;
          instr-ctrl; c-label; c-jmp; c-branch-scratch-zero; c-branch-tag-zero;

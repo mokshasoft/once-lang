@@ -6,7 +6,7 @@
 --
 -- The architecture of the COMPILED BINARY (not the host the compiler runs
 -- on). Owned by neither the codegen (`Once.Compile`) nor the verified CPU
--- interface (`Once.Verified.CPU.Interface`) — both import it, so there is
+-- interface (`Once.Adequacy.CPU.Interface`) — both import it, so there is
 -- ONE `Arch` type across the pipeline and no relabelling map between a
 -- "codegen Arch" and a "verified Arch".
 ------------------------------------------------------------------------
