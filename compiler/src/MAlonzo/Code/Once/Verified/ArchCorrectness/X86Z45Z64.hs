@@ -37,15 +37,15 @@ d_program'45'bound_8
 d_IRObsCorrectF_12 ::
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
-  MAlonzo.Code.Once.CCC.IR.T_IR_274 -> ()
+  MAlonzo.Code.Once.CCC.IR.T_IR_246 -> ()
 d_IRObsCorrectF_12 = erased
 -- Once.Verified.ArchCorrectness.X86-64._.ir-obs-correct
 d_ir'45'obs'45'correct_14 ::
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
-  MAlonzo.Code.Once.CCC.IR.T_IR_274 ->
+  MAlonzo.Code.Once.CCC.IR.T_IR_246 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
-  MAlonzo.Code.Once.CCC.IR.T_AllocMode_258 ->
+  MAlonzo.Code.Once.CCC.IR.T_AllocMode_230 ->
   AgdaAny ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456 ->

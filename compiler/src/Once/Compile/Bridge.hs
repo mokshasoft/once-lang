@@ -226,9 +226,9 @@ resolveImports modMap (Module userMod) =
 data AllocMode = AllocStack | AllocHeap
   deriving (Eq, Show)
 
-toMAllocMode :: AllocMode -> MCIR.T_AllocMode_258
-toMAllocMode AllocStack = MCIR.C_Stack_260
-toMAllocMode AllocHeap  = MCIR.C_Heap_262
+toMAllocMode :: AllocMode -> MCIR.T_AllocMode_230
+toMAllocMode AllocStack = MCIR.C_Stack_232
+toMAllocMode AllocHeap  = MCIR.C_Heap_234
 
 compileFromModule :: AllocMode -> Stage -> Bool -> Arch -> Module -> CompileResult
 compileFromModule m stage doOpt arch (Module mod_) =

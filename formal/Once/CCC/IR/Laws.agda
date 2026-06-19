@@ -122,8 +122,9 @@ alloc-mode-independent-In ps wf m₁ m₂ x = refl
 
 -- Import semantic Lambek laws
 open import Once.Semantics.Machine
-  using (sem-Out-In; sem-In-Out; sem-CoOut-CoIn; sem-CoIn-CoOut;
+  using (sem-Out-In; sem-In-Out; sem-CoOut-CoIn;
          coerce-round-trip; coerce⁻¹-round-trip; sem-Out; sem-CoIn)
+open import Once.Semantics.Machine.Laws using (sem-CoIn-CoOut)  -- 0.47: axiom-using law
 open import Relation.Binary.PropositionalEquality using (cong; trans; sym)
 
 -- | out-μ ∘ In = id (Lambek, μ-type, one direction)

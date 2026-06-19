@@ -59,7 +59,7 @@ d_correct_10 = erased
 d_exec_12 ::
   MAlonzo.Code.Once.Target.Arch.T_Arch_6 ->
   [MAlonzo.Code.Data.Fin.Base.T_Fin_10] ->
-  Integer -> [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_136]
+  Integer -> [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_122]
 d_exec_12
   = coe
       MAlonzo.Code.Once.Verified.Compile.du_exec_126
@@ -91,7 +91,7 @@ d_string'45'to'45'bytes'45'correct_18 = erased
 d_'10214'_'10215'A__20 ::
   MAlonzo.Code.Once.Target.Arch.T_Arch_6 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-  Integer -> [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_136]
+  Integer -> [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_122]
 d_'10214'_'10215'A__20
   = coe
       MAlonzo.Code.Once.Verified.Compile.du_'10214'_'10215'A__174

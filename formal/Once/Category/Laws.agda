@@ -297,11 +297,13 @@ eval-arr-identity f = refl
 -- used by eval. Machine uses ℕ which would cause type mismatches.
 open import Once.Semantics.Machine
   using (sem-In; sem-Out; sem-cata; sem-CoOut; sem-ana;
-         sem-fmap; sem-ana-Out-id;
+         sem-fmap;
          coerce-functor; coerce-functor⁻¹; coerce-round-trip; coerce⁻¹-round-trip;
          ⟦_⟧F;
          -- Proven for well-formed functors (no postulates)
-         sem-cata-compute; sem-cata-In-id)
+         sem-cata-compute)
+-- 0.47: the axiom-using identity laws live in Once.Semantics.Machine.Laws.
+open import Once.Semantics.Machine.Laws using (sem-cata-In-id; sem-ana-Out-id)
 -- GuardedT/sem-unguard/sem-hylo-guarded removed: productivity follows from IR totality
 open import Once.Functor.Translate using (WellFormedF)
 

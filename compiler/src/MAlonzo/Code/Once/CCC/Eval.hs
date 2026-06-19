@@ -29,41 +29,41 @@ import qualified MAlonzo.Code.Once.Type
 d_eval_10 ::
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
-  MAlonzo.Code.Once.CCC.IR.T_IR_274 -> AgdaAny -> AgdaAny
+  MAlonzo.Code.Once.CCC.IR.T_IR_246 -> AgdaAny -> AgdaAny
 d_eval_10 v0 v1 v2 v3
   = case coe v2 of
-      MAlonzo.Code.Once.CCC.IR.C_id_280 -> coe v3
-      MAlonzo.Code.Once.CCC.IR.C__'8728'__288 v5 v7 v8
+      MAlonzo.Code.Once.CCC.IR.C_id_252 -> coe v3
+      MAlonzo.Code.Once.CCC.IR.C__'8728'__260 v5 v7 v8
         -> coe
              d_eval_10 (coe v5) (coe v1) (coe v7)
              (coe d_eval_10 (coe v0) (coe v5) (coe v8) (coe v3))
-      MAlonzo.Code.Once.CCC.IR.C_'10216'_'44'_'10217'_296 v7 v8 v9
+      MAlonzo.Code.Once.CCC.IR.C_'10216'_'44'_'10217'_268 v7 v8 v9
         -> case coe v1 of
              MAlonzo.Code.Once.Type.C__'42'__126 v10 v11
                -> coe
-                    MAlonzo.Code.Once.Semantics.Core.du_sem'45'pair_320
+                    MAlonzo.Code.Once.Semantics.Core.du_sem'45'pair_306
                     (coe d_eval_10 (coe v0) (coe v10) (coe v7) (coe v3))
                     (coe d_eval_10 (coe v0) (coe v11) (coe v8) (coe v3))
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.CCC.IR.C_fst_302
-        -> coe MAlonzo.Code.Once.Semantics.Core.du_sem'45'fst_308 (coe v3)
-      MAlonzo.Code.Once.CCC.IR.C_snd_308
-        -> coe MAlonzo.Code.Once.Semantics.Core.du_sem'45'snd_314 (coe v3)
-      MAlonzo.Code.Once.CCC.IR.C_inl_314 v6
-        -> coe MAlonzo.Code.Once.Semantics.Core.du_sem'45'inl_330 v3
-      MAlonzo.Code.Once.CCC.IR.C_inr_320 v6
-        -> coe MAlonzo.Code.Once.Semantics.Core.du_sem'45'inr_336 v3
-      MAlonzo.Code.Once.CCC.IR.C_case_328 v7 v8
+      MAlonzo.Code.Once.CCC.IR.C_fst_274
+        -> coe MAlonzo.Code.Once.Semantics.Core.du_sem'45'fst_294 (coe v3)
+      MAlonzo.Code.Once.CCC.IR.C_snd_280
+        -> coe MAlonzo.Code.Once.Semantics.Core.du_sem'45'snd_300 (coe v3)
+      MAlonzo.Code.Once.CCC.IR.C_inl_286 v6
+        -> coe MAlonzo.Code.Once.Semantics.Core.du_sem'45'inl_316 v3
+      MAlonzo.Code.Once.CCC.IR.C_inr_292 v6
+        -> coe MAlonzo.Code.Once.Semantics.Core.du_sem'45'inr_322 v3
+      MAlonzo.Code.Once.CCC.IR.C_case_300 v7 v8
         -> case coe v0 of
              MAlonzo.Code.Once.Type.C__'43'__128 v9 v10
                -> coe
-                    MAlonzo.Code.Once.Semantics.Core.du_sem'45'case_344
+                    MAlonzo.Code.Once.Semantics.Core.du_sem'45'case_330
                     (coe d_eval_10 (coe v9) (coe v1) (coe v7))
                     (coe d_eval_10 (coe v10) (coe v1) (coe v8)) (coe v3)
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.CCC.IR.C_terminal_332
+      MAlonzo.Code.Once.CCC.IR.C_terminal_304
         -> coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8
-      MAlonzo.Code.Once.CCC.IR.C_curry_346 v8 v9
+      MAlonzo.Code.Once.CCC.IR.C_curry_318 v8 v9
         -> case coe v1 of
              MAlonzo.Code.Once.Type.C__'8658''91'_'93'__130 v10 v11 v12
                -> coe
@@ -72,53 +72,53 @@ d_eval_10 v0 v1 v2 v3
                          (coe MAlonzo.Code.Once.Type.C__'42'__126 (coe v0) (coe v10))
                          (coe v12) (coe v8)
                          (coe
-                            MAlonzo.Code.Once.Semantics.Core.du_sem'45'pair_320 (coe v3)
+                            MAlonzo.Code.Once.Semantics.Core.du_sem'45'pair_306 (coe v3)
                             (coe v13)))
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.CCC.IR.C_apply_354
+      MAlonzo.Code.Once.CCC.IR.C_apply_326
         -> case coe v3 of
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v7 v8 -> coe v7 v8
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.CCC.IR.C_arr_362 -> coe v3
-      MAlonzo.Code.Once.CCC.IR.C_In_366 v5 v6
+      MAlonzo.Code.Once.CCC.IR.C_arr_334 -> coe v3
+      MAlonzo.Code.Once.CCC.IR.C_In_338 v5 v6
         -> case coe v1 of
              MAlonzo.Code.Once.Type.C_μ'45'type_132 v7
                -> coe
-                    MAlonzo.Code.Once.Semantics.Core.du_sem'45'In_934 (coe v7)
+                    MAlonzo.Code.Once.Semantics.Core.du_sem'45'In_920 (coe v7)
                     (coe
-                       MAlonzo.Code.Once.Semantics.Core.du_coerce'45'functor_108 (coe v7)
+                       MAlonzo.Code.Once.Semantics.Core.du_coerce'45'functor_94 (coe v7)
                        (coe v3))
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.CCC.IR.C_out'45'μ_370 v5
+      MAlonzo.Code.Once.CCC.IR.C_out'45'μ_342 v5
         -> case coe v0 of
              MAlonzo.Code.Once.Type.C_μ'45'type_132 v6
                -> coe
-                    MAlonzo.Code.Once.Semantics.Core.du_coerce'45'functor'8315''185'_150
+                    MAlonzo.Code.Once.Semantics.Core.du_coerce'45'functor'8315''185'_136
                     (coe v6)
                     (coe
-                       MAlonzo.Code.Once.Semantics.Core.du_sem'45'Out_942 (coe v6)
+                       MAlonzo.Code.Once.Semantics.Core.du_sem'45'Out_928 (coe v6)
                        (coe v5) (coe v3))
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.CCC.IR.C_Cata_376 v5 v7
+      MAlonzo.Code.Once.CCC.IR.C_Cata_348 v5 v7
         -> case coe v0 of
              MAlonzo.Code.Once.Type.C_μ'45'type_132 v8
                -> coe
-                    MAlonzo.Code.Once.Semantics.Core.du_sem'45'cata_954 v8 v5
+                    MAlonzo.Code.Once.Semantics.Core.du_sem'45'cata_940 v8 v5
                     (\ v9 ->
                        d_eval_10
                          (coe
                             MAlonzo.Code.Once.Type.d_'10214'_'10215'T_162 (coe v8) (coe v1))
                          (coe v1) (coe v7)
                          (coe
-                            MAlonzo.Code.Once.Semantics.Core.du_coerce'45'functor'8315''185'_150
+                            MAlonzo.Code.Once.Semantics.Core.du_coerce'45'functor'8315''185'_136
                             (coe v8) (coe v9)))
                     v3
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.CCC.IR.C_Para_382 v5 v7
+      MAlonzo.Code.Once.CCC.IR.C_Para_354 v5 v7
         -> case coe v0 of
              MAlonzo.Code.Once.Type.C_μ'45'type_132 v8
                -> coe
-                    MAlonzo.Code.Once.Semantics.Core.du_sem'45'para_970 (coe v8)
+                    MAlonzo.Code.Once.Semantics.Core.du_sem'45'para_956 (coe v8)
                     (coe v5)
                     (coe
                        (\ v9 ->
@@ -128,38 +128,38 @@ d_eval_10 v0 v1 v2 v3
                                (coe MAlonzo.Code.Once.Type.C__'42'__126 (coe v0) (coe v1)))
                             (coe v1) (coe v7)
                             (coe
-                               MAlonzo.Code.Once.Semantics.Core.du_coerce'45'functor'8315''185'_150
+                               MAlonzo.Code.Once.Semantics.Core.du_coerce'45'functor'8315''185'_136
                                (coe v8) (coe v9))))
                     (coe v3)
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.CCC.IR.C_Out_386 v5
+      MAlonzo.Code.Once.CCC.IR.C_Out_358 v5
         -> case coe v0 of
              MAlonzo.Code.Once.Type.C_ν'45'type_134 v6
                -> coe
-                    MAlonzo.Code.Once.Semantics.Core.du_coerce'45'functor'8315''185'_150
+                    MAlonzo.Code.Once.Semantics.Core.du_coerce'45'functor'8315''185'_136
                     (coe v6)
                     (coe
-                       MAlonzo.Code.Once.Semantics.Core.du_sem'45'CoOut_1004 (coe v6)
+                       MAlonzo.Code.Once.Semantics.Core.du_sem'45'CoOut_990 (coe v6)
                        (coe v5) (coe v3))
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.CCC.IR.C_in'45'ν_390 v5 v6
+      MAlonzo.Code.Once.CCC.IR.C_in'45'ν_362 v5 v6
         -> case coe v1 of
              MAlonzo.Code.Once.Type.C_ν'45'type_134 v7
                -> coe
-                    MAlonzo.Code.Once.Semantics.Core.du_sem'45'CoIn_1014 (coe v7)
+                    MAlonzo.Code.Once.Semantics.Core.du_sem'45'CoIn_1000 (coe v7)
                     (coe
-                       MAlonzo.Code.Once.Semantics.Core.du_coerce'45'functor_108 (coe v7)
+                       MAlonzo.Code.Once.Semantics.Core.du_coerce'45'functor_94 (coe v7)
                        (coe v3))
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.CCC.IR.C_Ana_396 v5 v7
+      MAlonzo.Code.Once.CCC.IR.C_Ana_368 v5 v7
         -> case coe v1 of
              MAlonzo.Code.Once.Type.C_ν'45'type_134 v8
                -> coe
-                    MAlonzo.Code.Once.Semantics.Core.du_sem'45'ana_1114 (coe v8)
+                    MAlonzo.Code.Once.Semantics.Core.du_sem'45'ana_1024 (coe v8)
                     (coe
                        (\ v9 ->
                           coe
-                            MAlonzo.Code.Once.Semantics.Core.du_coerce'45'functor_108 (coe v8)
+                            MAlonzo.Code.Once.Semantics.Core.du_coerce'45'functor_94 (coe v8)
                             (coe
                                d_eval_10 (coe v0)
                                (coe
@@ -167,11 +167,11 @@ d_eval_10 v0 v1 v2 v3
                                (coe v7) (coe v9))))
                     (coe v3)
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.CCC.IR.C_Hylo_404 v4 v6 v7 v9 v10
+      MAlonzo.Code.Once.CCC.IR.C_Hylo_376 v4 v6 v7 v9 v10
         -> case coe v0 of
              MAlonzo.Code.Once.Type.C_μ'45'type_132 v11
                -> coe
-                    MAlonzo.Code.Once.Semantics.Core.du_sem'45'fuseNat_1244 v4 v11 v6
+                    MAlonzo.Code.Once.Semantics.Core.du_sem'45'fuseNat_1154 v4 v11 v6
                     v7
                     (\ v12 v13 ->
                        coe du_appNatTr'45'F_18 (coe v11) (coe v4) (coe v10) v13)
@@ -181,15 +181,15 @@ d_eval_10 v0 v1 v2 v3
                             MAlonzo.Code.Once.Type.d_'10214'_'10215'T_162 (coe v4) (coe v1))
                          (coe v1) (coe v9)
                          (coe
-                            MAlonzo.Code.Once.Semantics.Core.du_coerce'45'functor'8315''185'_150
+                            MAlonzo.Code.Once.Semantics.Core.du_coerce'45'functor'8315''185'_136
                             (coe v4) (coe v12)))
                     v3
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.CCC.IR.C_Fuse_412 v4 v6 v7 v9 v10
+      MAlonzo.Code.Once.CCC.IR.C_Fuse_384 v4 v6 v7 v9 v10
         -> case coe v0 of
              MAlonzo.Code.Once.Type.C_μ'45'type_132 v11
                -> coe
-                    MAlonzo.Code.Once.Semantics.Core.du_sem'45'fuseNat_1244 v4 v11 v6
+                    MAlonzo.Code.Once.Semantics.Core.du_sem'45'fuseNat_1154 v4 v11 v6
                     v7
                     (\ v12 v13 ->
                        coe du_appNatTr'45'F_18 (coe v11) (coe v4) (coe v10) v13)
@@ -199,30 +199,30 @@ d_eval_10 v0 v1 v2 v3
                             MAlonzo.Code.Once.Type.d_'10214'_'10215'T_162 (coe v4) (coe v1))
                          (coe v1) (coe v9)
                          (coe
-                            MAlonzo.Code.Once.Semantics.Core.du_coerce'45'functor'8315''185'_150
+                            MAlonzo.Code.Once.Semantics.Core.du_coerce'45'functor'8315''185'_136
                             (coe v4) (coe v12)))
                     v3
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.CCC.IR.C_free'45'heap_414 v4 -> coe v3
-      MAlonzo.Code.Once.CCC.IR.C_const_418 v5 v6 v7 -> coe v7
-      MAlonzo.Code.Once.CCC.IR.C_SigOp_424 v6
-        -> coe MAlonzo.Code.Once.CCC.SigOp.Info.d_semM_164 v6 v3
+      MAlonzo.Code.Once.CCC.IR.C_free'45'heap_386 v4 -> coe v3
+      MAlonzo.Code.Once.CCC.IR.C_const_390 v5 v6 v7 -> coe v7
+      MAlonzo.Code.Once.CCC.IR.C_SigOp_396 v6
+        -> coe MAlonzo.Code.Once.CCC.SigOp.Info.d_semM_150 v6 v3
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Eval.appNatTr-F
 d_appNatTr'45'F_18 ::
   MAlonzo.Code.Once.Type.T_Functor_110 ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
-  MAlonzo.Code.Once.CCC.IR.T_NatTr_276 -> () -> AgdaAny -> AgdaAny
+  MAlonzo.Code.Once.CCC.IR.T_NatTr_248 -> () -> AgdaAny -> AgdaAny
 d_appNatTr'45'F_18 v0 v1 v2 ~v3 v4
   = du_appNatTr'45'F_18 v0 v1 v2 v4
 du_appNatTr'45'F_18 ::
   MAlonzo.Code.Once.Type.T_Functor_110 ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
-  MAlonzo.Code.Once.CCC.IR.T_NatTr_276 -> AgdaAny -> AgdaAny
+  MAlonzo.Code.Once.CCC.IR.T_NatTr_248 -> AgdaAny -> AgdaAny
 du_appNatTr'45'F_18 v0 v1 v2 v3
   = case coe v2 of
-      MAlonzo.Code.Once.CCC.IR.C_ntId_426 -> coe v3
-      MAlonzo.Code.Once.CCC.IR.C_ntK_432 v6
+      MAlonzo.Code.Once.CCC.IR.C_ntId_398 -> coe v3
+      MAlonzo.Code.Once.CCC.IR.C_ntK_404 v6
         -> case coe v0 of
              MAlonzo.Code.Once.Type.C_K_114 v7
                -> case coe v1 of
@@ -230,7 +230,7 @@ du_appNatTr'45'F_18 v0 v1 v2 v3
                       -> coe d_eval_10 (coe v7) (coe v8) (coe v6) (coe v3)
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.CCC.IR.C_ntFst_440 v7
+      MAlonzo.Code.Once.CCC.IR.C_ntFst_412 v7
         -> case coe v0 of
              MAlonzo.Code.Once.Type.C__'8855'__120 v8 v9
                -> case coe v3 of
@@ -238,7 +238,7 @@ du_appNatTr'45'F_18 v0 v1 v2 v3
                       -> coe du_appNatTr'45'F_18 (coe v8) (coe v1) (coe v7) (coe v10)
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.CCC.IR.C_ntSnd_448 v7
+      MAlonzo.Code.Once.CCC.IR.C_ntSnd_420 v7
         -> case coe v0 of
              MAlonzo.Code.Once.Type.C__'8855'__120 v8 v9
                -> case coe v3 of
@@ -246,7 +246,7 @@ du_appNatTr'45'F_18 v0 v1 v2 v3
                       -> coe du_appNatTr'45'F_18 (coe v9) (coe v1) (coe v7) (coe v11)
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.CCC.IR.C_ntCase_456 v7 v8
+      MAlonzo.Code.Once.CCC.IR.C_ntCase_428 v7 v8
         -> case coe v0 of
              MAlonzo.Code.Once.Type.C__'8853'__118 v9 v10
                -> case coe v3 of
@@ -256,21 +256,21 @@ du_appNatTr'45'F_18 v0 v1 v2 v3
                       -> coe du_appNatTr'45'F_18 (coe v10) (coe v1) (coe v8) (coe v11)
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.CCC.IR.C_ntInl_464 v7
+      MAlonzo.Code.Once.CCC.IR.C_ntInl_436 v7
         -> case coe v1 of
              MAlonzo.Code.Once.Type.C__'8853'__118 v8 v9
                -> coe
                     MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38
                     (coe du_appNatTr'45'F_18 (coe v0) (coe v8) (coe v7) (coe v3))
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.CCC.IR.C_ntInr_472 v7
+      MAlonzo.Code.Once.CCC.IR.C_ntInr_444 v7
         -> case coe v1 of
              MAlonzo.Code.Once.Type.C__'8853'__118 v8 v9
                -> coe
                     MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42
                     (coe du_appNatTr'45'F_18 (coe v0) (coe v9) (coe v7) (coe v3))
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.CCC.IR.C_ntPair_480 v7 v8
+      MAlonzo.Code.Once.CCC.IR.C_ntPair_452 v7 v8
         -> case coe v1 of
              MAlonzo.Code.Once.Type.C__'8855'__120 v9 v10
                -> coe
