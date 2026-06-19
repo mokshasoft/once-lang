@@ -53,8 +53,8 @@ d_findMain'45'here_12 ::
   Bool ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20 ->
   Maybe MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  Maybe MAlonzo.Code.Once.CCC.IR.T_IR_22 ->
-  Maybe MAlonzo.Code.Once.CCC.IR.T_IR_22
+  Maybe MAlonzo.Code.Once.CCC.IR.T_IR_18 ->
+  Maybe MAlonzo.Code.Once.CCC.IR.T_IR_18
 d_findMain'45'here_12 v0 v1 v2 v3 v4
   = if coe v1
       then coe v4
@@ -76,7 +76,7 @@ d_findMain'45'here_12 v0 v1 v2 v3 v4
 -- Once.Verified.SourceTrace.findMain
 d_findMain_30 ::
   [MAlonzo.Code.Once.Compile.T_CompiledFun_186] ->
-  Maybe MAlonzo.Code.Once.CCC.IR.T_IR_22
+  Maybe MAlonzo.Code.Once.CCC.IR.T_IR_18
 d_findMain_30 v0
   = case coe v0 of
       [] -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
@@ -96,7 +96,7 @@ d_findMain_30 v0
 -- Once.Verified.SourceTrace.moduleToIR-aux
 d_moduleToIR'45'aux_36 ::
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30 ->
-  Maybe MAlonzo.Code.Once.CCC.IR.T_IR_22
+  Maybe MAlonzo.Code.Once.CCC.IR.T_IR_18
 d_moduleToIR'45'aux_36 v0
   = case coe v0 of
       MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v1
@@ -107,7 +107,7 @@ d_moduleToIR'45'aux_36 v0
 -- Once.Verified.SourceTrace.moduleToIR
 d_moduleToIR_40 ::
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_44 ->
-  Maybe MAlonzo.Code.Once.CCC.IR.T_IR_22
+  Maybe MAlonzo.Code.Once.CCC.IR.T_IR_18
 d_moduleToIR_40 v0
   = coe
       d_moduleToIR'45'aux_36
@@ -117,7 +117,7 @@ d_moduleToIR_40 v0
          (coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8) (coe v0))
 -- Once.Verified.SourceTrace.⟦_⟧IR
 d_'10214'_'10215'IR_44 ::
-  Maybe MAlonzo.Code.Once.CCC.IR.T_IR_22 ->
+  Maybe MAlonzo.Code.Once.CCC.IR.T_IR_18 ->
   Integer -> [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_122]
 d_'10214'_'10215'IR_44 v0
   = case coe v0 of

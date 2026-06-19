@@ -98,7 +98,7 @@ d_ArchCorrect_46 a0 a1 = ()
 data T_ArchCorrect_46
   = C_constructor_100 (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
                        Integer -> [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_122])
-                      (Maybe MAlonzo.Code.Once.CCC.IR.T_IR_22 ->
+                      (Maybe MAlonzo.Code.Once.CCC.IR.T_IR_18 ->
                        Integer -> [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_122])
 -- Once.Verified.Compile.ArchCorrect.asm-sem
 d_asm'45'sem_76 ::
@@ -112,7 +112,7 @@ d_asm'45'sem_76 v0
 -- Once.Verified.Compile.ArchCorrect.flat-trace
 d_flat'45'trace_78 ::
   T_ArchCorrect_46 ->
-  Maybe MAlonzo.Code.Once.CCC.IR.T_IR_22 ->
+  Maybe MAlonzo.Code.Once.CCC.IR.T_IR_18 ->
   Integer -> [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_122]
 d_flat'45'trace_78 v0
   = case coe v0 of
@@ -135,7 +135,7 @@ d_asm'45'trace'45'correct_92 = erased
 -- Once.Verified.Compile.ArchCorrect.ir-flat-correct
 d_ir'45'flat'45'correct_98 ::
   T_ArchCorrect_46 ->
-  Maybe MAlonzo.Code.Once.CCC.IR.T_IR_22 ->
+  Maybe MAlonzo.Code.Once.CCC.IR.T_IR_18 ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_ir'45'flat'45'correct_98 = erased
 -- Once.Verified.Compile.gmoduleToModule-correct

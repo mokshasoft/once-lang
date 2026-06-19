@@ -72,7 +72,7 @@ data T_ValidAt_126
                        MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_610
                        T_ValidAt_126 |
     C_valid'45'closure_206 MAlonzo.Code.Once.Type.T_Type_112
-                           MAlonzo.Code.Once.CCC.IR.T_IR_22 AgdaAny
+                           MAlonzo.Code.Once.CCC.IR.T_IR_18 AgdaAny
                            MAlonzo.Code.Data.Nat.Base.T__'8804'__22
                            MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12
                            MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12
@@ -153,7 +153,7 @@ d_snd'45'valid_268 v0
 d_ClosureValid_286 a0 a1 a2 a3 a4 a5 a6 a7 a8 = ()
 data T_ClosureValid_286
   = C_constructor_358 MAlonzo.Code.Once.Type.T_Type_112
-                      MAlonzo.Code.Once.CCC.IR.T_IR_22 AgdaAny
+                      MAlonzo.Code.Once.CCC.IR.T_IR_18 AgdaAny
                       MAlonzo.Code.Data.Nat.Base.T__'8804'__22
                       MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12
                       MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12
@@ -170,7 +170,7 @@ d_EnvType_330 v0
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Machine.Validity.ValidityDef.ClosureValid.body
 d_body_332 ::
-  T_ClosureValid_286 -> MAlonzo.Code.Once.CCC.IR.T_IR_22
+  T_ClosureValid_286 -> MAlonzo.Code.Once.CCC.IR.T_IR_18
 d_body_332 v0
   = case coe v0 of
       C_constructor_358 v1 v2 v3 v4 v5 v6 v9 v10 v11 v12 -> coe v2
@@ -470,7 +470,7 @@ d_composeClosure_676 ::
   MAlonzo.Code.Once.Type.T_Quantity_4 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
-  MAlonzo.Code.Once.CCC.IR.T_IR_22 ->
+  MAlonzo.Code.Once.CCC.IR.T_IR_18 ->
   AgdaAny ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
@@ -488,7 +488,7 @@ d_composeClosure_676 ~v0 ~v1 ~v2 v3 ~v4 ~v5 ~v6 v7 v8 v9 ~v10 v11
   = du_composeClosure_676 v3 v7 v8 v9 v11 v12 v16 v17 v18 v19
 du_composeClosure_676 ::
   MAlonzo.Code.Once.Type.T_Type_112 ->
-  MAlonzo.Code.Once.CCC.IR.T_IR_22 ->
+  MAlonzo.Code.Once.CCC.IR.T_IR_18 ->
   AgdaAny ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
@@ -770,7 +770,7 @@ d_ep''_924 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_Quantity_4 ->
-  MAlonzo.Code.Once.CCC.IR.T_IR_22 ->
+  MAlonzo.Code.Once.CCC.IR.T_IR_18 ->
   AgdaAny ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
@@ -796,7 +796,7 @@ d_cp''_926 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_Quantity_4 ->
-  MAlonzo.Code.Once.CCC.IR.T_IR_22 ->
+  MAlonzo.Code.Once.CCC.IR.T_IR_18 ->
   AgdaAny ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
@@ -822,7 +822,7 @@ d_ev''_928 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_Quantity_4 ->
-  MAlonzo.Code.Once.CCC.IR.T_IR_22 ->
+  MAlonzo.Code.Once.CCC.IR.T_IR_18 ->
   AgdaAny ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->

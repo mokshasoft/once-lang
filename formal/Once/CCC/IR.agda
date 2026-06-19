@@ -31,11 +31,12 @@ open import Once.Type public
 -- Import WellFormedF for recursion scheme constructors
 open import Once.Functor.Translate using (WellFormedF; ⟦_⟧-base)
 
--- HeapRef and ValueLocation: needed for the `free-heap` constructor and the
--- `LocMatchesMode` predicate below. D062: these come from the shared location
--- types / HeapAddress, NOT the machine (SMCore) — the categorical IR must not
--- depend on the abstract machine's execution.
-open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
+-- HeapRef: the `free-heap` constructor's payload (a heap reference). From the
+-- lightweight shared HeapAddress module (stdlib-only), NOT the machine.
+-- 0.47: `ValueLocation`/`LocMatchesMode` moved OUT — the mode↔location-shape
+-- link is a machine-validity predicate (now `Once.CCC.Machine.LocMatchesMode`),
+-- not IR syntax. So the IR no longer imports `Once.CCC.Machine.Locations`
+-- (→ `FrameSemantics` → `Memory.*`) and is a pure syntax tier modulo HeapRef.
 open import Once.Memory.HeapAddress using (HeapRef)
 
 -- D054/0.47: `const` carries the literal's machine-carrier value
@@ -63,31 +64,11 @@ data AllocMode : Set where
   Stack : AllocMode  -- Allocate inline on stack (non-escaping)
   Heap  : AllocMode  -- Allocate on heap (escaping)
 
-------------------------------------------------------------------------
--- LocMatchesMode: link between mode and location shape
---
--- Plan 0.14 (Camp 2): make the mode tag in ValidAtWF semantically
--- meaningful. A compound value's representation lives where its mode
--- says: Stack-mode compounds at AtStack locations, Heap-mode at
--- AtDynamic. The Place stage's "mode matches loc shape" discipline is
--- surfaced into the proof system here, so any ValidAtWF Heap … loc …
--- carries the witness loc = AtDynamic _.
---
--- Note: only used by compound-type ValidAtWF constructors (pair /
--- inl / inr / closure / μ / ν). Primitives can live at any loc
--- regardless of mode because writeLoc (since Plan 0.14) accepts
--- primitive StoredValues in heap cells and any StoredValue in stack
--- cells.
-------------------------------------------------------------------------
-
-open import Data.Unit using (⊤)
-open import Data.Empty using (⊥)
-
-LocMatchesMode : ∀ {FS} → AllocMode → ValueLocation FS → Set
-LocMatchesMode Stack (AtStack _ _)  = ⊤
-LocMatchesMode Stack (AtDynamic _)  = ⊥
-LocMatchesMode Heap  (AtStack _ _)  = ⊥
-LocMatchesMode Heap  (AtDynamic _)  = ⊤
+-- 0.47: `LocMatchesMode` (the mode↔location-shape link) moved to
+-- `Once.CCC.Machine.LocMatchesMode` — it is a machine-validity predicate over
+-- `ValueLocation`, not IR syntax. Keeping it here forced the IR to import the
+-- machine's `Locations`/`FrameSemantics`/`Memory.*`. Its consumers (the
+-- compound-type `ValidAtWF` constructors) now import it from there.
 
 ------------------------------------------------------------------------
 -- Allocator (Plan 0.2.4.5)
