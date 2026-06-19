@@ -97,16 +97,10 @@ eqIR = SigOp eq-info
 neIR : IR (Int * Int) (Unit + Unit)
 neIR = SigOp ne-info
 
--- | Interpret context as a product type (environment type)
---
--- The context (A₀, A₁, ..., Aₙ₋₁) becomes the nested product
--- (...((Unit * A₀) * A₁) * ... * Aₙ₋₁)
---
--- We use left-nested products so newest binding is easiest to access.
---
-⟦_⟧ᶜ : ∀ {n} → Ctx n → Type
-⟦ ∅ ⟧ᶜ         = Unit
-⟦ Γ , A ^ q ⟧ᶜ = ⟦ Γ ⟧ᶜ * A
+-- | `⟦_⟧ᶜ` (context → environment product type) moved to `Once.Surface.Syntax`
+-- (Plan 0.47): it is pure `Ctx → Type`, so it belongs with `Ctx`, and the
+-- denotational meaning can take it without importing this (operational)
+-- elaborator. It is in scope here via `open import Once.Surface.Syntax`.
 
 -- | Project variable from environment (de Bruijn index 0 = rightmost)
 --
