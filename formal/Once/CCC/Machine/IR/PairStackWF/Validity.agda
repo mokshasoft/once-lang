@@ -46,6 +46,7 @@ open import Once.CCC.Machine.SMCore hiding (AllocMode; Stack; Heap)
 open import Once.Semantics.Machine using (⟦_⟧; sem-pair)
 pair = sem-pair
 open import Once.CCC.IR
+open import Once.CCC.Machine.LocMatchesMode using (LocMatchesMode)
 open import Once.CCC.Eval using (eval)
 open import Once.CCC.IR.Size
 open import Once.CCC.IR.Stack

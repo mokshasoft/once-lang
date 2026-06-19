@@ -29,12 +29,12 @@ data T_Target_4
   = C_constructor_46 (Integer ->
                       MAlonzo.Code.Once.Type.T_Type_112 ->
                       MAlonzo.Code.Once.Type.T_Type_112 ->
-                      MAlonzo.Code.Once.CCC.IR.T_IR_22 ->
+                      MAlonzo.Code.Once.CCC.IR.T_IR_18 ->
                       MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14)
                      (Integer ->
                       MAlonzo.Code.Once.Type.T_Type_112 ->
                       MAlonzo.Code.Once.Type.T_Type_112 ->
-                      MAlonzo.Code.Once.CCC.IR.T_IR_22 ->
+                      MAlonzo.Code.Once.CCC.IR.T_IR_18 ->
                       MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14)
                      MAlonzo.Code.Agda.Builtin.String.T_String_6
                      (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
@@ -48,7 +48,7 @@ d_irToAsm_30 ::
   Integer ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
-  MAlonzo.Code.Once.CCC.IR.T_IR_22 ->
+  MAlonzo.Code.Once.CCC.IR.T_IR_18 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_irToAsm_30 v0
   = case coe v0 of
@@ -60,7 +60,7 @@ d_irToBodies_36 ::
   Integer ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
-  MAlonzo.Code.Once.CCC.IR.T_IR_22 ->
+  MAlonzo.Code.Once.CCC.IR.T_IR_18 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_irToBodies_36 v0
   = case coe v0 of

@@ -94,11 +94,11 @@ d_validateMain_4 v0
          _ -> coe v1)
 -- Once.Compile.wrapMainAsEntry
 d_wrapMainAsEntry_8 ::
-  MAlonzo.Code.Once.CCC.IR.T_IR_22 ->
-  MAlonzo.Code.Once.CCC.IR.T_IR_22
+  MAlonzo.Code.Once.CCC.IR.T_IR_18 ->
+  MAlonzo.Code.Once.CCC.IR.T_IR_18
 d_wrapMainAsEntry_8 v0
   = coe
-      MAlonzo.Code.Once.CCC.IR.C__'8728'__36
+      MAlonzo.Code.Once.CCC.IR.C__'8728'__32
       (coe
          MAlonzo.Code.Once.Type.C__'42'__126
          (coe
@@ -110,16 +110,16 @@ d_wrapMainAsEntry_8 v0
                (coe MAlonzo.Code.Once.Type.C_eff_36))
             (coe MAlonzo.Code.Once.Type.C_Unit_122))
          (coe MAlonzo.Code.Once.Type.C_Unit_122))
-      (coe MAlonzo.Code.Once.CCC.IR.C_apply_102)
+      (coe MAlonzo.Code.Once.CCC.IR.C_apply_98)
       (coe
-         MAlonzo.Code.Once.CCC.IR.C_'10216'_'44'_'10217'_44 v0
-         (coe MAlonzo.Code.Once.CCC.IR.C_terminal_80)
+         MAlonzo.Code.Once.CCC.IR.C_'10216'_'44'_'10217'_40 v0
+         (coe MAlonzo.Code.Once.CCC.IR.C_terminal_76)
          (coe MAlonzo.Code.Once.CCC.IR.C_Stack_8))
 -- Once.Compile.maybeWrapMain
 d_maybeWrapMain_18 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
-  MAlonzo.Code.Once.CCC.IR.T_IR_22 ->
+  MAlonzo.Code.Once.CCC.IR.T_IR_18 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_maybeWrapMain_18 v0 v1 v2
   = let v3
@@ -290,7 +290,7 @@ d_compileFun_104 v0 v1 v2 v3 v4 v5 v6
 d_CompiledFun_186 = ()
 data T_CompiledFun_186
   = C_mkCompiledFun_204 MAlonzo.Code.Agda.Builtin.String.T_String_6
-                        MAlonzo.Code.Once.Type.T_Type_112 MAlonzo.Code.Once.CCC.IR.T_IR_22
+                        MAlonzo.Code.Once.Type.T_Type_112 MAlonzo.Code.Once.CCC.IR.T_IR_18
                         Bool
 -- Once.Compile.CompiledFun.cfName
 d_cfName_196 ::
@@ -307,7 +307,7 @@ d_cfType_198 v0
       C_mkCompiledFun_204 v1 v2 v3 v4 -> coe v2
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Compile.CompiledFun.cfIR
-d_cfIR_200 :: T_CompiledFun_186 -> MAlonzo.Code.Once.CCC.IR.T_IR_22
+d_cfIR_200 :: T_CompiledFun_186 -> MAlonzo.Code.Once.CCC.IR.T_IR_18
 d_cfIR_200 v0
   = case coe v0 of
       C_mkCompiledFun_204 v1 v2 v3 v4 -> coe v3
@@ -766,7 +766,7 @@ d_pipeline_480 ::
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.CCC.IR.T_AllocMode_6 ->
   MAlonzo.Code.Once.Surface.IR.T_SurfaceIR_6 ->
-  MAlonzo.Code.Once.CCC.IR.T_IR_22
+  MAlonzo.Code.Once.CCC.IR.T_IR_18
 d_pipeline_480 v0 v1 v2 v3
   = coe
       MAlonzo.Code.Once.Escape.d_escape_148 v0 v1
@@ -779,7 +779,7 @@ d_pipeline'45'default_490 ::
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Surface.IR.T_SurfaceIR_6 ->
-  MAlonzo.Code.Once.CCC.IR.T_IR_22
+  MAlonzo.Code.Once.CCC.IR.T_IR_18
 d_pipeline'45'default_490 v0 v1
   = coe
       d_pipeline_480 (coe v0) (coe v1)
@@ -790,7 +790,7 @@ d_pipeline'45'no'45'escape_496 ::
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.CCC.IR.T_AllocMode_6 ->
   MAlonzo.Code.Once.Surface.IR.T_SurfaceIR_6 ->
-  MAlonzo.Code.Once.CCC.IR.T_IR_22
+  MAlonzo.Code.Once.CCC.IR.T_IR_18
 d_pipeline'45'no'45'escape_496 v0 v1 v2 v3
   = coe
       MAlonzo.Code.Once.Optimize.d_optimize_4106 v0 v1
@@ -802,7 +802,7 @@ d_pipeline'45'no'45'opt_506 ::
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.CCC.IR.T_AllocMode_6 ->
   MAlonzo.Code.Once.Surface.IR.T_SurfaceIR_6 ->
-  MAlonzo.Code.Once.CCC.IR.T_IR_22
+  MAlonzo.Code.Once.CCC.IR.T_IR_18
 d_pipeline'45'no'45'opt_506 v0 v1
   = coe
       MAlonzo.Code.Once.Surface.Desugar.d_desugar_18 (coe v0) (coe v1)

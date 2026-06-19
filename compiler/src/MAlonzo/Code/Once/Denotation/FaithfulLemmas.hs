@@ -76,7 +76,7 @@ d_algIR_164 ::
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_184 ->
   (Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
-  AgdaAny -> Integer -> MAlonzo.Code.Once.CCC.IR.T_IR_22
+  AgdaAny -> Integer -> MAlonzo.Code.Once.CCC.IR.T_IR_18
 d_algIR_164 ~v0 ~v1 v2 v3 v4 ~v5 v6 ~v7 ~v8 ~v9
   = du_algIR_164 v2 v3 v4 v6
 du_algIR_164 ::
@@ -84,10 +84,10 @@ du_algIR_164 ::
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_Purity_32 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_184 ->
-  MAlonzo.Code.Once.CCC.IR.T_IR_22
+  MAlonzo.Code.Once.CCC.IR.T_IR_18
 du_algIR_164 v0 v1 v2 v3
   = coe
-      MAlonzo.Code.Once.CCC.IR.C__'8728'__36
+      MAlonzo.Code.Once.CCC.IR.C__'8728'__32
       (coe
          MAlonzo.Code.Once.Type.C__'42'__126
          (coe
@@ -100,11 +100,11 @@ du_algIR_164 v0 v1 v2 v3
             (coe v1))
          (coe
             MAlonzo.Code.Once.Type.d_'10214'_'10215'T_162 (coe v0) (coe v1)))
-      (coe MAlonzo.Code.Once.CCC.IR.C_apply_102)
+      (coe MAlonzo.Code.Once.CCC.IR.C_apply_98)
       (coe
-         MAlonzo.Code.Once.CCC.IR.C_'10216'_'44'_'10217'_44
+         MAlonzo.Code.Once.CCC.IR.C_'10216'_'44'_'10217'_40
          (coe
-            MAlonzo.Code.Once.CCC.IR.C__'8728'__36
+            MAlonzo.Code.Once.CCC.IR.C__'8728'__32
             (coe
                MAlonzo.Code.Once.Surface.Syntax.du_'10214'_'10215''7580'_38
                (coe MAlonzo.Code.Once.Surface.Syntax.C_'8709'_8))
@@ -120,8 +120,8 @@ du_algIR_164 v0 v1 v2 v3
                      (coe MAlonzo.Code.Once.Type.C_Many_10) (coe v2))
                   (coe v1))
                (coe MAlonzo.Code.Once.CCC.IR.C_Heap_10) (coe v3))
-            (coe MAlonzo.Code.Once.CCC.IR.C_terminal_80))
-         (coe MAlonzo.Code.Once.CCC.IR.C_id_28)
+            (coe MAlonzo.Code.Once.CCC.IR.C_terminal_76))
+         (coe MAlonzo.Code.Once.CCC.IR.C_id_24)
          (coe MAlonzo.Code.Once.CCC.IR.C_Heap_10))
 -- Once.Denotation.FaithfulLemmas._.alg-eq
 d_alg'45'eq_168 ::
@@ -154,17 +154,17 @@ d_coalgIR_224 ::
   MAlonzo.Code.Once.Type.T_ArrowKind_40 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_184 ->
   (Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
-  AgdaAny -> Integer -> MAlonzo.Code.Once.CCC.IR.T_IR_22
+  AgdaAny -> Integer -> MAlonzo.Code.Once.CCC.IR.T_IR_18
 d_coalgIR_224 v0 v1 v2 v3 ~v4 ~v5 ~v6 = du_coalgIR_224 v0 v1 v2 v3
 du_coalgIR_224 ::
   MAlonzo.Code.Once.Type.T_Functor_110 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_ArrowKind_40 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_184 ->
-  MAlonzo.Code.Once.CCC.IR.T_IR_22
+  MAlonzo.Code.Once.CCC.IR.T_IR_18
 du_coalgIR_224 v0 v1 v2 v3
   = coe
-      MAlonzo.Code.Once.CCC.IR.C__'8728'__36
+      MAlonzo.Code.Once.CCC.IR.C__'8728'__32
       (coe
          MAlonzo.Code.Once.Type.C__'42'__126
          (coe
@@ -172,11 +172,11 @@ du_coalgIR_224 v0 v1 v2 v3
             (coe
                MAlonzo.Code.Once.Type.d_'10214'_'10215'T_162 (coe v0) (coe v1)))
          (coe v1))
-      (coe MAlonzo.Code.Once.CCC.IR.C_apply_102)
+      (coe MAlonzo.Code.Once.CCC.IR.C_apply_98)
       (coe
-         MAlonzo.Code.Once.CCC.IR.C_'10216'_'44'_'10217'_44
+         MAlonzo.Code.Once.CCC.IR.C_'10216'_'44'_'10217'_40
          (coe
-            MAlonzo.Code.Once.CCC.IR.C__'8728'__36
+            MAlonzo.Code.Once.CCC.IR.C__'8728'__32
             (coe
                MAlonzo.Code.Once.Surface.Syntax.du_'10214'_'10215''7580'_38
                (coe MAlonzo.Code.Once.Surface.Syntax.C_'8709'_8))
@@ -188,8 +188,8 @@ du_coalgIR_224 v0 v1 v2 v3
                   (coe
                      MAlonzo.Code.Once.Type.d_'10214'_'10215'T_162 (coe v0) (coe v1)))
                (coe MAlonzo.Code.Once.CCC.IR.C_Heap_10) (coe v3))
-            (coe MAlonzo.Code.Once.CCC.IR.C_terminal_80))
-         (coe MAlonzo.Code.Once.CCC.IR.C_id_28)
+            (coe MAlonzo.Code.Once.CCC.IR.C_terminal_76))
+         (coe MAlonzo.Code.Once.CCC.IR.C_id_24)
          (coe MAlonzo.Code.Once.CCC.IR.C_Heap_10))
 -- Once.Denotation.FaithfulLemmas._.stepˢ
 d_step'738'_226 ::
