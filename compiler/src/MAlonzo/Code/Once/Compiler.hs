@@ -20,15 +20,15 @@ import qualified Data.Text
 import qualified MAlonzo.Code.Agda.Builtin.Equality
 import qualified MAlonzo.Code.Agda.Builtin.String
 import qualified MAlonzo.Code.Data.Fin.Base
+import qualified MAlonzo.Code.Once.Adequacy
+import qualified MAlonzo.Code.Once.Adequacy.ArchCorrectness
+import qualified MAlonzo.Code.Once.Adequacy.CPU
+import qualified MAlonzo.Code.Once.Adequacy.Compile
+import qualified MAlonzo.Code.Once.Adequacy.SourceTrace
 import qualified MAlonzo.Code.Once.Denotation.Trace
 import qualified MAlonzo.Code.Once.Grammar
 import qualified MAlonzo.Code.Once.Parser.Module.Core
 import qualified MAlonzo.Code.Once.Target.Arch
-import qualified MAlonzo.Code.Once.Verified
-import qualified MAlonzo.Code.Once.Verified.ArchCorrectness
-import qualified MAlonzo.Code.Once.Verified.CPU
-import qualified MAlonzo.Code.Once.Verified.Compile
-import qualified MAlonzo.Code.Once.Verified.SourceTrace
 
 -- Once.Compiler.VC.codegen-asm-correct
 d_codegen'45'asm'45'correct_6 ::
@@ -45,8 +45,8 @@ d_compile_8 ::
   Maybe [MAlonzo.Code.Data.Fin.Base.T_Fin_10]
 d_compile_8
   = coe
-      MAlonzo.Code.Once.Verified.Compile.du_compile_136
-      (coe MAlonzo.Code.Once.Verified.CPU.d_arch'45'semantics_6)
+      MAlonzo.Code.Once.Adequacy.Compile.du_compile_136
+      (coe MAlonzo.Code.Once.Adequacy.CPU.d_arch'45'semantics_6)
 -- Once.Compiler.VC.correct
 d_correct_10 ::
   MAlonzo.Code.Once.Target.Arch.T_Arch_6 ->
@@ -62,8 +62,8 @@ d_exec_12 ::
   Integer -> [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_122]
 d_exec_12
   = coe
-      MAlonzo.Code.Once.Verified.Compile.du_exec_126
-      (coe MAlonzo.Code.Once.Verified.CPU.d_arch'45'semantics_6)
+      MAlonzo.Code.Once.Adequacy.Compile.du_exec_126
+      (coe MAlonzo.Code.Once.Adequacy.CPU.d_arch'45'semantics_6)
 -- Once.Compiler.VC.module-to-asm-correct
 d_module'45'to'45'asm'45'correct_14 ::
   MAlonzo.Code.Once.Target.Arch.T_Arch_6 ->
@@ -79,8 +79,8 @@ d_string'45'to'45'bytes_16 ::
   [MAlonzo.Code.Data.Fin.Base.T_Fin_10]
 d_string'45'to'45'bytes_16
   = coe
-      MAlonzo.Code.Once.Verified.Compile.du_string'45'to'45'bytes_132
-      (coe MAlonzo.Code.Once.Verified.CPU.d_arch'45'semantics_6)
+      MAlonzo.Code.Once.Adequacy.Compile.du_string'45'to'45'bytes_132
+      (coe MAlonzo.Code.Once.Adequacy.CPU.d_arch'45'semantics_6)
 -- Once.Compiler.VC.string-to-bytes-correct
 d_string'45'to'45'bytes'45'correct_18 ::
   MAlonzo.Code.Once.Target.Arch.T_Arch_6 ->
@@ -94,20 +94,20 @@ d_'10214'_'10215'A__20 ::
   Integer -> [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_122]
 d_'10214'_'10215'A__20
   = coe
-      MAlonzo.Code.Once.Verified.Compile.du_'10214'_'10215'A__174
+      MAlonzo.Code.Once.Adequacy.Compile.du_'10214'_'10215'A__174
       (coe
-         MAlonzo.Code.Once.Verified.ArchCorrectness.d_arch'45'correctness_12)
+         MAlonzo.Code.Once.Adequacy.ArchCorrectness.d_arch'45'correctness_12)
 -- Once.Compiler.once-compiler
 d_once'45'compiler_22 ::
-  MAlonzo.Code.Once.Verified.T_CorrectCompiler_4
+  MAlonzo.Code.Once.Adequacy.T_CorrectCompiler_4
 d_once'45'compiler_22
   = coe
-      MAlonzo.Code.Once.Verified.C_constructor_54
-      MAlonzo.Code.Once.Verified.SourceTrace.d_'10214'_'10215'_62
+      MAlonzo.Code.Once.Adequacy.C_constructor_54
+      MAlonzo.Code.Once.Adequacy.SourceTrace.d_'10214'_'10215'_62
       (coe
-         MAlonzo.Code.Once.Verified.Compile.du_exec_126
-         (coe MAlonzo.Code.Once.Verified.CPU.d_arch'45'semantics_6))
+         MAlonzo.Code.Once.Adequacy.Compile.du_exec_126
+         (coe MAlonzo.Code.Once.Adequacy.CPU.d_arch'45'semantics_6))
       (coe
-         MAlonzo.Code.Once.Verified.Compile.du_compile_136
-         (coe MAlonzo.Code.Once.Verified.CPU.d_arch'45'semantics_6))
+         MAlonzo.Code.Once.Adequacy.Compile.du_compile_136
+         (coe MAlonzo.Code.Once.Adequacy.CPU.d_arch'45'semantics_6))
       erased

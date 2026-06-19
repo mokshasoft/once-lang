@@ -7,7 +7,7 @@
 -- The structural conversion from the formal-grammar module AST
 -- (`Once.Grammar.GModule`) to the parser's module AST
 -- (`Once.Parser.Module.Core.Module`). Discharges the `gmoduleToModule`
--- postulate in `Once.Verified.Compile`.
+-- postulate in `Once.Adequacy.Compile`.
 --
 -- Per-decl conversion:
 --   - DTypeSig / DSignature : GType → PolyType (total; `TVar ↦ PTVar`).

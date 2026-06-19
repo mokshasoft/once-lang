@@ -11,7 +11,7 @@
 -- conversion succeeds iff the value is in the concrete domain (no
 -- `TVar`, no reserved-word vars, single-binding lets only).
 --
--- Used to discharge `gmoduleToModule` (Once.Verified.Compile).
+-- Used to discharge `gmoduleToModule` (Once.Adequacy.Compile).
 ------------------------------------------------------------------------
 
 module Once.Grammar.ConcreteDec where

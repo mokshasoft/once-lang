@@ -37,7 +37,7 @@ open import Once.CCC.Machine.SMCore
          module AbstractExec; module MemOps)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
-open import Once.Verified.FlatEvents using (module FlatEventTrace)
+open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
 
 module CataNatDescend {FS : FrameSemantics} where
   open FlatMachine {FS}

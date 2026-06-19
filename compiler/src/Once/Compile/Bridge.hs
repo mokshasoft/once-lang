@@ -45,7 +45,7 @@ import qualified MAlonzo.Code.Agda.Builtin.Sigma as MSigma
 import qualified MAlonzo.Code.Data.Sum.Base as MSum
 import qualified MAlonzo.Code.Once.Compile as MC
 import qualified MAlonzo.Code.Once.CCC.IR as MCIR
-import qualified MAlonzo.Code.Once.Verified.Compile as MVC
+import qualified MAlonzo.Code.Once.Adequacy.Compile as MVC
 import qualified MAlonzo.Code.Once.Target.Arch as MTA
 import qualified MAlonzo.Code.Once.Parser as MP
 import qualified MAlonzo.Code.Once.Parser.Module.Core as MMC
@@ -213,7 +213,7 @@ resolveImports modMap (Module userMod) =
 -- Equivalent to `compile` but skips the initial parse step — used by
 -- the AST-level pipeline after `resolveImports` produces a flat Module.
 --
--- Routes through `Once.Verified.Compile.compile-cli-asm` (Plan 0.10:
+-- Routes through `Once.Adequacy.Compile.compile-cli-asm` (Plan 0.10:
 -- extracted = verified). The verified path is currently a thin
 -- wrapper around `compileFromModule` for Build, with one named
 -- trusted-base postulate (`string-to-bytes` — GNU `as` conformance,

@@ -6,7 +6,7 @@
 -- SigOp events (Plan 0.36 task #8, traces-agree).
 --
 -- This is the end-to-end check that the trace bridge `flat-events-steps`
--- (Once.Verified.FlatEvents) composes with the state chains built in
+-- (Once.Adequacy.FlatEvents) composes with the state chains built in
 -- `CataNatDescend`: a continue descend iteration (`descend-iter-flat`) is
 -- 9 control/reg/load instructions, none an `instr-sigop`, so its
 -- `chain-events` reduce to `[]` DEFINITIONALLY and `flat-events` skips
@@ -36,7 +36,7 @@ open import Once.CCC.Machine.SMCore
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 open import Once.CCC.Codegen.CataNatDescend using (module CataNatDescend)
-open import Once.Verified.FlatEvents using (module FlatEventTrace)
+open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
 
 module CataNatTraceSilent {FS : FrameSemantics} where
   open FlatMachine {FS}

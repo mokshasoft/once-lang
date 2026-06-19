@@ -22,6 +22,7 @@ import qualified MAlonzo.Code.Agda.Builtin.Float
 import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Agda.Builtin.String
 import qualified MAlonzo.Code.Data.Nat.Base
+import qualified MAlonzo.Code.Once.Adequacy.FlatEvents
 import qualified MAlonzo.Code.Once.CCC.Codegen.IRToTrace
 import qualified MAlonzo.Code.Once.CCC.FrameSemantics
 import qualified MAlonzo.Code.Once.CCC.IR
@@ -35,7 +36,6 @@ import qualified MAlonzo.Code.Once.Functor.Base
 import qualified MAlonzo.Code.Once.Functor.Translate
 import qualified MAlonzo.Code.Once.Memory.HeapAddress
 import qualified MAlonzo.Code.Once.Type
-import qualified MAlonzo.Code.Once.Verified.FlatEvents
 
 -- Once.CCC.Codegen.IRObsCorrectFlat.IRObsCorrectFlatness._.FlatState
 d_FlatState_16 a0 a1 = ()
@@ -88,7 +88,7 @@ du_flat'45'events_140 ::
   [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_122]
 du_flat'45'events_140 v0
   = coe
-      MAlonzo.Code.Once.Verified.FlatEvents.d_flat'45'events_222 (coe v0)
+      MAlonzo.Code.Once.Adequacy.FlatEvents.d_flat'45'events_222 (coe v0)
 -- Once.CCC.Codegen.IRObsCorrectFlat.IRObsCorrectFlatness.μ-layer-iso
 d_μ'45'layer'45'iso_164 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
