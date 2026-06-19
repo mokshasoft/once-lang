@@ -47,7 +47,8 @@ open import Once.CCC.IR.Size
 open import Once.CCC.Machine.Allocation using (AllocMode; Stack; Heap; AllocState)
 
 -- Import semantic operations
-open import Once.Semantics.Value ℕ using (⟦μ⟧; ⟦_⟧F; sem-In; sem-Out; sem-cata; sem-cata-compute; sem-fmap)
+open import Once.Word using (module Word64)
+open import Once.Semantics.Value Word64.Word using (⟦μ⟧; ⟦_⟧F; sem-In; sem-Out; sem-cata; sem-cata-compute; sem-fmap)
 
 ------------------------------------------------------------------------
 -- Proof Module
