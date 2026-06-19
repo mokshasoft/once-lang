@@ -129,7 +129,7 @@ module _ {FS : FrameSemantics} where
   straight-trace' (Fuse _ _ _ _) _ n l = []
   straight-trace' (free-heap _)  _ n l = (λ _ _ → refl) ∷ []
   straight-trace' (SigOp _)   _ n l = (λ _ _ → refl) ∷ []
-  straight-trace' (const _ _ _) _ n l = (λ _ _ → refl) ∷ []
+  straight-trace' (const _ _) _ n l = (λ _ _ → refl) ∷ []
 
   ----------------------------------------------------------------------
   -- Corollaries over the public entry points.

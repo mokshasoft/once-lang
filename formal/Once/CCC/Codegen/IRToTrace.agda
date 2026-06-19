@@ -70,7 +70,7 @@ open import Once.CCC.IR using (IR; AllocMode; Stack; Heap;
   In; out-μ; Cata; Para; Out; in-ν; Ana; Hylo; Fuse;
   free-heap; SigOp; const)
 -- Plan 0.36 Phase 2b: functor structure drives the cata codegen strategy.
-open import Once.Type using (Functor; K; Id; _⊕_; _⊗_)
+open import Once.Type using (Functor; K; Id; _⊕_; _⊗_; fits-int; fits-float)
 
 open import Once.CCC.Machine.SMCore
   using (AbstractInstr; AbstractTrace;
@@ -623,7 +623,9 @@ ir-to-trace' n l apply =
 ir-to-trace' n l (SigOp si) = n , l , (instr-sigop si ∷ []) , []
 
 -- Plan 0.11: const literal — emit a single load-const abstract instr.
-ir-to-trace' n l (const p _ vM) = n , l , (instr-load-const p vM ∷ []) , []
+-- 0.47: matching the FitsInReg evidence reduces `⟦ ℕ ⟧-base A` to `⟦ A ⟧`.
+ir-to-trace' n l (const fits-int   v) = n , l , (instr-load-const fits-int   v ∷ []) , []
+ir-to-trace' n l (const fits-float v) = n , l , (instr-load-const fits-float v ∷ []) , []
 
 -- ────────────────────────────────────────────────────────────────────
 -- Stubbed — emit `[]`. Not needed for Layer 0; future work.

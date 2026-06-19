@@ -402,11 +402,11 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
     -- per-primitive-type discharge produces concrete IRResultAWFs
     -- (similar in shape to SimpleWFImpl's run-X). Audit-visible
     -- trusted-base entry until then.
-    run-ir-wf mIn (const p vI vM) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ =
+    run-ir-wf mIn (const p v) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ =
       mIn , run-const-postulate
       where
         postulate
-          run-const-postulate : IRResultAWF mIn (const p vI vM) x s alloc
+          run-const-postulate : IRResultAWF mIn (const p v) x s alloc
 
     --------------------------------------------------------------------------
     -- OCP-0003: Recursion Schemes

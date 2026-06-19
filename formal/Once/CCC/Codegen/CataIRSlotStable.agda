@@ -34,7 +34,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; sym;
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.IR
-open import Once.Type using (Functor; K; Id; _⊕_; _⊗_)
+open import Once.Type using (Functor; K; Id; _⊕_; _⊗_; fits-int; fits-float)
 open import Once.CCC.Machine.SMCore using (AbstractTrace; AbstractInstr;
          mov-to-output; mov-to-input; mov-output-to-input2; mov-input2-to-output;
          load-indirect; load-indirect-suc; load-from-slot; store-at-slot;
@@ -317,7 +317,8 @@ module CataIRSlotStable {FS : FrameSemantics} where
   ir-stable (curry _ Stack) n l = all-stable?-sound _ refl
   ir-stable (curry _ Heap)  n l = all-stable?-sound _ refl
   ir-stable (SigOp _)       n l = all-stable?-sound _ refl
-  ir-stable (const _ _ _)   n l = all-stable?-sound _ refl
+  ir-stable (const fits-int _)   n l = all-stable?-sound _ refl
+  ir-stable (const fits-float _) n l = all-stable?-sound _ refl
   ir-stable (inl Stack)     n l = all-stable?-sound _ refl
   ir-stable (inr Stack)     n l = all-stable?-sound _ refl
   ir-stable (inl Heap)      n l = all-stable?-sound _ refl

@@ -52,7 +52,7 @@ ir-size (Fuse _ _ alg t) = 2 +ℕ ir-size alg +ℕ ir-size-nt t
 -- Other
 ir-size (free-heap _) = 1
 ir-size (SigOp _) = 1
-ir-size (const _ _ _) = 1
+ir-size (const _ _) = 1
 
 ir-size-nt ntId         = 1
 ir-size-nt (ntK ir)     = 1 +ℕ ir-size ir

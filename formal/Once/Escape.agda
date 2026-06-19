@@ -111,7 +111,7 @@ escape-once arr = arr
 escape-once (SigOp name) = SigOp name
 
 -- const literal: opaque, pass through
-escape-once (const p vI vM) = const p vI vM
+escape-once (const p v) = const p v
 
 -- free-heap: opaque, pass through
 escape-once (free-heap h) = free-heap h
