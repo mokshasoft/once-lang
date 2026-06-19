@@ -2,11 +2,11 @@
 -- Copyright (C) 2025-2026 Jonas Claesson and contributors
 
 ------------------------------------------------------------------------
--- Once.Verified.DenotTrace — the denotational (monadic) trace semantics.
+-- Once.Denotation.DenotTrace — the denotational (monadic) trace semantics.
 --
 -- Plan 0.46. `⟦_⟧ᴰ` is the SOURCE OBSERVABLE: a compositional,
 -- effect-graded, monadic interpretation of the CCC IR into the trace
--- monad `T` (Once.Verified.TraceMonad). It is fuel-free (totality is
+-- monad `T` (Once.Denotation.TraceMonad). It is fuel-free (totality is
 -- structural recursion on the IR), event-indexed (the `ℕ` of `T` is the
 -- observation depth, consumed only by `Ana`), and HIGHER-ORDER-CORRECT:
 --
@@ -25,7 +25,7 @@
 -- is a later refinement; flagged, not silently dropped.)
 ------------------------------------------------------------------------
 
-module Once.Verified.DenotTrace where
+module Once.Denotation.DenotTrace where
 
 open import Data.Nat using (ℕ; zero; suc)
 open import Data.List using (List; []; _∷_; _++_; take)
@@ -48,9 +48,9 @@ open import Once.Functor.Translate using (WellFormedF)
 open import Once.Semantics.Machine
   using (sem-cata; sem-ana; sem-para; sem-In; sem-fuseNat-events;
          sem-fmap; coerce-functor; coerce-functor⁻¹; ⟦_⟧F)
-open import Once.Verified.Trace using (SigOpEvent; mkEvent)
-open import Once.Verified.TraceMonad using (T; returnT; _>>=T_; valueT; projTrace)
-open import Once.Verified.TraceDenote using (events-F)
+open import Once.Denotation.Trace using (SigOpEvent; mkEvent)
+open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_; valueT; projTrace)
+open import Once.Denotation.TraceDenote using (events-F)
 
 ------------------------------------------------------------------------
 -- The monadic value domain. Mirrors `Val.⟦_⟧` EXCEPT at the arrow, which

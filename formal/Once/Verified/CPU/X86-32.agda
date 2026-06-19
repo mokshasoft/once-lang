@@ -15,7 +15,7 @@ open import Data.List using (List)
 open import Data.Maybe using (Maybe)
 open import Data.String using (String)
 
-open import Once.Verified.Behavior      using (Behavior)
+open import Once.Denotation.Behavior      using (Behavior)
 open import Once.Verified.CPU.Interface using (Byte; ArchSemantics)
 
 import Once.CCC.Target.X86-32.Semantics as X32

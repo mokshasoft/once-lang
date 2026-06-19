@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson and contributors
 
 ------------------------------------------------------------------------
--- Once.Verified.SourceDenote — `⟦_⟧ˢ`, THE source semantics (Plan 0.46 / OCP-0006).
+-- Once.Denotation.SourceDenote — `⟦_⟧ˢ`, THE source semantics (Plan 0.46 / OCP-0006).
 --
 -- The single anchor: a typed, FUEL-FREE, total+productive denotational trace
 -- semantics directly over the intrinsically-typed surface `Expr` — independent of
@@ -20,7 +20,7 @@
 -- island. Discharge them as the elaborate-correctness proof (M3) reaches them.
 ------------------------------------------------------------------------
 
-module Once.Verified.SourceDenote where
+module Once.Denotation.SourceDenote where
 
 open import Data.Fin using (Fin) renaming (zero to fzero; suc to fsuc)
 open import Data.Nat using (ℕ; zero; suc)
@@ -36,10 +36,10 @@ open import Once.Type
   using (Type; Unit; Void; Int; Str; _*_; _+_; _⇒[_]_; Functor; ⟦_⟧T; μ-type)
 open import Once.Surface.Syntax using (Expr; Ctx; Usage; lookup; _,_^_; ∅)
 open import Once.Surface.Elaborate using (⟦_⟧ᶜ)
-open import Once.Verified.TraceMonad using (T; returnT; _>>=T_; projTrace; valueT)
-open import Once.Verified.DenotTrace using (⟦_⟧ᴰ; evalᴰ; forget; inject; emit-D)
-open import Once.Verified.TraceDenote using (events-F)
-open import Once.Verified.Trace using (SigOpEvent)
+open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_; projTrace; valueT)
+open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ; evalᴰ; forget; inject; emit-D)
+open import Once.Denotation.TraceDenote using (events-F)
+open import Once.Denotation.Trace using (SigOpEvent)
 open import Once.CCC.IR using (IR)
 open import Once.CCC.Eval as Val using ()
 open import Once.Functor.Translate using (WellFormedF)

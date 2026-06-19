@@ -342,8 +342,8 @@ denot-safe-strict:
 	@if [ -z "$$AGDA_SAFE_ACTIVE" ] && [ -z "$$AGDA_SAFE_DISABLE" ]; then \
 	  exec $(CURDIR)/scripts/agda-safe.sh denot-safe-strict; \
 	fi
-	@echo "Type-checking the denotational meaning (Once.Verified.DenotTrace) under --safe..."
-	@sh -c '$(AGDA_CMD) --safe Once/Verified/DenotTrace.agda'
+	@echo "Type-checking the denotational meaning (Once.Denotation.DenotTrace) under --safe..."
+	@sh -c '$(AGDA_CMD) --safe Once.Denotation.DenotTrace.agda'
 
 #-----------------------------------------------------------------------------
 # Utilities

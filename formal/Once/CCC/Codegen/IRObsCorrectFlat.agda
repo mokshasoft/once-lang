@@ -49,9 +49,9 @@ open import Once.CCC.Codegen.IRToTrace using (ir-to-trace)
 open import Once.CCC.Codegen.CataNextSlot using (module CataNextSlot)
 open import Once.CCC.Codegen.CataIRSlotStable using (module CataIRSlotStable)
 open import Once.CCC.Machine.ClosureWellFormed using (module ClosureWellFormedDef)
-open import Once.Verified.Trace using (SigOpEvent)
-open import Once.Verified.DenotTrace using (evalᴰ; inject)
-open import Once.Verified.TraceMonad using (projTrace)
+open import Once.Denotation.Trace using (SigOpEvent)
+open import Once.Denotation.DenotTrace using (evalᴰ; inject)
+open import Once.Denotation.TraceMonad using (projTrace)
 open import Once.Verified.FlatEvents using (module FlatEventTrace)
 
 module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where

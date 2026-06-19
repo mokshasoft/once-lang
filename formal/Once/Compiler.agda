@@ -6,7 +6,7 @@
 --
 -- This module wires together:
 --   - the abstract spec     (`Once.Verified`)
---   - the meaning           (`Once.Verified.Behavior`)
+--   - the meaning           (`Once.Denotation.Behavior`)
 --   - the trusted CPU base  (`Once.Verified.CPU`)
 --   - the proof + compile   (`Once.Verified.Compile`)
 --
@@ -23,7 +23,7 @@ open import Data.Nat using (ℕ)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
 open import Once.Verified
-open import Once.Verified.Behavior using (Source; Behavior)
+open import Once.Denotation.Behavior using (Source; Behavior)
 open import Once.Verified.SourceTrace using (⟦_⟧)
 -- The driver is where the per-arch CPU semantics are INJECTED (D054
 -- wired-not-imported). Importing `Once.Verified.CPU` here pulls in the

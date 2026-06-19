@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson and contributors
 
 ------------------------------------------------------------------------
--- Once.Verified.Behavior — WHAT THIS COMPILER CLAIMS
+-- Once.Denotation.Behavior — WHAT THIS COMPILER CLAIMS
 --
 -- ╔══════════════════════════════════════════════════════════════════╗
 -- ║  CRITICAL READING NOTE — DO NOT GET THIS WRONG.                  ║
@@ -75,12 +75,12 @@
 -- to the outside world.
 ------------------------------------------------------------------------
 
-module Once.Verified.Behavior where
+module Once.Denotation.Behavior where
 
 open import Data.Nat using (ℕ)
 open import Data.List using (List)
 
-open import Once.Verified.Trace using (SigOpEvent)
+open import Once.Denotation.Trace using (SigOpEvent)
 import Once.Grammar as G
 
 ------------------------------------------------------------------------

@@ -2,16 +2,16 @@
 -- Copyright (C) 2025-2026 Jonas Claesson and contributors
 
 ------------------------------------------------------------------------
--- Once.Verified.Trace — SigOp effect events (Plan 0.24, Phase A′).
+-- Once.Denotation.Trace — SigOp effect events (Plan 0.24, Phase A′).
 --
 -- The observable behaviour of a Once program is the sequence of SigOp
 -- calls it performs, with their arguments — NOT a return value, NOT an
--- exit code (see `Once.Verified.Behavior` preamble and the memory note
+-- exit code (see `Once.Denotation.Behavior` preamble and the memory note
 -- "programs don't return values"). The exit code is just the argument
 -- of the program's `linux.exit` call, recovered from the event list.
 --
 -- A (possibly infinite) trace is represented by the OBSERVATION-DEPTH-
--- INDEXED denotation `Once.Verified.DenotTrace.evalᴰ` (via `projTrace`)
+-- INDEXED denotation `Once.Denotation.DenotTrace.evalᴰ` (via `projTrace`)
 -- as the family of its finite prefixes (a `List SigOpEvent` per depth
 -- bound). This avoids coinduction and sized types; productive programs
 -- are handled by proving agreement at every bound (the take-lemma). This
@@ -20,7 +20,7 @@
 -- `TraceDenote`, now reduced to shared event helpers).
 ------------------------------------------------------------------------
 
-module Once.Verified.Trace where
+module Once.Denotation.Trace where
 
 open import Data.List using (List; []; _∷_)
 open import Data.Maybe using (Maybe; just; nothing)

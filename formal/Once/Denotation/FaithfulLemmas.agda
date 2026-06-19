@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson and contributors
 
 ------------------------------------------------------------------------
--- Once.Verified.FaithfulLemmas — reusable coherence lemmas for the
+-- Once.Denotation.FaithfulLemmas — reusable coherence lemmas for the
 -- `faithful` proof's recursion-scheme cases (`cata`/`ana`).
 --
 -- Extracted from `SourceFaithful` (per the extract-proofs-from-where
@@ -14,7 +14,7 @@
 --                           values). Induction on the type.
 ------------------------------------------------------------------------
 
-module Once.Verified.FaithfulLemmas where
+module Once.Denotation.FaithfulLemmas where
 
 open import Data.Unit using (⊤; tt)
 open import Data.List using (List; []; _++_)
@@ -34,11 +34,11 @@ open import Once.Semantics.Machine using (sem-cata; sem-ana; coerce-functor; coe
 open import Once.Surface.Syntax using (Expr; Ctx; Usage; ∅; zeroUsage)
 open import Once.Surface.Elaborate using (elaborate; ⟦_⟧ᶜ)
 import Once.Compile as C
-open import Once.Verified.Trace using (SigOpEvent)
-open import Once.Verified.TraceMonad using (T; returnT; valueT; projTrace; _>>=T_)
-open import Once.Verified.DenotTrace using (⟦_⟧ᴰ; evalᴰ; cata-ev-algᴰ; ana-events; forget; inject)
-open import Once.Verified.TraceDenote using (events-F)
-import Once.Verified.SourceDenote as SD
+open import Once.Denotation.Trace using (SigOpEvent)
+open import Once.Denotation.TraceMonad using (T; returnT; valueT; projTrace; _>>=T_)
+open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ; evalᴰ; cata-ev-algᴰ; ana-events; forget; inject)
+open import Once.Denotation.TraceDenote using (events-F)
+import Once.Denotation.SourceDenote as SD
 open import Once.Postulates using (extensionality)
 
 open Once.Surface.Syntax.Expr

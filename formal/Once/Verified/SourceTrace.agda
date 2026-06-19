@@ -3,7 +3,7 @@
 
 ------------------------------------------------------------------------
 -- Once.Verified.SourceTrace — the source semantics `⟦_⟧` (Plan 0.24,
--- Phase C). Discharges the former `Once.Verified.Behavior.⟦_⟧`
+-- Phase C). Discharges the former `Once.Denotation.Behavior.⟦_⟧`
 -- postulate.
 --
 -- `⟦ src ⟧` is the SigOp trace of the source program (its meaning), read
@@ -19,7 +19,7 @@
 --
 -- D060 (2026-06-16): there is now ONE denotational meaning. The surface
 -- `⟦_⟧ˢ` and IR `⟦_⟧ᴰ` are two presentations of it, tied by the proven
--- `faithful` (`Once.Verified.SourceFaithful`). The old independent
+-- `faithful` (`Once.Denotation.SourceFaithful`). The old independent
 -- `SS.eval`/`runTrace` reference (and the `ElaborateFaithful` conjunct it
 -- backed) is retired: `SourceSemantics`/`AnaTrace`/`ElaborateTrace` are
 -- gone, and `faithful` is the standalone load-bearing fact rather than a
@@ -47,9 +47,9 @@ open import Once.CCC.IR using (IR)
 import Once.Compile as C
 import Once.Parser.Module.Core as P
 open import Once.Grammar.ModuleConvert using (gmoduleToModule)
-open import Once.Verified.Behavior using (Source; Behavior)
-open import Once.Verified.DenotTrace using (evalᴰ)
-open import Once.Verified.TraceMonad using (projTrace)
+open import Once.Denotation.Behavior using (Source; Behavior)
+open import Once.Denotation.DenotTrace using (evalᴰ)
+open import Once.Denotation.TraceMonad using (projTrace)
 
 ------------------------------------------------------------------------
 -- Source → IR of `main` (option (a): reuse the compiler's elaborator).

@@ -34,7 +34,7 @@ open import Data.Product using (_,_)
 open import Data.List using (List; _++_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 
-open import Once.Verified.Trace using (SigOpEvent)
+open import Once.Denotation.Trace using (SigOpEvent)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)

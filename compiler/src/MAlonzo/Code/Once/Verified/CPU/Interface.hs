@@ -21,7 +21,7 @@ import qualified MAlonzo.Code.Agda.Builtin.List
 import qualified MAlonzo.Code.Agda.Builtin.Maybe
 import qualified MAlonzo.Code.Agda.Builtin.String
 import qualified MAlonzo.Code.Data.Fin.Base
-import qualified MAlonzo.Code.Once.Verified.Trace
+import qualified MAlonzo.Code.Once.Denotation.Trace
 
 -- Once.Verified.CPU.Interface.Byte
 d_Byte_8 :: ()
@@ -32,7 +32,7 @@ data T_ArchSemantics_10
   = C_constructor_56 AgdaAny (AgdaAny -> AgdaAny -> Maybe AgdaAny)
                      (AgdaAny ->
                       AgdaAny ->
-                      Integer -> [MAlonzo.Code.Once.Verified.Trace.T_SigOpEvent_136])
+                      Integer -> [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_136])
                      ([MAlonzo.Code.Data.Fin.Base.T_Fin_10] -> Maybe AgdaAny)
                      (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
                       [MAlonzo.Code.Data.Fin.Base.T_Fin_10])
@@ -60,7 +60,7 @@ d_run'45'trace_34 ::
   T_ArchSemantics_10 ->
   AgdaAny ->
   AgdaAny ->
-  Integer -> [MAlonzo.Code.Once.Verified.Trace.T_SigOpEvent_136]
+  Integer -> [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_136]
 d_run'45'trace_34 v0
   = case coe v0 of
       C_constructor_56 v3 v4 v5 v6 v7 -> coe v5
@@ -86,7 +86,7 @@ d_assemble_38 v0
 d_exec'45'bytes_40 ::
   T_ArchSemantics_10 ->
   [MAlonzo.Code.Data.Fin.Base.T_Fin_10] ->
-  Integer -> [MAlonzo.Code.Once.Verified.Trace.T_SigOpEvent_136]
+  Integer -> [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_136]
 d_exec'45'bytes_40 v0 v1
   = let v2 = coe d_decode_36 v0 v1 in
     coe

@@ -10,7 +10,7 @@
 
 {-# OPTIONS_GHC -Wno-overlapping-patterns #-}
 
-module MAlonzo.Code.Once.Verified.Behavior where
+module MAlonzo.Code.Once.Denotation.Behavior where
 
 import MAlonzo.RTE (coe, erased, AgdaAny, addInt, subInt, mulInt,
                     quotInt, remInt, geqInt, ltInt, eqInt, add64, sub64, mul64, quot64,
@@ -18,9 +18,9 @@ import MAlonzo.RTE (coe, erased, AgdaAny, addInt, subInt, mulInt,
 import qualified MAlonzo.RTE
 import qualified Data.Text
 
--- Once.Verified.Behavior.Behavior
+-- Once.Denotation.Behavior.Behavior
 d_Behavior_6 :: ()
 d_Behavior_6 = erased
--- Once.Verified.Behavior.Source
+-- Once.Denotation.Behavior.Source
 d_Source_8 :: ()
 d_Source_8 = erased

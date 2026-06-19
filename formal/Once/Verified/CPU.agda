@@ -29,7 +29,7 @@ module Once.Verified.CPU where
 
 open import Data.List using (List)
 
-open import Once.Verified.Behavior        using (Behavior)
+open import Once.Denotation.Behavior        using (Behavior)
 open import Once.Verified.CPU.Interface   public  -- re-export
 import Once.Verified.CPU.RiscV64 as RiscV64-CPU
 import Once.Verified.CPU.X86-64  as X86-64-CPU

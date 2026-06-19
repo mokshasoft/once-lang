@@ -10,7 +10,7 @@
 
 {-# OPTIONS_GHC -Wno-overlapping-patterns #-}
 
-module MAlonzo.Code.Once.Verified.DenotTrace where
+module MAlonzo.Code.Once.Denotation.DenotTrace where
 
 import MAlonzo.RTE (coe, erased, AgdaAny, addInt, subInt, mulInt,
                     quotInt, remInt, geqInt, ltInt, eqInt, add64, sub64, mul64, quot64,
@@ -25,17 +25,17 @@ import qualified MAlonzo.Code.Data.Sum.Base
 import qualified MAlonzo.Code.Once.CCC.Eval
 import qualified MAlonzo.Code.Once.CCC.IR
 import qualified MAlonzo.Code.Once.CCC.SigOp.Info
+import qualified MAlonzo.Code.Once.Denotation.Trace
+import qualified MAlonzo.Code.Once.Denotation.TraceDenote
+import qualified MAlonzo.Code.Once.Denotation.TraceMonad
 import qualified MAlonzo.Code.Once.Semantics.Core
 import qualified MAlonzo.Code.Once.Type
-import qualified MAlonzo.Code.Once.Verified.Trace
-import qualified MAlonzo.Code.Once.Verified.TraceDenote
-import qualified MAlonzo.Code.Once.Verified.TraceMonad
 
--- Once.Verified.DenotTrace.⟦_⟧ᴰ
+-- Once.Denotation.DenotTrace.⟦_⟧ᴰ
 d_'10214'_'10215''7472'_6 ::
   MAlonzo.Code.Once.Type.T_Type_112 -> ()
 d_'10214'_'10215''7472'_6 = erased
--- Once.Verified.DenotTrace.forget
+-- Once.Denotation.DenotTrace.forget
 d_forget_26 ::
   MAlonzo.Code.Once.Type.T_Type_112 -> AgdaAny -> AgdaAny
 d_forget_26 v0 v1
@@ -66,7 +66,7 @@ d_forget_26 v0 v1
                 d_forget_26
                   (coe v4)
                   (coe
-                     MAlonzo.Code.Once.Verified.TraceMonad.du_valueT_70
+                     MAlonzo.Code.Once.Denotation.TraceMonad.du_valueT_70
                      (coe v1 (d_inject_30 (coe v2) (coe v5))) (coe (0 :: Integer))))
       MAlonzo.Code.Once.Type.C_μ'45'type_132 v2 -> coe v1
       MAlonzo.Code.Once.Type.C_ν'45'type_134 v2 -> coe v1
@@ -75,7 +75,7 @@ d_forget_26 v0 v1
       MAlonzo.Code.Once.Type.C_Str_140 -> coe v1
       MAlonzo.Code.Once.Type.C_Buffer_142 -> coe v1
       _ -> MAlonzo.RTE.mazUnreachableError
--- Once.Verified.DenotTrace.inject
+-- Once.Denotation.DenotTrace.inject
 d_inject_30 ::
   MAlonzo.Code.Once.Type.T_Type_112 -> AgdaAny -> AgdaAny
 d_inject_30 v0 v1
@@ -104,7 +104,7 @@ d_inject_30 v0 v1
         -> coe
              (\ v5 v6 ->
                 coe
-                  MAlonzo.Code.Once.Verified.TraceMonad.du_returnT_12
+                  MAlonzo.Code.Once.Denotation.TraceMonad.du_returnT_12
                   (coe
                      d_inject_30 (coe v4) (coe v1 (d_forget_26 (coe v2) (coe v5)))))
       MAlonzo.Code.Once.Type.C_μ'45'type_132 v2 -> coe v1
@@ -114,17 +114,17 @@ d_inject_30 v0 v1
       MAlonzo.Code.Once.Type.C_Str_140 -> coe v1
       MAlonzo.Code.Once.Type.C_Buffer_142 -> coe v1
       _ -> MAlonzo.RTE.mazUnreachableError
--- Once.Verified.DenotTrace.emit-D
+-- Once.Denotation.DenotTrace.emit-D
 d_emit'45'D_128 ::
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.CCC.SigOp.Info.T_SigOpInfo_150 ->
-  AgdaAny -> [MAlonzo.Code.Once.Verified.Trace.T_SigOpEvent_136]
+  AgdaAny -> [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_136]
 d_emit'45'D_128 v0 ~v1 v2 v3 = du_emit'45'D_128 v0 v2 v3
 du_emit'45'D_128 ::
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.CCC.SigOp.Info.T_SigOpInfo_150 ->
-  AgdaAny -> [MAlonzo.Code.Once.Verified.Trace.T_SigOpEvent_136]
+  AgdaAny -> [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_136]
 du_emit'45'D_128 v0 v1 v2
   = let v3
           = MAlonzo.Code.Once.CCC.SigOp.Info.d_effect_166 (coe v1) in
@@ -136,18 +136,18 @@ du_emit'45'D_128 v0 v1 v2
            -> coe
                 MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                 (coe
-                   MAlonzo.Code.Once.Verified.Trace.du_mkEvent_152 (coe v0) (coe v1)
+                   MAlonzo.Code.Once.Denotation.Trace.du_mkEvent_152 (coe v0) (coe v1)
                    (coe v2))
                 (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
          MAlonzo.Code.Once.CCC.SigOp.Info.C_Halts_144
            -> coe
                 MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                 (coe
-                   MAlonzo.Code.Once.Verified.Trace.du_mkEvent_152 (coe v0) (coe v1)
+                   MAlonzo.Code.Once.Denotation.Trace.du_mkEvent_152 (coe v0) (coe v1)
                    (coe v2))
                 (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
          _ -> MAlonzo.RTE.mazUnreachableError)
--- Once.Verified.DenotTrace.evalᴰ
+-- Once.Denotation.DenotTrace.evalᴰ
 d_eval'7472'_154 ::
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
@@ -171,27 +171,27 @@ d_eval'7472'_154 v0 v1 v2 v3
          MAlonzo.Code.Once.CCC.IR.C_id_280
            -> coe
                 (\ v6 ->
-                   coe MAlonzo.Code.Once.Verified.TraceMonad.du_returnT_12 (coe v3))
+                   coe MAlonzo.Code.Once.Denotation.TraceMonad.du_returnT_12 (coe v3))
          MAlonzo.Code.Once.CCC.IR.C__'8728'__288 v6 v8 v9
            -> coe
-                MAlonzo.Code.Once.Verified.TraceMonad.du__'62''62''61'T__20
+                MAlonzo.Code.Once.Denotation.TraceMonad.du__'62''62''61'T__20
                 (coe d_eval'7472'_154 (coe v0) (coe v6) (coe v9) (coe v3))
                 (coe d_eval'7472'_154 (coe v6) (coe v1) (coe v8))
          MAlonzo.Code.Once.CCC.IR.C_'10216'_'44'_'10217'_296 v8 v9 v10
            -> case coe v1 of
                 MAlonzo.Code.Once.Type.C__'42'__126 v11 v12
                   -> coe
-                       MAlonzo.Code.Once.Verified.TraceMonad.du__'62''62''61'T__20
+                       MAlonzo.Code.Once.Denotation.TraceMonad.du__'62''62''61'T__20
                        (coe d_eval'7472'_154 (coe v0) (coe v11) (coe v8) (coe v3))
                        (coe
                           (\ v13 ->
                              coe
-                               MAlonzo.Code.Once.Verified.TraceMonad.du__'62''62''61'T__20
+                               MAlonzo.Code.Once.Denotation.TraceMonad.du__'62''62''61'T__20
                                (coe d_eval'7472'_154 (coe v0) (coe v12) (coe v9) (coe v3))
                                (coe
                                   (\ v14 v15 ->
                                      coe
-                                       MAlonzo.Code.Once.Verified.TraceMonad.du_returnT_12
+                                       MAlonzo.Code.Once.Denotation.TraceMonad.du_returnT_12
                                        (coe
                                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v13)
                                           (coe v14))))))
@@ -202,7 +202,7 @@ d_eval'7472'_154 v0 v1 v2 v3
                   -> coe
                        (\ v9 ->
                           coe
-                            MAlonzo.Code.Once.Verified.TraceMonad.du_returnT_12
+                            MAlonzo.Code.Once.Denotation.TraceMonad.du_returnT_12
                             (coe MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28 (coe v3)))
                 _ -> coe v4
          MAlonzo.Code.Once.CCC.IR.C_snd_308
@@ -211,7 +211,7 @@ d_eval'7472'_154 v0 v1 v2 v3
                   -> coe
                        (\ v9 ->
                           coe
-                            MAlonzo.Code.Once.Verified.TraceMonad.du_returnT_12
+                            MAlonzo.Code.Once.Denotation.TraceMonad.du_returnT_12
                             (coe MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30 (coe v3)))
                 _ -> coe v4
          MAlonzo.Code.Once.CCC.IR.C_inl_314 v7
@@ -220,7 +220,7 @@ d_eval'7472'_154 v0 v1 v2 v3
                   -> coe
                        (\ v10 ->
                           coe
-                            MAlonzo.Code.Once.Verified.TraceMonad.du_returnT_12
+                            MAlonzo.Code.Once.Denotation.TraceMonad.du_returnT_12
                             (coe MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 (coe v3)))
                 _ -> coe v4
          MAlonzo.Code.Once.CCC.IR.C_inr_320 v7
@@ -229,7 +229,7 @@ d_eval'7472'_154 v0 v1 v2 v3
                   -> coe
                        (\ v10 ->
                           coe
-                            MAlonzo.Code.Once.Verified.TraceMonad.du_returnT_12
+                            MAlonzo.Code.Once.Denotation.TraceMonad.du_returnT_12
                             (coe MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 (coe v3)))
                 _ -> coe v4
          MAlonzo.Code.Once.CCC.IR.C_case_328 v8 v9
@@ -246,7 +246,7 @@ d_eval'7472'_154 v0 v1 v2 v3
            -> coe
                 (\ v6 ->
                    coe
-                     MAlonzo.Code.Once.Verified.TraceMonad.du_returnT_12
+                     MAlonzo.Code.Once.Denotation.TraceMonad.du_returnT_12
                      (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8))
          MAlonzo.Code.Once.CCC.IR.C_curry_346 v9 v10
            -> case coe v1 of
@@ -254,7 +254,7 @@ d_eval'7472'_154 v0 v1 v2 v3
                   -> coe
                        (\ v14 ->
                           coe
-                            MAlonzo.Code.Once.Verified.TraceMonad.du_returnT_12
+                            MAlonzo.Code.Once.Denotation.TraceMonad.du_returnT_12
                             (coe
                                (\ v15 ->
                                   d_eval'7472'_154
@@ -281,7 +281,7 @@ d_eval'7472'_154 v0 v1 v2 v3
                        MAlonzo.Code.Once.Type.C__'8658''91'_'93'__130 v11 v12 v13
                          -> coe
                               (\ v14 ->
-                                 coe MAlonzo.Code.Once.Verified.TraceMonad.du_returnT_12 (coe v3))
+                                 coe MAlonzo.Code.Once.Denotation.TraceMonad.du_returnT_12 (coe v3))
                        _ -> coe v4
                 _ -> coe v4
          MAlonzo.Code.Once.CCC.IR.C_Cata_376 v6 v8
@@ -333,7 +333,7 @@ d_eval'7472'_154 v0 v1 v2 v3
                                                 MAlonzo.Code.Once.Type.d_'10214'_'10215'T_162
                                                 (coe v9) (coe v0))
                                              (coe
-                                                MAlonzo.Code.Once.Verified.TraceMonad.du_valueT_70
+                                                MAlonzo.Code.Once.Denotation.TraceMonad.du_valueT_70
                                                 (coe
                                                    d_eval'7472'_154 (coe v0)
                                                    (coe
@@ -357,13 +357,13 @@ d_eval'7472'_154 v0 v1 v2 v3
                            MAlonzo.Code.Once.CCC.SigOp.Info.d_semM_164 v7
                            (d_forget_26 (coe v0) (coe v3)))))
          _ -> coe v4)
--- Once.Verified.DenotTrace.rec-trace-D
+-- Once.Denotation.DenotTrace.rec-trace-D
 d_rec'45'trace'45'D_160 ::
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.CCC.IR.T_IR_274 ->
   AgdaAny ->
-  Integer -> [MAlonzo.Code.Once.Verified.Trace.T_SigOpEvent_136]
+  Integer -> [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_136]
 d_rec'45'trace'45'D_160 v0 v1 v2 v3 v4
   = let v5 = coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16 in
     coe
@@ -429,7 +429,7 @@ d_rec'45'trace'45'D_160 v0 v1 v2 v3 v4
                              coe
                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                (coe
-                                  MAlonzo.Code.Once.Verified.TraceMonad.du_projTrace_62
+                                  MAlonzo.Code.Once.Denotation.TraceMonad.du_projTrace_62
                                   (coe
                                      d_eval'7472'_154
                                      (coe
@@ -448,7 +448,7 @@ d_rec'45'trace'45'D_160 v0 v1 v2 v3 v4
                                (coe
                                   d_forget_26 (coe v1)
                                   (coe
-                                     MAlonzo.Code.Once.Verified.TraceMonad.du_valueT_70
+                                     MAlonzo.Code.Once.Denotation.TraceMonad.du_valueT_70
                                      (coe
                                         d_eval'7472'_154
                                         (coe
@@ -483,7 +483,7 @@ d_rec'45'trace'45'D_160 v0 v1 v2 v3 v4
                              coe
                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                (coe
-                                  MAlonzo.Code.Once.Verified.TraceMonad.du_projTrace_62
+                                  MAlonzo.Code.Once.Denotation.TraceMonad.du_projTrace_62
                                   (coe
                                      d_eval'7472'_154
                                      (coe
@@ -502,7 +502,7 @@ d_rec'45'trace'45'D_160 v0 v1 v2 v3 v4
                                (coe
                                   d_forget_26 (coe v1)
                                   (coe
-                                     MAlonzo.Code.Once.Verified.TraceMonad.du_valueT_70
+                                     MAlonzo.Code.Once.Denotation.TraceMonad.du_valueT_70
                                      (coe
                                         d_eval'7472'_154
                                         (coe
@@ -525,7 +525,7 @@ d_rec'45'trace'45'D_160 v0 v1 v2 v3 v4
          MAlonzo.Code.Once.CCC.IR.C_const_418 v7 v8 v9
            -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
          _ -> coe v5)
--- Once.Verified.DenotTrace.cata-ev-algᴰ
+-- Once.Denotation.DenotTrace.cata-ev-algᴰ
 d_cata'45'ev'45'alg'7472'_166 ::
   MAlonzo.Code.Once.Type.T_Functor_110 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
@@ -538,11 +538,11 @@ d_cata'45'ev'45'alg'7472'_166 v0 v1 v2 v3 v4
       (coe
          MAlonzo.Code.Data.List.Base.du__'43''43'__32
          (coe
-            MAlonzo.Code.Once.Verified.TraceDenote.du_events'45'F_10 (coe v0)
+            MAlonzo.Code.Once.Denotation.TraceDenote.du_events'45'F_10 (coe v0)
             (coe (\ v5 -> MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28 (coe v5)))
             (coe v4))
          (coe
-            MAlonzo.Code.Once.Verified.TraceMonad.du_projTrace_62
+            MAlonzo.Code.Once.Denotation.TraceMonad.du_projTrace_62
             (coe
                d_eval'7472'_154
                (coe
@@ -557,7 +557,7 @@ d_cata'45'ev'45'alg'7472'_166 v0 v1 v2 v3 v4
       (coe
          d_forget_26 (coe v1)
          (coe
-            MAlonzo.Code.Once.Verified.TraceMonad.du_valueT_70
+            MAlonzo.Code.Once.Denotation.TraceMonad.du_valueT_70
             (coe
                d_eval'7472'_154
                (coe
@@ -569,7 +569,7 @@ d_cata'45'ev'45'alg'7472'_166 v0 v1 v2 v3 v4
                      MAlonzo.Code.Once.Type.d_'10214'_'10215'T_162 (coe v0) (coe v1))
                   (coe du_z_402 (coe v0) (coe v4))))
             (coe v2)))
--- Once.Verified.DenotTrace.para-ev-algᴰ
+-- Once.Denotation.DenotTrace.para-ev-algᴰ
 d_para'45'ev'45'alg'7472'_172 ::
   MAlonzo.Code.Once.Type.T_Functor_110 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
@@ -582,14 +582,14 @@ d_para'45'ev'45'alg'7472'_172 v0 v1 v2 v3 v4
       (coe
          MAlonzo.Code.Data.List.Base.du__'43''43'__32
          (coe
-            MAlonzo.Code.Once.Verified.TraceDenote.du_events'45'F_10 (coe v0)
+            MAlonzo.Code.Once.Denotation.TraceDenote.du_events'45'F_10 (coe v0)
             (coe
                (\ v5 ->
                   MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                     (coe MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30 (coe v5))))
             (coe v4))
          (coe
-            MAlonzo.Code.Once.Verified.TraceMonad.du_projTrace_62
+            MAlonzo.Code.Once.Denotation.TraceMonad.du_projTrace_62
             (coe
                d_eval'7472'_154
                (coe
@@ -610,7 +610,7 @@ d_para'45'ev'45'alg'7472'_172 v0 v1 v2 v3 v4
       (coe
          d_forget_26 (coe v1)
          (coe
-            MAlonzo.Code.Once.Verified.TraceMonad.du_valueT_70
+            MAlonzo.Code.Once.Denotation.TraceMonad.du_valueT_70
             (coe
                d_eval'7472'_154
                (coe
@@ -628,13 +628,13 @@ d_para'45'ev'45'alg'7472'_172 v0 v1 v2 v3 v4
                         (coe MAlonzo.Code.Once.Type.C_μ'45'type_132 (coe v0)) (coe v1)))
                   (coe du_z_418 (coe v0) (coe v4))))
             (coe v2)))
--- Once.Verified.DenotTrace.ana-events
+-- Once.Denotation.DenotTrace.ana-events
 d_ana'45'events_178 ::
   MAlonzo.Code.Once.Type.T_Functor_110 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.CCC.IR.T_IR_274 ->
   AgdaAny ->
-  Integer -> [MAlonzo.Code.Once.Verified.Trace.T_SigOpEvent_136]
+  Integer -> [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_136]
 d_ana'45'events_178 v0 v1 v2 v3 v4
   = case coe v4 of
       0 -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
@@ -643,15 +643,15 @@ d_ana'45'events_178 v0 v1 v2 v3 v4
              (coe
                 MAlonzo.Code.Data.List.Base.du__'43''43'__32
                 (coe
-                   MAlonzo.Code.Once.Verified.TraceMonad.du_projTrace_62
+                   MAlonzo.Code.Once.Denotation.TraceMonad.du_projTrace_62
                    (coe du_step_442 (coe v0) (coe v1) (coe v2) (coe v3)) (coe v5))
                 (coe
-                   MAlonzo.Code.Once.Verified.TraceDenote.du_events'45'F_10 (coe v0)
+                   MAlonzo.Code.Once.Denotation.TraceDenote.du_events'45'F_10 (coe v0)
                    (coe
                       (\ v6 ->
                          d_ana'45'events_178 (coe v0) (coe v1) (coe v2) (coe v6) (coe v5)))
                    (coe d_layer_444 (coe v0) (coe v1) (coe v2) (coe v3) (coe v5))))
--- Once.Verified.DenotTrace._.z
+-- Once.Denotation.DenotTrace._.z
 d_z_402 ::
   MAlonzo.Code.Once.Type.T_Functor_110 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
@@ -667,7 +667,7 @@ du_z_402 v0 v1
          MAlonzo.Code.Once.Semantics.Core.du_sem'45'fmap_432 (coe v0)
          (coe (\ v2 -> MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30 (coe v2)))
          (coe v1))
--- Once.Verified.DenotTrace._.z
+-- Once.Denotation.DenotTrace._.z
 d_z_418 ::
   MAlonzo.Code.Once.Type.T_Functor_110 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
@@ -690,7 +690,7 @@ du_z_418 v0 v1
                     MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                     (coe MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30 (coe v2)))))
          (coe v1))
--- Once.Verified.DenotTrace._.step
+-- Once.Denotation.DenotTrace._.step
 d_step_442 ::
   MAlonzo.Code.Once.Type.T_Functor_110 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
@@ -709,7 +709,7 @@ du_step_442 v0 v1 v2 v3
       (coe
          MAlonzo.Code.Once.Type.d_'10214'_'10215'T_162 (coe v0) (coe v1))
       (coe v2) (coe d_inject_30 (coe v1) (coe v3))
--- Once.Verified.DenotTrace._.layer
+-- Once.Denotation.DenotTrace._.layer
 d_layer_444 ::
   MAlonzo.Code.Once.Type.T_Functor_110 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
@@ -722,5 +722,5 @@ d_layer_444 v0 v1 v2 v3 v4
          (coe
             MAlonzo.Code.Once.Type.d_'10214'_'10215'T_162 (coe v0) (coe v1))
          (coe
-            MAlonzo.Code.Once.Verified.TraceMonad.du_valueT_70
+            MAlonzo.Code.Once.Denotation.TraceMonad.du_valueT_70
             (coe du_step_442 (coe v0) (coe v1) (coe v2) (coe v3)) (coe v4)))

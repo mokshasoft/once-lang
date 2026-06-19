@@ -5,7 +5,7 @@
 -- Once.Verified.FlatEvents — the machine SigOp-event trace.
 --
 -- Plan 0.36 (machine side): `flat-events` is the machine counterpart of
--- the source observable `obs` (Once.Verified.TraceDenote). It mirrors
+-- the source observable `obs` (Once.Denotation.TraceDenote). It mirrors
 -- `exec-flat`'s three mutual fuel functions (Once.CCC.Machine.Flat) and
 -- emits a `SigOpEvent` at each `instr-sigop` it executes — leaving
 -- `exec-flat`/`FlatState` untouched (a parallel observation, not an
@@ -47,7 +47,7 @@ open import Once.CCC.Machine.SMCore
          AbstractTrace; AbstractInstr; instr-sigop)
 open import Once.CCC.Machine.Flat
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
-open import Once.Verified.Trace using (SigOpEvent; mk-event; isInt?)
+open import Once.Denotation.Trace using (SigOpEvent; mk-event; isInt?)
 
 module FlatEventTrace {FS : FrameSemantics} where
   open FlatMachine {FS}

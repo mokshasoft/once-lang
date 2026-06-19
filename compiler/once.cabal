@@ -383,22 +383,22 @@ library
       MAlonzo.Code.Once.Verified
       MAlonzo.Code.Once.Verified.ArchCorrectness
       MAlonzo.Code.Once.Verified.ArchCorrectness.X86Z45Z64
-      MAlonzo.Code.Once.Verified.Behavior
+      MAlonzo.Code.Once.Denotation.Behavior
       MAlonzo.Code.Once.Verified.Compile
       MAlonzo.Code.Once.Verified.CPU
       MAlonzo.Code.Once.Verified.CPU.Interface
       MAlonzo.Code.Once.Verified.CPU.RiscV64
       MAlonzo.Code.Once.Verified.CPU.X86Z45Z32
       MAlonzo.Code.Once.Verified.CPU.X86Z45Z64
-      MAlonzo.Code.Once.Verified.DenotTrace
-      MAlonzo.Code.Once.Verified.FaithfulLemmas
+      MAlonzo.Code.Once.Denotation.DenotTrace
+      MAlonzo.Code.Once.Denotation.FaithfulLemmas
       MAlonzo.Code.Once.Verified.FlatEvents
-      MAlonzo.Code.Once.Verified.SourceDenote
-      MAlonzo.Code.Once.Verified.SourceFaithful
+      MAlonzo.Code.Once.Denotation.SourceDenote
+      MAlonzo.Code.Once.Denotation.SourceFaithful
       MAlonzo.Code.Once.Verified.SourceTrace
-      MAlonzo.Code.Once.Verified.Trace
-      MAlonzo.Code.Once.Verified.TraceDenote
-      MAlonzo.Code.Once.Verified.TraceMonad
+      MAlonzo.Code.Once.Denotation.Trace
+      MAlonzo.Code.Once.Denotation.TraceDenote
+      MAlonzo.Code.Once.Denotation.TraceMonad
       MAlonzo.Code.Once.Word
       MAlonzo.Code.Relation.Binary
       MAlonzo.Code.Relation.Binary.Bundles
