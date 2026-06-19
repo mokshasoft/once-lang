@@ -47,6 +47,14 @@ lookup : ∀ {n} → Ctx n → Fin n → Type
 lookup (Γ , A ^ q) Fin.zero    = A
 lookup (Γ , _ ^ _) (Fin.suc i) = lookup Γ i
 
+-- | Interpret a context as the (left-nested) product environment type.
+--   (A₀,…,Aₙ₋₁) ↦ (…((Unit * A₀) * A₁) … * Aₙ₋₁). Pure `Ctx → Type` — it lives
+--   here (with `Ctx`/`Type`), NOT in `Surface.Elaborate`, so the denotational
+--   meaning can take it without importing the (operational) elaborator (0.47).
+⟦_⟧ᶜ : ∀ {n} → Ctx n → Type
+⟦ ∅ ⟧ᶜ         = Unit
+⟦ Γ , A ^ q ⟧ᶜ = ⟦ Γ ⟧ᶜ * A
+
 -- | Lookup quantity at position in context
 --
 -- lookupQuantity ctx i returns the quantity annotation at position i

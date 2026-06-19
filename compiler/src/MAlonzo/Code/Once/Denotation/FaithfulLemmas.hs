@@ -39,7 +39,7 @@ d_morph'45'app'45'bridge_80 ::
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_ArrowKind_40 ->
-  MAlonzo.Code.Once.Surface.Syntax.T_Expr_174 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_184 ->
   (Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
   AgdaAny ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
@@ -49,7 +49,7 @@ d_morph'45'app'45'bridge'45'fun_112 ::
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_ArrowKind_40 ->
-  MAlonzo.Code.Once.Surface.Syntax.T_Expr_174 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_184 ->
   (Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_morph'45'app'45'bridge'45'fun_112 = erased
@@ -61,7 +61,7 @@ d_cata'45'body_142 ::
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_Purity_32 ->
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
-  MAlonzo.Code.Once.Surface.Syntax.T_Expr_174 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_184 ->
   (Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
   AgdaAny ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
@@ -74,7 +74,7 @@ d_algIR_164 ::
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_Purity_32 ->
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
-  MAlonzo.Code.Once.Surface.Syntax.T_Expr_174 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_184 ->
   (Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
   AgdaAny -> Integer -> MAlonzo.Code.Once.CCC.IR.T_IR_274
 d_algIR_164 ~v0 ~v1 v2 v3 v4 ~v5 v6 ~v7 ~v8 ~v9
@@ -83,7 +83,7 @@ du_algIR_164 ::
   MAlonzo.Code.Once.Type.T_Functor_110 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_Purity_32 ->
-  MAlonzo.Code.Once.Surface.Syntax.T_Expr_174 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_184 ->
   MAlonzo.Code.Once.CCC.IR.T_IR_274
 du_algIR_164 v0 v1 v2 v3
   = coe
@@ -106,10 +106,10 @@ du_algIR_164 v0 v1 v2 v3
          (coe
             MAlonzo.Code.Once.CCC.IR.C__'8728'__288
             (coe
-               MAlonzo.Code.Once.Surface.Elaborate.du_'10214'_'10215''7580'_44
+               MAlonzo.Code.Once.Surface.Syntax.du_'10214'_'10215''7580'_38
                (coe MAlonzo.Code.Once.Surface.Syntax.C_'8709'_8))
             (coe
-               MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_118
+               MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_108
                (coe MAlonzo.Code.Once.Surface.Syntax.C_'8709'_8)
                (coe
                   MAlonzo.Code.Once.Type.C__'8658''91'_'93'__130
@@ -131,7 +131,7 @@ d_alg'45'eq_168 ::
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_Purity_32 ->
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
-  MAlonzo.Code.Once.Surface.Syntax.T_Expr_174 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_184 ->
   (Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
   AgdaAny ->
   Integer ->
@@ -142,7 +142,7 @@ d_ana'45'ev'45'bridge_200 ::
   MAlonzo.Code.Once.Type.T_Functor_110 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_ArrowKind_40 ->
-  MAlonzo.Code.Once.Surface.Syntax.T_Expr_174 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_184 ->
   (Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
   AgdaAny ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
@@ -152,7 +152,7 @@ d_coalgIR_224 ::
   MAlonzo.Code.Once.Type.T_Functor_110 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_ArrowKind_40 ->
-  MAlonzo.Code.Once.Surface.Syntax.T_Expr_174 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_184 ->
   (Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
   AgdaAny -> Integer -> MAlonzo.Code.Once.CCC.IR.T_IR_274
 d_coalgIR_224 v0 v1 v2 v3 ~v4 ~v5 ~v6 = du_coalgIR_224 v0 v1 v2 v3
@@ -160,7 +160,7 @@ du_coalgIR_224 ::
   MAlonzo.Code.Once.Type.T_Functor_110 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_ArrowKind_40 ->
-  MAlonzo.Code.Once.Surface.Syntax.T_Expr_174 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_184 ->
   MAlonzo.Code.Once.CCC.IR.T_IR_274
 du_coalgIR_224 v0 v1 v2 v3
   = coe
@@ -178,10 +178,10 @@ du_coalgIR_224 v0 v1 v2 v3
          (coe
             MAlonzo.Code.Once.CCC.IR.C__'8728'__288
             (coe
-               MAlonzo.Code.Once.Surface.Elaborate.du_'10214'_'10215''7580'_44
+               MAlonzo.Code.Once.Surface.Syntax.du_'10214'_'10215''7580'_38
                (coe MAlonzo.Code.Once.Surface.Syntax.C_'8709'_8))
             (coe
-               MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_118
+               MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_108
                (coe MAlonzo.Code.Once.Surface.Syntax.C_'8709'_8)
                (coe
                   MAlonzo.Code.Once.Type.C__'8658''91'_'93'__130 (coe v1) (coe v2)
@@ -196,7 +196,7 @@ d_step'738'_226 ::
   MAlonzo.Code.Once.Type.T_Functor_110 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_ArrowKind_40 ->
-  MAlonzo.Code.Once.Surface.Syntax.T_Expr_174 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_184 ->
   (Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
   AgdaAny ->
   Integer -> Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
@@ -206,7 +206,7 @@ du_step'738'_226 ::
   MAlonzo.Code.Once.Type.T_Functor_110 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_ArrowKind_40 ->
-  MAlonzo.Code.Once.Surface.Syntax.T_Expr_174 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_184 ->
   AgdaAny -> Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_step'738'_226 v0 v1 v2 v3 v4
   = coe
@@ -230,7 +230,7 @@ d_step'45'eq_230 ::
   MAlonzo.Code.Once.Type.T_Functor_110 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_ArrowKind_40 ->
-  MAlonzo.Code.Once.Surface.Syntax.T_Expr_174 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_184 ->
   (Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
   AgdaAny ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
@@ -243,7 +243,7 @@ d_ana'45'body_264 ::
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_Purity_32 ->
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
-  MAlonzo.Code.Once.Surface.Syntax.T_Expr_174 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_184 ->
   (Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
   AgdaAny ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12

@@ -34,8 +34,7 @@ open import Data.String using (String)
 
 open import Once.Type
   using (Type; Unit; Void; Int; Str; _*_; _+_; _⇒[_]_; Functor; ⟦_⟧T; μ-type)
-open import Once.Surface.Syntax using (Expr; Ctx; Usage; lookup; _,_^_; ∅)
-open import Once.Surface.Elaborate using (⟦_⟧ᶜ)
+open import Once.Surface.Syntax using (Expr; Ctx; Usage; lookup; _,_^_; ∅; ⟦_⟧ᶜ)
 open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_; projTrace; valueT)
 open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ; evalᴰ; forget; inject; emit-D)
 open import Once.Denotation.TraceDenote using (events-F)

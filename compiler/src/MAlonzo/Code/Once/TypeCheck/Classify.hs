@@ -386,12 +386,12 @@ d_lookupLocal'45'go_272 v0 v1 v2 v3
                                               (coe
                                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                  (coe
-                                                    MAlonzo.Code.Once.Surface.Syntax.d_singleUse_66
+                                                    MAlonzo.Code.Once.Surface.Syntax.d_singleUse_76
                                                     (coe v0)
                                                     (coe MAlonzo.Code.Data.Fin.Base.C_zero_12)
                                                     (coe MAlonzo.Code.Once.Type.C_One_8))
                                                  (coe
-                                                    MAlonzo.Code.Once.Surface.Syntax.C_var_182
+                                                    MAlonzo.Code.Once.Surface.Syntax.C_var_192
                                                     (coe MAlonzo.Code.Data.Fin.Base.C_zero_12)))))
                                  else coe
                                         seq (coe v13)
@@ -413,7 +413,7 @@ d_lookupLocal'45'go_272 v0 v1 v2 v3
                                                                       (coe
                                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                          (coe
-                                                                            MAlonzo.Code.Once.Surface.Syntax.C__'8759'__56
+                                                                            MAlonzo.Code.Once.Surface.Syntax.C__'8759'__66
                                                                             (coe
                                                                                MAlonzo.Code.Once.Type.C_Zero_6)
                                                                             v18)
@@ -443,8 +443,8 @@ d_lookupLocal_360 v0 v1
 d_LookupLocalView_370 a0 a1 = ()
 data T_LookupLocalView_370
   = C_llv'45'found_382 MAlonzo.Code.Once.Type.T_Type_112
-                       MAlonzo.Code.Once.Surface.Syntax.T_Usage_50
-                       MAlonzo.Code.Once.Surface.Syntax.T_Expr_174 |
+                       MAlonzo.Code.Once.Surface.Syntax.T_Usage_60
+                       MAlonzo.Code.Once.Surface.Syntax.T_Expr_184 |
     C_llv'45'not'45'found_384
 -- Once.TypeCheck.Classify.inspectLookupLocal
 d_inspectLookupLocal_390 ::
