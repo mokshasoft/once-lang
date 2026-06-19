@@ -39,15 +39,15 @@ d_proj'45'lookup_20 ::
 d_proj'45'lookup_20 = erased
 -- Once.Denotation.SourceFaithful.app-trace
 d_app'45'trace_50 ::
-  [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_136] ->
-  [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_136] ->
-  [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_136] ->
+  [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_122] ->
+  [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_122] ->
+  [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_122] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_app'45'trace_50 = erased
 -- Once.Denotation.SourceFaithful.case-trace
 d_case'45'trace_66 ::
-  [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_136] ->
-  [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_136] ->
+  [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_122] ->
+  [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_122] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_case'45'trace_66 = erased
 -- Once.Denotation.SourceFaithful.app-body
