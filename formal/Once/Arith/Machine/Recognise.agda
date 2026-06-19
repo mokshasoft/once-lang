@@ -29,7 +29,7 @@
 module Once.Arith.Machine.Recognise where
 
 open import Data.Bool using (Bool; true; false)
-open import Data.Integer using (ℤ)
+open import Data.Integer using (ℤ; +_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.String using (String; _≟_)
@@ -112,14 +112,15 @@ recognise-body sh (SigOp si ∘ e) | no _ = nothing
 -- Bool helper to keep the case-tree of `recognise-body` from
 -- forcing an intermediate `Unit` type (which collides with
 -- `out-μ`'s codomain unification).
-recognise-body sh (const fits-int z _ ∘ rhs) with is-terminal? rhs
+recognise-body sh (const fits-int v ∘ rhs) with is-terminal? rhs
   where
     is-terminal? : ∀ {X Y} → IR X Y → Bool
     is-terminal? terminal = true
     is-terminal? _        = false
-... | true  = just (alit z)
+-- D054/0.47: const carries the non-negative ℕ carrier; `alit` takes ℤ, so inject.
+... | true  = just (alit (+ v))
 ... | false = nothing
-recognise-body sh (const fits-float _ _ ∘ _) = nothing
+recognise-body sh (const fits-float _ ∘ _) = nothing
 
 -- Otherwise: try projection-chain.
 recognise-body sh other with recognise-path other

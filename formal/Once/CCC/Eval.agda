@@ -67,7 +67,10 @@ eval (free-heap _) x = x
 -- Constants (global elements 1 → A for primitive A): ignore the
 -- Unit input and return the machine-level value (this evaluator is
 -- the machine-level one — Once.CCC.Eval uses Semantics.Machine).
-eval (const _ _ vM) _ = vM
+-- D054/0.47: `const` carries `⟦ ℕ ⟧-base A`; for FitsInReg A this is `⟦ A ⟧`
+-- after matching the evidence, so the literal is returned directly.
+eval (const fits-int   v) _ = v
+eval (const fits-float v) _ = v
 -- Signature operations: the `SigOpInfo` carries the machine-level
 -- semantic function (`semM`).
 eval (SigOp si) x = semM si x

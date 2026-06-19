@@ -236,7 +236,7 @@ rec-trace-D (Fuse {F} {G} wfF wfG {B} alg t) x n =
             in (projTrace r n , forget (valueT r n)))
     x)
 rec-trace-D (free-heap r)           x n = []
-rec-trace-D (const f iv mv)         x n = []
+rec-trace-D (const f v)         x n = []
 -- Structural / pure constructors: never reached here (they have explicit
 -- `evalᴰ` clauses), and emit no recursion-scheme events ⇒ `[]`.
 rec-trace-D _                       x n = []

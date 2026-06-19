@@ -387,7 +387,7 @@ ir-head (Hylo _ _ _ _) = h-Hylo
 ir-head (Fuse _ _ _ _) = h-Fuse
 ir-head (free-heap _) = h-free-heap
 ir-head (SigOp _) = h-SigOp
-ir-head (const _ _ _) = h-const
+ir-head (const _ _) = h-const
 
 -- subst₂ for IR.
 subst₂-IR : ∀ {A B A' B'} → A ≡ A' → B ≡ B' → IR A B → IR A' B'
@@ -726,16 +726,14 @@ t₁ ≟NatTr t₂ = ≟NatTr-aux t₁ t₂ (nt-headTag t₁ Data.Nat.Properties
 -- on FitsInReg + per-register-fittable-type decidable equality on the
 -- proof-level and machine-level values. Tractable but adds scope.
 -- Trusted-base entry until then.
-≟IRH-diag (const p₁ vI₁ vM₁) (const p₂ vI₂ vM₂) _ refl refl =
-  ≟const-irrelevant p₁ p₂ vI₁ vI₂ vM₁ vM₂
+≟IRH-diag (const p₁ v₁) (const p₂ v₂) _ refl refl =
+  ≟const-irrelevant p₁ p₂ v₁ v₂
   where
-    open import Data.Integer using (ℤ)
+    open import Once.Functor.Translate using (⟦_⟧-base)
     open import Data.Nat using (ℕ)
-    import Once.Semantics.Core ℤ as I
-    import Once.Semantics.Core ℕ as M
     postulate
-      ≟const-irrelevant : ∀ (q₁ q₂ : FitsInReg _) (uI₁ uI₂ : I.⟦ _ ⟧) (uM₁ uM₂ : M.⟦ _ ⟧) →
-                          Dec (const q₁ uI₁ uM₁ ≡ const q₂ uI₂ uM₂)
+      ≟const-irrelevant : ∀ (q₁ q₂ : FitsInReg _) (u₁ u₂ : ⟦ ℕ ⟧-base _) →
+                          Dec (const q₁ u₁ ≡ const q₂ u₂)
 
 ------------------------------------------------------------------------
 -- Helper: Check for Void types (enables dead code elimination)
@@ -931,7 +929,7 @@ pairView-gen (Hylo wfF wfG alg coalg) eq = is-other-pair (subst (IR _) eq (Hylo 
 pairView-gen (Fuse wfF wfG alg tr)    eq = is-other-pair (subst (IR _) eq (Fuse wfF wfG alg tr))
 pairView-gen (free-heap h)   eq = is-other-pair (subst (IR _) eq (free-heap h))
 pairView-gen (SigOp si)      eq = is-other-pair (subst (IR _) eq (SigOp si))
-pairView-gen (const p vI vM) eq = is-other-pair (subst (IR _) eq (const p vI vM))
+pairView-gen (const p v) eq = is-other-pair (subst (IR _) eq (const p v))
 
 pairView : ∀ {A B C} → (f : IR A (B * C)) → PairView f
 pairView f = pairView-gen f refl
@@ -963,7 +961,7 @@ coprodView-gen (Hylo wfF wfG alg coalg) eq = is-other-coprod (subst (IR _) eq (H
 coprodView-gen (Fuse wfF wfG alg tr)    eq = is-other-coprod (subst (IR _) eq (Fuse wfF wfG alg tr))
 coprodView-gen (free-heap h)   eq = is-other-coprod (subst (IR _) eq (free-heap h))
 coprodView-gen (SigOp si)      eq = is-other-coprod (subst (IR _) eq (SigOp si))
-coprodView-gen (const p vI vM) eq = is-other-coprod (subst (IR _) eq (const p vI vM))
+coprodView-gen (const p v) eq = is-other-coprod (subst (IR _) eq (const p v))
 
 coprodView : ∀ {A B D} → (f : IR D (A + B)) → CoprodView f
 coprodView f = coprodView-gen f refl
@@ -1000,7 +998,7 @@ composeFirstView (Hylo wfF wfG alg coalg) = cf-other (Hylo wfF wfG alg coalg)
 composeFirstView (Fuse wfF wfG alg tr)    = cf-other (Fuse wfF wfG alg tr)
 composeFirstView (free-heap h)   = cf-other (free-heap h)
 composeFirstView (SigOp si)      = cf-other (SigOp si)
-composeFirstView (const p vI vM) = cf-other (const p vI vM)
+composeFirstView (const p v) = cf-other (const p v)
 
 composeSecondView : ∀ {A B} → (f : IR A B) → ComposeSecondView f
 composeSecondView id             = cs-id
@@ -1027,7 +1025,7 @@ composeSecondView (Hylo wfF wfG alg coalg) = cs-other (Hylo wfF wfG alg coalg)
 composeSecondView (Fuse wfF wfG alg tr)    = cs-other (Fuse wfF wfG alg tr)
 composeSecondView (free-heap h)  = cs-other (free-heap h)
 composeSecondView (SigOp si)     = cs-other (SigOp si)
-composeSecondView (const p vI vM) = cs-other (const p vI vM)
+composeSecondView (const p v) = cs-other (const p v)
 
 fstSndView : ∀ {A B} → (f : IR A B) → FstSndView f
 fstSndView fst             = fsv-fst
@@ -1054,7 +1052,7 @@ fstSndView (Hylo wfF wfG alg coalg) = fsv-other (Hylo wfF wfG alg coalg)
 fstSndView (Fuse wfF wfG alg tr)    = fsv-other (Fuse wfF wfG alg tr)
 fstSndView (free-heap h)   = fsv-other (free-heap h)
 fstSndView (SigOp si)      = fsv-other (SigOp si)
-fstSndView (const p vI vM) = fsv-other (const p vI vM)
+fstSndView (const p v) = fsv-other (const p v)
 
 inlInrView : ∀ {A B} → (f : IR A B) → InlInrView f
 inlInrView (inl m)         = iiv-inl m
@@ -1081,7 +1079,7 @@ inlInrView (Hylo wfF wfG alg coalg) = iiv-other (Hylo wfF wfG alg coalg)
 inlInrView (Fuse wfF wfG alg tr)    = iiv-other (Fuse wfF wfG alg tr)
 inlInrView (free-heap h)   = iiv-other (free-heap h)
 inlInrView (SigOp si)      = iiv-other (SigOp si)
-inlInrView (const p vI vM) = iiv-other (const p vI vM)
+inlInrView (const p v) = iiv-other (const p v)
 
 -- Helper: beta reduction for fst ∘ f (verified given view)
 -- | Does this IR contain an observable effect (a SigOp or a heap free)?
@@ -1118,7 +1116,7 @@ has-effect? (curry f _)     = has-effect? f
 has-effect? apply           = true
 has-effect? arr             = false
 has-effect? (SigOp _)       = true
-has-effect? (const _ _ _)   = false
+has-effect? (const _ _)   = false
 has-effect? (free-heap _)   = true
 has-effect? (In _ _)        = false
 has-effect? (out-μ _)       = false
@@ -1262,7 +1260,7 @@ mutual
   ... | yes refl = initial
   ... | no _     = SigOp n
   -- | const is opaque (constant value of a primitive type, not optimized)
-  optimize-once-structural (const p vI vM) = const p vI vM
+  optimize-once-structural (const p v) = const p v
   -- | free-heap is opaque (no optimization)
   optimize-once-structural (free-heap h) = free-heap h
   -- | OCP-0003 recursion schemes: optimize algebras/coalgebras

@@ -128,7 +128,7 @@ ir-stack-requirement (Fuse _ _ alg t) = ir-stack-requirement alg +ℕ ir-stack-r
 -- Other
 ir-stack-requirement (free-heap _) = 0
 ir-stack-requirement (SigOp _) = 0  -- Primitives manage own stack
-ir-stack-requirement (const _ _ _) = 0  -- Pure register write, no stack
+ir-stack-requirement (const _ _) = 0  -- Pure register write, no stack
 
 ir-stack-requirement-nt ntId         = 0
 ir-stack-requirement-nt (ntK ir)     = ir-stack-requirement ir

@@ -59,7 +59,7 @@ depth (Fuse _ _ alg t) = suc (depth alg ⊔ depth-nt t)
 -- Memory and primitives
 depth (free-heap _) = 0
 depth (SigOp _)      = 0
-depth (const _ _ _)  = 0
+depth (const _ _)  = 0
 
 depth-nt ntId         = 0
 depth-nt (ntK ir)     = depth ir

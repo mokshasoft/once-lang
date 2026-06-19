@@ -171,7 +171,7 @@ rewrite-ir ir with try-lift ir
           (g' , bg) = walk-nt g
       in Fuse w₁ w₂ f' g' , (bf ++ bg)
     walk (free-heap r)     = free-heap r , []
-    walk (const p vI vM)   = const p vI vM , []
+    walk (const p v)   = const p v , []
     walk (SigOp si)        = SigOp si , []
 
     walk-nt ntId         = ntId , []

@@ -65,7 +65,7 @@ cost (Fuse _ _ alg t) = cost alg ℕ+ cost-nt t  -- fusion: algebra + natural tr
 -- Memory and primitives
 cost (free-heap _) = 0                        -- deallocation doesn't allocate
 cost (SigOp _)      = 0                        -- primitives are opaque
-cost (const _ _ _)  = 0                        -- literal global element
+cost (const _ _)  = 0                        -- literal global element
 
 cost-nt ntId         = 0
 cost-nt (ntK ir)     = cost ir

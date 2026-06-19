@@ -29,7 +29,7 @@ open import Data.String using (String)
 open import Once.Type public
 
 -- Import WellFormedF for recursion scheme constructors
-open import Once.Functor.Translate using (WellFormedF)
+open import Once.Functor.Translate using (WellFormedF; ⟦_⟧-base)
 
 -- HeapRef and ValueLocation: needed for the `free-heap` constructor and the
 -- `LocMatchesMode` predicate below. D062: these come from the shared location
@@ -38,14 +38,14 @@ open import Once.Functor.Translate using (WellFormedF)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
 open import Once.Memory.HeapAddress using (HeapRef)
 
--- Eval semantics universes — `const` carries values at BOTH levels,
--- mirroring `SigOpInfo`'s `semI` + `semM` pattern. The proof-level
--- value (signed integers, etc.) is used by `Once.Semantics.IR.eval′`;
--- the machine-level value (unsigned, etc.) by `Once.CCC.Eval.eval`.
-open import Data.Integer using (ℤ)
+-- D054/0.47: `const` carries the literal's machine-carrier value
+-- (`⟦ ℕ ⟧-base A` — `ℕ` for Int, `Float` for Float), NOT a Core interpretation.
+-- This keeps the IR a pure syntax tier with NO dependency on Once.Semantics.Core.
+-- (`Int`'s denotation IS `Word` per D054; the width-specific `Word` is realised
+-- by `norm`/`fromℤ` at codegen/arith, where the target word size is known.
+-- Literals are non-negative — negation is a separate `OpNeg` — so the carrier is
+-- a plain `ℕ`. A Word-typed value model is the deferred L2 wrap.)
 open import Data.Nat using (ℕ)
-import Once.Semantics.Core ℤ as I
-import Once.Semantics.Core ℕ as M
 
 -- SigOpInfo: the descriptor carried by every signature operation.
 open import Once.CCC.SigOp.Info public
@@ -280,11 +280,11 @@ data IR where
   -- through `const` — they are produced by `terminal` (Unit is
   -- erased throughout the IR semantics post Plan 0.2.4.5).
   --
-  -- Carries values at BOTH semantic levels (proof-level `I.⟦A⟧` with
-  -- Int ≡ ℤ, machine-level `M.⟦A⟧` with Int ≡ ℕ), mirroring
-  -- `SigOpInfo.semI` / `semM`. CCC doesn't define a conversion;
-  -- the user supplies both.
-  const : ∀ {A} → FitsInReg A → I.⟦ A ⟧ → M.⟦ A ⟧ → IR Unit A
+  -- Carries the literal's machine-carrier value `⟦ ℕ ⟧-base A` (`ℕ` for Int,
+  -- `Float` for Float) — Core-free, so the IR is a pure syntax tier. (D054: an
+  -- `Int` literal denotes a `Word`; the width-specific `Word` is realised by
+  -- `norm`/`fromℤ` at codegen/arith. Non-negative; negation is `OpNeg`.)
+  const : ∀ {A} → FitsInReg A → ⟦ ℕ ⟧-base A → IR Unit A
 
   -- Signature operations (opaque escape hatch).
   -- Carries a `SigOpInfo` (name + sem at both levels) so the IR
