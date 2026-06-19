@@ -15,4 +15,5 @@ module Once.Semantics.Machine.Laws where
 
 open import Data.Nat using (ℕ)
 
-open import Once.Semantics.Value.Laws ℕ public
+open import Once.Word using (module Word64)
+open import Once.Semantics.Value.Laws Word64.Word public

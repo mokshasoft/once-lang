@@ -53,7 +53,8 @@ import Once.CCC.Machine.SMPrimitives as SMP
 open import Once.CCC.Machine.SMCore using (TreeTrace; ε; instr; _▸_; branch; call-sub; flat)
 
 -- Import semantic operations
-open import Once.Semantics.Value ℕ using (⟦μ⟧; ⟦_⟧F; sem-In; sem-Out; sem-In-Out; sem-cata; sem-cata-compute; sem-fmap; coerce-struct⁻¹)
+open import Once.Word using (module Word64)
+open import Once.Semantics.Value Word64.Word using (⟦μ⟧; ⟦_⟧F; sem-In; sem-Out; sem-In-Out; sem-cata; sem-cata-compute; sem-fmap; coerce-struct⁻¹)
 
 ------------------------------------------------------------------------
 -- Structural Trace Building

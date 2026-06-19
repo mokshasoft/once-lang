@@ -4,14 +4,20 @@
 ------------------------------------------------------------------------
 -- Once.Semantics.Value
 --
--- Core semantic interpretation, parameterized by integer representation.
+-- Core semantic interpretation, parameterized by the `Int` carrier.
 --
 -- This module provides:
 --   - ⟦_⟧: Type → Set (semantic interpretation)
 --   - sem-*: Semantic operations (products, sums, recursion schemes)
 --   - Semantic laws
 --
--- Instantiate with ℕ for machine semantics, ℤ for proof semantics.
+-- D054: `Int`'s denotation is the target's modular machine `Word`, NOT
+-- ℤ and NOT unbounded ℕ. Instantiate `IntRep` with the target `Word`
+-- carrier (`Once.Word.Word64.Word`); `Once.Semantics.Machine` does this.
+-- (`IntRep : Set` rather than `bits : ℕ` only because a top-level Agda
+-- module can't take a ℕ parameter — the carrier is width-invariant in
+-- the residue representation, so width lives in the modular ops, not
+-- here. The old ℤ "proof instance" is the parked `BigInt` spec — unused.)
 --
 -- ╔══════════════════════════════════════════════════════════════════╗
 -- ║  WARNING — Eff IS DENOTED AS A PLAIN ARROW.                      ║
@@ -55,7 +61,8 @@ open import Once.Type
 -- Semantic Interpretation
 --
 -- Functions are plain Agda functions (not Closure records).
--- Int is parameterized (ℕ for machine, ℤ for proofs).
+-- ⟦ Int ⟧ = IntRep, the target modular `Word` carrier (D054); supplied
+-- by the instantiation (`Once.Semantics.Machine` = `Word64.Word`).
 ------------------------------------------------------------------------
 
 ------------------------------------------------------------------------
