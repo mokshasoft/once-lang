@@ -307,7 +307,7 @@ library
       MAlonzo.Code.Once.Compile
       MAlonzo.Code.Once.Compiler
       MAlonzo.Code.Once.Escape
-      MAlonzo.Code.Once.Functor.Base
+      MAlonzo.Code.Once.Semantics.Functor
       MAlonzo.Code.Once.Functor.Decide
       MAlonzo.Code.Once.Functor.Translate
       MAlonzo.Code.Once.Grammar
@@ -359,7 +359,7 @@ library
       MAlonzo.Code.Once.Parser.TypeAlias
       MAlonzo.Code.Once.Parser.TypeRelation
       MAlonzo.Code.Once.Postulates
-      MAlonzo.Code.Once.Semantics.Core
+      MAlonzo.Code.Once.Semantics.Value
       MAlonzo.Code.Once.Semantics.Machine
       MAlonzo.Code.Once.Surface.Desugar
       MAlonzo.Code.Once.Surface.Elaborate

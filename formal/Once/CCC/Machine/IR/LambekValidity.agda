@@ -41,7 +41,7 @@ open import Once.Functor.Translate using (WellFormedF; WellFormedF-irrelevant)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; subst; sym; trans)
 
 -- Semantic operations
-open import Once.Semantics.Core ℕ using (sem-In; sem-Out; sem-CoIn; sem-CoOut;
+open import Once.Semantics.Value ℕ using (sem-In; sem-Out; sem-CoIn; sem-CoOut;
                                           coerce-functor; coerce-functor⁻¹; sem-Out-In;
                                           sem-CoOut-CoIn; coerce-round-trip)
 

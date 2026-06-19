@@ -1,5 +1,5 @@
 ------------------------------------------------------------------------
--- Once.Functor.Base
+-- Once.Semantics.Functor
 --
 -- Base functor interpretation without dependency on full ⟦_⟧.
 --
@@ -14,7 +14,7 @@
 -- OCP-0003 Phase 6: Enables proving μ-coherence.
 ------------------------------------------------------------------------
 
-module Once.Functor.Base where
+module Once.Semantics.Functor where
 
 open import Level using (Level; 0ℓ; suc)
 open import Data.Unit using (⊤; tt)

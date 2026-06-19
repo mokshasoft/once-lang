@@ -35,7 +35,7 @@ open import Once.Type using (Type; Unit; Int; Str; _*_; _+_;
 open import Once.CCC.SigOp.Info using (SigOpInfo; mk-info; EffectShape; Pure; Halts)
 open import Relation.Binary.PropositionalEquality using (refl)
 
-import Once.Semantics.Core ℕ as M
+import Once.Semantics.Value ℕ as M
 -- (Core ℤ `as I` removed: semI deleted — `semM` (ℕ/Word) is the meaning.)
 
 ------------------------------------------------------------------------

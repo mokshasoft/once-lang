@@ -32,7 +32,7 @@ module Once.SPF where
 open import Once.Type using (Type; Functor; K; Id; _⊕_; _⊗_)
 open import Once.Semantics.Machine using (⟦_⟧; ⟦_⟧F)
 -- OCP-0003 Phase 6: Import base functor for coherence
-open import Once.Functor.Base as Base using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF; μS; νS; sfmap)
+open import Once.Semantics.Functor as Base using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF; μS; νS; sfmap)
 open import Once.Functor.Translate using (translateF; μ-sem; ν-sem)
 open import Data.Integer using (ℤ)
 

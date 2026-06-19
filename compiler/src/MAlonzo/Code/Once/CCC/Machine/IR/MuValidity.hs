@@ -25,38 +25,38 @@ import qualified MAlonzo.Code.Once.CCC.FrameSemantics
 import qualified MAlonzo.Code.Once.CCC.Machine.Allocation
 import qualified MAlonzo.Code.Once.CCC.Machine.Locations
 import qualified MAlonzo.Code.Once.CCC.Machine.SMCore
-import qualified MAlonzo.Code.Once.Functor.Base
 import qualified MAlonzo.Code.Once.Functor.Translate
 import qualified MAlonzo.Code.Once.Memory.HeapAddress
-import qualified MAlonzo.Code.Once.Semantics.Core
+import qualified MAlonzo.Code.Once.Semantics.Functor
+import qualified MAlonzo.Code.Once.Semantics.Value
 import qualified MAlonzo.Code.Once.Type
 
 -- Once.CCC.Machine.IR.MuValidity._.sem-CoIn
 d_sem'45'CoIn_12 ::
   MAlonzo.Code.Once.Type.T_Functor_110 ->
-  AgdaAny -> MAlonzo.Code.Once.Functor.Base.T_νS_198
+  AgdaAny -> MAlonzo.Code.Once.Semantics.Functor.T_νS_198
 d_sem'45'CoIn_12
-  = coe MAlonzo.Code.Once.Semantics.Core.du_sem'45'CoIn_1000
+  = coe MAlonzo.Code.Once.Semantics.Value.du_sem'45'CoIn_1000
 -- Once.CCC.Machine.IR.MuValidity._.sem-CoOut
 d_sem'45'CoOut_14 ::
   MAlonzo.Code.Once.Type.T_Functor_110 ->
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
-  MAlonzo.Code.Once.Functor.Base.T_νS_198 -> AgdaAny
+  MAlonzo.Code.Once.Semantics.Functor.T_νS_198 -> AgdaAny
 d_sem'45'CoOut_14
-  = coe MAlonzo.Code.Once.Semantics.Core.du_sem'45'CoOut_990
+  = coe MAlonzo.Code.Once.Semantics.Value.du_sem'45'CoOut_990
 -- Once.CCC.Machine.IR.MuValidity._.sem-In
 d_sem'45'In_16 ::
   MAlonzo.Code.Once.Type.T_Functor_110 ->
-  AgdaAny -> MAlonzo.Code.Once.Functor.Base.T_μS_182
+  AgdaAny -> MAlonzo.Code.Once.Semantics.Functor.T_μS_182
 d_sem'45'In_16
-  = coe MAlonzo.Code.Once.Semantics.Core.du_sem'45'In_920
+  = coe MAlonzo.Code.Once.Semantics.Value.du_sem'45'In_920
 -- Once.CCC.Machine.IR.MuValidity._.sem-Out
 d_sem'45'Out_18 ::
   MAlonzo.Code.Once.Type.T_Functor_110 ->
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
-  MAlonzo.Code.Once.Functor.Base.T_μS_182 -> AgdaAny
+  MAlonzo.Code.Once.Semantics.Functor.T_μS_182 -> AgdaAny
 d_sem'45'Out_18
-  = coe MAlonzo.Code.Once.Semantics.Core.du_sem'45'Out_928
+  = coe MAlonzo.Code.Once.Semantics.Value.du_sem'45'Out_928
 -- Once.CCC.Machine.IR.MuValidity._.⟦_⟧F
 d_'10214'_'10215'F_20 ::
   MAlonzo.Code.Once.Type.T_Functor_110 -> () -> ()
@@ -234,7 +234,7 @@ d_μValid'45'mem'45'only_456 ::
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_510 ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
-  MAlonzo.Code.Once.Functor.Base.T_μS_182 ->
+  MAlonzo.Code.Once.Semantics.Functor.T_μS_182 ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456 ->
@@ -249,7 +249,7 @@ du_μValid'45'mem'45'only_456 ::
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_510 ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
-  MAlonzo.Code.Once.Functor.Base.T_μS_182 ->
+  MAlonzo.Code.Once.Semantics.Functor.T_μS_182 ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456 ->
@@ -263,7 +263,7 @@ du_μValid'45'mem'45'only_456 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                 du_μLayerValid'45'mem'45'only_440 (coe v0) (coe v1) (coe v3)
                 (coe v3) (coe v2) (coe v4) (coe v4)
                 (coe
-                   MAlonzo.Code.Once.Semantics.Core.du_sem'45'Out_928 (coe v3)
+                   MAlonzo.Code.Once.Semantics.Value.du_sem'45'Out_928 (coe v3)
                    (coe v4) (coe v5))
                 (coe v6) (coe v7) (coe v8) (coe v16))
       _ -> MAlonzo.RTE.mazUnreachableError
@@ -370,7 +370,7 @@ d_νValid'45'mem'45'only_640 ::
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_510 ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
-  MAlonzo.Code.Once.Functor.Base.T_νS_198 ->
+  MAlonzo.Code.Once.Semantics.Functor.T_νS_198 ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456 ->
@@ -385,7 +385,7 @@ du_νValid'45'mem'45'only_640 ::
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_510 ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
-  MAlonzo.Code.Once.Functor.Base.T_νS_198 ->
+  MAlonzo.Code.Once.Semantics.Functor.T_νS_198 ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456 ->
@@ -399,7 +399,7 @@ du_νValid'45'mem'45'only_640 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                 du_νLayerValid'45'mem'45'only_624 (coe v0) (coe v1) (coe v3)
                 (coe v3) (coe v2) (coe v4) (coe v4)
                 (coe
-                   MAlonzo.Code.Once.Semantics.Core.du_sem'45'CoOut_990 (coe v3)
+                   MAlonzo.Code.Once.Semantics.Value.du_sem'45'CoOut_990 (coe v3)
                    (coe v4) (coe v5))
                 (coe v6) (coe v7) (coe v8) (coe v16))
       _ -> MAlonzo.RTE.mazUnreachableError
@@ -546,7 +546,7 @@ d_μValid'45'frontier'45'advance_824 ::
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_510 ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
-  MAlonzo.Code.Once.Functor.Base.T_μS_182 ->
+  MAlonzo.Code.Once.Semantics.Functor.T_μS_182 ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
@@ -564,7 +564,7 @@ du_μValid'45'frontier'45'advance_824 ::
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_510 ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
-  MAlonzo.Code.Once.Functor.Base.T_μS_182 ->
+  MAlonzo.Code.Once.Semantics.Functor.T_μS_182 ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
@@ -583,7 +583,7 @@ du_μValid'45'frontier'45'advance_824 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                 du_μLayerValid'45'frontier'45'advance_808 (coe v0) (coe v1)
                 (coe v4) (coe v4) (coe v2) (coe v3) (coe v5) (coe v5)
                 (coe
-                   MAlonzo.Code.Once.Semantics.Core.du_sem'45'Out_928 (coe v4)
+                   MAlonzo.Code.Once.Semantics.Value.du_sem'45'Out_928 (coe v4)
                    (coe v5) (coe v6))
                 (coe v7) (coe v8) (coe v9) (coe v10) (coe v18))
       _ -> MAlonzo.RTE.mazUnreachableError
@@ -730,7 +730,7 @@ d_νValid'45'frontier'45'advance_1020 ::
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_510 ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
-  MAlonzo.Code.Once.Functor.Base.T_νS_198 ->
+  MAlonzo.Code.Once.Semantics.Functor.T_νS_198 ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
@@ -748,7 +748,7 @@ du_νValid'45'frontier'45'advance_1020 ::
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_510 ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
-  MAlonzo.Code.Once.Functor.Base.T_νS_198 ->
+  MAlonzo.Code.Once.Semantics.Functor.T_νS_198 ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
@@ -767,7 +767,7 @@ du_νValid'45'frontier'45'advance_1020 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                 du_νLayerValid'45'frontier'45'advance_1004 (coe v0) (coe v1)
                 (coe v4) (coe v4) (coe v2) (coe v3) (coe v5) (coe v5)
                 (coe
-                   MAlonzo.Code.Once.Semantics.Core.du_sem'45'CoOut_990 (coe v4)
+                   MAlonzo.Code.Once.Semantics.Value.du_sem'45'CoOut_990 (coe v4)
                    (coe v5) (coe v6))
                 (coe v7) (coe v8) (coe v9) (coe v10) (coe v18))
       _ -> MAlonzo.RTE.mazUnreachableError
@@ -874,7 +874,7 @@ d_μValid'45'bf'45'transfer_1224 ::
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_510 ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
-  MAlonzo.Code.Once.Functor.Base.T_μS_182 ->
+  MAlonzo.Code.Once.Semantics.Functor.T_μS_182 ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456 ->
   (MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
@@ -890,7 +890,7 @@ d_μValid'45'bf'45'transfer_1224 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
                 (coe v0) (coe v1) (coe v4) (coe v4) (coe v2) (coe v3) (coe v5)
                 (coe v5)
                 (coe
-                   MAlonzo.Code.Once.Semantics.Core.du_sem'45'Out_928 (coe v4)
+                   MAlonzo.Code.Once.Semantics.Value.du_sem'45'Out_928 (coe v4)
                    (coe v5) (coe v6))
                 (coe v7) (coe v8) (coe v9) (coe v17))
       _ -> MAlonzo.RTE.mazUnreachableError
@@ -997,7 +997,7 @@ d_νValid'45'bf'45'transfer_1404 ::
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_510 ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
-  MAlonzo.Code.Once.Functor.Base.T_νS_198 ->
+  MAlonzo.Code.Once.Semantics.Functor.T_νS_198 ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456 ->
   (MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
@@ -1013,7 +1013,7 @@ d_νValid'45'bf'45'transfer_1404 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
                 (coe v0) (coe v1) (coe v4) (coe v4) (coe v2) (coe v3) (coe v5)
                 (coe v5)
                 (coe
-                   MAlonzo.Code.Once.Semantics.Core.du_sem'45'CoOut_990 (coe v4)
+                   MAlonzo.Code.Once.Semantics.Value.du_sem'45'CoOut_990 (coe v4)
                    (coe v5) (coe v6))
                 (coe v7) (coe v8) (coe v9) (coe v17))
       _ -> MAlonzo.RTE.mazUnreachableError
@@ -1124,7 +1124,7 @@ d_μValid'45'mem'45'preserved_1580 ::
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_510 ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
-  MAlonzo.Code.Once.Functor.Base.T_μS_182 ->
+  MAlonzo.Code.Once.Semantics.Functor.T_μS_182 ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456 ->
@@ -1143,7 +1143,7 @@ du_μValid'45'mem'45'preserved_1580 ::
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_510 ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
-  MAlonzo.Code.Once.Functor.Base.T_μS_182 ->
+  MAlonzo.Code.Once.Semantics.Functor.T_μS_182 ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456 ->
@@ -1159,7 +1159,7 @@ du_μValid'45'mem'45'preserved_1580 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                 du_μLayerValid'45'mem'45'preserved_1562 (coe v0) (coe v1) (coe v3)
                 (coe v3) (coe v2) (coe v4) (coe v4)
                 (coe
-                   MAlonzo.Code.Once.Semantics.Core.du_sem'45'Out_928 (coe v3)
+                   MAlonzo.Code.Once.Semantics.Value.du_sem'45'Out_928 (coe v3)
                    (coe v4) (coe v5))
                 (coe v6) (coe v7) (coe v8) (coe v9) (coe v17))
       _ -> MAlonzo.RTE.mazUnreachableError
@@ -1270,7 +1270,7 @@ d_νValid'45'mem'45'preserved_1768 ::
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_510 ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
-  MAlonzo.Code.Once.Functor.Base.T_νS_198 ->
+  MAlonzo.Code.Once.Semantics.Functor.T_νS_198 ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456 ->
@@ -1289,7 +1289,7 @@ du_νValid'45'mem'45'preserved_1768 ::
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_510 ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
-  MAlonzo.Code.Once.Functor.Base.T_νS_198 ->
+  MAlonzo.Code.Once.Semantics.Functor.T_νS_198 ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456 ->
@@ -1305,7 +1305,7 @@ du_νValid'45'mem'45'preserved_1768 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                 du_νLayerValid'45'mem'45'preserved_1750 (coe v0) (coe v1) (coe v3)
                 (coe v3) (coe v2) (coe v4) (coe v4)
                 (coe
-                   MAlonzo.Code.Once.Semantics.Core.du_sem'45'CoOut_990 (coe v3)
+                   MAlonzo.Code.Once.Semantics.Value.du_sem'45'CoOut_990 (coe v3)
                    (coe v4) (coe v5))
                 (coe v6) (coe v7) (coe v8) (coe v9) (coe v17))
       _ -> MAlonzo.RTE.mazUnreachableError

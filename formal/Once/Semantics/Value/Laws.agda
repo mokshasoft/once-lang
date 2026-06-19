@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------
--- Once.Semantics.Core.Laws
+-- Once.Semantics.Value.Laws
 --
--- Equational LAWS over the value semantics (`Once.Semantics.Core`),
+-- Equational LAWS over the value semantics (`Once.Semantics.Value`),
 -- separated from the definitions module so the denotational meaning can
 -- import the semantic *functions* without dragging in the extensionality
 -- axioms `funext` / `bisimS-to-eq` (Plan 0.47 step 3).
@@ -11,7 +11,7 @@
 -- their bisimulation witnesses (need `bisimS-to-eq` from `Base.Laws`).
 ------------------------------------------------------------------------
 
-module Once.Semantics.Core.Laws (IntRep : Set) where
+module Once.Semantics.Value.Laws (IntRep : Set) where
 
 open import Data.Product using (_×_; _,_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
@@ -19,12 +19,12 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; sym;
 
 open import Once.Type using (Functor)
 open import Once.Functor.Translate using (translateF; WellFormedF)
-open import Once.Functor.Base
+open import Once.Semantics.Functor
   using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF; μS; ⟨_⟩; νS; unfoldS; anaS;
          cataS; cataS-In-id)
-open import Once.Functor.Base.Laws
+open import Once.Semantics.Functor.Laws
   using (_∼S_; ⟦_⟧SF-rel; bisimS-to-eq; unfoldS-∼)
-open import Once.Semantics.Core IntRep
+open import Once.Semantics.Value IntRep
 
 -- | Function extensionality (used only by `sem-cata-In-id`). A valid axiom
 --   (provable in Cubical Agda); kept here so the definitions module is axiom-free.

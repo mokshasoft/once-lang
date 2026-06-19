@@ -41,7 +41,7 @@ open import Once.Memory.HeapAddress using (HeapRef)
 
 -- D054/0.47: `const` carries the literal's machine-carrier value
 -- (`⟦ ℕ ⟧-base A` — `ℕ` for Int, `Float` for Float), NOT a Core interpretation.
--- This keeps the IR a pure syntax tier with NO dependency on Once.Semantics.Core.
+-- This keeps the IR a pure syntax tier with NO dependency on Once.Semantics.Value.
 -- (`Int`'s denotation IS `Word` per D054; the width-specific `Word` is realised
 -- by `norm`/`fromℤ` at codegen/arith, where the target word size is known.
 -- Literals are non-negative — negation is a separate `OpNeg` — so the carrier is
@@ -106,7 +106,7 @@ data Allocator : Set where
 -- polynomial functors. The structural recursion schemes `Fuse`/`Hylo` carry
 -- their transform AS a `NatTr`, so naturality — hence totality of the fold —
 -- is by construction (a divergent / value-synthesizing transform is
--- unrepresentable). The meaning translates `NatTr` to `Once.Functor.Base.NatSF`
+-- unrepresentable). The meaning translates `NatTr` to `Once.Semantics.Functor.NatSF`
 -- and folds it with the pragma-free `fuseNT`/`fuseNTW`; no `fuseW`.
 data IR   : Type → Type → Set
 data NatTr : Functor → Functor → Set
@@ -276,7 +276,7 @@ data IR where
 -- NatTr — IR-level natural transformations between polynomial functors
 --
 -- The compilable, manifestly-natural witness carried by `Fuse`/`Hylo`.
--- Mirrors `Once.Functor.Base.NatSF` one level up (over the object-language
+-- Mirrors `Once.Semantics.Functor.NatSF` one level up (over the object-language
 -- `Functor`/`Type` rather than `SFunctor`/`Set`), so the IR stays
 -- interpretation-agnostic. Source eliminators (`ntFst`/`ntSnd`/`ntCase`)
 -- and target introductions (`ntInl`/`ntInr`/`ntPair`) interleave; leaves are
@@ -285,7 +285,7 @@ data IR where
 --
 -- By construction a `NatTr` only routes/copies/discards the recursive
 -- positions, never inspecting or synthesizing μ-substructure; its meaning
--- (`Once.Functor.Base.appNatSF` after translation) is a genuine natural
+-- (`Once.Semantics.Functor.appNatSF` after translation) is a genuine natural
 -- transformation (`appNatSF-natural`), hence the folds `fuseNT`/`fuseNTW`
 -- that consume it are total without any the termination pragma.
 data NatTr where

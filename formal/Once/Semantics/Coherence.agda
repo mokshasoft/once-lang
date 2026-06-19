@@ -152,7 +152,7 @@ sem-fmap-comp F f g x =
 --    - sem-fmap-id: sem-fmap F id ≡ id
 --    - sem-fmap-comp: sem-fmap F (g ∘ f) ≡ sem-fmap F g ∘ sem-fmap F f
 --
--- The primary recursion scheme proofs are in Once.Semantics.Core:
+-- The primary recursion scheme proofs are in Once.Semantics.Value:
 --    - sem-Out-In, sem-In-Out (Lambek's Lemma)
 --    - sem-cata-compute, sem-cata-In-id (catamorphism laws)
 --    - sem-ana-Out-id (identity anamorphism)

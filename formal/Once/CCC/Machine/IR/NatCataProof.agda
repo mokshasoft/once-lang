@@ -31,7 +31,7 @@ open import Once.CCC.IR using (IR; ⟦_⟧T)
 open import Once.CCC.Eval using (eval)
 
 -- Import semantics
-open import Once.Semantics.Core ℕ using (⟦μ⟧; ⟦_⟧F; sem-In; sem-Out; sem-cata; sem-cata-compute; sem-fmap)
+open import Once.Semantics.Value ℕ using (⟦μ⟧; ⟦_⟧F; sem-In; sem-Out; sem-cata; sem-cata-compute; sem-fmap)
 
 ------------------------------------------------------------------------
 -- NatF: The Natural Number Functor
@@ -302,7 +302,7 @@ module NatCataTrace {FS : FrameSemantics} where
 -- For NatF = K Unit ⊕ Id:
 --
 -- ┌─────────────────────────────────────────────────────────────────┐
--- │ SEMANTICS (Once.Semantics.Core)                                 │
+-- │ SEMANTICS (Once.Semantics.Value)                                 │
 -- │   nat-cata alg n = sem-cata wf-NatF alg n                       │
 -- │                  = (via sem-cata-compute)                       │
 -- │                    alg (sem-fmap NatF (nat-cata alg) (nat-out n))│
