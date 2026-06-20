@@ -11,7 +11,7 @@
 module Once.Optimize.Shape where
 
 open import Once.Type
-open import Once.CCC.IR
+open import Once.IR
 open import Once.Optimize using (optimize-pair; optimize-case; _≟Type_; _≟IR_)
 
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; inspect; [_])

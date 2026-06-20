@@ -11,7 +11,7 @@
 module Once.Surface.Elaborate where
 
 open import Once.Type
-open import Once.CCC.IR
+open import Once.IR
 open import Once.Surface.Syntax
 -- coerceIRArrow eliminated: curry/apply are now quantity-polymorphic
 

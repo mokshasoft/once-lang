@@ -2,19 +2,19 @@
 -- Copyright (C) 2025-2026 Jonas Claesson and contributors
 
 ------------------------------------------------------------------------
--- Once.CCC.IR.Size
+-- Once.IR.Size
 --
 -- Size measure for IR and termination lemmas.
 --
 -- Used by the Dispatcher to prove recursive calls decrease in size.
 ------------------------------------------------------------------------
 
-module Once.CCC.IR.Size where
+module Once.IR.Size where
 
 open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; s≤s; z≤n) renaming (_+_ to _+ℕ_)
 open import Data.Nat.Properties using (m<m+n; m<n+m; n<1+n; m≤m+n; m≤n+m; m≤n⇒m≤1+n)
 
-open import Once.CCC.IR
+open import Once.IR
 
 ------------------------------------------------------------------------
 -- Size Measure for Termination

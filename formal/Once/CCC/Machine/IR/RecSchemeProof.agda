@@ -38,12 +38,12 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore hiding (AllocMode; Stack; Heap)
-open import Once.CCC.IR using (IR; Cata; ⟦_⟧T)
+open import Once.IR using (IR; Cata; ⟦_⟧T)
 open import Once.Type using (Type; Functor; K; Id; _⊕_; _⊗_; μ-type)
 open import Once.Functor.Translate using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod)
 open import Once.CCC.Eval using (eval)
 open import Once.Semantics.Machine using (⟦_⟧)
-open import Once.CCC.IR.Size
+open import Once.IR.Size
 open import Once.CCC.Machine.Allocation using (AllocMode; Stack; Heap; AllocState)
 
 -- Import semantic operations

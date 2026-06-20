@@ -34,7 +34,7 @@ open import Data.Product using (_,_; _×_; proj₁; proj₂)
 open import Data.Maybe using (Maybe; just; nothing)
 
 open import Once.Type using (Type; Int)
-open import Once.CCC.SigOp.Info using (SigOpInfo; mk-info; name; Pure)
+open import Once.SigOp.Info using (SigOpInfo; mk-info; name; Pure)
 
 open import Once.Arith.Machine.AbsState
   using (InputShape; shape-unit; shape-int; shape-pair; ⟦_⟧S; InputPath; Side; Fst; Snd)

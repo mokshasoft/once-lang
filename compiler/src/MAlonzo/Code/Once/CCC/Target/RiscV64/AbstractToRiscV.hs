@@ -21,8 +21,8 @@ import qualified MAlonzo.Code.Agda.Builtin.List
 import qualified MAlonzo.Code.Data.Integer.Base
 import qualified MAlonzo.Code.Data.List.Base
 import qualified MAlonzo.Code.Once.CCC.Machine.SMCore
-import qualified MAlonzo.Code.Once.CCC.SigOp.Info
 import qualified MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax
+import qualified MAlonzo.Code.Once.SigOp.Info
 import qualified MAlonzo.Code.Once.Target.Symbol
 
 -- Once.CCC.Target.RiscV64.AbstractToRiscV.slot-to-disp
@@ -272,7 +272,7 @@ d_compile'45'abstract_14 v0
                 MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.C_call'45'sym_86
                 (coe
                    MAlonzo.Code.Once.Target.Symbol.d_once'45'symbol_8
-                   (coe MAlonzo.Code.Once.CCC.SigOp.Info.d_name_148 (coe v3))))
+                   (coe MAlonzo.Code.Once.SigOp.Info.d_name_146 (coe v3))))
              (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
       MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'load'45'const_2102 v1 v2 v3
         -> coe

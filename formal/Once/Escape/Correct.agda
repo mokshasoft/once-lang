@@ -18,7 +18,7 @@
 module Once.Escape.Correct where
 
 open import Once.Type
-open import Once.CCC.IR
+open import Once.IR
 open import Once.CCC.Eval using (⟦_⟧; eval; appNatTr-F)
 open import Once.Escape
 open import Once.Postulates using (extensionality)

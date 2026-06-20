@@ -24,7 +24,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.Type using (Functor; μ-type)
 open import Once.Semantics.Machine using (⟦_⟧)
-open import Once.CCC.IR using (Heap)
+open import Once.IR using (Heap)
 open import Once.CCC.Machine.SMCore
   using (LocState; AllocState; halted; regs; readReg; Input1; Scratch;
          sv-as-loc; SV-Tag; ValueLocation; AbstractTrace)

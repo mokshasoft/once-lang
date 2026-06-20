@@ -29,7 +29,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore hiding (AllocMode; Stack; Heap)
 open import Once.Semantics.Machine using (⟦_⟧)
-open import Once.CCC.IR
+open import Once.IR
 open import Once.CCC.IR.Stack
 open import Once.CCC.Eval using (eval)
 open import Once.CCC.Machine.Allocation hiding (AllocMode)

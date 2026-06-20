@@ -32,9 +32,9 @@ open import Once.Type public
 open import Once.Semantics.Machine public
   using (⟦_⟧; sem-fst; sem-snd; sem-inl; sem-inr; sem-pair)
 pair = sem-pair
-open import Once.CCC.IR
+open import Once.IR
 open import Once.CCC.Eval using (eval)
-open import Once.CCC.IR.Size
+open import Once.IR.Size
 
 ------------------------------------------------------------------------
 -- ValidAt: Inductive Validity Predicate with Frontier Tracking

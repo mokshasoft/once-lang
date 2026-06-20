@@ -39,7 +39,7 @@ open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality
   using (_≡_; refl; sym; trans; cong; subst)
 open import Data.List using ([])
-open import Once.CCC.IR using (IR)
+open import Once.IR using (IR)
 open import Once.Type using (Unit)
 
 open import Once.Denotation.Behavior using (Source; Behavior)

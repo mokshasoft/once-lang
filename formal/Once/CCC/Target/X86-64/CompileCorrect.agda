@@ -38,8 +38,8 @@ open FrameSemantics using (Frame)
 
 open import Once.Type using (Type)
 open import Once.Semantics.Machine using (⟦_⟧)
-open import Once.CCC.IR using (IR; AllocMode)
-open import Once.CCC.IR.Size using (ir-size)
+open import Once.IR using (IR; AllocMode)
+open import Once.IR.Size using (ir-size)
 open import Once.CCC.Eval using (eval)
 import Once.CCC.Machine.Dispatcher as DispatcherModule
 

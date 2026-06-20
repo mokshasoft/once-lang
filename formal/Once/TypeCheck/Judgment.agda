@@ -42,7 +42,7 @@ open Once.Type using (Type; Unit; Int; Str; Void; Float; Buffer;
                       Functor; μ-type; ⟦_⟧T)
 open import Once.Functor.Translate using (WellFormedF)
 open import Once.Functor.Decide using (wellFormedF?)
-open import Once.CCC.IR using (IR)
+open import Once.IR using (IR)
 open import Once.TypeCheck.Morph using (MorphRaw; morphRaw?; morphToIR)
 open import Data.Bool using (true)
 open import Relation.Nullary using (¬_)

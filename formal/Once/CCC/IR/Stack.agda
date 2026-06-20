@@ -16,8 +16,8 @@ open import Data.Nat.Properties using (+-assoc; +-comm; +-suc; ≤-refl; ≤-tra
 open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst)
 
-open import Once.CCC.IR
-open import Once.CCC.IR.Size using (ir-size)
+open import Once.IR
+open import Once.IR.Size using (ir-size)
 import Once.CCC.Machine.SMPrimitives as SMP
 
 ------------------------------------------------------------------------

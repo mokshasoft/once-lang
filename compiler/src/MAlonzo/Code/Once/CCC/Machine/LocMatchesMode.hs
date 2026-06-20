@@ -18,12 +18,12 @@ import MAlonzo.RTE (coe, erased, AgdaAny, addInt, subInt, mulInt,
 import qualified MAlonzo.RTE
 import qualified Data.Text
 import qualified MAlonzo.Code.Once.CCC.FrameSemantics
-import qualified MAlonzo.Code.Once.CCC.IR
 import qualified MAlonzo.Code.Once.CCC.Machine.Locations
+import qualified MAlonzo.Code.Once.IR
 
 -- Once.CCC.Machine.LocMatchesMode.LocMatchesMode
 d_LocMatchesMode_10 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
-  MAlonzo.Code.Once.CCC.IR.T_AllocMode_6 ->
+  MAlonzo.Code.Once.IR.T_AllocMode_4 ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 -> ()
 d_LocMatchesMode_10 = erased

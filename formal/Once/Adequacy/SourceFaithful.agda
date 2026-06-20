@@ -40,7 +40,7 @@ open import Once.Type using (Type; Unit; Void; Int; Str; Float; Buffer; _*_; _+_
 open import Once.Surface.Syntax using (Expr; Ctx; Usage; lookup; _,_^_; ⟦_⟧ᶜ)
 open import Once.Surface.Elaborate using (elaborate; proj)
 open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_)
-open import Once.CCC.IR using (_∘_; ⟨_,_⟩; apply)
+open import Once.IR using (_∘_; ⟨_,_⟩; apply)
 open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ; evalᴰ; inject)
 open import Once.CCC.Eval as Val using ()
 import Once.Denotation.SourceDenote as SD

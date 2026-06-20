@@ -31,7 +31,7 @@ open import Data.String using (String; _++_)
 open import Data.Unit using (⊤; tt)
 
 open import Once.Type using (Type; Unit; Int)
-open import Once.CCC.SigOp.Info using (SigOpInfo; mk-info; Pure)
+open import Once.SigOp.Info using (SigOpInfo; mk-info; Pure)
 
 ------------------------------------------------------------------------
 -- The literal-family builder

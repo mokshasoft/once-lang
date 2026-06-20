@@ -12,7 +12,7 @@ module Once.CCC.IR.Laws where
 open import Data.Unit using (tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
-open import Once.CCC.IR
+open import Once.IR
 open import Once.CCC.Eval using (eval)
 open import Once.Semantics.Machine using (⟦_⟧; sem-fst; sem-snd; sem-pair)
 

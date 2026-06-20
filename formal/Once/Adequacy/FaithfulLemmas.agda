@@ -28,7 +28,7 @@ open import Once.Type using (Type; Unit; Void; Int; Str; Float; Buffer;
                               _*_; _+_; _⇒[_]_; μ-type; ν-type; Functor; ⟦_⟧T;
                               Purity; mk-kind; Many)
 open import Once.CCC.Eval as Val using ()
-open import Once.CCC.IR using (IR; _∘_; ⟨_,_⟩; apply; curry; terminal; id; snd; Cata; Ana)
+open import Once.IR using (IR; _∘_; ⟨_,_⟩; apply; curry; terminal; id; snd; Cata; Ana)
 open import Once.Functor.Translate using (WellFormedF)
 open import Once.Semantics.Machine using (sem-cata; sem-ana; coerce-functor; coerce-functor⁻¹; sem-fmap)
 open import Once.Surface.Syntax using (Expr; Ctx; Usage; ∅; zeroUsage; ⟦_⟧ᶜ)

@@ -21,8 +21,8 @@ import qualified MAlonzo.Code.Agda.Builtin.List
 import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Data.List.Base
 import qualified MAlonzo.Code.Data.Sum.Base
-import qualified MAlonzo.Code.Once.CCC.SigOp.Info
 import qualified MAlonzo.Code.Once.Denotation.Trace
+import qualified MAlonzo.Code.Once.SigOp.Info
 import qualified MAlonzo.Code.Once.Type
 
 -- Once.Denotation.TraceDenote.events-F
@@ -74,29 +74,28 @@ d_sig1_46 v0 v1
 d_emit'45'eff_54 ::
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
-  MAlonzo.Code.Once.CCC.SigOp.Info.T_SigOpInfo_136 ->
+  MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_134 ->
   Integer ->
   AgdaAny -> [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_122]
 d_emit'45'eff_54 v0 ~v1 v2 v3 v4 = du_emit'45'eff_54 v0 v2 v3 v4
 du_emit'45'eff_54 ::
   MAlonzo.Code.Once.Type.T_Type_112 ->
-  MAlonzo.Code.Once.CCC.SigOp.Info.T_SigOpInfo_136 ->
+  MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_134 ->
   Integer ->
   AgdaAny -> [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_122]
 du_emit'45'eff_54 v0 v1 v2 v3
-  = let v4
-          = MAlonzo.Code.Once.CCC.SigOp.Info.d_effect_152 (coe v1) in
+  = let v4 = MAlonzo.Code.Once.SigOp.Info.d_effect_150 (coe v1) in
     coe
       (case coe v4 of
-         MAlonzo.Code.Once.CCC.SigOp.Info.C_Pure_126
+         MAlonzo.Code.Once.SigOp.Info.C_Pure_124
            -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
-         MAlonzo.Code.Once.CCC.SigOp.Info.C_Emits_128
+         MAlonzo.Code.Once.SigOp.Info.C_Emits_126
            -> coe
                 d_sig1_46 (coe v2)
                 (coe
                    MAlonzo.Code.Once.Denotation.Trace.du_mkEvent_138 (coe v0) (coe v1)
                    (coe v3))
-         MAlonzo.Code.Once.CCC.SigOp.Info.C_Halts_130
+         MAlonzo.Code.Once.SigOp.Info.C_Halts_128
            -> coe
                 d_sig1_46 (coe v2)
                 (coe

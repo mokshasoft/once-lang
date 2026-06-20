@@ -43,7 +43,7 @@ open import Relation.Nullary using (¬_)
 
 open import Once.Type using (Type; Int; _*_)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
-open import Once.CCC.SigOp.Info using (SigOpInfo)
+open import Once.SigOp.Info using (SigOpInfo)
 open import Once.CCC.Machine.SMCore
   using (LocState; mkLocState; AbstractInstr; AbstractTrace;
          AbstractReg; Input1; Output;

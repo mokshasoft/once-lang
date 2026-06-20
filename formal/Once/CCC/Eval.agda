@@ -21,7 +21,7 @@ open import Data.Product using (_,_)
 open import Data.Sum using (inj₁; inj₂)
 
 open import Once.Type
-open import Once.CCC.IR
+open import Once.IR
 
 -- Import semantic interpretation of types from Once.Sem
 open import Once.Semantics.Machine

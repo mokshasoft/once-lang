@@ -33,7 +33,7 @@ open import Once.CCC.Target.X86-64.Syntax
 
 -- Import AbstractInstr from SMCore
 open import Once.CCC.Machine.SMCore
-open import Once.CCC.SigOp.Info using (SigOpInfo)
+open import Once.SigOp.Info using (SigOpInfo)
 open import Once.CCC.Label using (Label; once)
   using (AbstractInstr; AbstractTrace; Slot;
          mov-to-output; mov-to-input;

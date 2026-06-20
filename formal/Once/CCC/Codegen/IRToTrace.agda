@@ -61,10 +61,10 @@ open import Data.Bool using (Bool; true; false; if_then_else_; _∨_)
 open import Data.Product using (_×_; _,_; proj₂)
 open import Data.List using (List; []; _∷_; _++_)
 
-open import Once.CCC.SigOp.Info using (SigOpInfo)
+open import Once.SigOp.Info using (SigOpInfo)
 open SigOpInfo using (name)
 
-open import Once.CCC.IR using (IR; AllocMode; Stack; Heap;
+open import Once.IR using (IR; AllocMode; Stack; Heap;
   id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal; initial;
   curry; apply; arr;
   In; out-μ; Cata; Para; Out; in-ν; Ana; Hylo; Fuse;

@@ -39,12 +39,12 @@ open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_; projTrace; val
 open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ; evalᴰ; forget; inject; emit-D)
 open import Once.Denotation.TraceDenote using (events-F)
 open import Once.Denotation.Trace using (SigOpEvent)
-open import Once.CCC.IR using (IR)
+open import Once.IR using (IR)
 open import Once.CCC.Eval as Val using ()
 open import Once.Functor.Translate using (WellFormedF)
 open import Once.Semantics.Machine
   using (sem-cata; sem-ana; sem-fmap; coerce-functor; coerce-functor⁻¹; ⟦_⟧F)
-open import Once.CCC.SigOp.Info using (semM)
+open import Once.SigOp.Info using (semM)
 open import Once.Arith.SigOp.Builders
   using (add-info; sub-info; mul-info; div-info; mod-info; neg-info;
          lt-info; le-info; gt-info; ge-info; eq-info; ne-info; generic-info; value-info; arrow-info; str-lit-info)

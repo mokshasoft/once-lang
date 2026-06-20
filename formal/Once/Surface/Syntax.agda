@@ -11,7 +11,7 @@
 module Once.Surface.Syntax where
 
 open import Once.Type
-open import Once.CCC.IR using (IR)
+open import Once.IR using (IR)
 open import Once.Functor.Translate using (WellFormedF)
 
 open import Data.Nat using (ℕ)

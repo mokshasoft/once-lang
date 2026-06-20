@@ -30,7 +30,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.Type using (Type; Functor; ν-type; ⟦_⟧T)
 open import Once.Functor.Translate using (WellFormedF)
-open import Once.CCC.IR
+open import Once.IR
 open import Once.CCC.Eval using (⟦_⟧; eval)
 
 -- Import totality foundation

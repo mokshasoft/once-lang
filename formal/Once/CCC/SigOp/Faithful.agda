@@ -71,7 +71,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Once.Type using (Type)
 open import Once.Semantics.Machine using (⟦_⟧)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
-open import Once.CCC.SigOp.Info using (SigOpInfo; semM)
+open import Once.SigOp.Info using (SigOpInfo; semM)
 open import Once.CCC.Machine.SMCore
   using (LocState; AbstractTrace;
          AbstractReg; Input1; Output;

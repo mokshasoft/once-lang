@@ -32,10 +32,10 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore hiding (AllocMode; Stack; Heap)
 open import Once.Semantics.Machine using (⟦_⟧; sem-pair)
 pair = sem-pair  -- Semantic pair constructor for ⟦ A * B ⟧
-open import Once.CCC.IR
+open import Once.IR
 open import Once.CCC.Machine.LocMatchesMode using (LocMatchesMode)
 open import Once.CCC.Eval using (eval)
-open import Once.CCC.IR.Size
+open import Once.IR.Size
 open import Once.CCC.IR.Stack
 open import Once.CCC.Machine.Allocation hiding (AllocMode)
 open import Once.CCC.Machine.ClosureWellFormed

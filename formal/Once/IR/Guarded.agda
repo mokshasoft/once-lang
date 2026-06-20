@@ -1,5 +1,5 @@
 ------------------------------------------------------------------------
--- Once.CCC.IR.Guarded
+-- Once.IR.Guarded
 --
 -- DEPRECATED: This module is no longer used.
 --
@@ -16,7 +16,7 @@
 -- The Guarded type encodes the guardedness condition.
 ------------------------------------------------------------------------
 
-module Once.CCC.IR.Guarded where
+module Once.IR.Guarded where
 
 open import Level using (Level; _⊔_; 0ℓ; suc)
 open import Data.Unit using (⊤; tt)

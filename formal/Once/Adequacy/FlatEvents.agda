@@ -40,7 +40,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 
 open import Once.Type using (Int)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
-open import Once.CCC.SigOp.Info using (SigOpInfo; name; effect; EffectShape; Pure; Emits; Halts)
+open import Once.SigOp.Info using (SigOpInfo; name; effect; EffectShape; Pure; Emits; Halts)
 open import Once.CCC.Machine.SMCore
   using (LocState; halted; regs; readReg; Input1;
          StoredValue; SV-Lit;

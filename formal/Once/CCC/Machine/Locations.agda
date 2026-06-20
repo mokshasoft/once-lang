@@ -5,13 +5,13 @@
 -- Once.CCC.Machine.Locations — the fundamental location TYPES shared by
 -- the categorical IR and the abstract machine (D062).
 --
--- These sit strictly BELOW both `Once.CCC.IR` and the machine
+-- These sit strictly BELOW both `Once.IR` and the machine
 -- (`Once.CCC.Machine.SMCore`). The IR's `free-heap` constructor and its
 -- `LocMatchesMode` predicate need the location *types* — but the IR must NOT
 -- depend on the machine's *execution* (`exec-loop`, `readLoc`, …). Extracting
 -- the types here inverts the dependency correctly:
 --
---     Once.CCC.IR  ─┐
+--     Once.IR  ─┐
 --                   ├─→  Once.CCC.Machine.Locations  (types only)
 --     SMCore       ─┘    (← FrameSemantics, HeapAddress)
 --

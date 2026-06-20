@@ -21,12 +21,12 @@ import qualified MAlonzo.Code.Agda.Builtin.Equality
 import qualified MAlonzo.Code.Data.Nat.Base
 import qualified MAlonzo.Code.Once.Adequacy.Compile
 import qualified MAlonzo.Code.Once.CCC.Codegen.IRObsCorrectFlat
-import qualified MAlonzo.Code.Once.CCC.IR
 import qualified MAlonzo.Code.Once.CCC.Machine.Allocation
 import qualified MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed
 import qualified MAlonzo.Code.Once.CCC.Machine.Locations
 import qualified MAlonzo.Code.Once.CCC.Machine.SMCore
 import qualified MAlonzo.Code.Once.CCC.Target.X86Z45Z64.FrameInstantiation
+import qualified MAlonzo.Code.Once.IR
 import qualified MAlonzo.Code.Once.Type
 
 -- Once.Adequacy.ArchCorrectness.X86-64.program-bound
@@ -37,15 +37,15 @@ d_program'45'bound_8
 d_IRObsCorrectF_12 ::
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
-  MAlonzo.Code.Once.CCC.IR.T_IR_18 -> ()
+  MAlonzo.Code.Once.IR.T_IR_16 -> ()
 d_IRObsCorrectF_12 = erased
 -- Once.Adequacy.ArchCorrectness.X86-64._.ir-obs-correct
 d_ir'45'obs'45'correct_14 ::
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
-  MAlonzo.Code.Once.CCC.IR.T_IR_18 ->
+  MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
-  MAlonzo.Code.Once.CCC.IR.T_AllocMode_6 ->
+  MAlonzo.Code.Once.IR.T_AllocMode_4 ->
   AgdaAny ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456 ->

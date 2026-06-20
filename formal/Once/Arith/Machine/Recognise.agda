@@ -37,8 +37,8 @@ open import Data.Product using (_×_; _,_)
 open import Relation.Nullary using (Dec; yes; no)
 
 open import Once.Type using (Type; Unit; Int)
-open import Once.CCC.IR
-open import Once.CCC.SigOp.Info using (SigOpInfo; name)
+open import Once.IR
+open import Once.SigOp.Info using (SigOpInfo; name)
 
 open import Once.Arith.Machine.AbsState
   using (InputShape; shape-int; shape-pair; InputPath;

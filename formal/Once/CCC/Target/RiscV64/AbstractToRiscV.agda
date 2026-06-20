@@ -45,7 +45,7 @@ open import Once.CCC.Target.RiscV64.Syntax
          Instr; ld; sd; add; sub; addi; li; auipc; mv;
          beq; bne; jal; jalr; j; ret; call; call-sym; nop; unimp; label;
          Program; slot-size; slots)
-open import Once.CCC.SigOp.Info using (SigOpInfo)
+open import Once.SigOp.Info using (SigOpInfo)
 
 -- Import AbstractInstr from SMCore
 open import Once.CCC.Machine.SMCore

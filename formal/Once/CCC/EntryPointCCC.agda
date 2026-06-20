@@ -35,7 +35,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 
 -- Import IR and evaluation
-open import Once.CCC.IR using (IR)
+open import Once.IR using (IR)
 open import Once.CCC.Eval using ()
 
 -- Import for escape analysis types

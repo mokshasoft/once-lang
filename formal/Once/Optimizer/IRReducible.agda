@@ -13,7 +13,7 @@
 module Once.Optimizer.IRReducible where
 
 open import Once.Type
-open import Once.CCC.IR
+open import Once.IR
 open import Once.Optimize using (_≟Type_; _≟IR_)
 
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; _≢_)

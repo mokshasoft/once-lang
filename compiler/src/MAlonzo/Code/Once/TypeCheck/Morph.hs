@@ -20,7 +20,7 @@ import qualified Data.Text
 import qualified MAlonzo.Code.Agda.Builtin.Equality
 import qualified MAlonzo.Code.Agda.Builtin.Maybe
 import qualified MAlonzo.Code.Data.String.Properties
-import qualified MAlonzo.Code.Once.CCC.IR
+import qualified MAlonzo.Code.Once.IR
 import qualified MAlonzo.Code.Once.Type
 import qualified MAlonzo.Code.Once.TypeCheck.Raw
 import qualified MAlonzo.Code.Relation.Nullary.Decidable.Core
@@ -374,7 +374,7 @@ d_morphToIR_200 ::
   T_MorphRaw_68 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
-  Maybe MAlonzo.Code.Once.CCC.IR.T_IR_18
+  Maybe MAlonzo.Code.Once.IR.T_IR_16
 d_morphToIR_200 v0 v1 v2 v3
   = case coe v1 of
       C_mr'45'id_70
@@ -384,7 +384,7 @@ d_morphToIR_200 v0 v1 v2 v3
                 MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v5
                   -> coe
                        MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                       (coe MAlonzo.Code.Once.CCC.IR.C_id_24)
+                       (coe MAlonzo.Code.Once.IR.C_id_22)
                 MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v4
                 _ -> MAlonzo.RTE.mazUnreachableError)
       C_mr'45'fst_72
@@ -398,7 +398,7 @@ d_morphToIR_200 v0 v1 v2 v3
                           MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v8
                             -> coe
                                  MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                                 (coe MAlonzo.Code.Once.CCC.IR.C_fst_46)
+                                 (coe MAlonzo.Code.Once.IR.C_fst_44)
                           MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v7
                           _ -> MAlonzo.RTE.mazUnreachableError)
                 _ -> coe v4)
@@ -413,7 +413,7 @@ d_morphToIR_200 v0 v1 v2 v3
                           MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v8
                             -> coe
                                  MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                                 (coe MAlonzo.Code.Once.CCC.IR.C_snd_52)
+                                 (coe MAlonzo.Code.Once.IR.C_snd_50)
                           MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v7
                           _ -> MAlonzo.RTE.mazUnreachableError)
                 _ -> coe v4)
@@ -429,8 +429,8 @@ d_morphToIR_200 v0 v1 v2 v3
                             -> coe
                                  MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                  (coe
-                                    MAlonzo.Code.Once.CCC.IR.C_inl_58
-                                    (coe MAlonzo.Code.Once.CCC.IR.C_Heap_10))
+                                    MAlonzo.Code.Once.IR.C_inl_56
+                                    (coe MAlonzo.Code.Once.IR.C_Heap_8))
                           MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v7
                           _ -> MAlonzo.RTE.mazUnreachableError)
                 _ -> coe v4)
@@ -446,8 +446,8 @@ d_morphToIR_200 v0 v1 v2 v3
                             -> coe
                                  MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                  (coe
-                                    MAlonzo.Code.Once.CCC.IR.C_inr_64
-                                    (coe MAlonzo.Code.Once.CCC.IR.C_Heap_10))
+                                    MAlonzo.Code.Once.IR.C_inr_62
+                                    (coe MAlonzo.Code.Once.IR.C_Heap_8))
                           MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v7
                           _ -> MAlonzo.RTE.mazUnreachableError)
                 _ -> coe v4)
@@ -458,7 +458,7 @@ d_morphToIR_200 v0 v1 v2 v3
                 MAlonzo.Code.Once.Type.C_Unit_122
                   -> coe
                        MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                       (coe MAlonzo.Code.Once.CCC.IR.C_terminal_76)
+                       (coe MAlonzo.Code.Once.IR.C_terminal_74)
                 _ -> coe v4)
       C_mr'45'initial_82
         -> let v4 = coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 in
@@ -467,7 +467,7 @@ d_morphToIR_200 v0 v1 v2 v3
                 MAlonzo.Code.Once.Type.C_Void_124
                   -> coe
                        MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                       (coe MAlonzo.Code.Once.CCC.IR.C_initial_80)
+                       (coe MAlonzo.Code.Once.IR.C_initial_78)
                 _ -> coe v4)
       C_mr'45'case_88 v6 v7
         -> case coe v0 of
@@ -492,8 +492,7 @@ d_morphToIR_200 v0 v1 v2 v3
                                                     -> coe
                                                          MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                          (coe
-                                                            MAlonzo.Code.Once.CCC.IR.C_case_72 v17
-                                                            v18)
+                                                            MAlonzo.Code.Once.IR.C_case_70 v17 v18)
                                                   _ -> coe
                                                          MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                            _ -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18))
