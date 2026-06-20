@@ -34,8 +34,12 @@ module Once.Strata.Interpretations.Linux.Syscalls where
 open import Data.Unit using (tt)
 open import Relation.Binary.PropositionalEquality using (refl)
 
+open import Data.String using (String)
 open import Once.Type using (Int; Unit)
-open import Once.SigOp.Info using (SigOpInfo; mk-info; EffectShape; Halts)
+open import Once.Word using (Carrier)
+import Once.Semantics.Value Carrier as M
+open import Once.SigOp.Info using (SigOpInfo; mk-info; EffectShape; Pure; Halts)
+open import Once.SigOp.Interpretation using (Interpretation)
 
 ------------------------------------------------------------------------
 -- `linux.exit : Int → Unit` — terminate the process with an exit code.
@@ -49,3 +53,25 @@ open import Once.SigOp.Info using (SigOpInfo; mk-info; EffectShape; Halts)
 
 linux-exit-info : SigOpInfo Int Unit
 linux-exit-info = mk-info "linux.exit" (λ _ → tt) (Halts refl)
+
+------------------------------------------------------------------------
+-- The Linux `Interpretation` (Plan 0.38 M0) — the per-name resolver the
+-- compiler core is parameterized over. `linux.exit` resolves to its
+-- declared `linux-exit-info` (`Halts`, concrete `semM`); every other
+-- name resolves to a `Pure` value op whose machine value is the
+-- genuine external axiom `linux-semM` — POSTULATED HERE, confined to the
+-- Linux interpretation, NOT in the compiler core (this is precisely what
+-- the retired `classify-name`/`generic-semM` catch-all did wrongly,
+-- inside the core). A verified kernel (seL4) could prove `linux-semM`
+-- instead; the core is agnostic to which.
+------------------------------------------------------------------------
+
+postulate
+  linux-semM : ∀ {A B} → String → M.⟦ A ⟧ → M.⟦ B ⟧
+
+info-linux : ∀ {A B} → String → SigOpInfo A B
+info-linux {Int} {Unit} "linux.exit" = linux-exit-info
+info-linux             name          = mk-info name (linux-semM name) Pure
+
+linux : Interpretation
+linux = record { info = info-linux }
