@@ -17,4 +17,4 @@
 import I.Linux.Syscalls as S
 
 main : IO Unit
-main = effCompose (exit@S) (pure (3 + 5 * 2))
+main = exit@S (3 + 5 * 2)
