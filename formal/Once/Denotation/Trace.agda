@@ -31,8 +31,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.Type using (Type; Int)
 open import Once.CCC.SigOp.Info using (SigOpInfo; name)
-open import Once.Word using (module Word64)
-import Once.Semantics.Value Word64.Word as M
+open import Once.Word using (Carrier)
+import Once.Semantics.Value Carrier as M
 
 ------------------------------------------------------------------------
 -- Observable events.

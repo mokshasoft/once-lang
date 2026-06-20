@@ -54,8 +54,8 @@ fusion-compose-correct g f x = refl
 ------------------------------------------------------------------------
 
 open import Data.Integer using (ℤ)
-open import Once.Word using (module Word64)
-open import Once.Semantics.Value Word64.Word using (sem-cata; sem-para; sem-ana; sem-fuseNat; sem-fuseNat-cong; ⟦_⟧F; coerce-functor; coerce-functor⁻¹)
+open import Once.Word using (Carrier)
+open import Once.Semantics.Value Carrier using (sem-cata; sem-para; sem-ana; sem-fuseNat; sem-fuseNat-cong; ⟦_⟧F; coerce-functor; coerce-functor⁻¹)
 
 fusion-Cata-cong : ∀ {F A} (wf : _) (alg alg' : IR (⟦ F ⟧T A) A) (x : ⟦ μ-type F ⟧)
                  → eval alg ≡ eval alg'

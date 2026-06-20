@@ -34,7 +34,7 @@ d_eval'45'arith'45'W_28 ::
 d_eval'45'arith'45'W_28 v0 v1 v2 v3
   = case coe v2 of
       MAlonzo.Code.Once.Arith.Machine.IR.C_alit_14 v4
-        -> coe MAlonzo.Code.Once.Word.d_fromℤ_18 (coe v0) (coe v4)
+        -> coe MAlonzo.Code.Once.Word.d_fromℤ_20 (coe v0) (coe v4)
       MAlonzo.Code.Once.Arith.Machine.IR.C_ainput_16 v4
         -> let v5
                  = MAlonzo.Code.Once.Arith.Machine.Shape.d_project_32
@@ -42,28 +42,28 @@ d_eval'45'arith'45'W_28 v0 v1 v2 v3
            coe
              (case coe v5 of
                 MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v6
-                  -> coe MAlonzo.Code.Once.Word.d_fromℤ_18 (coe v0) (coe v6)
+                  -> coe MAlonzo.Code.Once.Word.d_fromℤ_20 (coe v0) (coe v6)
                 MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                   -> coe
-                       MAlonzo.Code.Once.Word.d_fromℤ_18 (coe v0) (coe (0 :: Integer))
+                       MAlonzo.Code.Once.Word.d_fromℤ_20 (coe v0) (coe (0 :: Integer))
                 _ -> MAlonzo.RTE.mazUnreachableError)
       MAlonzo.Code.Once.Arith.Machine.IR.C_aadd_18 v4 v5
         -> coe
-             MAlonzo.Code.Once.Word.d__'8853'__24 (coe v0)
+             MAlonzo.Code.Once.Word.d__'8853'__26 (coe v0)
              (coe d_eval'45'arith'45'W_28 (coe v0) (coe v1) (coe v4) (coe v3))
              (coe d_eval'45'arith'45'W_28 (coe v0) (coe v1) (coe v5) (coe v3))
       MAlonzo.Code.Once.Arith.Machine.IR.C_asub_20 v4 v5
         -> coe
-             MAlonzo.Code.Once.Word.d__'8854'__30 (coe v0)
+             MAlonzo.Code.Once.Word.d__'8854'__32 (coe v0)
              (coe d_eval'45'arith'45'W_28 (coe v0) (coe v1) (coe v4) (coe v3))
              (coe d_eval'45'arith'45'W_28 (coe v0) (coe v1) (coe v5) (coe v3))
       MAlonzo.Code.Once.Arith.Machine.IR.C_amul_22 v4 v5
         -> coe
-             MAlonzo.Code.Once.Word.d__'8855'__36 (coe v0)
+             MAlonzo.Code.Once.Word.d__'8855'__38 (coe v0)
              (coe d_eval'45'arith'45'W_28 (coe v0) (coe v1) (coe v4) (coe v3))
              (coe d_eval'45'arith'45'W_28 (coe v0) (coe v1) (coe v5) (coe v3))
       MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_24 v4
         -> coe
-             MAlonzo.Code.Once.Word.d_'8861'__42 (coe v0)
+             MAlonzo.Code.Once.Word.d_'8861'__44 (coe v0)
              (coe d_eval'45'arith'45'W_28 (coe v0) (coe v1) (coe v4) (coe v3))
       _ -> MAlonzo.RTE.mazUnreachableError

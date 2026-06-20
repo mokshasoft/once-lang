@@ -11,13 +11,14 @@
 --   - sem-*: Semantic operations (products, sums, recursion schemes)
 --   - Semantic laws
 --
--- D054: `Int`'s denotation is the target's modular machine `Word`, NOT
--- ℤ and NOT unbounded ℕ. Instantiate `IntRep` with the target `Word`
--- carrier (`Once.Word.Word64.Word`); `Once.Semantics.Machine` does this.
+-- D054: `Int`'s denotation is the modular machine `Word`, NOT ℤ and NOT
+-- unbounded ℕ. Instantiate `IntRep` with the width-agnostic machine-word
+-- carrier `Once.Word.Carrier`; `Once.Semantics.Machine` does this.
 -- (`IntRep : Set` rather than `bits : ℕ` only because a top-level Agda
--- module can't take a ℕ parameter — the carrier is width-invariant in
--- the residue representation, so width lives in the modular ops, not
--- here. The old ℤ "proof instance" is the parked `BigInt` spec — unused.)
+-- module can't take a ℕ parameter — and the carrier IS width-invariant
+-- in the residue representation, so width is threaded from the arch into
+-- the modular ops (D059), never baked into this carrier. The old ℤ
+-- "proof instance" is the parked `BigInt` spec — unused.)
 --
 -- ╔══════════════════════════════════════════════════════════════════╗
 -- ║  WARNING — Eff IS DENOTED AS A PLAIN ARROW.                      ║
@@ -61,8 +62,8 @@ open import Once.Type
 -- Semantic Interpretation
 --
 -- Functions are plain Agda functions (not Closure records).
--- ⟦ Int ⟧ = IntRep, the target modular `Word` carrier (D054); supplied
--- by the instantiation (`Once.Semantics.Machine` = `Word64.Word`).
+-- ⟦ Int ⟧ = IntRep, the modular `Word` carrier (D054); supplied by the
+-- instantiation (`Once.Semantics.Machine` = `Once.Word.Carrier`).
 ------------------------------------------------------------------------
 
 ------------------------------------------------------------------------
