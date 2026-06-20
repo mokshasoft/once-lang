@@ -33,8 +33,8 @@ open import Once.Functor.Translate using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-P
 open import Once.CCC.Machine.Allocation hiding (AllocMode)
 
 -- Import semantic operations
-open import Once.Word using (module Word64)
-open import Once.Semantics.Value Word64.Word using (⟦μ⟧; ⟦ν⟧; ⟦_⟧F; sem-In; sem-Out; sem-CoIn; sem-CoOut)
+open import Once.Word using (Carrier)
+open import Once.Semantics.Value Carrier using (⟦μ⟧; ⟦ν⟧; ⟦_⟧F; sem-In; sem-Out; sem-CoIn; sem-CoOut)
 
 -- Import SigOpSem for Validity module
 open import Once.CCC.Eval using ()

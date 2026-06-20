@@ -44,8 +44,8 @@ open import Once.Type using (Type; Unit)
 -- (Core ℤ `as I` removed: semI deleted — the machine `semM` is the meaning.)
 
 -- | Machine-level interpretation (Int ≡ ℕ).
-open import Once.Word using (module Word64)
-import Once.Semantics.Value Word64.Word as M
+open import Once.Word using (Carrier)
+import Once.Semantics.Value Carrier as M
 
 ------------------------------------------------------------------------
 -- EffectShape — the SigOp's effect *shape*, indexed by codomain

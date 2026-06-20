@@ -730,9 +730,9 @@ t₁ ≟NatTr t₂ = ≟NatTr-aux t₁ t₂ (nt-headTag t₁ Data.Nat.Properties
   ≟const-irrelevant p₁ p₂ v₁ v₂
   where
     open import Once.Functor.Translate using (⟦_⟧-base)
-    open import Data.Nat using (ℕ)
+    open import Once.Word using (Carrier)
     postulate
-      ≟const-irrelevant : ∀ (q₁ q₂ : FitsInReg _) (u₁ u₂ : ⟦ ℕ ⟧-base _) →
+      ≟const-irrelevant : ∀ (q₁ q₂ : FitsInReg _) (u₁ u₂ : ⟦ Carrier ⟧-base _) →
                           Dec (const q₁ u₁ ≡ const q₂ u₂)
 
 ------------------------------------------------------------------------

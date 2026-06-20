@@ -23,8 +23,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 
 open import Once.Type using (Functor; K; Id; _⊕_; _⊗_)
 open import Once.Functor.Translate using (WellFormedF)
-open import Once.Word using (module Word64)
-open import Once.Semantics.Value Word64.Word using (⟦_⟧F; ⟦μ⟧; sem-cata; sem-fmap;
+open import Once.Word using (Carrier)
+open import Once.Semantics.Value Carrier using (⟦_⟧F; ⟦μ⟧; sem-cata; sem-fmap;
   sem-Out; sem-In; sem-In-Out; sem-cata-compute)
 
 ------------------------------------------------------------------------

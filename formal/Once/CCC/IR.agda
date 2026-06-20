@@ -40,13 +40,16 @@ open import Once.Functor.Translate using (WellFormedF; ⟦_⟧-base)
 open import Once.Memory.HeapAddress using (HeapRef)
 
 -- D054/0.47: `const` carries the literal's machine-carrier value
--- (`⟦ ℕ ⟧-base A` — `ℕ` for Int, `Float` for Float), NOT a Core interpretation.
--- This keeps the IR a pure syntax tier with NO dependency on Once.Semantics.Value.
--- (`Int`'s denotation IS `Word` per D054; the width-specific `Word` is realised
--- by `norm`/`fromℤ` at codegen/arith, where the target word size is known.
--- Literals are non-negative — negation is a separate `OpNeg` — so the carrier is
--- a plain `ℕ`. A Word-typed value model is the deferred L2 wrap.)
-open import Data.Nat using (ℕ)
+-- (`⟦ Carrier ⟧-base A` — the machine `Word` carrier for Int, `Float` for
+-- Float), NOT a Core interpretation. This keeps the IR a pure syntax tier
+-- with NO dependency on Once.Semantics.Value (`Once.Word` is a primitive,
+-- not the semantics layer — like `Memory.HeapAddress` above).
+-- `Int`'s denotation IS `Word` per D054. `Carrier` is the WIDTH-AGNOSTIC
+-- residue carrier (Once.Word.Carrier): the target word size is threaded
+-- from the arch into the modular ops (`norm`/`fromℤ` at codegen/arith,
+-- D059), never baked into this literal's type. Literals are non-negative
+-- (negation is a separate `OpNeg`).
+open import Once.Word using (Carrier)
 
 -- SigOpInfo: the descriptor carried by every signature operation.
 open import Once.CCC.SigOp.Info public
@@ -261,11 +264,12 @@ data IR where
   -- through `const` — they are produced by `terminal` (Unit is
   -- erased throughout the IR semantics post Plan 0.2.4.5).
   --
-  -- Carries the literal's machine-carrier value `⟦ ℕ ⟧-base A` (`ℕ` for Int,
-  -- `Float` for Float) — Core-free, so the IR is a pure syntax tier. (D054: an
-  -- `Int` literal denotes a `Word`; the width-specific `Word` is realised by
-  -- `norm`/`fromℤ` at codegen/arith. Non-negative; negation is `OpNeg`.)
-  const : ∀ {A} → FitsInReg A → ⟦ ℕ ⟧-base A → IR Unit A
+  -- Carries the literal's machine-carrier value `⟦ Carrier ⟧-base A`
+  -- (the `Word` carrier for Int, `Float` for Float) — Value-free, so the IR
+  -- is a pure syntax tier. (D054: an `Int` literal denotes a `Word`; the
+  -- carrier is width-agnostic and the target word size is threaded from the
+  -- arch into `norm`/`fromℤ` at codegen/arith. Non-negative; neg is `OpNeg`.)
+  const : ∀ {A} → FitsInReg A → ⟦ Carrier ⟧-base A → IR Unit A
 
   -- Signature operations (opaque escape hatch).
   -- Carries a `SigOpInfo` (name + sem at both levels) so the IR

@@ -47,6 +47,19 @@ import Data.Sign as Sign
 open import Data.Bool using (Bool; true; false; if_then_else_; _∧_)
 open import Relation.Nullary using (does)
 
+-- | The machine-word carrier, SHARED BY ALL WIDTHS (D054 residue
+-- representation): a value in `[0, 2^bits)`, represented as ℕ. The
+-- bounding width is an OPERATIONAL parameter — it lives in `Width bits`
+-- (the modular ops) and is threaded from the target architecture (D059,
+-- "width threaded from the architecture, never hard-coded"), NEVER baked
+-- into the carrier type. So the value-level denotation of `Int` is this
+-- width-agnostic carrier (`⟦ Int ⟧ = Carrier`), not `Word64.Word` (which
+-- would hard-code 64) and not bare `ℕ` (which would promise unbounded
+-- arithmetic). `ℕ` here is only the residue representation, never the
+-- promise — CompCert's model.
+Carrier : Set
+Carrier = ℕ
+
 module Width (bits : ℕ) where
 
   modulus : ℕ
@@ -56,10 +69,11 @@ module Width (bits : ℕ) where
     modulus≢0 : ℕ.NonZero modulus
     modulus≢0 = m^n≢0 2 bits
 
-  -- | A machine word. Represented as ℕ; the modular operations below
-  -- maintain the `[0, modulus)` invariant by construction.
+  -- | A machine word at this width. Definitionally the shared,
+  -- width-agnostic `Carrier`; `bits` drives only the modular operations
+  -- below (which maintain the `[0, modulus)` invariant), NOT the type.
   Word : Set
-  Word = ℕ
+  Word = Carrier
 
   -- | Reduce a natural into the residue range.
   norm : ℕ → Word

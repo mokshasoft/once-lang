@@ -38,70 +38,70 @@ import qualified MAlonzo.Code.Once.Word
 d__'37''738'__10 :: Integer -> Integer -> Integer
 d__'37''738'__10
   = coe
-      MAlonzo.Code.Once.Word.d__'37''738'__102 (coe (64 :: Integer))
+      MAlonzo.Code.Once.Word.d__'37''738'__104 (coe (64 :: Integer))
 -- Once.Arith.SigOp.Block.W._/ˢ_
 d__'47''738'__12 :: Integer -> Integer -> Integer
 d__'47''738'__12
-  = coe MAlonzo.Code.Once.Word.d__'47''738'__96 (coe (64 :: Integer))
+  = coe MAlonzo.Code.Once.Word.d__'47''738'__98 (coe (64 :: Integer))
 -- Once.Arith.SigOp.Block.W._<ˢ_
 d__'60''738'__14 :: Integer -> Integer -> Bool
 d__'60''738'__14
-  = coe MAlonzo.Code.Once.Word.d__'60''738'__56 (coe (64 :: Integer))
+  = coe MAlonzo.Code.Once.Word.d__'60''738'__58 (coe (64 :: Integer))
 -- Once.Arith.SigOp.Block.W._≡ʷ_
 d__'8801''695'__16 :: Integer -> Integer -> Bool
-d__'8801''695'__16 = coe MAlonzo.Code.Once.Word.du__'8801''695'__62
+d__'8801''695'__16 = coe MAlonzo.Code.Once.Word.du__'8801''695'__64
 -- Once.Arith.SigOp.Block.W._⊕_
 d__'8853'__18 :: Integer -> Integer -> Integer
 d__'8853'__18
-  = coe MAlonzo.Code.Once.Word.d__'8853'__24 (coe (64 :: Integer))
+  = coe MAlonzo.Code.Once.Word.d__'8853'__26 (coe (64 :: Integer))
 -- Once.Arith.SigOp.Block.W._⊖_
 d__'8854'__20 :: Integer -> Integer -> Integer
 d__'8854'__20
-  = coe MAlonzo.Code.Once.Word.d__'8854'__30 (coe (64 :: Integer))
+  = coe MAlonzo.Code.Once.Word.d__'8854'__32 (coe (64 :: Integer))
 -- Once.Arith.SigOp.Block.W._⊗_
 d__'8855'__22 :: Integer -> Integer -> Integer
 d__'8855'__22
-  = coe MAlonzo.Code.Once.Word.d__'8855'__36 (coe (64 :: Integer))
+  = coe MAlonzo.Code.Once.Word.d__'8855'__38 (coe (64 :: Integer))
 -- Once.Arith.SigOp.Block.W.Word
 d_Word_24 :: ()
 d_Word_24 = erased
 -- Once.Arith.SigOp.Block.W.fromℤ
 d_fromℤ_26 :: Integer -> Integer
 d_fromℤ_26
-  = coe MAlonzo.Code.Once.Word.d_fromℤ_18 (coe (64 :: Integer))
+  = coe MAlonzo.Code.Once.Word.d_fromℤ_20 (coe (64 :: Integer))
 -- Once.Arith.SigOp.Block.W.half
 d_half_28 :: Integer
 d_half_28
-  = coe MAlonzo.Code.Once.Word.d_half_46 (coe (64 :: Integer))
+  = coe MAlonzo.Code.Once.Word.d_half_48 (coe (64 :: Integer))
 -- Once.Arith.SigOp.Block.W.intMin
 d_intMin_30 :: Integer
 d_intMin_30
-  = coe MAlonzo.Code.Once.Word.d_intMin_52 (coe (64 :: Integer))
+  = coe MAlonzo.Code.Once.Word.d_intMin_54 (coe (64 :: Integer))
 -- Once.Arith.SigOp.Block.W.modulus
 d_modulus_32 :: Integer
 d_modulus_32
-  = coe MAlonzo.Code.Once.Word.d_modulus_8 (coe (64 :: Integer))
+  = coe MAlonzo.Code.Once.Word.d_modulus_10 (coe (64 :: Integer))
 -- Once.Arith.SigOp.Block.W.modulus≢0
 d_modulus'8802'0_34 :: MAlonzo.Code.Data.Nat.Base.T_NonZero_112
 d_modulus'8802'0_34
   = coe
-      MAlonzo.Code.Once.Word.d_modulus'8802'0_10 (coe (64 :: Integer))
+      MAlonzo.Code.Once.Word.d_modulus'8802'0_12 (coe (64 :: Integer))
 -- Once.Arith.SigOp.Block.W.negOne
 d_negOne_36 :: Integer
 d_negOne_36
-  = coe MAlonzo.Code.Once.Word.d_negOne_54 (coe (64 :: Integer))
+  = coe MAlonzo.Code.Once.Word.d_negOne_56 (coe (64 :: Integer))
 -- Once.Arith.SigOp.Block.W.norm
 d_norm_38 :: Integer -> Integer
 d_norm_38
-  = coe MAlonzo.Code.Once.Word.d_norm_14 (coe (64 :: Integer))
+  = coe MAlonzo.Code.Once.Word.d_norm_16 (coe (64 :: Integer))
 -- Once.Arith.SigOp.Block.W.toℤ
 d_toℤ_40 :: Integer -> Integer
 d_toℤ_40
-  = coe MAlonzo.Code.Once.Word.d_toℤ_48 (coe (64 :: Integer))
+  = coe MAlonzo.Code.Once.Word.d_toℤ_50 (coe (64 :: Integer))
 -- Once.Arith.SigOp.Block.W.⊝_
 d_'8861'__42 :: Integer -> Integer
 d_'8861'__42
-  = coe MAlonzo.Code.Once.Word.d_'8861'__42 (coe (64 :: Integer))
+  = coe MAlonzo.Code.Once.Word.d_'8861'__44 (coe (64 :: Integer))
 -- Once.Arith.SigOp.Block.M.coerce-base-to-full
 d_coerce'45'base'45'to'45'full_46 ::
   MAlonzo.Code.Once.Type.T_Type_112 ->
@@ -671,29 +671,29 @@ d_block'45'semM_228 v0 v1 v2
   = case coe v1 of
       MAlonzo.Code.Once.Arith.Machine.IR.C_alit_14 v3
         -> coe
-             MAlonzo.Code.Once.Word.d_fromℤ_18 (coe (64 :: Integer)) (coe v3)
+             MAlonzo.Code.Once.Word.d_fromℤ_20 (coe (64 :: Integer)) (coe v3)
       MAlonzo.Code.Once.Arith.Machine.IR.C_ainput_16 v3
         -> coe
              d_maybe'45'zeroM_222
              (coe d_projectM_206 (coe v0) (coe v3) (coe v2))
       MAlonzo.Code.Once.Arith.Machine.IR.C_aadd_18 v3 v4
         -> coe
-             MAlonzo.Code.Once.Word.d__'8853'__24 (coe (64 :: Integer))
+             MAlonzo.Code.Once.Word.d__'8853'__26 (coe (64 :: Integer))
              (coe d_block'45'semM_228 (coe v0) (coe v3) (coe v2))
              (coe d_block'45'semM_228 (coe v0) (coe v4) (coe v2))
       MAlonzo.Code.Once.Arith.Machine.IR.C_asub_20 v3 v4
         -> coe
-             MAlonzo.Code.Once.Word.d__'8854'__30 (coe (64 :: Integer))
+             MAlonzo.Code.Once.Word.d__'8854'__32 (coe (64 :: Integer))
              (coe d_block'45'semM_228 (coe v0) (coe v3) (coe v2))
              (coe d_block'45'semM_228 (coe v0) (coe v4) (coe v2))
       MAlonzo.Code.Once.Arith.Machine.IR.C_amul_22 v3 v4
         -> coe
-             MAlonzo.Code.Once.Word.d__'8855'__36 (coe (64 :: Integer))
+             MAlonzo.Code.Once.Word.d__'8855'__38 (coe (64 :: Integer))
              (coe d_block'45'semM_228 (coe v0) (coe v3) (coe v2))
              (coe d_block'45'semM_228 (coe v0) (coe v4) (coe v2))
       MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_24 v3
         -> coe
-             MAlonzo.Code.Once.Word.d_'8861'__42 (coe (64 :: Integer))
+             MAlonzo.Code.Once.Word.d_'8861'__44 (coe (64 :: Integer))
              (coe d_block'45'semM_228 (coe v0) (coe v3) (coe v2))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Arith.SigOp.Block.block-info

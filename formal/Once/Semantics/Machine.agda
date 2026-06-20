@@ -6,12 +6,12 @@
 --
 -- Machine-level semantic interpretation.
 --
--- D054: `Int` denotes the target's modular machine `Word`
--- (`Once.Word.Word64.Word`), NOT unbounded ℕ. The carrier is ℕ only as
--- scaffolding *inside* `Word`'s residue definition (CompCert's model);
--- boundedness + wraparound live in the modular ops. The 64-bit name is
--- canonical: the residue carrier is width-invariant, so per-target width
--- (x86-32 etc.) is an operational concern in the arith/backend layer.
+-- D054: `Int` denotes the modular machine `Word` (`Once.Word.Carrier`),
+-- NOT unbounded ℕ. The carrier is ℕ only as scaffolding *inside* the
+-- residue definition (CompCert's model); boundedness + wraparound live
+-- in the modular ops. The carrier is deliberately WIDTH-AGNOSTIC: the
+-- residue carrier is width-invariant, so per-target width is threaded
+-- from the arch into the ops (D059), never baked into this denotation.
 -- This module is TARGET-INDEPENDENT. Backends may provide additional
 -- type representations (e.g., stack-type-slots for X86).
 --
@@ -21,5 +21,5 @@
 module Once.Semantics.Machine where
 
 -- Instantiate the value semantics at the target `Word` carrier (D054).
-open import Once.Word using (module Word64)
-open import Once.Semantics.Value Word64.Word public
+open import Once.Word using (Carrier)
+open import Once.Semantics.Value Carrier public

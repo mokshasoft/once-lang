@@ -31,8 +31,8 @@ open import Once.CCC.IR using (IR; ⟦_⟧T)
 open import Once.CCC.Eval using (eval)
 
 -- Import semantics
-open import Once.Word using (module Word64)
-open import Once.Semantics.Value Word64.Word using (⟦μ⟧; ⟦_⟧F; sem-In; sem-Out; sem-cata; sem-cata-compute; sem-fmap)
+open import Once.Word using (Carrier)
+open import Once.Semantics.Value Carrier using (⟦μ⟧; ⟦_⟧F; sem-In; sem-Out; sem-cata; sem-cata-compute; sem-fmap)
 
 ------------------------------------------------------------------------
 -- NatF: The Natural Number Functor

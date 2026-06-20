@@ -24,7 +24,7 @@ open import Once.CCC.Target.X86-64.Syntax
 open import Once.Target.Symbol using (once-symbol)
 open import Once.Type using (FitsInReg; fits-int; fits-float)
 import Once.Semantics.Value as SC
-open import Once.Word using (module Word64)
+open import Once.Word using (Carrier)
 
 ------------------------------------------------------------------------
 -- Plan 0.11: SigOp call by symbolic name.
@@ -42,7 +42,7 @@ compile-sigOp-length _ = refl
 -- Plan 0.11: const literal codegen. `FitsInReg` evidence dispatches;
 -- each register-fittable primitive emits its immediate-load.
 ------------------------------------------------------------------------
-compile-const : ∀ {A} → FitsInReg A → SC.⟦_⟧ Word64.Word A → Program
+compile-const : ∀ {A} → FitsInReg A → SC.⟦_⟧ Carrier A → Program
 compile-const fits-int   n = mov (reg rax) (imm n) ∷ []
 compile-const fits-float _ = ud2 ∷ []  -- float load not yet implemented; trap to keep the gap visible
 
@@ -50,7 +50,7 @@ compile-const-size : ∀ {A} → FitsInReg A → ℕ
 compile-const-size fits-int   = 1
 compile-const-size fits-float = 1
 
-compile-const-length : ∀ {A} (p : FitsInReg A) (v : SC.⟦_⟧ Word64.Word A) →
+compile-const-length : ∀ {A} (p : FitsInReg A) (v : SC.⟦_⟧ Carrier A) →
                         length (compile-const p v) ≡ compile-const-size p
 compile-const-length fits-int   _ = refl
 compile-const-length fits-float _ = refl

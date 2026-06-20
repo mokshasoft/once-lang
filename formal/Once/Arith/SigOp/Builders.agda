@@ -35,8 +35,8 @@ open import Once.Type using (Type; Unit; Int; Str; _*_; _+_;
 open import Once.CCC.SigOp.Info using (SigOpInfo; mk-info; EffectShape; Pure; Halts)
 open import Relation.Binary.PropositionalEquality using (refl)
 
-open import Once.Word using (module Word64)
-import Once.Semantics.Value Word64.Word as M
+open import Once.Word using (Carrier)
+import Once.Semantics.Value Carrier as M
 -- (Core ℤ `as I` removed: semI deleted — `semM` (ℕ/Word) is the meaning.)
 
 ------------------------------------------------------------------------
