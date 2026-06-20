@@ -272,8 +272,8 @@ library
       MAlonzo.Code.Once.CCC.Codegen.IRToTrace
       MAlonzo.Code.Once.CCC.Eval
       MAlonzo.Code.Once.CCC.FrameSemantics
-      MAlonzo.Code.Once.CCC.IR
-      MAlonzo.Code.Once.CCC.IR.Size
+      MAlonzo.Code.Once.IR
+      MAlonzo.Code.Once.IR.Size
       MAlonzo.Code.Once.CCC.IR.Stack
       MAlonzo.Code.Once.CCC.Label
       MAlonzo.Code.Once.CCC.Machine.Allocation
@@ -286,7 +286,7 @@ library
       MAlonzo.Code.Once.CCC.Machine.SMPrimitives
       MAlonzo.Code.Once.CCC.Machine.Validity
       MAlonzo.Code.Once.CCC.Machine.WriteOps
-      MAlonzo.Code.Once.CCC.SigOp.Info
+      MAlonzo.Code.Once.SigOp.Info
       MAlonzo.Code.Once.CCC.Target.RiscV64.AbstractToRiscV
       MAlonzo.Code.Once.CCC.Target.RiscV64.Emit
       MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics

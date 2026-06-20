@@ -33,7 +33,7 @@ open import Data.List.Relation.Unary.All.Properties using (++⁺)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; sym; trans)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
-open import Once.CCC.IR
+open import Once.IR
 open import Once.Type using (Functor; K; Id; _⊕_; _⊗_; fits-int; fits-float)
 open import Once.CCC.Machine.SMCore using (AbstractTrace; AbstractInstr;
          mov-to-output; mov-to-input; mov-output-to-input2; mov-input2-to-output;

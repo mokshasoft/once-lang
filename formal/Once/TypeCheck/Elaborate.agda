@@ -33,7 +33,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; con
 
 open import Once.Type
 open Once.Type using (showQuantity; showType) public
-open import Once.CCC.IR as IR
+open import Once.IR as IR
 -- Plan 0.36 Phase 1: `generic-info` reconstructs a SigOp's `SigOpInfo` from its
 -- name, so `extract-morph-eff` can recover the direct `IR.SigOp` morphism of an
 -- effectful sigOp used point-free (it elaborates as a closure otherwise).

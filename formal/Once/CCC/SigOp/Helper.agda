@@ -30,7 +30,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 
 open import Once.Type using (Type; FitsInReg)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
-open import Once.CCC.IR using (IR; SigOp; SigOpInfo; AllocMode; Stack; Heap)
+open import Once.IR using (IR; SigOp; SigOpInfo; AllocMode; Stack; Heap)
 open import Once.CCC.Machine.SMCore
   using (LocState; mkLocState; ValueLocation; AtStack; SV-Ptr;
          halted; regs; stackMem; heapMem;

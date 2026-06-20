@@ -44,7 +44,7 @@ import Unsafe.Coerce (unsafeCoerce)
 import qualified MAlonzo.Code.Agda.Builtin.Sigma as MSigma
 import qualified MAlonzo.Code.Data.Sum.Base as MSum
 import qualified MAlonzo.Code.Once.Compile as MC
-import qualified MAlonzo.Code.Once.CCC.IR as MCIR
+import qualified MAlonzo.Code.Once.IR as MCIR
 import qualified MAlonzo.Code.Once.Adequacy.Compile as MVC
 import qualified MAlonzo.Code.Once.Target.Arch as MTA
 import qualified MAlonzo.Code.Once.Parser as MP
@@ -226,9 +226,9 @@ resolveImports modMap (Module userMod) =
 data AllocMode = AllocStack | AllocHeap
   deriving (Eq, Show)
 
-toMAllocMode :: AllocMode -> MCIR.T_AllocMode_6
-toMAllocMode AllocStack = MCIR.C_Stack_8
-toMAllocMode AllocHeap  = MCIR.C_Heap_10
+toMAllocMode :: AllocMode -> MCIR.T_AllocMode_4
+toMAllocMode AllocStack = MCIR.C_Stack_6
+toMAllocMode AllocHeap  = MCIR.C_Heap_8
 
 compileFromModule :: AllocMode -> Stage -> Bool -> Arch -> Module -> CompileResult
 compileFromModule m stage doOpt arch (Module mod_) =

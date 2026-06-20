@@ -36,7 +36,7 @@ open import Once.CCC.Target.X86-32.Syntax
          Operand; reg; mem; imm;
          Instr; mov; lea; add; sub; cmp; test; push; pop; call; call-sym; ret; jmp; jne; je; nop; ud2; label;
          Program; slot-size; slots)
-open import Once.CCC.SigOp.Info using (SigOpInfo)
+open import Once.SigOp.Info using (SigOpInfo)
 
 -- Import AbstractInstr from SMCore
 open import Once.CCC.Machine.SMCore

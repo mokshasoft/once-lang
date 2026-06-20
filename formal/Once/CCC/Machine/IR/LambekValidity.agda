@@ -33,7 +33,7 @@ open import Data.Nat using (ℕ)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore hiding (AllocMode; Stack; Heap)
 open import Once.Semantics.Machine using (⟦_⟧)
-open import Once.CCC.IR
+open import Once.IR
 open import Once.CCC.Eval using (eval)
 open import Once.CCC.Machine.Allocation hiding (AllocMode)
 open import Once.Type using (Type; Functor; μ-type; ν-type; ⟦_⟧T)

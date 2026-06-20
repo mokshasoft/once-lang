@@ -29,7 +29,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.Type using (Type; Functor; _⊕_; Id; μ-type; ⟦_⟧T; _+_)
 open import Once.Semantics.Machine using (⟦_⟧; sem-inl; sem-inr)
 open import Once.CCC.Eval using (eval)
-open import Once.CCC.IR using (out-μ; Heap)
+open import Once.IR using (out-μ; Heap)
 open import Once.Functor.Translate using (WellFormedF; WellFormedF-irrelevant)
 open import Once.CCC.Machine.Allocation using (AllocState)
 open import Once.CCC.Machine.SMCore

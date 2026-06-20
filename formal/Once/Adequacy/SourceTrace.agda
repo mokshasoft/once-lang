@@ -43,7 +43,7 @@ open import Relation.Nullary using (yes; no; Dec)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.Type using (Type; Unit)
-open import Once.CCC.IR using (IR)
+open import Once.IR using (IR)
 import Once.Compile as C
 import Once.Parser.Module.Core as P
 open import Once.Grammar.ModuleConvert using (gmoduleToModule)

@@ -22,9 +22,9 @@ import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Data.List.Base
 import qualified MAlonzo.Code.Once.CCC.Label
 import qualified MAlonzo.Code.Once.CCC.Machine.SMCore
-import qualified MAlonzo.Code.Once.CCC.SigOp.Info
 import qualified MAlonzo.Code.Once.CCC.Target.X86Z45Z64.CodeGen.Primitives
 import qualified MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax
+import qualified MAlonzo.Code.Once.SigOp.Info
 
 -- Once.CCC.Target.X86-64.AbstractToX86.slot-to-disp
 d_slot'45'to'45'disp_10 :: Integer -> Integer
@@ -331,7 +331,7 @@ d_compile'45'abstract_14 v0
       MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'sigop_2098 v1 v2 v3
         -> coe
              MAlonzo.Code.Once.CCC.Target.X86Z45Z64.CodeGen.Primitives.d_compile'45'sigOp_12
-             (coe MAlonzo.Code.Once.CCC.SigOp.Info.d_name_148 (coe v3))
+             (coe MAlonzo.Code.Once.SigOp.Info.d_name_146 (coe v3))
       MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'load'45'const_2102 v1 v2 v3
         -> coe
              MAlonzo.Code.Once.CCC.Target.X86Z45Z64.CodeGen.Primitives.du_compile'45'const_24

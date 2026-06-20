@@ -23,7 +23,7 @@ open import Data.String using (String; _++_)
 
 open import Once.Target using (Target)
 open import Once.Target.Symbol using (once-symbol)
-open import Once.CCC.IR using (IR)
+open import Once.IR using (IR)
 
 open import Once.CCC.Codegen.IRToTrace using (ir-to-trace; ir-to-trace-from)
 open import Data.Nat using (ℕ)

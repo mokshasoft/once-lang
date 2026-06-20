@@ -31,7 +31,7 @@ module Once.Derived.Observation where
 open import Data.Unit using (⊤; tt)
 
 open import Once.Type
-open import Once.CCC.IR
+open import Once.IR
 open import Once.Functor.Translate using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod; IsBaseType; base-Unit; base-Int)
 
 -- Import coinductive types

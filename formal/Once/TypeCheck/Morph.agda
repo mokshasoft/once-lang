@@ -31,7 +31,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Once.Type using (Type; Unit; Void; Int; Float; Str; Buffer;
                              _*_; _+_; _⇒[_]_; μ-type; ν-type;
                              Functor; K; Id; _⊕_; _⊗_)
-open import Once.CCC.IR as IR using (IR; Heap)
+open import Once.IR as IR using (IR; Heap)
 open import Once.TypeCheck.Raw as Raw using (RawExpr; RVar; RApp)
 
 ------------------------------------------------------------------------

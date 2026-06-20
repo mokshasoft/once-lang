@@ -13,7 +13,7 @@
 module Once.Optimizer.Cost where
 
 open import Once.Type
-open import Once.CCC.IR
+open import Once.IR
 
 open import Data.Nat using (ℕ; zero; suc; _⊔_; _≤_; _<_; z≤n)
 open import Data.Nat as ℕ using () renaming (_+_ to _ℕ+_)

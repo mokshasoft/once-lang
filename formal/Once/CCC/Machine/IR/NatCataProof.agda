@@ -27,7 +27,7 @@ open import Once.Functor.Translate using (WellFormedF; wf-NatF; wf-K; wf-Id; wf-
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore hiding (AllocMode)
 open import Once.CCC.Machine.Allocation using (AllocMode; Stack; Heap)
-open import Once.CCC.IR using (IR; ⟦_⟧T)
+open import Once.IR using (IR; ⟦_⟧T)
 open import Once.CCC.Eval using (eval)
 
 -- Import semantics

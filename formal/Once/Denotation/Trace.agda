@@ -30,7 +30,7 @@ open import Relation.Nullary using (yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.Type using (Type; Int)
-open import Once.CCC.SigOp.Info using (SigOpInfo; name)
+open import Once.SigOp.Info using (SigOpInfo; name)
 open import Once.Word using (Carrier)
 import Once.Semantics.Value Carrier as M
 

@@ -27,7 +27,7 @@ open import Data.Product using (∃-syntax)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
 open import Once.Type using (Type)
-open import Once.CCC.IR using (IR; SigOp; AllocMode; SigOpInfo)
+open import Once.IR using (IR; SigOp; AllocMode; SigOpInfo)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.Semantics.Machine using (⟦_⟧)
 

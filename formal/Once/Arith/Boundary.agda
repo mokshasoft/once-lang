@@ -39,8 +39,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Relation.Nullary using (Dec; yes; no)
 
 open import Once.Type using (Type; Int; fits-int)
-open import Once.CCC.IR using (SigOp; AllocMode; Stack)
-open import Once.CCC.SigOp.Info using (SigOpInfo; name)
+open import Once.IR using (SigOp; AllocMode; Stack)
+open import Once.SigOp.Info using (SigOpInfo; name)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 
 -- | Decidable equality on `Type`: lifted from `Once.TypeCheck.Elaborate`.

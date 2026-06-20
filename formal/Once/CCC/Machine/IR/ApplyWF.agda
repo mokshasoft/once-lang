@@ -44,9 +44,9 @@ open import Once.Type
 open import Once.Semantics.Machine using (⟦_⟧; sem-fst; sem-snd; sem-pair; sem-inl; sem-inr; sem-case)
 open import Once.Memory.TypeSlots using (stack-type-slots; heap-type-slots; type-slots)
 pair = sem-pair
-open import Once.CCC.IR
+open import Once.IR
 open import Once.CCC.Eval using (eval)
-open import Once.CCC.IR.Size
+open import Once.IR.Size
 open import Once.CCC.IR.Stack
 open import Once.CCC.Machine.Allocation hiding (AllocMode)
 

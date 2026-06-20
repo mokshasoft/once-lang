@@ -24,7 +24,7 @@
 module Once.Adequacy.ArchCorrectness.X86-64 where
 
 open import Data.Nat using (ℕ)
-open import Once.CCC.IR using (IR)
+open import Once.IR using (IR)
 open import Once.Adequacy.CPU using (x86-64; arch-semantics)
 open import Once.Adequacy.Compile using (ArchCorrect)
 open import Once.CCC.Target.X86-64.FrameInstantiation using (x86v3-frame-semantics)

@@ -82,7 +82,7 @@ open FrameSemantics using (Frame)
 open import Once.Type using (Type; _*_; _+_; ⟦_⟧T; μ-type)
 open import Once.Functor.Translate using (WellFormedF)
 open import Once.Semantics.Machine using (⟦_⟧)
-open import Once.CCC.IR
+open import Once.IR
   using (IR; AllocMode; Stack; Heap;
          id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal; initial;
          curry; apply; arr;
@@ -132,7 +132,7 @@ module IRTraceCorrectness {FS : FrameSemantics} (program-bound : ℕ)
   open SMP.RecSchemeSemantics {FS}
     using (exec-abstract-load-indirect-preserves-alloc;
            exec-abstract-load-indirect-suc-preserves-alloc)
-  open import Once.CCC.SigOp.Info using (SigOpInfo; semM; effect; EffectShape; Pure; Emits; Halts)
+  open import Once.SigOp.Info using (SigOpInfo; semM; effect; EffectShape; Pure; Emits; Halts)
   open import Once.Type using (Unit; fits-in-reg?)
   open import Data.Maybe using (just; nothing)
   open import Once.CCC.Machine.SMCore using (mkLocState; stackMem; heapMem; writeReg; Output; instr-sigop)
@@ -177,7 +177,7 @@ module IRTraceCorrectness {FS : FrameSemantics} (program-bound : ℕ)
   open DispatcherModule.Dispatcher {FS} program-bound acc-pb sigOp-proof
     using (run-ir-wf)
   open import Data.Nat.Properties using (<-trans)
-  open import Once.CCC.IR.Size using (ir-size)
+  open import Once.IR.Size using (ir-size)
 
   -- Construct RecDispatcherWF at any size bound `n` from acc-pb +
   -- `n < program-bound`. Mirrors Dispatcher.make-rec-wf: given the

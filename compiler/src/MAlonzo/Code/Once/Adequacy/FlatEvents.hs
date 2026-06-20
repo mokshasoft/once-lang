@@ -27,8 +27,8 @@ import qualified MAlonzo.Code.Once.CCC.Codegen.FlatStepLemmas
 import qualified MAlonzo.Code.Once.CCC.FrameSemantics
 import qualified MAlonzo.Code.Once.CCC.Machine.Flat
 import qualified MAlonzo.Code.Once.CCC.Machine.SMCore
-import qualified MAlonzo.Code.Once.CCC.SigOp.Info
 import qualified MAlonzo.Code.Once.Denotation.Trace
+import qualified MAlonzo.Code.Once.SigOp.Info
 import qualified MAlonzo.Code.Once.Type
 
 -- Once.Adequacy.FlatEvents.FlatEventTrace._.FlatState
@@ -159,14 +159,14 @@ d_machine'45'event_170 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
-  MAlonzo.Code.Once.CCC.SigOp.Info.T_SigOpInfo_136 ->
+  MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_134 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_StoredValue_66 ->
   MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_122
 d_machine'45'event_170 ~v0 v1 ~v2 v3 v4
   = du_machine'45'event_170 v1 v3 v4
 du_machine'45'event_170 ::
   MAlonzo.Code.Once.Type.T_Type_112 ->
-  MAlonzo.Code.Once.CCC.SigOp.Info.T_SigOpInfo_136 ->
+  MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_134 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_StoredValue_66 ->
   MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_122
 du_machine'45'event_170 v0 v1 v2
@@ -177,12 +177,12 @@ du_machine'45'event_170 v0 v1 v2
          MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v4
            -> coe
                 MAlonzo.Code.Once.Denotation.Trace.C_mk'45'event_132
-                (coe MAlonzo.Code.Once.CCC.SigOp.Info.d_name_148 (coe v1))
+                (coe MAlonzo.Code.Once.SigOp.Info.d_name_146 (coe v1))
                 (coe du_decode'45'ℕ_162 (coe v2))
          MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
            -> coe
                 MAlonzo.Code.Once.Denotation.Trace.C_mk'45'event_132
-                (coe MAlonzo.Code.Once.CCC.SigOp.Info.d_name_148 (coe v1)) (coe v3)
+                (coe MAlonzo.Code.Once.SigOp.Info.d_name_146 (coe v1)) (coe v3)
          _ -> MAlonzo.RTE.mazUnreachableError)
 -- Once.Adequacy.FlatEvents.FlatEventTrace.ev-of-loc
 d_ev'45'of'45'loc_194 ::
@@ -200,13 +200,12 @@ du_ev'45'of'45'loc_194 v0 v1
     coe
       (case coe v0 of
          MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'sigop_2098 v3 v4 v5
-           -> let v6
-                    = MAlonzo.Code.Once.CCC.SigOp.Info.d_effect_152 (coe v5) in
+           -> let v6 = MAlonzo.Code.Once.SigOp.Info.d_effect_150 (coe v5) in
               coe
                 (case coe v6 of
-                   MAlonzo.Code.Once.CCC.SigOp.Info.C_Pure_126
+                   MAlonzo.Code.Once.SigOp.Info.C_Pure_124
                      -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
-                   MAlonzo.Code.Once.CCC.SigOp.Info.C_Emits_128
+                   MAlonzo.Code.Once.SigOp.Info.C_Emits_126
                      -> coe
                           MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                           (coe
@@ -216,7 +215,7 @@ du_ev'45'of'45'loc_194 v0 v1
                                 (coe MAlonzo.Code.Once.CCC.Machine.SMCore.d_regs_468 (coe v1))
                                 (coe MAlonzo.Code.Once.CCC.Machine.SMCore.C_Input1_56)))
                           (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
-                   MAlonzo.Code.Once.CCC.SigOp.Info.C_Halts_130
+                   MAlonzo.Code.Once.SigOp.Info.C_Halts_128
                      -> coe
                           MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                           (coe

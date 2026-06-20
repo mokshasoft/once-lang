@@ -15,7 +15,7 @@
 module Once.Optimize.Correct where
 
 open import Once.Type
-open import Once.CCC.IR
+open import Once.IR
 open import Once.CCC.Eval using (⟦_⟧; eval; appNatTr-F)
 open import Once.Optimize
 open import Once.Category.Laws
@@ -140,7 +140,7 @@ eval-unit-unique f x with eval f x
 -- then recursion-scheme expressions built from them evaluate equally.
 ------------------------------------------------------------------------
 
-open import Once.CCC.IR using (IR)
+open import Once.IR using (IR)
 open import Data.Integer using (ℤ)
 open import Once.Word using (Carrier)
 open import Once.Semantics.Value Carrier using (sem-cata; sem-para; sem-ana; sem-fuseNat; sem-fuseNat-cong; ⟦_⟧F; coerce-functor; coerce-functor⁻¹)

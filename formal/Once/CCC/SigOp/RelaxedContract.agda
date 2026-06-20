@@ -66,7 +66,7 @@ open import Relation.Nullary using (¬_)
 
 open import Once.Type using (Type)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
-open import Once.CCC.SigOp.Info using (SigOpInfo; name; semM)
+open import Once.SigOp.Info using (SigOpInfo; name; semM)
 open import Once.CCC.Machine.SMCore
   using (LocState; AbstractInstr; AbstractTrace;
          AbstractReg; Input1; Output;

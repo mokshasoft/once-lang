@@ -18,7 +18,7 @@ open import Data.Product using (_×_; _,_)
 
 open import Once.Target using (Target)
 open import Once.Target.Symbol using (once-symbol)
-open import Once.CCC.IR using (IR)
+open import Once.IR using (IR)
 
 -- x86-64 code generation and emission. Plan 0.10 Phase C: switched
 -- from the bespoke direct-compile-ir path to the verified abstract-

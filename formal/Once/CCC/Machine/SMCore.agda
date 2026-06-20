@@ -45,7 +45,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 -- discharge of `sigop-codegen-faithful`.
 open import Once.Type using (Type; FitsInReg; fits-int; fits-in-reg?)
 open import Once.Semantics.Machine using (⟦_⟧)
-open import Once.CCC.SigOp.Info using (SigOpInfo; effect; EffectShape; Pure; Emits; Halts)
+open import Once.SigOp.Info using (SigOpInfo; effect; EffectShape; Pure; Emits; Halts)
 
 private
   -- Helper: just is injective (private to avoid name clashes)
@@ -993,7 +993,7 @@ data AbstractInstr : Set where
   -- (e.g., "exit" → mov $60, %rax; syscall). The proof layer can
   -- consult `semI si` / `semM si` for per-name discharge of
   -- `sigop-codegen-faithful` and `ir-to-trace-correct-sigop` — see
-  -- `Once.CCC.SigOp.Info` for the spec layer.
+  -- `Once.SigOp.Info` for the spec layer.
   --
   -- Type indices A, B are implicit and recoverable when needed by
   -- pattern-matching on `instr-sigop {A} {B} si`.

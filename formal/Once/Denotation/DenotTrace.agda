@@ -37,12 +37,12 @@ open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Once.Type
   using (Type; Unit; Void; _*_; _+_; _⇒[_]_; μ-type; ν-type;
          Int; Float; Str; Buffer; Functor; ⟦_⟧T)
-open import Once.CCC.IR
+open import Once.IR
   using (IR; id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal;
          initial; curry; apply; arr; SigOp; Cata; In; Out; Ana;
          out-μ; free-heap; const; Para; Hylo; Fuse)
 open import Once.CCC.Eval as Val using (eval; appNatTr-F)   -- pure value domain `Val.⟦_⟧` + `eval`
-open import Once.CCC.SigOp.Info
+open import Once.SigOp.Info
   using (SigOpInfo; semM; effect; EffectShape; Pure; Emits; Halts)
 open import Once.Functor.Translate using (WellFormedF)
 open import Once.Semantics.Machine

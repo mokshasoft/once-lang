@@ -37,7 +37,7 @@ open import Function using (case_of_)
 open import Once.Type public
 
 -- Re-export Core IR
-open import Once.CCC.IR public
+open import Once.IR public
 
 -- Re-export Surface IR
 open import Once.Surface.IR public

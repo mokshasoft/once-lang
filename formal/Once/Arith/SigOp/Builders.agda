@@ -32,7 +32,7 @@ open import Data.Unit using (⊤)
 
 open import Once.Type using (Type; Unit; Int; Str; _*_; _+_;
                               ArrowKind; mk-kind; Purity; pure; eff)
-open import Once.CCC.SigOp.Info using (SigOpInfo; mk-info; EffectShape; Pure; Halts)
+open import Once.SigOp.Info using (SigOpInfo; mk-info; EffectShape; Pure; Halts)
 open import Relation.Binary.PropositionalEquality using (refl)
 
 open import Once.Word using (Carrier)

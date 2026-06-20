@@ -27,10 +27,10 @@ import qualified MAlonzo.Code.Data.String.Base
 import qualified MAlonzo.Code.Data.Sum.Base
 import qualified MAlonzo.Code.Once.Arith.Machine.IR
 import qualified MAlonzo.Code.Once.Arith.Machine.Shape
-import qualified MAlonzo.Code.Once.CCC.SigOp.Info
 import qualified MAlonzo.Code.Once.Functor.Translate
 import qualified MAlonzo.Code.Once.Semantics.Functor
 import qualified MAlonzo.Code.Once.Semantics.Value
+import qualified MAlonzo.Code.Once.SigOp.Info
 import qualified MAlonzo.Code.Once.Type
 import qualified MAlonzo.Code.Once.Word
 
@@ -700,10 +700,10 @@ d_block'45'semM_228 v0 v1 v2
 d_block'45'info_262 ::
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
-  MAlonzo.Code.Once.CCC.SigOp.Info.T_SigOpInfo_136
+  MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_134
 d_block'45'info_262 v0 v1
   = coe
-      MAlonzo.Code.Once.CCC.SigOp.Info.C_mk'45'info_154
+      MAlonzo.Code.Once.SigOp.Info.C_mk'45'info_152
       (coe du_block'45'name_200 (coe v1))
       (coe d_block'45'semM_228 (coe v0) (coe v1))
-      (coe MAlonzo.Code.Once.CCC.SigOp.Info.C_Pure_126)
+      (coe MAlonzo.Code.Once.SigOp.Info.C_Pure_124)

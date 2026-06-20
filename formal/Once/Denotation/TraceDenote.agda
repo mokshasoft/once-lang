@@ -28,7 +28,7 @@ open import Data.Sum using (inj₁; inj₂)
 
 open import Once.Type using (Functor; K; Id; _⊕_; _⊗_)
 open import Once.CCC.Eval using (⟦_⟧)
-open import Once.CCC.SigOp.Info using (SigOpInfo; effect; Pure; Emits; Halts)
+open import Once.SigOp.Info using (SigOpInfo; effect; Pure; Emits; Halts)
 open import Once.Semantics.Machine using (⟦_⟧F)
 open import Once.Denotation.Trace using (SigOpEvent; mkEvent)
 

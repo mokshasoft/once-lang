@@ -24,7 +24,7 @@
 module Once.Optimize where
 
 open import Once.Type
-open import Once.CCC.IR
+open import Once.IR
 open import Once.CCC.Machine.SMCore using (_≟H_)
 open import Once.Functor.Translate using (WellFormedF-irrelevant)
 
@@ -34,7 +34,7 @@ import Data.Nat.Properties
 open import Data.Product using (_×_; _,_; proj₁; proj₂; Σ; ∃)
 open import Data.String using (String)
 open import Data.String.Properties using () renaming (_≟_ to _≟String_)
-open import Once.CCC.SigOp.Info using (_≟SigOpInfo_)
+open import Once.SigOp.Info using (_≟SigOpInfo_)
 open import Relation.Nullary using (Dec; yes; no; ¬_)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; cong; cong₂; subst; sym; trans)
 open import Data.Empty using (⊥)

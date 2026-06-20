@@ -31,7 +31,7 @@ open import Data.Product using (Σ; _,_; ∃-syntax)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.Type
-open import Once.CCC.IR
+open import Once.IR
 open import Once.CCC.Eval using (⟦_⟧; eval)
 
 ------------------------------------------------------------------------

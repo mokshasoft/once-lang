@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson and contributors
 
 ------------------------------------------------------------------------
--- Once.CCC.IR
+-- Once.IR
 --
 -- The core IR based on Cartesian Closed Categories.
 --
@@ -21,7 +21,7 @@
 --   - Memory: free-heap (explicit deallocation)
 ------------------------------------------------------------------------
 
-module Once.CCC.IR where
+module Once.IR where
 
 open import Data.String using (String)
 
@@ -52,7 +52,7 @@ open import Once.Memory.HeapAddress using (HeapRef)
 open import Once.Word using (Carrier)
 
 -- SigOpInfo: the descriptor carried by every signature operation.
-open import Once.CCC.SigOp.Info public
+open import Once.SigOp.Info public
   using (SigOpInfo; mk-info; name; semM; effect;
          EffectShape; Pure; Emits; Halts)
 

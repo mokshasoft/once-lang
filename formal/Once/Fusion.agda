@@ -89,7 +89,7 @@
 module Once.Fusion where
 
 open import Once.Type
-open import Once.CCC.IR
+open import Once.IR
 
 open import Data.Nat using (ℕ; zero; suc)
 

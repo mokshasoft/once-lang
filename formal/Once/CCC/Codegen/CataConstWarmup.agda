@@ -24,7 +24,7 @@ open import Data.Product using (_×_; _,_)
 
 open import Once.Type using (⟦_⟧T; Functor; K; Id; _⊕_; _⊗_; _+_; _*_)
 open import Once.Functor.Translate using (WellFormedF)
-open import Once.CCC.IR using (IR; Cata)
+open import Once.IR using (IR; Cata)
 open import Once.CCC.Codegen.IRToTrace
   using (ir-to-trace-at-frontier; cata-strategy; strat-const; has-id)
 

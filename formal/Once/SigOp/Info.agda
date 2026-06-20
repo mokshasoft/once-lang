@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson and contributors
 
 ------------------------------------------------------------------------
--- Once.CCC.SigOp.Info
+-- Once.SigOp.Info
 --
 -- The signature-operation descriptor carried by every `SigOp` IR node.
 --
@@ -30,7 +30,7 @@
 -- (Int, Float, etc.). Per D047 (SigOp rename) and plan 0.2.4.1.
 ------------------------------------------------------------------------
 
-module Once.CCC.SigOp.Info where
+module Once.SigOp.Info where
 
 open import Data.Integer using (ℤ)
 open import Data.Nat using (ℕ)

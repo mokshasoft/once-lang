@@ -35,7 +35,7 @@ open import Data.Unit using (tt)
 open import Relation.Binary.PropositionalEquality using (refl)
 
 open import Once.Type using (Int; Unit)
-open import Once.CCC.SigOp.Info using (SigOpInfo; mk-info; EffectShape; Halts)
+open import Once.SigOp.Info using (SigOpInfo; mk-info; EffectShape; Halts)
 
 ------------------------------------------------------------------------
 -- `linux.exit : Int → Unit` — terminate the process with an exit code.

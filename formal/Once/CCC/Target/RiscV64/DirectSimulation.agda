@@ -15,7 +15,7 @@ module Once.CCC.Target.RiscV64.DirectSimulation where
 
 open import Data.Nat using (ℕ; zero; suc; _∸_; _≡ᵇ_; _≤_) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
 open import Data.String using (String)
-import Once.CCC.SigOp.Info
+import Once.SigOp.Info
 open import Data.Nat.DivMod using (_/_; m*n/n≡m)
 open import Data.Integer using (ℤ; +_; -[1+_]; ∣_∣)
 open import Data.Bool using (Bool; true; false; if_then_else_)
@@ -42,7 +42,7 @@ open import Once.CCC.Target.RiscV64.Syntax
          j; ret; call; call-sym; nop; unimp; label)
 open import Once.CCC.Target.RiscV64.AbstractToRiscV
   using (compile-abstract; compile-trace; slot-to-disp)
-open import Once.CCC.IR using (IR)
+open import Once.IR using (IR)
 open import Once.CCC.Eval using ()
 open import Once.Semantics.Machine using (⟦_⟧)
 
@@ -619,7 +619,7 @@ module Simulation {FS : FrameSemantics} where
   -- discharge plan. Future per-name strengthening upgrades this to
   -- per-name postulates tied to SigOpInfo.semM.
   postulate
-    sigop-codegen-faithful : ∀ {A B} (si : Once.CCC.SigOp.Info.SigOpInfo A B) ls rs alloc →
+    sigop-codegen-faithful : ∀ {A B} (si : Once.SigOp.Info.SigOpInfo A B) ls rs alloc →
       halted ls ≡ false → Corresponds ls rs alloc →
       Corresponds (proj₁ (exec-abstract (instr-sigop si) ls alloc))
                   (exec-prog (compile-abstract (instr-sigop si)) rs (current-frame alloc))
