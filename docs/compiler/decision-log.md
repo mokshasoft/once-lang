@@ -4334,6 +4334,15 @@ over an abstract interpretation — no concrete interpretation is baked in.**
 
 ### Consequences
 
+> **Update 2026-06-20:** `build-pure` has since been **retired** — the clean-semantics
+> `cata`/`ana` closure-bridge (`cata-body`/`ana-body`) removed the need for it, so `faithful`
+> is already total and postulate-free *without* the abstract-interpretation WF. The decision
+> below stands, but its *forcing function* is gone: M0 now proceeds for **honesty** (deleting
+> the `String → SigOpInfo` catch-all so a SigOp's effect/value come from a contract), not to
+> unblock `build-pure`. Also clarified: the **compiler never reads `semM`** — only `name` +
+> `effect` (the optimizer's pure-vs-eff, ≈ `π`); `semM` is consumed solely by `eval` and the
+> off-line proofs, so sourcing it from the contract is a meaning-layer (not compiler) fix.
+
 - `build-pure` (and a postulate-free meaning layer / `faithful`) is provable **relative to a
   well-formed abstract interpretation** — nothing emits at build, so the IR's per-fold-layer
   algebra rebuild matches the denotational build-once.
