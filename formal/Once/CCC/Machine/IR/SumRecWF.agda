@@ -968,7 +968,6 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   -- recursion scheme constructors: In, Cata, Out, Ana, Hylo.
   --
   -- The semantic correctness is established in:
-  --   - Once/CCC/IR/Laws.agda (evaluation laws)
   --   - Once/Category/Laws.agda (categorical laws)
   --
   -- Implementation strategy:

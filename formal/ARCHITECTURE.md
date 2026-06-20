@@ -22,6 +22,50 @@ makes the spec the trust point. Whatever the user installs is
 visible in the top-level signature — there are no hidden
 postulates inside the proof chain to go digging for.
 
+## Module Tiers
+
+The codebase is layered into four tiers and **dependency arrows point
+only UP** — no tier imports a tier below it. The two middle tiers (the
+*meaning* and the *compiler*) are independent siblings, joined at the top
+by adequacy. A module's namespace prefix tells you its tier.
+
+```
+                    ADEQUACY  (join) ............ Once.Adequacy.*
+              machine-trace (compile src) ≡ projTrace ⟦src⟧ˢ
+                   ╱                              ╲
+     DENOTATION (spec) ......... Once.Denotation.*    OPERATIONAL (impl)
+     the meaning: trace monad,                        Once.CCC.{Machine,
+     source denotation ⟦_⟧ˢ,                          Codegen,Target,Eval},
+     observable Behavior                              Once.Optimize · Place
+                   ╲                              ╱
+              KERNEL  (object language + point-free syntax)
+   Once.{Type, Word, Functor.*, Semantics.{Functor,Value}, IR, SigOp.Info}
+              — depends only on the standard library
+```
+
+- **Kernel** — the object language and its point-free IR (`Once.IR`), the
+  type language (`Once.Type`), the machine word (`Once.Word`, D054), the
+  polynomial-functor + value-model semantics (`Once.Semantics.{Functor,
+  Value}`), and the SigOp descriptor (`Once.SigOp.Info`). Imports only the
+  stdlib. The shared vocabulary both the spec and the compiler are written
+  against.
+- **Denotation (spec)** — the *meaning*: `eval`'s observable extension via
+  the trace monad, the source denotation `⟦_⟧ˢ`, and the observable
+  `Behavior`. Self-contained — imports the kernel, nothing operational.
+  Typechecks escape-hatch-clean (`make denot-safe`): the only axioms are
+  `funext` + `bisimS-to-eq`; the residual domain contracts are the
+  SigOp/arith value specs.
+- **Operational (impl)** — the compiler proper: the abstract machine, the
+  per-IR well-formedness proofs codegen needs (`Once.CCC.Machine.IR.*WF`),
+  IR→trace lowering, the optimizer, and the per-target backends.
+- **Adequacy (join)** — the grand theorem (`Once.Adequacy.*`) tying the two
+  middle tiers together: target execution refines the source meaning. The
+  elaboration-preserves-meaning bridge (`faithful`) lives here too, since it
+  references the elaborator (operational), not pure denotation.
+
+The kernel was lifted out of the operational `Once.CCC.*` namespace (D066)
+precisely so the namespace mirrors this layering.
+
 ## Pipeline
 
 | Stage | Module | What | Correctness |
@@ -36,7 +80,8 @@ postulates inside the proof chain to go digging for.
 
 ## IR Core
 
-The IR is a **point-free categorical core**. Every IR is a morphism
+The IR (`Once.IR`, kernel tier) is a **point-free categorical core**.
+Every IR is a morphism
 `IR A B`; composition is `_∘_`, products are `⟨_,_⟩` / `fst` / `snd`,
 sums are `inl` / `inr` / `case`, recursive types use `μ` / `In` /
 `cata` and `ν` / `Out` / `ana`. Primitive operations that are not
