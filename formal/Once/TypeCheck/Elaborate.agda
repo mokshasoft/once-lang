@@ -1778,8 +1778,8 @@ mutual
   -- (Plan 0.38 M0.2). The compiler is interpretation-BLIND: the effect
   -- comes from the `! <shape>` annotation in the imported signature
   -- (looked up in `NamedCtx.sigEffects` by the same qualified key as the
-  -- type), NEVER from a hardcoded name (`classify-name "linux.exit"` is
-  -- retired). An effectful, `Unit`-codomain op carries a CONTRACT
+  -- type), NEVER from a hardcoded name (the retired effect-from-name guess is
+  -- gone). An effectful, `Unit`-codomain op carries a CONTRACT
   -- (`haltsV`/`emitsV`), no value. A pure arrow, or an `eff` op whose
   -- codomain is not `Unit` (the deferred data-returning-syscall
   -- boundary), falls back to a `pureV` value (the `closure`/`poly`-style

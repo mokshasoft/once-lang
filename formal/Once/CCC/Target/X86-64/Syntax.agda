@@ -125,7 +125,7 @@ data Instr : Set where
   call   : Operand → Instr              -- call target (direct or indirect)
   -- Plan 0.11: SigOp call by symbolic name. The argument is a
   -- relocation symbol resolved by the linker — typically the SigOpInfo's
-  -- `name` (e.g. "linux.exit", "arith.add.int"). CCC does not inspect
+  -- `name` (e.g. an exit-syscall name, "arith.add.int"). CCC does not inspect
   -- the string; emit treats it as a label, simulation treats it as an
   -- opaque calling-convention transition (see `exec-x86 (call-sym _)`
   -- in DirectSimulation).
@@ -139,7 +139,7 @@ data Instr : Set where
   -- Special
   nop    : Instr                        -- no operation
   ud2    : Instr                        -- undefined instruction (trap for unreachable)
-  syscall : Instr                       -- Linux syscall (syscall number in rax,
+  syscall : Instr                       -- syscall instruction (syscall number in rax,
                                         -- args in rdi, rsi, rdx, r10, r8, r9)
 
   -- Label (pseudo-instruction for assembly)

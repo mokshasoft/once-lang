@@ -1088,7 +1088,7 @@ inlInrView (const p v) = iiv-other (const p v)
 -- terminal`, `fst/snd ∘ ⟨g,h⟩ → g/h`) are sound ONLY at the VALUE level:
 -- every `_ → Unit` morphism denotes `tt`, and a projection discards a
 -- component — both fine for the value, but they DROP any observable SigOp
--- trace the discarded sub-term would emit (e.g. `linux.exit`, a test
+-- trace the discarded sub-term would emit (e.g. the exit syscall, a test
 -- `emit`), so the binary silently exits 0. We gate those drops on this
 -- predicate: an effectful sub-term is never dropped (it falls through to a
 -- structural form that preserves it). (`Void`-source → `initial` stays

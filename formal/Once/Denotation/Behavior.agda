@@ -12,16 +12,16 @@
 -- ║  `main : Eff Unit Unit` is fixed by `validateMain`. The trailing ║
 -- ║  `Unit` is meaningless — there is nothing for a program to       ║
 -- ║  return because there is no caller above `main`. What a program  ║
--- ║  *does* is INVOKE SIGNATURE OPERATIONS (SigOps): `linux.exit`,   ║
--- ║  `linux.write`, `arith.add.int`, etc. The observable behaviour   ║
+-- ║  *does* is INVOKE SIGNATURE OPERATIONS (SigOps): the exit call,  ║
+-- ║  a write syscall, `arith.add.int`, etc. The observable behaviour ║
 -- ║  is THE SEQUENCE OF SIGOP CALLS the program performs and their  ║
 -- ║  arguments — i.e. an EFFECT TRACE.                               ║
 -- ║                                                                  ║
 -- ║  The exit code (Layer 0's only observable) is not a "return      ║
 -- ║  value." It is *the argument* to the program's final             ║
--- ║  `linux.exit` SigOp call. There is no other channel by which     ║
+-- ║  the exit-syscall SigOp call. There is no other channel by which ║
 -- ║  exit codes leave the program; "the program returns 42" is       ║
--- ║  shorthand for "the program calls `linux.exit 42`."              ║
+-- ║  shorthand for "the program calls an exit syscall."              ║
 -- ║                                                                  ║
 -- ║  Anyone tempted to project a "return value" from `evalSurface`   ║
 -- ║  is reading the semantics wrong. `evalSurface ε e : ⟦ T ⟧Type`   ║
@@ -40,8 +40,8 @@
 -- ║  The compile-correct theorem says: the compiled bytes invoke    ║
 -- ║  the same SigOp calls (same name, args, order) as the source    ║
 -- ║  intends. It DOES NOT say anything about what those SigOp       ║
--- ║  calls *do* — whether `linux.exit` actually terminates, whether ║
--- ║  `linux.write` actually outputs bytes, etc. That is the         ║
+-- ║  calls *do* — whether the exit syscall terminates, whether      ║
+-- ║  a write syscall outputs bytes, etc. That is the                ║
 -- ║  INTERPRETATION's responsibility, proven separately per SigOp   ║
 -- ║  (or postulated by the Once programmer using their interpretation║
 -- ║  layer in `Strata/Interpretations/...`).                         ║
@@ -54,15 +54,15 @@
 -- ║  compiler. Don't put trace obligations on the interpretation.    ║
 -- ╚══════════════════════════════════════════════════════════════════╝
 --
--- For Layer 0 the only SigOp a program can call is `linux.exit`,
--- so the trace is always `[("linux.exit", N)]`. The argument N is
+-- For Layer 0 the only SigOp a program can call is the exit syscall,
+-- so the trace is always `[(<exit-syscall>, N)]`. The argument N is
 -- what humans call "the exit code." We could pick any of these
 -- equivalent shapes for `Behavior`:
 --
 --   (a) `Behavior = List SigOpEvent`
 --       — the full trace; richest, future-proof for richer effects.
 --   (b) `Behavior = Maybe ℕ`
---       — the argument of the final `linux.exit` event, or `nothing`
+--       — the argument of the final exit-syscall event, or `nothing`
 --         if the program didn't call exit. Coarser but matches what
 --         Layer 0 cares about.
 --
@@ -86,7 +86,7 @@ import Once.Grammar as G
 ------------------------------------------------------------------------
 -- Behavior — THE observable: the ordered sequence of SigOp invocations
 -- a program makes (name + arguments). A Once program returns nothing;
--- this trace is the only thing observable. `linux.exit N` is just one
+-- this trace is the only thing observable. An exit syscall with arg N is just one
 -- SigOp whose argument is `N` — there is no privileged "exit code."
 --
 -- EVENT-COUNT-INDEXED (D058): `Behavior n` = the first `n` EFFECTFUL SigOp
@@ -113,7 +113,7 @@ Source : Set
 Source = G.GModule
 
 ------------------------------------------------------------------------
--- ⟦_⟧ — extracts the `linux.exit` argument from a program's
+-- ⟦_⟧ — extracts the exit-syscall argument from a program's
 -- effect-tree denotation. Postulated until the connector to the
 -- effect-tracking interpreter lands.
 --

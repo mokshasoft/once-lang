@@ -80,7 +80,7 @@ module X86-64 where
   -- the union. `blockClaimed` discharges arith blocks concretely;
   -- `rest-claimed` is the residual postulate, typed against the
   -- explicit list of prefixes still without a concrete provider.
-  -- The list shrinks as IntLit, Linux syscalls, etc. land their own
+  -- The list shrinks as IntLit, external syscalls, etc. land their own
   -- ClaimedProvider entries.
   postulate
     runtime : RuntimeContract FS
@@ -112,7 +112,6 @@ module X86-64 where
     "arith.ge.int"  ∷
     "arith.eq.int"  ∷
     "arith.ne.int"  ∷
-    "linux."        ∷
     []
 
   postulate
@@ -203,7 +202,6 @@ module X86-32 where
     "arith.ge.int"  ∷
     "arith.eq.int"  ∷
     "arith.ne.int"  ∷
-    "linux."        ∷
     []
 
   postulate
@@ -289,7 +287,6 @@ module RiscV64 where
     "arith.ge.int"  ∷
     "arith.eq.int"  ∷
     "arith.ne.int"  ∷
-    "linux."        ∷
     []
 
   postulate

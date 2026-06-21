@@ -143,7 +143,7 @@ str-lit-info s = mk-info ("lit.str." ++ s) (str-lit-semM s) Pure
 --
 -- Used by Surface.Elaborate for legacy `sigOp name` and `poly name`
 -- forms whose SigOpInfo is not yet known at elaboration time.
--- Phase D (Linux syscalls) and a future registry-lookup phase will
+-- Phase D (external syscalls) and a future registry-lookup phase will
 -- replace these placeholders with concrete SigOpInfos.
 ------------------------------------------------------------------------
 
@@ -162,7 +162,7 @@ postulate
 -- (realized only on application, D018 suspended-Eff), so a bare value
 -- reference emits nothing at build. INTERPRETATION-AGNOSTIC — no
 -- effect-from-name guess. Plan 0.38 M0.2: `classify-name` (the
--- `linux.exit → Halts` string match) is RETIRED; an external arrow's effect
+-- exit-syscall → Halts string match) is RETIRED; an external arrow's effect
 -- now comes from its DECLARED `! <shape>`, built at the elaborate site
 -- (`ext-arrow-info` in `TypeCheck.Elaborate`).
 value-info : ∀ {A B} → String → SigOpInfo A B

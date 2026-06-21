@@ -16,7 +16,7 @@
 -- Both fields are definitional for pure operations (e.g. arithmetic),
 -- trivially Unit-valued for termination effects (exit), or
 -- postulated for environment-reading effects (read). Each provider
--- module (`Strata/Interpretations/Linux/Syscalls.agda`,
+-- module (each interpretation's provider/contract module,
 -- `Once/Arith/SigOp/IntLit.agda`, …) constructs its `SigOpInfo`s
 -- with whichever semantic shape is appropriate.
 --
@@ -65,7 +65,7 @@ import Once.Semantics.Value Carrier as M
 -- unconstrained.
 --
 -- Layer 0 needs `Pure` + `Halts` (`Emits` is reserved for the next
--- syscall layer). New shapes (e.g. `ReadsWorld` for `linux.read`)
+-- syscall layer). New shapes (e.g. `ReadsWorld` for a `read` syscall)
 -- grow the type additively; each new constructor earns one generic
 -- CCC dispatch case + one `respects-semM` lemma — the closed type
 -- is what enforces "faithful classification" as a discipline.
@@ -76,11 +76,11 @@ data EffectShape (B : Type) : Set where
   -- output is `wrap (semM x)`. Codomain unrestricted.
   Pure  : EffectShape B
   -- | Observable event, continues. The event records the SigOp's
-  -- input; codomain must be `Unit` (reserved for `linux.write` etc.).
+  -- input; codomain must be `Unit` (reserved for a `write`/emitting syscall etc.).
   Emits : B ≡ Unit → EffectShape B
   -- | Observable event, ends the program. The event records the
   -- SigOp's input (e.g. the exit code); codomain must be `Unit`.
-  -- Used by `linux.exit`.
+  -- Used by the exit syscall.
   Halts : B ≡ Unit → EffectShape B
 
 ------------------------------------------------------------------------

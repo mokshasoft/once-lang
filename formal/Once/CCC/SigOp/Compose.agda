@@ -8,14 +8,14 @@
 --
 -- The `Provider` type in `Once.CCC.SigOp.Contract` is a partial
 -- function (returns `Maybe`) from SigOpInfos to contract proofs.
--- Multiple providers (IntLit family, Linux syscalls, user-imported
+-- Multiple providers (IntLit family, external syscalls, user-imported
 -- modules, …) are combined into a single composed provider via the
 -- standard first-win monoid on partial functions:
 --
 --   (p <|> q) si = p si or-else q si
 --
 -- Composition is associative, so chains like
--- `intLit <|> linux <|> math <|> user-provider` make sense without
+-- `intLit <|> syscalls <|> math <|> user-provider` make sense without
 -- parenthesisation.  The left-most provider that recognizes a
 -- given SigOp wins; downstream providers are only consulted on
 -- `nothing`.

@@ -8,7 +8,7 @@
 -- calls it performs, with their arguments — NOT a return value, NOT an
 -- exit code (see `Once.Denotation.Behavior` preamble and the memory note
 -- "programs don't return values"). The exit code is just the argument
--- of the program's `linux.exit` call, recovered from the event list.
+-- of the program's exit-syscall call, recovered from the event list.
 --
 -- A (possibly infinite) trace is represented by the OBSERVATION-DEPTH-
 -- INDEXED denotation `Once.Denotation.DenotTrace.evalᴰ` (via `projTrace`)
@@ -60,15 +60,3 @@ mkEvent : ∀ {D R} → SigOpInfo D R → M.⟦ D ⟧ → SigOpEvent
 mkEvent {D} si arg with isInt? D
 ... | just refl = mk-event (name si) (just arg)
 ... | nothing   = mk-event (name si) nothing
-
-------------------------------------------------------------------------
--- Exit-code projection: the argument of the first `linux.exit` event
--- in a (finite) trace prefix. The coarse Layer-0 observable — the full
--- observable is the event list itself.
-------------------------------------------------------------------------
-
-exitCodeOf : List SigOpEvent → Maybe ℕ
-exitCodeOf []       = nothing
-exitCodeOf (e ∷ es) with ev-name e ≟str "linux.exit"
-... | yes _ = ev-argℕ e
-... | no _  = exitCodeOf es

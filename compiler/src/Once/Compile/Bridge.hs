@@ -93,7 +93,7 @@ newtype Module = Module MMC.T_Module_44
 -- | An `import` decl seen inside a parsed module. Haskell uses this
 -- to decide which files to load before calling `resolveImports`.
 data ImportRef = ImportRef
-  { importPath  :: [Text]       -- ^ Dotted module path (e.g. ["I","Linux","Syscalls"])
+  { importPath  :: [Text]       -- ^ Dotted module path (e.g. ["I","Foo","Bar"])
   , importAlias :: Maybe Text   -- ^ Alias from `as X`, or Nothing
   } deriving (Eq, Show)
 

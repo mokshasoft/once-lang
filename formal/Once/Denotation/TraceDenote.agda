@@ -54,7 +54,7 @@ sig1 (suc _) e = e ∷ []
 -- ONLY effectful SigOps are observable (`main : Eff Unit Unit` produces nothing
 -- but effects, and effects come only from effectful SigOps). A `Pure` SigOp
 -- (arith, literals — the arith.block lowering is an optimization, not an
--- observable) emits NOTHING; `Emits`/`Halts` (e.g. `linux.exit`) emit the event.
+-- observable) emits NOTHING; `Emits`/`Halts` (e.g. the exit syscall) emit the event.
 -- The machine `flat-events` is made effect-aware in lockstep with this rule.
 emit-eff : ∀ {A B} → SigOpInfo A B → ℕ → ⟦ A ⟧ → List SigOpEvent
 emit-eff si n x with effect si

@@ -119,7 +119,7 @@ re-prove the surrounding composition.
 `main : Eff Unit Unit` has no return value. The **observable
 behaviour** of a Once program is the **trace of SigOp invocations**
 it produces, in order, with their arguments (e.g. an "exit code"
-is the argument to `linux.exit`, not a returned value). What each
+is the argument to the exit syscall, not a returned value). What each
 SigOp's runtime *does* is supplied by whatever the user plugs into
 the compile function's environment parameter (see Goal): a pure
 Agda implementation, a formally proven external one (seL4-style

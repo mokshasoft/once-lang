@@ -19,7 +19,7 @@
 -- definition for all targets; the per-target bridge is the IR-agnostic
 -- `flat-sim`.
 --
--- FAITHFUL arguments: the Layer-0 observable IS the `linux.exit`
+-- FAITHFUL arguments: the Layer-0 observable IS the exit-syscall
 -- argument, so the trace must carry it. `SigOpEvent` coarsens the
 -- argument to `ev-argℕ : Maybe ℕ`; `flat-events` decodes the machine's
 -- `Input1` (`SV-Lit {Int}` → the ℕ) — a function. `traces-agree` (next)
@@ -75,7 +75,7 @@ module FlatEventTrace {FS : FrameSemantics} where
   -- ONLY effectful SigOps are observable (lockstep with `obs`/`emit-eff`): a
   -- `Pure` `instr-sigop` (arith.block etc.) is computed in registers, NOT a
   -- syscall, so it emits no observable event; `Emits`/`Halts` (e.g.
-  -- `linux.exit`) emit the machine event.
+  -- the exit syscall) emit the machine event.
   ev-of-loc : AbstractInstr → LocState FS → List SigOpEvent
   ev-of-loc (instr-sigop si) loc with effect si
   ... | Pure    = []
