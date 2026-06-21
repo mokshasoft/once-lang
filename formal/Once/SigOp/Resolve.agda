@@ -21,6 +21,8 @@
 
 module Once.SigOp.Resolve where
 
+open import Data.Maybe using (Maybe; just; nothing)
+
 open import Once.IR
 open import Once.SigOp.Info using (name)
 open import Once.SigOp.Interpretation using (Interpretation)
@@ -58,7 +60,12 @@ module _ (I : Interpretation) where
   resolveSigOps (Fuse w₁ w₂ f g) = Fuse w₁ w₂ (resolveSigOps f) (resolveSigOps-nt g)
   resolveSigOps (free-heap r)   = free-heap r
   resolveSigOps (const p v)     = const p v
-  resolveSigOps (SigOp si)      = SigOp (info (name si))
+  -- External op the interpretation owns → swap in its declared info.
+  -- Internal producer (arith.*, lit.*, arith.block.*) → `nothing` → keep
+  -- the node's own `semM`/`effect` untouched.
+  resolveSigOps (SigOp si)      with info (name si)
+  ... | just si′                = SigOp si′
+  ... | nothing                 = SigOp si
 
   resolveSigOps-nt ntId         = ntId
   resolveSigOps-nt (ntK ir)     = ntK (resolveSigOps ir)
