@@ -306,6 +306,7 @@ mutual
   complete-prodTailWFraw (ppt-done {toks = TGe        ∷ _} _) _ = _ , refl
   complete-prodTailWFraw (ppt-done {toks = TEqEq      ∷ _} _) _ = _ , refl
   complete-prodTailWFraw (ppt-done {toks = TNeq       ∷ _} _) _ = _ , refl
+  complete-prodTailWFraw (ppt-done {toks = TBang      ∷ _} _) _ = _ , refl
   complete-prodTailWFraw (ppt-done {toks = TNewline   ∷ _} _) _ = _ , refl
   complete-prodTailWFraw (ppt-done {toks = TEOF       ∷ _} _) _ = _ , refl
   complete-prodTailWFraw (ppt-done {toks = TWord _    ∷ _} _) _ = _ , refl
@@ -362,6 +363,7 @@ mutual
   complete-sumTailWFraw (pst-done {toks = TGe        ∷ _} _) _ = _ , refl
   complete-sumTailWFraw (pst-done {toks = TEqEq      ∷ _} _) _ = _ , refl
   complete-sumTailWFraw (pst-done {toks = TNeq       ∷ _} _) _ = _ , refl
+  complete-sumTailWFraw (pst-done {toks = TBang      ∷ _} _) _ = _ , refl
   complete-sumTailWFraw (pst-done {toks = TNewline   ∷ _} _) _ = _ , refl
   complete-sumTailWFraw (pst-done {toks = TEOF       ∷ _} _) _ = _ , refl
   complete-sumTailWFraw (pst-done {toks = TWord _    ∷ _} _) _ = _ , refl
@@ -404,6 +406,7 @@ mutual
   complete-arrowTailWFraw (pat-done {toks = TGe        ∷ _} _) _ = _ , refl
   complete-arrowTailWFraw (pat-done {toks = TEqEq      ∷ _} _) _ = _ , refl
   complete-arrowTailWFraw (pat-done {toks = TNeq       ∷ _} _) _ = _ , refl
+  complete-arrowTailWFraw (pat-done {toks = TBang      ∷ _} _) _ = _ , refl
   complete-arrowTailWFraw (pat-done {toks = TNewline   ∷ _} _) _ = _ , refl
   complete-arrowTailWFraw (pat-done {toks = TEOF       ∷ _} _) _ = _ , refl
   complete-arrowTailWFraw (pat-done {toks = TWord _    ∷ _} _) _ = _ , refl
@@ -505,6 +508,7 @@ mutual
   complete-functorProdTailWFraw (pfpt-done {toks = TGe        ∷ _} _) _ = _ , refl
   complete-functorProdTailWFraw (pfpt-done {toks = TEqEq      ∷ _} _) _ = _ , refl
   complete-functorProdTailWFraw (pfpt-done {toks = TNeq       ∷ _} _) _ = _ , refl
+  complete-functorProdTailWFraw (pfpt-done {toks = TBang      ∷ _} _) _ = _ , refl
   complete-functorProdTailWFraw (pfpt-done {toks = TNewline   ∷ _} _) _ = _ , refl
   complete-functorProdTailWFraw (pfpt-done {toks = TEOF       ∷ _} _) _ = _ , refl
   complete-functorProdTailWFraw (pfpt-done {toks = TWord _    ∷ _} _) _ = _ , refl
@@ -560,6 +564,7 @@ mutual
   complete-functorSumTailWFraw (pfst-done {toks = TGe        ∷ _} _) _ = _ , refl
   complete-functorSumTailWFraw (pfst-done {toks = TEqEq      ∷ _} _) _ = _ , refl
   complete-functorSumTailWFraw (pfst-done {toks = TNeq       ∷ _} _) _ = _ , refl
+  complete-functorSumTailWFraw (pfst-done {toks = TBang      ∷ _} _) _ = _ , refl
   complete-functorSumTailWFraw (pfst-done {toks = TNewline   ∷ _} _) _ = _ , refl
   complete-functorSumTailWFraw (pfst-done {toks = TEOF       ∷ _} _) _ = _ , refl
   complete-functorSumTailWFraw (pfst-done {toks = TWord _    ∷ _} _) _ = _ , refl

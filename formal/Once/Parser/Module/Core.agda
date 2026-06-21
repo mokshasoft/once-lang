@@ -26,6 +26,7 @@ open import Relation.Nullary using (yes; no) public
 open import Relation.Binary.PropositionalEquality using (_≡_; refl) public
 
 open import Once.Type using (Type; PolyType) public
+open import Once.SigEffect using (SigEffect; emits; halts) public
 open import Once.TypeCheck.Raw using (RawExpr; RLam) public
 open import Once.Parser.Token public
 open import Once.Parser.Core public
@@ -54,12 +55,16 @@ data Decl : Set where
   -- via `isGround`/`extractGround`. Plan 0.6 Phase B.
   DTypeSig   : String → PolyType → Decl
   DFunDef    : String → Maybe AllocStrategy → RawExpr → Decl
-  -- | `DSignature name owner ty`
+  -- | `DSignature name owner ty eff`
   -- `owner = nothing`  : source-level primitive (user-written).
   -- `owner = just A`   : primitive inlined by import resolution,
   --                      imported under alias `A` (i.e. user writes
   --                      `name@A`).
-  DSignature : String → Maybe String → PolyType → Decl
+  -- `eff`              : declared `! <shape>` EffectShape annotation
+  --                      (`nothing` = no annotation). Plan 0.38 M0.2 —
+  --                      the compiler learns an external arrow's effect
+  --                      ONLY from this, never from a hardcoded name.
+  DSignature : String → Maybe String → PolyType → Maybe SigEffect → Decl
   DTypeAlias : String → List String → Type → Decl
   DImport    : Import → Decl
 

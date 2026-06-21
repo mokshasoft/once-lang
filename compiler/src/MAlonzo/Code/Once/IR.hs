@@ -61,7 +61,7 @@ data T_IR_16
                T_NatTr_18 |
     C_free'45'heap_156 MAlonzo.Code.Once.Memory.HeapAddress.T_HeapRef_8 |
     C_const_160 MAlonzo.Code.Once.Type.T_FitsInReg_192 AgdaAny |
-    C_SigOp_166 MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_134
+    C_SigOp_166 MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_150
 -- Once.IR.NatTr
 d_NatTr_18 a0 a1 = ()
 data T_NatTr_18

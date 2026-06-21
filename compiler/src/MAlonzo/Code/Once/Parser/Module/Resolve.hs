@@ -97,26 +97,26 @@ d_signaturesWithOwner_70 v0 v1
         -> let v4 = d_signaturesWithOwner_70 (coe v0) (coe v3) in
            coe
              (case coe v2 of
-                MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38 v5 v6 v7
+                MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38 v5 v6 v7 v8
                   -> coe
                        MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                        (coe
                           MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38 (coe v5)
-                          (coe v0) (coe v7))
+                          (coe v0) (coe v7) (coe v8))
                        (coe d_signaturesWithOwner_70 (coe v0) (coe v3))
                 _ -> coe v4)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Parser.Module.Resolve.resolveDecls
-d_resolveDecls_84 ::
+d_resolveDecls_86 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Once.Parser.Module.Core.T_Decl_32] ->
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30
-d_resolveDecls_84 v0 v1
+d_resolveDecls_86 v0 v1
   = case coe v1 of
       [] -> coe MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 (coe v1)
       (:) v2 v3
         -> let v4
-                 = let v4 = d_resolveDecls_84 (coe v0) (coe v3) in
+                 = let v4 = d_resolveDecls_86 (coe v0) (coe v3) in
                    coe
                      (case coe v4 of
                         MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v5 -> coe v4
@@ -138,7 +138,7 @@ d_resolveDecls_84 v0 v1
                           MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v7
                             -> case coe v7 of
                                  MAlonzo.Code.Once.Parser.Module.Core.C_mkModule_50 v8
-                                   -> let v9 = d_resolveDecls_84 (coe v0) (coe v3) in
+                                   -> let v9 = d_resolveDecls_86 (coe v0) (coe v3) in
                                       coe
                                         (case coe v9 of
                                            MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v10 -> coe v9
@@ -165,24 +165,24 @@ d_resolveDecls_84 v0 v1
                                      ::
                                      Data.Text.Text)
                                     (coe
-                                       du_showPath_106
+                                       du_showPath_108
                                        (coe
                                           MAlonzo.Code.Once.Parser.Module.Core.d_path_26 (coe v5))))
                           _ -> MAlonzo.RTE.mazUnreachableError)
                 _ -> coe v4)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Parser.Module.Resolve._.showPath
-d_showPath_106 ::
+d_showPath_108 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   MAlonzo.Code.Once.Parser.Module.Core.T_Import_20 ->
   [MAlonzo.Code.Once.Parser.Module.Core.T_Decl_32] ->
   [MAlonzo.Code.Agda.Builtin.String.T_String_6] ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
-d_showPath_106 ~v0 ~v1 ~v2 v3 = du_showPath_106 v3
-du_showPath_106 ::
+d_showPath_108 ~v0 ~v1 ~v2 v3 = du_showPath_108 v3
+du_showPath_108 ::
   [MAlonzo.Code.Agda.Builtin.String.T_String_6] ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
-du_showPath_106 v0
+du_showPath_108 v0
   = case coe v0 of
       [] -> coe ("" :: Data.Text.Text)
       (:) v1 v2
@@ -191,21 +191,21 @@ du_showPath_106 v0
                      MAlonzo.Code.Data.String.Base.d__'43''43'__20 v1
                      (coe
                         MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                        ("." :: Data.Text.Text) (coe du_showPath_106 (coe v2))) in
+                        ("." :: Data.Text.Text) (coe du_showPath_108 (coe v2))) in
            coe
              (case coe v2 of
                 [] -> coe v1
                 _ -> coe v3)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Parser.Module.Resolve.resolveImports
-d_resolveImports_172 ::
+d_resolveImports_174 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_44 ->
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30
-d_resolveImports_172 v0 v1
+d_resolveImports_174 v0 v1
   = case coe v1 of
       MAlonzo.Code.Once.Parser.Module.Core.C_mkModule_50 v2
-        -> let v3 = d_resolveDecls_84 (coe v0) (coe v2) in
+        -> let v3 = d_resolveDecls_86 (coe v0) (coe v2) in
            coe
              (case coe v3 of
                 MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v4 -> coe v3

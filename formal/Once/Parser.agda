@@ -133,6 +133,7 @@ showTokenPrefix (TGt        ∷ _) = "TGt"
 showTokenPrefix (TGe        ∷ _) = "TGe"
 showTokenPrefix (TEqEq      ∷ _) = "TEqEq"
 showTokenPrefix (TNeq       ∷ _) = "TNeq"
+showTokenPrefix (TBang      ∷ _) = "TBang"
 showTokenPrefix (TCaret1    ∷ _) = "TCaret1"
 showTokenPrefix (TCaret0    ∷ _) = "TCaret0"
 showTokenPrefix (TCaretW    ∷ _) = "TCaretW"
@@ -288,10 +289,10 @@ extractFunctions-go aliases (DFunDef name alloc body ∷ rest) nothing =
 -- resolves to this FunInfo without further wiring. Primitives must
 -- be ground; polymorphic primitive signatures are rejected by
 -- `projectSig`.
-extractFunctions-go aliases (DSignature name nothing ty ∷ rest) _ with projectSig aliases name ty
+extractFunctions-go aliases (DSignature name nothing ty _ ∷ rest) _ with projectSig aliases name ty
 ... | inj₁ err  = inj₁ err
 ... | inj₂ gty  = extractFunctions-consFun (extractFunctions-go aliases rest nothing) (mkFunInfo name (just gty) nothing (RVar name) true)
-extractFunctions-go aliases (DSignature name (just owner) ty ∷ rest) _ with projectSig aliases (owner ++ "." ++ name) ty
+extractFunctions-go aliases (DSignature name (just owner) ty _ ∷ rest) _ with projectSig aliases (owner ++ "." ++ name) ty
 ... | inj₁ err  = inj₁ err
 ... | inj₂ gty  =
          let qname = owner ++ "." ++ name

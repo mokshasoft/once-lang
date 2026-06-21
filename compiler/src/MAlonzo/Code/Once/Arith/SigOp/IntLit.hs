@@ -33,10 +33,10 @@ d_lit'45'int'45'name_8 v0
       (MAlonzo.Code.Data.Integer.Show.d_show_6 (coe v0))
 -- Once.Arith.SigOp.IntLit.lit-int-info
 d_lit'45'int'45'info_12 ::
-  Integer -> MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_134
+  Integer -> MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_150
 d_lit'45'int'45'info_12 v0
   = coe
-      MAlonzo.Code.Once.SigOp.Info.C_mk'45'info_152
+      MAlonzo.Code.Once.SigOp.Info.du_mk'45'info_216
       (coe d_lit'45'int'45'name_8 (coe v0))
       (coe
          (\ v1 ->

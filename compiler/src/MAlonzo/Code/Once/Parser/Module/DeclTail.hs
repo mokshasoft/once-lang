@@ -21,14 +21,18 @@ import qualified MAlonzo.Code.Agda.Builtin.List
 import qualified MAlonzo.Code.Agda.Builtin.Maybe
 import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Agda.Builtin.String
+import qualified MAlonzo.Code.Data.Char.Properties
 import qualified MAlonzo.Code.Data.List.Base
+import qualified MAlonzo.Code.Data.List.Relation.Binary.Pointwise.Properties
 import qualified MAlonzo.Code.Data.Nat.Base
 import qualified MAlonzo.Code.Data.Nat.Properties
+import qualified MAlonzo.Code.Data.String.Properties
 import qualified MAlonzo.Code.Once.Parser.Module.Core
 import qualified MAlonzo.Code.Once.Parser.PolyType
 import qualified MAlonzo.Code.Once.Parser.Token
 import qualified MAlonzo.Code.Once.Parser.Type
 import qualified MAlonzo.Code.Once.Parser.TypeRelation
+import qualified MAlonzo.Code.Once.SigEffect
 import qualified MAlonzo.Code.Relation.Nullary.Decidable.Core
 import qualified MAlonzo.Code.Relation.Nullary.Reflects
 
@@ -771,11 +775,235 @@ d_parseTypeAlias_120 v0
                 MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v1
                 _ -> MAlonzo.RTE.mazUnreachableError
          _ -> MAlonzo.RTE.mazUnreachableError)
+-- Once.Parser.Module.DeclTail.shapeWord
+d_shapeWord_136 ::
+  MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
+  Maybe MAlonzo.Code.Once.SigEffect.T_SigEffect_4
+d_shapeWord_136 v0
+  = let v1
+          = coe
+              MAlonzo.Code.Relation.Nullary.Decidable.Core.du_map'8242'_178
+              erased
+              (\ v1 ->
+                 coe
+                   MAlonzo.Code.Data.String.Properties.du_'8776''45'reflexive_8
+                   (coe v0))
+              (coe
+                 MAlonzo.Code.Data.String.Properties.d__'8776''63'__28 (coe v0)
+                 (coe ("halts" :: Data.Text.Text))) in
+    coe
+      (case coe v1 of
+         MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v2 v3
+           -> if coe v2
+                then coe
+                       seq (coe v3)
+                       (coe
+                          MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                          (coe MAlonzo.Code.Once.SigEffect.C_halts_8))
+                else coe
+                       seq (coe v3)
+                       (let v4
+                              = coe
+                                  MAlonzo.Code.Relation.Nullary.Decidable.Core.du_map'8242'_178
+                                  erased
+                                  (\ v4 ->
+                                     coe
+                                       MAlonzo.Code.Data.String.Properties.du_'8776''45'reflexive_8
+                                       (coe v0))
+                                  (coe
+                                     MAlonzo.Code.Data.String.Properties.d__'8776''63'__28 (coe v0)
+                                     (coe ("emits" :: Data.Text.Text))) in
+                        coe
+                          (case coe v4 of
+                             MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v5 v6
+                               -> if coe v5
+                                    then coe
+                                           seq (coe v6)
+                                           (coe
+                                              MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                              (coe MAlonzo.Code.Once.SigEffect.C_emits_6))
+                                    else coe
+                                           seq (coe v6)
+                                           (coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18)
+                             _ -> MAlonzo.RTE.mazUnreachableError))
+         _ -> MAlonzo.RTE.mazUnreachableError)
+-- Once.Parser.Module.DeclTail.parseEffAnnot
+d_parseEffAnnot_160 ::
+  [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
+d_parseEffAnnot_160 v0
+  = let v1
+          = coe
+              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+              (coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18)
+              (coe
+                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v0)
+                 (coe
+                    MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900
+                    (coe MAlonzo.Code.Data.List.Base.du_length_268 v0))) in
+    coe
+      (case coe v0 of
+         (:) v2 v3
+           -> case coe v2 of
+                MAlonzo.Code.Once.Parser.Token.C_TBang_70
+                  -> case coe v3 of
+                       (:) v4 v5
+                         -> case coe v4 of
+                              MAlonzo.Code.Once.Parser.Token.C_TWord_8 v6
+                                -> let v7
+                                         = coe
+                                             MAlonzo.Code.Relation.Nullary.Decidable.Core.du_map'8242'_178
+                                             erased
+                                             (\ v7 ->
+                                                coe
+                                                  MAlonzo.Code.Data.String.Properties.du_'8776''45'reflexive_8
+                                                  (coe v6))
+                                             (coe
+                                                MAlonzo.Code.Data.List.Relation.Binary.Pointwise.Properties.du_decidable_112
+                                                (coe
+                                                   MAlonzo.Code.Data.Char.Properties.d__'8799'__14)
+                                                (coe
+                                                   MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12
+                                                   v6)
+                                                (coe
+                                                   MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12
+                                                   ("halts" :: Data.Text.Text))) in
+                                   coe
+                                     (case coe v7 of
+                                        MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v8 v9
+                                          -> if coe v8
+                                               then let v10
+                                                          = seq
+                                                              (coe v9)
+                                                              (coe
+                                                                 MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                 (coe
+                                                                    MAlonzo.Code.Once.SigEffect.C_halts_8)) in
+                                                    coe
+                                                      (case coe v10 of
+                                                         MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v11
+                                                           -> coe
+                                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                (coe v10)
+                                                                (coe
+                                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                   (coe v5)
+                                                                   (coe
+                                                                      MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900
+                                                                      (coe
+                                                                         MAlonzo.Code.Data.List.Base.du_foldr_216
+                                                                         (coe
+                                                                            (\ v12 v13 ->
+                                                                               addInt
+                                                                                 (coe
+                                                                                    (1 :: Integer))
+                                                                                 (coe v13)))
+                                                                         (coe (0 :: Integer))
+                                                                         (coe v5))))
+                                                         MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
+                                                           -> coe
+                                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                (coe v10)
+                                                                (coe
+                                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                   (coe v0)
+                                                                   (coe
+                                                                      MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900
+                                                                      (coe
+                                                                         MAlonzo.Code.Data.List.Base.du_foldr_216
+                                                                         (coe
+                                                                            (\ v11 v12 ->
+                                                                               addInt
+                                                                                 (coe
+                                                                                    (1 :: Integer))
+                                                                                 (coe v12)))
+                                                                         (coe (0 :: Integer))
+                                                                         (coe v0))))
+                                                         _ -> MAlonzo.RTE.mazUnreachableError)
+                                               else (let v10
+                                                           = seq
+                                                               (coe v9)
+                                                               (let v10
+                                                                      = coe
+                                                                          MAlonzo.Code.Relation.Nullary.Decidable.Core.du_map'8242'_178
+                                                                          erased
+                                                                          (\ v10 ->
+                                                                             coe
+                                                                               MAlonzo.Code.Data.String.Properties.du_'8776''45'reflexive_8
+                                                                               (coe v6))
+                                                                          (coe
+                                                                             MAlonzo.Code.Data.String.Properties.d__'8776''63'__28
+                                                                             (coe v6)
+                                                                             (coe
+                                                                                ("emits"
+                                                                                 ::
+                                                                                 Data.Text.Text))) in
+                                                                coe
+                                                                  (case coe v10 of
+                                                                     MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v11 v12
+                                                                       -> if coe v11
+                                                                            then coe
+                                                                                   seq (coe v12)
+                                                                                   (coe
+                                                                                      MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                                      (coe
+                                                                                         MAlonzo.Code.Once.SigEffect.C_emits_6))
+                                                                            else coe
+                                                                                   seq (coe v12)
+                                                                                   (coe
+                                                                                      MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18)
+                                                                     _ -> MAlonzo.RTE.mazUnreachableError)) in
+                                                     coe
+                                                       (case coe v10 of
+                                                          MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v11
+                                                            -> coe
+                                                                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                 (coe v10)
+                                                                 (coe
+                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                    (coe v5)
+                                                                    (coe
+                                                                       MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900
+                                                                       (coe
+                                                                          MAlonzo.Code.Data.List.Base.du_foldr_216
+                                                                          (coe
+                                                                             (\ v12 v13 ->
+                                                                                addInt
+                                                                                  (coe
+                                                                                     (1 :: Integer))
+                                                                                  (coe v13)))
+                                                                          (coe (0 :: Integer))
+                                                                          (coe v5))))
+                                                          MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
+                                                            -> coe
+                                                                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                 (coe v10)
+                                                                 (coe
+                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                    (coe v0)
+                                                                    (coe
+                                                                       MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900
+                                                                       (coe
+                                                                          MAlonzo.Code.Data.List.Base.du_foldr_216
+                                                                          (coe
+                                                                             (\ v11 v12 ->
+                                                                                addInt
+                                                                                  (coe
+                                                                                     (1 :: Integer))
+                                                                                  (coe v12)))
+                                                                          (coe (0 :: Integer))
+                                                                          (coe v0))))
+                                                          _ -> MAlonzo.RTE.mazUnreachableError))
+                                        _ -> MAlonzo.RTE.mazUnreachableError)
+                              _ -> coe v1
+                       _ -> coe v1
+                _ -> coe v1
+         _ -> coe v1)
 -- Once.Parser.Module.DeclTail.parseSignatureB
-d_parseSignatureB_138 ::
+d_parseSignatureB_184 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_parseSignatureB_138 v0
+d_parseSignatureB_184 v0
   = let v1
           = MAlonzo.Code.Once.Parser.Module.Core.d_anyWordB_118 (coe v0) in
     coe
@@ -868,86 +1096,105 @@ d_parseSignatureB_138 v0
                                                                                                                           then case coe
                                                                                                                                       v27 of
                                                                                                                                  MAlonzo.Code.Relation.Nullary.Reflects.C_of'696'_22 v28
-                                                                                                                                   -> coe
-                                                                                                                                        MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                                                                                                                                        (coe
-                                                                                                                                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                                                                                                                           (coe
-                                                                                                                                              MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
-                                                                                                                                              (coe
-                                                                                                                                                 v3)
-                                                                                                                                              (coe
-                                                                                                                                                 MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18)
-                                                                                                                                              (coe
-                                                                                                                                                 v23))
-                                                                                                                                           (coe
-                                                                                                                                              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                                                                                                                              (coe
-                                                                                                                                                 v24)
-                                                                                                                                              (coe
-                                                                                                                                                 MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
-                                                                                                                                                 (coe
-                                                                                                                                                    addInt
-                                                                                                                                                    (coe
-                                                                                                                                                       (1 ::
-                                                                                                                                                          Integer))
-                                                                                                                                                    (coe
-                                                                                                                                                       MAlonzo.Code.Data.List.Base.du_foldr_216
-                                                                                                                                                       (coe
-                                                                                                                                                          (\ v29
-                                                                                                                                                             v30 ->
-                                                                                                                                                             addInt
+                                                                                                                                   -> let v29
+                                                                                                                                            = d_parseEffAnnot_160
+                                                                                                                                                (coe
+                                                                                                                                                   v24) in
+                                                                                                                                      coe
+                                                                                                                                        (case coe
+                                                                                                                                                v29 of
+                                                                                                                                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v30 v31
+                                                                                                                                             -> case coe
+                                                                                                                                                       v31 of
+                                                                                                                                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v32 v33
+                                                                                                                                                    -> coe
+                                                                                                                                                         MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                                                                                                         (coe
+                                                                                                                                                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                                                                                                            (coe
+                                                                                                                                                               MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
                                                                                                                                                                (coe
-                                                                                                                                                                  (1 ::
-                                                                                                                                                                     Integer))
+                                                                                                                                                                  v3)
                                                                                                                                                                (coe
-                                                                                                                                                                  v30)))
-                                                                                                                                                       (coe
-                                                                                                                                                          (0 ::
-                                                                                                                                                             Integer))
-                                                                                                                                                       (coe
-                                                                                                                                                          v8)))
-                                                                                                                                                 (coe
-                                                                                                                                                    MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
-                                                                                                                                                    (coe
-                                                                                                                                                       MAlonzo.Code.Data.List.Base.du_foldr_216
-                                                                                                                                                       (coe
-                                                                                                                                                          (\ v29
-                                                                                                                                                             v30 ->
-                                                                                                                                                             addInt
+                                                                                                                                                                  MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18)
                                                                                                                                                                (coe
-                                                                                                                                                                  (1 ::
-                                                                                                                                                                     Integer))
+                                                                                                                                                                  v23)
                                                                                                                                                                (coe
-                                                                                                                                                                  v30)))
-                                                                                                                                                       (coe
-                                                                                                                                                          (0 ::
-                                                                                                                                                             Integer))
-                                                                                                                                                       (coe
-                                                                                                                                                          v8))
-                                                                                                                                                    (coe
-                                                                                                                                                       v28)
-                                                                                                                                                    (coe
-                                                                                                                                                       MAlonzo.Code.Data.Nat.Base.C_s'8804's_34
-                                                                                                                                                       (MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900
-                                                                                                                                                          (coe
-                                                                                                                                                             MAlonzo.Code.Data.List.Base.du_foldr_216
-                                                                                                                                                             (coe
-                                                                                                                                                                (\ v29
-                                                                                                                                                                   v30 ->
-                                                                                                                                                                   addInt
+                                                                                                                                                                  v30))
+                                                                                                                                                            (coe
+                                                                                                                                                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                                                                                                               (coe
+                                                                                                                                                                  v32)
+                                                                                                                                                               (coe
+                                                                                                                                                                  MAlonzo.Code.Data.Nat.Properties.du_'8804''45''60''45'trans_3128
+                                                                                                                                                                  (coe
+                                                                                                                                                                     v33)
+                                                                                                                                                                  (coe
+                                                                                                                                                                     MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
                                                                                                                                                                      (coe
-                                                                                                                                                                        (1 ::
-                                                                                                                                                                           Integer))
+                                                                                                                                                                        addInt
+                                                                                                                                                                        (coe
+                                                                                                                                                                           (1 ::
+                                                                                                                                                                              Integer))
+                                                                                                                                                                        (coe
+                                                                                                                                                                           MAlonzo.Code.Data.List.Base.du_foldr_216
+                                                                                                                                                                           (coe
+                                                                                                                                                                              (\ v34
+                                                                                                                                                                                 v35 ->
+                                                                                                                                                                                 addInt
+                                                                                                                                                                                   (coe
+                                                                                                                                                                                      (1 ::
+                                                                                                                                                                                         Integer))
+                                                                                                                                                                                   (coe
+                                                                                                                                                                                      v35)))
+                                                                                                                                                                           (coe
+                                                                                                                                                                              (0 ::
+                                                                                                                                                                                 Integer))
+                                                                                                                                                                           (coe
+                                                                                                                                                                              v8)))
                                                                                                                                                                      (coe
-                                                                                                                                                                        v30)))
-                                                                                                                                                             (coe
-                                                                                                                                                                (0 ::
-                                                                                                                                                                   Integer))
-                                                                                                                                                             (coe
-                                                                                                                                                                v8)))))
-                                                                                                                                                 (coe
-                                                                                                                                                    v6))))
+                                                                                                                                                                        MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
+                                                                                                                                                                        (coe
+                                                                                                                                                                           MAlonzo.Code.Data.List.Base.du_foldr_216
+                                                                                                                                                                           (coe
+                                                                                                                                                                              (\ v34
+                                                                                                                                                                                 v35 ->
+                                                                                                                                                                                 addInt
+                                                                                                                                                                                   (coe
+                                                                                                                                                                                      (1 ::
+                                                                                                                                                                                         Integer))
+                                                                                                                                                                                   (coe
+                                                                                                                                                                                      v35)))
+                                                                                                                                                                           (coe
+                                                                                                                                                                              (0 ::
+                                                                                                                                                                                 Integer))
+                                                                                                                                                                           (coe
+                                                                                                                                                                              v8))
+                                                                                                                                                                        (coe
+                                                                                                                                                                           v28)
+                                                                                                                                                                        (coe
+                                                                                                                                                                           MAlonzo.Code.Data.Nat.Base.C_s'8804's_34
+                                                                                                                                                                           (MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900
+                                                                                                                                                                              (coe
+                                                                                                                                                                                 MAlonzo.Code.Data.List.Base.du_foldr_216
+                                                                                                                                                                                 (coe
+                                                                                                                                                                                    (\ v34
+                                                                                                                                                                                       v35 ->
+                                                                                                                                                                                       addInt
+                                                                                                                                                                                         (coe
+                                                                                                                                                                                            (1 ::
+                                                                                                                                                                                               Integer))
+                                                                                                                                                                                         (coe
+                                                                                                                                                                                            v35)))
+                                                                                                                                                                                 (coe
+                                                                                                                                                                                    (0 ::
+                                                                                                                                                                                       Integer))
+                                                                                                                                                                                 (coe
+                                                                                                                                                                                    v8)))))
+                                                                                                                                                                     (coe
+                                                                                                                                                                        v6)))))
+                                                                                                                                                  _ -> MAlonzo.RTE.mazUnreachableError
+                                                                                                                                           _ -> MAlonzo.RTE.mazUnreachableError)
                                                                                                                                  _ -> MAlonzo.RTE.mazUnreachableError
                                                                                                                           else (let v28
                                                                                                                                       = seq
@@ -965,86 +1212,105 @@ d_parseSignatureB_138 v0
                                                                                                                                               -> case coe
                                                                                                                                                         v31 of
                                                                                                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v32 v33
-                                                                                                                                                     -> coe
-                                                                                                                                                          MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                                                                                                                                                          (coe
-                                                                                                                                                             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                                                                                                                                             (coe
-                                                                                                                                                                MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
-                                                                                                                                                                (coe
-                                                                                                                                                                   v3)
-                                                                                                                                                                (coe
-                                                                                                                                                                   MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18)
-                                                                                                                                                                (coe
-                                                                                                                                                                   v30))
-                                                                                                                                                             (coe
-                                                                                                                                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                                                                                                                                                (coe
-                                                                                                                                                                   v32)
-                                                                                                                                                                (coe
-                                                                                                                                                                   MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
-                                                                                                                                                                   (coe
-                                                                                                                                                                      addInt
-                                                                                                                                                                      (coe
-                                                                                                                                                                         (1 ::
-                                                                                                                                                                            Integer))
-                                                                                                                                                                      (coe
-                                                                                                                                                                         MAlonzo.Code.Data.List.Base.du_foldr_216
-                                                                                                                                                                         (coe
-                                                                                                                                                                            (\ v34
-                                                                                                                                                                               v35 ->
-                                                                                                                                                                               addInt
+                                                                                                                                                     -> let v34
+                                                                                                                                                              = d_parseEffAnnot_160
+                                                                                                                                                                  (coe
+                                                                                                                                                                     v32) in
+                                                                                                                                                        coe
+                                                                                                                                                          (case coe
+                                                                                                                                                                  v34 of
+                                                                                                                                                             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v35 v36
+                                                                                                                                                               -> case coe
+                                                                                                                                                                         v36 of
+                                                                                                                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v37 v38
+                                                                                                                                                                      -> coe
+                                                                                                                                                                           MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                                                                                                                           (coe
+                                                                                                                                                                              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                                                                                                                              (coe
+                                                                                                                                                                                 MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
                                                                                                                                                                                  (coe
-                                                                                                                                                                                    (1 ::
-                                                                                                                                                                                       Integer))
+                                                                                                                                                                                    v3)
                                                                                                                                                                                  (coe
-                                                                                                                                                                                    v35)))
-                                                                                                                                                                         (coe
-                                                                                                                                                                            (0 ::
-                                                                                                                                                                               Integer))
-                                                                                                                                                                         (coe
-                                                                                                                                                                            v8)))
-                                                                                                                                                                   (coe
-                                                                                                                                                                      MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
-                                                                                                                                                                      (coe
-                                                                                                                                                                         MAlonzo.Code.Data.List.Base.du_foldr_216
-                                                                                                                                                                         (coe
-                                                                                                                                                                            (\ v34
-                                                                                                                                                                               v35 ->
-                                                                                                                                                                               addInt
+                                                                                                                                                                                    MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18)
                                                                                                                                                                                  (coe
-                                                                                                                                                                                    (1 ::
-                                                                                                                                                                                       Integer))
+                                                                                                                                                                                    v30)
                                                                                                                                                                                  (coe
-                                                                                                                                                                                    v35)))
-                                                                                                                                                                         (coe
-                                                                                                                                                                            (0 ::
-                                                                                                                                                                               Integer))
-                                                                                                                                                                         (coe
-                                                                                                                                                                            v8))
-                                                                                                                                                                      (coe
-                                                                                                                                                                         v33)
-                                                                                                                                                                      (coe
-                                                                                                                                                                         MAlonzo.Code.Data.Nat.Base.C_s'8804's_34
-                                                                                                                                                                         (MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900
-                                                                                                                                                                            (coe
-                                                                                                                                                                               MAlonzo.Code.Data.List.Base.du_foldr_216
-                                                                                                                                                                               (coe
-                                                                                                                                                                                  (\ v34
-                                                                                                                                                                                     v35 ->
-                                                                                                                                                                                     addInt
+                                                                                                                                                                                    v35))
+                                                                                                                                                                              (coe
+                                                                                                                                                                                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                                                                                                                                 (coe
+                                                                                                                                                                                    v37)
+                                                                                                                                                                                 (coe
+                                                                                                                                                                                    MAlonzo.Code.Data.Nat.Properties.du_'8804''45''60''45'trans_3128
+                                                                                                                                                                                    (coe
+                                                                                                                                                                                       v38)
+                                                                                                                                                                                    (coe
+                                                                                                                                                                                       MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
                                                                                                                                                                                        (coe
-                                                                                                                                                                                          (1 ::
-                                                                                                                                                                                             Integer))
+                                                                                                                                                                                          addInt
+                                                                                                                                                                                          (coe
+                                                                                                                                                                                             (1 ::
+                                                                                                                                                                                                Integer))
+                                                                                                                                                                                          (coe
+                                                                                                                                                                                             MAlonzo.Code.Data.List.Base.du_foldr_216
+                                                                                                                                                                                             (coe
+                                                                                                                                                                                                (\ v39
+                                                                                                                                                                                                   v40 ->
+                                                                                                                                                                                                   addInt
+                                                                                                                                                                                                     (coe
+                                                                                                                                                                                                        (1 ::
+                                                                                                                                                                                                           Integer))
+                                                                                                                                                                                                     (coe
+                                                                                                                                                                                                        v40)))
+                                                                                                                                                                                             (coe
+                                                                                                                                                                                                (0 ::
+                                                                                                                                                                                                   Integer))
+                                                                                                                                                                                             (coe
+                                                                                                                                                                                                v8)))
                                                                                                                                                                                        (coe
-                                                                                                                                                                                          v35)))
-                                                                                                                                                                               (coe
-                                                                                                                                                                                  (0 ::
-                                                                                                                                                                                     Integer))
-                                                                                                                                                                               (coe
-                                                                                                                                                                                  v8)))))
-                                                                                                                                                                   (coe
-                                                                                                                                                                      v6))))
+                                                                                                                                                                                          MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
+                                                                                                                                                                                          (coe
+                                                                                                                                                                                             MAlonzo.Code.Data.List.Base.du_foldr_216
+                                                                                                                                                                                             (coe
+                                                                                                                                                                                                (\ v39
+                                                                                                                                                                                                   v40 ->
+                                                                                                                                                                                                   addInt
+                                                                                                                                                                                                     (coe
+                                                                                                                                                                                                        (1 ::
+                                                                                                                                                                                                           Integer))
+                                                                                                                                                                                                     (coe
+                                                                                                                                                                                                        v40)))
+                                                                                                                                                                                             (coe
+                                                                                                                                                                                                (0 ::
+                                                                                                                                                                                                   Integer))
+                                                                                                                                                                                             (coe
+                                                                                                                                                                                                v8))
+                                                                                                                                                                                          (coe
+                                                                                                                                                                                             v33)
+                                                                                                                                                                                          (coe
+                                                                                                                                                                                             MAlonzo.Code.Data.Nat.Base.C_s'8804's_34
+                                                                                                                                                                                             (MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900
+                                                                                                                                                                                                (coe
+                                                                                                                                                                                                   MAlonzo.Code.Data.List.Base.du_foldr_216
+                                                                                                                                                                                                   (coe
+                                                                                                                                                                                                      (\ v39
+                                                                                                                                                                                                         v40 ->
+                                                                                                                                                                                                         addInt
+                                                                                                                                                                                                           (coe
+                                                                                                                                                                                                              (1 ::
+                                                                                                                                                                                                                 Integer))
+                                                                                                                                                                                                           (coe
+                                                                                                                                                                                                              v40)))
+                                                                                                                                                                                                   (coe
+                                                                                                                                                                                                      (0 ::
+                                                                                                                                                                                                         Integer))
+                                                                                                                                                                                                   (coe
+                                                                                                                                                                                                      v8)))))
+                                                                                                                                                                                       (coe
+                                                                                                                                                                                          v6)))))
+                                                                                                                                                                    _ -> MAlonzo.RTE.mazUnreachableError
+                                                                                                                                                             _ -> MAlonzo.RTE.mazUnreachableError)
                                                                                                                                                    _ -> MAlonzo.RTE.mazUnreachableError
                                                                                                                                             _ -> MAlonzo.RTE.mazUnreachableError
                                                                                                                                      MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
@@ -1063,86 +1329,105 @@ d_parseSignatureB_138 v0
                                                                                                                   -> case coe
                                                                                                                             v24 of
                                                                                                                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v25 v26
-                                                                                                                         -> coe
-                                                                                                                              MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                                                                                                                              (coe
-                                                                                                                                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                                                                                                                 (coe
-                                                                                                                                    MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
-                                                                                                                                    (coe
-                                                                                                                                       v3)
-                                                                                                                                    (coe
-                                                                                                                                       v21)
-                                                                                                                                    (coe
-                                                                                                                                       v23))
-                                                                                                                                 (coe
-                                                                                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                                                                                                                    (coe
-                                                                                                                                       v25)
-                                                                                                                                    (coe
-                                                                                                                                       MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
-                                                                                                                                       (coe
-                                                                                                                                          addInt
-                                                                                                                                          (coe
-                                                                                                                                             (1 ::
-                                                                                                                                                Integer))
-                                                                                                                                          (coe
-                                                                                                                                             MAlonzo.Code.Data.List.Base.du_foldr_216
-                                                                                                                                             (coe
-                                                                                                                                                (\ v27
-                                                                                                                                                   v28 ->
-                                                                                                                                                   addInt
+                                                                                                                         -> let v27
+                                                                                                                                  = d_parseEffAnnot_160
+                                                                                                                                      (coe
+                                                                                                                                         v25) in
+                                                                                                                            coe
+                                                                                                                              (case coe
+                                                                                                                                      v27 of
+                                                                                                                                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v28 v29
+                                                                                                                                   -> case coe
+                                                                                                                                             v29 of
+                                                                                                                                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v30 v31
+                                                                                                                                          -> coe
+                                                                                                                                               MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                                                                                               (coe
+                                                                                                                                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                                                                                                  (coe
+                                                                                                                                                     MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
                                                                                                                                                      (coe
-                                                                                                                                                        (1 ::
-                                                                                                                                                           Integer))
+                                                                                                                                                        v3)
                                                                                                                                                      (coe
-                                                                                                                                                        v28)))
-                                                                                                                                             (coe
-                                                                                                                                                (0 ::
-                                                                                                                                                   Integer))
-                                                                                                                                             (coe
-                                                                                                                                                v8)))
-                                                                                                                                       (coe
-                                                                                                                                          MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
-                                                                                                                                          (coe
-                                                                                                                                             MAlonzo.Code.Data.List.Base.du_foldr_216
-                                                                                                                                             (coe
-                                                                                                                                                (\ v27
-                                                                                                                                                   v28 ->
-                                                                                                                                                   addInt
+                                                                                                                                                        v21)
                                                                                                                                                      (coe
-                                                                                                                                                        (1 ::
-                                                                                                                                                           Integer))
+                                                                                                                                                        v23)
                                                                                                                                                      (coe
-                                                                                                                                                        v28)))
-                                                                                                                                             (coe
-                                                                                                                                                (0 ::
-                                                                                                                                                   Integer))
-                                                                                                                                             (coe
-                                                                                                                                                v8))
-                                                                                                                                          (coe
-                                                                                                                                             v26)
-                                                                                                                                          (coe
-                                                                                                                                             MAlonzo.Code.Data.Nat.Base.C_s'8804's_34
-                                                                                                                                             (MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900
-                                                                                                                                                (coe
-                                                                                                                                                   MAlonzo.Code.Data.List.Base.du_foldr_216
-                                                                                                                                                   (coe
-                                                                                                                                                      (\ v27
-                                                                                                                                                         v28 ->
-                                                                                                                                                         addInt
+                                                                                                                                                        v28))
+                                                                                                                                                  (coe
+                                                                                                                                                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                                                                                                     (coe
+                                                                                                                                                        v30)
+                                                                                                                                                     (coe
+                                                                                                                                                        MAlonzo.Code.Data.Nat.Properties.du_'8804''45''60''45'trans_3128
+                                                                                                                                                        (coe
+                                                                                                                                                           v31)
+                                                                                                                                                        (coe
+                                                                                                                                                           MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
                                                                                                                                                            (coe
-                                                                                                                                                              (1 ::
-                                                                                                                                                                 Integer))
+                                                                                                                                                              addInt
+                                                                                                                                                              (coe
+                                                                                                                                                                 (1 ::
+                                                                                                                                                                    Integer))
+                                                                                                                                                              (coe
+                                                                                                                                                                 MAlonzo.Code.Data.List.Base.du_foldr_216
+                                                                                                                                                                 (coe
+                                                                                                                                                                    (\ v32
+                                                                                                                                                                       v33 ->
+                                                                                                                                                                       addInt
+                                                                                                                                                                         (coe
+                                                                                                                                                                            (1 ::
+                                                                                                                                                                               Integer))
+                                                                                                                                                                         (coe
+                                                                                                                                                                            v33)))
+                                                                                                                                                                 (coe
+                                                                                                                                                                    (0 ::
+                                                                                                                                                                       Integer))
+                                                                                                                                                                 (coe
+                                                                                                                                                                    v8)))
                                                                                                                                                            (coe
-                                                                                                                                                              v28)))
-                                                                                                                                                   (coe
-                                                                                                                                                      (0 ::
-                                                                                                                                                         Integer))
-                                                                                                                                                   (coe
-                                                                                                                                                      v8)))))
-                                                                                                                                       (coe
-                                                                                                                                          v6))))
+                                                                                                                                                              MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
+                                                                                                                                                              (coe
+                                                                                                                                                                 MAlonzo.Code.Data.List.Base.du_foldr_216
+                                                                                                                                                                 (coe
+                                                                                                                                                                    (\ v32
+                                                                                                                                                                       v33 ->
+                                                                                                                                                                       addInt
+                                                                                                                                                                         (coe
+                                                                                                                                                                            (1 ::
+                                                                                                                                                                               Integer))
+                                                                                                                                                                         (coe
+                                                                                                                                                                            v33)))
+                                                                                                                                                                 (coe
+                                                                                                                                                                    (0 ::
+                                                                                                                                                                       Integer))
+                                                                                                                                                                 (coe
+                                                                                                                                                                    v8))
+                                                                                                                                                              (coe
+                                                                                                                                                                 v26)
+                                                                                                                                                              (coe
+                                                                                                                                                                 MAlonzo.Code.Data.Nat.Base.C_s'8804's_34
+                                                                                                                                                                 (MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900
+                                                                                                                                                                    (coe
+                                                                                                                                                                       MAlonzo.Code.Data.List.Base.du_foldr_216
+                                                                                                                                                                       (coe
+                                                                                                                                                                          (\ v32
+                                                                                                                                                                             v33 ->
+                                                                                                                                                                             addInt
+                                                                                                                                                                               (coe
+                                                                                                                                                                                  (1 ::
+                                                                                                                                                                                     Integer))
+                                                                                                                                                                               (coe
+                                                                                                                                                                                  v33)))
+                                                                                                                                                                       (coe
+                                                                                                                                                                          (0 ::
+                                                                                                                                                                             Integer))
+                                                                                                                                                                       (coe
+                                                                                                                                                                          v8)))))
+                                                                                                                                                           (coe
+                                                                                                                                                              v6)))))
+                                                                                                                                        _ -> MAlonzo.RTE.mazUnreachableError
+                                                                                                                                 _ -> MAlonzo.RTE.mazUnreachableError)
                                                                                                                        _ -> MAlonzo.RTE.mazUnreachableError
                                                                                                                 _ -> MAlonzo.RTE.mazUnreachableError
                                                                                                          MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
@@ -1198,86 +1483,105 @@ d_parseSignatureB_138 v0
                                                                                                                 then case coe
                                                                                                                             v23 of
                                                                                                                        MAlonzo.Code.Relation.Nullary.Reflects.C_of'696'_22 v24
-                                                                                                                         -> coe
-                                                                                                                              MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                                                                                                                              (coe
-                                                                                                                                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                                                                                                                 (coe
-                                                                                                                                    MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
-                                                                                                                                    (coe
-                                                                                                                                       v3)
-                                                                                                                                    (coe
-                                                                                                                                       v17)
-                                                                                                                                    (coe
-                                                                                                                                       v19))
-                                                                                                                                 (coe
-                                                                                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                                                                                                                    (coe
-                                                                                                                                       v20)
-                                                                                                                                    (coe
-                                                                                                                                       MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
-                                                                                                                                       (coe
-                                                                                                                                          addInt
-                                                                                                                                          (coe
-                                                                                                                                             (1 ::
-                                                                                                                                                Integer))
-                                                                                                                                          (coe
-                                                                                                                                             MAlonzo.Code.Data.List.Base.du_foldr_216
-                                                                                                                                             (coe
-                                                                                                                                                (\ v25
-                                                                                                                                                   v26 ->
-                                                                                                                                                   addInt
+                                                                                                                         -> let v25
+                                                                                                                                  = d_parseEffAnnot_160
+                                                                                                                                      (coe
+                                                                                                                                         v20) in
+                                                                                                                            coe
+                                                                                                                              (case coe
+                                                                                                                                      v25 of
+                                                                                                                                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v26 v27
+                                                                                                                                   -> case coe
+                                                                                                                                             v27 of
+                                                                                                                                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v28 v29
+                                                                                                                                          -> coe
+                                                                                                                                               MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                                                                                               (coe
+                                                                                                                                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                                                                                                  (coe
+                                                                                                                                                     MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
                                                                                                                                                      (coe
-                                                                                                                                                        (1 ::
-                                                                                                                                                           Integer))
+                                                                                                                                                        v3)
                                                                                                                                                      (coe
-                                                                                                                                                        v26)))
-                                                                                                                                             (coe
-                                                                                                                                                (0 ::
-                                                                                                                                                   Integer))
-                                                                                                                                             (coe
-                                                                                                                                                v8)))
-                                                                                                                                       (coe
-                                                                                                                                          MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
-                                                                                                                                          (coe
-                                                                                                                                             MAlonzo.Code.Data.List.Base.du_foldr_216
-                                                                                                                                             (coe
-                                                                                                                                                (\ v25
-                                                                                                                                                   v26 ->
-                                                                                                                                                   addInt
+                                                                                                                                                        v17)
                                                                                                                                                      (coe
-                                                                                                                                                        (1 ::
-                                                                                                                                                           Integer))
+                                                                                                                                                        v19)
                                                                                                                                                      (coe
-                                                                                                                                                        v26)))
-                                                                                                                                             (coe
-                                                                                                                                                (0 ::
-                                                                                                                                                   Integer))
-                                                                                                                                             (coe
-                                                                                                                                                v8))
-                                                                                                                                          (coe
-                                                                                                                                             v24)
-                                                                                                                                          (coe
-                                                                                                                                             MAlonzo.Code.Data.Nat.Base.C_s'8804's_34
-                                                                                                                                             (MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900
-                                                                                                                                                (coe
-                                                                                                                                                   MAlonzo.Code.Data.List.Base.du_foldr_216
-                                                                                                                                                   (coe
-                                                                                                                                                      (\ v25
-                                                                                                                                                         v26 ->
-                                                                                                                                                         addInt
+                                                                                                                                                        v26))
+                                                                                                                                                  (coe
+                                                                                                                                                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                                                                                                     (coe
+                                                                                                                                                        v28)
+                                                                                                                                                     (coe
+                                                                                                                                                        MAlonzo.Code.Data.Nat.Properties.du_'8804''45''60''45'trans_3128
+                                                                                                                                                        (coe
+                                                                                                                                                           v29)
+                                                                                                                                                        (coe
+                                                                                                                                                           MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
                                                                                                                                                            (coe
-                                                                                                                                                              (1 ::
-                                                                                                                                                                 Integer))
+                                                                                                                                                              addInt
+                                                                                                                                                              (coe
+                                                                                                                                                                 (1 ::
+                                                                                                                                                                    Integer))
+                                                                                                                                                              (coe
+                                                                                                                                                                 MAlonzo.Code.Data.List.Base.du_foldr_216
+                                                                                                                                                                 (coe
+                                                                                                                                                                    (\ v30
+                                                                                                                                                                       v31 ->
+                                                                                                                                                                       addInt
+                                                                                                                                                                         (coe
+                                                                                                                                                                            (1 ::
+                                                                                                                                                                               Integer))
+                                                                                                                                                                         (coe
+                                                                                                                                                                            v31)))
+                                                                                                                                                                 (coe
+                                                                                                                                                                    (0 ::
+                                                                                                                                                                       Integer))
+                                                                                                                                                                 (coe
+                                                                                                                                                                    v8)))
                                                                                                                                                            (coe
-                                                                                                                                                              v26)))
-                                                                                                                                                   (coe
-                                                                                                                                                      (0 ::
-                                                                                                                                                         Integer))
-                                                                                                                                                   (coe
-                                                                                                                                                      v8)))))
-                                                                                                                                       (coe
-                                                                                                                                          v6))))
+                                                                                                                                                              MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
+                                                                                                                                                              (coe
+                                                                                                                                                                 MAlonzo.Code.Data.List.Base.du_foldr_216
+                                                                                                                                                                 (coe
+                                                                                                                                                                    (\ v30
+                                                                                                                                                                       v31 ->
+                                                                                                                                                                       addInt
+                                                                                                                                                                         (coe
+                                                                                                                                                                            (1 ::
+                                                                                                                                                                               Integer))
+                                                                                                                                                                         (coe
+                                                                                                                                                                            v31)))
+                                                                                                                                                                 (coe
+                                                                                                                                                                    (0 ::
+                                                                                                                                                                       Integer))
+                                                                                                                                                                 (coe
+                                                                                                                                                                    v8))
+                                                                                                                                                              (coe
+                                                                                                                                                                 v24)
+                                                                                                                                                              (coe
+                                                                                                                                                                 MAlonzo.Code.Data.Nat.Base.C_s'8804's_34
+                                                                                                                                                                 (MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900
+                                                                                                                                                                    (coe
+                                                                                                                                                                       MAlonzo.Code.Data.List.Base.du_foldr_216
+                                                                                                                                                                       (coe
+                                                                                                                                                                          (\ v30
+                                                                                                                                                                             v31 ->
+                                                                                                                                                                             addInt
+                                                                                                                                                                               (coe
+                                                                                                                                                                                  (1 ::
+                                                                                                                                                                                     Integer))
+                                                                                                                                                                               (coe
+                                                                                                                                                                                  v31)))
+                                                                                                                                                                       (coe
+                                                                                                                                                                          (0 ::
+                                                                                                                                                                             Integer))
+                                                                                                                                                                       (coe
+                                                                                                                                                                          v8)))))
+                                                                                                                                                           (coe
+                                                                                                                                                              v6)))))
+                                                                                                                                        _ -> MAlonzo.RTE.mazUnreachableError
+                                                                                                                                 _ -> MAlonzo.RTE.mazUnreachableError)
                                                                                                                        _ -> MAlonzo.RTE.mazUnreachableError
                                                                                                                 else (let v24
                                                                                                                             = seq
@@ -1295,86 +1599,105 @@ d_parseSignatureB_138 v0
                                                                                                                                     -> case coe
                                                                                                                                               v27 of
                                                                                                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v28 v29
-                                                                                                                                           -> coe
-                                                                                                                                                MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                                                                                                                                                (coe
-                                                                                                                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                                                                                                                                   (coe
-                                                                                                                                                      MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
-                                                                                                                                                      (coe
-                                                                                                                                                         v3)
-                                                                                                                                                      (coe
-                                                                                                                                                         v17)
-                                                                                                                                                      (coe
-                                                                                                                                                         v26))
-                                                                                                                                                   (coe
-                                                                                                                                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                                                                                                                                      (coe
-                                                                                                                                                         v28)
-                                                                                                                                                      (coe
-                                                                                                                                                         MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
-                                                                                                                                                         (coe
-                                                                                                                                                            addInt
-                                                                                                                                                            (coe
-                                                                                                                                                               (1 ::
-                                                                                                                                                                  Integer))
-                                                                                                                                                            (coe
-                                                                                                                                                               MAlonzo.Code.Data.List.Base.du_foldr_216
-                                                                                                                                                               (coe
-                                                                                                                                                                  (\ v30
-                                                                                                                                                                     v31 ->
-                                                                                                                                                                     addInt
+                                                                                                                                           -> let v30
+                                                                                                                                                    = d_parseEffAnnot_160
+                                                                                                                                                        (coe
+                                                                                                                                                           v28) in
+                                                                                                                                              coe
+                                                                                                                                                (case coe
+                                                                                                                                                        v30 of
+                                                                                                                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v31 v32
+                                                                                                                                                     -> case coe
+                                                                                                                                                               v32 of
+                                                                                                                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v33 v34
+                                                                                                                                                            -> coe
+                                                                                                                                                                 MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                                                                                                                 (coe
+                                                                                                                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                                                                                                                    (coe
+                                                                                                                                                                       MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
                                                                                                                                                                        (coe
-                                                                                                                                                                          (1 ::
-                                                                                                                                                                             Integer))
+                                                                                                                                                                          v3)
                                                                                                                                                                        (coe
-                                                                                                                                                                          v31)))
-                                                                                                                                                               (coe
-                                                                                                                                                                  (0 ::
-                                                                                                                                                                     Integer))
-                                                                                                                                                               (coe
-                                                                                                                                                                  v8)))
-                                                                                                                                                         (coe
-                                                                                                                                                            MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
-                                                                                                                                                            (coe
-                                                                                                                                                               MAlonzo.Code.Data.List.Base.du_foldr_216
-                                                                                                                                                               (coe
-                                                                                                                                                                  (\ v30
-                                                                                                                                                                     v31 ->
-                                                                                                                                                                     addInt
+                                                                                                                                                                          v17)
                                                                                                                                                                        (coe
-                                                                                                                                                                          (1 ::
-                                                                                                                                                                             Integer))
+                                                                                                                                                                          v26)
                                                                                                                                                                        (coe
-                                                                                                                                                                          v31)))
-                                                                                                                                                               (coe
-                                                                                                                                                                  (0 ::
-                                                                                                                                                                     Integer))
-                                                                                                                                                               (coe
-                                                                                                                                                                  v8))
-                                                                                                                                                            (coe
-                                                                                                                                                               v29)
-                                                                                                                                                            (coe
-                                                                                                                                                               MAlonzo.Code.Data.Nat.Base.C_s'8804's_34
-                                                                                                                                                               (MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900
-                                                                                                                                                                  (coe
-                                                                                                                                                                     MAlonzo.Code.Data.List.Base.du_foldr_216
-                                                                                                                                                                     (coe
-                                                                                                                                                                        (\ v30
-                                                                                                                                                                           v31 ->
-                                                                                                                                                                           addInt
+                                                                                                                                                                          v31))
+                                                                                                                                                                    (coe
+                                                                                                                                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                                                                                                                       (coe
+                                                                                                                                                                          v33)
+                                                                                                                                                                       (coe
+                                                                                                                                                                          MAlonzo.Code.Data.Nat.Properties.du_'8804''45''60''45'trans_3128
+                                                                                                                                                                          (coe
+                                                                                                                                                                             v34)
+                                                                                                                                                                          (coe
+                                                                                                                                                                             MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
                                                                                                                                                                              (coe
-                                                                                                                                                                                (1 ::
-                                                                                                                                                                                   Integer))
+                                                                                                                                                                                addInt
+                                                                                                                                                                                (coe
+                                                                                                                                                                                   (1 ::
+                                                                                                                                                                                      Integer))
+                                                                                                                                                                                (coe
+                                                                                                                                                                                   MAlonzo.Code.Data.List.Base.du_foldr_216
+                                                                                                                                                                                   (coe
+                                                                                                                                                                                      (\ v35
+                                                                                                                                                                                         v36 ->
+                                                                                                                                                                                         addInt
+                                                                                                                                                                                           (coe
+                                                                                                                                                                                              (1 ::
+                                                                                                                                                                                                 Integer))
+                                                                                                                                                                                           (coe
+                                                                                                                                                                                              v36)))
+                                                                                                                                                                                   (coe
+                                                                                                                                                                                      (0 ::
+                                                                                                                                                                                         Integer))
+                                                                                                                                                                                   (coe
+                                                                                                                                                                                      v8)))
                                                                                                                                                                              (coe
-                                                                                                                                                                                v31)))
-                                                                                                                                                                     (coe
-                                                                                                                                                                        (0 ::
-                                                                                                                                                                           Integer))
-                                                                                                                                                                     (coe
-                                                                                                                                                                        v8)))))
-                                                                                                                                                         (coe
-                                                                                                                                                            v6))))
+                                                                                                                                                                                MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
+                                                                                                                                                                                (coe
+                                                                                                                                                                                   MAlonzo.Code.Data.List.Base.du_foldr_216
+                                                                                                                                                                                   (coe
+                                                                                                                                                                                      (\ v35
+                                                                                                                                                                                         v36 ->
+                                                                                                                                                                                         addInt
+                                                                                                                                                                                           (coe
+                                                                                                                                                                                              (1 ::
+                                                                                                                                                                                                 Integer))
+                                                                                                                                                                                           (coe
+                                                                                                                                                                                              v36)))
+                                                                                                                                                                                   (coe
+                                                                                                                                                                                      (0 ::
+                                                                                                                                                                                         Integer))
+                                                                                                                                                                                   (coe
+                                                                                                                                                                                      v8))
+                                                                                                                                                                                (coe
+                                                                                                                                                                                   v29)
+                                                                                                                                                                                (coe
+                                                                                                                                                                                   MAlonzo.Code.Data.Nat.Base.C_s'8804's_34
+                                                                                                                                                                                   (MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900
+                                                                                                                                                                                      (coe
+                                                                                                                                                                                         MAlonzo.Code.Data.List.Base.du_foldr_216
+                                                                                                                                                                                         (coe
+                                                                                                                                                                                            (\ v35
+                                                                                                                                                                                               v36 ->
+                                                                                                                                                                                               addInt
+                                                                                                                                                                                                 (coe
+                                                                                                                                                                                                    (1 ::
+                                                                                                                                                                                                       Integer))
+                                                                                                                                                                                                 (coe
+                                                                                                                                                                                                    v36)))
+                                                                                                                                                                                         (coe
+                                                                                                                                                                                            (0 ::
+                                                                                                                                                                                               Integer))
+                                                                                                                                                                                         (coe
+                                                                                                                                                                                            v8)))))
+                                                                                                                                                                             (coe
+                                                                                                                                                                                v6)))))
+                                                                                                                                                          _ -> MAlonzo.RTE.mazUnreachableError
+                                                                                                                                                   _ -> MAlonzo.RTE.mazUnreachableError)
                                                                                                                                          _ -> MAlonzo.RTE.mazUnreachableError
                                                                                                                                   _ -> MAlonzo.RTE.mazUnreachableError
                                                                                                                            MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
@@ -1393,86 +1716,105 @@ d_parseSignatureB_138 v0
                                                                                                         -> case coe
                                                                                                                   v20 of
                                                                                                              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v21 v22
-                                                                                                               -> coe
-                                                                                                                    MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                                                                                                                    (coe
-                                                                                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                                                                                                       (coe
-                                                                                                                          MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
-                                                                                                                          (coe
-                                                                                                                             v3)
-                                                                                                                          (coe
-                                                                                                                             v17)
-                                                                                                                          (coe
-                                                                                                                             v19))
-                                                                                                                       (coe
-                                                                                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                                                                                                          (coe
-                                                                                                                             v21)
-                                                                                                                          (coe
-                                                                                                                             MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
-                                                                                                                             (coe
-                                                                                                                                addInt
-                                                                                                                                (coe
-                                                                                                                                   (1 ::
-                                                                                                                                      Integer))
-                                                                                                                                (coe
-                                                                                                                                   MAlonzo.Code.Data.List.Base.du_foldr_216
-                                                                                                                                   (coe
-                                                                                                                                      (\ v23
-                                                                                                                                         v24 ->
-                                                                                                                                         addInt
+                                                                                                               -> let v23
+                                                                                                                        = d_parseEffAnnot_160
+                                                                                                                            (coe
+                                                                                                                               v21) in
+                                                                                                                  coe
+                                                                                                                    (case coe
+                                                                                                                            v23 of
+                                                                                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v24 v25
+                                                                                                                         -> case coe
+                                                                                                                                   v25 of
+                                                                                                                              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v26 v27
+                                                                                                                                -> coe
+                                                                                                                                     MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                                                                                     (coe
+                                                                                                                                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                                                                                        (coe
+                                                                                                                                           MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
                                                                                                                                            (coe
-                                                                                                                                              (1 ::
-                                                                                                                                                 Integer))
+                                                                                                                                              v3)
                                                                                                                                            (coe
-                                                                                                                                              v24)))
-                                                                                                                                   (coe
-                                                                                                                                      (0 ::
-                                                                                                                                         Integer))
-                                                                                                                                   (coe
-                                                                                                                                      v8)))
-                                                                                                                             (coe
-                                                                                                                                MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
-                                                                                                                                (coe
-                                                                                                                                   MAlonzo.Code.Data.List.Base.du_foldr_216
-                                                                                                                                   (coe
-                                                                                                                                      (\ v23
-                                                                                                                                         v24 ->
-                                                                                                                                         addInt
+                                                                                                                                              v17)
                                                                                                                                            (coe
-                                                                                                                                              (1 ::
-                                                                                                                                                 Integer))
+                                                                                                                                              v19)
                                                                                                                                            (coe
-                                                                                                                                              v24)))
-                                                                                                                                   (coe
-                                                                                                                                      (0 ::
-                                                                                                                                         Integer))
-                                                                                                                                   (coe
-                                                                                                                                      v8))
-                                                                                                                                (coe
-                                                                                                                                   v22)
-                                                                                                                                (coe
-                                                                                                                                   MAlonzo.Code.Data.Nat.Base.C_s'8804's_34
-                                                                                                                                   (MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900
-                                                                                                                                      (coe
-                                                                                                                                         MAlonzo.Code.Data.List.Base.du_foldr_216
-                                                                                                                                         (coe
-                                                                                                                                            (\ v23
-                                                                                                                                               v24 ->
-                                                                                                                                               addInt
+                                                                                                                                              v24))
+                                                                                                                                        (coe
+                                                                                                                                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                                                                                           (coe
+                                                                                                                                              v26)
+                                                                                                                                           (coe
+                                                                                                                                              MAlonzo.Code.Data.Nat.Properties.du_'8804''45''60''45'trans_3128
+                                                                                                                                              (coe
+                                                                                                                                                 v27)
+                                                                                                                                              (coe
+                                                                                                                                                 MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
                                                                                                                                                  (coe
-                                                                                                                                                    (1 ::
-                                                                                                                                                       Integer))
+                                                                                                                                                    addInt
+                                                                                                                                                    (coe
+                                                                                                                                                       (1 ::
+                                                                                                                                                          Integer))
+                                                                                                                                                    (coe
+                                                                                                                                                       MAlonzo.Code.Data.List.Base.du_foldr_216
+                                                                                                                                                       (coe
+                                                                                                                                                          (\ v28
+                                                                                                                                                             v29 ->
+                                                                                                                                                             addInt
+                                                                                                                                                               (coe
+                                                                                                                                                                  (1 ::
+                                                                                                                                                                     Integer))
+                                                                                                                                                               (coe
+                                                                                                                                                                  v29)))
+                                                                                                                                                       (coe
+                                                                                                                                                          (0 ::
+                                                                                                                                                             Integer))
+                                                                                                                                                       (coe
+                                                                                                                                                          v8)))
                                                                                                                                                  (coe
-                                                                                                                                                    v24)))
-                                                                                                                                         (coe
-                                                                                                                                            (0 ::
-                                                                                                                                               Integer))
-                                                                                                                                         (coe
-                                                                                                                                            v8)))))
-                                                                                                                             (coe
-                                                                                                                                v6))))
+                                                                                                                                                    MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
+                                                                                                                                                    (coe
+                                                                                                                                                       MAlonzo.Code.Data.List.Base.du_foldr_216
+                                                                                                                                                       (coe
+                                                                                                                                                          (\ v28
+                                                                                                                                                             v29 ->
+                                                                                                                                                             addInt
+                                                                                                                                                               (coe
+                                                                                                                                                                  (1 ::
+                                                                                                                                                                     Integer))
+                                                                                                                                                               (coe
+                                                                                                                                                                  v29)))
+                                                                                                                                                       (coe
+                                                                                                                                                          (0 ::
+                                                                                                                                                             Integer))
+                                                                                                                                                       (coe
+                                                                                                                                                          v8))
+                                                                                                                                                    (coe
+                                                                                                                                                       v22)
+                                                                                                                                                    (coe
+                                                                                                                                                       MAlonzo.Code.Data.Nat.Base.C_s'8804's_34
+                                                                                                                                                       (MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900
+                                                                                                                                                          (coe
+                                                                                                                                                             MAlonzo.Code.Data.List.Base.du_foldr_216
+                                                                                                                                                             (coe
+                                                                                                                                                                (\ v28
+                                                                                                                                                                   v29 ->
+                                                                                                                                                                   addInt
+                                                                                                                                                                     (coe
+                                                                                                                                                                        (1 ::
+                                                                                                                                                                           Integer))
+                                                                                                                                                                     (coe
+                                                                                                                                                                        v29)))
+                                                                                                                                                             (coe
+                                                                                                                                                                (0 ::
+                                                                                                                                                                   Integer))
+                                                                                                                                                             (coe
+                                                                                                                                                                v8)))))
+                                                                                                                                                 (coe
+                                                                                                                                                    v6)))))
+                                                                                                                              _ -> MAlonzo.RTE.mazUnreachableError
+                                                                                                                       _ -> MAlonzo.RTE.mazUnreachableError)
                                                                                                              _ -> MAlonzo.RTE.mazUnreachableError
                                                                                                       _ -> MAlonzo.RTE.mazUnreachableError
                                                                                                MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
@@ -1540,86 +1882,105 @@ d_parseSignatureB_138 v0
                                                                                                                 then case coe
                                                                                                                             v23 of
                                                                                                                        MAlonzo.Code.Relation.Nullary.Reflects.C_of'696'_22 v24
-                                                                                                                         -> coe
-                                                                                                                              MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                                                                                                                              (coe
-                                                                                                                                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                                                                                                                 (coe
-                                                                                                                                    MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
-                                                                                                                                    (coe
-                                                                                                                                       v3)
-                                                                                                                                    (coe
-                                                                                                                                       v13)
-                                                                                                                                    (coe
-                                                                                                                                       v19))
-                                                                                                                                 (coe
-                                                                                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                                                                                                                    (coe
-                                                                                                                                       v20)
-                                                                                                                                    (coe
-                                                                                                                                       MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
-                                                                                                                                       (coe
-                                                                                                                                          addInt
-                                                                                                                                          (coe
-                                                                                                                                             (1 ::
-                                                                                                                                                Integer))
-                                                                                                                                          (coe
-                                                                                                                                             MAlonzo.Code.Data.List.Base.du_foldr_216
-                                                                                                                                             (coe
-                                                                                                                                                (\ v25
-                                                                                                                                                   v26 ->
-                                                                                                                                                   addInt
+                                                                                                                         -> let v25
+                                                                                                                                  = d_parseEffAnnot_160
+                                                                                                                                      (coe
+                                                                                                                                         v20) in
+                                                                                                                            coe
+                                                                                                                              (case coe
+                                                                                                                                      v25 of
+                                                                                                                                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v26 v27
+                                                                                                                                   -> case coe
+                                                                                                                                             v27 of
+                                                                                                                                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v28 v29
+                                                                                                                                          -> coe
+                                                                                                                                               MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                                                                                               (coe
+                                                                                                                                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                                                                                                  (coe
+                                                                                                                                                     MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
                                                                                                                                                      (coe
-                                                                                                                                                        (1 ::
-                                                                                                                                                           Integer))
+                                                                                                                                                        v3)
                                                                                                                                                      (coe
-                                                                                                                                                        v26)))
-                                                                                                                                             (coe
-                                                                                                                                                (0 ::
-                                                                                                                                                   Integer))
-                                                                                                                                             (coe
-                                                                                                                                                v8)))
-                                                                                                                                       (coe
-                                                                                                                                          MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
-                                                                                                                                          (coe
-                                                                                                                                             MAlonzo.Code.Data.List.Base.du_foldr_216
-                                                                                                                                             (coe
-                                                                                                                                                (\ v25
-                                                                                                                                                   v26 ->
-                                                                                                                                                   addInt
+                                                                                                                                                        v13)
                                                                                                                                                      (coe
-                                                                                                                                                        (1 ::
-                                                                                                                                                           Integer))
+                                                                                                                                                        v19)
                                                                                                                                                      (coe
-                                                                                                                                                        v26)))
-                                                                                                                                             (coe
-                                                                                                                                                (0 ::
-                                                                                                                                                   Integer))
-                                                                                                                                             (coe
-                                                                                                                                                v8))
-                                                                                                                                          (coe
-                                                                                                                                             v24)
-                                                                                                                                          (coe
-                                                                                                                                             MAlonzo.Code.Data.Nat.Base.C_s'8804's_34
-                                                                                                                                             (MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900
-                                                                                                                                                (coe
-                                                                                                                                                   MAlonzo.Code.Data.List.Base.du_foldr_216
-                                                                                                                                                   (coe
-                                                                                                                                                      (\ v25
-                                                                                                                                                         v26 ->
-                                                                                                                                                         addInt
+                                                                                                                                                        v26))
+                                                                                                                                                  (coe
+                                                                                                                                                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                                                                                                     (coe
+                                                                                                                                                        v28)
+                                                                                                                                                     (coe
+                                                                                                                                                        MAlonzo.Code.Data.Nat.Properties.du_'8804''45''60''45'trans_3128
+                                                                                                                                                        (coe
+                                                                                                                                                           v29)
+                                                                                                                                                        (coe
+                                                                                                                                                           MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
                                                                                                                                                            (coe
-                                                                                                                                                              (1 ::
-                                                                                                                                                                 Integer))
+                                                                                                                                                              addInt
+                                                                                                                                                              (coe
+                                                                                                                                                                 (1 ::
+                                                                                                                                                                    Integer))
+                                                                                                                                                              (coe
+                                                                                                                                                                 MAlonzo.Code.Data.List.Base.du_foldr_216
+                                                                                                                                                                 (coe
+                                                                                                                                                                    (\ v30
+                                                                                                                                                                       v31 ->
+                                                                                                                                                                       addInt
+                                                                                                                                                                         (coe
+                                                                                                                                                                            (1 ::
+                                                                                                                                                                               Integer))
+                                                                                                                                                                         (coe
+                                                                                                                                                                            v31)))
+                                                                                                                                                                 (coe
+                                                                                                                                                                    (0 ::
+                                                                                                                                                                       Integer))
+                                                                                                                                                                 (coe
+                                                                                                                                                                    v8)))
                                                                                                                                                            (coe
-                                                                                                                                                              v26)))
-                                                                                                                                                   (coe
-                                                                                                                                                      (0 ::
-                                                                                                                                                         Integer))
-                                                                                                                                                   (coe
-                                                                                                                                                      v8)))))
-                                                                                                                                       (coe
-                                                                                                                                          v6))))
+                                                                                                                                                              MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
+                                                                                                                                                              (coe
+                                                                                                                                                                 MAlonzo.Code.Data.List.Base.du_foldr_216
+                                                                                                                                                                 (coe
+                                                                                                                                                                    (\ v30
+                                                                                                                                                                       v31 ->
+                                                                                                                                                                       addInt
+                                                                                                                                                                         (coe
+                                                                                                                                                                            (1 ::
+                                                                                                                                                                               Integer))
+                                                                                                                                                                         (coe
+                                                                                                                                                                            v31)))
+                                                                                                                                                                 (coe
+                                                                                                                                                                    (0 ::
+                                                                                                                                                                       Integer))
+                                                                                                                                                                 (coe
+                                                                                                                                                                    v8))
+                                                                                                                                                              (coe
+                                                                                                                                                                 v24)
+                                                                                                                                                              (coe
+                                                                                                                                                                 MAlonzo.Code.Data.Nat.Base.C_s'8804's_34
+                                                                                                                                                                 (MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900
+                                                                                                                                                                    (coe
+                                                                                                                                                                       MAlonzo.Code.Data.List.Base.du_foldr_216
+                                                                                                                                                                       (coe
+                                                                                                                                                                          (\ v30
+                                                                                                                                                                             v31 ->
+                                                                                                                                                                             addInt
+                                                                                                                                                                               (coe
+                                                                                                                                                                                  (1 ::
+                                                                                                                                                                                     Integer))
+                                                                                                                                                                               (coe
+                                                                                                                                                                                  v31)))
+                                                                                                                                                                       (coe
+                                                                                                                                                                          (0 ::
+                                                                                                                                                                             Integer))
+                                                                                                                                                                       (coe
+                                                                                                                                                                          v8)))))
+                                                                                                                                                           (coe
+                                                                                                                                                              v6)))))
+                                                                                                                                        _ -> MAlonzo.RTE.mazUnreachableError
+                                                                                                                                 _ -> MAlonzo.RTE.mazUnreachableError)
                                                                                                                        _ -> MAlonzo.RTE.mazUnreachableError
                                                                                                                 else (let v24
                                                                                                                             = seq
@@ -1637,86 +1998,105 @@ d_parseSignatureB_138 v0
                                                                                                                                     -> case coe
                                                                                                                                               v27 of
                                                                                                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v28 v29
-                                                                                                                                           -> coe
-                                                                                                                                                MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                                                                                                                                                (coe
-                                                                                                                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                                                                                                                                   (coe
-                                                                                                                                                      MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
-                                                                                                                                                      (coe
-                                                                                                                                                         v3)
-                                                                                                                                                      (coe
-                                                                                                                                                         v13)
-                                                                                                                                                      (coe
-                                                                                                                                                         v26))
-                                                                                                                                                   (coe
-                                                                                                                                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                                                                                                                                      (coe
-                                                                                                                                                         v28)
-                                                                                                                                                      (coe
-                                                                                                                                                         MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
-                                                                                                                                                         (coe
-                                                                                                                                                            addInt
-                                                                                                                                                            (coe
-                                                                                                                                                               (1 ::
-                                                                                                                                                                  Integer))
-                                                                                                                                                            (coe
-                                                                                                                                                               MAlonzo.Code.Data.List.Base.du_foldr_216
-                                                                                                                                                               (coe
-                                                                                                                                                                  (\ v30
-                                                                                                                                                                     v31 ->
-                                                                                                                                                                     addInt
+                                                                                                                                           -> let v30
+                                                                                                                                                    = d_parseEffAnnot_160
+                                                                                                                                                        (coe
+                                                                                                                                                           v28) in
+                                                                                                                                              coe
+                                                                                                                                                (case coe
+                                                                                                                                                        v30 of
+                                                                                                                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v31 v32
+                                                                                                                                                     -> case coe
+                                                                                                                                                               v32 of
+                                                                                                                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v33 v34
+                                                                                                                                                            -> coe
+                                                                                                                                                                 MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                                                                                                                 (coe
+                                                                                                                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                                                                                                                    (coe
+                                                                                                                                                                       MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
                                                                                                                                                                        (coe
-                                                                                                                                                                          (1 ::
-                                                                                                                                                                             Integer))
+                                                                                                                                                                          v3)
                                                                                                                                                                        (coe
-                                                                                                                                                                          v31)))
-                                                                                                                                                               (coe
-                                                                                                                                                                  (0 ::
-                                                                                                                                                                     Integer))
-                                                                                                                                                               (coe
-                                                                                                                                                                  v8)))
-                                                                                                                                                         (coe
-                                                                                                                                                            MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
-                                                                                                                                                            (coe
-                                                                                                                                                               MAlonzo.Code.Data.List.Base.du_foldr_216
-                                                                                                                                                               (coe
-                                                                                                                                                                  (\ v30
-                                                                                                                                                                     v31 ->
-                                                                                                                                                                     addInt
+                                                                                                                                                                          v13)
                                                                                                                                                                        (coe
-                                                                                                                                                                          (1 ::
-                                                                                                                                                                             Integer))
+                                                                                                                                                                          v26)
                                                                                                                                                                        (coe
-                                                                                                                                                                          v31)))
-                                                                                                                                                               (coe
-                                                                                                                                                                  (0 ::
-                                                                                                                                                                     Integer))
-                                                                                                                                                               (coe
-                                                                                                                                                                  v8))
-                                                                                                                                                            (coe
-                                                                                                                                                               v29)
-                                                                                                                                                            (coe
-                                                                                                                                                               MAlonzo.Code.Data.Nat.Base.C_s'8804's_34
-                                                                                                                                                               (MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900
-                                                                                                                                                                  (coe
-                                                                                                                                                                     MAlonzo.Code.Data.List.Base.du_foldr_216
-                                                                                                                                                                     (coe
-                                                                                                                                                                        (\ v30
-                                                                                                                                                                           v31 ->
-                                                                                                                                                                           addInt
+                                                                                                                                                                          v31))
+                                                                                                                                                                    (coe
+                                                                                                                                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                                                                                                                       (coe
+                                                                                                                                                                          v33)
+                                                                                                                                                                       (coe
+                                                                                                                                                                          MAlonzo.Code.Data.Nat.Properties.du_'8804''45''60''45'trans_3128
+                                                                                                                                                                          (coe
+                                                                                                                                                                             v34)
+                                                                                                                                                                          (coe
+                                                                                                                                                                             MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
                                                                                                                                                                              (coe
-                                                                                                                                                                                (1 ::
-                                                                                                                                                                                   Integer))
+                                                                                                                                                                                addInt
+                                                                                                                                                                                (coe
+                                                                                                                                                                                   (1 ::
+                                                                                                                                                                                      Integer))
+                                                                                                                                                                                (coe
+                                                                                                                                                                                   MAlonzo.Code.Data.List.Base.du_foldr_216
+                                                                                                                                                                                   (coe
+                                                                                                                                                                                      (\ v35
+                                                                                                                                                                                         v36 ->
+                                                                                                                                                                                         addInt
+                                                                                                                                                                                           (coe
+                                                                                                                                                                                              (1 ::
+                                                                                                                                                                                                 Integer))
+                                                                                                                                                                                           (coe
+                                                                                                                                                                                              v36)))
+                                                                                                                                                                                   (coe
+                                                                                                                                                                                      (0 ::
+                                                                                                                                                                                         Integer))
+                                                                                                                                                                                   (coe
+                                                                                                                                                                                      v8)))
                                                                                                                                                                              (coe
-                                                                                                                                                                                v31)))
-                                                                                                                                                                     (coe
-                                                                                                                                                                        (0 ::
-                                                                                                                                                                           Integer))
-                                                                                                                                                                     (coe
-                                                                                                                                                                        v8)))))
-                                                                                                                                                         (coe
-                                                                                                                                                            v6))))
+                                                                                                                                                                                MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
+                                                                                                                                                                                (coe
+                                                                                                                                                                                   MAlonzo.Code.Data.List.Base.du_foldr_216
+                                                                                                                                                                                   (coe
+                                                                                                                                                                                      (\ v35
+                                                                                                                                                                                         v36 ->
+                                                                                                                                                                                         addInt
+                                                                                                                                                                                           (coe
+                                                                                                                                                                                              (1 ::
+                                                                                                                                                                                                 Integer))
+                                                                                                                                                                                           (coe
+                                                                                                                                                                                              v36)))
+                                                                                                                                                                                   (coe
+                                                                                                                                                                                      (0 ::
+                                                                                                                                                                                         Integer))
+                                                                                                                                                                                   (coe
+                                                                                                                                                                                      v8))
+                                                                                                                                                                                (coe
+                                                                                                                                                                                   v29)
+                                                                                                                                                                                (coe
+                                                                                                                                                                                   MAlonzo.Code.Data.Nat.Base.C_s'8804's_34
+                                                                                                                                                                                   (MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900
+                                                                                                                                                                                      (coe
+                                                                                                                                                                                         MAlonzo.Code.Data.List.Base.du_foldr_216
+                                                                                                                                                                                         (coe
+                                                                                                                                                                                            (\ v35
+                                                                                                                                                                                               v36 ->
+                                                                                                                                                                                               addInt
+                                                                                                                                                                                                 (coe
+                                                                                                                                                                                                    (1 ::
+                                                                                                                                                                                                       Integer))
+                                                                                                                                                                                                 (coe
+                                                                                                                                                                                                    v36)))
+                                                                                                                                                                                         (coe
+                                                                                                                                                                                            (0 ::
+                                                                                                                                                                                               Integer))
+                                                                                                                                                                                         (coe
+                                                                                                                                                                                            v8)))))
+                                                                                                                                                                             (coe
+                                                                                                                                                                                v6)))))
+                                                                                                                                                          _ -> MAlonzo.RTE.mazUnreachableError
+                                                                                                                                                   _ -> MAlonzo.RTE.mazUnreachableError)
                                                                                                                                          _ -> MAlonzo.RTE.mazUnreachableError
                                                                                                                                   _ -> MAlonzo.RTE.mazUnreachableError
                                                                                                                            MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
@@ -1735,86 +2115,105 @@ d_parseSignatureB_138 v0
                                                                                                         -> case coe
                                                                                                                   v20 of
                                                                                                              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v21 v22
-                                                                                                               -> coe
-                                                                                                                    MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                                                                                                                    (coe
-                                                                                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                                                                                                       (coe
-                                                                                                                          MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
-                                                                                                                          (coe
-                                                                                                                             v3)
-                                                                                                                          (coe
-                                                                                                                             v17)
-                                                                                                                          (coe
-                                                                                                                             v19))
-                                                                                                                       (coe
-                                                                                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                                                                                                          (coe
-                                                                                                                             v21)
-                                                                                                                          (coe
-                                                                                                                             MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
-                                                                                                                             (coe
-                                                                                                                                addInt
-                                                                                                                                (coe
-                                                                                                                                   (1 ::
-                                                                                                                                      Integer))
-                                                                                                                                (coe
-                                                                                                                                   MAlonzo.Code.Data.List.Base.du_foldr_216
-                                                                                                                                   (coe
-                                                                                                                                      (\ v23
-                                                                                                                                         v24 ->
-                                                                                                                                         addInt
+                                                                                                               -> let v23
+                                                                                                                        = d_parseEffAnnot_160
+                                                                                                                            (coe
+                                                                                                                               v21) in
+                                                                                                                  coe
+                                                                                                                    (case coe
+                                                                                                                            v23 of
+                                                                                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v24 v25
+                                                                                                                         -> case coe
+                                                                                                                                   v25 of
+                                                                                                                              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v26 v27
+                                                                                                                                -> coe
+                                                                                                                                     MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                                                                                     (coe
+                                                                                                                                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                                                                                        (coe
+                                                                                                                                           MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
                                                                                                                                            (coe
-                                                                                                                                              (1 ::
-                                                                                                                                                 Integer))
+                                                                                                                                              v3)
                                                                                                                                            (coe
-                                                                                                                                              v24)))
-                                                                                                                                   (coe
-                                                                                                                                      (0 ::
-                                                                                                                                         Integer))
-                                                                                                                                   (coe
-                                                                                                                                      v8)))
-                                                                                                                             (coe
-                                                                                                                                MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
-                                                                                                                                (coe
-                                                                                                                                   MAlonzo.Code.Data.List.Base.du_foldr_216
-                                                                                                                                   (coe
-                                                                                                                                      (\ v23
-                                                                                                                                         v24 ->
-                                                                                                                                         addInt
+                                                                                                                                              v17)
                                                                                                                                            (coe
-                                                                                                                                              (1 ::
-                                                                                                                                                 Integer))
+                                                                                                                                              v19)
                                                                                                                                            (coe
-                                                                                                                                              v24)))
-                                                                                                                                   (coe
-                                                                                                                                      (0 ::
-                                                                                                                                         Integer))
-                                                                                                                                   (coe
-                                                                                                                                      v8))
-                                                                                                                                (coe
-                                                                                                                                   v22)
-                                                                                                                                (coe
-                                                                                                                                   MAlonzo.Code.Data.Nat.Base.C_s'8804's_34
-                                                                                                                                   (MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900
-                                                                                                                                      (coe
-                                                                                                                                         MAlonzo.Code.Data.List.Base.du_foldr_216
-                                                                                                                                         (coe
-                                                                                                                                            (\ v23
-                                                                                                                                               v24 ->
-                                                                                                                                               addInt
+                                                                                                                                              v24))
+                                                                                                                                        (coe
+                                                                                                                                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                                                                                           (coe
+                                                                                                                                              v26)
+                                                                                                                                           (coe
+                                                                                                                                              MAlonzo.Code.Data.Nat.Properties.du_'8804''45''60''45'trans_3128
+                                                                                                                                              (coe
+                                                                                                                                                 v27)
+                                                                                                                                              (coe
+                                                                                                                                                 MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
                                                                                                                                                  (coe
-                                                                                                                                                    (1 ::
-                                                                                                                                                       Integer))
+                                                                                                                                                    addInt
+                                                                                                                                                    (coe
+                                                                                                                                                       (1 ::
+                                                                                                                                                          Integer))
+                                                                                                                                                    (coe
+                                                                                                                                                       MAlonzo.Code.Data.List.Base.du_foldr_216
+                                                                                                                                                       (coe
+                                                                                                                                                          (\ v28
+                                                                                                                                                             v29 ->
+                                                                                                                                                             addInt
+                                                                                                                                                               (coe
+                                                                                                                                                                  (1 ::
+                                                                                                                                                                     Integer))
+                                                                                                                                                               (coe
+                                                                                                                                                                  v29)))
+                                                                                                                                                       (coe
+                                                                                                                                                          (0 ::
+                                                                                                                                                             Integer))
+                                                                                                                                                       (coe
+                                                                                                                                                          v8)))
                                                                                                                                                  (coe
-                                                                                                                                                    v24)))
-                                                                                                                                         (coe
-                                                                                                                                            (0 ::
-                                                                                                                                               Integer))
-                                                                                                                                         (coe
-                                                                                                                                            v8)))))
-                                                                                                                             (coe
-                                                                                                                                v6))))
+                                                                                                                                                    MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
+                                                                                                                                                    (coe
+                                                                                                                                                       MAlonzo.Code.Data.List.Base.du_foldr_216
+                                                                                                                                                       (coe
+                                                                                                                                                          (\ v28
+                                                                                                                                                             v29 ->
+                                                                                                                                                             addInt
+                                                                                                                                                               (coe
+                                                                                                                                                                  (1 ::
+                                                                                                                                                                     Integer))
+                                                                                                                                                               (coe
+                                                                                                                                                                  v29)))
+                                                                                                                                                       (coe
+                                                                                                                                                          (0 ::
+                                                                                                                                                             Integer))
+                                                                                                                                                       (coe
+                                                                                                                                                          v8))
+                                                                                                                                                    (coe
+                                                                                                                                                       v22)
+                                                                                                                                                    (coe
+                                                                                                                                                       MAlonzo.Code.Data.Nat.Base.C_s'8804's_34
+                                                                                                                                                       (MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900
+                                                                                                                                                          (coe
+                                                                                                                                                             MAlonzo.Code.Data.List.Base.du_foldr_216
+                                                                                                                                                             (coe
+                                                                                                                                                                (\ v28
+                                                                                                                                                                   v29 ->
+                                                                                                                                                                   addInt
+                                                                                                                                                                     (coe
+                                                                                                                                                                        (1 ::
+                                                                                                                                                                           Integer))
+                                                                                                                                                                     (coe
+                                                                                                                                                                        v29)))
+                                                                                                                                                             (coe
+                                                                                                                                                                (0 ::
+                                                                                                                                                                   Integer))
+                                                                                                                                                             (coe
+                                                                                                                                                                v8)))))
+                                                                                                                                                 (coe
+                                                                                                                                                    v6)))))
+                                                                                                                              _ -> MAlonzo.RTE.mazUnreachableError
+                                                                                                                       _ -> MAlonzo.RTE.mazUnreachableError)
                                                                                                              _ -> MAlonzo.RTE.mazUnreachableError
                                                                                                       _ -> MAlonzo.RTE.mazUnreachableError
                                                                                                MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
@@ -1868,86 +2267,105 @@ d_parseSignatureB_138 v0
                                                                                                       then case coe
                                                                                                                   v19 of
                                                                                                              MAlonzo.Code.Relation.Nullary.Reflects.C_of'696'_22 v20
-                                                                                                               -> coe
-                                                                                                                    MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                                                                                                                    (coe
-                                                                                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                                                                                                       (coe
-                                                                                                                          MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
-                                                                                                                          (coe
-                                                                                                                             v3)
-                                                                                                                          (coe
-                                                                                                                             v13)
-                                                                                                                          (coe
-                                                                                                                             v15))
-                                                                                                                       (coe
-                                                                                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                                                                                                          (coe
-                                                                                                                             v16)
-                                                                                                                          (coe
-                                                                                                                             MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
-                                                                                                                             (coe
-                                                                                                                                addInt
-                                                                                                                                (coe
-                                                                                                                                   (1 ::
-                                                                                                                                      Integer))
-                                                                                                                                (coe
-                                                                                                                                   MAlonzo.Code.Data.List.Base.du_foldr_216
-                                                                                                                                   (coe
-                                                                                                                                      (\ v21
-                                                                                                                                         v22 ->
-                                                                                                                                         addInt
+                                                                                                               -> let v21
+                                                                                                                        = d_parseEffAnnot_160
+                                                                                                                            (coe
+                                                                                                                               v16) in
+                                                                                                                  coe
+                                                                                                                    (case coe
+                                                                                                                            v21 of
+                                                                                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v22 v23
+                                                                                                                         -> case coe
+                                                                                                                                   v23 of
+                                                                                                                              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v24 v25
+                                                                                                                                -> coe
+                                                                                                                                     MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                                                                                     (coe
+                                                                                                                                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                                                                                        (coe
+                                                                                                                                           MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
                                                                                                                                            (coe
-                                                                                                                                              (1 ::
-                                                                                                                                                 Integer))
+                                                                                                                                              v3)
                                                                                                                                            (coe
-                                                                                                                                              v22)))
-                                                                                                                                   (coe
-                                                                                                                                      (0 ::
-                                                                                                                                         Integer))
-                                                                                                                                   (coe
-                                                                                                                                      v8)))
-                                                                                                                             (coe
-                                                                                                                                MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
-                                                                                                                                (coe
-                                                                                                                                   MAlonzo.Code.Data.List.Base.du_foldr_216
-                                                                                                                                   (coe
-                                                                                                                                      (\ v21
-                                                                                                                                         v22 ->
-                                                                                                                                         addInt
+                                                                                                                                              v13)
                                                                                                                                            (coe
-                                                                                                                                              (1 ::
-                                                                                                                                                 Integer))
+                                                                                                                                              v15)
                                                                                                                                            (coe
-                                                                                                                                              v22)))
-                                                                                                                                   (coe
-                                                                                                                                      (0 ::
-                                                                                                                                         Integer))
-                                                                                                                                   (coe
-                                                                                                                                      v8))
-                                                                                                                                (coe
-                                                                                                                                   v20)
-                                                                                                                                (coe
-                                                                                                                                   MAlonzo.Code.Data.Nat.Base.C_s'8804's_34
-                                                                                                                                   (MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900
-                                                                                                                                      (coe
-                                                                                                                                         MAlonzo.Code.Data.List.Base.du_foldr_216
-                                                                                                                                         (coe
-                                                                                                                                            (\ v21
-                                                                                                                                               v22 ->
-                                                                                                                                               addInt
+                                                                                                                                              v22))
+                                                                                                                                        (coe
+                                                                                                                                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                                                                                           (coe
+                                                                                                                                              v24)
+                                                                                                                                           (coe
+                                                                                                                                              MAlonzo.Code.Data.Nat.Properties.du_'8804''45''60''45'trans_3128
+                                                                                                                                              (coe
+                                                                                                                                                 v25)
+                                                                                                                                              (coe
+                                                                                                                                                 MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
                                                                                                                                                  (coe
-                                                                                                                                                    (1 ::
-                                                                                                                                                       Integer))
+                                                                                                                                                    addInt
+                                                                                                                                                    (coe
+                                                                                                                                                       (1 ::
+                                                                                                                                                          Integer))
+                                                                                                                                                    (coe
+                                                                                                                                                       MAlonzo.Code.Data.List.Base.du_foldr_216
+                                                                                                                                                       (coe
+                                                                                                                                                          (\ v26
+                                                                                                                                                             v27 ->
+                                                                                                                                                             addInt
+                                                                                                                                                               (coe
+                                                                                                                                                                  (1 ::
+                                                                                                                                                                     Integer))
+                                                                                                                                                               (coe
+                                                                                                                                                                  v27)))
+                                                                                                                                                       (coe
+                                                                                                                                                          (0 ::
+                                                                                                                                                             Integer))
+                                                                                                                                                       (coe
+                                                                                                                                                          v8)))
                                                                                                                                                  (coe
-                                                                                                                                                    v22)))
-                                                                                                                                         (coe
-                                                                                                                                            (0 ::
-                                                                                                                                               Integer))
-                                                                                                                                         (coe
-                                                                                                                                            v8)))))
-                                                                                                                             (coe
-                                                                                                                                v6))))
+                                                                                                                                                    MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
+                                                                                                                                                    (coe
+                                                                                                                                                       MAlonzo.Code.Data.List.Base.du_foldr_216
+                                                                                                                                                       (coe
+                                                                                                                                                          (\ v26
+                                                                                                                                                             v27 ->
+                                                                                                                                                             addInt
+                                                                                                                                                               (coe
+                                                                                                                                                                  (1 ::
+                                                                                                                                                                     Integer))
+                                                                                                                                                               (coe
+                                                                                                                                                                  v27)))
+                                                                                                                                                       (coe
+                                                                                                                                                          (0 ::
+                                                                                                                                                             Integer))
+                                                                                                                                                       (coe
+                                                                                                                                                          v8))
+                                                                                                                                                    (coe
+                                                                                                                                                       v20)
+                                                                                                                                                    (coe
+                                                                                                                                                       MAlonzo.Code.Data.Nat.Base.C_s'8804's_34
+                                                                                                                                                       (MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900
+                                                                                                                                                          (coe
+                                                                                                                                                             MAlonzo.Code.Data.List.Base.du_foldr_216
+                                                                                                                                                             (coe
+                                                                                                                                                                (\ v26
+                                                                                                                                                                   v27 ->
+                                                                                                                                                                   addInt
+                                                                                                                                                                     (coe
+                                                                                                                                                                        (1 ::
+                                                                                                                                                                           Integer))
+                                                                                                                                                                     (coe
+                                                                                                                                                                        v27)))
+                                                                                                                                                             (coe
+                                                                                                                                                                (0 ::
+                                                                                                                                                                   Integer))
+                                                                                                                                                             (coe
+                                                                                                                                                                v8)))))
+                                                                                                                                                 (coe
+                                                                                                                                                    v6)))))
+                                                                                                                              _ -> MAlonzo.RTE.mazUnreachableError
+                                                                                                                       _ -> MAlonzo.RTE.mazUnreachableError)
                                                                                                              _ -> MAlonzo.RTE.mazUnreachableError
                                                                                                       else (let v20
                                                                                                                   = seq
@@ -1965,86 +2383,105 @@ d_parseSignatureB_138 v0
                                                                                                                           -> case coe
                                                                                                                                     v23 of
                                                                                                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v24 v25
-                                                                                                                                 -> coe
-                                                                                                                                      MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                                                                                                                                      (coe
-                                                                                                                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                                                                                                                         (coe
-                                                                                                                                            MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
-                                                                                                                                            (coe
-                                                                                                                                               v3)
-                                                                                                                                            (coe
-                                                                                                                                               v13)
-                                                                                                                                            (coe
-                                                                                                                                               v22))
-                                                                                                                                         (coe
-                                                                                                                                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                                                                                                                            (coe
-                                                                                                                                               v24)
-                                                                                                                                            (coe
-                                                                                                                                               MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
-                                                                                                                                               (coe
-                                                                                                                                                  addInt
-                                                                                                                                                  (coe
-                                                                                                                                                     (1 ::
-                                                                                                                                                        Integer))
-                                                                                                                                                  (coe
-                                                                                                                                                     MAlonzo.Code.Data.List.Base.du_foldr_216
-                                                                                                                                                     (coe
-                                                                                                                                                        (\ v26
-                                                                                                                                                           v27 ->
-                                                                                                                                                           addInt
+                                                                                                                                 -> let v26
+                                                                                                                                          = d_parseEffAnnot_160
+                                                                                                                                              (coe
+                                                                                                                                                 v24) in
+                                                                                                                                    coe
+                                                                                                                                      (case coe
+                                                                                                                                              v26 of
+                                                                                                                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v27 v28
+                                                                                                                                           -> case coe
+                                                                                                                                                     v28 of
+                                                                                                                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v29 v30
+                                                                                                                                                  -> coe
+                                                                                                                                                       MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                                                                                                       (coe
+                                                                                                                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                                                                                                          (coe
+                                                                                                                                                             MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
                                                                                                                                                              (coe
-                                                                                                                                                                (1 ::
-                                                                                                                                                                   Integer))
+                                                                                                                                                                v3)
                                                                                                                                                              (coe
-                                                                                                                                                                v27)))
-                                                                                                                                                     (coe
-                                                                                                                                                        (0 ::
-                                                                                                                                                           Integer))
-                                                                                                                                                     (coe
-                                                                                                                                                        v8)))
-                                                                                                                                               (coe
-                                                                                                                                                  MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
-                                                                                                                                                  (coe
-                                                                                                                                                     MAlonzo.Code.Data.List.Base.du_foldr_216
-                                                                                                                                                     (coe
-                                                                                                                                                        (\ v26
-                                                                                                                                                           v27 ->
-                                                                                                                                                           addInt
+                                                                                                                                                                v13)
                                                                                                                                                              (coe
-                                                                                                                                                                (1 ::
-                                                                                                                                                                   Integer))
+                                                                                                                                                                v22)
                                                                                                                                                              (coe
-                                                                                                                                                                v27)))
-                                                                                                                                                     (coe
-                                                                                                                                                        (0 ::
-                                                                                                                                                           Integer))
-                                                                                                                                                     (coe
-                                                                                                                                                        v8))
-                                                                                                                                                  (coe
-                                                                                                                                                     v25)
-                                                                                                                                                  (coe
-                                                                                                                                                     MAlonzo.Code.Data.Nat.Base.C_s'8804's_34
-                                                                                                                                                     (MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900
-                                                                                                                                                        (coe
-                                                                                                                                                           MAlonzo.Code.Data.List.Base.du_foldr_216
-                                                                                                                                                           (coe
-                                                                                                                                                              (\ v26
-                                                                                                                                                                 v27 ->
-                                                                                                                                                                 addInt
+                                                                                                                                                                v27))
+                                                                                                                                                          (coe
+                                                                                                                                                             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                                                                                                             (coe
+                                                                                                                                                                v29)
+                                                                                                                                                             (coe
+                                                                                                                                                                MAlonzo.Code.Data.Nat.Properties.du_'8804''45''60''45'trans_3128
+                                                                                                                                                                (coe
+                                                                                                                                                                   v30)
+                                                                                                                                                                (coe
+                                                                                                                                                                   MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
                                                                                                                                                                    (coe
-                                                                                                                                                                      (1 ::
-                                                                                                                                                                         Integer))
+                                                                                                                                                                      addInt
+                                                                                                                                                                      (coe
+                                                                                                                                                                         (1 ::
+                                                                                                                                                                            Integer))
+                                                                                                                                                                      (coe
+                                                                                                                                                                         MAlonzo.Code.Data.List.Base.du_foldr_216
+                                                                                                                                                                         (coe
+                                                                                                                                                                            (\ v31
+                                                                                                                                                                               v32 ->
+                                                                                                                                                                               addInt
+                                                                                                                                                                                 (coe
+                                                                                                                                                                                    (1 ::
+                                                                                                                                                                                       Integer))
+                                                                                                                                                                                 (coe
+                                                                                                                                                                                    v32)))
+                                                                                                                                                                         (coe
+                                                                                                                                                                            (0 ::
+                                                                                                                                                                               Integer))
+                                                                                                                                                                         (coe
+                                                                                                                                                                            v8)))
                                                                                                                                                                    (coe
-                                                                                                                                                                      v27)))
-                                                                                                                                                           (coe
-                                                                                                                                                              (0 ::
-                                                                                                                                                                 Integer))
-                                                                                                                                                           (coe
-                                                                                                                                                              v8)))))
-                                                                                                                                               (coe
-                                                                                                                                                  v6))))
+                                                                                                                                                                      MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
+                                                                                                                                                                      (coe
+                                                                                                                                                                         MAlonzo.Code.Data.List.Base.du_foldr_216
+                                                                                                                                                                         (coe
+                                                                                                                                                                            (\ v31
+                                                                                                                                                                               v32 ->
+                                                                                                                                                                               addInt
+                                                                                                                                                                                 (coe
+                                                                                                                                                                                    (1 ::
+                                                                                                                                                                                       Integer))
+                                                                                                                                                                                 (coe
+                                                                                                                                                                                    v32)))
+                                                                                                                                                                         (coe
+                                                                                                                                                                            (0 ::
+                                                                                                                                                                               Integer))
+                                                                                                                                                                         (coe
+                                                                                                                                                                            v8))
+                                                                                                                                                                      (coe
+                                                                                                                                                                         v25)
+                                                                                                                                                                      (coe
+                                                                                                                                                                         MAlonzo.Code.Data.Nat.Base.C_s'8804's_34
+                                                                                                                                                                         (MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900
+                                                                                                                                                                            (coe
+                                                                                                                                                                               MAlonzo.Code.Data.List.Base.du_foldr_216
+                                                                                                                                                                               (coe
+                                                                                                                                                                                  (\ v31
+                                                                                                                                                                                     v32 ->
+                                                                                                                                                                                     addInt
+                                                                                                                                                                                       (coe
+                                                                                                                                                                                          (1 ::
+                                                                                                                                                                                             Integer))
+                                                                                                                                                                                       (coe
+                                                                                                                                                                                          v32)))
+                                                                                                                                                                               (coe
+                                                                                                                                                                                  (0 ::
+                                                                                                                                                                                     Integer))
+                                                                                                                                                                               (coe
+                                                                                                                                                                                  v8)))))
+                                                                                                                                                                   (coe
+                                                                                                                                                                      v6)))))
+                                                                                                                                                _ -> MAlonzo.RTE.mazUnreachableError
+                                                                                                                                         _ -> MAlonzo.RTE.mazUnreachableError)
                                                                                                                                _ -> MAlonzo.RTE.mazUnreachableError
                                                                                                                         _ -> MAlonzo.RTE.mazUnreachableError
                                                                                                                  MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
@@ -2062,86 +2499,105 @@ d_parseSignatureB_138 v0
                                                                                               -> case coe
                                                                                                         v16 of
                                                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v17 v18
-                                                                                                     -> coe
-                                                                                                          MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                                                                                                          (coe
-                                                                                                             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                                                                                             (coe
-                                                                                                                MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
-                                                                                                                (coe
-                                                                                                                   v3)
-                                                                                                                (coe
-                                                                                                                   v13)
-                                                                                                                (coe
-                                                                                                                   v15))
-                                                                                                             (coe
-                                                                                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                                                                                                (coe
-                                                                                                                   v17)
-                                                                                                                (coe
-                                                                                                                   MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
-                                                                                                                   (coe
-                                                                                                                      addInt
-                                                                                                                      (coe
-                                                                                                                         (1 ::
-                                                                                                                            Integer))
-                                                                                                                      (coe
-                                                                                                                         MAlonzo.Code.Data.List.Base.du_foldr_216
-                                                                                                                         (coe
-                                                                                                                            (\ v19
-                                                                                                                               v20 ->
-                                                                                                                               addInt
+                                                                                                     -> let v19
+                                                                                                              = d_parseEffAnnot_160
+                                                                                                                  (coe
+                                                                                                                     v17) in
+                                                                                                        coe
+                                                                                                          (case coe
+                                                                                                                  v19 of
+                                                                                                             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v20 v21
+                                                                                                               -> case coe
+                                                                                                                         v21 of
+                                                                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v22 v23
+                                                                                                                      -> coe
+                                                                                                                           MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                                                                           (coe
+                                                                                                                              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                                                                              (coe
+                                                                                                                                 MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
                                                                                                                                  (coe
-                                                                                                                                    (1 ::
-                                                                                                                                       Integer))
+                                                                                                                                    v3)
                                                                                                                                  (coe
-                                                                                                                                    v20)))
-                                                                                                                         (coe
-                                                                                                                            (0 ::
-                                                                                                                               Integer))
-                                                                                                                         (coe
-                                                                                                                            v8)))
-                                                                                                                   (coe
-                                                                                                                      MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
-                                                                                                                      (coe
-                                                                                                                         MAlonzo.Code.Data.List.Base.du_foldr_216
-                                                                                                                         (coe
-                                                                                                                            (\ v19
-                                                                                                                               v20 ->
-                                                                                                                               addInt
+                                                                                                                                    v13)
                                                                                                                                  (coe
-                                                                                                                                    (1 ::
-                                                                                                                                       Integer))
+                                                                                                                                    v15)
                                                                                                                                  (coe
-                                                                                                                                    v20)))
-                                                                                                                         (coe
-                                                                                                                            (0 ::
-                                                                                                                               Integer))
-                                                                                                                         (coe
-                                                                                                                            v8))
-                                                                                                                      (coe
-                                                                                                                         v18)
-                                                                                                                      (coe
-                                                                                                                         MAlonzo.Code.Data.Nat.Base.C_s'8804's_34
-                                                                                                                         (MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900
-                                                                                                                            (coe
-                                                                                                                               MAlonzo.Code.Data.List.Base.du_foldr_216
-                                                                                                                               (coe
-                                                                                                                                  (\ v19
-                                                                                                                                     v20 ->
-                                                                                                                                     addInt
+                                                                                                                                    v20))
+                                                                                                                              (coe
+                                                                                                                                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                                                                                 (coe
+                                                                                                                                    v22)
+                                                                                                                                 (coe
+                                                                                                                                    MAlonzo.Code.Data.Nat.Properties.du_'8804''45''60''45'trans_3128
+                                                                                                                                    (coe
+                                                                                                                                       v23)
+                                                                                                                                    (coe
+                                                                                                                                       MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
                                                                                                                                        (coe
-                                                                                                                                          (1 ::
-                                                                                                                                             Integer))
+                                                                                                                                          addInt
+                                                                                                                                          (coe
+                                                                                                                                             (1 ::
+                                                                                                                                                Integer))
+                                                                                                                                          (coe
+                                                                                                                                             MAlonzo.Code.Data.List.Base.du_foldr_216
+                                                                                                                                             (coe
+                                                                                                                                                (\ v24
+                                                                                                                                                   v25 ->
+                                                                                                                                                   addInt
+                                                                                                                                                     (coe
+                                                                                                                                                        (1 ::
+                                                                                                                                                           Integer))
+                                                                                                                                                     (coe
+                                                                                                                                                        v25)))
+                                                                                                                                             (coe
+                                                                                                                                                (0 ::
+                                                                                                                                                   Integer))
+                                                                                                                                             (coe
+                                                                                                                                                v8)))
                                                                                                                                        (coe
-                                                                                                                                          v20)))
-                                                                                                                               (coe
-                                                                                                                                  (0 ::
-                                                                                                                                     Integer))
-                                                                                                                               (coe
-                                                                                                                                  v8)))))
-                                                                                                                   (coe
-                                                                                                                      v6))))
+                                                                                                                                          MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
+                                                                                                                                          (coe
+                                                                                                                                             MAlonzo.Code.Data.List.Base.du_foldr_216
+                                                                                                                                             (coe
+                                                                                                                                                (\ v24
+                                                                                                                                                   v25 ->
+                                                                                                                                                   addInt
+                                                                                                                                                     (coe
+                                                                                                                                                        (1 ::
+                                                                                                                                                           Integer))
+                                                                                                                                                     (coe
+                                                                                                                                                        v25)))
+                                                                                                                                             (coe
+                                                                                                                                                (0 ::
+                                                                                                                                                   Integer))
+                                                                                                                                             (coe
+                                                                                                                                                v8))
+                                                                                                                                          (coe
+                                                                                                                                             v18)
+                                                                                                                                          (coe
+                                                                                                                                             MAlonzo.Code.Data.Nat.Base.C_s'8804's_34
+                                                                                                                                             (MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900
+                                                                                                                                                (coe
+                                                                                                                                                   MAlonzo.Code.Data.List.Base.du_foldr_216
+                                                                                                                                                   (coe
+                                                                                                                                                      (\ v24
+                                                                                                                                                         v25 ->
+                                                                                                                                                         addInt
+                                                                                                                                                           (coe
+                                                                                                                                                              (1 ::
+                                                                                                                                                                 Integer))
+                                                                                                                                                           (coe
+                                                                                                                                                              v25)))
+                                                                                                                                                   (coe
+                                                                                                                                                      (0 ::
+                                                                                                                                                         Integer))
+                                                                                                                                                   (coe
+                                                                                                                                                      v8)))))
+                                                                                                                                       (coe
+                                                                                                                                          v6)))))
+                                                                                                                    _ -> MAlonzo.RTE.mazUnreachableError
+                                                                                                             _ -> MAlonzo.RTE.mazUnreachableError)
                                                                                                    _ -> MAlonzo.RTE.mazUnreachableError
                                                                                             _ -> MAlonzo.RTE.mazUnreachableError
                                                                                      MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
@@ -2217,86 +2673,105 @@ d_parseSignatureB_138 v0
                                                                                                                 then case coe
                                                                                                                             v23 of
                                                                                                                        MAlonzo.Code.Relation.Nullary.Reflects.C_of'696'_22 v24
-                                                                                                                         -> coe
-                                                                                                                              MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                                                                                                                              (coe
-                                                                                                                                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                                                                                                                 (coe
-                                                                                                                                    MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
-                                                                                                                                    (coe
-                                                                                                                                       v3)
-                                                                                                                                    (coe
-                                                                                                                                       v9)
-                                                                                                                                    (coe
-                                                                                                                                       v19))
-                                                                                                                                 (coe
-                                                                                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                                                                                                                    (coe
-                                                                                                                                       v20)
-                                                                                                                                    (coe
-                                                                                                                                       MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
-                                                                                                                                       (coe
-                                                                                                                                          addInt
-                                                                                                                                          (coe
-                                                                                                                                             (1 ::
-                                                                                                                                                Integer))
-                                                                                                                                          (coe
-                                                                                                                                             MAlonzo.Code.Data.List.Base.du_foldr_216
-                                                                                                                                             (coe
-                                                                                                                                                (\ v25
-                                                                                                                                                   v26 ->
-                                                                                                                                                   addInt
+                                                                                                                         -> let v25
+                                                                                                                                  = d_parseEffAnnot_160
+                                                                                                                                      (coe
+                                                                                                                                         v20) in
+                                                                                                                            coe
+                                                                                                                              (case coe
+                                                                                                                                      v25 of
+                                                                                                                                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v26 v27
+                                                                                                                                   -> case coe
+                                                                                                                                             v27 of
+                                                                                                                                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v28 v29
+                                                                                                                                          -> coe
+                                                                                                                                               MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                                                                                               (coe
+                                                                                                                                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                                                                                                  (coe
+                                                                                                                                                     MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
                                                                                                                                                      (coe
-                                                                                                                                                        (1 ::
-                                                                                                                                                           Integer))
+                                                                                                                                                        v3)
                                                                                                                                                      (coe
-                                                                                                                                                        v26)))
-                                                                                                                                             (coe
-                                                                                                                                                (0 ::
-                                                                                                                                                   Integer))
-                                                                                                                                             (coe
-                                                                                                                                                v8)))
-                                                                                                                                       (coe
-                                                                                                                                          MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
-                                                                                                                                          (coe
-                                                                                                                                             MAlonzo.Code.Data.List.Base.du_foldr_216
-                                                                                                                                             (coe
-                                                                                                                                                (\ v25
-                                                                                                                                                   v26 ->
-                                                                                                                                                   addInt
+                                                                                                                                                        v9)
                                                                                                                                                      (coe
-                                                                                                                                                        (1 ::
-                                                                                                                                                           Integer))
+                                                                                                                                                        v19)
                                                                                                                                                      (coe
-                                                                                                                                                        v26)))
-                                                                                                                                             (coe
-                                                                                                                                                (0 ::
-                                                                                                                                                   Integer))
-                                                                                                                                             (coe
-                                                                                                                                                v8))
-                                                                                                                                          (coe
-                                                                                                                                             v24)
-                                                                                                                                          (coe
-                                                                                                                                             MAlonzo.Code.Data.Nat.Base.C_s'8804's_34
-                                                                                                                                             (MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900
-                                                                                                                                                (coe
-                                                                                                                                                   MAlonzo.Code.Data.List.Base.du_foldr_216
-                                                                                                                                                   (coe
-                                                                                                                                                      (\ v25
-                                                                                                                                                         v26 ->
-                                                                                                                                                         addInt
+                                                                                                                                                        v26))
+                                                                                                                                                  (coe
+                                                                                                                                                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                                                                                                     (coe
+                                                                                                                                                        v28)
+                                                                                                                                                     (coe
+                                                                                                                                                        MAlonzo.Code.Data.Nat.Properties.du_'8804''45''60''45'trans_3128
+                                                                                                                                                        (coe
+                                                                                                                                                           v29)
+                                                                                                                                                        (coe
+                                                                                                                                                           MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
                                                                                                                                                            (coe
-                                                                                                                                                              (1 ::
-                                                                                                                                                                 Integer))
+                                                                                                                                                              addInt
+                                                                                                                                                              (coe
+                                                                                                                                                                 (1 ::
+                                                                                                                                                                    Integer))
+                                                                                                                                                              (coe
+                                                                                                                                                                 MAlonzo.Code.Data.List.Base.du_foldr_216
+                                                                                                                                                                 (coe
+                                                                                                                                                                    (\ v30
+                                                                                                                                                                       v31 ->
+                                                                                                                                                                       addInt
+                                                                                                                                                                         (coe
+                                                                                                                                                                            (1 ::
+                                                                                                                                                                               Integer))
+                                                                                                                                                                         (coe
+                                                                                                                                                                            v31)))
+                                                                                                                                                                 (coe
+                                                                                                                                                                    (0 ::
+                                                                                                                                                                       Integer))
+                                                                                                                                                                 (coe
+                                                                                                                                                                    v8)))
                                                                                                                                                            (coe
-                                                                                                                                                              v26)))
-                                                                                                                                                   (coe
-                                                                                                                                                      (0 ::
-                                                                                                                                                         Integer))
-                                                                                                                                                   (coe
-                                                                                                                                                      v8)))))
-                                                                                                                                       (coe
-                                                                                                                                          v6))))
+                                                                                                                                                              MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
+                                                                                                                                                              (coe
+                                                                                                                                                                 MAlonzo.Code.Data.List.Base.du_foldr_216
+                                                                                                                                                                 (coe
+                                                                                                                                                                    (\ v30
+                                                                                                                                                                       v31 ->
+                                                                                                                                                                       addInt
+                                                                                                                                                                         (coe
+                                                                                                                                                                            (1 ::
+                                                                                                                                                                               Integer))
+                                                                                                                                                                         (coe
+                                                                                                                                                                            v31)))
+                                                                                                                                                                 (coe
+                                                                                                                                                                    (0 ::
+                                                                                                                                                                       Integer))
+                                                                                                                                                                 (coe
+                                                                                                                                                                    v8))
+                                                                                                                                                              (coe
+                                                                                                                                                                 v24)
+                                                                                                                                                              (coe
+                                                                                                                                                                 MAlonzo.Code.Data.Nat.Base.C_s'8804's_34
+                                                                                                                                                                 (MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900
+                                                                                                                                                                    (coe
+                                                                                                                                                                       MAlonzo.Code.Data.List.Base.du_foldr_216
+                                                                                                                                                                       (coe
+                                                                                                                                                                          (\ v30
+                                                                                                                                                                             v31 ->
+                                                                                                                                                                             addInt
+                                                                                                                                                                               (coe
+                                                                                                                                                                                  (1 ::
+                                                                                                                                                                                     Integer))
+                                                                                                                                                                               (coe
+                                                                                                                                                                                  v31)))
+                                                                                                                                                                       (coe
+                                                                                                                                                                          (0 ::
+                                                                                                                                                                             Integer))
+                                                                                                                                                                       (coe
+                                                                                                                                                                          v8)))))
+                                                                                                                                                           (coe
+                                                                                                                                                              v6)))))
+                                                                                                                                        _ -> MAlonzo.RTE.mazUnreachableError
+                                                                                                                                 _ -> MAlonzo.RTE.mazUnreachableError)
                                                                                                                        _ -> MAlonzo.RTE.mazUnreachableError
                                                                                                                 else (let v24
                                                                                                                             = seq
@@ -2314,86 +2789,105 @@ d_parseSignatureB_138 v0
                                                                                                                                     -> case coe
                                                                                                                                               v27 of
                                                                                                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v28 v29
-                                                                                                                                           -> coe
-                                                                                                                                                MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                                                                                                                                                (coe
-                                                                                                                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                                                                                                                                   (coe
-                                                                                                                                                      MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
-                                                                                                                                                      (coe
-                                                                                                                                                         v3)
-                                                                                                                                                      (coe
-                                                                                                                                                         v9)
-                                                                                                                                                      (coe
-                                                                                                                                                         v26))
-                                                                                                                                                   (coe
-                                                                                                                                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                                                                                                                                      (coe
-                                                                                                                                                         v28)
-                                                                                                                                                      (coe
-                                                                                                                                                         MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
-                                                                                                                                                         (coe
-                                                                                                                                                            addInt
-                                                                                                                                                            (coe
-                                                                                                                                                               (1 ::
-                                                                                                                                                                  Integer))
-                                                                                                                                                            (coe
-                                                                                                                                                               MAlonzo.Code.Data.List.Base.du_foldr_216
-                                                                                                                                                               (coe
-                                                                                                                                                                  (\ v30
-                                                                                                                                                                     v31 ->
-                                                                                                                                                                     addInt
+                                                                                                                                           -> let v30
+                                                                                                                                                    = d_parseEffAnnot_160
+                                                                                                                                                        (coe
+                                                                                                                                                           v28) in
+                                                                                                                                              coe
+                                                                                                                                                (case coe
+                                                                                                                                                        v30 of
+                                                                                                                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v31 v32
+                                                                                                                                                     -> case coe
+                                                                                                                                                               v32 of
+                                                                                                                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v33 v34
+                                                                                                                                                            -> coe
+                                                                                                                                                                 MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                                                                                                                 (coe
+                                                                                                                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                                                                                                                    (coe
+                                                                                                                                                                       MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
                                                                                                                                                                        (coe
-                                                                                                                                                                          (1 ::
-                                                                                                                                                                             Integer))
+                                                                                                                                                                          v3)
                                                                                                                                                                        (coe
-                                                                                                                                                                          v31)))
-                                                                                                                                                               (coe
-                                                                                                                                                                  (0 ::
-                                                                                                                                                                     Integer))
-                                                                                                                                                               (coe
-                                                                                                                                                                  v8)))
-                                                                                                                                                         (coe
-                                                                                                                                                            MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
-                                                                                                                                                            (coe
-                                                                                                                                                               MAlonzo.Code.Data.List.Base.du_foldr_216
-                                                                                                                                                               (coe
-                                                                                                                                                                  (\ v30
-                                                                                                                                                                     v31 ->
-                                                                                                                                                                     addInt
+                                                                                                                                                                          v9)
                                                                                                                                                                        (coe
-                                                                                                                                                                          (1 ::
-                                                                                                                                                                             Integer))
+                                                                                                                                                                          v26)
                                                                                                                                                                        (coe
-                                                                                                                                                                          v31)))
-                                                                                                                                                               (coe
-                                                                                                                                                                  (0 ::
-                                                                                                                                                                     Integer))
-                                                                                                                                                               (coe
-                                                                                                                                                                  v8))
-                                                                                                                                                            (coe
-                                                                                                                                                               v29)
-                                                                                                                                                            (coe
-                                                                                                                                                               MAlonzo.Code.Data.Nat.Base.C_s'8804's_34
-                                                                                                                                                               (MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900
-                                                                                                                                                                  (coe
-                                                                                                                                                                     MAlonzo.Code.Data.List.Base.du_foldr_216
-                                                                                                                                                                     (coe
-                                                                                                                                                                        (\ v30
-                                                                                                                                                                           v31 ->
-                                                                                                                                                                           addInt
+                                                                                                                                                                          v31))
+                                                                                                                                                                    (coe
+                                                                                                                                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                                                                                                                       (coe
+                                                                                                                                                                          v33)
+                                                                                                                                                                       (coe
+                                                                                                                                                                          MAlonzo.Code.Data.Nat.Properties.du_'8804''45''60''45'trans_3128
+                                                                                                                                                                          (coe
+                                                                                                                                                                             v34)
+                                                                                                                                                                          (coe
+                                                                                                                                                                             MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
                                                                                                                                                                              (coe
-                                                                                                                                                                                (1 ::
-                                                                                                                                                                                   Integer))
+                                                                                                                                                                                addInt
+                                                                                                                                                                                (coe
+                                                                                                                                                                                   (1 ::
+                                                                                                                                                                                      Integer))
+                                                                                                                                                                                (coe
+                                                                                                                                                                                   MAlonzo.Code.Data.List.Base.du_foldr_216
+                                                                                                                                                                                   (coe
+                                                                                                                                                                                      (\ v35
+                                                                                                                                                                                         v36 ->
+                                                                                                                                                                                         addInt
+                                                                                                                                                                                           (coe
+                                                                                                                                                                                              (1 ::
+                                                                                                                                                                                                 Integer))
+                                                                                                                                                                                           (coe
+                                                                                                                                                                                              v36)))
+                                                                                                                                                                                   (coe
+                                                                                                                                                                                      (0 ::
+                                                                                                                                                                                         Integer))
+                                                                                                                                                                                   (coe
+                                                                                                                                                                                      v8)))
                                                                                                                                                                              (coe
-                                                                                                                                                                                v31)))
-                                                                                                                                                                     (coe
-                                                                                                                                                                        (0 ::
-                                                                                                                                                                           Integer))
-                                                                                                                                                                     (coe
-                                                                                                                                                                        v8)))))
-                                                                                                                                                         (coe
-                                                                                                                                                            v6))))
+                                                                                                                                                                                MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
+                                                                                                                                                                                (coe
+                                                                                                                                                                                   MAlonzo.Code.Data.List.Base.du_foldr_216
+                                                                                                                                                                                   (coe
+                                                                                                                                                                                      (\ v35
+                                                                                                                                                                                         v36 ->
+                                                                                                                                                                                         addInt
+                                                                                                                                                                                           (coe
+                                                                                                                                                                                              (1 ::
+                                                                                                                                                                                                 Integer))
+                                                                                                                                                                                           (coe
+                                                                                                                                                                                              v36)))
+                                                                                                                                                                                   (coe
+                                                                                                                                                                                      (0 ::
+                                                                                                                                                                                         Integer))
+                                                                                                                                                                                   (coe
+                                                                                                                                                                                      v8))
+                                                                                                                                                                                (coe
+                                                                                                                                                                                   v29)
+                                                                                                                                                                                (coe
+                                                                                                                                                                                   MAlonzo.Code.Data.Nat.Base.C_s'8804's_34
+                                                                                                                                                                                   (MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900
+                                                                                                                                                                                      (coe
+                                                                                                                                                                                         MAlonzo.Code.Data.List.Base.du_foldr_216
+                                                                                                                                                                                         (coe
+                                                                                                                                                                                            (\ v35
+                                                                                                                                                                                               v36 ->
+                                                                                                                                                                                               addInt
+                                                                                                                                                                                                 (coe
+                                                                                                                                                                                                    (1 ::
+                                                                                                                                                                                                       Integer))
+                                                                                                                                                                                                 (coe
+                                                                                                                                                                                                    v36)))
+                                                                                                                                                                                         (coe
+                                                                                                                                                                                            (0 ::
+                                                                                                                                                                                               Integer))
+                                                                                                                                                                                         (coe
+                                                                                                                                                                                            v8)))))
+                                                                                                                                                                             (coe
+                                                                                                                                                                                v6)))))
+                                                                                                                                                          _ -> MAlonzo.RTE.mazUnreachableError
+                                                                                                                                                   _ -> MAlonzo.RTE.mazUnreachableError)
                                                                                                                                          _ -> MAlonzo.RTE.mazUnreachableError
                                                                                                                                   _ -> MAlonzo.RTE.mazUnreachableError
                                                                                                                            MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
@@ -2412,86 +2906,105 @@ d_parseSignatureB_138 v0
                                                                                                         -> case coe
                                                                                                                   v20 of
                                                                                                              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v21 v22
-                                                                                                               -> coe
-                                                                                                                    MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                                                                                                                    (coe
-                                                                                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                                                                                                       (coe
-                                                                                                                          MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
-                                                                                                                          (coe
-                                                                                                                             v3)
-                                                                                                                          (coe
-                                                                                                                             v17)
-                                                                                                                          (coe
-                                                                                                                             v19))
-                                                                                                                       (coe
-                                                                                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                                                                                                          (coe
-                                                                                                                             v21)
-                                                                                                                          (coe
-                                                                                                                             MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
-                                                                                                                             (coe
-                                                                                                                                addInt
-                                                                                                                                (coe
-                                                                                                                                   (1 ::
-                                                                                                                                      Integer))
-                                                                                                                                (coe
-                                                                                                                                   MAlonzo.Code.Data.List.Base.du_foldr_216
-                                                                                                                                   (coe
-                                                                                                                                      (\ v23
-                                                                                                                                         v24 ->
-                                                                                                                                         addInt
+                                                                                                               -> let v23
+                                                                                                                        = d_parseEffAnnot_160
+                                                                                                                            (coe
+                                                                                                                               v21) in
+                                                                                                                  coe
+                                                                                                                    (case coe
+                                                                                                                            v23 of
+                                                                                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v24 v25
+                                                                                                                         -> case coe
+                                                                                                                                   v25 of
+                                                                                                                              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v26 v27
+                                                                                                                                -> coe
+                                                                                                                                     MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                                                                                     (coe
+                                                                                                                                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                                                                                        (coe
+                                                                                                                                           MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
                                                                                                                                            (coe
-                                                                                                                                              (1 ::
-                                                                                                                                                 Integer))
+                                                                                                                                              v3)
                                                                                                                                            (coe
-                                                                                                                                              v24)))
-                                                                                                                                   (coe
-                                                                                                                                      (0 ::
-                                                                                                                                         Integer))
-                                                                                                                                   (coe
-                                                                                                                                      v8)))
-                                                                                                                             (coe
-                                                                                                                                MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
-                                                                                                                                (coe
-                                                                                                                                   MAlonzo.Code.Data.List.Base.du_foldr_216
-                                                                                                                                   (coe
-                                                                                                                                      (\ v23
-                                                                                                                                         v24 ->
-                                                                                                                                         addInt
+                                                                                                                                              v17)
                                                                                                                                            (coe
-                                                                                                                                              (1 ::
-                                                                                                                                                 Integer))
+                                                                                                                                              v19)
                                                                                                                                            (coe
-                                                                                                                                              v24)))
-                                                                                                                                   (coe
-                                                                                                                                      (0 ::
-                                                                                                                                         Integer))
-                                                                                                                                   (coe
-                                                                                                                                      v8))
-                                                                                                                                (coe
-                                                                                                                                   v22)
-                                                                                                                                (coe
-                                                                                                                                   MAlonzo.Code.Data.Nat.Base.C_s'8804's_34
-                                                                                                                                   (MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900
-                                                                                                                                      (coe
-                                                                                                                                         MAlonzo.Code.Data.List.Base.du_foldr_216
-                                                                                                                                         (coe
-                                                                                                                                            (\ v23
-                                                                                                                                               v24 ->
-                                                                                                                                               addInt
+                                                                                                                                              v24))
+                                                                                                                                        (coe
+                                                                                                                                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                                                                                           (coe
+                                                                                                                                              v26)
+                                                                                                                                           (coe
+                                                                                                                                              MAlonzo.Code.Data.Nat.Properties.du_'8804''45''60''45'trans_3128
+                                                                                                                                              (coe
+                                                                                                                                                 v27)
+                                                                                                                                              (coe
+                                                                                                                                                 MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
                                                                                                                                                  (coe
-                                                                                                                                                    (1 ::
-                                                                                                                                                       Integer))
+                                                                                                                                                    addInt
+                                                                                                                                                    (coe
+                                                                                                                                                       (1 ::
+                                                                                                                                                          Integer))
+                                                                                                                                                    (coe
+                                                                                                                                                       MAlonzo.Code.Data.List.Base.du_foldr_216
+                                                                                                                                                       (coe
+                                                                                                                                                          (\ v28
+                                                                                                                                                             v29 ->
+                                                                                                                                                             addInt
+                                                                                                                                                               (coe
+                                                                                                                                                                  (1 ::
+                                                                                                                                                                     Integer))
+                                                                                                                                                               (coe
+                                                                                                                                                                  v29)))
+                                                                                                                                                       (coe
+                                                                                                                                                          (0 ::
+                                                                                                                                                             Integer))
+                                                                                                                                                       (coe
+                                                                                                                                                          v8)))
                                                                                                                                                  (coe
-                                                                                                                                                    v24)))
-                                                                                                                                         (coe
-                                                                                                                                            (0 ::
-                                                                                                                                               Integer))
-                                                                                                                                         (coe
-                                                                                                                                            v8)))))
-                                                                                                                             (coe
-                                                                                                                                v6))))
+                                                                                                                                                    MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
+                                                                                                                                                    (coe
+                                                                                                                                                       MAlonzo.Code.Data.List.Base.du_foldr_216
+                                                                                                                                                       (coe
+                                                                                                                                                          (\ v28
+                                                                                                                                                             v29 ->
+                                                                                                                                                             addInt
+                                                                                                                                                               (coe
+                                                                                                                                                                  (1 ::
+                                                                                                                                                                     Integer))
+                                                                                                                                                               (coe
+                                                                                                                                                                  v29)))
+                                                                                                                                                       (coe
+                                                                                                                                                          (0 ::
+                                                                                                                                                             Integer))
+                                                                                                                                                       (coe
+                                                                                                                                                          v8))
+                                                                                                                                                    (coe
+                                                                                                                                                       v22)
+                                                                                                                                                    (coe
+                                                                                                                                                       MAlonzo.Code.Data.Nat.Base.C_s'8804's_34
+                                                                                                                                                       (MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900
+                                                                                                                                                          (coe
+                                                                                                                                                             MAlonzo.Code.Data.List.Base.du_foldr_216
+                                                                                                                                                             (coe
+                                                                                                                                                                (\ v28
+                                                                                                                                                                   v29 ->
+                                                                                                                                                                   addInt
+                                                                                                                                                                     (coe
+                                                                                                                                                                        (1 ::
+                                                                                                                                                                           Integer))
+                                                                                                                                                                     (coe
+                                                                                                                                                                        v29)))
+                                                                                                                                                             (coe
+                                                                                                                                                                (0 ::
+                                                                                                                                                                   Integer))
+                                                                                                                                                             (coe
+                                                                                                                                                                v8)))))
+                                                                                                                                                 (coe
+                                                                                                                                                    v6)))))
+                                                                                                                              _ -> MAlonzo.RTE.mazUnreachableError
+                                                                                                                       _ -> MAlonzo.RTE.mazUnreachableError)
                                                                                                              _ -> MAlonzo.RTE.mazUnreachableError
                                                                                                       _ -> MAlonzo.RTE.mazUnreachableError
                                                                                                MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
@@ -2545,86 +3058,105 @@ d_parseSignatureB_138 v0
                                                                                                       then case coe
                                                                                                                   v19 of
                                                                                                              MAlonzo.Code.Relation.Nullary.Reflects.C_of'696'_22 v20
-                                                                                                               -> coe
-                                                                                                                    MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                                                                                                                    (coe
-                                                                                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                                                                                                       (coe
-                                                                                                                          MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
-                                                                                                                          (coe
-                                                                                                                             v3)
-                                                                                                                          (coe
-                                                                                                                             v13)
-                                                                                                                          (coe
-                                                                                                                             v15))
-                                                                                                                       (coe
-                                                                                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                                                                                                          (coe
-                                                                                                                             v16)
-                                                                                                                          (coe
-                                                                                                                             MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
-                                                                                                                             (coe
-                                                                                                                                addInt
-                                                                                                                                (coe
-                                                                                                                                   (1 ::
-                                                                                                                                      Integer))
-                                                                                                                                (coe
-                                                                                                                                   MAlonzo.Code.Data.List.Base.du_foldr_216
-                                                                                                                                   (coe
-                                                                                                                                      (\ v21
-                                                                                                                                         v22 ->
-                                                                                                                                         addInt
+                                                                                                               -> let v21
+                                                                                                                        = d_parseEffAnnot_160
+                                                                                                                            (coe
+                                                                                                                               v16) in
+                                                                                                                  coe
+                                                                                                                    (case coe
+                                                                                                                            v21 of
+                                                                                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v22 v23
+                                                                                                                         -> case coe
+                                                                                                                                   v23 of
+                                                                                                                              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v24 v25
+                                                                                                                                -> coe
+                                                                                                                                     MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                                                                                     (coe
+                                                                                                                                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                                                                                        (coe
+                                                                                                                                           MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
                                                                                                                                            (coe
-                                                                                                                                              (1 ::
-                                                                                                                                                 Integer))
+                                                                                                                                              v3)
                                                                                                                                            (coe
-                                                                                                                                              v22)))
-                                                                                                                                   (coe
-                                                                                                                                      (0 ::
-                                                                                                                                         Integer))
-                                                                                                                                   (coe
-                                                                                                                                      v8)))
-                                                                                                                             (coe
-                                                                                                                                MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
-                                                                                                                                (coe
-                                                                                                                                   MAlonzo.Code.Data.List.Base.du_foldr_216
-                                                                                                                                   (coe
-                                                                                                                                      (\ v21
-                                                                                                                                         v22 ->
-                                                                                                                                         addInt
+                                                                                                                                              v13)
                                                                                                                                            (coe
-                                                                                                                                              (1 ::
-                                                                                                                                                 Integer))
+                                                                                                                                              v15)
                                                                                                                                            (coe
-                                                                                                                                              v22)))
-                                                                                                                                   (coe
-                                                                                                                                      (0 ::
-                                                                                                                                         Integer))
-                                                                                                                                   (coe
-                                                                                                                                      v8))
-                                                                                                                                (coe
-                                                                                                                                   v20)
-                                                                                                                                (coe
-                                                                                                                                   MAlonzo.Code.Data.Nat.Base.C_s'8804's_34
-                                                                                                                                   (MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900
-                                                                                                                                      (coe
-                                                                                                                                         MAlonzo.Code.Data.List.Base.du_foldr_216
-                                                                                                                                         (coe
-                                                                                                                                            (\ v21
-                                                                                                                                               v22 ->
-                                                                                                                                               addInt
+                                                                                                                                              v22))
+                                                                                                                                        (coe
+                                                                                                                                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                                                                                           (coe
+                                                                                                                                              v24)
+                                                                                                                                           (coe
+                                                                                                                                              MAlonzo.Code.Data.Nat.Properties.du_'8804''45''60''45'trans_3128
+                                                                                                                                              (coe
+                                                                                                                                                 v25)
+                                                                                                                                              (coe
+                                                                                                                                                 MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
                                                                                                                                                  (coe
-                                                                                                                                                    (1 ::
-                                                                                                                                                       Integer))
+                                                                                                                                                    addInt
+                                                                                                                                                    (coe
+                                                                                                                                                       (1 ::
+                                                                                                                                                          Integer))
+                                                                                                                                                    (coe
+                                                                                                                                                       MAlonzo.Code.Data.List.Base.du_foldr_216
+                                                                                                                                                       (coe
+                                                                                                                                                          (\ v26
+                                                                                                                                                             v27 ->
+                                                                                                                                                             addInt
+                                                                                                                                                               (coe
+                                                                                                                                                                  (1 ::
+                                                                                                                                                                     Integer))
+                                                                                                                                                               (coe
+                                                                                                                                                                  v27)))
+                                                                                                                                                       (coe
+                                                                                                                                                          (0 ::
+                                                                                                                                                             Integer))
+                                                                                                                                                       (coe
+                                                                                                                                                          v8)))
                                                                                                                                                  (coe
-                                                                                                                                                    v22)))
-                                                                                                                                         (coe
-                                                                                                                                            (0 ::
-                                                                                                                                               Integer))
-                                                                                                                                         (coe
-                                                                                                                                            v8)))))
-                                                                                                                             (coe
-                                                                                                                                v6))))
+                                                                                                                                                    MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
+                                                                                                                                                    (coe
+                                                                                                                                                       MAlonzo.Code.Data.List.Base.du_foldr_216
+                                                                                                                                                       (coe
+                                                                                                                                                          (\ v26
+                                                                                                                                                             v27 ->
+                                                                                                                                                             addInt
+                                                                                                                                                               (coe
+                                                                                                                                                                  (1 ::
+                                                                                                                                                                     Integer))
+                                                                                                                                                               (coe
+                                                                                                                                                                  v27)))
+                                                                                                                                                       (coe
+                                                                                                                                                          (0 ::
+                                                                                                                                                             Integer))
+                                                                                                                                                       (coe
+                                                                                                                                                          v8))
+                                                                                                                                                    (coe
+                                                                                                                                                       v20)
+                                                                                                                                                    (coe
+                                                                                                                                                       MAlonzo.Code.Data.Nat.Base.C_s'8804's_34
+                                                                                                                                                       (MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900
+                                                                                                                                                          (coe
+                                                                                                                                                             MAlonzo.Code.Data.List.Base.du_foldr_216
+                                                                                                                                                             (coe
+                                                                                                                                                                (\ v26
+                                                                                                                                                                   v27 ->
+                                                                                                                                                                   addInt
+                                                                                                                                                                     (coe
+                                                                                                                                                                        (1 ::
+                                                                                                                                                                           Integer))
+                                                                                                                                                                     (coe
+                                                                                                                                                                        v27)))
+                                                                                                                                                             (coe
+                                                                                                                                                                (0 ::
+                                                                                                                                                                   Integer))
+                                                                                                                                                             (coe
+                                                                                                                                                                v8)))))
+                                                                                                                                                 (coe
+                                                                                                                                                    v6)))))
+                                                                                                                              _ -> MAlonzo.RTE.mazUnreachableError
+                                                                                                                       _ -> MAlonzo.RTE.mazUnreachableError)
                                                                                                              _ -> MAlonzo.RTE.mazUnreachableError
                                                                                                       else (let v20
                                                                                                                   = seq
@@ -2642,86 +3174,105 @@ d_parseSignatureB_138 v0
                                                                                                                           -> case coe
                                                                                                                                     v23 of
                                                                                                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v24 v25
-                                                                                                                                 -> coe
-                                                                                                                                      MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                                                                                                                                      (coe
-                                                                                                                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                                                                                                                         (coe
-                                                                                                                                            MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
-                                                                                                                                            (coe
-                                                                                                                                               v3)
-                                                                                                                                            (coe
-                                                                                                                                               v13)
-                                                                                                                                            (coe
-                                                                                                                                               v22))
-                                                                                                                                         (coe
-                                                                                                                                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                                                                                                                            (coe
-                                                                                                                                               v24)
-                                                                                                                                            (coe
-                                                                                                                                               MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
-                                                                                                                                               (coe
-                                                                                                                                                  addInt
-                                                                                                                                                  (coe
-                                                                                                                                                     (1 ::
-                                                                                                                                                        Integer))
-                                                                                                                                                  (coe
-                                                                                                                                                     MAlonzo.Code.Data.List.Base.du_foldr_216
-                                                                                                                                                     (coe
-                                                                                                                                                        (\ v26
-                                                                                                                                                           v27 ->
-                                                                                                                                                           addInt
+                                                                                                                                 -> let v26
+                                                                                                                                          = d_parseEffAnnot_160
+                                                                                                                                              (coe
+                                                                                                                                                 v24) in
+                                                                                                                                    coe
+                                                                                                                                      (case coe
+                                                                                                                                              v26 of
+                                                                                                                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v27 v28
+                                                                                                                                           -> case coe
+                                                                                                                                                     v28 of
+                                                                                                                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v29 v30
+                                                                                                                                                  -> coe
+                                                                                                                                                       MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                                                                                                       (coe
+                                                                                                                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                                                                                                          (coe
+                                                                                                                                                             MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
                                                                                                                                                              (coe
-                                                                                                                                                                (1 ::
-                                                                                                                                                                   Integer))
+                                                                                                                                                                v3)
                                                                                                                                                              (coe
-                                                                                                                                                                v27)))
-                                                                                                                                                     (coe
-                                                                                                                                                        (0 ::
-                                                                                                                                                           Integer))
-                                                                                                                                                     (coe
-                                                                                                                                                        v8)))
-                                                                                                                                               (coe
-                                                                                                                                                  MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
-                                                                                                                                                  (coe
-                                                                                                                                                     MAlonzo.Code.Data.List.Base.du_foldr_216
-                                                                                                                                                     (coe
-                                                                                                                                                        (\ v26
-                                                                                                                                                           v27 ->
-                                                                                                                                                           addInt
+                                                                                                                                                                v13)
                                                                                                                                                              (coe
-                                                                                                                                                                (1 ::
-                                                                                                                                                                   Integer))
+                                                                                                                                                                v22)
                                                                                                                                                              (coe
-                                                                                                                                                                v27)))
-                                                                                                                                                     (coe
-                                                                                                                                                        (0 ::
-                                                                                                                                                           Integer))
-                                                                                                                                                     (coe
-                                                                                                                                                        v8))
-                                                                                                                                                  (coe
-                                                                                                                                                     v25)
-                                                                                                                                                  (coe
-                                                                                                                                                     MAlonzo.Code.Data.Nat.Base.C_s'8804's_34
-                                                                                                                                                     (MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900
-                                                                                                                                                        (coe
-                                                                                                                                                           MAlonzo.Code.Data.List.Base.du_foldr_216
-                                                                                                                                                           (coe
-                                                                                                                                                              (\ v26
-                                                                                                                                                                 v27 ->
-                                                                                                                                                                 addInt
+                                                                                                                                                                v27))
+                                                                                                                                                          (coe
+                                                                                                                                                             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                                                                                                             (coe
+                                                                                                                                                                v29)
+                                                                                                                                                             (coe
+                                                                                                                                                                MAlonzo.Code.Data.Nat.Properties.du_'8804''45''60''45'trans_3128
+                                                                                                                                                                (coe
+                                                                                                                                                                   v30)
+                                                                                                                                                                (coe
+                                                                                                                                                                   MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
                                                                                                                                                                    (coe
-                                                                                                                                                                      (1 ::
-                                                                                                                                                                         Integer))
+                                                                                                                                                                      addInt
+                                                                                                                                                                      (coe
+                                                                                                                                                                         (1 ::
+                                                                                                                                                                            Integer))
+                                                                                                                                                                      (coe
+                                                                                                                                                                         MAlonzo.Code.Data.List.Base.du_foldr_216
+                                                                                                                                                                         (coe
+                                                                                                                                                                            (\ v31
+                                                                                                                                                                               v32 ->
+                                                                                                                                                                               addInt
+                                                                                                                                                                                 (coe
+                                                                                                                                                                                    (1 ::
+                                                                                                                                                                                       Integer))
+                                                                                                                                                                                 (coe
+                                                                                                                                                                                    v32)))
+                                                                                                                                                                         (coe
+                                                                                                                                                                            (0 ::
+                                                                                                                                                                               Integer))
+                                                                                                                                                                         (coe
+                                                                                                                                                                            v8)))
                                                                                                                                                                    (coe
-                                                                                                                                                                      v27)))
-                                                                                                                                                           (coe
-                                                                                                                                                              (0 ::
-                                                                                                                                                                 Integer))
-                                                                                                                                                           (coe
-                                                                                                                                                              v8)))))
-                                                                                                                                               (coe
-                                                                                                                                                  v6))))
+                                                                                                                                                                      MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
+                                                                                                                                                                      (coe
+                                                                                                                                                                         MAlonzo.Code.Data.List.Base.du_foldr_216
+                                                                                                                                                                         (coe
+                                                                                                                                                                            (\ v31
+                                                                                                                                                                               v32 ->
+                                                                                                                                                                               addInt
+                                                                                                                                                                                 (coe
+                                                                                                                                                                                    (1 ::
+                                                                                                                                                                                       Integer))
+                                                                                                                                                                                 (coe
+                                                                                                                                                                                    v32)))
+                                                                                                                                                                         (coe
+                                                                                                                                                                            (0 ::
+                                                                                                                                                                               Integer))
+                                                                                                                                                                         (coe
+                                                                                                                                                                            v8))
+                                                                                                                                                                      (coe
+                                                                                                                                                                         v25)
+                                                                                                                                                                      (coe
+                                                                                                                                                                         MAlonzo.Code.Data.Nat.Base.C_s'8804's_34
+                                                                                                                                                                         (MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900
+                                                                                                                                                                            (coe
+                                                                                                                                                                               MAlonzo.Code.Data.List.Base.du_foldr_216
+                                                                                                                                                                               (coe
+                                                                                                                                                                                  (\ v31
+                                                                                                                                                                                     v32 ->
+                                                                                                                                                                                     addInt
+                                                                                                                                                                                       (coe
+                                                                                                                                                                                          (1 ::
+                                                                                                                                                                                             Integer))
+                                                                                                                                                                                       (coe
+                                                                                                                                                                                          v32)))
+                                                                                                                                                                               (coe
+                                                                                                                                                                                  (0 ::
+                                                                                                                                                                                     Integer))
+                                                                                                                                                                               (coe
+                                                                                                                                                                                  v8)))))
+                                                                                                                                                                   (coe
+                                                                                                                                                                      v6)))))
+                                                                                                                                                _ -> MAlonzo.RTE.mazUnreachableError
+                                                                                                                                         _ -> MAlonzo.RTE.mazUnreachableError)
                                                                                                                                _ -> MAlonzo.RTE.mazUnreachableError
                                                                                                                         _ -> MAlonzo.RTE.mazUnreachableError
                                                                                                                  MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
@@ -2739,86 +3290,105 @@ d_parseSignatureB_138 v0
                                                                                               -> case coe
                                                                                                         v16 of
                                                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v17 v18
-                                                                                                     -> coe
-                                                                                                          MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                                                                                                          (coe
-                                                                                                             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                                                                                             (coe
-                                                                                                                MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
-                                                                                                                (coe
-                                                                                                                   v3)
-                                                                                                                (coe
-                                                                                                                   v13)
-                                                                                                                (coe
-                                                                                                                   v15))
-                                                                                                             (coe
-                                                                                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                                                                                                (coe
-                                                                                                                   v17)
-                                                                                                                (coe
-                                                                                                                   MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
-                                                                                                                   (coe
-                                                                                                                      addInt
-                                                                                                                      (coe
-                                                                                                                         (1 ::
-                                                                                                                            Integer))
-                                                                                                                      (coe
-                                                                                                                         MAlonzo.Code.Data.List.Base.du_foldr_216
-                                                                                                                         (coe
-                                                                                                                            (\ v19
-                                                                                                                               v20 ->
-                                                                                                                               addInt
+                                                                                                     -> let v19
+                                                                                                              = d_parseEffAnnot_160
+                                                                                                                  (coe
+                                                                                                                     v17) in
+                                                                                                        coe
+                                                                                                          (case coe
+                                                                                                                  v19 of
+                                                                                                             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v20 v21
+                                                                                                               -> case coe
+                                                                                                                         v21 of
+                                                                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v22 v23
+                                                                                                                      -> coe
+                                                                                                                           MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                                                                           (coe
+                                                                                                                              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                                                                              (coe
+                                                                                                                                 MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
                                                                                                                                  (coe
-                                                                                                                                    (1 ::
-                                                                                                                                       Integer))
+                                                                                                                                    v3)
                                                                                                                                  (coe
-                                                                                                                                    v20)))
-                                                                                                                         (coe
-                                                                                                                            (0 ::
-                                                                                                                               Integer))
-                                                                                                                         (coe
-                                                                                                                            v8)))
-                                                                                                                   (coe
-                                                                                                                      MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
-                                                                                                                      (coe
-                                                                                                                         MAlonzo.Code.Data.List.Base.du_foldr_216
-                                                                                                                         (coe
-                                                                                                                            (\ v19
-                                                                                                                               v20 ->
-                                                                                                                               addInt
+                                                                                                                                    v13)
                                                                                                                                  (coe
-                                                                                                                                    (1 ::
-                                                                                                                                       Integer))
+                                                                                                                                    v15)
                                                                                                                                  (coe
-                                                                                                                                    v20)))
-                                                                                                                         (coe
-                                                                                                                            (0 ::
-                                                                                                                               Integer))
-                                                                                                                         (coe
-                                                                                                                            v8))
-                                                                                                                      (coe
-                                                                                                                         v18)
-                                                                                                                      (coe
-                                                                                                                         MAlonzo.Code.Data.Nat.Base.C_s'8804's_34
-                                                                                                                         (MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900
-                                                                                                                            (coe
-                                                                                                                               MAlonzo.Code.Data.List.Base.du_foldr_216
-                                                                                                                               (coe
-                                                                                                                                  (\ v19
-                                                                                                                                     v20 ->
-                                                                                                                                     addInt
+                                                                                                                                    v20))
+                                                                                                                              (coe
+                                                                                                                                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                                                                                 (coe
+                                                                                                                                    v22)
+                                                                                                                                 (coe
+                                                                                                                                    MAlonzo.Code.Data.Nat.Properties.du_'8804''45''60''45'trans_3128
+                                                                                                                                    (coe
+                                                                                                                                       v23)
+                                                                                                                                    (coe
+                                                                                                                                       MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
                                                                                                                                        (coe
-                                                                                                                                          (1 ::
-                                                                                                                                             Integer))
+                                                                                                                                          addInt
+                                                                                                                                          (coe
+                                                                                                                                             (1 ::
+                                                                                                                                                Integer))
+                                                                                                                                          (coe
+                                                                                                                                             MAlonzo.Code.Data.List.Base.du_foldr_216
+                                                                                                                                             (coe
+                                                                                                                                                (\ v24
+                                                                                                                                                   v25 ->
+                                                                                                                                                   addInt
+                                                                                                                                                     (coe
+                                                                                                                                                        (1 ::
+                                                                                                                                                           Integer))
+                                                                                                                                                     (coe
+                                                                                                                                                        v25)))
+                                                                                                                                             (coe
+                                                                                                                                                (0 ::
+                                                                                                                                                   Integer))
+                                                                                                                                             (coe
+                                                                                                                                                v8)))
                                                                                                                                        (coe
-                                                                                                                                          v20)))
-                                                                                                                               (coe
-                                                                                                                                  (0 ::
-                                                                                                                                     Integer))
-                                                                                                                               (coe
-                                                                                                                                  v8)))))
-                                                                                                                   (coe
-                                                                                                                      v6))))
+                                                                                                                                          MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
+                                                                                                                                          (coe
+                                                                                                                                             MAlonzo.Code.Data.List.Base.du_foldr_216
+                                                                                                                                             (coe
+                                                                                                                                                (\ v24
+                                                                                                                                                   v25 ->
+                                                                                                                                                   addInt
+                                                                                                                                                     (coe
+                                                                                                                                                        (1 ::
+                                                                                                                                                           Integer))
+                                                                                                                                                     (coe
+                                                                                                                                                        v25)))
+                                                                                                                                             (coe
+                                                                                                                                                (0 ::
+                                                                                                                                                   Integer))
+                                                                                                                                             (coe
+                                                                                                                                                v8))
+                                                                                                                                          (coe
+                                                                                                                                             v18)
+                                                                                                                                          (coe
+                                                                                                                                             MAlonzo.Code.Data.Nat.Base.C_s'8804's_34
+                                                                                                                                             (MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900
+                                                                                                                                                (coe
+                                                                                                                                                   MAlonzo.Code.Data.List.Base.du_foldr_216
+                                                                                                                                                   (coe
+                                                                                                                                                      (\ v24
+                                                                                                                                                         v25 ->
+                                                                                                                                                         addInt
+                                                                                                                                                           (coe
+                                                                                                                                                              (1 ::
+                                                                                                                                                                 Integer))
+                                                                                                                                                           (coe
+                                                                                                                                                              v25)))
+                                                                                                                                                   (coe
+                                                                                                                                                      (0 ::
+                                                                                                                                                         Integer))
+                                                                                                                                                   (coe
+                                                                                                                                                      v8)))))
+                                                                                                                                       (coe
+                                                                                                                                          v6)))))
+                                                                                                                    _ -> MAlonzo.RTE.mazUnreachableError
+                                                                                                             _ -> MAlonzo.RTE.mazUnreachableError)
                                                                                                    _ -> MAlonzo.RTE.mazUnreachableError
                                                                                             _ -> MAlonzo.RTE.mazUnreachableError
                                                                                      MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
@@ -2881,86 +3451,105 @@ d_parseSignatureB_138 v0
                                                                                                       then case coe
                                                                                                                   v19 of
                                                                                                              MAlonzo.Code.Relation.Nullary.Reflects.C_of'696'_22 v20
-                                                                                                               -> coe
-                                                                                                                    MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                                                                                                                    (coe
-                                                                                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                                                                                                       (coe
-                                                                                                                          MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
-                                                                                                                          (coe
-                                                                                                                             v3)
-                                                                                                                          (coe
-                                                                                                                             v9)
-                                                                                                                          (coe
-                                                                                                                             v15))
-                                                                                                                       (coe
-                                                                                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                                                                                                          (coe
-                                                                                                                             v16)
-                                                                                                                          (coe
-                                                                                                                             MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
-                                                                                                                             (coe
-                                                                                                                                addInt
-                                                                                                                                (coe
-                                                                                                                                   (1 ::
-                                                                                                                                      Integer))
-                                                                                                                                (coe
-                                                                                                                                   MAlonzo.Code.Data.List.Base.du_foldr_216
-                                                                                                                                   (coe
-                                                                                                                                      (\ v21
-                                                                                                                                         v22 ->
-                                                                                                                                         addInt
+                                                                                                               -> let v21
+                                                                                                                        = d_parseEffAnnot_160
+                                                                                                                            (coe
+                                                                                                                               v16) in
+                                                                                                                  coe
+                                                                                                                    (case coe
+                                                                                                                            v21 of
+                                                                                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v22 v23
+                                                                                                                         -> case coe
+                                                                                                                                   v23 of
+                                                                                                                              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v24 v25
+                                                                                                                                -> coe
+                                                                                                                                     MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                                                                                     (coe
+                                                                                                                                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                                                                                        (coe
+                                                                                                                                           MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
                                                                                                                                            (coe
-                                                                                                                                              (1 ::
-                                                                                                                                                 Integer))
+                                                                                                                                              v3)
                                                                                                                                            (coe
-                                                                                                                                              v22)))
-                                                                                                                                   (coe
-                                                                                                                                      (0 ::
-                                                                                                                                         Integer))
-                                                                                                                                   (coe
-                                                                                                                                      v8)))
-                                                                                                                             (coe
-                                                                                                                                MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
-                                                                                                                                (coe
-                                                                                                                                   MAlonzo.Code.Data.List.Base.du_foldr_216
-                                                                                                                                   (coe
-                                                                                                                                      (\ v21
-                                                                                                                                         v22 ->
-                                                                                                                                         addInt
+                                                                                                                                              v9)
                                                                                                                                            (coe
-                                                                                                                                              (1 ::
-                                                                                                                                                 Integer))
+                                                                                                                                              v15)
                                                                                                                                            (coe
-                                                                                                                                              v22)))
-                                                                                                                                   (coe
-                                                                                                                                      (0 ::
-                                                                                                                                         Integer))
-                                                                                                                                   (coe
-                                                                                                                                      v8))
-                                                                                                                                (coe
-                                                                                                                                   v20)
-                                                                                                                                (coe
-                                                                                                                                   MAlonzo.Code.Data.Nat.Base.C_s'8804's_34
-                                                                                                                                   (MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900
-                                                                                                                                      (coe
-                                                                                                                                         MAlonzo.Code.Data.List.Base.du_foldr_216
-                                                                                                                                         (coe
-                                                                                                                                            (\ v21
-                                                                                                                                               v22 ->
-                                                                                                                                               addInt
+                                                                                                                                              v22))
+                                                                                                                                        (coe
+                                                                                                                                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                                                                                           (coe
+                                                                                                                                              v24)
+                                                                                                                                           (coe
+                                                                                                                                              MAlonzo.Code.Data.Nat.Properties.du_'8804''45''60''45'trans_3128
+                                                                                                                                              (coe
+                                                                                                                                                 v25)
+                                                                                                                                              (coe
+                                                                                                                                                 MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
                                                                                                                                                  (coe
-                                                                                                                                                    (1 ::
-                                                                                                                                                       Integer))
+                                                                                                                                                    addInt
+                                                                                                                                                    (coe
+                                                                                                                                                       (1 ::
+                                                                                                                                                          Integer))
+                                                                                                                                                    (coe
+                                                                                                                                                       MAlonzo.Code.Data.List.Base.du_foldr_216
+                                                                                                                                                       (coe
+                                                                                                                                                          (\ v26
+                                                                                                                                                             v27 ->
+                                                                                                                                                             addInt
+                                                                                                                                                               (coe
+                                                                                                                                                                  (1 ::
+                                                                                                                                                                     Integer))
+                                                                                                                                                               (coe
+                                                                                                                                                                  v27)))
+                                                                                                                                                       (coe
+                                                                                                                                                          (0 ::
+                                                                                                                                                             Integer))
+                                                                                                                                                       (coe
+                                                                                                                                                          v8)))
                                                                                                                                                  (coe
-                                                                                                                                                    v22)))
-                                                                                                                                         (coe
-                                                                                                                                            (0 ::
-                                                                                                                                               Integer))
-                                                                                                                                         (coe
-                                                                                                                                            v8)))))
-                                                                                                                             (coe
-                                                                                                                                v6))))
+                                                                                                                                                    MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
+                                                                                                                                                    (coe
+                                                                                                                                                       MAlonzo.Code.Data.List.Base.du_foldr_216
+                                                                                                                                                       (coe
+                                                                                                                                                          (\ v26
+                                                                                                                                                             v27 ->
+                                                                                                                                                             addInt
+                                                                                                                                                               (coe
+                                                                                                                                                                  (1 ::
+                                                                                                                                                                     Integer))
+                                                                                                                                                               (coe
+                                                                                                                                                                  v27)))
+                                                                                                                                                       (coe
+                                                                                                                                                          (0 ::
+                                                                                                                                                             Integer))
+                                                                                                                                                       (coe
+                                                                                                                                                          v8))
+                                                                                                                                                    (coe
+                                                                                                                                                       v20)
+                                                                                                                                                    (coe
+                                                                                                                                                       MAlonzo.Code.Data.Nat.Base.C_s'8804's_34
+                                                                                                                                                       (MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900
+                                                                                                                                                          (coe
+                                                                                                                                                             MAlonzo.Code.Data.List.Base.du_foldr_216
+                                                                                                                                                             (coe
+                                                                                                                                                                (\ v26
+                                                                                                                                                                   v27 ->
+                                                                                                                                                                   addInt
+                                                                                                                                                                     (coe
+                                                                                                                                                                        (1 ::
+                                                                                                                                                                           Integer))
+                                                                                                                                                                     (coe
+                                                                                                                                                                        v27)))
+                                                                                                                                                             (coe
+                                                                                                                                                                (0 ::
+                                                                                                                                                                   Integer))
+                                                                                                                                                             (coe
+                                                                                                                                                                v8)))))
+                                                                                                                                                 (coe
+                                                                                                                                                    v6)))))
+                                                                                                                              _ -> MAlonzo.RTE.mazUnreachableError
+                                                                                                                       _ -> MAlonzo.RTE.mazUnreachableError)
                                                                                                              _ -> MAlonzo.RTE.mazUnreachableError
                                                                                                       else (let v20
                                                                                                                   = seq
@@ -2978,86 +3567,105 @@ d_parseSignatureB_138 v0
                                                                                                                           -> case coe
                                                                                                                                     v23 of
                                                                                                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v24 v25
-                                                                                                                                 -> coe
-                                                                                                                                      MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                                                                                                                                      (coe
-                                                                                                                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                                                                                                                         (coe
-                                                                                                                                            MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
-                                                                                                                                            (coe
-                                                                                                                                               v3)
-                                                                                                                                            (coe
-                                                                                                                                               v9)
-                                                                                                                                            (coe
-                                                                                                                                               v22))
-                                                                                                                                         (coe
-                                                                                                                                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                                                                                                                            (coe
-                                                                                                                                               v24)
-                                                                                                                                            (coe
-                                                                                                                                               MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
-                                                                                                                                               (coe
-                                                                                                                                                  addInt
-                                                                                                                                                  (coe
-                                                                                                                                                     (1 ::
-                                                                                                                                                        Integer))
-                                                                                                                                                  (coe
-                                                                                                                                                     MAlonzo.Code.Data.List.Base.du_foldr_216
-                                                                                                                                                     (coe
-                                                                                                                                                        (\ v26
-                                                                                                                                                           v27 ->
-                                                                                                                                                           addInt
+                                                                                                                                 -> let v26
+                                                                                                                                          = d_parseEffAnnot_160
+                                                                                                                                              (coe
+                                                                                                                                                 v24) in
+                                                                                                                                    coe
+                                                                                                                                      (case coe
+                                                                                                                                              v26 of
+                                                                                                                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v27 v28
+                                                                                                                                           -> case coe
+                                                                                                                                                     v28 of
+                                                                                                                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v29 v30
+                                                                                                                                                  -> coe
+                                                                                                                                                       MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                                                                                                       (coe
+                                                                                                                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                                                                                                          (coe
+                                                                                                                                                             MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
                                                                                                                                                              (coe
-                                                                                                                                                                (1 ::
-                                                                                                                                                                   Integer))
+                                                                                                                                                                v3)
                                                                                                                                                              (coe
-                                                                                                                                                                v27)))
-                                                                                                                                                     (coe
-                                                                                                                                                        (0 ::
-                                                                                                                                                           Integer))
-                                                                                                                                                     (coe
-                                                                                                                                                        v8)))
-                                                                                                                                               (coe
-                                                                                                                                                  MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
-                                                                                                                                                  (coe
-                                                                                                                                                     MAlonzo.Code.Data.List.Base.du_foldr_216
-                                                                                                                                                     (coe
-                                                                                                                                                        (\ v26
-                                                                                                                                                           v27 ->
-                                                                                                                                                           addInt
+                                                                                                                                                                v9)
                                                                                                                                                              (coe
-                                                                                                                                                                (1 ::
-                                                                                                                                                                   Integer))
+                                                                                                                                                                v22)
                                                                                                                                                              (coe
-                                                                                                                                                                v27)))
-                                                                                                                                                     (coe
-                                                                                                                                                        (0 ::
-                                                                                                                                                           Integer))
-                                                                                                                                                     (coe
-                                                                                                                                                        v8))
-                                                                                                                                                  (coe
-                                                                                                                                                     v25)
-                                                                                                                                                  (coe
-                                                                                                                                                     MAlonzo.Code.Data.Nat.Base.C_s'8804's_34
-                                                                                                                                                     (MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900
-                                                                                                                                                        (coe
-                                                                                                                                                           MAlonzo.Code.Data.List.Base.du_foldr_216
-                                                                                                                                                           (coe
-                                                                                                                                                              (\ v26
-                                                                                                                                                                 v27 ->
-                                                                                                                                                                 addInt
+                                                                                                                                                                v27))
+                                                                                                                                                          (coe
+                                                                                                                                                             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                                                                                                             (coe
+                                                                                                                                                                v29)
+                                                                                                                                                             (coe
+                                                                                                                                                                MAlonzo.Code.Data.Nat.Properties.du_'8804''45''60''45'trans_3128
+                                                                                                                                                                (coe
+                                                                                                                                                                   v30)
+                                                                                                                                                                (coe
+                                                                                                                                                                   MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
                                                                                                                                                                    (coe
-                                                                                                                                                                      (1 ::
-                                                                                                                                                                         Integer))
+                                                                                                                                                                      addInt
+                                                                                                                                                                      (coe
+                                                                                                                                                                         (1 ::
+                                                                                                                                                                            Integer))
+                                                                                                                                                                      (coe
+                                                                                                                                                                         MAlonzo.Code.Data.List.Base.du_foldr_216
+                                                                                                                                                                         (coe
+                                                                                                                                                                            (\ v31
+                                                                                                                                                                               v32 ->
+                                                                                                                                                                               addInt
+                                                                                                                                                                                 (coe
+                                                                                                                                                                                    (1 ::
+                                                                                                                                                                                       Integer))
+                                                                                                                                                                                 (coe
+                                                                                                                                                                                    v32)))
+                                                                                                                                                                         (coe
+                                                                                                                                                                            (0 ::
+                                                                                                                                                                               Integer))
+                                                                                                                                                                         (coe
+                                                                                                                                                                            v8)))
                                                                                                                                                                    (coe
-                                                                                                                                                                      v27)))
-                                                                                                                                                           (coe
-                                                                                                                                                              (0 ::
-                                                                                                                                                                 Integer))
-                                                                                                                                                           (coe
-                                                                                                                                                              v8)))))
-                                                                                                                                               (coe
-                                                                                                                                                  v6))))
+                                                                                                                                                                      MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
+                                                                                                                                                                      (coe
+                                                                                                                                                                         MAlonzo.Code.Data.List.Base.du_foldr_216
+                                                                                                                                                                         (coe
+                                                                                                                                                                            (\ v31
+                                                                                                                                                                               v32 ->
+                                                                                                                                                                               addInt
+                                                                                                                                                                                 (coe
+                                                                                                                                                                                    (1 ::
+                                                                                                                                                                                       Integer))
+                                                                                                                                                                                 (coe
+                                                                                                                                                                                    v32)))
+                                                                                                                                                                         (coe
+                                                                                                                                                                            (0 ::
+                                                                                                                                                                               Integer))
+                                                                                                                                                                         (coe
+                                                                                                                                                                            v8))
+                                                                                                                                                                      (coe
+                                                                                                                                                                         v25)
+                                                                                                                                                                      (coe
+                                                                                                                                                                         MAlonzo.Code.Data.Nat.Base.C_s'8804's_34
+                                                                                                                                                                         (MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900
+                                                                                                                                                                            (coe
+                                                                                                                                                                               MAlonzo.Code.Data.List.Base.du_foldr_216
+                                                                                                                                                                               (coe
+                                                                                                                                                                                  (\ v31
+                                                                                                                                                                                     v32 ->
+                                                                                                                                                                                     addInt
+                                                                                                                                                                                       (coe
+                                                                                                                                                                                          (1 ::
+                                                                                                                                                                                             Integer))
+                                                                                                                                                                                       (coe
+                                                                                                                                                                                          v32)))
+                                                                                                                                                                               (coe
+                                                                                                                                                                                  (0 ::
+                                                                                                                                                                                     Integer))
+                                                                                                                                                                               (coe
+                                                                                                                                                                                  v8)))))
+                                                                                                                                                                   (coe
+                                                                                                                                                                      v6)))))
+                                                                                                                                                _ -> MAlonzo.RTE.mazUnreachableError
+                                                                                                                                         _ -> MAlonzo.RTE.mazUnreachableError)
                                                                                                                                _ -> MAlonzo.RTE.mazUnreachableError
                                                                                                                         _ -> MAlonzo.RTE.mazUnreachableError
                                                                                                                  MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
@@ -3075,86 +3683,105 @@ d_parseSignatureB_138 v0
                                                                                               -> case coe
                                                                                                         v16 of
                                                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v17 v18
-                                                                                                     -> coe
-                                                                                                          MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                                                                                                          (coe
-                                                                                                             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                                                                                             (coe
-                                                                                                                MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
-                                                                                                                (coe
-                                                                                                                   v3)
-                                                                                                                (coe
-                                                                                                                   v13)
-                                                                                                                (coe
-                                                                                                                   v15))
-                                                                                                             (coe
-                                                                                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                                                                                                (coe
-                                                                                                                   v17)
-                                                                                                                (coe
-                                                                                                                   MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
-                                                                                                                   (coe
-                                                                                                                      addInt
-                                                                                                                      (coe
-                                                                                                                         (1 ::
-                                                                                                                            Integer))
-                                                                                                                      (coe
-                                                                                                                         MAlonzo.Code.Data.List.Base.du_foldr_216
-                                                                                                                         (coe
-                                                                                                                            (\ v19
-                                                                                                                               v20 ->
-                                                                                                                               addInt
+                                                                                                     -> let v19
+                                                                                                              = d_parseEffAnnot_160
+                                                                                                                  (coe
+                                                                                                                     v17) in
+                                                                                                        coe
+                                                                                                          (case coe
+                                                                                                                  v19 of
+                                                                                                             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v20 v21
+                                                                                                               -> case coe
+                                                                                                                         v21 of
+                                                                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v22 v23
+                                                                                                                      -> coe
+                                                                                                                           MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                                                                           (coe
+                                                                                                                              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                                                                              (coe
+                                                                                                                                 MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
                                                                                                                                  (coe
-                                                                                                                                    (1 ::
-                                                                                                                                       Integer))
+                                                                                                                                    v3)
                                                                                                                                  (coe
-                                                                                                                                    v20)))
-                                                                                                                         (coe
-                                                                                                                            (0 ::
-                                                                                                                               Integer))
-                                                                                                                         (coe
-                                                                                                                            v8)))
-                                                                                                                   (coe
-                                                                                                                      MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
-                                                                                                                      (coe
-                                                                                                                         MAlonzo.Code.Data.List.Base.du_foldr_216
-                                                                                                                         (coe
-                                                                                                                            (\ v19
-                                                                                                                               v20 ->
-                                                                                                                               addInt
+                                                                                                                                    v13)
                                                                                                                                  (coe
-                                                                                                                                    (1 ::
-                                                                                                                                       Integer))
+                                                                                                                                    v15)
                                                                                                                                  (coe
-                                                                                                                                    v20)))
-                                                                                                                         (coe
-                                                                                                                            (0 ::
-                                                                                                                               Integer))
-                                                                                                                         (coe
-                                                                                                                            v8))
-                                                                                                                      (coe
-                                                                                                                         v18)
-                                                                                                                      (coe
-                                                                                                                         MAlonzo.Code.Data.Nat.Base.C_s'8804's_34
-                                                                                                                         (MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900
-                                                                                                                            (coe
-                                                                                                                               MAlonzo.Code.Data.List.Base.du_foldr_216
-                                                                                                                               (coe
-                                                                                                                                  (\ v19
-                                                                                                                                     v20 ->
-                                                                                                                                     addInt
+                                                                                                                                    v20))
+                                                                                                                              (coe
+                                                                                                                                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                                                                                 (coe
+                                                                                                                                    v22)
+                                                                                                                                 (coe
+                                                                                                                                    MAlonzo.Code.Data.Nat.Properties.du_'8804''45''60''45'trans_3128
+                                                                                                                                    (coe
+                                                                                                                                       v23)
+                                                                                                                                    (coe
+                                                                                                                                       MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
                                                                                                                                        (coe
-                                                                                                                                          (1 ::
-                                                                                                                                             Integer))
+                                                                                                                                          addInt
+                                                                                                                                          (coe
+                                                                                                                                             (1 ::
+                                                                                                                                                Integer))
+                                                                                                                                          (coe
+                                                                                                                                             MAlonzo.Code.Data.List.Base.du_foldr_216
+                                                                                                                                             (coe
+                                                                                                                                                (\ v24
+                                                                                                                                                   v25 ->
+                                                                                                                                                   addInt
+                                                                                                                                                     (coe
+                                                                                                                                                        (1 ::
+                                                                                                                                                           Integer))
+                                                                                                                                                     (coe
+                                                                                                                                                        v25)))
+                                                                                                                                             (coe
+                                                                                                                                                (0 ::
+                                                                                                                                                   Integer))
+                                                                                                                                             (coe
+                                                                                                                                                v8)))
                                                                                                                                        (coe
-                                                                                                                                          v20)))
-                                                                                                                               (coe
-                                                                                                                                  (0 ::
-                                                                                                                                     Integer))
-                                                                                                                               (coe
-                                                                                                                                  v8)))))
-                                                                                                                   (coe
-                                                                                                                      v6))))
+                                                                                                                                          MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
+                                                                                                                                          (coe
+                                                                                                                                             MAlonzo.Code.Data.List.Base.du_foldr_216
+                                                                                                                                             (coe
+                                                                                                                                                (\ v24
+                                                                                                                                                   v25 ->
+                                                                                                                                                   addInt
+                                                                                                                                                     (coe
+                                                                                                                                                        (1 ::
+                                                                                                                                                           Integer))
+                                                                                                                                                     (coe
+                                                                                                                                                        v25)))
+                                                                                                                                             (coe
+                                                                                                                                                (0 ::
+                                                                                                                                                   Integer))
+                                                                                                                                             (coe
+                                                                                                                                                v8))
+                                                                                                                                          (coe
+                                                                                                                                             v18)
+                                                                                                                                          (coe
+                                                                                                                                             MAlonzo.Code.Data.Nat.Base.C_s'8804's_34
+                                                                                                                                             (MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900
+                                                                                                                                                (coe
+                                                                                                                                                   MAlonzo.Code.Data.List.Base.du_foldr_216
+                                                                                                                                                   (coe
+                                                                                                                                                      (\ v24
+                                                                                                                                                         v25 ->
+                                                                                                                                                         addInt
+                                                                                                                                                           (coe
+                                                                                                                                                              (1 ::
+                                                                                                                                                                 Integer))
+                                                                                                                                                           (coe
+                                                                                                                                                              v25)))
+                                                                                                                                                   (coe
+                                                                                                                                                      (0 ::
+                                                                                                                                                         Integer))
+                                                                                                                                                   (coe
+                                                                                                                                                      v8)))))
+                                                                                                                                       (coe
+                                                                                                                                          v6)))))
+                                                                                                                    _ -> MAlonzo.RTE.mazUnreachableError
+                                                                                                             _ -> MAlonzo.RTE.mazUnreachableError)
                                                                                                    _ -> MAlonzo.RTE.mazUnreachableError
                                                                                             _ -> MAlonzo.RTE.mazUnreachableError
                                                                                      MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
@@ -3205,86 +3832,105 @@ d_parseSignatureB_138 v0
                                                                                             then case coe
                                                                                                         v15 of
                                                                                                    MAlonzo.Code.Relation.Nullary.Reflects.C_of'696'_22 v16
-                                                                                                     -> coe
-                                                                                                          MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                                                                                                          (coe
-                                                                                                             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                                                                                             (coe
-                                                                                                                MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
-                                                                                                                (coe
-                                                                                                                   v3)
-                                                                                                                (coe
-                                                                                                                   v9)
-                                                                                                                (coe
-                                                                                                                   v11))
-                                                                                                             (coe
-                                                                                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                                                                                                (coe
-                                                                                                                   v12)
-                                                                                                                (coe
-                                                                                                                   MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
-                                                                                                                   (coe
-                                                                                                                      addInt
-                                                                                                                      (coe
-                                                                                                                         (1 ::
-                                                                                                                            Integer))
-                                                                                                                      (coe
-                                                                                                                         MAlonzo.Code.Data.List.Base.du_foldr_216
-                                                                                                                         (coe
-                                                                                                                            (\ v17
-                                                                                                                               v18 ->
-                                                                                                                               addInt
+                                                                                                     -> let v17
+                                                                                                              = d_parseEffAnnot_160
+                                                                                                                  (coe
+                                                                                                                     v12) in
+                                                                                                        coe
+                                                                                                          (case coe
+                                                                                                                  v17 of
+                                                                                                             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v18 v19
+                                                                                                               -> case coe
+                                                                                                                         v19 of
+                                                                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v20 v21
+                                                                                                                      -> coe
+                                                                                                                           MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                                                                           (coe
+                                                                                                                              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                                                                              (coe
+                                                                                                                                 MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
                                                                                                                                  (coe
-                                                                                                                                    (1 ::
-                                                                                                                                       Integer))
+                                                                                                                                    v3)
                                                                                                                                  (coe
-                                                                                                                                    v18)))
-                                                                                                                         (coe
-                                                                                                                            (0 ::
-                                                                                                                               Integer))
-                                                                                                                         (coe
-                                                                                                                            v8)))
-                                                                                                                   (coe
-                                                                                                                      MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
-                                                                                                                      (coe
-                                                                                                                         MAlonzo.Code.Data.List.Base.du_foldr_216
-                                                                                                                         (coe
-                                                                                                                            (\ v17
-                                                                                                                               v18 ->
-                                                                                                                               addInt
+                                                                                                                                    v9)
                                                                                                                                  (coe
-                                                                                                                                    (1 ::
-                                                                                                                                       Integer))
+                                                                                                                                    v11)
                                                                                                                                  (coe
-                                                                                                                                    v18)))
-                                                                                                                         (coe
-                                                                                                                            (0 ::
-                                                                                                                               Integer))
-                                                                                                                         (coe
-                                                                                                                            v8))
-                                                                                                                      (coe
-                                                                                                                         v16)
-                                                                                                                      (coe
-                                                                                                                         MAlonzo.Code.Data.Nat.Base.C_s'8804's_34
-                                                                                                                         (MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900
-                                                                                                                            (coe
-                                                                                                                               MAlonzo.Code.Data.List.Base.du_foldr_216
-                                                                                                                               (coe
-                                                                                                                                  (\ v17
-                                                                                                                                     v18 ->
-                                                                                                                                     addInt
+                                                                                                                                    v18))
+                                                                                                                              (coe
+                                                                                                                                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                                                                                 (coe
+                                                                                                                                    v20)
+                                                                                                                                 (coe
+                                                                                                                                    MAlonzo.Code.Data.Nat.Properties.du_'8804''45''60''45'trans_3128
+                                                                                                                                    (coe
+                                                                                                                                       v21)
+                                                                                                                                    (coe
+                                                                                                                                       MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
                                                                                                                                        (coe
-                                                                                                                                          (1 ::
-                                                                                                                                             Integer))
+                                                                                                                                          addInt
+                                                                                                                                          (coe
+                                                                                                                                             (1 ::
+                                                                                                                                                Integer))
+                                                                                                                                          (coe
+                                                                                                                                             MAlonzo.Code.Data.List.Base.du_foldr_216
+                                                                                                                                             (coe
+                                                                                                                                                (\ v22
+                                                                                                                                                   v23 ->
+                                                                                                                                                   addInt
+                                                                                                                                                     (coe
+                                                                                                                                                        (1 ::
+                                                                                                                                                           Integer))
+                                                                                                                                                     (coe
+                                                                                                                                                        v23)))
+                                                                                                                                             (coe
+                                                                                                                                                (0 ::
+                                                                                                                                                   Integer))
+                                                                                                                                             (coe
+                                                                                                                                                v8)))
                                                                                                                                        (coe
-                                                                                                                                          v18)))
-                                                                                                                               (coe
-                                                                                                                                  (0 ::
-                                                                                                                                     Integer))
-                                                                                                                               (coe
-                                                                                                                                  v8)))))
-                                                                                                                   (coe
-                                                                                                                      v6))))
+                                                                                                                                          MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
+                                                                                                                                          (coe
+                                                                                                                                             MAlonzo.Code.Data.List.Base.du_foldr_216
+                                                                                                                                             (coe
+                                                                                                                                                (\ v22
+                                                                                                                                                   v23 ->
+                                                                                                                                                   addInt
+                                                                                                                                                     (coe
+                                                                                                                                                        (1 ::
+                                                                                                                                                           Integer))
+                                                                                                                                                     (coe
+                                                                                                                                                        v23)))
+                                                                                                                                             (coe
+                                                                                                                                                (0 ::
+                                                                                                                                                   Integer))
+                                                                                                                                             (coe
+                                                                                                                                                v8))
+                                                                                                                                          (coe
+                                                                                                                                             v16)
+                                                                                                                                          (coe
+                                                                                                                                             MAlonzo.Code.Data.Nat.Base.C_s'8804's_34
+                                                                                                                                             (MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900
+                                                                                                                                                (coe
+                                                                                                                                                   MAlonzo.Code.Data.List.Base.du_foldr_216
+                                                                                                                                                   (coe
+                                                                                                                                                      (\ v22
+                                                                                                                                                         v23 ->
+                                                                                                                                                         addInt
+                                                                                                                                                           (coe
+                                                                                                                                                              (1 ::
+                                                                                                                                                                 Integer))
+                                                                                                                                                           (coe
+                                                                                                                                                              v23)))
+                                                                                                                                                   (coe
+                                                                                                                                                      (0 ::
+                                                                                                                                                         Integer))
+                                                                                                                                                   (coe
+                                                                                                                                                      v8)))))
+                                                                                                                                       (coe
+                                                                                                                                          v6)))))
+                                                                                                                    _ -> MAlonzo.RTE.mazUnreachableError
+                                                                                                             _ -> MAlonzo.RTE.mazUnreachableError)
                                                                                                    _ -> MAlonzo.RTE.mazUnreachableError
                                                                                             else (let v16
                                                                                                         = seq
@@ -3302,86 +3948,105 @@ d_parseSignatureB_138 v0
                                                                                                                 -> case coe
                                                                                                                           v19 of
                                                                                                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v20 v21
-                                                                                                                       -> coe
-                                                                                                                            MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                                                                                                                            (coe
-                                                                                                                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                                                                                                               (coe
-                                                                                                                                  MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
-                                                                                                                                  (coe
-                                                                                                                                     v3)
-                                                                                                                                  (coe
-                                                                                                                                     v9)
-                                                                                                                                  (coe
-                                                                                                                                     v18))
-                                                                                                                               (coe
-                                                                                                                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                                                                                                                  (coe
-                                                                                                                                     v20)
-                                                                                                                                  (coe
-                                                                                                                                     MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
-                                                                                                                                     (coe
-                                                                                                                                        addInt
-                                                                                                                                        (coe
-                                                                                                                                           (1 ::
-                                                                                                                                              Integer))
-                                                                                                                                        (coe
-                                                                                                                                           MAlonzo.Code.Data.List.Base.du_foldr_216
-                                                                                                                                           (coe
-                                                                                                                                              (\ v22
-                                                                                                                                                 v23 ->
-                                                                                                                                                 addInt
+                                                                                                                       -> let v22
+                                                                                                                                = d_parseEffAnnot_160
+                                                                                                                                    (coe
+                                                                                                                                       v20) in
+                                                                                                                          coe
+                                                                                                                            (case coe
+                                                                                                                                    v22 of
+                                                                                                                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v23 v24
+                                                                                                                                 -> case coe
+                                                                                                                                           v24 of
+                                                                                                                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v25 v26
+                                                                                                                                        -> coe
+                                                                                                                                             MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                                                                                             (coe
+                                                                                                                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                                                                                                (coe
+                                                                                                                                                   MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
                                                                                                                                                    (coe
-                                                                                                                                                      (1 ::
-                                                                                                                                                         Integer))
+                                                                                                                                                      v3)
                                                                                                                                                    (coe
-                                                                                                                                                      v23)))
-                                                                                                                                           (coe
-                                                                                                                                              (0 ::
-                                                                                                                                                 Integer))
-                                                                                                                                           (coe
-                                                                                                                                              v8)))
-                                                                                                                                     (coe
-                                                                                                                                        MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
-                                                                                                                                        (coe
-                                                                                                                                           MAlonzo.Code.Data.List.Base.du_foldr_216
-                                                                                                                                           (coe
-                                                                                                                                              (\ v22
-                                                                                                                                                 v23 ->
-                                                                                                                                                 addInt
+                                                                                                                                                      v9)
                                                                                                                                                    (coe
-                                                                                                                                                      (1 ::
-                                                                                                                                                         Integer))
+                                                                                                                                                      v18)
                                                                                                                                                    (coe
-                                                                                                                                                      v23)))
-                                                                                                                                           (coe
-                                                                                                                                              (0 ::
-                                                                                                                                                 Integer))
-                                                                                                                                           (coe
-                                                                                                                                              v8))
-                                                                                                                                        (coe
-                                                                                                                                           v21)
-                                                                                                                                        (coe
-                                                                                                                                           MAlonzo.Code.Data.Nat.Base.C_s'8804's_34
-                                                                                                                                           (MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900
-                                                                                                                                              (coe
-                                                                                                                                                 MAlonzo.Code.Data.List.Base.du_foldr_216
-                                                                                                                                                 (coe
-                                                                                                                                                    (\ v22
-                                                                                                                                                       v23 ->
-                                                                                                                                                       addInt
+                                                                                                                                                      v23))
+                                                                                                                                                (coe
+                                                                                                                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                                                                                                   (coe
+                                                                                                                                                      v25)
+                                                                                                                                                   (coe
+                                                                                                                                                      MAlonzo.Code.Data.Nat.Properties.du_'8804''45''60''45'trans_3128
+                                                                                                                                                      (coe
+                                                                                                                                                         v26)
+                                                                                                                                                      (coe
+                                                                                                                                                         MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
                                                                                                                                                          (coe
-                                                                                                                                                            (1 ::
-                                                                                                                                                               Integer))
+                                                                                                                                                            addInt
+                                                                                                                                                            (coe
+                                                                                                                                                               (1 ::
+                                                                                                                                                                  Integer))
+                                                                                                                                                            (coe
+                                                                                                                                                               MAlonzo.Code.Data.List.Base.du_foldr_216
+                                                                                                                                                               (coe
+                                                                                                                                                                  (\ v27
+                                                                                                                                                                     v28 ->
+                                                                                                                                                                     addInt
+                                                                                                                                                                       (coe
+                                                                                                                                                                          (1 ::
+                                                                                                                                                                             Integer))
+                                                                                                                                                                       (coe
+                                                                                                                                                                          v28)))
+                                                                                                                                                               (coe
+                                                                                                                                                                  (0 ::
+                                                                                                                                                                     Integer))
+                                                                                                                                                               (coe
+                                                                                                                                                                  v8)))
                                                                                                                                                          (coe
-                                                                                                                                                            v23)))
-                                                                                                                                                 (coe
-                                                                                                                                                    (0 ::
-                                                                                                                                                       Integer))
-                                                                                                                                                 (coe
-                                                                                                                                                    v8)))))
-                                                                                                                                     (coe
-                                                                                                                                        v6))))
+                                                                                                                                                            MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
+                                                                                                                                                            (coe
+                                                                                                                                                               MAlonzo.Code.Data.List.Base.du_foldr_216
+                                                                                                                                                               (coe
+                                                                                                                                                                  (\ v27
+                                                                                                                                                                     v28 ->
+                                                                                                                                                                     addInt
+                                                                                                                                                                       (coe
+                                                                                                                                                                          (1 ::
+                                                                                                                                                                             Integer))
+                                                                                                                                                                       (coe
+                                                                                                                                                                          v28)))
+                                                                                                                                                               (coe
+                                                                                                                                                                  (0 ::
+                                                                                                                                                                     Integer))
+                                                                                                                                                               (coe
+                                                                                                                                                                  v8))
+                                                                                                                                                            (coe
+                                                                                                                                                               v21)
+                                                                                                                                                            (coe
+                                                                                                                                                               MAlonzo.Code.Data.Nat.Base.C_s'8804's_34
+                                                                                                                                                               (MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900
+                                                                                                                                                                  (coe
+                                                                                                                                                                     MAlonzo.Code.Data.List.Base.du_foldr_216
+                                                                                                                                                                     (coe
+                                                                                                                                                                        (\ v27
+                                                                                                                                                                           v28 ->
+                                                                                                                                                                           addInt
+                                                                                                                                                                             (coe
+                                                                                                                                                                                (1 ::
+                                                                                                                                                                                   Integer))
+                                                                                                                                                                             (coe
+                                                                                                                                                                                v28)))
+                                                                                                                                                                     (coe
+                                                                                                                                                                        (0 ::
+                                                                                                                                                                           Integer))
+                                                                                                                                                                     (coe
+                                                                                                                                                                        v8)))))
+                                                                                                                                                         (coe
+                                                                                                                                                            v6)))))
+                                                                                                                                      _ -> MAlonzo.RTE.mazUnreachableError
+                                                                                                                               _ -> MAlonzo.RTE.mazUnreachableError)
                                                                                                                      _ -> MAlonzo.RTE.mazUnreachableError
                                                                                                               _ -> MAlonzo.RTE.mazUnreachableError
                                                                                                        MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
@@ -3398,86 +4063,105 @@ d_parseSignatureB_138 v0
                                                                                     -> case coe
                                                                                               v12 of
                                                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v13 v14
-                                                                                           -> coe
-                                                                                                MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                                                                                                (coe
-                                                                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                                                                                   (coe
-                                                                                                      MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
-                                                                                                      (coe
-                                                                                                         v3)
-                                                                                                      (coe
-                                                                                                         v9)
-                                                                                                      (coe
-                                                                                                         v11))
-                                                                                                   (coe
-                                                                                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                                                                                      (coe
-                                                                                                         v13)
-                                                                                                      (coe
-                                                                                                         MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
-                                                                                                         (coe
-                                                                                                            addInt
-                                                                                                            (coe
-                                                                                                               (1 ::
-                                                                                                                  Integer))
-                                                                                                            (coe
-                                                                                                               MAlonzo.Code.Data.List.Base.du_foldr_216
-                                                                                                               (coe
-                                                                                                                  (\ v15
-                                                                                                                     v16 ->
-                                                                                                                     addInt
+                                                                                           -> let v15
+                                                                                                    = d_parseEffAnnot_160
+                                                                                                        (coe
+                                                                                                           v13) in
+                                                                                              coe
+                                                                                                (case coe
+                                                                                                        v15 of
+                                                                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v16 v17
+                                                                                                     -> case coe
+                                                                                                               v17 of
+                                                                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v18 v19
+                                                                                                            -> coe
+                                                                                                                 MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                                                                 (coe
+                                                                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                                                                    (coe
+                                                                                                                       MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
                                                                                                                        (coe
-                                                                                                                          (1 ::
-                                                                                                                             Integer))
+                                                                                                                          v3)
                                                                                                                        (coe
-                                                                                                                          v16)))
-                                                                                                               (coe
-                                                                                                                  (0 ::
-                                                                                                                     Integer))
-                                                                                                               (coe
-                                                                                                                  v8)))
-                                                                                                         (coe
-                                                                                                            MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
-                                                                                                            (coe
-                                                                                                               MAlonzo.Code.Data.List.Base.du_foldr_216
-                                                                                                               (coe
-                                                                                                                  (\ v15
-                                                                                                                     v16 ->
-                                                                                                                     addInt
+                                                                                                                          v9)
                                                                                                                        (coe
-                                                                                                                          (1 ::
-                                                                                                                             Integer))
+                                                                                                                          v11)
                                                                                                                        (coe
-                                                                                                                          v16)))
-                                                                                                               (coe
-                                                                                                                  (0 ::
-                                                                                                                     Integer))
-                                                                                                               (coe
-                                                                                                                  v8))
-                                                                                                            (coe
-                                                                                                               v14)
-                                                                                                            (coe
-                                                                                                               MAlonzo.Code.Data.Nat.Base.C_s'8804's_34
-                                                                                                               (MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900
-                                                                                                                  (coe
-                                                                                                                     MAlonzo.Code.Data.List.Base.du_foldr_216
-                                                                                                                     (coe
-                                                                                                                        (\ v15
-                                                                                                                           v16 ->
-                                                                                                                           addInt
+                                                                                                                          v16))
+                                                                                                                    (coe
+                                                                                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                                                                       (coe
+                                                                                                                          v18)
+                                                                                                                       (coe
+                                                                                                                          MAlonzo.Code.Data.Nat.Properties.du_'8804''45''60''45'trans_3128
+                                                                                                                          (coe
+                                                                                                                             v19)
+                                                                                                                          (coe
+                                                                                                                             MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
                                                                                                                              (coe
-                                                                                                                                (1 ::
-                                                                                                                                   Integer))
+                                                                                                                                addInt
+                                                                                                                                (coe
+                                                                                                                                   (1 ::
+                                                                                                                                      Integer))
+                                                                                                                                (coe
+                                                                                                                                   MAlonzo.Code.Data.List.Base.du_foldr_216
+                                                                                                                                   (coe
+                                                                                                                                      (\ v20
+                                                                                                                                         v21 ->
+                                                                                                                                         addInt
+                                                                                                                                           (coe
+                                                                                                                                              (1 ::
+                                                                                                                                                 Integer))
+                                                                                                                                           (coe
+                                                                                                                                              v21)))
+                                                                                                                                   (coe
+                                                                                                                                      (0 ::
+                                                                                                                                         Integer))
+                                                                                                                                   (coe
+                                                                                                                                      v8)))
                                                                                                                              (coe
-                                                                                                                                v16)))
-                                                                                                                     (coe
-                                                                                                                        (0 ::
-                                                                                                                           Integer))
-                                                                                                                     (coe
-                                                                                                                        v8)))))
-                                                                                                         (coe
-                                                                                                            v6))))
+                                                                                                                                MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
+                                                                                                                                (coe
+                                                                                                                                   MAlonzo.Code.Data.List.Base.du_foldr_216
+                                                                                                                                   (coe
+                                                                                                                                      (\ v20
+                                                                                                                                         v21 ->
+                                                                                                                                         addInt
+                                                                                                                                           (coe
+                                                                                                                                              (1 ::
+                                                                                                                                                 Integer))
+                                                                                                                                           (coe
+                                                                                                                                              v21)))
+                                                                                                                                   (coe
+                                                                                                                                      (0 ::
+                                                                                                                                         Integer))
+                                                                                                                                   (coe
+                                                                                                                                      v8))
+                                                                                                                                (coe
+                                                                                                                                   v14)
+                                                                                                                                (coe
+                                                                                                                                   MAlonzo.Code.Data.Nat.Base.C_s'8804's_34
+                                                                                                                                   (MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900
+                                                                                                                                      (coe
+                                                                                                                                         MAlonzo.Code.Data.List.Base.du_foldr_216
+                                                                                                                                         (coe
+                                                                                                                                            (\ v20
+                                                                                                                                               v21 ->
+                                                                                                                                               addInt
+                                                                                                                                                 (coe
+                                                                                                                                                    (1 ::
+                                                                                                                                                       Integer))
+                                                                                                                                                 (coe
+                                                                                                                                                    v21)))
+                                                                                                                                         (coe
+                                                                                                                                            (0 ::
+                                                                                                                                               Integer))
+                                                                                                                                         (coe
+                                                                                                                                            v8)))))
+                                                                                                                             (coe
+                                                                                                                                v6)))))
+                                                                                                          _ -> MAlonzo.RTE.mazUnreachableError
+                                                                                                   _ -> MAlonzo.RTE.mazUnreachableError)
                                                                                          _ -> MAlonzo.RTE.mazUnreachableError
                                                                                   _ -> MAlonzo.RTE.mazUnreachableError
                                                                            MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
@@ -3494,10 +4178,10 @@ d_parseSignatureB_138 v0
          MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v1
          _ -> MAlonzo.RTE.mazUnreachableError)
 -- Once.Parser.Module.DeclTail.parseSignature
-d_parseSignature_184 ::
+d_parseSignature_252 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_parseSignature_184 v0
+d_parseSignature_252 v0
   = let v1
           = MAlonzo.Code.Once.Parser.Module.Core.d_anyWordB_118 (coe v0) in
     coe
@@ -3591,20 +4275,39 @@ d_parseSignature_184 v0
                                                                                                                                  seq
                                                                                                                                  (coe
                                                                                                                                     v27)
-                                                                                                                                 (coe
-                                                                                                                                    MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                                                                                                                                    (coe
-                                                                                                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                                                                                                                       (coe
-                                                                                                                                          MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
-                                                                                                                                          (coe
-                                                                                                                                             v3)
-                                                                                                                                          (coe
-                                                                                                                                             MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18)
-                                                                                                                                          (coe
-                                                                                                                                             v23))
-                                                                                                                                       (coe
-                                                                                                                                          v24)))
+                                                                                                                                 (let v28
+                                                                                                                                        = d_parseEffAnnot_160
+                                                                                                                                            (coe
+                                                                                                                                               v24) in
+                                                                                                                                  coe
+                                                                                                                                    (case coe
+                                                                                                                                            v28 of
+                                                                                                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v29 v30
+                                                                                                                                         -> case coe
+                                                                                                                                                   v30 of
+                                                                                                                                              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v31 v32
+                                                                                                                                                -> let v33
+                                                                                                                                                         = coe
+                                                                                                                                                             MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
+                                                                                                                                                             (coe
+                                                                                                                                                                v3)
+                                                                                                                                                             (coe
+                                                                                                                                                                MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18)
+                                                                                                                                                             (coe
+                                                                                                                                                                v23)
+                                                                                                                                                             (coe
+                                                                                                                                                                v29) in
+                                                                                                                                                   coe
+                                                                                                                                                     (coe
+                                                                                                                                                        MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                                                                                                        (coe
+                                                                                                                                                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                                                                                                           (coe
+                                                                                                                                                              v33)
+                                                                                                                                                           (coe
+                                                                                                                                                              v31)))
+                                                                                                                                              _ -> MAlonzo.RTE.mazUnreachableError
+                                                                                                                                       _ -> MAlonzo.RTE.mazUnreachableError))
                                                                                                                           else (let v28
                                                                                                                                       = seq
                                                                                                                                           (coe
@@ -3622,23 +4325,38 @@ d_parseSignature_184 v0
                                                                                                                                                         v31 of
                                                                                                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v32 v33
                                                                                                                                                      -> let v34
-                                                                                                                                                              = coe
-                                                                                                                                                                  MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
+                                                                                                                                                              = d_parseEffAnnot_160
                                                                                                                                                                   (coe
-                                                                                                                                                                     v3)
-                                                                                                                                                                  (coe
-                                                                                                                                                                     MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18)
-                                                                                                                                                                  (coe
-                                                                                                                                                                     v30) in
+                                                                                                                                                                     v32) in
                                                                                                                                                         coe
-                                                                                                                                                          (coe
-                                                                                                                                                             MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                                                                                                                                                             (coe
-                                                                                                                                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                                                                                                                                                (coe
-                                                                                                                                                                   v34)
-                                                                                                                                                                (coe
-                                                                                                                                                                   v32)))
+                                                                                                                                                          (case coe
+                                                                                                                                                                  v34 of
+                                                                                                                                                             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v35 v36
+                                                                                                                                                               -> case coe
+                                                                                                                                                                         v36 of
+                                                                                                                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v37 v38
+                                                                                                                                                                      -> let v39
+                                                                                                                                                                               = coe
+                                                                                                                                                                                   MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
+                                                                                                                                                                                   (coe
+                                                                                                                                                                                      v3)
+                                                                                                                                                                                   (coe
+                                                                                                                                                                                      MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18)
+                                                                                                                                                                                   (coe
+                                                                                                                                                                                      v30)
+                                                                                                                                                                                   (coe
+                                                                                                                                                                                      v35) in
+                                                                                                                                                                         coe
+                                                                                                                                                                           (coe
+                                                                                                                                                                              MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                                                                                                                              (coe
+                                                                                                                                                                                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                                                                                                                                 (coe
+                                                                                                                                                                                    v39)
+                                                                                                                                                                                 (coe
+                                                                                                                                                                                    v37)))
+                                                                                                                                                                    _ -> MAlonzo.RTE.mazUnreachableError
+                                                                                                                                                             _ -> MAlonzo.RTE.mazUnreachableError)
                                                                                                                                                    _ -> MAlonzo.RTE.mazUnreachableError
                                                                                                                                             _ -> MAlonzo.RTE.mazUnreachableError
                                                                                                                                      MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
@@ -3679,23 +4397,38 @@ d_parseSignature_184 v0
                                                                                                                             v24 of
                                                                                                                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v25 v26
                                                                                                                          -> let v27
-                                                                                                                                  = coe
-                                                                                                                                      MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
+                                                                                                                                  = d_parseEffAnnot_160
                                                                                                                                       (coe
-                                                                                                                                         v3)
-                                                                                                                                      (coe
-                                                                                                                                         v21)
-                                                                                                                                      (coe
-                                                                                                                                         v23) in
+                                                                                                                                         v25) in
                                                                                                                             coe
-                                                                                                                              (coe
-                                                                                                                                 MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                                                                                                                                 (coe
-                                                                                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                                                                                                                    (coe
-                                                                                                                                       v27)
-                                                                                                                                    (coe
-                                                                                                                                       v25)))
+                                                                                                                              (case coe
+                                                                                                                                      v27 of
+                                                                                                                                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v28 v29
+                                                                                                                                   -> case coe
+                                                                                                                                             v29 of
+                                                                                                                                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v30 v31
+                                                                                                                                          -> let v32
+                                                                                                                                                   = coe
+                                                                                                                                                       MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
+                                                                                                                                                       (coe
+                                                                                                                                                          v3)
+                                                                                                                                                       (coe
+                                                                                                                                                          v21)
+                                                                                                                                                       (coe
+                                                                                                                                                          v23)
+                                                                                                                                                       (coe
+                                                                                                                                                          v28) in
+                                                                                                                                             coe
+                                                                                                                                               (coe
+                                                                                                                                                  MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                                                                                                  (coe
+                                                                                                                                                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                                                                                                     (coe
+                                                                                                                                                        v32)
+                                                                                                                                                     (coe
+                                                                                                                                                        v30)))
+                                                                                                                                        _ -> MAlonzo.RTE.mazUnreachableError
+                                                                                                                                 _ -> MAlonzo.RTE.mazUnreachableError)
                                                                                                                        _ -> MAlonzo.RTE.mazUnreachableError
                                                                                                                 _ -> MAlonzo.RTE.mazUnreachableError
                                                                                                          MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
@@ -3773,20 +4506,39 @@ d_parseSignature_184 v0
                                                                                                                        seq
                                                                                                                        (coe
                                                                                                                           v23)
-                                                                                                                       (coe
-                                                                                                                          MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                                                                                                                          (coe
-                                                                                                                             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                                                                                                             (coe
-                                                                                                                                MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
-                                                                                                                                (coe
-                                                                                                                                   v3)
-                                                                                                                                (coe
-                                                                                                                                   v17)
-                                                                                                                                (coe
-                                                                                                                                   v19))
-                                                                                                                             (coe
-                                                                                                                                v20)))
+                                                                                                                       (let v24
+                                                                                                                              = d_parseEffAnnot_160
+                                                                                                                                  (coe
+                                                                                                                                     v20) in
+                                                                                                                        coe
+                                                                                                                          (case coe
+                                                                                                                                  v24 of
+                                                                                                                             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v25 v26
+                                                                                                                               -> case coe
+                                                                                                                                         v26 of
+                                                                                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v27 v28
+                                                                                                                                      -> let v29
+                                                                                                                                               = coe
+                                                                                                                                                   MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
+                                                                                                                                                   (coe
+                                                                                                                                                      v3)
+                                                                                                                                                   (coe
+                                                                                                                                                      v17)
+                                                                                                                                                   (coe
+                                                                                                                                                      v19)
+                                                                                                                                                   (coe
+                                                                                                                                                      v25) in
+                                                                                                                                         coe
+                                                                                                                                           (coe
+                                                                                                                                              MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                                                                                              (coe
+                                                                                                                                                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                                                                                                 (coe
+                                                                                                                                                    v29)
+                                                                                                                                                 (coe
+                                                                                                                                                    v27)))
+                                                                                                                                    _ -> MAlonzo.RTE.mazUnreachableError
+                                                                                                                             _ -> MAlonzo.RTE.mazUnreachableError))
                                                                                                                 else (let v24
                                                                                                                             = seq
                                                                                                                                 (coe
@@ -3804,23 +4556,38 @@ d_parseSignature_184 v0
                                                                                                                                               v27 of
                                                                                                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v28 v29
                                                                                                                                            -> let v30
-                                                                                                                                                    = coe
-                                                                                                                                                        MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
+                                                                                                                                                    = d_parseEffAnnot_160
                                                                                                                                                         (coe
-                                                                                                                                                           v3)
-                                                                                                                                                        (coe
-                                                                                                                                                           v17)
-                                                                                                                                                        (coe
-                                                                                                                                                           v26) in
+                                                                                                                                                           v28) in
                                                                                                                                               coe
-                                                                                                                                                (coe
-                                                                                                                                                   MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                                                                                                                                                   (coe
-                                                                                                                                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                                                                                                                                      (coe
-                                                                                                                                                         v30)
-                                                                                                                                                      (coe
-                                                                                                                                                         v28)))
+                                                                                                                                                (case coe
+                                                                                                                                                        v30 of
+                                                                                                                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v31 v32
+                                                                                                                                                     -> case coe
+                                                                                                                                                               v32 of
+                                                                                                                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v33 v34
+                                                                                                                                                            -> let v35
+                                                                                                                                                                     = coe
+                                                                                                                                                                         MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
+                                                                                                                                                                         (coe
+                                                                                                                                                                            v3)
+                                                                                                                                                                         (coe
+                                                                                                                                                                            v17)
+                                                                                                                                                                         (coe
+                                                                                                                                                                            v26)
+                                                                                                                                                                         (coe
+                                                                                                                                                                            v31) in
+                                                                                                                                                               coe
+                                                                                                                                                                 (coe
+                                                                                                                                                                    MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                                                                                                                    (coe
+                                                                                                                                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                                                                                                                       (coe
+                                                                                                                                                                          v35)
+                                                                                                                                                                       (coe
+                                                                                                                                                                          v33)))
+                                                                                                                                                          _ -> MAlonzo.RTE.mazUnreachableError
+                                                                                                                                                   _ -> MAlonzo.RTE.mazUnreachableError)
                                                                                                                                          _ -> MAlonzo.RTE.mazUnreachableError
                                                                                                                                   _ -> MAlonzo.RTE.mazUnreachableError
                                                                                                                            MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
@@ -3861,23 +4628,38 @@ d_parseSignature_184 v0
                                                                                                                   v20 of
                                                                                                              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v21 v22
                                                                                                                -> let v23
-                                                                                                                        = coe
-                                                                                                                            MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
+                                                                                                                        = d_parseEffAnnot_160
                                                                                                                             (coe
-                                                                                                                               v3)
-                                                                                                                            (coe
-                                                                                                                               v17)
-                                                                                                                            (coe
-                                                                                                                               v19) in
+                                                                                                                               v21) in
                                                                                                                   coe
-                                                                                                                    (coe
-                                                                                                                       MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                                                                                                                       (coe
-                                                                                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                                                                                                          (coe
-                                                                                                                             v23)
-                                                                                                                          (coe
-                                                                                                                             v21)))
+                                                                                                                    (case coe
+                                                                                                                            v23 of
+                                                                                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v24 v25
+                                                                                                                         -> case coe
+                                                                                                                                   v25 of
+                                                                                                                              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v26 v27
+                                                                                                                                -> let v28
+                                                                                                                                         = coe
+                                                                                                                                             MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
+                                                                                                                                             (coe
+                                                                                                                                                v3)
+                                                                                                                                             (coe
+                                                                                                                                                v17)
+                                                                                                                                             (coe
+                                                                                                                                                v19)
+                                                                                                                                             (coe
+                                                                                                                                                v24) in
+                                                                                                                                   coe
+                                                                                                                                     (coe
+                                                                                                                                        MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                                                                                        (coe
+                                                                                                                                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                                                                                           (coe
+                                                                                                                                              v28)
+                                                                                                                                           (coe
+                                                                                                                                              v26)))
+                                                                                                                              _ -> MAlonzo.RTE.mazUnreachableError
+                                                                                                                       _ -> MAlonzo.RTE.mazUnreachableError)
                                                                                                              _ -> MAlonzo.RTE.mazUnreachableError
                                                                                                       _ -> MAlonzo.RTE.mazUnreachableError
                                                                                                MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
@@ -3967,20 +4749,39 @@ d_parseSignature_184 v0
                                                                                                                        seq
                                                                                                                        (coe
                                                                                                                           v23)
-                                                                                                                       (coe
-                                                                                                                          MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                                                                                                                          (coe
-                                                                                                                             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                                                                                                             (coe
-                                                                                                                                MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
-                                                                                                                                (coe
-                                                                                                                                   v3)
-                                                                                                                                (coe
-                                                                                                                                   v13)
-                                                                                                                                (coe
-                                                                                                                                   v19))
-                                                                                                                             (coe
-                                                                                                                                v20)))
+                                                                                                                       (let v24
+                                                                                                                              = d_parseEffAnnot_160
+                                                                                                                                  (coe
+                                                                                                                                     v20) in
+                                                                                                                        coe
+                                                                                                                          (case coe
+                                                                                                                                  v24 of
+                                                                                                                             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v25 v26
+                                                                                                                               -> case coe
+                                                                                                                                         v26 of
+                                                                                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v27 v28
+                                                                                                                                      -> let v29
+                                                                                                                                               = coe
+                                                                                                                                                   MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
+                                                                                                                                                   (coe
+                                                                                                                                                      v3)
+                                                                                                                                                   (coe
+                                                                                                                                                      v13)
+                                                                                                                                                   (coe
+                                                                                                                                                      v19)
+                                                                                                                                                   (coe
+                                                                                                                                                      v25) in
+                                                                                                                                         coe
+                                                                                                                                           (coe
+                                                                                                                                              MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                                                                                              (coe
+                                                                                                                                                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                                                                                                 (coe
+                                                                                                                                                    v29)
+                                                                                                                                                 (coe
+                                                                                                                                                    v27)))
+                                                                                                                                    _ -> MAlonzo.RTE.mazUnreachableError
+                                                                                                                             _ -> MAlonzo.RTE.mazUnreachableError))
                                                                                                                 else (let v24
                                                                                                                             = seq
                                                                                                                                 (coe
@@ -3998,23 +4799,38 @@ d_parseSignature_184 v0
                                                                                                                                               v27 of
                                                                                                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v28 v29
                                                                                                                                            -> let v30
-                                                                                                                                                    = coe
-                                                                                                                                                        MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
+                                                                                                                                                    = d_parseEffAnnot_160
                                                                                                                                                         (coe
-                                                                                                                                                           v3)
-                                                                                                                                                        (coe
-                                                                                                                                                           v13)
-                                                                                                                                                        (coe
-                                                                                                                                                           v26) in
+                                                                                                                                                           v28) in
                                                                                                                                               coe
-                                                                                                                                                (coe
-                                                                                                                                                   MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                                                                                                                                                   (coe
-                                                                                                                                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                                                                                                                                      (coe
-                                                                                                                                                         v30)
-                                                                                                                                                      (coe
-                                                                                                                                                         v28)))
+                                                                                                                                                (case coe
+                                                                                                                                                        v30 of
+                                                                                                                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v31 v32
+                                                                                                                                                     -> case coe
+                                                                                                                                                               v32 of
+                                                                                                                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v33 v34
+                                                                                                                                                            -> let v35
+                                                                                                                                                                     = coe
+                                                                                                                                                                         MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
+                                                                                                                                                                         (coe
+                                                                                                                                                                            v3)
+                                                                                                                                                                         (coe
+                                                                                                                                                                            v13)
+                                                                                                                                                                         (coe
+                                                                                                                                                                            v26)
+                                                                                                                                                                         (coe
+                                                                                                                                                                            v31) in
+                                                                                                                                                               coe
+                                                                                                                                                                 (coe
+                                                                                                                                                                    MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                                                                                                                    (coe
+                                                                                                                                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                                                                                                                       (coe
+                                                                                                                                                                          v35)
+                                                                                                                                                                       (coe
+                                                                                                                                                                          v33)))
+                                                                                                                                                          _ -> MAlonzo.RTE.mazUnreachableError
+                                                                                                                                                   _ -> MAlonzo.RTE.mazUnreachableError)
                                                                                                                                          _ -> MAlonzo.RTE.mazUnreachableError
                                                                                                                                   _ -> MAlonzo.RTE.mazUnreachableError
                                                                                                                            MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
@@ -4055,23 +4871,38 @@ d_parseSignature_184 v0
                                                                                                                   v20 of
                                                                                                              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v21 v22
                                                                                                                -> let v23
-                                                                                                                        = coe
-                                                                                                                            MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
+                                                                                                                        = d_parseEffAnnot_160
                                                                                                                             (coe
-                                                                                                                               v3)
-                                                                                                                            (coe
-                                                                                                                               v17)
-                                                                                                                            (coe
-                                                                                                                               v19) in
+                                                                                                                               v21) in
                                                                                                                   coe
-                                                                                                                    (coe
-                                                                                                                       MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                                                                                                                       (coe
-                                                                                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                                                                                                          (coe
-                                                                                                                             v23)
-                                                                                                                          (coe
-                                                                                                                             v21)))
+                                                                                                                    (case coe
+                                                                                                                            v23 of
+                                                                                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v24 v25
+                                                                                                                         -> case coe
+                                                                                                                                   v25 of
+                                                                                                                              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v26 v27
+                                                                                                                                -> let v28
+                                                                                                                                         = coe
+                                                                                                                                             MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
+                                                                                                                                             (coe
+                                                                                                                                                v3)
+                                                                                                                                             (coe
+                                                                                                                                                v17)
+                                                                                                                                             (coe
+                                                                                                                                                v19)
+                                                                                                                                             (coe
+                                                                                                                                                v24) in
+                                                                                                                                   coe
+                                                                                                                                     (coe
+                                                                                                                                        MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                                                                                        (coe
+                                                                                                                                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                                                                                           (coe
+                                                                                                                                              v28)
+                                                                                                                                           (coe
+                                                                                                                                              v26)))
+                                                                                                                              _ -> MAlonzo.RTE.mazUnreachableError
+                                                                                                                       _ -> MAlonzo.RTE.mazUnreachableError)
                                                                                                              _ -> MAlonzo.RTE.mazUnreachableError
                                                                                                       _ -> MAlonzo.RTE.mazUnreachableError
                                                                                                MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
@@ -4147,20 +4978,39 @@ d_parseSignature_184 v0
                                                                                                              seq
                                                                                                              (coe
                                                                                                                 v19)
-                                                                                                             (coe
-                                                                                                                MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                                                                                                                (coe
-                                                                                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                                                                                                   (coe
-                                                                                                                      MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
-                                                                                                                      (coe
-                                                                                                                         v3)
-                                                                                                                      (coe
-                                                                                                                         v13)
-                                                                                                                      (coe
-                                                                                                                         v15))
-                                                                                                                   (coe
-                                                                                                                      v16)))
+                                                                                                             (let v20
+                                                                                                                    = d_parseEffAnnot_160
+                                                                                                                        (coe
+                                                                                                                           v16) in
+                                                                                                              coe
+                                                                                                                (case coe
+                                                                                                                        v20 of
+                                                                                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v21 v22
+                                                                                                                     -> case coe
+                                                                                                                               v22 of
+                                                                                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v23 v24
+                                                                                                                            -> let v25
+                                                                                                                                     = coe
+                                                                                                                                         MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
+                                                                                                                                         (coe
+                                                                                                                                            v3)
+                                                                                                                                         (coe
+                                                                                                                                            v13)
+                                                                                                                                         (coe
+                                                                                                                                            v15)
+                                                                                                                                         (coe
+                                                                                                                                            v21) in
+                                                                                                                               coe
+                                                                                                                                 (coe
+                                                                                                                                    MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                                                                                    (coe
+                                                                                                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                                                                                       (coe
+                                                                                                                                          v25)
+                                                                                                                                       (coe
+                                                                                                                                          v23)))
+                                                                                                                          _ -> MAlonzo.RTE.mazUnreachableError
+                                                                                                                   _ -> MAlonzo.RTE.mazUnreachableError))
                                                                                                       else (let v20
                                                                                                                   = seq
                                                                                                                       (coe
@@ -4178,23 +5028,38 @@ d_parseSignature_184 v0
                                                                                                                                     v23 of
                                                                                                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v24 v25
                                                                                                                                  -> let v26
-                                                                                                                                          = coe
-                                                                                                                                              MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
+                                                                                                                                          = d_parseEffAnnot_160
                                                                                                                                               (coe
-                                                                                                                                                 v3)
-                                                                                                                                              (coe
-                                                                                                                                                 v13)
-                                                                                                                                              (coe
-                                                                                                                                                 v22) in
+                                                                                                                                                 v24) in
                                                                                                                                     coe
-                                                                                                                                      (coe
-                                                                                                                                         MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                                                                                                                                         (coe
-                                                                                                                                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                                                                                                                            (coe
-                                                                                                                                               v26)
-                                                                                                                                            (coe
-                                                                                                                                               v24)))
+                                                                                                                                      (case coe
+                                                                                                                                              v26 of
+                                                                                                                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v27 v28
+                                                                                                                                           -> case coe
+                                                                                                                                                     v28 of
+                                                                                                                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v29 v30
+                                                                                                                                                  -> let v31
+                                                                                                                                                           = coe
+                                                                                                                                                               MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
+                                                                                                                                                               (coe
+                                                                                                                                                                  v3)
+                                                                                                                                                               (coe
+                                                                                                                                                                  v13)
+                                                                                                                                                               (coe
+                                                                                                                                                                  v22)
+                                                                                                                                                               (coe
+                                                                                                                                                                  v27) in
+                                                                                                                                                     coe
+                                                                                                                                                       (coe
+                                                                                                                                                          MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                                                                                                          (coe
+                                                                                                                                                             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                                                                                                             (coe
+                                                                                                                                                                v31)
+                                                                                                                                                             (coe
+                                                                                                                                                                v29)))
+                                                                                                                                                _ -> MAlonzo.RTE.mazUnreachableError
+                                                                                                                                         _ -> MAlonzo.RTE.mazUnreachableError)
                                                                                                                                _ -> MAlonzo.RTE.mazUnreachableError
                                                                                                                         _ -> MAlonzo.RTE.mazUnreachableError
                                                                                                                  MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
@@ -4234,23 +5099,38 @@ d_parseSignature_184 v0
                                                                                                         v16 of
                                                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v17 v18
                                                                                                      -> let v19
-                                                                                                              = coe
-                                                                                                                  MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
+                                                                                                              = d_parseEffAnnot_160
                                                                                                                   (coe
-                                                                                                                     v3)
-                                                                                                                  (coe
-                                                                                                                     v13)
-                                                                                                                  (coe
-                                                                                                                     v15) in
+                                                                                                                     v17) in
                                                                                                         coe
-                                                                                                          (coe
-                                                                                                             MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                                                                                                             (coe
-                                                                                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                                                                                                (coe
-                                                                                                                   v19)
-                                                                                                                (coe
-                                                                                                                   v17)))
+                                                                                                          (case coe
+                                                                                                                  v19 of
+                                                                                                             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v20 v21
+                                                                                                               -> case coe
+                                                                                                                         v21 of
+                                                                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v22 v23
+                                                                                                                      -> let v24
+                                                                                                                               = coe
+                                                                                                                                   MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
+                                                                                                                                   (coe
+                                                                                                                                      v3)
+                                                                                                                                   (coe
+                                                                                                                                      v13)
+                                                                                                                                   (coe
+                                                                                                                                      v15)
+                                                                                                                                   (coe
+                                                                                                                                      v20) in
+                                                                                                                         coe
+                                                                                                                           (coe
+                                                                                                                              MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                                                                              (coe
+                                                                                                                                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                                                                                 (coe
+                                                                                                                                    v24)
+                                                                                                                                 (coe
+                                                                                                                                    v22)))
+                                                                                                                    _ -> MAlonzo.RTE.mazUnreachableError
+                                                                                                             _ -> MAlonzo.RTE.mazUnreachableError)
                                                                                                    _ -> MAlonzo.RTE.mazUnreachableError
                                                                                             _ -> MAlonzo.RTE.mazUnreachableError
                                                                                      MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
@@ -4349,20 +5229,39 @@ d_parseSignature_184 v0
                                                                                                                        seq
                                                                                                                        (coe
                                                                                                                           v23)
-                                                                                                                       (coe
-                                                                                                                          MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                                                                                                                          (coe
-                                                                                                                             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                                                                                                             (coe
-                                                                                                                                MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
-                                                                                                                                (coe
-                                                                                                                                   v3)
-                                                                                                                                (coe
-                                                                                                                                   v9)
-                                                                                                                                (coe
-                                                                                                                                   v19))
-                                                                                                                             (coe
-                                                                                                                                v20)))
+                                                                                                                       (let v24
+                                                                                                                              = d_parseEffAnnot_160
+                                                                                                                                  (coe
+                                                                                                                                     v20) in
+                                                                                                                        coe
+                                                                                                                          (case coe
+                                                                                                                                  v24 of
+                                                                                                                             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v25 v26
+                                                                                                                               -> case coe
+                                                                                                                                         v26 of
+                                                                                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v27 v28
+                                                                                                                                      -> let v29
+                                                                                                                                               = coe
+                                                                                                                                                   MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
+                                                                                                                                                   (coe
+                                                                                                                                                      v3)
+                                                                                                                                                   (coe
+                                                                                                                                                      v9)
+                                                                                                                                                   (coe
+                                                                                                                                                      v19)
+                                                                                                                                                   (coe
+                                                                                                                                                      v25) in
+                                                                                                                                         coe
+                                                                                                                                           (coe
+                                                                                                                                              MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                                                                                              (coe
+                                                                                                                                                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                                                                                                 (coe
+                                                                                                                                                    v29)
+                                                                                                                                                 (coe
+                                                                                                                                                    v27)))
+                                                                                                                                    _ -> MAlonzo.RTE.mazUnreachableError
+                                                                                                                             _ -> MAlonzo.RTE.mazUnreachableError))
                                                                                                                 else (let v24
                                                                                                                             = seq
                                                                                                                                 (coe
@@ -4380,23 +5279,38 @@ d_parseSignature_184 v0
                                                                                                                                               v27 of
                                                                                                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v28 v29
                                                                                                                                            -> let v30
-                                                                                                                                                    = coe
-                                                                                                                                                        MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
+                                                                                                                                                    = d_parseEffAnnot_160
                                                                                                                                                         (coe
-                                                                                                                                                           v3)
-                                                                                                                                                        (coe
-                                                                                                                                                           v9)
-                                                                                                                                                        (coe
-                                                                                                                                                           v26) in
+                                                                                                                                                           v28) in
                                                                                                                                               coe
-                                                                                                                                                (coe
-                                                                                                                                                   MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                                                                                                                                                   (coe
-                                                                                                                                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                                                                                                                                      (coe
-                                                                                                                                                         v30)
-                                                                                                                                                      (coe
-                                                                                                                                                         v28)))
+                                                                                                                                                (case coe
+                                                                                                                                                        v30 of
+                                                                                                                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v31 v32
+                                                                                                                                                     -> case coe
+                                                                                                                                                               v32 of
+                                                                                                                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v33 v34
+                                                                                                                                                            -> let v35
+                                                                                                                                                                     = coe
+                                                                                                                                                                         MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
+                                                                                                                                                                         (coe
+                                                                                                                                                                            v3)
+                                                                                                                                                                         (coe
+                                                                                                                                                                            v9)
+                                                                                                                                                                         (coe
+                                                                                                                                                                            v26)
+                                                                                                                                                                         (coe
+                                                                                                                                                                            v31) in
+                                                                                                                                                               coe
+                                                                                                                                                                 (coe
+                                                                                                                                                                    MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                                                                                                                    (coe
+                                                                                                                                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                                                                                                                       (coe
+                                                                                                                                                                          v35)
+                                                                                                                                                                       (coe
+                                                                                                                                                                          v33)))
+                                                                                                                                                          _ -> MAlonzo.RTE.mazUnreachableError
+                                                                                                                                                   _ -> MAlonzo.RTE.mazUnreachableError)
                                                                                                                                          _ -> MAlonzo.RTE.mazUnreachableError
                                                                                                                                   _ -> MAlonzo.RTE.mazUnreachableError
                                                                                                                            MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
@@ -4437,23 +5351,38 @@ d_parseSignature_184 v0
                                                                                                                   v20 of
                                                                                                              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v21 v22
                                                                                                                -> let v23
-                                                                                                                        = coe
-                                                                                                                            MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
+                                                                                                                        = d_parseEffAnnot_160
                                                                                                                             (coe
-                                                                                                                               v3)
-                                                                                                                            (coe
-                                                                                                                               v17)
-                                                                                                                            (coe
-                                                                                                                               v19) in
+                                                                                                                               v21) in
                                                                                                                   coe
-                                                                                                                    (coe
-                                                                                                                       MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                                                                                                                       (coe
-                                                                                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                                                                                                          (coe
-                                                                                                                             v23)
-                                                                                                                          (coe
-                                                                                                                             v21)))
+                                                                                                                    (case coe
+                                                                                                                            v23 of
+                                                                                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v24 v25
+                                                                                                                         -> case coe
+                                                                                                                                   v25 of
+                                                                                                                              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v26 v27
+                                                                                                                                -> let v28
+                                                                                                                                         = coe
+                                                                                                                                             MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
+                                                                                                                                             (coe
+                                                                                                                                                v3)
+                                                                                                                                             (coe
+                                                                                                                                                v17)
+                                                                                                                                             (coe
+                                                                                                                                                v19)
+                                                                                                                                             (coe
+                                                                                                                                                v24) in
+                                                                                                                                   coe
+                                                                                                                                     (coe
+                                                                                                                                        MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                                                                                        (coe
+                                                                                                                                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                                                                                           (coe
+                                                                                                                                              v28)
+                                                                                                                                           (coe
+                                                                                                                                              v26)))
+                                                                                                                              _ -> MAlonzo.RTE.mazUnreachableError
+                                                                                                                       _ -> MAlonzo.RTE.mazUnreachableError)
                                                                                                              _ -> MAlonzo.RTE.mazUnreachableError
                                                                                                       _ -> MAlonzo.RTE.mazUnreachableError
                                                                                                MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
@@ -4529,20 +5458,39 @@ d_parseSignature_184 v0
                                                                                                              seq
                                                                                                              (coe
                                                                                                                 v19)
-                                                                                                             (coe
-                                                                                                                MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                                                                                                                (coe
-                                                                                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                                                                                                   (coe
-                                                                                                                      MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
-                                                                                                                      (coe
-                                                                                                                         v3)
-                                                                                                                      (coe
-                                                                                                                         v13)
-                                                                                                                      (coe
-                                                                                                                         v15))
-                                                                                                                   (coe
-                                                                                                                      v16)))
+                                                                                                             (let v20
+                                                                                                                    = d_parseEffAnnot_160
+                                                                                                                        (coe
+                                                                                                                           v16) in
+                                                                                                              coe
+                                                                                                                (case coe
+                                                                                                                        v20 of
+                                                                                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v21 v22
+                                                                                                                     -> case coe
+                                                                                                                               v22 of
+                                                                                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v23 v24
+                                                                                                                            -> let v25
+                                                                                                                                     = coe
+                                                                                                                                         MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
+                                                                                                                                         (coe
+                                                                                                                                            v3)
+                                                                                                                                         (coe
+                                                                                                                                            v13)
+                                                                                                                                         (coe
+                                                                                                                                            v15)
+                                                                                                                                         (coe
+                                                                                                                                            v21) in
+                                                                                                                               coe
+                                                                                                                                 (coe
+                                                                                                                                    MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                                                                                    (coe
+                                                                                                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                                                                                       (coe
+                                                                                                                                          v25)
+                                                                                                                                       (coe
+                                                                                                                                          v23)))
+                                                                                                                          _ -> MAlonzo.RTE.mazUnreachableError
+                                                                                                                   _ -> MAlonzo.RTE.mazUnreachableError))
                                                                                                       else (let v20
                                                                                                                   = seq
                                                                                                                       (coe
@@ -4560,23 +5508,38 @@ d_parseSignature_184 v0
                                                                                                                                     v23 of
                                                                                                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v24 v25
                                                                                                                                  -> let v26
-                                                                                                                                          = coe
-                                                                                                                                              MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
+                                                                                                                                          = d_parseEffAnnot_160
                                                                                                                                               (coe
-                                                                                                                                                 v3)
-                                                                                                                                              (coe
-                                                                                                                                                 v13)
-                                                                                                                                              (coe
-                                                                                                                                                 v22) in
+                                                                                                                                                 v24) in
                                                                                                                                     coe
-                                                                                                                                      (coe
-                                                                                                                                         MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                                                                                                                                         (coe
-                                                                                                                                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                                                                                                                            (coe
-                                                                                                                                               v26)
-                                                                                                                                            (coe
-                                                                                                                                               v24)))
+                                                                                                                                      (case coe
+                                                                                                                                              v26 of
+                                                                                                                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v27 v28
+                                                                                                                                           -> case coe
+                                                                                                                                                     v28 of
+                                                                                                                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v29 v30
+                                                                                                                                                  -> let v31
+                                                                                                                                                           = coe
+                                                                                                                                                               MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
+                                                                                                                                                               (coe
+                                                                                                                                                                  v3)
+                                                                                                                                                               (coe
+                                                                                                                                                                  v13)
+                                                                                                                                                               (coe
+                                                                                                                                                                  v22)
+                                                                                                                                                               (coe
+                                                                                                                                                                  v27) in
+                                                                                                                                                     coe
+                                                                                                                                                       (coe
+                                                                                                                                                          MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                                                                                                          (coe
+                                                                                                                                                             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                                                                                                             (coe
+                                                                                                                                                                v31)
+                                                                                                                                                             (coe
+                                                                                                                                                                v29)))
+                                                                                                                                                _ -> MAlonzo.RTE.mazUnreachableError
+                                                                                                                                         _ -> MAlonzo.RTE.mazUnreachableError)
                                                                                                                                _ -> MAlonzo.RTE.mazUnreachableError
                                                                                                                         _ -> MAlonzo.RTE.mazUnreachableError
                                                                                                                  MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
@@ -4616,23 +5579,38 @@ d_parseSignature_184 v0
                                                                                                         v16 of
                                                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v17 v18
                                                                                                      -> let v19
-                                                                                                              = coe
-                                                                                                                  MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
+                                                                                                              = d_parseEffAnnot_160
                                                                                                                   (coe
-                                                                                                                     v3)
-                                                                                                                  (coe
-                                                                                                                     v13)
-                                                                                                                  (coe
-                                                                                                                     v15) in
+                                                                                                                     v17) in
                                                                                                         coe
-                                                                                                          (coe
-                                                                                                             MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                                                                                                             (coe
-                                                                                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                                                                                                (coe
-                                                                                                                   v19)
-                                                                                                                (coe
-                                                                                                                   v17)))
+                                                                                                          (case coe
+                                                                                                                  v19 of
+                                                                                                             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v20 v21
+                                                                                                               -> case coe
+                                                                                                                         v21 of
+                                                                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v22 v23
+                                                                                                                      -> let v24
+                                                                                                                               = coe
+                                                                                                                                   MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
+                                                                                                                                   (coe
+                                                                                                                                      v3)
+                                                                                                                                   (coe
+                                                                                                                                      v13)
+                                                                                                                                   (coe
+                                                                                                                                      v15)
+                                                                                                                                   (coe
+                                                                                                                                      v20) in
+                                                                                                                         coe
+                                                                                                                           (coe
+                                                                                                                              MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                                                                              (coe
+                                                                                                                                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                                                                                 (coe
+                                                                                                                                    v24)
+                                                                                                                                 (coe
+                                                                                                                                    v22)))
+                                                                                                                    _ -> MAlonzo.RTE.mazUnreachableError
+                                                                                                             _ -> MAlonzo.RTE.mazUnreachableError)
                                                                                                    _ -> MAlonzo.RTE.mazUnreachableError
                                                                                             _ -> MAlonzo.RTE.mazUnreachableError
                                                                                      MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
@@ -4718,20 +5696,39 @@ d_parseSignature_184 v0
                                                                                                              seq
                                                                                                              (coe
                                                                                                                 v19)
-                                                                                                             (coe
-                                                                                                                MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                                                                                                                (coe
-                                                                                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                                                                                                   (coe
-                                                                                                                      MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
-                                                                                                                      (coe
-                                                                                                                         v3)
-                                                                                                                      (coe
-                                                                                                                         v9)
-                                                                                                                      (coe
-                                                                                                                         v15))
-                                                                                                                   (coe
-                                                                                                                      v16)))
+                                                                                                             (let v20
+                                                                                                                    = d_parseEffAnnot_160
+                                                                                                                        (coe
+                                                                                                                           v16) in
+                                                                                                              coe
+                                                                                                                (case coe
+                                                                                                                        v20 of
+                                                                                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v21 v22
+                                                                                                                     -> case coe
+                                                                                                                               v22 of
+                                                                                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v23 v24
+                                                                                                                            -> let v25
+                                                                                                                                     = coe
+                                                                                                                                         MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
+                                                                                                                                         (coe
+                                                                                                                                            v3)
+                                                                                                                                         (coe
+                                                                                                                                            v9)
+                                                                                                                                         (coe
+                                                                                                                                            v15)
+                                                                                                                                         (coe
+                                                                                                                                            v21) in
+                                                                                                                               coe
+                                                                                                                                 (coe
+                                                                                                                                    MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                                                                                    (coe
+                                                                                                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                                                                                       (coe
+                                                                                                                                          v25)
+                                                                                                                                       (coe
+                                                                                                                                          v23)))
+                                                                                                                          _ -> MAlonzo.RTE.mazUnreachableError
+                                                                                                                   _ -> MAlonzo.RTE.mazUnreachableError))
                                                                                                       else (let v20
                                                                                                                   = seq
                                                                                                                       (coe
@@ -4749,23 +5746,38 @@ d_parseSignature_184 v0
                                                                                                                                     v23 of
                                                                                                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v24 v25
                                                                                                                                  -> let v26
-                                                                                                                                          = coe
-                                                                                                                                              MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
+                                                                                                                                          = d_parseEffAnnot_160
                                                                                                                                               (coe
-                                                                                                                                                 v3)
-                                                                                                                                              (coe
-                                                                                                                                                 v9)
-                                                                                                                                              (coe
-                                                                                                                                                 v22) in
+                                                                                                                                                 v24) in
                                                                                                                                     coe
-                                                                                                                                      (coe
-                                                                                                                                         MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                                                                                                                                         (coe
-                                                                                                                                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                                                                                                                            (coe
-                                                                                                                                               v26)
-                                                                                                                                            (coe
-                                                                                                                                               v24)))
+                                                                                                                                      (case coe
+                                                                                                                                              v26 of
+                                                                                                                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v27 v28
+                                                                                                                                           -> case coe
+                                                                                                                                                     v28 of
+                                                                                                                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v29 v30
+                                                                                                                                                  -> let v31
+                                                                                                                                                           = coe
+                                                                                                                                                               MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
+                                                                                                                                                               (coe
+                                                                                                                                                                  v3)
+                                                                                                                                                               (coe
+                                                                                                                                                                  v9)
+                                                                                                                                                               (coe
+                                                                                                                                                                  v22)
+                                                                                                                                                               (coe
+                                                                                                                                                                  v27) in
+                                                                                                                                                     coe
+                                                                                                                                                       (coe
+                                                                                                                                                          MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                                                                                                          (coe
+                                                                                                                                                             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                                                                                                             (coe
+                                                                                                                                                                v31)
+                                                                                                                                                             (coe
+                                                                                                                                                                v29)))
+                                                                                                                                                _ -> MAlonzo.RTE.mazUnreachableError
+                                                                                                                                         _ -> MAlonzo.RTE.mazUnreachableError)
                                                                                                                                _ -> MAlonzo.RTE.mazUnreachableError
                                                                                                                         _ -> MAlonzo.RTE.mazUnreachableError
                                                                                                                  MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
@@ -4805,23 +5817,38 @@ d_parseSignature_184 v0
                                                                                                         v16 of
                                                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v17 v18
                                                                                                      -> let v19
-                                                                                                              = coe
-                                                                                                                  MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
+                                                                                                              = d_parseEffAnnot_160
                                                                                                                   (coe
-                                                                                                                     v3)
-                                                                                                                  (coe
-                                                                                                                     v13)
-                                                                                                                  (coe
-                                                                                                                     v15) in
+                                                                                                                     v17) in
                                                                                                         coe
-                                                                                                          (coe
-                                                                                                             MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                                                                                                             (coe
-                                                                                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                                                                                                (coe
-                                                                                                                   v19)
-                                                                                                                (coe
-                                                                                                                   v17)))
+                                                                                                          (case coe
+                                                                                                                  v19 of
+                                                                                                             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v20 v21
+                                                                                                               -> case coe
+                                                                                                                         v21 of
+                                                                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v22 v23
+                                                                                                                      -> let v24
+                                                                                                                               = coe
+                                                                                                                                   MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
+                                                                                                                                   (coe
+                                                                                                                                      v3)
+                                                                                                                                   (coe
+                                                                                                                                      v13)
+                                                                                                                                   (coe
+                                                                                                                                      v15)
+                                                                                                                                   (coe
+                                                                                                                                      v20) in
+                                                                                                                         coe
+                                                                                                                           (coe
+                                                                                                                              MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                                                                              (coe
+                                                                                                                                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                                                                                 (coe
+                                                                                                                                    v24)
+                                                                                                                                 (coe
+                                                                                                                                    v22)))
+                                                                                                                    _ -> MAlonzo.RTE.mazUnreachableError
+                                                                                                             _ -> MAlonzo.RTE.mazUnreachableError)
                                                                                                    _ -> MAlonzo.RTE.mazUnreachableError
                                                                                             _ -> MAlonzo.RTE.mazUnreachableError
                                                                                      MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
@@ -4895,20 +5922,39 @@ d_parseSignature_184 v0
                                                                                                    seq
                                                                                                    (coe
                                                                                                       v15)
-                                                                                                   (coe
-                                                                                                      MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                                                                                                      (coe
-                                                                                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                                                                                         (coe
-                                                                                                            MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
-                                                                                                            (coe
-                                                                                                               v3)
-                                                                                                            (coe
-                                                                                                               v9)
-                                                                                                            (coe
-                                                                                                               v11))
-                                                                                                         (coe
-                                                                                                            v12)))
+                                                                                                   (let v16
+                                                                                                          = d_parseEffAnnot_160
+                                                                                                              (coe
+                                                                                                                 v12) in
+                                                                                                    coe
+                                                                                                      (case coe
+                                                                                                              v16 of
+                                                                                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v17 v18
+                                                                                                           -> case coe
+                                                                                                                     v18 of
+                                                                                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v19 v20
+                                                                                                                  -> let v21
+                                                                                                                           = coe
+                                                                                                                               MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
+                                                                                                                               (coe
+                                                                                                                                  v3)
+                                                                                                                               (coe
+                                                                                                                                  v9)
+                                                                                                                               (coe
+                                                                                                                                  v11)
+                                                                                                                               (coe
+                                                                                                                                  v17) in
+                                                                                                                     coe
+                                                                                                                       (coe
+                                                                                                                          MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                                                                          (coe
+                                                                                                                             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                                                                             (coe
+                                                                                                                                v21)
+                                                                                                                             (coe
+                                                                                                                                v19)))
+                                                                                                                _ -> MAlonzo.RTE.mazUnreachableError
+                                                                                                         _ -> MAlonzo.RTE.mazUnreachableError))
                                                                                             else (let v16
                                                                                                         = seq
                                                                                                             (coe
@@ -4926,23 +5972,38 @@ d_parseSignature_184 v0
                                                                                                                           v19 of
                                                                                                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v20 v21
                                                                                                                        -> let v22
-                                                                                                                                = coe
-                                                                                                                                    MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
+                                                                                                                                = d_parseEffAnnot_160
                                                                                                                                     (coe
-                                                                                                                                       v3)
-                                                                                                                                    (coe
-                                                                                                                                       v9)
-                                                                                                                                    (coe
-                                                                                                                                       v18) in
+                                                                                                                                       v20) in
                                                                                                                           coe
-                                                                                                                            (coe
-                                                                                                                               MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                                                                                                                               (coe
-                                                                                                                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                                                                                                                  (coe
-                                                                                                                                     v22)
-                                                                                                                                  (coe
-                                                                                                                                     v20)))
+                                                                                                                            (case coe
+                                                                                                                                    v22 of
+                                                                                                                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v23 v24
+                                                                                                                                 -> case coe
+                                                                                                                                           v24 of
+                                                                                                                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v25 v26
+                                                                                                                                        -> let v27
+                                                                                                                                                 = coe
+                                                                                                                                                     MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
+                                                                                                                                                     (coe
+                                                                                                                                                        v3)
+                                                                                                                                                     (coe
+                                                                                                                                                        v9)
+                                                                                                                                                     (coe
+                                                                                                                                                        v18)
+                                                                                                                                                     (coe
+                                                                                                                                                        v23) in
+                                                                                                                                           coe
+                                                                                                                                             (coe
+                                                                                                                                                MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                                                                                                (coe
+                                                                                                                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                                                                                                   (coe
+                                                                                                                                                      v27)
+                                                                                                                                                   (coe
+                                                                                                                                                      v25)))
+                                                                                                                                      _ -> MAlonzo.RTE.mazUnreachableError
+                                                                                                                               _ -> MAlonzo.RTE.mazUnreachableError)
                                                                                                                      _ -> MAlonzo.RTE.mazUnreachableError
                                                                                                               _ -> MAlonzo.RTE.mazUnreachableError
                                                                                                        MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
@@ -4981,23 +6042,38 @@ d_parseSignature_184 v0
                                                                                               v12 of
                                                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v13 v14
                                                                                            -> let v15
-                                                                                                    = coe
-                                                                                                        MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
+                                                                                                    = d_parseEffAnnot_160
                                                                                                         (coe
-                                                                                                           v3)
-                                                                                                        (coe
-                                                                                                           v9)
-                                                                                                        (coe
-                                                                                                           v11) in
+                                                                                                           v13) in
                                                                                               coe
-                                                                                                (coe
-                                                                                                   MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                                                                                                   (coe
-                                                                                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                                                                                      (coe
-                                                                                                         v15)
-                                                                                                      (coe
-                                                                                                         v13)))
+                                                                                                (case coe
+                                                                                                        v15 of
+                                                                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v16 v17
+                                                                                                     -> case coe
+                                                                                                               v17 of
+                                                                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v18 v19
+                                                                                                            -> let v20
+                                                                                                                     = coe
+                                                                                                                         MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
+                                                                                                                         (coe
+                                                                                                                            v3)
+                                                                                                                         (coe
+                                                                                                                            v9)
+                                                                                                                         (coe
+                                                                                                                            v11)
+                                                                                                                         (coe
+                                                                                                                            v16) in
+                                                                                                               coe
+                                                                                                                 (coe
+                                                                                                                    MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                                                                    (coe
+                                                                                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                                                                       (coe
+                                                                                                                          v20)
+                                                                                                                       (coe
+                                                                                                                          v18)))
+                                                                                                          _ -> MAlonzo.RTE.mazUnreachableError
+                                                                                                   _ -> MAlonzo.RTE.mazUnreachableError)
                                                                                          _ -> MAlonzo.RTE.mazUnreachableError
                                                                                   _ -> MAlonzo.RTE.mazUnreachableError
                                                                            MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18

@@ -164,6 +164,7 @@ data NotAtomStart : List Token → Set where
   nas-TGe        : ∀ {rest} → NotAtomStart (TGe        ∷ rest)
   nas-TEqEq      : ∀ {rest} → NotAtomStart (TEqEq      ∷ rest)
   nas-TNeq       : ∀ {rest} → NotAtomStart (TNeq       ∷ rest)
+  nas-TBang      : ∀ {rest} → NotAtomStart (TBang      ∷ rest)
   nas-TNewline   : ∀ {rest} → NotAtomStart (TNewline   ∷ rest)
   nas-TEOF       : ∀ {rest} → NotAtomStart (TEOF       ∷ rest)
 
@@ -221,6 +222,7 @@ data NotTWord : Token → Set where
   ntw-TGe        : NotTWord TGe
   ntw-TEqEq      : NotTWord TEqEq
   ntw-TNeq       : NotTWord TNeq
+  ntw-TBang      : NotTWord TBang
   ntw-TNewline   : NotTWord TNewline
   ntw-TEOF       : NotTWord TEOF
   ntw-TInt       : ∀ {n} → NotTWord (TInt n)
@@ -256,6 +258,7 @@ data NotQualPrefix : List Token → Set where
   nqp-TGe        : ∀ {rest} → NotQualPrefix (TGe        ∷ rest)
   nqp-TEqEq      : ∀ {rest} → NotQualPrefix (TEqEq      ∷ rest)
   nqp-TNeq       : ∀ {rest} → NotQualPrefix (TNeq       ∷ rest)
+  nqp-TBang      : ∀ {rest} → NotQualPrefix (TBang      ∷ rest)
   nqp-TNewline   : ∀ {rest} → NotQualPrefix (TNewline   ∷ rest)
   nqp-TEOF       : ∀ {rest} → NotQualPrefix (TEOF       ∷ rest)
   nqp-TWord      : ∀ {s rest} → NotQualPrefix (TWord s  ∷ rest)

@@ -222,6 +222,7 @@ parseOpExprWF (TLe        ∷ _) _ = nothing
 parseOpExprWF (TGe        ∷ _) _ = nothing
 parseOpExprWF (TEqEq      ∷ _) _ = nothing
 parseOpExprWF (TNeq       ∷ _) _ = nothing
+parseOpExprWF (TBang      ∷ _) _ = nothing
 parseOpExprWF (TNewline   ∷ _) _ = nothing
 parseOpExprWF (TEOF       ∷ _) _ = nothing
 
@@ -335,6 +336,7 @@ parseLamParamsWF (TGt        ∷ _) _ = nothing
 parseLamParamsWF (TGe        ∷ _) _ = nothing
 parseLamParamsWF (TEqEq      ∷ _) _ = nothing
 parseLamParamsWF (TNeq       ∷ _) _ = nothing
+parseLamParamsWF (TBang      ∷ _) _ = nothing
 parseLamParamsWF (TNewline   ∷ _) _ = nothing
 parseLamParamsWF (TEOF       ∷ _) _ = nothing
 
@@ -380,6 +382,7 @@ parseLetContWF _ _ (TGt        ∷ _) _ = nothing
 parseLetContWF _ _ (TGe        ∷ _) _ = nothing
 parseLetContWF _ _ (TEqEq      ∷ _) _ = nothing
 parseLetContWF _ _ (TNeq       ∷ _) _ = nothing
+parseLetContWF _ _ (TBang      ∷ _) _ = nothing
 parseLetContWF _ _ (TNewline   ∷ _) _ = nothing
 parseLetContWF _ _ (TEOF       ∷ _) _ = nothing
 
@@ -467,6 +470,7 @@ parseRightBranchWF scrut x left toks (acc rec) with rbView toks
 ...     | just (_ , TGe        ∷ _ , _)  = nothing
 ...     | just (_ , TEqEq      ∷ _ , _)  = nothing
 ...     | just (_ , TNeq       ∷ _ , _)  = nothing
+...     | just (_ , TBang      ∷ _ , _)  = nothing
 ...     | just (_ , TNewline   ∷ _ , _)  = nothing
 ...     | just (_ , TEOF       ∷ _ , _)  = nothing
 
@@ -571,6 +575,7 @@ parseParenTripleWF _ _ (TGt        ∷ _) _ = nothing
 parseParenTripleWF _ _ (TGe        ∷ _) _ = nothing
 parseParenTripleWF _ _ (TEqEq      ∷ _) _ = nothing
 parseParenTripleWF _ _ (TNeq       ∷ _) _ = nothing
+parseParenTripleWF _ _ (TBang      ∷ _) _ = nothing
 parseParenTripleWF _ _ (TNewline   ∷ _) _ = nothing
 parseParenTripleWF _ _ (TEOF       ∷ _) _ = nothing
 
@@ -623,6 +628,7 @@ parseParenContWF e (TColon ∷ rest) (acc rec)
 ... | just (_ , TGe        ∷ _   , _)  = nothing
 ... | just (_ , TEqEq      ∷ _   , _)  = nothing
 ... | just (_ , TNeq       ∷ _   , _)  = nothing
+... | just (_ , TBang      ∷ _   , _)  = nothing
 ... | just (_ , TNewline   ∷ _   , _)  = nothing
 ... | just (_ , TEOF       ∷ _   , _)  = nothing
 ... | nothing                            = nothing
@@ -655,6 +661,7 @@ parseParenContWF _ (TGt        ∷ _) _ = nothing
 parseParenContWF _ (TGe        ∷ _) _ = nothing
 parseParenContWF _ (TEqEq      ∷ _) _ = nothing
 parseParenContWF _ (TNeq       ∷ _) _ = nothing
+parseParenContWF _ (TBang      ∷ _) _ = nothing
 parseParenContWF _ (TNewline   ∷ _) _ = nothing
 parseParenContWF _ (TEOF       ∷ _) _ = nothing
 
@@ -728,6 +735,7 @@ parseAtomExprWF-TLParen rest@(TLe       ∷ _) a = parseAtomExprWF-TLParen-paren
 parseAtomExprWF-TLParen rest@(TGe       ∷ _) a = parseAtomExprWF-TLParen-paren rest a
 parseAtomExprWF-TLParen rest@(TEqEq     ∷ _) a = parseAtomExprWF-TLParen-paren rest a
 parseAtomExprWF-TLParen rest@(TNeq      ∷ _) a = parseAtomExprWF-TLParen-paren rest a
+parseAtomExprWF-TLParen rest@(TBang     ∷ _) a = parseAtomExprWF-TLParen-paren rest a
 parseAtomExprWF-TLParen rest@(TNewline  ∷ _) a = parseAtomExprWF-TLParen-paren rest a
 parseAtomExprWF-TLParen rest@(TEOF      ∷ _) a = parseAtomExprWF-TLParen-paren rest a
 
@@ -816,6 +824,7 @@ atomExprVarWF name eq (TAt        ∷ TGt        ∷ r) = just (RVar name , TAt 
 atomExprVarWF name eq (TAt        ∷ TGe        ∷ r) = just (RVar name , TAt ∷ TGe        ∷ r , pae-var eq (nqp-TAt-cons ntw-TGe))
 atomExprVarWF name eq (TAt        ∷ TEqEq      ∷ r) = just (RVar name , TAt ∷ TEqEq      ∷ r , pae-var eq (nqp-TAt-cons ntw-TEqEq))
 atomExprVarWF name eq (TAt        ∷ TNeq       ∷ r) = just (RVar name , TAt ∷ TNeq       ∷ r , pae-var eq (nqp-TAt-cons ntw-TNeq))
+atomExprVarWF name eq (TAt        ∷ TBang      ∷ r) = just (RVar name , TAt ∷ TBang      ∷ r , pae-var eq (nqp-TAt-cons ntw-TBang))
 atomExprVarWF name eq (TAt        ∷ TNewline   ∷ r) = just (RVar name , TAt ∷ TNewline   ∷ r , pae-var eq (nqp-TAt-cons ntw-TNewline))
 atomExprVarWF name eq (TAt        ∷ TEOF       ∷ r) = just (RVar name , TAt ∷ TEOF       ∷ r , pae-var eq (nqp-TAt-cons ntw-TEOF))
 atomExprVarWF name eq (TPipe      ∷ r)  = just (RVar name , TPipe      ∷ r , pae-var eq nqp-TPipe)
@@ -832,6 +841,7 @@ atomExprVarWF name eq (TGt        ∷ r)  = just (RVar name , TGt        ∷ r ,
 atomExprVarWF name eq (TGe        ∷ r)  = just (RVar name , TGe        ∷ r , pae-var eq nqp-TGe)
 atomExprVarWF name eq (TEqEq      ∷ r)  = just (RVar name , TEqEq      ∷ r , pae-var eq nqp-TEqEq)
 atomExprVarWF name eq (TNeq       ∷ r)  = just (RVar name , TNeq       ∷ r , pae-var eq nqp-TNeq)
+atomExprVarWF name eq (TBang      ∷ r)  = just (RVar name , TBang      ∷ r , pae-var eq nqp-TBang)
 atomExprVarWF name eq (TNewline   ∷ r)  = just (RVar name , TNewline   ∷ r , pae-var eq nqp-TNewline)
 atomExprVarWF name eq (TEOF       ∷ r)  = just (RVar name , TEOF       ∷ r , pae-var eq nqp-TEOF)
 
@@ -880,6 +890,7 @@ parseAtomExprWF (TGt        ∷ _) _ = nothing
 parseAtomExprWF (TGe        ∷ _) _ = nothing
 parseAtomExprWF (TEqEq      ∷ _) _ = nothing
 parseAtomExprWF (TNeq       ∷ _) _ = nothing
+parseAtomExprWF (TBang      ∷ _) _ = nothing
 parseAtomExprWF (TNewline   ∷ _) _ = nothing
 parseAtomExprWF (TEOF       ∷ _) _ = nothing
 
@@ -959,6 +970,7 @@ parseAppTailWF f (TGt       ∷ r) _ = just (f , TGt       ∷ r , papp-done nas
 parseAppTailWF f (TGe       ∷ r) _ = just (f , TGe       ∷ r , papp-done nas-TGe)
 parseAppTailWF f (TEqEq     ∷ r) _ = just (f , TEqEq     ∷ r , papp-done nas-TEqEq)
 parseAppTailWF f (TNeq      ∷ r) _ = just (f , TNeq      ∷ r , papp-done nas-TNeq)
+parseAppTailWF f (TBang     ∷ r) _ = just (f , TBang     ∷ r , papp-done nas-TBang)
 parseAppTailWF f (TNewline  ∷ r) _ = just (f , TNewline  ∷ r , papp-done nas-TNewline)
 parseAppTailWF f (TEOF      ∷ r) _ = just (f , TEOF      ∷ r , papp-done nas-TEOF)
 
@@ -1071,6 +1083,9 @@ parseUnaryWF (TEqEq      ∷ r) a with parseAppWF (TEqEq      ∷ r) a
 parseUnaryWF (TNeq       ∷ r) a with parseAppWF (TNeq       ∷ r) a
 ... | nothing                 = nothing
 ... | just (e , rest' , d)   = just (e , rest' , pu-app d)
+parseUnaryWF (TBang      ∷ r) a with parseAppWF (TBang      ∷ r) a
+... | nothing                 = nothing
+... | just (e , rest' , d)   = just (e , rest' , pu-app d)
 parseUnaryWF (TNewline   ∷ r) a with parseAppWF (TNewline   ∷ r) a
 ... | nothing                 = nothing
 ... | just (e , rest' , d)   = just (e , rest' , pu-app d)
@@ -1136,6 +1151,7 @@ parseMulTailWF left (TGt        ∷ r) _ = just (left , TGt        ∷ r , pmt-d
 parseMulTailWF left (TGe        ∷ r) _ = just (left , TGe        ∷ r , pmt-done tt)
 parseMulTailWF left (TEqEq      ∷ r) _ = just (left , TEqEq      ∷ r , pmt-done tt)
 parseMulTailWF left (TNeq       ∷ r) _ = just (left , TNeq       ∷ r , pmt-done tt)
+parseMulTailWF left (TBang      ∷ r) _ = just (left , TBang      ∷ r , pmt-done tt)
 parseMulTailWF left (TNewline   ∷ r) _ = just (left , TNewline   ∷ r , pmt-done tt)
 parseMulTailWF left (TEOF       ∷ r) _ = just (left , TEOF       ∷ r , pmt-done tt)
 
@@ -1194,6 +1210,7 @@ parseAddTailWF left (TGt        ∷ r) _ = just (left , TGt        ∷ r , pat-d
 parseAddTailWF left (TGe        ∷ r) _ = just (left , TGe        ∷ r , pat-done tt)
 parseAddTailWF left (TEqEq      ∷ r) _ = just (left , TEqEq      ∷ r , pat-done tt)
 parseAddTailWF left (TNeq       ∷ r) _ = just (left , TNeq       ∷ r , pat-done tt)
+parseAddTailWF left (TBang      ∷ r) _ = just (left , TBang      ∷ r , pat-done tt)
 parseAddTailWF left (TNewline   ∷ r) _ = just (left , TNewline   ∷ r , pat-done tt)
 parseAddTailWF left (TEOF       ∷ r) _ = just (left , TEOF       ∷ r , pat-done tt)
 
@@ -1242,6 +1259,7 @@ parseCmpWF toks (acc rec) with parseAddWF toks (acc rec)
 ... | just (left , TPercent   ∷ r , dA) = just (left , TPercent   ∷ r , pcm-noop dA tt)
 ... | just (left , TAmpersand ∷ r , dA) = just (left , TAmpersand ∷ r , pcm-noop dA tt)
 ... | just (left , TNewline   ∷ r , dA) = just (left , TNewline   ∷ r , pcm-noop dA tt)
+... | just (left , TBang      ∷ r , dA) = just (left , TBang      ∷ r , pcm-noop dA tt)
 ... | just (left , TEOF       ∷ r , dA) = just (left , TEOF       ∷ r , pcm-noop dA tt)
 -- Compound comparison: parse a second `add`, build `RBinOp`.
 ... | just (left , TLt   ∷ r , dL)
@@ -1311,6 +1329,7 @@ parseCompTailWF left (TGt        ∷ r) _ = just (left , TGt        ∷ r , pct-
 parseCompTailWF left (TGe        ∷ r) _ = just (left , TGe        ∷ r , pct-done tt)
 parseCompTailWF left (TEqEq      ∷ r) _ = just (left , TEqEq      ∷ r , pct-done tt)
 parseCompTailWF left (TNeq       ∷ r) _ = just (left , TNeq       ∷ r , pct-done tt)
+parseCompTailWF left (TBang      ∷ r) _ = just (left , TBang      ∷ r , pct-done tt)
 parseCompTailWF left (TNewline   ∷ r) _ = just (left , TNewline   ∷ r , pct-done tt)
 parseCompTailWF left (TEOF       ∷ r) _ = just (left , TEOF       ∷ r , pct-done tt)
 

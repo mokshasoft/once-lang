@@ -138,10 +138,10 @@ du_recognise'45'body_44 v0 v1
                                        (\ v11 ->
                                           coe
                                             MAlonzo.Code.Data.String.Properties.du_'8776''45'reflexive_8
-                                            (coe MAlonzo.Code.Once.SigOp.Info.d_name_146 (coe v10)))
+                                            (coe MAlonzo.Code.Once.SigOp.Info.d_name_160 (coe v10)))
                                        (coe
                                           MAlonzo.Code.Data.String.Properties.d__'8776''63'__28
-                                          (coe MAlonzo.Code.Once.SigOp.Info.d_name_146 (coe v10))
+                                          (coe MAlonzo.Code.Once.SigOp.Info.d_name_160 (coe v10))
                                           (coe ("arith.neg.int" :: Data.Text.Text))) in
                              coe
                                (case coe v11 of
@@ -181,12 +181,12 @@ du_recognise'45'body_44 v0 v1
                                                    coe
                                                      MAlonzo.Code.Data.String.Properties.du_'8776''45'reflexive_8
                                                      (coe
-                                                        MAlonzo.Code.Once.SigOp.Info.d_name_146
+                                                        MAlonzo.Code.Once.SigOp.Info.d_name_160
                                                         (coe v10)))
                                                 (coe
                                                    MAlonzo.Code.Data.String.Properties.d__'8776''63'__28
                                                    (coe
-                                                      MAlonzo.Code.Once.SigOp.Info.d_name_146
+                                                      MAlonzo.Code.Once.SigOp.Info.d_name_160
                                                       (coe v10))
                                                    (coe ("arith.add.int" :: Data.Text.Text))) in
                                       coe
@@ -232,12 +232,12 @@ du_recognise'45'body_44 v0 v1
                                                                        coe
                                                                          MAlonzo.Code.Data.String.Properties.du_'8776''45'reflexive_8
                                                                          (coe
-                                                                            MAlonzo.Code.Once.SigOp.Info.d_name_146
+                                                                            MAlonzo.Code.Once.SigOp.Info.d_name_160
                                                                             (coe v10)))
                                                                     (coe
                                                                        MAlonzo.Code.Data.String.Properties.d__'8776''63'__28
                                                                        (coe
-                                                                          MAlonzo.Code.Once.SigOp.Info.d_name_146
+                                                                          MAlonzo.Code.Once.SigOp.Info.d_name_160
                                                                           (coe v10))
                                                                        (coe
                                                                           ("arith.sub.int"
@@ -297,13 +297,13 @@ du_recognise'45'body_44 v0 v1
                                                                                            coe
                                                                                              MAlonzo.Code.Data.String.Properties.du_'8776''45'reflexive_8
                                                                                              (coe
-                                                                                                MAlonzo.Code.Once.SigOp.Info.d_name_146
+                                                                                                MAlonzo.Code.Once.SigOp.Info.d_name_160
                                                                                                 (coe
                                                                                                    v10)))
                                                                                         (coe
                                                                                            MAlonzo.Code.Data.String.Properties.d__'8776''63'__28
                                                                                            (coe
-                                                                                              MAlonzo.Code.Once.SigOp.Info.d_name_146
+                                                                                              MAlonzo.Code.Once.SigOp.Info.d_name_160
                                                                                               (coe
                                                                                                  v10))
                                                                                            (coe

@@ -34,6 +34,7 @@ module Once.SigOp.Info where
 
 open import Data.Integer using (ℤ)
 open import Data.Nat using (ℕ)
+open import Data.Unit using (⊤; tt)
 open import Data.String using (String; _≟_)
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
@@ -83,6 +84,33 @@ data EffectShape (B : Type) : Set where
   Halts : B ≡ Unit → EffectShape B
 
 ------------------------------------------------------------------------
+-- SigOpSem — the SigOp's semantics, UNIFYING value and effect (Plan
+-- 0.38 M0.2).
+--
+-- A SigOp carries EITHER a proven pure value (an internal producer —
+-- `arith.*`, `lit.*`, `arith.block.*` — whose value Once derives and
+-- proves) OR an effect CONTRACT (an external op — a syscall — whose
+-- value is the producer's off-line concern, NOT CCC's). For an
+-- effect contract there is NO value field: the machine output is `tt`
+-- by the `B ≡ Unit` coherence the constructor carries.
+--
+-- This makes it STRUCTURALLY IMPOSSIBLE to bake an opaque external
+-- value into an effectful SigOp: an effectful op carries a contract,
+-- never a value. The earlier `generic-semM` syscall laundering cannot
+-- be expressed — the only place an opaque value can still live is a
+-- `pureV` (the named-pure-value `closure`/`poly` positions, a separate
+-- function-linking concern, NOT a syscall contract).
+------------------------------------------------------------------------
+
+data SigOpSem (A B : Type) : Set where
+  -- | Internal producer: a proven machine value function.
+  pureV : (M.⟦ A ⟧ → M.⟦ B ⟧) → SigOpSem A B
+  -- | External op, observable, continues. Value is `tt` (B ≡ Unit).
+  emitsV : B ≡ Unit → SigOpSem A B
+  -- | External op, observable, terminates the machine. Value is `tt`.
+  haltsV : B ≡ Unit → SigOpSem A B
+
+------------------------------------------------------------------------
 -- SigOpInfo
 ------------------------------------------------------------------------
 
@@ -98,13 +126,51 @@ data EffectShape (B : Type) : Set where
 -- `exec-sigop-output` / `exec-sigop-halts` / `exec-sigop-respects-semM`
 -- postulates with proven facts.
 record SigOpInfo (A B : Type) : Set where
-  constructor mk-info
+  constructor mk-info'
   field
-    name   : String
-    semM   : M.⟦ A ⟧ → M.⟦ B ⟧     -- machine-level semantics (the meaning; ℕ/Word)
-    effect : EffectShape B           -- observable effect shape (Plan 0.25)
+    name : String
+    sem  : SigOpSem A B              -- proven value (internal) OR effect contract (external)
 
 open SigOpInfo public
+
+------------------------------------------------------------------------
+-- Derived accessors — `semM` and `effect` are now DERIVED from `sem`
+-- (not stored fields), so every existing reader (`semM si x`,
+-- `effect si`) is unchanged while the underlying representation can no
+-- longer carry an opaque external value.
+--
+-- `semM` of an effect contract is `tt` (B ≡ Unit by the constructor's
+-- coherence) — the machine output the `Emits`/`Halts` codegen produces.
+------------------------------------------------------------------------
+
+semM : ∀ {A B} → SigOpInfo A B → M.⟦ A ⟧ → M.⟦ B ⟧
+semM si = go (sem si)
+  where
+    go : ∀ {A B} → SigOpSem A B → M.⟦ A ⟧ → M.⟦ B ⟧
+    go (pureV f)     = f
+    go (emitsV refl) = λ _ → tt
+    go (haltsV refl) = λ _ → tt
+
+effect : ∀ {A B} → SigOpInfo A B → EffectShape B
+effect si = go (sem si)
+  where
+    go : ∀ {A B} → SigOpSem A B → EffectShape B
+    go (pureV _)  = Pure
+    go (emitsV e) = Emits e
+    go (haltsV e) = Halts e
+
+------------------------------------------------------------------------
+-- Compatibility constructor — maps the old `(value, effect)` pair into
+-- `SigOpSem`, DROPPING the value for effect contracts (`Emits`/`Halts`):
+-- an effectful op's value is `tt` by coherence, so the supplied
+-- function is discarded — this is exactly what makes the syscall
+-- laundering unrepresentable. `Pure` keeps its value as `pureV`.
+------------------------------------------------------------------------
+
+mk-info : ∀ {A B} → String → (M.⟦ A ⟧ → M.⟦ B ⟧) → EffectShape B → SigOpInfo A B
+mk-info nm f Pure      = mk-info' nm (pureV f)
+mk-info nm f (Emits e) = mk-info' nm (emitsV e)
+mk-info nm f (Halts e) = mk-info' nm (haltsV e)
 
 ------------------------------------------------------------------------
 -- Name-only equality

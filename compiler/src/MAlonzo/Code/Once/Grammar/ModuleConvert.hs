@@ -160,7 +160,8 @@ d_gdeclToDecl_54 v0
              (coe
                 MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38 (coe v1)
                 (coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18)
-                (coe d_gtypeToPolyType_6 (coe v2)))
+                (coe d_gtypeToPolyType_6 (coe v2))
+                (coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18))
       MAlonzo.Code.Once.Grammar.C_DTypeAlias_134 v1 v2 v3
         -> let v4
                  = MAlonzo.Code.Once.Grammar.Convert.d_gtypeToType_6 (coe v3) in

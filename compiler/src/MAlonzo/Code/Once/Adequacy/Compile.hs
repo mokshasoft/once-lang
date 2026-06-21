@@ -41,7 +41,7 @@ import qualified MAlonzo.Code.Once.Target.Arch
 d_compile'45'asm_6 ::
   MAlonzo.Code.Once.Target.Arch.T_Arch_6 ->
   MAlonzo.Code.Once.Grammar.T_GModule_138 ->
-  MAlonzo.Code.Once.Compile.T_CompileResult_586
+  MAlonzo.Code.Once.Compile.T_CompileResult_638
 d_compile'45'asm_6 v0 v1
   = let v2
           = MAlonzo.Code.Once.Grammar.ModuleConvert.d_mapDecls_122
@@ -54,35 +54,35 @@ d_compile'45'asm_6 v0 v1
                         MAlonzo.Code.Once.Parser.Module.Core.C_mkModule_50 (coe v3) in
               coe
                 (coe
-                   MAlonzo.Code.Once.Compile.d_compileFromModule_698
+                   MAlonzo.Code.Once.Compile.d_compileFromModule_750
                    (coe MAlonzo.Code.Once.IR.C_Heap_8)
-                   (coe MAlonzo.Code.Once.Compile.C_Build_584)
+                   (coe MAlonzo.Code.Once.Compile.C_Build_636)
                    (coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8) (coe v0) (coe v4))
          MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
            -> case coe v2 of
                 MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v3
                   -> coe
-                       MAlonzo.Code.Once.Compile.d_compileFromModule_698
+                       MAlonzo.Code.Once.Compile.d_compileFromModule_750
                        (coe MAlonzo.Code.Once.IR.C_Heap_8)
-                       (coe MAlonzo.Code.Once.Compile.C_Build_584)
+                       (coe MAlonzo.Code.Once.Compile.C_Build_636)
                        (coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8) (coe v0) (coe v3)
                 MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                   -> coe
-                       MAlonzo.Code.Once.Compile.C_Error_594
+                       MAlonzo.Code.Once.Compile.C_Error_646
                        (coe ("GModule \8594 Module conversion failed" :: Data.Text.Text))
                 _ -> MAlonzo.RTE.mazUnreachableError
          _ -> MAlonzo.RTE.mazUnreachableError)
 -- Once.Adequacy.Compile.compile-cli-asm
 d_compile'45'cli'45'asm_26 ::
   MAlonzo.Code.Once.IR.T_AllocMode_4 ->
-  MAlonzo.Code.Once.Compile.T_Stage_578 ->
+  MAlonzo.Code.Once.Compile.T_Stage_630 ->
   Bool ->
   MAlonzo.Code.Once.Target.Arch.T_Arch_6 ->
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_44 ->
-  MAlonzo.Code.Once.Compile.T_CompileResult_586
+  MAlonzo.Code.Once.Compile.T_CompileResult_638
 d_compile'45'cli'45'asm_26 v0 v1 v2 v3 v4
   = coe
-      MAlonzo.Code.Once.Compile.d_compileFromModule_698 (coe v0) (coe v1)
+      MAlonzo.Code.Once.Compile.d_compileFromModule_750 (coe v0) (coe v1)
       (coe v2) (coe v3) (coe v4)
 -- Once.Adequacy.Compile.⟦_⟧M
 d_'10214'_'10215'M_38 ::
@@ -226,11 +226,16 @@ du_compile_136 v0 v1 v2
                               -> case coe v9 of
                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v10 v11
                                      -> let v12
-                                              = MAlonzo.Code.Once.Compile.d_compileAllFuns_410
+                                              = MAlonzo.Code.Once.Compile.d_compileAllFuns_442
                                                   (coe v6) (coe v7) (coe v10)
                                                   (coe
-                                                     MAlonzo.Code.Once.Compile.d_buildPolyCtx_226
-                                                     (coe v11)) in
+                                                     MAlonzo.Code.Once.Compile.d_buildPolyCtx_242
+                                                     (coe v11))
+                                                  (coe
+                                                     MAlonzo.Code.Once.Compile.d_collectSigEffects_454
+                                                     (coe
+                                                        MAlonzo.Code.Once.Parser.Module.Core.d_decls_48
+                                                        (coe v5))) in
                                         coe
                                           (case coe v12 of
                                              MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v13
@@ -241,11 +246,11 @@ du_compile_136 v0 v1 v2
                                                             MAlonzo.Code.Data.String.Base.d__'43''43'__20
                                                             (MAlonzo.Code.Once.Target.d_asmHeader_38
                                                                (coe
-                                                                  MAlonzo.Code.Once.Compile.d_archTarget_508
+                                                                  MAlonzo.Code.Once.Compile.d_archTarget_560
                                                                   (coe v1)))
-                                                            (MAlonzo.Code.Once.Compile.d_compileAllWithTarget_546
+                                                            (MAlonzo.Code.Once.Compile.d_compileAllWithTarget_598
                                                                (coe
-                                                                  MAlonzo.Code.Once.Compile.d_archTarget_508
+                                                                  MAlonzo.Code.Once.Compile.d_archTarget_560
                                                                   (coe v1))
                                                                (coe v13)) in
                                                   coe
@@ -274,11 +279,16 @@ du_compile_136 v0 v1 v2
                                   -> case coe v8 of
                                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v9 v10
                                          -> let v11
-                                                  = MAlonzo.Code.Once.Compile.d_compileAllFuns_410
+                                                  = MAlonzo.Code.Once.Compile.d_compileAllFuns_442
                                                       (coe v5) (coe v6) (coe v9)
                                                       (coe
-                                                         MAlonzo.Code.Once.Compile.d_buildPolyCtx_226
-                                                         (coe v10)) in
+                                                         MAlonzo.Code.Once.Compile.d_buildPolyCtx_242
+                                                         (coe v10))
+                                                      (coe
+                                                         MAlonzo.Code.Once.Compile.d_collectSigEffects_454
+                                                         (coe
+                                                            MAlonzo.Code.Once.Parser.Module.Core.d_decls_48
+                                                            (coe v4))) in
                                             coe
                                               (case coe v11 of
                                                  MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v12
@@ -289,11 +299,11 @@ du_compile_136 v0 v1 v2
                                                                 MAlonzo.Code.Data.String.Base.d__'43''43'__20
                                                                 (MAlonzo.Code.Once.Target.d_asmHeader_38
                                                                    (coe
-                                                                      MAlonzo.Code.Once.Compile.d_archTarget_508
+                                                                      MAlonzo.Code.Once.Compile.d_archTarget_560
                                                                       (coe v1)))
-                                                                (MAlonzo.Code.Once.Compile.d_compileAllWithTarget_546
+                                                                (MAlonzo.Code.Once.Compile.d_compileAllWithTarget_598
                                                                    (coe
-                                                                      MAlonzo.Code.Once.Compile.d_archTarget_508
+                                                                      MAlonzo.Code.Once.Compile.d_archTarget_560
                                                                       (coe v1))
                                                                    (coe v12)) in
                                                       coe

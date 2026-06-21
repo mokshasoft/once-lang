@@ -206,7 +206,7 @@ d_eval_10 v0 v1 v2 v3
       MAlonzo.Code.Once.IR.C_free'45'heap_156 v4 -> coe v3
       MAlonzo.Code.Once.IR.C_const_160 v5 v6 -> coe seq (coe v5) (coe v6)
       MAlonzo.Code.Once.IR.C_SigOp_166 v6
-        -> coe MAlonzo.Code.Once.SigOp.Info.d_semM_148 v6 v3
+        -> coe MAlonzo.Code.Once.SigOp.Info.du_semM_170 v6 v3
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Eval.appNatTr-F
 d_appNatTr'45'F_18 ::

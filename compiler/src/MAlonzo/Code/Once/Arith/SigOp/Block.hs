@@ -700,10 +700,10 @@ d_block'45'semM_228 v0 v1 v2
 d_block'45'info_262 ::
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
-  MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_134
+  MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_150
 d_block'45'info_262 v0 v1
   = coe
-      MAlonzo.Code.Once.SigOp.Info.C_mk'45'info_152
+      MAlonzo.Code.Once.SigOp.Info.du_mk'45'info_216
       (coe du_block'45'name_200 (coe v1))
       (coe d_block'45'semM_228 (coe v0) (coe v1))
       (coe MAlonzo.Code.Once.SigOp.Info.C_Pure_124)

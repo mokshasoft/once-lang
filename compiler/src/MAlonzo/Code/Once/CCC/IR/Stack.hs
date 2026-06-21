@@ -371,7 +371,7 @@ d_'10216''44''10217''45'stack'45'req_160 ::
 d_'10216''44''10217''45'stack'45'req_160 = erased
 -- Once.CCC.IR.Stack.sigOp-stack-req
 d_sigOp'45'stack'45'req_174 ::
-  MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_134 ->
+  MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_150 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_sigOp'45'stack'45'req_174 = erased
 -- Once.CCC.IR.Stack.⟨,⟩-capacity-for-pair

@@ -37,6 +37,7 @@ open import Data.Product using (_×_; _,_; ∃-syntax)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.Type
+open import Once.SigEffect using (SigEffect)
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Raw as Raw
 open import Once.TypeCheck.Context using (Ctx; ∅; name)
@@ -58,6 +59,27 @@ Imports = List (String × Type)
 -- | Empty imports
 emptyImports : Imports
 emptyImports = []
+
+-- | Declared `! <shape>` EffectShape annotations of imported external
+-- arrows, keyed by the SAME qualified name as `imports` (e.g.
+-- "S.exit" ↦ halts). Plan 0.38 M0.2: this is the ONLY channel by which
+-- the elaborator learns an external arrow's effect — a PARALLEL map, so
+-- `lookupImport`/`FunInfo`/the verified judgment stay untouched. An entry
+-- is absent (`nothing` on lookup) when no `! <shape>` was declared; the
+-- elaborator then falls back to the structural default (pure arrow ↦
+-- `Pure`, `Eff`-arrow ↦ `Emits`).
+SigEffectCtx : Set
+SigEffectCtx = List (String × SigEffect)
+
+emptySigEffects : SigEffectCtx
+emptySigEffects = []
+
+-- | Look up a declared effect shape by qualified import name.
+lookupSigEffect : SigEffectCtx → String → Maybe SigEffect
+lookupSigEffect [] _ = nothing
+lookupSigEffect ((n , se) ∷ rest) x with StrProp._≟_ n x
+... | yes _ = just se
+... | no  _ = lookupSigEffect rest x
 
 -- | Polymorphic-definition context (plan 0.6.2). Carries each
 -- user-declared poly def's schema and body so they can be
@@ -114,18 +136,22 @@ record NamedCtx : Set where
     freshCounter : ℕ  -- For generating fresh type variables (α₀, α₁, α₂, ...)
     imports     : Imports  -- Imported primitives (qualified names → types)
     polys       : PolyCtx  -- User polymorphic definitions (plan 0.6.2)
+    sigEffects  : SigEffectCtx  -- Declared `! <shape>` effects (plan 0.38 M0.2)
 
 -- | Empty context
 emptyCtx : NamedCtx
-emptyCtx = mkCtx 0 ∅ S∅ 0 emptyImports emptyPolyCtx
+emptyCtx = mkCtx 0 ∅ S∅ 0 emptyImports emptyPolyCtx emptySigEffects
 
 -- | Create context with imports
 ctxWithImports : Imports → NamedCtx
-ctxWithImports imps = mkCtx 0 ∅ S∅ 0 imps emptyPolyCtx
+ctxWithImports imps = mkCtx 0 ∅ S∅ 0 imps emptyPolyCtx emptySigEffects
 
 -- | Create context with imports and polymorphic defs. Plan 0.6.2.
+-- `sigEffects` defaults to empty (the verified judgment / reconstruction
+-- sites use this; the declared-effect map enters only at the top-level
+-- body context via `ctxWithImportsAndSelfAndPolys'`). Plan 0.38 M0.2.
 ctxWithImportsAndPolys : Imports → PolyCtx → NamedCtx
-ctxWithImportsAndPolys imps polys = mkCtx 0 ∅ S∅ 0 imps polys
+ctxWithImportsAndPolys imps polys = mkCtx 0 ∅ S∅ 0 imps polys emptySigEffects
 
 -- | Create context with imports and self-reference for recursive definitions
 -- The function's own name and type are added to the imports list so it can call itself.
@@ -138,18 +164,20 @@ ctxWithImportsAndSelf imps name ty =
 -- | Same as `ctxWithImportsAndSelf` but also carries a polymorphic
 -- context. Plan 0.6.2 — used by `compileFun` to make poly defs
 -- available to each ground function's body during typecheck.
-ctxWithImportsAndSelfAndPolys : Imports → PolyCtx → String → Type → NamedCtx
-ctxWithImportsAndSelfAndPolys imps polys name ty =
-  ctxWithImportsAndPolys ((name , ty) ∷ imps) polys
+-- Plan 0.38 M0.2: also seeds the declared `! <shape>` effect map; this
+-- is the ONE site the real map enters elaboration (the body context).
+ctxWithImportsAndSelfAndPolys : Imports → PolyCtx → SigEffectCtx → String → Type → NamedCtx
+ctxWithImportsAndSelfAndPolys imps polys sigEffs name ty =
+  mkCtx 0 ∅ S∅ 0 ((name , ty) ∷ imps) polys sigEffs
 
--- | Extend context with a new binding (preserves fresh counter, imports, polys)
+-- | Extend context with a new binding (preserves fresh counter, imports, polys, sigEffects)
 extendNamedCtx : NamedCtx → String → Type → NamedCtx
-extendNamedCtx (mkCtx n Γ Δ fresh imps polys) x A =
-  mkCtx (suc n) (extendCtx Γ x A) (Δ S, A) fresh imps polys
+extendNamedCtx (mkCtx n Γ Δ fresh imps polys sigEffs) x A =
+  mkCtx (suc n) (extendCtx Γ x A) (Δ S, A) fresh imps polys sigEffs
 
 -- | Bump fresh counter (for generating new type variables)
 bumpFresh : NamedCtx → NamedCtx
-bumpFresh (mkCtx n Γ Δ fresh imps polys) = mkCtx n Γ Δ (suc fresh) imps polys
+bumpFresh (mkCtx n Γ Δ fresh imps polys sigEffs) = mkCtx n Γ Δ (suc fresh) imps polys sigEffs
 
 -- | Generate fresh type variable name
 freshTVar : ℕ → String
@@ -277,7 +305,7 @@ composeMid ctx f g A with composeArgB ctx g A
 
 -- | Find a local variable's de Bruijn position and declared quantity.
 findLocalVarUsage : (ctx : NamedCtx) → String → Maybe (Fin (NamedCtx.size ctx) × Quantity)
-findLocalVarUsage (mkCtx n Γ Δ _ _ _) x = go Γ Δ
+findLocalVarUsage (mkCtx n Γ Δ _ _ _ _) x = go Γ Δ
   where
     go : ∀ {m} → Ctx → SCtx m → Maybe (Fin m × Quantity)
     go [] S∅ = nothing

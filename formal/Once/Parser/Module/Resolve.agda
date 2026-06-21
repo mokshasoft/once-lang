@@ -77,8 +77,8 @@ lookupModule ((p , m) ∷ rest)  path with p path≟ path
 -- belong to the imported module's own scope, not the importer's.
 signaturesWithOwner : Maybe String → List Decl → List Decl
 signaturesWithOwner _     []                                   = []
-signaturesWithOwner owner (DSignature name _ ty ∷ rest)        =
-  DSignature name owner ty ∷ signaturesWithOwner owner rest
+signaturesWithOwner owner (DSignature name _ ty eff ∷ rest)   =
+  DSignature name owner ty eff ∷ signaturesWithOwner owner rest
 signaturesWithOwner owner (_ ∷ rest)                           =
   signaturesWithOwner owner rest
 

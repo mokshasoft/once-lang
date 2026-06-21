@@ -705,7 +705,7 @@ du_elaborate_108 v0 v1 v2 v3
                      (coe MAlonzo.Code.Once.Type.C_Unit_122)
                      (coe
                         MAlonzo.Code.Once.IR.C_SigOp_166
-                        (MAlonzo.Code.Once.Arith.SigOp.Builders.d_value'45'info_210
+                        (MAlonzo.Code.Once.Arith.SigOp.Builders.d_value'45'info_198
                            (coe MAlonzo.Code.Once.Type.C_Unit_122) (coe v1) (coe v7)))
                      (coe MAlonzo.Code.Once.IR.C_terminal_74) in
            coe
@@ -717,8 +717,9 @@ du_elaborate_108 v0 v1 v2 v3
                           MAlonzo.Code.Once.IR.C__'8728'__30 v9
                           (coe
                              MAlonzo.Code.Once.IR.C_SigOp_166
-                             (MAlonzo.Code.Once.Arith.SigOp.Builders.d_arrow'45'info_218
-                                (coe v9) (coe v11) (coe v10) (coe v7)))
+                             (coe
+                                MAlonzo.Code.Once.Arith.SigOp.Builders.du_arrow'45'info_212
+                                (coe v9) (coe v11) (coe v7)))
                           (coe MAlonzo.Code.Once.IR.C_snd_50))
                        v2
                 _ -> coe v8)
@@ -728,7 +729,7 @@ du_elaborate_108 v0 v1 v2 v3
              (coe MAlonzo.Code.Once.Type.C_Unit_122)
              (coe
                 MAlonzo.Code.Once.IR.C_SigOp_166
-                (MAlonzo.Code.Once.Arith.SigOp.Builders.d_value'45'info_210
+                (MAlonzo.Code.Once.Arith.SigOp.Builders.d_value'45'info_198
                    (coe MAlonzo.Code.Once.Type.C_Unit_122) (coe v1) (coe v7)))
              (coe MAlonzo.Code.Once.IR.C_terminal_74)
       MAlonzo.Code.Once.Surface.Syntax.C_poly_522 v6
@@ -737,7 +738,7 @@ du_elaborate_108 v0 v1 v2 v3
              (coe MAlonzo.Code.Once.Type.C_Unit_122)
              (coe
                 MAlonzo.Code.Once.IR.C_SigOp_166
-                (MAlonzo.Code.Once.Arith.SigOp.Builders.d_value'45'info_210
+                (MAlonzo.Code.Once.Arith.SigOp.Builders.d_value'45'info_198
                    (coe MAlonzo.Code.Once.Type.C_Unit_122) (coe v1) (coe v6)))
              (coe MAlonzo.Code.Once.IR.C_terminal_74)
       MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_534 v9

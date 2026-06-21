@@ -37,7 +37,14 @@ open import Once.IR as IR
 -- Plan 0.36 Phase 1: `generic-info` reconstructs a SigOp's `SigOpInfo` from its
 -- name, so `extract-morph-eff` can recover the direct `IR.SigOp` morphism of an
 -- effectful sigOp used point-free (it elaborates as a closure otherwise).
-open import Once.Arith.SigOp.Builders using (generic-info)
+-- Plan 0.38 M0.2: external arrow SigOps are built from their DECLARED
+-- `! <shape>` effect (looked up in `NamedCtx.sigEffects`), never from a
+-- hardcoded name. `generic-semM` supplies the (laundered) value ONLY for
+-- the pure/value `pureV` positions — an effectful op carries a CONTRACT,
+-- not a value, so `Emits`/`Halts` drop it entirely.
+open import Once.Arith.SigOp.Builders using (generic-semM)
+open import Once.SigOp.Info using (SigOpInfo; mk-info'; pureV; emitsV; haltsV)
+open import Once.SigEffect using () renaming (halts to se-halts; emits to se-emits)
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Raw as Raw
 open import Once.TypeCheck.Error using (TypeError; renderError;
@@ -1767,6 +1774,25 @@ mutual
   inferElabV-RApp-other ctx f x =
     inferElabV-RApp-other-aux ctx f x _ refl
 
+  -- | Build an external arrow op's `SigOpInfo` from its DECLARED effect
+  -- (Plan 0.38 M0.2). The compiler is interpretation-BLIND: the effect
+  -- comes from the `! <shape>` annotation in the imported signature
+  -- (looked up in `NamedCtx.sigEffects` by the same qualified key as the
+  -- type), NEVER from a hardcoded name (`classify-name "linux.exit"` is
+  -- retired). An effectful, `Unit`-codomain op carries a CONTRACT
+  -- (`haltsV`/`emitsV`), no value. A pure arrow, or an `eff` op whose
+  -- codomain is not `Unit` (the deferred data-returning-syscall
+  -- boundary), falls back to a `pureV` value (the `closure`/`poly`-style
+  -- function-linking opacity, a separate axis from the syscall contract).
+  ext-arrow-info : ∀ {A B} → NamedCtx → (alias name : String) → Purity → SigOpInfo A B
+  ext-arrow-info ctx alias name pure = mk-info' name (pureV (generic-semM name))
+  ext-arrow-info {A} {B} ctx alias name eff with B ≟T Unit
+  ... | no _ = mk-info' name (pureV (generic-semM name))
+  ... | yes refl with lookupSigEffect (NamedCtx.sigEffects ctx) (alias ++ "." ++ name)
+  ...   | just se-halts = mk-info' name (haltsV refl)
+  ...   | just se-emits = mk-info' name (emitsV refl)
+  ...   | nothing       = mk-info' name (emitsV refl)
+
   -- Aux helper bodies (placed after all main mutual members so that the
   -- `... | pat` continuations of inferElabV/checkElabV clauses don't
   -- conflict with the aux's own clauses).
@@ -1781,7 +1807,7 @@ mutual
   inferElabV-RQualified-aux ctx name alias
     (just (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B)) eq =
     success (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B) _
-      (Surface.lift-morphism {π = π} (IR.SigOp (generic-info name)))
+      (Surface.lift-morphism {π = π} (IR.SigOp (ext-arrow-info ctx alias name π)))
       0 (NamedCtx.freshCounter ctx)
     , t-var-qualified eq
   inferElabV-RQualified-aux ctx name alias (just ty) eq =

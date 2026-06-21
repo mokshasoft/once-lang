@@ -261,6 +261,10 @@ tokenize-WF ('=' ∷ '=' ∷ cs) (acc rec) =
 tokenize-WF ('!' ∷ '=' ∷ cs) (acc rec) =
   TNeq ∷ tokenize-WF cs (rec (s≤s (m≤n⇒m≤1+n ≤-refl)))
 
+-- EffectShape delimiter `!` (standalone, not `!=`). Plan 0.38 M0.2.
+-- Must come AFTER the `!=`/TNeq clause (max-munch) and is a single char.
+tokenize-WF ('!' ∷ cs) (acc rec) = TBang ∷ tokenize-WF cs (rec (s≤s ≤-refl))
+
 -- Single-character punctuation
 tokenize-WF ('(' ∷ cs) (acc rec) = TLParen    ∷ tokenize-WF cs (rec (s≤s ≤-refl))
 tokenize-WF (')' ∷ cs) (acc rec) = TRParen    ∷ tokenize-WF cs (rec (s≤s ≤-refl))

@@ -214,6 +214,7 @@ parsePolyAtomImpl (TGt ∷ _)        = nothing
 parsePolyAtomImpl (TGe ∷ _)        = nothing
 parsePolyAtomImpl (TEqEq ∷ _)      = nothing
 parsePolyAtomImpl (TNeq ∷ _)       = nothing
+parsePolyAtomImpl (TBang ∷ _)      = nothing
 parsePolyAtomImpl (TNewline ∷ _)   = nothing
 parsePolyAtomImpl (TEOF ∷ _)       = nothing
 

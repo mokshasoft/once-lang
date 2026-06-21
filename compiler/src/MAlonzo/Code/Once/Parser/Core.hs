@@ -399,16 +399,16 @@ du_matchToken_174 v0 v1 v2
                        MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                        (coe MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1) (coe v2))
                 _ -> coe v3
-         MAlonzo.Code.Once.Parser.Token.C_TNewline_70
+         MAlonzo.Code.Once.Parser.Token.C_TNewline_72
            -> case coe v1 of
-                MAlonzo.Code.Once.Parser.Token.C_TNewline_70
+                MAlonzo.Code.Once.Parser.Token.C_TNewline_72
                   -> coe
                        MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                        (coe MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1) (coe v2))
                 _ -> coe v3
-         MAlonzo.Code.Once.Parser.Token.C_TEOF_72
+         MAlonzo.Code.Once.Parser.Token.C_TEOF_74
            -> case coe v1 of
-                MAlonzo.Code.Once.Parser.Token.C_TEOF_72
+                MAlonzo.Code.Once.Parser.Token.C_TEOF_74
                   -> coe
                        MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                        (coe MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1) (coe v2))
@@ -517,7 +517,7 @@ d_skipNewlines_278 v0
                         (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16) (coe v0)) in
            coe
              (case coe v1 of
-                MAlonzo.Code.Once.Parser.Token.C_TNewline_70
+                MAlonzo.Code.Once.Parser.Token.C_TNewline_72
                   -> let v4 = d_skipNewlines_278 (coe v2) in
                      coe
                        (case coe v4 of

@@ -20,6 +20,7 @@ import qualified Data.Text
 import qualified MAlonzo.Code.Agda.Builtin.Equality
 import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Agda.Builtin.String
+import qualified MAlonzo.Code.Agda.Builtin.Unit
 import qualified MAlonzo.Code.Data.String.Properties
 import qualified MAlonzo.Code.Data.Sum.Base
 import qualified MAlonzo.Code.Once.Functor.Translate
@@ -439,57 +440,122 @@ d_'10214'ν'10215'_116 = erased
 -- Once.SigOp.Info.EffectShape
 d_EffectShape_120 a0 = ()
 data T_EffectShape_120 = C_Pure_124 | C_Emits_126 | C_Halts_128
+-- Once.SigOp.Info.SigOpSem
+d_SigOpSem_134 a0 a1 = ()
+data T_SigOpSem_134
+  = C_pureV_140 (AgdaAny -> AgdaAny) | C_emitsV_142 | C_haltsV_144
 -- Once.SigOp.Info.SigOpInfo
-d_SigOpInfo_134 a0 a1 = ()
-data T_SigOpInfo_134
-  = C_mk'45'info_152 MAlonzo.Code.Agda.Builtin.String.T_String_6
-                     (AgdaAny -> AgdaAny) T_EffectShape_120
+d_SigOpInfo_150 a0 a1 = ()
+data T_SigOpInfo_150
+  = C_mk'45'info''_164 MAlonzo.Code.Agda.Builtin.String.T_String_6
+                       T_SigOpSem_134
 -- Once.SigOp.Info.SigOpInfo.name
-d_name_146 ::
-  T_SigOpInfo_134 -> MAlonzo.Code.Agda.Builtin.String.T_String_6
-d_name_146 v0
+d_name_160 ::
+  T_SigOpInfo_150 -> MAlonzo.Code.Agda.Builtin.String.T_String_6
+d_name_160 v0
   = case coe v0 of
-      C_mk'45'info_152 v1 v2 v3 -> coe v1
+      C_mk'45'info''_164 v1 v2 -> coe v1
       _ -> MAlonzo.RTE.mazUnreachableError
--- Once.SigOp.Info.SigOpInfo.semM
-d_semM_148 :: T_SigOpInfo_134 -> AgdaAny -> AgdaAny
-d_semM_148 v0
+-- Once.SigOp.Info.SigOpInfo.sem
+d_sem_162 :: T_SigOpInfo_150 -> T_SigOpSem_134
+d_sem_162 v0
   = case coe v0 of
-      C_mk'45'info_152 v1 v2 v3 -> coe v2
+      C_mk'45'info''_164 v1 v2 -> coe v2
       _ -> MAlonzo.RTE.mazUnreachableError
--- Once.SigOp.Info.SigOpInfo.effect
-d_effect_150 :: T_SigOpInfo_134 -> T_EffectShape_120
-d_effect_150 v0
+-- Once.SigOp.Info.semM
+d_semM_170 ::
+  MAlonzo.Code.Once.Type.T_Type_112 ->
+  MAlonzo.Code.Once.Type.T_Type_112 ->
+  T_SigOpInfo_150 -> AgdaAny -> AgdaAny
+d_semM_170 ~v0 ~v1 v2 = du_semM_170 v2
+du_semM_170 :: T_SigOpInfo_150 -> AgdaAny -> AgdaAny
+du_semM_170 v0 = coe du_go_182 (coe d_sem_162 (coe v0))
+-- Once.SigOp.Info._.go
+d_go_182 ::
+  MAlonzo.Code.Once.Type.T_Type_112 ->
+  MAlonzo.Code.Once.Type.T_Type_112 ->
+  T_SigOpInfo_150 ->
+  MAlonzo.Code.Once.Type.T_Type_112 ->
+  MAlonzo.Code.Once.Type.T_Type_112 ->
+  T_SigOpSem_134 -> AgdaAny -> AgdaAny
+d_go_182 ~v0 ~v1 ~v2 ~v3 ~v4 v5 = du_go_182 v5
+du_go_182 :: T_SigOpSem_134 -> AgdaAny -> AgdaAny
+du_go_182 v0
   = case coe v0 of
-      C_mk'45'info_152 v1 v2 v3 -> coe v3
+      C_pureV_140 v1 -> coe v1
+      C_emitsV_142
+        -> coe (\ v2 -> coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
+      C_haltsV_144
+        -> coe (\ v2 -> coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
+      _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.SigOp.Info.effect
+d_effect_194 ::
+  MAlonzo.Code.Once.Type.T_Type_112 ->
+  MAlonzo.Code.Once.Type.T_Type_112 ->
+  T_SigOpInfo_150 -> T_EffectShape_120
+d_effect_194 ~v0 ~v1 v2 = du_effect_194 v2
+du_effect_194 :: T_SigOpInfo_150 -> T_EffectShape_120
+du_effect_194 v0 = coe du_go_206 (coe d_sem_162 (coe v0))
+-- Once.SigOp.Info._.go
+d_go_206 ::
+  MAlonzo.Code.Once.Type.T_Type_112 ->
+  MAlonzo.Code.Once.Type.T_Type_112 ->
+  T_SigOpInfo_150 ->
+  MAlonzo.Code.Once.Type.T_Type_112 ->
+  MAlonzo.Code.Once.Type.T_Type_112 ->
+  T_SigOpSem_134 -> T_EffectShape_120
+d_go_206 ~v0 ~v1 ~v2 ~v3 ~v4 v5 = du_go_206 v5
+du_go_206 :: T_SigOpSem_134 -> T_EffectShape_120
+du_go_206 v0
+  = case coe v0 of
+      C_pureV_140 v1 -> coe C_Pure_124
+      C_emitsV_142 -> coe C_Emits_126
+      C_haltsV_144 -> coe C_Halts_128
+      _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.SigOp.Info.mk-info
+d_mk'45'info_216 ::
+  MAlonzo.Code.Once.Type.T_Type_112 ->
+  MAlonzo.Code.Once.Type.T_Type_112 ->
+  MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
+  (AgdaAny -> AgdaAny) -> T_EffectShape_120 -> T_SigOpInfo_150
+d_mk'45'info_216 ~v0 ~v1 v2 v3 v4 = du_mk'45'info_216 v2 v3 v4
+du_mk'45'info_216 ::
+  MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
+  (AgdaAny -> AgdaAny) -> T_EffectShape_120 -> T_SigOpInfo_150
+du_mk'45'info_216 v0 v1 v2
+  = case coe v2 of
+      C_Pure_124
+        -> coe C_mk'45'info''_164 (coe v0) (coe C_pureV_140 (coe v1))
+      C_Emits_126 -> coe C_mk'45'info''_164 (coe v0) (coe C_emitsV_142)
+      C_Halts_128 -> coe C_mk'45'info''_164 (coe v0) (coe C_haltsV_144)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.SigOp.Info._≟SigOpInfo-name_
-d__'8799'SigOpInfo'45'name__162 ::
-  T_SigOpInfo_134 ->
-  T_SigOpInfo_134 ->
+d__'8799'SigOpInfo'45'name__242 ::
+  T_SigOpInfo_150 ->
+  T_SigOpInfo_150 ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20
-d__'8799'SigOpInfo'45'name__162 v0 v1
+d__'8799'SigOpInfo'45'name__242 v0 v1
   = coe
       MAlonzo.Code.Data.String.Properties.d__'8799'__54
-      (coe d_name_146 (coe v0)) (coe d_name_146 (coe v1))
+      (coe d_name_160 (coe v0)) (coe d_name_160 (coe v1))
 -- Once.SigOp.Info.sigOpInfo-name-coherence
-d_sigOpInfo'45'name'45'coherence_176
+d_sigOpInfo'45'name'45'coherence_256
   = error
       "MAlonzo Runtime Error: postulate evaluated: Once.SigOp.Info.sigOpInfo-name-coherence"
 -- Once.SigOp.Info._≟SigOpInfo_
-d__'8799'SigOpInfo__186 ::
+d__'8799'SigOpInfo__266 ::
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
-  T_SigOpInfo_134 ->
-  T_SigOpInfo_134 ->
+  T_SigOpInfo_150 ->
+  T_SigOpInfo_150 ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20
-d__'8799'SigOpInfo__186 ~v0 ~v1 v2 v3
-  = du__'8799'SigOpInfo__186 v2 v3
-du__'8799'SigOpInfo__186 ::
-  T_SigOpInfo_134 ->
-  T_SigOpInfo_134 ->
+d__'8799'SigOpInfo__266 ~v0 ~v1 v2 v3
+  = du__'8799'SigOpInfo__266 v2 v3
+du__'8799'SigOpInfo__266 ::
+  T_SigOpInfo_150 ->
+  T_SigOpInfo_150 ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20
-du__'8799'SigOpInfo__186 v0 v1
+du__'8799'SigOpInfo__266 v0 v1
   = let v2
           = coe
               MAlonzo.Code.Relation.Nullary.Decidable.Core.du_map'8242'_178
@@ -497,10 +563,10 @@ du__'8799'SigOpInfo__186 v0 v1
               (\ v2 ->
                  coe
                    MAlonzo.Code.Data.String.Properties.du_'8776''45'reflexive_8
-                   (coe d_name_146 (coe v0)))
+                   (coe d_name_160 (coe v0)))
               (coe
                  MAlonzo.Code.Data.String.Properties.d__'8776''63'__28
-                 (coe d_name_146 (coe v0)) (coe d_name_146 (coe v1))) in
+                 (coe d_name_160 (coe v0)) (coe d_name_160 (coe v1))) in
     coe
       (case coe v2 of
          MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v3 v4
