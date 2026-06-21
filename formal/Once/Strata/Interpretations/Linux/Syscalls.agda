@@ -32,13 +32,12 @@
 module Once.Strata.Interpretations.Linux.Syscalls where
 
 open import Data.Unit using (tt)
+open import Data.Maybe using (Maybe; just; nothing)
 open import Relation.Binary.PropositionalEquality using (refl)
 
 open import Data.String using (String)
 open import Once.Type using (Int; Unit)
-open import Once.Word using (Carrier)
-import Once.Semantics.Value Carrier as M
-open import Once.SigOp.Info using (SigOpInfo; mk-info; EffectShape; Pure; Halts)
+open import Once.SigOp.Info using (SigOpInfo; mk-info; EffectShape; Halts)
 open import Once.SigOp.Interpretation using (Interpretation)
 
 ------------------------------------------------------------------------
@@ -66,12 +65,15 @@ linux-exit-info = mk-info "linux.exit" (λ _ → tt) (Halts refl)
 -- instead; the core is agnostic to which.
 ------------------------------------------------------------------------
 
-postulate
-  linux-semM : ∀ {A B} → String → M.⟦ A ⟧ → M.⟦ B ⟧
-
-info-linux : ∀ {A B} → String → SigOpInfo A B
-info-linux {Int} {Unit} "linux.exit" = linux-exit-info
-info-linux             name          = mk-info name (linux-semM name) Pure
+-- | Partial resolver: `just` only for names this interpretation OWNS.
+-- `nothing` for everything else — INTERNAL producers (`arith.*`, `lit.*`,
+-- `arith.block.*`) keep their own `semM`, and `resolveSigOps` leaves them
+-- alone. Layer 0 owns exactly `linux.exit`; data-returning syscalls
+-- (read/write/…) add their `just (mk-info … semM …)` entries here, with
+-- `semM` POSTULATED (confined to Linux) or proven for a verified kernel.
+info-linux : ∀ {A B} → String → Maybe (SigOpInfo A B)
+info-linux {Int} {Unit} "linux.exit" = just linux-exit-info
+info-linux             _             = nothing
 
 linux : Interpretation
 linux = record { info = info-linux }

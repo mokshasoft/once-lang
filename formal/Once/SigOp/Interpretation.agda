@@ -22,33 +22,17 @@
 module Once.SigOp.Interpretation where
 
 open import Data.String using (String)
+open import Data.Maybe using (Maybe)
 
-open import Once.Type using (Type; ArrowKind; mk-kind; pure; eff)
-open import Once.SigOp.Info using (SigOpInfo; mk-info; semM; EffectShape; Pure)
+open import Once.SigOp.Info using (SigOpInfo)
 
--- | An interpretation resolves each external SigOp name to its declared
--- contract. `info name` is the op's native `SigOpInfo` (its `semM` and
--- its `effect`). The value-vs-arrow `Pure` structure below is the CORE's
--- structural rule (an effect is realized only on an arrow, D018), NOT
--- the interpretation's concern.
+-- | An interpretation resolves the names of *its* (external) SigOps to
+-- their declared contract — `info name = just (its SigOpInfo)`. It is
+-- PARTIAL: `nothing` for any name it does not own (notably the INTERNAL
+-- producers — `arith.*`, `lit.*`, `arith.block.*` — which carry their own
+-- `semM` and must NOT be re-resolved through an interpretation). This is
+-- what lets `resolveSigOps` swap only external placeholders and leave
+-- internal SigOps (e.g. `arith.div.int`) untouched.
 record Interpretation : Set where
   field
-    info : ∀ {A B} → String → SigOpInfo A B
-
-module _ (I : Interpretation) where
-  open Interpretation I
-
-  -- | A SigOp referenced as a VALUE (non-arrow type, or a `closure` /
-  -- `poly` reference): its effect is `Pure` — an effect is realized only
-  -- on application (D018), so a bare value reference emits nothing at
-  -- build. The `semM` still comes from the interpretation.
-  value-info : ∀ {A B} → String → SigOpInfo A B
-  value-info {A} {B} nm = mk-info nm (semM (info {A} {B} nm)) Pure
-
-  -- | A SigOp at an ARROW type, dispatched on the arrow's purity `π` so
-  -- the effect is COHERENT with the type: a `pure` arrow op is `Pure`
-  -- (applying it emits nothing); an `eff` arrow op carries its declared
-  -- per-application effect from `info` (no `classify-name` string guess).
-  arrow-info : ∀ {A B} → ArrowKind → String → SigOpInfo A B
-  arrow-info (mk-kind _ pure) nm = value-info nm
-  arrow-info (mk-kind _ eff)  nm = info nm
+    info : ∀ {A B} → String → Maybe (SigOpInfo A B)
