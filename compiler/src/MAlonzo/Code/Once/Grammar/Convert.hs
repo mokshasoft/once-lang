@@ -388,7 +388,7 @@ d_parseGType_816 ::
 d_parseGType_816 v0
   = let v1
           = coe
-              MAlonzo.Code.Once.Parser.Type.du_stripType_2628
+              MAlonzo.Code.Once.Parser.Type.du_stripType_2672
               (let v1
                      = coe
                          MAlonzo.Code.Once.Parser.Type.du_parseTypeAtomWF_130 (coe v0) in

@@ -414,6 +414,7 @@ mutual
   complete-compTailWFraw (pct-done {toks = TGe        ∷ _} _) _ = _ , refl
   complete-compTailWFraw (pct-done {toks = TEqEq      ∷ _} _) _ = _ , refl
   complete-compTailWFraw (pct-done {toks = TNeq       ∷ _} _) _ = _ , refl
+  complete-compTailWFraw (pct-done {toks = TBang      ∷ _} _) _ = _ , refl
   complete-compTailWFraw (pct-done {toks = TNewline   ∷ _} _) _ = _ , refl
   complete-compTailWFraw (pct-done {toks = TEOF       ∷ _} _) _ = _ , refl
   complete-compTailWFraw (pct-done {toks = TWord _    ∷ _} _) _ = _ , refl
@@ -515,6 +516,9 @@ mutual
   complete-cmpWFraw (pcm-noop {rest = TEOF       ∷ _} dA _) (acc rec)
     with complete-addWFraw dA (acc rec)
   ... | dA' , eqA rewrite eqA = _ , refl
+  complete-cmpWFraw (pcm-noop {rest = TBang      ∷ _} dA _) (acc rec)
+    with complete-addWFraw dA (acc rec)
+  ... | dA' , eqA rewrite eqA = _ , refl
   complete-cmpWFraw (pcm-noop {rest = TLt  ∷ _} _ ()) _
   complete-cmpWFraw (pcm-noop {rest = TLe  ∷ _} _ ()) _
   complete-cmpWFraw (pcm-noop {rest = TGt  ∷ _} _ ()) _
@@ -609,6 +613,7 @@ mutual
   complete-addTailWFraw (pat-done {toks = TGe        ∷ _} _) _ = _ , refl
   complete-addTailWFraw (pat-done {toks = TEqEq      ∷ _} _) _ = _ , refl
   complete-addTailWFraw (pat-done {toks = TNeq       ∷ _} _) _ = _ , refl
+  complete-addTailWFraw (pat-done {toks = TBang      ∷ _} _) _ = _ , refl
   complete-addTailWFraw (pat-done {toks = TNewline   ∷ _} _) _ = _ , refl
   complete-addTailWFraw (pat-done {toks = TEOF       ∷ _} _) _ = _ , refl
   complete-addTailWFraw (pat-done {toks = TWord _    ∷ _} _) _ = _ , refl
@@ -671,6 +676,7 @@ mutual
   complete-mulTailWFraw (pmt-done {toks = TGe        ∷ _} _) _ = _ , refl
   complete-mulTailWFraw (pmt-done {toks = TEqEq      ∷ _} _) _ = _ , refl
   complete-mulTailWFraw (pmt-done {toks = TNeq       ∷ _} _) _ = _ , refl
+  complete-mulTailWFraw (pmt-done {toks = TBang      ∷ _} _) _ = _ , refl
   complete-mulTailWFraw (pmt-done {toks = TNewline   ∷ _} _) _ = _ , refl
   complete-mulTailWFraw (pmt-done {toks = TEOF       ∷ _} _) _ = _ , refl
   complete-mulTailWFraw (pmt-done {toks = TWord _    ∷ _} _) _ = _ , refl
@@ -802,6 +808,9 @@ mutual
   complete-unaryWFraw (pu-app {toks = TNeq       ∷ _} dApp) a
     with complete-appWFraw dApp a
   ... | dApp' , eqApp rewrite eqApp = _ , refl
+  complete-unaryWFraw (pu-app {toks = TBang      ∷ _} dApp) a
+    with complete-appWFraw dApp a
+  ... | dApp' , eqApp rewrite eqApp = _ , refl
   complete-unaryWFraw (pu-app {toks = TNewline   ∷ _} dApp) a
     with complete-appWFraw dApp a
   ... | dApp' , eqApp rewrite eqApp = _ , refl
@@ -864,6 +873,7 @@ mutual
   complete-appTailWFraw (papp-done {toks = TGe        ∷ _} nas-TGe) _ = _ , refl
   complete-appTailWFraw (papp-done {toks = TEqEq      ∷ _} nas-TEqEq) _ = _ , refl
   complete-appTailWFraw (papp-done {toks = TNeq       ∷ _} nas-TNeq) _ = _ , refl
+  complete-appTailWFraw (papp-done {toks = TBang      ∷ _} nas-TBang) _ = _ , refl
   complete-appTailWFraw (papp-done {toks = TNewline   ∷ _} nas-TNewline) _ = _ , refl
   complete-appTailWFraw (papp-done {toks = TEOF       ∷ _} nas-TEOF) _ = _ , refl
 
@@ -960,6 +970,7 @@ mutual
       nqp-case nqp-TGe        = _ , refl
       nqp-case nqp-TEqEq      = _ , refl
       nqp-case nqp-TNeq       = _ , refl
+      nqp-case nqp-TBang      = _ , refl
       nqp-case nqp-TNewline   = _ , refl
       nqp-case nqp-TEOF       = _ , refl
       nqp-case nqp-TWord      = _ , refl
@@ -994,6 +1005,7 @@ mutual
       nqp-case (nqp-TAt-cons ntw-TGe)        = _ , refl
       nqp-case (nqp-TAt-cons ntw-TEqEq)      = _ , refl
       nqp-case (nqp-TAt-cons ntw-TNeq)       = _ , refl
+      nqp-case (nqp-TAt-cons ntw-TBang)      = _ , refl
       nqp-case (nqp-TAt-cons ntw-TNewline)   = _ , refl
       nqp-case (nqp-TAt-cons ntw-TEOF)       = _ , refl
       nqp-case (nqp-TAt-cons ntw-TInt)       = _ , refl
@@ -1234,6 +1246,7 @@ mutual
   complete-pae-paren (TGe        ∷ toks') dE dC a = complete-pae-paren-body _ dE dC a
   complete-pae-paren (TEqEq      ∷ toks') dE dC a = complete-pae-paren-body _ dE dC a
   complete-pae-paren (TNeq       ∷ toks') dE dC a = complete-pae-paren-body _ dE dC a
+  complete-pae-paren (TBang      ∷ toks') dE dC a = complete-pae-paren-body _ dE dC a
   complete-pae-paren (TNewline   ∷ toks') dE dC a = complete-pae-paren-body _ dE dC a
   complete-pae-paren (TEOF       ∷ toks') dE dC a = complete-pae-paren-body _ dE dC a
   -- TRParen: dE : ParsesExpr (TRParen ∷ _) _ _ is impossible.

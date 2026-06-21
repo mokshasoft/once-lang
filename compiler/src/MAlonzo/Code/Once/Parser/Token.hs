@@ -31,4 +31,4 @@ data T_Token_6
     C_TSemicolon_38 | C_TAt_40 | C_TPipe_42 | C_TDot_44 | C_TPlus_46 |
     C_TMinus_48 | C_TStar_50 | C_TSlash_52 | C_TPercent_54 |
     C_TAmpersand_56 | C_TLt_58 | C_TLe_60 | C_TGt_62 | C_TGe_64 |
-    C_TEqEq_66 | C_TNeq_68 | C_TNewline_70 | C_TEOF_72
+    C_TEqEq_66 | C_TNeq_68 | C_TBang_70 | C_TNewline_72 | C_TEOF_74

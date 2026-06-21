@@ -28,6 +28,7 @@ import qualified MAlonzo.Code.Once.Parser.ExprRelation
 import qualified MAlonzo.Code.Once.Parser.Token
 import qualified MAlonzo.Code.Once.Parser.Type
 import qualified MAlonzo.Code.Once.Parser.TypeRelation
+import qualified MAlonzo.Code.Once.SigEffect
 import qualified MAlonzo.Code.Once.Type
 import qualified MAlonzo.Code.Once.TypeCheck.Raw
 
@@ -64,7 +65,8 @@ data T_Decl_32
                  MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 |
     C_DSignature_38 MAlonzo.Code.Agda.Builtin.String.T_String_6
                     (Maybe MAlonzo.Code.Agda.Builtin.String.T_String_6)
-                    MAlonzo.Code.Once.Type.T_PolyType_240 |
+                    MAlonzo.Code.Once.Type.T_PolyType_240
+                    (Maybe MAlonzo.Code.Once.SigEffect.T_SigEffect_4) |
     C_DTypeAlias_40 MAlonzo.Code.Agda.Builtin.String.T_String_6
                     [MAlonzo.Code.Agda.Builtin.String.T_String_6]
                     MAlonzo.Code.Once.Type.T_Type_112 |
@@ -138,7 +140,7 @@ d_parseExprB'45'adapt_102 v0 v1
                               (coe
                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v5)
                                  (coe
-                                    MAlonzo.Code.Once.Parser.ExprRelation.du_ParsesExpr'45'shrinks_1098
+                                    MAlonzo.Code.Once.Parser.ExprRelation.du_ParsesExpr'45'shrinks_1108
                                     (coe v0) (coe v6))))
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError

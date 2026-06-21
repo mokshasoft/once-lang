@@ -154,14 +154,14 @@ data T__'8866''7580'_'8758'_'10814'__20
                                           T__'8866''7580'_'8758'_'10814'__20
 -- Once.TypeCheck.Judgment._⊢_∶_⨾_
 d__'8866'_'8758'_'10814'__638 ::
-  MAlonzo.Code.Once.TypeCheck.Classify.T_NamedCtx_136 ->
+  MAlonzo.Code.Once.TypeCheck.Classify.T_NamedCtx_170 ->
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Usage_60 -> ()
 d__'8866'_'8758'_'10814'__638 = erased
 -- Once.TypeCheck.Judgment.Typed
 d_Typed_650 ::
-  MAlonzo.Code.Once.TypeCheck.Classify.T_NamedCtx_136 ->
+  MAlonzo.Code.Once.TypeCheck.Classify.T_NamedCtx_170 ->
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Usage_60 -> ()

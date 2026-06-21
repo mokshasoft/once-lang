@@ -42,14 +42,37 @@ parseTypeAlias toks with parseTypeAliasB toks
 ... | just (d , rest , _) = just (d , rest)
 ... | nothing = nothing
 
+-- | Map a shape word to its `SigEffect`. Only `halts`/`emits` are
+-- recognised; anything else is not a shape (the `!` is left in place,
+-- so the decl parser reports the stray token). Plan 0.38 M0.2.
+shapeWord : String → Maybe SigEffect
+shapeWord w with w ≟ "halts"
+... | yes _ = just halts
+... | no _ with w ≟ "emits"
+...   | yes _ = just emits
+...   | no _  = nothing
+
+-- | Optional trailing `! <shape>` EffectShape annotation. Consumes the
+-- two tokens `TBang ∷ TWord <shape>` when `<shape>` is a recognised
+-- shape word; otherwise consumes nothing. The remainder is never longer
+-- than the input.
+parseEffAnnot : (toks : List Token) →
+                Maybe SigEffect ×
+                Σ[ rest ∈ List Token ] (length rest ≤ length toks)
+parseEffAnnot (TBang ∷ TWord w ∷ rest) with shapeWord w
+... | just se = just se , rest , m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)
+... | nothing = nothing , TBang ∷ TWord w ∷ rest , ≤-refl
+parseEffAnnot toks = nothing , toks , ≤-refl
+
 parseSignatureB : (toks : List Token) → ParseAtB {Decl} toks
 parseSignatureB toks with anyWordB toks
 ... | nothing = nothing
 ... | just (name , TColon ∷ rest , bnd) with parsePolyTypeB rest
-...   | just (ty , rest' , bnd') =
-        just (DSignature name nothing ty , rest' ,
-              <-trans (<-trans bnd' (s≤s ≤-refl)) bnd)
-...   | nothing = nothing
+...   | just (ty , rest' , bnd') with parseEffAnnot rest'
+...     | (meff , rest'' , bndE) =
+          just (DSignature name nothing ty meff , rest'' ,
+                ≤-<-trans bndE (<-trans (<-trans bnd' (s≤s ≤-refl)) bnd))
+parseSignatureB toks | just (_ , TColon ∷ rest , bnd) | nothing = nothing
 parseSignatureB toks | just (_ , _ , _) = nothing
 
 parseSignature : Parser Decl

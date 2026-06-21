@@ -91,7 +91,11 @@ wrapParams (p ∷ ps) body = ELam p (wrapParams ps body)
 
 gdeclToDecl : GDecl → Maybe Decl
 gdeclToDecl (G.DTypeSig name ty)   = just (P.DTypeSig name (gtypeToPolyType ty))
-gdeclToDecl (G.DSignature name ty) = just (P.DSignature name nothing (gtypeToPolyType ty))
+-- Plan 0.38 M0.2: the verified grammar parser does not (yet) parse the
+-- `! <shape>` EffectShape annotation, so a GDecl-derived signature carries
+-- no declared effect (`nothing`). The live path (`Parser.Module.DeclTail`)
+-- is where `! <shape>` is parsed.
+gdeclToDecl (G.DSignature name ty) = just (P.DSignature name nothing (gtypeToPolyType ty) nothing)
 gdeclToDecl (G.DImport path alias) = just (P.DImport (mkImport path alias))
 gdeclToDecl (G.DTypeAlias name params ty) with gtypeToType ty
 ... | just t  = just (P.DTypeAlias name params t)

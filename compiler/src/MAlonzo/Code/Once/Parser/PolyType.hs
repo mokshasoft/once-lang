@@ -844,9 +844,11 @@ d_parsePolyAtomImpl_42 v0
                -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
              MAlonzo.Code.Once.Parser.Token.C_TNeq_68
                -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
-             MAlonzo.Code.Once.Parser.Token.C_TNewline_70
+             MAlonzo.Code.Once.Parser.Token.C_TBang_70
                -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
-             MAlonzo.Code.Once.Parser.Token.C_TEOF_72
+             MAlonzo.Code.Once.Parser.Token.C_TNewline_72
+               -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
+             MAlonzo.Code.Once.Parser.Token.C_TEOF_74
                -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError

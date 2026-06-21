@@ -286,6 +286,7 @@ library
       MAlonzo.Code.Once.CCC.Machine.SMPrimitives
       MAlonzo.Code.Once.CCC.Machine.Validity
       MAlonzo.Code.Once.CCC.Machine.WriteOps
+      MAlonzo.Code.Once.SigEffect
       MAlonzo.Code.Once.SigOp.Info
       MAlonzo.Code.Once.CCC.Target.RiscV64.AbstractToRiscV
       MAlonzo.Code.Once.CCC.Target.RiscV64.Emit

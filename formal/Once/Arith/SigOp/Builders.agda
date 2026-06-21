@@ -147,49 +147,38 @@ str-lit-info s = mk-info ("lit.str." ++ s) (str-lit-semM s) Pure
 -- replace these placeholders with concrete SigOpInfos.
 ------------------------------------------------------------------------
 
+-- | The opaque value of a SigOp referenced as a NAMED PURE VALUE — a
+-- `closure`/`poly`/non-arrow `sigOp`, a separately-linked function whose
+-- value Once does not inline (function-linking opacity). This is the ONLY
+-- surviving `generic-semM` position: an EFFECTFUL op carries a contract,
+-- not a value (`SigOpSem.emitsV`/`haltsV`), so this can no longer launder a
+-- syscall's value. (Eliminating it too — sourcing closure/poly values from
+-- the module environment — is a separate axis, the deferred follow-on.)
 postulate
   generic-semM : ∀ {A B} → String → M.⟦ A ⟧ → M.⟦ B ⟧
-
--- | Per-name effect classification for the unresolved-SigOp placeholder.
--- Layer-0 known names get their real shape here (e.g. `linux.exit → Halts`
--- when its codomain is `Unit`); unknown names default to `Pure`. This is
--- the small registry that discharges the "what effect does this name
--- have?" question for SigOps whose `SigOpInfo` is materialised only at
--- elaboration time.
---
--- The pattern-match on `B` is what enforces the coherence: `Halts refl`
--- only constructs when `B ≡ Unit`. A `linux.exit` parsed with a non-Unit
--- codomain (impossible by the elaborator's type-checking) silently falls
--- through to `Pure`.
-classify-name : ∀ {B} → String → EffectShape B
-classify-name {Unit} "linux.exit" = Halts refl
-classify-name _                   = Pure
-
--- | Effect at the ARROW (deferred-application) position. `generic-info` is
--- the per-application effect of an external op invoked through its arrow —
--- the only legitimate place an effect lives (it fires when the closure is
--- applied). `classify-name`'s string guess here is the stand-in to be
--- replaced by the interpretation's declared contract (Plan 0.38 / D061).
-generic-info : ∀ {A B} → String → SigOpInfo A B
-generic-info name = mk-info name (generic-semM name) (classify-name name)
 
 -- | A SigOp referenced as a VALUE — at non-arrow type, or as a `closure` /
 -- `poly` reference. Its effect is `Pure`: an effect lives on an *arrow*
 -- (realized only on application, D018 suspended-Eff), so a bare value
--- reference emits nothing at build. This is the structural fact behind
--- `build-pure` (a closed value builds with an empty trace), and it is
--- interpretation-AGNOSTIC — no `classify-name` guess. (The `semM` value is
--- still `generic-semM`; sourcing it from the interpretation contract is the
--- remaining laundering, orthogonal to the effect.)
+-- reference emits nothing at build. INTERPRETATION-AGNOSTIC — no
+-- effect-from-name guess. Plan 0.38 M0.2: `classify-name` (the
+-- `linux.exit → Halts` string match) is RETIRED; an external arrow's effect
+-- now comes from its DECLARED `! <shape>`, built at the elaborate site
+-- (`ext-arrow-info` in `TypeCheck.Elaborate`).
 value-info : ∀ {A B} → String → SigOpInfo A B
 value-info name = mk-info name (generic-semM name) Pure
 
--- | The info for an external op at an ARROW type, dispatched on the arrow's
--- purity `π` so the effect is COHERENT with the type: a `pure` arrow op is
--- `Pure` (applying it emits nothing — what `app` needs in `build-pure`); an
--- `eff` arrow op carries the deferred per-application effect (`generic-info`,
--- the `classify-name` stand-in to be replaced by the interpretation contract,
--- Plan 0.38/D061). This confines `classify-name` to `eff` arrows only.
+-- | Compat shims for the surface/meaning sites (`Surface.Desugar`,
+-- `Surface.Elaborate`, `Denotation.SourceDenote`) that still name these.
+-- Surface `sigOp`/`closure`/`poly` are value positions ⇒ `Pure`; a surface
+-- *arrow* `sigOp` is unreachable at Layer 0 (external `Eff` arrows are
+-- `Many` and take the qualified-ref IR path in `TypeCheck.Elaborate`,
+-- where the declared shape is read), so `arrow-info` is `value-info` too.
+-- Keeping the names (vs. inlining) avoids churning those three modules and
+-- keeps `faithful` definitionally `refl` (both presentations use the same
+-- shim).
+generic-info : ∀ {A B} → String → SigOpInfo A B
+generic-info = value-info
+
 arrow-info : ∀ {A B} → ArrowKind → String → SigOpInfo A B
-arrow-info (mk-kind _ pure) name = value-info name
-arrow-info (mk-kind _ eff)  name = generic-info name
+arrow-info _ name = value-info name

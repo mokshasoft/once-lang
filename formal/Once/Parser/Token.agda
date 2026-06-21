@@ -56,6 +56,7 @@ data Token : Set where
   TGe      : Token              -- >=
   TEqEq    : Token              -- ==
   TNeq     : Token              -- !=
+  TBang    : Token              -- !          (EffectShape delimiter: `! halts`)
 
   -- Structure
   TNewline : Token              -- significant newline

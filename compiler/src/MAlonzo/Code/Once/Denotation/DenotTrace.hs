@@ -118,15 +118,18 @@ d_inject_30 v0 v1
 d_emit'45'D_128 ::
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
-  MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_134 ->
+  MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_150 ->
   AgdaAny -> [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_122]
 d_emit'45'D_128 v0 ~v1 v2 v3 = du_emit'45'D_128 v0 v2 v3
 du_emit'45'D_128 ::
   MAlonzo.Code.Once.Type.T_Type_112 ->
-  MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_134 ->
+  MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_150 ->
   AgdaAny -> [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_122]
 du_emit'45'D_128 v0 v1 v2
-  = let v3 = MAlonzo.Code.Once.SigOp.Info.d_effect_150 (coe v1) in
+  = let v3
+          = coe
+              MAlonzo.Code.Once.SigOp.Info.du_go_206
+              (coe MAlonzo.Code.Once.SigOp.Info.d_sem_162 (coe v1)) in
     coe
       (case coe v3 of
          MAlonzo.Code.Once.SigOp.Info.C_Pure_124
@@ -353,7 +356,7 @@ d_eval'7472'_154 v0 v1 v2 v3
                      (coe
                         d_inject_30 (coe v1)
                         (coe
-                           MAlonzo.Code.Once.SigOp.Info.d_semM_148 v7
+                           MAlonzo.Code.Once.SigOp.Info.du_semM_170 v7
                            (d_forget_26 (coe v0) (coe v3)))))
          _ -> coe v4)
 -- Once.Denotation.DenotTrace.rec-trace-D

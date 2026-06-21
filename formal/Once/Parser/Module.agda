@@ -103,6 +103,7 @@ skipNewlines-≤ (TGt ∷ rest) refl = ≤-refl
 skipNewlines-≤ (TGe ∷ rest) refl = ≤-refl
 skipNewlines-≤ (TEqEq ∷ rest) refl = ≤-refl
 skipNewlines-≤ (TNeq ∷ rest) refl = ≤-refl
+skipNewlines-≤ (TBang ∷ rest) refl = ≤-refl
 skipNewlines-≤ (TCaret1 ∷ rest) refl = ≤-refl
 skipNewlines-≤ (TCaret0 ∷ rest) refl = ≤-refl
 skipNewlines-≤ (TCaretW ∷ rest) refl = ≤-refl
