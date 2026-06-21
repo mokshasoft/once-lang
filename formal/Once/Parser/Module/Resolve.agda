@@ -44,7 +44,7 @@ open import Once.Parser.Module.Core
 -- ModuleMap: path → resolved Module
 ------------------------------------------------------------------------
 
--- | Import path (e.g. ["I", "Linux", "Syscalls"]) paired with its
+-- | Import path (e.g. ["I", "Foo", "Bar"]) paired with its
 -- already-resolved module. Haskell builds this by topo-sorting and
 -- resolving bottom-up.
 ModuleMap : Set

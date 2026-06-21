@@ -64,7 +64,7 @@ module Def {FS : FrameSemantics} (program-bound : ℕ) where
   -- provider recognizes the SigOp (with output mode `m` and a
   -- contract proof), or `nothing` otherwise. Concrete providers
   -- are written as pattern-matches on the `name` field; each domain
-  -- owns its string prefix (e.g. `"lit.int."`, `"linux."`,
+  -- owns its string prefix (e.g. `"lit.int."`, a syscall prefix,
   -- `"arith.<op>.int"`).
   --
   -- Composition (`_<|>_`) makes the whole-program provider a

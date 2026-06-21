@@ -334,7 +334,7 @@ execInstr prog s nop =
 execInstr prog s ud2 =
   just (record s { halted = true })
 
--- syscall: Linux syscall. Outside abstract semantics' scope (kernel
+-- syscall: external syscall. Outside abstract semantics' scope (kernel
 -- transition); modeled as halt — interpretation layer dispatches
 -- the actual syscall.
 execInstr prog s syscall =

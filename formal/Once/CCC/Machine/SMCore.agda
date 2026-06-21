@@ -1538,7 +1538,7 @@ module AbstractExec {FS : FrameSemantics} where
   -- Input1 register, stackSlot) unchanged. The two postulates below
   -- (`exec-sigop-output` and `exec-sigop-halts`) are the trusted-
   -- base axioms describing what a SigOp does at the abstract level.
-  -- Per-name discharge of these axioms (e.g. `linux.exit` halts;
+  -- Per-name discharge of these axioms (e.g. the exit syscall halts;
   -- `lit.int.<N>` doesn't halt and produces a constant) is downstream
   -- work — see Plan 0.11 task A and Plan 0.10 Phase E.
   --

@@ -47,7 +47,7 @@
 --
 -- This record lives at the CCC layer and knows nothing about Int,
 -- syscalls, or any specific SigOp. Per-name discharge happens in the
--- domain layer (Arith for `arith.*`, Strata/Linux for `linux.*`).
+-- domain layer (Arith for `arith.*`, a Strata interpretation for external syscalls).
 --
 -- ## Plan
 --
@@ -89,7 +89,7 @@ module RelaxedDef {FS : FrameSemantics} where
   -- The contract record.
   --
   -- Each field is an obligation on the trace. Per-name discharge in
-  -- the domain layer (Arith/Linux) constructs this record.
+  -- the domain layer (Arith / a Strata interpretation) constructs this record.
   --
   -- Note: every field assumes `halted s ≡ false` as its precondition.
   -- A trace that runs from a halted state has no obligations (the

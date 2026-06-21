@@ -2304,7 +2304,7 @@ module TracePrimitives {FS : FrameSemantics} where
   exec-abstract-preserves-halted (worklist-check slot) s alloc h-eq _ = h-eq
   -- Plan 0.2.4.2 Phase D: closure-reg save is a no-op at the abstract level
   exec-abstract-preserves-halted instr-save-closure-reg s alloc h-eq _ = h-eq
-  -- Plan 0.11 Task A: SigOp may halt (e.g. linux.exit), so it is NOT
+  -- Plan 0.11 Task A: SigOp may halt (e.g. the exit syscall), so it is NOT
   -- a member of InstrPreservesHalted. The case is unreachable —
   -- there is no `iph-instr-sigop` constructor — so we use the absurd
   -- pattern. (Previously this clause returned `h-eq` defensively;

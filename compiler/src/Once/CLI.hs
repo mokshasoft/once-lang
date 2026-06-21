@@ -29,7 +29,7 @@ import Data.Char (isSpace)
 import Data.List (isPrefixOf, intercalate)
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
-import System.Directory (removeFile, doesFileExist, getCurrentDirectory, makeAbsolute)
+import System.Directory (removeFile, doesFileExist, doesDirectoryExist, getCurrentDirectory, makeAbsolute)
 import System.Exit (ExitCode(..), exitFailure, exitSuccess)
 import System.FilePath (takeBaseName, takeDirectory, (</>))
 import System.Environment (lookupEnv)
@@ -327,8 +327,8 @@ runBuild opts = do
 -- Plan 0.11: also assembles and statically links the per-arch impl
 -- files (`Strata/Interpretations/<…>.<arch>`) for every transitive
 -- import. This is how SigOp `call once_<name>` references resolve to
--- actual code (e.g. Linux `exit` syscall body lives in
--- `Strata/Interpretations/Linux/Syscalls.x86_64`'s `once_exit`).
+-- actual code (e.g. an `exit` syscall body lives in
+-- `Strata/Interpretations/<interp>/Syscalls.<arch>`'s `once_exit`).
 runVerifiedBuild :: BuildOptions -> FilePath -> Bridge.Arch -> Bridge.Module
                  -> FilePath -> [[T.Text]] -> IO ()
 runVerifiedBuild opts outputBase arch mod_ strataDir importPaths =
@@ -371,7 +371,7 @@ runVerifiedBuild opts outputBase arch mod_ strataDir importPaths =
             Right _ -> do
               -- Plan 0.11: collect + assemble per-arch impl files for
               -- imported Strata/Interpretations modules (e.g.
-              -- Strata/Interpretations/Linux/Syscalls.x86_64). Each
+              -- Strata/Interpretations/<interp>/Syscalls.<arch>). Each
               -- one becomes a .o that gets linked into the binary,
               -- providing the `once_<name>` symbols that
               -- `compile-sigOp` calls into.
@@ -464,7 +464,7 @@ link objFiles output = do
 -- AST-level Import Resolution (drives verified Agda resolver)
 ------------------------------------------------------------------------
 
--- | Map an import path (`["I","Linux","Syscalls"]`) to its disk
+-- | Map an import path (`["I","Foo","Bar"]`) to its disk
 -- location, applying the `I` → `Interpretations` prefix rule.
 importPathToFilePath :: FilePath -> [T.Text] -> FilePath
 importPathToFilePath strataDir pathParts =
@@ -483,8 +483,8 @@ archImplExtension Bridge.X86_32  = "x86_32"
 archImplExtension Bridge.RiscV64 = "riscv64"
 
 -- | Plan 0.11: map an import path to its per-arch implementation file
--- (e.g. `["I","Linux","Syscalls"]` + X86_64 →
--- `Strata/Interpretations/Linux/Syscalls.x86_64`).
+-- (e.g. `["I","Foo","Bar"]` + X86_64 →
+-- `Strata/Interpretations/Foo/Bar.x86_64`).
 importPathToImplPath :: FilePath -> Bridge.Arch -> [T.Text] -> FilePath
 importPathToImplPath strataDir arch pathParts =
   let mapped = case map T.unpack pathParts of
@@ -513,7 +513,9 @@ findStrataDir inputPath mStrataOpt = case mStrataOpt of
     findStrataUp :: FilePath -> IO (Maybe FilePath)
     findStrataUp dir = do
       let candidate = dir </> "Strata"
-      exists <- doesFileExist (candidate </> "Interpretations" </> "Linux" </> "Syscalls.once")
+      -- Interpretation-agnostic sentinel: a Strata dir is identified by its
+      -- `Interpretations/` subtree, never by any specific interpretation.
+      exists <- doesDirectoryExist (candidate </> "Interpretations")
       if exists
         then pure (Just candidate)
         else if dir == "/" || dir == "."

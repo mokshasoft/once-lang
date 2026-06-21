@@ -34,7 +34,7 @@
 -- ║  Reading note: a program of type `Eff Unit Unit` denotes         ║
 -- ║  `⊤ → ⊤` (the constant function). Programs DO NOT RETURN A      ║
 -- ║  VALUE — they invoke SigOps. Any observable based on those       ║
--- ║  SigOps (syscall trace, exit code as the linux.exit argument)   ║
+-- ║  SigOps (syscall trace, exit code as an exit-syscall argument)  ║
 -- ║  lives ELSEWHERE; see `Once.Denotation.Behavior`.                  ║
 -- ║                                                                  ║
 -- ║  Use `⟦_⟧` for value-level reasoning only (CCC laws, structural  ║

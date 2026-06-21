@@ -21,14 +21,12 @@ import qualified MAlonzo.Code.Agda.Builtin.Equality
 import qualified MAlonzo.Code.Agda.Builtin.Maybe
 import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Agda.Builtin.String
-import qualified MAlonzo.Code.Data.String.Properties
 import qualified MAlonzo.Code.Data.Sum.Base
 import qualified MAlonzo.Code.Once.Functor.Translate
 import qualified MAlonzo.Code.Once.Semantics.Functor
 import qualified MAlonzo.Code.Once.Semantics.Value
 import qualified MAlonzo.Code.Once.SigOp.Info
 import qualified MAlonzo.Code.Once.Type
-import qualified MAlonzo.Code.Relation.Nullary.Decidable.Core
 
 -- Once.Denotation.Trace.M.coerce-base-to-full
 d_coerce'45'base'45'to'45'full_8 ::
@@ -491,29 +489,3 @@ du_mkEvent_138 v0 v1 v2
                 C_mk'45'event_132
                 (coe MAlonzo.Code.Once.SigOp.Info.d_name_160 (coe v1)) (coe v3)
          _ -> MAlonzo.RTE.mazUnreachableError)
--- Once.Denotation.Trace.exitCodeOf
-d_exitCodeOf_162 :: [T_SigOpEvent_122] -> Maybe Integer
-d_exitCodeOf_162 v0
-  = case coe v0 of
-      [] -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
-      (:) v1 v2
-        -> let v3
-                 = coe
-                     MAlonzo.Code.Relation.Nullary.Decidable.Core.du_map'8242'_178
-                     erased
-                     (\ v3 ->
-                        coe
-                          MAlonzo.Code.Data.String.Properties.du_'8776''45'reflexive_8
-                          (coe d_ev'45'name_128 (coe v1)))
-                     (coe
-                        MAlonzo.Code.Data.String.Properties.d__'8776''63'__28
-                        (coe d_ev'45'name_128 (coe v1))
-                        (coe ("linux.exit" :: Data.Text.Text))) in
-           coe
-             (case coe v3 of
-                MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v4 v5
-                  -> if coe v4
-                       then coe seq (coe v5) (coe d_ev'45'argℕ_130 (coe v1))
-                       else coe seq (coe v5) (coe d_exitCodeOf_162 (coe v2))
-                _ -> MAlonzo.RTE.mazUnreachableError)
-      _ -> MAlonzo.RTE.mazUnreachableError
