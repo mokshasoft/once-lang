@@ -48,12 +48,14 @@ once-compiler = record
   ; Source   = Source
   ; Bytes    = List Byte
   ; Behavior = Behavior
-  ; ⟦_⟧      = ⟦_⟧
+  -- Plan 0.48: the TOTAL meaning (`Source → Maybe Behavior`, invalid ↦ nothing).
+  ; ⟦_⟧      = VC.⟦_⟧⊥
   ; exec     = VC.exec
   -- Behavioural equivalence = pointwise / up-to-`n` SigOp-trace prefix
-  -- equality (Plan 0.44). `VC.correct` is already this `∀ n → … n ≡ … n`,
-  -- so `correct` slots in with no funext.
+  -- equality (Plan 0.44).
   ; _≈_      = λ b₁ b₂ → ∀ (n : ℕ) → b₁ n ≡ b₂ n
+  -- Plan 0.48: `compile` carries the optimizer flag; `correct` is the single
+  -- unconditional `Pointwise` claim (∀ doOpt) over the total meaning.
   ; compile  = VC.compile
   ; correct  = VC.correct
   }

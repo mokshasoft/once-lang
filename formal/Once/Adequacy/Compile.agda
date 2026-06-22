@@ -31,10 +31,11 @@
 
 module Once.Adequacy.Compile where
 
-open import Data.Bool using (Bool; false)
+open import Data.Bool using (Bool; false; true)
 open import Data.Nat using (ℕ)
 open import Data.List using (List)
-open import Data.Maybe using (Maybe; just; nothing)
+open import Data.Maybe using (Maybe; just; nothing; map)
+open import Data.Maybe.Relation.Binary.Pointwise as PW using (Pointwise)
 open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality
   using (_≡_; refl; sym; trans; cong; subst)
@@ -45,7 +46,8 @@ open import Once.Type using (Unit)
 open import Once.Denotation.Behavior using (Source; Behavior)
 open import Once.Adequacy.SourceTrace
   using (⟦_⟧; ⟦⟧-via-module; moduleToIR; ⟦_⟧IR)
-open import Data.Product using (_×_; _,_)
+open import Data.Product using (_×_; _,_; Σ-syntax; proj₂)
+open import Function using (case_of_)
 -- D054 wired-not-imported: import only the portable INTERFACE (no
 -- postulates). The per-arch CPU semantics are *injected* via the
 -- `WithCPU` parameter below, never imported here — so this module
@@ -171,6 +173,19 @@ gmoduleToModule-correct :
   ∀ (n : ℕ) → ⟦ m ⟧M n ≡ ⟦ src ⟧ n
 gmoduleToModule-correct src m eq n = sym (⟦⟧-via-module src m eq n)
 
+-- `main⇒built` (Plan 0.48): a module with a compilable `main`
+-- (`moduleToIR m ≡ just ir`) Builds for EVERY `doOpt` — PROVEN (no longer a
+-- postulate) in `Once.Adequacy.MainBuilds`, bottom-up through the compile
+-- pipeline (success is `doOpt`-independent because `doOpt` only chooses
+-- `optimize ir` vs `ir` inside `compileFunBody`). Used by `correct` below to
+-- rule out the "has a `main` but didn't Build" domain mismatch.
+open import Once.Adequacy.MainBuilds using (main⇒built)
+-- Front-end SOUNDNESS (Plan 0.48 Phase 1): the front-end accepts only
+-- declaratively well-typed programs, so `⟦_⟧⊥`'s `just` domain is genuine
+-- (not true-by-construction). `ModuleTyped m` is the INDEPENDENT predicate
+-- "every function of `m` has a `_⊢ᶜ_∶_⨾_` derivation".
+open import Once.Adequacy.AcceptSound as AS using (ModuleTyped; moduleToIR-typed)
+
 ------------------------------------------------------------------------
 -- CPU semantics injected here (D054 wired-not-imported).
 --
@@ -197,12 +212,36 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
 
   -- The compile function — concrete body via the existing pipeline,
   -- finishing with the injected per-arch assembler.
-  compile : Arch → Source → Maybe (List Byte)
-  compile arch gmod with gmoduleToModule gmod
-  ... | nothing = nothing
-  ... | just m  with C.compileFromModule C.Heap C.Build false arch m
-  ...   | C.Built asm = just (string-to-bytes arch asm)
-  ...   | _           = nothing
+  --
+  -- This is the VERIFIED *executable* compiler (Plan 0.48): it produces bytes
+  -- only for a runnable program — one whose module has a compilable `main`
+  -- (`moduleToIR m ≡ just _`). A source with no `main` is a *library*, which
+  -- has no runnable behaviour (`⟦_⟧⊥ ≡ nothing`), so `compile ≡ nothing` too —
+  -- this gate is what makes the accept/reject boundary coincide with `⟦_⟧⊥`'s
+  -- just/nothing boundary by construction (no `built⇒main` axiom). The CLI's
+  -- separate library-build path (raw `compileFromModule` + its own `hasMain`)
+  -- is unaffected; libraries get their own correctness later.
+  --
+  -- Factored through explicit-argument helpers (NOT `with`-blocks): every
+  -- branch matches a bound `Maybe`/`CompileResult` variable, so `correct`'s
+  -- companion helpers (`correct-cr`/`-mir`/`-gm`) stay well-typed on the
+  -- neutral pipeline terms without any `with`-reduction alignment.
+  compile-cr : Arch → C.CompileResult → Maybe (List Byte)
+  compile-cr arch (C.Built asm)  = just (string-to-bytes arch asm)
+  compile-cr arch (C.Parsed _ _) = nothing
+  compile-cr arch (C.Checked _)  = nothing
+  compile-cr arch (C.Error _)    = nothing
+
+  compile-mir : Arch → Bool → P.Module → Maybe (IR Unit Unit) → Maybe (List Byte)
+  compile-mir arch doOpt m nothing   = nothing
+  compile-mir arch doOpt m (just _)  = compile-cr arch (C.compileFromModule C.Heap C.Build doOpt arch m)
+
+  compile-gm : Arch → Bool → Maybe P.Module → Maybe (List Byte)
+  compile-gm arch doOpt nothing   = nothing
+  compile-gm arch doOpt (just m)  = compile-mir arch doOpt m (moduleToIR m)
+
+  compile : Arch → Bool → Source → Maybe (List Byte)
+  compile arch doOpt gmod = compile-gm arch doOpt (gmoduleToModule gmod)
 
   -- This arch's asm-text meaning, read off the injected `arch-correct` witness.
   ⟦_⟧A_ : Arch → String → Behavior
@@ -252,28 +291,149 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   -- prefix length, the bytes' SigOp-trace equals the source's. (At
   -- `Behavior = ℕ → List SigOpEvent` this is exactly "the compiled program
   -- makes the same SigOp calls, in order, as the source denotes.")
-  correct :
-    ∀ (arch : Arch) (src : Source) (bytes : List Byte) →
-    compile arch src ≡ just bytes →
-    ∀ (n : ℕ) → exec arch bytes n ≡ ⟦ src ⟧ n
-  correct arch src bytes pf with gmoduleToModule src in g-eq
-  correct arch src bytes () | nothing
-  correct arch src bytes pf | just m
-    with C.compileFromModule C.Heap C.Build false arch m in c-eq
-  correct arch src bytes pf | just m | C.Parsed _ _    with pf
-  ... | ()
-  correct arch src bytes pf | just m | C.Checked _      with pf
-  ... | ()
-  correct arch src bytes pf | just m | C.Error _        with pf
-  ... | ()
-  correct arch src bytes pf | just m | C.Built asm
-    -- pf : just (string-to-bytes asm) ≡ just bytes
-    -- ⇒ bytes ≡ string-to-bytes asm
-    with bytes | pf
-  ... | _ | refl = λ n →
-    trans (string-to-bytes-correct arch asm n)
-          (trans (module-to-asm-correct arch m asm c-eq n)
-                 (gmoduleToModule-correct src m g-eq n))
+
+  -- ════════════════════════════════════════════════════════════════════
+  -- Plan 0.48 — the TOTAL source meaning + the UNCONDITIONAL correctness.
+  --
+  -- `⟦_⟧⊥`: an unparseable source has no behaviour (`nothing`); a parseable
+  -- one denotes its SigOp trace. NOTE (0.48 Phase 0b): this is still defined
+  -- THROUGH the front-end (`gmoduleToModule`), so the soundness/completeness
+  -- it backs is by-construction for now — making `⟦_⟧⊥` INDEPENDENT of the
+  -- compiler (a declarative source meaning) is the front-end phase's content.
+  -- `⟦_⟧⊥`: aux-style (no `with`) so it reduces under the parse/main equations.
+  -- An unparseable source, or a parseable one with no `main` (`moduleToIR ≡
+  -- nothing`), has no behaviour. NOTE (0.48 0b): still THROUGH the front-end —
+  -- making it independent (a declarative meaning) is the front-end phase.
+  ⟦_⟧⊥-ir : Maybe (IR Unit Unit) → Maybe Behavior
+  ⟦ nothing  ⟧⊥-ir = nothing
+  ⟦ just ir  ⟧⊥-ir = just (⟦ just ir ⟧IR)
+  ⟦_⟧⊥-m : Maybe P.Module → Maybe Behavior
+  ⟦ nothing ⟧⊥-m = nothing
+  ⟦ just m  ⟧⊥-m = ⟦ moduleToIR m ⟧⊥-ir
+  ⟦_⟧⊥ : Source → Maybe Behavior
+  ⟦ src ⟧⊥ = ⟦ gmoduleToModule src ⟧⊥-m
+
+  -- SOUNDNESS of the meaning's domain (Plan 0.48 Phase 1): if `src` HAS a
+  -- behaviour (`⟦ src ⟧⊥ ≡ just _`) then it parses to a module that is
+  -- declaratively well-typed (`ModuleTyped`). So `⟦_⟧⊥` is `just` only for
+  -- genuinely well-typed programs — soundness is no longer by-construction,
+  -- it is discharged against the INDEPENDENT judgment via `AcceptSound`.
+  -- With-free (explicit-`Maybe`-argument helpers).
+  ⟦⟧⊥-ir-sound : ∀ (mir : Maybe (IR Unit Unit)) (beh : Behavior) →
+    ⟦ mir ⟧⊥-ir ≡ just beh → Σ-syntax (IR Unit Unit) (λ ir → mir ≡ just ir)
+  ⟦⟧⊥-ir-sound nothing  beh ()
+  ⟦⟧⊥-ir-sound (just ir) beh eq = ir , refl
+
+  ⟦⟧⊥-m-sound : ∀ (mm : Maybe P.Module) (beh : Behavior) →
+    ⟦ mm ⟧⊥-m ≡ just beh →
+    Σ-syntax P.Module (λ m → (mm ≡ just m) × ModuleTyped m)
+  ⟦⟧⊥-m-sound nothing  beh ()
+  ⟦⟧⊥-m-sound (just m) beh eq =
+    m , refl , moduleToIR-typed m (proj₂ (⟦⟧⊥-ir-sound (moduleToIR m) beh eq))
+
+  ⟦⟧⊥-sound : ∀ (src : Source) (beh : Behavior) →
+    ⟦ src ⟧⊥ ≡ just beh →
+    Σ-syntax P.Module (λ m → (gmoduleToModule src ≡ just m) × ModuleTyped m)
+  ⟦⟧⊥-sound src beh eq = ⟦⟧⊥-m-sound (gmoduleToModule src) beh eq
+
+  -- Named Phase-0 gaps (NOT the theorem). `built⇒main` is GONE: gating
+  -- `compile` on `moduleToIR ≡ just` makes "Built ⇒ has-main" hold by
+  -- construction (a library never reaches the Built branch of `compile`).
+  -- `main⇒built` is GONE too: now PROVEN in `Once.Adequacy.MainBuilds` and
+  -- imported above. What remains: only the doOpt=true trace (`opt-trace`, the
+  -- optimize lift). The doOpt=false trace is PROVEN from the codegen chain
+  -- (`trace-false` below).
+  postulate
+    opt-trace : ∀ (arch : Arch) (m : P.Module) (asm : String) (ir : IR Unit Unit) →
+      C.compileFromModule C.Heap C.Build true arch m ≡ C.Built asm →
+      moduleToIR m ≡ just ir →
+      ∀ (n : ℕ) → exec arch (string-to-bytes arch asm) n ≡ ⟦ just ir ⟧IR n
+
+  -- Behavioural equivalence (matches the record's `_≈_`); the trace witnesses
+  -- below are exactly proofs at this relation.
+  _≋_ : Behavior → Behavior → Set
+  b₁ ≋ b₂ = ∀ (n : ℕ) → b₁ n ≡ b₂ n
+
+  -- The Built-case trace obligation, abstracted: GIVEN a `main` (`moduleToIR m
+  -- ≡ just ir`) and that the pipeline Builds `asm`, the bytes' trace equals the
+  -- source meaning `⟦ just ir ⟧IR`. Supplied per `doOpt` by `correct` below
+  -- (the proven codegen chain for `false`; `opt-trace` for `true`).
+  TraceAt : Arch → Bool → P.Module → IR Unit Unit → Set
+  TraceAt arch doOpt m ir =
+    ∀ (asm : String) → C.compileFromModule C.Heap C.Build doOpt arch m ≡ C.Built asm →
+    exec arch (string-to-bytes arch asm) ≋ ⟦ just ir ⟧IR
+
+  -- Layer 3 — over the compile RESULT. The accept case is `PW.just` of the
+  -- supplied trace witness; the three reject results are ruled out by
+  -- `main⇒built` (a `main` always Builds), so `compile` here can only Build.
+  correct-cr : ∀ (arch : Arch) (doOpt : Bool) (m : P.Module) (ir : IR Unit Unit)
+                 (cr : C.CompileResult) →
+                 C.compileFromModule C.Heap C.Build doOpt arch m ≡ cr →
+                 moduleToIR m ≡ just ir →
+                 TraceAt arch doOpt m ir →
+                 Pointwise _≋_ (map (exec arch) (compile-cr arch cr)) (⟦ just ir ⟧⊥-ir)
+  correct-cr arch doOpt m ir (C.Built asm)  cf-eq mi-eq tw = PW.just (tw asm cf-eq)
+  correct-cr arch doOpt m ir (C.Parsed _ _) cf-eq mi-eq tw =
+    case trans (sym cf-eq) (proj₂ (main⇒built arch doOpt m ir mi-eq)) of λ ()
+  correct-cr arch doOpt m ir (C.Checked _)  cf-eq mi-eq tw =
+    case trans (sym cf-eq) (proj₂ (main⇒built arch doOpt m ir mi-eq)) of λ ()
+  correct-cr arch doOpt m ir (C.Error _)    cf-eq mi-eq tw =
+    case trans (sym cf-eq) (proj₂ (main⇒built arch doOpt m ir mi-eq)) of λ ()
+
+  -- Layer 2 — over `moduleToIR m`. No `main` ⇒ both sides `nothing` (the
+  -- executable gate, definitional); a `main` ⇒ defer to `correct-cr`.
+  correct-mir : ∀ (arch : Arch) (doOpt : Bool) (m : P.Module) (mir : Maybe (IR Unit Unit)) →
+                  moduleToIR m ≡ mir →
+                  (∀ (ir : IR Unit Unit) → mir ≡ just ir → TraceAt arch doOpt m ir) →
+                  Pointwise _≋_ (map (exec arch) (compile-mir arch doOpt m mir)) (⟦ mir ⟧⊥-ir)
+  correct-mir arch doOpt m nothing   mi-eq tw = PW.nothing
+  correct-mir arch doOpt m (just ir) mi-eq tw =
+    correct-cr arch doOpt m ir (C.compileFromModule C.Heap C.Build doOpt arch m) refl mi-eq (tw ir refl)
+
+  -- Layer 1 — over `gmoduleToModule src`. Unparseable ⇒ both `nothing`;
+  -- parseable ⇒ defer to `correct-mir`.
+  correct-gm : ∀ (arch : Arch) (doOpt : Bool) (gm : Maybe P.Module) →
+                 (∀ (m : P.Module) → gm ≡ just m →
+                    ∀ (ir : IR Unit Unit) → moduleToIR m ≡ just ir → TraceAt arch doOpt m ir) →
+                 Pointwise _≋_ (map (exec arch) (compile-gm arch doOpt gm)) (⟦ gm ⟧⊥-m)
+  correct-gm arch doOpt nothing  tw = PW.nothing
+  correct-gm arch doOpt (just m) tw =
+    correct-mir arch doOpt m (moduleToIR m) refl (λ ir mi → tw m refl ir mi)
+
+  -- THE unconditional claim (Plan 0.48), COMPOSED (not postulated). The three
+  -- layers walk `gmoduleToModule → moduleToIR → compileFromModule` on explicit
+  -- arguments (no `with`); only the Built-case trace differs by `doOpt`:
+  -- `false` is the PROVEN codegen chain, `true` is the `opt-trace` lift.
+  correct : ∀ (arch : Arch) (doOpt : Bool) (src : Source) →
+            Pointwise _≋_ (map (exec arch) (compile arch doOpt src)) (⟦ src ⟧⊥)
+  correct arch false src = correct-gm arch false (gmoduleToModule src)
+    (λ m _ ir mi asm cf n → trans (string-to-bytes-correct arch asm n)
+                                   (trans (module-to-asm-correct arch m asm cf n)
+                                          (cong (λ x → ⟦ x ⟧IR n) mi)))
+  correct arch true src = correct-gm arch true (gmoduleToModule src)
+    (λ m _ ir mi asm cf n → opt-trace arch m asm ir cf mi n)
+
+  -- ════════════════════════════════════════════════════════════════════
+  -- SOUNDNESS, as a COROLLARY OF `correct` (Plan 0.48): not a sibling
+  -- theorem, not an island — it INVOKES the grand theorem. If the compiler
+  -- accepts `src` (emits bytes), then `src` is declaratively well-typed.
+  -- Chain: `correct` forces `⟦ src ⟧⊥ ≡ just _` (a real execution is never
+  -- `Pointwise`-related to `nothing`), then `⟦⟧⊥-sound` (front-end soundness,
+  -- `Once.Adequacy.AcceptSound`) delivers the INDEPENDENT judgment.
+  -- ════════════════════════════════════════════════════════════════════
+  pw-just-inv : ∀ {x : Behavior} (my : Maybe Behavior) →
+    Pointwise _≋_ (just x) my → Σ-syntax Behavior (λ y → my ≡ just y)
+  pw-just-inv (just y) _ = y , refl
+  pw-just-inv nothing ()
+
+  accept-sound : ∀ (arch : Arch) (doOpt : Bool) (src : Source) (bytes : List Byte) →
+    compile arch doOpt src ≡ just bytes →
+    Σ-syntax P.Module (λ m → (gmoduleToModule src ≡ just m) × ModuleTyped m)
+  accept-sound arch doOpt src bytes pf =
+    let p           = subst (λ c → Pointwise _≋_ (map (exec arch) c) (⟦ src ⟧⊥)) pf
+                            (correct arch doOpt src)
+        (beh , dom) = pw-just-inv (⟦ src ⟧⊥) p
+    in ⟦⟧⊥-sound src beh dom
 
   -- ════════════════════════════════════════════════════════════════════
   -- The GRAND THEOREM (D060): `correct` above IS the whole statement.
