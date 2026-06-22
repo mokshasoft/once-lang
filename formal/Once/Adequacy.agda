@@ -44,8 +44,9 @@
 module Once.Adequacy where
 
 open import Data.Bool using (Bool)
-open import Data.Maybe using (Maybe; just; nothing; map)
-open import Data.Maybe.Relation.Binary.Pointwise using (Pointwise)
+open import Data.Maybe using (Maybe; just)
+open import Data.Product using (Σ-syntax; _×_)
+open import Relation.Binary.PropositionalEquality using (_≡_)
 
 record CorrectCompiler : Set₁ where
   field
@@ -55,19 +56,25 @@ record CorrectCompiler : Set₁ where
     Bytes    : Set
     Behavior : Set
 
-    -- Source and target semantics. Behavioural EQUIVALENCE (`_≈_`) is
-    -- what "the compiled program does the same thing as the source"
-    -- ultimately reduces to — stated as an abstract relation, not raw
-    -- `≡`, so the certificate stays observable-agnostic AND funext-free:
-    -- for the SigOp-trace observable (`Behavior = ℕ → List SigOpEvent`)
-    -- the instance picks pointwise / up-to-`n` prefix equality (Plan 0.44).
-    -- The source meaning is TOTAL: a well-formed source denotes `just`
-    -- its SigOp trace; an INVALID source (ill-typed / unparseable) denotes
-    -- `nothing` — it has no behaviour. Making `⟦_⟧` total is what lets the
-    -- single `correct` below subsume soundness and completeness.
-    ⟦_⟧  : Source → Maybe Behavior
-    exec : Arch → Bytes → Behavior
-    _≈_  : Behavior → Behavior → Set
+    -- The INDEPENDENT source meaning, as a SPEC RELATION (Plan 0.49) — NOT a
+    -- `Source → Maybe Behavior` function the compiler could define and then
+    -- cancel against itself. `Typed` is the space of typed programs (the
+    -- instance: Once's typed terms). `_⊢_` is the DECLARATIVE judgment
+    -- "`src` denotes the typed program `tp`" — built from inference rules, it
+    -- does NOT run the compiler. `⟦_⟧ˢ` is the independent denotation of a
+    -- typed program. Together they ARE the authored semantics
+    -- (`Once.Denotation`), the one reviewed trust point. Because `_⊢_` is a
+    -- relation (not the elaborator), the front-end cannot appear on both sides
+    -- of `correct` and cancel — so typecheck AND elaborate become FORCED.
+    --
+    -- `_≈_` is behavioural EQUIVALENCE (abstract, not raw `≡`, so the
+    -- certificate stays observable-agnostic and funext-free; for the SigOp
+    -- trace the instance picks up-to-`n` prefix equality, Plan 0.44).
+    Typed : Set
+    _⊢_   : Source → Typed → Set
+    ⟦_⟧ˢ  : Typed → Behavior
+    exec  : Arch → Bytes → Behavior
+    _≈_   : Behavior → Behavior → Set
 
     -- The compiler. `Bool` selects whether the optimizer runs; correctness
     -- is required for BOTH settings, so the optimizer can never be
@@ -75,12 +82,18 @@ record CorrectCompiler : Set₁ where
     -- result — it cannot mask a bug from another stage). May fail.
     compile : Arch → Bool → Source → Maybe Bytes
 
-    -- THE claim — one unconditional statement. The behaviour the compiler
-    -- exhibits on `src` (run the bytes if it accepts, `nothing` if it
-    -- rejects) equals the source's meaning, for EVERY source and either
-    -- optimizer setting. Via `Pointwise` (`just ≁ nothing`) this is:
-    --   • soundness     — `⟦src⟧ = nothing` forces `compile = nothing`;
-    --   • completeness  — `⟦src⟧ = just _` forces `compile = just _`;
-    --   • trace-correct — accepted ⇒ `exec bytes ≈ ⟦src⟧`.
+    -- THE claim — one statement, TWO conjuncts (NOT separate record fields:
+    -- proving `correct` requires BOTH; you cannot drop one without editing
+    -- this reviewed spec). For EVERY arch and either optimizer setting,
+    -- against the INDEPENDENT meaning:
+    --   • soundness + trace — if the compiler ACCEPTS `src` (emits bytes),
+    --     then `src` HAS a meaning (`src ⊢ tp`) and the bytes' execution
+    --     equals it (`exec bytes ≈ ⟦ tp ⟧ˢ`);
+    --   • completeness — if `src` HAS a meaning, the compiler accepts it.
+    -- A front-end bug — accept the meaningless, reject the meaningful, or
+    -- elaborate to the wrong trace — makes `correct` unprovable: a TYPE ERROR.
     correct : ∀ arch doOpt src →
-              Pointwise _≈_ (map (exec arch) (compile arch doOpt src)) (⟦ src ⟧)
+        ( ∀ bytes → compile arch doOpt src ≡ just bytes →
+            Σ[ tp ∈ Typed ] ((src ⊢ tp) × (exec arch bytes ≈ ⟦ tp ⟧ˢ)) )
+      × ( ∀ tp → src ⊢ tp →
+            Σ[ bytes ∈ Bytes ] (compile arch doOpt src ≡ just bytes) )
