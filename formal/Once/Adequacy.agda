@@ -43,8 +43,9 @@
 
 module Once.Adequacy where
 
-open import Data.Maybe using (Maybe; just)
-open import Relation.Binary.PropositionalEquality using (_≡_)
+open import Data.Bool using (Bool)
+open import Data.Maybe using (Maybe; just; nothing; map)
+open import Data.Maybe.Relation.Binary.Pointwise using (Pointwise)
 
 record CorrectCompiler : Set₁ where
   field
@@ -60,16 +61,26 @@ record CorrectCompiler : Set₁ where
     -- `≡`, so the certificate stays observable-agnostic AND funext-free:
     -- for the SigOp-trace observable (`Behavior = ℕ → List SigOpEvent`)
     -- the instance picks pointwise / up-to-`n` prefix equality (Plan 0.44).
-    ⟦_⟧  : Source → Behavior
+    -- The source meaning is TOTAL: a well-formed source denotes `just`
+    -- its SigOp trace; an INVALID source (ill-typed / unparseable) denotes
+    -- `nothing` — it has no behaviour. Making `⟦_⟧` total is what lets the
+    -- single `correct` below subsume soundness and completeness.
+    ⟦_⟧  : Source → Maybe Behavior
     exec : Arch → Bytes → Behavior
     _≈_  : Behavior → Behavior → Set
 
-    -- The compiler. May fail (parse error, typecheck error, etc.).
-    compile : Arch → Source → Maybe Bytes
+    -- The compiler. `Bool` selects whether the optimizer runs; correctness
+    -- is required for BOTH settings, so the optimizer can never be
+    -- load-bearing for correctness (it may only PRESERVE an already-correct
+    -- result — it cannot mask a bug from another stage). May fail.
+    compile : Arch → Bool → Source → Maybe Bytes
 
-    -- The claim. Whenever the compiler returns bytes, those bytes'
-    -- execution on the target is behaviourally equivalent to the
-    -- source's denotation (the SigOp trace it intends).
-    correct : ∀ arch src bytes →
-              compile arch src ≡ just bytes →
-              exec arch bytes ≈ ⟦ src ⟧
+    -- THE claim — one unconditional statement. The behaviour the compiler
+    -- exhibits on `src` (run the bytes if it accepts, `nothing` if it
+    -- rejects) equals the source's meaning, for EVERY source and either
+    -- optimizer setting. Via `Pointwise` (`just ≁ nothing`) this is:
+    --   • soundness     — `⟦src⟧ = nothing` forces `compile = nothing`;
+    --   • completeness  — `⟦src⟧ = just _` forces `compile = just _`;
+    --   • trace-correct — accepted ⇒ `exec bytes ≈ ⟦src⟧`.
+    correct : ∀ arch doOpt src →
+              Pointwise _≈_ (map (exec arch) (compile arch doOpt src)) (⟦ src ⟧)

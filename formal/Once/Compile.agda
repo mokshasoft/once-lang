@@ -94,6 +94,8 @@ open PolyFunInfo
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Elaborate using (ctxWithImportsAndSelf; ctxWithImportsAndSelfAndPolys; PolyCtx; emptyPolyCtx; checkElab; resolveExpr)
 open import Once.TypeCheck.Elaborate as TE using (CheckElabResult)
+import Once.Surface.Syntax as Srf
+open import Relation.Binary.PropositionalEquality using (subst)
 -- D007 inference: the self-less context for inferring a sig-less def's type.
 open import Once.TypeCheck.Classify using (ctxWithImportsAndPolys; SigEffectCtx; emptySigEffects; lookupSigEffect)
 open import Once.SigEffect using (SigEffect)
@@ -163,10 +165,18 @@ extendFunCtx ctx name ty = (name , ty) ∷ ctx
 -- Returns IR or error message
 -- Plan 0.14 follow-up: take the default AllocMode from the caller
 -- (threaded from CLI --alloc).
-compileFunBody : AllocMode → Bool → FunCtx → PolyCtx → SigEffectCtx → (name : String) (ty : Type) → RawExpr → String ⊎ IR Unit ty
-compileFunBody m doOpt ctx polys sigEffs name ty expr with checkElab (ctxWithImportsAndSelfAndPolys ctx polys sigEffs name ty) expr ty
-... | TE.failure err = inj₁ ("Type error in " ++ name ++ ": " ++ TE.renderError err)
-... | TE.success _ surfaceExpr _ _ =
+-- `compileFunBody-aux` takes the elaboration RESULT explicitly (instead of a
+-- `with` on `checkElab`), so proofs can case on a bound variable and the
+-- original `compileFunBody` is `aux ∘ checkElab` by `refl` (Plan 0.48: needed
+-- to prove `doOpt`-independence of success without the `with`-bite). Generic
+-- over the elaboration context `Δ` so the dependent index need not be spelled.
+compileFunBody-aux : ∀ {n} {Δ : Srf.Ctx n}
+  → AllocMode → Bool → FunCtx → PolyCtx → (name : String) (ty : Type)
+  → Srf.⟦ Δ ⟧ᶜ ≡ Unit
+  → CheckElabResult Δ ty → String ⊎ IR Unit ty
+compileFunBody-aux m doOpt ctx polys name ty δ-unit (TE.failure err) =
+  inj₁ ("Type error in " ++ name ++ ": " ++ TE.renderError err)
+compileFunBody-aux m doOpt ctx polys name ty δ-unit (TE.success _ surfaceExpr _ _) =
   -- Plan 0.19: pass the user-fn list (= `ctx + self`) twice: once as
   -- `imps` (preserves the resolver's existing typecheck-context use for
   -- poly bodies) and once as `userFns` (drives sigOp→closure rewrite
@@ -175,17 +185,30 @@ compileFunBody m doOpt ctx polys sigEffs name ty expr with checkElab (ctxWithImp
   let userList = (name , ty) ∷ ctx
       resolved = resolveExpr polys userList userList 0 surfaceExpr
       ir = elaborate m resolved
-  in inj₂ (if doOpt then optimize ir else ir)
+  in inj₂ (subst (λ X → IR X ty) δ-unit (if doOpt then optimize ir else ir))
+
+compileFunBody : AllocMode → Bool → FunCtx → PolyCtx → SigEffectCtx → (name : String) (ty : Type) → RawExpr → String ⊎ IR Unit ty
+compileFunBody m doOpt ctx polys sigEffs name ty expr =
+  compileFunBody-aux m doOpt ctx polys name ty refl
+    (checkElab (ctxWithImportsAndSelfAndPolys ctx polys sigEffs name ty) expr ty)
 
 -- | Compile a function with main validation
 -- For main: validates type is Eff Unit A before compiling
 -- For other functions: compiles directly
+--
+-- Explicit-argument aux form (Plan 0.48): `compileFun-aux` dispatches on the
+-- `name == "main"` Bool, `compileFun-main-aux` on the `validateMain` result —
+-- both `doOpt`-free guards, so success rides on `compileFunBody` alone.
+compileFun-main-aux : AllocMode → Bool → FunCtx → PolyCtx → SigEffectCtx → (name : String) (ty : Type) → RawExpr → String ⊎ ⊤ → String ⊎ IR Unit ty
+compileFun-main-aux m doOpt ctx polys sigEffs name ty expr (inj₁ err) = inj₁ err
+compileFun-main-aux m doOpt ctx polys sigEffs name ty expr (inj₂ _)   = compileFunBody m doOpt ctx polys sigEffs name ty expr
+
+compileFun-aux : AllocMode → Bool → FunCtx → PolyCtx → SigEffectCtx → (name : String) (ty : Type) → RawExpr → Bool → String ⊎ IR Unit ty
+compileFun-aux m doOpt ctx polys sigEffs name ty expr true  = compileFun-main-aux m doOpt ctx polys sigEffs name ty expr (validateMain ty)
+compileFun-aux m doOpt ctx polys sigEffs name ty expr false = compileFunBody m doOpt ctx polys sigEffs name ty expr
+
 compileFun : AllocMode → Bool → FunCtx → PolyCtx → SigEffectCtx → (name : String) (ty : Type) → RawExpr → String ⊎ IR Unit ty
-compileFun m doOpt ctx polys sigEffs name ty expr with name == "main"
-... | true with validateMain ty
-...   | inj₁ err = inj₁ err
-...   | inj₂ _   = compileFunBody m doOpt ctx polys sigEffs name ty expr
-compileFun m doOpt ctx polys sigEffs name ty expr | false = compileFunBody m doOpt ctx polys sigEffs name ty expr
+compileFun m doOpt ctx polys sigEffs name ty expr = compileFun-aux m doOpt ctx polys sigEffs name ty expr (name == "main")
 
 ------------------------------------------------------------------------
 -- Module compilation: source → List (name, IR)
@@ -243,25 +266,40 @@ resolveFunType ctx polys nothing   body = inferType ctx polys body
 -- verified frontend can induct on it (a compiled `main` traces back to its
 -- `FunInfo`). The `ctx` accumulator is now
 -- an explicit parameter; `compileAllFuns` seeds it with `emptyFunCtx`.
+-- Explicit-argument aux form (Plan 0.48): the three nested scrutinees
+-- (`resolveFunType` → `compileFun` → the recursion) each become an aux that
+-- matches a bound `⊎` variable, so proofs can case without the `with`-bite.
+-- `caf-go-cf-aux` calls `compileAllFuns-go` (mutual); the self-recursion is on
+-- the structurally-smaller `rest`.
+caf-go-wrap : (fi : FunInfo) (ty : Type) → IR Unit ty → String ⊎ List CompiledFun → String ⊎ List CompiledFun
+caf-go-cf-aux : AllocMode → Bool → PolyCtx → SigEffectCtx → (fi : FunInfo) → List FunInfo → FunCtx → (ty : Type) → String ⊎ IR Unit ty → String ⊎ List CompiledFun
+caf-go-rf-aux : AllocMode → Bool → PolyCtx → SigEffectCtx → (fi : FunInfo) → List FunInfo → FunCtx → String ⊎ Type → String ⊎ List CompiledFun
 compileAllFuns-go : AllocMode → Bool → PolyCtx → SigEffectCtx → List FunInfo → FunCtx → String ⊎ List CompiledFun
+
+caf-go-wrap fi ty ir (inj₁ err)       = inj₁ err
+caf-go-wrap fi ty ir (inj₂ compiled)  =
+  -- Plan 0.2.4.5 D1: for main, wrap as `apply ∘ ⟨ main , terminal ⟩`
+  -- so codegen produces a Unit→Unit entry point that does the
+  -- closure invocation via the verified apply IR. _start no longer
+  -- needs hand-written closure-call ABI (which drifted at Stage C).
+  let wrapped = maybeWrapMain (funName fi) ty ir
+      ty'     = proj₁ wrapped
+      ir'     = proj₂ wrapped
+  in inj₂ (mkCompiledFun (funName fi) ty' ir' (funIsPrimitive fi) ∷ compiled)
+
+caf-go-cf-aux m doOpt polys sigEffs fi rest ctx ty (inj₁ err) = inj₁ err
+caf-go-cf-aux m doOpt polys sigEffs fi rest ctx ty (inj₂ ir) =
+  caf-go-wrap fi ty ir (compileAllFuns-go m doOpt polys sigEffs rest (extendFunCtx ctx (funName fi) ty))
+
+caf-go-rf-aux m doOpt polys sigEffs fi rest ctx (inj₁ err) = inj₁ err
+caf-go-rf-aux m doOpt polys sigEffs fi rest ctx (inj₂ ty) =
+  caf-go-cf-aux m doOpt polys sigEffs fi rest ctx ty (compileFun m doOpt ctx polys sigEffs (funName fi) ty (funBody fi))
+
 compileAllFuns-go m doOpt polys sigEffs [] _ = inj₂ []
 -- D007: resolve the function's type FIRST (explicit sig, or inferred from
 -- the body), then compile / extend the context / wrap-main with it.
-compileAllFuns-go m doOpt polys sigEffs (fi ∷ rest) ctx with resolveFunType ctx polys (funType fi) (funBody fi)
-... | inj₁ err = inj₁ err
-... | inj₂ ty with compileFun m doOpt ctx polys sigEffs (funName fi) ty (funBody fi)
-...   | inj₁ err = inj₁ err
-...   | inj₂ ir with compileAllFuns-go m doOpt polys sigEffs rest (extendFunCtx ctx (funName fi) ty)
-...     | inj₁ err = inj₁ err
-...     | inj₂ compiled =
-            -- Plan 0.2.4.5 D1: for main, wrap as `apply ∘ ⟨ main , terminal ⟩`
-            -- so codegen produces a Unit→Unit entry point that does the
-            -- closure invocation via the verified apply IR. _start no longer
-            -- needs hand-written closure-call ABI (which drifted at Stage C).
-            let wrapped = maybeWrapMain (funName fi) ty ir
-                ty'     = proj₁ wrapped
-                ir'     = proj₂ wrapped
-            in inj₂ (mkCompiledFun (funName fi) ty' ir' (funIsPrimitive fi) ∷ compiled)
+compileAllFuns-go m doOpt polys sigEffs (fi ∷ rest) ctx =
+  caf-go-rf-aux m doOpt polys sigEffs fi rest ctx (resolveFunType ctx polys (funType fi) (funBody fi))
 
 compileAllFuns : AllocMode → Bool → List FunInfo → PolyCtx → SigEffectCtx → String ⊎ List CompiledFun
 compileAllFuns m doOpt funs polys sigEffs = compileAllFuns-go m doOpt polys sigEffs funs emptyFunCtx
@@ -316,13 +354,17 @@ parseSourceToModule = parseStrict
 -- import-aware pipeline: Haskell parses each file separately, calls
 -- `resolveImports` to flatten imports into owner-tagged primitives,
 -- then hands the flat Module to this entry point.
+-- Explicit-argument aux form (Plan 0.48): dispatch on the `extractFunctions`
+-- result so the proof relating this to `compileFromModule` (which shares the
+-- same call) can match a bound `⊎` variable.
+compileResolvedModule-aux : AllocMode → Bool → Module → String ⊎ (List FunInfo × List PolyFunInfo) → String ⊎ List CompiledFun
+compileResolvedModule-aux m doOpt mod (inj₁ err)            = inj₁ err
+compileResolvedModule-aux m doOpt mod (inj₂ (funs , polys)) =
+  compileAllFuns m doOpt funs (buildPolyCtx polys) (collectSigEffects (Module.decls mod))
+
 compileResolvedModule : AllocMode → Bool → Module → String ⊎ List CompiledFun
 compileResolvedModule m doOpt mod =
-  let aliases = extractAliases mod
-  in case extractFunctions aliases mod of λ where
-       (inj₁ err)             → inj₁ err
-       (inj₂ (funs , polys))  →
-         compileAllFuns m doOpt funs (buildPolyCtx polys) (collectSigEffects (Module.decls mod))
+  compileResolvedModule-aux m doOpt mod (extractFunctions (extractAliases mod) mod)
 
 ------------------------------------------------------------------------
 -- Pipeline composition (SurfaceIR → IR)
@@ -508,20 +550,30 @@ compile m stage doOpt arch source with parseStrict source
 -- `resolveImports` to flatten `DImport` decls into owner-tagged
 -- `DSignature` decls. Skips the `parse source` step of `compile`.
 -- Plan 0.14 follow-up: takes AllocMode from CLI --alloc flag.
+-- Explicit-argument aux form (Plan 0.48): `cfm-ef-aux` dispatches on
+-- `extractFunctions`, `cfm-stage-aux` on the stage, and the Check/Build emit
+-- helpers on the `compileAllFuns` result — the SAME `compileAllFuns` call as
+-- `compileResolvedModule-aux`, which is what lets `main⇒built` relate them.
+cfm-build-emit : Arch → String ⊎ List CompiledFun → CompileResult
+cfm-build-emit arch (inj₁ err)       = Error err
+cfm-build-emit arch (inj₂ compiled)  =
+  let target = archTarget arch in Built (asmHeader target ++ compileAllWithTarget target compiled)
+
+cfm-check-emit : String ⊎ List CompiledFun → CompileResult
+cfm-check-emit (inj₁ err)       = Error err
+cfm-check-emit (inj₂ compiled)  = Checked compiled
+
+cfm-stage-aux : AllocMode → Stage → Bool → Arch → Module → List FunInfo → List PolyFunInfo → CompileResult
+cfm-stage-aux m Parse doOpt arch mod funs polys = Parsed funs polys
+cfm-stage-aux m Check doOpt arch mod funs polys =
+  cfm-check-emit (compileAllFuns m doOpt funs (buildPolyCtx polys) (collectSigEffects (Module.decls mod)))
+cfm-stage-aux m Build doOpt arch mod funs polys =
+  cfm-build-emit arch (compileAllFuns m doOpt funs (buildPolyCtx polys) (collectSigEffects (Module.decls mod)))
+
+cfm-ef-aux : AllocMode → Stage → Bool → Arch → Module → String ⊎ (List FunInfo × List PolyFunInfo) → CompileResult
+cfm-ef-aux m stage doOpt arch mod (inj₁ err)            = Error err
+cfm-ef-aux m stage doOpt arch mod (inj₂ (funs , polys)) = cfm-stage-aux m stage doOpt arch mod funs polys
+
 compileFromModule : AllocMode → Stage → Bool → Arch → Module → CompileResult
 compileFromModule m stage doOpt arch mod =
-  let aliases = extractAliases mod
-  in case extractFunctions aliases mod of λ where
-       (inj₁ err)             → Error err
-       (inj₂ (funs , polys))  →
-         let pctx = buildPolyCtx polys
-         in case stage of λ where
-           Parse → Parsed funs polys
-           Check → case compileAllFuns m doOpt funs pctx (collectSigEffects (Module.decls mod)) of λ where
-             (inj₁ err) → Error err
-             (inj₂ compiled) → Checked compiled
-           Build → case compileAllFuns m doOpt funs pctx (collectSigEffects (Module.decls mod)) of λ where
-             (inj₁ err) → Error err
-             (inj₂ compiled) →
-               let target = archTarget arch
-               in Built (asmHeader target ++ compileAllWithTarget target compiled)
+  cfm-ef-aux m stage doOpt arch mod (extractFunctions (extractAliases mod) mod)
