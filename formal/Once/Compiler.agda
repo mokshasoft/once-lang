@@ -48,14 +48,19 @@ once-compiler = record
   ; Source   = Source
   ; Bytes    = List Byte
   ; Behavior = Behavior
-  -- Plan 0.48: the TOTAL meaning (`Source → Maybe Behavior`, invalid ↦ nothing).
-  ; ⟦_⟧      = VC.⟦_⟧⊥
+  -- Plan 0.49: the INDEPENDENT meaning is RELATIONAL. `Typed` = an executable
+  -- declaratively-well-typed module; `_⊢_` links a source to it by PARSE (not
+  -- the elaborator); `⟦_⟧ˢ` is the surface denotation `SD.⟦_⟧ˢ` of `main` (so
+  -- `faithful` is load-bearing — typecheck + elaborate + codegen are forced).
+  ; Typed    = VC.Typed
+  ; _⊢_      = VC._⊢R_
+  ; ⟦_⟧ˢ     = VC.⟦_⟧ˢ
   ; exec     = VC.exec
   -- Behavioural equivalence = pointwise / up-to-`n` SigOp-trace prefix
   -- equality (Plan 0.44).
   ; _≈_      = λ b₁ b₂ → ∀ (n : ℕ) → b₁ n ≡ b₂ n
-  -- Plan 0.48: `compile` carries the optimizer flag; `correct` is the single
-  -- unconditional `Pointwise` claim (∀ doOpt) over the total meaning.
+  -- Plan 0.48: `compile` carries the optimizer flag.
   ; compile  = VC.compile
-  ; correct  = VC.correct
+  -- Plan 0.49: the two-conjunct (sound+trace / complete) relational claim.
+  ; correct  = VC.correctR
   }
