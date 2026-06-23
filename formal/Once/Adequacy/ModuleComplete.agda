@@ -27,8 +27,9 @@ open import Data.String using (String) renaming (_≟_ to _≟str_)
 open import Relation.Nullary using (yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 
+open import Function using (case_of_)
 open import Once.Adequacy.SourceTrace using (findMain; moduleToIR; moduleToIR-aux)
-open import Once.Adequacy.MainIRForm using (findMain-skip)
+open import Once.Adequacy.MainIRForm using (findMain-skip; compileFun-main-EffUU)
 
 open import Once.Type using (Type; Unit; _⇒[_]_; mk-kind; Many; eff)
 open import Once.IR using (IR)
@@ -205,3 +206,93 @@ moduleToIR-complete m mt (amu , me) with C.extractFunctions (C.extractAliases m)
            C.emptyFunCtx mt amu me
 ...   | (compiled , ir , ca-eq , fm-eq) =
         ir , trans (cong moduleToIR-aux ca-eq) fm-eq
+
+------------------------------------------------------------------------
+-- REVERSE lift (for soundness): compile-success ⇒ the declarative conditions.
+------------------------------------------------------------------------
+
+-- Every main-named function compiled ⇒ its resolved ty is EffUU
+-- (validateMain succeeded). Forces nothing new; reuses compileFun-main-EffUU.
+caf-go-mains : ∀ (polys : PolyCtx) (sigEffs : SigEffectCtx) {funs : List FunInfo}
+  (ctx : C.FunCtx) (aft : AS.AllFunsTyped polys sigEffs funs ctx) {compiled : List C.CompiledFun} →
+  C.compileAllFuns-go C.Heap false polys sigEffs funs ctx ≡ inj₂ compiled →
+  AllMainEffUU aft
+caf-go-mains polys sigEffs ctx AS.tnil _ = tt
+caf-go-mains polys sigEffs ctx (AS.tcons {fi = fi} {rest = rest} {ty = ty} rf deriv rest-typed) {compiled} caf-eq =
+  go (subst (λ r → C.caf-go-rf-aux C.Heap false polys sigEffs fi rest ctx r ≡ inj₂ compiled) rf caf-eq)
+  where
+    go : C.caf-go-cf-aux C.Heap false polys sigEffs fi rest ctx ty
+           (C.compileFun C.Heap false ctx polys sigEffs (funName fi) ty (funBody fi)) ≡ inj₂ compiled →
+         (funName fi ≡ "main" → ty ≡ EffUU) × AllMainEffUU rest-typed
+    go eq2 with C.compileFun C.Heap false ctx polys sigEffs (funName fi) ty (funBody fi) in cf-eq
+    ... | inj₁ err = case eq2 of λ ()
+    ... | inj₂ irFun
+        with C.compileAllFuns-go C.Heap false polys sigEffs rest (C.extendFunCtx ctx (funName fi) ty) in rec-eq
+    ...   | inj₁ err = case eq2 of λ ()
+    ...   | inj₂ compiled-rest =
+            (λ p → compileFun-main-EffUU ctx polys sigEffs ty (funBody fi) irFun
+                     (subst (λ nm → C.compileFun C.Heap false ctx polys sigEffs nm ty (funBody fi) ≡ inj₂ irFun)
+                            p cf-eq))
+            , caf-go-mains polys sigEffs (C.extendFunCtx ctx (funName fi) ty) rest-typed rec-eq
+
+-- A primitive head is skipped by findMain (regardless of name/type).
+open C.CompiledFun using (cfIsPrimitive)
+findMain-skip-prim : ∀ (cf : C.CompiledFun) (rest : List C.CompiledFun) →
+  cfIsPrimitive cf ≡ true → findMain (cf ∷ rest) ≡ findMain rest
+findMain-skip-prim cf rest pp rewrite pp = refl
+
+-- findMain found an entry ⇒ some main-named non-primitive EffUU function exists.
+caf-go-mainexists : ∀ (polys : PolyCtx) (sigEffs : SigEffectCtx) {funs : List FunInfo}
+  (ctx : C.FunCtx) (aft : AS.AllFunsTyped polys sigEffs funs ctx)
+  {compiled : List C.CompiledFun} {ir : IR Unit Unit} →
+  C.compileAllFuns-go C.Heap false polys sigEffs funs ctx ≡ inj₂ compiled →
+  findMain compiled ≡ just ir → MainExists aft
+caf-go-mainexists polys sigEffs ctx AS.tnil caf-eq fm =
+  case subst (λ c → findMain c ≡ just _) (sym (inj₂-injective caf-eq)) fm of λ ()
+caf-go-mainexists polys sigEffs ctx (AS.tcons {fi = fi} {rest = rest} {ty = ty} rf deriv rest-typed) {compiled} {ir} caf-eq fm =
+  go (subst (λ r → C.caf-go-rf-aux C.Heap false polys sigEffs fi rest ctx r ≡ inj₂ compiled) rf caf-eq)
+  where
+    go : C.caf-go-cf-aux C.Heap false polys sigEffs fi rest ctx ty
+           (C.compileFun C.Heap false ctx polys sigEffs (funName fi) ty (funBody fi)) ≡ inj₂ compiled →
+         MainExists (AS.tcons {fi = fi} {rest = rest} {ty = ty} rf deriv rest-typed)
+    go eq2 with C.compileFun C.Heap false ctx polys sigEffs (funName fi) ty (funBody fi) in cf-eq
+    ... | inj₁ err = case eq2 of λ ()
+    ... | inj₂ irFun
+        with C.compileAllFuns-go C.Heap false polys sigEffs rest (C.extendFunCtx ctx (funName fi) ty) in rec-eq
+    ...   | inj₁ err = case eq2 of λ ()
+    ...   | inj₂ compiled-rest = dispatch
+      where
+        cf0 : C.CompiledFun
+        cf0 = C.mkCompiledFun (funName fi) (proj₁ (C.maybeWrapMain (funName fi) ty irFun))
+                (proj₂ (C.maybeWrapMain (funName fi) ty irFun)) (funIsPrimitive fi)
+        fm0 : findMain (cf0 ∷ compiled-rest) ≡ just ir
+        fm0 = subst (λ c → findMain c ≡ just ir) (sym (inj₂-injective eq2)) fm
+        dispatch : MainExists (AS.tcons {fi = fi} {rest = rest} {ty = ty} rf deriv rest-typed)
+        dispatch with funName fi ≟str "main"
+        ... | no ¬p =
+              inj₂ (caf-go-mainexists polys sigEffs (C.extendFunCtx ctx (funName fi) ty) rest-typed
+                      rec-eq (trans (sym (findMain-skip cf0 compiled-rest ¬p)) fm0))
+        ... | yes refl = mx (funIsPrimitive fi) refl
+                            (compileFun-main-EffUU ctx polys sigEffs ty (funBody fi) irFun cf-eq)
+          where
+            mx : (b : Bool) → funIsPrimitive fi ≡ b → ty ≡ EffUU →
+                 ((funName fi ≡ "main") × (funIsPrimitive fi ≡ false) × (ty ≡ EffUU)) ⊎ MainExists rest-typed
+            mx false fp ty-eff = inj₁ (refl , fp , ty-eff)
+            mx true  fp ty-eff =
+              inj₂ (caf-go-mainexists polys sigEffs (C.extendFunCtx ctx "main" ty) rest-typed
+                      rec-eq (trans (sym (findMain-skip-prim cf0 compiled-rest fp)) fm0))
+
+------------------------------------------------------------------------
+-- The reverse lift, assembled: compile-success (via moduleToIR≡just) ⇒
+-- HasValidMain-decl. This is what `correctR-sound` uses to build `tp`.
+------------------------------------------------------------------------
+
+moduleToIR-sound : ∀ (m : C.Module) (mt : AS.ModuleTyped m) {ir : IR Unit Unit} →
+  moduleToIR m ≡ just ir → HasValidMain-decl m mt
+moduleToIR-sound m mt mi with C.extractFunctions (C.extractAliases m) m
+... | inj₂ (funs , polys)
+    with C.compileAllFuns-go C.Heap false (C.buildPolyCtx polys)
+           (C.collectSigEffects (C.Module.decls m)) funs C.emptyFunCtx in ca-eq
+...   | inj₂ compiled =
+        caf-go-mains (C.buildPolyCtx polys) (C.collectSigEffects (C.Module.decls m)) C.emptyFunCtx mt ca-eq
+        , caf-go-mainexists (C.buildPolyCtx polys) (C.collectSigEffects (C.Module.decls m)) C.emptyFunCtx mt ca-eq mi
