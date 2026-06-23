@@ -62,14 +62,10 @@ bind-cong-trace : ∀ {X Y} (m m′ : T X) (f : X → T Y) (n : ℕ) →
   m n ≡ m′ n → projTrace (m >>=T f) n ≡ projTrace (m′ >>=T f) n
 bind-cong-trace m m′ f n eq = cong (λ p → proj₁ p ++ proj₁ (f (proj₂ p) n)) eq
 
-postulate
-  -- DISCHARGE: thread `findMain`/`compileResolvedModule` (MainBuilds pattern):
-  -- the compiled `main` IR is the entry-wrap of the elaborated resolved term.
-  main-ir-form : ∀ (m : P.Module) (ir : IR Unit Unit) →
-    moduleToIR m ≡ just ir →
-    Σ-syntax (Usage 0) (λ Ψ →
-      Σ-syntax (Expr ∅ Ψ EffUU) (λ seR →
-        ir ≡ C.wrapMainAsEntry (elaborate C.Heap seR)))
+-- DISCHARGED (no longer a postulate): the compiled `main` IR is the entry-wrap
+-- of the elaborated resolved term — proven in `Once.Adequacy.MainIRForm` by the
+-- value-tracking induction over `compileAllFuns-go` + `findMain`.
+open import Once.Adequacy.MainIRForm using (main-ir-form)
 
 -- THE SD bridge: the compiled `main` IR's denotational trace equals the
 -- INDEPENDENT surface meaning of `main`. Proven from `main-ir-form` (plumbing)
