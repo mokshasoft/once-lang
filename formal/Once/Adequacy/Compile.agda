@@ -39,14 +39,27 @@ open import Data.Maybe.Relation.Binary.Pointwise as PW using (Pointwise)
 open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality
   using (_≡_; refl; sym; trans; cong; subst)
-open import Data.List using ([])
+open import Data.List using ([]; take)
 open import Once.IR using (IR)
-open import Once.Type using (Unit)
+open import Once.Type using (Unit; Type; _⇒[_]_; mk-kind; Many; eff)
 
 open import Once.Denotation.Behavior using (Source; Behavior)
 open import Once.Adequacy.SourceTrace
   using (⟦_⟧; ⟦⟧-via-module; moduleToIR; ⟦_⟧IR)
-open import Data.Product using (_×_; _,_; Σ-syntax; proj₂)
+
+-- Plan 0.49 (route 3): the INDEPENDENT surface denotation `SD.⟦_⟧ˢ` (over the
+-- intrinsically-typed `Expr`, NOT through the compiler's `evalᴰ ∘ moduleToIR`),
+-- plus the trace-monad run primitives, so `⟦ tp ⟧ˢ` forces `elaborate` via the
+-- proven `faithful`. The main `Expr` is recovered from a `⊢ᶜ` derivation by
+-- `check-complete` (the proven typechecker-completeness witness).
+import Once.Denotation.SourceDenote as SD
+open import Once.Denotation.TraceMonad using (T; _>>=T_; projTrace)
+open import Once.Surface.Syntax as Srf2 using (Expr; ∅; Usage)
+open import Once.TypeCheck.Completeness using (check-complete)
+open import Data.Unit using (tt)
+open import Data.Product using (_×_; _,_; Σ-syntax; proj₁; proj₂)
+open import Data.Maybe.Properties using (just-injective)
+open import Data.Empty using (⊥-elim)
 open import Function using (case_of_)
 -- D054 wired-not-imported: import only the portable INTERFACE (no
 -- postulates). The per-arch CPU semantics are *injected* via the
@@ -434,6 +447,124 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
                             (correct arch doOpt src)
         (beh , dom) = pw-just-inv (⟦ src ⟧⊥) p
     in ⟦⟧⊥-sound src beh dom
+
+  -- ════════════════════════════════════════════════════════════════════
+  -- Plan 0.49 (route 3) — RELATIONAL correctness against the INDEPENDENT
+  -- surface denotation `SD.⟦_⟧ˢ`. The meaning routes through `SD` (over the
+  -- intrinsically-typed `Expr`), NOT through `evalᴰ ∘ moduleToIR`, so the
+  -- proven `faithful` becomes load-bearing — typecheck (`AcceptSound` +
+  -- `check-complete`) AND elaborate (`faithful`) AND codegen are forced.
+  --
+  -- SCAFFOLD (feedback_scaffold_then_discharge): the relational shape is
+  -- wired NOW; the genuinely-new plumbing is NAMED postulates, discharge
+  -- backlog below. NOT yet forced: `checkElab` term-choice (row 3) — `⟦_⟧ˢ`
+  -- uses `check-complete`'s term (= `checkElab`'s `se`), so a wrong-but-
+  -- well-typed elaboration still cancels. Closing it is Plan 0.49 Phase 2.
+  --
+  -- Discharge backlog:
+  --   • mainTermOf  — extract main's `Expr` from `ModuleTyped m` (walk
+  --                   `AllFunsTyped` to "main"; `proj₁ (check-complete D)`).
+  --   • sd-bridge   — `⟦ moduleToIR m ⟧IR ≋ ⟦ tp ⟧ˢ`; the row-2 forcing,
+  --                   via the `wrapMainAsEntry` evalᴰ lemma ∘ `faithful`
+  --                   (∘ `resolveExpr`-faithfulness).
+  --   • HasValidMain — currently the COMPILER fact `moduleToIR m ≡ just _`
+  --                   (so completeness does NOT yet force the typechecker-
+  --                   complete half); make it the declarative `main : EffUU`
+  --                   predicate + derive `moduleToIR≡just` from `ModuleTyped`
+  --                   via the backward mirror of `caf-go-sound` (`check-complete`).
+  -- ════════════════════════════════════════════════════════════════════
+
+  EffUU : Type
+  EffUU = Unit ⇒[ mk-kind Many eff ] Unit
+
+  -- Run an `Eff Unit Unit` action's INDEPENDENT surface denotation to a
+  -- Behavior: apply the closure `SD.⟦ se ⟧ˢ tt` to the Unit input, read the
+  -- depth-`n` SigOp-trace prefix. Mirrors `⟦_⟧IR` but through `SD` (not
+  -- `evalᴰ ∘ moduleToIR`) — that is what makes `faithful` load-bearing.
+  runMainˢ : ∀ {Ψ : Usage 0} → Expr ∅ Ψ EffUU → Behavior
+  runMainˢ se n = take n (projTrace (SD.⟦ se ⟧ˢ tt >>=T (λ clo → clo tt)) n)
+
+  -- An executable typed module: declaratively well-typed (`ModuleTyped`)
+  -- with a runnable `main`. (SCAFFOLD `HasValidMain`, see backlog above.)
+  HasValidMain : P.Module → Set
+  HasValidMain m = Σ-syntax (IR Unit Unit) (λ ir → moduleToIR m ≡ just ir)
+
+  Typed : Set
+  Typed = Σ-syntax P.Module (λ m → ModuleTyped m × HasValidMain m)
+
+  -- Declarative link: `src` PARSES (verified relational parser — NOT the
+  -- typechecker/elaborator) to `tp`'s module. Independent of codegen.
+  _⊢R_ : Source → Typed → Set
+  src ⊢R (m , _ , _) = gmoduleToModule src ≡ just m
+
+  postulate
+    -- DISCHARGE: walk `ModuleTyped m` to "main"'s `⊢ᶜ` derivation at EffUU,
+    -- then `proj₁ (check-complete D)` is the intrinsic main term.
+    mainTermOf : (tp : Typed) → Σ-syntax (Usage 0) (λ Ψ → Expr ∅ Ψ EffUU)
+
+  ⟦_⟧ˢ : Typed → Behavior
+  ⟦ tp ⟧ˢ = runMainˢ (proj₂ (mainTermOf tp))
+
+  postulate
+    -- DISCHARGE: `wrapMainAsEntry` evalᴰ lemma ∘ `faithful` (row-2 forcing).
+    sd-bridge : ∀ (tp : Typed) → ⟦ moduleToIR (proj₁ tp) ⟧IR ≋ ⟦ tp ⟧ˢ
+
+  pw-just-rel : ∀ {x y : Behavior} → Pointwise _≋_ (just x) (just y) → x ≋ y
+  pw-just-rel (PW.just r) = r
+
+  -- accept ⇒ the parsed module has a compilable `main`. (Inverts `compile`'s
+  -- executable gate; reuses nothing new — pure case analysis on `moduleToIR`.)
+  compile-just-ir : ∀ (arch : Arch) (doOpt : Bool) (src : Source) (m : P.Module) (bytes : List Byte) →
+    gmoduleToModule src ≡ just m → compile arch doOpt src ≡ just bytes →
+    Σ-syntax (IR Unit Unit) (λ ir → moduleToIR m ≡ just ir)
+  compile-just-ir arch doOpt src m bytes g-eq pf with moduleToIR m in mi
+  ... | just ir = ir , refl
+  ... | nothing = ⊥-elim (case trans (sym c≡n) pf of λ ())
+    where c≡n : compile arch doOpt src ≡ nothing
+          c≡n rewrite g-eq | mi = refl
+
+  -- The total meaning at an accepted source: `⟦ src ⟧⊥ ≡ just (⟦ moduleToIR m ⟧IR)`.
+  ⟦⟧⊥-just : ∀ (src : Source) (m : P.Module) (ir : IR Unit Unit) →
+    gmoduleToModule src ≡ just m → moduleToIR m ≡ just ir →
+    ⟦ src ⟧⊥ ≡ just (⟦ moduleToIR m ⟧IR)
+  ⟦⟧⊥-just src m ir g-eq mi rewrite g-eq | mi = refl
+
+  -- SOUNDNESS + TRACE conjunct — reuses `accept-sound` (front-end soundness),
+  -- the existing `correct` (codegen), and `sd-bridge` (SD meaning).
+  correctR-sound : ∀ (arch : Arch) (doOpt : Bool) (src : Source) (bytes : List Byte) →
+    compile arch doOpt src ≡ just bytes →
+    Σ-syntax Typed (λ tp → (src ⊢R tp) × (exec arch bytes ≋ ⟦ tp ⟧ˢ))
+  correctR-sound arch doOpt src bytes pf with accept-sound arch doOpt src bytes pf
+  ... | (m , g-eq , MT) with compile-just-ir arch doOpt src m bytes g-eq pf
+  ...   | (ir , mi) =
+          let tp = (m , MT , (ir , mi))
+              p  = subst (λ c → Pointwise _≋_ (map (exec arch) c) (⟦ src ⟧⊥)) pf
+                         (correct arch doOpt src)
+              p' = subst (λ b → Pointwise _≋_ (just (exec arch bytes)) b)
+                         (⟦⟧⊥-just src m ir g-eq mi) p
+              e≋ = pw-just-rel p'
+          in tp , g-eq , (λ n → trans (e≋ n) (sd-bridge tp n))
+
+  -- COMPLETENESS conjunct — reuses `main⇒built` (a `main` always Builds).
+  correctR-complete : ∀ (arch : Arch) (doOpt : Bool) (src : Source) (tp : Typed) →
+    src ⊢R tp →
+    Σ-syntax (List Byte) (λ bytes → compile arch doOpt src ≡ just bytes)
+  correctR-complete arch doOpt src (m , MT , (ir , mi)) g-eq
+    with main⇒built arch doOpt m ir mi
+  ... | (asm , built-eq) = string-to-bytes arch asm , c≡j
+    where c≡j : compile arch doOpt src ≡ just (string-to-bytes arch asm)
+          c≡j rewrite g-eq | mi | built-eq = refl
+
+  -- THE relational claim — two conjuncts in ONE statement (matches the spec's
+  -- `correct`). Supplied to `Once.Adequacy.CorrectCompiler` in the apex.
+  correctR : ∀ (arch : Arch) (doOpt : Bool) (src : Source) →
+    ( ∀ bytes → compile arch doOpt src ≡ just bytes →
+        Σ-syntax Typed (λ tp → (src ⊢R tp) × (exec arch bytes ≋ ⟦ tp ⟧ˢ)) )
+    × ( ∀ tp → src ⊢R tp →
+        Σ-syntax (List Byte) (λ bytes → compile arch doOpt src ≡ just bytes) )
+  correctR arch doOpt src =
+      (λ bytes pf → correctR-sound arch doOpt src bytes pf)
+    , (λ tp h → correctR-complete arch doOpt src tp h)
 
   -- ════════════════════════════════════════════════════════════════════
   -- The GRAND THEOREM (D060): `correct` above IS the whole statement.
