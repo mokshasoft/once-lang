@@ -15,14 +15,28 @@
 
 module Once.Adequacy.MainIRForm where
 
+open import Data.Bool using (false)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
+open import Data.Sum.Properties using (inj₂-injective)
 open import Data.Unit using (⊤; tt)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+open import Data.Product using (Σ-syntax; _,_)
+open import Data.List using (_∷_)
+open import Data.String using (String)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst)
 
 open import Once.Type
   using (Type; Unit; Void; Int; Float; Str; Buffer; _*_; _+_; _⇒[_]_;
          μ-type; ν-type; mk-kind; Quantity; Zero; One; Many; Purity; pure; eff)
+open import Once.IR using (IR)
+open import Once.Surface.Syntax using (Expr; ∅; Usage)
+open import Once.Surface.Elaborate using (elaborate)
+open import Once.TypeCheck.Raw using (RawExpr)
+open import Once.TypeCheck.Classify using (SigEffectCtx)
+open import Once.TypeCheck.Elaborate
+  using (checkElab; ctxWithImportsAndSelfAndPolys; resolveExpr; PolyCtx;
+         CheckElabResult; success)
 import Once.Compile as C
+import Once.Adequacy.AcceptSound as AS
 
 EffUU : Type
 EffUU = Unit ⇒[ mk-kind Many eff ] Unit
@@ -72,3 +86,24 @@ validateMain-EffUU ((_ + _) ⇒[ k ] B)      ()
 validateMain-EffUU ((_ ⇒[ _ ] _) ⇒[ k ] B) ()
 validateMain-EffUU ((μ-type _) ⇒[ k ] B)   ()
 validateMain-EffUU ((ν-type _) ⇒[ k ] B)   ()
+
+------------------------------------------------------------------------
+-- (2) compileFunBody form: a successfully-compiled body (at EffUU, doOpt=false,
+-- Heap) is `elaborate Heap (resolveExpr … se)` for the checkElab term `se`.
+-- Reuses `AcceptSound.compileFunBody-aux-success` (inverts compileFunBody-aux).
+------------------------------------------------------------------------
+
+compileFunBody-form : ∀ (ctx : C.FunCtx) (polys : PolyCtx) (sigEffs : SigEffectCtx)
+  (name : String) (body : RawExpr) (irFun : IR Unit EffUU) →
+  C.compileFunBody C.Heap false ctx polys sigEffs name EffUU body ≡ inj₂ irFun →
+  Σ-syntax (Usage 0) (λ Ψ → Σ-syntax (Expr ∅ Ψ EffUU) (λ seR → irFun ≡ elaborate C.Heap seR))
+compileFunBody-form ctx polys sigEffs name body irFun eq =
+  let cr = checkElab (ctxWithImportsAndSelfAndPolys ctx polys sigEffs name EffUU) body EffUU
+      (Ψ , se , d , f , ce) =
+        AS.compileFunBody-aux-success false ctx polys name EffUU refl cr eq
+      eq2 : C.compileFunBody-aux C.Heap false ctx polys name EffUU refl (success Ψ se d f)
+            ≡ inj₂ irFun
+      eq2 = subst (λ c → C.compileFunBody-aux C.Heap false ctx polys name EffUU refl c ≡ inj₂ irFun)
+                  ce eq
+  in Ψ , resolveExpr polys ((name , EffUU) ∷ ctx) ((name , EffUU) ∷ ctx) 0 se
+       , sym (inj₂-injective eq2)
