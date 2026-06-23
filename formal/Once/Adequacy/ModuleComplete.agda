@@ -17,17 +17,22 @@
 
 module Once.Adequacy.ModuleComplete where
 
-open import Data.Bool using (false)
+open import Data.Bool using (Bool; false; true)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Sum.Properties using (inj₂-injective)
 open import Data.Unit using (tt)
 open import Data.Maybe using (just)
 open import Data.Product using (Σ-syntax; _,_; _×_; proj₁; proj₂)
+open import Data.Empty using (⊥)
 open import Data.List using (List; []; _∷_)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
+open import Data.List.Relation.Unary.Any using (Any; here; there)
 open import Data.String using (String) renaming (_≟_ to _≟str_)
 open import Relation.Nullary using (yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
+
+open import Once.Adequacy.SourceTrace using (findMain; moduleToIR; moduleToIR-aux)
+open import Once.Adequacy.MainIRForm using (findMain-skip)
 
 open import Once.Type using (Type; Unit; _⇒[_]_; mk-kind; Many; eff)
 open import Once.IR using (IR)
@@ -106,3 +111,107 @@ caf-go-complete polys sigEffs (fi ∷ rest) ctx (AS.tcons {ty = ty} rf deriv res
    , trans (cong (C.caf-go-rf-aux C.Heap false polys sigEffs fi rest ctx) rf)
        (trans (cong (C.caf-go-cf-aux C.Heap false polys sigEffs fi rest ctx ty) cf-eq)
               (cong (C.caf-go-wrap fi ty irFun) rec-eq))
+
+------------------------------------------------------------------------
+-- (4) findMain finds the entry, and assembly to `moduleToIR ≡ just`.
+------------------------------------------------------------------------
+
+-- A freshly-wrapped non-primitive "main" entry IS found by findMain.
+findMain-main-here : ∀ (irFun : IR Unit EffUU) (rest : List C.CompiledFun) →
+  findMain (C.mkCompiledFun "main" Unit (C.wrapMainAsEntry irFun) false ∷ rest)
+  ≡ just (C.wrapMainAsEntry irFun)
+findMain-main-here irFun rest = refl
+
+-- A wrapped "main" entry: non-primitive ⇒ found; primitive ⇒ skipped to the
+-- tail. Cases the primitive flag as an ARGUMENT (not `funIsPrimitive fi`), so
+-- the surrounding `fi` is never split.
+findMain-main-or-skip : ∀ (irFun : IR Unit EffUU) (b : Bool) (rest : List C.CompiledFun)
+  (ir-rest : IR Unit Unit) → findMain rest ≡ just ir-rest →
+  Σ-syntax (IR Unit Unit) (λ ir →
+    findMain (C.mkCompiledFun "main" Unit (C.wrapMainAsEntry irFun) b ∷ rest) ≡ just ir)
+findMain-main-or-skip irFun false rest ir-rest fm = C.wrapMainAsEntry irFun , refl
+findMain-main-or-skip irFun true  rest ir-rest fm = ir-rest , fm
+
+mk-main-ok : ∀ (ctx : C.FunCtx) (polys : PolyCtx) (fi : FunInfo) (ty : Type) →
+  MainEffUU fi → C.resolveFunType ctx polys (funType fi) (funBody fi) ≡ inj₂ ty →
+  funName fi ≡ "main" → ty ≡ EffUU
+mk-main-ok ctx polys fi ty pfi rf p =
+  sym (inj₂-injective
+    (subst (λ ft → C.resolveFunType ctx polys ft (funBody fi) ≡ inj₂ ty) (pfi p) rf))
+
+-- A non-primitive "main" exists.
+MainEntryNP : FunInfo → Set
+MainEntryNP fi = (funName fi ≡ "main") × (funIsPrimitive fi ≡ false)
+
+FindResult : PolyCtx → SigEffectCtx → List FunInfo → C.FunCtx → Set
+FindResult polys sigEffs funs ctx =
+  Σ-syntax (List C.CompiledFun) (λ compiled → Σ-syntax (IR Unit Unit) (λ ir →
+    (C.compileAllFuns-go C.Heap false polys sigEffs funs ctx ≡ inj₂ compiled)
+    × (findMain compiled ≡ just ir)))
+
+caf-go-find-complete : ∀ (polys : PolyCtx) (sigEffs : SigEffectCtx) (funs : List FunInfo)
+  (ctx : C.FunCtx) →
+  AS.AllFunsTyped polys sigEffs funs ctx → All MainEffUU funs → Any MainEntryNP funs →
+  FindResult polys sigEffs funs ctx
+caf-go-find-complete polys sigEffs (fi ∷ rest) ctx (AS.tcons {ty = ty} rf deriv rest-typed) (pfi ∷ prest) (here (refl , refl))
+  with mk-main-ok ctx polys fi ty pfi rf refl
+... | refl
+  with compileFun-complete ctx polys sigEffs "main" EffUU (funBody fi) (λ _ → refl) deriv
+...   | (irFun , cf-eq)
+  with caf-go-complete polys sigEffs rest (C.extendFunCtx ctx "main" EffUU) rest-typed prest
+...     | (compiled-rest , rec-eq) =
+          C.mkCompiledFun "main" Unit (C.wrapMainAsEntry irFun) false ∷ compiled-rest
+          , C.wrapMainAsEntry irFun
+          , trans (cong (C.caf-go-rf-aux C.Heap false polys sigEffs fi rest ctx) rf)
+              (trans (cong (C.caf-go-cf-aux C.Heap false polys sigEffs fi rest ctx EffUU) cf-eq)
+                     (cong (C.caf-go-wrap fi EffUU irFun) rec-eq))
+          , findMain-main-here irFun compiled-rest
+caf-go-find-complete polys sigEffs (fi ∷ rest) ctx (AS.tcons {ty = ty} rf deriv rest-typed) (pfi ∷ prest) (there any-rest)
+  with compileFun-complete ctx polys sigEffs (funName fi) ty (funBody fi) (mk-main-ok ctx polys fi ty pfi rf) deriv
+     | caf-go-find-complete polys sigEffs rest (C.extendFunCtx ctx (funName fi) ty) rest-typed prest any-rest
+... | (irFun , cf-eq) | (compiled-rest , ir , rec-eq , fm-rest) = result
+  where
+    cf0 : C.CompiledFun
+    cf0 = C.mkCompiledFun (funName fi) (proj₁ (C.maybeWrapMain (funName fi) ty irFun))
+            (proj₂ (C.maybeWrapMain (funName fi) ty irFun)) (funIsPrimitive fi)
+    -- The compile-eq chain, built BEFORE casing `funName` so `cf-eq` and the
+    -- `caf-go-rf-aux`-unfolded `compileFun` are both stuck on the SAME term
+    -- (casing `≟str` would substitute one but not the `==`-headed other).
+    ca-eq : C.compileAllFuns-go C.Heap false polys sigEffs (fi ∷ rest) ctx ≡ inj₂ (cf0 ∷ compiled-rest)
+    ca-eq = trans (cong (C.caf-go-rf-aux C.Heap false polys sigEffs fi rest ctx) rf)
+              (trans (cong (C.caf-go-cf-aux C.Heap false polys sigEffs fi rest ctx ty) cf-eq)
+                     (cong (C.caf-go-wrap fi ty irFun) rec-eq))
+    result : FindResult polys sigEffs (fi ∷ rest) ctx
+    result with funName fi ≟str "main"
+    ... | no ¬p =
+          cf0 ∷ compiled-rest , ir , ca-eq , trans (findMain-skip cf0 compiled-rest ¬p) fm-rest
+    ... | yes refl with mk-main-ok ctx polys fi ty pfi rf refl
+    ...   | refl =
+            C.mkCompiledFun "main" Unit (C.wrapMainAsEntry irFun) (funIsPrimitive fi) ∷ compiled-rest
+            , proj₁ (findMain-main-or-skip irFun (funIsPrimitive fi) compiled-rest ir fm-rest)
+            , trans (cong (C.caf-go-rf-aux C.Heap false polys sigEffs fi rest ctx) rf)
+                (trans (cong (C.caf-go-cf-aux C.Heap false polys sigEffs fi rest ctx EffUU) cf-eq)
+                       (cong (C.caf-go-wrap fi EffUU irFun) rec-eq))
+            , proj₂ (findMain-main-or-skip irFun (funIsPrimitive fi) compiled-rest ir fm-rest)
+
+------------------------------------------------------------------------
+-- The declarative HasValidMain + the assembly: ModuleTyped + HasValidMain
+-- ⇒ moduleToIR m ≡ just ir. Forces check-complete (row-1b).
+------------------------------------------------------------------------
+
+HasValidMain-decl-ef : C.Module → (String ⊎ (List FunInfo × List C.PolyFunInfo)) → Set
+HasValidMain-decl-ef m (inj₁ _)            = ⊥
+HasValidMain-decl-ef m (inj₂ (funs , _))   = All MainEffUU funs × Any MainEntryNP funs
+
+HasValidMain-decl : C.Module → Set
+HasValidMain-decl m = HasValidMain-decl-ef m (C.extractFunctions (C.extractAliases m) m)
+
+moduleToIR-complete : ∀ (m : C.Module) →
+  AS.ModuleTyped m → HasValidMain-decl m →
+  Σ-syntax (IR Unit Unit) (λ ir → moduleToIR m ≡ just ir)
+moduleToIR-complete m mt hvm with C.extractFunctions (C.extractAliases m) m
+... | inj₂ (funs , polys)
+    with caf-go-find-complete (C.buildPolyCtx polys) (C.collectSigEffects (C.Module.decls m))
+           funs C.emptyFunCtx mt (proj₁ hvm) (proj₂ hvm)
+...   | (compiled , ir , ca-eq , fm-eq) =
+        ir , trans (cong moduleToIR-aux ca-eq) fm-eq
