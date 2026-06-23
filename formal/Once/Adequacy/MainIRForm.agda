@@ -19,10 +19,12 @@ open import Data.Bool using (false)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Sum.Properties using (inj₂-injective)
 open import Data.Unit using (⊤; tt)
+open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Product using (Σ-syntax; _,_)
 open import Data.List using (_∷_)
 open import Data.String using (String)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst)
+open import Function using (case_of_)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 
 open import Once.Type
   using (Type; Unit; Void; Int; Float; Str; Buffer; _*_; _+_; _⇒[_]_;
@@ -107,3 +109,32 @@ compileFunBody-form ctx polys sigEffs name body irFun eq =
                   ce eq
   in Ψ , resolveExpr polys ((name , EffUU) ∷ ctx) ((name , EffUU) ∷ ctx) 0 se
        , sym (inj₂-injective eq2)
+
+------------------------------------------------------------------------
+-- (3a) compileFun at "main": reduce through `validateMain`, and extract the
+-- body form. Linchpin: `"main" == "main"` reduces to `true`.
+------------------------------------------------------------------------
+
+-- `compileFun "main" …` reduces to `compileFun-main-aux … (validateMain ty)`.
+compileFun-main-reduces : ∀ (ctx : C.FunCtx) (polys : PolyCtx) (sigEffs : SigEffectCtx)
+  (ty : Type) (body : RawExpr) →
+  C.compileFun C.Heap false ctx polys sigEffs "main" ty body
+  ≡ C.compileFun-main-aux C.Heap false ctx polys sigEffs "main" ty body (C.validateMain ty)
+compileFun-main-reduces ctx polys sigEffs ty body = refl
+
+-- A successfully-compiled "main" has type EffUU.
+compileFun-main-EffUU : ∀ (ctx : C.FunCtx) (polys : PolyCtx) (sigEffs : SigEffectCtx)
+  (ty : Type) (body : RawExpr) (irFun : IR Unit ty) →
+  C.compileFun C.Heap false ctx polys sigEffs "main" ty body ≡ inj₂ irFun →
+  ty ≡ EffUU
+compileFun-main-EffUU ctx polys sigEffs ty body irFun eq with C.validateMain ty in veq
+... | inj₂ tt  = validateMain-EffUU ty veq
+... | inj₁ err = case eq of λ ()
+
+-- At EffUU, `compileFun "main"` IS `compileFunBody` (validateMain EffUU ≡ inj₂ tt).
+compileFun-main-formEffUU : ∀ (ctx : C.FunCtx) (polys : PolyCtx) (sigEffs : SigEffectCtx)
+  (body : RawExpr) (irFun : IR Unit EffUU) →
+  C.compileFun C.Heap false ctx polys sigEffs "main" EffUU body ≡ inj₂ irFun →
+  Σ-syntax (Usage 0) (λ Ψ → Σ-syntax (Expr ∅ Ψ EffUU) (λ seR → irFun ≡ elaborate C.Heap seR))
+compileFun-main-formEffUU ctx polys sigEffs body irFun eq =
+  compileFunBody-form ctx polys sigEffs "main" body irFun eq
