@@ -1,0 +1,92 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson and contributors
+
+------------------------------------------------------------------------
+-- Once.Adequacy.MainExtract — the source meaning of a compiled `main`
+-- (Plan 0.49 Phase 1: the SD bridge, assembled).
+--
+-- `moduleToIR m` is the compiled `main` IR — the entry-wrapped elaboration
+-- of `main`'s (resolved) intrinsic surface term `seR`:
+--
+--     moduleToIR m ≡ just (wrapMainAsEntry (elaborate Heap seR))      -- main-ir-form
+--
+-- From that ONE plumbing fact, the INDEPENDENT surface meaning of `main`
+-- (its `SD.⟦_⟧ˢ` run) equals the compiled IR's denotational trace `⟦_⟧IR`:
+--
+--     ⟦ just ir ⟧IR  ≋  runMainˢ seR
+--
+-- via `wrap-trace` (the entry-wrap denotation lemma) ∘ `faithful` (the proven
+-- elaborator-faithfulness). This is where row-2 (`elaborate`) is genuinely
+-- FORCED — `faithful` is load-bearing here.
+--
+-- `main-ir-form` is the single remaining NAMED gap: that `moduleToIR` extracts
+-- exactly the entry-wrapped elaboration of `main`'s resolved term. It threads
+-- through `findMain`/`compileResolvedModule` (the `MainBuilds`/`AcceptSound`
+-- plumbing pattern); it is TRUE and codegen-structural, not a trust axiom.
+------------------------------------------------------------------------
+
+module Once.Adequacy.MainExtract where
+
+open import Data.Nat using (ℕ)
+open import Data.List using (List; _++_; take)
+open import Data.Maybe using (just)
+open import Data.Unit using (tt)
+open import Data.Product using (Σ-syntax; _,_; proj₁; proj₂)
+open import Relation.Binary.PropositionalEquality using (_≡_; cong; trans)
+
+open import Once.Type using (Unit; _⇒[_]_; mk-kind; Many; eff)
+open import Once.IR using (IR)
+open import Once.Surface.Syntax using (Expr; ∅; Usage)
+open import Once.Surface.Elaborate using (elaborate)
+import Once.Compile as C
+import Once.Parser.Module.Core as P
+open import Once.Denotation.Behavior using (Behavior)
+open import Once.Adequacy.SourceTrace using (moduleToIR; ⟦_⟧IR)
+open import Once.Adequacy.WrapBridge using (wrap-trace)
+open import Once.Adequacy.SourceFaithful using (faithful)
+import Once.Denotation.SourceDenote as SD
+open import Once.Denotation.TraceMonad using (T; _>>=T_; projTrace)
+open import Once.Denotation.DenotTrace using (evalᴰ)
+
+EffUU : _
+EffUU = Unit ⇒[ mk-kind Many eff ] Unit
+
+-- Run an `Eff Unit Unit` action's INDEPENDENT surface denotation to a
+-- Behavior: apply the closure `SD.⟦ se ⟧ˢ tt` to the Unit input, read the
+-- depth-`n` SigOp-trace prefix. Mirrors `⟦_⟧IR` but through `SD`.
+runMainˢ : ∀ {Ψ : Usage 0} → Expr ∅ Ψ EffUU → Behavior
+runMainˢ se n = take n (projTrace (SD.⟦ se ⟧ˢ tt >>=T (λ clo → clo tt)) n)
+
+-- Bind respects pointwise equality of the bound computation, at the trace level.
+bind-cong-trace : ∀ {X Y} (m m′ : T X) (f : X → T Y) (n : ℕ) →
+  m n ≡ m′ n → projTrace (m >>=T f) n ≡ projTrace (m′ >>=T f) n
+bind-cong-trace m m′ f n eq = cong (λ p → proj₁ p ++ proj₁ (f (proj₂ p) n)) eq
+
+postulate
+  -- DISCHARGE: thread `findMain`/`compileResolvedModule` (MainBuilds pattern):
+  -- the compiled `main` IR is the entry-wrap of the elaborated resolved term.
+  main-ir-form : ∀ (m : P.Module) (ir : IR Unit Unit) →
+    moduleToIR m ≡ just ir →
+    Σ-syntax (Usage 0) (λ Ψ →
+      Σ-syntax (Expr ∅ Ψ EffUU) (λ seR →
+        ir ≡ C.wrapMainAsEntry (elaborate C.Heap seR)))
+
+-- THE SD bridge: the compiled `main` IR's denotational trace equals the
+-- INDEPENDENT surface meaning of `main`. Proven from `main-ir-form` (plumbing)
+-- + `wrap-trace` (proven) + `faithful` (proven) + `bind-cong-trace`.
+source-meaningᴰ : ∀ (m : P.Module) (ir : IR Unit Unit) →
+  moduleToIR m ≡ just ir →
+  Σ-syntax (Usage 0) (λ Ψ →
+    Σ-syntax (Expr ∅ Ψ EffUU) (λ seR →
+      ∀ (n : ℕ) → ⟦ just ir ⟧IR n ≡ runMainˢ seR n))
+source-meaningᴰ m ir mi with main-ir-form m ir mi
+... | (Ψ , seR , eq) = Ψ , seR , bridge
+  where
+    bridge : ∀ (n : ℕ) → ⟦ just ir ⟧IR n ≡ runMainˢ seR n
+    bridge n =
+      trans (cong (λ X → ⟦ just X ⟧IR n) eq)
+        (trans (cong (take n) (wrap-trace (elaborate C.Heap seR) n))
+               (cong (take n)
+                 (bind-cong-trace (evalᴰ (elaborate C.Heap seR) tt)
+                                  (SD.⟦ seR ⟧ˢ tt) (λ clo → clo tt) n
+                                  (faithful seR tt n))))

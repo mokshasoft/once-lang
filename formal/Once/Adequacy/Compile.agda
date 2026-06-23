@@ -57,6 +57,9 @@ open import Once.Denotation.TraceMonad using (T; _>>=T_; projTrace)
 open import Once.Surface.Syntax as Srf2 using (Expr; ∅; Usage)
 open import Once.TypeCheck.Completeness using (check-complete)
 open import Data.Unit using (tt)
+-- Plan 0.49 Phase 1: the SD meaning of `main` + the IR↔SD bridge, assembled
+-- (`source-meaningᴰ` = `wrap-trace` ∘ `faithful` ∘ the `main-ir-form` plumbing).
+import Once.Adequacy.MainExtract as ME
 open import Data.Product using (_×_; _,_; Σ-syntax; proj₁; proj₂)
 open import Data.Maybe.Properties using (just-injective)
 open import Data.Empty using (⊥-elim)
@@ -474,16 +477,6 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   --                   via the backward mirror of `caf-go-sound` (`check-complete`).
   -- ════════════════════════════════════════════════════════════════════
 
-  EffUU : Type
-  EffUU = Unit ⇒[ mk-kind Many eff ] Unit
-
-  -- Run an `Eff Unit Unit` action's INDEPENDENT surface denotation to a
-  -- Behavior: apply the closure `SD.⟦ se ⟧ˢ tt` to the Unit input, read the
-  -- depth-`n` SigOp-trace prefix. Mirrors `⟦_⟧IR` but through `SD` (not
-  -- `evalᴰ ∘ moduleToIR`) — that is what makes `faithful` load-bearing.
-  runMainˢ : ∀ {Ψ : Usage 0} → Expr ∅ Ψ EffUU → Behavior
-  runMainˢ se n = take n (projTrace (SD.⟦ se ⟧ˢ tt >>=T (λ clo → clo tt)) n)
-
   -- An executable typed module: declaratively well-typed (`ModuleTyped`)
   -- with a runnable `main`. (SCAFFOLD `HasValidMain`, see backlog above.)
   HasValidMain : P.Module → Set
@@ -497,17 +490,21 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   _⊢R_ : Source → Typed → Set
   src ⊢R (m , _ , _) = gmoduleToModule src ≡ just m
 
-  postulate
-    -- DISCHARGE: walk `ModuleTyped m` to "main"'s `⊢ᶜ` derivation at EffUU,
-    -- then `proj₁ (check-complete D)` is the intrinsic main term.
-    mainTermOf : (tp : Typed) → Σ-syntax (Usage 0) (λ Ψ → Expr ∅ Ψ EffUU)
-
+  -- The INDEPENDENT surface meaning of `tp`'s `main`: `SD.⟦ main ⟧ˢ` run to a
+  -- trace (via `Once.Adequacy.MainExtract`). `main`'s resolved intrinsic term
+  -- and the IR↔SD bridge come PACKAGED from `source-meaningᴰ`, so `⟦_⟧ˢ` and
+  -- `sd-bridge` below stay consistent by sharing the same projection.
   ⟦_⟧ˢ : Typed → Behavior
-  ⟦ tp ⟧ˢ = runMainˢ (proj₂ (mainTermOf tp))
+  ⟦ (m , _ , (ir , mi)) ⟧ˢ = ME.runMainˢ (proj₁ (proj₂ (ME.source-meaningᴰ m ir mi)))
 
-  postulate
-    -- DISCHARGE: `wrapMainAsEntry` evalᴰ lemma ∘ `faithful` (row-2 forcing).
-    sd-bridge : ∀ (tp : Typed) → ⟦ moduleToIR (proj₁ tp) ⟧IR ≋ ⟦ tp ⟧ˢ
+  -- The SD bridge — now a PROOF (not a postulate): the compiled `main` IR's
+  -- denotational trace equals `main`'s INDEPENDENT surface meaning. Reuses
+  -- `ME.source-meaningᴰ` (= `wrap-trace` ∘ `faithful` ∘ the `main-ir-form`
+  -- plumbing). This is where row-2 (`elaborate`) is FORCED.
+  sd-bridge : ∀ (tp : Typed) → ⟦ moduleToIR (proj₁ tp) ⟧IR ≋ ⟦ tp ⟧ˢ
+  sd-bridge (m , _ , (ir , mi)) n =
+    trans (cong (λ x → ⟦ x ⟧IR n) mi)
+          (proj₂ (proj₂ (ME.source-meaningᴰ m ir mi)) n)
 
   pw-just-rel : ∀ {x y : Behavior} → Pointwise _≋_ (just x) (just y) → x ≋ y
   pw-just-rel (PW.just r) = r
