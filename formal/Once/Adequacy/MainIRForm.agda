@@ -15,16 +15,22 @@
 
 module Once.Adequacy.MainIRForm where
 
-open import Data.Bool using (false)
+open import Data.Bool using (false; true)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Sum.Properties using (inj₂-injective)
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥; ⊥-elim)
-open import Data.Product using (Σ-syntax; _,_)
-open import Data.List using (_∷_)
-open import Data.String using (String)
+open import Data.Product using (Σ-syntax; _,_; proj₁; proj₂)
+open import Data.Maybe using (Maybe; just; nothing)
+open import Data.Maybe.Properties using (just-injective)
+open import Data.List using (List; []; _∷_)
+open import Data.String using (String) renaming (_≟_ to _≟str_)
+open import Relation.Nullary using (yes; no; ¬_)
 open import Function using (case_of_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
+
+open import Once.Adequacy.SourceTrace
+  using (findMain; findMain-here; isUnit?; moduleToIR; moduleToIR-aux)
 
 open import Once.Type
   using (Type; Unit; Void; Int; Float; Str; Buffer; _*_; _+_; _⇒[_]_;
@@ -39,6 +45,8 @@ open import Once.TypeCheck.Elaborate
          CheckElabResult; success)
 import Once.Compile as C
 import Once.Adequacy.AcceptSound as AS
+open import Once.Parser using (FunInfo)
+open FunInfo
 
 EffUU : Type
 EffUU = Unit ⇒[ mk-kind Many eff ] Unit
@@ -138,3 +146,99 @@ compileFun-main-formEffUU : ∀ (ctx : C.FunCtx) (polys : PolyCtx) (sigEffs : Si
   Σ-syntax (Usage 0) (λ Ψ → Σ-syntax (Expr ∅ Ψ EffUU) (λ seR → irFun ≡ elaborate C.Heap seR))
 compileFun-main-formEffUU ctx polys sigEffs body irFun eq =
   compileFunBody-form ctx polys sigEffs "main" body irFun eq
+
+-- compileFun "main": success ⇒ ty≡EffUU AND the (coerced) IR is elaborate-of-resolved.
+compileFun-main-form : ∀ (ctx : C.FunCtx) (polys : PolyCtx) (sigEffs : SigEffectCtx)
+  (ty : Type) (body : RawExpr) (irFun : IR Unit ty) →
+  C.compileFun C.Heap false ctx polys sigEffs "main" ty body ≡ inj₂ irFun →
+  Σ-syntax (ty ≡ EffUU) (λ uty → Σ-syntax (Usage 0) (λ Ψ → Σ-syntax (Expr ∅ Ψ EffUU) (λ seR →
+    subst (IR Unit) uty irFun ≡ elaborate C.Heap seR)))
+compileFun-main-form ctx polys sigEffs ty body irFun eq
+  with compileFun-main-EffUU ctx polys sigEffs ty body irFun eq
+... | refl = refl , compileFun-main-formEffUU ctx polys sigEffs body irFun eq
+
+------------------------------------------------------------------------
+-- (3b) findMain dispatch helper: a head whose name ≠ "main" is skipped.
+------------------------------------------------------------------------
+
+findMain-here-no : ∀ (cf : C.CompiledFun) (b : Data.Bool.Bool)
+  (mu : Maybe (C.CompiledFun.cfType cf ≡ Unit)) (cont : Maybe (IR Unit Unit))
+  (¬p : ¬ (C.CompiledFun.cfName cf ≡ "main")) →
+  findMain-here cf b (no ¬p) mu cont ≡ cont
+findMain-here-no cf false mu cont ¬p = refl
+findMain-here-no cf true  mu cont ¬p = refl
+
+------------------------------------------------------------------------
+-- (3c) The value-tracking induction over `compileAllFuns-go`: the `findMain`
+-- result is the entry-wrap of the elaborated resolved main term.
+------------------------------------------------------------------------
+
+open C.CompiledFun using (cfType; cfName; cfIsPrimitive)
+
+-- A head whose name ≠ "main" is skipped by findMain. (Proven in its OWN goal,
+-- where the `with`-abstraction of the stuck String-decidable applies — unlike a
+-- freshly-built `subst` type, where it would not reduce.)
+findMain-skip : ∀ (cf : C.CompiledFun) (rest : List C.CompiledFun) →
+  ¬ (cfName cf ≡ "main") → findMain (cf ∷ rest) ≡ findMain rest
+findMain-skip cf rest ¬p with cfName cf ≟str "main"
+... | yes p  = ⊥-elim (¬p p)
+... | no ¬q  = findMain-here-no cf (cfIsPrimitive cf) (isUnit? (cfType cf)) (findMain rest) ¬q
+
+Form : IR Unit Unit → Set
+Form ir = Σ-syntax (Usage 0) (λ Ψ → Σ-syntax (Expr ∅ Ψ EffUU) (λ seR →
+            ir ≡ C.wrapMainAsEntry (elaborate C.Heap seR)))
+
+caf-go-find-form : ∀ (polys : PolyCtx) (sigEffs : SigEffectCtx) (funs : List FunInfo)
+  (ctx : C.FunCtx) (compiled : List C.CompiledFun) (ir : IR Unit Unit) →
+  C.compileAllFuns-go C.Heap false polys sigEffs funs ctx ≡ inj₂ compiled →
+  findMain compiled ≡ just ir → Form ir
+caf-go-find-form polys sigEffs [] ctx compiled ir caf-eq fm-eq =
+  case subst (λ c → findMain c ≡ just ir) (sym (inj₂-injective caf-eq)) fm-eq of λ ()
+caf-go-find-form polys sigEffs (fi ∷ rest) ctx compiled ir caf-eq fm-eq
+  with C.resolveFunType ctx polys (funType fi) (funBody fi) in rf-eq
+... | inj₁ err = case caf-eq of λ ()
+... | inj₂ ty
+    with C.compileFun C.Heap false ctx polys sigEffs (funName fi) ty (funBody fi) in cf-eq
+...   | inj₁ err = case caf-eq of λ ()
+...   | inj₂ irFun
+      with C.compileAllFuns-go C.Heap false polys sigEffs rest (C.extendFunCtx ctx (funName fi) ty) in rec-eq
+...     | inj₁ err = case caf-eq of λ ()
+...     | inj₂ compiled-rest
+        with funName fi ≟str "main"
+...       | no ¬p =
+            caf-go-find-form polys sigEffs rest (C.extendFunCtx ctx (funName fi) ty) compiled-rest ir rec-eq
+              (trans (sym (findMain-skip
+                             (C.mkCompiledFun (funName fi)
+                               (proj₁ (C.maybeWrapMain (funName fi) ty irFun))
+                               (proj₂ (C.maybeWrapMain (funName fi) ty irFun))
+                               (funIsPrimitive fi)) compiled-rest ¬p))
+                     (subst (λ c → findMain c ≡ just ir) (sym (inj₂-injective caf-eq)) fm-eq))
+...       | yes refl
+          with funIsPrimitive fi
+...         | true =
+              caf-go-find-form polys sigEffs rest (C.extendFunCtx ctx "main" ty) compiled-rest ir rec-eq
+                (subst (λ c → findMain c ≡ just ir) (sym (inj₂-injective caf-eq)) fm-eq)
+...         | false
+            with compileFun-main-form ctx polys sigEffs ty (funBody fi) irFun cf-eq
+...           | (refl , Ψ , seR , irEq) =
+                Ψ , seR ,
+                trans (sym (just-injective
+                              (subst (λ c → findMain c ≡ just ir) (sym (inj₂-injective caf-eq)) fm-eq)))
+                      (cong C.wrapMainAsEntry irEq)
+
+------------------------------------------------------------------------
+-- (4) Assemble: unfold `moduleToIR` to `compileAllFuns-go`, apply the induction.
+------------------------------------------------------------------------
+
+main-ir-form : ∀ (m : C.Module) (ir : IR Unit Unit) →
+  moduleToIR m ≡ just ir → Form ir
+main-ir-form m ir mi
+  with C.extractFunctions (C.extractAliases m) m in ef-eq
+... | inj₁ err = case mi of λ ()
+... | inj₂ (funs , polys) -- compileResolvedModule reduces to compileAllFuns-go
+    with C.compileAllFuns-go C.Heap false (C.buildPolyCtx polys)
+           (C.collectSigEffects (C.Module.decls m)) funs C.emptyFunCtx in caf-eq
+...   | inj₁ err = case mi of λ ()
+...   | inj₂ compiled =
+        caf-go-find-form (C.buildPolyCtx polys) (C.collectSigEffects (C.Module.decls m))
+          funs C.emptyFunCtx compiled ir caf-eq mi
