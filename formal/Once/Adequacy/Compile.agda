@@ -60,6 +60,10 @@ open import Data.Unit using (tt)
 -- Plan 0.49 Phase 1: the SD meaning of `main` + the IR↔SD bridge, assembled
 -- (`source-meaningᴰ` = `wrap-trace` ∘ `faithful` ∘ the `main-ir-form` plumbing).
 import Once.Adequacy.MainExtract as ME
+-- Plan 0.49 Phase 1 (row-1b): the declarative valid-main predicate + BOTH
+-- lifts. `moduleToIR-complete` (forces `check-complete`) discharges
+-- completeness; `moduleToIR-sound` produces the predicate for soundness.
+import Once.Adequacy.ModuleComplete as MC
 open import Data.Product using (_×_; _,_; Σ-syntax; proj₁; proj₂)
 open import Data.Maybe.Properties using (just-injective)
 open import Data.Empty using (⊥-elim)
@@ -477,13 +481,15 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   --                   via the backward mirror of `caf-go-sound` (`check-complete`).
   -- ════════════════════════════════════════════════════════════════════
 
-  -- An executable typed module: declaratively well-typed (`ModuleTyped`)
-  -- with a runnable `main`. (SCAFFOLD `HasValidMain`, see backlog above.)
-  HasValidMain : P.Module → Set
-  HasValidMain m = Σ-syntax (IR Unit Unit) (λ ir → moduleToIR m ≡ just ir)
-
+  -- An executable typed module: declaratively well-typed (`ModuleTyped`, via
+  -- `AcceptSound`) with a DECLARATIVELY-valid `main` (`MC.HasValidMain-decl`,
+  -- phrased over the typing derivation). The compiler fact `moduleToIR ≡ just`
+  -- is DERIVED from these by `MC.moduleToIR-complete` (which routes through the
+  -- proven `check-complete` — so completeness now forces row-1b), and the
+  -- predicate is PRODUCED for soundness by `MC.moduleToIR-sound`.
   Typed : Set
-  Typed = Σ-syntax P.Module (λ m → ModuleTyped m × HasValidMain m)
+  Typed = Σ-syntax P.Module (λ m →
+            Σ-syntax (ModuleTyped m) (λ mt → MC.HasValidMain-decl m mt))
 
   -- Declarative link: `src` PARSES (verified relational parser — NOT the
   -- typechecker/elaborator) to `tp`'s module. Independent of codegen.
@@ -491,20 +497,22 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   src ⊢R (m , _ , _) = gmoduleToModule src ≡ just m
 
   -- The INDEPENDENT surface meaning of `tp`'s `main`: `SD.⟦ main ⟧ˢ` run to a
-  -- trace (via `Once.Adequacy.MainExtract`). `main`'s resolved intrinsic term
-  -- and the IR↔SD bridge come PACKAGED from `source-meaningᴰ`, so `⟦_⟧ˢ` and
-  -- `sd-bridge` below stay consistent by sharing the same projection.
+  -- trace (via `Once.Adequacy.MainExtract`). The compiled-main IR `(ir, mi)` is
+  -- DERIVED from the declarative `tp` by `MC.moduleToIR-complete`; `⟦_⟧ˢ` and
+  -- `sd-bridge` share that same derivation, so they stay consistent.
   ⟦_⟧ˢ : Typed → Behavior
-  ⟦ (m , _ , (ir , mi)) ⟧ˢ = ME.runMainˢ (proj₁ (proj₂ (ME.source-meaningᴰ m ir mi)))
+  ⟦ (m , mt , hvm) ⟧ˢ =
+    ME.runMainˢ (proj₁ (proj₂ (ME.source-meaningᴰ m
+      (proj₁ (MC.moduleToIR-complete m mt hvm)) (proj₂ (MC.moduleToIR-complete m mt hvm)))))
 
-  -- The SD bridge — now a PROOF (not a postulate): the compiled `main` IR's
-  -- denotational trace equals `main`'s INDEPENDENT surface meaning. Reuses
-  -- `ME.source-meaningᴰ` (= `wrap-trace` ∘ `faithful` ∘ the `main-ir-form`
-  -- plumbing). This is where row-2 (`elaborate`) is FORCED.
+  -- The SD bridge — a PROOF: the compiled `main` IR's denotational trace equals
+  -- `main`'s INDEPENDENT surface meaning. Reuses `ME.source-meaningᴰ` (=
+  -- `wrap-trace` ∘ `faithful` ∘ `main-ir-form`). Row-2 (`elaborate`) is FORCED.
   sd-bridge : ∀ (tp : Typed) → ⟦ moduleToIR (proj₁ tp) ⟧IR ≋ ⟦ tp ⟧ˢ
-  sd-bridge (m , _ , (ir , mi)) n =
-    trans (cong (λ x → ⟦ x ⟧IR n) mi)
-          (proj₂ (proj₂ (ME.source-meaningᴰ m ir mi)) n)
+  sd-bridge (m , mt , hvm) n =
+    trans (cong (λ x → ⟦ x ⟧IR n) (proj₂ (MC.moduleToIR-complete m mt hvm)))
+          (proj₂ (proj₂ (ME.source-meaningᴰ m
+            (proj₁ (MC.moduleToIR-complete m mt hvm)) (proj₂ (MC.moduleToIR-complete m mt hvm)))) n)
 
   pw-just-rel : ∀ {x y : Behavior} → Pointwise _≋_ (just x) (just y) → x ≋ y
   pw-just-rel (PW.just r) = r
@@ -534,7 +542,7 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   correctR-sound arch doOpt src bytes pf with accept-sound arch doOpt src bytes pf
   ... | (m , g-eq , MT) with compile-just-ir arch doOpt src m bytes g-eq pf
   ...   | (ir , mi) =
-          let tp = (m , MT , (ir , mi))
+          let tp = (m , MT , MC.moduleToIR-sound m MT mi)
               p  = subst (λ c → Pointwise _≋_ (map (exec arch) c) (⟦ src ⟧⊥)) pf
                          (correct arch doOpt src)
               p' = subst (λ b → Pointwise _≋_ (just (exec arch bytes)) b)
@@ -546,9 +554,10 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   correctR-complete : ∀ (arch : Arch) (doOpt : Bool) (src : Source) (tp : Typed) →
     src ⊢R tp →
     Σ-syntax (List Byte) (λ bytes → compile arch doOpt src ≡ just bytes)
-  correctR-complete arch doOpt src (m , MT , (ir , mi)) g-eq
-    with main⇒built arch doOpt m ir mi
-  ... | (asm , built-eq) = string-to-bytes arch asm , c≡j
+  correctR-complete arch doOpt src (m , mt , hvm) g-eq
+    with MC.moduleToIR-complete m mt hvm
+  ... | (ir , mi) with main⇒built arch doOpt m ir mi
+  ...   | (asm , built-eq) = string-to-bytes arch asm , c≡j
     where c≡j : compile arch doOpt src ≡ just (string-to-bytes arch asm)
           c≡j rewrite g-eq | mi | built-eq = refl
 
