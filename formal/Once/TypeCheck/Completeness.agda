@@ -59,6 +59,9 @@ open import Once.TypeCheck.Classify using (ctxWithImportsAndPolys; composeArgB; 
 
 open import Once.Surface.Syntax as Surface using (zeroUsage; _+ᵘ_; _*ᵘ_)
   renaming (Expr to SExpr)
+-- Plan 0.49 / D063: morphism-completeness, proven by induction on ⊢ᵐ
+-- (12/15 cases; m-const/m-cata/m-named are scoped postulates there).
+open import Once.TypeCheck.MorphComplete using (morph-complete)
 open import Data.Bool using (Bool; true; false)
 open import Relation.Nullary using (¬_)
 open import Data.Empty using (⊥-elim)
@@ -886,12 +889,10 @@ mutual
   -- This SINGLE postulate REPLACES the three former false/dead postulates
   -- (`cata-check-complete`, `case-copair-eff-complete`, `compose-eff-complete`) —
   -- restoring consistency (the old eff ones were FALSE). Discharge = C3 follow-up.
+  -- `morph-complete` (Plan 0.49 / D063) is now PROVEN in Once.TypeCheck.MorphComplete
+  -- (imported above): induction on ⊢ᵐ, 12/15 cases discharged; m-const/m-cata/m-named
+  -- remain scoped postulates there (the latter pending plan 0.50).
   postulate
-    morph-complete : ∀ {ctx : NamedCtx} {e : RawExpr} {A B : Type} {π : T.Purity}
-                   → ctx ⊢ᵐ e ∶ A ⇨[ π ] B
-                   → ∃[ eE ] ∃[ d ] ∃[ f ]
-                       checkElab ctx e (A T.⇒[ T.mk-kind T.Many π ] B)
-                         ≡ success Surface.zeroUsage eE d f
     -- Plan 0.36 Phase 2a follow-up — TRANSIENT, PROVABLE: pair-literal
     -- check-mode completeness. `checkElabV (RPair a b) (A * B)` reduces
     -- via `checkPairLit` to `success (Surface.pair …)` given the two

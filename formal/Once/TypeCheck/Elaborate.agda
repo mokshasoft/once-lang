@@ -882,6 +882,14 @@ mutual
   -- POC-3).
   checkCompose : (ctx : NamedCtx) → (composeHead arg : RawExpr) → (T : Type)
                → VerifiedCheckResult ctx (Raw.RApp composeHead arg) T
+  -- Argument-driven helper: takes `composeMid`'s result + the equation
+  -- explicitly (no `with … in`), so the morph-complete proof can case the
+  -- stuck `composeArgB` cleanly. See MorphComplete / feedback_with_abstraction.
+  checkComposeGo : (ctx : NamedCtx) (f g : RawExpr) (A C : Type) (π : Once.Type.Purity)
+                 → (mid : Maybe Type) → composeMid ctx f g A ≡ mid
+                 → VerifiedCheckResult ctx
+                     (Raw.RApp (Raw.RApp (Raw.RVar "compose") f) g)
+                     (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] C)
   checkCurry : (ctx : NamedCtx) → (arg : RawExpr) → (T : Type)
              → VerifiedCheckResult ctx (Raw.RApp (Raw.RVar "curry") arg) T
   checkApply : (ctx : NamedCtx) → (arg : RawExpr) → (T : Type)
@@ -1192,7 +1200,7 @@ mutual
         with checkElabV ctx arg (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C)
   ...     | failure err , _ = failure err , tt
   ...     | success Ψg gE dg frg , wG
-            with extract-morph fE | extract-morph gE | extractMorphWitness wF | extractMorphWitness wG
+            with extract-morph-eff fE | extract-morph-eff gE | extractMorphWitness wF | extractMorphWitness wG
   ...       | just (mf , _) | just (mg , _) | just mFᵐ | just mGᵐ =
               success Surface.zeroUsage
                 (Surface.lift-morphism (IR.⟨ mf , mg ⟩ IR.Heap))
@@ -1255,14 +1263,16 @@ mutual
   -- both factors must be morphisms (`extractMorphWitness`); emit `lift-morphism
   -- (m_f ∘ m_g)`; witness `t-morph-lift (m-compose …)`.
   checkCompose ctx (Raw.RApp (Raw.RVar "compose") f_inner) arg
-               (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] C)
-    with composeMid ctx f_inner arg A in eqB
-  ... | nothing = failure (BuiltinTypeMismatch "compose") , tt
-  ... | just B
-        with checkElabV ctx arg (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B)
+               (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] C) =
+    checkComposeGo ctx f_inner arg A C π (composeMid ctx f_inner arg A) refl
+  checkCompose _ _ _ _ = failure (BuiltinTypeMismatch "compose") , tt
+
+  checkComposeGo ctx f g A C π nothing eqB = failure (BuiltinTypeMismatch "compose") , tt
+  checkComposeGo ctx f g A C π (just B) eqB
+        with checkElabV ctx g (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B)
   ...     | failure err , _ = failure err , tt
   ...     | success Ψg gE dg frg , wG
-            with checkElabV ctx f_inner (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] C)
+            with checkElabV ctx f (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] C)
   ...         | failure err , _ = failure err , tt
   ...         | success Ψf fE df frf , wF
                 with extract-morph-eff fE | extract-morph-eff gE | extractMorphWitness wF | extractMorphWitness wG
@@ -1270,14 +1280,13 @@ mutual
                     success Surface.zeroUsage (Surface.lift-morphism (m_f IR.∘ m_g))
                       (suc (df Data.Nat.⊔ dg)) frf , t-morph-lift (m-compose eqB mFᵐ mGᵐ)
   ...             | _ | _ | _ | _ = failure (BuiltinTypeMismatch "compose") , tt
-  checkCompose _ _ _ _ = failure (BuiltinTypeMismatch "compose") , tt
 
   -- Plan 0.6 Phase C.7 POC-3: `curry f` check-mode.
   -- Expected `A ⇒[Many] (B ⇒[Many] C)`. Check f at `(A * B) ⇒[Many] C`.
   checkCurry ctx arg (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C))
     with checkElabV ctx arg ((A Once.Type.* B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C)
   ... | failure err , _ = failure err , tt
-  ... | success Ψ argE d fr , w with extract-morph argE | extractMorphWitness w
+  ... | success Ψ argE d fr , w with extract-morph-eff argE | extractMorphWitness w
   ...   | just (mf , _) | just mFᵐ =
           success Surface.zeroUsage (Surface.lift-morphism (IR.curry mf IR.Heap)) (suc d) fr
           , t-morph-lift (m-curry mFᵐ)
