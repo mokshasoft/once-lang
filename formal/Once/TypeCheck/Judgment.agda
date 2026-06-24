@@ -377,7 +377,12 @@ mutual
     ----------------------------------------------------------------
     -- Categorical combinators (recurse on ⊢ᵐ → force the laws).
     ----------------------------------------------------------------
+    -- The `composeMid` premise mirrors `checkCompose`'s middle-type recovery
+    -- (the only combinator whose middle type `B` isn't pinned by the conclusion
+    -- type) — so `⊢ᵐ` stays in step with what `checkElab` can decide. (Same role
+    -- as the old `t-compose-check`'s `composeMid` premise.)
     m-compose : ∀ {ctx : NamedCtx} {f g : RawExpr} {A B C : Type}
+              → composeMid ctx f g A ≡ just B
               → ctx ⊢ᵐ f ∶ B ⇨ C
               → ctx ⊢ᵐ g ∶ A ⇨ B
               → ctx ⊢ᵐ RApp (RApp (RVar "compose") f) g ∶ A ⇨ C
