@@ -4718,3 +4718,47 @@ the eff→pure unsoundness is excluded by construction.
 
 - D065 (grade-free — refined here to pure-only), D046 (grade-erased IR / masquerade), D056 (one
   realm), D063 (`⊢ᵐ`), Plan 0.39 (optimizer drops eff SigOps), Plan 0.49 (`morph-complete`).
+
+## D067: `morph-complete` Discharged — 12/15 by Induction; 3 Scoped Postulates
+
+### Context
+
+D063–D066 made `morph-complete` (Plan 0.49 row-3 forcing) a TRUE, grade-correct postulate. This
+discharges it: `Once.TypeCheck.MorphComplete.morph-elab : ⊢ᵐ e ∶ A⇨[π]B → StrongElab` proves the
+strong form (`checkElabV` reduces to a success whose result expr `E` and witness `W` both extract —
+`extract-morph-eff E ≡ just (m,refl)`, `extractMorphWitness W ≡ just mᵐ`), and `morph-complete` is
+its `cong proj₁`. Completeness imports it; the blanket postulate is removed.
+
+### Decision
+
+**12/15 cases PROVEN**: 7 bare builtins (mirror `checkElab-fallback-RVar-*` lifted to `checkElabV`),
+`m-pair`/`m-case`/`m-compose`/`m-curry`/`m-arr` (recurse on arms, rewrite their `checkElabV` +
+extraction equations, `refl`). **3 SCOPED postulates** remain in `MorphComplete`:
+- `m-const` — needs a STRONG `gd-complete` (the Completeness one is `checkElab`-weak, not the
+  `checkElabV`-with-witness form). Mutual-with-Completeness.
+- `m-cata` — needs a STRONG `check-complete` on the (`⊢ᶜ`) algebra. Mutual-with-Completeness.
+- `m-named` — a **bare import elaborates to a CLOSURE** pre-Plan-0.50 (`sigOp x` → resolver →
+  `curry(SigOp∘snd)`; `extract-morph-eff` rightly refuses `sigOp`, soundness). Only QUALIFIED
+  externals (`RQualified` → `t-var-qualified` → `lift-morphism (IR.SigOp …)`) are morphisms today.
+  **Discharged by Plan 0.50 milestone 1** (named refs become direct `IR.SigOp` morphisms).
+
+Required refactors (feedback_with_abstraction — fight the definition, not the proof):
+- `composeMid` → plain `composeMid-pick` (was a `with` blocking `rewrite`/`with` abstraction).
+- `checkCompose` → `checkComposeGo` (explicit result + eq; drops `with … in`, which threaded
+  `composeMid` into a non-abstractable position).
+- `checkPair`/`checkCurry` → `extract-morph-eff` (they used the lift-morphism-only `extract-morph`,
+  so they REJECTED `cata` arms — a genuine completeness fix, not just convenience).
+- `extractMorphWitness`'s `t-arr-app-check` clause → plain `extractMorph-arr`.
+
+### Consequences
+
+- Frontend green through `Adequacy.ModuleComplete`. The CCC codegen apex (`EntryPointCCC`) has a
+  PRE-EXISTING break (`RecCoreWF`: `NatTr G F` vs `IR …`, unrelated — imports no `TypeCheck`).
+- Next (Plan 0.49 piece 3): `main-realize-agrees` ← `realize-agrees` (RealizeBridge, a denotational
+  induction relating `checkElab`'s `se` to `realize` of its soundness witness) + `resolveExpr`-
+  faithfulness. Then Plan 0.50, then prove `m-named`.
+
+### See Also
+
+- D063 (`⊢ᵐ`), D066 (grade-indexed), D064/Plan 0.50 (named-defs ABI — unblocks `m-named`), Plan 0.49
+  (`realize` spec, the row-3 forcing).
