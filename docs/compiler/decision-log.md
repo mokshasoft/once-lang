@@ -4447,3 +4447,227 @@ explicit recursive-coalgebra certificate.**
   (`reify-recursion-for-foetus-perf`). Literature: Capretta–Uustalu–Vene *Recursive coalgebras
   from comonads*; Adámek–Milius–Moss–Sousa *On Well-Founded and Recursive Coalgebras* (FoSSaCS
   2020); Bove–Capretta (well-founded recursion); Meijer–Fokkinga–Paterson (the morphism zoo).
+
+## D063: The Morphism Realm `⊢ᵐ` — the CCC Trichotomy in the Typing Judgment
+
+**Date**: 2026-06-24
+**Status**: Accepted (design); implementation in Plan 0.49 Phase 2 (route 2)
+**Completes**: D056 (one morphism realm for composition) at the level of the *declarative
+judgment* and the *denotation*, not just the elaborator algorithm.
+
+### Context
+
+Plan 0.49's `realize` (the elaborator-free reference elaboration `⊢ᶜ → SExpr`, whose
+denotation `SD.⟦realize D⟧ˢ` is the source meaning) must be a **total** function over the
+typing judgment. Writing it exposed a latent inconsistency that predates the plan:
+
+- The judgment's `t-case-copair-check` / `t-compose-check` are **grade-polymorphic** and take
+  **arbitrary check derivations** as arms (they model the *closure-realm* form: their `Ψ` is
+  `(0 +ᵘ Many*Ψ₁) +ᵘ Many*Ψ₂`).
+- But `checkElab` for the **eff** grade *only fuses* (`extract-morph-eff`) and **fails** with no
+  fallback (`Elaborate.agda:1301`, `:1354`) when an arm is not point-free.
+- So the **spec (judgment) is strictly more permissive than the elaborator**, and the proof layer
+  bridges the gap with two postulates (`case-copair-eff-complete`, `compose-eff-complete`,
+  `Completeness.agda:911`) labelled "PROVABLE" that are in fact **false** (counterexample: an arm
+  that is a bound variable of eff-arrow type — derivable via `t-embed (t-var-local …)`, rejected
+  by `checkElab`).
+
+`realize` cannot be both total and elaborator-free on these rules as the judgment stands, *and*
+the inconsistency cannot be fixed on the proof side: there is no eff-closure surface term to fall
+back to (eff exponential elements you compose are not a coherent thing), and adding one is exactly
+the `effCompose` parallel-structure anti-pattern D056/D046 forbid. **The spec must move.**
+
+### Decision
+
+Reflect the **CCC trichotomy** directly in the judgment. A source expression denotes one of three
+things, and each gets its own family + a lift into `⊢ᶜ`:
+
+| realm | categorical meaning | judgment | lift into `⊢ᶜ` |
+|---|---|---|---|
+| **value** | global element `1 → A` | `⊢ᵍ` (exists) | `t-value-lift` (exists) |
+| **morphism** | arrow `A → B` | **`⊢ᵐ` (new)** | **`t-morph-lift` (new)** |
+| **closure** | exponential element `Γ → Bᴬ` | `t-lam` (exists) | — (it *is* a `⊢ᶜ` rule) |
+
+`⊢ᵐ` (grade-free — the IR is grade-erased per D046; closed ⇒ no usage index, like `⊢ᵍ`) is
+**structural over the categorical combinators** (`m-compose`/`m-case`/`m-pair`/`m-curry`/`m-cata`,
+recursing on `⊢ᵐ`) with **extensional leaves** (`m-id`/`m-fst`/… point-free primitives; `m-const`
+reusing `⊢ᵍ`; `m-named` a plain morphism ref; `m-lam` a *closed* lambda read as its body in the
+one-variable context). `realize-morph : ⊢ᵐ e ∶ A ⇒ B → IR A B` is total by structural recursion,
+each clause the **direct** categorical IR (`IR.∘`, `IR.case`, `IR.⟨_,_⟩`, `IR.Cata`, …).
+`t-morph-lift : ⊢ᵐ e ∶ A ⇒ B → ⊢ᶜ e ∶ (A ⇒[Many π] B) ⨾ 0` collapses the whole combinator zoo
+(`t-id-check`…`t-compose-check`…`t-cata-check`) into one bridge, the mirror of `t-value-lift`.
+
+The categorical combinators take `⊢ᵐ` arms **uniformly across purity**. A *closure* (`t-lam`,
+context-capturing) is structurally **not** a `⊢ᵐ`, so it can never be a `compose`/`case` arm — the
+eff problem evaporates at its root, and the two false completeness postulates become provable
+(arms are now morphisms by construction) and are deleted.
+
+### Rationale
+
+- **Categorical, not bottom-up.** `elaborate : Expr Γ Ψ A → IR ⟦Γ⟧ᶜ A` already says every in-context
+  term is a morphism `⟦Γ⟧ → A`; the morphism realm is exactly its **closed** sub-fragment
+  (`1 → Bᴬ ≅ A → B`). Composition is the category's `∘` acting on morphisms; the closure-realm
+  `λx.f(g x)` is the *internal-hom* composition masquerading as it (the D043 original sin, made a
+  soundness issue by Plan 0.39). `curry`/`apply` remain the exponential structure for genuine
+  higher-order values — not a parallel composition realm.
+- **Forces the correct proof obligations.** The meaning routes through `realize-morph`'s direct
+  categorical IR, so `correct`'s soundness conjunct forces *codegen* to implement `∘` as
+  composition, and `realize-agrees` forces *`checkElab`* to denote the same `IR.∘` — one clause per
+  combinator, each literally the categorical law, with no closure escape hatch to make it
+  tautological. (An extensional `⊢ᵐ := closed ⊢ᶜ` + uncurry would type-check but route compose back
+  through the closure form, making the obligation say nothing about `∘` — rejected for that reason.)
+- **Mirror of `⊢ᵍ`** (D018/D041): the value realm already did exactly this ("extractable by
+  construction"). `⊢ᵐ` is the dual; `realize-morph` is the dual of `realize-global`.
+
+### Consequences
+
+- New `⊢ᵐ` family + `realize-morph`; `t-morph-lift` added to `⊢ᶜ`; the combinator check rules
+  (`t-id-check`…`t-compose-check`/`t-case-copair-check`/`t-pair-check`/`t-cata-check`/the bare
+  `t-{inl,inr,initial,arr}-check`) are subsumed and removed. Blast radius: `Judgment.agda`,
+  `Soundness.agda`, `Completeness.agda` (the two false postulates **deleted**, now provable),
+  `Elaborate.agda` (the eff `compose`/`case` clauses route through one grade-poly path), and the
+  saturated `t-{inl,inr}-app-check` likely collapse into `⊢ᵍ` (`g-inl`/`g-inr`) — confirm
+  separately.
+- The Once *programmer* loses nothing buildable today: the only programs leaving the spec are eff
+  `compose`/`case` with capturing-closure arms, which already do not compile. The principled
+  restriction (categorically honest): a capturing closure is not a `compose`/`case` arm — reference
+  a named morphism or use `apply`.
+- **Honest residue:** `m-lam`/`m-named`/`m-const` are forced extensionally (no law exists for an
+  opaque function); the combinators are forced as laws. First-order *and* higher-order closed
+  lambdas are handled uniformly by `m-lam` (body-in-one-variable-context); the higher-order case's
+  internal exponential use lives inside the body's IR, not in a special constructor.
+- Supersedes Plan 0.49's "fallback `app (app spec*) f g`" instruction for `realize`'s
+  compose/case/pair clauses.
+
+### See Also
+
+- D056 (one morphism realm — this completes it in the judgment+denotation), D046 (grade-erased
+  arrow), D018/D041 (`⊢ᵍ` value realm — the mirror), D044/D045 (classifier route), D053 (closures =
+  exponentials, calling convention is downstream), Plan 0.49 (route 2, the implementation),
+  Plan 0.40 (the elaborator-side one-realm migration this aligns with).
+
+## D064: Named Definitions Are Morphisms — Direct-Call ABI
+
+**Date**: 2026-06-24
+**Status**: Accepted (design); implementation DEFERRED (own milestone, sequenced after the D063 collapse)
+**Corrects**: D019 (sigop/closure split) + D053 (closure calling convention) — the *universal*
+closure-returner ABI for user-defined functions.
+
+### Context
+
+A top-level definition `f : A → B` (`f x = body`) compiles to `once_f` under a
+**closure-returning** ABI (D019/D053): `once_f()` returns a closure pointer (an element of the
+exponential object `Bᴬ`), and call sites go through `apply (closure "f") arg`. This represents
+*every* definition as an exponential element `1 → Bᴬ`, never as the morphism `A → B`.
+
+### Decision (from principle)
+
+- A top-level definition `f : A → B` **is a morphism `A → B`** — always, even when `B` is itself
+  an exponential (`f : A → (C ⇒ D)` is a morphism *into* an exponential object). A definition is
+  *never* inherently an exponential element.
+- An **exponential element** (a value of type `Bᴬ`, i.e. `1 → Bᴬ`) arises **only when a morphism
+  is used as data** — that is `curry`, a property of the **use site** (passing/storing the
+  function), not the definition.
+- Therefore: **a definition compiles to a morphism** (a direct symbol / `IR.SigOp`-style arrow,
+  `once_f(a : A) : B`, direct call). `curry`/closure is emitted **explicitly and only** at genuine
+  value-introduction sites.
+
+### Rationale
+
+The universal closure-returner conflates `Hom(A,B)` with `Hom(1, Bᴬ)`. These are isomorphic (the
+exponential adjunction), so the current ABI is **not unsound** — but it is the **wrong primitive**:
+it forces every function into the exponential realm by default. This is the *same* morphism/
+exponential conflation already removed elsewhere —
+- **D056**: `compose` is `∘` on morphisms, not internal-hom composition on closures;
+- **D063**: the typing judgment splits `⊢ᵐ` (morphisms) from `t-lam` (closures);
+— left standing at the **codegen/ABI** level. It was justified only by *implementation uniformity*
+of `apply` (one path for "apply a closure value" and "call a named function"), which is a
+convenience, not a language principle. D063 is the **enabler**: with the type system now
+distinguishing morphisms from closures, a call site can tell "call a named morphism" from "apply a
+closure value," so the direct-morphism ABI is well-defined where it previously was not.
+
+### Consequences
+
+- **NOT a short change.** It touches: the elaborator (`sigOp`/`closure` at arrow type → direct
+  `IR.SigOp` morphism instead of `curry(SigOp ∘ snd)`; `curry` only at value-use), the calling
+  convention / codegen backends (D053 — `once_f` becomes the arrow, call sites become direct
+  calls), use-site desugaring (`f arg` → direct call, not `apply (closure "f") arg`), the MAlonzo
+  bridge NameIds, and crucially the **closure/apply verification machinery** (the `Apply*`/`Curry*`
+  WF proofs, closure-location/`valid-closure-wf`, DirectSimulation/Corresponds) — a verified-
+  codegen milestone in its own right, comparable to the `Apply`/`Curry` work.
+- **Separable from Plan 0.49.** The *spec* (`realize-morph`) already uses the principled morphism
+  form `m-named ↦ IR.SigOp`; while the closure ABI still stands, the difference is absorbed by
+  `realize-agrees` (morphism ≡ uncurried-closure, true by the β/uncurry law). So the spec is
+  principled regardless of the ABI; the ABI change just turns that bridge lemma trivial.
+- Subsumes Plan 0.40 residual-3 ("a first-order function should not become a `curry`-closure") —
+  that residual is this decision at the lambda level.
+
+### Sequencing
+
+Recorded now; **implemented as its own milestone after the D063 collapse + the Plan 0.49 `realize`
+work land** (a dedicated plan, e.g. `0.50-named-defs-are-morphisms`). It is not a blocker for
+`realize`/`realize-agrees`, so it does not interrupt the current work.
+
+### See Also
+
+- D063 (the `⊢ᵐ`/`t-lam` distinction that enables this), D056 (one morphism realm), D019/D053 (the
+  decisions this corrects), Plan 0.40 residual-3 (first-order-lambda-as-morphism, subsumed),
+  Plan 0.49 (the `realize` work this is kept separable from).
+
+## D065: Bare Morphisms Are Grade-Free — `checkElab` Accepts Any Purity; `arr` Is Optional
+
+**Date**: 2026-06-24
+**Status**: Accepted; implementation in Plan 0.49 (morph-complete discharge)
+**Completes**: D056/D063 (grade-free morphism realm) at the *elaborator* level.
+
+### Context
+
+D063's `⊢ᵐ` morphism realm is grade-free (the IR is grade-erased, D046), and `t-morph-lift`
+wraps a morphism into `⊢ᶜ` at ANY purity `π`. But `checkElab`'s bare point-free builtins
+(`id`/`fst`/`snd`/`terminal`/`initial`/`inl`/`inr`/bare `arr`) are accepted only at **pure**
+arrows (`Elaborate.agda` `bbc-*-failure-aux` matched `mk-kind Many pure`, with `mk-kind _ eff →
+failure`). So `t-morph-lift {eff} (m-id …)` is a valid `⊢ᶜ` derivation that `checkElab` rejects —
+making `morph-complete` (completeness) **false** at `π = eff` for bare builtins. (Caught by
+*attempting* the `morph-complete` discharge — the value of discharging vs. postulating.)
+
+### Decision
+
+A bare morphism is usable at **any** grade without an explicit lift. Broaden `checkElab`'s
+bare-builtin clauses from `mk-kind Many pure` to `mk-kind Many π` (any purity), emitting the same
+grade-polymorphic `lift-morphism IR.X`. `checkElab` thus agrees with the grade-free `⊢ᵐ`;
+`morph-complete` becomes provable.
+
+`arr : (A → B) → Eff A B` (Hughes' arrow; runtime identity) is **retained but OPTIONAL** — it
+still lifts a *pure function value* to eff, but bare point-free morphisms no longer *need* it
+(`id` is directly usable at `T ⇒[eff] T`). The pure→eff boundary is no longer required to be
+syntactically marked for morphisms (it is grade-erased anyway).
+
+### Rationale
+
+Grade-free morphisms (D046/D056) — a morphism is the same arrow at any grade; the IR is
+grade-erased. Requiring `arr` on a bare morphism was an artifact of the pure-only `checkElab`
+clauses, not a semantic necessity. The alternative (restrict `t-morph-lift`'s grade per-leaf)
+re-fragments the eff `compose`/`case` D056 just unified, so it's rejected.
+
+### Consequences
+
+- `checkElab` accepts `id`/`fst`/… (and bare `arr`) at eff-arrows (small language broadening —
+  strictly more programs accepted, all semantically valid). Touches the `bbc-*` clauses + re-verify.
+- `morph-complete` (Completeness) becomes a TRUE, dischargeable theorem (was false at eff).
+- Effect visibility: pure→eff for a *morphism* is no longer syntactically marked. (Genuine
+  effects still come from SigOps; `arr` stays available for lifting pure *function values*.)
+- **`arr` is redundant *as a morphism* — bare unapplied `arr` is dropped.** Reasoning: `arr`'s
+  only job is the grade flip `pure → eff`, which is free for morphisms (grade-erased IR, D046 +
+  grade-free D065) — so for a morphism there is nothing to lift (`id : T ⇒[eff] T` directly).
+  `arr` *is* genuine for **closures** (capturing pure function *values*, introduced by `t-lam`
+  at a pure arrow): `arr f` lifts those to eff. So the morphism-realm leaf `m-arr-bare` (and the
+  bare-`arr` `checkElab` clause + `checkElab-fallback-RVar-arr`) are removed — bare unapplied
+  `arr` becomes a type error — while applied `arr f` (the closure lift, `t-arr-app-check`) is
+  retained. Surface-only, no expressiveness loss (you write `arr f`, or a bare morphism directly
+  at eff). Trajectory: D032 (`arr` lifts; effects a separate type) → D046 (effects = arrow grade)
+  → D065 (`arr`-on-morphisms redundant).
+
+### See Also
+
+- D063 (`⊢ᵐ`), D056 (one morphism realm), D046 (grade-erased arrow), D032 (`arr`),
+  Plan 0.49 (`morph-complete`).

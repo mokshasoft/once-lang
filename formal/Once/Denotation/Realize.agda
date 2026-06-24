@@ -31,16 +31,165 @@
 
 module Once.Denotation.Realize where
 
-open import Once.Type using (Type)
-open import Once.TypeCheck.Raw using (RawExpr)
+open import Data.String using (_++_)
+open import Once.Type using (Type; _*_; _+_; μ-type; ⟦_⟧T)
+open import Once.IR as IR using (IR; _∘_; ⟨_,_⟩)
+open import Once.TypeCheck.Raw using (RawExpr;
+  OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
 open import Once.TypeCheck.Classify using (NamedCtx)
-open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_)
-open import Once.Surface.Syntax using (Expr; Usage)
+open import Once.TypeCheck.Judgment
+  using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_; _⊢ᵍ_∶_; g-int; g-terminal; g-pair; g-inl; g-inr; g-In;
+         _⊢ᵐ_∶_⇨_; m-id; m-fst; m-snd; m-terminal; m-initial; m-inl; m-inr;
+         m-compose; m-case; m-pair; m-curry; m-cata; m-arr; m-const; m-named; m-lam;
+         t-int; t-str; t-unit; t-unit-var; t-var-local; t-var-qualified; t-var-import;
+         t-annot; t-pair; t-neg; t-let; t-case; t-binop-arith; t-binop-cmp;
+         t-id-app; t-fst-app; t-snd-app; t-terminal-app; t-arr-app-infer; t-apply-app-infer;
+         t-app; t-effApp;
+         t-embed; t-lam; t-value-lift; t-morph-lift; t-pair-lit-check; t-In-app-check;
+         t-apply-check; t-inl-app-check; t-inr-app-check; t-initial-app-check;
+         t-arr-app-check; t-arg-driven-app-check; t-var-poly-instantiate)
+open import Once.Surface.Syntax using (Expr; Usage;
+  lam; app; effApp; pair; neg; let'; case'; int; str; unit;
+  add; sub; mul; div; mod'; lt; le; gt; ge; eq; ne; arr'; sigOp; poly;
+  lift-morphism; morph-app)
+open import Once.Surface.Elaborate using (intLit; elaborate)
+open import Once.Arith.SigOp.Builders using (value-info)
 
--- Postulated for now (top-down: the module boundary + the meaning wiring come
--- FIRST, so the elaborator-free constraint is enforced before a single clause
--- is written). Discharged clause-by-clause against the judgment.
-postulate
-  realize : ∀ {ctx : NamedCtx} {e : RawExpr} {A : Type}
-              {Ψ : Usage (NamedCtx.size ctx)} →
-            ctx ⊢ᶜ e ∶ A ⨾ Ψ → Expr (NamedCtx.debruijn ctx) Ψ A
+-- The reference elaboration (D063): a mutual block
+--   realize       (⊢ᶜ → SExpr)   -- check-mode
+--   realize-infer (⊢ᵢ → SExpr)   -- infer-mode
+--   realize-morph (⊢ᵐ → IR)      -- morphism realm (below)
+--   realize-global(⊢ᵍ → IR)      -- value realm (below)
+-- Forward signatures first (mutual recursion, no `mutual` keyword needed).
+realize : ∀ {ctx : NamedCtx} {e : RawExpr} {A : Type}
+            {Ψ : Usage (NamedCtx.size ctx)}
+        → ctx ⊢ᶜ e ∶ A ⨾ Ψ → Expr (NamedCtx.debruijn ctx) Ψ A
+realize-infer : ∀ {ctx : NamedCtx} {e : RawExpr} {A : Type}
+                {Ψ : Usage (NamedCtx.size ctx)}
+              → ctx ⊢ᵢ e ∶ A ⨾ Ψ → Expr (NamedCtx.debruijn ctx) Ψ A
+
+------------------------------------------------------------------------
+-- realize-global — the VALUE realm (⊢ᵍ) → its global-element IR.
+--
+-- The closed-value half of the CCC trichotomy (D063): a `⊢ᵍ` derivation
+-- denotes a global element, read off the (term-free) derivation as the
+-- direct IR — the elaborator-free mirror of `checkG`'s IR construction
+-- (`Once.TypeCheck.Elaborate.checkG`, which `realize` must NOT import).
+-- Parametric in the domain `X`: a global element `X → A` factors through
+-- the terminal, so the constructors ignore `X`. Reused by `realize-morph`'s
+-- `m-const` leaf (a value used where a morphism is expected = const morphism).
+------------------------------------------------------------------------
+realize-global : ∀ {ctx : NamedCtx} {e : RawExpr} {A X : Type}
+               → ctx ⊢ᵍ e ∶ A → IR X A
+realize-global (g-int n)        = intLit n
+realize-global (g-terminal _ _) = IR.terminal
+realize-global (g-pair ga gb)   = ⟨ realize-global ga , realize-global gb ⟩ IR.Heap
+realize-global (g-inl ga)       = IR.inl IR.Heap ∘ realize-global ga
+realize-global (g-inr gb)       = IR.inr IR.Heap ∘ realize-global gb
+realize-global (g-In {wfF = wfF} _ garg) = IR.In wfF IR.Heap ∘ realize-global garg
+
+------------------------------------------------------------------------
+-- realize-morph — the MORPHISM realm (⊢ᵐ) → its categorical IR (D063).
+--
+-- The middle of the CCC trichotomy. STRUCTURAL on the combinators
+-- (`m-compose`/`m-case`/`m-pair`/`m-curry`/`m-cata`) → the DIRECT
+-- categorical IR (`IR.∘`/`IR.case`/`IR.⟨_,_⟩`/`IR.curry`/`IR.Cata`), so the
+-- agreement bridge forces the categorical LAWS. EXTENSIONAL leaves:
+--   • `m-const` → `realize-global` (a value is a constant morphism).
+--   • `m-named` → `IR.SigOp (value-info x)` — the PRINCIPLED morphism form
+--     (D064: a named def IS a morphism; the closure-returner ABI is corrected
+--     separately, bridged meanwhile by `realize-agrees` via the β/uncurry iso).
+--   • `m-lam`  → the closed lambda's body interpreted in the one-variable
+--     context `(∅, x)` and supplied the unit: `elaborate (realize body) ∘
+--     ⟨ terminal , id ⟩`. (Uses `realize` (the ⊢ᶜ reference) + `elaborate`
+--     (row-2, verified by `faithful`) — NOT `checkElab`, so the elaborator-free
+--     boundary holds.)
+------------------------------------------------------------------------
+realize-morph : ∀ {ctx : NamedCtx} {e : RawExpr} {A B : Type}
+              → ctx ⊢ᵐ e ∶ A ⇨ B → IR A B
+realize-morph (m-id _ _)        = IR.id
+realize-morph (m-fst _ _)       = IR.fst
+realize-morph (m-snd _ _)       = IR.snd
+realize-morph (m-terminal _ _)  = IR.terminal
+realize-morph (m-initial _ _)   = IR.initial
+realize-morph (m-inl _ _)       = IR.inl IR.Heap
+realize-morph (m-inr _ _)       = IR.inr IR.Heap
+realize-morph (m-compose df dg) = realize-morph df ∘ realize-morph dg
+realize-morph (m-case df dg)    = IR.case (realize-morph df) (realize-morph dg)
+realize-morph (m-pair df dg)    = ⟨ realize-morph df , realize-morph dg ⟩ IR.Heap
+realize-morph (m-curry df)      = IR.curry (realize-morph df) IR.Heap
+realize-morph (m-cata {wfF = wfF} _ dalg) =
+  IR.Cata wfF (IR.apply ∘ ⟨ elaborate IR.Heap (realize dalg) ∘ IR.terminal , IR.id ⟩ IR.Heap)
+realize-morph (m-arr df)        = realize-morph df
+realize-morph (m-const gd)      = realize-global gd
+realize-morph (m-named {x = x} _ _ _) = IR.SigOp (value-info x)
+realize-morph (m-lam d)         = elaborate IR.Heap (realize d) ∘ ⟨ IR.terminal , IR.id ⟩ IR.Heap
+
+------------------------------------------------------------------------
+-- realize (⊢ᶜ) — check-mode reference elaboration.
+-- The two bridge clauses route morphisms/values through the direct
+-- categorical IR (forcing the laws); the rest are the genuinely
+-- bidirectional / value-former rules kept in `⊢ᶜ`.
+------------------------------------------------------------------------
+realize (t-morph-lift d)        = lift-morphism (realize-morph d)
+realize (t-value-lift g)        = lift-morphism (realize-global g)
+realize (t-embed d)             = realize-infer d
+realize (t-lam {q = q} ≤p d)    = lam q ≤p (realize d)
+realize (t-pair-lit-check da db) = pair (realize da) (realize db)
+realize (t-In-app-check {wfF = wfF} _ d) = morph-app (IR.In wfF IR.Heap) (realize d)
+realize (t-apply-check dp)      = morph-app IR.apply (realize-infer dp)
+realize (t-inl-app-check d)     = morph-app (IR.inl IR.Heap) (realize d)
+realize (t-inr-app-check d)     = morph-app (IR.inr IR.Heap) (realize d)
+realize (t-initial-app-check d) = morph-app IR.initial (realize d)
+realize (t-arr-app-check d)     = arr' (realize d)
+realize (t-arg-driven-app-check _ darg df) = app (realize df) (realize-infer darg)
+realize (t-var-poly-instantiate {x = x} {T = T} _ _ _ _ _ _) = poly x T
+
+------------------------------------------------------------------------
+-- realize-infer (⊢ᵢ) — infer-mode reference elaboration.
+------------------------------------------------------------------------
+realize-infer (t-int n)         = int n
+realize-infer (t-str s)         = str s
+realize-infer t-unit            = unit
+realize-infer t-unit-var        = unit
+realize-infer (t-var-local {eE = eE} _ _) = eE
+realize-infer (t-var-qualified {name = name} {alias = alias} _) = sigOp (alias ++ "." ++ name)
+realize-infer (t-var-import {x = x} _ _ _) = sigOp x
+realize-infer (t-annot d)       = realize d
+realize-infer (t-pair da db)    = pair (realize-infer da) (realize-infer db)
+realize-infer (t-neg d)         = neg (realize-infer d)
+realize-infer (t-let d₁ d₂)     = let' (realize-infer d₁) (realize-infer d₂)
+realize-infer (t-case ds dl dr) = case' (realize-infer ds) (realize-infer dl) (realize-infer dr)
+-- arithmetic binops: pick the SExpr ctor by `op`; comparison ops make the
+-- `isArithmeticOp op ≡ true` premise absurd.
+realize-infer (t-binop-arith {op = OpAdd} _ d₁ d₂) = add  (realize-infer d₁) (realize-infer d₂)
+realize-infer (t-binop-arith {op = OpSub} _ d₁ d₂) = sub  (realize-infer d₁) (realize-infer d₂)
+realize-infer (t-binop-arith {op = OpMul} _ d₁ d₂) = mul  (realize-infer d₁) (realize-infer d₂)
+realize-infer (t-binop-arith {op = OpDiv} _ d₁ d₂) = div  (realize-infer d₁) (realize-infer d₂)
+realize-infer (t-binop-arith {op = OpMod} _ d₁ d₂) = mod' (realize-infer d₁) (realize-infer d₂)
+realize-infer (t-binop-arith {op = OpLt} () _ _)
+realize-infer (t-binop-arith {op = OpLe} () _ _)
+realize-infer (t-binop-arith {op = OpGt} () _ _)
+realize-infer (t-binop-arith {op = OpGe} () _ _)
+realize-infer (t-binop-arith {op = OpEq} () _ _)
+realize-infer (t-binop-arith {op = OpNe} () _ _)
+-- comparison binops: dual.
+realize-infer (t-binop-cmp {op = OpLt} _ d₁ d₂) = lt (realize-infer d₁) (realize-infer d₂)
+realize-infer (t-binop-cmp {op = OpLe} _ d₁ d₂) = le (realize-infer d₁) (realize-infer d₂)
+realize-infer (t-binop-cmp {op = OpGt} _ d₁ d₂) = gt (realize-infer d₁) (realize-infer d₂)
+realize-infer (t-binop-cmp {op = OpGe} _ d₁ d₂) = ge (realize-infer d₁) (realize-infer d₂)
+realize-infer (t-binop-cmp {op = OpEq} _ d₁ d₂) = eq (realize-infer d₁) (realize-infer d₂)
+realize-infer (t-binop-cmp {op = OpNe} _ d₁ d₂) = ne (realize-infer d₁) (realize-infer d₂)
+realize-infer (t-binop-cmp {op = OpAdd} () _ _)
+realize-infer (t-binop-cmp {op = OpSub} () _ _)
+realize-infer (t-binop-cmp {op = OpMul} () _ _)
+realize-infer (t-binop-cmp {op = OpDiv} () _ _)
+realize-infer (t-binop-cmp {op = OpMod} () _ _)
+realize-infer (t-id-app d)       = morph-app IR.id       (realize-infer d)
+realize-infer (t-fst-app d)      = morph-app IR.fst      (realize-infer d)
+realize-infer (t-snd-app d)      = morph-app IR.snd      (realize-infer d)
+realize-infer (t-terminal-app d) = morph-app IR.terminal (realize-infer d)
+realize-infer (t-arr-app-infer d) = arr' (realize-infer d)
+realize-infer (t-apply-app-infer d) = morph-app IR.apply (realize-infer d)
+realize-infer (t-app _ df dx)    = app    (realize-infer df) (realize dx)
+realize-infer (t-effApp _ df dx) = effApp (realize-infer df) (realize dx)
