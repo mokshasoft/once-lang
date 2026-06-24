@@ -298,10 +298,15 @@ domainOfHead _ _ = nothing
 -- | Symmetric B-recovery for `compose f g` at `A → C`: try `g`'s codomain
 -- (`composeArgB`), else fall back to `f`'s domain (`domainOfHead`). Fixes
 -- `composeArgB`'s g-only asymmetry — `B` is recoverable from either arm.
+-- | Pick the first `just`, else the fallback. A plain (non-`with`) helper so
+-- `composeMid ctx f g A` stays an abstractable neutral — needed by the
+-- `morph-complete` proof (`with composeMid … | eqB`); see MorphComplete.
+composeMid-pick : Maybe Type → Maybe Type → Maybe Type
+composeMid-pick (just B) _  = just B
+composeMid-pick nothing  fb = fb
+
 composeMid : NamedCtx → RawExpr → RawExpr → Type → Maybe Type
-composeMid ctx f g A with composeArgB ctx g A
-... | just B  = just B
-... | nothing = domainOfHead ctx f
+composeMid ctx f g A = composeMid-pick (composeArgB ctx g A) (domainOfHead ctx f)
 
 -- | Find a local variable's de Bruijn position and declared quantity.
 findLocalVarUsage : (ctx : NamedCtx) → String → Maybe (Fin (NamedCtx.size ctx) × Quantity)

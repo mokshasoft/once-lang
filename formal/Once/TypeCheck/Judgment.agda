@@ -630,11 +630,18 @@ extractMorphWitness : ∀ {ctx : NamedCtx} {e : RawExpr} {A B : Type}
                         {Ψ : Surface.Usage (NamedCtx.size ctx)}
                     → ctx ⊢ᶜ e ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B) ⨾ Ψ
                     → Maybe (ctx ⊢ᵐ e ∶ A ⇨[ π ] B)
+-- Plain (non-`with`) re-wrapper so `extractMorphWitness (t-arr-app-check d)`
+-- stays reducible under a known `extractMorphWitness d` (the morph-complete
+-- proof rewrites it); a `with` here would block that. See feedback_with_abstraction.
+extractMorph-arr : ∀ {ctx : NamedCtx} {arg : RawExpr} {A B : Type}
+                 → Maybe (ctx ⊢ᵐ arg ∶ A ⇨[ Once.Type.pure ] B)
+                 → Maybe (ctx ⊢ᵐ RApp (RVar "arr") arg ∶ A ⇨[ Once.Type.eff ] B)
+extractMorph-arr (just mF) = just (m-arr mF)
+extractMorph-arr nothing   = nothing
+
 extractMorphWitness (t-morph-lift mF)                  = just mF
 extractMorphWitness (t-value-lift g)                   = just (m-const g)
 extractMorphWitness (t-embed (t-var-import ¬u eqL eqI)) = just (m-named ¬u eqL eqI)
 -- `arr f` (an eff morphism): recover the inner pure morphism, re-wrap with `m-arr`.
-extractMorphWitness (t-arr-app-check d) with extractMorphWitness d
-... | just mF = just (m-arr mF)
-... | nothing = nothing
+extractMorphWitness (t-arr-app-check d)                = extractMorph-arr (extractMorphWitness d)
 extractMorphWitness _                                  = nothing
