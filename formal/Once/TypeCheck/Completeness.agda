@@ -888,7 +888,7 @@ mutual
   -- restoring consistency (the old eff ones were FALSE). Discharge = C3 follow-up.
   postulate
     morph-complete : ∀ {ctx : NamedCtx} {e : RawExpr} {A B : Type} {π : T.Purity}
-                   → ctx ⊢ᵐ e ∶ A ⇨ B
+                   → ctx ⊢ᵐ e ∶ A ⇨[ π ] B
                    → ∃[ eE ] ∃[ d ] ∃[ f ]
                        checkElab ctx e (A T.⇒[ T.mk-kind T.Many π ] B)
                          ≡ success Surface.zeroUsage eE d f

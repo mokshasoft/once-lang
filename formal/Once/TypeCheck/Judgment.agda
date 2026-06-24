@@ -329,123 +329,116 @@ mutual
   -- A capturing closure (`t-lam`) is structurally NOT a `⊢ᵐ`, so it can never be
   -- a `compose`/`case` arm — which is exactly why the eff fork disappears and the
   -- two false `*-eff-complete` completeness postulates become provable.
-  data _⊢ᵐ_∶_⇨_ : (ctx : NamedCtx) → RawExpr → (A B : Type) → Set where
+  -- D066: GRADE-INDEXED — `_⊢ᵐ_∶_⇨[ π ]_` carries the morphism's purity. Pure
+  -- morphisms are grade-poly (π free); effectful ones are grade-fixed. The IR
+  -- stays grade-erased (`realize-morph` ignores π); π lives only in the surface
+  -- type, applied by `t-morph-lift`. This makes `checkElab` and `⊢ᵐ` agree
+  -- (`morph-complete` provable) and excludes the unsound `eff → pure`.
+  data _⊢ᵐ_∶_⇨[_]_ : (ctx : NamedCtx) → RawExpr → Type → Once.Type.Purity → Type → Set where
 
     ----------------------------------------------------------------
-    -- Point-free primitive leaves. Lookups must fail so user
-    -- shadowing wins (same disjointness argument as `t-id-check`).
+    -- Point-free primitive leaves — pure morphisms, GRADE-POLY (π free; D065).
+    -- Lookups must fail so user shadowing wins.
     ----------------------------------------------------------------
-    m-id : ∀ {ctx : NamedCtx} {T : Type}
+    m-id : ∀ {ctx : NamedCtx} {T : Type} {π : Once.Type.Purity}
          → lookupLocal ctx "id" ≡ nothing
          → lookupImport (NamedCtx.imports ctx) "id" ≡ nothing
-         → ctx ⊢ᵐ RVar "id" ∶ T ⇨ T
+         → ctx ⊢ᵐ RVar "id" ∶ T ⇨[ π ] T
 
-    m-fst : ∀ {ctx : NamedCtx} {A B : Type}
+    m-fst : ∀ {ctx : NamedCtx} {A B : Type} {π : Once.Type.Purity}
           → lookupLocal ctx "fst" ≡ nothing
           → lookupImport (NamedCtx.imports ctx) "fst" ≡ nothing
-          → ctx ⊢ᵐ RVar "fst" ∶ (A * B) ⇨ A
+          → ctx ⊢ᵐ RVar "fst" ∶ (A * B) ⇨[ π ] A
 
-    m-snd : ∀ {ctx : NamedCtx} {A B : Type}
+    m-snd : ∀ {ctx : NamedCtx} {A B : Type} {π : Once.Type.Purity}
           → lookupLocal ctx "snd" ≡ nothing
           → lookupImport (NamedCtx.imports ctx) "snd" ≡ nothing
-          → ctx ⊢ᵐ RVar "snd" ∶ (A * B) ⇨ B
+          → ctx ⊢ᵐ RVar "snd" ∶ (A * B) ⇨[ π ] B
 
-    m-terminal : ∀ {ctx : NamedCtx} {A : Type}
+    m-terminal : ∀ {ctx : NamedCtx} {A : Type} {π : Once.Type.Purity}
                → lookupLocal ctx "terminal" ≡ nothing
                → lookupImport (NamedCtx.imports ctx) "terminal" ≡ nothing
-               → ctx ⊢ᵐ RVar "terminal" ∶ A ⇨ Unit
+               → ctx ⊢ᵐ RVar "terminal" ∶ A ⇨[ π ] Unit
 
-    m-initial : ∀ {ctx : NamedCtx} {A : Type}
+    m-initial : ∀ {ctx : NamedCtx} {A : Type} {π : Once.Type.Purity}
               → lookupLocal ctx "initial" ≡ nothing
               → lookupImport (NamedCtx.imports ctx) "initial" ≡ nothing
-              → ctx ⊢ᵐ RVar "initial" ∶ Void ⇨ A
+              → ctx ⊢ᵐ RVar "initial" ∶ Void ⇨[ π ] A
 
-    m-inl : ∀ {ctx : NamedCtx} {A B : Type}
+    m-inl : ∀ {ctx : NamedCtx} {A B : Type} {π : Once.Type.Purity}
           → lookupLocal ctx "inl" ≡ nothing
           → lookupImport (NamedCtx.imports ctx) "inl" ≡ nothing
-          → ctx ⊢ᵐ RVar "inl" ∶ A ⇨ (A + B)
+          → ctx ⊢ᵐ RVar "inl" ∶ A ⇨[ π ] (A + B)
 
-    m-inr : ∀ {ctx : NamedCtx} {A B : Type}
+    m-inr : ∀ {ctx : NamedCtx} {A B : Type} {π : Once.Type.Purity}
           → lookupLocal ctx "inr" ≡ nothing
           → lookupImport (NamedCtx.imports ctx) "inr" ≡ nothing
-          → ctx ⊢ᵐ RVar "inr" ∶ B ⇨ (A + B)
-
-    -- (D065: bare unapplied `arr` is NOT a morphism — `arr`-on-morphisms is the
-    -- redundant grade flip. Applied `arr f` (closure→eff lift) stays in `⊢ᶜ` via
-    -- `t-arr-app-check`.)
+          → ctx ⊢ᵐ RVar "inr" ∶ B ⇨[ π ] (A + B)
 
     ----------------------------------------------------------------
     -- Categorical combinators (recurse on ⊢ᵐ → force the laws).
     ----------------------------------------------------------------
-    -- The `composeMid` premise mirrors `checkCompose`'s middle-type recovery
-    -- (the only combinator whose middle type `B` isn't pinned by the conclusion
-    -- type) — so `⊢ᵐ` stays in step with what `checkElab` can decide. (Same role
-    -- as the old `t-compose-check`'s `composeMid` premise.)
-    m-compose : ∀ {ctx : NamedCtx} {f g : RawExpr} {A B C : Type}
+    -- `m-compose`/`m-case` share a single π (D032). The `composeMid` premise
+    -- mirrors `checkCompose`'s middle-type recovery (the only combinator whose
+    -- middle type `B` isn't pinned by the conclusion type).
+    m-compose : ∀ {ctx : NamedCtx} {f g : RawExpr} {A B C : Type} {π : Once.Type.Purity}
               → composeMid ctx f g A ≡ just B
-              → ctx ⊢ᵐ f ∶ B ⇨ C
-              → ctx ⊢ᵐ g ∶ A ⇨ B
-              → ctx ⊢ᵐ RApp (RApp (RVar "compose") f) g ∶ A ⇨ C
+              → ctx ⊢ᵐ f ∶ B ⇨[ π ] C
+              → ctx ⊢ᵐ g ∶ A ⇨[ π ] B
+              → ctx ⊢ᵐ RApp (RApp (RVar "compose") f) g ∶ A ⇨[ π ] C
 
-    m-case : ∀ {ctx : NamedCtx} {f g : RawExpr} {A B C : Type}
-           → ctx ⊢ᵐ f ∶ A ⇨ C
-           → ctx ⊢ᵐ g ∶ B ⇨ C
-           → ctx ⊢ᵐ RApp (RApp (RVar "case") f) g ∶ (A + B) ⇨ C
+    m-case : ∀ {ctx : NamedCtx} {f g : RawExpr} {A B C : Type} {π : Once.Type.Purity}
+           → ctx ⊢ᵐ f ∶ A ⇨[ π ] C
+           → ctx ⊢ᵐ g ∶ B ⇨[ π ] C
+           → ctx ⊢ᵐ RApp (RApp (RVar "case") f) g ∶ (A + B) ⇨[ π ] C
 
+    -- `m-pair`/`m-curry` are PURE-fixed (their `checkElab` paths are pure-only).
     m-pair : ∀ {ctx : NamedCtx} {f g : RawExpr} {A B C : Type}
-           → ctx ⊢ᵐ f ∶ A ⇨ B
-           → ctx ⊢ᵐ g ∶ A ⇨ C
-           → ctx ⊢ᵐ RApp (RApp (RVar "pair") f) g ∶ A ⇨ (B * C)
+           → ctx ⊢ᵐ f ∶ A ⇨[ Once.Type.pure ] B
+           → ctx ⊢ᵐ g ∶ A ⇨[ Once.Type.pure ] C
+           → ctx ⊢ᵐ RApp (RApp (RVar "pair") f) g ∶ A ⇨[ Once.Type.pure ] (B * C)
 
     m-curry : ∀ {ctx : NamedCtx} {f : RawExpr} {A B C : Type}
-            → ctx ⊢ᵐ f ∶ (A * B) ⇨ C
+            → ctx ⊢ᵐ f ∶ (A * B) ⇨[ Once.Type.pure ] C
             → ctx ⊢ᵐ RApp (RVar "curry") f
-                    ∶ A ⇨ (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C)
+                    ∶ A ⇨[ Once.Type.pure ] (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C)
 
-    -- The algebra is ANY *closed* function `⟦F⟧T A → A` (named/arith/lambda/
-    -- point-free), checked in the empty-locals context — so it's an extensional
-    -- leaf (a `⊢ᶜ` derivation, uncurried by `realize-morph`), not a structural
-    -- `⊢ᵐ`. The cata STRUCTURE (the fold) is what's forced; the algebra is
-    -- opaque (like `m-lam`/`m-named`). Grade-poly π is erased into the IR.
+    -- The cata algebra is ANY *closed* function `⟦F⟧T A → A`, checked in the
+    -- empty-locals context (extensional leaf, uncurried by `realize-morph`). The
+    -- cata's grade π follows the algebra's.
     m-cata : ∀ {ctx : NamedCtx} {alg : RawExpr} {F : Functor} {A : Type}
              {π : Once.Type.Purity} {wfF : WellFormedF F}
            → wellFormedF? F ≡ just wfF
            → ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx)
                ⊢ᶜ alg ∶ (⟦ F ⟧T A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A)
                       ⨾ Surface.zeroUsage
-           → ctx ⊢ᵐ RApp (RVar "cata") alg ∶ (μ-type F) ⇨ A
+           → ctx ⊢ᵐ RApp (RVar "cata") alg ∶ (μ-type F) ⇨[ π ] A
 
-    -- Effect lift: a no-op on the (grade-erased) morphism.
+    -- Effect lift: `arr f` lifts a PURE morphism to EFF (grade-changing).
     m-arr : ∀ {ctx : NamedCtx} {f : RawExpr} {A B : Type}
-          → ctx ⊢ᵐ f ∶ A ⇨ B
-          → ctx ⊢ᵐ RApp (RVar "arr") f ∶ A ⇨ B
+          → ctx ⊢ᵐ f ∶ A ⇨[ Once.Type.pure ] B
+          → ctx ⊢ᵐ RApp (RVar "arr") f ∶ A ⇨[ Once.Type.eff ] B
 
     ----------------------------------------------------------------
-    -- Extensional leaves (forced as "denotes this morphism").
+    -- Extensional leaves.
     ----------------------------------------------------------------
-    -- A closed value is the constant morphism `A → B` (D018). REUSES `⊢ᵍ`.
+    -- A closed value is the constant morphism `A → B` (D018). PURE. REUSES `⊢ᵍ`.
     m-const : ∀ {ctx : NamedCtx} {e : RawExpr} {A B : Type}
             → ctx ⊢ᵍ e ∶ B
-            → ctx ⊢ᵐ e ∶ A ⇨ B
+            → ctx ⊢ᵐ e ∶ A ⇨[ Once.Type.pure ] B
 
-    -- A named arrow reference is a morphism (the ABI by which `once_x` is
-    -- *called* is downstream codegen, NOT part of the spec).
-    m-named : ∀ {ctx : NamedCtx} {x : String} {A B : Type} {k : Once.Type.ArrowKind}
+    -- A named arrow reference is a morphism at the IMPORT's grade π (the ABI by
+    -- which `once_x` is called is downstream codegen, NOT part of the spec).
+    m-named : ∀ {ctx : NamedCtx} {x : String} {A B : Type} {π : Once.Type.Purity}
             → ¬ (x ≡ "unit")
             → lookupLocal ctx x ≡ nothing
-            → lookupImport (NamedCtx.imports ctx) x ≡ just (A Once.Type.⇒[ k ] B)
-            → ctx ⊢ᵐ RVar x ∶ A ⇨ B
+            → lookupImport (NamedCtx.imports ctx) x
+                ≡ just (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B)
+            → ctx ⊢ᵐ RVar x ∶ A ⇨[ π ] B
 
-    -- A *closed* lambda IS a morphism: its body, interpreted in the
-    -- one-variable context `(∅, x:A)` (imports/polys visible, no outer locals),
-    -- denotes `A → B`. Handles first- and higher-order uniformly (the
-    -- higher-order exponential use lives inside the body's IR).
-    m-lam : ∀ {ctx : NamedCtx} {x : String} {body : RawExpr} {A B : Type}
-            {q : Quantity}
-          → extendNamedCtx (ctxWithImportsAndPolys (NamedCtx.imports ctx)
-                                                    (NamedCtx.polys ctx)) x A
-              ⊢ᶜ body ∶ B ⨾ (q ∷ᵘ Surface.zeroUsage)
-          → ctx ⊢ᵐ RLam x body ∶ A ⇨ B
+    -- (D066: `m-lam` dropped — a closed lambda as a morphism is unreachable via
+    -- `extractMorphWitness` (its outer-ctx-emptiness can't be recovered there);
+    -- cata algebras go through `m-cata` (closed `⊢ᶜ`). Lambdas in `⊢ᶜ` use `t-lam`.)
 
   data _⊢ᶜ_∶_⨾_ : (ctx : NamedCtx) → RawExpr → (A : Type)
                  → Surface.Usage (NamedCtx.size ctx) → Set where
@@ -459,7 +452,7 @@ mutual
     -- with no separate eff path (the eff fork is gone).
     t-morph-lift : ∀ {ctx : NamedCtx} {e : RawExpr} {A B : Type}
                    {π : Once.Type.Purity}
-                 → ctx ⊢ᵐ e ∶ A ⇨ B
+                 → ctx ⊢ᵐ e ∶ A ⇨[ π ] B
                  → ctx ⊢ᶜ e ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B)
                          ⨾ Surface.zeroUsage
 
@@ -636,8 +629,12 @@ extractMorphWitness : ∀ {ctx : NamedCtx} {e : RawExpr} {A B : Type}
                         {π : Once.Type.Purity}
                         {Ψ : Surface.Usage (NamedCtx.size ctx)}
                     → ctx ⊢ᶜ e ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B) ⨾ Ψ
-                    → Maybe (ctx ⊢ᵐ e ∶ A ⇨ B)
+                    → Maybe (ctx ⊢ᵐ e ∶ A ⇨[ π ] B)
 extractMorphWitness (t-morph-lift mF)                  = just mF
 extractMorphWitness (t-value-lift g)                   = just (m-const g)
 extractMorphWitness (t-embed (t-var-import ¬u eqL eqI)) = just (m-named ¬u eqL eqI)
+-- `arr f` (an eff morphism): recover the inner pure morphism, re-wrap with `m-arr`.
+extractMorphWitness (t-arr-app-check d) with extractMorphWitness d
+... | just mF = just (m-arr mF)
+... | nothing = nothing
 extractMorphWitness _                                  = nothing

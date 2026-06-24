@@ -39,8 +39,8 @@ open import Once.TypeCheck.Raw using (RawExpr;
 open import Once.TypeCheck.Classify using (NamedCtx)
 open import Once.TypeCheck.Judgment
   using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_; _⊢ᵍ_∶_; g-int; g-terminal; g-pair; g-inl; g-inr; g-In;
-         _⊢ᵐ_∶_⇨_; m-id; m-fst; m-snd; m-terminal; m-initial; m-inl; m-inr;
-         m-compose; m-case; m-pair; m-curry; m-cata; m-arr; m-const; m-named; m-lam;
+         _⊢ᵐ_∶_⇨[_]_; m-id; m-fst; m-snd; m-terminal; m-initial; m-inl; m-inr;
+         m-compose; m-case; m-pair; m-curry; m-cata; m-arr; m-const; m-named;
          t-int; t-str; t-unit; t-unit-var; t-var-local; t-var-qualified; t-var-import;
          t-annot; t-pair; t-neg; t-let; t-case; t-binop-arith; t-binop-cmp;
          t-id-app; t-fst-app; t-snd-app; t-terminal-app; t-arr-app-infer; t-apply-app-infer;
@@ -105,8 +105,8 @@ realize-global (g-In {wfF = wfF} _ garg) = IR.In wfF IR.Heap ∘ realize-global 
 --     (row-2, verified by `faithful`) — NOT `checkElab`, so the elaborator-free
 --     boundary holds.)
 ------------------------------------------------------------------------
-realize-morph : ∀ {ctx : NamedCtx} {e : RawExpr} {A B : Type}
-              → ctx ⊢ᵐ e ∶ A ⇨ B → IR A B
+realize-morph : ∀ {ctx : NamedCtx} {e : RawExpr} {A B : Type} {π : Once.Type.Purity}
+              → ctx ⊢ᵐ e ∶ A ⇨[ π ] B → IR A B
 realize-morph (m-id _ _)        = IR.id
 realize-morph (m-fst _ _)       = IR.fst
 realize-morph (m-snd _ _)       = IR.snd
@@ -123,7 +123,6 @@ realize-morph (m-cata {wfF = wfF} _ dalg) =
 realize-morph (m-arr df)        = realize-morph df
 realize-morph (m-const gd)      = realize-global gd
 realize-morph (m-named {x = x} _ _ _) = IR.SigOp (value-info x)
-realize-morph (m-lam d)         = elaborate IR.Heap (realize d) ∘ ⟨ IR.terminal , IR.id ⟩ IR.Heap
 
 ------------------------------------------------------------------------
 -- realize (⊢ᶜ) — check-mode reference elaboration.
