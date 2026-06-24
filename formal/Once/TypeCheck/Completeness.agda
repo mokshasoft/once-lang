@@ -612,19 +612,9 @@ infer-complete-RApp-eff {ctx} f x A {B} eqAH eqF eqX
 -- The walk is a direct mutual structural recursion on derivations.
 ------------------------------------------------------------------------
 
-open Once.TypeCheck.Judgment
-  using (_⊢ᵢ_∶_⨾_; _⊢ᶜ_∶_⨾_;
-         t-int; t-str; t-unit; t-unit-var;
-         t-var-local; t-var-qualified; t-var-import;
-         t-annot; t-pair; t-neg; t-let; t-case;
-         t-binop-arith; t-binop-cmp;
-         t-id-app; t-fst-app; t-snd-app; t-terminal-app; t-app; t-effApp;
-         t-embed; t-lam;
-         t-id-check; t-fst-check; t-snd-check; t-terminal-check;
-         t-initial-check; t-inl-check; t-inr-check; t-arr-check;
-         t-pair-check; t-pair-lit-check; t-compose-check; t-curry-check; t-apply-check;
-         t-case-copair-check; t-In-app-check; t-cata-check;
-         t-var-poly-instantiate)
+-- (Judgment is already fully opened at the top of this file; the morphism realm
+-- `_⊢ᵐ_∶_⇨_`, `t-morph-lift`, and the `m-*` constructors are in scope from there.
+-- The former redundant `using`-list re-open was removed in the D063 collapse.)
 
 
 ------------------------------------------------------------------------
@@ -642,11 +632,8 @@ open Once.TypeCheck.Elaborate
          checkElab-fallback-RVar-id; checkElab-fallback-RVar-fst;
          checkElab-fallback-RVar-snd; checkElab-fallback-RVar-terminal;
          checkElab-fallback-RVar-initial; checkElab-fallback-RVar-inl;
-         checkElab-fallback-RVar-inr; checkElab-fallback-RVar-arr;
-         checkElab-fallback-RApp-pair; checkElab-fallback-RApp-compose;
-         checkElab-fallback-RApp-case;
-         checkElab-fallback-RApp-In;
-         checkElab-fallback-RApp-curry; checkElab-fallback-RApp-apply;
+         checkElab-fallback-RVar-inr;
+         checkElab-fallback-RApp-In; checkElab-fallback-RApp-apply;
          checkElab-fallback-RApp-arr;
          checkElab-fallback-RVar-poly;
          checkElab-fallback-RQualified; checkElab-fallback-RAnnot;
@@ -891,43 +878,20 @@ mutual
         (_ , _ , _ , eqX) = check-complete dX
     in infer-complete-RApp-eff f x A notPoly eqF eqX
 
-  -- Plan 0.36 Phase 2a — TRANSIENT, PROVABLE: cata completeness bridge.
-  -- `checkCataGo` elaborates the algebra in the EMPTY context and emits
-  -- the `cata` node; given the well-formedness equation + the algebra's
-  -- check-mode derivation, `checkElab` on `cata alg` reduces to that
-  -- emission (rebuild over `checkCataGo`, mirroring the kept
-  -- `checkElab-fallback-RApp-In`). Discharge with Correct's cata clause.
+  -- Plan 0.49 / D063: the MORPHISM-COMPLETENESS theorem. A `⊢ᵐ` morphism
+  -- check-elaborates at its arrow type (any grade π). TRUE — provable by
+  -- induction on `⊢ᵐ` (bare builtins → `checkElab-fallback-RVar-*`; compose/
+  -- case/pair/curry → the new fused `checkX` succeed on morphism arms; cata →
+  -- `checkCataGo`; leaves m-const/m-named/m-lam → value/import/lambda paths).
+  -- This SINGLE postulate REPLACES the three former false/dead postulates
+  -- (`cata-check-complete`, `case-copair-eff-complete`, `compose-eff-complete`) —
+  -- restoring consistency (the old eff ones were FALSE). Discharge = C3 follow-up.
   postulate
-    -- Plan 0.36 Phase 1: grade-polymorphic (π).
-    cata-check-complete : ∀ {ctx : NamedCtx} {alg : RawExpr}
-      {F : T.Functor} {A : Type} {π : T.Purity} {wfF : WellFormedF F}
-      → wellFormedF? F ≡ just wfF
-      → ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx)
-          ⊢ᶜ alg ∶ (T.⟦ F ⟧T A T.⇒[ T.mk-kind T.Many π ] A) ⨾ Surface.zeroUsage
-      → ∃[ eE ] ∃[ d ] ∃[ f ]
-          checkElab ctx (Raw.RApp (Raw.RVar "cata") alg)
-            (T.μ-type F T.⇒[ T.mk-kind T.Many π ] A)
-              ≡ success Surface.zeroUsage eE d f
-    -- Plan 0.36 Phase 1 — TRANSIENT, PROVABLE (mirror the pure
-    -- checkElab-fallback-RApp-{case,compose} via extract-morph-eff): the eff
-    -- copair/compose elaborator clauses succeed for valid eff arm derivations.
-    case-copair-eff-complete : ∀ {ctx : NamedCtx} {f g : RawExpr} {A B C : Type}
-      {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
-      → ctx ⊢ᶜ f ∶ (A T.⇒[ T.mk-kind T.Many T.eff ] C) ⨾ Ψ₁
-      → ctx ⊢ᶜ g ∶ (B T.⇒[ T.mk-kind T.Many T.eff ] C) ⨾ Ψ₂
-      → ∃[ eE ] ∃[ d ] ∃[ f' ]
-          checkElab ctx (Raw.RApp (Raw.RApp (Raw.RVar "case") f) g)
-            ((A T.+ B) T.⇒[ T.mk-kind T.Many T.eff ] C)
-              ≡ success ((Surface.zeroUsage +ᵘ (T.Many *ᵘ Ψ₁)) +ᵘ (T.Many *ᵘ Ψ₂)) eE d f'
-    compose-eff-complete : ∀ {ctx : NamedCtx} {f g : RawExpr} {A B C : Type}
-      {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
-      → composeMid ctx f g A ≡ just B
-      → ctx ⊢ᶜ f ∶ (B T.⇒[ T.mk-kind T.Many T.eff ] C) ⨾ Ψ₁
-      → ctx ⊢ᶜ g ∶ (A T.⇒[ T.mk-kind T.Many T.eff ] B) ⨾ Ψ₂
-      → ∃[ eE ] ∃[ d ] ∃[ f' ]
-          checkElab ctx (Raw.RApp (Raw.RApp (Raw.RVar "compose") f) g)
-            (A T.⇒[ T.mk-kind T.Many T.eff ] C)
-              ≡ success ((Surface.zeroUsage +ᵘ (T.Many *ᵘ Ψ₁)) +ᵘ (T.Many *ᵘ Ψ₂)) eE d f'
+    morph-complete : ∀ {ctx : NamedCtx} {e : RawExpr} {A B : Type} {π : T.Purity}
+                   → ctx ⊢ᵐ e ∶ A ⇨ B
+                   → ∃[ eE ] ∃[ d ] ∃[ f ]
+                       checkElab ctx e (A T.⇒[ T.mk-kind T.Many π ] B)
+                         ≡ success Surface.zeroUsage eE d f
     -- Plan 0.36 Phase 2a follow-up — TRANSIENT, PROVABLE: pair-literal
     -- check-mode completeness. `checkElabV (RPair a b) (A * B)` reduces
     -- via `checkPairLit` to `success (Surface.pair …)` given the two
@@ -1092,60 +1056,20 @@ mutual
     let (_ , _ , _ , eqI) = infer-complete (t-effApp notPoly dF dX)
     in checkElab-fallback-RApp-generic f x (T.Unit T.⇒[ T.mk-kind T.Many T.eff ] B) notPoly eqI
   -- Plan 0.6 Phase C.7 POC-1: bare `id` check-mode. The derivation's
-  -- lookup-failure premises drive the elaborator past its lookup
-  -- branch (which matches `t-embed (t-var-local/import …)`) into
-  -- the specialised `specId` emission with `zeroUsage`.
-  check-complete {ctx} (t-id-check {T = T} localN importN) =
-    checkElab-fallback-RVar-id {ctx} T localN importN
-  check-complete {ctx} (t-fst-check {A = A} {B = B} localN importN) =
-    checkElab-fallback-RVar-fst {ctx} A B localN importN
-  check-complete {ctx} (t-snd-check {A = A} {B = B} localN importN) =
-    checkElab-fallback-RVar-snd {ctx} A B localN importN
-  check-complete {ctx} (t-terminal-check {A = A} localN importN) =
-    checkElab-fallback-RVar-terminal {ctx} A localN importN
-  check-complete {ctx} (t-initial-check {A = A} localN importN) =
-    checkElab-fallback-RVar-initial {ctx} A localN importN
-  check-complete {ctx} (t-inl-check {A = A} {B = B} localN importN) =
-    checkElab-fallback-RVar-inl {ctx} A B localN importN
-  check-complete {ctx} (t-inr-check {A = A} {B = B} localN importN) =
-    checkElab-fallback-RVar-inr {ctx} A B localN importN
-  check-complete {ctx} (t-arr-check {A = A} {B = B} localN importN) =
-    checkElab-fallback-RVar-arr {ctx} A B localN importN
   -- Plan 0.41: the value-lift bridge. A closed global-element value (`⊢ᵍ`)
   -- elaborates at the pure arrow — recurses on the `⊢ᵍ` derivation via
   -- `gd-complete` (the extractable family always elaborates).
   check-complete {ctx} (t-value-lift {X = X} gd) = gd-complete X gd
-  -- Plan 0.6 Phase C.7 POC-2: applied `pair f g` check-mode. The
-  -- recursive check-complete calls on f and g give the
-  -- inferElab-success equations threaded through the fallback
-  -- helper.
-  check-complete (t-pair-check {f = f} {g = g} {A = A} {B = B} {C = C} d₁ d₂) =
-    let (_ , _ , _ , eq₁) = check-complete d₁
-        (_ , _ , _ , eq₂) = check-complete d₂
-    in checkElab-fallback-RApp-pair f g A B C eq₁ eq₂
-  -- Plan 0.36 Phase 1: dispatch on π (pure → fused-lift helper; eff → scaffold).
-  check-complete (t-case-copair-check {f = f} {g = g} {A = A} {B = B} {C = C} {π = T.pure} d₁ d₂) =
-    let (_ , _ , _ , eq₁) = check-complete d₁
-        (_ , _ , _ , eq₂) = check-complete d₂
-    in checkElab-fallback-RApp-case f g A B C eq₁ eq₂
-  check-complete (t-case-copair-check {π = T.eff} d₁ d₂) =
-    case-copair-eff-complete d₁ d₂
+  -- Plan 0.49 / D063: the morphism bridge. A `⊢ᵐ` morphism check-elaborates at
+  -- its arrow type — by `morph-complete` (induction on `⊢ᵐ`). This ONE clause
+  -- subsumes the 13 deleted combinator clauses and REPLACES the two false
+  -- `*-eff-complete` postulates with a single TRUE one.
+  check-complete (t-morph-lift d) = morph-complete d
   check-complete (t-In-app-check {arg = arg} {F = F} eqWF dArg) =
     let (_ , _ , _ , eqA) = check-complete dArg
     in checkElab-fallback-RApp-In arg F eqWF eqA
-  check-complete (t-cata-check {alg = alg} {F = F} {A = A} eqWF wArg) =
-    cata-check-complete eqWF wArg
   check-complete (t-pair-lit-check {a = a} {b = b} {A = A} {B = B} dA dB) =
     pair-lit-check-complete dA dB
-  check-complete (t-compose-check {f = f} {g = g} {A = A} {B = B} {C = C} {π = T.pure} eqArgB d₁ d₂) =
-    let (_ , _ , _ , eq₁) = check-complete d₁
-        (_ , _ , _ , eq₂) = check-complete d₂
-    in checkElab-fallback-RApp-compose f g A B C eqArgB eq₁ eq₂
-  check-complete (t-compose-check {π = T.eff} eqArgB d₁ d₂) =
-    compose-eff-complete eqArgB d₁ d₂
-  check-complete (t-curry-check {f = f} {A = A} {B = B} {C = C} d) =
-    let (_ , _ , _ , eq) = check-complete d
-    in checkElab-fallback-RApp-curry f A B C eq
   check-complete (t-apply-check {p = p} {A = A} {B = B} d) =
     let (_ , _ , _ , eq) = infer-complete d
     in checkElab-fallback-RApp-apply p A B eq

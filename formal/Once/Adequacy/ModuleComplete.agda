@@ -35,6 +35,9 @@ open import Once.Type using (Type; Unit; _⇒[_]_; mk-kind; Many; eff)
 open import Once.IR using (IR)
 open import Once.Surface.Syntax using (Expr; ∅; Usage)
 open import Once.Surface.Elaborate using (elaborate)
+-- Plan 0.49 / D063 C4: the elaborator-free reference elaboration. Importing it
+-- here (proof layer) is fine — `realize` itself does NOT import `checkElab`.
+open import Once.Denotation.Realize using (realize)
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Classify using (SigEffectCtx)
 open import Once.TypeCheck.Elaborate
@@ -206,6 +209,27 @@ moduleToIR-complete m mt (amu , me) with C.extractFunctions (C.extractAliases m)
            C.emptyFunCtx mt amu me
 ...   | (compiled , ir , ca-eq , fm-eq) =
         ir , trans (cong moduleToIR-aux ca-eq) fm-eq
+
+------------------------------------------------------------------------
+-- Plan 0.49 / D063 C4: the main's CANONICAL realize-term.
+--
+-- `mainRealized` reads `main`'s `⊢ᶜ` derivation off `ModuleTyped` and applies
+-- the elaborator-free `realize` — giving the surface term INDEPENDENTLY of
+-- `checkElab` (the row-3 forcing). `main`'s body context is
+-- `ctxWithImportsAndSelfAndPolys …` whose `debruijn` is `∅`, so the term lands
+-- at `Expr ∅ Ψ EffUU` (what `runMainˢ` needs). The `MainExists` `refl` fixes
+-- `ty ≡ EffUU`. The meaning `⟦tp⟧ˢ` = `runMainˢ` of this.
+------------------------------------------------------------------------
+mainRealized-go : ∀ {polys sigEffs funs ctx}
+                  (aft : AS.AllFunsTyped polys sigEffs funs ctx)
+                → MainExists aft → Σ-syntax (Usage 0) (λ Ψ → Expr ∅ Ψ EffUU)
+mainRealized-go (AS.tcons {Ψ = Ψ} rf deriv rest) (inj₁ (_ , _ , refl)) = Ψ , realize deriv
+mainRealized-go (AS.tcons rf deriv rest) (inj₂ me) = mainRealized-go rest me
+
+mainRealized : ∀ (m : C.Module) (mt : AS.ModuleTyped m) → HasValidMain-decl m mt
+             → Σ-syntax (Usage 0) (λ Ψ → Expr ∅ Ψ EffUU)
+mainRealized m mt (amu , me) with C.extractFunctions (C.extractAliases m) m
+... | inj₂ (funs , polys) = mainRealized-go mt me
 
 ------------------------------------------------------------------------
 -- REVERSE lift (for soundness): compile-success ⇒ the declarative conditions.

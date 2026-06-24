@@ -882,11 +882,6 @@ mutual
   -- POC-3).
   checkCompose : (ctx : NamedCtx) → (composeHead arg : RawExpr) → (T : Type)
                → VerifiedCheckResult ctx (Raw.RApp composeHead arg) T
-  checkComposeWithB : (ctx : NamedCtx) (f_inner arg : RawExpr) (A C : Type)
-                    → (mb : Maybe Type)
-                    → composeMid ctx f_inner arg A ≡ mb
-                    → VerifiedCheckResult ctx (Raw.RApp (Raw.RApp (Raw.RVar "compose") f_inner) arg)
-                                              (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C)
   checkCurry : (ctx : NamedCtx) → (arg : RawExpr) → (T : Type)
              → VerifiedCheckResult ctx (Raw.RApp (Raw.RVar "curry") arg) T
   checkApply : (ctx : NamedCtx) → (arg : RawExpr) → (T : Type)
@@ -930,16 +925,6 @@ mutual
   -- proofs). This lets external proofs substitute checkElab-success
   -- premises into the dispatch chain without navigating opaque
   -- `with`-helpers.
-  checkComposeWithBg : (ctx : NamedCtx) (f_inner arg : RawExpr) (A B C : Type)
-                     → composeMid ctx f_inner arg A ≡ just B
-                     → (rg : VerifiedCheckResult ctx arg
-                                                  (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B))
-                     → checkElabV ctx arg (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) ≡ rg
-                     → (rf : VerifiedCheckResult ctx f_inner
-                                                  (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C))
-                     → checkElabV ctx f_inner (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C) ≡ rf
-                     → VerifiedCheckResult ctx (Raw.RApp (Raw.RApp (Raw.RVar "compose") f_inner) arg)
-                                              (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C)
   inferElabV-RApp-other : (ctx : NamedCtx) (f x : RawExpr) → VerifiedInferResult ctx (Raw.RApp f x)
   -- Aux helpers that take the lookup result + equation as explicit args,
   -- so external proofs can pattern-match on the Maybe and supply the eq
@@ -1206,10 +1191,13 @@ mutual
   ... | success Ψf fE df frf , wF
         with checkElabV ctx arg (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C)
   ...     | failure err , _ = failure err , tt
-  ...     | success Ψg gE dg frg , wG =
-            success _
-              (Surface.app (Surface.app (weakenFromEmpty (specPair A B C)) fE) gE)
-              (suc (df Data.Nat.⊔ dg)) frg , t-pair-check wF wG
+  ...     | success Ψg gE dg frg , wG
+            with extract-morph fE | extract-morph gE | extractMorphWitness wF | extractMorphWitness wG
+  ...       | just (mf , _) | just (mg , _) | just mFᵐ | just mGᵐ =
+              success Surface.zeroUsage
+                (Surface.lift-morphism (IR.⟨ mf , mg ⟩ IR.Heap))
+                (suc (df Data.Nat.⊔ dg)) frg , t-morph-lift (m-pair mFᵐ mGᵐ)
+  ...       | _ | _ | _ | _ = failure (BuiltinTypeMismatch "pair") , tt
   -- Any other shape falls through to failure. Consistent with
   -- ahv-inl's per-shape exhaustive enumeration pattern.
   checkPair _ _ _ _ = failure (BuiltinTypeMismatch "pair") , tt
@@ -1233,72 +1221,22 @@ mutual
   -- closure-realm `app (app specCase fE) gE` form. Mirrors the
   -- `checkComposeWithBg` morphism-realm bypass but with no dependent
   -- `composeArgB` premise (so completeness stays postulate-free).
+  -- Plan 0.49 / D063: ONE grade-polymorphic clause (D056 — the bespoke eff
+  -- copy is gone). Both arms must be morphisms (`extractMorphWitness`); emit the
+  -- direct `lift-morphism (IR.case m_f m_g)`; no closure fallback.
   checkCase ctx (Raw.RApp (Raw.RVar "case") f_inner) arg
-            ((A Once.Type.+ B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C)
-    with checkElabV ctx f_inner (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C)
+            ((A Once.Type.+ B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] C)
+    with checkElabV ctx f_inner (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] C)
   ... | failure err , _ = failure err , tt
   ... | success Ψf fE df frf , wF
-        with checkElabV ctx arg (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C)
+        with checkElabV ctx arg (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] C)
   ...     | failure err , _ = failure err , tt
   ...     | success Ψg gE dg frg , wG
-            with extract-morph fE | extract-morph gE
-  ...         | just (m_f , eqf) | just (m_g , eqg) =
-                let
-                  wF' : ctx ⊢ᶜ f_inner ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C) ⨾ Surface.zeroUsage
-                  wF' = subst (λ Ψ → ctx ⊢ᶜ f_inner ∶ _ ⨾ Ψ) eqf wF
-                  wG' : ctx ⊢ᶜ arg ∶ (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C) ⨾ Surface.zeroUsage
-                  wG' = subst (λ Ψ → ctx ⊢ᶜ arg ∶ _ ⨾ Ψ) eqg wG
-                  collapse : (Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Surface.zeroUsage))
-                             Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Surface.zeroUsage)
-                           ≡ Surface.zeroUsage {NamedCtx.size ctx}
-                  collapse =
-                    trans (cong₂ Surface._+ᵘ_
-                                 (trans (cong (Surface.zeroUsage Surface.+ᵘ_) (*ᵘ-zeroʳ Once.Type.Many))
-                                        (+ᵘ-identityʳ Surface.zeroUsage))
-                                 (*ᵘ-zeroʳ Once.Type.Many))
-                          (+ᵘ-identityʳ Surface.zeroUsage)
-                in success _
-                    (Surface.lift-morphism (IR.case m_f m_g))
-                    (suc (df Data.Nat.⊔ dg)) frf
-                  , subst (λ Ψ → ctx ⊢ᶜ _ ∶ _ ⨾ Ψ) collapse
-                          (t-case-copair-check wF' wG')
-  ...         | _        | _        =
-                success _
-                  (Surface.app (Surface.app (weakenFromEmpty (specCase A B C)) fE) gE)
-                  (suc (df Data.Nat.⊔ dg)) frg , t-case-copair-check wF wG
-  -- Plan 0.36 Phase 1: effectful copair (D032 single-π). Both arms extracted as
-  -- IR morphisms (lift-morphism / arr' / bare sigOp) and fused to the SAME
-  -- grade-erased `IR.case`, wrapped at eff. Fused, not closures.
-  checkCase ctx (Raw.RApp (Raw.RVar "case") f_inner) arg
-            ((A Once.Type.+ B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] C)
-    with checkElabV ctx f_inner (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] C)
-  ... | failure err , _ = failure err , tt
-  ... | success Ψf fE df frf , wF
-        with checkElabV ctx arg (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] C)
-  ...     | failure err , _ = failure err , tt
-  ...     | success Ψg gE dg frg , wG
-            with extract-morph-eff fE | extract-morph-eff gE
-  ...         | just (m_f , eqf) | just (m_g , eqg) =
-                let
-                  wF' : ctx ⊢ᶜ f_inner ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] C) ⨾ Surface.zeroUsage
-                  wF' = subst (λ Ψ → ctx ⊢ᶜ f_inner ∶ _ ⨾ Ψ) eqf wF
-                  wG' : ctx ⊢ᶜ arg ∶ (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] C) ⨾ Surface.zeroUsage
-                  wG' = subst (λ Ψ → ctx ⊢ᶜ arg ∶ _ ⨾ Ψ) eqg wG
-                  collapse : (Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Surface.zeroUsage))
-                             Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Surface.zeroUsage)
-                           ≡ Surface.zeroUsage {NamedCtx.size ctx}
-                  collapse =
-                    trans (cong₂ Surface._+ᵘ_
-                                 (trans (cong (Surface.zeroUsage Surface.+ᵘ_) (*ᵘ-zeroʳ Once.Type.Many))
-                                        (+ᵘ-identityʳ Surface.zeroUsage))
-                                 (*ᵘ-zeroʳ Once.Type.Many))
-                          (+ᵘ-identityʳ Surface.zeroUsage)
-                in success _
-                    (Surface.lift-morphism (IR.case m_f m_g))
-                    (suc (df Data.Nat.⊔ dg)) frf
-                  , subst (λ Ψ → ctx ⊢ᶜ _ ∶ _ ⨾ Ψ) collapse
-                          (t-case-copair-check wF' wG')
-  ...         | _ | _ = failure (BuiltinTypeMismatch "case") , tt
+            with extract-morph-eff fE | extract-morph-eff gE | extractMorphWitness wF | extractMorphWitness wG
+  ...         | just (m_f , _) | just (m_g , _) | just mFᵐ | just mGᵐ =
+                success Surface.zeroUsage (Surface.lift-morphism (IR.case m_f m_g))
+                  (suc (df Data.Nat.⊔ dg)) frf , t-morph-lift (m-case mFᵐ mGᵐ)
+  ...         | _ | _ | _ | _ = failure (BuiltinTypeMismatch "case") , tt
   checkCase _ _ _ _ = failure (BuiltinTypeMismatch "case") , tt
 
   -- Plan 0.6 Phase C.7 POC-3 + 0.6.2 Phase 3b: bare `compose f g`
@@ -1312,111 +1250,38 @@ mutual
   -- because the typing rule must be locally decidable in a
   -- no-unification bidirectional system). The witness `t-compose-check`
   -- takes the composeArgB equality directly.
+  -- Plan 0.49 / D063: ONE grade-polymorphic clause (D056 — pure+eff unified, no
+  -- closure fallback, `checkComposeWithB/g` retired). `composeMid` recovers B;
+  -- both factors must be morphisms (`extractMorphWitness`); emit `lift-morphism
+  -- (m_f ∘ m_g)`; witness `t-morph-lift (m-compose …)`.
   checkCompose ctx (Raw.RApp (Raw.RVar "compose") f_inner) arg
-               (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C) =
-    checkComposeWithB ctx f_inner arg A C
-      (composeMid ctx f_inner arg A) refl
-  -- Plan 0.36 Phase 1: effectful composition (D032 single-π). Both factors
-  -- extracted (lift-morphism / arr' / bare sigOp) and fused to the SAME
-  -- grade-erased `IR.∘`, wrapped at eff.
-  checkCompose ctx (Raw.RApp (Raw.RVar "compose") f_inner) arg
-               (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] C)
-    with composeMid ctx f_inner arg A in eqAB
+               (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] C)
+    with composeMid ctx f_inner arg A
   ... | nothing = failure (BuiltinTypeMismatch "compose") , tt
   ... | just B
-        with checkElabV ctx arg (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B)
+        with checkElabV ctx arg (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B)
   ...     | failure err , _ = failure err , tt
   ...     | success Ψg gE dg frg , wG
-            with checkElabV ctx f_inner (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] C)
+            with checkElabV ctx f_inner (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] C)
   ...         | failure err , _ = failure err , tt
   ...         | success Ψf fE df frf , wF
-                with extract-morph-eff fE | extract-morph-eff gE
-  ...             | just (m_f , eqf) | just (m_g , eqg) =
-                    let
-                      wF' : ctx ⊢ᶜ f_inner ∶ (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] C) ⨾ Surface.zeroUsage
-                      wF' = subst (λ Ψ → ctx ⊢ᶜ f_inner ∶ _ ⨾ Ψ) eqf wF
-                      wG' : ctx ⊢ᶜ arg ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B) ⨾ Surface.zeroUsage
-                      wG' = subst (λ Ψ → ctx ⊢ᶜ arg ∶ _ ⨾ Ψ) eqg wG
-                      collapse : (Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Surface.zeroUsage))
-                                 Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Surface.zeroUsage)
-                               ≡ Surface.zeroUsage {NamedCtx.size ctx}
-                      collapse =
-                        trans (cong₂ Surface._+ᵘ_
-                                     (trans (cong (Surface.zeroUsage Surface.+ᵘ_) (*ᵘ-zeroʳ Once.Type.Many))
-                                            (+ᵘ-identityʳ Surface.zeroUsage))
-                                     (*ᵘ-zeroʳ Once.Type.Many))
-                              (+ᵘ-identityʳ Surface.zeroUsage)
-                    in success _
-                        (Surface.lift-morphism (m_f IR.∘ m_g))
-                        (suc (df Data.Nat.⊔ dg)) frf
-                      , subst (λ Ψ → ctx ⊢ᶜ _ ∶ _ ⨾ Ψ) collapse
-                              (t-compose-check eqAB wF' wG')
-  ...             | _ | _ = failure (BuiltinTypeMismatch "compose") , tt
+                with extract-morph-eff fE | extract-morph-eff gE | extractMorphWitness wF | extractMorphWitness wG
+  ...             | just (m_f , _) | just (m_g , _) | just mFᵐ | just mGᵐ =
+                    success Surface.zeroUsage (Surface.lift-morphism (m_f IR.∘ m_g))
+                      (suc (df Data.Nat.⊔ dg)) frf , t-morph-lift (m-compose mFᵐ mGᵐ)
+  ...             | _ | _ | _ | _ = failure (BuiltinTypeMismatch "compose") , tt
   checkCompose _ _ _ _ = failure (BuiltinTypeMismatch "compose") , tt
-
-  -- Helper that takes the composeArgB result + checkElabV results as
-  -- explicit arguments, so external proofs can substitute all the
-  -- relevant values without navigating opaque `with` helpers.
-  checkComposeWithB ctx f_inner arg A C nothing _ = failure (BuiltinTypeMismatch "compose") , tt
-  checkComposeWithB ctx f_inner arg A C (just B) eqArgB =
-    checkComposeWithBg ctx f_inner arg A B C eqArgB
-      (checkElabV ctx arg (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B))
-      refl
-      (checkElabV ctx f_inner (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C))
-      refl
-
-  checkComposeWithBg ctx f_inner arg A B C eqArgB (failure err , _) _ _ _ = failure err , tt
-  checkComposeWithBg ctx f_inner arg A B C eqArgB (success _ _ _ _ , _) _ (failure err , _) _ = failure err , tt
-  -- Plan 0.2.4.5 D2: morphism-realm bypass for `compose f g`. When
-  -- both arms are recognisable as `lift-morphism m`, emit a single
-  -- `lift-morphism (m_f IR.∘ m_g)` directly — no `app`, no `apply`,
-  -- no closure record. Pure CCC compose. Fall through to the
-  -- closure-realm `app (app specCompose) f g` form when either arm
-  -- isn't a syntactic morphism (e.g. `compose g (lam …)`).
-  --
-  -- Usage bookkeeping: `lift-morphism _` has Ψ = zeroUsage by its
-  -- constructor signature; `extract-morph` returns this equation
-  -- (eqf/eqg) so we can subst the wF/wG witnesses to zeroUsage,
-  -- then collapse the judgment's claimed usage `zeroUsage +ᵘ Many
-  -- *ᵘ zeroUsage +ᵘ Many *ᵘ zeroUsage` to `zeroUsage` via the
-  -- standard `*ᵘ-zeroʳ` and `+ᵘ-identityˡ`/`+ᵘ-identityʳ` lemmas.
-  checkComposeWithBg ctx f_inner arg A B C eqArgB
-    (success Ψg gE dg frg , wG) _ (success Ψf fE df frf , wF) _
-    with extract-morph fE | extract-morph gE
-  ... | just (m_f , eqf) | just (m_g , eqg) =
-    let
-      wF' : ctx ⊢ᶜ f_inner ∶ (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C) ⨾ Surface.zeroUsage
-      wF' = subst (λ Ψ → ctx ⊢ᶜ f_inner ∶ _ ⨾ Ψ) eqf wF
-      wG' : ctx ⊢ᶜ arg ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) ⨾ Surface.zeroUsage
-      wG' = subst (λ Ψ → ctx ⊢ᶜ arg ∶ _ ⨾ Ψ) eqg wG
-      -- Collapse `(zeroUsage +ᵘ Many *ᵘ zeroUsage) +ᵘ Many *ᵘ zeroUsage`
-      -- to `zeroUsage` so the judgment matches the lift-morphism's Ψ.
-      collapse : (Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Surface.zeroUsage))
-                 Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Surface.zeroUsage)
-               ≡ Surface.zeroUsage {NamedCtx.size ctx}
-      collapse =
-        trans (cong₂ Surface._+ᵘ_
-                     (trans (cong (Surface.zeroUsage Surface.+ᵘ_) (*ᵘ-zeroʳ Once.Type.Many))
-                            (+ᵘ-identityʳ Surface.zeroUsage))
-                     (*ᵘ-zeroʳ Once.Type.Many))
-              (+ᵘ-identityʳ Surface.zeroUsage)
-    in success _
-        (Surface.lift-morphism (m_f IR.∘ m_g))
-        (suc (df Data.Nat.⊔ dg)) frf
-      , subst (λ Ψ → ctx ⊢ᶜ _ ∶ _ ⨾ Ψ) collapse
-              (t-compose-check eqArgB wF' wG')
-  ... | _        | _        =
-    success _
-      (Surface.app (Surface.app (weakenFromEmpty (specCompose A B C)) fE) gE)
-      (suc (df Data.Nat.⊔ dg)) frf , t-compose-check eqArgB wF wG
 
   -- Plan 0.6 Phase C.7 POC-3: `curry f` check-mode.
   -- Expected `A ⇒[Many] (B ⇒[Many] C)`. Check f at `(A * B) ⇒[Many] C`.
   checkCurry ctx arg (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C))
     with checkElabV ctx arg ((A Once.Type.* B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C)
   ... | failure err , _ = failure err , tt
-  ... | success Ψ argE d fr , w =
-        success _ (Surface.app (weakenFromEmpty (specCurry A B C)) argE) (suc d) fr , t-curry-check w
+  ... | success Ψ argE d fr , w with extract-morph argE | extractMorphWitness w
+  ...   | just (mf , _) | just mFᵐ =
+          success Surface.zeroUsage (Surface.lift-morphism (IR.curry mf IR.Heap)) (suc d) fr
+          , t-morph-lift (m-curry mFᵐ)
+  ...   | _ | _ = failure (BuiltinTypeMismatch "curry") , tt
   checkCurry _ _ _ = failure (BuiltinTypeMismatch "curry") , tt
 
   -- Plan 0.6 Phase C.7 POC-3: `apply p` check-mode.
@@ -1500,7 +1365,7 @@ mutual
   ... | failure err , _ = failure err , tt
   ... | success Surface.[] algE d fr , wArg =
         success _ (Surface.cata wfF algE) (suc d) (NamedCtx.freshCounter ctx)
-          , t-cata-check eqW wArg
+          , t-morph-lift (m-cata eqW wArg)
 
   -- Body for the hoisted `ahv-other` (generic application) branch.
   inferElab-RApp-other ctx f x with asFun (inferElab ctx f)
@@ -2074,12 +1939,12 @@ mutual
   -- bbc-X failure-branch aux bodies. Each pattern-matches on T to the
   -- canonical builtin shape and on the lookup results. Success iff
   -- T = canonical & both lookups nothing & inner type-checks pass.
-  checkElabV-RVar-bbc-id-failure-aux ctx (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] Y) err (llv-not-found eqLoc) (liv-not-found eqImp) with X ≟T Y
+  checkElabV-RVar-bbc-id-failure-aux ctx (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] Y) err (llv-not-found eqLoc) (liv-not-found eqImp) with X ≟T Y
   ... | yes refl =
-        success Surface.zeroUsage (weakenFromEmpty (specId X)) 0 (NamedCtx.freshCounter ctx) , t-id-check eqLoc eqImp
+        success Surface.zeroUsage (Surface.lift-morphism IR.id) 0 (NamedCtx.freshCounter ctx) , t-morph-lift (m-id eqLoc eqImp)
   ... | no _ = failure (BuiltinTypeMismatch "id") , tt
-  checkElabV-RVar-bbc-id-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] _) err (llv-not-found _) (liv-found _) = failure (BuiltinTypeMismatch "id") , tt
-  checkElabV-RVar-bbc-id-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] _) err (llv-found _) _ = failure (BuiltinTypeMismatch "id") , tt
+  checkElabV-RVar-bbc-id-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] _) err (llv-not-found _) (liv-found _) = failure (BuiltinTypeMismatch "id") , tt
+  checkElabV-RVar-bbc-id-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] _) err (llv-found _) _ = failure (BuiltinTypeMismatch "id") , tt
   checkElabV-RVar-bbc-id-failure-aux ctx Unit err _ _ = failure err , tt
   checkElabV-RVar-bbc-id-failure-aux ctx Void err _ _ = failure err , tt
   checkElabV-RVar-bbc-id-failure-aux ctx Int err _ _ = failure err , tt
@@ -2088,18 +1953,17 @@ mutual
   checkElabV-RVar-bbc-id-failure-aux ctx Buffer err _ _ = failure err , tt
   checkElabV-RVar-bbc-id-failure-aux ctx (_ Once.Type.* _) err _ _ = failure err , tt
   checkElabV-RVar-bbc-id-failure-aux ctx (_ Once.Type.+ _) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-id-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind _ Once.Type.eff ] _) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-id-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Zero Once.Type.pure ] _) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-id-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.One Once.Type.pure ] _) err _ _ = failure err , tt
+  checkElabV-RVar-bbc-id-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Zero _ ] _) err _ _ = failure err , tt
+  checkElabV-RVar-bbc-id-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.One _ ] _) err _ _ = failure err , tt
   checkElabV-RVar-bbc-id-failure-aux ctx (Once.Type.μ-type _) err _ _ = failure err , tt
   checkElabV-RVar-bbc-id-failure-aux ctx (Once.Type.ν-type _) err _ _ = failure err , tt
 
-  checkElabV-RVar-bbc-fst-failure-aux ctx ((A Once.Type.* B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] A') err (llv-not-found eqLoc) (liv-not-found eqImp) with A ≟T A'
+  checkElabV-RVar-bbc-fst-failure-aux ctx ((A Once.Type.* B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A') err (llv-not-found eqLoc) (liv-not-found eqImp) with A ≟T A'
   ... | yes refl =
-        success Surface.zeroUsage (weakenFromEmpty (specFst A B)) 0 (NamedCtx.freshCounter ctx) , t-fst-check eqLoc eqImp
+        success Surface.zeroUsage (Surface.lift-morphism IR.fst) 0 (NamedCtx.freshCounter ctx) , t-morph-lift (m-fst eqLoc eqImp)
   ... | no _ = failure (BuiltinTypeMismatch "fst") , tt
-  checkElabV-RVar-bbc-fst-failure-aux ctx ((_ Once.Type.* _) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] _) err (llv-not-found _) (liv-found _) = failure (BuiltinTypeMismatch "fst") , tt
-  checkElabV-RVar-bbc-fst-failure-aux ctx ((_ Once.Type.* _) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] _) err (llv-found _) _ = failure (BuiltinTypeMismatch "fst") , tt
+  checkElabV-RVar-bbc-fst-failure-aux ctx ((_ Once.Type.* _) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] _) err (llv-not-found _) (liv-found _) = failure (BuiltinTypeMismatch "fst") , tt
+  checkElabV-RVar-bbc-fst-failure-aux ctx ((_ Once.Type.* _) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] _) err (llv-found _) _ = failure (BuiltinTypeMismatch "fst") , tt
   checkElabV-RVar-bbc-fst-failure-aux ctx Unit err _ _ = failure err , tt
   checkElabV-RVar-bbc-fst-failure-aux ctx Void err _ _ = failure err , tt
   checkElabV-RVar-bbc-fst-failure-aux ctx Int err _ _ = failure err , tt
@@ -2116,21 +1980,20 @@ mutual
   checkElabV-RVar-bbc-fst-failure-aux ctx ((_ Once.Type.⇒[ _ ] _) Once.Type.⇒[ _ ] _) err _ _ = failure err , tt
   checkElabV-RVar-bbc-fst-failure-aux ctx ((Once.Type.μ-type _) Once.Type.⇒[ _ ] _) err _ _ = failure err , tt
   checkElabV-RVar-bbc-fst-failure-aux ctx ((Once.Type.ν-type _) Once.Type.⇒[ _ ] _) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-fst-failure-aux ctx ((_ Once.Type.* _) Once.Type.⇒[ Once.Type.mk-kind _ Once.Type.eff ] _) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-fst-failure-aux ctx ((_ Once.Type.* _) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Zero Once.Type.pure ] _) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-fst-failure-aux ctx ((_ Once.Type.* _) Once.Type.⇒[ Once.Type.mk-kind Once.Type.One Once.Type.pure ] _) err _ _ = failure err , tt
+  checkElabV-RVar-bbc-fst-failure-aux ctx ((_ Once.Type.* _) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Zero _ ] _) err _ _ = failure err , tt
+  checkElabV-RVar-bbc-fst-failure-aux ctx ((_ Once.Type.* _) Once.Type.⇒[ Once.Type.mk-kind Once.Type.One _ ] _) err _ _ = failure err , tt
   checkElabV-RVar-bbc-fst-failure-aux ctx (_ Once.Type.* _) err _ _ = failure err , tt
   checkElabV-RVar-bbc-fst-failure-aux ctx (_ Once.Type.+ _) err _ _ = failure err , tt
   checkElabV-RVar-bbc-fst-failure-aux ctx (Once.Type.μ-type _) err _ _ = failure err , tt
   checkElabV-RVar-bbc-fst-failure-aux ctx (Once.Type.ν-type _) err _ _ = failure err , tt
 
   -- bbc-snd: canonical T = (A * B) ⇒[Many,pure] B'
-  checkElabV-RVar-bbc-snd-failure-aux ctx ((A Once.Type.* B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B') err (llv-not-found eqLoc) (liv-not-found eqImp) with B ≟T B'
+  checkElabV-RVar-bbc-snd-failure-aux ctx ((A Once.Type.* B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B') err (llv-not-found eqLoc) (liv-not-found eqImp) with B ≟T B'
   ... | yes refl =
-        success Surface.zeroUsage (weakenFromEmpty (specSnd A B)) 0 (NamedCtx.freshCounter ctx) , t-snd-check eqLoc eqImp
+        success Surface.zeroUsage (Surface.lift-morphism IR.snd) 0 (NamedCtx.freshCounter ctx) , t-morph-lift (m-snd eqLoc eqImp)
   ... | no _ = failure (BuiltinTypeMismatch "snd") , tt
-  checkElabV-RVar-bbc-snd-failure-aux ctx ((_ Once.Type.* _) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] _) err (llv-not-found _) (liv-found _) = failure (BuiltinTypeMismatch "snd") , tt
-  checkElabV-RVar-bbc-snd-failure-aux ctx ((_ Once.Type.* _) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] _) err (llv-found _) _ = failure (BuiltinTypeMismatch "snd") , tt
+  checkElabV-RVar-bbc-snd-failure-aux ctx ((_ Once.Type.* _) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] _) err (llv-not-found _) (liv-found _) = failure (BuiltinTypeMismatch "snd") , tt
+  checkElabV-RVar-bbc-snd-failure-aux ctx ((_ Once.Type.* _) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] _) err (llv-found _) _ = failure (BuiltinTypeMismatch "snd") , tt
   checkElabV-RVar-bbc-snd-failure-aux ctx Unit err _ _ = failure err , tt
   checkElabV-RVar-bbc-snd-failure-aux ctx Void err _ _ = failure err , tt
   checkElabV-RVar-bbc-snd-failure-aux ctx Int err _ _ = failure err , tt
@@ -2147,19 +2010,18 @@ mutual
   checkElabV-RVar-bbc-snd-failure-aux ctx ((_ Once.Type.⇒[ _ ] _) Once.Type.⇒[ _ ] _) err _ _ = failure err , tt
   checkElabV-RVar-bbc-snd-failure-aux ctx ((Once.Type.μ-type _) Once.Type.⇒[ _ ] _) err _ _ = failure err , tt
   checkElabV-RVar-bbc-snd-failure-aux ctx ((Once.Type.ν-type _) Once.Type.⇒[ _ ] _) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-snd-failure-aux ctx ((_ Once.Type.* _) Once.Type.⇒[ Once.Type.mk-kind _ Once.Type.eff ] _) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-snd-failure-aux ctx ((_ Once.Type.* _) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Zero Once.Type.pure ] _) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-snd-failure-aux ctx ((_ Once.Type.* _) Once.Type.⇒[ Once.Type.mk-kind Once.Type.One Once.Type.pure ] _) err _ _ = failure err , tt
+  checkElabV-RVar-bbc-snd-failure-aux ctx ((_ Once.Type.* _) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Zero _ ] _) err _ _ = failure err , tt
+  checkElabV-RVar-bbc-snd-failure-aux ctx ((_ Once.Type.* _) Once.Type.⇒[ Once.Type.mk-kind Once.Type.One _ ] _) err _ _ = failure err , tt
   checkElabV-RVar-bbc-snd-failure-aux ctx (_ Once.Type.* _) err _ _ = failure err , tt
   checkElabV-RVar-bbc-snd-failure-aux ctx (_ Once.Type.+ _) err _ _ = failure err , tt
   checkElabV-RVar-bbc-snd-failure-aux ctx (Once.Type.μ-type _) err _ _ = failure err , tt
   checkElabV-RVar-bbc-snd-failure-aux ctx (Once.Type.ν-type _) err _ _ = failure err , tt
 
   -- bbc-terminal: canonical T = A ⇒[Many,pure] Unit
-  checkElabV-RVar-bbc-terminal-failure-aux ctx (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] Unit) err (llv-not-found eqLoc) (liv-not-found eqImp) =
-    success Surface.zeroUsage (weakenFromEmpty (specTerminal A)) 0 (NamedCtx.freshCounter ctx) , t-terminal-check eqLoc eqImp
-  checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] Unit) err (llv-not-found _) (liv-found _) = failure (BuiltinTypeMismatch "terminal") , tt
-  checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] Unit) err (llv-found _) _ = failure (BuiltinTypeMismatch "terminal") , tt
+  checkElabV-RVar-bbc-terminal-failure-aux ctx (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] Unit) err (llv-not-found eqLoc) (liv-not-found eqImp) =
+    success Surface.zeroUsage (Surface.lift-morphism IR.terminal) 0 (NamedCtx.freshCounter ctx) , t-morph-lift (m-terminal eqLoc eqImp)
+  checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] Unit) err (llv-not-found _) (liv-found _) = failure (BuiltinTypeMismatch "terminal") , tt
+  checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] Unit) err (llv-found _) _ = failure (BuiltinTypeMismatch "terminal") , tt
   checkElabV-RVar-bbc-terminal-failure-aux ctx Unit err _ _ = failure err , tt
   checkElabV-RVar-bbc-terminal-failure-aux ctx Void err _ _ = failure err , tt
   checkElabV-RVar-bbc-terminal-failure-aux ctx Int err _ _ = failure err , tt
@@ -2178,17 +2040,16 @@ mutual
   checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.⇒[ _ ] (_ Once.Type.⇒[ _ ] _)) err _ _ = failure err , tt
   checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.⇒[ _ ] (Once.Type.μ-type _)) err _ _ = failure err , tt
   checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.⇒[ _ ] (Once.Type.ν-type _)) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind _ Once.Type.eff ] Unit) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Zero Once.Type.pure ] Unit) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.One Once.Type.pure ] Unit) err _ _ = failure err , tt
+  checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Zero _ ] Unit) err _ _ = failure err , tt
+  checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.One _ ] Unit) err _ _ = failure err , tt
   checkElabV-RVar-bbc-terminal-failure-aux ctx (Once.Type.μ-type _) err _ _ = failure err , tt
   checkElabV-RVar-bbc-terminal-failure-aux ctx (Once.Type.ν-type _) err _ _ = failure err , tt
 
   -- bbc-initial: canonical T = Void ⇒[Many,pure] A
-  checkElabV-RVar-bbc-initial-failure-aux ctx (Void Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] A) err (llv-not-found eqLoc) (liv-not-found eqImp) =
-    success Surface.zeroUsage (weakenFromEmpty (specInitial A)) 0 (NamedCtx.freshCounter ctx) , t-initial-check eqLoc eqImp
-  checkElabV-RVar-bbc-initial-failure-aux ctx (Void Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] _) err (llv-not-found _) (liv-found _) = failure (BuiltinTypeMismatch "initial") , tt
-  checkElabV-RVar-bbc-initial-failure-aux ctx (Void Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] _) err (llv-found _) _ = failure (BuiltinTypeMismatch "initial") , tt
+  checkElabV-RVar-bbc-initial-failure-aux ctx (Void Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A) err (llv-not-found eqLoc) (liv-not-found eqImp) =
+    success Surface.zeroUsage (Surface.lift-morphism IR.initial) 0 (NamedCtx.freshCounter ctx) , t-morph-lift (m-initial eqLoc eqImp)
+  checkElabV-RVar-bbc-initial-failure-aux ctx (Void Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] _) err (llv-not-found _) (liv-found _) = failure (BuiltinTypeMismatch "initial") , tt
+  checkElabV-RVar-bbc-initial-failure-aux ctx (Void Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] _) err (llv-found _) _ = failure (BuiltinTypeMismatch "initial") , tt
   checkElabV-RVar-bbc-initial-failure-aux ctx Unit err _ _ = failure err , tt
   checkElabV-RVar-bbc-initial-failure-aux ctx Void err _ _ = failure err , tt
   checkElabV-RVar-bbc-initial-failure-aux ctx Int err _ _ = failure err , tt
@@ -2207,19 +2068,18 @@ mutual
   checkElabV-RVar-bbc-initial-failure-aux ctx ((_ Once.Type.⇒[ _ ] _) Once.Type.⇒[ _ ] _) err _ _ = failure err , tt
   checkElabV-RVar-bbc-initial-failure-aux ctx ((Once.Type.μ-type _) Once.Type.⇒[ _ ] _) err _ _ = failure err , tt
   checkElabV-RVar-bbc-initial-failure-aux ctx ((Once.Type.ν-type _) Once.Type.⇒[ _ ] _) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-initial-failure-aux ctx (Void Once.Type.⇒[ Once.Type.mk-kind _ Once.Type.eff ] _) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-initial-failure-aux ctx (Void Once.Type.⇒[ Once.Type.mk-kind Once.Type.Zero Once.Type.pure ] _) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-initial-failure-aux ctx (Void Once.Type.⇒[ Once.Type.mk-kind Once.Type.One Once.Type.pure ] _) err _ _ = failure err , tt
+  checkElabV-RVar-bbc-initial-failure-aux ctx (Void Once.Type.⇒[ Once.Type.mk-kind Once.Type.Zero _ ] _) err _ _ = failure err , tt
+  checkElabV-RVar-bbc-initial-failure-aux ctx (Void Once.Type.⇒[ Once.Type.mk-kind Once.Type.One _ ] _) err _ _ = failure err , tt
   checkElabV-RVar-bbc-initial-failure-aux ctx (Once.Type.μ-type _) err _ _ = failure err , tt
   checkElabV-RVar-bbc-initial-failure-aux ctx (Once.Type.ν-type _) err _ _ = failure err , tt
 
   -- bbc-inl: canonical T = A ⇒[Many,pure] (A' + B)
-  checkElabV-RVar-bbc-inl-failure-aux ctx (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] (A' Once.Type.+ B)) err (llv-not-found eqLoc) (liv-not-found eqImp) with A ≟T A'
+  checkElabV-RVar-bbc-inl-failure-aux ctx (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] (A' Once.Type.+ B)) err (llv-not-found eqLoc) (liv-not-found eqImp) with A ≟T A'
   ... | yes refl =
-        success Surface.zeroUsage (weakenFromEmpty (specInl A B)) 0 (NamedCtx.freshCounter ctx) , t-inl-check eqLoc eqImp
+        success Surface.zeroUsage (Surface.lift-morphism (IR.inl IR.Heap)) 0 (NamedCtx.freshCounter ctx) , t-morph-lift (m-inl eqLoc eqImp)
   ... | no _ = failure (BuiltinTypeMismatch "inl") , tt
-  checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] (_ Once.Type.+ _)) err (llv-not-found _) (liv-found _) = failure (BuiltinTypeMismatch "inl") , tt
-  checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] (_ Once.Type.+ _)) err (llv-found _) _ = failure (BuiltinTypeMismatch "inl") , tt
+  checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] (_ Once.Type.+ _)) err (llv-not-found _) (liv-found _) = failure (BuiltinTypeMismatch "inl") , tt
+  checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] (_ Once.Type.+ _)) err (llv-found _) _ = failure (BuiltinTypeMismatch "inl") , tt
   checkElabV-RVar-bbc-inl-failure-aux ctx Unit err _ _ = failure err , tt
   checkElabV-RVar-bbc-inl-failure-aux ctx Void err _ _ = failure err , tt
   checkElabV-RVar-bbc-inl-failure-aux ctx Int err _ _ = failure err , tt
@@ -2238,19 +2098,18 @@ mutual
   checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.⇒[ _ ] (_ Once.Type.⇒[ _ ] _)) err _ _ = failure err , tt
   checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.⇒[ _ ] (Once.Type.μ-type _)) err _ _ = failure err , tt
   checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.⇒[ _ ] (Once.Type.ν-type _)) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind _ Once.Type.eff ] (_ Once.Type.+ _)) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Zero Once.Type.pure ] (_ Once.Type.+ _)) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.One Once.Type.pure ] (_ Once.Type.+ _)) err _ _ = failure err , tt
+  checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Zero _ ] (_ Once.Type.+ _)) err _ _ = failure err , tt
+  checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.One _ ] (_ Once.Type.+ _)) err _ _ = failure err , tt
   checkElabV-RVar-bbc-inl-failure-aux ctx (Once.Type.μ-type _) err _ _ = failure err , tt
   checkElabV-RVar-bbc-inl-failure-aux ctx (Once.Type.ν-type _) err _ _ = failure err , tt
 
   -- bbc-inr: canonical T = B ⇒[Many,pure] (A + B')
-  checkElabV-RVar-bbc-inr-failure-aux ctx (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] (A Once.Type.+ B')) err (llv-not-found eqLoc) (liv-not-found eqImp) with B ≟T B'
+  checkElabV-RVar-bbc-inr-failure-aux ctx (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] (A Once.Type.+ B')) err (llv-not-found eqLoc) (liv-not-found eqImp) with B ≟T B'
   ... | yes refl =
-        success Surface.zeroUsage (weakenFromEmpty (specInr A B)) 0 (NamedCtx.freshCounter ctx) , t-inr-check eqLoc eqImp
+        success Surface.zeroUsage (Surface.lift-morphism (IR.inr IR.Heap)) 0 (NamedCtx.freshCounter ctx) , t-morph-lift (m-inr eqLoc eqImp)
   ... | no _ = failure (BuiltinTypeMismatch "inr") , tt
-  checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] (_ Once.Type.+ _)) err (llv-not-found _) (liv-found _) = failure (BuiltinTypeMismatch "inr") , tt
-  checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] (_ Once.Type.+ _)) err (llv-found _) _ = failure (BuiltinTypeMismatch "inr") , tt
+  checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] (_ Once.Type.+ _)) err (llv-not-found _) (liv-found _) = failure (BuiltinTypeMismatch "inr") , tt
+  checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] (_ Once.Type.+ _)) err (llv-found _) _ = failure (BuiltinTypeMismatch "inr") , tt
   checkElabV-RVar-bbc-inr-failure-aux ctx Unit err _ _ = failure err , tt
   checkElabV-RVar-bbc-inr-failure-aux ctx Void err _ _ = failure err , tt
   checkElabV-RVar-bbc-inr-failure-aux ctx Int err _ _ = failure err , tt
@@ -2269,9 +2128,8 @@ mutual
   checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.⇒[ _ ] (_ Once.Type.⇒[ _ ] _)) err _ _ = failure err , tt
   checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.⇒[ _ ] (Once.Type.μ-type _)) err _ _ = failure err , tt
   checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.⇒[ _ ] (Once.Type.ν-type _)) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind _ Once.Type.eff ] (_ Once.Type.+ _)) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Zero Once.Type.pure ] (_ Once.Type.+ _)) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.One Once.Type.pure ] (_ Once.Type.+ _)) err _ _ = failure err , tt
+  checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Zero _ ] (_ Once.Type.+ _)) err _ _ = failure err , tt
+  checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.One _ ] (_ Once.Type.+ _)) err _ _ = failure err , tt
   checkElabV-RVar-bbc-inr-failure-aux ctx (Once.Type.μ-type _) err _ _ = failure err , tt
   checkElabV-RVar-bbc-inr-failure-aux ctx (Once.Type.ν-type _) err _ _ = failure err , tt
 
@@ -2282,8 +2140,7 @@ mutual
     with T₁
   ... | A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B with T₂
   ...   | A' Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B' with A ≟T A' | B ≟T B'
-  ...     | yes refl | yes refl =
-            success Surface.zeroUsage (weakenFromEmpty (specArr A B)) 0 (NamedCtx.freshCounter ctx) , t-arr-check eqLoc eqImp
+  ...     | yes refl | yes refl = failure (BuiltinTypeMismatch "arr") , tt   -- D065: bare unapplied `arr` is not a morphism
   ...     | _ | _ = failure (BuiltinTypeMismatch "arr") , tt
   checkElabV-RVar-bbc-arr-failure-aux ctx (T₁ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] T₂) err (llv-not-found _) (liv-not-found _)
     | A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B | Unit = failure err , tt
@@ -2784,97 +2641,12 @@ checkElab-fallback-RVar-inr {ctx} A B eqLoc eqImp | (failure _ , _) | refl
 checkElab-fallback-RVar-inr {ctx} A B eqLoc eqImp | (failure _ , _) | refl
   | _ | liv-found impossible = ⊥-elim (just≢nothing-Maybe (trans (sym impossible) eqImp))
 
-checkElab-fallback-RVar-arr :
-  ∀ {ctx : NamedCtx} (A B : Type)
-  → lookupLocal ctx "arr" ≡ nothing
-  → lookupImport (NamedCtx.imports ctx) "arr" ≡ nothing
-  → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
-      checkElab ctx (Raw.RVar "arr")
-                   ((A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B))
-        ≡ success Surface.zeroUsage eE d f)))
-checkElab-fallback-RVar-arr {ctx} A B eqLoc eqImp
-  with inferElabV ctx (Raw.RVar "arr") | inferElabV-RVar-fail-bridge ctx "arr" (λ ()) eqLoc eqImp
-... | (failure _ , _) | refl
-  with inspectLookupLocal ctx "arr" | inspectLookupImport ctx "arr"
-... | llv-not-found _ | liv-not-found _
-  with A ≟T A | B ≟T B
-... | yes refl | yes refl = _ , _ , _ , refl
-... | no ¬eq | _   = ⊥-elim (¬eq refl)
-... | _     | no ¬eq = ⊥-elim (¬eq refl)
-checkElab-fallback-RVar-arr {ctx} A B eqLoc eqImp | (failure _ , _) | refl
-  | llv-found impossible | _ = ⊥-elim (just≢nothing-Maybe (trans (sym impossible) eqLoc))
-checkElab-fallback-RVar-arr {ctx} A B eqLoc eqImp | (failure _ , _) | refl
-  | _ | liv-found impossible = ⊥-elim (just≢nothing-Maybe (trans (sym impossible) eqImp))
-
 -- Plan 0.6 Phase C.7 POC-2: applied `pair f g` at canonical
 -- `A ⇒[Many] (B * C)` shape. Given check-mode elab successes for
 -- both f and g, the specialised classifier dispatch
 -- (`ahv-pair-applied`) emits the `app (app specPair fE) gE` Surface
 -- IR. This helper threads the two sub-equations through the
 -- pattern-matching reduction chain to close completeness.
-checkElab-fallback-RApp-pair :
-  ∀ {ctx : NamedCtx} (f g : RawExpr) (A B C : Type)
-    {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
-    {eE_f : SExpr (NamedCtx.debruijn ctx) Ψ₁ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)}
-    {eE_g : SExpr (NamedCtx.debruijn ctx) Ψ₂ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C)}
-    {d_f f_f d_g f_g : ℕ}
-  → checkElab ctx f (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) ≡ success Ψ₁ eE_f d_f f_f
-  → checkElab ctx g (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C) ≡ success Ψ₂ eE_g d_g f_g
-  → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ fr →
-      checkElab ctx (Raw.RApp (Raw.RApp (Raw.RVar "pair") f) g)
-                    (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] (B Once.Type.* C))
-        ≡ success ((Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ₁))
-                    Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ₂)) eE d fr)))
-checkElab-fallback-RApp-pair {ctx} f g A B C eq_f eq_g
-  with checkElabV ctx f (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) | eq_f
-... | success _ _ _ _ , _ | refl
-    with checkElabV ctx g (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C) | eq_g
-...   | success _ _ _ _ , _ | refl = _ , _ , _ , refl
-
--- Plan 0.28 Commit 1: applied `case f g` (copair) check-mode at the
--- canonical `(A + B) ⇒[Many] C` shape. Given check-mode elab successes
--- for both arms, `checkCase` either takes the morphism-realm fast-path
--- (both arms `lift-morphism`) or the closure-realm `app (app specCase
--- fE) gE` form. Both paths produce the same conclusion usage
--- `(zeroUsage +ᵘ Many *ᵘ Ψ₁) +ᵘ Many *ᵘ Ψ₂` — in the fast-path the
--- arms' usages are `zeroUsage`, so this collapses to the
--- `lift-morphism`'s `zeroUsage`. Postulate-free (no `composeArgB`
--- dependent premise, unlike compose).
-checkElab-fallback-RApp-case :
-  ∀ {ctx : NamedCtx} (f g : RawExpr) (A B C : Type)
-    {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
-    {eE_f : SExpr (NamedCtx.debruijn ctx) Ψ₁ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C)}
-    {eE_g : SExpr (NamedCtx.debruijn ctx) Ψ₂ (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C)}
-    {d_f f_f d_g f_g : ℕ}
-  → checkElab ctx f (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C) ≡ success Ψ₁ eE_f d_f f_f
-  → checkElab ctx g (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C) ≡ success Ψ₂ eE_g d_g f_g
-  → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ fr →
-      checkElab ctx (Raw.RApp (Raw.RApp (Raw.RVar "case") f) g)
-                    ((A Once.Type.+ B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C)
-        ≡ success ((Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ₁))
-                    Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ₂)) eE d fr)))
-checkElab-fallback-RApp-case {ctx} f g A B C eq_f eq_g
-  with checkElabV ctx f (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C) | eq_f
-... | success _ eE_f _ _ , _ | refl
-    with checkElabV ctx g (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C) | eq_g
-...   | success _ eE_g _ _ , _ | refl
-        with extract-morph eE_f | extract-morph eE_g
-...       | just (m_f , refl) | just (m_g , refl)
-            rewrite trans (cong₂ Surface._+ᵘ_
-                            (trans (cong (Surface.zeroUsage Surface.+ᵘ_) (*ᵘ-zeroʳ Once.Type.Many))
-                                   (+ᵘ-identityʳ Surface.zeroUsage))
-                            (*ᵘ-zeroʳ Once.Type.Many))
-                          (+ᵘ-identityʳ (Surface.zeroUsage {NamedCtx.size ctx}))
-            = _ , _ , _ , refl
-...       | just _  | nothing = _ , _ , _ , refl
-...       | nothing | just _  = _ , _ , _ , refl
-...       | nothing | nothing = _ , _ , _ , refl
-
--- Plan 0.28 Commit 2: J-bridges aligning the elaborator's
--- `checkInGo`/`checkCata{A,B,C}` (called with the live decidable result
--- + `refl`) with a specific `just`-branch + its equation. Same shape as
--- `checkComposeWithB-J`: pattern-matching the explicit result arg as
--- `.(decider …) refl` collapses both sides to the same call.
 checkInGo-J :
   ∀ (ctx : NamedCtx) (arg : RawExpr) (F : Once.Type.Functor)
     (mw : Maybe (Once.Functor.Translate.WellFormedF F)) (eq : wellFormedF? F ≡ mw)
@@ -2882,15 +2654,6 @@ checkInGo-J :
       ≡ Data.Product.proj₁ (checkInGo ctx arg F mw eq)
 checkInGo-J ctx arg F .(wellFormedF? F) refl = refl
 
--- Plan 0.36 Phase 2a: the old morphRaw J-bridges (checkCataA/B/C-J) are
--- gone with checkCataA/B/C. The cata completeness bridge is rebuilt over
--- `checkCataGo` (empty-context algebra elaboration) when `Completeness`
--- is migrated — mirrors the `checkInGo-just-success` template below.
-
--- Plan 0.28 Commit 2: applied `In arg` (μ intro) check-mode at
--- `μ-type F`. Given the well-formedness equation + the argument's
--- check-mode success, `checkInGo` reduces to the `morph-app (IR.In …)`
--- emission (via the J-bridge + a plain-`with` success lemma).
 checkInGo-just-success :
   ∀ (ctx : NamedCtx) (arg : RawExpr) (F : Once.Type.Functor)
     (wfF : Once.Functor.Translate.WellFormedF F) (eqW : wellFormedF? F ≡ just wfF)
@@ -2929,72 +2692,6 @@ checkElab-fallback-RApp-In {ctx} arg F {wfF} eqWF eqArg =
 -- Plan 0.4 T2 follow-up (rule-split, 2026-05-03): checkCompose now
 -- requires composeArgB-resolved B; the proof composes the two
 -- checkElab-successes through the simplified dispatch chain.
-checkElab-fallback-RApp-compose :
-  ∀ {ctx : NamedCtx} (f g : RawExpr) (A B C : Type)
-    {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
-    {eE_f : SExpr (NamedCtx.debruijn ctx) Ψ₁ (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C)}
-    {eE_g : SExpr (NamedCtx.debruijn ctx) Ψ₂ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)}
-    {d_f f_f d_g f_g : ℕ}
-  → composeMid ctx f g A ≡ just B
-  → checkElab ctx f (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C) ≡ success Ψ₁ eE_f d_f f_f
-  → checkElab ctx g (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) ≡ success Ψ₂ eE_g d_g f_g
-  → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ fr →
-      checkElab ctx (Raw.RApp (Raw.RApp (Raw.RVar "compose") f) g)
-                    (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C)
-        ≡ success ((Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ₁))
-                    Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ₂)) eE d fr)))
--- J-style bridge: substitute the elaborator's internal
--- `composeArgB ctx g A , refl` with the externally-provided
--- `(just B) , eqArgB` pair.
-checkComposeWithB-J :
-  ∀ ctx f_inner arg A C
-  → (mb : Maybe Type) (eq : composeMid ctx f_inner arg A ≡ mb)
-  → Data.Product.proj₁ (checkComposeWithB ctx f_inner arg A C (composeMid ctx f_inner arg A) refl)
-      ≡ Data.Product.proj₁ (checkComposeWithB ctx f_inner arg A C mb eq)
-checkComposeWithB-J ctx f_inner arg A C .(composeMid ctx f_inner arg A) refl = refl
-
--- Reduce checkComposeWithB on (just B) when both checkElabV calls
--- succeed. Postulated due to Agda with-abstraction limitation that
--- prevents abstracting `checkElabV ctx arg (A ⇒[..] B)` against the
--- bound variable in the with-helper signature, when `arg`/`A`/`B`
--- are bound parameters of the surrounding function. (The structurally
--- identical pattern works for `checkElab-fallback-RApp-pair` whose
--- types A,B,C aren't constrained by a dependent premise like
--- `composeArgB ctx arg A ≡ just B`.) Sound by direct computation —
--- checkComposeWithBg's success clause fires when both rg and rf are
--- success forms.
-postulate
-  checkComposeWithB-just-success :
-    ∀ ctx f_inner arg A B C
-    → (eqArgB : composeMid ctx f_inner arg A ≡ just B)
-    → ∀ {Ψg Ψf eE_g eE_f d_g f_g d_f f_f}
-    → checkElab ctx arg (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)
-        ≡ success Ψg eE_g d_g f_g
-    → checkElab ctx f_inner (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C)
-        ≡ success Ψf eE_f d_f f_f
-    → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ fr →
-        Data.Product.proj₁ (checkComposeWithB ctx f_inner arg A C (just B) eqArgB)
-          ≡ success ((Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψf))
-                      Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψg))
-                    eE d fr)))
-
-checkElab-fallback-RApp-compose {ctx} f g A B C eqArgB eq_f eq_g =
-  let (_ , _ , _ , eq) = checkComposeWithB-just-success ctx f g A B C eqArgB eq_g eq_f
-  in _ , _ , _ , trans (checkComposeWithB-J ctx f g A C (just B) eqArgB) eq
--- Plan 0.6 Phase C.7 POC-3: applied `curry f` at `A → B → C`.
-checkElab-fallback-RApp-curry :
-  ∀ {ctx : NamedCtx} (f : RawExpr) (A B C : Type)
-    {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {eE : SExpr (NamedCtx.debruijn ctx) Ψ ((A Once.Type.* B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C)}
-    {d fr : ℕ}
-  → checkElab ctx f ((A Once.Type.* B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C) ≡ success Ψ eE d fr
-  → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
-      checkElab ctx (Raw.RApp (Raw.RVar "curry") f)
-                    (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C))
-        ≡ success (Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ)) eE' d' f')))
-checkElab-fallback-RApp-curry {ctx} f A B C eq_f
-  with checkElabV ctx f ((A Once.Type.* B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C) | eq_f
-... | success _ _ _ _ , _ | refl = _ , _ , _ , refl
 
 -- Plan 0.4 T0 (2026-04-30): applied `arr e` in check mode at
 -- `Eff A B`. The elaborator's ahv-arr check-mode path checks `e`

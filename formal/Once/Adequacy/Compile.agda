@@ -500,19 +500,33 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   -- trace (via `Once.Adequacy.MainExtract`). The compiled-main IR `(ir, mi)` is
   -- DERIVED from the declarative `tp` by `MC.moduleToIR-complete`; `⟦_⟧ˢ` and
   -- `sd-bridge` share that same derivation, so they stay consistent.
+  -- Plan 0.49 / D063 C4 (row-3 forcing): the meaning is `runMainˢ` of the
+  -- CANONICAL `realize` term — read off main's `⊢ᶜ` derivation INDEPENDENTLY of
+  -- `checkElab` (so a wrong-but-well-typed elaboration is now visible).
+  -- `main-realize-agrees` is the NAMED row-3 obligation: the `checkElab`-resolved
+  -- term `seR` (from `source-meaningᴰ`) and the `realize` term denote the same
+  -- trace. TRUE — by `RealizeBridge.realize-agrees` (SD.⟦se⟧≡SD.⟦realize(check-
+  -- sound cc)⟧) + `resolveExpr`-faithfulness (seR=resolveExpr se). Discharge =
+  -- Plan 0.49 piece 3. This REPLACES the row-3 cancellation of Phase 1.
+  postulate
+    main-realize-agrees : ∀ (m : P.Module) (mt : ModuleTyped m)
+      (hvm : MC.HasValidMain-decl m mt) (ir : IR Unit Unit) (mi : moduleToIR m ≡ just ir)
+      → ∀ n → ME.runMainˢ (proj₁ (proj₂ (ME.source-meaningᴰ m ir mi))) n
+              ≡ ME.runMainˢ (proj₂ (MC.mainRealized m mt hvm)) n
+
   ⟦_⟧ˢ : Typed → Behavior
-  ⟦ (m , mt , hvm) ⟧ˢ =
-    ME.runMainˢ (proj₁ (proj₂ (ME.source-meaningᴰ m
-      (proj₁ (MC.moduleToIR-complete m mt hvm)) (proj₂ (MC.moduleToIR-complete m mt hvm)))))
+  ⟦ (m , mt , hvm) ⟧ˢ = ME.runMainˢ (proj₂ (MC.mainRealized m mt hvm))
 
   -- The SD bridge — a PROOF: the compiled `main` IR's denotational trace equals
   -- `main`'s INDEPENDENT surface meaning. Reuses `ME.source-meaningᴰ` (=
   -- `wrap-trace` ∘ `faithful` ∘ `main-ir-form`). Row-2 (`elaborate`) is FORCED.
   sd-bridge : ∀ (tp : Typed) → ⟦ moduleToIR (proj₁ tp) ⟧IR ≋ ⟦ tp ⟧ˢ
   sd-bridge (m , mt , hvm) n =
-    trans (cong (λ x → ⟦ x ⟧IR n) (proj₂ (MC.moduleToIR-complete m mt hvm)))
-          (proj₂ (proj₂ (ME.source-meaningᴰ m
-            (proj₁ (MC.moduleToIR-complete m mt hvm)) (proj₂ (MC.moduleToIR-complete m mt hvm)))) n)
+    trans (trans (cong (λ x → ⟦ x ⟧IR n) (proj₂ (MC.moduleToIR-complete m mt hvm)))
+                 (proj₂ (proj₂ (ME.source-meaningᴰ m
+                   (proj₁ (MC.moduleToIR-complete m mt hvm)) (proj₂ (MC.moduleToIR-complete m mt hvm)))) n))
+          (main-realize-agrees m mt hvm
+            (proj₁ (MC.moduleToIR-complete m mt hvm)) (proj₂ (MC.moduleToIR-complete m mt hvm)) n)
 
   pw-just-rel : ∀ {x y : Behavior} → Pointwise _≋_ (just x) (just y) → x ≋ y
   pw-just-rel (PW.just r) = r
