@@ -1256,7 +1256,7 @@ mutual
   -- (m_f ∘ m_g)`; witness `t-morph-lift (m-compose …)`.
   checkCompose ctx (Raw.RApp (Raw.RVar "compose") f_inner) arg
                (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] C)
-    with composeMid ctx f_inner arg A
+    with composeMid ctx f_inner arg A in eqB
   ... | nothing = failure (BuiltinTypeMismatch "compose") , tt
   ... | just B
         with checkElabV ctx arg (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B)
@@ -1268,7 +1268,7 @@ mutual
                 with extract-morph-eff fE | extract-morph-eff gE | extractMorphWitness wF | extractMorphWitness wG
   ...             | just (m_f , _) | just (m_g , _) | just mFᵐ | just mGᵐ =
                     success Surface.zeroUsage (Surface.lift-morphism (m_f IR.∘ m_g))
-                      (suc (df Data.Nat.⊔ dg)) frf , t-morph-lift (m-compose mFᵐ mGᵐ)
+                      (suc (df Data.Nat.⊔ dg)) frf , t-morph-lift (m-compose eqB mFᵐ mGᵐ)
   ...             | _ | _ | _ | _ = failure (BuiltinTypeMismatch "compose") , tt
   checkCompose _ _ _ _ = failure (BuiltinTypeMismatch "compose") , tt
 
