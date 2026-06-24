@@ -4671,3 +4671,50 @@ re-fragments the eff `compose`/`case` D056 just unified, so it's rejected.
 
 - D063 (`⊢ᵐ`), D056 (one morphism realm), D046 (grade-erased arrow), D032 (`arr`),
   Plan 0.49 (`morph-complete`).
+
+## D066: The Morphism Realm Is Grade-Indexed (Pure Grade-Poly, Effectful Grade-Fixed)
+
+**Date**: 2026-06-24
+**Status**: Accepted; implementation in Plan 0.49 (`morph-complete` discharge)
+**Refines**: D065 — "bare morphisms are grade-free" holds **only for pure morphisms**.
+
+### Context
+
+Proving `morph-complete` revealed that a *grade-free* `⊢ᵐ` with a `∀π` `t-morph-lift` is both
+**incomplete and unsound** for the grade-fixed leaves:
+- `m-named` carries an import's fixed kind `A ⇒[k] B`, but `t-morph-lift {π}` wraps at any `π`. A
+  **pure import at eff** is `checkElab`-rejected (completeness gap); an **eff import at pure** is
+  **unsound** — it tags an effectful SigOp as pure, which the meaning/optimizer treat as
+  effect-free (Plan 0.39: the optimizer drops effectful SigOps). `eff → pure` drops effects.
+- Same for `m-const` (values; `t-value-lift` is pure-only), `m-lam`, `m-pair`, `m-curry`
+  (`checkElab` paths are pure-fixed).
+
+D065 is right for *pure* morphisms (the point-free builtins have no effect → usable at any grade),
+but the morphism realm has a **grade structure**: pure morphisms are grade-poly, effectful ones are
+grade-fixed (D046 masquerade + Plan 0.39 soundness).
+
+### Decision
+
+`⊢ᵐ` is **grade-indexed**: `_⊢ᵐ_∶_⇨[ π ]_` (purity `π` on the morphism). `t-morph-lift` lifts to
+`A ⇒[mk-kind Many π] B` using `⊢ᵐ`'s own `π` (NOT `∀π`). Per-constructor grade:
+- **grade-poly** (`π` free): `m-id`/`m-fst`/`m-snd`/`m-terminal`/`m-initial`/`m-inl`/`m-inr`
+  (pure point-free builtins — usable at any grade, D065).
+- **grade-poly via arms** (single shared `π`): `m-compose`, `m-case`, `m-cata`.
+- **pure-fixed** (`π = pure`): `m-pair`, `m-curry`, `m-const`, `m-lam` (`checkElab` paths pure-only).
+- **import-grade** (`π` from the import's kind): `m-named`.
+
+The IR stays grade-erased (`realize-morph` ignores `π`); `π` lives only in the surface type, so this
+matches D046. `morph-complete` becomes provable (each morphism elaborates at exactly its grade) and
+the eff→pure unsoundness is excluded by construction.
+
+### Consequences
+
+- `⊢ᵐ`, `t-morph-lift`, the `m-*` constructors, `extractMorphWitness`, `realize-morph`'s signature,
+  and the Elaborate witnesses thread the `π` index. The pure point-free builtins stay grade-poly
+  (D065's broadening = the free `π`).
+- Effectful morphisms can no longer be silently used at pure (soundness restored).
+
+### See Also
+
+- D065 (grade-free — refined here to pure-only), D046 (grade-erased IR / masquerade), D056 (one
+  realm), D063 (`⊢ᵐ`), Plan 0.39 (optimizer drops eff SigOps), Plan 0.49 (`morph-complete`).
