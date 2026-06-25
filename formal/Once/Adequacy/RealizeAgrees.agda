@@ -63,6 +63,24 @@ postulate
   check-agreeV-todo : ∀ (ctx : NamedCtx) (e : RawExpr) (T : Type) {Ψ se d f w}
     (eq : E.checkElabV ctx e T ≡ (success Ψ se d f , w)) → CheckAgreeV ctx e T eq
 
+-- RPair folded top-level (no `with`): take both sub-results explicitly +
+-- their sub-IHs as functions; the de-withed `inferElabV-RPair-aux` reduces by
+-- pattern-matching them. success/success is the real case; a `failure` sub
+-- makes the aux a `failure`, so the success equation is absurd.
+agree-RPair : ∀ {ctx : NamedCtx} {a b : RawExpr} {A Ψ}
+  {se : Expr (NamedCtx.debruijn ctx) Ψ A} {d f} {w : ctx ⊢ᵢ Raw.RPair a b ∶ A ⨾ Ψ}
+  (rA : VerifiedInferResult ctx a) (rB : VerifiedInferResult ctx b)
+  → E.inferElabV-RPair-aux ctx a b rA rB ≡ (success A Ψ se d f , w)
+  → (∀ {Aₐ Ψₐ aE dₐ fₐ} {wA : ctx ⊢ᵢ a ∶ Aₐ ⨾ Ψₐ}
+       → rA ≡ (success Aₐ Ψₐ aE dₐ fₐ , wA) → ∀ dγ k → SD.⟦ aE ⟧ˢ dγ k ≡ SD.⟦ realize-infer wA ⟧ˢ dγ k)
+  → (∀ {Bᵦ Ψᵦ bE dᵦ fᵦ} {wB : ctx ⊢ᵢ b ∶ Bᵦ ⨾ Ψᵦ}
+       → rB ≡ (success Bᵦ Ψᵦ bE dᵦ fᵦ , wB) → ∀ dγ k → SD.⟦ bE ⟧ˢ dγ k ≡ SD.⟦ realize-infer wB ⟧ˢ dγ k)
+  → ∀ dγ k → SD.⟦ se ⟧ˢ dγ k ≡ SD.⟦ realize-infer w ⟧ˢ dγ k
+agree-RPair (success Aₐ Ψₐ aE dₐ fₐ , wA) (success Bᵦ Ψᵦ bE dᵦ fᵦ , wB) refl subA subB dγ k
+  rewrite subA refl dγ k | subB refl dγ k = refl
+agree-RPair (failure _ , _) _ () subA subB
+agree-RPair (success _ _ _ _ _ , _) (failure _ , _) () subA subB
+
 -- RUnaryOp(neg) folded top-level (avoids mutual-block `...|` ambiguity,
 -- [[feedback_mutual_block_syntax]]): takes the sub-result explicitly + the
 -- sub-IH as a function (applied only in the Int branch). Non-Int/failure subs
@@ -108,12 +126,12 @@ mutual
   infer-agreeV ctx (Raw.RInt n)       refl dγ k = refl
   infer-agreeV ctx (Raw.RStringLit s) refl dγ k = refl
   infer-agreeV ctx Raw.RUnit          refl dγ k = refl
-  -- RPair: the de-withed `inferElabV-RPair-aux` reduces once the two sub-results
-  -- are exposed, so `with inferElabV … in eq` folds with no opaque with-helper.
-  infer-agreeV ctx (Raw.RPair a b) eq dγ k
-    with E.inferElabV ctx a in eqa | E.inferElabV ctx b in eqb
-  ... | success A Ψ₁ aE da fa , wA | success B Ψ₂ bE db fb , wB with eq
-  ...   | refl rewrite infer-agreeV ctx a eqa dγ k | infer-agreeV ctx b eqb dγ k = refl
+  -- RPair: with-free — delegate to the top-level `agree-RPair`, passing both
+  -- sub-results + sub-IHs as functions (mirrors RUnaryOp; the de-withed aux
+  -- reduces by pattern-matching the sub-results).
+  infer-agreeV ctx (Raw.RPair a b) eq dγ k =
+    agree-RPair (E.inferElabV ctx a) (E.inferElabV ctx b) eq
+      (λ p → infer-agreeV ctx a p) (λ p → infer-agreeV ctx b p) dγ k
   infer-agreeV ctx (Raw.RUnaryOp Raw.OpNeg e) eq dγ k =
     agree-RUnaryOp (E.inferElabV ctx e) eq (λ p → infer-agreeV ctx e p) dγ k
   infer-agreeV ctx (Raw.RLet x e₁ e₂) eq dγ k
