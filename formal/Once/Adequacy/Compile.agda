@@ -38,7 +38,7 @@ open import Data.Maybe using (Maybe; just; nothing; map)
 open import Data.Maybe.Relation.Binary.Pointwise as PW using (Pointwise)
 open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality
-  using (_≡_; refl; sym; trans; cong; subst)
+  using (_≡_; _≢_; refl; sym; trans; cong; subst)
 open import Data.List using ([]; take)
 open import Once.IR using (IR)
 open import Once.Type using (Unit; Type; _⇒[_]_; mk-kind; Many; eff)
@@ -81,6 +81,14 @@ import Once.Parser.Module.Core as P
 -- Stage 1 adapter, now a real structural conversion (discharges the
 -- former `gmoduleToModule` postulate).
 open import Once.Grammar.ModuleConvert using (gmoduleToModule)
+
+-- Plan 0.50 (de-island once-symbol-injective): the front-end function extractor
+-- + the target symbol mangler, so the apex can DEMAND distinct emitted symbols.
+open import Once.Parser using (extractFunctions; extractAliases; FunInfo)
+open import Once.Target.Symbol using (once-symbol-own)
+open import Data.Sum using ([_,_]′)
+open import Data.List using () renaming (map to mapL)
+open import Data.List.Relation.Unary.AllPairs using (AllPairs)
 
 -- `Arch` (here, via `Once.Adequacy.CPU.Interface`) and `C.Arch` (via
 -- `Once.Compile`) are now the SAME type — both re-export `Once.Target.Arch`
@@ -134,6 +142,37 @@ compile-cli-asm allocMode stage doOpt arch m =
 ⟦ m ⟧M = ⟦ moduleToIR m ⟧IR
 
 -- ════════════════════════════════════════════════════════════════════
+-- Plan 0.50 — DISTINCT EMITTED SYMBOLS, the precondition the assembler
+-- trust point (`assemble-correct`) actually needs. `as` produces correct
+-- bytes only for asm with no duplicate `.globl` labels; two top-level defs
+-- compiling to the same `once_…` symbol would silently mislink. We make
+-- that assumption EXPLICIT here (no longer hidden inside `assemble-correct`)
+-- and DISCHARGE it via `once-symbol-injective` (the encoding-injectivity
+-- proof). `funSymsOf` reads the SAME extractor the compiler uses, so the
+-- symbols are exactly those `compileFromModule` emits.
+-- ════════════════════════════════════════════════════════════════════
+funSymsOf : P.Module → List String
+funSymsOf m =
+  [ (λ _ → [])
+  , (λ p → mapL (λ fi → once-symbol-own (FunInfo.funName fi)) (proj₁ p))
+  ]′ (extractFunctions (extractAliases m) m)
+
+-- The compiled top-level symbols of `m` are pairwise distinct.
+DistinctSymbols : P.Module → Set
+DistinctSymbols m = AllPairs _≢_ (funSymsOf m)
+
+-- A successfully-built module has distinct symbols. Postulated here (the
+-- top-down hook): the apex now DEPENDS on it, so `once-symbol-injective` is
+-- load-bearing. Discharge (Plan 0.50 Phase 2/3): compile-success ⇒
+-- `extractFunctions ≡ inj₂` with `namesDistinct ≡ true` (the guard) ⇒
+-- distinct names ⇒ distinct symbols by `once-symbol-injective`.
+postulate
+  program-no-clash :
+    ∀ (arch : Arch) (m : P.Module) (asm : String) →
+    C.compileFromModule C.Heap C.Build false arch m ≡ C.Built asm →
+    DistinctSymbols m
+
+-- ════════════════════════════════════════════════════════════════════
 -- Per-arch backend correctness — `correct` is GENERIC over the target
 -- `Arch`, but each target must SUPPLY its own backend correctness as an
 -- `ArchCorrect` record. Per-arch coverage is type-enforced: you cannot
@@ -159,9 +198,15 @@ record ArchCorrect (arch : Arch) (as : ArchSemantics) : Set where
     -- (`nothing` ⇒ a library, no entry ⇒ []); def = `flat-events ∘
     -- ir-to-trace` from the loader entry (rides the per-target flat-sim).
     flat-trace : Maybe (IR Unit Unit) → Behavior
-    -- assemble-then-execute reproduces the asm-text meaning.
+    -- assemble-then-execute reproduces the asm-text meaning. HONEST
+    -- precondition (Plan 0.50): `as` is trusted only for asm produced by
+    -- compiling a module whose emitted symbols are distinct — the apex
+    -- supplies this via `program-no-clash` (→ `once-symbol-injective`).
     assemble-correct :
-      ∀ (asm : String) (n : ℕ) →
+      ∀ (m : P.Module) (asm : String) →
+      C.compileFromModule C.Heap C.Build false arch m ≡ C.Built asm →
+      DistinctSymbols m →
+      ∀ (n : ℕ) →
       ArchSemantics.exec-bytes as (ArchSemantics.assemble as asm) n ≡ asm-sem asm n
     -- the emitted asm's meaning equals the flat trace of the compiled IR.
     asm-trace-correct :
@@ -275,9 +320,12 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   -- postulate here: it is the per-arch `assemble-correct` obligation, which the
   -- arch's instance discharges or (today, GNU `as`) postulates.
   string-to-bytes-correct :
-    ∀ (arch : Arch) (asm : String) →
+    ∀ (arch : Arch) (m : P.Module) (asm : String) →
+    C.compileFromModule C.Heap C.Build false arch m ≡ C.Built asm →
     ∀ (n : ℕ) → exec arch (string-to-bytes arch asm) n ≡ (⟦ arch ⟧A asm) n
-  string-to-bytes-correct arch asm n = ArchCorrect.assemble-correct (arch-correct arch) asm n
+  string-to-bytes-correct arch m asm cf n =
+    ArchCorrect.assemble-correct (arch-correct arch) m asm cf
+      (program-no-clash arch m asm cf) n
 
   -- FACTOR 2 — the per-arch asm/printer bridge (`asm-trace-correct`) composed
   -- with the per-arch IR-observable theorem (`ir-flat-correct`). A theorem here;
@@ -431,7 +479,7 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   correct : ∀ (arch : Arch) (doOpt : Bool) (src : Source) →
             Pointwise _≋_ (map (exec arch) (compile arch doOpt src)) (⟦ src ⟧⊥)
   correct arch false src = correct-gm arch false (gmoduleToModule src)
-    (λ m _ ir mi asm cf n → trans (string-to-bytes-correct arch asm n)
+    (λ m _ ir mi asm cf n → trans (string-to-bytes-correct arch m asm cf n)
                                    (trans (module-to-asm-correct arch m asm cf n)
                                           (cong (λ x → ⟦ x ⟧IR n) mi)))
   correct arch true src = correct-gm arch true (gmoduleToModule src)
