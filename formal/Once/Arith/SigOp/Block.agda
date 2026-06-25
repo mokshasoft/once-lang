@@ -35,6 +35,7 @@ open import Data.Maybe using (Maybe; just; nothing)
 
 open import Once.Type using (Type; Int)
 open import Once.SigOp.Info using (SigOpInfo; mk-info; name; Pure)
+open import Once.CanonicalName using (bare)
 
 open import Once.Arith.Machine.AbsState
   using (InputShape; shape-unit; shape-int; shape-pair; ⟦_⟧S; InputPath; Side; Fst; Snd)
@@ -148,6 +149,6 @@ block-semM (aneg a)        inp = W.⊝ block-semM a inp
 -- definitional modular-`Word` evaluator (`block-semM`).
 block-info : ∀ {sh} → MArithIR sh → SigOpInfo (shape-as-type sh) Int
 block-info {sh} e = mk-info
-  (block-name e)
+  (bare (block-name e))
   (block-semM e)
   Pure  -- arith blocks are observably pure (no event, no halt)

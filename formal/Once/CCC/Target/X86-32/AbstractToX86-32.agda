@@ -27,7 +27,7 @@ module Once.CCC.Target.X86-32.AbstractToX86-32 where
 
 open import Data.Nat using (ℕ) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
 open import Data.List using (List; []; _∷_; _++_)
-open import Once.Target.Symbol using (once-symbol)
+open import Once.Target.Symbol using (once-symbol; once-symbol-path)
 
 -- Import x86-32 syntax
 open import Once.CCC.Target.X86-32.Syntax
@@ -211,7 +211,7 @@ compile-abstract (instr-reclaim-to n) = []
 -- Plan 0.11: name-agnostic SigOp codegen.
 -- Emit a single symbolic call; linker resolves the name at build time
 -- to the externally-defined function body. CCC stays name-agnostic.
-compile-abstract (instr-sigop si) = call-sym (once-symbol (SigOpInfo.name si)) ∷ []
+compile-abstract (instr-sigop si) = call-sym (once-symbol-path (SigOpInfo.name si)) ∷ []
 -- Plan 0.11: const literal. X86-32 stub (full per-primitive codegen
 -- not yet implemented for X86-32). Trap so the gap is visible.
 compile-abstract (instr-load-const _ _) = ud2 ∷ []
