@@ -46,8 +46,20 @@ open import Relation.Binary.PropositionalEquality
 open import Relation.Nullary using (¬_; yes; no; Dec)
 open import Data.Empty using (⊥; ⊥-elim)
 
+open import Data.List.Properties using (map-cong; map-∘; ++-cancelˡ)
+                                 renaming (map-injective to mapL-injective)
+open import Data.List.Relation.Unary.All.Properties using (map⁺)
+open import Function using (_∘_)
+import Data.String as Str
+open import Data.String using (String; toList; fromList)
+open import Data.String.Properties using (toList-injective)
+open import Data.String.Unsafe using (toList-++; toList∘fromList)
+
 open import Once.Parser.Lexer using (isIdentStart; isIdentContinue; toNat)
-open import Once.Target.Symbol using (z-encode-char; z-encode-char-aux)
+open import Once.Target.Symbol
+  using (z-encode-char; z-encode-char-aux; z-encode; showNat;
+         mangle-component; join-us; once-prefix; once-symbol-path)
+open import Once.CanonicalName using (CanonicalName; canonical; parts)
 
 ------------------------------------------------------------------------
 -- Digit-character predicate.
@@ -345,3 +357,70 @@ joinL-inj (c ∷ css') [] eq (vc0 ∷ _) vd =
 joinL-inj (c ∷ css') (d ∷ dss') eq (vc0 ∷ vcs) (vd0 ∷ vds) =
   let (c≡d , wEq) = peel (withSep (map mangL css')) (withSep (map mangL dss')) vc0 vd0 eq
   in cong₂ _∷_ c≡d (withSep-inj css' dss' wEq vcs vds)
+
+------------------------------------------------------------------------
+-- String ⇄ char-list bridge, and the headline injectivity theorem.
+--
+-- `toList` is the homomorphism from the String-level mangling
+-- (`mangle-component`/`join-us`/`once-symbol-path`) to the char-list
+-- mirrors above. Pushing `toList` through, cancelling the shared `once_`
+-- prefix, and applying `joinL-inj` recovers the component list; `toList`
+-- injectivity then recovers the component strings, and record-η the name.
+------------------------------------------------------------------------
+
+ValidIdent : String → Set
+ValidIdent s = ValidIdentChars (toList s)
+
+toList-showNat : ∀ (n : ℕ) → toList (showNat n) ≡ charsInBase 10 n
+toList-showNat n = toList∘fromList (charsInBase 10 n)
+
+toList-zencode : ∀ (s : String) → toList (z-encode s) ≡ zencL (toList s)
+toList-zencode s = toList∘fromList (concatMap z-encode-char (toList s))
+
+toList-mangle : ∀ (s : String) → toList (mangle-component s) ≡ mangL (toList s)
+toList-mangle s =
+  trans (toList-++ (showNat L) (z-encode s))
+        (cong₂ _++_
+          (trans (toList-showNat L) (cong (charsInBase 10) (cong length (toList-zencode s))))
+          (toList-zencode s))
+  where L = length (toList (z-encode s))
+
+toList-joinUs : ∀ (strs : List String) → toList (join-us strs) ≡ joinUsL' (map toList strs)
+toList-joinUs [] = refl
+toList-joinUs (x ∷ []) = sym (++-identityʳ (toList x))
+  where open import Data.List.Properties using (++-identityʳ)
+toList-joinUs (x ∷ y ∷ xs) =
+  trans (toList-++ x ("_" Str.++ join-us (y ∷ xs)))
+        (cong (toList x ++_)
+          (trans (toList-++ "_" (join-us (y ∷ xs)))
+                 (cong ('_' ∷_) (toList-joinUs (y ∷ xs)))))
+
+-- component-body relation: map toList ∘ map mangle-component ≡ map mangL ∘ map toList
+body-rel : ∀ (p : List String) → map toList (map mangle-component p) ≡ map mangL (map toList p)
+body-rel p = trans (sym (map-∘ p)) (trans (map-cong toList-mangle p) (map-∘ p))
+
+once-symbol-path-injective :
+  ∀ (cn₁ cn₂ : CanonicalName)
+  → All ValidIdent (parts cn₁) → All ValidIdent (parts cn₂)
+  → once-symbol-path cn₁ ≡ once-symbol-path cn₂ → cn₁ ≡ cn₂
+once-symbol-path-injective cn₁ cn₂ v1 v2 eq =
+  cong canonical
+    (mapL-injective (λ {a} {b} → toList-injective a b)
+      (joinL-inj (map toList (parts cn₁)) (map toList (parts cn₂))
+        bodyEq (map⁺ v1) (map⁺ v2)))
+  where
+    M : CanonicalName → String
+    M cn = join-us (map mangle-component (parts cn))
+    -- cancel the shared `once_` prefix at the char-list level
+    teq : toList (M cn₁) ≡ toList (M cn₂)
+    teq = ++-cancelˡ (toList once-prefix) _ _
+      (trans (sym (toList-++ once-prefix (M cn₁)))
+             (trans (cong toList eq) (toList-++ once-prefix (M cn₂))))
+    bodyEq : joinUsL' (map mangL (map toList (parts cn₁)))
+           ≡ joinUsL' (map mangL (map toList (parts cn₂)))
+    bodyEq =
+      trans (sym (trans (toList-joinUs (map mangle-component (parts cn₁)))
+                        (cong joinUsL' (body-rel (parts cn₁)))))
+            (trans teq
+                   (trans (toList-joinUs (map mangle-component (parts cn₂)))
+                          (cong joinUsL' (body-rel (parts cn₂)))))
