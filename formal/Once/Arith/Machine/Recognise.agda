@@ -39,6 +39,7 @@ open import Relation.Nullary using (Dec; yes; no)
 open import Once.Type using (Type; Unit; Int)
 open import Once.IR
 open import Once.SigOp.Info using (SigOpInfo; name)
+open import Once.CanonicalName using (bare; _≟ᶜ_)
 
 open import Once.Arith.Machine.AbsState
   using (InputShape; shape-int; shape-pair; InputPath;
@@ -83,17 +84,17 @@ recognise-path _         = nothing
 recognise-body : (sh : InputShape) → ∀ {A B} → IR A B → Maybe (MArithIR sh)
 
 -- Binary-op SigOp ∘ ⟨_,_⟩ — pattern-matches three constructors deep.
-recognise-body sh (SigOp si ∘ ⟨ a , b ⟩ _) with name si ≟ "arith.add.int"
+recognise-body sh (SigOp si ∘ ⟨ a , b ⟩ _) with name si ≟ᶜ bare "arith.add.int"
 ... | yes _  with recognise-body sh a | recognise-body sh b
 ...   | just ra | just rb = just (aadd ra rb)
 ...   | just _  | nothing = nothing
 ...   | nothing | _       = nothing
-recognise-body sh (SigOp si ∘ ⟨ a , b ⟩ _) | no _ with name si ≟ "arith.sub.int"
+recognise-body sh (SigOp si ∘ ⟨ a , b ⟩ _) | no _ with name si ≟ᶜ bare "arith.sub.int"
 ...   | yes _ with recognise-body sh a | recognise-body sh b
 ...     | just ra | just rb = just (asub ra rb)
 ...     | just _  | nothing = nothing
 ...     | nothing | _       = nothing
-recognise-body sh (SigOp si ∘ ⟨ a , b ⟩ _) | no _ | no _ with name si ≟ "arith.mul.int"
+recognise-body sh (SigOp si ∘ ⟨ a , b ⟩ _) | no _ | no _ with name si ≟ᶜ bare "arith.mul.int"
 ...     | yes _ with recognise-body sh a | recognise-body sh b
 ...       | just ra | just rb = just (amul ra rb)
 ...       | just _  | nothing = nothing
@@ -101,7 +102,7 @@ recognise-body sh (SigOp si ∘ ⟨ a , b ⟩ _) | no _ | no _ with name si ≟ 
 recognise-body sh (SigOp si ∘ ⟨ a , b ⟩ _) | no _ | no _ | no _ = nothing
 
 -- Unary-op SigOp ∘ e — `arith.neg.int`.
-recognise-body sh (SigOp si ∘ e) with name si ≟ "arith.neg.int"
+recognise-body sh (SigOp si ∘ e) with name si ≟ᶜ bare "arith.neg.int"
 ... | yes _ with recognise-body sh e
 ...   | just r  = just (aneg r)
 ...   | nothing = nothing

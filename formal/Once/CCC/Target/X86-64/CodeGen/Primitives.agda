@@ -21,7 +21,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.CCC.Target.X86-64.Syntax
   using (rax; reg; imm; mov; ud2; call-sym; Program)
-open import Once.Target.Symbol using (once-symbol)
+open import Once.Target.Symbol using (once-symbol-path)
+open import Once.CanonicalName using (CanonicalName)
 open import Once.Type using (FitsInReg; fits-int; fits-float)
 import Once.Semantics.Value as SC
 open import Once.Word using (Carrier)
@@ -29,13 +30,13 @@ open import Once.Word using (Carrier)
 ------------------------------------------------------------------------
 -- Plan 0.11: SigOp call by symbolic name.
 ------------------------------------------------------------------------
-compile-sigOp : String → Program
-compile-sigOp name = call-sym (once-symbol name) ∷ []
+compile-sigOp : CanonicalName → Program
+compile-sigOp name = call-sym (once-symbol-path name) ∷ []
 
-compile-sigOp-size : String → ℕ
+compile-sigOp-size : CanonicalName → ℕ
 compile-sigOp-size _ = 1
 
-compile-sigOp-length : ∀ (name : String) → length (compile-sigOp name) ≡ compile-sigOp-size name
+compile-sigOp-length : ∀ (name : CanonicalName) → length (compile-sigOp name) ≡ compile-sigOp-size name
 compile-sigOp-length _ = refl
 
 ------------------------------------------------------------------------
