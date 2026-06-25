@@ -11,7 +11,7 @@
 module Once.Parser where
 
 open import Data.Bool using (Bool; true; false; not; _∧_; _∨_)
-open import Data.List using (List; []; _∷_)
+open import Data.List using (List; []; _∷_; map)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_; proj₁)
 open import Data.String using (String; _≟_; _++_)
@@ -299,8 +299,34 @@ extractFunctions-go aliases (DSignature name (just owner) ty _ ∷ rest) _ with 
          in extractFunctions-consFun (extractFunctions-go aliases rest nothing) (mkFunInfo qname (just gty) nothing (RVar qname) true)
 extractFunctions-go aliases (_ ∷ rest) pending = extractFunctions-go aliases rest pending
 
+-- Plan 0.50 (clash-freedom): REJECT duplicate top-level definition names. Two
+-- definitions named `foo` both compile to the symbol `once_…foo` → "symbol
+-- already defined" / a misdirected call. Enforcing distinctness HERE —
+-- `extractFunctions` feeds BOTH `moduleToIR` (the compiler) and `ModuleTyped`
+-- (the typing predicate) — makes a duplicate a compile error AND makes any typed
+-- module IMPLY distinct names (the no-clash theorem's precondition, for free).
+nameElem : String → List String → Bool
+nameElem _ []       = false
+nameElem x (y ∷ ys) with x ≟ y
+... | yes _ = true
+... | no  _ = nameElem x ys
+
+namesDistinct : List String → Bool
+namesDistinct []       = true
+namesDistinct (x ∷ xs) = not (nameElem x xs) ∧ namesDistinct xs
+
+-- Guard `extractFunctions-go`'s result on name-distinctness (with-free dispatch).
+distinctOrErr : Bool → EFResult → EFResult
+distinctOrErr true  r = r
+distinctOrErr false _ = inj₁ "duplicate top-level definition name"
+
+guardDistinct : EFResult → EFResult
+guardDistinct (inj₁ err)            = inj₁ err
+guardDistinct (inj₂ (funs , polys)) =
+  distinctOrErr (namesDistinct (map FunInfo.funName funs)) (inj₂ (funs , polys))
+
 extractFunctions : TypeAliasEnv → Module → String ⊎ (List FunInfo × List PolyFunInfo)
-extractFunctions aliases (mkModule ds) = extractFunctions-go aliases ds nothing
+extractFunctions aliases (mkModule ds) = guardDistinct (extractFunctions-go aliases ds nothing)
 
 -- Plan 0.6.2: `inlineAll`, `inlineAllWithPoly`, `polySeedDefs` all
 -- removed. The eager RawExpr-level inlining pipeline is replaced by
