@@ -106,19 +106,43 @@ agree-RUnaryOp (success (_ Once.Type.⇒[ _ ] _) _ _ _ _ , _) () subAg
 agree-RUnaryOp (success (Once.Type.μ-type _) _ _ _ _ , _) () subAg
 agree-RUnaryOp (success (Once.Type.ν-type _) _ _ _ _ , _) () subAg
 
--- `let'` agreement combinator: if the bound expr and body each agree with
--- their `realize` counterpart (the body over the EXTENDED env), so does the
--- `let'`. `_>>=T_` evaluates the bound expr at `k` (fixing `v1`), then the body
--- at `(dγ , v1)` at `k` — rewrite the bound IH first, then the body IH at the
--- now-fixed `v1`.
-let'-agree : ∀ {ctx : NamedCtx} {x A B} {Ψ₁ Ψ₂ : Usage (NamedCtx.size ctx)} {q}
-  {e₁E r₁ : Expr (NamedCtx.debruijn ctx) Ψ₁ A}
-  {e₂E r₂ : Expr (NamedCtx.debruijn (extendNamedCtx ctx x A)) (q ∷ᵘ Ψ₂) B}
-  → (∀ dγ k → SD.⟦ e₁E ⟧ˢ dγ k ≡ SD.⟦ r₁ ⟧ˢ dγ k)
-  → (∀ dγ' k → SD.⟦ e₂E ⟧ˢ dγ' k ≡ SD.⟦ r₂ ⟧ˢ dγ' k)
-  → ∀ dγ k → SD.⟦ let' e₁E e₂E ⟧ˢ dγ k ≡ SD.⟦ let' r₁ r₂ ⟧ˢ dγ k
-let'-agree {r₁ = r₁} ag1 ag2 dγ k
-  rewrite ag1 dγ k | ag2 (dγ , proj₂ (SD.⟦ r₁ ⟧ˢ dγ k)) k = refl
+-- RLet folded with-free via two levels (e₂'s context depends on e₁'s type A):
+-- `agree-RLet` matches the e₁ result, `agree-RLet2` the e₂ result; the let'
+-- agreement threads `v1` through `_>>=T_` by inline rewrite (rewrite the bound
+-- IH at `(dγ,k)` — fixing `v1` — then the body IH at the now-fixed
+-- `(dγ, proj₂ ⟦realize w₁⟧)`). The e₂ IH
+-- is passed as a function of A (only knowable after matching e₁).
+agree-RLet2 : ∀ {ctx : NamedCtx} {x e₁ e₂ A B} {Ψ₁ : Usage (NamedCtx.size ctx)}
+  {Ψ : Usage (NamedCtx.size ctx)}
+  {se : Expr (NamedCtx.debruijn ctx) Ψ B} {d f} {w : ctx ⊢ᵢ Raw.RLet x e₁ e₂ ∶ B ⨾ Ψ}
+  (e₁E : Expr (NamedCtx.debruijn ctx) Ψ₁ A) (d₁ f₁ : ℕ) (w₁ : ctx ⊢ᵢ e₁ ∶ A ⨾ Ψ₁)
+  (rE2 : VerifiedInferResult (extendNamedCtx ctx x A) e₂)
+  → E.inferElabV-RLet-aux2 ctx x e₁ e₂ e₁E d₁ f₁ w₁ rE2 ≡ (success B Ψ se d f , w)
+  → (∀ dγ k → SD.⟦ e₁E ⟧ˢ dγ k ≡ SD.⟦ realize-infer w₁ ⟧ˢ dγ k)
+  → (∀ {B' q Ψ₂' e₂E d₂' f₂'} {w₂ : extendNamedCtx ctx x A ⊢ᵢ e₂ ∶ B' ⨾ (q ∷ᵘ Ψ₂')}
+       → rE2 ≡ (success B' (q ∷ᵘ Ψ₂') e₂E d₂' f₂' , w₂)
+       → ∀ dγ' k → SD.⟦ e₂E ⟧ˢ dγ' k ≡ SD.⟦ realize-infer w₂ ⟧ˢ dγ' k)
+  → ∀ dγ k → SD.⟦ se ⟧ˢ dγ k ≡ SD.⟦ realize-infer w ⟧ˢ dγ k
+agree-RLet2 e₁E d₁ f₁ w₁ (success B (q ∷ᵘ Ψ₂) e₂E d₂ f₂ , w₂) refl e₁ag e₂IH dγ k
+  rewrite e₁ag dγ k | e₂IH refl (dγ , proj₂ (SD.⟦ realize-infer w₁ ⟧ˢ dγ k)) k = refl
+agree-RLet2 e₁E d₁ f₁ w₁ (failure _ , _) () e₁ag e₂IH
+
+agree-RLet : ∀ {ctx : NamedCtx} {x e₁ e₂ B} {Ψ : Usage (NamedCtx.size ctx)}
+  {se : Expr (NamedCtx.debruijn ctx) Ψ B} {d f} {w : ctx ⊢ᵢ Raw.RLet x e₁ e₂ ∶ B ⨾ Ψ}
+  (rE1 : VerifiedInferResult ctx e₁)
+  → E.inferElabV-RLet-aux ctx x e₁ e₂ rE1 ≡ (success B Ψ se d f , w)
+  → (∀ {A Ψ₁ e₁E d₁ f₁} {w₁ : ctx ⊢ᵢ e₁ ∶ A ⨾ Ψ₁}
+       → rE1 ≡ (success A Ψ₁ e₁E d₁ f₁ , w₁) → ∀ dγ k → SD.⟦ e₁E ⟧ˢ dγ k ≡ SD.⟦ realize-infer w₁ ⟧ˢ dγ k)
+  → (∀ {A} → (rE2 : VerifiedInferResult (extendNamedCtx ctx x A) e₂)
+       → E.inferElabV (extendNamedCtx ctx x A) e₂ ≡ rE2
+       → ∀ {B' q Ψ₂' e₂E d₂' f₂'} {w₂ : extendNamedCtx ctx x A ⊢ᵢ e₂ ∶ B' ⨾ (q ∷ᵘ Ψ₂')}
+         → rE2 ≡ (success B' (q ∷ᵘ Ψ₂') e₂E d₂' f₂' , w₂)
+         → ∀ dγ' k → SD.⟦ e₂E ⟧ˢ dγ' k ≡ SD.⟦ realize-infer w₂ ⟧ˢ dγ' k)
+  → ∀ dγ k → SD.⟦ se ⟧ˢ dγ k ≡ SD.⟦ realize-infer w ⟧ˢ dγ k
+agree-RLet {ctx} {x} {e₁} {e₂} (success A Ψ₁ e₁E d₁ f₁ , w₁) eq e₁IH e₂IH dγ k =
+  agree-RLet2 e₁E d₁ f₁ w₁ (E.inferElabV (extendNamedCtx ctx x A) e₂) eq
+              (e₁IH refl) (λ p → e₂IH (E.inferElabV (extendNamedCtx ctx x A) e₂) refl p) dγ k
+agree-RLet (failure _ , _) () e₁IH e₂IH
 
 mutual
   infer-agreeV : ∀ (ctx : NamedCtx) (e : RawExpr) {A Ψ se d f w}
@@ -134,22 +158,10 @@ mutual
       (λ p → infer-agreeV ctx a p) (λ p → infer-agreeV ctx b p) dγ k
   infer-agreeV ctx (Raw.RUnaryOp Raw.OpNeg e) eq dγ k =
     agree-RUnaryOp (E.inferElabV ctx e) eq (λ p → infer-agreeV ctx e p) dγ k
-  infer-agreeV ctx (Raw.RLet x e₁ e₂) eq dγ k
-    with E.inferElabV ctx e₁ in eq1
-  ... | failure _ , _ with eq
-  ...   | ()
-  infer-agreeV ctx (Raw.RLet x e₁ e₂) eq dγ k
-    | success A Ψ₁ e₁E d₁ f₁ , w₁
-        with E.inferElabV (extendNamedCtx ctx x A) e₂ in eq2
-  ...     | failure _ , _ with eq
-  ...       | ()
-  infer-agreeV ctx (Raw.RLet x e₁ e₂) eq dγ k
-    | success A Ψ₁ e₁E d₁ f₁ , w₁
-    | success B (q ∷ᵘ Ψ₂) e₂E d₂ f₂ , w₂ with eq
-  ...     | refl
-            rewrite infer-agreeV ctx e₁ {A} {Ψ₁} {e₁E} {d₁} {f₁} {w₁} eq1 dγ k
-                  | infer-agreeV (extendNamedCtx ctx x A) e₂ {B} {q ∷ᵘ Ψ₂} {e₂E} {d₂} {f₂} {w₂} eq2
-                      (dγ , proj₂ (SD.⟦ realize-infer w₁ ⟧ˢ dγ k)) k = refl
+  infer-agreeV ctx (Raw.RLet x e₁ e₂) eq dγ k =
+    agree-RLet (E.inferElabV ctx e₁) eq
+      (λ p → infer-agreeV ctx e₁ p)
+      (λ {A} rE2 eqRE2 p → infer-agreeV (extendNamedCtx ctx x A) e₂ (trans eqRE2 p)) dγ k
   infer-agreeV ctx e eq = infer-agreeV-todo ctx e eq
 
   check-agreeV : ∀ (ctx : NamedCtx) (e : RawExpr) (T : Type) {Ψ se d f w}
