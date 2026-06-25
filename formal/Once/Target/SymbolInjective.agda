@@ -27,24 +27,26 @@
 
 module Once.Target.SymbolInjective where
 
-open import Data.Bool using (Bool; true; false; _∨_)
+open import Data.Bool using (Bool; true; false; _∨_; T)
 open import Data.Char using (Char; isAlpha; isDigit; toℕ)
 open import Data.Char.Properties using (_≟_) renaming (toℕ-injective to charToℕ-injective)
 open import Data.Fin using (Fin; zero; suc)
 open import Data.List using (List; []; _∷_; _++_; map; concatMap; length)
 open import Data.List.Properties using (∷-injective)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
-open import Data.Nat using (ℕ; zero; suc)
+open import Data.Nat using (ℕ; zero; suc; _≡ᵇ_)
+open import Data.Nat.Properties using (≡ᵇ⇒≡)
 open import Data.Nat.Show using (showInBase; charsInBase)
 open import Data.Digit using (showDigit)
 open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂; ∃; ∃-syntax; Σ-syntax)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
+open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality
-  using (_≡_; refl; cong; cong₂; sym; trans)
+  using (_≡_; refl; cong; cong₂; sym; trans; subst)
 open import Relation.Nullary using (¬_; yes; no; Dec)
 open import Data.Empty using (⊥; ⊥-elim)
 
-open import Once.Parser.Lexer using (isIdentStart; isIdentContinue)
+open import Once.Parser.Lexer using (isIdentStart; isIdentContinue; toNat)
 open import Once.Target.Symbol using (z-encode-char; z-encode-char-aux)
 
 ------------------------------------------------------------------------
@@ -180,3 +182,71 @@ zencL-inj (x ∷ xs) [] eq = ⊥-elim (zenc++-nonempty (zec-class x) (zencL xs) 
 zencL-inj (x ∷ xs) (y ∷ ys) eq =
   let (x≡y , zz) = consStep xs ys (zec-class x) (zec-class y) eq
   in cong₂ _∷_ x≡y (zencL-inj xs ys zz)
+
+------------------------------------------------------------------------
+-- Length-prefix self-delimiting machinery.
+--
+-- The decimal length-prefix `charsInBase 10 n` is made of digit chars,
+-- while a z-encoded LEXER identifier starts with a NON-digit (the first
+-- char is `isIdentStart` — alphabetic or `_` — or, if special, the escape
+-- `z`). So in `<digits><component>…` the maximal digit run is exactly the
+-- length prefix: the boundary is forced. `digit-prefix-unique` makes that
+-- precise; `len-prefix-cancel` then splits at the (now known) length.
+------------------------------------------------------------------------
+
+false≢true : false ≡ true → ⊥
+false≢true ()
+
+-- Every char in `charsInBase 10 n` is a digit char.
+all-digits-mapped : ∀ (zs : List (Fin 10)) → All IsDigitC (map (showDigit {10}) zs)
+all-digits-mapped [] = []
+all-digits-mapped (z ∷ zs) = showDigit10-isDigit z ∷ all-digits-mapped zs
+
+charsInBase-all-digits : ∀ (n : ℕ) → All IsDigitC (charsInBase 10 n)
+charsInBase-all-digits n = all-digits-mapped _
+
+-- A `true` disjunction splits into a `true` disjunct.
+∨-true-split : ∀ (a b : Bool) → (a ∨ b) ≡ true → (a ≡ true) ⊎ (b ≡ true)
+∨-true-split true  b _  = inj₁ refl
+∨-true-split false true _ = inj₂ refl
+∨-true-split false false ()
+
+-- A lexer identifier-start char is never a decimal digit.
+identStart⇒¬digit : ∀ {c} → isIdentStart c ≡ true → isDigit c ≡ false
+identStart⇒¬digit {c} h = go (∨-true-split (isAlpha c) (toNat c ≡ᵇ toNat '_') h)
+  where
+    go : (isAlpha c ≡ true) ⊎ ((toNat c ≡ᵇ toNat '_') ≡ true) → isDigit c ≡ false
+    go (inj₁ a) = alpha⇒¬digit {c} a
+    go (inj₂ u) = cong isDigit (charToℕ-injective c '_' (≡ᵇ⇒≡ (toNat c) (toNat '_') (subst T (sym u) tt)))
+
+-- "the list is empty, or its head is a non-digit char"
+HeadNotDigit : List Char → Set
+HeadNotDigit [] = ⊤
+HeadNotDigit (c ∷ _) = isDigit c ≡ false
+
+-- The decimal length-prefix is uniquely determined: matching digit prefixes
+-- (each followed by a non-digit) coincide, and so do the remainders.
+digit-prefix-unique : ∀ (D1 D2 r1 r2 : List Char)
+  → All IsDigitC D1 → All IsDigitC D2 → HeadNotDigit r1 → HeadNotDigit r2
+  → D1 ++ r1 ≡ D2 ++ r2 → (D1 ≡ D2) × (r1 ≡ r2)
+digit-prefix-unique [] [] r1 r2 _ _ _ _ eq = refl , eq
+digit-prefix-unique [] (d2 ∷ D2') r1 r2 _ (ad2 ∷ _) hnd1 _ eq =
+  ⊥-elim (false≢true (trans (sym (subst HeadNotDigit eq hnd1)) ad2))
+digit-prefix-unique (d1 ∷ D1') [] r1 r2 (ad1 ∷ _) _ _ hnd2 eq =
+  ⊥-elim (false≢true (trans (sym (subst HeadNotDigit (sym eq) hnd2)) ad1))
+digit-prefix-unique (d1 ∷ D1') (d2 ∷ D2') r1 r2 (_ ∷ aD1) (_ ∷ aD2) hnd1 hnd2 eq =
+  let (d1≡d2 , eqrest) = ∷-injective eq
+      (D1'≡D2' , r1≡r2) = digit-prefix-unique D1' D2' r1 r2 aD1 aD2 hnd1 hnd2 eqrest
+  in cong₂ _∷_ d1≡d2 D1'≡D2' , r1≡r2
+
+-- Equal-length prefixes of equal concatenations coincide (with remainders).
+len-prefix-cancel : ∀ (A B s t : List Char)
+  → length A ≡ length B → A ++ s ≡ B ++ t → (A ≡ B) × (s ≡ t)
+len-prefix-cancel [] [] s t _ eq = refl , eq
+len-prefix-cancel (a ∷ A') (b ∷ B') s t leq eq =
+  let (a≡b , eqrest) = ∷-injective eq
+      (A'≡B' , s≡t) = len-prefix-cancel A' B' s t (cong-pred leq) eqrest
+  in cong₂ _∷_ a≡b A'≡B' , s≡t
+  where
+    cong-pred : ∀ {m n : ℕ} → suc m ≡ suc n → m ≡ n
+    cong-pred refl = refl
