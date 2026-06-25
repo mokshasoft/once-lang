@@ -27,17 +27,22 @@ open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂)
 
 import Once.Type
-open import Once.Type using (Type; Int)
+open import Once.Type using (Type; Int; Unit; Purity; pure; eff; mk-kind; Many; _⇒[_]_; isUnit?)
 open import Once.TypeCheck.Raw as Raw using (RawExpr)
-open import Once.TypeCheck.Classify using (NamedCtx; extendNamedCtx)
+open import Once.TypeCheck.Classify using (NamedCtx; extendNamedCtx; lookupSigEffect)
 open import Once.TypeCheck.Elaborate using (success; failure; VerifiedInferResult)
 import Once.TypeCheck.Elaborate as E
+open import Once.IR as IR using (IR)
+open import Once.SigEffect using (SigEffect) renaming (halts to se-halts; emits to se-emits)
+open import Data.Maybe using (Maybe; just; nothing)
+open import Relation.Nullary using (Dec; yes; no)
 open import Once.TypeCheck.Judgment using (_⊢ᵢ_∶_⨾_; _⊢ᶜ_∶_⨾_; t-int; t-str; t-unit; t-pair; t-neg; t-let)
 open import Once.Denotation.Realize using (realize; realize-infer)
-open import Once.Surface.Syntax as Surface using (Expr; Usage; ⟦_⟧ᶜ; pair; neg; let')
+open import Once.Surface.Syntax as Surface using (Expr; Usage; ⟦_⟧ᶜ; pair; neg; let'; sigOp; lift-morphism)
 open Surface.Usage using () renaming (_∷_ to _∷ᵘ_)
 open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ)
 import Once.Denotation.SourceDenote as SD
+open import Once.CanonicalName using (CanonicalName; showCanonical)
 
 private
   Env : NamedCtx → Set
@@ -143,6 +148,42 @@ agree-RLet {ctx} {x} {e₁} {e₂} (success A Ψ₁ e₁E d₁ f₁ , w₁) eq e
   agree-RLet2 e₁E d₁ f₁ w₁ (E.inferElabV (extendNamedCtx ctx x A) e₂) eq
               (e₁IH refl) (λ p → e₂IH (E.inferElabV (extendNamedCtx ctx x A) e₂) refl p) dγ k
 agree-RLet (failure _ , _) () e₁IH e₂IH
+
+-- THE MASQUERADE (Plan 0.50): at a `Many`-arrow, the elaborator's effect-aware
+-- `lift-morphism (IR.SigOp (ext-resolved-info cn π))` denotes the same as
+-- `realize`'s `sigOp cn`. Now `refl` (after the effect-as-leaf-annotation fix):
+-- both read the effect off the arrow's `Purity` via the SHARED `isUnit?`, and
+-- `emit-D` collapses `Emits`/`Halts` (the event reads only the name = `cn`),
+-- `semM` collapses to `tt`. `pure` → both `value-info`; `eff` → one `isUnit?`
+-- case-split, the `Unit` branch one `lookupSigEffect` split, every leaf `refl`.
+masq : ∀ {ctx : NamedCtx} {Dom Cod : Type} (cn : CanonicalName) (π : Purity)
+       (dγ : Env ctx) (k : ℕ)
+     → SD.⟦ lift-morphism {Γ = NamedCtx.debruijn ctx} {π = π} (IR.SigOp (E.ext-resolved-info {Dom} {Cod} ctx cn π)) ⟧ˢ dγ k
+      ≡ SD.⟦ sigOp {Γ = NamedCtx.debruijn ctx} {A = Dom ⇒[ mk-kind Many π ] Cod} cn ⟧ˢ dγ k
+-- `Cod ≡ Unit` branch: the arrow is an effect contract. `emit-D` collapses
+-- `Emits`/`Halts` to the same event (it reads only `name = cn`), so every
+-- `lookupSigEffect` outcome — `se-halts`, `se-emits`, `nothing` — denotes the
+-- same thing as `realize`'s `sigOp cn` (whose `arrow-info-eff cn (isUnit? Unit)`
+-- = `emitsV`). All three leaves are `refl`. No `with` (mse is an explicit arg).
+masq-unit : ∀ {ctx : NamedCtx} {Dom : Type} (cn : CanonicalName) (mse : Maybe SigEffect)
+            (dγ : Env ctx) (k : ℕ)
+          → SD.⟦ lift-morphism {Γ = NamedCtx.debruijn ctx} {π = eff} (IR.SigOp (E.ext-resolved-info-aux {Dom} {Unit} cn eff (yes refl) mse)) ⟧ˢ dγ k
+           ≡ SD.⟦ sigOp {Γ = NamedCtx.debruijn ctx} {A = Dom ⇒[ mk-kind Many eff ] Unit} cn ⟧ˢ dγ k
+masq-unit cn (just se-halts) dγ k = refl
+masq-unit cn (just se-emits) dγ k = refl
+masq-unit cn nothing         dγ k = refl
+
+-- The outer dispatch on `isUnit? Cod` is a `with` (NOT a Dec-arg helper): the
+-- scrutinee appears in the GOAL via `⟦ sigOp … ⟧ˢ` (which computes `isUnit? Cod`
+-- internally), and only the `yes refl` UNIFICATION (`Cod := Unit`) reduces that
+-- hidden occurrence. A helper taking the `Dec` explicitly would leave the RHS's
+-- `isUnit? Cod` stuck. `masq` is a leaf equality lemma — opaque downstream — so
+-- the `with` blocks no later proof's reduction. The inner mse split lives in the
+-- with-free `masq-unit`, keeping this a single, flat `with`.
+masq {ctx} {Dom} {Cod} cn pure dγ k = refl
+masq {ctx} {Dom} {Cod} cn eff dγ k with isUnit? Cod
+... | no _ = refl
+... | yes refl = masq-unit {ctx} {Dom} cn (lookupSigEffect (NamedCtx.sigEffects ctx) (showCanonical cn)) dγ k
 
 mutual
   infer-agreeV : ∀ (ctx : NamedCtx) (e : RawExpr) {A Ψ se d f w}

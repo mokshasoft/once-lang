@@ -57,7 +57,18 @@ record SigOpEvent : Set where
 
 open SigOpEvent public
 
+-- Project the SigOp's `name` BEFORE the `isInt?` dispatch, so the event
+-- depends only on the CanonicalName (and the arg), never on the rest of the
+-- `SigOpInfo`. This keeps `mkEvent` reducing when the domain `D` is abstract:
+-- otherwise the `with isInt? D` is stuck on an abstract `D`, retains the whole
+-- `si` inside the stalled `with`, and forces callers to compare unrelated
+-- `sem` fields (e.g. `haltsV refl` vs `emitsV refl` in the realize-agrees
+-- masquerade). The trace observes only the name + Int-arg — exactly what this
+-- helper consumes — so two infos with the same `name` give the same event,
+-- definitionally, regardless of effect shape. (De-with discipline.)
+mkEvent-name : ∀ {D} → CanonicalName → Maybe (D ≡ Int) → M.⟦ D ⟧ → SigOpEvent
+mkEvent-name nm (just refl) arg = mk-event nm (just arg)
+mkEvent-name nm nothing     arg = mk-event nm nothing
+
 mkEvent : ∀ {D R} → SigOpInfo D R → M.⟦ D ⟧ → SigOpEvent
-mkEvent {D} si arg with isInt? D
-... | just refl = mk-event (name si) (just arg)
-... | nothing   = mk-event (name si) nothing
+mkEvent {D} si arg = mkEvent-name (name si) (isInt? D) arg
