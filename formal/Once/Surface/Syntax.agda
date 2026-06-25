@@ -20,6 +20,7 @@ open import Data.Bool using (Bool; true; _∧_)
 open import Data.Integer using (ℤ)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Data.String using (String)
+open import Once.CanonicalName using (CanonicalName)
 
 -- | Typing context (de Bruijn indexed with quantities)
 --
@@ -254,7 +255,7 @@ data Expr : ∀ {n} → Ctx n → Usage n → Type → Set where
   -- contract `sigOp` is intended to enforce by being reserved for
   -- externally-provided routines (declared via `signature foo : …`).
   -- User-defined top-level fns use `closure` instead (see below).
-  sigOp    : ∀ {n} {Γ : Ctx n} {A} → String → Expr Γ zeroUsage A
+  sigOp    : ∀ {n} {Γ : Ctx n} {A} → CanonicalName → Expr Γ zeroUsage A
 
   -- Plan 0.19: user-defined top-level fn reference.
   --

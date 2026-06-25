@@ -31,6 +31,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.Type using (Type; Int)
 open import Once.SigOp.Info using (SigOpInfo; name)
+open import Once.CanonicalName using (CanonicalName)
 open import Once.Word using (Carrier)
 import Once.Semantics.Value Carrier as M
 
@@ -51,7 +52,7 @@ isInt? _   = nothing
 record SigOpEvent : Set where
   constructor mk-event
   field
-    ev-name : String
+    ev-name : CanonicalName   -- Plan 0.50: the resolved identity (was String)
     ev-argℕ : Maybe ℕ   -- the argument as ℕ, when the SigOp's input is Int
 
 open SigOpEvent public
