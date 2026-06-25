@@ -48,6 +48,21 @@ library
       MAlonzo.RTE
   other-modules:
       Paths_once
+      MAlonzo.Code.Data.Maybe.Relation.Binary.Pointwise
+      MAlonzo.Code.Once.CanonicalName
+      MAlonzo.Code.Once.Denotation.Realize
+      MAlonzo.Code.Once.TypeCheck.Completeness
+      MAlonzo.Code.Once.TypeCheck.MorphComplete
+      MAlonzo.Code.Once.TypeCheck.Soundness
+      MAlonzo.Code.Once.Adequacy.AcceptSound
+      MAlonzo.Code.Once.Adequacy.MainBuilds
+      MAlonzo.Code.Once.Adequacy.MainExtract
+      MAlonzo.Code.Once.Adequacy.MainIRForm
+      MAlonzo.Code.Once.Adequacy.MainRealizeAgrees
+      MAlonzo.Code.Once.Adequacy.ModuleComplete
+      MAlonzo.Code.Once.Adequacy.RealizeAgrees
+      MAlonzo.Code.Once.Adequacy.RealizeBridge
+      MAlonzo.Code.Once.Adequacy.WrapBridge
       MAlonzo.Code.Agda.Builtin.Bool
       MAlonzo.Code.Agda.Builtin.Char
       MAlonzo.Code.Agda.Builtin.Char.Properties
