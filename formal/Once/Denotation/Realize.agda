@@ -54,6 +54,7 @@ open import Once.Surface.Syntax using (Expr; Usage;
   lift-morphism; morph-app)
 open import Once.Surface.Elaborate using (intLit; elaborate)
 open import Once.Arith.SigOp.Builders using (value-info)
+open import Once.CanonicalName using (bare)
 
 -- The reference elaboration (D063): a mutual block
 --   realize       (⊢ᶜ → SExpr)   -- check-mode
@@ -122,7 +123,7 @@ realize-morph (m-cata {wfF = wfF} _ dalg) =
   IR.Cata wfF (IR.apply ∘ ⟨ elaborate IR.Heap (realize dalg) ∘ IR.terminal , IR.id ⟩ IR.Heap)
 realize-morph (m-arr df)        = realize-morph df
 realize-morph (m-const gd)      = realize-global gd
-realize-morph (m-named {x = x} _ _ _) = IR.SigOp (value-info x)
+realize-morph (m-named {x = x} _ _ _) = IR.SigOp (value-info (bare x))
 
 ------------------------------------------------------------------------
 -- realize (⊢ᶜ) — check-mode reference elaboration.
@@ -152,8 +153,8 @@ realize-infer (t-str s)         = str s
 realize-infer t-unit            = unit
 realize-infer t-unit-var        = unit
 realize-infer (t-var-local {eE = eE} _ _) = eE
-realize-infer (t-var-qualified {name = name} {alias = alias} _) = sigOp (alias ++ "." ++ name)
-realize-infer (t-var-import {x = x} _ _ _) = sigOp x
+realize-infer (t-var-qualified {name = name} {alias = alias} _) = sigOp (bare (alias ++ "." ++ name))
+realize-infer (t-var-import {x = x} _ _ _) = sigOp (bare x)
 realize-infer (t-annot d)       = realize d
 realize-infer (t-pair da db)    = pair (realize-infer da) (realize-infer db)
 realize-infer (t-neg d)         = neg (realize-infer d)
