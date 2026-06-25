@@ -32,7 +32,7 @@ open import Data.Unit using (⊤)
 
 open import Once.Type using (Type; Unit; Int; Str; _*_; _+_;
                               ArrowKind; mk-kind; Purity; pure; eff)
-open import Once.SigOp.Info using (SigOpInfo; mk-info; EffectShape; Pure; Halts)
+open import Once.SigOp.Info using (SigOpInfo; mk-info; mk-info'; emitsV; EffectShape; Pure; Halts)
 open import Once.CanonicalName using (CanonicalName; bare; showCanonical)
 open import Relation.Binary.PropositionalEquality using (refl)
 
@@ -181,5 +181,15 @@ value-info name = mk-info name (generic-semM (showCanonical name)) Pure
 generic-info : ∀ {A B} → CanonicalName → SigOpInfo A B
 generic-info = value-info
 
+-- The effect is a LEAF annotation read off the arrow's `Purity` (the only
+-- effect bit the OBSERVABLE TRACE sees — `emit-D` collapses `Emits`/`Halts` to
+-- the same event, distinguishing only pure-vs-effectful). So a `pure` arrow is
+-- a pure value; an `eff` arrow with `Unit` codomain emits (an effect contract);
+-- an `eff` non-`Unit` arrow is the deferred-data case (a pure value). The
+-- `emits`-vs-`halts` refinement is codegen-only and never needs to reach here
+-- or `realize` — it stays in the typing context. (Plan 0.50 effect-axis: a
+-- referenced morphism's effect is intrinsic to its arrow, not a name lookup.)
 arrow-info : ∀ {A B} → ArrowKind → CanonicalName → SigOpInfo A B
-arrow-info _ name = value-info name
+arrow-info (mk-kind _ pure) name = value-info name
+arrow-info {A} {Unit} (mk-kind _ eff) name = mk-info' name (emitsV refl)
+arrow-info {A} {B}    (mk-kind _ eff) name = value-info name
