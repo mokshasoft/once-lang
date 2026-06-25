@@ -205,6 +205,10 @@ open import Once.Adequacy.MainBuilds using (main⇒built)
 -- (not true-by-construction). `ModuleTyped m` is the INDEPENDENT predicate
 -- "every function of `m` has a `_⊢ᶜ_∶_⨾_` derivation".
 open import Once.Adequacy.AcceptSound as AS using (ModuleTyped; moduleToIR-typed)
+-- Plan 0.50 (row-3 apex connection): the COMPOSITION discharging
+-- `main-realize-agrees` from `RealizeBridge.realize-agrees`. Importing it here
+-- puts `realize-agrees` on the apex path (no longer an island).
+import Once.Adequacy.MainRealizeAgrees as MRA
 
 ------------------------------------------------------------------------
 -- CPU semantics injected here (D054 wired-not-imported).
@@ -508,11 +512,17 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   -- trace. TRUE — by `RealizeBridge.realize-agrees` (SD.⟦se⟧≡SD.⟦realize(check-
   -- sound cc)⟧) + `resolveExpr`-faithfulness (seR=resolveExpr se). Discharge =
   -- Plan 0.49 piece 3. This REPLACES the row-3 cancellation of Phase 1.
-  postulate
-    main-realize-agrees : ∀ (m : P.Module) (mt : ModuleTyped m)
-      (hvm : MC.HasValidMain-decl m mt) (ir : IR Unit Unit) (mi : moduleToIR m ≡ just ir)
-      → ∀ n → ME.runMainˢ (proj₁ (proj₂ (ME.source-meaningᴰ m ir mi))) n
-              ≡ ME.runMainˢ (proj₂ (MC.mainRealized m mt hvm)) n
+  -- DISCHARGED (Plan 0.50): no longer a postulate. Composed in
+  -- `Once.Adequacy.MainRealizeAgrees` from `RealizeBridge.realize-agrees` (now
+  -- genuinely on the apex path) + the `main-checkElab-coherence` hook. The
+  -- residual apex-path postulates are `realize-agrees`'s `{infer,check}-agreeV-todo`
+  -- and the `main-checkElab-coherence` hook (strengthened extraction + resolveExpr
+  -- faithfulness), NOT this opaque whole-statement axiom.
+  main-realize-agrees : ∀ (m : P.Module) (mt : ModuleTyped m)
+    (hvm : MC.HasValidMain-decl m mt) (ir : IR Unit Unit) (mi : moduleToIR m ≡ just ir)
+    → ∀ n → ME.runMainˢ (proj₁ (proj₂ (ME.source-meaningᴰ m ir mi))) n
+            ≡ ME.runMainˢ (proj₂ (MC.mainRealized m mt hvm)) n
+  main-realize-agrees = MRA.main-realize-agrees-proof
 
   ⟦_⟧ˢ : Typed → Behavior
   ⟦ (m , mt , hvm) ⟧ˢ = ME.runMainˢ (proj₂ (MC.mainRealized m mt hvm))
