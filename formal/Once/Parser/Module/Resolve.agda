@@ -30,7 +30,7 @@
 
 module Once.Parser.Module.Resolve where
 
-open import Data.Bool using (Bool; true; false)
+open import Data.Bool using (Bool; true; false; _∨_)
 open import Data.List using (List; []; _∷_; map) renaming (_++_ to _++L_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_)
@@ -110,34 +110,76 @@ lookupImportAlias ((a , p) ∷ rest) x with a ≟ x
 ... | yes _ = just p
 ... | no  _ = lookupImportAlias rest x
 
--- | Rewrite every `RQualified name alias` whose alias resolves to a
--- canonical `RResolved (canonical (path ++ [name]))`. An unresolved
--- alias is left untouched (the typechecker rejects it as unbound).
--- All other nodes recurse structurally.
-canonExpr : AliasMap → RawExpr → RawExpr
-canonExpr am (RQualified name alias) with lookupImportAlias am alias
+-- | Names the elaborator special-cases on a bare `RVar` (point-free CCC
+-- builtins + recursion schemes). These MUST stay `RVar` so the dedicated
+-- typing rules fire — never canonicalize them to `RResolved`. Mirrors
+-- `Elaborate.isPolyBuiltin` (+ `cata`/`ana`/`In`/`Out`); kept local to avoid a
+-- Parser→TypeCheck import.
+isBuiltinName : String → Bool
+isBuiltinName "id"       = true
+isBuiltinName "fst"      = true
+isBuiltinName "snd"      = true
+isBuiltinName "inl"      = true
+isBuiltinName "inr"      = true
+isBuiltinName "unit"     = true
+isBuiltinName "pair"     = true
+isBuiltinName "terminal" = true
+isBuiltinName "initial"  = true
+isBuiltinName "curry"    = true
+isBuiltinName "apply"    = true
+isBuiltinName "compose"  = true
+isBuiltinName "arr"      = true
+isBuiltinName "cata"     = true
+isBuiltinName "ana"      = true
+isBuiltinName "In"       = true
+isBuiltinName "Out"      = true
+isBuiltinName _          = false
+
+elemStr : String → List String → Bool
+elemStr _ []       = false
+elemStr x (y ∷ ys) with x ≟ y
+... | yes _ = true
+... | no  _ = elemStr x ys
+
+-- | Plan 0.50 (D064): a bare `RVar x` that is NOT a local binder and NOT a
+-- builtin is a reference to a top-level definition (own-module or unaliased
+-- import) — a MORPHISM. Resolve it to `RResolved (canonical [x])` so it takes
+-- the `t-var-resolved` path (→ `lift-morphism` at arrow type) instead of
+-- `t-var-import` (→ `sigOp` → closure). The import table keys own/unaliased
+-- defs by their bare name, so `showCanonical (canonical [x]) = x` hits it.
+-- (Full dotted path = clash-freedom, a separable refinement.)
+canonVar : Bool → String → RawExpr
+canonVar true  x = RVar x                              -- local or builtin: keep
+canonVar false x = RResolved (canonical (x ∷ []))      -- top-level ref: a morphism
+
+-- | Rewrite `RQualified` (via alias map) and bare top-level `RVar` refs to
+-- `RResolved`; recurse structurally, threading the bound-variable set `bound`
+-- (lambda/let/destruct binders) so LOCALS are never canonicalized.
+canonExpr : List String → AliasMap → RawExpr → RawExpr
+canonExpr bound am (RQualified name alias) with lookupImportAlias am alias
 ... | just path = RResolved (canonical (path ++L (name ∷ [])))
 ... | nothing   = RQualified name alias
-canonExpr am (RVar x)            = RVar x
-canonExpr am (RResolved cn)      = RResolved cn
-canonExpr am (RApp f x)          = RApp (canonExpr am f) (canonExpr am x)
-canonExpr am (RLam x b)          = RLam x (canonExpr am b)
-canonExpr am (RLet x e₁ e₂)      = RLet x (canonExpr am e₁) (canonExpr am e₂)
-canonExpr am (RPair a b)         = RPair (canonExpr am a) (canonExpr am b)
-canonExpr am (RDestruct s xl el xr er) =
-  RDestruct (canonExpr am s) xl (canonExpr am el) xr (canonExpr am er)
-canonExpr am RUnit               = RUnit
-canonExpr am (RInt n)            = RInt n
-canonExpr am (RStringLit s)      = RStringLit s
-canonExpr am (RAnnot e t)        = RAnnot (canonExpr am e) t
-canonExpr am (RBinOp op a b)     = RBinOp op (canonExpr am a) (canonExpr am b)
-canonExpr am (RUnaryOp op e)     = RUnaryOp op (canonExpr am e)
-canonExpr am (RAna F c)          = RAna F (canonExpr am c)
+canonExpr bound am (RVar x)            = canonVar (elemStr x bound ∨ isBuiltinName x) x
+canonExpr bound am (RResolved cn)      = RResolved cn
+canonExpr bound am (RApp f x)          = RApp (canonExpr bound am f) (canonExpr bound am x)
+canonExpr bound am (RLam x b)          = RLam x (canonExpr (x ∷ bound) am b)
+canonExpr bound am (RLet x e₁ e₂)      = RLet x (canonExpr bound am e₁) (canonExpr (x ∷ bound) am e₂)
+canonExpr bound am (RPair a b)         = RPair (canonExpr bound am a) (canonExpr bound am b)
+canonExpr bound am (RDestruct s xl el xr er) =
+  RDestruct (canonExpr bound am s) xl (canonExpr (xl ∷ bound) am el) xr (canonExpr (xr ∷ bound) am er)
+canonExpr bound am RUnit               = RUnit
+canonExpr bound am (RInt n)            = RInt n
+canonExpr bound am (RStringLit s)      = RStringLit s
+canonExpr bound am (RAnnot e t)        = RAnnot (canonExpr bound am e) t
+canonExpr bound am (RBinOp op a b)     = RBinOp op (canonExpr bound am a) (canonExpr bound am b)
+canonExpr bound am (RUnaryOp op e)     = RUnaryOp op (canonExpr bound am e)
+canonExpr bound am (RAna F c)          = RAna F (canonExpr bound am c)
 
--- | Apply `canonExpr` to a decl's function body; everything else is
--- untouched (signatures/imports/type-aliases carry no expression refs).
+-- | Apply `canonExpr` to a decl's function body (empty initial bound set);
+-- everything else is untouched (signatures/imports/type-aliases carry no
+-- expression refs).
 canonDecl : AliasMap → Decl → Decl
-canonDecl am (DFunDef name alloc body) = DFunDef name alloc (canonExpr am body)
+canonDecl am (DFunDef name alloc body) = DFunDef name alloc (canonExpr [] am body)
 canonDecl am d                         = d
 
 ------------------------------------------------------------------------
