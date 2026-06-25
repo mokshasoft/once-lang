@@ -34,7 +34,7 @@ open import Data.Nat using (ℕ)
 open import Data.Nat.Show using (showInBase)
 showNat : ℕ → String
 showNat = showInBase 10
-open import Once.CanonicalName using (CanonicalName; parts)
+open import Once.CanonicalName using (CanonicalName; parts; canonical)
 
 -- | Once's universal symbol prefix.
 -- Applied to every Once-generated assembly symbol (user-defined
@@ -106,6 +106,17 @@ join-us (x ∷ y ∷ xs) = x ++ "_" ++ join-us (y ∷ xs)
 -- | The canonical clash-free symbol for a resolved identity (its `parts`).
 once-symbol-path : CanonicalName → String
 once-symbol-path cn = once-prefix ++ join-us (map mangle-component (parts cn))
+
+-- | Symbol for an OWN-module definition `name` — a single-component canonical
+-- identity. Plan 0.50 (D064): definition-label sites (function prologues,
+-- arith-block subroutines, `_start`'s `main` call) use THIS so the emitted
+-- symbol equals `compile-sigOp`'s `once-symbol-path` CALL emission for the same
+-- function (`canonical [name]`). Replaces the legacy `once-symbol`, which left
+-- definitions on `once_name` while calls migrated to `once-symbol-path` — a
+-- link mismatch. Being `once-symbol-path ∘ canonical ∘ [_]`, it inherits the
+-- clash-freedom (`once-symbol-path-injective`).
+once-symbol-own : String → String
+once-symbol-own name = once-symbol-path (canonical (name ∷ []))
 
 -- Format checks (the clash-free + asm-safe scheme, by example).
 private

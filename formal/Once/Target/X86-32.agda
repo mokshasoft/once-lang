@@ -22,7 +22,7 @@ module Once.Target.X86-32 where
 open import Data.String using (String; _++_)
 
 open import Once.Target using (Target)
-open import Once.Target.Symbol using (once-symbol)
+open import Once.Target.Symbol using (once-symbol; once-symbol-own)
 open import Once.IR using (IR)
 
 open import Once.CCC.Codegen.IRToTrace using (ir-to-trace; ir-to-trace-from)
@@ -42,8 +42,8 @@ x86-32-asmHeader =
 
 x86-32-functionPrologue : String → String
 x86-32-functionPrologue fname =
-  ".globl " ++ once-symbol fname ++ "\n" ++
-  once-symbol fname ++ ":\n"
+  ".globl " ++ once-symbol-own fname ++ "\n" ++
+  once-symbol-own fname ++ ":\n"
 
 -- | Plan 0.2.4.2 Phase B: closure-body emission stub.
 -- Plan 0.12 Layer 1: takes a starting label counter for symmetry

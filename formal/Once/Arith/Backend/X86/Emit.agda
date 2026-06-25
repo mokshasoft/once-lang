@@ -47,7 +47,7 @@ open import Once.Arith.Machine.Compile using (compile-abs; required-scratch)
 open import Once.Arith.Machine.IR using (MArithIR; ArithBlock)
 open Once.Arith.Machine.IR.ArithBlock using (block-shape; block-body)
 open import Once.Arith.SigOp.Block using (block-name)
-open import Once.Target.Symbol using (once-symbol)
+open import Once.Target.Symbol using (once-symbol; once-symbol-own)
 
 ------------------------------------------------------------------------
 -- Register / scratch text
@@ -160,10 +160,13 @@ emit-arith-block sym blk =
 ------------------------------------------------------------------------
 
 -- | The canonical assembly symbol for an `ArithBlock`. Mirrors the
--- name `block-info` puts in the `SigOpInfo`, mangled through
--- `once-symbol` to match `compile-sigOp`'s call-site emission.
+-- name `block-info` puts in the `SigOpInfo` (`bare (block-name …)` =
+-- `canonical [block-name]`), mangled through `once-symbol-own` =
+-- `once-symbol-path ∘ canonical ∘ [_]` to match `compile-sigOp`'s
+-- `once-symbol-path` call-site emission (Plan 0.50 — legacy `once-symbol`
+-- left the dots un-encoded, mismatching the call).
 arith-block-symbol : ArithBlock → String
-arith-block-symbol blk = once-symbol (block-name (block-body blk))
+arith-block-symbol blk = once-symbol-own (block-name (block-body blk))
 
 -- | Emit a list of arith blocks as concatenated assembly text. Each
 -- block becomes a `<once_arith.block.<digest>>:` subroutine; dedup
