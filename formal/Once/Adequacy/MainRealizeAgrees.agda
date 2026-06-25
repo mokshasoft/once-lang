@@ -47,7 +47,9 @@ open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ)
 
 open import Once.TypeCheck.Classify using (NamedCtx)
 open import Once.TypeCheck.Raw using (RawExpr)
-open import Once.TypeCheck.Elaborate using (checkElab; InferElabResult; CheckElabResult; success)
+open import Once.TypeCheck.Elaborate
+  using (checkElab; InferElabResult; CheckElabResult; success; resolveExpr; PolyCtx; Imports)
+open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_)
 open import Once.TypeCheck.Soundness using (check-sound)
 open import Once.Denotation.Realize using (realize)
 
@@ -62,13 +64,39 @@ import Once.Parser.Module.Core as P
 open import Once.Adequacy.RealizeBridge using (realize-agrees)
 
 ------------------------------------------------------------------------
--- The coherence hook (the one remaining apex-path postulate of this layer):
--- `main`'s source-meaning term `seR` and its realize term `realize deriv` both
--- factor through ONE `checkElab` of `main`'s body. Bundles the strengthened
--- main-extraction (carries `ce`) + gap (A) `resolveExpr-faithfulness`.
-------------------------------------------------------------------------
+-- The coherence hook, DECOMPOSED top-down into its three genuine constituents
+-- (A/B/C). The hook itself is now PROVEN from them (below) — so A/B/C's TYPES
+-- are pinned by that composition, not guessed.
+--
+-- (A) resolveExpr-faithfulness — the resolver preserves denotation. 28 non-poly
+--     cases are already `refl` lemmas in `Elaborate`; only the `poly` case is
+--     real content. Context-general.
 postulate
-  main-checkElab-coherence :
+  resolveExpr-faithful :
+    ∀ {n} {Γ : Srf.Ctx n} {Ψ : Usage n} {A : Type}
+      (polys : PolyCtx) (imps userFns : Imports) (fresh : ℕ)
+      (e : Expr Γ Ψ A) (dγ : ⟦ ⟦ Γ ⟧ᶜ ⟧ᴰ) (k : ℕ)
+    → SD.⟦ resolveExpr polys imps userFns fresh e ⟧ˢ dγ k ≡ SD.⟦ e ⟧ˢ dγ k
+
+-- (B) realize denotational-invariance — ANY two `⊢ᶜ` derivations of the SAME
+--     judgment realize to denotationally-equal terms. This is what lets the
+--     compiled main (via `checkElab`/`check-sound`) agree with `realize` of
+--     `mt`'s INDEPENDENT derivation, keeping the spec non-circular (no route-2).
+--     The headline theorem (induction over derivations; reconciles the
+--     `t-embed`-vs-specialized overlaps). Context-general.
+postulate
+  realize-invariant :
+    ∀ {ctx : NamedCtx} {e : RawExpr} {A : Type} {Ψ : Usage (NamedCtx.size ctx)}
+      (d₁ d₂ : ctx ⊢ᶜ e ∶ A ⨾ Ψ) (dγ : ⟦ ⟦ NamedCtx.debruijn ctx ⟧ᶜ ⟧ᴰ) (k : ℕ)
+    → SD.⟦ realize d₁ ⟧ˢ dγ k ≡ SD.⟦ realize d₂ ⟧ˢ dγ k
+
+-- (C) the threading/extraction — `source-meaningᴰ`'s `seR` and `mainRealized`'s
+--     `realize mtder` both factor through ONE `checkElab ce` of `main`'s body
+--     (`seR` = `resolveExpr … se`, `mtder` is `mt`'s main derivation). PLUMBING:
+--     to be discharged by strengthening `Form`/`main-ir-form` to carry `ce` +
+--     the resolver args + the two endpoint identifications.
+postulate
+  main-extract :
     ∀ (m : P.Module) (mt : ModuleTyped m) (hvm : MC.HasValidMain-decl m mt)
       (ir : IR Unit Unit) (mi : moduleToIR m ≡ just ir)
     → Σ-syntax NamedCtx (λ cctx →
@@ -77,11 +105,40 @@ postulate
       Σ-syntax (Expr (NamedCtx.debruijn cctx) Ψ EffUU) (λ se →
       Σ-syntax ℕ (λ d → Σ-syntax ℕ (λ f →
       Σ-syntax (⟦ ⟦ NamedCtx.debruijn cctx ⟧ᶜ ⟧ᴰ) (λ dγ₀ →
+      Σ-syntax (cctx ⊢ᶜ body ∶ EffUU ⨾ Ψ) (λ mtder →
       Σ-syntax (checkElab cctx body EffUU ≡ success Ψ se d f) (λ ce →
+      Σ-syntax PolyCtx (λ polys →
+      Σ-syntax Imports (λ imps → Σ-syntax Imports (λ userFns → Σ-syntax ℕ (λ fresh →
         ((n : ℕ) → SD.⟦ proj₁ (proj₂ (ME.source-meaningᴰ m ir mi)) ⟧ˢ tt n
-                 ≡ SD.⟦ se ⟧ˢ dγ₀ n)
+                 ≡ SD.⟦ resolveExpr polys imps userFns fresh se ⟧ˢ dγ₀ n)
       × ((n : ℕ) → SD.⟦ proj₂ (MC.mainRealized m mt hvm) ⟧ˢ tt n
-                 ≡ SD.⟦ realize (check-sound cctx body EffUU ce) ⟧ˢ dγ₀ n)))))))))
+                 ≡ SD.⟦ realize mtder ⟧ˢ dγ₀ n))))))))))))))
+
+------------------------------------------------------------------------
+-- The coherence hook, now PROVEN from A/B/C (the postulate is gone).
+-- seR ≈ se  : ⟦seR⟧ =(C seR-syn)= ⟦resolveExpr se⟧ =(A)= ⟦se⟧
+-- rt  ≈ deriv: ⟦rt⟧  =(C rt-syn)=  ⟦realize mtder⟧  =(B)= ⟦realize(check-sound ce)⟧
+------------------------------------------------------------------------
+main-checkElab-coherence :
+  ∀ (m : P.Module) (mt : ModuleTyped m) (hvm : MC.HasValidMain-decl m mt)
+    (ir : IR Unit Unit) (mi : moduleToIR m ≡ just ir)
+  → Σ-syntax NamedCtx (λ cctx →
+    Σ-syntax RawExpr (λ body →
+    Σ-syntax (Usage (NamedCtx.size cctx)) (λ Ψ →
+    Σ-syntax (Expr (NamedCtx.debruijn cctx) Ψ EffUU) (λ se →
+    Σ-syntax ℕ (λ d → Σ-syntax ℕ (λ f →
+    Σ-syntax (⟦ ⟦ NamedCtx.debruijn cctx ⟧ᶜ ⟧ᴰ) (λ dγ₀ →
+    Σ-syntax (checkElab cctx body EffUU ≡ success Ψ se d f) (λ ce →
+      ((n : ℕ) → SD.⟦ proj₁ (proj₂ (ME.source-meaningᴰ m ir mi)) ⟧ˢ tt n
+               ≡ SD.⟦ se ⟧ˢ dγ₀ n)
+    × ((n : ℕ) → SD.⟦ proj₂ (MC.mainRealized m mt hvm) ⟧ˢ tt n
+               ≡ SD.⟦ realize (check-sound cctx body EffUU ce) ⟧ˢ dγ₀ n)))))))))
+main-checkElab-coherence m mt hvm ir mi
+  with main-extract m mt hvm ir mi
+... | cctx , body , Ψ , se , d , f , dγ₀ , mtder , ce , polys , imps , userFns , fresh , seR-syn , rt-syn =
+      cctx , body , Ψ , se , d , f , dγ₀ , ce ,
+      (λ n → trans (seR-syn n) (resolveExpr-faithful polys imps userFns fresh se dγ₀ n)) ,
+      (λ n → trans (rt-syn n) (realize-invariant mtder (check-sound cctx body EffUU ce) dγ₀ n))
 
 ------------------------------------------------------------------------
 -- The composition. EXACT type of `Compile.main-realize-agrees`.
