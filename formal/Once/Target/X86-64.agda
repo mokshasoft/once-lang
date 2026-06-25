@@ -17,7 +17,7 @@ open import Data.List using (List; []; _∷_; foldr)
 open import Data.Product using (_×_; _,_)
 
 open import Once.Target using (Target)
-open import Once.Target.Symbol using (once-symbol)
+open import Once.Target.Symbol using (once-symbol; once-symbol-own)
 open import Once.IR using (IR)
 
 -- x86-64 code generation and emission. Plan 0.10 Phase C: switched
@@ -82,15 +82,15 @@ x86-64-asmHeader =
   -- (and potential GC future) but not read on the hot path.
   "    leaq once_heap_base(%rip), %r15\n" ++
   "    movq %r15, once_heap_pos(%rip)\n" ++
-  "    call once_main\n" ++
+  "    call " ++ once-symbol-own "main" ++ "\n" ++
   "    movq $60, %rax\n" ++
   "    xorq %rdi, %rdi\n" ++
   "    syscall\n\n"
 
 x86-64-functionPrologue : String → String
 x86-64-functionPrologue fname =
-  ".globl " ++ once-symbol fname ++ "\n" ++
-  once-symbol fname ++ ":\n"
+  ".globl " ++ once-symbol-own fname ++ "\n" ++
+  once-symbol-own fname ++ ":\n"
 
 x86-64-functionEpilogue : String
 x86-64-functionEpilogue = "    ret\n\n"
