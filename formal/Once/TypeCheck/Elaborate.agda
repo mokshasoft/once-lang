@@ -936,6 +936,12 @@ mutual
   -- premises into the dispatch chain without navigating opaque
   -- `with`-helpers.
   inferElabV-RApp-other : (ctx : NamedCtx) (f x : RawExpr) → VerifiedInferResult ctx (Raw.RApp f x)
+  -- RPair dispatch as a top-level aux taking the two sub-results explicitly
+  -- (no inline `with` → no opaque `with`-helper → downstream proofs recurse
+  -- directly; [[feedback_with_clauses_painful]]).
+  inferElabV-RPair-aux : (ctx : NamedCtx) (a b : RawExpr)
+    → VerifiedInferResult ctx a → VerifiedInferResult ctx b
+    → VerifiedInferResult ctx (Raw.RPair a b)
   -- Aux helpers that take the lookup result + equation as explicit args,
   -- so external proofs can pattern-match on the Maybe and supply the eq
   -- without `with...in` opacity.
@@ -1446,12 +1452,8 @@ mutual
   ... | success Ψ eE d fr , witness = success T Ψ eE d fr , t-annot witness
   ... | failure err , _             = failure err , tt
 
-  inferElabV ctx (Raw.RPair a b) with inferElabV ctx a
-  ... | failure err , _ = failure err , tt
-  ... | success A Ψ₁ aE da fa , wA with inferElabV ctx b
-  ...   | failure err , _ = failure err , tt
-  ...   | success B Ψ₂ bE db fb , wB =
-          success (A Once.Type.* B) _ (Surface.pair aE bE) (da ⊔ db) fb , t-pair wA wB
+  inferElabV ctx (Raw.RPair a b) =
+    inferElabV-RPair-aux ctx a b (inferElabV ctx a) (inferElabV ctx b)
 
   ----------------------------------------------------------------------
   -- Phase B — lookup-driven clauses (RQualified, RVar, RUnaryOp,
@@ -1722,6 +1724,13 @@ mutual
     success ty _ (Surface.sigOp cn) 0 (NamedCtx.freshCounter ctx) , t-var-resolved eq
   inferElabV-RResolved-aux ctx cn nothing _ =
     failure (UnboundVariable (showCanonical cn)) , tt
+
+  -- RPair: pair the two sub-results (a-failure short-circuits without forcing
+  -- b's result, matching the old left-to-right `with`).
+  inferElabV-RPair-aux ctx a b (success A Ψ₁ aE da fa , wA) (success B Ψ₂ bE db fb , wB) =
+    success (A Once.Type.* B) _ (Surface.pair aE bE) (da ⊔ db) fb , t-pair wA wB
+  inferElabV-RPair-aux ctx a b (failure err , _) _ = failure err , tt
+  inferElabV-RPair-aux ctx a b (success _ _ _ _ _ , _) (failure err , _) = failure err , tt
 
   inferElabV-RVar-lookup-aux ctx x ¬unit (just (A , Ψ , se)) eq-loc _ _ =
     success A Ψ se 0 (NamedCtx.freshCounter ctx) , t-var-local ¬unit eq-loc
