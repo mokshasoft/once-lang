@@ -32,6 +32,7 @@ open import Data.Unit using (⊤; tt)
 
 open import Once.Type using (Type; Unit; Int)
 open import Once.SigOp.Info using (SigOpInfo; mk-info; Pure)
+open import Once.CanonicalName using (bare)
 
 ------------------------------------------------------------------------
 -- The literal-family builder
@@ -50,6 +51,6 @@ lit-int-name n = "lit.int." ++ showℤ n
 -- to this framework in plan 0.2.4.2.
 lit-int-info : ℤ → SigOpInfo Unit Int
 lit-int-info n = mk-info
-  (lit-int-name n)
+  (bare (lit-int-name n))
   (λ _ → ∣ n ∣)  -- semM : ⊤ → ℕ (the value; ℕ/Word)
   Pure           -- effect: constants are observably pure
