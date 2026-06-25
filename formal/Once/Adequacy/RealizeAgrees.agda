@@ -24,12 +24,14 @@ module Once.Adequacy.RealizeAgrees where
 
 open import Data.Nat using (ℕ)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
+open import Data.Empty using (⊥; ⊥-elim)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂)
 
 import Once.Type
-open import Once.Type using (Type; Int; Unit; Purity; pure; eff; mk-kind; Many; _⇒[_]_; isUnit?)
+open import Once.Type using (Type; Int; Unit; Void; Float; Str; Buffer; _*_; _+_; μ-type; ν-type;
+                             Purity; pure; eff; mk-kind; Many; One; Zero; _⇒[_]_; isUnit?)
 open import Once.TypeCheck.Raw as Raw using (RawExpr)
-open import Once.TypeCheck.Classify using (NamedCtx; extendNamedCtx; lookupSigEffect)
+open import Once.TypeCheck.Classify using (NamedCtx; extendNamedCtx; lookupSigEffect; lookupImport)
 open import Once.TypeCheck.Elaborate using (success; failure; VerifiedInferResult)
 import Once.TypeCheck.Elaborate as E
 open import Once.IR as IR using (IR)
@@ -185,6 +187,42 @@ masq {ctx} {Dom} {Cod} cn eff dγ k with isUnit? Cod
 ... | no _ = refl
 ... | yes refl = masq-unit {ctx} {Dom} cn (lookupSigEffect (NamedCtx.sigEffects ctx) (showCanonical cn)) dγ k
 
+-- RResolved agreement, dispatched on the import-lookup result exactly as the
+-- elaborator's `inferElabV-RResolved-aux` does. A `Many`-arrow type resolves to
+-- the effect-aware `lift-morphism (SigOp (ext-resolved-info …))` whose
+-- agreement with realize's `sigOp cn` IS the `masq`-erade; every other type
+-- resolves to `sigOp cn` directly (= realize) so agreement is `refl`. The type
+-- shapes are ENUMERATED (not a catch-all): the aux's `just ty` clause sits
+-- behind the `just (Many-arrow)` clause, so on an abstract type it would not
+-- reduce — mirroring `Completeness`'s `go`. `nothing` ⇒ the aux fails, so the
+-- success-eq is absurd.
+-- `failure` and `success` are distinct constructors of `InferElabResult`, so a
+-- proof identifying them is absurd (used to discharge the `nothing`-lookup case,
+-- where the elaborator fails but the agreement obligation assumes success).
+fail≢succ : ∀ {n} {Δ : Surface.Ctx n} {te} {A} {Ψ} {se : Surface.Expr Δ Ψ A} {d f}
+          → failure {Δ = Δ} te ≡ success A Ψ se d f → ⊥
+fail≢succ ()
+
+agree-RResolved : ∀ (ctx : NamedCtx) (cn : CanonicalName) (lhs : Maybe Type)
+  (lkup : lookupImport (NamedCtx.imports ctx) (showCanonical cn) ≡ lhs)
+  {A Ψ se d f w}
+  → E.inferElabV-RResolved-aux ctx cn lhs lkup ≡ (success A Ψ se d f , w)
+  → ∀ (dγ : Env ctx) (k : ℕ) → SD.⟦ se ⟧ˢ dγ k ≡ SD.⟦ realize-infer w ⟧ˢ dγ k
+agree-RResolved ctx cn (just (A ⇒[ mk-kind Many π ] B)) lkup refl dγ k = masq {ctx} {A} {B} cn π dγ k
+agree-RResolved ctx cn (just (A ⇒[ mk-kind One  π ] B)) lkup refl dγ k = refl
+agree-RResolved ctx cn (just (A ⇒[ mk-kind Zero π ] B)) lkup refl dγ k = refl
+agree-RResolved ctx cn (just Unit)        lkup refl dγ k = refl
+agree-RResolved ctx cn (just Void)        lkup refl dγ k = refl
+agree-RResolved ctx cn (just Int)         lkup refl dγ k = refl
+agree-RResolved ctx cn (just Float)       lkup refl dγ k = refl
+agree-RResolved ctx cn (just Str)         lkup refl dγ k = refl
+agree-RResolved ctx cn (just Buffer)      lkup refl dγ k = refl
+agree-RResolved ctx cn (just (A * B))     lkup refl dγ k = refl
+agree-RResolved ctx cn (just (A + B))     lkup refl dγ k = refl
+agree-RResolved ctx cn (just (μ-type F))  lkup refl dγ k = refl
+agree-RResolved ctx cn (just (ν-type F))  lkup refl dγ k = refl
+agree-RResolved ctx cn nothing lkup eq dγ k = ⊥-elim (fail≢succ (cong proj₁ eq))
+
 mutual
   infer-agreeV : ∀ (ctx : NamedCtx) (e : RawExpr) {A Ψ se d f w}
     (eq : E.inferElabV ctx e ≡ (success A Ψ se d f , w)) → InferAgreeV ctx e eq
@@ -203,6 +241,8 @@ mutual
     agree-RLet (E.inferElabV ctx e₁) eq
       (λ p → infer-agreeV ctx e₁ p)
       (λ {A} rE2 eqRE2 p → infer-agreeV (extendNamedCtx ctx x A) e₂ (trans eqRE2 p)) dγ k
+  infer-agreeV ctx (Raw.RResolved cn) eq dγ k =
+    agree-RResolved ctx cn (lookupImport (NamedCtx.imports ctx) (showCanonical cn)) refl eq dγ k
   infer-agreeV ctx e eq = infer-agreeV-todo ctx e eq
 
   check-agreeV : ∀ (ctx : NamedCtx) (e : RawExpr) (T : Type) {Ψ se d f w}
