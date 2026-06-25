@@ -942,6 +942,24 @@ mutual
   inferElabV-RPair-aux : (ctx : NamedCtx) (a b : RawExpr)
     → VerifiedInferResult ctx a → VerifiedInferResult ctx b
     → VerifiedInferResult ctx (Raw.RPair a b)
+  inferElabV-RAnnot-aux : (ctx : NamedCtx) (e : RawExpr) (T : Type)
+    → VerifiedCheckResult ctx e T → VerifiedInferResult ctx (Raw.RAnnot e T)
+  inferElabV-RUnaryOp-aux : (ctx : NamedCtx) (e : RawExpr)
+    → VerifiedInferResult ctx e → VerifiedInferResult ctx (Raw.RUnaryOp Raw.OpNeg e)
+  inferElabV-RBinOp-aux : (ctx : NamedCtx) (op : Raw.BinOp) (e₁ e₂ : RawExpr)
+    → VerifiedInferResult ctx e₁ → VerifiedInferResult ctx e₂
+    → VerifiedInferResult ctx (Raw.RBinOp op e₁ e₂)
+  -- RLet/RDestruct: the later sub-expressions live in EXTENDED contexts whose
+  -- types come from the earlier sub-results, so they fold through nested auxes
+  -- (each takes the prior result's data explicitly — no inline `with`).
+  inferElabV-RLet-aux : (ctx : NamedCtx) (x : String) (e₁ e₂ : RawExpr)
+    → VerifiedInferResult ctx e₁ → VerifiedInferResult ctx (Raw.RLet x e₁ e₂)
+  inferElabV-RLet-aux2 : (ctx : NamedCtx) (x : String) (e₁ e₂ : RawExpr)
+    {A : Type} {Ψ₁ : Surface.Usage (NamedCtx.size ctx)}
+    (e₁E : SExpr (NamedCtx.debruijn ctx) Ψ₁ A) (d₁ f₁ : ℕ)
+    (w₁ : ctx ⊢ᵢ e₁ ∶ A ⨾ Ψ₁)
+    → VerifiedInferResult (extendNamedCtx ctx x A) e₂
+    → VerifiedInferResult ctx (Raw.RLet x e₁ e₂)
   -- Aux helpers that take the lookup result + equation as explicit args,
   -- so external proofs can pattern-match on the Maybe and supply the eq
   -- without `with...in` opacity.
@@ -1448,9 +1466,7 @@ mutual
   inferElabV ctx (Raw.RAna _ _) =
     failure (BuiltinTypeMismatch "ana") , tt
 
-  inferElabV ctx (Raw.RAnnot e T) with checkElabV ctx e T
-  ... | success Ψ eE d fr , witness = success T Ψ eE d fr , t-annot witness
-  ... | failure err , _             = failure err , tt
+  inferElabV ctx (Raw.RAnnot e T) = inferElabV-RAnnot-aux ctx e T (checkElabV ctx e T)
 
   inferElabV ctx (Raw.RPair a b) =
     inferElabV-RPair-aux ctx a b (inferElabV ctx a) (inferElabV ctx b)
@@ -1471,26 +1487,10 @@ mutual
   ... | yes refl = success Unit _ Surface.unit 0 (NamedCtx.freshCounter ctx) , t-unit-var
   ... | no ¬unit = inferElabV-RVar-lookup-aux ctx x ¬unit _ refl _ refl
 
-  inferElabV ctx (Raw.RUnaryOp Raw.OpNeg e) with inferElabV ctx e
-  ... | failure err , _                        = failure err , tt
-  ... | success Unit       _ _ _ _ , _         = failure (TypeMismatch Int Unit) , tt
-  ... | success Void       _ _ _ _ , _         = failure (TypeMismatch Int Void) , tt
-  ... | success Int        Ψ eE d fr , w       = success Int _ (Surface.neg eE) (suc d) fr , t-neg w
-  ... | success Float      _ _ _ _ , _         = failure (TypeMismatch Int Float) , tt
-  ... | success Str        _ _ _ _ , _         = failure (TypeMismatch Int Str) , tt
-  ... | success Buffer     _ _ _ _ , _         = failure (TypeMismatch Int Buffer) , tt
-  ... | success (A Once.Type.* B)       _ _ _ _ , _ = failure (TypeMismatch Int (A Once.Type.* B)) , tt
-  ... | success (A Once.Type.+ B)       _ _ _ _ , _ = failure (TypeMismatch Int (A Once.Type.+ B)) , tt
-  ... | success (A Once.Type.⇒[ k ] B)  _ _ _ _ , _ = failure (TypeMismatch Int (A Once.Type.⇒[ k ] B)) , tt
-  ... | success (Once.Type.μ-type F)    _ _ _ _ , _ = failure (TypeMismatch Int (Once.Type.μ-type F)) , tt
-  ... | success (Once.Type.ν-type F)    _ _ _ _ , _ = failure (TypeMismatch Int (Once.Type.ν-type F)) , tt
+  inferElabV ctx (Raw.RUnaryOp Raw.OpNeg e) = inferElabV-RUnaryOp-aux ctx e (inferElabV ctx e)
 
-  inferElabV ctx (Raw.RLet x e₁ e₂) with inferElabV ctx e₁
-  ... | failure err , _ = failure err , tt
-  ... | success A Ψ₁ e₁E d₁ f₁ , w₁ with inferElabV (extendNamedCtx ctx x A) e₂
-  ...   | failure err , _ = failure err , tt
-  ...   | success B (q ∷ᵘ Ψ₂) e₂E d₂ f₂ , w₂ =
-          success B _ (Surface.let' e₁E e₂E) (d₁ ⊔ suc d₂) f₂ , t-let w₁ w₂
+  inferElabV ctx (Raw.RLet x e₁ e₂) =
+    inferElabV-RLet-aux ctx x e₁ e₂ (inferElabV ctx e₁)
 
   inferElabV ctx (Raw.RDestruct scrut xL eL xR eR) with inferElabV ctx scrut
   ... | failure err , _                        = failure err , tt
@@ -1532,44 +1532,8 @@ mutual
   -- `op` is concretely matched.
   ----------------------------------------------------------------------
 
-  inferElabV ctx (Raw.RBinOp op e₁ e₂) with inferElabV ctx e₁
-  inferElabV ctx (Raw.RBinOp op e₁ e₂) | failure err , _ =
-    failure (BinOpLeftError err) , tt
-  inferElabV ctx (Raw.RBinOp op e₁ e₂) | success Unit       _ _ _ _ , _ = failure (BinOpLeftError (TypeMismatch Int Unit)) , tt
-  inferElabV ctx (Raw.RBinOp op e₁ e₂) | success Void       _ _ _ _ , _ = failure (BinOpLeftError (TypeMismatch Int Void)) , tt
-  inferElabV ctx (Raw.RBinOp op e₁ e₂) | success Float      _ _ _ _ , _ = failure (BinOpLeftError (TypeMismatch Int Float)) , tt
-  inferElabV ctx (Raw.RBinOp op e₁ e₂) | success Str        _ _ _ _ , _ = failure (BinOpLeftError (TypeMismatch Int Str)) , tt
-  inferElabV ctx (Raw.RBinOp op e₁ e₂) | success Buffer     _ _ _ _ , _ = failure (BinOpLeftError (TypeMismatch Int Buffer)) , tt
-  inferElabV ctx (Raw.RBinOp op e₁ e₂) | success (A Once.Type.* B)      _ _ _ _ , _ = failure (BinOpLeftError (TypeMismatch Int (A Once.Type.* B))) , tt
-  inferElabV ctx (Raw.RBinOp op e₁ e₂) | success (A Once.Type.+ B)      _ _ _ _ , _ = failure (BinOpLeftError (TypeMismatch Int (A Once.Type.+ B))) , tt
-  inferElabV ctx (Raw.RBinOp op e₁ e₂) | success (A Once.Type.⇒[ k ] B) _ _ _ _ , _ = failure (BinOpLeftError (TypeMismatch Int (A Once.Type.⇒[ k ] B))) , tt
-  inferElabV ctx (Raw.RBinOp op e₁ e₂) | success (Once.Type.μ-type F)   _ _ _ _ , _ = failure (BinOpLeftError (TypeMismatch Int (Once.Type.μ-type F))) , tt
-  inferElabV ctx (Raw.RBinOp op e₁ e₂) | success (Once.Type.ν-type F)   _ _ _ _ , _ = failure (BinOpLeftError (TypeMismatch Int (Once.Type.ν-type F))) , tt
-  inferElabV ctx (Raw.RBinOp op e₁ e₂) | success Int Ψ₁ e₁E d₁ f₁ , w₁ with inferElabV ctx e₂
-  inferElabV ctx (Raw.RBinOp op e₁ e₂) | success Int Ψ₁ e₁E d₁ f₁ , w₁ | failure err , _ =
-    failure (BinOpRightError err) , tt
-  inferElabV ctx (Raw.RBinOp op e₁ e₂) | success Int Ψ₁ e₁E d₁ f₁ , w₁ | success Unit       _ _ _ _ , _ = failure (BinOpRightError (TypeMismatch Int Unit)) , tt
-  inferElabV ctx (Raw.RBinOp op e₁ e₂) | success Int Ψ₁ e₁E d₁ f₁ , w₁ | success Void       _ _ _ _ , _ = failure (BinOpRightError (TypeMismatch Int Void)) , tt
-  inferElabV ctx (Raw.RBinOp op e₁ e₂) | success Int Ψ₁ e₁E d₁ f₁ , w₁ | success Float      _ _ _ _ , _ = failure (BinOpRightError (TypeMismatch Int Float)) , tt
-  inferElabV ctx (Raw.RBinOp op e₁ e₂) | success Int Ψ₁ e₁E d₁ f₁ , w₁ | success Str        _ _ _ _ , _ = failure (BinOpRightError (TypeMismatch Int Str)) , tt
-  inferElabV ctx (Raw.RBinOp op e₁ e₂) | success Int Ψ₁ e₁E d₁ f₁ , w₁ | success Buffer     _ _ _ _ , _ = failure (BinOpRightError (TypeMismatch Int Buffer)) , tt
-  inferElabV ctx (Raw.RBinOp op e₁ e₂) | success Int Ψ₁ e₁E d₁ f₁ , w₁ | success (A Once.Type.* B)      _ _ _ _ , _ = failure (BinOpRightError (TypeMismatch Int (A Once.Type.* B))) , tt
-  inferElabV ctx (Raw.RBinOp op e₁ e₂) | success Int Ψ₁ e₁E d₁ f₁ , w₁ | success (A Once.Type.+ B)      _ _ _ _ , _ = failure (BinOpRightError (TypeMismatch Int (A Once.Type.+ B))) , tt
-  inferElabV ctx (Raw.RBinOp op e₁ e₂) | success Int Ψ₁ e₁E d₁ f₁ , w₁ | success (A Once.Type.⇒[ k ] B) _ _ _ _ , _ = failure (BinOpRightError (TypeMismatch Int (A Once.Type.⇒[ k ] B))) , tt
-  inferElabV ctx (Raw.RBinOp op e₁ e₂) | success Int Ψ₁ e₁E d₁ f₁ , w₁ | success (Once.Type.μ-type F)   _ _ _ _ , _ = failure (BinOpRightError (TypeMismatch Int (Once.Type.μ-type F))) , tt
-  inferElabV ctx (Raw.RBinOp op e₁ e₂) | success Int Ψ₁ e₁E d₁ f₁ , w₁ | success (Once.Type.ν-type F)   _ _ _ _ , _ = failure (BinOpRightError (TypeMismatch Int (Once.Type.ν-type F))) , tt
-  inferElabV ctx (Raw.RBinOp op e₁ e₂) | success Int Ψ₁ e₁E d₁ f₁ , w₁ | success Int Ψ₂ e₂E d₂ f₂ , w₂ with op
-  ...   | Raw.OpAdd = success Int _ (Surface.add e₁E e₂E) (d₁ ⊔ d₂) f₂ , t-binop-arith refl w₁ w₂
-  ...   | Raw.OpSub = success Int _ (Surface.sub e₁E e₂E) (d₁ ⊔ d₂) f₂ , t-binop-arith refl w₁ w₂
-  ...   | Raw.OpMul = success Int _ (Surface.mul e₁E e₂E) (d₁ ⊔ d₂) f₂ , t-binop-arith refl w₁ w₂
-  ...   | Raw.OpDiv = success Int _ (Surface.div e₁E e₂E) (d₁ ⊔ d₂) f₂ , t-binop-arith refl w₁ w₂
-  ...   | Raw.OpMod = success Int _ (Surface.mod' e₁E e₂E) (d₁ ⊔ d₂) f₂ , t-binop-arith refl w₁ w₂
-  ...   | Raw.OpLt  = success (Unit Once.Type.+ Unit) _ (Surface.lt e₁E e₂E) (d₁ ⊔ d₂) f₂ , t-binop-cmp refl w₁ w₂
-  ...   | Raw.OpLe  = success (Unit Once.Type.+ Unit) _ (Surface.le e₁E e₂E) (d₁ ⊔ d₂) f₂ , t-binop-cmp refl w₁ w₂
-  ...   | Raw.OpGt  = success (Unit Once.Type.+ Unit) _ (Surface.gt e₁E e₂E) (d₁ ⊔ d₂) f₂ , t-binop-cmp refl w₁ w₂
-  ...   | Raw.OpGe  = success (Unit Once.Type.+ Unit) _ (Surface.ge e₁E e₂E) (d₁ ⊔ d₂) f₂ , t-binop-cmp refl w₁ w₂
-  ...   | Raw.OpEq  = success (Unit Once.Type.+ Unit) _ (Surface.eq e₁E e₂E) (d₁ ⊔ d₂) f₂ , t-binop-cmp refl w₁ w₂
-  ...   | Raw.OpNe  = success (Unit Once.Type.+ Unit) _ (Surface.ne e₁E e₂E) (d₁ ⊔ d₂) f₂ , t-binop-cmp refl w₁ w₂
+  inferElabV ctx (Raw.RBinOp op e₁ e₂) =
+    inferElabV-RBinOp-aux ctx op e₁ e₂ (inferElabV ctx e₁) (inferElabV ctx e₂)
 
   ----------------------------------------------------------------------
   -- Phase D — `checkElab` clauses.
@@ -1731,6 +1695,66 @@ mutual
     success (A Once.Type.* B) _ (Surface.pair aE bE) (da ⊔ db) fb , t-pair wA wB
   inferElabV-RPair-aux ctx a b (failure err , _) _ = failure err , tt
   inferElabV-RPair-aux ctx a b (success _ _ _ _ _ , _) (failure err , _) = failure err , tt
+
+  inferElabV-RAnnot-aux ctx e T (success Ψ eE d fr , witness) = success T Ψ eE d fr , t-annot witness
+  inferElabV-RAnnot-aux ctx e T (failure err , _)             = failure err , tt
+
+  inferElabV-RUnaryOp-aux ctx e (failure err , _)                = failure err , tt
+  inferElabV-RUnaryOp-aux ctx e (success Unit   _ _ _ _ , _)     = failure (TypeMismatch Int Unit) , tt
+  inferElabV-RUnaryOp-aux ctx e (success Void   _ _ _ _ , _)     = failure (TypeMismatch Int Void) , tt
+  inferElabV-RUnaryOp-aux ctx e (success Int    Ψ eE d fr , w)   = success Int _ (Surface.neg eE) (suc d) fr , t-neg w
+  inferElabV-RUnaryOp-aux ctx e (success Float  _ _ _ _ , _)     = failure (TypeMismatch Int Float) , tt
+  inferElabV-RUnaryOp-aux ctx e (success Str    _ _ _ _ , _)     = failure (TypeMismatch Int Str) , tt
+  inferElabV-RUnaryOp-aux ctx e (success Buffer _ _ _ _ , _)     = failure (TypeMismatch Int Buffer) , tt
+  inferElabV-RUnaryOp-aux ctx e (success (A Once.Type.* B)      _ _ _ _ , _) = failure (TypeMismatch Int (A Once.Type.* B)) , tt
+  inferElabV-RUnaryOp-aux ctx e (success (A Once.Type.+ B)      _ _ _ _ , _) = failure (TypeMismatch Int (A Once.Type.+ B)) , tt
+  inferElabV-RUnaryOp-aux ctx e (success (A Once.Type.⇒[ k ] B) _ _ _ _ , _) = failure (TypeMismatch Int (A Once.Type.⇒[ k ] B)) , tt
+  inferElabV-RUnaryOp-aux ctx e (success (Once.Type.μ-type F)   _ _ _ _ , _) = failure (TypeMismatch Int (Once.Type.μ-type F)) , tt
+  inferElabV-RUnaryOp-aux ctx e (success (Once.Type.ν-type F)   _ _ _ _ , _) = failure (TypeMismatch Int (Once.Type.ν-type F)) , tt
+
+  -- left non-Int → BinOpLeftError
+  inferElabV-RBinOp-aux ctx op e₁ e₂ (failure err , _) _ = failure (BinOpLeftError err) , tt
+  inferElabV-RBinOp-aux ctx op e₁ e₂ (success Unit   _ _ _ _ , _) _ = failure (BinOpLeftError (TypeMismatch Int Unit)) , tt
+  inferElabV-RBinOp-aux ctx op e₁ e₂ (success Void   _ _ _ _ , _) _ = failure (BinOpLeftError (TypeMismatch Int Void)) , tt
+  inferElabV-RBinOp-aux ctx op e₁ e₂ (success Float  _ _ _ _ , _) _ = failure (BinOpLeftError (TypeMismatch Int Float)) , tt
+  inferElabV-RBinOp-aux ctx op e₁ e₂ (success Str    _ _ _ _ , _) _ = failure (BinOpLeftError (TypeMismatch Int Str)) , tt
+  inferElabV-RBinOp-aux ctx op e₁ e₂ (success Buffer _ _ _ _ , _) _ = failure (BinOpLeftError (TypeMismatch Int Buffer)) , tt
+  inferElabV-RBinOp-aux ctx op e₁ e₂ (success (A Once.Type.* B)      _ _ _ _ , _) _ = failure (BinOpLeftError (TypeMismatch Int (A Once.Type.* B))) , tt
+  inferElabV-RBinOp-aux ctx op e₁ e₂ (success (A Once.Type.+ B)      _ _ _ _ , _) _ = failure (BinOpLeftError (TypeMismatch Int (A Once.Type.+ B))) , tt
+  inferElabV-RBinOp-aux ctx op e₁ e₂ (success (A Once.Type.⇒[ k ] B) _ _ _ _ , _) _ = failure (BinOpLeftError (TypeMismatch Int (A Once.Type.⇒[ k ] B))) , tt
+  inferElabV-RBinOp-aux ctx op e₁ e₂ (success (Once.Type.μ-type F)   _ _ _ _ , _) _ = failure (BinOpLeftError (TypeMismatch Int (Once.Type.μ-type F))) , tt
+  inferElabV-RBinOp-aux ctx op e₁ e₂ (success (Once.Type.ν-type F)   _ _ _ _ , _) _ = failure (BinOpLeftError (TypeMismatch Int (Once.Type.ν-type F))) , tt
+  -- left Int, right non-Int → BinOpRightError
+  inferElabV-RBinOp-aux ctx op e₁ e₂ (success Int _ _ _ _ , _) (failure err , _) = failure (BinOpRightError err) , tt
+  inferElabV-RBinOp-aux ctx op e₁ e₂ (success Int _ _ _ _ , _) (success Unit   _ _ _ _ , _) = failure (BinOpRightError (TypeMismatch Int Unit)) , tt
+  inferElabV-RBinOp-aux ctx op e₁ e₂ (success Int _ _ _ _ , _) (success Void   _ _ _ _ , _) = failure (BinOpRightError (TypeMismatch Int Void)) , tt
+  inferElabV-RBinOp-aux ctx op e₁ e₂ (success Int _ _ _ _ , _) (success Float  _ _ _ _ , _) = failure (BinOpRightError (TypeMismatch Int Float)) , tt
+  inferElabV-RBinOp-aux ctx op e₁ e₂ (success Int _ _ _ _ , _) (success Str    _ _ _ _ , _) = failure (BinOpRightError (TypeMismatch Int Str)) , tt
+  inferElabV-RBinOp-aux ctx op e₁ e₂ (success Int _ _ _ _ , _) (success Buffer _ _ _ _ , _) = failure (BinOpRightError (TypeMismatch Int Buffer)) , tt
+  inferElabV-RBinOp-aux ctx op e₁ e₂ (success Int _ _ _ _ , _) (success (A Once.Type.* B)      _ _ _ _ , _) = failure (BinOpRightError (TypeMismatch Int (A Once.Type.* B))) , tt
+  inferElabV-RBinOp-aux ctx op e₁ e₂ (success Int _ _ _ _ , _) (success (A Once.Type.+ B)      _ _ _ _ , _) = failure (BinOpRightError (TypeMismatch Int (A Once.Type.+ B))) , tt
+  inferElabV-RBinOp-aux ctx op e₁ e₂ (success Int _ _ _ _ , _) (success (A Once.Type.⇒[ k ] B) _ _ _ _ , _) = failure (BinOpRightError (TypeMismatch Int (A Once.Type.⇒[ k ] B))) , tt
+  inferElabV-RBinOp-aux ctx op e₁ e₂ (success Int _ _ _ _ , _) (success (Once.Type.μ-type F)   _ _ _ _ , _) = failure (BinOpRightError (TypeMismatch Int (Once.Type.μ-type F))) , tt
+  inferElabV-RBinOp-aux ctx op e₁ e₂ (success Int _ _ _ _ , _) (success (Once.Type.ν-type F)   _ _ _ _ , _) = failure (BinOpRightError (TypeMismatch Int (Once.Type.ν-type F))) , tt
+  -- both Int → op dispatch
+  inferElabV-RBinOp-aux ctx Raw.OpAdd e₁ e₂ (success Int Ψ₁ e₁E d₁ f₁ , w₁) (success Int Ψ₂ e₂E d₂ f₂ , w₂) = success Int _ (Surface.add e₁E e₂E) (d₁ ⊔ d₂) f₂ , t-binop-arith refl w₁ w₂
+  inferElabV-RBinOp-aux ctx Raw.OpSub e₁ e₂ (success Int Ψ₁ e₁E d₁ f₁ , w₁) (success Int Ψ₂ e₂E d₂ f₂ , w₂) = success Int _ (Surface.sub e₁E e₂E) (d₁ ⊔ d₂) f₂ , t-binop-arith refl w₁ w₂
+  inferElabV-RBinOp-aux ctx Raw.OpMul e₁ e₂ (success Int Ψ₁ e₁E d₁ f₁ , w₁) (success Int Ψ₂ e₂E d₂ f₂ , w₂) = success Int _ (Surface.mul e₁E e₂E) (d₁ ⊔ d₂) f₂ , t-binop-arith refl w₁ w₂
+  inferElabV-RBinOp-aux ctx Raw.OpDiv e₁ e₂ (success Int Ψ₁ e₁E d₁ f₁ , w₁) (success Int Ψ₂ e₂E d₂ f₂ , w₂) = success Int _ (Surface.div e₁E e₂E) (d₁ ⊔ d₂) f₂ , t-binop-arith refl w₁ w₂
+  inferElabV-RBinOp-aux ctx Raw.OpMod e₁ e₂ (success Int Ψ₁ e₁E d₁ f₁ , w₁) (success Int Ψ₂ e₂E d₂ f₂ , w₂) = success Int _ (Surface.mod' e₁E e₂E) (d₁ ⊔ d₂) f₂ , t-binop-arith refl w₁ w₂
+  inferElabV-RBinOp-aux ctx Raw.OpLt e₁ e₂ (success Int Ψ₁ e₁E d₁ f₁ , w₁) (success Int Ψ₂ e₂E d₂ f₂ , w₂) = success (Unit Once.Type.+ Unit) _ (Surface.lt e₁E e₂E) (d₁ ⊔ d₂) f₂ , t-binop-cmp refl w₁ w₂
+  inferElabV-RBinOp-aux ctx Raw.OpLe e₁ e₂ (success Int Ψ₁ e₁E d₁ f₁ , w₁) (success Int Ψ₂ e₂E d₂ f₂ , w₂) = success (Unit Once.Type.+ Unit) _ (Surface.le e₁E e₂E) (d₁ ⊔ d₂) f₂ , t-binop-cmp refl w₁ w₂
+  inferElabV-RBinOp-aux ctx Raw.OpGt e₁ e₂ (success Int Ψ₁ e₁E d₁ f₁ , w₁) (success Int Ψ₂ e₂E d₂ f₂ , w₂) = success (Unit Once.Type.+ Unit) _ (Surface.gt e₁E e₂E) (d₁ ⊔ d₂) f₂ , t-binop-cmp refl w₁ w₂
+  inferElabV-RBinOp-aux ctx Raw.OpGe e₁ e₂ (success Int Ψ₁ e₁E d₁ f₁ , w₁) (success Int Ψ₂ e₂E d₂ f₂ , w₂) = success (Unit Once.Type.+ Unit) _ (Surface.ge e₁E e₂E) (d₁ ⊔ d₂) f₂ , t-binop-cmp refl w₁ w₂
+  inferElabV-RBinOp-aux ctx Raw.OpEq e₁ e₂ (success Int Ψ₁ e₁E d₁ f₁ , w₁) (success Int Ψ₂ e₂E d₂ f₂ , w₂) = success (Unit Once.Type.+ Unit) _ (Surface.eq e₁E e₂E) (d₁ ⊔ d₂) f₂ , t-binop-cmp refl w₁ w₂
+  inferElabV-RBinOp-aux ctx Raw.OpNe e₁ e₂ (success Int Ψ₁ e₁E d₁ f₁ , w₁) (success Int Ψ₂ e₂E d₂ f₂ , w₂) = success (Unit Once.Type.+ Unit) _ (Surface.ne e₁E e₂E) (d₁ ⊔ d₂) f₂ , t-binop-cmp refl w₁ w₂
+
+  inferElabV-RLet-aux ctx x e₁ e₂ (failure err , _) = failure err , tt
+  inferElabV-RLet-aux ctx x e₁ e₂ (success A Ψ₁ e₁E d₁ f₁ , w₁) =
+    inferElabV-RLet-aux2 ctx x e₁ e₂ e₁E d₁ f₁ w₁ (inferElabV (extendNamedCtx ctx x A) e₂)
+  inferElabV-RLet-aux2 ctx x e₁ e₂ e₁E d₁ f₁ w₁ (failure err , _) = failure err , tt
+  inferElabV-RLet-aux2 ctx x e₁ e₂ e₁E d₁ f₁ w₁ (success B (q ∷ᵘ Ψ₂) e₂E d₂ f₂ , w₂) =
+    success B _ (Surface.let' e₁E e₂E) (d₁ ⊔ suc d₂) f₂ , t-let w₁ w₂
 
   inferElabV-RVar-lookup-aux ctx x ¬unit (just (A , Ψ , se)) eq-loc _ _ =
     success A Ψ se 0 (NamedCtx.freshCounter ctx) , t-var-local ¬unit eq-loc
