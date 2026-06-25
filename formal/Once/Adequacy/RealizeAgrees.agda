@@ -26,16 +26,16 @@ open import Data.Nat using (ℕ)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax; Σ-syntax)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂)
 
-open import Once.Type using (Type; _*_)
+open import Once.Type using (Type; _*_; Int)
 open import Once.TypeCheck.Raw as Raw using (RawExpr)
 open import Once.TypeCheck.Classify using (NamedCtx)
 open import Once.TypeCheck.Elaborate using (inferElab; success; failure)
 import Once.TypeCheck.Elaborate as E
 open import Once.TypeCheck.Judgment
   using (_⊢ᵢ_∶_⨾_; _⊢ᶜ_∶_⨾_;
-         t-int; t-str; t-unit; t-unit-var; t-pair)
+         t-int; t-str; t-unit; t-unit-var; t-pair; t-neg)
 open import Once.Denotation.Realize using (realize; realize-infer)
-open import Once.Surface.Syntax as Surf using (Expr; Usage; ⟦_⟧ᶜ; pair; _+ᵘ_)
+open import Once.Surface.Syntax as Surf using (Expr; Usage; ⟦_⟧ᶜ; pair; neg; _+ᵘ_)
 open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ)
 import Once.Denotation.SourceDenote as SD
 
@@ -85,6 +85,22 @@ postulate
                        {Ψ : Usage (NamedCtx.size ctx)}
                      (w : ctx ⊢ᵢ e ∶ A ⨾ Ψ) → InferAgree ctx e w
 
+-- RUnaryOp(neg) node: fold the elaborator's `Int` branch; the negation
+-- agreement reduces to the sub-agreement at depth `k`.
+agree-RNeg : ∀ {ctx : NamedCtx} (e : RawExpr)
+  {Ψ : Usage (NamedCtx.size ctx)} {eE : Expr (NamedCtx.debruijn ctx) Ψ Int}
+  {d f : ℕ} {rE : Expr (NamedCtx.debruijn ctx) Ψ Int}
+  → inferElab ctx e ≡ success Int Ψ eE d f
+  → (∀ dγ k → SD.⟦ eE ⟧ˢ dγ k ≡ SD.⟦ rE ⟧ˢ dγ k)
+  → ∃[ eE' ] ∃[ d' ] ∃[ f' ]
+      (inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ success Int Ψ eE' d' f')
+      × (∀ dγ k → SD.⟦ eE' ⟧ˢ dγ k ≡ SD.⟦ neg rE ⟧ˢ dγ k)
+agree-RNeg {ctx} e {rE = rE} eqE agE with E.inferElabV ctx e | eqE
+... | success Int _ eE _ _ , _ | refl = _ , _ , _ , refl , negAgree
+  where
+    negAgree : ∀ dγ k → SD.⟦ neg eE ⟧ˢ dγ k ≡ SD.⟦ neg rE ⟧ˢ dγ k
+    negAgree dγ k rewrite agE dγ k = refl
+
 infer-agree : ∀ {ctx : NamedCtx} {e : RawExpr} {A : Type}
                 {Ψ : Usage (NamedCtx.size ctx)}
               (w : ctx ⊢ᵢ e ∶ A ⨾ Ψ) → InferAgree ctx e w
@@ -96,4 +112,7 @@ infer-agree (t-pair {a = a} {b = b} wA wB) =
   let (aE , _ , _ , eqA , agA) = infer-agree wA
       (bE , _ , _ , eqB , agB) = infer-agree wB
   in agree-RPair a b {rA = realize-infer wA} {rB = realize-infer wB} eqA eqB agA agB
+infer-agree (t-neg {e = e} d) =
+  let (eE , _ , _ , eqE , agE) = infer-agree d
+  in agree-RNeg e {rE = realize-infer d} eqE agE
 infer-agree w = infer-agree-todo w
