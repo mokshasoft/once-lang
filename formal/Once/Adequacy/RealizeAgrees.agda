@@ -40,6 +40,7 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Relation.Nullary using (Dec; yes; no)
 open import Once.TypeCheck.Judgment using (_⊢ᵢ_∶_⨾_; _⊢ᶜ_∶_⨾_; t-int; t-str; t-unit; t-pair; t-neg; t-let)
 open import Once.Denotation.Realize using (realize; realize-infer)
+open import Once.TypeCheck.Soundness using (check-sound)
 open import Once.Surface.Syntax as Surface using (Expr; Usage; ⟦_⟧ᶜ; pair; neg; let'; sigOp; lift-morphism)
 open Surface.Usage using () renaming (_∷_ to _∷ᵘ_)
 open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ)
@@ -248,3 +249,22 @@ mutual
   check-agreeV : ∀ (ctx : NamedCtx) (e : RawExpr) (T : Type) {Ψ se d f w}
     (eq : E.checkElabV ctx e T ≡ (success Ψ se d f , w)) → CheckAgreeV ctx e T eq
   check-agreeV ctx e T eq = check-agreeV-todo ctx e T eq
+
+------------------------------------------------------------------------
+-- THE BRIDGE (Plan 0.50: de-island). `realize-agrees` of the EXACT type
+-- `RealizeBridge`/`Compile.main-realize-agrees` consume. Mirrors `check-sound`'s
+-- own case-split (`checkElab = proj₁ ∘ checkElabV`): casing `checkElabV` reduces
+-- `cc` to a `success`/`failure` equation; `success` ⇒ the goal is `check-agreeV`'s
+-- conclusion; `failure` is absurd. RealizeBridge re-exports this.
+------------------------------------------------------------------------
+realize-agrees : ∀ (ctx : NamedCtx) (e : RawExpr) (A : Type)
+  {Ψ : Usage (NamedCtx.size ctx)}
+  {se : Expr (NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
+  (cc : E.checkElab ctx e A ≡ success Ψ se d f)
+  (dγ : ⟦ ⟦ NamedCtx.debruijn ctx ⟧ᶜ ⟧ᴰ) (k : ℕ) →
+  SD.⟦ se ⟧ˢ dγ k ≡ SD.⟦ realize (check-sound ctx e A cc) ⟧ˢ dγ k
+realize-agrees ctx e A cc dγ k with E.checkElabV ctx e A in eqV
+... | success Ψ' eE' d' fr' , w' with cc
+...   | refl = check-agreeV ctx e A eqV dγ k
+realize-agrees ctx e A cc dγ k | failure _ , _ with cc
+... | ()
