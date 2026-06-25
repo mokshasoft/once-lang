@@ -23,17 +23,22 @@
 module Once.Adequacy.RealizeAgrees where
 
 open import Data.Nat using (ℕ)
+open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax; Σ-syntax)
+open import Data.String using (String)
+import Data.String.Properties as StrProp
+open import Relation.Nullary using (¬_; yes; no)
+open import Data.Empty using (⊥-elim)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂)
 
 open import Once.Type using (Type; _*_; Int)
 open import Once.TypeCheck.Raw as Raw using (RawExpr)
-open import Once.TypeCheck.Classify using (NamedCtx)
+open import Once.TypeCheck.Classify using (NamedCtx; lookupLocal; lookupImport)
 open import Once.TypeCheck.Elaborate using (inferElab; success; failure)
 import Once.TypeCheck.Elaborate as E
 open import Once.TypeCheck.Judgment
   using (_⊢ᵢ_∶_⨾_; _⊢ᶜ_∶_⨾_;
-         t-int; t-str; t-unit; t-unit-var; t-pair; t-neg)
+         t-int; t-str; t-unit; t-unit-var; t-pair; t-neg; t-var-local; t-var-import)
 open import Once.Denotation.Realize using (realize; realize-infer)
 open import Once.Surface.Syntax as Surf using (Expr; Usage; ⟦_⟧ᶜ; pair; neg; _+ᵘ_)
 open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ)
@@ -101,6 +106,49 @@ agree-RNeg {ctx} e {rE = rE} eqE agE with E.inferElabV ctx e | eqE
     negAgree : ∀ dγ k → SD.⟦ neg eE ⟧ˢ dγ k ≡ SD.⟦ neg rE ⟧ˢ dγ k
     negAgree dγ k rewrite agE dγ k = refl
 
+-- RVar (local): the emitted term IS the carried SExpr `eE'`, which is exactly
+-- `realize-infer (t-var-local …)` — so the agreement is `refl` once the
+-- elaborator's `x ≟ unit` + lookup dispatch is folded (mirrors
+-- `infer-complete-RVar-local`).
+agree-RVar-local : ∀ {ctx : NamedCtx} (x : String) {A : Type}
+  {Ψ : Usage (NamedCtx.size ctx)} {eE' : Expr (NamedCtx.debruijn ctx) Ψ A}
+  → (¬unit : ¬ (x ≡ "unit"))
+  → (eqLoc : lookupLocal ctx x ≡ just (A , Ψ , eE'))
+  → InferAgree ctx (Raw.RVar x) (t-var-local ¬unit eqLoc)
+agree-RVar-local {ctx} x {A} {Ψ} {eE'} ¬unit eqLoc with StrProp._≟_ x "unit"
+... | yes refl = ⊥-elim (¬unit refl)
+... | no _     = _ , _ , _ , cong proj₁ (helper _ eqLoc) , λ dγ k → refl
+  where
+    open E using (inferElabV-RVar-lookup-aux)
+    helper : ∀ (lhs : Maybe (∃[ A' ] ∃[ Ψ' ] (Expr (NamedCtx.debruijn ctx) Ψ' A')))
+           → (eq' : lookupLocal ctx x ≡ lhs)
+           → inferElabV-RVar-lookup-aux ctx x ¬unit (lookupLocal ctx x) refl _ refl
+             ≡ inferElabV-RVar-lookup-aux ctx x ¬unit lhs eq' _ refl
+    helper _ refl = refl
+
+-- RVar (import): emitted term is `sigOp (bare x)`, exactly
+-- `realize-infer (t-var-import …)` — agreement `refl`.
+agree-RVar-import : ∀ {ctx : NamedCtx} (x : String) {T : Type}
+  → (¬unit : ¬ (x ≡ "unit"))
+  → (eqLoc : lookupLocal ctx x ≡ nothing)
+  → (eqImp : lookupImport (NamedCtx.imports ctx) x ≡ just T)
+  → InferAgree ctx (Raw.RVar x) (t-var-import ¬unit eqLoc eqImp)
+agree-RVar-import {ctx} x {T} ¬unit eqLoc eqImp with StrProp._≟_ x "unit"
+... | yes refl = ⊥-elim (¬unit refl)
+... | no _     = _ , _ , _ , cong proj₁ (trans (helperLoc _ eqLoc) (helperImp _ eqImp)) , λ dγ k → refl
+  where
+    open E using (inferElabV-RVar-lookup-aux)
+    helperLoc : ∀ (lhs : Maybe (∃[ A' ] ∃[ Ψ' ] (Expr (NamedCtx.debruijn ctx) Ψ' A')))
+              → (eq' : lookupLocal ctx x ≡ lhs)
+              → inferElabV-RVar-lookup-aux ctx x ¬unit (lookupLocal ctx x) refl _ refl
+                ≡ inferElabV-RVar-lookup-aux ctx x ¬unit lhs eq' _ refl
+    helperLoc _ refl = refl
+    helperImp : ∀ (lhs : Maybe Type)
+              → (eq' : lookupImport (NamedCtx.imports ctx) x ≡ lhs)
+              → inferElabV-RVar-lookup-aux ctx x ¬unit nothing eqLoc (lookupImport (NamedCtx.imports ctx) x) refl
+                ≡ inferElabV-RVar-lookup-aux ctx x ¬unit nothing eqLoc lhs eq'
+    helperImp _ refl = refl
+
 infer-agree : ∀ {ctx : NamedCtx} {e : RawExpr} {A : Type}
                 {Ψ : Usage (NamedCtx.size ctx)}
               (w : ctx ⊢ᵢ e ∶ A ⨾ Ψ) → InferAgree ctx e w
@@ -115,4 +163,6 @@ infer-agree (t-pair {a = a} {b = b} wA wB) =
 infer-agree (t-neg {e = e} d) =
   let (eE , _ , _ , eqE , agE) = infer-agree d
   in agree-RNeg e {rE = realize-infer d} eqE agE
+infer-agree (t-var-local {x = x} ¬unit eqLoc) = agree-RVar-local x ¬unit eqLoc
+infer-agree (t-var-import {x = x} ¬unit eqLoc eqImp) = agree-RVar-import x ¬unit eqLoc eqImp
 infer-agree w = infer-agree-todo w
