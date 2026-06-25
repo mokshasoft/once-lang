@@ -1604,7 +1604,11 @@ mutual
   checkElabV ctx (Raw.RInt n) T = checkElabV-RInt-aux ctx n T (isRIntVliftTarget? T)
 
   -- Generic infer-and-match fallback — covers RInt, RStringLit, RUnit,
-  -- RPair, RBinOp, RUnaryOp, RLet, RDestruct, RAnnot, RQualified.
+  -- RPair, RBinOp, RUnaryOp, RLet, RDestruct, RAnnot, RQualified, RResolved.
+  -- NB: the `with inferElabV ctx e` here is LOAD-BEARING for termination — the
+  -- mutual `checkElab`↔`inferElab` same-size call (`checkElab e → inferElab e`)
+  -- is accepted by the foetus checker only as a `with`-scrutinee; extracting it
+  -- to an explicit-arg aux breaks termination. NOT every `with` is removable.
   checkElabV ctx e T with inferElabV ctx e
   ... | failure err , _ = failure err , tt
   ... | success T' Ψ eE d fr , w with T ≟T T'
