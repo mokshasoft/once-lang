@@ -42,7 +42,7 @@ open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂; ∃; ∃-syntax
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality
-  using (_≡_; refl; cong; cong₂; sym; trans; subst)
+  using (_≡_; _≢_; refl; cong; cong₂; sym; trans; subst)
 open import Relation.Nullary using (¬_; yes; no; Dec)
 open import Data.Empty using (⊥; ⊥-elim)
 
@@ -58,7 +58,7 @@ open import Data.String.Unsafe using (toList-++; toList∘fromList)
 open import Once.Parser.Lexer using (isIdentStart; isIdentContinue; toNat)
 open import Once.Target.Symbol
   using (z-encode-char; z-encode-char-aux; z-encode; showNat;
-         mangle-component; join-us; once-prefix; once-symbol-path)
+         mangle-component; join-us; once-prefix; once-symbol-path; once-symbol-own)
 open import Once.CanonicalName using (CanonicalName; canonical; parts)
 
 ------------------------------------------------------------------------
@@ -424,3 +424,23 @@ once-symbol-path-injective cn₁ cn₂ v1 v2 eq =
             (trans teq
                    (trans (toList-joinUs (map mangle-component (parts cn₂)))
                           (cong joinUsL' (body-rel (parts cn₂)))))
+
+------------------------------------------------------------------------
+-- Plan 0.50 — the BARE-name corollary. `once-symbol-own` (the symbol of a
+-- single top-level definition name, = `once-symbol-path (canonical [name])`)
+-- is injective on ValidIdent names; its ≢-form is what `program-no-clash`
+-- uses to lift distinct DEFINITION names to distinct emitted SYMBOLS.
+------------------------------------------------------------------------
+
+once-symbol-own-injective : ∀ (x y : String)
+  → ValidIdent x → ValidIdent y
+  → once-symbol-own x ≡ once-symbol-own y → x ≡ y
+once-symbol-own-injective x y vx vy eq =
+  proj₁ (∷-injective (cong parts
+    (once-symbol-path-injective (canonical (x ∷ [])) (canonical (y ∷ []))
+      (vx ∷ []) (vy ∷ []) eq)))
+
+once-symbol-own-≢ : ∀ (x y : String)
+  → ValidIdent x → ValidIdent y
+  → x ≢ y → once-symbol-own x ≢ once-symbol-own y
+once-symbol-own-≢ x y vx vy x≢y eq = x≢y (once-symbol-own-injective x y vx vy eq)
