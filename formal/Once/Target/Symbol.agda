@@ -23,6 +23,7 @@ open import Data.List using (List; []; _∷_; map; concatMap; length)
 open import Data.Char using (Char)
 open import Data.Nat using (ℕ)
 open import Data.Nat.Show renaming (show to showNat)
+open import Once.CanonicalName using (CanonicalName; parts)
 
 -- | Once's universal symbol prefix.
 -- Applied to every Once-generated assembly symbol (user-defined
@@ -59,6 +60,7 @@ z-encode-char '+'  = 'z' ∷ 'p' ∷ []
 z-encode-char '*'  = 'z' ∷ 't' ∷ []
 z-encode-char '!'  = 'z' ∷ 'b' ∷ []
 z-encode-char '?'  = 'z' ∷ 'h' ∷ []
+z-encode-char '.'  = 'z' ∷ 'd' ∷ []   -- dot: keeps single-component dotted names (arith.add.int) asm-safe
 z-encode-char c    = c ∷ []
 
 z-encode : String → String
@@ -74,21 +76,25 @@ join-us []           = ""
 join-us (x ∷ [])     = x
 join-us (x ∷ y ∷ xs) = x ++ "_" ++ join-us (y ∷ xs)
 
--- | The canonical clash-free symbol for a resolved identity `[path…, name]`.
-once-symbol-path : List String → String
-once-symbol-path comps = once-prefix ++ join-us (map mangle-component comps)
+-- | The canonical clash-free symbol for a resolved identity (its `parts`).
+once-symbol-path : CanonicalName → String
+once-symbol-path cn = once-prefix ++ join-us (map mangle-component (parts cn))
 
 -- Format checks (the clash-free + asm-safe scheme, by example).
 private
   open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+  open import Once.CanonicalName using (canonical)
   -- module Cars.All, fn foo
-  _ : once-symbol-path ("Cars" ∷ "All" ∷ "foo" ∷ []) ≡ "once_4Cars_3All_3foo"
+  _ : once-symbol-path (canonical ("Cars" ∷ "All" ∷ "foo" ∷ [])) ≡ "once_4Cars_3All_3foo"
   _ = refl
   -- module Cars, fn All_foo — distinct from the above (no clash)
-  _ : once-symbol-path ("Cars" ∷ "All_foo" ∷ []) ≡ "once_4Cars_7All_foo"
+  _ : once-symbol-path (canonical ("Cars" ∷ "All_foo" ∷ [])) ≡ "once_4Cars_7All_foo"
   _ = refl
   -- asm-unsafe chars z-encoded: assocL+ → assocLzp (len 8)
-  _ : once-symbol-path ("M" ∷ "assocL+" ∷ []) ≡ "once_1M_8assocLzp"
+  _ : once-symbol-path (canonical ("M" ∷ "assocL+" ∷ [])) ≡ "once_1M_8assocLzp"
+  _ = refl
+  -- single-component dotted name (arith.add.int) stays asm-safe: . → zd
+  _ : once-symbol-path (canonical ("arith.add.int" ∷ [])) ≡ "once_15arithzdaddzdint"
   _ = refl
   -- literal "zp" escapes its z → zzp (≠ the encoding of `+`)
   _ : mangle-component "zp" ≡ "3zzp"

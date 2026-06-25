@@ -36,6 +36,7 @@ open import Data.Integer using (ℤ)
 open import Data.Nat using (ℕ)
 open import Data.Unit using (⊤; tt)
 open import Data.String using (String; _≟_)
+open import Once.CanonicalName using (CanonicalName; _≟ᶜ_)
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
 
@@ -128,7 +129,7 @@ data SigOpSem (A B : Type) : Set where
 record SigOpInfo (A B : Type) : Set where
   constructor mk-info'
   field
-    name : String
+    name : CanonicalName            -- Plan 0.50: the resolved [path…, name] identity
     sem  : SigOpSem A B              -- proven value (internal) OR effect contract (external)
 
 open SigOpInfo public
@@ -167,7 +168,7 @@ effect si = go (sem si)
 -- laundering unrepresentable. `Pure` keeps its value as `pureV`.
 ------------------------------------------------------------------------
 
-mk-info : ∀ {A B} → String → (M.⟦ A ⟧ → M.⟦ B ⟧) → EffectShape B → SigOpInfo A B
+mk-info : ∀ {A B} → CanonicalName → (M.⟦ A ⟧ → M.⟦ B ⟧) → EffectShape B → SigOpInfo A B
 mk-info nm f Pure      = mk-info' nm (pureV f)
 mk-info nm f (Emits e) = mk-info' nm (emitsV e)
 mk-info nm f (Halts e) = mk-info' nm (haltsV e)
@@ -178,7 +179,7 @@ mk-info nm f (Halts e) = mk-info' nm (haltsV e)
 
 -- | `SigOpInfo`s are compared structurally by `name` only.
 _≟SigOpInfo-name_ : ∀ {A B} (si₁ si₂ : SigOpInfo A B) → Dec (name si₁ ≡ name si₂)
-si₁ ≟SigOpInfo-name si₂ = name si₁ ≟ name si₂
+si₁ ≟SigOpInfo-name si₂ = name si₁ ≟ᶜ name si₂
 
 -- | Name coherence (axiomatic).
 --
