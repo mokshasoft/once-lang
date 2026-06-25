@@ -29,12 +29,13 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 import Once.Type
 open import Once.Type using (Type; Int)
 open import Once.TypeCheck.Raw as Raw using (RawExpr)
-open import Once.TypeCheck.Classify using (NamedCtx)
+open import Once.TypeCheck.Classify using (NamedCtx; extendNamedCtx)
 open import Once.TypeCheck.Elaborate using (success; failure; VerifiedInferResult)
 import Once.TypeCheck.Elaborate as E
-open import Once.TypeCheck.Judgment using (_⊢ᵢ_∶_⨾_; _⊢ᶜ_∶_⨾_; t-int; t-str; t-unit; t-pair; t-neg)
+open import Once.TypeCheck.Judgment using (_⊢ᵢ_∶_⨾_; _⊢ᶜ_∶_⨾_; t-int; t-str; t-unit; t-pair; t-neg; t-let)
 open import Once.Denotation.Realize using (realize; realize-infer)
-open import Once.Surface.Syntax using (Expr; Usage; ⟦_⟧ᶜ; pair; neg)
+open import Once.Surface.Syntax as Surface using (Expr; Usage; ⟦_⟧ᶜ; pair; neg; let')
+open Surface.Usage using () renaming (_∷_ to _∷ᵘ_)
 open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ)
 import Once.Denotation.SourceDenote as SD
 
@@ -87,6 +88,20 @@ agree-RUnaryOp (success (_ Once.Type.⇒[ _ ] _) _ _ _ _ , _) () subAg
 agree-RUnaryOp (success (Once.Type.μ-type _) _ _ _ _ , _) () subAg
 agree-RUnaryOp (success (Once.Type.ν-type _) _ _ _ _ , _) () subAg
 
+-- `let'` agreement combinator: if the bound expr and body each agree with
+-- their `realize` counterpart (the body over the EXTENDED env), so does the
+-- `let'`. `_>>=T_` evaluates the bound expr at `k` (fixing `v1`), then the body
+-- at `(dγ , v1)` at `k` — rewrite the bound IH first, then the body IH at the
+-- now-fixed `v1`.
+let'-agree : ∀ {ctx : NamedCtx} {x A B} {Ψ₁ Ψ₂ : Usage (NamedCtx.size ctx)} {q}
+  {e₁E r₁ : Expr (NamedCtx.debruijn ctx) Ψ₁ A}
+  {e₂E r₂ : Expr (NamedCtx.debruijn (extendNamedCtx ctx x A)) (q ∷ᵘ Ψ₂) B}
+  → (∀ dγ k → SD.⟦ e₁E ⟧ˢ dγ k ≡ SD.⟦ r₁ ⟧ˢ dγ k)
+  → (∀ dγ' k → SD.⟦ e₂E ⟧ˢ dγ' k ≡ SD.⟦ r₂ ⟧ˢ dγ' k)
+  → ∀ dγ k → SD.⟦ let' e₁E e₂E ⟧ˢ dγ k ≡ SD.⟦ let' r₁ r₂ ⟧ˢ dγ k
+let'-agree {r₁ = r₁} ag1 ag2 dγ k
+  rewrite ag1 dγ k | ag2 (dγ , proj₂ (SD.⟦ r₁ ⟧ˢ dγ k)) k = refl
+
 mutual
   infer-agreeV : ∀ (ctx : NamedCtx) (e : RawExpr) {A Ψ se d f w}
     (eq : E.inferElabV ctx e ≡ (success A Ψ se d f , w)) → InferAgreeV ctx e eq
@@ -101,6 +116,22 @@ mutual
   ...   | refl rewrite infer-agreeV ctx a eqa dγ k | infer-agreeV ctx b eqb dγ k = refl
   infer-agreeV ctx (Raw.RUnaryOp Raw.OpNeg e) eq dγ k =
     agree-RUnaryOp (E.inferElabV ctx e) eq (λ p → infer-agreeV ctx e p) dγ k
+  infer-agreeV ctx (Raw.RLet x e₁ e₂) eq dγ k
+    with E.inferElabV ctx e₁ in eq1
+  ... | failure _ , _ with eq
+  ...   | ()
+  infer-agreeV ctx (Raw.RLet x e₁ e₂) eq dγ k
+    | success A Ψ₁ e₁E d₁ f₁ , w₁
+        with E.inferElabV (extendNamedCtx ctx x A) e₂ in eq2
+  ...     | failure _ , _ with eq
+  ...       | ()
+  infer-agreeV ctx (Raw.RLet x e₁ e₂) eq dγ k
+    | success A Ψ₁ e₁E d₁ f₁ , w₁
+    | success B (q ∷ᵘ Ψ₂) e₂E d₂ f₂ , w₂ with eq
+  ...     | refl
+            rewrite infer-agreeV ctx e₁ {A} {Ψ₁} {e₁E} {d₁} {f₁} {w₁} eq1 dγ k
+                  | infer-agreeV (extendNamedCtx ctx x A) e₂ {B} {q ∷ᵘ Ψ₂} {e₂E} {d₂} {f₂} {w₂} eq2
+                      (dγ , proj₂ (SD.⟦ realize-infer w₁ ⟧ˢ dγ k)) k = refl
   infer-agreeV ctx e eq = infer-agreeV-todo ctx e eq
 
   check-agreeV : ∀ (ctx : NamedCtx) (e : RawExpr) (T : Type) {Ψ se d f w}
