@@ -15,6 +15,7 @@ module Once.TypeCheck.Raw where
 open import Data.String using (String)
 open import Data.Integer using (ℤ)
 open import Once.Type using (Type; Functor)
+open import Once.CanonicalName using (CanonicalName)
 
 ------------------------------------------------------------------------
 -- Binary Operators (OCP-0002)
@@ -62,6 +63,12 @@ data RawExpr : Set where
   -- Qualified variable reference: name@alias (e.g., exit0@S)
   -- First String is the name, second is the module alias
   RQualified : String → String → RawExpr
+
+  -- Plan 0.50: a qualified ref RESOLVED to its canonical identity. The parser
+  -- emits `RQualified name alias`; `canon` (resolveImports) resolves alias→path
+  -- and rewrites it to `RResolved (canonical (path ++ [name]))`, so by typecheck
+  -- time the reference carries its clash-free canonical name directly.
+  RResolved : CanonicalName → RawExpr
 
   -- Function application
   RApp      : RawExpr → RawExpr → RawExpr
