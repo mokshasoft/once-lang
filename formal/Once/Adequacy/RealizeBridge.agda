@@ -20,30 +20,12 @@
 
 module Once.Adequacy.RealizeBridge where
 
-open import Data.Nat using (ℕ)
-open import Relation.Binary.PropositionalEquality using (_≡_)
-
-open import Once.Type using (Type)
-open import Once.TypeCheck.Raw using (RawExpr)
-open import Once.TypeCheck.Classify using (NamedCtx)
-open import Once.Surface.Syntax using (Expr; Usage; ⟦_⟧ᶜ)
-open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ)
-import Once.Denotation.SourceDenote as SD
-
--- The two things that meet here (the no-cheat boundary is in `Realize`, not
--- this module — this module is the proof, allowed to see both):
-open import Once.Denotation.Realize using (realize)
-open import Once.TypeCheck.Elaborate using (checkElab; success)
-open import Once.TypeCheck.Soundness using (check-sound)
-
--- THE agreement (postulated top-down; discharged later by induction on the
--- derivation). `se` = `checkElab`'s term; `realize (check-sound … cc)` = the
--- reference term read off the (term-free, raw-built) derivation. Pointwise in
--- the env `dγ` and depth `k`, like `faithful`.
-postulate
-  realize-agrees : ∀ (ctx : NamedCtx) (e : RawExpr) (A : Type)
-    {Ψ : Usage (NamedCtx.size ctx)}
-    {se : Expr (NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
-    (cc : checkElab ctx e A ≡ success Ψ se d f)
-    (dγ : ⟦ ⟦ NamedCtx.debruijn ctx ⟧ᶜ ⟧ᴰ) (k : ℕ) →
-    SD.⟦ se ⟧ˢ dγ k ≡ SD.⟦ realize (check-sound ctx e A cc) ⟧ˢ dγ k
+-- `realize-agrees` is now PROVEN (Plan 0.50: de-islanded). It used to be a
+-- `postulate` here while the proof floated in a parallel module imported by
+-- nothing — the apex assumed it as an axiom and never saw the proof. The proof
+-- (the per-construct agreement lemmas + the `check-sound`/`checkElabV` bridge)
+-- lives in `Once.Adequacy.RealizeAgrees`; this module RE-EXPORTS it so the apex
+-- path (`Compile.main-realize-agrees` → here) consumes the real theorem. The
+-- remaining debt is now `RealizeAgrees.{infer,check}-agreeV-todo`, which sit
+-- transitively ON the apex path — itemized, not a disconnected island.
+open import Once.Adequacy.RealizeAgrees using (realize-agrees) public
