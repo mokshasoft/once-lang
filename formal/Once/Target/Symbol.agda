@@ -21,8 +21,19 @@ module Once.Target.Symbol where
 open import Data.String using (String; _++_; toList; fromList)
 open import Data.List using (List; []; _∷_; map; concatMap; length)
 open import Data.Char using (Char)
+open import Data.Char.Properties using (_≟_)
+open import Relation.Nullary using (yes; no; Dec)
+open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Data.Nat using (ℕ)
-open import Data.Nat.Show renaming (show to showNat)
+-- `showNat = showInBase 10`: same decimal output as `Data.Nat.Show.show`
+-- (definitionally equal on every concrete numeral — the format-checks below
+-- are unchanged) but built on `charsInBase`, which the stdlib proves INJECTIVE
+-- (`Data.Nat.Show.Properties.charsInBase-injective`). Plan 0.50's
+-- `once-symbol-path` injectivity lemma needs that; `show` (via `toNatDigits`)
+-- has no stdlib injectivity proof.
+open import Data.Nat.Show using (showInBase)
+showNat : ℕ → String
+showNat = showInBase 10
 open import Once.CanonicalName using (CanonicalName; parts)
 
 -- | Once's universal symbol prefix.
@@ -53,15 +64,31 @@ once-symbol name = once-prefix ++ name
 ------------------------------------------------------------------------
 
 -- z-encode a single character (escape the asm-unsafe ones + `z` itself).
+-- Dispatched through a top-level helper taking the `_≟_` DECISIONS as
+-- explicit arguments (NOT a `with`-block — the user's blanket preference,
+-- and exact-split friendly). This makes `z-encode-char` REDUCE on a
+-- variable char once the decisions are supplied, and lets the injectivity
+-- proof (`Once.Target.SymbolInjective`) classify a char by pattern-matching
+-- the SAME `Dec` values — a literal-pattern catch-all is stuck on an
+-- abstract `c`. Output identical (the format-checks below are unchanged).
+-- `.` (dot) keeps single-component dotted names (arith.add.int) asm-safe.
+z-encode-char-aux :
+  (c : Char)
+  → Dec (c ≡ 'z') → Dec (c ≡ '\'') → Dec (c ≡ '+') → Dec (c ≡ '*')
+  → Dec (c ≡ '!') → Dec (c ≡ '?') → Dec (c ≡ '.') → List Char
+z-encode-char-aux c (yes _) _ _ _ _ _ _ = 'z' ∷ 'z' ∷ []
+z-encode-char-aux c (no _) (yes _) _ _ _ _ _ = 'z' ∷ 'q' ∷ []
+z-encode-char-aux c (no _) (no _) (yes _) _ _ _ _ = 'z' ∷ 'p' ∷ []
+z-encode-char-aux c (no _) (no _) (no _) (yes _) _ _ _ = 'z' ∷ 't' ∷ []
+z-encode-char-aux c (no _) (no _) (no _) (no _) (yes _) _ _ = 'z' ∷ 'b' ∷ []
+z-encode-char-aux c (no _) (no _) (no _) (no _) (no _) (yes _) _ = 'z' ∷ 'h' ∷ []
+z-encode-char-aux c (no _) (no _) (no _) (no _) (no _) (no _) (yes _) = 'z' ∷ 'd' ∷ []
+z-encode-char-aux c (no _) (no _) (no _) (no _) (no _) (no _) (no _) = c ∷ []
+
 z-encode-char : Char → List Char
-z-encode-char 'z'  = 'z' ∷ 'z' ∷ []
-z-encode-char '\'' = 'z' ∷ 'q' ∷ []
-z-encode-char '+'  = 'z' ∷ 'p' ∷ []
-z-encode-char '*'  = 'z' ∷ 't' ∷ []
-z-encode-char '!'  = 'z' ∷ 'b' ∷ []
-z-encode-char '?'  = 'z' ∷ 'h' ∷ []
-z-encode-char '.'  = 'z' ∷ 'd' ∷ []   -- dot: keeps single-component dotted names (arith.add.int) asm-safe
-z-encode-char c    = c ∷ []
+z-encode-char c =
+  z-encode-char-aux c (c ≟ 'z') (c ≟ '\'') (c ≟ '+') (c ≟ '*')
+                      (c ≟ '!') (c ≟ '?') (c ≟ '.')
 
 z-encode : String → String
 z-encode s = fromList (concatMap z-encode-char (toList s))
@@ -82,7 +109,7 @@ once-symbol-path cn = once-prefix ++ join-us (map mangle-component (parts cn))
 
 -- Format checks (the clash-free + asm-safe scheme, by example).
 private
-  open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+  open import Relation.Binary.PropositionalEquality using (refl)
   open import Once.CanonicalName using (canonical)
   -- module Cars.All, fn foo
   _ : once-symbol-path (canonical ("Cars" ∷ "All" ∷ "foo" ∷ [])) ≡ "once_4Cars_3All_3foo"
