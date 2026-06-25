@@ -45,7 +45,7 @@ open import Once.IR as IR
 open import Once.Arith.SigOp.Builders using (generic-semM)
 open import Once.SigOp.Info using (SigOpInfo; mk-info'; pureV; emitsV; haltsV)
 open import Once.CanonicalName using (CanonicalName; bare; showCanonical)
-open import Once.SigEffect using () renaming (halts to se-halts; emits to se-emits)
+open import Once.SigEffect using (SigEffect) renaming (halts to se-halts; emits to se-emits)
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Raw as Raw
 open import Once.TypeCheck.Error using (TypeError; renderError;
@@ -1673,14 +1673,19 @@ mutual
   -- straight into the `SigOpInfo` (NO `bare`, NO String render) — so the
   -- realize/elaborator/trace/codegen names agree by construction. Mirrors
   -- `ext-arrow-info`/`inferElabV-RQualified-aux` but keyed by `cn`.
+  -- De-withed (so the realize-agrees masquerade can fold it): the `B ≟T Unit`
+  -- decision + the `lookupSigEffect` result are explicit args.
+  ext-resolved-info-aux : ∀ {A B} → CanonicalName → Purity
+                        → Dec (B ≡ Unit) → Maybe SigEffect → SigOpInfo A B
+  ext-resolved-info-aux cn pure _ _ = mk-info' cn (pureV (generic-semM (showCanonical cn)))
+  ext-resolved-info-aux cn eff (no _) _ = mk-info' cn (pureV (generic-semM (showCanonical cn)))
+  ext-resolved-info-aux cn eff (yes refl) (just se-halts) = mk-info' cn (haltsV refl)
+  ext-resolved-info-aux cn eff (yes refl) (just se-emits) = mk-info' cn (emitsV refl)
+  ext-resolved-info-aux cn eff (yes refl) nothing         = mk-info' cn (emitsV refl)
+
   ext-resolved-info : ∀ {A B} → NamedCtx → CanonicalName → Purity → SigOpInfo A B
-  ext-resolved-info ctx cn pure = mk-info' cn (pureV (generic-semM (showCanonical cn)))
-  ext-resolved-info {A} {B} ctx cn eff with B ≟T Unit
-  ... | no _ = mk-info' cn (pureV (generic-semM (showCanonical cn)))
-  ... | yes refl with lookupSigEffect (NamedCtx.sigEffects ctx) (showCanonical cn)
-  ...   | just se-halts = mk-info' cn (haltsV refl)
-  ...   | just se-emits = mk-info' cn (emitsV refl)
-  ...   | nothing       = mk-info' cn (emitsV refl)
+  ext-resolved-info {A} {B} ctx cn π =
+    ext-resolved-info-aux cn π (B ≟T Unit) (lookupSigEffect (NamedCtx.sigEffects ctx) (showCanonical cn))
 
   inferElabV-RResolved-aux ctx cn
     (just (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B)) eq =
