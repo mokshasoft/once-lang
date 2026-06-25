@@ -31,10 +31,11 @@ open import Data.Sum using (_⊎_)
 open import Data.Unit using (⊤)
 
 open import Once.Type using (Type; Unit; Int; Str; _*_; _+_;
-                              ArrowKind; mk-kind; Purity; pure; eff)
+                              ArrowKind; mk-kind; Purity; pure; eff; isUnit?)
+open import Relation.Nullary using (Dec; yes; no)
 open import Once.SigOp.Info using (SigOpInfo; mk-info; mk-info'; emitsV; EffectShape; Pure; Halts)
 open import Once.CanonicalName using (CanonicalName; bare; showCanonical)
-open import Relation.Binary.PropositionalEquality using (refl)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.Word using (Carrier)
 import Once.Semantics.Value Carrier as M
@@ -189,7 +190,14 @@ generic-info = value-info
 -- `emits`-vs-`halts` refinement is codegen-only and never needs to reach here
 -- or `realize` — it stays in the typing context. (Plan 0.50 effect-axis: a
 -- referenced morphism's effect is intrinsic to its arrow, not a name lookup.)
+-- Dispatch the `eff` codomain check through the shared `isUnit?` decision (a
+-- top-level aux on the `Dec`, NOT a pattern-match on `B` — so it reduces given
+-- the decision, and the masquerade proof folds it via the SAME `isUnit? B`
+-- the elaborator's `ext-resolved-info` uses).
+arrow-info-eff : ∀ {A B} → CanonicalName → Dec (B ≡ Unit) → SigOpInfo A B
+arrow-info-eff name (yes refl) = mk-info' name (emitsV refl)
+arrow-info-eff name (no _)     = value-info name
+
 arrow-info : ∀ {A B} → ArrowKind → CanonicalName → SigOpInfo A B
 arrow-info (mk-kind _ pure) name = value-info name
-arrow-info {A} {Unit} (mk-kind _ eff) name = mk-info' name (emitsV refl)
-arrow-info {A} {B}    (mk-kind _ eff) name = value-info name
+arrow-info {A} {B} (mk-kind _ eff) name = arrow-info-eff name (isUnit? B)

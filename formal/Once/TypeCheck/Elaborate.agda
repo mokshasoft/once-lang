@@ -1685,7 +1685,9 @@ mutual
 
   ext-resolved-info : ∀ {A B} → NamedCtx → CanonicalName → Purity → SigOpInfo A B
   ext-resolved-info {A} {B} ctx cn π =
-    ext-resolved-info-aux cn π (B ≟T Unit) (lookupSigEffect (NamedCtx.sigEffects ctx) (showCanonical cn))
+    -- Use the SHARED low `isUnit?` (same decision SD's `arrow-info` uses), so
+    -- the realize-agrees masquerade folds both with one case-split.
+    ext-resolved-info-aux cn π (Once.Type.isUnit? B) (lookupSigEffect (NamedCtx.sigEffects ctx) (showCanonical cn))
 
   inferElabV-RResolved-aux ctx cn
     (just (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B)) eq =
