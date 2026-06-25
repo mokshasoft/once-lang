@@ -32,7 +32,7 @@ open import Data.Char using (Char; isAlpha; isDigit; toℕ)
 open import Data.Char.Properties using (_≟_) renaming (toℕ-injective to charToℕ-injective)
 open import Data.Fin using (Fin; zero; suc)
 open import Data.List using (List; []; _∷_; _++_; map; concatMap; length)
-open import Data.List.Properties using (∷-injective)
+open import Data.List.Properties using (∷-injective; ++-assoc; ++-conicalˡ)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Data.Nat using (ℕ; zero; suc; _≡ᵇ_)
 open import Data.Nat.Properties using (≡ᵇ⇒≡)
@@ -250,3 +250,98 @@ len-prefix-cancel (a ∷ A') (b ∷ B') s t leq eq =
   where
     cong-pred : ∀ {m n : ℕ} → suc m ≡ suc n → m ≡ n
     cong-pred refl = refl
+
+------------------------------------------------------------------------
+-- Component lists → the joined symbol body, and its injectivity.
+--
+-- A `ValidIdentChars` is a non-empty char list whose head is a lexer
+-- `isIdentStart` (so, by the length-prefix argument, its z-encoding starts
+-- non-digit). `mangL` is the per-component mangling at the char-list level
+-- (matches `toList ∘ mangle-component`); `joinUsL'`/`withSep` the `_`-join
+-- (matches `toList ∘ join-us`). `joinL-inj` is the core: the list of
+-- components is recovered from the joined body.
+------------------------------------------------------------------------
+
+open import Data.Nat.Show.Properties using (charsInBase-injective)
+
+ValidIdentChars : List Char → Set
+ValidIdentChars [] = ⊥
+ValidIdentChars (c ∷ cs) =
+  (isIdentStart c ≡ true) × All (λ d → isIdentContinue d ≡ true) cs
+
+mangL : List Char → List Char
+mangL cs = charsInBase 10 (length (zencL cs)) ++ zencL cs
+
+-- z-encoding of a valid identifier: a cons cell with a non-digit head.
+zencL-vic : ∀ {cs} → ValidIdentChars cs
+  → Σ[ h ∈ Char ] Σ[ t ∈ List Char ] (zencL cs ≡ h ∷ t) × (isDigit h ≡ false)
+zencL-vic {c0 ∷ cs'} (isC0 , _) = go (zec-class c0)
+  where
+    go : ZClass c0 (z-encode-char c0)
+       → Σ[ h ∈ Char ] Σ[ t ∈ List Char ] (zencL (c0 ∷ cs') ≡ h ∷ t) × (isDigit h ≡ false)
+    go (inj₁ (tag , ex , _)) = 'z' , tag ∷ zencL cs' , cong (_++ zencL cs') ex , refl
+    go (inj₂ (ex , _))       = c0 , zencL cs'        , cong (_++ zencL cs') ex , identStart⇒¬digit {c0} isC0
+
+zencL-suffix-headND : ∀ {cs} (suffix : List Char)
+                    → ValidIdentChars cs → HeadNotDigit (zencL cs ++ suffix)
+zencL-suffix-headND {cs} suffix vic =
+  let (h , t , zceq , hnd) = zencL-vic vic
+  in subst (λ z → HeadNotDigit (z ++ suffix)) (sym zceq) hnd
+
+++-cons-≢[] : ∀ (A : List Char) {h : Char} {rest : List Char} → ¬ (A ++ (h ∷ rest) ≡ [])
+++-cons-≢[] [] ()
+++-cons-≢[] (a ∷ A') ()
+
+mangL-nonempty : ∀ {d} → ValidIdentChars d → ¬ (mangL d ≡ [])
+mangL-nonempty {d} vic eq =
+  let (h , t , zceq , _) = zencL-vic vic
+  in ++-cons-≢[] (charsInBase 10 (length (zencL d)))
+       (subst (λ z → charsInBase 10 (length (zencL d)) ++ z ≡ []) zceq eq)
+
+joinUsL' : List (List Char) → List Char
+withSep  : List (List Char) → List Char
+joinUsL' []       = []
+joinUsL' (x ∷ xs) = x ++ withSep xs
+withSep []       = []
+withSep (x ∷ xs) = '_' ∷ (x ++ withSep xs)
+
+-- Peel one mangled component (+ its arbitrary suffix) off both sides.
+peel : ∀ {c d} (wc wd : List Char)
+  → ValidIdentChars c → ValidIdentChars d
+  → mangL c ++ wc ≡ mangL d ++ wd
+  → (c ≡ d) × (wc ≡ wd)
+peel {c} {d} wc wd vc vd eq =
+  let A = charsInBase 10 (length (zencL c))
+      B = charsInBase 10 (length (zencL d))
+      eq' : A ++ (zencL c ++ wc) ≡ B ++ (zencL d ++ wd)
+      eq' = trans (sym (++-assoc A (zencL c) wc)) (trans eq (++-assoc B (zencL d) wd))
+      pu = digit-prefix-unique A B (zencL c ++ wc) (zencL d ++ wd)
+             (charsInBase-all-digits (length (zencL c)))
+             (charsInBase-all-digits (length (zencL d)))
+             (zencL-suffix-headND wc vc) (zencL-suffix-headND wd vd) eq'
+      lenEq = charsInBase-injective 10 (length (zencL c)) (length (zencL d)) (proj₁ pu)
+      lpc = len-prefix-cancel (zencL c) (zencL d) wc wd lenEq (proj₂ pu)
+  in zencL-inj c d (proj₁ lpc) , proj₂ lpc
+
+withSep-inj : ∀ (css dss : List (List Char))
+  → withSep (map mangL css) ≡ withSep (map mangL dss)
+  → All ValidIdentChars css → All ValidIdentChars dss → css ≡ dss
+withSep-inj [] [] eq vc vd = refl
+withSep-inj [] (d ∷ dss') eq vc vd = ⊥-elim (cons≢[] (sym eq))
+withSep-inj (c ∷ css') [] eq vc vd = ⊥-elim (cons≢[] eq)
+withSep-inj (c ∷ css') (d ∷ dss') eq (vc0 ∷ vcs) (vd0 ∷ vds) =
+  let (c≡d , wEq) = peel (withSep (map mangL css')) (withSep (map mangL dss'))
+                         vc0 vd0 (proj₂ (∷-injective eq))
+  in cong₂ _∷_ c≡d (withSep-inj css' dss' wEq vcs vds)
+
+joinL-inj : ∀ (css dss : List (List Char))
+  → joinUsL' (map mangL css) ≡ joinUsL' (map mangL dss)
+  → All ValidIdentChars css → All ValidIdentChars dss → css ≡ dss
+joinL-inj [] [] eq vc vd = refl
+joinL-inj [] (d ∷ dss') eq vc (vd0 ∷ _) =
+  ⊥-elim (mangL-nonempty vd0 (++-conicalˡ (mangL d) (withSep (map mangL dss')) (sym eq)))
+joinL-inj (c ∷ css') [] eq (vc0 ∷ _) vd =
+  ⊥-elim (mangL-nonempty vc0 (++-conicalˡ (mangL c) (withSep (map mangL css')) eq))
+joinL-inj (c ∷ css') (d ∷ dss') eq (vc0 ∷ vcs) (vd0 ∷ vds) =
+  let (c≡d , wEq) = peel (withSep (map mangL css')) (withSep (map mangL dss')) vc0 vd0 eq
+  in cong₂ _∷_ c≡d (withSep-inj css' dss' wEq vcs vds)
