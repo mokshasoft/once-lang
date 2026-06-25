@@ -110,6 +110,34 @@ lookupImportAlias ((a , p) ∷ rest) x with a ≟ x
 ... | yes _ = just p
 ... | no  _ = lookupImportAlias rest x
 
+-- | name → owning module path, for UNALIASED imports (`DImport path nothing`).
+-- A bare reference to such a name resolves to the FULL path (clash-freedom):
+-- two unaliased modules both exporting `foo`, or own `foo` vs unaliased `foo`,
+-- get distinct canonical names. (Syscalls/primitives are ALIASED — `import … as
+-- S`, `exit@S` — so they take the `RQualified` path and never appear here.)
+UnaliasedMap : Set
+UnaliasedMap = List (String × List String)
+
+-- | The names a (resolved) module exports = its `DSignature` names (the same
+-- primitives `signaturesWithOwner` inlines).
+sigNames : List Decl → List String
+sigNames []                          = []
+sigNames (DSignature name _ _ _ ∷ r) = name ∷ sigNames r
+sigNames (_ ∷ r)                     = sigNames r
+
+collectUnaliased : ModuleMap → List Decl → UnaliasedMap
+collectUnaliased _      []                                       = []
+collectUnaliased modMap (DImport (mkImport path nothing) ∷ rest) with lookupModule modMap path
+... | just (mkModule impDs) = map (λ n → (n , path)) (sigNames impDs) ++L collectUnaliased modMap rest
+... | nothing               = collectUnaliased modMap rest
+collectUnaliased modMap (_ ∷ rest)                              = collectUnaliased modMap rest
+
+lookupUnaliased : UnaliasedMap → String → Maybe (List String)
+lookupUnaliased []              _ = nothing
+lookupUnaliased ((n , p) ∷ rest) x with x ≟ n
+... | yes _ = just p
+... | no  _ = lookupUnaliased rest x
+
 -- | Names the elaborator special-cases on a bare `RVar` (point-free CCC
 -- builtins + recursion schemes). These MUST stay `RVar` so the dedicated
 -- typing rules fire — never canonicalize them to `RResolved`. Mirrors
@@ -148,39 +176,47 @@ elemStr x (y ∷ ys) with x ≟ y
 -- `t-var-import` (→ `sigOp` → closure). The import table keys own/unaliased
 -- defs by their bare name, so `showCanonical (canonical [x]) = x` hits it.
 -- (Full dotted path = clash-freedom, a separable refinement.)
-canonVar : Bool → String → RawExpr
-canonVar true  x = RVar x                              -- local or builtin: keep
-canonVar false x = RResolved (canonical (x ∷ []))      -- top-level ref: a morphism
+-- A free (non-local, non-builtin) bare `RVar x`: an UNALIASED-import ref
+-- (`just path`) resolves to the FULL path `canonical (path ++ [x])`; an
+-- own-module ref (`nothing`) stays the single-component `canonical [x]` (the
+-- own module has no path and its names are unique within it). Both take the
+-- `t-var-resolved` → `lift-morphism` path (a MORPHISM, D064), and both are
+-- clash-free: own `[x]` (length 1) vs import `[path…, x]` (length ≥ 2).
+canonVar : Bool → Maybe (List String) → String → RawExpr
+canonVar true  _           x = RVar x                                       -- local or builtin
+canonVar false (just path) x = RResolved (canonical (path ++L (x ∷ [])))    -- unaliased import: full path
+canonVar false nothing     x = RResolved (canonical (x ∷ []))               -- own-module ref
 
 -- | Rewrite `RQualified` (via alias map) and bare top-level `RVar` refs to
 -- `RResolved`; recurse structurally, threading the bound-variable set `bound`
--- (lambda/let/destruct binders) so LOCALS are never canonicalized.
-canonExpr : List String → AliasMap → RawExpr → RawExpr
-canonExpr bound am (RQualified name alias) with lookupImportAlias am alias
+-- (lambda/let/destruct binders) so LOCALS are never canonicalized. `um` carries
+-- unaliased-import name→path for full-path resolution.
+canonExpr : List String → UnaliasedMap → AliasMap → RawExpr → RawExpr
+canonExpr bound um am (RQualified name alias) with lookupImportAlias am alias
 ... | just path = RResolved (canonical (path ++L (name ∷ [])))
 ... | nothing   = RQualified name alias
-canonExpr bound am (RVar x)            = canonVar (elemStr x bound ∨ isBuiltinName x) x
-canonExpr bound am (RResolved cn)      = RResolved cn
-canonExpr bound am (RApp f x)          = RApp (canonExpr bound am f) (canonExpr bound am x)
-canonExpr bound am (RLam x b)          = RLam x (canonExpr (x ∷ bound) am b)
-canonExpr bound am (RLet x e₁ e₂)      = RLet x (canonExpr bound am e₁) (canonExpr (x ∷ bound) am e₂)
-canonExpr bound am (RPair a b)         = RPair (canonExpr bound am a) (canonExpr bound am b)
-canonExpr bound am (RDestruct s xl el xr er) =
-  RDestruct (canonExpr bound am s) xl (canonExpr (xl ∷ bound) am el) xr (canonExpr (xr ∷ bound) am er)
-canonExpr bound am RUnit               = RUnit
-canonExpr bound am (RInt n)            = RInt n
-canonExpr bound am (RStringLit s)      = RStringLit s
-canonExpr bound am (RAnnot e t)        = RAnnot (canonExpr bound am e) t
-canonExpr bound am (RBinOp op a b)     = RBinOp op (canonExpr bound am a) (canonExpr bound am b)
-canonExpr bound am (RUnaryOp op e)     = RUnaryOp op (canonExpr bound am e)
-canonExpr bound am (RAna F c)          = RAna F (canonExpr bound am c)
+canonExpr bound um am (RVar x)            = canonVar (elemStr x bound ∨ isBuiltinName x) (lookupUnaliased um x) x
+canonExpr bound um am (RResolved cn)      = RResolved cn
+canonExpr bound um am (RApp f x)          = RApp (canonExpr bound um am f) (canonExpr bound um am x)
+canonExpr bound um am (RLam x b)          = RLam x (canonExpr (x ∷ bound) um am b)
+canonExpr bound um am (RLet x e₁ e₂)      = RLet x (canonExpr bound um am e₁) (canonExpr (x ∷ bound) um am e₂)
+canonExpr bound um am (RPair a b)         = RPair (canonExpr bound um am a) (canonExpr bound um am b)
+canonExpr bound um am (RDestruct s xl el xr er) =
+  RDestruct (canonExpr bound um am s) xl (canonExpr (xl ∷ bound) um am el) xr (canonExpr (xr ∷ bound) um am er)
+canonExpr bound um am RUnit               = RUnit
+canonExpr bound um am (RInt n)            = RInt n
+canonExpr bound um am (RStringLit s)      = RStringLit s
+canonExpr bound um am (RAnnot e t)        = RAnnot (canonExpr bound um am e) t
+canonExpr bound um am (RBinOp op a b)     = RBinOp op (canonExpr bound um am a) (canonExpr bound um am b)
+canonExpr bound um am (RUnaryOp op e)     = RUnaryOp op (canonExpr bound um am e)
+canonExpr bound um am (RAna F c)          = RAna F (canonExpr bound um am c)
 
 -- | Apply `canonExpr` to a decl's function body (empty initial bound set);
 -- everything else is untouched (signatures/imports/type-aliases carry no
 -- expression refs).
-canonDecl : AliasMap → Decl → Decl
-canonDecl am (DFunDef name alloc body) = DFunDef name alloc (canonExpr [] am body)
-canonDecl am d                         = d
+canonDecl : UnaliasedMap → AliasMap → Decl → Decl
+canonDecl um am (DFunDef name alloc body) = DFunDef name alloc (canonExpr [] um am body)
+canonDecl um am d                         = d
 
 ------------------------------------------------------------------------
 -- Primitive extraction with owner tagging
@@ -199,9 +235,14 @@ signaturesWithOwner owner (_ ∷ rest)                           =
 -- | Owner tag for an import's inlined signatures. An ALIASED import is
 -- keyed by its full dotted path (matching the resolved canonical names);
 -- an UNALIASED import stays `nothing` (bare, milestone-1).
+-- Plan 0.50 (clash-freedom): BOTH aliased and unaliased imports key their
+-- inlined signatures by the FULL dotted path, matching the canonical names
+-- `canon` produces (`RQualified`/`RVar` → `RResolved (canonical (path++[name]))`).
+-- So the import-table key = `showCanonical cn` by construction, and distinct
+-- imported modules' same-named primitives get distinct symbols.
 ownerOf : Import → Maybe String
 ownerOf (mkImport path (just _)) = just (showPath path)
-ownerOf (mkImport _    nothing)  = nothing
+ownerOf (mkImport path nothing)  = just (showPath path)
 
 ------------------------------------------------------------------------
 -- resolveImports
@@ -215,22 +256,23 @@ ownerOf (mkImport _    nothing)  = nothing
 -- Returns `inj₁ err` only if a referenced module path is missing from
 -- the map — a Haskell-layer bug, since the map should contain every
 -- transitive dependency.
-resolveDecls : AliasMap → ModuleMap → List Decl → String ⊎ List Decl
-resolveDecls _  _      []                             = inj₂ []
-resolveDecls am modMap (DImport imp ∷ rest) with lookupModule modMap (Import.path imp)
+resolveDecls : UnaliasedMap → AliasMap → ModuleMap → List Decl → String ⊎ List Decl
+resolveDecls _  _  _      []                             = inj₂ []
+resolveDecls um am modMap (DImport imp ∷ rest) with lookupModule modMap (Import.path imp)
 ... | nothing =
         inj₁ ("Internal error: import path not in ModuleMap: " ++ showPath (Import.path imp))
-... | just (mkModule impDs) with resolveDecls am modMap rest
+... | just (mkModule impDs) with resolveDecls um am modMap rest
 ...   | inj₁ err = inj₁ err
 ...   | inj₂ tailDs =
         inj₂ (signaturesWithOwner (ownerOf imp) impDs ++L tailDs)
-resolveDecls am modMap (d ∷ rest) with resolveDecls am modMap rest
+resolveDecls um am modMap (d ∷ rest) with resolveDecls um am modMap rest
 ... | inj₁ err = inj₁ err
-... | inj₂ tailDs = inj₂ (canonDecl am d ∷ tailDs)
+... | inj₂ tailDs = inj₂ (canonDecl um am d ∷ tailDs)
 
 -- | Public entry. Haskell populates the map, calls this, and feeds
 -- the resolved module to `compileResolved`.
 resolveImports : ModuleMap → Module → String ⊎ Module
-resolveImports modMap (mkModule ds) with resolveDecls (collectAliases ds) modMap ds
+resolveImports modMap (mkModule ds)
+  with resolveDecls (collectUnaliased modMap ds) (collectAliases ds) modMap ds
 ... | inj₁ err   = inj₁ err
 ... | inj₂ ds'   = inj₂ (mkModule ds')
