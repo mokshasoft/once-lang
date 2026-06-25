@@ -140,6 +140,19 @@ maybeWrapMain : (name : String) (ty : Type) → IR Unit ty
 maybeWrapMain "main" (Unit ⇒[ mk-kind Many eff ] Unit) ir = Unit , wrapMainAsEntry ir
 maybeWrapMain _ ty ir = ty , ir
 
+-- | Plan 0.50 Stage 2 (D064): emit a top-level definition as a DIRECT-CALL
+-- MORPHISM. References now elaborate to `lift-morphism (SigOp once_f)` and
+-- compile to a direct `call once_f` (`compile-sigOp`), so `once_f` must be the
+-- arrow `f : A → B` (`once_f(a) : B`), NOT a closure-returner `once_f() : Bᴬ`.
+-- An arrow function's `cfIR : IR Unit (A ⇒ B)` (the curried closure) is
+-- uncurried to `apply ∘ ⟨ cfIR ∘ terminal , id ⟩ : IR A B` — the verified
+-- `apply` consumes the closure with the incoming argument `id`, mirroring
+-- `wrapMainAsEntry`. `main` is already `cfType ≡ Unit` (entry-wrapped by
+-- `maybeWrapMain`), so it is non-arrow and passes through untouched.
+directCallIR : (ty : Type) → IR Unit ty → ∃[ D ] ∃[ C ] IR D C
+directCallIR (A ⇒[ k ] B) ir = A , B , apply ∘ ⟨ ir ∘ terminal , id ⟩ Stack
+directCallIR ty           ir = Unit , ty , ir
+
 ------------------------------------------------------------------------
 -- Function compilation: RawExpr → IR
 ------------------------------------------------------------------------
@@ -441,8 +454,10 @@ compileFunWithTarget : Target → ℕ → CompiledFun → ℕ × String × List 
 compileFunWithTarget target l cf with cfIsPrimitive cf
 ... | true  = l , "" , []  -- primitive: external symbol, no body
 ... | false =
-  let -- Plan 0.20 Phase G: arith-block recognition pass before codegen.
-      (ir' , blks)  = rewrite-ir (cfIR cf)
+  let -- Plan 0.50 Stage 2: emit the function as a direct-call morphism (D064).
+      (_ , _ , dcIR) = directCallIR (cfType cf) (cfIR cf)
+      -- Plan 0.20 Phase G: arith-block recognition pass before codegen.
+      (ir' , blks)  = rewrite-ir dcIR
       (l₁ , asm)    = irToAsm    target l ir'
       (l₂ , bodies) = irToBodies target l ir'
   in (l₁ ⊔ l₂) , (functionPrologue target (cfName cf) ++
