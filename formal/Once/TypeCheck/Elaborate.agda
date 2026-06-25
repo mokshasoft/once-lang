@@ -44,6 +44,7 @@ open import Once.IR as IR
 -- not a value, so `Emits`/`Halts` drop it entirely.
 open import Once.Arith.SigOp.Builders using (generic-semM)
 open import Once.SigOp.Info using (SigOpInfo; mk-info'; pureV; emitsV; haltsV)
+open import Once.CanonicalName using (CanonicalName; bare; showCanonical)
 open import Once.SigEffect using () renaming (halts to se-halts; emits to se-emits)
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Raw as Raw
@@ -1659,13 +1660,13 @@ mutual
   -- boundary), falls back to a `pureV` value (the `closure`/`poly`-style
   -- function-linking opacity, a separate axis from the syscall contract).
   ext-arrow-info : ∀ {A B} → NamedCtx → (alias name : String) → Purity → SigOpInfo A B
-  ext-arrow-info ctx alias name pure = mk-info' name (pureV (generic-semM name))
+  ext-arrow-info ctx alias name pure = mk-info' (bare (alias ++ "." ++ name)) (pureV (generic-semM (alias ++ "." ++ name)))
   ext-arrow-info {A} {B} ctx alias name eff with B ≟T Unit
-  ... | no _ = mk-info' name (pureV (generic-semM name))
+  ... | no _ = mk-info' (bare (alias ++ "." ++ name)) (pureV (generic-semM (alias ++ "." ++ name)))
   ... | yes refl with lookupSigEffect (NamedCtx.sigEffects ctx) (alias ++ "." ++ name)
-  ...   | just se-halts = mk-info' name (haltsV refl)
-  ...   | just se-emits = mk-info' name (emitsV refl)
-  ...   | nothing       = mk-info' name (emitsV refl)
+  ...   | just se-halts = mk-info' (bare (alias ++ "." ++ name)) (haltsV refl)
+  ...   | just se-emits = mk-info' (bare (alias ++ "." ++ name)) (emitsV refl)
+  ...   | nothing       = mk-info' (bare (alias ++ "." ++ name)) (emitsV refl)
 
   -- Aux helper bodies (placed after all main mutual members so that the
   -- `... | pat` continuations of inferElabV/checkElabV clauses don't
@@ -1685,14 +1686,14 @@ mutual
       0 (NamedCtx.freshCounter ctx)
     , t-var-qualified eq
   inferElabV-RQualified-aux ctx name alias (just ty) eq =
-    success ty _ (Surface.sigOp name) 0 (NamedCtx.freshCounter ctx) , t-var-qualified eq
+    success ty _ (Surface.sigOp (bare (alias ++ "." ++ name))) 0 (NamedCtx.freshCounter ctx) , t-var-qualified eq
   inferElabV-RQualified-aux ctx name alias nothing _ =
     failure (UnboundQualified name alias) , tt
 
   inferElabV-RVar-lookup-aux ctx x ¬unit (just (A , Ψ , se)) eq-loc _ _ =
     success A Ψ se 0 (NamedCtx.freshCounter ctx) , t-var-local ¬unit eq-loc
   inferElabV-RVar-lookup-aux ctx x ¬unit nothing eq-loc (just ty) eq-imp =
-    success ty _ (Surface.sigOp x) 0 (NamedCtx.freshCounter ctx) , t-var-import ¬unit eq-loc eq-imp
+    success ty _ (Surface.sigOp (bare x)) 0 (NamedCtx.freshCounter ctx) , t-var-import ¬unit eq-loc eq-imp
   inferElabV-RVar-lookup-aux ctx x ¬unit nothing eq-loc nothing eq-imp =
     failure (UnboundVariable x) , tt
 
@@ -2809,8 +2810,8 @@ resolveExprWF polys pAcc imps userFns fresh (Surface.arr' e) = Surface.arr' (res
 -- Semantic preservation: `evalSurface (sigOp x) ≡ evalSurface (closure x)`
 -- by construction (both go through `generic-semI`); the rewrite is a
 -- no-op in the denotation.
-resolveExprWF polys _ imps userFns _ (Surface.sigOp s) with lookupImport userFns s
-... | just _  = Surface.closure s
+resolveExprWF polys _ imps userFns _ (Surface.sigOp s) with lookupImport userFns (showCanonical s)
+... | just _  = Surface.closure (showCanonical s)
 ... | nothing = Surface.sigOp s
 -- Plan 0.19: closure already classified. Pass through unchanged.
 resolveExprWF polys _ imps userFns _ (Surface.closure s) = Surface.closure s
@@ -3108,8 +3109,8 @@ resolveExpr-arr' _ _ _ _ _ = refl
 -- nothing), the resolver is identity.
 resolveExpr-sigOp-extern :
   ∀ {n} {Γ : Surface.Ctx n} {A}
-    (polys : PolyCtx) (imps userFns : Imports) (fresh : ℕ) (s : String)
-  → lookupImport userFns s ≡ nothing
+    (polys : PolyCtx) (imps userFns : Imports) (fresh : ℕ) (s : CanonicalName)
+  → lookupImport userFns (showCanonical s) ≡ nothing
   → resolveExpr {Γ = Γ} polys imps userFns fresh (Surface.sigOp {A = A} s)
       ≡ Surface.sigOp s
 resolveExpr-sigOp-extern _ _ _ _ _ eq rewrite eq = refl
