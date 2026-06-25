@@ -297,6 +297,27 @@ infixr 30 _⊸_
 infixr 30 _⇒_
 infixr 30 _⇒₀_
 
+-- | Is this type the terminal `Unit`? A LOW-level decision (so SD's
+-- `arrow-info` and the elaborator's `ext-resolved-info` can BOTH dispatch on
+-- the same `Dec`, without SD importing the elaborator). The codomain-is-Unit
+-- check is what `EffectShape`'s `Emits`/`Halts` coherence needs; sharing the
+-- one decision keeps the masquerade a single case-split rather than an
+-- 11-constructor enumeration. ([[feedback_with_clauses_painful]] — the
+-- constructor-pattern analogue: dispatch on a reducible decision, not a
+-- scrutinee opaque to the proof's variables.)
+isUnit? : (T : Type) → Dec (T ≡ Unit)
+isUnit? Unit          = yes refl
+isUnit? Void          = no (λ ())
+isUnit? (_ * _)       = no (λ ())
+isUnit? (_ + _)       = no (λ ())
+isUnit? (_ ⇒[ _ ] _)  = no (λ ())
+isUnit? (μ-type _)    = no (λ ())
+isUnit? (ν-type _)    = no (λ ())
+isUnit? Int           = no (λ ())
+isUnit? Float         = no (λ ())
+isUnit? Str           = no (λ ())
+isUnit? Buffer        = no (λ ())
+
 -- Note: IO sugar removed for clarity in error messages.
 -- The parser desugars "IO A" to "Eff Unit A" at parse time.
 -- Use Eff Unit A directly in Agda code.
