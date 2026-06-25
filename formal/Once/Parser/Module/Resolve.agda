@@ -182,10 +182,22 @@ elemStr x (y ∷ ys) with x ≟ y
 -- own module has no path and its names are unique within it). Both take the
 -- `t-var-resolved` → `lift-morphism` path (a MORPHISM, D064), and both are
 -- clash-free: own `[x]` (length 1) vs import `[path…, x]` (length ≥ 2).
+-- | The `I` import-path prefix is a SHORTHAND for the `Interpretations`
+-- directory (mirrors the CLI's `I → Interpretations` disk rule, `Once.CLI`).
+-- The CANONICAL name — and thus the `once-symbol-path` symbol — must use the
+-- FULL resolved form, never the shorthand. So `canon` expands a leading `I` to
+-- `Interpretations` when building a `CanonicalName`. (Module-map lookups keep
+-- the ORIGINAL written path; only the identity/symbol uses the full form.)
+expandPath : List String → List String
+expandPath []         = []
+expandPath (c ∷ rest) with c ≟ "I"
+... | yes _ = "Interpretations" ∷ rest
+... | no  _ = c ∷ rest
+
 canonVar : Bool → Maybe (List String) → String → RawExpr
-canonVar true  _           x = RVar x                                       -- local or builtin
-canonVar false (just path) x = RResolved (canonical (path ++L (x ∷ [])))    -- unaliased import: full path
-canonVar false nothing     x = RResolved (canonical (x ∷ []))               -- own-module ref
+canonVar true  _           x = RVar x                                             -- local or builtin
+canonVar false (just path) x = RResolved (canonical (expandPath path ++L (x ∷ []))) -- unaliased import: full path
+canonVar false nothing     x = RResolved (canonical (x ∷ []))                     -- own-module ref
 
 -- | Rewrite `RQualified` (via alias map) and bare top-level `RVar` refs to
 -- `RResolved`; recurse structurally, threading the bound-variable set `bound`
@@ -193,7 +205,7 @@ canonVar false nothing     x = RResolved (canonical (x ∷ []))               --
 -- unaliased-import name→path for full-path resolution.
 canonExpr : List String → UnaliasedMap → AliasMap → RawExpr → RawExpr
 canonExpr bound um am (RQualified name alias) with lookupImportAlias am alias
-... | just path = RResolved (canonical (path ++L (name ∷ [])))
+... | just path = RResolved (canonical (expandPath path ++L (name ∷ [])))
 ... | nothing   = RQualified name alias
 canonExpr bound um am (RVar x)            = canonVar (elemStr x bound ∨ isBuiltinName x) (lookupUnaliased um x) x
 canonExpr bound um am (RResolved cn)      = RResolved cn
@@ -241,8 +253,8 @@ signaturesWithOwner owner (_ ∷ rest)                           =
 -- So the import-table key = `showCanonical cn` by construction, and distinct
 -- imported modules' same-named primitives get distinct symbols.
 ownerOf : Import → Maybe String
-ownerOf (mkImport path (just _)) = just (showPath path)
-ownerOf (mkImport path nothing)  = just (showPath path)
+ownerOf (mkImport path (just _)) = just (showPath (expandPath path))
+ownerOf (mkImport path nothing)  = just (showPath (expandPath path))
 
 ------------------------------------------------------------------------
 -- resolveImports
