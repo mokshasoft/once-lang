@@ -46,6 +46,7 @@ open import Once.Semantics.Machine
   using (sem-cata; sem-ana; sem-fmap; coerce-functor; coerce-functor⁻¹; ⟦_⟧F)
 open import Once.SigOp.Info using (semM)
 open import Once.Arith.SigOp.Builders
+open import Once.CanonicalName using (bare)
   using (add-info; sub-info; mul-info; div-info; mod-info; neg-info;
          lt-info; le-info; gt-info; ge-info; eq-info; ne-info; generic-info; value-info; arrow-info; str-lit-info)
 
@@ -189,5 +190,5 @@ ana-eventsˢ {F} {A} coalgComp a (suc m) =
 -- interpretation-agnostic (no `classify-name`). Matches elaborate's
 -- `SigOp (value-info name) ∘ terminal` ⇒ `faithful` stays `refl`.
 ⟦ sigOp {A = A} name ⟧ˢ   dγ = λ n → (emit-D (value-info {Unit} {A} name) tt , inject (semM (value-info {Unit} {A} name) tt))
-⟦ closure {A = A} name ⟧ˢ dγ = λ n → (emit-D (value-info {Unit} {A} name) tt , inject (semM (value-info {Unit} {A} name) tt))
-⟦ poly name PT ⟧ˢ         dγ = λ n → (emit-D (value-info {Unit} {PT} name) tt , inject (semM (value-info {Unit} {PT} name) tt))
+⟦ closure {A = A} name ⟧ˢ dγ = λ n → (emit-D (value-info {Unit} {A} (bare name)) tt , inject (semM (value-info {Unit} {A} (bare name)) tt))
+⟦ poly name PT ⟧ˢ         dγ = λ n → (emit-D (value-info {Unit} {PT} (bare name)) tt , inject (semM (value-info {Unit} {PT} (bare name)) tt))
