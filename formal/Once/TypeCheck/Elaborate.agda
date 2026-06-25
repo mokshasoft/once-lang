@@ -679,6 +679,7 @@ spineOf e = go e []
     go (Raw.RApp f x)        args = go f (x ∷ args)
     go (Raw.RVar n)          args = mkSpine (Raw.RVar n) args
     go (Raw.RQualified m n)  args = mkSpine (Raw.RQualified m n) args
+    go (Raw.RResolved cn)    args = mkSpine (Raw.RResolved cn) args
     go (Raw.RLam x b)        args = mkSpine (Raw.RLam x b) args
     go (Raw.RLet x e₁ e₂)    args = mkSpine (Raw.RLet x e₁ e₂) args
     go (Raw.RPair x y)       args = mkSpine (Raw.RPair x y) args
@@ -942,6 +943,11 @@ mutual
     ∀ (ctx : NamedCtx) (name alias : String) (lhs : Maybe Type)
     → lookupImport (NamedCtx.imports ctx) (alias ++ "." ++ name) ≡ lhs
     → VerifiedInferResult ctx (Raw.RQualified name alias)
+  -- Plan 0.50: resolved-ref lookup, keyed by the canonical dotted path.
+  inferElabV-RResolved-aux :
+    ∀ (ctx : NamedCtx) (cn : CanonicalName) (lhs : Maybe Type)
+    → lookupImport (NamedCtx.imports ctx) (showCanonical cn) ≡ lhs
+    → VerifiedInferResult ctx (Raw.RResolved cn)
   inferElabV-RVar-lookup-aux :
     ∀ (ctx : NamedCtx) (x : String) → ¬ (x ≡ "unit")
     → (locLhs : Maybe (∃[ A ] ∃[ Ψ ] (SExpr (NamedCtx.debruijn ctx) Ψ A)))
@@ -1456,6 +1462,9 @@ mutual
   inferElabV ctx (Raw.RQualified name alias) =
     inferElabV-RQualified-aux ctx name alias _ refl
 
+  inferElabV ctx (Raw.RResolved cn) =
+    inferElabV-RResolved-aux ctx cn _ refl
+
   inferElabV ctx (Raw.RVar x) with StrProp._≟_ x "unit"
   ... | yes refl = success Unit _ Surface.unit 0 (NamedCtx.freshCounter ctx) , t-unit-var
   ... | no ¬unit = inferElabV-RVar-lookup-aux ctx x ¬unit _ refl _ refl
@@ -1689,6 +1698,30 @@ mutual
     success ty _ (Surface.sigOp (bare (alias ++ "." ++ name))) 0 (NamedCtx.freshCounter ctx) , t-var-qualified eq
   inferElabV-RQualified-aux ctx name alias nothing _ =
     failure (UnboundQualified name alias) , tt
+
+  -- Plan 0.50: resolved external ref. The canonical name `cn` is carried
+  -- straight into the `SigOpInfo` (NO `bare`, NO String render) — so the
+  -- realize/elaborator/trace/codegen names agree by construction. Mirrors
+  -- `ext-arrow-info`/`inferElabV-RQualified-aux` but keyed by `cn`.
+  ext-resolved-info : ∀ {A B} → NamedCtx → CanonicalName → Purity → SigOpInfo A B
+  ext-resolved-info ctx cn pure = mk-info' cn (pureV (generic-semM (showCanonical cn)))
+  ext-resolved-info {A} {B} ctx cn eff with B ≟T Unit
+  ... | no _ = mk-info' cn (pureV (generic-semM (showCanonical cn)))
+  ... | yes refl with lookupSigEffect (NamedCtx.sigEffects ctx) (showCanonical cn)
+  ...   | just se-halts = mk-info' cn (haltsV refl)
+  ...   | just se-emits = mk-info' cn (emitsV refl)
+  ...   | nothing       = mk-info' cn (emitsV refl)
+
+  inferElabV-RResolved-aux ctx cn
+    (just (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B)) eq =
+    success (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B) _
+      (Surface.lift-morphism {π = π} (IR.SigOp (ext-resolved-info ctx cn π)))
+      0 (NamedCtx.freshCounter ctx)
+    , t-var-resolved eq
+  inferElabV-RResolved-aux ctx cn (just ty) eq =
+    success ty _ (Surface.sigOp cn) 0 (NamedCtx.freshCounter ctx) , t-var-resolved eq
+  inferElabV-RResolved-aux ctx cn nothing _ =
+    failure (UnboundVariable (showCanonical cn)) , tt
 
   inferElabV-RVar-lookup-aux ctx x ¬unit (just (A , Ψ , se)) eq-loc _ _ =
     success A Ψ se 0 (NamedCtx.freshCounter ctx) , t-var-local ¬unit eq-loc
@@ -2356,6 +2389,25 @@ checkElab-fallback-RQualified {ctx} name alias T eqInf
 ... | failure _ , _ with eqInf
 ...   | ()
 checkElab-fallback-RQualified {ctx} name alias T eqInf
+  | success T' Ψ' eE' d' fr' , w with eqInf
+... | refl with T ≟T T
+...   | yes refl = _ , _ , _ , refl
+...   | no ¬eq   = ⊥-elim (¬eq refl)
+
+-- RResolved (Plan 0.50): same generic fallback as RQualified.
+checkElab-fallback-RResolved :
+  ∀ {ctx : NamedCtx} (cn : CanonicalName) (T : Type)
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ T}
+    {d f : ℕ}
+  → inferElab ctx (Raw.RResolved cn) ≡ success T Ψ eE d f
+  → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
+      checkElab ctx (Raw.RResolved cn) T ≡ success Ψ eE' d' f')))
+checkElab-fallback-RResolved {ctx} cn T eqInf
+  with inferElabV ctx (Raw.RResolved cn)
+... | failure _ , _ with eqInf
+...   | ()
+checkElab-fallback-RResolved {ctx} cn T eqInf
   | success T' Ψ' eE' d' fr' , w with eqInf
 ... | refl with T ≟T T
 ...   | yes refl = _ , _ , _ , refl

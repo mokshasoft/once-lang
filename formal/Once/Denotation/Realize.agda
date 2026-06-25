@@ -41,7 +41,7 @@ open import Once.TypeCheck.Judgment
   using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_; _⊢ᵍ_∶_; g-int; g-terminal; g-pair; g-inl; g-inr; g-In;
          _⊢ᵐ_∶_⇨[_]_; m-id; m-fst; m-snd; m-terminal; m-initial; m-inl; m-inr;
          m-compose; m-case; m-pair; m-curry; m-cata; m-arr; m-const; m-named;
-         t-int; t-str; t-unit; t-unit-var; t-var-local; t-var-qualified; t-var-import;
+         t-int; t-str; t-unit; t-unit-var; t-var-local; t-var-qualified; t-var-resolved; t-var-import;
          t-annot; t-pair; t-neg; t-let; t-case; t-binop-arith; t-binop-cmp;
          t-id-app; t-fst-app; t-snd-app; t-terminal-app; t-arr-app-infer; t-apply-app-infer;
          t-app; t-effApp;
@@ -154,6 +154,10 @@ realize-infer t-unit            = unit
 realize-infer t-unit-var        = unit
 realize-infer (t-var-local {eE = eE} _ _) = eE
 realize-infer (t-var-qualified {name = name} {alias = alias} _) = sigOp (bare (alias ++ "." ++ name))
+-- Plan 0.50: a resolved ref carries its canonical identity directly — the
+-- reference elaboration reads it with NO String render, so it agrees with
+-- the elaborator's `SigOpInfo.name` by construction.
+realize-infer (t-var-resolved {cn = cn} _) = sigOp cn
 realize-infer (t-var-import {x = x} _ _ _) = sigOp (bare x)
 realize-infer (t-annot d)       = realize d
 realize-infer (t-pair da db)    = pair (realize-infer da) (realize-infer db)

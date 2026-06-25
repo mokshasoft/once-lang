@@ -47,9 +47,10 @@ open import Once.TypeCheck.Morph using (MorphRaw; morphRaw?; morphToIR)
 open import Data.Bool using (true)
 open import Relation.Nullary using (¬_)
 open import Once.TypeCheck.Raw as Raw
-  using (RawExpr; RVar; RQualified; RApp; RInt; RStringLit; RUnit; RAnnot; RPair;
+  using (RawExpr; RVar; RQualified; RResolved; RApp; RInt; RStringLit; RUnit; RAnnot; RPair;
          RLam; RLet; RDestruct; RUnaryOp; RBinOp; OpNeg; UnaryOp;
          BinOp; isArithmeticOp; isComparisonOp)
+open import Once.CanonicalName using (CanonicalName; showCanonical)
 open import Once.TypeCheck.Classify
   using (NamedCtx; lookupLocal; lookupImport; lookupPoly; removePoly;
          ctxWithImportsAndPolys; extendNamedCtx; classifyAppHead;
@@ -105,6 +106,16 @@ mutual
     t-var-qualified : ∀ {ctx : NamedCtx} {name alias : String} {T : Type}
                     → lookupImport (NamedCtx.imports ctx) (alias ++ "." ++ name) ≡ just T
                     → ctx ⊢ᵢ RQualified name alias ∶ T ⨾ zeroUsage
+
+    -- Plan 0.50: a qualified ref RESOLVED to its canonical identity. `canon`
+    -- (Resolve.agda) rewrites `RQualified name alias` → `RResolved cn` and
+    -- retags the imported signatures so the import table is keyed by the
+    -- canonical dotted path (`showCanonical cn`). So the lookup here uses
+    -- `showCanonical cn` directly — agreement with realize/codegen holds by
+    -- construction, not by two String renders coinciding.
+    t-var-resolved : ∀ {ctx : NamedCtx} {cn : CanonicalName} {T : Type}
+                   → lookupImport (NamedCtx.imports ctx) (showCanonical cn) ≡ just T
+                   → ctx ⊢ᵢ RResolved cn ∶ T ⨾ zeroUsage
 
     t-var-import : ∀ {ctx : NamedCtx} {x : String} {T : Type}
                  → ¬ (x ≡ "unit")
