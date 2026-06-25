@@ -40,7 +40,8 @@ open import Once.Type as T using (Type; Unit; Int; Str; Void; Float; Buffer;
                                   _*_; _+_; _⇒[_]_; Quantity; _≤q_;
                                   Zero; One; Many)
 open import Once.TypeCheck.Raw as Raw
-  using (RawExpr; RVar; RQualified; RInt; RStringLit; RUnit; RAnnot; RPair)
+  using (RawExpr; RVar; RQualified; RResolved; RInt; RStringLit; RUnit; RAnnot; RPair)
+open import Once.CanonicalName using (CanonicalName; showCanonical)
 open import Once.TypeCheck.Elaborate
   using (NamedCtx; inferElab; checkElab; InferElabResult; CheckElabResult;
          success; failure; lookupLocal; lookupImport;
@@ -128,6 +129,39 @@ infer-complete-RQualified {ctx} {name} {alias} {T} eq = go T eq
        → (eq' : lookupImport (NamedCtx.imports ctx) (alias ++ "." ++ name) ≡ just T')
        → ∃[ eE ] ∃[ d ] ∃[ f ]
            inferElab ctx (RQualified name alias) ≡ success T' zeroUsage eE d f
+    go (A ⇒[ T.mk-kind Many π ] B) eq' = _ , _ , _ , cong proj₁ (helper _ eq')
+    go (A ⇒[ T.mk-kind One  π ] B) eq' = _ , _ , _ , cong proj₁ (helper _ eq')
+    go (A ⇒[ T.mk-kind Zero π ] B) eq' = _ , _ , _ , cong proj₁ (helper _ eq')
+    go Unit          eq' = _ , _ , _ , cong proj₁ (helper _ eq')
+    go Void          eq' = _ , _ , _ , cong proj₁ (helper _ eq')
+    go Int           eq' = _ , _ , _ , cong proj₁ (helper _ eq')
+    go Float         eq' = _ , _ , _ , cong proj₁ (helper _ eq')
+    go Str           eq' = _ , _ , _ , cong proj₁ (helper _ eq')
+    go Buffer        eq' = _ , _ , _ , cong proj₁ (helper _ eq')
+    go (A * B)       eq' = _ , _ , _ , cong proj₁ (helper _ eq')
+    go (A + B)       eq' = _ , _ , _ , cong proj₁ (helper _ eq')
+    go (T.μ-type F)  eq' = _ , _ , _ , cong proj₁ (helper _ eq')
+    go (T.ν-type F)  eq' = _ , _ , _ , cong proj₁ (helper _ eq')
+
+-- Plan 0.50: resolved-ref completeness, keyed by `showCanonical cn`.
+infer-complete-RResolved :
+  ∀ {ctx : NamedCtx} {cn : CanonicalName} {T : Type}
+  → lookupImport (NamedCtx.imports ctx) (showCanonical cn) ≡ just T
+  → ∃[ eE ] ∃[ d ] ∃[ f ]
+      inferElab ctx (RResolved cn) ≡ success T zeroUsage eE d f
+infer-complete-RResolved {ctx} {cn} {T} eq = go T eq
+  where
+    open Once.TypeCheck.Elaborate using (inferElabV-RResolved-aux)
+    helper : ∀ (lhs : Maybe Type)
+           → (eq' : lookupImport (NamedCtx.imports ctx) (showCanonical cn) ≡ lhs)
+           → inferElabV-RResolved-aux ctx cn
+               (lookupImport (NamedCtx.imports ctx) (showCanonical cn)) refl
+             ≡ inferElabV-RResolved-aux ctx cn lhs eq'
+    helper _ refl = refl
+    go : ∀ (T' : Type)
+       → (eq' : lookupImport (NamedCtx.imports ctx) (showCanonical cn) ≡ just T')
+       → ∃[ eE ] ∃[ d ] ∃[ f ]
+           inferElab ctx (RResolved cn) ≡ success T' zeroUsage eE d f
     go (A ⇒[ T.mk-kind Many π ] B) eq' = _ , _ , _ , cong proj₁ (helper _ eq')
     go (A ⇒[ T.mk-kind One  π ] B) eq' = _ , _ , _ , cong proj₁ (helper _ eq')
     go (A ⇒[ T.mk-kind Zero π ] B) eq' = _ , _ , _ , cong proj₁ (helper _ eq')
@@ -639,7 +673,7 @@ open Once.TypeCheck.Elaborate
          checkElab-fallback-RApp-In; checkElab-fallback-RApp-apply;
          checkElab-fallback-RApp-arr;
          checkElab-fallback-RVar-poly;
-         checkElab-fallback-RQualified; checkElab-fallback-RAnnot;
+         checkElab-fallback-RQualified; checkElab-fallback-RResolved; checkElab-fallback-RAnnot;
          checkElab-fallback-RLet;
          checkElab-fallback-RDestruct; checkElab-fallback-RUnaryOp;
          checkElab-fallback-RBinOp;
@@ -818,6 +852,8 @@ mutual
     infer-complete-RVar-local x x≢unit eqLocal
   infer-complete {ctx} (t-var-qualified {name = name} {alias = alias} eqImp) =
     infer-complete-RQualified {ctx} {name} {alias} eqImp
+  infer-complete {ctx} (t-var-resolved {cn = cn} eqImp) =
+    infer-complete-RResolved {ctx} {cn} eqImp
   infer-complete (t-var-import {x = x} x≢unit eqLoc eqImp) =
     infer-complete-RVar-import x x≢unit eqLoc eqImp
   infer-complete (t-annot {e = e} {T = T} d) =
@@ -993,6 +1029,10 @@ mutual
     (t-embed (t-var-qualified {name = n} {alias = a} {T = T} eqImp)) =
     let (_ , _ , _ , eqI) = infer-complete {ctx} (t-var-qualified eqImp)
     in checkElab-fallback-RQualified {ctx} n a T eqI
+  check-complete {ctx}
+    (t-embed (t-var-resolved {cn = cn} {T = T} eqImp)) =
+    let (_ , _ , _ , eqI) = infer-complete {ctx} (t-var-resolved eqImp)
+    in checkElab-fallback-RResolved {ctx} cn T eqI
   check-complete (t-embed (t-var-import {x = x} {T = T} x≢unit eqLoc eqImp)) =
     let (_ , _ , _ , eqI) = infer-complete (t-var-import x≢unit eqLoc eqImp)
     in checkElab-fallback-RVar x T eqI

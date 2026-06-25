@@ -381,6 +381,7 @@ classifyAppHead (Raw.RApp (Raw.RVar x) _) with StrProp._≟_ x "pair"
 -- RApp with non-RVar head: not a builtin reference.
 classifyAppHead (Raw.RApp (Raw.RApp _ _) _)         = nothing
 classifyAppHead (Raw.RApp (Raw.RQualified _ _) _)   = nothing
+classifyAppHead (Raw.RApp (Raw.RResolved _) _)      = nothing
 classifyAppHead (Raw.RApp (Raw.RLam _ _) _)         = nothing
 classifyAppHead (Raw.RApp (Raw.RLet _ _ _) _)       = nothing
 classifyAppHead (Raw.RApp (Raw.RPair _ _) _)        = nothing
@@ -395,6 +396,7 @@ classifyAppHead (Raw.RApp (Raw.RAna _ _) _)         = nothing
 -- Non-RApp / non-RVar heads.
 classifyAppHead (Raw.RAna _ _)            = nothing
 classifyAppHead (Raw.RQualified _ _)      = nothing
+classifyAppHead (Raw.RResolved _)         = nothing
 classifyAppHead (Raw.RLam _ _)            = nothing
 classifyAppHead (Raw.RLet _ _ _)          = nothing
 classifyAppHead (Raw.RPair _ _)           = nothing
@@ -469,6 +471,7 @@ classifyAppHeadView (Raw.RApp (Raw.RVar x) _) with StrProp._≟_ x "pair"
 -- RApp with non-RVar head: ahv-other.
 classifyAppHeadView (Raw.RApp (Raw.RApp _ _) _)         = ahv-other
 classifyAppHeadView (Raw.RApp (Raw.RQualified _ _) _)   = ahv-other
+classifyAppHeadView (Raw.RApp (Raw.RResolved _) _)      = ahv-other
 classifyAppHeadView (Raw.RApp (Raw.RLam _ _) _)         = ahv-other
 classifyAppHeadView (Raw.RApp (Raw.RLet _ _ _) _)       = ahv-other
 classifyAppHeadView (Raw.RApp (Raw.RPair _ _) _)        = ahv-other
@@ -482,6 +485,7 @@ classifyAppHeadView (Raw.RApp (Raw.RUnaryOp _ _) _)     = ahv-other
 classifyAppHeadView (Raw.RApp (Raw.RAna _ _) _)         = ahv-other
 classifyAppHeadView (Raw.RAna _ _)            = ahv-other
 classifyAppHeadView (Raw.RQualified _ _)      = ahv-other
+classifyAppHeadView (Raw.RResolved _)         = ahv-other
 classifyAppHeadView (Raw.RLam _ _)            = ahv-other
 classifyAppHeadView (Raw.RLet _ _ _)          = ahv-other
 classifyAppHeadView (Raw.RPair _ _)           = ahv-other
@@ -518,6 +522,7 @@ classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RVar s) _} p | no _ | no _ w
 classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RVar _) _} _ | no _ | no _ | no _ = refl
 classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RApp _ _) _}       _ = refl
 classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RQualified _ _) _} _ = refl
+classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RResolved _) _}    _ = refl
 classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RLam _ _) _}       _ = refl
 classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RLet _ _ _) _}     _ = refl
 classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RPair _ _) _}      _ = refl
@@ -530,6 +535,7 @@ classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RBinOp _ _ _) _}   _ = refl
 classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RUnaryOp _ _) _}   _ = refl
 classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RAna _ _) _}       _ = refl
 classifyAppHead-nothing⇒view-other {Raw.RQualified _ _}     _ = refl
+classifyAppHead-nothing⇒view-other {Raw.RResolved _}        _ = refl
 classifyAppHead-nothing⇒view-other {Raw.RLam _ _}           _ = refl
 classifyAppHead-nothing⇒view-other {Raw.RLet _ _ _}         _ = refl
 classifyAppHead-nothing⇒view-other {Raw.RPair _ _}          _ = refl
@@ -610,6 +616,7 @@ view-other⇒classifyAppHead-nothing {Raw.RApp (Raw.RVar s) _} p | no _ | no _ w
 view-other⇒classifyAppHead-nothing {Raw.RApp (Raw.RVar _) _} _ | no _ | no _ | no _ = refl
 view-other⇒classifyAppHead-nothing {Raw.RApp (Raw.RApp _ _) _}       _ = refl
 view-other⇒classifyAppHead-nothing {Raw.RApp (Raw.RQualified _ _) _} _ = refl
+view-other⇒classifyAppHead-nothing {Raw.RApp (Raw.RResolved _) _}    _ = refl
 view-other⇒classifyAppHead-nothing {Raw.RApp (Raw.RLam _ _) _}       _ = refl
 view-other⇒classifyAppHead-nothing {Raw.RApp (Raw.RLet _ _ _) _}     _ = refl
 view-other⇒classifyAppHead-nothing {Raw.RApp (Raw.RPair _ _) _}      _ = refl
@@ -622,6 +629,7 @@ view-other⇒classifyAppHead-nothing {Raw.RApp (Raw.RBinOp _ _ _) _}   _ = refl
 view-other⇒classifyAppHead-nothing {Raw.RApp (Raw.RUnaryOp _ _) _}   _ = refl
 view-other⇒classifyAppHead-nothing {Raw.RApp (Raw.RAna _ _) _}       _ = refl
 view-other⇒classifyAppHead-nothing {Raw.RQualified _ _}     _ = refl
+view-other⇒classifyAppHead-nothing {Raw.RResolved _}        _ = refl
 view-other⇒classifyAppHead-nothing {Raw.RLam _ _}           _ = refl
 view-other⇒classifyAppHead-nothing {Raw.RLet _ _ _}         _ = refl
 view-other⇒classifyAppHead-nothing {Raw.RPair _ _}          _ = refl
