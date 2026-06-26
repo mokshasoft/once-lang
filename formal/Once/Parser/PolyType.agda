@@ -51,12 +51,9 @@ open import Once.Parser.Core using (Parser)
 ------------------------------------------------------------------------
 
 -- | True iff `s` starts with a lowercase letter (a-z).
--- Matches Haskell/ML/Idris convention: type variables are lowercase,
--- ground type names and user-declared type aliases are uppercase.
-isLowerWord : String → Bool
-isLowerWord s with StrLib.toList s
-... | []      = false
-... | (c ∷ _) = isLower c
+-- (Definition relocated to Once.Parser.CharClass; re-exported here so existing
+-- importers `Once.Parser.PolyType using (isLowerWord)` keep working.)
+open import Once.Parser.CharClass public using (isLowerWord)
 
 ------------------------------------------------------------------------
 -- Parser state
@@ -269,15 +266,21 @@ parsePolyType = parsePolyTypeImpl
 ------------------------------------------------------------------------
 
 open import Data.Nat using (_<_; _<?_)
+open import Data.Nat.Induction using (<-wellFounded)
 open import Data.Product using (Σ; Σ-syntax)
+open import Relation.Binary.PropositionalEquality using (_≡_)
+open import Once.Parser.Generic.PolyInst
+  using (parsePolyTypeP; sound-polyType; ParsesPolyType-shrink)
 
 ParsePolyAtB : List Token → Set
 ParsePolyAtB toks =
   Maybe (Σ[ t ∈ PolyType ] Σ[ rest ∈ List Token ] length rest < length toks)
 
+-- Plan 0.7-2: the runtime `<?` check is replaced by a STRUCTURAL bound — the
+-- generic bound-free parser `parsePolyTypeP` is now THE PolyType parser, and the
+-- length decrease is the relation shrink applied to the soundness witness.
 parsePolyTypeB : (toks : List Token) → ParsePolyAtB toks
-parsePolyTypeB toks with parsePolyType toks
-... | nothing = nothing
-... | just (t , rest) with length rest <? length toks
-...   | yes p = just (t , rest , p)
-...   | no _  = nothing
+parsePolyTypeB toks with parsePolyTypeP toks in eq
+... | nothing          = nothing
+... | just (t , rest)  =
+      just (t , rest , ParsesPolyType-shrink (sound-polyType toks (<-wellFounded (length toks)) eq))

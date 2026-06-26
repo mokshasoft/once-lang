@@ -25,7 +25,7 @@ open import Once.Type
         ; PInt; PFloat; PStr; PBuffer; PTVar
         ; PolyFunctor; PK; PId; _P⊕_; _P⊗_ )
 open import Once.Parser.Token
-open import Once.Parser.PolyType using (isLowerWord)
+open import Once.Parser.CharClass using (isLowerWord)
 open import Once.Parser.Generic.Relation
 import Once.Parser.Generic.Parser as P
 import Once.Parser.Generic.Sound as S
