@@ -82,6 +82,11 @@ data ParsesDecls : List Token → List Decl → List Token → Set where
     ParsesDecls rest ds rest' →
     ParsesDecls toks (d ∷ ds) rest'
 
+-- The decls-loop bridge. NOTE (next target): discharging these needs
+-- `parseDeclsWF` in a form whose output projections reduce without the
+-- ill-typed-with-abstraction clash against its own internal `with skipNewlines`
+-- — i.e. a clause-based `parseDeclsWF` (or derivation-carrying `parseDeclB`,
+-- as the type/expr parsers already are). The relation `ParsesDecls` is DEFINED.
 postulate
   sound-decls    : ∀ {toks ds rest} → parseDecls toks ≡ just (ds , rest) → ParsesDecls toks ds rest
   complete-decls : ∀ {toks ds rest} → ParsesDecls toks ds rest → parseDecls toks ≡ just (ds , rest)
