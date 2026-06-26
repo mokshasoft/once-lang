@@ -23,6 +23,7 @@ import qualified MAlonzo.Code.Data.String.Base
 import qualified MAlonzo.Code.Once.CCC.Codegen.IRToTrace
 import qualified MAlonzo.Code.Once.CCC.Target.RiscV64.AbstractToRiscV
 import qualified MAlonzo.Code.Once.CCC.Target.RiscV64.Emit
+import qualified MAlonzo.Code.Once.CanonicalName
 import qualified MAlonzo.Code.Once.IR
 import qualified MAlonzo.Code.Once.Target
 import qualified MAlonzo.Code.Once.Target.Symbol
@@ -40,7 +41,7 @@ d_riscv64'45'asmHeader_6
       (".section .text\n\n" :: Data.Text.Text)
 -- Once.Target.RiscV64.riscv64-functionPrologue
 d_riscv64'45'functionPrologue_8 ::
-  MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
+  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
 d_riscv64'45'functionPrologue_8 v0
   = coe
@@ -48,13 +49,15 @@ d_riscv64'45'functionPrologue_8 v0
       (".globl " :: Data.Text.Text)
       (coe
          MAlonzo.Code.Data.String.Base.d__'43''43'__20
-         (MAlonzo.Code.Once.Target.Symbol.d_once'45'symbol_8 (coe v0))
+         (MAlonzo.Code.Once.Target.Symbol.d_once'45'symbol'45'path_52
+            (coe v0))
          (coe
             MAlonzo.Code.Data.String.Base.d__'43''43'__20
             ("\n" :: Data.Text.Text)
             (coe
                MAlonzo.Code.Data.String.Base.d__'43''43'__20
-               (MAlonzo.Code.Once.Target.Symbol.d_once'45'symbol_8 (coe v0))
+               (MAlonzo.Code.Once.Target.Symbol.d_once'45'symbol'45'path_52
+                  (coe v0))
                (":\n" :: Data.Text.Text))))
 -- Once.Target.RiscV64.riscv64-irToBodies
 d_riscv64'45'irToBodies_16 ::

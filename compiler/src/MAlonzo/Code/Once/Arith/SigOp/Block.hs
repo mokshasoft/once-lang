@@ -27,6 +27,7 @@ import qualified MAlonzo.Code.Data.String.Base
 import qualified MAlonzo.Code.Data.Sum.Base
 import qualified MAlonzo.Code.Once.Arith.Machine.IR
 import qualified MAlonzo.Code.Once.Arith.Machine.Shape
+import qualified MAlonzo.Code.Once.CanonicalName
 import qualified MAlonzo.Code.Once.Functor.Translate
 import qualified MAlonzo.Code.Once.Semantics.Functor
 import qualified MAlonzo.Code.Once.Semantics.Value
@@ -704,6 +705,8 @@ d_block'45'info_262 ::
 d_block'45'info_262 v0 v1
   = coe
       MAlonzo.Code.Once.SigOp.Info.du_mk'45'info_216
-      (coe du_block'45'name_200 (coe v1))
+      (coe
+         MAlonzo.Code.Once.CanonicalName.d_bare_12
+         (coe du_block'45'name_200 (coe v1)))
       (coe d_block'45'semM_228 (coe v0) (coe v1))
       (coe MAlonzo.Code.Once.SigOp.Info.C_Pure_124)

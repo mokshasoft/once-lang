@@ -20,6 +20,7 @@ import qualified Data.Text
 import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Agda.Builtin.String
 import qualified MAlonzo.Code.Once.Arith.Machine.IR
+import qualified MAlonzo.Code.Once.CanonicalName
 import qualified MAlonzo.Code.Once.IR
 import qualified MAlonzo.Code.Once.Type
 
@@ -37,7 +38,7 @@ data T_Target_4
                       MAlonzo.Code.Once.IR.T_IR_16 ->
                       MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14)
                      MAlonzo.Code.Agda.Builtin.String.T_String_6
-                     (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
+                     (MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
                       MAlonzo.Code.Agda.Builtin.String.T_String_6)
                      MAlonzo.Code.Agda.Builtin.String.T_String_6
                      ([MAlonzo.Code.Once.Arith.Machine.IR.T_ArithBlock_86] ->
@@ -76,7 +77,7 @@ d_asmHeader_38 v0
 -- Once.Target.Target.functionPrologue
 d_functionPrologue_40 ::
   T_Target_4 ->
-  MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
+  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
 d_functionPrologue_40 v0
   = case coe v0 of

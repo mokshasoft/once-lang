@@ -213,21 +213,21 @@ d_valid'45'primitive'45'wf_536 ::
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_510 ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456 ->
-  MAlonzo.Code.Once.Type.T_FitsInReg_192 ->
+  MAlonzo.Code.Once.Type.T_FitsInReg_196 ->
   MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_610 ->
   T_ValidAtWF_522
 d_valid'45'primitive'45'wf_536 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 v8
                                v9
   = du_valid'45'primitive'45'wf_536 v8 v9
 du_valid'45'primitive'45'wf_536 ::
-  MAlonzo.Code.Once.Type.T_FitsInReg_192 ->
+  MAlonzo.Code.Once.Type.T_FitsInReg_196 ->
   MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_610 ->
   T_ValidAtWF_522
 du_valid'45'primitive'45'wf_536 v0 v1
   = case coe v0 of
-      MAlonzo.Code.Once.Type.C_fits'45'int_194
+      MAlonzo.Code.Once.Type.C_fits'45'int_198
         -> coe C_valid'45'int'45'wf_916 v1
-      MAlonzo.Code.Once.Type.C_fits'45'float_196
+      MAlonzo.Code.Once.Type.C_fits'45'float_200
         -> coe C_valid'45'float'45'wf_928 v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Machine.ClosureWellFormed.ClosureWellFormedDef.ResultPlace
@@ -1764,11 +1764,11 @@ du_validityWF'45'mem'45'only_2066 v0 v1 v2 v3 v4 v5 v6 v7 v8
                        du_validityWF'45'mem'45'only_2066 (coe v0) (coe v1) (coe v2)
                        (coe v3)
                        (coe
-                          MAlonzo.Code.Once.Type.d_'10214'_'10215'T_162 (coe v9) (coe v4))
+                          MAlonzo.Code.Once.Type.d_'10214'_'10215'T_166 (coe v9) (coe v4))
                        (coe
                           MAlonzo.Code.Once.CCC.Eval.d_eval_10 (coe v4)
                           (coe
-                             MAlonzo.Code.Once.Type.d_'10214'_'10215'T_162 (coe v9) (coe v4))
+                             MAlonzo.Code.Once.Type.d_'10214'_'10215'T_166 (coe v9) (coe v4))
                           (coe MAlonzo.Code.Once.IR.C_out'45'μ_112 v15) (coe v5))
                        (coe v6) (coe v7) (coe v17))
              _ -> MAlonzo.RTE.mazUnreachableError
@@ -1781,11 +1781,11 @@ du_validityWF'45'mem'45'only_2066 v0 v1 v2 v3 v4 v5 v6 v7 v8
                        du_validityWF'45'mem'45'only_2066 (coe v0) (coe v1) (coe v2)
                        (coe v3)
                        (coe
-                          MAlonzo.Code.Once.Type.d_'10214'_'10215'T_162 (coe v9) (coe v4))
+                          MAlonzo.Code.Once.Type.d_'10214'_'10215'T_166 (coe v9) (coe v4))
                        (coe
                           MAlonzo.Code.Once.CCC.Eval.d_eval_10 (coe v4)
                           (coe
-                             MAlonzo.Code.Once.Type.d_'10214'_'10215'T_162 (coe v9) (coe v4))
+                             MAlonzo.Code.Once.Type.d_'10214'_'10215'T_166 (coe v9) (coe v4))
                           (coe MAlonzo.Code.Once.IR.C_Out_128 v15) (coe v5))
                        (coe v6) (coe v7) (coe v17))
              _ -> MAlonzo.RTE.mazUnreachableError
@@ -2340,11 +2340,11 @@ du_validityWF'45'write'45'at'45'frontier_2418 v0 v1 v2 v3 v4 v5 v6
                        du_validityWF'45'write'45'at'45'frontier_2418 (coe v0) (coe v1)
                        (coe v2) (coe v3)
                        (coe
-                          MAlonzo.Code.Once.Type.d_'10214'_'10215'T_162 (coe v9) (coe v4))
+                          MAlonzo.Code.Once.Type.d_'10214'_'10215'T_166 (coe v9) (coe v4))
                        (coe
                           MAlonzo.Code.Once.CCC.Eval.d_eval_10 (coe v4)
                           (coe
-                             MAlonzo.Code.Once.Type.d_'10214'_'10215'T_162 (coe v9) (coe v4))
+                             MAlonzo.Code.Once.Type.d_'10214'_'10215'T_166 (coe v9) (coe v4))
                           (coe MAlonzo.Code.Once.IR.C_out'45'μ_112 v15) (coe v5))
                        (coe v6) (coe v7) (coe v17))
              _ -> MAlonzo.RTE.mazUnreachableError
@@ -2357,11 +2357,11 @@ du_validityWF'45'write'45'at'45'frontier_2418 v0 v1 v2 v3 v4 v5 v6
                        du_validityWF'45'write'45'at'45'frontier_2418 (coe v0) (coe v1)
                        (coe v2) (coe v3)
                        (coe
-                          MAlonzo.Code.Once.Type.d_'10214'_'10215'T_162 (coe v9) (coe v4))
+                          MAlonzo.Code.Once.Type.d_'10214'_'10215'T_166 (coe v9) (coe v4))
                        (coe
                           MAlonzo.Code.Once.CCC.Eval.d_eval_10 (coe v4)
                           (coe
-                             MAlonzo.Code.Once.Type.d_'10214'_'10215'T_162 (coe v9) (coe v4))
+                             MAlonzo.Code.Once.Type.d_'10214'_'10215'T_166 (coe v9) (coe v4))
                           (coe MAlonzo.Code.Once.IR.C_Out_128 v15) (coe v5))
                        (coe v6) (coe v7) (coe v17))
              _ -> MAlonzo.RTE.mazUnreachableError
@@ -2908,11 +2908,11 @@ du_validityWF'45'write'45'at'45'suc'45'frontier_2746 v0 v1 v2 v3 v4
                        du_validityWF'45'write'45'at'45'suc'45'frontier_2746 (coe v0)
                        (coe v1) (coe v2) (coe v3)
                        (coe
-                          MAlonzo.Code.Once.Type.d_'10214'_'10215'T_162 (coe v9) (coe v4))
+                          MAlonzo.Code.Once.Type.d_'10214'_'10215'T_166 (coe v9) (coe v4))
                        (coe
                           MAlonzo.Code.Once.CCC.Eval.d_eval_10 (coe v4)
                           (coe
-                             MAlonzo.Code.Once.Type.d_'10214'_'10215'T_162 (coe v9) (coe v4))
+                             MAlonzo.Code.Once.Type.d_'10214'_'10215'T_166 (coe v9) (coe v4))
                           (coe MAlonzo.Code.Once.IR.C_out'45'μ_112 v15) (coe v5))
                        (coe v6) (coe v7) (coe v17))
              _ -> MAlonzo.RTE.mazUnreachableError
@@ -2925,11 +2925,11 @@ du_validityWF'45'write'45'at'45'suc'45'frontier_2746 v0 v1 v2 v3 v4
                        du_validityWF'45'write'45'at'45'suc'45'frontier_2746 (coe v0)
                        (coe v1) (coe v2) (coe v3)
                        (coe
-                          MAlonzo.Code.Once.Type.d_'10214'_'10215'T_162 (coe v9) (coe v4))
+                          MAlonzo.Code.Once.Type.d_'10214'_'10215'T_166 (coe v9) (coe v4))
                        (coe
                           MAlonzo.Code.Once.CCC.Eval.d_eval_10 (coe v4)
                           (coe
-                             MAlonzo.Code.Once.Type.d_'10214'_'10215'T_162 (coe v9) (coe v4))
+                             MAlonzo.Code.Once.Type.d_'10214'_'10215'T_166 (coe v9) (coe v4))
                           (coe MAlonzo.Code.Once.IR.C_Out_128 v15) (coe v5))
                        (coe v6) (coe v7) (coe v17))
              _ -> MAlonzo.RTE.mazUnreachableError
@@ -3481,11 +3481,11 @@ du_validityWF'45'alloc'45'advance_3076 v0 v1 v2 v3 v4 v5 v6 v7 v8
                     (coe
                        du_validityWF'45'alloc'45'advance_3076 (coe v0) (coe v1) (coe v2)
                        (coe
-                          MAlonzo.Code.Once.Type.d_'10214'_'10215'T_162 (coe v9) (coe v3))
+                          MAlonzo.Code.Once.Type.d_'10214'_'10215'T_166 (coe v9) (coe v3))
                        (coe
                           MAlonzo.Code.Once.CCC.Eval.d_eval_10 (coe v3)
                           (coe
-                             MAlonzo.Code.Once.Type.d_'10214'_'10215'T_162 (coe v9) (coe v3))
+                             MAlonzo.Code.Once.Type.d_'10214'_'10215'T_166 (coe v9) (coe v3))
                           (coe MAlonzo.Code.Once.IR.C_out'45'μ_112 v15) (coe v4))
                        (coe v5) (coe v6) (coe v7) (coe v17))
              _ -> MAlonzo.RTE.mazUnreachableError
@@ -3497,11 +3497,11 @@ du_validityWF'45'alloc'45'advance_3076 v0 v1 v2 v3 v4 v5 v6 v7 v8
                     (coe
                        du_validityWF'45'alloc'45'advance_3076 (coe v0) (coe v1) (coe v2)
                        (coe
-                          MAlonzo.Code.Once.Type.d_'10214'_'10215'T_162 (coe v9) (coe v3))
+                          MAlonzo.Code.Once.Type.d_'10214'_'10215'T_166 (coe v9) (coe v3))
                        (coe
                           MAlonzo.Code.Once.CCC.Eval.d_eval_10 (coe v3)
                           (coe
-                             MAlonzo.Code.Once.Type.d_'10214'_'10215'T_162 (coe v9) (coe v3))
+                             MAlonzo.Code.Once.Type.d_'10214'_'10215'T_166 (coe v9) (coe v3))
                           (coe MAlonzo.Code.Once.IR.C_Out_128 v15) (coe v4))
                        (coe v5) (coe v6) (coe v7) (coe v17))
              _ -> MAlonzo.RTE.mazUnreachableError
@@ -4191,11 +4191,11 @@ du_validityWF'45'frontier'45'advance_3382 v0 v1 v2 v3 v4 v5 v6 v7
                        du_validityWF'45'frontier'45'advance_3382 (coe v0) (coe v1)
                        (coe v2) (coe v3)
                        (coe
-                          MAlonzo.Code.Once.Type.d_'10214'_'10215'T_162 (coe v11) (coe v4))
+                          MAlonzo.Code.Once.Type.d_'10214'_'10215'T_166 (coe v11) (coe v4))
                        (coe
                           MAlonzo.Code.Once.CCC.Eval.d_eval_10 (coe v4)
                           (coe
-                             MAlonzo.Code.Once.Type.d_'10214'_'10215'T_162 (coe v11) (coe v4))
+                             MAlonzo.Code.Once.Type.d_'10214'_'10215'T_166 (coe v11) (coe v4))
                           (coe MAlonzo.Code.Once.IR.C_out'45'μ_112 v17) (coe v5))
                        (coe v6) (coe v7) (coe v8) (coe v9) (coe v19))
              _ -> MAlonzo.RTE.mazUnreachableError
@@ -4208,11 +4208,11 @@ du_validityWF'45'frontier'45'advance_3382 v0 v1 v2 v3 v4 v5 v6 v7
                        du_validityWF'45'frontier'45'advance_3382 (coe v0) (coe v1)
                        (coe v2) (coe v3)
                        (coe
-                          MAlonzo.Code.Once.Type.d_'10214'_'10215'T_162 (coe v11) (coe v4))
+                          MAlonzo.Code.Once.Type.d_'10214'_'10215'T_166 (coe v11) (coe v4))
                        (coe
                           MAlonzo.Code.Once.CCC.Eval.d_eval_10 (coe v4)
                           (coe
-                             MAlonzo.Code.Once.Type.d_'10214'_'10215'T_162 (coe v11) (coe v4))
+                             MAlonzo.Code.Once.Type.d_'10214'_'10215'T_166 (coe v11) (coe v4))
                           (coe MAlonzo.Code.Once.IR.C_Out_128 v17) (coe v5))
                        (coe v6) (coe v7) (coe v8) (coe v9) (coe v19))
              _ -> MAlonzo.RTE.mazUnreachableError
@@ -4966,11 +4966,11 @@ du_validityWF'45'with'45'bf'45'transfer_3764 v0 v1 v2 v3 v4
                     (coe
                        du_validityWF'45'with'45'bf'45'transfer_3764
                        (coe
-                          MAlonzo.Code.Once.Type.d_'10214'_'10215'T_162 (coe v5) (coe v0))
+                          MAlonzo.Code.Once.Type.d_'10214'_'10215'T_166 (coe v5) (coe v0))
                        (coe
                           MAlonzo.Code.Once.CCC.Eval.d_eval_10 (coe v0)
                           (coe
-                             MAlonzo.Code.Once.Type.d_'10214'_'10215'T_162 (coe v5) (coe v0))
+                             MAlonzo.Code.Once.Type.d_'10214'_'10215'T_166 (coe v5) (coe v0))
                           (coe MAlonzo.Code.Once.IR.C_out'45'μ_112 v11) (coe v1))
                        (coe v2) (coe v3) (coe v13))
              _ -> MAlonzo.RTE.mazUnreachableError
@@ -4982,11 +4982,11 @@ du_validityWF'45'with'45'bf'45'transfer_3764 v0 v1 v2 v3 v4
                     (coe
                        du_validityWF'45'with'45'bf'45'transfer_3764
                        (coe
-                          MAlonzo.Code.Once.Type.d_'10214'_'10215'T_162 (coe v5) (coe v0))
+                          MAlonzo.Code.Once.Type.d_'10214'_'10215'T_166 (coe v5) (coe v0))
                        (coe
                           MAlonzo.Code.Once.CCC.Eval.d_eval_10 (coe v0)
                           (coe
-                             MAlonzo.Code.Once.Type.d_'10214'_'10215'T_162 (coe v5) (coe v0))
+                             MAlonzo.Code.Once.Type.d_'10214'_'10215'T_166 (coe v5) (coe v0))
                           (coe MAlonzo.Code.Once.IR.C_Out_128 v11) (coe v1))
                        (coe v2) (coe v3) (coe v13))
              _ -> MAlonzo.RTE.mazUnreachableError
@@ -5117,11 +5117,11 @@ du_validityWF'45'mem'45'preserved_4052 v0 v1 v2 v3 v4 v5 v6 v7 v8
                        du_validityWF'45'mem'45'preserved_4052 (coe v0) (coe v1) (coe v2)
                        (coe v3)
                        (coe
-                          MAlonzo.Code.Once.Type.d_'10214'_'10215'T_162 (coe v9) (coe v4))
+                          MAlonzo.Code.Once.Type.d_'10214'_'10215'T_166 (coe v9) (coe v4))
                        (coe
                           MAlonzo.Code.Once.CCC.Eval.d_eval_10 (coe v4)
                           (coe
-                             MAlonzo.Code.Once.Type.d_'10214'_'10215'T_162 (coe v9) (coe v4))
+                             MAlonzo.Code.Once.Type.d_'10214'_'10215'T_166 (coe v9) (coe v4))
                           (coe MAlonzo.Code.Once.IR.C_out'45'μ_112 v15) (coe v5))
                        (coe v6) (coe v7) (coe v17))
              _ -> MAlonzo.RTE.mazUnreachableError
@@ -5134,11 +5134,11 @@ du_validityWF'45'mem'45'preserved_4052 v0 v1 v2 v3 v4 v5 v6 v7 v8
                        du_validityWF'45'mem'45'preserved_4052 (coe v0) (coe v1) (coe v2)
                        (coe v3)
                        (coe
-                          MAlonzo.Code.Once.Type.d_'10214'_'10215'T_162 (coe v9) (coe v4))
+                          MAlonzo.Code.Once.Type.d_'10214'_'10215'T_166 (coe v9) (coe v4))
                        (coe
                           MAlonzo.Code.Once.CCC.Eval.d_eval_10 (coe v4)
                           (coe
-                             MAlonzo.Code.Once.Type.d_'10214'_'10215'T_162 (coe v9) (coe v4))
+                             MAlonzo.Code.Once.Type.d_'10214'_'10215'T_166 (coe v9) (coe v4))
                           (coe MAlonzo.Code.Once.IR.C_Out_128 v15) (coe v5))
                        (coe v6) (coe v7) (coe v17))
              _ -> MAlonzo.RTE.mazUnreachableError

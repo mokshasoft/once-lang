@@ -25,6 +25,7 @@ import qualified MAlonzo.Code.Once.Arith.Backend.X86.Emit
 import qualified MAlonzo.Code.Once.CCC.Codegen.IRToTrace
 import qualified MAlonzo.Code.Once.CCC.Target.X86Z45Z64.AbstractToX86
 import qualified MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Emit
+import qualified MAlonzo.Code.Once.CanonicalName
 import qualified MAlonzo.Code.Once.IR
 import qualified MAlonzo.Code.Once.Target
 import qualified MAlonzo.Code.Once.Target.Symbol
@@ -84,19 +85,28 @@ d_x86'45'64'45'asmHeader_6
                                               Data.Text.Text)
                                              (coe
                                                 MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                                                ("    call once_main\n" :: Data.Text.Text)
+                                                ("    call " :: Data.Text.Text)
                                                 (coe
                                                    MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                                                   ("    movq $60, %rax\n" :: Data.Text.Text)
+                                                   (MAlonzo.Code.Once.Target.Symbol.d_once'45'symbol'45'own_56
+                                                      (coe ("main" :: Data.Text.Text)))
                                                    (coe
                                                       MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                                                      ("    xorq %rdi, %rdi\n" :: Data.Text.Text)
-                                                      ("    syscall\n\n"
-                                                       ::
-                                                       Data.Text.Text)))))))))))))))))
+                                                      ("\n" :: Data.Text.Text)
+                                                      (coe
+                                                         MAlonzo.Code.Data.String.Base.d__'43''43'__20
+                                                         ("    movq $60, %rax\n" :: Data.Text.Text)
+                                                         (coe
+                                                            MAlonzo.Code.Data.String.Base.d__'43''43'__20
+                                                            ("    xorq %rdi, %rdi\n"
+                                                             ::
+                                                             Data.Text.Text)
+                                                            ("    syscall\n\n"
+                                                             ::
+                                                             Data.Text.Text)))))))))))))))))))
 -- Once.Target.X86-64.x86-64-functionPrologue
 d_x86'45'64'45'functionPrologue_8 ::
-  MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
+  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
 d_x86'45'64'45'functionPrologue_8 v0
   = coe
@@ -104,13 +114,15 @@ d_x86'45'64'45'functionPrologue_8 v0
       (".globl " :: Data.Text.Text)
       (coe
          MAlonzo.Code.Data.String.Base.d__'43''43'__20
-         (MAlonzo.Code.Once.Target.Symbol.d_once'45'symbol_8 (coe v0))
+         (MAlonzo.Code.Once.Target.Symbol.d_once'45'symbol'45'path_52
+            (coe v0))
          (coe
             MAlonzo.Code.Data.String.Base.d__'43''43'__20
             ("\n" :: Data.Text.Text)
             (coe
                MAlonzo.Code.Data.String.Base.d__'43''43'__20
-               (MAlonzo.Code.Once.Target.Symbol.d_once'45'symbol_8 (coe v0))
+               (MAlonzo.Code.Once.Target.Symbol.d_once'45'symbol'45'path_52
+                  (coe v0))
                (":\n" :: Data.Text.Text))))
 -- Once.Target.X86-64.x86-64-functionEpilogue
 d_x86'45'64'45'functionEpilogue_12 ::

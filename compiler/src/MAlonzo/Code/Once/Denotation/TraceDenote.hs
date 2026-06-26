@@ -96,12 +96,12 @@ du_emit'45'eff_54 v0 v1 v2 v3
            -> coe
                 d_sig1_46 (coe v2)
                 (coe
-                   MAlonzo.Code.Once.Denotation.Trace.du_mkEvent_138 (coe v0) (coe v1)
+                   MAlonzo.Code.Once.Denotation.Trace.du_mkEvent_150 (coe v0) (coe v1)
                    (coe v3))
          MAlonzo.Code.Once.SigOp.Info.C_Halts_128
            -> coe
                 d_sig1_46 (coe v2)
                 (coe
-                   MAlonzo.Code.Once.Denotation.Trace.du_mkEvent_138 (coe v0) (coe v1)
+                   MAlonzo.Code.Once.Denotation.Trace.du_mkEvent_150 (coe v0) (coe v1)
                    (coe v3))
          _ -> MAlonzo.RTE.mazUnreachableError)

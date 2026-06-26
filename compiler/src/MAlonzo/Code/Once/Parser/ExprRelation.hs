@@ -725,7 +725,7 @@ du_ParsesUnary'45'shrinks_1178 v0 v1 v2
         -> case coe v0 of
              (:) v7 v8
                -> case coe v1 of
-                    MAlonzo.Code.Once.TypeCheck.Raw.C_RUnaryOp_60 v10
+                    MAlonzo.Code.Once.TypeCheck.Raw.C_RUnaryOp_62 v10
                       -> coe
                            MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
                            (coe MAlonzo.Code.Data.List.Base.du_length_268 v8)
@@ -1166,7 +1166,7 @@ d_ParsesLamParams'45'shrinks_1222 v0 v1 v2 v3
         -> case coe v0 of
              (:) v9 v10
                -> case coe v1 of
-                    MAlonzo.Code.Once.TypeCheck.Raw.C_RLam_42 v11 v12
+                    MAlonzo.Code.Once.TypeCheck.Raw.C_RLam_44 v11 v12
                       -> coe
                            MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
                            (coe MAlonzo.Code.Data.List.Base.du_length_268 v10)
@@ -1228,7 +1228,7 @@ du_ParsesLetIn'45'shrinks_1242 v0 v1 v2 v3
         -> case coe v0 of
              (:) v10 v11
                -> case coe v1 of
-                    MAlonzo.Code.Once.TypeCheck.Raw.C_RLet_44 v12 v13 v14
+                    MAlonzo.Code.Once.TypeCheck.Raw.C_RLet_46 v12 v13 v14
                       -> coe
                            MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
                            (coe MAlonzo.Code.Data.List.Base.du_length_268 v11)
@@ -1352,7 +1352,7 @@ du_ParsesRightBranch'45'shrinks_1284 v0 v1 v2 v3
                              -> case coe v17 of
                                   (:) v18 v19
                                     -> case coe v1 of
-                                         MAlonzo.Code.Once.TypeCheck.Raw.C_RDestruct_48 v20 v21 v22 v23 v24
+                                         MAlonzo.Code.Once.TypeCheck.Raw.C_RDestruct_50 v20 v21 v22 v23 v24
                                            -> coe
                                                 MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
                                                 (coe
@@ -1411,7 +1411,7 @@ du_ParsesParenCont'45'shrinks_1294 v0 v1 v2 v3
         -> case coe v0 of
              (:) v11 v12
                -> case coe v1 of
-                    MAlonzo.Code.Once.TypeCheck.Raw.C_RPair_46 v13 v14
+                    MAlonzo.Code.Once.TypeCheck.Raw.C_RPair_48 v13 v14
                       -> coe
                            MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
                            (coe MAlonzo.Code.Data.List.Base.du_length_268 v6)
@@ -1434,7 +1434,7 @@ du_ParsesParenCont'45'shrinks_1294 v0 v1 v2 v3
         -> case coe v0 of
              (:) v9 v10
                -> case coe v1 of
-                    MAlonzo.Code.Once.TypeCheck.Raw.C_RAnnot_56 v11 v12
+                    MAlonzo.Code.Once.TypeCheck.Raw.C_RAnnot_58 v11 v12
                       -> coe
                            MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
                            (coe
