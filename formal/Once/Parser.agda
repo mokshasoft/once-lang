@@ -150,29 +150,39 @@ showTokenPrefix (TEOF       ∷ xs) = showTokenPrefix xs
 -- names in the import preprocessor; TVars in type signatures). Both
 -- symptoms were "the thing I wrote just isn't there." This entry
 -- point makes that class of failure impossible.
+-- The leftover often starts at a type signature using an uppercase word for
+-- a type *variable* (e.g. `swap : A * B -> B * A`) — uppercase names are
+-- concrete types (Int/Unit/…), type variables are lowercase. Detect that and
+-- add a hint instead of the bare "unexpected tokens". (Top-level so the
+-- clause-based `parseStrict` below stays analysable — front-end
+-- soundness/completeness reduce through its success path.)
+knownTypeWord : String → Bool
+knownTypeWord w = does (w ≟ "Unit") ∨ does (w ≟ "Void") ∨ does (w ≟ "Int")
+            ∨ does (w ≟ "Float") ∨ does (w ≟ "Buffer") ∨ does (w ≟ "String")
+hasUpperTVar : List Token → Bool
+hasUpperTVar []              = false
+hasUpperTVar (TWord w  ∷ ts) = (isUpperWord w ∧ not (knownTypeWord w)) ∨ hasUpperTVar ts
+hasUpperTVar (_        ∷ ts) = hasUpperTVar ts
+tvarHint : List Token → String
+tvarHint toks with hasUpperTVar toks
+... | true  = "\n  hint: type variables must be lowercase (e.g. `a`, not `A`); uppercase names like `Int`/`Unit` are concrete types"
+... | false = ""
+
+-- Clause-based dispatch (NO `with`) on the `allTrailing` decision and the
+-- `parseModule` result, so the success path `inj₂ m` reduces under hypotheses
+-- (the verified front-end's `parseStrict-sound`/`-complete` step through it).
+parseStrict-at : List Token → Module → Bool → String ⊎ Module
+parseStrict-at r m true  = inj₂ m
+parseStrict-at r m false =
+  inj₁ ("Parse error: unexpected tokens remaining after last parsed decl (starting at: "
+        ++ showTokenPrefix r ++ ")" ++ tvarHint r)
+
+parseStrict-pm : Maybe (Module × List Token) → String ⊎ Module
+parseStrict-pm nothing        = inj₁ "Parse error: module failed to parse"
+parseStrict-pm (just (m , r)) = parseStrict-at r m (allTrailing r)
+
 parseStrict : String → String ⊎ Module
-parseStrict source with parseModule (tokenizeString source)
-... | nothing       = inj₁ "Parse error: module failed to parse"
-... | just (m , r) with allTrailing r
-...   | true  = inj₂ m
-...   | false = inj₁ ("Parse error: unexpected tokens remaining after last parsed decl (starting at: "
-                       ++ showTokenPrefix r ++ ")" ++ tvarHint r)
-  where
-  -- The leftover often starts at a type signature using an uppercase word for
-  -- a type *variable* (e.g. `swap : A * B -> B * A`) — uppercase names are
-  -- concrete types (Int/Unit/…), type variables are lowercase. Detect that and
-  -- add a hint instead of the bare "unexpected tokens".
-  knownType : String → Bool
-  knownType w = does (w ≟ "Unit") ∨ does (w ≟ "Void") ∨ does (w ≟ "Int")
-              ∨ does (w ≟ "Float") ∨ does (w ≟ "Buffer") ∨ does (w ≟ "String")
-  hasUpperTVar : List Token → Bool
-  hasUpperTVar []              = false
-  hasUpperTVar (TWord w  ∷ ts) = (isUpperWord w ∧ not (knownType w)) ∨ hasUpperTVar ts
-  hasUpperTVar (_        ∷ ts) = hasUpperTVar ts
-  tvarHint : List Token → String
-  tvarHint toks with hasUpperTVar toks
-  ... | true  = "\n  hint: type variables must be lowercase (e.g. `a`, not `A`); uppercase names like `Int`/`Unit` are concrete types"
-  ... | false = ""
+parseStrict source = parseStrict-pm (parseModule (tokenizeString source))
 
 ------------------------------------------------------------------------
 -- Processing Pipeline Helpers
