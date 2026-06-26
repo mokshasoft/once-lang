@@ -70,24 +70,28 @@ parseModulePath toks with parseModulePathB toks
 ... | just (p , rest , _) = just (p , rest)
 ... | nothing = nothing
 
--- | Bounded variant of `as Alias`: residual ≤ input (the parser may
--- no-op and return the unchanged input). De-`with`'d through `pia-as`/`pia-w`.
+-- | Bounded variant of `as Alias`: residual ≤ input (the parser may no-op and
+-- return the unchanged input). CLASSIFIER-ROUTED through `anyWordB` (head
+-- dispatch) + de-`with`'d via `pia-head`/`pia-as`/`pia-w`, all typed over `toks`,
+-- so the adequacy bridge steps it for a variable tail.
 parseImportAliasB : List String → (toks : List Token) → ParseAtB≤ {Decl} toks
-pia-as : (path : List String) (s : String) (rest : List Token) → Dec (s ≡ "as") →
-         ParseAtB≤ {Decl} (TWord s ∷ rest)
-pia-w  : (path : List String) (s : String) (rest : List Token) → ParseAtB {String} rest →
-         ParseAtB≤ {Decl} (TWord s ∷ rest)
+pia-head : (path : List String) (toks : List Token) (aw : ParseAtB {String} toks) → ParseAtB≤ {Decl} toks
+pia-as : (path : List String) (toks : List Token) (s : String) (rest : List Token)
+         (bnd : length rest < length toks) → Dec (s ≡ "as") → ParseAtB≤ {Decl} toks
+pia-w  : (path : List String) (toks : List Token) (rest : List Token)
+         (bnd : length rest < length toks) → ParseAtB {String} rest → ParseAtB≤ {Decl} toks
 
-parseImportAliasB path (TWord s ∷ rest) = pia-as path s rest (s ≟ "as")
-parseImportAliasB path toks =
-      just (DImport (mkImport path nothing) , toks , ≤-refl)
+parseImportAliasB path toks = pia-head path toks (anyWordB toks)
 
-pia-as path s rest (yes _) = pia-w path s rest (anyWordB rest)
-pia-as path s rest (no  _) = just (DImport (mkImport path nothing) , TWord s ∷ rest , ≤-refl)
+pia-head path toks nothing                = just (DImport (mkImport path nothing) , toks , ≤-refl)
+pia-head path toks (just (s , rest , bnd)) = pia-as path toks s rest bnd (s ≟ "as")
 
-pia-w path s rest (just (alias , rest' , bnd)) =
-  just (DImport (mkImport path (just alias)) , rest' , <⇒≤ (<-trans bnd (s≤s ≤-refl)))
-pia-w path s rest nothing = nothing
+pia-as path toks s rest bnd (yes _) = pia-w path toks rest bnd (anyWordB rest)
+pia-as path toks s rest bnd (no  _) = just (DImport (mkImport path nothing) , toks , ≤-refl)
+
+pia-w path toks rest bnd (just (alias , rest' , bnd')) =
+  just (DImport (mkImport path (just alias)) , rest' , <⇒≤ (<-trans bnd' bnd))
+pia-w path toks rest bnd nothing = nothing
 
 -- | Parse optional 'as Alias' after import path
 parseImportAlias : List String → Parser Decl
@@ -95,15 +99,21 @@ parseImportAlias path toks with parseImportAliasB path toks
 ... | just (d , rest , _) = just (d , rest)
 ... | nothing = nothing
 
--- | Bounded parse of `import Module.Path [as Alias]`: consumes at
--- least the leading identifier (via parseModulePathB), so the residual
--- is strictly shorter than the input.
+-- | Bounded parse of `import Module.Path [as Alias]`: consumes at least the
+-- leading identifier (via parseModulePathB), so the residual is strictly shorter
+-- than the input. De-`with`'d through `pib-path`/`pib-alias` for the bridge.
 parseImportB : (toks : List Token) → ParseAtB {Decl} toks
-parseImportB toks with parseModulePathB toks
-... | nothing = nothing
-... | just (path , rest , bnd) with parseImportAliasB path rest
-...   | just (d , rest' , bnd') = just (d , rest' , ≤-<-trans bnd' bnd)
-...   | nothing = nothing
+pib-path : (toks : List Token) (mp : ParseAtB {List String} toks) → ParseAtB {Decl} toks
+pib-alias : (toks : List Token) (path : List String) (rest : List Token)
+            (bnd : length rest < length toks) (al : ParseAtB≤ {Decl} rest) → ParseAtB {Decl} toks
+
+parseImportB toks = pib-path toks (parseModulePathB toks)
+
+pib-path toks nothing                  = nothing
+pib-path toks (just (path , rest , bnd)) = pib-alias toks path rest bnd (parseImportAliasB path rest)
+
+pib-alias toks path rest bnd (just (d , rest' , bnd')) = just (d , rest' , ≤-<-trans bnd' bnd)
+pib-alias toks path rest bnd nothing                   = nothing
 
 -- | Parse: import Module.Path [as Alias]
 parseImport : Parser Decl

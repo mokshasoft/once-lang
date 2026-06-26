@@ -19,20 +19,21 @@ open import Data.Nat using (ℕ; suc; _<_; _≤_; s≤s; z≤n)
 open import Data.Nat.Induction using (<-wellFounded)
 open import Data.Nat.Properties using (≤-refl; <-trans; ≤-<-trans; <-≤-trans; <⇒≤; m≤n⇒m≤1+n)
 open import Data.List using (List; []; _∷_; length)
-open import Data.String using (String)
+open import Data.String using (String) renaming (_≟_ to _≟s_)
 open import Data.Maybe using (Maybe; just; nothing; is-just)
 open import Data.Maybe.Properties using (just-injective)
 open import Data.Product using (Σ; Σ-syntax; _×_; _,_; proj₁; proj₂)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Induction.WellFounded using (Acc; acc)
-open import Relation.Nullary using (¬_)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
+open import Relation.Nullary using (¬_; yes; no)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong)
 
 open import Once.Parser.Token
-open import Once.Parser.Module.Core using (ParseAtB; anyWordB)
+open import Once.Parser.Module.Core using (ParseAtB; ParseAtB≤; anyWordB; Decl; DImport; Import; mkImport)
 open import Once.Parser.Module.Import
   using (parseModulePath-WFB; pmp-aw; pmp-tail; pmp-dot; parseModulePathB;
-         dropDot; dropDot-≤; dotHead)
+         dropDot; dropDot-≤; dotHead;
+         parseImportAliasB; pia-head; pia-as; pia-w; parseImportB; pib-path; pib-alias)
 
 wordHead : List Token → Bool
 wordHead toks = is-just (anyWordB toks)
@@ -157,3 +158,100 @@ complete-mpWF (acc rec) (pmp-nodot {name} {tail} dh) rewrite dh = s≤s ≤-refl
 complete-mp : ∀ {toks path rest} → ParsesModulePath toks path rest →
   Σ[ bnd ∈ (length rest < length toks) ] parseModulePathB toks ≡ just (path , rest , bnd)
 complete-mp {toks} d = complete-mpWF (<-wellFounded (length toks)) d
+
+------------------------------------------------------------------------
+-- Stage 2: `ParsesImportAlias` (optional `as Alias`) + `ParsesImport`.
+------------------------------------------------------------------------
+
+-- A word-result forces a `TWord` head. The one unavoidable enumeration (33
+-- non-word `Token` heads); reused by the alias soundness.
+anyWordB-inv : ∀ {toks s rest bnd} → anyWordB toks ≡ just (s , rest , bnd) → toks ≡ TWord s ∷ rest
+anyWordB-inv {TWord _ ∷ _} refl = refl
+anyWordB-inv {[]} ()
+anyWordB-inv {TInt _ ∷ _} ()
+anyWordB-inv {TString _ ∷ _} ()
+anyWordB-inv {TLParen ∷ _} ()
+anyWordB-inv {TRParen ∷ _} ()
+anyWordB-inv {TLBrace ∷ _} ()
+anyWordB-inv {TRBrace ∷ _} ()
+anyWordB-inv {TColon ∷ _} ()
+anyWordB-inv {TEquals ∷ _} ()
+anyWordB-inv {TArrow ∷ _} ()
+anyWordB-inv {TCaret1 ∷ _} ()
+anyWordB-inv {TCaret0 ∷ _} ()
+anyWordB-inv {TCaretW ∷ _} ()
+anyWordB-inv {TLambda ∷ _} ()
+anyWordB-inv {TComma ∷ _} ()
+anyWordB-inv {TSemicolon ∷ _} ()
+anyWordB-inv {TAt ∷ _} ()
+anyWordB-inv {TPipe ∷ _} ()
+anyWordB-inv {TDot ∷ _} ()
+anyWordB-inv {TPlus ∷ _} ()
+anyWordB-inv {TMinus ∷ _} ()
+anyWordB-inv {TStar ∷ _} ()
+anyWordB-inv {TSlash ∷ _} ()
+anyWordB-inv {TPercent ∷ _} ()
+anyWordB-inv {TAmpersand ∷ _} ()
+anyWordB-inv {TLt ∷ _} ()
+anyWordB-inv {TLe ∷ _} ()
+anyWordB-inv {TGt ∷ _} ()
+anyWordB-inv {TGe ∷ _} ()
+anyWordB-inv {TEqEq ∷ _} ()
+anyWordB-inv {TNeq ∷ _} ()
+anyWordB-inv {TBang ∷ _} ()
+anyWordB-inv {TNewline ∷ _} ()
+anyWordB-inv {TEOF ∷ _} ()
+
+ij-false : ∀ {A : Set} {m : Maybe A} → is-just m ≡ false → m ≡ nothing
+ij-false {m = just _} ()
+ij-false {m = nothing} _ = refl
+
+data ParsesImportAlias (path : List String) : List Token → Decl → List Token → Set where
+  pia-alias-r   : ∀ {alias rest} →
+    ParsesImportAlias path (TWord "as" ∷ TWord alias ∷ rest) (DImport (mkImport path (just alias))) rest
+  pia-neq-r     : ∀ {s rest} → s ≢ "as" →
+    ParsesImportAlias path (TWord s ∷ rest) (DImport (mkImport path nothing)) (TWord s ∷ rest)
+  pia-nonword-r : ∀ {toks} → wordHead toks ≡ false →
+    ParsesImportAlias path toks (DImport (mkImport path nothing)) toks
+
+sound-alias : ∀ {path toks d rest bnd} → parseImportAliasB path toks ≡ just (d , rest , bnd) →
+  ParsesImportAlias path toks d rest
+sound-alias {path} {toks} h with anyWordB toks in aw
+... | nothing with refl ← just-injective h = pia-nonword-r (cong is-just aw)
+... | just (s , rest , bnd) with anyWordB-inv aw
+...   | refl with s ≟s "as"
+...     | no ¬p with refl ← just-injective h = pia-neq-r ¬p
+...     | yes refl with anyWordB rest in aw2
+...       | nothing with () ← h
+...       | just (alias , rest' , bnd2) with anyWordB-inv aw2
+...         | refl with refl ← just-injective h = pia-alias-r
+
+complete-alias : ∀ {path toks d rest} → ParsesImportAlias path toks d rest →
+  Σ[ bnd ∈ (length rest ≤ length toks) ] parseImportAliasB path toks ≡ just (d , rest , bnd)
+complete-alias (pia-alias-r {alias} {rest}) = _ , refl
+complete-alias (pia-neq-r {s} {rest} ¬p) with s ≟s "as"
+... | yes p = ⊥-elim (¬p p)
+... | no _ = ≤-refl , refl
+complete-alias {path} (pia-nonword-r {toks} wf) rewrite ij-false wf = ≤-refl , refl
+
+------------------------------------------------------------------------
+-- `ParsesImport` = dotted path then optional alias.
+------------------------------------------------------------------------
+
+data ParsesImport : List Token → Decl → List Token → Set where
+  pi-mk : ∀ {toks path rest d rest'} →
+    ParsesModulePath toks path rest → ParsesImportAlias path rest d rest' →
+    ParsesImport toks d rest'
+
+sound-import : ∀ {toks d rest bnd} → parseImportB toks ≡ just (d , rest , bnd) → ParsesImport toks d rest
+sound-import {toks} h with parseModulePathB toks in eq1
+... | nothing with () ← h
+... | just (path , rest , bnd) with parseImportAliasB path rest in eq2
+...   | nothing with () ← h
+...   | just (d , rest' , bnd') with refl ← just-injective h = pi-mk (sound-mp eq1) (sound-alias eq2)
+
+complete-import : ∀ {toks d rest} → ParsesImport toks d rest →
+  Σ[ bnd ∈ (length rest < length toks) ] parseImportB toks ≡ just (d , rest , bnd)
+complete-import (pi-mk mp al) with complete-mp mp
+... | (bnd , eq1) rewrite eq1 with complete-alias al
+...   | (bnd' , eq2) rewrite eq2 = ≤-<-trans bnd' bnd , refl
