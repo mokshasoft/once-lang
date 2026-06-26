@@ -47,7 +47,7 @@ open import Once.Arith.Machine.Compile using (compile-abs; required-scratch)
 open import Once.Arith.Machine.IR using (MArithIR; ArithBlock)
 open Once.Arith.Machine.IR.ArithBlock using (block-shape; block-body)
 open import Once.Arith.SigOp.Block using (block-name)
-open import Once.Target.Symbol using (once-symbol; once-symbol-own)
+open import Once.Target.Symbol using (once-symbol-own)
 
 ------------------------------------------------------------------------
 -- Register / scratch text

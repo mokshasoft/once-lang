@@ -17,7 +17,7 @@ open import Data.List using (List; []; _∷_; foldr)
 open import Data.Product using (_×_; _,_)
 
 open import Once.Target using (Target)
-open import Once.Target.Symbol using (once-symbol; once-symbol-own; once-symbol-path)
+open import Once.Target.Symbol using (once-symbol-own; once-symbol-path)
 open import Once.CanonicalName using (CanonicalName)
 open import Once.IR using (IR)
 

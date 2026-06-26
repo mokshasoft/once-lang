@@ -22,7 +22,7 @@ module Once.Target.RiscV64 where
 open import Data.String using (String; _++_)
 
 open import Once.Target using (Target)
-open import Once.Target.Symbol using (once-symbol; once-symbol-own; once-symbol-path)
+open import Once.Target.Symbol using (once-symbol-own; once-symbol-path)
 open import Once.CanonicalName using (CanonicalName)
 open import Once.IR using (IR)
 
