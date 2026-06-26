@@ -16,8 +16,8 @@ module Once.Parser.Generic.Relation where
 
 open import Data.Bool using (Bool; true; false)
 open import Data.List using (List; []; _∷_; length)
-open import Data.Maybe using (Maybe)
-open import Data.Product using (Σ; Σ-syntax)
+open import Data.Maybe using (Maybe; just; nothing)
+open import Data.Product using (Σ; Σ-syntax; _,_)
 open import Data.Nat using (_<_; _≤_; s≤s)
 open import Data.Nat.Properties using (≤-refl; <-trans; ≤-<-trans; <-≤-trans; <⇒≤; m≤n⇒m≤1+n; n≤1+n)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
@@ -86,8 +86,19 @@ record TyAlg : Set₁ where
     fSum fProd : RF → RF → RF
     Extra : List Token → R → List Token → Set
     extraShrink : ∀ {toks a rest} → Extra toks a rest → length rest < length toks
-    -- executable extra-atom parser (only fires when the keyword chain fails)
+    -- executable extra-atom parser (tried first; only hits on extra atoms)
     extraP : (toks : List Token) → Maybe (Σ[ a ∈ R ] Σ[ rest ∈ List Token ] Extra toks a rest)
+    extraComplete : ∀ {toks a rest} (ex : Extra toks a rest) → extraP toks ≡ just (a , rest , ex)
+    extraMiss-Unit   : (rest : List Token) → extraP (TWord "Unit"   ∷ rest) ≡ nothing
+    extraMiss-Void   : (rest : List Token) → extraP (TWord "Void"   ∷ rest) ≡ nothing
+    extraMiss-Int    : (rest : List Token) → extraP (TWord "Int"    ∷ rest) ≡ nothing
+    extraMiss-Float  : (rest : List Token) → extraP (TWord "Float"  ∷ rest) ≡ nothing
+    extraMiss-Buffer : (rest : List Token) → extraP (TWord "Buffer" ∷ rest) ≡ nothing
+    extraMiss-String : (rest : List Token) → extraP (TWord "String" ∷ rest) ≡ nothing
+    extraMiss-Eff    : (rest : List Token) → extraP (TWord "Eff"    ∷ rest) ≡ nothing
+    extraMiss-IO     : (rest : List Token) → extraP (TWord "IO"     ∷ rest) ≡ nothing
+    extraMiss-Mu     : (rest : List Token) → extraP (TWord "Mu"     ∷ rest) ≡ nothing
+    extraMiss-LParen : (rest : List Token) → extraP (TLParen ∷ rest) ≡ nothing
 
 -- Strict-decrease lemmas for the classifier-routed tails (enumeration, ONCE).
 isStar-< : (toks : List Token) → isStar toks ≡ true → length (drop1 toks) < length toks
