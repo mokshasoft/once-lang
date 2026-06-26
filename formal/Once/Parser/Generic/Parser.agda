@@ -2,9 +2,11 @@
 -- Copyright (C) 2025-2026 Jonas Claesson and contributors
 
 ------------------------------------------------------------------------
--- Once.Parser.Generic.Parser — the generic WF type-grammar parser, carrying the
--- `Gen` derivation. Classifier-routed (no per-token enumeration). Instantiated
--- for Type and PolyType. Plan 0.7 Phase 2.
+-- Once.Parser.Generic.Parser — the generic WF type-grammar parser, EXECUTABLE
+-- (returns the length bound). Classifier-routed; the tail helpers take the
+-- classifier VALUE + the bound as a FUNCTION of the eq (`λ e → isStar-< toks e`)
+-- — never a self-referential `refl` — so soundness (`with classifier in eq`) and
+-- completeness (`rewrite premise`) both reduce. Plan 0.7 Phase 2.
 ------------------------------------------------------------------------
 
 module Once.Parser.Generic.Parser where
@@ -14,8 +16,8 @@ open import Data.List using (List; []; _∷_; length)
 open import Data.String using (String) renaming (_≟_ to _≟s_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (Σ; Σ-syntax; _,_)
-open import Data.Nat using (_<_; s≤s)
-open import Data.Nat.Properties using (≤-refl; <-trans; <-≤-trans; n≤1+n)
+open import Data.Nat using (_<_; _≤_; s≤s)
+open import Data.Nat.Properties using (≤-refl; ≤-trans; <-trans; <-≤-trans; ≤-<-trans; <⇒≤; n≤1+n)
 open import Induction.WellFounded using (Acc; acc)
 open import Relation.Nullary using (yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
@@ -24,179 +26,189 @@ open import Once.Type using (Quantity; One; Zero; Many)
 open import Once.Parser.Token
 open import Once.Parser.Generic.Relation
 
-
 module Make (alg : TyAlg) where
   open TyAlg alg
-  open Gen alg
 
-  ParseAtomGD ParseProdGD ParseSumGD ParseTypeGD : List Token → Set
-  ParseAtomGD toks = Maybe (Σ[ T ∈ R ] Σ[ rest ∈ List Token ] ParsesAtomG toks T rest)
-  ParseProdGD toks = Maybe (Σ[ T ∈ R ] Σ[ rest ∈ List Token ] ParsesProdG toks T rest)
-  ParseSumGD  toks = Maybe (Σ[ T ∈ R ] Σ[ rest ∈ List Token ] ParsesSumG toks T rest)
-  ParseTypeGD toks = Maybe (Σ[ T ∈ R ] Σ[ rest ∈ List Token ] ParsesTypeG toks T rest)
-  ParseProdTailGD ParseSumTailGD ParseArrowTailGD : R → List Token → Set
-  ParseProdTailGD l toks = Maybe (Σ[ T ∈ R ] Σ[ rest ∈ List Token ] ParsesProdTailG l toks T rest)
-  ParseSumTailGD  l toks = Maybe (Σ[ T ∈ R ] Σ[ rest ∈ List Token ] ParsesSumTailG l toks T rest)
-  ParseArrowTailGD l toks = Maybe (Σ[ T ∈ R ] Σ[ rest ∈ List Token ] ParsesArrowTailG l toks T rest)
-  ParseFAtomGD ParseFProdGD ParseFSumGD : List Token → Set
-  ParseFAtomGD toks = Maybe (Σ[ F ∈ RF ] Σ[ rest ∈ List Token ] ParsesFuncAtomG toks F rest)
-  ParseFProdGD toks = Maybe (Σ[ F ∈ RF ] Σ[ rest ∈ List Token ] ParsesFuncProdG toks F rest)
-  ParseFSumGD  toks = Maybe (Σ[ F ∈ RF ] Σ[ rest ∈ List Token ] ParsesFuncSumG toks F rest)
-  ParseFProdTailGD ParseFSumTailGD : RF → List Token → Set
-  ParseFProdTailGD l toks = Maybe (Σ[ F ∈ RF ] Σ[ rest ∈ List Token ] ParsesFuncProdTailG l toks F rest)
-  ParseFSumTailGD  l toks = Maybe (Σ[ F ∈ RF ] Σ[ rest ∈ List Token ] ParsesFuncSumTailG l toks F rest)
+  AtomD : List Token → Set
+  AtomD toks = Maybe (Σ[ T ∈ R ] Σ[ rest ∈ List Token ] length rest < length toks)
+  ProdD SumD TypeD : List Token → Set
+  ProdD = AtomD
+  SumD  = AtomD
+  TypeD = AtomD
+  ProdTailD : R → List Token → Set
+  ProdTailD  l toks = Maybe (Σ[ T ∈ R ] Σ[ rest ∈ List Token ] length rest ≤ length toks)
+  SumTailD ArrowTailD : R → List Token → Set
+  SumTailD   = ProdTailD
+  ArrowTailD = ProdTailD
+  FAtomD : List Token → Set
+  FAtomD toks = Maybe (Σ[ F ∈ RF ] Σ[ rest ∈ List Token ] length rest < length toks)
+  FProdD FSumD : List Token → Set
+  FProdD = FAtomD
+  FSumD  = FAtomD
+  FProdTailD : RF → List Token → Set
+  FProdTailD l toks = Maybe (Σ[ F ∈ RF ] Σ[ rest ∈ List Token ] length rest ≤ length toks)
+  FSumTailD : RF → List Token → Set
+  FSumTailD = FProdTailD
 
-  atomWF      : (toks : List Token) → Acc _<_ (length toks) → ParseAtomGD toks
-  prodWF      : (toks : List Token) → Acc _<_ (length toks) → ParseProdGD toks
-  prodTailWF  : (l : R) (toks : List Token) → Acc _<_ (length toks) → ParseProdTailGD l toks
-  sumWF       : (toks : List Token) → Acc _<_ (length toks) → ParseSumGD toks
-  sumTailWF   : (l : R) (toks : List Token) → Acc _<_ (length toks) → ParseSumTailGD l toks
-  typeWF      : (toks : List Token) → Acc _<_ (length toks) → ParseTypeGD toks
-  arrowTailWF : (l : R) (toks : List Token) → Acc _<_ (length toks) → ParseArrowTailGD l toks
-  fAtomWF     : (toks : List Token) → Acc _<_ (length toks) → ParseFAtomGD toks
-  fProdWF     : (toks : List Token) → Acc _<_ (length toks) → ParseFProdGD toks
-  fProdTailWF : (l : RF) (toks : List Token) → Acc _<_ (length toks) → ParseFProdTailGD l toks
-  fSumWF      : (toks : List Token) → Acc _<_ (length toks) → ParseFSumGD toks
-  fSumTailWF  : (l : RF) (toks : List Token) → Acc _<_ (length toks) → ParseFSumTailGD l toks
-  atomExtra   : (toks : List Token) →
-                Maybe (Σ[ a ∈ R ] Σ[ rest ∈ List Token ] Extra toks a rest) → ParseAtomGD toks
-  parenFin    : (rest : List Token) → ParseTypeGD rest → ParseAtomGD (TLParen ∷ rest)
-  arrowA      : (l : R) (toks : List Token) → arrowDir toks ≡ adA → ParseTypeGD (drop1 toks) → ParseArrowTailGD l toks
-  arrowG      : (l : R) (toks : List Token) (q : Quantity) → arrowDir toks ≡ adG q → ParseTypeGD (drop2 toks) → ParseArrowTailGD l toks
-  fAtomK      : (rest : List Token) → ParseAtomGD rest → ParseFAtomGD (TWord "K" ∷ rest)
+  atomWF      : (toks : List Token) → Acc _<_ (length toks) → AtomD toks
+  prodWF      : (toks : List Token) → Acc _<_ (length toks) → ProdD toks
+  prodTailWF  : (l : R) (toks : List Token) → Acc _<_ (length toks) → ProdTailD l toks
+  sumWF       : (toks : List Token) → Acc _<_ (length toks) → SumD toks
+  sumTailWF   : (l : R) (toks : List Token) → Acc _<_ (length toks) → SumTailD l toks
+  typeWF      : (toks : List Token) → Acc _<_ (length toks) → TypeD toks
+  arrowTailWF : (l : R) (toks : List Token) → Acc _<_ (length toks) → ArrowTailD l toks
+  fAtomWF     : (toks : List Token) → Acc _<_ (length toks) → FAtomD toks
+  fProdWF     : (toks : List Token) → Acc _<_ (length toks) → FProdD toks
+  fProdTailWF : (l : RF) (toks : List Token) → Acc _<_ (length toks) → FProdTailD l toks
+  fSumWF      : (toks : List Token) → Acc _<_ (length toks) → FSumD toks
+  fSumTailWF  : (l : RF) (toks : List Token) → Acc _<_ (length toks) → FSumTailD l toks
+  atomGo      : (toks : List Token) → (∀ {y} → y < length toks → Acc _<_ y) →
+                Maybe (Σ[ a ∈ R ] Σ[ rest ∈ List Token ] Extra toks a rest) → AtomD toks
+  atomKw      : (toks : List Token) → (∀ {y} → y < length toks → Acc _<_ y) → AtomD toks
+  parenFin    : (rest : List Token) → TypeD rest → AtomD (TLParen ∷ rest)
+  arrowA      : (l : R) (toks : List Token) → TypeD (drop1 toks) → ArrowTailD l toks
+  arrowG      : (l : R) (toks : List Token) (q : Quantity) → TypeD (drop2 toks) → ArrowTailD l toks
+  fAtomK      : (rest : List Token) → AtomD rest → FAtomD (TWord "K" ∷ rest)
+  ptGo  : (l : R) (toks : List Token) (rec : ∀ {y} → y < length toks → Acc _<_ y)
+          (b : Bool) → (b ≡ true → length (drop1 toks) < length toks) → ProdTailD l toks
+  stGo  : (l : R) (toks : List Token) (rec : ∀ {y} → y < length toks → Acc _<_ y)
+          (b : Bool) → (b ≡ true → length (drop1 toks) < length toks) → SumTailD l toks
+  atGo  : (l : R) (toks : List Token) (rec : ∀ {y} → y < length toks → Acc _<_ y)
+          (d : ArrowDir) → (d ≡ adA → length (drop1 toks) < length toks)
+          → (∀ {q} → d ≡ adG q → length (drop2 toks) < length toks) → ArrowTailD l toks
+  fptGo : (l : RF) (toks : List Token) (rec : ∀ {y} → y < length toks → Acc _<_ y)
+          (b : Bool) → (b ≡ true → length (drop1 toks) < length toks) → FProdTailD l toks
+  fstGo : (l : RF) (toks : List Token) (rec : ∀ {y} → y < length toks → Acc _<_ y)
+          (b : Bool) → (b ≡ true → length (drop1 toks) < length toks) → FSumTailD l toks
 
-  -- atom
-  atomWF (TWord name ∷ rest) (acc rec) with name ≟s "Unit"
-  ... | yes refl = just (aUnit , rest , pa-unit rest)
+  atomWF toks (acc rec) = atomGo toks rec (extraP toks)
+  atomGo toks rec (just (a , rest , ex)) = just (a , rest , extraShrink ex)
+  atomGo toks rec nothing                = atomKw toks rec
+
+  atomKw (TWord name ∷ rest) rec with name ≟s "Unit"
+  ... | yes refl = just (aUnit , rest , s≤s ≤-refl)
   ... | no _ with name ≟s "Void"
-  ...   | yes refl = just (aVoid , rest , pa-void rest)
+  ...   | yes refl = just (aVoid , rest , s≤s ≤-refl)
   ...   | no _ with name ≟s "Int"
-  ...     | yes refl = just (aInt , rest , pa-int rest)
+  ...     | yes refl = just (aInt , rest , s≤s ≤-refl)
   ...     | no _ with name ≟s "Float"
-  ...       | yes refl = just (aFloat , rest , pa-float rest)
+  ...       | yes refl = just (aFloat , rest , s≤s ≤-refl)
   ...       | no _ with name ≟s "Buffer"
-  ...         | yes refl = just (aBuffer , rest , pa-buffer rest)
+  ...         | yes refl = just (aBuffer , rest , s≤s ≤-refl)
   ...         | no _ with name ≟s "String"
-  ...           | yes refl = just (aStr , rest , pa-string rest)
+  ...           | yes refl = just (aStr , rest , s≤s ≤-refl)
   ...           | no _ with name ≟s "Eff"
   ...             | yes refl with atomWF rest (rec (s≤s ≤-refl))
   ...               | nothing = nothing
-  ...               | just (A , r1 , dA) with atomWF r1 (rec (<-trans (atomShrink dA) (s≤s ≤-refl)))
+  ...               | just (A , r1 , bA) with atomWF r1 (rec (<-trans bA (s≤s ≤-refl)))
   ...                 | nothing = nothing
-  ...                 | just (B , r2 , dB) = just (aEff A B , r2 , pa-eff dA dB)
-  atomWF (TWord name ∷ rest) (acc rec)
+  ...                 | just (B , r2 , bB) = just (aEff A B , r2 , <-trans bB (<-trans bA (s≤s ≤-refl)))
+  atomKw (TWord name ∷ rest) rec
     | no _ | no _ | no _ | no _ | no _ | no _ | no _ with name ≟s "IO"
   ... | yes refl with atomWF rest (rec (s≤s ≤-refl))
   ...   | nothing = nothing
-  ...   | just (A , r1 , dA) = just (aEff aUnit A , r1 , pa-io dA)
-  atomWF (TWord name ∷ rest) (acc rec)
+  ...   | just (A , r1 , bA) = just (aEff aUnit A , r1 , <-trans bA (s≤s ≤-refl))
+  atomKw (TWord name ∷ rest) rec
     | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ with name ≟s "Mu"
   ... | yes refl with fSumWF rest (rec (s≤s ≤-refl))
   ...   | nothing = nothing
-  ...   | just (F , r1 , dF) = just (aMu F , r1 , pa-mu dF)
-  atomWF (TWord name ∷ rest) (acc rec)
-    | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ =
-      atomExtra (TWord name ∷ rest) (extraP (TWord name ∷ rest))
-  atomWF (TLParen ∷ rest) (acc rec) = parenFin rest (typeWF rest (rec (s≤s ≤-refl)))
-  atomWF toks (acc rec) = atomExtra toks (extraP toks)
+  ...   | just (F , r1 , bF) = just (aMu F , r1 , <-trans bF (s≤s ≤-refl))
+  atomKw (TWord name ∷ rest) rec
+    | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ = nothing
+  atomKw (TLParen ∷ rest) rec = parenFin rest (typeWF rest (rec (s≤s ≤-refl)))
+  atomKw toks rec = nothing
 
-  atomExtra toks (just (a , rest , ex)) = just (a , rest , pa-extra ex)
-  atomExtra toks nothing                = nothing
-
-  parenFin rest (just (T , TRParen ∷ rest2 , dT)) = just (T , rest2 , pa-paren dT refl)
+  parenFin rest (just (T , TRParen ∷ rest2 , bT)) =
+    just (T , rest2 , <-trans (s≤s ≤-refl) (<-trans bT (s≤s ≤-refl)))
   parenFin rest (just (_ , _ , _))                = nothing
   parenFin rest nothing                           = nothing
 
-  fAtomK rest (just (A , r1 , dA)) = just (fK A , r1 , pfa-k dA)
+  fAtomK rest (just (A , r1 , bA)) = just (fK A , r1 , <-trans bA (s≤s ≤-refl))
   fAtomK rest nothing              = nothing
 
-  -- prod
   prodWF toks (acc rec) with atomWF toks (acc rec)
   ... | nothing = nothing
-  ... | just (A , r1 , dA) with prodTailWF A r1 (rec (atomShrink dA))
+  ... | just (A , r1 , bA) with prodTailWF A r1 (rec bA)
   ...   | nothing = nothing
-  ...   | just (T , r2 , dT) = just (T , r2 , pp-mk dA dT)
+  ...   | just (T , r2 , bT) = just (T , r2 , ≤-<-trans bT bA)
 
-  prodTailWF l toks (acc rec) with isStar toks in eq
-  ... | false = just (l , toks , ppt-done eq)
-  ... | true with atomWF (drop1 toks) (rec (isStar-< toks eq))
+  prodTailWF l toks (acc rec) = ptGo l toks rec (isStar toks) (isStar-< toks)
+  ptGo l toks rec false bnd = just (l , toks , ≤-refl)
+  ptGo l toks rec true bnd with atomWF (drop1 toks) (rec (bnd refl))
+  ... | nothing = nothing
+  ... | just (B , r2 , bB) with prodTailWF (aProd l B) r2 (rec (<-≤-trans bB (drop1-≤ toks)))
   ...   | nothing = nothing
-  ...   | just (B , r2 , dB) with prodTailWF (aProd l B) r2 (rec (<-≤-trans (atomShrink dB) (drop1-≤ toks)))
-  ...     | nothing = nothing
-  ...     | just (T , r3 , dT) = just (T , r3 , ppt-star eq dB dT)
+  ...   | just (T , r3 , bT) = just (T , r3 , ≤-trans bT (≤-trans (<⇒≤ bB) (drop1-≤ toks)))
 
-  -- sum
   sumWF toks (acc rec) with prodWF toks (acc rec)
   ... | nothing = nothing
-  ... | just (A , r1 , dA) with sumTailWF A r1 (rec (prodShrink dA))
+  ... | just (A , r1 , bA) with sumTailWF A r1 (rec bA)
   ...   | nothing = nothing
-  ...   | just (T , r2 , dT) = just (T , r2 , ps-mk dA dT)
+  ...   | just (T , r2 , bT) = just (T , r2 , ≤-<-trans bT bA)
 
-  sumTailWF l toks (acc rec) with isPlus toks in eq
-  ... | false = just (l , toks , pst-done eq)
-  ... | true with prodWF (drop1 toks) (rec (isPlus-< toks eq))
+  sumTailWF l toks (acc rec) = stGo l toks rec (isPlus toks) (isPlus-< toks)
+  stGo l toks rec false bnd = just (l , toks , ≤-refl)
+  stGo l toks rec true bnd with prodWF (drop1 toks) (rec (bnd refl))
+  ... | nothing = nothing
+  ... | just (B , r2 , bB) with sumTailWF (aSum l B) r2 (rec (<-≤-trans bB (drop1-≤ toks)))
   ...   | nothing = nothing
-  ...   | just (B , r2 , dB) with sumTailWF (aSum l B) r2 (rec (<-≤-trans (prodShrink dB) (drop1-≤ toks)))
-  ...     | nothing = nothing
-  ...     | just (T , r3 , dT) = just (T , r3 , pst-plus eq dB dT)
+  ...   | just (T , r3 , bT) = just (T , r3 , ≤-trans bT (≤-trans (<⇒≤ bB) (drop1-≤ toks)))
 
-  -- type
   typeWF toks (acc rec) with sumWF toks (acc rec)
   ... | nothing = nothing
-  ... | just (A , r1 , dA) with arrowTailWF A r1 (rec (sumShrink dA))
+  ... | just (A , r1 , bA) with arrowTailWF A r1 (rec bA)
   ...   | nothing = nothing
-  ...   | just (T , r2 , dT) = just (T , r2 , pt-mk dA dT)
+  ...   | just (T , r2 , bT) = just (T , r2 , ≤-<-trans bT bA)
 
-  arrowTailWF l toks (acc rec) with arrowDir toks in eq
-  ... | adD   = just (l , toks , pat-done eq)
-  ... | adR   = nothing
-  ... | adA   = arrowA l toks eq (typeWF (drop1 toks) (rec (arrowDir-A-< toks eq)))
-  ... | adG q = arrowG l toks q eq (typeWF (drop2 toks) (rec (arrowDir-G-< toks eq)))
+  arrowTailWF l toks (acc rec) = atGo l toks rec (arrowDir toks) (arrowDir-A-< toks) (arrowDir-G-< toks)
+  atGo l toks rec adD     bndA bndG = just (l , toks , ≤-refl)
+  atGo l toks rec adR     bndA bndG = nothing
+  atGo l toks rec adA     bndA bndG = arrowA l toks (typeWF (drop1 toks) (rec (bndA refl)))
+  atGo l toks rec (adG q) bndA bndG = arrowG l toks q (typeWF (drop2 toks) (rec (bndG refl)))
 
-  arrowA l toks eq (just (B , r , dT)) = just (aArrow Many l B , r , pat-arrow eq dT)
-  arrowA l toks eq nothing             = nothing
-  arrowG l toks q eq (just (B , r , dT)) = just (aArrow q l B , r , pat-arrow-g eq dT)
-  arrowG l toks q eq nothing             = nothing
+  arrowA l toks (just (B , r , bT)) = just (aArrow Many l B , r , <⇒≤ (<-≤-trans bT (drop1-≤ toks)))
+  arrowA l toks nothing             = nothing
+  arrowG l toks q (just (B , r , bT)) = just (aArrow q l B , r , <⇒≤ (<-≤-trans bT (drop2-≤ toks)))
+  arrowG l toks q nothing             = nothing
 
-  -- functor sub-grammar
   fAtomWF (TWord name ∷ rest) (acc rec) with name ≟s "Id"
-  ... | yes refl = just (fId , rest , pfa-id rest)
+  ... | yes refl = just (fId , rest , s≤s ≤-refl)
   ... | no _ with name ≟s "K"
   ...   | yes refl = fAtomK rest (atomWF rest (rec (s≤s ≤-refl)))
   ...   | no _ = nothing
   fAtomWF (TLParen ∷ rest) (acc rec) = fParenFin rest (fSumWF rest (rec (s≤s ≤-refl)))
     where
-      fParenFin : (rest' : List Token) → ParseFSumGD rest' → ParseFAtomGD (TLParen ∷ rest')
-      fParenFin rest' (just (F , TRParen ∷ rest2 , dF)) = just (F , rest2 , pfa-paren dF refl)
+      fParenFin : (rest' : List Token) → FSumD rest' → FAtomD (TLParen ∷ rest')
+      fParenFin rest' (just (F , TRParen ∷ rest2 , bF)) =
+        just (F , rest2 , <-trans (s≤s ≤-refl) (<-trans bF (s≤s ≤-refl)))
       fParenFin rest' (just (_ , _ , _))                = nothing
       fParenFin rest' nothing                           = nothing
   fAtomWF toks (acc rec) = nothing
 
   fProdWF toks (acc rec) with fAtomWF toks (acc rec)
   ... | nothing = nothing
-  ... | just (A , r1 , dA) with fProdTailWF A r1 (rec (funcAtomShrink dA))
+  ... | just (A , r1 , bA) with fProdTailWF A r1 (rec bA)
   ...   | nothing = nothing
-  ...   | just (F , r2 , dT) = just (F , r2 , pfp-mk dA dT)
+  ...   | just (F , r2 , bT) = just (F , r2 , ≤-<-trans bT bA)
 
-  fProdTailWF l toks (acc rec) with isStar toks in eq
-  ... | false = just (l , toks , pfpt-done eq)
-  ... | true with fAtomWF (drop1 toks) (rec (isStar-< toks eq))
+  fProdTailWF l toks (acc rec) = fptGo l toks rec (isStar toks) (isStar-< toks)
+  fptGo l toks rec false bnd = just (l , toks , ≤-refl)
+  fptGo l toks rec true bnd with fAtomWF (drop1 toks) (rec (bnd refl))
+  ... | nothing = nothing
+  ... | just (B , r2 , bB) with fProdTailWF (fProd l B) r2 (rec (<-≤-trans bB (drop1-≤ toks)))
   ...   | nothing = nothing
-  ...   | just (B , r2 , dB) with fProdTailWF (fProd l B) r2 (rec (<-≤-trans (funcAtomShrink dB) (drop1-≤ toks)))
-  ...     | nothing = nothing
-  ...     | just (F , r3 , dT) = just (F , r3 , pfpt-star eq dB dT)
+  ...   | just (F , r3 , bT) = just (F , r3 , ≤-trans bT (≤-trans (<⇒≤ bB) (drop1-≤ toks)))
 
   fSumWF toks (acc rec) with fProdWF toks (acc rec)
   ... | nothing = nothing
-  ... | just (A , r1 , dA) with fSumTailWF A r1 (rec (funcProdShrink dA))
+  ... | just (A , r1 , bA) with fSumTailWF A r1 (rec bA)
   ...   | nothing = nothing
-  ...   | just (F , r2 , dT) = just (F , r2 , pfs-mk dA dT)
+  ...   | just (F , r2 , bT) = just (F , r2 , ≤-<-trans bT bA)
 
-  fSumTailWF l toks (acc rec) with isPlus toks in eq
-  ... | false = just (l , toks , pfst-done eq)
-  ... | true with fProdWF (drop1 toks) (rec (isPlus-< toks eq))
+  fSumTailWF l toks (acc rec) = fstGo l toks rec (isPlus toks) (isPlus-< toks)
+  fstGo l toks rec false bnd = just (l , toks , ≤-refl)
+  fstGo l toks rec true bnd with fProdWF (drop1 toks) (rec (bnd refl))
+  ... | nothing = nothing
+  ... | just (B , r2 , bB) with fSumTailWF (fSum l B) r2 (rec (<-≤-trans bB (drop1-≤ toks)))
   ...   | nothing = nothing
-  ...   | just (B , r2 , dB) with fSumTailWF (fSum l B) r2 (rec (<-≤-trans (funcProdShrink dB) (drop1-≤ toks)))
-  ...     | nothing = nothing
-  ...     | just (F , r3 , dT) = just (F , r3 , pfst-plus eq dB dT)
-
+  ...   | just (F , r3 , bT) = just (F , r3 , ≤-trans bT (≤-trans (<⇒≤ bB) (drop1-≤ toks)))
