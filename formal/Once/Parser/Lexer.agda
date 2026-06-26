@@ -213,91 +213,79 @@ skipBlock-length n cs = proj₂ (skipBlockB n cs)
 -- Main Tokenizer (well-founded on the input length)
 ------------------------------------------------------------------------
 
--- | Tokenize worker: receives an Acc witness on `length cs` to
--- justify termination. The two `with`-clauses (string literal, and the
--- digit/ident/skip general head) are de-`with`'d into parameterized helpers
--- `tok-str`/`tok-gen` so the verified lexer bridge (`Once.Adequacy.LexerBridge`)
--- can case those result PARAMETERS without an internal-`with` clash.
+-- | Classifiers for the MULTI-CHAR head dispatch. `tokenize-WF` routes the
+-- multi-char heads (`\n`/`-`/`<`/`>`/`=`/`!`/`{`/`^`) through these + the helpers
+-- below, INSTEAD of clause-order pattern matching. Behaviour is identical, but
+-- the second-char decision becomes a PARAMETER, so the verified lexer bridge
+-- (`Once.Adequacy.LexerBridge`) can reduce `tokenize-WF` under it without the
+-- catch-all-over-`Char` clash (a variable tail no longer leaves the function
+-- stuck). See [[feedback_de_with_parameterize_equation]].
+data Dash3  : Set where d-comment d-arrow d-minus : Dash3
+data Caret4 : Set where c-1 c-0 c-w c-gen : Caret4
+
+nlIndent : List Char → Bool
+nlIndent (' '  ∷ _) = true
+nlIndent ('\t' ∷ _) = true
+nlIndent _          = false
+isEqHead : List Char → Bool
+isEqHead ('=' ∷ _) = true
+isEqHead _         = false
+isDashHead : List Char → Bool
+isDashHead ('-' ∷ _) = true
+isDashHead _         = false
+dashClass : List Char → Dash3
+dashClass ('-' ∷ _) = d-comment
+dashClass ('>' ∷ _) = d-arrow
+dashClass _         = d-minus
+caretClass : List Char → Caret4
+caretClass ('1' ∷ _) = c-1
+caretClass ('0' ∷ _) = c-0
+caretClass ('w' ∷ _) = c-w
+caretClass _         = c-gen
+
+-- | Tokenize worker (de-`with`'d). `tok-str`/`tok-gen` handle the string and
+-- digit/ident/skip `with`-clauses; `tok-nl`/`tok-op2`/`tok-minus`/`tok-lbrace`/
+-- `tok-caret` handle the multi-char heads via the classifiers above.
 tok-str : (cs : List Char) → (∀ {y} → y < suc (length cs) → Acc _<_ y) →
           Maybe (Σ[ s ∈ List Char ] Σ[ rest ∈ List Char ] length rest < length cs) →
           List Token
 tok-gen : (c : Char) (cs : List Char) → (∀ {y} → y < suc (length cs) → Acc _<_ y) →
           Bool → Bool → List Token
+tok-nl  : (cs : List Char) → (∀ {y} → y < suc (length cs) → Acc _<_ y) → Bool → List Token
+tok-op2 : (cs : List Char) → (∀ {y} → y < suc (length cs) → Acc _<_ y) →
+          Token → Token → Bool → List Token
+tok-lbrace : (cs : List Char) → (∀ {y} → y < suc (length cs) → Acc _<_ y) → Bool → List Token
+tok-minus  : (cs : List Char) → (∀ {y} → y < suc (length cs) → Acc _<_ y) → Dash3 → List Token
+tok-caret  : (cs : List Char) → (∀ {y} → y < suc (length cs) → Acc _<_ y) → Caret4 → List Token
 tokenize-WF : (cs : List Char) → Acc _<_ (length cs) → List Token
+
 tokenize-WF [] _ = TEOF ∷ []
-
--- Line comments
-tokenize-WF ('-' ∷ '-' ∷ cs) (acc rec) =
-  let (rest , bnd) = skipLineB cs
-  in  tokenize-WF rest (rec (s≤s (m≤n⇒m≤1+n bnd)))
-
--- Block comments
-tokenize-WF ('{' ∷ '-' ∷ cs) (acc rec) =
-  let (rest , bnd) = skipBlockB 1 cs
-  in  tokenize-WF rest (rec (s≤s (m≤n⇒m≤1+n bnd)))
-
--- Whitespace (non-newline)
 tokenize-WF (' '  ∷ cs) (acc rec) = tokenize-WF cs (rec (s≤s ≤-refl))
 tokenize-WF ('\t' ∷ cs) (acc rec) = tokenize-WF cs (rec (s≤s ≤-refl))
 tokenize-WF ('\r' ∷ cs) (acc rec) = tokenize-WF cs (rec (s≤s ≤-refl))
-
--- Newlines: only significant if the next line starts at column 0.
-tokenize-WF ('\n' ∷ ' ' ∷ cs) (acc rec) =
-  tokenize-WF (' ' ∷ cs) (rec (s≤s ≤-refl))
-tokenize-WF ('\n' ∷ '\t' ∷ cs) (acc rec) =
-  tokenize-WF ('\t' ∷ cs) (rec (s≤s ≤-refl))
-tokenize-WF ('\n' ∷ cs) (acc rec) =
-  TNewline ∷ tokenize-WF cs (rec (s≤s ≤-refl))
-
--- QTT grade annotations on argument types: A^1, A^0, A^w.
-tokenize-WF ('^' ∷ '1' ∷ cs) (acc rec) =
-  TCaret1 ∷ tokenize-WF cs (rec (s≤s (m≤n⇒m≤1+n ≤-refl)))
-tokenize-WF ('^' ∷ '0' ∷ cs) (acc rec) =
-  TCaret0 ∷ tokenize-WF cs (rec (s≤s (m≤n⇒m≤1+n ≤-refl)))
-tokenize-WF ('^' ∷ 'w' ∷ cs) (acc rec) =
-  TCaretW ∷ tokenize-WF cs (rec (s≤s (m≤n⇒m≤1+n ≤-refl)))
-
--- Two-character operators (max munch)
-tokenize-WF ('-' ∷ '>' ∷ cs) (acc rec) =
-  TArrow ∷ tokenize-WF cs (rec (s≤s (m≤n⇒m≤1+n ≤-refl)))
-tokenize-WF ('<' ∷ '=' ∷ cs) (acc rec) =
-  TLe ∷ tokenize-WF cs (rec (s≤s (m≤n⇒m≤1+n ≤-refl)))
-tokenize-WF ('>' ∷ '=' ∷ cs) (acc rec) =
-  TGe ∷ tokenize-WF cs (rec (s≤s (m≤n⇒m≤1+n ≤-refl)))
-tokenize-WF ('=' ∷ '=' ∷ cs) (acc rec) =
-  TEqEq ∷ tokenize-WF cs (rec (s≤s (m≤n⇒m≤1+n ≤-refl)))
-tokenize-WF ('!' ∷ '=' ∷ cs) (acc rec) =
-  TNeq ∷ tokenize-WF cs (rec (s≤s (m≤n⇒m≤1+n ≤-refl)))
-
--- EffectShape delimiter `!` (standalone, not `!=`). Plan 0.38 M0.2.
--- Must come AFTER the `!=`/TNeq clause (max-munch) and is a single char.
-tokenize-WF ('!' ∷ cs) (acc rec) = TBang ∷ tokenize-WF cs (rec (s≤s ≤-refl))
-
--- Single-character punctuation
+tokenize-WF ('\n' ∷ cs) (acc rec) = tok-nl cs rec (nlIndent cs)
+tokenize-WF ('^' ∷ cs) (acc rec) = tok-caret cs rec (caretClass cs)
+tokenize-WF ('-' ∷ cs) (acc rec) = tok-minus cs rec (dashClass cs)
+tokenize-WF ('{' ∷ cs) (acc rec) = tok-lbrace cs rec (isDashHead cs)
+tokenize-WF ('<' ∷ cs) (acc rec) = tok-op2 cs rec TLe TLt (isEqHead cs)
+tokenize-WF ('>' ∷ cs) (acc rec) = tok-op2 cs rec TGe TGt (isEqHead cs)
+tokenize-WF ('=' ∷ cs) (acc rec) = tok-op2 cs rec TEqEq TEquals (isEqHead cs)
+tokenize-WF ('!' ∷ cs) (acc rec) = tok-op2 cs rec TNeq TBang (isEqHead cs)
 tokenize-WF ('(' ∷ cs) (acc rec) = TLParen    ∷ tokenize-WF cs (rec (s≤s ≤-refl))
 tokenize-WF (')' ∷ cs) (acc rec) = TRParen    ∷ tokenize-WF cs (rec (s≤s ≤-refl))
-tokenize-WF ('{' ∷ cs) (acc rec) = TLBrace    ∷ tokenize-WF cs (rec (s≤s ≤-refl))
 tokenize-WF ('}' ∷ cs) (acc rec) = TRBrace    ∷ tokenize-WF cs (rec (s≤s ≤-refl))
 tokenize-WF (':' ∷ cs) (acc rec) = TColon     ∷ tokenize-WF cs (rec (s≤s ≤-refl))
-tokenize-WF ('=' ∷ cs) (acc rec) = TEquals    ∷ tokenize-WF cs (rec (s≤s ≤-refl))
 tokenize-WF ('\\' ∷ cs) (acc rec) = TLambda   ∷ tokenize-WF cs (rec (s≤s ≤-refl))
 tokenize-WF (',' ∷ cs) (acc rec) = TComma     ∷ tokenize-WF cs (rec (s≤s ≤-refl))
 tokenize-WF (';' ∷ cs) (acc rec) = TSemicolon ∷ tokenize-WF cs (rec (s≤s ≤-refl))
 tokenize-WF ('@' ∷ cs) (acc rec) = TAt        ∷ tokenize-WF cs (rec (s≤s ≤-refl))
 tokenize-WF ('|' ∷ cs) (acc rec) = TPipe      ∷ tokenize-WF cs (rec (s≤s ≤-refl))
-
--- Operators
 tokenize-WF ('+' ∷ cs) (acc rec) = TPlus      ∷ tokenize-WF cs (rec (s≤s ≤-refl))
-tokenize-WF ('-' ∷ cs) (acc rec) = TMinus     ∷ tokenize-WF cs (rec (s≤s ≤-refl))
 tokenize-WF ('*' ∷ cs) (acc rec) = TStar      ∷ tokenize-WF cs (rec (s≤s ≤-refl))
 tokenize-WF ('/' ∷ cs) (acc rec) = TSlash     ∷ tokenize-WF cs (rec (s≤s ≤-refl))
 tokenize-WF ('%' ∷ cs) (acc rec) = TPercent   ∷ tokenize-WF cs (rec (s≤s ≤-refl))
 tokenize-WF ('&' ∷ cs) (acc rec) = TAmpersand ∷ tokenize-WF cs (rec (s≤s ≤-refl))
-tokenize-WF ('<' ∷ cs) (acc rec) = TLt        ∷ tokenize-WF cs (rec (s≤s ≤-refl))
-tokenize-WF ('>' ∷ cs) (acc rec) = TGt        ∷ tokenize-WF cs (rec (s≤s ≤-refl))
 tokenize-WF ('.' ∷ cs) (acc rec) = TDot       ∷ tokenize-WF cs (rec (s≤s ≤-refl))
-
--- String literals / integer / identifier / fallthrough — de-`with`'d.
 tokenize-WF ('"' ∷ cs) (acc rec) = tok-str cs rec (collectStringB cs)
 tokenize-WF (c ∷ cs)   (acc rec) = tok-gen c cs rec (isDigit c) (isIdentStart c)
 
@@ -311,6 +299,37 @@ tok-gen c cs rec false true  =
   let (ident , rest , bnd) = collectIdentB cs
   in  TWord (fromList (c ∷ ident)) ∷ tokenize-WF rest (rec (s≤s bnd))
 tok-gen c cs rec false false = tokenize-WF cs (rec (s≤s ≤-refl))
+
+-- `\n`: indented continuation (next char ' '/'\t') ⇒ insignificant (skip);
+-- else a significant `TNewline`. Both recurse on the tail `cs`.
+tok-nl cs rec true  = tokenize-WF cs (rec (n<1+n _))
+tok-nl cs rec false = TNewline ∷ tokenize-WF cs (rec (n<1+n _))
+
+-- 2-char `…=` operators: `t2` if next is `=` (recurse past it), else `t1`.
+tok-op2 ('=' ∷ rest) rec t2 t1 true = t2 ∷ tokenize-WF rest (rec (s≤s (m≤n⇒m≤1+n ≤-refl)))
+tok-op2 cs rec t2 t1 true  = t1 ∷ tokenize-WF cs (rec (n<1+n _))   -- unreachable (isEqHead cs ≡ true ⇒ cs ≡ '=' ∷ _)
+tok-op2 cs rec t2 t1 false = t1 ∷ tokenize-WF cs (rec (n<1+n _))
+
+-- `{`: block comment `{-` (skip via skipBlockB) else `TLBrace`.
+tok-lbrace ('-' ∷ rest) rec true = tokenize-WF (proj₁ (skipBlockB 1 rest)) (rec (s≤s (m≤n⇒m≤1+n (proj₂ (skipBlockB 1 rest)))))
+tok-lbrace cs rec true  = TLBrace ∷ tokenize-WF cs (rec (n<1+n _))   -- unreachable
+tok-lbrace cs rec false = TLBrace ∷ tokenize-WF cs (rec (n<1+n _))
+
+-- `-`: line comment `--`, arrow `->`, else `TMinus`.
+tok-minus ('-' ∷ rest) rec d-comment = tokenize-WF (proj₁ (skipLineB rest)) (rec (s≤s (m≤n⇒m≤1+n (proj₂ (skipLineB rest)))))
+tok-minus ('>' ∷ rest) rec d-arrow   = TArrow ∷ tokenize-WF rest (rec (s≤s (m≤n⇒m≤1+n ≤-refl)))
+tok-minus cs rec d-minus   = TMinus ∷ tokenize-WF cs (rec (n<1+n _))
+tok-minus cs rec d-comment = TMinus ∷ tokenize-WF cs (rec (n<1+n _))   -- unreachable
+tok-minus cs rec d-arrow   = TMinus ∷ tokenize-WF cs (rec (n<1+n _))   -- unreachable
+
+-- `^`: grade caret `^1`/`^0`/`^w`, else fall to the general head.
+tok-caret ('1' ∷ rest) rec c-1 = TCaret1 ∷ tokenize-WF rest (rec (s≤s (m≤n⇒m≤1+n ≤-refl)))
+tok-caret ('0' ∷ rest) rec c-0 = TCaret0 ∷ tokenize-WF rest (rec (s≤s (m≤n⇒m≤1+n ≤-refl)))
+tok-caret ('w' ∷ rest) rec c-w = TCaretW ∷ tokenize-WF rest (rec (s≤s (m≤n⇒m≤1+n ≤-refl)))
+tok-caret cs rec c-gen = tok-gen '^' cs rec (isDigit '^') (isIdentStart '^')
+tok-caret cs rec c-1   = tok-gen '^' cs rec (isDigit '^') (isIdentStart '^')   -- unreachable
+tok-caret cs rec c-0   = tok-gen '^' cs rec (isDigit '^') (isIdentStart '^')   -- unreachable
+tok-caret cs rec c-w   = tok-gen '^' cs rec (isDigit '^') (isIdentStart '^')   -- unreachable
 
 -- | Tokenize a list of characters into tokens.
 tokenize : List Char → List Token
