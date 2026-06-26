@@ -29,24 +29,31 @@ open import Data.List using (List; []; _∷_; map)
 open import Data.Char using (Char)
 open import Data.Maybe using (nothing)
 open import Data.String using (String; toList)
-open import Data.Product using (_×_; _,_; proj₁)
+open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; cong; subst)
 open import Relation.Nullary using (yes; no; ¬_)
 open import Data.Empty using (⊥; ⊥-elim)
+open import Function using (case_of_)
 open import Data.List.Relation.Unary.AllPairs using (AllPairs; []; _∷_)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 
 open import Data.String using (_≟_)
+open import Data.Sum.Properties using (inj₂-injective)
 open import Once.Parser using
   ( FunInfo; PolyFunInfo
   ; extractFunctions; extractFunctions-go; extractAliases
   ; namesDistinct; nameElem; allValidIdentB; validIdentB; validCharsB
+  ; emittedNames; emittedNames-cons
   ; allIdentContinue; guardDistinct; distinctOrErr )
 open import Once.Parser.Module.Core using (Module; mkModule)
 open import Once.Parser.Lexer using (isIdentStart; isIdentContinue)
 open import Once.Target.Symbol using (once-symbol-own)
 open import Once.Target.SymbolInjective using (ValidIdent; ValidIdentChars; once-symbol-own-≢)
+open import Once.CanonicalName using (bare)
+open import Once.TypeCheck.Elaborate using (PolyCtx)
+open import Once.TypeCheck.Classify using (SigEffectCtx)
+import Once.Compile as C
 
 ------------------------------------------------------------------------
 -- Boolean elimination helpers.
@@ -123,42 +130,83 @@ map-allpairs-own (x ∷ xs) (px ∷ ap) (vx ∷ vxs) =
   allpairs-head x xs px vx vxs ∷ map-allpairs-own xs ap vxs
 
 ------------------------------------------------------------------------
--- The emitted-symbol list of a module, and its distinctness.
+-- Distinctness OF THE REAL CODEGEN OUTPUT (`C.moduleSyms`, defined in
+-- `Once.Compile` on the SAME cfs `compileFromModule` renders). This is the
+-- precondition `assemble-correct` demands; proving it over `C.moduleSyms`
+-- (not an `extractFunctions` re-derivation) is what makes a wrong set a type
+-- error rather than a runtime regression.
 ------------------------------------------------------------------------
 
-symsOf : (String ⊎ (List FunInfo × List PolyFunInfo)) → List String
-symsOf (inj₁ _)            = []
-symsOf (inj₂ (funs , _))   = map once-symbol-own (map FunInfo.funName funs)
-
-funSymsOf : Module → List String
-funSymsOf m = symsOf (extractFunctions (extractAliases m) m)
-
--- The compiled top-level symbols of `m` are pairwise distinct.
 DistinctSymbols : Module → Set
-DistinctSymbols m = AllPairs _≢_ (funSymsOf m)
+DistinctSymbols m = AllPairs _≢_ (C.moduleSyms C.Heap false m)
 
-------------------------------------------------------------------------
--- The discharge.
-------------------------------------------------------------------------
+-- (a) the extractor guard fired ⇒ the well-formedness Bool was `true`.
+distinctOrErr-true : ∀ b {p p' : List FunInfo × List PolyFunInfo}
+  → distinctOrErr b (inj₂ p) ≡ inj₂ p' → b ≡ true
+distinctOrErr-true true  _  = refl
+distinctOrErr-true false ()
 
-no-clash-bool : (b : Bool) (funs : List FunInfo) (polys : List PolyFunInfo)
-  → b ≡ (namesDistinct (map FunInfo.funName funs) ∧ allValidIdentB (map FunInfo.funName funs))
-  → AllPairs _≢_ (symsOf (distinctOrErr b (inj₂ (funs , polys))))
-no-clash-bool true  funs polys beq =
-  map-allpairs-own (map FunInfo.funName funs)
-    (namesDistinct-sound  _ (∧-elimˡ (sym beq)))
-    (allValidIdentB-sound _ (∧-elimʳ (sym beq)))
-no-clash-bool false funs polys beq = []
+guard-true : (r : String ⊎ (List FunInfo × List PolyFunInfo))
+  {funs : List FunInfo} {polys : List PolyFunInfo}
+  → guardDistinct r ≡ inj₂ (funs , polys)
+  → (namesDistinct (emittedNames funs) ∧ allValidIdentB (emittedNames funs)) ≡ true
+guard-true (inj₁ _) ()
+guard-true (inj₂ (funs₀ , polys₀)) eq
+  with namesDistinct (emittedNames funs₀) ∧ allValidIdentB (emittedNames funs₀) in beq
+... | true  =
+      subst (λ fs → (namesDistinct (emittedNames fs) ∧ allValidIdentB (emittedNames fs)) ≡ true)
+            (cong proj₁ (inj₂-injective eq)) beq
+... | false with eq
+...   | ()
 
-no-clash-guard : (r : String ⊎ (List FunInfo × List PolyFunInfo))
-  → AllPairs _≢_ (symsOf (guardDistinct r))
-no-clash-guard (inj₁ _)            = []
-no-clash-guard (inj₂ (funs , polys)) =
-  no-clash-bool
-    (namesDistinct (map FunInfo.funName funs) ∧ allValidIdentB (map FunInfo.funName funs))
-    funs polys refl
+-- (b) the CODEGEN-FAITHFULNESS bridge: the symbols `compileAllFuns-go` actually
+-- builds equal `once-symbol-own` of the NON-primitive funNames. Induction through
+-- the mutual aux (template: `MainIRForm.caf-go-find-form`); `caf-go-wrap` builds
+-- `mkCompiledFun (bare (funName fi)) … (funIsPrimitive fi)`, so this is forced.
+caf-syms : ∀ (doOpt : Bool) (polys : PolyCtx) (sigEffs : SigEffectCtx)
+  (funs : List FunInfo) (ctx : C.FunCtx) (cfs : List C.CompiledFun)
+  → C.compileAllFuns-go C.Heap doOpt polys sigEffs funs ctx ≡ inj₂ cfs
+  → C.emittedSyms cfs ≡ map once-symbol-own (emittedNames funs)
+caf-syms doOpt polys sigEffs [] ctx cfs caf-eq =
+  cong C.emittedSyms (sym (inj₂-injective caf-eq))
+caf-syms doOpt polys sigEffs (fi ∷ rest) ctx cfs caf-eq
+  with C.resolveFunType ctx polys (FunInfo.funType fi) (FunInfo.funBody fi) in rf-eq
+... | inj₁ err = case caf-eq of λ ()
+... | inj₂ ty
+    with C.compileFun C.Heap doOpt ctx polys sigEffs (FunInfo.funName fi) ty (FunInfo.funBody fi) in cf-eq
+...   | inj₁ err = case caf-eq of λ ()
+...   | inj₂ irFun
+      with C.compileAllFuns-go C.Heap doOpt polys sigEffs rest (C.extendFunCtx ctx (FunInfo.funName fi) ty) in rec-eq
+...     | inj₁ err = case caf-eq of λ ()
+...     | inj₂ compiled-rest =
+          subst (λ c → C.emittedSyms c ≡ map once-symbol-own (emittedNames (fi ∷ rest)))
+                (inj₂-injective caf-eq)
+                (cons (FunInfo.funIsPrimitive fi) refl)
+      where
+        cfW = C.maybeWrapMain (FunInfo.funName fi) ty irFun
+        IH : C.emittedSyms compiled-rest ≡ map once-symbol-own (emittedNames rest)
+        IH = caf-syms doOpt polys sigEffs rest (C.extendFunCtx ctx (FunInfo.funName fi) ty) compiled-rest rec-eq
+        cons : (b : Bool) → FunInfo.funIsPrimitive fi ≡ b
+          → C.emittedSyms (C.mkCompiledFun (bare (FunInfo.funName fi)) (proj₁ cfW) (proj₂ cfW) b ∷ compiled-rest)
+            ≡ map once-symbol-own (emittedNames-cons b fi (emittedNames rest))
+        cons true  _ = IH
+        cons false _ = cong (once-symbol-own (FunInfo.funName fi) ∷_) IH
 
--- PROVED (no postulate): every module's emitted def-symbols are distinct.
+-- PROVED (no postulate): the symbols the codegen emits for `m` are distinct.
 program-no-clash : ∀ (m : Module) → DistinctSymbols m
-program-no-clash (mkModule ds) =
-  no-clash-guard (extractFunctions-go (extractAliases (mkModule ds)) ds nothing)
+program-no-clash (mkModule ds)
+  with extractFunctions (extractAliases (mkModule ds)) (mkModule ds) in efeq
+... | inj₁ _ = []
+... | inj₂ (funs , polys)
+    with C.compileAllFuns C.Heap false funs (C.buildPolyCtx polys) (C.collectSigEffects ds) in caeq
+...   | inj₁ _ = []
+...   | inj₂ cfs =
+        subst (AllPairs _≢_) (sym bridge)
+          (map-allpairs-own (emittedNames funs)
+            (namesDistinct-sound  _ (∧-elimˡ guard))
+            (allValidIdentB-sound _ (∧-elimʳ guard)))
+      where
+        guard : (namesDistinct (emittedNames funs) ∧ allValidIdentB (emittedNames funs)) ≡ true
+        guard = guard-true (extractFunctions-go (extractAliases (mkModule ds)) ds nothing) efeq
+        bridge : C.emittedSyms cfs ≡ map once-symbol-own (emittedNames funs)
+        bridge = caf-syms false (C.buildPolyCtx polys) (C.collectSigEffects ds) funs C.emptyFunCtx cfs caeq
