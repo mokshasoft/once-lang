@@ -48,6 +48,10 @@ open import Once.IR using (IR)
 import Once.Compile as C
 import Once.Parser.Module.Core as P
 open import Once.Grammar.ModuleConvert using (gmoduleToModule)
+-- Plan 0.51: pull the resolver INTO the verified front-end, so `moduleToIR`
+-- compiles the SAME (resolved) module the binary runs — and a resolver bug reds
+-- the apex via `moduleToIR-complete` (resolver-preserves-typing).
+open import Once.Parser.Module.Resolve using (resolveImports; ModuleMap)
 open import Once.Denotation.Behavior using (Source; Behavior)
 open import Once.Denotation.DenotTrace using (evalᴰ)
 open import Once.Denotation.TraceMonad using (projTrace)
@@ -91,6 +95,10 @@ moduleToIR-aux : String ⊎ List C.CompiledFun → Maybe (IR Unit Unit)
 moduleToIR-aux (inj₁ _)    = nothing
 moduleToIR-aux (inj₂ funs) = findMain funs
 
+-- Non-resolving: the IR of `main` in an ALREADY-RESOLVED module. The
+-- module-level proofs (`AcceptSound`/`MainBuilds`/`ModuleComplete`) reason
+-- about THIS over a module `mod` (interpreted as the RESOLVED module);
+-- resolution is confined to `srcToModule` below, so those proofs are untouched.
 moduleToIR : P.Module → Maybe (IR Unit Unit)
 moduleToIR mod = moduleToIR-aux (C.compileResolvedModule C.Heap false mod)
 
@@ -104,6 +112,37 @@ moduleToIR mod = moduleToIR-aux (C.compileResolvedModule C.Heap false mod)
 ⟦_⟧IR : Maybe (IR Unit Unit) → Behavior
 ⟦ just ir ⟧IR = λ n → take n (projTrace (evalᴰ ir tt) n)
 ⟦ nothing ⟧IR = λ _ → []
+
+------------------------------------------------------------------------
+-- The verified front-end (Plan 0.51): parse the user's grammar module,
+-- THEN resolve its imports against the in-`Source` `ModuleMap`. This is the
+-- resolution step the binary runs — now INSIDE the verified pipeline, so a
+-- resolver bug is the apex's concern (`Once.Adequacy.ResolverBridge`), not a
+-- trusted-I/O step. The INDEPENDENT meaning (`_⊢R_`/`⟦_⟧ˢ`) instead anchors on
+-- the UN-resolved `gmoduleToModule (Source.srcModule src)`, so completeness is
+-- not resolver-vacuous; the bridge between them is the named ResolverBridge.
+------------------------------------------------------------------------
+
+resolveToMaybe : String ⊎ P.Module → Maybe P.Module
+resolveToMaybe (inj₁ _) = nothing
+resolveToMaybe (inj₂ m) = just m
+
+srcToModule-aux : ModuleMap → Maybe P.Module → Maybe P.Module
+srcToModule-aux mm nothing  = nothing
+srcToModule-aux mm (just m) = resolveToMaybe (resolveImports mm m)
+
+srcToModule : Source → Maybe P.Module
+srcToModule src =
+  srcToModule-aux (Source.srcImports src) (gmoduleToModule (Source.srcModule src))
+
+-- The front-end SUCCEEDS to `mR` exactly when the user's module parses to `mU`
+-- and the resolver maps it to `mR`. (Reduction lemma the apex completeness path
+-- uses to rewrite `srcToModule src` once both halves are known.)
+srcToModule-just : ∀ (src : Source) (mU mR : P.Module) →
+  gmoduleToModule (Source.srcModule src) ≡ just mU →
+  resolveImports (Source.srcImports src) mU ≡ inj₂ mR →
+  srcToModule src ≡ just mR
+srcToModule-just src mU mR p-eq r-eq rewrite p-eq | r-eq = refl
 
 ------------------------------------------------------------------------
 -- The source semantics (discharges the `Behavior.⟦_⟧` postulate).
@@ -121,7 +160,7 @@ sourceTrace-aux (just m) = ⟦ moduleToIR m ⟧IR
 sourceTrace-aux nothing  = λ _ → []
 
 sourceTrace : Source → Behavior
-sourceTrace src = sourceTrace-aux (gmoduleToModule src)
+sourceTrace src = sourceTrace-aux (srcToModule src)
 
 -- `abstract`: keep `⟦_⟧` opaque downstream. Otherwise `⟦ src ⟧` unfolds
 -- to `sourceTrace src`'s `with gmoduleToModule src …`, and
@@ -132,12 +171,12 @@ abstract
   ⟦_⟧ : Source → Behavior
   ⟦ src ⟧ = sourceTrace src
 
-  -- Reduction lemma (exported): when `src` parses to module `m`, its meaning
-  -- IS `m`'s source trace. Proven INSIDE the `abstract` block (where `⟦_⟧`
-  -- reduces to `sourceTrace`); the J-style `sourceTrace-aux` makes the parse
-  -- equation `rewrite`-able with no `with`-opacity. This discharges
-  -- `Compile.gmoduleToModule-correct`.
+  -- Reduction lemma (exported): when `src` parses AND RESOLVES to module `m`
+  -- (`srcToModule src ≡ just m`), its meaning IS `m`'s source trace. Proven
+  -- INSIDE the `abstract` block (where `⟦_⟧` reduces to `sourceTrace`); the
+  -- J-style `sourceTrace-aux` makes the front-end equation `rewrite`-able with
+  -- no `with`-opacity. This discharges `Compile.gmoduleToModule-correct`.
   ⟦⟧-via-module :
-    ∀ (src : Source) (m : P.Module) → gmoduleToModule src ≡ just m →
+    ∀ (src : Source) (m : P.Module) → srcToModule src ≡ just m →
     ∀ (n : ℕ) → ⟦ src ⟧ n ≡ ⟦ moduleToIR m ⟧IR n
   ⟦⟧-via-module src m eq n rewrite eq = refl

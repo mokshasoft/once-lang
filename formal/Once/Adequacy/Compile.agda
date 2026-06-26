@@ -45,7 +45,7 @@ open import Once.Type using (Unit; Type; _⇒[_]_; mk-kind; Many; eff)
 
 open import Once.Denotation.Behavior using (Source; Behavior)
 open import Once.Adequacy.SourceTrace
-  using (⟦_⟧; ⟦⟧-via-module; moduleToIR; ⟦_⟧IR)
+  using (⟦_⟧; ⟦⟧-via-module; moduleToIR; ⟦_⟧IR; srcToModule; srcToModule-just)
 
 -- Plan 0.49 (route 3): the INDEPENDENT surface denotation `SD.⟦_⟧ˢ` (over the
 -- intrinsically-typed `Expr`, NOT through the compiler's `evalᴰ ∘ moduleToIR`),
@@ -114,8 +114,8 @@ open import Once.Adequacy.NameClash using (DistinctSymbols; program-no-clash)
 -- Plan 0.14 follow-up: take AllocMode from caller (CLI --alloc).
 -- compile-asm (no-CLI entry) defaults to Heap, matching pre-0.14 behavior.
 compile-asm : Arch → Source → C.CompileResult
-compile-asm arch gmod with gmoduleToModule gmod
-... | nothing = C.Error "GModule → Module conversion failed"
+compile-asm arch src with srcToModule src
+... | nothing = C.Error "front-end (parse / import resolution) failed"
 ... | just m  = C.compileFromModule C.Heap C.Build false arch m
 
 compile-cli-asm : C.AllocMode → C.Stage → Bool → Arch → P.Module → C.CompileResult
@@ -206,7 +206,7 @@ record ArchCorrect (arch : Arch) (as : ArchSemantics) : Set where
 -- `SourceTrace`, no `with`-opacity). The two meanings coincide.
 gmoduleToModule-correct :
   ∀ (src : Source) (m : P.Module) →
-  gmoduleToModule src ≡ just m →
+  srcToModule src ≡ just m →
   ∀ (n : ℕ) → ⟦ m ⟧M n ≡ ⟦ src ⟧ n
 gmoduleToModule-correct src m eq n = sym (⟦⟧-via-module src m eq n)
 
@@ -226,6 +226,10 @@ open import Once.Adequacy.AcceptSound as AS using (ModuleTyped; moduleToIR-typed
 -- `main-realize-agrees` from `RealizeBridge.realize-agrees`. Importing it here
 -- puts `realize-agrees` on the apex path (no longer an island).
 import Once.Adequacy.MainRealizeAgrees as MRA
+-- Plan 0.51: the NAMED resolver-correctness obligations bridging the
+-- un-resolved independent meaning to the resolved compilation. The resolver is
+-- now in the verified loop (`srcToModule`); these are the explicit gaps.
+import Once.Adequacy.ResolverBridge as RB
 
 ------------------------------------------------------------------------
 -- CPU semantics injected here (D054 wired-not-imported).
@@ -282,7 +286,7 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   compile-gm arch doOpt (just m)  = compile-mir arch doOpt m (moduleToIR m)
 
   compile : Arch → Bool → Source → Maybe (List Byte)
-  compile arch doOpt gmod = compile-gm arch doOpt (gmoduleToModule gmod)
+  compile arch doOpt src = compile-gm arch doOpt (srcToModule src)
 
   -- This arch's asm-text meaning, read off the injected `arch-correct` witness.
   ⟦_⟧A_ : Arch → String → Behavior
@@ -355,7 +359,7 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   ⟦ nothing ⟧⊥-m = nothing
   ⟦ just m  ⟧⊥-m = ⟦ moduleToIR m ⟧⊥-ir
   ⟦_⟧⊥ : Source → Maybe Behavior
-  ⟦ src ⟧⊥ = ⟦ gmoduleToModule src ⟧⊥-m
+  ⟦ src ⟧⊥ = ⟦ srcToModule src ⟧⊥-m
 
   -- SOUNDNESS of the meaning's domain (Plan 0.48 Phase 1): if `src` HAS a
   -- behaviour (`⟦ src ⟧⊥ ≡ just _`) then it parses to a module that is
@@ -377,8 +381,8 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
 
   ⟦⟧⊥-sound : ∀ (src : Source) (beh : Behavior) →
     ⟦ src ⟧⊥ ≡ just beh →
-    Σ-syntax P.Module (λ m → (gmoduleToModule src ≡ just m) × ModuleTyped m)
-  ⟦⟧⊥-sound src beh eq = ⟦⟧⊥-m-sound (gmoduleToModule src) beh eq
+    Σ-syntax P.Module (λ m → (srcToModule src ≡ just m) × ModuleTyped m)
+  ⟦⟧⊥-sound src beh eq = ⟦⟧⊥-m-sound (srcToModule src) beh eq
 
   -- Named Phase-0 gaps (NOT the theorem). `built⇒main` is GONE: gating
   -- `compile` on `moduleToIR ≡ just` makes "Built ⇒ has-main" hold by
@@ -450,11 +454,11 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   -- `false` is the PROVEN codegen chain, `true` is the `opt-trace` lift.
   correct : ∀ (arch : Arch) (doOpt : Bool) (src : Source) →
             Pointwise _≋_ (map (exec arch) (compile arch doOpt src)) (⟦ src ⟧⊥)
-  correct arch false src = correct-gm arch false (gmoduleToModule src)
+  correct arch false src = correct-gm arch false (srcToModule src)
     (λ m _ ir mi asm cf n → trans (string-to-bytes-correct arch m asm cf n)
                                    (trans (module-to-asm-correct arch m asm cf n)
                                           (cong (λ x → ⟦ x ⟧IR n) mi)))
-  correct arch true src = correct-gm arch true (gmoduleToModule src)
+  correct arch true src = correct-gm arch true (srcToModule src)
     (λ m _ ir mi asm cf n → opt-trace arch m asm ir cf mi n)
 
   -- ════════════════════════════════════════════════════════════════════
@@ -472,7 +476,7 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
 
   accept-sound : ∀ (arch : Arch) (doOpt : Bool) (src : Source) (bytes : List Byte) →
     compile arch doOpt src ≡ just bytes →
-    Σ-syntax P.Module (λ m → (gmoduleToModule src ≡ just m) × ModuleTyped m)
+    Σ-syntax P.Module (λ m → (srcToModule src ≡ just m) × ModuleTyped m)
   accept-sound arch doOpt src bytes pf =
     let p           = subst (λ c → Pointwise _≋_ (map (exec arch) c) (⟦ src ⟧⊥)) pf
                             (correct arch doOpt src)
@@ -516,9 +520,14 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
             Σ-syntax (ModuleTyped m) (λ mt → MC.HasValidMain-decl m mt))
 
   -- Declarative link: `src` PARSES (verified relational parser — NOT the
-  -- typechecker/elaborator) to `tp`'s module. Independent of codegen.
+  -- typechecker/elaborator, and crucially NOT the import resolver) to `tp`'s
+  -- module. Plan 0.51 / THE TRAP: this stays over the UN-RESOLVED grammar
+  -- module `Source.srcModule src`, never `srcToModule` (which resolves). If it
+  -- went through the resolver, the resolver would appear symmetrically on both
+  -- sides of `correctR` and cancel — completeness would be resolver-vacuous.
+  -- The gap to the resolved compilation is the named `ResolverBridge`.
   _⊢R_ : Source → Typed → Set
-  src ⊢R (m , _ , _) = gmoduleToModule src ≡ just m
+  src ⊢R (m , _ , _) = gmoduleToModule (Source.srcModule src) ≡ just m
 
   -- The INDEPENDENT surface meaning of `tp`'s `main`: `SD.⟦ main ⟧ˢ` run to a
   -- trace (via `Once.Adequacy.MainExtract`). The compiled-main IR `(ir, mi)` is
@@ -561,10 +570,12 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   pw-just-rel : ∀ {x y : Behavior} → Pointwise _≋_ (just x) (just y) → x ≋ y
   pw-just-rel (PW.just r) = r
 
-  -- accept ⇒ the parsed module has a compilable `main`. (Inverts `compile`'s
+  -- accept ⇒ the RESOLVED module has a compilable `main`. (Inverts `compile`'s
   -- executable gate; reuses nothing new — pure case analysis on `moduleToIR`.)
+  -- `m` is the resolved module (`srcToModule src ≡ just m`), since that is what
+  -- `compile`/`moduleToIR` run on.
   compile-just-ir : ∀ (arch : Arch) (doOpt : Bool) (src : Source) (m : P.Module) (bytes : List Byte) →
-    gmoduleToModule src ≡ just m → compile arch doOpt src ≡ just bytes →
+    srcToModule src ≡ just m → compile arch doOpt src ≡ just bytes →
     Σ-syntax (IR Unit Unit) (λ ir → moduleToIR m ≡ just ir)
   compile-just-ir arch doOpt src m bytes g-eq pf with moduleToIR m in mi
   ... | just ir = ir , refl
@@ -574,36 +585,50 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
 
   -- The total meaning at an accepted source: `⟦ src ⟧⊥ ≡ just (⟦ moduleToIR m ⟧IR)`.
   ⟦⟧⊥-just : ∀ (src : Source) (m : P.Module) (ir : IR Unit Unit) →
-    gmoduleToModule src ≡ just m → moduleToIR m ≡ just ir →
+    srcToModule src ≡ just m → moduleToIR m ≡ just ir →
     ⟦ src ⟧⊥ ≡ just (⟦ moduleToIR m ⟧IR)
   ⟦⟧⊥-just src m ir g-eq mi rewrite g-eq | mi = refl
 
-  -- SOUNDNESS + TRACE conjunct — reuses `accept-sound` (front-end soundness),
-  -- the existing `correct` (codegen), and `sd-bridge` (SD meaning).
+  -- SOUNDNESS + TRACE conjunct — `accept-sound` (front-end soundness over the
+  -- RESOLVED module `mR`) gives `ModuleTyped mR`; `RB.resolver-reflects-typing`
+  -- recovers the UN-resolved typed program `mU` so `tp`/`_⊢R_` stay parse-based
+  -- (non-vacuous). The trace chain: bytes ≋ `⟦ moduleToIR mR ⟧IR` (existing
+  -- codegen `correct`), ≋ `⟦ moduleToIR mU ⟧IR` (`RB.resolver-preserves-trace`),
+  -- ≋ `⟦ tp ⟧ˢ` (`sd-bridge` over the un-resolved `tp`).
   correctR-sound : ∀ (arch : Arch) (doOpt : Bool) (src : Source) (bytes : List Byte) →
     compile arch doOpt src ≡ just bytes →
     Σ-syntax Typed (λ tp → (src ⊢R tp) × (exec arch bytes ≋ ⟦ tp ⟧ˢ))
   correctR-sound arch doOpt src bytes pf with accept-sound arch doOpt src bytes pf
-  ... | (m , g-eq , MT) with compile-just-ir arch doOpt src m bytes g-eq pf
-  ...   | (ir , mi) =
-          let tp = (m , MT , MC.moduleToIR-sound m MT mi)
-              p  = subst (λ c → Pointwise _≋_ (map (exec arch) c) (⟦ src ⟧⊥)) pf
-                         (correct arch doOpt src)
-              p' = subst (λ b → Pointwise _≋_ (just (exec arch bytes)) b)
-                         (⟦⟧⊥-just src m ir g-eq mi) p
-              e≋ = pw-just-rel p'
-          in tp , g-eq , (λ n → trans (e≋ n) (sd-bridge tp n))
+  ... | (mR , g-eq , MT) with compile-just-ir arch doOpt src mR bytes g-eq pf
+  ...   | (ir , mi) with RB.resolver-reflects-typing src mR g-eq MT
+  ...     | (mU , p-eq , mt , hvm) =
+            let tp = (mU , mt , hvm)
+                p  = subst (λ c → Pointwise _≋_ (map (exec arch) c) (⟦ src ⟧⊥)) pf
+                           (correct arch doOpt src)
+                p' = subst (λ b → Pointwise _≋_ (just (exec arch bytes)) b)
+                           (⟦⟧⊥-just src mR ir g-eq mi) p
+                e≋ = pw-just-rel p'
+            in tp , p-eq , (λ n → trans (e≋ n)
+                              (trans (RB.resolver-preserves-trace src mR mU g-eq p-eq n)
+                                     (sd-bridge tp n)))
 
-  -- COMPLETENESS conjunct — reuses `main⇒built` (a `main` always Builds).
+  -- COMPLETENESS conjunct — `src ⊢R tp` gives the UN-resolved parse to `mU`;
+  -- `RB.resolver-preserves-typing` resolves it to a well-typed `mR` (with valid
+  -- main), which `moduleToIR-complete` compiles and `main⇒built` Builds. The
+  -- front-end reduction `srcToModule src ≡ just mR` (`srcToModule-just`) ties
+  -- the resolved module back to `compile src`.
   correctR-complete : ∀ (arch : Arch) (doOpt : Bool) (src : Source) (tp : Typed) →
     src ⊢R tp →
     Σ-syntax (List Byte) (λ bytes → compile arch doOpt src ≡ just bytes)
-  correctR-complete arch doOpt src (m , mt , hvm) g-eq
-    with MC.moduleToIR-complete m mt hvm
-  ... | (ir , mi) with main⇒built arch doOpt m ir mi
-  ...   | (asm , built-eq) = string-to-bytes arch asm , c≡j
-    where c≡j : compile arch doOpt src ≡ just (string-to-bytes arch asm)
-          c≡j rewrite g-eq | mi | built-eq = refl
+  correctR-complete arch doOpt src (mU , mt , hvm) g-eq
+    with RB.resolver-preserves-typing (Source.srcImports src) mU mt hvm
+  ... | (mR , res-eq , mt' , hvm') with MC.moduleToIR-complete mR mt' hvm'
+  ...   | (ir , mi) with main⇒built arch doOpt mR ir mi
+  ...     | (asm , built-eq) = string-to-bytes arch asm , c≡j
+    where stm-eq : srcToModule src ≡ just mR
+          stm-eq = srcToModule-just src mU mR g-eq res-eq
+          c≡j : compile arch doOpt src ≡ just (string-to-bytes arch asm)
+          c≡j rewrite stm-eq | mi | built-eq = refl
 
   -- THE relational claim — two conjuncts in ONE statement (matches the spec's
   -- `correct`). Supplied to `Once.Adequacy.CorrectCompiler` in the apex.
