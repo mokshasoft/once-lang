@@ -106,26 +106,31 @@ Behavior : Set
 Behavior = ℕ → List SigOpEvent
 
 ------------------------------------------------------------------------
--- Source — a COMPLETE compilation unit (Framing A, Plan 0.51).
+-- Source — a COMPLETE compilation unit, anchored at the raw program TEXT
+-- (Framing A; Plan 0.51 resolver-into-apex; Plan 0.52 front-end-into-apex).
 --
--- A single grammar module is NOT self-contained: a program that imports
--- `S.exit` has no determinate meaning without knowing what `S` resolves to.
--- So the object whose correctness we assert is the user's module TOGETHER
--- with its resolved import environment (`ModuleMap`, built by trusted I/O).
--- This is the spec-anticipated "separate compilation" absorption point: it
--- folds into `Source`, leaving `Once.Adequacy`'s `compile`/`correct` arity
--- untouched. The import resolver thereby runs INSIDE the verified `compile`
--- (`Once.Adequacy.SourceTrace.srcToModule`), so resolver correctness becomes
--- part of the apex (`Once.Adequacy.ResolverBridge`) rather than trusted I/O.
+-- The object whose correctness we assert is the user's program SOURCE TEXT
+-- together with its resolved import environment (`ModuleMap`, built by trusted
+-- I/O). Anchoring at `String` (not a pre-parsed `GModule`) pulls the WHOLE
+-- front-end — lexer + parser — INSIDE the verified `compile`
+-- (`Once.Adequacy.SourceTrace.srcToModule` = `parseStrict` then `resolveImports`),
+-- so lexer/parser correctness becomes part of the apex
+-- (`Once.Adequacy.FrontEndBridge`) rather than a trusted step. Likewise the
+-- import resolver (`Once.Adequacy.ResolverBridge`). Both are the spec-anticipated
+-- "separate compilation" / complete-program absorption, leaving
+-- `Once.Adequacy`'s `compile`/`correct` arity untouched. (Text-anchoring also
+-- matches what the binary actually has — raw source — so the apex `compile` is
+-- the function the CLI can route through.)
 ------------------------------------------------------------------------
 
+open import Data.String using (String)
 open import Once.Parser.Module.Resolve using (ModuleMap)
 
 record Source : Set where
   constructor mkSource
   field
     srcImports : ModuleMap     -- resolved import environment (trusted I/O)
-    srcModule  : G.GModule     -- the user's parsed grammar module
+    srcText    : String        -- the user's program source text
 
 ------------------------------------------------------------------------
 -- ⟦_⟧ — extracts the exit-syscall argument from a program's
