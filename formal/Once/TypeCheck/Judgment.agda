@@ -447,6 +447,15 @@ mutual
                 ≡ just (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B)
             → ctx ⊢ᵐ RVar x ∶ A ⇨[ π ] B
 
+    -- Plan 0.50 Stage 2 (D064): the RESOLVED-name morphism, the `⊢ᵐ` analog of
+    -- `t-var-resolved`. A canonicalized arrow reference `RResolved cn` is a
+    -- morphism at the import's grade — so a named function used as a VALUE
+    -- (e.g. `compose g g`) extracts as a morphism, mirroring the direct-call case.
+    m-named-resolved : ∀ {ctx : NamedCtx} {cn : CanonicalName} {A B : Type} {π : Once.Type.Purity}
+                     → lookupImport (NamedCtx.imports ctx) (showCanonical cn)
+                         ≡ just (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B)
+                     → ctx ⊢ᵐ RResolved cn ∶ A ⇨[ π ] B
+
     -- (D066: `m-lam` dropped — a closed lambda as a morphism is unreachable via
     -- `extractMorphWitness` (its outer-ctx-emptiness can't be recovered there);
     -- cata algebras go through `m-cata` (closed `⊢ᶜ`). Lambdas in `⊢ᶜ` use `t-lam`.)
@@ -653,6 +662,7 @@ extractMorph-arr nothing   = nothing
 extractMorphWitness (t-morph-lift mF)                  = just mF
 extractMorphWitness (t-value-lift g)                   = just (m-const g)
 extractMorphWitness (t-embed (t-var-import ¬u eqL eqI)) = just (m-named ¬u eqL eqI)
+extractMorphWitness (t-embed (t-var-resolved eq))       = just (m-named-resolved eq)
 -- `arr f` (an eff morphism): recover the inner pure morphism, re-wrap with `m-arr`.
 extractMorphWitness (t-arr-app-check d)                = extractMorph-arr (extractMorphWitness d)
 extractMorphWitness _                                  = nothing

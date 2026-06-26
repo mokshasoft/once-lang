@@ -40,7 +40,7 @@ open import Once.TypeCheck.Classify using (NamedCtx)
 open import Once.TypeCheck.Judgment
   using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_; _⊢ᵍ_∶_; g-int; g-terminal; g-pair; g-inl; g-inr; g-In;
          _⊢ᵐ_∶_⇨[_]_; m-id; m-fst; m-snd; m-terminal; m-initial; m-inl; m-inr;
-         m-compose; m-case; m-pair; m-curry; m-cata; m-arr; m-const; m-named;
+         m-compose; m-case; m-pair; m-curry; m-cata; m-arr; m-const; m-named; m-named-resolved;
          t-int; t-str; t-unit; t-unit-var; t-var-local; t-var-qualified; t-var-resolved; t-var-import;
          t-annot; t-pair; t-neg; t-let; t-case; t-binop-arith; t-binop-cmp;
          t-id-app; t-fst-app; t-snd-app; t-terminal-app; t-arr-app-infer; t-apply-app-infer;
@@ -124,6 +124,7 @@ realize-morph (m-cata {wfF = wfF} _ dalg) =
 realize-morph (m-arr df)        = realize-morph df
 realize-morph (m-const gd)      = realize-global gd
 realize-morph (m-named {x = x} _ _ _) = IR.SigOp (value-info (bare x))
+realize-morph (m-named-resolved {cn = cn} _) = IR.SigOp (value-info cn)
 
 ------------------------------------------------------------------------
 -- realize (⊢ᶜ) — check-mode reference elaboration.
