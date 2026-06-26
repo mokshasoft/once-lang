@@ -37,7 +37,7 @@ open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Sum.Properties using (inj₂-injective)
 open import Data.Product using (Σ; Σ-syntax; _×_; _,_; proj₁; proj₂)
 open import Data.String using (String)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 
 open import Once.Parser.Token using (Token)
 open import Once.Parser.Module.Core using (Decl; Module; mkModule; ParseAtB)
@@ -91,22 +91,25 @@ data ParsesDecls : List Token → List Decl → List Token → Set where
 -- DECLS-LOOP soundness — PROVEN over the de-`with`'d `pdwf-sk`/`pdwf-dc` by
 -- casing their result PARAMETERS (the `with`-clash is gone). Mutual, terminating
 -- on the same `Acc` as `parseDeclsWF`.
+SkBnd : (toks : List Token) (sk : Maybe (List Token × List Token)) → Set
+SkBnd toks sk = ∀ {nl toks'} → sk ≡ just (nl , toks') → length toks' ≤ length toks
+
 sound-declsWF  : ∀ (toks : List Token) (a : Acc _<_ (length toks)) →
   ParsesDecls toks (proj₁ (parseDeclsWF toks a)) (proj₁ (proj₂ (parseDeclsWF toks a)))
 sound-pdwf-sk : ∀ (toks : List Token) (rec : ∀ {y} → y < length toks → Acc _<_ y)
-  (sk : _) (eq : skipNewlines toks ≡ sk) →
-  ParsesDecls toks (proj₁ (pdwf-sk toks rec sk eq)) (proj₁ (proj₂ (pdwf-sk toks rec sk eq)))
+  (sk : Maybe (List Token × List Token)) (bnd : SkBnd toks sk) (eq : skipNewlines toks ≡ sk) →
+  ParsesDecls toks (proj₁ (pdwf-sk toks rec sk bnd)) (proj₁ (proj₂ (pdwf-sk toks rec sk bnd)))
 sound-pdwf-dc : ∀ (toks : List Token) (rec : ∀ {y} → y < length toks → Acc _<_ y)
   (toks' : List Token) (skipBnd : length toks' ≤ length toks)
   (pd : ParseAtB {Decl} toks') (pdeq : parseDeclB toks' ≡ pd)
   (nl : List Token) (skeq : skipNewlines toks ≡ just (nl , toks')) →
   ParsesDecls toks (proj₁ (pdwf-dc toks rec toks' skipBnd pd)) (proj₁ (proj₂ (pdwf-dc toks rec toks' skipBnd pd)))
 
-sound-declsWF toks (acc rec) = sound-pdwf-sk toks rec (skipNewlines toks) refl
+sound-declsWF toks (acc rec) = sound-pdwf-sk toks rec (skipNewlines toks) (skipNewlines-≤ toks) refl
 
-sound-pdwf-sk toks rec nothing             eq = pds-noskip eq
-sound-pdwf-sk toks rec (just (nl , toks')) eq =
-  sound-pdwf-dc toks rec toks' (skipNewlines-≤ toks eq) (parseDeclB toks') refl nl eq
+sound-pdwf-sk toks rec nothing             bnd eq = pds-noskip eq
+sound-pdwf-sk toks rec (just (nl , toks')) bnd eq =
+  sound-pdwf-dc toks rec toks' (bnd refl) (parseDeclB toks') refl nl eq
 
 sound-pdwf-dc toks rec toks' skipBnd nothing                     pdeq nl skeq = pds-stop skeq pdeq
 sound-pdwf-dc toks rec toks' skipBnd (just (d , rest , declBnd)) pdeq nl skeq =
@@ -118,9 +121,32 @@ sound-decls {toks} {ds} {rest} eq =
         (just-injective eq)
         (sound-declsWF toks (<-wellFounded (length toks)))
 
--- COMPLETENESS — next (reverse: induct on the `ParsesDecls` derivation).
-postulate
-  complete-decls : ∀ {toks ds rest} → ParsesDecls toks ds rest → parseDecls toks ≡ just (ds , rest)
+-- COMPLETENESS — induct on the `ParsesDecls` derivation. `pdwf-sk` reduces under
+-- the derivation's `skipNewlines toks ≡ …` (via `trans (sym eq) skeq` rewriting
+-- the `sk` PARAMETER — no self-referential `refl`, so no with-clash).
+complete-declsWF : ∀ {toks ds rest} (a : Acc _<_ (length toks)) → ParsesDecls toks ds rest →
+  (proj₁ (parseDeclsWF toks a) ≡ ds) × (proj₁ (proj₂ (parseDeclsWF toks a)) ≡ rest)
+complete-pdwf-sk : ∀ (toks : List Token) (rec : ∀ {y} → y < length toks → Acc _<_ y)
+  (sk : Maybe (List Token × List Token)) (bnd : SkBnd toks sk) (eq : skipNewlines toks ≡ sk)
+  {ds rest} → ParsesDecls toks ds rest →
+  (proj₁ (pdwf-sk toks rec sk bnd) ≡ ds) × (proj₁ (proj₂ (pdwf-sk toks rec sk bnd)) ≡ rest)
+
+complete-declsWF {toks} (acc rec) deriv =
+  complete-pdwf-sk toks rec (skipNewlines toks) (skipNewlines-≤ toks) refl deriv
+
+complete-pdwf-sk toks rec sk bnd eq (pds-noskip skeq)
+  rewrite trans (sym eq) skeq = refl , refl
+complete-pdwf-sk toks rec sk bnd eq (pds-stop skeq decleq)
+  rewrite trans (sym eq) skeq | decleq = refl , refl
+complete-pdwf-sk toks rec sk bnd eq (pds-cons skeq pdcl restderiv)
+  rewrite trans (sym eq) skeq with complete-decl pdcl
+... | (declBnd' , pdeq) rewrite pdeq
+    with complete-declsWF (rec (<-≤-trans declBnd' (bnd refl))) restderiv
+...   | (eqds , eqrest) = cong (_ ∷_) eqds , eqrest
+
+complete-decls : ∀ {toks ds rest} → ParsesDecls toks ds rest → parseDecls toks ≡ just (ds , rest)
+complete-decls {toks} {ds} {rest} deriv with complete-declsWF (<-wellFounded (length toks)) deriv
+... | (eqds , eqrest) = cong₂ (λ a b → just (a , b)) eqds eqrest
 
 ------------------------------------------------------------------------
 -- MODULE wrapper — PROVEN (`ParsesModule` over `ParsesDecls`, via the record
