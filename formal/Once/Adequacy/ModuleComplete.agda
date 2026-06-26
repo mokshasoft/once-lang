@@ -24,12 +24,13 @@ open import Data.Product using (Σ-syntax; _,_; _×_; proj₁; proj₂)
 open import Data.Empty using (⊥)
 open import Data.List using (List; []; _∷_)
 open import Data.String using (String) renaming (_≟_ to _≟str_)
+open import Once.CanonicalName using (bare)
 open import Relation.Nullary using (yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 
 open import Function using (case_of_)
 open import Once.Adequacy.SourceTrace using (findMain; moduleToIR; moduleToIR-aux)
-open import Once.Adequacy.MainIRForm using (findMain-skip; compileFun-main-EffUU)
+open import Once.Adequacy.MainIRForm using (findMain-skip; compileFun-main-EffUU; bare-injective)
 
 open import Once.Type using (Type; Unit; _⇒[_]_; mk-kind; Many; eff)
 open import Once.IR using (IR)
@@ -111,7 +112,7 @@ caf-go-complete polys sigEffs ctx AS.tnil _ = [] , refl
 caf-go-complete polys sigEffs ctx (AS.tcons {fi = fi} {rest = rest} {ty = ty} rf deriv rest-typed) (main-ok , prest) =
   let (irFun , cf-eq) = compileFun-complete ctx polys sigEffs (funName fi) ty (funBody fi) main-ok deriv
       (compiled-rest , rec-eq) = caf-go-complete polys sigEffs (C.extendFunCtx ctx (funName fi) ty) rest-typed prest
-  in (C.mkCompiledFun (funName fi)
+  in (C.mkCompiledFun (bare (funName fi))
         (proj₁ (C.maybeWrapMain (funName fi) ty irFun))
         (proj₂ (C.maybeWrapMain (funName fi) ty irFun))
         (funIsPrimitive fi) ∷ compiled-rest)
@@ -128,7 +129,7 @@ caf-go-complete polys sigEffs ctx (AS.tcons {fi = fi} {rest = rest} {ty = ty} rf
 findMain-main-or-skip : ∀ (irFun : IR Unit EffUU) (b : Bool) (rest : List C.CompiledFun)
   (ir-rest : IR Unit Unit) → findMain rest ≡ just ir-rest →
   Σ-syntax (IR Unit Unit) (λ ir →
-    findMain (C.mkCompiledFun "main" Unit (C.wrapMainAsEntry irFun) b ∷ rest) ≡ just ir)
+    findMain (C.mkCompiledFun (bare "main") Unit (C.wrapMainAsEntry irFun) b ∷ rest) ≡ just ir)
 findMain-main-or-skip irFun false rest ir-rest fm = C.wrapMainAsEntry irFun , refl
 findMain-main-or-skip irFun true  rest ir-rest fm = ir-rest , fm
 
@@ -147,7 +148,7 @@ caf-go-find-complete polys sigEffs ctx (AS.tcons {fi = fi} {rest = rest} {ty = t
 ... | (irFun , cf-eq)
   with caf-go-complete polys sigEffs (C.extendFunCtx ctx "main" EffUU) rest-typed prest
 ...   | (compiled-rest , rec-eq) =
-        C.mkCompiledFun "main" Unit (C.wrapMainAsEntry irFun) false ∷ compiled-rest
+        C.mkCompiledFun (bare "main") Unit (C.wrapMainAsEntry irFun) false ∷ compiled-rest
         , C.wrapMainAsEntry irFun
         , trans (cong (C.caf-go-rf-aux C.Heap false polys sigEffs fi rest ctx) rf)
             (trans (cong (C.caf-go-cf-aux C.Heap false polys sigEffs fi rest ctx EffUU) cf-eq)
@@ -155,7 +156,7 @@ caf-go-find-complete polys sigEffs ctx (AS.tcons {fi = fi} {rest = rest} {ty = t
         , findMain-main-here irFun compiled-rest
   where
     findMain-main-here : ∀ (g : IR Unit EffUU) (r : List C.CompiledFun) →
-      findMain (C.mkCompiledFun "main" Unit (C.wrapMainAsEntry g) false ∷ r) ≡ just (C.wrapMainAsEntry g)
+      findMain (C.mkCompiledFun (bare "main") Unit (C.wrapMainAsEntry g) false ∷ r) ≡ just (C.wrapMainAsEntry g)
     findMain-main-here g r = refl
 -- there: the main is in `rest`; compile `fi`, recurse, then dispatch `fi`.
 caf-go-find-complete polys sigEffs ctx (AS.tcons {fi = fi} {rest = rest} {ty = ty} rf deriv rest-typed) (main-ok , prest) (inj₂ me-rest)
@@ -164,7 +165,7 @@ caf-go-find-complete polys sigEffs ctx (AS.tcons {fi = fi} {rest = rest} {ty = t
 ... | (irFun , cf-eq) | (compiled-rest , ir , rec-eq , fm-rest) = result
   where
     cf0 : C.CompiledFun
-    cf0 = C.mkCompiledFun (funName fi) (proj₁ (C.maybeWrapMain (funName fi) ty irFun))
+    cf0 = C.mkCompiledFun (bare (funName fi)) (proj₁ (C.maybeWrapMain (funName fi) ty irFun))
             (proj₂ (C.maybeWrapMain (funName fi) ty irFun)) (funIsPrimitive fi)
     ca-eq : C.compileAllFuns-go C.Heap false polys sigEffs (fi ∷ rest) ctx ≡ inj₂ (cf0 ∷ compiled-rest)
     ca-eq = trans (cong (C.caf-go-rf-aux C.Heap false polys sigEffs fi rest ctx) rf)
@@ -173,10 +174,10 @@ caf-go-find-complete polys sigEffs ctx (AS.tcons {fi = fi} {rest = rest} {ty = t
     result : FindResult polys sigEffs (fi ∷ rest) ctx
     result with funName fi ≟str "main"
     ... | no ¬p =
-          cf0 ∷ compiled-rest , ir , ca-eq , trans (findMain-skip cf0 compiled-rest ¬p) fm-rest
+          cf0 ∷ compiled-rest , ir , ca-eq , trans (findMain-skip cf0 compiled-rest (λ e → ¬p (bare-injective e))) fm-rest
     ... | yes refl with main-ok refl
     ...   | refl =
-            C.mkCompiledFun "main" Unit (C.wrapMainAsEntry irFun) (funIsPrimitive fi) ∷ compiled-rest
+            C.mkCompiledFun (bare "main") Unit (C.wrapMainAsEntry irFun) (funIsPrimitive fi) ∷ compiled-rest
             , proj₁ (findMain-main-or-skip irFun (funIsPrimitive fi) compiled-rest ir fm-rest)
             , trans (cong (C.caf-go-rf-aux C.Heap false polys sigEffs fi rest ctx) rf)
                 (trans (cong (C.caf-go-cf-aux C.Heap false polys sigEffs fi rest ctx EffUU) cf-eq)
@@ -287,7 +288,7 @@ caf-go-mainexists polys sigEffs ctx (AS.tcons {fi = fi} {rest = rest} {ty = ty} 
     ...   | inj₂ compiled-rest = dispatch
       where
         cf0 : C.CompiledFun
-        cf0 = C.mkCompiledFun (funName fi) (proj₁ (C.maybeWrapMain (funName fi) ty irFun))
+        cf0 = C.mkCompiledFun (bare (funName fi)) (proj₁ (C.maybeWrapMain (funName fi) ty irFun))
                 (proj₂ (C.maybeWrapMain (funName fi) ty irFun)) (funIsPrimitive fi)
         fm0 : findMain (cf0 ∷ compiled-rest) ≡ just ir
         fm0 = subst (λ c → findMain c ≡ just ir) (sym (inj₂-injective eq2)) fm
@@ -295,7 +296,7 @@ caf-go-mainexists polys sigEffs ctx (AS.tcons {fi = fi} {rest = rest} {ty = ty} 
         dispatch with funName fi ≟str "main"
         ... | no ¬p =
               inj₂ (caf-go-mainexists polys sigEffs (C.extendFunCtx ctx (funName fi) ty) rest-typed
-                      rec-eq (trans (sym (findMain-skip cf0 compiled-rest ¬p)) fm0))
+                      rec-eq (trans (sym (findMain-skip cf0 compiled-rest (λ e → ¬p (bare-injective e)))) fm0))
         ... | yes refl = mx (funIsPrimitive fi) refl
                             (compileFun-main-EffUU ctx polys sigEffs ty (funBody fi) irFun cf-eq)
           where

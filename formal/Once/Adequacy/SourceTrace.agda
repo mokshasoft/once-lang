@@ -39,6 +39,7 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (tt)
 open import Data.String using (String) renaming (_≟_ to _≟str_)
+open import Once.CanonicalName using (CanonicalName; bare) renaming (_≟ᶜ_ to _≟cn_)
 open import Relation.Nullary using (yes; no; Dec)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
@@ -73,7 +74,7 @@ open C.CompiledFun using (cfName; cfType; cfIR; cfIsPrimitive)
 -- no real `_start` to run. Skipping primitives aligns this spec with the
 -- backend and makes the entry provably trace back to a `DFunDef`.
 findMain-here :
-  (cf : C.CompiledFun) → Bool → Dec (cfName cf ≡ "main") → Maybe (cfType cf ≡ Unit)
+  (cf : C.CompiledFun) → Bool → Dec (cfName cf ≡ bare "main") → Maybe (cfType cf ≡ Unit)
   → Maybe (IR Unit Unit) → Maybe (IR Unit Unit)
 findMain-here cf false (yes _) (just refl) cont = just (cfIR cf)
 findMain-here cf false (yes _) nothing     cont = cont
@@ -83,7 +84,7 @@ findMain-here cf true  _       _           cont = cont   -- primitive: never the
 findMain : List C.CompiledFun → Maybe (IR Unit Unit)
 findMain []         = nothing
 findMain (cf ∷ rest) =
-  findMain-here cf (cfIsPrimitive cf) (cfName cf ≟str "main") (isUnit? (cfType cf)) (findMain rest)
+  findMain-here cf (cfIsPrimitive cf) (cfName cf ≟cn bare "main") (isUnit? (cfType cf)) (findMain rest)
 
 -- Explicit dispatch on the compile result (no `with`-opacity).
 moduleToIR-aux : String ⊎ List C.CompiledFun → Maybe (IR Unit Unit)
