@@ -6,10 +6,14 @@
 -- declaration parser + sound/complete bridge. No shim, no postulate. First
 -- proven leaf for `Once.Adequacy`'s `ParsesDecl`.
 --
--- Stage 1: `ParsesModulePath` (dotted module path) over the classifier-routed
--- `parseModulePath-WFB`. `wordHead := is-just ∘ anyWordB` relates definitionally
--- to the executable, so the inversions need no per-token enumeration; the parser
--- never fails on a word head (`pmp-dot ≢ nothing`).
+--   * `ParsesModulePath` (dotted module path) ↔ `parseModulePath-WFB`.
+--   * `ParsesImportAlias` (optional `as Alias`) ↔ `parseImportAliasB`.
+--   * `ParsesImport`      (path then alias)    ↔ `parseImportB`.
+--
+-- `wordHead := is-just ∘ anyWordB` relates definitionally to the executable, so
+-- most inversions need no per-token enumeration; the only enumeration is
+-- `anyWordB-inv` (a word-result forces a `TWord` head). The path parser never
+-- fails on a word head (`pmp-dot ≢ nothing`).
 ------------------------------------------------------------------------
 
 module Once.Grammar.ImportBridge where
