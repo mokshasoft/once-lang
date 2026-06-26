@@ -115,17 +115,33 @@ skipNewlines-≤ (TEOF ∷ rest) refl = ≤-refl
 -- returning `[]` plus the unchanged input when no declaration parses.
 -- Each recursive call is on a strictly shorter residual, proved via
 -- `parseDeclB`'s Σ-bound composed with `skipNewlines-≤`.
+-- De-`with`'d via parameterized helpers (`pdwf-sk`/`pdwf-dc`): the `skipNewlines`
+-- and `parseDeclB` results are ARGUMENTS, with their equations available, so the
+-- verified decls-loop bridge (`Once.Adequacy.FrontEndBridge`) can case those
+-- parameters WITHOUT the ill-typed-with-abstraction clash against an internal
+-- `with skipNewlines`. Behaviour-identical to the old `with` form.
+pdwf-dc : (toks : List Token) → (∀ {y} → y < length toks → Acc _<_ y) →
+          (toks' : List Token) → length toks' ≤ length toks →
+          ParseAtB {Decl} toks' →
+          Σ[ ds ∈ List Decl ] Σ[ rest ∈ List Token ] length rest ≤ length toks
+pdwf-sk : (toks : List Token) → (∀ {y} → y < length toks → Acc _<_ y) →
+          (sk : Maybe (List Token × List Token)) → skipNewlines toks ≡ sk →
+          Σ[ ds ∈ List Decl ] Σ[ rest ∈ List Token ] length rest ≤ length toks
 parseDeclsWF : (toks : List Token) → Acc _<_ (length toks) →
                Σ[ ds ∈ List Decl ] Σ[ rest ∈ List Token ]
                  length rest ≤ length toks
-parseDeclsWF toks (acc rec) with skipNewlines toks in skipEq
-... | nothing = [] , toks , ≤-refl
-... | just (_ , toks') with parseDeclB toks' | skipNewlines-≤ toks skipEq
-...   | nothing | skipBnd = [] , toks' , skipBnd
-...   | just (d , rest , declBnd) | skipBnd
-        with parseDeclsWF rest (rec (<-≤-trans declBnd skipBnd))
-...     | (ds , rest' , restBnd) =
-          d ∷ ds , rest' , ≤-trans restBnd (≤-trans (<⇒≤ declBnd) skipBnd)
+
+parseDeclsWF toks (acc rec) = pdwf-sk toks rec (skipNewlines toks) refl
+
+pdwf-sk toks rec nothing             eq = [] , toks , ≤-refl
+pdwf-sk toks rec (just (nl , toks')) eq =
+  pdwf-dc toks rec toks' (skipNewlines-≤ toks eq) (parseDeclB toks')
+
+pdwf-dc toks rec toks' skipBnd nothing = [] , toks' , skipBnd
+pdwf-dc toks rec toks' skipBnd (just (d , rest , declBnd)) =
+  let r = parseDeclsWF rest (rec (<-≤-trans declBnd skipBnd))
+  in d ∷ proj₁ r , proj₁ (proj₂ r) ,
+     ≤-trans (proj₂ (proj₂ r)) (≤-trans (<⇒≤ declBnd) skipBnd)
 
 -- | Parse all declarations (separated by newlines).
 -- Termination: via well-founded recursion on token length. Each

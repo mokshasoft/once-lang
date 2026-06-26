@@ -26,8 +26,10 @@
 module Once.Adequacy.FrontEndBridge where
 
 open import Data.Bool using (Bool; true; false)
-open import Data.Nat using (_<_)
+open import Data.Nat using (_<_; _≤_)
 open import Data.Nat.Induction using (<-wellFounded)
+open import Data.Nat.Properties using (<-≤-trans)
+open import Induction.WellFounded using (Acc; acc)
 open import Data.List using (List; []; _∷_; length)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Maybe.Properties using (just-injective)
@@ -38,12 +40,13 @@ open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 
 open import Once.Parser.Token using (Token)
-open import Once.Parser.Module.Core using (Decl; Module; mkModule)
+open import Once.Parser.Module.Core using (Decl; Module; mkModule; ParseAtB)
 open Module using (decls)
 open import Once.Parser.Lexer using (tokenizeString)
 open import Once.Parser.Core using (skipNewlines)
 open import Once.Parser.Module
-  using (parseModule; parseModule-pd; parseDecls; parseDeclsWF; parseDeclB)
+  using (parseModule; parseModule-pd; parseDecls; parseDeclsWF; parseDeclB;
+         pdwf-sk; pdwf-dc; skipNewlines-≤)
 open import Once.Parser
   using (allTrailing; parseStrict; parseStrict-pm; parseStrict-at)
 
@@ -74,6 +77,9 @@ postulate
 ------------------------------------------------------------------------
 
 data ParsesDecls : List Token → List Decl → List Token → Set where
+  -- `skipNewlines` never returns `nothing`; this aligns the relation with
+  -- `pdwf-sk`'s (unreachable) `nothing` clause.
+  pds-noskip : ∀ {toks} → skipNewlines toks ≡ nothing → ParsesDecls toks [] toks
   pds-stop : ∀ {toks nl toks'} →
     skipNewlines toks ≡ just (nl , toks') → parseDeclB toks' ≡ nothing →
     ParsesDecls toks [] toks'
@@ -82,13 +88,38 @@ data ParsesDecls : List Token → List Decl → List Token → Set where
     ParsesDecls rest ds rest' →
     ParsesDecls toks (d ∷ ds) rest'
 
--- The decls-loop bridge. NOTE (next target): discharging these needs
--- `parseDeclsWF` in a form whose output projections reduce without the
--- ill-typed-with-abstraction clash against its own internal `with skipNewlines`
--- — i.e. a clause-based `parseDeclsWF` (or derivation-carrying `parseDeclB`,
--- as the type/expr parsers already are). The relation `ParsesDecls` is DEFINED.
+-- DECLS-LOOP soundness — PROVEN over the de-`with`'d `pdwf-sk`/`pdwf-dc` by
+-- casing their result PARAMETERS (the `with`-clash is gone). Mutual, terminating
+-- on the same `Acc` as `parseDeclsWF`.
+sound-declsWF  : ∀ (toks : List Token) (a : Acc _<_ (length toks)) →
+  ParsesDecls toks (proj₁ (parseDeclsWF toks a)) (proj₁ (proj₂ (parseDeclsWF toks a)))
+sound-pdwf-sk : ∀ (toks : List Token) (rec : ∀ {y} → y < length toks → Acc _<_ y)
+  (sk : _) (eq : skipNewlines toks ≡ sk) →
+  ParsesDecls toks (proj₁ (pdwf-sk toks rec sk eq)) (proj₁ (proj₂ (pdwf-sk toks rec sk eq)))
+sound-pdwf-dc : ∀ (toks : List Token) (rec : ∀ {y} → y < length toks → Acc _<_ y)
+  (toks' : List Token) (skipBnd : length toks' ≤ length toks)
+  (pd : ParseAtB {Decl} toks') (pdeq : parseDeclB toks' ≡ pd)
+  (nl : List Token) (skeq : skipNewlines toks ≡ just (nl , toks')) →
+  ParsesDecls toks (proj₁ (pdwf-dc toks rec toks' skipBnd pd)) (proj₁ (proj₂ (pdwf-dc toks rec toks' skipBnd pd)))
+
+sound-declsWF toks (acc rec) = sound-pdwf-sk toks rec (skipNewlines toks) refl
+
+sound-pdwf-sk toks rec nothing             eq = pds-noskip eq
+sound-pdwf-sk toks rec (just (nl , toks')) eq =
+  sound-pdwf-dc toks rec toks' (skipNewlines-≤ toks eq) (parseDeclB toks') refl nl eq
+
+sound-pdwf-dc toks rec toks' skipBnd nothing                     pdeq nl skeq = pds-stop skeq pdeq
+sound-pdwf-dc toks rec toks' skipBnd (just (d , rest , declBnd)) pdeq nl skeq =
+  pds-cons skeq (sound-decl pdeq) (sound-declsWF rest (rec (<-≤-trans declBnd skipBnd)))
+
+sound-decls : ∀ {toks ds rest} → parseDecls toks ≡ just (ds , rest) → ParsesDecls toks ds rest
+sound-decls {toks} {ds} {rest} eq =
+  subst (λ p → ParsesDecls toks (proj₁ p) (proj₂ p))
+        (just-injective eq)
+        (sound-declsWF toks (<-wellFounded (length toks)))
+
+-- COMPLETENESS — next (reverse: induct on the `ParsesDecls` derivation).
 postulate
-  sound-decls    : ∀ {toks ds rest} → parseDecls toks ≡ just (ds , rest) → ParsesDecls toks ds rest
   complete-decls : ∀ {toks ds rest} → ParsesDecls toks ds rest → parseDecls toks ≡ just (ds , rest)
 
 ------------------------------------------------------------------------
