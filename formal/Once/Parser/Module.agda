@@ -124,18 +124,24 @@ pdwf-dc : (toks : List Token) → (∀ {y} → y < length toks → Acc _<_ y) �
           (toks' : List Token) → length toks' ≤ length toks →
           ParseAtB {Decl} toks' →
           Σ[ ds ∈ List Decl ] Σ[ rest ∈ List Token ] length rest ≤ length toks
+-- `pdwf-sk` takes the residual-bound as a FUNCTION of the (matched) `sk`, NOT
+-- an equation `skipNewlines toks ≡ sk`. So `parseDeclsWF` passes `skipNewlines-≤
+-- toks` (no self-referential `refl`), and BOTH bridge directions can reduce
+-- `parseDeclsWF` under a `skipNewlines toks ≡ …` hypothesis without the
+-- ill-typed-with-abstraction clash.
 pdwf-sk : (toks : List Token) → (∀ {y} → y < length toks → Acc _<_ y) →
-          (sk : Maybe (List Token × List Token)) → skipNewlines toks ≡ sk →
+          (sk : Maybe (List Token × List Token)) →
+          (∀ {nl toks'} → sk ≡ just (nl , toks') → length toks' ≤ length toks) →
           Σ[ ds ∈ List Decl ] Σ[ rest ∈ List Token ] length rest ≤ length toks
 parseDeclsWF : (toks : List Token) → Acc _<_ (length toks) →
                Σ[ ds ∈ List Decl ] Σ[ rest ∈ List Token ]
                  length rest ≤ length toks
 
-parseDeclsWF toks (acc rec) = pdwf-sk toks rec (skipNewlines toks) refl
+parseDeclsWF toks (acc rec) = pdwf-sk toks rec (skipNewlines toks) (skipNewlines-≤ toks)
 
-pdwf-sk toks rec nothing             eq = [] , toks , ≤-refl
-pdwf-sk toks rec (just (nl , toks')) eq =
-  pdwf-dc toks rec toks' (skipNewlines-≤ toks eq) (parseDeclB toks')
+pdwf-sk toks rec nothing             bnd = [] , toks , ≤-refl
+pdwf-sk toks rec (just (nl , toks')) bnd =
+  pdwf-dc toks rec toks' (bnd refl) (parseDeclB toks')
 
 pdwf-dc toks rec toks' skipBnd nothing = [] , toks' , skipBnd
 pdwf-dc toks rec toks' skipBnd (just (d , rest , declBnd)) =
