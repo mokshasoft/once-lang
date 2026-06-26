@@ -2172,7 +2172,7 @@ du_sound'45'expr_34 v0
                                                                                                                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v27 v28
                                                                                                                                 -> let v29
                                                                                                                                          = coe
-                                                                                                                                             MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                                             MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                                              (coe
                                                                                                                                                 MAlonzo.Code.Once.TypeCheck.Raw.C_OpLt_18)
                                                                                                                                              (coe
@@ -2390,7 +2390,7 @@ du_sound'45'expr_34 v0
                                                                                                                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v27 v28
                                                                                                                                 -> let v29
                                                                                                                                          = coe
-                                                                                                                                             MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                                             MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                                              (coe
                                                                                                                                                 MAlonzo.Code.Once.TypeCheck.Raw.C_OpLe_20)
                                                                                                                                              (coe
@@ -2608,7 +2608,7 @@ du_sound'45'expr_34 v0
                                                                                                                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v27 v28
                                                                                                                                 -> let v29
                                                                                                                                          = coe
-                                                                                                                                             MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                                             MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                                              (coe
                                                                                                                                                 MAlonzo.Code.Once.TypeCheck.Raw.C_OpGt_22)
                                                                                                                                              (coe
@@ -2826,7 +2826,7 @@ du_sound'45'expr_34 v0
                                                                                                                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v27 v28
                                                                                                                                 -> let v29
                                                                                                                                          = coe
-                                                                                                                                             MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                                             MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                                              (coe
                                                                                                                                                 MAlonzo.Code.Once.TypeCheck.Raw.C_OpGe_24)
                                                                                                                                              (coe
@@ -3044,7 +3044,7 @@ du_sound'45'expr_34 v0
                                                                                                                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v27 v28
                                                                                                                                 -> let v29
                                                                                                                                          = coe
-                                                                                                                                             MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                                             MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                                              (coe
                                                                                                                                                 MAlonzo.Code.Once.TypeCheck.Raw.C_OpEq_26)
                                                                                                                                              (coe
@@ -3262,7 +3262,7 @@ du_sound'45'expr_34 v0
                                                                                                                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v27 v28
                                                                                                                                 -> let v29
                                                                                                                                          = coe
-                                                                                                                                             MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                                             MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                                              (coe
                                                                                                                                                 MAlonzo.Code.Once.TypeCheck.Raw.C_OpNe_28)
                                                                                                                                              (coe
@@ -5759,7 +5759,7 @@ du_sound'45'expr_34 v0
                                                                                                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v26 v27
                                                                                                                                     -> let v28
                                                                                                                                              = coe
-                                                                                                                                                 MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                                                 MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                                                  (coe
                                                                                                                                                     MAlonzo.Code.Once.TypeCheck.Raw.C_OpLt_18)
                                                                                                                                                  (coe
@@ -5977,7 +5977,7 @@ du_sound'45'expr_34 v0
                                                                                                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v26 v27
                                                                                                                                     -> let v28
                                                                                                                                              = coe
-                                                                                                                                                 MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                                                 MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                                                  (coe
                                                                                                                                                     MAlonzo.Code.Once.TypeCheck.Raw.C_OpLe_20)
                                                                                                                                                  (coe
@@ -6195,7 +6195,7 @@ du_sound'45'expr_34 v0
                                                                                                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v26 v27
                                                                                                                                     -> let v28
                                                                                                                                              = coe
-                                                                                                                                                 MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                                                 MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                                                  (coe
                                                                                                                                                     MAlonzo.Code.Once.TypeCheck.Raw.C_OpGt_22)
                                                                                                                                                  (coe
@@ -6413,7 +6413,7 @@ du_sound'45'expr_34 v0
                                                                                                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v26 v27
                                                                                                                                     -> let v28
                                                                                                                                              = coe
-                                                                                                                                                 MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                                                 MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                                                  (coe
                                                                                                                                                     MAlonzo.Code.Once.TypeCheck.Raw.C_OpGe_24)
                                                                                                                                                  (coe
@@ -6631,7 +6631,7 @@ du_sound'45'expr_34 v0
                                                                                                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v26 v27
                                                                                                                                     -> let v28
                                                                                                                                              = coe
-                                                                                                                                                 MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                                                 MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                                                  (coe
                                                                                                                                                     MAlonzo.Code.Once.TypeCheck.Raw.C_OpEq_26)
                                                                                                                                                  (coe
@@ -6849,7 +6849,7 @@ du_sound'45'expr_34 v0
                                                                                                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v26 v27
                                                                                                                                     -> let v28
                                                                                                                                              = coe
-                                                                                                                                                 MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                                                 MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                                                  (coe
                                                                                                                                                     MAlonzo.Code.Once.TypeCheck.Raw.C_OpNe_28)
                                                                                                                                                  (coe
@@ -9481,7 +9481,7 @@ du_sound'45'expr_34 v0
                                                                                                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v26 v27
                                                                                                                                     -> let v28
                                                                                                                                              = coe
-                                                                                                                                                 MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                                                 MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                                                  (coe
                                                                                                                                                     MAlonzo.Code.Once.TypeCheck.Raw.C_OpLt_18)
                                                                                                                                                  (coe
@@ -9699,7 +9699,7 @@ du_sound'45'expr_34 v0
                                                                                                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v26 v27
                                                                                                                                     -> let v28
                                                                                                                                              = coe
-                                                                                                                                                 MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                                                 MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                                                  (coe
                                                                                                                                                     MAlonzo.Code.Once.TypeCheck.Raw.C_OpLe_20)
                                                                                                                                                  (coe
@@ -9917,7 +9917,7 @@ du_sound'45'expr_34 v0
                                                                                                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v26 v27
                                                                                                                                     -> let v28
                                                                                                                                              = coe
-                                                                                                                                                 MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                                                 MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                                                  (coe
                                                                                                                                                     MAlonzo.Code.Once.TypeCheck.Raw.C_OpGt_22)
                                                                                                                                                  (coe
@@ -10135,7 +10135,7 @@ du_sound'45'expr_34 v0
                                                                                                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v26 v27
                                                                                                                                     -> let v28
                                                                                                                                              = coe
-                                                                                                                                                 MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                                                 MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                                                  (coe
                                                                                                                                                     MAlonzo.Code.Once.TypeCheck.Raw.C_OpGe_24)
                                                                                                                                                  (coe
@@ -10353,7 +10353,7 @@ du_sound'45'expr_34 v0
                                                                                                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v26 v27
                                                                                                                                     -> let v28
                                                                                                                                              = coe
-                                                                                                                                                 MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                                                 MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                                                  (coe
                                                                                                                                                     MAlonzo.Code.Once.TypeCheck.Raw.C_OpEq_26)
                                                                                                                                                  (coe
@@ -10571,7 +10571,7 @@ du_sound'45'expr_34 v0
                                                                                                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v26 v27
                                                                                                                                     -> let v28
                                                                                                                                              = coe
-                                                                                                                                                 MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                                                 MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                                                  (coe
                                                                                                                                                     MAlonzo.Code.Once.TypeCheck.Raw.C_OpNe_28)
                                                                                                                                                  (coe
@@ -13069,7 +13069,7 @@ du_sound'45'expr_34 v0
                                                                                                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v25 v26
                                                                                                                                         -> let v27
                                                                                                                                                  = coe
-                                                                                                                                                     MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                                                     MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                                                      (coe
                                                                                                                                                         MAlonzo.Code.Once.TypeCheck.Raw.C_OpLt_18)
                                                                                                                                                      (coe
@@ -13287,7 +13287,7 @@ du_sound'45'expr_34 v0
                                                                                                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v25 v26
                                                                                                                                         -> let v27
                                                                                                                                                  = coe
-                                                                                                                                                     MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                                                     MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                                                      (coe
                                                                                                                                                         MAlonzo.Code.Once.TypeCheck.Raw.C_OpLe_20)
                                                                                                                                                      (coe
@@ -13505,7 +13505,7 @@ du_sound'45'expr_34 v0
                                                                                                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v25 v26
                                                                                                                                         -> let v27
                                                                                                                                                  = coe
-                                                                                                                                                     MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                                                     MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                                                      (coe
                                                                                                                                                         MAlonzo.Code.Once.TypeCheck.Raw.C_OpGt_22)
                                                                                                                                                      (coe
@@ -13723,7 +13723,7 @@ du_sound'45'expr_34 v0
                                                                                                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v25 v26
                                                                                                                                         -> let v27
                                                                                                                                                  = coe
-                                                                                                                                                     MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                                                     MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                                                      (coe
                                                                                                                                                         MAlonzo.Code.Once.TypeCheck.Raw.C_OpGe_24)
                                                                                                                                                      (coe
@@ -13941,7 +13941,7 @@ du_sound'45'expr_34 v0
                                                                                                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v25 v26
                                                                                                                                         -> let v27
                                                                                                                                                  = coe
-                                                                                                                                                     MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                                                     MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                                                      (coe
                                                                                                                                                         MAlonzo.Code.Once.TypeCheck.Raw.C_OpEq_26)
                                                                                                                                                      (coe
@@ -14159,7 +14159,7 @@ du_sound'45'expr_34 v0
                                                                                                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v25 v26
                                                                                                                                         -> let v27
                                                                                                                                                  = coe
-                                                                                                                                                     MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                                                     MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                                                      (coe
                                                                                                                                                         MAlonzo.Code.Once.TypeCheck.Raw.C_OpNe_28)
                                                                                                                                                      (coe
@@ -16769,7 +16769,7 @@ du_sound'45'expr_34 v0
                                                                                                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v19 v20
                                                                                                                 -> let v21
                                                                                                                          = coe
-                                                                                                                             MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                             MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                              (coe
                                                                                                                                 MAlonzo.Code.Once.TypeCheck.Raw.C_OpLt_18)
                                                                                                                              (coe
@@ -16987,7 +16987,7 @@ du_sound'45'expr_34 v0
                                                                                                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v19 v20
                                                                                                                 -> let v21
                                                                                                                          = coe
-                                                                                                                             MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                             MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                              (coe
                                                                                                                                 MAlonzo.Code.Once.TypeCheck.Raw.C_OpLe_20)
                                                                                                                              (coe
@@ -17205,7 +17205,7 @@ du_sound'45'expr_34 v0
                                                                                                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v19 v20
                                                                                                                 -> let v21
                                                                                                                          = coe
-                                                                                                                             MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                             MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                              (coe
                                                                                                                                 MAlonzo.Code.Once.TypeCheck.Raw.C_OpGt_22)
                                                                                                                              (coe
@@ -17423,7 +17423,7 @@ du_sound'45'expr_34 v0
                                                                                                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v19 v20
                                                                                                                 -> let v21
                                                                                                                          = coe
-                                                                                                                             MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                             MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                              (coe
                                                                                                                                 MAlonzo.Code.Once.TypeCheck.Raw.C_OpGe_24)
                                                                                                                              (coe
@@ -17641,7 +17641,7 @@ du_sound'45'expr_34 v0
                                                                                                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v19 v20
                                                                                                                 -> let v21
                                                                                                                          = coe
-                                                                                                                             MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                             MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                              (coe
                                                                                                                                 MAlonzo.Code.Once.TypeCheck.Raw.C_OpEq_26)
                                                                                                                              (coe
@@ -17859,7 +17859,7 @@ du_sound'45'expr_34 v0
                                                                                                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v19 v20
                                                                                                                 -> let v21
                                                                                                                          = coe
-                                                                                                                             MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                             MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                              (coe
                                                                                                                                 MAlonzo.Code.Once.TypeCheck.Raw.C_OpNe_28)
                                                                                                                              (coe
@@ -20479,7 +20479,7 @@ du_sound'45'expr_34 v0
                                                                                                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v20 v21
                                                                                                             -> let v22
                                                                                                                      = coe
-                                                                                                                         MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                         MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                          (coe
                                                                                                                             MAlonzo.Code.Once.TypeCheck.Raw.C_OpLt_18)
                                                                                                                          (coe
@@ -20697,7 +20697,7 @@ du_sound'45'expr_34 v0
                                                                                                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v20 v21
                                                                                                             -> let v22
                                                                                                                      = coe
-                                                                                                                         MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                         MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                          (coe
                                                                                                                             MAlonzo.Code.Once.TypeCheck.Raw.C_OpLe_20)
                                                                                                                          (coe
@@ -20915,7 +20915,7 @@ du_sound'45'expr_34 v0
                                                                                                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v20 v21
                                                                                                             -> let v22
                                                                                                                      = coe
-                                                                                                                         MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                         MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                          (coe
                                                                                                                             MAlonzo.Code.Once.TypeCheck.Raw.C_OpGt_22)
                                                                                                                          (coe
@@ -21133,7 +21133,7 @@ du_sound'45'expr_34 v0
                                                                                                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v20 v21
                                                                                                             -> let v22
                                                                                                                      = coe
-                                                                                                                         MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                         MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                          (coe
                                                                                                                             MAlonzo.Code.Once.TypeCheck.Raw.C_OpGe_24)
                                                                                                                          (coe
@@ -21351,7 +21351,7 @@ du_sound'45'expr_34 v0
                                                                                                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v20 v21
                                                                                                             -> let v22
                                                                                                                      = coe
-                                                                                                                         MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                         MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                          (coe
                                                                                                                             MAlonzo.Code.Once.TypeCheck.Raw.C_OpEq_26)
                                                                                                                          (coe
@@ -21569,7 +21569,7 @@ du_sound'45'expr_34 v0
                                                                                                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v20 v21
                                                                                                             -> let v22
                                                                                                                      = coe
-                                                                                                                         MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                         MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                          (coe
                                                                                                                             MAlonzo.Code.Once.TypeCheck.Raw.C_OpNe_28)
                                                                                                                          (coe
@@ -24063,7 +24063,7 @@ du_sound'45'expr_34 v0
                                                                                                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v19 v20
                                                                                                                 -> let v21
                                                                                                                          = coe
-                                                                                                                             MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                             MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                              (coe
                                                                                                                                 MAlonzo.Code.Once.TypeCheck.Raw.C_OpLt_18)
                                                                                                                              (coe
@@ -24281,7 +24281,7 @@ du_sound'45'expr_34 v0
                                                                                                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v19 v20
                                                                                                                 -> let v21
                                                                                                                          = coe
-                                                                                                                             MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                             MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                              (coe
                                                                                                                                 MAlonzo.Code.Once.TypeCheck.Raw.C_OpLe_20)
                                                                                                                              (coe
@@ -24499,7 +24499,7 @@ du_sound'45'expr_34 v0
                                                                                                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v19 v20
                                                                                                                 -> let v21
                                                                                                                          = coe
-                                                                                                                             MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                             MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                              (coe
                                                                                                                                 MAlonzo.Code.Once.TypeCheck.Raw.C_OpGt_22)
                                                                                                                              (coe
@@ -24717,7 +24717,7 @@ du_sound'45'expr_34 v0
                                                                                                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v19 v20
                                                                                                                 -> let v21
                                                                                                                          = coe
-                                                                                                                             MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                             MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                              (coe
                                                                                                                                 MAlonzo.Code.Once.TypeCheck.Raw.C_OpGe_24)
                                                                                                                              (coe
@@ -24935,7 +24935,7 @@ du_sound'45'expr_34 v0
                                                                                                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v19 v20
                                                                                                                 -> let v21
                                                                                                                          = coe
-                                                                                                                             MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                             MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                              (coe
                                                                                                                                 MAlonzo.Code.Once.TypeCheck.Raw.C_OpEq_26)
                                                                                                                              (coe
@@ -25153,7 +25153,7 @@ du_sound'45'expr_34 v0
                                                                                                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v19 v20
                                                                                                                 -> let v21
                                                                                                                          = coe
-                                                                                                                             MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                             MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                              (coe
                                                                                                                                 MAlonzo.Code.Once.TypeCheck.Raw.C_OpNe_28)
                                                                                                                              (coe
@@ -27568,7 +27568,7 @@ du_sound'45'expr_34 v0
                                                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v13 v14
                                                                                         -> let v15
                                                                                                  = coe
-                                                                                                     MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                     MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                      (coe
                                                                                                         MAlonzo.Code.Once.TypeCheck.Raw.C_OpLt_18)
                                                                                                      (coe
@@ -27778,7 +27778,7 @@ du_sound'45'expr_34 v0
                                                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v13 v14
                                                                                         -> let v15
                                                                                                  = coe
-                                                                                                     MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                     MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                      (coe
                                                                                                         MAlonzo.Code.Once.TypeCheck.Raw.C_OpLe_20)
                                                                                                      (coe
@@ -27988,7 +27988,7 @@ du_sound'45'expr_34 v0
                                                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v13 v14
                                                                                         -> let v15
                                                                                                  = coe
-                                                                                                     MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                     MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                      (coe
                                                                                                         MAlonzo.Code.Once.TypeCheck.Raw.C_OpGt_22)
                                                                                                      (coe
@@ -28198,7 +28198,7 @@ du_sound'45'expr_34 v0
                                                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v13 v14
                                                                                         -> let v15
                                                                                                  = coe
-                                                                                                     MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                     MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                      (coe
                                                                                                         MAlonzo.Code.Once.TypeCheck.Raw.C_OpGe_24)
                                                                                                      (coe
@@ -28408,7 +28408,7 @@ du_sound'45'expr_34 v0
                                                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v13 v14
                                                                                         -> let v15
                                                                                                  = coe
-                                                                                                     MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                     MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                      (coe
                                                                                                         MAlonzo.Code.Once.TypeCheck.Raw.C_OpEq_26)
                                                                                                      (coe
@@ -28618,7 +28618,7 @@ du_sound'45'expr_34 v0
                                                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v13 v14
                                                                                         -> let v15
                                                                                                  = coe
-                                                                                                     MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                     MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                      (coe
                                                                                                         MAlonzo.Code.Once.TypeCheck.Raw.C_OpNe_28)
                                                                                                      (coe
@@ -30262,7 +30262,7 @@ du_complete'45'appTailWFraw_362 v0 v1
                                                   MAlonzo.Code.Once.Parser.ExprRelation.C_papp'45'arg_774
                                                   v4
                                                   (coe
-                                                     MAlonzo.Code.Once.TypeCheck.Raw.C_RInt_52
+                                                     MAlonzo.Code.Once.TypeCheck.Raw.C_RInt_54
                                                      (coe v15))
                                                   (coe
                                                      MAlonzo.Code.Once.Parser.ExprRelation.C_aao'45'TInt_156)
@@ -30291,7 +30291,7 @@ du_complete'45'appTailWFraw_362 v0 v1
                                                   MAlonzo.Code.Once.Parser.ExprRelation.C_papp'45'arg_774
                                                   v4
                                                   (coe
-                                                     MAlonzo.Code.Once.TypeCheck.Raw.C_RStringLit_54
+                                                     MAlonzo.Code.Once.TypeCheck.Raw.C_RStringLit_56
                                                      (coe v15))
                                                   (coe
                                                      MAlonzo.Code.Once.Parser.ExprRelation.C_aao'45'TString_162)
@@ -30401,7 +30401,7 @@ du_complete'45'unaryWFraw_390 v0 v1 v2
         -> case coe v0 of
              (:) v7 v8
                -> case coe v1 of
-                    MAlonzo.Code.Once.TypeCheck.Raw.C_RUnaryOp_60 v10
+                    MAlonzo.Code.Once.TypeCheck.Raw.C_RUnaryOp_62 v10
                       -> let v11
                                = coe du_complete'45'unaryWFraw_390 (coe v8) (coe v10) (coe v6) in
                          coe
@@ -34893,7 +34893,7 @@ du_complete'45'lamParamsWFraw_522 v0 v1 v2
         -> case coe v0 of
              (:) v8 v9
                -> case coe v1 of
-                    MAlonzo.Code.Once.TypeCheck.Raw.C_RLam_42 v10 v11
+                    MAlonzo.Code.Once.TypeCheck.Raw.C_RLam_44 v10 v11
                       -> let v12
                                = coe
                                    du_complete'45'lamParamsWFraw_522 (coe v9) (coe v11) (coe v7) in
@@ -35193,7 +35193,7 @@ du_complete'45'parenContWFraw_636 v0 v1 v2 v3
         -> case coe v0 of
              (:) v9 v10
                -> case coe v1 of
-                    MAlonzo.Code.Once.TypeCheck.Raw.C_RAnnot_56 v11 v12
+                    MAlonzo.Code.Once.TypeCheck.Raw.C_RAnnot_58 v11 v12
                       -> let v13
                                = coe
                                    MAlonzo.Code.Once.Grammar.ParserBridge.du_complete'45'typeWFraw_300

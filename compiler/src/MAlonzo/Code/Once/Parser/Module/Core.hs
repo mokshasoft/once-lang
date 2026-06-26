@@ -59,13 +59,13 @@ d_alias_28 v0
 d_Decl_32 = ()
 data T_Decl_32
   = C_DTypeSig_34 MAlonzo.Code.Agda.Builtin.String.T_String_6
-                  MAlonzo.Code.Once.Type.T_PolyType_240 |
+                  MAlonzo.Code.Once.Type.T_PolyType_244 |
     C_DFunDef_36 MAlonzo.Code.Agda.Builtin.String.T_String_6
                  (Maybe T_AllocStrategy_8)
                  MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 |
     C_DSignature_38 MAlonzo.Code.Agda.Builtin.String.T_String_6
                     (Maybe MAlonzo.Code.Agda.Builtin.String.T_String_6)
-                    MAlonzo.Code.Once.Type.T_PolyType_240
+                    MAlonzo.Code.Once.Type.T_PolyType_244
                     (Maybe MAlonzo.Code.Once.SigEffect.T_SigEffect_4) |
     C_DTypeAlias_40 MAlonzo.Code.Agda.Builtin.String.T_String_6
                     [MAlonzo.Code.Agda.Builtin.String.T_String_6]

@@ -20,8 +20,8 @@ import qualified Data.Text
 import qualified MAlonzo.Code.Agda.Builtin.Equality
 import qualified MAlonzo.Code.Agda.Builtin.Maybe
 import qualified MAlonzo.Code.Agda.Builtin.Sigma
-import qualified MAlonzo.Code.Agda.Builtin.String
 import qualified MAlonzo.Code.Data.Sum.Base
+import qualified MAlonzo.Code.Once.CanonicalName
 import qualified MAlonzo.Code.Once.Functor.Translate
 import qualified MAlonzo.Code.Once.Semantics.Functor
 import qualified MAlonzo.Code.Once.Semantics.Value
@@ -449,11 +449,12 @@ d_isInt'63'_120 v0
 -- Once.Denotation.Trace.SigOpEvent
 d_SigOpEvent_122 = ()
 data T_SigOpEvent_122
-  = C_mk'45'event_132 MAlonzo.Code.Agda.Builtin.String.T_String_6
+  = C_mk'45'event_132 MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4
                       (Maybe Integer)
 -- Once.Denotation.Trace.SigOpEvent.ev-name
 d_ev'45'name_128 ::
-  T_SigOpEvent_122 -> MAlonzo.Code.Agda.Builtin.String.T_String_6
+  T_SigOpEvent_122 ->
+  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4
 d_ev'45'name_128 v0
   = case coe v0 of
       C_mk'45'event_132 v1 v2 -> coe v1
@@ -464,28 +465,40 @@ d_ev'45'argℕ_130 v0
   = case coe v0 of
       C_mk'45'event_132 v1 v2 -> coe v2
       _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.Denotation.Trace.mkEvent-name
+d_mkEvent'45'name_136 ::
+  MAlonzo.Code.Once.Type.T_Type_112 ->
+  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  Maybe MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  AgdaAny -> T_SigOpEvent_122
+d_mkEvent'45'name_136 ~v0 v1 v2 v3
+  = du_mkEvent'45'name_136 v1 v2 v3
+du_mkEvent'45'name_136 ::
+  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  Maybe MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  AgdaAny -> T_SigOpEvent_122
+du_mkEvent'45'name_136 v0 v1 v2
+  = case coe v1 of
+      MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v3
+        -> coe
+             C_mk'45'event_132 (coe v0)
+             (coe MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe v2))
+      MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
+        -> coe C_mk'45'event_132 (coe v0) (coe v1)
+      _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Denotation.Trace.mkEvent
-d_mkEvent_138 ::
+d_mkEvent_150 ::
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_150 ->
   AgdaAny -> T_SigOpEvent_122
-d_mkEvent_138 v0 ~v1 v2 v3 = du_mkEvent_138 v0 v2 v3
-du_mkEvent_138 ::
+d_mkEvent_150 v0 ~v1 v2 v3 = du_mkEvent_150 v0 v2 v3
+du_mkEvent_150 ::
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_150 ->
   AgdaAny -> T_SigOpEvent_122
-du_mkEvent_138 v0 v1 v2
-  = let v3 = d_isInt'63'_120 (coe v0) in
-    coe
-      (case coe v3 of
-         MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v4
-           -> coe
-                C_mk'45'event_132
-                (coe MAlonzo.Code.Once.SigOp.Info.d_name_160 (coe v1))
-                (coe MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe v2))
-         MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
-           -> coe
-                C_mk'45'event_132
-                (coe MAlonzo.Code.Once.SigOp.Info.d_name_160 (coe v1)) (coe v3)
-         _ -> MAlonzo.RTE.mazUnreachableError)
+du_mkEvent_150 v0 v1 v2
+  = coe
+      du_mkEvent'45'name_136
+      (coe MAlonzo.Code.Once.SigOp.Info.d_name_160 (coe v1))
+      (coe d_isInt'63'_120 (coe v0)) (coe v2)

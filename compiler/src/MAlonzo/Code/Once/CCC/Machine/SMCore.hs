@@ -79,7 +79,7 @@ data T_StoredValue_66
   = C_SV'45'Ptr_70 MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 |
     C_SV'45'Tag_72 Integer |
     C_SV'45'Lit_76 MAlonzo.Code.Once.Type.T_Type_112
-                   MAlonzo.Code.Once.Type.T_FitsInReg_192 AgdaAny |
+                   MAlonzo.Code.Once.Type.T_FitsInReg_196 AgdaAny |
     C_SV'45'Code_78 Integer
 -- Once.CCC.Machine.SMCore.sucLoc
 d_sucLoc_82 ::
@@ -1719,7 +1719,7 @@ data T_AbstractInstr_2048
                           MAlonzo.Code.Once.Type.T_Type_112
                           MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_150 |
     C_instr'45'load'45'const_2102 MAlonzo.Code.Once.Type.T_Type_112
-                                  MAlonzo.Code.Once.Type.T_FitsInReg_192 AgdaAny |
+                                  MAlonzo.Code.Once.Type.T_FitsInReg_196 AgdaAny |
     C_instr'45'load'45'code'45'addr_2104 Integer |
     C_instr'45'save'45'closure'45'reg_2106 |
     C_instr'45'load'45'tag'45'lit_2108 Integer |
@@ -2326,7 +2326,7 @@ du_unit'45'storedvalue_2366 :: T_StoredValue_66
 du_unit'45'storedvalue_2366
   = coe
       C_SV'45'Lit_76 (coe MAlonzo.Code.Once.Type.C_Int_136)
-      (coe MAlonzo.Code.Once.Type.C_fits'45'int_194) (coe (0 :: Integer))
+      (coe MAlonzo.Code.Once.Type.C_fits'45'int_198) (coe (0 :: Integer))
 -- Once.CCC.Machine.SMCore.AbstractExec.structured-pure-sigop-output
 d_structured'45'pure'45'sigop'45'output_2372
   = error
@@ -2340,7 +2340,7 @@ d_pure'45'sigop'45'output_2378 ::
   T_LocState_456 -> T_StoredValue_66
 d_pure'45'sigop'45'output_2378 v0 v1 v2 v3 v4
   = let v5
-          = MAlonzo.Code.Once.Type.d_fits'45'in'45'reg'63'_200 (coe v2) in
+          = MAlonzo.Code.Once.Type.d_fits'45'in'45'reg'63'_204 (coe v2) in
     coe
       (case coe v5 of
          MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v6

@@ -21,6 +21,7 @@ import qualified MAlonzo.Code.Agda.Builtin.String
 import qualified MAlonzo.Code.Data.Integer.Base
 import qualified MAlonzo.Code.Data.Integer.Show
 import qualified MAlonzo.Code.Data.String.Base
+import qualified MAlonzo.Code.Once.CanonicalName
 import qualified MAlonzo.Code.Once.SigOp.Info
 
 -- Once.Arith.SigOp.IntLit.lit-int-name
@@ -37,7 +38,9 @@ d_lit'45'int'45'info_12 ::
 d_lit'45'int'45'info_12 v0
   = coe
       MAlonzo.Code.Once.SigOp.Info.du_mk'45'info_216
-      (coe d_lit'45'int'45'name_8 (coe v0))
+      (coe
+         MAlonzo.Code.Once.CanonicalName.d_bare_12
+         (coe d_lit'45'int'45'name_8 (coe v0)))
       (coe
          (\ v1 ->
             MAlonzo.Code.Data.Integer.Base.d_'8739'_'8739'_18 (coe v0)))

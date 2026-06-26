@@ -101,10 +101,10 @@ data ImportRef = ImportRef
 -- MAlonzo conversion (update suffixes after regenerating)
 ------------------------------------------------------------------------
 
-toMStage :: Stage -> MC.T_Stage_650
-toMStage Parse = MC.C_Parse_652
-toMStage Check = MC.C_Check_654
-toMStage Build = MC.C_Build_656
+toMStage :: Stage -> MC.T_Stage_678
+toMStage Parse = MC.C_Parse_680
+toMStage Check = MC.C_Check_682
+toMStage Build = MC.C_Build_684
 
 -- Single shared `Arch` enum (Once.Target.Arch). The compiler and the verified
 -- pipeline now use the SAME type, so one converter serves both call sites
@@ -137,12 +137,12 @@ fromMPolyFunInfo pfi = PolyFunSig
   , polyFunSigType = agdaToText (MT.d_showPolyType_468 (MP.d_pfunType_148 pfi))
   }
 
-fromMResult :: MC.T_CompileResult_658 -> CompileResult
-fromMResult (MC.C_Parsed_660 fis pfis) =
+fromMResult :: MC.T_CompileResult_686 -> CompileResult
+fromMResult (MC.C_Parsed_688 fis pfis) =
   Parsed (map fromMFunInfo fis) (map fromMPolyFunInfo pfis)
-fromMResult (MC.C_Checked_662 _)  = Checked
-fromMResult (MC.C_Built_664 asm)  = Built (agdaToText asm)
-fromMResult (MC.C_Error_666 err)  = Error (agdaToText err)
+fromMResult (MC.C_Checked_690 _)  = Checked
+fromMResult (MC.C_Built_692 asm)  = Built (agdaToText asm)
+fromMResult (MC.C_Error_694 err)  = Error (agdaToText err)
 
 ------------------------------------------------------------------------
 -- One-shot legacy pipeline
@@ -150,7 +150,7 @@ fromMResult (MC.C_Error_666 err)  = Error (agdaToText err)
 
 compile :: Stage -> Bool -> Arch -> Text -> CompileResult
 compile stage doOpt arch source =
-  fromMResult (MC.d_compile_702 (toMAllocMode AllocHeap) (toMStage stage) doOpt (toMArch arch) (textToAgda source))
+  fromMResult (MC.d_compile_730 (toMAllocMode AllocHeap) (toMStage stage) doOpt (toMArch arch) (textToAgda source))
 
 ------------------------------------------------------------------------
 -- AST-level pipeline

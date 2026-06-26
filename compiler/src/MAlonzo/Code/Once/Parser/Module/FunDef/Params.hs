@@ -35,7 +35,7 @@ d_wrapLams_10 v0 v1
       [] -> coe v1
       (:) v2 v3
         -> coe
-             MAlonzo.Code.Once.TypeCheck.Raw.C_RLam_42 (coe v2)
+             MAlonzo.Code.Once.TypeCheck.Raw.C_RLam_44 (coe v2)
              (coe d_wrapLams_10 (coe v3) (coe v1))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Parser.Module.FunDef.Params.parseParamsB

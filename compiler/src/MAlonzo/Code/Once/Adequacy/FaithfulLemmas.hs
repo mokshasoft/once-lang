@@ -93,13 +93,13 @@ du_algIR_164 v0 v1 v2 v3
          (coe
             MAlonzo.Code.Once.Type.C__'8658''91'_'93'__130
             (coe
-               MAlonzo.Code.Once.Type.d_'10214'_'10215'T_162 (coe v0) (coe v1))
+               MAlonzo.Code.Once.Type.d_'10214'_'10215'T_166 (coe v0) (coe v1))
             (coe
                MAlonzo.Code.Once.Type.C_mk'45'kind_50
                (coe MAlonzo.Code.Once.Type.C_Many_10) (coe v2))
             (coe v1))
          (coe
-            MAlonzo.Code.Once.Type.d_'10214'_'10215'T_162 (coe v0) (coe v1)))
+            MAlonzo.Code.Once.Type.d_'10214'_'10215'T_166 (coe v0) (coe v1)))
       (coe MAlonzo.Code.Once.IR.C_apply_96)
       (coe
          MAlonzo.Code.Once.IR.C_'10216'_'44'_'10217'_38
@@ -114,7 +114,7 @@ du_algIR_164 v0 v1 v2 v3
                (coe
                   MAlonzo.Code.Once.Type.C__'8658''91'_'93'__130
                   (coe
-                     MAlonzo.Code.Once.Type.d_'10214'_'10215'T_162 (coe v0) (coe v1))
+                     MAlonzo.Code.Once.Type.d_'10214'_'10215'T_166 (coe v0) (coe v1))
                   (coe
                      MAlonzo.Code.Once.Type.C_mk'45'kind_50
                      (coe MAlonzo.Code.Once.Type.C_Many_10) (coe v2))
@@ -170,7 +170,7 @@ du_coalgIR_224 v0 v1 v2 v3
          (coe
             MAlonzo.Code.Once.Type.C__'8658''91'_'93'__130 (coe v1) (coe v2)
             (coe
-               MAlonzo.Code.Once.Type.d_'10214'_'10215'T_162 (coe v0) (coe v1)))
+               MAlonzo.Code.Once.Type.d_'10214'_'10215'T_166 (coe v0) (coe v1)))
          (coe v1))
       (coe MAlonzo.Code.Once.IR.C_apply_96)
       (coe
@@ -186,7 +186,7 @@ du_coalgIR_224 v0 v1 v2 v3
                (coe
                   MAlonzo.Code.Once.Type.C__'8658''91'_'93'__130 (coe v1) (coe v2)
                   (coe
-                     MAlonzo.Code.Once.Type.d_'10214'_'10215'T_162 (coe v0) (coe v1)))
+                     MAlonzo.Code.Once.Type.d_'10214'_'10215'T_166 (coe v0) (coe v1)))
                (coe MAlonzo.Code.Once.IR.C_Heap_8) (coe v3))
             (coe MAlonzo.Code.Once.IR.C_terminal_74))
          (coe MAlonzo.Code.Once.IR.C_id_22)
@@ -217,7 +217,7 @@ du_step'738'_226 v0 v1 v2 v3 v4
          (coe
             MAlonzo.Code.Once.Type.C__'8658''91'_'93'__130 (coe v1) (coe v2)
             (coe
-               MAlonzo.Code.Once.Type.d_'10214'_'10215'T_162 (coe v0) (coe v1)))
+               MAlonzo.Code.Once.Type.d_'10214'_'10215'T_166 (coe v0) (coe v1)))
          (coe v3) (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8))
       (coe
          (\ v5 ->

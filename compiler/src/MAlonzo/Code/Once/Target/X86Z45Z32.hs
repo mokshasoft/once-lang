@@ -23,6 +23,7 @@ import qualified MAlonzo.Code.Data.String.Base
 import qualified MAlonzo.Code.Once.CCC.Codegen.IRToTrace
 import qualified MAlonzo.Code.Once.CCC.Target.X86Z45Z32.AbstractToX86Z45Z32
 import qualified MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Emit
+import qualified MAlonzo.Code.Once.CanonicalName
 import qualified MAlonzo.Code.Once.IR
 import qualified MAlonzo.Code.Once.Target
 import qualified MAlonzo.Code.Once.Target.Symbol
@@ -40,7 +41,7 @@ d_x86'45'32'45'asmHeader_6
       (".section .text\n\n" :: Data.Text.Text)
 -- Once.Target.X86-32.x86-32-functionPrologue
 d_x86'45'32'45'functionPrologue_8 ::
-  MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
+  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
 d_x86'45'32'45'functionPrologue_8 v0
   = coe
@@ -48,13 +49,15 @@ d_x86'45'32'45'functionPrologue_8 v0
       (".globl " :: Data.Text.Text)
       (coe
          MAlonzo.Code.Data.String.Base.d__'43''43'__20
-         (MAlonzo.Code.Once.Target.Symbol.d_once'45'symbol_8 (coe v0))
+         (MAlonzo.Code.Once.Target.Symbol.d_once'45'symbol'45'path_52
+            (coe v0))
          (coe
             MAlonzo.Code.Data.String.Base.d__'43''43'__20
             ("\n" :: Data.Text.Text)
             (coe
                MAlonzo.Code.Data.String.Base.d__'43''43'__20
-               (MAlonzo.Code.Once.Target.Symbol.d_once'45'symbol_8 (coe v0))
+               (MAlonzo.Code.Once.Target.Symbol.d_once'45'symbol'45'path_52
+                  (coe v0))
                (":\n" :: Data.Text.Text))))
 -- Once.Target.X86-32.x86-32-irToBodies
 d_x86'45'32'45'irToBodies_16 ::

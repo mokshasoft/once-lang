@@ -19,6 +19,7 @@ import qualified MAlonzo.RTE
 import qualified Data.Text
 import qualified MAlonzo.Code.Agda.Builtin.String
 import qualified MAlonzo.Code.Once.Arith.SigOp.Builders
+import qualified MAlonzo.Code.Once.CanonicalName
 import qualified MAlonzo.Code.Once.IR
 import qualified MAlonzo.Code.Once.Surface.IR
 import qualified MAlonzo.Code.Once.Type
@@ -34,7 +35,7 @@ d_sigOp'45'desugar_10 v0 v1 v2
       MAlonzo.Code.Once.IR.C_SigOp_166
       (coe
          MAlonzo.Code.Once.Arith.SigOp.Builders.d_generic'45'info_206 v0 v1
-         v2)
+         (MAlonzo.Code.Once.CanonicalName.d_bare_12 (coe v2)))
 -- Once.Surface.Desugar.desugar
 d_desugar_18 ::
   MAlonzo.Code.Once.Type.T_Type_112 ->

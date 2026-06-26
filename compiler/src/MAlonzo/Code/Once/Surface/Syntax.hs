@@ -22,6 +22,7 @@ import qualified MAlonzo.Code.Agda.Builtin.Equality
 import qualified MAlonzo.Code.Agda.Builtin.String
 import qualified MAlonzo.Code.Data.Bool.Base
 import qualified MAlonzo.Code.Data.Fin.Base
+import qualified MAlonzo.Code.Once.CanonicalName
 import qualified MAlonzo.Code.Once.Functor.Translate
 import qualified MAlonzo.Code.Once.IR
 import qualified MAlonzo.Code.Once.Type
@@ -262,7 +263,7 @@ data T_Expr_184
     C_eq_474 T_Usage_60 T_Usage_60 T_Expr_184 T_Expr_184 |
     C_ne_484 T_Usage_60 T_Usage_60 T_Expr_184 T_Expr_184 |
     C_arr''_496 T_Expr_184 |
-    C_sigOp_504 MAlonzo.Code.Agda.Builtin.String.T_String_6 |
+    C_sigOp_504 MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 |
     C_closure_512 MAlonzo.Code.Agda.Builtin.String.T_String_6 |
     C_poly_522 MAlonzo.Code.Agda.Builtin.String.T_String_6 |
     C_lift'45'morphism_534 MAlonzo.Code.Once.IR.T_IR_16 |

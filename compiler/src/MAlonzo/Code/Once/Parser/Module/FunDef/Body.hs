@@ -2152,7 +2152,7 @@ d_parseFunBodyB_12 v0 v1 v2 v3
                                                                                                                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v33 v34
                                                                                                                                                  -> let v35
                                                                                                                                                           = coe
-                                                                                                                                                              MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                                                              MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                                                               (coe
                                                                                                                                                                  MAlonzo.Code.Once.TypeCheck.Raw.C_OpLt_18)
                                                                                                                                                               (coe
@@ -2370,7 +2370,7 @@ d_parseFunBodyB_12 v0 v1 v2 v3
                                                                                                                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v33 v34
                                                                                                                                                  -> let v35
                                                                                                                                                           = coe
-                                                                                                                                                              MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                                                              MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                                                               (coe
                                                                                                                                                                  MAlonzo.Code.Once.TypeCheck.Raw.C_OpLe_20)
                                                                                                                                                               (coe
@@ -2588,7 +2588,7 @@ d_parseFunBodyB_12 v0 v1 v2 v3
                                                                                                                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v33 v34
                                                                                                                                                  -> let v35
                                                                                                                                                           = coe
-                                                                                                                                                              MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                                                              MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                                                               (coe
                                                                                                                                                                  MAlonzo.Code.Once.TypeCheck.Raw.C_OpGt_22)
                                                                                                                                                               (coe
@@ -2806,7 +2806,7 @@ d_parseFunBodyB_12 v0 v1 v2 v3
                                                                                                                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v33 v34
                                                                                                                                                  -> let v35
                                                                                                                                                           = coe
-                                                                                                                                                              MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                                                              MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                                                               (coe
                                                                                                                                                                  MAlonzo.Code.Once.TypeCheck.Raw.C_OpGe_24)
                                                                                                                                                               (coe
@@ -3024,7 +3024,7 @@ d_parseFunBodyB_12 v0 v1 v2 v3
                                                                                                                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v33 v34
                                                                                                                                                  -> let v35
                                                                                                                                                           = coe
-                                                                                                                                                              MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                                                              MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                                                               (coe
                                                                                                                                                                  MAlonzo.Code.Once.TypeCheck.Raw.C_OpEq_26)
                                                                                                                                                               (coe
@@ -3242,7 +3242,7 @@ d_parseFunBodyB_12 v0 v1 v2 v3
                                                                                                                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v33 v34
                                                                                                                                                  -> let v35
                                                                                                                                                           = coe
-                                                                                                                                                              MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                                                              MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                                                               (coe
                                                                                                                                                                  MAlonzo.Code.Once.TypeCheck.Raw.C_OpNe_28)
                                                                                                                                                               (coe
@@ -5741,7 +5741,7 @@ d_parseFunBodyB_12 v0 v1 v2 v3
                                                                                                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v32 v33
                                                                                                                                                      -> let v34
                                                                                                                                                               = coe
-                                                                                                                                                                  MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                                                                  MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                                                                   (coe
                                                                                                                                                                      MAlonzo.Code.Once.TypeCheck.Raw.C_OpLt_18)
                                                                                                                                                                   (coe
@@ -5959,7 +5959,7 @@ d_parseFunBodyB_12 v0 v1 v2 v3
                                                                                                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v32 v33
                                                                                                                                                      -> let v34
                                                                                                                                                               = coe
-                                                                                                                                                                  MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                                                                  MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                                                                   (coe
                                                                                                                                                                      MAlonzo.Code.Once.TypeCheck.Raw.C_OpLe_20)
                                                                                                                                                                   (coe
@@ -6177,7 +6177,7 @@ d_parseFunBodyB_12 v0 v1 v2 v3
                                                                                                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v32 v33
                                                                                                                                                      -> let v34
                                                                                                                                                               = coe
-                                                                                                                                                                  MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                                                                  MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                                                                   (coe
                                                                                                                                                                      MAlonzo.Code.Once.TypeCheck.Raw.C_OpGt_22)
                                                                                                                                                                   (coe
@@ -6395,7 +6395,7 @@ d_parseFunBodyB_12 v0 v1 v2 v3
                                                                                                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v32 v33
                                                                                                                                                      -> let v34
                                                                                                                                                               = coe
-                                                                                                                                                                  MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                                                                  MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                                                                   (coe
                                                                                                                                                                      MAlonzo.Code.Once.TypeCheck.Raw.C_OpGe_24)
                                                                                                                                                                   (coe
@@ -6613,7 +6613,7 @@ d_parseFunBodyB_12 v0 v1 v2 v3
                                                                                                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v32 v33
                                                                                                                                                      -> let v34
                                                                                                                                                               = coe
-                                                                                                                                                                  MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                                                                  MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                                                                   (coe
                                                                                                                                                                      MAlonzo.Code.Once.TypeCheck.Raw.C_OpEq_26)
                                                                                                                                                                   (coe
@@ -6831,7 +6831,7 @@ d_parseFunBodyB_12 v0 v1 v2 v3
                                                                                                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v32 v33
                                                                                                                                                      -> let v34
                                                                                                                                                               = coe
-                                                                                                                                                                  MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                                                                  MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                                                                   (coe
                                                                                                                                                                      MAlonzo.Code.Once.TypeCheck.Raw.C_OpNe_28)
                                                                                                                                                                   (coe
@@ -9468,7 +9468,7 @@ d_parseFunBodyB_12 v0 v1 v2 v3
                                                                                                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v32 v33
                                                                                                                                                      -> let v34
                                                                                                                                                               = coe
-                                                                                                                                                                  MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                                                                  MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                                                                   (coe
                                                                                                                                                                      MAlonzo.Code.Once.TypeCheck.Raw.C_OpLt_18)
                                                                                                                                                                   (coe
@@ -9686,7 +9686,7 @@ d_parseFunBodyB_12 v0 v1 v2 v3
                                                                                                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v32 v33
                                                                                                                                                      -> let v34
                                                                                                                                                               = coe
-                                                                                                                                                                  MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                                                                  MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                                                                   (coe
                                                                                                                                                                      MAlonzo.Code.Once.TypeCheck.Raw.C_OpLe_20)
                                                                                                                                                                   (coe
@@ -9904,7 +9904,7 @@ d_parseFunBodyB_12 v0 v1 v2 v3
                                                                                                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v32 v33
                                                                                                                                                      -> let v34
                                                                                                                                                               = coe
-                                                                                                                                                                  MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                                                                  MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                                                                   (coe
                                                                                                                                                                      MAlonzo.Code.Once.TypeCheck.Raw.C_OpGt_22)
                                                                                                                                                                   (coe
@@ -10122,7 +10122,7 @@ d_parseFunBodyB_12 v0 v1 v2 v3
                                                                                                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v32 v33
                                                                                                                                                      -> let v34
                                                                                                                                                               = coe
-                                                                                                                                                                  MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                                                                  MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                                                                   (coe
                                                                                                                                                                      MAlonzo.Code.Once.TypeCheck.Raw.C_OpGe_24)
                                                                                                                                                                   (coe
@@ -10340,7 +10340,7 @@ d_parseFunBodyB_12 v0 v1 v2 v3
                                                                                                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v32 v33
                                                                                                                                                      -> let v34
                                                                                                                                                               = coe
-                                                                                                                                                                  MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                                                                  MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                                                                   (coe
                                                                                                                                                                      MAlonzo.Code.Once.TypeCheck.Raw.C_OpEq_26)
                                                                                                                                                                   (coe
@@ -10558,7 +10558,7 @@ d_parseFunBodyB_12 v0 v1 v2 v3
                                                                                                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v32 v33
                                                                                                                                                      -> let v34
                                                                                                                                                               = coe
-                                                                                                                                                                  MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                                                                  MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                                                                   (coe
                                                                                                                                                                      MAlonzo.Code.Once.TypeCheck.Raw.C_OpNe_28)
                                                                                                                                                                   (coe
@@ -13057,7 +13057,7 @@ d_parseFunBodyB_12 v0 v1 v2 v3
                                                                                                                                                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v31 v32
                                                                                                                                                          -> let v33
                                                                                                                                                                   = coe
-                                                                                                                                                                      MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                                                                      MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                                                                       (coe
                                                                                                                                                                          MAlonzo.Code.Once.TypeCheck.Raw.C_OpLt_18)
                                                                                                                                                                       (coe
@@ -13275,7 +13275,7 @@ d_parseFunBodyB_12 v0 v1 v2 v3
                                                                                                                                                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v31 v32
                                                                                                                                                          -> let v33
                                                                                                                                                                   = coe
-                                                                                                                                                                      MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                                                                      MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                                                                       (coe
                                                                                                                                                                          MAlonzo.Code.Once.TypeCheck.Raw.C_OpLe_20)
                                                                                                                                                                       (coe
@@ -13493,7 +13493,7 @@ d_parseFunBodyB_12 v0 v1 v2 v3
                                                                                                                                                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v31 v32
                                                                                                                                                          -> let v33
                                                                                                                                                                   = coe
-                                                                                                                                                                      MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                                                                      MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                                                                       (coe
                                                                                                                                                                          MAlonzo.Code.Once.TypeCheck.Raw.C_OpGt_22)
                                                                                                                                                                       (coe
@@ -13711,7 +13711,7 @@ d_parseFunBodyB_12 v0 v1 v2 v3
                                                                                                                                                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v31 v32
                                                                                                                                                          -> let v33
                                                                                                                                                                   = coe
-                                                                                                                                                                      MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                                                                      MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                                                                       (coe
                                                                                                                                                                          MAlonzo.Code.Once.TypeCheck.Raw.C_OpGe_24)
                                                                                                                                                                       (coe
@@ -13929,7 +13929,7 @@ d_parseFunBodyB_12 v0 v1 v2 v3
                                                                                                                                                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v31 v32
                                                                                                                                                          -> let v33
                                                                                                                                                                   = coe
-                                                                                                                                                                      MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                                                                      MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                                                                       (coe
                                                                                                                                                                          MAlonzo.Code.Once.TypeCheck.Raw.C_OpEq_26)
                                                                                                                                                                       (coe
@@ -14147,7 +14147,7 @@ d_parseFunBodyB_12 v0 v1 v2 v3
                                                                                                                                                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v31 v32
                                                                                                                                                          -> let v33
                                                                                                                                                                   = coe
-                                                                                                                                                                      MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                                                                      MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                                                                       (coe
                                                                                                                                                                          MAlonzo.Code.Once.TypeCheck.Raw.C_OpNe_28)
                                                                                                                                                                       (coe
@@ -16760,7 +16760,7 @@ d_parseFunBodyB_12 v0 v1 v2 v3
                                                                                                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v25 v26
                                                                                                                                  -> let v27
                                                                                                                                           = coe
-                                                                                                                                              MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                                              MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                                               (coe
                                                                                                                                                  MAlonzo.Code.Once.TypeCheck.Raw.C_OpLt_18)
                                                                                                                                               (coe
@@ -16978,7 +16978,7 @@ d_parseFunBodyB_12 v0 v1 v2 v3
                                                                                                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v25 v26
                                                                                                                                  -> let v27
                                                                                                                                           = coe
-                                                                                                                                              MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                                              MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                                               (coe
                                                                                                                                                  MAlonzo.Code.Once.TypeCheck.Raw.C_OpLe_20)
                                                                                                                                               (coe
@@ -17196,7 +17196,7 @@ d_parseFunBodyB_12 v0 v1 v2 v3
                                                                                                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v25 v26
                                                                                                                                  -> let v27
                                                                                                                                           = coe
-                                                                                                                                              MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                                              MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                                               (coe
                                                                                                                                                  MAlonzo.Code.Once.TypeCheck.Raw.C_OpGt_22)
                                                                                                                                               (coe
@@ -17414,7 +17414,7 @@ d_parseFunBodyB_12 v0 v1 v2 v3
                                                                                                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v25 v26
                                                                                                                                  -> let v27
                                                                                                                                           = coe
-                                                                                                                                              MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                                              MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                                               (coe
                                                                                                                                                  MAlonzo.Code.Once.TypeCheck.Raw.C_OpGe_24)
                                                                                                                                               (coe
@@ -17632,7 +17632,7 @@ d_parseFunBodyB_12 v0 v1 v2 v3
                                                                                                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v25 v26
                                                                                                                                  -> let v27
                                                                                                                                           = coe
-                                                                                                                                              MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                                              MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                                               (coe
                                                                                                                                                  MAlonzo.Code.Once.TypeCheck.Raw.C_OpEq_26)
                                                                                                                                               (coe
@@ -17850,7 +17850,7 @@ d_parseFunBodyB_12 v0 v1 v2 v3
                                                                                                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v25 v26
                                                                                                                                  -> let v27
                                                                                                                                           = coe
-                                                                                                                                              MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                                              MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                                               (coe
                                                                                                                                                  MAlonzo.Code.Once.TypeCheck.Raw.C_OpNe_28)
                                                                                                                                               (coe
@@ -20481,7 +20481,7 @@ d_parseFunBodyB_12 v0 v1 v2 v3
                                                                                                                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v26 v27
                                                                                                                              -> let v28
                                                                                                                                       = coe
-                                                                                                                                          MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                                          MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                                           (coe
                                                                                                                                              MAlonzo.Code.Once.TypeCheck.Raw.C_OpLt_18)
                                                                                                                                           (coe
@@ -20699,7 +20699,7 @@ d_parseFunBodyB_12 v0 v1 v2 v3
                                                                                                                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v26 v27
                                                                                                                              -> let v28
                                                                                                                                       = coe
-                                                                                                                                          MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                                          MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                                           (coe
                                                                                                                                              MAlonzo.Code.Once.TypeCheck.Raw.C_OpLe_20)
                                                                                                                                           (coe
@@ -20917,7 +20917,7 @@ d_parseFunBodyB_12 v0 v1 v2 v3
                                                                                                                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v26 v27
                                                                                                                              -> let v28
                                                                                                                                       = coe
-                                                                                                                                          MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                                          MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                                           (coe
                                                                                                                                              MAlonzo.Code.Once.TypeCheck.Raw.C_OpGt_22)
                                                                                                                                           (coe
@@ -21135,7 +21135,7 @@ d_parseFunBodyB_12 v0 v1 v2 v3
                                                                                                                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v26 v27
                                                                                                                              -> let v28
                                                                                                                                       = coe
-                                                                                                                                          MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                                          MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                                           (coe
                                                                                                                                              MAlonzo.Code.Once.TypeCheck.Raw.C_OpGe_24)
                                                                                                                                           (coe
@@ -21353,7 +21353,7 @@ d_parseFunBodyB_12 v0 v1 v2 v3
                                                                                                                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v26 v27
                                                                                                                              -> let v28
                                                                                                                                       = coe
-                                                                                                                                          MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                                          MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                                           (coe
                                                                                                                                              MAlonzo.Code.Once.TypeCheck.Raw.C_OpEq_26)
                                                                                                                                           (coe
@@ -21571,7 +21571,7 @@ d_parseFunBodyB_12 v0 v1 v2 v3
                                                                                                                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v26 v27
                                                                                                                              -> let v28
                                                                                                                                       = coe
-                                                                                                                                          MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                                          MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                                           (coe
                                                                                                                                              MAlonzo.Code.Once.TypeCheck.Raw.C_OpNe_28)
                                                                                                                                           (coe
@@ -24068,7 +24068,7 @@ d_parseFunBodyB_12 v0 v1 v2 v3
                                                                                                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v25 v26
                                                                                                                                  -> let v27
                                                                                                                                           = coe
-                                                                                                                                              MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                                              MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                                               (coe
                                                                                                                                                  MAlonzo.Code.Once.TypeCheck.Raw.C_OpLt_18)
                                                                                                                                               (coe
@@ -24286,7 +24286,7 @@ d_parseFunBodyB_12 v0 v1 v2 v3
                                                                                                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v25 v26
                                                                                                                                  -> let v27
                                                                                                                                           = coe
-                                                                                                                                              MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                                              MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                                               (coe
                                                                                                                                                  MAlonzo.Code.Once.TypeCheck.Raw.C_OpLe_20)
                                                                                                                                               (coe
@@ -24504,7 +24504,7 @@ d_parseFunBodyB_12 v0 v1 v2 v3
                                                                                                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v25 v26
                                                                                                                                  -> let v27
                                                                                                                                           = coe
-                                                                                                                                              MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                                              MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                                               (coe
                                                                                                                                                  MAlonzo.Code.Once.TypeCheck.Raw.C_OpGt_22)
                                                                                                                                               (coe
@@ -24722,7 +24722,7 @@ d_parseFunBodyB_12 v0 v1 v2 v3
                                                                                                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v25 v26
                                                                                                                                  -> let v27
                                                                                                                                           = coe
-                                                                                                                                              MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                                              MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                                               (coe
                                                                                                                                                  MAlonzo.Code.Once.TypeCheck.Raw.C_OpGe_24)
                                                                                                                                               (coe
@@ -24940,7 +24940,7 @@ d_parseFunBodyB_12 v0 v1 v2 v3
                                                                                                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v25 v26
                                                                                                                                  -> let v27
                                                                                                                                           = coe
-                                                                                                                                              MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                                              MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                                               (coe
                                                                                                                                                  MAlonzo.Code.Once.TypeCheck.Raw.C_OpEq_26)
                                                                                                                                               (coe
@@ -25158,7 +25158,7 @@ d_parseFunBodyB_12 v0 v1 v2 v3
                                                                                                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v25 v26
                                                                                                                                  -> let v27
                                                                                                                                           = coe
-                                                                                                                                              MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                                              MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                                               (coe
                                                                                                                                                  MAlonzo.Code.Once.TypeCheck.Raw.C_OpNe_28)
                                                                                                                                               (coe
@@ -27765,7 +27765,7 @@ d_parseFunBodyB_12 v0 v1 v2 v3
                                                                                                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v19 v20
                                                                                                          -> let v21
                                                                                                                   = coe
-                                                                                                                      MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                      MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                       (coe
                                                                                                                          MAlonzo.Code.Once.TypeCheck.Raw.C_OpLt_18)
                                                                                                                       (coe
@@ -27983,7 +27983,7 @@ d_parseFunBodyB_12 v0 v1 v2 v3
                                                                                                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v19 v20
                                                                                                          -> let v21
                                                                                                                   = coe
-                                                                                                                      MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                      MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                       (coe
                                                                                                                          MAlonzo.Code.Once.TypeCheck.Raw.C_OpLe_20)
                                                                                                                       (coe
@@ -28201,7 +28201,7 @@ d_parseFunBodyB_12 v0 v1 v2 v3
                                                                                                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v19 v20
                                                                                                          -> let v21
                                                                                                                   = coe
-                                                                                                                      MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                      MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                       (coe
                                                                                                                          MAlonzo.Code.Once.TypeCheck.Raw.C_OpGt_22)
                                                                                                                       (coe
@@ -28419,7 +28419,7 @@ d_parseFunBodyB_12 v0 v1 v2 v3
                                                                                                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v19 v20
                                                                                                          -> let v21
                                                                                                                   = coe
-                                                                                                                      MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                      MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                       (coe
                                                                                                                          MAlonzo.Code.Once.TypeCheck.Raw.C_OpGe_24)
                                                                                                                       (coe
@@ -28637,7 +28637,7 @@ d_parseFunBodyB_12 v0 v1 v2 v3
                                                                                                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v19 v20
                                                                                                          -> let v21
                                                                                                                   = coe
-                                                                                                                      MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                      MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                       (coe
                                                                                                                          MAlonzo.Code.Once.TypeCheck.Raw.C_OpEq_26)
                                                                                                                       (coe
@@ -28855,7 +28855,7 @@ d_parseFunBodyB_12 v0 v1 v2 v3
                                                                                                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v19 v20
                                                                                                          -> let v21
                                                                                                                   = coe
-                                                                                                                      MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
+                                                                                                                      MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60
                                                                                                                       (coe
                                                                                                                          MAlonzo.Code.Once.TypeCheck.Raw.C_OpNe_28)
                                                                                                                       (coe

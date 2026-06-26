@@ -23,8 +23,8 @@ import qualified MAlonzo.Code.Agda.Builtin.List
 import qualified MAlonzo.Code.Agda.Builtin.Maybe
 import qualified MAlonzo.Code.Agda.Builtin.Unit
 import qualified MAlonzo.Code.Data.List.Base
-import qualified MAlonzo.Code.Data.String.Properties
 import qualified MAlonzo.Code.Data.Sum.Base
+import qualified MAlonzo.Code.Once.CanonicalName
 import qualified MAlonzo.Code.Once.Compile
 import qualified MAlonzo.Code.Once.Denotation.DenotTrace
 import qualified MAlonzo.Code.Once.Denotation.Trace
@@ -49,7 +49,7 @@ d_isUnit'63'_8 v0
          _ -> coe v1)
 -- Once.Adequacy.SourceTrace.findMain-here
 d_findMain'45'here_12 ::
-  MAlonzo.Code.Once.Compile.T_CompiledFun_210 ->
+  MAlonzo.Code.Once.Compile.T_CompiledFun_230 ->
   Bool ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20 ->
   Maybe MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
@@ -66,7 +66,7 @@ d_findMain'45'here_12 v0 v1 v2 v3 v4
                             (case coe v3 of
                                MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v7
                                  -> case coe v0 of
-                                      MAlonzo.Code.Once.Compile.C_mkCompiledFun_228 v8 v9 v10 v11
+                                      MAlonzo.Code.Once.Compile.C_mkCompiledFun_248 v8 v9 v10 v11
                                         -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe v10)
                                       _ -> MAlonzo.RTE.mazUnreachableError
                                MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v4
@@ -75,7 +75,7 @@ d_findMain'45'here_12 v0 v1 v2 v3 v4
               _ -> MAlonzo.RTE.mazUnreachableError)
 -- Once.Adequacy.SourceTrace.findMain
 d_findMain_30 ::
-  [MAlonzo.Code.Once.Compile.T_CompiledFun_210] ->
+  [MAlonzo.Code.Once.Compile.T_CompiledFun_230] ->
   Maybe MAlonzo.Code.Once.IR.T_IR_16
 d_findMain_30 v0
   = case coe v0 of
@@ -83,14 +83,16 @@ d_findMain_30 v0
       (:) v1 v2
         -> coe
              d_findMain'45'here_12 (coe v1)
-             (coe MAlonzo.Code.Once.Compile.d_cfIsPrimitive_226 (coe v1))
+             (coe MAlonzo.Code.Once.Compile.d_cfIsPrimitive_246 (coe v1))
              (coe
-                MAlonzo.Code.Data.String.Properties.d__'8799'__54
-                (coe MAlonzo.Code.Once.Compile.d_cfName_220 (coe v1))
-                (coe ("main" :: Data.Text.Text)))
+                MAlonzo.Code.Once.CanonicalName.d__'8799''7580'__16
+                (coe MAlonzo.Code.Once.Compile.d_cfName_240 (coe v1))
+                (coe
+                   MAlonzo.Code.Once.CanonicalName.d_bare_12
+                   (coe ("main" :: Data.Text.Text))))
              (coe
                 d_isUnit'63'_8
-                (coe MAlonzo.Code.Once.Compile.d_cfType_222 (coe v1)))
+                (coe MAlonzo.Code.Once.Compile.d_cfType_242 (coe v1)))
              (coe d_findMain_30 (coe v2))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.SourceTrace.moduleToIR-aux
@@ -112,7 +114,7 @@ d_moduleToIR_40 v0
   = coe
       d_moduleToIR'45'aux_36
       (coe
-         MAlonzo.Code.Once.Compile.d_compileResolvedModule_518
+         MAlonzo.Code.Once.Compile.d_compileResolvedModule_538
          (coe MAlonzo.Code.Once.IR.C_Heap_8)
          (coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8) (coe v0))
 -- Once.Adequacy.SourceTrace.⟦_⟧IR
