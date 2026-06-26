@@ -214,7 +214,15 @@ skipBlock-length n cs = proj₂ (skipBlockB n cs)
 ------------------------------------------------------------------------
 
 -- | Tokenize worker: receives an Acc witness on `length cs` to
--- justify termination.
+-- justify termination. The two `with`-clauses (string literal, and the
+-- digit/ident/skip general head) are de-`with`'d into parameterized helpers
+-- `tok-str`/`tok-gen` so the verified lexer bridge (`Once.Adequacy.LexerBridge`)
+-- can case those result PARAMETERS without an internal-`with` clash.
+tok-str : (cs : List Char) → (∀ {y} → y < suc (length cs) → Acc _<_ y) →
+          Maybe (Σ[ s ∈ List Char ] Σ[ rest ∈ List Char ] length rest < length cs) →
+          List Token
+tok-gen : (c : Char) (cs : List Char) → (∀ {y} → y < suc (length cs) → Acc _<_ y) →
+          Bool → Bool → List Token
 tokenize-WF : (cs : List Char) → Acc _<_ (length cs) → List Token
 tokenize-WF [] _ = TEOF ∷ []
 
@@ -289,23 +297,20 @@ tokenize-WF ('<' ∷ cs) (acc rec) = TLt        ∷ tokenize-WF cs (rec (s≤s �
 tokenize-WF ('>' ∷ cs) (acc rec) = TGt        ∷ tokenize-WF cs (rec (s≤s ≤-refl))
 tokenize-WF ('.' ∷ cs) (acc rec) = TDot       ∷ tokenize-WF cs (rec (s≤s ≤-refl))
 
--- String literals
-tokenize-WF ('"' ∷ cs) (acc rec) with collectStringB cs
-... | just (s , rest , bnd) =
-        TString (fromList s) ∷ tokenize-WF rest (rec (m≤n⇒m≤1+n bnd))
-... | nothing = []  -- error: unterminated string
+-- String literals / integer / identifier / fallthrough — de-`with`'d.
+tokenize-WF ('"' ∷ cs) (acc rec) = tok-str cs rec (collectStringB cs)
+tokenize-WF (c ∷ cs)   (acc rec) = tok-gen c cs rec (isDigit c) (isIdentStart c)
 
--- Integer literals / identifiers / fallthrough
-tokenize-WF (c ∷ cs) (acc rec) with isDigit c
-... | true = let (digits , rest , bnd) = collectDigitsB cs
-                 n = digitsToNat (c ∷ digits)
-             in  TInt (+ n) ∷ tokenize-WF rest (rec (s≤s bnd))
--- Identifiers (start with alpha or _)
-... | false with isIdentStart c
-...   | true = let (ident , rest , bnd) = collectIdentB cs
-               in  TWord (fromList (c ∷ ident)) ∷ tokenize-WF rest (rec (s≤s bnd))
--- Unknown character: skip
-...   | false = tokenize-WF cs (rec (s≤s ≤-refl))
+tok-str cs rec (just (s , rest , bnd)) =
+  TString (fromList s) ∷ tokenize-WF rest (rec (m≤n⇒m≤1+n bnd))
+tok-str cs rec nothing = []  -- error: unterminated string
+tok-gen c cs rec true  _     =
+  let (digits , rest , bnd) = collectDigitsB cs
+  in  TInt (+ digitsToNat (c ∷ digits)) ∷ tokenize-WF rest (rec (s≤s bnd))
+tok-gen c cs rec false true  =
+  let (ident , rest , bnd) = collectIdentB cs
+  in  TWord (fromList (c ∷ ident)) ∷ tokenize-WF rest (rec (s≤s bnd))
+tok-gen c cs rec false false = tokenize-WF cs (rec (s≤s ≤-refl))
 
 -- | Tokenize a list of characters into tokens.
 tokenize : List Char → List Token
