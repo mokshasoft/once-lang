@@ -1,0 +1,51 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claeson and contributors
+
+-- 06: capabilities are orthogonal to interpretations — one policy, many
+--     targets, and the capability-secure unikernel.
+--
+-- POC for OCP-0007. NOT compilable today.
+--
+-- Because capabilities are a separate axis from interpretations, the SAME
+-- program and the SAME policy port across a Linux dev box, seL4, bare metal, or
+-- a pure test — only the interpretation (who implements the op) changes. The
+-- capability grade, inferred and checked, is identical in every case.
+
+signature putLine  : Eff (String Utf8) Unit
+signature readFile : Eff (String Utf8) (String Utf8)
+
+-- Orthogonal policy — authored once, reused under every interpretation below.
+require putLine  : {Console}
+require readFile : {FileRead}
+
+-- The program. Inferred:  (String Utf8) →[{Console, FileRead}] Unit
+report : Eff (String Utf8) Unit
+report = readFile >>> putLine
+
+-- The interpretation supplies the OPERATIONS; the policy above supplies the
+-- CAPABILITIES. They never mention each other. Pick one at link time:
+--
+--   import I.Linux.File   as Host   -- putLine/readFile via Linux syscalls
+--   import I.SeL4.File    as Host   -- via seL4 caps to a file server
+--   import I.Test.Capture as Host   -- pure: canned reads, collected writes
+--
+-- In all three, `report`'s capability grade is the same {Console, FileRead}.
+
+-- ── The capability-secure unikernel ───────────────────────────────────────
+--
+-- A Once unikernel is `program + interpretation` linked into ONE image; the
+-- interpretation stratum IS the OS runtime — there is no kernel/user boundary.
+-- Security is enforced at COMPILE TIME (the inferred grade + a type error on
+-- under-grant) plus a single ROOT grant at boot. No runtime ambient authority,
+-- no syscall check.
+--
+--   * `main` holds the root capability and attenuates it down to components.
+--   * A component without a capability in its grade CANNOT call the operation
+--     (type error). Its inferred type is its authority manifest.
+--   * Swap I.Linux → I.SeL4 and the very same policy still holds.
+
+signature withConsole  : (Eff[ {Console}  ∪ r ] A B) -> (Eff[ r ] A B)
+signature withFileRead : (Eff[ {FileRead} ∪ r ] A B) -> (Eff[ r ] A B)
+
+main : IO Unit
+main = withConsole (withFileRead (report "motd.txt"))

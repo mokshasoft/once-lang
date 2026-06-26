@@ -1,0 +1,40 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claeson and contributors
+
+-- 03: not every effect is a capability.
+--
+-- POC for OCP-0007. NOT compilable today.
+--
+-- The grade is the set of effects a computation must DISCHARGE before it can
+-- run. Some members are CAPABILITIES — authority over an external resource,
+-- granted from the root and attenuable (Console below). Others are plain,
+-- in-language effects discharged by an ordinary pure handler, needing NO
+-- authority at all (State below).
+--
+-- (Working model for these examples: the grade lists both kinds; "capability"
+-- is the authority-bearing subset. Whether non-capability effects share the
+-- same grade or get a separate one is an open question in the OCP.)
+
+signature putLine : Eff (String Utf8) Unit   -- external resource
+signature get     : Eff Unit Nat             -- pure state, in-language
+signature put     : Eff Nat Unit             -- pure state, in-language
+
+-- Policy: only the external operation needs authority.
+require putLine : {Console}
+-- get / put need NO `require` — State is not a capability.
+
+-- Uses an authority-bearing effect.  inferred:  ... →[{Console}] ...
+greet : Eff (String Utf8) Unit
+greet = putLine
+
+-- Uses only a plain effect.          inferred:  Unit →[{State Nat}] Unit
+-- {State Nat} is in the grade (it must be handled) but carries no authority:
+-- any pure State handler discharges it; nothing is granted from root.
+bump : Eff Unit Unit
+bump = get >>> arr succ >>> put
+
+-- Composed: the grade unions both kinds. To RUN, Console must be granted from
+-- root (authority); State only needs a handler (no authority).
+--   inferred:  Unit →[{Console, State Nat}] Unit
+session : Eff Unit Unit
+session = bump >>> greet "tick"

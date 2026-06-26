@@ -1,0 +1,32 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claeson and contributors
+
+-- 01: operations carry no capabilities; the policy is orthogonal; the grade
+--     is inferred.
+--
+-- POC for OCP-0007 (capability-graded effects). NOT compilable today.
+--
+-- The library and its interpretations declare only OPERATIONS. Capabilities
+-- are NOT a library concern — they are a separate, orthogonal policy axis owned
+-- by the deployment. The same operation, under the same interpretation, may
+-- carry different capability policies in different deployments.
+
+-- The operation: plain Eff, no capability annotation anywhere.
+signature putLine : Eff (String Utf8) Unit
+
+-- The capability policy: a SEPARATE artifact (a deployment choice), independent
+-- of which interpretation actually provides `putLine`.
+require putLine : {Console}
+
+-- What the compiler INFERS for code that uses the op. This grade is the truth,
+-- computed bottom-up — you do not write it (D007: a signature only verifies,
+-- it never changes meaning). It is mostly something the compiler SHOWS you.
+--
+--   greet : (String Utf8) →[{Console}] Unit
+greet : Eff (String Utf8) Unit
+greet = putLine
+
+-- `main` is the root capability holder; here the {Console} requirement is
+-- discharged by the root grant (see 04 for grant/attenuate).
+main : IO Unit
+main = greet "Hello for Once"

@@ -1,0 +1,30 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claeson and contributors
+
+-- 02: composition unions the NEEDED capabilities, bottom-up.
+--
+-- POC for OCP-0007. NOT compilable today.
+--
+-- `>>>` is plain morphism composition — the same operator pure code uses. The
+-- capability grade rides along silently and is combined by JOIN (union). `arr`
+-- lifts a pure function, contributing the empty set.
+
+signature getLine : Eff Unit (String Utf8)
+signature putLine : Eff (String Utf8) Unit
+signature readEnv : Eff (String Utf8) (String Utf8)
+
+-- Policy (orthogonal, deployment-owned):
+require getLine, putLine : {Console}
+require readEnv          : {Env}
+
+-- Same capability throughout → union stays {Console}.
+--   getLine : {Console}  >>>  arr (..) : {}  >>>  putLine : {Console}
+--   inferred:  Unit →[{Console}] Unit
+greet : Eff Unit Unit
+greet = getLine >>> arr (\name -> "Hello, " ++ name) >>> putLine
+
+-- Different capabilities → the needed set is the UNION. No lifting, no stack,
+-- no annotation; the requirement simply accumulates.
+--   inferred:  Unit →[{Console, Env}] Unit
+greetUser : Eff Unit Unit
+greetUser = readEnv "USER" >>> arr (\u -> "Hello, " ++ u) >>> putLine
