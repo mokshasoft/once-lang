@@ -42,11 +42,6 @@ open import Once.CanonicalName using (CanonicalName; parts; canonical)
 once-prefix : String
 once-prefix = "once_"
 
--- | Legacy single-string mangle (just prepends `once_`). Retained for
--- callers not yet migrated to the canonical `once-symbol-path` (Plan 0.50).
-once-symbol : String → String
-once-symbol name = once-prefix ++ name
-
 ------------------------------------------------------------------------
 -- Plan 0.50 — canonical, clash-free symbol from a resolved identity.
 --
