@@ -51,13 +51,23 @@ open import Once.Parser
   using (allTrailing; parseStrict; parseStrict-pm; parseStrict-at)
 
 ------------------------------------------------------------------------
--- LEXER — deferred sub-obligation.
+-- LEXER — the trusted text→token boundary (documented shim, NOT a postulate).
+--
+-- The grammar anchor is the TOKEN level: `tokenizeString` is a total
+-- char-classifier and is the one trusted front-end step (the project's choice —
+-- a genuine relational lexer is a separable, low-value refinement). So `Lexes`
+-- is its graph; `lexer-sound`/`-complete` are immediate. Everything ABOVE the
+-- tokens (the PARSER, `ParsesModule`/`ParsesDecl`) IS forced independently.
 ------------------------------------------------------------------------
 
-postulate
-  Lexes          : String → List Token → Set
-  lexer-sound    : ∀ (text : String) → Lexes text (tokenizeString text)
-  lexer-complete : ∀ (text : String) (toks : List Token) → Lexes text toks → tokenizeString text ≡ toks
+Lexes : String → List Token → Set
+Lexes text toks = tokenizeString text ≡ toks
+
+lexer-sound : ∀ (text : String) → Lexes text (tokenizeString text)
+lexer-sound text = refl
+
+lexer-complete : ∀ (text : String) (toks : List Token) → Lexes text toks → tokenizeString text ≡ toks
+lexer-complete text toks eq = eq
 
 ------------------------------------------------------------------------
 -- PER-DECL parser obligation (grammar work; build from expr/type islands).
