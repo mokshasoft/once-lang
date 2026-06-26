@@ -101,23 +101,28 @@ Lexes : String → List Token → Set
 Lexes text toks = LexesChars (toList text) toks
 
 ------------------------------------------------------------------------
--- SOUNDNESS / COMPLETENESS — NEXT STEP (precisely scoped).
+-- SOUNDNESS / COMPLETENESS — NEXT STEP (precisely scoped & DIAGNOSED).
 --
--- `lexes-tok : ∀ cs a → LexesChars cs (tokenize-WF cs a)` mirrors `tokenize-WF`
--- clause-for-clause. The single-char-punct, comment, whitespace, string
--- (`tok-str`) and general (`tok-gen`) clauses go through directly. The BLOCKER
--- is the MULTI-CHAR clauses (`\n`/`-`/`<`/`>`/`=`/`!`/`{`/`^`): `tokenize-WF`
--- dispatches them by CLAUSE ORDER, so for a variable tail it is STUCK in the
--- proof (the catch-all-over-`Char` problem — same as the parser, but the
--- "specific vs general" split is the second char's identity).
+-- DONE: `tokenize-WF`'s 8 multi-char heads (`\n`/`-`/`<`/`>`/`=`/`!`/`{`/`^`) are
+-- de-`with`'d via classifiers (`nlIndent`/`isEqHead`/`isDashHead`/`dashClass`/
+-- `caretClass`) + helpers (`tok-nl`/`tok-op2`/`tok-lbrace`/`tok-minus`/`tok-caret`)
+-- in `Once.Parser.Lexer` — behaviour-preserving, committed.
 --
--- THE FIX (de-`with` `tokenize-WF`'s second-char dispatch via CLASSIFIERS):
--- e.g. `tokenize-WF ('\n' ∷ cs) = tok-nl cs rec (nlIndent cs)` with
--- `nlIndent cs = head cs ∈ {' ','\t'}`, `tok-nl cs rec true = tokenize-WF cs …`,
--- `tok-nl cs rec false = TNewline ∷ tokenize-WF cs …` (both recurse on the
--- tail; only the `TNewline` differs). Then sound cases `nlIndent cs` +`cs`, and
--- `lex-nl`/`lex-nl-sp`/`lex-nl-tab` are produced/refuted from the classifier.
--- Same shape for `-`/`{`/`<`/`>`/`=`/`!` (one decision each) and `^` (three).
--- `lexer-complete` then inducts on the `LexesChars` derivation, refuting
--- overlapping constructors via `tokenize`'s actual head token.
+-- THE REMAINING SUBTLETY (diagnosed, the earlier note was WRONG): casing the
+-- second char in `lexes-tok` does NOT work, because Agda does NOT reduce a char
+-- classifier under a PEELED literal — in a clause `lexes-tok ('\n' ∷ c ∷ cs)`
+-- (c split off after the `' '`/`'\t'` clauses), `nlIndent (c ∷ cs)` stays STUCK
+-- (the constraint `c ≠ ' '/'\t'` is not used in reduction), so the goal
+-- `tokenize-WF` won't step. Likewise the structure/refutation lemmas can't be
+-- proved by literal-peeling.
+--
+-- THE FIX: define the classifiers in `Lexer` via DECIDABLE char equality
+-- (`nlIndent (c ∷ _) = does (c ≟ ' ') ∨ does (c ≟ '\t')`, etc.) so they REDUCE
+-- under a decision; then `lexes-tok` dispatches `with c ≟ '='` (etc.) — the `no
+-- ¬p` branch makes `isEqHead (c ∷ _)` compute to `false` (so `tok-op2 …` steps),
+-- and the `yes refl` branch REFINES `c` to the literal (so the 2-char rule's
+-- continuation is in scope). `lexer-complete` inducts on the derivation, using
+-- the same decisions; each fallback constructor carries `<classifier> ≡ <fallback>`
+-- so the overlap is refuted by the decision. The relation below gets those
+-- `≡`-premises on the fallback constructors (`lex-nl`/`lex-lt`/`lex-minus`/…).
 ------------------------------------------------------------------------
