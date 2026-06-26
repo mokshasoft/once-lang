@@ -11,30 +11,55 @@
 module Once.Parser.Module.Import where
 
 open import Relation.Nullary using (Dec)
+open import Data.Bool using (Bool; true; false)
 open import Once.Parser.Module.Core
 
--- | Parse a dotted module path via well-founded recursion. Each step
--- consumes one identifier via `anyWordB`. De-`with`'d through `pmp-aw`/`pmp-dot`
--- (the `anyWordB` and recursion results are PARAMETERS) so the adequacy bridge
--- (`Once.Adequacy.DeclBridge`) can case them without an internal-`with` clash.
+-- | Drop the first token (used to recurse past a `.` separator). `dropDot-≤`
+-- bounds it. CLASSIFIER-ROUTED (Plan 0.52 bridge-readiness): the head dispatch
+-- goes through `dotHead` (a 1-token classifier) + `dropDot`, NOT a positional
+-- `TDot ∷ _` pattern — so the adequacy bridge can step the parser for a VARIABLE
+-- tail (the relation shares `dropDot tail`/`dotHead tail` symbolically; a
+-- positional catch-all would not reduce). Mirrors the lexer's `headK` routing.
+dropDot : List Token → List Token
+dropDot []       = []
+dropDot (_ ∷ xs) = xs
+
+dropDot-≤ : (xs : List Token) → length (dropDot xs) ≤ length xs
+dropDot-≤ []       = ≤-refl
+dropDot-≤ (_ ∷ xs) = m≤n⇒m≤1+n ≤-refl
+
+-- `dotHead tail ≡ true` ⇔ `tail` begins with a `.` separator (the path may
+-- continue; `parseModulePath-WFB (dropDot tail)` then decides cons vs stop).
+dotHead : List Token → Bool
+dotHead (TDot ∷ _) = true
+dotHead _          = false
+
+-- | Parse a dotted module path via well-founded recursion. Each step consumes
+-- one identifier via `anyWordB`. De-`with`'d + classifier-routed through
+-- `pmp-aw`/`pmp-tail`/`pmp-dot`.
 parseModulePath-WFB : (toks : List Token) → Acc _<_ (length toks) →
                       ParseAtB {List String} toks
 pmp-aw : (toks : List Token) (rec : ∀ {y} → y < length toks → Acc _<_ y)
-         (aw : ParseAtB {String} toks) → anyWordB toks ≡ aw → ParseAtB {List String} toks
+         (aw : ParseAtB {String} toks) → ParseAtB {List String} toks
+pmp-tail : (toks : List Token) (rec : ∀ {y} → y < length toks → Acc _<_ y)
+           (name : String) (tail : List Token) (bnd : length tail < length toks)
+           (cont : Bool) → ParseAtB {List String} toks
 pmp-dot : (toks : List Token) (rec : ∀ {y} → y < length toks → Acc _<_ y)
-          (name : String) (rest : List Token) (bnd : length (TDot ∷ rest) < length toks)
-          (sub : ParseAtB {List String} rest) → ParseAtB {List String} toks
+          (name : String) (tail : List Token) (bnd : length tail < length toks)
+          (sub : ParseAtB {List String} (dropDot tail)) → ParseAtB {List String} toks
 
-parseModulePath-WFB toks (acc rec) = pmp-aw toks rec (anyWordB toks) refl
+parseModulePath-WFB toks (acc rec) = pmp-aw toks rec (anyWordB toks)
 
-pmp-aw toks rec nothing eq = nothing
-pmp-aw toks rec (just (name , TDot ∷ rest , bnd)) eq =
-  pmp-dot toks rec name rest bnd (parseModulePath-WFB rest (rec (<-trans (s≤s ≤-refl) bnd)))
-pmp-aw toks rec (just (name , rest , bnd)) eq = just (name ∷ [] , rest , bnd)
+pmp-aw toks rec nothing = nothing
+pmp-aw toks rec (just (name , tail , bnd)) = pmp-tail toks rec name tail bnd (dotHead tail)
 
-pmp-dot toks rec name rest bnd (just (path , rest' , bnd')) =
-  just (name ∷ path , rest' , <-trans bnd' (<-trans (s≤s ≤-refl) bnd))
-pmp-dot toks rec name rest bnd nothing = just (name ∷ [] , (TDot ∷ rest) , bnd)
+pmp-tail toks rec name tail bnd true =
+  pmp-dot toks rec name tail bnd (parseModulePath-WFB (dropDot tail) (rec (≤-<-trans (dropDot-≤ tail) bnd)))
+pmp-tail toks rec name tail bnd false = just (name ∷ [] , tail , bnd)
+
+pmp-dot toks rec name tail bnd (just (path , rest' , bnd')) =
+  just (name ∷ path , rest' , <-trans bnd' (≤-<-trans (dropDot-≤ tail) bnd))
+pmp-dot toks rec name tail bnd nothing = just (name ∷ [] , tail , bnd)  -- unreachable when cont ≡ true
 
 parseModulePathB : (toks : List Token) → ParseAtB {List String} toks
 parseModulePathB toks = parseModulePath-WFB toks (<-wellFounded (length toks))
