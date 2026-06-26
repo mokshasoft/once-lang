@@ -51,16 +51,16 @@ open import Once.Parser
   using (allTrailing; parseStrict; parseStrict-pm; parseStrict-at)
 
 ------------------------------------------------------------------------
--- LEXER — NO SHIM. Genuine independent char-production relation `Lexes` +
--- bridge, being built in `Once.Adequacy.LexerBridge` (`tokenize-WF` de-`with`'d).
--- Postulated here (honest named obligation) until that lands; will then be
--- `open import`-ed, replacing these three.
+-- LEXER — NO SHIM. The genuine independent char-production relation `Lexes` +
+-- `lexer-sound`/`lexer-complete` now come from `Once.Adequacy.LexerBridge`
+-- (relation over `LexesChars`; soundness for all 27 special heads + full
+-- determinism + completeness = sound ∘ det, all GENUINELY PROVEN). The single
+-- remaining `LexerBridge.lexes-tok-gen` postulate (general-head reduction; needs
+-- `tokenize-WF`'s head routed through a `headK` classifier) is scoped INSIDE that
+-- module — the three opaque postulates that were here are now retired.
 ------------------------------------------------------------------------
 
-postulate
-  Lexes          : String → List Token → Set
-  lexer-sound    : ∀ (text : String) → Lexes text (tokenizeString text)
-  lexer-complete : ∀ (text : String) (toks : List Token) → Lexes text toks → tokenizeString text ≡ toks
+open import Once.Adequacy.LexerBridge using (Lexes; lexer-sound; lexer-complete) public
 
 ------------------------------------------------------------------------
 -- PER-DECL parser obligation (grammar work; build from expr/type islands).

@@ -22,7 +22,8 @@ open import Data.List using (List; []; _∷_; _++_; reverse; length)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_; Σ; proj₁; proj₂; Σ-syntax)
 open import Data.Bool using (Bool; true; false; _∨_; _∧_; not; if_then_else_)
-open import Data.Char using (Char; isAlpha; isDigit; isSpace; isLower)
+open import Data.Char using (Char; isAlpha; isDigit; isSpace; isLower) renaming (_≟_ to _≟c_)
+open import Relation.Nullary using (does)
 open import Data.Nat using (ℕ; zero; suc; _≡ᵇ_; _<ᵇ_; _≤_; _<_; s≤s; z≤n)
 open import Data.Nat.Properties using (≤-refl; ≤-trans; n<1+n; n≤1+n; <-trans; m≤n⇒m≤1+n)
 open import Data.Nat.Induction using (<-wellFounded)
@@ -223,25 +224,39 @@ skipBlock-length n cs = proj₂ (skipBlockB n cs)
 data Dash3  : Set where d-comment d-arrow d-minus : Dash3
 data Caret4 : Set where c-1 c-0 c-w c-gen : Caret4
 
+-- Defined via DECIDABLE char equality (`does (c ≟c X)`) — NOT literal pattern
+-- matching — so a proof can reduce them under `with c ≟c X` (the `no`/`yes`
+-- decision makes `does …` compute, and `yes refl` refines the char). See the
+-- LexerBridge doc.
 nlIndent : List Char → Bool
-nlIndent (' '  ∷ _) = true
-nlIndent ('\t' ∷ _) = true
-nlIndent _          = false
+nlIndent (c ∷ _) = does (c ≟c ' ') ∨ does (c ≟c '\t')
+nlIndent []      = false
 isEqHead : List Char → Bool
-isEqHead ('=' ∷ _) = true
-isEqHead _         = false
+isEqHead (c ∷ _) = does (c ≟c '=')
+isEqHead []      = false
 isDashHead : List Char → Bool
-isDashHead ('-' ∷ _) = true
-isDashHead _         = false
+isDashHead (c ∷ _) = does (c ≟c '-')
+isDashHead []      = false
 dashClass : List Char → Dash3
-dashClass ('-' ∷ _) = d-comment
-dashClass ('>' ∷ _) = d-arrow
-dashClass _         = d-minus
+dashClass (c ∷ _) = if does (c ≟c '-') then d-comment else (if does (c ≟c '>') then d-arrow else d-minus)
+dashClass []      = d-minus
 caretClass : List Char → Caret4
-caretClass ('1' ∷ _) = c-1
-caretClass ('0' ∷ _) = c-0
-caretClass ('w' ∷ _) = c-w
-caretClass _         = c-gen
+caretClass (c ∷ _) = if does (c ≟c '1') then c-1 else (if does (c ≟c '0') then c-0 else (if does (c ≟c 'w') then c-w else c-gen))
+caretClass []      = c-gen
+
+-- | Drop the first char (uniform tail). Lets the multi-char helpers recurse on
+-- `drop1 cs` instead of pattern-matching `cs ≡ '=' ∷ rest` — so the helpers
+-- REDUCE under a known classifier (e.g. `tok-op2 cs rec _ _ true`) even when the
+-- tail is a variable. Behaviour-preserving (a known classifier ⇒ the head is the
+-- consumed char, so `drop1 cs ≡ rest`); the old `cs`-pattern catch-alls were
+-- already flagged unreachable.
+drop1 : List Char → List Char
+drop1 []       = []
+drop1 (_ ∷ cs) = cs
+
+drop1-≤ : (cs : List Char) → length (drop1 cs) ≤ length cs
+drop1-≤ []       = z≤n
+drop1-≤ (_ ∷ cs) = n≤1+n _
 
 -- | Tokenize worker (de-`with`'d). `tok-str`/`tok-gen` handle the string and
 -- digit/ident/skip `with`-clauses; `tok-nl`/`tok-op2`/`tok-minus`/`tok-lbrace`/
@@ -305,31 +320,24 @@ tok-gen c cs rec false false = tokenize-WF cs (rec (s≤s ≤-refl))
 tok-nl cs rec true  = tokenize-WF cs (rec (n<1+n _))
 tok-nl cs rec false = TNewline ∷ tokenize-WF cs (rec (n<1+n _))
 
--- 2-char `…=` operators: `t2` if next is `=` (recurse past it), else `t1`.
-tok-op2 ('=' ∷ rest) rec t2 t1 true = t2 ∷ tokenize-WF rest (rec (s≤s (m≤n⇒m≤1+n ≤-refl)))
-tok-op2 cs rec t2 t1 true  = t1 ∷ tokenize-WF cs (rec (n<1+n _))   -- unreachable (isEqHead cs ≡ true ⇒ cs ≡ '=' ∷ _)
+-- 2-char `…=` operators: `t2` if next is `=` (recurse past it via drop1), else `t1`.
+tok-op2 cs rec t2 t1 true  = t2 ∷ tokenize-WF (drop1 cs) (rec (s≤s (drop1-≤ cs)))
 tok-op2 cs rec t2 t1 false = t1 ∷ tokenize-WF cs (rec (n<1+n _))
 
--- `{`: block comment `{-` (skip via skipBlockB) else `TLBrace`.
-tok-lbrace ('-' ∷ rest) rec true = tokenize-WF (proj₁ (skipBlockB 1 rest)) (rec (s≤s (m≤n⇒m≤1+n (proj₂ (skipBlockB 1 rest)))))
-tok-lbrace cs rec true  = TLBrace ∷ tokenize-WF cs (rec (n<1+n _))   -- unreachable
+-- `{`: block comment `{-` (skip via skipBlockB ∘ drop1) else `TLBrace`.
+tok-lbrace cs rec true  = tokenize-WF (proj₁ (skipBlockB 1 (drop1 cs))) (rec (s≤s (≤-trans (proj₂ (skipBlockB 1 (drop1 cs))) (drop1-≤ cs))))
 tok-lbrace cs rec false = TLBrace ∷ tokenize-WF cs (rec (n<1+n _))
 
--- `-`: line comment `--`, arrow `->`, else `TMinus`.
-tok-minus ('-' ∷ rest) rec d-comment = tokenize-WF (proj₁ (skipLineB rest)) (rec (s≤s (m≤n⇒m≤1+n (proj₂ (skipLineB rest)))))
-tok-minus ('>' ∷ rest) rec d-arrow   = TArrow ∷ tokenize-WF rest (rec (s≤s (m≤n⇒m≤1+n ≤-refl)))
+-- `-`: line comment `--` (skipLineB ∘ drop1), arrow `->` (drop1), else `TMinus`.
+tok-minus cs rec d-comment = tokenize-WF (proj₁ (skipLineB (drop1 cs))) (rec (s≤s (≤-trans (proj₂ (skipLineB (drop1 cs))) (drop1-≤ cs))))
+tok-minus cs rec d-arrow   = TArrow ∷ tokenize-WF (drop1 cs) (rec (s≤s (drop1-≤ cs)))
 tok-minus cs rec d-minus   = TMinus ∷ tokenize-WF cs (rec (n<1+n _))
-tok-minus cs rec d-comment = TMinus ∷ tokenize-WF cs (rec (n<1+n _))   -- unreachable
-tok-minus cs rec d-arrow   = TMinus ∷ tokenize-WF cs (rec (n<1+n _))   -- unreachable
 
--- `^`: grade caret `^1`/`^0`/`^w`, else fall to the general head.
-tok-caret ('1' ∷ rest) rec c-1 = TCaret1 ∷ tokenize-WF rest (rec (s≤s (m≤n⇒m≤1+n ≤-refl)))
-tok-caret ('0' ∷ rest) rec c-0 = TCaret0 ∷ tokenize-WF rest (rec (s≤s (m≤n⇒m≤1+n ≤-refl)))
-tok-caret ('w' ∷ rest) rec c-w = TCaretW ∷ tokenize-WF rest (rec (s≤s (m≤n⇒m≤1+n ≤-refl)))
+-- `^`: grade caret `^1`/`^0`/`^w` (drop1), else fall to the general head.
+tok-caret cs rec c-1 = TCaret1 ∷ tokenize-WF (drop1 cs) (rec (s≤s (drop1-≤ cs)))
+tok-caret cs rec c-0 = TCaret0 ∷ tokenize-WF (drop1 cs) (rec (s≤s (drop1-≤ cs)))
+tok-caret cs rec c-w = TCaretW ∷ tokenize-WF (drop1 cs) (rec (s≤s (drop1-≤ cs)))
 tok-caret cs rec c-gen = tok-gen '^' cs rec (isDigit '^') (isIdentStart '^')
-tok-caret cs rec c-1   = tok-gen '^' cs rec (isDigit '^') (isIdentStart '^')   -- unreachable
-tok-caret cs rec c-0   = tok-gen '^' cs rec (isDigit '^') (isIdentStart '^')   -- unreachable
-tok-caret cs rec c-w   = tok-gen '^' cs rec (isDigit '^') (isIdentStart '^')   -- unreachable
 
 -- | Tokenize a list of characters into tokens.
 tokenize : List Char → List Token
