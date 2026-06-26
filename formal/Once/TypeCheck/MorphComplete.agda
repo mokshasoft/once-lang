@@ -29,6 +29,7 @@ open import Once.IR using (IR; Heap)
 open import Once.Functor.Translate using (WellFormedF)
 open import Once.Functor.Decide using (wellFormedF?)
 open import Once.TypeCheck.Raw as Raw using (RawExpr)
+open import Once.CanonicalName using (CanonicalName; showCanonical)
 open import Once.TypeCheck.Classify using (NamedCtx; composeMid;
   lookupLocal; lookupImport; ctxWithImportsAndPolys;
   inspectLookupLocal; inspectLookupImport; llv-found; llv-not-found; liv-found; liv-not-found)
@@ -106,6 +107,14 @@ postulate
                      → lookupImport (NamedCtx.imports ctx) x
                          ≡ just (A T.⇒[ T.mk-kind T.Many π ] B)
                      → StrongElab ctx (Raw.RVar x) A B π
+  -- Plan 0.50 Stage 2 (D064): the RESOLVED-name strong-elab leaf, at PARITY with
+  -- `named-morph-strong` (same scoped hole, for `RResolved cn`). Discharging both
+  -- is the milestone-1 follow-up; the constructor + this leaf make value-use of a
+  -- named function (`compose g g`) elaborate as a morphism.
+  named-morph-strong-resolved : ∀ {ctx : NamedCtx} {cn : CanonicalName} {A B : Type} {π : T.Purity}
+                              → lookupImport (NamedCtx.imports ctx) (showCanonical cn)
+                                  ≡ just (A T.⇒[ T.mk-kind T.Many π ] B)
+                              → StrongElab ctx (Raw.RResolved cn) A B π
 
 morph-elab : ∀ {ctx : NamedCtx} {e : RawExpr} {A B : Type} {π : T.Purity}
            → ctx ⊢ᵐ e ∶ A ⇨[ π ] B → StrongElab ctx e A B π
@@ -178,6 +187,7 @@ morph-elab (m-inr eqLoc eqImp) | (failure _ , _) | refl | _ | liv-found imp = �
 -- ---- extensional leaves (HOLES) ----
 morph-elab (m-const gd) = const-morph-strong gd
 morph-elab (m-named ¬u eqL eqI) = named-morph-strong ¬u eqL eqI
+morph-elab (m-named-resolved eqI) = named-morph-strong-resolved eqI
 morph-elab (m-arr df) with morph-elab df
 ... | (mf , mFᵐ , Ef , _ , _ , Wf , eqf , exEff-f , exW-f)
       rewrite eqf = mf , m-arr mFᵐ , _ , _ , _ , _ , refl , exEff-f , cong extractMorph-arr exW-f
