@@ -132,9 +132,14 @@ parseDeclsWF toks (acc rec) with skipNewlines toks in skipEq
 -- successful `parseDecl` strictly shrinks the residual (`parseDeclB`'s
 -- Σ-bound), while `skipNewlines` is weakly shrinking (≤). No
 -- TERMINATING pragma is needed.
+-- Projection-based (NO `with`) so `parseDecls toks` reduces definitionally to
+-- `just (proj … parseDeclsWF …)` — the verified front-end's decls-loop bridge
+-- (`Once.Adequacy.FrontEndBridge`) needs this to relate `parseDecls` to its
+-- relation `ParsesDecls` without `with`-opacity.
 parseDecls : Parser (List Decl)
-parseDecls toks with parseDeclsWF toks (<-wellFounded (length toks))
-... | (ds , rest , _) = just (ds , rest)
+parseDecls toks =
+  just (proj₁ r , proj₁ (proj₂ r))
+  where r = parseDeclsWF toks (<-wellFounded (length toks))
 
 -- | Parse a complete module. Clause-based dispatch (NO `with`) on the
 -- `parseDecls` result, so the verified front-end bridge can reduce
