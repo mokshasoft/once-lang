@@ -24,37 +24,49 @@ open import Once.Parser.Module.OpName public
 open import Once.Parser.Module.FunDef public
 open import Once.Parser.Module.DeclTail public
 open import Once.Parser.Module.Resolve public
-open import Once.Parser.PolyType using (parsePolyTypeB)
+open import Once.Parser.PolyType using (parsePolyTypeB; ParsePolyAtB)
+open import Relation.Nullary using (Dec)
 
 -- | Bounded parse of a single declaration. On success the residual is
 -- strictly shorter than the input, which gives us the measure to do
 -- well-founded recursion in `parseDeclsWF` below.
+-- De-`with`'d (clause-based via parameterized helpers, like `parseDeclsWF`) so
+-- the per-decl bridge (`Once.Adequacy.FrontEndBridge`) can prove
+-- `sound-decl`/`complete-decl` by casing the sub-parser RESULT parameters with
+-- no internal-`with` clash. Behaviour-identical to the old form.
+pdb-sub : (t : Token) (rest : List Token) → ParseAtB {Decl} rest → ParseAtB {Decl} (t ∷ rest)
+pdb-sub t rest nothing                  = nothing
+pdb-sub t rest (just (d , rest' , bnd)) = just (d , rest' , <-trans bnd (s≤s ≤-refl))
+
+-- `name : polytype` head (keyword checks failed, `TColon` lookahead): a trailing
+-- `=` is a type-alias body, not a sig.
+pdb-colon : (w : String) (rest : List Token) → ParsePolyAtB rest →
+            ParseAtB {Decl} (TWord w ∷ TColon ∷ rest)
+pdb-colon w rest nothing                       = nothing
+pdb-colon w rest (just (ty , TEquals ∷ _ , _)) = nothing
+pdb-colon w rest (just (ty , rest' , bnd)) =
+  just (DTypeSig w ty , rest' , <-trans (<-trans bnd (s≤s ≤-refl)) (s≤s ≤-refl))
+
+-- Keyword checks failed: `TColon` lookahead is a type-sig, else a function def.
+pdb-fb : (w : String) (rest : List Token) → ParseAtB {Decl} (TWord w ∷ rest)
+pdb-fb w (TColon ∷ rest) = pdb-colon w rest (parsePolyTypeB rest)
+pdb-fb w rest            = pdb-sub (TWord w) rest (parseFunDefB w rest)
+
+pdb-kw3 : (w : String) (rest : List Token) → Dec (w ≡ "signature") → ParseAtB {Decl} (TWord w ∷ rest)
+pdb-kw3 w rest (yes _) = pdb-sub (TWord w) rest (parseSignatureB rest)
+pdb-kw3 w rest (no  _) = pdb-fb w rest
+pdb-kw2 : (w : String) (rest : List Token) → Dec (w ≡ "type") → ParseAtB {Decl} (TWord w ∷ rest)
+pdb-kw2 w rest (yes _) = pdb-sub (TWord w) rest (parseTypeAliasB rest)
+pdb-kw2 w rest (no  _) = pdb-kw3 w rest (w ≟ "signature")
+pdb-kw1 : (w : String) (rest : List Token) → Dec (w ≡ "import") → ParseAtB {Decl} (TWord w ∷ rest)
+pdb-kw1 w rest (yes _) = pdb-sub (TWord w) rest (parseImportB rest)
+pdb-kw1 w rest (no  _) = pdb-kw2 w rest (w ≟ "type")
+
 parseDeclB : (toks : List Token) → ParseAtB {Decl} toks
-parseDeclB [] = nothing
-parseDeclB (TWord w ∷ rest) with w ≟ "import"
-... | yes _ with parseImportB rest
-...   | just (d , rest' , bnd) = just (d , rest' , <-trans bnd (s≤s ≤-refl))
-...   | nothing = nothing
-parseDeclB (TWord w ∷ rest) | no _ with w ≟ "type"
-... | yes _ with parseTypeAliasB rest
-...   | just (d , rest' , bnd) = just (d , rest' , <-trans bnd (s≤s ≤-refl))
-...   | nothing = nothing
-parseDeclB (TWord w ∷ rest) | no _ | no _ with w ≟ "signature"
-... | yes _ with parseSignatureB rest
-...   | just (d , rest' , bnd) = just (d , rest' , <-trans bnd (s≤s ≤-refl))
-...   | nothing = nothing
-parseDeclB (TWord w ∷ TColon ∷ rest) | no _ | no _ | no _ with parsePolyTypeB rest
-... | nothing = nothing
-... | just (ty , TEquals ∷ _ , _) = nothing
-... | just (ty , rest' , bnd) =
-      just (DTypeSig w ty , rest' ,
-            <-trans (<-trans bnd (s≤s ≤-refl)) (s≤s ≤-refl))
-parseDeclB (TWord w ∷ rest) | no _ | no _ | no _
-  with parseFunDefB w rest
-... | just (d , rest' , bnd) = just (d , rest' , <-trans bnd (s≤s ≤-refl))
-... | nothing = nothing
+parseDeclB []               = nothing
+parseDeclB (TWord w ∷ rest) = pdb-kw1 w rest (w ≟ "import")
 parseDeclB (TLParen ∷ rest) = tryOpDeclB (TLParen ∷ rest)
-parseDeclB _ = nothing
+parseDeclB _                = nothing
 
 parseDecl : Parser Decl
 parseDecl toks with parseDeclB toks
