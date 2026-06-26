@@ -136,8 +136,12 @@ parseDecls : Parser (List Decl)
 parseDecls toks with parseDeclsWF toks (<-wellFounded (length toks))
 ... | (ds , rest , _) = just (ds , rest)
 
--- | Parse a complete module
+-- | Parse a complete module. Clause-based dispatch (NO `with`) on the
+-- `parseDecls` result, so the verified front-end bridge can reduce
+-- `parseModule` under a `parseDecls toks ≡ just (ds, rest)` hypothesis.
+parseModule-pd : Maybe (List Decl × List Token) → List Token → Maybe (Module × List Token)
+parseModule-pd (just (ds , rest)) _    = just (mkModule ds , rest)
+parseModule-pd nothing            toks = just (mkModule [] , toks)
+
 parseModule : Parser Module
-parseModule toks with parseDecls toks
-... | just (ds , rest) = just (mkModule ds , rest)
-... | nothing = just (mkModule [] , toks)
+parseModule toks = parseModule-pd (parseDecls toks) toks
