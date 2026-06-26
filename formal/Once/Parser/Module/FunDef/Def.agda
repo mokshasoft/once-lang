@@ -19,15 +19,29 @@ open import Once.Parser.Module.FunDef.Body
 
 -- | Bounded parse of a function definition: `name [@alloc] [params] = body`.
 -- The total shrink is (parseFunBody strict) × (parseParams weak) ×
--- (tryAlloc weak), giving an overall strict decrease.
+-- (tryAlloc weak), giving an overall strict decrease. De-`with`'d through
+-- `pfd-alloc`/`pfd-params`/`pfd-body` for the adequacy bridge.
 parseFunDefB : String → (toks : List Token) → ParseAtB {Decl} toks
-parseFunDefB name toks with tryAllocB toks
-... | alloc , toks' , allocBnd with parseParamsB toks'
-...   | params , toks'' , paramsBnd
-      with parseFunBodyB name alloc params toks''
-...     | just (d , rest , bodyBnd) =
-          just (d , rest , <-≤-trans (<-≤-trans bodyBnd paramsBnd) allocBnd)
-...     | nothing = nothing
+pfd-alloc : (name : String) (toks : List Token) →
+            Maybe AllocStrategy × Σ[ rest ∈ List Token ] length rest ≤ length toks →
+            ParseAtB {Decl} toks
+pfd-params : (name : String) (toks : List Token) (alloc : Maybe AllocStrategy)
+             (toks' : List Token) (allocBnd : length toks' ≤ length toks) →
+             Σ[ ps ∈ List String ] Σ[ rest ∈ List Token ] length rest ≤ length toks' →
+             ParseAtB {Decl} toks
+pfd-body : (name : String) (toks : List Token) (alloc : Maybe AllocStrategy)
+           (params : List String) (toks'' : List Token) (bnd'' : length toks'' ≤ length toks)
+           (fb : ParseAtB {Decl} toks'') → ParseAtB {Decl} toks
+
+parseFunDefB name toks = pfd-alloc name toks (tryAllocB toks)
+pfd-alloc name toks (alloc , toks' , allocBnd) =
+  pfd-params name toks alloc toks' allocBnd (parseParamsB toks')
+pfd-params name toks alloc toks' allocBnd (params , toks'' , paramsBnd) =
+  pfd-body name toks alloc params toks'' (≤-trans paramsBnd allocBnd)
+    (parseFunBodyB name alloc params toks'')
+pfd-body name toks alloc params toks'' bnd'' (just (d , rest , bodyBnd)) =
+  just (d , rest , <-≤-trans bodyBnd bnd'')
+pfd-body name toks alloc params toks'' bnd'' nothing = nothing
 
 parseFunDef : String → Parser Decl
 parseFunDef name toks with parseFunDefB name toks
