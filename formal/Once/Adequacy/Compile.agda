@@ -82,13 +82,11 @@ import Once.Parser.Module.Core as P
 -- former `gmoduleToModule` postulate).
 open import Once.Grammar.ModuleConvert using (gmoduleToModule)
 
--- Plan 0.50 (de-island once-symbol-injective): the front-end function extractor
--- + the target symbol mangler, so the apex can DEMAND distinct emitted symbols.
-open import Once.Parser using (extractFunctions; extractAliases; FunInfo)
-open import Once.Target.Symbol using (once-symbol-own)
-open import Data.Sum using ([_,_]′)
-open import Data.List using () renaming (map to mapL)
-open import Data.List.Relation.Unary.AllPairs using (AllPairs)
+-- Plan 0.50 (de-island): `DistinctSymbols` + the PROVED `program-no-clash`,
+-- the precondition the assembler trust point demands. Imported, not postulated —
+-- discharged in `Once.Adequacy.NameClash` via `once-symbol-own-≢` (the proven
+-- encoding injectivity) over the extractor's distinctness+validity guard.
+open import Once.Adequacy.NameClash using (DistinctSymbols; program-no-clash)
 
 -- `Arch` (here, via `Once.Adequacy.CPU.Interface`) and `C.Arch` (via
 -- `Once.Compile`) are now the SAME type — both re-export `Once.Target.Arch`
@@ -141,36 +139,10 @@ compile-cli-asm allocMode stage doOpt arch m =
 ⟦_⟧M : P.Module → Behavior
 ⟦ m ⟧M = ⟦ moduleToIR m ⟧IR
 
--- ════════════════════════════════════════════════════════════════════
--- Plan 0.50 — DISTINCT EMITTED SYMBOLS, the precondition the assembler
--- trust point (`assemble-correct`) actually needs. `as` produces correct
--- bytes only for asm with no duplicate `.globl` labels; two top-level defs
--- compiling to the same `once_…` symbol would silently mislink. We make
--- that assumption EXPLICIT here (no longer hidden inside `assemble-correct`)
--- and DISCHARGE it via `once-symbol-injective` (the encoding-injectivity
--- proof). `funSymsOf` reads the SAME extractor the compiler uses, so the
--- symbols are exactly those `compileFromModule` emits.
--- ════════════════════════════════════════════════════════════════════
-funSymsOf : P.Module → List String
-funSymsOf m =
-  [ (λ _ → [])
-  , (λ p → mapL (λ fi → once-symbol-own (FunInfo.funName fi)) (proj₁ p))
-  ]′ (extractFunctions (extractAliases m) m)
-
--- The compiled top-level symbols of `m` are pairwise distinct.
-DistinctSymbols : P.Module → Set
-DistinctSymbols m = AllPairs _≢_ (funSymsOf m)
-
--- A successfully-built module has distinct symbols. Postulated here (the
--- top-down hook): the apex now DEPENDS on it, so `once-symbol-injective` is
--- load-bearing. Discharge (Plan 0.50 Phase 2/3): compile-success ⇒
--- `extractFunctions ≡ inj₂` with `namesDistinct ≡ true` (the guard) ⇒
--- distinct names ⇒ distinct symbols by `once-symbol-injective`.
-postulate
-  program-no-clash :
-    ∀ (arch : Arch) (m : P.Module) (asm : String) →
-    C.compileFromModule C.Heap C.Build false arch m ≡ C.Built asm →
-    DistinctSymbols m
+-- DISTINCT EMITTED SYMBOLS (`DistinctSymbols`) + its proof (`program-no-clash`)
+-- now live in `Once.Adequacy.NameClash` (imported above). The assembler trust
+-- point (`assemble-correct`) demands it; the apex supplies it — PROVED, not
+-- assumed, so the symbol-distinctness assumption is explicit AND discharged.
 
 -- ════════════════════════════════════════════════════════════════════
 -- Per-arch backend correctness — `correct` is GENERIC over the target
@@ -325,7 +297,7 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
     ∀ (n : ℕ) → exec arch (string-to-bytes arch asm) n ≡ (⟦ arch ⟧A asm) n
   string-to-bytes-correct arch m asm cf n =
     ArchCorrect.assemble-correct (arch-correct arch) m asm cf
-      (program-no-clash arch m asm cf) n
+      (program-no-clash m) n
 
   -- FACTOR 2 — the per-arch asm/printer bridge (`asm-trace-correct`) composed
   -- with the per-arch IR-observable theorem (`ir-flat-correct`). A theorem here;
