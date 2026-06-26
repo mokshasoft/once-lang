@@ -338,6 +338,23 @@ allValidIdentB : List String → Bool
 allValidIdentB []       = true
 allValidIdentB (x ∷ xs) = validIdentB x ∧ allValidIdentB xs
 
+-- The names that actually get EMITTED as symbols: only NON-primitive defs get a
+-- `functionPrologue`/`.globl` label (primitives are external Strata symbols,
+-- skipped by `compileFunWithTarget`). Clash-freedom + validity are required only
+-- over these. This is FORCED by the codegen-faithful no-clash proof (`caf-syms`
+-- in `Once.Adequacy.NameClash`), whose emitted-symbol set runs over exactly the
+-- non-primitive `CompiledFun`s — checking imported/injected primitives (which may
+-- carry qualified/owner-tagged names) would wrongly reject valid programs.
+-- de-withed (Bool-helper) so the codegen-faithfulness proof (`caf-syms`) can
+-- case on `funIsPrimitive` and reduce both this and `emittedSyms` in lockstep.
+emittedNames-cons : Bool → FunInfo → List String → List String
+emittedNames-cons true  fi rest = rest
+emittedNames-cons false fi rest = FunInfo.funName fi ∷ rest
+
+emittedNames : List FunInfo → List String
+emittedNames []         = []
+emittedNames (fi ∷ fis) = emittedNames-cons (FunInfo.funIsPrimitive fi) fi (emittedNames fis)
+
 -- Guard `extractFunctions-go`'s result on name well-formedness — DISTINCT and
 -- each a valid identifier (with-free dispatch on the combined Bool).
 distinctOrErr : Bool → EFResult → EFResult
@@ -348,7 +365,7 @@ guardDistinct : EFResult → EFResult
 guardDistinct (inj₁ err)            = inj₁ err
 guardDistinct (inj₂ (funs , polys)) =
   distinctOrErr (namesDistinct nms ∧ allValidIdentB nms) (inj₂ (funs , polys))
-  where nms = map FunInfo.funName funs
+  where nms = emittedNames funs
 
 extractFunctions : TypeAliasEnv → Module → String ⊎ (List FunInfo × List PolyFunInfo)
 extractFunctions aliases (mkModule ds) = guardDistinct (extractFunctions-go aliases ds nothing)

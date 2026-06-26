@@ -39,6 +39,7 @@ open import Once.Type public
 -- Re-export Core IR
 open import Once.IR public
 open import Once.CanonicalName using (CanonicalName; bare)
+open import Once.Target.Symbol using (once-symbol-path)
 
 -- Re-export Surface IR
 open import Once.Surface.IR public
@@ -379,6 +380,27 @@ compileResolvedModule-aux m doOpt mod (inj₂ (funs , polys)) =
 compileResolvedModule : AllocMode → Bool → Module → String ⊎ List CompiledFun
 compileResolvedModule m doOpt mod =
   compileResolvedModule-aux m doOpt mod (extractFunctions (extractAliases mod) mod)
+
+-- Plan 0.50 — the symbols THIS codegen actually emits as `.globl` labels, defined
+-- on the SAME `CompiledFun` list `compileFromModule` renders (`compileResolvedModule`).
+-- `compileFunWithTarget` skips primitives and emits `functionPrologue (cfName cf)` =
+-- `once-symbol-path (cfName cf)` for the rest, so `emittedSyms` mirrors that exactly.
+-- Clash-freedom (`program-no-clash`) is proven over THIS list, so it cannot drift
+-- from what the backend emits (the earlier `extractFunctions`-re-derivation could).
+emittedSyms-cons : Bool → CompiledFun → List String → List String
+emittedSyms-cons true  cf rest = rest                                   -- primitive: no label
+emittedSyms-cons false cf rest = once-symbol-path (cfName cf) ∷ rest
+
+emittedSyms : List CompiledFun → List String
+emittedSyms []         = []
+emittedSyms (cf ∷ cfs) = emittedSyms-cons (cfIsPrimitive cf) cf (emittedSyms cfs)
+
+moduleSyms-aux : String ⊎ List CompiledFun → List String
+moduleSyms-aux (inj₁ _)   = []
+moduleSyms-aux (inj₂ cfs) = emittedSyms cfs
+
+moduleSyms : AllocMode → Bool → Module → List String
+moduleSyms m doOpt mod = moduleSyms-aux (compileResolvedModule m doOpt mod)
 
 ------------------------------------------------------------------------
 -- Pipeline composition (SurfaceIR → IR)
