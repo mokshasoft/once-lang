@@ -268,7 +268,7 @@ parsePolyType = parsePolyTypeImpl
 open import Data.Nat using (_<_; _<?_)
 open import Data.Nat.Induction using (<-wellFounded)
 open import Data.Product using (Σ; Σ-syntax)
-open import Relation.Binary.PropositionalEquality using (_≡_)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Once.Parser.Generic.PolyInst
   using (parsePolyTypeP; sound-polyType; ParsesPolyType-shrink)
 
@@ -279,8 +279,13 @@ ParsePolyAtB toks =
 -- Plan 0.7-2: the runtime `<?` check is replaced by a STRUCTURAL bound — the
 -- generic bound-free parser `parsePolyTypeP` is now THE PolyType parser, and the
 -- length decrease is the relation shrink applied to the soundness witness.
+-- De-`with`'d through `ppB-go` (the result Maybe is a parameter) so the bridge
+-- lemmas `parsePolyTypeB ↔ ParsesPolyType` can reason about it.
+ppB-go : (toks : List Token) (r : Maybe (PolyType × List Token)) →
+         parsePolyTypeP toks ≡ r → ParsePolyAtB toks
+ppB-go toks nothing          pf = nothing
+ppB-go toks (just (t , rest)) pf =
+  just (t , rest , ParsesPolyType-shrink (sound-polyType toks (<-wellFounded (length toks)) pf))
+
 parsePolyTypeB : (toks : List Token) → ParsePolyAtB toks
-parsePolyTypeB toks with parsePolyTypeP toks in eq
-... | nothing          = nothing
-... | just (t , rest)  =
-      just (t , rest , ParsesPolyType-shrink (sound-polyType toks (<-wellFounded (length toks)) eq))
+parsePolyTypeB toks = ppB-go toks (parsePolyTypeP toks) refl
