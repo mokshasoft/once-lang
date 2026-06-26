@@ -1,0 +1,40 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claeson and contributors
+
+-- 05: under-granted authority is a TYPE ERROR, not a runtime check.
+--
+-- POC for OCP-0007. NOT compilable today.
+--
+-- A capability is a PRECONDITION. The Agda analogue is an instance/implicit
+-- argument `⦃ Cap c ⦄`: the requirement accumulates as an unmet obligation
+-- until something discharges it. Writing the grade in a signature is a CHECK,
+-- never a coercion (D007: signatures verify, they do not change meaning) — so
+-- you annotate only to assert a budget, and the compiler confirms the inferred
+-- set fits within it. There is no ambient authority.
+
+signature putLine : Eff (String Utf8) Unit
+signature get     : Eff Unit Nat
+signature put     : Eff Nat Unit
+
+require putLine : {Console}        -- Console is a capability
+-- get / put: plain State effect, no capability
+
+bump : Eff Unit Unit
+bump = get >>> arr succ >>> put            -- inferred: →[{State Nat}]
+
+greet : Eff (String Utf8) Unit
+greet = putLine                            -- inferred: →[{Console}]
+
+-- An explicit grade annotation is a BUDGET. The compiler checks the inferred
+-- requirements fit inside it.
+
+-- OK: needs {State Nat}, budget allows {State Nat}.
+logOnly : Unit →[{State Nat}] Unit
+logOnly = bump
+
+-- TYPE ERROR (uncomment to see): `greet` needs {Console}, which is not in the
+-- declared budget {State Nat}. The component literally cannot call an operation
+-- whose capability it has not been granted — caught at compile time, not run.
+--
+-- logOnlyBad : Unit →[{State Nat}] Unit
+-- logOnlyBad = arr (\_ -> "tick") >>> greet

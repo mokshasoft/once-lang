@@ -1,0 +1,40 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claeson and contributors
+
+-- 04: needed flows up, granted flows down — root capability and attenuation.
+--
+-- POC for OCP-0007. NOT compilable today.
+--
+-- NEEDED capabilities are inferred bottom-up (02, 03). GRANTED capabilities
+-- flow top-down: `main` holds the ROOT capability and delegates authority,
+-- attenuating it on the way down. A grant DISCHARGES a requirement; the two
+-- flows meet at the grant site. A program type-checks only when every needed
+-- capability has been discharged from root.
+
+signature putLine  : Eff (String Utf8) Unit
+signature readFile : Eff (String Utf8) (String Utf8)
+
+require putLine  : {Console}
+require readFile : {FileRead}        -- the weaker file capability
+
+-- A component. Its inferred grade IS its authority manifest.
+--   report : (String Utf8) →[{Console, FileRead}] Unit
+report : Eff (String Utf8) Unit
+report = readFile >>> putLine
+
+-- Grants are grade-lowering: each discharges one capability from the set.
+-- (`r` is the residual — the capabilities a grant leaves untouched.)
+signature withConsole  : (Eff[ {Console}  ∪ r ] A B) -> (Eff[ r ] A B)
+signature withFileRead : (Eff[ {FileRead} ∪ r ] A B) -> (Eff[ r ] A B)
+
+-- Attenuation: a holder of FileReadWrite may mint the WEAKER FileRead to hand
+-- downstream (FileRead ⊑ FileReadWrite). The reverse is rejected — you can
+-- never amplify authority.
+--   ok:     attenuate {FileRead}      (rootHolds {FileReadWrite})
+--   ERROR:  attenuate {FileReadWrite} (childHolds {FileRead})   -- amplify
+
+-- main = root. Discharge every needed capability; residual must reach {}.
+--   withFileRead : {Console, FileRead}  ↓  {Console}
+--   withConsole  : {Console}            ↓  {}        ✓ runnable
+main : IO Unit
+main = withConsole (withFileRead (report "motd.txt"))
