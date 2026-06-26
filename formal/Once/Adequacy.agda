@@ -39,6 +39,29 @@
 -- ║  permitted but every such postulate is NAMED, lives in the       ║
 -- ║  instance file, and is listed by `make postulates`.              ║
 -- ╚══════════════════════════════════════════════════════════════════╝
+--
+-- WORKED GUIDANCE — absorbing variations into the INSTANCE, not the spec.
+-- When a new input or output appears, the reflex "add a parameter to
+-- `compile`/`correct`" is almost always wrong: the abstract `Source`/`Bytes`
+-- are the absorption points. Concrete cases:
+--   • Separate compilation / IMPORT ENVIRONMENTS (a module's meaning depends
+--     on the modules it imports): the object whose correctness we assert is a
+--     COMPLETE compilation unit, so fold the import environment INTO `Source`
+--     (instance: `Source = ModuleMap × main-module`). `_⊢_` and `⟦_⟧ˢ` then
+--     range over the imports because they are part of `src`. The spec — and
+--     in particular `compile`'s arity — does NOT change. (Plan 0.51: this is
+--     how the import resolver enters the verified apex.)
+--   • Multi-artefact / metadata output → encode in `Bytes`.
+-- META-RULE: if you ever feel you MUST add a parameter to `compile` or
+-- `correct` (an ambient env, a flag, a config), that is a REAL change to the
+-- top-level correctness statement. STOP and float the decision to a human —
+-- do NOT route around it by smuggling the input through a degenerate `Source`
+-- (e.g. `Source = X × String` chosen only to dodge this file). The fold-into-
+-- `Source` move is legitimate ONLY when `Source` genuinely names a more
+-- complete program object (as with imports); it is illegitimate as a pure
+-- evasion. The test: can you justify the new `Source` from first principles
+-- as "what a complete program IS", independent of wanting to avoid editing
+-- here? If not, it is a spec change — float it.
 ------------------------------------------------------------------------
 
 module Once.Adequacy where

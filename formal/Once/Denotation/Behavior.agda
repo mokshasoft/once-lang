@@ -106,11 +106,26 @@ Behavior : Set
 Behavior = ℕ → List SigOpEvent
 
 ------------------------------------------------------------------------
--- Source — anchored at the formal grammar.
+-- Source — a COMPLETE compilation unit (Framing A, Plan 0.51).
+--
+-- A single grammar module is NOT self-contained: a program that imports
+-- `S.exit` has no determinate meaning without knowing what `S` resolves to.
+-- So the object whose correctness we assert is the user's module TOGETHER
+-- with its resolved import environment (`ModuleMap`, built by trusted I/O).
+-- This is the spec-anticipated "separate compilation" absorption point: it
+-- folds into `Source`, leaving `Once.Adequacy`'s `compile`/`correct` arity
+-- untouched. The import resolver thereby runs INSIDE the verified `compile`
+-- (`Once.Adequacy.SourceTrace.srcToModule`), so resolver correctness becomes
+-- part of the apex (`Once.Adequacy.ResolverBridge`) rather than trusted I/O.
 ------------------------------------------------------------------------
 
-Source : Set
-Source = G.GModule
+open import Once.Parser.Module.Resolve using (ModuleMap)
+
+record Source : Set where
+  constructor mkSource
+  field
+    srcImports : ModuleMap     -- resolved import environment (trusted I/O)
+    srcModule  : G.GModule     -- the user's parsed grammar module
 
 ------------------------------------------------------------------------
 -- ⟦_⟧ — extracts the exit-syscall argument from a program's
