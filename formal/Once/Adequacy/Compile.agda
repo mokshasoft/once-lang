@@ -45,7 +45,7 @@ open import Once.Type using (Unit; Type; _⇒[_]_; mk-kind; Many; eff)
 
 open import Once.Denotation.Behavior using (Source; Behavior)
 open import Once.Adequacy.SourceTrace
-  using (⟦_⟧; ⟦⟧-via-module; moduleToIR; ⟦_⟧IR; srcToModule; srcToModule-just)
+  using (⟦_⟧; ⟦⟧-via-module; moduleToIR; ⟦_⟧IR; srcToModule; srcToModule-just; srcToModule-inv)
 
 -- Plan 0.49 (route 3): the INDEPENDENT surface denotation `SD.⟦_⟧ˢ` (over the
 -- intrinsically-typed `Expr`, NOT through the compiler's `evalᴰ ∘ moduleToIR`),
@@ -78,6 +78,8 @@ open import Once.Adequacy.CPU.Interface using (Arch; Byte; ArchSemantics)
 import Once.Compile as C
 import Once.Grammar as G
 import Once.Parser.Module.Core as P
+open import Data.Sum using (inj₂)
+open import Once.Parser using (parseStrict)
 -- Stage 1 adapter, now a real structural conversion (discharges the
 -- former `gmoduleToModule` postulate).
 open import Once.Grammar.ModuleConvert using (gmoduleToModule)
@@ -230,6 +232,10 @@ import Once.Adequacy.MainRealizeAgrees as MRA
 -- un-resolved independent meaning to the resolved compilation. The resolver is
 -- now in the verified loop (`srcToModule`); these are the explicit gaps.
 import Once.Adequacy.ResolverBridge as RB
+-- Plan 0.52: the NAMED front-end (lexer+parser) obligations. `_⊢R_` anchors on
+-- the INDEPENDENT `ParsesText` (the grammar/relational spec), so completeness is
+-- not front-end-vacuous; `compile` runs the executable `parseStrict`.
+import Once.Adequacy.FrontEndBridge as FB
 
 ------------------------------------------------------------------------
 -- CPU semantics injected here (D054 wired-not-imported).
@@ -519,15 +525,16 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   Typed = Σ-syntax P.Module (λ m →
             Σ-syntax (ModuleTyped m) (λ mt → MC.HasValidMain-decl m mt))
 
-  -- Declarative link: `src` PARSES (verified relational parser — NOT the
-  -- typechecker/elaborator, and crucially NOT the import resolver) to `tp`'s
-  -- module. Plan 0.51 / THE TRAP: this stays over the UN-RESOLVED grammar
-  -- module `Source.srcModule src`, never `srcToModule` (which resolves). If it
-  -- went through the resolver, the resolver would appear symmetrically on both
-  -- sides of `correctR` and cancel — completeness would be resolver-vacuous.
-  -- The gap to the resolved compilation is the named `ResolverBridge`.
+  -- Declarative link: `src`'s TEXT denotes `tp`'s module, by the INDEPENDENT
+  -- grammar/relational parse spec `FB.ParsesText` — NOT the executable
+  -- `parseStrict`, NOT the typechecker/elaborator, and NOT the import resolver.
+  -- Plan 0.52 / THE TRAP: anchoring on the executable front-end (or the resolver)
+  -- would put it symmetrically on both sides of `correctR` and cancel —
+  -- completeness would be front-end/resolver-vacuous. The gaps to the executable
+  -- front-end and the resolved compilation are the named `FrontEndBridge` /
+  -- `ResolverBridge`. `m` here is the UN-resolved parsed module.
   _⊢R_ : Source → Typed → Set
-  src ⊢R (m , _ , _) = gmoduleToModule (Source.srcModule src) ≡ just m
+  src ⊢R (m , _ , _) = FB.ParsesText (Source.srcText src) m
 
   -- The INDEPENDENT surface meaning of `tp`'s `main`: `SD.⟦ main ⟧ˢ` run to a
   -- trace (via `Once.Adequacy.MainExtract`). The compiled-main IR `(ir, mi)` is
@@ -599,34 +606,39 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
     compile arch doOpt src ≡ just bytes →
     Σ-syntax Typed (λ tp → (src ⊢R tp) × (exec arch bytes ≋ ⟦ tp ⟧ˢ))
   correctR-sound arch doOpt src bytes pf with accept-sound arch doOpt src bytes pf
-  ... | (mR , g-eq , MT) with compile-just-ir arch doOpt src mR bytes g-eq pf
-  ...   | (ir , mi) with RB.resolver-reflects-typing src mR g-eq MT
-  ...     | (mU , p-eq , mt , hvm) =
-            let tp = (mU , mt , hvm)
-                p  = subst (λ c → Pointwise _≋_ (map (exec arch) c) (⟦ src ⟧⊥)) pf
-                           (correct arch doOpt src)
-                p' = subst (λ b → Pointwise _≋_ (just (exec arch bytes)) b)
-                           (⟦⟧⊥-just src mR ir g-eq mi) p
-                e≋ = pw-just-rel p'
-            in tp , p-eq , (λ n → trans (e≋ n)
-                              (trans (RB.resolver-preserves-trace src mR mU g-eq p-eq n)
-                                     (sd-bridge tp n)))
+  ... | (mR , stm-eq , MT) with compile-just-ir arch doOpt src mR bytes stm-eq pf
+  ...   | (ir , mi) with srcToModule-inv src mR stm-eq
+  ...     | (mU , p-eq , res-eq) with RB.resolver-reflects-typing (Source.srcImports src) mU mR res-eq MT
+  ...       | (mt , hvm) =
+              let tp  = (mU , mt , hvm)
+                  ⊢R  = FB.parseStrict-sound (Source.srcText src) mU p-eq   -- ParsesText … mU = src ⊢R tp
+                  p   = subst (λ c → Pointwise _≋_ (map (exec arch) c) (⟦ src ⟧⊥)) pf
+                              (correct arch doOpt src)
+                  p'  = subst (λ b → Pointwise _≋_ (just (exec arch bytes)) b)
+                              (⟦⟧⊥-just src mR ir stm-eq mi) p
+                  e≋  = pw-just-rel p'                                        -- exec bytes ≋ ⟦ moduleToIR mR ⟧IR
+              in tp , ⊢R , (λ n → trans (e≋ n)
+                                (trans (RB.resolver-preserves-trace (Source.srcImports src) mU mR res-eq n)
+                                       (sd-bridge tp n)))
 
-  -- COMPLETENESS conjunct — `src ⊢R tp` gives the UN-resolved parse to `mU`;
-  -- `RB.resolver-preserves-typing` resolves it to a well-typed `mR` (with valid
-  -- main), which `moduleToIR-complete` compiles and `main⇒built` Builds. The
-  -- front-end reduction `srcToModule src ≡ just mR` (`srcToModule-just`) ties
-  -- the resolved module back to `compile src`.
+  -- COMPLETENESS conjunct — `src ⊢R tp` is `FB.ParsesText text mU` (independent
+  -- parse); `FB.parseStrict-complete` turns it into the executable
+  -- `parseStrict text ≡ inj₂ mU`; `RB.resolver-preserves-typing` resolves `mU`
+  -- to a well-typed `mR` (with valid main), which `moduleToIR-complete` compiles
+  -- and `main⇒built` Builds. `srcToModule-just` ties the resolved module back to
+  -- `compile src` (= `parseStrict` then `resolveImports`).
   correctR-complete : ∀ (arch : Arch) (doOpt : Bool) (src : Source) (tp : Typed) →
     src ⊢R tp →
     Σ-syntax (List Byte) (λ bytes → compile arch doOpt src ≡ just bytes)
-  correctR-complete arch doOpt src (mU , mt , hvm) g-eq
+  correctR-complete arch doOpt src (mU , mt , hvm) ⊢R
     with RB.resolver-preserves-typing (Source.srcImports src) mU mt hvm
   ... | (mR , res-eq , mt' , hvm') with MC.moduleToIR-complete mR mt' hvm'
   ...   | (ir , mi) with main⇒built arch doOpt mR ir mi
   ...     | (asm , built-eq) = string-to-bytes arch asm , c≡j
-    where stm-eq : srcToModule src ≡ just mR
-          stm-eq = srcToModule-just src mU mR g-eq res-eq
+    where p-eq : parseStrict (Source.srcText src) ≡ inj₂ mU
+          p-eq = FB.parseStrict-complete (Source.srcText src) mU ⊢R
+          stm-eq : srcToModule src ≡ just mR
+          stm-eq = srcToModule-just src mU mR p-eq res-eq
           c≡j : compile arch doOpt src ≡ just (string-to-bytes arch asm)
           c≡j rewrite stm-eq | mi | built-eq = refl
 

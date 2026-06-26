@@ -39,10 +39,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_)
 
 import Once.Parser.Module.Core as P
 open import Once.Parser.Module.Resolve using (ModuleMap; resolveImports)
-open import Once.Grammar.ModuleConvert using (gmoduleToModule)
-open import Once.Denotation.Behavior using (Source; Behavior)
-open Source using (srcModule; srcImports)
-open import Once.Adequacy.SourceTrace using (srcToModule; moduleToIR; ⟦_⟧IR)
+open import Once.Adequacy.SourceTrace using (moduleToIR; ⟦_⟧IR)
 import Once.Adequacy.AcceptSound as AS
 import Once.Adequacy.ModuleComplete as MC
 
@@ -63,17 +60,17 @@ postulate
       × Σ-syntax (AS.ModuleTyped mR) (λ mt' → MC.HasValidMain-decl mR mt'))
 
   -- (2) REVERSE type-recovery — for SOUNDNESS. If the front-end accepted (the
-  --     RESOLVED module is well-typed) then the UN-resolved source was itself a
-  --     typed program with a valid `main`, so the apex can produce a `tp` over
-  --     the un-resolved module (keeping `_⊢R_` parse-based). For the import-free
-  --     fragment this is an equivalence; with imports it needs the import-aware
-  --     declarative typing to phrase "the source typed GIVEN its imports".
+  --     RESOLVED module `mR` is well-typed) and `mU` resolves to `mR`, then `mU`
+  --     was itself a typed program with a valid `main`, so the apex can produce a
+  --     `tp` over the UN-resolved module (keeping `_⊢R_` front-end-based, not
+  --     resolver-based). For the import-free fragment this is an equivalence;
+  --     with imports it needs the import-aware declarative typing to phrase "the
+  --     source typed GIVEN its imports". (Phrased over the resolve step alone —
+  --     the parse step is the FrontEndBridge's concern.)
   resolver-reflects-typing :
-    ∀ (src : Source) (mR : P.Module) →
-    srcToModule src ≡ just mR → AS.ModuleTyped mR →
-    Σ-syntax P.Module (λ mU →
-      (gmoduleToModule (srcModule src) ≡ just mU)
-      × Σ-syntax (AS.ModuleTyped mU) (λ mt → MC.HasValidMain-decl mU mt))
+    ∀ (mm : ModuleMap) (mU mR : P.Module) →
+    resolveImports mm mU ≡ inj₂ mR → AS.ModuleTyped mR →
+    Σ-syntax (AS.ModuleTyped mU) (λ mt → MC.HasValidMain-decl mU mt)
 
   -- (3) trace-preservation — for SOUNDNESS/TRACE. The resolved module's IR
   --     trace equals the un-resolved module's, so the compiled bytes' trace
@@ -82,7 +79,6 @@ postulate
   --     discharge via the realize/`faithful` bridge over the canonicalized refs
   --     (Plan 0.50 `m-named-resolved` / `realize-agrees`).
   resolver-preserves-trace :
-    ∀ (src : Source) (mR mU : P.Module) →
-    srcToModule src ≡ just mR →
-    gmoduleToModule (srcModule src) ≡ just mU →
+    ∀ (mm : ModuleMap) (mU mR : P.Module) →
+    resolveImports mm mU ≡ inj₂ mR →
     ∀ (n : ℕ) → ⟦ moduleToIR mR ⟧IR n ≡ ⟦ moduleToIR mU ⟧IR n

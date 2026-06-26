@@ -36,21 +36,24 @@ open import Data.Bool using (Bool; false; true)
 open import Data.Nat using (ℕ)
 open import Data.List using (List; []; _∷_; take)
 open import Data.Maybe using (Maybe; just; nothing)
+open import Data.Maybe.Properties using (just-injective)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
+open import Data.Product using (_×_; _,_; Σ-syntax)
 open import Data.Unit using (tt)
 open import Data.String using (String) renaming (_≟_ to _≟str_)
 open import Once.CanonicalName using (CanonicalName; bare) renaming (_≟ᶜ_ to _≟cn_)
 open import Relation.Nullary using (yes; no; Dec)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
 
 open import Once.Type using (Type; Unit)
 open import Once.IR using (IR)
 import Once.Compile as C
 import Once.Parser.Module.Core as P
-open import Once.Grammar.ModuleConvert using (gmoduleToModule)
--- Plan 0.51: pull the resolver INTO the verified front-end, so `moduleToIR`
--- compiles the SAME (resolved) module the binary runs — and a resolver bug reds
--- the apex via `moduleToIR-complete` (resolver-preserves-typing).
+-- Plan 0.52: pull the LEXER+PARSER into the verified front-end — `srcToModule`
+-- runs the executable `parseStrict` on the source TEXT (a front-end bug reds the
+-- apex via `Once.Adequacy.FrontEndBridge`). Plan 0.51: and then the resolver, so
+-- `moduleToIR` compiles the SAME (resolved) module the binary runs.
+open import Once.Parser using (parseStrict)
 open import Once.Parser.Module.Resolve using (resolveImports; ModuleMap)
 open import Once.Denotation.Behavior using (Source; Behavior)
 open import Once.Denotation.DenotTrace using (evalᴰ)
@@ -123,26 +126,54 @@ moduleToIR mod = moduleToIR-aux (C.compileResolvedModule C.Heap false mod)
 -- not resolver-vacuous; the bridge between them is the named ResolverBridge.
 ------------------------------------------------------------------------
 
-resolveToMaybe : String ⊎ P.Module → Maybe P.Module
-resolveToMaybe (inj₁ _) = nothing
-resolveToMaybe (inj₂ m) = just m
+eitherToMaybe : String ⊎ P.Module → Maybe P.Module
+eitherToMaybe (inj₁ _) = nothing
+eitherToMaybe (inj₂ m) = just m
 
 srcToModule-aux : ModuleMap → Maybe P.Module → Maybe P.Module
 srcToModule-aux mm nothing  = nothing
-srcToModule-aux mm (just m) = resolveToMaybe (resolveImports mm m)
+srcToModule-aux mm (just m) = eitherToMaybe (resolveImports mm m)
 
+-- The verified front-end: lex+parse the source TEXT (`parseStrict`), then resolve
+-- imports. Both the lexer and parser now run INSIDE `compile`; their correctness
+-- is the apex's concern (`Once.Adequacy.FrontEndBridge`), as the resolver's is
+-- (`Once.Adequacy.ResolverBridge`).
 srcToModule : Source → Maybe P.Module
 srcToModule src =
-  srcToModule-aux (Source.srcImports src) (gmoduleToModule (Source.srcModule src))
+  srcToModule-aux (Source.srcImports src) (eitherToMaybe (parseStrict (Source.srcText src)))
 
--- The front-end SUCCEEDS to `mR` exactly when the user's module parses to `mU`
+-- The front-end SUCCEEDS to `mR` exactly when the source text parses to `mU`
 -- and the resolver maps it to `mR`. (Reduction lemma the apex completeness path
 -- uses to rewrite `srcToModule src` once both halves are known.)
 srcToModule-just : ∀ (src : Source) (mU mR : P.Module) →
-  gmoduleToModule (Source.srcModule src) ≡ just mU →
+  parseStrict (Source.srcText src) ≡ inj₂ mU →
   resolveImports (Source.srcImports src) mU ≡ inj₂ mR →
   srcToModule src ≡ just mR
 srcToModule-just src mU mR p-eq r-eq rewrite p-eq | r-eq = refl
+
+-- Inversion: a successful front-end (`srcToModule src ≡ just mR`) DECOMPOSES
+-- into a successful parse (`parseStrict text ≡ inj₂ mU`) and a successful
+-- resolve (`resolveImports … mU ≡ inj₂ mR`). The apex soundness path uses this
+-- to recover the un-resolved parsed module `mU` (for `_⊢R_`/the FrontEndBridge).
+-- Clause-based on the `⊎` results (no `with`-opacity).
+eitherToMaybe-inv : ∀ (e : String ⊎ P.Module) (m : P.Module) →
+  eitherToMaybe e ≡ just m → e ≡ inj₂ m
+eitherToMaybe-inv (inj₁ _)  m ()
+eitherToMaybe-inv (inj₂ m') m eq = cong inj₂ (just-injective eq)
+
+srcToModule-inv-p : ∀ (mm : ModuleMap) (pr : String ⊎ P.Module) (mR : P.Module) →
+  srcToModule-aux mm (eitherToMaybe pr) ≡ just mR →
+  Σ-syntax P.Module (λ mU → (pr ≡ inj₂ mU) × (resolveImports mm mU ≡ inj₂ mR))
+srcToModule-inv-p mm (inj₁ _)  mR ()
+srcToModule-inv-p mm (inj₂ mU) mR eq = mU , refl , eitherToMaybe-inv (resolveImports mm mU) mR eq
+
+srcToModule-inv : ∀ (src : Source) (mR : P.Module) →
+  srcToModule src ≡ just mR →
+  Σ-syntax P.Module (λ mU →
+    (parseStrict (Source.srcText src) ≡ inj₂ mU)
+    × (resolveImports (Source.srcImports src) mU ≡ inj₂ mR))
+srcToModule-inv src mR eq =
+  srcToModule-inv-p (Source.srcImports src) (parseStrict (Source.srcText src)) mR eq
 
 ------------------------------------------------------------------------
 -- The source semantics (discharges the `Behavior.⟦_⟧` postulate).
