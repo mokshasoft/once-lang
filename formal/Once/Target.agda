@@ -16,6 +16,7 @@ open import Data.Product using (_×_)
 open import Data.String using (String)
 open import Once.IR using (IR)
 open import Once.Arith.Machine.IR using (ArithBlock)
+open import Once.CanonicalName using (CanonicalName)
 
 ------------------------------------------------------------------------
 -- Target Record
@@ -40,8 +41,11 @@ record Target : Set where
     irToBodies : ℕ → ∀ {A B} → IR A B → ℕ × String
     -- | Assembly file header (e.g., ".section .text")
     asmHeader : String
-    -- | Generate function prologue (label, .globl directive)
-    functionPrologue : String → String
+    -- | Generate function prologue (label, .globl directive).
+    -- Plan 0.50 (def-side CanonicalName): keyed on the definition's
+    -- CanonicalName, mangled by `once-symbol-path` — the same identity the
+    -- caller resolves to, so def/call symbols agree by construction.
+    functionPrologue : CanonicalName → String
     -- | Generate function epilogue (ret instruction)
     functionEpilogue : String
     -- | Plan 0.20 Phase G: emit per-arith-block subroutines as a

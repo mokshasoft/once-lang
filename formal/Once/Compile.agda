@@ -38,6 +38,7 @@ open import Once.Type public
 
 -- Re-export Core IR
 open import Once.IR public
+open import Once.CanonicalName using (CanonicalName; bare)
 
 -- Re-export Surface IR
 open import Once.Surface.IR public
@@ -232,7 +233,7 @@ compileFun m doOpt ctx polys sigEffs name ty expr = compileFun-aux m doOpt ctx p
 record CompiledFun : Set where
   constructor mkCompiledFun
   field
-    cfName : String
+    cfName : CanonicalName
     cfType : Type
     cfIR   : IR Unit cfType
     -- | Plan 0.11: `true` for primitives (signatures whose
@@ -298,7 +299,7 @@ caf-go-wrap fi ty ir (inj₂ compiled)  =
   let wrapped = maybeWrapMain (funName fi) ty ir
       ty'     = proj₁ wrapped
       ir'     = proj₂ wrapped
-  in inj₂ (mkCompiledFun (funName fi) ty' ir' (funIsPrimitive fi) ∷ compiled)
+  in inj₂ (mkCompiledFun (bare (funName fi)) ty' ir' (funIsPrimitive fi) ∷ compiled)
 
 caf-go-cf-aux m doOpt polys sigEffs fi rest ctx ty (inj₁ err) = inj₁ err
 caf-go-cf-aux m doOpt polys sigEffs fi rest ctx ty (inj₂ ir) =

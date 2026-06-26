@@ -25,6 +25,7 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Maybe.Properties using (just-injective)
 open import Data.List using (List; []; _∷_)
 open import Data.String using (String) renaming (_≟_ to _≟str_)
+open import Once.CanonicalName using (CanonicalName; bare) renaming (_≟ᶜ_ to _≟cn_)
 open import Relation.Nullary using (yes; no; ¬_)
 open import Function using (case_of_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
@@ -163,7 +164,7 @@ compileFun-main-form ctx polys sigEffs ty body irFun eq
 
 findMain-here-no : ∀ (cf : C.CompiledFun) (b : Data.Bool.Bool)
   (mu : Maybe (C.CompiledFun.cfType cf ≡ Unit)) (cont : Maybe (IR Unit Unit))
-  (¬p : ¬ (C.CompiledFun.cfName cf ≡ "main")) →
+  (¬p : ¬ (C.CompiledFun.cfName cf ≡ bare "main")) →
   findMain-here cf b (no ¬p) mu cont ≡ cont
 findMain-here-no cf false mu cont ¬p = refl
 findMain-here-no cf true  mu cont ¬p = refl
@@ -175,12 +176,17 @@ findMain-here-no cf true  mu cont ¬p = refl
 
 open C.CompiledFun using (cfType; cfName; cfIsPrimitive)
 
+-- `bare` is injective (single-component CanonicalName), so a String name ≠
+-- "main" lifts to its CanonicalName ≠ `bare "main"`.
+bare-injective : ∀ {s t} → bare s ≡ bare t → s ≡ t
+bare-injective refl = refl
+
 -- A head whose name ≠ "main" is skipped by findMain. (Proven in its OWN goal,
 -- where the `with`-abstraction of the stuck String-decidable applies — unlike a
 -- freshly-built `subst` type, where it would not reduce.)
 findMain-skip : ∀ (cf : C.CompiledFun) (rest : List C.CompiledFun) →
-  ¬ (cfName cf ≡ "main") → findMain (cf ∷ rest) ≡ findMain rest
-findMain-skip cf rest ¬p with cfName cf ≟str "main"
+  ¬ (cfName cf ≡ bare "main") → findMain (cf ∷ rest) ≡ findMain rest
+findMain-skip cf rest ¬p with cfName cf ≟cn bare "main"
 ... | yes p  = ⊥-elim (¬p p)
 ... | no ¬q  = findMain-here-no cf (cfIsPrimitive cf) (isUnit? (cfType cf)) (findMain rest) ¬q
 
@@ -208,10 +214,10 @@ caf-go-find-form polys sigEffs (fi ∷ rest) ctx compiled ir caf-eq fm-eq
 ...       | no ¬p =
             caf-go-find-form polys sigEffs rest (C.extendFunCtx ctx (funName fi) ty) compiled-rest ir rec-eq
               (trans (sym (findMain-skip
-                             (C.mkCompiledFun (funName fi)
+                             (C.mkCompiledFun (bare (funName fi))
                                (proj₁ (C.maybeWrapMain (funName fi) ty irFun))
                                (proj₂ (C.maybeWrapMain (funName fi) ty irFun))
-                               (funIsPrimitive fi)) compiled-rest ¬p))
+                               (funIsPrimitive fi)) compiled-rest (λ e → ¬p (bare-injective e))))
                      (subst (λ c → findMain c ≡ just ir) (sym (inj₂-injective caf-eq)) fm-eq))
 ...       | yes refl
           with funIsPrimitive fi
