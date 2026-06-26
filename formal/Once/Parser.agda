@@ -14,7 +14,8 @@ open import Data.Bool using (Bool; true; false; not; _∧_; _∨_)
 open import Data.List using (List; []; _∷_; map)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_; proj₁)
-open import Data.String using (String; _≟_; _++_)
+open import Data.String using (String; _≟_; _++_; toList)
+open import Data.Char using (Char)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Nat using (ℕ)
 open import Relation.Nullary using (yes; no; does)
@@ -22,7 +23,7 @@ open import Relation.Nullary using (yes; no; does)
 open import Once.Type using (Type; PolyType; isGround; extractGround; showPolyType)
 open import Once.TypeCheck.Raw using (RawExpr; RVar)
 open import Once.Parser.Token
-open import Once.Parser.Lexer using (tokenizeString)
+open import Once.Parser.Lexer using (tokenizeString; isIdentStart; isIdentContinue)
 open import Once.Parser.Core using (Parser)
 open import Once.Parser.Type using (parseType; isUpperWord) public
 open import Once.Parser.PolyType using (parsePolyType) public
@@ -315,15 +316,39 @@ namesDistinct : List String → Bool
 namesDistinct []       = true
 namesDistinct (x ∷ xs) = not (nameElem x xs) ∧ namesDistinct xs
 
--- Guard `extractFunctions-go`'s result on name-distinctness (with-free dispatch).
+-- Plan 0.50 (clash-freedom, validity half): each top-level definition name must
+-- be a genuine lexer identifier — head `isIdentStart`, tail `isIdentContinue` —
+-- the SAME predicates the lexer tokenises with. This is the precondition the
+-- symbol mangling needs to be INJECTIVE (`once-symbol-path-injective`): the
+-- self-delimiting length prefix only works because an identifier never starts
+-- with a digit. Checked HERE (no `with`), so `extractFunctions` success carries
+-- it; `program-no-clash` reads it back off via `validIdentB-sound`.
+allIdentContinue : List Char → Bool
+allIdentContinue []       = true
+allIdentContinue (c ∷ cs) = isIdentContinue c ∧ allIdentContinue cs
+
+validCharsB : List Char → Bool
+validCharsB []       = false
+validCharsB (c ∷ cs) = isIdentStart c ∧ allIdentContinue cs
+
+validIdentB : String → Bool
+validIdentB s = validCharsB (toList s)
+
+allValidIdentB : List String → Bool
+allValidIdentB []       = true
+allValidIdentB (x ∷ xs) = validIdentB x ∧ allValidIdentB xs
+
+-- Guard `extractFunctions-go`'s result on name well-formedness — DISTINCT and
+-- each a valid identifier (with-free dispatch on the combined Bool).
 distinctOrErr : Bool → EFResult → EFResult
 distinctOrErr true  r = r
-distinctOrErr false _ = inj₁ "duplicate top-level definition name"
+distinctOrErr false _ = inj₁ "ill-formed top-level definition name (duplicate or not an identifier)"
 
 guardDistinct : EFResult → EFResult
 guardDistinct (inj₁ err)            = inj₁ err
 guardDistinct (inj₂ (funs , polys)) =
-  distinctOrErr (namesDistinct (map FunInfo.funName funs)) (inj₂ (funs , polys))
+  distinctOrErr (namesDistinct nms ∧ allValidIdentB nms) (inj₂ (funs , polys))
+  where nms = map FunInfo.funName funs
 
 extractFunctions : TypeAliasEnv → Module → String ⊎ (List FunInfo × List PolyFunInfo)
 extractFunctions aliases (mkModule ds) = guardDistinct (extractFunctions-go aliases ds nothing)
