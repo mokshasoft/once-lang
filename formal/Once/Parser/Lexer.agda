@@ -258,9 +258,48 @@ drop1-≤ : (cs : List Char) → length (drop1 cs) ≤ length cs
 drop1-≤ []       = z≤n
 drop1-≤ (_ ∷ cs) = n≤1+n _
 
--- | Tokenize worker (de-`with`'d). `tok-str`/`tok-gen` handle the string and
--- digit/ident/skip `with`-clauses; `tok-nl`/`tok-op2`/`tok-minus`/`tok-lbrace`/
--- `tok-caret` handle the multi-char heads via the classifiers above.
+-- | Head classifier: maps the first char to its dispatch kind. Routing
+-- `tokenize-WF`'s head through this (instead of 27 positional literal clauses)
+-- lets the bridge proofs step `tokenize-WF (c ∷ cs)` for a VARIABLE `c` via
+-- `with headK c in eq` — Agda cannot reduce a positional catch-all under a peeled
+-- literal, but it reduces `tok-head c cs rec (headK c)` once `headK c` is known.
+data HeadK : Set where
+  hkWS hkNL hkCaret hkDash hkLBrace hkLt hkGt hkEq hkBang
+    hkLParen hkRParen hkRBrace hkColon hkLambda hkComma hkSemi hkAt hkPipe
+    hkPlus hkStar hkSlash hkPct hkAmp hkDot hkStr hkGen : HeadK
+
+headK : Char → HeadK
+headK c =
+  if does (c ≟c ' ') ∨ does (c ≟c '\t') ∨ does (c ≟c '\r') then hkWS
+  else if does (c ≟c '\n') then hkNL
+  else if does (c ≟c '^') then hkCaret
+  else if does (c ≟c '-') then hkDash
+  else if does (c ≟c '{') then hkLBrace
+  else if does (c ≟c '<') then hkLt
+  else if does (c ≟c '>') then hkGt
+  else if does (c ≟c '=') then hkEq
+  else if does (c ≟c '!') then hkBang
+  else if does (c ≟c '(') then hkLParen
+  else if does (c ≟c ')') then hkRParen
+  else if does (c ≟c '}') then hkRBrace
+  else if does (c ≟c ':') then hkColon
+  else if does (c ≟c '\\') then hkLambda
+  else if does (c ≟c ',') then hkComma
+  else if does (c ≟c ';') then hkSemi
+  else if does (c ≟c '@') then hkAt
+  else if does (c ≟c '|') then hkPipe
+  else if does (c ≟c '+') then hkPlus
+  else if does (c ≟c '*') then hkStar
+  else if does (c ≟c '/') then hkSlash
+  else if does (c ≟c '%') then hkPct
+  else if does (c ≟c '&') then hkAmp
+  else if does (c ≟c '.') then hkDot
+  else if does (c ≟c '"') then hkStr
+  else hkGen
+
+-- | Tokenize worker. The head is dispatched via `headK` + `tok-head`; the
+-- multi-char heads delegate to `tok-nl`/`tok-op2`/`tok-minus`/`tok-lbrace`/
+-- `tok-caret`; the string/general clauses to `tok-str`/`tok-gen`.
 tok-str : (cs : List Char) → (∀ {y} → y < suc (length cs) → Acc _<_ y) →
           Maybe (Σ[ s ∈ List Char ] Σ[ rest ∈ List Char ] length rest < length cs) →
           List Token
@@ -272,37 +311,38 @@ tok-op2 : (cs : List Char) → (∀ {y} → y < suc (length cs) → Acc _<_ y) �
 tok-lbrace : (cs : List Char) → (∀ {y} → y < suc (length cs) → Acc _<_ y) → Bool → List Token
 tok-minus  : (cs : List Char) → (∀ {y} → y < suc (length cs) → Acc _<_ y) → Dash3 → List Token
 tok-caret  : (cs : List Char) → (∀ {y} → y < suc (length cs) → Acc _<_ y) → Caret4 → List Token
+tok-head   : (c : Char) (cs : List Char) → (∀ {y} → y < suc (length cs) → Acc _<_ y) → HeadK → List Token
 tokenize-WF : (cs : List Char) → Acc _<_ (length cs) → List Token
 
 tokenize-WF [] _ = TEOF ∷ []
-tokenize-WF (' '  ∷ cs) (acc rec) = tokenize-WF cs (rec (s≤s ≤-refl))
-tokenize-WF ('\t' ∷ cs) (acc rec) = tokenize-WF cs (rec (s≤s ≤-refl))
-tokenize-WF ('\r' ∷ cs) (acc rec) = tokenize-WF cs (rec (s≤s ≤-refl))
-tokenize-WF ('\n' ∷ cs) (acc rec) = tok-nl cs rec (nlIndent cs)
-tokenize-WF ('^' ∷ cs) (acc rec) = tok-caret cs rec (caretClass cs)
-tokenize-WF ('-' ∷ cs) (acc rec) = tok-minus cs rec (dashClass cs)
-tokenize-WF ('{' ∷ cs) (acc rec) = tok-lbrace cs rec (isDashHead cs)
-tokenize-WF ('<' ∷ cs) (acc rec) = tok-op2 cs rec TLe TLt (isEqHead cs)
-tokenize-WF ('>' ∷ cs) (acc rec) = tok-op2 cs rec TGe TGt (isEqHead cs)
-tokenize-WF ('=' ∷ cs) (acc rec) = tok-op2 cs rec TEqEq TEquals (isEqHead cs)
-tokenize-WF ('!' ∷ cs) (acc rec) = tok-op2 cs rec TNeq TBang (isEqHead cs)
-tokenize-WF ('(' ∷ cs) (acc rec) = TLParen    ∷ tokenize-WF cs (rec (s≤s ≤-refl))
-tokenize-WF (')' ∷ cs) (acc rec) = TRParen    ∷ tokenize-WF cs (rec (s≤s ≤-refl))
-tokenize-WF ('}' ∷ cs) (acc rec) = TRBrace    ∷ tokenize-WF cs (rec (s≤s ≤-refl))
-tokenize-WF (':' ∷ cs) (acc rec) = TColon     ∷ tokenize-WF cs (rec (s≤s ≤-refl))
-tokenize-WF ('\\' ∷ cs) (acc rec) = TLambda   ∷ tokenize-WF cs (rec (s≤s ≤-refl))
-tokenize-WF (',' ∷ cs) (acc rec) = TComma     ∷ tokenize-WF cs (rec (s≤s ≤-refl))
-tokenize-WF (';' ∷ cs) (acc rec) = TSemicolon ∷ tokenize-WF cs (rec (s≤s ≤-refl))
-tokenize-WF ('@' ∷ cs) (acc rec) = TAt        ∷ tokenize-WF cs (rec (s≤s ≤-refl))
-tokenize-WF ('|' ∷ cs) (acc rec) = TPipe      ∷ tokenize-WF cs (rec (s≤s ≤-refl))
-tokenize-WF ('+' ∷ cs) (acc rec) = TPlus      ∷ tokenize-WF cs (rec (s≤s ≤-refl))
-tokenize-WF ('*' ∷ cs) (acc rec) = TStar      ∷ tokenize-WF cs (rec (s≤s ≤-refl))
-tokenize-WF ('/' ∷ cs) (acc rec) = TSlash     ∷ tokenize-WF cs (rec (s≤s ≤-refl))
-tokenize-WF ('%' ∷ cs) (acc rec) = TPercent   ∷ tokenize-WF cs (rec (s≤s ≤-refl))
-tokenize-WF ('&' ∷ cs) (acc rec) = TAmpersand ∷ tokenize-WF cs (rec (s≤s ≤-refl))
-tokenize-WF ('.' ∷ cs) (acc rec) = TDot       ∷ tokenize-WF cs (rec (s≤s ≤-refl))
-tokenize-WF ('"' ∷ cs) (acc rec) = tok-str cs rec (collectStringB cs)
-tokenize-WF (c ∷ cs)   (acc rec) = tok-gen c cs rec (isDigit c) (isIdentStart c)
+tokenize-WF (c ∷ cs) (acc rec) = tok-head c cs rec (headK c)
+
+tok-head c cs rec hkWS     = tokenize-WF cs (rec (s≤s ≤-refl))
+tok-head c cs rec hkNL     = tok-nl cs rec (nlIndent cs)
+tok-head c cs rec hkCaret  = tok-caret cs rec (caretClass cs)
+tok-head c cs rec hkDash   = tok-minus cs rec (dashClass cs)
+tok-head c cs rec hkLBrace = tok-lbrace cs rec (isDashHead cs)
+tok-head c cs rec hkLt     = tok-op2 cs rec TLe TLt (isEqHead cs)
+tok-head c cs rec hkGt     = tok-op2 cs rec TGe TGt (isEqHead cs)
+tok-head c cs rec hkEq     = tok-op2 cs rec TEqEq TEquals (isEqHead cs)
+tok-head c cs rec hkBang   = tok-op2 cs rec TNeq TBang (isEqHead cs)
+tok-head c cs rec hkLParen = TLParen    ∷ tokenize-WF cs (rec (s≤s ≤-refl))
+tok-head c cs rec hkRParen = TRParen    ∷ tokenize-WF cs (rec (s≤s ≤-refl))
+tok-head c cs rec hkRBrace = TRBrace    ∷ tokenize-WF cs (rec (s≤s ≤-refl))
+tok-head c cs rec hkColon  = TColon     ∷ tokenize-WF cs (rec (s≤s ≤-refl))
+tok-head c cs rec hkLambda = TLambda    ∷ tokenize-WF cs (rec (s≤s ≤-refl))
+tok-head c cs rec hkComma  = TComma     ∷ tokenize-WF cs (rec (s≤s ≤-refl))
+tok-head c cs rec hkSemi   = TSemicolon ∷ tokenize-WF cs (rec (s≤s ≤-refl))
+tok-head c cs rec hkAt     = TAt        ∷ tokenize-WF cs (rec (s≤s ≤-refl))
+tok-head c cs rec hkPipe   = TPipe      ∷ tokenize-WF cs (rec (s≤s ≤-refl))
+tok-head c cs rec hkPlus   = TPlus      ∷ tokenize-WF cs (rec (s≤s ≤-refl))
+tok-head c cs rec hkStar   = TStar      ∷ tokenize-WF cs (rec (s≤s ≤-refl))
+tok-head c cs rec hkSlash  = TSlash     ∷ tokenize-WF cs (rec (s≤s ≤-refl))
+tok-head c cs rec hkPct    = TPercent   ∷ tokenize-WF cs (rec (s≤s ≤-refl))
+tok-head c cs rec hkAmp    = TAmpersand ∷ tokenize-WF cs (rec (s≤s ≤-refl))
+tok-head c cs rec hkDot    = TDot       ∷ tokenize-WF cs (rec (s≤s ≤-refl))
+tok-head c cs rec hkStr    = tok-str cs rec (collectStringB cs)
+tok-head c cs rec hkGen    = tok-gen c cs rec (isDigit c) (isIdentStart c)
 
 tok-str cs rec (just (s , rest , bnd)) =
   TString (fromList s) ∷ tokenize-WF rest (rec (m≤n⇒m≤1+n bnd))
