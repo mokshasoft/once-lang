@@ -30,4 +30,4 @@ For smaller decisions, use the [Decision Log](../compiler/decision-log.md) inste
 | 0004 | [Zero-Trust Verification](OCP-0004-zero-trust-verification.md) | Draft |
 | 0005 | [Decision State & Invariant Encoding](OCP-0005-decision-state-and-invariant-encoding.md) | Draft |
 | 0006 | [Once Spec Language Definition](OCP-0006-once-spec-language-definition.md) | Draft |
-| 0007 | [Graded Algebraic Effects](OCP-0007-graded-algebraic-effects.md) | Draft |
+| 0007 | [Capability-Graded Effects](OCP-0007-capability-graded-effects.md) | Draft |
