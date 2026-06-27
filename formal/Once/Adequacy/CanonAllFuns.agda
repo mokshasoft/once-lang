@@ -16,21 +16,25 @@ module Once.Adequacy.CanonAllFuns where
 open import Data.Bool using (Bool; true; false)
 open import Data.List using (List; []; _∷_; map)
 open import Data.Maybe using (just; nothing)
-open import Data.Product using (_,_)
-open import Data.Sum using (inj₂)
-open import Data.String using (String)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
+open import Data.Product using (_,_; ∃-syntax)
+open import Data.Sum using (_⊎_; inj₁; inj₂)
+open import Data.String using (String; _++_)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; sym; trans)
 
 open import Once.Type using (Type)
 open import Once.Parser using (FunInfo; PolyFunInfo)
 open Once.Parser.FunInfo using (funName; funType; funBody; funIsPrimitive)
 import Once.Compile as C
-open import Once.TypeCheck.Classify using (PolyCtx; ctxWithImportsAndSelfAndPolys)
-open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_)
+open import Once.TypeCheck.Classify using (PolyCtx; ctxWithImportsAndSelfAndPolys; ctxWithImportsAndPolys)
+open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_)
+open import Once.TypeCheck.Elaborate using (inferElab; InferElabResult; success; failure)
+open import Once.TypeCheck.Error using (renderError)
+open import Once.TypeCheck.Soundness using (infer-sound)
+open import Once.TypeCheck.Completeness using (infer-complete)
 import Once.Adequacy.AcceptSound as AS
 open import Once.Adequacy.CanonPreserve using (⊆ᵇ-nil)
-open import Once.Adequacy.CanonPreserveMutual using (canon-pres-ᶜ; mkPIB)
-open import Once.Adequacy.CanonPolyTransport using (canonPolysCtx; PInB; polys-transport-ᶜ)
+open import Once.Adequacy.CanonPreserveMutual using (canon-pres-ᶜ; canon-pres-ᵢ; mkPIB)
+open import Once.Adequacy.CanonPolyTransport using (canonPolysCtx; PInB; polys-transport-ᶜ; polys-transport-ᵢ)
 open import Once.Adequacy.CanonExtract using (canonFI; canonFuns; canonPFI; canonPolys; canonBody)
 open import Once.Parser.Module.Resolve using (canonExpr)
 
@@ -48,24 +52,81 @@ buildPolyCtx-canon b (pfi ∷ rest) = cong (_ ∷_) (buildPolyCtx-canon b rest)
 -- which is canonExpr+polys-invariant — the lone elaborator residual).
 ------------------------------------------------------------------------
 
-postulate
-  -- The lone elaborator residual: `inferType` is invariant under the resolver's
-  -- body canonicalization + poly-context canonicalization (D007 no-sig functions).
-  inferType-transport :
-    ∀ (ctx : C.FunCtx) (polysU : List PolyFunInfo) (b : List String) (fi : FunInfo) (ty : Type)
-    → C.inferType ctx (C.buildPolyCtx polysU) (funBody fi) ≡ inj₂ ty
-    → C.inferType ctx (C.buildPolyCtx (canonPolys b polysU)) (funBody (canonFI b fi)) ≡ inj₂ ty
+-- The lone elaborator residual, DISCHARGED via the relational bridge: `inferType`
+-- wraps `inferElab`, which agrees with the declarative `⊢ᵢ` (infer-sound /
+-- infer-complete). `⊢ᵢ` is preserved by the resolver's body-canonicalization
+-- (canon-pres-ᵢ) and poly-context canonicalization (polys-transport-ᵢ), so the
+-- inferred TYPE rides. `result-extract` mirrors `inferType`'s RHS so we reason about
+-- a plain function instead of fighting its `with inferElab` opacity.
+
+⊎-clash : ∀ {x : String} {y : Type} {Z : Set} → inj₁ x ≡ inj₂ y → Z
+⊎-clash ()
+
+result-extract : ∀ {n} {Δ} → InferElabResult {n} Δ → String ⊎ Type
+result-extract (success A _ _ _ _) = inj₂ A
+result-extract (failure err)       = inj₁ ("Cannot infer type: " ++ renderError err)
+
+inferType≡extract : ∀ (ctx : C.FunCtx) (polys : PolyCtx) (body : _)
+  → C.inferType ctx polys body ≡ result-extract (inferElab (ctxWithImportsAndPolys ctx polys) body)
+inferType≡extract ctx polys body with inferElab (ctxWithImportsAndPolys ctx polys) body
+... | success A Ψ eE d f = refl
+... | failure err       = refl
+
+-- Invert `inferType … ≡ inj₂ ty` to the underlying `inferElab` success. Convert to
+-- a `result-extract` statement FIRST (so `inferElab` appears transparently), THEN case.
+inferType→inferElab : ∀ (ctx : C.FunCtx) (polys : PolyCtx) (body : _) (ty : Type)
+  → C.inferType ctx polys body ≡ inj₂ ty
+  → ∃[ Ψ ] ∃[ eE ] ∃[ d ] ∃[ f ] inferElab (ctxWithImportsAndPolys ctx polys) body ≡ success ty Ψ eE d f
+inferType→inferElab ctx polys body ty eq =
+  go (inferElab (ctxWithImportsAndPolys ctx polys) body) (trans (sym (inferType≡extract ctx polys body)) eq)
+  where
+    go : ∀ {n} {Δ} (r : InferElabResult {n} Δ)
+       → result-extract r ≡ inj₂ ty
+       → ∃[ Ψ ] ∃[ eE ] ∃[ d ] ∃[ f ] r ≡ success ty Ψ eE d f
+    go (success A Ψ eE d f) re with re
+    ... | refl = Ψ , eE , d , f , refl
+    go (failure err) re = ⊎-clash re
+
+-- `inferElab` success at the canonExpr'd body + canonPolys'd ctx ⇒ `inferType ≡ inj₂ ty`.
+inferElab→inferType : ∀ (ctx : C.FunCtx) (polys : PolyCtx) (body : _) (ty : Type) {Ψ eE d f}
+  → inferElab (ctxWithImportsAndPolys ctx polys) body ≡ success ty Ψ eE d f
+  → C.inferType ctx polys body ≡ inj₂ ty
+inferElab→inferType ctx polys body ty eqs =
+  trans (inferType≡extract ctx polys body) (cong result-extract eqs)
+
+inferType-transport :
+  ∀ (ctx : C.FunCtx) (polysU : List PolyFunInfo) (b : List String)
+    (pib : PInB (C.buildPolyCtx polysU) b) (fi : FunInfo) (ty : Type)
+  → C.inferType ctx (C.buildPolyCtx polysU) (funBody fi) ≡ inj₂ ty
+  → C.inferType ctx (C.buildPolyCtx (canonPolys b polysU)) (funBody (canonFI b fi)) ≡ inj₂ ty
+inferType-transport ctx polysU b pib fi ty eq
+  rewrite buildPolyCtx-canon b polysU with funIsPrimitive fi | inferType→inferElab ctx (C.buildPolyCtx polysU) (funBody fi) ty eq
+-- PRIMITIVE body unchanged: only the poly context canonicalizes.
+... | true  | Ψ , eE , d , f , eqU =
+        inferElab→inferType ctx (canonPolysCtx b (C.buildPolyCtx polysU)) (funBody fi) ty
+          (let _ , _ , _ , eqR = infer-complete
+                 (polys-transport-ᵢ b (C.buildPolyCtx polysU) pib (infer-sound _ (funBody fi) eqU))
+           in eqR)
+-- USER body: canonExpr on the body, then the poly context canonicalizes.
+... | false | Ψ , eE , d , f , eqU =
+        inferElab→inferType ctx (canonPolysCtx b (C.buildPolyCtx polysU)) (canonExpr b [] [] (funBody fi)) ty
+          (let _ , _ , _ , eqR = infer-complete
+                 (polys-transport-ᵢ b (C.buildPolyCtx polysU) pib
+                   (canon-pres-ᵢ b (⊆ᵇ-nil {b}) (mkPIB pib)
+                     (infer-sound _ (funBody fi) eqU)))
+           in eqR)
 
 -- funType (canonFI b fi) = funType fi (record update). Signatured case ignores the
 -- body + polys (definitional); no-sig case = inferType-transport.
 resolveFunType-transport :
-  ∀ (ctx : C.FunCtx) (polysU : List PolyFunInfo) (b : List String) (fi : FunInfo) (ty : Type)
+  ∀ (ctx : C.FunCtx) (polysU : List PolyFunInfo) (b : List String)
+    (pib : PInB (C.buildPolyCtx polysU) b) (fi : FunInfo) (ty : Type)
   → C.resolveFunType ctx (C.buildPolyCtx polysU) (funType fi) (funBody fi) ≡ inj₂ ty
   → C.resolveFunType ctx (C.buildPolyCtx (canonPolys b polysU))
       (funType (canonFI b fi)) (funBody (canonFI b fi)) ≡ inj₂ ty
-resolveFunType-transport ctx polysU b fi ty eq with funType fi
+resolveFunType-transport ctx polysU b pib fi ty eq with funType fi
 ... | just ty' = eq
-... | nothing  = inferType-transport ctx polysU b fi ty eq
+... | nothing  = inferType-transport ctx polysU b pib fi ty eq
 
 ------------------------------------------------------------------------
 -- The AllFunsTyped transport.
@@ -93,7 +154,7 @@ AllFunsTyped-transport :
   → AS.AllFunsTyped (C.buildPolyCtx (canonPolys b polysU)) sigEffs (canonFuns b funs) ctx
 AllFunsTyped-transport b polysU sigEffs pib [] AS.tnil = AS.tnil
 AllFunsTyped-transport {ctx} b polysU sigEffs pib (fi ∷ rest) (AS.tcons {ty = ty} rft jud rest-typed) =
-  AS.tcons (resolveFunType-transport ctx polysU b fi ty rft)
+  AS.tcons (resolveFunType-transport ctx polysU b pib fi ty rft)
            (body-transport b polysU sigEffs ctx pib fi ty jud)
            (AllFunsTyped-transport b polysU sigEffs pib rest rest-typed)
 
