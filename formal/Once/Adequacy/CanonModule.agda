@@ -46,6 +46,7 @@ import Once.Adequacy.ModuleComplete as MC
 open import Once.Adequacy.CanonPreserve using (⊆ᵇ-nil)
 open import Once.Adequacy.CanonPreserveMutual
   using (canon-pres-ᶜ; mkPIB)
+open import Once.Adequacy.CanonPolyNames using (polyInB-bridge)
 
 ------------------------------------------------------------------------
 -- Body canonicalization on the EXTRACTED function list (mirrors `canonDecl`
@@ -91,16 +92,6 @@ AllFunsTyped-canon {polys} bound pib (fi ∷ rest) (AS.tcons {ty = ty} rft jud r
 ------------------------------------------------------------------------
 
 postulate
-  -- The `polys` context's names ARE the own-module poly-def names (both are the
-  -- non-ground `DTypeSig`s — `buildPolyCtx ∘ extractFunctions` vs `polyDefNames`).
-  -- Dictated by `AllFunsTyped-canon`'s `PolyInB` argument. The `extractFunctions`
-  -- link is LOAD-BEARING: without it the claim is false for an unrelated `polysU`.
-  polyInB-bridge :
-    ∀ (mU : P.Module) (funsU : List FunInfo) (polysU : List C.PolyFunInfo)
-    → C.extractFunctions (C.extractAliases mU) mU ≡ inj₂ (funsU , polysU)
-    → ∀ {x s b} → lookupPoly (C.buildPolyCtx polysU) x ≡ just (s , b)
-    → elemStr x (polyDefNames (P.Module.decls mU)) ≡ true
-
   -- `extractFunctions`∘`canonDecl` commute (funs/sigEffs preserved, bodies
   -- canonExpr'd) + the poly-context transport (`polysR` has canonExpr'd bodies):
   -- the lifted `AllFunsTyped` over `mapCanonBody funsU` IS `ModuleTyped mR`. The
