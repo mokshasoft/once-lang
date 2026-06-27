@@ -27,6 +27,29 @@
 -- `RVar → RResolved`, no inlined imports) all three reduce to that
 -- canonicalization being type- and trace-preserving — fully provable; that is
 -- the natural first discharge target.
+--
+-- DISCHARGE ANALYSIS (2026-06-27, POC done — not blocked by Plan 0.50):
+--   `bare x ≡ canonical [x]` and `showCanonical (canonical [x]) ≡ x` are
+--   DEFINITIONAL (Once.CanonicalName), and `t-var-import`/`t-var-resolved`
+--   (and `m-named`/`m-named-resolved`, Judgment.agda) carry the SAME
+--   `lookupImport` premise (`x` vs `showCanonical cn = x`). So canonExpr's
+--   `RVar x → RResolved (canonical [x])` maps cleanly with NO dependency on the
+--   open `named-morph-strong*` postulates (those are the import/full-path case).
+--   ⇒ the import-free discharge is available now; 0.51 is NOT gated on 0.50.
+--
+--   Proof shape (the integration cost):
+--     (1)+(2) TYPING — `ModuleTyped` = the inductive `⊢ᶜ` judgment (AcceptSound:
+--       "ONLY the judgment, no elaborator"). Discharge = a mutual induction over
+--       the 4-judgment ⊢ᵢ/⊢ᵍ/⊢ᵐ/⊢ᶜ block (~48 rules; most CONGRUENCE). The var
+--       rules map `t-var-import → t-var-resolved` / `m-named → m-named-resolved`
+--       via the showCanonical identity; binders (t-lam/t-let/t-case) need a
+--       threaded invariant `x ∈ canonExpr-bound ⟺ lookupLocal ctx x ≢ nothing`.
+--       Plus the import-free split: case on `NoImports mU`, proven branch +
+--       residual `*-imports` postulate (keeps the apex interface general).
+--     (3) TRACE — routes through `moduleToIR`→`compileResolvedModule` (the
+--       3445-line type-directed elaborator). Needs canonExpr-invariance of
+--       compilation (heavier), OR leverage of existing compile-correctness.
+--   Estimate: ~400-700 lines across typing+trace. A dedicated arc, not a grind.
 ------------------------------------------------------------------------
 
 module Once.Adequacy.ResolverBridge where
