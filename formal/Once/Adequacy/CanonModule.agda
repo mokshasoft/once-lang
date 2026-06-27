@@ -93,9 +93,11 @@ AllFunsTyped-canon {polys} bound pib (fi ∷ rest) (AS.tcons {ty = ty} rft jud r
 postulate
   -- The `polys` context's names ARE the own-module poly-def names (both are the
   -- non-ground `DTypeSig`s — `buildPolyCtx ∘ extractFunctions` vs `polyDefNames`).
-  -- Dictated by `AllFunsTyped-canon`'s `PolyInB` argument.
+  -- Dictated by `AllFunsTyped-canon`'s `PolyInB` argument. The `extractFunctions`
+  -- link is LOAD-BEARING: without it the claim is false for an unrelated `polysU`.
   polyInB-bridge :
-    ∀ (mU : P.Module) (polysU : List C.PolyFunInfo)
+    ∀ (mU : P.Module) (funsU : List FunInfo) (polysU : List C.PolyFunInfo)
+    → C.extractFunctions (C.extractAliases mU) mU ≡ inj₂ (funsU , polysU)
     → ∀ {x s b} → lookupPoly (C.buildPolyCtx polysU) x ≡ just (s , b)
     → elemStr x (polyDefNames (P.Module.decls mU)) ≡ true
 
@@ -125,7 +127,8 @@ module-typed-canon-ef :
 module-typed-canon-ef mm mU mR (inj₁ _) ef-eq res-eq mt = ⊥-elim mt
 module-typed-canon-ef mm mU mR (inj₂ (funsU , polysU)) ef-eq res-eq mt =
   module-bridge mm mU mR funsU polysU ef-eq res-eq
-    (AllFunsTyped-canon (polyDefNames (P.Module.decls mU)) (polyInB-bridge mU polysU) funsU mt)
+    (AllFunsTyped-canon (polyDefNames (P.Module.decls mU))
+       (polyInB-bridge mU funsU polysU ef-eq) funsU mt)
 
 module-typed-canon :
   ∀ (mm : ModuleMap) (mU mR : P.Module)
