@@ -296,17 +296,21 @@ composeArgB _ _ _ = nothing
 -- is the symmetric partner that reads it off `f`'s domain (by lookup). Needed
 -- when `g` is a value-shape whose type `composeArgB` can't reveal (e.g. an
 -- `In(…)` construction) but `f` is a named morphism (e.g. `emitAll : Mu → Unit`).
+-- Read a domain off an import-table lookup (shared by the bare `RVar` and the
+-- canonicalized `RResolved` heads so the two coincide DEFINITIONALLY — needed by
+-- `CanonComposeMid.domainOfHead-canon`; behaviour is identical to the old inline
+-- `with`-blocks).
+domainOfHead-arrow : Maybe Type → Maybe Type
+domainOfHead-arrow (just (D Once.Type.⇒[ _ ] _)) = just D
+domainOfHead-arrow _ = nothing
+
 domainOfHead : NamedCtx → RawExpr → Maybe Type
-domainOfHead ctx (Raw.RVar name) with lookupImport (NamedCtx.imports ctx) name
-... | just (D Once.Type.⇒[ _ ] _) = just D
-... | _ = nothing
+domainOfHead ctx (Raw.RVar name) = domainOfHead-arrow (lookupImport (NamedCtx.imports ctx) name)
 domainOfHead ctx (Raw.RApp (Raw.RVar "arr") f') = domainOfHead ctx f'
 -- Plan 0.50 Stage 3: a RESOLVED canonical name behaves like its bare form (the
 -- import table is keyed by `showCanonical cn`), so point-free composes survive
 -- the resolver's `RVar → RResolved` canonicalization.
-domainOfHead ctx (Raw.RResolved cn) with lookupImport (NamedCtx.imports ctx) (showCanonical cn)
-... | just (D Once.Type.⇒[ _ ] _) = just D
-... | _ = nothing
+domainOfHead ctx (Raw.RResolved cn) = domainOfHead-arrow (lookupImport (NamedCtx.imports ctx) (showCanonical cn))
 domainOfHead _ _ = nothing
 
 -- | Symmetric B-recovery for `compose f g` at `A → C`: try `g`'s codomain

@@ -67,19 +67,12 @@ poly-ext : ∀ {ctx bound} (x : String) (A : Type)
 poly-ext x A pib = mkPIB (λ {x'} h → ⊆ᵇ-weaken x x' (app pib {x'} h))
 
 ------------------------------------------------------------------------
--- The hard premise (deferred): `composeMid` is invariant under canonExpr on the
--- compose ARMS, given they are well-typed morphisms. Provable by casing `⊢ᵐ f`/g
--- (each concrete head: RVar named → showCanonical-definitional; builtin → kept;
--- arr-app → recurse) — the `domainOfHead`/`composeArgB` stuck-pattern resolution.
+-- `composeMid` is invariant under canonExpr on the compose ARMS — DISCHARGED in
+-- `Once.Adequacy.CanonComposeMid` by casing the `⊢ᵐ` derivations (one residual
+-- there: `composeArgB-RVar-resolved`, an Agda literal-pattern limitation).
 ------------------------------------------------------------------------
 
-postulate
-  composeMid-canon :
-    ∀ {ctx : NamedCtx} {f g : RawExpr} {A B C : _} {π : _} (bound : List String)
-    → ctx ⊢ᵐ f ∶ B ⇨[ π ] C
-    → ctx ⊢ᵐ g ∶ A ⇨[ π ] B
-    → composeMid ctx f g A ≡ just B
-    → composeMid ctx (canonExpr bound [] [] f) (canonExpr bound [] [] g) A ≡ just B
+open import Once.Adequacy.CanonComposeMid using (composeMid-canon)
 
 ------------------------------------------------------------------------
 -- Mutual preservation.
