@@ -96,3 +96,30 @@ AllFunsTyped-transport {ctx} b polysU sigEffs pib (fi ∷ rest) (AS.tcons {ty = 
   AS.tcons (resolveFunType-transport ctx polysU b fi ty rft)
            (body-transport b polysU sigEffs ctx pib fi ty jud)
            (AllFunsTyped-transport b polysU sigEffs pib rest rest-typed)
+
+------------------------------------------------------------------------
+-- The main-validity predicates transport (they read only funName /
+-- funIsPrimitive / ty, all preserved by canonFI).
+------------------------------------------------------------------------
+
+open import Data.Sum using (inj₁; inj₂)
+open import Data.Unit using (tt)
+open import Once.Adequacy.ModuleComplete using (AllMainEffUU; MainExists)
+
+AllMainEffUU-transport :
+  ∀ {ctx : C.FunCtx} (b : List String) (polysU : List PolyFunInfo) (sigEffs : _)
+    (pib : PInB (C.buildPolyCtx polysU) b) (funs : List FunInfo)
+    (mt : AS.AllFunsTyped (C.buildPolyCtx polysU) sigEffs funs ctx)
+  → AllMainEffUU mt → AllMainEffUU (AllFunsTyped-transport b polysU sigEffs pib funs mt)
+AllMainEffUU-transport b polysU sigEffs pib [] AS.tnil amu = amu
+AllMainEffUU-transport b polysU sigEffs pib (fi ∷ rest) (AS.tcons rft jud rest-typed) (main-ok , prest) =
+  main-ok , AllMainEffUU-transport b polysU sigEffs pib rest rest-typed prest
+
+MainExists-transport :
+  ∀ {ctx : C.FunCtx} (b : List String) (polysU : List PolyFunInfo) (sigEffs : _)
+    (pib : PInB (C.buildPolyCtx polysU) b) (funs : List FunInfo)
+    (mt : AS.AllFunsTyped (C.buildPolyCtx polysU) sigEffs funs ctx)
+  → MainExists mt → MainExists (AllFunsTyped-transport b polysU sigEffs pib funs mt)
+MainExists-transport b polysU sigEffs pib (fi ∷ rest) (AS.tcons rft jud rest-typed) (inj₁ x) = inj₁ x
+MainExists-transport b polysU sigEffs pib (fi ∷ rest) (AS.tcons rft jud rest-typed) (inj₂ y) =
+  inj₂ (MainExists-transport b polysU sigEffs pib rest rest-typed y)

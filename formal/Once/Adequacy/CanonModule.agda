@@ -45,7 +45,7 @@ open import Once.TypeCheck.Classify using (lookupPoly; PolyCtx)
 open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_)
 import Once.Adequacy.AcceptSound as AS
 import Once.Adequacy.ModuleComplete as MC
-open import Once.Adequacy.CanonModuleTyped using (canonModule; module-typed-canon)
+open import Once.Adequacy.CanonModuleTyped using (canonModule; module-typed-and-valid)
 
 ------------------------------------------------------------------------
 -- `ModuleTyped` transport is DISCHARGED (`Once.Adequacy.CanonModuleTyped`):
@@ -54,13 +54,6 @@ open import Once.Adequacy.CanonModuleTyped using (canonModule; module-typed-cano
 ------------------------------------------------------------------------
 
 postulate
-  -- main's signature is unchanged by `canonDecl` (it canonExpr's only the BODY),
-  -- so existence + the `EffUU` type ride (structural; via extractFunctions-canon).
-  has-valid-main-canon :
-    ∀ (ds : List P.Decl) (mt : AS.ModuleTyped (P.mkModule ds))
-    → MC.HasValidMain-decl (P.mkModule ds) mt
-    → MC.HasValidMain-decl (canonModule ds) (module-typed-canon ds mt)
-
   -- The IMPORT case (residual): a module with `DImport`s inlines its imports'
   -- signatures, so `extractFunctions mR` differs from the own-module
   -- canonicalization and resolution can fail if the `ModuleMap` is incomplete.
@@ -91,6 +84,6 @@ canon-preserves-typing mm mU mt vmain = go (CR.noImports? (P.Module.decls mU))
     go : _ → Σ-syntax P.Module (λ mR' →
            (resolveImports mm mU ≡ inj₂ mR')
            × Σ-syntax (AS.ModuleTyped mR') (λ mt' → MC.HasValidMain-decl mR' mt'))
-    go (yes ni) = canonModule ds , res-eq , module-typed-canon ds mt , has-valid-main-canon ds mt vmain
+    go (yes ni) = canonModule ds , res-eq , module-typed-and-valid ds mt vmain
       where res-eq = CR.resolveImports-ni mm ds ni
     go (no _) = resolver-preserves-typing-imports mm mU mt vmain
