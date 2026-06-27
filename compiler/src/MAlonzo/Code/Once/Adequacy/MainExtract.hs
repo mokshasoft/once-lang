@@ -92,10 +92,10 @@ du_source'45'meaning'7472'_54 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_source'45'meaning'7472'_54 v0
   = let v1
-          = MAlonzo.Code.Once.Parser.d_guardDistinct_492
+          = MAlonzo.Code.Once.Parser.d_guardDistinct_476
               (coe
-                 MAlonzo.Code.Once.Parser.d_extractFunctions'45'go_206
-                 (coe MAlonzo.Code.Once.Parser.d_extractAliases_92 (coe v0))
+                 MAlonzo.Code.Once.Parser.d_extractFunctions'45'go_190
+                 (coe MAlonzo.Code.Once.Parser.d_extractAliases_76 (coe v0))
                  (coe MAlonzo.Code.Once.Parser.Module.Core.d_decls_48 (coe v0))
                  (coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18)) in
     coe

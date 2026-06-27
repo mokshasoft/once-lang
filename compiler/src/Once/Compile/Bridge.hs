@@ -121,20 +121,20 @@ agdaToText = unsafeCoerce
 textToAgda :: Text -> a
 textToAgda = unsafeCoerce
 
-fromMFunInfo :: MP.T_FunInfo_112 -> FunSig
+fromMFunInfo :: MP.T_FunInfo_96 -> FunSig
 fromMFunInfo fi = FunSig
-  { funSigName = agdaToText (MP.d_funName_124 fi)
+  { funSigName = agdaToText (MP.d_funName_108 fi)
     -- D007: funType is now `Maybe Type` (Nothing = no explicit sig, inferred).
     -- MAlonzo's Maybe is Haskell's Maybe (Just/Nothing pattern synonyms).
-  , funSigType = case MP.d_funType_126 fi of
+  , funSigType = case MP.d_funType_110 fi of
       Just ty -> agdaToText (MT.d_showType_206 ty)
       Nothing -> T.pack "<inferred>"
   }
 
-fromMPolyFunInfo :: MP.T_PolyFunInfo_136 -> PolyFunSig
+fromMPolyFunInfo :: MP.T_PolyFunInfo_120 -> PolyFunSig
 fromMPolyFunInfo pfi = PolyFunSig
-  { polyFunSigName = agdaToText (MP.d_pfunName_146 pfi)
-  , polyFunSigType = agdaToText (MT.d_showPolyType_468 (MP.d_pfunType_148 pfi))
+  { polyFunSigName = agdaToText (MP.d_pfunName_130 pfi)
+  , polyFunSigType = agdaToText (MT.d_showPolyType_468 (MP.d_pfunType_132 pfi))
   }
 
 fromMResult :: MC.T_CompileResult_686 -> CompileResult
