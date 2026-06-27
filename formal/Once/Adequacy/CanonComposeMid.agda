@@ -20,6 +20,7 @@ open import Data.List using (List; []; _∷_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_,_)
 open import Data.String using (String) renaming (_≟_ to _≟s_)
+open import Data.Empty using (⊥; ⊥-elim)
 open import Relation.Nullary using (yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
 
@@ -72,15 +73,25 @@ domainOfHead-canon bound (m-named-resolved _) = refl
 -- composeArgB is canonExpr-invariant on a well-typed morphism arm.
 ------------------------------------------------------------------------
 
--- The lone non-mechanical sub-fact: for a NON-builtin name, the resolver's
--- `RVar x → RResolved (canonical [x])` leaves `composeArgB` unchanged. Both
--- reduce to the SAME `lookupPoly … x` / `lookupImport … x` chain — the RResolved
--- clause directly (`showCanonical (canonical [x]) = x`), the RVar one after
--- skipping the fst/snd/id/terminal LITERAL clauses (blocked for abstract x).
-postulate
-  composeArgB-RVar-resolved :
-    ∀ (ctx : NamedCtx) (y : String) (A : Type) → isBuiltinName y ≡ false
-    → composeArgB ctx (Raw.RResolved (canonical (y ∷ []))) A ≡ composeArgB ctx (Raw.RVar y) A
+-- For a NON-builtin name, the resolver's `RVar x → RResolved (canonical [x])`
+-- leaves `composeArgB` unchanged: both reduce to `composeArgB-lookup ctx x A` —
+-- the RResolved clause directly (`showCanonical (canonical [x]) = x`), the RVar one
+-- after the `≟`-dispatch skips fst/snd/id/terminal (ruled out by `isBuiltinName`).
+t≢f : true ≡ false → ⊥
+t≢f ()
+
+composeArgB-RVar-resolved :
+  ∀ (ctx : NamedCtx) (y : String) (A : Type) → isBuiltinName y ≡ false
+  → composeArgB ctx (Raw.RResolved (canonical (y ∷ []))) A ≡ composeArgB ctx (Raw.RVar y) A
+composeArgB-RVar-resolved ctx y A nb with y ≟s "fst"
+... | yes refl = ⊥-elim (t≢f nb)
+... | no _ with y ≟s "snd"
+...   | yes refl = ⊥-elim (t≢f nb)
+...   | no _ with y ≟s "id"
+...     | yes refl = ⊥-elim (t≢f nb)
+...     | no _ with y ≟s "terminal"
+...       | yes refl = ⊥-elim (t≢f nb)
+...       | no _ = refl
 
 composeArgB-canon : ∀ {ctx g A′ π B′} (bound : List String) (A : Type)
   → ctx ⊢ᵐ g ∶ A′ ⇨[ π ] B′
