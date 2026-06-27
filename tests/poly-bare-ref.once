@@ -1,0 +1,22 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson and contributors
+
+-- Regression: a POLYMORPHIC def referenced bare (unapplied) at a ground type.
+-- The resolver must NOT canonicalize the poly name `myid` to `RResolved` — poly
+-- defs are INLINED (`t-var-poly-instantiate`), not given a monomorphic symbol, so
+-- a resolved poly name has nothing to resolve to (poly sigs live in `polys`, not
+-- the import table) and the elaborator reports "unbound/unspecialized".
+-- Compare: a MONO def (`incr` below) bare-referenced DOES resolve fine.
+-- This was hidden by the `resolver-preserves-typing` postulate (ResolverBridge).
+
+myid : a -> a
+myid = id
+
+useId : Int -> Int
+useId = myid
+
+incr : Int -> Int
+incr = id
+
+useIncr : Int -> Int
+useIncr = incr

@@ -39,6 +39,7 @@ open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Relation.Nullary using (yes; no)
 
 open import Once.Parser.Module.Core
+open import Once.Type using (isGround)
 open import Once.CanonicalName using (CanonicalName; canonical)
 open import Once.TypeCheck.Raw
   using (RawExpr; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair;
@@ -170,6 +171,23 @@ elemStr x (y ∷ ys) with x ≟ y
 ... | yes _ = true
 ... | no  _ = elemStr x ys
 
+-- | Names of own-module POLYMORPHIC definitions — a `DTypeSig name ty` whose
+-- `ty` is NON-ground (`isGround ty ≡ inj₂`), mirroring `extractFunctions`'
+-- ground/poly split (Once.Parser): a non-ground sig routes its `DFunDef` into a
+-- `PolyFunInfo`, i.e. the `polys` context, NOT the import table. Such a def is
+-- INLINED at use sites by `t-var-poly-instantiate` (which fires only on a bare
+-- `RVar`), so it has no monomorphic symbol to resolve to. Canonicalizing it to
+-- `RResolved` would make the elaborator look it up in `imports` (where it is
+-- absent) → "unbound/unspecialized". So these names must stay bare `RVar` — they
+-- are threaded into `canonExpr`'s initial `bound`, kept by the SAME dispatch as
+-- local binders. See tests/poly-bare-ref.once.
+polyDefNames : List Decl → List String
+polyDefNames []                          = []
+polyDefNames (DTypeSig name ty ∷ rest)   with isGround ty
+... | inj₁ _ = polyDefNames rest                       -- ground → mono (resolved as usual)
+... | inj₂ _ = name ∷ polyDefNames rest                -- non-ground → poly (keep bare)
+polyDefNames (_ ∷ rest)                  = polyDefNames rest
+
 -- | Plan 0.50 (D064): a bare `RVar x` that is NOT a local binder and NOT a
 -- builtin is a reference to a top-level definition (own-module or unaliased
 -- import) — a MORPHISM. Resolve it to `RResolved (canonical [x])` so it takes
@@ -224,12 +242,13 @@ canonExpr bound um am (RBinOp op a b)     = RBinOp op (canonExpr bound um am a) 
 canonExpr bound um am (RUnaryOp op e)     = RUnaryOp op (canonExpr bound um am e)
 canonExpr bound um am (RAna F c)          = RAna F (canonExpr bound um am c)
 
--- | Apply `canonExpr` to a decl's function body (empty initial bound set);
--- everything else is untouched (signatures/imports/type-aliases carry no
--- expression refs).
-canonDecl : UnaliasedMap → AliasMap → Decl → Decl
-canonDecl um am (DFunDef name alloc body) = DFunDef name alloc (canonExpr [] um am body)
-canonDecl um am d                         = d
+-- | Apply `canonExpr` to a decl's function body; everything else is untouched
+-- (signatures/imports/type-aliases carry no expression refs). The initial bound
+-- set is `polys` — the own-module polymorphic-def names — so bare references to
+-- them are KEPT as `RVar` (taking `t-var-poly-instantiate`), never canonicalized.
+canonDecl : List String → UnaliasedMap → AliasMap → Decl → Decl
+canonDecl polys um am (DFunDef name alloc body) = DFunDef name alloc (canonExpr polys um am body)
+canonDecl polys um am d                         = d
 
 ------------------------------------------------------------------------
 -- Primitive extraction with owner tagging
@@ -269,23 +288,23 @@ ownerOf (mkImport path nothing)  = just (showPath (expandPath path))
 -- Returns `inj₁ err` only if a referenced module path is missing from
 -- the map — a Haskell-layer bug, since the map should contain every
 -- transitive dependency.
-resolveDecls : UnaliasedMap → AliasMap → ModuleMap → List Decl → String ⊎ List Decl
-resolveDecls _  _  _      []                             = inj₂ []
-resolveDecls um am modMap (DImport imp ∷ rest) with lookupModule modMap (Import.path imp)
+resolveDecls : List String → UnaliasedMap → AliasMap → ModuleMap → List Decl → String ⊎ List Decl
+resolveDecls _     _  _  _      []                             = inj₂ []
+resolveDecls polys um am modMap (DImport imp ∷ rest) with lookupModule modMap (Import.path imp)
 ... | nothing =
         inj₁ ("Internal error: import path not in ModuleMap: " ++ showPath (Import.path imp))
-... | just (mkModule impDs) with resolveDecls um am modMap rest
+... | just (mkModule impDs) with resolveDecls polys um am modMap rest
 ...   | inj₁ err = inj₁ err
 ...   | inj₂ tailDs =
         inj₂ (signaturesWithOwner (ownerOf imp) impDs ++L tailDs)
-resolveDecls um am modMap (d ∷ rest) with resolveDecls um am modMap rest
+resolveDecls polys um am modMap (d ∷ rest) with resolveDecls polys um am modMap rest
 ... | inj₁ err = inj₁ err
-... | inj₂ tailDs = inj₂ (canonDecl um am d ∷ tailDs)
+... | inj₂ tailDs = inj₂ (canonDecl polys um am d ∷ tailDs)
 
 -- | Public entry. Haskell populates the map, calls this, and feeds
 -- the resolved module to `compileResolved`.
 resolveImports : ModuleMap → Module → String ⊎ Module
 resolveImports modMap (mkModule ds)
-  with resolveDecls (collectUnaliased modMap ds) (collectAliases ds) modMap ds
+  with resolveDecls (polyDefNames ds) (collectUnaliased modMap ds) (collectAliases ds) modMap ds
 ... | inj₁ err   = inj₁ err
 ... | inj₂ ds'   = inj₂ (mkModule ds')
