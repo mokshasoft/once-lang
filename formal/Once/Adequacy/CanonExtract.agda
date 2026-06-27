@@ -38,8 +38,10 @@ open import Once.Parser.Module.Resolve using (canonExpr; canonDecl)
 canonBody : List String → FunInfo → FunInfo
 canonBody b fi = record fi { funBody = canonExpr b [] [] (funBody fi) }
 
+-- `if` only on the BODY (record-update keeps funName/funType DEFINITIONALLY), so
+-- the AllFunsTyped transport's extendFunCtx (funName …) matches without casing.
 canonFI : List String → FunInfo → FunInfo
-canonFI b fi = if (funIsPrimitive fi) then fi else canonBody b fi
+canonFI b fi = record fi { funBody = if (funIsPrimitive fi) then funBody fi else canonExpr b [] [] (funBody fi) }
 
 canonFuns : List String → List FunInfo → List FunInfo
 canonFuns b = map (canonFI b)
