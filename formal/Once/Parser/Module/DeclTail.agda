@@ -14,7 +14,9 @@ open import Data.Bool using (Bool; true; false)
 open import Data.List using (reverse)
 
 open import Once.Parser.Module.Core
-open import Once.Parser.PolyType using (parsePolyTypeB)
+open import Once.Parser.PolyType using (parsePolyTypeB; ParsePolyAtB)
+open import Data.Product using (proj₁; proj₂)
+open import Data.Nat.Properties using (<-≤-trans)
 
 -- Local head classifier + `taDrop1` (Plan 0.52 bridge-readiness).
 taEqHead : List Token → Bool
@@ -88,24 +90,65 @@ shapeWord w with w ≟ "halts"
 -- two tokens `TBang ∷ TWord <shape>` when `<shape>` is a recognised
 -- shape word; otherwise consumes nothing. The remainder is never longer
 -- than the input.
+-- Routed through the `effAnnotShape` classifier (instead of matching the
+-- `TBang ∷ TWord w` prefix directly) so the bridge cases it in 2 clauses.
+effAnnotShape : List Token → Maybe SigEffect
+effAnnotShape (TBang ∷ TWord w ∷ _) = shapeWord w
+effAnnotShape _                     = nothing
+
+eaDrop2 : List Token → List Token
+eaDrop2 (_ ∷ _ ∷ xs) = xs
+eaDrop2 xs           = xs
+
+eaDrop2-≤ : (toks : List Token) → length (eaDrop2 toks) ≤ length toks
+eaDrop2-≤ (_ ∷ _ ∷ xs) = m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)
+eaDrop2-≤ []           = ≤-refl
+eaDrop2-≤ (_ ∷ [])     = ≤-refl
+
+parseEffAnnot-go : (toks : List Token) → Maybe SigEffect →
+                   Maybe SigEffect × Σ[ rest ∈ List Token ] (length rest ≤ length toks)
+parseEffAnnot-go toks (just se) = just se , eaDrop2 toks , eaDrop2-≤ toks
+parseEffAnnot-go toks nothing   = nothing , toks , ≤-refl
+
 parseEffAnnot : (toks : List Token) →
                 Maybe SigEffect ×
                 Σ[ rest ∈ List Token ] (length rest ≤ length toks)
-parseEffAnnot (TBang ∷ TWord w ∷ rest) with shapeWord w
-... | just se = just se , rest , m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)
-... | nothing = nothing , TBang ∷ TWord w ∷ rest , ≤-refl
-parseEffAnnot toks = nothing , toks , ≤-refl
+parseEffAnnot toks = parseEffAnnot-go toks (effAnnotShape toks)
+
+-- `name : polytype [! shape]` signature. Routed through `colonHead` + `colDrop1`
+-- (instead of matching `TColon ∷ rest` on the anyWordB residual) for the bridge.
+colonHead : List Token → Bool
+colonHead (TColon ∷ _) = true
+colonHead _            = false
+
+colDrop1 : List Token → List Token
+colDrop1 (_ ∷ xs) = xs
+colDrop1 []       = []
+
+colDrop1-≤ : (toks : List Token) → length (colDrop1 toks) ≤ length toks
+colDrop1-≤ (_ ∷ xs) = m≤n⇒m≤1+n ≤-refl
+colDrop1-≤ []       = ≤-refl
+
+psig-poly : (toks : List Token) (name : String) (residual : List Token)
+            (bnd : length residual < length toks) → ParsePolyAtB (colDrop1 residual) →
+            ParseAtB {Decl} toks
+psig-poly toks name residual bnd nothing = nothing
+psig-poly toks name residual bnd (just (ty , rest' , bnd')) =
+  just (DSignature name nothing ty (proj₁ (parseEffAnnot rest'))
+       , proj₁ (proj₂ (parseEffAnnot rest'))
+       , <-trans (<-≤-trans (≤-<-trans (proj₂ (proj₂ (parseEffAnnot rest'))) bnd')
+                            (colDrop1-≤ residual)) bnd)
+
+psig-colon : (toks : List Token) (name : String) (residual : List Token)
+             (bnd : length residual < length toks) → Bool → ParseAtB {Decl} toks
+psig-colon toks name residual bnd false = nothing
+psig-colon toks name residual bnd true  =
+  psig-poly toks name residual bnd (parsePolyTypeB (colDrop1 residual))
 
 parseSignatureB : (toks : List Token) → ParseAtB {Decl} toks
 parseSignatureB toks with anyWordB toks
-... | nothing = nothing
-... | just (name , TColon ∷ rest , bnd) with parsePolyTypeB rest
-...   | just (ty , rest' , bnd') with parseEffAnnot rest'
-...     | (meff , rest'' , bndE) =
-          just (DSignature name nothing ty meff , rest'' ,
-                ≤-<-trans bndE (<-trans (<-trans bnd' (s≤s ≤-refl)) bnd))
-parseSignatureB toks | just (_ , TColon ∷ rest , bnd) | nothing = nothing
-parseSignatureB toks | just (_ , _ , _) = nothing
+... | nothing                       = nothing
+... | just (name , residual , bnd)  = psig-colon toks name residual bnd (colonHead residual)
 
 parseSignature : Parser Decl
 parseSignature toks with parseSignatureB toks
