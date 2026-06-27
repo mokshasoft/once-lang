@@ -119,3 +119,34 @@ classify-canon bound (Raw.RAnnot e t) h = refl
 classify-canon bound (Raw.RBinOp op a b) h = refl
 classify-canon bound (Raw.RUnaryOp op e) h = refl
 classify-canon bound (Raw.RAna F c) h = refl
+
+------------------------------------------------------------------------
+-- Bound subset (a binder list grown by the resolver covers the context's
+-- locals). `names(named ctx) ⊆ bound` is the only hypothesis the preservation
+-- induction needs (so the cata-algebra context-reset is the vacuous `[] ⊆`).
+------------------------------------------------------------------------
+
+_⊆ᵇ_ : List String → List String → Set
+b₁ ⊆ᵇ b₂ = ∀ y → elemStr y b₁ ≡ true → elemStr y b₂ ≡ true
+
+elemStr-head : ∀ (x : String) (bound : List String) → elemStr x (x ∷ bound) ≡ true
+elemStr-head x bound with x ≟s x
+... | yes _ = refl
+... | no ¬p = ⊥-elim (¬p refl)
+
+elemStr-tail : ∀ {y x : String} (bound : List String) → ¬ (y ≡ x) →
+  elemStr y (x ∷ bound) ≡ elemStr y bound
+elemStr-tail {y} {x} bound ¬p with y ≟s x
+... | yes p = ⊥-elim (¬p p)
+... | no _  = refl
+
+⊆ᵇ-refl : ∀ {b} → b ⊆ᵇ b
+⊆ᵇ-refl y h = h
+
+⊆ᵇ-nil : ∀ {b} → [] ⊆ᵇ b
+⊆ᵇ-nil y ()
+
+⊆ᵇ-cons : ∀ {b₁ b₂} (x : String) → b₁ ⊆ᵇ b₂ → (x ∷ b₁) ⊆ᵇ (x ∷ b₂)
+⊆ᵇ-cons {b₁} {b₂} x sub y h with y ≟s x
+... | yes refl = refl
+... | no ¬p    = sub y h
