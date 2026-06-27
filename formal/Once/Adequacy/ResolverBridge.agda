@@ -65,23 +65,25 @@ open import Once.Parser.Module.Resolve using (ModuleMap; resolveImports)
 open import Once.Adequacy.SourceTrace using (moduleToIR; ⟦_⟧IR)
 import Once.Adequacy.AcceptSound as AS
 import Once.Adequacy.ModuleComplete as MC
+import Once.Adequacy.CanonModule as CMod
+
+-- (1) FORWARD type-preservation — for COMPLETENESS. A declaratively well-typed
+--     UN-resolved module with a valid `main` resolves to a module that is ALSO
+--     well-typed with a valid `main`. A resolver that maps a well-typed ref to an
+--     ill-typed `RResolved` (the stashed generator cut) makes this unprovable.
+--     Plan 0.51 Step 4: DISCHARGED for the import-free fragment by the top-down
+--     `CMod.canon-preserves-typing`, which lifts the `⊢ᶜ` derivation per-function
+--     via `Once.Adequacy.CanonPreserveMutual.canon-pres-ᶜ` (the import case routes
+--     to a residual `*-imports` postulate, keeping the apex interface general).
+resolver-preserves-typing :
+  ∀ (mm : ModuleMap) (mU : P.Module) (mt : AS.ModuleTyped mU) →
+  MC.HasValidMain-decl mU mt →
+  Σ-syntax P.Module (λ mR →
+    (resolveImports mm mU ≡ inj₂ mR)
+    × Σ-syntax (AS.ModuleTyped mR) (λ mt' → MC.HasValidMain-decl mR mt'))
+resolver-preserves-typing = CMod.canon-preserves-typing
 
 postulate
-  -- (1) FORWARD type-preservation — for COMPLETENESS. A declaratively
-  --     well-typed UN-resolved module with a valid `main` resolves to a module
-  --     that is ALSO well-typed with a valid `main`. This is the forcing on the
-  --     completeness side: a resolver that maps a well-typed ref to an
-  --     ill-typed `RResolved` (the stashed generator cut) makes this unprovable.
-  --     Discharge: induction over the `⊢ᶜ` derivation, relating the un-resolved
-  --     refs to their `canonExpr` images, against an import-aware declarative
-  --     typing.
-  resolver-preserves-typing :
-    ∀ (mm : ModuleMap) (mU : P.Module) (mt : AS.ModuleTyped mU) →
-    MC.HasValidMain-decl mU mt →
-    Σ-syntax P.Module (λ mR →
-      (resolveImports mm mU ≡ inj₂ mR)
-      × Σ-syntax (AS.ModuleTyped mR) (λ mt' → MC.HasValidMain-decl mR mt'))
-
   -- (2) REVERSE type-recovery — for SOUNDNESS. If the front-end accepted (the
   --     RESOLVED module `mR` is well-typed) and `mU` resolves to `mR`, then `mU`
   --     was itself a typed program with a valid `main`, so the apex can produce a
