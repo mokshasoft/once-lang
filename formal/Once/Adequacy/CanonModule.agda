@@ -45,108 +45,21 @@ open import Once.TypeCheck.Classify using (lookupPoly; PolyCtx)
 open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_)
 import Once.Adequacy.AcceptSound as AS
 import Once.Adequacy.ModuleComplete as MC
-open import Once.Adequacy.CanonPreserve using (⊆ᵇ-nil)
-open import Once.Adequacy.CanonPreserveMutual
-  using (canon-pres-ᶜ; mkPIB)
-open import Once.Adequacy.CanonPolyNames using (polyInB-bridge)
+open import Once.Adequacy.CanonModuleTyped using (canonModule; module-typed-canon)
 
 ------------------------------------------------------------------------
--- Body canonicalization on the EXTRACTED function list (mirrors `canonDecl`
--- acting on each `DFunDef` body, with the own-module poly names as the bound).
-------------------------------------------------------------------------
-
-canonBody : List String → FunInfo → FunInfo
-canonBody bound fi =
-  record fi { funBody = canonExpr bound [] [] (FunInfo.funBody fi) }
-
-mapCanonBody : List String → List FunInfo → List FunInfo
-mapCanonBody bound = map (canonBody bound)
-
-------------------------------------------------------------------------
--- LOAD-BEARING core: lift `AllFunsTyped` through body-canonicalization.
--- The poly context `polys` is FIXED here (the per-function ctx's `.named` is ∅
--- and its `.polys` is this `polys`), so each body's derivation lifts directly by
--- `canon-pres-ᶜ` with `Names⊆ = ⊆ᵇ-nil` and the module-level `PolyInB` (`pib`).
+-- `ModuleTyped` transport is DISCHARGED (`Once.Adequacy.CanonModuleTyped`):
+-- `module-typed-canon ds : ModuleTyped (mkModule ds) → ModuleTyped (canonModule ds)`,
+-- via extract-commute + AllFunsTyped-transport (canon-pres-ᶜ + poly-ctx transport).
 ------------------------------------------------------------------------
 
 postulate
-  -- The ONLY genuinely elaborator-level residual: D007 no-signature functions
-  -- have their type INFERRED from the body, and `inferType` (the elaborator) is
-  -- canonExpr-invariant (a body and its canonicalization infer the same type —
-  -- this is the typing-half of trace-preservation, Step 5 flavour).
-  inferType-canon :
-    ∀ (ctx : C.FunCtx) (polys : PolyCtx) (bound : List String) (body : RawExpr) (ty : Type)
-    → C.inferType ctx polys body ≡ inj₂ ty
-    → C.inferType ctx polys (canonExpr bound [] [] body) ≡ inj₂ ty
-
--- The signatured case (`funType = just ty`) is DEFINITIONAL (`resolveFunType`
--- ignores the body); only the no-sig case defers to `inferType-canon`.
-resolveFunType-canon :
-  ∀ (ctx : C.FunCtx) (polys : PolyCtx) (bound : List String) (fi : FunInfo) (ty : Type)
-  → C.resolveFunType ctx polys (FunInfo.funType fi) (FunInfo.funBody fi) ≡ inj₂ ty
-  → C.resolveFunType ctx polys (FunInfo.funType fi) (canonExpr bound [] [] (FunInfo.funBody fi)) ≡ inj₂ ty
-resolveFunType-canon ctx polys bound fi ty eq with FunInfo.funType fi
-... | just ty' = eq
-... | nothing  = inferType-canon ctx polys bound (FunInfo.funBody fi) ty eq
-
-AllFunsTyped-canon : ∀ {polys sigEffs ctx} (bound : List String)
-  → (∀ {x s b} → lookupPoly polys x ≡ just (s , b) → elemStr x bound ≡ true)
-  → (funs : List FunInfo)
-  → AS.AllFunsTyped polys sigEffs funs ctx
-  → AS.AllFunsTyped polys sigEffs (mapCanonBody bound funs) ctx
-AllFunsTyped-canon bound pib [] AS.tnil = AS.tnil
-AllFunsTyped-canon {polys} bound pib (fi ∷ rest) (AS.tcons {ty = ty} rft jud rest-typed) =
-  AS.tcons (resolveFunType-canon _ polys bound fi ty rft)
-           (canon-pres-ᶜ bound (⊆ᵇ-nil {bound}) (mkPIB (λ {x'} h → pib h)) jud)
-           (AllFunsTyped-canon bound pib rest rest-typed)
-
-------------------------------------------------------------------------
--- Module-level bridges (structural; dictated by the spine).
-------------------------------------------------------------------------
-
-postulate
-  -- `extractFunctions`∘`canonDecl` commute (funs/sigEffs preserved, bodies
-  -- canonExpr'd) + the poly-context transport (`polysR` has canonExpr'd bodies):
-  -- the lifted `AllFunsTyped` over `mapCanonBody funsU` IS `ModuleTyped mR`. The
-  -- Step-2 poly-ctx generalization lives here.
-  module-bridge :
-    ∀ (mm : ModuleMap) (mU mR : P.Module)
-      (funsU : List FunInfo) (polysU : List C.PolyFunInfo)
-    → C.extractFunctions (C.extractAliases mU) mU ≡ inj₂ (funsU , polysU)
-    → resolveImports mm mU ≡ inj₂ mR
-    → AS.AllFunsTyped (C.buildPolyCtx polysU) (C.collectSigEffects (P.Module.decls mU))
-        (mapCanonBody (polyDefNames (P.Module.decls mU)) funsU) C.emptyFunCtx
-    → AS.ModuleTyped mR
-
--- `ModuleTyped mU → ModuleTyped mR` — a TOP-LEVEL aux taking the `extractFunctions`
--- result explicitly (NOT a `with`-block: keeps the `AllFunsTyped` reduction clean
--- and avoids with-abstraction opacity). The `inj₂` arm is the LOAD-BEARING path:
--- it calls `AllFunsTyped-canon` (→ `canon-pres-ᶜ`), then `module-bridge`.
-module-typed-canon-ef :
-  ∀ (mm : ModuleMap) (mU mR : P.Module)
-    (efU : String ⊎ (List FunInfo × List C.PolyFunInfo))
-  → C.extractFunctions (C.extractAliases mU) mU ≡ efU
-  → resolveImports mm mU ≡ inj₂ mR
-  → AS.ModuleTyped-ef mU efU → AS.ModuleTyped mR
-module-typed-canon-ef mm mU mR (inj₁ _) ef-eq res-eq mt = ⊥-elim mt
-module-typed-canon-ef mm mU mR (inj₂ (funsU , polysU)) ef-eq res-eq mt =
-  module-bridge mm mU mR funsU polysU ef-eq res-eq
-    (AllFunsTyped-canon (polyDefNames (P.Module.decls mU))
-       (polyInB-bridge mU funsU polysU ef-eq) funsU mt)
-
-module-typed-canon :
-  ∀ (mm : ModuleMap) (mU mR : P.Module)
-  → resolveImports mm mU ≡ inj₂ mR
-  → AS.ModuleTyped mU → AS.ModuleTyped mR
-module-typed-canon mm mU mR res-eq mt =
-  module-typed-canon-ef mm mU mR (C.extractFunctions (C.extractAliases mU) mU) refl res-eq mt
-
-postulate
+  -- main's signature is unchanged by `canonDecl` (it canonExpr's only the BODY),
+  -- so existence + the `EffUU` type ride (structural; via extractFunctions-canon).
   has-valid-main-canon :
-    ∀ (mm : ModuleMap) (mU mR : P.Module)
-    → (res-eq : resolveImports mm mU ≡ inj₂ mR)
-    → (mt : AS.ModuleTyped mU) → MC.HasValidMain-decl mU mt
-    → MC.HasValidMain-decl mR (module-typed-canon mm mU mR res-eq mt)
+    ∀ (ds : List P.Decl) (mt : AS.ModuleTyped (P.mkModule ds))
+    → MC.HasValidMain-decl (P.mkModule ds) mt
+    → MC.HasValidMain-decl (canonModule ds) (module-typed-canon ds mt)
 
   -- The IMPORT case (residual): a module with `DImport`s inlines its imports'
   -- signatures, so `extractFunctions mR` differs from the own-module
@@ -178,6 +91,6 @@ canon-preserves-typing mm mU mt vmain = go (CR.noImports? (P.Module.decls mU))
     go : _ → Σ-syntax P.Module (λ mR' →
            (resolveImports mm mU ≡ inj₂ mR')
            × Σ-syntax (AS.ModuleTyped mR') (λ mt' → MC.HasValidMain-decl mR' mt'))
-    go (yes ni) = mR , res-eq , module-typed-canon mm mU mR res-eq mt , has-valid-main-canon mm mU mR res-eq mt vmain
+    go (yes ni) = canonModule ds , res-eq , module-typed-canon ds mt , has-valid-main-canon ds mt vmain
       where res-eq = CR.resolveImports-ni mm ds ni
     go (no _) = resolver-preserves-typing-imports mm mU mt vmain
