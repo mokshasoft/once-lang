@@ -25,8 +25,10 @@ open import Once.Parser.Module.FunDef public
 open import Once.Parser.Module.DeclTail public
 open import Once.Parser.Module.Resolve public
 open import Once.Parser.PolyType using (parsePolyTypeB; ParsePolyAtB)
+open import Once.Parser.Module.DeclTail using (colonHead; colDrop1; colDrop1-≤)
 open import Relation.Nullary using (Dec)
 open import Data.Bool using (Bool; true; false)
+open import Data.Nat.Properties using (<⇒≤; <-≤-trans)
 
 -- | Bounded parse of a single declaration. On success the residual is
 -- strictly shorter than the input, which gives us the measure to do
@@ -39,26 +41,26 @@ pdb-sub : (t : Token) (rest : List Token) → ParseAtB {Decl} rest → ParseAtB 
 pdb-sub t rest nothing                  = nothing
 pdb-sub t rest (just (d , rest' , bnd)) = just (d , rest' , <-trans bnd (s≤s ≤-refl))
 
--- `name : polytype` head (keyword checks failed, `TColon` lookahead): a trailing
--- `=` is a type-alias body, not a sig. Routed through the `eqHead` classifier +
--- a `Bool`-parameter helper (instead of matching the `TEquals` token directly) so
--- the bridge cases it in 2 clauses, not 33. Behaviour-identical. (`eqHead` is the
--- one re-exported from `Module.FunDef.Body` — same `TEquals`-head classifier.)
-pdb-colon-go : (w : String) (rest : List Token) (ty : PolyType) (rest' : List Token)
-               (bnd : length rest' < length rest) → Bool → ParseAtB {Decl} (TWord w ∷ TColon ∷ rest)
-pdb-colon-go w rest ty rest' bnd true  = nothing
-pdb-colon-go w rest ty rest' bnd false =
-  just (DTypeSig w ty , rest' , <-trans (<-trans bnd (s≤s ≤-refl)) (s≤s ≤-refl))
+-- Keyword checks failed: classifier-routed via `colonHead` — a `TColon` lookahead
+-- is a type-sig (a trailing `=` rejects it via `eqHead`), else a function def. The
+-- type-sig path uses `colDrop1` (not a structural `TColon` match) so the bridge
+-- dispatches in 2 clauses, not 33. Behaviour-identical to the old `TColon` match.
+pdb-fb-sig-go : (w : String) (rest : List Token) (ty : PolyType) (rest' : List Token)
+                (bnd : length rest' < length (colDrop1 rest)) → Bool → ParseAtB {Decl} (TWord w ∷ rest)
+pdb-fb-sig-go w rest ty rest' bnd true  = nothing
+pdb-fb-sig-go w rest ty rest' bnd false =
+  just (DTypeSig w ty , rest' , s≤s (<⇒≤ (<-≤-trans bnd (colDrop1-≤ rest))))
 
-pdb-colon : (w : String) (rest : List Token) → ParsePolyAtB rest →
-            ParseAtB {Decl} (TWord w ∷ TColon ∷ rest)
-pdb-colon w rest nothing                   = nothing
-pdb-colon w rest (just (ty , rest' , bnd)) = pdb-colon-go w rest ty rest' bnd (eqHead rest')
+pdb-fb-sig : (w : String) (rest : List Token) → ParsePolyAtB (colDrop1 rest) → ParseAtB {Decl} (TWord w ∷ rest)
+pdb-fb-sig w rest nothing                   = nothing
+pdb-fb-sig w rest (just (ty , rest' , bnd)) = pdb-fb-sig-go w rest ty rest' bnd (eqHead rest')
 
--- Keyword checks failed: `TColon` lookahead is a type-sig, else a function def.
+pdb-fb-go : (w : String) (rest : List Token) → Bool → ParseAtB {Decl} (TWord w ∷ rest)
+pdb-fb-go w rest true  = pdb-fb-sig w rest (parsePolyTypeB (colDrop1 rest))
+pdb-fb-go w rest false = pdb-sub (TWord w) rest (parseFunDefB w rest)
+
 pdb-fb : (w : String) (rest : List Token) → ParseAtB {Decl} (TWord w ∷ rest)
-pdb-fb w (TColon ∷ rest) = pdb-colon w rest (parsePolyTypeB rest)
-pdb-fb w rest            = pdb-sub (TWord w) rest (parseFunDefB w rest)
+pdb-fb w rest = pdb-fb-go w rest (colonHead rest)
 
 pdb-kw3 : (w : String) (rest : List Token) → Dec (w ≡ "signature") → ParseAtB {Decl} (TWord w ∷ rest)
 pdb-kw3 w rest (yes _) = pdb-sub (TWord w) rest (parseSignatureB rest)

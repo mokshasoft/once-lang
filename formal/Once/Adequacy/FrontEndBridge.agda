@@ -63,16 +63,12 @@ open import Once.Parser
 open import Once.Adequacy.LexerBridge using (Lexes; lexer-sound; lexer-complete) public
 
 ------------------------------------------------------------------------
--- PER-DECL parser obligation (grammar work; build from expr/type islands).
+-- PER-DECL parser obligation — now DISCHARGED (was postulated). The relation
+-- `ParsesDecl` (a sum of the six decl forms) + `sound-decl`/`complete-decl` are
+-- proven in `Once.Grammar.DeclBridge`, bottoming at the expr/type/poly islands.
 ------------------------------------------------------------------------
 
-postulate
-  ParsesDecl : List Token → Decl → List Token → Set
-  sound-decl :
-    ∀ {toks d rest bnd} → parseDeclB toks ≡ just (d , rest , bnd) → ParsesDecl toks d rest
-  complete-decl :
-    ∀ {toks d rest} → ParsesDecl toks d rest →
-    Σ[ bnd ∈ (length rest < length toks) ] parseDeclB toks ≡ just (d , rest , bnd)
+open import Once.Grammar.DeclBridge using (ParsesDecl; sound-decl; complete-decl) public
 
 ------------------------------------------------------------------------
 -- DECLS LOOP — relation DEFINED (mirrors `parseDeclsWF`); bridge postulated.
