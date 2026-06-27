@@ -27,6 +27,8 @@ open import Once.Parser.Module.Resolve
   using (canonExpr; canonVar; isBuiltinName; elemStr; lookupUnaliased)
 open import Once.TypeCheck.Classify
   using (NamedCtx; lookupLocal; lookupLocal-go; extendNamedCtx; classifyAppHead)
+open import Once.TypeCheck.Judgment
+  using (_⊢ᵍ_∶_; g-int; g-terminal; g-pair; g-inl; g-inr; g-In)
 open import Once.TypeCheck.Context using (Ctx; names; name)
 open import Once.Surface.Syntax
   using () renaming (Ctx to SCtx; ∅ to S∅; _,_^_ to _S,_^_)
@@ -150,3 +152,18 @@ elemStr-tail {y} {x} bound ¬p with y ≟s x
 ⊆ᵇ-cons {b₁} {b₂} x sub y h with y ≟s x
 ... | yes refl = refl
 ... | no ¬p    = sub y h
+
+------------------------------------------------------------------------
+-- Value-judgment preservation. `⊢ᵍ` is INDEPENDENT of the other judgments
+-- (it recurses only into itself), and has no var-local / binder, so no bound
+-- hypothesis is needed — every head is a builtin (kept) or structural.
+------------------------------------------------------------------------
+
+pres-ᵍ : ∀ {ctx e T} (bound : List String) →
+  ctx ⊢ᵍ e ∶ T → ctx ⊢ᵍ canonExpr bound [] [] e ∶ T
+pres-ᵍ bound (g-int n) = g-int n
+pres-ᵍ bound (g-terminal lL lI) rewrite canon-builtin bound "terminal" refl = g-terminal lL lI
+pres-ᵍ bound (g-pair d₁ d₂) = g-pair (pres-ᵍ bound d₁) (pres-ᵍ bound d₂)
+pres-ᵍ bound (g-inl d) rewrite canon-builtin bound "inl" refl = g-inl (pres-ᵍ bound d)
+pres-ᵍ bound (g-inr d) rewrite canon-builtin bound "inr" refl = g-inr (pres-ᵍ bound d)
+pres-ᵍ bound (g-In wf d) rewrite canon-builtin bound "In" refl = g-In wf (pres-ᵍ bound d)
