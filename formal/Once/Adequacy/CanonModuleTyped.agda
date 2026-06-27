@@ -25,7 +25,9 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; con
 open import Data.Maybe using (just)
 open import Once.Parser.Module.Core
   using (Decl; DTypeSig; DFunDef; DSignature; DImport; DTypeAlias; Module; mkModule; decls)
+open import Data.Bool using (true; false; _∧_)
 open import Once.Parser using (FunInfo; PolyFunInfo)
+open Once.Parser.FunInfo using (funIsPrimitive)
 import Once.Compile as C
 open import Once.Parser.Module.Resolve using (canonDecl; polyDefNames)
 import Once.Adequacy.AcceptSound as AS
@@ -72,13 +74,24 @@ collectSigEffects-canon : ∀ (ds : List Decl)
   → C.collectSigEffects (map (canonDecl (polyDefNames ds) [] []) ds) ≡ C.collectSigEffects ds
 collectSigEffects-canon ds = collectSigEffects-canonB (polyDefNames ds) ds
 
-postulate
-  -- canonFI preserves funName, so emittedNames (and the distinctness guard) are
-  -- unchanged: guardDistinct passes iff it passed on the originals.
-  guardDistinct-canon : ∀ (b : List String) (funsU : List FunInfo) (polysU : List PolyFunInfo)
-    → C.guardDistinct (inj₂ (funsU , polysU)) ≡ inj₂ (funsU , polysU)
-    → C.guardDistinct (inj₂ (canonFuns b funsU , canonPolys b polysU))
-        ≡ inj₂ (canonFuns b funsU , canonPolys b polysU)
+-- canonFI preserves funName + funIsPrimitive (record update), so emittedNames —
+-- and thus the distinctness guard — is unchanged.
+emittedNames-canon : ∀ (b : List String) (funs : List FunInfo)
+  → C.emittedNames (canonFuns b funs) ≡ C.emittedNames funs
+emittedNames-canon b [] = refl
+emittedNames-canon b (fi ∷ rest) with funIsPrimitive fi
+... | true  = emittedNames-canon b rest
+... | false = cong (_ ∷_) (emittedNames-canon b rest)
+
+guardDistinct-canon : ∀ (b : List String) (funsU : List FunInfo) (polysU : List PolyFunInfo)
+  → C.guardDistinct (inj₂ (funsU , polysU)) ≡ inj₂ (funsU , polysU)
+  → C.guardDistinct (inj₂ (canonFuns b funsU , canonPolys b polysU))
+      ≡ inj₂ (canonFuns b funsU , canonPolys b polysU)
+guardDistinct-canon b funsU polysU hyp
+  rewrite emittedNames-canon b funsU
+  with C.namesDistinct (C.emittedNames funsU) ∧ C.allValidIdentB (C.emittedNames funsU) | hyp
+... | true  | _  = refl
+... | false | ()
 
 ------------------------------------------------------------------------
 -- extractFunctions transports (peel guardDistinct, commute, re-wrap).
