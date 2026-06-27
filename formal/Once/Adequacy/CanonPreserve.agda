@@ -16,15 +16,20 @@ open import Data.List using (List; []; _∷_)
 open import Data.Maybe using (Maybe; just; nothing; is-just)
 open import Data.Product using (_,_)
 open import Data.String using (String) renaming (_≟_ to _≟s_)
-open import Relation.Nullary using (yes; no)
+open import Data.Empty using (⊥-elim)
+open import Relation.Nullary using (yes; no; ¬_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
 
+open import Once.Type using (Type)
 open import Once.CanonicalName using (CanonicalName; canonical; showCanonical)
 open import Once.TypeCheck.Raw as Raw using (RawExpr)
 open import Once.Parser.Module.Resolve
   using (canonExpr; canonVar; isBuiltinName; elemStr; lookupUnaliased)
 open import Once.TypeCheck.Classify
-  using (NamedCtx; lookupLocal; extendNamedCtx; classifyAppHead)
+  using (NamedCtx; lookupLocal; lookupLocal-go; extendNamedCtx; classifyAppHead)
+open import Once.TypeCheck.Context using (Ctx; names; name)
+open import Once.Surface.Syntax
+  using () renaming (Ctx to SCtx; ∅ to S∅; _,_^_ to _S,_^_)
 
 ------------------------------------------------------------------------
 -- canonExpr-RVar dispatch (import-free: um = am = []).
@@ -43,19 +48,24 @@ canon-RVar-resolve : ∀ (bound : List String) (x : String) →
 canon-RVar-resolve bound x eq rewrite eq = refl
 
 ------------------------------------------------------------------------
--- Bound / local agreement: the syntactic binder list `bound` matches the
--- context's local bindings. Threaded through λ/let/case binders.
+-- `bound` is taken to be `names (named ctx)` everywhere (so binder cases are
+-- DEFINITIONAL: names (extend ctx x A) = x ∷ names (named ctx)). The only fact
+-- the var case needs is: a name found locally is in `names` — proven by direct
+-- induction on the `Ctx` (where the `with x ≟ name b` DOES drive both
+-- `lookupLocal-go` and `elemStr`, since the binder is applied directly).
 ------------------------------------------------------------------------
 
-BLA : NamedCtx → List String → Set
-BLA ctx bound = ∀ x → elemStr x bound ≡ is-just (lookupLocal ctx x)
+-- lookupLocal-go found ⇒ the name is in the context's `names`.
+llg-just→elem : ∀ {m} (x : String) (Γ : Ctx) (Δ : SCtx m) {r} →
+  lookupLocal-go x Γ Δ ≡ just r → elemStr x (names Γ) ≡ true
+llg-just→elem x [] S∅ ()
+llg-just→elem x [] (_ S, _ ^ _) ()
+llg-just→elem x (_ ∷ _) S∅ ()
+llg-just→elem x (b ∷ Γ') (Δ' S, B ^ q) h with x ≟s name b
+... | yes _ = refl
+... | no _ with lookupLocal-go x Γ' Δ' in eq2
+...   | just r' = llg-just→elem x Γ' Δ' eq2
 
--- A name found locally is in `bound`.
-bla-local : ∀ {ctx bound x A Ψ se} → BLA ctx bound →
-  lookupLocal ctx x ≡ just (A , Ψ , se) → elemStr x bound ≡ true
-bla-local {x = x} bla eq rewrite bla x | eq = refl
-
--- A name not found locally is not in `bound`.
-bla-import : ∀ {ctx bound x} → BLA ctx bound →
-  lookupLocal ctx x ≡ nothing → elemStr x bound ≡ false
-bla-import {x = x} bla eq rewrite bla x | eq = refl
+lookup-just→elem : ∀ (ctx : NamedCtx) (x : String) {r} →
+  lookupLocal ctx x ≡ just r → elemStr x (names (NamedCtx.named ctx)) ≡ true
+lookup-just→elem ctx x h = llg-just→elem x (NamedCtx.named ctx) (NamedCtx.debruijn ctx) h
