@@ -40,6 +40,7 @@ open import Once.Type
 open import Once.SigEffect using (SigEffect)
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Raw as Raw
+open import Once.CanonicalName using (CanonicalName; showCanonical)
 open import Once.TypeCheck.Context using (Ctx; ∅; name)
 open import Once.TypeCheck.Context as Context using () renaming (_,_∷_ to extendCtx)
 open import Once.Surface.Syntax as Surface using ()
@@ -266,6 +267,13 @@ composeArgB ctx (Raw.RVar name) A with lookupPoly (NamedCtx.polys ctx) name
 ... | nothing with lookupImport (NamedCtx.imports ctx) name
 ...   | just (_ Once.Type.⇒[ _ ] C) = just C
 ...   | _ = nothing
+-- Plan 0.50 Stage 3: RESOLVED canonical name — mirror the bare-name lookup via
+-- `showCanonical cn` (own-module/import sigs are keyed by it).
+composeArgB ctx (Raw.RResolved cn) A with lookupPoly (NamedCtx.polys ctx) (showCanonical cn)
+... | just (schema , _) = schemaArrowCodomain schema A
+... | nothing with lookupImport (NamedCtx.imports ctx) (showCanonical cn)
+...   | just (_ Once.Type.⇒[ _ ] C) = just C
+...   | _ = nothing
 -- Nested compose: recurse.
 composeArgB ctx (Raw.RApp (Raw.RApp (Raw.RVar "compose") f') g') A with composeArgB ctx g' A
 ... | nothing = nothing
@@ -293,6 +301,12 @@ domainOfHead ctx (Raw.RVar name) with lookupImport (NamedCtx.imports ctx) name
 ... | just (D Once.Type.⇒[ _ ] _) = just D
 ... | _ = nothing
 domainOfHead ctx (Raw.RApp (Raw.RVar "arr") f') = domainOfHead ctx f'
+-- Plan 0.50 Stage 3: a RESOLVED canonical name behaves like its bare form (the
+-- import table is keyed by `showCanonical cn`), so point-free composes survive
+-- the resolver's `RVar → RResolved` canonicalization.
+domainOfHead ctx (Raw.RResolved cn) with lookupImport (NamedCtx.imports ctx) (showCanonical cn)
+... | just (D Once.Type.⇒[ _ ] _) = just D
+... | _ = nothing
 domainOfHead _ _ = nothing
 
 -- | Symmetric B-recovery for `compose f g` at `A → C`: try `g`'s codomain
