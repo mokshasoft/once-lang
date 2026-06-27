@@ -69,3 +69,53 @@ llg-just→elem x (b ∷ Γ') (Δ' S, B ^ q) h with x ≟s name b
 lookup-just→elem : ∀ (ctx : NamedCtx) (x : String) {r} →
   lookupLocal ctx x ≡ just r → elemStr x (names (NamedCtx.named ctx)) ≡ true
 lookup-just→elem ctx x h = llg-just→elem x (NamedCtx.named ctx) (NamedCtx.debruijn ctx) h
+
+------------------------------------------------------------------------
+-- canonExpr keeps every builtin head, so classifyAppHead is preserved.
+------------------------------------------------------------------------
+
+∨-true : ∀ (b : Bool) → b ∨ true ≡ true
+∨-true true  = refl
+∨-true false = refl
+
+canon-builtin : ∀ (bound : List String) (s : String) → isBuiltinName s ≡ true →
+  canonExpr bound [] [] (Raw.RVar s) ≡ Raw.RVar s
+canon-builtin bound s eq = canon-RVar-keep bound s lem
+  where lem : (elemStr s bound ∨ isBuiltinName s) ≡ true
+        lem rewrite eq = ∨-true (elemStr s bound)
+
+classify-canon : ∀ (bound : List String) (f : RawExpr) →
+  classifyAppHead f ≡ nothing → classifyAppHead (canonExpr bound [] [] f) ≡ nothing
+classify-canon bound (Raw.RVar x) h with elemStr x bound ∨ isBuiltinName x in eb
+... | true  rewrite canon-RVar-keep bound x eb = h
+... | false rewrite canon-RVar-resolve bound x eb = refl
+classify-canon bound (Raw.RApp (Raw.RVar x) g) h with elemStr x bound ∨ isBuiltinName x in eb
+... | true  rewrite canon-RVar-keep bound x eb = h
+... | false rewrite canon-RVar-resolve bound x eb = refl
+classify-canon bound (Raw.RApp (Raw.RApp a b) g) h = refl
+classify-canon bound (Raw.RApp (Raw.RQualified n al) g) h = refl
+classify-canon bound (Raw.RApp (Raw.RResolved cn) g) h = refl
+classify-canon bound (Raw.RApp (Raw.RLam y b) g) h = refl
+classify-canon bound (Raw.RApp (Raw.RLet y e₁ e₂) g) h = refl
+classify-canon bound (Raw.RApp (Raw.RPair a b) g) h = refl
+classify-canon bound (Raw.RApp (Raw.RDestruct s xl el xr er) g) h = refl
+classify-canon bound (Raw.RApp Raw.RUnit g) h = refl
+classify-canon bound (Raw.RApp (Raw.RInt n) g) h = refl
+classify-canon bound (Raw.RApp (Raw.RStringLit s) g) h = refl
+classify-canon bound (Raw.RApp (Raw.RAnnot e t) g) h = refl
+classify-canon bound (Raw.RApp (Raw.RBinOp op a b) g) h = refl
+classify-canon bound (Raw.RApp (Raw.RUnaryOp op e) g) h = refl
+classify-canon bound (Raw.RApp (Raw.RAna F c) g) h = refl
+classify-canon bound (Raw.RQualified n al) h = refl
+classify-canon bound (Raw.RResolved cn) h = refl
+classify-canon bound (Raw.RLam y b) h = refl
+classify-canon bound (Raw.RLet y e₁ e₂) h = refl
+classify-canon bound (Raw.RPair a b) h = refl
+classify-canon bound (Raw.RDestruct s xl el xr er) h = refl
+classify-canon bound Raw.RUnit h = refl
+classify-canon bound (Raw.RInt n) h = refl
+classify-canon bound (Raw.RStringLit s) h = refl
+classify-canon bound (Raw.RAnnot e t) h = refl
+classify-canon bound (Raw.RBinOp op a b) h = refl
+classify-canon bound (Raw.RUnaryOp op e) h = refl
+classify-canon bound (Raw.RAna F c) h = refl
