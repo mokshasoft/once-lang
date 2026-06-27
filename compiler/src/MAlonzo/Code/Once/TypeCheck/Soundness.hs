@@ -152,7 +152,7 @@ d_viewBundle_132 v0
   = coe
       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
       (coe
-         MAlonzo.Code.Once.TypeCheck.Classify.d_classifyAppHeadView_948
+         MAlonzo.Code.Once.TypeCheck.Classify.d_classifyAppHeadView_1008
          (coe v0))
       erased
 -- Once.TypeCheck.Soundness.check-soundV
@@ -1794,7 +1794,7 @@ du_sound'45'RApp'45'generic_2490 v0 v1 v2
               MAlonzo.Code.Once.TypeCheck.Elaborate.du_inferElabV'45'RApp'45'dispatch_1566
               (coe v0) (coe v1) (coe v2)
               (coe
-                 MAlonzo.Code.Once.TypeCheck.Classify.d_classifyAppHeadView_948
+                 MAlonzo.Code.Once.TypeCheck.Classify.d_classifyAppHeadView_1008
                  (coe v1)) in
     coe
       (case coe v3 of
