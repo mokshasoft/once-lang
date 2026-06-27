@@ -68,13 +68,24 @@ mapCanonBody bound = map (canonBody bound)
 ------------------------------------------------------------------------
 
 postulate
-  -- D007 inferred-type functions: `inferType` (the elaborator) is canonExpr-
-  -- invariant. The signatured case (`funType = just ty`) is definitional; this
-  -- covers the `nothing` case. Dictated by the `tcons` reconstruction below.
-  resolveFunType-canon :
-    ∀ (ctx : C.FunCtx) (polys : PolyCtx) (bound : List String) (fi : FunInfo) (ty : Type)
-    → C.resolveFunType ctx polys (FunInfo.funType fi) (FunInfo.funBody fi) ≡ inj₂ ty
-    → C.resolveFunType ctx polys (FunInfo.funType fi) (canonExpr bound [] [] (FunInfo.funBody fi)) ≡ inj₂ ty
+  -- The ONLY genuinely elaborator-level residual: D007 no-signature functions
+  -- have their type INFERRED from the body, and `inferType` (the elaborator) is
+  -- canonExpr-invariant (a body and its canonicalization infer the same type —
+  -- this is the typing-half of trace-preservation, Step 5 flavour).
+  inferType-canon :
+    ∀ (ctx : C.FunCtx) (polys : PolyCtx) (bound : List String) (body : RawExpr) (ty : Type)
+    → C.inferType ctx polys body ≡ inj₂ ty
+    → C.inferType ctx polys (canonExpr bound [] [] body) ≡ inj₂ ty
+
+-- The signatured case (`funType = just ty`) is DEFINITIONAL (`resolveFunType`
+-- ignores the body); only the no-sig case defers to `inferType-canon`.
+resolveFunType-canon :
+  ∀ (ctx : C.FunCtx) (polys : PolyCtx) (bound : List String) (fi : FunInfo) (ty : Type)
+  → C.resolveFunType ctx polys (FunInfo.funType fi) (FunInfo.funBody fi) ≡ inj₂ ty
+  → C.resolveFunType ctx polys (FunInfo.funType fi) (canonExpr bound [] [] (FunInfo.funBody fi)) ≡ inj₂ ty
+resolveFunType-canon ctx polys bound fi ty eq with FunInfo.funType fi
+... | just ty' = eq
+... | nothing  = inferType-canon ctx polys bound (FunInfo.funBody fi) ty eq
 
 AllFunsTyped-canon : ∀ {polys sigEffs ctx} (bound : List String)
   → (∀ {x s b} → lookupPoly polys x ≡ just (s , b) → elemStr x bound ≡ true)
