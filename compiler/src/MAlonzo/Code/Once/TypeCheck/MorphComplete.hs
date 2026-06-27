@@ -120,8 +120,12 @@ d_cata'45'morph'45'strong_172
 d_named'45'morph'45'strong_184
   = error
       "MAlonzo Runtime Error: postulate evaluated: Once.TypeCheck.MorphComplete.named-morph-strong"
+-- Once.TypeCheck.MorphComplete.named-morph-strong-resolved
+d_named'45'morph'45'strong'45'resolved_196
+  = error
+      "MAlonzo Runtime Error: postulate evaluated: Once.TypeCheck.MorphComplete.named-morph-strong-resolved"
 -- Once.TypeCheck.MorphComplete.morph-elab
-d_morph'45'elab_196 ::
+d_morph'45'elab_208 ::
   MAlonzo.Code.Once.TypeCheck.Classify.T_NamedCtx_170 ->
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
@@ -129,7 +133,7 @@ d_morph'45'elab_196 ::
   MAlonzo.Code.Once.Type.T_Purity_32 ->
   MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7504'_'8758'_'8680''91'_'93'__18 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_morph'45'elab_196 v0 v1 v2 v3 v4 v5
+d_morph'45'elab_208 v0 v1 v2 v3 v4 v5
   = case coe v5 of
       MAlonzo.Code.Once.TypeCheck.Judgment.C_m'45'id_356
         -> let v11
@@ -213,7 +217,7 @@ d_morph'45'elab_196 v0 v1 v2 v3 v4 v5
                                                                               (coe
                                                                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                  (coe
-                                                                                    MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'morph'45'lift_528
+                                                                                    MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'morph'45'lift_540
                                                                                     (coe
                                                                                        MAlonzo.Code.Once.TypeCheck.Judgment.C_m'45'id_356))
                                                                                  (coe
@@ -314,7 +318,7 @@ d_morph'45'elab_196 v0 v1 v2 v3 v4 v5
                                                                               (coe
                                                                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                  (coe
-                                                                                    MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'morph'45'lift_528
+                                                                                    MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'morph'45'lift_540
                                                                                     (coe
                                                                                        MAlonzo.Code.Once.TypeCheck.Judgment.C_m'45'fst_366))
                                                                                  (coe
@@ -415,7 +419,7 @@ d_morph'45'elab_196 v0 v1 v2 v3 v4 v5
                                                                               (coe
                                                                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                  (coe
-                                                                                    MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'morph'45'lift_528
+                                                                                    MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'morph'45'lift_540
                                                                                     (coe
                                                                                        MAlonzo.Code.Once.TypeCheck.Judgment.C_m'45'snd_376))
                                                                                  (coe
@@ -505,7 +509,7 @@ d_morph'45'elab_196 v0 v1 v2 v3 v4 v5
                                                           (coe
                                                              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                              (coe
-                                                                MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'morph'45'lift_528
+                                                                MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'morph'45'lift_540
                                                                 (coe
                                                                    MAlonzo.Code.Once.TypeCheck.Judgment.C_m'45'terminal_384))
                                                              (coe
@@ -589,7 +593,7 @@ d_morph'45'elab_196 v0 v1 v2 v3 v4 v5
                                                           (coe
                                                              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                              (coe
-                                                                MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'morph'45'lift_528
+                                                                MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'morph'45'lift_540
                                                                 (coe
                                                                    MAlonzo.Code.Once.TypeCheck.Judgment.C_m'45'initial_392))
                                                              (coe
@@ -688,7 +692,7 @@ d_morph'45'elab_196 v0 v1 v2 v3 v4 v5
                                                                               (coe
                                                                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                  (coe
-                                                                                    MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'morph'45'lift_528
+                                                                                    MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'morph'45'lift_540
                                                                                     (coe
                                                                                        MAlonzo.Code.Once.TypeCheck.Judgment.C_m'45'inl_402))
                                                                                  (coe
@@ -793,7 +797,7 @@ d_morph'45'elab_196 v0 v1 v2 v3 v4 v5
                                                                               (coe
                                                                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                  (coe
-                                                                                    MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'morph'45'lift_528
+                                                                                    MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'morph'45'lift_540
                                                                                     (coe
                                                                                        MAlonzo.Code.Once.TypeCheck.Judgment.C_m'45'inr_412))
                                                                                  (coe
@@ -817,11 +821,11 @@ d_morph'45'elab_196 v0 v1 v2 v3 v4 v5
                -> case coe v16 of
                     MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_42 v18 v19
                       -> let v20
-                               = d_morph'45'elab_196
+                               = d_morph'45'elab_208
                                    (coe v0) (coe v19) (coe v10) (coe v3) (coe v4) (coe v14) in
                          coe
                            (let v21
-                                  = d_morph'45'elab_196
+                                  = d_morph'45'elab_208
                                       (coe v0) (coe v17) (coe v2) (coe v10) (coe v4) (coe v15) in
                             coe
                               (case coe v20 of
@@ -907,7 +911,7 @@ d_morph'45'elab_196 v0 v1 v2 v3 v4 v5
                                                                                                                                                      (coe
                                                                                                                                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                                                         (coe
-                                                                                                                                                           MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'morph'45'lift_528
+                                                                                                                                                           MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'morph'45'lift_540
                                                                                                                                                            (coe
                                                                                                                                                               MAlonzo.Code.Once.TypeCheck.Judgment.C_m'45'compose_428
                                                                                                                                                               v10
@@ -944,12 +948,12 @@ d_morph'45'elab_196 v0 v1 v2 v3 v4 v5
                       -> case coe v2 of
                            MAlonzo.Code.Once.Type.C__'43'__128 v19 v20
                              -> let v21
-                                      = d_morph'45'elab_196
+                                      = d_morph'45'elab_208
                                           (coe v0) (coe v18) (coe v19) (coe v3) (coe v4)
                                           (coe v13) in
                                 coe
                                   (let v22
-                                         = d_morph'45'elab_196
+                                         = d_morph'45'elab_208
                                              (coe v0) (coe v16) (coe v20) (coe v3) (coe v4)
                                              (coe v14) in
                                    coe
@@ -1035,7 +1039,7 @@ d_morph'45'elab_196 v0 v1 v2 v3 v4 v5
                                                                                                                                                             (coe
                                                                                                                                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                                                                (coe
-                                                                                                                                                                  MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'morph'45'lift_528
+                                                                                                                                                                  MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'morph'45'lift_540
                                                                                                                                                                   (coe
                                                                                                                                                                      MAlonzo.Code.Once.TypeCheck.Judgment.C_m'45'case_444
                                                                                                                                                                      v25
@@ -1072,12 +1076,12 @@ d_morph'45'elab_196 v0 v1 v2 v3 v4 v5
                       -> case coe v3 of
                            MAlonzo.Code.Once.Type.C__'42'__126 v18 v19
                              -> let v20
-                                      = d_morph'45'elab_196
+                                      = d_morph'45'elab_208
                                           (coe v0) (coe v17) (coe v2) (coe v18)
                                           (coe MAlonzo.Code.Once.Type.C_pure_34) (coe v12) in
                                 coe
                                   (let v21
-                                         = d_morph'45'elab_196
+                                         = d_morph'45'elab_208
                                              (coe v0) (coe v15) (coe v2) (coe v19)
                                              (coe MAlonzo.Code.Once.Type.C_pure_34) (coe v13) in
                                    coe
@@ -1167,7 +1171,7 @@ d_morph'45'elab_196 v0 v1 v2 v3 v4 v5
                                                                                                                                                             (coe
                                                                                                                                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                                                                (coe
-                                                                                                                                                                  MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'morph'45'lift_528
+                                                                                                                                                                  MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'morph'45'lift_540
                                                                                                                                                                   (coe
                                                                                                                                                                      MAlonzo.Code.Once.TypeCheck.Judgment.C_m'45'pair_458
                                                                                                                                                                      v24
@@ -1202,7 +1206,7 @@ d_morph'45'elab_196 v0 v1 v2 v3 v4 v5
                -> case coe v3 of
                     MAlonzo.Code.Once.Type.C__'8658''91'_'93'__130 v14 v15 v16
                       -> let v17
-                               = d_morph'45'elab_196
+                               = d_morph'45'elab_208
                                    (coe v0) (coe v13)
                                    (coe MAlonzo.Code.Once.Type.C__'42'__126 (coe v2) (coe v14))
                                    (coe v16) (coe MAlonzo.Code.Once.Type.C_pure_34) (coe v11) in
@@ -1260,7 +1264,7 @@ d_morph'45'elab_196 v0 v1 v2 v3 v4 v5
                                                                                               (coe
                                                                                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                  (coe
-                                                                                                    MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'morph'45'lift_528
+                                                                                                    MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'morph'45'lift_540
                                                                                                     (coe
                                                                                                        MAlonzo.Code.Once.TypeCheck.Judgment.C_m'45'curry_470
                                                                                                        v20))
@@ -1293,7 +1297,7 @@ d_morph'45'elab_196 v0 v1 v2 v3 v4 v5
         -> case coe v1 of
              MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_42 v11 v12
                -> let v13
-                        = d_morph'45'elab_196
+                        = d_morph'45'elab_208
                             (coe v0) (coe v12) (coe v2) (coe v3)
                             (coe MAlonzo.Code.Once.Type.C_pure_34) (coe v10) in
                   coe
@@ -1341,7 +1345,7 @@ d_morph'45'elab_196 v0 v1 v2 v3 v4 v5
                                                                                            (coe
                                                                                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                               (coe
-                                                                                                 MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'arr'45'app'45'check_652
+                                                                                                 MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'arr'45'app'45'check_664
                                                                                                  v24)
                                                                                               (coe
                                                                                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
@@ -1368,9 +1372,15 @@ d_morph'45'elab_196 v0 v1 v2 v3 v4 v5
                -> coe
                     d_named'45'morph'45'strong_184 v0 v14 v2 v3 v4 erased erased erased
              _ -> MAlonzo.RTE.mazUnreachableError
+      MAlonzo.Code.Once.TypeCheck.Judgment.C_m'45'named'45'resolved_528
+        -> case coe v1 of
+             MAlonzo.Code.Once.TypeCheck.Raw.C_RResolved_40 v12
+               -> coe
+                    d_named'45'morph'45'strong'45'resolved_196 v0 v12 v2 v3 v4 erased
+             _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.TypeCheck.MorphComplete.morph-complete
-d_morph'45'complete_1024 ::
+d_morph'45'complete_1038 ::
   MAlonzo.Code.Once.TypeCheck.Classify.T_NamedCtx_170 ->
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
@@ -1378,9 +1388,9 @@ d_morph'45'complete_1024 ::
   MAlonzo.Code.Once.Type.T_Purity_32 ->
   MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7504'_'8758'_'8680''91'_'93'__18 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_morph'45'complete_1024 v0 v1 v2 v3 v4 v5
+d_morph'45'complete_1038 v0 v1 v2 v3 v4 v5
   = let v6
-          = d_morph'45'elab_196
+          = d_morph'45'elab_208
               (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) in
     coe
       (case coe v6 of

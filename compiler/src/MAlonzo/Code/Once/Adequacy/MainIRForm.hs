@@ -219,7 +219,7 @@ d_Form_344 = erased
 d_caf'45'go'45'find'45'form_364 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
-  [MAlonzo.Code.Once.Parser.T_FunInfo_112] ->
+  [MAlonzo.Code.Once.Parser.T_FunInfo_96] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Once.Compile.T_CompiledFun_230] ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
@@ -231,7 +231,7 @@ d_caf'45'go'45'find'45'form_364 v0 v1 v2 v3 ~v4 ~v5 ~v6 ~v7
 du_caf'45'go'45'find'45'form_364 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
-  [MAlonzo.Code.Once.Parser.T_FunInfo_112] ->
+  [MAlonzo.Code.Once.Parser.T_FunInfo_96] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_caf'45'go'45'find'45'form_364 v0 v1 v2 v3
@@ -241,8 +241,8 @@ du_caf'45'go'45'find'45'form_364 v0 v1 v2 v3
         -> let v6
                  = MAlonzo.Code.Once.Compile.d_resolveFunType_304
                      (coe v3) (coe v0)
-                     (coe MAlonzo.Code.Once.Parser.d_funType_126 (coe v4))
-                     (coe MAlonzo.Code.Once.Parser.d_funBody_130 (coe v4)) in
+                     (coe MAlonzo.Code.Once.Parser.d_funType_110 (coe v4))
+                     (coe MAlonzo.Code.Once.Parser.d_funBody_114 (coe v4)) in
            coe
              (case coe v6 of
                 MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v7 -> erased
@@ -251,8 +251,8 @@ du_caf'45'go'45'find'45'form_364 v0 v1 v2 v3
                            = MAlonzo.Code.Once.Compile.d_compileFun'45'aux_174
                                (coe MAlonzo.Code.Once.IR.C_Heap_8)
                                (coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8) (coe v3) (coe v0)
-                               (coe v1) (coe MAlonzo.Code.Once.Parser.d_funName_124 (coe v4))
-                               (coe v7) (coe MAlonzo.Code.Once.Parser.d_funBody_130 (coe v4))
+                               (coe v1) (coe MAlonzo.Code.Once.Parser.d_funName_108 (coe v4))
+                               (coe v7) (coe MAlonzo.Code.Once.Parser.d_funBody_114 (coe v4))
                                (coe
                                   MAlonzo.Code.Relation.Nullary.Decidable.Core.du_isYes_132
                                   (coe
@@ -261,13 +261,13 @@ du_caf'45'go'45'find'45'form_364 v0 v1 v2 v3
                                      (\ v8 ->
                                         coe
                                           MAlonzo.Code.Data.String.Properties.du_'8776''45'reflexive_8
-                                          (coe MAlonzo.Code.Once.Parser.d_funName_124 (coe v4)))
+                                          (coe MAlonzo.Code.Once.Parser.d_funName_108 (coe v4)))
                                      (coe
                                         MAlonzo.Code.Data.List.Relation.Binary.Pointwise.Properties.du_decidable_112
                                         (coe MAlonzo.Code.Data.Char.Properties.d__'8799'__14)
                                         (coe
                                            MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12
-                                           (MAlonzo.Code.Once.Parser.d_funName_124 (coe v4)))
+                                           (MAlonzo.Code.Once.Parser.d_funName_108 (coe v4)))
                                         (coe
                                            MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12
                                            ("main" :: Data.Text.Text))))) in
@@ -282,7 +282,7 @@ du_caf'45'go'45'find'45'form_364 v0 v1 v2 v3
                                          (coe v1) (coe v5)
                                          (coe
                                             MAlonzo.Code.Once.Compile.d_extendFunCtx_50 (coe v3)
-                                            (coe MAlonzo.Code.Once.Parser.d_funName_124 (coe v4))
+                                            (coe MAlonzo.Code.Once.Parser.d_funName_108 (coe v4))
                                             (coe v7)) in
                                coe
                                  (case coe v10 of
@@ -296,12 +296,12 @@ du_caf'45'go'45'find'45'form_364 v0 v1 v2 v3
                                                       coe
                                                         MAlonzo.Code.Data.String.Properties.du_'8776''45'reflexive_8
                                                         (coe
-                                                           MAlonzo.Code.Once.Parser.d_funName_124
+                                                           MAlonzo.Code.Once.Parser.d_funName_108
                                                            (coe v4)))
                                                    (coe
                                                       MAlonzo.Code.Data.String.Properties.d__'8776''63'__28
                                                       (coe
-                                                         MAlonzo.Code.Once.Parser.d_funName_124
+                                                         MAlonzo.Code.Once.Parser.d_funName_108
                                                          (coe v4))
                                                       (coe ("main" :: Data.Text.Text))) in
                                          coe
@@ -311,7 +311,7 @@ du_caf'45'go'45'find'45'form_364 v0 v1 v2 v3
                                                      then coe
                                                             seq (coe v14)
                                                             (case coe v4 of
-                                                               MAlonzo.Code.Once.Parser.C_mkFunInfo_134 v15 v16 v17 v18 v19
+                                                               MAlonzo.Code.Once.Parser.C_mkFunInfo_118 v15 v16 v17 v18 v19
                                                                  -> if coe v19
                                                                       then coe
                                                                              du_caf'45'go'45'find'45'form_364
@@ -359,7 +359,7 @@ du_caf'45'go'45'find'45'form_364 v0 v1 v2 v3
                                                                   MAlonzo.Code.Once.Compile.d_extendFunCtx_50
                                                                   (coe v3)
                                                                   (coe
-                                                                     MAlonzo.Code.Once.Parser.d_funName_124
+                                                                     MAlonzo.Code.Once.Parser.d_funName_108
                                                                      (coe v4))
                                                                   (coe v7)))
                                               _ -> MAlonzo.RTE.mazUnreachableError)
@@ -379,10 +379,10 @@ du_main'45'ir'45'form_702 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_main'45'ir'45'form_702 v0
   = let v1
-          = MAlonzo.Code.Once.Parser.d_guardDistinct_492
+          = MAlonzo.Code.Once.Parser.d_guardDistinct_476
               (coe
-                 MAlonzo.Code.Once.Parser.d_extractFunctions'45'go_206
-                 (coe MAlonzo.Code.Once.Parser.d_extractAliases_92 (coe v0))
+                 MAlonzo.Code.Once.Parser.d_extractFunctions'45'go_190
+                 (coe MAlonzo.Code.Once.Parser.d_extractAliases_76 (coe v0))
                  (coe MAlonzo.Code.Once.Parser.Module.Core.d_decls_48 (coe v0))
                  (coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18)) in
     coe

@@ -367,6 +367,24 @@ library
       MAlonzo.Code.Once.Parser.Module.FunDef.Params
       MAlonzo.Code.Once.Parser.Module.Import
       MAlonzo.Code.Once.Parser.Module.OpName
+      MAlonzo.Code.Once.Adequacy.FrontEndBridge
+      MAlonzo.Code.Once.Adequacy.LexerBridge
+      MAlonzo.Code.Once.Adequacy.NameClash
+      MAlonzo.Code.Once.Adequacy.ResolverBridge
+      MAlonzo.Code.Once.Grammar.DeclBridge
+      MAlonzo.Code.Once.Grammar.FunDefBridge
+      MAlonzo.Code.Once.Grammar.ImportBridge
+      MAlonzo.Code.Once.Grammar.OpDeclBridge
+      MAlonzo.Code.Once.Grammar.PolyTypeBridge
+      MAlonzo.Code.Once.Grammar.SignatureBridge
+      MAlonzo.Code.Once.Grammar.TypeAliasBridge
+      MAlonzo.Code.Once.Parser.CharClass
+      MAlonzo.Code.Once.Parser.Generic.Complete
+      MAlonzo.Code.Once.Parser.Generic.Parser
+      MAlonzo.Code.Once.Parser.Generic.PolyInst
+      MAlonzo.Code.Once.Parser.Generic.Relation
+      MAlonzo.Code.Once.Parser.Generic.Sound
+      MAlonzo.Code.Once.Target.SymbolInjective
       MAlonzo.Code.Once.Parser.Module.Resolve
       MAlonzo.Code.Once.Parser.PolyType
       MAlonzo.Code.Once.Parser.Tests
