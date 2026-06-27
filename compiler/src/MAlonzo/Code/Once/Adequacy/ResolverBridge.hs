@@ -17,11 +17,20 @@ import MAlonzo.RTE (coe, erased, AgdaAny, addInt, subInt, mulInt,
                     rem64, lt64, eq64, word64FromNat, word64ToNat)
 import qualified MAlonzo.RTE
 import qualified Data.Text
+import qualified MAlonzo.Code.Agda.Builtin.Sigma
+import qualified MAlonzo.Code.Once.Adequacy.CanonModule
+import qualified MAlonzo.Code.Once.Parser.Module.Core
 
 -- Once.Adequacy.ResolverBridge.resolver-preserves-typing
+d_resolver'45'preserves'45'typing_16 ::
+  [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
+  MAlonzo.Code.Once.Parser.Module.Core.T_Module_44 ->
+  AgdaAny ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_resolver'45'preserves'45'typing_16
-  = error
-      "MAlonzo Runtime Error: postulate evaluated: Once.Adequacy.ResolverBridge.resolver-preserves-typing"
+  = coe
+      MAlonzo.Code.Once.Adequacy.CanonModule.d_canon'45'preserves'45'typing_34
 -- Once.Adequacy.ResolverBridge.resolver-reflects-typing
 d_resolver'45'reflects'45'typing_26
   = error

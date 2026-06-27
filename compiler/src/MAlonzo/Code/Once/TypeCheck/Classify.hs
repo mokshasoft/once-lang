@@ -546,107 +546,200 @@ d_inspectLookupImport_480 v0 v1
          MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
            -> coe C_liv'45'not'45'found_474
          _ -> MAlonzo.RTE.mazUnreachableError)
+-- Once.TypeCheck.Classify.composeArgB-lookup
+d_composeArgB'45'lookup_502 ::
+  T_NamedCtx_170 ->
+  MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
+  MAlonzo.Code.Once.Type.T_Type_112 ->
+  Maybe MAlonzo.Code.Once.Type.T_Type_112
+d_composeArgB'45'lookup_502 v0 v1 v2
+  = let v3 = d_lookupPoly_48 (coe d_polys_196 (coe v0)) (coe v1) in
+    coe
+      (case coe v3 of
+         MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v4
+           -> case coe v4 of
+                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v5 v6
+                  -> coe
+                       MAlonzo.Code.Once.Type.d_schemaArrowCodomain_860 (coe v5) (coe v2)
+                _ -> MAlonzo.RTE.mazUnreachableError
+         MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
+           -> let v4
+                    = d_lookupImport_274 (coe d_imports_194 (coe v0)) (coe v1) in
+              coe
+                (case coe v4 of
+                   MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v5
+                     -> case coe v5 of
+                          MAlonzo.Code.Once.Type.C__'8658''91'_'93'__130 v6 v7 v8
+                            -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe v8)
+                          _ -> coe v3
+                   _ -> coe v3)
+         _ -> MAlonzo.RTE.mazUnreachableError)
+-- Once.TypeCheck.Classify.composeArgB-fst
+d_composeArgB'45'fst_546 ::
+  T_NamedCtx_170 ->
+  MAlonzo.Code.Once.Type.T_Type_112 ->
+  Maybe MAlonzo.Code.Once.Type.T_Type_112
+d_composeArgB'45'fst_546 v0 v1
+  = let v2
+          = d_composeArgB'45'lookup_502
+              (coe v0) (coe ("fst" :: Data.Text.Text)) (coe v1) in
+    coe
+      (case coe v1 of
+         MAlonzo.Code.Once.Type.C__'42'__126 v3 v4
+           -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe v3)
+         _ -> coe v2)
+-- Once.TypeCheck.Classify.composeArgB-snd
+d_composeArgB'45'snd_556 ::
+  T_NamedCtx_170 ->
+  MAlonzo.Code.Once.Type.T_Type_112 ->
+  Maybe MAlonzo.Code.Once.Type.T_Type_112
+d_composeArgB'45'snd_556 v0 v1
+  = let v2
+          = d_composeArgB'45'lookup_502
+              (coe v0) (coe ("snd" :: Data.Text.Text)) (coe v1) in
+    coe
+      (case coe v1 of
+         MAlonzo.Code.Once.Type.C__'42'__126 v3 v4
+           -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe v4)
+         _ -> coe v2)
+-- Once.TypeCheck.Classify.composeArgB-rvar
+d_composeArgB'45'rvar_566 ::
+  T_NamedCtx_170 ->
+  MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
+  MAlonzo.Code.Once.Type.T_Type_112 ->
+  Maybe MAlonzo.Code.Once.Type.T_Type_112
+d_composeArgB'45'rvar_566 v0 v1 v2
+  = let v3
+          = coe
+              MAlonzo.Code.Relation.Nullary.Decidable.Core.du_map'8242'_178
+              erased
+              (\ v3 ->
+                 coe
+                   MAlonzo.Code.Data.String.Properties.du_'8776''45'reflexive_8
+                   (coe v1))
+              (coe
+                 MAlonzo.Code.Data.String.Properties.d__'8776''63'__28 (coe v1)
+                 (coe ("fst" :: Data.Text.Text))) in
+    coe
+      (case coe v3 of
+         MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v4 v5
+           -> if coe v4
+                then coe
+                       seq (coe v5) (coe d_composeArgB'45'fst_546 (coe v0) (coe v2))
+                else coe
+                       seq (coe v5)
+                       (let v6
+                              = coe
+                                  MAlonzo.Code.Relation.Nullary.Decidable.Core.du_map'8242'_178
+                                  erased
+                                  (\ v6 ->
+                                     coe
+                                       MAlonzo.Code.Data.String.Properties.du_'8776''45'reflexive_8
+                                       (coe v1))
+                                  (coe
+                                     MAlonzo.Code.Data.String.Properties.d__'8776''63'__28 (coe v1)
+                                     (coe ("snd" :: Data.Text.Text))) in
+                        coe
+                          (case coe v6 of
+                             MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v7 v8
+                               -> if coe v7
+                                    then coe
+                                           seq (coe v8)
+                                           (coe d_composeArgB'45'snd_556 (coe v0) (coe v2))
+                                    else coe
+                                           seq (coe v8)
+                                           (let v9
+                                                  = coe
+                                                      MAlonzo.Code.Relation.Nullary.Decidable.Core.du_map'8242'_178
+                                                      erased
+                                                      (\ v9 ->
+                                                         coe
+                                                           MAlonzo.Code.Data.String.Properties.du_'8776''45'reflexive_8
+                                                           (coe v1))
+                                                      (coe
+                                                         MAlonzo.Code.Data.String.Properties.d__'8776''63'__28
+                                                         (coe v1) (coe ("id" :: Data.Text.Text))) in
+                                            coe
+                                              (case coe v9 of
+                                                 MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v10 v11
+                                                   -> if coe v10
+                                                        then coe
+                                                               seq (coe v11)
+                                                               (coe
+                                                                  MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                  (coe v2))
+                                                        else coe
+                                                               seq (coe v11)
+                                                               (let v12
+                                                                      = coe
+                                                                          MAlonzo.Code.Relation.Nullary.Decidable.Core.du_map'8242'_178
+                                                                          erased
+                                                                          (\ v12 ->
+                                                                             coe
+                                                                               MAlonzo.Code.Data.String.Properties.du_'8776''45'reflexive_8
+                                                                               (coe v1))
+                                                                          (coe
+                                                                             MAlonzo.Code.Data.String.Properties.d__'8776''63'__28
+                                                                             (coe v1)
+                                                                             (coe
+                                                                                ("terminal"
+                                                                                 ::
+                                                                                 Data.Text.Text))) in
+                                                                coe
+                                                                  (case coe v12 of
+                                                                     MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v13 v14
+                                                                       -> if coe v13
+                                                                            then coe
+                                                                                   seq (coe v14)
+                                                                                   (coe
+                                                                                      MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                                      (coe
+                                                                                         MAlonzo.Code.Once.Type.C_Unit_122))
+                                                                            else coe
+                                                                                   seq (coe v14)
+                                                                                   (coe
+                                                                                      d_composeArgB'45'lookup_502
+                                                                                      (coe v0)
+                                                                                      (coe v1)
+                                                                                      (coe v2))
+                                                                     _ -> MAlonzo.RTE.mazUnreachableError))
+                                                 _ -> MAlonzo.RTE.mazUnreachableError))
+                             _ -> MAlonzo.RTE.mazUnreachableError))
+         _ -> MAlonzo.RTE.mazUnreachableError)
 -- Once.TypeCheck.Classify.composeArgB
-d_composeArgB_502 ::
+d_composeArgB_638 ::
   T_NamedCtx_170 ->
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
   Maybe MAlonzo.Code.Once.Type.T_Type_112
-d_composeArgB_502 v0 v1 v2
+d_composeArgB_638 v0 v1 v2
   = let v3 = coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 in
     coe
       (case coe v1 of
          MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36 v4
-           -> let v5
-                    = let v5 = d_lookupPoly_48 (coe d_polys_196 (coe v0)) (coe v4) in
-                      coe
-                        (case coe v5 of
-                           MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v6
-                             -> case coe v6 of
-                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v7 v8
-                                    -> coe
-                                         MAlonzo.Code.Once.Type.d_schemaArrowCodomain_860 (coe v7)
-                                         (coe v2)
-                                  _ -> MAlonzo.RTE.mazUnreachableError
-                           MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
-                             -> let v6
-                                      = d_lookupImport_274 (coe d_imports_194 (coe v0)) (coe v4) in
-                                coe
-                                  (case coe v6 of
-                                     MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v7
-                                       -> case coe v7 of
-                                            MAlonzo.Code.Once.Type.C__'8658''91'_'93'__130 v8 v9 v10
-                                              -> coe
-                                                   MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                                                   (coe v10)
-                                            _ -> coe v5
-                                     _ -> coe v5)
-                           _ -> MAlonzo.RTE.mazUnreachableError) in
-              coe
-                (case coe v4 of
-                   l | (==) l ("fst" :: Data.Text.Text) ->
-                       case coe v2 of
-                         MAlonzo.Code.Once.Type.C__'42'__126 v6 v7
-                           -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe v6)
-                         _ -> coe v5
-                   l | (==) l ("id" :: Data.Text.Text) ->
-                       coe MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe v2)
-                   l | (==) l ("snd" :: Data.Text.Text) ->
-                       case coe v2 of
-                         MAlonzo.Code.Once.Type.C__'42'__126 v6 v7
-                           -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe v7)
-                         _ -> coe v5
-                   l | (==) l ("terminal" :: Data.Text.Text) ->
-                       coe
-                         MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                         (coe MAlonzo.Code.Once.Type.C_Unit_122)
-                   _ -> coe v5)
+           -> coe d_composeArgB'45'rvar_566 (coe v0) (coe v4) (coe v2)
          MAlonzo.Code.Once.TypeCheck.Raw.C_RResolved_40 v4
-           -> let v5
-                    = d_lookupPoly_48
-                        (coe d_polys_196 (coe v0))
-                        (coe
-                           MAlonzo.Code.Once.CanonicalName.d_showCanonical_40 (coe v4)) in
-              coe
-                (case coe v5 of
-                   MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v6
-                     -> case coe v6 of
-                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v7 v8
-                            -> coe
-                                 MAlonzo.Code.Once.Type.d_schemaArrowCodomain_860 (coe v7) (coe v2)
-                          _ -> MAlonzo.RTE.mazUnreachableError
-                   MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
-                     -> let v6
-                              = d_lookupImport_274
-                                  (coe d_imports_194 (coe v0))
-                                  (coe
-                                     MAlonzo.Code.Once.CanonicalName.d_showCanonical_40 (coe v4)) in
-                        coe
-                          (case coe v6 of
-                             MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v7
-                               -> case coe v7 of
-                                    MAlonzo.Code.Once.Type.C__'8658''91'_'93'__130 v8 v9 v10
-                                      -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe v10)
-                                    _ -> coe v5
-                             _ -> coe v5)
-                   _ -> MAlonzo.RTE.mazUnreachableError)
+           -> coe
+                d_composeArgB'45'lookup_502 (coe v0)
+                (coe MAlonzo.Code.Once.CanonicalName.d_showCanonical_40 (coe v4))
+                (coe v2)
          MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_42 v4 v5
            -> case coe v4 of
                 MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36 v6
                   -> case coe v6 of
                        l | (==) l ("arr" :: Data.Text.Text) ->
-                           coe d_composeArgB_502 (coe v0) (coe v5) (coe v2)
+                           coe d_composeArgB_638 (coe v0) (coe v5) (coe v2)
                        _ -> coe v3
                 MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_42 v6 v7
                   -> case coe v6 of
                        MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36 v8
                          -> case coe v8 of
                               l | (==) l ("compose" :: Data.Text.Text) ->
-                                  let v9 = d_composeArgB_502 (coe v0) (coe v5) (coe v2) in
+                                  let v9 = d_composeArgB_638 (coe v0) (coe v5) (coe v2) in
                                   coe
                                     (case coe v9 of
                                        MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v10
-                                         -> coe d_composeArgB_502 (coe v0) (coe v7) (coe v10)
+                                         -> coe d_composeArgB_638 (coe v0) (coe v7) (coe v10)
                                        MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v9
                                        _ -> MAlonzo.RTE.mazUnreachableError)
                               _ -> coe v3
@@ -657,83 +750,82 @@ d_composeArgB_502 v0 v1 v2
                 MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                 (coe MAlonzo.Code.Once.Type.C_Int_136)
          _ -> coe v3)
+-- Once.TypeCheck.Classify.domainOfHead-arrow
+d_domainOfHead'45'arrow_716 ::
+  Maybe MAlonzo.Code.Once.Type.T_Type_112 ->
+  Maybe MAlonzo.Code.Once.Type.T_Type_112
+d_domainOfHead'45'arrow_716 v0
+  = let v1 = coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 in
+    coe
+      (case coe v0 of
+         MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v2
+           -> case coe v2 of
+                MAlonzo.Code.Once.Type.C__'8658''91'_'93'__130 v3 v4 v5
+                  -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe v3)
+                _ -> coe v1
+         _ -> coe v1)
 -- Once.TypeCheck.Classify.domainOfHead
-d_domainOfHead_666 ::
+d_domainOfHead_720 ::
   T_NamedCtx_170 ->
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
   Maybe MAlonzo.Code.Once.Type.T_Type_112
-d_domainOfHead_666 v0 v1
+d_domainOfHead_720 v0 v1
   = let v2 = coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 in
     coe
       (case coe v1 of
          MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36 v3
-           -> let v4
-                    = d_lookupImport_274 (coe d_imports_194 (coe v0)) (coe v3) in
-              coe
-                (case coe v4 of
-                   MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v5
-                     -> case coe v5 of
-                          MAlonzo.Code.Once.Type.C__'8658''91'_'93'__130 v6 v7 v8
-                            -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe v6)
-                          _ -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
-                   _ -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18)
+           -> coe
+                d_domainOfHead'45'arrow_716
+                (coe d_lookupImport_274 (coe d_imports_194 (coe v0)) (coe v3))
          MAlonzo.Code.Once.TypeCheck.Raw.C_RResolved_40 v3
-           -> let v4
-                    = d_lookupImport_274
-                        (coe d_imports_194 (coe v0))
-                        (coe
-                           MAlonzo.Code.Once.CanonicalName.d_showCanonical_40 (coe v3)) in
-              coe
-                (case coe v4 of
-                   MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v5
-                     -> case coe v5 of
-                          MAlonzo.Code.Once.Type.C__'8658''91'_'93'__130 v6 v7 v8
-                            -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe v6)
-                          _ -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
-                   _ -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18)
+           -> coe
+                d_domainOfHead'45'arrow_716
+                (coe
+                   d_lookupImport_274 (coe d_imports_194 (coe v0))
+                   (coe MAlonzo.Code.Once.CanonicalName.d_showCanonical_40 (coe v3)))
          MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_42 v3 v4
            -> case coe v3 of
                 MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36 v5
                   -> case coe v5 of
                        l | (==) l ("arr" :: Data.Text.Text) ->
-                           coe d_domainOfHead_666 (coe v0) (coe v4)
+                           coe d_domainOfHead_720 (coe v0) (coe v4)
                        _ -> coe v2
                 _ -> coe v2
          _ -> coe v2)
 -- Once.TypeCheck.Classify.composeMid-pick
-d_composeMid'45'pick_708 ::
+d_composeMid'45'pick_734 ::
   Maybe MAlonzo.Code.Once.Type.T_Type_112 ->
   Maybe MAlonzo.Code.Once.Type.T_Type_112 ->
   Maybe MAlonzo.Code.Once.Type.T_Type_112
-d_composeMid'45'pick_708 v0 v1
+d_composeMid'45'pick_734 v0 v1
   = case coe v0 of
       MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v2 -> coe v0
       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.TypeCheck.Classify.composeMid
-d_composeMid_714 ::
+d_composeMid_740 ::
   T_NamedCtx_170 ->
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
   Maybe MAlonzo.Code.Once.Type.T_Type_112
-d_composeMid_714 v0 v1 v2 v3
+d_composeMid_740 v0 v1 v2 v3
   = coe
-      d_composeMid'45'pick_708
-      (coe d_composeArgB_502 (coe v0) (coe v2) (coe v3))
-      (coe d_domainOfHead_666 (coe v0) (coe v1))
+      d_composeMid'45'pick_734
+      (coe d_composeArgB_638 (coe v0) (coe v2) (coe v3))
+      (coe d_domainOfHead_720 (coe v0) (coe v1))
 -- Once.TypeCheck.Classify.findLocalVarUsage
-d_findLocalVarUsage_726 ::
+d_findLocalVarUsage_752 ::
   T_NamedCtx_170 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_findLocalVarUsage_726 v0 v1
+d_findLocalVarUsage_752 v0 v1
   = case coe v0 of
       C_mkCtx_200 v2 v3 v4 v5 v6 v7 v8
-        -> coe du_go_742 (coe v1) (coe v3) (coe v4)
+        -> coe du_go_768 (coe v1) (coe v3) (coe v4)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.TypeCheck.Classify._.go
-d_go_742 ::
+d_go_768 ::
   Integer ->
   [MAlonzo.Code.Once.TypeCheck.Context.T_Binding_6] ->
   MAlonzo.Code.Once.Surface.Syntax.T_Ctx_6 ->
@@ -746,14 +838,14 @@ d_go_742 ::
   [MAlonzo.Code.Once.TypeCheck.Context.T_Binding_6] ->
   MAlonzo.Code.Once.Surface.Syntax.T_Ctx_6 ->
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_go_742 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 v7 ~v8 v9 v10
-  = du_go_742 v7 v9 v10
-du_go_742 ::
+d_go_768 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 v7 ~v8 v9 v10
+  = du_go_768 v7 v9 v10
+du_go_768 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   [MAlonzo.Code.Once.TypeCheck.Context.T_Binding_6] ->
   MAlonzo.Code.Once.Surface.Syntax.T_Ctx_6 ->
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_go_742 v0 v1 v2
+du_go_768 v0 v1 v2
   = case coe v1 of
       []
         -> coe
@@ -787,7 +879,7 @@ du_go_742 v0 v1 v2
                                            (coe MAlonzo.Code.Data.Fin.Base.C_zero_12) (coe v8)))
                               else coe
                                      seq (coe v11)
-                                     (let v12 = coe du_go_742 (coe v0) (coe v4) (coe v6) in
+                                     (let v12 = coe du_go_768 (coe v0) (coe v4) (coe v6) in
                                       coe
                                         (case coe v12 of
                                            MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v13
@@ -808,19 +900,19 @@ du_go_742 v0 v1 v2
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.TypeCheck.Classify.PolyBuiltinApp
-d_PolyBuiltinApp_806 = ()
-data T_PolyBuiltinApp_806
-  = C_pba'45'id_808 | C_pba'45'fst_810 | C_pba'45'snd_812 |
-    C_pba'45'terminal_814 | C_pba'45'inl_816 | C_pba'45'inr_818 |
-    C_pba'45'initial_820 | C_pba'45'arr_822 |
-    C_pba'45'pair'45'applied_824 | C_pba'45'compose'45'applied_826 |
-    C_pba'45'case'45'applied_828 | C_pba'45'curry_830 |
-    C_pba'45'apply_832 | C_pba'45'In_834 | C_pba'45'cata_836
+d_PolyBuiltinApp_832 = ()
+data T_PolyBuiltinApp_832
+  = C_pba'45'id_834 | C_pba'45'fst_836 | C_pba'45'snd_838 |
+    C_pba'45'terminal_840 | C_pba'45'inl_842 | C_pba'45'inr_844 |
+    C_pba'45'initial_846 | C_pba'45'arr_848 |
+    C_pba'45'pair'45'applied_850 | C_pba'45'compose'45'applied_852 |
+    C_pba'45'case'45'applied_854 | C_pba'45'curry_856 |
+    C_pba'45'apply_858 | C_pba'45'In_860 | C_pba'45'cata_862
 -- Once.TypeCheck.Classify.classifyAppHead
-d_classifyAppHead_838 ::
+d_classifyAppHead_864 ::
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
-  Maybe T_PolyBuiltinApp_806
-d_classifyAppHead_838 v0
+  Maybe T_PolyBuiltinApp_832
+d_classifyAppHead_864 v0
   = case coe v0 of
       MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36 v1
         -> let v2
@@ -841,7 +933,7 @@ d_classifyAppHead_838 v0
                        then coe
                               seq (coe v4)
                               (coe
-                                 MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe C_pba'45'id_808))
+                                 MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe C_pba'45'id_834))
                        else coe
                               seq (coe v4)
                               (let v5
@@ -863,7 +955,7 @@ d_classifyAppHead_838 v0
                                                   seq (coe v7)
                                                   (coe
                                                      MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                                                     (coe C_pba'45'fst_810))
+                                                     (coe C_pba'45'fst_836))
                                            else coe
                                                   seq (coe v7)
                                                   (let v8
@@ -886,7 +978,7 @@ d_classifyAppHead_838 v0
                                                                       seq (coe v10)
                                                                       (coe
                                                                          MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                                                                         (coe C_pba'45'snd_812))
+                                                                         (coe C_pba'45'snd_838))
                                                                else coe
                                                                       seq (coe v10)
                                                                       (let v11
@@ -914,7 +1006,7 @@ d_classifyAppHead_838 v0
                                                                                           (coe
                                                                                              MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                              (coe
-                                                                                                C_pba'45'terminal_814))
+                                                                                                C_pba'45'terminal_840))
                                                                                    else coe
                                                                                           seq
                                                                                           (coe v13)
@@ -948,7 +1040,7 @@ d_classifyAppHead_838 v0
                                                                                                               (coe
                                                                                                                  MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                  (coe
-                                                                                                                    C_pba'45'inl_816))
+                                                                                                                    C_pba'45'inl_842))
                                                                                                        else coe
                                                                                                               seq
                                                                                                               (coe
@@ -983,7 +1075,7 @@ d_classifyAppHead_838 v0
                                                                                                                                   (coe
                                                                                                                                      MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                      (coe
-                                                                                                                                        C_pba'45'inr_818))
+                                                                                                                                        C_pba'45'inr_844))
                                                                                                                            else coe
                                                                                                                                   seq
                                                                                                                                   (coe
@@ -1018,7 +1110,7 @@ d_classifyAppHead_838 v0
                                                                                                                                                       (coe
                                                                                                                                                          MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                          (coe
-                                                                                                                                                            C_pba'45'initial_820))
+                                                                                                                                                            C_pba'45'initial_846))
                                                                                                                                                else coe
                                                                                                                                                       seq
                                                                                                                                                       (coe
@@ -1053,7 +1145,7 @@ d_classifyAppHead_838 v0
                                                                                                                                                                           (coe
                                                                                                                                                                              MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                              (coe
-                                                                                                                                                                                C_pba'45'arr_822))
+                                                                                                                                                                                C_pba'45'arr_848))
                                                                                                                                                                    else coe
                                                                                                                                                                           seq
                                                                                                                                                                           (coe
@@ -1088,7 +1180,7 @@ d_classifyAppHead_838 v0
                                                                                                                                                                                               (coe
                                                                                                                                                                                                  MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                  (coe
-                                                                                                                                                                                                    C_pba'45'curry_830))
+                                                                                                                                                                                                    C_pba'45'curry_856))
                                                                                                                                                                                        else coe
                                                                                                                                                                                               seq
                                                                                                                                                                                               (coe
@@ -1123,7 +1215,7 @@ d_classifyAppHead_838 v0
                                                                                                                                                                                                                   (coe
                                                                                                                                                                                                                      MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                      (coe
-                                                                                                                                                                                                                        C_pba'45'apply_832))
+                                                                                                                                                                                                                        C_pba'45'apply_858))
                                                                                                                                                                                                            else coe
                                                                                                                                                                                                                   seq
                                                                                                                                                                                                                   (coe
@@ -1158,7 +1250,7 @@ d_classifyAppHead_838 v0
                                                                                                                                                                                                                                       (coe
                                                                                                                                                                                                                                          MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                          (coe
-                                                                                                                                                                                                                                            C_pba'45'In_834))
+                                                                                                                                                                                                                                            C_pba'45'In_860))
                                                                                                                                                                                                                                else coe
                                                                                                                                                                                                                                       seq
                                                                                                                                                                                                                                       (coe
@@ -1193,7 +1285,7 @@ d_classifyAppHead_838 v0
                                                                                                                                                                                                                                                           (coe
                                                                                                                                                                                                                                                              MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                                              (coe
-                                                                                                                                                                                                                                                                C_pba'45'cata_836))
+                                                                                                                                                                                                                                                                C_pba'45'cata_862))
                                                                                                                                                                                                                                                    else coe
                                                                                                                                                                                                                                                           seq
                                                                                                                                                                                                                                                           (coe
@@ -1238,7 +1330,7 @@ d_classifyAppHead_838 v0
                                      seq (coe v6)
                                      (coe
                                         MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                                        (coe C_pba'45'pair'45'applied_824))
+                                        (coe C_pba'45'pair'45'applied_850))
                               else coe
                                      seq (coe v6)
                                      (let v7
@@ -1260,7 +1352,7 @@ d_classifyAppHead_838 v0
                                                          seq (coe v9)
                                                          (coe
                                                             MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                                                            (coe C_pba'45'compose'45'applied_826))
+                                                            (coe C_pba'45'compose'45'applied_852))
                                                   else coe
                                                          seq (coe v9)
                                                          (let v10
@@ -1287,7 +1379,7 @@ d_classifyAppHead_838 v0
                                                                              (coe
                                                                                 MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                 (coe
-                                                                                   C_pba'45'case'45'applied_828))
+                                                                                   C_pba'45'case'45'applied_854))
                                                                       else coe
                                                                              seq (coe v12)
                                                                              (coe
@@ -1348,18 +1440,18 @@ d_classifyAppHead_838 v0
         -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.TypeCheck.Classify.AppHeadView
-d_AppHeadView_964 a0 = ()
-data T_AppHeadView_964
-  = C_ahv'45'id_966 | C_ahv'45'fst_968 | C_ahv'45'snd_970 |
-    C_ahv'45'terminal_972 | C_ahv'45'inl_974 | C_ahv'45'inr_976 |
-    C_ahv'45'initial_978 | C_ahv'45'arr_980 | C_ahv'45'curry_982 |
-    C_ahv'45'apply_984 | C_ahv'45'In_986 | C_ahv'45'cata_988 |
-    C_ahv'45'pair'45'applied_992 | C_ahv'45'compose'45'applied_996 |
-    C_ahv'45'case'45'applied_1000 | C_ahv'45'other_1004
+d_AppHeadView_990 a0 = ()
+data T_AppHeadView_990
+  = C_ahv'45'id_992 | C_ahv'45'fst_994 | C_ahv'45'snd_996 |
+    C_ahv'45'terminal_998 | C_ahv'45'inl_1000 | C_ahv'45'inr_1002 |
+    C_ahv'45'initial_1004 | C_ahv'45'arr_1006 | C_ahv'45'curry_1008 |
+    C_ahv'45'apply_1010 | C_ahv'45'In_1012 | C_ahv'45'cata_1014 |
+    C_ahv'45'pair'45'applied_1018 | C_ahv'45'compose'45'applied_1022 |
+    C_ahv'45'case'45'applied_1026 | C_ahv'45'other_1030
 -- Once.TypeCheck.Classify.classifyAppHeadView
-d_classifyAppHeadView_1008 ::
-  MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 -> T_AppHeadView_964
-d_classifyAppHeadView_1008 v0
+d_classifyAppHeadView_1034 ::
+  MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 -> T_AppHeadView_990
+d_classifyAppHeadView_1034 v0
   = case coe v0 of
       MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36 v1
         -> let v2
@@ -1377,7 +1469,7 @@ d_classifyAppHeadView_1008 v0
              (case coe v2 of
                 MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v3 v4
                   -> if coe v3
-                       then coe seq (coe v4) (coe C_ahv'45'id_966)
+                       then coe seq (coe v4) (coe C_ahv'45'id_992)
                        else coe
                               seq (coe v4)
                               (let v5
@@ -1395,7 +1487,7 @@ d_classifyAppHeadView_1008 v0
                                  (case coe v5 of
                                     MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v6 v7
                                       -> if coe v6
-                                           then coe seq (coe v7) (coe C_ahv'45'fst_968)
+                                           then coe seq (coe v7) (coe C_ahv'45'fst_994)
                                            else coe
                                                   seq (coe v7)
                                                   (let v8
@@ -1416,7 +1508,7 @@ d_classifyAppHeadView_1008 v0
                                                           -> if coe v9
                                                                then coe
                                                                       seq (coe v10)
-                                                                      (coe C_ahv'45'snd_970)
+                                                                      (coe C_ahv'45'snd_996)
                                                                else coe
                                                                       seq (coe v10)
                                                                       (let v11
@@ -1442,7 +1534,7 @@ d_classifyAppHeadView_1008 v0
                                                                                           seq
                                                                                           (coe v13)
                                                                                           (coe
-                                                                                             C_ahv'45'terminal_972)
+                                                                                             C_ahv'45'terminal_998)
                                                                                    else coe
                                                                                           seq
                                                                                           (coe v13)
@@ -1474,7 +1566,7 @@ d_classifyAppHeadView_1008 v0
                                                                                                               (coe
                                                                                                                  v16)
                                                                                                               (coe
-                                                                                                                 C_ahv'45'inl_974)
+                                                                                                                 C_ahv'45'inl_1000)
                                                                                                        else coe
                                                                                                               seq
                                                                                                               (coe
@@ -1507,7 +1599,7 @@ d_classifyAppHeadView_1008 v0
                                                                                                                                   (coe
                                                                                                                                      v19)
                                                                                                                                   (coe
-                                                                                                                                     C_ahv'45'inr_976)
+                                                                                                                                     C_ahv'45'inr_1002)
                                                                                                                            else coe
                                                                                                                                   seq
                                                                                                                                   (coe
@@ -1540,7 +1632,7 @@ d_classifyAppHeadView_1008 v0
                                                                                                                                                       (coe
                                                                                                                                                          v22)
                                                                                                                                                       (coe
-                                                                                                                                                         C_ahv'45'initial_978)
+                                                                                                                                                         C_ahv'45'initial_1004)
                                                                                                                                                else coe
                                                                                                                                                       seq
                                                                                                                                                       (coe
@@ -1573,7 +1665,7 @@ d_classifyAppHeadView_1008 v0
                                                                                                                                                                           (coe
                                                                                                                                                                              v25)
                                                                                                                                                                           (coe
-                                                                                                                                                                             C_ahv'45'arr_980)
+                                                                                                                                                                             C_ahv'45'arr_1006)
                                                                                                                                                                    else coe
                                                                                                                                                                           seq
                                                                                                                                                                           (coe
@@ -1606,7 +1698,7 @@ d_classifyAppHeadView_1008 v0
                                                                                                                                                                                               (coe
                                                                                                                                                                                                  v28)
                                                                                                                                                                                               (coe
-                                                                                                                                                                                                 C_ahv'45'curry_982)
+                                                                                                                                                                                                 C_ahv'45'curry_1008)
                                                                                                                                                                                        else coe
                                                                                                                                                                                               seq
                                                                                                                                                                                               (coe
@@ -1639,7 +1731,7 @@ d_classifyAppHeadView_1008 v0
                                                                                                                                                                                                                   (coe
                                                                                                                                                                                                                      v31)
                                                                                                                                                                                                                   (coe
-                                                                                                                                                                                                                     C_ahv'45'apply_984)
+                                                                                                                                                                                                                     C_ahv'45'apply_1010)
                                                                                                                                                                                                            else coe
                                                                                                                                                                                                                   seq
                                                                                                                                                                                                                   (coe
@@ -1672,7 +1764,7 @@ d_classifyAppHeadView_1008 v0
                                                                                                                                                                                                                                       (coe
                                                                                                                                                                                                                                          v34)
                                                                                                                                                                                                                                       (coe
-                                                                                                                                                                                                                                         C_ahv'45'In_986)
+                                                                                                                                                                                                                                         C_ahv'45'In_1012)
                                                                                                                                                                                                                                else coe
                                                                                                                                                                                                                                       seq
                                                                                                                                                                                                                                       (coe
@@ -1705,13 +1797,13 @@ d_classifyAppHeadView_1008 v0
                                                                                                                                                                                                                                                           (coe
                                                                                                                                                                                                                                                              v37)
                                                                                                                                                                                                                                                           (coe
-                                                                                                                                                                                                                                                             C_ahv'45'cata_988)
+                                                                                                                                                                                                                                                             C_ahv'45'cata_1014)
                                                                                                                                                                                                                                                    else coe
                                                                                                                                                                                                                                                           seq
                                                                                                                                                                                                                                                           (coe
                                                                                                                                                                                                                                                              v37)
                                                                                                                                                                                                                                                           (coe
-                                                                                                                                                                                                                                                             C_ahv'45'other_1004)
+                                                                                                                                                                                                                                                             C_ahv'45'other_1030)
                                                                                                                                                                                                                                             _ -> MAlonzo.RTE.mazUnreachableError))
                                                                                                                                                                                                                         _ -> MAlonzo.RTE.mazUnreachableError))
                                                                                                                                                                                                     _ -> MAlonzo.RTE.mazUnreachableError))
@@ -1725,9 +1817,9 @@ d_classifyAppHeadView_1008 v0
                                     _ -> MAlonzo.RTE.mazUnreachableError))
                 _ -> MAlonzo.RTE.mazUnreachableError)
       MAlonzo.Code.Once.TypeCheck.Raw.C_RQualified_38 v1 v2
-        -> coe C_ahv'45'other_1004
+        -> coe C_ahv'45'other_1030
       MAlonzo.Code.Once.TypeCheck.Raw.C_RResolved_40 v1
-        -> coe C_ahv'45'other_1004
+        -> coe C_ahv'45'other_1030
       MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_42 v1 v2
         -> case coe v1 of
              MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36 v3
@@ -1746,7 +1838,7 @@ d_classifyAppHeadView_1008 v0
                     (case coe v4 of
                        MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v5 v6
                          -> if coe v5
-                              then coe seq (coe v6) (coe C_ahv'45'pair'45'applied_992)
+                              then coe seq (coe v6) (coe C_ahv'45'pair'45'applied_1018)
                               else coe
                                      seq (coe v6)
                                      (let v7
@@ -1766,7 +1858,7 @@ d_classifyAppHeadView_1008 v0
                                              -> if coe v8
                                                   then coe
                                                          seq (coe v9)
-                                                         (coe C_ahv'45'compose'45'applied_996)
+                                                         (coe C_ahv'45'compose'45'applied_1022)
                                                   else coe
                                                          seq (coe v9)
                                                          (let v10
@@ -1791,90 +1883,90 @@ d_classifyAppHeadView_1008 v0
                                                                       then coe
                                                                              seq (coe v12)
                                                                              (coe
-                                                                                C_ahv'45'case'45'applied_1000)
+                                                                                C_ahv'45'case'45'applied_1026)
                                                                       else coe
                                                                              seq (coe v12)
                                                                              (coe
-                                                                                C_ahv'45'other_1004)
+                                                                                C_ahv'45'other_1030)
                                                                _ -> MAlonzo.RTE.mazUnreachableError))
                                            _ -> MAlonzo.RTE.mazUnreachableError))
                        _ -> MAlonzo.RTE.mazUnreachableError)
              MAlonzo.Code.Once.TypeCheck.Raw.C_RQualified_38 v3 v4
-               -> coe C_ahv'45'other_1004
+               -> coe C_ahv'45'other_1030
              MAlonzo.Code.Once.TypeCheck.Raw.C_RResolved_40 v3
-               -> coe C_ahv'45'other_1004
+               -> coe C_ahv'45'other_1030
              MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_42 v3 v4
-               -> coe C_ahv'45'other_1004
+               -> coe C_ahv'45'other_1030
              MAlonzo.Code.Once.TypeCheck.Raw.C_RLam_44 v3 v4
-               -> coe C_ahv'45'other_1004
+               -> coe C_ahv'45'other_1030
              MAlonzo.Code.Once.TypeCheck.Raw.C_RLet_46 v3 v4 v5
-               -> coe C_ahv'45'other_1004
+               -> coe C_ahv'45'other_1030
              MAlonzo.Code.Once.TypeCheck.Raw.C_RPair_48 v3 v4
-               -> coe C_ahv'45'other_1004
+               -> coe C_ahv'45'other_1030
              MAlonzo.Code.Once.TypeCheck.Raw.C_RDestruct_50 v3 v4 v5 v6 v7
-               -> coe C_ahv'45'other_1004
+               -> coe C_ahv'45'other_1030
              MAlonzo.Code.Once.TypeCheck.Raw.C_RUnit_52
-               -> coe C_ahv'45'other_1004
+               -> coe C_ahv'45'other_1030
              MAlonzo.Code.Once.TypeCheck.Raw.C_RInt_54 v3
-               -> coe C_ahv'45'other_1004
+               -> coe C_ahv'45'other_1030
              MAlonzo.Code.Once.TypeCheck.Raw.C_RStringLit_56 v3
-               -> coe C_ahv'45'other_1004
+               -> coe C_ahv'45'other_1030
              MAlonzo.Code.Once.TypeCheck.Raw.C_RAnnot_58 v3 v4
-               -> coe C_ahv'45'other_1004
+               -> coe C_ahv'45'other_1030
              MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60 v3 v4 v5
-               -> coe C_ahv'45'other_1004
+               -> coe C_ahv'45'other_1030
              MAlonzo.Code.Once.TypeCheck.Raw.C_RUnaryOp_62 v4
-               -> coe C_ahv'45'other_1004
+               -> coe C_ahv'45'other_1030
              MAlonzo.Code.Once.TypeCheck.Raw.C_RAna_64 v3 v4
-               -> coe C_ahv'45'other_1004
+               -> coe C_ahv'45'other_1030
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.TypeCheck.Raw.C_RLam_44 v1 v2
-        -> coe C_ahv'45'other_1004
+        -> coe C_ahv'45'other_1030
       MAlonzo.Code.Once.TypeCheck.Raw.C_RLet_46 v1 v2 v3
-        -> coe C_ahv'45'other_1004
+        -> coe C_ahv'45'other_1030
       MAlonzo.Code.Once.TypeCheck.Raw.C_RPair_48 v1 v2
-        -> coe C_ahv'45'other_1004
+        -> coe C_ahv'45'other_1030
       MAlonzo.Code.Once.TypeCheck.Raw.C_RDestruct_50 v1 v2 v3 v4 v5
-        -> coe C_ahv'45'other_1004
+        -> coe C_ahv'45'other_1030
       MAlonzo.Code.Once.TypeCheck.Raw.C_RUnit_52
-        -> coe C_ahv'45'other_1004
+        -> coe C_ahv'45'other_1030
       MAlonzo.Code.Once.TypeCheck.Raw.C_RInt_54 v1
-        -> coe C_ahv'45'other_1004
+        -> coe C_ahv'45'other_1030
       MAlonzo.Code.Once.TypeCheck.Raw.C_RStringLit_56 v1
-        -> coe C_ahv'45'other_1004
+        -> coe C_ahv'45'other_1030
       MAlonzo.Code.Once.TypeCheck.Raw.C_RAnnot_58 v1 v2
-        -> coe C_ahv'45'other_1004
+        -> coe C_ahv'45'other_1030
       MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60 v1 v2 v3
-        -> coe C_ahv'45'other_1004
+        -> coe C_ahv'45'other_1030
       MAlonzo.Code.Once.TypeCheck.Raw.C_RUnaryOp_62 v2
-        -> coe C_ahv'45'other_1004
+        -> coe C_ahv'45'other_1030
       MAlonzo.Code.Once.TypeCheck.Raw.C_RAna_64 v1 v2
-        -> coe C_ahv'45'other_1004
+        -> coe C_ahv'45'other_1030
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.TypeCheck.Classify.classifyAppHead-nothing⇒view-other
-d_classifyAppHead'45'nothing'8658'view'45'other_1136 ::
+d_classifyAppHead'45'nothing'8658'view'45'other_1162 ::
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_classifyAppHead'45'nothing'8658'view'45'other_1136 = erased
+d_classifyAppHead'45'nothing'8658'view'45'other_1162 = erased
 -- Once.TypeCheck.Classify.view-other⇒classifyAppHead-nothing
-d_view'45'other'8658'classifyAppHead'45'nothing_1444 ::
+d_view'45'other'8658'classifyAppHead'45'nothing_1470 ::
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_view'45'other'8658'classifyAppHead'45'nothing_1444 = erased
+d_view'45'other'8658'classifyAppHead'45'nothing_1470 = erased
 -- Once.TypeCheck.Classify.BareBuiltinClass
-d_BareBuiltinClass_1750 a0 = ()
-data T_BareBuiltinClass_1750
-  = C_bbc'45'id_1752 | C_bbc'45'fst_1754 | C_bbc'45'snd_1756 |
-    C_bbc'45'terminal_1758 | C_bbc'45'initial_1760 |
-    C_bbc'45'inl_1762 | C_bbc'45'inr_1764 | C_bbc'45'arr_1766 |
-    C_bbc'45'other_1770
+d_BareBuiltinClass_1776 a0 = ()
+data T_BareBuiltinClass_1776
+  = C_bbc'45'id_1778 | C_bbc'45'fst_1780 | C_bbc'45'snd_1782 |
+    C_bbc'45'terminal_1784 | C_bbc'45'initial_1786 |
+    C_bbc'45'inl_1788 | C_bbc'45'inr_1790 | C_bbc'45'arr_1792 |
+    C_bbc'45'other_1796
 -- Once.TypeCheck.Classify.classifyBareBuiltin
-d_classifyBareBuiltin_1774 ::
+d_classifyBareBuiltin_1800 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-  T_BareBuiltinClass_1750
-d_classifyBareBuiltin_1774 v0
+  T_BareBuiltinClass_1776
+d_classifyBareBuiltin_1800 v0
   = let v1
           = coe
               MAlonzo.Code.Relation.Nullary.Decidable.Core.du_map'8242'_178
@@ -1890,7 +1982,7 @@ d_classifyBareBuiltin_1774 v0
       (case coe v1 of
          MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v2 v3
            -> if coe v2
-                then coe seq (coe v3) (coe C_bbc'45'id_1752)
+                then coe seq (coe v3) (coe C_bbc'45'id_1778)
                 else coe
                        seq (coe v3)
                        (let v4
@@ -1908,7 +2000,7 @@ d_classifyBareBuiltin_1774 v0
                           (case coe v4 of
                              MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v5 v6
                                -> if coe v5
-                                    then coe seq (coe v6) (coe C_bbc'45'fst_1754)
+                                    then coe seq (coe v6) (coe C_bbc'45'fst_1780)
                                     else coe
                                            seq (coe v6)
                                            (let v7
@@ -1928,7 +2020,7 @@ d_classifyBareBuiltin_1774 v0
                                                  MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v8 v9
                                                    -> if coe v8
                                                         then coe
-                                                               seq (coe v9) (coe C_bbc'45'snd_1756)
+                                                               seq (coe v9) (coe C_bbc'45'snd_1782)
                                                         else coe
                                                                seq (coe v9)
                                                                (let v10
@@ -1953,7 +2045,7 @@ d_classifyBareBuiltin_1774 v0
                                                                             then coe
                                                                                    seq (coe v12)
                                                                                    (coe
-                                                                                      C_bbc'45'terminal_1758)
+                                                                                      C_bbc'45'terminal_1784)
                                                                             else coe
                                                                                    seq (coe v12)
                                                                                    (let v13
@@ -1984,7 +2076,7 @@ d_classifyBareBuiltin_1774 v0
                                                                                                        (coe
                                                                                                           v15)
                                                                                                        (coe
-                                                                                                          C_bbc'45'initial_1760)
+                                                                                                          C_bbc'45'initial_1786)
                                                                                                 else coe
                                                                                                        seq
                                                                                                        (coe
@@ -2017,7 +2109,7 @@ d_classifyBareBuiltin_1774 v0
                                                                                                                            (coe
                                                                                                                               v18)
                                                                                                                            (coe
-                                                                                                                              C_bbc'45'inl_1762)
+                                                                                                                              C_bbc'45'inl_1788)
                                                                                                                     else coe
                                                                                                                            seq
                                                                                                                            (coe
@@ -2050,7 +2142,7 @@ d_classifyBareBuiltin_1774 v0
                                                                                                                                                (coe
                                                                                                                                                   v21)
                                                                                                                                                (coe
-                                                                                                                                                  C_bbc'45'inr_1764)
+                                                                                                                                                  C_bbc'45'inr_1790)
                                                                                                                                         else coe
                                                                                                                                                seq
                                                                                                                                                (coe
@@ -2083,13 +2175,13 @@ d_classifyBareBuiltin_1774 v0
                                                                                                                                                                    (coe
                                                                                                                                                                       v24)
                                                                                                                                                                    (coe
-                                                                                                                                                                      C_bbc'45'arr_1766)
+                                                                                                                                                                      C_bbc'45'arr_1792)
                                                                                                                                                             else coe
                                                                                                                                                                    seq
                                                                                                                                                                    (coe
                                                                                                                                                                       v24)
                                                                                                                                                                    (coe
-                                                                                                                                                                      C_bbc'45'other_1770)
+                                                                                                                                                                      C_bbc'45'other_1796)
                                                                                                                                                      _ -> MAlonzo.RTE.mazUnreachableError))
                                                                                                                                  _ -> MAlonzo.RTE.mazUnreachableError))
                                                                                                              _ -> MAlonzo.RTE.mazUnreachableError))
@@ -2099,14 +2191,14 @@ d_classifyBareBuiltin_1774 v0
                              _ -> MAlonzo.RTE.mazUnreachableError))
          _ -> MAlonzo.RTE.mazUnreachableError)
 -- Once.TypeCheck.Classify.ViewBundle
-d_ViewBundle_1842 ::
+d_ViewBundle_1868 ::
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 -> ()
-d_ViewBundle_1842 = erased
+d_ViewBundle_1868 = erased
 -- Once.TypeCheck.Classify.viewBundle
-d_viewBundle_1850 ::
+d_viewBundle_1876 ::
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_viewBundle_1850 v0
+d_viewBundle_1876 v0
   = coe
       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-      (coe d_classifyAppHeadView_1008 (coe v0)) erased
+      (coe d_classifyAppHeadView_1034 (coe v0)) erased
