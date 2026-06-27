@@ -29,6 +29,8 @@ import qualified MAlonzo.Code.Data.Maybe.Relation.Binary.Pointwise
 import qualified MAlonzo.Code.Data.Sum.Base
 import qualified MAlonzo.Code.Once.Adequacy.AcceptSound
 import qualified MAlonzo.Code.Once.Adequacy.CPU.Interface
+import qualified MAlonzo.Code.Once.Adequacy.CanonModule
+import qualified MAlonzo.Code.Once.Adequacy.CanonResolve
 import qualified MAlonzo.Code.Once.Adequacy.FrontEndBridge
 import qualified MAlonzo.Code.Once.Adequacy.MainBuilds
 import qualified MAlonzo.Code.Once.Adequacy.MainExtract
@@ -1154,10 +1156,13 @@ du_correctR'45'complete_878 v0 v1 v2 v3 v4
         -> case coe v6 of
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v7 v8
                -> let v9
-                        = coe
-                            MAlonzo.Code.Once.Adequacy.ResolverBridge.d_resolver'45'preserves'45'typing_16
-                            (MAlonzo.Code.Once.Denotation.Behavior.d_srcImports_14 (coe v3)) v5
-                            v7 v8 in
+                        = MAlonzo.Code.Once.Adequacy.CanonModule.d_go_56
+                            (coe
+                               MAlonzo.Code.Once.Denotation.Behavior.d_srcImports_14 (coe v3))
+                            (coe v5) (coe v7) (coe v8)
+                            (coe
+                               MAlonzo.Code.Once.Adequacy.CanonResolve.d_noImports'63'_16
+                               (coe MAlonzo.Code.Once.Parser.Module.Core.d_decls_48 (coe v5))) in
                   coe
                     (case coe v9 of
                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v10 v11
