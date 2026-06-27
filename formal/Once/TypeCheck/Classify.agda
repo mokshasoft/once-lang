@@ -249,31 +249,44 @@ inspectLookupImport ctx x with lookupImport (NamedCtx.imports ctx) x in eq
 -- t-compose-check; the inferElab-driven path (path 2) was dropped
 -- because the typing rule must be locally decidable in a no-unification
 -- bidirectional system.
-composeArgB : NamedCtx → RawExpr → Type → Maybe Type
--- fst : (X * Y) → X, so B = X when A = X * Y.
-composeArgB ctx (Raw.RVar "fst") (X * _) = just X
--- snd : (X * Y) → Y, so B = Y when A = X * Y.
-composeArgB ctx (Raw.RVar "snd") (_ * Y) = just Y
--- id : X → X, so B = A.
-composeArgB ctx (Raw.RVar "id") A = just A
--- terminal : X → Unit, so B = Unit.
-composeArgB ctx (Raw.RVar "terminal") _ = just Unit
--- User poly name: look up schema, match domain, extract codomain.
--- Plan 0.36 Phase 1: fall back to the monomorphic named-def type (`imports`)
--- and read off its codomain, so point-free composes of named morphisms
--- (e.g. `compose exit (arr seven)`, `compose emitAll (arr getXs)`) recover B.
-composeArgB ctx (Raw.RVar name) A with lookupPoly (NamedCtx.polys ctx) name
+-- User poly name / named morphism: look up schema (poly) or fall back to the
+-- monomorphic named-def type (`imports`) and read off its codomain. SHARED by the
+-- bare `RVar` general case AND the resolved `RResolved` case (keyed by
+-- `showCanonical cn`) — so the two coincide DEFINITIONALLY (needed by
+-- `CanonComposeMid.composeArgB-RVar-resolved`).
+composeArgB-lookup : NamedCtx → String → Type → Maybe Type
+composeArgB-lookup ctx name A with lookupPoly (NamedCtx.polys ctx) name
 ... | just (schema , _) = schemaArrowCodomain schema A
 ... | nothing with lookupImport (NamedCtx.imports ctx) name
 ...   | just (_ Once.Type.⇒[ _ ] C) = just C
 ...   | _ = nothing
--- Plan 0.50 Stage 3: RESOLVED canonical name — mirror the bare-name lookup via
--- `showCanonical cn` (own-module/import sigs are keyed by it).
-composeArgB ctx (Raw.RResolved cn) A with lookupPoly (NamedCtx.polys ctx) (showCanonical cn)
-... | just (schema , _) = schemaArrowCodomain schema A
-... | nothing with lookupImport (NamedCtx.imports ctx) (showCanonical cn)
-...   | just (_ Once.Type.⇒[ _ ] C) = just C
-...   | _ = nothing
+
+-- fst/snd : recover the matching projection's codomain when A is a product, else
+-- fall through to the lookup path (a user `fst`/`snd` shadow).
+composeArgB-fst : NamedCtx → Type → Maybe Type
+composeArgB-fst ctx (X * _) = just X
+composeArgB-fst ctx A       = composeArgB-lookup ctx "fst" A
+
+composeArgB-snd : NamedCtx → Type → Maybe Type
+composeArgB-snd ctx (_ * Y) = just Y
+composeArgB-snd ctx A       = composeArgB-lookup ctx "snd" A
+
+-- RVar dispatch via explicit `≟` (not literal patterns) so the builtins are
+-- distinguished from an ABSTRACT name in proofs (the literal-pattern opacity fix).
+composeArgB-rvar : NamedCtx → String → Type → Maybe Type
+composeArgB-rvar ctx name A with name ≟ "fst"
+... | yes _ = composeArgB-fst ctx A
+... | no  _ with name ≟ "snd"
+...   | yes _ = composeArgB-snd ctx A
+...   | no  _ with name ≟ "id"
+...     | yes _ = just A
+...     | no  _ with name ≟ "terminal"
+...       | yes _ = just Unit
+...       | no  _ = composeArgB-lookup ctx name A
+
+composeArgB : NamedCtx → RawExpr → Type → Maybe Type
+composeArgB ctx (Raw.RVar name) A   = composeArgB-rvar ctx name A
+composeArgB ctx (Raw.RResolved cn) A = composeArgB-lookup ctx (showCanonical cn) A
 -- Nested compose: recurse.
 composeArgB ctx (Raw.RApp (Raw.RApp (Raw.RVar "compose") f') g') A with composeArgB ctx g' A
 ... | nothing = nothing
