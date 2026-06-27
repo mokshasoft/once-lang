@@ -30,6 +30,7 @@ open import Data.Product using (_×_; _,_; Σ-syntax)
 open import Data.String using (String)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Empty using (⊥-elim)
+open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.Type using (Type)
@@ -38,7 +39,8 @@ import Once.Parser.Module.Core as P
 open import Once.Parser using (FunInfo; mkFunInfo)
 import Once.Compile as C
 open import Once.Parser.Module.Resolve
-  using (ModuleMap; resolveImports; canonExpr; polyDefNames; elemStr)
+  using (ModuleMap; resolveImports; canonExpr; canonDecl; polyDefNames; elemStr)
+import Once.Adequacy.CanonResolve as CR
 open import Once.TypeCheck.Classify using (lookupPoly; PolyCtx)
 open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_)
 import Once.Adequacy.AcceptSound as AS
@@ -146,13 +148,17 @@ postulate
     → (mt : AS.ModuleTyped mU) → MC.HasValidMain-decl mU mt
     → MC.HasValidMain-decl mR (module-typed-canon mm mU mR res-eq mt)
 
-  -- Resolution SUCCEEDS for a well-typed module (residual): import-free always
-  -- succeeds (`resolveDecls` over non-`DImport` decls never returns `inj₁`); the
-  -- import case assumes the `ModuleMap` carries every dependency (a Haskell-layer
-  -- invariant). Keeps the apex interface total.
-  resolve-result :
-    ∀ (mm : ModuleMap) (mU : P.Module) → AS.ModuleTyped mU
-    → Σ-syntax P.Module (λ mR → resolveImports mm mU ≡ inj₂ mR)
+  -- The IMPORT case (residual): a module with `DImport`s inlines its imports'
+  -- signatures, so `extractFunctions mR` differs from the own-module
+  -- canonicalization and resolution can fail if the `ModuleMap` is incomplete.
+  -- The import-free fragment is fully discharged below; this residual needs the
+  -- Plan-0.50 import-aware machinery.
+  resolver-preserves-typing-imports :
+    ∀ (mm : ModuleMap) (mU : P.Module) (mt : AS.ModuleTyped mU)
+    → MC.HasValidMain-decl mU mt
+    → Σ-syntax P.Module (λ mR →
+        (resolveImports mm mU ≡ inj₂ mR)
+        × Σ-syntax (AS.ModuleTyped mR) (λ mt' → MC.HasValidMain-decl mR mt'))
 
 ------------------------------------------------------------------------
 -- The spine = `resolver-preserves-typing`. Resolve; on success lift the typing
@@ -165,8 +171,13 @@ canon-preserves-typing :
   → Σ-syntax P.Module (λ mR →
       (resolveImports mm mU ≡ inj₂ mR)
       × Σ-syntax (AS.ModuleTyped mR) (λ mt' → MC.HasValidMain-decl mR mt'))
-canon-preserves-typing mm mU mt vmain =
-  let (mR , res-eq) = resolve-result mm mU mt
-  in mR , res-eq
-        , module-typed-canon mm mU mR res-eq mt
-        , has-valid-main-canon mm mU mR res-eq mt vmain
+canon-preserves-typing mm mU mt vmain = go (CR.noImports? (P.Module.decls mU))
+  where
+    ds = P.Module.decls mU
+    mR = P.mkModule (map (canonDecl (polyDefNames ds) [] []) ds)
+    go : _ → Σ-syntax P.Module (λ mR' →
+           (resolveImports mm mU ≡ inj₂ mR')
+           × Σ-syntax (AS.ModuleTyped mR') (λ mt' → MC.HasValidMain-decl mR' mt'))
+    go (yes ni) = mR , res-eq , module-typed-canon mm mU mR res-eq mt , has-valid-main-canon mm mU mR res-eq mt vmain
+      where res-eq = CR.resolveImports-ni mm ds ni
+    go (no _) = resolver-preserves-typing-imports mm mU mt vmain
