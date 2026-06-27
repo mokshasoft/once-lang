@@ -22,7 +22,9 @@ open import Data.Sum using (inj₁; inj₂)
 open import Data.Empty using (⊥-elim)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; cong; subst)
 
-open import Once.Parser.Module.Core using (Decl; Module; mkModule; decls)
+open import Data.Maybe using (just)
+open import Once.Parser.Module.Core
+  using (Decl; DTypeSig; DFunDef; DSignature; DImport; DTypeAlias; Module; mkModule; decls)
 open import Once.Parser using (FunInfo; PolyFunInfo)
 import Once.Compile as C
 open import Once.Parser.Module.Resolve using (canonDecl; polyDefNames)
@@ -39,11 +41,38 @@ open import Once.Adequacy.CanonPolyNames using (polyInB-bridge; guardDistinct-in
 canonModule : List Decl → Module
 canonModule ds = mkModule (map (canonDecl (polyDefNames ds) [] []) ds)
 
+-- canonDecl keeps DTypeAlias / DSignature, so aliases + sig-effects are unchanged
+-- (independent of the bound `b`, which only affects DFunDef bodies — skipped here).
+extractAliases-canonB : ∀ (b : List String) (ds : List Decl)
+  → C.extractAliases (mkModule (map (canonDecl b [] []) ds)) ≡ C.extractAliases (mkModule ds)
+extractAliases-canonB b [] = refl
+extractAliases-canonB b (DTypeSig n ty ∷ rest)        = extractAliases-canonB b rest
+extractAliases-canonB b (DFunDef n a bd ∷ rest)       = extractAliases-canonB b rest
+extractAliases-canonB b (DSignature n o ty se ∷ rest) = extractAliases-canonB b rest
+extractAliases-canonB b (DTypeAlias n p bd ∷ rest)    = cong (_ ∷_) (extractAliases-canonB b rest)
+extractAliases-canonB b (DImport imp ∷ rest)          = extractAliases-canonB b rest
+
+extractAliases-canon : ∀ (ds : List Decl)
+  → C.extractAliases (canonModule ds) ≡ C.extractAliases (mkModule ds)
+extractAliases-canon ds = extractAliases-canonB (polyDefNames ds) ds
+
+collectSigEffects-canonB : ∀ (b : List String) (ds : List Decl)
+  → C.collectSigEffects (map (canonDecl b [] []) ds) ≡ C.collectSigEffects ds
+collectSigEffects-canonB b [] = refl
+collectSigEffects-canonB b (DTypeSig n ty ∷ rest)                      = collectSigEffects-canonB b rest
+collectSigEffects-canonB b (DFunDef n a bd ∷ rest)                     = collectSigEffects-canonB b rest
+collectSigEffects-canonB b (DSignature n (just o) ty (just se) ∷ rest) = cong (_ ∷_) (collectSigEffects-canonB b rest)
+collectSigEffects-canonB b (DSignature n nothing ty (just se) ∷ rest)  = cong (_ ∷_) (collectSigEffects-canonB b rest)
+collectSigEffects-canonB b (DSignature n (just o) ty nothing ∷ rest)   = collectSigEffects-canonB b rest
+collectSigEffects-canonB b (DSignature n nothing ty nothing ∷ rest)    = collectSigEffects-canonB b rest
+collectSigEffects-canonB b (DTypeAlias n p bd ∷ rest)                  = collectSigEffects-canonB b rest
+collectSigEffects-canonB b (DImport imp ∷ rest)                        = collectSigEffects-canonB b rest
+
+collectSigEffects-canon : ∀ (ds : List Decl)
+  → C.collectSigEffects (map (canonDecl (polyDefNames ds) [] []) ds) ≡ C.collectSigEffects ds
+collectSigEffects-canon ds = collectSigEffects-canonB (polyDefNames ds) ds
+
 postulate
-  extractAliases-canon : ∀ (ds : List Decl)
-    → C.extractAliases (canonModule ds) ≡ C.extractAliases (mkModule ds)
-  collectSigEffects-canon : ∀ (ds : List Decl)
-    → C.collectSigEffects (map (canonDecl (polyDefNames ds) [] []) ds) ≡ C.collectSigEffects ds
   -- canonFI preserves funName, so emittedNames (and the distinctness guard) are
   -- unchanged: guardDistinct passes iff it passed on the originals.
   guardDistinct-canon : ∀ (b : List String) (funsU : List FunInfo) (polysU : List PolyFunInfo)
