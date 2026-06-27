@@ -17,7 +17,7 @@ module Once.Adequacy.CanonModuleTyped where
 open import Data.List using (List; []; _∷_; map)
 open import Data.String using (String)
 open import Data.Maybe using (nothing)
-open import Data.Product using (_×_; _,_)
+open import Data.Product using (_×_; _,_; Σ-syntax)
 open import Data.Sum using (inj₁; inj₂)
 open import Data.Empty using (⊥-elim)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; cong; subst)
@@ -32,8 +32,9 @@ import Once.Compile as C
 open import Once.Parser.Module.Resolve using (canonDecl; polyDefNames)
 import Once.Adequacy.AcceptSound as AS
 open import Once.Adequacy.CanonExtract using (canonFI; canonFuns; canonPFI; canonPolys; extract-commute)
-open import Once.Adequacy.CanonAllFuns using (AllFunsTyped-transport)
+open import Once.Adequacy.CanonAllFuns using (AllFunsTyped-transport; AllMainEffUU-transport; MainExists-transport)
 open import Once.Adequacy.CanonPolyNames using (polyInB-bridge; guardDistinct-inj₂)
+import Once.Adequacy.ModuleComplete as MC
 
 ------------------------------------------------------------------------
 -- canonModule + the small structural commutes (canonDecl preserves
@@ -130,3 +131,32 @@ module-typed-canon : ∀ (ds : List Decl)
   → AS.ModuleTyped (mkModule ds) → AS.ModuleTyped (canonModule ds)
 module-typed-canon ds mt =
   module-typed-canon-aux ds (C.extractFunctions (C.extractAliases (mkModule ds)) (mkModule ds)) refl mt
+
+------------------------------------------------------------------------
+-- ModuleTyped + HasValidMain transport, BUNDLED so the validity predicates
+-- compute over the clean `AllFunsTyped-transport` (not a subst): both
+-- `extractFunctions(canonModule)` occurrences (in ModuleTyped and HasValidMain)
+-- get rewritten together, so the whole Σ aligns in one scope.
+------------------------------------------------------------------------
+
+module-typed-and-valid-aux : ∀ (ds : List Decl)
+    (efU : _) → C.extractFunctions (C.extractAliases (mkModule ds)) (mkModule ds) ≡ efU
+  → (mt : AS.ModuleTyped-ef (mkModule ds) efU)
+  → MC.ModuleMainEffUU-ef (mkModule ds) efU mt × MC.ModuleMainExists-ef (mkModule ds) efU mt
+  → Σ-syntax (AS.ModuleTyped (canonModule ds)) (λ mt' → MC.HasValidMain-decl (canonModule ds) mt')
+module-typed-and-valid-aux ds (inj₁ _) ef-eq mt vmain = ⊥-elim mt
+module-typed-and-valid-aux ds (inj₂ (funsU , polysU)) ef-eq mt (amu , me)
+  rewrite extractFunctions-canon ds funsU polysU ef-eq
+  rewrite collectSigEffects-canon ds =
+    AllFunsTyped-transport (polyDefNames ds) polysU (C.collectSigEffects ds)
+      (polyInB-bridge (mkModule ds) funsU polysU ef-eq) funsU mt
+    , (AllMainEffUU-transport (polyDefNames ds) polysU (C.collectSigEffects ds)
+        (polyInB-bridge (mkModule ds) funsU polysU ef-eq) funsU mt amu
+      , MainExists-transport (polyDefNames ds) polysU (C.collectSigEffects ds)
+        (polyInB-bridge (mkModule ds) funsU polysU ef-eq) funsU mt me)
+
+module-typed-and-valid : ∀ (ds : List Decl)
+    (mt : AS.ModuleTyped (mkModule ds)) → MC.HasValidMain-decl (mkModule ds) mt
+  → Σ-syntax (AS.ModuleTyped (canonModule ds)) (λ mt' → MC.HasValidMain-decl (canonModule ds) mt')
+module-typed-and-valid ds mt vmain =
+  module-typed-and-valid-aux ds (C.extractFunctions (C.extractAliases (mkModule ds)) (mkModule ds)) refl mt vmain
