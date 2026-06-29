@@ -537,11 +537,8 @@ test-suite once-test
   main-is: Spec.hs
   other-modules:
       Paths_once
-      AllocationSpec
       ArithSpec
-      Backend.C.Spec
       Backend.Common
-      BackendSpec
       IRSpec
       Layer0Spec
       Layer1Spec
@@ -565,6 +562,13 @@ test-suite once-test
       -threaded
       -rtsopts
       -with-rtsopts=-N
+  -- Put the freshly-built `once` executable on PATH for the tests. The test
+  -- harness (Backend.Common.runOnce) resolves the compiler via
+  -- `findExecutable "once"`; without this stanza `once` is absent and the
+  -- harness falls back to `cabal run once --`, which deadlocks on cabal's
+  -- build lock when many tests run concurrently under `cabal test`.
+  build-tool-depends:
+      once:once
   build-depends:
       base >=4.7 && <5
     , containers

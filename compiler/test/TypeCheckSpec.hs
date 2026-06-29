@@ -10,7 +10,8 @@ import qualified Data.Text.IO as TIO
 import System.Exit (ExitCode(..))
 import System.IO (hClose)
 import System.IO.Temp (withSystemTempFile)
-import System.Process (readProcessWithExitCode)
+
+import Backend.Common (runOnce)
 
 typeCheckTests :: TestTree
 typeCheckTests = testGroup "Type Checker (Agda)"
@@ -26,13 +27,18 @@ typeCheckTests = testGroup "Type Checker (Agda)"
 interFunctionCallTests :: TestTree
 interFunctionCallTests = testGroup "Inter-function calls"
   [ testCase "simple function call" $ do
-      -- A function can call another function defined earlier
+      -- A function can call another function defined earlier. `main` must be
+      -- IO Unit (= Eff Unit Unit), so the inter-function call is exercised by
+      -- `useHelper` rather than by `main` directly.
       let source = T.unlines
             [ "helper : Int -> Int"
             , "helper x = x"
             , ""
-            , "main : Int"
-            , "main = helper 5"
+            , "useHelper : Int -> Int"
+            , "useHelper x = helper x"
+            , ""
+            , "main : IO Unit"
+            , "main = id"
             ]
       result <- typeCheckSource source
       result @?= Right ()
@@ -49,23 +55,25 @@ interFunctionCallTests = testGroup "Inter-function calls"
             , "compute : Int -> Int"
             , "compute x = double (add1 x)"
             , ""
-            , "main : Int"
-            , "main = compute 5"
+            , "main : IO Unit"
+            , "main = id"
             ]
       result <- typeCheckSource source
       result @?= Right ()
 
-  , testCase "function calling function with lambda parameter" $ do
-      -- Inter-function call where caller passes a lambda arg
+  , testCase "function calling function with an argument" $ do
+      -- Inter-function call where the caller forwards its argument.
+      -- (Avoid the name `apply`, which is a builtin morphism, just like
+      -- `fst`/`snd` — a user binding of that name is shadowed by the builtin.)
       let source = T.unlines
-            [ "apply : Int -> Int"
-            , "apply x = x"
+            [ "callee : Int -> Int"
+            , "callee x = x"
             , ""
-            , "test : Int -> Int"
-            , "test y = apply y"
+            , "caller : Int -> Int"
+            , "caller y = callee y"
             , ""
-            , "main : Int"
-            , "main = test 42"
+            , "main : IO Unit"
+            , "main = id"
             ]
       result <- typeCheckSource source
       result @?= Right ()
@@ -79,8 +87,8 @@ interFunctionCallTests = testGroup "Inter-function calls"
             , "config : Int"
             , "config = port"
             , ""
-            , "main : Int"
-            , "main = config"
+            , "main : IO Unit"
+            , "main = id"
             ]
       result <- typeCheckSource source
       result @?= Right ()
@@ -103,8 +111,8 @@ interFunctionCallTests = testGroup "Inter-function calls"
             , "f5 : Int"
             , "f5 = f4"
             , ""
-            , "main : Int"
-            , "main = f5"
+            , "main : IO Unit"
+            , "main = id"
             ]
       result <- typeCheckSource source
       result @?= Right ()
@@ -121,8 +129,8 @@ recursionTests = testGroup "Recursion"
             [ "loop : Int"
             , "loop = loop"
             , ""
-            , "main : Int"
-            , "main = 0"
+            , "main : IO Unit"
+            , "main = id"
             ]
       result <- typeCheckSource source
       result @?= Right ()
@@ -132,8 +140,8 @@ recursionTests = testGroup "Recursion"
             [ "countdown : Int -> Int"
             , "countdown n = countdown n"
             , ""
-            , "main : Int"
-            , "main = countdown 10"
+            , "main : IO Unit"
+            , "main = id"
             ]
       result <- typeCheckSource source
       result @?= Right ()
@@ -143,8 +151,8 @@ recursionTests = testGroup "Recursion"
             [ "gcd : Int -> Int -> Int"
             , "gcd a b = gcd b a"
             , ""
-            , "main : Int"
-            , "main = gcd 12 8"
+            , "main : IO Unit"
+            , "main = id"
             ]
       result <- typeCheckSource source
       result @?= Right ()
@@ -159,8 +167,8 @@ recursionTests = testGroup "Recursion"
             , "odd : Int -> Int"
             , "odd n = odd n"
             , ""
-            , "main : Int"
-            , "main = even 4"
+            , "main : IO Unit"
+            , "main = id"
             ]
       result <- typeCheckSource source
       result @?= Right ()
@@ -172,21 +180,14 @@ recursionTests = testGroup "Recursion"
 
 builtinShadowingTests :: TestTree
 builtinShadowingTests = testGroup "Builtin names"
-  [ testCase "user-defined 'id' is shadowed by builtin" $ do
-      -- The builtin 'id : α → α' takes precedence over user-defined id
-      -- This causes a type mismatch when calling with concrete type
-      let source = T.unlines
-            [ "id : Int -> Int"
-            , "id x = x"
-            , ""
-            , "test : Int"
-            , "test = id 5"
-            ]
-      result <- typeCheckSource source
-      -- This should fail because builtin id : α → α doesn't unify with Int arg
-      assertBool "Should fail due to builtin shadowing" (isLeft result)
-
-  , testCase "non-builtin names work fine" $ do
+  -- NOTE: a "user-defined 'id' is shadowed by builtin" test was removed here.
+  -- It expected `id : Int -> Int; id x = x; test = id 5` to be REJECTED, but
+  -- it can't be: whether the builtin `id : α → α` or the user binding is used,
+  -- `id 5` is well-typed at `Int`, so no type error is possible. The real
+  -- builtin-shadowing behaviour (the builtin wins, breaking calls that don't
+  -- match the builtin's type) is covered by the `fst`/`snd` cases below, where
+  -- the builtins require a pair argument.
+  [ testCase "non-builtin names work fine" $ do
       -- Using a non-builtin name avoids the shadowing issue
       let source = T.unlines
             [ "myId : Int -> Int"
@@ -232,12 +233,13 @@ typeCheckSource :: T.Text -> IO (Either String ())
 typeCheckSource source = withSystemTempFile "test.once" $ \path handle -> do
   TIO.hPutStr handle source
   hClose handle  -- Must close before external process reads
-  -- Note: cabal run resolves to the built executable
-  (exitCode, _stdout, stderr) <- readProcessWithExitCode
-    "cabal" ["run", "once", "--", "check", path] ""
+  -- `once check` prints type errors on stdout, so include both streams in the
+  -- Left message. runOnce resolves the on-PATH `once` (see once.cabal
+  -- build-tool-depends) and only falls back to `cabal run`.
+  (exitCode, stdout, stderr) <- runOnce ["check", path]
   case exitCode of
     ExitSuccess -> return (Right ())
-    ExitFailure _ -> return (Left stderr)
+    ExitFailure _ -> return (Left (stdout ++ stderr))
 
 isLeft :: Either a b -> Bool
 isLeft (Left _) = True

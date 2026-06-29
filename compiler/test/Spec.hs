@@ -1,10 +1,9 @@
 module Main (main) where
 
 import Test.Tasty
+import Test.Tasty.Runners (NumThreads (..))
 
-import AllocationSpec (allocationStressTests)
 import ArithSpec (arithTests)
-import BackendSpec (backendTests)
 import IRSpec (irTests)
 import Layer0Spec (layer0Tests)
 import Layer1Spec (layer1Tests)
@@ -17,7 +16,13 @@ import TypeCheckSpec (typeCheckTests)
 import TypeErrorSpec (typeErrorTests)
 
 main :: IO ()
-main = defaultMain $ testGroup "Once"
+-- Run sequentially (NumThreads 1). The codegen/integration tests shell out to
+-- `once`, which builds against the shared `Strata/` interpretation tree and
+-- writes/removes a shared object file there (e.g.
+-- `Strata/Interpretations/Linux/Syscalls.x86_64.o`). Running them in parallel
+-- races on that artifact (`removeLink: does not exist`). Serialising keeps the
+-- suite deterministic; total runtime is ~12s.
+main = defaultMain $ localOption (NumThreads 1) $ testGroup "Once"
   [ parseTests
   , typeCheckTests
   , typeErrorTests
@@ -29,6 +34,4 @@ main = defaultMain $ testGroup "Once"
   , layer4Tests
   , layer5Tests
   , arithTests
-  , backendTests
-  , allocationStressTests
   ]

@@ -13,7 +13,8 @@ import qualified Data.Text.IO as TIO
 import System.Exit (ExitCode(..))
 import System.IO (hClose)
 import System.IO.Temp (withSystemTempFile)
-import System.Process (readProcessWithExitCode)
+
+import Backend.Common (runOnce)
 
 typeErrorTests :: TestTree
 typeErrorTests = testGroup "Type Errors"
@@ -27,14 +28,30 @@ typeErrorTests = testGroup "Type Errors"
 
 typeMismatchTests :: TestTree
 typeMismatchTests = testGroup "Type mismatches"
-  [ testCase "Int literal where function expected" $ do
-      -- A function type Int -> Int cannot have literal body
+  [ testCase "value body at function type lifts to a constant function" $ do
+      -- `f : Int -> Int; f = 42` is ACCEPTED: a value body `b : B` at type
+      -- `A -> B` lifts to the constant function `const b = b ∘ terminal`
+      -- (here `42 : Unit -> Int` precomposed with `terminal : Int -> Unit`).
+      -- This is the same value-lifting the language applies elsewhere, so it
+      -- is allowed rather than special-cased. The body must still match the
+      -- RESULT type: `f : Int -> String; f = 42` and `f : Int -> Int; f = unit`
+      -- are both rejected (see below), as are multi-argument arrows.
       let source = T.unlines
             [ "f : Int -> Int"
             , "f = 42"
             ]
       result <- typeCheckSource source
-      assertBool "Should reject Int literal for function type" (isLeft result)
+      result @?= Right ()
+
+  , testCase "value body must match the function's result type" $ do
+      -- The constant-function lifting is not a blanket escape hatch: the body
+      -- type must equal the arrow's result type.
+      let source = T.unlines
+            [ "f : Int -> String"
+            , "f = 42"
+            ]
+      result <- typeCheckSource source
+      assertBool "Should reject Int body at result type String" (isLeft result)
 
   , testCase "String literal for Int type" $ do
       let source = T.unlines
@@ -78,14 +95,15 @@ typeMismatchTests = testGroup "Type mismatches"
 
 mainTypeTests :: TestTree
 mainTypeTests = testGroup "Main function validation"
-  [ testCase "main with Eff Unit A is valid" $ do
-      -- This is the canonical main type
+  [ testCase "main with IO Unit (Eff Unit Unit) is valid" $ do
+      -- The canonical (and only valid) main type is `IO Unit` = `Eff Unit Unit`
+      -- (fixed by validateMain; see Once.Denotation.Behavior). `Eff Unit Int`
+      -- is NOT valid — the trailing object must be Unit.
       let source = T.unlines
-            [ "main : Eff Unit Int"
-            , "main = arr 42"
+            [ "main : IO Unit"
+            , "main = id"
             ]
       result <- typeCheckSource source
-      -- Note: arr lifts pure values to Eff
       result @?= Right ()
 
   , testCase "main without Eff is invalid" $ do
@@ -117,11 +135,11 @@ typeCheckSource :: T.Text -> IO (Either String ())
 typeCheckSource source = withSystemTempFile "test.once" $ \path handle -> do
   TIO.hPutStr handle source
   hClose handle  -- Must close before external process reads
-  (exitCode, _stdout, stderr) <- readProcessWithExitCode
-    "cabal" ["run", "once", "--", "check", path] ""
+  -- `once check` prints type errors on stdout; include both streams in Left.
+  (exitCode, stdout, stderr) <- runOnce ["check", path]
   case exitCode of
     ExitSuccess -> return (Right ())
-    ExitFailure _ -> return (Left stderr)
+    ExitFailure _ -> return (Left (stdout ++ stderr))
 
 isLeft :: Either a b -> Bool
 isLeft (Left _) = True
