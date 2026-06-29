@@ -156,22 +156,22 @@ once_argv_init:
 // ----------------------------------------------------------------------
 // Input: Unit (ignored) in a0
 // Output: int64 in a0
-.global once_argc
-.type once_argc, @function
-once_argc:
+.global argc
+.type argc, @function
+argc:
     lla     t0, g_argc
     ld      a0, 0(t0)
     ret
-.size once_argc, .-once_argc
+.size argc, .-argc
 
 // ----------------------------------------------------------------------
 // argv - Get argument at index
 // ----------------------------------------------------------------------
 // Input: int64 index in a0
 // Output: OnceString (data in a0, len in a1)
-.global once_argv
-.type once_argv, @function
-once_argv:
+.global argv
+.type argv, @function
+argv:
     // Check bounds: 0 <= idx < g_argc
     bltz    a0, .argv_empty
 
@@ -203,16 +203,16 @@ once_argv:
     lla     a0, .Lempty_str
     li      a1, 0
     ret
-.size once_argv, .-once_argv
+.size argv, .-argv
 
 // ----------------------------------------------------------------------
 // argn - Get first argument as integer
 // ----------------------------------------------------------------------
 // Input: Unit (ignored) in a0
 // Output: int64 in a0
-.global once_argn
-.type once_argn, @function
-once_argn:
+.global argn
+.type argn, @function
+argn:
     // Check if argc >= 2
     lla     t0, g_argc
     ld      t0, 0(t0)
@@ -264,6 +264,6 @@ once_argn:
 .argn_zero:
     li      a0, 0
     ret
-.size once_argn, .-once_argn
+.size argn, .-argn
 
 #endif // ONCE_LINUX_RISCV64_ARGV_DEFINED

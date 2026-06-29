@@ -12,33 +12,33 @@
  * Basic Arithmetic
  *========================================================================*/
 
-.globl once_add
-.type once_add, @function
-once_add:
+.globl add
+.type add, @function
+add:
     mov     %rdi, %rax      // a = fst
     add     %rsi, %rax      // a + snd
     ret
-.size once_add, .-once_add
+.size add, .-add
 
-.globl once_sub
-.type once_sub, @function
-once_sub:
+.globl sub
+.type sub, @function
+sub:
     mov     %rdi, %rax      // a = fst
     sub     %rsi, %rax      // a - snd
     ret
-.size once_sub, .-once_sub
+.size sub, .-sub
 
-.globl once_mul
-.type once_mul, @function
-once_mul:
+.globl mul
+.type mul, @function
+mul:
     mov     %rdi, %rax      // a = fst
     imul    %rsi, %rax      // a * snd
     ret
-.size once_mul, .-once_mul
+.size mul, .-mul
 
-.globl once_div
-.type once_div, @function
-once_div:
+.globl div
+.type div, @function
+div:
     test    %rsi, %rsi      // check if b == 0
     jz      .div_zero
     mov     %rdi, %rax      // a = fst
@@ -48,11 +48,11 @@ once_div:
 .div_zero:
     xor     %eax, %eax      // return 0 for division by zero
     ret
-.size once_div, .-once_div
+.size div, .-div
 
-.globl once_mod
-.type once_mod, @function
-once_mod:
+.globl mod
+.type mod, @function
+mod:
     test    %rsi, %rsi      // check if b == 0
     jz      .mod_zero
     mov     %rdi, %rax      // a = fst
@@ -63,156 +63,156 @@ once_mod:
 .mod_zero:
     xor     %eax, %eax      // return 0 for mod by zero
     ret
-.size once_mod, .-once_mod
+.size mod, .-mod
 
-.globl once_neg
-.type once_neg, @function
-once_neg:
+.globl neg
+.type neg, @function
+neg:
     mov     %rdi, %rax
     neg     %rax
     ret
-.size once_neg, .-once_neg
+.size neg, .-neg
 
-.globl once_abs
-.type once_abs, @function
-once_abs:
+.globl abs
+.type abs, @function
+abs:
     mov     %rdi, %rax
     mov     %rdi, %rdx
     neg     %rdx
     cmovs   %rdx, %rax      // if rax was negative, use negated value
     ret
-.size once_abs, .-once_abs
+.size abs, .-abs
 
 /*========================================================================
  * Comparisons (return 0 or 1)
  *========================================================================*/
 
-.globl once_eq
-.type once_eq, @function
-once_eq:
+.globl eq
+.type eq, @function
+eq:
     xor     %eax, %eax      // result = 0
     cmp     %rsi, %rdi      // compare fst, snd
     sete    %al             // set al = 1 if equal
     ret
-.size once_eq, .-once_eq
+.size eq, .-eq
 
-.globl once_neq
-.type once_neq, @function
-once_neq:
+.globl neq
+.type neq, @function
+neq:
     xor     %eax, %eax
     cmp     %rsi, %rdi
     setne   %al
     ret
-.size once_neq, .-once_neq
+.size neq, .-neq
 
-.globl once_lt
-.type once_lt, @function
-once_lt:
+.globl lt
+.type lt, @function
+lt:
     xor     %eax, %eax
     cmp     %rsi, %rdi      // fst - snd
     setl    %al             // signed less than
     ret
-.size once_lt, .-once_lt
+.size lt, .-lt
 
-.globl once_le
-.type once_le, @function
-once_le:
+.globl le
+.type le, @function
+le:
     xor     %eax, %eax
     cmp     %rsi, %rdi
     setle   %al
     ret
-.size once_le, .-once_le
+.size le, .-le
 
-.globl once_gt
-.type once_gt, @function
-once_gt:
+.globl gt
+.type gt, @function
+gt:
     xor     %eax, %eax
     cmp     %rsi, %rdi
     setg    %al
     ret
-.size once_gt, .-once_gt
+.size gt, .-gt
 
-.globl once_ge
-.type once_ge, @function
-once_ge:
+.globl ge
+.type ge, @function
+ge:
     xor     %eax, %eax
     cmp     %rsi, %rdi
     setge   %al
     ret
-.size once_ge, .-once_ge
+.size ge, .-ge
 
 /*========================================================================
  * Bitwise Operations
  *========================================================================*/
 
-.globl once_band
-.type once_band, @function
-once_band:
+.globl band
+.type band, @function
+band:
     mov     %rdi, %rax
     and     %rsi, %rax
     ret
-.size once_band, .-once_band
+.size band, .-band
 
-.globl once_bor
-.type once_bor, @function
-once_bor:
+.globl bor
+.type bor, @function
+bor:
     mov     %rdi, %rax
     or      %rsi, %rax
     ret
-.size once_bor, .-once_bor
+.size bor, .-bor
 
-.globl once_bxor
-.type once_bxor, @function
-once_bxor:
+.globl bxor
+.type bxor, @function
+bxor:
     mov     %rdi, %rax
     xor     %rsi, %rax
     ret
-.size once_bxor, .-once_bxor
+.size bxor, .-bxor
 
-.globl once_bnot
-.type once_bnot, @function
-once_bnot:
+.globl bnot
+.type bnot, @function
+bnot:
     mov     %rdi, %rax
     not     %rax
     ret
-.size once_bnot, .-once_bnot
+.size bnot, .-bnot
 
-.globl once_shl
-.type once_shl, @function
-once_shl:
+.globl shl
+.type shl, @function
+shl:
     mov     %rdi, %rax
     mov     %rsi, %rcx      // shift amount must be in cl
     shl     %cl, %rax
     ret
-.size once_shl, .-once_shl
+.size shl, .-shl
 
-.globl once_shr
-.type once_shr, @function
-once_shr:
+.globl shr
+.type shr, @function
+shr:
     mov     %rdi, %rax
     mov     %rsi, %rcx      // shift amount must be in cl
     sar     %cl, %rax       // arithmetic right shift (preserves sign)
     ret
-.size once_shr, .-once_shr
+.size shr, .-shr
 
 /*========================================================================
  * Min/Max
  *========================================================================*/
 
-.globl once_min
-.type once_min, @function
-once_min:
+.globl min
+.type min, @function
+min:
     mov     %rdi, %rax      // a = fst
     cmp     %rsi, %rdi      // compare a, b
     cmovg   %rsi, %rax      // if a > b, use b
     ret
-.size once_min, .-once_min
+.size min, .-min
 
-.globl once_max
-.type once_max, @function
-once_max:
+.globl max
+.type max, @function
+max:
     mov     %rdi, %rax      // a = fst
     cmp     %rsi, %rdi      // compare a, b
     cmovl   %rsi, %rax      // if a < b, use b
     ret
-.size once_max, .-once_max
+.size max, .-max

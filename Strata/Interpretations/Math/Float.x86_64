@@ -31,84 +31,84 @@
 // ----------------------------------------------------------------------
 // Input: OncePair* (fst, snd) in rdi
 // Output: double in xmm0
-.global once_fadd
-.type once_fadd, @function
-once_fadd:
+.global fadd
+.type fadd, @function
+fadd:
     movsd   (%rdi), %xmm0       // xmm0 = fst
     addsd   8(%rdi), %xmm0      // xmm0 += snd
     ret
-.size once_fadd, .-once_fadd
+.size fadd, .-fadd
 
 // ----------------------------------------------------------------------
 // fsub - Subtract two floats
 // ----------------------------------------------------------------------
 // Input: OncePair* (fst, snd) in rdi
 // Output: double in xmm0
-.global once_fsub
-.type once_fsub, @function
-once_fsub:
+.global fsub
+.type fsub, @function
+fsub:
     movsd   (%rdi), %xmm0       // xmm0 = fst
     subsd   8(%rdi), %xmm0      // xmm0 -= snd
     ret
-.size once_fsub, .-once_fsub
+.size fsub, .-fsub
 
 // ----------------------------------------------------------------------
 // fmul - Multiply two floats
 // ----------------------------------------------------------------------
 // Input: OncePair* (fst, snd) in rdi
 // Output: double in xmm0
-.global once_fmul
-.type once_fmul, @function
-once_fmul:
+.global fmul
+.type fmul, @function
+fmul:
     movsd   (%rdi), %xmm0       // xmm0 = fst
     mulsd   8(%rdi), %xmm0      // xmm0 *= snd
     ret
-.size once_fmul, .-once_fmul
+.size fmul, .-fmul
 
 // ----------------------------------------------------------------------
 // fdiv - Divide two floats
 // ----------------------------------------------------------------------
 // Input: OncePair* (fst, snd) in rdi
 // Output: double in xmm0
-.global once_fdiv
-.type once_fdiv, @function
-once_fdiv:
+.global fdiv
+.type fdiv, @function
+fdiv:
     movsd   (%rdi), %xmm0       // xmm0 = fst
     divsd   8(%rdi), %xmm0      // xmm0 /= snd
     ret
-.size once_fdiv, .-once_fdiv
+.size fdiv, .-fdiv
 
 // ----------------------------------------------------------------------
 // fneg - Negate a float
 // ----------------------------------------------------------------------
 // Input: double in xmm0
 // Output: double in xmm0
-.global once_fneg
-.type once_fneg, @function
-once_fneg:
+.global fneg
+.type fneg, @function
+fneg:
     // XOR with sign bit mask to flip sign
     movq    %xmm0, %rax
     movabs  $0x8000000000000000, %rcx
     xor     %rcx, %rax
     movq    %rax, %xmm0
     ret
-.size once_fneg, .-once_fneg
+.size fneg, .-fneg
 
 // ----------------------------------------------------------------------
 // fabs - Absolute value
 // ----------------------------------------------------------------------
 // Input: double in xmm0
 // Output: double in xmm0
-.global once_fabs
-.type once_fabs, @function
-once_fabs:
+.global fabs
+.type fabs, @function
+fabs:
     // AND with mask to clear sign bit
     movq    %xmm0, %rax
     movabs  $0x7FFFFFFFFFFFFFFF, %rcx
     and     %rcx, %rax
     movq    %rax, %xmm0
     ret
-.size once_fabs, .-once_fabs
+.size fabs, .-fabs
 
 // ======================================================================
 // Hardware-supported operations
@@ -119,12 +119,12 @@ once_fabs:
 // ----------------------------------------------------------------------
 // Input: double in xmm0
 // Output: double in xmm0
-.global once_fsqrt
-.type once_fsqrt, @function
-once_fsqrt:
+.global fsqrt
+.type fsqrt, @function
+fsqrt:
     sqrtsd  %xmm0, %xmm0
     ret
-.size once_fsqrt, .-once_fsqrt
+.size fsqrt, .-fsqrt
 
 // ======================================================================
 // Comparisons (return 0 for false, 1 for true)
@@ -135,69 +135,69 @@ once_fsqrt:
 // ----------------------------------------------------------------------
 // Input: OncePair* (fst, snd) in rdi
 // Output: int64 (0 or 1) in rax
-.global once_flt
-.type once_flt, @function
-once_flt:
+.global flt
+.type flt, @function
+flt:
     movsd   (%rdi), %xmm0       // xmm0 = fst
     ucomisd 8(%rdi), %xmm0      // compare fst with snd
     setb    %al                 // set if fst < snd (below, for unordered compare)
     movzbl  %al, %eax
     ret
-.size once_flt, .-once_flt
+.size flt, .-flt
 
 // ----------------------------------------------------------------------
 // fle - Less than or equal
 // ----------------------------------------------------------------------
 // Input: OncePair* (fst, snd) in rdi
 // Output: int64 (0 or 1) in rax
-.global once_fle
-.type once_fle, @function
-once_fle:
+.global fle
+.type fle, @function
+fle:
     movsd   (%rdi), %xmm0
     ucomisd 8(%rdi), %xmm0
     setbe   %al                 // set if fst <= snd
     movzbl  %al, %eax
     ret
-.size once_fle, .-once_fle
+.size fle, .-fle
 
 // ----------------------------------------------------------------------
 // fgt - Greater than
 // ----------------------------------------------------------------------
 // Input: OncePair* (fst, snd) in rdi
 // Output: int64 (0 or 1) in rax
-.global once_fgt
-.type once_fgt, @function
-once_fgt:
+.global fgt
+.type fgt, @function
+fgt:
     movsd   (%rdi), %xmm0
     ucomisd 8(%rdi), %xmm0
     seta    %al                 // set if fst > snd
     movzbl  %al, %eax
     ret
-.size once_fgt, .-once_fgt
+.size fgt, .-fgt
 
 // ----------------------------------------------------------------------
 // fge - Greater than or equal
 // ----------------------------------------------------------------------
 // Input: OncePair* (fst, snd) in rdi
 // Output: int64 (0 or 1) in rax
-.global once_fge
-.type once_fge, @function
-once_fge:
+.global fge
+.type fge, @function
+fge:
     movsd   (%rdi), %xmm0
     ucomisd 8(%rdi), %xmm0
     setae   %al                 // set if fst >= snd
     movzbl  %al, %eax
     ret
-.size once_fge, .-once_fge
+.size fge, .-fge
 
 // ----------------------------------------------------------------------
 // feq - Equal
 // ----------------------------------------------------------------------
 // Input: OncePair* (fst, snd) in rdi
 // Output: int64 (0 or 1) in rax
-.global once_feq
-.type once_feq, @function
-once_feq:
+.global feq
+.type feq, @function
+feq:
     movsd   (%rdi), %xmm0
     ucomisd 8(%rdi), %xmm0
     sete    %al
@@ -205,16 +205,16 @@ once_feq:
     and     %cl, %al
     movzbl  %al, %eax
     ret
-.size once_feq, .-once_feq
+.size feq, .-feq
 
 // ----------------------------------------------------------------------
 // fne - Not equal
 // ----------------------------------------------------------------------
 // Input: OncePair* (fst, snd) in rdi
 // Output: int64 (0 or 1) in rax
-.global once_fne
-.type once_fne, @function
-once_fne:
+.global fne
+.type fne, @function
+fne:
     movsd   (%rdi), %xmm0
     ucomisd 8(%rdi), %xmm0
     setne   %al
@@ -222,7 +222,7 @@ once_fne:
     or      %cl, %al
     movzbl  %al, %eax
     ret
-.size once_fne, .-once_fne
+.size fne, .-fne
 
 // ======================================================================
 // Conversions
@@ -233,24 +233,24 @@ once_fne:
 // ----------------------------------------------------------------------
 // Input: int64 in rdi
 // Output: double in xmm0
-.global once_intToFloat
-.type once_intToFloat, @function
-once_intToFloat:
+.global intToFloat
+.type intToFloat, @function
+intToFloat:
     cvtsi2sdq %rdi, %xmm0
     ret
-.size once_intToFloat, .-once_intToFloat
+.size intToFloat, .-intToFloat
 
 // ----------------------------------------------------------------------
 // floatToInt - Convert float to integer (truncate toward zero)
 // ----------------------------------------------------------------------
 // Input: double in xmm0
 // Output: int64 in rax
-.global once_floatToInt
-.type once_floatToInt, @function
-once_floatToInt:
+.global floatToInt
+.type floatToInt, @function
+floatToInt:
     cvttsd2siq %xmm0, %rax
     ret
-.size once_floatToInt, .-once_floatToInt
+.size floatToInt, .-floatToInt
 
 // ======================================================================
 // Constants
@@ -261,12 +261,12 @@ once_floatToInt:
 // ----------------------------------------------------------------------
 // Input: Unit (ignored)
 // Output: double in xmm0
-.global once_pi
-.type once_pi, @function
-once_pi:
+.global pi
+.type pi, @function
+pi:
     movsd   .Lpi_const(%rip), %xmm0
     ret
-.size once_pi, .-once_pi
+.size pi, .-pi
 
 .section .rodata
 .align 8
@@ -284,26 +284,26 @@ once_pi:
 // ----------------------------------------------------------------------
 // Input: OncePair* (fst, snd) in rdi
 // Output: double in xmm0
-.global once_fmin
-.type once_fmin, @function
-once_fmin:
+.global fmin
+.type fmin, @function
+fmin:
     movsd   (%rdi), %xmm0
     minsd   8(%rdi), %xmm0
     ret
-.size once_fmin, .-once_fmin
+.size fmin, .-fmin
 
 // ----------------------------------------------------------------------
 // fmax - Maximum of two floats
 // ----------------------------------------------------------------------
 // Input: OncePair* (fst, snd) in rdi
 // Output: double in xmm0
-.global once_fmax
-.type once_fmax, @function
-once_fmax:
+.global fmax
+.type fmax, @function
+fmax:
     movsd   (%rdi), %xmm0
     maxsd   8(%rdi), %xmm0
     ret
-.size once_fmax, .-once_fmax
+.size fmax, .-fmax
 
 // ======================================================================
 // Transcendental functions - STUB implementations

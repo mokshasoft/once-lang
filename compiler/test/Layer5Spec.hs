@@ -26,8 +26,15 @@ layer5Tests = testGroup "Layer5"
   [ isEvenTest
   , testGroup "cata-general (Plan 0.36 Phase 0 — RED until functor-general codegen)"
       [ exitTest name code | (name, code) <- cataGeneralCases ]
-  , testGroup "cata-effectful (Plan 0.36 — PENDING: needs emit.int + trace-valued exec)"
-      [ pendingExitTest name code | (name, code) <- cataEffectfulCases ]
+  , testGroup "cata-effectful (Plan 0.36)"
+      -- `layer5-cata-list-emit` now links and runs to its sentinel: it was
+      -- blocked only by the `I.Test.Emit` impl's wrong symbol, fixed by the
+      -- interpretation symbol-aliasing change. `layer5-cata-leaftree-emit`
+      -- still fails to compile on a genuine type error in the fixture, so it
+      -- stays a pending expectation.
+      [ exitTest        "layer5-cata-list-emit"     7
+      , pendingExitTest "layer5-cata-leaftree-emit" 7
+      ]
   ]
 
 -- | isEven (two) is even, mapped to exit code 42 via case.
@@ -55,16 +62,6 @@ cataGeneralCases =
   , ("layer5-cata-nestedprod-sum",  42)  -- #9 Mu (K Unit + ((K Int * K Int) * Id))
   ]
 
--- | Effect-emitting catas (algebra calls the test-local `emit.int` Emits
--- SigOp). The exit code here is only a run-completed sentinel (7); the real
--- observable is the emit TRACE, asserted at the `obs` level once emit.int +
--- trace-valued exec-flat land (Phase 1). For now this just checks the
--- program builds and runs to the sentinel.
-cataEffectfulCases :: [(String, Int)]
-cataEffectfulCases =
-  [ ("layer5-cata-list-emit",     7)  -- trace [emit 5, emit 3, exit 7]
-  , ("layer5-cata-leaftree-emit", 7)  -- crown: trace [emit 40, emit 2, exit 7]
-  ]
 
 -- | Build a `.once` program and assert it exits with the given code.
 exitTest :: String -> Int -> TestTree

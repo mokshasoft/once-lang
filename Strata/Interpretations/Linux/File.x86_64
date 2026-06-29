@@ -42,9 +42,9 @@
 // ----------------------------------------------------------------------
 // Input: (str_data, str_len)
 // Output: Unit (NULL)
-.global once_print
-.type once_print, @function
-once_print:
+.global print
+.type print, @function
+print:
     push    %rbp
     mov     %rsp, %rbp
 
@@ -59,16 +59,16 @@ once_print:
     xor     %eax, %eax          // Return NULL
     pop     %rbp
     ret
-.size once_print, .-once_print
+.size print, .-print
 
 // ----------------------------------------------------------------------
 // println - Write string to stdout with newline
 // ----------------------------------------------------------------------
 // Input: (str_data, str_len)
 // Output: Unit (NULL)
-.global once_println
-.type once_println, @function
-once_println:
+.global println
+.type println, @function
+println:
     push    %rbp
     mov     %rsp, %rbp
     sub     $8, %rsp            // Space for newline
@@ -94,16 +94,16 @@ once_println:
     add     $8, %rsp
     pop     %rbp
     ret
-.size once_println, .-once_println
+.size println, .-println
 
 // ----------------------------------------------------------------------
 // err - Write string to stderr (no newline)
 // ----------------------------------------------------------------------
 // Input: (str_data, str_len)
 // Output: Unit (NULL)
-.global once_err
-.type once_err, @function
-once_err:
+.global err
+.type err, @function
+err:
     push    %rbp
     mov     %rsp, %rbp
 
@@ -117,16 +117,16 @@ once_err:
     xor     %eax, %eax
     pop     %rbp
     ret
-.size once_err, .-once_err
+.size err, .-err
 
 // ----------------------------------------------------------------------
 // errln - Write string to stderr with newline
 // ----------------------------------------------------------------------
 // Input: (str_data, str_len)
 // Output: Unit (NULL)
-.global once_errln
-.type once_errln, @function
-once_errln:
+.global errln
+.type errln, @function
+errln:
     push    %rbp
     mov     %rsp, %rbp
     sub     $8, %rsp
@@ -149,16 +149,16 @@ once_errln:
     add     $8, %rsp
     pop     %rbp
     ret
-.size once_errln, .-once_errln
+.size errln, .-errln
 
 // ----------------------------------------------------------------------
 // putc - Write single character to stdout
 // ----------------------------------------------------------------------
 // Input: Int (character code)
 // Output: Unit (NULL)
-.global once_putc
-.type once_putc, @function
-once_putc:
+.global putc
+.type putc, @function
+putc:
     push    %rbp
     mov     %rsp, %rbp
     sub     $8, %rsp
@@ -177,7 +177,7 @@ once_putc:
     add     $8, %rsp
     pop     %rbp
     ret
-.size once_putc, .-once_putc
+.size putc, .-putc
 
 // ----------------------------------------------------------------------
 // flush - Flush stdout
@@ -187,16 +187,16 @@ once_putc:
 //
 // Note: With raw syscalls there's no buffering to flush.
 // We call fsync anyway for completeness.
-.global once_flush
-.type once_flush, @function
-once_flush:
+.global flush
+.type flush, @function
+flush:
     mov     $STDOUT, %edi
     mov     $SYS_fsync, %rax
     syscall
 
     xor     %eax, %eax
     ret
-.size once_flush, .-once_flush
+.size flush, .-flush
 
 // ======================================================================
 // Input Operations
@@ -207,9 +207,9 @@ once_flush:
 // ----------------------------------------------------------------------
 // Input: Unit (ignored)
 // Output: Int (character code, or -1 on EOF)
-.global once_getc
-.type once_getc, @function
-once_getc:
+.global getc
+.type getc, @function
+getc:
     push    %rbp
     mov     %rsp, %rbp
     sub     $8, %rsp
@@ -236,7 +236,7 @@ once_getc:
     add     $8, %rsp
     pop     %rbp
     ret
-.size once_getc, .-once_getc
+.size getc, .-getc
 
 // ----------------------------------------------------------------------
 // getline - Read line from stdin into buffer
@@ -246,9 +246,9 @@ once_getc:
 //
 // Reads until newline or maxlen-1 reached. Does not include newline.
 // Null-terminates the result.
-.global once_getline
-.type once_getline, @function
-once_getline:
+.global getline
+.type getline, @function
+getline:
     push    %rbp
     mov     %rsp, %rbp
     push    %r12
@@ -316,7 +316,7 @@ once_getline:
     pop     %r12
     pop     %rbp
     ret
-.size once_getline, .-once_getline
+.size getline, .-getline
 
 // ======================================================================
 // File Reading Helpers
@@ -327,9 +327,9 @@ once_getline:
 // ----------------------------------------------------------------------
 // Input: ((path_data, path_len), ((buf_data, buf_len), maxlen))
 // Output: Int (bytes read, or -1 on error)
-.global once_readfile
-.type once_readfile, @function
-once_readfile:
+.global readfile
+.type readfile, @function
+readfile:
     push    %rbp
     mov     %rsp, %rbp
     push    %r12
@@ -404,16 +404,16 @@ once_readfile:
     pop     %r12
     pop     %rbp
     ret
-.size once_readfile, .-once_readfile
+.size readfile, .-readfile
 
 // ----------------------------------------------------------------------
 // filesize - Get file size
 // ----------------------------------------------------------------------
 // Input: (path_data, path_len)
 // Output: Int (size in bytes, or -1 on error)
-.global once_filesize
-.type once_filesize, @function
-once_filesize:
+.global filesize
+.type filesize, @function
+filesize:
     push    %rbp
     mov     %rsp, %rbp
     sub     $144, %rsp          // Space for struct stat (144 bytes on x86_64)
@@ -439,7 +439,7 @@ once_filesize:
     add     $144, %rsp
     pop     %rbp
     ret
-.size once_filesize, .-once_filesize
+.size filesize, .-filesize
 
 #endif // ONCE_LINUX_X86_64_FILE_DEFINED
 

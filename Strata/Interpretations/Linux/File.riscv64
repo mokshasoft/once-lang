@@ -42,9 +42,9 @@
 // ----------------------------------------------------------------------
 // Input: (str_data, str_len)
 // Output: Unit (NULL)
-.global once_print
-.type once_print, @function
-once_print:
+.global print
+.type print, @function
+print:
     addi    sp, sp, -16
     sd      ra, 8(sp)
 
@@ -60,16 +60,16 @@ once_print:
     ld      ra, 8(sp)
     addi    sp, sp, 16
     ret
-.size once_print, .-once_print
+.size print, .-print
 
 // ----------------------------------------------------------------------
 // println - Write string to stdout with newline
 // ----------------------------------------------------------------------
 // Input: (str_data, str_len)
 // Output: Unit (NULL)
-.global once_println
-.type once_println, @function
-once_println:
+.global println
+.type println, @function
+println:
     addi    sp, sp, -32
     sd      ra, 24(sp)
     sd      s0, 16(sp)
@@ -97,16 +97,16 @@ once_println:
     ld      s0, 16(sp)
     addi    sp, sp, 32
     ret
-.size once_println, .-once_println
+.size println, .-println
 
 // ----------------------------------------------------------------------
 // err - Write string to stderr (no newline)
 // ----------------------------------------------------------------------
 // Input: (str_data, str_len)
 // Output: Unit (NULL)
-.global once_err
-.type once_err, @function
-once_err:
+.global err
+.type err, @function
+err:
     addi    sp, sp, -16
     sd      ra, 8(sp)
 
@@ -121,16 +121,16 @@ once_err:
     ld      ra, 8(sp)
     addi    sp, sp, 16
     ret
-.size once_err, .-once_err
+.size err, .-err
 
 // ----------------------------------------------------------------------
 // errln - Write string to stderr with newline
 // ----------------------------------------------------------------------
 // Input: (str_data, str_len)
 // Output: Unit (NULL)
-.global once_errln
-.type once_errln, @function
-once_errln:
+.global errln
+.type errln, @function
+errln:
     addi    sp, sp, -32
     sd      ra, 24(sp)
 
@@ -153,16 +153,16 @@ once_errln:
     ld      ra, 24(sp)
     addi    sp, sp, 32
     ret
-.size once_errln, .-once_errln
+.size errln, .-errln
 
 // ----------------------------------------------------------------------
 // putc - Write single character to stdout
 // ----------------------------------------------------------------------
 // Input: Int (character code)
 // Output: Unit (NULL)
-.global once_putc
-.type once_putc, @function
-once_putc:
+.global putc
+.type putc, @function
+putc:
     addi    sp, sp, -16
     sd      ra, 8(sp)
 
@@ -180,23 +180,23 @@ once_putc:
     ld      ra, 8(sp)
     addi    sp, sp, 16
     ret
-.size once_putc, .-once_putc
+.size putc, .-putc
 
 // ----------------------------------------------------------------------
 // flush - Flush stdout
 // ----------------------------------------------------------------------
 // Input: Unit (ignored)
 // Output: Unit (NULL)
-.global once_flush
-.type once_flush, @function
-once_flush:
+.global flush
+.type flush, @function
+flush:
     li      a0, STDOUT
     li      a7, SYS_fsync
     ecall
 
     li      a0, 0
     ret
-.size once_flush, .-once_flush
+.size flush, .-flush
 
 // ======================================================================
 // Input Operations
@@ -207,9 +207,9 @@ once_flush:
 // ----------------------------------------------------------------------
 // Input: Unit (ignored)
 // Output: Int (character code, or -1 on EOF)
-.global once_getc
-.type once_getc, @function
-once_getc:
+.global getc
+.type getc, @function
+getc:
     addi    sp, sp, -16
     sd      ra, 8(sp)
 
@@ -234,16 +234,16 @@ once_getc:
     ld      ra, 8(sp)
     addi    sp, sp, 16
     ret
-.size once_getc, .-once_getc
+.size getc, .-getc
 
 // ----------------------------------------------------------------------
 // getline - Read line from stdin into buffer
 // ----------------------------------------------------------------------
 // Input: ((buf_data, buf_len), maxlen)
 // Output: Int (bytes read, or -1 on EOF with no data)
-.global once_getline
-.type once_getline, @function
-once_getline:
+.global getline
+.type getline, @function
+getline:
     addi    sp, sp, -48
     sd      ra, 40(sp)
     sd      s0, 32(sp)
@@ -306,7 +306,7 @@ once_getline:
     ld      s2, 16(sp)
     addi    sp, sp, 48
     ret
-.size once_getline, .-once_getline
+.size getline, .-getline
 
 // ======================================================================
 // File Reading Helpers
@@ -317,9 +317,9 @@ once_getline:
 // ----------------------------------------------------------------------
 // Input: ((path_data, path_len), ((buf_data, buf_len), maxlen))
 // Output: Int (bytes read, or -1 on error)
-.global once_readfile
-.type once_readfile, @function
-once_readfile:
+.global readfile
+.type readfile, @function
+readfile:
     addi    sp, sp, -64
     sd      ra, 56(sp)
     sd      s0, 48(sp)
@@ -393,16 +393,16 @@ once_readfile:
     ld      s3, 24(sp)
     addi    sp, sp, 64
     ret
-.size once_readfile, .-once_readfile
+.size readfile, .-readfile
 
 // ----------------------------------------------------------------------
 // filesize - Get file size
 // ----------------------------------------------------------------------
 // Input: (path_data, path_len)
 // Output: Int (size in bytes, or -1 on error)
-.global once_filesize
-.type once_filesize, @function
-once_filesize:
+.global filesize
+.type filesize, @function
+filesize:
     addi    sp, sp, -160        // Space for struct stat (128 bytes) + 32
     sd      ra, 152(sp)
 
@@ -431,7 +431,7 @@ once_filesize:
     ld      ra, 152(sp)
     addi    sp, sp, 160
     ret
-.size once_filesize, .-once_filesize
+.size filesize, .-filesize
 
 #endif // ONCE_LINUX_RISCV64_FILE_DEFINED
 

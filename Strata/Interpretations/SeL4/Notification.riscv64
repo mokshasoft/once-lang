@@ -42,9 +42,9 @@
 // The capability's badge is ORed into the notification word.
 // This is non-blocking - returns immediately.
 
-.global once_seL4_Signal
-.type once_seL4_Signal, @function
-once_seL4_Signal:
+.global seL4_Signal
+.type seL4_Signal, @function
+seL4_Signal:
     addi    sp, sp, -16
     sd      ra, 8(sp)
     sd      s0, 0(sp)
@@ -74,7 +74,7 @@ once_seL4_Signal:
     ld      ra, 8(sp)
     addi    sp, sp, 16
     ret
-.size once_seL4_Signal, .-once_seL4_Signal
+.size seL4_Signal, .-seL4_Signal
 
 // ----------------------------------------------------------------------
 // seL4_Wait - Wait for notification (blocking)
@@ -87,9 +87,9 @@ once_seL4_Signal:
 // Blocks until the notification word is non-zero.
 // Returns and atomically clears the notification word.
 
-.global once_seL4_Wait
-.type once_seL4_Wait, @function
-once_seL4_Wait:
+.global seL4_Wait
+.type seL4_Wait, @function
+seL4_Wait:
     addi    sp, sp, -16
     sd      ra, 8(sp)
     sd      s0, 0(sp)
@@ -118,7 +118,7 @@ once_seL4_Wait:
     ld      ra, 8(sp)
     addi    sp, sp, 16
     ret
-.size once_seL4_Wait, .-once_seL4_Wait
+.size seL4_Wait, .-seL4_Wait
 
 // ----------------------------------------------------------------------
 // seL4_Poll - Poll notification (non-blocking)
@@ -129,9 +129,9 @@ once_seL4_Wait:
 // Non-blocking check of notification.
 // Returns notification word and clears it, or returns 0.
 
-.global once_seL4_Poll
-.type once_seL4_Poll, @function
-once_seL4_Poll:
+.global seL4_Poll
+.type seL4_Poll, @function
+seL4_Poll:
     addi    sp, sp, -16
     sd      ra, 8(sp)
     sd      s0, 0(sp)
@@ -154,6 +154,6 @@ once_seL4_Poll:
     ld      ra, 8(sp)
     addi    sp, sp, 16
     ret
-.size once_seL4_Poll, .-once_seL4_Poll
+.size seL4_Poll, .-seL4_Poll
 
 #endif // ONCE_SEL4_NOTIFICATION_RISCV64_DEFINED

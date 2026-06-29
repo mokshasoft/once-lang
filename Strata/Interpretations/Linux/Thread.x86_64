@@ -62,9 +62,9 @@
 // Output: (handle_data, handle_len) - OnceBuffer (ThreadHandle)
 //
 // Allocates stack, creates clone, returns handle for joining.
-.global once_thread_spawn
-.type once_thread_spawn, @function
-once_thread_spawn:
+.global thread_spawn
+.type thread_spawn, @function
+thread_spawn:
     push    %rbp
     mov     %rsp, %rbp
     push    %r12
@@ -202,16 +202,16 @@ once_thread_spawn:
     pop     %r12
     pop     %rbp
     ret
-.size once_thread_spawn, .-once_thread_spawn
+.size thread_spawn, .-thread_spawn
 
 // ----------------------------------------------------------------------
 // thread_join - Wait for thread to complete
 // ----------------------------------------------------------------------
 // Input: (handle_data, handle_len) - OnceBuffer
 // Output: Unit (NULL)
-.global once_thread_join
-.type once_thread_join, @function
-once_thread_join:
+.global thread_join
+.type thread_join, @function
+thread_join:
     push    %rbp
     mov     %rsp, %rbp
     push    %r12
@@ -273,26 +273,26 @@ once_thread_join:
     pop     %r12
     pop     %rbp
     ret
-.size once_thread_join, .-once_thread_join
+.size thread_join, .-thread_join
 
 // ----------------------------------------------------------------------
 // thread_detach - Spawn thread without join handle
 // ----------------------------------------------------------------------
 // Input: function pointer
 // Output: Unit (NULL)
-.global once_thread_detach
-.type once_thread_detach, @function
-once_thread_detach:
+.global thread_detach
+.type thread_detach, @function
+thread_detach:
     push    %rbp
     mov     %rsp, %rbp
 
     // Spawn thread (ignore handle - it will self-clean)
-    call    once_thread_spawn
+    call    thread_spawn
 
     xor     %eax, %eax
     pop     %rbp
     ret
-.size once_thread_detach, .-once_thread_detach
+.size thread_detach, .-thread_detach
 
 // ======================================================================
 // Synchronization Primitives
@@ -305,9 +305,9 @@ once_thread_detach:
 // Output: (mutex_data, mutex_len) - OnceBuffer
 //
 // Mutex is a single int32: 0 = unlocked, 1 = locked
-.global once_mutex_init
-.type once_mutex_init, @function
-once_mutex_init:
+.global mutex_init
+.type mutex_init, @function
+mutex_init:
     push    %rbp
     mov     %rsp, %rbp
     sub     $16, %rsp
@@ -343,16 +343,16 @@ once_mutex_init:
     add     $16, %rsp
     pop     %rbp
     ret
-.size once_mutex_init, .-once_mutex_init
+.size mutex_init, .-mutex_init
 
 // ----------------------------------------------------------------------
 // mutex_lock - Acquire mutex
 // ----------------------------------------------------------------------
 // Input: (mutex_data, mutex_len) - OnceBuffer
 // Output: Unit (NULL)
-.global once_mutex_lock
-.type once_mutex_lock, @function
-once_mutex_lock:
+.global mutex_lock
+.type mutex_lock, @function
+mutex_lock:
     push    %rbp
     mov     %rsp, %rbp
     push    %r12
@@ -384,16 +384,16 @@ once_mutex_lock:
     pop     %r12
     pop     %rbp
     ret
-.size once_mutex_lock, .-once_mutex_lock
+.size mutex_lock, .-mutex_lock
 
 // ----------------------------------------------------------------------
 // mutex_unlock - Release mutex
 // ----------------------------------------------------------------------
 // Input: (mutex_data, mutex_len) - OnceBuffer
 // Output: Unit (NULL)
-.global once_mutex_unlock
-.type once_mutex_unlock, @function
-once_mutex_unlock:
+.global mutex_unlock
+.type mutex_unlock, @function
+mutex_unlock:
     push    %rbp
     mov     %rsp, %rbp
 
@@ -415,7 +415,7 @@ once_mutex_unlock:
     xor     %eax, %eax
     pop     %rbp
     ret
-.size once_mutex_unlock, .-once_mutex_unlock
+.size mutex_unlock, .-mutex_unlock
 
 // ----------------------------------------------------------------------
 // cond_init - Initialize condition variable
@@ -424,9 +424,9 @@ once_mutex_unlock:
 // Output: (cond_data, cond_len) - OnceBuffer
 //
 // Cond var is a single int32 sequence number
-.global once_cond_init
-.type once_cond_init, @function
-once_cond_init:
+.global cond_init
+.type cond_init, @function
+cond_init:
     push    %rbp
     mov     %rsp, %rbp
     sub     $16, %rsp
@@ -461,16 +461,16 @@ once_cond_init:
     add     $16, %rsp
     pop     %rbp
     ret
-.size once_cond_init, .-once_cond_init
+.size cond_init, .-cond_init
 
 // ----------------------------------------------------------------------
 // cond_wait - Wait on condition variable
 // ----------------------------------------------------------------------
 // Input: ((cond_data, cond_len), (mutex_data, mutex_len))
 // Output: Unit (NULL)
-.global once_cond_wait
-.type once_cond_wait, @function
-once_cond_wait:
+.global cond_wait
+.type cond_wait, @function
+cond_wait:
     push    %rbp
     mov     %rsp, %rbp
     push    %r12
@@ -490,7 +490,7 @@ once_cond_wait:
 
     // Unlock mutex (need to pass buffer struct)
     mov     %r13, %rdi
-    call    once_mutex_unlock
+    call    mutex_unlock
 
     // Futex wait for seq to change
     mov     %r12, %rdi
@@ -505,7 +505,7 @@ once_cond_wait:
 
     // Reacquire mutex
     mov     %r13, %rdi
-    call    once_mutex_lock
+    call    mutex_lock
 
     xor     %eax, %eax
     add     $16, %rsp
@@ -514,16 +514,16 @@ once_cond_wait:
     pop     %r12
     pop     %rbp
     ret
-.size once_cond_wait, .-once_cond_wait
+.size cond_wait, .-cond_wait
 
 // ----------------------------------------------------------------------
 // cond_signal - Signal one waiter
 // ----------------------------------------------------------------------
 // Input: (cond_data, cond_len) - OnceBuffer
 // Output: Unit (NULL)
-.global once_cond_signal
-.type once_cond_signal, @function
-once_cond_signal:
+.global cond_signal
+.type cond_signal, @function
+cond_signal:
     push    %rbp
     mov     %rsp, %rbp
 
@@ -545,16 +545,16 @@ once_cond_signal:
     xor     %eax, %eax
     pop     %rbp
     ret
-.size once_cond_signal, .-once_cond_signal
+.size cond_signal, .-cond_signal
 
 // ----------------------------------------------------------------------
 // cond_broadcast - Signal all waiters
 // ----------------------------------------------------------------------
 // Input: (cond_data, cond_len) - OnceBuffer
 // Output: Unit (NULL)
-.global once_cond_broadcast
-.type once_cond_broadcast, @function
-once_cond_broadcast:
+.global cond_broadcast
+.type cond_broadcast, @function
+cond_broadcast:
     push    %rbp
     mov     %rsp, %rbp
 
@@ -576,7 +576,7 @@ once_cond_broadcast:
     xor     %eax, %eax
     pop     %rbp
     ret
-.size once_cond_broadcast, .-once_cond_broadcast
+.size cond_broadcast, .-cond_broadcast
 
 // ======================================================================
 // Atomic Operations
@@ -587,9 +587,9 @@ once_cond_broadcast:
 // ----------------------------------------------------------------------
 // Input: ((addr_data, addr_len), (expected, new_val))
 // Output: Int (previous value)
-.global once_atomic_cas
-.type once_atomic_cas, @function
-once_atomic_cas:
+.global atomic_cas
+.type atomic_cas, @function
+atomic_cas:
     // Unpack: ((addr_data, addr_len), (expected, new_val))
     mov     (%rdi), %r8         // r8 = ptr to addr buffer
     mov     8(%rdi), %r9        // r9 = ptr to (expected, new_val)
@@ -603,16 +603,16 @@ once_atomic_cas:
 
     // rax has previous value
     ret
-.size once_atomic_cas, .-once_atomic_cas
+.size atomic_cas, .-atomic_cas
 
 // ----------------------------------------------------------------------
 // atomic_add - Fetch and add
 // ----------------------------------------------------------------------
 // Input: ((addr_data, addr_len), delta)
 // Output: Int (previous value)
-.global once_atomic_add
-.type once_atomic_add, @function
-once_atomic_add:
+.global atomic_add
+.type atomic_add, @function
+atomic_add:
     // Unpack: ((addr_data, addr_len), delta)
     mov     (%rdi), %r8         // r8 = ptr to addr buffer
     mov     8(%rdi), %rax       // rax = delta
@@ -624,20 +624,20 @@ once_atomic_add:
 
     // rax has previous value
     ret
-.size once_atomic_add, .-once_atomic_add
+.size atomic_add, .-atomic_add
 
 // ----------------------------------------------------------------------
 // memory_barrier - Full memory fence
 // ----------------------------------------------------------------------
 // Input: Unit (ignored)
 // Output: Unit (NULL)
-.global once_memory_barrier
-.type once_memory_barrier, @function
-once_memory_barrier:
+.global memory_barrier
+.type memory_barrier, @function
+memory_barrier:
     mfence
     xor     %eax, %eax
     ret
-.size once_memory_barrier, .-once_memory_barrier
+.size memory_barrier, .-memory_barrier
 
 #endif // ONCE_LINUX_X86_64_THREAD_DEFINED
 

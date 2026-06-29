@@ -55,9 +55,9 @@
 // Output: Unit (returns 0)
 // Simplest syscall - good for testing
 
-.global once_seL4_Yield
-.type once_seL4_Yield, @function
-once_seL4_Yield:
+.global seL4_Yield
+.type seL4_Yield, @function
+seL4_Yield:
     addi    sp, sp, -16
     sd      ra, 8(sp)
     sd      s0, 0(sp)
@@ -76,7 +76,7 @@ once_seL4_Yield:
     ld      ra, 8(sp)
     addi    sp, sp, 16
     ret
-.size once_seL4_Yield, .-once_seL4_Yield
+.size seL4_Yield, .-seL4_Yield
 
 // ----------------------------------------------------------------------
 // seL4_Send - Send message to endpoint (blocking)
@@ -84,9 +84,9 @@ once_seL4_Yield:
 // Input: (cap, msgInfo, mr0, mr1, mr2, mr3) as nested tuple
 // Output: Unit
 
-.global once_seL4_Send
-.type once_seL4_Send, @function
-once_seL4_Send:
+.global seL4_Send
+.type seL4_Send, @function
+seL4_Send:
     addi    sp, sp, -16
     sd      ra, 8(sp)
     sd      s0, 0(sp)
@@ -127,16 +127,16 @@ once_seL4_Send:
     ld      ra, 8(sp)
     addi    sp, sp, 16
     ret
-.size once_seL4_Send, .-once_seL4_Send
+.size seL4_Send, .-seL4_Send
 
 // ----------------------------------------------------------------------
 // seL4_NBSend - Non-blocking send
 // ----------------------------------------------------------------------
 // Same as seL4_Send but with syscall number -2
 
-.global once_seL4_NBSend
-.type once_seL4_NBSend, @function
-once_seL4_NBSend:
+.global seL4_NBSend
+.type seL4_NBSend, @function
+seL4_NBSend:
     addi    sp, sp, -16
     sd      ra, 8(sp)
     sd      s0, 0(sp)
@@ -168,7 +168,7 @@ once_seL4_NBSend:
     ld      ra, 8(sp)
     addi    sp, sp, 16
     ret
-.size once_seL4_NBSend, .-once_seL4_NBSend
+.size seL4_NBSend, .-seL4_NBSend
 
 // ----------------------------------------------------------------------
 // seL4_Recv - Wait for message on endpoint (blocking)
@@ -178,9 +178,9 @@ once_seL4_NBSend:
 //
 // Returns tuple allocated on stack
 
-.global once_seL4_Recv
-.type once_seL4_Recv, @function
-once_seL4_Recv:
+.global seL4_Recv
+.type seL4_Recv, @function
+seL4_Recv:
     addi    sp, sp, -64
     sd      ra, 56(sp)
     sd      s0, 48(sp)
@@ -254,16 +254,16 @@ once_seL4_Recv:
     ld      ra, 56(sp)
     addi    sp, sp, 64
     ret
-.size once_seL4_Recv, .-once_seL4_Recv
+.size seL4_Recv, .-seL4_Recv
 
 // ----------------------------------------------------------------------
 // seL4_NBRecv - Non-blocking receive
 // ----------------------------------------------------------------------
 // Same as seL4_Recv but with syscall number -8
 
-.global once_seL4_NBRecv
-.type once_seL4_NBRecv, @function
-once_seL4_NBRecv:
+.global seL4_NBRecv
+.type seL4_NBRecv, @function
+seL4_NBRecv:
     addi    sp, sp, -64
     sd      ra, 56(sp)
     sd      s0, 48(sp)
@@ -319,7 +319,7 @@ once_seL4_NBRecv:
     ld      ra, 56(sp)
     addi    sp, sp, 64
     ret
-.size once_seL4_NBRecv, .-once_seL4_NBRecv
+.size seL4_NBRecv, .-seL4_NBRecv
 
 // ----------------------------------------------------------------------
 // seL4_Call - RPC-style send and receive
@@ -327,9 +327,9 @@ once_seL4_NBRecv:
 // Input: (cap, msgInfo, mr0, mr1, mr2, mr3)
 // Output: (msgInfo, mr0, mr1, mr2, mr3)
 
-.global once_seL4_Call
-.type once_seL4_Call, @function
-once_seL4_Call:
+.global seL4_Call
+.type seL4_Call, @function
+seL4_Call:
     addi    sp, sp, -48
     sd      ra, 40(sp)
     sd      s0, 32(sp)
@@ -390,7 +390,7 @@ once_seL4_Call:
     ld      ra, 40(sp)
     addi    sp, sp, 48
     ret
-.size once_seL4_Call, .-once_seL4_Call
+.size seL4_Call, .-seL4_Call
 
 // ----------------------------------------------------------------------
 // seL4_Reply - Reply to caller
@@ -398,9 +398,9 @@ once_seL4_Call:
 // Input: (msgInfo, mr0, mr1, mr2, mr3)
 // Output: Unit
 
-.global once_seL4_Reply
-.type once_seL4_Reply, @function
-once_seL4_Reply:
+.global seL4_Reply
+.type seL4_Reply, @function
+seL4_Reply:
     addi    sp, sp, -16
     sd      ra, 8(sp)
     sd      s0, 0(sp)
@@ -426,7 +426,7 @@ once_seL4_Reply:
     ld      ra, 8(sp)
     addi    sp, sp, 16
     ret
-.size once_seL4_Reply, .-once_seL4_Reply
+.size seL4_Reply, .-seL4_Reply
 
 // ----------------------------------------------------------------------
 // seL4_ReplyRecv - Atomic reply and receive
@@ -434,9 +434,9 @@ once_seL4_Reply:
 // Input: (src, msgInfo, mr0, mr1, mr2, mr3, reply)
 // Output: (badge, msgInfo, mr0, mr1, mr2, mr3)
 
-.global once_seL4_ReplyRecv
-.type once_seL4_ReplyRecv, @function
-once_seL4_ReplyRecv:
+.global seL4_ReplyRecv
+.type seL4_ReplyRecv, @function
+seL4_ReplyRecv:
     addi    sp, sp, -64
     sd      ra, 56(sp)
     sd      s0, 48(sp)
@@ -504,6 +504,6 @@ once_seL4_ReplyRecv:
     ld      ra, 56(sp)
     addi    sp, sp, 64
     ret
-.size once_seL4_ReplyRecv, .-once_seL4_ReplyRecv
+.size seL4_ReplyRecv, .-seL4_ReplyRecv
 
 #endif // ONCE_SEL4_RISCV64_DEFINED

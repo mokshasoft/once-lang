@@ -33,9 +33,9 @@
 // ----------------------------------------------------------------------
 // Input: Int (size in bytes)
 // Output: (buf_data, buf_len) - OnceBuffer
-.global once_alloc
-.type once_alloc, @function
-once_alloc:
+.global alloc
+.type alloc, @function
+alloc:
     addi    sp, sp, -32
     sd      ra, 24(sp)
     sd      s0, 16(sp)
@@ -80,16 +80,16 @@ once_alloc:
     ld      s0, 16(sp)
     addi    sp, sp, 32
     ret
-.size once_alloc, .-once_alloc
+.size alloc, .-alloc
 
 // ----------------------------------------------------------------------
 // free - Free allocated memory
 // ----------------------------------------------------------------------
 // Input: (buf_data, buf_len) - OnceBuffer
 // Output: Unit (0/NULL)
-.global once_free
-.type once_free, @function
-once_free:
+.global free
+.type free, @function
+free:
     addi    sp, sp, -16
     sd      ra, 8(sp)
 
@@ -117,16 +117,16 @@ once_free:
     ld      ra, 8(sp)
     addi    sp, sp, 16
     ret
-.size once_free, .-once_free
+.size free, .-free
 
 // ----------------------------------------------------------------------
 // realloc - Reallocate memory
 // ----------------------------------------------------------------------
 // Input: ((buf_data, buf_len), new_size)
 // Output: (buf_data, buf_len) - OnceBuffer
-.global once_realloc
-.type once_realloc, @function
-once_realloc:
+.global realloc
+.type realloc, @function
+realloc:
     addi    sp, sp, -48
     sd      ra, 40(sp)
     sd      s0, 32(sp)
@@ -236,16 +236,16 @@ once_realloc:
     ld      s2, 16(sp)
     addi    sp, sp, 48
     ret
-.size once_realloc, .-once_realloc
+.size realloc, .-realloc
 
 // ----------------------------------------------------------------------
 // heap_string - Allocate and copy string to heap
 // ----------------------------------------------------------------------
 // Input: (len, (src_data, src_len))
 // Output: (str_data, str_len) - OnceString
-.global once_heap_string
-.type once_heap_string, @function
-once_heap_string:
+.global heap_string
+.type heap_string, @function
+heap_string:
     addi    sp, sp, -48
     sd      ra, 40(sp)
     sd      s0, 32(sp)
@@ -310,7 +310,7 @@ once_heap_string:
     ld      s2, 16(sp)
     addi    sp, sp, 48
     ret
-.size once_heap_string, .-once_heap_string
+.size heap_string, .-heap_string
 
 #endif // ONCE_LINUX_RISCV64_MEMORY_DEFINED
 

@@ -38,6 +38,7 @@ import System.Process (readProcessWithExitCode)
 -- Bridge to MAlonzo-generated code (stable API)
 import Once.Compile.Bridge (CompileResult(..), FunSig(..), PolyFunSig(..))
 import qualified Once.Compile.Bridge as Bridge
+import qualified Once.Target.SymbolName as SymName
 
 ------------------------------------------------------------------------
 -- Types
@@ -425,7 +426,59 @@ assembleImplFiles strataDir arch paths = go paths []
           asmResult <- assemble implPath objPath
           case asmResult of
             Left err  -> pure (Left ("Failed to assemble " ++ implPath ++ ": " ++ err))
-            Right _   -> go rest (objPath : acc)
+            Right _   -> do
+              -- Rename each operation's CLEAN symbol (its bare signature name,
+              -- as written in the impl file) to the mangled symbol the codegen
+              -- calls. `objcopy --redefine-sym` is a no-op on absent symbols, so
+              -- an impl that still hard-codes the mangled symbol is untouched.
+              ops <- interpOpNames (importPathToFilePath strataDir p)
+              let renames = [ (op, SymName.onceSymbolPath (canonicalParts p ++ [T.unpack op]))
+                            | op <- ops ]
+              redefResult <- redefineSymbols objPath renames
+              case redefResult of
+                Left err -> pure (Left ("Failed to alias symbols in " ++ implPath ++ ": " ++ err))
+                Right _  -> go rest (objPath : acc)
+
+    -- The canonical name segments for an interpretation module: the import
+    -- path with the `I` → `Interpretations` rule applied (matching
+    -- importPathToImplPath and what the codegen mangles).
+    canonicalParts :: [T.Text] -> [String]
+    canonicalParts pathParts = case map T.unpack pathParts of
+      ("I" : rest) -> "Interpretations" : rest
+      other        -> other
+
+-- | Extract an interpretation module's operation names — the `signature <name>`
+-- declarations in its `.once` file. These are the external SigOps whose symbols
+-- the companion impl file provides. Missing/unreadable file ⇒ no ops.
+interpOpNames :: FilePath -> IO [T.Text]
+interpOpNames oncePath = do
+  exists <- doesFileExist oncePath
+  if not exists
+    then pure []
+    else do
+      contents <- TIO.readFile oncePath
+      pure [ name
+           | l <- T.lines contents
+           , kw : name : _ <- [T.words l]
+           , kw == T.pack "signature" ]
+
+-- | Rewrite symbol names in an object file in place (`objcopy --redefine-sym`).
+-- Honors the OBJCOPY env var, else "objcopy". An empty rename list is skipped.
+redefineSymbols :: FilePath -> [(T.Text, String)] -> IO (Either String ())
+redefineSymbols _       []      = pure (Right ())
+redefineSymbols objPath renames = do
+  objcopy <- maybe "objcopy" id <$> lookupEnv "OBJCOPY"
+  let args = concat [ ["--redefine-sym", T.unpack clean ++ "=" ++ mangled]
+                    | (clean, mangled) <- renames ]
+             ++ [objPath]   -- single file ⇒ objcopy edits it in place
+  result <- try $ readProcessWithExitCode objcopy args ""
+  case result of
+    Left (e :: SomeException) ->
+      pure $ Left $ "objcopy error: " ++ show e
+    Right (exitCode, _stdout, stderr) ->
+      case exitCode of
+        ExitSuccess   -> pure $ Right ()
+        ExitFailure _ -> pure $ Left $ "objcopy failed (" ++ objcopy ++ "): " ++ stderr
 
 ------------------------------------------------------------------------
 -- Assembler/Linker Invocation

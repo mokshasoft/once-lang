@@ -103,96 +103,96 @@
 #----------------------------------------------------------------------
 #Input: Unit (ignored)
 #Output: Does not return
-.global once_15Interpretations_5Linux_8Syscalls_5exit0
-.type once_15Interpretations_5Linux_8Syscalls_5exit0, @function
-once_15Interpretations_5Linux_8Syscalls_5exit0:
+.global exit0
+.type exit0, @function
+exit0:
     mov     $SYS_exit_group, %rax
     xor     %edi, %edi          #status = 0
     syscall
     #Does not return
-.size once_15Interpretations_5Linux_8Syscalls_5exit0, .-once_15Interpretations_5Linux_8Syscalls_5exit0
+.size exit0, .-exit0
 
 #----------------------------------------------------------------------
 #exit - Exit with given code
 #----------------------------------------------------------------------
 #Input: Int (exit code)
 #Output: Does not return
-.global once_15Interpretations_5Linux_8Syscalls_4exit
-.type once_15Interpretations_5Linux_8Syscalls_4exit, @function
-once_15Interpretations_5Linux_8Syscalls_4exit:
+.global exit
+.type exit, @function
+exit:
     mov     %rdi, %rdi          #status already in rdi
     mov     $SYS_exit_group, %rax
     syscall
     #Does not return
-.size once_15Interpretations_5Linux_8Syscalls_4exit, .-once_15Interpretations_5Linux_8Syscalls_4exit
+.size exit, .-exit
 
 #----------------------------------------------------------------------
 #getpid - Get process ID
 #----------------------------------------------------------------------
 #Input: Unit (ignored)
 #Output: Int (pid)
-.global once_15Interpretations_5Linux_8Syscalls_6getpid
-.type once_15Interpretations_5Linux_8Syscalls_6getpid, @function
-once_15Interpretations_5Linux_8Syscalls_6getpid:
+.global getpid
+.type getpid, @function
+getpid:
     mov     $SYS_getpid, %rax
     syscall
     ret
-.size once_15Interpretations_5Linux_8Syscalls_6getpid, .-once_15Interpretations_5Linux_8Syscalls_6getpid
+.size getpid, .-getpid
 
 #----------------------------------------------------------------------
 #getppid - Get parent process ID
 #----------------------------------------------------------------------
-.global once_15Interpretations_5Linux_8Syscalls_7getppid
-.type once_15Interpretations_5Linux_8Syscalls_7getppid, @function
-once_15Interpretations_5Linux_8Syscalls_7getppid:
+.global getppid
+.type getppid, @function
+getppid:
     mov     $SYS_getppid, %rax
     syscall
     ret
-.size once_15Interpretations_5Linux_8Syscalls_7getppid, .-once_15Interpretations_5Linux_8Syscalls_7getppid
+.size getppid, .-getppid
 
 #----------------------------------------------------------------------
 #getuid - Get user ID
 #----------------------------------------------------------------------
-.global once_15Interpretations_5Linux_8Syscalls_6getuid
-.type once_15Interpretations_5Linux_8Syscalls_6getuid, @function
-once_15Interpretations_5Linux_8Syscalls_6getuid:
+.global getuid
+.type getuid, @function
+getuid:
     mov     $SYS_getuid, %rax
     syscall
     ret
-.size once_15Interpretations_5Linux_8Syscalls_6getuid, .-once_15Interpretations_5Linux_8Syscalls_6getuid
+.size getuid, .-getuid
 
 #----------------------------------------------------------------------
 #geteuid - Get effective user ID
 #----------------------------------------------------------------------
-.global once_15Interpretations_5Linux_8Syscalls_7geteuid
-.type once_15Interpretations_5Linux_8Syscalls_7geteuid, @function
-once_15Interpretations_5Linux_8Syscalls_7geteuid:
+.global geteuid
+.type geteuid, @function
+geteuid:
     mov     $SYS_geteuid, %rax
     syscall
     ret
-.size once_15Interpretations_5Linux_8Syscalls_7geteuid, .-once_15Interpretations_5Linux_8Syscalls_7geteuid
+.size geteuid, .-geteuid
 
 #----------------------------------------------------------------------
 #getgid - Get group ID
 #----------------------------------------------------------------------
-.global once_15Interpretations_5Linux_8Syscalls_6getgid
-.type once_15Interpretations_5Linux_8Syscalls_6getgid, @function
-once_15Interpretations_5Linux_8Syscalls_6getgid:
+.global getgid
+.type getgid, @function
+getgid:
     mov     $SYS_getgid, %rax
     syscall
     ret
-.size once_15Interpretations_5Linux_8Syscalls_6getgid, .-once_15Interpretations_5Linux_8Syscalls_6getgid
+.size getgid, .-getgid
 
 #----------------------------------------------------------------------
 #getegid - Get effective group ID
 #----------------------------------------------------------------------
-.global once_15Interpretations_5Linux_8Syscalls_7getegid
-.type once_15Interpretations_5Linux_8Syscalls_7getegid, @function
-once_15Interpretations_5Linux_8Syscalls_7getegid:
+.global getegid
+.type getegid, @function
+getegid:
     mov     $SYS_getegid, %rax
     syscall
     ret
-.size once_15Interpretations_5Linux_8Syscalls_7getegid, .-once_15Interpretations_5Linux_8Syscalls_7getegid
+.size getegid, .-getegid
 
 #======================================================================
 #File Descriptors
@@ -203,9 +203,9 @@ once_15Interpretations_5Linux_8Syscalls_7getegid:
 #----------------------------------------------------------------------
 #Input: (fd, (buf_data, buf_len), count) as nested tuple
 #Output: Int (bytes read or -errno)
-.global once_15Interpretations_5Linux_8Syscalls_7fd_read
-.type once_15Interpretations_5Linux_8Syscalls_7fd_read, @function
-once_15Interpretations_5Linux_8Syscalls_7fd_read:
+.global fd_read
+.type fd_read, @function
+fd_read:
     push    %rbp
     mov     %rsp, %rbp
 
@@ -228,16 +228,16 @@ once_15Interpretations_5Linux_8Syscalls_7fd_read:
 
     pop     %rbp
     ret
-.size once_15Interpretations_5Linux_8Syscalls_7fd_read, .-once_15Interpretations_5Linux_8Syscalls_7fd_read
+.size fd_read, .-fd_read
 
 #----------------------------------------------------------------------
 #fd_write - Write to file descriptor
 #----------------------------------------------------------------------
 #Input: (fd, (buf_data, buf_len), count) as nested tuple
 #Output: Int (bytes written or -errno)
-.global once_15Interpretations_5Linux_8Syscalls_8fd_write
-.type once_15Interpretations_5Linux_8Syscalls_8fd_write, @function
-once_15Interpretations_5Linux_8Syscalls_8fd_write:
+.global fd_write
+.type fd_write, @function
+fd_write:
     push    %rbp
     mov     %rsp, %rbp
 
@@ -259,44 +259,44 @@ once_15Interpretations_5Linux_8Syscalls_8fd_write:
 
     pop     %rbp
     ret
-.size once_15Interpretations_5Linux_8Syscalls_8fd_write, .-once_15Interpretations_5Linux_8Syscalls_8fd_write
+.size fd_write, .-fd_write
 
 #----------------------------------------------------------------------
 #fd_close - Close file descriptor
 #----------------------------------------------------------------------
 #Input: Int (fd)
 #Output: Int (0 or -errno)
-.global once_15Interpretations_5Linux_8Syscalls_8fd_close
-.type once_15Interpretations_5Linux_8Syscalls_8fd_close, @function
-once_15Interpretations_5Linux_8Syscalls_8fd_close:
+.global fd_close
+.type fd_close, @function
+fd_close:
     #rdi = fd
     mov     $SYS_close, %rax
     syscall
     ret
-.size once_15Interpretations_5Linux_8Syscalls_8fd_close, .-once_15Interpretations_5Linux_8Syscalls_8fd_close
+.size fd_close, .-fd_close
 
 #----------------------------------------------------------------------
 #fd_dup - Duplicate file descriptor
 #----------------------------------------------------------------------
 #Input: Int (fd)
 #Output: Int (new fd or -errno)
-.global once_15Interpretations_5Linux_8Syscalls_6fd_dup
-.type once_15Interpretations_5Linux_8Syscalls_6fd_dup, @function
-once_15Interpretations_5Linux_8Syscalls_6fd_dup:
+.global fd_dup
+.type fd_dup, @function
+fd_dup:
     #rdi = fd
     mov     $SYS_dup, %rax
     syscall
     ret
-.size once_15Interpretations_5Linux_8Syscalls_6fd_dup, .-once_15Interpretations_5Linux_8Syscalls_6fd_dup
+.size fd_dup, .-fd_dup
 
 #----------------------------------------------------------------------
 #fd_dup2 - Duplicate fd to specific number
 #----------------------------------------------------------------------
 #Input: (oldfd, newfd)
 #Output: Int (new fd or -errno)
-.global once_15Interpretations_5Linux_8Syscalls_7fd_dup2
-.type once_15Interpretations_5Linux_8Syscalls_7fd_dup2, @function
-once_15Interpretations_5Linux_8Syscalls_7fd_dup2:
+.global fd_dup2
+.type fd_dup2, @function
+fd_dup2:
     #Unpack: (oldfd, newfd)
     mov     (%rdi), %rax        #rax = oldfd
     mov     8(%rdi), %rsi       #rsi = newfd
@@ -305,7 +305,7 @@ once_15Interpretations_5Linux_8Syscalls_7fd_dup2:
     mov     $SYS_dup2, %rax
     syscall
     ret
-.size once_15Interpretations_5Linux_8Syscalls_7fd_dup2, .-once_15Interpretations_5Linux_8Syscalls_7fd_dup2
+.size fd_dup2, .-fd_dup2
 
 #======================================================================
 #File Operations
@@ -316,9 +316,9 @@ once_15Interpretations_5Linux_8Syscalls_7fd_dup2:
 #----------------------------------------------------------------------
 #Input: ((path_data, path_len), (flags, mode))
 #Output: Int (fd or -errno)
-.global once_15Interpretations_5Linux_8Syscalls_4open
-.type once_15Interpretations_5Linux_8Syscalls_4open, @function
-once_15Interpretations_5Linux_8Syscalls_4open:
+.global open
+.type open, @function
+open:
     push    %rbp
     mov     %rsp, %rbp
 
@@ -335,16 +335,16 @@ once_15Interpretations_5Linux_8Syscalls_4open:
 
     pop     %rbp
     ret
-.size once_15Interpretations_5Linux_8Syscalls_4open, .-once_15Interpretations_5Linux_8Syscalls_4open
+.size open, .-open
 
 #----------------------------------------------------------------------
 #creat - Create file
 #----------------------------------------------------------------------
 #Input: ((path_data, path_len), mode)
 #Output: Int (fd or -errno)
-.global once_15Interpretations_5Linux_8Syscalls_5creat
-.type once_15Interpretations_5Linux_8Syscalls_5creat, @function
-once_15Interpretations_5Linux_8Syscalls_5creat:
+.global creat
+.type creat, @function
+creat:
     #Unpack: ((path_data, path_len), mode)
     mov     (%rdi), %r8         #r8 = ptr to path
     mov     8(%rdi), %rsi       #rsi = mode
@@ -353,32 +353,32 @@ once_15Interpretations_5Linux_8Syscalls_5creat:
     mov     $SYS_creat, %rax
     syscall
     ret
-.size once_15Interpretations_5Linux_8Syscalls_5creat, .-once_15Interpretations_5Linux_8Syscalls_5creat
+.size creat, .-creat
 
 #----------------------------------------------------------------------
 #unlink - Delete file
 #----------------------------------------------------------------------
 #Input: (path_data, path_len)
 #Output: Int (0 or -errno)
-.global once_15Interpretations_5Linux_8Syscalls_6unlink
-.type once_15Interpretations_5Linux_8Syscalls_6unlink, @function
-once_15Interpretations_5Linux_8Syscalls_6unlink:
+.global unlink
+.type unlink, @function
+unlink:
     #Unpack path string
     mov     (%rdi), %rdi        #rdi = path_data
 
     mov     $SYS_unlink, %rax
     syscall
     ret
-.size once_15Interpretations_5Linux_8Syscalls_6unlink, .-once_15Interpretations_5Linux_8Syscalls_6unlink
+.size unlink, .-unlink
 
 #----------------------------------------------------------------------
 #rename - Rename file
 #----------------------------------------------------------------------
 #Input: ((old_data, old_len), (new_data, new_len))
 #Output: Int (0 or -errno)
-.global once_15Interpretations_5Linux_8Syscalls_6rename
-.type once_15Interpretations_5Linux_8Syscalls_6rename, @function
-once_15Interpretations_5Linux_8Syscalls_6rename:
+.global rename
+.type rename, @function
+rename:
     #Unpack: ((old_data, old_len), (new_data, new_len))
     mov     (%rdi), %r8         #r8 = ptr to old path
     mov     8(%rdi), %r9        #r9 = ptr to new path
@@ -389,16 +389,16 @@ once_15Interpretations_5Linux_8Syscalls_6rename:
     mov     $SYS_rename, %rax
     syscall
     ret
-.size once_15Interpretations_5Linux_8Syscalls_6rename, .-once_15Interpretations_5Linux_8Syscalls_6rename
+.size rename, .-rename
 
 #----------------------------------------------------------------------
 #symlink - Create symbolic link
 #----------------------------------------------------------------------
 #Input: ((target_data, target_len), (link_data, link_len))
 #Output: Int (0 or -errno)
-.global once_15Interpretations_5Linux_8Syscalls_7symlink
-.type once_15Interpretations_5Linux_8Syscalls_7symlink, @function
-once_15Interpretations_5Linux_8Syscalls_7symlink:
+.global symlink
+.type symlink, @function
+symlink:
     #Unpack: ((target_data, target_len), (link_data, link_len))
     mov     (%rdi), %r8         #r8 = ptr to target
     mov     8(%rdi), %r9        #r9 = ptr to link
@@ -409,16 +409,16 @@ once_15Interpretations_5Linux_8Syscalls_7symlink:
     mov     $SYS_symlink, %rax
     syscall
     ret
-.size once_15Interpretations_5Linux_8Syscalls_7symlink, .-once_15Interpretations_5Linux_8Syscalls_7symlink
+.size symlink, .-symlink
 
 #----------------------------------------------------------------------
 #readlink - Read symbolic link
 #----------------------------------------------------------------------
 #Input: ((path_data, path_len), ((buf_data, buf_len), bufsiz))
 #Output: Int (length or -errno)
-.global once_15Interpretations_5Linux_8Syscalls_8readlink
-.type once_15Interpretations_5Linux_8Syscalls_8readlink, @function
-once_15Interpretations_5Linux_8Syscalls_8readlink:
+.global readlink
+.type readlink, @function
+readlink:
     push    %rbp
     mov     %rsp, %rbp
 
@@ -438,16 +438,16 @@ once_15Interpretations_5Linux_8Syscalls_8readlink:
 
     pop     %rbp
     ret
-.size once_15Interpretations_5Linux_8Syscalls_8readlink, .-once_15Interpretations_5Linux_8Syscalls_8readlink
+.size readlink, .-readlink
 
 #----------------------------------------------------------------------
 #stat - Get file status
 #----------------------------------------------------------------------
 #Input: ((path_data, path_len), (buf_data, buf_len))
 #Output: Int (0 or -errno)
-.global once_15Interpretations_5Linux_8Syscalls_4stat
-.type once_15Interpretations_5Linux_8Syscalls_4stat, @function
-once_15Interpretations_5Linux_8Syscalls_4stat:
+.global stat
+.type stat, @function
+stat:
     #Unpack
     mov     (%rdi), %r8         #r8 = ptr to path
     mov     8(%rdi), %r9        #r9 = ptr to buffer
@@ -458,16 +458,16 @@ once_15Interpretations_5Linux_8Syscalls_4stat:
     mov     $SYS_stat, %rax
     syscall
     ret
-.size once_15Interpretations_5Linux_8Syscalls_4stat, .-once_15Interpretations_5Linux_8Syscalls_4stat
+.size stat, .-stat
 
 #----------------------------------------------------------------------
 #lstat - Get file status (don't follow symlinks)
 #----------------------------------------------------------------------
 #Input: ((path_data, path_len), (buf_data, buf_len))
 #Output: Int (0 or -errno)
-.global once_15Interpretations_5Linux_8Syscalls_5lstat
-.type once_15Interpretations_5Linux_8Syscalls_5lstat, @function
-once_15Interpretations_5Linux_8Syscalls_5lstat:
+.global lstat
+.type lstat, @function
+lstat:
     mov     (%rdi), %r8
     mov     8(%rdi), %r9
     mov     (%r8), %rdi
@@ -476,16 +476,16 @@ once_15Interpretations_5Linux_8Syscalls_5lstat:
     mov     $SYS_lstat, %rax
     syscall
     ret
-.size once_15Interpretations_5Linux_8Syscalls_5lstat, .-once_15Interpretations_5Linux_8Syscalls_5lstat
+.size lstat, .-lstat
 
 #----------------------------------------------------------------------
 #fstat - Get file status by fd
 #----------------------------------------------------------------------
 #Input: (fd, (buf_data, buf_len))
 #Output: Int (0 or -errno)
-.global once_15Interpretations_5Linux_8Syscalls_5fstat
-.type once_15Interpretations_5Linux_8Syscalls_5fstat, @function
-once_15Interpretations_5Linux_8Syscalls_5fstat:
+.global fstat
+.type fstat, @function
+fstat:
     mov     (%rdi), %r8         #r8 = fd
     mov     8(%rdi), %r9        #r9 = ptr to buffer
 
@@ -495,16 +495,16 @@ once_15Interpretations_5Linux_8Syscalls_5fstat:
     mov     $SYS_fstat, %rax
     syscall
     ret
-.size once_15Interpretations_5Linux_8Syscalls_5fstat, .-once_15Interpretations_5Linux_8Syscalls_5fstat
+.size fstat, .-fstat
 
 #----------------------------------------------------------------------
 #chmod - Change file permissions
 #----------------------------------------------------------------------
 #Input: ((path_data, path_len), mode)
 #Output: Int (0 or -errno)
-.global once_15Interpretations_5Linux_8Syscalls_5chmod
-.type once_15Interpretations_5Linux_8Syscalls_5chmod, @function
-once_15Interpretations_5Linux_8Syscalls_5chmod:
+.global chmod
+.type chmod, @function
+chmod:
     mov     (%rdi), %r8         #r8 = ptr to path
     mov     8(%rdi), %rsi       #rsi = mode
     mov     (%r8), %rdi         #rdi = path_data
@@ -512,16 +512,16 @@ once_15Interpretations_5Linux_8Syscalls_5chmod:
     mov     $SYS_chmod, %rax
     syscall
     ret
-.size once_15Interpretations_5Linux_8Syscalls_5chmod, .-once_15Interpretations_5Linux_8Syscalls_5chmod
+.size chmod, .-chmod
 
 #----------------------------------------------------------------------
 #fchmod - Change file permissions by fd
 #----------------------------------------------------------------------
 #Input: (fd, mode)
 #Output: Int (0 or -errno)
-.global once_15Interpretations_5Linux_8Syscalls_6fchmod
-.type once_15Interpretations_5Linux_8Syscalls_6fchmod, @function
-once_15Interpretations_5Linux_8Syscalls_6fchmod:
+.global fchmod
+.type fchmod, @function
+fchmod:
     mov     (%rdi), %rax        #rax = fd
     mov     8(%rdi), %rsi       #rsi = mode
     mov     %rax, %rdi          #rdi = fd
@@ -529,16 +529,16 @@ once_15Interpretations_5Linux_8Syscalls_6fchmod:
     mov     $SYS_fchmod, %rax
     syscall
     ret
-.size once_15Interpretations_5Linux_8Syscalls_6fchmod, .-once_15Interpretations_5Linux_8Syscalls_6fchmod
+.size fchmod, .-fchmod
 
 #----------------------------------------------------------------------
 #chown - Change file owner
 #----------------------------------------------------------------------
 #Input: ((path_data, path_len), (owner, group))
 #Output: Int (0 or -errno)
-.global once_15Interpretations_5Linux_8Syscalls_5chown
-.type once_15Interpretations_5Linux_8Syscalls_5chown, @function
-once_15Interpretations_5Linux_8Syscalls_5chown:
+.global chown
+.type chown, @function
+chown:
     mov     (%rdi), %r8         #r8 = ptr to path
     mov     8(%rdi), %r9        #r9 = ptr to (owner, group)
 
@@ -549,16 +549,16 @@ once_15Interpretations_5Linux_8Syscalls_5chown:
     mov     $SYS_chown, %rax
     syscall
     ret
-.size once_15Interpretations_5Linux_8Syscalls_5chown, .-once_15Interpretations_5Linux_8Syscalls_5chown
+.size chown, .-chown
 
 #----------------------------------------------------------------------
 #truncate - Truncate file
 #----------------------------------------------------------------------
 #Input: ((path_data, path_len), length)
 #Output: Int (0 or -errno)
-.global once_15Interpretations_5Linux_8Syscalls_8truncate
-.type once_15Interpretations_5Linux_8Syscalls_8truncate, @function
-once_15Interpretations_5Linux_8Syscalls_8truncate:
+.global truncate
+.type truncate, @function
+truncate:
     mov     (%rdi), %r8         #r8 = ptr to path
     mov     8(%rdi), %rsi       #rsi = length
     mov     (%r8), %rdi         #rdi = path_data
@@ -566,16 +566,16 @@ once_15Interpretations_5Linux_8Syscalls_8truncate:
     mov     $SYS_truncate, %rax
     syscall
     ret
-.size once_15Interpretations_5Linux_8Syscalls_8truncate, .-once_15Interpretations_5Linux_8Syscalls_8truncate
+.size truncate, .-truncate
 
 #----------------------------------------------------------------------
 #ftruncate - Truncate file by fd
 #----------------------------------------------------------------------
 #Input: (fd, length)
 #Output: Int (0 or -errno)
-.global once_15Interpretations_5Linux_8Syscalls_9ftruncate
-.type once_15Interpretations_5Linux_8Syscalls_9ftruncate, @function
-once_15Interpretations_5Linux_8Syscalls_9ftruncate:
+.global ftruncate
+.type ftruncate, @function
+ftruncate:
     mov     (%rdi), %rax        #rax = fd
     mov     8(%rdi), %rsi       #rsi = length
     mov     %rax, %rdi          #rdi = fd
@@ -583,7 +583,7 @@ once_15Interpretations_5Linux_8Syscalls_9ftruncate:
     mov     $SYS_ftruncate, %rax
     syscall
     ret
-.size once_15Interpretations_5Linux_8Syscalls_9ftruncate, .-once_15Interpretations_5Linux_8Syscalls_9ftruncate
+.size ftruncate, .-ftruncate
 
 #======================================================================
 #Directory Operations
@@ -594,9 +594,9 @@ once_15Interpretations_5Linux_8Syscalls_9ftruncate:
 #----------------------------------------------------------------------
 #Input: ((path_data, path_len), mode)
 #Output: Int (0 or -errno)
-.global once_15Interpretations_5Linux_8Syscalls_5mkdir
-.type once_15Interpretations_5Linux_8Syscalls_5mkdir, @function
-once_15Interpretations_5Linux_8Syscalls_5mkdir:
+.global mkdir
+.type mkdir, @function
+mkdir:
     mov     (%rdi), %r8         #r8 = ptr to path
     mov     8(%rdi), %rsi       #rsi = mode
     mov     (%r8), %rdi         #rdi = path_data
@@ -604,46 +604,46 @@ once_15Interpretations_5Linux_8Syscalls_5mkdir:
     mov     $SYS_mkdir, %rax
     syscall
     ret
-.size once_15Interpretations_5Linux_8Syscalls_5mkdir, .-once_15Interpretations_5Linux_8Syscalls_5mkdir
+.size mkdir, .-mkdir
 
 #----------------------------------------------------------------------
 #rmdir - Remove directory
 #----------------------------------------------------------------------
 #Input: (path_data, path_len)
 #Output: Int (0 or -errno)
-.global once_15Interpretations_5Linux_8Syscalls_5rmdir
-.type once_15Interpretations_5Linux_8Syscalls_5rmdir, @function
-once_15Interpretations_5Linux_8Syscalls_5rmdir:
+.global rmdir
+.type rmdir, @function
+rmdir:
     mov     (%rdi), %rdi        #rdi = path_data
 
     mov     $SYS_rmdir, %rax
     syscall
     ret
-.size once_15Interpretations_5Linux_8Syscalls_5rmdir, .-once_15Interpretations_5Linux_8Syscalls_5rmdir
+.size rmdir, .-rmdir
 
 #----------------------------------------------------------------------
 #chdir - Change directory
 #----------------------------------------------------------------------
 #Input: (path_data, path_len)
 #Output: Int (0 or -errno)
-.global once_15Interpretations_5Linux_8Syscalls_5chdir
-.type once_15Interpretations_5Linux_8Syscalls_5chdir, @function
-once_15Interpretations_5Linux_8Syscalls_5chdir:
+.global chdir
+.type chdir, @function
+chdir:
     mov     (%rdi), %rdi        #rdi = path_data
 
     mov     $SYS_chdir, %rax
     syscall
     ret
-.size once_15Interpretations_5Linux_8Syscalls_5chdir, .-once_15Interpretations_5Linux_8Syscalls_5chdir
+.size chdir, .-chdir
 
 #----------------------------------------------------------------------
 #getcwd - Get current directory
 #----------------------------------------------------------------------
 #Input: ((buf_data, buf_len), size)
 #Output: Int (length or -errno)
-.global once_15Interpretations_5Linux_8Syscalls_6getcwd
-.type once_15Interpretations_5Linux_8Syscalls_6getcwd, @function
-once_15Interpretations_5Linux_8Syscalls_6getcwd:
+.global getcwd
+.type getcwd, @function
+getcwd:
     mov     (%rdi), %r8         #r8 = ptr to buffer
     mov     8(%rdi), %rsi       #rsi = size
     mov     (%r8), %rdi         #rdi = buf_data
@@ -651,22 +651,22 @@ once_15Interpretations_5Linux_8Syscalls_6getcwd:
     mov     $SYS_getcwd, %rax
     syscall
     ret
-.size once_15Interpretations_5Linux_8Syscalls_6getcwd, .-once_15Interpretations_5Linux_8Syscalls_6getcwd
+.size getcwd, .-getcwd
 
 #----------------------------------------------------------------------
 #chroot - Change root directory
 #----------------------------------------------------------------------
 #Input: (path_data, path_len)
 #Output: Int (0 or -errno)
-.global once_15Interpretations_5Linux_8Syscalls_6chroot
-.type once_15Interpretations_5Linux_8Syscalls_6chroot, @function
-once_15Interpretations_5Linux_8Syscalls_6chroot:
+.global chroot
+.type chroot, @function
+chroot:
     mov     (%rdi), %rdi        #rdi = path_data
 
     mov     $SYS_chroot, %rax
     syscall
     ret
-.size once_15Interpretations_5Linux_8Syscalls_6chroot, .-once_15Interpretations_5Linux_8Syscalls_6chroot
+.size chroot, .-chroot
 
 #======================================================================
 #File Seeking
@@ -677,9 +677,9 @@ once_15Interpretations_5Linux_8Syscalls_6chroot:
 #----------------------------------------------------------------------
 #Input: (fd, (offset, whence))
 #Output: Int (new position or -errno)
-.global once_15Interpretations_5Linux_8Syscalls_5lseek
-.type once_15Interpretations_5Linux_8Syscalls_5lseek, @function
-once_15Interpretations_5Linux_8Syscalls_5lseek:
+.global lseek
+.type lseek, @function
+lseek:
     mov     (%rdi), %r8         #r8 = fd
     mov     8(%rdi), %r9        #r9 = ptr to (offset, whence)
 
@@ -690,7 +690,7 @@ once_15Interpretations_5Linux_8Syscalls_5lseek:
     mov     $SYS_lseek, %rax
     syscall
     ret
-.size once_15Interpretations_5Linux_8Syscalls_5lseek, .-once_15Interpretations_5Linux_8Syscalls_5lseek
+.size lseek, .-lseek
 
 #======================================================================
 #Time
@@ -701,23 +701,23 @@ once_15Interpretations_5Linux_8Syscalls_5lseek:
 #----------------------------------------------------------------------
 #Input: Unit (ignored)
 #Output: Int (seconds since epoch)
-.global once_15Interpretations_5Linux_8Syscalls_4time
-.type once_15Interpretations_5Linux_8Syscalls_4time, @function
-once_15Interpretations_5Linux_8Syscalls_4time:
+.global time
+.type time, @function
+time:
     xor     %edi, %edi          #NULL
     mov     $SYS_time, %rax
     syscall
     ret
-.size once_15Interpretations_5Linux_8Syscalls_4time, .-once_15Interpretations_5Linux_8Syscalls_4time
+.size time, .-time
 
 #----------------------------------------------------------------------
 #clock_gettime - Get high-resolution time
 #----------------------------------------------------------------------
 #Input: (clk_id, (buf_data, buf_len))
 #Output: Int (0 or -errno)
-.global once_15Interpretations_5Linux_8Syscalls_13clock_gettime
-.type once_15Interpretations_5Linux_8Syscalls_13clock_gettime, @function
-once_15Interpretations_5Linux_8Syscalls_13clock_gettime:
+.global clock_gettime
+.type clock_gettime, @function
+clock_gettime:
     mov     (%rdi), %r8         #r8 = clk_id
     mov     8(%rdi), %r9        #r9 = ptr to buffer
 
@@ -727,16 +727,16 @@ once_15Interpretations_5Linux_8Syscalls_13clock_gettime:
     mov     $SYS_clock_gettime, %rax
     syscall
     ret
-.size once_15Interpretations_5Linux_8Syscalls_13clock_gettime, .-once_15Interpretations_5Linux_8Syscalls_13clock_gettime
+.size clock_gettime, .-clock_gettime
 
 #----------------------------------------------------------------------
 #sleep - Sleep for seconds
 #----------------------------------------------------------------------
 #Input: Int (seconds)
 #Output: Int (remaining seconds)
-.global once_15Interpretations_5Linux_8Syscalls_5sleep
-.type once_15Interpretations_5Linux_8Syscalls_5sleep, @function
-once_15Interpretations_5Linux_8Syscalls_5sleep:
+.global sleep
+.type sleep, @function
+sleep:
     push    %rbp
     mov     %rsp, %rbp
     sub     $32, %rsp           #Space for two timespecs
@@ -757,16 +757,16 @@ once_15Interpretations_5Linux_8Syscalls_5sleep:
     add     $32, %rsp
     pop     %rbp
     ret
-.size once_15Interpretations_5Linux_8Syscalls_5sleep, .-once_15Interpretations_5Linux_8Syscalls_5sleep
+.size sleep, .-sleep
 
 #----------------------------------------------------------------------
 #usleep - Sleep for microseconds
 #----------------------------------------------------------------------
 #Input: Int (microseconds)
 #Output: Int (0 or -errno)
-.global once_15Interpretations_5Linux_8Syscalls_6usleep
-.type once_15Interpretations_5Linux_8Syscalls_6usleep, @function
-once_15Interpretations_5Linux_8Syscalls_6usleep:
+.global usleep
+.type usleep, @function
+usleep:
     push    %rbp
     mov     %rsp, %rbp
     sub     $32, %rsp
@@ -790,16 +790,16 @@ once_15Interpretations_5Linux_8Syscalls_6usleep:
     add     $32, %rsp
     pop     %rbp
     ret
-.size once_15Interpretations_5Linux_8Syscalls_6usleep, .-once_15Interpretations_5Linux_8Syscalls_6usleep
+.size usleep, .-usleep
 
 #----------------------------------------------------------------------
 #nanosleep - Sleep with timespec
 #----------------------------------------------------------------------
 #Input: ((req_data, req_len), (rem_data, rem_len))
 #Output: Int (0 or -errno)
-.global once_15Interpretations_5Linux_8Syscalls_9nanosleep
-.type once_15Interpretations_5Linux_8Syscalls_9nanosleep, @function
-once_15Interpretations_5Linux_8Syscalls_9nanosleep:
+.global nanosleep
+.type nanosleep, @function
+nanosleep:
     mov     (%rdi), %r8         #r8 = ptr to req buffer
     mov     8(%rdi), %r9        #r9 = ptr to rem buffer
 
@@ -809,7 +809,7 @@ once_15Interpretations_5Linux_8Syscalls_9nanosleep:
     mov     $SYS_nanosleep, %rax
     syscall
     ret
-.size once_15Interpretations_5Linux_8Syscalls_9nanosleep, .-once_15Interpretations_5Linux_8Syscalls_9nanosleep
+.size nanosleep, .-nanosleep
 
 #======================================================================
 #Environment
@@ -820,9 +820,9 @@ once_15Interpretations_5Linux_8Syscalls_9nanosleep:
 #For now, these are stubs that return error/empty
 #A full implementation would need to parse the environ array
 
-.global once_15Interpretations_5Linux_8Syscalls_6getenv
-.type once_15Interpretations_5Linux_8Syscalls_6getenv, @function
-once_15Interpretations_5Linux_8Syscalls_6getenv:
+.global getenv
+.type getenv, @function
+getenv:
     #Return empty string (data=NULL, len=0)
     push    %rbp
     mov     %rsp, %rbp
@@ -835,21 +835,21 @@ once_15Interpretations_5Linux_8Syscalls_6getenv:
     add     $16, %rsp
     pop     %rbp
     ret
-.size once_15Interpretations_5Linux_8Syscalls_6getenv, .-once_15Interpretations_5Linux_8Syscalls_6getenv
+.size getenv, .-getenv
 
-.global once_15Interpretations_5Linux_8Syscalls_6setenv
-.type once_15Interpretations_5Linux_8Syscalls_6setenv, @function
-once_15Interpretations_5Linux_8Syscalls_6setenv:
+.global setenv
+.type setenv, @function
+setenv:
     mov     $-1, %rax           #Not implemented
     ret
-.size once_15Interpretations_5Linux_8Syscalls_6setenv, .-once_15Interpretations_5Linux_8Syscalls_6setenv
+.size setenv, .-setenv
 
-.global once_15Interpretations_5Linux_8Syscalls_8unsetenv
-.type once_15Interpretations_5Linux_8Syscalls_8unsetenv, @function
-once_15Interpretations_5Linux_8Syscalls_8unsetenv:
+.global unsetenv
+.type unsetenv, @function
+unsetenv:
     mov     $-1, %rax           #Not implemented
     ret
-.size once_15Interpretations_5Linux_8Syscalls_8unsetenv, .-once_15Interpretations_5Linux_8Syscalls_8unsetenv
+.size unsetenv, .-unsetenv
 
 #======================================================================
 #Memory Mapping
@@ -860,9 +860,9 @@ once_15Interpretations_5Linux_8Syscalls_8unsetenv:
 #----------------------------------------------------------------------
 #Input: (addr, (length, (prot, (flags, (fd, offset)))))
 #Output: (buf_data, buf_len) - Buffer struct
-.global once_15Interpretations_5Linux_8Syscalls_4mmap
-.type once_15Interpretations_5Linux_8Syscalls_4mmap, @function
-once_15Interpretations_5Linux_8Syscalls_4mmap:
+.global mmap
+.type mmap, @function
+mmap:
     push    %rbp
     mov     %rsp, %rbp
     push    %r12
@@ -912,16 +912,16 @@ once_15Interpretations_5Linux_8Syscalls_4mmap:
     pop     %r12
     pop     %rbp
     ret
-.size once_15Interpretations_5Linux_8Syscalls_4mmap, .-once_15Interpretations_5Linux_8Syscalls_4mmap
+.size mmap, .-mmap
 
 #----------------------------------------------------------------------
 #munmap - Unmap memory
 #----------------------------------------------------------------------
 #Input: ((buf_data, buf_len), length)
 #Output: Int (0 or -errno)
-.global once_15Interpretations_5Linux_8Syscalls_6munmap
-.type once_15Interpretations_5Linux_8Syscalls_6munmap, @function
-once_15Interpretations_5Linux_8Syscalls_6munmap:
+.global munmap
+.type munmap, @function
+munmap:
     mov     (%rdi), %r8         #r8 = ptr to buffer
     mov     8(%rdi), %rsi       #rsi = length
     mov     (%r8), %rdi         #rdi = buf_data
@@ -929,16 +929,16 @@ once_15Interpretations_5Linux_8Syscalls_6munmap:
     mov     $SYS_munmap, %rax
     syscall
     ret
-.size once_15Interpretations_5Linux_8Syscalls_6munmap, .-once_15Interpretations_5Linux_8Syscalls_6munmap
+.size munmap, .-munmap
 
 #----------------------------------------------------------------------
 #mprotect - Change memory protection
 #----------------------------------------------------------------------
 #Input: ((buf_data, buf_len), (length, prot))
 #Output: Int (0 or -errno)
-.global once_15Interpretations_5Linux_8Syscalls_8mprotect
-.type once_15Interpretations_5Linux_8Syscalls_8mprotect, @function
-once_15Interpretations_5Linux_8Syscalls_8mprotect:
+.global mprotect
+.type mprotect, @function
+mprotect:
     mov     (%rdi), %r8         #r8 = ptr to buffer
     mov     8(%rdi), %r9        #r9 = ptr to (length, prot)
 
@@ -949,7 +949,7 @@ once_15Interpretations_5Linux_8Syscalls_8mprotect:
     mov     $SYS_mprotect, %rax
     syscall
     ret
-.size once_15Interpretations_5Linux_8Syscalls_8mprotect, .-once_15Interpretations_5Linux_8Syscalls_8mprotect
+.size mprotect, .-mprotect
 
 #======================================================================
 #Signals
@@ -960,9 +960,9 @@ once_15Interpretations_5Linux_8Syscalls_8mprotect:
 #----------------------------------------------------------------------
 #Input: (pid, sig)
 #Output: Int (0 or -errno)
-.global once_15Interpretations_5Linux_8Syscalls_4kill
-.type once_15Interpretations_5Linux_8Syscalls_4kill, @function
-once_15Interpretations_5Linux_8Syscalls_4kill:
+.global kill
+.type kill, @function
+kill:
     mov     (%rdi), %rax        #rax = pid
     mov     8(%rdi), %rsi       #rsi = sig
     mov     %rax, %rdi          #rdi = pid
@@ -970,16 +970,16 @@ once_15Interpretations_5Linux_8Syscalls_4kill:
     mov     $SYS_kill, %rax
     syscall
     ret
-.size once_15Interpretations_5Linux_8Syscalls_4kill, .-once_15Interpretations_5Linux_8Syscalls_4kill
+.size kill, .-kill
 
 #----------------------------------------------------------------------
 #raise - Send signal to self
 #----------------------------------------------------------------------
 #Input: Int (sig)
 #Output: Int (0 or -errno)
-.global once_15Interpretations_5Linux_8Syscalls_5raise
-.type once_15Interpretations_5Linux_8Syscalls_5raise, @function
-once_15Interpretations_5Linux_8Syscalls_5raise:
+.global raise
+.type raise, @function
+raise:
     mov     %rdi, %rsi          #rsi = sig
 
     #Get own pid
@@ -990,20 +990,20 @@ once_15Interpretations_5Linux_8Syscalls_5raise:
     mov     $SYS_kill, %rax
     syscall
     ret
-.size once_15Interpretations_5Linux_8Syscalls_5raise, .-once_15Interpretations_5Linux_8Syscalls_5raise
+.size raise, .-raise
 
 #----------------------------------------------------------------------
 #pause - Wait for signal
 #----------------------------------------------------------------------
 #Input: Unit (ignored)
 #Output: Int (-errno, always -EINTR)
-.global once_15Interpretations_5Linux_8Syscalls_5pause
-.type once_15Interpretations_5Linux_8Syscalls_5pause, @function
-once_15Interpretations_5Linux_8Syscalls_5pause:
+.global pause
+.type pause, @function
+pause:
     mov     $SYS_pause, %rax
     syscall
     ret
-.size once_15Interpretations_5Linux_8Syscalls_5pause, .-once_15Interpretations_5Linux_8Syscalls_5pause
+.size pause, .-pause
 
 #======================================================================
 #Pipe and IPC
@@ -1014,15 +1014,15 @@ once_15Interpretations_5Linux_8Syscalls_5pause:
 #----------------------------------------------------------------------
 #Input: (buf_data, buf_len)
 #Output: Int (0 or -errno)
-.global once_15Interpretations_5Linux_8Syscalls_4pipe
-.type once_15Interpretations_5Linux_8Syscalls_4pipe, @function
-once_15Interpretations_5Linux_8Syscalls_4pipe:
+.global pipe
+.type pipe, @function
+pipe:
     mov     (%rdi), %rdi        #rdi = buf_data
 
     mov     $SYS_pipe, %rax
     syscall
     ret
-.size once_15Interpretations_5Linux_8Syscalls_4pipe, .-once_15Interpretations_5Linux_8Syscalls_4pipe
+.size pipe, .-pipe
 
 #======================================================================
 #Socket Operations
@@ -1033,9 +1033,9 @@ once_15Interpretations_5Linux_8Syscalls_4pipe:
 #----------------------------------------------------------------------
 #Input: (domain, (type, protocol))
 #Output: Int (fd or -errno)
-.global once_15Interpretations_5Linux_8Syscalls_6socket
-.type once_15Interpretations_5Linux_8Syscalls_6socket, @function
-once_15Interpretations_5Linux_8Syscalls_6socket:
+.global socket
+.type socket, @function
+socket:
     mov     (%rdi), %r8         #r8 = domain
     mov     8(%rdi), %r9        #r9 = ptr to (type, protocol)
 
@@ -1046,16 +1046,16 @@ once_15Interpretations_5Linux_8Syscalls_6socket:
     mov     $SYS_socket, %rax
     syscall
     ret
-.size once_15Interpretations_5Linux_8Syscalls_6socket, .-once_15Interpretations_5Linux_8Syscalls_6socket
+.size socket, .-socket
 
 #----------------------------------------------------------------------
 #bind - Bind socket to address
 #----------------------------------------------------------------------
 #Input: (sockfd, ((addr_data, addr_len), addrlen))
 #Output: Int (0 or -errno)
-.global once_15Interpretations_5Linux_8Syscalls_4bind
-.type once_15Interpretations_5Linux_8Syscalls_4bind, @function
-once_15Interpretations_5Linux_8Syscalls_4bind:
+.global bind
+.type bind, @function
+bind:
     mov     (%rdi), %r8         #r8 = sockfd
     mov     8(%rdi), %r9        #r9 = ptr to rest
 
@@ -1069,16 +1069,16 @@ once_15Interpretations_5Linux_8Syscalls_4bind:
     mov     $SYS_bind, %rax
     syscall
     ret
-.size once_15Interpretations_5Linux_8Syscalls_4bind, .-once_15Interpretations_5Linux_8Syscalls_4bind
+.size bind, .-bind
 
 #----------------------------------------------------------------------
 #listen - Listen on socket
 #----------------------------------------------------------------------
 #Input: (sockfd, backlog)
 #Output: Int (0 or -errno)
-.global once_15Interpretations_5Linux_8Syscalls_6listen
-.type once_15Interpretations_5Linux_8Syscalls_6listen, @function
-once_15Interpretations_5Linux_8Syscalls_6listen:
+.global listen
+.type listen, @function
+listen:
     mov     (%rdi), %rax        #rax = sockfd
     mov     8(%rdi), %rsi       #rsi = backlog
     mov     %rax, %rdi          #rdi = sockfd
@@ -1086,16 +1086,16 @@ once_15Interpretations_5Linux_8Syscalls_6listen:
     mov     $SYS_listen, %rax
     syscall
     ret
-.size once_15Interpretations_5Linux_8Syscalls_6listen, .-once_15Interpretations_5Linux_8Syscalls_6listen
+.size listen, .-listen
 
 #----------------------------------------------------------------------
 #accept - Accept connection
 #----------------------------------------------------------------------
 #Input: (sockfd, ((addr_data, addr_len), (addrlen_data, addrlen_len)))
 #Output: Int (new fd or -errno)
-.global once_15Interpretations_5Linux_8Syscalls_6accept
-.type once_15Interpretations_5Linux_8Syscalls_6accept, @function
-once_15Interpretations_5Linux_8Syscalls_6accept:
+.global accept
+.type accept, @function
+accept:
     mov     (%rdi), %r8         #r8 = sockfd
     mov     8(%rdi), %r9        #r9 = ptr to rest
 
@@ -1110,16 +1110,16 @@ once_15Interpretations_5Linux_8Syscalls_6accept:
     mov     $SYS_accept, %rax
     syscall
     ret
-.size once_15Interpretations_5Linux_8Syscalls_6accept, .-once_15Interpretations_5Linux_8Syscalls_6accept
+.size accept, .-accept
 
 #----------------------------------------------------------------------
 #connect - Connect to address
 #----------------------------------------------------------------------
 #Input: (sockfd, ((addr_data, addr_len), addrlen))
 #Output: Int (0 or -errno)
-.global once_15Interpretations_5Linux_8Syscalls_7connect
-.type once_15Interpretations_5Linux_8Syscalls_7connect, @function
-once_15Interpretations_5Linux_8Syscalls_7connect:
+.global connect
+.type connect, @function
+connect:
     mov     (%rdi), %r8         #r8 = sockfd
     mov     8(%rdi), %r9        #r9 = ptr to rest
 
@@ -1133,16 +1133,16 @@ once_15Interpretations_5Linux_8Syscalls_7connect:
     mov     $SYS_connect, %rax
     syscall
     ret
-.size once_15Interpretations_5Linux_8Syscalls_7connect, .-once_15Interpretations_5Linux_8Syscalls_7connect
+.size connect, .-connect
 
 #----------------------------------------------------------------------
 #send - Send on socket (via sendto)
 #----------------------------------------------------------------------
 #Input: (sockfd, ((buf_data, buf_len), (len, flags)))
 #Output: Int (bytes sent or -errno)
-.global once_15Interpretations_5Linux_8Syscalls_4send
-.type once_15Interpretations_5Linux_8Syscalls_4send, @function
-once_15Interpretations_5Linux_8Syscalls_4send:
+.global send
+.type send, @function
+send:
     push    %rbp
     mov     %rsp, %rbp
 
@@ -1164,16 +1164,16 @@ once_15Interpretations_5Linux_8Syscalls_4send:
 
     pop     %rbp
     ret
-.size once_15Interpretations_5Linux_8Syscalls_4send, .-once_15Interpretations_5Linux_8Syscalls_4send
+.size send, .-send
 
 #----------------------------------------------------------------------
 #recv - Receive from socket (via recvfrom)
 #----------------------------------------------------------------------
 #Input: (sockfd, ((buf_data, buf_len), (len, flags)))
 #Output: Int (bytes received or -errno)
-.global once_15Interpretations_5Linux_8Syscalls_4recv
-.type once_15Interpretations_5Linux_8Syscalls_4recv, @function
-once_15Interpretations_5Linux_8Syscalls_4recv:
+.global recv
+.type recv, @function
+recv:
     push    %rbp
     mov     %rsp, %rbp
 
@@ -1195,16 +1195,16 @@ once_15Interpretations_5Linux_8Syscalls_4recv:
 
     pop     %rbp
     ret
-.size once_15Interpretations_5Linux_8Syscalls_4recv, .-once_15Interpretations_5Linux_8Syscalls_4recv
+.size recv, .-recv
 
 #----------------------------------------------------------------------
 #shutdown - Shutdown socket
 #----------------------------------------------------------------------
 #Input: (sockfd, how)
 #Output: Int (0 or -errno)
-.global once_15Interpretations_5Linux_8Syscalls_8shutdown
-.type once_15Interpretations_5Linux_8Syscalls_8shutdown, @function
-once_15Interpretations_5Linux_8Syscalls_8shutdown:
+.global shutdown
+.type shutdown, @function
+shutdown:
     mov     (%rdi), %rax        #rax = sockfd
     mov     8(%rdi), %rsi       #rsi = how
     mov     %rax, %rdi          #rdi = sockfd
@@ -1212,16 +1212,16 @@ once_15Interpretations_5Linux_8Syscalls_8shutdown:
     mov     $SYS_shutdown, %rax
     syscall
     ret
-.size once_15Interpretations_5Linux_8Syscalls_8shutdown, .-once_15Interpretations_5Linux_8Syscalls_8shutdown
+.size shutdown, .-shutdown
 
 #----------------------------------------------------------------------
 #setsockopt - Set socket option
 #----------------------------------------------------------------------
 #Input: (sockfd, (level, (optname, ((optval_data, optval_len), optlen))))
 #Output: Int (0 or -errno)
-.global once_15Interpretations_5Linux_8Syscalls_10setsockopt
-.type once_15Interpretations_5Linux_8Syscalls_10setsockopt, @function
-once_15Interpretations_5Linux_8Syscalls_10setsockopt:
+.global setsockopt
+.type setsockopt, @function
+setsockopt:
     push    %rbp
     mov     %rsp, %rbp
 
@@ -1246,16 +1246,16 @@ once_15Interpretations_5Linux_8Syscalls_10setsockopt:
 
     pop     %rbp
     ret
-.size once_15Interpretations_5Linux_8Syscalls_10setsockopt, .-once_15Interpretations_5Linux_8Syscalls_10setsockopt
+.size setsockopt, .-setsockopt
 
 #----------------------------------------------------------------------
 #getsockopt - Get socket option
 #----------------------------------------------------------------------
 #Input: (sockfd, (level, (optname, ((optval_data, optval_len), (optlen_data, optlen_len)))))
 #Output: Int (0 or -errno)
-.global once_15Interpretations_5Linux_8Syscalls_10getsockopt
-.type once_15Interpretations_5Linux_8Syscalls_10getsockopt, @function
-once_15Interpretations_5Linux_8Syscalls_10getsockopt:
+.global getsockopt
+.type getsockopt, @function
+getsockopt:
     push    %rbp
     mov     %rsp, %rbp
 
@@ -1280,7 +1280,7 @@ once_15Interpretations_5Linux_8Syscalls_10getsockopt:
 
     pop     %rbp
     ret
-.size once_15Interpretations_5Linux_8Syscalls_10getsockopt, .-once_15Interpretations_5Linux_8Syscalls_10getsockopt
+.size getsockopt, .-getsockopt
 
 #======================================================================
 #Polling
@@ -1291,9 +1291,9 @@ once_15Interpretations_5Linux_8Syscalls_10getsockopt:
 #----------------------------------------------------------------------
 #Input: ((fds_data, fds_len), (nfds, timeout))
 #Output: Int (ready count or -errno)
-.global once_15Interpretations_5Linux_8Syscalls_4poll
-.type once_15Interpretations_5Linux_8Syscalls_4poll, @function
-once_15Interpretations_5Linux_8Syscalls_4poll:
+.global poll
+.type poll, @function
+poll:
     mov     (%rdi), %r8         #r8 = ptr to fds buffer
     mov     8(%rdi), %r9        #r9 = ptr to (nfds, timeout)
 
@@ -1304,7 +1304,7 @@ once_15Interpretations_5Linux_8Syscalls_4poll:
     mov     $SYS_poll, %rax
     syscall
     ret
-.size once_15Interpretations_5Linux_8Syscalls_4poll, .-once_15Interpretations_5Linux_8Syscalls_4poll
+.size poll, .-poll
 
 #======================================================================
 #Random
@@ -1315,9 +1315,9 @@ once_15Interpretations_5Linux_8Syscalls_4poll:
 #----------------------------------------------------------------------
 #Input: ((buf_data, buf_len), (buflen, flags))
 #Output: Int (bytes or -errno)
-.global once_15Interpretations_5Linux_8Syscalls_9getrandom
-.type once_15Interpretations_5Linux_8Syscalls_9getrandom, @function
-once_15Interpretations_5Linux_8Syscalls_9getrandom:
+.global getrandom
+.type getrandom, @function
+getrandom:
     mov     (%rdi), %r8         #r8 = ptr to buffer
     mov     8(%rdi), %r9        #r9 = ptr to (buflen, flags)
 
@@ -1328,7 +1328,7 @@ once_15Interpretations_5Linux_8Syscalls_9getrandom:
     mov     $SYS_getrandom, %rax
     syscall
     ret
-.size once_15Interpretations_5Linux_8Syscalls_9getrandom, .-once_15Interpretations_5Linux_8Syscalls_9getrandom
+.size getrandom, .-getrandom
 
 #======================================================================
 #Threading (low-level)
@@ -1339,9 +1339,9 @@ once_15Interpretations_5Linux_8Syscalls_9getrandom:
 #----------------------------------------------------------------------
 #Input: (flags, (stack_data, stack_len))
 #Output: Int (tid or -errno)
-.global once_15Interpretations_5Linux_8Syscalls_5clone
-.type once_15Interpretations_5Linux_8Syscalls_5clone, @function
-once_15Interpretations_5Linux_8Syscalls_5clone:
+.global clone
+.type clone, @function
+clone:
     mov     (%rdi), %r8         #r8 = flags
     mov     8(%rdi), %r9        #r9 = ptr to stack buffer
 
@@ -1354,16 +1354,16 @@ once_15Interpretations_5Linux_8Syscalls_5clone:
     mov     $SYS_clone, %rax
     syscall
     ret
-.size once_15Interpretations_5Linux_8Syscalls_5clone, .-once_15Interpretations_5Linux_8Syscalls_5clone
+.size clone, .-clone
 
 #----------------------------------------------------------------------
 #futex - Fast userspace mutex operations
 #----------------------------------------------------------------------
 #Input: ((addr_data, addr_len), (op, (val, ((timeout_data, timeout_len), ((addr2_data, addr2_len), val3)))))
 #Output: Int (depends on op)
-.global once_15Interpretations_5Linux_8Syscalls_5futex
-.type once_15Interpretations_5Linux_8Syscalls_5futex, @function
-once_15Interpretations_5Linux_8Syscalls_5futex:
+.global futex
+.type futex, @function
+futex:
     push    %rbp
     mov     %rsp, %rbp
     push    %r12
@@ -1393,20 +1393,20 @@ once_15Interpretations_5Linux_8Syscalls_5futex:
     pop     %r12
     pop     %rbp
     ret
-.size once_15Interpretations_5Linux_8Syscalls_5futex, .-once_15Interpretations_5Linux_8Syscalls_5futex
+.size futex, .-futex
 
 #----------------------------------------------------------------------
 #gettid - Get thread ID
 #----------------------------------------------------------------------
 #Input: Unit (ignored)
 #Output: Int (tid)
-.global once_15Interpretations_5Linux_8Syscalls_6gettid
-.type once_15Interpretations_5Linux_8Syscalls_6gettid, @function
-once_15Interpretations_5Linux_8Syscalls_6gettid:
+.global gettid
+.type gettid, @function
+gettid:
     mov     $SYS_gettid, %rax
     syscall
     ret
-.size once_15Interpretations_5Linux_8Syscalls_6gettid, .-once_15Interpretations_5Linux_8Syscalls_6gettid
+.size gettid, .-gettid
 
 #endif #ONCE_LINUX_X86_64_SYSCALLS_DEFINED
 
