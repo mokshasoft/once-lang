@@ -81,6 +81,13 @@ CheckAgreeV ctx e T {se = se} {w = w} _ =
 postulate
   check-agreeV-todo : ∀ (ctx : NamedCtx) (e : RawExpr) (T : Type) {Ψ se d f w}
     (eq : E.checkElabV ctx e T ≡ (success Ψ se d f , w)) → CheckAgreeV ctx e T eq
+  -- RApp check views not yet discharged (apply / pair-applied / compose-applied /
+  -- case-applied / curry / cata / other-arg-driven — the morph-lift + specApply
+  -- semantic content). Progressively emptied.
+  check-RApp-todo : ∀ (ctx : NamedCtx) (f arg : RawExpr) (T : Type) {Ψ se d fr w}
+    (vw : E.AppHeadView f) (veq : E.classifyAppHeadView f ≡ vw)
+    → E.checkElabV-RApp-dispatch ctx f arg T vw veq ≡ (success Ψ se d fr , w)
+    → ∀ (dγ : ⟦ ⟦ NamedCtx.debruijn ctx ⟧ᶜ ⟧ᴰ) (k : ℕ) → SD.⟦ se ⟧ˢ dγ k ≡ SD.⟦ realize w ⟧ˢ dγ k
 
 -- RPair folded top-level (no `with`): take both sub-results explicitly +
 -- their sub-IHs as functions; the de-withed `inferElabV-RPair-aux` reduces by
@@ -506,6 +513,49 @@ checkG-realize {ctx} {X} (g-In {arg = arg} {F = F} {wfF = wfF} eqWF garg) eq
 ...     | nothing         | ()
 
 ------------------------------------------------------------------------
+-- check-mode RApp agreement, dispatched on the app-head VIEW (a parameter of
+-- `checkElabV-RApp-dispatch`). The `t-embed` views (id/fst/snd/terminal) infer
+-- `RApp f arg`, match `T`, and delegate to the supplied infer IH (since
+-- `realize (t-embed w) = realize-infer w`). The remaining views (morph-lift /
+-- specApply / arg-driven) route to `check-RApp-todo` for now.
+agree-check-RApp : ∀ (ctx : NamedCtx) (f arg : RawExpr) (T : Type) {Ψ se d fr w}
+  (vw : E.AppHeadView f) (veq : E.classifyAppHeadView f ≡ vw)
+  → E.checkElabV-RApp-dispatch ctx f arg T vw veq ≡ (success Ψ se d fr , w)
+  → (inferIH : ∀ {T' Ψ' eE' d' fr'} {w' : ctx ⊢ᵢ Raw.RApp f arg ∶ T' ⨾ Ψ'}
+       → E.inferElabV ctx (Raw.RApp f arg) ≡ (success T' Ψ' eE' d' fr' , w')
+       → ∀ dγ k → SD.⟦ eE' ⟧ˢ dγ k ≡ SD.⟦ realize-infer w' ⟧ˢ dγ k)
+  → (argCheckIH : ∀ {T' Ψ' eE' d' fr'} {w' : ctx ⊢ᶜ arg ∶ T' ⨾ Ψ'}
+       → E.checkElabV ctx arg T' ≡ (success Ψ' eE' d' fr' , w')
+       → ∀ dγ k → SD.⟦ eE' ⟧ˢ dγ k ≡ SD.⟦ realize w' ⟧ˢ dγ k)
+  → ∀ dγ k → SD.⟦ se ⟧ˢ dγ k ≡ SD.⟦ realize w ⟧ˢ dγ k
+agree-check-RApp ctx f arg T E.ahv-id veq disp inferIH argCheckIH dγ k
+  with E.inferElabV ctx (Raw.RApp f arg) | disp
+... | failure _ , _ | ()
+... | success T' Ψ eE d fr , w | eq₁ with T E.≟T T' | eq₁
+...   | yes refl | refl = inferIH refl dγ k
+...   | no _     | ()
+agree-check-RApp ctx f arg T E.ahv-fst veq disp inferIH argCheckIH dγ k
+  with E.inferElabV ctx (Raw.RApp f arg) | disp
+... | failure _ , _ | ()
+... | success T' Ψ eE d fr , w | eq₁ with T E.≟T T' | eq₁
+...   | yes refl | refl = inferIH refl dγ k
+...   | no _     | ()
+agree-check-RApp ctx f arg T E.ahv-snd veq disp inferIH argCheckIH dγ k
+  with E.inferElabV ctx (Raw.RApp f arg) | disp
+... | failure _ , _ | ()
+... | success T' Ψ eE d fr , w | eq₁ with T E.≟T T' | eq₁
+...   | yes refl | refl = inferIH refl dγ k
+...   | no _     | ()
+agree-check-RApp ctx f arg T E.ahv-terminal veq disp inferIH argCheckIH dγ k
+  with E.inferElabV ctx (Raw.RApp f arg) | disp
+... | failure _ , _ | ()
+... | success T' Ψ eE d fr , w | eq₁ with T E.≟T T' | eq₁
+...   | yes refl | refl = inferIH refl dγ k
+...   | no _     | ()
+agree-check-RApp ctx f arg T vw veq disp inferIH argCheckIH dγ k =
+  check-RApp-todo ctx f arg T vw veq disp dγ k
+
+------------------------------------------------------------------------
 -- Well-founded measure for the infer/check mutual recursion. The same-size
 -- `check-agreeV e → infer-agreeV e` (the t-embed fallback) together with the
 -- strictly-smaller `infer-agreeV (RAnnot e T) → check-agreeV e` make the SCC
@@ -777,6 +827,12 @@ mutual
   check-agreeV ctx (Raw.RLam x body) (μ-type _)   _ ()
   check-agreeV ctx (Raw.RLam x body) (ν-type _)   _ ()
   check-agreeV ctx (Raw.RLam x body) (_ ⇒[ mk-kind _ eff ] _) _ ()
+  -- RApp: dispatch on the app-head view; t-embed views delegate to infer,
+  -- the rest route through agree-check-RApp (todo residual for now).
+  check-agreeV ctx (Raw.RApp f arg) T (acc rec) eq dγ k =
+    agree-check-RApp ctx f arg T (E.classifyAppHeadView f) refl eq
+      (λ p → infer-agreeV ctx (Raw.RApp f arg) (rec (infer<check (Raw.RApp f arg))) p)
+      (λ {T'} p → check-agreeV ctx arg T' (rec (mC-sub (μ<-r (μ f) (μ arg)))) p) dγ k
   check-agreeV ctx e T _ eq = check-agreeV-todo ctx e T eq
 
 ------------------------------------------------------------------------
