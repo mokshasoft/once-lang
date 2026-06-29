@@ -21,7 +21,7 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (Σ-syntax; ∃-syntax; _,_; _×_; proj₁)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Relation.Nullary using (yes; no; ¬_)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂)
 open import Data.String using (String)
 
 open import Once.Type as T using (Type; Functor; μ-type; ⟦_⟧T)
@@ -34,6 +34,7 @@ open import Once.TypeCheck.Classify using (NamedCtx; composeMid;
   lookupLocal; lookupImport; ctxWithImportsAndPolys;
   inspectLookupLocal; inspectLookupImport; llv-found; llv-not-found; liv-found; liv-not-found)
 open import Once.Surface.Syntax as Srf using (Expr; lift-morphism; zeroUsage)
+open import Once.Denotation.Realize using (realize-morph)
 open import Once.TypeCheck.Judgment
 open import Once.TypeCheck.Elaborate
   using (checkElab; checkElabV; checkComposeGo; extract-morph-eff;
@@ -55,6 +56,7 @@ StrongElab ctx e A B π =
     (checkElabV ctx e (A T.⇒[ T.mk-kind T.Many π ] B) ≡ (success zeroUsage E d fr , W))
   × (extract-morph-eff E ≡ just (m , refl))
   × (extractMorphWitness W ≡ just mᵐ)
+  × (m ≡ realize-morph mᵐ)
 
 private
   -- `checkComposeGo` is called at the canonical `(composeMid …, refl)`; any
@@ -80,10 +82,11 @@ private
     → extractMorphWitness Wf ≡ just mFᵐ
     → extractMorphWitness Wg ≡ just mGᵐ
     → Σ-syntax (IR A C) λ m → Σ-syntax ℕ λ d → Σ-syntax ℕ λ fr →
-        checkComposeGo ctx f g A C π (just B) eqB
-          ≡ (success zeroUsage (lift-morphism m) d fr , t-morph-lift (m-compose eqB mFᵐ mGᵐ))
+        (checkComposeGo ctx f g A C π (just B) eqB
+          ≡ (success zeroUsage (lift-morphism m) d fr , t-morph-lift (m-compose eqB mFᵐ mGᵐ)))
+        × (m ≡ mf IR.∘ mg)
   composeGo-success eqB eqf eqg exf exg exwf exwg
-    rewrite eqg | eqf | exf | exg | exwf | exwg = _ , _ , _ , refl
+    rewrite eqg | eqf | exf | exg | exwf | exwg = _ , _ , _ , refl , refl
 
 -- Three cases are scoped follow-ups (kept as StrongElab postulates so the
 -- recursive cases can still take them as arms). They are NOT discharged here:
@@ -124,7 +127,7 @@ morph-elab {ctx = ctx} (m-id {T = TT} eqLoc eqImp)
 ... | (failure _ , _) | refl
   with inspectLookupLocal ctx "id" | inspectLookupImport ctx "id"
 ... | llv-not-found eqL | liv-not-found eqI with TT ≟T TT
-...   | yes refl = IR.id , m-id eqL eqI , _ , _ , _ , t-morph-lift (m-id eqL eqI) , refl , refl , refl
+...   | yes refl = IR.id , m-id eqL eqI , _ , _ , _ , t-morph-lift (m-id eqL eqI) , refl , refl , refl , refl
 ...   | no ¬eq = ⊥-elim (¬eq refl)
 morph-elab (m-id eqLoc eqImp) | (failure _ , _) | refl | llv-found imp | _ = ⊥-elim (just≢nothing (trans (sym imp) eqLoc))
 morph-elab (m-id eqLoc eqImp) | (failure _ , _) | refl | _ | liv-found imp = ⊥-elim (just≢nothing (trans (sym imp) eqImp))
@@ -134,7 +137,7 @@ morph-elab {ctx = ctx} (m-fst {A = A} {B = B} eqLoc eqImp)
 ... | (failure _ , _) | refl
   with inspectLookupLocal ctx "fst" | inspectLookupImport ctx "fst"
 ... | llv-not-found eqL | liv-not-found eqI with A ≟T A
-...   | yes refl = IR.fst , m-fst eqL eqI , _ , _ , _ , t-morph-lift (m-fst eqL eqI) , refl , refl , refl
+...   | yes refl = IR.fst , m-fst eqL eqI , _ , _ , _ , t-morph-lift (m-fst eqL eqI) , refl , refl , refl , refl
 ...   | no ¬eq = ⊥-elim (¬eq refl)
 morph-elab (m-fst eqLoc eqImp) | (failure _ , _) | refl | llv-found imp | _ = ⊥-elim (just≢nothing (trans (sym imp) eqLoc))
 morph-elab (m-fst eqLoc eqImp) | (failure _ , _) | refl | _ | liv-found imp = ⊥-elim (just≢nothing (trans (sym imp) eqImp))
@@ -144,7 +147,7 @@ morph-elab {ctx = ctx} (m-snd {A = A} {B = B} eqLoc eqImp)
 ... | (failure _ , _) | refl
   with inspectLookupLocal ctx "snd" | inspectLookupImport ctx "snd"
 ... | llv-not-found eqL | liv-not-found eqI with B ≟T B
-...   | yes refl = IR.snd , m-snd eqL eqI , _ , _ , _ , t-morph-lift (m-snd eqL eqI) , refl , refl , refl
+...   | yes refl = IR.snd , m-snd eqL eqI , _ , _ , _ , t-morph-lift (m-snd eqL eqI) , refl , refl , refl , refl
 ...   | no ¬eq = ⊥-elim (¬eq refl)
 morph-elab (m-snd eqLoc eqImp) | (failure _ , _) | refl | llv-found imp | _ = ⊥-elim (just≢nothing (trans (sym imp) eqLoc))
 morph-elab (m-snd eqLoc eqImp) | (failure _ , _) | refl | _ | liv-found imp = ⊥-elim (just≢nothing (trans (sym imp) eqImp))
@@ -153,7 +156,7 @@ morph-elab {ctx = ctx} (m-terminal eqLoc eqImp)
   with inferElabV ctx (Raw.RVar "terminal") | inferElabV-RVar-fail-bridge ctx "terminal" (λ ()) eqLoc eqImp
 ... | (failure _ , _) | refl
   with inspectLookupLocal ctx "terminal" | inspectLookupImport ctx "terminal"
-... | llv-not-found eqL | liv-not-found eqI = IR.terminal , m-terminal eqL eqI , _ , _ , _ , t-morph-lift (m-terminal eqL eqI) , refl , refl , refl
+... | llv-not-found eqL | liv-not-found eqI = IR.terminal , m-terminal eqL eqI , _ , _ , _ , t-morph-lift (m-terminal eqL eqI) , refl , refl , refl , refl
 morph-elab (m-terminal eqLoc eqImp) | (failure _ , _) | refl | llv-found imp | _ = ⊥-elim (just≢nothing (trans (sym imp) eqLoc))
 morph-elab (m-terminal eqLoc eqImp) | (failure _ , _) | refl | _ | liv-found imp = ⊥-elim (just≢nothing (trans (sym imp) eqImp))
 
@@ -161,7 +164,7 @@ morph-elab {ctx = ctx} (m-initial eqLoc eqImp)
   with inferElabV ctx (Raw.RVar "initial") | inferElabV-RVar-fail-bridge ctx "initial" (λ ()) eqLoc eqImp
 ... | (failure _ , _) | refl
   with inspectLookupLocal ctx "initial" | inspectLookupImport ctx "initial"
-... | llv-not-found eqL | liv-not-found eqI = IR.initial , m-initial eqL eqI , _ , _ , _ , t-morph-lift (m-initial eqL eqI) , refl , refl , refl
+... | llv-not-found eqL | liv-not-found eqI = IR.initial , m-initial eqL eqI , _ , _ , _ , t-morph-lift (m-initial eqL eqI) , refl , refl , refl , refl
 morph-elab (m-initial eqLoc eqImp) | (failure _ , _) | refl | llv-found imp | _ = ⊥-elim (just≢nothing (trans (sym imp) eqLoc))
 morph-elab (m-initial eqLoc eqImp) | (failure _ , _) | refl | _ | liv-found imp = ⊥-elim (just≢nothing (trans (sym imp) eqImp))
 
@@ -170,7 +173,7 @@ morph-elab {ctx = ctx} (m-inl {A = A} {B = B} eqLoc eqImp)
 ... | (failure _ , _) | refl
   with inspectLookupLocal ctx "inl" | inspectLookupImport ctx "inl"
 ... | llv-not-found eqL | liv-not-found eqI with A ≟T A
-...   | yes refl = IR.inl Heap , m-inl eqL eqI , _ , _ , _ , t-morph-lift (m-inl eqL eqI) , refl , refl , refl
+...   | yes refl = IR.inl Heap , m-inl eqL eqI , _ , _ , _ , t-morph-lift (m-inl eqL eqI) , refl , refl , refl , refl
 ...   | no ¬eq = ⊥-elim (¬eq refl)
 morph-elab (m-inl eqLoc eqImp) | (failure _ , _) | refl | llv-found imp | _ = ⊥-elim (just≢nothing (trans (sym imp) eqLoc))
 morph-elab (m-inl eqLoc eqImp) | (failure _ , _) | refl | _ | liv-found imp = ⊥-elim (just≢nothing (trans (sym imp) eqImp))
@@ -180,7 +183,7 @@ morph-elab {ctx = ctx} (m-inr {A = A} {B = B} eqLoc eqImp)
 ... | (failure _ , _) | refl
   with inspectLookupLocal ctx "inr" | inspectLookupImport ctx "inr"
 ... | llv-not-found eqL | liv-not-found eqI with B ≟T B
-...   | yes refl = IR.inr Heap , m-inr eqL eqI , _ , _ , _ , t-morph-lift (m-inr eqL eqI) , refl , refl , refl
+...   | yes refl = IR.inr Heap , m-inr eqL eqI , _ , _ , _ , t-morph-lift (m-inr eqL eqI) , refl , refl , refl , refl
 ...   | no ¬eq = ⊥-elim (¬eq refl)
 morph-elab (m-inr eqLoc eqImp) | (failure _ , _) | refl | llv-found imp | _ = ⊥-elim (just≢nothing (trans (sym imp) eqLoc))
 morph-elab (m-inr eqLoc eqImp) | (failure _ , _) | refl | _ | liv-found imp = ⊥-elim (just≢nothing (trans (sym imp) eqImp))
@@ -189,26 +192,27 @@ morph-elab (m-const gd) = const-morph-strong gd
 morph-elab (m-named ¬u eqL eqI) = named-morph-strong ¬u eqL eqI
 morph-elab (m-named-resolved eqI) = named-morph-strong-resolved eqI
 morph-elab (m-arr df) with morph-elab df
-... | (mf , mFᵐ , Ef , _ , _ , Wf , eqf , exEff-f , exW-f)
-      rewrite eqf = mf , m-arr mFᵐ , _ , _ , _ , _ , refl , exEff-f , cong extractMorph-arr exW-f
+... | (mf , mFᵐ , Ef , _ , _ , Wf , eqf , exEff-f , exW-f , cons-f)
+      rewrite eqf = mf , m-arr mFᵐ , _ , _ , _ , _ , refl , exEff-f , cong extractMorph-arr exW-f , cons-f
 -- ---- recursive combinators ----
 morph-elab (m-compose {B = Bmid} eqB df dg) with morph-elab df | morph-elab dg
-... | (mf , mFᵐ , Ef , _ , _ , Wf , eqf , exEff-f , exW-f) | (mg , mGᵐ , Eg , _ , _ , Wg , eqg , exEff-g , exW-g)
+... | (mf , mFᵐ , Ef , _ , _ , Wf , eqf , exEff-f , exW-f , cons-f) | (mg , mGᵐ , Eg , _ , _ , Wg , eqg , exEff-g , exW-g , cons-g)
       with composeGo-success eqB eqf eqg exEff-f exEff-g exW-f exW-g
-...     | (m , d , fr , eqGo) =
+...     | (m , d , fr , eqGo , m≡fg) =
         m , m-compose eqB mFᵐ mGᵐ , _ , d , fr , t-morph-lift (m-compose eqB mFᵐ mGᵐ) ,
-        trans (sym (go-canonical eqB)) eqGo , refl , refl
+        trans (sym (go-canonical eqB)) eqGo , refl , refl ,
+        trans m≡fg (cong₂ IR._∘_ cons-f cons-g)
 morph-elab (m-case df dg) with morph-elab df | morph-elab dg
-... | (mf , mFᵐ , Ef , _ , _ , Wf , eqf , exEff-f , exW-f) | (mg , mGᵐ , Eg , _ , _ , Wg , eqg , exEff-g , exW-g)
+... | (mf , mFᵐ , Ef , _ , _ , Wf , eqf , exEff-f , exW-f , cons-f) | (mg , mGᵐ , Eg , _ , _ , Wg , eqg , exEff-g , exW-g , cons-g)
       rewrite eqf | eqg | exEff-f | exEff-g | exW-f | exW-g =
-      _ , m-case mFᵐ mGᵐ , _ , _ , _ , _ , refl , refl , refl
+      _ , m-case mFᵐ mGᵐ , _ , _ , _ , _ , refl , refl , refl , cong₂ IR.case cons-f cons-g
 morph-elab (m-pair df dg) with morph-elab df | morph-elab dg
-... | (mf , mFᵐ , Ef , _ , _ , Wf , eqf , exEff-f , exW-f) | (mg , mGᵐ , Eg , _ , _ , Wg , eqg , exEff-g , exW-g)
+... | (mf , mFᵐ , Ef , _ , _ , Wf , eqf , exEff-f , exW-f , cons-f) | (mg , mGᵐ , Eg , _ , _ , Wg , eqg , exEff-g , exW-g , cons-g)
       rewrite eqf | eqg | exEff-f | exEff-g | exW-f | exW-g =
-      _ , m-pair mFᵐ mGᵐ , _ , _ , _ , _ , refl , refl , refl
+      _ , m-pair mFᵐ mGᵐ , _ , _ , _ , _ , refl , refl , refl , cong₂ (λ x y → IR.⟨ x , y ⟩ Heap) cons-f cons-g
 morph-elab (m-curry df) with morph-elab df
-... | (mf , mFᵐ , Ef , _ , _ , Wf , eqf , exEff-f , exW-f)
-      rewrite eqf | exEff-f | exW-f = _ , _ , _ , _ , _ , _ , refl , refl , refl
+... | (mf , mFᵐ , Ef , _ , _ , Wf , eqf , exEff-f , exW-f , cons-f)
+      rewrite eqf | exEff-f | exW-f = _ , _ , _ , _ , _ , _ , refl , refl , refl , cong (λ z → IR.curry z Heap) cons-f
 morph-elab (m-cata eqWF dalg) = cata-morph-strong eqWF dalg
 
 -- The weak (checkElab) morphism-completeness, derived from the strong form.
@@ -219,4 +223,4 @@ morph-complete : ∀ {ctx : NamedCtx} {e : RawExpr} {A B : Type} {π : T.Purity}
                    checkElab ctx e (A T.⇒[ T.mk-kind T.Many π ] B)
                      ≡ success zeroUsage eE d f)))
 morph-complete d with morph-elab d
-... | (_ , _ , E , d′ , fr , _ , eqV , _ , _) = E , d′ , fr , cong proj₁ eqV
+... | (_ , _ , E , d′ , fr , _ , eqV , _ , _ , _) = E , d′ , fr , cong proj₁ eqV
