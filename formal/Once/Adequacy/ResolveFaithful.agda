@@ -28,6 +28,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; sym;
 open import Once.Type using (Type; Int)
 open import Once.Surface.Syntax as Srf using (Expr; Usage; ⟦_⟧ᶜ)
 open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ)
+open import Once.Denotation.TraceMonad using (T; _>>=T_)
 import Once.Denotation.SourceDenote as SD
 open import Once.TypeCheck.Elaborate using (resolveExpr; PolyCtx; Imports)
 open import Once.Postulates using (extensionality)
@@ -42,6 +43,14 @@ postulate
       (polys : PolyCtx) (imps userFns : Imports) (fresh : ℕ)
       (e : Expr Γ Ψ A) (dγ : ⟦ ⟦ Γ ⟧ᶜ ⟧ᴰ) (k : ℕ)
     → SD.⟦ resolveExpr polys imps userFns fresh e ⟧ˢ dγ k ≡ SD.⟦ e ⟧ˢ dγ k
+
+-- Two-sided bind congruence at each fuel: `>>=T` at `j` consumes only `m j`
+-- (and the continuation at `proj₂ (m j)`), so pointwise equalities of BOTH the
+-- monad value and the continuation transfer.
+bind2-faithful : ∀ {X Y} (mR mU : T X) (gR gU : X → T Y)
+  → (∀ j → mR j ≡ mU j) → (∀ v j → gR v j ≡ gU v j)
+  → ∀ j → (mR >>=T gR) j ≡ (mU >>=T gU) j
+bind2-faithful mR mU gR gU me ge j rewrite me j | ge (proj₂ (mU j)) j = refl
 
 ------------------------------------------------------------------------
 -- The faithfulness theorem.
@@ -93,5 +102,15 @@ resolveExpr-faithful polys imps userFns fresh (Srf.case' s l r) dγ k
   rewrite resolveExpr-faithful polys imps userFns fresh s dγ k
         | extensionality (λ a → extensionality (λ j → resolveExpr-faithful polys imps userFns fresh l (dγ , a) j))
         | extensionality (λ b → extensionality (λ j → resolveExpr-faithful polys imps userFns fresh r (dγ , b) j)) = refl
--- Hard constructors (sigOp / effApp / cata / ana / poly) → the named residual.
+-- effApp: D018 closure `returnT (λ _ → ⟦f⟧ >>=T λ vf → ⟦x⟧ >>=T λ vx → vf vx)`.
+-- Funext over the Unit arg + fuel; the body is a nested bind closed by bind2.
+resolveExpr-faithful polys imps userFns fresh (Srf.effApp f x) dγ k =
+  cong ([] ,_) (extensionality (λ _ → extensionality
+    (bind2-faithful (SD.⟦ resolveExpr polys imps userFns fresh f ⟧ˢ dγ) (SD.⟦ f ⟧ˢ dγ) _ _
+      (λ j → resolveExpr-faithful polys imps userFns fresh f dγ j)
+      (λ vf → bind2-faithful (SD.⟦ resolveExpr polys imps userFns fresh x ⟧ˢ dγ) (SD.⟦ x ⟧ˢ dγ)
+                (λ vx → vf vx) (λ vx → vf vx)
+                (λ j → resolveExpr-faithful polys imps userFns fresh x dγ j)
+                (λ vx j → refl)))))
+-- Hard constructors (sigOp / cata / ana / poly) → the named residual.
 resolveExpr-faithful polys imps userFns fresh e dγ k = resolveExpr-faithful-hard polys imps userFns fresh e dγ k
