@@ -24,7 +24,7 @@ module Once.Adequacy.RealizeAgrees where
 
 open import Data.Nat using (ℕ)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃-syntax)
-open import Data.String using (String)
+open import Data.String using (String; _++_)
 open import Data.String.Properties as StrProp using ()
 open import Data.Empty using (⊥; ⊥-elim)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂)
@@ -47,7 +47,7 @@ open import Once.Surface.Syntax as Surface using (Expr; Usage; ⟦_⟧ᶜ; pair;
 open Surface.Usage using () renaming (_∷_ to _∷ᵘ_)
 open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ)
 import Once.Denotation.SourceDenote as SD
-open import Once.CanonicalName using (CanonicalName; showCanonical)
+open import Once.CanonicalName using (CanonicalName; showCanonical; bare)
 
 private
   Env : NamedCtx → Set
@@ -255,6 +255,28 @@ masq {ctx} {Dom} {Cod} cn eff dγ k with isUnit? Cod
 ... | no _ = refl
 ... | yes refl = masq-unit {ctx} {Dom} cn (lookupSigEffect (NamedCtx.sigEffects ctx) (showCanonical cn)) dγ k
 
+-- The RQualified analogue of `masq`. `ext-arrow-info` decides its Unit-codomain
+-- via `E._≟T_ Unit` (NOT the `isUnit?` realize's `sigOp` uses), so the bridge
+-- cross-checks both deciders. `pure` is `refl` on both sides. For `eff`:
+-- `Cod ≟T Unit = yes` ⇒ `Cod := Unit`, realize's `isUnit? Unit` also fires, and
+-- the `lookupSigEffect` split is all `refl` (emit-D reads only the name, so
+-- haltsV/emitsV collapse, exactly as in `masq-unit`); `Cod ≟T Unit = no ¬p` ⇒
+-- both sides `pureV` once `isUnit? Cod` is forced to `no` (its `yes` corner
+-- contradicts ¬p).
+masq-arrow : ∀ {ctx : NamedCtx} {Dom Cod : Type} (alias name : String) (π : Purity)
+       (dγ : Env ctx) (k : ℕ)
+     → SD.⟦ lift-morphism {Γ = NamedCtx.debruijn ctx} {π = π} (IR.SigOp (E.ext-arrow-info {Dom} {Cod} ctx alias name π)) ⟧ˢ dγ k
+      ≡ SD.⟦ sigOp {Γ = NamedCtx.debruijn ctx} {A = Dom ⇒[ mk-kind Many π ] Cod} (bare (alias ++ "." ++ name)) ⟧ˢ dγ k
+masq-arrow {ctx} {Dom} {Cod} alias name pure dγ k = refl
+masq-arrow {ctx} {Dom} {Cod} alias name eff dγ k with Cod E.≟T Unit
+... | yes refl with lookupSigEffect (NamedCtx.sigEffects ctx) (alias ++ "." ++ name)
+...   | just se-halts = refl
+...   | just se-emits = refl
+...   | nothing       = refl
+masq-arrow {ctx} {Dom} {Cod} alias name eff dγ k | no ¬p with isUnit? Cod
+... | no _     = refl
+... | yes refl = ⊥-elim (¬p refl)
+
 -- RResolved agreement, dispatched on the import-lookup result exactly as the
 -- elaborator's `inferElabV-RResolved-aux` does. A `Many`-arrow type resolves to
 -- the effect-aware `lift-morphism (SigOp (ext-resolved-info …))` whose
@@ -306,6 +328,32 @@ agree-RVar ctx x ¬u (just (A , Ψ , se)) eq-loc impLhs eq-imp refl dγ k = refl
 agree-RVar ctx x ¬u nothing eq-loc (just ty) eq-imp refl dγ k = refl
 agree-RVar ctx x ¬u nothing eq-loc nothing eq-imp eq dγ k = ⊥-elim (fail≢succ (cong proj₁ eq))
 
+-- RQualified agreement, dispatched on the import-lookup of the dotted path,
+-- exactly as `inferElabV-RQualified-aux` does. A `Many`-arrow resolves to the
+-- effect-aware `lift-morphism (SigOp (ext-arrow-info …))` whose agreement with
+-- realize's `sigOp (bare (alias.name))` is `masq-arrow`; every other type
+-- resolves to that same `sigOp` directly (= realize) so agreement is `refl`.
+-- `nothing` ⇒ the aux fails, so the success-eq is absurd.
+agree-RQualified : ∀ (ctx : NamedCtx) (name alias : String) (lhs : Maybe Type)
+  (lkup : lookupImport (NamedCtx.imports ctx) (alias ++ "." ++ name) ≡ lhs)
+  {A Ψ se d f w}
+  → E.inferElabV-RQualified-aux ctx name alias lhs lkup ≡ (success A Ψ se d f , w)
+  → ∀ (dγ : Env ctx) (k : ℕ) → SD.⟦ se ⟧ˢ dγ k ≡ SD.⟦ realize-infer w ⟧ˢ dγ k
+agree-RQualified ctx name alias (just (A ⇒[ mk-kind Many π ] B)) lkup refl dγ k = masq-arrow {ctx} {A} {B} alias name π dγ k
+agree-RQualified ctx name alias (just (A ⇒[ mk-kind One  π ] B)) lkup refl dγ k = refl
+agree-RQualified ctx name alias (just (A ⇒[ mk-kind Zero π ] B)) lkup refl dγ k = refl
+agree-RQualified ctx name alias (just Unit)        lkup refl dγ k = refl
+agree-RQualified ctx name alias (just Void)        lkup refl dγ k = refl
+agree-RQualified ctx name alias (just Int)         lkup refl dγ k = refl
+agree-RQualified ctx name alias (just Float)       lkup refl dγ k = refl
+agree-RQualified ctx name alias (just Str)         lkup refl dγ k = refl
+agree-RQualified ctx name alias (just Buffer)      lkup refl dγ k = refl
+agree-RQualified ctx name alias (just (A * B))     lkup refl dγ k = refl
+agree-RQualified ctx name alias (just (A + B))     lkup refl dγ k = refl
+agree-RQualified ctx name alias (just (μ-type F))  lkup refl dγ k = refl
+agree-RQualified ctx name alias (just (ν-type F))  lkup refl dγ k = refl
+agree-RQualified ctx name alias nothing lkup eq dγ k = ⊥-elim (fail≢succ (cong proj₁ eq))
+
 mutual
   infer-agreeV : ∀ (ctx : NamedCtx) (e : RawExpr) {A Ψ se d f w}
     (eq : E.inferElabV ctx e ≡ (success A Ψ se d f , w)) → InferAgreeV ctx e eq
@@ -342,6 +390,10 @@ mutual
   infer-agreeV ctx (Raw.RBinOp op e₁ e₂) eq dγ k =
     agree-RBinOp op (E.inferElabV ctx e₁) (E.inferElabV ctx e₂) eq
       (λ p → infer-agreeV ctx e₁ p) (λ p → infer-agreeV ctx e₂ p) dγ k
+  -- RQualified: dispatch on the dotted-path import-lookup (with-free top-level).
+  infer-agreeV ctx (Raw.RQualified name alias) eq dγ k =
+    agree-RQualified ctx name alias
+      (lookupImport (NamedCtx.imports ctx) (alias ++ "." ++ name)) refl eq dγ k
   infer-agreeV ctx e eq = infer-agreeV-todo ctx e eq
 
   check-agreeV : ∀ (ctx : NamedCtx) (e : RawExpr) (T : Type) {Ψ se d f w}
