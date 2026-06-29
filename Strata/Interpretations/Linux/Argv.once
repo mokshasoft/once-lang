@@ -15,7 +15,7 @@ signature argc : Eff Unit Int
 
 -- | Get argument at index (0-based). Returns empty string if out of bounds.
 -- Index 0 is the program name.
-signature argv : Eff Int (String Utf8)
+signature argv : Eff Int (String)
 
 -- | Get argument at index 1 (first user argument), parsed as integer.
 -- Returns 0 if no argument or parse fails.

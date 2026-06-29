@@ -83,10 +83,10 @@ signature intToFloat : Int -> Float
 signature floatToInt : Float -> Int
 
 -- | Parse float from string (returns 0.0 on failure)
-signature parseFloat : String Utf8 -> Float
+signature parseFloat : String -> Float
 
 -- | Convert float to string
-signature floatToString : Float -> String Utf8
+signature floatToString : Float -> String
 
 ------------------------------------------------------------------------
 -- Constants
