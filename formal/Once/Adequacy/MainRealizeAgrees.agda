@@ -68,15 +68,11 @@ open import Once.Adequacy.RealizeBridge using (realize-agrees)
 -- (A/B/C). The hook itself is now PROVEN from them (below) — so A/B/C's TYPES
 -- are pinned by that composition, not guessed.
 --
--- (A) resolveExpr-faithfulness — the resolver preserves denotation. 28 non-poly
---     cases are already `refl` lemmas in `Elaborate`; only the `poly` case is
---     real content. Context-general.
-postulate
-  resolveExpr-faithful :
-    ∀ {n} {Γ : Srf.Ctx n} {Ψ : Usage n} {A : Type}
-      (polys : PolyCtx) (imps userFns : Imports) (fresh : ℕ)
-      (e : Expr Γ Ψ A) (dγ : ⟦ ⟦ Γ ⟧ᶜ ⟧ᴰ) (k : ℕ)
-    → SD.⟦ resolveExpr polys imps userFns fresh e ⟧ˢ dγ k ≡ SD.⟦ e ⟧ˢ dγ k
+-- (A) resolveExpr-faithfulness — the resolver preserves denotation. The ~30
+--     STRUCTURAL constructors are now PROVEN by induction in
+--     `Once.Adequacy.ResolveFaithful`; the 5 hard constructors (sigOp / effApp /
+--     cata / ana / poly) are isolated there in `resolveExpr-faithful-hard`.
+open import Once.Adequacy.ResolveFaithful using (resolveExpr-faithful)
 
 -- (B) realize denotational-invariance — ANY two `⊢ᶜ` derivations of the SAME
 --     judgment realize to denotationally-equal terms. This is what lets the
