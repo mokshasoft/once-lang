@@ -665,6 +665,24 @@ mutual
         with T E.≟T T' | eq₁
   ...     | yes refl | refl = infer-agreeV ctx (Raw.RResolved cn) (rec (infer<check (Raw.RResolved cn))) ieq dγ k
   ...     | no _     | ()
+  -- RUnit / RStringLit: generic fallback over a literal whose inferred type is
+  -- fixed (Unit / Str); case `T ≟T <that>` (the fallback's `T ≟T T'`), so `eq`
+  -- reduces. `yes refl` delegates to `infer-agreeV` of the literal.
+  check-agreeV ctx Raw.RUnit T (acc rec) eq dγ k with T E.≟T Unit | eq
+  ... | yes refl | refl = infer-agreeV ctx Raw.RUnit (rec (infer<check Raw.RUnit)) refl dγ k
+  ... | no _     | ()
+  check-agreeV ctx (Raw.RStringLit s) T (acc rec) eq dγ k with T E.≟T Str | eq
+  ... | yes refl | refl = infer-agreeV ctx (Raw.RStringLit s) (rec (infer<check (Raw.RStringLit s))) refl dγ k
+  ... | no _     | ()
+  -- RInt: vlift target (X ⇒[Many,pure] Int) emits `lift-morphism (intLit n)`,
+  -- witness `t-value-lift (g-int n)`; `realize-global (g-int n) = intLit n`, so
+  -- the two `lift-morphism`s coincide ⇒ `refl`. Otherwise the generic fallback
+  -- (inferred type Int) delegates to `infer-agreeV`.
+  check-agreeV ctx (Raw.RInt n) T (acc rec) eq dγ k with E.isRIntVliftTarget? T | eq
+  ... | just (X , refl) | refl = refl
+  ... | nothing | eq' with T E.≟T Int | eq'
+  ...   | yes refl | refl = infer-agreeV ctx (Raw.RInt n) (rec (infer<check (Raw.RInt n))) refl dγ k
+  ...   | no _     | ()
   check-agreeV ctx e T _ eq = check-agreeV-todo ctx e T eq
 
 ------------------------------------------------------------------------
