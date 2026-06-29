@@ -41,18 +41,14 @@ open import Once.Adequacy.CanonPolyTransport using (canonPolysCtx; PInB)
 open import Once.Adequacy.CanonExtract using (canonFI; canonFuns; canonPolys)
 open import Once.Adequacy.CanonAllFuns using (buildPolyCtx-canon)
 open import Once.Adequacy.CanonReflectMutual using (canon-reflects-ᶜ)
+open import Once.Adequacy.CanonReflectPolyTransport using (polys-reflect-ᶜ)
 open import Once.Adequacy.ModuleComplete using (AllMainEffUU; MainExists)
 
 ------------------------------------------------------------------------
--- The poly-context-transport reversals (TEMP scaffold).
+-- The remaining poly-context-transport reversal (TEMP scaffold).
 ------------------------------------------------------------------------
 
 postulate
-  -- Reverse of `CanonPolyTransport.polys-transport-ᶜ`.
-  polys-reflect-ᶜ : ∀ (b : List String) {n Γ Δ f i s} (p : PolyCtx) → PInB p b → ∀ {e A Ψ}
-    → mkCtx n Γ Δ f i (canonPolysCtx b p) s ⊢ᶜ e ∶ A ⨾ Ψ
-    → mkCtx n Γ Δ f i p s ⊢ᶜ e ∶ A ⨾ Ψ
-
   -- Reverse of `CanonAllFuns.inferType-transport`.
   inferType-reflect : ∀ (ctx : C.FunCtx) (polysU : List PolyFunInfo) (b : List String)
     → PInB (C.buildPolyCtx polysU) b → (fi : FunInfo) (ty : Type)
