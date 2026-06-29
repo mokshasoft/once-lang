@@ -44,6 +44,8 @@ open import Once.SigEffect using (SigEffect) renaming (halts to se-halts; emits 
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Sum using (inj₁; inj₂; [_,_]′)
 open import Once.Adequacy.ResolveFaithful using (bind2-faithful)
+open import Once.Denotation.TraceMonad using (returnT)
+open import Once.Postulates using (extensionality)
 open import Relation.Nullary using (Dec; yes; no; ¬_)
 open import Once.TypeCheck.Judgment using (_⊢ᵢ_∶_⨾_; _⊢ᶜ_∶_⨾_; _⊢ᵍ_∶_; t-int; t-str; t-unit; t-pair; t-neg; t-let; t-binop-arith; t-binop-cmp; g-int; g-terminal; g-pair; g-inl; g-inr; g-In)
 open import Once.Denotation.Realize using (realize; realize-infer; realize-global)
@@ -750,6 +752,31 @@ mutual
   ...     | success T'' Ψ eE d fr , w | eq₂ with T' E.≟T T'' | eq₂
   ...       | yes refl | refl = infer-agreeV ctx (Raw.RPair a b) (rec (infer<check (Raw.RPair a b))) ieq dγ k
   ...       | no _     | ()
+  -- RLam: only checks against a pure arrow `A ⇒[Many/One/Zero,pure] B`; the body
+  -- is checked in `ctx,x:A`. `se = lam q leq bodyE`, witness `t-lam leq wBody`,
+  -- and `⟦lam q _ e⟧ = returnT (λ a → ⟦e⟧ (dγ,a))`, so agreement = the body
+  -- `check-agreeV` lifted through the bound value (funext over `a` then fuel `j`).
+  -- Every non-pure-arrow target fails ⇒ absurd success-eq.
+  check-agreeV ctx (Raw.RLam x body) (A ⇒[ mk-kind q pure ] B) (acc rec) eq dγ k
+    with E.checkElabV (extendNamedCtx ctx x A) body B in eqBody | eq
+  ... | failure _ , _ | ()
+  ... | success (q' ∷ᵘ Ψ) bodyE d fr , wBody | eq₁ with E.decideLeq q' q | eq₁
+  ...   | just leq  | refl =
+          cong (λ f → returnT f k)
+            (extensionality (λ a → extensionality (λ j →
+              check-agreeV (extendNamedCtx ctx x A) body B (rec (mC-sub ≤-refl)) eqBody (dγ , a) j)))
+  ...   | nothing   | ()
+  check-agreeV ctx (Raw.RLam x body) Unit         _ ()
+  check-agreeV ctx (Raw.RLam x body) Void         _ ()
+  check-agreeV ctx (Raw.RLam x body) Int          _ ()
+  check-agreeV ctx (Raw.RLam x body) Float        _ ()
+  check-agreeV ctx (Raw.RLam x body) Str          _ ()
+  check-agreeV ctx (Raw.RLam x body) Buffer       _ ()
+  check-agreeV ctx (Raw.RLam x body) (_ * _)      _ ()
+  check-agreeV ctx (Raw.RLam x body) (_ + _)      _ ()
+  check-agreeV ctx (Raw.RLam x body) (μ-type _)   _ ()
+  check-agreeV ctx (Raw.RLam x body) (ν-type _)   _ ()
+  check-agreeV ctx (Raw.RLam x body) (_ ⇒[ mk-kind _ eff ] _) _ ()
   check-agreeV ctx e T _ eq = check-agreeV-todo ctx e T eq
 
 ------------------------------------------------------------------------
