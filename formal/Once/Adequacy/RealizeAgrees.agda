@@ -545,6 +545,12 @@ infer<check e = ≤-refl
 check<infer-annot : ∀ e T → mCheck e < mInfer (Raw.RAnnot e T)
 check<infer-annot e T = s≤s (≤-reflexive (sym (+-suc (μ e) (μ e))))
 
+-- check→check on a strictly-smaller subterm: `μ sub < μ par` ⇒
+-- `mCheck sub < mCheck par`. Stated over the ℕ measures (NOT the exprs — `μ` is
+-- not injective, so expr indices wouldn't infer).
+mC-sub : ∀ {m n : ℕ} → m < n → suc (m +ℕ m) < suc (n +ℕ n)
+mC-sub h = s≤s (dbl-< h)
+
 -- generic subterm size bounds (raw ℕ; instantiate with the μ of children)
 μ<-l : ∀ a b → a < suc (a +ℕ b)
 μ<-l a b = s≤s (m≤m+n a b)
@@ -720,6 +726,30 @@ mutual
   ... | nothing | eq' with T E.≟T Int | eq'
   ...   | yes refl | refl = infer-agreeV ctx (Raw.RInt n) (rec (infer<check (Raw.RInt n))) refl dγ k
   ...   | no _     | ()
+  -- RPair: product target → bidirectional component check (pair denotation is
+  -- fuel-`k`-pointwise, rewrite both component agreements); pure-arrow→product
+  -- vlift → `lift-morphism m` vs `realize-global gd`, bridged by `checkG-realize`;
+  -- else the generic infer-and-match fallback.
+  check-agreeV ctx (Raw.RPair a b) T (acc rec) eq dγ k with E.classifyRPairTarget T | eq
+  ... | E.rpt-prod A B | eq'
+        with E.checkElabV ctx a A in eqa | eq'
+  ...     | failure _ , _ | ()
+  ...     | success Ψ₁ aE da fa , wA | eq''
+            with E.checkElabV ctx b B in eqb | eq''
+  ...         | failure _ , _ | ()
+  ...         | success Ψ₂ bE db fb , wB | refl
+                rewrite check-agreeV ctx a A (rec (mC-sub (μ<-l (μ a) (μ b)))) eqa dγ k
+                      | check-agreeV ctx b B (rec (mC-sub (μ<-r (μ a) (μ b)))) eqb dγ k = refl
+  check-agreeV ctx (Raw.RPair a b) T (acc rec) eq dγ k | E.rpt-vlift X A B | eq'
+        with E.inspectCheckG ctx X (Raw.RPair a b) (A * B) | eq'
+  ...     | E.cgv-nothing _ | ()
+  ...     | E.cgv-just {m} {gd} cgeq | refl rewrite checkG-realize gd cgeq = refl
+  check-agreeV ctx (Raw.RPair a b) T (acc rec) eq dγ k | E.rpt-other T' | eq'
+        with E.inferElabV ctx (Raw.RPair a b) in ieq | eq'
+  ...     | failure _ , _ | ()
+  ...     | success T'' Ψ eE d fr , w | eq₂ with T' E.≟T T'' | eq₂
+  ...       | yes refl | refl = infer-agreeV ctx (Raw.RPair a b) (rec (infer<check (Raw.RPair a b))) ieq dγ k
+  ...       | no _     | ()
   check-agreeV ctx e T _ eq = check-agreeV-todo ctx e T eq
 
 ------------------------------------------------------------------------
