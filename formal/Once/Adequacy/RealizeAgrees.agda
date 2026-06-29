@@ -244,6 +244,10 @@ mutual
       (λ {A} rE2 eqRE2 p → infer-agreeV (extendNamedCtx ctx x A) e₂ (trans eqRE2 p)) dγ k
   infer-agreeV ctx (Raw.RResolved cn) eq dγ k =
     agree-RResolved ctx cn (lookupImport (NamedCtx.imports ctx) (showCanonical cn)) refl eq dγ k
+  -- RLam / RAna: `inferElabV` always fails (no infer rule), so the success
+  -- equation is absurd.
+  infer-agreeV ctx (Raw.RLam _ _) ()
+  infer-agreeV ctx (Raw.RAna _ _) ()
   infer-agreeV ctx e eq = infer-agreeV-todo ctx e eq
 
   check-agreeV : ∀ (ctx : NamedCtx) (e : RawExpr) (T : Type) {Ψ se d f w}
