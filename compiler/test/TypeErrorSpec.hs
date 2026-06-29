@@ -20,6 +20,10 @@ typeErrorTests :: TestTree
 typeErrorTests = testGroup "Type Errors"
   [ typeMismatchTests
   , mainTypeTests
+  , builtinShapeErrorTests
+  , destructErrorTests
+  , modeErrorTests
+  , scopeErrorTests
   ]
 
 ------------------------------------------------------------------------
@@ -126,6 +130,84 @@ mainTypeTests = testGroup "Main function validation"
   ]
 
 ------------------------------------------------------------------------
+-- Builtin shape errors (fst/snd/negation on the wrong type, arity)
+------------------------------------------------------------------------
+
+builtinShapeErrorTests :: TestTree
+builtinShapeErrorTests = testGroup "Builtin shape errors"
+  [ rejects "fst applied to a non-pair"
+      [ "f : Int -> Int"
+      , "f x = fst x"
+      ]
+  , rejects "snd applied to a non-pair"
+      [ "f : Int -> Int"
+      , "f x = snd x"
+      ]
+  , rejects "unary negation of a non-Int"
+      [ "f : String -> Int"
+      , "f x = -x"
+      ]
+  , rejects "over-application (id given two arguments)"
+      [ "f : Int -> Int"
+      , "f x = id x x"
+      ]
+  ]
+
+------------------------------------------------------------------------
+-- destruct (sum elimination) errors
+------------------------------------------------------------------------
+
+destructErrorTests :: TestTree
+destructErrorTests = testGroup "destruct errors"
+  [ rejects "destruct on a non-sum scrutinee"
+      [ "f : Int -> Int"
+      , "f x = destruct x of { Left a -> a ; Right b -> b }"
+      ]
+  , rejects "destruct branches with different types"
+      [ "f : (Int + Int) -> Int"
+      , "f x = destruct x of { Left a -> a ; Right b -> \"s\" }"
+      ]
+  ]
+
+------------------------------------------------------------------------
+-- Mode errors: check-only constructs used in inference position
+------------------------------------------------------------------------
+
+modeErrorTests :: TestTree
+modeErrorTests = testGroup "Inference-mode errors"
+  [ rejects "bare lambda without a type signature"
+      [ "f = \\x -> x"
+      ]
+  , rejects "inl with no target sum type"
+      [ "g = inl"
+      ]
+  , rejects "inr with no target sum type"
+      [ "g = inr"
+      ]
+  , rejects "initial with no target type"
+      [ "g = initial"
+      ]
+  ]
+
+------------------------------------------------------------------------
+-- Scope errors: unbound (qualified) names
+------------------------------------------------------------------------
+
+scopeErrorTests :: TestTree
+scopeErrorTests = testGroup "Scope errors"
+  [ rejects "unbound local variable"
+      [ "f : Int -> Int"
+      , "f x = y"
+      ]
+  , rejects "unbound qualified (imported) name"
+      [ "import I.Linux.Syscalls as S"
+      , ""
+      , "main : IO Unit"
+      , "main = nope@S"
+      ]
+  ]
+
+------------------------------------------------------------------------
 -- Test Helpers
 ------------------------------------------------------------------------
 
@@ -144,3 +226,9 @@ typeCheckSource source = withSystemTempFile "test.once" $ \path handle -> do
 isLeft :: Either a b -> Bool
 isLeft (Left _) = True
 isLeft (Right _) = False
+
+-- | Assert that a program (given as source lines) is REJECTED by `once check`.
+rejects :: TestName -> [T.Text] -> TestTree
+rejects name sourceLines = testCase name $ do
+  result <- typeCheckSource (T.unlines sourceLines)
+  assertBool ("Should reject: " ++ name) (isLeft result)
