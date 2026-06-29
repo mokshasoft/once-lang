@@ -398,6 +398,61 @@ mutual
 
   check-agreeV : ∀ (ctx : NamedCtx) (e : RawExpr) (T : Type) {Ψ se d f w}
     (eq : E.checkElabV ctx e T ≡ (success Ψ se d f , w)) → CheckAgreeV ctx e T eq
+  -- Generic infer-and-match fallback (checkElabV's catch-all): the check
+  -- witness is `t-embed w` over the infer witness `w`, `se` is the infer-
+  -- elaborated `eE`, and `realize (t-embed w) = realize-infer w`, so agreement
+  -- is EXACTLY `infer-agreeV` of the same expr. We mirror the fallback's two
+  -- `with`s (inferElabV result; `T ≟T T'`), threading `eq` through each level
+  -- so it reduces: `failure`/type-mismatch make it absurd, `yes refl` delegates.
+  check-agreeV ctx (Raw.RBinOp op a b) T eq dγ k
+    with E.inferElabV ctx (Raw.RBinOp op a b) in ieq | eq
+  ... | failure _ , _ | ()
+  ... | success T' Ψ eE d fr , w | eq₁
+        with T E.≟T T' | eq₁
+  ...     | yes refl | refl = infer-agreeV ctx (Raw.RBinOp op a b) ieq dγ k
+  ...     | no _     | ()
+  check-agreeV ctx (Raw.RUnaryOp Raw.OpNeg e) T eq dγ k
+    with E.inferElabV ctx (Raw.RUnaryOp Raw.OpNeg e) in ieq | eq
+  ... | failure _ , _ | ()
+  ... | success T' Ψ eE d fr , w | eq₁
+        with T E.≟T T' | eq₁
+  ...     | yes refl | refl = infer-agreeV ctx (Raw.RUnaryOp Raw.OpNeg e) ieq dγ k
+  ...     | no _     | ()
+  check-agreeV ctx (Raw.RLet x e₁ e₂) T eq dγ k
+    with E.inferElabV ctx (Raw.RLet x e₁ e₂) in ieq | eq
+  ... | failure _ , _ | ()
+  ... | success T' Ψ eE d fr , w | eq₁
+        with T E.≟T T' | eq₁
+  ...     | yes refl | refl = infer-agreeV ctx (Raw.RLet x e₁ e₂) ieq dγ k
+  ...     | no _     | ()
+  check-agreeV ctx (Raw.RDestruct scrut xL eL xR eR) T eq dγ k
+    with E.inferElabV ctx (Raw.RDestruct scrut xL eL xR eR) in ieq | eq
+  ... | failure _ , _ | ()
+  ... | success T' Ψ eE d fr , w | eq₁
+        with T E.≟T T' | eq₁
+  ...     | yes refl | refl = infer-agreeV ctx (Raw.RDestruct scrut xL eL xR eR) ieq dγ k
+  ...     | no _     | ()
+  check-agreeV ctx (Raw.RAnnot e T₀) T eq dγ k
+    with E.inferElabV ctx (Raw.RAnnot e T₀) in ieq | eq
+  ... | failure _ , _ | ()
+  ... | success T' Ψ eE d fr , w | eq₁
+        with T E.≟T T' | eq₁
+  ...     | yes refl | refl = infer-agreeV ctx (Raw.RAnnot e T₀) ieq dγ k
+  ...     | no _     | ()
+  check-agreeV ctx (Raw.RQualified name alias) T eq dγ k
+    with E.inferElabV ctx (Raw.RQualified name alias) in ieq | eq
+  ... | failure _ , _ | ()
+  ... | success T' Ψ eE d fr , w | eq₁
+        with T E.≟T T' | eq₁
+  ...     | yes refl | refl = infer-agreeV ctx (Raw.RQualified name alias) ieq dγ k
+  ...     | no _     | ()
+  check-agreeV ctx (Raw.RResolved cn) T eq dγ k
+    with E.inferElabV ctx (Raw.RResolved cn) in ieq | eq
+  ... | failure _ , _ | ()
+  ... | success T' Ψ eE d fr , w | eq₁
+        with T E.≟T T' | eq₁
+  ...     | yes refl | refl = infer-agreeV ctx (Raw.RResolved cn) ieq dγ k
+  ...     | no _     | ()
   check-agreeV ctx e T eq = check-agreeV-todo ctx e T eq
 
 ------------------------------------------------------------------------
