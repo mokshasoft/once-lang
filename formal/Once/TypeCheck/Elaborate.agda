@@ -960,6 +960,29 @@ mutual
     (w₁ : ctx ⊢ᵢ e₁ ∶ A ⨾ Ψ₁)
     → VerifiedInferResult (extendNamedCtx ctx x A) e₂
     → VerifiedInferResult ctx (Raw.RLet x e₁ e₂)
+  -- RDestruct de-withed into three nested auxes (one per `with` level):
+  -- `-aux` dispatches the scrutinee type, `-auxL` the left branch (in `ctx,xL:A`),
+  -- `-auxR` the right branch (in `ctx,xR:B`) + the branch-type match. Behaviour-
+  -- preserving extraction of the old inline `with` chain so external proofs can
+  -- case the dispatch without `with`-opacity.
+  inferElabV-RDestruct-aux : (ctx : NamedCtx) (scrut : RawExpr) (xL : String) (eL : RawExpr) (xR : String) (eR : RawExpr)
+    → VerifiedInferResult ctx scrut
+    → VerifiedInferResult ctx (Raw.RDestruct scrut xL eL xR eR)
+  inferElabV-RDestruct-auxL : (ctx : NamedCtx) (scrut : RawExpr) (xL : String) (eL : RawExpr) (xR : String) (eR : RawExpr)
+    (A B : Type) {Ψs : Surface.Usage (NamedCtx.size ctx)}
+    (scrutE : SExpr (NamedCtx.debruijn ctx) Ψs (A Once.Type.+ B)) (ds fs : ℕ)
+    (wS : ctx ⊢ᵢ scrut ∶ (A Once.Type.+ B) ⨾ Ψs)
+    → VerifiedInferResult (extendNamedCtx ctx xL A) eL
+    → VerifiedInferResult ctx (Raw.RDestruct scrut xL eL xR eR)
+  inferElabV-RDestruct-auxR : (ctx : NamedCtx) (scrut : RawExpr) (xL : String) (eL : RawExpr) (xR : String) (eR : RawExpr)
+    (A B : Type) {Ψs : Surface.Usage (NamedCtx.size ctx)}
+    (scrutE : SExpr (NamedCtx.debruijn ctx) Ψs (A Once.Type.+ B)) (ds fs : ℕ)
+    (wS : ctx ⊢ᵢ scrut ∶ (A Once.Type.+ B) ⨾ Ψs)
+    {C₁ : Type} {qℓ : _} {Ψₗ : Surface.Usage (NamedCtx.size ctx)}
+    (eLE : SExpr (NamedCtx.debruijn (extendNamedCtx ctx xL A)) (qℓ ∷ᵘ Ψₗ) C₁) (dL fL : ℕ)
+    (wL : (extendNamedCtx ctx xL A) ⊢ᵢ eL ∶ C₁ ⨾ (qℓ ∷ᵘ Ψₗ))
+    → VerifiedInferResult (extendNamedCtx ctx xR B) eR
+    → VerifiedInferResult ctx (Raw.RDestruct scrut xL eL xR eR)
   -- Aux helpers that take the lookup result + equation as explicit args,
   -- so external proofs can pattern-match on the Maybe and supply the eq
   -- without `with...in` opacity.
@@ -1492,30 +1515,8 @@ mutual
   inferElabV ctx (Raw.RLet x e₁ e₂) =
     inferElabV-RLet-aux ctx x e₁ e₂ (inferElabV ctx e₁)
 
-  inferElabV ctx (Raw.RDestruct scrut xL eL xR eR) with inferElabV ctx scrut
-  ... | failure err , _                        = failure err , tt
-  ... | success Unit   _ _ _ _ , _             = failure CaseScrutineeNotSum , tt
-  ... | success Void   _ _ _ _ , _             = failure CaseScrutineeNotSum , tt
-  ... | success Int    _ _ _ _ , _             = failure CaseScrutineeNotSum , tt
-  ... | success Float  _ _ _ _ , _             = failure CaseScrutineeNotSum , tt
-  ... | success Str    _ _ _ _ , _             = failure CaseScrutineeNotSum , tt
-  ... | success Buffer _ _ _ _ , _             = failure CaseScrutineeNotSum , tt
-  ... | success (_ Once.Type.* _) _ _ _ _ , _  = failure CaseScrutineeNotSum , tt
-  ... | success (_ Once.Type.⇒[ _ ] _) _ _ _ _ , _ = failure CaseScrutineeNotSum , tt
-  ... | success (Once.Type.μ-type _) _ _ _ _ , _   = failure CaseScrutineeNotSum , tt
-  ... | success (Once.Type.ν-type _) _ _ _ _ , _   = failure CaseScrutineeNotSum , tt
-  ... | success (A Once.Type.+ B) Ψs scrutE ds fs , wS
-        with inferElabV (extendNamedCtx ctx xL A) eL
-  ...     | failure err , _ = failure err , tt
-  ...     | success C₁ (qℓ ∷ᵘ Ψₗ) eLE dL fL , wL
-            with inferElabV (extendNamedCtx ctx xR B) eR
-  ...       | failure err , _ = failure err , tt
-  ...       | success C₂ (qr ∷ᵘ Ψᵣ) eRE dR fR , wR
-              with C₁ ≟T C₂
-  ...         | yes refl =
-                success C₁ _ (Surface.case' scrutE eLE eRE)
-                  (ds ⊔ suc dL ⊔ suc dR) fR , t-case wS wL wR
-  ...         | no _ = failure CaseBranchMismatch , tt
+  inferElabV ctx (Raw.RDestruct scrut xL eL xR eR) =
+    inferElabV-RDestruct-aux ctx scrut xL eL xR eR (inferElabV ctx scrut)
 
   ----------------------------------------------------------------------
   -- Phase C — `inferElab` `RApp` (13 view branches).
@@ -1766,6 +1767,32 @@ mutual
   inferElabV-RLet-aux2 ctx x e₁ e₂ e₁E d₁ f₁ w₁ (failure err , _) = failure err , tt
   inferElabV-RLet-aux2 ctx x e₁ e₂ e₁E d₁ f₁ w₁ (success B (q ∷ᵘ Ψ₂) e₂E d₂ f₂ , w₂) =
     success B _ (Surface.let' e₁E e₂E) (d₁ ⊔ suc d₂) f₂ , t-let w₁ w₂
+
+  -- RDestruct bodies (de-withed). `-aux` dispatches the scrutinee type;
+  -- non-sum scrutinees fail; a sum `A + B` feeds `-auxL` with the left branch
+  -- inferred in `ctx,xL:A`. `-auxL` feeds `-auxR` with the right branch in
+  -- `ctx,xR:B`. `-auxR` matches branch types (`C₁ ≟T C₂`) and emits `t-case`.
+  inferElabV-RDestruct-aux ctx scrut xL eL xR eR (failure err , _)            = failure err , tt
+  inferElabV-RDestruct-aux ctx scrut xL eL xR eR (success Unit   _ _ _ _ , _) = failure CaseScrutineeNotSum , tt
+  inferElabV-RDestruct-aux ctx scrut xL eL xR eR (success Void   _ _ _ _ , _) = failure CaseScrutineeNotSum , tt
+  inferElabV-RDestruct-aux ctx scrut xL eL xR eR (success Int    _ _ _ _ , _) = failure CaseScrutineeNotSum , tt
+  inferElabV-RDestruct-aux ctx scrut xL eL xR eR (success Float  _ _ _ _ , _) = failure CaseScrutineeNotSum , tt
+  inferElabV-RDestruct-aux ctx scrut xL eL xR eR (success Str    _ _ _ _ , _) = failure CaseScrutineeNotSum , tt
+  inferElabV-RDestruct-aux ctx scrut xL eL xR eR (success Buffer _ _ _ _ , _) = failure CaseScrutineeNotSum , tt
+  inferElabV-RDestruct-aux ctx scrut xL eL xR eR (success (_ Once.Type.* _) _ _ _ _ , _) = failure CaseScrutineeNotSum , tt
+  inferElabV-RDestruct-aux ctx scrut xL eL xR eR (success (_ Once.Type.⇒[ _ ] _) _ _ _ _ , _) = failure CaseScrutineeNotSum , tt
+  inferElabV-RDestruct-aux ctx scrut xL eL xR eR (success (Once.Type.μ-type _) _ _ _ _ , _) = failure CaseScrutineeNotSum , tt
+  inferElabV-RDestruct-aux ctx scrut xL eL xR eR (success (Once.Type.ν-type _) _ _ _ _ , _) = failure CaseScrutineeNotSum , tt
+  inferElabV-RDestruct-aux ctx scrut xL eL xR eR (success (A Once.Type.+ B) Ψs scrutE ds fs , wS) =
+    inferElabV-RDestruct-auxL ctx scrut xL eL xR eR A B scrutE ds fs wS (inferElabV (extendNamedCtx ctx xL A) eL)
+  inferElabV-RDestruct-auxL ctx scrut xL eL xR eR A B scrutE ds fs wS (failure err , _) = failure err , tt
+  inferElabV-RDestruct-auxL ctx scrut xL eL xR eR A B scrutE ds fs wS (success C₁ (qℓ ∷ᵘ Ψₗ) eLE dL fL , wL) =
+    inferElabV-RDestruct-auxR ctx scrut xL eL xR eR A B scrutE ds fs wS eLE dL fL wL (inferElabV (extendNamedCtx ctx xR B) eR)
+  inferElabV-RDestruct-auxR ctx scrut xL eL xR eR A B scrutE ds fs wS eLE dL fL wL (failure err , _) = failure err , tt
+  inferElabV-RDestruct-auxR ctx scrut xL eL xR eR A B scrutE ds fs wS {C₁ = C₁} eLE dL fL wL (success C₂ (qr ∷ᵘ Ψᵣ) eRE dR fR , wR)
+    with C₁ ≟T C₂
+  ... | yes refl = success C₁ _ (Surface.case' scrutE eLE eRE) (ds ⊔ suc dL ⊔ suc dR) fR , t-case wS wL wR
+  ... | no _     = failure CaseBranchMismatch , tt
 
   inferElabV-RVar-lookup-aux ctx x ¬unit (just (A , Ψ , se)) eq-loc _ _ =
     success A Ψ se 0 (NamedCtx.freshCounter ctx) , t-var-local ¬unit eq-loc

@@ -39,6 +39,8 @@ import Once.TypeCheck.Elaborate as E
 open import Once.IR as IR using (IR)
 open import Once.SigEffect using (SigEffect) renaming (halts to se-halts; emits to se-emits)
 open import Data.Maybe using (Maybe; just; nothing)
+open import Data.Sum using (inj₁; inj₂; [_,_]′)
+open import Once.Adequacy.ResolveFaithful using (bind2-faithful)
 open import Relation.Nullary using (Dec; yes; no; ¬_)
 open import Once.TypeCheck.Judgment using (_⊢ᵢ_∶_⨾_; _⊢ᶜ_∶_⨾_; t-int; t-str; t-unit; t-pair; t-neg; t-let; t-binop-arith; t-binop-cmp)
 open import Once.Denotation.Realize using (realize; realize-infer)
@@ -394,6 +396,42 @@ mutual
   infer-agreeV ctx (Raw.RQualified name alias) eq dγ k =
     agree-RQualified ctx name alias
       (lookupImport (NamedCtx.imports ctx) (alias ++ "." ++ name)) refl eq dγ k
+  -- RDestruct (case): mirror the de-withed elaborator auxes (scrutinee type;
+  -- left branch in ctx,xL:A; right branch in ctx,xR:B; branch-type match). The
+  -- emitted `case' scrutE eLE eRE` denotes `⟦scrutE⟧ >>=T copair-of-branches`;
+  -- `realize-infer (t-case …)` is the SAME shape over the witnesses. Close by
+  -- `bind2-faithful`: scrutinee agreement = `infer-agreeV scrut`, branch
+  -- agreement = `infer-agreeV eL/eR` at the injected env `(dγ , a)/(dγ , b)`.
+  infer-agreeV ctx (Raw.RDestruct scrut xL eL xR eR) eq dγ k
+    with E.inferElabV ctx scrut in seq | eq
+  ... | failure _ , _ | ()
+  ... | success Unit   _ _ _ _ , _ | ()
+  ... | success Void   _ _ _ _ , _ | ()
+  ... | success Int    _ _ _ _ , _ | ()
+  ... | success Float  _ _ _ _ , _ | ()
+  ... | success Str    _ _ _ _ , _ | ()
+  ... | success Buffer _ _ _ _ , _ | ()
+  ... | success (_ * _)      _ _ _ _ , _ | ()
+  ... | success (_ ⇒[ _ ] _) _ _ _ _ , _ | ()
+  ... | success (μ-type _)   _ _ _ _ , _ | ()
+  ... | success (ν-type _)   _ _ _ _ , _ | ()
+  ... | success (A + B) Ψs scrutE ds fs , wS | eq₁
+        with E.inferElabV (extendNamedCtx ctx xL A) eL in leq | eq₁
+  ...     | failure _ , _ | ()
+  ...     | success C₁ (qℓ ∷ᵘ Ψₗ) eLE dL fL , wL | eq₂
+            with E.inferElabV (extendNamedCtx ctx xR B) eR in req | eq₂
+  ...       | failure _ , _ | ()
+  ...       | success C₂ (qr ∷ᵘ Ψᵣ) eRE dR fR , wR | eq₃
+              with C₁ E.≟T C₂ | eq₃
+  ...         | no _     | ()
+  ...         | yes refl | refl =
+                bind2-faithful (SD.⟦ scrutE ⟧ˢ dγ) (SD.⟦ realize-infer wS ⟧ˢ dγ)
+                  (λ v → [ (λ a → SD.⟦ eLE ⟧ˢ (dγ , a)) , (λ b → SD.⟦ eRE ⟧ˢ (dγ , b)) ]′ v)
+                  (λ v → [ (λ a → SD.⟦ realize-infer wL ⟧ˢ (dγ , a)) , (λ b → SD.⟦ realize-infer wR ⟧ˢ (dγ , b)) ]′ v)
+                  (λ j → infer-agreeV ctx scrut seq dγ j)
+                  (λ { (inj₁ a) j → infer-agreeV (extendNamedCtx ctx xL A) eL leq (dγ , a) j
+                     ; (inj₂ b) j → infer-agreeV (extendNamedCtx ctx xR B) eR req (dγ , b) j })
+                  k
   infer-agreeV ctx e eq = infer-agreeV-todo ctx e eq
 
   check-agreeV : ∀ (ctx : NamedCtx) (e : RawExpr) (T : Type) {Ψ se d f w}
