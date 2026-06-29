@@ -52,8 +52,7 @@ open import Relation.Nullary using (Dec; yes; no; ¬_)
 open import Once.TypeCheck.Judgment using (_⊢ᵢ_∶_⨾_; _⊢ᶜ_∶_⨾_; _⊢ᵍ_∶_; _⊢ᵐ_∶_⇨[_]_; t-int; t-str; t-unit; t-pair; t-neg; t-let; t-binop-arith; t-binop-cmp; g-int; g-terminal; g-pair; g-inl; g-inr; g-In; extractMorphWitness)
 open import Once.Denotation.Realize using (realize; realize-infer; realize-global; realize-morph)
 open import Once.TypeCheck.Soundness using (check-sound)
-open import Once.Surface.Syntax as Surface using (Expr; Usage; ⟦_⟧ᶜ; pair; neg; let'; sigOp; lift-morphism; app; morph-app)
-open import Once.Surface.Thinning using (weakenFromEmpty)
+open import Once.Surface.Syntax as Surface using (Expr; Usage; ⟦_⟧ᶜ; pair; neg; let'; sigOp; lift-morphism)
 open Surface.Usage using () renaming (_∷_ to _∷ᵘ_)
 open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ)
 import Once.Denotation.SourceDenote as SD
@@ -91,14 +90,6 @@ postulate
     (vw : E.AppHeadView f) (veq : E.classifyAppHeadView f ≡ vw)
     → E.checkElabV-RApp-dispatch ctx f arg T vw veq ≡ (success Ψ se d fr , w)
     → ∀ (dγ : ⟦ ⟦ NamedCtx.debruijn ctx ⟧ᶜ ⟧ᴰ) (k : ℕ) → SD.⟦ se ⟧ˢ dγ k ≡ SD.⟦ realize w ⟧ˢ dγ k
-  -- specApply ≡ apply (ANCHORED into the ahv-apply cases below before discharge):
-  -- the spec'd curried-apply lambda `λ p → (fst p)(snd p)` applied to `X` denotes
-  -- the same as the `apply` morphism applied to `X` (both = `⟦X⟧ >>=T λv → fst v
-  -- (snd v)`). Consumed via `trans` in the (infer + check) ahv-apply clauses.
-  specApply-lemma : ∀ {n} {Γ : Surface.Ctx n} {Ψ : Surface.Usage n} {A B : Type}
-      (X : Expr Γ Ψ ((A ⇒[ mk-kind Many pure ] B) * A))
-    → ∀ (dγ : ⟦ ⟦ Γ ⟧ᶜ ⟧ᴰ) (k : ℕ)
-    → SD.⟦ app (weakenFromEmpty (E.specApply A B)) X ⟧ˢ dγ k ≡ SD.⟦ morph-app IR.apply X ⟧ˢ dγ k
 
 -- RPair folded top-level (no `with`): take both sub-results explicitly +
 -- their sub-IHs as functions; the de-withed `inferElabV-RPair-aux` reduces by
@@ -469,10 +460,10 @@ agree-RApp ctx f arg E.ahv-arr veq eq argIH dγ k with E.inferElabV ctx arg | eq
 ... | success (μ-type _) _ _ _ _ , _ | ()
 ... | success (ν-type _) _ _ _ _ , _ | ()
 -- ahv-apply / ahv-other : genuine semantic content (deferred).
--- ahv-apply: arg must infer to `(A ⇒[Many,pure] B) * A`; se = `app (specApply) argE`,
--- witness `t-apply-app-infer w`, realize = `morph-app apply (realize-infer w)`.
--- rewrite argIH (argE → realize-infer w) then close by specApply-lemma. Every
--- other inferred arg-type makes the dispatch fail ⇒ absurd.
+-- ahv-apply: arg must infer to `(A ⇒[Many,pure] B) * A`; se = `morph-app apply argE`
+-- (elaborator emits the apply MORPHISM directly — no specApply lambda / weakening),
+-- witness `t-apply-app-infer w`, realize = `morph-app apply (realize-infer w)` ⇒ a
+-- plain morph-app congruence (rewrite the arg IH). Every other arg-type fails ⇒ absurd.
 agree-RApp ctx f arg E.ahv-apply veq eq argIH dγ k with E.inferElabV ctx arg | eq
 ... | failure _ , _ | ()
 ... | success Unit _ _ _ _ , _ | ()
@@ -501,7 +492,7 @@ agree-RApp ctx f arg E.ahv-apply veq eq argIH dγ k with E.inferElabV ctx arg | 
 ... | success ((_ ⇒[ mk-kind Zero pure ] _) * _) _ _ _ _ , _ | ()
 ... | success ((_ ⇒[ mk-kind Zero eff ] _) * _) _ _ _ _ , _ | ()
 ... | success ((A ⇒[ mk-kind Many pure ] B) * A') Ψ argE d fr , w | eq₁ with A E.≟T A' | eq₁
-...   | yes refl | refl rewrite argIH refl dγ k = specApply-lemma (realize-infer w) dγ k
+...   | yes refl | refl rewrite argIH refl dγ k = refl
 ...   | no _     | ()
 agree-RApp ctx f arg E.ahv-other veq eq argIH dγ k = agree-RApp-hard f arg E.ahv-other veq eq dγ k
 
