@@ -66,6 +66,7 @@ open import Once.Adequacy.SourceTrace using (moduleToIR; ⟦_⟧IR)
 import Once.Adequacy.AcceptSound as AS
 import Once.Adequacy.ModuleComplete as MC
 import Once.Adequacy.CanonModule as CMod
+import Once.Adequacy.CanonReflectModule as CRMod
 
 -- (1) FORWARD type-preservation — for COMPLETENESS. A declaratively well-typed
 --     UN-resolved module with a valid `main` resolves to a module that is ALSO
@@ -83,20 +84,23 @@ resolver-preserves-typing :
     × Σ-syntax (AS.ModuleTyped mR) (λ mt' → MC.HasValidMain-decl mR mt'))
 resolver-preserves-typing = CMod.canon-preserves-typing
 
-postulate
-  -- (2) REVERSE type-recovery — for SOUNDNESS. If the front-end accepted (the
-  --     RESOLVED module `mR` is well-typed) and `mU` resolves to `mR`, then `mU`
-  --     was itself a typed program with a valid `main`, so the apex can produce a
-  --     `tp` over the UN-resolved module (keeping `_⊢R_` front-end-based, not
-  --     resolver-based). For the import-free fragment this is an equivalence;
-  --     with imports it needs the import-aware declarative typing to phrase "the
-  --     source typed GIVEN its imports". (Phrased over the resolve step alone —
-  --     the parse step is the FrontEndBridge's concern.)
-  resolver-reflects-typing :
-    ∀ (mm : ModuleMap) (mU mR : P.Module) →
-    resolveImports mm mU ≡ inj₂ mR → AS.ModuleTyped mR →
-    Σ-syntax (AS.ModuleTyped mU) (λ mt → MC.HasValidMain-decl mU mt)
+-- (2) REVERSE type-recovery — for SOUNDNESS. If the front-end accepted (the
+--     RESOLVED module `mR` is well-typed WITH a valid main) and `mU` resolves to
+--     `mR`, then `mU` was itself a typed program with a valid `main`, so the apex
+--     can produce a `tp` over the UN-resolved module (keeping `_⊢R_`
+--     front-end-based, not resolver-based). The `HasValidMain mR` input is
+--     threaded from the call site (derived via `MC.moduleToIR-sound`): it is NOT
+--     derivable from `ModuleTyped mR` alone, so the earlier `ModuleTyped mR`-only
+--     postulate shape was unprovable. The import-free fragment is discharged in
+--     `CanonReflectModule`; the import case stays a residual `*-imports`
+--     postulate there (mirroring `preserves-typing`).
+resolver-reflects-typing :
+  ∀ (mm : ModuleMap) (mU mR : P.Module) →
+  resolveImports mm mU ≡ inj₂ mR → (mt : AS.ModuleTyped mR) → MC.HasValidMain-decl mR mt →
+  Σ-syntax (AS.ModuleTyped mU) (λ mt' → MC.HasValidMain-decl mU mt')
+resolver-reflects-typing = CRMod.resolver-reflects-typing
 
+postulate
   -- (3) trace-preservation — for SOUNDNESS/TRACE. The resolved module's IR
   --     trace equals the un-resolved module's, so the compiled bytes' trace
   --     (against the resolved IR) equals the independent meaning (against the

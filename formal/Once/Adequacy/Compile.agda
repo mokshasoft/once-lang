@@ -608,7 +608,7 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   correctR-sound arch doOpt src bytes pf with accept-sound arch doOpt src bytes pf
   ... | (mR , stm-eq , MT) with compile-just-ir arch doOpt src mR bytes stm-eq pf
   ...   | (ir , mi) with srcToModule-inv src mR stm-eq
-  ...     | (mU , p-eq , res-eq) with RB.resolver-reflects-typing (Source.srcImports src) mU mR res-eq MT
+  ...     | (mU , p-eq , res-eq) with RB.resolver-reflects-typing (Source.srcImports src) mU mR res-eq MT (MC.moduleToIR-sound mR MT mi)
   ...       | (mt , hvm) =
               let tp  = (mU , mt , hvm)
                   ⊢R  = FB.parseStrict-sound (Source.srcText src) mU p-eq   -- ParsesText … mU = src ⊢R tp
