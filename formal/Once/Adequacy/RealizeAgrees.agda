@@ -23,14 +23,14 @@
 module Once.Adequacy.RealizeAgrees where
 
 open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; s≤s) renaming (_+_ to _+ℕ_)
-open import Data.Nat.Properties using (≤-refl; ≤-reflexive; ≤-trans; +-mono-<; m≤m+n; m≤n+m; +-suc; n≤1+n)
+open import Data.Nat.Properties using (≤-refl; ≤-reflexive; ≤-trans; +-mono-<; +-mono-≤; m≤m+n; m≤n+m; +-suc; n≤1+n)
 open import Data.Nat.Induction using (<-wellFounded)
 open import Induction.WellFounded using (Acc; acc)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃-syntax)
 open import Data.String using (String; _++_)
 open import Data.String.Properties as StrProp using ()
 open import Data.Empty using (⊥; ⊥-elim)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 
 import Once.Type
 open import Once.Type using (Type; Int; Unit; Void; Float; Str; Buffer; _*_; _+_; μ-type; ν-type;
@@ -46,7 +46,7 @@ open import Data.Sum using (inj₁; inj₂; [_,_]′)
 open import Once.Adequacy.ResolveFaithful using (bind2-faithful)
 open import Once.TypeCheck.MorphComplete using (morph-elab)
 open import Data.Maybe.Properties using (just-injective)
-open import Once.Denotation.TraceMonad using (returnT)
+open import Once.Denotation.TraceMonad using (returnT; _>>=T_)
 open import Once.Postulates using (extensionality)
 open import Relation.Nullary using (Dec; yes; no; ¬_)
 open import Once.TypeCheck.Judgment using (_⊢ᵢ_∶_⨾_; _⊢ᶜ_∶_⨾_; _⊢ᵍ_∶_; _⊢ᵐ_∶_⇨[_]_; t-int; t-str; t-unit; t-pair; t-neg; t-let; t-binop-arith; t-binop-cmp; g-int; g-terminal; g-pair; g-inl; g-inr; g-In; extractMorphWitness)
@@ -77,7 +77,8 @@ CheckAgreeV ctx e T {se = se} {w = w} _ =
   ∀ (dγ : Env ctx) (k : ℕ) → SD.⟦ se ⟧ˢ dγ k ≡ SD.⟦ realize w ⟧ˢ dγ k
 
 -- `infer-agreeV` is now TOTAL (every RawExpr constructor handled; the RApp
--- apply/other heads route through `agree-RApp-hard`). Only check-mode's
+-- apply head is a morph-app congruence, `other` rides `agree-RApp-other-aux`).
+-- Only check-mode's
 -- non-`t-embed` specials (RLam/RVar-bbc/RPair-product/RInt-vlift/literals)
 -- remain as a postulate.
 postulate
@@ -378,14 +379,77 @@ agree-RQualified ctx name alias nothing lkup eq dγ k = ⊥-elim (fail≢succ (c
 -- success-eq is absurd. The 5 builtin-combinator heads emit `morph-app IR.X arg`
 -- (unary `>>=T`, same morphism both sides ⇒ `rewrite` the arg IH) or `arr' arg`
 -- (denotational identity ⇒ the arg IH directly); their `realize-infer (t-X-app)`
--- is the same shape over the witness. `ahv-apply` (app of `specApply` vs
--- `morph-app apply`) and `ahv-other` (generic app/effApp; needs the FUNCTION-
--- position agreement too) carry semantic content → `agree-RApp-hard`.
-postulate
-  agree-RApp-hard : ∀ {ctx : NamedCtx} (f arg : RawExpr) {A Ψ se d fr w}
-    (vw : E.AppHeadView f) (veq : E.classifyAppHeadView f ≡ vw)
-    → E.inferElabV-RApp-dispatch ctx f arg vw veq ≡ (success A Ψ se d fr , w)
-    → ∀ (dγ : Env ctx) (k : ℕ) → SD.⟦ se ⟧ˢ dγ k ≡ SD.⟦ realize-infer w ⟧ˢ dγ k
+-- is the same shape over the witness. `ahv-apply` emits `morph-app apply argE`
+-- (same morphism both sides ⇒ arg-IH congruence); `ahv-other` (generic
+-- app/effApp; also needs the FUNCTION-position agreement) rides
+-- `agree-RApp-other-aux` below.
+-- ahv-other (infer) — the verified counterpart of `inferElabV-RApp-other-aux`.
+-- The elaborator emits `app fE xE` (pure arrow) or `effApp fE xE` (Many-eff
+-- arrow), and `realize-infer (t-app …) = app (realize-infer wF) (realize wX)`
+-- (resp. `effApp …`) — the SAME shape — so the agreement is a plain
+-- application congruence: the FUNCTION position rides `fInferIH` (f is inferred)
+-- and the ARGUMENT position rides `argCheckIH` (the arg is CHECKED at f's
+-- domain). The app denotation is a nested `_>>=T_`, closed by `bind2-faithful`
+-- (outer = fInferIH; inner = argCheckIH with a definitionally-equal
+-- continuation ⇒ `refl`). effApp wraps the same body in `returnT (λ _ → …)`, so
+-- it is the app proof under `extensionality`. Every non-arrow / eff-One/Zero f
+-- makes the elaborator fail ⇒ success-eq absurd. The `lhs`/`eqAH` arguments
+-- mirror `inferElabV-RApp-other-aux` exactly (so the dispatch reduces).
+agree-RApp-other-aux : ∀ {ctx : NamedCtx} (f arg : RawExpr) {A Ψ se d fr w}
+  (lhs : Maybe E.PolyBuiltinApp) (eqAH : E.classifyAppHead f ≡ lhs)
+  → E.inferElabV-RApp-other-aux ctx f arg lhs eqAH ≡ (success A Ψ se d fr , w)
+  → (fInferIH : ∀ {T' Ψ' eE' d' fr'} {w' : ctx ⊢ᵢ f ∶ T' ⨾ Ψ'}
+       → E.inferElabV ctx f ≡ (success T' Ψ' eE' d' fr' , w')
+       → ∀ dγ k → SD.⟦ eE' ⟧ˢ dγ k ≡ SD.⟦ realize-infer w' ⟧ˢ dγ k)
+  → (argCheckIH : ∀ {T' Ψ' eE' d' fr'} {w' : ctx ⊢ᶜ arg ∶ T' ⨾ Ψ'}
+       → E.checkElabV ctx arg T' ≡ (success Ψ' eE' d' fr' , w')
+       → ∀ dγ k → SD.⟦ eE' ⟧ˢ dγ k ≡ SD.⟦ realize w' ⟧ˢ dγ k)
+  → ∀ (dγ : Env ctx) (k : ℕ) → SD.⟦ se ⟧ˢ dγ k ≡ SD.⟦ realize-infer w ⟧ˢ dγ k
+agree-RApp-other-aux f arg (just _) eqAH () fInferIH argCheckIH
+agree-RApp-other-aux {ctx} f arg nothing eqAH eq fInferIH argCheckIH dγ k
+  with E.inferElabV ctx f | eq
+... | failure _ , _ | ()
+... | success Unit       _ _ _ _ , _ | ()
+... | success Void       _ _ _ _ , _ | ()
+... | success Int        _ _ _ _ , _ | ()
+... | success Float      _ _ _ _ , _ | ()
+... | success Str        _ _ _ _ , _ | ()
+... | success Buffer     _ _ _ _ , _ | ()
+... | success (_ * _)      _ _ _ _ , _ | ()
+... | success (_ + _)      _ _ _ _ , _ | ()
+... | success (μ-type _)   _ _ _ _ , _ | ()
+... | success (ν-type _)   _ _ _ _ , _ | ()
+... | success (A ⇒[ mk-kind q pure ] B) Ψ₁ fE df ff , wF | eq₁
+      with E.checkElabV ctx arg A in xeq | eq₁
+...   | failure _ , _ | ()
+...   | success Ψ₂ xE dx fx , wX | refl =
+        bind2-faithful (SD.⟦ fE ⟧ˢ dγ) (SD.⟦ realize-infer wF ⟧ˢ dγ)
+          (λ vf → SD.⟦ xE ⟧ˢ dγ >>=T λ vx → vf vx)
+          (λ vf → SD.⟦ realize wX ⟧ˢ dγ >>=T λ vx → vf vx)
+          (λ j → fInferIH refl dγ j)
+          (λ vf j → bind2-faithful (SD.⟦ xE ⟧ˢ dγ) (SD.⟦ realize wX ⟧ˢ dγ)
+                      (λ vx → vf vx) (λ vx → vf vx)
+                      (λ j' → argCheckIH xeq dγ j') (λ _ _ → refl) j)
+          k
+agree-RApp-other-aux {ctx} f arg nothing eqAH eq fInferIH argCheckIH dγ k
+  | success (A ⇒[ mk-kind Many eff ] B) Ψ₁ fE df ff , wF | eq₁
+      with E.checkElabV ctx arg A in xeq | eq₁
+...   | failure _ , _ | ()
+...   | success Ψ₂ xE dx fx , wX | refl =
+        cong (λ g → returnT g k)
+          (extensionality (λ _ → extensionality (λ j →
+            bind2-faithful (SD.⟦ fE ⟧ˢ dγ) (SD.⟦ realize-infer wF ⟧ˢ dγ)
+              (λ vf → SD.⟦ xE ⟧ˢ dγ >>=T λ vx → vf vx)
+              (λ vf → SD.⟦ realize wX ⟧ˢ dγ >>=T λ vx → vf vx)
+              (λ j' → fInferIH refl dγ j')
+              (λ vf j' → bind2-faithful (SD.⟦ xE ⟧ˢ dγ) (SD.⟦ realize wX ⟧ˢ dγ)
+                          (λ vx → vf vx) (λ vx → vf vx)
+                          (λ j'' → argCheckIH xeq dγ j'') (λ _ _ → refl) j')
+              j)))
+agree-RApp-other-aux {ctx} f arg nothing eqAH eq fInferIH argCheckIH dγ k
+  | success (A ⇒[ mk-kind One eff ] B) _ _ _ _ , _ | ()
+agree-RApp-other-aux {ctx} f arg nothing eqAH eq fInferIH argCheckIH dγ k
+  | success (A ⇒[ mk-kind Zero eff ] B) _ _ _ _ , _ | ()
 
 agree-RApp : ∀ (ctx : NamedCtx) (f arg : RawExpr) {A Ψ se d fr w}
   (vw : E.AppHeadView f) (veq : E.classifyAppHeadView f ≡ vw)
@@ -393,27 +457,34 @@ agree-RApp : ∀ (ctx : NamedCtx) (f arg : RawExpr) {A Ψ se d fr w}
   → (argIH : ∀ {A' Ψ' argE d' fr'} {w' : ctx ⊢ᵢ arg ∶ A' ⨾ Ψ'}
        → E.inferElabV ctx arg ≡ (success A' Ψ' argE d' fr' , w')
        → ∀ dγ k → SD.⟦ argE ⟧ˢ dγ k ≡ SD.⟦ realize-infer w' ⟧ˢ dγ k)
+  -- function-position + checked-arg IHs (only `ahv-other` consumes them).
+  → (fInferIH : ∀ {T' Ψ' eE' d' fr'} {w' : ctx ⊢ᵢ f ∶ T' ⨾ Ψ'}
+       → E.inferElabV ctx f ≡ (success T' Ψ' eE' d' fr' , w')
+       → ∀ dγ k → SD.⟦ eE' ⟧ˢ dγ k ≡ SD.⟦ realize-infer w' ⟧ˢ dγ k)
+  → (argCheckIH : ∀ {T' Ψ' eE' d' fr'} {w' : ctx ⊢ᶜ arg ∶ T' ⨾ Ψ'}
+       → E.checkElabV ctx arg T' ≡ (success Ψ' eE' d' fr' , w')
+       → ∀ dγ k → SD.⟦ eE' ⟧ˢ dγ k ≡ SD.⟦ realize w' ⟧ˢ dγ k)
   → ∀ (dγ : Env ctx) (k : ℕ) → SD.⟦ se ⟧ˢ dγ k ≡ SD.⟦ realize-infer w ⟧ˢ dγ k
 -- check-only / infer-failing heads: the dispatch is `failure`, so success-eq absurd.
-agree-RApp ctx f arg E.ahv-inl            veq eq argIH dγ k = ⊥-elim (fail≢succ (cong proj₁ eq))
-agree-RApp ctx f arg E.ahv-inr            veq eq argIH dγ k = ⊥-elim (fail≢succ (cong proj₁ eq))
-agree-RApp ctx f arg E.ahv-initial        veq eq argIH dγ k = ⊥-elim (fail≢succ (cong proj₁ eq))
-agree-RApp ctx f arg E.ahv-pair-applied   veq eq argIH dγ k = ⊥-elim (fail≢succ (cong proj₁ eq))
-agree-RApp ctx f arg E.ahv-compose-applied veq eq argIH dγ k = ⊥-elim (fail≢succ (cong proj₁ eq))
-agree-RApp ctx f arg E.ahv-case-applied   veq eq argIH dγ k = ⊥-elim (fail≢succ (cong proj₁ eq))
-agree-RApp ctx f arg E.ahv-In             veq eq argIH dγ k = ⊥-elim (fail≢succ (cong proj₁ eq))
-agree-RApp ctx f arg E.ahv-cata           veq eq argIH dγ k = ⊥-elim (fail≢succ (cong proj₁ eq))
-agree-RApp ctx f arg E.ahv-curry          veq eq argIH dγ k = ⊥-elim (fail≢succ (cong proj₁ eq))
+agree-RApp ctx f arg E.ahv-inl            veq eq argIH fInferIH argCheckIH dγ k = ⊥-elim (fail≢succ (cong proj₁ eq))
+agree-RApp ctx f arg E.ahv-inr            veq eq argIH fInferIH argCheckIH dγ k = ⊥-elim (fail≢succ (cong proj₁ eq))
+agree-RApp ctx f arg E.ahv-initial        veq eq argIH fInferIH argCheckIH dγ k = ⊥-elim (fail≢succ (cong proj₁ eq))
+agree-RApp ctx f arg E.ahv-pair-applied   veq eq argIH fInferIH argCheckIH dγ k = ⊥-elim (fail≢succ (cong proj₁ eq))
+agree-RApp ctx f arg E.ahv-compose-applied veq eq argIH fInferIH argCheckIH dγ k = ⊥-elim (fail≢succ (cong proj₁ eq))
+agree-RApp ctx f arg E.ahv-case-applied   veq eq argIH fInferIH argCheckIH dγ k = ⊥-elim (fail≢succ (cong proj₁ eq))
+agree-RApp ctx f arg E.ahv-In             veq eq argIH fInferIH argCheckIH dγ k = ⊥-elim (fail≢succ (cong proj₁ eq))
+agree-RApp ctx f arg E.ahv-cata           veq eq argIH fInferIH argCheckIH dγ k = ⊥-elim (fail≢succ (cong proj₁ eq))
+agree-RApp ctx f arg E.ahv-curry          veq eq argIH fInferIH argCheckIH dγ k = ⊥-elim (fail≢succ (cong proj₁ eq))
 -- ahv-id : any-typed arg, result morph-app id.
-agree-RApp ctx f arg E.ahv-id veq eq argIH dγ k with E.inferElabV ctx arg | eq
+agree-RApp ctx f arg E.ahv-id veq eq argIH fInferIH argCheckIH dγ k with E.inferElabV ctx arg | eq
 ... | failure _ , _ | ()
 ... | success T Ψ argE d fr , w | refl rewrite argIH refl dγ k = refl
 -- ahv-terminal : any-typed arg, result morph-app terminal.
-agree-RApp ctx f arg E.ahv-terminal veq eq argIH dγ k with E.inferElabV ctx arg | eq
+agree-RApp ctx f arg E.ahv-terminal veq eq argIH fInferIH argCheckIH dγ k with E.inferElabV ctx arg | eq
 ... | failure _ , _ | ()
 ... | success T Ψ argE d fr , w | refl rewrite argIH refl dγ k = refl
 -- ahv-fst : arg must be a product; other shapes fail.
-agree-RApp ctx f arg E.ahv-fst veq eq argIH dγ k with E.inferElabV ctx arg | eq
+agree-RApp ctx f arg E.ahv-fst veq eq argIH fInferIH argCheckIH dγ k with E.inferElabV ctx arg | eq
 ... | failure _ , _ | ()
 ... | success (A * B) Ψ argE d fr , w | refl rewrite argIH refl dγ k = refl
 ... | success Unit _ _ _ _ , _ | ()
@@ -427,7 +498,7 @@ agree-RApp ctx f arg E.ahv-fst veq eq argIH dγ k with E.inferElabV ctx arg | eq
 ... | success (μ-type _) _ _ _ _ , _ | ()
 ... | success (ν-type _) _ _ _ _ , _ | ()
 -- ahv-snd : arg must be a product; other shapes fail.
-agree-RApp ctx f arg E.ahv-snd veq eq argIH dγ k with E.inferElabV ctx arg | eq
+agree-RApp ctx f arg E.ahv-snd veq eq argIH fInferIH argCheckIH dγ k with E.inferElabV ctx arg | eq
 ... | failure _ , _ | ()
 ... | success (A * B) Ψ argE d fr , w | refl rewrite argIH refl dγ k = refl
 ... | success Unit _ _ _ _ , _ | ()
@@ -441,7 +512,7 @@ agree-RApp ctx f arg E.ahv-snd veq eq argIH dγ k with E.inferElabV ctx arg | eq
 ... | success (μ-type _) _ _ _ _ , _ | ()
 ... | success (ν-type _) _ _ _ _ , _ | ()
 -- ahv-arr : arg must be a pure Many-arrow; `arr'` is the identity denotation.
-agree-RApp ctx f arg E.ahv-arr veq eq argIH dγ k with E.inferElabV ctx arg | eq
+agree-RApp ctx f arg E.ahv-arr veq eq argIH fInferIH argCheckIH dγ k with E.inferElabV ctx arg | eq
 ... | failure _ , _ | ()
 ... | success (A ⇒[ mk-kind Many pure ] B) Ψ argE d fr , w | refl = argIH refl dγ k
 ... | success Unit _ _ _ _ , _ | ()
@@ -464,7 +535,7 @@ agree-RApp ctx f arg E.ahv-arr veq eq argIH dγ k with E.inferElabV ctx arg | eq
 -- (elaborator emits the apply MORPHISM directly — no specApply lambda / weakening),
 -- witness `t-apply-app-infer w`, realize = `morph-app apply (realize-infer w)` ⇒ a
 -- plain morph-app congruence (rewrite the arg IH). Every other arg-type fails ⇒ absurd.
-agree-RApp ctx f arg E.ahv-apply veq eq argIH dγ k with E.inferElabV ctx arg | eq
+agree-RApp ctx f arg E.ahv-apply veq eq argIH fInferIH argCheckIH dγ k with E.inferElabV ctx arg | eq
 ... | failure _ , _ | ()
 ... | success Unit _ _ _ _ , _ | ()
 ... | success Void _ _ _ _ , _ | ()
@@ -494,7 +565,11 @@ agree-RApp ctx f arg E.ahv-apply veq eq argIH dγ k with E.inferElabV ctx arg | 
 ... | success ((A ⇒[ mk-kind Many pure ] B) * A') Ψ argE d fr , w | eq₁ with A E.≟T A' | eq₁
 ...   | yes refl | refl rewrite argIH refl dγ k = refl
 ...   | no _     | ()
-agree-RApp ctx f arg E.ahv-other veq eq argIH dγ k = agree-RApp-hard f arg E.ahv-other veq eq dγ k
+-- ahv-other: the dispatch reduces to `inferElabV-RApp-other ctx f arg =
+-- inferElabV-RApp-other-aux ctx f arg (classifyAppHead f) refl`, so `eq` already
+-- has the aux's type; delegate (the IHs ride f-infer and arg-check).
+agree-RApp ctx f arg E.ahv-other veq eq argIH fInferIH argCheckIH dγ k =
+  agree-RApp-other-aux f arg (E.classifyAppHead f) refl eq fInferIH argCheckIH dγ k
 
 -- RAnnot infers by CHECKING `e` against the annotation `T₀`; witness is
 -- `t-annot witness`, se is the check-elaborated `eE`, and
@@ -832,6 +907,13 @@ mC-sub h = s≤s (dbl-< h)
 mIC-sub : ∀ {m n : ℕ} → m < n → m +ℕ m < suc (n +ℕ n)
 mIC-sub h = ≤-trans (dbl-< h) (n≤1+n _)
 
+-- infer→check on a strictly-smaller subterm: `mCheck sub < mInfer par`. Used
+-- when an INFER node (e.g. `RApp f arg`, ahv-other) drives a CHECK on a child
+-- (`checkElabV ctx arg A`). From `m < n` (child μ < parent μ), `suc m + suc m ≤
+-- n + n` (+-mono-≤), and `suc m + suc m ≡ suc (suc (m + m))` (+-suc) ⇒ goal.
+mCI-sub : ∀ {m n : ℕ} → m < n → suc (m +ℕ m) < n +ℕ n
+mCI-sub {m} {n} h = subst (_≤ n +ℕ n) (cong suc (+-suc m m)) (+-mono-≤ h h)
+
 -- generic subterm size bounds (raw ℕ; instantiate with the μ of children)
 μ<-l : ∀ a b → a < suc (a +ℕ b)
 μ<-l a b = s≤s (m≤m+n a b)
@@ -886,11 +968,13 @@ mutual
   infer-agreeV ctx (Raw.RQualified name alias) _ eq dγ k =
     agree-RQualified ctx name alias
       (lookupImport (NamedCtx.imports ctx) (alias ++ "." ++ name)) refl eq dγ k
-  -- RApp: dispatch on the app-head view (delegates clean heads, defers
-  -- apply/other to agree-RApp-hard). Argument IH carries a smaller `Acc`.
+  -- RApp: dispatch on the app-head view. arg-infer / f-infer / arg-check IHs
+  -- each carry a strictly-smaller `Acc` (dbl-</μ<-l/μ<-r/mCI-sub).
   infer-agreeV ctx (Raw.RApp f arg) (acc rec) eq dγ k =
     agree-RApp ctx f arg (E.classifyAppHeadView f) refl eq
-      (λ p → infer-agreeV ctx arg (rec (dbl-< (μ<-r (μ f) (μ arg)))) p) dγ k
+      (λ p → infer-agreeV ctx arg (rec (dbl-< (μ<-r (μ f) (μ arg)))) p)
+      (λ p → infer-agreeV ctx f (rec (dbl-< (μ<-l (μ f) (μ arg)))) p)
+      (λ {T'} p → check-agreeV ctx arg T' (rec (mCI-sub (μ<-r (μ f) (μ arg)))) p) dγ k
   -- RAnnot: infers by CHECKING the body against the annotation; delegate to
   -- `check-agreeV` (phase drops to check, which is strictly < this infer node).
   infer-agreeV ctx (Raw.RAnnot e T₀) (acc rec) eq dγ k =
