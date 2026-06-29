@@ -811,13 +811,6 @@ completeness-gap-arr-app-check-eq {ctx} arg A B eqC
 ... | success _ _ _ _ , _ | refl = _ , _ , _ , refl
 
 postulate
-  completeness-gap-apply-check :
-    ∀ {ctx : NamedCtx} {p : RawExpr} {A B : Type}
-      {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    → ctx ⊢ᵢ p ∶ ((A T.⇒[ T.mk-kind T.Many T.pure ] B) T.* A) ⨾ Ψ
-    → ∃[ eE ] ∃[ d ] ∃[ f ]
-        checkElab ctx (Raw.RApp (RVar "apply") p) B
-          ≡ success (zeroUsage +ᵘ (T.Many *ᵘ Ψ)) eE d f
   completeness-gap-arg-driven-app-check :
     ∀ {ctx : NamedCtx} {f arg : RawExpr} {X T : Type}
       {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
@@ -1081,8 +1074,9 @@ mutual
   check-complete (t-embed (t-arr-app-infer {e = e} {A = A} {B = B} d)) =
     let (_ , _ , _ , eqC) = check-complete (t-embed d)
     in completeness-gap-arr-app-check-eq e A B eqC
-  check-complete (t-embed (t-apply-app-infer d)) =
-    completeness-gap-apply-check d
+  check-complete (t-embed (t-apply-app-infer {p = p} {A = A} {B = B} d)) =
+    let (_ , _ , _ , eqI) = infer-complete d
+    in checkElab-fallback-RApp-apply p A B eqI
   check-complete (t-embed (t-app {f = f} {x = x} {B = B} notPoly dF dX)) =
     let (_ , _ , _ , eqI) = infer-complete (t-app notPoly dF dX)
     in checkElab-fallback-RApp-generic f x B notPoly eqI
