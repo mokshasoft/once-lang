@@ -47,6 +47,7 @@ open import Once.Adequacy.CanonExtract using (canonFuns; canonPolys)
 open import Once.Adequacy.CanonPolyNames using (polyInB-bridge)
 open import Once.Adequacy.CanonReflectAllFuns
   using (AllFunsTyped-reflect; AllMainEffUU-reflect; MainExists-reflect)
+open import Once.Adequacy.CanonReflectExtract using (extractFunctions-canon-inj₁)
 
 ------------------------------------------------------------------------
 -- The reverse of `CanonModuleTyped.module-typed-and-valid`, assembled from the
@@ -54,13 +55,6 @@ open import Once.Adequacy.CanonReflectAllFuns
 -- its validity predicates over the SAME `ef`, so one `subst` along
 -- `extractFunctions-canon` transports the whole Σ (the validity predicates ride).
 ------------------------------------------------------------------------
-
-postulate
-  -- canonicalization preserves an extraction ERROR (names/structure kept). The
-  -- inj₁-branch residual; the inj₂ fragment is discharged below.
-  extractFunctions-canon-inj₁ : ∀ (ds : List P.Decl) {x}
-    → C.extractFunctions (C.extractAliases (P.mkModule ds)) (P.mkModule ds) ≡ inj₁ x
-    → C.extractFunctions (C.extractAliases (canonModule ds)) (canonModule ds) ≡ inj₁ x
 
 -- A bundle of `ModuleTyped-ef` + its two validity predicates over one `ef`.
 HVBundle : ∀ (m : P.Module) (ef : _) → Set
