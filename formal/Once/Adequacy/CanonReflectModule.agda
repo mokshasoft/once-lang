@@ -26,31 +26,83 @@
 
 module Once.Adequacy.CanonReflectModule where
 
-open import Data.List using (List)
+open import Data.List using (List; map)
+open import Data.String using (String)
 open import Data.Product using (_×_; _,_; Σ-syntax; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
+open import Data.Empty using (⊥-elim)
 open import Relation.Nullary using (yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst)
 
 import Once.Parser.Module.Core as P
-open import Once.Parser.Module.Resolve using (ModuleMap; resolveImports)
+open import Once.Parser using (FunInfo; PolyFunInfo)
+import Once.Compile as C
+open import Once.Parser.Module.Resolve using (ModuleMap; resolveImports; canonDecl; polyDefNames)
 import Once.Adequacy.CanonResolve as CR
 import Once.Adequacy.AcceptSound as AS
 import Once.Adequacy.ModuleComplete as MC
-open import Once.Adequacy.CanonModuleTyped using (canonModule)
+open import Once.Adequacy.CanonModuleTyped
+  using (canonModule; extractFunctions-canon; collectSigEffects-canon)
+open import Once.Adequacy.CanonExtract using (canonFuns; canonPolys)
+open import Once.Adequacy.CanonPolyNames using (polyInB-bridge)
+open import Once.Adequacy.CanonReflectAllFuns
+  using (AllFunsTyped-reflect; AllMainEffUU-reflect; MainExists-reflect)
 
 ------------------------------------------------------------------------
--- The load-bearing reverse transport (TEMP scaffold).
+-- The reverse of `CanonModuleTyped.module-typed-and-valid`, assembled from the
+-- reverse `AllFunsTyped` transport. The bundle `P` carries `ModuleTyped-ef` with
+-- its validity predicates over the SAME `ef`, so one `subst` along
+-- `extractFunctions-canon` transports the whole Σ (the validity predicates ride).
 ------------------------------------------------------------------------
 
 postulate
-  -- The reverse of `CanonModuleTyped.module-typed-and-valid`. DISCHARGE via the
-  -- reverse expression-typing reflection (`CanonReflectMutual.canon-reflects-ᶜ`)
-  -- lifted through a reverse `AllFunsTyped` transport.
-  module-typed-and-valid-reflect : ∀ (ds : List P.Decl)
-      (mt : AS.ModuleTyped (canonModule ds)) → MC.HasValidMain-decl (canonModule ds) mt
-    → Σ-syntax (AS.ModuleTyped (P.mkModule ds)) (λ mt' → MC.HasValidMain-decl (P.mkModule ds) mt')
+  -- canonicalization preserves an extraction ERROR (names/structure kept). The
+  -- inj₁-branch residual; the inj₂ fragment is discharged below.
+  extractFunctions-canon-inj₁ : ∀ (ds : List P.Decl) {x}
+    → C.extractFunctions (C.extractAliases (P.mkModule ds)) (P.mkModule ds) ≡ inj₁ x
+    → C.extractFunctions (C.extractAliases (canonModule ds)) (canonModule ds) ≡ inj₁ x
 
+-- A bundle of `ModuleTyped-ef` + its two validity predicates over one `ef`.
+HVBundle : ∀ (m : P.Module) (ef : _) → Set
+HVBundle m ef = Σ-syntax (AS.ModuleTyped-ef m ef)
+  (λ mt → MC.ModuleMainEffUU-ef m ef mt × MC.ModuleMainExists-ef m ef mt)
+
+-- A bundle of an `AllFunsTyped` derivation + its two validity predicates,
+-- indexed by the sig-effects (so one `subst` along `collectSigEffects-canon`
+-- carries the validity predicates with the derivation).
+VBundle : ∀ (b : List String) (funsU : List FunInfo) (polysU : List PolyFunInfo) (se : _) → Set
+VBundle b funsU polysU se = Σ-syntax
+  (AS.AllFunsTyped (C.buildPolyCtx (canonPolys b polysU)) se (canonFuns b funsU) C.emptyFunCtx)
+  (λ mt → MC.AllMainEffUU mt × MC.MainExists mt)
+
+module-typed-and-valid-reflect : ∀ (ds : List P.Decl)
+    (mt : AS.ModuleTyped (canonModule ds)) → MC.HasValidMain-decl (canonModule ds) mt
+  → Σ-syntax (AS.ModuleTyped (P.mkModule ds)) (λ mt' → MC.HasValidMain-decl (P.mkModule ds) mt')
+module-typed-and-valid-reflect ds mt vmain =
+  go (C.extractFunctions (C.extractAliases (P.mkModule ds)) (P.mkModule ds)) refl
+  where
+    go : ∀ efU → C.extractFunctions (C.extractAliases (P.mkModule ds)) (P.mkModule ds) ≡ efU
+       → Σ-syntax (AS.ModuleTyped (P.mkModule ds)) (λ mt' → MC.HasValidMain-decl (P.mkModule ds) mt')
+    go (inj₁ x) ef-eq =
+      ⊥-elim (subst (AS.ModuleTyped-ef (canonModule ds)) (extractFunctions-canon-inj₁ ds ef-eq) mt)
+    go (inj₂ (funsU , polysU)) ef-eq rewrite ef-eq =
+      let b   = polyDefNames ds
+          pib = polyInB-bridge (P.mkModule ds) funsU polysU ef-eq
+          -- (ModuleTyped , valid) bundle transported to the canonFuns/canonPolys form
+          bnd : HVBundle (canonModule ds) (inj₂ (canonFuns b funsU , canonPolys b polysU))
+          bnd = subst (HVBundle (canonModule ds)) (extractFunctions-canon ds funsU polysU ef-eq)
+                      (mt , proj₁ vmain , proj₂ vmain)
+          -- then transported along collectSigEffects(canonModule) = collectSigEffects ds
+          vb : VBundle b funsU polysU (C.collectSigEffects ds)
+          vb = subst (VBundle b funsU polysU) (collectSigEffects-canon ds) bnd
+          mt-c  = proj₁ vb
+          amu-c = proj₁ (proj₂ vb)
+          me-c  = proj₂ (proj₂ vb)
+      in AllFunsTyped-reflect b polysU (C.collectSigEffects ds) pib funsU mt-c
+       , (AllMainEffUU-reflect b polysU (C.collectSigEffects ds) pib funsU mt-c amu-c
+         , MainExists-reflect b polysU (C.collectSigEffects ds) pib funsU mt-c me-c)
+
+postulate
   -- The IMPORT residual (parallels `CanonModule.resolver-preserves-typing-imports`).
   resolver-reflects-typing-imports : ∀ (mm : ModuleMap) (mU mR : P.Module)
     → resolveImports mm mU ≡ inj₂ mR → (mt : AS.ModuleTyped mR) → MC.HasValidMain-decl mR mt
