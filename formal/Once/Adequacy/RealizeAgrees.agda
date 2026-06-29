@@ -47,8 +47,8 @@ open import Once.Adequacy.ResolveFaithful using (bind2-faithful)
 open import Once.Denotation.TraceMonad using (returnT)
 open import Once.Postulates using (extensionality)
 open import Relation.Nullary using (Dec; yes; no; ¬_)
-open import Once.TypeCheck.Judgment using (_⊢ᵢ_∶_⨾_; _⊢ᶜ_∶_⨾_; _⊢ᵍ_∶_; t-int; t-str; t-unit; t-pair; t-neg; t-let; t-binop-arith; t-binop-cmp; g-int; g-terminal; g-pair; g-inl; g-inr; g-In)
-open import Once.Denotation.Realize using (realize; realize-infer; realize-global)
+open import Once.TypeCheck.Judgment using (_⊢ᵢ_∶_⨾_; _⊢ᶜ_∶_⨾_; _⊢ᵍ_∶_; _⊢ᵐ_∶_⇨[_]_; t-int; t-str; t-unit; t-pair; t-neg; t-let; t-binop-arith; t-binop-cmp; g-int; g-terminal; g-pair; g-inl; g-inr; g-In; extractMorphWitness)
+open import Once.Denotation.Realize using (realize; realize-infer; realize-global; realize-morph)
 open import Once.TypeCheck.Soundness using (check-sound)
 open import Once.Surface.Syntax as Surface using (Expr; Usage; ⟦_⟧ᶜ; pair; neg; let'; sigOp; lift-morphism)
 open Surface.Usage using () renaming (_∷_ to _∷ᵘ_)
@@ -88,6 +88,19 @@ postulate
     (vw : E.AppHeadView f) (veq : E.classifyAppHeadView f ≡ vw)
     → E.checkElabV-RApp-dispatch ctx f arg T vw veq ≡ (success Ψ se d fr , w)
     → ∀ (dγ : ⟦ ⟦ NamedCtx.debruijn ctx ⟧ᶜ ⟧ᴰ) (k : ℕ) → SD.⟦ se ⟧ˢ dγ k ≡ SD.⟦ realize w ⟧ˢ dγ k
+  -- The morph-realize bridge (ANCHORED into the RApp morph-lift cases below before
+  -- discharge): the IR built by `extract-morph-eff` from the elaborated morphism
+  -- expr equals `realize-morph` of the `extractMorphWitness` of its typing
+  -- witness, for elaboration-paired (E, W). Consumed via `rewrite` in
+  -- ahv-curry/pair-applied/compose-applied/case-applied/cata.
+  morph-realize : ∀ {ctx : NamedCtx} {e : RawExpr} {A B : Type} {π : Purity}
+      {E : Expr (NamedCtx.debruijn ctx) Surface.zeroUsage (A ⇒[ mk-kind Many π ] B)} {d fr : ℕ}
+      {W : ctx ⊢ᶜ e ∶ (A ⇒[ mk-kind Many π ] B) ⨾ Surface.zeroUsage}
+      {m : IR A B} {mᵐ : ctx ⊢ᵐ e ∶ A ⇨[ π ] B}
+    → E.checkElabV ctx e (A ⇒[ mk-kind Many π ] B) ≡ (success Surface.zeroUsage E d fr , W)
+    → E.extract-morph-eff E ≡ just (m , refl)
+    → extractMorphWitness W ≡ just mᵐ
+    → m ≡ realize-morph mᵐ
 
 -- RPair folded top-level (no `with`): take both sub-results explicitly +
 -- their sub-IHs as functions; the de-withed `inferElabV-RPair-aux` reduces by
@@ -605,6 +618,50 @@ agree-check-RApp ctx f arg (X ⇒[ mk-kind Many pure ] (μ-type F)) E.ahv-In veq
   with E.inspectCheckG ctx X (Raw.RApp (Raw.RVar "In") arg) (μ-type F) | disp
 ... | E.cgv-nothing _ | ()
 ... | E.cgv-just {m} {gd} cgeq | refl rewrite checkG-realize gd cgeq = refl
+-- ahv-curry: checkCurry emits `lift-morphism (curry mf Heap)`, witness
+-- `t-morph-lift (m-curry mFᵐ)`; `realize` is `lift-morphism (curry
+-- (realize-morph mFᵐ) Heap)` — rewrite by the morph-realize bridge (mf ≡
+-- realize-morph mFᵐ). Non-curry targets fall through to check-RApp-todo.
+agree-check-RApp ctx f arg (A ⇒[ mk-kind Many pure ] (B ⇒[ mk-kind Many pure ] C)) E.ahv-curry veq disp inferIH argCheckIH dγ k
+  with E.checkElabV ctx arg ((A * B) ⇒[ mk-kind Many pure ] C) in eqarg | disp
+... | failure _ , _ | ()
+... | success Ψ argE d fr , w | disp'
+      with E.extract-morph-eff argE in exf | extractMorphWitness w in exw | disp'
+...   | just (mf , refl) | just mFᵐ | refl rewrite morph-realize eqarg exf exw = refl
+...   | just (mf , refl) | nothing  | ()
+...   | nothing          | _        | ()
+-- ahv-pair-applied: checkPair emits `lift-morphism ⟨mf,mg⟩`, witness
+-- `t-morph-lift (m-pair mFᵐ mGᵐ)`; rewrite by morph-realize on BOTH components.
+agree-check-RApp ctx (Raw.RApp (Raw.RVar "pair") f_inner) arg (A ⇒[ mk-kind Many pure ] (B * C)) E.ahv-pair-applied veq disp inferIH argCheckIH dγ k
+  with E.checkElabV ctx f_inner (A ⇒[ mk-kind Many pure ] B) in eqf | disp
+... | failure _ , _ | ()
+... | success Ψf fE df frf , wF | disp'
+      with E.checkElabV ctx arg (A ⇒[ mk-kind Many pure ] C) in eqg | disp'
+...   | failure _ , _ | ()
+...   | success Ψg gE dg frg , wG | disp''
+        with E.extract-morph-eff fE in exf | E.extract-morph-eff gE in exg | extractMorphWitness wF in exwf | extractMorphWitness wG in exwg | disp''
+...     | just (mf , refl) | just (mg , refl) | just mFᵐ | just mGᵐ | refl
+          rewrite morph-realize eqf exf exwf | morph-realize eqg exg exwg = refl
+...     | nothing | _ | _ | _ | ()
+...     | just _  | nothing | _ | _ | ()
+...     | just _  | just _  | nothing | _ | ()
+...     | just _  | just _  | just _  | nothing | ()
+-- ahv-case-applied: checkCase emits `lift-morphism (case m_f m_g)`, witness
+-- `t-morph-lift (m-case mFᵐ mGᵐ)`; rewrite both components.
+agree-check-RApp ctx (Raw.RApp (Raw.RVar "case") f_inner) arg ((A + B) ⇒[ mk-kind Many π ] C) E.ahv-case-applied veq disp inferIH argCheckIH dγ k
+  with E.checkElabV ctx f_inner (A ⇒[ mk-kind Many π ] C) in eqf | disp
+... | failure _ , _ | ()
+... | success Ψf fE df frf , wF | disp'
+      with E.checkElabV ctx arg (B ⇒[ mk-kind Many π ] C) in eqg | disp'
+...   | failure _ , _ | ()
+...   | success Ψg gE dg frg , wG | disp''
+        with E.extract-morph-eff fE in exf | E.extract-morph-eff gE in exg | extractMorphWitness wF in exwf | extractMorphWitness wG in exwg | disp''
+...     | just (m_f , refl) | just (m_g , refl) | just mFᵐ | just mGᵐ | refl
+          rewrite morph-realize eqf exf exwf | morph-realize eqg exg exwg = refl
+...     | nothing | _ | _ | _ | ()
+...     | just _  | nothing | _ | _ | ()
+...     | just _  | just _  | nothing | _ | ()
+...     | just _  | just _  | just _  | nothing | ()
 agree-check-RApp ctx f arg T vw veq disp inferIH argCheckIH dγ k =
   check-RApp-todo ctx f arg T vw veq disp dγ k
 
