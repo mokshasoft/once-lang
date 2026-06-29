@@ -21,14 +21,16 @@
 module Once.Adequacy.ResolveFaithful where
 
 open import Data.Nat using (ℕ)
+open import Data.Unit using (tt)
 open import Data.List using ([])
 open import Data.Product using (_,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; sym; trans)
 
 open import Once.Type using (Type; Int)
 open import Once.Surface.Syntax as Srf using (Expr; Usage; ⟦_⟧ᶜ)
-open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ)
-open import Once.Denotation.TraceMonad using (T; _>>=T_)
+open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ; inject; forget)
+open import Once.Denotation.TraceMonad using (T; _>>=T_; valueT)
+open import Once.Semantics.Machine using (sem-cata; sem-ana; coerce-functor)
 import Once.Denotation.SourceDenote as SD
 open import Once.TypeCheck.Elaborate using (resolveExpr; PolyCtx; Imports)
 open import Once.Postulates using (extensionality)
@@ -112,5 +114,20 @@ resolveExpr-faithful polys imps userFns fresh (Srf.effApp f x) dγ k =
                 (λ vx → vf vx) (λ vx → vf vx)
                 (λ j → resolveExpr-faithful polys imps userFns fresh x dγ j)
                 (λ vx j → refl)))))
--- Hard constructors (sigOp / cata / ana / poly) → the named residual.
+-- cata: a closure folding `sem-cata` over the CLOSED algebra `⟦alg⟧ˢ tt`. One
+-- `cong` over the algebra denotation (the IH at empty env tt, lifted to a full
+-- T-value by funext over fuel); the fold structure is otherwise identical.
+resolveExpr-faithful polys imps userFns fresh (Srf.cata {F = F} {A = A} wf alg) dγ k =
+  cong (λ ac → [] , (λ x → λ n →
+         let r = sem-cata wf (SD.cata-ev-algˢ {F} {A} n ac) x in (proj₁ r , inject (proj₂ r))))
+       (extensionality (λ j → resolveExpr-faithful polys imps userFns fresh alg tt j))
+-- ana: dual of cata — a closure over the CLOSED coalgebra `⟦coalg⟧ˢ tt` (appears
+-- in both `ana-eventsˢ` and `sem-ana`). One `cong` over the coalgebra denotation.
+resolveExpr-faithful polys imps userFns fresh (Srf.ana {F = F} {A = A} wf coalg) dγ k =
+  cong (λ ac → [] , (λ a → λ n →
+         ( SD.ana-eventsˢ {F} {A} ac (forget a) n
+         , inject (sem-ana F (λ a' → coerce-functor F _
+                     (forget (valueT (valueT ac 0 (inject a')) 0))) (forget a)) )))
+       (extensionality (λ j → resolveExpr-faithful polys imps userFns fresh coalg tt j))
+-- Hard constructors (sigOp / poly) → the named residual.
 resolveExpr-faithful polys imps userFns fresh e dγ k = resolveExpr-faithful-hard polys imps userFns fresh e dγ k
