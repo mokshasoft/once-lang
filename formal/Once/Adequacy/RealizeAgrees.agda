@@ -34,7 +34,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 
 import Once.Type
 open import Once.Type using (Type; Int; Unit; Void; Float; Str; Buffer; _*_; _+_; μ-type; ν-type;
-                             Purity; pure; eff; mk-kind; Many; One; Zero; _⇒[_]_; isUnit?)
+                             Purity; pure; eff; mk-kind; Many; One; Zero; _⇒[_]_; isUnit?; ⟦_⟧T; Functor)
 open import Once.TypeCheck.Raw as Raw using (RawExpr)
 open import Once.TypeCheck.Classify using (NamedCtx; extendNamedCtx; lookupSigEffect; lookupImport; lookupLocal)
 open import Once.TypeCheck.Elaborate using (success; failure; VerifiedInferResult; VerifiedCheckResult)
@@ -45,8 +45,8 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Sum using (inj₁; inj₂; [_,_]′)
 open import Once.Adequacy.ResolveFaithful using (bind2-faithful)
 open import Relation.Nullary using (Dec; yes; no; ¬_)
-open import Once.TypeCheck.Judgment using (_⊢ᵢ_∶_⨾_; _⊢ᶜ_∶_⨾_; t-int; t-str; t-unit; t-pair; t-neg; t-let; t-binop-arith; t-binop-cmp)
-open import Once.Denotation.Realize using (realize; realize-infer)
+open import Once.TypeCheck.Judgment using (_⊢ᵢ_∶_⨾_; _⊢ᶜ_∶_⨾_; _⊢ᵍ_∶_; t-int; t-str; t-unit; t-pair; t-neg; t-let; t-binop-arith; t-binop-cmp; g-int; g-terminal; g-pair; g-inl; g-inr; g-In)
+open import Once.Denotation.Realize using (realize; realize-infer; realize-global)
 open import Once.TypeCheck.Soundness using (check-sound)
 open import Once.Surface.Syntax as Surface using (Expr; Usage; ⟦_⟧ᶜ; pair; neg; let'; sigOp; lift-morphism)
 open Surface.Usage using () renaming (_∷_ to _∷ᵘ_)
@@ -465,6 +465,43 @@ agree-RAnnot : ∀ {ctx : NamedCtx} {e : RawExpr} {T₀ : Type} {A Ψ}
   → ∀ dγ k → SD.⟦ se ⟧ˢ dγ k ≡ SD.⟦ realize-infer w ⟧ˢ dγ k
 agree-RAnnot (success Ψ' eE' d' fr' , witness) refl IH dγ k = IH refl dγ k
 agree-RAnnot (failure _ , _) () IH
+
+------------------------------------------------------------------------
+-- `checkG` builds EXACTLY the global-element IR that `realize-global` reads off
+-- the ⊢ᵍ witness it returns: `m ≡ realize-global gd`. By induction on `gd`
+-- (each constructor fixes `e`,`A` so `checkG` reduces); leaves (`g-int`,
+-- `g-terminal`) are `refl`, the recursive cases re-run `checkG`'s sub-`with` and
+-- `cong` the IH. Unblocks every check-mode value-lift case (RPair-vlift etc.).
+checkG-realize : ∀ {ctx : NamedCtx} {X : Type} {e : RawExpr} {A : Type} {m : IR X A}
+  (gd : ctx ⊢ᵍ e ∶ A)
+  → E.checkG ctx X e A ≡ just (m , gd) → m ≡ realize-global gd
+checkG-realize (g-int n) refl = refl
+checkG-realize {ctx} {X} (g-terminal eqL eqI) eq
+  with E.inspectLookupLocal ctx "terminal" | E.inspectLookupImport ctx "terminal" | eq
+... | E.llv-not-found _ | E.liv-not-found _ | refl = refl
+... | E.llv-not-found _ | E.liv-found _     | ()
+... | E.llv-found _     | _                 | ()
+checkG-realize {ctx} {X} (g-pair {a = a} {b = b} {A = A} {B = B} ga gb) eq
+  with E.checkG ctx X a A in eqa | E.checkG ctx X b B in eqb | eq
+... | just (ma , _) | just (mb , _) | refl =
+      cong₂ (λ x y → IR.⟨ x , y ⟩ IR.Heap) (checkG-realize ga eqa) (checkG-realize gb eqb)
+... | nothing       | _            | ()
+... | just _        | nothing      | ()
+checkG-realize {ctx} {X} (g-inl {arg = arg} {A = A} ga) eq
+  with E.checkG ctx X arg A in eqa | eq
+... | just (ma , _) | refl = cong (λ z → IR.inl IR.Heap IR.∘ z) (checkG-realize ga eqa)
+... | nothing       | ()
+checkG-realize {ctx} {X} (g-inr {arg = arg} {B = B} gb) eq
+  with E.checkG ctx X arg B in eqb | eq
+... | just (mb , _) | refl = cong (λ z → IR.inr IR.Heap IR.∘ z) (checkG-realize gb eqb)
+... | nothing       | ()
+checkG-realize {ctx} {X} (g-In {arg = arg} {F = F} {wfF = wfF} eqWF garg) eq
+  with E.inspectWellFormedF F | eq
+... | E.wfv-no _  | ()
+... | E.wfv-yes _ | eq'
+      with E.checkG ctx X arg (⟦ F ⟧T (μ-type F)) in eqarg | eq'
+...     | just (marg , _) | refl = cong (λ z → IR.In wfF IR.Heap IR.∘ z) (checkG-realize garg eqarg)
+...     | nothing         | ()
 
 ------------------------------------------------------------------------
 -- Well-founded measure for the infer/check mutual recursion. The same-size
