@@ -28,16 +28,16 @@ stderr = 2
 ------------------------------------------------------------------------
 
 -- | Write string to stdout (no newline)
-signature print : Eff (String Utf8) Unit
+signature print : Eff (String) Unit
 
 -- | Write string to stdout with newline
-signature println : Eff (String Utf8) Unit
+signature println : Eff (String) Unit
 
 -- | Write string to stderr (no newline)
-signature err : Eff (String Utf8) Unit
+signature err : Eff (String) Unit
 
 -- | Write string to stderr with newline
-signature errln : Eff (String Utf8) Unit
+signature errln : Eff (String) Unit
 
 -- | Write a single character to stdout
 signature putc : Eff Int Unit
@@ -64,8 +64,8 @@ signature getline : Eff (Buffer * Int) Int
 
 -- | Read entire file contents into buffer
 -- Returns bytes read or -1 on error
-signature readfile : Eff (String Utf8 * Buffer * Int) Int
+signature readfile : Eff (String * Buffer * Int) Int
 
 -- | Get file size
 -- Returns size in bytes or -1 on error
-signature filesize : Eff (String Utf8) Int
+signature filesize : Eff (String) Int

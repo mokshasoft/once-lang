@@ -16,7 +16,7 @@
 signature ifZero : Int -> Unit + Unit
 
 -- | Parse integer from string (returns 0 on failure)
-signature parseInt : String Utf8 -> Int
+signature parseInt : String -> Int
 
 -- | Convert integer to string
-signature intToString : Int -> String Utf8
+signature intToString : Int -> String

@@ -10,4 +10,4 @@ signature free : Eff Buffer Unit
 signature realloc : Eff (Buffer * Int) Buffer
 
 -- Helper for heap string allocation (used by @heap annotation)
-signature heap_string : Eff (Int * Buffer) (String Utf8)
+signature heap_string : Eff (Int * Buffer) (String)
