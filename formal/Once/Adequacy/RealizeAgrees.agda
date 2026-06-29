@@ -40,7 +40,7 @@ open import Once.IR as IR using (IR)
 open import Once.SigEffect using (SigEffect) renaming (halts to se-halts; emits to se-emits)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Relation.Nullary using (Dec; yes; no; ¬_)
-open import Once.TypeCheck.Judgment using (_⊢ᵢ_∶_⨾_; _⊢ᶜ_∶_⨾_; t-int; t-str; t-unit; t-pair; t-neg; t-let)
+open import Once.TypeCheck.Judgment using (_⊢ᵢ_∶_⨾_; _⊢ᶜ_∶_⨾_; t-int; t-str; t-unit; t-pair; t-neg; t-let; t-binop-arith; t-binop-cmp)
 open import Once.Denotation.Realize using (realize; realize-infer)
 open import Once.TypeCheck.Soundness using (check-sound)
 open import Once.Surface.Syntax as Surface using (Expr; Usage; ⟦_⟧ᶜ; pair; neg; let'; sigOp; lift-morphism)
@@ -115,6 +115,71 @@ agree-RUnaryOp (success (_ Once.Type.+ _) _ _ _ _ , _) () subAg
 agree-RUnaryOp (success (_ Once.Type.⇒[ _ ] _) _ _ _ _ , _) () subAg
 agree-RUnaryOp (success (Once.Type.μ-type _) _ _ _ _ , _) () subAg
 agree-RUnaryOp (success (Once.Type.ν-type _) _ _ _ _ , _) () subAg
+
+-- RBinOp folded top-level (mirrors `inferElabV-RBinOp-aux`'s left-type /
+-- right-type / op dispatch). Both operands must elaborate to `Int`; any other
+-- left/right shape makes the aux `failure`, so the success equation is absurd
+-- (`()`). For the 11 success ops the witness is `t-binop-{arith,cmp} refl w₁ w₂`
+-- and `se` is the matching arithmetic/comparison IR; `realize-infer` rebuilds
+-- the SAME IR over `realize-infer w₁/w₂`, so rewriting both operand IHs at
+-- `(dγ,k)` (the binary op denotation is fuel-`k`-pointwise, as for `agree-RPair`)
+-- closes each case with `refl`.
+agree-RBinOp : ∀ {ctx : NamedCtx} (op : Raw.BinOp) {e₁ e₂ : RawExpr} {A Ψ}
+  {se : Expr (NamedCtx.debruijn ctx) Ψ A} {d f} {w : ctx ⊢ᵢ Raw.RBinOp op e₁ e₂ ∶ A ⨾ Ψ}
+  (r₁ : VerifiedInferResult ctx e₁) (r₂ : VerifiedInferResult ctx e₂)
+  → E.inferElabV-RBinOp-aux ctx op e₁ e₂ r₁ r₂ ≡ (success A Ψ se d f , w)
+  → (∀ {A₁ Ψ₁ e₁E d₁ f₁} {w₁ : ctx ⊢ᵢ e₁ ∶ A₁ ⨾ Ψ₁}
+       → r₁ ≡ (success A₁ Ψ₁ e₁E d₁ f₁ , w₁) → ∀ dγ k → SD.⟦ e₁E ⟧ˢ dγ k ≡ SD.⟦ realize-infer w₁ ⟧ˢ dγ k)
+  → (∀ {A₂ Ψ₂ e₂E d₂ f₂} {w₂ : ctx ⊢ᵢ e₂ ∶ A₂ ⨾ Ψ₂}
+       → r₂ ≡ (success A₂ Ψ₂ e₂E d₂ f₂ , w₂) → ∀ dγ k → SD.⟦ e₂E ⟧ˢ dγ k ≡ SD.⟦ realize-infer w₂ ⟧ˢ dγ k)
+  → ∀ dγ k → SD.⟦ se ⟧ˢ dγ k ≡ SD.⟦ realize-infer w ⟧ˢ dγ k
+-- left operand fails to be Int → aux is `failure`
+agree-RBinOp op (failure _ , _) _ () s₁ s₂
+agree-RBinOp op (success Unit          _ _ _ _ , _) _ () s₁ s₂
+agree-RBinOp op (success Void          _ _ _ _ , _) _ () s₁ s₂
+agree-RBinOp op (success Float         _ _ _ _ , _) _ () s₁ s₂
+agree-RBinOp op (success Str           _ _ _ _ , _) _ () s₁ s₂
+agree-RBinOp op (success Buffer        _ _ _ _ , _) _ () s₁ s₂
+agree-RBinOp op (success (_ * _)       _ _ _ _ , _) _ () s₁ s₂
+agree-RBinOp op (success (_ + _)       _ _ _ _ , _) _ () s₁ s₂
+agree-RBinOp op (success (_ ⇒[ _ ] _)  _ _ _ _ , _) _ () s₁ s₂
+agree-RBinOp op (success (μ-type _)    _ _ _ _ , _) _ () s₁ s₂
+agree-RBinOp op (success (ν-type _)    _ _ _ _ , _) _ () s₁ s₂
+-- left is Int, right fails to be Int → aux is `failure`
+agree-RBinOp op (success Int _ _ _ _ , _) (failure _ , _)                  () s₁ s₂
+agree-RBinOp op (success Int _ _ _ _ , _) (success Unit          _ _ _ _ , _) () s₁ s₂
+agree-RBinOp op (success Int _ _ _ _ , _) (success Void          _ _ _ _ , _) () s₁ s₂
+agree-RBinOp op (success Int _ _ _ _ , _) (success Float         _ _ _ _ , _) () s₁ s₂
+agree-RBinOp op (success Int _ _ _ _ , _) (success Str           _ _ _ _ , _) () s₁ s₂
+agree-RBinOp op (success Int _ _ _ _ , _) (success Buffer        _ _ _ _ , _) () s₁ s₂
+agree-RBinOp op (success Int _ _ _ _ , _) (success (_ * _)       _ _ _ _ , _) () s₁ s₂
+agree-RBinOp op (success Int _ _ _ _ , _) (success (_ + _)       _ _ _ _ , _) () s₁ s₂
+agree-RBinOp op (success Int _ _ _ _ , _) (success (_ ⇒[ _ ] _)  _ _ _ _ , _) () s₁ s₂
+agree-RBinOp op (success Int _ _ _ _ , _) (success (μ-type _)    _ _ _ _ , _) () s₁ s₂
+agree-RBinOp op (success Int _ _ _ _ , _) (success (ν-type _)    _ _ _ _ , _) () s₁ s₂
+-- both Int → the op picks the IR; rewrite both operand IHs at (dγ,k)
+agree-RBinOp Raw.OpAdd (success Int _ _ _ _ , _) (success Int _ _ _ _ , _) refl s₁ s₂ dγ k
+  rewrite s₁ refl dγ k | s₂ refl dγ k = refl
+agree-RBinOp Raw.OpSub (success Int _ _ _ _ , _) (success Int _ _ _ _ , _) refl s₁ s₂ dγ k
+  rewrite s₁ refl dγ k | s₂ refl dγ k = refl
+agree-RBinOp Raw.OpMul (success Int _ _ _ _ , _) (success Int _ _ _ _ , _) refl s₁ s₂ dγ k
+  rewrite s₁ refl dγ k | s₂ refl dγ k = refl
+agree-RBinOp Raw.OpDiv (success Int _ _ _ _ , _) (success Int _ _ _ _ , _) refl s₁ s₂ dγ k
+  rewrite s₁ refl dγ k | s₂ refl dγ k = refl
+agree-RBinOp Raw.OpMod (success Int _ _ _ _ , _) (success Int _ _ _ _ , _) refl s₁ s₂ dγ k
+  rewrite s₁ refl dγ k | s₂ refl dγ k = refl
+agree-RBinOp Raw.OpLt (success Int _ _ _ _ , _) (success Int _ _ _ _ , _) refl s₁ s₂ dγ k
+  rewrite s₁ refl dγ k | s₂ refl dγ k = refl
+agree-RBinOp Raw.OpLe (success Int _ _ _ _ , _) (success Int _ _ _ _ , _) refl s₁ s₂ dγ k
+  rewrite s₁ refl dγ k | s₂ refl dγ k = refl
+agree-RBinOp Raw.OpGt (success Int _ _ _ _ , _) (success Int _ _ _ _ , _) refl s₁ s₂ dγ k
+  rewrite s₁ refl dγ k | s₂ refl dγ k = refl
+agree-RBinOp Raw.OpGe (success Int _ _ _ _ , _) (success Int _ _ _ _ , _) refl s₁ s₂ dγ k
+  rewrite s₁ refl dγ k | s₂ refl dγ k = refl
+agree-RBinOp Raw.OpEq (success Int _ _ _ _ , _) (success Int _ _ _ _ , _) refl s₁ s₂ dγ k
+  rewrite s₁ refl dγ k | s₂ refl dγ k = refl
+agree-RBinOp Raw.OpNe (success Int _ _ _ _ , _) (success Int _ _ _ _ , _) refl s₁ s₂ dγ k
+  rewrite s₁ refl dγ k | s₂ refl dγ k = refl
 
 -- RLet folded with-free via two levels (e₂'s context depends on e₁'s type A):
 -- `agree-RLet` matches the e₁ result, `agree-RLet2` the e₂ result; the let'
@@ -272,6 +337,11 @@ mutual
   -- equation is absurd.
   infer-agreeV ctx (Raw.RLam _ _) ()
   infer-agreeV ctx (Raw.RAna _ _) ()
+  -- RBinOp: with-free — delegate to top-level `agree-RBinOp`, passing both
+  -- operand results explicitly + their sub-IHs (mirrors RPair).
+  infer-agreeV ctx (Raw.RBinOp op e₁ e₂) eq dγ k =
+    agree-RBinOp op (E.inferElabV ctx e₁) (E.inferElabV ctx e₂) eq
+      (λ p → infer-agreeV ctx e₁ p) (λ p → infer-agreeV ctx e₂ p) dγ k
   infer-agreeV ctx e eq = infer-agreeV-todo ctx e eq
 
   check-agreeV : ∀ (ctx : NamedCtx) (e : RawExpr) (T : Type) {Ψ se d f w}
