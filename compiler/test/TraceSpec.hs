@@ -8,14 +8,12 @@
 -- the final `exit` argument. These tests observe a MULTI-SigOp trace — effect
 -- ordering AND arguments.
 --
--- Each program declares the SigOps locally:
---     signature emit : Eff Int Unit
---     signature exit : Eff Int Unit
--- and is linked against the trace runtime (test/trace-runtime.s), whose `emit`
--- writes its argument's low byte to stdout. So the captured stdout is exactly
--- the emitted byte sequence and the exit code is the final `exit` argument.
--- Declaring the SigOps locally means the codegen calls them by their own name
--- (`once_4emit`/`once_4exit`) — no strata/module-path symbol mangling involved.
+-- Each program imports the observable test interpretation `I.Test.Emit` (whose
+-- `emit : Eff Int Unit` writes its argument's low byte to stdout) and takes
+-- `exit` from the real `I.Linux.Syscalls`. Both resolve under the single test
+-- strata root (Backend.Common.testStrataDir), and the compiler links their
+-- implementations. So the captured stdout is exactly the emitted byte sequence
+-- and the exit code is the final `exit` argument.
 module TraceSpec (traceTests) where
 
 import Test.Tasty
@@ -29,14 +27,14 @@ traceTests :: TestTree
 traceTests = testGroup "Effect traces (observable)"
   [ traceTest "exit only is an empty emit trace"
       [ "c5 : Unit -> Int", "c5 u = 5" ]
-      [ "main = compose exit (arr c5)" ]
+      [ "main = compose exit@S (arr c5)" ]
       [] 5
 
   , traceTest "single emit then exit"
       [ "c42 : Unit -> Int", "c42 u = 42"
       , "c0 : Unit -> Int",  "c0 u = 0"
       ]
-      [ "main = compose exit (compose (arr c0) (compose emit (arr c42)))" ]
+      [ "main = compose exit@S (compose (arr c0) (compose emit@E (arr c42)))" ]
       [42] 0
 
   , traceTest "two emits preserve order (emit 5 before emit 3)"
@@ -44,11 +42,11 @@ traceTests = testGroup "Effect traces (observable)"
       , "c3 : Unit -> Int", "c3 u = 3"
       , "c7 : Unit -> Int", "c7 u = 7"
       ]
-      [ "main = compose exit"
+      [ "main = compose exit@S"
       , "         (compose (arr c7)"
-      , "           (compose emit"
+      , "           (compose emit@E"
       , "             (compose (arr c3)"
-      , "               (compose emit (arr c5)))))"
+      , "               (compose emit@E (arr c5)))))"
       ]
       [5, 3] 7
 
@@ -58,26 +56,26 @@ traceTests = testGroup "Effect traces (observable)"
       , "c3 : Unit -> Int", "c3 u = 3"
       , "c9 : Unit -> Int", "c9 u = 9"
       ]
-      [ "main = compose exit"
+      [ "main = compose exit@S"
       , "         (compose (arr c9)"
-      , "           (compose emit"
+      , "           (compose emit@E"
       , "             (compose (arr c3)"
-      , "               (compose emit"
+      , "               (compose emit@E"
       , "                 (compose (arr c2)"
-      , "                   (compose emit (arr c1)))))))"
+      , "                   (compose emit@E (arr c1)))))))"
       ]
       [1, 2, 3] 9
   ]
 
--- | Build a trace program (helper definitions + a `main`), link it against the
--- trace runtime, run it, and assert the emitted byte sequence and exit code.
--- @emitted@ is the expected list of bytes written by `emit`.
+-- | Build a trace program (helper definitions + a `main`), run it, and assert
+-- the emitted byte sequence and exit code. @emitted@ is the expected list of
+-- bytes written by `emit`.
 traceTest :: TestName -> [T.Text] -> [T.Text] -> [Int] -> Int -> TestTree
 traceTest name helpers mainLines emitted exitCode =
   testCase name $ do
     let source = T.unlines $
-          [ "signature emit : Eff Int Unit"
-          , "signature exit : Eff Int Unit"
+          [ "import I.Linux.Syscalls as S"
+          , "import I.Test.Emit as E"
           , ""
           ] ++ helpers ++ [ "", "main : IO Unit" ] ++ mainLines
     result <- buildAndRunTrace (slug name) source

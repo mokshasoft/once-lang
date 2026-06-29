@@ -1,0 +1,11 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson and contributors
+
+-- | Test-framework interpretation providing an OBSERVABLE `emit` SigOp, used by
+-- TraceSpec to observe a program's effect trace at runtime. Unlike the shipped
+-- `I.Test.Emit` (a runtime nop), this one's x86_64 implementation writes each
+-- emitted byte to stdout, so the emitted sequence — its order and arguments —
+-- is observable. `exit` is NOT defined here; trace programs take it from the
+-- real `I.Linux.Syscalls` (the Linux interpretation is symlinked into this test
+-- strata so a single --strata root resolves both imports).
+signature emit : Eff Int Unit
