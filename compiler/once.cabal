@@ -8,7 +8,7 @@ bug-reports:    https://github.com/githubuser/compiler/issues
 author:         Jonas Claesson
 maintainer:     jonas.cl@protonmail.com
 copyright:      2025 Jonas Claesson
-license:        GPL-2.0-only
+license:        AGPL-3.0-or-later
 license-file:   LICENSE
 build-type:     Simple
 extra-source-files:
