@@ -618,7 +618,7 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
                               (⟦⟧⊥-just src mR ir stm-eq mi) p
                   e≋  = pw-just-rel p'                                        -- exec bytes ≋ ⟦ moduleToIR mR ⟧IR
               in tp , ⊢R , (λ n → trans (e≋ n)
-                                (trans (RB.resolver-preserves-trace (Source.srcImports src) mU mR res-eq n)
+                                (trans (RB.resolver-preserves-trace (Source.srcImports src) mU mR res-eq mt hvm mi n)
                                        (sd-bridge tp n)))
 
   -- COMPLETENESS conjunct — `src ⊢R tp` is `FB.ParsesText text mU` (independent

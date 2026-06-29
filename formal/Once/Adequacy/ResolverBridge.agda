@@ -67,6 +67,9 @@ import Once.Adequacy.AcceptSound as AS
 import Once.Adequacy.ModuleComplete as MC
 import Once.Adequacy.CanonModule as CMod
 import Once.Adequacy.CanonReflectModule as CRMod
+import Once.Adequacy.ResolverTrace as RT
+open import Once.IR using (IR)
+open import Once.Type using (Unit)
 
 -- (1) FORWARD type-preservation — for COMPLETENESS. A declaratively well-typed
 --     UN-resolved module with a valid `main` resolves to a module that is ALSO
@@ -100,14 +103,16 @@ resolver-reflects-typing :
   Σ-syntax (AS.ModuleTyped mU) (λ mt' → MC.HasValidMain-decl mU mt')
 resolver-reflects-typing = CRMod.resolver-reflects-typing
 
-postulate
-  -- (3) trace-preservation — for SOUNDNESS/TRACE. The resolved module's IR
-  --     trace equals the un-resolved module's, so the compiled bytes' trace
-  --     (against the resolved IR) equals the independent meaning (against the
-  --     un-resolved main). This is resolver-preserves-SEMANTICS in trace form;
-  --     discharge via the realize/`faithful` bridge over the canonicalized refs
-  --     (Plan 0.50 `m-named-resolved` / `realize-agrees`).
-  resolver-preserves-trace :
-    ∀ (mm : ModuleMap) (mU mR : P.Module) →
-    resolveImports mm mU ≡ inj₂ mR →
-    ∀ (n : ℕ) → ⟦ moduleToIR mR ⟧IR n ≡ ⟦ moduleToIR mU ⟧IR n
+-- (3) trace-preservation — for SOUNDNESS/TRACE. The resolved module's IR trace
+--     equals the un-resolved module's, so the compiled bytes' trace (against the
+--     resolved IR) equals the independent meaning (against the un-resolved main).
+--     Routes through the DENOTATION (sd-bridge for both + a cross-resolution
+--     residual); see `Once.Adequacy.ResolverTrace`. The typing of mU + the
+--     compilability of mR are threaded from the call site (both available there).
+resolver-preserves-trace :
+  ∀ (mm : ModuleMap) (mU mR : P.Module) →
+  resolveImports mm mU ≡ inj₂ mR →
+  (mt-U : AS.ModuleTyped mU) → MC.HasValidMain-decl mU mt-U →
+  ∀ {ir-R : IR Unit Unit} → moduleToIR mR ≡ just ir-R →
+  ∀ (n : ℕ) → ⟦ moduleToIR mR ⟧IR n ≡ ⟦ moduleToIR mU ⟧IR n
+resolver-preserves-trace = RT.resolver-preserves-trace
