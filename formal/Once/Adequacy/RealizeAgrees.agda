@@ -581,6 +581,30 @@ agree-check-RApp ctx f arg (_ ⇒[ mk-kind Zero eff ] _)  E.ahv-arr veq ()
 agree-check-RApp ctx f arg (_ ⇒[ mk-kind One eff ] _)   E.ahv-arr veq ()
 agree-check-RApp ctx f arg (μ-type _) E.ahv-arr veq ()
 agree-check-RApp ctx f arg (ν-type _) E.ahv-arr veq ()
+-- ahv-inl/inr: direct sum target → morph-app (inl/inr Heap) argE (rewrite arg
+-- check IH); pure-arrow→sum target → value-lift via checkG (rewrite checkG-realize).
+-- ahv-In: pure-arrow→μ target → value-lift via checkG. All other targets fail
+-- ⇒ fall through to the global `check-RApp-todo` catch-all (absurd success-eq).
+agree-check-RApp ctx f arg (A + B) E.ahv-inl veq disp inferIH argCheckIH dγ k
+  with E.checkElabV ctx arg A in aeq | disp
+... | failure _ , _ | ()
+... | success Ψ argE d fr , w | refl rewrite argCheckIH aeq dγ k = refl
+agree-check-RApp ctx f arg (X ⇒[ mk-kind Many pure ] (A + B)) E.ahv-inl veq disp inferIH argCheckIH dγ k
+  with E.inspectCheckG ctx X (Raw.RApp (Raw.RVar "inl") arg) (A + B) | disp
+... | E.cgv-nothing _ | ()
+... | E.cgv-just {m} {gd} cgeq | refl rewrite checkG-realize gd cgeq = refl
+agree-check-RApp ctx f arg (A + B) E.ahv-inr veq disp inferIH argCheckIH dγ k
+  with E.checkElabV ctx arg B in aeq | disp
+... | failure _ , _ | ()
+... | success Ψ argE d fr , w | refl rewrite argCheckIH aeq dγ k = refl
+agree-check-RApp ctx f arg (X ⇒[ mk-kind Many pure ] (A + B)) E.ahv-inr veq disp inferIH argCheckIH dγ k
+  with E.inspectCheckG ctx X (Raw.RApp (Raw.RVar "inr") arg) (A + B) | disp
+... | E.cgv-nothing _ | ()
+... | E.cgv-just {m} {gd} cgeq | refl rewrite checkG-realize gd cgeq = refl
+agree-check-RApp ctx f arg (X ⇒[ mk-kind Many pure ] (μ-type F)) E.ahv-In veq disp inferIH argCheckIH dγ k
+  with E.inspectCheckG ctx X (Raw.RApp (Raw.RVar "In") arg) (μ-type F) | disp
+... | E.cgv-nothing _ | ()
+... | E.cgv-just {m} {gd} cgeq | refl rewrite checkG-realize gd cgeq = refl
 agree-check-RApp ctx f arg T vw veq disp inferIH argCheckIH dγ k =
   check-RApp-todo ctx f arg T vw veq disp dγ k
 
