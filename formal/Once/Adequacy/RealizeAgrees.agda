@@ -44,6 +44,8 @@ open import Once.SigEffect using (SigEffect) renaming (halts to se-halts; emits 
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Sum using (inj₁; inj₂; [_,_]′)
 open import Once.Adequacy.ResolveFaithful using (bind2-faithful)
+open import Once.TypeCheck.MorphComplete using (morph-elab)
+open import Data.Maybe.Properties using (just-injective)
 open import Once.Denotation.TraceMonad using (returnT)
 open import Once.Postulates using (extensionality)
 open import Relation.Nullary using (Dec; yes; no; ¬_)
@@ -88,19 +90,6 @@ postulate
     (vw : E.AppHeadView f) (veq : E.classifyAppHeadView f ≡ vw)
     → E.checkElabV-RApp-dispatch ctx f arg T vw veq ≡ (success Ψ se d fr , w)
     → ∀ (dγ : ⟦ ⟦ NamedCtx.debruijn ctx ⟧ᶜ ⟧ᴰ) (k : ℕ) → SD.⟦ se ⟧ˢ dγ k ≡ SD.⟦ realize w ⟧ˢ dγ k
-  -- The morph-realize bridge (ANCHORED into the RApp morph-lift cases below before
-  -- discharge): the IR built by `extract-morph-eff` from the elaborated morphism
-  -- expr equals `realize-morph` of the `extractMorphWitness` of its typing
-  -- witness, for elaboration-paired (E, W). Consumed via `rewrite` in
-  -- ahv-curry/pair-applied/compose-applied/case-applied/cata.
-  morph-realize : ∀ {ctx : NamedCtx} {e : RawExpr} {A B : Type} {π : Purity}
-      {E : Expr (NamedCtx.debruijn ctx) Surface.zeroUsage (A ⇒[ mk-kind Many π ] B)} {d fr : ℕ}
-      {W : ctx ⊢ᶜ e ∶ (A ⇒[ mk-kind Many π ] B) ⨾ Surface.zeroUsage}
-      {m : IR A B} {mᵐ : ctx ⊢ᵐ e ∶ A ⇨[ π ] B}
-    → E.checkElabV ctx e (A ⇒[ mk-kind Many π ] B) ≡ (success Surface.zeroUsage E d fr , W)
-    → E.extract-morph-eff E ≡ just (m , refl)
-    → extractMorphWitness W ≡ just mᵐ
-    → m ≡ realize-morph mᵐ
 
 -- RPair folded top-level (no `with`): take both sub-results explicitly +
 -- their sub-IHs as functions; the de-withed `inferElabV-RPair-aux` reduces by
@@ -524,6 +513,30 @@ checkG-realize {ctx} {X} (g-In {arg = arg} {F = F} {wfF = wfF} eqWF garg) eq
       with E.checkG ctx X arg (⟦ F ⟧T (μ-type F)) in eqarg | eq'
 ...     | just (marg , _) | refl = cong (λ z → IR.In wfF IR.Heap IR.∘ z) (checkG-realize garg eqarg)
 ...     | nothing         | ()
+
+------------------------------------------------------------------------
+-- morph-realize (consumed by the RApp morph-lift cases below): the IR
+-- `extract-morph-eff` reads off the elaborated morphism expr equals
+-- `realize-morph` of the witness's `extractMorphWitness`. DISCHARGED via
+-- `morph-elab` (whose strengthened `StrongElab` carries `m ≡ realize-morph mᵐ`)
+-- + checkElabV determinism: matching `ce`/`ce'` against the shared `checkElabV`
+-- value unifies our (E, W) with morph-elab's; `just`-injectivity on the extract
+-- equations then identifies m/mᵐ with morph-elab's, and `cons'` closes it.
+morph-realize : ∀ {ctx : NamedCtx} {e : RawExpr} {A B : Type} {π : Purity}
+    {E : Expr (NamedCtx.debruijn ctx) Surface.zeroUsage (A ⇒[ mk-kind Many π ] B)} {d fr : ℕ}
+    {W : ctx ⊢ᶜ e ∶ (A ⇒[ mk-kind Many π ] B) ⨾ Surface.zeroUsage}
+    {m : IR A B} {mᵐ : ctx ⊢ᵐ e ∶ A ⇨[ π ] B}
+  → E.checkElabV ctx e (A ⇒[ mk-kind Many π ] B) ≡ (success Surface.zeroUsage E d fr , W)
+  → E.extract-morph-eff E ≡ just (m , refl)
+  → extractMorphWitness W ≡ just mᵐ
+  → m ≡ realize-morph mᵐ
+morph-realize {ctx = ctx} {e = e} {A = A} {B = B} {π = π} {mᵐ = mᵐ} ce ex exw
+  with morph-elab mᵐ
+... | (m' , mᵐ' , E' , d' , fr' , W' , ce' , ex' , exw' , cons')
+      with E.checkElabV ctx e (A ⇒[ mk-kind Many π ] B) | ce | ce'
+...     | _ | refl | refl =
+          trans (cong proj₁ (just-injective (trans (sym ex) ex')))
+            (trans cons' (cong realize-morph (sym (just-injective (trans (sym exw) exw')))))
 
 ------------------------------------------------------------------------
 -- check-mode RApp agreement, dispatched on the app-head VIEW (a parameter of
