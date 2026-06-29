@@ -27,14 +27,11 @@ layer5Tests = testGroup "Layer5"
   , testGroup "cata-general (Plan 0.36 Phase 0 — RED until functor-general codegen)"
       [ exitTest name code | (name, code) <- cataGeneralCases ]
   , testGroup "cata-effectful (Plan 0.36)"
-      -- `layer5-cata-list-emit` now links and runs to its sentinel: it was
-      -- blocked only by the `I.Test.Emit` impl's wrong symbol, fixed by the
-      -- interpretation symbol-aliasing change. `layer5-cata-leaftree-emit`
-      -- still fails to compile on a genuine type error in the fixture, so it
-      -- stays a pending expectation.
-      [ exitTest        "layer5-cata-list-emit"     7
-      , pendingExitTest "layer5-cata-leaftree-emit" 7
-      ]
+      -- Both effect-emitting catas build and run to their sentinel (exit 7).
+      -- `emit@E` is a runtime nop in the shipped interpretation, so the exit
+      -- code is the observable here; the emit trace itself is exercised by
+      -- TraceSpec (against the observable test interpretation).
+      [ exitTest name 7 | name <- cataEffectfulCases ]
   ]
 
 -- | isEven (two) is even, mapped to exit code 42 via case.
@@ -63,6 +60,15 @@ cataGeneralCases =
   ]
 
 
+-- | The two effect-emitting cata north-star fixtures (Plan 0.36). Both now
+-- build and run to the sentinel exit 7; the algebra invokes `emit@E` per
+-- emitting layer (a runtime nop in the shipped interpretation).
+cataEffectfulCases :: [String]
+cataEffectfulCases =
+  [ "layer5-cata-list-emit"      -- trace [emit 5, emit 3, exit 7]
+  , "layer5-cata-leaftree-emit"  -- crown: trace [emit 40, emit 2, exit 7]
+  ]
+
 -- | Build a `.once` program and assert it exits with the given code.
 exitTest :: String -> Int -> TestTree
 exitTest name code = testCase (name ++ " (exit " ++ show code ++ ")") $ do
@@ -70,22 +76,6 @@ exitTest name code = testCase (name ++ " (exit " ++ show code ++ ")") $ do
   case result of
     Left err -> assertFailure err
     Right () -> return ()
-
--- | A Plan 0.36 "expected failure". The effectful-cata programs do not yet
--- build/run (they need `emit.int` + trace-valued exec-flat), so we assert they
--- currently FAIL. This keeps the suite green while tracking the pending work,
--- and — crucially — this test will START FAILING the moment the feature lands
--- and the program reaches its sentinel exit code, prompting us to promote it
--- back to a real `exitTest`.
-pendingExitTest :: String -> Int -> TestTree
-pendingExitTest name code =
-  testCase (name ++ " (pending Plan 0.36 — expect build/run to fail)") $ do
-    result <- buildAndRun name code
-    case result of
-      Left _   -> return ()  -- still unimplemented, as expected
-      Right () -> assertFailure $
-        name ++ " now builds and exits " ++ show code ++
-        " — effectful cata appears implemented; promote this back to exitTest."
 
 ------------------------------------------------------------------------
 -- Test Helpers (same shape as Layer0Spec.buildAndRun)
