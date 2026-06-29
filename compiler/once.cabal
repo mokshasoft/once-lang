@@ -550,6 +550,7 @@ test-suite once-test
       OptimizeSpec
       ParseSpec
       QttSpec
+      TraceSpec
       TypeCheckSpec
       TypeErrorSpec
       -- Disabled: reference old Haskell modules that no longer exist

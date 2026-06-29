@@ -15,6 +15,7 @@ import Layer5Spec (layer5Tests)
 import OptimizeSpec (optimizeTests)
 import ParseSpec (parseTests)
 import QttSpec (qttTests)
+import TraceSpec (traceTests)
 import TypeCheckSpec (typeCheckTests)
 import TypeErrorSpec (typeErrorTests)
 
@@ -40,4 +41,5 @@ main = defaultMain $ localOption (NumThreads 1) $ testGroup "Once"
   , layer5Tests
   , arithTests
   , optimizeTests
+  , traceTests
   ]
