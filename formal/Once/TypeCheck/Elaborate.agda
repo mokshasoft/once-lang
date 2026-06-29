@@ -1355,7 +1355,7 @@ mutual
   ... | success ((A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) Once.Type.* A') Ψ argE d fr , w
         with A ≟T A' | T ≟T B
   ...   | yes refl | yes refl =
-          success _ (Surface.app (weakenFromEmpty (specApply A B)) argE) (suc d) fr , t-apply-check w
+          success _ (Surface.morph-app IR.apply argE) (suc d) fr , t-apply-check w
   ...   | yes refl | no _ = failure (TypeMismatch T B) , tt
   ...   | no _ | _ = failure (BuiltinTypeMismatch "apply") , tt
   checkApply ctx arg T | success Unit _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
@@ -1890,7 +1890,7 @@ mutual
   ... | failure err , _ = failure err , tt
   ... | success ((A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) Once.Type.* A') Ψ argE d fr , w with A ≟T A'
   ...   | yes refl =
-    success B _ (Surface.app (weakenFromEmpty (specApply A B)) argE) (suc d) fr , t-apply-app-infer w
+    success B _ (Surface.morph-app IR.apply argE) (suc d) fr , t-apply-app-infer w
   ...   | no _ =
     failure (BuiltinTypeMismatch "apply") , tt
   inferElabV-RApp-dispatch ctx f arg ahv-apply _ | success Unit _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
