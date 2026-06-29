@@ -23,7 +23,9 @@
 module Once.Adequacy.RealizeAgrees where
 
 open import Data.Nat using (ℕ)
-open import Data.Product using (_×_; _,_; proj₁; proj₂)
+open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃-syntax)
+open import Data.String using (String)
+open import Data.String.Properties as StrProp using ()
 open import Data.Empty using (⊥; ⊥-elim)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂)
 
@@ -31,13 +33,13 @@ import Once.Type
 open import Once.Type using (Type; Int; Unit; Void; Float; Str; Buffer; _*_; _+_; μ-type; ν-type;
                              Purity; pure; eff; mk-kind; Many; One; Zero; _⇒[_]_; isUnit?)
 open import Once.TypeCheck.Raw as Raw using (RawExpr)
-open import Once.TypeCheck.Classify using (NamedCtx; extendNamedCtx; lookupSigEffect; lookupImport)
+open import Once.TypeCheck.Classify using (NamedCtx; extendNamedCtx; lookupSigEffect; lookupImport; lookupLocal)
 open import Once.TypeCheck.Elaborate using (success; failure; VerifiedInferResult)
 import Once.TypeCheck.Elaborate as E
 open import Once.IR as IR using (IR)
 open import Once.SigEffect using (SigEffect) renaming (halts to se-halts; emits to se-emits)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Relation.Nullary using (Dec; yes; no)
+open import Relation.Nullary using (Dec; yes; no; ¬_)
 open import Once.TypeCheck.Judgment using (_⊢ᵢ_∶_⨾_; _⊢ᶜ_∶_⨾_; t-int; t-str; t-unit; t-pair; t-neg; t-let)
 open import Once.Denotation.Realize using (realize; realize-infer)
 open import Once.TypeCheck.Soundness using (check-sound)
@@ -224,6 +226,21 @@ agree-RResolved ctx cn (just (μ-type F))  lkup refl dγ k = refl
 agree-RResolved ctx cn (just (ν-type F))  lkup refl dγ k = refl
 agree-RResolved ctx cn nothing lkup eq dγ k = ⊥-elim (fail≢succ (cong proj₁ eq))
 
+-- RVar (non-unit): cases the lookup-aux. Local → the bound SExpr IS realize's
+-- `eE`; import → both elaborator and `realize-infer` emit `sigOp (bare x)`;
+-- neither-found → the success equation is absurd. No `masq` (unlike RResolved,
+-- whose aux emits a `lift-morphism` for arrows).
+agree-RVar : ∀ (ctx : NamedCtx) (x : String) (¬u : ¬ (x ≡ "unit"))
+  (locLhs : Maybe (∃[ A ] ∃[ Ψ ] (Expr (NamedCtx.debruijn ctx) Ψ A)))
+  (eq-loc : lookupLocal ctx x ≡ locLhs)
+  (impLhs : Maybe Type) (eq-imp : lookupImport (NamedCtx.imports ctx) x ≡ impLhs)
+  {A Ψ se d f w}
+  → E.inferElabV-RVar-lookup-aux ctx x ¬u locLhs eq-loc impLhs eq-imp ≡ (success A Ψ se d f , w)
+  → ∀ (dγ : Env ctx) (k : ℕ) → SD.⟦ se ⟧ˢ dγ k ≡ SD.⟦ realize-infer w ⟧ˢ dγ k
+agree-RVar ctx x ¬u (just (A , Ψ , se)) eq-loc impLhs eq-imp refl dγ k = refl
+agree-RVar ctx x ¬u nothing eq-loc (just ty) eq-imp refl dγ k = refl
+agree-RVar ctx x ¬u nothing eq-loc nothing eq-imp eq dγ k = ⊥-elim (fail≢succ (cong proj₁ eq))
+
 mutual
   infer-agreeV : ∀ (ctx : NamedCtx) (e : RawExpr) {A Ψ se d f w}
     (eq : E.inferElabV ctx e ≡ (success A Ψ se d f , w)) → InferAgreeV ctx e eq
@@ -244,6 +261,13 @@ mutual
       (λ {A} rE2 eqRE2 p → infer-agreeV (extendNamedCtx ctx x A) e₂ (trans eqRE2 p)) dγ k
   infer-agreeV ctx (Raw.RResolved cn) eq dγ k =
     agree-RResolved ctx cn (lookupImport (NamedCtx.imports ctx) (showCanonical cn)) refl eq dγ k
+  -- RVar: mirror inferElabV's `x ≟ "unit"` dispatch (bring `eq` into the `with`
+  -- so it specialises); unit → `unit`, else the lookup-aux via `agree-RVar`.
+  infer-agreeV ctx (Raw.RVar x) eq dγ k with StrProp._≟_ x "unit" | eq
+  ... | yes refl | refl = refl
+  ... | no ¬unit | eq' =
+        agree-RVar ctx x ¬unit (lookupLocal ctx x) refl
+                   (lookupImport (NamedCtx.imports ctx) x) refl eq' dγ k
   -- RLam / RAna: `inferElabV` always fails (no infer rule), so the success
   -- equation is absurd.
   infer-agreeV ctx (Raw.RLam _ _) ()
