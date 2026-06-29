@@ -43,6 +43,7 @@ library
       Once.Compile.Bridge
       Once.Eval
       Once.IR
+      Once.Target.SymbolName
       Once.Type
       Once.Value
       MAlonzo.RTE
@@ -550,6 +551,7 @@ test-suite once-test
       OptimizeSpec
       ParseSpec
       QttSpec
+      SymbolNameSpec
       TraceSpec
       TypeCheckSpec
       TypeErrorSpec

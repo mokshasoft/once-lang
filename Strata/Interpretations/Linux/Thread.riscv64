@@ -58,9 +58,9 @@
 // ----------------------------------------------------------------------
 // Input: function pointer (Eff Unit Unit)
 // Output: (handle_data, handle_len) - OnceBuffer (ThreadHandle)
-.global once_thread_spawn
-.type once_thread_spawn, @function
-once_thread_spawn:
+.global thread_spawn
+.type thread_spawn, @function
+thread_spawn:
     addi    sp, sp, -64
     sd      ra, 56(sp)
     sd      s0, 48(sp)
@@ -200,16 +200,16 @@ once_thread_spawn:
     ld      s3, 24(sp)
     addi    sp, sp, 64
     ret
-.size once_thread_spawn, .-once_thread_spawn
+.size thread_spawn, .-thread_spawn
 
 // ----------------------------------------------------------------------
 // thread_join - Wait for thread to complete
 // ----------------------------------------------------------------------
 // Input: (handle_data, handle_len) - OnceBuffer
 // Output: Unit (NULL)
-.global once_thread_join
-.type once_thread_join, @function
-once_thread_join:
+.global thread_join
+.type thread_join, @function
+thread_join:
     addi    sp, sp, -32
     sd      ra, 24(sp)
     sd      s0, 16(sp)
@@ -269,27 +269,27 @@ once_thread_join:
     ld      s1, 8(sp)
     addi    sp, sp, 32
     ret
-.size once_thread_join, .-once_thread_join
+.size thread_join, .-thread_join
 
 // ----------------------------------------------------------------------
 // thread_detach - Spawn thread without join handle
 // ----------------------------------------------------------------------
 // Input: function pointer
 // Output: Unit (NULL)
-.global once_thread_detach
-.type once_thread_detach, @function
-once_thread_detach:
+.global thread_detach
+.type thread_detach, @function
+thread_detach:
     addi    sp, sp, -16
     sd      ra, 8(sp)
 
     // Spawn thread (ignore handle)
-    call    once_thread_spawn
+    call    thread_spawn
 
     li      a0, 0
     ld      ra, 8(sp)
     addi    sp, sp, 16
     ret
-.size once_thread_detach, .-once_thread_detach
+.size thread_detach, .-thread_detach
 
 // ======================================================================
 // Synchronization Primitives
@@ -300,9 +300,9 @@ once_thread_detach:
 // ----------------------------------------------------------------------
 // Input: Unit (ignored)
 // Output: (mutex_data, mutex_len) - OnceBuffer
-.global once_mutex_init
-.type once_mutex_init, @function
-once_mutex_init:
+.global mutex_init
+.type mutex_init, @function
+mutex_init:
     addi    sp, sp, -32
     sd      ra, 24(sp)
 
@@ -338,16 +338,16 @@ once_mutex_init:
     ld      ra, 24(sp)
     addi    sp, sp, 32
     ret
-.size once_mutex_init, .-once_mutex_init
+.size mutex_init, .-mutex_init
 
 // ----------------------------------------------------------------------
 // mutex_lock - Acquire mutex
 // ----------------------------------------------------------------------
 // Input: (mutex_data, mutex_len) - OnceBuffer
 // Output: Unit (NULL)
-.global once_mutex_lock
-.type once_mutex_lock, @function
-once_mutex_lock:
+.global mutex_lock
+.type mutex_lock, @function
+mutex_lock:
     addi    sp, sp, -16
     sd      ra, 8(sp)
     sd      s0, 0(sp)
@@ -379,16 +379,16 @@ once_mutex_lock:
     ld      s0, 0(sp)
     addi    sp, sp, 16
     ret
-.size once_mutex_lock, .-once_mutex_lock
+.size mutex_lock, .-mutex_lock
 
 // ----------------------------------------------------------------------
 // mutex_unlock - Release mutex
 // ----------------------------------------------------------------------
 // Input: (mutex_data, mutex_len) - OnceBuffer
 // Output: Unit (NULL)
-.global once_mutex_unlock
-.type once_mutex_unlock, @function
-once_mutex_unlock:
+.global mutex_unlock
+.type mutex_unlock, @function
+mutex_unlock:
     addi    sp, sp, -16
     sd      ra, 8(sp)
 
@@ -412,16 +412,16 @@ once_mutex_unlock:
     ld      ra, 8(sp)
     addi    sp, sp, 16
     ret
-.size once_mutex_unlock, .-once_mutex_unlock
+.size mutex_unlock, .-mutex_unlock
 
 // ----------------------------------------------------------------------
 // cond_init - Initialize condition variable
 // ----------------------------------------------------------------------
 // Input: Unit (ignored)
 // Output: (cond_data, cond_len) - OnceBuffer
-.global once_cond_init
-.type once_cond_init, @function
-once_cond_init:
+.global cond_init
+.type cond_init, @function
+cond_init:
     addi    sp, sp, -32
     sd      ra, 24(sp)
 
@@ -456,16 +456,16 @@ once_cond_init:
     ld      ra, 24(sp)
     addi    sp, sp, 32
     ret
-.size once_cond_init, .-once_cond_init
+.size cond_init, .-cond_init
 
 // ----------------------------------------------------------------------
 // cond_wait - Wait on condition variable
 // ----------------------------------------------------------------------
 // Input: ((cond_data, cond_len), (mutex_data, mutex_len))
 // Output: Unit (NULL)
-.global once_cond_wait
-.type once_cond_wait, @function
-once_cond_wait:
+.global cond_wait
+.type cond_wait, @function
+cond_wait:
     addi    sp, sp, -48
     sd      ra, 40(sp)
     sd      s0, 32(sp)
@@ -483,7 +483,7 @@ once_cond_wait:
 
     // Unlock mutex
     mv      a0, s1
-    call    once_mutex_unlock
+    call    mutex_unlock
 
     // Futex wait for seq to change
     mv      a0, s0
@@ -498,7 +498,7 @@ once_cond_wait:
 
     // Reacquire mutex
     mv      a0, s1
-    call    once_mutex_lock
+    call    mutex_lock
 
     li      a0, 0
     ld      ra, 40(sp)
@@ -507,16 +507,16 @@ once_cond_wait:
     ld      s2, 16(sp)
     addi    sp, sp, 48
     ret
-.size once_cond_wait, .-once_cond_wait
+.size cond_wait, .-cond_wait
 
 // ----------------------------------------------------------------------
 // cond_signal - Signal one waiter
 // ----------------------------------------------------------------------
 // Input: (cond_data, cond_len) - OnceBuffer
 // Output: Unit (NULL)
-.global once_cond_signal
-.type once_cond_signal, @function
-once_cond_signal:
+.global cond_signal
+.type cond_signal, @function
+cond_signal:
     addi    sp, sp, -16
     sd      ra, 8(sp)
 
@@ -540,16 +540,16 @@ once_cond_signal:
     ld      ra, 8(sp)
     addi    sp, sp, 16
     ret
-.size once_cond_signal, .-once_cond_signal
+.size cond_signal, .-cond_signal
 
 // ----------------------------------------------------------------------
 // cond_broadcast - Signal all waiters
 // ----------------------------------------------------------------------
 // Input: (cond_data, cond_len) - OnceBuffer
 // Output: Unit (NULL)
-.global once_cond_broadcast
-.type once_cond_broadcast, @function
-once_cond_broadcast:
+.global cond_broadcast
+.type cond_broadcast, @function
+cond_broadcast:
     addi    sp, sp, -16
     sd      ra, 8(sp)
 
@@ -574,7 +574,7 @@ once_cond_broadcast:
     ld      ra, 8(sp)
     addi    sp, sp, 16
     ret
-.size once_cond_broadcast, .-once_cond_broadcast
+.size cond_broadcast, .-cond_broadcast
 
 // ======================================================================
 // Atomic Operations
@@ -585,9 +585,9 @@ once_cond_broadcast:
 // ----------------------------------------------------------------------
 // Input: ((addr_data, addr_len), (expected, new_val))
 // Output: Int (previous value)
-.global once_atomic_cas
-.type once_atomic_cas, @function
-once_atomic_cas:
+.global atomic_cas
+.type atomic_cas, @function
+atomic_cas:
     // Unpack: ((addr_data, addr_len), (expected, new_val))
     ld      t0, 0(a0)           // t0 = ptr to addr buffer
     ld      t1, 8(a0)           // t1 = ptr to (expected, new_val)
@@ -606,16 +606,16 @@ once_atomic_cas:
 .cas_fail:
     mv      a0, t4              // Return previous value
     ret
-.size once_atomic_cas, .-once_atomic_cas
+.size atomic_cas, .-atomic_cas
 
 // ----------------------------------------------------------------------
 // atomic_add - Fetch and add
 // ----------------------------------------------------------------------
 // Input: ((addr_data, addr_len), delta)
 // Output: Int (previous value)
-.global once_atomic_add
-.type once_atomic_add, @function
-once_atomic_add:
+.global atomic_add
+.type atomic_add, @function
+atomic_add:
     // Unpack: ((addr_data, addr_len), delta)
     ld      t0, 0(a0)           // t0 = ptr to addr buffer
     ld      t1, 8(a0)           // t1 = delta
@@ -625,20 +625,20 @@ once_atomic_add:
     // Atomic add
     amoadd.d a0, t1, (t0)       // a0 = old value
     ret
-.size once_atomic_add, .-once_atomic_add
+.size atomic_add, .-atomic_add
 
 // ----------------------------------------------------------------------
 // memory_barrier - Full memory fence
 // ----------------------------------------------------------------------
 // Input: Unit (ignored)
 // Output: Unit (NULL)
-.global once_memory_barrier
-.type once_memory_barrier, @function
-once_memory_barrier:
+.global memory_barrier
+.type memory_barrier, @function
+memory_barrier:
     fence   rw, rw
     li      a0, 0
     ret
-.size once_memory_barrier, .-once_memory_barrier
+.size memory_barrier, .-memory_barrier
 
 #endif // ONCE_LINUX_RISCV64_THREAD_DEFINED
 

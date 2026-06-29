@@ -1,10 +1,10 @@
 -- SPDX-License-Identifier: AGPL-3.0-or-later
 -- Copyright (C) 2025-2026 Jonas Claesson and contributors
 
--- PENDING: point-free effectful cata. Does not compile yet — needs the
--- eff-frontend (grade-polymorphic compose/case + faithful external-SigOp
--- extraction, Plan 0.36). Tracked by [[project_effectful_cata_blocker]].
--- Expected once it compiles: exit 7, observable TRACE [emit 5, emit 3, linux.exit 7].
+-- Point-free effectful cata (Plan 0.36). Compiles and runs to its sentinel
+-- exit 7 (it was blocked only by the I.Test.Emit impl's wrong symbol, fixed by
+-- the interpretation symbol-aliasing change). Observable TRACE is
+-- [emit 5, emit 3, linux.exit 7]; the exit code is the run-completed sentinel.
 
 -- Plan 0.36 north-star (EFFECTFUL). Functor #3 (List Int), effect-emitting:
 -- the cata algebra invokes the test-local `emit` Emits SigOp once per cons

@@ -12,179 +12,179 @@
  * Basic Arithmetic
  *========================================================================*/
 
-.globl once_add
-.type once_add, @function
-once_add:
+.globl add
+.type add, @function
+add:
     add     a0, a0, a1      // return fst + snd
     ret
-.size once_add, .-once_add
+.size add, .-add
 
-.globl once_sub
-.type once_sub, @function
-once_sub:
+.globl sub
+.type sub, @function
+sub:
     sub     a0, a0, a1      // return fst - snd
     ret
-.size once_sub, .-once_sub
+.size sub, .-sub
 
-.globl once_mul
-.type once_mul, @function
-once_mul:
+.globl mul
+.type mul, @function
+mul:
     mul     a0, a0, a1      // return fst * snd
     ret
-.size once_mul, .-once_mul
+.size mul, .-mul
 
-.globl once_div
-.type once_div, @function
-once_div:
+.globl div
+.type div, @function
+div:
     beqz    a1, .Ldiv_zero  // if snd == 0, return 0
     div     a0, a0, a1      // signed divide
     ret
 .Ldiv_zero:
     li      a0, 0
     ret
-.size once_div, .-once_div
+.size div, .-div
 
-.globl once_mod
-.type once_mod, @function
-once_mod:
+.globl mod
+.type mod, @function
+mod:
     beqz    a1, .Lmod_zero  // if snd == 0, return 0
     rem     a0, a0, a1      // signed remainder
     ret
 .Lmod_zero:
     li      a0, 0
     ret
-.size once_mod, .-once_mod
+.size mod, .-mod
 
-.globl once_neg
-.type once_neg, @function
-once_neg:
+.globl neg
+.type neg, @function
+neg:
     neg     a0, a0
     ret
-.size once_neg, .-once_neg
+.size neg, .-neg
 
-.globl once_abs
-.type once_abs, @function
-once_abs:
+.globl abs
+.type abs, @function
+abs:
     bgez    a0, .Labs_done  // if a0 >= 0, already positive
     neg     a0, a0
 .Labs_done:
     ret
-.size once_abs, .-once_abs
+.size abs, .-abs
 
 /*========================================================================
  * Comparisons (return 0 or 1)
  *========================================================================*/
 
-.globl once_eq
-.type once_eq, @function
-once_eq:
+.globl eq
+.type eq, @function
+eq:
     xor     a0, a0, a1      // a0 = 0 if equal
     seqz    a0, a0          // a0 = 1 if a0 == 0
     ret
-.size once_eq, .-once_eq
+.size eq, .-eq
 
-.globl once_neq
-.type once_neq, @function
-once_neq:
+.globl neq
+.type neq, @function
+neq:
     xor     a0, a0, a1      // a0 = 0 if equal
     snez    a0, a0          // a0 = 1 if a0 != 0
     ret
-.size once_neq, .-once_neq
+.size neq, .-neq
 
-.globl once_lt
-.type once_lt, @function
-once_lt:
+.globl lt
+.type lt, @function
+lt:
     slt     a0, a0, a1      // a0 = 1 if fst < snd (signed)
     ret
-.size once_lt, .-once_lt
+.size lt, .-lt
 
-.globl once_le
-.type once_le, @function
-once_le:
+.globl le
+.type le, @function
+le:
     slt     a0, a1, a0      // a0 = 1 if snd < fst
     xori    a0, a0, 1       // a0 = !(snd < fst) = (fst <= snd)
     ret
-.size once_le, .-once_le
+.size le, .-le
 
-.globl once_gt
-.type once_gt, @function
-once_gt:
+.globl gt
+.type gt, @function
+gt:
     slt     a0, a1, a0      // a0 = 1 if snd < fst (i.e., fst > snd)
     ret
-.size once_gt, .-once_gt
+.size gt, .-gt
 
-.globl once_ge
-.type once_ge, @function
-once_ge:
+.globl ge
+.type ge, @function
+ge:
     slt     a0, a0, a1      // a0 = 1 if fst < snd
     xori    a0, a0, 1       // a0 = !(fst < snd) = (fst >= snd)
     ret
-.size once_ge, .-once_ge
+.size ge, .-ge
 
 /*========================================================================
  * Bitwise Operations
  *========================================================================*/
 
-.globl once_band
-.type once_band, @function
-once_band:
+.globl band
+.type band, @function
+band:
     and     a0, a0, a1
     ret
-.size once_band, .-once_band
+.size band, .-band
 
-.globl once_bor
-.type once_bor, @function
-once_bor:
+.globl bor
+.type bor, @function
+bor:
     or      a0, a0, a1
     ret
-.size once_bor, .-once_bor
+.size bor, .-bor
 
-.globl once_bxor
-.type once_bxor, @function
-once_bxor:
+.globl bxor
+.type bxor, @function
+bxor:
     xor     a0, a0, a1
     ret
-.size once_bxor, .-once_bxor
+.size bxor, .-bxor
 
-.globl once_bnot
-.type once_bnot, @function
-once_bnot:
+.globl bnot
+.type bnot, @function
+bnot:
     not     a0, a0
     ret
-.size once_bnot, .-once_bnot
+.size bnot, .-bnot
 
-.globl once_shl
-.type once_shl, @function
-once_shl:
+.globl shl
+.type shl, @function
+shl:
     sll     a0, a0, a1      // logical left shift
     ret
-.size once_shl, .-once_shl
+.size shl, .-shl
 
-.globl once_shr
-.type once_shr, @function
-once_shr:
+.globl shr
+.type shr, @function
+shr:
     sra     a0, a0, a1      // arithmetic right shift
     ret
-.size once_shr, .-once_shr
+.size shr, .-shr
 
 /*========================================================================
  * Min/Max
  *========================================================================*/
 
-.globl once_min
-.type once_min, @function
-once_min:
+.globl min
+.type min, @function
+min:
     blt     a0, a1, .Lmin_done  // if fst < snd, use fst
     mv      a0, a1              // else use snd
 .Lmin_done:
     ret
-.size once_min, .-once_min
+.size min, .-min
 
-.globl once_max
-.type once_max, @function
-once_max:
+.globl max
+.type max, @function
+max:
     bgt     a0, a1, .Lmax_done  // if fst > snd, use fst
     mv      a0, a1              // else use snd
 .Lmax_done:
     ret
-.size once_max, .-once_max
+.size max, .-max

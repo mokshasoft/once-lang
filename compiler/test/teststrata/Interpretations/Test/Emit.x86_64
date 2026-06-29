@@ -1,25 +1,22 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2025-2026 Jonas Claesson and contributors
 #
-# x86_64 implementation of the test-framework `I.Test.Emit.emit` SigOp.
+# x86_64 implementation of `I.Test.Emit.emit`, used by TraceSpec to observe a
+# program's effect trace at runtime.
 #
-# The symbol is what the verified codegen emits for an IMPORTED SigOp:
-# Once.Target.Symbol mangles the full canonical name `Interpretations.Test.Emit.emit`
-# to `once_` + length-prefixed, `_`-joined parts. So:
-#   emit  ->  once_15Interpretations_4Test_4Emit_4emit
-# (15="Interpretations", 4="Test", 4="Emit", 4="emit"). This is the same scheme
-# every shipped interpretation .x86_64 follows (e.g. Syscalls.x86_64's
-# once_15Interpretations_5Linux_8Syscalls_4exit).
+# The symbol is just the signature name `emit`. The build (Once.CLI's
+# assembleImplFiles) renames it to the mangled call symbol the codegen emits,
+# so no module-path mangling is written by hand.
 #
-# Once SysV convention: the Int argument arrives in %rdi. `emit` writes its
-# low byte to stdout (fd 1) so the emitted sequence is observable, then returns
+# Once SysV convention: the Int argument arrives in %rdi. `emit` writes its low
+# byte to stdout (fd 1) so the emitted sequence is observable, then returns
 # Unit (0).
 
 .text
 .align 16
-.global once_15Interpretations_4Test_4Emit_4emit
-.type once_15Interpretations_4Test_4Emit_4emit, @function
-once_15Interpretations_4Test_4Emit_4emit:
+.global emit
+.type emit, @function
+emit:
     movb    %dil, -1(%rsp)      # stash the argument's low byte (red zone)
     leaq    -1(%rsp), %rsi      # rsi = buffer
     movq    $1, %rdi            # rdi = fd (stdout)
@@ -28,4 +25,4 @@ once_15Interpretations_4Test_4Emit_4emit:
     syscall
     xorq    %rax, %rax          # return Unit (0)
     ret
-.size once_15Interpretations_4Test_4Emit_4emit, .-once_15Interpretations_4Test_4Emit_4emit
+.size emit, .-emit

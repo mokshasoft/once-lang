@@ -35,9 +35,9 @@
 # Input: (destRoot, destIndex, destDepth, srcRoot, srcIndex, srcDepth, rights)
 # Output: Int (seL4_Error)
 
-.global once_seL4_CNode_Copy
-.type once_seL4_CNode_Copy, @function
-once_seL4_CNode_Copy:
+.global seL4_CNode_Copy
+.type seL4_CNode_Copy, @function
+seL4_CNode_Copy:
     push    %rbp
     mov     %rsp, %rbp
     push    %rbx
@@ -89,7 +89,7 @@ once_seL4_CNode_Copy:
     pop     %rbx
     pop     %rbp
     ret
-.size once_seL4_CNode_Copy, .-once_seL4_CNode_Copy
+.size seL4_CNode_Copy, .-seL4_CNode_Copy
 
 # ----------------------------------------------------------------------
 # seL4_CNode_Mint - Copy capability with badge
@@ -97,9 +97,9 @@ once_seL4_CNode_Copy:
 # Input: (destRoot, destIndex, destDepth, srcRoot, srcIndex, srcDepth, rights, badge)
 # Output: Int (seL4_Error)
 
-.global once_seL4_CNode_Mint
-.type once_seL4_CNode_Mint, @function
-once_seL4_CNode_Mint:
+.global seL4_CNode_Mint
+.type seL4_CNode_Mint, @function
+seL4_CNode_Mint:
     push    %rbp
     mov     %rsp, %rbp
     push    %rbx
@@ -150,7 +150,7 @@ once_seL4_CNode_Mint:
     pop     %rbx
     pop     %rbp
     ret
-.size once_seL4_CNode_Mint, .-once_seL4_CNode_Mint
+.size seL4_CNode_Mint, .-seL4_CNode_Mint
 
 # ----------------------------------------------------------------------
 # seL4_CNode_Move - Move a capability
@@ -158,9 +158,9 @@ once_seL4_CNode_Mint:
 # Input: (destRoot, destIndex, destDepth, srcRoot, srcIndex, srcDepth, rights)
 # Output: Int (seL4_Error)
 
-.global once_seL4_CNode_Move
-.type once_seL4_CNode_Move, @function
-once_seL4_CNode_Move:
+.global seL4_CNode_Move
+.type seL4_CNode_Move, @function
+seL4_CNode_Move:
     push    %rbp
     mov     %rsp, %rbp
     push    %rbx
@@ -207,7 +207,7 @@ once_seL4_CNode_Move:
     pop     %rbx
     pop     %rbp
     ret
-.size once_seL4_CNode_Move, .-once_seL4_CNode_Move
+.size seL4_CNode_Move, .-seL4_CNode_Move
 
 # ----------------------------------------------------------------------
 # seL4_CNode_Delete - Delete a capability
@@ -215,9 +215,9 @@ once_seL4_CNode_Move:
 # Input: (root, index, depth)
 # Output: Int (seL4_Error)
 
-.global once_seL4_CNode_Delete
-.type once_seL4_CNode_Delete, @function
-once_seL4_CNode_Delete:
+.global seL4_CNode_Delete
+.type seL4_CNode_Delete, @function
+seL4_CNode_Delete:
     push    %rbp
     mov     %rsp, %rbp
     push    %rbx
@@ -243,7 +243,7 @@ once_seL4_CNode_Delete:
     pop     %rbx
     pop     %rbp
     ret
-.size once_seL4_CNode_Delete, .-once_seL4_CNode_Delete
+.size seL4_CNode_Delete, .-seL4_CNode_Delete
 
 # ----------------------------------------------------------------------
 # seL4_CNode_Revoke - Revoke derived capabilities
@@ -251,9 +251,9 @@ once_seL4_CNode_Delete:
 # Input: (root, index, depth)
 # Output: Int (seL4_Error)
 
-.global once_seL4_CNode_Revoke
-.type once_seL4_CNode_Revoke, @function
-once_seL4_CNode_Revoke:
+.global seL4_CNode_Revoke
+.type seL4_CNode_Revoke, @function
+seL4_CNode_Revoke:
     push    %rbp
     mov     %rsp, %rbp
     push    %rbx
@@ -278,6 +278,6 @@ once_seL4_CNode_Revoke:
     pop     %rbx
     pop     %rbp
     ret
-.size once_seL4_CNode_Revoke, .-once_seL4_CNode_Revoke
+.size seL4_CNode_Revoke, .-seL4_CNode_Revoke
 
 #endif // ONCE_SEL4_CNODE_X86_64_DEFINED

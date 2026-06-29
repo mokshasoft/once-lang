@@ -37,9 +37,9 @@
 // Output: (buf_data, buf_len) - OnceBuffer
 //
 // Uses mmap with MAP_PRIVATE | MAP_ANONYMOUS
-.global once_alloc
-.type once_alloc, @function
-once_alloc:
+.global alloc
+.type alloc, @function
+alloc:
     push    %rbp
     mov     %rsp, %rbp
     push    %r12
@@ -85,7 +85,7 @@ once_alloc:
     pop     %r12
     pop     %rbp
     ret
-.size once_alloc, .-once_alloc
+.size alloc, .-alloc
 
 // ----------------------------------------------------------------------
 // free - Free allocated memory
@@ -94,9 +94,9 @@ once_alloc:
 // Output: Unit (0/NULL)
 //
 // Reads size from header and calls munmap
-.global once_free
-.type once_free, @function
-once_free:
+.global free
+.type free, @function
+free:
     push    %rbp
     mov     %rsp, %rbp
 
@@ -124,7 +124,7 @@ once_free:
     xor     %eax, %eax          // Return NULL (Unit)
     pop     %rbp
     ret
-.size once_free, .-once_free
+.size free, .-free
 
 // ----------------------------------------------------------------------
 // realloc - Reallocate memory
@@ -135,9 +135,9 @@ once_free:
 // Strategy: allocate new, copy, free old
 // Note: This is inefficient but simple. A real allocator would
 // try to expand in place if possible.
-.global once_realloc
-.type once_realloc, @function
-once_realloc:
+.global realloc
+.type realloc, @function
+realloc:
     push    %rbp
     mov     %rsp, %rbp
     push    %r12
@@ -252,7 +252,7 @@ once_realloc:
     pop     %r12
     pop     %rbp
     ret
-.size once_realloc, .-once_realloc
+.size realloc, .-realloc
 
 // ----------------------------------------------------------------------
 // heap_string - Allocate and copy string to heap
@@ -261,9 +261,9 @@ once_realloc:
 // Output: (str_data, str_len) - OnceString
 //
 // Allocates len bytes and copies from source buffer
-.global once_heap_string
-.type once_heap_string, @function
-once_heap_string:
+.global heap_string
+.type heap_string, @function
+heap_string:
     push    %rbp
     mov     %rsp, %rbp
     push    %r12
@@ -333,7 +333,7 @@ once_heap_string:
     pop     %r12
     pop     %rbp
     ret
-.size once_heap_string, .-once_heap_string
+.size heap_string, .-heap_string
 
 #endif // ONCE_LINUX_X86_64_MEMORY_DEFINED
 

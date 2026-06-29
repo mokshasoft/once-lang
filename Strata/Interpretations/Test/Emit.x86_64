@@ -8,8 +8,8 @@
 
 .text
 .align 16
-.global once_emit
-.type once_emit, @function
-once_emit:
+.global emit
+.type emit, @function
+emit:
     ret
-.size once_emit, .-once_emit
+.size emit, .-emit

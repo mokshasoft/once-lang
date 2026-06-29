@@ -32,9 +32,9 @@
 //
 // This is a capability invocation using seL4_Call.
 
-.global once_seL4_Untyped_Retype
-.type once_seL4_Untyped_Retype, @function
-once_seL4_Untyped_Retype:
+.global seL4_Untyped_Retype
+.type seL4_Untyped_Retype, @function
+seL4_Untyped_Retype:
     addi    sp, sp, -48
     sd      ra, 40(sp)
     sd      s0, 32(sp)
@@ -91,6 +91,6 @@ once_seL4_Untyped_Retype:
     ld      ra, 40(sp)
     addi    sp, sp, 48
     ret
-.size once_seL4_Untyped_Retype, .-once_seL4_Untyped_Retype
+.size seL4_Untyped_Retype, .-seL4_Untyped_Retype
 
 #endif // ONCE_SEL4_UNTYPED_RISCV64_DEFINED

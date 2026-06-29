@@ -154,13 +154,13 @@ once_argv_init:
 // ----------------------------------------------------------------------
 // Input: Unit (ignored) in rdi
 // Output: int64 in rax
-.global once_argc
-.type once_argc, @function
-once_argc:
+.global argc
+.type argc, @function
+argc:
     lea     g_argc(%rip), %rax
     mov     (%rax), %rax
     ret
-.size once_argc, .-once_argc
+.size argc, .-argc
 
 // ----------------------------------------------------------------------
 // argv - Get argument at index
@@ -170,9 +170,9 @@ once_argc:
 //
 // Note: Returns struct by value. On x86_64, small structs are returned
 // in rax:rdx. We return data in rax, len in rdx.
-.global once_argv
-.type once_argv, @function
-once_argv:
+.global argv
+.type argv, @function
+argv:
     push    %rbp
     mov     %rsp, %rbp
 
@@ -211,7 +211,7 @@ once_argv:
     xor     %edx, %edx
     pop     %rbp
     ret
-.size once_argv, .-once_argv
+.size argv, .-argv
 
 .section .rodata
 .Lempty_str:
@@ -226,9 +226,9 @@ once_argv:
 // Output: int64 in rax
 //
 // Parses argv[1] as integer, returns 0 if not available or invalid.
-.global once_argn
-.type once_argn, @function
-once_argn:
+.global argn
+.type argn, @function
+argn:
     push    %rbp
     mov     %rsp, %rbp
     push    %r12
@@ -290,6 +290,6 @@ once_argn:
     pop     %r12
     pop     %rbp
     ret
-.size once_argn, .-once_argn
+.size argn, .-argn
 
 #endif // ONCE_LINUX_X86_64_ARGV_DEFINED

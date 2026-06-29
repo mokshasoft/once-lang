@@ -40,9 +40,9 @@
 # Input: (tcb, faultEP, cspaceRoot, cspaceData, vspaceRoot, vspaceData, ipcBuffer, ipcBufferFrame)
 # Output: Int (seL4_Error)
 
-.global once_seL4_TCB_Configure
-.type once_seL4_TCB_Configure, @function
-once_seL4_TCB_Configure:
+.global seL4_TCB_Configure
+.type seL4_TCB_Configure, @function
+seL4_TCB_Configure:
     push    %rbp
     mov     %rsp, %rbp
     push    %rbx
@@ -93,7 +93,7 @@ once_seL4_TCB_Configure:
     pop     %rbx
     pop     %rbp
     ret
-.size once_seL4_TCB_Configure, .-once_seL4_TCB_Configure
+.size seL4_TCB_Configure, .-seL4_TCB_Configure
 
 # ----------------------------------------------------------------------
 # seL4_TCB_SetPriority - Set thread priority
@@ -101,9 +101,9 @@ once_seL4_TCB_Configure:
 # Input: (tcb, authority, priority)
 # Output: Int (seL4_Error)
 
-.global once_seL4_TCB_SetPriority
-.type once_seL4_TCB_SetPriority, @function
-once_seL4_TCB_SetPriority:
+.global seL4_TCB_SetPriority
+.type seL4_TCB_SetPriority, @function
+seL4_TCB_SetPriority:
     push    %rbp
     mov     %rsp, %rbp
     push    %rbx
@@ -130,7 +130,7 @@ once_seL4_TCB_SetPriority:
     pop     %rbx
     pop     %rbp
     ret
-.size once_seL4_TCB_SetPriority, .-once_seL4_TCB_SetPriority
+.size seL4_TCB_SetPriority, .-seL4_TCB_SetPriority
 
 # ----------------------------------------------------------------------
 # seL4_TCB_SetMCPriority - Set max controlled priority
@@ -138,9 +138,9 @@ once_seL4_TCB_SetPriority:
 # Input: (tcb, authority, mcp)
 # Output: Int (seL4_Error)
 
-.global once_seL4_TCB_SetMCPriority
-.type once_seL4_TCB_SetMCPriority, @function
-once_seL4_TCB_SetMCPriority:
+.global seL4_TCB_SetMCPriority
+.type seL4_TCB_SetMCPriority, @function
+seL4_TCB_SetMCPriority:
     push    %rbp
     mov     %rsp, %rbp
     push    %rbx
@@ -166,7 +166,7 @@ once_seL4_TCB_SetMCPriority:
     pop     %rbx
     pop     %rbp
     ret
-.size once_seL4_TCB_SetMCPriority, .-once_seL4_TCB_SetMCPriority
+.size seL4_TCB_SetMCPriority, .-seL4_TCB_SetMCPriority
 
 # ----------------------------------------------------------------------
 # seL4_TCB_SetSchedParams - Set scheduling parameters
@@ -174,9 +174,9 @@ once_seL4_TCB_SetMCPriority:
 # Input: (tcb, authority, mcp, priority)
 # Output: Int (seL4_Error)
 
-.global once_seL4_TCB_SetSchedParams
-.type once_seL4_TCB_SetSchedParams, @function
-once_seL4_TCB_SetSchedParams:
+.global seL4_TCB_SetSchedParams
+.type seL4_TCB_SetSchedParams, @function
+seL4_TCB_SetSchedParams:
     push    %rbp
     mov     %rsp, %rbp
     push    %rbx
@@ -205,7 +205,7 @@ once_seL4_TCB_SetSchedParams:
     pop     %rbx
     pop     %rbp
     ret
-.size once_seL4_TCB_SetSchedParams, .-once_seL4_TCB_SetSchedParams
+.size seL4_TCB_SetSchedParams, .-seL4_TCB_SetSchedParams
 
 # ----------------------------------------------------------------------
 # seL4_TCB_SetIPCBuffer - Set IPC buffer
@@ -213,9 +213,9 @@ once_seL4_TCB_SetSchedParams:
 # Input: (tcb, ipcBuffer, ipcBufferFrame)
 # Output: Int (seL4_Error)
 
-.global once_seL4_TCB_SetIPCBuffer
-.type once_seL4_TCB_SetIPCBuffer, @function
-once_seL4_TCB_SetIPCBuffer:
+.global seL4_TCB_SetIPCBuffer
+.type seL4_TCB_SetIPCBuffer, @function
+seL4_TCB_SetIPCBuffer:
     push    %rbp
     mov     %rsp, %rbp
     push    %rbx
@@ -241,7 +241,7 @@ once_seL4_TCB_SetIPCBuffer:
     pop     %rbx
     pop     %rbp
     ret
-.size once_seL4_TCB_SetIPCBuffer, .-once_seL4_TCB_SetIPCBuffer
+.size seL4_TCB_SetIPCBuffer, .-seL4_TCB_SetIPCBuffer
 
 # ----------------------------------------------------------------------
 # seL4_TCB_SetSpace - Set CSpace and VSpace
@@ -249,9 +249,9 @@ once_seL4_TCB_SetIPCBuffer:
 # Input: (tcb, faultEP, cspaceRoot, cspaceData, vspaceRoot, vspaceData)
 # Output: Int (seL4_Error)
 
-.global once_seL4_TCB_SetSpace
-.type once_seL4_TCB_SetSpace, @function
-once_seL4_TCB_SetSpace:
+.global seL4_TCB_SetSpace
+.type seL4_TCB_SetSpace, @function
+seL4_TCB_SetSpace:
     push    %rbp
     mov     %rsp, %rbp
     push    %rbx
@@ -294,7 +294,7 @@ once_seL4_TCB_SetSpace:
     pop     %rbx
     pop     %rbp
     ret
-.size once_seL4_TCB_SetSpace, .-once_seL4_TCB_SetSpace
+.size seL4_TCB_SetSpace, .-seL4_TCB_SetSpace
 
 # ----------------------------------------------------------------------
 # seL4_TCB_Resume - Resume suspended thread
@@ -302,9 +302,9 @@ once_seL4_TCB_SetSpace:
 # Input: tcb
 # Output: Int (seL4_Error)
 
-.global once_seL4_TCB_Resume
-.type once_seL4_TCB_Resume, @function
-once_seL4_TCB_Resume:
+.global seL4_TCB_Resume
+.type seL4_TCB_Resume, @function
+seL4_TCB_Resume:
     push    %rbp
     mov     %rsp, %rbp
     push    %rbx
@@ -326,7 +326,7 @@ once_seL4_TCB_Resume:
     pop     %rbx
     pop     %rbp
     ret
-.size once_seL4_TCB_Resume, .-once_seL4_TCB_Resume
+.size seL4_TCB_Resume, .-seL4_TCB_Resume
 
 # ----------------------------------------------------------------------
 # seL4_TCB_Suspend - Suspend thread
@@ -334,9 +334,9 @@ once_seL4_TCB_Resume:
 # Input: tcb
 # Output: Int (seL4_Error)
 
-.global once_seL4_TCB_Suspend
-.type once_seL4_TCB_Suspend, @function
-once_seL4_TCB_Suspend:
+.global seL4_TCB_Suspend
+.type seL4_TCB_Suspend, @function
+seL4_TCB_Suspend:
     push    %rbp
     mov     %rsp, %rbp
     push    %rbx
@@ -358,7 +358,7 @@ once_seL4_TCB_Suspend:
     pop     %rbx
     pop     %rbp
     ret
-.size once_seL4_TCB_Suspend, .-once_seL4_TCB_Suspend
+.size seL4_TCB_Suspend, .-seL4_TCB_Suspend
 
 # ----------------------------------------------------------------------
 # seL4_TCB_WriteRegisters - Write thread registers
@@ -366,9 +366,9 @@ once_seL4_TCB_Suspend:
 # Input: (tcb, resume, arch, count, regs)
 # Output: Int (seL4_Error)
 
-.global once_seL4_TCB_WriteRegisters
-.type once_seL4_TCB_WriteRegisters, @function
-once_seL4_TCB_WriteRegisters:
+.global seL4_TCB_WriteRegisters
+.type seL4_TCB_WriteRegisters, @function
+seL4_TCB_WriteRegisters:
     push    %rbp
     mov     %rsp, %rbp
     push    %rbx
@@ -410,7 +410,7 @@ once_seL4_TCB_WriteRegisters:
     pop     %rbx
     pop     %rbp
     ret
-.size once_seL4_TCB_WriteRegisters, .-once_seL4_TCB_WriteRegisters
+.size seL4_TCB_WriteRegisters, .-seL4_TCB_WriteRegisters
 
 # ----------------------------------------------------------------------
 # seL4_TCB_ReadRegisters - Read thread registers
@@ -418,9 +418,9 @@ once_seL4_TCB_WriteRegisters:
 # Input: (tcb, suspend, arch, count, regs)
 # Output: Int (seL4_Error)
 
-.global once_seL4_TCB_ReadRegisters
-.type once_seL4_TCB_ReadRegisters, @function
-once_seL4_TCB_ReadRegisters:
+.global seL4_TCB_ReadRegisters
+.type seL4_TCB_ReadRegisters, @function
+seL4_TCB_ReadRegisters:
     push    %rbp
     mov     %rsp, %rbp
     push    %rbx
@@ -460,6 +460,6 @@ once_seL4_TCB_ReadRegisters:
     pop     %rbx
     pop     %rbp
     ret
-.size once_seL4_TCB_ReadRegisters, .-once_seL4_TCB_ReadRegisters
+.size seL4_TCB_ReadRegisters, .-seL4_TCB_ReadRegisters
 
 #endif // ONCE_SEL4_TCB_X86_64_DEFINED
