@@ -1,43 +1,38 @@
 -- SPDX-License-Identifier: AGPL-3.0-or-later
 -- Copyright (C) 2025-2026 Jonas Claesson and contributors
 
--- Plan 0.36 Phase-0 north-star test (EFFECTFUL — THE CROWN CASE). RED
--- until (a) the test-local `emit.int` Emits SigOp is wired (Phase 0
--- prerequisite) and (b) functor-general cata codegen + trace-valued
--- exec-flat land.
+-- Plan 0.36 north-star test (EFFECTFUL — THE CROWN CASE). Functor shape #5
+-- (leaf binary tree, TWO recursive positions), effect-emitting: emit each
+-- leaf's Int. Combines the case the legacy codegen could not do (two recursive
+-- children) with effect ORDERING across them.
 --
--- Functor shape #5 (leaf binary tree, TWO recursive positions),
--- EFFECT-EMITTING: emit each leaf. This is the crown test — it combines
--- the case the legacy codegen cannot do (two recursive children) with
--- effect ORDERING across those two children.
+-- Point-free / effect-sequenced, like layer5-cata-list-emit.once: `arr` lifts
+-- pure morphisms into the effect realm and `compose` sequences the effectful
+-- cata into main's chain so its emissions fire. `emit@E` is the test-local
+-- Emits SigOp (signature emit : Eff Int Unit; runtime nop).
 --
--- `emit@E` is a TEST-LOCAL Emits SigOp (signature emit : Eff Int Unit;
--- runtime nop; PreservesCCC postulated). See layer5-cata-list-emit.once.
---
--- cata folds the left subtree before the right, so node(leaf 40, leaf 2)
--- emits 40 then 2.
---
--- Expected observable TRACE (asserted at `obs` level, not stdout):
---   [ emit.int 40 , emit.int 2 , linux.exit 7 ]
--- exit 7 = run-completed sentinel; the emit sequence is the real observable.
+-- cata folds the children before the node, so node(leaf 40, leaf 2) emits 40
+-- then 2. Expected observable TRACE [ emit 40 , emit 2 , linux.exit 7 ]; the
+-- exit code is the run-completed sentinel and the suite's assertion.
 
 import I.Linux.Syscalls as S
 import I.Test.Emit as E
-
--- algebra : (Int + (Unit * Unit)) -> Unit
---   leaf : Int -> Unit            = emit the leaf value
---   node : Unit * Unit -> Unit    = const unit (children already emitted)
-emitLeaf : Int -> Unit
-emitLeaf n = emit@E n
-emitNode : Unit * Unit -> Unit
-emitNode _ = unit
-
-emitTree : Mu (K Int + (Id * Id)) -> Unit
-emitTree = cata (case emitLeaf emitNode)
 
 -- node(leaf 40, leaf 2)
 t : Mu (K Int + (Id * Id))
 t = In (inr (In (inl 40), In (inl 2)))
 
+getT : Unit -> Mu (K Int + (Id * Id))
+getT u = t
+
+seven : Unit -> Int
+seven u = 7
+
+-- algebra over `K Int + (Id * Id)` (recursive positions already folded to Unit):
+--   leaf (K Int):        emit@E             -- emit the leaf value
+--   node (Unit * Unit):  arr terminal       -- children already emitted; emit nothing
+emitTree : Eff (Mu (K Int + (Id * Id))) Unit
+emitTree = cata (case emit@E (arr terminal))
+
 main : IO Unit
-main = exit@S (const 7 (emitTree t))
+main = compose exit@S (compose (arr seven) (compose emitTree (arr getT)))
