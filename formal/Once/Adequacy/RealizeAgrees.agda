@@ -36,7 +36,7 @@ import Once.Type
 open import Once.Type using (Type; Int; Unit; Void; Float; Str; Buffer; _*_; _+_; μ-type; ν-type;
                              Purity; pure; eff; mk-kind; Many; One; Zero; _⇒[_]_; isUnit?; ⟦_⟧T; Functor)
 open import Once.TypeCheck.Raw as Raw using (RawExpr)
-open import Once.TypeCheck.Classify using (NamedCtx; extendNamedCtx; lookupSigEffect; lookupImport; lookupLocal)
+open import Once.TypeCheck.Classify using (NamedCtx; extendNamedCtx; lookupSigEffect; lookupImport; lookupLocal; composeMid)
 open import Once.TypeCheck.Elaborate using (success; failure; VerifiedInferResult; VerifiedCheckResult)
 import Once.TypeCheck.Elaborate as E
 open import Once.IR as IR using (IR)
@@ -538,6 +538,32 @@ morph-realize {ctx = ctx} {e = e} {A = A} {B = B} {π = π} {mᵐ = mᵐ} ce ex 
           trans (cong proj₁ (just-injective (trans (sym ex) ex')))
             (trans cons' (cong realize-morph (sym (just-injective (trans (sym exw) exw')))))
 
+-- compose helper: mirror `checkComposeGo` with `composeMid`'s result `mid` and
+-- `eqB` as EXPLICIT parameters (so the `t-morph-lift (m-compose eqB …)` witness's
+-- `eqB` is a parameter, not a `with`-generalized scrutinee that would clash with
+-- the witness implicit). `just B` ⇒ both arms checked + rewritten via morph-realize.
+agree-compose : ∀ (ctx : NamedCtx) (f_inner arg : RawExpr) (A C : Type) (π : Purity)
+  (mid : Maybe Type) (eqB : composeMid ctx f_inner arg A ≡ mid)
+  {Ψ : Usage (NamedCtx.size ctx)} {se : Expr (NamedCtx.debruijn ctx) Ψ (A ⇒[ mk-kind Many π ] C)}
+  {d fr : ℕ} {w : ctx ⊢ᶜ Raw.RApp (Raw.RApp (Raw.RVar "compose") f_inner) arg ∶ (A ⇒[ mk-kind Many π ] C) ⨾ Ψ}
+  → E.checkComposeGo ctx f_inner arg A C π mid eqB ≡ (success Ψ se d fr , w)
+  → ∀ (dγ : Env ctx) (k : ℕ) → SD.⟦ se ⟧ˢ dγ k ≡ SD.⟦ realize w ⟧ˢ dγ k
+agree-compose ctx f_inner arg A C π nothing eqB ()
+agree-compose ctx f_inner arg A C π (just B) eqB disp dγ k
+  with E.checkElabV ctx arg (A ⇒[ mk-kind Many π ] B) in eqg | disp
+... | failure _ , _ | ()
+... | success Ψg gE dg frg , wG | disp'
+      with E.checkElabV ctx f_inner (B ⇒[ mk-kind Many π ] C) in eqf | disp'
+...   | failure _ , _ | ()
+...   | success Ψf fE df frf , wF | disp''
+        with E.extract-morph-eff fE in exf | E.extract-morph-eff gE in exg | extractMorphWitness wF in exwf | extractMorphWitness wG in exwg | disp''
+...     | just (m_f , refl) | just (m_g , refl) | just mFᵐ | just mGᵐ | refl
+          rewrite morph-realize eqf exf exwf | morph-realize eqg exg exwg = refl
+...     | nothing | _ | _ | _ | ()
+...     | just _  | nothing | _ | _ | ()
+...     | just _  | just _  | nothing | _ | ()
+...     | just _  | just _  | just _  | nothing | ()
+
 ------------------------------------------------------------------------
 -- check-mode RApp agreement, dispatched on the app-head VIEW (a parameter of
 -- `checkElabV-RApp-dispatch`). The `t-embed` views (id/fst/snd/terminal) infer
@@ -675,6 +701,10 @@ agree-check-RApp ctx (Raw.RApp (Raw.RVar "case") f_inner) arg ((A + B) ⇒[ mk-k
 ...     | just _  | nothing | _ | _ | ()
 ...     | just _  | just _  | nothing | _ | ()
 ...     | just _  | just _  | just _  | nothing | ()
+-- ahv-compose-applied: delegate to agree-compose (mirrors checkCompose →
+-- checkComposeGo with composeMid + eqB explicit).
+agree-check-RApp ctx (Raw.RApp (Raw.RVar "compose") f_inner) arg (A ⇒[ mk-kind Many π ] C) E.ahv-compose-applied veq disp inferIH argCheckIH dγ k =
+  agree-compose ctx f_inner arg A C π (composeMid ctx f_inner arg A) refl disp dγ k
 agree-check-RApp ctx f arg T vw veq disp inferIH argCheckIH dγ k =
   check-RApp-todo ctx f arg T vw veq disp dγ k
 
