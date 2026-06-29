@@ -552,6 +552,35 @@ agree-check-RApp ctx f arg T E.ahv-terminal veq disp inferIH argCheckIH dγ k
 ... | success T' Ψ eE d fr , w | eq₁ with T E.≟T T' | eq₁
 ...   | yes refl | refl = inferIH refl dγ k
 ...   | no _     | ()
+-- ahv-initial: arg checked at Void; se = morph-app initial argE (unary >>=T),
+-- witness t-initial-app-check w, realize = morph-app initial (realize w) ⇒
+-- rewrite the arg check IH.
+agree-check-RApp ctx f arg T E.ahv-initial veq disp inferIH argCheckIH dγ k
+  with E.checkElabV ctx arg Void in aeq | disp
+... | failure _ , _ | ()
+... | success Ψ argE d fr , w | refl rewrite argCheckIH aeq dγ k = refl
+-- ahv-arr: target must be `A ⇒[Many,eff] B`; arg checked at `A ⇒[Many,pure] B`,
+-- se = arr' argE (denotational IDENTITY), witness t-arr-app-check w,
+-- realize = arr' (realize w) ⇒ agreement is exactly the arg check IH.
+agree-check-RApp ctx f arg (A ⇒[ mk-kind Many eff ] B) E.ahv-arr veq disp inferIH argCheckIH dγ k
+  with E.checkElabV ctx arg (A ⇒[ mk-kind Many pure ] B) in aeq | disp
+... | failure _ , _ | ()
+... | success Ψ argE d fr , w | refl = argCheckIH aeq dγ k
+agree-check-RApp ctx f arg Unit       E.ahv-arr veq ()
+agree-check-RApp ctx f arg Void       E.ahv-arr veq ()
+agree-check-RApp ctx f arg Int        E.ahv-arr veq ()
+agree-check-RApp ctx f arg Float      E.ahv-arr veq ()
+agree-check-RApp ctx f arg Str        E.ahv-arr veq ()
+agree-check-RApp ctx f arg Buffer     E.ahv-arr veq ()
+agree-check-RApp ctx f arg (_ * _)    E.ahv-arr veq ()
+agree-check-RApp ctx f arg (_ + _)    E.ahv-arr veq ()
+agree-check-RApp ctx f arg (_ ⇒[ mk-kind Many pure ] _) E.ahv-arr veq ()
+agree-check-RApp ctx f arg (_ ⇒[ mk-kind One  pure ] _) E.ahv-arr veq ()
+agree-check-RApp ctx f arg (_ ⇒[ mk-kind Zero pure ] _) E.ahv-arr veq ()
+agree-check-RApp ctx f arg (_ ⇒[ mk-kind Zero eff ] _)  E.ahv-arr veq ()
+agree-check-RApp ctx f arg (_ ⇒[ mk-kind One eff ] _)   E.ahv-arr veq ()
+agree-check-RApp ctx f arg (μ-type _) E.ahv-arr veq ()
+agree-check-RApp ctx f arg (ν-type _) E.ahv-arr veq ()
 agree-check-RApp ctx f arg T vw veq disp inferIH argCheckIH dγ k =
   check-RApp-todo ctx f arg T vw veq disp dγ k
 
