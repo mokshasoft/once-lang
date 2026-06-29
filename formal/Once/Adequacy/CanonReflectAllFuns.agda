@@ -26,7 +26,7 @@ open import Data.Maybe using (just; nothing)
 open import Data.Product using (_,_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.String using (String)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst)
 
 open import Once.Type using (Type)
 open import Once.Parser using (FunInfo; PolyFunInfo)
@@ -34,26 +34,46 @@ open Once.Parser.FunInfo using (funName; funType; funBody; funIsPrimitive)
 import Once.Compile as C
 open import Once.TypeCheck.Classify
   using (PolyCtx; NamedCtx; mkCtx; ctxWithImportsAndSelfAndPolys)
-open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_)
+open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_)
+open import Once.TypeCheck.Soundness using (infer-sound)
+open import Once.TypeCheck.Completeness using (infer-complete)
+open import Once.Parser.Module.Resolve using (canonExpr)
 import Once.Adequacy.AcceptSound as AS
 open import Once.Adequacy.CanonPreserve using (⊆ᵇ-nil)
 open import Once.Adequacy.CanonPolyTransport using (canonPolysCtx; PInB)
 open import Once.Adequacy.CanonExtract using (canonFI; canonFuns; canonPolys)
-open import Once.Adequacy.CanonAllFuns using (buildPolyCtx-canon)
-open import Once.Adequacy.CanonReflectMutual using (canon-reflects-ᶜ)
-open import Once.Adequacy.CanonReflectPolyTransport using (polys-reflect-ᶜ)
+open import Once.Adequacy.CanonAllFuns using (buildPolyCtx-canon; inferType→inferElab; inferElab→inferType)
+open import Once.Adequacy.CanonReflectMutual using (canon-reflects-ᶜ; canon-reflects-ᵢ)
+open import Once.Adequacy.CanonReflectPolyTransport using (polys-reflect-ᶜ; polys-reflect-ᵢ)
 open import Once.Adequacy.ModuleComplete using (AllMainEffUU; MainExists)
 
 ------------------------------------------------------------------------
--- The remaining poly-context-transport reversal (TEMP scaffold).
+-- Reverse of `CanonAllFuns.inferType-transport`: invert to inferElab, run
+-- infer-sound, REFLECT the `⊢ᵢ` (polys-reflect-ᵢ then, for user bodies,
+-- canon-reflects-ᵢ), then infer-complete back. Reuses the forward inferElab
+-- bridge helpers (inferType→inferElab / inferElab→inferType).
 ------------------------------------------------------------------------
 
-postulate
-  -- Reverse of `CanonAllFuns.inferType-transport`.
-  inferType-reflect : ∀ (ctx : C.FunCtx) (polysU : List PolyFunInfo) (b : List String)
-    → PInB (C.buildPolyCtx polysU) b → (fi : FunInfo) (ty : Type)
-    → C.inferType ctx (C.buildPolyCtx (canonPolys b polysU)) (funBody (canonFI b fi)) ≡ inj₂ ty
-    → C.inferType ctx (C.buildPolyCtx polysU) (funBody fi) ≡ inj₂ ty
+inferType-reflect : ∀ (ctx : C.FunCtx) (polysU : List PolyFunInfo) (b : List String)
+  → PInB (C.buildPolyCtx polysU) b → (fi : FunInfo) (ty : Type)
+  → C.inferType ctx (C.buildPolyCtx (canonPolys b polysU)) (funBody (canonFI b fi)) ≡ inj₂ ty
+  → C.inferType ctx (C.buildPolyCtx polysU) (funBody fi) ≡ inj₂ ty
+inferType-reflect ctx polysU b pib fi ty eq
+  with funIsPrimitive fi
+     | inferType→inferElab ctx (canonPolysCtx b (C.buildPolyCtx polysU)) (funBody (canonFI b fi)) ty
+         (subst (λ P → C.inferType ctx P (funBody (canonFI b fi)) ≡ inj₂ ty) (buildPolyCtx-canon b polysU) eq)
+... | true  | _ , _ , _ , _ , eqC =
+        inferElab→inferType ctx (C.buildPolyCtx polysU) (funBody fi) ty
+          (let _ , _ , _ , eqU = infer-complete
+                 (polys-reflect-ᵢ b (C.buildPolyCtx polysU) pib (infer-sound _ (funBody fi) eqC))
+           in eqU)
+... | false | _ , _ , _ , _ , eqC =
+        inferElab→inferType ctx (C.buildPolyCtx polysU) (funBody fi) ty
+          (let _ , _ , _ , eqU = infer-complete
+                 (canon-reflects-ᵢ b (funBody fi) (⊆ᵇ-nil {b})
+                   (polys-reflect-ᵢ b (C.buildPolyCtx polysU) pib
+                     (infer-sound _ (canonExpr b [] [] (funBody fi)) eqC)))
+           in eqU)
 
 ------------------------------------------------------------------------
 -- resolveFunType / body reflect (mirror of the forward transports).
