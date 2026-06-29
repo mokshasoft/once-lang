@@ -110,6 +110,17 @@ validSyntaxTests = testGroup "Valid syntax"
       result <- parseSource source
       assertParsed result ["exit : Eff Int Unit"]
 
+  , testCase "signature with effect-shape annotation" $ do
+      -- Signatures may carry an effect-shape annotation (`! halts` / `! emits`,
+      -- per Once.SigOp.Info.EffectShape). It is consumed by the parser and not
+      -- reflected in the printed signature.
+      let source = T.unlines
+            [ "signature ex : Eff Int Unit ! halts"
+            , "signature em : Eff Int Unit ! emits"
+            ]
+      result <- parseSource source
+      assertParsed result ["ex : Eff Int Unit", "em : Eff Int Unit"]
+
   , testCase "import statement" $ do
       -- `import` now resolves the interpretation and surfaces ITS signatures
       -- too, so the parse output is the imported module's signatures plus the

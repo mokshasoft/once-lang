@@ -539,6 +539,7 @@ test-suite once-test
       Paths_once
       ArithSpec
       Backend.Common
+      GeneratorSpec
       IRSpec
       Layer0Spec
       Layer1Spec
@@ -546,7 +547,9 @@ test-suite once-test
       Layer3Spec
       Layer4Spec
       Layer5Spec
+      OptimizeSpec
       ParseSpec
+      QttSpec
       TypeCheckSpec
       TypeErrorSpec
       -- Disabled: reference old Haskell modules that no longer exist

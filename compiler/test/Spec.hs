@@ -4,6 +4,7 @@ import Test.Tasty
 import Test.Tasty.Runners (NumThreads (..))
 
 import ArithSpec (arithTests)
+import GeneratorSpec (generatorTests)
 import IRSpec (irTests)
 import Layer0Spec (layer0Tests)
 import Layer1Spec (layer1Tests)
@@ -11,7 +12,9 @@ import Layer2Spec (layer2Tests)
 import Layer3Spec (layer3Tests)
 import Layer4Spec (layer4Tests)
 import Layer5Spec (layer5Tests)
+import OptimizeSpec (optimizeTests)
 import ParseSpec (parseTests)
+import QttSpec (qttTests)
 import TypeCheckSpec (typeCheckTests)
 import TypeErrorSpec (typeErrorTests)
 
@@ -26,6 +29,8 @@ main = defaultMain $ localOption (NumThreads 1) $ testGroup "Once"
   [ parseTests
   , typeCheckTests
   , typeErrorTests
+  , qttTests
+  , generatorTests
   , irTests
   , layer0Tests
   , layer1Tests
@@ -34,4 +39,5 @@ main = defaultMain $ localOption (NumThreads 1) $ testGroup "Once"
   , layer4Tests
   , layer5Tests
   , arithTests
+  , optimizeTests
   ]

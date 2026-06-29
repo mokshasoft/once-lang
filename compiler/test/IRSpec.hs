@@ -86,6 +86,37 @@ irTests = testGroup "IR Categorical Laws"
           \v -> evalEq (Compose (Case (Terminal tA) (Id tB)) (Inr tA tB))
                        (Id tB)
                        v
+
+      -- η for coproducts: re-injecting each branch is the identity.
+      , testProperty "coproduct η: case inl inr = id (Left)" $
+          \a -> evalEq (Case (Inl tA tB) (Inr tA tB))
+                       (Id (TSum tA tB))
+                       (VLeft a)
+      , testProperty "coproduct η: case inl inr = id (Right)" $
+          \b -> evalEq (Case (Inl tA tB) (Inr tA tB))
+                       (Id (TSum tA tB))
+                       (VRight b)
+
+      -- Fusion: a post-composition distributes into both branches.
+      , testProperty "case fusion: h ∘ case f g = case (h∘f) (h∘g) (Left)" $
+          \a -> let f = Id tA; g = Id tA; h = Terminal tA
+                in evalEq (Compose h (Case f g))
+                          (Case (Compose h f) (Compose h g))
+                          (VLeft a)
+      , testProperty "case fusion: h ∘ case f g = case (h∘f) (h∘g) (Right)" $
+          \b -> let f = Id tA; g = Id tA; h = Terminal tA
+                in evalEq (Compose h (Case f g))
+                          (Case (Compose h f) (Compose h g))
+                          (VRight b)
+      ]
+
+  , testGroup "Initial object"
+      -- `initial : Void -> A` is vacuous: Void has no values, so evaluating it
+      -- never yields one (the dual of `terminal`, which always yields Unit).
+      [ testProperty "initial is uninhabited: eval (initial) never succeeds" $
+          \v -> case eval (Initial tA) v of
+                  Left _  -> True
+                  Right _ -> False
       ]
 
   , testGroup "swap example"
