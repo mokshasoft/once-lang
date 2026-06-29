@@ -811,14 +811,6 @@ completeness-gap-arr-app-check-eq {ctx} arg A B eqC
 ... | success _ _ _ _ , _ | refl = _ , _ , _ , refl
 
 postulate
-  completeness-gap-arr-check :
-    ∀ {ctx : NamedCtx} {e : RawExpr} {A B : Type}
-      {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    → ctx ⊢ᵢ e ∶ (A T.⇒[ T.mk-kind T.Many T.pure ] B) ⨾ Ψ
-    → ∃[ eE ] ∃[ d ] ∃[ f ]
-        checkElab ctx (Raw.RApp (RVar "arr") e)
-                      (A T.⇒[ T.mk-kind T.Many T.eff ] B)
-          ≡ success Ψ eE d f
   completeness-gap-apply-check :
     ∀ {ctx : NamedCtx} {p : RawExpr} {A B : Type}
       {Ψ : Surface.Usage (NamedCtx.size ctx)}
@@ -1086,8 +1078,9 @@ mutual
   -- pattern). Postulated as a completeness gap; soundness for
   -- t-arr-app-infer / t-apply-app-infer is fully proven via
   -- sound-RApp-arr / sound-RApp-apply.
-  check-complete (t-embed (t-arr-app-infer d)) =
-    completeness-gap-arr-check d
+  check-complete (t-embed (t-arr-app-infer {e = e} {A = A} {B = B} d)) =
+    let (_ , _ , _ , eqC) = check-complete (t-embed d)
+    in completeness-gap-arr-app-check-eq e A B eqC
   check-complete (t-embed (t-apply-app-infer d)) =
     completeness-gap-apply-check d
   check-complete (t-embed (t-app {f = f} {x = x} {B = B} notPoly dF dX)) =
