@@ -1014,6 +1014,14 @@ mutual
     ∀ (ctx : NamedCtx) (f arg : RawExpr) (T : Type) (vw : AppHeadView f)
     → classifyAppHeadView f ≡ vw
     → VerifiedCheckResult ctx (Raw.RApp f arg) T
+  -- Arg-driven application fallback (the `ahv-other` failure branch), factored
+  -- out so the `classifyAppHead f` split rides EXPLICIT `lhs`/`eqAH` arguments
+  -- (no inline `with … in`); this lets the agreement proof mirror it with a
+  -- companion aux, exactly like `inferElabV-RApp-other-aux`.
+  checkElabV-RApp-other-argdriven-aux :
+    ∀ (ctx : NamedCtx) (f arg : RawExpr) (T : Type) (errInfer : TypeError)
+      (lhs : Maybe PolyBuiltinApp) → classifyAppHead f ≡ lhs
+    → VerifiedCheckResult ctx (Raw.RApp f arg) T
   -- Plan 0.4 T2: bbc-X failure-branch aux helpers. Each is hardcoded
   -- to its builtin name (forced by the `bbc-X` constructor at the call
   -- site). Takes lookupLocal/lookupImport results + equations as
@@ -2039,16 +2047,17 @@ mutual
   ... | success T' Ψ eE d fr , w with T ≟T T'
   ...   | yes refl = success Ψ eE d fr , t-embed w
   ...   | no _     = failure (TypeMismatch T T') , tt
-  checkElabV-RApp-dispatch ctx f arg T ahv-other _ | failure errInfer , _
-        with classifyAppHead f in eqAH
-  ...   | just _  = failure errInfer , tt
-  ...   | nothing with inferElabV ctx arg
-  ...     | failure errArg , _ = failure errArg , tt
-  ...     | success X Ψx argE dx frx , wArg
-              with checkElabV ctx f (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] T)
-  ...       | failure err , _ = failure err , tt
-  ...       | success Ψf fE df frf , wF =
-              success _ (Surface.app fE argE) (suc (df ⊔ dx)) frf , t-arg-driven-app-check eqAH wArg wF
+  checkElabV-RApp-dispatch ctx f arg T ahv-other _ | failure errInfer , _ =
+    checkElabV-RApp-other-argdriven-aux ctx f arg T errInfer (classifyAppHead f) refl
+
+  checkElabV-RApp-other-argdriven-aux ctx f arg T errInfer (just _) eqAH = failure errInfer , tt
+  checkElabV-RApp-other-argdriven-aux ctx f arg T errInfer nothing eqAH with inferElabV ctx arg
+  ... | failure errArg , _ = failure errArg , tt
+  ... | success X Ψx argE dx frx , wArg
+          with checkElabV ctx f (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] T)
+  ...   | failure err , _ = failure err , tt
+  ...   | success Ψf fE df frf , wF =
+          success _ (Surface.app fE argE) (suc (df ⊔ dx)) frf , t-arg-driven-app-check eqAH wArg wF
 
   -- bbc-X failure-branch aux bodies. Each pattern-matches on T to the
   -- canonical builtin shape and on the lookup results. Success iff
