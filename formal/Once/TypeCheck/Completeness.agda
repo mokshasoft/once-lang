@@ -1196,6 +1196,15 @@ mutual
   subsume-complete {ctx} (t-lam {x = x} {body = body} {A = A} {B = B} {q' = q'} leqEq bodyD) =
     let (_ , _ , _ , eqBody) = check-complete bodyD
     in check-complete-RLam-eff ctx x body A q' B leqEq eqBody
+  -- t-embed at a catch-all expr: checkElab = embedOrSubsume … (inferElabV …)
+  -- DEFINITIONALLY, so `check-complete` of the same derivation IS the pure-side
+  -- equation `embedOrSubsume-lifts` consumes (embed at pure, subsume at eff).
+  subsume-complete {ctx} {_} {A} {B} (t-embed d@(t-var-resolved {cn = cn} eqImp)) =
+    let (_ , _ , _ , eqC) = check-complete (t-embed d)
+    in embedOrSubsume-lifts ctx (Raw.RResolved cn) A B (inferElabV ctx (Raw.RResolved cn)) eqC
+  subsume-complete {ctx} {_} {A} {B} (t-embed d@(t-var-qualified {name = name} {alias = alias} eqImp)) =
+    let (_ , _ , _ , eqC) = check-complete (t-embed d)
+    in embedOrSubsume-lifts ctx (Raw.RQualified name alias) A B (inferElabV ctx (Raw.RQualified name alias)) eqC
   subsume-complete (t-embed x)                 = subsume-residual (t-embed x)
   subsume-complete (t-apply-check d)           = subsume-residual (t-apply-check d)
   subsume-complete (t-initial-app-check d)     = subsume-residual (t-initial-app-check d)
