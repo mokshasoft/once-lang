@@ -3303,6 +3303,67 @@ checkElab-fallback-RApp-generic-eff {ctx} f x A B eqAH eqInf
 ...     | yes refl | yes refl = _ , _ , _ , refl
 ...     | no ¬a    | _        = ⊥-elim (¬a refl)
 ...     | yes _     | no ¬b    = ⊥-elim (¬b refl)
+
+-- Plan 0.52: eff (subsume) fallbacks for the infer-then-check builtin-app heads
+-- (id/fst/snd). Their head is CONCRETE so the view reduces without a bridge;
+-- the dispatch now routes infer-success through the named embedOrSubsume, so
+-- the eff arrow ≠ inferred pure arrow takes the subsume branch (A/B reflexive).
+checkElab-fallback-RApp-id-eff :
+  ∀ {ctx : NamedCtx} (arg : RawExpr) (A B : Type)
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)}
+    {d f' : ℕ}
+  → inferElab ctx (Raw.RApp (Raw.RVar "id") arg) ≡ success (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) Ψ eE d f'
+  → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f'' →
+      checkElab ctx (Raw.RApp (Raw.RVar "id") arg) (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B)
+        ≡ success Ψ eE' d' f'')))
+checkElab-fallback-RApp-id-eff {ctx} arg A B eqInf
+  with inferElabV ctx (Raw.RApp (Raw.RVar "id") arg) | eqInf
+... | success _ _ _ _ _ , _ | refl
+    with (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B) ≟T (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)
+...   | yes ()
+...   | no _ with A ≟T A | B ≟T B
+...     | yes refl | yes refl = _ , _ , _ , refl
+...     | no ¬a    | _        = ⊥-elim (¬a refl)
+...     | yes _     | no ¬b    = ⊥-elim (¬b refl)
+
+checkElab-fallback-RApp-fst-eff :
+  ∀ {ctx : NamedCtx} (arg : RawExpr) (A B : Type)
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)}
+    {d f' : ℕ}
+  → inferElab ctx (Raw.RApp (Raw.RVar "fst") arg) ≡ success (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) Ψ eE d f'
+  → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f'' →
+      checkElab ctx (Raw.RApp (Raw.RVar "fst") arg) (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B)
+        ≡ success Ψ eE' d' f'')))
+checkElab-fallback-RApp-fst-eff {ctx} arg A B eqInf
+  with inferElabV ctx (Raw.RApp (Raw.RVar "fst") arg) | eqInf
+... | success _ _ _ _ _ , _ | refl
+    with (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B) ≟T (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)
+...   | yes ()
+...   | no _ with A ≟T A | B ≟T B
+...     | yes refl | yes refl = _ , _ , _ , refl
+...     | no ¬a    | _        = ⊥-elim (¬a refl)
+...     | yes _     | no ¬b    = ⊥-elim (¬b refl)
+
+checkElab-fallback-RApp-snd-eff :
+  ∀ {ctx : NamedCtx} (arg : RawExpr) (A B : Type)
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)}
+    {d f' : ℕ}
+  → inferElab ctx (Raw.RApp (Raw.RVar "snd") arg) ≡ success (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) Ψ eE d f'
+  → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f'' →
+      checkElab ctx (Raw.RApp (Raw.RVar "snd") arg) (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B)
+        ≡ success Ψ eE' d' f'')))
+checkElab-fallback-RApp-snd-eff {ctx} arg A B eqInf
+  with inferElabV ctx (Raw.RApp (Raw.RVar "snd") arg) | eqInf
+... | success _ _ _ _ _ , _ | refl
+    with (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B) ≟T (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)
+...   | yes ()
+...   | no _ with A ≟T A | B ≟T B
+...     | yes refl | yes refl = _ , _ , _ , refl
+...     | no ¬a    | _        = ⊥-elim (¬a refl)
+...     | yes _     | no ¬b    = ⊥-elim (¬b refl)
 checkElab-fallback-RApp-terminal :
   ∀ {ctx : NamedCtx} (arg : RawExpr) (T : Type)
     {Ψ : Surface.Usage (NamedCtx.size ctx)}
