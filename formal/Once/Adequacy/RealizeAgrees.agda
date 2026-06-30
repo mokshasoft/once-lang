@@ -1207,6 +1207,12 @@ mutual
       (λ {T'} p → check-agreeV ctx arg T' (rec (mC-sub (μ<-r (μ f) (μ arg)))) p)
       (λ p → infer-agreeV ctx arg (rec (mIC-sub (μ<-r (μ f) (μ arg)))) p)
       (λ {T'} p → check-agreeV ctx f T' (rec (mC-sub (μ<-l (μ f) (μ arg)))) p) dγ k
+  -- RAna: no infer rule (`inferElabV` always fails) and no check rule either, so
+  -- the generic `checkElabV` fallback (`with inferElabV ctx e`) is always
+  -- `failure` ⇒ success-eq absurd.
+  check-agreeV ctx (Raw.RAna a e) T _ eq
+    with E.inferElabV ctx (Raw.RAna a e) | eq
+  ... | failure _ , _ | ()
   check-agreeV ctx e T _ eq = check-agreeV-todo ctx e T eq
 
 ------------------------------------------------------------------------
