@@ -3430,6 +3430,51 @@ checkElab-fallback-RApp-apply-eff {ctx} p A B eqInf
 ...     | yes refl | yes refl = _ , _ , _ , refl
 ...     | no ¬a    | _        = ⊥-elim (¬a refl)
 ...     | yes _     | no ¬b    = ⊥-elim (¬b refl)
+
+-- Plan 0.52: `checkCata` is grade-poly (matches `μF ⇒[Many π]A` for any π). The
+-- J-bridge + just-success pattern (mirrors checkInGo-J / checkInGo-just-success)
+-- avoids generalizing `wellFormedF? F` (which clashes with checkCata's `refl`).
+checkCataGo-J :
+  ∀ (ctx : NamedCtx) (alg : RawExpr) (F : Once.Type.Functor) (A : Type) (π : Once.Type.Purity)
+    (mw : Maybe (Once.Functor.Translate.WellFormedF F)) (eq : wellFormedF? F ≡ mw)
+  → checkElab ctx (Raw.RApp (Raw.RVar "cata") alg) (Once.Type.μ-type F Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A)
+      ≡ checkProj₁ (checkCataGo ctx alg F A π mw eq)
+checkCataGo-J ctx alg F A π .(wellFormedF? F) refl = refl
+
+checkCataGo-just-success-eff :
+  ∀ (ctx : NamedCtx) (alg : RawExpr) (F : Once.Type.Functor) (A : Type)
+    (wfF : Once.Functor.Translate.WellFormedF F) (eqW : wellFormedF? F ≡ just wfF)
+    {algE : SExpr (NamedCtx.debruijn (ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx)))
+                  Surface.zeroUsage (Once.Type.⟦ F ⟧T A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] A)}
+    {d fr : ℕ}
+  → checkElab (ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx))
+              alg (Once.Type.⟦ F ⟧T A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] A)
+      ≡ success Surface.zeroUsage algE d fr
+  → ∃-syntax (λ eE → ∃-syntax (λ d' → ∃-syntax (λ fr' →
+      checkProj₁ (checkCataGo ctx alg F A Once.Type.eff (just wfF) eqW)
+        ≡ success Surface.zeroUsage eE d' fr')))
+checkCataGo-just-success-eff ctx alg F A wfF eqW eqAlg
+  with checkElabV (ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx))
+                  alg (Once.Type.⟦ F ⟧T A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] A) | eqAlg
+... | success Surface.[] _ _ _ , _ | refl = _ , _ , _ , refl
+
+checkElab-fallback-RApp-cata-eff :
+  ∀ {ctx : NamedCtx} (alg : RawExpr) (F : Once.Type.Functor) (A : Type)
+    {wfF : Once.Functor.Translate.WellFormedF F}
+    {algE : SExpr (NamedCtx.debruijn (ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx)))
+                  Surface.zeroUsage (Once.Type.⟦ F ⟧T A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] A)}
+    {d fr : ℕ}
+  → wellFormedF? F ≡ just wfF
+  → checkElab (ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx))
+              alg (Once.Type.⟦ F ⟧T A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] A)
+      ≡ success Surface.zeroUsage algE d fr
+  → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f'' →
+      checkElab ctx (Raw.RApp (Raw.RVar "cata") alg)
+                    (Once.Type.μ-type F Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] A)
+        ≡ success Surface.zeroUsage eE' d' f'')))
+checkElab-fallback-RApp-cata-eff {ctx} alg F A {wfF} eqWF eqAlg =
+  let (_ , _ , _ , eqGo) = checkCataGo-just-success-eff ctx alg F A wfF eqWF eqAlg
+  in _ , _ , _ , trans (checkCataGo-J ctx alg F A Once.Type.eff (just wfF) eqWF) eqGo
 checkElab-fallback-RApp-terminal :
   ∀ {ctx : NamedCtx} (arg : RawExpr) (T : Type)
     {Ψ : Surface.Usage (NamedCtx.size ctx)}

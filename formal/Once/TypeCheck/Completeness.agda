@@ -692,7 +692,7 @@ open Once.TypeCheck.Elaborate
          checkElab-fallback-RApp-generic; checkElab-fallback-RApp-generic-eff;
          checkElab-fallback-RApp-id-eff; checkElab-fallback-RApp-fst-eff; checkElab-fallback-RApp-snd-eff;
          checkElab-fallback-RVar-eff; checkElab-fallback-RApp-initial-eff;
-         checkElab-fallback-RApp-apply-eff)
+         checkElab-fallback-RApp-apply-eff; checkElab-fallback-RApp-cata-eff)
 
 -- RVar case: covers both local and import lookups (and "unit"). The
 -- fallback lemma takes the inferElab-success equation uniformly.
@@ -1212,6 +1212,11 @@ mutual
   subsume-complete {ctx} {_} {A} {B} (t-morph-lift (m-named {x = x} ¬u eqL eqI)) =
     let (_ , _ , _ , eqInf) = infer-complete (t-var-import ¬u eqL eqI)
     in checkElab-fallback-RVar-eff x A B eqInf
+  -- m-cata: checkCata is grade-poly, but the ALGEBRA is checked at the cata's
+  -- grade — so recurse subsume-complete on the algebra, then the cata eff fallback.
+  subsume-complete {ctx} (t-morph-lift (m-cata {alg = alg} {F = F} {A = A} eqW algD)) =
+    let (_ , _ , _ , eqAlgEff) = subsume-complete algD
+    in checkElab-fallback-RApp-cata-eff alg F A eqW eqAlgEff
   subsume-complete (t-morph-lift m) with regrade-eff m
   ... | just m' = morph-complete m'
   ... | nothing = subsume-residual (t-morph-lift m)
