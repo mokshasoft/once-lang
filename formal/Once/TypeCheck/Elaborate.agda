@@ -3388,6 +3388,21 @@ checkElab-fallback-RVar-eff {ctx} x A B eqInf
 ...     | yes refl | yes refl = _ , _ , _ , refl
 ...     | no ¬a    | _        = ⊥-elim (¬a refl)
 ...     | yes _     | no ¬b    = ⊥-elim (¬b refl)
+
+-- Plan 0.52: `initial arg` checks at ANY target (the `initial` morphism is
+-- Void → T grade-agnostically), so given `arg : Void` it checks at the eff arrow.
+checkElab-fallback-RApp-initial-eff :
+  ∀ {ctx : NamedCtx} (arg : RawExpr) (T : Type)
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {argE : SExpr (NamedCtx.debruijn ctx) Ψ Once.Type.Void}
+    {d fr : ℕ}
+  → checkElab ctx arg Once.Type.Void ≡ success Ψ argE d fr
+  → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f'' →
+      checkElab ctx (Raw.RApp (Raw.RVar "initial") arg) T
+        ≡ success (Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ)) eE' d' f'')))
+checkElab-fallback-RApp-initial-eff {ctx} arg T eqArg
+  with checkElabV ctx arg Once.Type.Void | eqArg
+... | success _ _ _ _ , _ | refl = _ , _ , _ , refl
 checkElab-fallback-RApp-terminal :
   ∀ {ctx : NamedCtx} (arg : RawExpr) (T : Type)
     {Ψ : Surface.Usage (NamedCtx.size ctx)}

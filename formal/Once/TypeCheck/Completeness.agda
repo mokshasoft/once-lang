@@ -691,7 +691,7 @@ open Once.TypeCheck.Elaborate
          checkElab-fallback-RApp-snd; checkElab-fallback-RApp-terminal;
          checkElab-fallback-RApp-generic; checkElab-fallback-RApp-generic-eff;
          checkElab-fallback-RApp-id-eff; checkElab-fallback-RApp-fst-eff; checkElab-fallback-RApp-snd-eff;
-         checkElab-fallback-RVar-eff)
+         checkElab-fallback-RVar-eff; checkElab-fallback-RApp-initial-eff)
 
 -- RVar case: covers both local and import lookups (and "unit"). The
 -- fallback lemma takes the inferElab-success equation uniformly.
@@ -1265,6 +1265,10 @@ mutual
     in checkElab-fallback-RVar-eff x A B eqI
   subsume-complete (t-embed x)                 = subsume-residual (t-embed x)
   subsume-complete (t-apply-check d)           = subsume-residual (t-apply-check d)
-  subsume-complete (t-initial-app-check d)     = subsume-residual (t-initial-app-check d)
+  -- t-initial-app-check: `initial` is grade-agnostic (Void → any T), so given
+  -- arg : Void it checks at the eff arrow directly (no subsumption needed).
+  subsume-complete {ctx} {_} {A} {B} (t-initial-app-check {arg = arg} d) =
+    let (_ , _ , _ , eqArg) = check-complete d
+    in checkElab-fallback-RApp-initial-eff arg (A T.⇒[ T.mk-kind T.Many T.eff ] B) eqArg
   subsume-complete (t-arg-driven-app-check a b c) = subsume-residual (t-arg-driven-app-check a b c)
   subsume-complete (t-var-poly-instantiate a b c d e f) = subsume-residual (t-var-poly-instantiate a b c d e f)
