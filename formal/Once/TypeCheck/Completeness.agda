@@ -1189,6 +1189,11 @@ mutual
     → ctx ⊢ᶜ e ∶ (A T.⇒[ T.mk-kind T.Many T.pure ] B) ⨾ Ψ
     → ∃[ eE ] ∃[ d ] ∃[ f ]
         checkElab ctx e (A T.⇒[ T.mk-kind T.Many T.eff ] B) ≡ success Ψ eE d f
+  -- m-named-resolved is import-grade-fixed (regrade → nothing) but RResolved is a
+  -- catch-all expr, so it subsumes via embedOrSubsume-lifts (like t-var-resolved).
+  subsume-complete {ctx} {_} {A} {B} (t-morph-lift dm@(m-named-resolved {cn = cn} eqImp)) =
+    let (_ , _ , _ , eqC) = check-complete (t-morph-lift dm)
+    in embedOrSubsume-lifts ctx (Raw.RResolved cn) A B (inferElabV ctx (Raw.RResolved cn)) eqC
   subsume-complete (t-morph-lift m) with regrade-eff m
   ... | just m' = morph-complete m'
   ... | nothing = subsume-residual (t-morph-lift m)
