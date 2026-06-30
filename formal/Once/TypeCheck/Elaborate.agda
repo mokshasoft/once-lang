@@ -2023,7 +2023,12 @@ mutual
   checkElabV-RApp-dispatch ctx f arg T ahv-In _ = checkIn ctx arg T
   checkElabV-RApp-dispatch ctx f arg T ahv-cata _ = checkCata ctx arg T
   checkElabV-RApp-dispatch ctx f arg T ahv-curry _ = checkCurry ctx arg T
-  checkElabV-RApp-dispatch ctx f arg T ahv-apply _ = checkApply ctx arg T
+  -- Plan 0.52 (OCP-0008): `apply p` infers (t-apply-app-infer), so route its
+  -- CHECK through the named embedOrSubsume — this ADDS the subsume case (apply at
+  -- an eff arrow) that the old `checkApply` (exact T ≟ codomain) rejected.
+  checkElabV-RApp-dispatch ctx f arg T ahv-apply _ with inferElabV ctx (Raw.RApp f arg)
+  ... | r@(success _ _ _ _ _ , _) = embedOrSubsume ctx (Raw.RApp f arg) T r
+  ... | (failure err , _) = failure err , tt
   -- ahv-other: infer-then-check via the NAMED `embedOrSubsume` (OCP-0008: route
   -- through the named combinator, not an inline with-tree, so completeness can
   -- reason through it); on infer failure, arg-driven application.
@@ -2740,10 +2745,11 @@ checkElab-fallback-RApp-apply :
 checkElab-fallback-RApp-apply {ctx} p A B eqInf
   with inferElabV ctx p | eqInf
 ... | success ((_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] _) Once.Type.* _) _ _ _ _ , _ | refl
-    with A ≟T A | B ≟T B
-...   | yes refl | yes refl = _ , _ , _ , refl
-...   | yes refl | no  ¬eq  = ⊥-elim (¬eq refl)
-...   | no  ¬eq  | _        = ⊥-elim (¬eq refl)
+    with A ≟T A
+...   | no  ¬eq  = ⊥-elim (¬eq refl)
+...   | yes refl with B ≟T B
+...     | yes refl = _ , _ , _ , refl
+...     | no  ¬eq  = ⊥-elim (¬eq refl)
 resolveExprWF : ∀ {n} {Γ : Surface.Ctx n} {Ψ : Surface.Usage n} {A}
               → (polys : PolyCtx) → Acc _<_ (length polys)
               → Imports → Imports → ℕ
@@ -3403,6 +3409,27 @@ checkElab-fallback-RApp-initial-eff :
 checkElab-fallback-RApp-initial-eff {ctx} arg T eqArg
   with checkElabV ctx arg Once.Type.Void | eqArg
 ... | success _ _ _ _ , _ | refl = _ , _ , _ , refl
+
+-- Plan 0.52: `apply p` now routes its check through the named embedOrSubsume, so
+-- (like the other infer-then-check heads) it subsumes from the inferred result.
+checkElab-fallback-RApp-apply-eff :
+  ∀ {ctx : NamedCtx} (p : RawExpr) (A B : Type)
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)}
+    {d f' : ℕ}
+  → inferElab ctx (Raw.RApp (Raw.RVar "apply") p) ≡ success (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) Ψ eE d f'
+  → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f'' →
+      checkElab ctx (Raw.RApp (Raw.RVar "apply") p) (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B)
+        ≡ success Ψ eE' d' f'')))
+checkElab-fallback-RApp-apply-eff {ctx} p A B eqInf
+  with inferElabV ctx (Raw.RApp (Raw.RVar "apply") p) | eqInf
+... | success _ _ _ _ _ , _ | refl
+    with (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B) ≟T (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)
+...   | yes ()
+...   | no _ with A ≟T A | B ≟T B
+...     | yes refl | yes refl = _ , _ , _ , refl
+...     | no ¬a    | _        = ⊥-elim (¬a refl)
+...     | yes _     | no ¬b    = ⊥-elim (¬b refl)
 checkElab-fallback-RApp-terminal :
   ∀ {ctx : NamedCtx} (arg : RawExpr) (T : Type)
     {Ψ : Surface.Usage (NamedCtx.size ctx)}

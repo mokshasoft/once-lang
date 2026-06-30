@@ -886,39 +886,15 @@ agree-check-RApp ctx (Raw.RApp (Raw.RVar "compose") f_inner) arg (A ⇒[ mk-kind
 -- ahv-apply (check): checkApply infers the arg; se = morph-app apply argE,
 -- witness t-apply-check w, realize = morph-app apply (realize-infer w) ⇒ plain
 -- morph-app congruence via the inferred-arg IH. Non-`(Many-pure-arrow * A)` args fail.
+-- Plan 0.52: `apply p` now routes its check through the named embedOrSubsume
+-- (infer the whole app, embed at T or subsume) — identical shape to ahv-other.
 agree-check-RApp ctx f arg T E.ahv-apply veq disp inferIH argCheckIH argInferIH fCheckIH dγ k
-  with E.inferElabV ctx arg | disp
-... | failure _ , _ | ()
-... | success Unit _ _ _ _ , _ | ()
-... | success Void _ _ _ _ , _ | ()
-... | success Int _ _ _ _ , _ | ()
-... | success Float _ _ _ _ , _ | ()
-... | success Str _ _ _ _ , _ | ()
-... | success Buffer _ _ _ _ , _ | ()
-... | success (_ + _) _ _ _ _ , _ | ()
-... | success (_ ⇒[ _ ] _) _ _ _ _ , _ | ()
-... | success (Unit * _) _ _ _ _ , _ | ()
-... | success (Void * _) _ _ _ _ , _ | ()
-... | success (Int * _) _ _ _ _ , _ | ()
-... | success (Float * _) _ _ _ _ , _ | ()
-... | success (Str * _) _ _ _ _ , _ | ()
-... | success (Buffer * _) _ _ _ _ , _ | ()
-... | success ((_ * _) * _) _ _ _ _ , _ | ()
-... | success ((_ + _) * _) _ _ _ _ , _ | ()
-... | success ((_ ⇒[ mk-kind Zero pure ] _) * _) _ _ _ _ , _ | ()
-... | success ((_ ⇒[ mk-kind One pure ] _) * _) _ _ _ _ , _ | ()
-... | success ((_ ⇒[ mk-kind Many eff ] _) * _) _ _ _ _ , _ | ()
-... | success ((_ ⇒[ mk-kind One eff ] _) * _) _ _ _ _ , _ | ()
-... | success ((_ ⇒[ mk-kind Zero eff ] _) * _) _ _ _ _ , _ | ()
-... | success ((μ-type _) * _) _ _ _ _ , _ | ()
-... | success ((ν-type _) * _) _ _ _ _ , _ | ()
-... | success (μ-type _) _ _ _ _ , _ | ()
-... | success (ν-type _) _ _ _ _ , _ | ()
-... | success ((A ⇒[ mk-kind Many pure ] B) * A') Ψ argE d fr , w | eq₁
-      with A E.≟T A' | T E.≟T B | eq₁
-...   | yes refl | yes refl | refl rewrite argInferIH refl dγ k = refl
-...   | yes refl | no _     | ()
-...   | no _     | _        | ()
+  with E.inferElabV ctx (Raw.RApp f arg) | disp
+... | success T' Ψ eE d fr , w | eq₁ with T E.≟T T' | eq₁
+...   | yes refl | refl = inferIH refl dγ k
+...   | no _     | eq₂ = agree-embedOrSubsume-no T' T eE d fr w eq₂ (λ dγ' k' → inferIH refl dγ' k') dγ k
+agree-check-RApp ctx f arg T E.ahv-apply veq disp inferIH argCheckIH argInferIH fCheckIH dγ k
+  | failure _ , _ | ()
 -- ahv-other (check): the dispatch first tries `inferElabV (RApp f arg)` and on
 -- success matches `T` — that is the `t-embed` path (`realize (t-embed w) =
 -- realize-infer w` ⇒ the supplied `inferIH`). On infer-failure it falls to the
