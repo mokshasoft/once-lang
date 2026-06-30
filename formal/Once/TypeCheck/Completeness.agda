@@ -1269,7 +1269,6 @@ mutual
   subsume-complete {ctx} {_} {A} {B} (t-embed dd@(t-apply-app-infer {p = p} d)) =
     let (_ , _ , _ , eqI) = infer-complete dd
     in checkElab-fallback-RApp-apply-eff p A B eqI
-  subsume-complete (t-embed x)                 = subsume-residual (t-embed x)
   -- t-apply-check: same — build t-apply-app-infer from the SAME premise.
   subsume-complete {ctx} {_} {A} {B} (t-apply-check {p = p} d) =
     let (_ , _ , _ , eqI) = infer-complete (t-apply-app-infer d)
