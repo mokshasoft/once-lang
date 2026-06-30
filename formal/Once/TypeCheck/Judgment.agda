@@ -574,6 +574,17 @@ mutual
                              ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B)
                              ⨾ Ψ
 
+    -- | pure ⊑ eff SUBSUMPTION (D068 / Plan 0.52 M1): a value of a pure arrow is
+    -- usable where the eff arrow is expected, with NO `arr` term — "annotation is
+    -- a check, never a coercion" (OCP-0007). The denotation is identity
+    -- (`realize` emits `arr'`, and `⟦arr' f⟧ = ⟦f⟧`). This is `t-arr-app-check`
+    -- with the `arr` wrapper dropped from the subject. Retires surface `arr`.
+    -- Monotone only (pure→eff; eff→pure is unsound — D066).
+    t-subsume : ∀ {ctx : NamedCtx} {e : RawExpr} {A B : Type}
+                {Ψ : Surface.Usage (NamedCtx.size ctx)}
+              → ctx ⊢ᶜ e ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) ⨾ Ψ
+              → ctx ⊢ᶜ e ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B) ⨾ Ψ
+
     -- | Argument-driven application in check mode. Plan 0.4 T1
     -- changes 2+4. When `f` cannot be inferred as a function (the
     -- function-driven `t-app` path fails), infer the argument first

@@ -715,6 +715,51 @@ agree-check-RApp-argdriven-aux {ctx} f arg T errInfer nothing eqAH eq fCheckIH a
 -- `realize (t-embed w) = realize-infer w`). The arg-driven `ahv-other` failure
 -- branch rides `agree-check-RApp-argdriven-aux`; remaining views (cata) route
 -- to `check-RApp-todo` for now.
+-- Plan 0.52 M1: the agreement mirror of `embedOrSubsume-no` (the `T ≟T T'` = no
+-- recovery at every infer-then-check site). When the inferred pure arrow `T'`
+-- subsumes to the expected eff arrow `T`, the elaborator emits `arr' eE` with
+-- `t-subsume (t-embed w)`; since `⟦arr' f⟧ = ⟦f⟧` and `realize (t-subsume …)`
+-- re-wraps in `arr'`, the agreement is EXACTLY the inferred-expr IH (`iIH`).
+-- Every non-subsuming shape makes `embedOrSubsume-no` fail ⇒ success-eq absurd.
+agree-embedOrSubsume-no : ∀ {ctx : NamedCtx} {e : RawExpr} (T' T : Type)
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    (eE : Expr (NamedCtx.debruijn ctx) Ψ T') (d fr : ℕ) (wᵢ : ctx ⊢ᵢ e ∶ T' ⨾ Ψ)
+    {Ψ' se d' fr'} {w : ctx ⊢ᶜ e ∶ T ⨾ Ψ'}
+  → E.embedOrSubsume-no ctx e T' T eE d fr wᵢ ≡ (success Ψ' se d' fr' , w)
+  → (iIH : ∀ dγ k → SD.⟦ eE ⟧ˢ dγ k ≡ SD.⟦ realize-infer wᵢ ⟧ˢ dγ k)
+  → ∀ dγ k → SD.⟦ se ⟧ˢ dγ k ≡ SD.⟦ realize w ⟧ˢ dγ k
+agree-embedOrSubsume-no (A' ⇒[ mk-kind Many pure ] B') (A ⇒[ mk-kind Many eff ] B) eE d fr wᵢ eq iIH dγ k
+  with A E.≟T A' | B E.≟T B' | eq
+... | yes refl | yes refl | refl = iIH dγ k
+... | yes refl | no _     | ()
+... | no _     | _        | ()
+agree-embedOrSubsume-no Unit                          T eE d fr wᵢ () iIH
+agree-embedOrSubsume-no Void                          T eE d fr wᵢ () iIH
+agree-embedOrSubsume-no Int                           T eE d fr wᵢ () iIH
+agree-embedOrSubsume-no Float                         T eE d fr wᵢ () iIH
+agree-embedOrSubsume-no Str                           T eE d fr wᵢ () iIH
+agree-embedOrSubsume-no Buffer                        T eE d fr wᵢ () iIH
+agree-embedOrSubsume-no (_ * _)                       T eE d fr wᵢ () iIH
+agree-embedOrSubsume-no (_ + _)                       T eE d fr wᵢ () iIH
+agree-embedOrSubsume-no (μ-type _)                    T eE d fr wᵢ () iIH
+agree-embedOrSubsume-no (ν-type _)                    T eE d fr wᵢ () iIH
+agree-embedOrSubsume-no (_ ⇒[ mk-kind Many eff ] _)   T eE d fr wᵢ () iIH
+agree-embedOrSubsume-no (_ ⇒[ mk-kind One _ ] _)      T eE d fr wᵢ () iIH
+agree-embedOrSubsume-no (_ ⇒[ mk-kind Zero _ ] _)     T eE d fr wᵢ () iIH
+agree-embedOrSubsume-no (A' ⇒[ mk-kind Many pure ] B') Unit                          eE d fr wᵢ () iIH
+agree-embedOrSubsume-no (A' ⇒[ mk-kind Many pure ] B') Void                          eE d fr wᵢ () iIH
+agree-embedOrSubsume-no (A' ⇒[ mk-kind Many pure ] B') Int                           eE d fr wᵢ () iIH
+agree-embedOrSubsume-no (A' ⇒[ mk-kind Many pure ] B') Float                         eE d fr wᵢ () iIH
+agree-embedOrSubsume-no (A' ⇒[ mk-kind Many pure ] B') Str                           eE d fr wᵢ () iIH
+agree-embedOrSubsume-no (A' ⇒[ mk-kind Many pure ] B') Buffer                        eE d fr wᵢ () iIH
+agree-embedOrSubsume-no (A' ⇒[ mk-kind Many pure ] B') (_ * _)                       eE d fr wᵢ () iIH
+agree-embedOrSubsume-no (A' ⇒[ mk-kind Many pure ] B') (_ + _)                       eE d fr wᵢ () iIH
+agree-embedOrSubsume-no (A' ⇒[ mk-kind Many pure ] B') (μ-type _)                    eE d fr wᵢ () iIH
+agree-embedOrSubsume-no (A' ⇒[ mk-kind Many pure ] B') (ν-type _)                    eE d fr wᵢ () iIH
+agree-embedOrSubsume-no (A' ⇒[ mk-kind Many pure ] B') (_ ⇒[ mk-kind Many pure ] _)  eE d fr wᵢ () iIH
+agree-embedOrSubsume-no (A' ⇒[ mk-kind Many pure ] B') (_ ⇒[ mk-kind One _ ] _)      eE d fr wᵢ () iIH
+agree-embedOrSubsume-no (A' ⇒[ mk-kind Many pure ] B') (_ ⇒[ mk-kind Zero _ ] _)     eE d fr wᵢ () iIH
+
 agree-check-RApp : ∀ (ctx : NamedCtx) (f arg : RawExpr) (T : Type) {Ψ se d fr w}
   (vw : E.AppHeadView f) (veq : E.classifyAppHeadView f ≡ vw)
   → E.checkElabV-RApp-dispatch ctx f arg T vw veq ≡ (success Ψ se d fr , w)
@@ -737,25 +782,25 @@ agree-check-RApp ctx f arg T E.ahv-id veq disp inferIH argCheckIH argInferIH fCh
 ... | failure _ , _ | ()
 ... | success T' Ψ eE d fr , w | eq₁ with T E.≟T T' | eq₁
 ...   | yes refl | refl = inferIH refl dγ k
-...   | no _     | ()
+...   | no _     | eq₂ = agree-embedOrSubsume-no T' T eE d fr w eq₂ (λ dγ' k' → inferIH refl dγ' k') dγ k
 agree-check-RApp ctx f arg T E.ahv-fst veq disp inferIH argCheckIH argInferIH fCheckIH dγ k
   with E.inferElabV ctx (Raw.RApp f arg) | disp
 ... | failure _ , _ | ()
 ... | success T' Ψ eE d fr , w | eq₁ with T E.≟T T' | eq₁
 ...   | yes refl | refl = inferIH refl dγ k
-...   | no _     | ()
+...   | no _     | eq₂ = agree-embedOrSubsume-no T' T eE d fr w eq₂ (λ dγ' k' → inferIH refl dγ' k') dγ k
 agree-check-RApp ctx f arg T E.ahv-snd veq disp inferIH argCheckIH argInferIH fCheckIH dγ k
   with E.inferElabV ctx (Raw.RApp f arg) | disp
 ... | failure _ , _ | ()
 ... | success T' Ψ eE d fr , w | eq₁ with T E.≟T T' | eq₁
 ...   | yes refl | refl = inferIH refl dγ k
-...   | no _     | ()
+...   | no _     | eq₂ = agree-embedOrSubsume-no T' T eE d fr w eq₂ (λ dγ' k' → inferIH refl dγ' k') dγ k
 agree-check-RApp ctx f arg T E.ahv-terminal veq disp inferIH argCheckIH argInferIH fCheckIH dγ k
   with E.inferElabV ctx (Raw.RApp f arg) | disp
 ... | failure _ , _ | ()
 ... | success T' Ψ eE d fr , w | eq₁ with T E.≟T T' | eq₁
 ...   | yes refl | refl = inferIH refl dγ k
-...   | no _     | ()
+...   | no _     | eq₂ = agree-embedOrSubsume-no T' T eE d fr w eq₂ (λ dγ' k' → inferIH refl dγ' k') dγ k
 -- ahv-initial: arg checked at Void; se = morph-app initial argE (unary >>=T),
 -- witness t-initial-app-check w, realize = morph-app initial (realize w) ⇒
 -- rewrite the arg check IH.
@@ -906,7 +951,7 @@ agree-check-RApp ctx f arg T E.ahv-other veq disp inferIH argCheckIH argInferIH 
   with E.inferElabV ctx (Raw.RApp f arg) | disp
 ... | success T' Ψ eE d fr , w | eq₁ with T E.≟T T' | eq₁
 ...   | yes refl | refl = inferIH refl dγ k
-...   | no _     | ()
+...   | no _     | eq₂ = agree-embedOrSubsume-no T' T eE d fr w eq₂ (λ dγ' k' → inferIH refl dγ' k') dγ k
 agree-check-RApp ctx f arg T E.ahv-other veq disp inferIH argCheckIH argInferIH fCheckIH dγ k
   | failure errInfer , _ | disp₁ =
     agree-check-RApp-argdriven-aux f arg T errInfer
@@ -1089,49 +1134,63 @@ mutual
   ... | success T' Ψ eE d fr , w | eq₁
         with T E.≟T T' | eq₁
   ...     | yes refl | refl = infer-agreeV ctx (Raw.RBinOp op a b) (rec (infer<check (Raw.RBinOp op a b))) ieq dγ k
-  ...     | no _     | ()
+  ...     | no _     | eq₂ =
+            agree-embedOrSubsume-no T' T eE d fr w eq₂
+              (λ dγ' k' → infer-agreeV ctx (Raw.RBinOp op a b) (rec (infer<check (Raw.RBinOp op a b))) ieq dγ' k') dγ k
   check-agreeV ctx (Raw.RUnaryOp Raw.OpNeg e) T (acc rec) eq dγ k
     with E.inferElabV ctx (Raw.RUnaryOp Raw.OpNeg e) in ieq | eq
   ... | failure _ , _ | ()
   ... | success T' Ψ eE d fr , w | eq₁
         with T E.≟T T' | eq₁
   ...     | yes refl | refl = infer-agreeV ctx (Raw.RUnaryOp Raw.OpNeg e) (rec (infer<check (Raw.RUnaryOp Raw.OpNeg e))) ieq dγ k
-  ...     | no _     | ()
+  ...     | no _     | eq₂ =
+            agree-embedOrSubsume-no T' T eE d fr w eq₂
+              (λ dγ' k' → infer-agreeV ctx (Raw.RUnaryOp Raw.OpNeg e) (rec (infer<check (Raw.RUnaryOp Raw.OpNeg e))) ieq dγ' k') dγ k
   check-agreeV ctx (Raw.RLet x e₁ e₂) T (acc rec) eq dγ k
     with E.inferElabV ctx (Raw.RLet x e₁ e₂) in ieq | eq
   ... | failure _ , _ | ()
   ... | success T' Ψ eE d fr , w | eq₁
         with T E.≟T T' | eq₁
   ...     | yes refl | refl = infer-agreeV ctx (Raw.RLet x e₁ e₂) (rec (infer<check (Raw.RLet x e₁ e₂))) ieq dγ k
-  ...     | no _     | ()
+  ...     | no _     | eq₂ =
+            agree-embedOrSubsume-no T' T eE d fr w eq₂
+              (λ dγ' k' → infer-agreeV ctx (Raw.RLet x e₁ e₂) (rec (infer<check (Raw.RLet x e₁ e₂))) ieq dγ' k') dγ k
   check-agreeV ctx (Raw.RDestruct scrut xL eL xR eR) T (acc rec) eq dγ k
     with E.inferElabV ctx (Raw.RDestruct scrut xL eL xR eR) in ieq | eq
   ... | failure _ , _ | ()
   ... | success T' Ψ eE d fr , w | eq₁
         with T E.≟T T' | eq₁
   ...     | yes refl | refl = infer-agreeV ctx (Raw.RDestruct scrut xL eL xR eR) (rec (infer<check (Raw.RDestruct scrut xL eL xR eR))) ieq dγ k
-  ...     | no _     | ()
+  ...     | no _     | eq₂ =
+            agree-embedOrSubsume-no T' T eE d fr w eq₂
+              (λ dγ' k' → infer-agreeV ctx (Raw.RDestruct scrut xL eL xR eR) (rec (infer<check (Raw.RDestruct scrut xL eL xR eR))) ieq dγ' k') dγ k
   check-agreeV ctx (Raw.RAnnot e T₀) T (acc rec) eq dγ k
     with E.inferElabV ctx (Raw.RAnnot e T₀) in ieq | eq
   ... | failure _ , _ | ()
   ... | success T' Ψ eE d fr , w | eq₁
         with T E.≟T T' | eq₁
   ...     | yes refl | refl = infer-agreeV ctx (Raw.RAnnot e T₀) (rec (infer<check (Raw.RAnnot e T₀))) ieq dγ k
-  ...     | no _     | ()
+  ...     | no _     | eq₂ =
+            agree-embedOrSubsume-no T' T eE d fr w eq₂
+              (λ dγ' k' → infer-agreeV ctx (Raw.RAnnot e T₀) (rec (infer<check (Raw.RAnnot e T₀))) ieq dγ' k') dγ k
   check-agreeV ctx (Raw.RQualified name alias) T (acc rec) eq dγ k
     with E.inferElabV ctx (Raw.RQualified name alias) in ieq | eq
   ... | failure _ , _ | ()
   ... | success T' Ψ eE d fr , w | eq₁
         with T E.≟T T' | eq₁
   ...     | yes refl | refl = infer-agreeV ctx (Raw.RQualified name alias) (rec (infer<check (Raw.RQualified name alias))) ieq dγ k
-  ...     | no _     | ()
+  ...     | no _     | eq₂ =
+            agree-embedOrSubsume-no T' T eE d fr w eq₂
+              (λ dγ' k' → infer-agreeV ctx (Raw.RQualified name alias) (rec (infer<check (Raw.RQualified name alias))) ieq dγ' k') dγ k
   check-agreeV ctx (Raw.RResolved cn) T (acc rec) eq dγ k
     with E.inferElabV ctx (Raw.RResolved cn) in ieq | eq
   ... | failure _ , _ | ()
   ... | success T' Ψ eE d fr , w | eq₁
         with T E.≟T T' | eq₁
   ...     | yes refl | refl = infer-agreeV ctx (Raw.RResolved cn) (rec (infer<check (Raw.RResolved cn))) ieq dγ k
-  ...     | no _     | ()
+  ...     | no _     | eq₂ =
+            agree-embedOrSubsume-no T' T eE d fr w eq₂
+              (λ dγ' k' → infer-agreeV ctx (Raw.RResolved cn) (rec (infer<check (Raw.RResolved cn))) ieq dγ' k') dγ k
   -- RUnit / RStringLit: generic fallback over a literal whose inferred type is
   -- fixed (Unit / Str); case `T ≟T <that>` (the fallback's `T ≟T T'`), so `eq`
   -- reduces. `yes refl` delegates to `infer-agreeV` of the literal.
@@ -1198,7 +1257,20 @@ mutual
   check-agreeV ctx (Raw.RLam x body) (_ + _)      _ ()
   check-agreeV ctx (Raw.RLam x body) (μ-type _)   _ ()
   check-agreeV ctx (Raw.RLam x body) (ν-type _)   _ ()
-  check-agreeV ctx (Raw.RLam x body) (_ ⇒[ mk-kind _ eff ] _) _ ()
+  -- Plan 0.52 M1: lambda at an eff arrow via pure ⊑ eff subsumption. `se = arr'
+  -- (lam Many …)`, witness `t-subsume (t-lam …)`; `⟦arr' f⟧ = ⟦f⟧` so the proof
+  -- is the pure RLam body argument verbatim. One/Zero-eff still fail (no clause).
+  check-agreeV ctx (Raw.RLam x body) (A ⇒[ mk-kind Many eff ] B) (acc rec) eq dγ k
+    with E.checkElabV (extendNamedCtx ctx x A) body B in eqBody | eq
+  ... | failure _ , _ | ()
+  ... | success (q' ∷ᵘ Ψ) bodyE d fr , wBody | eq₁ with E.decideLeq q' Many | eq₁
+  ...   | just leq  | refl =
+          cong (λ f → returnT f k)
+            (extensionality (λ a → extensionality (λ j →
+              check-agreeV (extendNamedCtx ctx x A) body B (rec (mC-sub ≤-refl)) eqBody (dγ , a) j)))
+  ...   | nothing   | ()
+  check-agreeV ctx (Raw.RLam x body) (_ ⇒[ mk-kind One eff ] _) _ ()
+  check-agreeV ctx (Raw.RLam x body) (_ ⇒[ mk-kind Zero eff ] _) _ ()
   -- RApp: dispatch on the app-head view; t-embed views delegate to infer,
   -- the rest route through agree-check-RApp (todo residual for now).
   check-agreeV ctx (Raw.RApp f arg) T (acc rec) eq dγ k =

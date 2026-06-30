@@ -177,6 +177,7 @@ mutual
     → ctx ⊢ᶜ e ∶ A ⨾ Ψ → ctx ⊢ᶜ canonExpr bound [] [] e ∶ A ⨾ Ψ
   canon-pres-ᶜ bound sub pib (t-morph-lift d) = t-morph-lift (canon-pres-ᵐ bound sub pib d)
   canon-pres-ᶜ bound sub pib (t-embed d) = t-embed (canon-pres-ᵢ bound sub pib d)
+  canon-pres-ᶜ bound sub pib (t-subsume d) = t-subsume (canon-pres-ᶜ bound sub pib d)
   canon-pres-ᶜ bound sub pib (t-lam {x = x} {A = A} le d) =
     t-lam le (canon-pres-ᶜ (x ∷ bound) (⊆ᵇ-cons x sub) (poly-ext x A pib) d)
   canon-pres-ᶜ bound sub pib (t-value-lift d) = t-value-lift (pres-ᵍ bound d)

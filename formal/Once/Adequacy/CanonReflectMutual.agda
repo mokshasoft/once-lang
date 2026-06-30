@@ -290,6 +290,7 @@ reflect-var-ᶜ : ∀ {ctx A Ψ} (b : Bool) (bound : List String) (x : String)
 reflect-var-ᶜ true  bound x sub eb D = D
 reflect-var-ᶜ false bound x sub eb (t-morph-lift d) = t-morph-lift (reflect-var-ᵐ false bound x sub eb d)
 reflect-var-ᶜ false bound x sub eb (t-embed d)      = t-embed (reflect-var-ᵢ false bound x sub eb d)
+reflect-var-ᶜ false bound x sub eb (t-subsume d)    = t-subsume (reflect-var-ᶜ false bound x sub eb d)
 reflect-var-ᶜ false bound x sub eb (t-value-lift ())
 
 ------------------------------------------------------------------------
@@ -487,6 +488,7 @@ mutual
   -- Universal lift bridges (catch-all LAST; recurse on the same `e`).
   canon-reflects-ᶜ bound e sub (t-morph-lift d) = t-morph-lift (canon-reflects-ᵐ bound e sub d)
   canon-reflects-ᶜ bound e sub (t-embed d)      = t-embed (canon-reflects-ᵢ bound e sub d)
+  canon-reflects-ᶜ bound e sub (t-subsume d)    = t-subsume (canon-reflects-ᶜ bound e sub d)
   canon-reflects-ᶜ bound e sub (t-value-lift d) = t-value-lift (canon-reflects-ᵍ bound e d)
 
   reflect-app-var-ᶜ : ∀ {ctx A Ψ} (b : Bool) (bound : List String) (y : String) (X : RawExpr)
@@ -504,8 +506,10 @@ mutual
   reflect-app-var-ᶜ true bound y X sub eb (t-arr-app-check d)   = t-arr-app-check (canon-reflects-ᶜ bound X sub d)
   reflect-app-var-ᶜ true bound y X sub eb (t-arg-driven-app-check cls darg df) =
     t-arg-driven-app-check cls (canon-reflects-ᵢ bound X sub darg) df
+  reflect-app-var-ᶜ true bound y X sub eb (t-subsume d) = t-subsume (reflect-app-var-ᶜ true bound y X sub eb d)
   reflect-app-var-ᶜ false bound y X sub eb (t-morph-lift d) = t-morph-lift (reflect-app-var-ᵐ false bound y X sub eb d)
   reflect-app-var-ᶜ false bound y X sub eb (t-embed d)      = t-embed (reflect-app-var-ᵢ false bound y X sub eb d)
   reflect-app-var-ᶜ false bound y X sub eb (t-value-lift ())
   reflect-app-var-ᶜ false bound y X sub eb (t-arg-driven-app-check cls darg df) =
     t-arg-driven-app-check (classifyRVar-nonbuiltin y (∨-false-r eb)) (canon-reflects-ᵢ bound X sub darg) (reflect-var-ᶜ false bound y sub eb df)
+  reflect-app-var-ᶜ false bound y X sub eb (t-subsume d) = t-subsume (reflect-app-var-ᶜ false bound y X sub eb d)

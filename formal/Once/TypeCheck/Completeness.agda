@@ -810,6 +810,22 @@ completeness-gap-arr-app-check-eq {ctx} arg A B eqC
   with checkElabV ctx arg (A T.⇒[ T.mk-kind T.Many T.pure ] B) | eqC
 ... | success _ _ _ _ , _ | refl = _ , _ , _ , refl
 
+-- Plan 0.52 M1 SCAFFOLD (to be discharged): the `t-subsume` completeness bridge.
+-- `checkElab` finds the eff-arrow typing whenever it finds the pure-arrow one
+-- (pure ⊑ eff). For the embedOrSubsume-routed forms (catch-all / RVar / RApp
+-- embed views) this is `embedOrSubsume-lifts` (inferred pure-arrow ⇒ subsume);
+-- for RLam it is the eff lambda clause reusing the same body check; non-arrow
+-- forms make the pure-arrow premise vacuous. Discharged in the next step.
+postulate
+  subsume-complete :
+    ∀ {ctx : NamedCtx} {e : RawExpr} {A B : Type}
+      {Ψ : Surface.Usage (NamedCtx.size ctx)}
+      {eE : SExpr (NamedCtx.debruijn ctx) Ψ (A T.⇒[ T.mk-kind T.Many T.pure ] B)}
+      {d f : ℕ}
+    → checkElab ctx e (A T.⇒[ T.mk-kind T.Many T.pure ] B) ≡ success Ψ eE d f
+    → ∃[ eE' ] ∃[ d' ] ∃[ f' ]
+        checkElab ctx e (A T.⇒[ T.mk-kind T.Many T.eff ] B) ≡ success Ψ eE' d' f'
+
 postulate
   completeness-gap-arg-driven-app-check :
     ∀ {ctx : NamedCtx} {f arg : RawExpr} {X T : Type}
@@ -1118,6 +1134,11 @@ mutual
     in completeness-gap-arr-app-check-eq arg A B eqC
   check-complete (t-arg-driven-app-check notPoly dArg dF) =
     completeness-gap-arg-driven-app-check notPoly dArg dF
+  -- Plan 0.52 M1: pure ⊑ eff subsumption — recurse on the pure-arrow derivation,
+  -- then lift the pure-arrow checkElab success to the eff arrow (subsume-complete).
+  check-complete (t-subsume {e = e} {A = A} {B = B} d) =
+    let (_ , _ , _ , eqC) = check-complete d
+    in subsume-complete {e = e} {A = A} {B = B} eqC
 
   -- Plan 0.6.2 Phase 4: polymorphic schema-instantiation. Threads
   -- the body's check-mode derivation through `check-complete`,

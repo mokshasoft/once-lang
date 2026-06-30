@@ -409,6 +409,45 @@ VerifiedCheckResult : (ctx : NamedCtx) (e : RawExpr) (T : Type) → Set
 VerifiedCheckResult ctx e T =
   ∃-syntax (λ r → checkSoundOf ctx e T r)
 
+-- The universal "infer-then-check" combinator (Plan 0.52 M1). Given the expected
+-- check type `T` and the result of inferring `e` (`VerifiedInferResult`):
+--   * inferred type matches `T`              → `t-embed`;
+--   * `T` is the eff arrow of the inferred pure arrow (pure ⊑ eff SUBSUMPTION,
+--     D068) → `t-subsume (t-embed w)` (se = `arr' eE`, identity denotation);
+--   * otherwise                              → type mismatch.
+-- Non-recursive (consumes an already-built infer witness), so no impact on the
+-- `checkElabV`/`inferElabV` termination. Every check-mode "fall back to infer"
+-- site (the generic catch-all + the `bbc-*` builtin auxes) routes through here,
+-- so subsumption is uniform and `check-complete` has a single bridge.
+-- The `T ≟T T'` = no recovery: pure ⊑ eff subsumption when `T` is an eff arrow
+-- and the inferred `T'` is the matching pure arrow. Matched on the inferred `T'`
+-- (concrete at most sites) FIRST, so a non-arrow `T'` (e.g. `Str`) fails without
+-- splitting an abstract expected `T` (which would get stuck). Top-level so the
+-- generic catch-all can inline `with T ≟T T'` (keeping that decision visible to
+-- the agreement proofs) while still sharing this subsumption tail.
+-- NOTE arg order: the inferred `T'` comes BEFORE the expected `T`, so Agda
+-- splits the (concrete) `T'` first — a non-arrow `T'` hits the catch-all without
+-- ever forcing a split of an abstract `T`.
+embedOrSubsume-no : ∀ (ctx : NamedCtx) (e : RawExpr)
+                      {Ψ : Surface.Usage (NamedCtx.size ctx)} (T' T : Type)
+                  → SExpr (NamedCtx.debruijn ctx) Ψ T' → (depth fresh : ℕ)
+                  → ctx ⊢ᵢ e ∶ T' ⨾ Ψ → VerifiedCheckResult ctx e T
+embedOrSubsume-no ctx e (A' Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B')
+                        (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B)
+                        eE depth fresh w with A ≟T A' | B ≟T B'
+... | yes refl | yes refl = success _ (Surface.arr' eE) depth fresh , t-subsume (t-embed w)
+... | _        | _        = failure (TypeMismatch
+                              (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B)
+                              (A' Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B')) , tt
+embedOrSubsume-no ctx e T' T eE depth fresh w = failure (TypeMismatch T T') , tt
+
+embedOrSubsume : ∀ (ctx : NamedCtx) (e : RawExpr) (T : Type)
+               → VerifiedInferResult ctx e → VerifiedCheckResult ctx e T
+embedOrSubsume ctx e T (failure err , _) = failure err , tt
+embedOrSubsume ctx e T (success T' Ψ eE d fr , w) with T ≟T T'
+... | yes refl = success Ψ eE d fr , t-embed w
+... | no _     = embedOrSubsume-no ctx e T' T eE d fr w
+
 ------------------------------------------------------------------------
 -- QTT Usage Helpers
 ------------------------------------------------------------------------
@@ -1571,7 +1610,14 @@ mutual
   ... | success (q' ∷ᵘ Ψ) bodyE d fr , wBody with decideLeq q' q
   ...   | just eq = success _ (Surface.lam q eq bodyE) (suc d) fr , t-lam eq wBody
   ...   | nothing = failure (UsageViolation x q q') , tt
-  -- Non-pure-arrow T: lambda's only check-mode rule is t-lam (pure).
+  -- Eff arrow: pure ⊑ eff SUBSUMPTION (Plan 0.52 M1) — a lambda checks at the
+  -- corresponding pure arrow and is lifted by `t-subsume` (no `arr` needed).
+  checkElabV ctx (Raw.RLam x body) (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B) with checkElabV (extendNamedCtx ctx x A) body B
+  ... | failure err , _ = failure err , tt
+  ... | success (q' ∷ᵘ Ψ) bodyE d fr , wBody with decideLeq q' Once.Type.Many
+  ...   | just eq = success _ (Surface.arr' (Surface.lam Once.Type.Many eq bodyE)) (suc d) fr , t-subsume (t-lam eq wBody)
+  ...   | nothing = failure (UsageViolation x Once.Type.Many q') , tt
+  -- Non-arrow T: lambda's only check-mode rules are t-lam (pure) / t-subsume (eff).
   checkElabV ctx (Raw.RLam _ _) _ = failure LambdaRequiresFunctionType , tt
 
   ----------------------------------------------------------------------
@@ -1622,7 +1668,7 @@ mutual
   ... | failure err , _ = failure err , tt
   ... | success T' Ψ eE d fr , w with T ≟T T'
   ...   | yes refl = success Ψ eE d fr , t-embed w
-  ...   | no _     = failure (TypeMismatch T T') , tt
+  ...   | no _     = embedOrSubsume-no ctx e T' T eE d fr w
 
   ----------------------------------------------------------------------
   -- `inferElabV-RApp-other` body — verified counterpart of
@@ -1939,26 +1985,26 @@ mutual
   inferElabV-RApp-dispatch ctx f arg ahv-other _ = inferElabV-RApp-other ctx f arg
 
   -- checkElabV's RApp dispatch — mirror of inferElabV-RApp-dispatch.
-  checkElabV-RApp-dispatch ctx f arg T ahv-id _ with inferElabV ctx (Raw.RApp f arg)
+  checkElabV-RApp-dispatch ctx f arg T ahv-id _       with inferElabV ctx (Raw.RApp f arg)
   ... | failure err , _ = failure err , tt
   ... | success T' Ψ eE d fr , w with T ≟T T'
   ...   | yes refl = success Ψ eE d fr , t-embed w
-  ...   | no _     = failure (TypeMismatch T T') , tt
-  checkElabV-RApp-dispatch ctx f arg T ahv-fst _ with inferElabV ctx (Raw.RApp f arg)
+  ...   | no _     = embedOrSubsume-no ctx (Raw.RApp f arg) T' T eE d fr w
+  checkElabV-RApp-dispatch ctx f arg T ahv-fst _      with inferElabV ctx (Raw.RApp f arg)
   ... | failure err , _ = failure err , tt
   ... | success T' Ψ eE d fr , w with T ≟T T'
   ...   | yes refl = success Ψ eE d fr , t-embed w
-  ...   | no _     = failure (TypeMismatch T T') , tt
-  checkElabV-RApp-dispatch ctx f arg T ahv-snd _ with inferElabV ctx (Raw.RApp f arg)
+  ...   | no _     = embedOrSubsume-no ctx (Raw.RApp f arg) T' T eE d fr w
+  checkElabV-RApp-dispatch ctx f arg T ahv-snd _      with inferElabV ctx (Raw.RApp f arg)
   ... | failure err , _ = failure err , tt
   ... | success T' Ψ eE d fr , w with T ≟T T'
   ...   | yes refl = success Ψ eE d fr , t-embed w
-  ...   | no _     = failure (TypeMismatch T T') , tt
+  ...   | no _     = embedOrSubsume-no ctx (Raw.RApp f arg) T' T eE d fr w
   checkElabV-RApp-dispatch ctx f arg T ahv-terminal _ with inferElabV ctx (Raw.RApp f arg)
   ... | failure err , _ = failure err , tt
   ... | success T' Ψ eE d fr , w with T ≟T T'
   ...   | yes refl = success Ψ eE d fr , t-embed w
-  ...   | no _     = failure (TypeMismatch T T') , tt
+  ...   | no _     = embedOrSubsume-no ctx (Raw.RApp f arg) T' T eE d fr w
   -- ahv-inl: T must be sum type A+B; check arg at A.
   -- Plan 0.41 structural value-lift: `inl arg` / `inr arg` at a *pure arrow*
   -- to a sum is a closed global-element value — route through `checkG`, which
@@ -2046,7 +2092,7 @@ mutual
   checkElabV-RApp-dispatch ctx f arg T ahv-other _ with inferElabV ctx (Raw.RApp f arg)
   ... | success T' Ψ eE d fr , w with T ≟T T'
   ...   | yes refl = success Ψ eE d fr , t-embed w
-  ...   | no _     = failure (TypeMismatch T T') , tt
+  ...   | no _     = embedOrSubsume-no ctx (Raw.RApp f arg) T' T eE d fr w
   checkElabV-RApp-dispatch ctx f arg T ahv-other _ | failure errInfer , _ =
     checkElabV-RApp-other-argdriven-aux ctx f arg T errInfer (classifyAppHead f) refl
 
@@ -2355,59 +2401,41 @@ mutual
   -- Per-bbc-X auxes: pattern-match on the verified inferElabV result
   -- (Σ-pair). The success path uses t-embed of the witness; the
   -- failure path delegates to bbc-X-failure-aux.
-  checkElabV-RVar-bbc-id-aux ctx T (success T' Ψ eE d fr , w) with T ≟T T'
-  ... | yes refl = success Ψ eE d fr , t-embed w
-  ... | no _     = failure (TypeMismatch T T') , tt
+  checkElabV-RVar-bbc-id-aux ctx T r@(success _ _ _ _ _ , _) = embedOrSubsume ctx (Raw.RVar "id") T r
   checkElabV-RVar-bbc-id-aux ctx T (failure err , _) =
     checkElabV-RVar-bbc-id-failure-aux ctx T err (inspectLookupLocal ctx "id") (inspectLookupImport ctx "id")
 
-  checkElabV-RVar-bbc-fst-aux ctx T (success T' Ψ eE d fr , w) with T ≟T T'
-  ... | yes refl = success Ψ eE d fr , t-embed w
-  ... | no _     = failure (TypeMismatch T T') , tt
+  checkElabV-RVar-bbc-fst-aux ctx T r@(success _ _ _ _ _ , _) = embedOrSubsume ctx (Raw.RVar "fst") T r
   checkElabV-RVar-bbc-fst-aux ctx T (failure err , _) =
     checkElabV-RVar-bbc-fst-failure-aux ctx T err (inspectLookupLocal ctx "fst") (inspectLookupImport ctx "fst")
 
-  checkElabV-RVar-bbc-snd-aux ctx T (success T' Ψ eE d fr , w) with T ≟T T'
-  ... | yes refl = success Ψ eE d fr , t-embed w
-  ... | no _     = failure (TypeMismatch T T') , tt
+  checkElabV-RVar-bbc-snd-aux ctx T r@(success _ _ _ _ _ , _) = embedOrSubsume ctx (Raw.RVar "snd") T r
   checkElabV-RVar-bbc-snd-aux ctx T (failure err , _) =
     checkElabV-RVar-bbc-snd-failure-aux ctx T err (inspectLookupLocal ctx "snd") (inspectLookupImport ctx "snd")
 
-  checkElabV-RVar-bbc-terminal-aux ctx T (success T' Ψ eE d fr , w) with T ≟T T'
-  ... | yes refl = success Ψ eE d fr , t-embed w
-  ... | no _     = failure (TypeMismatch T T') , tt
+  checkElabV-RVar-bbc-terminal-aux ctx T r@(success _ _ _ _ _ , _) = embedOrSubsume ctx (Raw.RVar "terminal") T r
   checkElabV-RVar-bbc-terminal-aux ctx T (failure err , _) =
     checkElabV-RVar-bbc-terminal-failure-aux ctx T err (inspectLookupLocal ctx "terminal") (inspectLookupImport ctx "terminal")
 
-  checkElabV-RVar-bbc-initial-aux ctx T (success T' Ψ eE d fr , w) with T ≟T T'
-  ... | yes refl = success Ψ eE d fr , t-embed w
-  ... | no _     = failure (TypeMismatch T T') , tt
+  checkElabV-RVar-bbc-initial-aux ctx T r@(success _ _ _ _ _ , _) = embedOrSubsume ctx (Raw.RVar "initial") T r
   checkElabV-RVar-bbc-initial-aux ctx T (failure err , _) =
     checkElabV-RVar-bbc-initial-failure-aux ctx T err (inspectLookupLocal ctx "initial") (inspectLookupImport ctx "initial")
 
-  checkElabV-RVar-bbc-inl-aux ctx T (success T' Ψ eE d fr , w) with T ≟T T'
-  ... | yes refl = success Ψ eE d fr , t-embed w
-  ... | no _     = failure (TypeMismatch T T') , tt
+  checkElabV-RVar-bbc-inl-aux ctx T r@(success _ _ _ _ _ , _) = embedOrSubsume ctx (Raw.RVar "inl") T r
   checkElabV-RVar-bbc-inl-aux ctx T (failure err , _) =
     checkElabV-RVar-bbc-inl-failure-aux ctx T err (inspectLookupLocal ctx "inl") (inspectLookupImport ctx "inl")
 
-  checkElabV-RVar-bbc-inr-aux ctx T (success T' Ψ eE d fr , w) with T ≟T T'
-  ... | yes refl = success Ψ eE d fr , t-embed w
-  ... | no _     = failure (TypeMismatch T T') , tt
+  checkElabV-RVar-bbc-inr-aux ctx T r@(success _ _ _ _ _ , _) = embedOrSubsume ctx (Raw.RVar "inr") T r
   checkElabV-RVar-bbc-inr-aux ctx T (failure err , _) =
     checkElabV-RVar-bbc-inr-failure-aux ctx T err (inspectLookupLocal ctx "inr") (inspectLookupImport ctx "inr")
 
-  checkElabV-RVar-bbc-arr-aux ctx T (success T' Ψ eE d fr , w) with T ≟T T'
-  ... | yes refl = success Ψ eE d fr , t-embed w
-  ... | no _     = failure (TypeMismatch T T') , tt
+  checkElabV-RVar-bbc-arr-aux ctx T r@(success _ _ _ _ _ , _) = embedOrSubsume ctx (Raw.RVar "arr") T r
   checkElabV-RVar-bbc-arr-aux ctx T (failure err , _) =
     checkElabV-RVar-bbc-arr-failure-aux ctx T err (inspectLookupLocal ctx "arr") (inspectLookupImport ctx "arr")
 
   -- bbc-other: success-via-infer mirrors the others; failure goes
   -- through lookupPoly fallback (still postulate-witnessed).
-  checkElabV-RVar-bbc-other-aux ctx x T (success T' Ψ eE d fr , w) with T ≟T T'
-  ... | yes refl = success Ψ eE d fr , t-embed w
-  ... | no _     = failure (TypeMismatch T T') , tt
+  checkElabV-RVar-bbc-other-aux ctx x T r@(success _ _ _ _ _ , _) = embedOrSubsume ctx (Raw.RVar x) T r
   checkElabV-RVar-bbc-other-aux ctx x T (failure err , _) with lookupPoly (NamedCtx.polys ctx) x
   ... | nothing = failure err , tt
   ... | just _  = success Surface.zeroUsage (Surface.poly x T) 0 (NamedCtx.freshCounter ctx) , bbc-other-poly-witness ctx x T

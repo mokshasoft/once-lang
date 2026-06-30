@@ -47,7 +47,7 @@ open import Once.TypeCheck.Judgment
          t-app; t-effApp;
          t-embed; t-lam; t-value-lift; t-morph-lift; t-pair-lit-check; t-In-app-check;
          t-apply-check; t-inl-app-check; t-inr-app-check; t-initial-app-check;
-         t-arr-app-check; t-arg-driven-app-check; t-var-poly-instantiate)
+         t-arr-app-check; t-subsume; t-arg-driven-app-check; t-var-poly-instantiate)
 open import Once.Surface.Syntax using (Expr; Usage;
   lam; app; effApp; pair; neg; let'; case'; int; str; unit;
   add; sub; mul; div; mod'; lt; le; gt; ge; eq; ne; arr'; sigOp; poly;
@@ -143,6 +143,7 @@ realize (t-inl-app-check d)     = morph-app (IR.inl IR.Heap) (realize d)
 realize (t-inr-app-check d)     = morph-app (IR.inr IR.Heap) (realize d)
 realize (t-initial-app-check d) = morph-app IR.initial (realize d)
 realize (t-arr-app-check d)     = arr' (realize d)
+realize (t-subsume d)           = arr' (realize d)
 realize (t-arg-driven-app-check _ darg df) = app (realize df) (realize-infer darg)
 realize (t-var-poly-instantiate {x = x} {T = T} _ _ _ _ _ _) = poly x T
 

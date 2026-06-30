@@ -296,6 +296,7 @@ mutual
     → mkCtx n Γ Δ f i (canonPolysCtx b p) s ⊢ᶜ e ∶ A ⨾ Ψ
   polys-transport-ᶜ b p pib (t-morph-lift d) = t-morph-lift (polys-transport-ᵐ b p pib d)
   polys-transport-ᶜ b p pib (t-embed d) = t-embed (polys-transport-ᵢ b p pib d)
+  polys-transport-ᶜ b p pib (t-subsume d) = t-subsume (polys-transport-ᶜ b p pib d)
   polys-transport-ᶜ b p pib (t-lam le d) = t-lam le (polys-transport-ᶜ b p pib d)
   polys-transport-ᶜ b p pib (t-value-lift d) = t-value-lift (polys-transport-ᵍ b p d)
   polys-transport-ᶜ b p pib (t-pair-lit-check d₁ d₂) = t-pair-lit-check (polys-transport-ᶜ b p pib d₁) (polys-transport-ᶜ b p pib d₂)
