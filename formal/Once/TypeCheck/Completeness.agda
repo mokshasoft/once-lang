@@ -45,7 +45,7 @@ open import Once.CanonicalName using (CanonicalName; showCanonical)
 open import Once.TypeCheck.Elaborate
   using (NamedCtx; inferElab; checkElab; InferElabResult; CheckElabResult;
          success; failure; lookupLocal; lookupImport;
-         inferElabV; checkElabV; _≟T_;
+         inferElabV; checkElabV; _≟T_; embedOrSubsume; VerifiedInferResult; isRIntVliftTarget?;
          classifyAppHead; classifyAppHeadView; ahv-other;
          classifyAppHead-nothing⇒view-other; AppHeadView;
          classifyBareBuiltin; checkG; inspectWellFormedF; wfv-yes; wfv-no;
@@ -810,21 +810,85 @@ completeness-gap-arr-app-check-eq {ctx} arg A B eqC
   with checkElabV ctx arg (A T.⇒[ T.mk-kind T.Many T.pure ] B) | eqC
 ... | success _ _ _ _ , _ | refl = _ , _ , _ , refl
 
--- Plan 0.52 M1 SCAFFOLD (to be discharged): the `t-subsume` completeness bridge.
--- `checkElab` finds the eff-arrow typing whenever it finds the pure-arrow one
--- (pure ⊑ eff). For the embedOrSubsume-routed forms (catch-all / RVar / RApp
--- embed views) this is `embedOrSubsume-lifts` (inferred pure-arrow ⇒ subsume);
--- for RLam it is the eff lambda clause reusing the same body check; non-arrow
--- forms make the pure-arrow premise vacuous. Discharged in the next step.
+-- Plan 0.52 M1: the `t-subsume` completeness bridge — `checkElab` finds the
+-- eff-arrow typing whenever it finds the pure-arrow one (pure ⊑ eff).
+SubsumeComplete : (ctx : NamedCtx) (e : RawExpr) (A B : Type) → Set
+SubsumeComplete ctx e A B =
+  ∀ {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ (A T.⇒[ T.mk-kind T.Many T.pure ] B)} {d f : ℕ}
+  → checkElab ctx e (A T.⇒[ T.mk-kind T.Many T.pure ] B) ≡ success Ψ eE d f
+  → ∃[ eE' ] ∃[ d' ] ∃[ f' ]
+      checkElab ctx e (A T.⇒[ T.mk-kind T.Many T.eff ] B) ≡ success Ψ eE' d' f'
+
+-- The ONE bridge for every infer-then-check site (the generic `checkElabV`
+-- catch-all is definitionally `embedOrSubsume … (inferElabV …)`): embed at the
+-- pure target, SUBSUME at the eff target. (eff side: eff-arrow ≠ inferred
+-- pure-arrow, then the A/B `≟T` are reflexive.)
+embedOrSubsume-lifts : ∀ (ctx : NamedCtx) (e : RawExpr) (A B : Type)
+    (r : VerifiedInferResult ctx e)
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ (A T.⇒[ T.mk-kind T.Many T.pure ] B)} {d f : ℕ}
+  → proj₁ (embedOrSubsume ctx e (A T.⇒[ T.mk-kind T.Many T.pure ] B) r) ≡ success Ψ eE d f
+  → ∃[ eE' ] ∃[ d' ] ∃[ f' ]
+      proj₁ (embedOrSubsume ctx e (A T.⇒[ T.mk-kind T.Many T.eff ] B) r) ≡ success Ψ eE' d' f'
+embedOrSubsume-lifts ctx e A B (failure _ , _) ()
+embedOrSubsume-lifts ctx e A B (success T' Ψ' eE' d' f' , w) eqP
+  with (A T.⇒[ T.mk-kind T.Many T.pure ] B) ≟T T' | eqP
+... | yes refl | refl
+      -- embed at pure; at eff: eff-arrow ≠ inferred pure-arrow, then A/B reflexive.
+      with (A T.⇒[ T.mk-kind T.Many T.eff ] B) ≟T (A T.⇒[ T.mk-kind T.Many T.pure ] B)
+...     | yes ()
+...     | no _ with A ≟T A | B ≟T B
+...       | yes refl | yes refl = _ , _ , _ , refl
+...       | no ¬a    | _        = ⊥-elim (¬a refl)
+...       | yes _     | no ¬b    = ⊥-elim (¬b refl)
+-- `(A⇒pure B) ≟T T'` = no: the PURE target never subsumes (subsume needs an eff
+-- target), so `embedOrSubsume-no … (pure arrow)` fails for every inferred `T'`.
+-- Case `T'` so `embedOrSubsume-no` reduces (it matches `T'` first).
+embedOrSubsume-lifts ctx e A B (success Unit              Ψ' eE' d' f' , w) eqP | no _ | ()
+embedOrSubsume-lifts ctx e A B (success Void              Ψ' eE' d' f' , w) eqP | no _ | ()
+embedOrSubsume-lifts ctx e A B (success Int               Ψ' eE' d' f' , w) eqP | no _ | ()
+embedOrSubsume-lifts ctx e A B (success Float             Ψ' eE' d' f' , w) eqP | no _ | ()
+embedOrSubsume-lifts ctx e A B (success Str               Ψ' eE' d' f' , w) eqP | no _ | ()
+embedOrSubsume-lifts ctx e A B (success Buffer            Ψ' eE' d' f' , w) eqP | no _ | ()
+embedOrSubsume-lifts ctx e A B (success (_ T.* _)         Ψ' eE' d' f' , w) eqP | no _ | ()
+embedOrSubsume-lifts ctx e A B (success (_ T.+ _)         Ψ' eE' d' f' , w) eqP | no _ | ()
+embedOrSubsume-lifts ctx e A B (success (T.μ-type _)      Ψ' eE' d' f' , w) eqP | no _ | ()
+embedOrSubsume-lifts ctx e A B (success (T.ν-type _)      Ψ' eE' d' f' , w) eqP | no _ | ()
+embedOrSubsume-lifts ctx e A B (success (_ T.⇒[ T.mk-kind T.Many T.pure ] _) Ψ' eE' d' f' , w) eqP | no _ | ()
+embedOrSubsume-lifts ctx e A B (success (_ T.⇒[ T.mk-kind T.Many T.eff ] _)  Ψ' eE' d' f' , w) eqP | no _ | ()
+embedOrSubsume-lifts ctx e A B (success (_ T.⇒[ T.mk-kind T.One _ ] _)       Ψ' eE' d' f' , w) eqP | no _ | ()
+embedOrSubsume-lifts ctx e A B (success (_ T.⇒[ T.mk-kind T.Zero _ ] _)      Ψ' eE' d' f' , w) eqP | no _ | ()
+
 postulate
-  subsume-complete :
-    ∀ {ctx : NamedCtx} {e : RawExpr} {A B : Type}
-      {Ψ : Surface.Usage (NamedCtx.size ctx)}
-      {eE : SExpr (NamedCtx.debruijn ctx) Ψ (A T.⇒[ T.mk-kind T.Many T.pure ] B)}
-      {d f : ℕ}
-    → checkElab ctx e (A T.⇒[ T.mk-kind T.Many T.pure ] B) ≡ success Ψ eE d f
-    → ∃[ eE' ] ∃[ d' ] ∃[ f' ]
-        checkElab ctx e (A T.⇒[ T.mk-kind T.Many T.eff ] B) ≡ success Ψ eE' d' f'
+  -- Narrow scaffolds — the specific-clause exprs whose eff completeness is the
+  -- bbc / RApp-dispatch / RPair-vlift / lambda-body mirror. To be discharged.
+  subsume-complete-RPair : ∀ {ctx a b A B} → SubsumeComplete ctx (Raw.RPair a b) A B
+  subsume-complete-RVar  : ∀ {ctx x A B}    → SubsumeComplete ctx (Raw.RVar x) A B
+  subsume-complete-RApp  : ∀ {ctx f g A B}  → SubsumeComplete ctx (Raw.RApp f g) A B
+  subsume-complete-RLam  : ∀ {ctx x bd A B} → SubsumeComplete ctx (Raw.RLam x bd) A B
+
+subsume-complete : ∀ {ctx e A B} → SubsumeComplete ctx e A B
+subsume-complete {ctx = ctx} {e = Raw.RPair a b} {A} {B} eqP = subsume-complete-RPair {ctx = ctx} {a = a} {b = b} {A = A} {B = B} eqP
+subsume-complete {ctx = ctx} {e = Raw.RVar x}    {A} {B} eqP = subsume-complete-RVar {ctx = ctx} {x = x} {A = A} {B = B} eqP
+subsume-complete {ctx = ctx} {e = Raw.RApp f g}  {A} {B} eqP = subsume-complete-RApp {ctx = ctx} {f = f} {g = g} {A = A} {B = B} eqP
+subsume-complete {ctx = ctx} {e = Raw.RLam x bd} {A} {B} eqP = subsume-complete-RLam {ctx = ctx} {x = x} {bd = bd} {A = A} {B = B} eqP
+-- RInt: grade-poly vlift — the eff target is a vlift target too (D069).
+subsume-complete {e = Raw.RInt n} {A} {B} eqP
+  with isRIntVliftTarget? (A T.⇒[ T.mk-kind T.Many T.pure ] B) | eqP
+... | just (X , π , refl) | refl = _ , _ , _ , refl
+... | nothing | ()
+-- infer-then-check forms (the generic catch-all = `embedOrSubsume … (inferElabV …)`).
+subsume-complete {ctx = ctx} {e = Raw.RResolved cn}      {A} {B} eqP = embedOrSubsume-lifts ctx (Raw.RResolved cn) A B (inferElabV ctx (Raw.RResolved cn)) eqP
+subsume-complete {ctx = ctx} {e = Raw.RQualified nm al}  {A} {B} eqP = embedOrSubsume-lifts ctx (Raw.RQualified nm al) A B (inferElabV ctx (Raw.RQualified nm al)) eqP
+subsume-complete {ctx = ctx} {e = Raw.RLet x e₁ e₂}      {A} {B} eqP = embedOrSubsume-lifts ctx (Raw.RLet x e₁ e₂) A B (inferElabV ctx (Raw.RLet x e₁ e₂)) eqP
+subsume-complete {ctx = ctx} {e = Raw.RAnnot e₀ T₀}      {A} {B} eqP = embedOrSubsume-lifts ctx (Raw.RAnnot e₀ T₀) A B (inferElabV ctx (Raw.RAnnot e₀ T₀)) eqP
+subsume-complete {ctx = ctx} {e = Raw.RDestruct s xL eL xR eR} {A} {B} eqP = embedOrSubsume-lifts ctx (Raw.RDestruct s xL eL xR eR) A B (inferElabV ctx (Raw.RDestruct s xL eL xR eR)) eqP
+subsume-complete {ctx = ctx} {e = Raw.RBinOp op a b}     {A} {B} eqP = embedOrSubsume-lifts ctx (Raw.RBinOp op a b) A B (inferElabV ctx (Raw.RBinOp op a b)) eqP
+subsume-complete {ctx = ctx} {e = Raw.RUnaryOp op e₀}    {A} {B} eqP = embedOrSubsume-lifts ctx (Raw.RUnaryOp op e₀) A B (inferElabV ctx (Raw.RUnaryOp op e₀)) eqP
+subsume-complete {ctx = ctx} {e = Raw.RUnit}             {A} {B} eqP = embedOrSubsume-lifts ctx Raw.RUnit A B (inferElabV ctx Raw.RUnit) eqP
+subsume-complete {ctx = ctx} {e = Raw.RStringLit s}      {A} {B} eqP = embedOrSubsume-lifts ctx (Raw.RStringLit s) A B (inferElabV ctx (Raw.RStringLit s)) eqP
+subsume-complete {ctx = ctx} {e = Raw.RAna a e₀}         {A} {B} eqP = embedOrSubsume-lifts ctx (Raw.RAna a e₀) A B (inferElabV ctx (Raw.RAna a e₀)) eqP
 
 postulate
   completeness-gap-arg-driven-app-check :
