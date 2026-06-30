@@ -760,6 +760,26 @@ agree-embedOrSubsume-no (A' ⇒[ mk-kind Many pure ] B') (_ ⇒[ mk-kind Many pu
 agree-embedOrSubsume-no (A' ⇒[ mk-kind Many pure ] B') (_ ⇒[ mk-kind One _ ] _)      eE d fr wᵢ () iIH
 agree-embedOrSubsume-no (A' ⇒[ mk-kind Many pure ] B') (_ ⇒[ mk-kind Zero _ ] _)     eE d fr wᵢ () iIH
 
+-- The agreement for the WHOLE `embedOrSubsume` combinator (every infer-then-check
+-- site = `embedOrSubsume ctx e T (inferElabV ctx e)`). Embed (`T ≟T T'` = yes):
+-- `t-embed`, so the agreement IS the infer IH; subsume (no): `agree-embedOrSubsume-no`
+-- (identity via `arr'`); failure: success-eq absurd. One lemma → every catch-all
+-- check-agree clause is a one-liner, with NO proof-side `with T ≟T T'` alignment.
+agree-embedOrSubsume : ∀ {ctx : NamedCtx} {e : RawExpr} (T : Type)
+    {Ψ se d f} {w : ctx ⊢ᶜ e ∶ T ⨾ Ψ}
+  → E.embedOrSubsume ctx e T (E.inferElabV ctx e) ≡ (success Ψ se d f , w)
+  → (inferIH : ∀ {T' Ψ' eE' d' fr'} {w' : ctx ⊢ᵢ e ∶ T' ⨾ Ψ'}
+       → E.inferElabV ctx e ≡ (success T' Ψ' eE' d' fr' , w')
+       → ∀ dγ k → SD.⟦ eE' ⟧ˢ dγ k ≡ SD.⟦ realize-infer w' ⟧ˢ dγ k)
+  → ∀ dγ k → SD.⟦ se ⟧ˢ dγ k ≡ SD.⟦ realize w ⟧ˢ dγ k
+agree-embedOrSubsume {ctx = ctx} {e = e} T eq inferIH dγ k
+  with E.inferElabV ctx e | eq
+... | failure _ , _ | ()
+... | success T' Ψ' eE' d' fr' , wᵢ | eq' with T E.≟T T' | eq'
+...   | yes refl | refl = inferIH refl dγ k
+...   | no _     | eq₂ =
+        agree-embedOrSubsume-no T' T eE' d' fr' wᵢ eq₂ (λ dγ' k' → inferIH refl dγ' k') dγ k
+
 agree-check-RApp : ∀ (ctx : NamedCtx) (f arg : RawExpr) (T : Type) {Ψ se d fr w}
   (vw : E.AppHeadView f) (veq : E.classifyAppHeadView f ≡ vw)
   → E.checkElabV-RApp-dispatch ctx f arg T vw veq ≡ (success Ψ se d fr , w)
@@ -1128,78 +1148,28 @@ mutual
   -- is EXACTLY `infer-agreeV` of the same expr (the phase drops, so the `Acc`
   -- is strictly smaller via `infer<check`). Mirror the fallback's two `with`s
   -- (inferElabV result; `T ≟T T'`), threading `eq` so it reduces.
-  check-agreeV ctx (Raw.RBinOp op a b) T (acc rec) eq dγ k
-    with E.inferElabV ctx (Raw.RBinOp op a b) in ieq | eq
-  ... | failure _ , _ | ()
-  ... | success T' Ψ eE d fr , w | eq₁
-        with T E.≟T T' | eq₁
-  ...     | yes refl | refl = infer-agreeV ctx (Raw.RBinOp op a b) (rec (infer<check (Raw.RBinOp op a b))) ieq dγ k
-  ...     | no _     | eq₂ =
-            agree-embedOrSubsume-no T' T eE d fr w eq₂
-              (λ dγ' k' → infer-agreeV ctx (Raw.RBinOp op a b) (rec (infer<check (Raw.RBinOp op a b))) ieq dγ' k') dγ k
-  check-agreeV ctx (Raw.RUnaryOp Raw.OpNeg e) T (acc rec) eq dγ k
-    with E.inferElabV ctx (Raw.RUnaryOp Raw.OpNeg e) in ieq | eq
-  ... | failure _ , _ | ()
-  ... | success T' Ψ eE d fr , w | eq₁
-        with T E.≟T T' | eq₁
-  ...     | yes refl | refl = infer-agreeV ctx (Raw.RUnaryOp Raw.OpNeg e) (rec (infer<check (Raw.RUnaryOp Raw.OpNeg e))) ieq dγ k
-  ...     | no _     | eq₂ =
-            agree-embedOrSubsume-no T' T eE d fr w eq₂
-              (λ dγ' k' → infer-agreeV ctx (Raw.RUnaryOp Raw.OpNeg e) (rec (infer<check (Raw.RUnaryOp Raw.OpNeg e))) ieq dγ' k') dγ k
-  check-agreeV ctx (Raw.RLet x e₁ e₂) T (acc rec) eq dγ k
-    with E.inferElabV ctx (Raw.RLet x e₁ e₂) in ieq | eq
-  ... | failure _ , _ | ()
-  ... | success T' Ψ eE d fr , w | eq₁
-        with T E.≟T T' | eq₁
-  ...     | yes refl | refl = infer-agreeV ctx (Raw.RLet x e₁ e₂) (rec (infer<check (Raw.RLet x e₁ e₂))) ieq dγ k
-  ...     | no _     | eq₂ =
-            agree-embedOrSubsume-no T' T eE d fr w eq₂
-              (λ dγ' k' → infer-agreeV ctx (Raw.RLet x e₁ e₂) (rec (infer<check (Raw.RLet x e₁ e₂))) ieq dγ' k') dγ k
-  check-agreeV ctx (Raw.RDestruct scrut xL eL xR eR) T (acc rec) eq dγ k
-    with E.inferElabV ctx (Raw.RDestruct scrut xL eL xR eR) in ieq | eq
-  ... | failure _ , _ | ()
-  ... | success T' Ψ eE d fr , w | eq₁
-        with T E.≟T T' | eq₁
-  ...     | yes refl | refl = infer-agreeV ctx (Raw.RDestruct scrut xL eL xR eR) (rec (infer<check (Raw.RDestruct scrut xL eL xR eR))) ieq dγ k
-  ...     | no _     | eq₂ =
-            agree-embedOrSubsume-no T' T eE d fr w eq₂
-              (λ dγ' k' → infer-agreeV ctx (Raw.RDestruct scrut xL eL xR eR) (rec (infer<check (Raw.RDestruct scrut xL eL xR eR))) ieq dγ' k') dγ k
-  check-agreeV ctx (Raw.RAnnot e T₀) T (acc rec) eq dγ k
-    with E.inferElabV ctx (Raw.RAnnot e T₀) in ieq | eq
-  ... | failure _ , _ | ()
-  ... | success T' Ψ eE d fr , w | eq₁
-        with T E.≟T T' | eq₁
-  ...     | yes refl | refl = infer-agreeV ctx (Raw.RAnnot e T₀) (rec (infer<check (Raw.RAnnot e T₀))) ieq dγ k
-  ...     | no _     | eq₂ =
-            agree-embedOrSubsume-no T' T eE d fr w eq₂
-              (λ dγ' k' → infer-agreeV ctx (Raw.RAnnot e T₀) (rec (infer<check (Raw.RAnnot e T₀))) ieq dγ' k') dγ k
-  check-agreeV ctx (Raw.RQualified name alias) T (acc rec) eq dγ k
-    with E.inferElabV ctx (Raw.RQualified name alias) in ieq | eq
-  ... | failure _ , _ | ()
-  ... | success T' Ψ eE d fr , w | eq₁
-        with T E.≟T T' | eq₁
-  ...     | yes refl | refl = infer-agreeV ctx (Raw.RQualified name alias) (rec (infer<check (Raw.RQualified name alias))) ieq dγ k
-  ...     | no _     | eq₂ =
-            agree-embedOrSubsume-no T' T eE d fr w eq₂
-              (λ dγ' k' → infer-agreeV ctx (Raw.RQualified name alias) (rec (infer<check (Raw.RQualified name alias))) ieq dγ' k') dγ k
-  check-agreeV ctx (Raw.RResolved cn) T (acc rec) eq dγ k
-    with E.inferElabV ctx (Raw.RResolved cn) in ieq | eq
-  ... | failure _ , _ | ()
-  ... | success T' Ψ eE d fr , w | eq₁
-        with T E.≟T T' | eq₁
-  ...     | yes refl | refl = infer-agreeV ctx (Raw.RResolved cn) (rec (infer<check (Raw.RResolved cn))) ieq dγ k
-  ...     | no _     | eq₂ =
-            agree-embedOrSubsume-no T' T eE d fr w eq₂
-              (λ dγ' k' → infer-agreeV ctx (Raw.RResolved cn) (rec (infer<check (Raw.RResolved cn))) ieq dγ' k') dγ k
+  -- Infer-then-check (generic catch-all = `embedOrSubsume`): ONE bridge lemma.
+  check-agreeV ctx (Raw.RBinOp op a b) T (acc rec) eq dγ k =
+    agree-embedOrSubsume T eq (λ p → infer-agreeV ctx (Raw.RBinOp op a b) (rec (infer<check (Raw.RBinOp op a b))) p) dγ k
+  check-agreeV ctx (Raw.RUnaryOp Raw.OpNeg e) T (acc rec) eq dγ k =
+    agree-embedOrSubsume T eq (λ p → infer-agreeV ctx (Raw.RUnaryOp Raw.OpNeg e) (rec (infer<check (Raw.RUnaryOp Raw.OpNeg e))) p) dγ k
+  check-agreeV ctx (Raw.RLet x e₁ e₂) T (acc rec) eq dγ k =
+    agree-embedOrSubsume T eq (λ p → infer-agreeV ctx (Raw.RLet x e₁ e₂) (rec (infer<check (Raw.RLet x e₁ e₂))) p) dγ k
+  check-agreeV ctx (Raw.RDestruct scrut xL eL xR eR) T (acc rec) eq dγ k =
+    agree-embedOrSubsume T eq (λ p → infer-agreeV ctx (Raw.RDestruct scrut xL eL xR eR) (rec (infer<check (Raw.RDestruct scrut xL eL xR eR))) p) dγ k
+  check-agreeV ctx (Raw.RAnnot e T₀) T (acc rec) eq dγ k =
+    agree-embedOrSubsume T eq (λ p → infer-agreeV ctx (Raw.RAnnot e T₀) (rec (infer<check (Raw.RAnnot e T₀))) p) dγ k
+  check-agreeV ctx (Raw.RQualified name alias) T (acc rec) eq dγ k =
+    agree-embedOrSubsume T eq (λ p → infer-agreeV ctx (Raw.RQualified name alias) (rec (infer<check (Raw.RQualified name alias))) p) dγ k
+  check-agreeV ctx (Raw.RResolved cn) T (acc rec) eq dγ k =
+    agree-embedOrSubsume T eq (λ p → infer-agreeV ctx (Raw.RResolved cn) (rec (infer<check (Raw.RResolved cn))) p) dγ k
   -- RUnit / RStringLit: generic fallback over a literal whose inferred type is
   -- fixed (Unit / Str); case `T ≟T <that>` (the fallback's `T ≟T T'`), so `eq`
   -- reduces. `yes refl` delegates to `infer-agreeV` of the literal.
-  check-agreeV ctx Raw.RUnit T (acc rec) eq dγ k with T E.≟T Unit | eq
-  ... | yes refl | refl = infer-agreeV ctx Raw.RUnit (rec (infer<check Raw.RUnit)) refl dγ k
-  ... | no _     | ()
-  check-agreeV ctx (Raw.RStringLit s) T (acc rec) eq dγ k with T E.≟T Str | eq
-  ... | yes refl | refl = infer-agreeV ctx (Raw.RStringLit s) (rec (infer<check (Raw.RStringLit s))) refl dγ k
-  ... | no _     | ()
+  check-agreeV ctx Raw.RUnit T (acc rec) eq dγ k =
+    agree-embedOrSubsume T eq (λ p → infer-agreeV ctx Raw.RUnit (rec (infer<check Raw.RUnit)) p) dγ k
+  check-agreeV ctx (Raw.RStringLit s) T (acc rec) eq dγ k =
+    agree-embedOrSubsume T eq (λ p → infer-agreeV ctx (Raw.RStringLit s) (rec (infer<check (Raw.RStringLit s))) p) dγ k
   -- RInt: vlift target (X ⇒[Many,pure] Int) emits `lift-morphism (intLit n)`,
   -- witness `t-value-lift (g-int n)`; `realize-global (g-int n) = intLit n`, so
   -- the two `lift-morphism`s coincide ⇒ `refl`. Otherwise the generic fallback
@@ -1282,9 +1252,8 @@ mutual
   -- RAna: no infer rule (`inferElabV` always fails) and no check rule either, so
   -- the generic `checkElabV` fallback (`with inferElabV ctx e`) is always
   -- `failure` ⇒ success-eq absurd.
-  check-agreeV ctx (Raw.RAna a e) T _ eq
-    with E.inferElabV ctx (Raw.RAna a e) | eq
-  ... | failure _ , _ | ()
+  check-agreeV ctx (Raw.RAna a e) T (acc rec) eq dγ k =
+    agree-embedOrSubsume T eq (λ p → infer-agreeV ctx (Raw.RAna a e) (rec (infer<check (Raw.RAna a e))) p) dγ k
   check-agreeV ctx e T _ eq = check-agreeV-todo ctx e T eq
 
 ------------------------------------------------------------------------

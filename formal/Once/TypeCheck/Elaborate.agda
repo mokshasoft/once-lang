@@ -1666,11 +1666,7 @@ mutual
   -- mutual `checkElab`↔`inferElab` same-size call (`checkElab e → inferElab e`)
   -- is accepted by the foetus checker only as a `with`-scrutinee; extracting it
   -- to an explicit-arg aux breaks termination. NOT every `with` is removable.
-  checkElabV ctx e T with inferElabV ctx e
-  ... | failure err , _ = failure err , tt
-  ... | success T' Ψ eE d fr , w with T ≟T T'
-  ...   | yes refl = success Ψ eE d fr , t-embed w
-  ...   | no _     = embedOrSubsume-no ctx e T' T eE d fr w
+  checkElabV ctx e T = embedOrSubsume ctx e T (inferElabV ctx e)
 
   ----------------------------------------------------------------------
   -- `inferElabV-RApp-other` body — verified counterpart of
