@@ -1226,6 +1226,17 @@ mutual
   subsume-complete {ctx} {_} {A} {B} (t-embed dd@(t-app {f = f} {x = x} notPoly dF dX)) =
     let (_ , _ , _ , eqI) = infer-complete dd
     in checkElab-fallback-RApp-generic-eff f x A B notPoly eqI
+  -- Other catch-all exprs (RLet / RDestruct / RAnnot): checkElab = embedOrSubsume
+  -- definitionally, so the check-complete-of-same-derivation trick applies.
+  subsume-complete {ctx} {Raw.RLet x e₁ e₂} {A} {B} (t-embed d) =
+    let (_ , _ , _ , eqC) = check-complete (t-embed d)
+    in embedOrSubsume-lifts ctx (Raw.RLet x e₁ e₂) A B (inferElabV ctx (Raw.RLet x e₁ e₂)) eqC
+  subsume-complete {ctx} {Raw.RDestruct s xL eL xR eR} {A} {B} (t-embed d) =
+    let (_ , _ , _ , eqC) = check-complete (t-embed d)
+    in embedOrSubsume-lifts ctx (Raw.RDestruct s xL eL xR eR) A B (inferElabV ctx (Raw.RDestruct s xL eL xR eR)) eqC
+  subsume-complete {ctx} {Raw.RAnnot e₀ T₀} {A} {B} (t-embed d) =
+    let (_ , _ , _ , eqC) = check-complete (t-embed d)
+    in embedOrSubsume-lifts ctx (Raw.RAnnot e₀ T₀) A B (inferElabV ctx (Raw.RAnnot e₀ T₀)) eqC
   subsume-complete (t-embed x)                 = subsume-residual (t-embed x)
   subsume-complete (t-apply-check d)           = subsume-residual (t-apply-check d)
   subsume-complete (t-initial-app-check d)     = subsume-residual (t-initial-app-check d)

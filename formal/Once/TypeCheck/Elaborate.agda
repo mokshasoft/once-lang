@@ -1940,26 +1940,22 @@ mutual
   inferElabV-RApp-dispatch ctx f arg ahv-other _ = inferElabV-RApp-other ctx f arg
 
   -- checkElabV's RApp dispatch — mirror of inferElabV-RApp-dispatch.
+  -- Plan 0.52 (OCP-0008): infer-then-check builtin-app heads route through the
+  -- NAMED embedOrSubsume (was an inline with-tree). `with`-bind the inferElabV
+  -- result (so the termination checker sees the recursive call) and hand it to
+  -- embedOrSubsume; on infer failure, propagate failure.
   checkElabV-RApp-dispatch ctx f arg T ahv-id _       with inferElabV ctx (Raw.RApp f arg)
-  ... | failure err , _ = failure err , tt
-  ... | success T' Ψ eE d fr , w with T ≟T T'
-  ...   | yes refl = success Ψ eE d fr , t-embed w
-  ...   | no _     = embedOrSubsume-no ctx (Raw.RApp f arg) T' T eE d fr w
+  ... | r@(success _ _ _ _ _ , _) = embedOrSubsume ctx (Raw.RApp f arg) T r
+  ... | (failure err , _) = failure err , tt
   checkElabV-RApp-dispatch ctx f arg T ahv-fst _      with inferElabV ctx (Raw.RApp f arg)
-  ... | failure err , _ = failure err , tt
-  ... | success T' Ψ eE d fr , w with T ≟T T'
-  ...   | yes refl = success Ψ eE d fr , t-embed w
-  ...   | no _     = embedOrSubsume-no ctx (Raw.RApp f arg) T' T eE d fr w
+  ... | r@(success _ _ _ _ _ , _) = embedOrSubsume ctx (Raw.RApp f arg) T r
+  ... | (failure err , _) = failure err , tt
   checkElabV-RApp-dispatch ctx f arg T ahv-snd _      with inferElabV ctx (Raw.RApp f arg)
-  ... | failure err , _ = failure err , tt
-  ... | success T' Ψ eE d fr , w with T ≟T T'
-  ...   | yes refl = success Ψ eE d fr , t-embed w
-  ...   | no _     = embedOrSubsume-no ctx (Raw.RApp f arg) T' T eE d fr w
+  ... | r@(success _ _ _ _ _ , _) = embedOrSubsume ctx (Raw.RApp f arg) T r
+  ... | (failure err , _) = failure err , tt
   checkElabV-RApp-dispatch ctx f arg T ahv-terminal _ with inferElabV ctx (Raw.RApp f arg)
-  ... | failure err , _ = failure err , tt
-  ... | success T' Ψ eE d fr , w with T ≟T T'
-  ...   | yes refl = success Ψ eE d fr , t-embed w
-  ...   | no _     = embedOrSubsume-no ctx (Raw.RApp f arg) T' T eE d fr w
+  ... | r@(success _ _ _ _ _ , _) = embedOrSubsume ctx (Raw.RApp f arg) T r
+  ... | (failure err , _) = failure err , tt
   -- ahv-inl: T must be sum type A+B; check arg at A.
   -- Plan 0.41 structural value-lift: `inl arg` / `inr arg` at a *pure arrow*
   -- to a sum is a closed global-element value — route through `checkG`, which
