@@ -504,6 +504,27 @@ check-complete-RLam ctx x body A q q' B leqEq eqC
     with Once.TypeCheck.Elaborate.decideLeq q' q | decideLeq-just q' q leqEq
 ...   | just _ | _ , refl = _ , _ , _ , refl
 
+-- Plan 0.52: the eff-arrow RLam (the subsumed lambda). Same body check +
+-- `decideLeq q' Many` as the pure clause; the eff clause only adds the
+-- `arr'`/`t-subsume` wrapper (Elaborate). Quantity is `Many` (the eff target).
+check-complete-RLam-eff :
+  ∀ (ctx : NamedCtx) (x : String) (body : RawExpr)
+    (A : Type) (q' : Quantity) (B : Type)
+    {Ψ' : Surface.Usage (NamedCtx.size ctx)}
+    {eE' : SExpr (NamedCtx.debruijn (Once.TypeCheck.Elaborate.extendNamedCtx ctx x A))
+                 (q' Surface.Usage.∷ Ψ') B}
+    {d' f' : ℕ}
+  → (q' T.≤q T.Many) ≡ true
+  → checkElab (Once.TypeCheck.Elaborate.extendNamedCtx ctx x A) body B
+      ≡ success (q' Surface.Usage.∷ Ψ') eE' d' f'
+  → ∃[ eE ] ∃[ d ] ∃[ f ]
+      checkElab ctx (Raw.RLam x body) (A T.⇒[ T.mk-kind T.Many T.eff ] B) ≡ success Ψ' eE d f
+check-complete-RLam-eff ctx x body A q' B leqEq eqC
+  with checkElabV (Once.TypeCheck.Elaborate.extendNamedCtx ctx x A) body B | eqC
+... | success (_ Surface.Usage.∷ _) _ _ _ , _ | refl
+    with Once.TypeCheck.Elaborate.decideLeq q' T.Many | decideLeq-just q' T.Many leqEq
+...   | just _ | _ , refl = _ , _ , _ , refl
+
 ------------------------------------------------------------------------
 -- RDestruct (case / sum elimination)
 ------------------------------------------------------------------------
@@ -782,16 +803,6 @@ completeness-gap-initial-app-check-eq {ctx} arg T eqC
 
 -- (Plan 0.52 M1: `completeness-gap-arr-app-check-eq` retired with `t-arr-app-check`.)
 
--- Plan 0.52 M1: the `t-subsume` completeness bridge — `checkElab` finds the
--- eff-arrow typing whenever it finds the pure-arrow one (pure ⊑ eff).
-SubsumeComplete : (ctx : NamedCtx) (e : RawExpr) (A B : Type) → Set
-SubsumeComplete ctx e A B =
-  ∀ {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {eE : SExpr (NamedCtx.debruijn ctx) Ψ (A T.⇒[ T.mk-kind T.Many T.pure ] B)} {d f : ℕ}
-  → checkElab ctx e (A T.⇒[ T.mk-kind T.Many T.pure ] B) ≡ success Ψ eE d f
-  → ∃[ eE' ] ∃[ d' ] ∃[ f' ]
-      checkElab ctx e (A T.⇒[ T.mk-kind T.Many T.eff ] B) ≡ success Ψ eE' d' f'
-
 -- The ONE bridge for every infer-then-check site (the generic `checkElabV`
 -- catch-all is definitionally `embedOrSubsume … (inferElabV …)`): embed at the
 -- pure target, SUBSUME at the eff target. (eff side: eff-arrow ≠ inferred
@@ -833,71 +844,6 @@ embedOrSubsume-lifts ctx e A B (success (_ T.⇒[ T.mk-kind T.One _ ] _)       �
 embedOrSubsume-lifts ctx e A B (success (_ T.⇒[ T.mk-kind T.Zero _ ] _)      Ψ' eE' d' f' , w) eqP | no _ | ()
 
 postulate
-  -- Narrow scaffolds. RVar/RApp mirror the elaborator's hand-coded bare-builtin
-  -- failure-auxes / RApp dispatch, whose 3-deep INTERNAL structure
-  -- (type-shape → lookups → ≟T) cannot be mirrored cleanly from completeness
-  -- without fighting the abstraction (the flat `with` can't drive the aux's
-  -- hidden internal `≟`, and nesting hits the `...` ambiguity). The clean fix is
-  -- a with-refactor of those auxes into a uniform grade-poly view; deferred.
-  subsume-complete-RVar  : ∀ {ctx x A B}    → SubsumeComplete ctx (Raw.RVar x) A B
-  subsume-complete-RApp  : ∀ {ctx f g A B}  → SubsumeComplete ctx (Raw.RApp f g) A B
-
--- RPair at an arrow target is the value-lift case. `classifyRPairTarget` is a
--- VIEW: matching `rpt-vlift` refines the codomain to a product and shares the
--- π-independent `inspectCheckG` (so eff lifts whenever pure does, D069);
--- `rpt-other` is vacuous since a pair always infers to a product, never an
--- arrow, so the pure-arrow check can never have succeeded.
-subsume-complete-RPair : ∀ {ctx a b A B} → SubsumeComplete ctx (Raw.RPair a b) A B
-subsume-complete-RPair {ctx} {a} {b} {dom} {cod} eqP
-  with classifyRPairTarget (dom T.⇒[ T.mk-kind T.Many T.pure ] cod) | eqP
-... | rpt-vlift X A B _ | eqP'
-      with inspectCheckG ctx X (Raw.RPair a b) (A T.* B) | eqP'
-...     | cgv-just _    | refl = _ , _ , _ , refl
-...     | cgv-nothing _ | ()
-subsume-complete-RPair {ctx} {a} {b} {dom} {cod} eqP | rpt-other _ | eqP'
-      with inferElabV ctx a | inferElabV ctx b | eqP'
-...     | failure _ , _          | _                      | ()
-...     | success _ _ _ _ _ , _  | failure _ , _          | ()
-...     | success Ta _ _ _ _ , _ | success Tb _ _ _ _ , _ | eqP''
-            with (dom T.⇒[ T.mk-kind T.Many T.pure ] cod) ≟T (Ta T.* Tb) | eqP''
-...           | no _ | ()
-
--- RLam: the pure clause (`A⇒[Many pure]B`) and the eff clause (`A⇒[Many eff]B`)
--- run the SAME body check + the SAME `decideLeq q' Many`; the eff clause just
--- wraps the result in `arr'`/`t-subsume`. So whenever the pure check succeeds
--- (body success + grade fits), so does the eff check.
-subsume-complete-RLam : ∀ {ctx x bd A B} → SubsumeComplete ctx (Raw.RLam x bd) A B
-subsume-complete-RLam {ctx} {x} {bd} {A} {B} eqP
-  with checkElabV (Once.TypeCheck.Elaborate.extendNamedCtx ctx x A) bd B | eqP
-... | failure _ , _                              | ()
-... | success (q' Surface.Usage.∷ Ψ₀) bE d₀ fr₀ , wB | eqP'
-      with Once.TypeCheck.Elaborate.decideLeq q' T.Many | eqP'
-...     | just _  | refl = _ , _ , _ , refl
-...     | nothing | ()
-
-subsume-complete : ∀ {ctx e A B} → SubsumeComplete ctx e A B
-subsume-complete {ctx = ctx} {e = Raw.RPair a b} {A} {B} eqP = subsume-complete-RPair {ctx = ctx} {a = a} {b = b} {A = A} {B = B} eqP
-subsume-complete {ctx = ctx} {e = Raw.RVar x}    {A} {B} eqP = subsume-complete-RVar {ctx = ctx} {x = x} {A = A} {B = B} eqP
-subsume-complete {ctx = ctx} {e = Raw.RApp f g}  {A} {B} eqP = subsume-complete-RApp {ctx = ctx} {f = f} {g = g} {A = A} {B = B} eqP
-subsume-complete {ctx = ctx} {e = Raw.RLam x bd} {A} {B} eqP = subsume-complete-RLam {ctx = ctx} {x = x} {bd = bd} {A = A} {B = B} eqP
--- RInt: grade-poly vlift — the eff target is a vlift target too (D069).
-subsume-complete {e = Raw.RInt n} {A} {B} eqP
-  with isRIntVliftTarget? (A T.⇒[ T.mk-kind T.Many T.pure ] B) | eqP
-... | just (X , π , refl) | refl = _ , _ , _ , refl
-... | nothing | ()
--- infer-then-check forms (the generic catch-all = `embedOrSubsume … (inferElabV …)`).
-subsume-complete {ctx = ctx} {e = Raw.RResolved cn}      {A} {B} eqP = embedOrSubsume-lifts ctx (Raw.RResolved cn) A B (inferElabV ctx (Raw.RResolved cn)) eqP
-subsume-complete {ctx = ctx} {e = Raw.RQualified nm al}  {A} {B} eqP = embedOrSubsume-lifts ctx (Raw.RQualified nm al) A B (inferElabV ctx (Raw.RQualified nm al)) eqP
-subsume-complete {ctx = ctx} {e = Raw.RLet x e₁ e₂}      {A} {B} eqP = embedOrSubsume-lifts ctx (Raw.RLet x e₁ e₂) A B (inferElabV ctx (Raw.RLet x e₁ e₂)) eqP
-subsume-complete {ctx = ctx} {e = Raw.RAnnot e₀ T₀}      {A} {B} eqP = embedOrSubsume-lifts ctx (Raw.RAnnot e₀ T₀) A B (inferElabV ctx (Raw.RAnnot e₀ T₀)) eqP
-subsume-complete {ctx = ctx} {e = Raw.RDestruct s xL eL xR eR} {A} {B} eqP = embedOrSubsume-lifts ctx (Raw.RDestruct s xL eL xR eR) A B (inferElabV ctx (Raw.RDestruct s xL eL xR eR)) eqP
-subsume-complete {ctx = ctx} {e = Raw.RBinOp op a b}     {A} {B} eqP = embedOrSubsume-lifts ctx (Raw.RBinOp op a b) A B (inferElabV ctx (Raw.RBinOp op a b)) eqP
-subsume-complete {ctx = ctx} {e = Raw.RUnaryOp op e₀}    {A} {B} eqP = embedOrSubsume-lifts ctx (Raw.RUnaryOp op e₀) A B (inferElabV ctx (Raw.RUnaryOp op e₀)) eqP
-subsume-complete {ctx = ctx} {e = Raw.RUnit}             {A} {B} eqP = embedOrSubsume-lifts ctx Raw.RUnit A B (inferElabV ctx Raw.RUnit) eqP
-subsume-complete {ctx = ctx} {e = Raw.RStringLit s}      {A} {B} eqP = embedOrSubsume-lifts ctx (Raw.RStringLit s) A B (inferElabV ctx (Raw.RStringLit s)) eqP
-subsume-complete {ctx = ctx} {e = Raw.RAna a e₀}         {A} {B} eqP = embedOrSubsume-lifts ctx (Raw.RAna a e₀) A B (inferElabV ctx (Raw.RAna a e₀)) eqP
-
-postulate
   completeness-gap-arg-driven-app-check :
     ∀ {ctx : NamedCtx} {f arg : RawExpr} {X T : Type}
       {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
@@ -907,6 +853,38 @@ postulate
     → ∃[ eE ] ∃[ d ] ∃[ fr ]
         checkElab ctx (Raw.RApp f arg) T
           ≡ success (Ψ₁ +ᵘ (T.Many *ᵘ Ψ₂)) eE d fr
+
+-- Regrade a morphism to `eff` (Plan 0.52). Grade-poly leaves and compose/case
+-- rebuild directly; the pure-fixed (m-pair/m-curry) and import-grade-fixed
+-- (m-named/m-named-resolved/m-cata) morphisms cannot, so the caller falls back
+-- to subsumption-via-infer.
+regrade-eff : ∀ {ctx e A B π}
+            → ctx ⊢ᵐ e ∶ A ⇨[ π ] B
+            → Maybe (ctx ⊢ᵐ e ∶ A ⇨[ T.eff ] B)
+regrade-eff (m-id eqL eqI)       = just (m-id eqL eqI)
+regrade-eff (m-fst eqL eqI)      = just (m-fst eqL eqI)
+regrade-eff (m-snd eqL eqI)      = just (m-snd eqL eqI)
+regrade-eff (m-terminal eqL eqI) = just (m-terminal eqL eqI)
+regrade-eff (m-initial eqL eqI)  = just (m-initial eqL eqI)
+regrade-eff (m-inl eqL eqI)      = just (m-inl eqL eqI)
+regrade-eff (m-inr eqL eqI)      = just (m-inr eqL eqI)
+regrade-eff (m-const g)          = just (m-const g)
+regrade-eff (m-compose eqB f g)  with regrade-eff f | regrade-eff g
+... | just f' | just g' = just (m-compose eqB f' g')
+... | _       | _       = nothing
+regrade-eff (m-case f g)         with regrade-eff f | regrade-eff g
+... | just f' | just g' = just (m-case f' g')
+... | _       | _       = nothing
+regrade-eff _                    = nothing
+
+-- TEMPORARY residual (Plan 0.52, wiring step): the subsume-complete cases not
+-- yet handled — used to surface the coverage shape via the typechecker.
+postulate
+  subsume-residual : ∀ {ctx : NamedCtx} {e : RawExpr} {A B : Type}
+      {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    → ctx ⊢ᶜ e ∶ (A T.⇒[ T.mk-kind T.Many T.pure ] B) ⨾ Ψ
+    → ∃[ eE ] ∃[ d ] ∃[ f ]
+        checkElab ctx e (A T.⇒[ T.mk-kind T.Many T.eff ] B) ≡ success Ψ eE d f
 
 mutual
   infer-complete :
@@ -1184,11 +1162,10 @@ mutual
     in completeness-gap-initial-app-check-eq arg T eqC
   check-complete (t-arg-driven-app-check notPoly dArg dF) =
     completeness-gap-arg-driven-app-check notPoly dArg dF
-  -- Plan 0.52 M1: pure ⊑ eff subsumption — recurse on the pure-arrow derivation,
-  -- then lift the pure-arrow checkElab success to the eff arrow (subsume-complete).
-  check-complete (t-subsume {e = e} {A = A} {B = B} d) =
-    let (_ , _ , _ , eqC) = check-complete d
-    in subsume-complete {e = e} {A = A} {B = B} eqC
+  -- Plan 0.52: pure ⊑ eff subsumption, BY INDUCTION ON THE DERIVATION (OCP-0008
+  -- spirit: reason through the typing, not the decision procedure). Morphisms
+  -- regrade to eff and go through `morph-complete`; values through `gd-complete`.
+  check-complete (t-subsume d) = subsume-complete d
 
   -- Plan 0.6.2 Phase 4: polymorphic schema-instantiation. Threads
   -- the body's check-mode derivation through `check-complete`,
@@ -1197,3 +1174,24 @@ mutual
     (t-var-poly-instantiate {x = x} {T = T} bbcOther x≢unit localN importN polyE bodyD) =
     let (_ , _ , _ , eqBody) = check-complete bodyD
     in checkElab-fallback-RVar-poly {ctx} x T bbcOther x≢unit localN importN polyE eqBody
+
+  -- pure-arrow derivation ⇒ the eff-arrow checkElab also succeeds (same usage).
+  -- BY INDUCTION ON THE DERIVATION (OCP-0008): morphisms regrade to eff and go
+  -- through morph-complete; values through gd-complete. Residual cases TODO.
+  subsume-complete : ∀ {ctx : NamedCtx} {e : RawExpr} {A B : Type}
+      {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    → ctx ⊢ᶜ e ∶ (A T.⇒[ T.mk-kind T.Many T.pure ] B) ⨾ Ψ
+    → ∃[ eE ] ∃[ d ] ∃[ f ]
+        checkElab ctx e (A T.⇒[ T.mk-kind T.Many T.eff ] B) ≡ success Ψ eE d f
+  subsume-complete (t-morph-lift m) with regrade-eff m
+  ... | just m' = morph-complete m'
+  ... | nothing = subsume-residual (t-morph-lift m)
+  subsume-complete {ctx} (t-value-lift {X = X} g) = gd-complete {π = T.eff} X g
+  subsume-complete {ctx} (t-lam {x = x} {body = body} {A = A} {B = B} {q' = q'} leqEq bodyD) =
+    let (_ , _ , _ , eqBody) = check-complete bodyD
+    in check-complete-RLam-eff ctx x body A q' B leqEq eqBody
+  subsume-complete (t-embed x)                 = subsume-residual (t-embed x)
+  subsume-complete (t-apply-check d)           = subsume-residual (t-apply-check d)
+  subsume-complete (t-initial-app-check d)     = subsume-residual (t-initial-app-check d)
+  subsume-complete (t-arg-driven-app-check a b c) = subsume-residual (t-arg-driven-app-check a b c)
+  subsume-complete (t-var-poly-instantiate a b c d e f) = subsume-residual (t-var-poly-instantiate a b c d e f)
