@@ -1284,4 +1284,10 @@ mutual
     let (_ , _ , _ , eqArg) = check-complete d
     in checkElab-fallback-RApp-initial-eff arg (A T.⇒[ T.mk-kind T.Many T.eff ] B) eqArg
   subsume-complete (t-arg-driven-app-check a b c) = subsume-residual (t-arg-driven-app-check a b c)
-  subsume-complete (t-var-poly-instantiate a b c d e f) = subsume-residual (t-var-poly-instantiate a b c d e f)
+  -- t-var-poly-instantiate: the poly path is T-agnostic (instantiates at T via
+  -- lookupPoly); recurse subsume-complete on the body for the eff target type.
+  subsume-complete {ctx} {_} {A} {B}
+    (t-var-poly-instantiate {x = x} bbcOther x≢unit localN importN polyE bodyD) =
+    let (_ , _ , _ , eqBodyEff) = subsume-complete bodyD
+    in checkElab-fallback-RVar-poly {ctx} x (A T.⇒[ T.mk-kind T.Many T.eff ] B)
+         bbcOther x≢unit localN importN polyE eqBodyEff
