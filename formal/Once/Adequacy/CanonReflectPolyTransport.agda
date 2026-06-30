@@ -93,7 +93,6 @@ mutual
   polys-reflect-ᵢ b p pib (t-fst-app d) = t-fst-app (polys-reflect-ᵢ b p pib d)
   polys-reflect-ᵢ b p pib (t-snd-app d) = t-snd-app (polys-reflect-ᵢ b p pib d)
   polys-reflect-ᵢ b p pib (t-terminal-app d) = t-terminal-app (polys-reflect-ᵢ b p pib d)
-  polys-reflect-ᵢ b p pib (t-arr-app-infer d) = t-arr-app-infer (polys-reflect-ᵢ b p pib d)
   polys-reflect-ᵢ b p pib (t-apply-app-infer d) = t-apply-app-infer (polys-reflect-ᵢ b p pib d)
   polys-reflect-ᵢ b p pib (t-app cls df dx) = t-app cls (polys-reflect-ᵢ b p pib df) (polys-reflect-ᶜ b p pib dx)
   polys-reflect-ᵢ b p pib (t-effApp cls df dx) = t-effApp cls (polys-reflect-ᵢ b p pib df) (polys-reflect-ᶜ b p pib dx)
@@ -116,7 +115,6 @@ mutual
   polys-reflect-ᵐ b p pib (m-pair df dg) = m-pair (polys-reflect-ᵐ b p pib df) (polys-reflect-ᵐ b p pib dg)
   polys-reflect-ᵐ b p pib (m-curry df) = m-curry (polys-reflect-ᵐ b p pib df)
   polys-reflect-ᵐ b p pib (m-cata wf d) = m-cata wf (polys-reflect-ᶜ b p pib d)
-  polys-reflect-ᵐ b p pib (m-arr df) = m-arr (polys-reflect-ᵐ b p pib df)
   polys-reflect-ᵐ b p pib (m-const d) = m-const (polys-reflect-ᵍ b p d)
   polys-reflect-ᵐ b p pib (m-named ¬u lln imp) = m-named ¬u lln imp
   polys-reflect-ᵐ b p pib (m-named-resolved imp) = m-named-resolved imp
@@ -135,7 +133,6 @@ mutual
   polys-reflect-ᶜ b p pib (t-inl-app-check d) = t-inl-app-check (polys-reflect-ᶜ b p pib d)
   polys-reflect-ᶜ b p pib (t-inr-app-check d) = t-inr-app-check (polys-reflect-ᶜ b p pib d)
   polys-reflect-ᶜ b p pib (t-initial-app-check d) = t-initial-app-check (polys-reflect-ᶜ b p pib d)
-  polys-reflect-ᶜ b p pib (t-arr-app-check d) = t-arr-app-check (polys-reflect-ᶜ b p pib d)
   polys-reflect-ᶜ b p pib (t-arg-driven-app-check cls darg df) =
     t-arg-driven-app-check cls (polys-reflect-ᵢ b p pib darg) (polys-reflect-ᶜ b p pib df)
   polys-reflect-ᶜ b {i = i} p pib (t-var-poly-instantiate {x = x} {T = T} {schema = schema} {body = bodyC} cb ¬u lln lin lpC dC)

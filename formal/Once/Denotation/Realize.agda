@@ -40,14 +40,14 @@ open import Once.TypeCheck.Classify using (NamedCtx)
 open import Once.TypeCheck.Judgment
   using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_; _⊢ᵍ_∶_; g-int; g-terminal; g-pair; g-inl; g-inr; g-In;
          _⊢ᵐ_∶_⇨[_]_; m-id; m-fst; m-snd; m-terminal; m-initial; m-inl; m-inr;
-         m-compose; m-case; m-pair; m-curry; m-cata; m-arr; m-const; m-named; m-named-resolved;
+         m-compose; m-case; m-pair; m-curry; m-cata; m-const; m-named; m-named-resolved;
          t-int; t-str; t-unit; t-unit-var; t-var-local; t-var-qualified; t-var-resolved; t-var-import;
          t-annot; t-pair; t-neg; t-let; t-case; t-binop-arith; t-binop-cmp;
-         t-id-app; t-fst-app; t-snd-app; t-terminal-app; t-arr-app-infer; t-apply-app-infer;
+         t-id-app; t-fst-app; t-snd-app; t-terminal-app; t-apply-app-infer;
          t-app; t-effApp;
          t-embed; t-lam; t-value-lift; t-morph-lift; t-pair-lit-check; t-In-app-check;
          t-apply-check; t-inl-app-check; t-inr-app-check; t-initial-app-check;
-         t-arr-app-check; t-subsume; t-arg-driven-app-check; t-var-poly-instantiate)
+         t-subsume; t-arg-driven-app-check; t-var-poly-instantiate)
 open import Once.Surface.Syntax using (Expr; Usage;
   lam; app; effApp; pair; neg; let'; case'; int; str; unit;
   add; sub; mul; div; mod'; lt; le; gt; ge; eq; ne; arr'; sigOp; poly;
@@ -121,7 +121,6 @@ realize-morph (m-pair df dg)    = ⟨ realize-morph df , realize-morph dg ⟩ IR
 realize-morph (m-curry df)      = IR.curry (realize-morph df) IR.Heap
 realize-morph (m-cata {wfF = wfF} _ dalg) =
   IR.Cata wfF (IR.apply ∘ ⟨ elaborate IR.Heap (realize dalg) ∘ IR.terminal , IR.id ⟩ IR.Heap)
-realize-morph (m-arr df)        = realize-morph df
 realize-morph (m-const gd)      = realize-global gd
 realize-morph (m-named {x = x} _ _ _) = IR.SigOp (value-info (bare x))
 realize-morph (m-named-resolved {cn = cn} _) = IR.SigOp (value-info cn)
@@ -142,7 +141,6 @@ realize (t-apply-check dp)      = morph-app IR.apply (realize-infer dp)
 realize (t-inl-app-check d)     = morph-app (IR.inl IR.Heap) (realize d)
 realize (t-inr-app-check d)     = morph-app (IR.inr IR.Heap) (realize d)
 realize (t-initial-app-check d) = morph-app IR.initial (realize d)
-realize (t-arr-app-check d)     = arr' (realize d)
 realize (t-subsume d)           = arr' (realize d)
 realize (t-arg-driven-app-check _ darg df) = app (realize df) (realize-infer darg)
 realize (t-var-poly-instantiate {x = x} {T = T} _ _ _ _ _ _) = poly x T
@@ -195,7 +193,6 @@ realize-infer (t-id-app d)       = morph-app IR.id       (realize-infer d)
 realize-infer (t-fst-app d)      = morph-app IR.fst      (realize-infer d)
 realize-infer (t-snd-app d)      = morph-app IR.snd      (realize-infer d)
 realize-infer (t-terminal-app d) = morph-app IR.terminal (realize-infer d)
-realize-infer (t-arr-app-infer d) = arr' (realize-infer d)
 realize-infer (t-apply-app-infer d) = morph-app IR.apply (realize-infer d)
 realize-infer (t-app _ df dx)    = app    (realize-infer df) (realize dx)
 realize-infer (t-effApp _ df dx) = effApp (realize-infer df) (realize dx)

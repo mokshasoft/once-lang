@@ -179,7 +179,6 @@ composeArgB-polys-canon b ctx A (m-case _ _)  = refl
 composeArgB-polys-canon b ctx A (m-pair _ _)  = refl
 composeArgB-polys-canon b ctx A (m-curry _)   = refl
 composeArgB-polys-canon b ctx A (m-cata _ _)  = refl
-composeArgB-polys-canon b ctx A (m-arr df)    = composeArgB-polys-canon b ctx A df
 composeArgB-polys-canon b ctx A (m-const (g-int n))       = refl
 composeArgB-polys-canon b ctx A (m-const (g-terminal _ _)) = composeArgB-rvar-polys-canon b ctx "terminal" A
 composeArgB-polys-canon b ctx A (m-const (g-pair _ _))    = refl
@@ -204,7 +203,6 @@ domainOfHead-polys-canon b ctx (m-case _ _)      = refl
 domainOfHead-polys-canon b ctx (m-pair _ _)      = refl
 domainOfHead-polys-canon b ctx (m-curry _)       = refl
 domainOfHead-polys-canon b ctx (m-cata _ _)      = refl
-domainOfHead-polys-canon b ctx (m-arr df)        = domainOfHead-polys-canon b ctx df
 domainOfHead-polys-canon b ctx (m-const (g-int n))        = refl
 domainOfHead-polys-canon b ctx (m-const (g-terminal _ _)) = refl
 domainOfHead-polys-canon b ctx (m-const (g-pair _ _))     = refl
@@ -263,7 +261,6 @@ mutual
   polys-transport-ᵢ b p pib (t-fst-app d) = t-fst-app (polys-transport-ᵢ b p pib d)
   polys-transport-ᵢ b p pib (t-snd-app d) = t-snd-app (polys-transport-ᵢ b p pib d)
   polys-transport-ᵢ b p pib (t-terminal-app d) = t-terminal-app (polys-transport-ᵢ b p pib d)
-  polys-transport-ᵢ b p pib (t-arr-app-infer d) = t-arr-app-infer (polys-transport-ᵢ b p pib d)
   polys-transport-ᵢ b p pib (t-apply-app-infer d) = t-apply-app-infer (polys-transport-ᵢ b p pib d)
   polys-transport-ᵢ b p pib (t-app cls df dx) = t-app cls (polys-transport-ᵢ b p pib df) (polys-transport-ᶜ b p pib dx)
   polys-transport-ᵢ b p pib (t-effApp cls df dx) = t-effApp cls (polys-transport-ᵢ b p pib df) (polys-transport-ᶜ b p pib dx)
@@ -286,7 +283,6 @@ mutual
   polys-transport-ᵐ b p pib (m-pair df dg) = m-pair (polys-transport-ᵐ b p pib df) (polys-transport-ᵐ b p pib dg)
   polys-transport-ᵐ b p pib (m-curry df) = m-curry (polys-transport-ᵐ b p pib df)
   polys-transport-ᵐ b p pib (m-cata wf d) = m-cata wf (polys-transport-ᶜ b p pib d)
-  polys-transport-ᵐ b p pib (m-arr df) = m-arr (polys-transport-ᵐ b p pib df)
   polys-transport-ᵐ b p pib (m-const d) = m-const (polys-transport-ᵍ b p d)
   polys-transport-ᵐ b p pib (m-named ¬u lln imp) = m-named ¬u lln imp
   polys-transport-ᵐ b p pib (m-named-resolved imp) = m-named-resolved imp
@@ -305,7 +301,6 @@ mutual
   polys-transport-ᶜ b p pib (t-inl-app-check d) = t-inl-app-check (polys-transport-ᶜ b p pib d)
   polys-transport-ᶜ b p pib (t-inr-app-check d) = t-inr-app-check (polys-transport-ᶜ b p pib d)
   polys-transport-ᶜ b p pib (t-initial-app-check d) = t-initial-app-check (polys-transport-ᶜ b p pib d)
-  polys-transport-ᶜ b p pib (t-arr-app-check d) = t-arr-app-check (polys-transport-ᶜ b p pib d)
   polys-transport-ᶜ b p pib (t-arg-driven-app-check cls darg df) =
     t-arg-driven-app-check cls (polys-transport-ᵢ b p pib darg) (polys-transport-ᶜ b p pib df)
   polys-transport-ᶜ b {i = i} p pib (t-var-poly-instantiate {x = x} {T = T} {body = body} cb ¬u lln lin lp d) =

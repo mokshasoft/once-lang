@@ -622,23 +622,7 @@ sound-RApp-snd ctx arg IH eq
 sound-RApp-snd ctx arg IH eq | failure _ , _ with eq
 ... | ()
 
--- arr applied: argument must be `A ⇒[Many] B`.
--- Plan 0.4 T0 (2026-04-30): closes spec-gap-arr-app-infer.
-sound-RApp-arr :
-  ∀ (ctx : NamedCtx) (arg : RawExpr)
-    {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
-  → (IH : ∀ {A' Ψ' eE' d' f'}
-        → inferElab ctx arg ≡ success A' Ψ' eE' d' f'
-        → ctx ⊢ arg ∶ A' ⨾ Ψ')
-  → inferElab ctx (RApp (RVar "arr") arg) ≡ success A Ψ eE d f
-  → ctx ⊢ RApp (RVar "arr") arg ∶ A ⨾ Ψ
-sound-RApp-arr ctx arg IH eq
-  with Once.TypeCheck.Elaborate.inferElabV ctx (RApp (RVar "arr") arg)
-... | success A' Ψ' eE' d' f' , w with eq
-...   | refl = w
-sound-RApp-arr ctx arg IH eq | failure _ , _ with eq
-... | ()
+-- (Plan 0.52 M1: `sound-RApp-arr` retired with the surface `arr` builtin.)
 
 -- apply applied: argument must be `(A ⇒[Many] B) * A`.
 -- Plan 0.4 T0 (2026-04-30): closes spec-gap-apply-app-infer.
@@ -741,9 +725,6 @@ classifyAppHeadView-RVar-snd = refl
 classifyAppHeadView-RVar-terminal : Once.TypeCheck.Elaborate.classifyAppHeadView (Raw.RVar "terminal")
   ≡ Once.TypeCheck.Elaborate.ahv-terminal
 classifyAppHeadView-RVar-terminal = refl
-classifyAppHeadView-RVar-arr : Once.TypeCheck.Elaborate.classifyAppHeadView (Raw.RVar "arr")
-  ≡ Once.TypeCheck.Elaborate.ahv-arr
-classifyAppHeadView-RVar-arr = refl
 classifyAppHeadView-RVar-apply : Once.TypeCheck.Elaborate.classifyAppHeadView (Raw.RVar "apply")
   ≡ Once.TypeCheck.Elaborate.ahv-apply
 classifyAppHeadView-RVar-apply = refl

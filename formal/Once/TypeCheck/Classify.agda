@@ -293,10 +293,6 @@ composeArgB ctx (Raw.RApp (Raw.RApp (Raw.RVar "compose") f') g') A with composeA
 ... | just B' with composeArgB ctx f' B'
 ...   | nothing = nothing
 ...   | just C  = just C
--- Plan 0.36 Phase 1: `arr g` (effect lift) preserves the underlying arrow's
--- domain/codomain, so B-recovery sees through it. Lets a pure morphism be
--- lifted into an effectful compose (single-π: `compose emit (arr fst)`).
-composeArgB ctx (Raw.RApp (Raw.RVar "arr") g') A = composeArgB ctx g' A
 -- Plan 0.41 / D018: an integer literal is the const morphism `_ → Int`
 -- (a global element), so as a `compose`-arm its codomain is `Int`.
 composeArgB ctx (Raw.RInt _) _ = just Int
@@ -319,7 +315,6 @@ domainOfHead-arrow _ = nothing
 
 domainOfHead : NamedCtx → RawExpr → Maybe Type
 domainOfHead ctx (Raw.RVar name) = domainOfHead-arrow (lookupImport (NamedCtx.imports ctx) name)
-domainOfHead ctx (Raw.RApp (Raw.RVar "arr") f') = domainOfHead ctx f'
 -- Plan 0.50 Stage 3: a RESOLVED canonical name behaves like its bare form (the
 -- import table is keyed by `showCanonical cn`), so point-free composes survive
 -- the resolver's `RVar → RResolved` canonicalization.
@@ -362,7 +357,6 @@ findLocalVarUsage (mkCtx n Γ Δ _ _ _ _) x = go Γ Δ
 data PolyBuiltinApp : Set where
   pba-id pba-fst pba-snd pba-terminal : PolyBuiltinApp  -- infer-mode successes
   pba-inl pba-inr pba-initial : PolyBuiltinApp          -- infer-mode rejections
-  pba-arr : PolyBuiltinApp                              -- Eff lift, infer mode
   pba-pair-applied : PolyBuiltinApp                     -- `RApp (RVar "pair") _` head, check mode
   pba-compose-applied : PolyBuiltinApp                  -- `RApp (RVar "compose") _` head, check mode
   pba-case-applied : PolyBuiltinApp                     -- `RApp (RVar "case") _` head, check mode (copair)
@@ -389,17 +383,15 @@ classifyAppHead (Raw.RVar x) with StrProp._≟_ x "id"
 ...           | yes _ = just pba-inr
 ...           | no  _ with StrProp._≟_ x "initial"
 ...             | yes _ = just pba-initial
-...             | no  _ with StrProp._≟_ x "arr"
-...               | yes _ = just pba-arr
-...               | no  _ with StrProp._≟_ x "curry"
-...                 | yes _ = just pba-curry
-...                 | no  _ with StrProp._≟_ x "apply"
-...                   | yes _ = just pba-apply
-...                   | no  _ with StrProp._≟_ x "In"
-...                     | yes _ = just pba-In
-...                     | no  _ with StrProp._≟_ x "cata"
-...                       | yes _ = just pba-cata
-...                       | no  _ = nothing
+...             | no  _ with StrProp._≟_ x "curry"
+...               | yes _ = just pba-curry
+...               | no  _ with StrProp._≟_ x "apply"
+...                 | yes _ = just pba-apply
+...                 | no  _ with StrProp._≟_ x "In"
+...                   | yes _ = just pba-In
+...                   | no  _ with StrProp._≟_ x "cata"
+...                     | yes _ = just pba-cata
+...                     | no  _ = nothing
 -- Applied-form heads: `RApp (RVar "pair" | "compose") _`. Plan 0.6
 -- Phase C.7 POC-2 / POC-3.
 classifyAppHead (Raw.RApp (Raw.RVar x) _) with StrProp._≟_ x "pair"
@@ -456,7 +448,6 @@ data AppHeadView : RawExpr → Set where
   ahv-inl      : AppHeadView (Raw.RVar "inl")
   ahv-inr      : AppHeadView (Raw.RVar "inr")
   ahv-initial  : AppHeadView (Raw.RVar "initial")
-  ahv-arr      : AppHeadView (Raw.RVar "arr")
   ahv-curry    : AppHeadView (Raw.RVar "curry")
   ahv-apply    : AppHeadView (Raw.RVar "apply")
   ahv-In       : AppHeadView (Raw.RVar "In")
@@ -481,17 +472,15 @@ classifyAppHeadView (Raw.RVar x) with StrProp._≟_ x "id"
 ...           | yes refl = ahv-inr
 ...           | no  _ with StrProp._≟_ x "initial"
 ...             | yes refl = ahv-initial
-...             | no  _ with StrProp._≟_ x "arr"
-...               | yes refl = ahv-arr
-...               | no  _ with StrProp._≟_ x "curry"
-...                 | yes refl = ahv-curry
-...                 | no  _ with StrProp._≟_ x "apply"
-...                   | yes refl = ahv-apply
-...                   | no  _ with StrProp._≟_ x "In"
-...                     | yes refl = ahv-In
-...                     | no  _ with StrProp._≟_ x "cata"
-...                       | yes refl = ahv-cata
-...                       | no  _ = ahv-other
+...             | no  _ with StrProp._≟_ x "curry"
+...               | yes refl = ahv-curry
+...               | no  _ with StrProp._≟_ x "apply"
+...                 | yes refl = ahv-apply
+...                 | no  _ with StrProp._≟_ x "In"
+...                   | yes refl = ahv-In
+...                   | no  _ with StrProp._≟_ x "cata"
+...                     | yes refl = ahv-cata
+...                     | no  _ = ahv-other
 classifyAppHeadView (Raw.RApp (Raw.RVar x) _) with StrProp._≟_ x "pair"
 ... | yes refl = ahv-pair-applied
 ... | no  _    with StrProp._≟_ x "compose"
@@ -608,26 +597,22 @@ classifyAppHead-nothing⇒view-other {Raw.RVar s} p | no _ | no _ | no _ | no _ 
 ... | yes _ with p
 ...   | ()
 classifyAppHead-nothing⇒view-other {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _ | no _ | no _
-  with StrProp._≟_ s "arr"
-... | yes _ with p
-...   | ()
-classifyAppHead-nothing⇒view-other {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _
   with StrProp._≟_ s "curry"
 ... | yes _ with p
 ...   | ()
-classifyAppHead-nothing⇒view-other {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _
+classifyAppHead-nothing⇒view-other {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _
   with StrProp._≟_ s "apply"
 ... | yes _ with p
 ...   | ()
-classifyAppHead-nothing⇒view-other {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _
+classifyAppHead-nothing⇒view-other {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _
   with StrProp._≟_ s "In"
 ... | yes _ with p
 ...   | ()
-classifyAppHead-nothing⇒view-other {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _
+classifyAppHead-nothing⇒view-other {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _
   with StrProp._≟_ s "cata"
 ... | yes _ with p
 ...   | ()
-classifyAppHead-nothing⇒view-other {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ = refl
+classifyAppHead-nothing⇒view-other {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ = refl
 
 -- Reverse bridge (Plan 0.4 T0 Option A): from view ≡ ahv-other to
 -- classifyAppHead ≡ nothing. Needed by `infer-sound`'s ahv-other
@@ -700,26 +685,22 @@ view-other⇒classifyAppHead-nothing {Raw.RVar s} p | no _ | no _ | no _ | no _ 
 ... | yes refl with p
 ...   | ()
 view-other⇒classifyAppHead-nothing {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _ | no _ | no _
-  with StrProp._≟_ s "arr"
-... | yes refl with p
-...   | ()
-view-other⇒classifyAppHead-nothing {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _
   with StrProp._≟_ s "curry"
 ... | yes refl with p
 ...   | ()
-view-other⇒classifyAppHead-nothing {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _
+view-other⇒classifyAppHead-nothing {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _
   with StrProp._≟_ s "apply"
 ... | yes refl with p
 ...   | ()
-view-other⇒classifyAppHead-nothing {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _
+view-other⇒classifyAppHead-nothing {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _
   with StrProp._≟_ s "In"
 ... | yes refl with p
 ...   | ()
-view-other⇒classifyAppHead-nothing {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _
+view-other⇒classifyAppHead-nothing {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _
   with StrProp._≟_ s "cata"
 ... | yes refl with p
 ...   | ()
-view-other⇒classifyAppHead-nothing {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ = refl
+view-other⇒classifyAppHead-nothing {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ = refl
 data BareBuiltinClass : String → Set where
   bbc-id       : BareBuiltinClass "id"
   bbc-fst      : BareBuiltinClass "fst"
@@ -728,7 +709,6 @@ data BareBuiltinClass : String → Set where
   bbc-initial  : BareBuiltinClass "initial"
   bbc-inl      : BareBuiltinClass "inl"
   bbc-inr      : BareBuiltinClass "inr"
-  bbc-arr      : BareBuiltinClass "arr"
   bbc-other    : ∀ {x} → BareBuiltinClass x
 
 classifyBareBuiltin : (x : String) → BareBuiltinClass x
@@ -746,9 +726,7 @@ classifyBareBuiltin x with StrProp._≟_ x "id"
 ...           | yes refl = bbc-inl
 ...           | no  _ with StrProp._≟_ x "inr"
 ...             | yes refl = bbc-inr
-...             | no  _ with StrProp._≟_ x "arr"
-...               | yes refl = bbc-arr
-...               | no  _ = bbc-other
+...             | no  _ = bbc-other
 
 -- Bundle for AppHeadView: pairs the view with its defining equation.
 -- Lets callers recover a term-level witness `classifyAppHeadView f ≡ v`

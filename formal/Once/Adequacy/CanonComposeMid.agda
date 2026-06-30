@@ -55,8 +55,6 @@ domainOfHead-canon bound (m-case _ _)     rewrite canon-builtin bound "case" ref
 domainOfHead-canon bound (m-pair _ _)     rewrite canon-builtin bound "pair" refl = refl
 domainOfHead-canon bound (m-curry _)      rewrite canon-builtin bound "curry" refl = refl
 domainOfHead-canon bound (m-cata _ _)     rewrite canon-builtin bound "cata" refl = refl
-domainOfHead-canon bound (m-arr df)       rewrite canon-builtin bound "arr" refl
-  rewrite domainOfHead-canon bound df = refl
 domainOfHead-canon bound (m-const (g-int n))      = refl
 domainOfHead-canon bound (m-const (g-terminal _ _)) rewrite canon-builtin bound "terminal" refl = refl
 domainOfHead-canon bound (m-const (g-pair _ _))   = refl
@@ -113,8 +111,6 @@ composeArgB-canon {ctx} bound A (m-compose {f = f} {g = g} _ df dg)
   with composeArgB ctx g A
 ... | nothing = refl
 ... | just B′ rewrite composeArgB-canon bound B′ df = refl
-composeArgB-canon bound A (m-arr df) rewrite canon-builtin bound "arr" refl
-  rewrite composeArgB-canon bound A df = refl
 composeArgB-canon bound A (m-const (g-int n))       = refl
 composeArgB-canon bound A (m-const (g-terminal _ _)) rewrite canon-builtin bound "terminal" refl = refl
 composeArgB-canon bound A (m-const (g-pair _ _))    = refl

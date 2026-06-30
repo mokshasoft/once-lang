@@ -219,17 +219,7 @@ mutual
                    → ctx ⊢ᵢ e ∶ T ⨾ Ψ
                    → ctx ⊢ᵢ RApp (RVar "terminal") e ∶ Unit ⨾ (zeroUsage +ᵘ (Once.Type.Many *ᵘ Ψ))
 
-    -- | `arr f` — lift a Many-quantity pure function into Eff.
-    -- Plan 0.4 T0 spec rule (2026-04-30): closes spec-gap-arr-app-infer.
-    -- Disjoint from t-app by classifyAppHead (RVar "arr") = just pba-arr.
-    t-arr-app-infer : ∀ {ctx : NamedCtx} {e : RawExpr} {A B : Type}
-                      {Ψ : Surface.Usage (NamedCtx.size ctx)}
-                    → ctx ⊢ᵢ e ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) ⨾ Ψ
-                    -- Plan 0.36 Phase 1: arr is a LINEAR effect lift (`arr' e`,
-                    -- usage-preserving), not the unrestricted closure app.
-                    → ctx ⊢ᵢ RApp (RVar "arr") e
-                              ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B)
-                              ⨾ Ψ
+    -- (Plan 0.52 M1: `t-arr-app-infer` retired — pure⊑eff is now `t-subsume`.)
 
     -- | `apply p` — eliminate a pair-of-function. p must infer at
     -- (A ⇒[Many] B) * A. Plan 0.4 T0 spec rule (2026-04-30): closes
@@ -425,10 +415,7 @@ mutual
                       ⨾ Surface.zeroUsage
            → ctx ⊢ᵐ RApp (RVar "cata") alg ∶ (μ-type F) ⇨[ π ] A
 
-    -- Effect lift: `arr f` lifts a PURE morphism to EFF (grade-changing).
-    m-arr : ∀ {ctx : NamedCtx} {f : RawExpr} {A B : Type}
-          → ctx ⊢ᵐ f ∶ A ⇨[ Once.Type.pure ] B
-          → ctx ⊢ᵐ RApp (RVar "arr") f ∶ A ⇨[ Once.Type.eff ] B
+    -- (Plan 0.52 M1: `m-arr` retired — pure⊑eff is now `t-subsume`.)
 
     ----------------------------------------------------------------
     -- Extensional leaves.
@@ -563,19 +550,8 @@ mutual
                                  ∶ T
                                  ⨾ (Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ))
 
-    -- | Applied `arr arg` in check mode at expected `Eff A B`.
-    -- Plan 0.4 T1 change 4. `arr` is the lift operation of the
-    -- effect arrow on the CCC (Hughes' `arr`); this rule names it
-    -- in saturated form. Drives specialisation from the expected
-    -- `Eff A B` so a bare lambda `\p => …` can typecheck (otherwise
-    -- the lambda has no infer rule).
-    t-arr-app-check : ∀ {ctx : NamedCtx} {arg : RawExpr} {A B : Type}
-                      {Ψ : Surface.Usage (NamedCtx.size ctx)}
-                    → ctx ⊢ᶜ arg ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) ⨾ Ψ
-                    -- Plan 0.36 Phase 1: arr is a LINEAR effect lift (usage-preserving).
-                    → ctx ⊢ᶜ RApp (RVar "arr") arg
-                             ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B)
-                             ⨾ Ψ
+    -- (Plan 0.52 M1: `t-arr-app-check` retired — a bare lambda at an eff arrow
+    -- now checks via the pure-arrow clause + `t-subsume`, no `arr` term.)
 
     -- | pure ⊑ eff SUBSUMPTION (D068 / Plan 0.52 M1): a value of a pure arrow is
     -- usable where the eff arrow is expected, with NO `arr` term — "annotation is
@@ -664,19 +640,10 @@ extractMorphWitness : ∀ {ctx : NamedCtx} {e : RawExpr} {A B : Type}
                         {Ψ : Surface.Usage (NamedCtx.size ctx)}
                     → ctx ⊢ᶜ e ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B) ⨾ Ψ
                     → Maybe (ctx ⊢ᵐ e ∶ A ⇨[ π ] B)
--- Plain (non-`with`) re-wrapper so `extractMorphWitness (t-arr-app-check d)`
--- stays reducible under a known `extractMorphWitness d` (the morph-complete
--- proof rewrites it); a `with` here would block that. See feedback_with_abstraction.
-extractMorph-arr : ∀ {ctx : NamedCtx} {arg : RawExpr} {A B : Type}
-                 → Maybe (ctx ⊢ᵐ arg ∶ A ⇨[ Once.Type.pure ] B)
-                 → Maybe (ctx ⊢ᵐ RApp (RVar "arr") arg ∶ A ⇨[ Once.Type.eff ] B)
-extractMorph-arr (just mF) = just (m-arr mF)
-extractMorph-arr nothing   = nothing
+-- (Plan 0.52 M1: `extractMorph-arr` retired with `m-arr`.)
 
 extractMorphWitness (t-morph-lift mF)                  = just mF
 extractMorphWitness (t-value-lift g)                   = just (m-const g)
 extractMorphWitness (t-embed (t-var-import ¬u eqL eqI)) = just (m-named ¬u eqL eqI)
 extractMorphWitness (t-embed (t-var-resolved eq))       = just (m-named-resolved eq)
--- `arr f` (an eff morphism): recover the inner pure morphism, re-wrap with `m-arr`.
-extractMorphWitness (t-arr-app-check d)                = extractMorph-arr (extractMorphWitness d)
 extractMorphWitness _                                  = nothing

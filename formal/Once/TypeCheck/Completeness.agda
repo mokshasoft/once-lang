@@ -52,7 +52,7 @@ open import Once.TypeCheck.Elaborate
          inspectCheckG; cgv-just; cgv-nothing;
          classifyRPairTarget; rpt-vlift; rpt-other;
          bbc-id; bbc-fst; bbc-snd; bbc-terminal; bbc-initial;
-         bbc-inl; bbc-inr; bbc-arr; bbc-other)
+         bbc-inl; bbc-inr; bbc-other)
 open import Once.TypeCheck.Judgment
 open import Once.Functor.Translate using (WellFormedF)
 open import Once.Functor.Decide using (wellFormedF?)
@@ -317,18 +317,7 @@ infer-complete-RApp-snd {ctx} arg eqArg
   with inferElabV ctx arg | eqArg
 ... | success (_ * _) _ _ _ _ , _ | refl = _ , _ , _ , refl
 
-infer-complete-RApp-arr :
-  ∀ {ctx : NamedCtx} (arg : RawExpr) {A B : Type}
-    {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {argE : SExpr (NamedCtx.debruijn ctx) Ψ (A T.⇒[ T.mk-kind T.Many T.pure ] B)}
-    {d' f' : ℕ}
-  → inferElab ctx arg ≡ success (A T.⇒[ T.mk-kind T.Many T.pure ] B) Ψ argE d' f'
-  → ∃[ eE ] ∃[ d ] ∃[ f ]
-      inferElab ctx (Raw.RApp (RVar "arr") arg)
-        ≡ success (A T.⇒[ T.mk-kind T.Many T.eff ] B) Ψ eE d f
-infer-complete-RApp-arr {ctx} arg eqArg
-  with inferElabV ctx arg | eqArg
-... | success (_ T.⇒[ T.mk-kind T.Many T.pure ] _) _ _ _ _ , _ | refl = _ , _ , _ , refl
+-- (Plan 0.52 M1: `infer-complete-RApp-arr` retired with `t-arr-app-infer`.)
 
 infer-complete-RApp-apply :
   ∀ {ctx : NamedCtx} (arg : RawExpr) (A : Type) {B : Type}
@@ -672,7 +661,6 @@ open Once.TypeCheck.Elaborate
          checkElab-fallback-RVar-initial; checkElab-fallback-RVar-inl;
          checkElab-fallback-RVar-inr;
          checkElab-fallback-RApp-In; checkElab-fallback-RApp-apply;
-         checkElab-fallback-RApp-arr;
          checkElab-fallback-RVar-poly;
          checkElab-fallback-RQualified; checkElab-fallback-RResolved; checkElab-fallback-RAnnot;
          checkElab-fallback-RLet;
@@ -736,11 +724,6 @@ checkElab-fallback-RVar {ctx} x T eqInf
 ...     | yes refl = _ , _ , _ , refl
 ...     | no ¬eq   = ⊥-elim (¬eq refl)
 checkElab-fallback-RVar {ctx} x T eqInf
-    | bbc-arr with inferElabV ctx (Raw.RVar x) | eqInf
-...   | success _ _ _ _ _ , _ | refl with T ≟T T
-...     | yes refl = _ , _ , _ , refl
-...     | no ¬eq   = ⊥-elim (¬eq refl)
-checkElab-fallback-RVar {ctx} x T eqInf
     | bbc-other with inferElabV ctx (Raw.RVar x) | eqInf
 ...   | success _ _ _ _ _ , _ | refl with T ≟T T
 ...     | yes refl = _ , _ , _ , refl
@@ -797,19 +780,7 @@ completeness-gap-initial-app-check-eq {ctx} arg T eqC
   with checkElabV ctx arg T.Void | eqC
 ... | success _ _ _ _ , _ | refl = _ , _ , _ , refl
 
-completeness-gap-arr-app-check-eq :
-  ∀ {ctx : NamedCtx} (arg : RawExpr) (A B : Type)
-    {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {eE : SExpr (NamedCtx.debruijn ctx) Ψ (A T.⇒[ T.mk-kind T.Many T.pure ] B)}
-    {d f : ℕ}
-  → checkElab ctx arg (A T.⇒[ T.mk-kind T.Many T.pure ] B) ≡ success Ψ eE d f
-  → ∃[ eE' ] ∃[ d' ] ∃[ f' ]
-      checkElab ctx (Raw.RApp (RVar "arr") arg)
-                    (A T.⇒[ T.mk-kind T.Many T.eff ] B)
-        ≡ success Ψ eE' d' f'
-completeness-gap-arr-app-check-eq {ctx} arg A B eqC
-  with checkElabV ctx arg (A T.⇒[ T.mk-kind T.Many T.pure ] B) | eqC
-... | success _ _ _ _ , _ | refl = _ , _ , _ , refl
+-- (Plan 0.52 M1: `completeness-gap-arr-app-check-eq` retired with `t-arr-app-check`.)
 
 -- Plan 0.52 M1: the `t-subsume` completeness bridge — `checkElab` finds the
 -- eff-arrow typing whenever it finds the pure-arrow one (pure ⊑ eff).
@@ -996,9 +967,6 @@ mutual
   infer-complete (t-terminal-app {e = e} d) =
     let (_ , _ , _ , eqSub) = infer-complete d
     in infer-complete-RApp-terminal e eqSub
-  infer-complete (t-arr-app-infer {e = e} d) =
-    let (_ , _ , _ , eqSub) = infer-complete d
-    in infer-complete-RApp-arr e eqSub
   infer-complete (t-apply-app-infer {p = p} {A = A} d) =
     let (_ , _ , _ , eqSub) = infer-complete d
     in infer-complete-RApp-apply p A eqSub
@@ -1171,21 +1139,6 @@ mutual
   check-complete (t-embed (t-terminal-app {e = e} d)) =
     let (_ , _ , _ , eqI) = infer-complete (t-terminal-app d)
     in checkElab-fallback-RApp-terminal e Unit eqI
-  -- Plan 0.4 T0 (2026-04-30): t-embed of t-arr-app-infer.
-  -- The elaborator's check-mode for `arr e` uses ahv-arr-check (a
-  -- specialised path) which calls checkElab on `e` rather than
-  -- transporting via inferElab. So the existing
-  -- checkElab-fallback-RApp-generic (which assumes catchall transport)
-  -- doesn't apply. The natural recursion `check-complete (t-embed d)`
-  -- to obtain checkElab evidence on `e` triggers a termination-checker
-  -- false-negative (the recursive arg is structurally smaller, but
-  -- the lex measure is confused by the mutual block + projection
-  -- pattern). Postulated as a completeness gap; soundness for
-  -- t-arr-app-infer / t-apply-app-infer is fully proven via
-  -- sound-RApp-arr / sound-RApp-apply.
-  check-complete (t-embed (t-arr-app-infer {e = e} {A = A} {B = B} d)) =
-    let (_ , _ , _ , eqC) = check-complete (t-embed d)
-    in completeness-gap-arr-app-check-eq e A B eqC
   check-complete (t-embed (t-apply-app-infer {p = p} {A = A} {B = B} d)) =
     let (_ , _ , _ , eqI) = infer-complete d
     in checkElab-fallback-RApp-apply p A B eqI
@@ -1225,9 +1178,6 @@ mutual
   check-complete (t-initial-app-check {arg = arg} {T = T} d) =
     let (_ , _ , _ , eqC) = check-complete d
     in completeness-gap-initial-app-check-eq arg T eqC
-  check-complete (t-arr-app-check {arg = arg} {A = A} {B = B} d) =
-    let (_ , _ , _ , eqC) = check-complete d
-    in completeness-gap-arr-app-check-eq arg A B eqC
   check-complete (t-arg-driven-app-check notPoly dArg dF) =
     completeness-gap-arg-driven-app-check notPoly dArg dF
   -- Plan 0.52 M1: pure ⊑ eff subsumption — recurse on the pure-arrow derivation,

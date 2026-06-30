@@ -511,25 +511,7 @@ agree-RApp ctx f arg E.ahv-snd veq eq argIH fInferIH argCheckIH dγ k with E.inf
 ... | success (_ ⇒[ _ ] _) _ _ _ _ , _ | ()
 ... | success (μ-type _) _ _ _ _ , _ | ()
 ... | success (ν-type _) _ _ _ _ , _ | ()
--- ahv-arr : arg must be a pure Many-arrow; `arr'` is the identity denotation.
-agree-RApp ctx f arg E.ahv-arr veq eq argIH fInferIH argCheckIH dγ k with E.inferElabV ctx arg | eq
-... | failure _ , _ | ()
-... | success (A ⇒[ mk-kind Many pure ] B) Ψ argE d fr , w | refl = argIH refl dγ k
-... | success Unit _ _ _ _ , _ | ()
-... | success Void _ _ _ _ , _ | ()
-... | success Int _ _ _ _ , _ | ()
-... | success Float _ _ _ _ , _ | ()
-... | success Str _ _ _ _ , _ | ()
-... | success Buffer _ _ _ _ , _ | ()
-... | success (_ * _) _ _ _ _ , _ | ()
-... | success (_ + _) _ _ _ _ , _ | ()
-... | success (_ ⇒[ mk-kind Many eff ] _) _ _ _ _ , _ | ()
-... | success (_ ⇒[ mk-kind One  eff ] _) _ _ _ _ , _ | ()
-... | success (_ ⇒[ mk-kind Zero eff ] _) _ _ _ _ , _ | ()
-... | success (_ ⇒[ mk-kind Zero pure ] _) _ _ _ _ , _ | ()
-... | success (_ ⇒[ mk-kind One pure ] _) _ _ _ _ , _ | ()
-... | success (μ-type _) _ _ _ _ , _ | ()
-... | success (ν-type _) _ _ _ _ , _ | ()
+-- (Plan 0.52 M1: `ahv-arr` agree clause retired with the surface `arr` builtin.)
 -- ahv-apply / ahv-other : genuine semantic content (deferred).
 -- ahv-apply: arg must infer to `(A ⇒[Many,pure] B) * A`; se = `morph-app apply argE`
 -- (elaborator emits the apply MORPHISM directly — no specApply lambda / weakening),
@@ -828,28 +810,7 @@ agree-check-RApp ctx f arg T E.ahv-initial veq disp inferIH argCheckIH argInferI
   with E.checkElabV ctx arg Void in aeq | disp
 ... | failure _ , _ | ()
 ... | success Ψ argE d fr , w | refl rewrite argCheckIH aeq dγ k = refl
--- ahv-arr: target must be `A ⇒[Many,eff] B`; arg checked at `A ⇒[Many,pure] B`,
--- se = arr' argE (denotational IDENTITY), witness t-arr-app-check w,
--- realize = arr' (realize w) ⇒ agreement is exactly the arg check IH.
-agree-check-RApp ctx f arg (A ⇒[ mk-kind Many eff ] B) E.ahv-arr veq disp inferIH argCheckIH argInferIH fCheckIH dγ k
-  with E.checkElabV ctx arg (A ⇒[ mk-kind Many pure ] B) in aeq | disp
-... | failure _ , _ | ()
-... | success Ψ argE d fr , w | refl = argCheckIH aeq dγ k
-agree-check-RApp ctx f arg Unit       E.ahv-arr veq ()
-agree-check-RApp ctx f arg Void       E.ahv-arr veq ()
-agree-check-RApp ctx f arg Int        E.ahv-arr veq ()
-agree-check-RApp ctx f arg Float      E.ahv-arr veq ()
-agree-check-RApp ctx f arg Str        E.ahv-arr veq ()
-agree-check-RApp ctx f arg Buffer     E.ahv-arr veq ()
-agree-check-RApp ctx f arg (_ * _)    E.ahv-arr veq ()
-agree-check-RApp ctx f arg (_ + _)    E.ahv-arr veq ()
-agree-check-RApp ctx f arg (_ ⇒[ mk-kind Many pure ] _) E.ahv-arr veq ()
-agree-check-RApp ctx f arg (_ ⇒[ mk-kind One  pure ] _) E.ahv-arr veq ()
-agree-check-RApp ctx f arg (_ ⇒[ mk-kind Zero pure ] _) E.ahv-arr veq ()
-agree-check-RApp ctx f arg (_ ⇒[ mk-kind Zero eff ] _)  E.ahv-arr veq ()
-agree-check-RApp ctx f arg (_ ⇒[ mk-kind One eff ] _)   E.ahv-arr veq ()
-agree-check-RApp ctx f arg (μ-type _) E.ahv-arr veq ()
-agree-check-RApp ctx f arg (ν-type _) E.ahv-arr veq ()
+-- (Plan 0.52 M1: `ahv-arr` check-agree clauses retired with the surface `arr` builtin.)
 -- ahv-inl/inr: direct sum target → morph-app (inl/inr Heap) argE (rewrite arg
 -- check IH); pure-arrow→sum target → value-lift via checkG (rewrite checkG-realize).
 -- ahv-In: pure-arrow→μ target → value-lift via checkG. All other targets fail

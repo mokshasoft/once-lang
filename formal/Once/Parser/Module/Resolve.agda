@@ -157,7 +157,6 @@ isBuiltinName "initial"  = true
 isBuiltinName "curry"    = true
 isBuiltinName "apply"    = true
 isBuiltinName "compose"  = true
-isBuiltinName "arr"      = true
 isBuiltinName "case"     = true
 isBuiltinName "cata"     = true
 isBuiltinName "ana"      = true

@@ -191,9 +191,6 @@ morph-elab (m-inr eqLoc eqImp) | (failure _ , _) | refl | _ | liv-found imp = �
 morph-elab (m-const gd) = const-morph-strong gd
 morph-elab (m-named ¬u eqL eqI) = named-morph-strong ¬u eqL eqI
 morph-elab (m-named-resolved eqI) = named-morph-strong-resolved eqI
-morph-elab (m-arr df) with morph-elab df
-... | (mf , mFᵐ , Ef , _ , _ , Wf , eqf , exEff-f , exW-f , cons-f)
-      rewrite eqf = mf , m-arr mFᵐ , _ , _ , _ , _ , refl , exEff-f , cong extractMorph-arr exW-f , cons-f
 -- ---- recursive combinators ----
 morph-elab (m-compose {B = Bmid} eqB df dg) with morph-elab df | morph-elab dg
 ... | (mf , mFᵐ , Ef , _ , _ , Wf , eqf , exEff-f , exW-f , cons-f) | (mg , mGᵐ , Eg , _ , _ , Wg , eqg , exEff-g , exW-g , cons-g)

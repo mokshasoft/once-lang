@@ -118,17 +118,15 @@ classifyRVar-nonbuiltin x nb with x ≟s "id"
 ...           | yes refl = ⊥-elim (t≢f nb)
 ...           | no _ with x ≟s "initial"
 ...             | yes refl = ⊥-elim (t≢f nb)
-...             | no _ with x ≟s "arr"
+...             | no _ with x ≟s "curry"
 ...               | yes refl = ⊥-elim (t≢f nb)
-...               | no _ with x ≟s "curry"
+...               | no _ with x ≟s "apply"
 ...                 | yes refl = ⊥-elim (t≢f nb)
-...                 | no _ with x ≟s "apply"
+...                 | no _ with x ≟s "In"
 ...                   | yes refl = ⊥-elim (t≢f nb)
-...                   | no _ with x ≟s "In"
+...                   | no _ with x ≟s "cata"
 ...                     | yes refl = ⊥-elim (t≢f nb)
-...                     | no _ with x ≟s "cata"
-...                       | yes refl = ⊥-elim (t≢f nb)
-...                       | no _ = refl
+...                     | no _ = refl
 
 -- Applied-RVar head dispatch with the boolean as an explicit pattern (so
 -- `canonVar` computes and the hypothesis is in reduced form).
@@ -399,7 +397,6 @@ mutual
   reflect-app-var-ᵢ true bound y X sub eb (t-fst-app d)       = t-fst-app (canon-reflects-ᵢ bound X sub d)
   reflect-app-var-ᵢ true bound y X sub eb (t-snd-app d)       = t-snd-app (canon-reflects-ᵢ bound X sub d)
   reflect-app-var-ᵢ true bound y X sub eb (t-terminal-app d)  = t-terminal-app (canon-reflects-ᵢ bound X sub d)
-  reflect-app-var-ᵢ true bound y X sub eb (t-arr-app-infer d) = t-arr-app-infer (canon-reflects-ᵢ bound X sub d)
   reflect-app-var-ᵢ true bound y X sub eb (t-apply-app-infer d) = t-apply-app-infer (canon-reflects-ᵢ bound X sub d)
   reflect-app-var-ᵢ true bound y X sub eb (t-app cls df dx)   = t-app cls df (canon-reflects-ᶜ bound X sub dx)
   reflect-app-var-ᵢ true bound y X sub eb (t-effApp cls df dx) = t-effApp cls df (canon-reflects-ᶜ bound X sub dx)
@@ -427,7 +424,6 @@ mutual
     → ctx ⊢ᵐ Raw.RApp (Raw.RVar y) X ∶ A ⇨[ π ] B
   reflect-app-var-ᵐ true bound y X sub eb (m-curry df) = m-curry (canon-reflects-ᵐ bound X sub df)
   reflect-app-var-ᵐ true bound y X sub eb (m-cata wf d) = m-cata wf (canon-reflects-ᶜ bound X (⊆ᵇ-nil {bound}) d)
-  reflect-app-var-ᵐ true bound y X sub eb (m-arr df) = m-arr (canon-reflects-ᵐ bound X sub df)
   reflect-app-var-ᵐ true bound y X sub eb (m-const dg) = m-const (reflect-gapp true bound y X dg)
   reflect-app-var-ᵐ false bound y X sub eb (m-const ())
 
@@ -503,7 +499,6 @@ mutual
   reflect-app-var-ᶜ true bound y X sub eb (t-inl-app-check d)   = t-inl-app-check (canon-reflects-ᶜ bound X sub d)
   reflect-app-var-ᶜ true bound y X sub eb (t-inr-app-check d)   = t-inr-app-check (canon-reflects-ᶜ bound X sub d)
   reflect-app-var-ᶜ true bound y X sub eb (t-initial-app-check d) = t-initial-app-check (canon-reflects-ᶜ bound X sub d)
-  reflect-app-var-ᶜ true bound y X sub eb (t-arr-app-check d)   = t-arr-app-check (canon-reflects-ᶜ bound X sub d)
   reflect-app-var-ᶜ true bound y X sub eb (t-arg-driven-app-check cls darg df) =
     t-arg-driven-app-check cls (canon-reflects-ᵢ bound X sub darg) df
   reflect-app-var-ᶜ true bound y X sub eb (t-subsume d) = t-subsume (reflect-app-var-ᶜ true bound y X sub eb d)

@@ -120,8 +120,6 @@ mutual
     rewrite canon-builtin bound "snd" refl = t-snd-app (canon-pres-ᵢ bound sub pib d)
   canon-pres-ᵢ bound sub pib (t-terminal-app d)
     rewrite canon-builtin bound "terminal" refl = t-terminal-app (canon-pres-ᵢ bound sub pib d)
-  canon-pres-ᵢ bound sub pib (t-arr-app-infer d)
-    rewrite canon-builtin bound "arr" refl = t-arr-app-infer (canon-pres-ᵢ bound sub pib d)
   canon-pres-ᵢ bound sub pib (t-apply-app-infer d)
     rewrite canon-builtin bound "apply" refl = t-apply-app-infer (canon-pres-ᵢ bound sub pib d)
   canon-pres-ᵢ bound sub pib (t-app {f = f} cls df dx) =
@@ -163,8 +161,6 @@ mutual
   canon-pres-ᵐ bound sub pib (m-cata wf d)
     rewrite canon-builtin bound "cata" refl =
       m-cata wf (canon-pres-ᶜ bound (⊆ᵇ-nil {bound}) (mkPIB (λ {x'} h → app pib {x'} h)) d)
-  canon-pres-ᵐ bound sub pib (m-arr df)
-    rewrite canon-builtin bound "arr" refl = m-arr (canon-pres-ᵐ bound sub pib df)
   canon-pres-ᵐ bound sub pib (m-const d) = m-const (pres-ᵍ bound d)
   canon-pres-ᵐ bound sub pib (m-named {x = x} ¬u lln imp)
     with elemStr x bound ∨ isBuiltinName x in eb
@@ -193,8 +189,6 @@ mutual
     rewrite canon-builtin bound "inr" refl = t-inr-app-check (canon-pres-ᶜ bound sub pib d)
   canon-pres-ᶜ bound sub pib (t-initial-app-check d)
     rewrite canon-builtin bound "initial" refl = t-initial-app-check (canon-pres-ᶜ bound sub pib d)
-  canon-pres-ᶜ bound sub pib (t-arr-app-check d)
-    rewrite canon-builtin bound "arr" refl = t-arr-app-check (canon-pres-ᶜ bound sub pib d)
   canon-pres-ᶜ bound sub pib (t-arg-driven-app-check {f = f} cls darg df) =
     t-arg-driven-app-check (classify-canon bound f cls)
                            (canon-pres-ᵢ bound sub pib darg) (canon-pres-ᶜ bound sub pib df)
