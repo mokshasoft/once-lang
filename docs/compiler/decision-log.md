@@ -4829,3 +4829,58 @@ exactly OCP-0007 attenuation: authority only relaxes downward.
   (grade-erased IR), D032 (`arr` lifts), D061 (SigOp contract from interpretation),
   Plan 0.52 (implementation), Plan 0.39 (optimizer drops pure SigOps), OCP-0007
   (capability-graded effects), QTT (McBride/Atkey — quantity semiring, erasure).
+
+## D069: Effect-Free Value Intros Are Grade-Poly — the Grade Is Real Only Where Effects Are Introduced
+
+**Date**: 2026-06-30
+**Status**: Accepted; implementation in Plan 0.52 M1
+**Refines**: D066 (which fixed value-lift / `m-pair` / `m-curry` to pure).
+
+### Context
+
+D068's general `t-subsume` (`⊢ᶜ e ∶ A⇒[pure]B → ⊢ᶜ e ∶ A⇒[eff]B`) makes
+`⊢ᶜ 42 ∶ (X⇒[eff]Int)` derivable (a constant used as an effectful function). But
+`t-value-lift` (and `m-pair`/`m-curry`) were PURE-FIXED (D066), so `checkElab`
+could not find that eff typing — a completeness gap. The same hits every
+effect-free value intro (RInt-vlift, RPair-vlift, closed values via `checkG`).
+
+### Decision
+
+The grade is a FREE INDEX wherever no effect is introduced. Make the effect-free
+value intros **grade-poly** (π free): a closed value / point-free combinator
+inhabits `A ⇒[mk-kind Many π] B` at ANY π directly. `t-value-lift` (and the
+pure-fixed `m-pair`/`m-curry`) gain a free `π`, extending the SAME pattern D065
+gave the bare point-free morphisms. `t-subsume` then survives ONLY for the
+genuinely-graded constructs: **lambdas** (grade determined by the body — a
+pure-bodied lambda subsumes up; an eff-bodied one cannot be pure) and
+**infer-embed** (a variable/application has a fixed inferred type).
+
+### Meaning-preserving (does NOT change Once)
+
+- **Denotations unchanged**: the grade is denotationally inert
+  (`⟦arr' f⟧=⟦f⟧`, `evalᴰ`/`realize-morph` ignore the kind). `42 : X⇒[pure]Int`
+  and `42 : X⇒[eff]Int` denote the same function.
+- **Same programs well-typed**: `t-subsume` already admits `42 : eff`; this only
+  changes which DERIVATION the elaborator finds (a grade-poly `t-value-lift`
+  vs `t-subsume (t-value-lift …)`).
+- **D066's load-bearing content intact**: the soundness barrier is **eff→pure
+  forbidden** (an effectful SigOp must not masquerade as pure — the optimizer
+  drops pure SigOps, Plan 0.39). D069 only grade-polys EFFECT-FREE intros for the
+  **pure→eff** direction; it never makes an effectful construct grade-poly and
+  never permits eff→pure. The invariant — the actual semantic guarantee — stays.
+
+### Consequences
+
+- Cleaner, smaller proofs: `subsume-complete`'s value cases become trivial (the
+  eff value-lift succeeds directly), leaving `t-subsume` completeness to RLam +
+  infer-embed only. The principle "the grade is real only where effects are
+  introduced" makes the split obvious.
+- `t-value-lift`/`m-pair`/`m-curry` gain a free `π`; `isRIntVliftTarget?` / the
+  vlift elaborator sites / `checkG` accept any grade; realize/soundness/agree
+  thread `π` (grade-erased, so denotation unchanged).
+
+### See Also
+
+- D066 (refined here — value intros pure-fixed → grade-poly), D065 (bare
+  morphisms grade-poly), D068 (`t-subsume`), D032 (compose/case/cata grade-poly),
+  Plan 0.39 (optimizer drops pure SigOps), Plan 0.52 M1.
