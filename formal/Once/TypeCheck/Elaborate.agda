@@ -1612,15 +1612,20 @@ mutual
   -- we use a second with on inferElab (rather than eager-evaluation)
   -- so Agda's termination check sees the result as a with-helper
   -- value rather than an arbitrary argument.
-  checkElabV ctx (Raw.RVar x) T with classifyBareBuiltin x | inferElabV ctx (Raw.RVar x)
-  ... | bbc-id       | rInfV = checkElabV-RVar-bbc-id-aux ctx T rInfV
-  ... | bbc-fst      | rInfV = checkElabV-RVar-bbc-fst-aux ctx T rInfV
-  ... | bbc-snd      | rInfV = checkElabV-RVar-bbc-snd-aux ctx T rInfV
-  ... | bbc-terminal | rInfV = checkElabV-RVar-bbc-terminal-aux ctx T rInfV
-  ... | bbc-initial  | rInfV = checkElabV-RVar-bbc-initial-aux ctx T rInfV
-  ... | bbc-inl      | rInfV = checkElabV-RVar-bbc-inl-aux ctx T rInfV
-  ... | bbc-inr      | rInfV = checkElabV-RVar-bbc-inr-aux ctx T rInfV
-  ... | bbc-other    | rInfV = checkElabV-RVar-bbc-other-aux ctx x T rInfV
+  -- Plan 0.52 (OCP-0008): route the infer-SUCCESS path through the NAMED
+  -- embedOrSubsume (uniform, x-agnostic); only the infer-FAILURE path needs the
+  -- per-builtin failure-aux dispatch (and bbc-other's lookupPoly fallback).
+  checkElabV ctx (Raw.RVar x) T with inferElabV ctx (Raw.RVar x)
+  ... | rInfV@(success _ _ _ _ _ , _) = embedOrSubsume ctx (Raw.RVar x) T rInfV
+  ... | rInfV@(failure _ , _) with classifyBareBuiltin x
+  ...   | bbc-id       = checkElabV-RVar-bbc-id-aux ctx T rInfV
+  ...   | bbc-fst      = checkElabV-RVar-bbc-fst-aux ctx T rInfV
+  ...   | bbc-snd      = checkElabV-RVar-bbc-snd-aux ctx T rInfV
+  ...   | bbc-terminal = checkElabV-RVar-bbc-terminal-aux ctx T rInfV
+  ...   | bbc-initial  = checkElabV-RVar-bbc-initial-aux ctx T rInfV
+  ...   | bbc-inl      = checkElabV-RVar-bbc-inl-aux ctx T rInfV
+  ...   | bbc-inr      = checkElabV-RVar-bbc-inr-aux ctx T rInfV
+  ...   | bbc-other    = checkElabV-RVar-bbc-other-aux ctx x T rInfV
 
   -- Plan 0.36 Phase 2a follow-up: pair literal `(a , b)` at a product
   -- type — check components bidirectionally so check-only constructs
@@ -3207,15 +3212,12 @@ checkElab-fallback-RVar-poly :
       checkElab ctx (Raw.RVar x) T
         ≡ success Surface.zeroUsage eE d fr)))
 checkElab-fallback-RVar-poly {ctx} x T eqCls ¬unit eqLoc eqImp eqPoly _
-  with classifyBareBuiltin x | eqCls
-... | bbc-other | refl
   with inferElabV ctx (Raw.RVar x) | inferElabV-RVar-fail-bridge ctx x ¬unit eqLoc eqImp
 ... | (failure _ , _) | refl
+  with classifyBareBuiltin x | eqCls
+... | bbc-other | refl
   with lookupPoly (NamedCtx.polys ctx) x | eqPoly
-... | just _ | refl
-  with T ≟T T
-... | yes refl = _ , _ , _ , refl
-... | no ¬eq = ⊥-elim (¬eq refl)
+... | just _ | refl = _ , _ , _ , refl
 checkElab-fallback-RApp-id :
   ∀ {ctx : NamedCtx} (arg : RawExpr) (T : Type)
     {Ψ : Surface.Usage (NamedCtx.size ctx)}
@@ -3357,6 +3359,28 @@ checkElab-fallback-RApp-snd-eff :
         ≡ success Ψ eE' d' f'')))
 checkElab-fallback-RApp-snd-eff {ctx} arg A B eqInf
   with inferElabV ctx (Raw.RApp (Raw.RVar "snd") arg) | eqInf
+... | success _ _ _ _ _ , _ | refl
+    with (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B) ≟T (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)
+...   | yes ()
+...   | no _ with A ≟T A | B ≟T B
+...     | yes refl | yes refl = _ , _ , _ , refl
+...     | no ¬a    | _        = ⊥-elim (¬a refl)
+...     | yes _     | no ¬b    = ⊥-elim (¬b refl)
+
+-- Plan 0.52: eff (subsume) fallback for an RVar whose infer SUCCEEDS (local /
+-- import var). The dispatch routes infer-success through the named
+-- embedOrSubsume BEFORE the bbc split, so this reduces for an abstract `x`.
+checkElab-fallback-RVar-eff :
+  ∀ {ctx : NamedCtx} (x : String) (A B : Type)
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)}
+    {d f' : ℕ}
+  → inferElab ctx (Raw.RVar x) ≡ success (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) Ψ eE d f'
+  → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f'' →
+      checkElab ctx (Raw.RVar x) (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B)
+        ≡ success Ψ eE' d' f'')))
+checkElab-fallback-RVar-eff {ctx} x A B eqInf
+  with inferElabV ctx (Raw.RVar x) | eqInf
 ... | success _ _ _ _ _ , _ | refl
     with (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B) ≟T (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)
 ...   | yes ()

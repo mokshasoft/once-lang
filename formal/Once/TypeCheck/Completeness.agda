@@ -690,7 +690,8 @@ open Once.TypeCheck.Elaborate
          checkElab-fallback-RApp-id; checkElab-fallback-RApp-fst;
          checkElab-fallback-RApp-snd; checkElab-fallback-RApp-terminal;
          checkElab-fallback-RApp-generic; checkElab-fallback-RApp-generic-eff;
-         checkElab-fallback-RApp-id-eff; checkElab-fallback-RApp-fst-eff; checkElab-fallback-RApp-snd-eff)
+         checkElab-fallback-RApp-id-eff; checkElab-fallback-RApp-fst-eff; checkElab-fallback-RApp-snd-eff;
+         checkElab-fallback-RVar-eff)
 
 -- RVar case: covers both local and import lookups (and "unit"). The
 -- fallback lemma takes the inferElab-success equation uniformly.
@@ -1249,6 +1250,14 @@ mutual
   subsume-complete {ctx} {_} {A} {B} (t-embed dd@(t-snd-app {e = e} d)) =
     let (_ , _ , _ , eqI) = infer-complete dd
     in checkElab-fallback-RApp-snd-eff e A B eqI
+  -- t-embed at an RVar (local / import): infer succeeds, so the dispatch routes
+  -- through the named embedOrSubsume → the RVar eff fallback discharges it.
+  subsume-complete {ctx} {_} {A} {B} (t-embed dd@(t-var-local {x = x} _ _)) =
+    let (_ , _ , _ , eqI) = infer-complete dd
+    in checkElab-fallback-RVar-eff x A B eqI
+  subsume-complete {ctx} {_} {A} {B} (t-embed dd@(t-var-import {x = x} _ _ _)) =
+    let (_ , _ , _ , eqI) = infer-complete dd
+    in checkElab-fallback-RVar-eff x A B eqI
   subsume-complete (t-embed x)                 = subsume-residual (t-embed x)
   subsume-complete (t-apply-check d)           = subsume-residual (t-apply-check d)
   subsume-complete (t-initial-app-check d)     = subsume-residual (t-initial-app-check d)
