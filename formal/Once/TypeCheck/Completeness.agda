@@ -877,14 +877,24 @@ regrade-eff (m-case f g)         with regrade-eff f | regrade-eff g
 ... | _       | _       = nothing
 regrade-eff _                    = nothing
 
--- TEMPORARY residual (Plan 0.52): the subsume-complete cases not yet discharged.
--- Handled directly: t-morph-lift (regrade-eff → morph-complete, covering the
--- RVar builtins + RApp morphism-apps), t-value-lift (gd-complete), t-lam.
--- Residual = the infer-then-subsume cases (t-embed, t-apply-check,
--- t-initial-app-check, t-arg-driven-app-check, t-var-poly-instantiate) and the
--- regrade-nothing morphisms (m-pair/m-curry/m-named/m-named-resolved/m-cata);
--- discharging these needs the per-shape elaborator-dispatch reduction (bbc /
--- RApp / app-check) — same machinery as the elaborator, deferred.
+-- TEMPORARY residual (Plan 0.52). Discharged so far: t-morph-lift (regrade-eff →
+-- morph-complete: RVar builtins + RApp morphism-apps), t-value-lift, t-lam,
+-- t-embed at RResolved/RQualified, and m-named-resolved — all the cases where
+-- the elaborator routes through the NAMED `embedOrSubsume` (so the check-complete
+-- of the same derivation IS the embedOrSubsume-lifts pure-side equation).
+--
+-- REMAINING residual, split by why:
+--  (a) RVar local/poly/named (t-embed t-var-local, t-var-poly-instantiate,
+--      m-named): the bbc-X-aux SUCCESS path is a NAMED embedOrSubsume, so these
+--      ARE dischargeable via embedOrSubsume-lifts after casing classifyBareBuiltin
+--      (8 branches) — a tedious-but-mechanical grind.
+--  (b) RApp (t-embed t-app/t-effApp, t-arg-driven-app-check, t-apply-check,
+--      t-initial-app-check, m-pair/m-curry/m-cata): the RApp dispatches INLINE
+--      embedOrSubsume's body (e.g. ahv-other, Elaborate ~2027) instead of calling
+--      it, so checkElab is a DISTINCT anonymous with-aux — the OCP-0008 with-
+--      opacity. Clean fix: refactor those dispatches to CALL the named
+--      embedOrSubsume (then embedOrSubsume-lifts applies uniformly). A small,
+--      principled elaborator change (with an agreement-proof cascade).
 postulate
   subsume-residual : ∀ {ctx : NamedCtx} {e : RawExpr} {A B : Type}
       {Ψ : Surface.Usage (NamedCtx.size ctx)}
