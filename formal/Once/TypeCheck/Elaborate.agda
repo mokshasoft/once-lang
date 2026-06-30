@@ -3282,6 +3282,31 @@ checkElab-fallback-RApp-generic {ctx} f x T eqAH eqInf
     with T ≟T T
 ...   | yes refl = _ , _ , _ , refl
 ...   | no ¬eq   = ⊥-elim (¬eq refl)
+
+-- Plan 0.52: the eff (SUBSUME) variant — a generic app that INFERS at a pure
+-- arrow also CHECKS at the corresponding eff arrow. Since ahv-other now routes
+-- through the named embedOrSubsume, the eff-arrow ≠ inferred pure-arrow, so it
+-- takes embedOrSubsume-no's subsume branch (A/B reflexive).
+checkElab-fallback-RApp-generic-eff :
+  ∀ {ctx : NamedCtx} (f x : RawExpr) (A B : Type)
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)}
+    {d f' : ℕ}
+  → classifyAppHead f ≡ nothing
+  → inferElab ctx (Raw.RApp f x) ≡ success (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) Ψ eE d f'
+  → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f'' →
+      checkElab ctx (Raw.RApp f x) (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B)
+        ≡ success Ψ eE' d' f'')))
+checkElab-fallback-RApp-generic-eff {ctx} f x A B eqAH eqInf
+  rewrite cong checkProj₁ (checkViewBridge {ctx} {f} {x} {A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B} ahv-other (classifyAppHead-nothing⇒view-other eqAH))
+  with inferElabV ctx (Raw.RApp f x) | eqInf
+... | success _ _ _ _ _ , _ | refl
+    with (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B) ≟T (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)
+...   | yes ()
+...   | no _ with A ≟T A | B ≟T B
+...     | yes refl | yes refl = _ , _ , _ , refl
+...     | no ¬a    | _        = ⊥-elim (¬a refl)
+...     | yes _     | no ¬b    = ⊥-elim (¬b refl)
 checkElab-fallback-RApp-terminal :
   ∀ {ctx : NamedCtx} (arg : RawExpr) (T : Type)
     {Ψ : Surface.Usage (NamedCtx.size ctx)}

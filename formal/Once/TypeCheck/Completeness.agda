@@ -689,7 +689,7 @@ open Once.TypeCheck.Elaborate
          checkElab-fallback-RBinOp;
          checkElab-fallback-RApp-id; checkElab-fallback-RApp-fst;
          checkElab-fallback-RApp-snd; checkElab-fallback-RApp-terminal;
-         checkElab-fallback-RApp-generic)
+         checkElab-fallback-RApp-generic; checkElab-fallback-RApp-generic-eff)
 
 -- RVar case: covers both local and import lookups (and "unit"). The
 -- fallback lemma takes the inferElab-success equation uniformly.
@@ -1220,6 +1220,12 @@ mutual
   subsume-complete {ctx} {_} {A} {B} (t-embed d@(t-var-qualified {name = name} {alias = alias} eqImp)) =
     let (_ , _ , _ , eqC) = check-complete (t-embed d)
     in embedOrSubsume-lifts ctx (Raw.RQualified name alias) A B (inferElabV ctx (Raw.RQualified name alias)) eqC
+  -- t-embed at a generic app: ahv-other now routes through the named
+  -- embedOrSubsume, so the eff (subsume) fallback discharges it from the
+  -- inferElab equation (no mkCtx-Σ matching).
+  subsume-complete {ctx} {_} {A} {B} (t-embed dd@(t-app {f = f} {x = x} notPoly dF dX)) =
+    let (_ , _ , _ , eqI) = infer-complete dd
+    in checkElab-fallback-RApp-generic-eff f x A B notPoly eqI
   subsume-complete (t-embed x)                 = subsume-residual (t-embed x)
   subsume-complete (t-apply-check d)           = subsume-residual (t-apply-check d)
   subsume-complete (t-initial-app-check d)     = subsume-residual (t-initial-app-check d)
