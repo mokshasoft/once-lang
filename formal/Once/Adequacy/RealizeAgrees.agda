@@ -673,11 +673,48 @@ agree-compose ctx f_inner arg A C π (just B) eqB disp dγ k
 ...     | just _  | just _  | just _  | nothing | ()
 
 ------------------------------------------------------------------------
+-- Companion of `checkElabV-RApp-other-argdriven-aux` (the `ahv-other`
+-- infer-failure fallback). `lhs`/`eqAH` are explicit so the dispatch reduces
+-- (`just _` ⇒ elaborator failed ⇒ success-eq absurd). On `nothing`: `arg` is
+-- inferred, `f` is CHECKED at `X ⇒[Many,pure] T`, `se = app fE argE`, and
+-- `realize (t-arg-driven-app-check _ wArg wF) = app (realize wF)
+-- (realize-infer wArg)` — the SAME shape ⇒ application congruence (`fCheckIH`
+-- on the function, `argInferIH` on the argument; nested `bind2-faithful`).
+agree-check-RApp-argdriven-aux : ∀ {ctx : NamedCtx} (f arg : RawExpr) (T : Type)
+  (errInfer : E.TypeError) {Ψ se d fr w}
+  (lhs : Maybe E.PolyBuiltinApp) (eqAH : E.classifyAppHead f ≡ lhs)
+  → E.checkElabV-RApp-other-argdriven-aux ctx f arg T errInfer lhs eqAH ≡ (success Ψ se d fr , w)
+  → (fCheckIH : ∀ {T' Ψ' eE' d' fr'} {w' : ctx ⊢ᶜ f ∶ T' ⨾ Ψ'}
+       → E.checkElabV ctx f T' ≡ (success Ψ' eE' d' fr' , w')
+       → ∀ dγ k → SD.⟦ eE' ⟧ˢ dγ k ≡ SD.⟦ realize w' ⟧ˢ dγ k)
+  → (argInferIH : ∀ {T' Ψ' eE' d' fr'} {w' : ctx ⊢ᵢ arg ∶ T' ⨾ Ψ'}
+       → E.inferElabV ctx arg ≡ (success T' Ψ' eE' d' fr' , w')
+       → ∀ dγ k → SD.⟦ eE' ⟧ˢ dγ k ≡ SD.⟦ realize-infer w' ⟧ˢ dγ k)
+  → ∀ (dγ : Env ctx) (k : ℕ) → SD.⟦ se ⟧ˢ dγ k ≡ SD.⟦ realize w ⟧ˢ dγ k
+agree-check-RApp-argdriven-aux f arg T errInfer (just _) eqAH () fCheckIH argInferIH
+agree-check-RApp-argdriven-aux {ctx} f arg T errInfer nothing eqAH eq fCheckIH argInferIH dγ k
+  with E.inferElabV ctx arg | eq
+... | failure _ , _ | ()
+... | success X Ψx argE dx frx , wArg | eq₁
+      with E.checkElabV ctx f (X ⇒[ mk-kind Many pure ] T) in feq2 | eq₁
+...   | failure _ , _ | ()
+...   | success Ψf fE df frf , wF | refl =
+        bind2-faithful (SD.⟦ fE ⟧ˢ dγ) (SD.⟦ realize wF ⟧ˢ dγ)
+          (λ vf → SD.⟦ argE ⟧ˢ dγ >>=T λ vx → vf vx)
+          (λ vf → SD.⟦ realize-infer wArg ⟧ˢ dγ >>=T λ vx → vf vx)
+          (λ j → fCheckIH feq2 dγ j)
+          (λ vf j → bind2-faithful (SD.⟦ argE ⟧ˢ dγ) (SD.⟦ realize-infer wArg ⟧ˢ dγ)
+                      (λ vx → vf vx) (λ vx → vf vx)
+                      (λ j' → argInferIH refl dγ j') (λ _ _ → refl) j)
+          k
+
+------------------------------------------------------------------------
 -- check-mode RApp agreement, dispatched on the app-head VIEW (a parameter of
 -- `checkElabV-RApp-dispatch`). The `t-embed` views (id/fst/snd/terminal) infer
 -- `RApp f arg`, match `T`, and delegate to the supplied infer IH (since
--- `realize (t-embed w) = realize-infer w`). The remaining views (morph-lift /
--- specApply / arg-driven) route to `check-RApp-todo` for now.
+-- `realize (t-embed w) = realize-infer w`). The arg-driven `ahv-other` failure
+-- branch rides `agree-check-RApp-argdriven-aux`; remaining views (cata) route
+-- to `check-RApp-todo` for now.
 agree-check-RApp : ∀ (ctx : NamedCtx) (f arg : RawExpr) (T : Type) {Ψ se d fr w}
   (vw : E.AppHeadView f) (veq : E.classifyAppHeadView f ≡ vw)
   → E.checkElabV-RApp-dispatch ctx f arg T vw veq ≡ (success Ψ se d fr , w)
@@ -690,26 +727,30 @@ agree-check-RApp : ∀ (ctx : NamedCtx) (f arg : RawExpr) (T : Type) {Ψ se d fr
   → (argInferIH : ∀ {T' Ψ' eE' d' fr'} {w' : ctx ⊢ᵢ arg ∶ T' ⨾ Ψ'}
        → E.inferElabV ctx arg ≡ (success T' Ψ' eE' d' fr' , w')
        → ∀ dγ k → SD.⟦ eE' ⟧ˢ dγ k ≡ SD.⟦ realize-infer w' ⟧ˢ dγ k)
+  -- check-f IH (only `ahv-other`'s arg-driven path consumes it).
+  → (fCheckIH : ∀ {T' Ψ' eE' d' fr'} {w' : ctx ⊢ᶜ f ∶ T' ⨾ Ψ'}
+       → E.checkElabV ctx f T' ≡ (success Ψ' eE' d' fr' , w')
+       → ∀ dγ k → SD.⟦ eE' ⟧ˢ dγ k ≡ SD.⟦ realize w' ⟧ˢ dγ k)
   → ∀ dγ k → SD.⟦ se ⟧ˢ dγ k ≡ SD.⟦ realize w ⟧ˢ dγ k
-agree-check-RApp ctx f arg T E.ahv-id veq disp inferIH argCheckIH argInferIH dγ k
+agree-check-RApp ctx f arg T E.ahv-id veq disp inferIH argCheckIH argInferIH fCheckIH dγ k
   with E.inferElabV ctx (Raw.RApp f arg) | disp
 ... | failure _ , _ | ()
 ... | success T' Ψ eE d fr , w | eq₁ with T E.≟T T' | eq₁
 ...   | yes refl | refl = inferIH refl dγ k
 ...   | no _     | ()
-agree-check-RApp ctx f arg T E.ahv-fst veq disp inferIH argCheckIH argInferIH dγ k
+agree-check-RApp ctx f arg T E.ahv-fst veq disp inferIH argCheckIH argInferIH fCheckIH dγ k
   with E.inferElabV ctx (Raw.RApp f arg) | disp
 ... | failure _ , _ | ()
 ... | success T' Ψ eE d fr , w | eq₁ with T E.≟T T' | eq₁
 ...   | yes refl | refl = inferIH refl dγ k
 ...   | no _     | ()
-agree-check-RApp ctx f arg T E.ahv-snd veq disp inferIH argCheckIH argInferIH dγ k
+agree-check-RApp ctx f arg T E.ahv-snd veq disp inferIH argCheckIH argInferIH fCheckIH dγ k
   with E.inferElabV ctx (Raw.RApp f arg) | disp
 ... | failure _ , _ | ()
 ... | success T' Ψ eE d fr , w | eq₁ with T E.≟T T' | eq₁
 ...   | yes refl | refl = inferIH refl dγ k
 ...   | no _     | ()
-agree-check-RApp ctx f arg T E.ahv-terminal veq disp inferIH argCheckIH argInferIH dγ k
+agree-check-RApp ctx f arg T E.ahv-terminal veq disp inferIH argCheckIH argInferIH fCheckIH dγ k
   with E.inferElabV ctx (Raw.RApp f arg) | disp
 ... | failure _ , _ | ()
 ... | success T' Ψ eE d fr , w | eq₁ with T E.≟T T' | eq₁
@@ -718,14 +759,14 @@ agree-check-RApp ctx f arg T E.ahv-terminal veq disp inferIH argCheckIH argInfer
 -- ahv-initial: arg checked at Void; se = morph-app initial argE (unary >>=T),
 -- witness t-initial-app-check w, realize = morph-app initial (realize w) ⇒
 -- rewrite the arg check IH.
-agree-check-RApp ctx f arg T E.ahv-initial veq disp inferIH argCheckIH argInferIH dγ k
+agree-check-RApp ctx f arg T E.ahv-initial veq disp inferIH argCheckIH argInferIH fCheckIH dγ k
   with E.checkElabV ctx arg Void in aeq | disp
 ... | failure _ , _ | ()
 ... | success Ψ argE d fr , w | refl rewrite argCheckIH aeq dγ k = refl
 -- ahv-arr: target must be `A ⇒[Many,eff] B`; arg checked at `A ⇒[Many,pure] B`,
 -- se = arr' argE (denotational IDENTITY), witness t-arr-app-check w,
 -- realize = arr' (realize w) ⇒ agreement is exactly the arg check IH.
-agree-check-RApp ctx f arg (A ⇒[ mk-kind Many eff ] B) E.ahv-arr veq disp inferIH argCheckIH argInferIH dγ k
+agree-check-RApp ctx f arg (A ⇒[ mk-kind Many eff ] B) E.ahv-arr veq disp inferIH argCheckIH argInferIH fCheckIH dγ k
   with E.checkElabV ctx arg (A ⇒[ mk-kind Many pure ] B) in aeq | disp
 ... | failure _ , _ | ()
 ... | success Ψ argE d fr , w | refl = argCheckIH aeq dγ k
@@ -748,23 +789,23 @@ agree-check-RApp ctx f arg (ν-type _) E.ahv-arr veq ()
 -- check IH); pure-arrow→sum target → value-lift via checkG (rewrite checkG-realize).
 -- ahv-In: pure-arrow→μ target → value-lift via checkG. All other targets fail
 -- ⇒ fall through to the global `check-RApp-todo` catch-all (absurd success-eq).
-agree-check-RApp ctx f arg (A + B) E.ahv-inl veq disp inferIH argCheckIH argInferIH dγ k
+agree-check-RApp ctx f arg (A + B) E.ahv-inl veq disp inferIH argCheckIH argInferIH fCheckIH dγ k
   with E.checkElabV ctx arg A in aeq | disp
 ... | failure _ , _ | ()
 ... | success Ψ argE d fr , w | refl rewrite argCheckIH aeq dγ k = refl
-agree-check-RApp ctx f arg (X ⇒[ mk-kind Many pure ] (A + B)) E.ahv-inl veq disp inferIH argCheckIH argInferIH dγ k
+agree-check-RApp ctx f arg (X ⇒[ mk-kind Many pure ] (A + B)) E.ahv-inl veq disp inferIH argCheckIH argInferIH fCheckIH dγ k
   with E.inspectCheckG ctx X (Raw.RApp (Raw.RVar "inl") arg) (A + B) | disp
 ... | E.cgv-nothing _ | ()
 ... | E.cgv-just {m} {gd} cgeq | refl rewrite checkG-realize gd cgeq = refl
-agree-check-RApp ctx f arg (A + B) E.ahv-inr veq disp inferIH argCheckIH argInferIH dγ k
+agree-check-RApp ctx f arg (A + B) E.ahv-inr veq disp inferIH argCheckIH argInferIH fCheckIH dγ k
   with E.checkElabV ctx arg B in aeq | disp
 ... | failure _ , _ | ()
 ... | success Ψ argE d fr , w | refl rewrite argCheckIH aeq dγ k = refl
-agree-check-RApp ctx f arg (X ⇒[ mk-kind Many pure ] (A + B)) E.ahv-inr veq disp inferIH argCheckIH argInferIH dγ k
+agree-check-RApp ctx f arg (X ⇒[ mk-kind Many pure ] (A + B)) E.ahv-inr veq disp inferIH argCheckIH argInferIH fCheckIH dγ k
   with E.inspectCheckG ctx X (Raw.RApp (Raw.RVar "inr") arg) (A + B) | disp
 ... | E.cgv-nothing _ | ()
 ... | E.cgv-just {m} {gd} cgeq | refl rewrite checkG-realize gd cgeq = refl
-agree-check-RApp ctx f arg (X ⇒[ mk-kind Many pure ] (μ-type F)) E.ahv-In veq disp inferIH argCheckIH argInferIH dγ k
+agree-check-RApp ctx f arg (X ⇒[ mk-kind Many pure ] (μ-type F)) E.ahv-In veq disp inferIH argCheckIH argInferIH fCheckIH dγ k
   with E.inspectCheckG ctx X (Raw.RApp (Raw.RVar "In") arg) (μ-type F) | disp
 ... | E.cgv-nothing _ | ()
 ... | E.cgv-just {m} {gd} cgeq | refl rewrite checkG-realize gd cgeq = refl
@@ -772,7 +813,7 @@ agree-check-RApp ctx f arg (X ⇒[ mk-kind Many pure ] (μ-type F)) E.ahv-In veq
 -- `t-morph-lift (m-curry mFᵐ)`; `realize` is `lift-morphism (curry
 -- (realize-morph mFᵐ) Heap)` — rewrite by the morph-realize bridge (mf ≡
 -- realize-morph mFᵐ). Non-curry targets fall through to check-RApp-todo.
-agree-check-RApp ctx f arg (A ⇒[ mk-kind Many pure ] (B ⇒[ mk-kind Many pure ] C)) E.ahv-curry veq disp inferIH argCheckIH argInferIH dγ k
+agree-check-RApp ctx f arg (A ⇒[ mk-kind Many pure ] (B ⇒[ mk-kind Many pure ] C)) E.ahv-curry veq disp inferIH argCheckIH argInferIH fCheckIH dγ k
   with E.checkElabV ctx arg ((A * B) ⇒[ mk-kind Many pure ] C) in eqarg | disp
 ... | failure _ , _ | ()
 ... | success Ψ argE d fr , w | disp'
@@ -782,7 +823,7 @@ agree-check-RApp ctx f arg (A ⇒[ mk-kind Many pure ] (B ⇒[ mk-kind Many pure
 ...   | nothing          | _        | ()
 -- ahv-pair-applied: checkPair emits `lift-morphism ⟨mf,mg⟩`, witness
 -- `t-morph-lift (m-pair mFᵐ mGᵐ)`; rewrite by morph-realize on BOTH components.
-agree-check-RApp ctx (Raw.RApp (Raw.RVar "pair") f_inner) arg (A ⇒[ mk-kind Many pure ] (B * C)) E.ahv-pair-applied veq disp inferIH argCheckIH argInferIH dγ k
+agree-check-RApp ctx (Raw.RApp (Raw.RVar "pair") f_inner) arg (A ⇒[ mk-kind Many pure ] (B * C)) E.ahv-pair-applied veq disp inferIH argCheckIH argInferIH fCheckIH dγ k
   with E.checkElabV ctx f_inner (A ⇒[ mk-kind Many pure ] B) in eqf | disp
 ... | failure _ , _ | ()
 ... | success Ψf fE df frf , wF | disp'
@@ -798,7 +839,7 @@ agree-check-RApp ctx (Raw.RApp (Raw.RVar "pair") f_inner) arg (A ⇒[ mk-kind Ma
 ...     | just _  | just _  | just _  | nothing | ()
 -- ahv-case-applied: checkCase emits `lift-morphism (case m_f m_g)`, witness
 -- `t-morph-lift (m-case mFᵐ mGᵐ)`; rewrite both components.
-agree-check-RApp ctx (Raw.RApp (Raw.RVar "case") f_inner) arg ((A + B) ⇒[ mk-kind Many π ] C) E.ahv-case-applied veq disp inferIH argCheckIH argInferIH dγ k
+agree-check-RApp ctx (Raw.RApp (Raw.RVar "case") f_inner) arg ((A + B) ⇒[ mk-kind Many π ] C) E.ahv-case-applied veq disp inferIH argCheckIH argInferIH fCheckIH dγ k
   with E.checkElabV ctx f_inner (A ⇒[ mk-kind Many π ] C) in eqf | disp
 ... | failure _ , _ | ()
 ... | success Ψf fE df frf , wF | disp'
@@ -814,12 +855,12 @@ agree-check-RApp ctx (Raw.RApp (Raw.RVar "case") f_inner) arg ((A + B) ⇒[ mk-k
 ...     | just _  | just _  | just _  | nothing | ()
 -- ahv-compose-applied: delegate to agree-compose (mirrors checkCompose →
 -- checkComposeGo with composeMid + eqB explicit).
-agree-check-RApp ctx (Raw.RApp (Raw.RVar "compose") f_inner) arg (A ⇒[ mk-kind Many π ] C) E.ahv-compose-applied veq disp inferIH argCheckIH argInferIH dγ k =
+agree-check-RApp ctx (Raw.RApp (Raw.RVar "compose") f_inner) arg (A ⇒[ mk-kind Many π ] C) E.ahv-compose-applied veq disp inferIH argCheckIH argInferIH fCheckIH dγ k =
   agree-compose ctx f_inner arg A C π (composeMid ctx f_inner arg A) refl disp dγ k
 -- ahv-apply (check): checkApply infers the arg; se = morph-app apply argE,
 -- witness t-apply-check w, realize = morph-app apply (realize-infer w) ⇒ plain
 -- morph-app congruence via the inferred-arg IH. Non-`(Many-pure-arrow * A)` args fail.
-agree-check-RApp ctx f arg T E.ahv-apply veq disp inferIH argCheckIH argInferIH dγ k
+agree-check-RApp ctx f arg T E.ahv-apply veq disp inferIH argCheckIH argInferIH fCheckIH dγ k
   with E.inferElabV ctx arg | disp
 ... | failure _ , _ | ()
 ... | success Unit _ _ _ _ , _ | ()
@@ -852,7 +893,25 @@ agree-check-RApp ctx f arg T E.ahv-apply veq disp inferIH argCheckIH argInferIH 
 ...   | yes refl | yes refl | refl rewrite argInferIH refl dγ k = refl
 ...   | yes refl | no _     | ()
 ...   | no _     | _        | ()
-agree-check-RApp ctx f arg T vw veq disp inferIH argCheckIH argInferIH dγ k =
+-- ahv-other (check): the dispatch first tries `inferElabV (RApp f arg)` and on
+-- success matches `T` — that is the `t-embed` path (`realize (t-embed w) =
+-- realize-infer w` ⇒ the supplied `inferIH`). On infer-failure it falls to the
+-- ARG-DRIVEN application: `arg` is inferred, `f` is CHECKED at `X ⇒[Many,pure]
+-- T`, and `se = app fE argE` with `realize (t-arg-driven-app-check _ wArg wF) =
+-- app (realize wF) (realize-infer wArg)` — the SAME shape. So it is the
+-- application congruence again, now with the FUNCTION on `fCheckIH` (f checked)
+-- and the ARGUMENT on `argInferIH` (arg inferred). `classifyAppHead f = just _`
+-- contradicts ahv-other ⇒ the elaborator fails ⇒ success-eq absurd.
+agree-check-RApp ctx f arg T E.ahv-other veq disp inferIH argCheckIH argInferIH fCheckIH dγ k
+  with E.inferElabV ctx (Raw.RApp f arg) | disp
+... | success T' Ψ eE d fr , w | eq₁ with T E.≟T T' | eq₁
+...   | yes refl | refl = inferIH refl dγ k
+...   | no _     | ()
+agree-check-RApp ctx f arg T E.ahv-other veq disp inferIH argCheckIH argInferIH fCheckIH dγ k
+  | failure errInfer , _ | disp₁ =
+    agree-check-RApp-argdriven-aux f arg T errInfer
+      (E.classifyAppHead f) refl disp₁ fCheckIH argInferIH dγ k
+agree-check-RApp ctx f arg T vw veq disp inferIH argCheckIH argInferIH fCheckIH dγ k =
   check-RApp-todo ctx f arg T vw veq disp dγ k
 
 ------------------------------------------------------------------------
@@ -1146,7 +1205,8 @@ mutual
     agree-check-RApp ctx f arg T (E.classifyAppHeadView f) refl eq
       (λ p → infer-agreeV ctx (Raw.RApp f arg) (rec (infer<check (Raw.RApp f arg))) p)
       (λ {T'} p → check-agreeV ctx arg T' (rec (mC-sub (μ<-r (μ f) (μ arg)))) p)
-      (λ p → infer-agreeV ctx arg (rec (mIC-sub (μ<-r (μ f) (μ arg)))) p) dγ k
+      (λ p → infer-agreeV ctx arg (rec (mIC-sub (μ<-r (μ f) (μ arg)))) p)
+      (λ {T'} p → check-agreeV ctx f T' (rec (mC-sub (μ<-l (μ f) (μ arg)))) p) dγ k
   check-agreeV ctx e T _ eq = check-agreeV-todo ctx e T eq
 
 ------------------------------------------------------------------------
