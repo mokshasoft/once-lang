@@ -2023,11 +2023,11 @@ mutual
   checkElabV-RApp-dispatch ctx f arg T ahv-cata _ = checkCata ctx arg T
   checkElabV-RApp-dispatch ctx f arg T ahv-curry _ = checkCurry ctx arg T
   checkElabV-RApp-dispatch ctx f arg T ahv-apply _ = checkApply ctx arg T
-  -- ahv-other: try infer-then-match; on failure, arg-driven application.
+  -- ahv-other: infer-then-check via the NAMED `embedOrSubsume` (OCP-0008: route
+  -- through the named combinator, not an inline with-tree, so completeness can
+  -- reason through it); on infer failure, arg-driven application.
   checkElabV-RApp-dispatch ctx f arg T ahv-other _ with inferElabV ctx (Raw.RApp f arg)
-  ... | success T' Ψ eE d fr , w with T ≟T T'
-  ...   | yes refl = success Ψ eE d fr , t-embed w
-  ...   | no _     = embedOrSubsume-no ctx (Raw.RApp f arg) T' T eE d fr w
+  ... | r@(success _ _ _ _ _ , _) = embedOrSubsume ctx (Raw.RApp f arg) T r
   checkElabV-RApp-dispatch ctx f arg T ahv-other _ | failure errInfer , _ =
     checkElabV-RApp-other-argdriven-aux ctx f arg T errInfer (classifyAppHead f) refl
 
