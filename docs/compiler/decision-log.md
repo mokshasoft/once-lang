@@ -4762,3 +4762,70 @@ Required refactors (feedback_with_abstraction — fight the definition, not the 
 
 - D063 (`⊢ᵐ`), D066 (grade-indexed), D064/Plan 0.50 (named-defs ABI — unblocks `m-named`), Plan 0.49
   (`realize` spec, the row-3 forcing).
+
+## D068: Grade Is a Checked, Erased Refinement — pure→eff Is Subsumption, `arr` Retired
+
+**Date**: 2026-06-30
+**Status**: Accepted; implementation in Plan 0.52 (not started)
+**Completes**: D065/D066 — the grade discipline taken to its endpoint, enabling OCP-0007.
+
+### Context
+
+`evalᴰ apply` is kind-polymorphic and `evalᴰ arr f = returnT f` (identity): the
+grade is a PHANTOM IR index — present in the type, ignored by codegen (grade-erased
+IR, D046; `realize-morph` ignores `π`, D066). D065 already dropped BARE `arr` (type
+error) and made bare morphisms grade-free. What remains is APPLIED `arr f` — a pure
+function VALUE lifted to an eff arrow (`t-arr-app-check`), a no-op coercion
+(`⟦arr f⟧ = ⟦f⟧`). The question (raised while closing the `check-agreeV` RVar gap):
+should the pure→eff boundary be a COERCION term (`arr`) or a SUBSUMPTION check?
+
+### Decision
+
+The grade (purity, later capabilities) is a **checked, runtime-erased typing
+refinement**. pure→eff is **monotone subsumption** (`pure ⊑ eff`, a check on the
+grade lattice), never a coercion term. `arr` is retired entirely (bare already gone
+per D065; applied `arr f` replaced by subsumption in `checkElabV`). The grade stays
+in the surface type (load-bearing for the effect/capability analysis), but is
+adjusted by checking, not by inserting terms.
+
+Subsumption is ONE-DIRECTIONAL: `pure ⊑ eff` sound; `eff ⊑ pure` UNSOUND (D066 — the
+optimizer drops pure SigOps, so tagging an eff SigOp pure drops effects). That is
+exactly OCP-0007 attenuation: authority only relaxes downward.
+
+### Rationale
+
+- **OCP-0007**: its core rule is "annotation is a CHECK, never a coercion"; effects
+  compose with the same operators as pure code and the grade "rides along
+  silently." A pure→eff coercion term (`arr`) contradicts this; monotone subsumption
+  IS it. Retiring `arr` is a prerequisite for the capability-lattice generalization.
+- **QTT / dependent types**: the kinds already carry `Zero/One/Many` — the `{0,1,ω}`
+  semiring of Quantitative Type Theory (Idris 2 / Agda `--erasure`). QTT tracks
+  resource/usage annotations in typing, adjusts them by CHECKING, and ERASES them at
+  runtime — and QTT is a dependent type theory, the cleanest on-ramp to a dependent
+  future. The purity/capability grade is another such annotation (a lattice). `arr`
+  is the pure/eff analogue of an explicit `0→ω` coercion term, which QTT
+  specifically avoids. So "check, not coercion" is the dependent-types-aligned path;
+  keeping `arr` is the one move that fights it.
+- **No expressiveness change**: `arr` is denotationally the identity, so retiring it
+  removes zero behavior; subsumption expresses everything it did, with less ceremony.
+
+### Consequences
+
+- Deletes the `arr` IR constructor + codegen, the `arr'`/`ahv-arr` coercion-identity
+  lemma, `m-arr`, and the bbc-`arr` machinery. New obligation — `pure ⊑ eff`
+  subsumption is denotation-preserving — is trivial (`⟦_⟧` is grade-blind).
+- Correctness spec stays grade-free (already is); grade soundness becomes a separate,
+  smaller static-analysis property — the healthiest proof end-state.
+- Optional follow-on (Plan 0.52 M2): erase the `mk-kind q π` index from the IR
+  exponential OBJECT (codegen already ignores it), collapsing every
+  `mk-kind Many/One/Zero × pure/eff` case-split across the agree/codegen proofs —
+  PENDING verification that optimizer purity rides on SigOp contracts (D061), not
+  arrow grades.
+- Surface programs drop `arr f` (rare); re-extract MAlonzo.
+
+### See Also
+
+- D065 (bare `arr` dropped), D066 (grade-indexed `⊢ᵐ`; eff→pure unsound), D046
+  (grade-erased IR), D032 (`arr` lifts), D061 (SigOp contract from interpretation),
+  Plan 0.52 (implementation), Plan 0.39 (optimizer drops pure SigOps), OCP-0007
+  (capability-graded effects), QTT (McBride/Atkey — quantity semiring, erasure).
