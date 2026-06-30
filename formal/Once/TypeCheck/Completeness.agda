@@ -877,8 +877,14 @@ regrade-eff (m-case f g)         with regrade-eff f | regrade-eff g
 ... | _       | _       = nothing
 regrade-eff _                    = nothing
 
--- TEMPORARY residual (Plan 0.52, wiring step): the subsume-complete cases not
--- yet handled — used to surface the coverage shape via the typechecker.
+-- TEMPORARY residual (Plan 0.52): the subsume-complete cases not yet discharged.
+-- Handled directly: t-morph-lift (regrade-eff → morph-complete, covering the
+-- RVar builtins + RApp morphism-apps), t-value-lift (gd-complete), t-lam.
+-- Residual = the infer-then-subsume cases (t-embed, t-apply-check,
+-- t-initial-app-check, t-arg-driven-app-check, t-var-poly-instantiate) and the
+-- regrade-nothing morphisms (m-pair/m-curry/m-named/m-named-resolved/m-cata);
+-- discharging these needs the per-shape elaborator-dispatch reduction (bbc /
+-- RApp / app-check) — same machinery as the elaborator, deferred.
 postulate
   subsume-residual : ∀ {ctx : NamedCtx} {e : RawExpr} {A B : Type}
       {Ψ : Surface.Usage (NamedCtx.size ctx)}
