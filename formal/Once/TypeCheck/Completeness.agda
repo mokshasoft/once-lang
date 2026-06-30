@@ -833,8 +833,12 @@ embedOrSubsume-lifts ctx e A B (success (_ T.⇒[ T.mk-kind T.One _ ] _)       �
 embedOrSubsume-lifts ctx e A B (success (_ T.⇒[ T.mk-kind T.Zero _ ] _)      Ψ' eE' d' f' , w) eqP | no _ | ()
 
 postulate
-  -- Narrow scaffolds — the specific-clause exprs whose eff completeness is the
-  -- bbc / RApp-dispatch mirror. To be discharged.
+  -- Narrow scaffolds. RVar/RApp mirror the elaborator's hand-coded bare-builtin
+  -- failure-auxes / RApp dispatch, whose 3-deep INTERNAL structure
+  -- (type-shape → lookups → ≟T) cannot be mirrored cleanly from completeness
+  -- without fighting the abstraction (the flat `with` can't drive the aux's
+  -- hidden internal `≟`, and nesting hits the `...` ambiguity). The clean fix is
+  -- a with-refactor of those auxes into a uniform grade-poly view; deferred.
   subsume-complete-RVar  : ∀ {ctx x A B}    → SubsumeComplete ctx (Raw.RVar x) A B
   subsume-complete-RApp  : ∀ {ctx f g A B}  → SubsumeComplete ctx (Raw.RApp f g) A B
 
