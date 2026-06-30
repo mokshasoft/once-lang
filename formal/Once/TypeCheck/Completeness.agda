@@ -1206,6 +1206,11 @@ mutual
   subsume-complete {ctx} {_} {A} {B} (t-morph-lift dm@(m-named-resolved {cn = cn} eqImp)) =
     let (_ , _ , _ , eqC) = check-complete (t-morph-lift dm)
     in embedOrSubsume-lifts ctx (Raw.RResolved cn) A B (inferElabV ctx (Raw.RResolved cn)) eqC
+  -- m-named (import var): import-grade-fixed (regrade → nothing), but the import
+  -- INFERS, so build t-var-import from its premises and reuse the RVar eff fallback.
+  subsume-complete {ctx} {_} {A} {B} (t-morph-lift (m-named {x = x} ¬u eqL eqI)) =
+    let (_ , _ , _ , eqInf) = infer-complete (t-var-import ¬u eqL eqI)
+    in checkElab-fallback-RVar-eff x A B eqInf
   subsume-complete (t-morph-lift m) with regrade-eff m
   ... | just m' = morph-complete m'
   ... | nothing = subsume-residual (t-morph-lift m)
