@@ -50,6 +50,7 @@ open import Once.TypeCheck.Elaborate
          classifyAppHead-nothing⇒view-other; AppHeadView;
          classifyBareBuiltin; checkG; inspectWellFormedF; wfv-yes; wfv-no;
          inspectCheckG; cgv-just; cgv-nothing;
+         classifyRPairTarget; rpt-vlift; rpt-other;
          bbc-id; bbc-fst; bbc-snd; bbc-terminal; bbc-initial;
          bbc-inl; bbc-inr; bbc-arr; bbc-other)
 open import Once.TypeCheck.Judgment
@@ -862,11 +863,42 @@ embedOrSubsume-lifts ctx e A B (success (_ T.⇒[ T.mk-kind T.Zero _ ] _)      �
 
 postulate
   -- Narrow scaffolds — the specific-clause exprs whose eff completeness is the
-  -- bbc / RApp-dispatch / RPair-vlift / lambda-body mirror. To be discharged.
-  subsume-complete-RPair : ∀ {ctx a b A B} → SubsumeComplete ctx (Raw.RPair a b) A B
+  -- bbc / RApp-dispatch mirror. To be discharged.
   subsume-complete-RVar  : ∀ {ctx x A B}    → SubsumeComplete ctx (Raw.RVar x) A B
   subsume-complete-RApp  : ∀ {ctx f g A B}  → SubsumeComplete ctx (Raw.RApp f g) A B
-  subsume-complete-RLam  : ∀ {ctx x bd A B} → SubsumeComplete ctx (Raw.RLam x bd) A B
+
+-- RPair at an arrow target is the value-lift case. `classifyRPairTarget` is a
+-- VIEW: matching `rpt-vlift` refines the codomain to a product and shares the
+-- π-independent `inspectCheckG` (so eff lifts whenever pure does, D069);
+-- `rpt-other` is vacuous since a pair always infers to a product, never an
+-- arrow, so the pure-arrow check can never have succeeded.
+subsume-complete-RPair : ∀ {ctx a b A B} → SubsumeComplete ctx (Raw.RPair a b) A B
+subsume-complete-RPair {ctx} {a} {b} {dom} {cod} eqP
+  with classifyRPairTarget (dom T.⇒[ T.mk-kind T.Many T.pure ] cod) | eqP
+... | rpt-vlift X A B _ | eqP'
+      with inspectCheckG ctx X (Raw.RPair a b) (A T.* B) | eqP'
+...     | cgv-just _    | refl = _ , _ , _ , refl
+...     | cgv-nothing _ | ()
+subsume-complete-RPair {ctx} {a} {b} {dom} {cod} eqP | rpt-other _ | eqP'
+      with inferElabV ctx a | inferElabV ctx b | eqP'
+...     | failure _ , _          | _                      | ()
+...     | success _ _ _ _ _ , _  | failure _ , _          | ()
+...     | success Ta _ _ _ _ , _ | success Tb _ _ _ _ , _ | eqP''
+            with (dom T.⇒[ T.mk-kind T.Many T.pure ] cod) ≟T (Ta T.* Tb) | eqP''
+...           | no _ | ()
+
+-- RLam: the pure clause (`A⇒[Many pure]B`) and the eff clause (`A⇒[Many eff]B`)
+-- run the SAME body check + the SAME `decideLeq q' Many`; the eff clause just
+-- wraps the result in `arr'`/`t-subsume`. So whenever the pure check succeeds
+-- (body success + grade fits), so does the eff check.
+subsume-complete-RLam : ∀ {ctx x bd A B} → SubsumeComplete ctx (Raw.RLam x bd) A B
+subsume-complete-RLam {ctx} {x} {bd} {A} {B} eqP
+  with checkElabV (Once.TypeCheck.Elaborate.extendNamedCtx ctx x A) bd B | eqP
+... | failure _ , _                              | ()
+... | success (q' Surface.Usage.∷ Ψ₀) bE d₀ fr₀ , wB | eqP'
+      with Once.TypeCheck.Elaborate.decideLeq q' T.Many | eqP'
+...     | just _  | refl = _ , _ , _ , refl
+...     | nothing | ()
 
 subsume-complete : ∀ {ctx e A B} → SubsumeComplete ctx e A B
 subsume-complete {ctx = ctx} {e = Raw.RPair a b} {A} {B} eqP = subsume-complete-RPair {ctx = ctx} {a = a} {b = b} {A = A} {B = B} eqP
