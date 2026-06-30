@@ -96,8 +96,8 @@ private
 --   • m-named  — a bare import elaborates to a CLOSURE pre-plan-0.50 (D064); becomes a
 --                direct `IR.SigOp` morphism in plan 0.50 milestone 1, when this is proven.
 postulate
-  const-morph-strong : ∀ {ctx : NamedCtx} {e : RawExpr} {A B : Type}
-                     → ctx ⊢ᵍ e ∶ B → StrongElab ctx e A B T.pure
+  const-morph-strong : ∀ {ctx : NamedCtx} {e : RawExpr} {A B : Type} {π : T.Purity}
+                     → ctx ⊢ᵍ e ∶ B → StrongElab ctx e A B π
   cata-morph-strong : ∀ {ctx : NamedCtx} {alg : RawExpr} {F : Functor} {A : Type}
                         {π : T.Purity} {wfF : WellFormedF F}
                     → wellFormedF? F ≡ just wfF

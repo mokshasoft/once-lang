@@ -977,10 +977,10 @@ mutual
   -- `inspectCheckG` view as their value-lift `checkElabV` clauses, so the
   -- elaborator reduces (no `with checkG` opacity). `checkG-just` rules out the
   -- `cgv-nothing` branch (the value IS a `checkG`-success).
-  gd-complete : ∀ {ctx : NamedCtx} {e : RawExpr} {A : Type} (X : Type)
+  gd-complete : ∀ {ctx : NamedCtx} {e : RawExpr} {A : Type} {π : T.Purity} (X : Type)
               → ctx ⊢ᵍ e ∶ A
               → ∃[ eE ] ∃[ d ] ∃[ f' ]
-                  checkElab ctx e (X T.⇒[ T.mk-kind T.Many T.pure ] A)
+                  checkElab ctx e (X T.⇒[ T.mk-kind T.Many π ] A)
                     ≡ success Surface.zeroUsage eE d f'
   gd-complete X (g-int n) = _ , _ , _ , refl
   gd-complete {ctx = ctx} X (g-terminal eqL eqI) =

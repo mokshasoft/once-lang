@@ -156,11 +156,12 @@ open import Once.TypeCheck.Judgment
 -- catch-all (which left `checkElabV (RInt n) T` stuck for variable `T`, and
 -- made `ErrorProofs`' "RInt at T≠Int fails" claim false). Proofs — and the
 -- Plan 0.45 frontend trace induction — `with isRIntVliftTarget? T` to dispatch.
+-- D069: grade-poly — a constant `Int` value inhabits `X ⇒[Many π] Int` at ANY π.
 isRIntVliftTarget? :
   (T : Type) →
-  Maybe (∃-syntax (λ X → T ≡ (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] Int)))
-isRIntVliftTarget? (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] Int) =
-  just (X , refl)
+  Maybe (∃-syntax (λ X → ∃-syntax (λ π → T ≡ (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] Int))))
+isRIntVliftTarget? (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] Int) =
+  just (X , π , refl)
 isRIntVliftTarget? _ = nothing
 
 -- | Classify a check-mode target type for a pair literal: a product `A * B`
@@ -171,15 +172,16 @@ isRIntVliftTarget? _ = nothing
 -- specific clauses overlapping the catch-all (same gate as RInt; Plan 0.45).
 data RPairTarget : Type → Set where
   rpt-prod  : (A B : Type) → RPairTarget (A Once.Type.* B)
-  rpt-vlift : (X A B : Type) →
-              RPairTarget (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] (A Once.Type.* B))
+  -- D069: grade-poly — a closed pair value inhabits the arrow at any π.
+  rpt-vlift : (X A B : Type) (π : Once.Type.Purity) →
+              RPairTarget (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] (A Once.Type.* B))
   rpt-other : (T : Type) → RPairTarget T
 
 classifyRPairTarget : (T : Type) → RPairTarget T
 classifyRPairTarget (A Once.Type.* B) = rpt-prod A B
 classifyRPairTarget
-  (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] (A Once.Type.* B)) =
-  rpt-vlift X A B
+  (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] (A Once.Type.* B)) =
+  rpt-vlift X A B π
 classifyRPairTarget T = rpt-other T
 
 -- | Decidable functor and type equality (mutually recursive)
@@ -1151,7 +1153,7 @@ mutual
   -- the generic infer-and-match). One scrutinee, no clause overlap.
   checkElabV-RInt-aux :
     ∀ (ctx : NamedCtx) (n : ℤ) (T : Type)
-    → Maybe (∃-syntax (λ X → T ≡ (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] Int)))
+    → Maybe (∃-syntax (λ X → ∃-syntax (λ π → T ≡ (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] Int))))
     → VerifiedCheckResult ctx (Raw.RInt n) T
   -- RPair check-mode dispatch, taking the target classification explicitly
   -- (product / pure-arrow-to-product / other). One scrutinee, no overlap.
@@ -1436,7 +1438,7 @@ mutual
   checkIn ctx arg (Once.Type.μ-type F) = checkInGo ctx arg F (wellFormedF? F) refl
   -- Plan 0.41 structural value-lift: `In arg` at a pure arrow to `μ-type F`
   -- is a closed global-element value — route through `checkG`.
-  checkIn ctx arg (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] (Once.Type.μ-type F))
+  checkIn ctx arg (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] (Once.Type.μ-type F))
     with inspectCheckG ctx X (Raw.RApp (Raw.RVar "In") arg) (Once.Type.μ-type F)
   ... | cgv-nothing _    = failure (BuiltinTypeMismatch "In") , tt
   ... | cgv-just {m} {gd} _ =
@@ -2011,14 +2013,14 @@ mutual
   -- yields the IR and the `⊢ᵍ` derivation for the `t-value-lift` bridge.
   -- Specific clauses before the value-type `with T` dispatch (first-match).
   checkElabV-RApp-dispatch ctx f arg
-    (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] (A Once.Type.+ B)) ahv-inl _
+    (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] (A Once.Type.+ B)) ahv-inl _
     with inspectCheckG ctx X (Raw.RApp (Raw.RVar "inl") arg) (A Once.Type.+ B)
   ... | cgv-nothing _ = failure InlNeedsSumType , tt
   ... | cgv-just {m} {gd} _ =
           success Surface.zeroUsage (Surface.lift-morphism m) 0 (NamedCtx.freshCounter ctx)
           , t-value-lift gd
   checkElabV-RApp-dispatch ctx f arg
-    (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] (A Once.Type.+ B)) ahv-inr _
+    (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] (A Once.Type.+ B)) ahv-inr _
     with inspectCheckG ctx X (Raw.RApp (Raw.RVar "inr") arg) (A Once.Type.+ B)
   ... | cgv-nothing _ = failure InrNeedsSumType , tt
   ... | cgv-just {m} {gd} _ =
@@ -2372,7 +2374,7 @@ mutual
   -- RInt: value-lift on a pure-arrow-to-Int target, else generic infer+match.
   -- `refl` refines `T` to the arrow so `t-value-lift (g-int n)` types; the
   -- `nothing` branch reproduces the old generic clause for RInt verbatim.
-  checkElabV-RInt-aux ctx n T (just (X , refl)) =
+  checkElabV-RInt-aux ctx n T (just (X , π , refl)) =
     success Surface.zeroUsage (Surface.lift-morphism (intLit n)) 0 (NamedCtx.freshCounter ctx)
     , t-value-lift (g-int n)
   checkElabV-RInt-aux ctx n T nothing with inferElabV ctx (Raw.RInt n)
@@ -2385,10 +2387,10 @@ mutual
   -- pure-arrow-to-product → value-lift via checkG (inspectCheckG); else the
   -- generic infer+match. The latter two are the old clauses verbatim.
   checkElabV-RPair-aux ctx a b _ (rpt-prod A B) = checkPairLit ctx a b A B
-  checkElabV-RPair-aux ctx a b _ (rpt-vlift X A B)
+  checkElabV-RPair-aux ctx a b _ (rpt-vlift X A B π)
     with inspectCheckG ctx X (Raw.RPair a b) (A Once.Type.* B)
-  ... | cgv-nothing _ = failure (TypeMismatch (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] (A Once.Type.* B))
-                                        (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] (A Once.Type.* B))) , tt
+  ... | cgv-nothing _ = failure (TypeMismatch (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] (A Once.Type.* B))
+                                        (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] (A Once.Type.* B))) , tt
   ... | cgv-just {m} {gd} _ =
           success Surface.zeroUsage (Surface.lift-morphism m) 0 (NamedCtx.freshCounter ctx)
           , t-value-lift gd
@@ -2738,11 +2740,11 @@ checkElab-fallback-RVar-snd {ctx} A B eqLoc eqImp | (failure _ , _) | refl
   | _ | liv-found impossible = ⊥-elim (just≢nothing-Maybe (trans (sym impossible) eqImp))
 
 checkElab-fallback-RVar-terminal :
-  ∀ {ctx : NamedCtx} (A : Type)
+  ∀ {ctx : NamedCtx} {π : Once.Type.Purity} (A : Type)
   → lookupLocal ctx "terminal" ≡ nothing
   → lookupImport (NamedCtx.imports ctx) "terminal" ≡ nothing
   → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
-      checkElab ctx (Raw.RVar "terminal") (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] Unit)
+      checkElab ctx (Raw.RVar "terminal") (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] Unit)
         ≡ success Surface.zeroUsage eE d f)))
 checkElab-fallback-RVar-terminal {ctx} A eqLoc eqImp
   with inferElabV ctx (Raw.RVar "terminal") | inferElabV-RVar-fail-bridge ctx "terminal" (λ ()) eqLoc eqImp

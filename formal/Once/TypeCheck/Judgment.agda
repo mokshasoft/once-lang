@@ -434,9 +434,10 @@ mutual
     -- Extensional leaves.
     ----------------------------------------------------------------
     -- A closed value is the constant morphism `A → B` (D018). PURE. REUSES `⊢ᵍ`.
-    m-const : ∀ {ctx : NamedCtx} {e : RawExpr} {A B : Type}
+    -- D069: GRADE-POLY (`π` free) — a closed value is effect-free.
+    m-const : ∀ {ctx : NamedCtx} {e : RawExpr} {A B : Type} {π : Once.Type.Purity}
             → ctx ⊢ᵍ e ∶ B
-            → ctx ⊢ᵐ e ∶ A ⇨[ Once.Type.pure ] B
+            → ctx ⊢ᵐ e ∶ A ⇨[ π ] B
 
     -- A named arrow reference is a morphism at the IMPORT's grade π (the ABI by
     -- which `once_x` is called is downstream codegen, NOT part of the spec).
@@ -494,9 +495,11 @@ mutual
     -- family by construction, completeness recurses on the `⊢ᵍ` derivation
     -- (no over-generality — a named ref `t-embed` is not a `⊢ᵍ` value, so it
     -- can't reach this rule). PURE-only — masquerade-safe (D046's grade).
-    t-value-lift : ∀ {ctx : NamedCtx} {e : RawExpr} {A X : Type}
+    -- D069: GRADE-POLY (`π` free). A closed value is effect-free, so the constant
+    -- morphism `X ⇒[Many π] A` inhabits any grade — `t-subsume` is unneeded for it.
+    t-value-lift : ∀ {ctx : NamedCtx} {e : RawExpr} {A X : Type} {π : Once.Type.Purity}
                  → ctx ⊢ᵍ e ∶ A
-                 → ctx ⊢ᶜ e ∶ (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] A) ⨾ Surface.zeroUsage
+                 → ctx ⊢ᶜ e ∶ (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A) ⨾ Surface.zeroUsage
 
     -- Plan 0.36 Phase 2a follow-up: check-mode for the pair LITERAL
     -- `(a , b)` at a product type. Checks the components bidirectionally

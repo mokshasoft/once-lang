@@ -1205,7 +1205,7 @@ mutual
   -- the two `lift-morphism`s coincide ⇒ `refl`. Otherwise the generic fallback
   -- (inferred type Int) delegates to `infer-agreeV`.
   check-agreeV ctx (Raw.RInt n) T (acc rec) eq dγ k with E.isRIntVliftTarget? T | eq
-  ... | just (X , refl) | refl = refl
+  ... | just (X , π , refl) | refl = refl
   ... | nothing | eq' with T E.≟T Int | eq'
   ...   | yes refl | refl = infer-agreeV ctx (Raw.RInt n) (rec (infer<check (Raw.RInt n))) refl dγ k
   ...   | no _     | ()
@@ -1223,7 +1223,7 @@ mutual
   ...         | success Ψ₂ bE db fb , wB | refl
                 rewrite check-agreeV ctx a A (rec (mC-sub (μ<-l (μ a) (μ b)))) eqa dγ k
                       | check-agreeV ctx b B (rec (mC-sub (μ<-r (μ a) (μ b)))) eqb dγ k = refl
-  check-agreeV ctx (Raw.RPair a b) T (acc rec) eq dγ k | E.rpt-vlift X A B | eq'
+  check-agreeV ctx (Raw.RPair a b) T (acc rec) eq dγ k | E.rpt-vlift X A B π | eq'
         with E.inspectCheckG ctx X (Raw.RPair a b) (A * B) | eq'
   ...     | E.cgv-nothing _ | ()
   ...     | E.cgv-just {m} {gd} cgeq | refl rewrite checkG-realize gd cgeq = refl
