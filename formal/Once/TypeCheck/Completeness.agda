@@ -63,7 +63,8 @@ open import Once.Surface.Syntax as Surface using (zeroUsage; _+ᵘ_; _*ᵘ_)
   renaming (Expr to SExpr)
 -- Plan 0.49 / D063: morphism-completeness, proven by induction on ⊢ᵐ
 -- (12/15 cases; m-const/m-cata/m-named are scoped postulates there).
-open import Once.TypeCheck.MorphComplete using (morph-complete; pair-eff-complete; curry-eff-complete)
+open import Once.TypeCheck.MorphComplete using (morph-complete; pair-eff-complete; curry-eff-complete;
+  compose-eff-complete; case-eff-complete)
 open import Data.Bool using (Bool; true; false)
 open import Relation.Nullary using (¬_)
 open import Data.Empty using (⊥-elim)
@@ -894,36 +895,11 @@ regrade-eff (m-case f g)         with regrade-eff f | regrade-eff g
 ... | _       | _       = nothing
 regrade-eff _                    = nothing
 
--- TEMPORARY residual (Plan 0.52). subsume-complete is DISCHARGED for every case
--- EXCEPT one: `subsume-residual` is now only reached by the t-morph-lift branch
--- for `m-compose`/`m-case` whose regrade-eff = nothing — i.e. a compose/case of
--- PURE morphisms one of whose arms is a saturated builtin (m-pair/m-curry/m-named/
--- m-cata, all pure-fixed), subsumed to eff.
---
--- This is a genuine compose+subsumption WRINKLE, not a with-opacity mirror:
--- checkComposeGo checks the arms at the compose grade and needs EXTRACTABLE
--- same-grade morphism witnesses (extractMorphWitness). At an eff target the
--- pure-fixed arm subsumes to a `t-subsume` witness, and
--- `extractMorphWitness (t-subsume …) = nothing`, so checkComposeGo (eff) FAILS.
--- (extractMorphWitness can't just recurse into t-subsume: the inner morphism is
--- pure, but m-compose {eff} needs eff arms — a grade mismatch.)
---
--- SOUNDNESS NOTE: because the elaborator currently REJECTS this program,
--- subsume-residual asserts a FALSE `≡ success` for it — an unsound postulate
--- (the same latent gap the old per-form subsume-complete-RApp postulate had).
--- The FIX (making it sound + then dischargeable) is a conditional elaborator
--- eff-clause on checkCompose/checkCase: "try checkComposeGo (eff) [genuinely-eff
--- compose of eff imports]; else check the compose at PURE and wrap in
--- arr'/t-subsume". Delicate (agree + completeness cascade); a focused follow-up.
--- (t-arg-driven-app-check uses completeness-gap-arg-driven-app-check-eff, the eff
--- twin of the pre-existing pure argdriven completeness postulate — that one IS
--- sound, since the argdriven eff-clause was added.)
-postulate
-  subsume-residual : ∀ {ctx : NamedCtx} {e : RawExpr} {A B : Type}
-      {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    → ctx ⊢ᶜ e ∶ (A T.⇒[ T.mk-kind T.Many T.pure ] B) ⨾ Ψ
-    → ∃[ eE ] ∃[ d ] ∃[ f ]
-        checkElab ctx e (A T.⇒[ T.mk-kind T.Many T.eff ] B) ≡ success Ψ eE d f
+-- Plan 0.52: the former `subsume-residual` postulate (the m-compose/m-case
+-- pure⊑eff wrinkle) is now DISCHARGED postulate-free — the elaborator's eff-clause
+-- accepts a subsumed pure compose/case (checkCompose/checkCase try eff, else check
+-- at pure and wrap in arr'/t-subsume), and compose/case-eff-complete (MorphComplete)
+-- prove it. See subsume-complete below.
 
 mutual
   infer-complete :
@@ -1241,9 +1217,21 @@ mutual
   -- checkPair/checkCurry clauses wrap the pure morphism in arr'/t-subsume.
   subsume-complete (t-morph-lift (m-pair mFᵐ mGᵐ)) = pair-eff-complete mFᵐ mGᵐ
   subsume-complete (t-morph-lift (m-curry mFᵐ))    = curry-eff-complete mFᵐ
-  subsume-complete (t-morph-lift m) with regrade-eff m
-  ... | just m' = morph-complete m'
-  ... | nothing = subsume-residual (t-morph-lift m)
+  -- Plan 0.52: m-compose/m-case at eff — the elaborator's eff-clause tries eff
+  -- (genuinely-eff arms), else checks at pure and wraps in arr'/t-subsume. Both
+  -- discharged by compose/case-eff-complete (postulate-free), so subsume-residual
+  -- is RETIRED (the last unsound gap closed).
+  subsume-complete (t-morph-lift (m-compose eqB df dg)) = compose-eff-complete eqB df dg
+  subsume-complete (t-morph-lift (m-case df dg))        = case-eff-complete df dg
+  -- Grade-poly LEAVES: regrade to eff (same constructor) and reuse morph-complete.
+  subsume-complete {ctx} (t-morph-lift (m-id eqL eqI))       = morph-complete {ctx = ctx} (m-id eqL eqI)
+  subsume-complete {ctx} (t-morph-lift (m-fst eqL eqI))      = morph-complete {ctx = ctx} (m-fst eqL eqI)
+  subsume-complete {ctx} (t-morph-lift (m-snd eqL eqI))      = morph-complete {ctx = ctx} (m-snd eqL eqI)
+  subsume-complete {ctx} (t-morph-lift (m-terminal eqL eqI)) = morph-complete {ctx = ctx} (m-terminal eqL eqI)
+  subsume-complete {ctx} (t-morph-lift (m-initial eqL eqI))  = morph-complete {ctx = ctx} (m-initial eqL eqI)
+  subsume-complete {ctx} (t-morph-lift (m-inl eqL eqI))      = morph-complete {ctx = ctx} (m-inl eqL eqI)
+  subsume-complete {ctx} (t-morph-lift (m-inr eqL eqI))      = morph-complete {ctx = ctx} (m-inr eqL eqI)
+  subsume-complete {ctx} (t-morph-lift (m-const g))          = morph-complete {ctx = ctx} (m-const g)
   subsume-complete {ctx} (t-value-lift {X = X} g) = gd-complete {π = T.eff} X g
   subsume-complete {ctx} (t-lam {x = x} {body = body} {A = A} {B = B} {q' = q'} leqEq bodyD) =
     let (_ , _ , _ , eqBody) = check-complete bodyD

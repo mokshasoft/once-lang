@@ -37,8 +37,8 @@ open import Once.Surface.Syntax as Srf using (Expr; lift-morphism; zeroUsage)
 open import Once.Denotation.Realize using (realize-morph)
 open import Once.TypeCheck.Judgment
 open import Once.TypeCheck.Elaborate
-  using (checkElab; checkElabV; checkComposeGo; extract-morph-eff;
-         inferElabV; inferElabV-RVar-fail-bridge;
+  using (checkElab; checkElabV; checkComposeGo; checkCaseGo; extract-morph-eff;
+         inferElabV; inferElabV-RVar-fail-bridge; VerifiedCheckResult;
          success; failure; _≟T_)
 
 private
@@ -87,6 +87,46 @@ private
         × (m ≡ mf IR.∘ mg)
   composeGo-success eqB eqf eqg exf exg exwf exwg
     rewrite eqg | eqf | exf | exg | exwf | exwg = _ , _ , _ , refl , refl
+
+  -- checkComposeGo/checkCaseGo emit `success Surface.zeroUsage …` on the sole
+  -- success leaf; recover that usage after a `with`-abstraction loses it (needed
+  -- for the eff-clause passthrough branch in compose/case-eff-complete).
+  cgo-usage : ∀ {ctx f g A C} {π : T.Purity} {mid} {eqB}
+    {Ψ : Srf.Usage (NamedCtx.size ctx)} {se d fr w}
+    → checkComposeGo ctx f g A C π mid eqB ≡ (success Ψ se d fr , w)
+    → Ψ ≡ zeroUsage
+  cgo-usage {mid = nothing} ()
+  cgo-usage {ctx} {f} {g} {A} {C} {π} {just B} eq
+    with checkElabV ctx g (A T.⇒[ T.mk-kind T.Many π ] B) | eq
+  ... | failure _ , _ | ()
+  ... | success Ψg gE dg frg , wG | eq₁
+      with checkElabV ctx f (B T.⇒[ T.mk-kind T.Many π ] C) | eq₁
+  ...   | failure _ , _ | ()
+  ...   | success Ψf fE df frf , wF | eq₂
+        with extract-morph-eff fE | extract-morph-eff gE | extractMorphWitness wF | extractMorphWitness wG | eq₂
+  ...     | just _ | just _ | just _ | just _ | refl = refl
+  ...     | nothing | _ | _ | _ | ()
+  ...     | just _ | nothing | _ | _ | ()
+  ...     | just _ | just _ | nothing | _ | ()
+  ...     | just _ | just _ | just _ | nothing | ()
+
+  ccgo-usage : ∀ {ctx f g A B C} {π : T.Purity}
+    {Ψ : Srf.Usage (NamedCtx.size ctx)} {se d fr w}
+    → checkCaseGo ctx f g A B C π ≡ (success Ψ se d fr , w)
+    → Ψ ≡ zeroUsage
+  ccgo-usage {ctx} {f} {g} {A} {B} {C} {π} eq
+    with checkElabV ctx f (A T.⇒[ T.mk-kind T.Many π ] C) | eq
+  ... | failure _ , _ | ()
+  ... | success Ψf fE df frf , wF | eq₁
+      with checkElabV ctx g (B T.⇒[ T.mk-kind T.Many π ] C) | eq₁
+  ...   | failure _ , _ | ()
+  ...   | success Ψg gE dg frg , wG | eq₂
+        with extract-morph-eff fE | extract-morph-eff gE | extractMorphWitness wF | extractMorphWitness wG | eq₂
+  ...     | just _ | just _ | just _ | just _ | refl = refl
+  ...     | nothing | _ | _ | _ | ()
+  ...     | just _ | nothing | _ | _ | ()
+  ...     | just _ | just _ | nothing | _ | ()
+  ...     | just _ | just _ | just _ | nothing | ()
 
 -- Three cases are scoped follow-ups (kept as StrongElab postulates so the
 -- recursive cases can still take them as arms). They are NOT discharged here:
@@ -263,3 +303,63 @@ curry-eff-complete : ∀ {ctx : NamedCtx} {f : RawExpr} {A B C : Type}
 curry-eff-complete df with morph-elab df
 ... | (mf , mFᵐ , Ef , _ , _ , Wf , eqf , exEff-f , exW-f , cons-f)
       rewrite eqf | exEff-f | exW-f = _ , _ , _ , refl
+
+-- Plan 0.52 (pure⊑eff): a PURE compose/case elaborates at an EFF arrow. The
+-- elaborator's eff-clause first TRIES checkComposeGo/checkCaseGo (eff) [genuinely
+-- eff-able arms], then falls back to the PURE Go + arr'/t-subsume. This lemma
+-- discharges BOTH: case the eff-Go — on success provide it (passthrough), on
+-- failure drive the PURE Go (which always succeeds, since the arms are the pure
+-- morphisms `morph-elab` elaborates) so the fallback wraps it in arr'. Covers the
+-- last subsume-complete residual (m-compose/m-case whose arm is a pure-fixed
+-- builtin, so the eff-Go genuinely fails and the arr' fallback fires).
+-- Helper: takes the eff `checkComposeGo` result as an EXPLICIT argument (so `mid`
+-- is concrete at the call — dodges the `with … in` metavar on `composeMid`) plus
+-- its `refl` equation, and the pure Go success. `rewrite eqr` drives the eff-clause
+-- into its passthrough (success) or fallback (failure ⇒ pure Go + arr').
+compose-eff-hlp : ∀ {ctx : NamedCtx} {f g : RawExpr} {A B C : Type}
+    {sep dp frp wp}
+  → (eqB : composeMid ctx f g A ≡ just B)
+  → checkComposeGo ctx f g A C T.pure (just B) eqB ≡ (success zeroUsage sep dp frp , wp)
+  → (r : VerifiedCheckResult ctx (Raw.RApp (Raw.RApp (Raw.RVar "compose") f) g)
+           (A T.⇒[ T.mk-kind T.Many T.eff ] C))
+  → checkComposeGo ctx f g A C T.eff (just B) eqB ≡ r
+  → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ fr →
+      checkElab ctx (Raw.RApp (Raw.RApp (Raw.RVar "compose") f) g)
+                (A T.⇒[ T.mk-kind T.Many T.eff ] C)
+        ≡ success zeroUsage eE d fr)))
+compose-eff-hlp eqB eqGo (success Ψe eEe de fre , we) eqr with cgo-usage eqr
+... | refl rewrite trans (sym (go-canonical {π = T.eff} eqB)) eqr = eEe , de , fre , refl
+compose-eff-hlp eqB eqGo (failure _ , _) eqr
+  rewrite trans (sym (go-canonical {π = T.eff} eqB)) eqr
+        | trans (sym (go-canonical {π = T.pure} eqB)) eqGo = _ , _ , _ , refl
+
+compose-eff-complete : ∀ {ctx : NamedCtx} {f g : RawExpr} {A B C : Type}
+                     → composeMid ctx f g A ≡ just B
+                     → ctx ⊢ᵐ f ∶ B ⇨[ T.pure ] C
+                     → ctx ⊢ᵐ g ∶ A ⇨[ T.pure ] B
+                     → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ fr →
+                         checkElab ctx (Raw.RApp (Raw.RApp (Raw.RVar "compose") f) g)
+                                   (A T.⇒[ T.mk-kind T.Many T.eff ] C)
+                           ≡ success zeroUsage eE d fr)))
+compose-eff-complete {ctx} {f} {g} {A} {B} {C} eqB df dg
+  with morph-elab df | morph-elab dg
+... | (mf , mFᵐ , Ef , _ , _ , Wf , eqf , exEff-f , exW-f , cons-f) | (mg , mGᵐ , Eg , _ , _ , Wg , eqg , exEff-g , exW-g , cons-g)
+      with composeGo-success eqB eqf eqg exEff-f exEff-g exW-f exW-g
+...     | (m , d , fr , eqGo , m≡fg) =
+          compose-eff-hlp eqB eqGo
+            (checkComposeGo ctx f g A C T.eff (just B) eqB) refl
+
+case-eff-complete : ∀ {ctx : NamedCtx} {f g : RawExpr} {A B C : Type}
+                  → ctx ⊢ᵐ f ∶ A ⇨[ T.pure ] C
+                  → ctx ⊢ᵐ g ∶ B ⇨[ T.pure ] C
+                  → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ fr →
+                      checkElab ctx (Raw.RApp (Raw.RApp (Raw.RVar "case") f) g)
+                                ((A T.+ B) T.⇒[ T.mk-kind T.Many T.eff ] C)
+                        ≡ success zeroUsage eE d fr)))
+case-eff-complete {ctx} {f} {g} {A} {B} {C} df dg
+  with morph-elab df | morph-elab dg
+... | (mf , mFᵐ , Ef , _ , _ , Wf , eqf , exEff-f , exW-f , cons-f) | (mg , mGᵐ , Eg , _ , _ , Wg , eqg , exEff-g , exW-g , cons-g)
+      with checkCaseGo ctx f g A B C T.eff in eqEff
+...     | failure _ , _ rewrite eqf | eqg | exEff-f | exEff-g | exW-f | exW-g = _ , _ , _ , refl
+...     | success Ψe eEe de fre , we with ccgo-usage eqEff
+...       | refl = eEe , de , fre , refl
