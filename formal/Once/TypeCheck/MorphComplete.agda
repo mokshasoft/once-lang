@@ -221,3 +221,27 @@ morph-complete : ∀ {ctx : NamedCtx} {e : RawExpr} {A B : Type} {π : T.Purity}
                      ≡ success zeroUsage eE d f)))
 morph-complete d with morph-elab d
 ... | (_ , _ , E , d′ , fr , _ , eqV , _ , _ , _) = E , d′ , fr , cong proj₁ eqV
+
+-- Plan 0.52 (pure⊑eff): the pair/curry morphisms are PURE-fixed, but their IR is
+-- grade-poly, so at an EFF arrow they are the pure morphism wrapped in
+-- arr'/t-subsume. Mirror morph-elab's m-pair/m-curry clauses at the eff clause.
+pair-eff-complete : ∀ {ctx : NamedCtx} {f g : RawExpr} {A B C : Type}
+                  → ctx ⊢ᵐ f ∶ A ⇨[ T.pure ] B
+                  → ctx ⊢ᵐ g ∶ A ⇨[ T.pure ] C
+                  → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ fr →
+                      checkElab ctx (Raw.RApp (Raw.RApp (Raw.RVar "pair") f) g)
+                                (A T.⇒[ T.mk-kind T.Many T.eff ] (B T.* C))
+                        ≡ success zeroUsage eE d fr)))
+pair-eff-complete df dg with morph-elab df | morph-elab dg
+... | (mf , mFᵐ , Ef , _ , _ , Wf , eqf , exEff-f , exW-f , cons-f) | (mg , mGᵐ , Eg , _ , _ , Wg , eqg , exEff-g , exW-g , cons-g)
+      rewrite eqf | eqg | exEff-f | exEff-g | exW-f | exW-g = _ , _ , _ , refl
+
+curry-eff-complete : ∀ {ctx : NamedCtx} {f : RawExpr} {A B C : Type}
+                   → ctx ⊢ᵐ f ∶ (A T.* B) ⇨[ T.pure ] C
+                   → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ fr →
+                       checkElab ctx (Raw.RApp (Raw.RVar "curry") f)
+                                 (A T.⇒[ T.mk-kind T.Many T.eff ] (B T.⇒[ T.mk-kind T.Many T.pure ] C))
+                         ≡ success zeroUsage eE d fr)))
+curry-eff-complete df with morph-elab df
+... | (mf , mFᵐ , Ef , _ , _ , Wf , eqf , exEff-f , exW-f , cons-f)
+      rewrite eqf | exEff-f | exW-f = _ , _ , _ , refl

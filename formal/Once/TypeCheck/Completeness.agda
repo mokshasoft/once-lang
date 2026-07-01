@@ -63,7 +63,7 @@ open import Once.Surface.Syntax as Surface using (zeroUsage; _+ᵘ_; _*ᵘ_)
   renaming (Expr to SExpr)
 -- Plan 0.49 / D063: morphism-completeness, proven by induction on ⊢ᵐ
 -- (12/15 cases; m-const/m-cata/m-named are scoped postulates there).
-open import Once.TypeCheck.MorphComplete using (morph-complete)
+open import Once.TypeCheck.MorphComplete using (morph-complete; pair-eff-complete; curry-eff-complete)
 open import Data.Bool using (Bool; true; false)
 open import Relation.Nullary using (¬_)
 open import Data.Empty using (⊥-elim)
@@ -1217,6 +1217,10 @@ mutual
   subsume-complete {ctx} (t-morph-lift (m-cata {alg = alg} {F = F} {A = A} eqW algD)) =
     let (_ , _ , _ , eqAlgEff) = subsume-complete algD
     in checkElab-fallback-RApp-cata-eff alg F A eqW eqAlgEff
+  -- m-pair / m-curry: pure-fixed morphisms whose IR is grade-poly — the eff
+  -- checkPair/checkCurry clauses wrap the pure morphism in arr'/t-subsume.
+  subsume-complete (t-morph-lift (m-pair mFᵐ mGᵐ)) = pair-eff-complete mFᵐ mGᵐ
+  subsume-complete (t-morph-lift (m-curry mFᵐ))    = curry-eff-complete mFᵐ
   subsume-complete (t-morph-lift m) with regrade-eff m
   ... | just m' = morph-complete m'
   ... | nothing = subsume-residual (t-morph-lift m)

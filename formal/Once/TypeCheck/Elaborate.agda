@@ -1286,6 +1286,22 @@ mutual
                 (Surface.lift-morphism (IR.⟨ mf , mg ⟩ IR.Heap))
                 (suc (df Data.Nat.⊔ dg)) frg , t-morph-lift (m-pair mFᵐ mGᵐ)
   ...       | _ | _ | _ | _ = failure (BuiltinTypeMismatch "pair") , tt
+  -- Plan 0.52 (pure⊑eff): the pair morphism is grade-poly, so at an EFF arrow it
+  -- is the pure pair wrapped in arr'/t-subsume (the m-pair morphism stays pure).
+  checkPair ctx (Raw.RApp (Raw.RVar "pair") f_inner) arg
+            (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] (B Once.Type.* C))
+    with checkElabV ctx f_inner (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)
+  ... | failure err , _ = failure err , tt
+  ... | success Ψf fE df frf , wF
+        with checkElabV ctx arg (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C)
+  ...     | failure err , _ = failure err , tt
+  ...     | success Ψg gE dg frg , wG
+            with extract-morph-eff fE | extract-morph-eff gE | extractMorphWitness wF | extractMorphWitness wG
+  ...       | just (mf , _) | just (mg , _) | just mFᵐ | just mGᵐ =
+              success Surface.zeroUsage
+                (Surface.arr' (Surface.lift-morphism (IR.⟨ mf , mg ⟩ IR.Heap)))
+                (suc (df Data.Nat.⊔ dg)) frg , t-subsume (t-morph-lift (m-pair mFᵐ mGᵐ))
+  ...       | _ | _ | _ | _ = failure (BuiltinTypeMismatch "pair") , tt
   -- Any other shape falls through to failure. Consistent with
   -- ahv-inl's per-shape exhaustive enumeration pattern.
   checkPair _ _ _ _ = failure (BuiltinTypeMismatch "pair") , tt
@@ -1370,6 +1386,16 @@ mutual
   ...   | just (mf , _) | just mFᵐ =
           success Surface.zeroUsage (Surface.lift-morphism (IR.curry mf IR.Heap)) (suc d) fr
           , t-morph-lift (m-curry mFᵐ)
+  ...   | _ | _ = failure (BuiltinTypeMismatch "curry") , tt
+  -- Plan 0.52 (pure⊑eff): curry at an EFF outer arrow is the pure curry wrapped
+  -- in arr'/t-subsume (the m-curry morphism stays pure; inner arrow unchanged).
+  checkCurry ctx arg (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C))
+    with checkElabV ctx arg ((A Once.Type.* B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C)
+  ... | failure err , _ = failure err , tt
+  ... | success Ψ argE d fr , w with extract-morph-eff argE | extractMorphWitness w
+  ...   | just (mf , _) | just mFᵐ =
+          success Surface.zeroUsage (Surface.arr' (Surface.lift-morphism (IR.curry mf IR.Heap))) (suc d) fr
+          , t-subsume (t-morph-lift (m-curry mFᵐ))
   ...   | _ | _ = failure (BuiltinTypeMismatch "curry") , tt
   checkCurry _ _ _ = failure (BuiltinTypeMismatch "curry") , tt
 
