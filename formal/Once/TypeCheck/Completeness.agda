@@ -71,13 +71,14 @@ import Data.String.Properties
 -- Supplementary imports for the MERGED morph-elab/StrongElab/eff-complete block.
 open import Data.Empty using (⊥)
 open import Once.IR using (IR; Heap)
-open import Once.Denotation.Realize using (realize-morph)
+open import Once.Denotation.Realize using (realize-morph; realize-global)
 open import Once.Surface.Syntax as Srf using (Expr; lift-morphism)
 open import Once.Type using (Functor; μ-type; ⟦_⟧T)
 open import Once.TypeCheck.Classify using (lookupLocal; lookupImport;
   inspectLookupLocal; inspectLookupImport; llv-found; llv-not-found; liv-found; liv-not-found)
 open import Once.TypeCheck.Elaborate using (extract-morph-eff; extractMorphWitness;
-  checkComposeGo; checkCaseGo; VerifiedCheckResult; inferElabV-RVar-fail-bridge)
+  checkComposeGo; checkCaseGo; VerifiedCheckResult; inferElabV-RVar-fail-bridge;
+  checkG; inspectWellFormedF; wfv-no; wfv-yes)
 
 ------------------------------------------------------------------------
 -- Leaf-case completeness
@@ -1013,8 +1014,6 @@ private
 --   • m-named  — a bare import elaborates to a CLOSURE pre-plan-0.50 (D064); becomes a
 --                direct `IR.SigOp` morphism in plan 0.50 milestone 1, when this is proven.
 postulate
-  const-morph-strong : ∀ {ctx : NamedCtx} {e : RawExpr} {A B : Type} {π : T.Purity}
-                     → ctx ⊢ᵍ e ∶ B → StrongElab ctx e A B π
   cata-morph-strong : ∀ {ctx : NamedCtx} {alg : RawExpr} {F : Functor} {A : Type}
                         {π : T.Purity} {wfF : WellFormedF F}
                     → wellFormedF? F ≡ just wfF
@@ -1035,6 +1034,39 @@ postulate
                               → lookupImport (NamedCtx.imports ctx) (showCanonical cn)
                                   ≡ just (A T.⇒[ T.mk-kind T.Many π ] B)
                               → StrongElab ctx (Raw.RResolved cn) A B π
+
+-- `checkG` builds EXACTLY realize-global's IR (moved from RealizeAgrees so the
+-- value-lift discharge of const-morph-strong can use it; self-contained).
+checkG-realize : ∀ {ctx : NamedCtx} {X : Type} {e : RawExpr} {A : Type} {m : IR X A}
+  (gd : ctx ⊢ᵍ e ∶ A)
+  → checkG ctx X e A ≡ just (m , gd) → m ≡ realize-global gd
+checkG-realize (g-int n) refl = refl
+checkG-realize {ctx} {X} (g-terminal eqL eqI) eq
+  with inspectLookupLocal ctx "terminal" | inspectLookupImport ctx "terminal" | eq
+... | llv-not-found _ | liv-not-found _ | refl = refl
+... | llv-not-found _ | liv-found _     | ()
+... | llv-found _     | _               | ()
+checkG-realize {ctx} {X} (g-pair {a = a} {b = b} {A = A} {B = B} ga gb) eq
+  with checkG ctx X a A in eqa | checkG ctx X b B in eqb | eq
+... | just (ma , _) | just (mb , _) | refl =
+      cong₂ (λ x y → IR.⟨ x , y ⟩ Heap) (checkG-realize ga eqa) (checkG-realize gb eqb)
+... | nothing       | _            | ()
+... | just _        | nothing      | ()
+checkG-realize {ctx} {X} (g-inl {arg = arg} {A = A} ga) eq
+  with checkG ctx X arg A in eqa | eq
+... | just (ma , _) | refl = cong (λ z → IR.inl Heap IR.∘ z) (checkG-realize ga eqa)
+... | nothing       | ()
+checkG-realize {ctx} {X} (g-inr {arg = arg} {B = B} gb) eq
+  with checkG ctx X arg B in eqb | eq
+... | just (mb , _) | refl = cong (λ z → IR.inr Heap IR.∘ z) (checkG-realize gb eqb)
+... | nothing       | ()
+checkG-realize {ctx} {X} (g-In {arg = arg} {F = F} {wfF = wfF} eqWF garg) eq
+  with inspectWellFormedF F | eq
+... | wfv-no _  | ()
+... | wfv-yes _ | eq'
+      with checkG ctx X arg (⟦ F ⟧T (μ-type F)) in eqarg | eq'
+...     | just (marg , _) | refl = cong (λ z → IR.In wfF Heap IR.∘ z) (checkG-realize garg eqarg)
+...     | nothing         | ()
 
 mutual
   morph-elab : ∀ {ctx : NamedCtx} {e : RawExpr} {A B : Type} {π : T.Purity}
@@ -1427,6 +1459,46 @@ mutual
                     ≡ success Surface.zeroUsage eE d f'
   gd-complete {π = π} X gd with gd-completeV {π = π} X gd
   ... | eE , d , f' , _ , eq = eE , d , f' , cong proj₁ eq
+
+  -- DISCHARGED (was const-morph-strong postulate): a value ⊢ᵍ e ∶ B elaborates
+  -- at X⇒B as a const morphism. The value-lift emits `success (lift-morphism m)
+  -- …, t-value-lift gd'` where (m, gd') = checkG; extract-morph-eff/extractMorph-
+  -- Witness are refl, and `m ≡ realize-morph (m-const gd') = realize-global gd'`
+  -- is exactly checkG-realize. (g-int uses the isRIntVliftTarget? path — refl.)
+  const-morph-strong : ∀ {ctx : NamedCtx} {e : RawExpr} {A B : Type} {π : T.Purity}
+                     → ctx ⊢ᵍ e ∶ B → StrongElab ctx e A B π
+  const-morph-strong (g-int n) =
+    _ , m-const (g-int n) , _ , _ , _ , t-value-lift (g-int n) , refl , refl , refl , refl
+  -- g-terminal elaborates as the terminal MORPHISM (t-morph-lift (m-terminal …)),
+  -- not a value-lift — mirror the RVar-terminal elaborator path directly.
+  const-morph-strong {ctx = ctx} {A = X} (g-terminal eqL eqI)
+    with inferElabV ctx (Raw.RVar "terminal") | inferElabV-RVar-fail-bridge ctx "terminal" (λ ()) eqL eqI
+  ... | (failure _ , _) | refl
+      with inspectLookupLocal ctx "terminal" | inspectLookupImport ctx "terminal"
+  ...   | llv-not-found eqLoc' | liv-not-found eqImp' =
+          _ , m-terminal eqLoc' eqImp' , _ , _ , _ , t-morph-lift (m-terminal eqLoc' eqImp') , refl , refl , refl , refl
+  ...   | llv-found impossible | _ = nothing≢just (trans (sym eqL) impossible)
+  ...   | _ | liv-found impossible = nothing≢just (trans (sym eqI) impossible)
+  const-morph-strong {ctx = ctx} {A = X} (g-pair {a = a} {b = b} {A = A} {B = B} ga gb)
+    with inspectCheckG ctx X (Raw.RPair a b) (A T.* B) | checkG-just X (g-pair ga gb)
+  ... | cgv-just {m} {gd'} eqCG | _ =
+        m , m-const gd' , _ , _ , _ , t-value-lift gd' , refl , refl , refl , checkG-realize gd' eqCG
+  ... | cgv-nothing eqN | _ , _ , eqJ = nothing≢just (trans (sym eqN) eqJ)
+  const-morph-strong {ctx = ctx} {A = X} (g-inl {arg = arg} {A = A} {B = B} ga)
+    with inspectCheckG ctx X (Raw.RApp (Raw.RVar "inl") arg) (A T.+ B) | checkG-just X (g-inl ga)
+  ... | cgv-just {m} {gd'} eqCG | _ =
+        m , m-const gd' , _ , _ , _ , t-value-lift gd' , refl , refl , refl , checkG-realize gd' eqCG
+  ... | cgv-nothing eqN | _ , _ , eqJ = nothing≢just (trans (sym eqN) eqJ)
+  const-morph-strong {ctx = ctx} {A = X} (g-inr {arg = arg} {A = A} {B = B} gb)
+    with inspectCheckG ctx X (Raw.RApp (Raw.RVar "inr") arg) (A T.+ B) | checkG-just X (g-inr gb)
+  ... | cgv-just {m} {gd'} eqCG | _ =
+        m , m-const gd' , _ , _ , _ , t-value-lift gd' , refl , refl , refl , checkG-realize gd' eqCG
+  ... | cgv-nothing eqN | _ , _ , eqJ = nothing≢just (trans (sym eqN) eqJ)
+  const-morph-strong {ctx = ctx} {A = X} (g-In {arg = arg} {F = F} eqWF garg)
+    with inspectCheckG ctx X (Raw.RApp (Raw.RVar "In") arg) (T.μ-type F) | checkG-just X (g-In eqWF garg)
+  ... | cgv-just {m} {gd'} eqCG | _ =
+        m , m-const gd' , _ , _ , _ , t-value-lift gd' , refl , refl , refl , checkG-realize gd' eqCG
+  ... | cgv-nothing eqN | _ , _ , eqJ = nothing≢just (trans (sym eqN) eqJ)
 
   -- Full ⊢ᶜ walk: handles t-lam recursively and delegates t-embed
   -- to the per-shape fallback lemma.
