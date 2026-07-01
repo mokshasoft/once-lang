@@ -153,17 +153,17 @@ optimizer: optimizer-cost optimizer-depth optimizer-rewrite optimizer-complete o
 
 .PHONY: ccc-x86-64
 ccc-x86-64:
-	@echo "Type-checking X86-64 CCC backend (Dispatcher + Refinement + CodeGen)..."
-	@sh -c '$(AGDA_CMD) Once/CCC/Target/X86-64/Correct.agda'
+	@echo "Type-checking X86-64 CCC backend (Target instance)..."
+	@sh -c '$(AGDA_CMD) Once/Target/X86-64.agda'
 
 .PHONY: ccc-x86-32
 ccc-x86-32:
-	@echo "Type-checking X86-32 CCC backend (DirectSimulation + Target instance)..."
+	@echo "Type-checking X86-32 CCC backend (Target instance)..."
 	@sh -c '$(AGDA_CMD) Once/Target/X86-32.agda'
 
 .PHONY: ccc-riscv64
 ccc-riscv64:
-	@echo "Type-checking RISC-V 64 CCC backend (DirectSimulation + Target instance)..."
+	@echo "Type-checking RISC-V 64 CCC backend (Target instance)..."
 	@sh -c '$(AGDA_CMD) Once/Target/RiscV64.agda'
 
 #-----------------------------------------------------------------------------
@@ -233,8 +233,8 @@ malonzo:
 
 .PHONY: dead-code-ccc-x86-64
 dead-code-ccc-x86-64:
-	@echo "Running dead code analysis on X86-64 (Dispatcher + Refinement + CodeGen)..."
-	@./run-dead-code.sh Once.CCC.Target.X86-64.WholeProgram.Correctness.compile-correct Once/CCC/Target/X86-64/Correct.agda
+	@echo "Running dead code analysis on X86-64 (Adequacy apex)..."
+	@./run-dead-code.sh Once.Adequacy.ArchCorrectness.X86-64.x86-64-correct Once/Adequacy/ArchCorrectness/X86-64.agda
 
 #-----------------------------------------------------------------------------
 # Postulate Detection
@@ -290,8 +290,8 @@ exact-split-census:
 # Precise postulate detection using patched Agda (X86-64 CCC: Dispatcher + Refinement + CodeGen)
 .PHONY: postulates-ccc-x86-64
 postulates-ccc-x86-64:
-	@echo "Checking postulates in X86-64 CCC (Dispatcher + Refinement + CodeGen)..."
-	@sh -c '$(PATCHED_AGDA_CMD) --warn-postulates Once/CCC/Target/X86-64/Correct.agda'
+	@echo "Checking postulates in X86-64 CCC (Target instance)..."
+	@sh -c '$(PATCHED_AGDA_CMD) --warn-postulates Once/Target/X86-64.agda'
 
 # Precise postulate detection using patched Agda (X86-64 Arith)
 .PHONY: postulates-arith-x86-64
