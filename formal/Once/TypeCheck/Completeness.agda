@@ -679,7 +679,7 @@ open Once.TypeCheck.Elaborate
   using (checkElab-fallback-RInt; checkElab-fallback-RStringLit;
          checkElab-fallback-RUnit; checkElab-fallback-RVar-unit;
          checkElab-fallback-RVar-id; checkElab-fallback-RVar-fst;
-         checkElab-fallback-RVar-snd; checkElab-fallback-RVar-terminal;
+         checkElab-fallback-RVar-snd; checkElab-fallback-RVar-terminal; checkElab-fallback-RVar-terminalV;
          checkElab-fallback-RVar-initial; checkElab-fallback-RVar-inl;
          checkElab-fallback-RVar-inr;
          checkElab-fallback-RApp-In; checkElab-fallback-RApp-apply;
@@ -1052,7 +1052,7 @@ mutual
                      checkElabV ctx e (X T.⇒[ T.mk-kind T.Many π ] A)
                        ≡ (success Surface.zeroUsage eE d f' , w)
   gd-completeV X (g-int n) = _ , _ , _ , _ , refl
-  gd-completeV {ctx = ctx} X (g-terminal eqL eqI) = TODO-gd-terminal-strong
+  gd-completeV {ctx = ctx} X (g-terminal eqL eqI) = checkElab-fallback-RVar-terminalV {ctx} X eqL eqI
   gd-completeV {ctx = ctx} X (g-pair {a = a} {b = b} {A = A} {B = B} ga gb)
     with inspectCheckG ctx X (Raw.RPair a b) (A T.* B) | checkG-just X (g-pair ga gb)
   ... | cgv-just _      | _              = _ , _ , _ , _ , refl
