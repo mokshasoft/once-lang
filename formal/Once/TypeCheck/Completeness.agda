@@ -903,13 +903,21 @@ regrade-eff _                    = nothing
 -- This is a genuine compose+subsumption WRINKLE, not a with-opacity mirror:
 -- checkComposeGo checks the arms at the compose grade and needs EXTRACTABLE
 -- same-grade morphism witnesses (extractMorphWitness). At an eff target the
--- pure-fixed arm subsumes to a `t-subsume` witness, which is NOT extractable, so
--- checkComposeGo (eff) fails. The whole compose is really a PURE morphism f∘g
--- subsumed to eff, so the elaborator would need a conditional eff-clause "try
--- checkComposeGo (eff); else check the compose at pure and wrap in arr'/t-subsume"
--- (a genuinely-eff compose of eff imports must still take the eff path). Delicate;
--- deferred. (t-arg-driven-app-check uses completeness-gap-arg-driven-app-check-eff,
--- the eff twin of the pre-existing pure argdriven completeness postulate.)
+-- pure-fixed arm subsumes to a `t-subsume` witness, and
+-- `extractMorphWitness (t-subsume …) = nothing`, so checkComposeGo (eff) FAILS.
+-- (extractMorphWitness can't just recurse into t-subsume: the inner morphism is
+-- pure, but m-compose {eff} needs eff arms — a grade mismatch.)
+--
+-- SOUNDNESS NOTE: because the elaborator currently REJECTS this program,
+-- subsume-residual asserts a FALSE `≡ success` for it — an unsound postulate
+-- (the same latent gap the old per-form subsume-complete-RApp postulate had).
+-- The FIX (making it sound + then dischargeable) is a conditional elaborator
+-- eff-clause on checkCompose/checkCase: "try checkComposeGo (eff) [genuinely-eff
+-- compose of eff imports]; else check the compose at PURE and wrap in
+-- arr'/t-subsume". Delicate (agree + completeness cascade); a focused follow-up.
+-- (t-arg-driven-app-check uses completeness-gap-arg-driven-app-check-eff, the eff
+-- twin of the pre-existing pure argdriven completeness postulate — that one IS
+-- sound, since the argdriven eff-clause was added.)
 postulate
   subsume-residual : ∀ {ctx : NamedCtx} {e : RawExpr} {A B : Type}
       {Ψ : Surface.Usage (NamedCtx.size ctx)}
