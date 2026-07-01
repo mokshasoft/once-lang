@@ -24,7 +24,9 @@
 # Target-specific steps (step-target):
 #   make ccc-x86-64    - CCC code gen for X86-64
 #   make arith-x86-64  - Arithmetic primitives for X86-64
-#   make compiler-x86-64 - Full X86-64 compiler
+#   make compiler      - Verify the whole compiler (= certified; apex + bundle)
+#   make certified     - Correctness (CorrectCompiler) AND VerifiedTypeChecker
+#   make check-all     - Type-check EVERY module (island-rot backstop)
 #
 # Dead code analysis (requires patched Agda):
 #   make dead-code-ccc-x86-64 - Dead code analysis for X86-64 CCC
@@ -49,7 +51,7 @@ endef
 #-----------------------------------------------------------------------------
 
 .PHONY: all
-all: agda
+all: certified
 
 #-----------------------------------------------------------------------------
 # Pipeline: Frontend (target-independent)
@@ -197,17 +199,6 @@ arith-x86-64:
 # Full Compiler (frontend + target)
 #-----------------------------------------------------------------------------
 
-.PHONY: compiler-x86-64
-# Single entry point: typechecking Once/Compile/EndToEnd.agda transitively
-# pulls in every correctness island (parser, typechecker, desugar/optimize/
-# escape/fusion proofs, arith primitives, codegen+correctness wire-up) AND
-# composes elaborate-correct with compile-correct (the latter under named
-# postulates for the eval′↔eval mismatch; see Plan 0.4.2). If anything
-# the compiler depends on drifts, this fails — no other target needed.
-compiler-x86-64:
-	@echo "Build + verify X86-64 compiler (single entry: Once/Compile/EndToEnd.agda)..."
-	@sh -c '$(AGDA_CMD) Once/Compile/EndToEnd.agda'
-
 .PHONY: compiler-x86-32
 compiler-x86-32: frontend ccc-x86-32
 	@echo "X86-32 compiler proofs type-check successfully!"
@@ -216,13 +207,17 @@ compiler-x86-32: frontend ccc-x86-32
 compiler-riscv64: frontend ccc-riscv64
 	@echo "RISC-V 64 compiler proofs type-check successfully!"
 
-.PHONY: compiler-all
-compiler-all: compiler-x86-64 compiler-x86-32 compiler-riscv64
-	@echo "All-arch compiler proofs type-check successfully (x86-64 + x86-32 + riscv64)!"
-
+# The apex verification is `certified` (Once.Certified — the arch-generic
+# `CorrectCompiler` proof for every target via `arch-correctness`, conjoined
+# with the `VerifiedTypeChecker` bundle). The former `Once/Compile/EndToEnd.agda`
+# single-entry target was removed: that module no longer exists.
 .PHONY: compiler
-compiler: compiler-x86-64
-	@echo "All compiler proofs type-check successfully!"
+compiler: certified
+	@echo "Compiler verified (correctness + well-behavedness)!"
+
+.PHONY: compiler-all
+compiler-all: certified compiler-x86-32 compiler-riscv64
+	@echo "All-arch compiler proofs type-check successfully!"
 
 #-----------------------------------------------------------------------------
 # MAlonzo Extraction
