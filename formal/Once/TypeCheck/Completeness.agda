@@ -31,7 +31,7 @@ open import Data.Nat using (ℕ; zero; suc; _⊔_)
 open import Data.String using (String; _++_)
 open import Data.Integer using (ℤ)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Product using (∃; ∃-syntax; _×_; _,_; proj₁; proj₂)
+open import Data.Product using (∃; ∃-syntax; Σ-syntax; _×_; _,_; proj₁; proj₂)
 open import Relation.Nullary using (yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; trans; sym)
 open import Data.String.Properties as StrProp using (_≟_)
@@ -1038,30 +1038,46 @@ mutual
   -- `inspectCheckG` view as their value-lift `checkElabV` clauses, so the
   -- elaborator reduces (no `with checkG` opacity). `checkG-just` rules out the
   -- `cgv-nothing` branch (the value IS a `checkG`-success).
+  -- STRONG completeness for closed values (⊢ᵍ). Returns the full `checkElabV`
+  -- pair-equation + reconstructed ⊢ᶜ witness. The weak `gd-complete` is `cong
+  -- proj₁` of this (below). Most cases stay `refl` because `checkElabV` reduces
+  -- to `(success … , witness)` definitionally (via `checkIn`/`checkG` cgv-just).
+  -- STRONG-COMPLETENESS MIGRATION (branch): this is the value pillar of the one
+  -- mutual strong-completeness theorem. TODO: g-terminal needs a strong
+  -- checkElab-fallback-RVar-terminal (weak fallback returns proj₁ only).
+  gd-completeV : ∀ {ctx : NamedCtx} {e : RawExpr} {A : Type} {π : T.Purity} (X : Type)
+               → ctx ⊢ᵍ e ∶ A
+               → ∃[ eE ] ∃[ d ] ∃[ f' ]
+                   Σ[ w ∈ ctx ⊢ᶜ e ∶ (X T.⇒[ T.mk-kind T.Many π ] A) ⨾ Surface.zeroUsage ]
+                     checkElabV ctx e (X T.⇒[ T.mk-kind T.Many π ] A)
+                       ≡ (success Surface.zeroUsage eE d f' , w)
+  gd-completeV X (g-int n) = _ , _ , _ , _ , refl
+  gd-completeV {ctx = ctx} X (g-terminal eqL eqI) = TODO-gd-terminal-strong
+  gd-completeV {ctx = ctx} X (g-pair {a = a} {b = b} {A = A} {B = B} ga gb)
+    with inspectCheckG ctx X (Raw.RPair a b) (A T.* B) | checkG-just X (g-pair ga gb)
+  ... | cgv-just _      | _              = _ , _ , _ , _ , refl
+  ... | cgv-nothing eqN | _ , _ , eqJ    = nothing≢just (trans (sym eqN) eqJ)
+  gd-completeV {ctx = ctx} X (g-inl {arg = arg} {A = A} {B = B} ga)
+    with inspectCheckG ctx X (Raw.RApp (Raw.RVar "inl") arg) (A T.+ B) | checkG-just X (g-inl ga)
+  ... | cgv-just _      | _              = _ , _ , _ , _ , refl
+  ... | cgv-nothing eqN | _ , _ , eqJ    = nothing≢just (trans (sym eqN) eqJ)
+  gd-completeV {ctx = ctx} X (g-inr {arg = arg} {A = A} {B = B} gb)
+    with inspectCheckG ctx X (Raw.RApp (Raw.RVar "inr") arg) (A T.+ B) | checkG-just X (g-inr gb)
+  ... | cgv-just _      | _              = _ , _ , _ , _ , refl
+  ... | cgv-nothing eqN | _ , _ , eqJ    = nothing≢just (trans (sym eqN) eqJ)
+  gd-completeV {ctx = ctx} X (g-In {arg = arg} {F = F} eqWF garg)
+    with inspectCheckG ctx X (Raw.RApp (Raw.RVar "In") arg) (T.μ-type F) | checkG-just X (g-In eqWF garg)
+  ... | cgv-just _      | _              = _ , _ , _ , _ , refl
+  ... | cgv-nothing eqN | _ , _ , eqJ    = nothing≢just (trans (sym eqN) eqJ)
+
+  -- Weak form, demoted to a projection of the strong one.
   gd-complete : ∀ {ctx : NamedCtx} {e : RawExpr} {A : Type} {π : T.Purity} (X : Type)
               → ctx ⊢ᵍ e ∶ A
               → ∃[ eE ] ∃[ d ] ∃[ f' ]
                   checkElab ctx e (X T.⇒[ T.mk-kind T.Many π ] A)
                     ≡ success Surface.zeroUsage eE d f'
-  gd-complete X (g-int n) = _ , _ , _ , refl
-  gd-complete {ctx = ctx} X (g-terminal eqL eqI) =
-    checkElab-fallback-RVar-terminal {ctx} X eqL eqI
-  gd-complete {ctx = ctx} X (g-pair {a = a} {b = b} {A = A} {B = B} ga gb)
-    with inspectCheckG ctx X (Raw.RPair a b) (A T.* B) | checkG-just X (g-pair ga gb)
-  ... | cgv-just _      | _              = _ , _ , _ , refl
-  ... | cgv-nothing eqN | _ , _ , eqJ    = nothing≢just (trans (sym eqN) eqJ)
-  gd-complete {ctx = ctx} X (g-inl {arg = arg} {A = A} {B = B} ga)
-    with inspectCheckG ctx X (Raw.RApp (Raw.RVar "inl") arg) (A T.+ B) | checkG-just X (g-inl ga)
-  ... | cgv-just _      | _              = _ , _ , _ , refl
-  ... | cgv-nothing eqN | _ , _ , eqJ    = nothing≢just (trans (sym eqN) eqJ)
-  gd-complete {ctx = ctx} X (g-inr {arg = arg} {A = A} {B = B} gb)
-    with inspectCheckG ctx X (Raw.RApp (Raw.RVar "inr") arg) (A T.+ B) | checkG-just X (g-inr gb)
-  ... | cgv-just _      | _              = _ , _ , _ , refl
-  ... | cgv-nothing eqN | _ , _ , eqJ    = nothing≢just (trans (sym eqN) eqJ)
-  gd-complete {ctx = ctx} X (g-In {arg = arg} {F = F} eqWF garg)
-    with inspectCheckG ctx X (Raw.RApp (Raw.RVar "In") arg) (T.μ-type F) | checkG-just X (g-In eqWF garg)
-  ... | cgv-just _      | _              = _ , _ , _ , refl
-  ... | cgv-nothing eqN | _ , _ , eqJ    = nothing≢just (trans (sym eqN) eqJ)
+  gd-complete {π = π} X gd with gd-completeV {π = π} X gd
+  ... | eE , d , f' , _ , eq = eE , d , f' , cong proj₁ eq
 
   -- Full ⊢ᶜ walk: handles t-lam recursively and delegates t-embed
   -- to the per-shape fallback lemma.
