@@ -192,14 +192,32 @@ morph-elab (m-const gd) = const-morph-strong gd
 morph-elab (m-named ¬u eqL eqI) = named-morph-strong ¬u eqL eqI
 morph-elab (m-named-resolved eqI) = named-morph-strong-resolved eqI
 -- ---- recursive combinators ----
-morph-elab (m-compose {B = Bmid} eqB df dg) with morph-elab df | morph-elab dg
+-- Plan 0.52 (pure⊑eff): compose/case are grade-poly, but `checkCompose`/`checkCase`
+-- now have a SEPARATE eff-clause (the subsumption fallback), so they no longer
+-- reduce at an ABSTRACT π. We therefore case π here. `pure` hits the generic
+-- clause (proof unchanged); `eff` hits the eff-clause, whose genuinely-eff branch
+-- passes `checkComposeGo/checkCaseGo (eff)` through unchanged — driven by the same
+-- equations (a `rewrite` on the composeGo success for compose; the arm rewrites
+-- already reduce checkCaseGo for case).
+morph-elab (m-compose {B = Bmid} {π = T.pure} eqB df dg) with morph-elab df | morph-elab dg
 ... | (mf , mFᵐ , Ef , _ , _ , Wf , eqf , exEff-f , exW-f , cons-f) | (mg , mGᵐ , Eg , _ , _ , Wg , eqg , exEff-g , exW-g , cons-g)
       with composeGo-success eqB eqf eqg exEff-f exEff-g exW-f exW-g
 ...     | (m , d , fr , eqGo , m≡fg) =
         m , m-compose eqB mFᵐ mGᵐ , _ , d , fr , t-morph-lift (m-compose eqB mFᵐ mGᵐ) ,
         trans (sym (go-canonical eqB)) eqGo , refl , refl ,
         trans m≡fg (cong₂ IR._∘_ cons-f cons-g)
-morph-elab (m-case df dg) with morph-elab df | morph-elab dg
+morph-elab (m-compose {B = Bmid} {π = T.eff} eqB df dg) with morph-elab df | morph-elab dg
+... | (mf , mFᵐ , Ef , _ , _ , Wf , eqf , exEff-f , exW-f , cons-f) | (mg , mGᵐ , Eg , _ , _ , Wg , eqg , exEff-g , exW-g , cons-g)
+      with composeGo-success eqB eqf eqg exEff-f exEff-g exW-f exW-g
+...     | (m , d , fr , eqGo , m≡fg) rewrite trans (sym (go-canonical eqB)) eqGo =
+        m , m-compose eqB mFᵐ mGᵐ , _ , d , fr , t-morph-lift (m-compose eqB mFᵐ mGᵐ) ,
+        refl , refl , refl ,
+        trans m≡fg (cong₂ IR._∘_ cons-f cons-g)
+morph-elab (m-case {π = T.pure} df dg) with morph-elab df | morph-elab dg
+... | (mf , mFᵐ , Ef , _ , _ , Wf , eqf , exEff-f , exW-f , cons-f) | (mg , mGᵐ , Eg , _ , _ , Wg , eqg , exEff-g , exW-g , cons-g)
+      rewrite eqf | eqg | exEff-f | exEff-g | exW-f | exW-g =
+      _ , m-case mFᵐ mGᵐ , _ , _ , _ , _ , refl , refl , refl , cong₂ IR.case cons-f cons-g
+morph-elab (m-case {π = T.eff} df dg) with morph-elab df | morph-elab dg
 ... | (mf , mFᵐ , Ef , _ , _ , Wf , eqf , exEff-f , exW-f , cons-f) | (mg , mGᵐ , Eg , _ , _ , Wg , eqg , exEff-g , exW-g , cons-g)
       rewrite eqf | eqg | exEff-f | exEff-g | exW-f | exW-g =
       _ , m-case mFᵐ mGᵐ , _ , _ , _ , _ , refl , refl , refl , cong₂ IR.case cons-f cons-g

@@ -654,6 +654,65 @@ agree-compose ctx f_inner arg A C π (just B) eqB disp dγ k
 ...     | just _  | just _  | nothing | _ | ()
 ...     | just _  | just _  | just _  | nothing | ()
 
+-- Plan 0.52 (pure⊑eff): the `case` analogue of `agree-compose`, reasoning over
+-- `checkCaseGo` (grade-poly, no clause-split) so it is immune to the eff-clause.
+agree-caseGo : ∀ (ctx : NamedCtx) (f_inner arg : RawExpr) (A B C : Type) (π : Purity)
+  {Ψ : Usage (NamedCtx.size ctx)} {se : Expr (NamedCtx.debruijn ctx) Ψ ((A + B) ⇒[ mk-kind Many π ] C)}
+  {d fr : ℕ} {w : ctx ⊢ᶜ Raw.RApp (Raw.RApp (Raw.RVar "case") f_inner) arg ∶ ((A + B) ⇒[ mk-kind Many π ] C) ⨾ Ψ}
+  → E.checkCaseGo ctx f_inner arg A B C π ≡ (success Ψ se d fr , w)
+  → ∀ (dγ : Env ctx) (k : ℕ) → SD.⟦ se ⟧ˢ dγ k ≡ SD.⟦ realize w ⟧ˢ dγ k
+agree-caseGo ctx f_inner arg A B C π disp dγ k
+  with E.checkElabV ctx f_inner (A ⇒[ mk-kind Many π ] C) in eqf | disp
+... | failure _ , _ | ()
+... | success Ψf fE df frf , wF | disp'
+      with E.checkElabV ctx arg (B ⇒[ mk-kind Many π ] C) in eqg | disp'
+...   | failure _ , _ | ()
+...   | success Ψg gE dg frg , wG | disp''
+        with E.extract-morph-eff fE in exf | E.extract-morph-eff gE in exg | extractMorphWitness wF in exwf | extractMorphWitness wG in exwg | disp''
+...     | just (m_f , refl) | just (m_g , refl) | just mFᵐ | just mGᵐ | refl
+          rewrite morph-realize eqf exf exwf | morph-realize eqg exg exwg = refl
+...     | nothing | _ | _ | _ | ()
+...     | just _  | nothing | _ | _ | ()
+...     | just _  | just _  | nothing | _ | ()
+...     | just _  | just _  | just _  | nothing | ()
+
+-- eff-clause agreement for compose/case. Mirror the elaborator's eff-clause:
+-- the genuinely-eff Go succeeds (passthrough ⇒ delegate at eff), OR the pure
+-- fallback wraps in arr'/t-subsume — and since `⟦arr' x⟧ = ⟦x⟧` and `realize
+-- (t-subsume w) = arr' (realize w)` (both definitional), the subsumed goal
+-- reduces to the pure Go agreement.
+agree-compose-eff : ∀ (ctx : NamedCtx) (f_inner arg : RawExpr) (A C : Type)
+  {Ψ : Usage (NamedCtx.size ctx)} {se : Expr (NamedCtx.debruijn ctx) Ψ (A ⇒[ mk-kind Many eff ] C)}
+  {d fr : ℕ} {w : ctx ⊢ᶜ Raw.RApp (Raw.RApp (Raw.RVar "compose") f_inner) arg ∶ (A ⇒[ mk-kind Many eff ] C) ⨾ Ψ}
+  → E.checkCompose ctx (Raw.RApp (Raw.RVar "compose") f_inner) arg (A ⇒[ mk-kind Many eff ] C)
+      ≡ (success Ψ se d fr , w)
+  → ∀ (dγ : Env ctx) (k : ℕ) → SD.⟦ se ⟧ˢ dγ k ≡ SD.⟦ realize w ⟧ˢ dγ k
+agree-compose-eff ctx f_inner arg A C disp dγ k
+  with E.checkComposeGo ctx f_inner arg A C eff (composeMid ctx f_inner arg A) refl in eqEff | disp
+... | success Ψe eEe de fre , we | refl =
+      agree-compose ctx f_inner arg A C eff (composeMid ctx f_inner arg A) refl eqEff dγ k
+... | failure _ , _ | disp'
+      with E.checkComposeGo ctx f_inner arg A C pure (composeMid ctx f_inner arg A) refl in eqPure | disp'
+...   | success Ψp eEp dp frp , wp | refl =
+        agree-compose ctx f_inner arg A C pure (composeMid ctx f_inner arg A) refl eqPure dγ k
+...   | failure _ , _ | ()
+
+agree-caseGo-eff : ∀ (ctx : NamedCtx) (f_inner arg : RawExpr) (A B C : Type)
+  {Ψ : Usage (NamedCtx.size ctx)} {se : Expr (NamedCtx.debruijn ctx) Ψ ((A + B) ⇒[ mk-kind Many eff ] C)}
+  {d fr : ℕ} {w : ctx ⊢ᶜ Raw.RApp (Raw.RApp (Raw.RVar "case") f_inner) arg ∶ ((A + B) ⇒[ mk-kind Many eff ] C) ⨾ Ψ}
+  → E.checkCase ctx (Raw.RApp (Raw.RVar "case") f_inner) arg ((A + B) ⇒[ mk-kind Many eff ] C)
+      ≡ (success Ψ se d fr , w)
+  → ∀ (dγ : Env ctx) (k : ℕ) → SD.⟦ se ⟧ˢ dγ k ≡ SD.⟦ realize w ⟧ˢ dγ k
+agree-caseGo-eff ctx f_inner arg A B C disp dγ k
+  with E.checkCaseGo ctx f_inner arg A B C eff in eqEff | disp
+... | success Ψe eEe de fre , we | refl =
+      agree-caseGo ctx f_inner arg A B C eff eqEff dγ k
+... | failure _ , _ | disp'
+      with E.checkCaseGo ctx f_inner arg A B C pure in eqPure | disp'
+...   | success Ψp eEp dp frp , wp | refl =
+        agree-caseGo ctx f_inner arg A B C pure eqPure dγ k
+...   | failure _ , _ | ()
+
 ------------------------------------------------------------------------
 -- Companion of `checkElabV-RApp-other-argdriven-aux` (the `ahv-other`
 -- infer-failure fallback). `lhs`/`eqAH` are explicit so the dispatch reduces
@@ -882,24 +941,21 @@ agree-check-RApp ctx (Raw.RApp (Raw.RVar "pair") f_inner) arg (A ⇒[ mk-kind Ma
 ...     | just _  | just _  | just _  | nothing | ()
 -- ahv-case-applied: checkCase emits `lift-morphism (case m_f m_g)`, witness
 -- `t-morph-lift (m-case mFᵐ mGᵐ)`; rewrite both components.
-agree-check-RApp ctx (Raw.RApp (Raw.RVar "case") f_inner) arg ((A + B) ⇒[ mk-kind Many π ] C) E.ahv-case-applied veq disp inferIH argCheckIH argInferIH fCheckIH dγ k
-  with E.checkElabV ctx f_inner (A ⇒[ mk-kind Many π ] C) in eqf | disp
-... | failure _ , _ | ()
-... | success Ψf fE df frf , wF | disp'
-      with E.checkElabV ctx arg (B ⇒[ mk-kind Many π ] C) in eqg | disp'
-...   | failure _ , _ | ()
-...   | success Ψg gE dg frg , wG | disp''
-        with E.extract-morph-eff fE in exf | E.extract-morph-eff gE in exg | extractMorphWitness wF in exwf | extractMorphWitness wG in exwg | disp''
-...     | just (m_f , refl) | just (m_g , refl) | just mFᵐ | just mGᵐ | refl
-          rewrite morph-realize eqf exf exwf | morph-realize eqg exg exwg = refl
-...     | nothing | _ | _ | _ | ()
-...     | just _  | nothing | _ | _ | ()
-...     | just _  | just _  | nothing | _ | ()
-...     | just _  | just _  | just _  | nothing | ()
+-- Plan 0.52: case π (checkCase now has a separate eff-clause, so it no longer
+-- reduces at abstract π). pure → checkCaseGo directly (agree-caseGo); eff → the
+-- eff-clause (agree-caseGo-eff: passthrough or subsumed-pure).
+agree-check-RApp ctx (Raw.RApp (Raw.RVar "case") f_inner) arg ((A + B) ⇒[ mk-kind Many pure ] C) E.ahv-case-applied veq disp inferIH argCheckIH argInferIH fCheckIH dγ k =
+  agree-caseGo ctx f_inner arg A B C pure disp dγ k
+agree-check-RApp ctx (Raw.RApp (Raw.RVar "case") f_inner) arg ((A + B) ⇒[ mk-kind Many eff ] C) E.ahv-case-applied veq disp inferIH argCheckIH argInferIH fCheckIH dγ k =
+  agree-caseGo-eff ctx f_inner arg A B C disp dγ k
 -- ahv-compose-applied: delegate to agree-compose (mirrors checkCompose →
 -- checkComposeGo with composeMid + eqB explicit).
-agree-check-RApp ctx (Raw.RApp (Raw.RVar "compose") f_inner) arg (A ⇒[ mk-kind Many π ] C) E.ahv-compose-applied veq disp inferIH argCheckIH argInferIH fCheckIH dγ k =
-  agree-compose ctx f_inner arg A C π (composeMid ctx f_inner arg A) refl disp dγ k
+-- Plan 0.52: case π (as for `case`). pure → agree-compose over checkComposeGo;
+-- eff → agree-compose-eff (the eff-clause: passthrough or subsumed-pure).
+agree-check-RApp ctx (Raw.RApp (Raw.RVar "compose") f_inner) arg (A ⇒[ mk-kind Many pure ] C) E.ahv-compose-applied veq disp inferIH argCheckIH argInferIH fCheckIH dγ k =
+  agree-compose ctx f_inner arg A C pure (composeMid ctx f_inner arg A) refl disp dγ k
+agree-check-RApp ctx (Raw.RApp (Raw.RVar "compose") f_inner) arg (A ⇒[ mk-kind Many eff ] C) E.ahv-compose-applied veq disp inferIH argCheckIH argInferIH fCheckIH dγ k =
+  agree-compose-eff ctx f_inner arg A C disp dγ k
 -- ahv-apply (check): checkApply infers the arg; se = morph-app apply argE,
 -- witness t-apply-check w, realize = morph-app apply (realize-infer w) ⇒ plain
 -- morph-app congruence via the inferred-arg IH. Non-`(Many-pure-arrow * A)` args fail.

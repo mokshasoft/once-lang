@@ -1346,6 +1346,16 @@ mutual
   -- Plan 0.49 / D063: ONE grade-polymorphic clause (D056 — the bespoke eff
   -- copy is gone). Both arms must be morphisms (`extractMorphWitness`); emit the
   -- direct `lift-morphism (IR.case m_f m_g)`; no closure fallback.
+  -- Plan 0.52 (pure⊑eff): case at an EFF outer arrow — mirror of the compose
+  -- eff-clause. Try eff arms; else check the whole case at PURE and subsume.
+  checkCase ctx (Raw.RApp (Raw.RVar "case") f_inner) arg
+            ((A Once.Type.+ B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] C)
+    with checkCaseGo ctx f_inner arg A B C Once.Type.eff
+  ... | (success Ψ eE d fr , w) = success Ψ eE d fr , w
+  ... | (failure _ , _)
+        with checkCaseGo ctx f_inner arg A B C Once.Type.pure
+  ...     | (success Ψ eE d fr , w) = success Ψ (Surface.arr' eE) d fr , t-subsume w
+  ...     | (failure err , _) = failure err , tt
   checkCase ctx (Raw.RApp (Raw.RVar "case") f_inner) arg
             ((A Once.Type.+ B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] C) =
     checkCaseGo ctx f_inner arg A B C π
@@ -1379,6 +1389,19 @@ mutual
   -- closure fallback, `checkComposeWithB/g` retired). `composeMid` recovers B;
   -- both factors must be morphisms (`extractMorphWitness`); emit `lift-morphism
   -- (m_f ∘ m_g)`; witness `t-morph-lift (m-compose …)`.
+  -- Plan 0.52 (pure⊑eff): compose at an EFF outer arrow. First try the genuinely
+  -- eff path (arms checked at eff); if that fails (e.g. a pure-fixed arm like
+  -- `pair`/`curry`/a named import), check the whole compose at PURE and subsume
+  -- via arr'/t-subsume. This makes `checkElab (compose f g) (…eff…)` ACCEPT a
+  -- subsumed pure compose (soundness of the subsume-complete bridge).
+  checkCompose ctx (Raw.RApp (Raw.RVar "compose") f_inner) arg
+               (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] C)
+    with checkComposeGo ctx f_inner arg A C Once.Type.eff (composeMid ctx f_inner arg A) refl
+  ... | (success Ψ eE d fr , w) = success Ψ eE d fr , w
+  ... | (failure _ , _)
+        with checkComposeGo ctx f_inner arg A C Once.Type.pure (composeMid ctx f_inner arg A) refl
+  ...     | (success Ψ eE d fr , w) = success Ψ (Surface.arr' eE) d fr , t-subsume w
+  ...     | (failure err , _) = failure err , tt
   checkCompose ctx (Raw.RApp (Raw.RVar "compose") f_inner) arg
                (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] C) =
     checkComposeGo ctx f_inner arg A C π (composeMid ctx f_inner arg A) refl
