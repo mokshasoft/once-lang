@@ -266,6 +266,7 @@ library
       MAlonzo.Code.Once.Allocator.AbstractInstance
       MAlonzo.Code.Once.Allocator.Interface
       MAlonzo.Code.Once.Arith.Backend.RiscV64.Emit
+      MAlonzo.Code.Once.Arith.Backend.X86Z45Z32.Emit
       MAlonzo.Code.Once.Arith.Backend.X86.CodeGen
       MAlonzo.Code.Once.Arith.Backend.X86.Emit
       MAlonzo.Code.Once.Arith.Backend.X86.Syntax

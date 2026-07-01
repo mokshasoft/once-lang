@@ -78,6 +78,8 @@ showInstr (pop r)        = "    popl "  ++ showReg r
 showInstr nop            = "    nop"
 showInstr ud2            = "    ud2"
 showInstr (label n)      = ".L" ++ showNat n ++ ":"
+showInstr (mov-code r n) = "    movl $.L_thunk_" ++ showNat n ++ ", " ++ showReg r
+showInstr (jmp-l n)      = "    jmp .L" ++ showNat n
 
 ------------------------------------------------------------------------
 -- Program emission

@@ -1,0 +1,42 @@
+# ======================================================================
+# Linux Syscall Primitives - x86-32 (i386) Implementation
+# ======================================================================
+#
+# Plan 0.53: i386 counterpart of Syscalls.x86_64. i386 uses the `int $0x80`
+# syscall gate with syscall numbers in %eax and args in %ebx,%ecx,%edx,...
+# (DIFFERENT numbers from x86_64). Bare symbol names (`exit`, ...) are aliased
+# to the mangled `once_...` names by objcopy per the interpretation module's
+# `signature` lines (arch-independent).
+#
+# Once SigOp ABI on x86-32: the operation's Int argument arrives in %ecx
+# (Input1, the analogue of x86_64's %rdi); results return in %eax (Output).
+# ======================================================================
+
+.equ SYS_exit,          1
+.equ SYS_exit_group,    252
+.equ SYS_read,          3
+.equ SYS_write,         4
+
+.section .text
+
+# ----------------------------------------------------------------------
+# exit0 - Exit with code 0. Input: Unit (ignored). Does not return.
+# ----------------------------------------------------------------------
+.global exit0
+.type exit0, @function
+exit0:
+    movl    $SYS_exit_group, %eax
+    xorl    %ebx, %ebx              # status = 0
+    int     $0x80
+.size exit0, .-exit0
+
+# ----------------------------------------------------------------------
+# exit - Exit with given code. Input: Int (exit code) in %ecx. No return.
+# ----------------------------------------------------------------------
+.global exit
+.type exit, @function
+exit:
+    movl    %ecx, %ebx             # status = Input1 (%ecx)
+    movl    $SYS_exit_group, %eax
+    int     $0x80
+.size exit, .-exit

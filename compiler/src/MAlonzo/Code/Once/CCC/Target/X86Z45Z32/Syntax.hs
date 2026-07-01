@@ -44,13 +44,14 @@ data T_Instr_44
     C_test_60 T_Operand_36 T_Operand_36 | C_jmp_62 T_Operand_36 |
     C_jne_64 Integer | C_je_66 Integer | C_call_68 T_Operand_36 |
     C_call'45'sym_70 MAlonzo.Code.Agda.Builtin.String.T_String_6 |
-    C_ret_72 | C_nop_74 | C_ud2_76 | C_label_78 Integer
+    C_ret_72 | C_nop_74 | C_ud2_76 | C_label_78 Integer |
+    C_mov'45'code_80 T_Reg_10 Integer | C_jmp'45'l_82 Integer
 -- Once.CCC.Target.X86-32.Syntax.Program
-d_Program_80 :: ()
-d_Program_80 = erased
+d_Program_84 :: ()
+d_Program_84 = erased
 -- Once.CCC.Target.X86-32.Syntax.slot-size
-d_slot'45'size_82 :: Integer
-d_slot'45'size_82 = coe (4 :: Integer)
+d_slot'45'size_86 :: Integer
+d_slot'45'size_86 = coe (4 :: Integer)
 -- Once.CCC.Target.X86-32.Syntax.slots
-d_slots_84 :: Integer -> Integer
-d_slots_84 v0 = coe mulInt (coe v0) (coe d_slot'45'size_82)
+d_slots_88 :: Integer -> Integer
+d_slots_88 v0 = coe mulInt (coe v0) (coe d_slot'45'size_86)

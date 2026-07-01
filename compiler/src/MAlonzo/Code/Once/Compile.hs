@@ -804,7 +804,7 @@ d_archTarget_606 v0
       MAlonzo.Code.Once.Target.Arch.C_x86'45'64_8
         -> coe MAlonzo.Code.Once.Target.X86Z45Z64.d_x86'45'64_84
       MAlonzo.Code.Once.Target.Arch.C_x86'45'32_10
-        -> coe MAlonzo.Code.Once.Target.X86Z45Z32.d_x86'45'32_36
+        -> coe MAlonzo.Code.Once.Target.X86Z45Z32.d_x86'45'32_86
       MAlonzo.Code.Once.Target.Arch.C_riscv64_12
         -> coe MAlonzo.Code.Once.Target.RiscV64.d_riscv64_88
       _ -> MAlonzo.RTE.mazUnreachableError

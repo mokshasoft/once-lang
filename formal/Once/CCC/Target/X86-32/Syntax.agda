@@ -123,6 +123,12 @@ data Instr : Set where
 
   -- Assembly pseudo-instructions
   label : ℕ → Instr                   -- .L<n>:
+  -- Plan 0.53: load a code-label (thunk body) address into a register —
+  -- `movl $.L_thunk_<n>, <reg>` (absolute; non-PIE static exe). And an
+  -- unconditional jump to a `.L<n>` label (the plain `jmp (imm n)` prints a
+  -- bare number, not a label).
+  mov-code : Reg → ℕ → Instr          -- movl $.L_thunk_<n>, reg
+  jmp-l    : ℕ → Instr                -- jmp .L<n>
 
 ------------------------------------------------------------------------
 -- Programs

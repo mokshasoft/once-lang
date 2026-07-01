@@ -254,6 +254,13 @@ execInstr prog s ud2 =
 execInstr prog s (label _) =
   just (record s { pc = pc s + 1 })
 
+-- Plan 0.53: pseudo-instructions used only for runtime emission; the
+-- abstract model isn't exercised here (the apex is FS-generic).
+execInstr prog s (mov-code _ _) =
+  just (record s { pc = pc s + 1 })
+execInstr prog s (jmp-l _) =
+  just (record s { pc = pc s + 1 })
+
 ------------------------------------------------------------------------
 -- Program execution
 ------------------------------------------------------------------------
