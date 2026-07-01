@@ -3,49 +3,34 @@
 
 -- | Layer 5 codegen tests: structured recursion (catamorphisms).
 --
--- Compiles a `.once` program that uses `cata` over a μ-type to an executable
--- and verifies the exit code. Drives Plan 0.28 (cata surface-reachability).
+-- Compiles `.once` programs that use `cata` over a μ-type to executables and
+-- verifies the exit code. Plan 0.53: each runs on every backend arch
+-- (x86_64 native, x86_32 / riscv64 under qemu) via the shared `exitCases`.
 --
 -- Run with: cabal test --test-option='-p "/Layer5/"'
 
 module Layer5Spec (layer5Tests) where
 
 import Test.Tasty
-import Test.Tasty.HUnit
 
-import qualified Data.Text.IO as TIO
-import System.Directory (createDirectoryIfMissing)
-import System.Exit (ExitCode (..))
-import System.FilePath ((</>))
-import System.Process (readProcessWithExitCode)
-
-import Backend.Common (runOnce, cleanupDir)
+import Backend.Common (exitCases)
 
 layer5Tests :: TestTree
 layer5Tests = testGroup "Layer5"
-  [ isEvenTest
-  , testGroup "cata-general (Plan 0.36 Phase 0 — RED until functor-general codegen)"
-      [ exitTest name code | (name, code) <- cataGeneralCases ]
+  [ exitCases "cata isEven of an even Nat (exit 42)" "layer5-iseven" 42
+  , testGroup "cata-general (Plan 0.36 Phase 0)"
+      [ exitCases name name code | (name, code) <- cataGeneralCases ]
   , testGroup "cata-effectful (Plan 0.36)"
       -- Both effect-emitting catas build and run to their sentinel (exit 7).
       -- `emit@E` is a runtime nop in the shipped interpretation, so the exit
       -- code is the observable here; the emit trace itself is exercised by
       -- TraceSpec (against the observable test interpretation).
-      [ exitTest name 7 | name <- cataEffectfulCases ]
+      [ exitCases name name 7 | name <- cataEffectfulCases ]
   ]
-
--- | isEven (two) is even, mapped to exit code 42 via case.
-isEvenTest :: TestTree
-isEvenTest = testCase "cata isEven of an even Nat (exit 42)" $ do
-  result <- buildAndRun "layer5-iseven" 42
-  case result of
-    Left err -> assertFailure err
-    Right () -> return ()
 
 -- | Plan 0.36 Phase-0 north-star matrix: one cata per polynomial-functor
 -- shape (K/Id/+/*), each fold's value observed as the `exit` argument.
--- All RED until the functor-general cata codegen (Phase 2) lands; shape #5
--- (leaf tree, two recursive positions) is the decisive non-Nat case.
+-- Shape #5 (leaf tree, two recursive positions) is the decisive non-Nat case.
 cataGeneralCases :: [(String, Int)]
 cataGeneralCases =
   [ ("layer5-cata-degenerate",      42)  -- #1 Mu (K Int), 0 rec positions
@@ -59,53 +44,11 @@ cataGeneralCases =
   , ("layer5-cata-nestedprod-sum",  42)  -- #9 Mu (K Unit + ((K Int * K Int) * Id))
   ]
 
-
--- | The two effect-emitting cata north-star fixtures (Plan 0.36). Both now
--- build and run to the sentinel exit 7; the algebra invokes `emit@E` per
--- emitting layer (a runtime nop in the shipped interpretation).
+-- | The two effect-emitting cata north-star fixtures (Plan 0.36). Both build
+-- and run to the sentinel exit 7; the algebra invokes `emit@E` per emitting
+-- layer (a runtime nop in the shipped interpretation).
 cataEffectfulCases :: [String]
 cataEffectfulCases =
   [ "layer5-cata-list-emit"      -- trace [emit 5, emit 3, exit 7]
   , "layer5-cata-leaftree-emit"  -- crown: trace [emit 40, emit 2, exit 7]
   ]
-
--- | Build a `.once` program and assert it exits with the given code.
-exitTest :: String -> Int -> TestTree
-exitTest name code = testCase (name ++ " (exit " ++ show code ++ ")") $ do
-  result <- buildAndRun name code
-  case result of
-    Left err -> assertFailure err
-    Right () -> return ()
-
-------------------------------------------------------------------------
--- Test Helpers (same shape as Layer0Spec.buildAndRun)
-------------------------------------------------------------------------
-
-buildAndRun :: String -> Int -> IO (Either String ())
-buildAndRun name expectedExitCode = do
-  let testDir = "/tmp/once_" ++ name
-      srcFile = "test/" ++ name ++ ".once"
-      exeFile = testDir </> name
-
-  createDirectoryIfMissing True testDir
-  source <- TIO.readFile srcFile
-  TIO.writeFile (testDir </> name ++ ".once") source
-
-  (buildExit, _buildOut, buildErr) <- runOnce
-    ["build", "--target", "x86_64", "--no-optimize", "--exe",
-     testDir </> name ++ ".once", "-o", exeFile]
-
-  case buildExit of
-    ExitFailure _ -> do
-      cleanupDir testDir
-      return $ Left $ "Build failed: " ++ buildErr
-    ExitSuccess -> do
-      (runExit, _runOut, runErr) <- readProcessWithExitCode exeFile [] ""
-      cleanupDir testDir
-      case runExit of
-        ExitFailure code | code == expectedExitCode -> return $ Right ()
-        ExitFailure code -> return $ Left $
-          "Wrong exit code: expected " ++ show expectedExitCode ++
-          " but got " ++ show code ++ (if null runErr then "" else " (" ++ runErr ++ ")")
-        ExitSuccess -> return $ Left $
-          "Expected exit code " ++ show expectedExitCode ++ " but got 0 (success)"
