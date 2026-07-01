@@ -6,14 +6,14 @@
 -- leaf's Int. Combines the case the legacy codegen could not do (two recursive
 -- children) with effect ORDERING across them.
 --
--- Point-free / effect-sequenced, like layer5-cata-list-emit.once: `arr` lifts
--- pure morphisms into the effect realm and `compose` sequences the effectful
--- cata into main's chain so its emissions fire. `emit@E` is the test-local
--- Emits SigOp (signature emit : Eff Int Unit; runtime nop).
+-- Compiles + runs to the exit-7 sentinel (the suite's assertion). `emit@E` is
+-- the test-local Emits SigOp (runtime nop in the shipped interpretation; the
+-- emit ORDERING is exercised by TraceSpec against the byte interpretation).
 --
--- cata folds the children before the node, so node(leaf 40, leaf 2) emits 40
--- then 2. Expected observable TRACE [ emit 40 , emit 2 , linux.exit 7 ]; the
--- exit code is the run-completed sentinel and the suite's assertion.
+-- Plan 0.52 retired `arr`; the algebra composes the eff SigOp with the builtin
+-- `terminal`, and `emitTree` is applied to `t` in a `let` (composing a
+-- user-named cata as a morphism arm is a separate open frontend item — see
+-- plans/0.53-HANDOFF-compose-pure-eff-subsumption.md).
 
 import I.Linux.Syscalls as S
 import I.Test.Emit as E
@@ -22,17 +22,11 @@ import I.Test.Emit as E
 t : Mu (K Int + (Id * Id))
 t = In (inr (In (inl 40), In (inl 2)))
 
-getT : Unit -> Mu (K Int + (Id * Id))
-getT u = t
-
-seven : Unit -> Int
-seven u = 7
-
 -- algebra over `K Int + (Id * Id)` (recursive positions already folded to Unit):
---   leaf (K Int):        emit@E             -- emit the leaf value
---   node (Unit * Unit):  arr terminal       -- children already emitted; emit nothing
+--   leaf (K Int):        emit@E       -- emit the leaf value
+--   node (Unit * Unit):  terminal     -- children already emitted; emit nothing
 emitTree : Eff (Mu (K Int + (Id * Id))) Unit
-emitTree = cata (case emit@E (arr terminal))
+emitTree = cata (case emit@E terminal)
 
 main : IO Unit
-main = compose exit@S (compose (arr seven) (compose emitTree (arr getT)))
+main = let r = emitTree t in exit@S 7

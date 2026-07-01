@@ -24,45 +24,39 @@ import qualified Data.Text as T
 import Backend.Common (buildAndRunTrace)
 
 traceTests :: TestTree
+-- Plan 0.52 retired `arr`; the const morphisms are written as integer
+-- literals directly (global elements — the same denotation as `arr cN`).
+-- Effect ordering + exit code are unchanged; the compose chains are identical.
 traceTests = testGroup "Effect traces (observable)"
   [ traceTest "exit only is an empty emit trace"
-      [ "c5 : Unit -> Int", "c5 u = 5" ]
-      [ "main = compose exit@S (arr c5)" ]
+      []
+      [ "main = compose exit@S 5" ]
       [] 5
 
   , traceTest "single emit then exit"
-      [ "c42 : Unit -> Int", "c42 u = 42"
-      , "c0 : Unit -> Int",  "c0 u = 0"
-      ]
-      [ "main = compose exit@S (compose (arr c0) (compose emit@E (arr c42)))" ]
+      []
+      [ "main = compose exit@S (compose 0 (compose emit@E 42))" ]
       [42] 0
 
   , traceTest "two emits preserve order (emit 5 before emit 3)"
-      [ "c5 : Unit -> Int", "c5 u = 5"
-      , "c3 : Unit -> Int", "c3 u = 3"
-      , "c7 : Unit -> Int", "c7 u = 7"
-      ]
+      []
       [ "main = compose exit@S"
-      , "         (compose (arr c7)"
+      , "         (compose 7"
       , "           (compose emit@E"
-      , "             (compose (arr c3)"
-      , "               (compose emit@E (arr c5)))))"
+      , "             (compose 3"
+      , "               (compose emit@E 5))))"
       ]
       [5, 3] 7
 
   , traceTest "three emits preserve order and arguments"
-      [ "c1 : Unit -> Int", "c1 u = 1"
-      , "c2 : Unit -> Int", "c2 u = 2"
-      , "c3 : Unit -> Int", "c3 u = 3"
-      , "c9 : Unit -> Int", "c9 u = 9"
-      ]
+      []
       [ "main = compose exit@S"
-      , "         (compose (arr c9)"
+      , "         (compose 9"
       , "           (compose emit@E"
-      , "             (compose (arr c3)"
+      , "             (compose 3"
       , "               (compose emit@E"
-      , "                 (compose (arr c2)"
-      , "                   (compose emit@E (arr c1)))))))"
+      , "                 (compose 2"
+      , "                   (compose emit@E 1))))))"
       ]
       [1, 2, 3] 9
   ]

@@ -2,18 +2,15 @@
 -- Copyright (C) 2025-2026 Jonas Claesson and contributors
 
 -- Point-free effectful cata (Plan 0.36). Compiles and runs to its sentinel
--- exit 7 (it was blocked only by the I.Test.Emit impl's wrong symbol, fixed by
--- the interpretation symbol-aliasing change). Observable TRACE is
--- [emit 5, emit 3, linux.exit 7]; the exit code is the run-completed sentinel.
-
--- Plan 0.36 north-star (EFFECTFUL). Functor #3 (List Int), effect-emitting:
--- the cata algebra invokes the test-local `emit` Emits SigOp once per cons
--- layer. Tests effect ORDERING (cata folds bottom-up: [3,5] emits 5 then 3).
--- Point-free / effect-sequenced (D032 grade-polymorphic composition): `arr`
--- lifts pure morphisms into the effect realm; `compose` sequences the
--- effectful cata into main's chain so its emissions actually fire.
--- Expected observable TRACE: [ emit 5 , emit 3 , linux.exit 7 ]; the binary
--- runs to exit 7 (emit = runtime nop).
+-- exit 7. The effect-emitting cata algebra invokes the test-local `emit` Emits
+-- SigOp once per cons layer (a runtime nop in the shipped interpretation, so
+-- the observable here is the exit code; the emit ORDERING itself is exercised
+-- by TraceSpec against the byte-writing test interpretation).
+--
+-- Plan 0.52 retired `arr`; the algebra composes an eff SigOp with the builtin
+-- `fst`/`terminal` morphisms directly, and `emitAll` is applied to `xs` in a
+-- `let` (composing a user-named cata as a morphism arm is a separate open
+-- frontend item — see plans/0.53-HANDOFF-compose-pure-eff-subsumption.md).
 
 import I.Linux.Syscalls as S
 import I.Test.Emit as E
@@ -22,16 +19,10 @@ import I.Test.Emit as E
 xs : Mu (K Unit + (K Int * Id))
 xs = In (inr (3, In (inr (5, In (inl unit)))))
 
-getXs : Unit -> Mu (K Unit + (K Int * Id))
-getXs u = xs
-
-seven : Unit -> Int
-seven u = 7
-
 -- algebra : (Unit + (Int * Unit)) ->[eff] Unit  (nil: unit; cons: emit head)
 emitAll : Eff (Mu (K Unit + (K Int * Id))) Unit
-emitAll = cata (case (arr terminal) (compose emit@E (arr fst)))
+emitAll = cata (case terminal (compose emit@E fst))
 
--- run emitAll on xs (sequenced into main's effect chain), then exit 7.
+-- run emitAll on xs, then exit 7.
 main : IO Unit
-main = compose exit@S (compose (arr seven) (compose emitAll (arr getXs)))
+main = let r = emitAll xs in exit@S 7
