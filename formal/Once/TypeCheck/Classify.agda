@@ -365,71 +365,10 @@ data PolyBuiltinApp : Set where
   pba-In : PolyBuiltinApp                               -- 1-arg `In arg`, check mode (μ intro)
   pba-cata : PolyBuiltinApp                             -- 1-arg `cata alg`, check mode (fold)
 
--- | Classify an application head. `just <pba>` iff the head is an
--- `RVar` bound to one of the seven polymorphic builtins; `nothing`
--- otherwise, in which case the generic application rule applies.
-classifyAppHead : RawExpr → Maybe PolyBuiltinApp
-classifyAppHead (Raw.RVar x) with StrProp._≟_ x "id"
-... | yes _ = just pba-id
-... | no  _ with StrProp._≟_ x "fst"
-...   | yes _ = just pba-fst
-...   | no  _ with StrProp._≟_ x "snd"
-...     | yes _ = just pba-snd
-...     | no  _ with StrProp._≟_ x "terminal"
-...       | yes _ = just pba-terminal
-...       | no  _ with StrProp._≟_ x "inl"
-...         | yes _ = just pba-inl
-...         | no  _ with StrProp._≟_ x "inr"
-...           | yes _ = just pba-inr
-...           | no  _ with StrProp._≟_ x "initial"
-...             | yes _ = just pba-initial
-...             | no  _ with StrProp._≟_ x "curry"
-...               | yes _ = just pba-curry
-...               | no  _ with StrProp._≟_ x "apply"
-...                 | yes _ = just pba-apply
-...                 | no  _ with StrProp._≟_ x "In"
-...                   | yes _ = just pba-In
-...                   | no  _ with StrProp._≟_ x "cata"
-...                     | yes _ = just pba-cata
-...                     | no  _ = nothing
--- Applied-form heads: `RApp (RVar "pair" | "compose") _`. Plan 0.6
--- Phase C.7 POC-2 / POC-3.
-classifyAppHead (Raw.RApp (Raw.RVar x) _) with StrProp._≟_ x "pair"
-... | yes _ = just pba-pair-applied
-... | no  _ with StrProp._≟_ x "compose"
-...   | yes _ = just pba-compose-applied
-...   | no  _ with StrProp._≟_ x "case"
-...     | yes _ = just pba-case-applied
-...     | no  _ = nothing
--- RApp with non-RVar head: not a builtin reference.
-classifyAppHead (Raw.RApp (Raw.RApp _ _) _)         = nothing
-classifyAppHead (Raw.RApp (Raw.RQualified _ _) _)   = nothing
-classifyAppHead (Raw.RApp (Raw.RResolved _) _)      = nothing
-classifyAppHead (Raw.RApp (Raw.RLam _ _) _)         = nothing
-classifyAppHead (Raw.RApp (Raw.RLet _ _ _) _)       = nothing
-classifyAppHead (Raw.RApp (Raw.RPair _ _) _)        = nothing
-classifyAppHead (Raw.RApp (Raw.RDestruct _ _ _ _ _) _) = nothing
-classifyAppHead (Raw.RApp Raw.RUnit _)              = nothing
-classifyAppHead (Raw.RApp (Raw.RInt _) _)           = nothing
-classifyAppHead (Raw.RApp (Raw.RStringLit _) _)     = nothing
-classifyAppHead (Raw.RApp (Raw.RAnnot _ _) _)       = nothing
-classifyAppHead (Raw.RApp (Raw.RBinOp _ _ _) _)     = nothing
-classifyAppHead (Raw.RApp (Raw.RUnaryOp _ _) _)     = nothing
-classifyAppHead (Raw.RApp (Raw.RAna _ _) _)         = nothing
--- Non-RApp / non-RVar heads.
-classifyAppHead (Raw.RAna _ _)            = nothing
-classifyAppHead (Raw.RQualified _ _)      = nothing
-classifyAppHead (Raw.RResolved _)         = nothing
-classifyAppHead (Raw.RLam _ _)            = nothing
-classifyAppHead (Raw.RLet _ _ _)          = nothing
-classifyAppHead (Raw.RPair _ _)           = nothing
-classifyAppHead (Raw.RDestruct _ _ _ _ _) = nothing
-classifyAppHead Raw.RUnit                 = nothing
-classifyAppHead (Raw.RInt _)              = nothing
-classifyAppHead (Raw.RStringLit _)        = nothing
-classifyAppHead (Raw.RAnnot _ _)          = nothing
-classifyAppHead (Raw.RBinOp _ _ _)        = nothing
-classifyAppHead (Raw.RUnaryOp _ _)        = nothing
+-- | `classifyAppHead` (head → `Maybe PolyBuiltinApp`) is DEFINED BELOW, after
+-- `classifyAppHeadView`, as `viewToPba ∘ classifyAppHeadView` — a single source
+-- of truth for the string dispatch (OCP-0008 de-withing). The old parallel
+-- nested-≟ ladder is retired; the two compat bridges collapse to near-trivial.
 
 -- | View-type classification of an application head. Each constructor
 -- fixes the head's concrete RawExpr shape via an index, so pattern-
@@ -517,6 +456,31 @@ classifyAppHeadView (Raw.RAnnot _ _)          = ahv-other
 classifyAppHeadView (Raw.RBinOp _ _ _)        = ahv-other
 classifyAppHeadView (Raw.RUnaryOp _ _)        = ahv-other
 
+-- | Map an app-head VIEW to its `Maybe PolyBuiltinApp`. This is the single
+-- source of truth linking the view to the `Maybe`-return classifier.
+viewToPba : ∀ {f} → AppHeadView f → Maybe PolyBuiltinApp
+viewToPba ahv-id              = just pba-id
+viewToPba ahv-fst             = just pba-fst
+viewToPba ahv-snd             = just pba-snd
+viewToPba ahv-terminal        = just pba-terminal
+viewToPba ahv-inl             = just pba-inl
+viewToPba ahv-inr             = just pba-inr
+viewToPba ahv-initial         = just pba-initial
+viewToPba ahv-curry           = just pba-curry
+viewToPba ahv-apply           = just pba-apply
+viewToPba ahv-In              = just pba-In
+viewToPba ahv-cata            = just pba-cata
+viewToPba ahv-pair-applied    = just pba-pair-applied
+viewToPba ahv-compose-applied = just pba-compose-applied
+viewToPba ahv-case-applied    = just pba-case-applied
+viewToPba ahv-other           = nothing
+
+-- | `classifyAppHead` derived from the view (OCP-0008 single-dispatch). Reduces
+-- to exactly the same values as the retired parallel ladder (e.g.
+-- `classifyAppHead (RVar "id") = viewToPba ahv-id = just pba-id`).
+classifyAppHead : RawExpr → Maybe PolyBuiltinApp
+classifyAppHead f = viewToPba (classifyAppHeadView f)
+
 -- | Compat: `classifyAppHead f ≡ nothing` ⇔ `classifyAppHeadView f ≡
 -- ahv-other`. Needed because existing downstream proofs (Judgment's
 -- t-app premise, Soundness's sound-RApp-generic, etc.) use
@@ -524,95 +488,24 @@ classifyAppHeadView (Raw.RUnaryOp _ _)        = ahv-other
 -- new proofs (`checkElab-fallback-RApp-generic` below).
 classifyAppHead-nothing⇒view-other :
   ∀ {f} → classifyAppHead f ≡ nothing → classifyAppHeadView f ≡ ahv-other
--- Non-RVar heads: both classifyAppHead and classifyAppHeadView
--- reduce definitionally to their respective nothing / ahv-other.
--- Plan 0.6 Phase C.7 POC-2: the RApp case now has a nested match
--- on `RApp (RVar "pair") _`. Split: if head is `RVar "pair"`,
--- classifyAppHead returns `just pba-pair-applied` (so the premise
--- `≡ nothing` is impossible); otherwise uniform `refl`.
-classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RVar s) _} p with StrProp._≟_ s "pair"
-... | yes _ with p
-...   | ()
-classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RVar s) _} p | no _ with StrProp._≟_ s "compose"
-... | yes _ with p
-...   | ()
-classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RVar s) _} p | no _ | no _ with StrProp._≟_ s "case"
-... | yes _ with p
-...   | ()
-classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RVar _) _} _ | no _ | no _ | no _ = refl
-classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RApp _ _) _}       _ = refl
-classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RQualified _ _) _} _ = refl
-classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RResolved _) _}    _ = refl
-classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RLam _ _) _}       _ = refl
-classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RLet _ _ _) _}     _ = refl
-classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RPair _ _) _}      _ = refl
-classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RDestruct _ _ _ _ _) _} _ = refl
-classifyAppHead-nothing⇒view-other {Raw.RApp Raw.RUnit _}            _ = refl
-classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RInt _) _}         _ = refl
-classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RStringLit _) _}   _ = refl
-classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RAnnot _ _) _}     _ = refl
-classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RBinOp _ _ _) _}   _ = refl
-classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RUnaryOp _ _) _}   _ = refl
-classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RAna _ _) _}       _ = refl
-classifyAppHead-nothing⇒view-other {Raw.RQualified _ _}     _ = refl
-classifyAppHead-nothing⇒view-other {Raw.RResolved _}        _ = refl
-classifyAppHead-nothing⇒view-other {Raw.RLam _ _}           _ = refl
-classifyAppHead-nothing⇒view-other {Raw.RLet _ _ _}         _ = refl
-classifyAppHead-nothing⇒view-other {Raw.RPair _ _}          _ = refl
-classifyAppHead-nothing⇒view-other {Raw.RDestruct _ _ _ _ _} _ = refl
-classifyAppHead-nothing⇒view-other {Raw.RUnit}              _ = refl
-classifyAppHead-nothing⇒view-other {Raw.RInt _}             _ = refl
-classifyAppHead-nothing⇒view-other {Raw.RStringLit _}       _ = refl
-classifyAppHead-nothing⇒view-other {Raw.RAnnot _ _}         _ = refl
-classifyAppHead-nothing⇒view-other {Raw.RBinOp _ _ _}       _ = refl
-classifyAppHead-nothing⇒view-other {Raw.RUnaryOp _ _}       _ = refl
-classifyAppHead-nothing⇒view-other {Raw.RAna _ _}           _ = refl
--- RVar: both dispatches walk the same 7-string chain; show the
--- result alignment case-by-case.
-classifyAppHead-nothing⇒view-other {Raw.RVar s} p with StrProp._≟_ s "id"
-... | yes _ with p
-...   | ()
-classifyAppHead-nothing⇒view-other {Raw.RVar s} p | no _
-  with StrProp._≟_ s "fst"
-... | yes _ with p
-...   | ()
-classifyAppHead-nothing⇒view-other {Raw.RVar s} p | no _ | no _
-  with StrProp._≟_ s "snd"
-... | yes _ with p
-...   | ()
-classifyAppHead-nothing⇒view-other {Raw.RVar s} p | no _ | no _ | no _
-  with StrProp._≟_ s "terminal"
-... | yes _ with p
-...   | ()
-classifyAppHead-nothing⇒view-other {Raw.RVar s} p | no _ | no _ | no _ | no _
-  with StrProp._≟_ s "inl"
-... | yes _ with p
-...   | ()
-classifyAppHead-nothing⇒view-other {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _
-  with StrProp._≟_ s "inr"
-... | yes _ with p
-...   | ()
-classifyAppHead-nothing⇒view-other {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _ | no _
-  with StrProp._≟_ s "initial"
-... | yes _ with p
-...   | ()
-classifyAppHead-nothing⇒view-other {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _ | no _ | no _
-  with StrProp._≟_ s "curry"
-... | yes _ with p
-...   | ()
-classifyAppHead-nothing⇒view-other {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _
-  with StrProp._≟_ s "apply"
-... | yes _ with p
-...   | ()
-classifyAppHead-nothing⇒view-other {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _
-  with StrProp._≟_ s "In"
-... | yes _ with p
-...   | ()
-classifyAppHead-nothing⇒view-other {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _
-  with StrProp._≟_ s "cata"
-... | yes _ with p
-...   | ()
-classifyAppHead-nothing⇒view-other {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ = refl
+-- classifyAppHead = viewToPba ∘ classifyAppHeadView, so case the view: every
+-- builtin constructor makes viewToPba ≡ just _ (contradicts p); only ahv-other.
+classifyAppHead-nothing⇒view-other {f} p with classifyAppHeadView f | p
+... | ahv-id              | ()
+... | ahv-fst             | ()
+... | ahv-snd             | ()
+... | ahv-terminal        | ()
+... | ahv-inl             | ()
+... | ahv-inr             | ()
+... | ahv-initial         | ()
+... | ahv-curry           | ()
+... | ahv-apply           | ()
+... | ahv-In              | ()
+... | ahv-cata            | ()
+... | ahv-pair-applied    | ()
+... | ahv-compose-applied | ()
+... | ahv-case-applied    | ()
+... | ahv-other           | _  = refl
 
 -- Reverse bridge (Plan 0.4 T0 Option A): from view ≡ ahv-other to
 -- classifyAppHead ≡ nothing. Needed by `infer-sound`'s ahv-other
@@ -620,87 +513,9 @@ classifyAppHead-nothing⇒view-other {Raw.RVar s} p | no _ | no _ | no _ | no _ 
 -- types `t-app` / `t-effApp`).
 view-other⇒classifyAppHead-nothing :
   ∀ {f} → classifyAppHeadView f ≡ ahv-other → classifyAppHead f ≡ nothing
-view-other⇒classifyAppHead-nothing {Raw.RApp (Raw.RVar s) _} p with StrProp._≟_ s "pair"
-... | yes refl with p
-...   | ()
-view-other⇒classifyAppHead-nothing {Raw.RApp (Raw.RVar s) _} p | no _ with StrProp._≟_ s "compose"
-... | yes refl with p
-...   | ()
-view-other⇒classifyAppHead-nothing {Raw.RApp (Raw.RVar s) _} p | no _ | no _ with StrProp._≟_ s "case"
-... | yes refl with p
-...   | ()
-view-other⇒classifyAppHead-nothing {Raw.RApp (Raw.RVar _) _} _ | no _ | no _ | no _ = refl
-view-other⇒classifyAppHead-nothing {Raw.RApp (Raw.RApp _ _) _}       _ = refl
-view-other⇒classifyAppHead-nothing {Raw.RApp (Raw.RQualified _ _) _} _ = refl
-view-other⇒classifyAppHead-nothing {Raw.RApp (Raw.RResolved _) _}    _ = refl
-view-other⇒classifyAppHead-nothing {Raw.RApp (Raw.RLam _ _) _}       _ = refl
-view-other⇒classifyAppHead-nothing {Raw.RApp (Raw.RLet _ _ _) _}     _ = refl
-view-other⇒classifyAppHead-nothing {Raw.RApp (Raw.RPair _ _) _}      _ = refl
-view-other⇒classifyAppHead-nothing {Raw.RApp (Raw.RDestruct _ _ _ _ _) _} _ = refl
-view-other⇒classifyAppHead-nothing {Raw.RApp Raw.RUnit _}            _ = refl
-view-other⇒classifyAppHead-nothing {Raw.RApp (Raw.RInt _) _}         _ = refl
-view-other⇒classifyAppHead-nothing {Raw.RApp (Raw.RStringLit _) _}   _ = refl
-view-other⇒classifyAppHead-nothing {Raw.RApp (Raw.RAnnot _ _) _}     _ = refl
-view-other⇒classifyAppHead-nothing {Raw.RApp (Raw.RBinOp _ _ _) _}   _ = refl
-view-other⇒classifyAppHead-nothing {Raw.RApp (Raw.RUnaryOp _ _) _}   _ = refl
-view-other⇒classifyAppHead-nothing {Raw.RApp (Raw.RAna _ _) _}       _ = refl
-view-other⇒classifyAppHead-nothing {Raw.RQualified _ _}     _ = refl
-view-other⇒classifyAppHead-nothing {Raw.RResolved _}        _ = refl
-view-other⇒classifyAppHead-nothing {Raw.RLam _ _}           _ = refl
-view-other⇒classifyAppHead-nothing {Raw.RLet _ _ _}         _ = refl
-view-other⇒classifyAppHead-nothing {Raw.RPair _ _}          _ = refl
-view-other⇒classifyAppHead-nothing {Raw.RDestruct _ _ _ _ _} _ = refl
-view-other⇒classifyAppHead-nothing {Raw.RUnit}              _ = refl
-view-other⇒classifyAppHead-nothing {Raw.RInt _}             _ = refl
-view-other⇒classifyAppHead-nothing {Raw.RStringLit _}       _ = refl
-view-other⇒classifyAppHead-nothing {Raw.RAnnot _ _}         _ = refl
-view-other⇒classifyAppHead-nothing {Raw.RBinOp _ _ _}       _ = refl
-view-other⇒classifyAppHead-nothing {Raw.RUnaryOp _ _}       _ = refl
-view-other⇒classifyAppHead-nothing {Raw.RAna _ _}           _ = refl
-view-other⇒classifyAppHead-nothing {Raw.RVar s} p with StrProp._≟_ s "id"
-... | yes refl with p
-...   | ()
-view-other⇒classifyAppHead-nothing {Raw.RVar s} p | no _
-  with StrProp._≟_ s "fst"
-... | yes refl with p
-...   | ()
-view-other⇒classifyAppHead-nothing {Raw.RVar s} p | no _ | no _
-  with StrProp._≟_ s "snd"
-... | yes refl with p
-...   | ()
-view-other⇒classifyAppHead-nothing {Raw.RVar s} p | no _ | no _ | no _
-  with StrProp._≟_ s "terminal"
-... | yes refl with p
-...   | ()
-view-other⇒classifyAppHead-nothing {Raw.RVar s} p | no _ | no _ | no _ | no _
-  with StrProp._≟_ s "inl"
-... | yes refl with p
-...   | ()
-view-other⇒classifyAppHead-nothing {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _
-  with StrProp._≟_ s "inr"
-... | yes refl with p
-...   | ()
-view-other⇒classifyAppHead-nothing {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _ | no _
-  with StrProp._≟_ s "initial"
-... | yes refl with p
-...   | ()
-view-other⇒classifyAppHead-nothing {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _ | no _ | no _
-  with StrProp._≟_ s "curry"
-... | yes refl with p
-...   | ()
-view-other⇒classifyAppHead-nothing {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _
-  with StrProp._≟_ s "apply"
-... | yes refl with p
-...   | ()
-view-other⇒classifyAppHead-nothing {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _
-  with StrProp._≟_ s "In"
-... | yes refl with p
-...   | ()
-view-other⇒classifyAppHead-nothing {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _
-  with StrProp._≟_ s "cata"
-... | yes refl with p
-...   | ()
-view-other⇒classifyAppHead-nothing {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ = refl
+-- rewrite the view to ahv-other; classifyAppHead reduces to viewToPba ahv-other = nothing.
+view-other⇒classifyAppHead-nothing {f} p rewrite p = refl
+
 data BareBuiltinClass : String → Set where
   bbc-id       : BareBuiltinClass "id"
   bbc-fst      : BareBuiltinClass "fst"

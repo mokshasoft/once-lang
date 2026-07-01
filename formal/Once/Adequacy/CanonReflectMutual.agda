@@ -50,7 +50,8 @@ open import Once.TypeCheck.Classify
 open import Once.TypeCheck.Context using (names)
 open import Once.TypeCheck.Judgment
 open import Once.Adequacy.CanonPreserve
-  using (lookup-just→elem; canon-RVar-keep; canon-RVar-resolve; _⊆ᵇ_; ⊆ᵇ-cons; ⊆ᵇ-nil)
+  using (lookup-just→elem; canon-RVar-keep; canon-RVar-resolve; _⊆ᵇ_; ⊆ᵇ-cons; ⊆ᵇ-nil;
+         caHead-RApp-arg-irr)
 
 ------------------------------------------------------------------------
 -- Boolean / bookkeeping lemmas.
@@ -150,8 +151,9 @@ classify-decanon : ∀ (bound : List String) (f : RawExpr)
   → classifyAppHead (canonExpr bound [] [] f) ≡ nothing → classifyAppHead f ≡ nothing
 -- Applied-RVar head: the only non-refl case.
 classify-decanon bound (Raw.RApp (Raw.RVar z) g) h =
-  classify-decanon-rvar (elemStr z bound ∨ isBuiltinName z) bound z
-    (canonExpr bound [] [] g) refl h
+  trans (caHead-RApp-arg-irr z g (canonExpr bound [] [] g))
+    (classify-decanon-rvar (elemStr z bound ∨ isBuiltinName z) bound z
+      (canonExpr bound [] [] g) refl h)
 -- Every other head: `classifyAppHead f` is `nothing` definitionally.
 classify-decanon bound (Raw.RApp (Raw.RApp a b) g) h = refl
 classify-decanon bound (Raw.RApp (Raw.RQualified n al) g) h = refl

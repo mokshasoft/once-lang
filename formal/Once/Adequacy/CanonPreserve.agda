@@ -86,13 +86,28 @@ canon-builtin bound s eq = canon-RVar-keep bound s lem
   where lem : (elemStr s bound ∨ isBuiltinName s) ≡ true
         lem rewrite eq = ∨-true (elemStr s bound)
 
+-- Plan 0.52 (OCP-0008 classifier flatten): `classifyAppHead` is now
+-- `viewToPba ∘ classifyAppHeadView`, so for an `RApp (RVar x) _` head its stuck
+-- neutral form mentions the argument (the view's applied constructors carry it),
+-- even though the result ignores it. This lemma restores argument-irrelevance,
+-- which `classify-canon`'s keep-branch relies on (arg g vs canonExpr g).
+caHead-RApp-arg-irr : ∀ (x : String) (g g' : RawExpr)
+  → classifyAppHead (Raw.RApp (Raw.RVar x) g) ≡ classifyAppHead (Raw.RApp (Raw.RVar x) g')
+caHead-RApp-arg-irr x g g' with x ≟s "pair"
+... | yes refl = refl
+... | no _ with x ≟s "compose"
+...   | yes refl = refl
+...   | no _ with x ≟s "case"
+...     | yes refl = refl
+...     | no _ = refl
+
 classify-canon : ∀ (bound : List String) (f : RawExpr) →
   classifyAppHead f ≡ nothing → classifyAppHead (canonExpr bound [] [] f) ≡ nothing
 classify-canon bound (Raw.RVar x) h with elemStr x bound ∨ isBuiltinName x in eb
 ... | true  rewrite canon-RVar-keep bound x eb = h
 ... | false rewrite canon-RVar-resolve bound x eb = refl
 classify-canon bound (Raw.RApp (Raw.RVar x) g) h with elemStr x bound ∨ isBuiltinName x in eb
-... | true  rewrite canon-RVar-keep bound x eb = h
+... | true  rewrite canon-RVar-keep bound x eb = trans (caHead-RApp-arg-irr x (canonExpr bound [] [] g) g) h
 ... | false rewrite canon-RVar-resolve bound x eb = refl
 classify-canon bound (Raw.RApp (Raw.RApp a b) g) h = refl
 classify-canon bound (Raw.RApp (Raw.RQualified n al) g) h = refl
