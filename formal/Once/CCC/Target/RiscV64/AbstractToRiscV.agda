@@ -42,10 +42,11 @@ open import Once.Target.Symbol using (once-symbol; once-symbol-path)
 open import Once.CCC.Target.RiscV64.Syntax
   using (Reg; zero; ra; sp; fp; a0; a1; a2; a3; a4; a5; a6; a7;
          s1; s2; s3; s4; t0; t1; t2; t3; t4;
-         Instr; ld; sd; add; sub; addi; li; auipc; mv;
+         Instr; ld; sd; add; sub; addi; li; auipc; lla; mv;
          beq; bne; jal; jalr; j; ret; call; call-sym; nop; unimp; label;
          Program; slot-size; slots)
 open import Once.SigOp.Info using (SigOpInfo)
+open import Once.Type using (fits-int; fits-float)
 
 -- Import AbstractInstr from SMCore
 open import Once.CCC.Machine.SMCore
@@ -119,14 +120,15 @@ compile-abstract load-indirect-suc =
   ld a0 t0 slot-size ∷ []
 
 -- load-from-slot: Output := stack[slot]
--- RV64: ld a0, slot*8(fp)
+-- Plan 0.53: frameless, sp-relative (match x86-64's %rsp model).
+-- RV64: ld a0, slot*8(sp)
 compile-abstract (load-from-slot n) =
-  ld a0 fp (slot-to-disp n) ∷ []
+  ld a0 sp (slot-to-disp n) ∷ []
 
 -- store-at-slot: stack[slot] := Output
--- RV64: sd a0, slot*8(fp)
+-- RV64: sd a0, slot*8(sp)
 compile-abstract (store-at-slot n) =
-  sd a0 fp (slot-to-disp n) ∷ []
+  sd a0 sp (slot-to-disp n) ∷ []
 
 -- store-indirect: *Input1 := Output
 -- Need address and value, but both are a0!
@@ -141,16 +143,16 @@ compile-abstract store-indirect-suc =
   sd a0 t0 slot-size ∷ []
 
 -- lea-slot: Output := &stack[slot]
--- RV64: addi a0, fp, slot*8
+-- RV64: addi a0, sp, slot*8  (Plan 0.53 frameless)
 compile-abstract (lea-slot n) =
-  addi a0 fp (+ (slot-to-disp n)) ∷ []
+  addi a0 sp (+ (slot-to-disp n)) ∷ []
 
 -- restore-input: Input1 := stack[slot]
 -- This restores a saved address for use by store-indirect
 -- We load into t0 (not a0) to preserve current value
--- RV64: ld t0, slot*8(fp)
+-- RV64: ld t0, slot*8(sp)  (Plan 0.53 frameless)
 compile-abstract (restore-input n) =
-  ld t0 fp (slot-to-disp n) ∷ []
+  ld t0 sp (slot-to-disp n) ∷ []
 
 -- lea-indexed: indexed-pointer compute for the cata payload stack
 -- (Plan 0.36 2b). DEAD on this backend — Tier-1 cata codegen uses a linked
@@ -165,10 +167,14 @@ compile-abstract (instr-alloc-stack n) =
   where import Data.Integer
 
 -- instr-alloc-heap: allocate a heap cell.
--- Plan 0.14: RV64 codegen stub. Real heap allocation is target-specific
--- (e.g. malloc/bump-allocator). Emitted as a no-op until the RV64
--- backend wires up heap allocation.
-compile-abstract (instr-alloc-heap n) = []
+-- Plan 0.53: mirror x86-64's r15 bump allocator. s2 holds the heap top
+-- pointer (initialized by _start to once_heap_base). To allocate n slots:
+--   mv   a0, s2       ; Output := current heap top
+--   addi s2, s2, n*8  ; bump heap top by n words
+-- The freshly-allocated block lives at the OLD s2 value (now in a0).
+compile-abstract (instr-alloc-heap n) =
+  mv a0 s2 ∷
+  addi s2 s2 (+ (slots n)) ∷ []
 
 -- instr-dealloc-stack: deallocate N slots from stack
 -- RV64: addi sp, sp, N*8
@@ -197,13 +203,17 @@ compile-abstract instr-pop-frame =
   ld fp sp 0 ∷
   addi sp fp (+ slot-size) ∷ []
 
--- instr-call-closure: jump to closure code (via indirect call)
--- Closure in s1, code-ptr at [s1 + 8]
--- RV64: ld t0, 8(s1)      (load code pointer)
---       jalr ra, t0, 0    (call through t0)
+-- instr-call-closure: jump to closure code (via indirect call).
+-- Closure in s1, code-ptr at [s1 + 8]. Plan 0.53: load the code pointer
+-- into t1 (NOT t0) — t0 carries the Input1/argument pointer that the callee
+-- reads via `ld a0, 8(t0)`, and it must survive the call. This mirrors
+-- x86-64's `call *0x8(%r12)`, a memory-indirect call that never clobbers the
+-- argument register %rdi.
+-- RV64: ld t1, 8(s1)      (load code pointer into scratch t1)
+--       jalr ra, t1, 0    (call through t1; t0 preserved for the callee)
 compile-abstract instr-call-closure =
-  ld t0 s1 slot-size ∷
-  jalr ra t0 0 ∷ []
+  ld t1 s1 slot-size ∷
+  jalr ra t1 0 ∷ []
 
 ------------------------------------------------------------------------
 -- Worklist operations (for Cata/recursion scheme support)
@@ -217,14 +227,14 @@ compile-abstract instr-call-closure =
 compile-abstract (worklist-init n) = []
 
 -- worklist-push: Push Output to worklist at slot
--- RV64: sd a0, slot*8(fp)  (same as store-at-slot)
+-- RV64: sd a0, slot*8(sp)  (same as store-at-slot)
 compile-abstract (worklist-push n) =
-  sd a0 fp (slot-to-disp n) ∷ []
+  sd a0 sp (slot-to-disp n) ∷ []
 
 -- worklist-pop: Pop from worklist at slot to Output
--- RV64: ld a0, slot*8(fp)  (same as load-from-slot)
+-- RV64: ld a0, slot*8(sp)  (same as load-from-slot)
 compile-abstract (worklist-pop n) =
-  ld a0 fp (slot-to-disp n) ∷ []
+  ld a0 sp (slot-to-disp n) ∷ []
 
 -- worklist-check: Check if worklist is empty (no-op in simplified model)
 -- RV64: (empty - proofs use Star-based reasoning, not loop mechanics)
@@ -238,11 +248,13 @@ compile-abstract (instr-reclaim-to n) = []
 -- Emit a single symbolic call; linker resolves the name at build time
 -- to the externally-defined function body. CCC stays name-agnostic.
 compile-abstract (instr-sigop si) = call-sym (once-symbol-path (SigOpInfo.name si)) ∷ []
--- Plan 0.11: const literal. RV64 stub (full per-primitive codegen
--- not yet implemented for RV64). Trap so the gap is visible.
-compile-abstract (instr-load-const _ _) = unimp ∷ []
--- Plan 0.2.4.2: closure-body code-addr load. RV64 stub.
-compile-abstract (instr-load-code-addr _) = unimp ∷ []
+-- Plan 0.53: const literal. Mirror x86-64's compile-const:
+-- fits-int loads the immediate into Output (a0); float still trapped.
+compile-abstract (instr-load-const fits-int   v) = li a0 (+ v) ∷ []
+compile-abstract (instr-load-const fits-float _) = unimp ∷ []
+-- Plan 0.53: closure-body code-addr load. Mirror x86-64's
+-- `lea .L_thunk_n(%rip), %rax` — load the body label address into Output.
+compile-abstract (instr-load-code-addr n) = lla a0 n ∷ []
 -- Plan 0.2.4.2: save closure-register. On RV64 the closure pointer
 -- lives in s1; Input1 is in t0. Move t0 into s1 so the subsequent
 -- `ld t0, 8(s1); jalr ra, t0, 0` resolves correctly.

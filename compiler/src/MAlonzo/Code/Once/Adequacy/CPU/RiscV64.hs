@@ -39,6 +39,6 @@ d_arch'45'semantics_14
   = coe
       MAlonzo.Code.Once.Adequacy.CPU.Interface.C_constructor_56
       MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_initState_278
-      MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_run_712
+      MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_run_720
       d_run'45'trace'45'riscv64_8 d_decode'45'riscv64_10
       d_assemble'45'riscv64_12

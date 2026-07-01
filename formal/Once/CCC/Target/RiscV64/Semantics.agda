@@ -275,6 +275,13 @@ execInstr prog s (auipc rd imm) =
   in just (record s { regs = writeReg (regs s) rd result
                     ; pc = pc s + 1 })
 
+-- lla rd, .L_thunk_n : load a code-label address (Plan 0.53). The abstract
+-- model doesn't track link-time label addresses; advance pc, leave rd opaque
+-- (0). Not exercised by the FS-generic apex (no target exec runs here).
+execInstr prog s (lla rd n) =
+  just (record s { regs = writeReg (regs s) rd 0
+                 ; pc = pc s + 1 })
+
 ------------------------------------------------------------------------
 -- Move (pseudo-instruction)
 ------------------------------------------------------------------------
