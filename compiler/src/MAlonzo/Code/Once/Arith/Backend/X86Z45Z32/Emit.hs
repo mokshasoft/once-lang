@@ -316,54 +316,69 @@ d_emit'45'arith'45'block_96 v0 v1
                ("    pushl %esi\n" :: Data.Text.Text)
                (coe
                   MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                  ("    subl $" :: Data.Text.Text)
+                  ("    pushl %edx\n" :: Data.Text.Text)
                   (coe
                      MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                     (coe
-                        MAlonzo.Code.Data.Nat.Show.d_show_56
-                        (mulInt
-                           (coe (4 :: Integer))
-                           (coe
-                              MAlonzo.Code.Once.Arith.Machine.Compile.du_required'45'scratch_22
-                              (coe
-                                 MAlonzo.Code.Once.Arith.Machine.IR.d_block'45'body_94 (coe v1)))))
+                     ("    pushl %edi\n" :: Data.Text.Text)
                      (coe
                         MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                        (", %esp\n" :: Data.Text.Text)
+                        ("    subl $" :: Data.Text.Text)
                         (coe
                            MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                           (d_program'45'text_88
-                              (coe
-                                 MAlonzo.Code.Once.Arith.Backend.X86.CodeGen.d_emit'45'program_368
+                           (coe
+                              MAlonzo.Code.Data.Nat.Show.d_show_56
+                              (mulInt
+                                 (coe (4 :: Integer))
                                  (coe
-                                    MAlonzo.Code.Once.Arith.Machine.Compile.du_compile'45'abs_74
+                                    MAlonzo.Code.Once.Arith.Machine.Compile.du_required'45'scratch_22
                                     (coe
                                        MAlonzo.Code.Once.Arith.Machine.IR.d_block'45'body_94
                                        (coe v1)))))
                            (coe
                               MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                              ("    addl $" :: Data.Text.Text)
+                              (", %esp\n" :: Data.Text.Text)
                               (coe
                                  MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                                 (coe
-                                    MAlonzo.Code.Data.Nat.Show.d_show_56
-                                    (mulInt
-                                       (coe (4 :: Integer))
+                                 (d_program'45'text_88
+                                    (coe
+                                       MAlonzo.Code.Once.Arith.Backend.X86.CodeGen.d_emit'45'program_368
                                        (coe
-                                          MAlonzo.Code.Once.Arith.Machine.Compile.du_required'45'scratch_22
+                                          MAlonzo.Code.Once.Arith.Machine.Compile.du_compile'45'abs_74
                                           (coe
                                              MAlonzo.Code.Once.Arith.Machine.IR.d_block'45'body_94
                                              (coe v1)))))
                                  (coe
                                     MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                                    (", %esp\n" :: Data.Text.Text)
+                                    ("    addl $" :: Data.Text.Text)
                                     (coe
                                        MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                                       ("    popl %esi\n" :: Data.Text.Text)
+                                       (coe
+                                          MAlonzo.Code.Data.Nat.Show.d_show_56
+                                          (mulInt
+                                             (coe (4 :: Integer))
+                                             (coe
+                                                MAlonzo.Code.Once.Arith.Machine.Compile.du_required'45'scratch_22
+                                                (coe
+                                                   MAlonzo.Code.Once.Arith.Machine.IR.d_block'45'body_94
+                                                   (coe v1)))))
                                        (coe
                                           MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                                          ("    popl %ebx\n" :: Data.Text.Text)
-                                          ("    ret\n\n" :: Data.Text.Text)))))))))))))
+                                          (", %esp\n" :: Data.Text.Text)
+                                          (coe
+                                             MAlonzo.Code.Data.String.Base.d__'43''43'__20
+                                             ("    popl %edi\n" :: Data.Text.Text)
+                                             (coe
+                                                MAlonzo.Code.Data.String.Base.d__'43''43'__20
+                                                ("    popl %edx\n" :: Data.Text.Text)
+                                                (coe
+                                                   MAlonzo.Code.Data.String.Base.d__'43''43'__20
+                                                   ("    popl %esi\n" :: Data.Text.Text)
+                                                   (coe
+                                                      MAlonzo.Code.Data.String.Base.d__'43''43'__20
+                                                      ("    popl %ebx\n" :: Data.Text.Text)
+                                                      ("    ret\n\n"
+                                                       ::
+                                                       Data.Text.Text)))))))))))))))))
 -- Once.Arith.Backend.X86-32.Emit.arith-block-symbol
 d_arith'45'block'45'symbol_108 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_ArithBlock_86 ->
