@@ -281,8 +281,6 @@ d_isBuiltinName_192 v0
              coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
          l | (==) l ("apply" :: Data.Text.Text) ->
              coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
-         l | (==) l ("arr" :: Data.Text.Text) ->
-             coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
          l | (==) l ("case" :: Data.Text.Text) ->
              coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
          l | (==) l ("cata" :: Data.Text.Text) ->

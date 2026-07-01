@@ -306,7 +306,7 @@ d_'10214'_'10215'A__60
   = coe
       MAlonzo.Code.Once.Adequacy.Compile.du_'10214'_'10215'A__186
       (coe
-         MAlonzo.Code.Once.Adequacy.ArchCorrectness.d_arch'45'correctness_12)
+         MAlonzo.Code.Once.Adequacy.ArchCorrectness.d_arch'45'correctness_8)
 -- Once.Compiler.VC.⟦_⟧ˢ
 d_'10214'_'10215''738'_62 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->

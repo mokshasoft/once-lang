@@ -59,6 +59,7 @@ showInstr (sub  rd rs1 rs2)   = "    sub "   ++ showReg rd ++ ", " ++ showReg rs
 showInstr (addi rd rs i)      = "    addi "  ++ showReg rd ++ ", " ++ showReg rs  ++ ", " ++ showInt i
 showInstr (li   rd i)         = "    li "    ++ showReg rd ++ ", " ++ showInt i
 showInstr (auipc rd i)        = "    auipc " ++ showReg rd ++ ", " ++ showNat i
+showInstr (lla  rd n)         = "    lla "   ++ showReg rd ++ ", .L_thunk_" ++ showNat n
 showInstr (mv   rd rs)        = "    mv "    ++ showReg rd ++ ", " ++ showReg rs
 showInstr (beq  rs1 rs2 o)    = "    beq "   ++ showReg rs1 ++ ", " ++ showReg rs2 ++ ", .L" ++ showNat o
 showInstr (bne  rs1 rs2 o)    = "    bne "   ++ showReg rs1 ++ ", " ++ showReg rs2 ++ ", .L" ++ showNat o

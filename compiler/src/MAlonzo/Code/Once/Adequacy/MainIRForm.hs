@@ -84,7 +84,7 @@ du_compileFunBody'45'form_80 v0 v1 v2 v3 v4
          (coe
             MAlonzo.Code.Once.Adequacy.AcceptSound.du_compileFunBody'45'aux'45'success_34
             (coe
-               MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElab_1298
+               MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElab_1488
                (coe
                   MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndSelfAndPolys_222
                   (coe v0) (coe v1) (coe v2) (coe v3) (coe d_EffUU_6))
@@ -92,7 +92,7 @@ du_compileFunBody'45'form_80 v0 v1 v2 v3 v4
       (coe
          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
          (coe
-            MAlonzo.Code.Once.TypeCheck.Elaborate.du_resolveExpr_12596
+            MAlonzo.Code.Once.TypeCheck.Elaborate.du_resolveExpr_11800
             (coe (0 :: Integer))
             (coe MAlonzo.Code.Once.Surface.Syntax.C_'8709'_8) (coe d_EffUU_6)
             (coe v1)
@@ -116,7 +116,7 @@ du_compileFunBody'45'form_80 v0 v1 v2 v3 v4
                   (coe
                      MAlonzo.Code.Once.Adequacy.AcceptSound.du_compileFunBody'45'aux'45'success_34
                      (coe
-                        MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElab_1298
+                        MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElab_1488
                         (coe
                            MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndSelfAndPolys_222
                            (coe v0) (coe v1) (coe v2) (coe v3) (coe d_EffUU_6))
