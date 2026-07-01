@@ -1322,3 +1322,18 @@ mutual
     let (_ , _ , _ , eqBodyEff) = subsume-complete bodyD
     in checkElab-fallback-RVar-poly {ctx} x (A T.⇒[ T.mk-kind T.Many T.eff ] B)
          bbcOther x≢unit localN importN polyE eqBodyEff
+
+-- STRONG check-complete: a trivial VIEW of the weak `check-complete`, not a
+-- per-case rewrite. Abstract `checkElabV`, take the weak proj₁ equation, and
+-- `rewrite` it to expose the REAL witness (proj₂ of the elaborator result — not
+-- a subst-reconstruction, so downstream witness-extraction still reduces). This
+-- is the strong-completeness primitive the migration needs; per-case strong
+-- proofs are unnecessary.
+check-completeV : ∀ {ctx : NamedCtx} {e : RawExpr} {A : Type}
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+  → ctx ⊢ᶜ e ∶ A ⨾ Ψ
+  → ∃[ eE ] ∃[ d ] ∃[ f ]
+      Σ-syntax (ctx ⊢ᶜ e ∶ A ⨾ Ψ) (λ w →
+        checkElabV ctx e A ≡ (success Ψ eE d f , w))
+check-completeV {ctx} {e} {A} d with checkElabV ctx e A | check-complete d
+... | r , w0 | eE , d' , f , eq rewrite eq = eE , d' , f , w0 , refl
