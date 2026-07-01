@@ -491,7 +491,7 @@ du_canon'45'pres'45''7504'_118 v0 v1 v2 v3 v4 v5 v6
         -> coe
              MAlonzo.Code.Once.TypeCheck.Judgment.C_m'45'const_484
              (coe
-                MAlonzo.Code.Once.Adequacy.CanonPreserve.du_pres'45''7501'_626
+                MAlonzo.Code.Once.Adequacy.CanonPreserve.du_pres'45''7501'_688
                 (coe v1) (coe v4) (coe v12))
       MAlonzo.Code.Once.TypeCheck.Judgment.C_m'45'named_496
         -> case coe v1 of
@@ -582,7 +582,7 @@ du_canon'45'pres'45''7580'_130 v0 v1 v2 v3 v4 v5
                -> coe
                     MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'value'45'lift_560
                     (coe
-                       MAlonzo.Code.Once.Adequacy.CanonPreserve.du_pres'45''7501'_626
+                       MAlonzo.Code.Once.Adequacy.CanonPreserve.du_pres'45''7501'_688
                        (coe v1) (coe v14) (coe v11))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'pair'45'lit'45'check_576 v11 v12 v13 v14

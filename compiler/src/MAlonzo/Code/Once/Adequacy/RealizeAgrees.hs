@@ -381,7 +381,7 @@ d_agree'45'RApp_2402 ::
   Integer ->
   Integer ->
   MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7522'_'8758'_'10814'__10 ->
-  MAlonzo.Code.Once.TypeCheck.Classify.T_AppHeadView_970 ->
+  MAlonzo.Code.Once.TypeCheck.Classify.T_AppHeadView_852 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   (MAlonzo.Code.Once.Type.T_Type_112 ->
@@ -629,7 +629,7 @@ d_agree'45'check'45'RApp_6948 ::
   Integer ->
   Integer ->
   MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7580'_'8758'_'10814'__24 ->
-  MAlonzo.Code.Once.TypeCheck.Classify.T_AppHeadView_970 ->
+  MAlonzo.Code.Once.TypeCheck.Classify.T_AppHeadView_852 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   (MAlonzo.Code.Once.Type.T_Type_112 ->
