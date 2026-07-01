@@ -22,36 +22,32 @@ import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Once.IR
 import qualified MAlonzo.Code.Once.Parser.Module.Core
 
--- Once.Adequacy.MainRealizeAgrees.resolveExpr-faithful
-d_resolveExpr'45'faithful_28
-  = error
-      "MAlonzo Runtime Error: postulate evaluated: Once.Adequacy.MainRealizeAgrees.resolveExpr-faithful"
 -- Once.Adequacy.MainRealizeAgrees.realize-invariant
-d_realize'45'invariant_46
+d_realize'45'invariant_22
   = error
       "MAlonzo Runtime Error: postulate evaluated: Once.Adequacy.MainRealizeAgrees.realize-invariant"
 -- Once.Adequacy.MainRealizeAgrees.main-extract
-d_main'45'extract_88
+d_main'45'extract_64
   = error
       "MAlonzo Runtime Error: postulate evaluated: Once.Adequacy.MainRealizeAgrees.main-extract"
 -- Once.Adequacy.MainRealizeAgrees.main-checkElab-coherence
-d_main'45'checkElab'45'coherence_120 ::
+d_main'45'checkElab'45'coherence_96 ::
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_44 ->
   AgdaAny ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_main'45'checkElab'45'coherence_120 v0 v1 v2 v3 ~v4
-  = du_main'45'checkElab'45'coherence_120 v0 v1 v2 v3
-du_main'45'checkElab'45'coherence_120 ::
+d_main'45'checkElab'45'coherence_96 v0 v1 v2 v3 ~v4
+  = du_main'45'checkElab'45'coherence_96 v0 v1 v2 v3
+du_main'45'checkElab'45'coherence_96 ::
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_44 ->
   AgdaAny ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_main'45'checkElab'45'coherence_120 v0 v1 v2 v3
-  = let v4 = coe d_main'45'extract_88 v0 v1 v2 v3 erased in
+du_main'45'checkElab'45'coherence_96 v0 v1 v2 v3
+  = let v4 = coe d_main'45'extract_64 v0 v1 v2 v3 erased in
     coe
       (case coe v4 of
          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v5 v6
@@ -134,11 +130,11 @@ du_main'45'checkElab'45'coherence_120 v0 v1 v2 v3
                 _ -> MAlonzo.RTE.mazUnreachableError
          _ -> MAlonzo.RTE.mazUnreachableError)
 -- Once.Adequacy.MainRealizeAgrees.main-realize-agrees-proof
-d_main'45'realize'45'agrees'45'proof_192 ::
+d_main'45'realize'45'agrees'45'proof_168 ::
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_44 ->
   AgdaAny ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_main'45'realize'45'agrees'45'proof_192 = erased
+d_main'45'realize'45'agrees'45'proof_168 = erased

@@ -30,12 +30,12 @@ import qualified MAlonzo.Code.Data.Sum.Base
 import qualified MAlonzo.Code.Once.Adequacy.AcceptSound
 import qualified MAlonzo.Code.Once.Adequacy.CPU.Interface
 import qualified MAlonzo.Code.Once.Adequacy.CanonModule
+import qualified MAlonzo.Code.Once.Adequacy.CanonReflectModule
 import qualified MAlonzo.Code.Once.Adequacy.CanonResolve
 import qualified MAlonzo.Code.Once.Adequacy.FrontEndBridge
 import qualified MAlonzo.Code.Once.Adequacy.MainBuilds
 import qualified MAlonzo.Code.Once.Adequacy.MainExtract
 import qualified MAlonzo.Code.Once.Adequacy.ModuleComplete
-import qualified MAlonzo.Code.Once.Adequacy.ResolverBridge
 import qualified MAlonzo.Code.Once.Adequacy.SourceTrace
 import qualified MAlonzo.Code.Once.Compile
 import qualified MAlonzo.Code.Once.Denotation.Behavior
@@ -993,140 +993,257 @@ du_correctR'45'sound_732 v0
            -> case coe v3 of
                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v4 v5
                   -> let v6
-                           = let v6
-                                   = MAlonzo.Code.Once.Adequacy.SourceTrace.d_moduleToIR'45'aux_36
-                                       (coe
-                                          MAlonzo.Code.Once.Compile.d_compileResolvedModule'45'aux_518
-                                          (coe MAlonzo.Code.Once.IR.C_Heap_8)
-                                          (coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8) (coe v2)
-                                          (coe
-                                             MAlonzo.Code.Once.Parser.d_guardDistinct_476
-                                             (coe
-                                                MAlonzo.Code.Once.Parser.d_extractFunctions'45'go_190
-                                                (coe
-                                                   MAlonzo.Code.Once.Parser.d_extractAliases_76
-                                                   (coe v2))
-                                                (coe
-                                                   MAlonzo.Code.Once.Parser.Module.Core.d_decls_48
-                                                   (coe v2))
-                                                (coe
-                                                   MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18)))) in
-                             coe
-                               (case coe v6 of
-                                  MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v7
-                                    -> coe
-                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v7) erased
-                                  MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
-                                    -> coe MAlonzo.Code.Data.Empty.du_'8869''45'elim_12
-                                  _ -> MAlonzo.RTE.mazUnreachableError) in
-                     coe
-                       (coe
-                          seq (coe v6)
-                          (let v7
-                                 = coe
-                                     MAlonzo.Code.Once.Adequacy.SourceTrace.du_srcToModule'45'inv'45'p_116
+                           = MAlonzo.Code.Once.Adequacy.SourceTrace.d_moduleToIR'45'aux_36
+                               (coe
+                                  MAlonzo.Code.Once.Compile.d_compileResolvedModule'45'aux_518
+                                  (coe MAlonzo.Code.Once.IR.C_Heap_8)
+                                  (coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8) (coe v2)
+                                  (coe
+                                     MAlonzo.Code.Once.Parser.d_guardDistinct_476
                                      (coe
-                                        MAlonzo.Code.Once.Parser.d_parseStrict'45'at_56
+                                        MAlonzo.Code.Once.Parser.d_extractFunctions'45'go_190
+                                        (coe MAlonzo.Code.Once.Parser.d_extractAliases_76 (coe v2))
                                         (coe
-                                           MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
-                                           (coe
-                                              MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
-                                              (coe
-                                                 MAlonzo.Code.Once.Parser.Module.du_pdwf'45'sk_306
-                                                 (coe
-                                                    MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_560
-                                                    (coe
-                                                       MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12
-                                                       (MAlonzo.Code.Once.Denotation.Behavior.d_srcText_16
-                                                          (coe v0))))
-                                                 (coe
-                                                    MAlonzo.Code.Once.Parser.Core.d_skipNewlines_278
-                                                    (coe
-                                                       MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_560
-                                                       (coe
-                                                          MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12
-                                                          (MAlonzo.Code.Once.Denotation.Behavior.d_srcText_16
-                                                             (coe v0)))))
-                                                 (\ v7 v8 v9 ->
-                                                    coe
-                                                      MAlonzo.Code.Once.Parser.Module.du_skipNewlines'45''8804'_176
-                                                      (coe
-                                                         MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_560
-                                                         (coe
-                                                            MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12
-                                                            (MAlonzo.Code.Once.Denotation.Behavior.d_srcText_16
-                                                               (coe v0))))))))
-                                        (coe
-                                           MAlonzo.Code.Once.Parser.Module.Core.C_mkModule_50
-                                           (coe
-                                              MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
-                                              (coe
-                                                 MAlonzo.Code.Once.Parser.Module.d_r_368
-                                                 (coe
-                                                    MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_560
-                                                    (coe
-                                                       MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12
-                                                       (MAlonzo.Code.Once.Denotation.Behavior.d_srcText_16
-                                                          (coe v0)))))))
-                                        (coe
-                                           MAlonzo.Code.Once.Parser.d_allTrailing_18
-                                           (coe
-                                              MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
-                                              (coe
-                                                 MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
-                                                 (coe
-                                                    MAlonzo.Code.Once.Parser.Module.du_pdwf'45'sk_306
-                                                    (coe
-                                                       MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_560
-                                                       (coe
-                                                          MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12
-                                                          (MAlonzo.Code.Once.Denotation.Behavior.d_srcText_16
-                                                             (coe v0))))
-                                                    (coe
-                                                       MAlonzo.Code.Once.Parser.Core.d_skipNewlines_278
-                                                       (coe
-                                                          MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_560
+                                           MAlonzo.Code.Once.Parser.Module.Core.d_decls_48 (coe v2))
+                                        (coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18)))) in
+                     coe
+                       (case coe v6 of
+                          MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v7
+                            -> let v8
+                                     = coe
+                                         MAlonzo.Code.Once.Adequacy.SourceTrace.du_srcToModule'45'inv'45'p_116
+                                         (coe
+                                            MAlonzo.Code.Once.Parser.d_parseStrict'45'at_56
+                                            (coe
+                                               MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
+                                               (coe
+                                                  MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
+                                                  (coe
+                                                     MAlonzo.Code.Once.Parser.Module.du_pdwf'45'sk_306
+                                                     (coe
+                                                        MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_560
+                                                        (coe
+                                                           MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12
+                                                           (MAlonzo.Code.Once.Denotation.Behavior.d_srcText_16
+                                                              (coe v0))))
+                                                     (coe
+                                                        MAlonzo.Code.Once.Parser.Core.d_skipNewlines_278
+                                                        (coe
+                                                           MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_560
+                                                           (coe
+                                                              MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12
+                                                              (MAlonzo.Code.Once.Denotation.Behavior.d_srcText_16
+                                                                 (coe v0)))))
+                                                     (\ v8 v9 v10 ->
+                                                        coe
+                                                          MAlonzo.Code.Once.Parser.Module.du_skipNewlines'45''8804'_176
                                                           (coe
-                                                             MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12
-                                                             (MAlonzo.Code.Once.Denotation.Behavior.d_srcText_16
-                                                                (coe v0)))))
-                                                    (\ v7 v8 v9 ->
-                                                       coe
-                                                         MAlonzo.Code.Once.Parser.Module.du_skipNewlines'45''8804'_176
-                                                         (coe
-                                                            MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_560
-                                                            (coe
-                                                               MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12
-                                                               (MAlonzo.Code.Once.Denotation.Behavior.d_srcText_16
-                                                                  (coe v0)))))))))) in
-                           coe
-                             (case coe v7 of
-                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v8 v9
-                                  -> coe
-                                       seq (coe v9)
-                                       (let v10
-                                              = coe
-                                                  MAlonzo.Code.Once.Adequacy.ResolverBridge.d_resolver'45'reflects'45'typing_26
-                                                  (MAlonzo.Code.Once.Denotation.Behavior.d_srcImports_14
-                                                     (coe v0))
-                                                  v8 v2 erased v5 in
-                                        coe
-                                          (coe
-                                             seq (coe v10)
-                                             (coe
-                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                                (coe
-                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                                   (coe v8) (coe v10))
-                                                (coe
-                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                                   (coe
-                                                      MAlonzo.Code.Once.Adequacy.FrontEndBridge.du_parseStrict'45'sound_496
+                                                             MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_560
+                                                             (coe
+                                                                MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12
+                                                                (MAlonzo.Code.Once.Denotation.Behavior.d_srcText_16
+                                                                   (coe v0))))))))
+                                            (coe
+                                               MAlonzo.Code.Once.Parser.Module.Core.C_mkModule_50
+                                               (coe
+                                                  MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
+                                                  (coe
+                                                     MAlonzo.Code.Once.Parser.Module.d_r_368
+                                                     (coe
+                                                        MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_560
+                                                        (coe
+                                                           MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12
+                                                           (MAlonzo.Code.Once.Denotation.Behavior.d_srcText_16
+                                                              (coe v0)))))))
+                                            (coe
+                                               MAlonzo.Code.Once.Parser.d_allTrailing_18
+                                               (coe
+                                                  MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
+                                                  (coe
+                                                     MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
+                                                     (coe
+                                                        MAlonzo.Code.Once.Parser.Module.du_pdwf'45'sk_306
+                                                        (coe
+                                                           MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_560
+                                                           (coe
+                                                              MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12
+                                                              (MAlonzo.Code.Once.Denotation.Behavior.d_srcText_16
+                                                                 (coe v0))))
+                                                        (coe
+                                                           MAlonzo.Code.Once.Parser.Core.d_skipNewlines_278
+                                                           (coe
+                                                              MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_560
+                                                              (coe
+                                                                 MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12
+                                                                 (MAlonzo.Code.Once.Denotation.Behavior.d_srcText_16
+                                                                    (coe v0)))))
+                                                        (\ v8 v9 v10 ->
+                                                           coe
+                                                             MAlonzo.Code.Once.Parser.Module.du_skipNewlines'45''8804'_176
+                                                             (coe
+                                                                MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_560
+                                                                (coe
+                                                                   MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12
+                                                                   (MAlonzo.Code.Once.Denotation.Behavior.d_srcText_16
+                                                                      (coe v0)))))))))) in
+                               coe
+                                 (case coe v8 of
+                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v9 v10
+                                      -> coe
+                                           seq (coe v10)
+                                           (let v11
+                                                  = coe
+                                                      MAlonzo.Code.Once.Adequacy.CanonReflectModule.du_go_144
                                                       (coe
-                                                         MAlonzo.Code.Once.Denotation.Behavior.d_srcText_16
-                                                         (coe v0)))
-                                                   erased))))
-                                _ -> MAlonzo.RTE.mazUnreachableError)))
+                                                         MAlonzo.Code.Once.Denotation.Behavior.d_srcImports_14
+                                                         (coe v0))
+                                                      (coe v9) (coe v2) (coe v5)
+                                                      (coe
+                                                         MAlonzo.Code.Once.Adequacy.ModuleComplete.du_moduleToIR'45'sound_864
+                                                         (coe v2) (coe v5) (coe v7))
+                                                      (coe
+                                                         MAlonzo.Code.Once.Adequacy.CanonResolve.d_noImports'63'_16
+                                                         (coe
+                                                            MAlonzo.Code.Once.Parser.Module.Core.d_decls_48
+                                                            (coe v9))) in
+                                            coe
+                                              (coe
+                                                 seq (coe v11)
+                                                 (coe
+                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                    (coe
+                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                       (coe v9) (coe v11))
+                                                    (coe
+                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                       (coe
+                                                          MAlonzo.Code.Once.Adequacy.FrontEndBridge.du_parseStrict'45'sound_496
+                                                          (coe
+                                                             MAlonzo.Code.Once.Denotation.Behavior.d_srcText_16
+                                                             (coe v0)))
+                                                       erased))))
+                                    _ -> MAlonzo.RTE.mazUnreachableError)
+                          MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
+                            -> let v7 = coe MAlonzo.Code.Data.Empty.du_'8869''45'elim_12 in
+                               coe
+                                 (case coe v7 of
+                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v8 v9
+                                      -> let v10
+                                               = coe
+                                                   MAlonzo.Code.Once.Adequacy.SourceTrace.du_srcToModule'45'inv'45'p_116
+                                                   (coe
+                                                      MAlonzo.Code.Once.Parser.d_parseStrict'45'at_56
+                                                      (coe
+                                                         MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
+                                                         (coe
+                                                            MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
+                                                            (coe
+                                                               MAlonzo.Code.Once.Parser.Module.du_pdwf'45'sk_306
+                                                               (coe
+                                                                  MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_560
+                                                                  (coe
+                                                                     MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12
+                                                                     (MAlonzo.Code.Once.Denotation.Behavior.d_srcText_16
+                                                                        (coe v0))))
+                                                               (coe
+                                                                  MAlonzo.Code.Once.Parser.Core.d_skipNewlines_278
+                                                                  (coe
+                                                                     MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_560
+                                                                     (coe
+                                                                        MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12
+                                                                        (MAlonzo.Code.Once.Denotation.Behavior.d_srcText_16
+                                                                           (coe v0)))))
+                                                               (\ v10 v11 v12 ->
+                                                                  coe
+                                                                    MAlonzo.Code.Once.Parser.Module.du_skipNewlines'45''8804'_176
+                                                                    (coe
+                                                                       MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_560
+                                                                       (coe
+                                                                          MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12
+                                                                          (MAlonzo.Code.Once.Denotation.Behavior.d_srcText_16
+                                                                             (coe v0))))))))
+                                                      (coe
+                                                         MAlonzo.Code.Once.Parser.Module.Core.C_mkModule_50
+                                                         (coe
+                                                            MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
+                                                            (coe
+                                                               MAlonzo.Code.Once.Parser.Module.d_r_368
+                                                               (coe
+                                                                  MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_560
+                                                                  (coe
+                                                                     MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12
+                                                                     (MAlonzo.Code.Once.Denotation.Behavior.d_srcText_16
+                                                                        (coe v0)))))))
+                                                      (coe
+                                                         MAlonzo.Code.Once.Parser.d_allTrailing_18
+                                                         (coe
+                                                            MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
+                                                            (coe
+                                                               MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
+                                                               (coe
+                                                                  MAlonzo.Code.Once.Parser.Module.du_pdwf'45'sk_306
+                                                                  (coe
+                                                                     MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_560
+                                                                     (coe
+                                                                        MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12
+                                                                        (MAlonzo.Code.Once.Denotation.Behavior.d_srcText_16
+                                                                           (coe v0))))
+                                                                  (coe
+                                                                     MAlonzo.Code.Once.Parser.Core.d_skipNewlines_278
+                                                                     (coe
+                                                                        MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_560
+                                                                        (coe
+                                                                           MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12
+                                                                           (MAlonzo.Code.Once.Denotation.Behavior.d_srcText_16
+                                                                              (coe v0)))))
+                                                                  (\ v10 v11 v12 ->
+                                                                     coe
+                                                                       MAlonzo.Code.Once.Parser.Module.du_skipNewlines'45''8804'_176
+                                                                       (coe
+                                                                          MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_560
+                                                                          (coe
+                                                                             MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12
+                                                                             (MAlonzo.Code.Once.Denotation.Behavior.d_srcText_16
+                                                                                (coe v0)))))))))) in
+                                         coe
+                                           (case coe v10 of
+                                              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v11 v12
+                                                -> coe
+                                                     seq (coe v12)
+                                                     (let v13
+                                                            = coe
+                                                                MAlonzo.Code.Once.Adequacy.CanonReflectModule.du_go_144
+                                                                (coe
+                                                                   MAlonzo.Code.Once.Denotation.Behavior.d_srcImports_14
+                                                                   (coe v0))
+                                                                (coe v11) (coe v2) (coe v5)
+                                                                (coe
+                                                                   MAlonzo.Code.Once.Adequacy.ModuleComplete.du_moduleToIR'45'sound_864
+                                                                   (coe v2) (coe v5) (coe v8))
+                                                                (coe
+                                                                   MAlonzo.Code.Once.Adequacy.CanonResolve.d_noImports'63'_16
+                                                                   (coe
+                                                                      MAlonzo.Code.Once.Parser.Module.Core.d_decls_48
+                                                                      (coe v11))) in
+                                                      coe
+                                                        (coe
+                                                           seq (coe v13)
+                                                           (coe
+                                                              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                              (coe
+                                                                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                 (coe v11) (coe v13))
+                                                              (coe
+                                                                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                 (coe
+                                                                    MAlonzo.Code.Once.Adequacy.FrontEndBridge.du_parseStrict'45'sound_496
+                                                                    (coe
+                                                                       MAlonzo.Code.Once.Denotation.Behavior.d_srcText_16
+                                                                       (coe v0)))
+                                                                 erased))))
+                                              _ -> MAlonzo.RTE.mazUnreachableError)
+                                    _ -> MAlonzo.RTE.mazUnreachableError)
+                          _ -> MAlonzo.RTE.mazUnreachableError)
                 _ -> MAlonzo.RTE.mazUnreachableError
          _ -> MAlonzo.RTE.mazUnreachableError)
 -- Once.Adequacy.Compile.WithCPU.correctR-complete
@@ -1156,7 +1273,7 @@ du_correctR'45'complete_878 v0 v1 v2 v3 v4
         -> case coe v6 of
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v7 v8
                -> let v9
-                        = MAlonzo.Code.Once.Adequacy.CanonModule.d_go_56
+                        = MAlonzo.Code.Once.Adequacy.CanonModule.d_go_50
                             (coe
                                MAlonzo.Code.Once.Denotation.Behavior.d_srcImports_14 (coe v3))
                             (coe v5) (coe v7) (coe v8)

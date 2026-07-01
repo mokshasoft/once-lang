@@ -208,7 +208,7 @@ d_compileFunBody'45'aux_66 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Once.TypeCheck.Elaborate.T_CheckElabResult_306 ->
+  MAlonzo.Code.Once.TypeCheck.Elaborate.T_CheckElabResult_314 ->
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30
 d_compileFunBody'45'aux_66 v0 v1 v2 v3 v4 v5 v6 v7 ~v8 v9
   = du_compileFunBody'45'aux_66 v0 v1 v2 v3 v4 v5 v6 v7 v9
@@ -221,11 +221,11 @@ du_compileFunBody'45'aux_66 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
-  MAlonzo.Code.Once.TypeCheck.Elaborate.T_CheckElabResult_306 ->
+  MAlonzo.Code.Once.TypeCheck.Elaborate.T_CheckElabResult_314 ->
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30
 du_compileFunBody'45'aux_66 v0 v1 v2 v3 v4 v5 v6 v7 v8
   = case coe v8 of
-      MAlonzo.Code.Once.TypeCheck.Elaborate.C_success_320 v9 v10 v11 v12
+      MAlonzo.Code.Once.TypeCheck.Elaborate.C_success_328 v9 v10 v11 v12
         -> coe
              MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42
              (coe
@@ -240,7 +240,7 @@ du_compileFunBody'45'aux_66 v0 v1 v2 v3 v4 v5 v6 v7 v8
                       MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_108 (coe v1)
                       (coe v7) (coe v2)
                       (coe
-                         MAlonzo.Code.Once.TypeCheck.Elaborate.du_resolveExpr_12596 (coe v0)
+                         MAlonzo.Code.Once.TypeCheck.Elaborate.du_resolveExpr_12000 (coe v0)
                          (coe v1) (coe v7) (coe v5)
                          (coe
                             MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
@@ -255,7 +255,7 @@ du_compileFunBody'45'aux_66 v0 v1 v2 v3 v4 v5 v6 v7 v8
                    MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_108 (coe v1)
                    (coe v7) (coe v2)
                    (coe
-                      MAlonzo.Code.Once.TypeCheck.Elaborate.du_resolveExpr_12596 (coe v0)
+                      MAlonzo.Code.Once.TypeCheck.Elaborate.du_resolveExpr_12000 (coe v0)
                       (coe v1) (coe v7) (coe v5)
                       (coe
                          MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
@@ -266,7 +266,7 @@ du_compileFunBody'45'aux_66 v0 v1 v2 v3 v4 v5 v6 v7 v8
                          (coe MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v6) (coe v7))
                          (coe v4))
                       (coe (0 :: Integer)) (coe v10))))
-      MAlonzo.Code.Once.TypeCheck.Elaborate.C_failure_322 v9
+      MAlonzo.Code.Once.TypeCheck.Elaborate.C_failure_330 v9
         -> coe
              MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38
              (coe
@@ -296,7 +296,7 @@ d_compileFunBody_112 v0 v1 v2 v3 v4 v5 v6 v7
       (coe MAlonzo.Code.Once.Surface.Syntax.C_'8709'_8) (coe v0) (coe v1)
       (coe v2) (coe v3) (coe v5) (coe v6)
       (coe
-         MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElab_1298
+         MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElab_1488
          (coe
             MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndSelfAndPolys_222
             (coe v2) (coe v3) (coe v4) (coe v5) (coe v6))
@@ -438,16 +438,16 @@ d_inferType_276 v0 v1 v2
   = let v3
           = MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
               (coe
-                 MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1434
+                 MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1640
                  (coe
                     MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndPolys_208
                     (coe v0) (coe v1))
                  (coe v2)) in
     coe
       (case coe v3 of
-         MAlonzo.Code.Once.TypeCheck.Elaborate.C_success_296 v4 v5 v6 v7 v8
+         MAlonzo.Code.Once.TypeCheck.Elaborate.C_success_304 v4 v5 v6 v7 v8
            -> coe MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 (coe v4)
-         MAlonzo.Code.Once.TypeCheck.Elaborate.C_failure_298 v4
+         MAlonzo.Code.Once.TypeCheck.Elaborate.C_failure_306 v4
            -> coe
                 MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38
                 (coe

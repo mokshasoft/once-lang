@@ -119,7 +119,7 @@ du_module'45'typed'45'canon'45'aux_274 v0 v1 v2
         -> case coe v3 of
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v4 v5
                -> coe
-                    MAlonzo.Code.Once.Adequacy.CanonAllFuns.du_AllFunsTyped'45'transport_172
+                    MAlonzo.Code.Once.Adequacy.CanonAllFuns.du_AllFunsTyped'45'transport_424
                     (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
                     (coe
                        MAlonzo.Code.Once.Parser.Module.Resolve.d_polyDefNames_218
@@ -143,3 +143,66 @@ d_module'45'typed'45'canon_302 v0 v1
             (coe MAlonzo.Code.Once.Parser.Module.Core.C_mkModule_50 (coe v0)))
          (coe MAlonzo.Code.Once.Parser.Module.Core.C_mkModule_50 (coe v0)))
       (coe v1)
+-- Once.Adequacy.CanonModuleTyped.module-typed-and-valid-aux
+d_module'45'typed'45'and'45'valid'45'aux_316 ::
+  [MAlonzo.Code.Once.Parser.Module.Core.T_Decl_32] ->
+  MAlonzo.Code.Data.Sum.Base.T__'8846'__30 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  AgdaAny ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
+d_module'45'typed'45'and'45'valid'45'aux_316 v0 v1 ~v2 v3 v4
+  = du_module'45'typed'45'and'45'valid'45'aux_316 v0 v1 v3 v4
+du_module'45'typed'45'and'45'valid'45'aux_316 ::
+  [MAlonzo.Code.Once.Parser.Module.Core.T_Decl_32] ->
+  MAlonzo.Code.Data.Sum.Base.T__'8846'__30 ->
+  AgdaAny ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
+du_module'45'typed'45'and'45'valid'45'aux_316 v0 v1 v2 v3
+  = case coe v1 of
+      MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v4
+        -> coe MAlonzo.Code.Data.Empty.du_'8869''45'elim_12
+      MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v4
+        -> case coe v4 of
+             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v5 v6
+               -> case coe v3 of
+                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v7 v8
+                      -> coe
+                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                           (coe
+                              MAlonzo.Code.Once.Adequacy.CanonAllFuns.du_AllFunsTyped'45'transport_424
+                              (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
+                              (coe
+                                 MAlonzo.Code.Once.Parser.Module.Resolve.d_polyDefNames_218
+                                 (coe v0))
+                              (coe v6)
+                              (coe MAlonzo.Code.Once.Compile.d_collectSigEffects_462 (coe v0))
+                              (coe v5) (coe v2))
+                           (coe
+                              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                              (coe
+                                 MAlonzo.Code.Once.Adequacy.CanonAllFuns.du_AllMainEffUU'45'transport_470
+                                 (coe v5) (coe v2) (coe v7))
+                              (coe
+                                 MAlonzo.Code.Once.Adequacy.CanonAllFuns.du_MainExists'45'transport_518
+                                 (coe v5) (coe v2) (coe v8)))
+                    _ -> MAlonzo.RTE.mazUnreachableError
+             _ -> MAlonzo.RTE.mazUnreachableError
+      _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.Adequacy.CanonModuleTyped.module-typed-and-valid
+d_module'45'typed'45'and'45'valid_354 ::
+  [MAlonzo.Code.Once.Parser.Module.Core.T_Decl_32] ->
+  AgdaAny ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
+d_module'45'typed'45'and'45'valid_354 v0 v1 v2
+  = coe
+      du_module'45'typed'45'and'45'valid'45'aux_316 (coe v0)
+      (coe
+         MAlonzo.Code.Once.Parser.d_extractFunctions_490
+         (coe
+            MAlonzo.Code.Once.Parser.d_extractAliases_76
+            (coe MAlonzo.Code.Once.Parser.Module.Core.C_mkModule_50 (coe v0)))
+         (coe MAlonzo.Code.Once.Parser.Module.Core.C_mkModule_50 (coe v0)))
+      (coe v1) (coe v2)
