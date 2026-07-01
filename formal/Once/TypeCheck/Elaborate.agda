@@ -28,7 +28,7 @@ open import Data.Bool using (Bool; true; false; if_then_else_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.List using (List; []; _∷_; length)
 open import Relation.Nullary using (Dec; yes; no; ¬_)
-open import Data.Product using (_×_; _,_; ∃-syntax)
+open import Data.Product using (_×_; _,_; ∃-syntax; Σ-syntax)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; cong; cong₂; sym; trans)
 
 open import Once.Type
@@ -2702,6 +2702,27 @@ checkElab-fallback-RVar-terminal {ctx} A eqLoc eqImp
 checkElab-fallback-RVar-terminal {ctx} A eqLoc eqImp | (failure _ , _) | refl
   | llv-found impossible | _ = ⊥-elim (just≢nothing-Maybe (trans (sym impossible) eqLoc))
 checkElab-fallback-RVar-terminal {ctx} A eqLoc eqImp | (failure _ , _) | refl
+  | _ | liv-found impossible = ⊥-elim (just≢nothing-Maybe (trans (sym impossible) eqImp))
+
+-- STRONG variant: the full checkElabV pair-equation + witness (for the
+-- strong-completeness migration's gd-completeV g-terminal case). Same reduction
+-- path as the weak one, so the body is identical modulo the extra witness slot.
+checkElab-fallback-RVar-terminalV :
+  ∀ {ctx : NamedCtx} {π : Once.Type.Purity} (A : Type)
+  → lookupLocal ctx "terminal" ≡ nothing
+  → lookupImport (NamedCtx.imports ctx) "terminal" ≡ nothing
+  → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
+      Σ-syntax (ctx ⊢ᶜ Raw.RVar "terminal" ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] Unit) ⨾ Surface.zeroUsage) (λ w →
+        checkElabV ctx (Raw.RVar "terminal") (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] Unit)
+          ≡ (success Surface.zeroUsage eE d f , w)))))
+checkElab-fallback-RVar-terminalV {ctx} A eqLoc eqImp
+  with inferElabV ctx (Raw.RVar "terminal") | inferElabV-RVar-fail-bridge ctx "terminal" (λ ()) eqLoc eqImp
+... | (failure _ , _) | refl
+  with inspectLookupLocal ctx "terminal" | inspectLookupImport ctx "terminal"
+... | llv-not-found _ | liv-not-found _ = _ , _ , _ , _ , refl
+checkElab-fallback-RVar-terminalV {ctx} A eqLoc eqImp | (failure _ , _) | refl
+  | llv-found impossible | _ = ⊥-elim (just≢nothing-Maybe (trans (sym impossible) eqLoc))
+checkElab-fallback-RVar-terminalV {ctx} A eqLoc eqImp | (failure _ , _) | refl
   | _ | liv-found impossible = ⊥-elim (just≢nothing-Maybe (trans (sym impossible) eqImp))
 
 checkElab-fallback-RVar-initial :
