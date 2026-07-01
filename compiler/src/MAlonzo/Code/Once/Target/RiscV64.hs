@@ -21,6 +21,7 @@ import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Agda.Builtin.String
 import qualified MAlonzo.Code.Data.Nat.Show
 import qualified MAlonzo.Code.Data.String.Base
+import qualified MAlonzo.Code.Once.Arith.Backend.RiscV64.Emit
 import qualified MAlonzo.Code.Once.CCC.Codegen.IRToTrace
 import qualified MAlonzo.Code.Once.CCC.Target.RiscV64.AbstractToRiscV
 import qualified MAlonzo.Code.Once.CCC.Target.RiscV64.Emit
@@ -404,4 +405,5 @@ d_riscv64_88
       (coe d_riscv64'45'asmHeader_6)
       (coe d_riscv64'45'functionPrologue_8)
       (coe d_riscv64'45'functionEpilogue_12)
-      (coe (\ v0 -> "" :: Data.Text.Text))
+      (coe
+         MAlonzo.Code.Once.Arith.Backend.RiscV64.Emit.d_emit'45'arith'45'blocks_112)

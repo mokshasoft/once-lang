@@ -35,6 +35,7 @@ open import Once.CCC.Codegen.IRToTrace
 open import Once.CCC.Machine.SMCore using (AbstractTrace)
 open import Once.CCC.Target.RiscV64.AbstractToRiscV using (compile-trace-cnt)
 open import Once.CCC.Target.RiscV64.Emit using (programToText)
+open import Once.Arith.Backend.RiscV64.Emit using (emit-arith-blocks)
 
 ------------------------------------------------------------------------
 -- RV64 Assembly Format (LP64 ABI, GAS syntax)
@@ -152,5 +153,5 @@ riscv64 = record
   ; asmHeader        = riscv64-asmHeader
   ; functionPrologue = riscv64-functionPrologue
   ; functionEpilogue = riscv64-functionEpilogue
-  ; emitArithBlocks  = λ _ → ""
+  ; emitArithBlocks  = emit-arith-blocks
   }
