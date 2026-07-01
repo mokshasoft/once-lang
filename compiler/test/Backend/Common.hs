@@ -1,6 +1,12 @@
 module Backend.Common
-  ( -- * Test Programs
-    testPrograms
+  ( -- * Multi-arch runtime testing
+    BackendArch (..)
+  , archName
+  , backendArches
+  , buildAndRunOn
+  , exitCases
+    -- * Test Programs
+  , testPrograms
   , helloOnce
   , helloOnceNoAlloc
   , helloOnceWithAlloc
@@ -29,12 +35,102 @@ module Backend.Common
 import Control.Exception (SomeException, try)
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
-import System.Directory (createDirectoryIfMissing, findExecutable, removeDirectoryRecursive)
+import System.Directory (createDirectoryIfMissing, findExecutable, makeAbsolute, removeDirectoryRecursive)
+import System.Environment (getEnvironment)
 import System.Exit (ExitCode (..))
 import System.FilePath ((</>))
-import System.Process (readProcessWithExitCode)
+import System.Process (proc, env, readProcessWithExitCode, readCreateProcessWithExitCode)
+
+import Test.Tasty (TestTree, testGroup)
+import Test.Tasty.HUnit (testCase, assertFailure)
 
 import Once.Type (Type (..))
+
+------------------------------------------------------------------------
+-- Multi-arch runtime testing (Plan 0.53): build each program for every
+-- backend arch and run it — natively for x86_64, under qemu user-mode for
+-- x86_32 / riscv64. `once` shells out to $AS/$LD/$OBJCOPY, so per-arch cross
+-- tools are supplied via the compiler subprocess's environment. `once`
+-- auto-links the matching `Strata/Interpretations/*.<arch>` impls.
+------------------------------------------------------------------------
+
+data BackendArch = X86_64 | X86_32 | RiscV64 deriving (Eq)
+
+archName :: BackendArch -> String
+archName X86_64  = "x86_64"
+archName X86_32  = "x86_32"
+archName RiscV64 = "riscv64"
+
+-- | The arches the runtime/backend specs execute on.
+backendArches :: [BackendArch]
+backendArches = [X86_64, X86_32, RiscV64]
+
+-- | Cross-tool env (AS/LD/OBJCOPY) for the `once` subprocess. x86_64 uses the
+-- host defaults; x86_32 uses native binutils via thin --32 / -m elf_i386
+-- wrappers (test/tools/); riscv64 uses the riscv64-unknown-linux-gnu toolchain.
+archToolEnv :: BackendArch -> IO [(String, String)]
+archToolEnv X86_64 = pure []
+archToolEnv X86_32 = do
+  asW <- makeAbsolute "test/tools/as-x86-32"
+  ldW <- makeAbsolute "test/tools/ld-x86-32"
+  pure [("AS", asW), ("LD", ldW)]
+archToolEnv RiscV64 = pure
+  [ ("AS", "riscv64-unknown-linux-gnu-as")
+  , ("LD", "riscv64-unknown-linux-gnu-ld")
+  , ("OBJCOPY", "riscv64-unknown-linux-gnu-objcopy") ]
+
+-- | qemu prefix to run a built exe for this arch (empty = native).
+archRunPrefix :: BackendArch -> [String]
+archRunPrefix X86_64  = []
+archRunPrefix X86_32  = ["qemu-i386"]
+archRunPrefix RiscV64 = ["qemu-riscv64"]
+
+-- | Run `once build …` with the arch's cross tools injected into the env.
+runOnceArch :: BackendArch -> [String] -> IO (ExitCode, String, String)
+runOnceArch arch args = do
+  extra <- archToolEnv arch
+  base  <- getEnvironment
+  let env' = extra ++ filter ((`notElem` map fst extra) . fst) base
+  onceInPath <- findExecutable "once"
+  let cp = case onceInPath of
+             Just p  -> proc p args
+             Nothing -> proc "cabal" (["run", "once", "--"] ++ args)
+  readCreateProcessWithExitCode cp { env = Just env' } ""
+
+-- | Build `test/<name>.once` for `arch` and run it (native or qemu, with a
+-- 10s wall-clock cap so a codegen bug that loops shows as a failure, not a
+-- hang). Returns Right () iff the process exit code equals `expected`.
+buildAndRunOn :: BackendArch -> String -> Int -> IO (Either String ())
+buildAndRunOn arch name expected = do
+  let tag     = archName arch
+      testDir = "/tmp/once_" ++ tag ++ "_" ++ name
+      srcFile = testDir </> name ++ ".once"
+      exeFile = testDir </> name
+  createDirectoryIfMissing True testDir
+  source <- TIO.readFile ("test/" ++ name ++ ".once")
+  TIO.writeFile srcFile source
+  (buildExit, _out, buildErr) <- runOnceArch arch
+    ["build", "--target", tag, "--alloc", "heap", "--no-optimize", "--exe", srcFile, "-o", exeFile]
+  case buildExit of
+    ExitFailure _ -> cleanupDir testDir >> pure (Left ("[" ++ tag ++ "] build failed: " ++ buildErr))
+    ExitSuccess -> do
+      (runExit, _rout, _rerr) <- readProcessWithExitCode "timeout"
+        (["10"] ++ archRunPrefix arch ++ [exeFile]) ""
+      cleanupDir testDir
+      let code = case runExit of ExitSuccess -> 0; ExitFailure c -> c
+      pure $ if code == expected
+               then Right ()
+               else Left ("[" ++ tag ++ "] expected exit " ++ show expected
+                          ++ " but got " ++ show code
+                          ++ (if code == 124 then " (TIMEOUT/hang)" else ""))
+
+-- | One test program → a per-arch test group (each arch is its own case, so a
+-- partial backend shows exactly which arches pass). Reads `test/<name>.once`.
+exitCases :: String -> String -> Int -> TestTree
+exitCases label name expected =
+  testGroup label
+    [ testCase (archName a) (buildAndRunOn a name expected >>= either assertFailure pure)
+    | a <- backendArches ]
 
 -- | Common type variables for tests
 tA, tB :: Type

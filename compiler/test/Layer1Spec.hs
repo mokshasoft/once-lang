@@ -6,98 +6,20 @@
 -- Tests that compile to executables and verify output via exit codes.
 -- Layer 1 adds pair construction and projection on top of Layer 0.
 --
--- The current tests cover ground pair expressions in `main`'s body:
--- bare projections (`fst (a, b)`), nested pairs, and compose chains
--- of `snd` morphisms (which collapse through the morphism-realm
--- bypass, Plan 0.2.4.5 D2, to pure CCC compose).
---
--- User-defined Layer 1 functions over pairs (`swap p = (snd p, fst p)`)
--- now work with `--alloc heap` after Plan 0.19 (Surface sigOp/closure
--- ABI split). They're tested in `Layer4Spec` (closure-realm tests),
--- not here, because they exercise the user-fn closure path which lives
--- in Layer 4 conceptually. The original demonstrating source remains
--- at `test/layer1-swap.once`.
+-- Plan 0.53: runs on every backend arch (x86_64 native, x86_32 / riscv64
+-- under qemu) via the shared multi-arch `exitCases` helper.
 --
 -- Run with: cabal test --test-option='-p "/Layer1/"'
 
 module Layer1Spec (layer1Tests) where
 
 import Test.Tasty
-import Test.Tasty.HUnit
 
-import qualified Data.Text.IO as TIO
-import System.Directory (createDirectoryIfMissing)
-import System.Exit (ExitCode (..))
-import System.FilePath ((</>))
-import System.Process (readProcessWithExitCode)
-
-import Backend.Common (runOnce, cleanupDir)
+import Backend.Common (exitCases)
 
 layer1Tests :: TestTree
 layer1Tests = testGroup "Layer1"
-  [ fstTest
-  , sndDeepTest
-  , composeSndTest
+  [ exitCases "fst projects first component (exit 42)"    "layer1-fst"         42
+  , exitCases "deeply-nested snd (exit 42)"               "layer1-snd-deep"    42
+  , exitCases "compose chain of snd morphisms (exit 42)"  "layer1-compose-snd" 42
   ]
-
--- | exit (fst (42, 99)) should exit with code 42
-fstTest :: TestTree
-fstTest = testCase "fst projects first component (exit 42)" $ do
-  result <- buildAndRun "layer1-fst" 42
-  case result of
-    Left err -> assertFailure err
-    Right () -> return ()
-
--- | exit (snd (snd (snd (1, (2, (3, 42)))))) should exit with code 42
-sndDeepTest :: TestTree
-sndDeepTest = testCase "deeply-nested snd (exit 42)" $ do
-  result <- buildAndRun "layer1-snd-deep" 42
-  case result of
-    Left err -> assertFailure err
-    Right () -> return ()
-
--- | exit ((snd . snd . snd) (1, (2, (3, 42)))) should exit with code 42
--- Exercises the morphism-realm compose bypass for non-id morphisms.
-composeSndTest :: TestTree
-composeSndTest = testCase "compose chain of snd morphisms (exit 42)" $ do
-  result <- buildAndRun "layer1-compose-snd" 42
-  case result of
-    Left err -> assertFailure err
-    Right () -> return ()
-
-------------------------------------------------------------------------
--- Test Helpers (mirrors Layer0Spec)
-------------------------------------------------------------------------
-
-buildAndRun :: String -> Int -> IO (Either String ())
-buildAndRun name expectedExitCode = do
-  let testDir = "/tmp/once_" ++ name
-      srcFile = "test/" ++ name ++ ".once"
-      exeFile = testDir </> name
-
-  createDirectoryIfMissing True testDir
-
-  source <- TIO.readFile srcFile
-  TIO.writeFile (testDir </> name ++ ".once") source
-
-  (buildExit, _buildOut, buildErr) <- runOnce
-    ["build", "--target", "x86_64", "--no-optimize", "--exe",
-     testDir </> name ++ ".once", "-o", exeFile]
-
-  case buildExit of
-    ExitFailure _ -> do
-      cleanupDir testDir
-      return $ Left $ "Build failed: " ++ buildErr
-    ExitSuccess -> do
-      (runExit, _runOut, _runErr) <- readProcessWithExitCode exeFile [] ""
-
-      cleanupDir testDir
-
-      case runExit of
-        ExitFailure code | code == expectedExitCode -> return $ Right ()
-        ExitFailure code -> return $ Left $
-          "Wrong exit code: expected " ++ show expectedExitCode ++
-          " but got " ++ show code
-        ExitSuccess -> return $ Left $
-          "Expected exit code " ++ show expectedExitCode ++
-          " but got 0 (success)"

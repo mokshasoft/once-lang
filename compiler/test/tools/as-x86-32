@@ -1,0 +1,3 @@
+#!/bin/sh
+# once invokes: as <asmFile> -o <objFile>. Prepend --32 for i386 output.
+exec as --32 "$@"

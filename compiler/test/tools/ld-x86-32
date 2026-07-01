@@ -1,0 +1,3 @@
+#!/bin/sh
+# once invokes: ld <objs...> -o <exe>. Force i386 emulation.
+exec ld -m elf_i386 "$@"
