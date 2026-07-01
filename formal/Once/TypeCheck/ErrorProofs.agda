@@ -39,7 +39,7 @@ open import Once.TypeCheck.Raw as Raw
 open import Once.TypeCheck.Elaborate
   using (NamedCtx; inferElab; checkElab; InferElabResult; CheckElabResult;
          success; failure; lookupLocal; lookupImport;
-         inferElabV; checkElabV; _≟T_)
+         inferElabV; checkElabV; _≟T_; isRIntVliftTarget?)
 open import Once.TypeCheck.Error
   using (TypeError;
          LambdaInInferMode; LambdaRequiresFunctionType;
@@ -266,8 +266,16 @@ check-RInt-type-mismatch :
   → ¬ (T ≡ Int)
   → checkElab ctx (Raw.RInt n) T ≡ failure err
   → err ≡ TypeMismatch T Int
+-- Plan 0.45/D069: `checkElab (RInt n) T` first dispatches on `isRIntVliftTarget? T`
+-- (RInt value-lifts at `X ⇒[Many π] Int`). A vlift target SUCCEEDS, so the
+-- failure hypothesis is absurd there; otherwise it is the old infer-and-match
+-- (`T ≟T Int`), which fails with `TypeMismatch T Int` when `T ≢ Int`.
 check-RInt-type-mismatch ctx n T ¬eq eq
-  with T ≟T Int
+  with isRIntVliftTarget? T
+... | just (X , π , refl) with eq
+...   | ()
+check-RInt-type-mismatch ctx n T ¬eq eq
+  | nothing with T ≟T Int
 ... | yes refl = ⊥-elim (¬eq refl)
 ... | no _ with eq
 ...   | refl = refl
