@@ -20,7 +20,7 @@
 module Once.Target.RiscV64 where
 
 open import Data.String using (String; _++_)
-open import Data.Nat using (ℕ; _*_)
+open import Data.Nat using (ℕ; _*_; _+_)
 open import Data.Nat.Show using () renaming (show to showNat)
 open import Data.List using (List; []; _∷_)
 open import Data.Product using (_×_; _,_)
@@ -83,17 +83,25 @@ riscv64-functionEpilogue = "    ret\n\n"
 -- IR → Assembly
 ------------------------------------------------------------------------
 
--- Plan 0.53: each compiled IR function brackets its trace with
--- `addi sp,sp,-budget*8` / `addi sp,sp,budget*8` for its private
--- sp-relative slot frame (mirror x86-64's subq/addq).
+-- Plan 0.53: each compiled IR function brackets its trace with a private
+-- sp-relative slot frame. Unlike x86-64 (where `call` pushes the return
+-- address on the stack), RISC-V `jalr` writes the return address to the `ra`
+-- REGISTER, which nested closure calls clobber. So the frame also saves/
+-- restores `ra` (one extra slot at offset budget*8), the standard RV64
+-- calling convention — without it, any function that returns after making a
+-- closure call would jump through a stale `ra` and loop.
 riscv64-irToAsm : ℕ → ∀ {A B} → IR A B → ℕ × String
 riscv64-irToAsm l ir =
   let budget       = ir-stack-budget-from l ir
       (l' , trace) = ir-to-trace-from l ir
       prog         = compile-trace trace
-  in l' , ("    addi sp, sp, -" ++ showNat (budget * 8) ++ "\n" ++
+      raOff        = budget * 8
+      frame        = raOff + 8   -- +8 for the saved ra
+  in l' , ("    addi sp, sp, -" ++ showNat frame ++ "\n" ++
+           "    sd ra, " ++ showNat raOff ++ "(sp)\n" ++
            programToText prog ++
-           "    addi sp, sp, " ++ showNat (budget * 8) ++ "\n")
+           "    ld ra, " ++ showNat raOff ++ "(sp)\n" ++
+           "    addi sp, sp, " ++ showNat frame ++ "\n")
 
 -- Plan 0.53: closure-body (thunk) emission. For each `(label, budget,
 -- body-trace)` from `ir-to-bodies`, emit:
@@ -115,9 +123,11 @@ riscv64-irToBodies l ir =
     emit-thunk-body : (ℕ × ℕ × AbstractTrace) → String
     emit-thunk-body (lbl , budget , body-trace) =
       ".L_thunk_" ++ showNat lbl ++ ":\n" ++
-      "    addi sp, sp, -" ++ showNat (budget * 8) ++ "\n" ++
+      "    addi sp, sp, -" ++ showNat (budget * 8 + 8) ++ "\n" ++
+      "    sd ra, " ++ showNat (budget * 8) ++ "(sp)\n" ++
       programToText (compile-trace body-trace) ++
-      "    addi sp, sp, " ++ showNat (budget * 8) ++ "\n" ++
+      "    ld ra, " ++ showNat (budget * 8) ++ "(sp)\n" ++
+      "    addi sp, sp, " ++ showNat (budget * 8 + 8) ++ "\n" ++
       "    ret\n\n"
     emit-bodies : List (ℕ × ℕ × AbstractTrace) → String
     emit-bodies []       = ""
