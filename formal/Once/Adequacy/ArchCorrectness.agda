@@ -14,13 +14,14 @@
 --
 -- TRUST vs OBLIGATION is NOT baked into the `ArchCorrect` record (every
 -- field is phrased `…-correct`); WHETHER a field is a proof or a postulate
--- is decided HERE, per arch. Today each witness is a whole-record postulate
--- (assemble/printer trusted + the IR-observable obligation deferred). When an
--- arch genuinely discharges a field — e.g. x86-64's `ir-flat-correct` via
--- `IRObsCorrectFlat` — refactor THAT arch's witness from a postulate into a
--- `record { … }` construction, so the still-trusted fields stay postulated
--- and the proved field becomes a real proof. Nothing assumes the trusted
--- fields can't be proved later (an in-Agda assembler / verified printer).
+-- is decided HERE, per arch. Since Plan 0.53 (2026-07-01) ALL THREE witnesses
+-- are constructed from the FS-generic IR-observable theorem `ir-obs-correct`
+-- (`Once.Adequacy.ArchCorrectness.{X86-64,X86-32,RiscV64}`) — no longer
+-- whole-record postulates. Each arch carries a single named
+-- `<arch>-flat-from-obs` residual (the entry-state + prefix FS plumbing) plus
+-- `program-bound`; those are provable (no new mathematics) and nothing assumes
+-- the trusted fields can't be proved later (an in-Agda assembler / verified
+-- printer). `cata-correct` is load-bearing for the apex on every target.
 ------------------------------------------------------------------------
 
 module Once.Adequacy.ArchCorrectness where
