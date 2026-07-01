@@ -47,9 +47,14 @@ for f in "$TESTDIR"/*.once; do
     echo "FAIL(build) $name (expected exit $exp) — see $BUILD/$name.log"
     fail=$((fail+1)); failed+=("$name"); continue
   fi
-  "$QEMU" "$BUILD/$name"; got=$?
+  # Per-test wall-clock cap: a codegen bug can loop forever under qemu.
+  # timeout exits 124 on expiry, which surfaces as a FAIL (never a hang).
+  timeout 10 "$QEMU" "$BUILD/$name"; got=$?
   if [ "$got" -eq "$exp" ]; then
     pass=$((pass+1))
+  elif [ "$got" -eq 124 ]; then
+    echo "FAIL $name: TIMEOUT (hang) under qemu-riscv64, expected exit $exp"
+    fail=$((fail+1)); failed+=("$name")
   else
     echo "FAIL $name: expected exit $exp, got $got (qemu-riscv64)"
     fail=$((fail+1)); failed+=("$name")
