@@ -1,14 +1,14 @@
-// ======================================================================
-// Memory Operations - RISC-V64 Implementation
-// ======================================================================
-//
-// MallocLike interface using mmap/munmap directly (no libc).
-//
-// Memory layout: Each allocation has an 8-byte header storing the size.
-//   [size: 8 bytes][user data: size bytes]
-//   ^-- mmap returns     ^-- returned to user
-//
-// ======================================================================
+# ======================================================================
+# Memory Operations - RISC-V64 Implementation
+# ======================================================================
+#
+# MallocLike interface using mmap/munmap directly (no libc).
+#
+# Memory layout: Each allocation has an 8-byte header storing the size.
+#   [size: 8 bytes][user data: size bytes]
+#   ^-- mmap returns     ^-- returned to user
+#
+# ======================================================================
 
 .text
 .align 2
@@ -19,20 +19,20 @@
 .equ SYS_mmap,      222
 .equ SYS_munmap,    215
 
-// mmap constants
+# mmap constants
 .equ PROT_READ,     1
 .equ PROT_WRITE,    2
 .equ MAP_PRIVATE,   2
 .equ MAP_ANONYMOUS, 32
 
-// Header size
+# Header size
 .equ HEADER_SIZE,   8
 
-// ----------------------------------------------------------------------
-// alloc - Allocate memory
-// ----------------------------------------------------------------------
-// Input: Int (size in bytes)
-// Output: (buf_data, buf_len) - OnceBuffer
+# ----------------------------------------------------------------------
+# alloc - Allocate memory
+# ----------------------------------------------------------------------
+# Input: Int (size in bytes)
+# Output: (buf_data, buf_len) - OnceBuffer
 .global alloc
 .type alloc, @function
 alloc:
@@ -40,33 +40,33 @@ alloc:
     sd      ra, 24(sp)
     sd      s0, 16(sp)
 
-    mv      s0, a0              // s0 = requested size
+    mv      s0, a0              # s0 = requested size
 
-    // Total size = header + data
-    addi    a1, a0, HEADER_SIZE // a1 = total size
+    # Total size = header + data
+    addi    a1, a0, HEADER_SIZE # a1 = total size
 
-    // mmap(NULL, size, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0)
-    li      a0, 0               // addr = NULL
-    // a1 = length
+    # mmap(NULL, size, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0)
+    li      a0, 0               # addr = NULL
+    # a1 = length
     li      a2, (PROT_READ | PROT_WRITE)
     li      a3, (MAP_PRIVATE | MAP_ANONYMOUS)
-    li      a4, -1              // fd = -1
-    li      a5, 0               // offset = 0
+    li      a4, -1              # fd = -1
+    li      a5, 0               # offset = 0
 
     li      a7, SYS_mmap
     ecall
 
-    // Check for error
+    # Check for error
     li      t0, -4096
     bltu    t0, a0, .alloc_failed_rv
 
-    // Store size in header
+    # Store size in header
     sd      s0, 0(a0)
 
-    // Return buffer pointing past header
+    # Return buffer pointing past header
     addi    t0, a0, HEADER_SIZE
-    sd      t0, 0(sp)           // data
-    sd      s0, 8(sp)           // len
+    sd      t0, 0(sp)           # data
+    sd      s0, 8(sp)           # len
     addi    a0, sp, 0
     j       .alloc_done_rv
 
@@ -82,48 +82,48 @@ alloc:
     ret
 .size alloc, .-alloc
 
-// ----------------------------------------------------------------------
-// free - Free allocated memory
-// ----------------------------------------------------------------------
-// Input: (buf_data, buf_len) - OnceBuffer
-// Output: Unit (0/NULL)
+# ----------------------------------------------------------------------
+# free - Free allocated memory
+# ----------------------------------------------------------------------
+# Input: (buf_data, buf_len) - OnceBuffer
+# Output: Unit (0/NULL)
 .global free
 .type free, @function
 free:
     addi    sp, sp, -16
     sd      ra, 8(sp)
 
-    // Get buffer data pointer
-    ld      a0, 0(a0)           // a0 = buf_data
+    # Get buffer data pointer
+    ld      a0, 0(a0)           # a0 = buf_data
 
-    // Check for NULL
+    # Check for NULL
     beqz    a0, .free_done_rv
 
-    // Calculate original mmap address
+    # Calculate original mmap address
     addi    a0, a0, -HEADER_SIZE
 
-    // Read size from header
-    ld      a1, 0(a0)           // a1 = stored size
+    # Read size from header
+    ld      a1, 0(a0)           # a1 = stored size
 
-    // Add header size for munmap
+    # Add header size for munmap
     addi    a1, a1, HEADER_SIZE
 
-    // munmap
+    # munmap
     li      a7, SYS_munmap
     ecall
 
 .free_done_rv:
-    li      a0, 0               // Return NULL
+    li      a0, 0               # Return NULL
     ld      ra, 8(sp)
     addi    sp, sp, 16
     ret
 .size free, .-free
 
-// ----------------------------------------------------------------------
-// realloc - Reallocate memory
-// ----------------------------------------------------------------------
-// Input: ((buf_data, buf_len), new_size)
-// Output: (buf_data, buf_len) - OnceBuffer
+# ----------------------------------------------------------------------
+# realloc - Reallocate memory
+# ----------------------------------------------------------------------
+# Input: ((buf_data, buf_len), new_size)
+# Output: (buf_data, buf_len) - OnceBuffer
 .global realloc
 .type realloc, @function
 realloc:
@@ -133,20 +133,20 @@ realloc:
     sd      s1, 24(sp)
     sd      s2, 16(sp)
 
-    // Unpack: ((buf_data, buf_len), new_size)
-    ld      t0, 0(a0)           // t0 = ptr to old buffer
-    ld      s1, 8(a0)           // s1 = new_size
+    # Unpack: ((buf_data, buf_len), new_size)
+    ld      t0, 0(a0)           # t0 = ptr to old buffer
+    ld      s1, 8(a0)           # s1 = new_size
 
-    ld      s0, 0(t0)           // s0 = old buf_data
+    ld      s0, 0(t0)           # s0 = old buf_data
 
-    // Handle NULL input
+    # Handle NULL input
     beqz    s0, .realloc_alloc_only_rv
 
-    // Get old size from header
-    ld      s2, -HEADER_SIZE(s0)    // s2 = old size
+    # Get old size from header
+    ld      s2, -HEADER_SIZE(s0)    # s2 = old size
 
-    // Allocate new memory
-    addi    a1, s1, HEADER_SIZE // total size
+    # Allocate new memory
+    addi    a1, s1, HEADER_SIZE # total size
 
     li      a0, 0
     li      a2, (PROT_READ | PROT_WRITE)
@@ -160,23 +160,23 @@ realloc:
     li      t0, -4096
     bltu    t0, a0, .realloc_failed_rv
 
-    // Store new size in header
+    # Store new size in header
     sd      s1, 0(a0)
 
-    // Calculate new data pointer
-    addi    t1, a0, HEADER_SIZE // t1 = new data ptr
-    mv      t2, a0              // t2 = mmap result (for munmap later)
+    # Calculate new data pointer
+    addi    t1, a0, HEADER_SIZE # t1 = new data ptr
+    mv      t2, a0              # t2 = mmap result (for munmap later)
 
-    // Copy data: min(old_size, new_size)
-    mv      t3, s2              // t3 = old_size
+    # Copy data: min(old_size, new_size)
+    mv      t3, s2              # t3 = old_size
     blt     s1, t3, .realloc_use_new_size_rv
     j       .realloc_copy_rv
 .realloc_use_new_size_rv:
-    mv      t3, s1              // t3 = min
+    mv      t3, s1              # t3 = min
 
 .realloc_copy_rv:
-    mv      t4, s0              // source
-    mv      t5, t1              // dest
+    mv      t4, s0              # source
+    mv      t5, t1              # dest
 .realloc_copy_loop_rv:
     beqz    t3, .realloc_copy_done_rv
     lb      t6, 0(t4)
@@ -187,11 +187,11 @@ realloc:
     j       .realloc_copy_loop_rv
 
 .realloc_copy_done_rv:
-    // Save new ptr
-    sd      t1, 0(sp)           // data
-    sd      s1, 8(sp)           // len
+    # Save new ptr
+    sd      t1, 0(sp)           # data
+    sd      s1, 8(sp)           # len
 
-    // Free old memory
+    # Free old memory
     addi    a0, s0, -HEADER_SIZE
     ld      a1, 0(a0)
     addi    a1, a1, HEADER_SIZE
@@ -202,7 +202,7 @@ realloc:
     j       .realloc_done_rv
 
 .realloc_alloc_only_rv:
-    // No old buffer, just allocate
+    # No old buffer, just allocate
     addi    a1, s1, HEADER_SIZE
 
     li      a0, 0
@@ -238,11 +238,11 @@ realloc:
     ret
 .size realloc, .-realloc
 
-// ----------------------------------------------------------------------
-// heap_string - Allocate and copy string to heap
-// ----------------------------------------------------------------------
-// Input: (len, (src_data, src_len))
-// Output: (str_data, str_len) - OnceString
+# ----------------------------------------------------------------------
+# heap_string - Allocate and copy string to heap
+# ----------------------------------------------------------------------
+# Input: (len, (src_data, src_len))
+# Output: (str_data, str_len) - OnceString
 .global heap_string
 .type heap_string, @function
 heap_string:
@@ -252,12 +252,12 @@ heap_string:
     sd      s1, 24(sp)
     sd      s2, 16(sp)
 
-    // Unpack: (len, (src_data, src_len))
-    ld      s0, 0(a0)           // s0 = len
-    ld      t0, 8(a0)           // t0 = ptr to src buffer
-    ld      s1, 0(t0)           // s1 = src_data
+    # Unpack: (len, (src_data, src_len))
+    ld      s0, 0(a0)           # s0 = len
+    ld      t0, 8(a0)           # t0 = ptr to src buffer
+    ld      s1, 0(t0)           # s1 = src_data
 
-    // Allocate memory
+    # Allocate memory
     addi    a1, s0, HEADER_SIZE
 
     li      a0, 0
@@ -272,16 +272,16 @@ heap_string:
     li      t0, -4096
     bltu    t0, a0, .heap_string_failed_rv
 
-    // Store size in header
+    # Store size in header
     sd      s0, 0(a0)
 
-    // Get data pointer
-    addi    s2, a0, HEADER_SIZE // s2 = dest
+    # Get data pointer
+    addi    s2, a0, HEADER_SIZE # s2 = dest
 
-    // Copy data
-    mv      t0, s1              // source
-    mv      t1, s2              // dest
-    mv      t2, s0              // count
+    # Copy data
+    mv      t0, s1              # source
+    mv      t1, s2              # dest
+    mv      t2, s0              # count
 .heap_string_copy_rv:
     beqz    t2, .heap_string_copy_done_rv
     lb      t3, 0(t0)
@@ -292,9 +292,9 @@ heap_string:
     j       .heap_string_copy_rv
 
 .heap_string_copy_done_rv:
-    // Return string
-    sd      s2, 0(sp)           // data
-    sd      s0, 8(sp)           // len
+    # Return string
+    sd      s2, 0(sp)           # data
+    sd      s0, 8(sp)           # len
     addi    a0, sp, 0
     j       .heap_string_done_rv
 
@@ -312,5 +312,5 @@ heap_string:
     ret
 .size heap_string, .-heap_string
 
-#endif // ONCE_LINUX_RISCV64_MEMORY_DEFINED
+#endif # ONCE_LINUX_RISCV64_MEMORY_DEFINED
 
