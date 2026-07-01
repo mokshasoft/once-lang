@@ -116,11 +116,19 @@ emit-arith-block sym blk =
       pad   = showℕ (4 * n)
       instr = emit-program (compile-abs (block-body blk))
   in sym ++ ":\n" ++
+     -- Save ALL four borrowed abstract-reg registers: %ebx (closure) and
+     -- %esi (heap) are global; %edx (Scratch) and %edi (Input2) are the
+     -- CCC reg-op registers, live across a cata loop whose algebra calls
+     -- this block. Clobbering %edx would corrupt the loop counter.
      "    pushl %ebx\n" ++
      "    pushl %esi\n" ++
+     "    pushl %edx\n" ++
+     "    pushl %edi\n" ++
      "    subl $" ++ pad ++ ", %esp\n" ++
      program-text instr ++
      "    addl $" ++ pad ++ ", %esp\n" ++
+     "    popl %edi\n" ++
+     "    popl %edx\n" ++
      "    popl %esi\n" ++
      "    popl %ebx\n" ++
      "    ret\n\n"
