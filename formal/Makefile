@@ -65,6 +65,24 @@ typecheck:
 	@echo "Type-checking verified type checker..."
 	@sh -c '$(AGDA_CMD) Once/TypeCheck.agda'
 
+# The SHIPPED artefact: correctness (Once.Adequacy.CorrectCompiler) CONJOINED
+# with the well-behavedness bundle (Once.TypeCheck.Verified — determinism,
+# totality, error-preservation, frontend identities). A single entry that gates
+# BOTH; a regression in either fails this target. See Once/Certified.agda.
+.PHONY: certified
+certified:
+	@echo "Type-checking the certified artefact (correctness AND well-behavedness)..."
+	@sh -c '$(AGDA_CMD) Once/Certified.agda'
+
+# Island-rot backstop: type-check EVERY module (not just the apex closure), so an
+# off-apex proof can never rot silently again (as ErrorProofs did). Generates a
+# transient Everything module importing the whole tree. Heavy — CI / on demand.
+.PHONY: check-all
+check-all:
+	@echo "module Everything where" > Everything.agda
+	@find Once -name '*.agda' | LC_ALL=C sort | sed 's|/|.|g; s|\.agda$$||; s|^|import |' >> Everything.agda
+	@sh -c '$(AGDA_CMD) Everything.agda'; status=$$?; rm -f Everything.agda Everything.agdai; exit $$status
+
 .PHONY: elaborate
 elaborate:
 	@echo "Type-checking elaboration (Surface → IR)..."
