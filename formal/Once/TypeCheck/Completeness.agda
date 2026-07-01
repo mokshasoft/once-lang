@@ -856,6 +856,20 @@ postulate
     → ∃[ eE ] ∃[ d ] ∃[ fr ]
         checkElab ctx (Raw.RApp f arg) T
           ≡ success (Ψ₁ +ᵘ (T.Many *ᵘ Ψ₂)) eE d fr
+  -- Plan 0.52: the eff-analog (pure⊑eff at an arg-driven app), the exact twin of
+  -- the pure gap above — inherits the same known argdriven-reduction difficulty
+  -- (checkElab (f arg) reduces through inferElab (f arg) ≡ failure, hard to
+  -- establish for an abstract argdriven app). The eff argdriven clause checks f
+  -- at its pure codomain and wraps in arr'/t-subsume.
+  completeness-gap-arg-driven-app-check-eff :
+    ∀ {ctx : NamedCtx} {f arg : RawExpr} {X A B : Type}
+      {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
+    → Once.TypeCheck.Elaborate.classifyAppHead f ≡ nothing
+    → ctx ⊢ᵢ arg ∶ X ⨾ Ψ₂
+    → ctx ⊢ᶜ f ∶ (X T.⇒[ T.mk-kind T.Many T.pure ] (A T.⇒[ T.mk-kind T.Many T.pure ] B)) ⨾ Ψ₁
+    → ∃[ eE ] ∃[ d ] ∃[ fr ]
+        checkElab ctx (Raw.RApp f arg) (A T.⇒[ T.mk-kind T.Many T.eff ] B)
+          ≡ success (Ψ₁ +ᵘ (T.Many *ᵘ Ψ₂)) eE d fr
 
 -- Regrade a morphism to `eff` (Plan 0.52). Grade-poly leaves and compose/case
 -- rebuild directly; the pure-fixed (m-pair/m-curry) and import-grade-fixed
@@ -1287,7 +1301,10 @@ mutual
   subsume-complete {ctx} {_} {A} {B} (t-initial-app-check {arg = arg} d) =
     let (_ , _ , _ , eqArg) = check-complete d
     in checkElab-fallback-RApp-initial-eff arg (A T.⇒[ T.mk-kind T.Many T.eff ] B) eqArg
-  subsume-complete (t-arg-driven-app-check a b c) = subsume-residual (t-arg-driven-app-check a b c)
+  -- t-arg-driven-app-check: inherits the pre-existing argdriven completeness gap
+  -- (completeness-gap-arg-driven-app-check is postulated for the pure case too).
+  subsume-complete (t-arg-driven-app-check notPoly dArg dF) =
+    completeness-gap-arg-driven-app-check-eff notPoly dArg dF
   -- t-var-poly-instantiate: the poly path is T-agnostic (instantiates at T via
   -- lookupPoly); recurse subsume-complete on the body for the eff target type.
   subsume-complete {ctx} {_} {A} {B}

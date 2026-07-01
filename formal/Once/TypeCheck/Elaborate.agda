@@ -430,6 +430,16 @@ VerifiedCheckResult ctx e T =
 -- NOTE arg order: the inferred `T'` comes BEFORE the expected `T`, so Agda
 -- splits the (concrete) `T'` first — a non-arrow `T'` hits the catch-all without
 -- ever forcing a split of an abstract `T`.
+-- Plan 0.52: a VIEW classifying whether a target is a Many-eff arrow. Lets the
+-- argdriven dispatch (and its agreement proof) branch pure⊑eff uniformly for an
+-- abstract `T` (OCP-0008: a view, not a stuck type-shape match / T-enumeration).
+data EffArrowView : Type → Set where
+  eav-eff   : (A B : Type) → EffArrowView (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B)
+  eav-other : (T : Type) → EffArrowView T
+classifyEffArrow : (T : Type) → EffArrowView T
+classifyEffArrow (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B) = eav-eff A B
+classifyEffArrow T = eav-other T
+
 embedOrSubsume-no : ∀ (ctx : NamedCtx) (e : RawExpr)
                       {Ψ : Surface.Usage (NamedCtx.size ctx)} (T' T : Type)
                   → SExpr (NamedCtx.debruijn ctx) Ψ T' → (depth fresh : ℕ)
@@ -2064,9 +2074,19 @@ mutual
     checkElabV-RApp-other-argdriven-aux ctx f arg T errInfer (classifyAppHead f) refl
 
   checkElabV-RApp-other-argdriven-aux ctx f arg T errInfer (just _) eqAH = failure errInfer , tt
+  -- Plan 0.52 (pure⊑eff): dispatch on the target via classifyEffArrow. At an EFF
+  -- arrow, check `f` at its PURE codomain (its natural type — no nested
+  -- subsumption) and wrap the app in arr'/t-subsume; otherwise the plain app.
   checkElabV-RApp-other-argdriven-aux ctx f arg T errInfer nothing eqAH with inferElabV ctx arg
   ... | failure errArg , _ = failure errArg , tt
-  ... | success X Ψx argE dx frx , wArg
+  ... | success X Ψx argE dx frx , wArg with classifyEffArrow T
+  ...   | eav-eff A B with checkElabV ctx f (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ]
+                                              (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B))
+  ...     | failure err , _ = failure err , tt
+  ...     | success Ψf fE df frf , wF =
+            success _ (Surface.arr' (Surface.app fE argE)) (suc (df ⊔ dx)) frf
+            , t-subsume (t-arg-driven-app-check eqAH wArg wF)
+  checkElabV-RApp-other-argdriven-aux ctx f arg T errInfer nothing eqAH | success X Ψx argE dx frx , wArg | eav-other _
           with checkElabV ctx f (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] T)
   ...   | failure err , _ = failure err , tt
   ...   | success Ψf fE df frf , wF =

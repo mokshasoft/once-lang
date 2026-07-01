@@ -674,21 +674,38 @@ agree-check-RApp-argdriven-aux : ∀ {ctx : NamedCtx} (f arg : RawExpr) (T : Typ
        → ∀ dγ k → SD.⟦ eE' ⟧ˢ dγ k ≡ SD.⟦ realize-infer w' ⟧ˢ dγ k)
   → ∀ (dγ : Env ctx) (k : ℕ) → SD.⟦ se ⟧ˢ dγ k ≡ SD.⟦ realize w ⟧ˢ dγ k
 agree-check-RApp-argdriven-aux f arg T errInfer (just _) eqAH () fCheckIH argInferIH
+-- Plan 0.52: dispatch on classifyEffArrow (mirrors the elaborator). Both the
+-- eff branch (f at pure codomain, se = arr'(app …), arr' transparent) and the
+-- plain branch give the SAME application congruence.
 agree-check-RApp-argdriven-aux {ctx} f arg T errInfer nothing eqAH eq fCheckIH argInferIH dγ k
   with E.inferElabV ctx arg | eq
 ... | failure _ , _ | ()
-... | success X Ψx argE dx frx , wArg | eq₁
-      with E.checkElabV ctx f (X ⇒[ mk-kind Many pure ] T) in feq2 | eq₁
-...   | failure _ , _ | ()
-...   | success Ψf fE df frf , wF | refl =
-        bind2-faithful (SD.⟦ fE ⟧ˢ dγ) (SD.⟦ realize wF ⟧ˢ dγ)
-          (λ vf → SD.⟦ argE ⟧ˢ dγ >>=T λ vx → vf vx)
-          (λ vf → SD.⟦ realize-infer wArg ⟧ˢ dγ >>=T λ vx → vf vx)
-          (λ j → fCheckIH feq2 dγ j)
-          (λ vf j → bind2-faithful (SD.⟦ argE ⟧ˢ dγ) (SD.⟦ realize-infer wArg ⟧ˢ dγ)
-                      (λ vx → vf vx) (λ vx → vf vx)
-                      (λ j' → argInferIH refl dγ j') (λ _ _ → refl) j)
-          k
+... | success X Ψx argE dx frx , wArg | eq₁ with E.classifyEffArrow T
+...   | E.eav-eff A B
+        with E.checkElabV ctx f (X ⇒[ mk-kind Many pure ] (A ⇒[ mk-kind Many pure ] B)) in feq2 | eq₁
+...     | failure _ , _ | ()
+...     | success Ψf fE df frf , wF | refl =
+          bind2-faithful (SD.⟦ fE ⟧ˢ dγ) (SD.⟦ realize wF ⟧ˢ dγ)
+            (λ vf → SD.⟦ argE ⟧ˢ dγ >>=T λ vx → vf vx)
+            (λ vf → SD.⟦ realize-infer wArg ⟧ˢ dγ >>=T λ vx → vf vx)
+            (λ j → fCheckIH feq2 dγ j)
+            (λ vf j → bind2-faithful (SD.⟦ argE ⟧ˢ dγ) (SD.⟦ realize-infer wArg ⟧ˢ dγ)
+                        (λ vx → vf vx) (λ vx → vf vx)
+                        (λ j' → argInferIH refl dγ j') (λ _ _ → refl) j)
+            k
+agree-check-RApp-argdriven-aux {ctx} f arg T errInfer nothing eqAH eq fCheckIH argInferIH dγ k
+  | success X Ψx argE dx frx , wArg | eq₁ | E.eav-other _
+        with E.checkElabV ctx f (X ⇒[ mk-kind Many pure ] T) in feq2 | eq₁
+...     | failure _ , _ | ()
+...     | success Ψf fE df frf , wF | refl =
+          bind2-faithful (SD.⟦ fE ⟧ˢ dγ) (SD.⟦ realize wF ⟧ˢ dγ)
+            (λ vf → SD.⟦ argE ⟧ˢ dγ >>=T λ vx → vf vx)
+            (λ vf → SD.⟦ realize-infer wArg ⟧ˢ dγ >>=T λ vx → vf vx)
+            (λ j → fCheckIH feq2 dγ j)
+            (λ vf j → bind2-faithful (SD.⟦ argE ⟧ˢ dγ) (SD.⟦ realize-infer wArg ⟧ˢ dγ)
+                        (λ vx → vf vx) (λ vx → vf vx)
+                        (λ j' → argInferIH refl dγ j') (λ _ _ → refl) j)
+            k
 
 ------------------------------------------------------------------------
 -- check-mode RApp agreement, dispatched on the app-head VIEW (a parameter of
