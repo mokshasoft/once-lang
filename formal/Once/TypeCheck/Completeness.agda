@@ -894,24 +894,22 @@ regrade-eff (m-case f g)         with regrade-eff f | regrade-eff g
 ... | _       | _       = nothing
 regrade-eff _                    = nothing
 
--- TEMPORARY residual (Plan 0.52). Discharged so far: t-morph-lift (regrade-eff →
--- morph-complete: RVar builtins + RApp morphism-apps), t-value-lift, t-lam,
--- t-embed at RResolved/RQualified, and m-named-resolved — all the cases where
--- the elaborator routes through the NAMED `embedOrSubsume` (so the check-complete
--- of the same derivation IS the embedOrSubsume-lifts pure-side equation).
+-- TEMPORARY residual (Plan 0.52). subsume-complete is DISCHARGED for every case
+-- EXCEPT one: `subsume-residual` is now only reached by the t-morph-lift branch
+-- for `m-compose`/`m-case` whose regrade-eff = nothing — i.e. a compose/case of
+-- PURE morphisms one of whose arms is a saturated builtin (m-pair/m-curry/m-named/
+-- m-cata, all pure-fixed), subsumed to eff.
 --
--- REMAINING residual, split by why:
---  (a) RVar local/poly/named (t-embed t-var-local, t-var-poly-instantiate,
---      m-named): the bbc-X-aux SUCCESS path is a NAMED embedOrSubsume, so these
---      ARE dischargeable via embedOrSubsume-lifts after casing classifyBareBuiltin
---      (8 branches) — a tedious-but-mechanical grind.
---  (b) RApp (t-embed t-app/t-effApp, t-arg-driven-app-check, t-apply-check,
---      t-initial-app-check, m-pair/m-curry/m-cata): the RApp dispatches INLINE
---      embedOrSubsume's body (e.g. ahv-other, Elaborate ~2027) instead of calling
---      it, so checkElab is a DISTINCT anonymous with-aux — the OCP-0008 with-
---      opacity. Clean fix: refactor those dispatches to CALL the named
---      embedOrSubsume (then embedOrSubsume-lifts applies uniformly). A small,
---      principled elaborator change (with an agreement-proof cascade).
+-- This is a genuine compose+subsumption WRINKLE, not a with-opacity mirror:
+-- checkComposeGo checks the arms at the compose grade and needs EXTRACTABLE
+-- same-grade morphism witnesses (extractMorphWitness). At an eff target the
+-- pure-fixed arm subsumes to a `t-subsume` witness, which is NOT extractable, so
+-- checkComposeGo (eff) fails. The whole compose is really a PURE morphism f∘g
+-- subsumed to eff, so the elaborator would need a conditional eff-clause "try
+-- checkComposeGo (eff); else check the compose at pure and wrap in arr'/t-subsume"
+-- (a genuinely-eff compose of eff imports must still take the eff path). Delicate;
+-- deferred. (t-arg-driven-app-check uses completeness-gap-arg-driven-app-check-eff,
+-- the eff twin of the pre-existing pure argdriven completeness postulate.)
 postulate
   subsume-residual : ∀ {ctx : NamedCtx} {e : RawExpr} {A B : Type}
       {Ψ : Surface.Usage (NamedCtx.size ctx)}
