@@ -926,6 +926,14 @@ mutual
   -- `(A + B) ⇒[Many] C` shape.
   checkCase : (ctx : NamedCtx) → (caseHead arg : RawExpr) → (T : Type)
             → VerifiedCheckResult ctx (Raw.RApp caseHead arg) T
+  -- Argument-driven helper (mirror of `checkComposeGo`): the arm-checking core
+  -- of `case`, parameterised by the copair domains A B, codomain C, and grade π.
+  -- Extracting it lets the eff-subsumption clause of `checkCase` call it at two
+  -- grades (try eff; else pure + arr'/t-subsume) without duplicating the body.
+  checkCaseGo : (ctx : NamedCtx) (f g : RawExpr) (A B C : Type) (π : Once.Type.Purity)
+              → VerifiedCheckResult ctx
+                  (Raw.RApp (Raw.RApp (Raw.RVar "case") f) g)
+                  ((A Once.Type.+ B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] C)
   -- Compose / curry / apply classifier helpers (plan 0.6 Phase C.7
   -- POC-3).
   checkCompose : (ctx : NamedCtx) → (composeHead arg : RawExpr) → (T : Type)
@@ -1339,11 +1347,15 @@ mutual
   -- copy is gone). Both arms must be morphisms (`extractMorphWitness`); emit the
   -- direct `lift-morphism (IR.case m_f m_g)`; no closure fallback.
   checkCase ctx (Raw.RApp (Raw.RVar "case") f_inner) arg
-            ((A Once.Type.+ B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] C)
-    with checkElabV ctx f_inner (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] C)
+            ((A Once.Type.+ B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] C) =
+    checkCaseGo ctx f_inner arg A B C π
+  checkCase _ _ _ _ = failure (BuiltinTypeMismatch "case") , tt
+
+  checkCaseGo ctx f g A B C π
+    with checkElabV ctx f (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] C)
   ... | failure err , _ = failure err , tt
   ... | success Ψf fE df frf , wF
-        with checkElabV ctx arg (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] C)
+        with checkElabV ctx g (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] C)
   ...     | failure err , _ = failure err , tt
   ...     | success Ψg gE dg frg , wG
             with extract-morph-eff fE | extract-morph-eff gE | extractMorphWitness wF | extractMorphWitness wG
@@ -1351,7 +1363,6 @@ mutual
                 success Surface.zeroUsage (Surface.lift-morphism (IR.case m_f m_g))
                   (suc (df Data.Nat.⊔ dg)) frf , t-morph-lift (m-case mFᵐ mGᵐ)
   ...         | _ | _ | _ | _ = failure (BuiltinTypeMismatch "case") , tt
-  checkCase _ _ _ _ = failure (BuiltinTypeMismatch "case") , tt
 
   -- Plan 0.6 Phase C.7 POC-3 + 0.6.2 Phase 3b: bare `compose f g`
   -- check-mode. Expected `A ⇒[Many] C`. Primary path: infer g's type
