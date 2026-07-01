@@ -44,7 +44,7 @@ open import Once.SigEffect using (SigEffect) renaming (halts to se-halts; emits 
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Sum using (inj₁; inj₂; [_,_]′)
 open import Once.Adequacy.ResolveFaithful using (bind2-faithful)
-open import Once.TypeCheck.MorphComplete using (morph-elab)
+open import Once.TypeCheck.Completeness using (morph-elab)
 open import Data.Maybe.Properties using (just-injective)
 open import Once.Denotation.TraceMonad using (returnT; _>>=T_)
 open import Once.Postulates using (extensionality)
