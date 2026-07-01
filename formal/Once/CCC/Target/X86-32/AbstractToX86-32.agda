@@ -25,8 +25,9 @@
 
 module Once.CCC.Target.X86-32.AbstractToX86-32 where
 
-open import Data.Nat using (ℕ) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
+open import Data.Nat using (ℕ; suc) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
 open import Data.List using (List; []; _∷_; _++_)
+open import Data.Product using (_×_; _,_)
 open import Once.Target.Symbol using (once-symbol; once-symbol-path)
 
 -- Import x86-32 syntax
@@ -35,8 +36,10 @@ open import Once.CCC.Target.X86-32.Syntax
          Mem; base; base+disp; label-rel;
          Operand; reg; mem; imm;
          Instr; mov; lea; add; sub; cmp; test; push; pop; call; call-sym; ret; jmp; jne; je; nop; ud2; label;
+         mov-code; jmp-l;
          Program; slot-size; slots)
 open import Once.SigOp.Info using (SigOpInfo)
+open import Once.Type using (fits-int; fits-float)
 
 -- Import AbstractInstr from SMCore
 open import Once.CCC.Machine.SMCore
@@ -51,7 +54,10 @@ open import Once.CCC.Machine.SMCore
          worklist-init; worklist-push; worklist-pop; worklist-check;
          instr-reclaim-to; instr-sigop; instr-load-const; instr-load-code-addr;
          instr-save-closure-reg;
-         instr-load-tag-lit; instr-case-on-tag; instr-loop; instr-reg-op; instr-ctrl)
+         instr-load-tag-lit; instr-case-on-tag; instr-loop; instr-reg-op; instr-ctrl;
+         -- Plan 0.53: RegOp + FlatCtrl constructors for reg-op / flat-control lowering
+         scratch-one; scratch-zero; scratch-dec; scratch-load-count; input2-zero; input2-inc;
+         c-label; c-jmp; c-branch-scratch-zero; c-branch-tag-zero)
 
 ------------------------------------------------------------------------
 -- Slot to displacement conversion
@@ -138,11 +144,16 @@ compile-abstract (lea-slot n) =
 compile-abstract (restore-input n) =
   mov (reg ecx) (mem (base+disp ebp (slot-to-disp n))) ∷ []
 
--- lea-indexed: indexed-pointer compute for the cata payload stack
--- (Plan 0.36 2b). DEAD on this backend — Tier-1 cata codegen uses a linked
--- stack, not lea-indexed; the live verified target is x86-64. Stubbed like
--- the other unimplemented x86-32 ops (instr-reg-op).
-compile-abstract (lea-indexed _) = ud2 ∷ []
+-- lea-indexed: Input1 := &(base + 4*idx). base = SV-Ptr at slot n, idx =
+-- Scratch (edx). Plan 0.53: mirror x86-64 (4-byte words on i386). No scaled
+-- index in this model, so synthesize 4*idx in eax by two doublings, then add
+-- to the base pointer; result in ecx (Input1).
+compile-abstract (lea-indexed n) =
+  mov (reg ecx) (mem (base+disp ebp (slot-to-disp n))) ∷
+  mov (reg eax) (reg edx) ∷
+  add (reg eax) (reg eax) ∷
+  add (reg eax) (reg eax) ∷
+  add (reg ecx) (reg eax) ∷ []
 
 -- instr-alloc-stack: allocate N slots on stack
 -- x86-32: sub esp, N*4
@@ -150,10 +161,13 @@ compile-abstract (instr-alloc-stack n) =
   sub (reg esp) (imm (slots n)) ∷ []
 
 -- instr-alloc-heap: allocate a heap cell.
--- Plan 0.14: X86-32 codegen stub. Real heap allocation is target-specific
--- (e.g. malloc/bump-allocator). Emitted as a no-op until the X86-32
--- backend wires up heap allocation.
-compile-abstract (instr-alloc-heap n) = []
+-- Plan 0.53: mirror x86-64's r15 bump allocator with esi (i386 has no r15).
+-- esi = heap top (init by _start to once_heap_base):
+--   mov eax, esi       ; Output := current heap top
+--   add esi, n*4       ; bump by n words (4-byte i386 words)
+compile-abstract (instr-alloc-heap n) =
+  mov (reg eax) (reg esi) ∷
+  add (reg esi) (imm (slots n)) ∷ []
 
 -- instr-dealloc-stack: deallocate N slots from stack
 -- x86-32: add esp, N*4
@@ -212,28 +226,78 @@ compile-abstract (instr-reclaim-to n) = []
 -- Emit a single symbolic call; linker resolves the name at build time
 -- to the externally-defined function body. CCC stays name-agnostic.
 compile-abstract (instr-sigop si) = call-sym (once-symbol-path (SigOpInfo.name si)) ∷ []
--- Plan 0.11: const literal. X86-32 stub (full per-primitive codegen
--- not yet implemented for X86-32). Trap so the gap is visible.
-compile-abstract (instr-load-const _ _) = ud2 ∷ []
--- Plan 0.2.4.2: closure-body code-addr load. X86-32 stub.
-compile-abstract (instr-load-code-addr _) = ud2 ∷ []
+-- Plan 0.53: const literal → load into Output (eax). Mirror x86-64.
+compile-abstract (instr-load-const fits-int   v) = mov (reg eax) (imm v) ∷ []
+compile-abstract (instr-load-const fits-float _) = ud2 ∷ []
+-- Plan 0.53: closure-body code-addr load → Output (eax) := &.L_thunk_n.
+compile-abstract (instr-load-code-addr n) = mov-code eax n ∷ []
 -- Plan 0.2.4.2: save closure-register. On x86-32 the closure pointer
 -- lives in ebx (mirror of x86-64's r12); Input1 is in ecx. Move ecx
 -- into ebx so the subsequent `call [ebx + 4]` resolves correctly.
 compile-abstract instr-save-closure-reg =
   mov (reg ebx) (reg ecx) ∷ []
 
--- Plan 0.13.1: tag literal — X86-32 stub. Trap so the gap is visible.
-compile-abstract (instr-load-tag-lit _) = ud2 ∷ []
--- Plan 0.13.1: case-on-tag — X86-32 stub. Sub-traces not lowered.
+-- Plan 0.53: tag literal → Output (eax). Mirror x86-64.
+compile-abstract (instr-load-tag-lit n) = mov (reg eax) (imm n) ∷ []
+-- case-on-tag / loop are STRUCTURED nodes carrying sub-traces; they are
+-- expanded (with labels + branches) by `compile-trace-cnt` below, not here.
 compile-abstract (instr-case-on-tag _ _) = ud2 ∷ []
-compile-abstract (instr-loop _) = ud2 ∷ []  -- Plan 0.29: loop lowering is x86-64-only for now
-compile-abstract (instr-reg-op _) = ud2 ∷ []  -- Plan 0.29 M5
-compile-abstract (instr-ctrl _) = ud2 ∷ []  -- Plan 0.32: flat control x86-64-only for now
+compile-abstract (instr-loop _) = ud2 ∷ []
+-- Plan 0.53 (mirror x86-64 M5): register pokes. Scratch = edx, Input2 = edi
+-- (ebx = closure, esi = heap, ecx = Input1, eax = Output, ebp = frame).
+compile-abstract (instr-reg-op scratch-one)        = mov (reg edx) (imm 1) ∷ []
+compile-abstract (instr-reg-op scratch-zero)       = mov (reg edx) (imm 0) ∷ []
+compile-abstract (instr-reg-op scratch-dec)        = sub (reg edx) (imm 1) ∷ []
+compile-abstract (instr-reg-op scratch-load-count) = mov (reg edx) (reg edi) ∷ []
+compile-abstract (instr-reg-op input2-zero)        = mov (reg edi) (imm 0) ∷ []
+compile-abstract (instr-reg-op input2-inc)         = add (reg edi) (imm 1) ∷ []
+-- Plan 0.53 (mirror x86-64 M3/0.34): flat control. Input1 ptr = ecx (tag at
+-- 0(ecx)); Scratch = edx.
+compile-abstract (instr-ctrl (c-label n))               = label n ∷ []
+compile-abstract (instr-ctrl (c-jmp n))                 = jmp-l n ∷ []
+compile-abstract (instr-ctrl (c-branch-scratch-zero n)) = cmp (reg edx) (imm 0) ∷ je n ∷ []
+compile-abstract (instr-ctrl (c-branch-tag-zero n))     = cmp (mem (base ecx)) (imm 0) ∷ je n ∷ []
 
 ------------------------------------------------------------------------
 -- Trace compilation: compile a whole trace to x86-32
 ------------------------------------------------------------------------
+
+-- Plan 0.53: label-threading trace compiler (mirror x86-64's
+-- compile-trace-cnt). Structured case-on-tag / loop nodes carry sub-traces
+-- the plain compile-trace foldr would DROP; expand them with fresh labels +
+-- branches. Input1 ptr = ecx (tag at 0(ecx)); loop counter = edx.
+compile-trace-cnt : ℕ → AbstractTrace → ℕ × Program
+compile-trace-cnt n [] = n , []
+compile-trace-cnt n (instr-loop body ∷ rest) =
+  let l-top = n
+      l-end = suc n
+      (n1 , pbody) = compile-trace-cnt (suc (suc n)) body
+      (n2 , pr)    = compile-trace-cnt n1 rest
+      loop = label l-top ∷
+             cmp (reg edx) (imm 0) ∷
+             je l-end ∷
+             pbody ++
+             (jmp-l l-top ∷
+              label l-end ∷ [])
+  in n2 , loop ++ pr
+compile-trace-cnt n (instr-case-on-tag f g ∷ rest) =
+  let lbl-inl = n
+      lbl-end = suc n
+      (n1 , pf) = compile-trace-cnt (suc (suc n)) f
+      (n2 , pg) = compile-trace-cnt n1 g
+      (n3 , pr) = compile-trace-cnt n2 rest
+      -- tag at 0(ecx); tag ≡ 0 ⇒ inl (f), else inr (g). Fall-through is g.
+      dispatch  = cmp (mem (base ecx)) (imm 0) ∷
+                  je lbl-inl ∷
+                  pg ++
+                  (jmp-l lbl-end ∷
+                   label lbl-inl ∷ []) ++
+                  pf ++
+                  (label lbl-end ∷ [])
+  in n3 , dispatch ++ pr
+compile-trace-cnt n (i ∷ rest) =
+  let (n1 , pr) = compile-trace-cnt n rest
+  in n1 , compile-abstract i ++ pr
 
 compile-trace : AbstractTrace → Program
 compile-trace [] = []

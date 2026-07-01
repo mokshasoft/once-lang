@@ -416,7 +416,7 @@ du_execInstr_224 v0 v1
                                 (d_readReg_48
                                    (coe d_regs_146 (coe v0))
                                    (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Syntax.C_esp_26))
-                                MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Syntax.d_slot'45'size_82))
+                                MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Syntax.d_slot'45'size_86))
                           (coe
                              d_writeMem_108 (coe d_memory_148 (coe v0))
                              (coe
@@ -424,7 +424,7 @@ du_execInstr_224 v0 v1
                                 (d_readReg_48
                                    (coe d_regs_146 (coe v0))
                                    (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Syntax.C_esp_26))
-                                MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Syntax.d_slot'45'size_82)
+                                MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Syntax.d_slot'45'size_86)
                              (coe v4))
                           (coe d_flags_150 (coe v0))
                           (coe addInt (coe (1 :: Integer)) (coe d_pc_152 (coe v0)))
@@ -453,7 +453,7 @@ du_execInstr_224 v0 v1
                                    d_readReg_48 (coe d_regs_146 (coe v0))
                                    (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Syntax.C_esp_26))
                                 (coe
-                                   MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Syntax.d_slot'45'size_82)))
+                                   MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Syntax.d_slot'45'size_86)))
                           (coe d_memory_148 (coe v0)) (coe d_flags_150 (coe v0))
                           (coe addInt (coe (1 :: Integer)) (coe d_pc_152 (coe v0)))
                           (coe d_halted_154 (coe v0)))
@@ -628,7 +628,7 @@ du_execInstr_224 v0 v1
                                 (d_readReg_48
                                    (coe d_regs_146 (coe v0))
                                    (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Syntax.C_esp_26))
-                                MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Syntax.d_slot'45'size_82))
+                                MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Syntax.d_slot'45'size_86))
                           (coe
                              d_writeMem_108 (coe d_memory_148 (coe v0))
                              (coe
@@ -636,7 +636,7 @@ du_execInstr_224 v0 v1
                                 (d_readReg_48
                                    (coe d_regs_146 (coe v0))
                                    (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Syntax.C_esp_26))
-                                MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Syntax.d_slot'45'size_82)
+                                MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Syntax.d_slot'45'size_86)
                              (coe addInt (coe (1 :: Integer)) (coe d_pc_152 (coe v0))))
                           (coe d_flags_150 (coe v0)) (coe v4) (coe d_halted_154 (coe v0)))
                 MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v3
@@ -670,7 +670,7 @@ du_execInstr_224 v0 v1
                                    d_readReg_48 (coe d_regs_146 (coe v0))
                                    (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Syntax.C_esp_26))
                                 (coe
-                                   MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Syntax.d_slot'45'size_82)))
+                                   MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Syntax.d_slot'45'size_86)))
                           (coe d_memory_148 (coe v0)) (coe d_flags_150 (coe v0)) (coe v3)
                           (coe d_halted_154 (coe v0)))
                 MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v2
@@ -698,27 +698,43 @@ du_execInstr_224 v0 v1
                 (coe d_flags_150 (coe v0))
                 (coe addInt (coe (1 :: Integer)) (coe d_pc_152 (coe v0)))
                 (coe d_halted_154 (coe v0)))
+      MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Syntax.C_mov'45'code_80 v2 v3
+        -> coe
+             MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+             (coe
+                C_mkstate_156 (coe d_regs_146 (coe v0)) (coe d_memory_148 (coe v0))
+                (coe d_flags_150 (coe v0))
+                (coe addInt (coe (1 :: Integer)) (coe d_pc_152 (coe v0)))
+                (coe d_halted_154 (coe v0)))
+      MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Syntax.C_jmp'45'l_82 v2
+        -> coe
+             MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+             (coe
+                C_mkstate_156 (coe d_regs_146 (coe v0)) (coe d_memory_148 (coe v0))
+                (coe d_flags_150 (coe v0))
+                (coe addInt (coe (1 :: Integer)) (coe d_pc_152 (coe v0)))
+                (coe d_halted_154 (coe v0)))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Target.X86-32.Semantics.fetch
-d_fetch_402 ::
+d_fetch_410 ::
   [MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Syntax.T_Instr_44] ->
   Integer ->
   Maybe MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Syntax.T_Instr_44
-d_fetch_402 v0 v1
+d_fetch_410 v0 v1
   = case coe v0 of
       [] -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
       (:) v2 v3
         -> case coe v1 of
              0 -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe v2)
              _ -> let v4 = subInt (coe v1) (coe (1 :: Integer)) in
-                  coe (coe d_fetch_402 (coe v3) (coe v4))
+                  coe (coe d_fetch_410 (coe v3) (coe v4))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Target.X86-32.Semantics.step-not-halted
-d_step'45'not'45'halted_410 ::
+d_step'45'not'45'halted_418 ::
   [MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Syntax.T_Instr_44] ->
   T_State_134 -> Maybe T_State_134
-d_step'45'not'45'halted_410 v0 v1
-  = let v2 = d_fetch_402 (coe v0) (coe d_pc_152 (coe v1)) in
+d_step'45'not'45'halted_418 v0 v1
+  = let v2 = d_fetch_410 (coe v0) (coe d_pc_152 (coe v1)) in
     coe
       (case coe v2 of
          MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v3
@@ -732,21 +748,21 @@ d_step'45'not'45'halted_410 v0 v1
                    (coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10))
          _ -> MAlonzo.RTE.mazUnreachableError)
 -- Once.CCC.Target.X86-32.Semantics.step
-d_step_420 ::
+d_step_428 ::
   [MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Syntax.T_Instr_44] ->
   T_State_134 -> Maybe T_State_134
-d_step_420 v0 v1
+d_step_428 v0 v1
   = let v2 = d_halted_154 (coe v1) in
     coe
       (if coe v2
          then coe MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe v1)
-         else coe d_step'45'not'45'halted_410 (coe v0) (coe v1))
+         else coe d_step'45'not'45'halted_418 (coe v0) (coe v1))
 -- Once.CCC.Target.X86-32.Semantics.exec
-d_exec_438 ::
+d_exec_446 ::
   Integer ->
   [MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Syntax.T_Instr_44] ->
   T_State_134 -> Maybe T_State_134
-d_exec_438 v0 v1 v2
+d_exec_446 v0 v1 v2
   = case coe v0 of
       0 -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe v2)
       _ -> let v3 = subInt (coe v0) (coe (1 :: Integer)) in
@@ -755,7 +771,7 @@ d_exec_438 v0 v1 v2
               coe
                 (if coe v4
                    then coe MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe v2)
-                   else (let v5 = d_step'45'not'45'halted_410 (coe v1) (coe v2) in
+                   else (let v5 = d_step'45'not'45'halted_418 (coe v1) (coe v2) in
                          coe
                            (case coe v5 of
                               MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v6
@@ -763,14 +779,14 @@ d_exec_438 v0 v1 v2
                                    coe
                                      (if coe v7
                                         then coe v5
-                                        else coe d_exec_438 (coe v3) (coe v1) (coe v6))
+                                        else coe d_exec_446 (coe v3) (coe v1) (coe v6))
                               MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v5
                               _ -> MAlonzo.RTE.mazUnreachableError))))
 -- Once.CCC.Target.X86-32.Semantics.defaultFuel
-d_defaultFuel_502 :: Integer
-d_defaultFuel_502 = coe (10000 :: Integer)
+d_defaultFuel_510 :: Integer
+d_defaultFuel_510 = coe (10000 :: Integer)
 -- Once.CCC.Target.X86-32.Semantics.run
-d_run_504 ::
+d_run_512 ::
   [MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Syntax.T_Instr_44] ->
   T_State_134 -> Maybe T_State_134
-d_run_504 = coe d_exec_438 (coe d_defaultFuel_502)
+d_run_512 = coe d_exec_446 (coe d_defaultFuel_510)
