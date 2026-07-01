@@ -28,15 +28,13 @@ module Once.Adequacy.ArchCorrectness where
 open import Once.Adequacy.CPU using (Arch; x86-64; x86-32; riscv64; arch-semantics)
 open import Once.Adequacy.Compile using (ArchCorrect)
 
--- x86-64's witness is DISCHARGED THROUGH the generic IR-observable theorem
--- (`ir-obs-correct` → `cata-correct`) — see `…ArchCorrectness.X86-64`. So
--- `cata-correct` is load-bearing for the apex on this target. The other two
--- targets remain whole-record postulates (no flat-sim / FS instance wired yet).
-open import Once.Adequacy.ArchCorrectness.X86-64 using (x86-64-correct)
-
-postulate
-  x86-32-correct  : ArchCorrect x86-32  (arch-semantics x86-32)
-  riscv64-correct : ArchCorrect riscv64 (arch-semantics riscv64)
+-- All three targets are DISCHARGED THROUGH the generic IR-observable theorem
+-- (`ir-obs-correct` → `cata-correct`) — see `…ArchCorrectness.{X86-64,X86-32,RiscV64}`.
+-- So `cata-correct` is load-bearing for the apex on every target; each carries
+-- only its single named `<arch>-flat-from-obs` FS-plumbing residual (Plan 0.53).
+open import Once.Adequacy.ArchCorrectness.X86-64  using (x86-64-correct)
+open import Once.Adequacy.ArchCorrectness.X86-32  using (x86-32-correct)
+open import Once.Adequacy.ArchCorrectness.RiscV64 using (riscv64-correct)
 
 -- Total over `Arch` ⇒ adding a target forces a new witness here.
 arch-correctness : ∀ (arch : Arch) → ArchCorrect arch (arch-semantics arch)
