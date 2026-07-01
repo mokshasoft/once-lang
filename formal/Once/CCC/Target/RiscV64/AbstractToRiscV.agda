@@ -33,7 +33,8 @@
 
 module Once.CCC.Target.RiscV64.AbstractToRiscV where
 
-open import Data.Nat using (ℕ) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
+open import Data.Nat using (ℕ; suc) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
+open import Data.Product using (_×_; _,_)
 open import Data.Integer using (+_)
 open import Data.List using (List; []; _∷_; _++_)
 open import Once.Target.Symbol using (once-symbol; once-symbol-path)
@@ -61,7 +62,11 @@ open import Once.CCC.Machine.SMCore
          worklist-init; worklist-push; worklist-pop; worklist-check;
          instr-reclaim-to; instr-sigop; instr-load-const; instr-load-code-addr;
          instr-save-closure-reg;
-         instr-load-tag-lit; instr-case-on-tag; instr-loop; instr-reg-op; instr-ctrl)
+         instr-load-tag-lit; instr-case-on-tag; instr-loop; instr-reg-op; instr-ctrl;
+         -- RegOp constructors (Plan 0.53 reg-op lowering)
+         scratch-one; scratch-zero; scratch-dec; scratch-load-count; input2-zero; input2-inc;
+         -- FlatCtrl constructors (Plan 0.53 flat-control lowering)
+         c-label; c-jmp; c-branch-scratch-zero; c-branch-tag-zero)
 
 ------------------------------------------------------------------------
 -- Slot to displacement conversion
@@ -154,11 +159,23 @@ compile-abstract (lea-slot n) =
 compile-abstract (restore-input n) =
   ld t0 sp (slot-to-disp n) ∷ []
 
--- lea-indexed: indexed-pointer compute for the cata payload stack
--- (Plan 0.36 2b). DEAD on this backend — Tier-1 cata codegen uses a linked
--- stack, not lea-indexed; the live verified target is x86-64. Stubbed like
--- the other unimplemented RV64 ops (instr-reg-op).
-compile-abstract (lea-indexed _) = unimp ∷ []
+-- lea-indexed: Input1 := &(base + 8*idx). base = SV-Ptr at slot n, idx =
+-- Scratch (s3). Plan 0.53: mirror x86-64 — no shift instr in this model, so
+-- synthesize 8*idx by three doublings in t1, then add to the base pointer.
+-- Result lands in t0 (Input1). RV64:
+--   ld  t0, n*8(sp)   ; t0 := base ptr
+--   mv  t1, s3        ; t1 := idx (Scratch)
+--   add t1, t1, t1    ; ×2
+--   add t1, t1, t1    ; ×4
+--   add t1, t1, t1    ; ×8  → t1 = 8*idx
+--   add t0, t0, t1    ; t0 := base + 8*idx
+compile-abstract (lea-indexed n) =
+  ld t0 sp (slot-to-disp n) ∷
+  mv t1 s3 ∷
+  add t1 t1 t1 ∷
+  add t1 t1 t1 ∷
+  add t1 t1 t1 ∷
+  add t0 t0 t1 ∷ []
 
 -- instr-alloc-stack: allocate N slots on stack
 -- RV64: addi sp, sp, -N*8
@@ -261,18 +278,72 @@ compile-abstract (instr-load-code-addr n) = lla a0 n ∷ []
 compile-abstract instr-save-closure-reg =
   mv s1 t0 ∷ []
 
--- Plan 0.13.1: tag literal — RV64 stub. Trap so the gap is visible.
-compile-abstract (instr-load-tag-lit _) = unimp ∷ []
--- Plan 0.13.1: case-on-tag — RV64 stub.
+-- Plan 0.53: tag literal — write the tag n to Output (a0). Mirror x86-64's
+-- `mov rax, imm n`.
+compile-abstract (instr-load-tag-lit n) = li a0 (+ n) ∷ []
+-- case-on-tag / loop are STRUCTURED nodes carrying sub-traces; they are
+-- expanded (with fresh labels + branches) by `compile-trace-cnt` below, not
+-- here. This single-instruction view is a sentinel (should never be reached
+-- once irToAsm/irToBodies route through compile-trace-cnt).
 compile-abstract (instr-case-on-tag _ _) = unimp ∷ []
-compile-abstract (instr-loop _) = unimp ∷ []  -- Plan 0.29: loop lowering is x86-64-only for now
-compile-abstract (instr-reg-op _) = unimp ∷ []  -- Plan 0.29 M5
-compile-abstract (instr-ctrl _) = unimp ∷ []  -- Plan 0.32: flat control x86-64-only for now
+compile-abstract (instr-loop _) = unimp ∷ []
+-- Plan 0.53 (mirror x86-64 M5): register pokes. Scratch = s3, Input2 = s4
+-- (callee-saved, otherwise unused by this codegen).
+compile-abstract (instr-reg-op scratch-one)        = li s3 (+ 1) ∷ []
+compile-abstract (instr-reg-op scratch-zero)       = li s3 (+ 0) ∷ []
+compile-abstract (instr-reg-op scratch-dec)        = addi s3 s3 (Data.Integer.-_ (+ 1)) ∷ []
+  where import Data.Integer
+compile-abstract (instr-reg-op scratch-load-count) = mv s3 s4 ∷ []
+compile-abstract (instr-reg-op input2-zero)        = li s4 (+ 0) ∷ []
+compile-abstract (instr-reg-op input2-inc)         = addi s4 s4 (+ 1) ∷ []
+-- Plan 0.53 (mirror x86-64 M3/0.34): flat control lowers 1-to-1. Labels/jumps
+-- reuse RV64's `.L<n>` label space; the conditional branches are single
+-- compare-and-branch (no flags on RISC-V). Input1 pointer = t0; Scratch = s3.
+compile-abstract (instr-ctrl (c-label n))               = label n ∷ []
+compile-abstract (instr-ctrl (c-jmp n))                 = j n ∷ []
+compile-abstract (instr-ctrl (c-branch-scratch-zero n)) = beq s3 zero n ∷ []
+compile-abstract (instr-ctrl (c-branch-tag-zero n))     = ld t1 t0 0 ∷ beq t1 zero n ∷ []
 
 ------------------------------------------------------------------------
 -- Trace compilation: compile a whole trace to RISC-V
 ------------------------------------------------------------------------
 
-compile-trace : AbstractTrace → Program
-compile-trace [] = []
-compile-trace (i ∷ is) = compile-abstract i ++ compile-trace is
+-- Plan 0.53: label-threading trace compiler (mirror x86-64's
+-- compile-trace-cnt). Structured `case-on-tag` / `instr-loop` nodes carry
+-- sub-traces that must be recursively compiled and bracketed by fresh labels
+-- + branches; the plain `compile-trace` foldr would DROP the sub-traces (it
+-- maps compile-abstract, which sees only the sentinel). Each case/loop
+-- consumes 2 fresh labels; the counter threads through so nested structures
+-- get unique labels. Input1 pointer = t0 (tag at 0(t0)); loop counter = s3.
+compile-trace-cnt : ℕ → AbstractTrace → ℕ × Program
+compile-trace-cnt n [] = n , []
+compile-trace-cnt n (instr-loop body ∷ rest) =
+  let l-top = n
+      l-end = suc n
+      (n1 , pbody) = compile-trace-cnt (suc (suc n)) body
+      (n2 , pr)    = compile-trace-cnt n1 rest
+      -- Scratch (s3) is the loop counter; break when it hits 0.
+      loop = label l-top ∷
+             beq s3 zero l-end ∷
+             pbody ++
+             (j l-top ∷
+              label l-end ∷ [])
+  in n2 , loop ++ pr
+compile-trace-cnt n (instr-case-on-tag f g ∷ rest) =
+  let lbl-inl = n
+      lbl-end = suc n
+      (n1 , pf) = compile-trace-cnt (suc (suc n)) f
+      (n2 , pg) = compile-trace-cnt n1 g
+      (n3 , pr) = compile-trace-cnt n2 rest
+      -- tag at 0(t0); tag ≡ 0 ⇒ inl (f), else inr (g). Fall-through is g.
+      dispatch  = ld t1 t0 0 ∷
+                  beq t1 zero lbl-inl ∷
+                  pg ++
+                  (j lbl-end ∷
+                   label lbl-inl ∷ []) ++
+                  pf ++
+                  (label lbl-end ∷ [])
+  in n3 , dispatch ++ pr
+compile-trace-cnt n (i ∷ rest) =
+  let (n1 , pr) = compile-trace-cnt n rest
+  in n1 , compile-abstract i ++ pr

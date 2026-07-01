@@ -8,7 +8,7 @@
 --
 -- Code generation goes via the shared abstract-trace pipeline:
 --   IR  ──Once.CCC.Codegen.IRToTrace──▶  AbstractTrace
---       ──AbstractToRiscV.compile-trace──▶  RiscV64.Program
+--       ──AbstractToRiscV.compile-trace-cnt──▶  RiscV64.Program
 --       ──Emit.programToText──▶  String
 --
 -- Plan 0.53: brought to the x86-64 runtime level — frameless, sp-relative
@@ -33,7 +33,7 @@ open import Once.IR using (IR)
 open import Once.CCC.Codegen.IRToTrace
   using (ir-to-trace-from; ir-to-bodies-from; ir-stack-budget-from)
 open import Once.CCC.Machine.SMCore using (AbstractTrace)
-open import Once.CCC.Target.RiscV64.AbstractToRiscV using (compile-trace)
+open import Once.CCC.Target.RiscV64.AbstractToRiscV using (compile-trace-cnt)
 open import Once.CCC.Target.RiscV64.Emit using (programToText)
 
 ------------------------------------------------------------------------
@@ -92,16 +92,18 @@ riscv64-functionEpilogue = "    ret\n\n"
 -- closure call would jump through a stale `ra` and loop.
 riscv64-irToAsm : ℕ → ∀ {A B} → IR A B → ℕ × String
 riscv64-irToAsm l ir =
-  let budget       = ir-stack-budget-from l ir
-      (l' , trace) = ir-to-trace-from l ir
-      prog         = compile-trace trace
-      raOff        = budget * 8
-      frame        = raOff + 8   -- +8 for the saved ra
-  in l' , ("    addi sp, sp, -" ++ showNat frame ++ "\n" ++
-           "    sd ra, " ++ showNat raOff ++ "(sp)\n" ++
-           programToText prog ++
-           "    ld ra, " ++ showNat raOff ++ "(sp)\n" ++
-           "    addi sp, sp, " ++ showNat frame ++ "\n")
+  let budget        = ir-stack-budget-from l ir
+      (l' , trace)  = ir-to-trace-from l ir
+      -- Plan 0.53: compile-trace-cnt (not compile-trace) so structured
+      -- case-on-tag / loop nodes expand with fresh labels; thread the counter.
+      (l'' , prog)  = compile-trace-cnt l' trace
+      raOff         = budget * 8
+      frame         = raOff + 8   -- +8 for the saved ra
+  in l'' , ("    addi sp, sp, -" ++ showNat frame ++ "\n" ++
+            "    sd ra, " ++ showNat raOff ++ "(sp)\n" ++
+            programToText prog ++
+            "    ld ra, " ++ showNat raOff ++ "(sp)\n" ++
+            "    addi sp, sp, " ++ showNat frame ++ "\n")
 
 -- Plan 0.53: closure-body (thunk) emission. For each `(label, budget,
 -- body-trace)` from `ir-to-bodies`, emit:
@@ -118,20 +120,26 @@ riscv64-irToAsm l ir =
 riscv64-irToBodies : ℕ → ∀ {A B} → IR A B → ℕ × String
 riscv64-irToBodies l ir =
   let (l' , bodies) = ir-to-bodies-from l ir
-  in l' , emit-bodies bodies
+  in emit-bodies l' bodies
   where
-    emit-thunk-body : (ℕ × ℕ × AbstractTrace) → String
-    emit-thunk-body (lbl , budget , body-trace) =
-      ".L_thunk_" ++ showNat lbl ++ ":\n" ++
-      "    addi sp, sp, -" ++ showNat (budget * 8 + 8) ++ "\n" ++
-      "    sd ra, " ++ showNat (budget * 8) ++ "(sp)\n" ++
-      programToText (compile-trace body-trace) ++
-      "    ld ra, " ++ showNat (budget * 8) ++ "(sp)\n" ++
-      "    addi sp, sp, " ++ showNat (budget * 8 + 8) ++ "\n" ++
-      "    ret\n\n"
-    emit-bodies : List (ℕ × ℕ × AbstractTrace) → String
-    emit-bodies []       = ""
-    emit-bodies (b ∷ bs) = emit-thunk-body b ++ emit-bodies bs
+    -- Thread the case/loop label counter through each body's
+    -- compile-trace-cnt so nested cases inside thunk bodies get unique labels.
+    emit-thunk-body : ℕ → (ℕ × ℕ × AbstractTrace) → ℕ × String
+    emit-thunk-body cl (lbl , budget , body-trace) =
+      let (cl' , prog) = compile-trace-cnt cl body-trace
+      in cl' , (".L_thunk_" ++ showNat lbl ++ ":\n" ++
+                "    addi sp, sp, -" ++ showNat (budget * 8 + 8) ++ "\n" ++
+                "    sd ra, " ++ showNat (budget * 8) ++ "(sp)\n" ++
+                programToText prog ++
+                "    ld ra, " ++ showNat (budget * 8) ++ "(sp)\n" ++
+                "    addi sp, sp, " ++ showNat (budget * 8 + 8) ++ "\n" ++
+                "    ret\n\n")
+    emit-bodies : ℕ → List (ℕ × ℕ × AbstractTrace) → ℕ × String
+    emit-bodies cl []       = cl , ""
+    emit-bodies cl (b ∷ bs) =
+      let (cl1 , txt1) = emit-thunk-body cl b
+          (cl2 , txt2) = emit-bodies cl1 bs
+      in cl2 , (txt1 ++ txt2)
 
 ------------------------------------------------------------------------
 -- Target Instance
