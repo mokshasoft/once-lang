@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson and contributors
 
 ------------------------------------------------------------------------
--- Once.Arith.Backend.X86.CodeGen
+-- Once.Arith.Backend.XInstr.CodeGen
 --
 -- Plan 0.20 Phase D — `emit : AbstractInstr → XProgram`.
 --
@@ -12,7 +12,7 @@
 -- abstract regs, so this never fires in the current pipeline).
 ------------------------------------------------------------------------
 
-module Once.Arith.Backend.X86.CodeGen where
+module Once.Arith.Backend.XInstr.CodeGen where
 
 open import Data.Nat using (ℕ; zero; suc)
 open import Data.List using (List; []; _∷_; _++_)
@@ -25,7 +25,7 @@ open import Once.Arith.Machine.AbsState using (InputPath; Side; Fst; Snd)
 open import Once.Arith.Machine.AbsInstr
   using (AbstractInstr; load-input; load-imm; add-rrr; sub-rrr; mul-rrr;
          neg-rr; spill; reload; move-to-out)
-open import Once.Arith.Backend.X86.Syntax
+open import Once.Arith.Backend.XInstr.Syntax
 
 ------------------------------------------------------------------------
 -- Decidable equality on XReg (needed by the binary-op emit cases to

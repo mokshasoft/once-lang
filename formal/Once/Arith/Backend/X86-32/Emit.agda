@@ -5,7 +5,7 @@
 -- Once.Arith.Backend.X86-32.Emit
 --
 -- Plan 0.53 — x86-32 arith-block emitter. Mirrors
--- `Once.Arith.Backend.X86.Emit` (x86-64) with i386 conventions.
+-- `Once.Arith.Backend.X86-64.Emit` (x86-64) with i386 conventions.
 --
 -- Calling convention (matching the rest of Once's x86-32 codegen):
 --   - `%ecx` holds the block input value pointer (Input1). A primitive Int
@@ -31,8 +31,8 @@ open import Data.Nat.Show using () renaming (show to showℕ)
 open import Data.List using (List; []; _∷_)
 open import Data.String using (String; _++_)
 
-open import Once.Arith.Backend.X86.Syntax
-open import Once.Arith.Backend.X86.CodeGen using (emit-program)
+open import Once.Arith.Backend.XInstr.Syntax
+open import Once.Arith.Backend.XInstr.CodeGen using (emit-program)
 open import Once.Arith.Machine.AbsState using (InputPath; Side; Fst; Snd)
 open import Once.Arith.Machine.Compile using (compile-abs; required-scratch)
 open import Once.Arith.Machine.IR using (MArithIR; ArithBlock)

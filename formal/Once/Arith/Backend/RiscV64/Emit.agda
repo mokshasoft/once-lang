@@ -5,7 +5,7 @@
 -- Once.Arith.Backend.RiscV64.Emit
 --
 -- Plan 0.53 — RISC-V 64 arith-block emitter. Mirrors
--- `Once.Arith.Backend.X86.Emit`: translate the arch-independent arith
+-- `Once.Arith.Backend.X86-64.Emit`: translate the arch-independent arith
 -- `XInstr` IR to RV64 assembly text and assemble a leaf block subroutine
 -- (prologue + body + epilogue).
 --
@@ -30,8 +30,8 @@ open import Data.Nat.Show using () renaming (show to showℕ)
 open import Data.List using (List; []; _∷_)
 open import Data.String using (String; _++_)
 
-open import Once.Arith.Backend.X86.Syntax
-open import Once.Arith.Backend.X86.CodeGen using (emit-program)
+open import Once.Arith.Backend.XInstr.Syntax
+open import Once.Arith.Backend.XInstr.CodeGen using (emit-program)
 open import Once.Arith.Machine.AbsState using (InputPath; Side; Fst; Snd)
 open import Once.Arith.Machine.Compile using (compile-abs; required-scratch)
 open import Once.Arith.Machine.IR using (MArithIR; ArithBlock)

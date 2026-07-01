@@ -31,7 +31,7 @@ open import Once.IR using (IR)
 open import Once.CCC.Codegen.IRToTrace
   using (ir-to-trace; ir-to-bodies; ir-stack-budget;
          ir-to-trace-from; ir-to-bodies-from; ir-stack-budget-from)
-open import Once.Arith.Backend.X86.Emit using (emit-arith-blocks)
+open import Once.Arith.Backend.X86-64.Emit using (emit-arith-blocks)
 open import Data.Nat using (ℕ)
 open import Data.Product using (_×_; _,_)
 open import Once.CCC.Machine.SMCore using (AbstractTrace)

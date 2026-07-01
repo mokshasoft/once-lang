@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson and contributors
 
 ------------------------------------------------------------------------
--- Once.Arith.Backend.X86.Syntax
+-- Once.Arith.Backend.XInstr.Syntax
 --
 -- Plan 0.20 Phase D — the x86-64 instruction subset used by arith
 -- block codegen.
@@ -23,7 +23,7 @@
 -- arith.block.<digest>` whose code is the assembled sequence.
 ------------------------------------------------------------------------
 
-module Once.Arith.Backend.X86.Syntax where
+module Once.Arith.Backend.XInstr.Syntax where
 
 open import Data.Integer using (ℤ)
 open import Data.Nat using (ℕ)

@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson and contributors
 
 ------------------------------------------------------------------------
--- Once.Arith.Backend.X86.Emit
+-- Once.Arith.Backend.X86-64.Emit
 --
 -- Plan 0.20 Phase G — translate the arith subsystem's `XInstr`
 -- subset to AT&T-syntax x86-64 assembly text, and assemble a full
@@ -27,11 +27,11 @@
 --     these registers as caller-saved.
 --   - Scratch stack slots are addressed via `[%rsp - 8*(slot+1)]`
 --     after the prologue subtracts `8 * required-scratch` from
---     `%rsp`. The reservation matches `Once.Arith.Backend.X86.Syntax`'s
+--     `%rsp`. The reservation matches `Once.Arith.Backend.XInstr.Syntax`'s
 --     comment.
 ------------------------------------------------------------------------
 
-module Once.Arith.Backend.X86.Emit where
+module Once.Arith.Backend.X86-64.Emit where
 
 open import Data.Integer using (ℤ; +_; -[1+_])
 open import Data.Integer.Show using () renaming (show to showℤ)
@@ -40,8 +40,8 @@ open import Data.Nat.Show using () renaming (show to showℕ)
 open import Data.List using (List; []; _∷_)
 open import Data.String using (String; _++_)
 
-open import Once.Arith.Backend.X86.Syntax
-open import Once.Arith.Backend.X86.CodeGen using (emit-program)
+open import Once.Arith.Backend.XInstr.Syntax
+open import Once.Arith.Backend.XInstr.CodeGen using (emit-program)
 open import Once.Arith.Machine.AbsState using (InputPath; Side; Fst; Snd)
 open import Once.Arith.Machine.Compile using (compile-abs; required-scratch)
 open import Once.Arith.Machine.IR using (MArithIR; ArithBlock)

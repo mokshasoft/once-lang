@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson and contributors
 
 ------------------------------------------------------------------------
--- Once.Arith.Backend.X86.Correct
+-- Once.Arith.Backend.X86-64.Correct
 --
 -- Plan 0.20 Phase D — per-AbstractInstr refinement.
 --
@@ -20,7 +20,7 @@
 -- semantics-extraction plan.
 ------------------------------------------------------------------------
 
-module Once.Arith.Backend.X86.Correct where
+module Once.Arith.Backend.X86-64.Correct where
 
 open import Data.Nat using (ℕ)
 open import Data.Integer using (ℤ)
@@ -32,8 +32,8 @@ open import Once.Arith.Machine.AbsInstr
          mul-rrr; neg-rr; spill; reload; move-to-out; module Exec)
 -- L1: executor `step` is width-parameterised; x86-64 backend → 64.
 open Exec 64 using (step)
-open import Once.Arith.Backend.X86.Syntax using (XInstr; XProgram)
-open import Once.Arith.Backend.X86.CodeGen using (emit)
+open import Once.Arith.Backend.XInstr.Syntax using (XInstr; XProgram)
+open import Once.Arith.Backend.XInstr.CodeGen using (emit)
 
 ------------------------------------------------------------------------
 -- Bridge surface (postulated until I-arith-4 discharge)
