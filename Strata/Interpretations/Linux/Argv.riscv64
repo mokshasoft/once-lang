@@ -1,11 +1,11 @@
-// ======================================================================
-// Command-line Argument Access - RISC-V64 Implementation
-// ======================================================================
-//
-// Provides access to argc/argv by reading /proc/self/cmdline at startup.
-// Uses a constructor function to parse arguments before main().
-//
-// ======================================================================
+# ======================================================================
+# Command-line Argument Access - RISC-V64 Implementation
+# ======================================================================
+#
+# Provides access to argc/argv by reading /proc/self/cmdline at startup.
+# Uses a constructor function to parse arguments before main().
+#
+# ======================================================================
 
 .text
 .align 2
@@ -22,9 +22,9 @@
 .equ MAX_ARGS,      256
 .equ CMDLINE_SIZE,  4096
 
-// ======================================================================
-// Data Section
-// ======================================================================
+# ======================================================================
+# Data Section
+# ======================================================================
 
 .section .bss
 .align 8
@@ -44,9 +44,9 @@ g_cmdline_buf:
 
 .text
 
-// ======================================================================
-// Initialization (constructor)
-// ======================================================================
+# ======================================================================
+# Initialization (constructor)
+# ======================================================================
 
 .section .init_array,"aw"
 .align 8
@@ -54,9 +54,9 @@ g_cmdline_buf:
 
 .text
 
-// ----------------------------------------------------------------------
-// once_argv_init - Parse /proc/self/cmdline at startup
-// ----------------------------------------------------------------------
+# ----------------------------------------------------------------------
+# once_argv_init - Parse /proc/self/cmdline at startup
+# ----------------------------------------------------------------------
 .type once_argv_init, @function
 once_argv_init:
     addi    sp, sp, -48
@@ -66,7 +66,7 @@ once_argv_init:
     sd      s2, 16(sp)
     sd      s3, 8(sp)
 
-    // Open /proc/self/cmdline
+    # Open /proc/self/cmdline
     li      a0, AT_FDCWD
     lla     a1, .Lprocpath
     li      a2, O_RDONLY
@@ -75,51 +75,51 @@ once_argv_init:
     ecall
 
     bltz    a0, .init_done
-    mv      s0, a0                  // s0 = fd
+    mv      s0, a0                  # s0 = fd
 
-    // Read cmdline
+    # Read cmdline
     mv      a0, s0
     lla     a1, g_cmdline_buf
     li      a2, CMDLINE_SIZE - 1
     li      a7, SYS_read
     ecall
 
-    mv      s1, a0                  // s1 = bytes read
+    mv      s1, a0                  # s1 = bytes read
 
-    // Close fd
+    # Close fd
     mv      a0, s0
     li      a7, SYS_close
     ecall
 
     blez    s1, .init_done
 
-    // Null-terminate
+    # Null-terminate
     lla     s2, g_cmdline_buf
     add     t0, s2, s1
     sb      zero, 0(t0)
 
-    // Parse null-separated arguments
-    li      s3, 0                   // s3 = argc = 0
-    li      t1, 0                   // t1 = position
+    # Parse null-separated arguments
+    li      s3, 0                   # s3 = argc = 0
+    li      t1, 0                   # t1 = position
 
 .parse_loop:
     bge     t1, s1, .parse_done
     li      t2, MAX_ARGS
     bge     s3, t2, .parse_done
 
-    // Check current byte
+    # Check current byte
     add     t0, s2, t1
     lbu     t2, 0(t0)
     beqz    t2, .skip_null
 
-    // Found start of argument - store pointer
+    # Found start of argument - store pointer
     lla     t3, g_argv
-    slli    t4, s3, 3               // argc * 8
+    slli    t4, s3, 3               # argc * 8
     add     t3, t3, t4
     sd      t0, 0(t3)
     addi    s3, s3, 1
 
-    // Skip to end of argument
+    # Skip to end of argument
 .skip_arg:
     addi    t1, t1, 1
     bge     t1, s1, .parse_done
@@ -133,7 +133,7 @@ once_argv_init:
     j       .parse_loop
 
 .parse_done:
-    // Store argc
+    # Store argc
     lla     t0, g_argc
     sd      s3, 0(t0)
 
@@ -147,15 +147,15 @@ once_argv_init:
     ret
 .size once_argv_init, .-once_argv_init
 
-// ======================================================================
-// Public Functions
-// ======================================================================
+# ======================================================================
+# Public Functions
+# ======================================================================
 
-// ----------------------------------------------------------------------
-// argc - Get argument count
-// ----------------------------------------------------------------------
-// Input: Unit (ignored) in a0
-// Output: int64 in a0
+# ----------------------------------------------------------------------
+# argc - Get argument count
+# ----------------------------------------------------------------------
+# Input: Unit (ignored) in a0
+# Output: int64 in a0
 .global argc
 .type argc, @function
 argc:
@@ -164,31 +164,31 @@ argc:
     ret
 .size argc, .-argc
 
-// ----------------------------------------------------------------------
-// argv - Get argument at index
-// ----------------------------------------------------------------------
-// Input: int64 index in a0
-// Output: OnceString (data in a0, len in a1)
+# ----------------------------------------------------------------------
+# argv - Get argument at index
+# ----------------------------------------------------------------------
+# Input: int64 index in a0
+# Output: OnceString (data in a0, len in a1)
 .global argv
 .type argv, @function
 argv:
-    // Check bounds: 0 <= idx < g_argc
+    # Check bounds: 0 <= idx < g_argc
     bltz    a0, .argv_empty
 
     lla     t0, g_argc
     ld      t1, 0(t0)
     bge     a0, t1, .argv_empty
 
-    // Get pointer: g_argv[idx]
+    # Get pointer: g_argv[idx]
     lla     t0, g_argv
     slli    t1, a0, 3
     add     t0, t0, t1
-    ld      t0, 0(t0)               // t0 = g_argv[idx]
+    ld      t0, 0(t0)               # t0 = g_argv[idx]
     beqz    t0, .argv_empty
 
-    // Calculate length (strlen)
-    mv      a0, t0                  // a0 = data pointer
-    li      a1, 0                   // a1 = len = 0
+    # Calculate length (strlen)
+    mv      a0, t0                  # a0 = data pointer
+    li      a1, 0                   # a1 = len = 0
 .strlen_loop:
     add     t1, t0, a1
     lbu     t2, 0(t1)
@@ -205,30 +205,30 @@ argv:
     ret
 .size argv, .-argv
 
-// ----------------------------------------------------------------------
-// argn - Get first argument as integer
-// ----------------------------------------------------------------------
-// Input: Unit (ignored) in a0
-// Output: int64 in a0
+# ----------------------------------------------------------------------
+# argn - Get first argument as integer
+# ----------------------------------------------------------------------
+# Input: Unit (ignored) in a0
+# Output: int64 in a0
 .global argn
 .type argn, @function
 argn:
-    // Check if argc >= 2
+    # Check if argc >= 2
     lla     t0, g_argc
     ld      t0, 0(t0)
     li      t1, 2
     blt     t0, t1, .argn_zero
 
-    // Get argv[1]
+    # Get argv[1]
     lla     t0, g_argv
-    ld      t0, 8(t0)               // t0 = g_argv[1]
+    ld      t0, 8(t0)               # t0 = g_argv[1]
     beqz    t0, .argn_zero
 
-    // Parse as integer (simple atoll)
-    li      a0, 0                   // result = 0
-    li      t1, 0                   // negative flag = 0
+    # Parse as integer (simple atoll)
+    li      a0, 0                   # result = 0
+    li      t1, 0                   # negative flag = 0
 
-    // Check for negative
+    # Check for negative
     lbu     t2, 0(t0)
     li      t3, '-'
     bne     t2, t3, .atoll_loop
@@ -239,13 +239,13 @@ argn:
     lbu     t2, 0(t0)
     beqz    t2, .atoll_done
 
-    // Check if digit ('0' = 48, '9' = 57)
-    addi    t2, t2, -48             // t2 = char - '0'
+    # Check if digit ('0' = 48, '9' = 57)
+    addi    t2, t2, -48             # t2 = char - '0'
     bltz    t2, .atoll_done
     li      t3, 9
     bgt     t2, t3, .atoll_done
 
-    // result = result * 10 + digit
+    # result = result * 10 + digit
     li      t3, 10
     mul     a0, a0, t3
     add     a0, a0, t2
@@ -254,7 +254,7 @@ argn:
     j       .atoll_loop
 
 .atoll_done:
-    // Apply sign
+    # Apply sign
     beqz    t1, .argn_return
     neg     a0, a0
 
@@ -266,4 +266,4 @@ argn:
     ret
 .size argn, .-argn
 
-#endif // ONCE_LINUX_RISCV64_ARGV_DEFINED
+#endif # ONCE_LINUX_RISCV64_ARGV_DEFINED
