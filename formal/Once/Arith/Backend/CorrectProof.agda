@@ -240,3 +240,80 @@ refine-add dst a b xd xa xb eqd eqa eqb s rewrite eqd | eqa | eqb with xd ≟x x
           dst≢b : ¬ (dst ≡ b)
           dst≢b e = ¬pb (xreg-idx-inj xd xb (trans (abs-reg-idx dst xd eqd)
                                                     (trans e (sym (abs-reg-idx b xb eqb)))))
+
+refine-mul : ∀ {sh} (dst a b : ℕ) (xd xa xb : XReg) →
+  abs-reg dst ≡ just xd → abs-reg a ≡ just xa → abs-reg b ≡ just xb →
+  (s : ArithAbsState sh) → exec-x86 (emit (mul-rrr dst a b)) s ~ step (mul-rrr dst a b) s
+refine-mul dst a b xd xa xb eqd eqa eqb s rewrite eqd | eqa | eqb with xd ≟x xa
+... | yes p rewrite abs-reg-idx dst xd eqd | abs-reg-idx b xb eqb =
+      ≡→~ (cong (λ v → record s { regs = ArithAbsState.regs s [ dst ↦ v ] })
+                (cong (λ r → bin-op _⊗_ r (ArithAbsState.regs s [ b ]))
+                      (cong (ArithAbsState.regs s [_]) (idx-eq eqd eqa p))))
+... | no ¬pa with xd ≟x xb
+...   | yes q rewrite abs-reg-idx dst xd eqd | abs-reg-idx a xa eqa =
+        ≡→~ (cong (λ v → record s { regs = ArithAbsState.regs s [ dst ↦ v ] })
+                  (trans (cong (λ r → bin-op _⊗_ r (ArithAbsState.regs s [ a ]))
+                               (cong (ArithAbsState.regs s [_]) (idx-eq eqd eqb q)))
+                         (bin-op-comm _⊗_ ⊗-comm (ArithAbsState.regs s [ b ]) (ArithAbsState.regs s [ a ]))))
+...   | no ¬pb rewrite abs-reg-idx dst xd eqd | abs-reg-idx a xa eqa | abs-reg-idx b xb eqb =
+        (λ j → trans (double-write (ArithAbsState.regs s) dst (ArithAbsState.regs s [ a ])
+                        (bin-op _⊗_ ((ArithAbsState.regs s [ dst ↦ ArithAbsState.regs s [ a ] ]) [ dst ])
+                                    ((ArithAbsState.regs s [ dst ↦ ArithAbsState.regs s [ a ] ]) [ b ])) j)
+                     (cong (λ v → (ArithAbsState.regs s [ dst ↦ v ]) [ j ])
+                           (cong₂ (bin-op _⊗_)
+                                  (store-write-same (ArithAbsState.regs s) dst (ArithAbsState.regs s [ a ]))
+                                  (store-write-other (ArithAbsState.regs s) dst b (ArithAbsState.regs s [ a ]) dst≢b))))
+        , (λ _ → refl) , refl , refl
+        where
+          dst≢b : ¬ (dst ≡ b)
+          dst≢b e = ¬pb (xreg-idx-inj xd xb (trans (abs-reg-idx dst xd eqd)
+                                                    (trans e (sym (abs-reg-idx b xb eqb)))))
+
+-- neg-then-add computes subtraction:  bin-op ⊕ (un-op ⊝ mb) ma ≡ bin-op ⊖ ma mb.
+sub-bin-identity : ∀ (ma mb : Maybe ℕ) → bin-op _⊕_ (un-op ⊝_ mb) ma ≡ bin-op _⊖_ ma mb
+sub-bin-identity (just a) (just b) = cong just (sub-identity a b)
+sub-bin-identity (just a) nothing  = refl
+sub-bin-identity nothing  (just b) = refl
+sub-bin-identity nothing  nothing  = refl
+
+refine-sub : ∀ {sh} (dst a b : ℕ) (xd xa xb : XReg) →
+  abs-reg dst ≡ just xd → abs-reg a ≡ just xa → abs-reg b ≡ just xb →
+  (s : ArithAbsState sh) → exec-x86 (emit (sub-rrr dst a b)) s ~ step (sub-rrr dst a b) s
+refine-sub dst a b xd xa xb eqd eqa eqb s rewrite eqd | eqa | eqb with xd ≟x xa
+-- dst≡a: single Xsub
+... | yes p rewrite abs-reg-idx dst xd eqd | abs-reg-idx b xb eqb =
+      ≡→~ (cong (λ v → record s { regs = ArithAbsState.regs s [ dst ↦ v ] })
+                (cong (λ r → bin-op _⊖_ r (ArithAbsState.regs s [ b ]))
+                      (cong (ArithAbsState.regs s [_]) (idx-eq eqd eqa p))))
+... | no ¬pa with xd ≟x xb
+-- dst≡b: Xneg ∷ Xadd  (double-write, sub-identity)
+...   | yes q rewrite abs-reg-idx dst xd eqd | abs-reg-idx a xa eqa =
+        (λ j → trans (double-write (ArithAbsState.regs s) dst (un-op ⊝_ (ArithAbsState.regs s [ dst ]))
+                        (bin-op _⊕_ ((ArithAbsState.regs s [ dst ↦ un-op ⊝_ (ArithAbsState.regs s [ dst ]) ]) [ dst ])
+                                    ((ArithAbsState.regs s [ dst ↦ un-op ⊝_ (ArithAbsState.regs s [ dst ]) ]) [ a ])) j)
+                     (cong (λ v → (ArithAbsState.regs s [ dst ↦ v ]) [ j ])
+                           (trans (cong₂ (bin-op _⊕_)
+                                     (store-write-same (ArithAbsState.regs s) dst (un-op ⊝_ (ArithAbsState.regs s [ dst ])))
+                                     (store-write-other (ArithAbsState.regs s) dst a (un-op ⊝_ (ArithAbsState.regs s [ dst ])) dst≢a))
+                             (trans (cong (λ w → bin-op _⊕_ (un-op ⊝_ w) (ArithAbsState.regs s [ a ]))
+                                          (cong (ArithAbsState.regs s [_]) (idx-eq eqd eqb q)))
+                                    (sub-bin-identity (ArithAbsState.regs s [ a ]) (ArithAbsState.regs s [ b ]))))))
+        , (λ _ → refl) , refl , refl
+        where
+          dst≢a : ¬ (dst ≡ a)
+          dst≢a e = ¬pa (xreg-idx-inj xd xa (trans (abs-reg-idx dst xd eqd)
+                                                   (trans e (sym (abs-reg-idx a xa eqa)))))
+-- else: Xmov ∷ Xsub  (double-write)
+...   | no ¬pb rewrite abs-reg-idx dst xd eqd | abs-reg-idx a xa eqa | abs-reg-idx b xb eqb =
+        (λ j → trans (double-write (ArithAbsState.regs s) dst (ArithAbsState.regs s [ a ])
+                        (bin-op _⊖_ ((ArithAbsState.regs s [ dst ↦ ArithAbsState.regs s [ a ] ]) [ dst ])
+                                    ((ArithAbsState.regs s [ dst ↦ ArithAbsState.regs s [ a ] ]) [ b ])) j)
+                     (cong (λ v → (ArithAbsState.regs s [ dst ↦ v ]) [ j ])
+                           (cong₂ (bin-op _⊖_)
+                                  (store-write-same (ArithAbsState.regs s) dst (ArithAbsState.regs s [ a ]))
+                                  (store-write-other (ArithAbsState.regs s) dst b (ArithAbsState.regs s [ a ]) dst≢b))))
+        , (λ _ → refl) , refl , refl
+        where
+          dst≢b : ¬ (dst ≡ b)
+          dst≢b e = ¬pb (xreg-idx-inj xd xb (trans (abs-reg-idx dst xd eqd)
+                                                    (trans e (sym (abs-reg-idx b xb eqb)))))
