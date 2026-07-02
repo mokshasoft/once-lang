@@ -20,14 +20,14 @@ open import Data.Integer using (ℤ)
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
-open import Relation.Nullary using (yes; no)
+open import Relation.Nullary using (yes; no; ¬_)
 open import Relation.Binary.PropositionalEquality
-  using (_≡_; refl; cong; sym; trans; subst)
+  using (_≡_; refl; cong; cong₂; sym; trans; subst)
 
 open import Once.Arith.Machine.AbsState
 open import Once.Arith.Machine.AbsInstr
 open import Once.Arith.Backend.XInstr.Syntax
-open import Once.Arith.Backend.XInstr.CodeGen using (emit; emit-program; abs-reg)
+open import Once.Arith.Backend.XInstr.CodeGen using (emit; emit-program; abs-reg; _≟x_)
 open import Once.Word using (module Width)
 
 open Width bits using (fromℤ; _⊕_; _⊖_; _⊗_; ⊝_; norm; modulus; modulus≢0)
@@ -193,3 +193,50 @@ refine-neg dst a xd xa eqd eqa s
                  (cong (λ v → (ArithAbsState.regs s [ dst ↦ un-op ⊝_ v ]) [ j ])
                        (store-write-same (ArithAbsState.regs s) dst (ArithAbsState.regs s [ a ]))))
   , (λ _ → refl) , refl , refl
+
+------------------------------------------------------------------------
+-- Binary ops: mirror emit's aliasing dispatch (dst≡a | dst≡b | else).
+------------------------------------------------------------------------
+
+xreg-idx-inj : ∀ xd xb → xreg-idx xd ≡ xreg-idx xb → xd ≡ xb
+xreg-idx-inj XR12 XR12 _ = refl
+xreg-idx-inj XR13 XR13 _ = refl
+xreg-idx-inj XR14 XR14 _ = refl
+xreg-idx-inj XR15 XR15 _ = refl
+xreg-idx-inj XR12 XR13 () ; xreg-idx-inj XR12 XR14 () ; xreg-idx-inj XR12 XR15 ()
+xreg-idx-inj XR13 XR12 () ; xreg-idx-inj XR13 XR14 () ; xreg-idx-inj XR13 XR15 ()
+xreg-idx-inj XR14 XR12 () ; xreg-idx-inj XR14 XR13 () ; xreg-idx-inj XR14 XR15 ()
+xreg-idx-inj XR15 XR12 () ; xreg-idx-inj XR15 XR13 () ; xreg-idx-inj XR15 XR14 ()
+
+-- dst ≡ a from xd ≡ xa (via round-trips).
+idx-eq : ∀ {r₁ r₂ x₁ x₂} → abs-reg r₁ ≡ just x₁ → abs-reg r₂ ≡ just x₂ → x₁ ≡ x₂ → r₁ ≡ r₂
+idx-eq {r₁} {r₂} {x₁} {x₂} e₁ e₂ xe =
+  trans (sym (abs-reg-idx r₁ x₁ e₁)) (trans (cong xreg-idx xe) (abs-reg-idx r₂ x₂ e₂))
+
+refine-add : ∀ {sh} (dst a b : ℕ) (xd xa xb : XReg) →
+  abs-reg dst ≡ just xd → abs-reg a ≡ just xa → abs-reg b ≡ just xb →
+  (s : ArithAbsState sh) → exec-x86 (emit (add-rrr dst a b)) s ~ step (add-rrr dst a b) s
+refine-add dst a b xd xa xb eqd eqa eqb s rewrite eqd | eqa | eqb with xd ≟x xa
+... | yes p rewrite abs-reg-idx dst xd eqd | abs-reg-idx b xb eqb =
+      ≡→~ (cong (λ v → record s { regs = ArithAbsState.regs s [ dst ↦ v ] })
+                (cong (λ r → bin-op _⊕_ r (ArithAbsState.regs s [ b ]))
+                      (cong (ArithAbsState.regs s [_]) (idx-eq eqd eqa p))))
+... | no ¬pa with xd ≟x xb
+...   | yes q rewrite abs-reg-idx dst xd eqd | abs-reg-idx a xa eqa =
+        ≡→~ (cong (λ v → record s { regs = ArithAbsState.regs s [ dst ↦ v ] })
+                  (trans (cong (λ r → bin-op _⊕_ r (ArithAbsState.regs s [ a ]))
+                               (cong (ArithAbsState.regs s [_]) (idx-eq eqd eqb q)))
+                         (bin-op-comm _⊕_ ⊕-comm (ArithAbsState.regs s [ b ]) (ArithAbsState.regs s [ a ]))))
+...   | no ¬pb rewrite abs-reg-idx dst xd eqd | abs-reg-idx a xa eqa | abs-reg-idx b xb eqb =
+        (λ j → trans (double-write (ArithAbsState.regs s) dst (ArithAbsState.regs s [ a ])
+                        (bin-op _⊕_ ((ArithAbsState.regs s [ dst ↦ ArithAbsState.regs s [ a ] ]) [ dst ])
+                                    ((ArithAbsState.regs s [ dst ↦ ArithAbsState.regs s [ a ] ]) [ b ])) j)
+                     (cong (λ v → (ArithAbsState.regs s [ dst ↦ v ]) [ j ])
+                           (cong₂ (bin-op _⊕_)
+                                  (store-write-same (ArithAbsState.regs s) dst (ArithAbsState.regs s [ a ]))
+                                  (store-write-other (ArithAbsState.regs s) dst b (ArithAbsState.regs s [ a ]) dst≢b))))
+        , (λ _ → refl) , refl , refl
+        where
+          dst≢b : ¬ (dst ≡ b)
+          dst≢b e = ¬pb (xreg-idx-inj xd xb (trans (abs-reg-idx dst xd eqd)
+                                                    (trans e (sym (abs-reg-idx b xb eqb)))))
