@@ -1018,7 +1018,7 @@ postulate
                         {π : T.Purity} {wfF : WellFormedF F}
                     → wellFormedF? F ≡ just wfF
                     → ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx)
-                        ⊢ᶜ alg ∶ (⟦ F ⟧T A T.⇒[ T.mk-kind T.Many π ] A) ⨾ zeroUsage
+                        ⊢ᵐ alg ∶ (⟦ F ⟧T A) ⇨[ π ] A
                     → StrongElab ctx (Raw.RApp (Raw.RVar "cata") alg) (μ-type F) A π
   named-morph-strong : ∀ {ctx : NamedCtx} {x : String} {A B : Type} {π : T.Purity}
                      → ¬ (x ≡ "unit")
