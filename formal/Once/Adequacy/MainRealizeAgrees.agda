@@ -68,10 +68,10 @@ open import Once.Adequacy.RealizeBridge using (realize-agrees)
 -- (A/B/C). The hook itself is now PROVEN from them (below) — so A/B/C's TYPES
 -- are pinned by that composition, not guessed.
 --
--- (A) resolveExpr-faithfulness — the resolver preserves denotation. The ~30
---     STRUCTURAL constructors are now PROVEN by induction in
---     `Once.Adequacy.ResolveFaithful`; the 5 hard constructors (sigOp / effApp /
---     cata / ana / poly) are isolated there in `resolveExpr-faithful-hard`.
+-- (A) resolveExpr-faithfulness — the resolver preserves denotation. All
+--     structural constructors (incl. effApp/cata/ana) are PROVEN by induction in
+--     `Once.Adequacy.ResolveFaithful`; the only residuals are two NARROW
+--     denotational postulates there (sigOp→closure rewrite, poly body-splice).
 open import Once.Adequacy.ResolveFaithful using (resolveExpr-faithful)
 
 -- (B) realize denotational-invariance — ANY two `⊢ᶜ` derivations of the SAME
