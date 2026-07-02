@@ -21,25 +21,24 @@
 module Once.Adequacy.ArchCorrectness.RiscV64 where
 
 open import Data.Nat using (ℕ)
-open import Once.IR using (IR)
 open import Once.Adequacy.CPU using (riscv64; arch-semantics)
 open import Once.Adequacy.Compile using (ArchCorrect)
 open import Once.CCC.Target.RiscV64.FrameInstantiation using (rv64-frame-semantics)
+open import Once.CCC.Machine.SMCore using (LocState)
+open import Once.CCC.Machine.Allocation using (AllocState)
 open import Once.CCC.Codegen.IRObsCorrectFlat using (module IRObsCorrectFlatness)
+import Once.Adequacy.ArchCorrectness.FlatFromObs as FFO
 
--- The observation bound for this target (per-IR; ≥ the relevant `ir-size`s).
-postulate program-bound : ℕ
-
-open IRObsCorrectFlatness {rv64-frame-semantics} program-bound
-  using (IRObsCorrectF; ir-obs-correct)
-
--- The per-target bridge: the FS-level per-IR observable theorem
--- (`ir-obs-correct`, routing `Cata → cata-correct`) → riscv64's `ArchCorrect`.
 postulate
-  riscv64-flat-from-obs :
-    (∀ {A B} (ir : IR A B) → IRObsCorrectF ir)
-    → ArchCorrect riscv64 (arch-semantics riscv64)
+  program-bound : ℕ
+  -- loader `_start` entry frame (named data trust input; Layer 2 builds it).
+  entry-s     : LocState rv64-frame-semantics
+  entry-alloc : AllocState {rv64-frame-semantics}
 
--- riscv64's witness, DISCHARGED THROUGH ir-obs-correct (→ cata-correct).
+open IRObsCorrectFlatness {rv64-frame-semantics} program-bound using (ir-obs-correct)
+
+-- riscv64's witness, CONSTRUCTED via the shared FlatFromObs (Phase B L1).
 riscv64-correct : ArchCorrect riscv64 (arch-semantics riscv64)
-riscv64-correct = riscv64-flat-from-obs ir-obs-correct
+riscv64-correct =
+  FFO.flat-from-obs riscv64 rv64-frame-semantics (arch-semantics riscv64)
+    program-bound entry-s entry-alloc ir-obs-correct
