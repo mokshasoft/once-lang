@@ -623,11 +623,13 @@ extract-morph-eff-aux (Surface.lift-morphism m) refl = just (m , refl)
 -- `once_seven` is a closure-returner, not that SigOp). Extraction stays
 -- faithful: only genuine `lift-morphism`s (and `arr'`/`cata` over them).
 extract-morph-eff-aux (Surface.arr' e)          refl = extract-morph-eff-aux e refl
--- A `cata` IS a direct morphism `μF → A`. Recover the bare `Cata` IR (the same
--- un-curried form `Surface.Elaborate.elaborate` builds) so it fuses into an
--- effectful compose/case like any other morphism (e.g. `compose emitAll …`).
-extract-morph-eff-aux (Surface.cata {F = F} wfF algE) refl =
-  just (IR.Cata wfF (IR.apply IR.∘ IR.⟨ Elab.elaborate IR.Heap algE IR.∘ IR.terminal , IR.id ⟩ IR.Heap) , refl)
+-- A `cata` IS a direct morphism `μF → A`. Plan 0.54: the algebra is itself a
+-- morphism, so recover ITS `IR (⟦F⟧T A) A` and wrap in `IR.Cata` directly —
+-- no `apply/⟨⟩/terminal` wrapper. Fuses into an effectful compose/case like any
+-- other morphism.
+extract-morph-eff-aux (Surface.cata {F = F} wfF algE) refl with extract-morph-eff-aux algE refl
+... | just (m-alg , eqΨ) = just (IR.Cata wfF m-alg , eqΨ)
+... | nothing            = nothing
 extract-morph-eff-aux _ _ = nothing
 
 extract-morph-eff : ∀ {n} {Γ : SCtx n} {Ψ : Surface.Usage n} {A B : Type}
@@ -1522,9 +1524,14 @@ mutual
     with checkElabV (ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx))
                     alg (⟦ F ⟧T A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A)
   ... | failure err , _ = failure err , tt
-  ... | success Surface.[] algE d fr , wArg =
-        success _ (Surface.cata wfF algE) (suc d) (NamedCtx.freshCounter ctx)
-          , t-morph-lift (m-cata eqW wArg)
+  ... | success Surface.[] algE d fr , wArg with extractMorphWitness wArg
+  -- Plan 0.54: the algebra must be a MORPHISM. Recover its `⊢ᵐ` witness; a
+  -- non-morphism (e.g. lambda) algebra is rejected (surface sugar bracket-
+  -- abstracts to a morphism before this slot — deferred).
+  ...   | just mᵐ =
+          success _ (Surface.cata wfF algE) (suc d) (NamedCtx.freshCounter ctx)
+            , t-morph-lift (m-cata eqW mᵐ)
+  ...   | nothing = failure (BuiltinTypeMismatch "cata") , tt
 
   -- Body for the hoisted `ahv-other` (generic application) branch.
   inferElab-RApp-other ctx f x with asFun (inferElab ctx f)

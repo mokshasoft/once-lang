@@ -119,8 +119,9 @@ realize-morph (m-compose _ df dg) = realize-morph df ∘ realize-morph dg
 realize-morph (m-case df dg)    = IR.case (realize-morph df) (realize-morph dg)
 realize-morph (m-pair df dg)    = ⟨ realize-morph df , realize-morph dg ⟩ IR.Heap
 realize-morph (m-curry df)      = IR.curry (realize-morph df) IR.Heap
-realize-morph (m-cata {wfF = wfF} _ dalg) =
-  IR.Cata wfF (IR.apply ∘ ⟨ elaborate IR.Heap (realize dalg) ∘ IR.terminal , IR.id ⟩ IR.Heap)
+-- Plan 0.54: DIRECT — the algebra is a morphism (`⊢ᵐ`), read straight to its
+-- categorical IR; no `elaborate` round-trip, uniform with the other combinators.
+realize-morph (m-cata {wfF = wfF} _ dalg) = IR.Cata wfF (realize-morph dalg)
 realize-morph (m-const gd)      = realize-global gd
 realize-morph (m-named {x = x} _ _ _) = IR.SigOp (value-info (bare x))
 realize-morph (m-named-resolved {cn = cn} _) = IR.SigOp (value-info cn)

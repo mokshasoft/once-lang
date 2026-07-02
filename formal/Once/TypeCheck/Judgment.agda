@@ -404,15 +404,18 @@ mutual
             → ctx ⊢ᵐ RApp (RVar "curry") f
                     ∶ A ⇨[ Once.Type.pure ] (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C)
 
-    -- The cata algebra is ANY *closed* function `⟦F⟧T A → A`, checked in the
-    -- empty-locals context (extensional leaf, uncurried by `realize-morph`). The
-    -- cata's grade π follows the algebra's.
+    -- Plan 0.54: the cata algebra is a MORPHISM `⟦F⟧T A → A` (`⊢ᵐ`), not a
+    -- general `⊢ᶜ`. This keeps `realize-morph (m-cata)` DIRECT — `Cata wfF
+    -- (realize-morph dalg)` — with no `elaborate` round-trip, uniform with every
+    -- other combinator, and makes `cata-morph-strong` provable via `morph-realize`.
+    -- Lambda algebras become surface sugar (bracket-abstracted to a morphism
+    -- before this slot); point-free algebras only meanwhile. The cata's grade π
+    -- follows the algebra's.
     m-cata : ∀ {ctx : NamedCtx} {alg : RawExpr} {F : Functor} {A : Type}
              {π : Once.Type.Purity} {wfF : WellFormedF F}
            → wellFormedF? F ≡ just wfF
            → ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx)
-               ⊢ᶜ alg ∶ (⟦ F ⟧T A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A)
-                      ⨾ Surface.zeroUsage
+               ⊢ᵐ alg ∶ (⟦ F ⟧T A) ⇨[ π ] A
            → ctx ⊢ᵐ RApp (RVar "cata") alg ∶ (μ-type F) ⇨[ π ] A
 
     -- (Plan 0.52 M1: `m-arr` retired — pure⊑eff is now `t-subsume`.)
