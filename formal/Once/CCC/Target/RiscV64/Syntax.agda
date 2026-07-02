@@ -40,39 +40,11 @@ open import Data.String using (String)
 --   x18-x27 (s2-s11): saved registers
 --   x28-x31 (t3-t6): temporaries
 --
-data Reg : Set where
-  -- Hardwired zero
-  zero : Reg   -- x0: always reads as 0
-
-  -- Return address
-  ra   : Reg   -- x1: return address
-
-  -- Stack/frame pointers
-  sp   : Reg   -- x2: stack pointer
-  fp   : Reg   -- x8/s0: frame pointer (callee-saved)
-
-  -- Function arguments and return values
-  a0   : Reg   -- x10: first argument / return value
-  a1   : Reg   -- x11: second argument / second return value
-  a2   : Reg   -- x12: third argument
-  a3   : Reg   -- x13: fourth argument
-  a4   : Reg   -- x14: fifth argument
-  a5   : Reg   -- x15: sixth argument
-  a6   : Reg   -- x16: seventh argument
-  a7   : Reg   -- x17: eighth argument
-
-  -- Saved registers (callee-saved)
-  s1   : Reg   -- x9: saved register
-  s2   : Reg   -- x18: saved register (environment pointer for closures)
-  s3   : Reg   -- x19: saved register
-  s4   : Reg   -- x20: saved register
-
-  -- Temporaries (caller-saved)
-  t0   : Reg   -- x5: temporary
-  t1   : Reg   -- x6: temporary
-  t2   : Reg   -- x7: temporary
-  t3   : Reg   -- x28: temporary
-  t4   : Reg   -- x29: temporary
+-- The physical register file is now the single shared declaration
+-- `Once.Target.RiscV64.PhysReg` (Plan 0.55), re-exported here so every CCC
+-- importer of this module keeps seeing `Reg` unchanged.
+open import Once.Target.RiscV64.PhysReg public using
+  (Reg; zero; ra; sp; fp; a0; a1; a2; a3; a4; a5; a6; a7; s1; s2; s3; s4; t0; t1; t2; t3; t4)
 
 ------------------------------------------------------------------------
 -- Instructions

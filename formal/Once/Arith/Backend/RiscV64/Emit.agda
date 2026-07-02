@@ -14,7 +14,8 @@
 --     lives at `0(t0)`; a nested pair's `Fst`/`Snd` map to byte offsets
 --     `0` / `8`.
 --   - The Int result is returned in `a0` (Output).
---   - `t1-t4` are the abstract reg file (`AbsReg 0..3`); `a0` doubles as
+--   - The abstract reg file XR0..XR3 maps to a3/a4/a5 (CCC-free; see arith-reg
+--     + Once.Target.RiscV64.PhysReg). `a0` doubles as
 --     the path-walk scratch. All are caller-saved at the SigOp call site.
 --   - Scratch stack slots live at `8*slot(sp)` after the prologue reserves
 --     `8 * required-scratch` bytes. The block is a leaf (no calls), so it
@@ -43,13 +44,29 @@ open import Once.Target.Symbol using (once-symbol-own)
 -- Register / scratch text
 ------------------------------------------------------------------------
 
--- The 4 abstract arith registers → RV64 temporaries (free within a leaf
--- block; the main codegen's uses of t1 are all closure-call-local).
+open import Once.Target.RiscV64.PhysReg using (Reg; a3; a4; a5; showReg; owner; RegClass; arith)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+
+-- XR0..XR3 acquire the CCC-free caller-saved argument registers a3/a4/a5 from
+-- the single shared `Once.Target.RiscV64.PhysReg` declaration (Plan 0.55).
+-- Only 3 registers are CCC-free on RV64, and `compile-go` emits only XR0/XR1
+-- (compile-abs-bound), so the dead XR2/XR3 alias a5 — never actually emitted.
+-- `arith-disjoint` is a `refl`, so non-clobbering is definitional (replacing the
+-- old — false — comment that t1-t4 were free: CCC emits t1 ~45×).
+arith-reg : XReg → Reg
+arith-reg XR0 = a3
+arith-reg XR1 = a4
+arith-reg XR2 = a5
+arith-reg XR3 = a5
+
+arith-disjoint : ∀ x → owner (arith-reg x) ≡ arith
+arith-disjoint XR0 = refl
+arith-disjoint XR1 = refl
+arith-disjoint XR2 = refl
+arith-disjoint XR3 = refl
+
 reg-text : XReg → String
-reg-text XR0 = "t1"
-reg-text XR1 = "t2"
-reg-text XR2 = "t3"
-reg-text XR3 = "t4"
+reg-text x = showReg (arith-reg x)
 
 -- | A scratch slot lives at `8*slot(sp)` within the reserved frame.
 scratch-text : XScratch → String

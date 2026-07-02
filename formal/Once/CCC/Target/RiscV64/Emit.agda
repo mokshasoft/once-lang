@@ -24,28 +24,8 @@ open import Once.CCC.Target.RiscV64.Syntax
 -- Register names (RV64 standard ABI)
 ------------------------------------------------------------------------
 
-showReg : Reg → String
-showReg zero = "zero"
-showReg ra   = "ra"
-showReg sp   = "sp"
-showReg fp   = "fp"
-showReg a0   = "a0"
-showReg a1   = "a1"
-showReg a2   = "a2"
-showReg a3   = "a3"
-showReg a4   = "a4"
-showReg a5   = "a5"
-showReg a6   = "a6"
-showReg a7   = "a7"
-showReg s1   = "s1"
-showReg s2   = "s2"
-showReg s3   = "s3"
-showReg s4   = "s4"
-showReg t0   = "t0"
-showReg t1   = "t1"
-showReg t2   = "t2"
-showReg t3   = "t3"
-showReg t4   = "t4"
+-- Register rendering is shared with the arith backend (Plan 0.55).
+open import Once.Target.RiscV64.PhysReg using (showReg)
 
 ------------------------------------------------------------------------
 -- Instructions
