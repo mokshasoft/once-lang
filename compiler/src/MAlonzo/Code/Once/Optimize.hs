@@ -4368,94 +4368,89 @@ d_optimize'45'compose_3690 v0 v1 v2 v3 v4
                            du_optimize'45'compose'45'second_3660 (coe v1) (coe v3) (coe v4)
                     _ -> MAlonzo.RTE.mazUnreachableError)))
 -- Once.Optimize.optimize-pair-aux
-d_optimize'45'pair'45'aux_3752 ::
+d_optimize'45'pair'45'aux_3754 ::
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
+  MAlonzo.Code.Once.IR.T_AllocMode_4 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   T_FstSndView_2830 ->
   T_FstSndView_2830 -> MAlonzo.Code.Once.IR.T_IR_16
-d_optimize'45'pair'45'aux_3752 ~v0 ~v1 ~v2 v3 v4 v5 v6
-  = du_optimize'45'pair'45'aux_3752 v3 v4 v5 v6
-du_optimize'45'pair'45'aux_3752 ::
+d_optimize'45'pair'45'aux_3754 ~v0 ~v1 ~v2 v3 v4 v5 v6 v7
+  = du_optimize'45'pair'45'aux_3754 v3 v4 v5 v6 v7
+du_optimize'45'pair'45'aux_3754 ::
+  MAlonzo.Code.Once.IR.T_AllocMode_4 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   T_FstSndView_2830 ->
   T_FstSndView_2830 -> MAlonzo.Code.Once.IR.T_IR_16
-du_optimize'45'pair'45'aux_3752 v0 v1 v2 v3
-  = case coe v2 of
+du_optimize'45'pair'45'aux_3754 v0 v1 v2 v3 v4
+  = case coe v3 of
       C_fsv'45'fst_2836
-        -> case coe v3 of
+        -> case coe v4 of
              C_fsv'45'fst_2836
                -> coe
                     MAlonzo.Code.Once.IR.C_'10216'_'44'_'10217'_38
                     (coe MAlonzo.Code.Once.IR.C_fst_44)
-                    (coe MAlonzo.Code.Once.IR.C_fst_44)
-                    (coe MAlonzo.Code.Once.IR.C_Stack_6)
+                    (coe MAlonzo.Code.Once.IR.C_fst_44) v0
              C_fsv'45'snd_2842 -> coe MAlonzo.Code.Once.IR.C_id_22
              C_fsv'45'other_2850
                -> coe
                     MAlonzo.Code.Once.IR.C_'10216'_'44'_'10217'_38
-                    (coe MAlonzo.Code.Once.IR.C_fst_44) v1
-                    (coe MAlonzo.Code.Once.IR.C_Stack_6)
+                    (coe MAlonzo.Code.Once.IR.C_fst_44) v2 v0
              _ -> MAlonzo.RTE.mazUnreachableError
       C_fsv'45'snd_2842
-        -> case coe v3 of
+        -> case coe v4 of
              C_fsv'45'fst_2836
                -> coe
                     MAlonzo.Code.Once.IR.C_'10216'_'44'_'10217'_38
                     (coe MAlonzo.Code.Once.IR.C_snd_50)
-                    (coe MAlonzo.Code.Once.IR.C_fst_44)
-                    (coe MAlonzo.Code.Once.IR.C_Stack_6)
+                    (coe MAlonzo.Code.Once.IR.C_fst_44) v0
              C_fsv'45'snd_2842
                -> coe
                     MAlonzo.Code.Once.IR.C_'10216'_'44'_'10217'_38
                     (coe MAlonzo.Code.Once.IR.C_snd_50)
-                    (coe MAlonzo.Code.Once.IR.C_snd_50)
-                    (coe MAlonzo.Code.Once.IR.C_Stack_6)
+                    (coe MAlonzo.Code.Once.IR.C_snd_50) v0
              C_fsv'45'other_2850
                -> coe
                     MAlonzo.Code.Once.IR.C_'10216'_'44'_'10217'_38
-                    (coe MAlonzo.Code.Once.IR.C_snd_50) v1
-                    (coe MAlonzo.Code.Once.IR.C_Stack_6)
+                    (coe MAlonzo.Code.Once.IR.C_snd_50) v2 v0
              _ -> MAlonzo.RTE.mazUnreachableError
       C_fsv'45'other_2850
-        -> case coe v3 of
+        -> case coe v4 of
              C_fsv'45'fst_2836
                -> coe
-                    MAlonzo.Code.Once.IR.C_'10216'_'44'_'10217'_38 v0
-                    (coe MAlonzo.Code.Once.IR.C_fst_44)
-                    (coe MAlonzo.Code.Once.IR.C_Stack_6)
+                    MAlonzo.Code.Once.IR.C_'10216'_'44'_'10217'_38 v1
+                    (coe MAlonzo.Code.Once.IR.C_fst_44) v0
              C_fsv'45'snd_2842
                -> coe
-                    MAlonzo.Code.Once.IR.C_'10216'_'44'_'10217'_38 v0
-                    (coe MAlonzo.Code.Once.IR.C_snd_50)
-                    (coe MAlonzo.Code.Once.IR.C_Stack_6)
+                    MAlonzo.Code.Once.IR.C_'10216'_'44'_'10217'_38 v1
+                    (coe MAlonzo.Code.Once.IR.C_snd_50) v0
              C_fsv'45'other_2850
-               -> coe
-                    MAlonzo.Code.Once.IR.C_'10216'_'44'_'10217'_38 v0 v1
-                    (coe MAlonzo.Code.Once.IR.C_Stack_6)
+               -> coe MAlonzo.Code.Once.IR.C_'10216'_'44'_'10217'_38 v1 v2 v0
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Optimize.optimize-pair
-d_optimize'45'pair_3796 ::
+d_optimize'45'pair_3816 ::
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
+  MAlonzo.Code.Once.IR.T_AllocMode_4 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Once.IR.T_IR_16 -> MAlonzo.Code.Once.IR.T_IR_16
-d_optimize'45'pair_3796 ~v0 ~v1 ~v2 v3 v4
-  = du_optimize'45'pair_3796 v3 v4
-du_optimize'45'pair_3796 ::
+d_optimize'45'pair_3816 ~v0 ~v1 ~v2 v3 v4 v5
+  = du_optimize'45'pair_3816 v3 v4 v5
+du_optimize'45'pair_3816 ::
+  MAlonzo.Code.Once.IR.T_AllocMode_4 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Once.IR.T_IR_16 -> MAlonzo.Code.Once.IR.T_IR_16
-du_optimize'45'pair_3796 v0 v1
+du_optimize'45'pair_3816 v0 v1 v2
   = coe
-      du_optimize'45'pair'45'aux_3752 (coe v0) (coe v1)
-      (coe du_fstSndView_3330 (coe v0)) (coe du_fstSndView_3330 (coe v1))
+      du_optimize'45'pair'45'aux_3754 (coe v0) (coe v1) (coe v2)
+      (coe du_fstSndView_3330 (coe v1)) (coe du_fstSndView_3330 (coe v2))
 -- Once.Optimize.optimize-case-aux
-d_optimize'45'case'45'aux_3812 ::
+d_optimize'45'case'45'aux_3834 ::
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
@@ -4463,14 +4458,14 @@ d_optimize'45'case'45'aux_3812 ::
   MAlonzo.Code.Once.IR.T_IR_16 ->
   T_InlInrView_2856 ->
   T_InlInrView_2856 -> MAlonzo.Code.Once.IR.T_IR_16
-d_optimize'45'case'45'aux_3812 ~v0 ~v1 ~v2 v3 v4 v5 v6
-  = du_optimize'45'case'45'aux_3812 v3 v4 v5 v6
-du_optimize'45'case'45'aux_3812 ::
+d_optimize'45'case'45'aux_3834 ~v0 ~v1 ~v2 v3 v4 v5 v6
+  = du_optimize'45'case'45'aux_3834 v3 v4 v5 v6
+du_optimize'45'case'45'aux_3834 ::
   MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   T_InlInrView_2856 ->
   T_InlInrView_2856 -> MAlonzo.Code.Once.IR.T_IR_16
-du_optimize'45'case'45'aux_3812 v0 v1 v2 v3
+du_optimize'45'case'45'aux_3834 v0 v1 v2 v3
   = case coe v2 of
       C_iiv'45'inl_2864
         -> case coe v0 of
@@ -4537,41 +4532,41 @@ du_optimize'45'case'45'aux_3812 v0 v1 v2 v3
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Optimize.optimize-case
-d_optimize'45'case_3856 ::
+d_optimize'45'case_3878 ::
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Once.IR.T_IR_16 -> MAlonzo.Code.Once.IR.T_IR_16
-d_optimize'45'case_3856 ~v0 ~v1 ~v2 v3 v4
-  = du_optimize'45'case_3856 v3 v4
-du_optimize'45'case_3856 ::
+d_optimize'45'case_3878 ~v0 ~v1 ~v2 v3 v4
+  = du_optimize'45'case_3878 v3 v4
+du_optimize'45'case_3878 ::
   MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Once.IR.T_IR_16 -> MAlonzo.Code.Once.IR.T_IR_16
-du_optimize'45'case_3856 v0 v1
+du_optimize'45'case_3878 v0 v1
   = coe
-      du_optimize'45'case'45'aux_3812 (coe v0) (coe v1)
+      du_optimize'45'case'45'aux_3834 (coe v0) (coe v1)
       (coe du_inlInrView_3408 (coe v0)) (coe du_inlInrView_3408 (coe v1))
 -- Once.Optimize.optimize-once-structural
-d_optimize'45'once'45'structural_3866 ::
+d_optimize'45'once'45'structural_3888 ::
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.IR.T_IR_16 -> MAlonzo.Code.Once.IR.T_IR_16
-d_optimize'45'once'45'structural_3866 v0 v1 v2
+d_optimize'45'once'45'structural_3888 v0 v1 v2
   = case coe v2 of
       MAlonzo.Code.Once.IR.C_id_22 -> coe MAlonzo.Code.Once.IR.C_id_22
       MAlonzo.Code.Once.IR.C__'8728'__30 v4 v6 v7
         -> coe
              d_optimize'45'compose_3690 (coe v0) (coe v4) (coe v1)
-             (coe d_optimize'45'once_3872 (coe v4) (coe v1) (coe v6))
-             (coe d_optimize'45'once_3872 (coe v0) (coe v4) (coe v7))
+             (coe d_optimize'45'once_3894 (coe v4) (coe v1) (coe v6))
+             (coe d_optimize'45'once_3894 (coe v0) (coe v4) (coe v7))
       MAlonzo.Code.Once.IR.C_'10216'_'44'_'10217'_38 v6 v7 v8
         -> case coe v1 of
              MAlonzo.Code.Once.Type.C__'42'__126 v9 v10
                -> coe
-                    du_optimize'45'pair_3796
-                    (coe d_optimize'45'once_3872 (coe v0) (coe v9) (coe v6))
-                    (coe d_optimize'45'once_3872 (coe v0) (coe v10) (coe v7))
+                    du_optimize'45'pair_3816 (coe v8)
+                    (coe d_optimize'45'once_3894 (coe v0) (coe v9) (coe v6))
+                    (coe d_optimize'45'once_3894 (coe v0) (coe v10) (coe v7))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.IR.C_fst_44 -> coe MAlonzo.Code.Once.IR.C_fst_44
       MAlonzo.Code.Once.IR.C_snd_50 -> coe MAlonzo.Code.Once.IR.C_snd_50
@@ -4601,9 +4596,9 @@ d_optimize'45'once'45'structural_3866 v0 v1 v2
         -> case coe v0 of
              MAlonzo.Code.Once.Type.C__'43'__128 v8 v9
                -> coe
-                    du_optimize'45'case_3856
-                    (coe d_optimize'45'once_3872 (coe v8) (coe v1) (coe v6))
-                    (coe d_optimize'45'once_3872 (coe v9) (coe v1) (coe v7))
+                    du_optimize'45'case_3878
+                    (coe d_optimize'45'once_3894 (coe v8) (coe v1) (coe v6))
+                    (coe d_optimize'45'once_3894 (coe v9) (coe v1) (coe v7))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.IR.C_terminal_74
         -> coe MAlonzo.Code.Once.IR.C_terminal_74
@@ -4614,7 +4609,7 @@ d_optimize'45'once'45'structural_3866 v0 v1 v2
              MAlonzo.Code.Once.Type.C__'8658''91'_'93'__130 v9 v10 v11
                -> coe
                     MAlonzo.Code.Once.IR.C_curry_88
-                    (d_optimize'45'once_3872
+                    (d_optimize'45'once_3894
                        (coe MAlonzo.Code.Once.Type.C__'42'__126 (coe v0) (coe v9))
                        (coe v11) (coe v7))
                     v8
@@ -4632,7 +4627,7 @@ d_optimize'45'once'45'structural_3866 v0 v1 v2
              MAlonzo.Code.Once.Type.C_μ'45'type_132 v7
                -> coe
                     MAlonzo.Code.Once.IR.C_Cata_118 v4
-                    (d_optimize'45'once_3872
+                    (d_optimize'45'once_3894
                        (coe
                           MAlonzo.Code.Once.Type.d_'10214'_'10215'T_166 (coe v7) (coe v1))
                        (coe v1) (coe v6))
@@ -4642,7 +4637,7 @@ d_optimize'45'once'45'structural_3866 v0 v1 v2
              MAlonzo.Code.Once.Type.C_μ'45'type_132 v7
                -> coe
                     MAlonzo.Code.Once.IR.C_Para_124 v4
-                    (d_optimize'45'once_3872
+                    (d_optimize'45'once_3894
                        (coe
                           MAlonzo.Code.Once.Type.d_'10214'_'10215'T_166 (coe v7)
                           (coe MAlonzo.Code.Once.Type.C__'42'__126 (coe v0) (coe v1)))
@@ -4657,7 +4652,7 @@ d_optimize'45'once'45'structural_3866 v0 v1 v2
              MAlonzo.Code.Once.Type.C_ν'45'type_134 v7
                -> coe
                     MAlonzo.Code.Once.IR.C_Ana_138 v4
-                    (d_optimize'45'once_3872
+                    (d_optimize'45'once_3894
                        (coe v0)
                        (coe
                           MAlonzo.Code.Once.Type.d_'10214'_'10215'T_166 (coe v7) (coe v0))
@@ -4668,22 +4663,22 @@ d_optimize'45'once'45'structural_3866 v0 v1 v2
              MAlonzo.Code.Once.Type.C_μ'45'type_132 v10
                -> coe
                     MAlonzo.Code.Once.IR.C_Hylo_146 v3 v5 v6
-                    (d_optimize'45'once_3872
+                    (d_optimize'45'once_3894
                        (coe
                           MAlonzo.Code.Once.Type.d_'10214'_'10215'T_166 (coe v3) (coe v1))
                        (coe v1) (coe v8))
-                    (d_optimize'45'nt_3878 (coe v10) (coe v3) (coe v9))
+                    (d_optimize'45'nt_3900 (coe v10) (coe v3) (coe v9))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.IR.C_Fuse_154 v3 v5 v6 v8 v9
         -> case coe v0 of
              MAlonzo.Code.Once.Type.C_μ'45'type_132 v10
                -> coe
                     MAlonzo.Code.Once.IR.C_Fuse_154 v3 v5 v6
-                    (d_optimize'45'once_3872
+                    (d_optimize'45'once_3894
                        (coe
                           MAlonzo.Code.Once.Type.d_'10214'_'10215'T_166 (coe v3) (coe v1))
                        (coe v1) (coe v8))
-                    (d_optimize'45'nt_3878 (coe v10) (coe v3) (coe v9))
+                    (d_optimize'45'nt_3900 (coe v10) (coe v3) (coe v9))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.IR.C_free'45'heap_156 v3 -> coe v2
       MAlonzo.Code.Once.IR.C_const_160 v4 v5
@@ -4701,11 +4696,11 @@ d_optimize'45'once'45'structural_3866 v0 v1 v2
                 _ -> MAlonzo.RTE.mazUnreachableError)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Optimize.optimize-once
-d_optimize'45'once_3872 ::
+d_optimize'45'once_3894 ::
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.IR.T_IR_16 -> MAlonzo.Code.Once.IR.T_IR_16
-d_optimize'45'once_3872 v0 v1 v2
+d_optimize'45'once_3894 v0 v1 v2
   = let v3
           = d__'8799'Type__126
               (coe v1) (coe MAlonzo.Code.Once.Type.C_Unit_122) in
@@ -4721,7 +4716,7 @@ d_optimize'45'once_3872 v0 v1 v2
                         coe
                           (if coe v6
                              then coe
-                                    d_optimize'45'once'45'structural_3866 (coe v0)
+                                    d_optimize'45'once'45'structural_3888 (coe v0)
                                     (coe MAlonzo.Code.Once.Type.C_Unit_122) (coe v2)
                              else coe MAlonzo.Code.Once.IR.C_terminal_74))
                 else coe
@@ -4737,16 +4732,16 @@ d_optimize'45'once_3872 v0 v1 v2
                                     else coe
                                            seq (coe v8)
                                            (coe
-                                              d_optimize'45'once'45'structural_3866 (coe v0)
+                                              d_optimize'45'once'45'structural_3888 (coe v0)
                                               (coe v1) (coe v2))
                              _ -> MAlonzo.RTE.mazUnreachableError))
          _ -> MAlonzo.RTE.mazUnreachableError)
 -- Once.Optimize.optimize-nt
-d_optimize'45'nt_3878 ::
+d_optimize'45'nt_3900 ::
   MAlonzo.Code.Once.Type.T_Functor_110 ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
   MAlonzo.Code.Once.IR.T_NatTr_18 -> MAlonzo.Code.Once.IR.T_NatTr_18
-d_optimize'45'nt_3878 v0 v1 v2
+d_optimize'45'nt_3900 v0 v1 v2
   = case coe v2 of
       MAlonzo.Code.Once.IR.C_ntId_168 -> coe v2
       MAlonzo.Code.Once.IR.C_ntK_174 v5
@@ -4756,7 +4751,7 @@ d_optimize'45'nt_3878 v0 v1 v2
                     MAlonzo.Code.Once.Type.C_K_114 v7
                       -> coe
                            MAlonzo.Code.Once.IR.C_ntK_174
-                           (d_optimize'45'once_3872 (coe v6) (coe v7) (coe v5))
+                           (d_optimize'45'once_3894 (coe v6) (coe v7) (coe v5))
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.IR.C_ntFst_182 v6
@@ -4764,64 +4759,64 @@ d_optimize'45'nt_3878 v0 v1 v2
              MAlonzo.Code.Once.Type.C__'8855'__120 v7 v8
                -> coe
                     MAlonzo.Code.Once.IR.C_ntFst_182
-                    (d_optimize'45'nt_3878 (coe v7) (coe v1) (coe v6))
+                    (d_optimize'45'nt_3900 (coe v7) (coe v1) (coe v6))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.IR.C_ntSnd_190 v6
         -> case coe v0 of
              MAlonzo.Code.Once.Type.C__'8855'__120 v7 v8
                -> coe
                     MAlonzo.Code.Once.IR.C_ntSnd_190
-                    (d_optimize'45'nt_3878 (coe v8) (coe v1) (coe v6))
+                    (d_optimize'45'nt_3900 (coe v8) (coe v1) (coe v6))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.IR.C_ntCase_198 v6 v7
         -> case coe v0 of
              MAlonzo.Code.Once.Type.C__'8853'__118 v8 v9
                -> coe
                     MAlonzo.Code.Once.IR.C_ntCase_198
-                    (d_optimize'45'nt_3878 (coe v8) (coe v1) (coe v6))
-                    (d_optimize'45'nt_3878 (coe v9) (coe v1) (coe v7))
+                    (d_optimize'45'nt_3900 (coe v8) (coe v1) (coe v6))
+                    (d_optimize'45'nt_3900 (coe v9) (coe v1) (coe v7))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.IR.C_ntInl_206 v6
         -> case coe v1 of
              MAlonzo.Code.Once.Type.C__'8853'__118 v7 v8
                -> coe
                     MAlonzo.Code.Once.IR.C_ntInl_206
-                    (d_optimize'45'nt_3878 (coe v0) (coe v7) (coe v6))
+                    (d_optimize'45'nt_3900 (coe v0) (coe v7) (coe v6))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.IR.C_ntInr_214 v6
         -> case coe v1 of
              MAlonzo.Code.Once.Type.C__'8853'__118 v7 v8
                -> coe
                     MAlonzo.Code.Once.IR.C_ntInr_214
-                    (d_optimize'45'nt_3878 (coe v0) (coe v8) (coe v6))
+                    (d_optimize'45'nt_3900 (coe v0) (coe v8) (coe v6))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.IR.C_ntPair_222 v6 v7
         -> case coe v1 of
              MAlonzo.Code.Once.Type.C__'8855'__120 v8 v9
                -> coe
                     MAlonzo.Code.Once.IR.C_ntPair_222
-                    (d_optimize'45'nt_3878 (coe v0) (coe v8) (coe v6))
-                    (d_optimize'45'nt_3878 (coe v0) (coe v9) (coe v7))
+                    (d_optimize'45'nt_3900 (coe v0) (coe v8) (coe v6))
+                    (d_optimize'45'nt_3900 (coe v0) (coe v9) (coe v7))
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Optimize.optimize-n
-d_optimize'45'n_4094 ::
+d_optimize'45'n_4116 ::
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
   Integer ->
   MAlonzo.Code.Once.IR.T_IR_16 -> MAlonzo.Code.Once.IR.T_IR_16
-d_optimize'45'n_4094 v0 v1 v2 v3
+d_optimize'45'n_4116 v0 v1 v2 v3
   = case coe v2 of
       0 -> coe v3
       _ -> let v4 = subInt (coe v2) (coe (1 :: Integer)) in
            coe
              (coe
-                d_optimize'45'n_4094 (coe v0) (coe v1) (coe v4)
-                (coe d_optimize'45'once_3872 (coe v0) (coe v1) (coe v3)))
+                d_optimize'45'n_4116 (coe v0) (coe v1) (coe v4)
+                (coe d_optimize'45'once_3894 (coe v0) (coe v1) (coe v3)))
 -- Once.Optimize.optimize
-d_optimize_4106 ::
+d_optimize_4128 ::
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.IR.T_IR_16 -> MAlonzo.Code.Once.IR.T_IR_16
-d_optimize_4106 v0 v1
-  = coe d_optimize'45'n_4094 (coe v0) (coe v1) (coe (10 :: Integer))
+d_optimize_4128 v0 v1
+  = coe d_optimize'45'n_4116 (coe v0) (coe v1) (coe (10 :: Integer))

@@ -1184,20 +1184,24 @@ optimize-compose g f | false with composeFirstView g
 
 -- | Optimize pair construction
 --   ⟨ fst , snd ⟩ = id (eta)
-optimize-pair-aux : ∀ {A B C} (f : IR C A) (g : IR C B)
+-- Plan 0.53: preserve the pair's original AllocMode `m` instead of forcing
+-- `Stack`. Forcing `Stack` was the same class of mode leak as the closure-env
+-- fix: an optimized pair that escapes (e.g. captured by a closure) must stay on
+-- the heap in heap-mode. The eta case `⟨fst,snd⟩ → id` is mode-independent.
+optimize-pair-aux : ∀ {A B C} (m : AllocMode) (f : IR C A) (g : IR C B)
                   → FstSndView f → FstSndView g → IR C (A * B)
-optimize-pair-aux f g fsv-fst       fsv-snd       = id
-optimize-pair-aux f g fsv-fst       fsv-fst       = ⟨ f , g ⟩ Stack
-optimize-pair-aux f g fsv-fst       (fsv-other _) = ⟨ f , g ⟩ Stack
-optimize-pair-aux f g fsv-snd       fsv-fst       = ⟨ f , g ⟩ Stack
-optimize-pair-aux f g fsv-snd       fsv-snd       = ⟨ f , g ⟩ Stack
-optimize-pair-aux f g fsv-snd       (fsv-other _) = ⟨ f , g ⟩ Stack
-optimize-pair-aux f g (fsv-other _) fsv-fst       = ⟨ f , g ⟩ Stack
-optimize-pair-aux f g (fsv-other _) fsv-snd       = ⟨ f , g ⟩ Stack
-optimize-pair-aux f g (fsv-other _) (fsv-other _) = ⟨ f , g ⟩ Stack
+optimize-pair-aux m f g fsv-fst       fsv-snd       = id
+optimize-pair-aux m f g fsv-fst       fsv-fst       = ⟨ f , g ⟩ m
+optimize-pair-aux m f g fsv-fst       (fsv-other _) = ⟨ f , g ⟩ m
+optimize-pair-aux m f g fsv-snd       fsv-fst       = ⟨ f , g ⟩ m
+optimize-pair-aux m f g fsv-snd       fsv-snd       = ⟨ f , g ⟩ m
+optimize-pair-aux m f g fsv-snd       (fsv-other _) = ⟨ f , g ⟩ m
+optimize-pair-aux m f g (fsv-other _) fsv-fst       = ⟨ f , g ⟩ m
+optimize-pair-aux m f g (fsv-other _) fsv-snd       = ⟨ f , g ⟩ m
+optimize-pair-aux m f g (fsv-other _) (fsv-other _) = ⟨ f , g ⟩ m
 
-optimize-pair : ∀ {A B C} → IR C A → IR C B → IR C (A * B)
-optimize-pair f g = optimize-pair-aux f g (fstSndView f) (fstSndView g)
+optimize-pair : ∀ {A B C} → AllocMode → IR C A → IR C B → IR C (A * B)
+optimize-pair m f g = optimize-pair-aux m f g (fstSndView f) (fstSndView g)
 
 -- | Optimize case construction
 --   [ inl , inr ] = id (eta)
@@ -1239,7 +1243,7 @@ mutual
   optimize-once-structural (g ∘ f) = optimize-compose (optimize-once g) (optimize-once f)
   optimize-once-structural fst = fst
   optimize-once-structural snd = snd
-  optimize-once-structural (⟨ f , g ⟩ m) = optimize-pair (optimize-once f) (optimize-once g)
+  optimize-once-structural (⟨ f , g ⟩ m) = optimize-pair m (optimize-once f) (optimize-once g)
   -- | inl with Void source is equivalent to initial (no inhabitants)
   optimize-once-structural (inl {A} {B} m) with A ≟Type Void
   ... | yes refl = initial

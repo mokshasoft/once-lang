@@ -78,7 +78,7 @@ du_cfb'45'aux'45'doOpt_28 v0 v1 v2 v3 v4 v5 v6 v7
              (coe
                 MAlonzo.Code.Data.Bool.Base.du_if_then_else__44 (coe v2)
                 (coe
-                   MAlonzo.Code.Once.Optimize.d_optimize_4106
+                   MAlonzo.Code.Once.Optimize.d_optimize_4128
                    (coe
                       MAlonzo.Code.Once.Surface.Syntax.du_'10214'_'10215''7580'_38
                       (coe v1))

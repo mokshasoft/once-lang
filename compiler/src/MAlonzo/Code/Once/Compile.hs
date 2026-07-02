@@ -231,7 +231,7 @@ du_compileFunBody'45'aux_66 v0 v1 v2 v3 v4 v5 v6 v7 v8
              (coe
                 MAlonzo.Code.Data.Bool.Base.du_if_then_else__44 (coe v3)
                 (coe
-                   MAlonzo.Code.Once.Optimize.d_optimize_4106
+                   MAlonzo.Code.Once.Optimize.d_optimize_4128
                    (coe
                       MAlonzo.Code.Once.Surface.Syntax.du_'10214'_'10215''7580'_38
                       (coe v1))
@@ -760,7 +760,7 @@ d_pipeline_578 v0 v1 v2 v3
   = coe
       MAlonzo.Code.Once.Escape.d_escape_148 v0 v1
       (coe
-         MAlonzo.Code.Once.Optimize.d_optimize_4106 v0 v1
+         MAlonzo.Code.Once.Optimize.d_optimize_4128 v0 v1
          (MAlonzo.Code.Once.Surface.Desugar.d_desugar_18
             (coe v0) (coe v1) (coe v2) (coe v3)))
 -- Once.Compile.pipeline-default
@@ -782,7 +782,7 @@ d_pipeline'45'no'45'escape_594 ::
   MAlonzo.Code.Once.IR.T_IR_16
 d_pipeline'45'no'45'escape_594 v0 v1 v2 v3
   = coe
-      MAlonzo.Code.Once.Optimize.d_optimize_4106 v0 v1
+      MAlonzo.Code.Once.Optimize.d_optimize_4128 v0 v1
       (MAlonzo.Code.Once.Surface.Desugar.d_desugar_18
          (coe v0) (coe v1) (coe v2) (coe v3))
 -- Once.Compile.pipeline-no-opt
