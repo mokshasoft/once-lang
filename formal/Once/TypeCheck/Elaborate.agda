@@ -628,8 +628,8 @@ extract-morph-eff-aux (Surface.arr' e)          refl = extract-morph-eff-aux e r
 -- no `apply/⟨⟩/terminal` wrapper. Fuses into an effectful compose/case like any
 -- other morphism.
 extract-morph-eff-aux (Surface.cata {F = F} wfF algE) refl with extract-morph-eff-aux algE refl
-... | just (m-alg , eqΨ) = just (IR.Cata wfF m-alg , eqΨ)
-... | nothing            = nothing
+... | just (m-alg , _) = just (IR.Cata wfF m-alg , refl)
+... | nothing          = nothing
 extract-morph-eff-aux _ _ = nothing
 
 extract-morph-eff : ∀ {n} {Γ : SCtx n} {Ψ : Surface.Usage n} {A B : Type}
