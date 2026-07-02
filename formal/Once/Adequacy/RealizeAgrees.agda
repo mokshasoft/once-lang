@@ -82,8 +82,36 @@ CheckAgreeV ctx e T {se = se} {w = w} _ =
 -- non-`t-embed` specials (RLam/RVar-bbc/RPair-product/RInt-vlift/literals)
 -- remain as a postulate.
 postulate
-  check-agreeV-todo : ∀ (ctx : NamedCtx) (e : RawExpr) (T : Type) {Ψ se d f w}
-    (eq : E.checkElabV ctx e T ≡ (success Ψ se d f , w)) → CheckAgreeV ctx e T eq
+  -- NARROWED from the former broad `check-agreeV-todo` (any shape). The catch-all
+  -- was reached by RVar ONLY, and RVar's infer-SUCCESS is now PROVEN (below). What
+  -- remains are the bare-builtin / poly infer-FAILURE leaves — each a PRECISE,
+  -- NAMED obligation over the elaborator's own `checkElabV-RVar-bbc-*-aux`. The 7
+  -- builtins are `refl` once navigated (`spec* = lift-morphism IR.*`, `realize-morph`
+  -- direct) — dischargeable follow-up; poly rides the `bbc-other-poly-witness` gap.
+  check-agreeV-RVar-id-todo : ∀ (ctx : NamedCtx) (T : Type) {fe snd Ψ se d f w}
+    → E.checkElabV-RVar-bbc-id-aux ctx T (failure fe , snd) ≡ (success Ψ se d f , w)
+    → ∀ dγ k → SD.⟦ se ⟧ˢ dγ k ≡ SD.⟦ realize w ⟧ˢ dγ k
+  check-agreeV-RVar-fst-todo : ∀ (ctx : NamedCtx) (T : Type) {fe snd Ψ se d f w}
+    → E.checkElabV-RVar-bbc-fst-aux ctx T (failure fe , snd) ≡ (success Ψ se d f , w)
+    → ∀ dγ k → SD.⟦ se ⟧ˢ dγ k ≡ SD.⟦ realize w ⟧ˢ dγ k
+  check-agreeV-RVar-snd-todo : ∀ (ctx : NamedCtx) (T : Type) {fe snd Ψ se d f w}
+    → E.checkElabV-RVar-bbc-snd-aux ctx T (failure fe , snd) ≡ (success Ψ se d f , w)
+    → ∀ dγ k → SD.⟦ se ⟧ˢ dγ k ≡ SD.⟦ realize w ⟧ˢ dγ k
+  check-agreeV-RVar-terminal-todo : ∀ (ctx : NamedCtx) (T : Type) {fe snd Ψ se d f w}
+    → E.checkElabV-RVar-bbc-terminal-aux ctx T (failure fe , snd) ≡ (success Ψ se d f , w)
+    → ∀ dγ k → SD.⟦ se ⟧ˢ dγ k ≡ SD.⟦ realize w ⟧ˢ dγ k
+  check-agreeV-RVar-initial-todo : ∀ (ctx : NamedCtx) (T : Type) {fe snd Ψ se d f w}
+    → E.checkElabV-RVar-bbc-initial-aux ctx T (failure fe , snd) ≡ (success Ψ se d f , w)
+    → ∀ dγ k → SD.⟦ se ⟧ˢ dγ k ≡ SD.⟦ realize w ⟧ˢ dγ k
+  check-agreeV-RVar-inl-todo : ∀ (ctx : NamedCtx) (T : Type) {fe snd Ψ se d f w}
+    → E.checkElabV-RVar-bbc-inl-aux ctx T (failure fe , snd) ≡ (success Ψ se d f , w)
+    → ∀ dγ k → SD.⟦ se ⟧ˢ dγ k ≡ SD.⟦ realize w ⟧ˢ dγ k
+  check-agreeV-RVar-inr-todo : ∀ (ctx : NamedCtx) (T : Type) {fe snd Ψ se d f w}
+    → E.checkElabV-RVar-bbc-inr-aux ctx T (failure fe , snd) ≡ (success Ψ se d f , w)
+    → ∀ dγ k → SD.⟦ se ⟧ˢ dγ k ≡ SD.⟦ realize w ⟧ˢ dγ k
+  check-agreeV-RVar-poly-todo : ∀ (ctx : NamedCtx) (x : String) (T : Type) {fe snd Ψ se d f w}
+    → E.checkElabV-RVar-bbc-other-aux ctx x T (failure fe , snd) ≡ (success Ψ se d f , w)
+    → ∀ dγ k → SD.⟦ se ⟧ˢ dγ k ≡ SD.⟦ realize w ⟧ˢ dγ k
   -- RApp check views not yet discharged (apply / pair-applied / compose-applied /
   -- case-applied / curry / cata / other-arg-driven — the morph-lift + specApply
   -- semantic content). Progressively emptied.
@@ -1232,7 +1260,29 @@ mutual
   -- `failure` ⇒ success-eq absurd.
   check-agreeV ctx (Raw.RAna a e) T (acc rec) eq dγ k =
     agree-embedOrSubsume T eq (λ p → infer-agreeV ctx (Raw.RAna a e) (rec (infer<check (Raw.RAna a e))) p) dγ k
-  check-agreeV ctx e T _ eq = check-agreeV-todo ctx e T eq
+  -- RVar (the ONLY shape that reached the former catch-all). Infer-success bridges
+  -- through embed (t-embed ⇒ infer-agreeV) or subsume (agree-embedOrSubsume-no),
+  -- exactly like `ahv-apply`. Infer-failure dispatches the bare builtins / poly to
+  -- their PRECISE named obligations (each `refl` once navigated; poly = the gap).
+  check-agreeV ctx (Raw.RVar x) T (acc rec) eq dγ k
+    with E.inferElabV ctx (Raw.RVar x) in ieq | eq
+  ... | success T' Ψ' eE' d' f' , wi | eq'
+        with T E.≟T T' | eq'
+  ...     | yes refl | refl =
+            infer-agreeV ctx (Raw.RVar x) (rec (infer<check (Raw.RVar x))) ieq dγ k
+  ...     | no _ | eq₂ =
+            agree-embedOrSubsume-no T' T eE' d' f' wi eq₂
+              (λ dγ' k' → infer-agreeV ctx (Raw.RVar x) (rec (infer<check (Raw.RVar x))) ieq dγ' k') dγ k
+  check-agreeV ctx (Raw.RVar x) T (acc rec) eq dγ k
+    | failure fe , snd | eq' with E.classifyBareBuiltin x | eq'
+  ...   | E.bbc-id       | eq'' = check-agreeV-RVar-id-todo       ctx T eq'' dγ k
+  ...   | E.bbc-fst      | eq'' = check-agreeV-RVar-fst-todo      ctx T eq'' dγ k
+  ...   | E.bbc-snd      | eq'' = check-agreeV-RVar-snd-todo      ctx T eq'' dγ k
+  ...   | E.bbc-terminal | eq'' = check-agreeV-RVar-terminal-todo ctx T eq'' dγ k
+  ...   | E.bbc-initial  | eq'' = check-agreeV-RVar-initial-todo  ctx T eq'' dγ k
+  ...   | E.bbc-inl      | eq'' = check-agreeV-RVar-inl-todo      ctx T eq'' dγ k
+  ...   | E.bbc-inr      | eq'' = check-agreeV-RVar-inr-todo      ctx T eq'' dγ k
+  ...   | E.bbc-other    | eq'' = check-agreeV-RVar-poly-todo     ctx x T eq'' dγ k
 
 ------------------------------------------------------------------------
 -- THE BRIDGE (Plan 0.50: de-island). `realize-agrees` of the EXACT type
