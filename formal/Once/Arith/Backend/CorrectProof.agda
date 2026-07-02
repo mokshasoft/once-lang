@@ -31,6 +31,10 @@ open import Once.Arith.Backend.XInstr.Syntax
 open import Once.Arith.Backend.XInstr.CodeGen using (emit; emit-program; abs-reg; _≟x_)
 open import Once.Arith.Machine.IR using (MArithIR; alit; ainput; aadd; asub; amul; aneg)
 open import Once.Arith.Machine.Compile using (compile-go; compile-abs)
+open import Once.Arith.Machine.WordSem using (module Sem)
+open Sem bits using (eval-arith-W)
+import Once.Arith.Machine.CompileCorrect as CC
+open CC bits using (abs-validity)
 open import Once.Word using (module Width)
 
 open Width bits using (fromℤ; _⊕_; _⊖_; _⊗_; ⊝_; norm; modulus; modulus≢0)
@@ -434,3 +438,16 @@ compile-go-bound d (aneg a) =
 
 compile-abs-bound : ∀ {sh} (e : MArithIR sh) → All-bound (compile-abs e)
 compile-abs-bound e = All-bound-++ (compile-go 0 e) _ (compile-go-bound 0 e) (bound0 , tt)
+
+------------------------------------------------------------------------
+-- Block codegen correctness (width-generic): the emitted XInstr program
+-- for `compile-abs e`, run on the concrete machine, outputs the block's
+-- modular-Word value.  Composes the concrete refinement (refine-program
+-- over the reg-bounded compile-abs) with the abstract validity.
+------------------------------------------------------------------------
+
+block-correct : ∀ {sh} (e : MArithIR sh) (env : ⟦ sh ⟧S) →
+  output-of (exec-x86 (emit-program (compile-abs e)) (init env)) ≡ just (eval-arith-W e env)
+block-correct e env =
+  trans (proj₁ (proj₂ (proj₂ (refine-program (compile-abs e) (compile-abs-bound e) (init env)))))
+        (abs-validity e env)
