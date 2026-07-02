@@ -111,13 +111,9 @@ postulate
   check-agreeV-RVar-poly-todo : ∀ (ctx : NamedCtx) (x : String) (T : Type) {fe snd Ψ se d f w}
     → E.checkElabV-RVar-bbc-other-aux ctx x T (failure fe , snd) ≡ (success Ψ se d f , w)
     → ∀ dγ k → SD.⟦ se ⟧ˢ dγ k ≡ SD.⟦ realize w ⟧ˢ dγ k
-  -- RApp check views not yet discharged (apply / pair-applied / compose-applied /
-  -- case-applied / curry / cata / other-arg-driven — the morph-lift + specApply
-  -- semantic content). Progressively emptied.
-  check-RApp-todo : ∀ (ctx : NamedCtx) (f arg : RawExpr) (T : Type) {Ψ se d fr w}
-    (vw : E.AppHeadView f) (veq : E.classifyAppHeadView f ≡ vw)
-    → E.checkElabV-RApp-dispatch ctx f arg T vw veq ≡ (success Ψ se d fr , w)
-    → ∀ (dγ : ⟦ ⟦ NamedCtx.debruijn ctx ⟧ᶜ ⟧ᴰ) (k : ℕ) → SD.⟦ se ⟧ˢ dγ k ≡ SD.⟦ realize w ⟧ˢ dγ k
+  -- (Plan 0.55 D#2: `check-RApp-todo` ELIMINATED — all RApp check views discharged
+  -- by explicit `agree-check-RApp` clauses; the residual is the narrow
+  -- `agree-cata-denotes` denotational leaf. See below.)
 
 -- DISCHARGED bbc-id leaf: `spec id = lift-morphism IR.id`, `realize-morph (m-id) =
 -- IR.id`, so the sole success leaf (arrow target A⇒A, both lookups absent, A≟A) is
@@ -794,8 +790,8 @@ agree-check-RApp-argdriven-aux {ctx} f arg T errInfer nothing eqAH eq fCheckIH a
 -- `checkElabV-RApp-dispatch`). The `t-embed` views (id/fst/snd/terminal) infer
 -- `RApp f arg`, match `T`, and delegate to the supplied infer IH (since
 -- `realize (t-embed w) = realize-infer w`). The arg-driven `ahv-other` failure
--- branch rides `agree-check-RApp-argdriven-aux`; remaining views (cata) route
--- to `check-RApp-todo` for now.
+-- branch rides `agree-check-RApp-argdriven-aux`; the morphism-emitting views
+-- (In/curry/pair/case/compose/cata) ride the output-driven morphism bridges.
 -- Plan 0.52 M1: the agreement mirror of `embedOrSubsume-no` (the `T ≟T T'` = no
 -- recovery at every infer-then-check site). When the inferred pure arrow `T'`
 -- subsumes to the expected eff arrow `T`, the elaborator emits `arr' eE` with
@@ -1001,8 +997,8 @@ agree-check-RApp ctx f arg T E.ahv-initial veq disp inferIH argCheckIH argInferI
 -- (Plan 0.52 M1: `ahv-arr` check-agree clauses retired with the surface `arr` builtin.)
 -- ahv-inl/inr: direct sum target → morph-app (inl/inr Heap) argE (rewrite arg
 -- check IH); pure-arrow→sum target → value-lift via checkG (rewrite checkG-realize).
--- ahv-In: pure-arrow→μ target → value-lift via checkG. All other targets fail
--- ⇒ fall through to the global `check-RApp-todo` catch-all (absurd success-eq).
+-- ahv-In: arrow→μ target → value-lift via checkG; bare μ target → morph-app In.
+-- All other targets make the dispatch fail ⇒ Agda prunes them via `disp` clash.
 agree-check-RApp ctx f arg (A + B) E.ahv-inl veq disp inferIH argCheckIH argInferIH fCheckIH dγ k
   with E.checkElabV ctx arg A in aeq | disp
 ... | failure _ , _ | ()
@@ -1030,7 +1026,7 @@ agree-check-RApp ctx f arg (μ-type F) E.ahv-In veq disp inferIH argCheckIH argI
 -- ahv-curry: checkCurry emits `lift-morphism (curry mf Heap)`, witness
 -- `t-morph-lift (m-curry mFᵐ)`; `realize` is `lift-morphism (curry
 -- (realize-morph mFᵐ) Heap)` — rewrite by the morph-realize bridge (mf ≡
--- realize-morph mFᵐ). Non-curry targets fall through to check-RApp-todo.
+-- realize-morph mFᵐ). Non-arrow-arrow targets ⇒ dispatch fails ⇒ pruned by `disp`.
 agree-check-RApp ctx f arg (A ⇒[ mk-kind Many pure ] (B ⇒[ mk-kind Many pure ] C)) E.ahv-curry veq disp inferIH argCheckIH argInferIH fCheckIH dγ k
   with E.checkElabV ctx arg ((A * B) ⇒[ mk-kind Many pure ] C) in eqarg | disp
 ... | failure _ , _ | ()
@@ -1147,8 +1143,13 @@ agree-check-RApp ctx f arg (μ-type F ⇒[ mk-kind Many eff ] A) E.ahv-cata veq 
 ...   | success Ψp eEp dp frp , wp | refl =
         agree-checkCataGo ctx arg F A pure (wellFormedF? F) refl eqPure dγ k
 ...   | failure _ , _ | ()
-agree-check-RApp ctx f arg T vw veq disp inferIH argCheckIH argInferIH fCheckIH dγ k =
-  check-RApp-todo ctx f arg T vw veq disp dγ k
+-- Plan 0.55 D#2 (catch-all ELIMINATED): no `check-RApp-todo` catch-all. Every
+-- (view × target) the dispatch can make SUCCEED now has an explicit agree clause
+-- (id/fst/snd/terminal/apply/other via infer-embed; initial/inl/inr via morph-app or
+-- checkG value-lift; In/curry/pair/case/compose/cata via the morphism/subsume
+-- bridges). Every OTHER (view × target) makes the dispatch reduce to `failure`, so
+-- `disp : … ≡ (success …)` is a constructor clash Agda's coverage checker prunes
+-- automatically — no absurd (view × target) matrix. [[feedback_recurse_on_output_not_dispatch]]
 
 ------------------------------------------------------------------------
 -- Well-founded measure for the infer/check mutual recursion. The same-size
