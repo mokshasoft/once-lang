@@ -105,3 +105,45 @@ double-write : ∀ (σ : Store) i A B j → ((σ [ i ↦ A ]) [ i ↦ B ]) [ j ]
 double-write σ i A B j with i ≟ j
 ... | yes _  = refl
 ... | no ¬p = store-write-other σ i j A ¬p
+
+------------------------------------------------------------------------
+-- ~ is an equivalence; ≡ refines into ~
+------------------------------------------------------------------------
+
+≡→~ : ∀ {sh} {s₁ s₂ : ArithAbsState sh} → s₁ ≡ s₂ → s₁ ~ s₂
+≡→~ refl = ~-refl _
+
+~-sym : ∀ {sh} {s₁ s₂ : ArithAbsState sh} → s₁ ~ s₂ → s₂ ~ s₁
+~-sym (r , sc , o , i) = (λ j → sym (r j)) , (λ j → sym (sc j)) , sym o , sym i
+
+~-trans : ∀ {sh} {s₁ s₂ s₃ : ArithAbsState sh} → s₁ ~ s₂ → s₂ ~ s₃ → s₁ ~ s₃
+~-trans (r₁ , sc₁ , o₁ , i₁) (r₂ , sc₂ , o₂ , i₂) =
+  (λ j → trans (r₁ j) (r₂ j)) , (λ j → trans (sc₁ j) (sc₂ j)) , trans o₁ o₂ , trans i₁ i₂
+
+------------------------------------------------------------------------
+-- Single-write refines (full ≡, same shape as load-imm)
+------------------------------------------------------------------------
+
+refine-load-input : ∀ {sh} (p : InputPath) (r : ℕ) (xr : XReg) → abs-reg r ≡ just xr →
+  (s : ArithAbsState sh) → exec-x86 (emit (load-input p r)) s ≡ step (load-input p r) s
+refine-load-input p r xr eq s rewrite eq =
+  cong (λ i → record s { regs = ArithAbsState.regs s [ i ↦ just (fromℤ (maybe-zero (project _ p (ArithAbsState.input s)))) ] })
+       (abs-reg-idx r xr eq)
+
+refine-spill : ∀ {sh} (src slot : ℕ) (xs : XReg) → abs-reg src ≡ just xs →
+  (s : ArithAbsState sh) → exec-x86 (emit (spill src slot)) s ≡ step (spill src slot) s
+refine-spill src slot xs eq s rewrite eq =
+  cong (λ i → record s { scratch = ArithAbsState.scratch s [ slot ↦ ArithAbsState.regs s [ i ] ] })
+       (abs-reg-idx src xs eq)
+
+refine-reload : ∀ {sh} (slot dst : ℕ) (xd : XReg) → abs-reg dst ≡ just xd →
+  (s : ArithAbsState sh) → exec-x86 (emit (reload slot dst)) s ≡ step (reload slot dst) s
+refine-reload slot dst xd eq s rewrite eq =
+  cong (λ i → record s { regs = ArithAbsState.regs s [ i ↦ ArithAbsState.scratch s [ slot ] ] })
+       (abs-reg-idx dst xd eq)
+
+refine-move-to-out : ∀ {sh} (src : ℕ) (xs : XReg) → abs-reg src ≡ just xs →
+  (s : ArithAbsState sh) → exec-x86 (emit (move-to-out src)) s ≡ step (move-to-out src) s
+refine-move-to-out src xs eq s rewrite eq =
+  cong (λ i → record s { output = ArithAbsState.regs s [ i ] })
+       (abs-reg-idx src xs eq)
