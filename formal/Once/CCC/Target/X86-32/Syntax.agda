@@ -33,18 +33,11 @@ open import Data.String using (String)
 --   ebp: base pointer (frame pointer)
 --   esp: stack pointer
 --
-data Reg : Set where
-  -- General purpose
-  eax : Reg   -- Accumulator, return value
-  ebx : Reg   -- Base register (callee-saved)
-  ecx : Reg   -- Counter register
-  edx : Reg   -- Data register, 2nd return value / 3rd arg
-  esi : Reg   -- Source index (callee-saved)
-  edi : Reg   -- Destination index (callee-saved)
-
-  -- Stack/Frame
-  ebp : Reg   -- Frame pointer (callee-saved)
-  esp : Reg   -- Stack pointer
+-- The physical register file is now the single shared declaration
+-- `Once.Target.X86-32.PhysReg` (Plan 0.55), re-exported here so every CCC
+-- importer of this module keeps seeing `Reg` unchanged.
+open import Once.Target.X86-32.PhysReg public using
+  (Reg; eax; ebx; ecx; edx; esi; edi; ebp; esp)
 
 ------------------------------------------------------------------------
 -- Memory Operands

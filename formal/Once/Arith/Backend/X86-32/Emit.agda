@@ -44,11 +44,29 @@ open import Once.Target.Symbol using (once-symbol-own)
 -- Register / scratch text
 ------------------------------------------------------------------------
 
+open import Once.Target.X86-32.PhysReg using (Reg; edx; edi; ebx; esi; showReg; owner; RegClass; ccc)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+
+-- ia32 is register-POOR: CCC live-uses all 8 GPRs, so there are NO CCC-free
+-- registers. The arith block BORROWS edx/edi/ebx/esi (all `ccc`-owned) from the
+-- single shared `Once.Target.X86-32.PhysReg` and PRESERVES them by save/restore
+-- (the push/pop in the block framing below). So — unlike x86-64/riscv — the
+-- honest fact is `arith-borrows : owner (arith-reg x) ≡ ccc`, marking that
+-- PreservesCCC here is restore-correctness, not disjointness.
+arith-reg : XReg → Reg
+arith-reg XR0 = edx
+arith-reg XR1 = edi
+arith-reg XR2 = ebx
+arith-reg XR3 = esi
+
+arith-borrows : ∀ x → owner (arith-reg x) ≡ ccc
+arith-borrows XR0 = refl
+arith-borrows XR1 = refl
+arith-borrows XR2 = refl
+arith-borrows XR3 = refl
+
 reg-text : XReg → String
-reg-text XR0 = "%edx"
-reg-text XR1 = "%edi"
-reg-text XR2 = "%ebx"
-reg-text XR3 = "%esi"
+reg-text x = showReg (arith-reg x)
 
 -- | A scratch slot lives at `4*slot(%esp)` within the reserved frame.
 scratch-text : XScratch → String

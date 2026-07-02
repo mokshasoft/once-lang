@@ -22,15 +22,8 @@ open import Once.CCC.Target.X86-32.Syntax
 -- Register names
 ------------------------------------------------------------------------
 
-showReg : Reg → String
-showReg eax = "%eax"
-showReg ebx = "%ebx"
-showReg ecx = "%ecx"
-showReg edx = "%edx"
-showReg esi = "%esi"
-showReg edi = "%edi"
-showReg ebp = "%ebp"
-showReg esp = "%esp"
+-- Register rendering is shared with the arith backend (Plan 0.55).
+open import Once.Target.X86-32.PhysReg using (showReg)
 
 ------------------------------------------------------------------------
 -- Memory operands (AT&T syntax)
