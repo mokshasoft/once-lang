@@ -13,7 +13,9 @@
 module Once.Adequacy.CanonReflectPolyTransport where
 
 open import Data.Bool using (Bool; true; false)
-open import Data.List using (List; []; _∷_)
+open import Data.List using (List; []; _∷_; length)
+open import Data.Nat using (_<_)
+open import Induction.WellFounded using (Acc; acc)
 open import Data.Maybe using (Maybe; just; nothing) renaming (map to mapMaybe)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.String using (String)
@@ -25,7 +27,7 @@ open import Once.Surface.Syntax as Surface using (zeroUsage)
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.Parser.Module.Resolve using (canonExpr)
 open import Once.TypeCheck.Classify
-  using (PolyCtx; NamedCtx; mkCtx; lookupPoly; removePoly; ctxWithImportsAndPolys; composeMid)
+  using (PolyCtx; NamedCtx; mkCtx; lookupPoly; removePoly; removePoly-decreases; ctxWithImportsAndPolys; composeMid)
 open import Once.TypeCheck.Judgment
 open import Once.Adequacy.CanonPreserve using (⊆ᵇ-nil)
 open import Once.Adequacy.CanonPolyTransport
@@ -68,74 +70,77 @@ polys-reflect-ᵍ b p (g-inl d)          = g-inl (polys-reflect-ᵍ b p d)
 polys-reflect-ᵍ b p (g-inr d)          = g-inr (polys-reflect-ᵍ b p d)
 polys-reflect-ᵍ b p (g-In wf d)        = g-In wf (polys-reflect-ᵍ b p d)
 
-{-# TERMINATING #-}
+-- Formerly `{-# TERMINATING #-}`; now PROVEN by well-founded recursion on
+-- `Acc _<_ (length p)` (the poly-context descent `removePoly-decreases` supplies),
+-- the dual of `polys-transport-*`. Lexicographic (Acc, derivation): structural calls
+-- keep `ac`, the one poly-shrink call passes `rec (removePoly-decreases …)`.
 mutual
-  polys-reflect-ᵢ : ∀ (b : List String) {n Γ Δ f i s} (p : PolyCtx) → PInB p b → ∀ {e A Ψ}
+  polys-reflect-ᵢ : ∀ (b : List String) {n Γ Δ f i s} (p : PolyCtx) → PInB p b → Acc _<_ (length p) → ∀ {e A Ψ}
     → mkCtx n Γ Δ f i (canonPolysCtx b p) s ⊢ᵢ e ∶ A ⨾ Ψ
     → mkCtx n Γ Δ f i p s ⊢ᵢ e ∶ A ⨾ Ψ
-  polys-reflect-ᵢ b p pib (t-int n)  = t-int n
-  polys-reflect-ᵢ b p pib (t-str s)  = t-str s
-  polys-reflect-ᵢ b p pib t-unit     = t-unit
-  polys-reflect-ᵢ b p pib t-unit-var = t-unit-var
-  polys-reflect-ᵢ b p pib (t-var-local ¬u lk) = t-var-local ¬u lk
-  polys-reflect-ᵢ b p pib (t-var-qualified imp) = t-var-qualified imp
-  polys-reflect-ᵢ b p pib (t-var-resolved imp) = t-var-resolved imp
-  polys-reflect-ᵢ b p pib (t-var-import ¬u lkn imp) = t-var-import ¬u lkn imp
-  polys-reflect-ᵢ b p pib (t-annot d) = t-annot (polys-reflect-ᶜ b p pib d)
-  polys-reflect-ᵢ b p pib (t-pair d₁ d₂) = t-pair (polys-reflect-ᵢ b p pib d₁) (polys-reflect-ᵢ b p pib d₂)
-  polys-reflect-ᵢ b p pib (t-neg d) = t-neg (polys-reflect-ᵢ b p pib d)
-  polys-reflect-ᵢ b p pib (t-let d₁ d₂) = t-let (polys-reflect-ᵢ b p pib d₁) (polys-reflect-ᵢ b p pib d₂)
-  polys-reflect-ᵢ b p pib (t-case ds dL dR) =
-    t-case (polys-reflect-ᵢ b p pib ds) (polys-reflect-ᵢ b p pib dL) (polys-reflect-ᵢ b p pib dR)
-  polys-reflect-ᵢ b p pib (t-binop-arith pr d₁ d₂) = t-binop-arith pr (polys-reflect-ᵢ b p pib d₁) (polys-reflect-ᵢ b p pib d₂)
-  polys-reflect-ᵢ b p pib (t-binop-cmp pr d₁ d₂) = t-binop-cmp pr (polys-reflect-ᵢ b p pib d₁) (polys-reflect-ᵢ b p pib d₂)
-  polys-reflect-ᵢ b p pib (t-id-app d) = t-id-app (polys-reflect-ᵢ b p pib d)
-  polys-reflect-ᵢ b p pib (t-fst-app d) = t-fst-app (polys-reflect-ᵢ b p pib d)
-  polys-reflect-ᵢ b p pib (t-snd-app d) = t-snd-app (polys-reflect-ᵢ b p pib d)
-  polys-reflect-ᵢ b p pib (t-terminal-app d) = t-terminal-app (polys-reflect-ᵢ b p pib d)
-  polys-reflect-ᵢ b p pib (t-apply-app-infer d) = t-apply-app-infer (polys-reflect-ᵢ b p pib d)
-  polys-reflect-ᵢ b p pib (t-app cls df dx) = t-app cls (polys-reflect-ᵢ b p pib df) (polys-reflect-ᶜ b p pib dx)
-  polys-reflect-ᵢ b p pib (t-effApp cls df dx) = t-effApp cls (polys-reflect-ᵢ b p pib df) (polys-reflect-ᶜ b p pib dx)
+  polys-reflect-ᵢ b p pib ac (t-int n)  = t-int n
+  polys-reflect-ᵢ b p pib ac (t-str s)  = t-str s
+  polys-reflect-ᵢ b p pib ac t-unit     = t-unit
+  polys-reflect-ᵢ b p pib ac t-unit-var = t-unit-var
+  polys-reflect-ᵢ b p pib ac (t-var-local ¬u lk) = t-var-local ¬u lk
+  polys-reflect-ᵢ b p pib ac (t-var-qualified imp) = t-var-qualified imp
+  polys-reflect-ᵢ b p pib ac (t-var-resolved imp) = t-var-resolved imp
+  polys-reflect-ᵢ b p pib ac (t-var-import ¬u lkn imp) = t-var-import ¬u lkn imp
+  polys-reflect-ᵢ b p pib ac (t-annot d) = t-annot (polys-reflect-ᶜ b p pib ac d)
+  polys-reflect-ᵢ b p pib ac (t-pair d₁ d₂) = t-pair (polys-reflect-ᵢ b p pib ac d₁) (polys-reflect-ᵢ b p pib ac d₂)
+  polys-reflect-ᵢ b p pib ac (t-neg d) = t-neg (polys-reflect-ᵢ b p pib ac d)
+  polys-reflect-ᵢ b p pib ac (t-let d₁ d₂) = t-let (polys-reflect-ᵢ b p pib ac d₁) (polys-reflect-ᵢ b p pib ac d₂)
+  polys-reflect-ᵢ b p pib ac (t-case ds dL dR) =
+    t-case (polys-reflect-ᵢ b p pib ac ds) (polys-reflect-ᵢ b p pib ac dL) (polys-reflect-ᵢ b p pib ac dR)
+  polys-reflect-ᵢ b p pib ac (t-binop-arith pr d₁ d₂) = t-binop-arith pr (polys-reflect-ᵢ b p pib ac d₁) (polys-reflect-ᵢ b p pib ac d₂)
+  polys-reflect-ᵢ b p pib ac (t-binop-cmp pr d₁ d₂) = t-binop-cmp pr (polys-reflect-ᵢ b p pib ac d₁) (polys-reflect-ᵢ b p pib ac d₂)
+  polys-reflect-ᵢ b p pib ac (t-id-app d) = t-id-app (polys-reflect-ᵢ b p pib ac d)
+  polys-reflect-ᵢ b p pib ac (t-fst-app d) = t-fst-app (polys-reflect-ᵢ b p pib ac d)
+  polys-reflect-ᵢ b p pib ac (t-snd-app d) = t-snd-app (polys-reflect-ᵢ b p pib ac d)
+  polys-reflect-ᵢ b p pib ac (t-terminal-app d) = t-terminal-app (polys-reflect-ᵢ b p pib ac d)
+  polys-reflect-ᵢ b p pib ac (t-apply-app-infer d) = t-apply-app-infer (polys-reflect-ᵢ b p pib ac d)
+  polys-reflect-ᵢ b p pib ac (t-app cls df dx) = t-app cls (polys-reflect-ᵢ b p pib ac df) (polys-reflect-ᶜ b p pib ac dx)
+  polys-reflect-ᵢ b p pib ac (t-effApp cls df dx) = t-effApp cls (polys-reflect-ᵢ b p pib ac df) (polys-reflect-ᶜ b p pib ac dx)
 
-  polys-reflect-ᵐ : ∀ (b : List String) {n Γ Δ f i s} (p : PolyCtx) → PInB p b → ∀ {e A π B}
+  polys-reflect-ᵐ : ∀ (b : List String) {n Γ Δ f i s} (p : PolyCtx) → PInB p b → Acc _<_ (length p) → ∀ {e A π B}
     → mkCtx n Γ Δ f i (canonPolysCtx b p) s ⊢ᵐ e ∶ A ⇨[ π ] B
     → mkCtx n Γ Δ f i p s ⊢ᵐ e ∶ A ⇨[ π ] B
-  polys-reflect-ᵐ b p pib (m-id ll li) = m-id ll li
-  polys-reflect-ᵐ b p pib (m-fst ll li) = m-fst ll li
-  polys-reflect-ᵐ b p pib (m-snd ll li) = m-snd ll li
-  polys-reflect-ᵐ b p pib (m-terminal ll li) = m-terminal ll li
-  polys-reflect-ᵐ b p pib (m-initial ll li) = m-initial ll li
-  polys-reflect-ᵐ b p pib (m-inl ll li) = m-inl ll li
-  polys-reflect-ᵐ b p pib (m-inr ll li) = m-inr ll li
-  polys-reflect-ᵐ b {n = n} {Γ = Γ} {Δ = Δ} {f = fr} {i = i} {s = s} p pib (m-compose cm df dg) =
+  polys-reflect-ᵐ b p pib ac (m-id ll li) = m-id ll li
+  polys-reflect-ᵐ b p pib ac (m-fst ll li) = m-fst ll li
+  polys-reflect-ᵐ b p pib ac (m-snd ll li) = m-snd ll li
+  polys-reflect-ᵐ b p pib ac (m-terminal ll li) = m-terminal ll li
+  polys-reflect-ᵐ b p pib ac (m-initial ll li) = m-initial ll li
+  polys-reflect-ᵐ b p pib ac (m-inl ll li) = m-inl ll li
+  polys-reflect-ᵐ b p pib ac (m-inr ll li) = m-inr ll li
+  polys-reflect-ᵐ b {n = n} {Γ = Γ} {Δ = Δ} {f = fr} {i = i} {s = s} p pib ac (m-compose cm df dg) =
     m-compose (composeMid-polys-decanon b (mkCtx n Γ Δ fr i p s)
-                (polys-reflect-ᵐ b p pib df) (polys-reflect-ᵐ b p pib dg) cm)
-              (polys-reflect-ᵐ b p pib df) (polys-reflect-ᵐ b p pib dg)
-  polys-reflect-ᵐ b p pib (m-case df dg) = m-case (polys-reflect-ᵐ b p pib df) (polys-reflect-ᵐ b p pib dg)
-  polys-reflect-ᵐ b p pib (m-pair df dg) = m-pair (polys-reflect-ᵐ b p pib df) (polys-reflect-ᵐ b p pib dg)
-  polys-reflect-ᵐ b p pib (m-curry df) = m-curry (polys-reflect-ᵐ b p pib df)
-  polys-reflect-ᵐ b p pib (m-cata wf d) = m-cata wf (polys-reflect-ᵐ b p pib d)
-  polys-reflect-ᵐ b p pib (m-const d) = m-const (polys-reflect-ᵍ b p d)
-  polys-reflect-ᵐ b p pib (m-named ¬u lln imp) = m-named ¬u lln imp
-  polys-reflect-ᵐ b p pib (m-named-resolved imp) = m-named-resolved imp
+                (polys-reflect-ᵐ b p pib ac df) (polys-reflect-ᵐ b p pib ac dg) cm)
+              (polys-reflect-ᵐ b p pib ac df) (polys-reflect-ᵐ b p pib ac dg)
+  polys-reflect-ᵐ b p pib ac (m-case df dg) = m-case (polys-reflect-ᵐ b p pib ac df) (polys-reflect-ᵐ b p pib ac dg)
+  polys-reflect-ᵐ b p pib ac (m-pair df dg) = m-pair (polys-reflect-ᵐ b p pib ac df) (polys-reflect-ᵐ b p pib ac dg)
+  polys-reflect-ᵐ b p pib ac (m-curry df) = m-curry (polys-reflect-ᵐ b p pib ac df)
+  polys-reflect-ᵐ b p pib ac (m-cata wf d) = m-cata wf (polys-reflect-ᵐ b p pib ac d)
+  polys-reflect-ᵐ b p pib ac (m-const d) = m-const (polys-reflect-ᵍ b p d)
+  polys-reflect-ᵐ b p pib ac (m-named ¬u lln imp) = m-named ¬u lln imp
+  polys-reflect-ᵐ b p pib ac (m-named-resolved imp) = m-named-resolved imp
 
-  polys-reflect-ᶜ : ∀ (b : List String) {n Γ Δ f i s} (p : PolyCtx) → PInB p b → ∀ {e A Ψ}
+  polys-reflect-ᶜ : ∀ (b : List String) {n Γ Δ f i s} (p : PolyCtx) → PInB p b → Acc _<_ (length p) → ∀ {e A Ψ}
     → mkCtx n Γ Δ f i (canonPolysCtx b p) s ⊢ᶜ e ∶ A ⨾ Ψ
     → mkCtx n Γ Δ f i p s ⊢ᶜ e ∶ A ⨾ Ψ
-  polys-reflect-ᶜ b p pib (t-morph-lift d) = t-morph-lift (polys-reflect-ᵐ b p pib d)
-  polys-reflect-ᶜ b p pib (t-embed d) = t-embed (polys-reflect-ᵢ b p pib d)
-  polys-reflect-ᶜ b p pib (t-subsume d) = t-subsume (polys-reflect-ᶜ b p pib d)
-  polys-reflect-ᶜ b p pib (t-lam le d) = t-lam le (polys-reflect-ᶜ b p pib d)
-  polys-reflect-ᶜ b p pib (t-value-lift d) = t-value-lift (polys-reflect-ᵍ b p d)
-  polys-reflect-ᶜ b p pib (t-pair-lit-check d₁ d₂) = t-pair-lit-check (polys-reflect-ᶜ b p pib d₁) (polys-reflect-ᶜ b p pib d₂)
-  polys-reflect-ᶜ b p pib (t-In-app-check wf d) = t-In-app-check wf (polys-reflect-ᶜ b p pib d)
-  polys-reflect-ᶜ b p pib (t-apply-check d) = t-apply-check (polys-reflect-ᵢ b p pib d)
-  polys-reflect-ᶜ b p pib (t-inl-app-check d) = t-inl-app-check (polys-reflect-ᶜ b p pib d)
-  polys-reflect-ᶜ b p pib (t-inr-app-check d) = t-inr-app-check (polys-reflect-ᶜ b p pib d)
-  polys-reflect-ᶜ b p pib (t-initial-app-check d) = t-initial-app-check (polys-reflect-ᶜ b p pib d)
-  polys-reflect-ᶜ b p pib (t-arg-driven-app-check cls darg df) =
-    t-arg-driven-app-check cls (polys-reflect-ᵢ b p pib darg) (polys-reflect-ᶜ b p pib df)
-  polys-reflect-ᶜ b {i = i} p pib (t-var-poly-instantiate {x = x} {T = T} {schema = schema} {body = bodyC} cb ¬u lln lin lpC dC)
+  polys-reflect-ᶜ b p pib ac (t-morph-lift d) = t-morph-lift (polys-reflect-ᵐ b p pib ac d)
+  polys-reflect-ᶜ b p pib ac (t-embed d) = t-embed (polys-reflect-ᵢ b p pib ac d)
+  polys-reflect-ᶜ b p pib ac (t-subsume d) = t-subsume (polys-reflect-ᶜ b p pib ac d)
+  polys-reflect-ᶜ b p pib ac (t-lam le d) = t-lam le (polys-reflect-ᶜ b p pib ac d)
+  polys-reflect-ᶜ b p pib ac (t-value-lift d) = t-value-lift (polys-reflect-ᵍ b p d)
+  polys-reflect-ᶜ b p pib ac (t-pair-lit-check d₁ d₂) = t-pair-lit-check (polys-reflect-ᶜ b p pib ac d₁) (polys-reflect-ᶜ b p pib ac d₂)
+  polys-reflect-ᶜ b p pib ac (t-In-app-check wf d) = t-In-app-check wf (polys-reflect-ᶜ b p pib ac d)
+  polys-reflect-ᶜ b p pib ac (t-apply-check d) = t-apply-check (polys-reflect-ᵢ b p pib ac d)
+  polys-reflect-ᶜ b p pib ac (t-inl-app-check d) = t-inl-app-check (polys-reflect-ᶜ b p pib ac d)
+  polys-reflect-ᶜ b p pib ac (t-inr-app-check d) = t-inr-app-check (polys-reflect-ᶜ b p pib ac d)
+  polys-reflect-ᶜ b p pib ac (t-initial-app-check d) = t-initial-app-check (polys-reflect-ᶜ b p pib ac d)
+  polys-reflect-ᶜ b p pib ac (t-arg-driven-app-check cls darg df) =
+    t-arg-driven-app-check cls (polys-reflect-ᵢ b p pib ac darg) (polys-reflect-ᶜ b p pib ac df)
+  polys-reflect-ᶜ b {i = i} p pib (acc rec) (t-var-poly-instantiate {x = x} {T = T} {schema = schema} {body = bodyC} cb ¬u lln lin lpC dC)
     with lookupPoly p x in eqLP | lookupPoly-canon b p x
   ... | nothing | lc = ⊥-elim (n≢j (trans (sym lc) lpC))
   ... | just (schema′ , bodyP) | lc =
@@ -155,4 +160,5 @@ mutual
                   (sym (cong proj₂ eqJ)) dC1
       d-rec : ctxWithImportsAndPolys i (removePoly x p) ⊢ᶜ bodyP ∶ T ⨾ zeroUsage
       d-rec = canon-reflects-ᶜ b bodyP (⊆ᵇ-nil {b})
-                (polys-reflect-ᶜ b (removePoly x p) (removePoly-PInB {p} {b} x pib) dC2)
+                (polys-reflect-ᶜ b (removePoly x p) (removePoly-PInB {p} {b} x pib)
+                  (rec (removePoly-decreases x p lp-rec)) dC2)

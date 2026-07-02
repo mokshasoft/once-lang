@@ -21,7 +21,8 @@
 module Once.Adequacy.CanonReflectAllFuns where
 
 open import Data.Bool using (Bool; true; false)
-open import Data.List using (List; []; _∷_; map)
+open import Data.List using (List; []; _∷_; map; length)
+open import Data.Nat.Induction using (<-wellFounded)
 open import Data.Maybe using (just; nothing)
 open import Data.Product using (_,_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
@@ -65,13 +66,15 @@ inferType-reflect ctx polysU b pib fi ty eq
 ... | true  | _ , _ , _ , _ , eqC =
         inferElab→inferType ctx (C.buildPolyCtx polysU) (funBody fi) ty
           (let _ , _ , _ , eqU = infer-complete
-                 (polys-reflect-ᵢ b (C.buildPolyCtx polysU) pib (infer-sound _ (funBody fi) eqC))
+                 (polys-reflect-ᵢ b (C.buildPolyCtx polysU) pib
+                   (<-wellFounded (length (C.buildPolyCtx polysU))) (infer-sound _ (funBody fi) eqC))
            in eqU)
 ... | false | _ , _ , _ , _ , eqC =
         inferElab→inferType ctx (C.buildPolyCtx polysU) (funBody fi) ty
           (let _ , _ , _ , eqU = infer-complete
                  (canon-reflects-ᵢ b (funBody fi) (⊆ᵇ-nil {b})
                    (polys-reflect-ᵢ b (C.buildPolyCtx polysU) pib
+                     (<-wellFounded (length (C.buildPolyCtx polysU)))
                      (infer-sound _ (canonExpr b [] [] (funBody fi)) eqC)))
            in eqU)
 
@@ -98,9 +101,11 @@ body-reflect :
       ⊢ᶜ funBody fi ∶ ty ⨾ Ψ
 body-reflect b polysU sigEffs ctx pib fi ty jud
   rewrite buildPolyCtx-canon b polysU with funIsPrimitive fi
-... | true  = polys-reflect-ᶜ b (C.buildPolyCtx polysU) pib jud
+... | true  = polys-reflect-ᶜ b (C.buildPolyCtx polysU) pib
+                (<-wellFounded (length (C.buildPolyCtx polysU))) jud
 ... | false = canon-reflects-ᶜ b (funBody fi) (⊆ᵇ-nil {b})
-                (polys-reflect-ᶜ b (C.buildPolyCtx polysU) pib jud)
+                (polys-reflect-ᶜ b (C.buildPolyCtx polysU) pib
+                  (<-wellFounded (length (C.buildPolyCtx polysU))) jud)
 
 ------------------------------------------------------------------------
 -- The AllFunsTyped reflect + the main-validity predicates reflect.
