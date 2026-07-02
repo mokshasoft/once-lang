@@ -4884,3 +4884,97 @@ pure-bodied lambda subsumes up; an eff-bodied one cannot be pure) and
 - D066 (refined here — value intros pure-fixed → grade-poly), D065 (bare
   morphisms grade-poly), D068 (`t-subsume`), D032 (compose/case/cata grade-poly),
   Plan 0.39 (optimizer drops pure SigOps), Plan 0.52 M1.
+
+## D070: Lambdas ARE Morphisms — Bracket-Abstract Them (the ⊢ᶜ/⊢ᵐ Split for Lambdas Is a Presentation Artifact)
+
+### Context
+
+Discharging `cata-morph-strong` (the last apex-reachable morphism-completeness
+leaf, after `const-morph-strong` landed) requires `StrongElab`'s faithfulness
+field `m ≡ realize-morph mᵐ` — a **syntactic** IR equality. Investigation
+showed this holds cheaply for EVERYTHING point-free:
+
+- **Leaves / combinators** (`m-id`/`m-compose`/`m-pair`/`m-case`/`m-curry`):
+  `realize-morph` builds the categorical IR DIRECTLY from sub-morphism IRs and
+  the elaborator builds the same — syntactically equal by structural recursion
+  (`morph-realize`).
+- **Values** (`⊢ᵍ`): a closed value is a global element (point-free constant
+  morphism); `checkG-realize` gives syntactic equality (`const-morph-strong`
+  discharged this way).
+
+It breaks in EXACTLY ONE place: a **lambda** cata algebra. `cata`'s algebra slot
+is typed `⊢ᶜ`, which admits `t-lam`. `realize-morph (m-cata _ dalg)` embeds the
+algebra via `elaborate Heap (realize dalg)` — a round-trip `⊢ᶜ → realize →
+Surface → elaborate → IR` — while the elaborator embeds `elaborate Heap algE`.
+For a lambda the two surface terms (`algE` vs `realize dalg`) come from different
+producers, so they are meaning-equal but **not syntactically** equal. A lambda is
+the ONLY non-point-free thing that can reach a morphism IR node (compose/case
+arms are `⊢ᵐ`, so they can never be lambdas). `ana` (IR-only today) would have
+the identical issue via its `⊢ᶜ` coalgebra.
+
+The mathematical question — lambda vs morphism — has a definitive answer:
+**Curry–Howard–Lambek.** A CCC and the typed λ-calculus are equivalent; a closed
+lambda `A → B` **IS** a morphism `A → B`; lambda abstraction is the exponential
+adjunction (`curry`/`apply`); **bracket abstraction is the isomorphism**. So the
+`⊢ᶜ`/`⊢ᵐ` distinction for lambdas is a **syntactic presentation artifact**, not a
+categorical one.
+
+### Decision
+
+**Elaborate closed lambdas to point-free `⊢ᵐ` morphisms via bracket abstraction**,
+rather than leaving them as `⊢ᶜ` `t-lam`. Then cata/ana algebras are always
+morphisms, `realize-morph` stays in IR-land, and `cata-morph-strong` (like the
+other combinators) is provable with the cheap structural `morph-realize` — no
+denotational reorg of the agree theorem.
+
+The IR is NOT changed — it is ALREADY point-free. This decision lives at the
+TYPING/derivation level only: it aligns the derivation (`⊢ᵐ`) with the IR's
+already-point-free reality. It is the mathematically honest fix: the point-free
+IR is the correct categorical home, and lambdas already belong in it. The
+alternative (make `morph-realize` denotational, `⟦m⟧ ≡ ⟦realize-morph mᵐ⟧`,
+mutual with `agree`) merely PATCHES a presentation mismatch — working around the
+fact that two syntaxes for the same morphism aren't the same term.
+
+### Refines D066 (m-lam drop) — the two reasons no longer bind
+
+D066 dropped `m-lam` (a closed lambda AS a morphism). Neither reason blocks
+bracket abstraction:
+
+1. *"`extractMorphWitness` can't recover a closed lambda's outer-ctx-emptiness"* —
+   a NON-issue. Bracket abstraction produces a GENUINE composite morphism
+   (`curry`/`apply`/`compose`/…), not a lambda-shaped `m-lam`, so
+   `extractMorphWitness` recovers a real `⊢ᵐ`. Nobody needs to recover a lambda.
+2. *"lambdas-as-`t-lam` keep compose/case arms lambda-free ⇒ `*-eff-complete`
+   provable"* — PRESERVED. The lambda becomes a morphism BEFORE it can occupy an
+   arm position, so arms stay morphism-shaped; the eff-complete proofs keep their
+   guarantee.
+
+### Meaning-preserving (does NOT change Once)
+
+- **Runtime / IR unchanged.** `Once.Surface.Elaborate` ALREADY lowers surface
+  lambdas to point-free IR (`curry`/`apply`) — codegen is already point-free.
+  This moves the SAME categorical translation to the TYPING level so the morphism
+  realm captures it; denotations are unchanged (bracket abstraction is meaning-
+  preserving by the CCC isomorphism).
+- **Same programs well-typed.** Lambda sugar stays in the surface; only the
+  DERIVATION changes (a lambda gets a `⊢ᵐ` bracket-abstraction derivation instead
+  of `t-lam`).
+
+### Consequences
+
+- `cata-morph-strong` (and future `ana`) discharge as cheap structural
+  `morph-realize` cases; no agree-theorem reorg; `StrongElab`'s syntactic
+  faithfulness field stays intact.
+- New elaborator content: the bracket-abstraction translation + a `⊢ᵐ`
+  derivation for lambdas + its `realize-morph` clause. Real work, but well-
+  trodden (the CAM/categorical-combinator translation) and it removes the only
+  non-point-free thing in the pipeline.
+- `t-lam` in `⊢ᶜ` may become vestigial for closed lambdas (retain for any
+  open/context-carrying use if such arises).
+
+### See Also
+
+- D066 (m-lam drop — reasons refined/dissolved here), D063 (CCC trichotomy
+  `⊢ᵍ`/`⊢ᵐ`/`⊢ᶜ`), D032 (compose/case/cata grade-poly), Curry–Howard–Lambek
+  correspondence (CCC ≅ typed λ-calculus), Plan 0.52 M1 (`const-morph-strong`
+  discharged; `cata-morph-strong` the remaining leaf this enables).
