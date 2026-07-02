@@ -16,9 +16,11 @@
 --            on purpose.
 --   * ccc  — registers CCC keeps live across a SigOp call: rcx rbx rbp rsi
 --            rsp, plus r12 (closure ptr) and r15 (heap-top ptr).
---   * arith— the arith block's private working registers (r13 r14 r10 r11),
---            chosen from the set CCC never emits.
---   * free — rdx r8 r9 (emitted by neither today).
+--   * arith— the arith block's private working registers (r8 r9 r10 r11):
+--            chosen to be BOTH caller-saved (a `call` already clobbers them,
+--            so the frameless block owes no callee-save) AND in the set CCC
+--            never emits (so disjointness with `ccc` is definitional).
+--   * free — rdx r13 r14 (emitted by neither today).
 ------------------------------------------------------------------------
 
 module Once.Target.X86-64.PhysReg where
@@ -85,10 +87,10 @@ owner rsi = ccc
 owner rsp = ccc
 owner r12 = ccc
 owner r15 = ccc
-owner r13 = arith
-owner r14 = arith
+owner r8  = arith
+owner r9  = arith
 owner r10 = arith
 owner r11 = arith
 owner rdx = free
-owner r8  = free
-owner r9  = free
+owner r13 = free
+owner r14 = free

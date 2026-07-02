@@ -17,14 +17,15 @@
 --     return-value convention. The wrapping `SigOp arith.block.*`
 --     call site treats the result the same way `compile-const`
 --     emits its integer literals.
---   - `%r12-%r15` are the abstract reg file (`AbsReg 0..3`).
---     `Xmov-imm` / `Xmov-arg` / `Xmov-rr` write them; `Xadd-rr`
---     etc. operate in place. None of them are callee-saved across
---     this call: the block does not modify CCC's normal callee-saved
---     register set because (a) the wider compiler reserves
---     `r12-r15` as scratch already, and (b) the block is invoked
---     via a SigOp call site that, like any other SigOp, treats
---     these registers as caller-saved.
+--   - The abstract reg file `XR0..XR3` maps to `%r8-%r11` — acquired
+--     from the single shared `Once.Target.X86-64.PhysReg` declaration
+--     via `arith-reg`. These are chosen to be BOTH caller-saved (so the
+--     frameless block owes no callee-save across the `call`) AND in the
+--     set CCC never emits. The latter makes non-clobbering DEFINITIONAL:
+--     `arith-disjoint : owner (arith-reg x) ≡ arith` is a `refl` (Plan
+--     0.55), replacing the old — and, for `r12`/`r15`, false — comment
+--     that claimed `r12-r15` were CCC scratch (they are CCC's closure and
+--     heap-top pointers).
 --   - Scratch stack slots are addressed via `[%rsp - 8*(slot+1)]`
 --     after the prologue subtracts `8 * required-scratch` from
 --     `%rsp`. The reservation matches `Once.Arith.Backend.XInstr.Syntax`'s
@@ -48,16 +49,34 @@ open import Once.Arith.Machine.IR using (MArithIR; ArithBlock)
 open Once.Arith.Machine.IR.ArithBlock using (block-shape; block-body)
 open import Once.Arith.SigOp.Block using (block-name)
 open import Once.Target.Symbol using (once-symbol-own)
+open import Once.Target.X86-64.PhysReg using (Reg; r8; r9; r10; r11; showReg; owner; RegClass; arith)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 ------------------------------------------------------------------------
 -- Register / scratch text
+--
+-- The arith block acquires its 4 working registers from the SINGLE shared
+-- `Once.Target.X86-64.PhysReg` declaration (Plan 0.55), choosing registers
+-- CCC never emits — so `arith-disjoint` below is a `refl`, and the
+-- "does-not-clobber-CCC" property is definitional rather than assumed.
 ------------------------------------------------------------------------
 
+arith-reg : XReg → Reg
+arith-reg XR0 = r8
+arith-reg XR1 = r9
+arith-reg XR2 = r10
+arith-reg XR3 = r11
+
+-- Every arith working register is `arith`-owned, hence never a CCC-live
+-- register (`owner`'s `ccc`/`io` classes are distinct constructors).
+arith-disjoint : ∀ x → owner (arith-reg x) ≡ arith
+arith-disjoint XR0 = refl
+arith-disjoint XR1 = refl
+arith-disjoint XR2 = refl
+arith-disjoint XR3 = refl
+
 reg-text : XReg → String
-reg-text XR0 = "%r12"
-reg-text XR1 = "%r13"
-reg-text XR2 = "%r14"
-reg-text XR3 = "%r15"
+reg-text x = showReg (arith-reg x)
 
 -- | A scratch slot lives at `[%rsp - 8*(slot+1)]` once the prologue
 -- has reserved `8 * required-scratch` bytes below the original
