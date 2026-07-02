@@ -1507,6 +1507,20 @@ mutual
   -- decidable results are threaded through `checkCataA/B/C` so the
   -- witness carries the equations and completeness reduces cleanly.
   -- Emits `lift-morphism (IR.Cata wfF algIR)`.
+  -- Plan 0.54 (pure⊑eff): cata at an EFF outer arrow. A cata is just another
+  -- morphism whose grade FOLLOWS its algebra — so mirror checkCompose/checkCurry:
+  -- first try the genuinely-eff Go (algebra checked at eff); if that fails (a
+  -- PURE algebra, whose eff-check subsumes to a `t-subsume` that carries no
+  -- `extractMorphWitness`), check the whole cata at PURE and subsume via
+  -- arr'/t-subsume. This ACCEPTS `cata pureAlg` at an eff position (soundness of
+  -- the `subsume-complete` m-cata bridge).
+  checkCata ctx alg (Once.Type.μ-type F Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] A)
+    with checkCataGo ctx alg F A Once.Type.eff (wellFormedF? F) refl
+  ... | (success Ψ eE d fr , w) = success Ψ eE d fr , w
+  ... | (failure _ , _)
+        with checkCataGo ctx alg F A Once.Type.pure (wellFormedF? F) refl
+  ...     | (success Ψ eE d fr , w) = success Ψ (Surface.arr' eE) d fr , t-subsume w
+  ...     | (failure err , _) = failure err , tt
   checkCata ctx alg (Once.Type.μ-type F Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A) =
     checkCataGo ctx alg F A π (wellFormedF? F) refl
   checkCata _ _ _ = failure (BuiltinTypeMismatch "cata") , tt
@@ -3539,66 +3553,101 @@ checkElab-fallback-RApp-apply-eff {ctx} p A B eqInf
 ...     | no ¬a    | _        = ⊥-elim (¬a refl)
 ...     | yes _     | no ¬b    = ⊥-elim (¬b refl)
 
--- Plan 0.52: `checkCata` is grade-poly (matches `μF ⇒[Many π]A` for any π). The
--- J-bridge + just-success pattern (mirrors checkInGo-J / checkInGo-just-success)
--- avoids generalizing `wellFormedF? F` (which clashes with checkCata's `refl`).
-checkCataGo-J :
-  ∀ (ctx : NamedCtx) (alg : RawExpr) (F : Once.Type.Functor) (A : Type) (π : Once.Type.Purity)
-    (mw : Maybe (Once.Functor.Translate.WellFormedF F)) (eq : wellFormedF? F ≡ mw)
-  → checkElab ctx (Raw.RApp (Raw.RVar "cata") alg) (Once.Type.μ-type F Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A)
-      ≡ checkProj₁ (checkCataGo ctx alg F A π mw eq)
-checkCataGo-J ctx alg F A π .(wellFormedF? F) refl = refl
+-- Plan 0.54: relate the two `(mw, eq)` instantiations of `checkCataGo` by
+-- singleton contractibility (mirrors compose's `go-canonical`). Used to bridge
+-- the `(wellFormedF? F, refl)` form that `checkElabV`/`checkCata` actually produce
+-- to the `(just wfF, eqW)` form that `checkCataGo-just-success` concludes at.
+cata-go-canonical :
+  ∀ {ctx : NamedCtx} {alg : RawExpr} {F : Once.Type.Functor} {A : Type}
+    {π : Once.Type.Purity} {mw : Maybe (Once.Functor.Translate.WellFormedF F)}
+    (p : wellFormedF? F ≡ mw)
+  → checkCataGo ctx alg F A π mw p ≡ checkCataGo ctx alg F A π (wellFormedF? F) refl
+cata-go-canonical refl = refl
 
--- Plan 0.54: the algebra must be a MORPHISM — success now also needs its
--- `⊢ᶜ` witness to extract a `⊢ᵐ`. State over `checkElabV` (carries the witness)
--- plus the `extractMorphWitness ≡ just` premise; then `checkCataGo` reduces.
-checkCataGo-just-success-eff :
+-- Plan 0.54: the checkElabV-level J-bridge for cata at PURE. `checkCata`'s eff
+-- clause is grade-specific (needs π=eff), so at PURE the generic clause fires and
+-- `checkElabV` reduces DIRECTLY to `checkCataGo … pure`. Generalize over `(mw, eq)`
+-- with the `.(wellFormedF? F)` dot pattern (a direct `≟ just wfF` split gets stuck
+-- on the neutral `wellFormedF? F`); the caller instantiates at `(just wfF) eqW`.
+checkCataGoV-pure-J :
   ∀ (ctx : NamedCtx) (alg : RawExpr) (F : Once.Type.Functor) (A : Type)
+    (mw : Maybe (Once.Functor.Translate.WellFormedF F)) (eq : wellFormedF? F ≡ mw)
+  → checkElabV ctx (Raw.RApp (Raw.RVar "cata") alg)
+              (Once.Type.μ-type F Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] A)
+      ≡ checkCataGo ctx alg F A Once.Type.pure mw eq
+checkCataGoV-pure-J ctx alg F A .(wellFormedF? F) refl = refl
+
+-- Plan 0.54 (cata-morph-strong): the GRADE-POLY, FULL-PAIR just-success lemma.
+-- `checkCataGo` at grade π checks the algebra at
+-- grade π; when the algebra elaborates to a morphism (its `⊢ᵐ` witness recovered
+-- by `extractMorphWitness`), `checkCataGo` reduces to the `Surface.cata`/`m-cata`
+-- success — DIRECTLY (both the result AND the witness), which the strong
+-- elaboration needs (the eff helper only gives `proj₁`).
+checkCataGo-just-success :
+  ∀ (ctx : NamedCtx) (alg : RawExpr) (F : Once.Type.Functor) (A : Type) (π : Once.Type.Purity)
     (wfF : Once.Functor.Translate.WellFormedF F) (eqW : wellFormedF? F ≡ just wfF)
     {algE : SExpr (NamedCtx.debruijn (ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx)))
-                  Surface.zeroUsage (Once.Type.⟦ F ⟧T A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] A)}
+                  Surface.zeroUsage (Once.Type.⟦ F ⟧T A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A)}
     {d fr : ℕ}
     {w : ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx)
-           ⊢ᶜ alg ∶ (Once.Type.⟦ F ⟧T A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] A)
+           ⊢ᶜ alg ∶ (Once.Type.⟦ F ⟧T A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A)
            ⨾ Surface.zeroUsage}
     {mᵐ : ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx)
-            ⊢ᵐ alg ∶ (Once.Type.⟦ F ⟧T A) ⇨[ Once.Type.eff ] A}
+            ⊢ᵐ alg ∶ (Once.Type.⟦ F ⟧T A) ⇨[ π ] A}
   → checkElabV (ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx))
-              alg (Once.Type.⟦ F ⟧T A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] A)
+              alg (Once.Type.⟦ F ⟧T A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A)
       ≡ (success Surface.zeroUsage algE d fr , w)
   → extractMorphWitness w ≡ just mᵐ
-  → ∃-syntax (λ eE → ∃-syntax (λ d' → ∃-syntax (λ fr' →
-      checkProj₁ (checkCataGo ctx alg F A Once.Type.eff (just wfF) eqW)
-        ≡ success Surface.zeroUsage eE d' fr')))
-checkCataGo-just-success-eff ctx alg F A wfF eqW eqAlgV eqExt
+  → checkCataGo ctx alg F A π (just wfF) eqW
+      ≡ (success Surface.zeroUsage (Surface.cata wfF algE) (suc d) (NamedCtx.freshCounter ctx)
+          , t-morph-lift (m-cata eqW mᵐ))
+checkCataGo-just-success ctx alg F A π wfF eqW eqAlgV eqExt
   with checkElabV (ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx))
-                  alg (Once.Type.⟦ F ⟧T A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] A) | eqAlgV
+                  alg (Once.Type.⟦ F ⟧T A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A) | eqAlgV
 ... | (success Surface.[] _ _ _ , w) | refl with extractMorphWitness w | eqExt
-...   | just mᵐ | refl = _ , _ , _ , refl
+...   | just mᵐ | refl = refl
 
-checkElab-fallback-RApp-cata-eff :
-  ∀ {ctx : NamedCtx} (alg : RawExpr) (F : Once.Type.Functor) (A : Type)
-    {wfF : Once.Functor.Translate.WellFormedF F}
+-- Plan 0.54: cata at EFF with a GENUINELY-eff algebra. `checkCata`'s eff clause
+-- first tries the eff-Go and passes it through on success. Given the eff-Go IS the
+-- `m-cata` success (the algebra elaborated at eff with a morphism witness), reduce
+-- `checkElabV` through the eff with-tree to that same success. Pass the eff-Go
+-- result explicitly (mirrors compose-eff-hlp) so the with-tree case-splits on a
+-- constructor; the failure branch is refuted by `eqStrong`.
+checkCata-eff-strong-hlp :
+  ∀ (ctx : NamedCtx) (alg : RawExpr) (F : Once.Type.Functor) (A : Type)
+    {wfF : Once.Functor.Translate.WellFormedF F} {eqW : wellFormedF? F ≡ just wfF}
     {algE : SExpr (NamedCtx.debruijn (ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx)))
                   Surface.zeroUsage (Once.Type.⟦ F ⟧T A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] A)}
-    {d fr : ℕ}
-    {w : ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx)
-           ⊢ᶜ alg ∶ (Once.Type.⟦ F ⟧T A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] A)
-           ⨾ Surface.zeroUsage}
+    {d : ℕ}
     {mᵐ : ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx)
             ⊢ᵐ alg ∶ (Once.Type.⟦ F ⟧T A) ⇨[ Once.Type.eff ] A}
-  → wellFormedF? F ≡ just wfF
-  → checkElabV (ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx))
-              alg (Once.Type.⟦ F ⟧T A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] A)
-      ≡ (success Surface.zeroUsage algE d fr , w)
-  → extractMorphWitness w ≡ just mᵐ
-  → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f'' →
-      checkElab ctx (Raw.RApp (Raw.RVar "cata") alg)
-                    (Once.Type.μ-type F Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] A)
-        ≡ success Surface.zeroUsage eE' d' f'')))
-checkElab-fallback-RApp-cata-eff {ctx} alg F A {wfF} eqWF eqAlgV eqExt =
-  let (_ , _ , _ , eqGo) = checkCataGo-just-success-eff ctx alg F A wfF eqWF eqAlgV eqExt
-  in _ , _ , _ , trans (checkCataGo-J ctx alg F A Once.Type.eff (just wfF) eqWF) eqGo
+    (r : VerifiedCheckResult ctx (Raw.RApp (Raw.RVar "cata") alg)
+           (Once.Type.μ-type F Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] A))
+  → checkCataGo ctx alg F A Once.Type.eff (wellFormedF? F) refl ≡ r
+  → r ≡ (success Surface.zeroUsage (Surface.cata wfF algE) (suc d) (NamedCtx.freshCounter ctx)
+          , t-morph-lift (m-cata eqW mᵐ))
+  → checkElabV ctx (Raw.RApp (Raw.RVar "cata") alg)
+              (Once.Type.μ-type F Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] A)
+      ≡ (success Surface.zeroUsage (Surface.cata wfF algE) (suc d) (NamedCtx.freshCounter ctx)
+          , t-morph-lift (m-cata eqW mᵐ))
+checkCata-eff-strong-hlp ctx alg F A (success Ψ eE d fr , w) eqr eqStrong
+  rewrite eqr = eqStrong
+checkCata-eff-strong-hlp ctx alg F A (failure err , _) eqr eqStrong
+  with cong checkProj₁ eqStrong
+... | ()
+
+-- Plan 0.54: `extract-morph-eff` on a `Surface.cata` node recovers `IR.Cata wfF m`
+-- directly from the algebra's own extraction (mirrors the compose/pair fusions).
+extract-morph-eff-cata :
+  ∀ {n} {Γ : SCtx n} {F : Once.Type.Functor} {A : Type} {π : Once.Type.Purity}
+    {wfF : Once.Functor.Translate.WellFormedF F}
+    {algE : SExpr S∅ Surface.zeroUsage (Once.Type.⟦ F ⟧T A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A)}
+    {m-alg : IR (Once.Type.⟦ F ⟧T A) A}
+  → extract-morph-eff algE ≡ just (m-alg , refl)
+  → extract-morph-eff {Γ = Γ} (Surface.cata {A = A} wfF algE) ≡ just (IR.Cata wfF m-alg , refl)
+extract-morph-eff-cata {algE = algE} eq with extract-morph-eff-aux algE refl | eq
+... | just (_ , refl) | refl = refl
+
 checkElab-fallback-RApp-terminal :
   ∀ {ctx : NamedCtx} (arg : RawExpr) (T : Type)
     {Ψ : Surface.Usage (NamedCtx.size ctx)}

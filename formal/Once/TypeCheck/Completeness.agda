@@ -59,7 +59,7 @@ open import Once.Functor.Decide using (wellFormedF?)
 open import Once.TypeCheck.Classify using (ctxWithImportsAndPolys; composeArgB; composeMid;
   inspectLookupLocal; inspectLookupImport; llv-found; llv-not-found; liv-found; liv-not-found)
 
-open import Once.Surface.Syntax as Surface using (zeroUsage; _+ᵘ_; _*ᵘ_)
+open import Once.Surface.Syntax as Surface using (zeroUsage; _+ᵘ_; _*ᵘ_; [])
   renaming (Expr to SExpr)
 -- Plan 0.49 / D063: morphism-completeness, proven by induction on ⊢ᵐ
 -- (12/15 cases; m-const/m-cata/m-named are scoped postulates there).
@@ -78,7 +78,9 @@ open import Once.TypeCheck.Classify using (lookupLocal; lookupImport;
   inspectLookupLocal; inspectLookupImport; llv-found; llv-not-found; liv-found; liv-not-found)
 open import Once.TypeCheck.Elaborate using (extract-morph-eff; extractMorphWitness;
   checkComposeGo; checkCaseGo; VerifiedCheckResult; inferElabV-RVar-fail-bridge;
-  checkG; inspectWellFormedF; wfv-no; wfv-yes)
+  checkG; inspectWellFormedF; wfv-no; wfv-yes;
+  checkCataGo; cata-go-canonical; checkCataGoV-pure-J; checkCataGo-just-success;
+  checkCata-eff-strong-hlp; extract-morph-eff-cata)
 
 ------------------------------------------------------------------------
 -- Leaf-case completeness
@@ -703,7 +705,7 @@ open Once.TypeCheck.Elaborate
          checkElab-fallback-RApp-generic; checkElab-fallback-RApp-generic-eff;
          checkElab-fallback-RApp-id-eff; checkElab-fallback-RApp-fst-eff; checkElab-fallback-RApp-snd-eff;
          checkElab-fallback-RVar-eff; checkElab-fallback-RApp-initial-eff;
-         checkElab-fallback-RApp-apply-eff; checkElab-fallback-RApp-cata-eff)
+         checkElab-fallback-RApp-apply-eff)
 
 -- RVar case: covers both local and import lookups (and "unit"). The
 -- fallback lemma takes the inferElab-success equation uniformly.
@@ -1006,20 +1008,29 @@ private
   ...     | just _ | just _ | nothing | _ | ()
   ...     | just _ | just _ | just _ | nothing | ()
 
--- Three cases are scoped follow-ups (kept as StrongElab postulates so the
--- recursive cases can still take them as arms). They are NOT discharged here:
---   • m-const  — needs a STRONG gd-complete (checkElabV-with-witness form; the
---                Completeness `gd-complete` is checkElab-weak). Mutual-w/-Completeness.
---   • m-cata   — needs a STRONG check-complete on the (⊢ᶜ) algebra. Mutual-w/-Completeness.
+  -- Plan 0.54: `checkCataGo` emits `success zeroUsage …` on its sole success leaf;
+  -- recover that usage after a `with`-abstraction loses it (the eff-clause
+  -- passthrough branch in `cata-eff-complete`). Mirrors `ccgo-usage`.
+  ccatago-usage : ∀ {ctx alg F A} {π : T.Purity} {wfF : WellFormedF F}
+    {eqW : wellFormedF? F ≡ just wfF}
+    {Ψ : Srf.Usage (NamedCtx.size ctx)} {se d fr w}
+    → checkCataGo ctx alg F A π (just wfF) eqW ≡ (success Ψ se d fr , w)
+    → Ψ ≡ zeroUsage
+  ccatago-usage {ctx} {alg} {F} {A} {π} eq
+    with checkElabV (ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx))
+                    alg (⟦ F ⟧T A T.⇒[ T.mk-kind T.Many π ] A) | eq
+  ... | failure _ , _ | ()
+  ... | success [] algE d fr , wArg | eq₁ with extractMorphWitness wArg | eq₁
+  ...   | just _ | refl = refl
+  ...   | nothing | ()
+
+-- Remaining scoped follow-ups (kept as StrongElab postulates so the recursive
+-- cases can still take them as arms). They are NOT discharged here:
 --   • m-named  — a bare import elaborates to a CLOSURE pre-plan-0.50 (D064); becomes a
 --                direct `IR.SigOp` morphism in plan 0.50 milestone 1, when this is proven.
+-- (m-const DISCHARGED via value-lift; m-cata DISCHARGED, Plan 0.54 — a cata is a
+-- morphism whose grade follows its algebra, proven directly in `morph-elab` below.)
 postulate
-  cata-morph-strong : ∀ {ctx : NamedCtx} {alg : RawExpr} {F : Functor} {A : Type}
-                        {π : T.Purity} {wfF : WellFormedF F}
-                    → wellFormedF? F ≡ just wfF
-                    → ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx)
-                        ⊢ᵐ alg ∶ (⟦ F ⟧T A) ⇨[ π ] A
-                    → StrongElab ctx (Raw.RApp (Raw.RVar "cata") alg) (μ-type F) A π
   named-morph-strong : ∀ {ctx : NamedCtx} {x : String} {A B : Type} {π : T.Purity}
                      → ¬ (x ≡ "unit")
                      → lookupLocal ctx x ≡ nothing
@@ -1178,7 +1189,48 @@ mutual
   morph-elab (m-curry df) with morph-elab df
   ... | (mf , mFᵐ , Ef , _ , _ , Wf , eqf , exEff-f , exW-f , cons-f)
         rewrite eqf | exEff-f | exW-f = _ , _ , _ , _ , _ , _ , refl , refl , refl , cong (λ z → IR.curry z Heap) cons-f
-  morph-elab (m-cata eqWF dalg) = cata-morph-strong eqWF dalg
+  -- Plan 0.54 (cata-morph-strong DISCHARGED): a cata is just another morphism;
+  -- its grade π FOLLOWS its algebra. The algebra `dalg : ⊢ᵐ alg ∶ ⟦F⟧T A ⇨[π] A`
+  -- strongly elaborates (recursively) at the SAME grade π; `checkCataGo` at π
+  -- checks the algebra at π, so `checkCataGoV-J` + `checkCataGo-just-success`
+  -- reduce the whole dispatch to the `Surface.cata`/`m-cata` success DIRECTLY
+  -- (no eff subsumption — that path is `subsume-complete`'s m-cata, below). The
+  -- realize field is `cong (IR.Cata wfF)` over the algebra's — `realize-morph
+  -- (m-cata) = IR.Cata wfF (realize-morph dalg)` is direct (Realize:124).
+  -- π = pure: `checkCata`'s generic clause fires (the eff clause needs π=eff), so
+  -- `checkElabV` reduces DIRECTLY to `checkCataGo … pure` (checkCataGoV-pure-J).
+  morph-elab {ctx = ctx} (m-cata {alg = alg} {F = F} {A = A} {π = T.pure} {wfF = wfF} eqWF dalg)
+    with morph-elab dalg
+  ... | (m-alg , mᵐ-alg , algE , d , fr , wArg , eqV , exEff , exW , cons) =
+        IR.Cata wfF m-alg
+      , m-cata eqWF mᵐ-alg
+      , Surface.cata wfF algE
+      , suc d , NamedCtx.freshCounter ctx
+      , t-morph-lift (m-cata eqWF mᵐ-alg)
+      , trans (checkCataGoV-pure-J ctx alg F A (just wfF) eqWF)
+              (checkCataGo-just-success ctx alg F A T.pure wfF eqWF eqV exW)
+      , extract-morph-eff-cata {Γ = NamedCtx.debruijn ctx} {wfF = wfF} {algE = algE} exEff
+      , refl
+      , cong (IR.Cata wfF) cons
+  -- π = eff: a GENUINELY-eff algebra. `checkCata`'s eff clause tries the eff-Go
+  -- first; the algebra elaborates at eff with a morphism witness, so eff-Go IS the
+  -- `m-cata` success and the clause passes it through (checkCata-eff-strong-hlp).
+  morph-elab {ctx = ctx} (m-cata {alg = alg} {F = F} {A = A} {π = T.eff} {wfF = wfF} eqWF dalg)
+    with morph-elab dalg
+  ... | (m-alg , mᵐ-alg , algE , d , fr , wArg , eqV , exEff , exW , cons) =
+        IR.Cata wfF m-alg
+      , m-cata eqWF mᵐ-alg
+      , Surface.cata wfF algE
+      , suc d , NamedCtx.freshCounter ctx
+      , t-morph-lift (m-cata eqWF mᵐ-alg)
+      , checkCata-eff-strong-hlp ctx alg F A
+          (checkCataGo ctx alg F A T.eff (wellFormedF? F) refl)
+          refl
+          (trans (sym (cata-go-canonical eqWF))
+                 (checkCataGo-just-success ctx alg F A T.eff wfF eqWF eqV exW))
+      , extract-morph-eff-cata {Γ = NamedCtx.debruijn ctx} {wfF = wfF} {algE = algE} exEff
+      , refl
+      , cong (IR.Cata wfF) cons
 
   -- The weak (checkElab) morphism-completeness, derived from the strong form.
   -- (`checkElab = proj₁ ∘ checkElabV`, Elaborate:1071.)
@@ -1272,6 +1324,35 @@ mutual
         with checkCaseGo ctx f g A B C T.eff in eqEff
   ...     | failure _ , _ rewrite eqf | eqg | exEff-f | exEff-g | exW-f | exW-g = _ , _ , _ , refl
   ...     | success Ψe eEe de fre , we with ccgo-usage eqEff
+  ...       | refl = eEe , de , fre , refl
+
+  -- Plan 0.54 (pure⊑eff): a cata with a PURE algebra elaborated at an EFF arrow.
+  -- Mirrors case-eff-complete (cata's eff clause also "tries eff, else pure +
+  -- arr'/t-subsume"): case the eff-Go — on FAILURE (the pure algebra can't yield
+  -- an eff morphism witness) the pure elaborations drive the pure Go, whose
+  -- success the eff clause wraps in arr'; on SUCCESS (a genuinely-eff algebra)
+  -- pass it through. The algebra lives in the imports/polys ctx (m-cata premise).
+  cata-eff-complete : ∀ {ctx : NamedCtx} {alg : RawExpr} {F : Functor} {A : Type}
+                        {wfF : WellFormedF F}
+                    → wellFormedF? F ≡ just wfF
+                    → ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx)
+                        ⊢ᵐ alg ∶ (⟦ F ⟧T A) ⇨[ T.pure ] A
+                    → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ fr →
+                        checkElab ctx (Raw.RApp (Raw.RVar "cata") alg)
+                                  (μ-type F T.⇒[ T.mk-kind T.Many T.eff ] A)
+                          ≡ success zeroUsage eE d fr)))
+  cata-eff-complete {ctx} {alg} {F} {A} {wfF} eqWF dalg with morph-elab dalg
+  ... | (m-alg , mᵐ-alg , algE , d , fr , wArg , eqV , exEff , exW , cons)
+        with checkCataGo ctx alg F A T.eff (wellFormedF? F) refl in eqEff
+  -- eff-Go failed (pure algebra): drive the pure Go to its `m-cata` success (via
+  -- `checkCataGo-just-success` + `cata-go-canonical`, since `checkCataGo` gates on
+  -- the neutral `wellFormedF? F` before its elaboration scrutinee); the eff clause
+  -- wraps it in arr'/t-subsume.
+  ...     | failure _ , _
+            rewrite trans (sym (cata-go-canonical eqWF))
+                          (checkCataGo-just-success ctx alg F A T.pure wfF eqWF eqV exW)
+            = _ , _ , _ , refl
+  ...     | success Ψe eEe de fre , we with ccatago-usage (trans (cata-go-canonical eqWF) eqEff)
   ...       | refl = eEe , de , fre , refl
 
   check-completeV : ∀ {ctx : NamedCtx} {e : RawExpr} {A : Type}
@@ -1645,11 +1726,12 @@ mutual
   subsume-complete {ctx} {_} {A} {B} (t-morph-lift (m-named {x = x} ¬u eqL eqI)) =
     let (_ , _ , _ , eqInf) = infer-complete (t-var-import ¬u eqL eqI)
     in checkElab-fallback-RVar-eff x A B eqInf
-  -- m-cata: checkCata is grade-poly, but the ALGEBRA is checked at the cata's
-  -- grade — so recurse subsume-complete on the algebra, then the cata eff fallback.
+  -- m-cata: a cata is just another morphism whose grade FOLLOWS its algebra. At a
+  -- pure arrow the algebra `algD` is pure, so this mirrors m-pair/m-curry/m-case —
+  -- `cata-eff-complete` wraps the pure cata in arr'/t-subsume (via checkCata's eff
+  -- clause). NO recursion on the algebra grade (the grade "problem" dissolves).
   subsume-complete {ctx} (t-morph-lift (m-cata {alg = alg} {F = F} {A = A} eqW algD)) =
-    let (_ , _ , _ , eqAlgEff) = subsume-complete algD
-    in checkElab-fallback-RApp-cata-eff alg F A eqW eqAlgEff
+    cata-eff-complete eqW algD
   -- m-pair / m-curry: pure-fixed morphisms whose IR is grade-poly — the eff
   -- checkPair/checkCurry clauses wrap the pure morphism in arr'/t-subsume.
   subsume-complete (t-morph-lift (m-pair mFᵐ mGᵐ)) = pair-eff-complete mFᵐ mGᵐ
