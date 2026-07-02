@@ -84,30 +84,8 @@ CheckAgreeV ctx e T {se = se} {w = w} _ =
 -- non-`t-embed` specials (RLam/RVar-bbc/RPair-product/RInt-vlift/literals)
 -- remain as a postulate.
 postulate
-  -- NARROWED from the former broad `check-agreeV-todo` (any shape). The catch-all
-  -- was reached by RVar ONLY, and RVar's infer-SUCCESS is now PROVEN (below). What
-  -- remains are the bare-builtin / poly infer-FAILURE leaves — each a PRECISE,
-  -- NAMED obligation over the elaborator's own `checkElabV-RVar-bbc-*-aux`. The 7
-  -- builtins are `refl` once navigated (`spec* = lift-morphism IR.*`, `realize-morph`
-  -- direct) — dischargeable follow-up; poly rides the `bbc-other-poly-witness` gap.
-  check-agreeV-RVar-fst-todo : ∀ (ctx : NamedCtx) (T : Type) {fe snd Ψ se d f w}
-    → E.checkElabV-RVar-bbc-fst-aux ctx T (failure fe , snd) ≡ (success Ψ se d f , w)
-    → ∀ dγ k → SD.⟦ se ⟧ˢ dγ k ≡ SD.⟦ realize w ⟧ˢ dγ k
-  check-agreeV-RVar-snd-todo : ∀ (ctx : NamedCtx) (T : Type) {fe snd Ψ se d f w}
-    → E.checkElabV-RVar-bbc-snd-aux ctx T (failure fe , snd) ≡ (success Ψ se d f , w)
-    → ∀ dγ k → SD.⟦ se ⟧ˢ dγ k ≡ SD.⟦ realize w ⟧ˢ dγ k
-  check-agreeV-RVar-terminal-todo : ∀ (ctx : NamedCtx) (T : Type) {fe snd Ψ se d f w}
-    → E.checkElabV-RVar-bbc-terminal-aux ctx T (failure fe , snd) ≡ (success Ψ se d f , w)
-    → ∀ dγ k → SD.⟦ se ⟧ˢ dγ k ≡ SD.⟦ realize w ⟧ˢ dγ k
-  check-agreeV-RVar-initial-todo : ∀ (ctx : NamedCtx) (T : Type) {fe snd Ψ se d f w}
-    → E.checkElabV-RVar-bbc-initial-aux ctx T (failure fe , snd) ≡ (success Ψ se d f , w)
-    → ∀ dγ k → SD.⟦ se ⟧ˢ dγ k ≡ SD.⟦ realize w ⟧ˢ dγ k
-  check-agreeV-RVar-inl-todo : ∀ (ctx : NamedCtx) (T : Type) {fe snd Ψ se d f w}
-    → E.checkElabV-RVar-bbc-inl-aux ctx T (failure fe , snd) ≡ (success Ψ se d f , w)
-    → ∀ dγ k → SD.⟦ se ⟧ˢ dγ k ≡ SD.⟦ realize w ⟧ˢ dγ k
-  check-agreeV-RVar-inr-todo : ∀ (ctx : NamedCtx) (T : Type) {fe snd Ψ se d f w}
-    → E.checkElabV-RVar-bbc-inr-aux ctx T (failure fe , snd) ≡ (success Ψ se d f , w)
-    → ∀ dγ k → SD.⟦ se ⟧ˢ dγ k ≡ SD.⟦ realize w ⟧ˢ dγ k
+  -- The RVar residual: ONLY `poly` (rides the `bbc-other-poly-witness` gap). The 6
+  -- bare builtins (id/fst/snd/terminal/initial/inl/inr) are now DISCHARGED below.
   check-agreeV-RVar-poly-todo : ∀ (ctx : NamedCtx) (x : String) (T : Type) {fe snd Ψ se d f w}
     → E.checkElabV-RVar-bbc-other-aux ctx x T (failure fe , snd) ≡ (success Ψ se d f , w)
     → ∀ dγ k → SD.⟦ se ⟧ˢ dγ k ≡ SD.⟦ realize w ⟧ˢ dγ k
@@ -142,6 +120,190 @@ check-agreeV-RVar-id ctx (μ-type _) ()
 check-agreeV-RVar-id ctx (ν-type _) ()
 check-agreeV-RVar-id ctx (_ ⇒[ mk-kind One _ ] _) ()
 check-agreeV-RVar-id ctx (_ ⇒[ mk-kind Zero _ ] _) ()
+
+-- DISCHARGED bbc-fst leaf: success at `(A * B) ⇒[Many π] A'` (lookups absent, A≟A');
+-- `spec fst = lift-morphism IR.fst`, `realize-morph (m-fst) = IR.fst` ⇒ `refl`. All
+-- other targets make `checkElabV-RVar-bbc-fst-failure-aux` reduce to `failure`, so
+-- the success premise is a constructor clash Agda coverage prunes (no absurd matrix).
+check-agreeV-RVar-fst : ∀ (ctx : NamedCtx) (T : Type) {fe snd Ψ se d f w}
+  → E.checkElabV-RVar-bbc-fst-aux ctx T (failure fe , snd) ≡ (success Ψ se d f , w)
+  → ∀ dγ k → SD.⟦ se ⟧ˢ dγ k ≡ SD.⟦ realize w ⟧ˢ dγ k
+check-agreeV-RVar-fst ctx ((A * B) ⇒[ mk-kind Many π ] A') eq
+  with E.inspectLookupLocal ctx "fst" | E.inspectLookupImport ctx "fst" | eq
+... | E.llv-not-found _ | E.liv-not-found _ | eq' with A E.≟T A' | eq'
+...   | yes refl | refl = λ dγ k → refl
+...   | no _     | ()
+check-agreeV-RVar-fst ctx ((A * B) ⇒[ mk-kind Many π ] A') eq
+  | E.llv-not-found _ | E.liv-found _ | ()
+check-agreeV-RVar-fst ctx ((A * B) ⇒[ mk-kind Many π ] A') eq
+  | E.llv-found _ | _ | ()
+
+-- DISCHARGED bbc-snd (as fst, success at `(A * B) ⇒[Many π] B'` with B≟B').
+check-agreeV-RVar-snd : ∀ (ctx : NamedCtx) (T : Type) {fe snd Ψ se d f w}
+  → E.checkElabV-RVar-bbc-snd-aux ctx T (failure fe , snd) ≡ (success Ψ se d f , w)
+  → ∀ dγ k → SD.⟦ se ⟧ˢ dγ k ≡ SD.⟦ realize w ⟧ˢ dγ k
+check-agreeV-RVar-snd ctx ((A * B) ⇒[ mk-kind Many π ] B') eq
+  with E.inspectLookupLocal ctx "snd" | E.inspectLookupImport ctx "snd" | eq
+... | E.llv-not-found _ | E.liv-not-found _ | eq' with B E.≟T B' | eq'
+...   | yes refl | refl = λ dγ k → refl
+...   | no _     | ()
+check-agreeV-RVar-snd ctx ((A * B) ⇒[ mk-kind Many π ] B') eq
+  | E.llv-not-found _ | E.liv-found _ | ()
+check-agreeV-RVar-snd ctx ((A * B) ⇒[ mk-kind Many π ] B') eq
+  | E.llv-found _ | _ | ()
+
+-- DISCHARGED bbc-terminal: success at the canonical target; every other target makes
+-- the elaborator dispatch fail (absurd success-eq). Codomain-fixed ⇒ quantity must
+-- be concrete, so enumerate Many/One/Zero × codomain as plain top-level () (no
+-- with-abstraction); non-arrow targets auto-prune via the premise clash.
+check-agreeV-RVar-terminal : ∀ (ctx : NamedCtx) (T : Type) {fe snd Ψ se d f w}
+  → E.checkElabV-RVar-bbc-terminal-aux ctx T (failure fe , snd) ≡ (success Ψ se d f , w)
+  → ∀ dγ k → SD.⟦ se ⟧ˢ dγ k ≡ SD.⟦ realize w ⟧ˢ dγ k
+check-agreeV-RVar-terminal ctx (A ⇒[ mk-kind Many π ] Unit) eq
+  with E.inspectLookupLocal ctx "terminal" | E.inspectLookupImport ctx "terminal" | eq
+... | E.llv-not-found _ | E.liv-not-found _ | refl = λ dγ k → refl
+... | E.llv-not-found _ | E.liv-found _ | ()
+... | E.llv-found _ | _ | ()
+check-agreeV-RVar-terminal ctx (A ⇒[ mk-kind One _ ] Unit) ()
+check-agreeV-RVar-terminal ctx (A ⇒[ mk-kind Zero _ ] Unit) ()
+check-agreeV-RVar-terminal ctx (A ⇒[ mk-kind Many _ ] Void) ()
+check-agreeV-RVar-terminal ctx (A ⇒[ mk-kind One _ ] Void) ()
+check-agreeV-RVar-terminal ctx (A ⇒[ mk-kind Zero _ ] Void) ()
+check-agreeV-RVar-terminal ctx (A ⇒[ mk-kind Many _ ] Int) ()
+check-agreeV-RVar-terminal ctx (A ⇒[ mk-kind One _ ] Int) ()
+check-agreeV-RVar-terminal ctx (A ⇒[ mk-kind Zero _ ] Int) ()
+check-agreeV-RVar-terminal ctx (A ⇒[ mk-kind Many _ ] Float) ()
+check-agreeV-RVar-terminal ctx (A ⇒[ mk-kind One _ ] Float) ()
+check-agreeV-RVar-terminal ctx (A ⇒[ mk-kind Zero _ ] Float) ()
+check-agreeV-RVar-terminal ctx (A ⇒[ mk-kind Many _ ] Str) ()
+check-agreeV-RVar-terminal ctx (A ⇒[ mk-kind One _ ] Str) ()
+check-agreeV-RVar-terminal ctx (A ⇒[ mk-kind Zero _ ] Str) ()
+check-agreeV-RVar-terminal ctx (A ⇒[ mk-kind Many _ ] Buffer) ()
+check-agreeV-RVar-terminal ctx (A ⇒[ mk-kind One _ ] Buffer) ()
+check-agreeV-RVar-terminal ctx (A ⇒[ mk-kind Zero _ ] Buffer) ()
+check-agreeV-RVar-terminal ctx (A ⇒[ mk-kind Many _ ] (_ * _)) ()
+check-agreeV-RVar-terminal ctx (A ⇒[ mk-kind One _ ] (_ * _)) ()
+check-agreeV-RVar-terminal ctx (A ⇒[ mk-kind Zero _ ] (_ * _)) ()
+check-agreeV-RVar-terminal ctx (A ⇒[ mk-kind Many _ ] (_ + _)) ()
+check-agreeV-RVar-terminal ctx (A ⇒[ mk-kind One _ ] (_ + _)) ()
+check-agreeV-RVar-terminal ctx (A ⇒[ mk-kind Zero _ ] (_ + _)) ()
+check-agreeV-RVar-terminal ctx (A ⇒[ mk-kind Many _ ] (_ ⇒[ _ ] _)) ()
+check-agreeV-RVar-terminal ctx (A ⇒[ mk-kind One _ ] (_ ⇒[ _ ] _)) ()
+check-agreeV-RVar-terminal ctx (A ⇒[ mk-kind Zero _ ] (_ ⇒[ _ ] _)) ()
+check-agreeV-RVar-terminal ctx (A ⇒[ mk-kind Many _ ] (μ-type _)) ()
+check-agreeV-RVar-terminal ctx (A ⇒[ mk-kind One _ ] (μ-type _)) ()
+check-agreeV-RVar-terminal ctx (A ⇒[ mk-kind Zero _ ] (μ-type _)) ()
+check-agreeV-RVar-terminal ctx (A ⇒[ mk-kind Many _ ] (ν-type _)) ()
+check-agreeV-RVar-terminal ctx (A ⇒[ mk-kind One _ ] (ν-type _)) ()
+check-agreeV-RVar-terminal ctx (A ⇒[ mk-kind Zero _ ] (ν-type _)) ()
+
+-- DISCHARGED bbc-initial: success at `Void ⇒[Many π] A` (no type-eq, lookups only).
+check-agreeV-RVar-initial : ∀ (ctx : NamedCtx) (T : Type) {fe snd Ψ se d f w}
+  → E.checkElabV-RVar-bbc-initial-aux ctx T (failure fe , snd) ≡ (success Ψ se d f , w)
+  → ∀ dγ k → SD.⟦ se ⟧ˢ dγ k ≡ SD.⟦ realize w ⟧ˢ dγ k
+check-agreeV-RVar-initial ctx (Void ⇒[ mk-kind Many π ] A) eq
+  with E.inspectLookupLocal ctx "initial" | E.inspectLookupImport ctx "initial" | eq
+... | E.llv-not-found _ | E.liv-not-found _ | refl = λ dγ k → refl
+... | E.llv-not-found _ | E.liv-found _ | ()
+... | E.llv-found _ | _ | ()
+
+-- DISCHARGED bbc-inl: success at the canonical target; every other target makes
+-- the elaborator dispatch fail (absurd success-eq). Codomain-fixed ⇒ quantity must
+-- be concrete, so enumerate Many/One/Zero × codomain as plain top-level () (no
+-- with-abstraction); non-arrow targets auto-prune via the premise clash.
+check-agreeV-RVar-inl : ∀ (ctx : NamedCtx) (T : Type) {fe snd Ψ se d f w}
+  → E.checkElabV-RVar-bbc-inl-aux ctx T (failure fe , snd) ≡ (success Ψ se d f , w)
+  → ∀ dγ k → SD.⟦ se ⟧ˢ dγ k ≡ SD.⟦ realize w ⟧ˢ dγ k
+check-agreeV-RVar-inl ctx (A ⇒[ mk-kind Many π ] (A' + B)) eq
+  with E.inspectLookupLocal ctx "inl" | E.inspectLookupImport ctx "inl" | eq
+... | E.llv-not-found _ | E.liv-not-found _ | eq' with A E.≟T A' | eq'
+...   | yes refl | refl = λ dγ k → refl
+...   | no _     | ()
+check-agreeV-RVar-inl ctx (A ⇒[ mk-kind Many π ] (A' + B)) eq
+  | E.llv-not-found _ | E.liv-found _ | ()
+check-agreeV-RVar-inl ctx (A ⇒[ mk-kind Many π ] (A' + B)) eq
+  | E.llv-found _ | _ | ()
+check-agreeV-RVar-inl ctx (A ⇒[ mk-kind One _ ] (_ + _)) ()
+check-agreeV-RVar-inl ctx (A ⇒[ mk-kind Zero _ ] (_ + _)) ()
+check-agreeV-RVar-inl ctx (A ⇒[ mk-kind Many _ ] Unit) ()
+check-agreeV-RVar-inl ctx (A ⇒[ mk-kind One _ ] Unit) ()
+check-agreeV-RVar-inl ctx (A ⇒[ mk-kind Zero _ ] Unit) ()
+check-agreeV-RVar-inl ctx (A ⇒[ mk-kind Many _ ] Void) ()
+check-agreeV-RVar-inl ctx (A ⇒[ mk-kind One _ ] Void) ()
+check-agreeV-RVar-inl ctx (A ⇒[ mk-kind Zero _ ] Void) ()
+check-agreeV-RVar-inl ctx (A ⇒[ mk-kind Many _ ] Int) ()
+check-agreeV-RVar-inl ctx (A ⇒[ mk-kind One _ ] Int) ()
+check-agreeV-RVar-inl ctx (A ⇒[ mk-kind Zero _ ] Int) ()
+check-agreeV-RVar-inl ctx (A ⇒[ mk-kind Many _ ] Float) ()
+check-agreeV-RVar-inl ctx (A ⇒[ mk-kind One _ ] Float) ()
+check-agreeV-RVar-inl ctx (A ⇒[ mk-kind Zero _ ] Float) ()
+check-agreeV-RVar-inl ctx (A ⇒[ mk-kind Many _ ] Str) ()
+check-agreeV-RVar-inl ctx (A ⇒[ mk-kind One _ ] Str) ()
+check-agreeV-RVar-inl ctx (A ⇒[ mk-kind Zero _ ] Str) ()
+check-agreeV-RVar-inl ctx (A ⇒[ mk-kind Many _ ] Buffer) ()
+check-agreeV-RVar-inl ctx (A ⇒[ mk-kind One _ ] Buffer) ()
+check-agreeV-RVar-inl ctx (A ⇒[ mk-kind Zero _ ] Buffer) ()
+check-agreeV-RVar-inl ctx (A ⇒[ mk-kind Many _ ] (_ * _)) ()
+check-agreeV-RVar-inl ctx (A ⇒[ mk-kind One _ ] (_ * _)) ()
+check-agreeV-RVar-inl ctx (A ⇒[ mk-kind Zero _ ] (_ * _)) ()
+check-agreeV-RVar-inl ctx (A ⇒[ mk-kind Many _ ] (_ ⇒[ _ ] _)) ()
+check-agreeV-RVar-inl ctx (A ⇒[ mk-kind One _ ] (_ ⇒[ _ ] _)) ()
+check-agreeV-RVar-inl ctx (A ⇒[ mk-kind Zero _ ] (_ ⇒[ _ ] _)) ()
+check-agreeV-RVar-inl ctx (A ⇒[ mk-kind Many _ ] (μ-type _)) ()
+check-agreeV-RVar-inl ctx (A ⇒[ mk-kind One _ ] (μ-type _)) ()
+check-agreeV-RVar-inl ctx (A ⇒[ mk-kind Zero _ ] (μ-type _)) ()
+check-agreeV-RVar-inl ctx (A ⇒[ mk-kind Many _ ] (ν-type _)) ()
+check-agreeV-RVar-inl ctx (A ⇒[ mk-kind One _ ] (ν-type _)) ()
+check-agreeV-RVar-inl ctx (A ⇒[ mk-kind Zero _ ] (ν-type _)) ()
+
+-- DISCHARGED bbc-inr: success at the canonical target; every other target makes
+-- the elaborator dispatch fail (absurd success-eq). Codomain-fixed ⇒ quantity must
+-- be concrete, so enumerate Many/One/Zero × codomain as plain top-level () (no
+-- with-abstraction); non-arrow targets auto-prune via the premise clash.
+check-agreeV-RVar-inr : ∀ (ctx : NamedCtx) (T : Type) {fe snd Ψ se d f w}
+  → E.checkElabV-RVar-bbc-inr-aux ctx T (failure fe , snd) ≡ (success Ψ se d f , w)
+  → ∀ dγ k → SD.⟦ se ⟧ˢ dγ k ≡ SD.⟦ realize w ⟧ˢ dγ k
+check-agreeV-RVar-inr ctx (B ⇒[ mk-kind Many π ] (A + B')) eq
+  with E.inspectLookupLocal ctx "inr" | E.inspectLookupImport ctx "inr" | eq
+... | E.llv-not-found _ | E.liv-not-found _ | eq' with B E.≟T B' | eq'
+...   | yes refl | refl = λ dγ k → refl
+...   | no _     | ()
+check-agreeV-RVar-inr ctx (B ⇒[ mk-kind Many π ] (A + B')) eq
+  | E.llv-not-found _ | E.liv-found _ | ()
+check-agreeV-RVar-inr ctx (B ⇒[ mk-kind Many π ] (A + B')) eq
+  | E.llv-found _ | _ | ()
+check-agreeV-RVar-inr ctx (B ⇒[ mk-kind One _ ] (_ + _)) ()
+check-agreeV-RVar-inr ctx (B ⇒[ mk-kind Zero _ ] (_ + _)) ()
+check-agreeV-RVar-inr ctx (B ⇒[ mk-kind Many _ ] Unit) ()
+check-agreeV-RVar-inr ctx (B ⇒[ mk-kind One _ ] Unit) ()
+check-agreeV-RVar-inr ctx (B ⇒[ mk-kind Zero _ ] Unit) ()
+check-agreeV-RVar-inr ctx (B ⇒[ mk-kind Many _ ] Void) ()
+check-agreeV-RVar-inr ctx (B ⇒[ mk-kind One _ ] Void) ()
+check-agreeV-RVar-inr ctx (B ⇒[ mk-kind Zero _ ] Void) ()
+check-agreeV-RVar-inr ctx (B ⇒[ mk-kind Many _ ] Int) ()
+check-agreeV-RVar-inr ctx (B ⇒[ mk-kind One _ ] Int) ()
+check-agreeV-RVar-inr ctx (B ⇒[ mk-kind Zero _ ] Int) ()
+check-agreeV-RVar-inr ctx (B ⇒[ mk-kind Many _ ] Float) ()
+check-agreeV-RVar-inr ctx (B ⇒[ mk-kind One _ ] Float) ()
+check-agreeV-RVar-inr ctx (B ⇒[ mk-kind Zero _ ] Float) ()
+check-agreeV-RVar-inr ctx (B ⇒[ mk-kind Many _ ] Str) ()
+check-agreeV-RVar-inr ctx (B ⇒[ mk-kind One _ ] Str) ()
+check-agreeV-RVar-inr ctx (B ⇒[ mk-kind Zero _ ] Str) ()
+check-agreeV-RVar-inr ctx (B ⇒[ mk-kind Many _ ] Buffer) ()
+check-agreeV-RVar-inr ctx (B ⇒[ mk-kind One _ ] Buffer) ()
+check-agreeV-RVar-inr ctx (B ⇒[ mk-kind Zero _ ] Buffer) ()
+check-agreeV-RVar-inr ctx (B ⇒[ mk-kind Many _ ] (_ * _)) ()
+check-agreeV-RVar-inr ctx (B ⇒[ mk-kind One _ ] (_ * _)) ()
+check-agreeV-RVar-inr ctx (B ⇒[ mk-kind Zero _ ] (_ * _)) ()
+check-agreeV-RVar-inr ctx (B ⇒[ mk-kind Many _ ] (_ ⇒[ _ ] _)) ()
+check-agreeV-RVar-inr ctx (B ⇒[ mk-kind One _ ] (_ ⇒[ _ ] _)) ()
+check-agreeV-RVar-inr ctx (B ⇒[ mk-kind Zero _ ] (_ ⇒[ _ ] _)) ()
+check-agreeV-RVar-inr ctx (B ⇒[ mk-kind Many _ ] (μ-type _)) ()
+check-agreeV-RVar-inr ctx (B ⇒[ mk-kind One _ ] (μ-type _)) ()
+check-agreeV-RVar-inr ctx (B ⇒[ mk-kind Zero _ ] (μ-type _)) ()
+check-agreeV-RVar-inr ctx (B ⇒[ mk-kind Many _ ] (ν-type _)) ()
+check-agreeV-RVar-inr ctx (B ⇒[ mk-kind One _ ] (ν-type _)) ()
+check-agreeV-RVar-inr ctx (B ⇒[ mk-kind Zero _ ] (ν-type _)) ()
 
 -- RPair folded top-level (no `with`): take both sub-results explicitly +
 -- their sub-IHs as functions; the de-withed `inferElabV-RPair-aux` reduces by
@@ -1442,12 +1604,12 @@ mutual
   check-agreeV ctx (Raw.RVar x) T (acc rec) eq dγ k
     | failure fe , snd | eq' with E.classifyBareBuiltin x | eq'
   ...   | E.bbc-id       | eq'' = check-agreeV-RVar-id            ctx T eq'' dγ k
-  ...   | E.bbc-fst      | eq'' = check-agreeV-RVar-fst-todo      ctx T eq'' dγ k
-  ...   | E.bbc-snd      | eq'' = check-agreeV-RVar-snd-todo      ctx T eq'' dγ k
-  ...   | E.bbc-terminal | eq'' = check-agreeV-RVar-terminal-todo ctx T eq'' dγ k
-  ...   | E.bbc-initial  | eq'' = check-agreeV-RVar-initial-todo  ctx T eq'' dγ k
-  ...   | E.bbc-inl      | eq'' = check-agreeV-RVar-inl-todo      ctx T eq'' dγ k
-  ...   | E.bbc-inr      | eq'' = check-agreeV-RVar-inr-todo      ctx T eq'' dγ k
+  ...   | E.bbc-fst      | eq'' = check-agreeV-RVar-fst           ctx T eq'' dγ k
+  ...   | E.bbc-snd      | eq'' = check-agreeV-RVar-snd           ctx T eq'' dγ k
+  ...   | E.bbc-terminal | eq'' = check-agreeV-RVar-terminal      ctx T eq'' dγ k
+  ...   | E.bbc-initial  | eq'' = check-agreeV-RVar-initial       ctx T eq'' dγ k
+  ...   | E.bbc-inl      | eq'' = check-agreeV-RVar-inl           ctx T eq'' dγ k
+  ...   | E.bbc-inr      | eq'' = check-agreeV-RVar-inr           ctx T eq'' dγ k
   ...   | E.bbc-other    | eq'' = check-agreeV-RVar-poly-todo     ctx x T eq'' dγ k
 
 ------------------------------------------------------------------------
