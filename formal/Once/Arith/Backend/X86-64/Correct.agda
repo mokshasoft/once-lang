@@ -4,24 +4,12 @@
 ------------------------------------------------------------------------
 -- Once.Arith.Backend.X86-64.Correct
 --
--- Plan 0.53 — x86-64 instantiation of the shared width-parametric
--- refinement scaffold (`Once.Arith.Backend.Correct`) at width 64.
--- The concrete machine is postulated here (per I-arith-4 the discharge
--- reuses + extends `Once.CCC.Target.X86-64.Semantics`); the per-ctor
--- `refine-*` obligations come from the shared scaffold.
+-- Plan 0.54 — X86-64 instantiation of the shared width-parametric,
+-- PROVEN refinement module (`Once.Arith.Backend.Correct`) at width 64.
+-- Re-exports the proven concrete machine (`exec-x86`), the discharged
+-- `refine`/`refine-program`, and `block-correct` — no postulates.
 ------------------------------------------------------------------------
 
 module Once.Arith.Backend.X86-64.Correct where
 
-open import Once.Arith.Machine.AbsState using (ArithAbsState; InputShape)
-open import Once.Arith.Backend.XInstr.Syntax using (XProgram)
-
--- x86-64 concrete machine (SCAFFOLD — postulated until discharge).
-postulate
-  XState     : InputShape → Set
-  concretise : ∀ {sh} → ArithAbsState sh → XState sh
-  exec-x86   : ∀ {sh} → XProgram → XState sh → XState sh
-
--- x86-64 word width = 64. Instantiate the shared scaffold; re-export
--- `refine` + the per-ctor obligations.
-open import Once.Arith.Backend.Correct 64 XState concretise exec-x86 public
+open import Once.Arith.Backend.Correct 64 public
