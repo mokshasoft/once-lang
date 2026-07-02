@@ -17,7 +17,10 @@ import MAlonzo.RTE (coe, erased, AgdaAny, addInt, subInt, mulInt,
                     rem64, lt64, eq64, word64FromNat, word64ToNat)
 import qualified MAlonzo.RTE
 import qualified Data.Text
+import qualified MAlonzo.Code.Agda.Builtin.List
 import qualified MAlonzo.Code.Agda.Builtin.String
+import qualified MAlonzo.Code.Data.List.Relation.Unary.All
+import qualified MAlonzo.Code.Once.Target.RegConvention
 
 -- Once.Target.RiscV64.PhysReg.Reg
 d_Reg_8 = ()
@@ -53,32 +56,54 @@ d_showReg_52 v0
       C_t3_48 -> coe ("t3" :: Data.Text.Text)
       C_t4_50 -> coe ("t4" :: Data.Text.Text)
       _ -> MAlonzo.RTE.mazUnreachableError
--- Once.Target.RiscV64.PhysReg.RegClass
-d_RegClass_54 = ()
-data T_RegClass_54 = C_io_56 | C_ccc_58 | C_arith_60 | C_free_62
 -- Once.Target.RiscV64.PhysReg.owner
-d_owner_64 :: T_Reg_8 -> T_RegClass_54
-d_owner_64 v0
+d_owner_54 ::
+  T_Reg_8 -> MAlonzo.Code.Once.Target.RegConvention.T_RegClass_6
+d_owner_54 v0
   = case coe v0 of
-      C_zero_10 -> coe C_ccc_58
-      C_ra_12 -> coe C_ccc_58
-      C_sp_14 -> coe C_ccc_58
-      C_fp_16 -> coe C_ccc_58
-      C_a0_18 -> coe C_io_56
-      C_a1_20 -> coe C_ccc_58
-      C_a2_22 -> coe C_ccc_58
-      C_a3_24 -> coe C_arith_60
-      C_a4_26 -> coe C_arith_60
-      C_a5_28 -> coe C_arith_60
-      C_a6_30 -> coe C_ccc_58
-      C_a7_32 -> coe C_ccc_58
-      C_s1_34 -> coe C_ccc_58
-      C_s2_36 -> coe C_ccc_58
-      C_s3_38 -> coe C_ccc_58
-      C_s4_40 -> coe C_ccc_58
-      C_t0_42 -> coe C_io_56
-      C_t1_44 -> coe C_ccc_58
-      C_t2_46 -> coe C_ccc_58
-      C_t3_48 -> coe C_ccc_58
-      C_t4_50 -> coe C_ccc_58
+      C_zero_10 -> coe MAlonzo.Code.Once.Target.RegConvention.C_ccc_10
+      C_ra_12 -> coe MAlonzo.Code.Once.Target.RegConvention.C_ccc_10
+      C_sp_14 -> coe MAlonzo.Code.Once.Target.RegConvention.C_ccc_10
+      C_fp_16 -> coe MAlonzo.Code.Once.Target.RegConvention.C_ccc_10
+      C_a0_18 -> coe MAlonzo.Code.Once.Target.RegConvention.C_io_8
+      C_a1_20 -> coe MAlonzo.Code.Once.Target.RegConvention.C_ccc_10
+      C_a2_22 -> coe MAlonzo.Code.Once.Target.RegConvention.C_ccc_10
+      C_a3_24 -> coe MAlonzo.Code.Once.Target.RegConvention.C_arith_12
+      C_a4_26 -> coe MAlonzo.Code.Once.Target.RegConvention.C_arith_12
+      C_a5_28 -> coe MAlonzo.Code.Once.Target.RegConvention.C_arith_12
+      C_a6_30 -> coe MAlonzo.Code.Once.Target.RegConvention.C_ccc_10
+      C_a7_32 -> coe MAlonzo.Code.Once.Target.RegConvention.C_ccc_10
+      C_s1_34 -> coe MAlonzo.Code.Once.Target.RegConvention.C_ccc_10
+      C_s2_36 -> coe MAlonzo.Code.Once.Target.RegConvention.C_ccc_10
+      C_s3_38 -> coe MAlonzo.Code.Once.Target.RegConvention.C_ccc_10
+      C_s4_40 -> coe MAlonzo.Code.Once.Target.RegConvention.C_ccc_10
+      C_t0_42 -> coe MAlonzo.Code.Once.Target.RegConvention.C_io_8
+      C_t1_44 -> coe MAlonzo.Code.Once.Target.RegConvention.C_ccc_10
+      C_t2_46 -> coe MAlonzo.Code.Once.Target.RegConvention.C_ccc_10
+      C_t3_48 -> coe MAlonzo.Code.Once.Target.RegConvention.C_ccc_10
+      C_t4_50 -> coe MAlonzo.Code.Once.Target.RegConvention.C_ccc_10
       _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.Target.RiscV64.PhysReg.arith-budget
+d_arith'45'budget_56 :: [T_Reg_8]
+d_arith'45'budget_56
+  = coe
+      MAlonzo.Code.Agda.Builtin.List.C__'8759'__22 (coe C_a3_24)
+      (coe
+         MAlonzo.Code.Agda.Builtin.List.C__'8759'__22 (coe C_a4_26)
+         (coe
+            MAlonzo.Code.Agda.Builtin.List.C__'8759'__22 (coe C_a5_28)
+            (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)))
+-- Once.Target.RiscV64.PhysReg.convention
+d_convention_58 ::
+  MAlonzo.Code.Once.Target.RegConvention.T_RegConvention_16
+d_convention_58
+  = coe
+      MAlonzo.Code.Once.Target.RegConvention.C_constructor_42
+      d_showReg_52 d_owner_54 d_arith'45'budget_56
+      (coe
+         MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60 erased
+         (coe
+            MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60 erased
+            (coe
+               MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60 erased
+               (coe MAlonzo.Code.Data.List.Relation.Unary.All.C_'91''93'_50))))

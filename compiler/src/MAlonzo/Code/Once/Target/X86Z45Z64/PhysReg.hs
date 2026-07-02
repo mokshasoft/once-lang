@@ -17,7 +17,10 @@ import MAlonzo.RTE (coe, erased, AgdaAny, addInt, subInt, mulInt,
                     rem64, lt64, eq64, word64FromNat, word64ToNat)
 import qualified MAlonzo.RTE
 import qualified Data.Text
+import qualified MAlonzo.Code.Agda.Builtin.List
 import qualified MAlonzo.Code.Agda.Builtin.String
+import qualified MAlonzo.Code.Data.List.Relation.Unary.All
+import qualified MAlonzo.Code.Once.Target.RegConvention
 
 -- Once.Target.X86-64.PhysReg.Reg
 d_Reg_8 = ()
@@ -47,27 +50,53 @@ d_showReg_42 v0
       C_r14_38 -> coe ("%r14" :: Data.Text.Text)
       C_r15_40 -> coe ("%r15" :: Data.Text.Text)
       _ -> MAlonzo.RTE.mazUnreachableError
--- Once.Target.X86-64.PhysReg.RegClass
-d_RegClass_44 = ()
-data T_RegClass_44 = C_io_46 | C_ccc_48 | C_arith_50 | C_free_52
 -- Once.Target.X86-64.PhysReg.owner
-d_owner_54 :: T_Reg_8 -> T_RegClass_44
-d_owner_54 v0
+d_owner_44 ::
+  T_Reg_8 -> MAlonzo.Code.Once.Target.RegConvention.T_RegClass_6
+d_owner_44 v0
   = case coe v0 of
-      C_rax_10 -> coe C_io_46
-      C_rbx_12 -> coe C_ccc_48
-      C_rcx_14 -> coe C_ccc_48
-      C_rdx_16 -> coe C_free_52
-      C_rsi_18 -> coe C_ccc_48
-      C_rdi_20 -> coe C_io_46
-      C_rbp_22 -> coe C_ccc_48
-      C_rsp_24 -> coe C_ccc_48
-      C_r8_26 -> coe C_arith_50
-      C_r9_28 -> coe C_arith_50
-      C_r10_30 -> coe C_arith_50
-      C_r11_32 -> coe C_arith_50
-      C_r12_34 -> coe C_ccc_48
-      C_r13_36 -> coe C_free_52
-      C_r14_38 -> coe C_free_52
-      C_r15_40 -> coe C_ccc_48
+      C_rax_10 -> coe MAlonzo.Code.Once.Target.RegConvention.C_io_8
+      C_rbx_12 -> coe MAlonzo.Code.Once.Target.RegConvention.C_ccc_10
+      C_rcx_14 -> coe MAlonzo.Code.Once.Target.RegConvention.C_ccc_10
+      C_rdx_16 -> coe MAlonzo.Code.Once.Target.RegConvention.C_free_14
+      C_rsi_18 -> coe MAlonzo.Code.Once.Target.RegConvention.C_ccc_10
+      C_rdi_20 -> coe MAlonzo.Code.Once.Target.RegConvention.C_io_8
+      C_rbp_22 -> coe MAlonzo.Code.Once.Target.RegConvention.C_ccc_10
+      C_rsp_24 -> coe MAlonzo.Code.Once.Target.RegConvention.C_ccc_10
+      C_r8_26 -> coe MAlonzo.Code.Once.Target.RegConvention.C_arith_12
+      C_r9_28 -> coe MAlonzo.Code.Once.Target.RegConvention.C_arith_12
+      C_r10_30 -> coe MAlonzo.Code.Once.Target.RegConvention.C_arith_12
+      C_r11_32 -> coe MAlonzo.Code.Once.Target.RegConvention.C_arith_12
+      C_r12_34 -> coe MAlonzo.Code.Once.Target.RegConvention.C_ccc_10
+      C_r13_36 -> coe MAlonzo.Code.Once.Target.RegConvention.C_free_14
+      C_r14_38 -> coe MAlonzo.Code.Once.Target.RegConvention.C_free_14
+      C_r15_40 -> coe MAlonzo.Code.Once.Target.RegConvention.C_ccc_10
       _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.Target.X86-64.PhysReg.arith-budget
+d_arith'45'budget_46 :: [T_Reg_8]
+d_arith'45'budget_46
+  = coe
+      MAlonzo.Code.Agda.Builtin.List.C__'8759'__22 (coe C_r8_26)
+      (coe
+         MAlonzo.Code.Agda.Builtin.List.C__'8759'__22 (coe C_r9_28)
+         (coe
+            MAlonzo.Code.Agda.Builtin.List.C__'8759'__22 (coe C_r10_30)
+            (coe
+               MAlonzo.Code.Agda.Builtin.List.C__'8759'__22 (coe C_r11_32)
+               (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16))))
+-- Once.Target.X86-64.PhysReg.convention
+d_convention_48 ::
+  MAlonzo.Code.Once.Target.RegConvention.T_RegConvention_16
+d_convention_48
+  = coe
+      MAlonzo.Code.Once.Target.RegConvention.C_constructor_42
+      d_showReg_42 d_owner_44 d_arith'45'budget_46
+      (coe
+         MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60 erased
+         (coe
+            MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60 erased
+            (coe
+               MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60 erased
+               (coe
+                  MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60 erased
+                  (coe MAlonzo.Code.Data.List.Relation.Unary.All.C_'91''93'_50)))))

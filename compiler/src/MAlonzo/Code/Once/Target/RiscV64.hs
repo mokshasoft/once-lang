@@ -28,6 +28,7 @@ import qualified MAlonzo.Code.Once.CCC.Target.RiscV64.Emit
 import qualified MAlonzo.Code.Once.CanonicalName
 import qualified MAlonzo.Code.Once.IR
 import qualified MAlonzo.Code.Once.Target
+import qualified MAlonzo.Code.Once.Target.RiscV64.PhysReg
 import qualified MAlonzo.Code.Once.Target.Symbol
 import qualified MAlonzo.Code.Once.Type
 
@@ -400,10 +401,11 @@ du_emit'45'bodies_66 v0 v1
 d_riscv64_88 :: MAlonzo.Code.Once.Target.T_Target_4
 d_riscv64_88
   = coe
-      MAlonzo.Code.Once.Target.C_constructor_46
+      MAlonzo.Code.Once.Target.C_constructor_50
       (coe d_riscv64'45'irToAsm_18) (coe d_riscv64'45'irToBodies_42)
       (coe d_riscv64'45'asmHeader_6)
       (coe d_riscv64'45'functionPrologue_8)
       (coe d_riscv64'45'functionEpilogue_12)
       (coe
          MAlonzo.Code.Once.Arith.Backend.RiscV64.Emit.d_emit'45'arith'45'blocks_120)
+      (coe MAlonzo.Code.Once.Target.RiscV64.PhysReg.d_convention_58)

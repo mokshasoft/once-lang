@@ -509,7 +509,7 @@ du_cfm'45'built'45'aux_542 v0 v1 v2
                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                 (coe
                    MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                   (MAlonzo.Code.Once.Target.d_asmHeader_38
+                   (MAlonzo.Code.Once.Target.d_asmHeader_40
                       (coe MAlonzo.Code.Once.Compile.d_archTarget_606 (coe v0)))
                    (MAlonzo.Code.Once.Compile.d_compileAllWithTarget_646
                       (coe MAlonzo.Code.Once.Compile.d_archTarget_606 (coe v0))

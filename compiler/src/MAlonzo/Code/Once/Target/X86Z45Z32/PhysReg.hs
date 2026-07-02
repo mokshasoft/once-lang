@@ -17,7 +17,10 @@ import MAlonzo.RTE (coe, erased, AgdaAny, addInt, subInt, mulInt,
                     rem64, lt64, eq64, word64FromNat, word64ToNat)
 import qualified MAlonzo.RTE
 import qualified Data.Text
+import qualified MAlonzo.Code.Agda.Builtin.List
 import qualified MAlonzo.Code.Agda.Builtin.String
+import qualified MAlonzo.Code.Data.List.Relation.Unary.All
+import qualified MAlonzo.Code.Once.Target.RegConvention
 
 -- Once.Target.X86-32.PhysReg.Reg
 d_Reg_8 = ()
@@ -38,19 +41,29 @@ d_showReg_26 v0
       C_ebp_22 -> coe ("%ebp" :: Data.Text.Text)
       C_esp_24 -> coe ("%esp" :: Data.Text.Text)
       _ -> MAlonzo.RTE.mazUnreachableError
--- Once.Target.X86-32.PhysReg.RegClass
-d_RegClass_28 = ()
-data T_RegClass_28 = C_io_30 | C_ccc_32 | C_arith_34 | C_free_36
 -- Once.Target.X86-32.PhysReg.owner
-d_owner_38 :: T_Reg_8 -> T_RegClass_28
-d_owner_38 v0
+d_owner_28 ::
+  T_Reg_8 -> MAlonzo.Code.Once.Target.RegConvention.T_RegClass_6
+d_owner_28 v0
   = case coe v0 of
-      C_eax_10 -> coe C_io_30
-      C_ebx_12 -> coe C_ccc_32
-      C_ecx_14 -> coe C_io_30
-      C_edx_16 -> coe C_ccc_32
-      C_esi_18 -> coe C_ccc_32
-      C_edi_20 -> coe C_ccc_32
-      C_ebp_22 -> coe C_ccc_32
-      C_esp_24 -> coe C_ccc_32
+      C_eax_10 -> coe MAlonzo.Code.Once.Target.RegConvention.C_io_8
+      C_ebx_12 -> coe MAlonzo.Code.Once.Target.RegConvention.C_ccc_10
+      C_ecx_14 -> coe MAlonzo.Code.Once.Target.RegConvention.C_io_8
+      C_edx_16 -> coe MAlonzo.Code.Once.Target.RegConvention.C_ccc_10
+      C_esi_18 -> coe MAlonzo.Code.Once.Target.RegConvention.C_ccc_10
+      C_edi_20 -> coe MAlonzo.Code.Once.Target.RegConvention.C_ccc_10
+      C_ebp_22 -> coe MAlonzo.Code.Once.Target.RegConvention.C_ccc_10
+      C_esp_24 -> coe MAlonzo.Code.Once.Target.RegConvention.C_ccc_10
       _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.Target.X86-32.PhysReg.arith-budget
+d_arith'45'budget_30 :: [T_Reg_8]
+d_arith'45'budget_30
+  = coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
+-- Once.Target.X86-32.PhysReg.convention
+d_convention_32 ::
+  MAlonzo.Code.Once.Target.RegConvention.T_RegConvention_16
+d_convention_32
+  = coe
+      MAlonzo.Code.Once.Target.RegConvention.C_constructor_42
+      d_showReg_26 d_owner_28 d_arith'45'budget_30
+      (coe MAlonzo.Code.Data.List.Relation.Unary.All.C_'91''93'_50)

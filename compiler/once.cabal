@@ -406,6 +406,7 @@ library
       MAlonzo.Code.Once.Surface.Thinning
       MAlonzo.Code.Once.Target
       MAlonzo.Code.Once.Target.Arch
+      MAlonzo.Code.Once.Target.RegConvention
       MAlonzo.Code.Once.Target.RiscV64
       MAlonzo.Code.Once.Target.RiscV64.PhysReg
       MAlonzo.Code.Once.Target.Symbol
