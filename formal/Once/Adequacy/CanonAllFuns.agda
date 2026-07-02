@@ -14,7 +14,8 @@
 module Once.Adequacy.CanonAllFuns where
 
 open import Data.Bool using (Bool; true; false)
-open import Data.List using (List; []; _∷_; map)
+open import Data.List using (List; []; _∷_; map; length)
+open import Data.Nat.Induction using (<-wellFounded)
 open import Data.Maybe using (just; nothing)
 open import Data.Product using (_,_; ∃-syntax)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
@@ -105,13 +106,15 @@ inferType-transport ctx polysU b pib fi ty eq
 ... | true  | Ψ , eE , d , f , eqU =
         inferElab→inferType ctx (canonPolysCtx b (C.buildPolyCtx polysU)) (funBody fi) ty
           (let _ , _ , _ , eqR = infer-complete
-                 (polys-transport-ᵢ b (C.buildPolyCtx polysU) pib (infer-sound _ (funBody fi) eqU))
+                 (polys-transport-ᵢ b (C.buildPolyCtx polysU) pib
+                   (<-wellFounded (length (C.buildPolyCtx polysU))) (infer-sound _ (funBody fi) eqU))
            in eqR)
 -- USER body: canonExpr on the body, then the poly context canonicalizes.
 ... | false | Ψ , eE , d , f , eqU =
         inferElab→inferType ctx (canonPolysCtx b (C.buildPolyCtx polysU)) (canonExpr b [] [] (funBody fi)) ty
           (let _ , _ , _ , eqR = infer-complete
                  (polys-transport-ᵢ b (C.buildPolyCtx polysU) pib
+                   (<-wellFounded (length (C.buildPolyCtx polysU)))
                    (canon-pres-ᵢ b (⊆ᵇ-nil {b}) (mkPIB pib)
                      (infer-sound _ (funBody fi) eqU)))
            in eqR)
@@ -142,8 +145,10 @@ body-transport :
       ⊢ᶜ funBody (canonFI b fi) ∶ ty ⨾ Ψ
 body-transport b polysU sigEffs ctx pib fi ty jud
   rewrite buildPolyCtx-canon b polysU with funIsPrimitive fi
-... | true  = polys-transport-ᶜ b (C.buildPolyCtx polysU) pib jud
+... | true  = polys-transport-ᶜ b (C.buildPolyCtx polysU) pib
+                (<-wellFounded (length (C.buildPolyCtx polysU))) jud
 ... | false = polys-transport-ᶜ b (C.buildPolyCtx polysU) pib
+                (<-wellFounded (length (C.buildPolyCtx polysU)))
                 (canon-pres-ᶜ {ctx = ctxWithImportsAndSelfAndPolys ctx (C.buildPolyCtx polysU) sigEffs (funName fi) ty}
                   b (⊆ᵇ-nil {b}) (mkPIB pib) jud)
 
