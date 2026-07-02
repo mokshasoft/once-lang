@@ -12,12 +12,11 @@
 -- `ir-obs-correct` routes `Cata → cata-correct`, `cata-correct` is
 -- LOAD-BEARING for the apex `correct` on this target too.
 --
--- The remaining per-target FS plumbing (entry state, its preconditions,
--- the per-IR observation bound, the prefix lift from `traces-agree` to
--- `ir-flat-correct`'s ∀-n shape) is bundled in the single NAMED bridge
--- `x86-32-flat-from-obs` — the same shape/trust as x86-64's
--- `x86-flat-from-obs`. This raises x86-32 from a whole-record postulate to
--- exactly x86-64's level.
+-- x86-32-correct is now CONSTRUCTED via the shared `FlatFromObs` module
+-- (Phase B L1): `asm-sem`/`flat-trace` DEFINED, `assemble-correct` = `refl`,
+-- with named postulates `asm-trace-correct`/`ir-flat-correct` + the loader
+-- `entry-s`/`entry-alloc`. The old monolithic `x86-32-flat-from-obs`
+-- postulate is retired.
 ------------------------------------------------------------------------
 
 module Once.Adequacy.ArchCorrectness.X86-32 where
