@@ -1470,6 +1470,57 @@ mutual
     let (_ , _ , _ , eqI) = infer-complete (t-effApp notPoly dF dX)
     in checkElab-fallback-RApp-generic f x (T.Unit T.⇒[ T.mk-kind T.Many T.eff ] B) notPoly eqI
 
+  -- The EFF-mode SWITCH (pure⊑eff twin of `iFromInfer`): an expr synthesizing a
+  -- PURE arrow elaborates at the EFF arrow. Recurses on the INFER derivation — the
+  -- catch-all-expr heads lift the pure `iFromInfer` result through
+  -- `embedOrSubsume-lifts` (embed at pure, subsume at eff); the app/var heads use
+  -- their per-head eff fallback. `subsume-complete (t-embed d)` collapses to ONE
+  -- clause delegating here (parity with `check-complete (t-embed d) = iFromInfer d`),
+  -- so the bidirectional switch is a single named two-mode concept (pure + eff).
+  iFromInferEff : ∀ {ctx : NamedCtx} {e : RawExpr} {A B : Type}
+      {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    → ctx ⊢ᵢ e ∶ (A T.⇒[ T.mk-kind T.Many T.pure ] B) ⨾ Ψ
+    → ∃[ eE ] ∃[ d ] ∃[ f ]
+        checkElab ctx e (A T.⇒[ T.mk-kind T.Many T.eff ] B) ≡ success Ψ eE d f
+  -- catch-all-expr heads: lift the pure switch result through embedOrSubsume.
+  iFromInferEff {ctx} {_} {A} {B} d@(t-var-resolved {cn = cn} eqImp) =
+    let (_ , _ , _ , eqC) = iFromInfer d
+    in embedOrSubsume-lifts ctx (Raw.RResolved cn) A B (inferElabV ctx (Raw.RResolved cn)) eqC
+  iFromInferEff {ctx} {_} {A} {B} d@(t-var-qualified {name = name} {alias = alias} eqImp) =
+    let (_ , _ , _ , eqC) = iFromInfer d
+    in embedOrSubsume-lifts ctx (Raw.RQualified name alias) A B (inferElabV ctx (Raw.RQualified name alias)) eqC
+  iFromInferEff {ctx} {_} {A} {B} d@(t-let {x = x} {e₁ = e₁} {e₂ = e₂} d₁ d₂) =
+    let (_ , _ , _ , eqC) = iFromInfer d
+    in embedOrSubsume-lifts ctx (Raw.RLet x e₁ e₂) A B (inferElabV ctx (Raw.RLet x e₁ e₂)) eqC
+  iFromInferEff {ctx} {_} {A} {B} d@(t-case {scrut = scrut} {eL = eL} {eR = eR} {xL = xL} {xR = xR} dS dL dR) =
+    let (_ , _ , _ , eqC) = iFromInfer d
+    in embedOrSubsume-lifts ctx (Raw.RDestruct scrut xL eL xR eR) A B (inferElabV ctx (Raw.RDestruct scrut xL eL xR eR)) eqC
+  iFromInferEff {ctx} {_} {A} {B} d@(t-annot {e = e} {T = T} d₀) =
+    let (_ , _ , _ , eqC) = iFromInfer d
+    in embedOrSubsume-lifts ctx (Raw.RAnnot e T) A B (inferElabV ctx (Raw.RAnnot e T)) eqC
+  -- app / var heads: per-head eff fallback from the infer equation.
+  iFromInferEff {ctx} {_} {A} {B} dd@(t-app {f = f} {x = x} notPoly dF dX) =
+    let (_ , _ , _ , eqI) = infer-complete dd
+    in checkElab-fallback-RApp-generic-eff f x A B notPoly eqI
+  iFromInferEff {ctx} {_} {A} {B} dd@(t-id-app {e = e} d) =
+    let (_ , _ , _ , eqI) = infer-complete dd
+    in checkElab-fallback-RApp-id-eff e A B eqI
+  iFromInferEff {ctx} {_} {A} {B} dd@(t-fst-app {e = e} d) =
+    let (_ , _ , _ , eqI) = infer-complete dd
+    in checkElab-fallback-RApp-fst-eff e A B eqI
+  iFromInferEff {ctx} {_} {A} {B} dd@(t-snd-app {e = e} d) =
+    let (_ , _ , _ , eqI) = infer-complete dd
+    in checkElab-fallback-RApp-snd-eff e A B eqI
+  iFromInferEff {ctx} {_} {A} {B} dd@(t-var-local {x = x} _ _) =
+    let (_ , _ , _ , eqI) = infer-complete dd
+    in checkElab-fallback-RVar-eff x A B eqI
+  iFromInferEff {ctx} {_} {A} {B} dd@(t-var-import {x = x} _ _ _) =
+    let (_ , _ , _ , eqI) = infer-complete dd
+    in checkElab-fallback-RVar-eff x A B eqI
+  iFromInferEff {ctx} {_} {A} {B} dd@(t-apply-app-infer {p = p} d) =
+    let (_ , _ , _ , eqI) = infer-complete dd
+    in checkElab-fallback-RApp-apply-eff p A B eqI
+
   infer-complete :
     ∀ {ctx : NamedCtx} {e : RawExpr} {A : Type}
       {Ψ : Surface.Usage (NamedCtx.size ctx)}
@@ -1793,60 +1844,13 @@ mutual
   subsume-complete {ctx} (t-lam {x = x} {body = body} {A = A} {B = B} {q' = q'} leqEq bodyD) =
     let (_ , _ , _ , eqBody) = check-complete bodyD
     in check-complete-RLam-eff ctx x body A q' B leqEq eqBody
-  -- t-embed at a catch-all expr: checkElab = embedOrSubsume … (inferElabV …)
-  -- DEFINITIONALLY, so `check-complete` of the same derivation IS the pure-side
-  -- equation `embedOrSubsume-lifts` consumes (embed at pure, subsume at eff).
-  subsume-complete {ctx} {_} {A} {B} (t-embed d@(t-var-resolved {cn = cn} eqImp)) =
-    let (_ , _ , _ , eqC) = check-complete (t-embed d)
-    in embedOrSubsume-lifts ctx (Raw.RResolved cn) A B (inferElabV ctx (Raw.RResolved cn)) eqC
-  subsume-complete {ctx} {_} {A} {B} (t-embed d@(t-var-qualified {name = name} {alias = alias} eqImp)) =
-    let (_ , _ , _ , eqC) = check-complete (t-embed d)
-    in embedOrSubsume-lifts ctx (Raw.RQualified name alias) A B (inferElabV ctx (Raw.RQualified name alias)) eqC
-  -- t-embed at a generic app: ahv-other now routes through the named
-  -- embedOrSubsume, so the eff (subsume) fallback discharges it from the
-  -- inferElab equation (no mkCtx-Σ matching).
-  subsume-complete {ctx} {_} {A} {B} (t-embed dd@(t-app {f = f} {x = x} notPoly dF dX)) =
-    let (_ , _ , _ , eqI) = infer-complete dd
-    in checkElab-fallback-RApp-generic-eff f x A B notPoly eqI
-  -- Other catch-all exprs (RLet / RDestruct / RAnnot): checkElab = embedOrSubsume
-  -- definitionally, so the check-complete-of-same-derivation trick applies.
-  subsume-complete {ctx} {Raw.RLet x e₁ e₂} {A} {B} (t-embed d) =
-    let (_ , _ , _ , eqC) = check-complete (t-embed d)
-    in embedOrSubsume-lifts ctx (Raw.RLet x e₁ e₂) A B (inferElabV ctx (Raw.RLet x e₁ e₂)) eqC
-  subsume-complete {ctx} {Raw.RDestruct s xL eL xR eR} {A} {B} (t-embed d) =
-    let (_ , _ , _ , eqC) = check-complete (t-embed d)
-    in embedOrSubsume-lifts ctx (Raw.RDestruct s xL eL xR eR) A B (inferElabV ctx (Raw.RDestruct s xL eL xR eR)) eqC
-  subsume-complete {ctx} {Raw.RAnnot e₀ T₀} {A} {B} (t-embed d) =
-    let (_ , _ , _ , eqC) = check-complete (t-embed d)
-    in embedOrSubsume-lifts ctx (Raw.RAnnot e₀ T₀) A B (inferElabV ctx (Raw.RAnnot e₀ T₀)) eqC
-  -- t-embed at a builtin-app head (id/fst/snd): now routes through the named
-  -- embedOrSubsume, so the per-head eff fallback discharges it from infer.
-  subsume-complete {ctx} {_} {A} {B} (t-embed dd@(t-id-app {e = e} d)) =
-    let (_ , _ , _ , eqI) = infer-complete dd
-    in checkElab-fallback-RApp-id-eff e A B eqI
-  subsume-complete {ctx} {_} {A} {B} (t-embed dd@(t-fst-app {e = e} d)) =
-    let (_ , _ , _ , eqI) = infer-complete dd
-    in checkElab-fallback-RApp-fst-eff e A B eqI
-  subsume-complete {ctx} {_} {A} {B} (t-embed dd@(t-snd-app {e = e} d)) =
-    let (_ , _ , _ , eqI) = infer-complete dd
-    in checkElab-fallback-RApp-snd-eff e A B eqI
-  -- t-embed at an RVar (local / import): infer succeeds, so the dispatch routes
-  -- through the named embedOrSubsume → the RVar eff fallback discharges it.
-  subsume-complete {ctx} {_} {A} {B} (t-embed dd@(t-var-local {x = x} _ _)) =
-    let (_ , _ , _ , eqI) = infer-complete dd
-    in checkElab-fallback-RVar-eff x A B eqI
-  subsume-complete {ctx} {_} {A} {B} (t-embed dd@(t-var-import {x = x} _ _ _)) =
-    let (_ , _ , _ , eqI) = infer-complete dd
-    in checkElab-fallback-RVar-eff x A B eqI
-  -- t-embed (t-apply-app-infer): apply now routes through embedOrSubsume (its
-  -- check ADDS subsumption), so the apply eff fallback discharges it from infer.
-  subsume-complete {ctx} {_} {A} {B} (t-embed dd@(t-apply-app-infer {p = p} d)) =
-    let (_ , _ , _ , eqI) = infer-complete dd
-    in checkElab-fallback-RApp-apply-eff p A B eqI
-  -- t-apply-check: same — build t-apply-app-infer from the SAME premise.
-  subsume-complete {ctx} {_} {A} {B} (t-apply-check {p = p} d) =
-    let (_ , _ , _ , eqI) = infer-complete (t-apply-app-infer d)
-    in checkElab-fallback-RApp-apply-eff p A B eqI
+  -- t-embed: ONE clause — the EFF-mode switch `iFromInferEff` recurses on the infer
+  -- derivation (parity with `check-complete (t-embed d) = iFromInfer d`), so pure and
+  -- eff mode share one named bidirectional switch instead of 12 unrolled clauses.
+  subsume-complete (t-embed d) = iFromInferEff d
+  -- t-apply-check: the check-mode apply bridges to the infer-mode apply on the SAME
+  -- premise `d` (a principled mode-conversion), then rides the same eff switch.
+  subsume-complete (t-apply-check {p = p} d) = iFromInferEff (t-apply-app-infer d)
   -- t-initial-app-check: `initial` is grade-agnostic (Void → any T), so given
   -- arg : Void it checks at the eff arrow directly (no subsumption needed).
   subsume-complete {ctx} {_} {A} {B} (t-initial-app-check {arg = arg} d) =
