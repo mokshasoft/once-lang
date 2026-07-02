@@ -986,7 +986,7 @@ agree-check-RApp ctx f arg (A + B) E.ahv-inl veq disp inferIH argCheckIH argInfe
   with E.checkElabV ctx arg A in aeq | disp
 ... | failure _ , _ | ()
 ... | success Ψ argE d fr , w | refl rewrite argCheckIH aeq dγ k = refl
-agree-check-RApp ctx f arg (X ⇒[ mk-kind Many pure ] (A + B)) E.ahv-inl veq disp inferIH argCheckIH argInferIH fCheckIH dγ k
+agree-check-RApp ctx f arg (X ⇒[ mk-kind Many π ] (A + B)) E.ahv-inl veq disp inferIH argCheckIH argInferIH fCheckIH dγ k
   with E.inspectCheckG ctx X (Raw.RApp (Raw.RVar "inl") arg) (A + B) | disp
 ... | E.cgv-nothing _ | ()
 ... | E.cgv-just {m} {gd} cgeq | refl rewrite checkG-realize gd cgeq = refl
@@ -994,11 +994,11 @@ agree-check-RApp ctx f arg (A + B) E.ahv-inr veq disp inferIH argCheckIH argInfe
   with E.checkElabV ctx arg B in aeq | disp
 ... | failure _ , _ | ()
 ... | success Ψ argE d fr , w | refl rewrite argCheckIH aeq dγ k = refl
-agree-check-RApp ctx f arg (X ⇒[ mk-kind Many pure ] (A + B)) E.ahv-inr veq disp inferIH argCheckIH argInferIH fCheckIH dγ k
+agree-check-RApp ctx f arg (X ⇒[ mk-kind Many π ] (A + B)) E.ahv-inr veq disp inferIH argCheckIH argInferIH fCheckIH dγ k
   with E.inspectCheckG ctx X (Raw.RApp (Raw.RVar "inr") arg) (A + B) | disp
 ... | E.cgv-nothing _ | ()
 ... | E.cgv-just {m} {gd} cgeq | refl rewrite checkG-realize gd cgeq = refl
-agree-check-RApp ctx f arg (X ⇒[ mk-kind Many pure ] (μ-type F)) E.ahv-In veq disp inferIH argCheckIH argInferIH fCheckIH dγ k
+agree-check-RApp ctx f arg (X ⇒[ mk-kind Many π ] (μ-type F)) E.ahv-In veq disp inferIH argCheckIH argInferIH fCheckIH dγ k
   with E.inspectCheckG ctx X (Raw.RApp (Raw.RVar "In") arg) (μ-type F) | disp
 ... | E.cgv-nothing _ | ()
 ... | E.cgv-just {m} {gd} cgeq | refl rewrite checkG-realize gd cgeq = refl
