@@ -1364,6 +1364,112 @@ mutual
   check-completeV {ctx} {e} {A} d with checkElabV ctx e A | check-complete d
   ... | r , w0 | eE , d' , f , eq rewrite eq = eE , d' , f , w0 , refl
 
+  -- The bidirectional SWITCH lemma `infer ⊆ check`, by structural recursion on the
+  -- INFER derivation (genuine subterms — NO `t-embed` re-wrap). `check-complete
+  -- (t-embed d)` is now ONE clause delegating here, so this is the single, uniform
+  -- switch (was 24 scattered clauses + the `pair-lit` postulate). Neutral forms
+  -- reduce via `infer-complete` + the `checkElab-fallback-*` switch; the INTRO form
+  -- `t-pair` RECURSES (its components, synthesized in the derivation, must be
+  -- re-CHECKED by `checkPairLit`) — the sub-derivations d₁/d₂ are genuine subterms,
+  -- so the recursion is structural (this is what the postulate could not express).
+  iFromInfer : ∀ {ctx : NamedCtx} {e : RawExpr} {A : Type}
+      {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    → ctx ⊢ᵢ e ∶ A ⨾ Ψ
+    → ∃[ eE ] ∃[ d ] ∃[ f ]
+        checkElab ctx e A ≡ success Ψ eE d f
+
+  -- Strong (paired `checkElabV`) view of the switch — mirrors `check-completeV`
+  -- over `check-complete`, but from the INFER derivation (so a pair's components
+  -- are reached without a re-wrap). Feeds `checkPairLit`'s two scrutinees.
+  check-completeV-from-infer : ∀ {ctx : NamedCtx} {e : RawExpr} {A : Type}
+      {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    → ctx ⊢ᵢ e ∶ A ⨾ Ψ
+    → ∃[ eE ] ∃[ d ] ∃[ f ]
+        Σ-syntax (ctx ⊢ᶜ e ∶ A ⨾ Ψ) (λ w →
+          checkElabV ctx e A ≡ (success Ψ eE d f , w))
+
+  -- `checkElabV (RPair a b) (A * B)` reduces via `checkPairLit` (checkElabV a A /
+  -- checkElabV b B). Given the two paired component equations, `rewrite` drives it
+  -- to its `success` leaf. NON-recursive (the caller supplies the equations, so the
+  -- recursion measure lives in the caller's structural descent, not here).
+  pair-lit-reduce : ∀ {ctx : NamedCtx} {a b : RawExpr} {A B : Type}
+    {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
+    {aE da fa wA bE db fb wB}
+    → checkElabV ctx a A ≡ (success Ψ₁ aE da fa , wA)
+    → checkElabV ctx b B ≡ (success Ψ₂ bE db fb , wB)
+    → ∃[ eE ] ∃[ d ] ∃[ f ]
+        checkElab ctx (Raw.RPair a b) (A * B)
+          ≡ success (Ψ₁ +ᵘ Ψ₂) eE d f
+
+  check-completeV-from-infer {ctx} {e} {A} d
+    with checkElabV ctx e A | iFromInfer d
+  ... | r , w0 | eE , d' , f , eq rewrite eq = eE , d' , f , w0 , refl
+
+  pair-lit-reduce eqA eqB rewrite eqA | eqB = _ , _ , _ , refl
+
+  -- Leaves.
+  iFromInfer {ctx} (t-int n)   = checkElab-fallback-RInt {ctx} n
+  iFromInfer {ctx} (t-str s)   = checkElab-fallback-RStringLit {ctx} s
+  iFromInfer {ctx} t-unit      = checkElab-fallback-RUnit {ctx}
+  iFromInfer {ctx} t-unit-var  = checkElab-fallback-RVar-unit {ctx}
+  iFromInfer (t-var-local {x = x} {A = T} x≢unit eqLocal) =
+    let (_ , _ , _ , eqI) = infer-complete (t-var-local x≢unit eqLocal)
+    in checkElab-fallback-RVar x T eqI
+  iFromInfer {ctx} (t-var-qualified {name = n} {alias = a} {T = T} eqImp) =
+    let (_ , _ , _ , eqI) = infer-complete {ctx} (t-var-qualified eqImp)
+    in checkElab-fallback-RQualified {ctx} n a T eqI
+  iFromInfer {ctx} (t-var-resolved {cn = cn} {T = T} eqImp) =
+    let (_ , _ , _ , eqI) = infer-complete {ctx} (t-var-resolved eqImp)
+    in checkElab-fallback-RResolved {ctx} cn T eqI
+  iFromInfer (t-var-import {x = x} {T = T} x≢unit eqLoc eqImp) =
+    let (_ , _ , _ , eqI) = infer-complete (t-var-import x≢unit eqLoc eqImp)
+    in checkElab-fallback-RVar x T eqI
+  iFromInfer (t-annot {e = e} {T = T} d) =
+    let (_ , _ , _ , eqI) = infer-complete (t-annot d)
+    in checkElab-fallback-RAnnot e T eqI
+  -- INTRO form: pair components were synthesized (d₁/d₂ : ⊢ᵢ) but `checkPairLit`
+  -- re-CHECKS them — recurse the SWITCH on the genuine sub-derivations.
+  iFromInfer (t-pair {a = a} {b = b} {A = A} {B = B} d₁ d₂)
+    with check-completeV-from-infer d₁ | check-completeV-from-infer d₂
+  ... | (_ , _ , _ , _ , eqA) | (_ , _ , _ , _ , eqB) = pair-lit-reduce eqA eqB
+  iFromInfer (t-neg {e = e} d) =
+    let (_ , _ , _ , eqI) = infer-complete (t-neg d)
+    in checkElab-fallback-RUnaryOp Raw.OpNeg e T.Int eqI
+  iFromInfer (t-let {x = x} {e₁ = e₁} {e₂ = e₂} {B = B} d₁ d₂) =
+    let (_ , _ , _ , eqI) = infer-complete (t-let d₁ d₂)
+    in checkElab-fallback-RLet x e₁ e₂ B eqI
+  iFromInfer (t-case {scrut = scrut} {eL = eL} {eR = eR}
+                     {xL = xL} {xR = xR} {C = C} dS dL dR) =
+    let (_ , _ , _ , eqI) = infer-complete (t-case dS dL dR)
+    in checkElab-fallback-RDestruct scrut xL eL xR eR C eqI
+  iFromInfer (t-binop-arith {op = op} {e₁ = e₁} {e₂ = e₂} arithEq d₁ d₂) =
+    let (_ , _ , _ , eqI) = infer-complete (t-binop-arith arithEq d₁ d₂)
+    in checkElab-fallback-RBinOp op e₁ e₂ T.Int eqI
+  iFromInfer (t-binop-cmp {op = op} {e₁ = e₁} {e₂ = e₂} cmpEq d₁ d₂) =
+    let (_ , _ , _ , eqI) = infer-complete (t-binop-cmp cmpEq d₁ d₂)
+    in checkElab-fallback-RBinOp op e₁ e₂ (Unit T.+ Unit) eqI
+  iFromInfer (t-id-app {e = e} {T = T} d) =
+    let (_ , _ , _ , eqI) = infer-complete (t-id-app d)
+    in checkElab-fallback-RApp-id e T eqI
+  iFromInfer (t-fst-app {e = e} {A = A} d) =
+    let (_ , _ , _ , eqI) = infer-complete (t-fst-app d)
+    in checkElab-fallback-RApp-fst e A eqI
+  iFromInfer (t-snd-app {e = e} {B = B} d) =
+    let (_ , _ , _ , eqI) = infer-complete (t-snd-app d)
+    in checkElab-fallback-RApp-snd e B eqI
+  iFromInfer (t-terminal-app {e = e} d) =
+    let (_ , _ , _ , eqI) = infer-complete (t-terminal-app d)
+    in checkElab-fallback-RApp-terminal e Unit eqI
+  iFromInfer (t-apply-app-infer {p = p} {A = A} {B = B} d) =
+    let (_ , _ , _ , eqI) = infer-complete d
+    in checkElab-fallback-RApp-apply p A B eqI
+  iFromInfer (t-app {f = f} {x = x} {B = B} notPoly dF dX) =
+    let (_ , _ , _ , eqI) = infer-complete (t-app notPoly dF dX)
+    in checkElab-fallback-RApp-generic f x B notPoly eqI
+  iFromInfer (t-effApp {f = f} {x = x} {B = B} notPoly dF dX) =
+    let (_ , _ , _ , eqI) = infer-complete (t-effApp notPoly dF dX)
+    in checkElab-fallback-RApp-generic f x (T.Unit T.⇒[ T.mk-kind T.Many T.eff ] B) notPoly eqI
+
   infer-complete :
     ∀ {ctx : NamedCtx} {e : RawExpr} {A : Type}
       {Ψ : Surface.Usage (NamedCtx.size ctx)}
@@ -1452,18 +1558,9 @@ mutual
   -- `morph-complete` (Plan 0.49 / D063) is now PROVEN in Once.TypeCheck.MorphComplete
   -- (imported above): induction on ⊢ᵐ, 12/15 cases discharged; m-const/m-cata/m-named
   -- remain scoped postulates there (the latter pending plan 0.50).
-  postulate
-    -- Plan 0.36 Phase 2a follow-up — TRANSIENT, PROVABLE: pair-literal
-    -- check-mode completeness. `checkElabV (RPair a b) (A * B)` reduces
-    -- via `checkPairLit` to `success (Surface.pair …)` given the two
-    -- component check-mode derivations.
-    pair-lit-check-complete : ∀ {ctx : NamedCtx} {a b : RawExpr} {A B : Type}
-      {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
-      → ctx ⊢ᶜ a ∶ A ⨾ Ψ₁
-      → ctx ⊢ᶜ b ∶ B ⨾ Ψ₂
-      → ∃[ eE ] ∃[ d ] ∃[ f ]
-          checkElab ctx (Raw.RPair a b) (A * B)
-            ≡ success (Ψ₁ +ᵘ Ψ₂) eE d f
+  -- (Plan 0.36 Phase 2a follow-up DISCHARGED: `pair-lit-check-complete` was the
+  -- pair-literal check-mode completeness postulate — now proven via `pair-lit-reduce`
+  -- + the `iFromInfer` switch / `check-completeV`, above. No postulate remains.)
 
   -- `nothing ≡ just _` is absurd — returns any goal type (no `⊥` import needed).
   nothing≢just : ∀ {ℓ} {A : Set ℓ} {x : A} {C : Set} → nothing ≡ just x → C
@@ -1596,73 +1693,11 @@ mutual
     let (_ , _ , _ , eqBody) = check-complete bodyD
     in check-complete-RLam ctx x body A q q' B leq-eq eqBody
 
-  -- t-embed: case-split on the inner ⊢ᵢ derivation to recover e's
-  -- shape, then invoke the matching fallback lemma.
-  check-complete {ctx} (t-embed (t-int n))   = checkElab-fallback-RInt {ctx} n
-  check-complete {ctx} (t-embed (t-str s))   = checkElab-fallback-RStringLit {ctx} s
-  check-complete {ctx} (t-embed t-unit)      = checkElab-fallback-RUnit {ctx}
-  check-complete {ctx} (t-embed t-unit-var)  = checkElab-fallback-RVar-unit {ctx}
-  check-complete (t-embed (t-var-local {x = x} {A = T} x≢unit eqLocal)) =
-    let (_ , _ , _ , eqI) = infer-complete (t-var-local x≢unit eqLocal)
-    in checkElab-fallback-RVar x T eqI
-  check-complete {ctx}
-    (t-embed (t-var-qualified {name = n} {alias = a} {T = T} eqImp)) =
-    let (_ , _ , _ , eqI) = infer-complete {ctx} (t-var-qualified eqImp)
-    in checkElab-fallback-RQualified {ctx} n a T eqI
-  check-complete {ctx}
-    (t-embed (t-var-resolved {cn = cn} {T = T} eqImp)) =
-    let (_ , _ , _ , eqI) = infer-complete {ctx} (t-var-resolved eqImp)
-    in checkElab-fallback-RResolved {ctx} cn T eqI
-  check-complete (t-embed (t-var-import {x = x} {T = T} x≢unit eqLoc eqImp)) =
-    let (_ , _ , _ , eqI) = infer-complete (t-var-import x≢unit eqLoc eqImp)
-    in checkElab-fallback-RVar x T eqI
-  check-complete (t-embed (t-annot {e = e} {T = T} d)) =
-    let (_ , _ , _ , eqI) = infer-complete (t-annot d)
-    in checkElab-fallback-RAnnot e T eqI
-  -- Plan 0.36 Phase 2a: RPair check-mode now goes through `checkPairLit`
-  -- (bidirectional). Route the embedded-infer pair through the same
-  -- pair-literal bridge by re-embedding the component infer derivations.
-  check-complete (t-embed (t-pair {a = a} {b = b} {A = A} {B = B} d₁ d₂)) =
-    pair-lit-check-complete (t-embed d₁) (t-embed d₂)
-  check-complete (t-embed (t-neg {e = e} d)) =
-    let (_ , _ , _ , eqI) = infer-complete (t-neg d)
-    in checkElab-fallback-RUnaryOp Raw.OpNeg e T.Int eqI
-  check-complete (t-embed (t-let {x = x} {e₁ = e₁} {e₂ = e₂} {B = B} d₁ d₂)) =
-    let (_ , _ , _ , eqI) = infer-complete (t-let d₁ d₂)
-    in checkElab-fallback-RLet x e₁ e₂ B eqI
-  check-complete (t-embed (t-case {scrut = scrut} {eL = eL} {eR = eR}
-                                   {xL = xL} {xR = xR} {C = C} dS dL dR)) =
-    let (_ , _ , _ , eqI) = infer-complete (t-case dS dL dR)
-    in checkElab-fallback-RDestruct scrut xL eL xR eR C eqI
-  check-complete (t-embed (t-binop-arith {op = op} {e₁ = e₁} {e₂ = e₂}
-                                          arithEq d₁ d₂)) =
-    let (_ , _ , _ , eqI) = infer-complete (t-binop-arith arithEq d₁ d₂)
-    in checkElab-fallback-RBinOp op e₁ e₂ T.Int eqI
-  check-complete (t-embed (t-binop-cmp {op = op} {e₁ = e₁} {e₂ = e₂}
-                                        cmpEq d₁ d₂)) =
-    let (_ , _ , _ , eqI) = infer-complete (t-binop-cmp cmpEq d₁ d₂)
-    in checkElab-fallback-RBinOp op e₁ e₂ (Unit T.+ Unit) eqI
-  check-complete (t-embed (t-id-app {e = e} {T = T} d)) =
-    let (_ , _ , _ , eqI) = infer-complete (t-id-app d)
-    in checkElab-fallback-RApp-id e T eqI
-  check-complete (t-embed (t-fst-app {e = e} {A = A} d)) =
-    let (_ , _ , _ , eqI) = infer-complete (t-fst-app d)
-    in checkElab-fallback-RApp-fst e A eqI
-  check-complete (t-embed (t-snd-app {e = e} {B = B} d)) =
-    let (_ , _ , _ , eqI) = infer-complete (t-snd-app d)
-    in checkElab-fallback-RApp-snd e B eqI
-  check-complete (t-embed (t-terminal-app {e = e} d)) =
-    let (_ , _ , _ , eqI) = infer-complete (t-terminal-app d)
-    in checkElab-fallback-RApp-terminal e Unit eqI
-  check-complete (t-embed (t-apply-app-infer {p = p} {A = A} {B = B} d)) =
-    let (_ , _ , _ , eqI) = infer-complete d
-    in checkElab-fallback-RApp-apply p A B eqI
-  check-complete (t-embed (t-app {f = f} {x = x} {B = B} notPoly dF dX)) =
-    let (_ , _ , _ , eqI) = infer-complete (t-app notPoly dF dX)
-    in checkElab-fallback-RApp-generic f x B notPoly eqI
-  check-complete (t-embed (t-effApp {f = f} {x = x} {B = B} notPoly dF dX)) =
-    let (_ , _ , _ , eqI) = infer-complete (t-effApp notPoly dF dX)
-    in checkElab-fallback-RApp-generic f x (T.Unit T.⇒[ T.mk-kind T.Many T.eff ] B) notPoly eqI
+  -- t-embed (infer ⊆ check): ONE clause — the switch is `iFromInfer`, which
+  -- recurses structurally on the INFER derivation (the 22 former per-shape clauses
+  -- moved there). Discharges the old `pair-lit` re-wrap: the pair's components are
+  -- reached via `iFromInfer`'s genuine sub-derivations, not a re-embedded grandchild.
+  check-complete (t-embed d) = iFromInfer d
   -- Plan 0.6 Phase C.7 POC-1: bare `id` check-mode. The derivation's
   -- Plan 0.41: the value-lift bridge. A closed global-element value (`⊢ᵍ`)
   -- elaborates at the pure arrow — recurses on the `⊢ᵍ` derivation via
@@ -1676,8 +1711,11 @@ mutual
   check-complete (t-In-app-check {arg = arg} {F = F} eqWF dArg) =
     let (_ , _ , _ , eqA) = check-complete dArg
     in checkElab-fallback-RApp-In arg F eqWF eqA
-  check-complete (t-pair-lit-check {a = a} {b = b} {A = A} {B = B} dA dB) =
-    pair-lit-check-complete dA dB
+  -- Direct (bidirectional) pair check: components carry ⊢ᶜ derivations, so recurse
+  -- the STRONG `check-completeV` on the genuine subterms dA/dB (no switch needed).
+  check-complete (t-pair-lit-check {a = a} {b = b} {A = A} {B = B} dA dB)
+    with check-completeV dA | check-completeV dB
+  ... | (_ , _ , _ , _ , eqA) | (_ , _ , _ , _ , eqB) = pair-lit-reduce eqA eqB
   check-complete (t-apply-check {p = p} {A = A} {B = B} d) =
     let (_ , _ , _ , eq) = infer-complete d
     in checkElab-fallback-RApp-apply p A B eq
