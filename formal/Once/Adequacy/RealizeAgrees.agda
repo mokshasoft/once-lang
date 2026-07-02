@@ -36,7 +36,7 @@ import Once.Type
 open import Once.Type using (Type; Int; Unit; Void; Float; Str; Buffer; _*_; _+_; μ-type; ν-type;
                              Purity; pure; eff; mk-kind; Many; One; Zero; _⇒[_]_; isUnit?; ⟦_⟧T; Functor)
 open import Once.TypeCheck.Raw as Raw using (RawExpr)
-open import Once.TypeCheck.Classify using (NamedCtx; extendNamedCtx; lookupSigEffect; lookupImport; lookupLocal; composeMid)
+open import Once.TypeCheck.Classify using (NamedCtx; extendNamedCtx; lookupSigEffect; lookupImport; lookupLocal; composeMid; ctxWithImportsAndPolys)
 open import Once.TypeCheck.Elaborate using (success; failure; VerifiedInferResult; VerifiedCheckResult)
 import Once.TypeCheck.Elaborate as E
 open import Once.IR as IR using (IR)
@@ -57,6 +57,8 @@ open Surface.Usage using () renaming (_∷_ to _∷ᵘ_)
 open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ)
 import Once.Denotation.SourceDenote as SD
 open import Once.CanonicalName using (CanonicalName; showCanonical; bare)
+open import Once.Functor.Translate using (WellFormedF)
+open import Once.Functor.Decide using (wellFormedF?)
 
 private
   Env : NamedCtx → Set
@@ -859,6 +861,74 @@ agree-embedOrSubsume {ctx = ctx} {e = e} T eq inferIH dγ k
 ...   | no _     | eq₂ =
         agree-embedOrSubsume-no T' T eE' d' fr' wᵢ eq₂ (λ dγ' k' → inferIH refl dγ' k') dγ k
 
+-- Plan 0.55 D#2: the SINGLE genuinely-hard leaf of the "recurse on OUTPUT"
+-- redesign — the cata denotational bridge. `⟦ Surface.cata wfF algE ⟧ˢ` folds via
+-- `sem-cata` over `cata-ev-algˢ n (⟦algE⟧ˢ tt)`; `⟦ lift-morphism (IR.Cata wfF
+-- m-alg) ⟧ˢ = returnT (evalᴰ (Cata wfF m-alg))` folds via `sem-cata` over
+-- `cata-ev-algᴰ n m-alg`. Given the algebra extracts (`⟦algE⟧ˢ tt ≡ returnT (evalᴰ
+-- m-alg)` by the algebra's own faithfulness), the two `cata-ev-alg`s agree by
+-- monad-left-identity (`returnT a >>=T f = f a`) + a `sem-cata` algebra-congruence
+-- under the fold. NARROW: confined to this one clause (was smeared across the
+-- `check-RApp-todo` view catch-all). [[feedback_enumerate_over_catchall_postulate]]
+postulate
+  agree-cata-denotes : ∀ {n} {Γ : Surface.Ctx n} {F : Functor} {A : Type} {π : Purity}
+      {wfF : WellFormedF F}
+      {algE : Expr Surface.∅ Surface.zeroUsage (⟦ F ⟧T A ⇒[ mk-kind Many π ] A)}
+      {m-alg : IR (⟦ F ⟧T A) A}
+    → E.extract-morph-eff algE ≡ just (m-alg , refl)
+    → ∀ (dγ : ⟦ ⟦ Γ ⟧ᶜ ⟧ᴰ) (k : ℕ)
+    → SD.⟦ Surface.cata {Γ = Γ} wfF algE ⟧ˢ dγ k
+        ≡ SD.⟦ Surface.lift-morphism {Γ = Γ} {π = π} (IR.Cata wfF m-alg) ⟧ˢ dγ k
+
+-- morph-realize enriched to ALSO return the `extract-morph-eff` equation (needed to
+-- feed `agree-cata-denotes`). Same `morph-elab` + checkElabV-determinism derivation
+-- as `morph-realize`, but exposes the elaborated morphism `m` with BOTH its extract
+-- equation and `m ≡ realize-morph mᵐ`.
+algebra-morph-recover : ∀ {ctx : NamedCtx} {e : RawExpr} {A B : Type} {π : Purity}
+    {E : Expr (NamedCtx.debruijn ctx) Surface.zeroUsage (A ⇒[ mk-kind Many π ] B)} {d fr : ℕ}
+    {W : ctx ⊢ᶜ e ∶ (A ⇒[ mk-kind Many π ] B) ⨾ Surface.zeroUsage}
+    {mᵐ : ctx ⊢ᵐ e ∶ A ⇨[ π ] B}
+  → E.checkElabV ctx e (A ⇒[ mk-kind Many π ] B) ≡ (success Surface.zeroUsage E d fr , W)
+  → extractMorphWitness W ≡ just mᵐ
+  → ∃-syntax (λ (m : IR A B) → (E.extract-morph-eff E ≡ just (m , refl)) × (m ≡ realize-morph mᵐ))
+algebra-morph-recover {ctx = ctx} {e = e} {A = A} {B = B} {π = π} {mᵐ = mᵐ} ce exw
+  with morph-elab mᵐ
+... | (m' , mᵐ' , E' , d' , fr' , W' , ce' , ex' , exw' , cons')
+      with E.checkElabV ctx e (A ⇒[ mk-kind Many π ] B) | ce | ce'
+...     | _ | refl | refl =
+          m' , ex'
+             , trans cons' (cong realize-morph
+                 (sym (just-injective (trans (sym exw) exw'))))
+
+-- Plan 0.55 D#2: the cata agreement over `checkCataGo` (mirrors `agree-caseGo` /
+-- `agree-compose`). `mw`/`eqW` are EXPLICIT so `checkCataGo` reduces on `just wfF`
+-- WITHOUT the `wellFormedF? F` dependent-`with` hazard (the same device as
+-- `checkCataGoV-pure-J`). The lone success leaf is the cata denotational bridge
+-- (`agree-cata-denotes`) composed with the algebra's `extract ≡ realize-morph`
+-- (`algebra-morph-recover`); `realize (t-morph-lift (m-cata _ mᵐ)) = lift-morphism
+-- (IR.Cata wfF (realize-morph mᵐ))` is definitional (Realize:124/135).
+agree-checkCataGo : ∀ (ctx : NamedCtx) (alg : RawExpr) (F : Functor) (A : Type) (π : Purity)
+    (mw : Maybe (WellFormedF F)) (eqW : wellFormedF? F ≡ mw)
+    {Ψ : Usage (NamedCtx.size ctx)}
+    {se : Expr (NamedCtx.debruijn ctx) Ψ (μ-type F ⇒[ mk-kind Many π ] A)}
+    {d fr : ℕ}
+    {w : ctx ⊢ᶜ Raw.RApp (Raw.RVar "cata") alg ∶ (μ-type F ⇒[ mk-kind Many π ] A) ⨾ Ψ}
+  → E.checkCataGo ctx alg F A π mw eqW ≡ (success Ψ se d fr , w)
+  → ∀ (dγ : Env ctx) (k : ℕ) → SD.⟦ se ⟧ˢ dγ k ≡ SD.⟦ realize w ⟧ˢ dγ k
+agree-checkCataGo ctx alg F A π nothing eqW ()
+agree-checkCataGo ctx alg F A π (just wfF) eqW disp dγ k
+  with E.checkElabV (ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx))
+                    alg (⟦ F ⟧T A ⇒[ mk-kind Many π ] A) in eqAlg | disp
+... | failure _ , _ | ()
+... | success Surface.[] algE dA frA , wArg | disp₁
+      with extractMorphWitness wArg in exw | disp₁
+...   | nothing | ()
+...   | just mᵐ | refl
+        with algebra-morph-recover eqAlg exw
+...     | (m-alg , exEff , eqRealize) =
+          trans (agree-cata-denotes {Γ = NamedCtx.debruijn ctx} {wfF = wfF} {algE = algE} exEff dγ k)
+                (cong (λ z → SD.⟦ Surface.lift-morphism {Γ = NamedCtx.debruijn ctx} {π = π} (IR.Cata wfF z) ⟧ˢ dγ k) eqRealize)
+
 agree-check-RApp : ∀ (ctx : NamedCtx) (f arg : RawExpr) (T : Type) {Ψ se d fr w}
   (vw : E.AppHeadView f) (veq : E.classifyAppHeadView f ≡ vw)
   → E.checkElabV-RApp-dispatch ctx f arg T vw veq ≡ (success Ψ se d fr , w)
@@ -1007,6 +1077,24 @@ agree-check-RApp ctx f arg T E.ahv-other veq disp inferIH argCheckIH argInferIH 
   | failure errInfer , _ | disp₁ =
     agree-check-RApp-argdriven-aux f arg T errInfer
       (E.classifyAppHead f) refl disp₁ fCheckIH argInferIH dγ k
+-- ahv-cata (Plan 0.55 D#2): the elaborated `se` is a `Surface.cata` node (a bare
+-- morphism), so drive the agreement by the OUTPUT via `agree-checkCataGo` — no view
+-- catch-all. pure: `checkCata` reduces DIRECTLY to `checkCataGo … pure`. eff: the
+-- eff clause tries the eff-Go (genuine-eff algebra) then subsumes a pure-Go via
+-- `arr'`/`t-subsume`; both `arr'` wrappers are denotationally transparent
+-- (`⟦arr' x⟧ = ⟦x⟧`, `realize (t-subsume w) = arr' (realize w)`), so each branch is
+-- the corresponding `agree-checkCataGo`.
+agree-check-RApp ctx f arg (μ-type F ⇒[ mk-kind Many pure ] A) E.ahv-cata veq disp inferIH argCheckIH argInferIH fCheckIH dγ k =
+  agree-checkCataGo ctx arg F A pure (wellFormedF? F) refl disp dγ k
+agree-check-RApp ctx f arg (μ-type F ⇒[ mk-kind Many eff ] A) E.ahv-cata veq disp inferIH argCheckIH argInferIH fCheckIH dγ k
+  with E.checkCataGo ctx arg F A eff (wellFormedF? F) refl in eqEff | disp
+... | success Ψe eEe de fre , we | refl =
+      agree-checkCataGo ctx arg F A eff (wellFormedF? F) refl eqEff dγ k
+... | failure _ , _ | disp₁
+      with E.checkCataGo ctx arg F A pure (wellFormedF? F) refl in eqPure | disp₁
+...   | success Ψp eEp dp frp , wp | refl =
+        agree-checkCataGo ctx arg F A pure (wellFormedF? F) refl eqPure dγ k
+...   | failure _ , _ | ()
 agree-check-RApp ctx f arg T vw veq disp inferIH argCheckIH argInferIH fCheckIH dγ k =
   check-RApp-todo ctx f arg T vw veq disp dγ k
 
