@@ -114,7 +114,7 @@ mutual
   polys-reflect-ᵐ b p pib (m-case df dg) = m-case (polys-reflect-ᵐ b p pib df) (polys-reflect-ᵐ b p pib dg)
   polys-reflect-ᵐ b p pib (m-pair df dg) = m-pair (polys-reflect-ᵐ b p pib df) (polys-reflect-ᵐ b p pib dg)
   polys-reflect-ᵐ b p pib (m-curry df) = m-curry (polys-reflect-ᵐ b p pib df)
-  polys-reflect-ᵐ b p pib (m-cata wf d) = m-cata wf (polys-reflect-ᶜ b p pib d)
+  polys-reflect-ᵐ b p pib (m-cata wf d) = m-cata wf (polys-reflect-ᵐ b p pib d)
   polys-reflect-ᵐ b p pib (m-const d) = m-const (polys-reflect-ᵍ b p d)
   polys-reflect-ᵐ b p pib (m-named ¬u lln imp) = m-named ¬u lln imp
   polys-reflect-ᵐ b p pib (m-named-resolved imp) = m-named-resolved imp

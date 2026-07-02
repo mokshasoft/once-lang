@@ -282,7 +282,7 @@ mutual
   polys-transport-ᵐ b p pib (m-case df dg) = m-case (polys-transport-ᵐ b p pib df) (polys-transport-ᵐ b p pib dg)
   polys-transport-ᵐ b p pib (m-pair df dg) = m-pair (polys-transport-ᵐ b p pib df) (polys-transport-ᵐ b p pib dg)
   polys-transport-ᵐ b p pib (m-curry df) = m-curry (polys-transport-ᵐ b p pib df)
-  polys-transport-ᵐ b p pib (m-cata wf d) = m-cata wf (polys-transport-ᶜ b p pib d)
+  polys-transport-ᵐ b p pib (m-cata wf d) = m-cata wf (polys-transport-ᵐ b p pib d)
   polys-transport-ᵐ b p pib (m-const d) = m-const (polys-transport-ᵍ b p d)
   polys-transport-ᵐ b p pib (m-named ¬u lln imp) = m-named ¬u lln imp
   polys-transport-ᵐ b p pib (m-named-resolved imp) = m-named-resolved imp

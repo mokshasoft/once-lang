@@ -160,7 +160,7 @@ mutual
     rewrite canon-builtin bound "curry" refl = m-curry (canon-pres-ᵐ bound sub pib df)
   canon-pres-ᵐ bound sub pib (m-cata wf d)
     rewrite canon-builtin bound "cata" refl =
-      m-cata wf (canon-pres-ᶜ bound (⊆ᵇ-nil {bound}) (mkPIB (λ {x'} h → app pib {x'} h)) d)
+      m-cata wf (canon-pres-ᵐ bound (⊆ᵇ-nil {bound}) (mkPIB (λ {x'} h → app pib {x'} h)) d)
   canon-pres-ᵐ bound sub pib (m-const d) = m-const (pres-ᵍ bound d)
   canon-pres-ᵐ bound sub pib (m-named {x = x} ¬u lln imp)
     with elemStr x bound ∨ isBuiltinName x in eb

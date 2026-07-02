@@ -425,7 +425,7 @@ mutual
     → ctx ⊢ᵐ Raw.RApp (canonVar b nothing y) (canonExpr bound [] [] X) ∶ A ⇨[ π ] B
     → ctx ⊢ᵐ Raw.RApp (Raw.RVar y) X ∶ A ⇨[ π ] B
   reflect-app-var-ᵐ true bound y X sub eb (m-curry df) = m-curry (canon-reflects-ᵐ bound X sub df)
-  reflect-app-var-ᵐ true bound y X sub eb (m-cata wf d) = m-cata wf (canon-reflects-ᶜ bound X (⊆ᵇ-nil {bound}) d)
+  reflect-app-var-ᵐ true bound y X sub eb (m-cata wf d) = m-cata wf (canon-reflects-ᵐ bound X (⊆ᵇ-nil {bound}) d)
   reflect-app-var-ᵐ true bound y X sub eb (m-const dg) = m-const (reflect-gapp true bound y X dg)
   reflect-app-var-ᵐ false bound y X sub eb (m-const ())
 
