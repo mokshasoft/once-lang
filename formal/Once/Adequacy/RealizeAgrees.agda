@@ -900,6 +900,27 @@ algebra-morph-recover {ctx = ctx} {e = e} {A = A} {B = B} {π = π} {mᵐ = mᵐ
              , trans cons' (cong realize-morph
                  (sym (just-injective (trans (sym exw) exw'))))
 
+-- Plan 0.55 D#2: bare-`μF` `In` agreement over `checkInGo` (`mw`/`eqW` explicit to
+-- dodge the `wellFormedF? F` dependent-`with`, as for cata). Emits `morph-app (In
+-- wfF Heap) argE`; `realize (t-In-app-check _ wArg) = morph-app (In wfF Heap)
+-- (realize wArg)` — SAME morph-app congruence as `ahv-initial` (rewrite arg IH).
+agree-checkInGo : ∀ (ctx : NamedCtx) (arg : RawExpr) (F : Functor)
+    (mw : Maybe (WellFormedF F)) (eqW : wellFormedF? F ≡ mw)
+    {Ψ : Usage (NamedCtx.size ctx)}
+    {se : Expr (NamedCtx.debruijn ctx) Ψ (μ-type F)}
+    {d fr : ℕ}
+    {w : ctx ⊢ᶜ Raw.RApp (Raw.RVar "In") arg ∶ μ-type F ⨾ Ψ}
+  → E.checkInGo ctx arg F mw eqW ≡ (success Ψ se d fr , w)
+  → (argCheckIH : ∀ {T' Ψ' eE' d' fr'} {w' : ctx ⊢ᶜ arg ∶ T' ⨾ Ψ'}
+       → E.checkElabV ctx arg T' ≡ (success Ψ' eE' d' fr' , w')
+       → ∀ dγ k → SD.⟦ eE' ⟧ˢ dγ k ≡ SD.⟦ realize w' ⟧ˢ dγ k)
+  → ∀ (dγ : Env ctx) (k : ℕ) → SD.⟦ se ⟧ˢ dγ k ≡ SD.⟦ realize w ⟧ˢ dγ k
+agree-checkInGo ctx arg F nothing eqW ()
+agree-checkInGo ctx arg F (just wfF) eqW disp argCheckIH dγ k
+  with E.checkElabV ctx arg (⟦ F ⟧T (μ-type F)) in aeq | disp
+... | failure _ , _ | ()
+... | success Ψ argE d fr , wArg | refl rewrite argCheckIH aeq dγ k = refl
+
 -- Plan 0.55 D#2: the cata agreement over `checkCataGo` (mirrors `agree-caseGo` /
 -- `agree-compose`). `mw`/`eqW` are EXPLICIT so `checkCataGo` reduces on `just wfF`
 -- WITHOUT the `wellFormedF? F` dependent-`with` hazard (the same device as
@@ -1002,6 +1023,10 @@ agree-check-RApp ctx f arg (X ⇒[ mk-kind Many π ] (μ-type F)) E.ahv-In veq d
   with E.inspectCheckG ctx X (Raw.RApp (Raw.RVar "In") arg) (μ-type F) | disp
 ... | E.cgv-nothing _ | ()
 ... | E.cgv-just {m} {gd} cgeq | refl rewrite checkG-realize gd cgeq = refl
+-- ahv-In at a bare `μ-type F` target (Plan 0.55 D#2): checkInGo builds `morph-app
+-- (In wfF Heap) argE` — delegate to agree-checkInGo (arg-check congruence).
+agree-check-RApp ctx f arg (μ-type F) E.ahv-In veq disp inferIH argCheckIH argInferIH fCheckIH dγ k =
+  agree-checkInGo ctx arg F (wellFormedF? F) refl disp argCheckIH dγ k
 -- ahv-curry: checkCurry emits `lift-morphism (curry mf Heap)`, witness
 -- `t-morph-lift (m-curry mFᵐ)`; `realize` is `lift-morphism (curry
 -- (realize-morph mFᵐ) Heap)` — rewrite by the morph-realize bridge (mf ≡
@@ -1014,9 +1039,36 @@ agree-check-RApp ctx f arg (A ⇒[ mk-kind Many pure ] (B ⇒[ mk-kind Many pure
 ...   | just (mf , refl) | just mFᵐ | refl rewrite morph-realize eqarg exf exw = refl
 ...   | just (mf , refl) | nothing  | ()
 ...   | nothing          | _        | ()
+-- ahv-curry at an EFF outer arrow (Plan 0.55 D#2): checkCurry subsumes the pure
+-- curry via `arr'`/`t-subsume`. `⟦arr' x⟧ = ⟦x⟧` and `realize (t-subsume w) = arr'
+-- (realize w)` are transparent, so this is the SAME morph-realize rewrite as pure.
+agree-check-RApp ctx f arg (A ⇒[ mk-kind Many eff ] (B ⇒[ mk-kind Many pure ] C)) E.ahv-curry veq disp inferIH argCheckIH argInferIH fCheckIH dγ k
+  with E.checkElabV ctx arg ((A * B) ⇒[ mk-kind Many pure ] C) in eqarg | disp
+... | failure _ , _ | ()
+... | success Ψ argE d fr , w | disp'
+      with E.extract-morph-eff argE in exf | extractMorphWitness w in exw | disp'
+...   | just (mf , refl) | just mFᵐ | refl rewrite morph-realize eqarg exf exw = refl
+...   | just (mf , refl) | nothing  | ()
+...   | nothing          | _        | ()
 -- ahv-pair-applied: checkPair emits `lift-morphism ⟨mf,mg⟩`, witness
 -- `t-morph-lift (m-pair mFᵐ mGᵐ)`; rewrite by morph-realize on BOTH components.
 agree-check-RApp ctx (Raw.RApp (Raw.RVar "pair") f_inner) arg (A ⇒[ mk-kind Many pure ] (B * C)) E.ahv-pair-applied veq disp inferIH argCheckIH argInferIH fCheckIH dγ k
+  with E.checkElabV ctx f_inner (A ⇒[ mk-kind Many pure ] B) in eqf | disp
+... | failure _ , _ | ()
+... | success Ψf fE df frf , wF | disp'
+      with E.checkElabV ctx arg (A ⇒[ mk-kind Many pure ] C) in eqg | disp'
+...   | failure _ , _ | ()
+...   | success Ψg gE dg frg , wG | disp''
+        with E.extract-morph-eff fE in exf | E.extract-morph-eff gE in exg | extractMorphWitness wF in exwf | extractMorphWitness wG in exwg | disp''
+...     | just (mf , refl) | just (mg , refl) | just mFᵐ | just mGᵐ | refl
+          rewrite morph-realize eqf exf exwf | morph-realize eqg exg exwg = refl
+...     | nothing | _ | _ | _ | ()
+...     | just _  | nothing | _ | _ | ()
+...     | just _  | just _  | nothing | _ | ()
+...     | just _  | just _  | just _  | nothing | ()
+-- ahv-pair-applied at an EFF outer arrow (Plan 0.55 D#2): checkPair subsumes the
+-- pure pair via `arr'`/`t-subsume` (both transparent) — SAME morph-realize rewrite.
+agree-check-RApp ctx (Raw.RApp (Raw.RVar "pair") f_inner) arg (A ⇒[ mk-kind Many eff ] (B * C)) E.ahv-pair-applied veq disp inferIH argCheckIH argInferIH fCheckIH dγ k
   with E.checkElabV ctx f_inner (A ⇒[ mk-kind Many pure ] B) in eqf | disp
 ... | failure _ , _ | ()
 ... | success Ψf fE df frf , wF | disp'
