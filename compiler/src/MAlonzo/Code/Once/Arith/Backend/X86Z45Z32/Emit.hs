@@ -35,13 +35,13 @@ d_reg'45'text_10 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6
 d_reg'45'text_10 v0
   = case coe v0 of
-      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_XR12_12
+      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_XR0_12
         -> coe ("%edx" :: Data.Text.Text)
-      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_XR13_14
+      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_XR1_14
         -> coe ("%edi" :: Data.Text.Text)
-      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_XR14_16
+      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_XR2_16
         -> coe ("%ebx" :: Data.Text.Text)
-      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_XR15_18
+      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_XR3_18
         -> coe ("%esi" :: Data.Text.Text)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Arith.Backend.X86-32.Emit.scratch-text
@@ -330,7 +330,7 @@ d_emit'45'arith'45'block_96 v0 v1
                               (mulInt
                                  (coe (4 :: Integer))
                                  (coe
-                                    MAlonzo.Code.Once.Arith.Machine.Compile.du_required'45'scratch_22
+                                    MAlonzo.Code.Once.Arith.Machine.Compile.du_required'45'scratch_12
                                     (coe
                                        MAlonzo.Code.Once.Arith.Machine.IR.d_block'45'body_94
                                        (coe v1)))))
@@ -343,7 +343,7 @@ d_emit'45'arith'45'block_96 v0 v1
                                     (coe
                                        MAlonzo.Code.Once.Arith.Backend.XInstr.CodeGen.d_emit'45'program_368
                                        (coe
-                                          MAlonzo.Code.Once.Arith.Machine.Compile.du_compile'45'abs_74
+                                          MAlonzo.Code.Once.Arith.Machine.Compile.du_compile'45'abs_64
                                           (coe
                                              MAlonzo.Code.Once.Arith.Machine.IR.d_block'45'body_94
                                              (coe v1)))))
@@ -357,7 +357,7 @@ d_emit'45'arith'45'block_96 v0 v1
                                           (mulInt
                                              (coe (4 :: Integer))
                                              (coe
-                                                MAlonzo.Code.Once.Arith.Machine.Compile.du_required'45'scratch_22
+                                                MAlonzo.Code.Once.Arith.Machine.Compile.du_required'45'scratch_12
                                                 (coe
                                                    MAlonzo.Code.Once.Arith.Machine.IR.d_block'45'body_94
                                                    (coe v1)))))

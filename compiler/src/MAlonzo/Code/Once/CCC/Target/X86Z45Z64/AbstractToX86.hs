@@ -25,6 +25,7 @@ import qualified MAlonzo.Code.Once.CCC.Machine.SMCore
 import qualified MAlonzo.Code.Once.CCC.Target.X86Z45Z64.CodeGen.Primitives
 import qualified MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax
 import qualified MAlonzo.Code.Once.SigOp.Info
+import qualified MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg
 
 -- Once.CCC.Target.X86-64.AbstractToX86.slot-to-disp
 d_slot'45'to'45'disp_10 :: Integer -> Integer
@@ -32,203 +33,203 @@ d_slot'45'to'45'disp_10 v0
   = coe
       mulInt (coe v0)
       (coe
-         MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.d_slot'45'size_114)
+         MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.d_slot'45'size_80)
 -- Once.CCC.Target.X86-64.AbstractToX86.compile-abstract
 d_compile'45'abstract_14 ::
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2048 ->
-  [MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.T_Instr_62]
+  [MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.T_Instr_28]
 d_compile'45'abstract_14 v0
   = case coe v0 of
       MAlonzo.Code.Once.CCC.Machine.SMCore.C_mov'45'to'45'output_2050
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe
-                MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mov_64
+                MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mov_30
                 (coe
-                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_56
-                   (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_rax_12))
+                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_22
+                   (coe MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.C_rax_10))
                 (coe
-                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_56
-                   (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_rdi_22)))
+                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_22
+                   (coe MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.C_rdi_20)))
              (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
       MAlonzo.Code.Once.CCC.Machine.SMCore.C_mov'45'to'45'input_2052
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe
-                MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mov_64
+                MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mov_30
                 (coe
-                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_56
-                   (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_rdi_22))
+                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_22
+                   (coe MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.C_rdi_20))
                 (coe
-                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_56
-                   (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_rax_12)))
+                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_22
+                   (coe MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.C_rax_10)))
              (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
       MAlonzo.Code.Once.CCC.Machine.SMCore.C_mov'45'output'45'to'45'input2_2054
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe
-                MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mov_64
+                MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mov_30
                 (coe
-                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_56
-                   (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_rsi_20))
+                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_22
+                   (coe MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.C_rsi_18))
                 (coe
-                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_56
-                   (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_rax_12)))
+                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_22
+                   (coe MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.C_rax_10)))
              (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
       MAlonzo.Code.Once.CCC.Machine.SMCore.C_mov'45'input2'45'to'45'output_2056
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe
-                MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mov_64
+                MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mov_30
                 (coe
-                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_56
-                   (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_rax_12))
+                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_22
+                   (coe MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.C_rax_10))
                 (coe
-                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_56
-                   (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_rsi_20)))
+                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_22
+                   (coe MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.C_rsi_18)))
              (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
       MAlonzo.Code.Once.CCC.Machine.SMCore.C_load'45'indirect_2058
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe
-                MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mov_64
+                MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mov_30
                 (coe
-                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_56
-                   (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_rax_12))
+                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_22
+                   (coe MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.C_rax_10))
                 (coe
-                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mem_58
+                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mem_24
                    (coe
-                      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_base_46
-                      (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_rdi_22))))
+                      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_base_12
+                      (coe MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.C_rdi_20))))
              (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
       MAlonzo.Code.Once.CCC.Machine.SMCore.C_load'45'indirect'45'suc_2060
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe
-                MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mov_64
+                MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mov_30
                 (coe
-                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_56
-                   (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_rax_12))
+                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_22
+                   (coe MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.C_rax_10))
                 (coe
-                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mem_58
+                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mem_24
                    (coe
-                      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_base'43'disp_48
-                      (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_rdi_22)
+                      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_base'43'disp_14
+                      (coe MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.C_rdi_20)
                       (coe
-                         MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.d_slot'45'size_114))))
+                         MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.d_slot'45'size_80))))
              (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
       MAlonzo.Code.Once.CCC.Machine.SMCore.C_load'45'from'45'slot_2062 v1
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe
-                MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mov_64
+                MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mov_30
                 (coe
-                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_56
-                   (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_rax_12))
+                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_22
+                   (coe MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.C_rax_10))
                 (coe
-                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mem_58
+                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mem_24
                    (coe
-                      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_base'43'disp_48
-                      (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_rsp_26)
+                      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_base'43'disp_14
+                      (coe MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.C_rsp_24)
                       (coe d_slot'45'to'45'disp_10 (coe v1)))))
              (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
       MAlonzo.Code.Once.CCC.Machine.SMCore.C_store'45'at'45'slot_2064 v1
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe
-                MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mov_64
+                MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mov_30
                 (coe
-                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mem_58
+                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mem_24
                    (coe
-                      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_base'43'disp_48
-                      (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_rsp_26)
+                      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_base'43'disp_14
+                      (coe MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.C_rsp_24)
                       (coe d_slot'45'to'45'disp_10 (coe v1))))
                 (coe
-                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_56
-                   (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_rax_12)))
+                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_22
+                   (coe MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.C_rax_10)))
              (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
       MAlonzo.Code.Once.CCC.Machine.SMCore.C_store'45'indirect_2066
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe
-                MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mov_64
+                MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mov_30
                 (coe
-                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mem_58
+                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mem_24
                    (coe
-                      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_base_46
-                      (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_rdi_22)))
+                      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_base_12
+                      (coe MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.C_rdi_20)))
                 (coe
-                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_56
-                   (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_rax_12)))
+                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_22
+                   (coe MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.C_rax_10)))
              (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
       MAlonzo.Code.Once.CCC.Machine.SMCore.C_store'45'indirect'45'suc_2068
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe
-                MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mov_64
+                MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mov_30
                 (coe
-                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mem_58
+                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mem_24
                    (coe
-                      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_base'43'disp_48
-                      (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_rdi_22)
+                      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_base'43'disp_14
+                      (coe MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.C_rdi_20)
                       (coe
-                         MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.d_slot'45'size_114)))
+                         MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.d_slot'45'size_80)))
                 (coe
-                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_56
-                   (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_rax_12)))
+                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_22
+                   (coe MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.C_rax_10)))
              (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
       MAlonzo.Code.Once.CCC.Machine.SMCore.C_lea'45'slot_2070 v1
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe
-                MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_lea_66
-                (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_rax_12)
+                MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_lea_32
+                (coe MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.C_rax_10)
                 (coe
-                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_base'43'disp_48
-                   (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_rsp_26)
+                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_base'43'disp_14
+                   (coe MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.C_rsp_24)
                    (coe d_slot'45'to'45'disp_10 (coe v1))))
              (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
       MAlonzo.Code.Once.CCC.Machine.SMCore.C_restore'45'input_2072 v1
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe
-                MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mov_64
+                MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mov_30
                 (coe
-                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_56
-                   (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_rdi_22))
+                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_22
+                   (coe MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.C_rdi_20))
                 (coe
-                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mem_58
+                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mem_24
                    (coe
-                      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_base'43'disp_48
-                      (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_rsp_26)
+                      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_base'43'disp_14
+                      (coe MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.C_rsp_24)
                       (coe d_slot'45'to'45'disp_10 (coe v1)))))
              (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
       MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'alloc'45'stack_2074 v1
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe
-                MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_sub_70
+                MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_sub_36
                 (coe
-                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_56
-                   (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_rsp_26))
+                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_22
+                   (coe MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.C_rsp_24))
                 (coe
-                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_imm_60
+                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_imm_26
                    (coe
-                      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.d_slots_116
+                      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.d_slots_82
                       (coe v1))))
              (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
       MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'dealloc'45'stack_2076 v1
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe
-                MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_add_68
+                MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_add_34
                 (coe
-                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_56
-                   (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_rsp_26))
+                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_22
+                   (coe MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.C_rsp_24))
                 (coe
-                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_imm_60
+                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_imm_26
                    (coe
-                      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.d_slots_116
+                      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.d_slots_82
                       (coe v1))))
              (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
       MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'reclaim'45'to_2078 v1
@@ -237,62 +238,62 @@ d_compile'45'abstract_14 v0
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe
-                MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_push_88
+                MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_push_54
                 (coe
-                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_56
-                   (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_rbp_24)))
+                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_22
+                   (coe MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.C_rbp_22)))
              (coe
                 MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                 (coe
-                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mov_64
+                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mov_30
                    (coe
-                      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_56
-                      (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_rbp_24))
+                      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_22
+                      (coe MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.C_rbp_22))
                    (coe
-                      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_56
-                      (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_rsp_26)))
+                      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_22
+                      (coe MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.C_rsp_24)))
                 (coe
                    MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                    (coe
-                      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_sub_70
+                      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_sub_36
                       (coe
-                         MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_56
-                         (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_rsp_26))
+                         MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_22
+                         (coe MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.C_rsp_24))
                       (coe
-                         MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_imm_60
+                         MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_imm_26
                          (coe
-                            MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.d_slots_116
+                            MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.d_slots_82
                             (coe v1))))
                    (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)))
       MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'pop'45'frame_2082
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe
-                MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mov_64
+                MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mov_30
                 (coe
-                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_56
-                   (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_rsp_26))
+                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_22
+                   (coe MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.C_rsp_24))
                 (coe
-                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_56
-                   (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_rbp_24)))
+                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_22
+                   (coe MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.C_rbp_22)))
              (coe
                 MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                 (coe
-                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_pop_90
-                   (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_rbp_24))
+                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_pop_56
+                   (coe MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.C_rbp_22))
                 (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16))
       MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'call'45'closure_2084
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe
-                MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_call_82
+                MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_call_48
                 (coe
-                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mem_58
+                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mem_24
                    (coe
-                      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_base'43'disp_48
-                      (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_r12_36)
+                      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_base'43'disp_14
+                      (coe MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.C_r12_34)
                       (coe
-                         MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.d_slot'45'size_114))))
+                         MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.d_slot'45'size_80))))
              (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
       MAlonzo.Code.Once.CCC.Machine.SMCore.C_worklist'45'init_2086 v1
         -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
@@ -300,30 +301,30 @@ d_compile'45'abstract_14 v0
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe
-                MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mov_64
+                MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mov_30
                 (coe
-                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mem_58
+                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mem_24
                    (coe
-                      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_base'43'disp_48
-                      (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_rsp_26)
+                      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_base'43'disp_14
+                      (coe MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.C_rsp_24)
                       (coe d_slot'45'to'45'disp_10 (coe v1))))
                 (coe
-                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_56
-                   (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_rax_12)))
+                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_22
+                   (coe MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.C_rax_10)))
              (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
       MAlonzo.Code.Once.CCC.Machine.SMCore.C_worklist'45'pop_2090 v1
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe
-                MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mov_64
+                MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mov_30
                 (coe
-                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_56
-                   (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_rax_12))
+                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_22
+                   (coe MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.C_rax_10))
                 (coe
-                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mem_58
+                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mem_24
                    (coe
-                      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_base'43'disp_48
-                      (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_rsp_26)
+                      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_base'43'disp_14
+                      (coe MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.C_rsp_24)
                       (coe d_slot'45'to'45'disp_10 (coe v1)))))
              (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
       MAlonzo.Code.Once.CCC.Machine.SMCore.C_worklist'45'check_2092 v1
@@ -340,68 +341,68 @@ d_compile'45'abstract_14 v0
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe
-                MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_lea_66
-                (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_rax_12)
+                MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_lea_32
+                (coe MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.C_rax_10)
                 (coe
-                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_rip'43'label_52
+                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_rip'43'label_18
                    (coe v1)))
              (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
       MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'save'45'closure'45'reg_2106
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe
-                MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mov_64
+                MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mov_30
                 (coe
-                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_56
-                   (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_r12_36))
+                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_22
+                   (coe MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.C_r12_34))
                 (coe
-                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_56
-                   (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_rdi_22)))
+                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_22
+                   (coe MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.C_rdi_20)))
              (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
       MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'load'45'tag'45'lit_2108 v1
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe
-                MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mov_64
+                MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mov_30
                 (coe
-                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_56
-                   (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_rax_12))
+                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_22
+                   (coe MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.C_rax_10))
                 (coe
-                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_imm_60 (coe v1)))
+                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_imm_26 (coe v1)))
              (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
       MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'case'45'on'45'tag_2110 v1 v2
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
-             (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_ud2_94)
+             (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_ud2_60)
              (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
       MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'alloc'45'heap_2112 v1
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe
-                MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mov_64
+                MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mov_30
                 (coe
-                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_56
-                   (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_rax_12))
+                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_22
+                   (coe MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.C_rax_10))
                 (coe
-                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_56
-                   (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_r15_42)))
+                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_22
+                   (coe MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.C_r15_40)))
              (coe
                 MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                 (coe
-                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_add_68
+                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_add_34
                    (coe
-                      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_56
-                      (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_r15_42))
+                      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_22
+                      (coe MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.C_r15_40))
                    (coe
-                      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_imm_60
+                      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_imm_26
                       (coe
-                         MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.d_slots_116
+                         MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.d_slots_82
                          (coe v1))))
                 (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16))
       MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'loop_2114 v1
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
-             (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_ud2_94)
+             (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_ud2_60)
              (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
       MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'reg'45'op_2116 v1
         -> case coe v1 of
@@ -409,72 +410,72 @@ d_compile'45'abstract_14 v0
                -> coe
                     MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                     (coe
-                       MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mov_64
+                       MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mov_30
                        (coe
-                          MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_56
-                          (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_rbx_14))
+                          MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_22
+                          (coe MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.C_rbx_12))
                        (coe
-                          MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_imm_60
+                          MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_imm_26
                           (coe (1 :: Integer))))
                     (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
              MAlonzo.Code.Once.CCC.Machine.SMCore.C_scratch'45'zero_426
                -> coe
                     MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                     (coe
-                       MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mov_64
+                       MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mov_30
                        (coe
-                          MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_56
-                          (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_rbx_14))
+                          MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_22
+                          (coe MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.C_rbx_12))
                        (coe
-                          MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_imm_60
+                          MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_imm_26
                           (coe (0 :: Integer))))
                     (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
              MAlonzo.Code.Once.CCC.Machine.SMCore.C_scratch'45'dec_428
                -> coe
                     MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                     (coe
-                       MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_sub_70
+                       MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_sub_36
                        (coe
-                          MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_56
-                          (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_rbx_14))
+                          MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_22
+                          (coe MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.C_rbx_12))
                        (coe
-                          MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_imm_60
+                          MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_imm_26
                           (coe (1 :: Integer))))
                     (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
              MAlonzo.Code.Once.CCC.Machine.SMCore.C_scratch'45'load'45'count_430
                -> coe
                     MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                     (coe
-                       MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mov_64
+                       MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mov_30
                        (coe
-                          MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_56
-                          (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_rbx_14))
+                          MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_22
+                          (coe MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.C_rbx_12))
                        (coe
-                          MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_56
-                          (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_rsi_20)))
+                          MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_22
+                          (coe MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.C_rsi_18)))
                     (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
              MAlonzo.Code.Once.CCC.Machine.SMCore.C_input2'45'zero_432
                -> coe
                     MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                     (coe
-                       MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mov_64
+                       MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mov_30
                        (coe
-                          MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_56
-                          (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_rsi_20))
+                          MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_22
+                          (coe MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.C_rsi_18))
                        (coe
-                          MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_imm_60
+                          MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_imm_26
                           (coe (0 :: Integer))))
                     (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
              MAlonzo.Code.Once.CCC.Machine.SMCore.C_input2'45'inc_434
                -> coe
                     MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                     (coe
-                       MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_add_68
+                       MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_add_34
                        (coe
-                          MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_56
-                          (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_rsi_20))
+                          MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_22
+                          (coe MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.C_rsi_18))
                        (coe
-                          MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_imm_60
+                          MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_imm_26
                           (coe (1 :: Integer))))
                     (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
              _ -> MAlonzo.RTE.mazUnreachableError
@@ -484,51 +485,51 @@ d_compile'45'abstract_14 v0
                -> coe
                     MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                     (coe
-                       MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_label_98
+                       MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_label_64
                        (coe MAlonzo.Code.Once.CCC.Label.C_once_8 (coe v2)))
                     (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
              MAlonzo.Code.Once.CCC.Machine.SMCore.C_c'45'jmp_2042 v2
                -> coe
                     MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                     (coe
-                       MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_jmp_76
+                       MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_jmp_42
                        (coe MAlonzo.Code.Once.CCC.Label.C_once_8 (coe v2)))
                     (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
              MAlonzo.Code.Once.CCC.Machine.SMCore.C_c'45'branch'45'scratch'45'zero_2044 v2
                -> coe
                     MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                     (coe
-                       MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_cmp_72
+                       MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_cmp_38
                        (coe
-                          MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_56
-                          (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_rbx_14))
+                          MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_22
+                          (coe MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.C_rbx_12))
                        (coe
-                          MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_imm_60
+                          MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_imm_26
                           (coe (0 :: Integer))))
                     (coe
                        MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                        (coe
-                          MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_je_78
+                          MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_je_44
                           (coe MAlonzo.Code.Once.CCC.Label.C_once_8 (coe v2)))
                        (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16))
              MAlonzo.Code.Once.CCC.Machine.SMCore.C_c'45'branch'45'tag'45'zero_2046 v2
                -> coe
                     MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                     (coe
-                       MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_cmp_72
+                       MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_cmp_38
                        (coe
-                          MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mem_58
+                          MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mem_24
                           (coe
-                             MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_base'43'disp_48
-                             (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_rdi_22)
+                             MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_base'43'disp_14
+                             (coe MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.C_rdi_20)
                              (coe (0 :: Integer))))
                        (coe
-                          MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_imm_60
+                          MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_imm_26
                           (coe (0 :: Integer))))
                     (coe
                        MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                        (coe
-                          MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_je_78
+                          MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_je_44
                           (coe MAlonzo.Code.Once.CCC.Label.C_once_8 (coe v2)))
                        (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16))
              _ -> MAlonzo.RTE.mazUnreachableError
@@ -536,66 +537,66 @@ d_compile'45'abstract_14 v0
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe
-                MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mov_64
+                MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mov_30
                 (coe
-                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_56
-                   (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_rdi_22))
+                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_22
+                   (coe MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.C_rdi_20))
                 (coe
-                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mem_58
+                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mem_24
                    (coe
-                      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_base'43'disp_48
-                      (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_rsp_26)
+                      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_base'43'disp_14
+                      (coe MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.C_rsp_24)
                       (coe d_slot'45'to'45'disp_10 (coe v1)))))
              (coe
                 MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                 (coe
-                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mov_64
+                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mov_30
                    (coe
-                      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_56
-                      (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_rcx_16))
+                      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_22
+                      (coe MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.C_rcx_14))
                    (coe
-                      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_56
-                      (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_rbx_14)))
+                      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_22
+                      (coe MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.C_rbx_12)))
                 (coe
                    MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                    (coe
-                      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_add_68
+                      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_add_34
                       (coe
-                         MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_56
-                         (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_rcx_16))
+                         MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_22
+                         (coe MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.C_rcx_14))
                       (coe
-                         MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_56
-                         (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_rcx_16)))
+                         MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_22
+                         (coe MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.C_rcx_14)))
                    (coe
                       MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                       (coe
-                         MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_add_68
+                         MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_add_34
                          (coe
-                            MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_56
-                            (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_rcx_16))
+                            MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_22
+                            (coe MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.C_rcx_14))
                          (coe
-                            MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_56
-                            (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_rcx_16)))
+                            MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_22
+                            (coe MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.C_rcx_14)))
                       (coe
                          MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                          (coe
-                            MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_add_68
+                            MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_add_34
                             (coe
-                               MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_56
-                               (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_rcx_16))
+                               MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_22
+                               (coe MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.C_rcx_14))
                             (coe
-                               MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_56
-                               (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_rcx_16)))
+                               MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_22
+                               (coe MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.C_rcx_14)))
                          (coe
                             MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                             (coe
-                               MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_add_68
+                               MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_add_34
                                (coe
-                                  MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_56
-                                  (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_rdi_22))
+                                  MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_22
+                                  (coe MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.C_rdi_20))
                                (coe
-                                  MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_56
-                                  (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_rcx_16)))
+                                  MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_22
+                                  (coe MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.C_rcx_14)))
                             (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16))))))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Target.X86-64.AbstractToX86.compile-trace-cnt
@@ -646,20 +647,20 @@ d_compile'45'trace'45'cnt_62 v0 v1
                           (coe
                              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                              (coe
-                                MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_cmp_72
+                                MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_cmp_38
                                 (coe
-                                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mem_58
+                                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mem_24
                                    (coe
-                                      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_base'43'disp_48
-                                      (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_rdi_22)
+                                      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_base'43'disp_14
+                                      (coe MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.C_rdi_20)
                                       (coe (0 :: Integer))))
                                 (coe
-                                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_imm_60
+                                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_imm_26
                                    (coe (0 :: Integer))))
                              (coe
                                 MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                                 (coe
-                                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_je_78
+                                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_je_44
                                    (coe MAlonzo.Code.Once.CCC.Label.C_once_8 (coe v0)))
                                 (coe
                                    MAlonzo.Code.Data.List.Base.du__'43''43'__32
@@ -676,14 +677,14 @@ d_compile'45'trace'45'cnt_62 v0 v1
                                    (coe
                                       MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                                       (coe
-                                         MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_jmp_76
+                                         MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_jmp_42
                                          (coe
                                             MAlonzo.Code.Once.CCC.Label.C_once_8
                                             (coe addInt (coe (1 :: Integer)) (coe v0))))
                                       (coe
                                          MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                                          (coe
-                                            MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_label_98
+                                            MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_label_64
                                             (coe MAlonzo.Code.Once.CCC.Label.C_once_8 (coe v0)))
                                          (coe
                                             MAlonzo.Code.Data.List.Base.du__'43''43'__32
@@ -696,7 +697,7 @@ d_compile'45'trace'45'cnt_62 v0 v1
                                             (coe
                                                MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                                                (coe
-                                                  MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_label_98
+                                                  MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_label_64
                                                   (coe
                                                      MAlonzo.Code.Once.CCC.Label.C_once_8
                                                      (coe addInt (coe (1 :: Integer)) (coe v0))))
@@ -735,22 +736,22 @@ d_compile'45'trace'45'cnt_62 v0 v1
                           (coe
                              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                              (coe
-                                MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_label_98
+                                MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_label_64
                                 (coe MAlonzo.Code.Once.CCC.Label.C_once_8 (coe v0)))
                              (coe
                                 MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                                 (coe
-                                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_cmp_72
+                                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_cmp_38
                                    (coe
-                                      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_56
-                                      (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_rbx_14))
+                                      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_22
+                                      (coe MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.C_rbx_12))
                                    (coe
-                                      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_imm_60
+                                      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_imm_26
                                       (coe (0 :: Integer))))
                                 (coe
                                    MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                                    (coe
-                                      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_je_78
+                                      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_je_44
                                       (coe
                                          MAlonzo.Code.Once.CCC.Label.C_once_8
                                          (coe addInt (coe (1 :: Integer)) (coe v0))))
@@ -764,12 +765,12 @@ d_compile'45'trace'45'cnt_62 v0 v1
                                       (coe
                                          MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                                          (coe
-                                            MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_jmp_76
+                                            MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_jmp_42
                                             (coe MAlonzo.Code.Once.CCC.Label.C_once_8 (coe v0)))
                                          (coe
                                             MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                                             (coe
-                                               MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_label_98
+                                               MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_label_64
                                                (coe
                                                   MAlonzo.Code.Once.CCC.Label.C_once_8
                                                   (coe addInt (coe (1 :: Integer)) (coe v0))))
@@ -789,7 +790,7 @@ d_compile'45'trace'45'cnt_62 v0 v1
 -- Once.CCC.Target.X86-64.AbstractToX86.compile-trace
 d_compile'45'trace_122 ::
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2048] ->
-  [MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.T_Instr_62]
+  [MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.T_Instr_28]
 d_compile'45'trace_122 v0
   = case coe v0 of
       [] -> coe v0

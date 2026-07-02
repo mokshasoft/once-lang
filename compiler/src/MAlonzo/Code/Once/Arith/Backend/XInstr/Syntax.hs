@@ -21,7 +21,7 @@ import qualified MAlonzo.Code.Once.Arith.Machine.Shape
 
 -- Once.Arith.Backend.XInstr.Syntax.XReg
 d_XReg_10 = ()
-data T_XReg_10 = C_XR12_12 | C_XR13_14 | C_XR14_16 | C_XR15_18
+data T_XReg_10 = C_XR0_12 | C_XR1_14 | C_XR2_16 | C_XR3_18
 -- Once.Arith.Backend.XInstr.Syntax.XScratch
 d_XScratch_20 = ()
 newtype T_XScratch_20 = C_mk'45'scratch_26 Integer
