@@ -331,62 +331,13 @@ mutual
   -- Application: RVar head via helper; concrete heads via t-app/t-effApp.
   canon-reflects-ᵢ bound (Raw.RApp (Raw.RVar y) X) sub D =
     reflect-app-var-ᵢ (elemStr y bound ∨ isBuiltinName y) bound y X sub refl D
-  canon-reflects-ᵢ bound (Raw.RApp (Raw.RQualified hn ha) X) sub (t-app cls df dx) =
-    t-app (classify-decanon bound (Raw.RQualified hn ha) cls) (canon-reflects-ᵢ bound (Raw.RQualified hn ha) sub df) (canon-reflects-ᶜ bound X sub dx)
-  canon-reflects-ᵢ bound (Raw.RApp (Raw.RQualified hn ha) X) sub (t-effApp cls df dx) =
-    t-effApp (classify-decanon bound (Raw.RQualified hn ha) cls) (canon-reflects-ᵢ bound (Raw.RQualified hn ha) sub df) (canon-reflects-ᶜ bound X sub dx)
-  canon-reflects-ᵢ bound (Raw.RApp (Raw.RResolved hcn) X) sub (t-app cls df dx) =
-    t-app (classify-decanon bound (Raw.RResolved hcn) cls) (canon-reflects-ᵢ bound (Raw.RResolved hcn) sub df) (canon-reflects-ᶜ bound X sub dx)
-  canon-reflects-ᵢ bound (Raw.RApp (Raw.RResolved hcn) X) sub (t-effApp cls df dx) =
-    t-effApp (classify-decanon bound (Raw.RResolved hcn) cls) (canon-reflects-ᵢ bound (Raw.RResolved hcn) sub df) (canon-reflects-ᶜ bound X sub dx)
-  canon-reflects-ᵢ bound (Raw.RApp (Raw.RApp hf hg) X) sub (t-app cls df dx) =
-    t-app (classify-decanon bound (Raw.RApp hf hg) cls) (canon-reflects-ᵢ bound (Raw.RApp hf hg) sub df) (canon-reflects-ᶜ bound X sub dx)
-  canon-reflects-ᵢ bound (Raw.RApp (Raw.RApp hf hg) X) sub (t-effApp cls df dx) =
-    t-effApp (classify-decanon bound (Raw.RApp hf hg) cls) (canon-reflects-ᵢ bound (Raw.RApp hf hg) sub df) (canon-reflects-ᶜ bound X sub dx)
-  canon-reflects-ᵢ bound (Raw.RApp (Raw.RLam hx hb) X) sub (t-app cls df dx) =
-    t-app (classify-decanon bound (Raw.RLam hx hb) cls) (canon-reflects-ᵢ bound (Raw.RLam hx hb) sub df) (canon-reflects-ᶜ bound X sub dx)
-  canon-reflects-ᵢ bound (Raw.RApp (Raw.RLam hx hb) X) sub (t-effApp cls df dx) =
-    t-effApp (classify-decanon bound (Raw.RLam hx hb) cls) (canon-reflects-ᵢ bound (Raw.RLam hx hb) sub df) (canon-reflects-ᶜ bound X sub dx)
-  canon-reflects-ᵢ bound (Raw.RApp (Raw.RLet hx he1 he2) X) sub (t-app cls df dx) =
-    t-app (classify-decanon bound (Raw.RLet hx he1 he2) cls) (canon-reflects-ᵢ bound (Raw.RLet hx he1 he2) sub df) (canon-reflects-ᶜ bound X sub dx)
-  canon-reflects-ᵢ bound (Raw.RApp (Raw.RLet hx he1 he2) X) sub (t-effApp cls df dx) =
-    t-effApp (classify-decanon bound (Raw.RLet hx he1 he2) cls) (canon-reflects-ᵢ bound (Raw.RLet hx he1 he2) sub df) (canon-reflects-ᶜ bound X sub dx)
-  canon-reflects-ᵢ bound (Raw.RApp (Raw.RPair ha hb) X) sub (t-app cls df dx) =
-    t-app (classify-decanon bound (Raw.RPair ha hb) cls) (canon-reflects-ᵢ bound (Raw.RPair ha hb) sub df) (canon-reflects-ᶜ bound X sub dx)
-  canon-reflects-ᵢ bound (Raw.RApp (Raw.RPair ha hb) X) sub (t-effApp cls df dx) =
-    t-effApp (classify-decanon bound (Raw.RPair ha hb) cls) (canon-reflects-ᵢ bound (Raw.RPair ha hb) sub df) (canon-reflects-ᶜ bound X sub dx)
-  canon-reflects-ᵢ bound (Raw.RApp (Raw.RDestruct hs hxl hel hxr her) X) sub (t-app cls df dx) =
-    t-app (classify-decanon bound (Raw.RDestruct hs hxl hel hxr her) cls) (canon-reflects-ᵢ bound (Raw.RDestruct hs hxl hel hxr her) sub df) (canon-reflects-ᶜ bound X sub dx)
-  canon-reflects-ᵢ bound (Raw.RApp (Raw.RDestruct hs hxl hel hxr her) X) sub (t-effApp cls df dx) =
-    t-effApp (classify-decanon bound (Raw.RDestruct hs hxl hel hxr her) cls) (canon-reflects-ᵢ bound (Raw.RDestruct hs hxl hel hxr her) sub df) (canon-reflects-ᶜ bound X sub dx)
-  canon-reflects-ᵢ bound (Raw.RApp Raw.RUnit X) sub (t-app cls df dx) =
-    t-app (classify-decanon bound Raw.RUnit cls) (canon-reflects-ᵢ bound Raw.RUnit sub df) (canon-reflects-ᶜ bound X sub dx)
-  canon-reflects-ᵢ bound (Raw.RApp Raw.RUnit X) sub (t-effApp cls df dx) =
-    t-effApp (classify-decanon bound Raw.RUnit cls) (canon-reflects-ᵢ bound Raw.RUnit sub df) (canon-reflects-ᶜ bound X sub dx)
-  canon-reflects-ᵢ bound (Raw.RApp (Raw.RInt hn) X) sub (t-app cls df dx) =
-    t-app (classify-decanon bound (Raw.RInt hn) cls) (canon-reflects-ᵢ bound (Raw.RInt hn) sub df) (canon-reflects-ᶜ bound X sub dx)
-  canon-reflects-ᵢ bound (Raw.RApp (Raw.RInt hn) X) sub (t-effApp cls df dx) =
-    t-effApp (classify-decanon bound (Raw.RInt hn) cls) (canon-reflects-ᵢ bound (Raw.RInt hn) sub df) (canon-reflects-ᶜ bound X sub dx)
-  canon-reflects-ᵢ bound (Raw.RApp (Raw.RStringLit hs) X) sub (t-app cls df dx) =
-    t-app (classify-decanon bound (Raw.RStringLit hs) cls) (canon-reflects-ᵢ bound (Raw.RStringLit hs) sub df) (canon-reflects-ᶜ bound X sub dx)
-  canon-reflects-ᵢ bound (Raw.RApp (Raw.RStringLit hs) X) sub (t-effApp cls df dx) =
-    t-effApp (classify-decanon bound (Raw.RStringLit hs) cls) (canon-reflects-ᵢ bound (Raw.RStringLit hs) sub df) (canon-reflects-ᶜ bound X sub dx)
-  canon-reflects-ᵢ bound (Raw.RApp (Raw.RAnnot he ht) X) sub (t-app cls df dx) =
-    t-app (classify-decanon bound (Raw.RAnnot he ht) cls) (canon-reflects-ᵢ bound (Raw.RAnnot he ht) sub df) (canon-reflects-ᶜ bound X sub dx)
-  canon-reflects-ᵢ bound (Raw.RApp (Raw.RAnnot he ht) X) sub (t-effApp cls df dx) =
-    t-effApp (classify-decanon bound (Raw.RAnnot he ht) cls) (canon-reflects-ᵢ bound (Raw.RAnnot he ht) sub df) (canon-reflects-ᶜ bound X sub dx)
-  canon-reflects-ᵢ bound (Raw.RApp (Raw.RBinOp hop ha hb) X) sub (t-app cls df dx) =
-    t-app (classify-decanon bound (Raw.RBinOp hop ha hb) cls) (canon-reflects-ᵢ bound (Raw.RBinOp hop ha hb) sub df) (canon-reflects-ᶜ bound X sub dx)
-  canon-reflects-ᵢ bound (Raw.RApp (Raw.RBinOp hop ha hb) X) sub (t-effApp cls df dx) =
-    t-effApp (classify-decanon bound (Raw.RBinOp hop ha hb) cls) (canon-reflects-ᵢ bound (Raw.RBinOp hop ha hb) sub df) (canon-reflects-ᶜ bound X sub dx)
-  canon-reflects-ᵢ bound (Raw.RApp (Raw.RUnaryOp hop he) X) sub (t-app cls df dx) =
-    t-app (classify-decanon bound (Raw.RUnaryOp hop he) cls) (canon-reflects-ᵢ bound (Raw.RUnaryOp hop he) sub df) (canon-reflects-ᶜ bound X sub dx)
-  canon-reflects-ᵢ bound (Raw.RApp (Raw.RUnaryOp hop he) X) sub (t-effApp cls df dx) =
-    t-effApp (classify-decanon bound (Raw.RUnaryOp hop he) cls) (canon-reflects-ᵢ bound (Raw.RUnaryOp hop he) sub df) (canon-reflects-ᶜ bound X sub dx)
-  canon-reflects-ᵢ bound (Raw.RApp (Raw.RAna hF hc) X) sub (t-app cls df dx) =
-    t-app (classify-decanon bound (Raw.RAna hF hc) cls) (canon-reflects-ᵢ bound (Raw.RAna hF hc) sub df) (canon-reflects-ᶜ bound X sub dx)
-  canon-reflects-ᵢ bound (Raw.RApp (Raw.RAna hF hc) X) sub (t-effApp cls df dx) =
-    t-effApp (classify-decanon bound (Raw.RAna hF hc) cls) (canon-reflects-ᵢ bound (Raw.RAna hF hc) sub df) (canon-reflects-ᶜ bound X sub dx)
+  -- Non-RVar heads (RVar handled above): ONE clause per app rule. `hd` abstract —
+  -- `classify-decanon bound hd cls` is well-typed for any head, so the 28 unrolled
+  -- per-head clauses collapse to 2 (t-app / t-effApp).
+  canon-reflects-ᵢ bound (Raw.RApp hd X) sub (t-app cls df dx) =
+    t-app (classify-decanon bound hd cls) (canon-reflects-ᵢ bound hd sub df) (canon-reflects-ᶜ bound X sub dx)
+  canon-reflects-ᵢ bound (Raw.RApp hd X) sub (t-effApp cls df dx) =
+    t-effApp (classify-decanon bound hd cls) (canon-reflects-ᵢ bound hd sub df) (canon-reflects-ᶜ bound X sub dx)
   -- No ⊢ᵢ rule concludes RLam / RAna.
   canon-reflects-ᵢ bound (Raw.RLam x body) sub ()
   canon-reflects-ᵢ bound (Raw.RAna F c) sub ()
@@ -455,34 +406,10 @@ mutual
     t-lam le (canon-reflects-ᶜ (x ∷ bound) body (⊆ᵇ-cons x sub) d)
   canon-reflects-ᶜ bound (Raw.RApp (Raw.RVar y) X) sub D =
     reflect-app-var-ᶜ (elemStr y bound ∨ isBuiltinName y) bound y X sub refl D
-  canon-reflects-ᶜ bound (Raw.RApp (Raw.RQualified hn ha) X) sub (t-arg-driven-app-check cls darg df) =
-    t-arg-driven-app-check (classify-decanon bound (Raw.RQualified hn ha) cls) (canon-reflects-ᵢ bound X sub darg) (canon-reflects-ᶜ bound (Raw.RQualified hn ha) sub df)
-  canon-reflects-ᶜ bound (Raw.RApp (Raw.RResolved hcn) X) sub (t-arg-driven-app-check cls darg df) =
-    t-arg-driven-app-check (classify-decanon bound (Raw.RResolved hcn) cls) (canon-reflects-ᵢ bound X sub darg) (canon-reflects-ᶜ bound (Raw.RResolved hcn) sub df)
-  canon-reflects-ᶜ bound (Raw.RApp (Raw.RApp hf hg) X) sub (t-arg-driven-app-check cls darg df) =
-    t-arg-driven-app-check (classify-decanon bound (Raw.RApp hf hg) cls) (canon-reflects-ᵢ bound X sub darg) (canon-reflects-ᶜ bound (Raw.RApp hf hg) sub df)
-  canon-reflects-ᶜ bound (Raw.RApp (Raw.RLam hx hb) X) sub (t-arg-driven-app-check cls darg df) =
-    t-arg-driven-app-check (classify-decanon bound (Raw.RLam hx hb) cls) (canon-reflects-ᵢ bound X sub darg) (canon-reflects-ᶜ bound (Raw.RLam hx hb) sub df)
-  canon-reflects-ᶜ bound (Raw.RApp (Raw.RLet hx he1 he2) X) sub (t-arg-driven-app-check cls darg df) =
-    t-arg-driven-app-check (classify-decanon bound (Raw.RLet hx he1 he2) cls) (canon-reflects-ᵢ bound X sub darg) (canon-reflects-ᶜ bound (Raw.RLet hx he1 he2) sub df)
-  canon-reflects-ᶜ bound (Raw.RApp (Raw.RPair ha hb) X) sub (t-arg-driven-app-check cls darg df) =
-    t-arg-driven-app-check (classify-decanon bound (Raw.RPair ha hb) cls) (canon-reflects-ᵢ bound X sub darg) (canon-reflects-ᶜ bound (Raw.RPair ha hb) sub df)
-  canon-reflects-ᶜ bound (Raw.RApp (Raw.RDestruct hs hxl hel hxr her) X) sub (t-arg-driven-app-check cls darg df) =
-    t-arg-driven-app-check (classify-decanon bound (Raw.RDestruct hs hxl hel hxr her) cls) (canon-reflects-ᵢ bound X sub darg) (canon-reflects-ᶜ bound (Raw.RDestruct hs hxl hel hxr her) sub df)
-  canon-reflects-ᶜ bound (Raw.RApp Raw.RUnit X) sub (t-arg-driven-app-check cls darg df) =
-    t-arg-driven-app-check (classify-decanon bound Raw.RUnit cls) (canon-reflects-ᵢ bound X sub darg) (canon-reflects-ᶜ bound Raw.RUnit sub df)
-  canon-reflects-ᶜ bound (Raw.RApp (Raw.RInt hn) X) sub (t-arg-driven-app-check cls darg df) =
-    t-arg-driven-app-check (classify-decanon bound (Raw.RInt hn) cls) (canon-reflects-ᵢ bound X sub darg) (canon-reflects-ᶜ bound (Raw.RInt hn) sub df)
-  canon-reflects-ᶜ bound (Raw.RApp (Raw.RStringLit hs) X) sub (t-arg-driven-app-check cls darg df) =
-    t-arg-driven-app-check (classify-decanon bound (Raw.RStringLit hs) cls) (canon-reflects-ᵢ bound X sub darg) (canon-reflects-ᶜ bound (Raw.RStringLit hs) sub df)
-  canon-reflects-ᶜ bound (Raw.RApp (Raw.RAnnot he ht) X) sub (t-arg-driven-app-check cls darg df) =
-    t-arg-driven-app-check (classify-decanon bound (Raw.RAnnot he ht) cls) (canon-reflects-ᵢ bound X sub darg) (canon-reflects-ᶜ bound (Raw.RAnnot he ht) sub df)
-  canon-reflects-ᶜ bound (Raw.RApp (Raw.RBinOp hop ha hb) X) sub (t-arg-driven-app-check cls darg df) =
-    t-arg-driven-app-check (classify-decanon bound (Raw.RBinOp hop ha hb) cls) (canon-reflects-ᵢ bound X sub darg) (canon-reflects-ᶜ bound (Raw.RBinOp hop ha hb) sub df)
-  canon-reflects-ᶜ bound (Raw.RApp (Raw.RUnaryOp hop he) X) sub (t-arg-driven-app-check cls darg df) =
-    t-arg-driven-app-check (classify-decanon bound (Raw.RUnaryOp hop he) cls) (canon-reflects-ᵢ bound X sub darg) (canon-reflects-ᶜ bound (Raw.RUnaryOp hop he) sub df)
-  canon-reflects-ᶜ bound (Raw.RApp (Raw.RAna hF hc) X) sub (t-arg-driven-app-check cls darg df) =
-    t-arg-driven-app-check (classify-decanon bound (Raw.RAna hF hc) cls) (canon-reflects-ᵢ bound X sub darg) (canon-reflects-ᶜ bound (Raw.RAna hF hc) sub df)
+  -- Non-RVar heads (RVar handled above): ONE clause — `hd` abstract, mirroring the
+  -- `canon-reflects-ᵢ` collapse (14 unrolled per-head clauses → 1).
+  canon-reflects-ᶜ bound (Raw.RApp hd X) sub (t-arg-driven-app-check cls darg df) =
+    t-arg-driven-app-check (classify-decanon bound hd cls) (canon-reflects-ᵢ bound X sub darg) (canon-reflects-ᶜ bound hd sub df)
   -- Universal lift bridges (catch-all LAST; recurse on the same `e`).
   canon-reflects-ᶜ bound e sub (t-morph-lift d) = t-morph-lift (canon-reflects-ᵐ bound e sub d)
   canon-reflects-ᶜ bound e sub (t-embed d)      = t-embed (canon-reflects-ᵢ bound e sub d)
