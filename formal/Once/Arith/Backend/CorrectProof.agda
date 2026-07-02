@@ -13,7 +13,9 @@ open import Data.Nat using (ℕ; zero; suc)
 
 module Once.Arith.Backend.CorrectProof (bits : ℕ) where
 
-open import Data.Nat using (_≟_)
+open import Data.Nat using (_≟_; _+_; _*_; _∸_; _%_)
+open import Data.Nat.Properties using (+-comm; *-comm)
+open import Data.Nat.DivMod using (%-distribˡ-+; m%n%n≡m%n)
 open import Data.Integer using (ℤ)
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.Maybe using (Maybe; just; nothing)
@@ -28,7 +30,7 @@ open import Once.Arith.Backend.XInstr.Syntax
 open import Once.Arith.Backend.XInstr.CodeGen using (emit; emit-program; abs-reg)
 open import Once.Word using (module Width)
 
-open Width bits using (fromℤ; _⊕_; _⊖_; _⊗_; ⊝_)
+open Width bits using (fromℤ; _⊕_; _⊖_; _⊗_; ⊝_; norm; modulus; modulus≢0)
 open Exec bits using (step; run-abstract)
 
 ------------------------------------------------------------------------
@@ -147,3 +149,32 @@ refine-move-to-out : ∀ {sh} (src : ℕ) (xs : XReg) → abs-reg src ≡ just x
 refine-move-to-out src xs eq s rewrite eq =
   cong (λ i → record s { output = ArithAbsState.regs s [ i ] })
        (abs-reg-idx src xs eq)
+
+------------------------------------------------------------------------
+-- Word algebra (width-generic): commutativity + the sub identity that
+-- `emit`'s aliasing optimizations need. All via ℕ facts under `norm`.
+------------------------------------------------------------------------
+
+⊕-comm : ∀ x y → x ⊕ y ≡ y ⊕ x
+⊕-comm x y = cong norm (+-comm x y)
+
+⊗-comm : ∀ x y → x ⊗ y ≡ y ⊗ x
+⊗-comm x y = cong norm (*-comm x y)
+
+-- norm absorbs a norm on the left of a `+`:  norm (norm x + y) ≡ norm (x + y).
+norm-absorb-left : ∀ x y → norm (norm x + y) ≡ norm (x + y)
+norm-absorb-left x y = trans (%-distribˡ-+ (x % modulus) y modulus)
+                             (trans (cong (λ w → (w + (y % modulus)) % modulus) (m%n%n≡m%n x modulus))
+                                    (sym (%-distribˡ-+ x y modulus)))
+
+-- sub via neg-then-add:  (⊝ b) ⊕ a ≡ a ⊖ b.
+sub-identity : ∀ a b → (⊝ b) ⊕ a ≡ a ⊖ b
+sub-identity a b = trans (norm-absorb-left (modulus ∸ b) a) (cong norm (+-comm (modulus ∸ b) a))
+
+-- `bin-op` inherits commutativity of the underlying op.
+bin-op-comm : ∀ (f : ℕ → ℕ → ℕ) → (∀ x y → f x y ≡ f y x) →
+  ∀ (ma mb : Maybe ℕ) → bin-op f ma mb ≡ bin-op f mb ma
+bin-op-comm f fc (just x) (just y) = cong just (fc x y)
+bin-op-comm f fc (just x) nothing  = refl
+bin-op-comm f fc nothing  (just y) = refl
+bin-op-comm f fc nothing  nothing  = refl
