@@ -88,9 +88,6 @@ postulate
   -- NAMED obligation over the elaborator's own `checkElabV-RVar-bbc-*-aux`. The 7
   -- builtins are `refl` once navigated (`spec* = lift-morphism IR.*`, `realize-morph`
   -- direct) — dischargeable follow-up; poly rides the `bbc-other-poly-witness` gap.
-  check-agreeV-RVar-id-todo : ∀ (ctx : NamedCtx) (T : Type) {fe snd Ψ se d f w}
-    → E.checkElabV-RVar-bbc-id-aux ctx T (failure fe , snd) ≡ (success Ψ se d f , w)
-    → ∀ dγ k → SD.⟦ se ⟧ˢ dγ k ≡ SD.⟦ realize w ⟧ˢ dγ k
   check-agreeV-RVar-fst-todo : ∀ (ctx : NamedCtx) (T : Type) {fe snd Ψ se d f w}
     → E.checkElabV-RVar-bbc-fst-aux ctx T (failure fe , snd) ≡ (success Ψ se d f , w)
     → ∀ dγ k → SD.⟦ se ⟧ˢ dγ k ≡ SD.⟦ realize w ⟧ˢ dγ k
@@ -119,6 +116,34 @@ postulate
     (vw : E.AppHeadView f) (veq : E.classifyAppHeadView f ≡ vw)
     → E.checkElabV-RApp-dispatch ctx f arg T vw veq ≡ (success Ψ se d fr , w)
     → ∀ (dγ : ⟦ ⟦ NamedCtx.debruijn ctx ⟧ᶜ ⟧ᴰ) (k : ℕ) → SD.⟦ se ⟧ˢ dγ k ≡ SD.⟦ realize w ⟧ˢ dγ k
+
+-- DISCHARGED bbc-id leaf: `spec id = lift-morphism IR.id`, `realize-morph (m-id) =
+-- IR.id`, so the sole success leaf (arrow target A⇒A, both lookups absent, A≟A) is
+-- `refl`; every other target / lookup-found branch fails ⇒ absurd success-eq.
+check-agreeV-RVar-id : ∀ (ctx : NamedCtx) (T : Type) {fe snd Ψ se d f w}
+  → E.checkElabV-RVar-bbc-id-aux ctx T (failure fe , snd) ≡ (success Ψ se d f , w)
+  → ∀ dγ k → SD.⟦ se ⟧ˢ dγ k ≡ SD.⟦ realize w ⟧ˢ dγ k
+check-agreeV-RVar-id ctx (X ⇒[ mk-kind Many π ] Y) eq
+  with E.inspectLookupLocal ctx "id" | E.inspectLookupImport ctx "id" | eq
+... | E.llv-not-found _ | E.liv-not-found _ | eq' with X E.≟T Y | eq'
+...   | yes refl | refl = λ dγ k → refl
+...   | no _     | ()
+check-agreeV-RVar-id ctx (X ⇒[ mk-kind Many π ] Y) eq
+  | E.llv-not-found _ | E.liv-found _ | ()
+check-agreeV-RVar-id ctx (X ⇒[ mk-kind Many π ] Y) eq
+  | E.llv-found _ | _ | ()
+check-agreeV-RVar-id ctx Unit ()
+check-agreeV-RVar-id ctx Void ()
+check-agreeV-RVar-id ctx Int ()
+check-agreeV-RVar-id ctx Float ()
+check-agreeV-RVar-id ctx Str ()
+check-agreeV-RVar-id ctx Buffer ()
+check-agreeV-RVar-id ctx (_ * _) ()
+check-agreeV-RVar-id ctx (_ + _) ()
+check-agreeV-RVar-id ctx (μ-type _) ()
+check-agreeV-RVar-id ctx (ν-type _) ()
+check-agreeV-RVar-id ctx (_ ⇒[ mk-kind One _ ] _) ()
+check-agreeV-RVar-id ctx (_ ⇒[ mk-kind Zero _ ] _) ()
 
 -- RPair folded top-level (no `with`): take both sub-results explicitly +
 -- their sub-IHs as functions; the de-withed `inferElabV-RPair-aux` reduces by
@@ -1275,7 +1300,7 @@ mutual
               (λ dγ' k' → infer-agreeV ctx (Raw.RVar x) (rec (infer<check (Raw.RVar x))) ieq dγ' k') dγ k
   check-agreeV ctx (Raw.RVar x) T (acc rec) eq dγ k
     | failure fe , snd | eq' with E.classifyBareBuiltin x | eq'
-  ...   | E.bbc-id       | eq'' = check-agreeV-RVar-id-todo       ctx T eq'' dγ k
+  ...   | E.bbc-id       | eq'' = check-agreeV-RVar-id            ctx T eq'' dγ k
   ...   | E.bbc-fst      | eq'' = check-agreeV-RVar-fst-todo      ctx T eq'' dγ k
   ...   | E.bbc-snd      | eq'' = check-agreeV-RVar-snd-todo      ctx T eq'' dγ k
   ...   | E.bbc-terminal | eq'' = check-agreeV-RVar-terminal-todo ctx T eq'' dγ k
