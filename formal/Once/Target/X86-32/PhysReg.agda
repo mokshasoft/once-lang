@@ -54,3 +54,13 @@ owner esi = ccc
 owner edi = ccc
 owner ebp = ccc
 owner esp = ccc
+
+------------------------------------------------------------------------
+-- Arith register budget (Plan 0.56): EMPTY on ia32 — no CCC-free
+-- registers, so k = 0 ⇒ the save/restore fallback (0.55's arith-borrows).
+------------------------------------------------------------------------
+
+open import Data.List using (List; [])
+
+arith-budget : List Reg
+arith-budget = []

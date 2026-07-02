@@ -83,3 +83,12 @@ owner t1 = ccc
 owner t2 = ccc
 owner t3 = ccc
 owner t4 = ccc
+
+------------------------------------------------------------------------
+-- Arith register budget (Plan 0.56).
+------------------------------------------------------------------------
+
+open import Data.List using (List; []; _∷_)
+
+arith-budget : List Reg
+arith-budget = a3 ∷ a4 ∷ a5 ∷ []

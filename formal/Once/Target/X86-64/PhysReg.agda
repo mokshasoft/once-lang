@@ -94,3 +94,13 @@ owner r11 = arith
 owner rdx = free
 owner r13 = free
 owner r14 = free
+
+------------------------------------------------------------------------
+-- Arith register budget (Plan 0.56): the arith-owned registers in
+-- priority order. `k = length arith-budget` scales the arith compiler.
+------------------------------------------------------------------------
+
+open import Data.List using (List; []; _∷_)
+
+arith-budget : List Reg
+arith-budget = r8 ∷ r9 ∷ r10 ∷ r11 ∷ []
