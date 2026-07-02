@@ -33,23 +33,11 @@ open import Once.CCC.Label using (Label)
 --   rsp: stack pointer
 --   rbp: frame pointer
 --
-data Reg : Set where
-  rax : Reg    -- Return value / accumulator
-  rbx : Reg    -- Callee-saved (base)
-  rcx : Reg    -- Fourth argument (Windows) / counter
-  rdx : Reg    -- Third argument
-  rsi : Reg    -- Second argument (source index)
-  rdi : Reg    -- First argument (destination index)
-  rbp : Reg    -- Frame pointer (callee-saved)
-  rsp : Reg    -- Stack pointer
-  r8  : Reg    -- Fifth argument
-  r9  : Reg    -- Sixth argument
-  r10 : Reg    -- Temporary
-  r11 : Reg    -- Temporary
-  r12 : Reg    -- Callee-saved (environment pointer for closures)
-  r13 : Reg    -- Callee-saved
-  r14 : Reg    -- Callee-saved
-  r15 : Reg    -- Callee-saved
+-- The physical register file is now the single shared declaration
+-- `Once.Target.X86-64.PhysReg` (Plan 0.55), re-exported here so every CCC
+-- importer of this module keeps seeing `Reg` unchanged.
+open import Once.Target.X86-64.PhysReg public using
+  (Reg; rax; rbx; rcx; rdx; rsi; rdi; rbp; rsp; r8; r9; r10; r11; r12; r13; r14; r15)
 
 ------------------------------------------------------------------------
 -- Memory operands

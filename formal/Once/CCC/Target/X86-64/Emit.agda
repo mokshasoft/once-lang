@@ -24,23 +24,8 @@ open import Once.CCC.Label using (Label; once; sigop)
 -- Register names
 ------------------------------------------------------------------------
 
-showReg : Reg → String
-showReg rax = "%rax"
-showReg rbx = "%rbx"
-showReg rcx = "%rcx"
-showReg rdx = "%rdx"
-showReg rsi = "%rsi"
-showReg rdi = "%rdi"
-showReg rbp = "%rbp"
-showReg rsp = "%rsp"
-showReg r8  = "%r8"
-showReg r9  = "%r9"
-showReg r10 = "%r10"
-showReg r11 = "%r11"
-showReg r12 = "%r12"
-showReg r13 = "%r13"
-showReg r14 = "%r14"
-showReg r15 = "%r15"
+-- Register rendering is shared with the arith backend (Plan 0.55).
+open import Once.Target.X86-64.PhysReg using (showReg)
 
 ------------------------------------------------------------------------
 -- Memory operands (AT&T syntax)
