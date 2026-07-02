@@ -178,3 +178,18 @@ bin-op-comm f fc (just x) (just y) = cong just (fc x y)
 bin-op-comm f fc (just x) nothing  = refl
 bin-op-comm f fc nothing  (just y) = refl
 bin-op-comm f fc nothing  nothing  = refl
+
+------------------------------------------------------------------------
+-- neg-rr: 2-instr emit (mov; neg) → double-write, so ~ (not ≡).
+------------------------------------------------------------------------
+
+refine-neg : ∀ {sh} (dst a : ℕ) (xd xa : XReg) →
+  abs-reg dst ≡ just xd → abs-reg a ≡ just xa →
+  (s : ArithAbsState sh) → exec-x86 (emit (neg-rr dst a)) s ~ step (neg-rr dst a) s
+refine-neg dst a xd xa eqd eqa s
+  rewrite eqd | eqa | abs-reg-idx dst xd eqd | abs-reg-idx a xa eqa =
+    (λ j → trans (double-write (ArithAbsState.regs s) dst (ArithAbsState.regs s [ a ])
+                    (un-op ⊝_ ((ArithAbsState.regs s [ dst ↦ ArithAbsState.regs s [ a ] ]) [ dst ])) j)
+                 (cong (λ v → (ArithAbsState.regs s [ dst ↦ un-op ⊝_ v ]) [ j ])
+                       (store-write-same (ArithAbsState.regs s) dst (ArithAbsState.regs s [ a ]))))
+  , (λ _ → refl) , refl , refl
