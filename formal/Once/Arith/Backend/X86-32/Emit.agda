@@ -45,10 +45,10 @@ open import Once.Target.Symbol using (once-symbol-own)
 ------------------------------------------------------------------------
 
 reg-text : XReg → String
-reg-text XR12 = "%edx"
-reg-text XR13 = "%edi"
-reg-text XR14 = "%ebx"
-reg-text XR15 = "%esi"
+reg-text XR0 = "%edx"
+reg-text XR1 = "%edi"
+reg-text XR2 = "%ebx"
+reg-text XR3 = "%esi"
 
 -- | A scratch slot lives at `4*slot(%esp)` within the reserved frame.
 scratch-text : XScratch → String

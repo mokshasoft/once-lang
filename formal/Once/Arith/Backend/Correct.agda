@@ -5,7 +5,7 @@
 -- Once.Arith.Backend.Correct  (width-parametric, PROVEN — Plan 0.54 Phase A)
 --
 -- Width-generic (`bits`): defines the concrete XInstr machine and proves
--- `exec-x86 (emit i) ≡ step i` per AbstractInstr (with the reg-bound the
+-- `exec-xprog (emit i) ≡ step i` per AbstractInstr (arch-neutral XInstr machine;
 -- 4-register `emit` needs). No baked-in width — the per-arch Correct picks it.
 ------------------------------------------------------------------------
 
@@ -45,10 +45,10 @@ open Exec bits using (step; run-abstract)
 ------------------------------------------------------------------------
 
 xreg-idx : XReg → ℕ
-xreg-idx XR12 = 0
-xreg-idx XR13 = 1
-xreg-idx XR14 = 2
-xreg-idx XR15 = 3
+xreg-idx XR0 = 0
+xreg-idx XR1 = 1
+xreg-idx XR2 = 2
+xreg-idx XR3 = 3
 
 -- Round-trip: if `emit` used `abs-reg r ≡ just xr`, the concrete reg maps back.
 abs-reg-idx : ∀ (r : ℕ) (xr : XReg) → abs-reg r ≡ just xr → xreg-idx xr ≡ r
@@ -78,9 +78,9 @@ exec-xinstr (Ximul-rr d src)  s = record s { regs = ArithAbsState.regs s [ xreg-
 exec-xinstr (Xneg-r d)        s = record s { regs = ArithAbsState.regs s [ xreg-idx d ↦ un-op ⊝_ (ArithAbsState.regs s [ xreg-idx d ]) ] }
 exec-xinstr (Xmov-out src)    s = record s { output = ArithAbsState.regs s [ xreg-idx src ] }
 
-exec-x86 : ∀ {sh} → XProgram → ArithAbsState sh → ArithAbsState sh
-exec-x86 []       s = s
-exec-x86 (i ∷ is) s = exec-x86 is (exec-xinstr i s)
+exec-xprog : ∀ {sh} → XProgram → ArithAbsState sh → ArithAbsState sh
+exec-xprog []       s = s
+exec-xprog (i ∷ is) s = exec-xprog is (exec-xinstr i s)
 
 ------------------------------------------------------------------------
 -- refine, milestone 1: load-imm (validates the with-abstraction approach)
@@ -88,7 +88,7 @@ exec-x86 (i ∷ is) s = exec-x86 is (exec-xinstr i s)
 
 refine-load-imm : ∀ {sh} (z : ℤ) (r : ℕ) (xr : XReg) → abs-reg r ≡ just xr →
   (s : ArithAbsState sh) →
-  exec-x86 (emit (load-imm z r)) s ≡ step (load-imm z r) s
+  exec-xprog (emit (load-imm z r)) s ≡ step (load-imm z r) s
 refine-load-imm z r xr eq s rewrite eq =
   cong (λ i → record s { regs = ArithAbsState.regs s [ i ↦ just (fromℤ z) ] })
        (abs-reg-idx r xr eq)
@@ -134,25 +134,25 @@ double-write σ i A B j with i ≟ j
 ------------------------------------------------------------------------
 
 refine-load-input : ∀ {sh} (p : InputPath) (r : ℕ) (xr : XReg) → abs-reg r ≡ just xr →
-  (s : ArithAbsState sh) → exec-x86 (emit (load-input p r)) s ≡ step (load-input p r) s
+  (s : ArithAbsState sh) → exec-xprog (emit (load-input p r)) s ≡ step (load-input p r) s
 refine-load-input p r xr eq s rewrite eq =
   cong (λ i → record s { regs = ArithAbsState.regs s [ i ↦ just (fromℤ (maybe-zero (project _ p (ArithAbsState.input s)))) ] })
        (abs-reg-idx r xr eq)
 
 refine-spill : ∀ {sh} (src slot : ℕ) (xs : XReg) → abs-reg src ≡ just xs →
-  (s : ArithAbsState sh) → exec-x86 (emit (spill src slot)) s ≡ step (spill src slot) s
+  (s : ArithAbsState sh) → exec-xprog (emit (spill src slot)) s ≡ step (spill src slot) s
 refine-spill src slot xs eq s rewrite eq =
   cong (λ i → record s { scratch = ArithAbsState.scratch s [ slot ↦ ArithAbsState.regs s [ i ] ] })
        (abs-reg-idx src xs eq)
 
 refine-reload : ∀ {sh} (slot dst : ℕ) (xd : XReg) → abs-reg dst ≡ just xd →
-  (s : ArithAbsState sh) → exec-x86 (emit (reload slot dst)) s ≡ step (reload slot dst) s
+  (s : ArithAbsState sh) → exec-xprog (emit (reload slot dst)) s ≡ step (reload slot dst) s
 refine-reload slot dst xd eq s rewrite eq =
   cong (λ i → record s { regs = ArithAbsState.regs s [ i ↦ ArithAbsState.scratch s [ slot ] ] })
        (abs-reg-idx dst xd eq)
 
 refine-move-to-out : ∀ {sh} (src : ℕ) (xs : XReg) → abs-reg src ≡ just xs →
-  (s : ArithAbsState sh) → exec-x86 (emit (move-to-out src)) s ≡ step (move-to-out src) s
+  (s : ArithAbsState sh) → exec-xprog (emit (move-to-out src)) s ≡ step (move-to-out src) s
 refine-move-to-out src xs eq s rewrite eq =
   cong (λ i → record s { output = ArithAbsState.regs s [ i ] })
        (abs-reg-idx src xs eq)
@@ -192,7 +192,7 @@ bin-op-comm f fc nothing  nothing  = refl
 
 refine-neg : ∀ {sh} (dst a : ℕ) (xd xa : XReg) →
   abs-reg dst ≡ just xd → abs-reg a ≡ just xa →
-  (s : ArithAbsState sh) → exec-x86 (emit (neg-rr dst a)) s ~ step (neg-rr dst a) s
+  (s : ArithAbsState sh) → exec-xprog (emit (neg-rr dst a)) s ~ step (neg-rr dst a) s
 refine-neg dst a xd xa eqd eqa s
   rewrite eqd | eqa | abs-reg-idx dst xd eqd | abs-reg-idx a xa eqa =
     (λ j → trans (double-write (ArithAbsState.regs s) dst (ArithAbsState.regs s [ a ])
@@ -206,14 +206,14 @@ refine-neg dst a xd xa eqd eqa s
 ------------------------------------------------------------------------
 
 xreg-idx-inj : ∀ xd xb → xreg-idx xd ≡ xreg-idx xb → xd ≡ xb
-xreg-idx-inj XR12 XR12 _ = refl
-xreg-idx-inj XR13 XR13 _ = refl
-xreg-idx-inj XR14 XR14 _ = refl
-xreg-idx-inj XR15 XR15 _ = refl
-xreg-idx-inj XR12 XR13 () ; xreg-idx-inj XR12 XR14 () ; xreg-idx-inj XR12 XR15 ()
-xreg-idx-inj XR13 XR12 () ; xreg-idx-inj XR13 XR14 () ; xreg-idx-inj XR13 XR15 ()
-xreg-idx-inj XR14 XR12 () ; xreg-idx-inj XR14 XR13 () ; xreg-idx-inj XR14 XR15 ()
-xreg-idx-inj XR15 XR12 () ; xreg-idx-inj XR15 XR13 () ; xreg-idx-inj XR15 XR14 ()
+xreg-idx-inj XR0 XR0 _ = refl
+xreg-idx-inj XR1 XR1 _ = refl
+xreg-idx-inj XR2 XR2 _ = refl
+xreg-idx-inj XR3 XR3 _ = refl
+xreg-idx-inj XR0 XR1 () ; xreg-idx-inj XR0 XR2 () ; xreg-idx-inj XR0 XR3 ()
+xreg-idx-inj XR1 XR0 () ; xreg-idx-inj XR1 XR2 () ; xreg-idx-inj XR1 XR3 ()
+xreg-idx-inj XR2 XR0 () ; xreg-idx-inj XR2 XR1 () ; xreg-idx-inj XR2 XR3 ()
+xreg-idx-inj XR3 XR0 () ; xreg-idx-inj XR3 XR1 () ; xreg-idx-inj XR3 XR2 ()
 
 -- dst ≡ a from xd ≡ xa (via round-trips).
 idx-eq : ∀ {r₁ r₂ x₁ x₂} → abs-reg r₁ ≡ just x₁ → abs-reg r₂ ≡ just x₂ → x₁ ≡ x₂ → r₁ ≡ r₂
@@ -222,7 +222,7 @@ idx-eq {r₁} {r₂} {x₁} {x₂} e₁ e₂ xe =
 
 refine-add : ∀ {sh} (dst a b : ℕ) (xd xa xb : XReg) →
   abs-reg dst ≡ just xd → abs-reg a ≡ just xa → abs-reg b ≡ just xb →
-  (s : ArithAbsState sh) → exec-x86 (emit (add-rrr dst a b)) s ~ step (add-rrr dst a b) s
+  (s : ArithAbsState sh) → exec-xprog (emit (add-rrr dst a b)) s ~ step (add-rrr dst a b) s
 refine-add dst a b xd xa xb eqd eqa eqb s rewrite eqd | eqa | eqb with xd ≟x xa
 ... | yes p rewrite abs-reg-idx dst xd eqd | abs-reg-idx b xb eqb =
       ≡→~ (cong (λ v → record s { regs = ArithAbsState.regs s [ dst ↦ v ] })
@@ -250,7 +250,7 @@ refine-add dst a b xd xa xb eqd eqa eqb s rewrite eqd | eqa | eqb with xd ≟x x
 
 refine-mul : ∀ {sh} (dst a b : ℕ) (xd xa xb : XReg) →
   abs-reg dst ≡ just xd → abs-reg a ≡ just xa → abs-reg b ≡ just xb →
-  (s : ArithAbsState sh) → exec-x86 (emit (mul-rrr dst a b)) s ~ step (mul-rrr dst a b) s
+  (s : ArithAbsState sh) → exec-xprog (emit (mul-rrr dst a b)) s ~ step (mul-rrr dst a b) s
 refine-mul dst a b xd xa xb eqd eqa eqb s rewrite eqd | eqa | eqb with xd ≟x xa
 ... | yes p rewrite abs-reg-idx dst xd eqd | abs-reg-idx b xb eqb =
       ≡→~ (cong (λ v → record s { regs = ArithAbsState.regs s [ dst ↦ v ] })
@@ -285,7 +285,7 @@ sub-bin-identity nothing  nothing  = refl
 
 refine-sub : ∀ {sh} (dst a b : ℕ) (xd xa xb : XReg) →
   abs-reg dst ≡ just xd → abs-reg a ≡ just xa → abs-reg b ≡ just xb →
-  (s : ArithAbsState sh) → exec-x86 (emit (sub-rrr dst a b)) s ~ step (sub-rrr dst a b) s
+  (s : ArithAbsState sh) → exec-xprog (emit (sub-rrr dst a b)) s ~ step (sub-rrr dst a b) s
 refine-sub dst a b xd xa xb eqd eqa eqb s rewrite eqd | eqa | eqb with xd ≟x xa
 -- dst≡a: single Xsub
 ... | yes p rewrite abs-reg-idx dst xd eqd | abs-reg-idx b xb eqb =
@@ -358,13 +358,13 @@ step-cong (spill src slot) (rc , sc , oc , ic) = rc , store-cong2 sc slot (rc sr
 step-cong (reload slot dst)(rc , sc , oc , ic) = store-cong2 rc dst (sc slot) , sc , oc , ic
 step-cong (move-to-out src)(rc , sc , oc , ic) = rc , sc , rc src , ic
 
-exec-x86-cong : ∀ {sh} (P : XProgram) {s₁ s₂ : ArithAbsState sh} → s₁ ~ s₂ → exec-x86 P s₁ ~ exec-x86 P s₂
-exec-x86-cong []       eq = eq
-exec-x86-cong (i ∷ is) eq = exec-x86-cong is (exec-xinstr-cong i eq)
+exec-xprog-cong : ∀ {sh} (P : XProgram) {s₁ s₂ : ArithAbsState sh} → s₁ ~ s₂ → exec-xprog P s₁ ~ exec-xprog P s₂
+exec-xprog-cong []       eq = eq
+exec-xprog-cong (i ∷ is) eq = exec-xprog-cong is (exec-xinstr-cong i eq)
 
-exec-x86-++ : ∀ {sh} (xs ys : XProgram) (s : ArithAbsState sh) → exec-x86 (xs ++ ys) s ≡ exec-x86 ys (exec-x86 xs s)
-exec-x86-++ []       ys s = refl
-exec-x86-++ (i ∷ is) ys s = exec-x86-++ is ys (exec-xinstr i s)
+exec-xprog-++ : ∀ {sh} (xs ys : XProgram) (s : ArithAbsState sh) → exec-xprog (xs ++ ys) s ≡ exec-xprog ys (exec-xprog xs s)
+exec-xprog-++ []       ys s = refl
+exec-xprog-++ (i ∷ is) ys s = exec-xprog-++ is ys (exec-xinstr i s)
 
 -- Reg-bound: every reg index the instruction uses fits in the 4-register file.
 InBound : ℕ → Set
@@ -381,7 +381,7 @@ reg-bound (spill src slot)  = InBound src
 reg-bound (reload slot dst) = InBound dst
 reg-bound (move-to-out src) = InBound src
 
-refine : ∀ {sh} (i : AbstractInstr) → reg-bound i → (s : ArithAbsState sh) → exec-x86 (emit i) s ~ step i s
+refine : ∀ {sh} (i : AbstractInstr) → reg-bound i → (s : ArithAbsState sh) → exec-xprog (emit i) s ~ step i s
 refine (load-input p r)  (xr , e)                    s = ≡→~ (refine-load-input p r xr e s)
 refine (load-imm z r)    (xr , e)                    s = ≡→~ (refine-load-imm z r xr e s)
 refine (add-rrr dst a b) ((xd , ed) , (xa , ea) , (xb , eb)) s = refine-add dst a b xd xa xb ed ea eb s
@@ -398,11 +398,11 @@ All-bound (i ∷ is) = reg-bound i × All-bound is
 
 -- The fold: a reg-bounded program's XInstr run bisimulates the abstract run.
 refine-program : ∀ {sh} (prog : List AbstractInstr) → All-bound prog →
-  (s : ArithAbsState sh) → exec-x86 (emit-program prog) s ~ run-abstract prog s
+  (s : ArithAbsState sh) → exec-xprog (emit-program prog) s ~ run-abstract prog s
 refine-program []       _          s = ~-refl s
 refine-program (i ∷ is) (bi , bis) s =
-  subst (λ t → t ~ run-abstract is (step i s)) (sym (exec-x86-++ (emit i) (emit-program is) s))
-        (~-trans (exec-x86-cong (emit-program is) (refine i bi s))
+  subst (λ t → t ~ run-abstract is (step i s)) (sym (exec-xprog-++ (emit i) (emit-program is) s))
+        (~-trans (exec-xprog-cong (emit-program is) (refine i bi s))
                  (refine-program is bis (step i s)))
 
 ------------------------------------------------------------------------
@@ -410,9 +410,9 @@ refine-program (i ∷ is) (bi , bis) s =
 ------------------------------------------------------------------------
 
 bound0 : InBound 0
-bound0 = XR12 , refl
+bound0 = XR0 , refl
 bound1 : InBound 1
-bound1 = XR13 , refl
+bound1 = XR1 , refl
 
 All-bound-++ : ∀ (xs ys : List AbstractInstr) → All-bound xs → All-bound ys → All-bound (xs ++ ys)
 All-bound-++ []       ys _          by = by
@@ -447,7 +447,7 @@ compile-abs-bound e = All-bound-++ (compile-go 0 e) _ (compile-go-bound 0 e) (bo
 ------------------------------------------------------------------------
 
 block-correct : ∀ {sh} (e : MArithIR sh) (env : ⟦ sh ⟧S) →
-  output-of (exec-x86 (emit-program (compile-abs e)) (init env)) ≡ just (eval-arith-W e env)
+  output-of (exec-xprog (emit-program (compile-abs e)) (init env)) ≡ just (eval-arith-W e env)
 block-correct e env =
   trans (proj₁ (proj₂ (proj₂ (refine-program (compile-abs e) (compile-abs-bound e) (init env)))))
         (abs-validity e env)

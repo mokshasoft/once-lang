@@ -54,10 +54,10 @@ open import Once.Target.Symbol using (once-symbol-own)
 ------------------------------------------------------------------------
 
 reg-text : XReg → String
-reg-text XR12 = "%r12"
-reg-text XR13 = "%r13"
-reg-text XR14 = "%r14"
-reg-text XR15 = "%r15"
+reg-text XR0 = "%r12"
+reg-text XR1 = "%r13"
+reg-text XR2 = "%r14"
+reg-text XR3 = "%r15"
 
 -- | A scratch slot lives at `[%rsp - 8*(slot+1)]` once the prologue
 -- has reserved `8 * required-scratch` bytes below the original

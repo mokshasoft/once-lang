@@ -4,7 +4,7 @@
 ------------------------------------------------------------------------
 -- Once.Arith.Backend.XInstr.Syntax
 --
--- Plan 0.20 Phase D — the x86-64 instruction subset used by arith
+-- Plan 0.20 Phase D — the arch-neutral instruction subset used by arith
 -- block codegen.
 --
 -- Why a NEW (and small) subset, not the existing
@@ -39,10 +39,10 @@ open import Once.Arith.Machine.AbsState using (InputPath)
 -- register file. Phase F's allocator can grow the set; Phase G's
 -- comparison ops may need rax/rdx for `idiv` / `cqo`.
 data XReg : Set where
-  XR12 : XReg   -- AbsReg 0 (accumulator)
-  XR13 : XReg   -- AbsReg 1 (reload target)
-  XR14 : XReg   -- AbsReg 2
-  XR15 : XReg   -- AbsReg 3
+  XR0 : XReg   -- accumulator (AbsReg 0)
+  XR1 : XReg   -- reload target (AbsReg 1)
+  XR2 : XReg
+  XR3 : XReg
 
 ------------------------------------------------------------------------
 -- Scratch slot addressing (stack-relative)
@@ -60,7 +60,8 @@ record XScratch : Set where
 -- Instructions
 ------------------------------------------------------------------------
 
--- | x86-64 arith instruction subset.
+-- | Arch-neutral arith instruction subset (shared by all backends; only
+-- the per-arch Emit renders XReg/offsets to concrete asm).
 --
 -- Naming convention: `Xmov-imm dst z` = `mov $z, %dst`;
 -- `Xadd-rr a b`     = `add %b, %a`  (Intel-style mnemonics, AT&T

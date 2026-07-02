@@ -46,10 +46,10 @@ open import Once.Target.Symbol using (once-symbol-own)
 -- The 4 abstract arith registers → RV64 temporaries (free within a leaf
 -- block; the main codegen's uses of t1 are all closure-call-local).
 reg-text : XReg → String
-reg-text XR12 = "t1"
-reg-text XR13 = "t2"
-reg-text XR14 = "t3"
-reg-text XR15 = "t4"
+reg-text XR0 = "t1"
+reg-text XR1 = "t2"
+reg-text XR2 = "t3"
+reg-text XR3 = "t4"
 
 -- | A scratch slot lives at `8*slot(sp)` within the reserved frame.
 scratch-text : XScratch → String
