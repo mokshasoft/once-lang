@@ -112,7 +112,7 @@ d_wrapMainAsEntry_8 v0
       (coe
          MAlonzo.Code.Once.IR.C_'10216'_'44'_'10217'_38 v0
          (coe MAlonzo.Code.Once.IR.C_terminal_74)
-         (coe MAlonzo.Code.Once.IR.C_Stack_6))
+         (coe MAlonzo.Code.Once.IR.C_Heap_8))
 -- Once.Compile.maybeWrapMain
 d_maybeWrapMain_18 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
@@ -178,7 +178,7 @@ d_directCallIR_32 v0 v1
                             (coe MAlonzo.Code.Once.Type.C_Unit_122) v1
                             (coe MAlonzo.Code.Once.IR.C_terminal_74))
                          (coe MAlonzo.Code.Once.IR.C_id_22)
-                         (coe MAlonzo.Code.Once.IR.C_Stack_6))))
+                         (coe MAlonzo.Code.Once.IR.C_Heap_8))))
          _ -> coe v2)
 -- Once.Compile.FunCtx
 d_FunCtx_46 :: ()

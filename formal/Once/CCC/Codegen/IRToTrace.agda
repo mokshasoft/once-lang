@@ -601,18 +601,33 @@ ir-to-trace' n l (curry body Heap) =
 -- body and points Input1 at it. Body uses uniform fst/snd =
 -- load-indirect / load-indirect-suc to project from packed pairs,
 -- regardless of nesting level.
+-- Plan 0.53: the new (env, arg) pair MUST be HEAP-allocated, not stacked.
+-- A curried callee's body captures its `Input1` (a pointer to THIS pair) into
+-- a heap closure; with the pair on the stack that capture points into a
+-- transient stack cell that is reused once the frame is popped — the x86-32
+-- `arith-lambda-2` dangling read (x86-64/riscv64 only survived by luck). We are
+-- heap-only, so build it on the heap (mirrors the `⟨ f , g ⟩ Heap` clause).
 ir-to-trace' n l apply =
-  let pair-slot = n
-  in (suc (suc pair-slot)) , l ,
+  let arg-stash  = n
+      env-stash  = suc arg-stash
+      pair-stash = suc env-stash
+  in (suc pair-stash) , l ,
      (load-indirect-suc ∷                -- Output := arg-loc from input pair
-      store-at-slot (suc pair-slot) ∷    -- new-pair[1] := arg-loc
+      store-at-slot arg-stash ∷          -- stash arg
       load-indirect ∷                    -- Output := closure-loc from input pair
       mov-to-input ∷                     -- Input1 := closure-loc
-      instr-save-closure-reg ∷
-      load-indirect ∷                    -- Output := env-loc from closure
-      store-at-slot pair-slot ∷          -- new-pair[0] := env-loc
-      lea-slot pair-slot ∷               -- Output := &new-pair
-      mov-to-input ∷                     -- Input1 := &new-pair
+      instr-save-closure-reg ∷           -- closure-reg := closure (survives below)
+      load-indirect ∷                    -- Output := env-loc from closure[0]
+      store-at-slot env-stash ∷          -- stash env
+      instr-alloc-heap 2 ∷               -- Output := fresh heap pair
+      store-at-slot pair-stash ∷
+      mov-to-input ∷                     -- Input1 := heap pair
+      load-from-slot env-stash ∷
+      store-indirect ∷                   -- heap-pair[0] := env
+      load-from-slot arg-stash ∷
+      store-indirect-suc ∷               -- heap-pair[1] := arg
+      load-from-slot pair-stash ∷        -- Output := &heap-pair
+      mov-to-input ∷                     -- Input1 := &heap-pair
       instr-call-closure ∷ []) ,
      []
 

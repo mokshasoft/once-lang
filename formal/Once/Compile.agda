@@ -132,7 +132,15 @@ validateMain ty = inj₁ ("main must have type IO Unit (= Eff Unit Unit), but go
 -- itself. `_start` then only needs to do kernel-runtime setup
 -- (heap-pool init, stack reservation) and call the wrapped entry.
 wrapMainAsEntry : IR Unit (Unit ⇒[ mk-kind Many eff ] Unit) → IR Unit Unit
-wrapMainAsEntry mainIR = apply ∘ ⟨ mainIR , terminal ⟩ Stack
+-- Plan 0.53: the entry/call apply-pairs must be `Heap`, not `Stack`.
+-- These wrappers can produce ESCAPING closures (a curried direct-call
+-- function `g 4` returns a closure capturing `4`); with a `Stack` pair the
+-- capture would point into a transient stack cell that is reused after the
+-- frame is popped (the x86-32 `arith-lambda-2` dangling read — x86-64/riscv64
+-- only survived it by luck). AllocMode is semantically transparent, so this
+-- does not affect the evaluation proof; it only moves the allocation to the
+-- heap, where an escaping closure's environment must live. We are heap-only.
+wrapMainAsEntry mainIR = apply ∘ ⟨ mainIR , terminal ⟩ Heap
 
 -- | Apply the entry wrap conditionally for the function named "main".
 -- Returns the (possibly-rewritten) type and IR. Non-main functions and
@@ -152,7 +160,10 @@ maybeWrapMain _ ty ir = ty , ir
 -- `wrapMainAsEntry`. `main` is already `cfType ≡ Unit` (entry-wrapped by
 -- `maybeWrapMain`), so it is non-arrow and passes through untouched.
 directCallIR : (ty : Type) → IR Unit ty → ∃[ D ] ∃[ C ] IR D C
-directCallIR (A ⇒[ k ] B) ir = A , B , apply ∘ ⟨ ir ∘ terminal , id ⟩ Stack
+-- Plan 0.53: `Heap`, not `Stack` — see wrapMainAsEntry. A curried direct-call
+-- function's first application returns a closure that captures the first arg
+-- and escapes, so its apply-pair must be heap-allocated.
+directCallIR (A ⇒[ k ] B) ir = A , B , apply ∘ ⟨ ir ∘ terminal , id ⟩ Heap
 directCallIR ty           ir = Unit , ty , ir
 
 ------------------------------------------------------------------------

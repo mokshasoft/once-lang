@@ -139,7 +139,7 @@ du_flat'45'run_182 v0 v1 v2 v3 v4 v5 v6
       MAlonzo.Code.Once.CCC.Machine.Flat.d_exec'45'flat_200 (coe v0)
       (coe v1)
       (coe
-         MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace_690
+         MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace_694
          (coe v2) (coe v3) (coe v4))
       (coe
          MAlonzo.Code.Once.CCC.Machine.Flat.C_mkFlat_70 (coe v5) (coe v6)
