@@ -12,18 +12,24 @@
 -- IH `rewrite`s cleanly. Binders (`lam`/`case'`) close over the bound var → use
 -- `Once.Postulates.extensionality` (funext).
 --
--- SCAFFOLD (feedback_scaffold_then_discharge): the genuinely-hard constructors
--- (`sigOp` name-resolution, `morph-app`, `cata`/`ana` closure-bridges, `poly`
--- inlining via `resolveExpr-poly-match`) route to the single named residual
--- `resolveExpr-faithful-hard`, to be discharged next.
+-- Plan 0.55 D#3 (DONE): the broad `resolveExpr-faithful-hard` catch-all is GONE.
+-- morph-app/cata/ana are structural (IH + closure `cong`); the only genuinely-hard
+-- constructors are `sigOp` (name→closure rewrite) and `poly` (body splice), each now
+-- an explicit clause with its `nothing`/`failure` sub-branch PROVEN (`refl`) and the
+-- open denotational fact isolated to a NARROW named postulate
+-- (`resolveExpr-sigOp-closure-faithful` / `resolveExpr-poly-splice-faithful`).
 ------------------------------------------------------------------------
 
 module Once.Adequacy.ResolveFaithful where
 
-open import Data.Nat using (ℕ)
+open import Data.Nat using (ℕ; _<_)
+open import Data.Nat.Induction using (<-wellFounded)
+open import Data.List using ([]; length)
 open import Data.Unit using (tt)
-open import Data.List using ([])
+open import Data.Maybe using (Maybe; just; nothing)
+open import Data.String using (String)
 open import Data.Product using (_,_; proj₁; proj₂)
+open import Induction.WellFounded using (Acc)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; sym; trans)
 
 open import Once.Type using (Type; Int)
@@ -32,19 +38,57 @@ open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ; inject; forget)
 open import Once.Denotation.TraceMonad using (T; _>>=T_; valueT)
 open import Once.Semantics.Machine using (sem-cata; sem-ana; coerce-functor)
 import Once.Denotation.SourceDenote as SD
-open import Once.TypeCheck.Elaborate using (resolveExpr; PolyCtx; Imports)
+open import Once.TypeCheck.Elaborate using (resolveExpr; PolyCtx; Imports;
+  resolvePolyCase; applySplice; checkElab; CheckElabResult)
+open import Once.TypeCheck.Classify using (lookupPoly; removePoly; lookupImport; ctxWithImportsAndPolys)
+open import Once.CanonicalName using (CanonicalName; showCanonical)
 open import Once.Postulates using (extensionality)
 
 ------------------------------------------------------------------------
--- The hard-constructor residual (sigOp / morph-app / cata / ana / poly).
+-- The two NARROW denotational residuals (Plan 0.55 D#3). The former broad
+-- `resolveExpr-faithful-hard` (any constructor) is REPLACED by:
+--   (1) the `sigOp → closure` rewrite no-op (name ∈ userFns) — `emit-D`/`semM` for
+--       `value-info s` vs `value-info (bare (showCanonical s))` coincide, and the
+--       arrow-vs-value shape at a userFn agrees; a genuine denotational fact.
+--   (2) the `poly` SPLICE (matched poly + body elaborates) — the inlined body
+--       denotes as the poly placeholder. The `nothing`/`failure` sub-branches are
+--       PROVEN (`refl`, poly unchanged). [[feedback_enumerate_over_catchall_postulate]]
 ------------------------------------------------------------------------
 
 postulate
-  resolveExpr-faithful-hard :
-    ∀ {n} {Γ : Srf.Ctx n} {Ψ : Usage n} {A : Type}
-      (polys : PolyCtx) (imps userFns : Imports) (fresh : ℕ)
-      (e : Expr Γ Ψ A) (dγ : ⟦ ⟦ Γ ⟧ᶜ ⟧ᴰ) (k : ℕ)
-    → SD.⟦ resolveExpr polys imps userFns fresh e ⟧ˢ dγ k ≡ SD.⟦ e ⟧ˢ dγ k
+  resolveExpr-sigOp-closure-faithful :
+    ∀ {n} {Γ : Srf.Ctx n} {A : Type}
+      (s : CanonicalName) (dγ : ⟦ ⟦ Γ ⟧ᶜ ⟧ᴰ) (k : ℕ)
+    → SD.⟦ Srf.closure {Γ = Γ} {A = A} (showCanonical s) ⟧ˢ dγ k
+        ≡ SD.⟦ Srf.sigOp {Γ = Γ} {A = A} s ⟧ˢ dγ k
+
+  resolveExpr-poly-splice-faithful :
+    ∀ {n} {Γ : Srf.Ctx n} {A : Type}
+      (polys : PolyCtx) (pAcc : Acc _<_ (length polys)) (imps userFns : Imports) (fresh : ℕ)
+      (x : String) {schema : _} {body : _} {Ψ0 : _} {eE : _} {d f : ℕ}
+      (polyEq : lookupPoly polys x ≡ just (schema , body))
+      (dγ : ⟦ ⟦ Γ ⟧ᶜ ⟧ᴰ) (k : ℕ)
+    → SD.⟦ applySplice {Γ = Γ} polys pAcc imps userFns fresh x A polyEq (CheckElabResult.success Ψ0 eE d f) ⟧ˢ dγ k
+        ≡ SD.⟦ Srf.poly {Γ = Γ} x A ⟧ˢ dγ k
+
+-- The `poly` case, J-style over the `lookupPoly` outcome (`lp`/`eqLP` explicit) so
+-- `resolvePolyCase` reduces WITHOUT the documented `rewrite polyEq` with-abstraction
+-- trap (Elaborate:3262). nothing / checkElab-failure ⇒ poly unchanged ⇒ refl; the
+-- checkElab-success SPLICE ⇒ the narrow `resolveExpr-poly-splice-faithful`.
+resolveExpr-poly-faithful :
+  ∀ {n} {Γ : Srf.Ctx n} {A : Type}
+    (polys : PolyCtx) (pAcc : Acc _<_ (length polys)) (imps userFns : Imports) (fresh : ℕ)
+    (x : String)
+    (lp : Maybe _) (eqLP : lookupPoly polys x ≡ lp)
+    (dγ : ⟦ ⟦ Γ ⟧ᶜ ⟧ᴰ) (k : ℕ)
+  → SD.⟦ resolvePolyCase {Γ = Γ} polys pAcc imps userFns fresh x A lp eqLP ⟧ˢ dγ k
+      ≡ SD.⟦ Srf.poly {Γ = Γ} x A ⟧ˢ dγ k
+resolveExpr-poly-faithful polys pAcc imps userFns fresh x nothing eqLP dγ k = refl
+resolveExpr-poly-faithful {A = A} polys pAcc imps userFns fresh x (just (schema , body)) eqLP dγ k
+  with checkElab (ctxWithImportsAndPolys imps (removePoly x polys)) body A
+... | CheckElabResult.failure _ = refl
+... | CheckElabResult.success Ψ0 eE d f =
+      resolveExpr-poly-splice-faithful polys pAcc imps userFns fresh x eqLP dγ k
 
 -- Two-sided bind congruence at each fuel: `>>=T` at `j` consumes only `m j`
 -- (and the continuation at `proj₂ (m j)`), so pointwise equalities of BOTH the
@@ -129,5 +173,13 @@ resolveExpr-faithful polys imps userFns fresh (Srf.ana {F = F} {A = A} wf coalg)
          , inject (sem-ana F (λ a' → coerce-functor F _
                      (forget (valueT (valueT ac 0 (inject a')) 0))) (forget a)) )))
        (extensionality (λ j → resolveExpr-faithful polys imps userFns fresh coalg tt j))
--- Hard constructors (sigOp / poly) → the named residual.
-resolveExpr-faithful polys imps userFns fresh e dγ k = resolveExpr-faithful-hard polys imps userFns fresh e dγ k
+-- sigOp: the resolver rewrites to `closure` iff the name is a user fn (else
+-- unchanged). nothing ⇒ refl; just ⇒ the narrow sigOp→closure denotational no-op.
+resolveExpr-faithful {Γ = Γ} {A = A} polys imps userFns fresh (Srf.sigOp s) dγ k
+  with lookupImport userFns (showCanonical s)
+... | just _  = resolveExpr-sigOp-closure-faithful {Γ = Γ} {A = A} s dγ k
+... | nothing = refl
+-- poly: J-style aux over the `lookupPoly` outcome (dodges the with-abstraction trap).
+resolveExpr-faithful {Γ = Γ} {A = A} polys imps userFns fresh (Srf.poly x T) dγ k =
+  resolveExpr-poly-faithful {Γ = Γ} {A = A} polys (<-wellFounded (length polys)) imps userFns fresh x
+    (lookupPoly polys x) refl dγ k
