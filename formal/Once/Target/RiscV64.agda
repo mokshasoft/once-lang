@@ -146,6 +146,8 @@ riscv64-irToBodies l ir =
 -- Target Instance
 ------------------------------------------------------------------------
 
+open import Once.Target.RiscV64.PhysReg using () renaming (convention to riscv64-regConvention)
+
 riscv64 : Target
 riscv64 = record
   { irToAsm          = riscv64-irToAsm
@@ -154,4 +156,5 @@ riscv64 = record
   ; functionPrologue = riscv64-functionPrologue
   ; functionEpilogue = riscv64-functionEpilogue
   ; emitArithBlocks  = emit-arith-blocks
+  ; regConvention    = riscv64-regConvention
   }

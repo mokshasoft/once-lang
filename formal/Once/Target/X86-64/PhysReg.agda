@@ -71,11 +71,8 @@ showReg r15 = "%r15"
 -- Ownership partition — makes CCC/arith disjointness definitional
 ------------------------------------------------------------------------
 
-data RegClass : Set where
-  io    : RegClass   -- shared calling-convention (input / output)
-  ccc   : RegClass   -- live in CCC across a SigOp call
-  arith : RegClass   -- the arith block's private working set
-  free  : RegClass   -- emitted by neither today
+open import Once.Target.RegConvention public
+  using (RegClass; io; ccc; arith; free; RegConvention)
 
 owner : Reg → RegClass
 owner rdi = io
@@ -101,6 +98,15 @@ owner r14 = free
 ------------------------------------------------------------------------
 
 open import Data.List using (List; []; _∷_)
+import Data.List.Relation.Unary.All as All
+open import Relation.Binary.PropositionalEquality using (refl)
 
 arith-budget : List Reg
 arith-budget = r8 ∷ r9 ∷ r10 ∷ r11 ∷ []
+
+-- This arch's register convention (Plan 0.55/0.56). `budget-owned` proves
+-- every budget register is arith-owned, so an invalid budget won't typecheck.
+convention : RegConvention
+convention = record
+  { Reg = Reg ; showReg = showReg ; owner = owner ; arith-budget = arith-budget
+  ; budget-owned = refl All.∷ refl All.∷ refl All.∷ refl All.∷ All.[] }

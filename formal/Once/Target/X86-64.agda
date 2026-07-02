@@ -172,6 +172,8 @@ x86-64-irToBodies l ir =
 -- Target Instance
 ------------------------------------------------------------------------
 
+open import Once.Target.X86-64.PhysReg using () renaming (convention to x86-64-regConvention)
+
 x86-64 : Target
 x86-64 = record
   { irToAsm          = x86-64-irToAsm
@@ -180,4 +182,5 @@ x86-64 = record
   ; functionPrologue = x86-64-functionPrologue
   ; functionEpilogue = x86-64-functionEpilogue
   ; emitArithBlocks  = emit-arith-blocks
+  ; regConvention    = x86-64-regConvention
   }

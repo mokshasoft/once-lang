@@ -17,13 +17,15 @@ open import Data.String using (String)
 open import Once.IR using (IR)
 open import Once.Arith.Machine.IR using (ArithBlock)
 open import Once.CanonicalName using (CanonicalName)
+open import Once.Target.RegConvention using (RegConvention)
 
 ------------------------------------------------------------------------
 -- Target Record
 ------------------------------------------------------------------------
 
--- | A target provides architecture-specific code generation
-record Target : Set where
+-- | A target provides architecture-specific code generation.
+-- `Set₁` because `regConvention : RegConvention` carries the arch's `Reg : Set`.
+record Target : Set₁ where
   field
     -- | Compile IR to assembly text (function body only).
     -- Plan 0.12 Layer 1: takes a starting thunk-label counter and
@@ -55,5 +57,10 @@ record Target : Set where
     -- symbol from `compile-sigOp`. Targets that don't yet ship a
     -- block emitter return `""`.
     emitArithBlocks : List ArithBlock → String
+    -- | Plan 0.55/0.56: the arch's physical-register convention — its register
+    -- partition (`owner`) + arith budget. Making it a Target field FORCES every
+    -- arch to declare (and prove valid, via `budget-owned`) how it lends
+    -- registers to the arith block; consumed by the PreservesCCC / budget work.
+    regConvention : RegConvention
 
 open Target public

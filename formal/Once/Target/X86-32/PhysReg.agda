@@ -39,11 +39,8 @@ showReg edi = "%edi"
 showReg ebp = "%ebp"
 showReg esp = "%esp"
 
-data RegClass : Set where
-  io    : RegClass
-  ccc   : RegClass
-  arith : RegClass   -- empty on ia32 (no CCC-free registers)
-  free  : RegClass
+open import Once.Target.RegConvention public
+  using (RegClass; io; ccc; arith; free; RegConvention)
 
 owner : Reg → RegClass
 owner ecx = io
@@ -61,6 +58,14 @@ owner esp = ccc
 ------------------------------------------------------------------------
 
 open import Data.List using (List; [])
+import Data.List.Relation.Unary.All as All
 
 arith-budget : List Reg
 arith-budget = []
+
+-- k = 0: the arith block borrows CCC registers + save/restores (0.55's
+-- arith-borrows); the budget is empty, so `budget-owned` is trivially `[]`.
+convention : RegConvention
+convention = record
+  { Reg = Reg ; showReg = showReg ; owner = owner ; arith-budget = arith-budget
+  ; budget-owned = All.[] }

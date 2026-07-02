@@ -55,11 +55,8 @@ showReg t2   = "t2"
 showReg t3   = "t3"
 showReg t4   = "t4"
 
-data RegClass : Set where
-  io    : RegClass
-  ccc   : RegClass
-  arith : RegClass
-  free  : RegClass
+open import Once.Target.RegConvention public
+  using (RegClass; io; ccc; arith; free; RegConvention)
 
 owner : Reg → RegClass
 owner t0 = io
@@ -89,6 +86,13 @@ owner t4 = ccc
 ------------------------------------------------------------------------
 
 open import Data.List using (List; []; _∷_)
+import Data.List.Relation.Unary.All as All
+open import Relation.Binary.PropositionalEquality using (refl)
 
 arith-budget : List Reg
 arith-budget = a3 ∷ a4 ∷ a5 ∷ []
+
+convention : RegConvention
+convention = record
+  { Reg = Reg ; showReg = showReg ; owner = owner ; arith-budget = arith-budget
+  ; budget-owned = refl All.∷ refl All.∷ refl All.∷ All.[] }
