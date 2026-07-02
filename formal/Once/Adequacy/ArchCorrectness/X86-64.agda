@@ -4,38 +4,38 @@
 ------------------------------------------------------------------------
 -- Once.Adequacy.ArchCorrectness.X86-64
 --
--- x86-64 backend correctness, now CONSTRUCTED via the shared
--- `FlatFromObs` module (Plan 0.53-step2 / Phase B Layer 1) instead of the
--- old monolithic `x86-flat-from-obs` postulate. The trust surface is now
--- explicit + named: `asm-sem`/`flat-trace` are DEFINED, `assemble-correct`
--- is `refl`, and the remaining gaps are the named postulates
--- `asm-trace-correct` (printer/loader) + `ir-flat-correct` (→ Layer 2),
--- plus the loader `_start` entry frame (`entry-s`/`entry-alloc`), a data
--- trust input Layer 2 constructs concretely. `ir-obs-correct` is still
--- threaded, so `cata-correct` stays load-bearing for the apex.
+-- x86-64 backend correctness, now CONSTRUCTED via the shared `FlatFromObs`
+-- module (Plan 0.53-step2 / Phase B Layer 1) instead of the old monolithic
+-- `x86-flat-from-obs` postulate. Explicit trust surface: `asm-sem` DEFINED,
+-- `assemble-correct` = `refl`; the remaining gaps are the named postulates
+-- `flat-trace` (the flat-machine trace — Layer 2 defines it concretely with
+-- an adequate fuel), `asm-trace-correct` (printer/loader), and
+-- `ir-flat-correct` (→ Layer 2). `ir-obs-correct` is threaded so
+-- `cata-correct` stays load-bearing for the apex.
 ------------------------------------------------------------------------
 
 module Once.Adequacy.ArchCorrectness.X86-64 where
 
 open import Data.Nat using (ℕ)
+open import Data.Maybe using (Maybe)
+open import Once.IR using (IR)
+open import Once.Type using (Unit)
+open import Once.Denotation.Behavior using (Behavior)
 open import Once.Adequacy.CPU using (x86-64; arch-semantics)
 open import Once.Adequacy.Compile using (ArchCorrect)
 open import Once.CCC.Target.X86-64.FrameInstantiation using (x86v3-frame-semantics)
-open import Once.CCC.Machine.SMCore using (LocState)
-open import Once.CCC.Machine.Allocation using (AllocState)
 open import Once.CCC.Codegen.IRObsCorrectFlat using (module IRObsCorrectFlatness)
 import Once.Adequacy.ArchCorrectness.FlatFromObs as FFO
 
 postulate
   program-bound : ℕ
-  -- The loader `_start` entry frame: LocState + allocator (next-slot ≡ 0).
-  -- A named DATA trust input (constructible; Layer 2 builds it concretely).
-  entry-s     : LocState x86v3-frame-semantics
-  entry-alloc : AllocState {x86v3-frame-semantics}
+  -- the flat-machine SigOp trace of a compiled IR (a named DATA trust input;
+  -- Layer 2 defines it concretely as `take n (flat-events (EF …) …)`).
+  flat-trace : Maybe (IR Unit Unit) → Behavior
 
 open IRObsCorrectFlatness {x86v3-frame-semantics} program-bound using (ir-obs-correct)
 
 x86-64-correct : ArchCorrect x86-64 (arch-semantics x86-64)
 x86-64-correct =
   FFO.flat-from-obs x86-64 x86v3-frame-semantics (arch-semantics x86-64)
-    program-bound entry-s entry-alloc ir-obs-correct
+    program-bound flat-trace ir-obs-correct

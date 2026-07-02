@@ -22,19 +22,19 @@
 module Once.Adequacy.ArchCorrectness.RiscV64 where
 
 open import Data.Nat using (ℕ)
+open import Data.Maybe using (Maybe)
+open import Once.IR using (IR)
+open import Once.Type using (Unit)
+open import Once.Denotation.Behavior using (Behavior)
 open import Once.Adequacy.CPU using (riscv64; arch-semantics)
 open import Once.Adequacy.Compile using (ArchCorrect)
 open import Once.CCC.Target.RiscV64.FrameInstantiation using (rv64-frame-semantics)
-open import Once.CCC.Machine.SMCore using (LocState)
-open import Once.CCC.Machine.Allocation using (AllocState)
 open import Once.CCC.Codegen.IRObsCorrectFlat using (module IRObsCorrectFlatness)
 import Once.Adequacy.ArchCorrectness.FlatFromObs as FFO
 
 postulate
   program-bound : ℕ
-  -- loader `_start` entry frame (named data trust input; Layer 2 builds it).
-  entry-s     : LocState rv64-frame-semantics
-  entry-alloc : AllocState {rv64-frame-semantics}
+  flat-trace : Maybe (IR Unit Unit) → Behavior  -- Layer 2 defines concretely
 
 open IRObsCorrectFlatness {rv64-frame-semantics} program-bound using (ir-obs-correct)
 
@@ -42,4 +42,4 @@ open IRObsCorrectFlatness {rv64-frame-semantics} program-bound using (ir-obs-cor
 riscv64-correct : ArchCorrect riscv64 (arch-semantics riscv64)
 riscv64-correct =
   FFO.flat-from-obs riscv64 rv64-frame-semantics (arch-semantics riscv64)
-    program-bound entry-s entry-alloc ir-obs-correct
+    program-bound flat-trace ir-obs-correct
