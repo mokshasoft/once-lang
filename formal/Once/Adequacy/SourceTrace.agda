@@ -88,6 +88,17 @@ findMain-here cf false (yes _) nothing     cont = cont
 findMain-here cf false (no  _) _           cont = cont
 findMain-here cf true  _       _           cont = cont   -- primitive: never the entry
 
+-- | The Boolean predicate `findMain` selects on: a non-primitive `main`-named
+-- function whose (entry-wrapped) codomain is `Unit`. `findMain` returns the IR
+-- of the FIRST such function. Factored out (Plan 0.55) so the SAME notion of
+-- "which function is the entry" is nameable for the deterministic `mainRealized`
+-- selector's alignment. Behaviour-preserving: `findMain`/`findMain-here` are
+-- unchanged — `isMain cf ≡ true` exactly when `findMain-here cf … ≡ just (cfIR cf)`.
+isMain : C.CompiledFun → Bool
+isMain cf with cfIsPrimitive cf | cfName cf ≟cn bare "main" | isUnit? (cfType cf)
+... | false | yes _ | just _ = true
+... | _     | _     | _      = false
+
 findMain : List C.CompiledFun → Maybe (IR Unit Unit)
 findMain []         = nothing
 findMain (cf ∷ rest) =

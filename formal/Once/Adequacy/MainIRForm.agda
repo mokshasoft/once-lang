@@ -20,7 +20,8 @@ open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Sum.Properties using (inj₂-injective)
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥; ⊥-elim)
-open import Data.Product using (Σ-syntax; _,_; proj₁; proj₂)
+open import Data.Nat using (ℕ)
+open import Data.Product using (Σ-syntax; _×_; _,_; proj₁; proj₂)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Maybe.Properties using (just-injective)
 open import Data.List using (List; []; _∷_)
@@ -40,7 +41,7 @@ open import Once.IR using (IR)
 open import Once.Surface.Syntax using (Expr; ∅; Usage)
 open import Once.Surface.Elaborate using (elaborate)
 open import Once.TypeCheck.Raw using (RawExpr)
-open import Once.TypeCheck.Classify using (SigEffectCtx)
+open import Once.TypeCheck.Classify using (SigEffectCtx; NamedCtx; Imports)
 open import Once.TypeCheck.Elaborate
   using (checkElab; ctxWithImportsAndSelfAndPolys; resolveExpr; PolyCtx;
          CheckElabResult; success)
@@ -51,6 +52,36 @@ open FunInfo
 
 EffUU : Type
 EffUU = Unit ⇒[ mk-kind Many eff ] Unit
+
+------------------------------------------------------------------------
+-- Plan 0.55: the strengthened extraction payload. Besides the resolved
+-- surface term `seR` (whose elaboration is `main`'s IR), carry the `checkElab`
+-- witness `ce` and the resolver arguments, so `MainRealizeAgrees.main-extract`
+-- can (i) identify `seR` with `resolveExpr … se` and (ii) recover the typing
+-- derivation via `check-sound ce`. All of these are already computed inside
+-- `compileFunBody-form`; the payload just stops discarding them.
+------------------------------------------------------------------------
+
+-- The main function's checkElab context is `ctxWithImportsAndSelfAndPolys ctx
+-- polys sigEffs "main" EffUU`, which has `size 0` / `debruijn ∅` — so `se : Expr
+-- ∅ Ψ EffUU` (`Ψ : Usage 0`) and the syntactic `seR ≡ resolveExpr … se` both
+-- typecheck. We bind the components (`ctx polys sigEffs`) rather than an abstract
+-- `cctx`, so those size/debruijn reductions are available.
+Payload : (Ψ : Usage 0) → Expr ∅ Ψ EffUU → Set
+Payload Ψ seR =
+  Σ-syntax C.FunCtx (λ ctx → Σ-syntax PolyCtx (λ polys → Σ-syntax SigEffectCtx (λ sigEffs →
+  Σ-syntax RawExpr (λ body →
+  Σ-syntax (Expr ∅ Ψ EffUU) (λ se →
+  Σ-syntax ℕ (λ d → Σ-syntax ℕ (λ f →
+  Σ-syntax (checkElab (ctxWithImportsAndSelfAndPolys ctx polys sigEffs "main" EffUU) body EffUU
+             ≡ success Ψ se d f) (λ ce →
+    seR ≡ resolveExpr polys (("main" , EffUU) ∷ ctx) (("main" , EffUU) ∷ ctx) 0 se))))))))
+
+-- Body-level form (before entry-wrap): `irFun ≡ elaborate Heap seR` + payload.
+BodyForm : IR Unit EffUU → Set
+BodyForm irFun =
+  Σ-syntax (Usage 0) (λ Ψ → Σ-syntax (Expr ∅ Ψ EffUU) (λ seR →
+    (irFun ≡ elaborate C.Heap seR) × Payload Ψ seR))
 
 ------------------------------------------------------------------------
 -- (1) validateMain inversion: `validateMain ty ≡ inj₂ tt → ty ≡ EffUU`.
@@ -105,19 +136,20 @@ validateMain-EffUU ((ν-type _) ⇒[ k ] B)   ()
 ------------------------------------------------------------------------
 
 compileFunBody-form : ∀ (ctx : C.FunCtx) (polys : PolyCtx) (sigEffs : SigEffectCtx)
-  (name : String) (body : RawExpr) (irFun : IR Unit EffUU) →
-  C.compileFunBody C.Heap false ctx polys sigEffs name EffUU body ≡ inj₂ irFun →
-  Σ-syntax (Usage 0) (λ Ψ → Σ-syntax (Expr ∅ Ψ EffUU) (λ seR → irFun ≡ elaborate C.Heap seR))
-compileFunBody-form ctx polys sigEffs name body irFun eq =
-  let cr = checkElab (ctxWithImportsAndSelfAndPolys ctx polys sigEffs name EffUU) body EffUU
+  (body : RawExpr) (irFun : IR Unit EffUU) →
+  C.compileFunBody C.Heap false ctx polys sigEffs "main" EffUU body ≡ inj₂ irFun →
+  BodyForm irFun
+compileFunBody-form ctx polys sigEffs body irFun eq =
+  let cr = checkElab (ctxWithImportsAndSelfAndPolys ctx polys sigEffs "main" EffUU) body EffUU
       (Ψ , se , d , f , ce) =
-        AS.compileFunBody-aux-success false ctx polys name EffUU refl cr eq
-      eq2 : C.compileFunBody-aux C.Heap false ctx polys name EffUU refl (success Ψ se d f)
+        AS.compileFunBody-aux-success false ctx polys "main" EffUU refl cr eq
+      eq2 : C.compileFunBody-aux C.Heap false ctx polys "main" EffUU refl (success Ψ se d f)
             ≡ inj₂ irFun
-      eq2 = subst (λ c → C.compileFunBody-aux C.Heap false ctx polys name EffUU refl c ≡ inj₂ irFun)
+      eq2 = subst (λ c → C.compileFunBody-aux C.Heap false ctx polys "main" EffUU refl c ≡ inj₂ irFun)
                   ce eq
-  in Ψ , resolveExpr polys ((name , EffUU) ∷ ctx) ((name , EffUU) ∷ ctx) 0 se
+  in Ψ , resolveExpr polys (("main" , EffUU) ∷ ctx) (("main" , EffUU) ∷ ctx) 0 se
        , sym (inj₂-injective eq2)
+       , ctx , polys , sigEffs , body , se , d , f , ce , refl
 
 ------------------------------------------------------------------------
 -- (3a) compileFun at "main": reduce through `validateMain`, and extract the
@@ -144,16 +176,15 @@ compileFun-main-EffUU ctx polys sigEffs ty body irFun eq with C.validateMain ty 
 compileFun-main-formEffUU : ∀ (ctx : C.FunCtx) (polys : PolyCtx) (sigEffs : SigEffectCtx)
   (body : RawExpr) (irFun : IR Unit EffUU) →
   C.compileFun C.Heap false ctx polys sigEffs "main" EffUU body ≡ inj₂ irFun →
-  Σ-syntax (Usage 0) (λ Ψ → Σ-syntax (Expr ∅ Ψ EffUU) (λ seR → irFun ≡ elaborate C.Heap seR))
+  BodyForm irFun
 compileFun-main-formEffUU ctx polys sigEffs body irFun eq =
-  compileFunBody-form ctx polys sigEffs "main" body irFun eq
+  compileFunBody-form ctx polys sigEffs body irFun eq
 
 -- compileFun "main": success ⇒ ty≡EffUU AND the (coerced) IR is elaborate-of-resolved.
 compileFun-main-form : ∀ (ctx : C.FunCtx) (polys : PolyCtx) (sigEffs : SigEffectCtx)
   (ty : Type) (body : RawExpr) (irFun : IR Unit ty) →
   C.compileFun C.Heap false ctx polys sigEffs "main" ty body ≡ inj₂ irFun →
-  Σ-syntax (ty ≡ EffUU) (λ uty → Σ-syntax (Usage 0) (λ Ψ → Σ-syntax (Expr ∅ Ψ EffUU) (λ seR →
-    subst (IR Unit) uty irFun ≡ elaborate C.Heap seR)))
+  Σ-syntax (ty ≡ EffUU) (λ uty → BodyForm (subst (IR Unit) uty irFun))
 compileFun-main-form ctx polys sigEffs ty body irFun eq
   with compileFun-main-EffUU ctx polys sigEffs ty body irFun eq
 ... | refl = refl , compileFun-main-formEffUU ctx polys sigEffs body irFun eq
@@ -192,7 +223,7 @@ findMain-skip cf rest ¬p with cfName cf ≟cn bare "main"
 
 Form : IR Unit Unit → Set
 Form ir = Σ-syntax (Usage 0) (λ Ψ → Σ-syntax (Expr ∅ Ψ EffUU) (λ seR →
-            ir ≡ C.wrapMainAsEntry (elaborate C.Heap seR)))
+            (ir ≡ C.wrapMainAsEntry (elaborate C.Heap seR)) × Payload Ψ seR))
 
 caf-go-find-form : ∀ (polys : PolyCtx) (sigEffs : SigEffectCtx) (funs : List FunInfo)
   (ctx : C.FunCtx) (compiled : List C.CompiledFun) (ir : IR Unit Unit) →
@@ -226,11 +257,12 @@ caf-go-find-form polys sigEffs (fi ∷ rest) ctx compiled ir caf-eq fm-eq
                 (subst (λ c → findMain c ≡ just ir) (sym (inj₂-injective caf-eq)) fm-eq)
 ...         | false
             with compileFun-main-form ctx polys sigEffs ty (funBody fi) irFun cf-eq
-...           | (refl , Ψ , seR , irEq) =
+...           | (refl , Ψ , seR , irEq , payload) =
                 Ψ , seR ,
                 trans (sym (just-injective
                               (subst (λ c → findMain c ≡ just ir) (sym (inj₂-injective caf-eq)) fm-eq)))
                       (cong C.wrapMainAsEntry irEq)
+                , payload
 
 ------------------------------------------------------------------------
 -- (4) Assemble: unfold `moduleToIR` to `compileAllFuns-go`, apply the induction.

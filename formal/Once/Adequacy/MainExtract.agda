@@ -65,18 +65,22 @@ bind-cong-trace m m′ f n eq = cong (λ p → proj₁ p ++ proj₁ (f (proj₂ 
 -- DISCHARGED (no longer a postulate): the compiled `main` IR is the entry-wrap
 -- of the elaborated resolved term — proven in `Once.Adequacy.MainIRForm` by the
 -- value-tracking induction over `compileAllFuns-go` + `findMain`.
-open import Once.Adequacy.MainIRForm using (main-ir-form)
+open import Once.Adequacy.MainIRForm using (main-ir-form; Form)
 
 -- THE SD bridge: the compiled `main` IR's denotational trace equals the
 -- INDEPENDENT surface meaning of `main`. Proven from `main-ir-form` (plumbing)
 -- + `wrap-trace` (proven) + `faithful` (proven) + `bind-cong-trace`.
-source-meaningᴰ : ∀ (m : P.Module) (ir : IR Unit Unit) →
-  moduleToIR m ≡ just ir →
+-- Top-level aux over the (strengthened, Plan 0.55) `Form` — extra payload
+-- fields ignored here, same `seR`. Routing through this top-level helper (rather
+-- than an inline `with main-ir-form …`) keeps `source-meaningᴰ m ir mi`
+-- reducible to `source-meaningᴰ-aux ir (main-ir-form m ir mi)`, so
+-- `MainRealizeAgrees.main-extract` can `with main-ir-form m ir mi` and share the
+-- abstracted value with this call (recovering `seR`).
+source-meaningᴰ-aux : ∀ (ir : IR Unit Unit) → Form ir →
   Σ-syntax (Usage 0) (λ Ψ →
     Σ-syntax (Expr ∅ Ψ EffUU) (λ seR →
       ∀ (n : ℕ) → ⟦ just ir ⟧IR n ≡ runMainˢ seR n))
-source-meaningᴰ m ir mi with main-ir-form m ir mi
-... | (Ψ , seR , eq) = Ψ , seR , bridge
+source-meaningᴰ-aux ir (Ψ , seR , eq , _) = Ψ , seR , bridge
   where
     bridge : ∀ (n : ℕ) → ⟦ just ir ⟧IR n ≡ runMainˢ seR n
     bridge n =
@@ -86,3 +90,10 @@ source-meaningᴰ m ir mi with main-ir-form m ir mi
                  (bind-cong-trace (evalᴰ (elaborate C.Heap seR) tt)
                                   (SD.⟦ seR ⟧ˢ tt) (λ clo → clo tt) n
                                   (faithful seR tt n))))
+
+source-meaningᴰ : ∀ (m : P.Module) (ir : IR Unit Unit) →
+  moduleToIR m ≡ just ir →
+  Σ-syntax (Usage 0) (λ Ψ →
+    Σ-syntax (Expr ∅ Ψ EffUU) (λ seR →
+      ∀ (n : ℕ) → ⟦ just ir ⟧IR n ≡ runMainˢ seR n))
+source-meaningᴰ m ir mi = source-meaningᴰ-aux ir (main-ir-form m ir mi)

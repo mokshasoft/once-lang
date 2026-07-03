@@ -21,11 +21,11 @@ open import Data.Sum.Properties using (inj₂-injective)
 open import Data.Unit using (⊤; tt)
 open import Data.Maybe using (just)
 open import Data.Product using (Σ-syntax; _,_; _×_; proj₁; proj₂)
-open import Data.Empty using (⊥)
+open import Data.Empty using (⊥; ⊥-elim)
 open import Data.List using (List; []; _∷_)
 open import Data.String using (String) renaming (_≟_ to _≟str_)
 open import Once.CanonicalName using (bare)
-open import Relation.Nullary using (yes; no)
+open import Relation.Nullary using (yes; no; Dec)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 
 open import Function using (case_of_)
@@ -42,7 +42,7 @@ open import Once.Denotation.Realize using (realize)
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Classify using (SigEffectCtx)
 open import Once.TypeCheck.Elaborate
-  using (checkElab; ctxWithImportsAndSelfAndPolys; resolveExpr; PolyCtx)
+  using (checkElab; ctxWithImportsAndSelfAndPolys; resolveExpr; PolyCtx; _≟T_)
 open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_)
 open import Once.TypeCheck.Completeness using (check-complete)
 import Once.Compile as C
@@ -221,11 +221,38 @@ moduleToIR-complete m mt (amu , me) with C.extractFunctions (C.extractAliases m)
 -- at `Expr ∅ Ψ EffUU` (what `runMainˢ` needs). The `MainExists` `refl` fixes
 -- `ty ≡ EffUU`. The meaning `⟦tp⟧ˢ` = `runMainˢ` of this.
 ------------------------------------------------------------------------
+-- Plan 0.55 (approach A): DETERMINISTIC selector. Walk to the FIRST source-level
+-- `main` (`funName ≡ "main" ∧ ¬funIsPrimitive ∧ ty ≡ EffUU`), dispatching on those
+-- decisions — NOT on `me`'s inj₁/inj₂ choice (which could point past the first
+-- main). `me` is used ONLY to supply the tail witness in the skip branches (so the
+-- recursion is non-empty). This makes the selection agree BY CONSTRUCTION with
+-- `findMain` (which also picks the first `main`), enabling the `main-extract`
+-- alignment without a fragile position-uniqueness argument.
+-- Explicit-scrutinee dispatch helper (mutual with `mainRealized-go`), so that the
+-- selection is EXTERNALLY REDUCIBLE in proofs: once the three decisions are literal
+-- constructors, `mrg-dispatch` reduces (no `with`-block opacity). Return the head IFF
+-- it is the (source-level) `main` (name `"main"`, `ty ≡ EffUU`, non-primitive); else
+-- recurse into the tail witness `w`.
 mainRealized-go : ∀ {polys sigEffs funs ctx}
                   (aft : AS.AllFunsTyped polys sigEffs funs ctx)
                 → MainExists aft → Σ-syntax (Usage 0) (λ Ψ → Expr ∅ Ψ EffUU)
+mrg-dispatch : ∀ {polys sigEffs nm bdy rest ctx ty Ψ}
+  (deriv : (ctxWithImportsAndSelfAndPolys ctx polys sigEffs nm ty) ⊢ᶜ bdy ∶ ty ⨾ Ψ)
+  (rest-typed : AS.AllFunsTyped polys sigEffs rest (C.extendFunCtx ctx nm ty))
+  (w : MainExists rest-typed)
+  → Dec (nm ≡ "main") → Dec (ty ≡ EffUU) → Bool
+  → Σ-syntax (Usage 0) (λ Ψ' → Expr ∅ Ψ' EffUU)
+
+-- `inj₁` witnesses the head IS `main` (position 0, hence the first) — return it.
 mainRealized-go (AS.tcons {Ψ = Ψ} rf deriv rest) (inj₁ (_ , _ , refl)) = Ψ , realize deriv
-mainRealized-go (AS.tcons rf deriv rest) (inj₂ me) = mainRealized-go rest me
+-- `inj₂` says a main exists in the tail; but to stay FIRST we still check the head.
+mainRealized-go (AS.tcons {fi = fi} {ty = ty} rf deriv rt) (inj₂ w) =
+  mrg-dispatch deriv rt w (funName fi ≟str "main") (ty ≟T EffUU) (funIsPrimitive fi)
+
+mrg-dispatch {Ψ = Ψ} deriv rest-typed w (yes _) (yes refl) false = Ψ , realize deriv
+mrg-dispatch deriv rest-typed w (no _)  _          _     = mainRealized-go rest-typed w
+mrg-dispatch deriv rest-typed w (yes _) (no _)     _     = mainRealized-go rest-typed w
+mrg-dispatch deriv rest-typed w (yes _) (yes _)    true  = mainRealized-go rest-typed w
 
 mainRealized : ∀ (m : C.Module) (mt : AS.ModuleTyped m) → HasValidMain-decl m mt
              → Σ-syntax (Usage 0) (λ Ψ → Expr ∅ Ψ EffUU)
