@@ -219,11 +219,9 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
   ------------------------------------------------------------------------
   -- Primitives manage their own stack - no capacity precondition.
   --
-  -- With the partial `Provider` (D1a), `sigOp-proof` returns
-  -- `just (m , proof)` when the provider covers this SigOp, or
-  -- `nothing` otherwise. The `nothing` case is handled via
-  -- `uncovered-sigOp-placeholder` for Phase A; Phase E introduces
-  -- a coverage precondition that rules it out structurally.
+  -- "FORCE IT": the `Provider` is now TOTAL, so `sigOp-proof si` is a
+  -- `Contract` DIRECTLY — no `Maybe`, no `uncovered-sigOp-placeholder` escape.
+  -- Emitting a SigOp forces its producer to prove-or-postulate its contract.
   run-sigOp : ∀ {A B} (mIn : AllocMode) (si : SigOpInfo A B)
     (x : ⟦ A ⟧) (input-loc : ValueLocation FS)
     (s : LocState FS) (alloc : AllocState {FS}) →
@@ -232,12 +230,9 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
     halted s ≡ false →
     readReg (regs s) Input1 ≡ SV-Ptr input-loc →
     ∃[ m ] IRResultAWF m (SigOp {A} {B} si) x s alloc
-  run-sigOp {A} {B} mIn si x input-loc s alloc valid bf nh rdi
-    with sigOp-proof {A} {B} si
-  ... | just (m , proof) = m , proof mIn x input-loc s alloc valid bf nh rdi
-  ... | nothing = uncovered-sigOp-placeholder
-    where postulate
-      uncovered-sigOp-placeholder : ∃[ m ] IRResultAWF m (SigOp {A} {B} si) x s alloc
+  run-sigOp {A} {B} mIn si x input-loc s alloc valid bf nh rdi =
+    let (m , proof) = sigOp-proof {A} {B} si
+    in m , proof mIn x input-loc s alloc valid bf nh rdi
 
   ------------------------------------------------------------------------
   -- Main dispatcher (recursive cases use Acc)

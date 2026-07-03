@@ -22,7 +22,7 @@ module Once.CCC.SigOp.Contract where
 
 open import Data.Nat using (ℕ)
 open import Data.Bool using (false)
-open import Data.Maybe using (Maybe)
+open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (∃-syntax)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
@@ -58,18 +58,27 @@ module Def {FS : FrameSemantics} (program-bound : ℕ) where
       readReg (regs s) Input1 ≡ SV-Ptr input-loc →
       IRResultAWF output-mode ir x s alloc
 
-  -- | Provider interface (partial).
-  --
-  -- Given a `SigOpInfo A B`, return `just (m , proof)` if this
-  -- provider recognizes the SigOp (with output mode `m` and a
-  -- contract proof), or `nothing` otherwise. Concrete providers
-  -- are written as pattern-matches on the `name` field; each domain
-  -- owns its string prefix (e.g. `"lit.int."`, a syscall prefix,
-  -- `"arith.<op>.int"`).
-  --
-  -- Composition (`_<|>_`) makes the whole-program provider a
-  -- first-win chain of domain providers.
+  -- | Partial provider: a per-domain contributor. Returns `just` for the
+  -- SigOp names it owns, `nothing` otherwise. Composed by `_<|>_` — this is
+  -- what any producer (incl. once-programmer interpretations) writes.
+  PartialProvider : Set
+  PartialProvider =
+    ∀ {A B : Type} (si : SigOpInfo A B) →
+    Maybe (∃[ m ] Contract {A} {B} m (SigOp si))
+
+  -- | Provider interface (TOTAL — "force it"). A provider MUST return a
+  -- `Contract` for ANY SigOp: no `Maybe`/skip. Minting a SigOp forces its
+  -- producer to PROVE or POSTULATE its correctness — mandatory, not optional.
   Provider : Set
   Provider =
     ∀ {A B : Type} (si : SigOpInfo A B) →
-    Maybe (∃[ m ] Contract {A} {B} m (SigOp si))
+    ∃[ m ] Contract {A} {B} m (SigOp si)
+
+  -- | Close a partial chain into a TOTAL provider, deferring names the chain
+  -- doesn't own to `residual` — the ONE visible producer-of-last-resort
+  -- (typically a named postulate) for the open SigOp-name tail. Not a hidden
+  -- escape: it's an explicit `Provider` argument in the trust surface.
+  close : PartialProvider → Provider → Provider
+  close p residual si with p si
+  ... | just r  = r
+  ... | nothing = residual si

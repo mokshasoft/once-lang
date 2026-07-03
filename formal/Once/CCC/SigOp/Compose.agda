@@ -36,19 +36,18 @@ open import Once.CCC.SigOp.Contract using (module Def)
 ------------------------------------------------------------------------
 
 module _ {FS : FrameSemantics} (program-bound : ℕ) where
-  open Def {FS} program-bound using (Provider)
+  open Def {FS} program-bound using (PartialProvider)
 
-  -- | First-win composition: try `p` first; if it returns `nothing`,
-  -- fall through to `q`.
+  -- | First-win composition over PARTIAL providers (the composable layer):
+  -- try `p`; if `nothing`, fall through to `q`.
   infixr 5 _<|>_
-  _<|>_ : Provider → Provider → Provider
+  _<|>_ : PartialProvider → PartialProvider → PartialProvider
   (p <|> q) si with p si
   ... | just result = just result
   ... | nothing     = q si
 
-  -- | The empty provider — recognizes nothing. Identity element for
-  -- `_<|>_`: `p <|> emptyProvider ≡ p`.
-  emptyProvider : Provider
+  -- | The empty partial provider — recognises nothing. Identity for `_<|>_`.
+  emptyProvider : PartialProvider
   emptyProvider _ = nothing
 
 ------------------------------------------------------------------------
@@ -70,12 +69,12 @@ module _ {FS : FrameSemantics} (program-bound : ℕ) where
 ------------------------------------------------------------------------
 
 module _ {FS : FrameSemantics} (program-bound : ℕ) where
-  open Def {FS} program-bound using (Provider)
+  open Def {FS} program-bound using (PartialProvider)
 
   record ClaimedProvider (claims : List String) : Set where
     constructor mk-claimed
     field
-      provider : Provider
+      provider : PartialProvider
 
   open ClaimedProvider public
 
