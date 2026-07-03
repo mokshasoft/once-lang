@@ -24,7 +24,8 @@ open import Relation.Nullary using (Dec; yes; no)
 open import Once.Arith.Machine.AbsState using (InputPath; Side; Fst; Snd)
 open import Once.Arith.Machine.AbsInstr
   using (AbstractInstr; load-input; load-imm; add-rrr; sub-rrr; mul-rrr;
-         div-rrr; rem-rrr; neg-rr; spill; reload; move-to-out)
+         div-rrr; rem-rrr; div-safe-rrr; rem-safe-rrr; neg-rr; spill; reload;
+         move-to-out)
 open import Once.Arith.Backend.XInstr.Syntax
 
 ------------------------------------------------------------------------
@@ -124,6 +125,13 @@ emit (div-rrr dst a b) with abs-reg dst | abs-reg a | abs-reg b
 ... | _       | _       | _                = []
 emit (rem-rrr dst a b) with abs-reg dst | abs-reg a | abs-reg b
 ... | just xd | just xa | just xb          = Xrem-rrr xd xa xb ∷ []
+... | _       | _       | _                = []
+-- `-safe` variants: same 3-address shape, guard-elided Emit downstream.
+emit (div-safe-rrr dst a b) with abs-reg dst | abs-reg a | abs-reg b
+... | just xd | just xa | just xb          = Xdiv-safe-rrr xd xa xb ∷ []
+... | _       | _       | _                = []
+emit (rem-safe-rrr dst a b) with abs-reg dst | abs-reg a | abs-reg b
+... | just xd | just xa | just xb          = Xrem-safe-rrr xd xa xb ∷ []
 ... | _       | _       | _                = []
 emit (neg-rr dst a) with abs-reg dst | abs-reg a
 ... | just xd | just xa = Xmov-rr xd xa ∷ Xneg-r xd ∷ []

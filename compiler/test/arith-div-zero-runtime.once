@@ -1,0 +1,16 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson and contributors
+
+-- arith-div-zero-runtime.once: D055 guard fires for a RUNTIME (non-literal)
+-- zero divisor — the case the guard actually exists for. The divisor `x - x`
+-- is computed (not a literal), so guard elision does NOT apply; x86 must run
+-- the guard to return the RISC-V value -1 instead of trapping (#DE/SIGFPE).
+-- f 7 = 7 / (7 - 7) = 7 / 0 = -1; low byte = 255. Expected exit code 255.
+
+import I.Linux.Syscalls as S
+
+f : Int -> Int
+f x = x / (x - x)
+
+main : IO Unit
+main = exit@S (f 7)

@@ -16,8 +16,10 @@ open import Data.Nat using (ℕ)
 module Once.Arith.Machine.CompileCorrect (bits : ℕ) where
 
 open import Data.Nat using (zero; suc; _<_; s≤s; z≤n)
+open import Data.Nat.DivMod using (m%n<n)
+open import Data.Bool using (Bool; true; false)
 open import Data.Nat.Properties using (<⇒≢; ≤-refl; m≤n⇒m≤1+n)
-open import Data.Integer using (ℤ)
+open import Data.Integer using (ℤ; +_; -[1+_])
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
@@ -29,17 +31,51 @@ open import Once.Arith.Machine.AbsState
          Store; empty-store; _[_↦_]; _[_]; store-write-same; store-write-other)
 open import Once.Arith.Machine.AbsInstr
   using (AbstractInstr; load-input; load-imm; add-rrr; sub-rrr; mul-rrr;
-         div-rrr; rem-rrr; neg-rr; spill; reload; move-to-out;
-         maybe-zero; bin-op; un-op; module Exec)
+         div-rrr; rem-rrr; div-safe-rrr; rem-safe-rrr; neg-rr; spill; reload;
+         move-to-out; maybe-zero; bin-op; un-op; module Exec)
 open Exec bits using (step; run-abstract)
 open import Once.Arith.Machine.IR
   using (MArithIR; alit; ainput; aadd; asub; amul; adiv; amod; aneg; eval-arith)
 open import Once.Word using (module Width)
-open Width bits using (fromℤ; _⊕_; _⊖_; _⊗_; _/ˢ_; _%ˢ_; ⊝_)
+open Width bits using
+  (fromℤ; _⊕_; _⊖_; _⊗_; _/ˢ_; _%ˢ_; ⊝_; modulus; modulus≢0;
+   /ˢ-zero; %ˢ-zero; fromℤ-0; fromℤ-in-range; fromℤ-neg1;
+   /ˢ-negOne; %ˢ-negOne; /ˢ-in-range; %ˢ-in-range)
 open import Once.Arith.Machine.WordSem using (module Sem)
 open Sem bits using (eval-arith-W)
-open import Once.Arith.Machine.Compile using (compile-go; compile-abs)
+open import Once.Arith.Machine.Compile
+  using (compile-go; compile-abs; div-op; rem-op; div-instr; rem-instr; safe-divisor?;
+         normalize; fold-div; fold-mod)
 open ArithAbsState
+
+------------------------------------------------------------------------
+-- Guard-elision (Part B) is semantics-preserving at the abstract level:
+-- `div-op b` / `rem-op b` (which may pick the `-safe` variant) `step`
+-- IDENTICALLY to the guarded `div-rrr 0 1 0` / `rem-rrr 0 1 0`. Both cases
+-- of the `if` write the same `bin-op _/ˢ_`/`_%ˢ_`, so this is `refl`.
+------------------------------------------------------------------------
+
+step-div-safe≡ : ∀ {sh} (s : ArithAbsState sh) →
+  step (div-safe-rrr 0 1 0) s ≡ step (div-rrr 0 1 0) s
+step-div-safe≡ s = refl
+
+step-div-instr : ∀ {sh} (t : Bool) (s : ArithAbsState sh) →
+  step (div-instr t) s ≡ step (div-rrr 0 1 0) s
+step-div-instr true  s = refl
+step-div-instr false s = refl
+
+step-div-op : ∀ {sh} (b : MArithIR sh) (s : ArithAbsState sh) →
+  step (div-op b) s ≡ step (div-rrr 0 1 0) s
+step-div-op b s = step-div-instr (safe-divisor? b) s
+
+step-rem-instr : ∀ {sh} (t : Bool) (s : ArithAbsState sh) →
+  step (rem-instr t) s ≡ step (rem-rrr 0 1 0) s
+step-rem-instr true  s = refl
+step-rem-instr false s = refl
+
+step-rem-op : ∀ {sh} (b : MArithIR sh) (s : ArithAbsState sh) →
+  step (rem-op b) s ≡ step (rem-rrr 0 1 0) s
+step-rem-op b s = step-rem-instr (safe-divisor? b) s
 
 ------------------------------------------------------------------------
 -- Strong invariant on `compile-go`
@@ -255,12 +291,16 @@ adiv-correct {sh} d a b s = record
     s4   = step (reload d 1) s3
     s5   = step (div-rrr 0 1 0) s4
 
+    -- `compile-go` emits `div-op b` (guard-elided when safe); `step-div-op`
+    -- collapses it back to `div-rrr 0 1 0`, so the field proofs below (which
+    -- read s5 = step (div-rrr 0 1 0) s4) are unchanged.
     bridge : run-abstract (compile-go d (adiv a b)) s ≡ s5
-    bridge = trans
+    bridge = trans (trans
       (run-abstract-app (compile-go d a)
-        (spill 0 d ∷ compile-go (suc d) b ++ (reload d 1 ∷ div-rrr 0 1 0 ∷ [])) s)
+        (spill 0 d ∷ compile-go (suc d) b ++ (reload d 1 ∷ div-op b ∷ [])) s)
       (run-abstract-app (compile-go (suc d) b)
-        (reload d 1 ∷ div-rrr 0 1 0 ∷ []) s2)
+        (reload d 1 ∷ div-op b ∷ []) s2))
+      (step-div-op b s4)
 
     scratch-s3-d : scratch s3 [ d ] ≡ regs s1 [ 0 ]
     scratch-s3-d = trans (scratch≤ ih-b d ≤-refl)
@@ -297,11 +337,12 @@ amod-correct {sh} d a b s = record
     s5   = step (rem-rrr 0 1 0) s4
 
     bridge : run-abstract (compile-go d (amod a b)) s ≡ s5
-    bridge = trans
+    bridge = trans (trans
       (run-abstract-app (compile-go d a)
-        (spill 0 d ∷ compile-go (suc d) b ++ (reload d 1 ∷ rem-rrr 0 1 0 ∷ [])) s)
+        (spill 0 d ∷ compile-go (suc d) b ++ (reload d 1 ∷ rem-op b ∷ [])) s)
       (run-abstract-app (compile-go (suc d) b)
-        (reload d 1 ∷ rem-rrr 0 1 0 ∷ []) s2)
+        (reload d 1 ∷ rem-op b ∷ []) s2))
+      (step-rem-op b s4)
 
     scratch-s3-d : scratch s3 [ d ] ≡ regs s1 [ 0 ]
     scratch-s3-d = trans (scratch≤ ih-b d ≤-refl)
@@ -334,3 +375,90 @@ abs-validity : ∀ {sh} (e : MArithIR sh) (env : ⟦ sh ⟧S) →
 abs-validity {sh} e env =
   trans (cong output-of (run-abstract-app (compile-go 0 e) (move-to-out 0 ∷ []) (init env)))
         (reg0 (compile-go-correct 0 e (init env)))
+
+------------------------------------------------------------------------
+-- Degenerate-divisor folding preserves `eval-arith-W` (Part A soundness).
+--
+-- The `normalize` pre-pass (used by the per-arch `emit-arith-block`) is
+-- meaning-preserving: `eval-arith-W (normalize e) ≡ eval-arith-W e`. Every
+-- fold is discharged by the corresponding `Once.Word` identity (no
+-- postulates). The `negOne`/in-range facts need bits ≥ 1, supplied as
+-- `bits ≡ suc b`; each arch instantiates it (64 = suc 63, 32 = suc 31).
+------------------------------------------------------------------------
+
+module _ (b : ℕ) (eqb : bits ≡ suc b) where
+
+  -- every arith value lands in `[0, modulus)` (needed for `/ˢ negOne = ⊝`).
+  eval-in-range : ∀ {sh} (e : MArithIR sh) (env : ⟦ sh ⟧S) → eval-arith-W e env < modulus
+  eval-in-range (alit z)   env = fromℤ-in-range z
+  eval-in-range (ainput p) env with project _ p env
+  ... | just z  = fromℤ-in-range z
+  ... | nothing = fromℤ-in-range (+ 0)
+  eval-in-range (aadd a c) env = m%n<n _ modulus
+  eval-in-range (asub a c) env = m%n<n _ modulus
+  eval-in-range (amul a c) env = m%n<n _ modulus
+  eval-in-range (adiv a c) env =
+    /ˢ-in-range b eqb (eval-arith-W a env) (eval-arith-W c env)
+  eval-in-range (amod a c) env =
+    %ˢ-in-range b eqb (eval-arith-W a env) (eval-arith-W c env) (eval-in-range a env)
+  eval-in-range (aneg a)   env = m%n<n _ modulus
+
+  -- single-node folds (the `alit 0 / alit -1` divisor cases); every other
+  -- divisor is left untouched (`fold-div a c = adiv a c`, `refl`).
+  fold-div-preserves : ∀ {sh} (a c : MArithIR sh) (env : ⟦ sh ⟧S) →
+    eval-arith-W a env < modulus →
+    eval-arith-W (fold-div a c) env ≡ eval-arith-W (adiv a c) env
+  fold-div-preserves a (alit (+ 0)) env _ =
+    trans (fromℤ-neg1 b eqb)
+          (trans (sym (/ˢ-zero (eval-arith-W a env)))
+                 (cong (eval-arith-W a env /ˢ_) (sym fromℤ-0)))
+  fold-div-preserves a (alit (-[1+ 0 ])) env a<mod =
+    sym (trans (cong (eval-arith-W a env /ˢ_) (fromℤ-neg1 b eqb))
+               (/ˢ-negOne b eqb (eval-arith-W a env) a<mod))
+  fold-div-preserves a (alit (+ (suc _)))     env _ = refl
+  fold-div-preserves a (alit (-[1+ suc _ ]))  env _ = refl
+  fold-div-preserves a (ainput _) env _ = refl
+  fold-div-preserves a (aadd _ _) env _ = refl
+  fold-div-preserves a (asub _ _) env _ = refl
+  fold-div-preserves a (amul _ _) env _ = refl
+  fold-div-preserves a (adiv _ _) env _ = refl
+  fold-div-preserves a (amod _ _) env _ = refl
+  fold-div-preserves a (aneg _)   env _ = refl
+
+  fold-mod-preserves : ∀ {sh} (a c : MArithIR sh) (env : ⟦ sh ⟧S) →
+    eval-arith-W (fold-mod a c) env ≡ eval-arith-W (amod a c) env
+  fold-mod-preserves a (alit (+ 0)) env =
+    trans (sym (%ˢ-zero (eval-arith-W a env)))
+          (cong (eval-arith-W a env %ˢ_) (sym fromℤ-0))
+  fold-mod-preserves a (alit (-[1+ 0 ])) env =
+    trans fromℤ-0
+          (trans (sym (%ˢ-negOne b eqb (eval-arith-W a env)))
+                 (cong (eval-arith-W a env %ˢ_) (sym (fromℤ-neg1 b eqb))))
+  fold-mod-preserves a (alit (+ (suc _)))    env = refl
+  fold-mod-preserves a (alit (-[1+ suc _ ])) env = refl
+  fold-mod-preserves a (ainput _) env = refl
+  fold-mod-preserves a (aadd _ _) env = refl
+  fold-mod-preserves a (asub _ _) env = refl
+  fold-mod-preserves a (amul _ _) env = refl
+  fold-mod-preserves a (adiv _ _) env = refl
+  fold-mod-preserves a (amod _ _) env = refl
+  fold-mod-preserves a (aneg _)   env = refl
+
+  normalize-preserves : ∀ {sh} (e : MArithIR sh) (env : ⟦ sh ⟧S) →
+    eval-arith-W (normalize e) env ≡ eval-arith-W e env
+  normalize-preserves (alit z)   env = refl
+  normalize-preserves (ainput p) env = refl
+  normalize-preserves (aadd a c) env =
+    cong₂ _⊕_ (normalize-preserves a env) (normalize-preserves c env)
+  normalize-preserves (asub a c) env =
+    cong₂ _⊖_ (normalize-preserves a env) (normalize-preserves c env)
+  normalize-preserves (amul a c) env =
+    cong₂ _⊗_ (normalize-preserves a env) (normalize-preserves c env)
+  normalize-preserves (aneg a)   env = cong ⊝_ (normalize-preserves a env)
+  normalize-preserves (adiv a c) env =
+    trans (fold-div-preserves (normalize a) (normalize c) env
+             (eval-in-range (normalize a) env))
+          (cong₂ _/ˢ_ (normalize-preserves a env) (normalize-preserves c env))
+  normalize-preserves (amod a c) env =
+    trans (fold-mod-preserves (normalize a) (normalize c) env)
+          (cong₂ _%ˢ_ (normalize-preserves a env) (normalize-preserves c env))

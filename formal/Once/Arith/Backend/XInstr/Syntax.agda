@@ -103,6 +103,13 @@ data XInstr : Set where
   Xdiv-rrr  : XReg → XReg → XReg → XInstr    -- dst := dividend /ˢ divisor
   Xrem-rrr  : XReg → XReg → XReg → XInstr    -- dst := dividend %ˢ divisor
 
+  -- Guard-ELIDED division / remainder (Plan: div-guard elision). SAME meaning
+  -- as `Xdiv-rrr`/`Xrem-rrr` (`/ˢ`/`%ˢ`); the per-arch Emit renders a BARE
+  -- idiv (no D055 test/INT_MIN guard). Emitted ONLY when compile-go proved the
+  -- divisor a safe literal (nonzero, ≠ −1), so #DE cannot fire by construction.
+  Xdiv-safe-rrr : XReg → XReg → XReg → XInstr
+  Xrem-safe-rrr : XReg → XReg → XReg → XInstr
+
   -- Boundary glue
   Xmov-out  : XReg → XInstr                 -- mov %src, %rax  (function
                                             -- result lands in rax per

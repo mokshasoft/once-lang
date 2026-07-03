@@ -44,7 +44,7 @@ open import Data.String using (String; _++_)
 open import Once.Arith.Backend.XInstr.Syntax
 open import Once.Arith.Backend.XInstr.CodeGen using (emit-program)
 open import Once.Arith.Machine.AbsState using (InputPath; Side; Fst; Snd)
-open import Once.Arith.Machine.Compile using (compile-abs; required-scratch)
+open import Once.Arith.Machine.Compile using (compile-abs; required-scratch; normalize)
 open import Once.Arith.Machine.IR using (MArithIR; ArithBlock)
 open Once.Arith.Machine.IR.ArithBlock using (block-shape; block-body)
 open import Once.Arith.SigOp.Block using (block-name)
@@ -179,6 +179,20 @@ instr-text (Xrem-rrr dst a b) =
      "    movq %rdx, %rax\n" ++           -- remainder is in %rdx
      "3:\n" ++
      "    movq %rax, " ++ reg-text dst ++ "\n"
+-- Guard-ELIDED div/rem. The divisor is a compile-time-safe literal (nonzero,
+-- ≠ −1, verified by `compile-go`'s `safe-divisor?`), so neither #DE case can
+-- arise: BARE cqto/idivq, no test/cmp/jmp guard. Same trusted-printer seam as
+-- the guarded idivq — safety is guaranteed by construction at the call site.
+instr-text (Xdiv-safe-rrr dst a b) =
+     "    movq " ++ reg-text a ++ ", %rax\n" ++
+     "    cqto\n" ++
+     "    idivq " ++ reg-text b ++ "\n" ++
+     "    movq %rax, " ++ reg-text dst ++ "\n"
+instr-text (Xrem-safe-rrr dst a b) =
+     "    movq " ++ reg-text a ++ ", %rax\n" ++
+     "    cqto\n" ++
+     "    idivq " ++ reg-text b ++ "\n" ++
+     "    movq %rdx, " ++ reg-text dst ++ "\n"   -- remainder is in %rdx
 instr-text (Xneg-r dst)       = "    negq " ++ reg-text dst ++ "\n"
 instr-text (Xmov-out src)     = "    movq " ++ reg-text src ++ ", %rax\n"
 
@@ -208,9 +222,10 @@ program-text (i ∷ is) = instr-text i ++ program-text is
 -- are perfectly balanced so the call site sees no stack drift.
 emit-arith-block : (sym : String) → ArithBlock → String
 emit-arith-block sym blk =
-  let n     = required-scratch (block-body blk)
+  let body  = normalize (block-body blk)   -- div-guard elision + degenerate folds
+      n     = required-scratch body
       pad   = showℕ (8 * n)
-      instr = emit-program (compile-abs (block-body blk))
+      instr = emit-program (compile-abs body)
   in sym ++ ":\n" ++
      "    subq $" ++ pad ++ ", %rsp\n" ++
      program-text instr ++

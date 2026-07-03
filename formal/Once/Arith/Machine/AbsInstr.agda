@@ -57,6 +57,14 @@ data AbstractInstr : Set where
   -- | `rem-rrr dst a b` : reg dst := reg a %ˢ reg b (D055 total signed rem).
   rem-rrr     : ℕ → ℕ → ℕ → AbstractInstr
 
+  -- | `div-safe-rrr dst a b` / `rem-safe-rrr dst a b` : SEMANTICALLY IDENTICAL
+  -- to `div-rrr`/`rem-rrr` (both denote `_/ˢ_`/`_%ˢ_`). The `-safe` marker is
+  -- a codegen HINT that the divisor is a compile-time-safe literal (nonzero,
+  -- not −1), so the per-arch Emit may drop the D055 idiv guard. The abstract
+  -- MEANING is unchanged — see the `step` cases below (identical writes).
+  div-safe-rrr : ℕ → ℕ → ℕ → AbstractInstr
+  rem-safe-rrr : ℕ → ℕ → ℕ → AbstractInstr
+
   -- | `neg-rr dst a` : reg dst := - reg a.
   neg-rr      : ℕ → ℕ → AbstractInstr
 
@@ -126,6 +134,13 @@ module Exec (bits : ℕ) where
     { regs = ArithAbsState.regs s [ dst ↦
         bin-op _/ˢ_ (ArithAbsState.regs s [ a ]) (ArithAbsState.regs s [ b ]) ] }
   step (rem-rrr dst a b) s = record s
+    { regs = ArithAbsState.regs s [ dst ↦
+        bin-op _%ˢ_ (ArithAbsState.regs s [ a ]) (ArithAbsState.regs s [ b ]) ] }
+  -- `-safe` variants: step is IDENTICAL to the guarded div-rrr/rem-rrr.
+  step (div-safe-rrr dst a b) s = record s
+    { regs = ArithAbsState.regs s [ dst ↦
+        bin-op _/ˢ_ (ArithAbsState.regs s [ a ]) (ArithAbsState.regs s [ b ]) ] }
+  step (rem-safe-rrr dst a b) s = record s
     { regs = ArithAbsState.regs s [ dst ↦
         bin-op _%ˢ_ (ArithAbsState.regs s [ a ]) (ArithAbsState.regs s [ b ]) ] }
   step (neg-rr dst a) s = record s

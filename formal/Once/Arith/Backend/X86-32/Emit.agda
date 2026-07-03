@@ -34,7 +34,7 @@ open import Data.String using (String; _++_)
 open import Once.Arith.Backend.XInstr.Syntax
 open import Once.Arith.Backend.XInstr.CodeGen using (emit-program)
 open import Once.Arith.Machine.AbsState using (InputPath; Side; Fst; Snd)
-open import Once.Arith.Machine.Compile using (compile-abs; required-scratch)
+open import Once.Arith.Machine.Compile using (compile-abs; required-scratch; normalize)
 open import Once.Arith.Machine.IR using (MArithIR; ArithBlock)
 open Once.Arith.Machine.IR.ArithBlock using (block-shape; block-body)
 open import Once.Arith.SigOp.Block using (block-name)
@@ -150,6 +150,25 @@ instr-text (Xrem-rrr dst a b) =
      "3:\n" ++
      "    addl $4, %esp\n" ++
      "    movl %eax, " ++ reg-text dst ++ "\n"
+-- Guard-ELIDED div/rem (divisor a compile-time-safe literal, ≠ 0, ≠ −1 — see
+-- `compile-go`'s `safe-divisor?`). BARE cltd/idivl, no #DE guard. The divisor
+-- is still stashed on the stack so cltd/idivl may freely clobber %edx (an arith
+-- register), and both operands are read before any clobber.
+instr-text (Xdiv-safe-rrr dst a b) =
+     "    pushl " ++ reg-text b ++ "\n" ++
+     "    movl " ++ reg-text a ++ ", %eax\n" ++
+     "    cltd\n" ++
+     "    idivl (%esp)\n" ++
+     "    addl $4, %esp\n" ++
+     "    movl %eax, " ++ reg-text dst ++ "\n"
+instr-text (Xrem-safe-rrr dst a b) =
+     "    pushl " ++ reg-text b ++ "\n" ++
+     "    movl " ++ reg-text a ++ ", %eax\n" ++
+     "    cltd\n" ++
+     "    idivl (%esp)\n" ++
+     "    movl %edx, %eax\n" ++           -- remainder is in %edx
+     "    addl $4, %esp\n" ++
+     "    movl %eax, " ++ reg-text dst ++ "\n"
 instr-text (Xneg-r dst)       = "    negl " ++ reg-text dst ++ "\n"
 instr-text (Xmov-out src)     = "    movl " ++ reg-text src ++ ", %eax\n"
 
@@ -174,9 +193,10 @@ program-text (i ∷ is) = instr-text i ++ program-text is
 --       ret
 emit-arith-block : (sym : String) → ArithBlock → String
 emit-arith-block sym blk =
-  let n     = required-scratch (block-body blk)
+  let body  = normalize (block-body blk)   -- div-guard elision + degenerate folds
+      n     = required-scratch body
       pad   = showℕ (4 * n)
-      instr = emit-program (compile-abs (block-body blk))
+      instr = emit-program (compile-abs body)
   in sym ++ ":\n" ++
      -- Save ALL four borrowed abstract-reg registers: %ebx (closure) and
      -- %esi (heap) are global; %edx (Scratch) and %edi (Input2) are the

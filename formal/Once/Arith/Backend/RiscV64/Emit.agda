@@ -34,7 +34,7 @@ open import Data.String using (String; _++_)
 open import Once.Arith.Backend.XInstr.Syntax
 open import Once.Arith.Backend.XInstr.CodeGen using (emit-program)
 open import Once.Arith.Machine.AbsState using (InputPath; Side; Fst; Snd)
-open import Once.Arith.Machine.Compile using (compile-abs; required-scratch)
+open import Once.Arith.Machine.Compile using (compile-abs; required-scratch; normalize)
 open import Once.Arith.Machine.IR using (MArithIR; ArithBlock)
 open Once.Arith.Machine.IR.ArithBlock using (block-shape; block-body)
 open import Once.Arith.SigOp.Block using (block-name)
@@ -113,6 +113,10 @@ instr-text (Ximul-rr dst src) = "    mul " ++ reg-text dst ++ ", " ++ reg-text d
 -- (quotient) / dividend (remainder); INT_MIN/-1 → INT_MIN / 0. Clean 1-1.
 instr-text (Xdiv-rrr dst a b) = "    div " ++ reg-text dst ++ ", " ++ reg-text a ++ ", " ++ reg-text b ++ "\n"
 instr-text (Xrem-rrr dst a b) = "    rem " ++ reg-text dst ++ ", " ++ reg-text a ++ ", " ++ reg-text b ++ "\n"
+-- `-safe` variants: RV64 `div`/`rem` are already total (no #DE trap), so the
+-- guard-elided form is IDENTICAL to the guarded one — a clean 1-1 map.
+instr-text (Xdiv-safe-rrr dst a b) = "    div " ++ reg-text dst ++ ", " ++ reg-text a ++ ", " ++ reg-text b ++ "\n"
+instr-text (Xrem-safe-rrr dst a b) = "    rem " ++ reg-text dst ++ ", " ++ reg-text a ++ ", " ++ reg-text b ++ "\n"
 instr-text (Xneg-r dst)       = "    neg " ++ reg-text dst ++ ", " ++ reg-text dst ++ "\n"
 instr-text (Xmov-out src)     = "    mv a0, " ++ reg-text src ++ "\n"
 
@@ -133,9 +137,10 @@ program-text (i ∷ is) = instr-text i ++ program-text is
 --       ret
 emit-arith-block : (sym : String) → ArithBlock → String
 emit-arith-block sym blk =
-  let n     = required-scratch (block-body blk)
+  let body  = normalize (block-body blk)   -- div-guard elision + degenerate folds
+      n     = required-scratch body
       pad   = showℕ (8 * n)
-      instr = emit-program (compile-abs (block-body blk))
+      instr = emit-program (compile-abs body)
   in sym ++ ":\n" ++
      "    addi sp, sp, -" ++ pad ++ "\n" ++
      program-text instr ++
