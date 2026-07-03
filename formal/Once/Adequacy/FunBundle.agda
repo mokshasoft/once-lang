@@ -331,3 +331,43 @@ ra-head {ty = ty} fi ce rt w
 
 realize-agree (bcons rf ce cf rest) (inj₁ (_ , _ , refl)) = refl
 realize-agree (bcons {fi = fi} rf ce cf rest) (inj₂ w) = ra-head fi ce rest w
+
+------------------------------------------------------------------------
+-- (3c) `bundle-realize-node`: extract the selected main node's data
+-- (`mctx`/`mbody`/`mΨ`/`mse`/`mce`) with a proof that `bundle-realize` returns
+-- exactly `realize (check-sound … mce)` at that node. Feeds eq2 of `main-extract`.
+-- Prim-first dispatch (mirrors `br-dispatch`) ⇒ same node as `bundle-find`.
+------------------------------------------------------------------------
+
+RNode : ∀ (polys : PolyCtx) (sigEffs : SigEffectCtx)
+  → Σ-syntax (Usage 0) (λ Ψ' → Expr ∅ Ψ' EffUU) → Set
+RNode polys sigEffs r =
+  Σ-syntax C.FunCtx (λ mctx → Σ-syntax RawExpr (λ mbody →
+  Σ-syntax (Usage 0) (λ mΨ → Σ-syntax (Expr ∅ mΨ EffUU) (λ mse → Σ-syntax ℕ (λ md → Σ-syntax ℕ (λ mf →
+  Σ-syntax (checkElab (ctxWithImportsAndSelfAndPolys mctx polys sigEffs "main" EffUU) mbody EffUU
+             ≡ TE.success mΨ mse md mf) (λ mce →
+    r ≡ (mΨ , realize (check-sound (ctxWithImportsAndSelfAndPolys mctx polys sigEffs "main" EffUU) mbody EffUU mce)))))))))
+
+bundle-realize-node : ∀ {polys sigEffs funs ctx} (b : FunBundle polys sigEffs funs ctx)
+  (bme : BMainExists b) → RNode polys sigEffs (bundle-realize b bme)
+
+brn-dispatch : ∀ {polys sigEffs rest ctx ty} (fi : FunInfo)
+  {Ψ : Usage (NamedCtx.size (ctxWithImportsAndSelfAndPolys ctx polys sigEffs (funName fi) ty))}
+  {se : Expr (NamedCtx.debruijn (ctxWithImportsAndSelfAndPolys ctx polys sigEffs (funName fi) ty)) Ψ ty}
+  {d f : ℕ}
+  (ce : checkElab (ctxWithImportsAndSelfAndPolys ctx polys sigEffs (funName fi) ty) (funBody fi) ty
+          ≡ TE.success Ψ se d f)
+  (rt : FunBundle polys sigEffs rest (C.extendFunCtx ctx (funName fi) ty)) (w : BMainExists rt)
+  (nd : Dec (funName fi ≡ "main")) (td : Dec (ty ≡ EffUU)) (pb : Bool)
+  → RNode polys sigEffs (br-dispatch fi ce rt w nd td pb)
+brn-dispatch fi ce rt w _        _          true  = bundle-realize-node rt w
+brn-dispatch {polys = polys} {sigEffs = sigEffs} {ctx = ctx} fi {Ψ = Ψ} {se = se} {d = d} {f = f} ce rt w (yes p) (yes refl) false rewrite p =
+  ctx , funBody fi , Ψ , se , d , f , ce , refl
+brn-dispatch fi ce rt w (no _)  _          false = bundle-realize-node rt w
+brn-dispatch fi ce rt w (yes _) (no _)     false = bundle-realize-node rt w
+
+bundle-realize-node {polys = polys} {sigEffs = sigEffs}
+  (bcons {fi = fi} {ctx = ctx} {Ψ = Ψ} {se = se} {d = d} {f = f} rf ce cf rest) (inj₁ (p , _ , refl)) rewrite p =
+  ctx , funBody fi , Ψ , se , d , f , ce , refl
+bundle-realize-node (bcons {fi = fi} {ty = ty} rf ce cf rest) (inj₂ w) =
+  brn-dispatch fi ce rest w (funName fi ≟str "main") (ty ≟T EffUU) (funIsPrimitive fi)
