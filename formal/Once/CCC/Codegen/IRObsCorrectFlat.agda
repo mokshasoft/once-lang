@@ -27,22 +27,25 @@
 
 module Once.CCC.Codegen.IRObsCorrectFlat where
 
-open import Data.Nat using (ℕ; suc; _<_)
+open import Data.Nat using (ℕ; zero; suc; _<_)
 open import Data.Bool using (false; true)
-open import Data.List using (length; take)
+open import Data.List using (length; take; []; _∷_)
+open import Data.Maybe using (just; nothing)
 open import Data.Product using (_×_; _,_; ∃; ∃-syntax; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
-open import Once.Type using (Type; ⟦_⟧T; μ-type)
+open import Once.Type using (Type; ⟦_⟧T; μ-type; FitsInReg; fits-in-reg?)
 open import Once.Functor.Translate using (WellFormedF; WellFormedF-irrelevant)
 open import Once.Semantics.Machine using (⟦_⟧)
-open import Once.IR using (IR; AllocMode; Cata; out-μ)
-open import Relation.Binary.PropositionalEquality using (refl; trans)
+open import Once.IR using (IR; AllocMode; Stack; Cata; SigOp; SigOpInfo; out-μ)
+open import Once.SigOp.Info using (effect; EffectShape; Pure; Emits; Halts)
+open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong)
 open import Once.IR.Size using (ir-size)
 open import Once.CCC.Eval using (eval; ⟦_⟧)
 open import Once.CCC.Machine.SMCore
-  using (LocState; ValueLocation; SV-Ptr; halted; regs; readReg; Input1)
+  using (LocState; ValueLocation; SV-Ptr; halted; regs; readReg; Input1;
+         instr-sigop; module AbstractExec)
 open import Once.CCC.Machine.Allocation using (AllocState; next-slot; module FrontierInvariant)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Codegen.IRToTrace using (ir-to-trace)
@@ -56,9 +59,10 @@ open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
 
 module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   open FlatMachine {FS}
+  open AbstractExec {FS} using (exec-sigop-halts)
   open FrontierInvariant {FS} using (BeforeFrontier)
-  open ClosureWellFormedDef {FS} program-bound using (ValidAtWF; valid-μ-wf)
-  open FlatEventTrace {FS} using (flat-events)
+  open ClosureWellFormedDef {FS} program-bound using (ValidAtWF; valid-μ-wf; valid-primitive-wf)
+  open FlatEventTrace {FS} using (flat-events; event-of; flat-events-[])
   open CataNextSlot {FS} using (exec-flat-keeps-next-slot)
   open CataIRSlotStable {FS} using (ir-to-trace-slot-stable)
 
@@ -197,6 +201,71 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   postulate
     obs-correct-rest : ∀ {A B} (ir : IR A B) → IRObsCorrectF ir
 
+  -- ════════════════════════════════════════════════════════════════════
+  -- `obs-correct-sigop` — the `SigOp` case carved OUT of `obs-correct-rest`
+  -- and discharged DIRECTLY (zero new postulates) for the tractable class:
+  -- `Pure` + fits-in-reg SigOps (which is exactly `arith.block.*`). This is
+  -- the FLAT-machine analogue of `Once.CCC.SigOp.PureProvider` (which does
+  -- the same over the abstract `exec-trace`); here we target
+  -- `MachineRefinesObsF` over `flat-run`/`flat-events`.
+  --
+  --   * `traces-agree`  — a `Pure` SigOp is a register computation, not a
+  --     syscall: the machine emits `[]` (`flat-events-[]`, since the only
+  --     fetchable instr `instr-sigop si` is `Pure` ⇒ `event-of ≡ []`) and
+  --     the denotation emits `[]` (`emit-D si _ ≡ []` for `Pure`). Both
+  --     sides reduce to `take k [] ≡ take k []`.
+  --   * `value-realized` — the codomain fits in a register, so its validity
+  --     is location-only (`valid-primitive-wf fitness before`). The single
+  --     `instr-sigop` step leaves `alloc` untouched
+  --     (`exec-abstract (instr-sigop …)` returns `… , alloc`), so
+  --     `BeforeFrontier alloc input-loc` transports to the post-run alloc.
+  --
+  -- Non-`Pure` or non-fits-in-reg SigOps still route to `obs-correct-rest`,
+  -- so the total IR dispatch is preserved.
+  -- ════════════════════════════════════════════════════════════════════
+  pure-obs-correct-sigop :
+    ∀ {A B} (si : SigOpInfo A B) (fitness : FitsInReg B)
+    → effect si ≡ Pure → IRObsCorrectF (SigOp si)
+  pure-obs-correct-sigop {A} {B} si fitness pure-eq
+    _ mIn x input-loc s alloc _ valid input-before not-halted _ =
+    record
+      { traces-agree = λ k →
+          2 , trans (cong (take k) (mach-[] 2))
+                    (cong (take k) (sym (denot-[] k)))
+      ; value-realized =
+          2 , Stack , input-loc , valid-primitive-wf fitness before
+      }
+    where
+      -- Machine side: no fetchable instr emits an event (the sole
+      -- instruction `instr-sigop si` is `Pure`), so the whole trace is `[]`.
+      ev-[] : ∀ pc i → fetch (ir-to-trace (SigOp si)) pc ≡ just i
+            → ∀ fs → event-of i fs ≡ []
+      ev-[] zero    .(instr-sigop si) refl fs rewrite pure-eq = refl
+      ev-[] (suc n) i                 ()   fs
+
+      mach-[] : ∀ f → flat-events f (ir-to-trace (SigOp si)) (mkFlat s alloc 0) ≡ []
+      mach-[] f = flat-events-[] (ir-to-trace (SigOp si)) ev-[] f (mkFlat s alloc 0)
+
+      -- Denotation side: a `Pure` SigOp emits nothing (`emit-D … ≡ []`).
+      denot-[] : ∀ k → projTrace (evalᴰ (SigOp si) (inject x)) k ≡ []
+      denot-[] k rewrite pure-eq = refl
+
+      -- The single `instr-sigop` step leaves the allocator untouched.
+      keeps-alloc : falloc (flat-run 2 (SigOp si) s alloc) ≡ alloc
+      keeps-alloc rewrite not-halted | pure-eq = refl
+
+      before : BeforeFrontier (falloc (flat-run 2 (SigOp si) s alloc)) input-loc
+      before rewrite keeps-alloc = input-before
+
+  obs-correct-sigop : ∀ {A B} (si : SigOpInfo A B) → IRObsCorrectF (SigOp si)
+  obs-correct-sigop {A} {B} si with fits-in-reg? B
+  ... | nothing = obs-correct-rest (SigOp si)
+  ... | just fitness with effect si in pure-eq
+  ...   | Pure    = pure-obs-correct-sigop si fitness pure-eq
+  ...   | Emits _ = obs-correct-rest (SigOp si)
+  ...   | Halts _ = obs-correct-rest (SigOp si)
+
   ir-obs-correct : ∀ {A B} (ir : IR A B) → IRObsCorrectF ir
   ir-obs-correct (Cata wf alg) = cata-correct wf alg (ir-obs-correct alg)
+  ir-obs-correct (SigOp si)    = obs-correct-sigop si
   ir-obs-correct ir            = obs-correct-rest ir
