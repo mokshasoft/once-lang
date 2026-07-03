@@ -113,6 +113,7 @@ data AllocStrategy
 data InterpType
   = InterpC       -- ^ C interpretation
   | InterpX86_64  -- ^ x86-64 interpretation
+  | InterpX86_32  -- ^ x86-32 interpretation
   | InterpArm64   -- ^ ARM64 interpretation
   | InterpRiscV64 -- ^ RISC-V interpretation
   deriving (Eq, Show)
@@ -121,6 +122,7 @@ data InterpType
 parseInterpType :: String -> Maybe InterpType
 parseInterpType "C" = Just InterpC
 parseInterpType "x86_64" = Just InterpX86_64
+parseInterpType "x86_32" = Just InterpX86_32
 parseInterpType "arm64" = Just InterpArm64
 parseInterpType "riscv64" = Just InterpRiscV64
 parseInterpType _ = Nothing
@@ -364,7 +366,7 @@ runVerifiedBuild opts outputBase arch mod_ strataDir importPaths =
 
         Executable -> do
           -- Assemble user .s → .o
-          asmResult <- assemble asmPath objPath
+          asmResult <- assemble arch asmPath objPath
           case asmResult of
             Left err -> do
               TIO.putStrLn $ "Assembly failed: " <> T.pack err
@@ -383,7 +385,7 @@ runVerifiedBuild opts outputBase arch mod_ strataDir importPaths =
                   exitFailure
                 Right implObjs -> do
                   -- Link all .o files (user + impls) to executable
-                  linkResult <- link (objPath : implObjs) outputBase
+                  linkResult <- link arch (objPath : implObjs) outputBase
                   case linkResult of
                     Left err -> do
                       TIO.putStrLn $ "Link failed: " <> T.pack err
@@ -423,7 +425,7 @@ assembleImplFiles strataDir arch paths = go paths []
         then go rest acc  -- Skip: no impl for this arch (may be intentional)
         else do
           let objPath = implPath ++ ".o"
-          asmResult <- assemble implPath objPath
+          asmResult <- assemble arch implPath objPath
           case asmResult of
             Left err  -> pure (Left ("Failed to assemble " ++ implPath ++ ": " ++ err))
             Right _   -> do
@@ -484,12 +486,23 @@ redefineSymbols objPath renames = do
 -- Assembler/Linker Invocation
 ------------------------------------------------------------------------
 
+-- | Plan 0.57: per-arch assembler/linker flags. x86-32 uses the NATIVE
+-- as/ld with 32-bit flags; x86-64 uses defaults; riscv64 goes through the
+-- cross toolchain selected via the AS/LD env vars (no extra flags here).
+archAsFlags :: Bridge.Arch -> [String]
+archAsFlags Bridge.X86_32 = ["--32"]
+archAsFlags _             = []
+
+archLdFlags :: Bridge.Arch -> [String]
+archLdFlags Bridge.X86_32 = ["-m", "elf_i386"]
+archLdFlags _             = []
+
 -- | Assemble a .s file to .o using the system assembler
 -- Checks AS environment variable, falls back to "as"
-assemble :: FilePath -> FilePath -> IO (Either String FilePath)
-assemble asmFile objFile = do
+assemble :: Bridge.Arch -> FilePath -> FilePath -> IO (Either String FilePath)
+assemble arch asmFile objFile = do
   as <- maybe "as" id <$> lookupEnv "AS"
-  result <- try $ readProcessWithExitCode as [asmFile, "-o", objFile] ""
+  result <- try $ readProcessWithExitCode as (archAsFlags arch ++ [asmFile, "-o", objFile]) ""
   case result of
     Left (e :: SomeException) ->
       pure $ Left $ "Assembler error: " ++ show e
@@ -500,10 +513,10 @@ assemble asmFile objFile = do
 
 -- | Link object files to an executable using the system linker
 -- Checks LD environment variable, falls back to "ld"
-link :: [FilePath] -> FilePath -> IO (Either String FilePath)
-link objFiles output = do
+link :: Bridge.Arch -> [FilePath] -> FilePath -> IO (Either String FilePath)
+link arch objFiles output = do
   ld <- maybe "ld" id <$> lookupEnv "LD"
-  let args = objFiles ++ ["-o", output]
+  let args = archLdFlags arch ++ objFiles ++ ["-o", output]
   result <- try $ readProcessWithExitCode ld args ""
   case result of
     Left (e :: SomeException) ->
