@@ -65,7 +65,7 @@ bind-cong-trace m m′ f n eq = cong (λ p → proj₁ p ++ proj₁ (f (proj₂ 
 -- DISCHARGED (no longer a postulate): the compiled `main` IR is the entry-wrap
 -- of the elaborated resolved term — proven in `Once.Adequacy.MainIRForm` by the
 -- value-tracking induction over `compileAllFuns-go` + `findMain`.
-open import Once.Adequacy.MainIRForm using (main-ir-form; Form)
+open import Once.Adequacy.MainForm using (main-ir-form; Form)
 
 -- THE SD bridge: the compiled `main` IR's denotational trace equals the
 -- INDEPENDENT surface meaning of `main`. Proven from `main-ir-form` (plumbing)
