@@ -355,19 +355,17 @@ d_canon'45'pres'45''7504'_118 ::
   T_PolyInB_16 ->
   MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7504'_'8758'_'8680''91'_'93'__18 ->
   MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7504'_'8758'_'8680''91'_'93'__18
-d_canon'45'pres'45''7504'_118 v0 v1 v2 v3 v4 v5 ~v6 ~v7 v8
-  = du_canon'45'pres'45''7504'_118 v0 v1 v2 v3 v4 v5 v8
+d_canon'45'pres'45''7504'_118 ~v0 v1 v2 ~v3 v4 v5 ~v6 ~v7 v8
+  = du_canon'45'pres'45''7504'_118 v1 v2 v4 v5 v8
 du_canon'45'pres'45''7504'_118 ::
-  MAlonzo.Code.Once.TypeCheck.Classify.T_NamedCtx_170 ->
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
-  MAlonzo.Code.Once.Type.T_Purity_32 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
   [MAlonzo.Code.Agda.Builtin.String.T_String_6] ->
   MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7504'_'8758'_'8680''91'_'93'__18 ->
   MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7504'_'8758'_'8680''91'_'93'__18
-du_canon'45'pres'45''7504'_118 v0 v1 v2 v3 v4 v5 v6
-  = case coe v6 of
+du_canon'45'pres'45''7504'_118 v0 v1 v2 v3 v4
+  = case coe v4 of
       MAlonzo.Code.Once.TypeCheck.Judgment.C_m'45'id_344
         -> coe MAlonzo.Code.Once.TypeCheck.Judgment.C_m'45'id_344
       MAlonzo.Code.Once.TypeCheck.Judgment.C_m'45'fst_354
@@ -382,130 +380,103 @@ du_canon'45'pres'45''7504'_118 v0 v1 v2 v3 v4 v5 v6
         -> coe MAlonzo.Code.Once.TypeCheck.Judgment.C_m'45'inl_390
       MAlonzo.Code.Once.TypeCheck.Judgment.C_m'45'inr_400
         -> coe MAlonzo.Code.Once.TypeCheck.Judgment.C_m'45'inr_400
-      MAlonzo.Code.Once.TypeCheck.Judgment.C_m'45'compose_416 v11 v15 v16
-        -> case coe v1 of
-             MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_42 v17 v18
-               -> case coe v17 of
-                    MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_42 v19 v20
-                      -> coe
-                           MAlonzo.Code.Once.TypeCheck.Judgment.C_m'45'compose_416 v11
-                           (coe
-                              du_canon'45'pres'45''7504'_118 (coe v0) (coe v20) (coe v11)
-                              (coe v3) (coe v4) (coe v5) (coe v15))
-                           (coe
-                              du_canon'45'pres'45''7504'_118 (coe v0) (coe v18) (coe v2) (coe v3)
-                              (coe v11) (coe v5) (coe v16))
-                    _ -> MAlonzo.RTE.mazUnreachableError
-             _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.TypeCheck.Judgment.C_m'45'case_432 v14 v15
-        -> case coe v1 of
-             MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_42 v16 v17
-               -> case coe v16 of
-                    MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_42 v18 v19
-                      -> case coe v2 of
-                           MAlonzo.Code.Once.Type.C__'43'__128 v20 v21
-                             -> coe
-                                  MAlonzo.Code.Once.TypeCheck.Judgment.C_m'45'case_432
-                                  (coe
-                                     du_canon'45'pres'45''7504'_118 (coe v0) (coe v19) (coe v20)
-                                     (coe v3) (coe v4) (coe v5) (coe v14))
-                                  (coe
-                                     du_canon'45'pres'45''7504'_118 (coe v0) (coe v17) (coe v21)
-                                     (coe v3) (coe v4) (coe v5) (coe v15))
-                           _ -> MAlonzo.RTE.mazUnreachableError
-                    _ -> MAlonzo.RTE.mazUnreachableError
-             _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.TypeCheck.Judgment.C_m'45'pair_446 v13 v14
-        -> case coe v1 of
+      MAlonzo.Code.Once.TypeCheck.Judgment.C_m'45'compose_416 v9 v13 v14
+        -> case coe v0 of
              MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_42 v15 v16
                -> case coe v15 of
                     MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_42 v17 v18
-                      -> case coe v4 of
-                           MAlonzo.Code.Once.Type.C__'42'__126 v19 v20
+                      -> coe
+                           MAlonzo.Code.Once.TypeCheck.Judgment.C_m'45'compose_416 v9
+                           (coe
+                              du_canon'45'pres'45''7504'_118 (coe v18) (coe v9) (coe v2) (coe v3)
+                              (coe v13))
+                           (coe
+                              du_canon'45'pres'45''7504'_118 (coe v16) (coe v1) (coe v9) (coe v3)
+                              (coe v14))
+                    _ -> MAlonzo.RTE.mazUnreachableError
+             _ -> MAlonzo.RTE.mazUnreachableError
+      MAlonzo.Code.Once.TypeCheck.Judgment.C_m'45'case_432 v12 v13
+        -> case coe v0 of
+             MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_42 v14 v15
+               -> case coe v14 of
+                    MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_42 v16 v17
+                      -> case coe v1 of
+                           MAlonzo.Code.Once.Type.C__'43'__128 v18 v19
                              -> coe
-                                  MAlonzo.Code.Once.TypeCheck.Judgment.C_m'45'pair_446
+                                  MAlonzo.Code.Once.TypeCheck.Judgment.C_m'45'case_432
                                   (coe
-                                     du_canon'45'pres'45''7504'_118 (coe v0) (coe v18) (coe v2)
-                                     (coe MAlonzo.Code.Once.Type.C_pure_34) (coe v19) (coe v5)
-                                     (coe v13))
+                                     du_canon'45'pres'45''7504'_118 (coe v17) (coe v18) (coe v2)
+                                     (coe v3) (coe v12))
                                   (coe
-                                     du_canon'45'pres'45''7504'_118 (coe v0) (coe v16) (coe v2)
-                                     (coe MAlonzo.Code.Once.Type.C_pure_34) (coe v20) (coe v5)
-                                     (coe v14))
+                                     du_canon'45'pres'45''7504'_118 (coe v15) (coe v19) (coe v2)
+                                     (coe v3) (coe v13))
                            _ -> MAlonzo.RTE.mazUnreachableError
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.TypeCheck.Judgment.C_m'45'curry_458 v12
-        -> case coe v1 of
+      MAlonzo.Code.Once.TypeCheck.Judgment.C_m'45'pair_446 v11 v12
+        -> case coe v0 of
              MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_42 v13 v14
-               -> case coe v4 of
-                    MAlonzo.Code.Once.Type.C__'8658''91'_'93'__130 v15 v16 v17
+               -> case coe v13 of
+                    MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_42 v15 v16
+                      -> case coe v2 of
+                           MAlonzo.Code.Once.Type.C__'42'__126 v17 v18
+                             -> coe
+                                  MAlonzo.Code.Once.TypeCheck.Judgment.C_m'45'pair_446
+                                  (coe
+                                     du_canon'45'pres'45''7504'_118 (coe v16) (coe v1) (coe v17)
+                                     (coe v3) (coe v11))
+                                  (coe
+                                     du_canon'45'pres'45''7504'_118 (coe v14) (coe v1) (coe v18)
+                                     (coe v3) (coe v12))
+                           _ -> MAlonzo.RTE.mazUnreachableError
+                    _ -> MAlonzo.RTE.mazUnreachableError
+             _ -> MAlonzo.RTE.mazUnreachableError
+      MAlonzo.Code.Once.TypeCheck.Judgment.C_m'45'curry_458 v10
+        -> case coe v0 of
+             MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_42 v11 v12
+               -> case coe v2 of
+                    MAlonzo.Code.Once.Type.C__'8658''91'_'93'__130 v13 v14 v15
                       -> coe
                            MAlonzo.Code.Once.TypeCheck.Judgment.C_m'45'curry_458
                            (coe
-                              du_canon'45'pres'45''7504'_118 (coe v0) (coe v14)
-                              (coe MAlonzo.Code.Once.Type.C__'42'__126 (coe v2) (coe v15))
-                              (coe MAlonzo.Code.Once.Type.C_pure_34) (coe v17) (coe v5)
-                              (coe v12))
+                              du_canon'45'pres'45''7504'_118 (coe v12)
+                              (coe MAlonzo.Code.Once.Type.C__'42'__126 (coe v1) (coe v13))
+                              (coe v15) (coe v3) (coe v10))
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.TypeCheck.Judgment.C_m'45'cata_472 v12 v14
-        -> case coe v1 of
-             MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_42 v15 v16
-               -> case coe v2 of
-                    MAlonzo.Code.Once.Type.C_μ'45'type_132 v17
+      MAlonzo.Code.Once.TypeCheck.Judgment.C_m'45'cata_472 v10 v12
+        -> case coe v0 of
+             MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_42 v13 v14
+               -> case coe v1 of
+                    MAlonzo.Code.Once.Type.C_μ'45'type_132 v15
                       -> coe
-                           MAlonzo.Code.Once.TypeCheck.Judgment.C_m'45'cata_472 v12
+                           MAlonzo.Code.Once.TypeCheck.Judgment.C_m'45'cata_472 v10
                            (coe
-                              du_canon'45'pres'45''7580'_130
+                              du_canon'45'pres'45''7504'_118 (coe v14)
                               (coe
-                                 MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndPolys_208
-                                 (coe MAlonzo.Code.Once.TypeCheck.Classify.d_imports_194 (coe v0))
-                                 (coe MAlonzo.Code.Once.TypeCheck.Classify.d_polys_196 (coe v0)))
-                              (coe v16)
-                              (coe
-                                 MAlonzo.Code.Once.Type.C__'8658''91'_'93'__130
-                                 (coe
-                                    MAlonzo.Code.Once.Type.d_'10214'_'10215'T_166 (coe v17)
-                                    (coe v4))
-                                 (coe
-                                    MAlonzo.Code.Once.Type.C_mk'45'kind_50
-                                    (coe MAlonzo.Code.Once.Type.C_Many_10) (coe v3))
-                                 (coe v4))
-                              (coe
-                                 MAlonzo.Code.Once.Surface.Syntax.d_zeroUsage_70
-                                 (coe
-                                    MAlonzo.Code.Once.TypeCheck.Classify.d_size_186
-                                    (coe
-                                       MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndPolys_208
-                                       (coe
-                                          MAlonzo.Code.Once.TypeCheck.Classify.d_imports_194
-                                          (coe v0))
-                                       (coe
-                                          MAlonzo.Code.Once.TypeCheck.Classify.d_polys_196
-                                          (coe v0)))))
-                              (coe v5) (coe v14))
+                                 MAlonzo.Code.Once.Type.d_'10214'_'10215'T_166 (coe v15) (coe v2))
+                              (coe v2) (coe v3) (coe v12))
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.TypeCheck.Judgment.C_m'45'const_484 v12
+      MAlonzo.Code.Once.TypeCheck.Judgment.C_m'45'const_484 v10
         -> coe
              MAlonzo.Code.Once.TypeCheck.Judgment.C_m'45'const_484
              (coe
                 MAlonzo.Code.Once.Adequacy.CanonPreserve.du_pres'45''7501'_688
-                (coe v1) (coe v4) (coe v12))
+                (coe v0) (coe v2) (coe v10))
       MAlonzo.Code.Once.TypeCheck.Judgment.C_m'45'named_496
-        -> case coe v1 of
-             MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36 v15
-               -> let v16
+        -> case coe v0 of
+             MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36 v13
+               -> let v14
                         = MAlonzo.Code.Data.Bool.Base.d__'8744'__30
                             (coe
-                               MAlonzo.Code.Once.Parser.Module.Resolve.d_elemStr_194 (coe v15)
-                               (coe v5))
+                               MAlonzo.Code.Once.Parser.Module.Resolve.d_elemStr_194 (coe v13)
+                               (coe v3))
                             (coe
                                MAlonzo.Code.Once.Parser.Module.Resolve.d_isBuiltinName_192
-                               (coe v15)) in
+                               (coe v13)) in
                   coe
-                    (if coe v16
+                    (if coe v14
                        then coe MAlonzo.Code.Once.TypeCheck.Judgment.C_m'45'named_496
                        else coe
                               MAlonzo.Code.Once.TypeCheck.Judgment.C_m'45'named'45'resolved_508)
@@ -542,14 +513,11 @@ du_canon'45'pres'45''7580'_130 v0 v1 v2 v3 v4 v5
       MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'morph'45'lift_520 v11
         -> case coe v2 of
              MAlonzo.Code.Once.Type.C__'8658''91'_'93'__130 v12 v13 v14
-               -> case coe v13 of
-                    MAlonzo.Code.Once.Type.C_mk'45'kind_50 v15 v16
-                      -> coe
-                           MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'morph'45'lift_520
-                           (coe
-                              du_canon'45'pres'45''7504'_118 (coe v0) (coe v1) (coe v12)
-                              (coe v16) (coe v14) (coe v4) (coe v11))
-                    _ -> MAlonzo.RTE.mazUnreachableError
+               -> coe
+                    MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'morph'45'lift_520
+                    (coe
+                       du_canon'45'pres'45''7504'_118 (coe v1) (coe v12) (coe v14)
+                       (coe v4) (coe v11))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'embed_530 v10
         -> coe

@@ -19,15 +19,37 @@ import qualified MAlonzo.RTE
 import qualified Data.Text
 import qualified MAlonzo.Code.Agda.Builtin.Equality
 import qualified MAlonzo.Code.Agda.Builtin.Sigma
+import qualified MAlonzo.Code.Agda.Builtin.String
+import qualified MAlonzo.Code.Induction.WellFounded
 import qualified MAlonzo.Code.Once.Surface.Syntax
 import qualified MAlonzo.Code.Once.Type
 
--- Once.Adequacy.ResolveFaithful.resolveExpr-faithful-hard
-d_resolveExpr'45'faithful'45'hard_28
+-- Once.Adequacy.ResolveFaithful.resolveExpr-sigOp-closure-faithful
+d_resolveExpr'45'sigOp'45'closure'45'faithful_18
   = error
-      "MAlonzo Runtime Error: postulate evaluated: Once.Adequacy.ResolveFaithful.resolveExpr-faithful-hard"
+      "MAlonzo Runtime Error: postulate evaluated: Once.Adequacy.ResolveFaithful.resolveExpr-sigOp-closure-faithful"
+-- Once.Adequacy.ResolveFaithful.resolveExpr-poly-splice-faithful
+d_resolveExpr'45'poly'45'splice'45'faithful_56
+  = error
+      "MAlonzo Runtime Error: postulate evaluated: Once.Adequacy.ResolveFaithful.resolveExpr-poly-splice-faithful"
+-- Once.Adequacy.ResolveFaithful.resolveExpr-poly-faithful
+d_resolveExpr'45'poly'45'faithful_84 ::
+  Integer ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Ctx_6 ->
+  MAlonzo.Code.Once.Type.T_Type_112 ->
+  [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
+  MAlonzo.Code.Induction.WellFounded.T_Acc_42 ->
+  [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
+  [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
+  Integer ->
+  MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
+  Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  AgdaAny ->
+  Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_resolveExpr'45'poly'45'faithful_84 = erased
 -- Once.Adequacy.ResolveFaithful.bind2-faithful
-d_bind2'45'faithful_50 ::
+d_bind2'45'faithful_208 ::
   () ->
   () ->
   (Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14) ->
@@ -38,9 +60,9 @@ d_bind2'45'faithful_50 ::
   (AgdaAny ->
    Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_bind2'45'faithful_50 = erased
+d_bind2'45'faithful_208 = erased
 -- Once.Adequacy.ResolveFaithful.resolveExpr-faithful
-d_resolveExpr'45'faithful_96 ::
+d_resolveExpr'45'faithful_254 ::
   Integer ->
   MAlonzo.Code.Once.Surface.Syntax.T_Ctx_6 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Usage_60 ->
@@ -52,4 +74,4 @@ d_resolveExpr'45'faithful_96 ::
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_184 ->
   AgdaAny ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_resolveExpr'45'faithful_96 = erased
+d_resolveExpr'45'faithful_254 = erased

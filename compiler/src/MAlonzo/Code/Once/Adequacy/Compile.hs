@@ -55,11 +55,11 @@ d_compile'45'asm_6 ::
   MAlonzo.Code.Once.Compile.T_CompileResult_686
 d_compile'45'asm_6 v0 v1
   = let v2
-          = MAlonzo.Code.Once.Adequacy.SourceTrace.d_srcToModule'45'aux_56
+          = MAlonzo.Code.Once.Adequacy.SourceTrace.d_srcToModule'45'aux_68
               (coe
                  MAlonzo.Code.Once.Denotation.Behavior.d_srcImports_14 (coe v1))
               (coe
-                 MAlonzo.Code.Once.Adequacy.SourceTrace.d_eitherToMaybe_52
+                 MAlonzo.Code.Once.Adequacy.SourceTrace.d_eitherToMaybe_64
                  (coe
                     MAlonzo.Code.Once.Parser.d_parseStrict'45'at_56
                     (coe
@@ -165,9 +165,9 @@ d_'10214'_'10215'M_38 ::
   Integer -> [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_122]
 d_'10214'_'10215'M_38 v0
   = coe
-      MAlonzo.Code.Once.Adequacy.SourceTrace.d_'10214'_'10215'IR_44
+      MAlonzo.Code.Once.Adequacy.SourceTrace.d_'10214'_'10215'IR_56
       (coe
-         MAlonzo.Code.Once.Adequacy.SourceTrace.d_moduleToIR_40 (coe v0))
+         MAlonzo.Code.Once.Adequacy.SourceTrace.d_moduleToIR_52 (coe v0))
 -- Once.Adequacy.Compile.ArchCorrect
 d_ArchCorrect_46 a0 a1 = ()
 data T_ArchCorrect_46
@@ -345,7 +345,7 @@ du_compile'45'gm_166 v0 v1 v2 v3
         -> coe
              du_compile'45'mir_152 (coe v0) (coe v1) (coe v2) (coe v4)
              (coe
-                MAlonzo.Code.Once.Adequacy.SourceTrace.d_moduleToIR_40 (coe v4))
+                MAlonzo.Code.Once.Adequacy.SourceTrace.d_moduleToIR_52 (coe v4))
       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v3
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.Compile.WithCPU.compile
@@ -369,7 +369,7 @@ du_compile_178 v0 v1 v2 v3
   = coe
       du_compile'45'gm_166 (coe v0) (coe v1) (coe v2)
       (coe
-         MAlonzo.Code.Once.Adequacy.SourceTrace.d_srcToModule_64 (coe v3))
+         MAlonzo.Code.Once.Adequacy.SourceTrace.d_srcToModule_76 (coe v3))
 -- Once.Adequacy.Compile.WithCPU.⟦_⟧A_
 d_'10214'_'10215'A__186 ::
   (MAlonzo.Code.Once.Target.Arch.T_Arch_6 ->
@@ -440,7 +440,7 @@ du_'10214'_'10215''8869''45'ir_252 v0
         -> coe
              MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
              (coe
-                MAlonzo.Code.Once.Adequacy.SourceTrace.d_'10214'_'10215'IR_44
+                MAlonzo.Code.Once.Adequacy.SourceTrace.d_'10214'_'10215'IR_56
                 (coe v0))
       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v0
       _ -> MAlonzo.RTE.mazUnreachableError
@@ -464,7 +464,7 @@ du_'10214'_'10215''8869''45'm_256 v0
         -> coe
              du_'10214'_'10215''8869''45'ir_252
              (coe
-                MAlonzo.Code.Once.Adequacy.SourceTrace.d_moduleToIR_40 (coe v1))
+                MAlonzo.Code.Once.Adequacy.SourceTrace.d_moduleToIR_52 (coe v1))
       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v0
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.Compile.WithCPU.⟦_⟧⊥
@@ -485,7 +485,7 @@ du_'10214'_'10215''8869'_260 v0
   = coe
       du_'10214'_'10215''8869''45'm_256
       (coe
-         MAlonzo.Code.Once.Adequacy.SourceTrace.d_srcToModule_64 (coe v0))
+         MAlonzo.Code.Once.Adequacy.SourceTrace.d_srcToModule_76 (coe v0))
 -- Once.Adequacy.Compile.WithCPU.⟦⟧⊥-ir-sound
 d_'10214''10215''8869''45'ir'45'sound_270 ::
   (MAlonzo.Code.Once.Target.Arch.T_Arch_6 ->
@@ -551,7 +551,7 @@ du_'10214''10215''8869''45'sound_302 v0
   = coe
       du_'10214''10215''8869''45'm'45'sound_286
       (coe
-         MAlonzo.Code.Once.Adequacy.SourceTrace.d_srcToModule_64 (coe v0))
+         MAlonzo.Code.Once.Adequacy.SourceTrace.d_srcToModule_76 (coe v0))
 -- Once.Adequacy.Compile.WithCPU.opt-trace
 d_opt'45'trace_320
   = error
@@ -680,7 +680,7 @@ du_correct'45'gm_456 v0 v1 v2
         -> coe
              du_correct'45'mir_422 (coe v0) (coe v1) (coe v3)
              (coe
-                MAlonzo.Code.Once.Adequacy.SourceTrace.d_moduleToIR_40 (coe v3))
+                MAlonzo.Code.Once.Adequacy.SourceTrace.d_moduleToIR_52 (coe v3))
       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
         -> coe
              MAlonzo.Code.Data.Maybe.Relation.Binary.Pointwise.C_nothing_42
@@ -706,7 +706,7 @@ du_correct_482 v0 v1 v2
       (coe
          du_correct'45'gm_456 (coe v0) (coe v1)
          (coe
-            MAlonzo.Code.Once.Adequacy.SourceTrace.d_srcToModule_64 (coe v2)))
+            MAlonzo.Code.Once.Adequacy.SourceTrace.d_srcToModule_76 (coe v2)))
 -- Once.Adequacy.Compile.WithCPU.pw-just-inv
 d_pw'45'just'45'inv_528 ::
   (MAlonzo.Code.Once.Target.Arch.T_Arch_6 ->
@@ -797,7 +797,7 @@ du_'10214'_'10215''738'_588 v0
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                        (coe
-                          MAlonzo.Code.Once.Adequacy.ModuleComplete.d_mainRealized_596
+                          MAlonzo.Code.Once.Adequacy.ModuleComplete.d_mainRealized_674
                           (coe v1) (coe v3) (coe v4)))
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
@@ -841,7 +841,7 @@ du_compile'45'just'45'ir_630 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_compile'45'just'45'ir_630 v0
   = let v1
-          = MAlonzo.Code.Once.Adequacy.SourceTrace.d_moduleToIR'45'aux_36
+          = MAlonzo.Code.Once.Adequacy.SourceTrace.d_moduleToIR'45'aux_48
               (coe
                  MAlonzo.Code.Once.Compile.d_compileResolvedModule'45'aux_518
                  (coe MAlonzo.Code.Once.IR.C_Heap_8)
@@ -908,11 +908,11 @@ du_correctR'45'sound_732 v0
           = coe
               du_'10214''10215''8869''45'm'45'sound_286
               (coe
-                 MAlonzo.Code.Once.Adequacy.SourceTrace.d_srcToModule'45'aux_56
+                 MAlonzo.Code.Once.Adequacy.SourceTrace.d_srcToModule'45'aux_68
                  (coe
                     MAlonzo.Code.Once.Denotation.Behavior.d_srcImports_14 (coe v0))
                  (coe
-                    MAlonzo.Code.Once.Adequacy.SourceTrace.d_eitherToMaybe_52
+                    MAlonzo.Code.Once.Adequacy.SourceTrace.d_eitherToMaybe_64
                     (coe
                        MAlonzo.Code.Once.Parser.d_parseStrict'45'at_56
                        (coe
@@ -993,7 +993,7 @@ du_correctR'45'sound_732 v0
            -> case coe v3 of
                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v4 v5
                   -> let v6
-                           = MAlonzo.Code.Once.Adequacy.SourceTrace.d_moduleToIR'45'aux_36
+                           = MAlonzo.Code.Once.Adequacy.SourceTrace.d_moduleToIR'45'aux_48
                                (coe
                                   MAlonzo.Code.Once.Compile.d_compileResolvedModule'45'aux_518
                                   (coe MAlonzo.Code.Once.IR.C_Heap_8)
@@ -1011,7 +1011,7 @@ du_correctR'45'sound_732 v0
                           MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v7
                             -> let v8
                                      = coe
-                                         MAlonzo.Code.Once.Adequacy.SourceTrace.du_srcToModule'45'inv'45'p_116
+                                         MAlonzo.Code.Once.Adequacy.SourceTrace.du_srcToModule'45'inv'45'p_128
                                          (coe
                                             MAlonzo.Code.Once.Parser.d_parseStrict'45'at_56
                                             (coe
@@ -1099,7 +1099,7 @@ du_correctR'45'sound_732 v0
                                                          (coe v0))
                                                       (coe v9) (coe v2) (coe v5)
                                                       (coe
-                                                         MAlonzo.Code.Once.Adequacy.ModuleComplete.du_moduleToIR'45'sound_864
+                                                         MAlonzo.Code.Once.Adequacy.ModuleComplete.du_moduleToIR'45'sound_926
                                                          (coe v2) (coe v5) (coe v7))
                                                       (coe
                                                          MAlonzo.Code.Once.Adequacy.CanonResolve.d_noImports'63'_16
@@ -1130,7 +1130,7 @@ du_correctR'45'sound_732 v0
                                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v8 v9
                                       -> let v10
                                                = coe
-                                                   MAlonzo.Code.Once.Adequacy.SourceTrace.du_srcToModule'45'inv'45'p_116
+                                                   MAlonzo.Code.Once.Adequacy.SourceTrace.du_srcToModule'45'inv'45'p_128
                                                    (coe
                                                       MAlonzo.Code.Once.Parser.d_parseStrict'45'at_56
                                                       (coe
@@ -1218,7 +1218,7 @@ du_correctR'45'sound_732 v0
                                                                    (coe v0))
                                                                 (coe v11) (coe v2) (coe v5)
                                                                 (coe
-                                                                   MAlonzo.Code.Once.Adequacy.ModuleComplete.du_moduleToIR'45'sound_864
+                                                                   MAlonzo.Code.Once.Adequacy.ModuleComplete.du_moduleToIR'45'sound_926
                                                                    (coe v2) (coe v5) (coe v8))
                                                                 (coe
                                                                    MAlonzo.Code.Once.Adequacy.CanonResolve.d_noImports'63'_16

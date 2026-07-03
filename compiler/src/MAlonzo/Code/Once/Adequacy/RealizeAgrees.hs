@@ -20,17 +20,20 @@ import qualified Data.Text
 import qualified MAlonzo.Code.Agda.Builtin.Equality
 import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Agda.Builtin.String
+import qualified MAlonzo.Code.Agda.Builtin.Unit
 import qualified MAlonzo.Code.Data.Irrelevant
 import qualified MAlonzo.Code.Data.Nat.Base
 import qualified MAlonzo.Code.Data.Nat.Properties
 import qualified MAlonzo.Code.Data.Sum.Base
 import qualified MAlonzo.Code.Induction.WellFounded
 import qualified MAlonzo.Code.Once.CanonicalName
+import qualified MAlonzo.Code.Once.Functor.Translate
 import qualified MAlonzo.Code.Once.IR
 import qualified MAlonzo.Code.Once.SigEffect
 import qualified MAlonzo.Code.Once.Surface.Syntax
 import qualified MAlonzo.Code.Once.Type
 import qualified MAlonzo.Code.Once.TypeCheck.Classify
+import qualified MAlonzo.Code.Once.TypeCheck.Completeness
 import qualified MAlonzo.Code.Once.TypeCheck.Error
 import qualified MAlonzo.Code.Once.TypeCheck.Judgment
 import qualified MAlonzo.Code.Once.TypeCheck.Raw
@@ -63,16 +66,117 @@ d_CheckAgreeV_56 ::
   MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7580'_'8758'_'10814'__24 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 -> ()
 d_CheckAgreeV_56 = erased
--- Once.Adequacy.RealizeAgrees.check-agreeV-todo
-d_check'45'agreeV'45'todo_90
+-- Once.Adequacy.RealizeAgrees.check-agreeV-RVar-poly-todo
+d_check'45'agreeV'45'RVar'45'poly'45'todo_96
   = error
-      "MAlonzo Runtime Error: postulate evaluated: Once.Adequacy.RealizeAgrees.check-agreeV-todo"
--- Once.Adequacy.RealizeAgrees.check-RApp-todo
-d_check'45'RApp'45'todo_118
-  = error
-      "MAlonzo Runtime Error: postulate evaluated: Once.Adequacy.RealizeAgrees.check-RApp-todo"
+      "MAlonzo Runtime Error: postulate evaluated: Once.Adequacy.RealizeAgrees.check-agreeV-RVar-poly-todo"
+-- Once.Adequacy.RealizeAgrees.check-agreeV-RVar-id
+d_check'45'agreeV'45'RVar'45'id_120 ::
+  MAlonzo.Code.Once.TypeCheck.Classify.T_NamedCtx_170 ->
+  MAlonzo.Code.Once.Type.T_Type_112 ->
+  MAlonzo.Code.Once.TypeCheck.Error.T_TypeError_6 ->
+  MAlonzo.Code.Agda.Builtin.Unit.T_'8868'_6 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Usage_60 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_184 ->
+  Integer ->
+  Integer ->
+  MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7580'_'8758'_'10814'__24 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  AgdaAny ->
+  Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_check'45'agreeV'45'RVar'45'id_120 = erased
+-- Once.Adequacy.RealizeAgrees.check-agreeV-RVar-fst
+d_check'45'agreeV'45'RVar'45'fst_246 ::
+  MAlonzo.Code.Once.TypeCheck.Classify.T_NamedCtx_170 ->
+  MAlonzo.Code.Once.Type.T_Type_112 ->
+  MAlonzo.Code.Once.TypeCheck.Error.T_TypeError_6 ->
+  MAlonzo.Code.Agda.Builtin.Unit.T_'8868'_6 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Usage_60 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_184 ->
+  Integer ->
+  Integer ->
+  MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7580'_'8758'_'10814'__24 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  AgdaAny ->
+  Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_check'45'agreeV'45'RVar'45'fst_246 = erased
+-- Once.Adequacy.RealizeAgrees.check-agreeV-RVar-snd
+d_check'45'agreeV'45'RVar'45'snd_360 ::
+  MAlonzo.Code.Once.TypeCheck.Classify.T_NamedCtx_170 ->
+  MAlonzo.Code.Once.Type.T_Type_112 ->
+  MAlonzo.Code.Once.TypeCheck.Error.T_TypeError_6 ->
+  MAlonzo.Code.Agda.Builtin.Unit.T_'8868'_6 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Usage_60 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_184 ->
+  Integer ->
+  Integer ->
+  MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7580'_'8758'_'10814'__24 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  AgdaAny ->
+  Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_check'45'agreeV'45'RVar'45'snd_360 = erased
+-- Once.Adequacy.RealizeAgrees.check-agreeV-RVar-terminal
+d_check'45'agreeV'45'RVar'45'terminal_474 ::
+  MAlonzo.Code.Once.TypeCheck.Classify.T_NamedCtx_170 ->
+  MAlonzo.Code.Once.Type.T_Type_112 ->
+  MAlonzo.Code.Once.TypeCheck.Error.T_TypeError_6 ->
+  MAlonzo.Code.Agda.Builtin.Unit.T_'8868'_6 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Usage_60 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_184 ->
+  Integer ->
+  Integer ->
+  MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7580'_'8758'_'10814'__24 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  AgdaAny ->
+  Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_check'45'agreeV'45'RVar'45'terminal_474 = erased
+-- Once.Adequacy.RealizeAgrees.check-agreeV-RVar-initial
+d_check'45'agreeV'45'RVar'45'initial_666 ::
+  MAlonzo.Code.Once.TypeCheck.Classify.T_NamedCtx_170 ->
+  MAlonzo.Code.Once.Type.T_Type_112 ->
+  MAlonzo.Code.Once.TypeCheck.Error.T_TypeError_6 ->
+  MAlonzo.Code.Agda.Builtin.Unit.T_'8868'_6 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Usage_60 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_184 ->
+  Integer ->
+  Integer ->
+  MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7580'_'8758'_'10814'__24 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  AgdaAny ->
+  Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_check'45'agreeV'45'RVar'45'initial_666 = erased
+-- Once.Adequacy.RealizeAgrees.check-agreeV-RVar-inl
+d_check'45'agreeV'45'RVar'45'inl_730 ::
+  MAlonzo.Code.Once.TypeCheck.Classify.T_NamedCtx_170 ->
+  MAlonzo.Code.Once.Type.T_Type_112 ->
+  MAlonzo.Code.Once.TypeCheck.Error.T_TypeError_6 ->
+  MAlonzo.Code.Agda.Builtin.Unit.T_'8868'_6 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Usage_60 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_184 ->
+  Integer ->
+  Integer ->
+  MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7580'_'8758'_'10814'__24 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  AgdaAny ->
+  Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_check'45'agreeV'45'RVar'45'inl_730 = erased
+-- Once.Adequacy.RealizeAgrees.check-agreeV-RVar-inr
+d_check'45'agreeV'45'RVar'45'inr_972 ::
+  MAlonzo.Code.Once.TypeCheck.Classify.T_NamedCtx_170 ->
+  MAlonzo.Code.Once.Type.T_Type_112 ->
+  MAlonzo.Code.Once.TypeCheck.Error.T_TypeError_6 ->
+  MAlonzo.Code.Agda.Builtin.Unit.T_'8868'_6 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Usage_60 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_184 ->
+  Integer ->
+  Integer ->
+  MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7580'_'8758'_'10814'__24 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  AgdaAny ->
+  Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_check'45'agreeV'45'RVar'45'inr_972 = erased
 -- Once.Adequacy.RealizeAgrees.agree-RPair
-d_agree'45'RPair_178 ::
+d_agree'45'RPair_1250 ::
   MAlonzo.Code.Once.TypeCheck.Classify.T_NamedCtx_170 ->
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
@@ -105,9 +209,9 @@ d_agree'45'RPair_178 ::
    Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
   AgdaAny ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_agree'45'RPair_178 = erased
+d_agree'45'RPair_1250 = erased
 -- Once.Adequacy.RealizeAgrees.agree-RUnaryOp
-d_agree'45'RUnaryOp_264 ::
+d_agree'45'RUnaryOp_1336 ::
   MAlonzo.Code.Once.TypeCheck.Classify.T_NamedCtx_170 ->
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
@@ -128,9 +232,9 @@ d_agree'45'RUnaryOp_264 ::
    Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
   AgdaAny ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_agree'45'RUnaryOp_264 = erased
+d_agree'45'RUnaryOp_1336 = erased
 -- Once.Adequacy.RealizeAgrees.agree-RBinOp
-d_agree'45'RBinOp_368 ::
+d_agree'45'RBinOp_1440 ::
   MAlonzo.Code.Once.TypeCheck.Classify.T_NamedCtx_170 ->
   MAlonzo.Code.Once.TypeCheck.Raw.T_BinOp_6 ->
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
@@ -164,9 +268,9 @@ d_agree'45'RBinOp_368 ::
    Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
   AgdaAny ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_agree'45'RBinOp_368 = erased
+d_agree'45'RBinOp_1440 = erased
 -- Once.Adequacy.RealizeAgrees.agree-RLet2
-d_agree'45'RLet2_738 ::
+d_agree'45'RLet2_1810 ::
   MAlonzo.Code.Once.TypeCheck.Classify.T_NamedCtx_170 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
@@ -199,9 +303,9 @@ d_agree'45'RLet2_738 ::
    Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
   AgdaAny ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_agree'45'RLet2_738 = erased
+d_agree'45'RLet2_1810 = erased
 -- Once.Adequacy.RealizeAgrees.agree-RLet
-d_agree'45'RLet_854 ::
+d_agree'45'RLet_1926 ::
   MAlonzo.Code.Once.TypeCheck.Classify.T_NamedCtx_170 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
@@ -238,9 +342,9 @@ d_agree'45'RLet_854 ::
    Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
   AgdaAny ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_agree'45'RLet_854 = erased
+d_agree'45'RLet_1926 = erased
 -- Once.Adequacy.RealizeAgrees.masq
-d_masq_906 ::
+d_masq_1978 ::
   MAlonzo.Code.Once.TypeCheck.Classify.T_NamedCtx_170 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
@@ -248,18 +352,18 @@ d_masq_906 ::
   MAlonzo.Code.Once.Type.T_Purity_32 ->
   AgdaAny ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_masq_906 = erased
+d_masq_1978 = erased
 -- Once.Adequacy.RealizeAgrees.masq-unit
-d_masq'45'unit_920 ::
+d_masq'45'unit_1992 ::
   MAlonzo.Code.Once.TypeCheck.Classify.T_NamedCtx_170 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
   Maybe MAlonzo.Code.Once.SigEffect.T_SigEffect_4 ->
   AgdaAny ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_masq'45'unit_920 = erased
+d_masq'45'unit_1992 = erased
 -- Once.Adequacy.RealizeAgrees.masq-arrow
-d_masq'45'arrow_1008 ::
+d_masq'45'arrow_2080 ::
   MAlonzo.Code.Once.TypeCheck.Classify.T_NamedCtx_170 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
@@ -268,9 +372,9 @@ d_masq'45'arrow_1008 ::
   MAlonzo.Code.Once.Type.T_Purity_32 ->
   AgdaAny ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_masq'45'arrow_1008 = erased
+d_masq'45'arrow_2080 = erased
 -- Once.Adequacy.RealizeAgrees.fail≢succ
-d_fail'8802'succ_1170 ::
+d_fail'8802'succ_2242 ::
   Integer ->
   MAlonzo.Code.Once.Surface.Syntax.T_Ctx_6 ->
   MAlonzo.Code.Once.TypeCheck.Error.T_TypeError_6 ->
@@ -281,9 +385,9 @@ d_fail'8802'succ_1170 ::
   Integer ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20
-d_fail'8802'succ_1170 = erased
+d_fail'8802'succ_2242 = erased
 -- Once.Adequacy.RealizeAgrees.agree-RResolved
-d_agree'45'RResolved_1196 ::
+d_agree'45'RResolved_2268 ::
   MAlonzo.Code.Once.TypeCheck.Classify.T_NamedCtx_170 ->
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
   Maybe MAlonzo.Code.Once.Type.T_Type_112 ->
@@ -297,9 +401,9 @@ d_agree'45'RResolved_1196 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   AgdaAny ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_agree'45'RResolved_1196 = erased
+d_agree'45'RResolved_2268 = erased
 -- Once.Adequacy.RealizeAgrees.agree-RVar
-d_agree'45'RVar_1404 ::
+d_agree'45'RVar_2476 ::
   MAlonzo.Code.Once.TypeCheck.Classify.T_NamedCtx_170 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   (MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
@@ -317,9 +421,9 @@ d_agree'45'RVar_1404 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   AgdaAny ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_agree'45'RVar_1404 = erased
+d_agree'45'RVar_2476 = erased
 -- Once.Adequacy.RealizeAgrees.agree-RQualified
-d_agree'45'RQualified_1486 ::
+d_agree'45'RQualified_2558 ::
   MAlonzo.Code.Once.TypeCheck.Classify.T_NamedCtx_170 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
@@ -334,9 +438,9 @@ d_agree'45'RQualified_1486 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   AgdaAny ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_agree'45'RQualified_1486 = erased
+d_agree'45'RQualified_2558 = erased
 -- Once.Adequacy.RealizeAgrees.agree-RApp-other-aux
-d_agree'45'RApp'45'other'45'aux_1750 ::
+d_agree'45'RApp'45'other'45'aux_2822 ::
   MAlonzo.Code.Once.TypeCheck.Classify.T_NamedCtx_170 ->
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
@@ -369,9 +473,9 @@ d_agree'45'RApp'45'other'45'aux_1750 ::
    Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
   AgdaAny ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_agree'45'RApp'45'other'45'aux_1750 = erased
+d_agree'45'RApp'45'other'45'aux_2822 = erased
 -- Once.Adequacy.RealizeAgrees.agree-RApp
-d_agree'45'RApp_2402 ::
+d_agree'45'RApp_3474 ::
   MAlonzo.Code.Once.TypeCheck.Classify.T_NamedCtx_170 ->
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
@@ -413,9 +517,9 @@ d_agree'45'RApp_2402 ::
    Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
   AgdaAny ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_agree'45'RApp_2402 = erased
+d_agree'45'RApp_3474 = erased
 -- Once.Adequacy.RealizeAgrees.agree-RAnnot
-d_agree'45'RAnnot_4032 ::
+d_agree'45'RAnnot_5104 ::
   MAlonzo.Code.Once.TypeCheck.Classify.T_NamedCtx_170 ->
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
@@ -437,20 +541,9 @@ d_agree'45'RAnnot_4032 ::
    Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
   AgdaAny ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_agree'45'RAnnot_4032 = erased
--- Once.Adequacy.RealizeAgrees.checkG-realize
-d_checkG'45'realize_4064 ::
-  MAlonzo.Code.Once.TypeCheck.Classify.T_NamedCtx_170 ->
-  MAlonzo.Code.Once.Type.T_Type_112 ->
-  MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
-  MAlonzo.Code.Once.Type.T_Type_112 ->
-  MAlonzo.Code.Once.IR.T_IR_16 ->
-  MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7501'_'8758'__14 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_checkG'45'realize_4064 = erased
+d_agree'45'RAnnot_5104 = erased
 -- Once.Adequacy.RealizeAgrees.morph-realize
-d_morph'45'realize_4414 ::
+d_morph'45'realize_5146 ::
   MAlonzo.Code.Once.TypeCheck.Classify.T_NamedCtx_170 ->
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
@@ -466,9 +559,9 @@ d_morph'45'realize_4414 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_morph'45'realize_4414 = erased
+d_morph'45'realize_5146 = erased
 -- Once.Adequacy.RealizeAgrees.agree-compose
-d_agree'45'compose_4548 ::
+d_agree'45'compose_5280 ::
   MAlonzo.Code.Once.TypeCheck.Classify.T_NamedCtx_170 ->
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
@@ -485,9 +578,9 @@ d_agree'45'compose_4548 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   AgdaAny ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_agree'45'compose_4548 = erased
+d_agree'45'compose_5280 = erased
 -- Once.Adequacy.RealizeAgrees.agree-caseGo
-d_agree'45'caseGo_5020 ::
+d_agree'45'caseGo_5752 ::
   MAlonzo.Code.Once.TypeCheck.Classify.T_NamedCtx_170 ->
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
@@ -503,9 +596,9 @@ d_agree'45'caseGo_5020 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   AgdaAny ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_agree'45'caseGo_5020 = erased
+d_agree'45'caseGo_5752 = erased
 -- Once.Adequacy.RealizeAgrees.agree-compose-eff
-d_agree'45'compose'45'eff_5454 ::
+d_agree'45'compose'45'eff_6186 ::
   MAlonzo.Code.Once.TypeCheck.Classify.T_NamedCtx_170 ->
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
@@ -519,9 +612,9 @@ d_agree'45'compose'45'eff_5454 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   AgdaAny ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_agree'45'compose'45'eff_5454 = erased
+d_agree'45'compose'45'eff_6186 = erased
 -- Once.Adequacy.RealizeAgrees.agree-caseGo-eff
-d_agree'45'caseGo'45'eff_5600 ::
+d_agree'45'caseGo'45'eff_6332 ::
   MAlonzo.Code.Once.TypeCheck.Classify.T_NamedCtx_170 ->
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
@@ -536,9 +629,9 @@ d_agree'45'caseGo'45'eff_5600 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   AgdaAny ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_agree'45'caseGo'45'eff_5600 = erased
+d_agree'45'caseGo'45'eff_6332 = erased
 -- Once.Adequacy.RealizeAgrees.agree-check-RApp-argdriven-aux
-d_agree'45'check'45'RApp'45'argdriven'45'aux_5794 ::
+d_agree'45'check'45'RApp'45'argdriven'45'aux_6526 ::
   MAlonzo.Code.Once.TypeCheck.Classify.T_NamedCtx_170 ->
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
@@ -572,9 +665,9 @@ d_agree'45'check'45'RApp'45'argdriven'45'aux_5794 ::
    Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
   AgdaAny ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_agree'45'check'45'RApp'45'argdriven'45'aux_5794 = erased
+d_agree'45'check'45'RApp'45'argdriven'45'aux_6526 = erased
 -- Once.Adequacy.RealizeAgrees.agree-embedOrSubsume-no
-d_agree'45'embedOrSubsume'45'no_6244 ::
+d_agree'45'embedOrSubsume'45'no_6976 ::
   MAlonzo.Code.Once.TypeCheck.Classify.T_NamedCtx_170 ->
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
@@ -594,9 +687,9 @@ d_agree'45'embedOrSubsume'45'no_6244 ::
    Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
   AgdaAny ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_agree'45'embedOrSubsume'45'no_6244 = erased
+d_agree'45'embedOrSubsume'45'no_6976 = erased
 -- Once.Adequacy.RealizeAgrees.agree-embedOrSubsume
-d_agree'45'embedOrSubsume_6722 ::
+d_agree'45'embedOrSubsume_7454 ::
   MAlonzo.Code.Once.TypeCheck.Classify.T_NamedCtx_170 ->
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
@@ -617,9 +710,119 @@ d_agree'45'embedOrSubsume_6722 ::
    Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
   AgdaAny ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_agree'45'embedOrSubsume_6722 = erased
+d_agree'45'embedOrSubsume_7454 = erased
+-- Once.Adequacy.RealizeAgrees.agree-cata-denotes
+d_agree'45'cata'45'denotes_7602
+  = error
+      "MAlonzo Runtime Error: postulate evaluated: Once.Adequacy.RealizeAgrees.agree-cata-denotes"
+-- Once.Adequacy.RealizeAgrees.algebra-morph-recover
+d_algebra'45'morph'45'recover_7626 ::
+  MAlonzo.Code.Once.TypeCheck.Classify.T_NamedCtx_170 ->
+  MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Type.T_Type_112 ->
+  MAlonzo.Code.Once.Type.T_Type_112 ->
+  MAlonzo.Code.Once.Type.T_Purity_32 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_184 ->
+  Integer ->
+  Integer ->
+  MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7580'_'8758'_'10814'__24 ->
+  MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7504'_'8758'_'8680''91'_'93'__18 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
+d_algebra'45'morph'45'recover_7626 v0 v1 v2 v3 v4 ~v5 ~v6 ~v7 ~v8
+                                   v9 ~v10 ~v11
+  = du_algebra'45'morph'45'recover_7626 v0 v1 v2 v3 v4 v9
+du_algebra'45'morph'45'recover_7626 ::
+  MAlonzo.Code.Once.TypeCheck.Classify.T_NamedCtx_170 ->
+  MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Type.T_Type_112 ->
+  MAlonzo.Code.Once.Type.T_Type_112 ->
+  MAlonzo.Code.Once.Type.T_Purity_32 ->
+  MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7504'_'8758'_'8680''91'_'93'__18 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
+du_algebra'45'morph'45'recover_7626 v0 v1 v2 v3 v4 v5
+  = let v6
+          = MAlonzo.Code.Once.TypeCheck.Completeness.d_morph'45'elab_4492
+              (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) in
+    coe
+      (case coe v6 of
+         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v7 v8
+           -> case coe v8 of
+                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v9 v10
+                  -> case coe v10 of
+                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v11 v12
+                         -> case coe v12 of
+                              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v13 v14
+                                -> case coe v14 of
+                                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v15 v16
+                                       -> case coe v16 of
+                                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v17 v18
+                                              -> case coe v18 of
+                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v19 v20
+                                                     -> case coe v20 of
+                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v21 v22
+                                                            -> coe
+                                                                 seq (coe v22)
+                                                                 (coe
+                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                    (coe v7)
+                                                                    (coe
+                                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                       (coe v21) erased))
+                                                          _ -> MAlonzo.RTE.mazUnreachableError
+                                                   _ -> MAlonzo.RTE.mazUnreachableError
+                                            _ -> MAlonzo.RTE.mazUnreachableError
+                                     _ -> MAlonzo.RTE.mazUnreachableError
+                              _ -> MAlonzo.RTE.mazUnreachableError
+                       _ -> MAlonzo.RTE.mazUnreachableError
+                _ -> MAlonzo.RTE.mazUnreachableError
+         _ -> MAlonzo.RTE.mazUnreachableError)
+-- Once.Adequacy.RealizeAgrees.agree-checkInGo
+d_agree'45'checkInGo_7766 ::
+  MAlonzo.Code.Once.TypeCheck.Classify.T_NamedCtx_170 ->
+  MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Type.T_Functor_110 ->
+  Maybe MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Usage_60 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_184 ->
+  Integer ->
+  Integer ->
+  MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7580'_'8758'_'10814'__24 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  (MAlonzo.Code.Once.Type.T_Type_112 ->
+   MAlonzo.Code.Once.Surface.Syntax.T_Usage_60 ->
+   MAlonzo.Code.Once.Surface.Syntax.T_Expr_184 ->
+   Integer ->
+   Integer ->
+   MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7580'_'8758'_'10814'__24 ->
+   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+   AgdaAny ->
+   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
+  AgdaAny ->
+  Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_agree'45'checkInGo_7766 = erased
+-- Once.Adequacy.RealizeAgrees.agree-checkCataGo
+d_agree'45'checkCataGo_7878 ::
+  MAlonzo.Code.Once.TypeCheck.Classify.T_NamedCtx_170 ->
+  MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Type.T_Functor_110 ->
+  MAlonzo.Code.Once.Type.T_Type_112 ->
+  MAlonzo.Code.Once.Type.T_Purity_32 ->
+  Maybe MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Usage_60 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_184 ->
+  Integer ->
+  Integer ->
+  MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7580'_'8758'_'10814'__24 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  AgdaAny ->
+  Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_agree'45'checkCataGo_7878 = erased
 -- Once.Adequacy.RealizeAgrees.agree-check-RApp
-d_agree'45'check'45'RApp_6948 ::
+d_agree'45'check'45'RApp_8178 ::
   MAlonzo.Code.Once.TypeCheck.Classify.T_NamedCtx_170 ->
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
@@ -670,10 +873,11 @@ d_agree'45'check'45'RApp_6948 ::
    Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
   AgdaAny ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_agree'45'check'45'RApp_6948 = erased
+d_agree'45'check'45'RApp_8178 = erased
 -- Once.Adequacy.RealizeAgrees.μ
-d_μ_9448 :: MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 -> Integer
-d_μ_9448 v0
+d_μ_11616 ::
+  MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 -> Integer
+d_μ_11616 v0
   = case coe v0 of
       MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36 v1 -> coe (1 :: Integer)
       MAlonzo.Code.Once.TypeCheck.Raw.C_RQualified_38 v1 v2
@@ -682,183 +886,183 @@ d_μ_9448 v0
         -> coe (1 :: Integer)
       MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_42 v1 v2
         -> coe
-             addInt (coe addInt (coe (1 :: Integer)) (coe d_μ_9448 (coe v1)))
-             (coe d_μ_9448 (coe v2))
+             addInt (coe addInt (coe (1 :: Integer)) (coe d_μ_11616 (coe v1)))
+             (coe d_μ_11616 (coe v2))
       MAlonzo.Code.Once.TypeCheck.Raw.C_RLam_44 v1 v2
-        -> coe addInt (coe (1 :: Integer)) (coe d_μ_9448 (coe v2))
+        -> coe addInt (coe (1 :: Integer)) (coe d_μ_11616 (coe v2))
       MAlonzo.Code.Once.TypeCheck.Raw.C_RLet_46 v1 v2 v3
         -> coe
-             addInt (coe addInt (coe (1 :: Integer)) (coe d_μ_9448 (coe v2)))
-             (coe d_μ_9448 (coe v3))
+             addInt (coe addInt (coe (1 :: Integer)) (coe d_μ_11616 (coe v2)))
+             (coe d_μ_11616 (coe v3))
       MAlonzo.Code.Once.TypeCheck.Raw.C_RPair_48 v1 v2
         -> coe
-             addInt (coe addInt (coe (1 :: Integer)) (coe d_μ_9448 (coe v1)))
-             (coe d_μ_9448 (coe v2))
+             addInt (coe addInt (coe (1 :: Integer)) (coe d_μ_11616 (coe v1)))
+             (coe d_μ_11616 (coe v2))
       MAlonzo.Code.Once.TypeCheck.Raw.C_RDestruct_50 v1 v2 v3 v4 v5
         -> coe
              addInt
              (coe
-                addInt (coe addInt (coe (1 :: Integer)) (coe d_μ_9448 (coe v1)))
-                (coe d_μ_9448 (coe v3)))
-             (coe d_μ_9448 (coe v5))
+                addInt (coe addInt (coe (1 :: Integer)) (coe d_μ_11616 (coe v1)))
+                (coe d_μ_11616 (coe v3)))
+             (coe d_μ_11616 (coe v5))
       MAlonzo.Code.Once.TypeCheck.Raw.C_RUnit_52 -> coe (1 :: Integer)
       MAlonzo.Code.Once.TypeCheck.Raw.C_RInt_54 v1 -> coe (1 :: Integer)
       MAlonzo.Code.Once.TypeCheck.Raw.C_RStringLit_56 v1
         -> coe (1 :: Integer)
       MAlonzo.Code.Once.TypeCheck.Raw.C_RAnnot_58 v1 v2
-        -> coe addInt (coe (1 :: Integer)) (coe d_μ_9448 (coe v1))
+        -> coe addInt (coe (1 :: Integer)) (coe d_μ_11616 (coe v1))
       MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60 v1 v2 v3
         -> coe
-             addInt (coe addInt (coe (1 :: Integer)) (coe d_μ_9448 (coe v2)))
-             (coe d_μ_9448 (coe v3))
+             addInt (coe addInt (coe (1 :: Integer)) (coe d_μ_11616 (coe v2)))
+             (coe d_μ_11616 (coe v3))
       MAlonzo.Code.Once.TypeCheck.Raw.C_RUnaryOp_62 v2
-        -> coe addInt (coe (1 :: Integer)) (coe d_μ_9448 (coe v2))
+        -> coe addInt (coe (1 :: Integer)) (coe d_μ_11616 (coe v2))
       MAlonzo.Code.Once.TypeCheck.Raw.C_RAna_64 v1 v2
-        -> coe addInt (coe (1 :: Integer)) (coe d_μ_9448 (coe v2))
+        -> coe addInt (coe (1 :: Integer)) (coe d_μ_11616 (coe v2))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.RealizeAgrees.mInfer
-d_mInfer_9480 ::
+d_mInfer_11648 ::
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 -> Integer
-d_mInfer_9480 v0
-  = coe addInt (coe d_μ_9448 (coe v0)) (coe d_μ_9448 (coe v0))
+d_mInfer_11648 v0
+  = coe addInt (coe d_μ_11616 (coe v0)) (coe d_μ_11616 (coe v0))
 -- Once.Adequacy.RealizeAgrees.mCheck
-d_mCheck_9482 ::
+d_mCheck_11650 ::
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 -> Integer
-d_mCheck_9482 v0
+d_mCheck_11650 v0
   = coe
-      addInt (coe addInt (coe (1 :: Integer)) (coe d_μ_9448 (coe v0)))
-      (coe d_μ_9448 (coe v0))
+      addInt (coe addInt (coe (1 :: Integer)) (coe d_μ_11616 (coe v0)))
+      (coe d_μ_11616 (coe v0))
 -- Once.Adequacy.RealizeAgrees.dbl-<
-d_dbl'45''60'_9492 ::
+d_dbl'45''60'_11660 ::
   Integer ->
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-d_dbl'45''60'_9492 ~v0 v1 v2 = du_dbl'45''60'_9492 v1 v2
-du_dbl'45''60'_9492 ::
+d_dbl'45''60'_11660 ~v0 v1 v2 = du_dbl'45''60'_11660 v1 v2
+du_dbl'45''60'_11660 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-du_dbl'45''60'_9492 v0 v1
+du_dbl'45''60'_11660 v0 v1
   = coe
       MAlonzo.Code.Data.Nat.Properties.du_'43''45'mono'45''60'_3706 v0 v1
       v1
 -- Once.Adequacy.RealizeAgrees.infer<check
-d_infer'60'check_9498 ::
+d_infer'60'check_11666 ::
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-d_infer'60'check_9498 v0
+d_infer'60'check_11666 v0
   = coe
       MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900
-      (coe addInt (coe (1 :: Integer)) (coe d_mInfer_9480 (coe v0)))
+      (coe addInt (coe (1 :: Integer)) (coe d_mInfer_11648 (coe v0)))
 -- Once.Adequacy.RealizeAgrees.check<infer-annot
-d_check'60'infer'45'annot_9506 ::
+d_check'60'infer'45'annot_11674 ::
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-d_check'60'infer'45'annot_9506 v0 ~v1
-  = du_check'60'infer'45'annot_9506 v0
-du_check'60'infer'45'annot_9506 ::
+d_check'60'infer'45'annot_11674 v0 ~v1
+  = du_check'60'infer'45'annot_11674 v0
+du_check'60'infer'45'annot_11674 ::
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-du_check'60'infer'45'annot_9506 v0
+du_check'60'infer'45'annot_11674 v0
   = coe
       MAlonzo.Code.Data.Nat.Base.C_s'8804's_34
       (coe
          MAlonzo.Code.Data.Nat.Properties.du_'8804''45'reflexive_2896
          (coe
-            addInt (coe addInt (coe (1 :: Integer)) (coe d_μ_9448 (coe v0)))
-            (coe d_μ_9448 (coe v0))))
+            addInt (coe addInt (coe (1 :: Integer)) (coe d_μ_11616 (coe v0)))
+            (coe d_μ_11616 (coe v0))))
 -- Once.Adequacy.RealizeAgrees.mC-sub
-d_mC'45'sub_9516 ::
+d_mC'45'sub_11684 ::
   Integer ->
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-d_mC'45'sub_9516 ~v0 v1 v2 = du_mC'45'sub_9516 v1 v2
-du_mC'45'sub_9516 ::
+d_mC'45'sub_11684 ~v0 v1 v2 = du_mC'45'sub_11684 v1 v2
+du_mC'45'sub_11684 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-du_mC'45'sub_9516 v0 v1
+du_mC'45'sub_11684 v0 v1
   = coe
       MAlonzo.Code.Data.Nat.Base.C_s'8804's_34
-      (coe du_dbl'45''60'_9492 (coe v0) (coe v1))
+      (coe du_dbl'45''60'_11660 (coe v0) (coe v1))
 -- Once.Adequacy.RealizeAgrees.mIC-sub
-d_mIC'45'sub_9524 ::
+d_mIC'45'sub_11692 ::
   Integer ->
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-d_mIC'45'sub_9524 ~v0 v1 v2 = du_mIC'45'sub_9524 v1 v2
-du_mIC'45'sub_9524 ::
+d_mIC'45'sub_11692 ~v0 v1 v2 = du_mIC'45'sub_11692 v1 v2
+du_mIC'45'sub_11692 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-du_mIC'45'sub_9524 v0 v1
+du_mIC'45'sub_11692 v0 v1
   = coe
       MAlonzo.Code.Data.Nat.Properties.du_'8804''45'trans_2908
-      (coe du_dbl'45''60'_9492 (coe v0) (coe v1))
+      (coe du_dbl'45''60'_11660 (coe v0) (coe v1))
       (coe
          MAlonzo.Code.Data.Nat.Properties.d_n'8804'1'43'n_2988
          (coe addInt (coe v0) (coe v0)))
 -- Once.Adequacy.RealizeAgrees.mCI-sub
-d_mCI'45'sub_9532 ::
+d_mCI'45'sub_11700 ::
   Integer ->
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-d_mCI'45'sub_9532 ~v0 v1 v2 = du_mCI'45'sub_9532 v1 v2
-du_mCI'45'sub_9532 ::
+d_mCI'45'sub_11700 ~v0 v1 v2 = du_mCI'45'sub_11700 v1 v2
+du_mCI'45'sub_11700 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-du_mCI'45'sub_9532 v0 v1
+du_mCI'45'sub_11700 v0 v1
   = coe
       MAlonzo.Code.Data.Nat.Properties.du_'43''45'mono'45''8804'_3672
       (coe v0) (coe v1) (coe v1)
 -- Once.Adequacy.RealizeAgrees.μ<-l
-d_μ'60''45'l_9546 ::
+d_μ'60''45'l_11714 ::
   Integer -> Integer -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-d_μ'60''45'l_9546 v0 ~v1 = du_μ'60''45'l_9546 v0
-du_μ'60''45'l_9546 ::
+d_μ'60''45'l_11714 v0 ~v1 = du_μ'60''45'l_11714 v0
+du_μ'60''45'l_11714 ::
   Integer -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-du_μ'60''45'l_9546 v0
+du_μ'60''45'l_11714 v0
   = coe
       MAlonzo.Code.Data.Nat.Base.C_s'8804's_34
       (coe
          MAlonzo.Code.Data.Nat.Properties.du_m'8804'm'43'n_3624 (coe v0))
 -- Once.Adequacy.RealizeAgrees.μ<-r
-d_μ'60''45'r_9556 ::
+d_μ'60''45'r_11724 ::
   Integer -> Integer -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-d_μ'60''45'r_9556 ~v0 v1 = du_μ'60''45'r_9556 v1
-du_μ'60''45'r_9556 ::
+d_μ'60''45'r_11724 ~v0 v1 = du_μ'60''45'r_11724 v1
+du_μ'60''45'r_11724 ::
   Integer -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-du_μ'60''45'r_9556 v0
+du_μ'60''45'r_11724 v0
   = coe
       MAlonzo.Code.Data.Nat.Base.C_s'8804's_34
       (coe
          MAlonzo.Code.Data.Nat.Properties.du_m'8804'n'43'm_3636 (coe v0))
 -- Once.Adequacy.RealizeAgrees.μ<-d-s
-d_μ'60''45'd'45's_9568 ::
+d_μ'60''45'd'45's_11736 ::
   Integer ->
   Integer -> Integer -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-d_μ'60''45'd'45's_9568 v0 ~v1 ~v2 = du_μ'60''45'd'45's_9568 v0
-du_μ'60''45'd'45's_9568 ::
+d_μ'60''45'd'45's_11736 v0 ~v1 ~v2 = du_μ'60''45'd'45's_11736 v0
+du_μ'60''45'd'45's_11736 ::
   Integer -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-du_μ'60''45'd'45's_9568 v0
+du_μ'60''45'd'45's_11736 v0
   = coe
       MAlonzo.Code.Data.Nat.Base.C_s'8804's_34
       (coe
          MAlonzo.Code.Data.Nat.Properties.du_m'8804'm'43'n_3624 (coe v0))
 -- Once.Adequacy.RealizeAgrees.μ<-d-l
-d_μ'60''45'd'45'l_9582 ::
+d_μ'60''45'd'45'l_11750 ::
   Integer ->
   Integer -> Integer -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-d_μ'60''45'd'45'l_9582 ~v0 v1 v2 = du_μ'60''45'd'45'l_9582 v1 v2
-du_μ'60''45'd'45'l_9582 ::
+d_μ'60''45'd'45'l_11750 ~v0 v1 v2 = du_μ'60''45'd'45'l_11750 v1 v2
+du_μ'60''45'd'45'l_11750 ::
   Integer -> Integer -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-du_μ'60''45'd'45'l_9582 v0 v1
+du_μ'60''45'd'45'l_11750 v0 v1
   = coe
       MAlonzo.Code.Data.Nat.Base.C_s'8804's_34
       (coe
@@ -869,13 +1073,13 @@ du_μ'60''45'd'45'l_9582 v0 v1
             MAlonzo.Code.Data.Nat.Properties.du_m'8804'n'43'm_3636
             (coe addInt (coe v0) (coe v1))))
 -- Once.Adequacy.RealizeAgrees.μ<-d-r
-d_μ'60''45'd'45'r_9596 ::
+d_μ'60''45'd'45'r_11764 ::
   Integer ->
   Integer -> Integer -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-d_μ'60''45'd'45'r_9596 ~v0 v1 v2 = du_μ'60''45'd'45'r_9596 v1 v2
-du_μ'60''45'd'45'r_9596 ::
+d_μ'60''45'd'45'r_11764 ~v0 v1 v2 = du_μ'60''45'd'45'r_11764 v1 v2
+du_μ'60''45'd'45'r_11764 ::
   Integer -> Integer -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-du_μ'60''45'd'45'r_9596 v0 v1
+du_μ'60''45'd'45'r_11764 v0 v1
   = coe
       MAlonzo.Code.Data.Nat.Base.C_s'8804's_34
       (coe
@@ -886,7 +1090,7 @@ du_μ'60''45'd'45'r_9596 v0 v1
             MAlonzo.Code.Data.Nat.Properties.du_m'8804'n'43'm_3636
             (coe addInt (coe v0) (coe v1))))
 -- Once.Adequacy.RealizeAgrees.infer-agreeV
-d_infer'45'agreeV_9624 ::
+d_infer'45'agreeV_11792 ::
   MAlonzo.Code.Once.TypeCheck.Classify.T_NamedCtx_170 ->
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
   MAlonzo.Code.Induction.WellFounded.T_Acc_42 ->
@@ -899,9 +1103,9 @@ d_infer'45'agreeV_9624 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   AgdaAny ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_infer'45'agreeV_9624 = erased
+d_infer'45'agreeV_11792 = erased
 -- Once.Adequacy.RealizeAgrees.check-agreeV
-d_check'45'agreeV_9646 ::
+d_check'45'agreeV_11814 ::
   MAlonzo.Code.Once.TypeCheck.Classify.T_NamedCtx_170 ->
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
@@ -914,9 +1118,9 @@ d_check'45'agreeV_9646 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   AgdaAny ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_check'45'agreeV_9646 = erased
+d_check'45'agreeV_11814 = erased
 -- Once.Adequacy.RealizeAgrees..extendedlambda0
-d_'46'extendedlambda0_10506 ::
+d_'46'extendedlambda0_12674 ::
   MAlonzo.Code.Once.TypeCheck.Classify.T_NamedCtx_170 ->
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
@@ -957,9 +1161,9 @@ d_'46'extendedlambda0_10506 ::
   Integer ->
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30 ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'46'extendedlambda0_10506 = erased
+d_'46'extendedlambda0_12674 = erased
 -- Once.Adequacy.RealizeAgrees.realize-agrees
-d_realize'45'agrees_11662 ::
+d_realize'45'agrees_14136 ::
   MAlonzo.Code.Once.TypeCheck.Classify.T_NamedCtx_170 ->
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
@@ -970,4 +1174,4 @@ d_realize'45'agrees_11662 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   AgdaAny ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_realize'45'agrees_11662 = erased
+d_realize'45'agrees_14136 = erased

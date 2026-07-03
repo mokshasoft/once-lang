@@ -100,7 +100,7 @@ du_inferType'8594'inferElab_98 v0 v1 v2
   = coe
       du_go_128
       (coe
-         MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElab_1482
+         MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElab_1500
          (coe
             MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndPolys_208
             (coe v0) (coe v1))
