@@ -254,10 +254,20 @@ mrg-dispatch deriv rest-typed w (no _)  _          _     = mainRealized-go rest-
 mrg-dispatch deriv rest-typed w (yes _) (no _)     _     = mainRealized-go rest-typed w
 mrg-dispatch deriv rest-typed w (yes _) (yes _)    true  = mainRealized-go rest-typed w
 
+-- Externally-reducible aux (Plan 0.55): takes the `extractFunctions` result as an
+-- EXPLICIT argument, so a caller that `with`-abstracts the same scrutinee drives it
+-- in lockstep (mirrors `MainIRForm.mif-ef`). Behaviour identical to the old
+-- `mainRealized` (which is now defined via it).
+mainRealized-ef : ∀ (m : C.Module) (ef : String ⊎ (List FunInfo × List C.PolyFunInfo))
+  (mt : AS.ModuleTyped-ef m ef)
+  → ModuleMainEffUU-ef m ef mt → ModuleMainExists-ef m ef mt
+  → Σ-syntax (Usage 0) (λ Ψ → Expr ∅ Ψ EffUU)
+mainRealized-ef m (inj₂ (funs , polys)) mt amu me = mainRealized-go mt me
+
 mainRealized : ∀ (m : C.Module) (mt : AS.ModuleTyped m) → HasValidMain-decl m mt
              → Σ-syntax (Usage 0) (λ Ψ → Expr ∅ Ψ EffUU)
-mainRealized m mt (amu , me) with C.extractFunctions (C.extractAliases m) m
-... | inj₂ (funs , polys) = mainRealized-go mt me
+mainRealized m mt (amu , me) =
+  mainRealized-ef m (C.extractFunctions (C.extractAliases m) m) mt amu me
 
 ------------------------------------------------------------------------
 -- REVERSE lift (for soundness): compile-success ⇒ the declarative conditions.

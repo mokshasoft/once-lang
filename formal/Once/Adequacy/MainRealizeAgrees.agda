@@ -80,11 +80,9 @@ open import Once.Adequacy.ResolveFaithful using (resolveExpr-faithful)
 --     `mt`'s INDEPENDENT derivation, keeping the spec non-circular (no route-2).
 --     The headline theorem (induction over derivations; reconciles the
 --     `t-embed`-vs-specialized overlaps). Context-general.
-postulate
-  realize-invariant :
-    ∀ {ctx : NamedCtx} {e : RawExpr} {A : Type} {Ψ : Usage (NamedCtx.size ctx)}
-      (d₁ d₂ : ctx ⊢ᶜ e ∶ A ⨾ Ψ) (dγ : ⟦ ⟦ NamedCtx.debruijn ctx ⟧ᶜ ⟧ᴰ) (k : ℕ)
-    → SD.⟦ realize d₁ ⟧ˢ dγ k ≡ SD.⟦ realize d₂ ⟧ˢ dγ k
+-- Plan 0.55: factored into `Once.Adequacy.RealizeInvariant` (a base module) so
+-- `MtIndep`/`mt-den-indep` can share it without an import cycle. UNCHANGED.
+open import Once.Adequacy.RealizeInvariant using (realize-invariant)
 
 -- (C) the threading/extraction — `source-meaningᴰ`'s `seR` and `mainRealized`'s
 --     `realize mtder` both factor through ONE `checkElab ce` of `main`'s body

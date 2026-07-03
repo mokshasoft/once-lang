@@ -30,7 +30,7 @@ open FunInfo
 import Once.Adequacy.AcceptSound as AS
 import Once.Adequacy.ModuleComplete as MC
 open import Once.Adequacy.ModuleComplete using (EffUU)
-open import Once.Adequacy.MainRealizeAgrees using (realize-invariant)
+open import Once.Adequacy.RealizeInvariant using (realize-invariant)
 
 -- `Usage 0` is a singleton.
 usage0-unique : (Ψ : Usage 0) → Ψ ≡ []
