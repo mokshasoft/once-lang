@@ -38,9 +38,10 @@ open import Once.IR using (IR)
 open import Once.Type using (Unit; Type; _⇒[_]_; mk-kind; Many; eff)
 import Once.Compile as C
 open import Once.Surface.Syntax using (Expr; ∅; Usage)
+open import Once.Surface.Elaborate using (elaborate)
 open import Once.Denotation.Realize using (realize)
 open import Once.TypeCheck.Elaborate as TE
-  using (CheckElabResult; checkElab; ctxWithImportsAndSelfAndPolys; PolyCtx; _≟T_)
+  using (CheckElabResult; checkElab; ctxWithImportsAndSelfAndPolys; PolyCtx; _≟T_; resolveExpr)
 open import Once.TypeCheck.Classify using (NamedCtx; SigEffectCtx)
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_)
@@ -371,3 +372,84 @@ bundle-realize-node {polys = polys} {sigEffs = sigEffs}
   ctx , funBody fi , Ψ , se , d , f , ce , refl
 bundle-realize-node (bcons {fi = fi} {ty = ty} rf ce cf rest) (inj₂ w) =
   brn-dispatch fi ce rest w (funName fi ≟str "main") (ty ≟T EffUU) (funIsPrimitive fi)
+
+------------------------------------------------------------------------
+-- (3d) `bundle-find-exists`: a `just` find result witnesses `BMainExists`.
+------------------------------------------------------------------------
+
+bundle-find-exists : ∀ {polys sigEffs funs ctx} (b : FunBundle polys sigEffs funs ctx)
+  {ir : IR Unit Unit} → bundle-find b ≡ just ir → BMainExists b
+bundle-find-exists bnil ()
+bundle-find-exists (bcons {fi = fi} {ty = ty} {irFun = irFun} rf ce cf rest) eq
+  with funName fi ≟str "main" | ty ≟T EffUU | funIsPrimitive fi
+... | yes p | yes refl | false = inj₁ (p , refl , refl)
+... | yes _ | yes refl | true  = inj₂ (bundle-find-exists rest eq)
+... | yes _ | no _     | false = inj₂ (bundle-find-exists rest eq)
+... | yes _ | no _     | true  = inj₂ (bundle-find-exists rest eq)
+... | no _  | _        | false = inj₂ (bundle-find-exists rest eq)
+... | no _  | _        | true  = inj₂ (bundle-find-exists rest eq)
+
+------------------------------------------------------------------------
+-- (3e) `bundle-main-node`: the COMBINED find+realize node extractor. Returns
+-- the selected main node's data with BOTH (i) the find-side IR form
+-- (`bundle-find b ≡ just (wrapMainAsEntry (elaborate … seR))`) and (ii) the
+-- realize-side (`bundle-realize b bme ≡ (Ψ , realize (check-sound … ce))`),
+-- over the SAME node. Feeds the bundle-rebased `main-ir-form` (Plan 0.55).
+------------------------------------------------------------------------
+
+-- IR-form lemma: from the bound `ce`/`cf` at a "main" node, the compiled IR is
+-- the elaboration of the resolved checkElab term (uses the bound `se`/`ce`).
+irFun-main-form : ∀ (ctx : C.FunCtx) (polys : PolyCtx) (sigEffs : SigEffectCtx)
+  (body : RawExpr) (irFun : IR Unit EffUU)
+  {Ψ : Usage 0} {se : Expr ∅ Ψ EffUU} {d f : ℕ}
+  (ce : checkElab (ctxWithImportsAndSelfAndPolys ctx polys sigEffs "main" EffUU) body EffUU
+          ≡ TE.success Ψ se d f)
+  (cf : C.compileFun C.Heap false ctx polys sigEffs "main" EffUU body ≡ inj₂ irFun) →
+  irFun ≡ elaborate C.Heap (resolveExpr polys (("main" , EffUU) ∷ ctx) (("main" , EffUU) ∷ ctx) 0 se)
+irFun-main-form ctx polys sigEffs body irFun ce cf =
+  inj₂-injective (trans (sym cf) (cong (C.compileFunBody-aux C.Heap false ctx polys "main" EffUU refl) ce))
+
+MNodeAt : ∀ (polys : PolyCtx) (sigEffs : SigEffectCtx)
+  → Maybe (IR Unit Unit) → Σ-syntax (Usage 0) (λ Ψ' → Expr ∅ Ψ' EffUU) → Set
+MNodeAt polys sigEffs fr rr =
+  Σ-syntax C.FunCtx (λ mctx → Σ-syntax RawExpr (λ mbody →
+  Σ-syntax (Usage 0) (λ mΨ → Σ-syntax (Expr ∅ mΨ EffUU) (λ mse → Σ-syntax ℕ (λ md → Σ-syntax ℕ (λ mf →
+  Σ-syntax (checkElab (ctxWithImportsAndSelfAndPolys mctx polys sigEffs "main" EffUU) mbody EffUU
+             ≡ TE.success mΨ mse md mf) (λ mce →
+    (fr ≡ just (C.wrapMainAsEntry (elaborate C.Heap
+            (resolveExpr polys (("main" , EffUU) ∷ mctx) (("main" , EffUU) ∷ mctx) 0 mse))))
+  × (rr ≡ (mΨ , realize (check-sound (ctxWithImportsAndSelfAndPolys mctx polys sigEffs "main" EffUU)
+                           mbody EffUU mce))))))))))
+
+bundle-main-node : ∀ {polys sigEffs funs ctx} (b : FunBundle polys sigEffs funs ctx)
+  (bme : BMainExists b) → MNodeAt polys sigEffs (bundle-find b) (bundle-realize b bme)
+
+bmn-dispatch : ∀ {polys sigEffs rest ctx ty} (fi : FunInfo)
+  {Ψ : Usage (NamedCtx.size (ctxWithImportsAndSelfAndPolys ctx polys sigEffs (funName fi) ty))}
+  {se : Expr (NamedCtx.debruijn (ctxWithImportsAndSelfAndPolys ctx polys sigEffs (funName fi) ty)) Ψ ty}
+  {d f : ℕ} {irFun : IR Unit ty}
+  (ce : checkElab (ctxWithImportsAndSelfAndPolys ctx polys sigEffs (funName fi) ty) (funBody fi) ty
+          ≡ TE.success Ψ se d f)
+  (cf : C.compileFun C.Heap false ctx polys sigEffs (funName fi) ty (funBody fi) ≡ inj₂ irFun)
+  (rt : FunBundle polys sigEffs rest (C.extendFunCtx ctx (funName fi) ty)) (w : BMainExists rt)
+  (nd : Dec (funName fi ≡ "main")) (td : Dec (ty ≡ EffUU)) (pb : Bool)
+  → MNodeAt polys sigEffs (bf-dispatch irFun nd td pb (bundle-find rt))
+                          (br-dispatch fi ce rt w nd td pb)
+bmn-dispatch fi ce cf rt w _        _          true  = bundle-main-node rt w
+bmn-dispatch {polys = polys} {sigEffs = sigEffs} {ctx = ctx} fi {Ψ = Ψ} {se = se} {d = d} {f = f} {irFun = irFun}
+             ce cf rt w (yes p) (yes refl) false rewrite p =
+  ctx , funBody fi , Ψ , se , d , f , ce ,
+    cong (λ x → just (C.wrapMainAsEntry x)) (irFun-main-form ctx polys sigEffs (funBody fi) irFun ce cf) , refl
+bmn-dispatch fi ce cf rt w (no _)  _          false = bundle-main-node rt w
+bmn-dispatch fi ce cf rt w (yes _) (no _)     false = bundle-main-node rt w
+
+bundle-main-node {polys = polys} {sigEffs = sigEffs}
+  (bcons {fi = fi} {ctx = ctx} {Ψ = Ψ} {se = se} {d = d} {f = f} {irFun = irFun} rf ce cf rest) (inj₁ (p , pr , refl))
+  rewrite p | pr with "main" ≟str "main" | EffUU ≟T EffUU
+... | yes refl | yes refl =
+      ctx , funBody fi , Ψ , se , d , f , ce ,
+        cong (λ x → just (C.wrapMainAsEntry x)) (irFun-main-form ctx polys sigEffs (funBody fi) irFun ce cf) , refl
+... | yes _    | no ¬q = ⊥-elim (¬q refl)
+... | no ¬r    | _     = ⊥-elim (¬r refl)
+bundle-main-node (bcons {fi = fi} {ty = ty} rf ce cf rest) (inj₂ w) =
+  bmn-dispatch fi ce cf rest w (funName fi ≟str "main") (ty ≟T EffUU) (funIsPrimitive fi)
