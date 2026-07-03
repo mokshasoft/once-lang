@@ -26,7 +26,7 @@ module Once.Arith.Backend.X86-32.Emit where
 
 open import Data.Integer using (ℤ; +_; -[1+_])
 open import Data.Integer.Show using () renaming (show to showℤ)
-open import Data.Nat using (ℕ; suc; _*_)
+open import Data.Nat using (ℕ; suc; _*_; _∸_)
 open import Data.Nat.Show using () renaming (show to showℕ)
 open import Data.List using (List; []; _∷_)
 open import Data.String using (String; _++_)
@@ -168,6 +168,23 @@ instr-text (Xrem-safe-rrr dst a b) =
      "    idivl (%esp)\n" ++
      "    movl %edx, %eax\n" ++           -- remainder is in %edx
      "    addl $4, %esp\n" ++
+     "    movl %eax, " ++ reg-text dst ++ "\n"
+-- Strength-reduced multiply by a power-of-two literal: left shift by `imm`
+-- (32-bit widths; `imm ≤ 30 < 32`, so the shift count is in range).
+instr-text (Xshl-rri dst src imm) =
+     "    movl " ++ reg-text src ++ ", " ++ reg-text dst ++ "\n" ++
+     "    sall $" ++ showℕ imm ++ ", " ++ reg-text dst ++ "\n"
+-- Strength-reduced signed divide by `2^imm` (truncate toward zero) — the
+-- branchless sign-bias idiom realising `sdiv2ᵏ` at 32-bit width. `%eax` is
+-- the path-walk scratch (never an arith register). bias = (src<0 ? 2^imm−1 :
+-- 0), then arithmetic-shift-right (src + bias) by imm. `src` read twice
+-- before `dst` is written, so correct even when `dst ≡ src`.
+instr-text (Xsdiv-pow2-rri dst src imm) =
+     "    movl " ++ reg-text src ++ ", %eax\n" ++
+     "    sarl $31, %eax\n" ++                                  -- eax = src<0 ? -1 : 0
+     "    shrl $" ++ showℕ (32 ∸ imm) ++ ", %eax\n" ++          -- eax = src<0 ? 2^imm−1 : 0
+     "    addl " ++ reg-text src ++ ", %eax\n" ++               -- eax = src + bias
+     "    sarl $" ++ showℕ imm ++ ", %eax\n" ++                 -- eax = quotient
      "    movl %eax, " ++ reg-text dst ++ "\n"
 instr-text (Xneg-r dst)       = "    negl " ++ reg-text dst ++ "\n"
 instr-text (Xmov-out src)     = "    movl " ++ reg-text src ++ ", %eax\n"

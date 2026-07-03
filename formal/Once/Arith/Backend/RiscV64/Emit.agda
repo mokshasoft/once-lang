@@ -26,7 +26,7 @@ module Once.Arith.Backend.RiscV64.Emit where
 
 open import Data.Integer using (ℤ; +_; -[1+_])
 open import Data.Integer.Show using () renaming (show to showℤ)
-open import Data.Nat using (ℕ; suc; _*_)
+open import Data.Nat using (ℕ; suc; _*_; _∸_)
 open import Data.Nat.Show using () renaming (show to showℕ)
 open import Data.List using (List; []; _∷_)
 open import Data.String using (String; _++_)
@@ -117,6 +117,21 @@ instr-text (Xrem-rrr dst a b) = "    rem " ++ reg-text dst ++ ", " ++ reg-text a
 -- guard-elided form is IDENTICAL to the guarded one — a clean 1-1 map.
 instr-text (Xdiv-safe-rrr dst a b) = "    div " ++ reg-text dst ++ ", " ++ reg-text a ++ ", " ++ reg-text b ++ "\n"
 instr-text (Xrem-safe-rrr dst a b) = "    rem " ++ reg-text dst ++ ", " ++ reg-text a ++ ", " ++ reg-text b ++ "\n"
+-- Strength-reduced multiply by a power-of-two literal: `slli` left shift by
+-- `imm` (`imm ≤ 30 < 64`, so the shift count is in range).
+instr-text (Xshl-rri dst src imm) =
+     "    slli " ++ reg-text dst ++ ", " ++ reg-text src ++ ", " ++ showℕ imm ++ "\n"
+-- Strength-reduced signed divide by `2^imm` (truncate toward zero) — the
+-- sign-bias idiom realising `sdiv2ᵏ`. `a0` is the path-walk scratch (caller-
+-- saved, never an arith register). bias = (src<0 ? 2^imm−1 : 0) via
+-- `srai a0,src,63` (sign mask) then logical `srli a0,a0,64−imm`; then arithmetic
+-- `srai` of (src + bias) by imm. `src` read twice before `dst` is written, so
+-- correct even when `dst ≡ src`.
+instr-text (Xsdiv-pow2-rri dst src imm) =
+     "    srai a0, " ++ reg-text src ++ ", 63\n" ++             -- a0 = src<0 ? -1 : 0
+     "    srli a0, a0, " ++ showℕ (64 ∸ imm) ++ "\n" ++         -- a0 = src<0 ? 2^imm−1 : 0
+     "    add a0, " ++ reg-text src ++ ", a0\n" ++              -- a0 = src + bias
+     "    srai " ++ reg-text dst ++ ", a0, " ++ showℕ imm ++ "\n"  -- dst = quotient
 instr-text (Xneg-r dst)       = "    neg " ++ reg-text dst ++ ", " ++ reg-text dst ++ "\n"
 instr-text (Xmov-out src)     = "    mv a0, " ++ reg-text src ++ "\n"
 

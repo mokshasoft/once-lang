@@ -15,7 +15,7 @@ open import Data.Nat using (ℕ)
 
 module Once.Arith.Machine.CompileCorrect (bits : ℕ) where
 
-open import Data.Nat using (zero; suc; _<_; s≤s; z≤n)
+open import Data.Nat using (zero; suc; _<_; s≤s; z≤n; _^_)
 open import Data.Nat.DivMod using (m%n<n)
 open import Data.Bool using (Bool; true; false)
 open import Data.Nat.Properties using (<⇒≢; ≤-refl; m≤n⇒m≤1+n)
@@ -38,13 +38,14 @@ open import Once.Arith.Machine.IR
   using (MArithIR; alit; ainput; aadd; asub; amul; adiv; amod; aneg; eval-arith)
 open import Once.Word using (module Width)
 open Width bits using
-  (fromℤ; _⊕_; _⊖_; _⊗_; _/ˢ_; _%ˢ_; ⊝_; modulus; modulus≢0;
+  (fromℤ; _⊕_; _⊖_; _⊗_; _/ˢ_; _%ˢ_; ⊝_; modulus; modulus≢0; shlᵂ; sdiv2ᵏ; ⊗-pow2;
    /ˢ-zero; %ˢ-zero; fromℤ-0; fromℤ-in-range; fromℤ-neg1;
    /ˢ-negOne; %ˢ-negOne; /ˢ-in-range; %ˢ-in-range)
 open import Once.Arith.Machine.WordSem using (module Sem)
 open Sem bits using (eval-arith-W)
 open import Once.Arith.Machine.Compile
-  using (compile-go; compile-abs; div-op; rem-op; div-instr; rem-instr; safe-divisor?;
+  using (compile-go; compile-abs; mul-op; mul-choose; div-op; div-choose; rem-op;
+         div-instr; rem-instr; safe-divisor?; safe-lit?; pow2?; pow2-exp?; pow2-exp?-correct;
          normalize; fold-div; fold-mod)
 open ArithAbsState
 
@@ -64,9 +65,66 @@ step-div-instr : ∀ {sh} (t : Bool) (s : ArithAbsState sh) →
 step-div-instr true  s = refl
 step-div-instr false s = refl
 
-step-div-op : ∀ {sh} (b : MArithIR sh) (s : ArithAbsState sh) →
+-- Strength reduction (multiply / divide by a power-of-two literal) is
+-- semantics-preserving GIVEN reg 0 holds the multiplier/divisor value
+-- `eval-arith-W b`: `mul-op b`/`div-op b` (which may pick a shift) then
+-- `step` identically to `mul-rrr 0 1 0`/`div-rrr 0 1 0`. The shift's write
+-- `un-op (shlᵂ · j)`/`un-op (sdiv2ᵏ · j)` on reg 1 equals `bin-op _⊗_`/
+-- `bin-op _/ˢ_` of reg 1 and reg 0 (= `fromℤ (+ 2^j)`), via `⊗-pow2` /
+-- `sdiv2ᵏ`'s definition. Non-power-of-two `b` falls through to `refl` (mul)
+-- or `step-div-instr` (div guard elision).
+
+step-mul-op-eq : ∀ {sh} (b : MArithIR sh) (env : ⟦ sh ⟧S) (s : ArithAbsState sh) →
+  regs s [ 0 ] ≡ just (eval-arith-W b env) →
+  step (mul-op b) s ≡ step (mul-rrr 0 1 0) s
+step-mul-op-eq (alit k) env s h with pow2-exp? k in pe
+... | just j  = cong (λ v → record s { regs = regs s [ 0 ↦ v ] }) inner
+  where
+    k≡ : k ≡ + (2 ^ j)
+    k≡ = pow2-exp?-correct k j pe
+    r0 : regs s [ 0 ] ≡ just (fromℤ (+ (2 ^ j)))
+    r0 = trans h (cong (λ z → just (fromℤ z)) k≡)
+    inner : un-op (λ x → shlᵂ x j) (regs s [ 1 ])
+          ≡ bin-op _⊗_ (regs s [ 1 ]) (regs s [ 0 ])
+    inner rewrite r0 with regs s [ 1 ]
+    ... | just A  = cong just (sym (⊗-pow2 A j))
+    ... | nothing = refl
+... | nothing = refl
+step-mul-op-eq (ainput p) env s h = refl
+step-mul-op-eq (aadd a b) env s h = refl
+step-mul-op-eq (asub a b) env s h = refl
+step-mul-op-eq (amul a b) env s h = refl
+step-mul-op-eq (adiv a b) env s h = refl
+step-mul-op-eq (amod a b) env s h = refl
+step-mul-op-eq (aneg a)   env s h = refl
+
+step-div-op-eq : ∀ {sh} (b : MArithIR sh) (env : ⟦ sh ⟧S) (s : ArithAbsState sh) →
+  regs s [ 0 ] ≡ just (eval-arith-W b env) →
   step (div-op b) s ≡ step (div-rrr 0 1 0) s
-step-div-op b s = step-div-instr (safe-divisor? b) s
+step-div-op-eq (alit k) env s h with pow2-exp? k in pe
+... | just j  = cong (λ v → record s { regs = regs s [ 0 ↦ v ] }) inner
+  where
+    k≡ : k ≡ + (2 ^ j)
+    k≡ = pow2-exp?-correct k j pe
+    r0 : regs s [ 0 ] ≡ just (fromℤ (+ (2 ^ j)))
+    r0 = trans h (cong (λ z → just (fromℤ z)) k≡)
+    inner : un-op (λ x → sdiv2ᵏ x j) (regs s [ 1 ])
+          ≡ bin-op _/ˢ_ (regs s [ 1 ]) (regs s [ 0 ])
+    inner rewrite r0 with regs s [ 1 ]
+    ... | just A  = refl
+    ... | nothing = refl
+-- `safe-divisor? (alit k) = safe-lit? k` is a stuck neutral, so `div-op (alit k)`
+-- does NOT reduce to a constructor here; feed the bool through `step-div-instr`.
+... | nothing = step-div-instr (safe-lit? k) s
+-- Non-literal divisors: `pow2? b = nothing` AND `safe-divisor? b = false`, so
+-- `div-op b` reduces fully to `div-rrr 0 1 0` and the equation is `refl`.
+step-div-op-eq (ainput p) env s h = refl
+step-div-op-eq (aadd a b) env s h = refl
+step-div-op-eq (asub a b) env s h = refl
+step-div-op-eq (amul a b) env s h = refl
+step-div-op-eq (adiv a b) env s h = refl
+step-div-op-eq (amod a b) env s h = refl
+step-div-op-eq (aneg a)   env s h = refl
 
 step-rem-instr : ∀ {sh} (t : Bool) (s : ArithAbsState sh) →
   step (rem-instr t) s ≡ step (rem-rrr 0 1 0) s
@@ -250,20 +308,27 @@ amul-correct {sh} d a b s = record
     s4   = step (reload d 1) s3
     s5   = step (mul-rrr 0 1 0) s4
 
+    regs-s3-0 : regs s3 [ 0 ] ≡ just (eval-arith-W b (input s))
+    regs-s3-0 = trans (reg0 ih-b)
+                      (cong (λ x → just (eval-arith-W b x)) (input-eq ih-a))
+
+    regs-s4-0 : regs s4 [ 0 ] ≡ just (eval-arith-W b (input s))
+    regs-s4-0 = trans (store-write-other (regs s3) 1 0 (scratch s3 [ d ]) (λ ())) regs-s3-0
+
+    -- `compile-go` emits `mul-op b` (a left shift when `b` is a power-of-two
+    -- literal); `step-mul-op-eq` collapses it back to `mul-rrr 0 1 0` given
+    -- reg 0 = the multiplier value, so the s5-based field proofs stand.
     bridge : run-abstract (compile-go d (amul a b)) s ≡ s5
-    bridge = trans
+    bridge = trans (trans
       (run-abstract-app (compile-go d a)
-        (spill 0 d ∷ compile-go (suc d) b ++ (reload d 1 ∷ mul-rrr 0 1 0 ∷ [])) s)
+        (spill 0 d ∷ compile-go (suc d) b ++ (reload d 1 ∷ mul-op b ∷ [])) s)
       (run-abstract-app (compile-go (suc d) b)
-        (reload d 1 ∷ mul-rrr 0 1 0 ∷ []) s2)
+        (reload d 1 ∷ mul-op b ∷ []) s2))
+      (step-mul-op-eq b (input s) s4 regs-s4-0)
 
     scratch-s3-d : scratch s3 [ d ] ≡ regs s1 [ 0 ]
     scratch-s3-d = trans (scratch≤ ih-b d ≤-refl)
                          (store-write-same (scratch s1) d (regs s1 [ 0 ]))
-
-    regs-s3-0 : regs s3 [ 0 ] ≡ just (eval-arith-W b (input s))
-    regs-s3-0 = trans (reg0 ih-b)
-                      (cong (λ x → just (eval-arith-W b x)) (input-eq ih-a))
 
 adiv-correct : ∀ {sh} (d : ℕ) (a b : MArithIR sh) (s : ArithAbsState sh) →
   CompileGoInv d (adiv a b) s
@@ -291,24 +356,27 @@ adiv-correct {sh} d a b s = record
     s4   = step (reload d 1) s3
     s5   = step (div-rrr 0 1 0) s4
 
-    -- `compile-go` emits `div-op b` (guard-elided when safe); `step-div-op`
-    -- collapses it back to `div-rrr 0 1 0`, so the field proofs below (which
-    -- read s5 = step (div-rrr 0 1 0) s4) are unchanged.
+    regs-s3-0 : regs s3 [ 0 ] ≡ just (eval-arith-W b (input s))
+    regs-s3-0 = trans (reg0 ih-b)
+                      (cong (λ x → just (eval-arith-W b x)) (input-eq ih-a))
+
+    regs-s4-0 : regs s4 [ 0 ] ≡ just (eval-arith-W b (input s))
+    regs-s4-0 = trans (store-write-other (regs s3) 1 0 (scratch s3 [ d ]) (λ ())) regs-s3-0
+
+    -- `compile-go` emits `div-op b` (guard-elided when safe, a sign-corrected
+    -- shift when `b` is a power-of-two literal); `step-div-op-eq` collapses it
+    -- back to `div-rrr 0 1 0` given reg 0 = the divisor value.
     bridge : run-abstract (compile-go d (adiv a b)) s ≡ s5
     bridge = trans (trans
       (run-abstract-app (compile-go d a)
         (spill 0 d ∷ compile-go (suc d) b ++ (reload d 1 ∷ div-op b ∷ [])) s)
       (run-abstract-app (compile-go (suc d) b)
         (reload d 1 ∷ div-op b ∷ []) s2))
-      (step-div-op b s4)
+      (step-div-op-eq b (input s) s4 regs-s4-0)
 
     scratch-s3-d : scratch s3 [ d ] ≡ regs s1 [ 0 ]
     scratch-s3-d = trans (scratch≤ ih-b d ≤-refl)
                          (store-write-same (scratch s1) d (regs s1 [ 0 ]))
-
-    regs-s3-0 : regs s3 [ 0 ] ≡ just (eval-arith-W b (input s))
-    regs-s3-0 = trans (reg0 ih-b)
-                      (cong (λ x → just (eval-arith-W b x)) (input-eq ih-a))
 
 amod-correct : ∀ {sh} (d : ℕ) (a b : MArithIR sh) (s : ArithAbsState sh) →
   CompileGoInv d (amod a b) s

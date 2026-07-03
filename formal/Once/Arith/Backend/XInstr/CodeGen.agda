@@ -24,8 +24,8 @@ open import Relation.Nullary using (Dec; yes; no)
 open import Once.Arith.Machine.AbsState using (InputPath; Side; Fst; Snd)
 open import Once.Arith.Machine.AbsInstr
   using (AbstractInstr; load-input; load-imm; add-rrr; sub-rrr; mul-rrr;
-         div-rrr; rem-rrr; div-safe-rrr; rem-safe-rrr; neg-rr; spill; reload;
-         move-to-out)
+         div-rrr; rem-rrr; div-safe-rrr; rem-safe-rrr; shl-rri; sdiv-pow2-rri;
+         neg-rr; spill; reload; move-to-out)
 open import Once.Arith.Backend.XInstr.Syntax
 
 ------------------------------------------------------------------------
@@ -133,6 +133,16 @@ emit (div-safe-rrr dst a b) with abs-reg dst | abs-reg a | abs-reg b
 emit (rem-safe-rrr dst a b) with abs-reg dst | abs-reg a | abs-reg b
 ... | just xd | just xa | just xb          = Xrem-safe-rrr xd xa xb ∷ []
 ... | _       | _       | _                = []
+-- Strength-reduced multiply / divide by a power-of-two literal. Single-write
+-- (`dst := f src`); the neutral XInstr carries both regs plus the immediate
+-- shift count. No aliasing dispatch — the per-arch Emit reads `src` before
+-- writing `dst`.
+emit (shl-rri dst src imm) with abs-reg dst | abs-reg src
+... | just xd | just xs                    = Xshl-rri xd xs imm ∷ []
+... | _       | _                          = []
+emit (sdiv-pow2-rri dst src imm) with abs-reg dst | abs-reg src
+... | just xd | just xs                    = Xsdiv-pow2-rri xd xs imm ∷ []
+... | _       | _                          = []
 emit (neg-rr dst a) with abs-reg dst | abs-reg a
 ... | just xd | just xa = Xmov-rr xd xa ∷ Xneg-r xd ∷ []
 ... | _       | _       = []

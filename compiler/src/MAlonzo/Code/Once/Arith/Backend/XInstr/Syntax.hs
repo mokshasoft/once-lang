@@ -47,7 +47,9 @@ data T_XInstr_28
     C_Xrem'45'rrr_50 T_XReg_10 T_XReg_10 T_XReg_10 |
     C_Xdiv'45'safe'45'rrr_52 T_XReg_10 T_XReg_10 T_XReg_10 |
     C_Xrem'45'safe'45'rrr_54 T_XReg_10 T_XReg_10 T_XReg_10 |
-    C_Xmov'45'out_56 T_XReg_10
+    C_Xshl'45'rri_56 T_XReg_10 T_XReg_10 Integer |
+    C_Xsdiv'45'pow2'45'rri_58 T_XReg_10 T_XReg_10 Integer |
+    C_Xmov'45'out_60 T_XReg_10
 -- Once.Arith.Backend.XInstr.Syntax.XProgram
-d_XProgram_58 :: ()
-d_XProgram_58 = erased
+d_XProgram_62 :: ()
+d_XProgram_62 = erased

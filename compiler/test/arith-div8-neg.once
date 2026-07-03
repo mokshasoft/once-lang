@@ -1,0 +1,15 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson and contributors
+
+-- arith-div8-neg.once: signed divide by a power-of-two literal, negative
+-- dividend. f x = x / 8; f (0 - 24) = -3 (truncate toward zero). The process
+-- exit code is the low byte of -3, i.e. 253. Expected exit code 253.
+-- Exercises the sign-corrected arithmetic-shift-right (sar + bias, not idiv).
+
+import I.Linux.Syscalls as S
+
+f : Int -> Int
+f x = x / 8
+
+main : IO Unit
+main = exit@S (f (0 - 24))

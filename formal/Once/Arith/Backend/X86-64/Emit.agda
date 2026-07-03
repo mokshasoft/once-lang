@@ -36,7 +36,7 @@ module Once.Arith.Backend.X86-64.Emit where
 
 open import Data.Integer using (ℤ; +_; -[1+_])
 open import Data.Integer.Show using () renaming (show to showℤ)
-open import Data.Nat using (ℕ; suc; _*_)
+open import Data.Nat using (ℕ; suc; _*_; _∸_)
 open import Data.Nat.Show using () renaming (show to showℕ)
 open import Data.List using (List; []; _∷_)
 open import Data.String using (String; _++_)
@@ -193,6 +193,23 @@ instr-text (Xrem-safe-rrr dst a b) =
      "    cqto\n" ++
      "    idivq " ++ reg-text b ++ "\n" ++
      "    movq %rdx, " ++ reg-text dst ++ "\n"   -- remainder is in %rdx
+-- Strength-reduced multiply by a power-of-two literal: left shift by `imm`.
+-- `imm ≤ 30 < 64`, so the shift count is always in range.
+instr-text (Xshl-rri dst src imm) =
+     "    movq " ++ reg-text src ++ ", " ++ reg-text dst ++ "\n" ++
+     "    salq $" ++ showℕ imm ++ ", " ++ reg-text dst ++ "\n"
+-- Strength-reduced signed divide by `2^imm` (truncate toward zero) — the
+-- branchless GCC sign-bias idiom realising `sdiv2ᵏ`. `%rax` is caller-saved
+-- scratch (never an arith register). Computes bias = (src<0 ? 2^imm−1 : 0),
+-- then arithmetic-shift-right (src + bias) by imm. `src` is read twice before
+-- `dst` is written, so it is correct even when `dst ≡ src`.
+instr-text (Xsdiv-pow2-rri dst src imm) =
+     "    movq " ++ reg-text src ++ ", %rax\n" ++
+     "    sarq $63, %rax\n" ++                                  -- rax = src<0 ? -1 : 0
+     "    shrq $" ++ showℕ (64 ∸ imm) ++ ", %rax\n" ++          -- rax = src<0 ? 2^imm−1 : 0
+     "    addq " ++ reg-text src ++ ", %rax\n" ++               -- rax = src + bias
+     "    sarq $" ++ showℕ imm ++ ", %rax\n" ++                 -- rax = quotient
+     "    movq %rax, " ++ reg-text dst ++ "\n"
 instr-text (Xneg-r dst)       = "    negq " ++ reg-text dst ++ "\n"
 instr-text (Xmov-out src)     = "    movq " ++ reg-text src ++ ", %rax\n"
 

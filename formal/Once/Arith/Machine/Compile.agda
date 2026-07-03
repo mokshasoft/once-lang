@@ -22,15 +22,20 @@
 
 module Once.Arith.Machine.Compile where
 
-open import Data.Nat using (ℕ; suc; _⊔_)
+open import Data.Nat using (ℕ; zero; suc; _⊔_; _^_; _≡ᵇ_)
 open import Data.List using (List; []; _∷_; _++_)
-open import Data.Bool using (Bool; true; false; if_then_else_)
+open import Data.Bool using (Bool; true; false; if_then_else_; T)
 open import Data.Integer using (ℤ; +_; -[1+_])
+open import Data.Maybe using (Maybe; just; nothing)
+open import Data.Maybe.Properties using (just-injective)
+open import Data.Unit using (tt)
+open import Data.Nat.Properties using (≡ᵇ⇒≡)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; trans; sym; subst)
 
 open import Once.Arith.Machine.AbsInstr
   using (AbstractInstr; load-input; load-imm; add-rrr; sub-rrr; mul-rrr;
-         div-rrr; rem-rrr; div-safe-rrr; rem-safe-rrr; neg-rr; spill; reload;
-         move-to-out)
+         div-rrr; rem-rrr; div-safe-rrr; rem-safe-rrr; shl-rri; sdiv-pow2-rri;
+         neg-rr; spill; reload; move-to-out)
 open import Once.Arith.Machine.IR
   using (MArithIR; alit; ainput; aadd; asub; amul; adiv; amod; aneg)
 
@@ -70,9 +75,17 @@ safe-lit? (+ (suc _))    = true    -- ≥ 1
 safe-lit? (-[1+ 0 ])     = false   -- −1    : INT_MIN/−1 overflow
 safe-lit? (-[1+ suc _ ]) = true    -- ≤ −2
 
+-- Split on every constructor (not a catch-all) so `safe-divisor? e` reduces
+-- definitionally in the correctness proofs.
 safe-divisor? : ∀ {sh} → MArithIR sh → Bool
-safe-divisor? (alit k) = safe-lit? k
-safe-divisor? _        = false     -- non-literal divisor: keep the guard
+safe-divisor? (alit k)   = safe-lit? k
+safe-divisor? (ainput _) = false   -- non-literal divisor: keep the guard
+safe-divisor? (aadd _ _) = false
+safe-divisor? (asub _ _) = false
+safe-divisor? (amul _ _) = false
+safe-divisor? (adiv _ _) = false
+safe-divisor? (amod _ _) = false
+safe-divisor? (aneg _)   = false
 
 -- | Final div/rem instruction for divisor `b`: the guard-ELIDED `-safe`
 -- variant when `b` is a safe literal, else the guarded form. Both denote
@@ -87,9 +100,81 @@ div-instr false = div-rrr 0 1 0
 rem-instr true  = rem-safe-rrr 0 1 0
 rem-instr false = rem-rrr 0 1 0
 
-div-op rem-op : ∀ {sh} → MArithIR sh → AbstractInstr
-div-op b = div-instr (safe-divisor? b)
+rem-op : ∀ {sh} → MArithIR sh → AbstractInstr
 rem-op b = rem-instr (safe-divisor? b)
+
+------------------------------------------------------------------------
+-- Power-of-two strength reduction (multiply / divide by `2^j`)
+--
+-- A literal multiplier/divisor `k = 2^j` (positive power of two, `j ≥ 1`)
+-- is compiled to a SHIFT rather than an `imul`/`idiv`:
+--   `amul a (alit 2^j)` → left shift by `j`   (`shl-rri`)
+--   `adiv a (alit 2^j)` → sign-corrected arithmetic shift right by `j`
+--                         (`sdiv-pow2-rri`; truncated signed div by 2^j).
+-- Detection is a bounded search recovering `j`; the `pow2-bound` fuel caps
+-- `j ≤ pow2-bound` so `2^j < 2^(bits−1)` even at the smallest supported
+-- width (32) — i.e. the hardware shift count is valid and (for divide) the
+-- divisor `2^j` is a genuine positive value ∉ {0,−1} on every arch.
+------------------------------------------------------------------------
+
+-- | Maximum reduced exponent: `2^30 < 2^31 = 2^(32−1)`, safe at width ≥ 32.
+pow2-bound : ℕ
+pow2-bound = 30
+
+-- | `pow2-try f j n` : the first `j′ ∈ {j, …, j+f−1}` with `n ≡ 2^j′`, else
+-- `nothing`. Started at `j = 1`, `f = pow2-bound` — so `j′ ∈ {1, …, 30}`
+-- (excludes `2^0 = 1`, which is not worth a shift).
+pow2-try : ℕ → ℕ → ℕ → Maybe ℕ
+pow2-try zero    j n = nothing
+pow2-try (suc f) j n with n ≡ᵇ (2 ^ j)
+... | true  = just j
+... | false = pow2-try f (suc j) n
+
+-- | Recover the exponent of a positive power-of-two literal (`j ≥ 1`).
+pow2-exp? : ℤ → Maybe ℕ
+pow2-exp? (+ n)      = pow2-try pow2-bound 1 n
+pow2-exp? (-[1+ _ ]) = nothing
+
+-- | The multiplier/divisor's exponent, when it is such a literal. Split on
+-- every constructor (not a catch-all) so `pow2? e` reduces definitionally in
+-- the strength-reduction correctness proofs.
+pow2? : ∀ {sh} → MArithIR sh → Maybe ℕ
+pow2? (alit k)   = pow2-exp? k
+pow2? (ainput _) = nothing
+pow2? (aadd _ _) = nothing
+pow2? (asub _ _) = nothing
+pow2? (amul _ _) = nothing
+pow2? (adiv _ _) = nothing
+pow2? (amod _ _) = nothing
+pow2? (aneg _)   = nothing
+
+-- Correctness: a detected exponent `j` really identifies `k = + 2^j`.
+pow2-try-correct : ∀ f j n j′ → pow2-try f j n ≡ just j′ → n ≡ 2 ^ j′
+pow2-try-correct (suc f) j n j′ with n ≡ᵇ (2 ^ j) in p
+... | true  = λ eq → trans (≡ᵇ⇒≡ n (2 ^ j) (subst T (sym p) tt))
+                           (cong (2 ^_) (just-injective eq))
+... | false = pow2-try-correct f (suc j) n j′
+
+pow2-exp?-correct : ∀ k j → pow2-exp? k ≡ just j → k ≡ + (2 ^ j)
+pow2-exp?-correct (+ n) j eq = cong +_ (pow2-try-correct pow2-bound 1 n j eq)
+
+-- | Final multiply instruction for multiplier `b`: a left shift when `b`
+-- is a power-of-two literal, else the plain `imul`.
+mul-choose : Maybe ℕ → AbstractInstr
+mul-choose (just j) = shl-rri 0 1 j
+mul-choose nothing  = mul-rrr 0 1 0
+
+mul-op : ∀ {sh} → MArithIR sh → AbstractInstr
+mul-op b = mul-choose (pow2? b)
+
+-- | Final divide instruction for divisor `b`: a sign-corrected shift when
+-- `b` is a power-of-two literal; else the guard-elided/guarded form.
+div-choose : Maybe ℕ → Bool → AbstractInstr
+div-choose (just j) _ = sdiv-pow2-rri 0 1 j
+div-choose nothing  t = div-instr t
+
+div-op : ∀ {sh} → MArithIR sh → AbstractInstr
+div-op b = div-choose (pow2? b) (safe-divisor? b)
 
 ------------------------------------------------------------------------
 -- compile-abs (operational)
@@ -112,9 +197,11 @@ compile-go d (asub a b)   =
   compile-go (suc d) b ++
   (reload d 1 ∷ sub-rrr 0 1 0 ∷ [])
 compile-go d (amul a b)   =
+  -- After: reg 0 = (reg 1) ⊗ (reg 0) = a * b.  `mul-op b` picks a left
+  -- shift when `b` is a power-of-two literal (strength reduction).
   compile-go d a ++ (spill 0 d ∷ []) ++
   compile-go (suc d) b ++
-  (reload d 1 ∷ mul-rrr 0 1 0 ∷ [])
+  (reload d 1 ∷ mul-op b ∷ [])
 compile-go d (adiv a b)   =
   -- After: reg 0 = (reg 1) /ˢ (reg 0) = a /ˢ b.  `div-op b` picks the
   -- guard-elided variant when `b` is a safe literal (Part B).

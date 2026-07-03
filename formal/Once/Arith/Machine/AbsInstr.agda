@@ -65,6 +65,16 @@ data AbstractInstr : Set where
   div-safe-rrr : ℕ → ℕ → ℕ → AbstractInstr
   rem-safe-rrr : ℕ → ℕ → ℕ → AbstractInstr
 
+  -- | `shl-rri dst src imm` : reg dst := reg src `shlᵂ` imm — the modular
+  -- value of a left shift by `imm` (`= reg src ⊗ 2^imm`). Emitted for a
+  -- multiply by a positive power-of-two literal (strength reduction).
+  shl-rri     : ℕ → ℕ → ℕ → AbstractInstr
+
+  -- | `sdiv-pow2-rri dst src imm` : reg dst := reg src `sdiv2ᵏ` imm — the
+  -- truncated signed division of reg src by `2^imm` (`= reg src /ˢ 2^imm`).
+  -- Emitted for a divide by a positive power-of-two literal.
+  sdiv-pow2-rri : ℕ → ℕ → ℕ → AbstractInstr
+
   -- | `neg-rr dst a` : reg dst := - reg a.
   neg-rr      : ℕ → ℕ → AbstractInstr
 
@@ -112,7 +122,7 @@ maybe-zero nothing  = + 0
 ------------------------------------------------------------------------
 
 module Exec (bits : ℕ) where
-  open Width bits using (fromℤ; _⊕_; _⊖_; _⊗_; _/ˢ_; _%ˢ_; ⊝_)
+  open Width bits using (fromℤ; _⊕_; _⊖_; _⊗_; _/ˢ_; _%ˢ_; ⊝_; shlᵂ; sdiv2ᵏ)
 
   -- | One abstract step.
   step : ∀ {sh} → AbstractInstr → ArithAbsState sh → ArithAbsState sh
@@ -143,6 +153,13 @@ module Exec (bits : ℕ) where
   step (rem-safe-rrr dst a b) s = record s
     { regs = ArithAbsState.regs s [ dst ↦
         bin-op _%ˢ_ (ArithAbsState.regs s [ a ]) (ArithAbsState.regs s [ b ]) ] }
+  -- strength-reduced multiply / divide by a power-of-two literal.
+  step (shl-rri dst src imm) s = record s
+    { regs = ArithAbsState.regs s [ dst ↦
+        un-op (λ x → shlᵂ x imm) (ArithAbsState.regs s [ src ]) ] }
+  step (sdiv-pow2-rri dst src imm) s = record s
+    { regs = ArithAbsState.regs s [ dst ↦
+        un-op (λ x → sdiv2ᵏ x imm) (ArithAbsState.regs s [ src ]) ] }
   step (neg-rr dst a) s = record s
     { regs = ArithAbsState.regs s [ dst ↦
         un-op ⊝_ (ArithAbsState.regs s [ a ]) ] }

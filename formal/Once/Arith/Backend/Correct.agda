@@ -33,14 +33,15 @@ open import Once.Arith.Backend.XInstr.Syntax
 open import Once.Arith.Backend.XInstr.CodeGen using (emit; emit-program; abs-reg; _≟x_)
 open import Once.Arith.Machine.IR using (MArithIR; alit; ainput; aadd; asub; amul; adiv; amod; aneg)
 open import Once.Arith.Machine.Compile
-  using (compile-go; compile-abs; div-op; rem-op; div-instr; rem-instr; safe-divisor?)
+  using (compile-go; compile-abs; mul-op; mul-choose; div-op; div-choose; rem-op;
+         div-instr; rem-instr; safe-divisor?; pow2?)
 open import Once.Arith.Machine.WordSem using (module Sem)
 open Sem bits using (eval-arith-W)
 import Once.Arith.Machine.CompileCorrect as CC
 open CC bits using (abs-validity)
 open import Once.Word using (module Width)
 
-open Width bits using (fromℤ; _⊕_; _⊖_; _⊗_; _/ˢ_; _%ˢ_; ⊝_; norm; modulus; modulus≢0)
+open Width bits using (fromℤ; _⊕_; _⊖_; _⊗_; _/ˢ_; _%ˢ_; ⊝_; shlᵂ; sdiv2ᵏ; norm; modulus; modulus≢0)
 open Exec bits using (step; run-abstract)
 
 ------------------------------------------------------------------------
@@ -85,6 +86,11 @@ exec-xinstr (Xrem-rrr d a b)  s = record s { regs = ArithAbsState.regs s [ xreg-
 -- construction, since compile-go emits `-safe` only for provably-safe literals).
 exec-xinstr (Xdiv-safe-rrr d a b) s = record s { regs = ArithAbsState.regs s [ xreg-idx d ↦ bin-op _/ˢ_ (ArithAbsState.regs s [ xreg-idx a ]) (ArithAbsState.regs s [ xreg-idx b ]) ] }
 exec-xinstr (Xrem-safe-rrr d a b) s = record s { regs = ArithAbsState.regs s [ xreg-idx d ↦ bin-op _%ˢ_ (ArithAbsState.regs s [ xreg-idx a ]) (ArithAbsState.regs s [ xreg-idx b ]) ] }
+-- Strength-reduced multiply / divide by a power-of-two literal: SAME concrete
+-- meaning as the AbsInstr `step` (single write `dst := un-op (shlᵂ ·)`/`(sdiv2ᵏ ·)`
+-- of `src`). The per-arch Emit's shift/bias asm is the trusted realisation.
+exec-xinstr (Xshl-rri d src imm)      s = record s { regs = ArithAbsState.regs s [ xreg-idx d ↦ un-op (λ x → shlᵂ x imm) (ArithAbsState.regs s [ xreg-idx src ]) ] }
+exec-xinstr (Xsdiv-pow2-rri d src imm) s = record s { regs = ArithAbsState.regs s [ xreg-idx d ↦ un-op (λ x → sdiv2ᵏ x imm) (ArithAbsState.regs s [ xreg-idx src ]) ] }
 exec-xinstr (Xneg-r d)        s = record s { regs = ArithAbsState.regs s [ xreg-idx d ↦ un-op ⊝_ (ArithAbsState.regs s [ xreg-idx d ]) ] }
 exec-xinstr (Xmov-out src)    s = record s { output = ArithAbsState.regs s [ xreg-idx src ] }
 
@@ -408,6 +414,44 @@ refine-rem-safe dst a b xd xa xb eqd eqa eqb s
 ... | just _   | just _   | nothing  = ⊥-elim (just≢nothing (sym eqb))
 
 ------------------------------------------------------------------------
+-- shl / sdiv-pow2: single-write, TWO-address (dst, src) + immediate. Same
+-- single-write refinement shape as div/rem (but one operand is a read src,
+-- and the write is `un-op (f · imm)` rather than `bin-op`). Full ≡.
+------------------------------------------------------------------------
+
+-- Shared just-just body: map both concrete XRegs back to their abstract
+-- indices, congruently rewriting the single `un-op f` write.
+refine-2addr-just : ∀ {sh} (f : ℕ → ℕ) (dst src : ℕ) (xd′ xs′ : XReg)
+  (s : ArithAbsState sh) →
+  abs-reg dst ≡ just xd′ → abs-reg src ≡ just xs′ →
+  record s { regs = ArithAbsState.regs s [ xreg-idx xd′ ↦
+      un-op f (ArithAbsState.regs s [ xreg-idx xs′ ]) ] }
+  ≡ record s { regs = ArithAbsState.regs s [ dst ↦
+      un-op f (ArithAbsState.regs s [ src ]) ] }
+refine-2addr-just f dst src xd′ xs′ s pd ps =
+  cong₂ (λ i v → record s { regs = ArithAbsState.regs s [ i ↦ v ] })
+        (abs-reg-idx dst xd′ pd)
+        (cong (λ j → un-op f (ArithAbsState.regs s [ j ])) (abs-reg-idx src xs′ ps))
+
+refine-shl : ∀ {sh} (dst src imm : ℕ) (xd xs : XReg) →
+  abs-reg dst ≡ just xd → abs-reg src ≡ just xs →
+  (s : ArithAbsState sh) → exec-xprog (emit (shl-rri dst src imm)) s ≡ step (shl-rri dst src imm) s
+refine-shl dst src imm xd xs eqd eqs s
+  with abs-reg dst in pd | abs-reg src in ps
+... | just xd′ | just xs′ = refine-2addr-just (λ x → shlᵂ x imm) dst src xd′ xs′ s pd ps
+... | nothing  | _        = ⊥-elim (just≢nothing (sym eqd))
+... | just _   | nothing  = ⊥-elim (just≢nothing (sym eqs))
+
+refine-sdiv-pow2 : ∀ {sh} (dst src imm : ℕ) (xd xs : XReg) →
+  abs-reg dst ≡ just xd → abs-reg src ≡ just xs →
+  (s : ArithAbsState sh) → exec-xprog (emit (sdiv-pow2-rri dst src imm)) s ≡ step (sdiv-pow2-rri dst src imm) s
+refine-sdiv-pow2 dst src imm xd xs eqd eqs s
+  with abs-reg dst in pd | abs-reg src in ps
+... | just xd′ | just xs′ = refine-2addr-just (λ x → sdiv2ᵏ x imm) dst src xd′ xs′ s pd ps
+... | nothing  | _        = ⊥-elim (just≢nothing (sym eqd))
+... | just _   | nothing  = ⊥-elim (just≢nothing (sym eqs))
+
+------------------------------------------------------------------------
 -- Congruence of exec/step under ~, then the fold.
 ------------------------------------------------------------------------
 
@@ -430,6 +474,8 @@ exec-xinstr-cong (Xdiv-rrr d a b)  (rc , sc , oc , ic) = store-cong2 rc (xreg-id
 exec-xinstr-cong (Xrem-rrr d a b)  (rc , sc , oc , ic) = store-cong2 rc (xreg-idx d) (cong₂ (bin-op _%ˢ_) (rc (xreg-idx a)) (rc (xreg-idx b))) , sc , oc , ic
 exec-xinstr-cong (Xdiv-safe-rrr d a b) (rc , sc , oc , ic) = store-cong2 rc (xreg-idx d) (cong₂ (bin-op _/ˢ_) (rc (xreg-idx a)) (rc (xreg-idx b))) , sc , oc , ic
 exec-xinstr-cong (Xrem-safe-rrr d a b) (rc , sc , oc , ic) = store-cong2 rc (xreg-idx d) (cong₂ (bin-op _%ˢ_) (rc (xreg-idx a)) (rc (xreg-idx b))) , sc , oc , ic
+exec-xinstr-cong (Xshl-rri d src imm)      (rc , sc , oc , ic) = store-cong2 rc (xreg-idx d) (cong (un-op (λ x → shlᵂ x imm)) (rc (xreg-idx src))) , sc , oc , ic
+exec-xinstr-cong (Xsdiv-pow2-rri d src imm) (rc , sc , oc , ic) = store-cong2 rc (xreg-idx d) (cong (un-op (λ x → sdiv2ᵏ x imm)) (rc (xreg-idx src))) , sc , oc , ic
 exec-xinstr-cong (Xneg-r d)        (rc , sc , oc , ic) = store-cong2 rc (xreg-idx d) (cong (un-op ⊝_) (rc (xreg-idx d))) , sc , oc , ic
 exec-xinstr-cong (Xmov-out src)    (rc , sc , oc , ic) = rc , sc , rc (xreg-idx src) , ic
 
@@ -443,6 +489,8 @@ step-cong (div-rrr dst a b)(rc , sc , oc , ic) = store-cong2 rc dst (cong₂ (bi
 step-cong (rem-rrr dst a b)(rc , sc , oc , ic) = store-cong2 rc dst (cong₂ (bin-op _%ˢ_) (rc a) (rc b)) , sc , oc , ic
 step-cong (div-safe-rrr dst a b)(rc , sc , oc , ic) = store-cong2 rc dst (cong₂ (bin-op _/ˢ_) (rc a) (rc b)) , sc , oc , ic
 step-cong (rem-safe-rrr dst a b)(rc , sc , oc , ic) = store-cong2 rc dst (cong₂ (bin-op _%ˢ_) (rc a) (rc b)) , sc , oc , ic
+step-cong (shl-rri dst src imm)      (rc , sc , oc , ic) = store-cong2 rc dst (cong (un-op (λ x → shlᵂ x imm)) (rc src)) , sc , oc , ic
+step-cong (sdiv-pow2-rri dst src imm)(rc , sc , oc , ic) = store-cong2 rc dst (cong (un-op (λ x → sdiv2ᵏ x imm)) (rc src)) , sc , oc , ic
 step-cong (neg-rr dst a)   (rc , sc , oc , ic) = store-cong2 rc dst (cong (un-op ⊝_) (rc a)) , sc , oc , ic
 step-cong (spill src slot) (rc , sc , oc , ic) = rc , store-cong2 sc slot (rc src) , oc , ic
 step-cong (reload slot dst)(rc , sc , oc , ic) = store-cong2 rc dst (sc slot) , sc , oc , ic
@@ -470,6 +518,8 @@ reg-bound (div-rrr dst a b) = InBound dst × InBound a × InBound b
 reg-bound (rem-rrr dst a b) = InBound dst × InBound a × InBound b
 reg-bound (div-safe-rrr dst a b) = InBound dst × InBound a × InBound b
 reg-bound (rem-safe-rrr dst a b) = InBound dst × InBound a × InBound b
+reg-bound (shl-rri dst src imm)      = InBound dst × InBound src
+reg-bound (sdiv-pow2-rri dst src imm) = InBound dst × InBound src
 reg-bound (neg-rr dst a)    = InBound dst × InBound a
 reg-bound (spill src slot)  = InBound src
 reg-bound (reload slot dst) = InBound dst
@@ -485,6 +535,8 @@ refine (div-rrr dst a b) ((xd , ed) , (xa , ea) , (xb , eb)) s = ≡→~ (refine
 refine (rem-rrr dst a b) ((xd , ed) , (xa , ea) , (xb , eb)) s = ≡→~ (refine-rem dst a b xd xa xb ed ea eb s)
 refine (div-safe-rrr dst a b) ((xd , ed) , (xa , ea) , (xb , eb)) s = ≡→~ (refine-div-safe dst a b xd xa xb ed ea eb s)
 refine (rem-safe-rrr dst a b) ((xd , ed) , (xa , ea) , (xb , eb)) s = ≡→~ (refine-rem-safe dst a b xd xa xb ed ea eb s)
+refine (shl-rri dst src imm)      ((xd , ed) , (xs , es)) s = ≡→~ (refine-shl dst src imm xd xs ed es s)
+refine (sdiv-pow2-rri dst src imm) ((xd , ed) , (xs , es)) s = ≡→~ (refine-sdiv-pow2 dst src imm xd xs ed es s)
 refine (neg-rr dst a)    ((xd , ed) , (xa , ea))     s = refine-neg dst a xd xa ed ea s
 refine (spill src slot)  (xs , e)                    s = ≡→~ (refine-spill src slot xs e s)
 refine (reload slot dst) (xd , e)                    s = ≡→~ (refine-reload slot dst xd e s)
@@ -512,14 +564,26 @@ bound0 = XR0 , refl
 bound1 : InBound 1
 bound1 = XR1 , refl
 
--- `div-op b` / `rem-op b` are `div-rrr 0 1 0` or their `-safe` twin; either
--- way the three reg operands are 0,1,0 — reg-bound is the same triple.  We
--- pattern-match the decision Bool (via `div-instr`) so `reg-bound` reduces.
+-- `div-op b` = `div-choose (pow2? b) (safe-divisor? b)`: a `sdiv-pow2-rri 0 1 j`
+-- (reg-bound = InBound 0 × InBound 1) when `b` is a power-of-two literal, else
+-- `div-instr t` = `div-rrr 0 1 0`/`-safe` twin (reg operands 0,1,0). We
+-- pattern-match both decisions so `reg-bound` reduces.
 div-instr-bound : (t : Bool) → reg-bound (div-instr t)
 div-instr-bound true  = bound0 , bound1 , bound0
 div-instr-bound false = bound0 , bound1 , bound0
+div-choose-bound : (m : Maybe ℕ) (t : Bool) → reg-bound (div-choose m t)
+div-choose-bound (just j) t = bound0 , bound1
+div-choose-bound nothing  t = div-instr-bound t
 div-op-bound : ∀ {sh} (b : MArithIR sh) → reg-bound (div-op b)
-div-op-bound b = div-instr-bound (safe-divisor? b)
+div-op-bound b = div-choose-bound (pow2? b) (safe-divisor? b)
+
+-- `mul-op b` = `mul-choose (pow2? b)`: a `shl-rri 0 1 j` (reg-bound =
+-- InBound 0 × InBound 1) when `b` is a power-of-two literal, else `mul-rrr 0 1 0`.
+mul-choose-bound : (m : Maybe ℕ) → reg-bound (mul-choose m)
+mul-choose-bound (just j) = bound0 , bound1
+mul-choose-bound nothing  = bound0 , bound1 , bound0
+mul-op-bound : ∀ {sh} (b : MArithIR sh) → reg-bound (mul-op b)
+mul-op-bound b = mul-choose-bound (pow2? b)
 
 rem-instr-bound : (t : Bool) → reg-bound (rem-instr t)
 rem-instr-bound true  = bound0 , bound1 , bound0
@@ -545,7 +609,7 @@ compile-go-bound d (asub a b) =
 compile-go-bound d (amul a b) =
   All-bound-++ (compile-go d a) _ (compile-go-bound d a)
     (bound0 , All-bound-++ (compile-go (suc d) b) _ (compile-go-bound (suc d) b)
-                (bound1 , (bound0 , bound1 , bound0) , tt))
+                (bound1 , mul-op-bound b , tt))
 compile-go-bound d (adiv a b) =
   All-bound-++ (compile-go d a) _ (compile-go-bound d a)
     (bound0 , All-bound-++ (compile-go (suc d) b) _ (compile-go-bound (suc d) b)

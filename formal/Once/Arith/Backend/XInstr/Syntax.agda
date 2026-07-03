@@ -110,6 +110,18 @@ data XInstr : Set where
   Xdiv-safe-rrr : XReg → XReg → XReg → XInstr
   Xrem-safe-rrr : XReg → XReg → XReg → XInstr
 
+  -- Power-of-two strength reduction (multiply / divide by `2^imm`). SINGLE
+  -- write `dst := f src` carrying an immediate shift count `imm`:
+  --   `Xshl-rri dst src imm`      = `dst := src `shlᵂ` imm` (= src ⊗ 2^imm);
+  --                                 per-arch Emit renders `shl`/`slli`.
+  --   `Xsdiv-pow2-rri dst src imm` = `dst := src `sdiv2ᵏ` imm` (= src /ˢ 2^imm,
+  --                                 truncate toward zero); per-arch Emit
+  --                                 renders the sign-corrected `sar`/`srai`
+  --                                 bias sequence. Emitted ONLY for a positive
+  --                                 power-of-two literal multiplier/divisor.
+  Xshl-rri       : XReg → XReg → ℕ → XInstr
+  Xsdiv-pow2-rri : XReg → XReg → ℕ → XInstr
+
   -- Boundary glue
   Xmov-out  : XReg → XInstr                 -- mov %src, %rax  (function
                                             -- result lands in rax per

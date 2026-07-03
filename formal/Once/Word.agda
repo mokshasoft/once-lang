@@ -39,7 +39,8 @@ module Once.Word where
 
 import Data.Nat as ℕ
 open ℕ using (ℕ; zero; suc; _∸_; _^_; _≤_; _<_; s≤s; z≤n)
-open import Data.Nat.DivMod using (_%_; _/_; n%1≡0; n/1≡n; n%n≡0; m<n⇒m%n≡m; m%n<n)
+open import Data.Nat.DivMod using (_%_; _/_; n%1≡0; n/1≡n; n%n≡0; m<n⇒m%n≡m; m%n<n;
+   %-distribˡ-*; m%n%n≡m%n)
 open import Data.Nat.Properties using
   (m^n≢0; m^n>0; +-identityʳ; +-comm;
    +-mono-≤; +-monoʳ-≤; +-monoʳ-<; ∸-monoˡ-≤; m+n∸n≡m; m∸n+n≡m; m∸[m∸n]≡n;
@@ -173,6 +174,45 @@ module Width (bits : ℕ) where
   a %ˢ b = if b ℕ.≡ᵇ 0 then a
            else if (a ℕ.≡ᵇ intMin) ∧ (b ℕ.≡ᵇ negOne) then 0
            else fromℤ (tmodℤ (toℤ a) (toℤ b))
+
+  ----------------------------------------------------------------------
+  -- Power-of-two strength reduction (multiply / divide by `2^j`).
+  --
+  -- `shlᵂ x j` is the FAITHFUL model of a left shift by `j`: the same
+  -- modular value the hardware `shl $j` computes (for an in-range `j`),
+  -- `norm (x * 2^j)`. The identity `⊗-pow2` shows a multiply by the
+  -- literal `2^j` denotes exactly that shift — a plain modular-distribution
+  -- fact, valid at EVERY width (no `bits ≥ 1` hypothesis). The per-arch
+  -- Emit renders `shl`/`slli`; `compile-go` fires it only for a positive
+  -- power-of-two literal in the in-range window (`j ≤ 30`), so the asm
+  -- shift count is always valid.
+  --
+  -- `sdiv2ᵏ x j` is the truncated signed division by the constant `2^j`
+  -- (`x /ˢ fromℤ (+ 2^j)`; for the in-range window `2^j` is a genuine
+  -- positive divisor ∉ {0,−1}, so `/ˢ` takes its truncate-toward-zero
+  -- branch). The per-arch Emit renders the biased arithmetic-shift-right
+  -- sequence (`sar`/`srai`, sign-corrected) — the TRUSTED printer seam,
+  -- exactly like `idivq` for `_/ˢ_`.
+  ----------------------------------------------------------------------
+
+  shlᵂ : Word → ℕ → Word
+  shlᵂ x j = norm (x ℕ.* (2 ^ j))
+
+  sdiv2ᵏ : Word → ℕ → Word
+  sdiv2ᵏ x j = x /ˢ fromℤ (+ (2 ^ j))
+
+  -- Multiply by the literal `2^j` ≡ a left shift by `j`. Near-definitional:
+  -- `(x * (2^j % m)) % m ≡ (x * 2^j) % m` via `%-distribˡ-*` + `%`-idempotence.
+  ⊗-pow2 : ∀ x j → x ⊗ fromℤ (+ (2 ^ j)) ≡ shlᵂ x j
+  ⊗-pow2 x j =
+    trans (%-distribˡ-* x (2 ^ j % modulus) modulus)
+          (trans (cong (λ w → ((x % modulus) ℕ.* w) % modulus)
+                       (m%n%n≡m%n (2 ^ j) modulus))
+                 (sym (%-distribˡ-* x (2 ^ j) modulus)))
+
+  -- Divide by the literal `2^j` ≡ `sdiv2ᵏ` (definitional).
+  /ˢ-pow2 : ∀ x j → x /ˢ fromℤ (+ (2 ^ j)) ≡ sdiv2ᵏ x j
+  /ˢ-pow2 x j = refl
 
   ----------------------------------------------------------------------
   -- Degenerate-divisor identities (division-guard ELISION, Part A).
