@@ -33,7 +33,7 @@ module Once.Adequacy.MainRealizeAgrees where
 open import Data.Nat using (ℕ)
 open import Data.Maybe using (just)
 open import Data.Unit using (tt)
-open import Data.List using (take)
+open import Data.List using (take; _∷_)
 open import Data.Product using (_×_; _,_; Σ-syntax; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
 
@@ -48,7 +48,12 @@ open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ)
 open import Once.TypeCheck.Classify using (NamedCtx)
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Elaborate
-  using (checkElab; InferElabResult; CheckElabResult; success; resolveExpr; PolyCtx; Imports)
+  using (checkElab; InferElabResult; CheckElabResult; success; resolveExpr; PolyCtx; Imports;
+         ctxWithImportsAndSelfAndPolys)
+open import Data.Bool using (false)
+open import Data.Sum using (inj₁; inj₂)
+open import Data.Empty using (⊥-elim)
+open import Function using (case_of_)
 open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_)
 open import Once.TypeCheck.Soundness using (check-sound)
 open import Once.Denotation.Realize using (realize)
@@ -59,6 +64,10 @@ import Once.Adequacy.ModuleComplete as MC
 open import Once.Adequacy.ModuleComplete using (EffUU)
 open import Once.Adequacy.AcceptSound as AS using (ModuleTyped)
 import Once.Parser.Module.Core as P
+import Once.Compile as C
+import Once.Adequacy.MainForm as MF
+import Once.Adequacy.FunBundle as FB
+open import Once.Adequacy.MtIndep using (mt-den-indep)
 
 -- THE proven agreement — the load-bearing composition uses this:
 open import Once.Adequacy.RealizeBridge using (realize-agrees)
@@ -89,24 +98,40 @@ open import Once.Adequacy.RealizeInvariant using (realize-invariant)
 --     (`seR` = `resolveExpr … se`, `mtder` is `mt`'s main derivation). PLUMBING:
 --     to be discharged by strengthening `Form`/`main-ir-form` to carry `ce` +
 --     the resolver args + the two endpoint identifications.
-postulate
-  main-extract :
-    ∀ (m : P.Module) (mt : ModuleTyped m) (hvm : MC.HasValidMain-decl m mt)
-      (ir : IR Unit Unit) (mi : moduleToIR m ≡ just ir)
-    → Σ-syntax NamedCtx (λ cctx →
-      Σ-syntax RawExpr (λ body →
-      Σ-syntax (Usage (NamedCtx.size cctx)) (λ Ψ →
-      Σ-syntax (Expr (NamedCtx.debruijn cctx) Ψ EffUU) (λ se →
-      Σ-syntax ℕ (λ d → Σ-syntax ℕ (λ f →
-      Σ-syntax (⟦ ⟦ NamedCtx.debruijn cctx ⟧ᶜ ⟧ᴰ) (λ dγ₀ →
-      Σ-syntax (cctx ⊢ᶜ body ∶ EffUU ⨾ Ψ) (λ mtder →
-      Σ-syntax (checkElab cctx body EffUU ≡ success Ψ se d f) (λ ce →
-      Σ-syntax PolyCtx (λ polys →
-      Σ-syntax Imports (λ imps → Σ-syntax Imports (λ userFns → Σ-syntax ℕ (λ fresh →
-        ((n : ℕ) → SD.⟦ proj₁ (proj₂ (ME.source-meaningᴰ m ir mi)) ⟧ˢ tt n
-                 ≡ SD.⟦ resolveExpr polys imps userFns fresh se ⟧ˢ dγ₀ n)
-      × ((n : ℕ) → SD.⟦ proj₂ (MC.mainRealized m mt hvm) ⟧ˢ tt n
-                 ≡ SD.⟦ realize mtder ⟧ˢ dγ₀ n))))))))))))))
+-- Plan 0.55: `main-extract` is now a DEFINITION (postulate deleted). The bundle-
+-- rebased `main-ir-form` (`MainForm`) hands us the selected main node together
+-- with the `FunBundle` `b`/`bme` whose `bundle-realize b bme` IS that node's
+-- `realize (check-sound … ce)`. eq1 = `cong ⟦_⟧ˢ` of the Payload's `seR ≡
+-- resolveExpr … se`; eq2 = `mt-den-indep` ∘ `realize-agree` ∘ the carried
+-- `bundle-realize` witness. Casing `extractFunctions` (reduces `mainRealized` to
+-- `mainRealized-go mt me`) and `compileAllFuns-go` (reduces `main-ir-form` to the
+-- concrete bundle) makes `mt` and `b` share `polys`/`sigEffs`/`funs`.
+main-extract :
+  ∀ (m : P.Module) (mt : ModuleTyped m) (hvm : MC.HasValidMain-decl m mt)
+    (ir : IR Unit Unit) (mi : moduleToIR m ≡ just ir)
+  → Σ-syntax NamedCtx (λ cctx →
+    Σ-syntax RawExpr (λ body →
+    Σ-syntax (Usage (NamedCtx.size cctx)) (λ Ψ →
+    Σ-syntax (Expr (NamedCtx.debruijn cctx) Ψ EffUU) (λ se →
+    Σ-syntax ℕ (λ d → Σ-syntax ℕ (λ f →
+    Σ-syntax (⟦ ⟦ NamedCtx.debruijn cctx ⟧ᶜ ⟧ᴰ) (λ dγ₀ →
+    Σ-syntax (cctx ⊢ᶜ body ∶ EffUU ⨾ Ψ) (λ mtder →
+    Σ-syntax (checkElab cctx body EffUU ≡ success Ψ se d f) (λ ce →
+    Σ-syntax PolyCtx (λ polys →
+    Σ-syntax Imports (λ imps → Σ-syntax Imports (λ userFns → Σ-syntax ℕ (λ fresh →
+      ((n : ℕ) → SD.⟦ proj₁ (proj₂ (ME.source-meaningᴰ m ir mi)) ⟧ˢ tt n
+               ≡ SD.⟦ resolveExpr polys imps userFns fresh se ⟧ˢ dγ₀ n)
+    × ((n : ℕ) → SD.⟦ proj₂ (MC.mainRealized m mt hvm) ⟧ˢ tt n
+               ≡ SD.⟦ realize mtder ⟧ˢ dγ₀ n))))))))))))))
+main-extract m mt hvm ir mi =
+  let (funs , polys , ef-eq , b , bme , mctx , mbody , mΨ , mse , md , mf , mce , ir≡ , rw) = MF.main-node-of m ir mi
+  in    ctxWithImportsAndSelfAndPolys mctx (C.buildPolyCtx polys) (C.collectSigEffects (C.Module.decls m)) "main" EffUU
+      , mbody , mΨ , mse , md , mf , tt
+      , check-sound (ctxWithImportsAndSelfAndPolys mctx (C.buildPolyCtx polys) (C.collectSigEffects (C.Module.decls m)) "main" EffUU) mbody EffUU mce
+      , mce , C.buildPolyCtx polys , (("main" , EffUU) ∷ mctx) , (("main" , EffUU) ∷ mctx) , 0
+      , (λ n → refl)
+      , (λ n → trans (MF.mainRealized-bundle m mt hvm b bme ef-eq n)
+                     (cong (λ z → SD.⟦ proj₂ z ⟧ˢ tt n) rw))
 
 ------------------------------------------------------------------------
 -- The coherence hook, now PROVEN from A/B/C (the postulate is gone).
