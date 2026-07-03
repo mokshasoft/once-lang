@@ -349,6 +349,21 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
                   → ValidAtWF m continuation-alloc v loc s
                   → BeforeFrontier continuation-alloc loc
                   → ResultPlace B m alloc continuation-alloc v s
+      -- Force-it: register-resident primitive result. The value `v` lives in
+      -- Output as a register literal (abstract sentinel `unit-storedvalue`;
+      -- the real bits are the per-arch Simulation's job), NOT as a pointer.
+      -- Validity is location-only (`valid-primitive-wf`), so a witness `loc`
+      -- carries `ValidAtWF`/`BeforeFrontier`, while the rax field HONESTLY
+      -- records `Output ≡ unit-storedvalue` — provable, unlike the refutable
+      -- `SV-Ptr` claim `at-loc` would force on a sentinel.
+      at-reg      : ∀ {B m alloc continuation-alloc v s}
+                    (loc : ValueLocation FS)
+                  → ValidAtWF m alloc v loc s
+                  → BeforeFrontier alloc loc
+                  → readReg (regs s) Output ≡ unit-storedvalue
+                  → ValidAtWF m continuation-alloc v loc s
+                  → BeforeFrontier continuation-alloc loc
+                  → ResultPlace B m alloc continuation-alloc v s
 
     -- Plan 0.2.4.5 D1 trust points: place-* extraction helpers.
     --
@@ -386,36 +401,52 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     -- spec migration covered. Tracked as Plan 0.2.4.5 D1 task #28.
     place-loc : ∀ {B m a₁ a₂ v s} → ResultPlace B m a₁ a₂ v s → ValueLocation FS
     place-loc (at-loc loc _ _ _ _ _) = loc
+    place-loc (at-reg loc _ _ _ _ _) = loc
     place-loc {Unit} unit-result = unit-result-loc-stub
       where postulate unit-result-loc-stub : ValueLocation FS
 
     place-valid : ∀ {B m a₁ a₂ v s} (rp : ResultPlace B m a₁ a₂ v s) →
                   ValidAtWF m a₁ v (place-loc rp) s
     place-valid (at-loc _ valid _ _ _ _) = valid
+    place-valid (at-reg _ valid _ _ _ _) = valid
     place-valid {Unit} {m} {a₁} {_} {tt} {s} unit-result = valid-unit-stub
       where postulate valid-unit-stub : ValidAtWF m a₁ {Unit} tt _ s
 
     place-before : ∀ {B m a₁ a₂ v s} (rp : ResultPlace B m a₁ a₂ v s) →
                    BeforeFrontier a₁ (place-loc rp)
     place-before (at-loc _ _ before _ _ _) = before
+    place-before (at-reg _ _ before _ _ _) = before
     place-before {Unit} {_} {a₁} unit-result = before-stub
       where postulate before-stub : BeforeFrontier a₁ _
 
+    -- The actual StoredValue Output holds for this result: a pointer for a
+    -- located result (`at-loc`), the register sentinel for a register-resident
+    -- primitive (`at-reg`). For `at-loc` this reduces DEFINITIONALLY to
+    -- `SV-Ptr (place-loc rp)`, so existing `at-loc`-only consumers are unchanged.
+    place-sv : ∀ {B m a₁ a₂ v s} → ResultPlace B m a₁ a₂ v s → StoredValue FS
+    place-sv (at-loc loc _ _ _ _ _) = SV-Ptr loc
+    place-sv (at-reg _   _ _ _ _ _) = unit-storedvalue
+    place-sv {Unit} unit-result     = SV-Ptr unit-result-sv-loc
+      where postulate unit-result-sv-loc : ValueLocation FS
+
     place-rax : ∀ {B m a₁ a₂ v s} (rp : ResultPlace B m a₁ a₂ v s) →
-                readReg (regs s) Output ≡ SV-Ptr (place-loc rp)
+                readReg (regs s) Output ≡ place-sv rp
     place-rax (at-loc _ _ _ rax _ _) = rax
+    place-rax (at-reg _ _ _ rax _ _) = rax
     place-rax {Unit} {_} {_} {_} {_} {s} unit-result = rax-stub
-      where postulate rax-stub : readReg (regs s) Output ≡ SV-Ptr _
+      where postulate rax-stub : readReg (regs s) Output ≡ place-sv {Unit} unit-result
 
     place-cont-valid : ∀ {B m a₁ a₂ v s} (rp : ResultPlace B m a₁ a₂ v s) →
                        ValidAtWF m a₂ v (place-loc rp) s
     place-cont-valid (at-loc _ _ _ _ cvalid _) = cvalid
+    place-cont-valid (at-reg _ _ _ _ cvalid _) = cvalid
     place-cont-valid {Unit} {m} {_} {a₂} {tt} {s} unit-result = valid-unit-cs
       where postulate valid-unit-cs : ValidAtWF m a₂ {Unit} tt _ s
 
     place-cont-before : ∀ {B m a₁ a₂ v s} (rp : ResultPlace B m a₁ a₂ v s) →
                        BeforeFrontier a₂ (place-loc rp)
     place-cont-before (at-loc _ _ _ _ _ cbefore) = cbefore
+    place-cont-before (at-reg _ _ _ _ _ cbefore) = cbefore
     place-cont-before {Unit} {_} {_} {a₂} unit-result = before-cs
       where postulate before-cs : BeforeFrontier a₂ _
 
