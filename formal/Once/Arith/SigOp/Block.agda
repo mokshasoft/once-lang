@@ -40,7 +40,7 @@ open import Once.CanonicalName using (bare)
 open import Once.Arith.Machine.AbsState
   using (InputShape; shape-unit; shape-int; shape-pair; ⟦_⟧S; InputPath; Side; Fst; Snd)
 open import Once.Arith.Machine.IR
-  using (MArithIR; alit; ainput; aadd; asub; amul; aneg;
+  using (MArithIR; alit; ainput; aadd; asub; amul; adiv; amod; aneg;
          shape-as-type; ArithBlock; mk-block)
 import Once.Word as OnceWord
 module W = OnceWord.Word64
@@ -84,6 +84,8 @@ show-arith-ir (ainput p)   = "I" ++ show-path p
 show-arith-ir (aadd a b)   = "A" ++ show-arith-ir a ++ show-arith-ir b
 show-arith-ir (asub a b)   = "B" ++ show-arith-ir a ++ show-arith-ir b
 show-arith-ir (amul a b)   = "M" ++ show-arith-ir a ++ show-arith-ir b
+show-arith-ir (adiv a b)   = "D" ++ show-arith-ir a ++ show-arith-ir b
+show-arith-ir (amod a b)   = "R" ++ show-arith-ir a ++ show-arith-ir b
 show-arith-ir (aneg a)     = "G" ++ show-arith-ir a
 
 -- | The digest is just the serialisation. (A hash function would be
@@ -139,6 +141,8 @@ block-semM {sh} (ainput p) inp = maybe-zeroM (projectM sh p inp)
 block-semM (aadd a b)      inp = block-semM a inp W.⊕ block-semM b inp
 block-semM (asub a b)      inp = block-semM a inp W.⊖ block-semM b inp
 block-semM (amul a b)      inp = block-semM a inp W.⊗ block-semM b inp
+block-semM (adiv a b)      inp = block-semM a inp W./ˢ block-semM b inp
+block-semM (amod a b)      inp = block-semM a inp W.%ˢ block-semM b inp
 block-semM (aneg a)        inp = W.⊝ block-semM a inp
 
 -- | The block's `SigOpInfo`.

@@ -1,0 +1,13 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson and contributors
+
+-- arith-mod-1.once: remainder. f x = x % 6; f 20 = 2. Exits 2.
+-- Plan 0.57 (D055): % is total.
+
+import I.Linux.Syscalls as S
+
+f : Int -> Int
+f x = x % 6
+
+main : IO Unit
+main = exit@S (f 20)

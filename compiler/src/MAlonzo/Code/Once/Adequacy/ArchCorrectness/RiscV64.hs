@@ -19,6 +19,8 @@ import qualified MAlonzo.RTE
 import qualified Data.Text
 import qualified MAlonzo.Code.Agda.Builtin.Equality
 import qualified MAlonzo.Code.Data.Nat.Base
+import qualified MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs
+import qualified MAlonzo.Code.Once.Adequacy.CPU
 import qualified MAlonzo.Code.Once.Adequacy.Compile
 import qualified MAlonzo.Code.Once.CCC.Codegen.IRObsCorrectFlat
 import qualified MAlonzo.Code.Once.CCC.Machine.Allocation
@@ -27,18 +29,17 @@ import qualified MAlonzo.Code.Once.CCC.Machine.Locations
 import qualified MAlonzo.Code.Once.CCC.Machine.SMCore
 import qualified MAlonzo.Code.Once.CCC.Target.RiscV64.FrameInstantiation
 import qualified MAlonzo.Code.Once.IR
+import qualified MAlonzo.Code.Once.Target.Arch
 import qualified MAlonzo.Code.Once.Type
 
 -- Once.Adequacy.ArchCorrectness.RiscV64.program-bound
 d_program'45'bound_8
   = error
       "MAlonzo Runtime Error: postulate evaluated: Once.Adequacy.ArchCorrectness.RiscV64.program-bound"
--- Once.Adequacy.ArchCorrectness.RiscV64._.IRObsCorrectF
-d_IRObsCorrectF_12 ::
-  MAlonzo.Code.Once.Type.T_Type_112 ->
-  MAlonzo.Code.Once.Type.T_Type_112 ->
-  MAlonzo.Code.Once.IR.T_IR_16 -> ()
-d_IRObsCorrectF_12 = erased
+-- Once.Adequacy.ArchCorrectness.RiscV64.flat-trace
+d_flat'45'trace_10
+  = error
+      "MAlonzo Runtime Error: postulate evaluated: Once.Adequacy.ArchCorrectness.RiscV64.flat-trace"
 -- Once.Adequacy.ArchCorrectness.RiscV64._.ir-obs-correct
 d_ir'45'obs'45'correct_14 ::
   MAlonzo.Code.Once.Type.T_Type_112 ->
@@ -55,24 +56,20 @@ d_ir'45'obs'45'correct_14 ::
   MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_610 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Once.CCC.Codegen.IRObsCorrectFlat.T_MachineRefinesObsF_250
+  MAlonzo.Code.Once.CCC.Codegen.IRObsCorrectFlat.T_MachineRefinesObsF_260
 d_ir'45'obs'45'correct_14
   = coe
-      MAlonzo.Code.Once.CCC.Codegen.IRObsCorrectFlat.d_ir'45'obs'45'correct_340
+      MAlonzo.Code.Once.CCC.Codegen.IRObsCorrectFlat.d_ir'45'obs'45'correct_506
       (coe
          MAlonzo.Code.Once.CCC.Target.RiscV64.FrameInstantiation.d_rv64'45'frame'45'semantics_302)
       (coe d_program'45'bound_8)
--- Once.Adequacy.ArchCorrectness.RiscV64.riscv64-flat-from-obs
-d_riscv64'45'flat'45'from'45'obs_22
-  = error
-      "MAlonzo Runtime Error: postulate evaluated: Once.Adequacy.ArchCorrectness.RiscV64.riscv64-flat-from-obs"
 -- Once.Adequacy.ArchCorrectness.RiscV64.riscv64-correct
-d_riscv64'45'correct_24 ::
+d_riscv64'45'correct_16 ::
   MAlonzo.Code.Once.Adequacy.Compile.T_ArchCorrect_46
-d_riscv64'45'correct_24
+d_riscv64'45'correct_16
   = coe
-      d_riscv64'45'flat'45'from'45'obs_22
-      (MAlonzo.Code.Once.CCC.Codegen.IRObsCorrectFlat.d_ir'45'obs'45'correct_340
-         (coe
-            MAlonzo.Code.Once.CCC.Target.RiscV64.FrameInstantiation.d_rv64'45'frame'45'semantics_302)
-         (coe d_program'45'bound_8))
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_flat'45'from'45'obs_46
+      (coe
+         MAlonzo.Code.Once.Adequacy.CPU.d_arch'45'semantics_6
+         (coe MAlonzo.Code.Once.Target.Arch.C_riscv64_12))
+      (coe d_flat'45'trace_10)

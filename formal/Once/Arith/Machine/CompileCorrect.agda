@@ -29,13 +29,13 @@ open import Once.Arith.Machine.AbsState
          Store; empty-store; _[_↦_]; _[_]; store-write-same; store-write-other)
 open import Once.Arith.Machine.AbsInstr
   using (AbstractInstr; load-input; load-imm; add-rrr; sub-rrr; mul-rrr;
-         neg-rr; spill; reload; move-to-out;
+         div-rrr; rem-rrr; neg-rr; spill; reload; move-to-out;
          maybe-zero; bin-op; un-op; module Exec)
 open Exec bits using (step; run-abstract)
 open import Once.Arith.Machine.IR
-  using (MArithIR; alit; ainput; aadd; asub; amul; aneg; eval-arith)
+  using (MArithIR; alit; ainput; aadd; asub; amul; adiv; amod; aneg; eval-arith)
 open import Once.Word using (module Width)
-open Width bits using (fromℤ; _⊕_; _⊖_; _⊗_; ⊝_)
+open Width bits using (fromℤ; _⊕_; _⊖_; _⊗_; _/ˢ_; _%ˢ_; ⊝_)
 open import Once.Arith.Machine.WordSem using (module Sem)
 open Sem bits using (eval-arith-W)
 open import Once.Arith.Machine.Compile using (compile-go; compile-abs)
@@ -229,6 +229,88 @@ amul-correct {sh} d a b s = record
     regs-s3-0 = trans (reg0 ih-b)
                       (cong (λ x → just (eval-arith-W b x)) (input-eq ih-a))
 
+adiv-correct : ∀ {sh} (d : ℕ) (a b : MArithIR sh) (s : ArithAbsState sh) →
+  CompileGoInv d (adiv a b) s
+adiv-correct {sh} d a b s = record
+  { reg0      = trans (cong (λ x → regs x [ 0 ]) bridge)
+                      (cong₂ (bin-op _/ˢ_)
+                             (trans scratch-s3-d (reg0 ih-a))
+                             regs-s3-0)
+  ; scratch≤  = λ i lt → trans (cong (λ x → scratch x [ i ]) bridge)
+                          (trans (scratch≤ ih-b i (<-suc lt))
+                          (trans (store-write-other (scratch s1) d i
+                                   (regs s1 [ 0 ]) (d≢i lt))
+                                 (scratch≤ ih-a i lt)))
+  ; input-eq  = trans (cong input bridge)
+                      (trans (input-eq ih-b) (input-eq ih-a))
+  ; output-eq = trans (cong output bridge)
+                      (trans (output-eq ih-b) (output-eq ih-a))
+  }
+  where
+    ih-a = compile-go-correct d a s
+    s1   = run-abstract (compile-go d a) s
+    s2   = step (spill 0 d) s1
+    ih-b = compile-go-correct (suc d) b s2
+    s3   = run-abstract (compile-go (suc d) b) s2
+    s4   = step (reload d 1) s3
+    s5   = step (div-rrr 0 1 0) s4
+
+    bridge : run-abstract (compile-go d (adiv a b)) s ≡ s5
+    bridge = trans
+      (run-abstract-app (compile-go d a)
+        (spill 0 d ∷ compile-go (suc d) b ++ (reload d 1 ∷ div-rrr 0 1 0 ∷ [])) s)
+      (run-abstract-app (compile-go (suc d) b)
+        (reload d 1 ∷ div-rrr 0 1 0 ∷ []) s2)
+
+    scratch-s3-d : scratch s3 [ d ] ≡ regs s1 [ 0 ]
+    scratch-s3-d = trans (scratch≤ ih-b d ≤-refl)
+                         (store-write-same (scratch s1) d (regs s1 [ 0 ]))
+
+    regs-s3-0 : regs s3 [ 0 ] ≡ just (eval-arith-W b (input s))
+    regs-s3-0 = trans (reg0 ih-b)
+                      (cong (λ x → just (eval-arith-W b x)) (input-eq ih-a))
+
+amod-correct : ∀ {sh} (d : ℕ) (a b : MArithIR sh) (s : ArithAbsState sh) →
+  CompileGoInv d (amod a b) s
+amod-correct {sh} d a b s = record
+  { reg0      = trans (cong (λ x → regs x [ 0 ]) bridge)
+                      (cong₂ (bin-op _%ˢ_)
+                             (trans scratch-s3-d (reg0 ih-a))
+                             regs-s3-0)
+  ; scratch≤  = λ i lt → trans (cong (λ x → scratch x [ i ]) bridge)
+                          (trans (scratch≤ ih-b i (<-suc lt))
+                          (trans (store-write-other (scratch s1) d i
+                                   (regs s1 [ 0 ]) (d≢i lt))
+                                 (scratch≤ ih-a i lt)))
+  ; input-eq  = trans (cong input bridge)
+                      (trans (input-eq ih-b) (input-eq ih-a))
+  ; output-eq = trans (cong output bridge)
+                      (trans (output-eq ih-b) (output-eq ih-a))
+  }
+  where
+    ih-a = compile-go-correct d a s
+    s1   = run-abstract (compile-go d a) s
+    s2   = step (spill 0 d) s1
+    ih-b = compile-go-correct (suc d) b s2
+    s3   = run-abstract (compile-go (suc d) b) s2
+    s4   = step (reload d 1) s3
+    s5   = step (rem-rrr 0 1 0) s4
+
+    bridge : run-abstract (compile-go d (amod a b)) s ≡ s5
+    bridge = trans
+      (run-abstract-app (compile-go d a)
+        (spill 0 d ∷ compile-go (suc d) b ++ (reload d 1 ∷ rem-rrr 0 1 0 ∷ [])) s)
+      (run-abstract-app (compile-go (suc d) b)
+        (reload d 1 ∷ rem-rrr 0 1 0 ∷ []) s2)
+
+    scratch-s3-d : scratch s3 [ d ] ≡ regs s1 [ 0 ]
+    scratch-s3-d = trans (scratch≤ ih-b d ≤-refl)
+                         (store-write-same (scratch s1) d (regs s1 [ 0 ]))
+
+    regs-s3-0 : regs s3 [ 0 ] ≡ just (eval-arith-W b (input s))
+    regs-s3-0 = trans (reg0 ih-b)
+                      (cong (λ x → just (eval-arith-W b x)) (input-eq ih-a))
+
 compile-go-correct d (alit z) s = record
   { reg0      = refl
   ; scratch≤  = λ _ _ → refl
@@ -240,6 +322,8 @@ compile-go-correct d (aneg a)   s = aneg-correct d a s
 compile-go-correct d (aadd a b) s = aadd-correct d a b s
 compile-go-correct d (asub a b) s = asub-correct d a b s
 compile-go-correct d (amul a b) s = amul-correct d a b s
+compile-go-correct d (adiv a b) s = adiv-correct d a b s
+compile-go-correct d (amod a b) s = amod-correct d a b s
 
 ------------------------------------------------------------------------
 -- Block validity: `output-of (run-abstract (compile-abs e) (init env))`

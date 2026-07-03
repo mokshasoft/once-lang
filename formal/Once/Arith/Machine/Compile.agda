@@ -27,9 +27,9 @@ open import Data.List using (List; []; _∷_; _++_)
 
 open import Once.Arith.Machine.AbsInstr
   using (AbstractInstr; load-input; load-imm; add-rrr; sub-rrr; mul-rrr;
-         neg-rr; spill; reload; move-to-out)
+         div-rrr; rem-rrr; neg-rr; spill; reload; move-to-out)
 open import Once.Arith.Machine.IR
-  using (MArithIR; alit; ainput; aadd; asub; amul; aneg)
+  using (MArithIR; alit; ainput; aadd; asub; amul; adiv; amod; aneg)
 
 ------------------------------------------------------------------------
 -- Register / scratch budget
@@ -46,6 +46,8 @@ required-scratch (ainput _)   = 0
 required-scratch (aadd a b)   = required-scratch a ⊔ suc (required-scratch b)
 required-scratch (asub a b)   = required-scratch a ⊔ suc (required-scratch b)
 required-scratch (amul a b)   = required-scratch a ⊔ suc (required-scratch b)
+required-scratch (adiv a b)   = required-scratch a ⊔ suc (required-scratch b)
+required-scratch (amod a b)   = required-scratch a ⊔ suc (required-scratch b)
 required-scratch (aneg a)     = required-scratch a
 
 ------------------------------------------------------------------------
@@ -72,6 +74,16 @@ compile-go d (amul a b)   =
   compile-go d a ++ (spill 0 d ∷ []) ++
   compile-go (suc d) b ++
   (reload d 1 ∷ mul-rrr 0 1 0 ∷ [])
+compile-go d (adiv a b)   =
+  -- After: reg 0 = (reg 1) /ˢ (reg 0) = a /ˢ b
+  compile-go d a ++ (spill 0 d ∷ []) ++
+  compile-go (suc d) b ++
+  (reload d 1 ∷ div-rrr 0 1 0 ∷ [])
+compile-go d (amod a b)   =
+  -- After: reg 0 = (reg 1) %ˢ (reg 0) = a %ˢ b
+  compile-go d a ++ (spill 0 d ∷ []) ++
+  compile-go (suc d) b ++
+  (reload d 1 ∷ rem-rrr 0 1 0 ∷ [])
 compile-go d (aneg a)     =
   compile-go d a ++ (neg-rr 0 0 ∷ [])
 

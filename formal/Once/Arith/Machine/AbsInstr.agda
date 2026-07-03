@@ -51,6 +51,12 @@ data AbstractInstr : Set where
   -- | `mul-rrr dst a b` : reg dst := reg a * reg b.
   mul-rrr     : ℕ → ℕ → ℕ → AbstractInstr
 
+  -- | `div-rrr dst a b` : reg dst := reg a /ˢ reg b (D055 total signed div).
+  div-rrr     : ℕ → ℕ → ℕ → AbstractInstr
+
+  -- | `rem-rrr dst a b` : reg dst := reg a %ˢ reg b (D055 total signed rem).
+  rem-rrr     : ℕ → ℕ → ℕ → AbstractInstr
+
   -- | `neg-rr dst a` : reg dst := - reg a.
   neg-rr      : ℕ → ℕ → AbstractInstr
 
@@ -98,7 +104,7 @@ maybe-zero nothing  = + 0
 ------------------------------------------------------------------------
 
 module Exec (bits : ℕ) where
-  open Width bits using (fromℤ; _⊕_; _⊖_; _⊗_; ⊝_)
+  open Width bits using (fromℤ; _⊕_; _⊖_; _⊗_; _/ˢ_; _%ˢ_; ⊝_)
 
   -- | One abstract step.
   step : ∀ {sh} → AbstractInstr → ArithAbsState sh → ArithAbsState sh
@@ -116,6 +122,12 @@ module Exec (bits : ℕ) where
   step (mul-rrr dst a b) s = record s
     { regs = ArithAbsState.regs s [ dst ↦
         bin-op _⊗_ (ArithAbsState.regs s [ a ]) (ArithAbsState.regs s [ b ]) ] }
+  step (div-rrr dst a b) s = record s
+    { regs = ArithAbsState.regs s [ dst ↦
+        bin-op _/ˢ_ (ArithAbsState.regs s [ a ]) (ArithAbsState.regs s [ b ]) ] }
+  step (rem-rrr dst a b) s = record s
+    { regs = ArithAbsState.regs s [ dst ↦
+        bin-op _%ˢ_ (ArithAbsState.regs s [ a ]) (ArithAbsState.regs s [ b ]) ] }
   step (neg-rr dst a) s = record s
     { regs = ArithAbsState.regs s [ dst ↦
         un-op ⊝_ (ArithAbsState.regs s [ a ]) ] }

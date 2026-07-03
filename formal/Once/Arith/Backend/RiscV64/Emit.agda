@@ -109,6 +109,10 @@ instr-text (Xmov-arg dst path) = path-load-text dst path
 instr-text (Xadd-rr dst src)  = "    add " ++ reg-text dst ++ ", " ++ reg-text dst ++ ", " ++ reg-text src ++ "\n"
 instr-text (Xsub-rr dst src)  = "    sub " ++ reg-text dst ++ ", " ++ reg-text dst ++ ", " ++ reg-text src ++ "\n"
 instr-text (Ximul-rr dst src) = "    mul " ++ reg-text dst ++ ", " ++ reg-text dst ++ ", " ++ reg-text src ++ "\n"
+-- RV64M `div`/`rem` are signed and TOTAL by spec (D055): div-by-zero → -1
+-- (quotient) / dividend (remainder); INT_MIN/-1 → INT_MIN / 0. Clean 1-1.
+instr-text (Xdiv-rrr dst a b) = "    div " ++ reg-text dst ++ ", " ++ reg-text a ++ ", " ++ reg-text b ++ "\n"
+instr-text (Xrem-rrr dst a b) = "    rem " ++ reg-text dst ++ ", " ++ reg-text a ++ ", " ++ reg-text b ++ "\n"
 instr-text (Xneg-r dst)       = "    neg " ++ reg-text dst ++ ", " ++ reg-text dst ++ "\n"
 instr-text (Xmov-out src)     = "    mv a0, " ++ reg-text src ++ "\n"
 

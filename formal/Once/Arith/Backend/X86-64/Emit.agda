@@ -136,6 +136,49 @@ instr-text (Xmov-arg dst path) = path-load-text dst path
 instr-text (Xadd-rr dst src)  = "    addq " ++ reg-text src ++ ", " ++ reg-text dst ++ "\n"
 instr-text (Xsub-rr dst src)  = "    subq " ++ reg-text src ++ ", " ++ reg-text dst ++ "\n"
 instr-text (Ximul-rr dst src) = "    imulq " ++ reg-text src ++ ", " ++ reg-text dst ++ "\n"
+-- D055 total signed division. x86 `idiv` traps (#DE) on divisor 0 AND on
+-- INT_MIN/-1, so we guard both cases before ever executing `idivq`.
+-- Result computed in %rax; %rdx is caller-saved scratch (never an arith
+-- register). GNU-as numeric local labels (`1f`/`2f`/`3f`) are per-emission
+-- reusable, so multiple div/rem sequences never collide.
+instr-text (Xdiv-rrr dst a b) =
+     "    movq " ++ reg-text a ++ ", %rax\n" ++
+     "    testq " ++ reg-text b ++ ", " ++ reg-text b ++ "\n" ++
+     "    jne 1f\n" ++
+     "    movq $-1, %rax\n" ++            -- a / 0 = -1
+     "    jmp 3f\n" ++
+     "1:\n" ++
+     "    cmpq $-1, " ++ reg-text b ++ "\n" ++
+     "    jne 2f\n" ++
+     "    movabsq $0x8000000000000000, %rdx\n" ++
+     "    cmpq %rdx, %rax\n" ++
+     "    jne 2f\n" ++
+     "    movq %rdx, %rax\n" ++           -- INT_MIN / -1 = INT_MIN
+     "    jmp 3f\n" ++
+     "2:\n" ++
+     "    cqto\n" ++
+     "    idivq " ++ reg-text b ++ "\n" ++
+     "3:\n" ++
+     "    movq %rax, " ++ reg-text dst ++ "\n"
+instr-text (Xrem-rrr dst a b) =
+     "    movq " ++ reg-text a ++ ", %rax\n" ++
+     "    testq " ++ reg-text b ++ ", " ++ reg-text b ++ "\n" ++
+     "    jne 1f\n" ++
+     "    jmp 3f\n" ++                    -- a % 0 = a  (a already in %rax)
+     "1:\n" ++
+     "    cmpq $-1, " ++ reg-text b ++ "\n" ++
+     "    jne 2f\n" ++
+     "    movabsq $0x8000000000000000, %rdx\n" ++
+     "    cmpq %rdx, %rax\n" ++
+     "    jne 2f\n" ++
+     "    xorl %eax, %eax\n" ++           -- INT_MIN % -1 = 0
+     "    jmp 3f\n" ++
+     "2:\n" ++
+     "    cqto\n" ++
+     "    idivq " ++ reg-text b ++ "\n" ++
+     "    movq %rdx, %rax\n" ++           -- remainder is in %rdx
+     "3:\n" ++
+     "    movq %rax, " ++ reg-text dst ++ "\n"
 instr-text (Xneg-r dst)       = "    negq " ++ reg-text dst ++ "\n"
 instr-text (Xmov-out src)     = "    movq " ++ reg-text src ++ ", %rax\n"
 

@@ -21,10 +21,10 @@ open import Data.Integer using (+_)
 open import Data.Maybe using (just; nothing)
 import Once.Word as W
 open import Once.Arith.Machine.Shape using (InputShape; ⟦_⟧S; InputPath; project)
-open import Once.Arith.Machine.IR using (MArithIR; alit; ainput; aadd; asub; amul; aneg)
+open import Once.Arith.Machine.IR using (MArithIR; alit; ainput; aadd; asub; amul; adiv; amod; aneg)
 
 module Sem (bits : ℕ) where
-  open W.Width bits using (Word; fromℤ; _⊕_; _⊖_; _⊗_; ⊝_)
+  open W.Width bits using (Word; fromℤ; _⊕_; _⊖_; _⊗_; _/ˢ_; _%ˢ_; ⊝_)
 
   -- | Mirrors `IR.eval-arith` op-for-op with `Once.Word`'s modular
   -- operations, applying `fromℤ` at the leaves. The target of the
@@ -37,4 +37,6 @@ module Sem (bits : ℕ) where
   eval-arith-W (aadd a b) inp = eval-arith-W a inp ⊕ eval-arith-W b inp
   eval-arith-W (asub a b) inp = eval-arith-W a inp ⊖ eval-arith-W b inp
   eval-arith-W (amul a b) inp = eval-arith-W a inp ⊗ eval-arith-W b inp
+  eval-arith-W (adiv a b) inp = eval-arith-W a inp /ˢ eval-arith-W b inp
+  eval-arith-W (amod a b) inp = eval-arith-W a inp %ˢ eval-arith-W b inp
   eval-arith-W (aneg a)   inp = ⊝ eval-arith-W a inp

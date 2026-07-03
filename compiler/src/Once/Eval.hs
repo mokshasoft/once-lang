@@ -118,8 +118,12 @@ evalArith numTy expr v = case expr of
   MA.C_Add_92 _ _ e1 e2 -> binOp (+) e1 e2 v
   MA.C_Sub_100 _ _ e1 e2 -> binOp (-) e1 e2 v
   MA.C_Mul_108 _ _ e1 e2 -> binOp (*) e1 e2 v
-  MA.C_Div_116 _ _ e1 e2 -> binOp div e1 e2 v
-  MA.C_Mod_124 _ _ e1 e2 -> binOp mod e1 e2 v
+  -- D055: `/` and `%` are TOTAL, truncated toward zero (Haskell quot/rem),
+  -- with a zero divisor yielding -1 (div) / the dividend (rem). This matches
+  -- the Word-level `_/ˢ_`/`_%ˢ_` (Once.Word); div/mod (round toward -∞,
+  -- partial) would DISAGREE and crash constant-folding on x / 0.
+  MA.C_Div_116 _ _ e1 e2 -> binOp d055div e1 e2 v
+  MA.C_Mod_124 _ _ e1 e2 -> binOp d055mod e1 e2 v
 
   -- Unary negation
   MA.C_Neg_130 e -> do
@@ -136,6 +140,14 @@ evalArith numTy expr v = case expr of
   MA.C_Conv_146 _ e -> evalArith numTy e v
 
   where
+    -- D055 total signed div/rem over unbounded Integer (no Word wraparound
+    -- to model here — this is the compile-time oracle). quot/rem truncate
+    -- toward zero; a zero divisor is the total sentinel case.
+    d055div :: Integer -> Integer -> Integer
+    d055div a b = if b == 0 then -1 else quot a b
+    d055mod :: Integer -> Integer -> Integer
+    d055mod a b = if b == 0 then a  else rem a b
+
     binOp :: (Integer -> Integer -> Integer) -> MA.T_ArithIR_72 -> MA.T_ArithIR_72 -> Value -> Either EvalError Value
     binOp f e1 e2 input = do
       v1 <- evalArith numTy e1 input

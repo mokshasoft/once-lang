@@ -1,0 +1,13 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson and contributors
+
+-- arith-mod-zero.once: D055 total remainder by zero: x % 0 = x.
+-- f 7 = 7 % 0 = 7. Expected exit code 7.
+
+import I.Linux.Syscalls as S
+
+f : Int -> Int
+f x = x % 0
+
+main : IO Unit
+main = exit@S (f 7)

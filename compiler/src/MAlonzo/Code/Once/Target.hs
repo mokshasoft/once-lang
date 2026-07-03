@@ -42,7 +42,7 @@ data T_Target_4
                      (MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
                       MAlonzo.Code.Agda.Builtin.String.T_String_6)
                      MAlonzo.Code.Agda.Builtin.String.T_String_6
-                     ([MAlonzo.Code.Once.Arith.Machine.IR.T_ArithBlock_86] ->
+                     ([MAlonzo.Code.Once.Arith.Machine.IR.T_ArithBlock_126] ->
                       MAlonzo.Code.Agda.Builtin.String.T_String_6)
                      MAlonzo.Code.Once.Target.RegConvention.T_RegConvention_16
 -- Once.Target.Target.irToAsm
@@ -95,7 +95,7 @@ d_functionEpilogue_44 v0
 -- Once.Target.Target.emitArithBlocks
 d_emitArithBlocks_46 ::
   T_Target_4 ->
-  [MAlonzo.Code.Once.Arith.Machine.IR.T_ArithBlock_86] ->
+  [MAlonzo.Code.Once.Arith.Machine.IR.T_ArithBlock_126] ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
 d_emitArithBlocks_46 v0
   = case coe v0 of

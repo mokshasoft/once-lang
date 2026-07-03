@@ -96,6 +96,13 @@ data XInstr : Set where
   Ximul-rr  : XReg → XReg → XInstr          -- imul %src, %dst
   Xneg-r    : XReg → XInstr                 -- neg %dst
 
+  -- Division / remainder (D055 total signed). THREE-address (dst, dividend,
+  -- divisor) — NOT the in-place 2-address form: x86 `idiv` implicitly uses
+  -- rax/rdx regardless, so an explicit dividend/divisor pair avoids any
+  -- aliasing constraint on `dst`. `dst := a /ˢ b` / `dst := a %ˢ b`.
+  Xdiv-rrr  : XReg → XReg → XReg → XInstr    -- dst := dividend /ˢ divisor
+  Xrem-rrr  : XReg → XReg → XReg → XInstr    -- dst := dividend %ˢ divisor
+
   -- Boundary glue
   Xmov-out  : XReg → XInstr                 -- mov %src, %rax  (function
                                             -- result lands in rax per

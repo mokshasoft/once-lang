@@ -17,12 +17,13 @@
 
 module Once.Arith.Machine.IR where
 
-open import Data.Integer using (ℤ; +_)
+open import Data.Integer using (ℤ; +_; ∣_∣; sign; _◃_)
 import Data.Integer as ℤ
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_,_; proj₁; proj₂)
-open import Data.Nat using (ℕ)
+open import Data.Nat using (ℕ; zero; suc)
 import Data.Nat as ℕ
+import Data.Sign as Sign
 
 open import Once.Type using (Type; Unit; Int)
 import Once.Type as T
@@ -45,6 +46,8 @@ data MArithIR (sh : InputShape) : Set where
   aadd       : MArithIR sh → MArithIR sh → MArithIR sh
   asub       : MArithIR sh → MArithIR sh → MArithIR sh
   amul       : MArithIR sh → MArithIR sh → MArithIR sh
+  adiv       : MArithIR sh → MArithIR sh → MArithIR sh
+  amod       : MArithIR sh → MArithIR sh → MArithIR sh
   aneg       : MArithIR sh → MArithIR sh
 
 ------------------------------------------------------------------------
@@ -57,6 +60,19 @@ data MArithIR (sh : InputShape) : Set where
 -- as a default. Recognition (Phase B) only produces well-formed
 -- paths; the validity theorem (Phase C) restates this so the default
 -- never fires in practice.
+-- Spec-level (ℤ) truncated-toward-zero signed div/rem. This ℤ evaluator
+-- is a legacy artifact (the machine-faithful meaning is `eval-arith-W`
+-- over `Word`, with the D055 total sentinels); here we keep it TOTAL by
+-- the same policy: a zero divisor gives `0` (div) / the dividend (rem).
+private
+  divℤ modℤ : ℤ → ℤ → ℤ
+  divℤ a (+ zero)     = + 0
+  divℤ a (+ suc d)    = (sign a Sign.* Sign.+) ◃ (∣ a ∣ ℕ./ suc d)
+  divℤ a (ℤ.-[1+ d ]) = (sign a Sign.* Sign.-) ◃ (∣ a ∣ ℕ./ suc d)
+  modℤ a (+ zero)     = a
+  modℤ a (+ suc d)    = sign a ◃ (∣ a ∣ ℕ.% suc d)
+  modℤ a (ℤ.-[1+ d ]) = sign a ◃ (∣ a ∣ ℕ.% suc d)
+
 eval-arith : ∀ {sh} → MArithIR sh → ⟦ sh ⟧S → ℤ
 eval-arith {sh} (alit z)     _   = z
 eval-arith {sh} (ainput p)   inp with project sh p inp
@@ -65,6 +81,8 @@ eval-arith {sh} (ainput p)   inp with project sh p inp
 eval-arith (aadd a b) inp = eval-arith a inp ℤ.+ eval-arith b inp
 eval-arith (asub a b) inp = eval-arith a inp ℤ.- eval-arith b inp
 eval-arith (amul a b) inp = eval-arith a inp ℤ.* eval-arith b inp
+eval-arith (adiv a b) inp = divℤ (eval-arith a inp) (eval-arith b inp)
+eval-arith (amod a b) inp = modℤ (eval-arith a inp) (eval-arith b inp)
 eval-arith (aneg a)   inp = ℤ.- eval-arith a inp
 
 -- (The machine-level modular-`Word` evaluator `eval-arith-W` is now in
@@ -110,4 +128,6 @@ leaf-count (ainput _)   = 1
 leaf-count (aadd a b)   = leaf-count a ℕ.+ leaf-count b
 leaf-count (asub a b)   = leaf-count a ℕ.+ leaf-count b
 leaf-count (amul a b)   = leaf-count a ℕ.+ leaf-count b
+leaf-count (adiv a b)   = leaf-count a ℕ.+ leaf-count b
+leaf-count (amod a b)   = leaf-count a ℕ.+ leaf-count b
 leaf-count (aneg a)     = leaf-count a

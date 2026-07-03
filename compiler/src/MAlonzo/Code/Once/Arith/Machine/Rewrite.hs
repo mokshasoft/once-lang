@@ -97,7 +97,11 @@ du_has'45'op_36 v0
         -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
       MAlonzo.Code.Once.Arith.Machine.IR.C_amul_22 v1 v2
         -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
-      MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_24 v1
+      MAlonzo.Code.Once.Arith.Machine.IR.C_adiv_24 v1 v2
+        -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
+      MAlonzo.Code.Once.Arith.Machine.IR.C_amod_26 v1 v2
+        -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
+      MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_28 v1
         -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Arith.Machine.Rewrite.block-as-ir
@@ -116,7 +120,7 @@ du_block'45'as'45'ir_42 ::
 du_block'45'as'45'ir_42 v0 v1
   = coe
       MAlonzo.Code.Once.IR.C_SigOp_166
-      (MAlonzo.Code.Once.Arith.SigOp.Block.d_block'45'info_262
+      (MAlonzo.Code.Once.Arith.SigOp.Block.d_block'45'info_282
          (coe v0) (coe v1))
 -- Once.Arith.Machine.Rewrite.try-lift
 d_try'45'lift_58 ::
@@ -153,7 +157,7 @@ d_try'45'lift_58 v0 v1 v2
                                                            du_block'45'as'45'ir_42 (coe v6)
                                                            (coe v9))
                                                         (coe
-                                                           MAlonzo.Code.Once.Arith.Machine.IR.C_mk'45'block_96
+                                                           MAlonzo.Code.Once.Arith.Machine.IR.C_mk'45'block_136
                                                            (coe v6) (coe v9)))
                                               else coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18)
                                     MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v8

@@ -45,7 +45,7 @@ open import Once.Arith.Machine.AbsState
   using (InputShape; shape-int; shape-pair; InputPath;
          Side; Fst; Snd)
 open import Once.Arith.Machine.IR
-  using (MArithIR; alit; ainput; aadd; asub; amul; aneg; ArithBlock;
+  using (MArithIR; alit; ainput; aadd; asub; amul; adiv; amod; aneg; ArithBlock;
          mk-block)
 
 ------------------------------------------------------------------------
@@ -99,7 +99,17 @@ recognise-body sh (SigOp si ∘ ⟨ a , b ⟩ _) | no _ | no _ with name si ≟�
 ...       | just ra | just rb = just (amul ra rb)
 ...       | just _  | nothing = nothing
 ...       | nothing | _       = nothing
-recognise-body sh (SigOp si ∘ ⟨ a , b ⟩ _) | no _ | no _ | no _ = nothing
+recognise-body sh (SigOp si ∘ ⟨ a , b ⟩ _) | no _ | no _ | no _ with name si ≟ᶜ bare "arith.div.int"
+...       | yes _ with recognise-body sh a | recognise-body sh b
+...         | just ra | just rb = just (adiv ra rb)
+...         | just _  | nothing = nothing
+...         | nothing | _       = nothing
+recognise-body sh (SigOp si ∘ ⟨ a , b ⟩ _) | no _ | no _ | no _ | no _ with name si ≟ᶜ bare "arith.mod.int"
+...         | yes _ with recognise-body sh a | recognise-body sh b
+...           | just ra | just rb = just (amod ra rb)
+...           | just _  | nothing = nothing
+...           | nothing | _       = nothing
+recognise-body sh (SigOp si ∘ ⟨ a , b ⟩ _) | no _ | no _ | no _ | no _ | no _ = nothing
 
 -- Unary-op SigOp ∘ e — `arith.neg.int`.
 recognise-body sh (SigOp si ∘ e) with name si ≟ᶜ bare "arith.neg.int"

@@ -24,7 +24,7 @@ open import Relation.Nullary using (Dec; yes; no)
 open import Once.Arith.Machine.AbsState using (InputPath; Side; Fst; Snd)
 open import Once.Arith.Machine.AbsInstr
   using (AbstractInstr; load-input; load-imm; add-rrr; sub-rrr; mul-rrr;
-         neg-rr; spill; reload; move-to-out)
+         div-rrr; rem-rrr; neg-rr; spill; reload; move-to-out)
 open import Once.Arith.Backend.XInstr.Syntax
 
 ------------------------------------------------------------------------
@@ -115,6 +115,16 @@ emit (mul-rrr dst a b) with abs-reg dst | abs-reg a | abs-reg b
 ...     | yes _                            = Ximul-rr xd xa ∷ []
 ...     | no _                             = Xmov-rr xd xa ∷ Ximul-rr xd xb ∷ []
 emit (mul-rrr _ _ _) | _ | _ | _           = []
+-- | `div-rrr dst a b` / `rem-rrr dst a b`. THREE-address: emit a single
+-- neutral `Xdiv-rrr`/`Xrem-rrr` with explicit dividend/divisor. No aliasing
+-- dispatch is needed — the per-arch Emit reads both operands before writing
+-- `dst` (x86 idiv consumes rax/rdx internally; RV64 div/rem is 3-address).
+emit (div-rrr dst a b) with abs-reg dst | abs-reg a | abs-reg b
+... | just xd | just xa | just xb          = Xdiv-rrr xd xa xb ∷ []
+... | _       | _       | _                = []
+emit (rem-rrr dst a b) with abs-reg dst | abs-reg a | abs-reg b
+... | just xd | just xa | just xb          = Xrem-rrr xd xa xb ∷ []
+... | _       | _       | _                = []
 emit (neg-rr dst a) with abs-reg dst | abs-reg a
 ... | just xd | just xa = Xmov-rr xd xa ∷ Xneg-r xd ∷ []
 ... | _       | _       = []

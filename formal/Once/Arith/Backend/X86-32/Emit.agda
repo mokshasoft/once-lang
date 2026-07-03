@@ -106,6 +106,50 @@ instr-text (Xmov-arg dst path) = path-load-text dst path
 instr-text (Xadd-rr dst src)  = "    addl " ++ reg-text src ++ ", " ++ reg-text dst ++ "\n"
 instr-text (Xsub-rr dst src)  = "    subl " ++ reg-text src ++ ", " ++ reg-text dst ++ "\n"
 instr-text (Ximul-rr dst src) = "    imull " ++ reg-text src ++ ", " ++ reg-text dst ++ "\n"
+-- D055 total signed division. `idivl` uses edx:eax implicitly; since %edx is
+-- an arith register (XR0) here, the divisor is stashed on the stack so
+-- `cltd`/`idivl` can freely clobber %edx, and both operands are read before
+-- any clobber. Result in %eax. Guards div-by-0 and INT_MIN/-1 (both #DE).
+instr-text (Xdiv-rrr dst a b) =
+     "    pushl " ++ reg-text b ++ "\n" ++
+     "    movl " ++ reg-text a ++ ", %eax\n" ++
+     "    cmpl $0, (%esp)\n" ++
+     "    jne 1f\n" ++
+     "    movl $-1, %eax\n" ++            -- a / 0 = -1
+     "    jmp 3f\n" ++
+     "1:\n" ++
+     "    cmpl $-1, (%esp)\n" ++
+     "    jne 2f\n" ++
+     "    cmpl $0x80000000, %eax\n" ++
+     "    jne 2f\n" ++
+     "    movl $0x80000000, %eax\n" ++    -- INT_MIN / -1 = INT_MIN
+     "    jmp 3f\n" ++
+     "2:\n" ++
+     "    cltd\n" ++
+     "    idivl (%esp)\n" ++
+     "3:\n" ++
+     "    addl $4, %esp\n" ++
+     "    movl %eax, " ++ reg-text dst ++ "\n"
+instr-text (Xrem-rrr dst a b) =
+     "    pushl " ++ reg-text b ++ "\n" ++
+     "    movl " ++ reg-text a ++ ", %eax\n" ++
+     "    cmpl $0, (%esp)\n" ++
+     "    jne 1f\n" ++
+     "    jmp 3f\n" ++                    -- a % 0 = a  (a already in %eax)
+     "1:\n" ++
+     "    cmpl $-1, (%esp)\n" ++
+     "    jne 2f\n" ++
+     "    cmpl $0x80000000, %eax\n" ++
+     "    jne 2f\n" ++
+     "    xorl %eax, %eax\n" ++           -- INT_MIN % -1 = 0
+     "    jmp 3f\n" ++
+     "2:\n" ++
+     "    cltd\n" ++
+     "    idivl (%esp)\n" ++
+     "    movl %edx, %eax\n" ++           -- remainder is in %edx
+     "3:\n" ++
+     "    addl $4, %esp\n" ++
+     "    movl %eax, " ++ reg-text dst ++ "\n"
 instr-text (Xneg-r dst)       = "    negl " ++ reg-text dst ++ "\n"
 instr-text (Xmov-out src)     = "    movl " ++ reg-text src ++ ", %eax\n"
 

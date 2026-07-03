@@ -38,7 +38,7 @@ open import Once.SigOp.Info using (SigOpInfo)
 open import Once.Arith.Machine.AbsState
   using (InputShape; shape-unit; shape-int; shape-pair)
 open import Once.Arith.Machine.IR
-  using (MArithIR; alit; ainput; aadd; asub; amul; aneg;
+  using (MArithIR; alit; ainput; aadd; asub; amul; adiv; amod; aneg;
          ArithBlock; mk-block; shape-as-type)
 open Once.Arith.Machine.IR.ArithBlock using (block-shape; block-body)
 open import Once.Arith.Machine.Recognise using (recognise; recognise-body)
@@ -74,6 +74,8 @@ has-op (ainput _)  = false
 has-op (aadd _ _)  = true
 has-op (asub _ _)  = true
 has-op (amul _ _)  = true
+has-op (adiv _ _)  = true
+has-op (amod _ _)  = true
 has-op (aneg _)    = true
 
 ------------------------------------------------------------------------

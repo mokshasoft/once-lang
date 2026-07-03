@@ -278,7 +278,6 @@ library
       MAlonzo.Code.Once.Arith.Machine.Recognise
       MAlonzo.Code.Once.Arith.Machine.Rewrite
       MAlonzo.Code.Once.Arith.Machine.Shape
-      MAlonzo.Code.Once.Arith.Machine.WordSem
       MAlonzo.Code.Once.Arith.SigOp.Block
       MAlonzo.Code.Once.Arith.SigOp.Builders
       MAlonzo.Code.Once.Arith.SigOp.IntLit
