@@ -50,10 +50,6 @@ open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Elaborate
   using (checkElab; InferElabResult; CheckElabResult; success; resolveExpr; PolyCtx; Imports;
          ctxWithImportsAndSelfAndPolys)
-open import Data.Bool using (false)
-open import Data.Sum using (inj₁; inj₂)
-open import Data.Empty using (⊥-elim)
-open import Function using (case_of_)
 open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_)
 open import Once.TypeCheck.Soundness using (check-sound)
 open import Once.Denotation.Realize using (realize)
@@ -66,8 +62,6 @@ open import Once.Adequacy.AcceptSound as AS using (ModuleTyped)
 import Once.Parser.Module.Core as P
 import Once.Compile as C
 import Once.Adequacy.MainForm as MF
-import Once.Adequacy.FunBundle as FB
-open import Once.Adequacy.MtIndep using (mt-den-indep)
 
 -- THE proven agreement — the load-bearing composition uses this:
 open import Once.Adequacy.RealizeBridge using (realize-agrees)
