@@ -40,7 +40,7 @@ open import Once.Functor.Translate using (WellFormedF; WellFormedF-irrelevant)
 open import Once.Semantics.Machine using (⟦_⟧)
 open import Once.IR using (IR; AllocMode; Stack; Cata; SigOp; SigOpInfo; out-μ; id)
 open import Once.SigOp.Info using (effect; EffectShape; Pure; Emits; Halts)
-open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong)
+open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong; subst)
 open import Once.IR.Size using (ir-size)
 open import Once.CCC.Eval using (eval; ⟦_⟧)
 open import Once.CCC.Machine.SMCore
@@ -57,12 +57,13 @@ open import Once.Denotation.DenotTrace using (evalᴰ; inject)
 open import Once.Denotation.TraceMonad using (projTrace)
 open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
 import Once.CCC.Machine.IR.SimpleWF as SimpleWF
+open import Once.CCC.Codegen.FlatSemanticLift using (lift-validAtWF-flat)
 open import Data.List.Relation.Unary.All using () renaming ([] to []ᴬ; _∷_ to _∷ᴬ_)
 open import Data.Product using (proj₁; proj₂)
 
 module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   open FlatMachine {FS}
-  open AbstractExec {FS} using (exec-sigop-halts; exec-trace-single)
+  open AbstractExec {FS} using (exec-sigop-halts; exec-trace-single; exec-trace)
   open FrontierInvariant {FS} using (BeforeFrontier)
   open ClosureWellFormedDef {FS} program-bound
     using (ValidAtWF; valid-μ-wf; valid-primitive-wf; place-valid; place-loc; result-place;
@@ -300,32 +301,32 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
       denot-[] : ∀ k → projTrace (evalᴰ (id {A}) (inject x)) k ≡ []
       denot-[] k = refl
 
-      -- The abstract codegen correctness for `id` (`run-id`) gives an
-      -- `IRResultAWF` whose `result-place` carries `ValidAtWF` at the
-      -- abstract post-state. `exec-trace-is-flat` bridges that abstract
-      -- state (`exec-trace`) to the FLAT post-state (`flat-run`) up to
-      -- `forced`; `forced` only flips `halted` (leaving `stackMem`/`heapMem`),
-      -- so the LIVE `validityWF-mem-only` transports the validity across it
-      -- (no dependence on the dead/orphan `ValidAtWFHalted`).
+      -- `run-id` (the abstract codegen correctness for `id`) gives an
+      -- `IRResultAWF` whose `result-place` carries `ValidAtWF` at the abstract
+      -- post-state. The reusable `lift-validAtWF-flat` (`FlatSemanticLift`, now
+      -- rebuilt on the LIVE `validityWF-mem-only`) lifts that to the FLAT
+      -- post-state up to `forced`. Every straight constructor reuses it.
       r = run-id x input-loc s alloc valid input-before not-halted rdi
 
       -- `ir-to-trace id = mov-to-output ∷ []`; `mov-to-output` is a straight
-      -- (non-control) instr, so `flat-exec-instr` IS `flat-step-straight`
-      -- (`StraightStep = λ _ _ → refl`). Built inline — no red `StraightTrace`.
-      bridge = exec-trace-is-flat (ir-to-trace (id {A})) s alloc
-                 ((λ _ _ → refl) ∷ᴬ []ᴬ)
+      -- (non-control) instr (`StraightStep = λ _ _ → refl`), built inline —
+      -- no red `StraightTrace`.
+      straight-id : Straight (ir-to-trace (id {A}))
+      straight-id = (λ _ _ → refl) ∷ᴬ []ᴬ
 
-      keeps-alloc : falloc (flat-run 2 (id {A}) s alloc) ≡ alloc
-      keeps-alloc = trans (proj₂ bridge)
-                          (cong proj₂ (exec-trace-single mov-to-output s alloc not-halted))
+      -- `mov-to-output` doesn't allocate: `proj₂ (exec-trace …) ≡ alloc`.
+      alloc-eq : proj₂ (exec-trace (ir-to-trace (id {A})) s alloc) ≡ alloc
+      alloc-eq = cong proj₂ (exec-trace-single mov-to-output s alloc not-halted)
 
       id-value :
         ValidAtWF mIn (falloc (flat-run 2 (id {A}) s alloc))
           (eval (id {A}) x) (place-loc (result-place r))
           (forced (floc (flat-run 2 (id {A}) s alloc)))
-      id-value rewrite keeps-alloc | proj₁ bridge =
-        validityWF-mem-only (eval (id {A}) x) (place-loc (result-place r))
-          _ _ refl refl (place-valid (result-place r))
+      id-value =
+        lift-validAtWF-flat program-bound (ir-to-trace (id {A})) s alloc straight-id
+          (subst (λ a → ValidAtWF mIn a (eval (id {A}) x) (place-loc (result-place r))
+                   (proj₁ (exec-trace (ir-to-trace (id {A})) s alloc)))
+                 (sym alloc-eq) (place-valid (result-place r)))
 
   ir-obs-correct : ∀ {A B} (ir : IR A B) → IRObsCorrectF ir
   ir-obs-correct (Cata wf alg) = cata-correct wf alg (ir-obs-correct alg)

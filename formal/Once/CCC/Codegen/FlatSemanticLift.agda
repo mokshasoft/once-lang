@@ -25,14 +25,13 @@ open import Data.Nat using (ℕ; suc)
 open import Data.Bool using (true)
 open import Data.List using (length)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
-open import Relation.Binary.PropositionalEquality using (_≡_; sym; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore using (AbstractTrace; LocState; AllocState; module AbstractExec)
 open import Once.Semantics.Machine using (⟦_⟧)
 open import Once.Type using (Type)
 open import Once.CCC.Machine.ClosureWellFormed using (module ClosureWellFormedDef)
-open import Once.CCC.Machine.ValidAtWFHalted using (validAtWF-set-halted)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 
 module _ {FS : FrameSemantics} (program-bound : ℕ) where
@@ -43,7 +42,9 @@ module _ {FS : FrameSemantics} (program-bound : ℕ) where
   -- The semantic-side conclusion (over exec-trace) transports to the
   -- flat final state. The alloc swaps via `falloc ≡ proj₂ exec-trace`;
   -- the state via `forced (floc …) ≡ forced (proj₁ exec-trace)`, having
-  -- first forced the exec-trace state's `halted` (validAtWF-set-halted).
+  -- first forced the exec-trace state's `halted`. `forced` only flips
+  -- `halted` (leaves stackMem/heapMem), so the LIVE `validityWF-mem-only`
+  -- does the transport (the dead `ValidAtWFHalted` is retired).
   lift-validAtWF-flat : ∀ {mOut A} {v : ⟦ A ⟧} {loc}
     (trace : AbstractTrace) (s : LocState FS) (alloc : AllocState {FS})
     → Straight trace
@@ -54,7 +55,7 @@ module _ {FS : FrameSemantics} (program-bound : ℕ) where
   lift-validAtWF-flat {mOut} {A} {v} {loc} trace s alloc straight valid =
     subst (λ st → ValidAtWF mOut (falloc EF) v loc st) (sym (proj₁ br))
       (subst (λ a → ValidAtWF mOut a v loc (forced (proj₁ ET))) (sym (proj₂ br))
-        (validAtWF-set-halted program-bound true valid))
+        (validityWF-mem-only v loc (proj₁ ET) (forced (proj₁ ET)) refl refl valid))
     where
       ET = exec-trace trace s alloc
       EF = exec-flat (suc (length trace)) trace (mkFlat s alloc 0)
