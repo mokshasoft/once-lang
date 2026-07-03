@@ -297,11 +297,13 @@ bundle-realize {polys = polys} {sigEffs = sigEffs}
 bundle-realize (bcons {fi = fi} {ty = ty} rf ce cf rest) (inj₂ w) =
   br-dispatch fi ce rest w (funName fi ≟str "main") (ty ≟T EffUU) (funIsPrimitive fi)
 
+-- PRIM-FIRST clause order, matching `bf-dispatch` (so `bundle-find` and
+-- `bundle-realize` dispatch identically ⇒ their node-coherence is definitional).
+br-dispatch fi ce rt w _        _          true  = bundle-realize rt w
 br-dispatch {polys = polys} {sigEffs = sigEffs} {ctx = ctx} fi {Ψ = Ψ} ce rt w (yes _) (yes refl) false =
   Ψ , realize (check-sound (ctxWithImportsAndSelfAndPolys ctx polys sigEffs (funName fi) EffUU) (funBody fi) EffUU ce)
-br-dispatch fi ce rt w (no _)  _          _    = bundle-realize rt w
-br-dispatch fi ce rt w (yes _) (no _)     _    = bundle-realize rt w
-br-dispatch fi ce rt w (yes _) (yes refl) true = bundle-realize rt w
+br-dispatch fi ce rt w (no _)  _          false = bundle-realize rt w
+br-dispatch fi ce rt w (yes _) (no _)     false = bundle-realize rt w
 
 realize-agree : ∀ {polys sigEffs funs ctx} (b : FunBundle polys sigEffs funs ctx) (bme : BMainExists b) →
   MC.mainRealized-go (bundle→typed b) (bme→me b bme) ≡ bundle-realize b bme
@@ -316,12 +318,16 @@ ra-head : ∀ {polys sigEffs rest ctx ty} (fi : FunInfo)
   MC.mrg-dispatch (check-sound (ctxWithImportsAndSelfAndPolys ctx polys sigEffs (funName fi) ty) (funBody fi) ty ce)
       (bundle→typed rt) (bme→me rt w) (funName fi ≟str "main") (ty ≟T EffUU) (funIsPrimitive fi)
   ≡ br-dispatch fi ce rt w (funName fi ≟str "main") (ty ≟T EffUU) (funIsPrimitive fi)
+-- `mrg-dispatch` is name-first, `br-dispatch` (now) prim-first ⇒ case all three
+-- concretely (prim always; type when name=yes) so BOTH sides reduce per branch.
 ra-head {ty = ty} fi ce rt w
   with funName fi ≟str "main" | ty ≟T EffUU | funIsPrimitive fi
+... | no _  | _        | false = realize-agree rt w
+... | no _  | _        | true  = realize-agree rt w
 ... | yes _ | yes refl | false = refl
-... | no _  | _        | _     = realize-agree rt w
-... | yes _ | no _     | _     = realize-agree rt w
 ... | yes _ | yes refl | true  = realize-agree rt w
+... | yes _ | no _     | false = realize-agree rt w
+... | yes _ | no _     | true  = realize-agree rt w
 
 realize-agree (bcons rf ce cf rest) (inj₁ (_ , _ , refl)) = refl
 realize-agree (bcons {fi = fi} rf ce cf rest) (inj₂ w) = ra-head fi ce rest w
