@@ -34,13 +34,14 @@ open import Data.Product using (_×_; _,_)
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Data.List.Relation.Unary.All.Properties using (++⁺)
-open import Relation.Binary.PropositionalEquality using (refl)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.IR using (IR; AllocMode; Stack; Heap;
   id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal; initial;
   curry; apply; arr;
   In; out-μ; Cata; Para; Out; in-ν; Ana; Hylo; Fuse;
   free-heap; SigOp; const)
+open import Once.Type using (fits-int; fits-float)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore using (AbstractInstr; AbstractTrace)
 open import Once.CCC.Codegen.IRToTrace using (ir-to-trace'; ir-to-trace; ir-to-trace-at-frontier)
@@ -117,7 +118,9 @@ module _ {FS : FrameSemantics} where
     (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ []
   straight-trace' apply       _ n l =
     (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷
-    (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ []
+    (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷
+    (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷
+    (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ []
   straight-trace' (In _ _)    _ n l = (λ _ _ → refl) ∷ []
   straight-trace' (out-μ _)   _ n l = (λ _ _ → refl) ∷ []
   straight-trace' (Cata _ _)  ()
@@ -129,7 +132,8 @@ module _ {FS : FrameSemantics} where
   straight-trace' (Fuse _ _ _ _) _ n l = []
   straight-trace' (free-heap _)  _ n l = (λ _ _ → refl) ∷ []
   straight-trace' (SigOp _)   _ n l = (λ _ _ → refl) ∷ []
-  straight-trace' (const _ _) _ n l = (λ _ _ → refl) ∷ []
+  straight-trace' (const fits-int   _) _ n l = (λ _ _ → refl) ∷ []
+  straight-trace' (const fits-float _) _ n l = (λ _ _ → refl) ∷ []
 
   ----------------------------------------------------------------------
   -- Corollaries over the public entry points.
