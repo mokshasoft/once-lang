@@ -25,11 +25,12 @@ open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥)
 open import Data.Nat using (ℕ)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+open import Data.List using (_++_)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong₂)
 
 open import Once.Type using (Type; Unit; Void; Int; Float; Str; Buffer;
                              _*_; _+_; _⇒[_]_; μ-type; ν-type)
-open import Once.Denotation.TraceMonad using (T; projTrace; valueT)
+open import Once.Denotation.TraceMonad using (T; projTrace; valueT; returnT; _>>=T_)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ)
 
 ------------------------------------------------------------------------
@@ -61,3 +62,25 @@ RelV (A + B) (inj₂ _)  (inj₁ _)  = ⊥
 -- The arrow: related arguments map to related computations. This is the
 -- funext-free heart — a Π over related inputs, not an equality of functions.
 RelV (A ⇒[ k ] B) f g = ∀ {a b} → RelV A a b → RelT B (f a) (g b)
+
+------------------------------------------------------------------------
+-- Monad lemmas — the two combinators `⟦_⟧ᶜ`/SD are built from (`returnT`,
+-- `_>>=T_`). Both hold DEFINITIONALLY from `_>>=T_`'s `++`-of-traces.
+------------------------------------------------------------------------
+
+-- `returnT` has empty trace and carries its value, so related values give
+-- related pure computations.
+RelT-return : ∀ {A} {x y : ⟦ A ⟧ᴰ} → RelV A x y → RelT A (returnT x) (returnT y)
+RelT-return rv n = refl , rv
+
+-- Bind preserves the relation: related computations sequenced with related
+-- continuations stay related. `_>>=T_` concatenates the two traces, so the
+-- trace equality is `cong₂ _++_` of the two halves.
+RelT-bind : ∀ {A B} {t₁ t₂ : T ⟦ A ⟧ᴰ} {f g : ⟦ A ⟧ᴰ → T ⟦ B ⟧ᴰ}
+          → RelT A t₁ t₂
+          → (∀ {a b} → RelV A a b → RelT B (f a) (g b))
+          → RelT B (t₁ >>=T f) (t₂ >>=T g)
+RelT-bind rt rk n =
+  let (tr-eq  , v-rel)  = rt n
+      (tr-eq' , v-rel') = rk v-rel n
+  in cong₂ _++_ tr-eq tr-eq' , v-rel'
