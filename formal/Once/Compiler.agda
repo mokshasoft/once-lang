@@ -54,7 +54,10 @@ once-compiler = record
   -- `faithful` is load-bearing — typecheck + elaborate + codegen are forced).
   ; Typed    = VC.Typed
   ; _⊢_      = VC._⊢R_
-  ; ⟦_⟧ˢ     = VC.⟦_⟧ˢ
+  -- Plan 0.58 (OCP-0006): the reference meaning is now the DIRECT, IR-free
+  -- derivation denotation `VC.⟦_⟧ᵈ` (was `VC.⟦_⟧ˢ` = SD∘realize); `correctᵈ`
+  -- re-composes the grand theorem with the observational bridge.
+  ; ⟦_⟧ˢ     = VC.⟦_⟧ᵈ
   ; exec     = VC.exec
   -- Behavioural equivalence = pointwise / up-to-`n` SigOp-trace prefix
   -- equality (Plan 0.44).
@@ -62,5 +65,5 @@ once-compiler = record
   -- Plan 0.48: `compile` carries the optimizer flag.
   ; compile  = VC.compile
   -- Plan 0.49: the two-conjunct (sound+trace / complete) relational claim.
-  ; correct  = VC.correctR
+  ; correct  = VC.correctᵈ
   }

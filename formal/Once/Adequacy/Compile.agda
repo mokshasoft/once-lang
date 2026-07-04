@@ -653,6 +653,29 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
       (λ bytes pf → correctR-sound arch doOpt src bytes pf)
     , (λ tp h → correctR-complete arch doOpt src tp h)
 
+  ------------------------------------------------------------------------
+  -- Plan 0.58 (OCP-0006) — TOP-DOWN WIRE. The reference meaning becomes the
+  -- DIRECT, IR-free derivation denotation `⟦_⟧ᵈ`. These two are TEMP scaffolds
+  -- that PIN the downstream shapes (discharged later: `⟦_⟧ᵈ` built from
+  -- `Once.Denotation.Meaning`'s per-realm denotations; `bridgeᵈ` the
+  -- observational `⟦_⟧ᵈ ≈ SD∘realize`, funext-free by `∀ n`). `correctᵈ`
+  -- RE-COMPOSES the existing `correctR` (`exec ≋ ⟦_⟧ˢ`) with the bridge — the
+  -- adequacy chain is reused, not re-derived.
+  ------------------------------------------------------------------------
+  postulate
+    ⟦_⟧ᵈ    : Typed → Behavior
+    bridgeᵈ : ∀ (tp : Typed) (n : ℕ) → ⟦ tp ⟧ˢ n ≡ ⟦ tp ⟧ᵈ n
+
+  correctᵈ : ∀ (arch : Arch) (doOpt : Bool) (src : Source) →
+    ( ∀ bytes → compile arch doOpt src ≡ just bytes →
+        Σ-syntax Typed (λ tp → (src ⊢R tp) × (exec arch bytes ≋ ⟦ tp ⟧ᵈ)) )
+    × ( ∀ tp → src ⊢R tp →
+        Σ-syntax (List Byte) (λ bytes → compile arch doOpt src ≡ just bytes) )
+  correctᵈ arch doOpt src =
+      (λ bytes pf → let (tp , ⊢R , e≋) = correctR-sound arch doOpt src bytes pf
+                     in tp , ⊢R , (λ n → trans (e≋ n) (bridgeᵈ tp n)))
+    , (λ tp h → correctR-complete arch doOpt src tp h)
+
   -- ════════════════════════════════════════════════════════════════════
   -- The GRAND THEOREM (D060): `correct` above IS the whole statement.
   -- There is now ONE denotational meaning: the surface `⟦_⟧ˢ` and the IR
