@@ -15,14 +15,16 @@
 
 module Once.CCC.Codegen.StraightRunSteps where
 
-open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; s≤s; z≤n)
+open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; s≤s; z≤n; _+_)
 open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.Maybe using (Maybe; just; nothing)
+open import Data.Product using (Σ; _×_; _,_; ∃-syntax)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore using (AbstractInstr; AbstractTrace)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
+open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 open import Once.Denotation.TraceMonad using (T; _>>=T_; projTrace; valueT)
 
 -- Denot-side split for `∘`'s `traces-agree` RHS: the trace of a Kleisli
@@ -34,7 +36,18 @@ projTrace->>=T : ∀ {X Y} (m : T X) (h : X → T Y) (n : ℕ)
 projTrace->>=T m h n = refl
 
 module _ {FS : FrameSemantics} where
-  open FlatMachine {FS} using (fetch)
+  open FlatMachine {FS} using (fetch; FlatState)
+  open FlatStepsAPI {FS}
+
+  -- Split a `FlatSteps` chain at any prefix length `k1` — the inverse of
+  -- `FlatStepLemmas.FlatSteps-++`. Feeds `chain-events-++` to decompose the
+  -- composite `∘` run's events into `f`'s prefix (pc `0..|f|-1`) and the rest.
+  FlatSteps-split : ∀ {prog fs fs'} (k1 k2 : ℕ)
+                  → FlatSteps prog (k1 + k2) fs fs'
+                  → ∃[ fs'' ] (FlatSteps prog k1 fs fs'' × FlatSteps prog k2 fs'' fs')
+  FlatSteps-split zero     k2 steps          = _ , [] , steps
+  FlatSteps-split (suc k1) k2 (link ∷ rest) with FlatSteps-split k1 k2 rest
+  ... | fs'' , l , r = fs'' , (link ∷ l) , r
 
   -- Prefix fetch (dual of `FlatStepLemmas.fetch-++`, which reads the
   -- SUFFIX at offset `length xs + j`): reading position `j` of `xs ++ ys`
