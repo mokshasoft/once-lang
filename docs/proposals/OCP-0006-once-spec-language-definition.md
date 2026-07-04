@@ -1,7 +1,7 @@
 # OCP-0006: `Once.Spec` — One Home for the Language Definition
 
 **Author:** Jonas Claeson
-**Status:** Draft
+**Status:** Accepted — re-export cut implemented (plan 0.58)
 **Created:** 2026-06-24
 
 ---
@@ -146,11 +146,20 @@ reviewer to audit one import line.
 
 ## Status / sequencing
 
-**Deferred** until after the D063 collapse lands (replace the over-permissive
-`t-compose-check`/`t-case-copair-check` with `⊢ᵐ` arms, re-prove completeness,
-delete the two false `*-eff-complete` postulates). This OCP is cosmetic relative
-to that forcing work; doing it first would only churn imports under an
-in-flux judgment.
+The deferral prerequisite (the D063 collapse — replace `t-compose-check`/
+`t-case-copair-check` with `⊢ᵐ` arms, re-prove completeness, retire the two false
+`*-eff-complete` postulates) **landed** via plans 0.52–0.55.
+
+**Implemented (re-export cut, plan 0.58):** `Once.Spec` + the five leaves
+(`Type`/`Syntax`/`Typing`/`Meaning`/`Correct`) exist as `open … public` re-exports
+of the trusted spec modules — the enumerable, namespaced trust boundary. Boundary
+calls settled: `Once.IR`/`evalᴰ` stay OUTSIDE (option a — shared syntax vocabulary);
+`Once.Spec.Syntax` carries both `Raw` and `Surface.Syntax`; `Once.Spec.Correct` is the
+`CorrectCompiler` criterion ONLY (proof-free; the instance + its named postulates are
+not re-homed).
+
+**Follow-up (not yet done):** make `Once.Spec` *canonical* by rewiring
+implementation-package importers onto `Once.Spec.*` (high import churn) — a later plan.
 
 ### See Also
 
