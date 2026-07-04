@@ -45,13 +45,25 @@ open import Once.CCC.Machine.Flat using (module FlatMachine)
 -- Recurse only on the main-trace-splicing constructors (`∘`, `⟨,⟩`);
 -- a `SigOp` must be `Pure`. `Cata` is excluded (owned by `cata-correct`).
 ------------------------------------------------------------------------
+-- Denot-clean fragment: `evalᴰ` emits `[]` (both sides of `traces-agree`).
+-- `apply` runs a RUNTIME closure (unknown events) and the recursion schemes
+-- (`Cata`/`Ana`/`Para`/`Hylo`/`Fuse`) emit their fold trace via `rec-trace-D`,
+-- so they are excluded; `case` recurses on its branches (`evalᴰ (case f g)`
+-- dispatches to `evalᴰ f`/`evalᴰ g`). Everything else (leaves, `In`/`out-μ`/
+-- `Out`/`const`/`free-heap` — `rec-trace-D ≡ []`, `curry` — `returnT`) is `⊤`.
 NoEffectfulSigOp : ∀ {A B} → IR A B → Set
-NoEffectfulSigOp (g ∘ f)       = NoEffectfulSigOp g × NoEffectfulSigOp f
-NoEffectfulSigOp (⟨ f , g ⟩ m) = NoEffectfulSigOp f × NoEffectfulSigOp g
-NoEffectfulSigOp (SigOp si)    = effect si ≡ Pure
-NoEffectfulSigOp (Cata _ _)    = ⊥
+NoEffectfulSigOp (g ∘ f)        = NoEffectfulSigOp g × NoEffectfulSigOp f
+NoEffectfulSigOp (⟨ f , g ⟩ m)  = NoEffectfulSigOp f × NoEffectfulSigOp g
+NoEffectfulSigOp (case f g)     = NoEffectfulSigOp f × NoEffectfulSigOp g
+NoEffectfulSigOp (SigOp si)     = effect si ≡ Pure
+NoEffectfulSigOp apply          = ⊥
+NoEffectfulSigOp (Cata _ _)     = ⊥
+NoEffectfulSigOp (Ana _ _)      = ⊥
+NoEffectfulSigOp (Para _ _)     = ⊥
+NoEffectfulSigOp (Hylo _ _ _ _) = ⊥
+NoEffectfulSigOp (Fuse _ _ _ _) = ⊥
 {-# CATCHALL #-}
-NoEffectfulSigOp _             = ⊤
+NoEffectfulSigOp _              = ⊤
 
 module _ {FS : FrameSemantics} where
   open FlatEventTrace {FS} using (event-of; flat-events; flat-events-[])
@@ -113,20 +125,16 @@ module _ {FS : FrameSemantics} where
   trace-noeff' (curry b Heap)  _ n l =
     (λ _ → refl) ∷ (λ _ → refl) ∷ (λ _ → refl) ∷ (λ _ → refl) ∷ (λ _ → refl) ∷
     (λ _ → refl) ∷ (λ _ → refl) ∷ (λ _ → refl) ∷ (λ _ → refl) ∷ (λ _ → refl) ∷ []
-  trace-noeff' apply       _ n l =
-    (λ _ → refl) ∷ (λ _ → refl) ∷ (λ _ → refl) ∷ (λ _ → refl) ∷ (λ _ → refl) ∷
-    (λ _ → refl) ∷ (λ _ → refl) ∷ (λ _ → refl) ∷ (λ _ → refl) ∷ (λ _ → refl) ∷
-    (λ _ → refl) ∷ (λ _ → refl) ∷ (λ _ → refl) ∷ (λ _ → refl) ∷ (λ _ → refl) ∷
-    (λ _ → refl) ∷ (λ _ → refl) ∷ []
+  trace-noeff' apply       ()
   trace-noeff' (In _ _)    _ n l = (λ _ → refl) ∷ []
   trace-noeff' (out-μ _)   _ n l = (λ _ → refl) ∷ []
   trace-noeff' (Cata _ _)  ()
-  trace-noeff' (Para _ _)  _ n l = []
+  trace-noeff' (Para _ _)  ()
   trace-noeff' (Out _)     _ n l = (λ _ → refl) ∷ []
   trace-noeff' (in-ν _ _)  _ n l = []
-  trace-noeff' (Ana _ _)   _ n l = []
-  trace-noeff' (Hylo _ _ _ _) _ n l = []
-  trace-noeff' (Fuse _ _ _ _) _ n l = []
+  trace-noeff' (Ana _ _)   ()
+  trace-noeff' (Hylo _ _ _ _) ()
+  trace-noeff' (Fuse _ _ _ _) ()
   trace-noeff' (free-heap _)  _ n l = (λ _ → refl) ∷ []
   trace-noeff' (SigOp si)  eff n l = sigop-pure-nonemitting si eff ∷ []
   trace-noeff' (const fits-int   _) _ n l = (λ _ → refl) ∷ []
