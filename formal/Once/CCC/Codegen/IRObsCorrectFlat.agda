@@ -38,14 +38,14 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.Type using (Type; ⟦_⟧T; μ-type; FitsInReg; fits-in-reg?)
 open import Once.Functor.Translate using (WellFormedF; WellFormedF-irrelevant)
 open import Once.Semantics.Machine using (⟦_⟧)
-open import Once.IR using (IR; AllocMode; Stack; Cata; SigOp; SigOpInfo; out-μ; id)
+open import Once.IR using (IR; AllocMode; Stack; Cata; SigOp; SigOpInfo; out-μ; id; fst; snd; terminal)
 open import Once.SigOp.Info using (effect; EffectShape; Pure; Emits; Halts)
 open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong; subst)
 open import Once.IR.Size using (ir-size)
 open import Once.CCC.Eval using (eval; ⟦_⟧)
 open import Once.CCC.Machine.SMCore
   using (LocState; ValueLocation; SV-Ptr; halted; regs; readReg; Input1;
-         instr-sigop; mov-to-output; module AbstractExec)
+         instr-sigop; mov-to-output; load-indirect; load-indirect-suc; module AbstractExec)
 open import Once.CCC.Machine.Allocation using (AllocState; next-slot; module FrontierInvariant)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Codegen.IRToTrace using (ir-to-trace)
@@ -57,6 +57,7 @@ open import Once.Denotation.DenotTrace using (evalᴰ; inject)
 open import Once.Denotation.TraceMonad using (projTrace)
 open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
 import Once.CCC.Machine.IR.SimpleWF as SimpleWF
+import Once.CCC.Machine.SMPrimitives as SMP
 open import Once.CCC.Codegen.FlatSemanticLift using (lift-validAtWF-flat)
 open import Data.List.Relation.Unary.All using () renaming ([] to []ᴬ; _∷_ to _∷ᴬ_)
 open import Data.Product using (proj₁; proj₂)
@@ -66,12 +67,15 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   open AbstractExec {FS} using (exec-sigop-halts; exec-trace-single; exec-trace)
   open FrontierInvariant {FS} using (BeforeFrontier)
   open ClosureWellFormedDef {FS} program-bound
-    using (ValidAtWF; valid-μ-wf; valid-primitive-wf; place-valid; place-loc; result-place;
-           validityWF-mem-only)
+    using (ValidAtWF; valid-μ-wf; valid-primitive-wf; valid-unit-wf;
+           place-valid; place-loc; result-place; validityWF-mem-only)
   open FlatEventTrace {FS} using (flat-events; event-of; flat-events-[])
   open CataNextSlot {FS} using (exec-flat-keeps-next-slot)
   open CataIRSlotStable {FS} using (ir-to-trace-slot-stable)
-  open SimpleWF.SimpleWFImpl {FS} program-bound using (run-id)
+  open SimpleWF.SimpleWFImpl {FS} program-bound using (run-id; run-fst; run-snd; run-terminal)
+  open SMP.RecSchemeSemantics {FS}
+    using (exec-abstract-load-indirect-preserves-alloc;
+           exec-abstract-load-indirect-suc-preserves-alloc)
 
   -- μ↔layer iso (the strat-const crux), general in F. A μ-value's
   -- validity at `loc` IS its destructured layer's validity at the SAME
@@ -328,8 +332,94 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
                    (proj₁ (exec-trace (ir-to-trace (id {A})) s alloc)))
                  (sym alloc-eq) (place-valid (result-place r)))
 
+  -- `fst`/`snd`: single straight loads (`load-indirect`/`load-indirect-suc`),
+  -- same recipe as `id` but with their alloc-preservation lemmas.
+  obs-correct-fst : ∀ {A B} → IRObsCorrectF (fst {A} {B})
+  obs-correct-fst {A} {B} _ mIn x input-loc s alloc _ valid input-before not-halted rdi =
+    record
+      { traces-agree = λ k →
+          2 , trans (cong (take k) (mach-[] 2)) (cong (take k) (sym (denot-[] k)))
+      ; value-realized = 2 , proj₁ rf , place-loc (result-place r) , fst-value
+      }
+    where
+      ev-[] : ∀ pc i → fetch (ir-to-trace (fst {A} {B})) pc ≡ just i → ∀ fs → event-of i fs ≡ []
+      ev-[] zero    .load-indirect refl fs = refl
+      ev-[] (suc n) i                ()   fs
+      mach-[] : ∀ f → flat-events f (ir-to-trace (fst {A} {B})) (mkFlat s alloc 0) ≡ []
+      mach-[] f = flat-events-[] (ir-to-trace (fst {A} {B})) ev-[] f (mkFlat s alloc 0)
+      denot-[] : ∀ k → projTrace (evalᴰ (fst {A} {B}) (inject x)) k ≡ []
+      denot-[] k = refl
+      rf = run-fst x input-loc s alloc valid input-before not-halted rdi
+      r  = proj₂ rf
+      straight-fst : Straight (ir-to-trace (fst {A} {B}))
+      straight-fst = (λ _ _ → refl) ∷ᴬ []ᴬ
+      alloc-eq : proj₂ (exec-trace (ir-to-trace (fst {A} {B})) s alloc) ≡ alloc
+      alloc-eq = trans (cong proj₂ (exec-trace-single load-indirect s alloc not-halted))
+                       (exec-abstract-load-indirect-preserves-alloc s alloc)
+      fst-value :
+        ValidAtWF (proj₁ rf) (falloc (flat-run 2 (fst {A} {B}) s alloc))
+          (eval (fst {A} {B}) x) (place-loc (result-place r))
+          (forced (floc (flat-run 2 (fst {A} {B}) s alloc)))
+      fst-value =
+        lift-validAtWF-flat program-bound (ir-to-trace (fst {A} {B})) s alloc straight-fst
+          (subst (λ a → ValidAtWF (proj₁ rf) a (eval (fst {A} {B}) x) (place-loc (result-place r))
+                   (proj₁ (exec-trace (ir-to-trace (fst {A} {B})) s alloc)))
+                 (sym alloc-eq) (place-valid (result-place r)))
+
+  obs-correct-snd : ∀ {A B} → IRObsCorrectF (snd {A} {B})
+  obs-correct-snd {A} {B} _ mIn x input-loc s alloc _ valid input-before not-halted rdi =
+    record
+      { traces-agree = λ k →
+          2 , trans (cong (take k) (mach-[] 2)) (cong (take k) (sym (denot-[] k)))
+      ; value-realized = 2 , proj₁ rf , place-loc (result-place r) , snd-value
+      }
+    where
+      ev-[] : ∀ pc i → fetch (ir-to-trace (snd {A} {B})) pc ≡ just i → ∀ fs → event-of i fs ≡ []
+      ev-[] zero    .load-indirect-suc refl fs = refl
+      ev-[] (suc n) i                    ()   fs
+      mach-[] : ∀ f → flat-events f (ir-to-trace (snd {A} {B})) (mkFlat s alloc 0) ≡ []
+      mach-[] f = flat-events-[] (ir-to-trace (snd {A} {B})) ev-[] f (mkFlat s alloc 0)
+      denot-[] : ∀ k → projTrace (evalᴰ (snd {A} {B}) (inject x)) k ≡ []
+      denot-[] k = refl
+      rf = run-snd x input-loc s alloc valid input-before not-halted rdi
+      r  = proj₂ rf
+      straight-snd : Straight (ir-to-trace (snd {A} {B}))
+      straight-snd = (λ _ _ → refl) ∷ᴬ []ᴬ
+      alloc-eq : proj₂ (exec-trace (ir-to-trace (snd {A} {B})) s alloc) ≡ alloc
+      alloc-eq = trans (cong proj₂ (exec-trace-single load-indirect-suc s alloc not-halted))
+                       (exec-abstract-load-indirect-suc-preserves-alloc s alloc)
+      snd-value :
+        ValidAtWF (proj₁ rf) (falloc (flat-run 2 (snd {A} {B}) s alloc))
+          (eval (snd {A} {B}) x) (place-loc (result-place r))
+          (forced (floc (flat-run 2 (snd {A} {B}) s alloc)))
+      snd-value =
+        lift-validAtWF-flat program-bound (ir-to-trace (snd {A} {B}) ) s alloc straight-snd
+          (subst (λ a → ValidAtWF (proj₁ rf) a (eval (snd {A} {B}) x) (place-loc (result-place r))
+                   (proj₁ (exec-trace (ir-to-trace (snd {A} {B})) s alloc)))
+                 (sym alloc-eq) (place-valid (result-place r)))
+
+  -- `terminal`: empty trace, value `tt : Unit` — `valid-unit-wf` is trivial at
+  -- any state, so `value-realized` needs no lift/transport.
+  obs-correct-terminal : ∀ {A} → IRObsCorrectF (terminal {A})
+  obs-correct-terminal {A} _ mIn x input-loc s alloc _ valid input-before not-halted rdi =
+    record
+      { traces-agree = λ k →
+          1 , trans (cong (take k) (mach-[] 1)) (cong (take k) (sym (denot-[] k)))
+      ; value-realized = 1 , mIn , input-loc , valid-unit-wf
+      }
+    where
+      ev-[] : ∀ pc i → fetch (ir-to-trace (terminal {A})) pc ≡ just i → ∀ fs → event-of i fs ≡ []
+      ev-[] pc i ()
+      mach-[] : ∀ f → flat-events f (ir-to-trace (terminal {A})) (mkFlat s alloc 0) ≡ []
+      mach-[] f = flat-events-[] (ir-to-trace (terminal {A})) ev-[] f (mkFlat s alloc 0)
+      denot-[] : ∀ k → projTrace (evalᴰ (terminal {A}) (inject x)) k ≡ []
+      denot-[] k = refl
+
   ir-obs-correct : ∀ {A B} (ir : IR A B) → IRObsCorrectF ir
   ir-obs-correct (Cata wf alg) = cata-correct wf alg (ir-obs-correct alg)
   ir-obs-correct (SigOp si)    = obs-correct-sigop si
   ir-obs-correct id            = obs-correct-id
+  ir-obs-correct fst           = obs-correct-fst
+  ir-obs-correct snd           = obs-correct-snd
+  ir-obs-correct terminal      = obs-correct-terminal
   ir-obs-correct ir            = obs-correct-rest ir
