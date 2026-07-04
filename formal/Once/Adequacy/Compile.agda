@@ -64,6 +64,7 @@ import Once.Adequacy.MainExtract as ME
 -- lifts. `moduleToIR-complete` (forces `check-complete`) discharges
 -- completeness; `moduleToIR-sound` produces the predicate for soundness.
 import Once.Adequacy.ModuleComplete as MC
+import Once.Denotation.MainMeaning as MM     -- Plan 0.58: the direct IR-free meaning
 open import Data.Product using (_×_; _,_; Σ-syntax; proj₁; proj₂)
 open import Data.Maybe.Properties using (just-injective)
 open import Data.Empty using (⊥-elim)
@@ -662,8 +663,13 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   -- RE-COMPOSES the existing `correctR` (`exec ≋ ⟦_⟧ˢ`) with the bridge — the
   -- adequacy chain is reused, not re-derived.
   ------------------------------------------------------------------------
+  -- Plan 0.58 step 4: `⟦_⟧ᵈ` DISCHARGED — the direct, IR-free denotation of
+  -- `main`'s `⊢ᶜ` derivation (`Once.Denotation.MainMeaning.meaningᵈ`, which
+  -- mirrors `mainRealized` with `⟦_⟧ᶜ` instead of `realize`).
+  ⟦_⟧ᵈ : Typed → Behavior
+  ⟦ (m , mt , hvm) ⟧ᵈ = MM.meaningᵈ m mt hvm
+  -- `bridgeᵈ` (the observational `⟦_⟧ᵈ ≈ SD∘realize`) is the last temp scaffold.
   postulate
-    ⟦_⟧ᵈ    : Typed → Behavior
     bridgeᵈ : ∀ (tp : Typed) (n : ℕ) → ⟦ tp ⟧ˢ n ≡ ⟦ tp ⟧ᵈ n
 
   correctᵈ : ∀ (arch : Arch) (doOpt : Bool) (src : Source) →
