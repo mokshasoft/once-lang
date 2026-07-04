@@ -33,7 +33,7 @@ open import Once.Type
   using (Type; Unit; Void; Int; _*_; _+_; _⇒[_]_; μ-type; Functor; ⟦_⟧T; Purity)
 open import Once.CanonicalName using (CanonicalName; showCanonical; bare)
 open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_)
-open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ; emit-D; inject)
+open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ; emit-D; inject; forget)
 open import Once.Surface.Context using (Ctx; ∅; _,_^_; svar; SVar) renaming (⟦_⟧ᶜ to ⟦_⟧ᶜᵗ; lookup to lookupᵗ)
 open import Once.TypeCheck.Classify using (NamedCtx)
 open import Once.TypeCheck.Raw using (BinOp; OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
@@ -67,8 +67,13 @@ postulate
   -- m-cata: the structural fold of an algebra over `μF` (P2: reuse SD's cata-ev-algᴰ).
   cata-sem  : ∀ {F : Functor} {A : Type}
             → (⟦ ⟦ F ⟧T A ⟧ᴰ → T ⟦ A ⟧ᴰ) → ⟦ μ-type F ⟧ᴰ → T ⟦ A ⟧ᴰ
-  -- m-named / m-named-resolved: the named arrow's meaning (P2: the definition env).
-  named-sem : ∀ {A B : Type} → String → ⟦ A ⟧ᴰ → T ⟦ B ⟧ᴰ
+
+-- m-named / m-named-resolved: the named arrow's meaning, IR-free. This is
+-- DEFINITIONALLY `evalᴰ (SigOp (value-info cn))` (same RHS), so the `bridgeᵈ`
+-- case for a named morphism is `refl`.
+named-sem : ∀ {A B : Type} → CanonicalName → ⟦ A ⟧ᴰ → T ⟦ B ⟧ᴰ
+named-sem {A} {B} cn a =
+  λ _ → (emit-D (value-info {A} {B} cn) (forget a) , inject (semM (value-info {A} {B} cn) (forget a)))
 
 ------------------------------------------------------------------------
 -- The VALUE realm `⊢ᵍ` — a closed global element denotes a value `⟦A⟧ᴰ`.
@@ -101,8 +106,8 @@ postulate
 ⟦ m-curry f       ⟧ᵐ = λ a  → returnT (λ b → ⟦ f ⟧ᵐ (a , b))
 ⟦ m-const gv      ⟧ᵐ = λ _  → returnT ⟦ gv ⟧ᵍ
 ⟦ m-cata _ alg    ⟧ᵐ = cata-sem ⟦ alg ⟧ᵐ
-⟦_⟧ᵐ {A = A} {B = B} (m-named {x = x} _ _ _)        = named-sem {A} {B} x
-⟦_⟧ᵐ {A = A} {B = B} (m-named-resolved {cn = cn} _) = named-sem {A} {B} (showCanonical cn)
+⟦_⟧ᵐ {A = A} {B = B} (m-named {x = x} _ _ _)        = named-sem {A} {B} (bare x)
+⟦_⟧ᵐ {A = A} {B = B} (m-named-resolved {cn = cn} _) = named-sem {A} {B} cn
 
 ------------------------------------------------------------------------
 -- (P3) The env — IR-free positional lookup into `⟦ ⟦ Γ ⟧ᶜ ⟧ᴰ`.
