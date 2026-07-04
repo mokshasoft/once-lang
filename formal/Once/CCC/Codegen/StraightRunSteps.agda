@@ -23,6 +23,15 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore using (AbstractInstr; AbstractTrace)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
+open import Once.Denotation.TraceMonad using (T; _>>=T_; projTrace; valueT)
+
+-- Denot-side split for `∘`'s `traces-agree` RHS: the trace of a Kleisli
+-- composite is the first's trace followed by the second's (run on the first's
+-- value). Immediate from `_>>=T_` (`TraceMonad.agda:55-59`), which concatenates
+-- `proj₁`s. This is `evalᴰ (g∘f) = evalᴰ f >>=T evalᴰ g`'s observable half.
+projTrace->>=T : ∀ {X Y} (m : T X) (h : X → T Y) (n : ℕ)
+               → projTrace (m >>=T h) n ≡ projTrace m n ++ projTrace (h (valueT m n)) n
+projTrace->>=T m h n = refl
 
 module _ {FS : FrameSemantics} where
   open FlatMachine {FS} using (fetch)
