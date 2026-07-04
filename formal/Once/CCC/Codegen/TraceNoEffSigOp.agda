@@ -22,6 +22,7 @@ open import Data.Nat using (ℕ)
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥)
 open import Data.Product using (_×_; _,_)
+open import Data.Sum using (inj₁; inj₂)
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Data.List.Relation.Unary.All.Properties using (++⁺)
@@ -39,6 +40,9 @@ open import Once.CCC.Machine.SMCore using (AbstractInstr; AbstractTrace; instr-s
 open import Once.CCC.Codegen.IRToTrace using (ir-to-trace'; ir-to-trace; ir-to-trace-at-frontier)
 open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
+open import Once.Denotation.DenotTrace using (evalᴰ; ⟦_⟧ᴰ; forget; emit-D; rec-trace-D)
+open import Once.Denotation.TraceMonad using (projTrace; valueT; _>>=T_; returnT)
+open import Once.CCC.Codegen.StraightRunSteps using (projTrace->>=T)
 
 ------------------------------------------------------------------------
 -- The gate: the MAIN trace of `ir` carries no effectful `instr-sigop`.
@@ -157,3 +161,55 @@ module _ {FS : FrameSemantics} where
     → ∀ (fuel : ℕ) (fs : FlatState) → flat-events fuel (ir-to-trace ir) fs ≡ []
   noeff-flat-[] ir ne =
     flat-events-[] (ir-to-trace ir) (λ pc i eq → fetch-All (trace-noeff ir ne) eq)
+
+------------------------------------------------------------------------
+-- Denot side: a `NoEffectfulSigOp` IR's denotation emits no events.
+-- FS-free (pure denotational). Together with `noeff-flat-[]` this gives
+-- `traces-agree ≡ []` for the whole denot-clean fragment.
+------------------------------------------------------------------------
+
+-- A pure SigOp's denotational emission is `[]` (`emit-D` dispatches on effect).
+emit-D-pure : ∀ {A B} (si : SigOpInfo A B) x → effect si ≡ Pure → emit-D si x ≡ []
+emit-D-pure si x eff rewrite eff = refl
+
+noeff-denot-[] : ∀ {A B} (ir : IR A B) → NoEffectfulSigOp ir
+               → ∀ (a : ⟦ A ⟧ᴰ) (k : ℕ) → projTrace (evalᴰ ir a) k ≡ []
+-- `returnT` leaves.
+noeff-denot-[] id          _ a k = refl
+noeff-denot-[] fst         _ a k = refl
+noeff-denot-[] snd         _ a k = refl
+noeff-denot-[] (inl _)     _ a k = refl
+noeff-denot-[] (inr _)     _ a k = refl
+noeff-denot-[] terminal    _ a k = refl
+noeff-denot-[] arr         _ a k = refl
+noeff-denot-[] (curry _ _) _ a k = refl
+-- Kleisli composition: split via `projTrace->>=T`, both parts `[]` by IH.
+noeff-denot-[] (g ∘ f) (ng , nf) a k
+  rewrite projTrace->>=T (evalᴰ f a) (evalᴰ g) k
+        | noeff-denot-[] f nf a k
+        | noeff-denot-[] g ng (valueT (evalᴰ f a) k) k = refl
+noeff-denot-[] (⟨ f , g ⟩ m) (nf , ng) a k
+  rewrite projTrace->>=T (evalᴰ f a) (λ b → evalᴰ g a >>=T λ c → returnT (b , c)) k
+        | noeff-denot-[] f nf a k
+        | projTrace->>=T (evalᴰ g a) (λ c → returnT (valueT (evalᴰ f a) k , c)) k
+        | noeff-denot-[] g ng a k = refl
+-- `case` dispatches to a branch by the input tag.
+noeff-denot-[] (case f g) (nf , ng) (inj₁ a) k = noeff-denot-[] f nf a k
+noeff-denot-[] (case f g) (nf , ng) (inj₂ b) k = noeff-denot-[] g ng b k
+-- Pure `SigOp`.
+noeff-denot-[] (SigOp si) eff a k = emit-D-pure si (forget a) eff
+-- Catch-all denot (`rec-trace-D ≡ []` for these pure constructors).
+noeff-denot-[] (In _ _)    _ a k = refl
+noeff-denot-[] (out-μ _)   _ a k = refl
+noeff-denot-[] (Out _)     _ a k = refl
+noeff-denot-[] (in-ν _ _)  _ a k = refl
+noeff-denot-[] (free-heap _) _ a k = refl
+noeff-denot-[] (const fits-int   _) _ a k = refl
+noeff-denot-[] (const fits-float _) _ a k = refl
+-- Excluded fragment (gate is `⊥`).
+noeff-denot-[] apply         ()
+noeff-denot-[] (Cata _ _)    ()
+noeff-denot-[] (Ana _ _)     ()
+noeff-denot-[] (Para _ _)    ()
+noeff-denot-[] (Hylo _ _ _ _) ()
+noeff-denot-[] (Fuse _ _ _ _) ()
