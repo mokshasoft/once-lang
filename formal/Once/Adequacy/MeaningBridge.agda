@@ -37,7 +37,10 @@ open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_; _
   m-id; m-fst; m-snd; m-terminal; m-initial; m-inl; m-inr; m-compose; m-case;
   m-pair; m-curry; m-cata; m-const; m-named; m-named-resolved;
   g-int; g-terminal; g-pair; g-inl; g-inr; g-In)
-open import Once.Denotation.Meaning using (⟦_⟧ᶜ; ⟦_⟧ᵢ; ⟦_⟧ᵍ; ⟦_⟧ᵐ; lookupᴰ; Env)
+open import Once.Denotation.Meaning using (⟦_⟧ᶜ; ⟦_⟧ᵢ; ⟦_⟧ᵍ; ⟦_⟧ᵐ; lookupᴰ; Env; cata-sem)
+import Once.IR as IR
+open import Once.Arith.SigOp.Builders using (value-info)
+open import Once.CanonicalName using (CanonicalName; bare)
 open import Once.Denotation.Realize using (realize; realize-infer; realize-morph; realize-global)
 import Once.Denotation.SourceDenote as SD
 open import Once.Adequacy.MeaningRelation
@@ -71,8 +74,18 @@ postulate
   bridge-c : ∀ {ctx : NamedCtx} {e A Ψ} (d : ctx ⊢ᶜ e ∶ A ⨾ Ψ)
              {dγ₁ dγ₂ : Env ctx} (re : RelEnv (NamedCtx.debruijn ctx) dγ₁ dγ₂)
            → RelT A (⟦ d ⟧ᶜ dγ₁) (SD.⟦ realize d ⟧ˢ dγ₂)
-  bridge-m : ∀ {ctx : NamedCtx} {e A B} {π : Purity} (d : ctx ⊢ᵐ e ∶ A ⇨[ π ] B)
-           → RelV (A ⇒[ mk-kind Many π ] B) (⟦ d ⟧ᵐ) (evalᴰ (realize-morph d))
+  -- m-named / m-named-resolved: a sigop preserves the relation. Its event drops
+  -- non-`Int` (non-`FitsInReg`) args (`mkEvent`), and for `FitsInReg` domains
+  -- `RelV = ≡` gives `forget`-equality by `cong` — funext-free (see plan 0.58).
+  sigop-bridge : ∀ {A B} {cn : CanonicalName} {a b : ⟦ A ⟧ᴰ} → RelV A a b
+               → RelT B (evalᴰ (IR.SigOp (value-info {A} {B} cn)) a)
+                        (evalᴰ (IR.SigOp (value-info {A} {B} cn)) b)
+  -- m-cata: the fold preserves the relation (`sem-cata` congruence over the
+  -- direct algebra `cata-ev-algᴰ-D`, using the recursive `bridge-m` on `alg`).
+  cata-bridge : ∀ {F} {A'} {wfF : WellFormedF F}
+                (dalg : ⟦ ⟦ F ⟧T A' ⟧ᴰ → T ⟦ A' ⟧ᴰ) (mir : IR.IR (⟦ F ⟧T A') A')
+                {a b : ⟦ μ-type F ⟧ᴰ} → RelV (μ-type F) a b
+              → RelT A' (cata-sem wfF dalg a) (evalᴰ (IR.Cata wfF mir) b)
   -- Leaf `evalᴰ`-reduction facts (the `intLit` / `In` reductions of a global
   -- point). NOT the funext concern — plain equational leaves, discharged with
   -- the other leaves.
@@ -99,3 +112,37 @@ bridge-g (g-pair ga gb) y n =
 bridge-g (g-inl ga) y n = cong (_++ []) (proj₁ (bridge-g ga y n)) , proj₂ (bridge-g ga y n)
 bridge-g (g-inr gb) y n = cong (_++ []) (proj₁ (bridge-g gb y n)) , proj₂ (bridge-g gb y n)
 bridge-g (g-In dec garg) y = in-bridge dec garg y
+
+------------------------------------------------------------------------
+-- The MORPHISM realm, DISCHARGED — structural (`RelT-return`/`RelT-bind` +
+-- direct `∀ n` for the constructor-wrapping cases); `m-const` routes to
+-- `bridge-g`; `m-cata`/`m-named` via the leaves above.
+------------------------------------------------------------------------
+
+bridge-m : ∀ {ctx : NamedCtx} {e A B} {π : Purity} (d : ctx ⊢ᵐ e ∶ A ⇨[ π ] B)
+         → RelV (A ⇒[ mk-kind Many π ] B) (⟦ d ⟧ᵐ) (evalᴰ (realize-morph d))
+bridge-m (m-id _ _)          rv n = refl , rv
+bridge-m (m-fst _ _)         rv n = refl , proj₁ rv
+bridge-m (m-snd _ _)         rv n = refl , proj₂ rv
+bridge-m (m-terminal _ _)    _ n = refl , tt
+bridge-m (m-initial _ _) {a = ()}
+bridge-m (m-inl _ _)         rv n = refl , rv
+bridge-m (m-inr _ _)         rv n = refl , rv
+bridge-m (m-compose _ df dg) rv n =
+    cong₂ _++_ (proj₁ (bridge-m dg rv n)) (proj₁ (bridge-m df (proj₂ (bridge-m dg rv n)) n))
+  , proj₂ (bridge-m df (proj₂ (bridge-m dg rv n)) n)
+bridge-m (m-case df dg) {a = inj₁ _} {b = inj₁ _} rv = bridge-m df rv
+bridge-m (m-case df dg) {a = inj₂ _} {b = inj₂ _} rv = bridge-m dg rv
+bridge-m (m-case df dg) {a = inj₁ _} {b = inj₂ _} ()
+bridge-m (m-case df dg) {a = inj₂ _} {b = inj₁ _} ()
+bridge-m (m-pair df dg)      rv n =
+    cong₂ (λ x y → x ++ (y ++ [])) (proj₁ (bridge-m df rv n)) (proj₁ (bridge-m dg rv n))
+  , (proj₂ (bridge-m df rv n) , proj₂ (bridge-m dg rv n))
+bridge-m (m-curry df)        rv n = refl , (λ rb → bridge-m df (rv , rb))
+bridge-m (m-const gd) {b = b} _ = bridge-g gd b
+bridge-m (m-cata {wfF = wfF} _ alg) {a = a} {b = b} rv =
+  cata-bridge {wfF = wfF} ⟦ alg ⟧ᵐ (realize-morph alg) {a = a} {b = b} rv
+bridge-m {A = A} {B = B} (m-named {x = x} _ _ _) {a = a} {b = b} rv =
+  sigop-bridge {A = A} {B = B} {cn = bare x} {a = a} {b = b} rv
+bridge-m {A = A} {B = B} (m-named-resolved {cn = cn} _) {a = a} {b = b} rv =
+  sigop-bridge {A = A} {B = B} {cn = cn} {a = a} {b = b} rv
