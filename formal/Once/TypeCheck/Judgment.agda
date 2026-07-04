@@ -58,8 +58,11 @@ open import Once.TypeCheck.Classify
 
 open import Data.String using (_++_)
 
-open import Once.Surface.Syntax as Surface using (zeroUsage; _+ᵘ_; _*ᵘ_; _⊔ᵘ_)
-  renaming (Expr to SExpr; Ctx to SCtx)
+-- Plan 0.58 (OCP-0006): IR-FREE `Once.Surface.Context` (not `Surface.Syntax`);
+-- `t-var-local` now carries the de-Bruijn `Fin` index, so no `SExpr` is needed.
+open import Data.Fin using (Fin)
+open import Once.Surface.Context as Surface using (zeroUsage; _+ᵘ_; _*ᵘ_; _⊔ᵘ_)
+  renaming (Ctx to SCtx)
 open Surface.Usage using () renaming (_∷_ to _∷ᵘ_)
 
 ------------------------------------------------------------------------
@@ -98,9 +101,9 @@ mutual
 
     t-var-local : ∀ {ctx : NamedCtx} {x : String} {A : Type}
                   {Ψ : Surface.Usage (NamedCtx.size ctx)}
-                  {eE : SExpr (NamedCtx.debruijn ctx) Ψ A}
+                  {eV : Surface.SVar (NamedCtx.debruijn ctx) Ψ A}
                 → ¬ (x ≡ "unit")
-                → lookupLocal ctx x ≡ just (A , Ψ , eE)
+                → lookupLocal ctx x ≡ just (A , Ψ , eV)
                 → ctx ⊢ᵢ RVar x ∶ A ⨾ Ψ
 
     t-var-qualified : ∀ {ctx : NamedCtx} {name alias : String} {T : Type}

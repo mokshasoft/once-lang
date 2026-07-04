@@ -43,9 +43,12 @@ open import Once.TypeCheck.Raw as Raw
 open import Once.CanonicalName using (CanonicalName; showCanonical)
 open import Once.TypeCheck.Context using (Ctx; ∅; name)
 open import Once.TypeCheck.Context as Context using () renaming (_,_∷_ to extendCtx)
-open import Once.Surface.Syntax as Surface using ()
-  renaming (Ctx to SCtx; Expr to SExpr; ∅ to S∅; _,_ to _S,_; _,_^_ to _S,_^_)
-open import Once.Surface.Thinning using (weaken)
+-- Plan 0.58 (OCP-0006): import the IR-FREE `Once.Surface.Context` (not
+-- `Surface.Syntax`, which carries `Once.IR` via `Expr`). `lookupLocal` now
+-- returns the de-Bruijn `Fin` index (not a `var i` `SExpr`), so `Classify` —
+-- and hence `NamedCtx`/the typing judgment — is IR-free.
+open import Once.Surface.Context as Surface using ()
+  renaming (Ctx to SCtx; ∅ to S∅; _,_ to _S,_; _,_^_ to _S,_^_)
 
 ------------------------------------------------------------------------
 ------------------------------------------------------------------------
@@ -200,18 +203,18 @@ lookupImport ((n , ty) ∷ rest) x with StrProp._≟_ n x
 -- where-helper, generating a different scrutinee shape that breaks
 -- with-abstraction unification.
 lookupLocal-go : ∀ {m} (x : String) (Γ : Ctx) (Δ' : SCtx m)
-               → Maybe (∃[ A ] ∃[ Ψ ] (SExpr Δ' Ψ A))
+               → Maybe (∃[ A ] ∃[ Ψ ] (Surface.SVar Δ' Ψ A))
 lookupLocal-go x [] S∅ = nothing
 lookupLocal-go x [] (_ S, _ ^ _) = nothing
 lookupLocal-go x (_ ∷ _) S∅ = nothing
 lookupLocal-go {m = suc m'} x (b ∷ Γ') (Δ' S, B ^ _) with Data.String._≟_ x (name b)
-... | yes _ = just (B , _ , Surface.var zero)
+... | yes _ = just (_ , _ , Surface.svar zero)
 ... | no _  with lookupLocal-go x Γ' Δ'
-...   | nothing        = nothing
-...   | just (A , Ψ , se) = just (A , _ , weaken se)
+...   | nothing = nothing
+...   | just (A , Ψ , Surface.svar i) = just (_ , _ , Surface.svar (suc i))
 
 lookupLocal : (ctx : NamedCtx) → String
-            → Maybe (∃[ A ] ∃[ Ψ ] (SExpr (NamedCtx.debruijn ctx) Ψ A))
+            → Maybe (∃[ A ] ∃[ Ψ ] (Surface.SVar (NamedCtx.debruijn ctx) Ψ A))
 lookupLocal ctx x = lookupLocal-go x (NamedCtx.named ctx) (NamedCtx.debruijn ctx)
 
 ------------------------------------------------------------------------
@@ -226,12 +229,12 @@ lookupLocal ctx x = lookupLocal-go x (NamedCtx.named ctx) (NamedCtx.debruijn ctx
 ------------------------------------------------------------------------
 
 data LookupLocalView (ctx : NamedCtx) (x : String) : Set where
-  llv-found : ∀ {A Ψ se} → lookupLocal ctx x ≡ just (A , Ψ , se) → LookupLocalView ctx x
+  llv-found : ∀ {A Ψ eV} → lookupLocal ctx x ≡ just (A , Ψ , eV) → LookupLocalView ctx x
   llv-not-found : lookupLocal ctx x ≡ nothing → LookupLocalView ctx x
 
 inspectLookupLocal : (ctx : NamedCtx) (x : String) → LookupLocalView ctx x
 inspectLookupLocal ctx x with lookupLocal ctx x in eq
-... | just (A , Ψ , se) = llv-found eq
+... | just (A , Ψ , eV) = llv-found eq
 ... | nothing           = llv-not-found eq
 
 data LookupImportView (ctx : NamedCtx) (x : String) : Set where

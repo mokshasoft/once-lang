@@ -123,3 +123,12 @@ lookupUsage (q ∷ ψ) (Fin.suc i) = lookupUsage ψ i
 -- | Drop first element from usage vector (for removing bound variable)
 tailUsage : ∀ {n} → Usage (ℕ.suc n) → Usage n
 tailUsage (q ∷ ψ) = ψ
+
+------------------------------------------------------------------------
+-- Plan 0.58 (OCP-0006): the IR-FREE variable witness. A de-Bruijn `Fin`
+-- carrying the same type/usage indices a `var i : Expr` would — so
+-- `lookupLocal`/`t-var-local` can name a local WITHOUT the IR-carrying `Expr`.
+-- (`Surface.var i` rebuilds the `Expr` from `svar i` in the impl side.)
+------------------------------------------------------------------------
+data SVar : ∀ {n} → Ctx n → Usage n → Type → Set where
+  svar : ∀ {n} {Γ : Ctx n} (i : Fin n) → SVar Γ (singleUse i One) (lookup Γ i)

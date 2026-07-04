@@ -754,7 +754,7 @@ record VerifiedTypeChecker : Set₁ where
     tcInfer-complete-RVar-local :
       ∀ (ctx : NamedCtx) (x : String) {A : Type}
         {Ψ : Surface.Usage (NamedCtx.size ctx)}
-        {eE' : SExpr (NamedCtx.debruijn ctx) Ψ A}
+        {eE' : Surface.SVar (NamedCtx.debruijn ctx) Ψ A}
       → ¬ (x ≡ "unit")
       → lookupLocal ctx x ≡ just (A , Ψ , eE')
       → ∃[ eE ] ∃[ d ] ∃[ f ]

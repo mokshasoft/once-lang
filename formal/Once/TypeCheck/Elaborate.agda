@@ -1053,7 +1053,7 @@ mutual
     → VerifiedInferResult ctx (Raw.RResolved cn)
   inferElabV-RVar-lookup-aux :
     ∀ (ctx : NamedCtx) (x : String) → ¬ (x ≡ "unit")
-    → (locLhs : Maybe (∃[ A ] ∃[ Ψ ] (SExpr (NamedCtx.debruijn ctx) Ψ A)))
+    → (locLhs : Maybe (∃[ A ] ∃[ Ψ ] (Surface.SVar (NamedCtx.debruijn ctx) Ψ A)))
     → lookupLocal ctx x ≡ locLhs
     → (impLhs : Maybe Type)
     → lookupImport (NamedCtx.imports ctx) x ≡ impLhs
@@ -1918,8 +1918,8 @@ mutual
   ... | yes refl = success C₁ _ (Surface.case' scrutE eLE eRE) (ds ⊔ suc dL ⊔ suc dR) fR , t-case wS wL wR
   ... | no _     = failure CaseBranchMismatch , tt
 
-  inferElabV-RVar-lookup-aux ctx x ¬unit (just (A , Ψ , se)) eq-loc _ _ =
-    success A Ψ se 0 (NamedCtx.freshCounter ctx) , t-var-local ¬unit eq-loc
+  inferElabV-RVar-lookup-aux ctx x ¬unit (just (A , Ψ , eV)) eq-loc _ _ =
+    success A Ψ (Surface.svar→expr eV) 0 (NamedCtx.freshCounter ctx) , t-var-local ¬unit eq-loc
   inferElabV-RVar-lookup-aux ctx x ¬unit nothing eq-loc (just ty) eq-imp =
     success ty _ (Surface.sigOp (bare x)) 0 (NamedCtx.freshCounter ctx) , t-var-import ¬unit eq-loc eq-imp
   inferElabV-RVar-lookup-aux ctx x ¬unit nothing eq-loc nothing eq-imp =

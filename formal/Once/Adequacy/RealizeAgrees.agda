@@ -550,7 +550,7 @@ agree-RResolved ctx cn nothing lkup eq dγ k = ⊥-elim (fail≢succ (cong proj�
 -- neither-found → the success equation is absurd. No `masq` (unlike RResolved,
 -- whose aux emits a `lift-morphism` for arrows).
 agree-RVar : ∀ (ctx : NamedCtx) (x : String) (¬u : ¬ (x ≡ "unit"))
-  (locLhs : Maybe (∃[ A ] ∃[ Ψ ] (Expr (NamedCtx.debruijn ctx) Ψ A)))
+  (locLhs : Maybe (∃[ A ] ∃[ Ψ ] (Surface.SVar (NamedCtx.debruijn ctx) Ψ A)))
   (eq-loc : lookupLocal ctx x ≡ locLhs)
   (impLhs : Maybe Type) (eq-imp : lookupImport (NamedCtx.imports ctx) x ≡ impLhs)
   {A Ψ se d f w}

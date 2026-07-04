@@ -48,7 +48,7 @@ open import Once.TypeCheck.Judgment
          t-embed; t-lam; t-value-lift; t-morph-lift; t-pair-lit-check; t-In-app-check;
          t-apply-check; t-inl-app-check; t-inr-app-check; t-initial-app-check;
          t-subsume; t-arg-driven-app-check; t-var-poly-instantiate)
-open import Once.Surface.Syntax using (Expr; Usage;
+open import Once.Surface.Syntax using (Expr; Usage; var; svar; svar→expr;
   lam; app; effApp; pair; neg; let'; case'; int; str; unit;
   add; sub; mul; div; mod'; lt; le; gt; ge; eq; ne; arr'; sigOp; poly;
   lift-morphism; morph-app)
@@ -153,7 +153,7 @@ realize-infer (t-int n)         = int n
 realize-infer (t-str s)         = str s
 realize-infer t-unit            = unit
 realize-infer t-unit-var        = unit
-realize-infer (t-var-local {eE = eE} _ _) = eE
+realize-infer (t-var-local {eV = eV} _ _) = svar→expr eV
 realize-infer (t-var-qualified {name = name} {alias = alias} _) = sigOp (bare (alias ++ "." ++ name))
 -- Plan 0.50: a resolved ref carries its canonical identity directly — the
 -- reference elaboration reads it with NO String render, so it agrees with

@@ -355,7 +355,7 @@ infer-complete-RApp-apply {ctx} arg A eqArg
 infer-complete-RVar-local :
   ∀ {ctx : NamedCtx} (x : String) {A : Type}
     {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {eE' : SExpr (NamedCtx.debruijn ctx) Ψ A}
+    {eE' : Srf.SVar (NamedCtx.debruijn ctx) Ψ A}
   → ¬ (x ≡ "unit")
   → lookupLocal ctx x ≡ just (A , Ψ , eE')
   → ∃[ eE ] ∃[ d ] ∃[ f ]
@@ -366,7 +366,7 @@ infer-complete-RVar-local {ctx} x {A} {Ψ} {eE'} ¬unit eqLoc
 ... | no _     = _ , _ , _ , cong proj₁ (helper _ eqLoc)
   where
     open Once.TypeCheck.Elaborate using (inferElabV-RVar-lookup-aux)
-    helper : ∀ (lhs : Maybe (∃[ A' ] ∃[ Ψ' ] (SExpr (NamedCtx.debruijn ctx) Ψ' A')))
+    helper : ∀ (lhs : Maybe (∃[ A' ] ∃[ Ψ' ] (Srf.SVar (NamedCtx.debruijn ctx) Ψ' A')))
            → (eq' : lookupLocal ctx x ≡ lhs)
            → inferElabV-RVar-lookup-aux ctx x ¬unit (lookupLocal ctx x) refl _ refl
              ≡ inferElabV-RVar-lookup-aux ctx x ¬unit lhs eq' _ refl
@@ -385,7 +385,7 @@ infer-complete-RVar-import {ctx} x {T} ¬unit eqLoc eqImp
 ... | no _     = _ , _ , _ , cong proj₁ (trans (helperLoc _ eqLoc) (helperImp _ eqImp))
   where
     open Once.TypeCheck.Elaborate using (inferElabV-RVar-lookup-aux)
-    helperLoc : ∀ (lhs : Maybe (∃[ A' ] ∃[ Ψ' ] (SExpr (NamedCtx.debruijn ctx) Ψ' A')))
+    helperLoc : ∀ (lhs : Maybe (∃[ A' ] ∃[ Ψ' ] (Srf.SVar (NamedCtx.debruijn ctx) Ψ' A')))
               → (eq' : lookupLocal ctx x ≡ lhs)
               → inferElabV-RVar-lookup-aux ctx x ¬unit (lookupLocal ctx x) refl _ refl
                 ≡ inferElabV-RVar-lookup-aux ctx x ¬unit lhs eq' _ refl

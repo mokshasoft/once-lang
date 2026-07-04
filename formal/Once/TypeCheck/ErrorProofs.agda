@@ -248,7 +248,7 @@ var-unbound-is-UnboundVariable ctx x ¬unit eqLoc eqImp eqOuter
 ... | no _     = go (trans (sym (cong proj₁ (trans (helperLoc _ eqLoc) (helperImp _ eqImp)))) eqOuter)
   where
     open Once.TypeCheck.Elaborate using (inferElabV-RVar-lookup-aux)
-    helperLoc : ∀ (lhs : Maybe (∃[ A' ] ∃[ Ψ' ] (SExpr (NamedCtx.debruijn ctx) Ψ' A')))
+    helperLoc : ∀ (lhs : Maybe (∃[ A' ] ∃[ Ψ' ] (Surface.SVar (NamedCtx.debruijn ctx) Ψ' A')))
               → (eq' : lookupLocal ctx x ≡ lhs)
               → inferElabV-RVar-lookup-aux ctx x ¬unit (lookupLocal ctx x) refl _ refl
                 ≡ inferElabV-RVar-lookup-aux ctx x ¬unit lhs eq' _ refl

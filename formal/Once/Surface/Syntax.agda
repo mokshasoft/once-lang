@@ -242,4 +242,11 @@ data Expr : ∀ {n} → Ctx n → Usage n → Type → Set where
   -- denotational `evalᴰ` reads its budget-`n` event prefix (`ana-events`).
   ana : ∀ {n} {Γ : Ctx n} {F : Functor} {A} {π : Purity}
       → WellFormedF F → Expr ∅ zeroUsage (A ⇒[ mk-kind Many π ] ⟦ F ⟧T A)
+
       → Expr Γ zeroUsage (A ⇒[ mk-kind Many π ] ν-type F)
+
+-- Plan 0.58 (OCP-0006): materialise the `Expr` variable from the IR-free `SVar`
+-- witness (`Once.Surface.Context`). `lookupLocal`/`t-var-local` name locals by
+-- `svar i`; the impl side (elaborate / realize) rebuilds `var i` here.
+svar→expr : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A} → SVar Γ Ψ A → Expr Γ Ψ A
+svar→expr (svar i) = var i
