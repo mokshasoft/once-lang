@@ -15,19 +15,28 @@
 module Once.Adequacy.MeaningBridge where
 
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
+open import Data.Sum using (inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
 open import Data.Nat using (ℕ)
 open import Data.Fin using (Fin; zero; suc)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+open import Data.Integer using (ℤ)
+open import Data.Maybe using (just)
+open import Data.List using ([]; _++_)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
 
-open import Once.Type using (Type; Purity; mk-kind; Many; _⇒[_]_)
+open import Once.Type using (Type; Purity; mk-kind; Many; _⇒[_]_; _+_; _*_; μ-type; ⟦_⟧T; Functor; Int)
+open import Once.Functor.Translate using (WellFormedF)
+open import Once.Functor.Decide using (wellFormedF?)
 open import Once.Surface.Context using (Ctx; ∅; _,_^_; lookup)
   renaming (⟦_⟧ᶜ to ⟦_⟧ᶜᵗ)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ)
-open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_)
+open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_; projTrace; valueT)
 open import Once.Denotation.DenotTrace using (evalᴰ)
 open import Once.TypeCheck.Classify using (NamedCtx)
-open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_; _⊢ᵍ_∶_; _⊢ᵐ_∶_⇨[_]_)
+open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_; _⊢ᵍ_∶_; _⊢ᵐ_∶_⇨[_]_;
+  m-id; m-fst; m-snd; m-terminal; m-initial; m-inl; m-inr; m-compose; m-case;
+  m-pair; m-curry; m-cata; m-const; m-named; m-named-resolved;
+  g-int; g-terminal; g-pair; g-inl; g-inr; g-In)
 open import Once.Denotation.Meaning using (⟦_⟧ᶜ; ⟦_⟧ᵢ; ⟦_⟧ᵍ; ⟦_⟧ᵐ; lookupᴰ; Env)
 open import Once.Denotation.Realize using (realize; realize-infer; realize-morph; realize-global)
 import Once.Denotation.SourceDenote as SD
@@ -48,6 +57,7 @@ rel-lookup : ∀ {n} (Γ : Ctx n) (i : Fin n) {dγ₁ dγ₂ : ⟦ ⟦ Γ ⟧ᶜ
 rel-lookup (Γ , A ^ q) zero    {dγ₁ , a₁} {dγ₂ , a₂} (_  , ra) = ra
 rel-lookup (Γ , A ^ q) (suc i) {dγ₁ , a₁} {dγ₂ , a₂} (re , _)  = rel-lookup Γ i re
 
+
 ------------------------------------------------------------------------
 -- The fundamental lemma — four mutually-recursive realms. STATED here;
 -- discharged case-by-case (structural: `RelT-bind`/`RelT-return` + IH).
@@ -63,5 +73,29 @@ postulate
            → RelT A (⟦ d ⟧ᶜ dγ₁) (SD.⟦ realize d ⟧ˢ dγ₂)
   bridge-m : ∀ {ctx : NamedCtx} {e A B} {π : Purity} (d : ctx ⊢ᵐ e ∶ A ⇨[ π ] B)
            → RelV (A ⇒[ mk-kind Many π ] B) (⟦ d ⟧ᵐ) (evalᴰ (realize-morph d))
-  bridge-g : ∀ {ctx : NamedCtx} {e A} {X : Type} (d : ctx ⊢ᵍ e ∶ A) (y : ⟦ X ⟧ᴰ)
-           → RelT A (returnT ⟦ d ⟧ᵍ) (evalᴰ (realize-global {X = X} d) y)
+  -- Leaf `evalᴰ`-reduction facts (the `intLit` / `In` reductions of a global
+  -- point). NOT the funext concern — plain equational leaves, discharged with
+  -- the other leaves.
+  int-bridge : ∀ {ctx : NamedCtx} {X : Type} (n : ℤ) (y : ⟦ X ⟧ᴰ)
+             → RelT Int (returnT ⟦ g-int {ctx} n ⟧ᵍ) (evalᴰ (realize-global {X = X} (g-int {ctx} n)) y)
+  in-bridge : ∀ {ctx arg} {F : Functor} {X : Type} {wfF : WellFormedF F}
+              (dec : wellFormedF? F ≡ just wfF) (garg : ctx ⊢ᵍ arg ∶ (⟦ F ⟧T (μ-type F))) (y : ⟦ X ⟧ᴰ)
+            → RelT (μ-type F) (returnT ⟦ g-In {wfF = wfF} dec garg ⟧ᵍ)
+                             (evalᴰ (realize-global {X = X} (g-In {wfF = wfF} dec garg)) y)
+
+-- The VALUE realm, DISCHARGED — structural (`RelT-bind`/`RelT-return`, using
+-- `returnT x >>=T f ≡ f x` definitionally) + the two leaf facts above.
+bridge-g : ∀ {ctx : NamedCtx} {e A} {X : Type} (d : ctx ⊢ᵍ e ∶ A) (y : ⟦ X ⟧ᴰ)
+         → RelT A (returnT ⟦ d ⟧ᵍ) (evalᴰ (realize-global {X = X} d) y)
+bridge-g {ctx = ctx} {X = X} (g-int n) y = int-bridge {ctx = ctx} {X = X} n y
+bridge-g (g-terminal _ _) y n = refl , tt
+-- Compound cases inline the `∀ n` reasoning (applying `bridge-g … n` gives a
+-- concrete pair, so no `RelT`-type unification): the pure side's trace is `[]`,
+-- the `evalᴰ` side's is `projTrace (sub) n ++ …`, equal by the sub-relation's
+-- trace half; the value follows from the sub-relation's value half.
+bridge-g (g-pair ga gb) y n =
+    cong₂ (λ x z → x ++ (z ++ [])) (proj₁ (bridge-g ga y n)) (proj₁ (bridge-g gb y n))
+  , (proj₂ (bridge-g ga y n) , proj₂ (bridge-g gb y n))
+bridge-g (g-inl ga) y n = cong (_++ []) (proj₁ (bridge-g ga y n)) , proj₂ (bridge-g ga y n)
+bridge-g (g-inr gb) y n = cong (_++ []) (proj₁ (bridge-g gb y n)) , proj₂ (bridge-g gb y n)
+bridge-g (g-In dec garg) y = in-bridge dec garg y
