@@ -34,6 +34,7 @@ open import Once.Type
 open import Once.CanonicalName using (CanonicalName; showCanonical; bare)
 open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_)
 open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ; emit-D; inject; forget)
+open import Once.Semantics.Machine using (sem-In; coerce-functor)
 open import Once.Surface.Context using (Ctx; ∅; _,_^_; svar; SVar) renaming (⟦_⟧ᶜ to ⟦_⟧ᶜᵗ; lookup to lookupᵗ)
 open import Once.TypeCheck.Classify using (NamedCtx)
 open import Once.TypeCheck.Raw using (BinOp; OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
@@ -62,11 +63,17 @@ open import Once.TypeCheck.Judgment
 ------------------------------------------------------------------------
 
 postulate
-  -- g-In: the initial-algebra constructor `⟦F⟧T (μF) → μF` at the value level.
-  in-value  : ∀ {F : Functor} → ⟦ ⟦ F ⟧T (μ-type F) ⟧ᴰ → ⟦ μ-type F ⟧ᴰ
-  -- m-cata: the structural fold of an algebra over `μF` (P2: reuse SD's cata-ev-algᴰ).
+  -- m-cata: the structural fold of an algebra over `μF`. Last remaining scaffold —
+  -- the event-tracking fold (SD's `sem-cata`/`cata-ev-algᴰ`) over the DIRECT
+  -- algebra rather than the IR one; discharged separately.
   cata-sem  : ∀ {F : Functor} {A : Type}
             → (⟦ ⟦ F ⟧T A ⟧ᴰ → T ⟦ A ⟧ᴰ) → ⟦ μ-type F ⟧ᴰ → T ⟦ A ⟧ᴰ
+
+-- g-In: the initial-algebra constructor `⟦F⟧T (μF) → μF` at the value level.
+-- DEFINITIONALLY `eval (In wf Heap) ∘ forget` (first-order data is pure), so the
+-- `bridgeᵈ` case for `g-In` is a `forget`-coercion step.
+in-value : ∀ {F : Functor} → ⟦ ⟦ F ⟧T (μ-type F) ⟧ᴰ → ⟦ μ-type F ⟧ᴰ
+in-value {F} x = sem-In F (coerce-functor F (μ-type F) (forget x))
 
 -- m-named / m-named-resolved: the named arrow's meaning, IR-free. This is
 -- DEFINITIONALLY `evalᴰ (SigOp (value-info cn))` (same RHS), so the `bridgeᵈ`
