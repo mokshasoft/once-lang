@@ -32,9 +32,15 @@ open import Data.String using (String; _++_)
 open import Once.Type
   using (Type; Unit; Void; Int; _*_; _+_; _⇒[_]_; μ-type; Functor; ⟦_⟧T; Purity)
 open import Once.CanonicalName using (CanonicalName; showCanonical; bare)
-open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_)
+open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_; valueT; projTrace)
 open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ; emit-D; inject; forget)
-open import Once.Semantics.Machine using (sem-In; coerce-functor)
+open import Once.Semantics.Machine using (sem-In; coerce-functor; sem-cata; sem-fmap; coerce-functor⁻¹; ⟦_⟧F)
+open import Once.Functor.Translate using (WellFormedF)
+open import Once.Denotation.Trace using (SigOpEvent)
+open import Once.Denotation.TraceDenote using (events-F)
+open import Once.CCC.Eval as Val using ()
+open import Data.List using (List) renaming (_++_ to _++ₗ_)
+open import Data.Nat using (ℕ)
 open import Once.Surface.Context using (Ctx; ∅; _,_^_; svar; SVar) renaming (⟦_⟧ᶜ to ⟦_⟧ᶜᵗ; lookup to lookupᵗ)
 open import Once.TypeCheck.Classify using (NamedCtx)
 open import Once.TypeCheck.Raw using (BinOp; OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
@@ -62,12 +68,22 @@ open import Once.TypeCheck.Judgment
 -- rule's semantics that needs machinery this file does not yet set up.
 ------------------------------------------------------------------------
 
-postulate
-  -- m-cata: the structural fold of an algebra over `μF`. Last remaining scaffold —
-  -- the event-tracking fold (SD's `sem-cata`/`cata-ev-algᴰ`) over the DIRECT
-  -- algebra rather than the IR one; discharged separately.
-  cata-sem  : ∀ {F : Functor} {A : Type}
-            → (⟦ ⟦ F ⟧T A ⟧ᴰ → T ⟦ A ⟧ᴰ) → ⟦ μ-type F ⟧ᴰ → T ⟦ A ⟧ᴰ
+-- m-cata: the event-tracking structural fold, IR-free — a direct-algebra mirror
+-- of SD's `cata-ev-algᴰ` (`evalᴰ alg` replaced by the direct algebra `dalg`).
+-- DEFINITIONALLY matches `evalᴰ (Cata wf alg)` when `dalg = evalᴰ alg`, so the
+-- `bridgeᵈ` cata case reduces to the (recursive) morphism bridge.
+cata-ev-algᴰ-D : ∀ {F : Functor} {A : Type} → ℕ → (⟦ ⟦ F ⟧T A ⟧ᴰ → T ⟦ A ⟧ᴰ)
+               → ⟦ F ⟧F (List SigOpEvent × Val.⟦ A ⟧) → List SigOpEvent × Val.⟦ A ⟧
+cata-ev-algᴰ-D {F} {A} n dalg fc =
+  ( events-F F proj₁ fc ++ₗ projTrace (dalg (inject z)) n
+  , forget (valueT (dalg (inject z)) n) )
+  where z = coerce-functor⁻¹ F A (sem-fmap F proj₂ fc)
+
+cata-sem : ∀ {F : Functor} {A : Type} → WellFormedF F
+         → (⟦ ⟦ F ⟧T A ⟧ᴰ → T ⟦ A ⟧ᴰ) → ⟦ μ-type F ⟧ᴰ → T ⟦ A ⟧ᴰ
+cata-sem {F} {A} wf dalg v = λ n →
+  let r = sem-cata wf (cata-ev-algᴰ-D {F} {A} n dalg) (forget v)
+  in (proj₁ r , inject (proj₂ r))
 
 -- g-In: the initial-algebra constructor `⟦F⟧T (μF) → μF` at the value level.
 -- DEFINITIONALLY `eval (In wf Heap) ∘ forget` (first-order data is pure), so the
@@ -112,7 +128,7 @@ named-sem {A} {B} cn a =
 ⟦ m-pair f g      ⟧ᵐ = λ a  → ⟦ f ⟧ᵐ a >>=T λ b → ⟦ g ⟧ᵐ a >>=T λ c → returnT (b , c)
 ⟦ m-curry f       ⟧ᵐ = λ a  → returnT (λ b → ⟦ f ⟧ᵐ (a , b))
 ⟦ m-const gv      ⟧ᵐ = λ _  → returnT ⟦ gv ⟧ᵍ
-⟦ m-cata _ alg    ⟧ᵐ = cata-sem ⟦ alg ⟧ᵐ
+⟦ m-cata {wfF = wfF} _ alg ⟧ᵐ = cata-sem wfF ⟦ alg ⟧ᵐ
 ⟦_⟧ᵐ {A = A} {B = B} (m-named {x = x} _ _ _)        = named-sem {A} {B} (bare x)
 ⟦_⟧ᵐ {A = A} {B = B} (m-named-resolved {cn = cn} _) = named-sem {A} {B} cn
 
