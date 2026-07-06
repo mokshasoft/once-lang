@@ -205,6 +205,203 @@ keeps the whole system strongly normalizing.
 
 ---
 
+## 5. Why Once's foundations make the dependent layer cheaper to build
+
+Beyond decidability-for-free (Motivation → "Why Once's totality already fixes
+it"), Once's *specific* foundations — the total
+core (OCP-0003), point-free CCC morphisms, arrows-not-monads, structured
+recursion, and reified functors — make the dependent layer materially cheaper to
+*implement*, not just cheaper to justify. They all simplify for the same reason,
+and it is the same move this OCP makes for totality (Motivation → "The caveat
+OCP-0003 gets subtly wrong").
+
+### The pattern: no untamed feature ⟹ no taming mechanism
+
+Conventional dependently-typed languages spend most of their implementation
+complexity on **taming mechanisms** — machinery whose only job is to stop some
+*unstructured* feature from breaking decidability or soundness. Once, by
+construction, **lacks the unstructured feature**, so the taming mechanism is
+simply absent. This is the same shape as the totality argument in the
+Motivation (non-totality is inexpressible ⟹ no totality oracle to run), generalized across
+every foundation:
+
+| Agda/Coq needs this taming machinery… | …to tame this unstructured feature | Once lacks the feature structurally, because… |
+|---|---|---|
+| Termination checker + **sized types** | general recursion | `Cata`/`Para` only (OCP-0003) — SN by construction |
+| **Guardedness** checker / productivity analysis | general corecursion | `Ana` reified / fuel-indexed (§4) |
+| **NbE + de Bruijn + capture-avoidance** | named-variable binders | point-free CCC — substitution *is* composition |
+| Dependent pattern-match **unification** ("green slime", the K-axiom mess) | `with` / dependent matching | eliminators / motive-explicit `case` (OCP-0008); `case` = `Cata` |
+| Monad transformers / effect-in-DTT gymnastics | monadic `>>=` threading values through binders | arrows / graded morphisms — effects are structural |
+
+Each row is a large, historically bug-prone, TCB-heavy subsystem in a real proof
+assistant. Sized types, the guardedness checker, and the dependent-unification
+engine are three of Agda's most complex and most-unsound-in-history modules.
+Once does not *simplify* them — it **never admitted the thing they exist to
+control**, so they do not appear.
+
+### The deepest saving: point-free removes the substitution engine
+
+The single hardest correctness-critical component of a dependent type checker is
+**substitution under binders** — de Bruijn shifting, capture-avoidance, and the
+NbE machinery built to do β-reduction right. That apparatus exists because terms
+have *named bound variables*.
+
+A point-free categorical core does not have them, and this is not a coincidence:
+categorical combinators (Curien's CAM, the λ→CCC translation) were *invented to
+implement substitution as composition*. In the categorical semantics of type
+theory a term-in-context `Γ ⊢ t : A` **is** a morphism `⟦Γ⟧ → ⟦A⟧`, substitution
+**is** precomposition, and weakening **is** a projection. If Once's *syntax* is
+already morphisms rather than named λ-terms, the gap the checker must bridge
+between syntax and semantics is much smaller: substitution-in-conversion
+collapses to composition.
+
+### Arrows keep the conversion fragment clean
+
+Effects-in-dependent-types is a notorious swamp: with a monad, the
+continuation's *type* can depend on the value inside the computation, so `>>=`'s
+dependent typing degrades and drifts toward the whole "dependent effects"
+literature. Arrows sidestep it: an arrow `A ⇝ B` is an *object* you compose, not
+a bind that threads a value through a binder. Effect typing stays **structural**
+(composition of morphisms in a graded category) rather than value-dependent.
+This dovetails with §2–3: because effects are arrows, the *type-level* part of an
+effectful program stays in the inductive/structural (conversion-friendly)
+fragment, while the coinductive part is purely the **trace semantics** — the
+propositional Level-C object. Monadic effects would smear value-threading into
+the term structure the checker has to reduce; arrows keep it out.
+
+### Reified functors are already the right shape for indexed data
+
+Indexed inductive families (`Vec n`, `Fin n`) are, categorically, **indexed
+polynomial functors / containers** — the dependent generalization of a functor.
+Once already reifies `Functor` as first-class data (OCP-0003), so the move to
+indexed data is *extending an existing reified-functor machinery with indices*,
+not inventing datatype-genericity from scratch. The categorical semantics of
+inductive families is exactly "containers," which is the shape Once is already
+in.
+
+### What does *not* get simpler (honesty)
+
+- **Universe stratification** (Girard). CCC/arrows/structured recursion do
+  nothing for it — the `Type₀ : Type₁ : …` ladder is a *second, orthogonal*
+  well-foundedness obligation (universe rank, not data descent), not inherited
+  from OCP-0003. Full cost, unchanged.
+- **CCC → CwF/LCCC.** See Trade-offs / Open Questions: the point-free win on the
+  term/substitution layer is *paid for* by moving up from a plain CCC (models
+  STLC) to a comprehension category / category-with-families (models Π/Σ).
+- **Normalization *performance*.** Structured recursion buys *termination*, not
+  *speed*; the existing OOM/timeout reality (Impact → Performance) is untouched.
+
+The savings concentrate in exactly the four subsystems that make Agda/Coq hard
+to *build* and hard to *trust* — termination/sizing, guardedness,
+capture-avoiding substitution, dependent-match unification. The one genuine bill
+is structural (CCC → CwF), plus the untouched universe hierarchy.
+
+---
+
+## 6. Staged introduction (Rungs 0–6)
+
+The dependent layer should be built as a **tower of shippable increments**, not a
+big-bang. Each rung adds exactly one piece of machinery, has an independent
+payoff, and carries one metatheory obligation. Nothing is ever removed — the
+**runtime core stays fixed** the whole way up (see Impact → Expressivity: type-level
+power rises, runtime is unchanged). In λ-cube terms the tower walks from the
+bottom corner toward the top, then adds the MLTT extras (identity types, indexed
+families, universes) above the pure cube.
+
+The tower's summit is the concrete goal that motivates the whole OCP: **state and
+prove properties of Once programs — up to compiler correctness — inside Once
+itself, at zero runtime cost.**
+
+### Rung 0 — base (today)
+
+Total, simply-typed Once: CCC/arrows, structured recursion, reified functors,
+self-hosting compiler with a reified IR. Programs run; nothing is proved *inside*
+the language.
+
+### Rung 1 — one universe + type-level functions
+
+Add `Type₀` and let `Cata` compute over *types* (the λω̲ corner: types→types, no
+term-dependency yet).
+- **Buys:** datatype-generic programming, type-level computation.
+- **Obligation:** none hard — no term-in-type conversion yet.
+- **Cheap** because Once already reifies functors; this just types that level.
+
+### Rung 2 — Π and Σ over the total core
+
+The first genuinely dependent step (λP). Types may now mention *terms* (`Vec n`).
+- **Buys:** indexed types; the ability to *say* things about values.
+- **Obligation:** decidable conversion — **free** from OCP-0003 totality
+  (normalize-compare terminates because the core is SN). Keep equality
+  **intensional** (smallest decidable choice).
+
+### Rung 3 — the identity type `Id (a ≡ b)` + `J`
+
+The rung that turns "dependent types" into "a logic." Without it you can *index*
+types but cannot *state a proof obligation*.
+- **Buys:** phrasing and proving equalities (`refl` + `J`).
+- **Obligation:** pick intensional first (revisit for funext/OTT/cubical later —
+  see Open Questions).
+
+### Rung 4 — indexed inductive families
+
+Generalize reified functors to *indexed* polynomial functors / containers, so you
+can define **relations as datatypes**: the typing relation `⊢`, the
+step/semantics relation, and the trace-equivalence relation (the coinductive ones
+per §2's Level C live here, on the propositional side). Eliminators = `Cata` over
+indexed families.
+- **Buys:** the single biggest jump — you can now *phrase compiler correctness as
+  a type*.
+- **Obligation:** strict positivity for the families (respected by the existing WF
+  machinery).
+
+### Rung 5 — the erasure invariant
+
+Impose the multiplicity discipline (QTT — see Open Questions / Trade-offs) so that
+everything in Rungs 2–4 that is index/proof is **erased**: nothing reaches the
+backend. This is **not a late rung** — it is a **design invariant imposed from
+Rung 2 onward**, so the dependent layer is erasable-by-construction rather than
+retrofitted. Multiplicity `0` = erased proof/index; `1` = linear resource (folds
+Once's resource-control work into the same mechanism); `ω` = unrestricted.
+
+### Rung 6 — the summit: reflect Once into Once and prove
+
+All pieces now present: (a) Once's IR *already* exists as data (self-hosting);
+(b) define the semantics + the correctness proposition as indexed families
+(Rung 4); (c) prove `∀ (p : IR). Corresponds (compile p) (semantics p)` by
+structured recursion (`Cata`) over `p`; (d) erase all of it (Rung 5). This
+*internalizes the current Agda development* (`CompileCorrectFlat`, `flat-sim`,
+`exec-flat-is-semantics`) into Once itself.
+
+### The honest wall at the summit
+
+Rung 6 meets the diagonalization ceiling this OCP already names (Motivation → "The
+caveat OCP-0003 gets subtly wrong"), so the goal must be scoped precisely:
+
+- You **can** prove properties of Once *programs* in Once, and prove the compiler
+  correct for *represented* programs — those inductions are structural (`Cata`
+  over a given `p`).
+- You **cannot** write a *total self-interpreter* — an Once function that
+  evaluates arbitrary Once *and* is proven total for all inputs. That is exactly
+  the forbidden diagonal. The reflected operational-semantics interpreter must be
+  **fuel-indexed** (structural on a `Nat`), which is fine for stating correctness
+  but is the honest shape of the limit.
+
+So "prove Once in Once" is fully reachable for the theorems that matter (compiler
+correctness, program properties) **provided the reflected interpreter is
+fuel-bounded** — the same guardrail as everywhere else in Once.
+
+| Rung | Adds | λ-cube / MLTT locus |
+|---|---|---|
+| 0 | (base) total simply-typed core | λ→ |
+| 1 | universe + type-level functions | λω̲ (types→types) |
+| 2 | Π, Σ over the total core | λP (types→terms) |
+| 3 | identity type `Id` + `J` | MLTT equality |
+| 4 | indexed inductive families | inductive families |
+| 5 | erasure invariant (QTT `0/1/ω`) | phase / relevance |
+| 6 | reflect Once, prove correctness | self-reflection (fuel-guarded) |
+
+---
+
 ## Impact
 
 ### Performance
@@ -258,6 +455,10 @@ OCP-0003, unchanged by this proposal.
   (trace bisimilarity) that never touch conversion.
 - Clear, documented boundary so the coinduction-in-conversion pitfall is avoided
   by design.
+- **Four taming subsystems never built** (§5): no termination/sizing checker, no
+  guardedness checker, no capture-avoiding substitution engine, no
+  dependent-match unifier — because Once lacks the unstructured feature each one
+  exists to control. Directly shrinks the TCB (aligns with OCP-0004).
 
 **Lost:**
 - Codata in definitional conversion — but Level A shows this loses no real
@@ -266,6 +467,11 @@ OCP-0003, unchanged by this proposal.
 - (Inherited, unchanged) total self-interpreter — needs a fuel parameter.
 - (Cost, not loss) higher type-checker resource usage; mitigated by existing
   techniques, not eliminated.
+- (Structural cost, §5) the point-free substitution win is *paid for* by moving
+  the categorical model up from a plain CCC (models STLC) to a
+  category-with-families / LCCC (models Π/Σ). Complexity moves out of
+  capture-avoidance code and into adjoint/comprehension structure — arguably a
+  good trade, but a trade, not a free win. See Open Questions.
 
 ---
 
@@ -310,6 +516,17 @@ OCP-0003, unchanged by this proposal.
   cubical) that provides it definitionally?
 - **Elaboration cost.** What is the realistic type-checker budget once real Once
   programs carry dependent indices, given the existing OOM/timeout constraints?
+- **Categorical model: CCC → CwF/LCCC (§5).** Point-free syntax removes
+  capture-avoiding substitution (substitution = composition), but dependent types
+  need *more* than a CCC: Σ/Π require a comprehension category /
+  category-with-families / locally-cartesian-closed structure, where dependency
+  is expressed by context extension + projection (Π = right adjoint to
+  weakening), not by a named binder. This is the honest tension in point-free
+  dependency: there is no name `n` to reference in `(n : Nat) → Vec n`, so the
+  dependency must be carried categorically. Which concrete presentation (explicit
+  CwF, display maps, or a combinator calculus over it) is the right elaboration
+  target for Once, and how much of the reified-functor machinery can be reused as
+  its container/polynomial layer?
 
 ---
 
@@ -324,3 +541,257 @@ necessity; C: codata propositions are valuable and also out of conversion). The
 headline: *Once's totality already bought decidable dependent type checking; the
 only thing left to get right is keeping coinduction on the propositional side of
 the line.*
+
+---
+
+## FAQ
+
+Design-conversation questions that shaped this OCP, with the answers distilled.
+
+### Q1. How do the different "kinds" of dependent types relate — a line, a tree, or something else? (expressiveness)
+
+**A cube (a lattice), not a chain and not a tree.** Barendregt's λ-cube starts
+from simply-typed λ-calculus (terms→terms) and adds three *orthogonal* features:
+polymorphism (terms→types, System F), type operators (types→types, λω̲), and
+**dependent types proper** (types→terms, λP). "Dependently typed" languages
+(Agda/Coq/Lean) sit at the top corner where all three combine (the Calculus of
+Constructions). So the expressiveness order is the **powerset lattice 2³**:
+
+- **Not a chain** — System F and λP are *incomparable* (System F has
+  impredicative polymorphism λP lacks; λP has term-dependency System F lacks).
+- **Not a tree** — any subset of axes *joins* freely; CoC is the join of all
+  three, and a tree forbids that reconvergence.
+- **A partial order** by inclusion, STLC at the bottom, CoC at the top; each axis
+  strictly adds power.
+
+The type formers this OCP proposes (Π, Σ, `Id`, indexed families, universes) sit
+*above* the pure cube — CoC + those extras = MLTT/CIC. A second viewpoint besides
+expressiveness: the same lattice is a **cost** lattice — the term→type axis (λP)
+is the one that forces deciding *conversion*, which is why the whole OCP's
+argument concentrates there.
+
+### Q2. How do "universes in universes" relate to dependent types?
+
+Universes are **not** a fourth axis of the cube; they are the machinery that makes
+the cube's first-class-types corners *coherent*. Once types are values you pass
+around, types need a type. The naive `Type : Type` is inconsistent (Girard's
+paradox) and also *diverges*, so you stratify: `Type₀ : Type₁ : Type₂ : …`
+(predicative). Universes are **orthogonal to Π/Σ dependency** but **mandatory** to
+safely internalize the type→type / type→term axes. A tiny LF-style system (λP
+only) can run with a single fixed universe; the hierarchy becomes load-bearing
+precisely when you want to quantify over types *and* stay consistent — which Once
+does. (See §3 note on universe design in Open Questions.)
+
+### Q3. Which dependent types carry no runtime representation? (for proving Once in Once)
+
+The **erased** ones — and it is *enforced*, not conventional. Once has committed
+to the **QTT / multiplicity** approach (see Trade-offs, Open Questions, Rung 5):
+each binding is `0` (erased — present only for type checking/proving), `1`
+(linear), or `ω` (unrestricted). The "which carries no runtime rep" answer is the
+`0`-multiplicity bindings: equality/`Id` proofs, membership in
+inductively-defined relations (typing derivations, trace-bisimilarity proofs),
+type arguments, and ghost indices. Your self-hosting instinct is exactly right:
+Once-in-Once *the compiler* runs (`ω`/`1`), but the *proofs about it* are `0` and
+evaporate after checking — zero runtime footprint. (Caveat: erasure buys
+*runtime*, not *type-check time* — a `0` proof can still be expensive to check;
+see Impact → Performance.)
+
+### Q4. Is runtime representation "coming in at `Type`"? Is that the universes — `Type → Type → Type`?
+
+No — that conflates three distinct ladders that all wear the word `Type`:
+
+1. **Universe sizing ladder** — `Type₀ : Type₁ : …` (connective is `:`,
+   membership). Purpose: avoid Girard's paradox. Nothing to do with runtime.
+2. **Type operators** — `Type → Type` (connective is `→`, a function like
+   `List : Type → Type`). Cube axis 2; lives *inside* one universe. This is what
+   you wrote — it is *not* the universe hierarchy.
+3. **Relevance / erasure** — a *third* axis. Either a `Prop` universe (Coq) *or* a
+   per-binding multiplicity (QTT — Once's choice).
+
+The universe *level* of something does **not** determine erasure: a `Nat`
+(runtime) and a proof `x ≡ y` (erased) can both live in `Type₀`. Your intuition
+matches the Coq design where erasure *is* a universe (`Prop`) — but that is a
+*sibling* of the sizing ladder, not the same one. Once tracks erasure per-binding
+(QTT) instead, so it is decoupled from universes entirely.
+
+### Q5. If the algorithm branches on `n` at runtime, can that be made a type error — to avoid runtime dependency entirely?
+
+Yes. Marking a binding multiplicity `0` makes the checker **reject** any runtime
+computation that branches on it ("erased variable used in non-erased position").
+A stronger, cleaner version is available if you ever want it: make the *entire*
+dependent layer a **phase-separated proof layer** (two-level type theory) whose
+output type is the object-level IR or nothing, so runtime-relevant dependency is
+not merely a type error but **unrepresentable**. Once's QTT choice is the more
+permissive point on this dial: it *allows* `ω` runtime-relevant dependency while
+letting you *choose* full erasure per binding — you keep the door open for
+dependently-typed running code *and* get zero-cost proofs. (This is the
+phase-separation-vs-graded question, settled toward graded; see Open Questions.)
+
+### Q6. Is the universe hierarchy "fuel for types"?
+
+At the *deepest* level, yes — same meta-move; at the *literal* level, no. Both
+fuel and the universe ladder are **predicative ℕ-stratification breaking a
+self-referential paradox that would otherwise diverge** (fuel: `f_n` calls only
+`f_{n-1}`; universes: `Typeₙ` quantifies only over `Type_{<n}`; and `Type : Type`
+really does produce a *looping* term, matching value-level `loop`). But the
+*resource* differs: fuel is a **consumed step-clock** that runs out and yields
+*finite approximations*; a universe level is a **static size-rank** that is never
+spent and is always *exact*. The precise technical analogue is **rank in a
+well-founded cumulative hierarchy**, not a clock. "Fuel for types" is a good
+mnemonic for the skeleton, as long as no one pictures a level being *spent* during
+checking.
+
+### Q7. Does `Type : Type` even explode if all type-level computation is total (CCC + Cata)? A total language "can't create an infinite type loop."
+
+It still explodes — this is the subtlest point in the universe story. **Girard's
+paradox uses zero recursion combinators.** The looping term (Hurkens' closed term
+of type `⊥`) is built from *only* `Type : Type` plus `Π (X : Type). …` — no
+`Fold`, no `Cata`, nothing OCP-0003 restricts. Impredicative self-instantiation
+(a type `U` that is itself a `Type` and can be fed its own quantifier) is a
+fixpoint combinator in disguise — the type-level `(λx. x x)(λx. x x)`.
+
+The clean framing: there are **two orthogonal well-foundedness obligations** —
+*data descent* (recursion over values inside types; `Cata` handles it) and
+*universe rank* (types classifying types; stratification handles it). `Type :
+Type` is a **cycle in the rank ladder** — "type-fuel that never decreases" — a
+loop in the *type-formation* dimension that `Cata` has no bearing on. Equivalently
+it is **Cantor's diagonal at the type level** (`Type : Type` lets `U` retract its
+own `℘℘U`), the same diagonalization behind the halting problem. So SN is a
+property of the *whole* system including its universe rules; you cannot bolt
+`Type : Type` onto the total core and keep totality. **This is exactly why
+universe stratification is listed as a separate obligation (§Formal Verification,
+Open Questions), not something inherited from OCP-0003.** The only "escape" —
+forbidding quantification over `Type` — would destroy first-class types, the very
+thing dependency wants; so wanting first-class types is precisely what *forces*
+the rank ladder to be well-founded.
+
+---
+
+## Appendix: Beyond This Proposal — The Graded/Modal Direction (Speculative)
+
+> **Status: speculative, non-committal.** Nothing here is proposed for
+> implementation. It records the design *trajectory* — where the ideas in this OCP
+> point if pushed one level of abstraction further — so the intent survives and a
+> future OCP can pick it up. The shippable content is Rungs 0–6 (§6); this
+> appendix is the horizon behind them.
+
+### A.1 The one-line thesis: side-conditions become composable modalities
+
+§5 observed that Once *lacks* the untamed features conventional DTT has to tame,
+so the taming passes never get built. This appendix is the same idea at a higher
+altitude, for the features Once genuinely *does* want (linearity, erasure,
+coinduction):
+
+> **Where you want a feature that DTT normally polices with an external
+> side-condition, take the feature as an *internal modality you compose*, not a
+> *checker pass you run*.**
+
+This is the exact move arrows made for effects. Arrows turned monadic *sequencing*
+from value-threading-through-binders into **morphism composition**. The analogous
+move for a proof language turns DTT's external side-conditions —
+termination, guardedness, linearity, relevance — from *passes that reject* into
+**modalities that compose**:
+
+- linearity / erasure → a **grade** drawn from a semiring (this is QTT; `0`/`1`/`ω`
+  are grades — see Trade-offs, Open Questions, Rung 5);
+- productivity / coinduction → the **later modality `▷`** (guarded type theory).
+  The external guardedness *checker* becomes an internal, typed, composable `▷`;
+  you *prove* productivity compositionally rather than have a syntactic pass gate
+  it. This is §4's open `Ana` question resolved the principled way;
+- staging / necessity / cohesion → **`□`-style modalities**.
+
+The unifying framework is **graded / multimodal dependent type theory** — MTT
+(Gratzer–Kavvos–Nuyts–Birkedal), parameterized by a *mode theory* (a 2-category),
+converging with the graded/quantitative tradition (Graded Modal DTT; Atkey's QTT).
+It is "arrows-shaped" in the precise sense: *one framework, instantiated by
+choosing the modal/grade structure, from which plain DTT (trivial mode), QTT,
+guarded recursion, and cohesion all fall out as special cases* — and none is lost,
+just as arrows do not lose monads. For Once it **unifies the three concerns this
+proposal kept circling — linearity, erasure, and coinduction-without-breaking-
+decidability — into one graded-modal fibration** instead of three bolted-on
+mechanisms.
+
+### A.2 The categorical map: enrich the fibration
+
+DTT's semantics is a **comprehension category / category-with-families /
+fibration with Π and Σ** (a category fibered over contexts; `Π` right adjoint to
+weakening, `Σ` left adjoint). Every "next thing after dependent types" is a
+systematic enrichment of *that fibration*:
+
+| Enrich the fibration's… | You get | Generalizes |
+|---|---|---|
+| **fibers** → ∞-groupoids | HoTT / cubical | the *equality* dimension (funext, univalence — see Open Questions) |
+| **base** → graded/moded | **graded/modal DTT** (MTT, QTT, guarded `▷`) | the *resource / variance / productivity* structure (A.1) |
+| **fibration** → directed | **directed type theory** | the *symmetry* of identity (A.3) |
+| **base's monoidal structure** → linear | linear dependent types | the *structural rules* |
+
+There is no consensus single successor to DTT the way arrows are the agreed
+generalization of monads; there are these frontier directions, and the unifying
+lens is fibered category theory. The row that matters most for Once is the
+**base** row (A.1); the row that is the *ideal* fit is the **fibration** row
+(A.3).
+
+### A.3 Directed HoTT — the arrows-native equality theory
+
+Ordinary HoTT models types as **∞-groupoids**: every path is invertible, `a = b`
+is symmetric. But Once is built on **morphisms / arrows** — a *category*, not a
+groupoid. Compile steps, effects, and traces run *forward*; they are not
+invertible, and a linear resource cannot be run backward. **Directed type theory**
+is the variant whose identity type is replaced by a *directed* hom `a → b`
+(asymmetric, non-invertible), modeling categories rather than groupoids.
+
+This is the genuinely **arrows-native** equality theory, and the structural fit
+with Once is threefold:
+
+- **Morphisms, not paths.** Once's computational content is directed (a CCC is a
+  category); directed HoTT's identity *is* a directed morphism, so equality lines
+  up with computation instead of assuming an invertibility Once's programs never
+  have.
+- **Linearity.** Directed paths do not assume invertibility, matching linear
+  resource flow (you cannot un-consume). This is why OCP-0003's compatibility
+  matrix already rated **directed HoTT "best" for Once's linearity** (see Open
+  Questions).
+- **Traces.** A trace is a directed object; program refinement/simulation is a
+  directed relation (a morphism `a → b`), not a symmetric equivalence. Directed
+  identity is the native home for the refinement half of §3's trace semantics.
+
+**Honesty / maturity.** Directed type theory is **research-frontier** — no mature
+implementation, no settled decidable-conversion story. It is the *north star*, not
+a shippable target. The practical path reaches it through the graded/modal
+direction (A.1): variance/directedness is itself governed by a modal discipline,
+so a graded-modal core is the realistic on-ramp toward a directed one.
+
+### A.4 Why this is native to Once, not a foreign import
+
+Via **natural models** (Awodey), DTT presents as a single *representable map of
+presheaves*, tying it directly to **polynomial functors / containers** — and
+indexed inductive families (`Vec`, `Fin`) *are* polynomial functors. So the
+categorical object underneath DTT is **the reified-functor / container machinery
+Once is already built on** (OCP-0003). The generalizations above are therefore not
+alien layers; they are the fibered/polynomial *generalization of what Once already
+is*.
+
+That yields the deepest version of "make the proofs line up": build the checker as
+the **internal language of the right (graded) fibration**, so that composing
+proofs *is* composing morphisms — the §5 point-free/CwF observation, lifted one
+level. Grades ride on the fibration; modalities are functors over it;
+termination/guardedness/linearity stop being passes and become structure.
+
+### A.5 What is actually actionable (if ever pursued)
+
+Ranked by maturity, for a future OCP:
+
+1. **QTT (graded resource)** — shippable now (Idris 2); already this OCP's choice.
+2. **Guarded `▷`** — fairly mature (Guarded/Clocked Cubical Agda); the realistic
+   way to make coinduction a composable modality (the §4 `Ana` resolution).
+3. **MTT / graded-modal DTT** — real theory, partial implementations; the
+   *organizing* framework, not yet a download-and-use checker.
+4. **Directed type theory** — research-only; the ideal arrows-native equality, no
+   decidable-conversion story yet.
+
+The through-line to hold onto: **§5 and this appendix are one idea at two
+altitudes.** §5 says "Once lacks the untamed feature, so no taming pass exists."
+This appendix says "where Once *does* want the feature, take it as a *modality it
+composes*, not a *pass it runs*." Both keep the checker's core small and the proofs
+compositional — the same discipline that made totality cheap (this OCP) and effects
+clean (arrows).
