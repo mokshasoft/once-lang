@@ -782,12 +782,44 @@ already sit above plain categories; the climb is:
 | Category | objects + composable morphisms | pure point-free composition |
 | Arrows / Freyd (premonoidal) | `arr`, `first` | effectful composition (where Once is) |
 | Profunctors / optics | `A ⇸ B` | bidirectional data access (lenses/prisms) |
-| Traced / dagger | feedback, reversal | fixpoints / reversibility as *structure* |
+| Traced / dagger | feedback (`trace`), reversal (`f†`) | fixpoints / running effects *backward* as structure |
 | Graded / modal (fibration) | grade + modal functors | termination/linearity/productivity as *composed* structure |
 
 The top rung is A.2's **base** row, and its limit is directed HoTT (A.3): "more
 generic arrows" (term level) and "directed identity" (type level) are the *same*
 trajectory seen from two altitudes.
+
+**Running effects backward — three notions, and which Once may have.** The Traced /
+dagger rung raises a natural question ("can an effectful arrow run backward?") whose
+honest answer is that "backward" is *three* structurally distinct things:
+
+- **(A) True inverse** — every `f : A → B` has a literal `f† : B → A`. Home:
+  **dagger / inverse categories** (Cockett–Lack). Systems: reversible languages
+  (Janus, rfun, Theseus) and quantum languages (Quipper, Silq, Qwire — unitaries
+  are dagger morphisms, `f† = f⁻¹`). Hard constraint: effects must be
+  **information-preserving** — Landauer's principle means any effect that *erases*
+  (state overwrite, most I/O) has no inverse.
+- **(B) Bidirectional** — one arrow *packages* a forward + a derived backward pass
+  obeying round-trip laws; not a literal reversal. This is the **profunctor/optics**
+  rung. Systems: lenses (`get`/`put`), invertible syntax descriptions
+  (Rendel–Ostermann — one spec runs *forward as a parser, backward as a printer*),
+  Boomerang/biGUL.
+- **(C) Compensation / journaled undo** — no mathematical inverse; log forward and
+  reverse *operationally*. Systems: Sagas (compensating transactions), event
+  sourcing / CRDTs, time-travel debuggers (rr).
+
+The genuinely backward-*flowing* structure comes from **traced monoidal → compact
+closed** (the `Int`-construction / Geometry of Interaction): computation as tokens
+flowing both ways along wires — reversal as *structure*, not a bolted-on undo.
+
+The tie-back to the summit: a **dagger is a *symmetric* reversal** — exactly the
+groupoid-flavored invertibility that **directed HoTT deliberately drops** (A.3).
+Once's effects are directed and irreversible *by design* (I/O happens; a consumed
+linear resource cannot be un-consumed; a trace step runs forward). So the only
+"backward" Once may coherently want is **(B)** (bidirectional derived arrows over
+its data) or **(C)** (logged compensation) — **never (A)**, because a directed,
+linear semantics is *defined* by refusing the dagger's symmetry. The ladder tops
+out at directed HoTT precisely *because* Once declines notion (A).
 
 ### A.2 The categorical map: enrich the fibration
 
