@@ -255,6 +255,33 @@ already morphisms rather than named λ-terms, the gap the checker must bridge
 between syntax and semantics is much smaller: substitution-in-conversion
 collapses to composition.
 
+### Names are surface sugar; the nameless core stays a CwF
+
+A natural objection to a point-free core: dependent types *want* names — you write
+`(n : Nat) → Vec n`, and the `n` in `Vec n` refers to the binder. The resolution is
+the one Once already uses for `let`: **names live only in surface syntax and are
+elaborated away** before the IR. Bracket abstraction / the λ→CCC translation — the
+very translations categorical combinators were invented for — turn named terms into
+composition, exactly as `let` elaborates to application. So "clean nameless core,
+features added by sugar" is the right architecture for dependent Once too, and the
+**elaborator *is* that sugar layer**.
+
+The one precise correction: for *dependent* types the nameless target is **not a
+plain CCC**. Bracket abstraction removes the term-level `n` cleanly, but the
+*dependency* — a later type mentioning an earlier value — is real information that
+must survive as a **reindexing/substitution morphism**: the binder becomes
+context-extension + projection + pullback, and `Π` the right adjoint to weakening —
+structure a plain CCC lacks. So the clean core is a **category-with-families /
+calculus of explicit substitutions** (the λσ-calculus; CwF-as-GAT), a few
+combinators richer than CCC+SR. The names vanish; the dependency rides along as
+first-class reindexing. This restates the CCC → CwF bill (booked under *What does
+not get simpler* and Open Questions) as an **architecture**: the surface may be
+named, the IR is nameless, and "nameless" means CwF-combinators, not plain CCC.
+(Nobody hand-writes point-free dependent terms — explicit-substitution syntax is
+unreadable — but it is an *elaboration target*, not a surface; modern SOGAT /
+second-order presentations make this exact: write with binders, the underlying
+theory is nameless.)
+
 ### Arrows keep the conversion fragment clean
 
 Effects-in-dependent-types is a notorious swamp: with a monad, the
@@ -665,6 +692,41 @@ forbidding quantification over `Type` — would destroy first-class types, the v
 thing dependency wants; so wanting first-class types is precisely what *forces*
 the rank ladder to be well-founded.
 
+### Q8. Agda vs Cubical Agda — and what lies beyond cubical? (equality theory)
+
+Plain (intensional MLTT) Agda cannot *prove* function extensionality, univalence,
+or quotients with computational content — you can only **postulate** them, at which
+point `transport` gets stuck and canonicity breaks (closed `Nat`s that never reduce
+to a numeral). **Cubical Agda** changes the *mechanism*: equality becomes a `Path`
+(a function out of an interval `I`), so funext is just λ-abstraction over `I`,
+univalence *computes* (`transport` along `ua e` runs `e`), and HITs (quotients,
+truncations, pushouts) become definable with real reduction rules. So cubical turns
+those canonicity-breaking postulates into **computing theorems** — it is the
+maximal answer along the **equality/homotopy axis**. (Nuance: cubical's path
+equality computes but is still *propositional*, not *judgemental* — `funext`'s
+output is a path that reduces, not a new definitional equation.)
+
+What is *not* in cubical lies on **orthogonal axes** — the useful mental model is
+that "more general than cubical" almost always means "moves along a *different*
+axis," not "further up the same one":
+
+- **Impredicativity** — an impredicative `Prop` (Coq/Lean/CoC); neither Agda
+  variant has it (both predicative).
+- **A strict-equality layer** — two-level type theory (2LTT) bolts a second,
+  UIP-satisfying equality alongside the homotopical one, for metatheory and
+  semisimplicial types cubical alone cannot express.
+- **Modalities** — guarded (`▷`), cohesion (`♭`/`♯`), and **directed** (§A.3); base
+  cubical has none natively (only as separate extensions).
+- **Internal parametricity** — bridge/parametric cubical adds a separate bridge
+  dimension for internal free theorems.
+
+For Once this matches Open Questions → *Equality theory*: cubical is the right tool
+*iff* the homotopy axis is what you need, but the smallest decidable start is
+intensional + propositional bisimilarity, and the axes Once actually cares about —
+linearity, erasure, productivity, directedness — are the **modal/graded** ones
+(§A.1), not the homotopy one. That is why the appendix's north star is *directed*
+HoTT (§A.3), reached via the graded/modal on-ramp, rather than cubical.
+
 ---
 
 ## Appendix: Beyond This Proposal — The Graded/Modal Direction (Speculative)
@@ -710,6 +772,22 @@ just as arrows do not lose monads. For Once it **unifies the three concerns this
 proposal kept circling — linearity, erasure, and coinduction-without-breaking-
 decidability — into one graded-modal fibration** instead of three bolted-on
 mechanisms.
+
+**The arrows ladder (term-level companion to A.2).** "Can the arrows themselves be
+made more generic?" is the same question one rung below the fibration. Arrows
+already sit above plain categories; the climb is:
+
+| Rung | Structure | Adds |
+|---|---|---|
+| Category | objects + composable morphisms | pure point-free composition |
+| Arrows / Freyd (premonoidal) | `arr`, `first` | effectful composition (where Once is) |
+| Profunctors / optics | `A ⇸ B` | bidirectional data access (lenses/prisms) |
+| Traced / dagger | feedback, reversal | fixpoints / reversibility as *structure* |
+| Graded / modal (fibration) | grade + modal functors | termination/linearity/productivity as *composed* structure |
+
+The top rung is A.2's **base** row, and its limit is directed HoTT (A.3): "more
+generic arrows" (term level) and "directed identity" (type level) are the *same*
+trajectory seen from two altitudes.
 
 ### A.2 The categorical map: enrich the fibration
 
@@ -776,6 +854,44 @@ the **internal language of the right (graded) fibration**, so that composing
 proofs *is* composing morphisms — the §5 point-free/CwF observation, lifted one
 level. Grades ride on the fibration; modalities are functors over it;
 termination/guardedness/linearity stop being passes and become structure.
+
+### A.4b Dependency is the fibration; grades ride on top (what is, and is not, minimal-touch)
+
+A tempting shortcut is to hope the CwF structure (§5) can itself be added
+*orthogonally, as a grade on the arrow* — bolted on cheaply, touching the proofs
+minimally. It cannot, and the reason sharpens the whole appendix: **dependency and
+grading are different *kinds* of thing, at different structural depths.**
+
+- A **grade** is a *scalar annotation* from a semiring (`0/1/ω`). It labels a
+  morphism without changing what the morphism *is*, which is exactly why it
+  composes cleanly and touches proofs minimally.
+- A **CwF is a shape change, not a label.** Dependency restructures the objects
+  themselves: contexts become extendable (`Γ.A` with projection `p : Γ.A → Γ`),
+  types live *over* a context as a presheaf, terms reindex along every
+  substitution, and `Π`/`Σ` appear as the **adjoints to weakening**
+  (`Σ ⊣ weaken ⊣ Π`). None of that is expressible as a semiring element on a hom.
+
+So the orthogonality is real but runs the **other way** from the shortcut: the CwF
+is the **base fibration**, and grading is the enrichment layered *on top* of it —
+which is precisely what QTT is (a CwF whose term judgment additionally carries
+multiplicities) and what MTT is (a CwF fibered over a mode theory). The
+consequences for "minimal-touch" are therefore split cleanly:
+
+- **The CwF move is the one genuinely structural, non-free bill** — the CCC → CwF
+  cost already booked under §5's *What does not get simpler* and Open Questions. It
+  changes the core; it is not minimal-touch.
+- **Grading is the minimal-touch layer** — it rides on the finished fibration and
+  composes, which is exactly why this OCP makes QTT a **Rung-5 invariant imposed
+  from Rung 2 onward** (§6) rather than a retrofit. Pay for the fibration once,
+  then grade it freely.
+
+The one sense in which the shortcut's instinct is deepest-true: in the fully
+abstract natural-models/MTT view, `Π`/`Σ` *and* modalities are **both** "functors
+over the fibration," so they share a mathematical language. But even there they sit
+at different depths — `Σ ⊣ wk ⊣ Π` are the adjoints-to-reindexing that *define*
+dependency, and the reindexing structure must exist before a grade or modality can
+ride on it. **Dependency is structurally prior; grades and modalities layer on
+top.**
 
 ### A.5 What is actually actionable (if ever pursued)
 
