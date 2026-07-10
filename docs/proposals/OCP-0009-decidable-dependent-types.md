@@ -19,6 +19,20 @@ machinery. Codata enters dependent Once only as runtime values and as
 definitionally-reducing type indices. This OCP records the reasoning — the
 expressiveness/decidability trade-offs — so the design intent survives.
 
+**The ambition behind the discipline.** The goal is not a modest dependent layer
+but the opposite extreme: a surface language *more* expressive than any single
+existing dependently-typed system, elaborated down to a core IR simple enough that
+the whole self-hosting compiler stays *provable*. Those two wants pull against each
+other everywhere else — expressive surfaces come with large, trust-heavy checkers.
+Once's bet (§5, Appendix) is that they are reconcilable *because* the expressive
+power lives in **surface sugar** while the metatheory lives in a **small, uniform
+core** — the same surface-vs-core split Once already uses for `let`, names, and
+effects. The north star is the single core into which *every* frontier
+dependent-type feature elaborates; §6 is the staged path toward it, and the
+Appendix is the generalization that would make it "fall out." Where that bet is
+not yet cashed — one feature that may *not* elaborate into the simple core — is
+flagged honestly (FAQ Q9, Open Questions → *Induction-recursion*).
+
 ---
 
 ## Motivation
@@ -380,6 +394,13 @@ indexed families.
   a type*.
 - **Obligation:** strict positivity for the families (respected by the existing WF
   machinery).
+- **Ceiling (honesty):** this rung stops at *ordinary* indexed families —
+  **induction-recursion / induction-induction are out of scope** and are not known
+  to elaborate into the container / polynomial-functor core (§A.4). IR/II are
+  strictly stronger (internal Tarski universes, proof-theoretic strength past plain
+  MLTT), so if Once ever needs universes-as-data or IR-style definitions, that is a
+  separate, unresolved bill — not a free extension of this rung (FAQ Q9, Open
+  Questions → *Induction-recursion*).
 
 ### Rung 5 — the erasure invariant
 
@@ -452,9 +473,15 @@ performance problem — the same one, at higher volume.
 
 The dependent layer strictly *adds* type-level expressiveness. The one thing it
 does **not** add — by deliberate design (§2) — is codata in definitional
-conversion, and Level A shows nothing is lost there. The residual global ceiling
-is the diagonalization limit (no total self-interpreter), inherited from
-OCP-0003, unchanged by this proposal.
+conversion, and Level A shows nothing is lost there. **Two ceilings remain, and
+they differ in kind.** The *global* one is the diagonalization limit (no total
+self-interpreter), inherited from OCP-0003 and unchanged here. The *feature-level*
+one is **induction-recursion / induction-induction**: Dybjer–Setzer IR/II are
+strictly stronger than the indexed inductive families this OCP proposes (Rung 4),
+and Once's container / polynomial-functor foundation (§A.4) may not reach them —
+so on that single feature, proposed Once is very likely narrower than Agda-today.
+This is the honest exception to "as expressive as any total proof assistant" (FAQ
+Q9, Open Questions → *Induction-recursion*).
 
 ### Formal Verification
 
@@ -554,6 +581,17 @@ OCP-0003, unchanged by this proposal.
   CwF, display maps, or a combinator calculus over it) is the right elaboration
   target for Once, and how much of the reified-functor machinery can be reused as
   its container/polynomial layer?
+- **Induction-recursion / induction-induction (the one open expressiveness gap).**
+  Indexed inductive families (Rung 4) are modeled by the container /
+  polynomial-functor machinery Once already has (§A.4), but Dybjer–Setzer IR/II are
+  **strictly stronger** — internal Tarski universes, proof-theoretic strength
+  beyond plain MLTT — and are **not** captured by polynomial functors. Does Once
+  actually want IR/II (its main pull is defining universes-as-data and some
+  well-founded encodings)? If yes, can the reified-functor foundation be extended
+  to *positive/small* IR (there is a fibred-functor theory to borrow), or is this
+  the single frontier feature that does **not** elaborate into Once's simple core —
+  making it the honest ceiling on "more expressive than any other DT language" (FAQ
+  Q9)? Decide before claiming full parity with Agda/Coq/Lean.
 
 ---
 
@@ -727,6 +765,46 @@ linearity, erasure, productivity, directedness — are the **modal/graded** ones
 (§A.1), not the homotopy one. That is why the appendix's north star is *directed*
 HoTT (§A.3), reached via the graded/modal on-ramp, rather than cubical.
 
+### Q9. Can total-core Once express everything Agda can today? (the expressiveness ceiling vs. a real proof assistant)
+
+Not quite — but the reason is **not** "Once is total and Agda is not." Agda used
+as a proof assistant (`--safe`) is *also* total: its termination and positivity
+checkers reject partiality, which is exactly why it is consistent. So proposed
+Once and Agda-today share the **same totality ceiling**, including the
+diagonalization limit — neither can write a total self-interpreter (Motivation →
+"the caveat"; Rung 6's honest wall). The genuine differences are narrower and
+mostly *deliberate*:
+
+- **Recursion shape — *not* a strength loss.** Once restricts to `Cata`/`Para`
+  where Agda runs a termination checker (sized types, lexicographic orders). This
+  is weaker in *ergonomics* only: a termination checker certifies a well-founded
+  measure, and well-founded recursion is itself an eliminator (the `Acc`
+  accessibility eliminator). With Rung-4 indexed families and the full eliminator
+  suite, Once encodes everything Agda's checker accepts — you just write the
+  eliminator by hand. The trade is convenience for a smaller TCB (no
+  sizing/guardedness subsystem — §5).
+- **Definitional coinduction — deliberately dropped.** Agda's copatterns reason
+  about codata up to definitional unfolding; Once keeps `ν`/`Ana` out of
+  conversion (§2). Level A/B show this loses nothing usable (bisimilarity is
+  undecidable for everyone anyway). A scope choice, not a weakness.
+- **Equality — Once starts intensional.** No univalence / funext-with-computation
+  in the Rung-3 starting point; Cubical Agda has it. This is an Open Question
+  (which equality theory first — see Q8), not a permanent ceiling.
+- **The one genuinely open gap — induction-recursion / induction-induction.**
+  Dybjer–Setzer *induction-recursion* is **strictly stronger** than indexed
+  inductive families: it can internally define a Tarski universe, and its
+  proof-theoretic strength climbs past plain MLTT. Once's semantic backbone is
+  **containers / polynomial functors** (§A.4), which model indexed families
+  cleanly but do **not** obviously capture IR/II. So on *this* feature, proposed
+  Once (as scoped) is very likely **narrower than Agda-today**, and it is the one
+  place the "everything elaborates into the simple core" north star (Summary) is
+  not yet cashed. See Open Questions → *Induction-recursion*.
+
+The headline: for ordinary total programs and proofs, proposed Once matches a
+real proof assistant's ceiling (both total, same diagonal limit); the losses are
+codata-in-conversion (deliberate) and the intensional start (revisitable), and
+the single unresolved expressiveness gap is IR/II.
+
 ---
 
 ## Appendix: Beyond This Proposal — The Graded/Modal Direction (Speculative)
@@ -841,6 +919,52 @@ lens is fibered category theory. The row that matters most for Once is the
 **base** row (A.1); the row that is the *ideal* fit is the **fibration** row
 (A.3).
 
+### A.2b Two layers of generalization — one settled, one frontier
+
+The north star (Summary) — *a surface more expressive than any one DT language,
+elaborated into a single simple core* — is exactly the "find the generalization and
+everything falls out" instinct. That instinct has **already been vindicated once**,
+and is **still open once**:
+
+- **The pure cube: solved — Pure Type Systems.** Barendregt's PTS make the entire
+  λ-cube fall out of three parameters — sorts `S`, axioms `A`, rules `R`. STLC,
+  System F, λω̲, λP, and CoC are each *one instantiation* of the same rules. For the
+  non-modal core, "one framework, every corner as sugar" is not a hope but a
+  **theorem** — the existence proof that the north star is achievable in principle.
+- **The modal/graded/homotopy frontier: generalized in *semantics*, not yet in
+  *algorithmics*.** MTT (A.1) and natural models (A.4) unify QTT, guarded `▷`,
+  cohesion, and the homotopy axis as enrichments of *one* fibration. But this
+  unification is **semantic** — it says the corners share a mathematical language,
+  **not** that a single decidable checker covers them. The directed corner (A.3)
+  has *no* decidable-conversion story; MTT is "real theory, partial
+  implementations" (A.5).
+
+**The load-bearing caveat, stated plainly:** a categorical generalization unifies
+*what the theories mean*, not *how to decide them*. Concretely, *"how to decide
+them"* is **not** the code that runs a program — it is the **type checker's
+conversion algorithm**: the terminating "normalize both sides, compare normal
+forms" routine that decides type equality *while checking a proof*. That is the
+middle link of this OCP's own spine — `SN ⟹ decidable conversion ⟹ decidable type
+checking` (Motivation). A semantics can be *fully* worked out — consistent model,
+known equations, meaning settled — while that procedure is still missing or
+provably absent; you then know exactly *what* the theory means but have no
+always-halting algorithm to *check* it. Arrows-generalize-monads worked as
+engineering because both ends kept that conversion link decidable and
+implementable; MTT-generalizes-DTT is gorgeous semantics whose frontier corners
+have **no decidable-conversion story yet** — which, for Once, would reintroduce the
+very problem this whole proposal exists to prevent. So the generalization does **not** hand Once a free universal decidable
+checker — that is why "find the generalization and everything falls out" is *true at
+the pure-cube level (PTS)* but only *aspirational at the modal/directed level*. What
+the generalization genuinely buys is what the north star actually needs: a way to
+**choose a corner coherently** and add each feature (linearity, erasure,
+productivity, directedness) as a **composable modality on the fibration** rather
+than a bolted-on checker pass (A.1) — over a fibration whose base object
+(polynomial functors / containers) Once *already is* (A.4). The unfinished business
+is precisely the algorithmic half: making each chosen corner's conversion decidable,
+feature by feature, as it is elaborated into the simple core — with IR/II (FAQ Q9)
+as the sharpest reminder that "expressible in the general framework" does not yet
+mean "elaborable into Once's core."
+
 ### A.3 Directed HoTT — the arrows-native equality theory
 
 Ordinary HoTT models types as **∞-groupoids**: every path is invertible, `a = b`
@@ -880,6 +1004,18 @@ categorical object underneath DTT is **the reified-functor / container machinery
 Once is already built on** (OCP-0003). The generalizations above are therefore not
 alien layers; they are the fibered/polynomial *generalization of what Once already
 is*.
+
+**The honest exception.** "Indexed families = polynomial functors" is exact for
+*ordinary* inductive families, but **induction-recursion / induction-induction go
+beyond containers**: IR can define a Tarski universe internally and out-strips both
+the polynomial-functor semantics and plain MLTT's proof-theoretic strength. So the
+"Once is already standing on DTT's categorical object" claim holds for the
+indexed-family layer this OCP proposes (Rung 4) but is **not** established for the
+IR/II extension — the one place the reified-functor foundation may genuinely fall
+short of the north star. There *is* a partial theory to reach for (positive /
+small IR presented as fibred functors, à la Ghani–Malatesta–Nordvall Forsberg),
+but wiring it to Once's container layer is unresolved. See FAQ Q9 and Open
+Questions → *Induction-recursion*.
 
 That yields the deepest version of "make the proofs line up": build the checker as
 the **internal language of the right (graded) fibration**, so that composing
