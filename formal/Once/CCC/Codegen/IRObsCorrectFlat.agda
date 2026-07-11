@@ -38,7 +38,8 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.Type using (Type; ⟦_⟧T; μ-type; FitsInReg; fits-in-reg?)
 open import Once.Functor.Translate using (WellFormedF; WellFormedF-irrelevant)
 open import Once.Semantics.Machine using (⟦_⟧)
-open import Once.IR using (IR; AllocMode; Stack; Cata; SigOp; SigOpInfo; out-μ; id; fst; snd; terminal)
+open import Once.IR using (IR; AllocMode; Stack; Cata; SigOp; SigOpInfo; out-μ; id; fst; snd; terminal; arr; free-heap)
+open import Once.Memory.HeapAddress using (HeapRef)
 open import Once.SigOp.Info using (effect; EffectShape; Pure; Emits; Halts)
 open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong; subst)
 open import Once.IR.Size using (ir-size)
@@ -72,7 +73,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   open FlatEventTrace {FS} using (flat-events; event-of; flat-events-[])
   open CataNextSlot {FS} using (exec-flat-keeps-next-slot)
   open CataIRSlotStable {FS} using (ir-to-trace-slot-stable)
-  open SimpleWF.SimpleWFImpl {FS} program-bound using (run-id; run-fst; run-snd; run-terminal)
+  open SimpleWF.SimpleWFImpl {FS} program-bound using (run-id; run-fst; run-snd; run-terminal; run-arr; run-free-heap)
   open SMP.RecSchemeSemantics {FS}
     using (exec-abstract-load-indirect-preserves-alloc;
            exec-abstract-load-indirect-suc-preserves-alloc)
@@ -415,6 +416,39 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
       denot-[] : ∀ k → projTrace (evalᴰ (terminal {A}) (inject x)) k ≡ []
       denot-[] k = refl
 
+  -- Plan 0.58: `free-heap ref` — `ir-to-trace = mov-to-output ∷ []`,
+  -- `eval (free-heap _) x = x`; the `id` recipe with `run-free-heap`. TOTAL
+  -- producer, carves `free-heap` out of `obs-correct-rest` with no postulate.
+  obs-correct-free-heap : ∀ (ref : HeapRef) → IRObsCorrectF (free-heap ref)
+  obs-correct-free-heap ref _ mIn x input-loc s alloc _ valid input-before not-halted rdi =
+    record
+      { traces-agree = λ k →
+          2 , trans (cong (take k) (mach-[] 2)) (cong (take k) (sym (denot-[] k)))
+      ; value-realized = 2 , mIn , place-loc (result-place r) , fh-value
+      }
+    where
+      ev-[] : ∀ pc i → fetch (ir-to-trace (free-heap ref)) pc ≡ just i → ∀ fs → event-of i fs ≡ []
+      ev-[] zero    .mov-to-output refl fs = refl
+      ev-[] (suc n) i                 ()   fs
+      mach-[] : ∀ f → flat-events f (ir-to-trace (free-heap ref)) (mkFlat s alloc 0) ≡ []
+      mach-[] f = flat-events-[] (ir-to-trace (free-heap ref)) ev-[] f (mkFlat s alloc 0)
+      denot-[] : ∀ k → projTrace (evalᴰ (free-heap ref) (inject x)) k ≡ []
+      denot-[] k = refl
+      r = run-free-heap ref x input-loc s alloc valid input-before not-halted rdi
+      straight-fh : Straight (ir-to-trace (free-heap ref))
+      straight-fh = (λ _ _ → refl) ∷ᴬ []ᴬ
+      alloc-eq : proj₂ (exec-trace (ir-to-trace (free-heap ref)) s alloc) ≡ alloc
+      alloc-eq = cong proj₂ (exec-trace-single mov-to-output s alloc not-halted)
+      fh-value :
+        ValidAtWF mIn (falloc (flat-run 2 (free-heap ref) s alloc))
+          (eval (free-heap ref) x) (place-loc (result-place r))
+          (forced (floc (flat-run 2 (free-heap ref) s alloc)))
+      fh-value =
+        lift-validAtWF-flat program-bound (ir-to-trace (free-heap ref)) s alloc straight-fh
+          (subst (λ a → ValidAtWF mIn a (eval (free-heap ref) x) (place-loc (result-place r))
+                   (proj₁ (exec-trace (ir-to-trace (free-heap ref)) s alloc)))
+                 (sym alloc-eq) (place-valid (result-place r)))
+
   ir-obs-correct : ∀ {A B} (ir : IR A B) → IRObsCorrectF ir
   ir-obs-correct (Cata wf alg) = cata-correct wf alg (ir-obs-correct alg)
   ir-obs-correct (SigOp si)    = obs-correct-sigop si
@@ -422,4 +456,5 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   ir-obs-correct fst           = obs-correct-fst
   ir-obs-correct snd           = obs-correct-snd
   ir-obs-correct terminal      = obs-correct-terminal
+  ir-obs-correct (free-heap ref) = obs-correct-free-heap ref
   ir-obs-correct ir            = obs-correct-rest ir
