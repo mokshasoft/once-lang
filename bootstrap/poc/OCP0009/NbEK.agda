@@ -21,7 +21,7 @@ module poc.OCP0009.NbEK where
 
 open import normalizer.Syntax.Types
 open import normalizer.Syntax.CCC
-  using (Term; id; _∘_; fst; snd; ⟨_,_⟩; inl; inr; [_,_]; terminal; In; Out; cata)
+  using (Term; id; _∘_; fst; snd; ⟨_,_⟩; inl; inr; [_,_]; terminal; In; Out; cata; fmap)
 
 ------------------------------------------------------------------------
 -- The category of thinnings.  `A₁ ≼ A` : `A₁` is `A` extended with product
@@ -67,6 +67,10 @@ data Ne A where
   nCase : ∀ {X Y B} → Term X B → Term Y B → Ne A (X + Y) → Ne A B
   nOut  : ∀ {F}     → Ne A (μ F) → Ne A (⟦ F ⟧F (μ F))
   nCata : ∀ F {C}   → Term (⟦ F ⟧F C) C → Ne A (μ F) → Ne A C
+  -- `fmap (cata F alg)` applied to a functor-position neutral (the sound,
+  -- STRUCTURAL residual — weakens without the `t ∘ id` junk that would break
+  -- the strict functor laws).
+  nMap  : ∀ F {C} G → Term (⟦ F ⟧F C) C → Ne A (⟦ G ⟧F (μ F)) → Ne A (⟦ G ⟧F C)
 
 data Val A where
   vUnit : Val A Unit
@@ -89,6 +93,7 @@ wkNe w (nSnd ne)      = nSnd (wkNe w ne)
 wkNe w (nCase f g ne) = nCase f g (wkNe w ne)
 wkNe w (nOut ne)      = nOut (wkNe w ne)
 wkNe w (nCata F a ne) = nCata F a (wkNe w ne)
+wkNe w (nMap F G a ne) = nMap F G a (wkNe w ne)
 
 wkVal w vUnit       = vUnit
 wkVal w (vPair a b) = vPair (wkVal w a) (wkVal w b)
@@ -112,6 +117,7 @@ wkNe-id (nSnd ne)      = cong nSnd (wkNe-id ne)
 wkNe-id (nCase f g ne) = cong (nCase f g) (wkNe-id ne)
 wkNe-id (nOut ne)      = cong nOut (wkNe-id ne)
 wkNe-id (nCata F a ne) = cong (nCata F a) (wkNe-id ne)
+wkNe-id (nMap F G a ne) = cong (nMap F G a) (wkNe-id ne)
 
 wkVal-id vUnit       = refl
 wkVal-id (vPair a b) = cong₂ vPair (wkVal-id a) (wkVal-id b)
@@ -131,6 +137,7 @@ wkNe-comp w₂ w₁ (nSnd ne)      = cong nSnd (wkNe-comp w₂ w₁ ne)
 wkNe-comp w₂ w₁ (nCase f g ne) = cong (nCase f g) (wkNe-comp w₂ w₁ ne)
 wkNe-comp w₂ w₁ (nOut ne)      = cong nOut (wkNe-comp w₂ w₁ ne)
 wkNe-comp w₂ w₁ (nCata F a ne) = cong (nCata F a) (wkNe-comp w₂ w₁ ne)
+wkNe-comp w₂ w₁ (nMap F G a ne) = cong (nMap F G a) (wkNe-comp w₂ w₁ ne)
 
 wkVal-comp w₂ w₁ vUnit       = refl
 wkVal-comp w₂ w₁ (vPair a b) = cong₂ vPair (wkVal-comp w₂ w₁ a) (wkVal-comp w₂ w₁ b)
@@ -165,6 +172,7 @@ reifyNe (nSnd ne)    = snd ∘ reifyNe ne
 reifyNe (nCase f g ne) = [ f , g ] ∘ reifyNe ne
 reifyNe (nOut ne)    = Out ∘ reifyNe ne
 reifyNe (nCata F a ne) = cata F a ∘ reifyNe ne
+reifyNe (nMap F G a ne) = fmap G (cata F a) ∘ reifyNe ne
 
 ------------------------------------------------------------------------
 -- Next, on this foundation: (1) `eval` into the presheaf (a fragment
