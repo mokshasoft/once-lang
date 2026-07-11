@@ -35,7 +35,7 @@ open import Data.Product using (_×_; _,_; ∃; ∃-syntax; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
-open import Once.Type using (Type; ⟦_⟧T; μ-type; FitsInReg; fits-in-reg?)
+open import Once.Type using (Type; ⟦_⟧T; μ-type; FitsInReg; fits-in-reg?; _⇒[_]_; mk-kind; pure)
 open import Once.Functor.Translate using (WellFormedF; WellFormedF-irrelevant)
 open import Once.Semantics.Machine using (⟦_⟧)
 open import Once.IR using (IR; AllocMode; Stack; Cata; SigOp; SigOpInfo; out-μ; id; fst; snd; terminal; arr; free-heap)
@@ -416,6 +416,40 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
       denot-[] : ∀ k → projTrace (evalᴰ (terminal {A}) (inject x)) k ≡ []
       denot-[] k = refl
 
+  -- Plan 0.58: `arr` — pure→eff closure coercion. `ir-to-trace arr =
+  -- mov-to-output ∷ []` (identical to `id`) and `eval arr f = f`; the `id`
+  -- recipe with `run-arr` (a TOTAL SimpleWF producer). The `inject` implicit
+  -- is annotated explicitly — arr's higher-order kind-typed input floats it.
+  obs-correct-arr : ∀ {A B q} → IRObsCorrectF (arr {A} {B} {q})
+  obs-correct-arr {A} {B} {q} _ mIn x input-loc s alloc _ valid input-before not-halted rdi =
+    record
+      { traces-agree = λ k →
+          2 , trans (cong (take k) (mach-[] 2)) (cong (take k) (sym (denot-[] k)))
+      ; value-realized = 2 , mIn , place-loc (result-place r) , arr-value
+      }
+    where
+      ev-[] : ∀ pc i → fetch (ir-to-trace (arr {A} {B} {q})) pc ≡ just i → ∀ fs → event-of i fs ≡ []
+      ev-[] zero    .mov-to-output refl fs = refl
+      ev-[] (suc n) i                 ()   fs
+      mach-[] : ∀ f → flat-events f (ir-to-trace (arr {A} {B} {q})) (mkFlat s alloc 0) ≡ []
+      mach-[] f = flat-events-[] (ir-to-trace (arr {A} {B} {q})) ev-[] f (mkFlat s alloc 0)
+      denot-[] : ∀ k → projTrace (evalᴰ (arr {A} {B} {q}) (inject {A ⇒[ mk-kind q pure ] B} x)) k ≡ []
+      denot-[] k = refl
+      r = run-arr x input-loc s alloc valid input-before not-halted rdi
+      straight-arr : Straight (ir-to-trace (arr {A} {B} {q}))
+      straight-arr = (λ _ _ → refl) ∷ᴬ []ᴬ
+      alloc-eq : proj₂ (exec-trace (ir-to-trace (arr {A} {B} {q})) s alloc) ≡ alloc
+      alloc-eq = cong proj₂ (exec-trace-single mov-to-output s alloc not-halted)
+      arr-value :
+        ValidAtWF mIn (falloc (flat-run 2 (arr {A} {B} {q}) s alloc))
+          (eval (arr {A} {B} {q}) x) (place-loc (result-place r))
+          (forced (floc (flat-run 2 (arr {A} {B} {q}) s alloc)))
+      arr-value =
+        lift-validAtWF-flat program-bound (ir-to-trace (arr {A} {B} {q})) s alloc straight-arr
+          (subst (λ a → ValidAtWF mIn a (eval (arr {A} {B} {q}) x) (place-loc (result-place r))
+                   (proj₁ (exec-trace (ir-to-trace (arr {A} {B} {q})) s alloc)))
+                 (sym alloc-eq) (place-valid (result-place r)))
+
   -- Plan 0.58: `free-heap ref` — `ir-to-trace = mov-to-output ∷ []`,
   -- `eval (free-heap _) x = x`; the `id` recipe with `run-free-heap`. TOTAL
   -- producer, carves `free-heap` out of `obs-correct-rest` with no postulate.
@@ -456,5 +490,6 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   ir-obs-correct fst           = obs-correct-fst
   ir-obs-correct snd           = obs-correct-snd
   ir-obs-correct terminal      = obs-correct-terminal
+  ir-obs-correct arr           = obs-correct-arr
   ir-obs-correct (free-heap ref) = obs-correct-free-heap ref
   ir-obs-correct ir            = obs-correct-rest ir
