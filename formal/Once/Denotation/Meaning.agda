@@ -35,7 +35,7 @@ open import Once.CanonicalName using (CanonicalName; showCanonical; bare)
 open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_; valueT; projTrace)
 open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ; emit-D; inject; forget)
 open import Once.Semantics.Machine using (sem-In; coerce-functor; sem-cata; sem-fmap; coerce-functor⁻¹; ⟦_⟧F)
-open import Once.Functor.Translate using (WellFormedF; IsBaseType; IsConcrete; base-Unit)
+open import Once.Functor.Translate using (WellFormedF; IsBaseType; IsConcrete; base-Unit; con-base; con-fun)
 open import Once.Denotation.Trace using (SigOpEvent)
 open import Once.Denotation.TraceDenote using (events-F)
 open import Once.CCC.Eval as Val using ()
@@ -46,7 +46,7 @@ open import Once.TypeCheck.Classify using (NamedCtx)
 open import Once.TypeCheck.Raw using (BinOp; OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
 open import Once.SigOp.Info using (SigOpInfo; semM)
 open import Once.Arith.SigOp.Builders
-  using (value-info; str-lit-info;
+  using (value-info; arrow-info; str-lit-info;
          add-info; sub-info; mul-info; div-info; mod-info; neg-info;
          lt-info; le-info; gt-info; ge-info; eq-info; ne-info)
 open import Once.TypeCheck.Judgment
@@ -143,9 +143,25 @@ lookupᴰ (Γ , A ^ q) (suc i) (dγ , a) = lookupᴰ Γ i dγ
 svarᴰ : ∀ {n} {Γ : Ctx n} {Ψ A} → SVar Γ Ψ A → ⟦ ⟦ Γ ⟧ᶜᵗ ⟧ᴰ → ⟦ A ⟧ᴰ
 svarᴰ {Γ = Γ} (svar i) dγ = lookupᴰ Γ i dγ
 
--- A closed named/sigop value reference (matches SD's `sigOp`/`poly`), IR-free.
+-- A closed named/sigop value reference (matches SD's `poly`/`closure`), IR-free.
 sigOpValᴰ : ∀ {B} → SigOpInfo Unit B → T ⟦ B ⟧ᴰ
 sigOpValᴰ si = λ _ → (emit-D si tt , inject (semM si tt))
+
+-- An EXTERNAL sigop reference (`t-var-qualified/resolved/import`, realized to
+-- SD's `sigOp`). DISPATCHES ON RESULT-TYPE SHAPE exactly like SD's `sigOp`: at
+-- an ARROW type the reference is a first-order function POINTER whose effect
+-- fires on APPLICATION (`arrow-info` respects the arrow's `Purity`), NOT a pure
+-- `value-info` value. This is the migration's headline case (a SigOp result may
+-- be a first-order fn pointer); dispatching here keeps the direct meaning FAITHFUL
+-- to SD (⇒ `sigop-ref-bridge`'s arrow case is `refl`), where an un-dispatched
+-- `value-info` would wrongly drop the pointee's effect.
+-- Split on the WITNESS (not `A`'s shape) so `con-base` reduces at an abstract
+-- base `A` — `con-fun` forces the arrow shape for the closure form.
+sigOpRefᴰ : ∀ {A} → CanonicalName → IsConcrete A → T ⟦ A ⟧ᴰ
+sigOpRefᴰ {A = A} cn (con-base ib) = sigOpValᴰ (value-info {Unit} {A} cn base-Unit (con-base ib))
+sigOpRefᴰ cn (con-fun {A = Dom} {B = Cod} {k = k} bDom cCod) =
+  returnT (λ arg → λ n → ( emit-D (arrow-info {Dom} {Cod} k cn bDom cCod) (forget arg)
+                         , inject (semM (arrow-info {Dom} {Cod} k cn bDom cCod) (forget arg)) ))
 
 Env : NamedCtx → Set
 Env ctx = ⟦ ⟦ NamedCtx.debruijn ctx ⟧ᶜᵗ ⟧ᴰ
@@ -177,9 +193,9 @@ Env ctx = ⟦ ⟦ NamedCtx.debruijn ctx ⟧ᶜᵗ ⟧ᴰ
 ⟦ t-unit ⟧ᵢ                 dγ = returnT tt
 ⟦ t-unit-var ⟧ᵢ             dγ = returnT tt
 ⟦ t-var-local {eV = eV} _ _ ⟧ᵢ dγ = returnT (svarᴰ eV dγ)
-⟦_⟧ᵢ {A = A} (t-var-qualified {name = name} {alias = alias} _ conc) dγ = sigOpValᴰ (value-info {Unit} {A} (bare (alias ++ "." ++ name)) base-Unit conc)
-⟦_⟧ᵢ {A = A} (t-var-resolved {cn = cn} _ conc) dγ = sigOpValᴰ (value-info {Unit} {A} cn base-Unit conc)
-⟦_⟧ᵢ {A = A} (t-var-import {x = x} _ _ _ conc) dγ = sigOpValᴰ (value-info {Unit} {A} (bare x) base-Unit conc)
+⟦_⟧ᵢ {A = A} (t-var-qualified {name = name} {alias = alias} _ conc) dγ = sigOpRefᴰ {A = A} (bare (alias ++ "." ++ name)) conc
+⟦_⟧ᵢ {A = A} (t-var-resolved {cn = cn} _ conc) dγ = sigOpRefᴰ {A = A} cn conc
+⟦_⟧ᵢ {A = A} (t-var-import {x = x} _ _ _ conc) dγ = sigOpRefᴰ {A = A} (bare x) conc
 ⟦ t-annot d ⟧ᵢ              dγ = ⟦ d ⟧ᶜ dγ
 ⟦ t-pair da db ⟧ᵢ           dγ = ⟦ da ⟧ᵢ dγ >>=T λ a → ⟦ db ⟧ᵢ dγ >>=T λ b → returnT (a , b)
 ⟦ t-neg d ⟧ᵢ                dγ = ⟦ d ⟧ᵢ dγ >>=T λ v → returnT (semM neg-info v)

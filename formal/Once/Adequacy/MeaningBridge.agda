@@ -55,7 +55,7 @@ open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_; _
   t-In-app-check; t-apply-check; t-inl-app-check; t-inr-app-check;
   t-initial-app-check; t-subsume; t-arg-driven-app-check; t-var-poly-instantiate)
 open import Once.Denotation.Meaning using (⟦_⟧ᶜ; ⟦_⟧ᵢ; ⟦_⟧ᵍ; ⟦_⟧ᵐ;
-  lookupᴰ; Env; cata-sem; sigOpValᴰ; svarᴰ; in-value)
+  lookupᴰ; Env; cata-sem; sigOpValᴰ; sigOpRefᴰ; svarᴰ; in-value)
 import Once.IR as IR
 open import Once.Arith.SigOp.Builders using (value-info;
   add-info; sub-info; mul-info; div-info; mod-info; neg-info;
@@ -95,19 +95,6 @@ rel-lookup (Γ , A ^ q) (suc i) {dγ₁ , a₁} {dγ₂ , a₂} (re , _)  = rel-
 ------------------------------------------------------------------------
 
 postulate
-  -- t-var-* at an ARROW-typed value reference (`con-fun`): the ONLY remaining
-  -- sigop leaf. LHS is the closed `value-info` value (`sigOpValᴰ`, a curried
-  -- machine function); RHS is SD's `sigOp` ARROW clause (an `arrow-info`
-  -- closure firing the SigOp at apply). They agree by the β/uncurry ABI iso,
-  -- which needs a coherence fact about `generic-semM` (itself abstract) — a
-  -- separate obligation from this concreteness migration. The `con-base`
-  -- (non-arrow) cases and the whole `poly` case are DISCHARGED below.
-  sigop-ref-arrow-bridge : ∀ {n} {Γ : Ctx n} {Dom Cod : Type} {k}
-                (cn : CanonicalName) (bDom : IsBaseType Dom) (cCod : IsConcrete Cod)
-                (dγ : ⟦ ⟦ Γ ⟧ᶜᵗ ⟧ᴰ)
-              → RelT (Dom ⇒[ k ] Cod)
-                     (sigOpValᴰ (value-info {Unit} {Dom ⇒[ k ] Cod} cn base-Unit (con-fun bDom cCod)))
-                     (SD.⟦ sigOp {Γ = Γ} {A = Dom ⇒[ k ] Cod} cn (con-fun bDom cCod) ⟧ˢ dγ)
   -- m-cata: the fold preserves the relation (`sem-cata` congruence over the
   -- direct algebra `cata-ev-algᴰ-D`, using the recursive `bridge-m` on `alg`).
   cata-bridge : ∀ {F} {A'} {wfF : WellFormedF F}
@@ -199,14 +186,19 @@ sd-sigOp-base≡ cn base-Buffer        dγ = refl
 sd-sigOp-base≡ cn (base-Prod ibA ibB) dγ = refl
 sd-sigOp-base≡ cn (base-Sum ibA ibB)  dγ = refl
 
+-- Now `refl`-shaped: `Meaning.sigOpRefᴰ` DISPATCHES exactly as SD's `sigOp`, so
+-- LHS ≡ RHS. `con-base` still needs the type-shape reduction of SD's stuck
+-- catch-all (`sd-sigOp-base≡`, `sigOpRefᴰ (con-base) = sigOpValᴰ (value-info)`);
+-- `con-fun` exposes `A` as an arrow so BOTH sides are the same `arrow-info`
+-- closure ⇒ plain reflexivity.
 sigop-ref-bridge : ∀ {n} {Γ : Ctx n} {A : Type} (cn : CanonicalName) (conc : IsConcrete A) (dγ : ⟦ ⟦ Γ ⟧ᶜᵗ ⟧ᴰ)
-                 → RelT A (sigOpValᴰ (value-info {Unit} {A} cn base-Unit conc)) (SD.⟦ sigOp {Γ = Γ} {A = A} cn conc ⟧ˢ dγ)
+                 → RelT A (sigOpRefᴰ cn conc) (SD.⟦ sigOp {Γ = Γ} {A = A} cn conc ⟧ˢ dγ)
 sigop-ref-bridge {A = A} cn (con-base ib) dγ =
-  subst (λ z → RelT A (sigOpValᴰ (value-info {Unit} {A} cn base-Unit (con-base ib))) z)
+  subst (λ z → RelT A (sigOpRefᴰ cn (con-base ib)) z)
         (sym (sd-sigOp-base≡ cn ib dγ))
-        (RelT-refl (con-base ib) (sigOpValᴰ (value-info {Unit} {A} cn base-Unit (con-base ib))))
-sigop-ref-bridge {n = n} {Γ = Γ} {A = Dom ⇒[ k ] Cod} cn (con-fun bDom cCod) dγ =
-  sigop-ref-arrow-bridge {n = n} {Γ = Γ} {Dom = Dom} {Cod = Cod} {k = k} cn bDom cCod dγ
+        (RelT-refl (con-base ib) (sigOpRefᴰ cn (con-base ib)))
+sigop-ref-bridge {A = Dom ⇒[ k ] Cod} cn (con-fun bDom cCod) dγ =
+  RelT-refl (con-fun {k = k} bDom cCod) (sigOpRefᴰ cn (con-fun {k = k} bDom cCod))
 
 -- Poly placeholder reference. SD's `poly` clause is UN-dispatched (always the
 -- closed `value-info` form) ⇒ LHS ≡ RHS definitionally for ANY `T`; the relation
