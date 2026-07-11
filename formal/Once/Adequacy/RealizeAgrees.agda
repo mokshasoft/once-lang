@@ -42,11 +42,12 @@ import Once.TypeCheck.Elaborate as E
 open import Once.IR as IR using (IR)
 open import Once.SigEffect using (SigEffect) renaming (halts to se-halts; emits to se-emits)
 open import Data.Maybe using (Maybe; just; nothing)
+open import Data.Unit using (tt)
 open import Data.Sum using (inj₁; inj₂; [_,_]′)
 open import Once.Adequacy.ResolveFaithful using (bind2-faithful)
 open import Once.TypeCheck.Completeness using (morph-elab; checkG-realize)
 open import Data.Maybe.Properties using (just-injective)
-open import Once.Denotation.TraceMonad using (returnT; _>>=T_)
+open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_)
 open import Once.Postulates using (extensionality)
 open import Relation.Nullary using (Dec; yes; no; ¬_)
 open import Once.TypeCheck.Judgment using (_⊢ᵢ_∶_⨾_; _⊢ᶜ_∶_⨾_; _⊢ᵍ_∶_; _⊢ᵐ_∶_⇨[_]_; t-int; t-str; t-unit; t-pair; t-neg; t-let; t-binop-arith; t-binop-cmp; g-int; g-terminal; g-pair; g-inl; g-inr; g-In; extractMorphWitness)
@@ -1093,15 +1094,58 @@ agree-embedOrSubsume {ctx = ctx} {e = e} T eq inferIH dγ k
 -- monad-left-identity (`returnT a >>=T f = f a`) + a `sem-cata` algebra-congruence
 -- under the fold. NARROW: confined to this one clause (was smeared across the
 -- `check-RApp-todo` view catch-all). [[feedback_enumerate_over_catchall_postulate]]
-postulate
-  agree-cata-denotes : ∀ {n} {Γ : Surface.Ctx n} {F : Functor} {A : Type} {π : Purity}
-      {wfF : WellFormedF F}
-      {algE : Expr Surface.∅ Surface.zeroUsage (⟦ F ⟧T A ⇒[ mk-kind Many π ] A)}
-      {m-alg : IR (⟦ F ⟧T A) A}
-    → E.extract-morph-eff algE ≡ just (m-alg , refl)
-    → ∀ (dγ : ⟦ ⟦ Γ ⟧ᶜ ⟧ᴰ) (k : ℕ)
-    → SD.⟦ Surface.cata {Γ = Γ} wfF algE ⟧ˢ dγ k
-        ≡ SD.⟦ Surface.lift-morphism {Γ = Γ} {π = π} (IR.Cata wfF m-alg) ⟧ˢ dγ k
+-- Plan 0.58: DISCHARGED. The algebra's SD denotation equals `returnT` of its
+-- extracted IR's `evalᴰ` — structural recursion on `algE` (`lift-morphism`
+-- definitional, `arr'` transparent, `cata` rides `cata-fold-eq` with the
+-- recursively-obtained inner faithfulness; everything else extracts to `nothing`
+-- so the hypothesis is absurd).
+-- Over `extract-morph-eff-aux` with a GENERAL result type `T` + the `T ≡ A⇒B`
+-- equation: `var`'s neutral `lookup Γ i` then unifies with `T` (no split-stuck),
+-- and every non-morphism constructor extracts to `nothing` (aux's catch-all) so
+-- the hypothesis is absurd. `just` is only produced by `lift-morphism`/`arr'`/
+-- `cata`, where `teq` is forced to `refl` (so the `subst` is the identity).
+faithful-aux : ∀ {n} {Γ : Surface.Ctx n} {Ψ : Usage n} {RT A B} {π : Purity}
+    (E : Expr Γ Ψ RT) (teq : RT ≡ (A ⇒[ mk-kind Many π ] B)) {m : IR A B} {ψ0 : Ψ ≡ Surface.zeroUsage}
+  → E.extract-morph-eff-aux E teq ≡ just (m , ψ0)
+  → ∀ (dγ : ⟦ ⟦ Γ ⟧ᶜ ⟧ᴰ)
+  → SD.⟦ E ⟧ˢ dγ ≡ subst (λ Ty → T ⟦ Ty ⟧ᴰ) (sym teq) (returnT (evalᴰ m))
+faithful-aux (Surface.lift-morphism m') refl eq dγ =
+  cong (λ mm → returnT (evalᴰ mm)) (cong proj₁ (just-injective eq))
+faithful-aux (Surface.arr' e) refl eq dγ = faithful-aux e refl eq dγ
+faithful-aux {Γ = Γ} (Surface.cata wfF' algE') refl eq dγ
+  with E.extract-morph-eff algE' in innerEq | eq
+... | just (m' , refl) | refl =
+      extensionality (λ k → cata-fold-eq {Γ = Γ} wfF' algE' m' (faithful-aux algE' refl innerEq tt) dγ k)
+faithful-aux (Surface.var i) teq () dγ
+faithful-aux (Surface.lam _ _ _) teq () dγ
+faithful-aux (Surface.app _ _) teq () dγ
+faithful-aux (Surface.effApp _ _) teq () dγ
+faithful-aux (Surface.sigOp _ _) teq () dγ
+faithful-aux (Surface.closure _ _) teq () dγ
+faithful-aux (Surface.poly _ _ _) teq () dγ
+faithful-aux (Surface.morph-app _ _) teq () dγ
+faithful-aux (Surface.ana _ _) teq () dγ
+faithful-aux (Surface.absurd _) teq () dγ
+faithful-aux (Surface.fst' _) teq () dγ
+faithful-aux (Surface.snd' _) teq () dγ
+faithful-aux (Surface.case' _ _ _) teq () dγ
+
+extract-morph-eff-denotes : ∀ {A B} {π : Purity}
+    (algE : Expr Surface.∅ Surface.zeroUsage (A ⇒[ mk-kind Many π ] B)) {m : IR A B}
+  → E.extract-morph-eff algE ≡ just (m , refl)
+  → SD.⟦ algE ⟧ˢ tt ≡ returnT (evalᴰ m)
+extract-morph-eff-denotes algE eq = faithful-aux algE refl eq tt
+
+agree-cata-denotes : ∀ {n} {Γ : Surface.Ctx n} {F : Functor} {A : Type} {π : Purity}
+    {wfF : WellFormedF F}
+    {algE : Expr Surface.∅ Surface.zeroUsage (⟦ F ⟧T A ⇒[ mk-kind Many π ] A)}
+    {m-alg : IR (⟦ F ⟧T A) A}
+  → E.extract-morph-eff algE ≡ just (m-alg , refl)
+  → ∀ (dγ : ⟦ ⟦ Γ ⟧ᶜ ⟧ᴰ) (k : ℕ)
+  → SD.⟦ Surface.cata {Γ = Γ} wfF algE ⟧ˢ dγ k
+      ≡ SD.⟦ Surface.lift-morphism {Γ = Γ} {π = π} (IR.Cata wfF m-alg) ⟧ˢ dγ k
+agree-cata-denotes {Γ = Γ} {wfF = wfF} {algE = algE} {m-alg = m-alg} eq dγ k =
+  cata-fold-eq {Γ = Γ} wfF algE m-alg (extract-morph-eff-denotes algE eq) dγ k
 
 -- morph-realize enriched to ALSO return the `extract-morph-eff` equation (needed to
 -- feed `agree-cata-denotes`). Same `morph-elab` + checkElabV-determinism derivation
