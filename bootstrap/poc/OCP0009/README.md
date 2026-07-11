@@ -55,10 +55,10 @@ retargeting to `_≋_` both fixes that and closes the proof.)
 ## Check
 
 ```bash
-for m in Conv Complete Sound Finite Transparency; do bootstrap/check.sh poc/OCP0009/$m.agda; done
+for m in Conv Complete Sound Finite Decidable Transparency; do bootstrap/check.sh poc/OCP0009/$m.agda; done
 ```
 
-All five exit 0. `Conv.agda`'s example block is the POC *executing*: e.g.
+All six exit 0. `Conv.agda`'s example block is the POC *executing*: e.g.
 `conv fo-Nat (fst ∘ ⟨ zero , one ⟩) zero ≡ true` is proved by `refl`, i.e. Agda
 evaluated the conversion and got `true` — the product-β equation decided purely by
 running both sides, never by orienting a rewrite.
@@ -120,6 +120,17 @@ conversion POC-0's `Unit`-only `conv` could not even state.
 > excludes exactly `μ` (infinite — `Nat`) and `⇒` (function) — the two cases whose
 > input set is not enumerable, and therefore *precisely* where residualizing NbE /
 > neutrals become necessary.
+
+### Capstone — conversion is *Decidable* (`Decidable.agda`, proven)
+
+```
+≋-dec : FiniteFO A → FirstOrder C → (t u : Term A C) → Dec (t ≋ u)
+```
+
+The proof-carrying form: `yes p` returns a proof `p : t ≋ u`, `no ¬p` a refutation —
+literally "decidable conversion" for the fragment (the OCP title, made concrete).
+Zero new postulates. The closed case (POC-0) is the instance `≋-dec₀ = ≋-dec
+ffo-unit`.
 
 ## Next
 
