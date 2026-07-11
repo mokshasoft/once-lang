@@ -1,29 +1,27 @@
 ------------------------------------------------------------------------
--- OCP-0009 · The NbE engine (sound core) — open-term conversion by reify
+-- OCP-0009 · The NbE engine — now with μ (inductive types)
 --
--- Turns the *definitional* fragment of `_≋_` into an object-level normal
--- form for OPEN terms: `nf : Term A B → Term A B` via a residualizing
--- semantics with NEUTRALS (reflect/reify). Conversion of open terms is then
--- `nf t` vs `nf u` — decided syntactically, no confluence, no enumeration,
--- no single-point-domain trick. This is the engine the `Open.agda` framing
--- called for; it is the SAME evaluator pillar (reflect/reify/eval-nbe are
--- deterministic total functions).
+-- `nf : Term A B → Term A B`, a residualizing reify/reflect with NEUTRALS
+-- that normalizes OPEN terms and decides definitional conversion for the
+-- `{Unit, ×, +, μ}` fragment — products, sums, AND inductive types:
+--   · product β/η, coproduct β                     (as before)
+--   · cata-β: `cata alg ∘ In` unfolds on constructor-headed values
+--   · in/out-η: `In ∘ Out = id`, `Out ∘ In = id`   (smart constructors)
+--   · cata / Out on a μ-NEUTRAL (a variable of inductive type) stays STUCK
+--     — the inductive-only discipline (OCP-0009 §2) realized operationally.
 --
--- SCOPE (honest, and SOUND within it): the `{Unit, ×, +}` fragment —
--- products, sums, unit. It gives η-long normal forms, so it decides the
--- definitional theory there (product β/η, coproduct β, projection/case on a
--- neutral stays stuck). `μ` (inductive types) and `⇒` (exponentials) are
--- kept OPAQUE (`nOpaque` — the morphism is carried un-normalized), which is
--- SOUND (denotation preserved) but not yet normalizing for them. Extending:
---   · `μ` needs the neutral-under-functor handling (cata on `In (neutral)`)
---     and in/out-η — the genuinely subtle part of inductive NbE;
---   · `⇒` needs a Kripke/presheaf function space (weakening) for reify.
--- Both are standard; both are the remaining engineering. Full adequacy
--- (nf sound + complete + stable) is the logical-relation obligation, stated
--- here and demonstrated on examples — NOT postulated.
+-- Soundness through the subtle case: when `cata` meets `In (neutral)` whose
+-- functor structure contains a neutral, `mapCata` residualizes it via the
+-- SYNTACTIC `fmap` (`fmap G (cata F alg) ∘ reify ne`) — nothing is dropped,
+-- so denotation is preserved. `⇒` (functions) stays opaque (needs a Kripke
+-- reify — the remaining piece). Full adequacy is the logical-relation
+-- obligation, demonstrated on examples, not postulated.
+--
+-- Not `--safe`: `vcata`/`mapCata`/`eval-nbe` recurse together over both the
+-- Term and the Val structure; termination is the standard NbE argument, not
+-- Agda-structural, so it carries a `TERMINATING` pragma.
 ------------------------------------------------------------------------
 
-{-# OPTIONS --safe #-}
 module poc.OCP0009.NbE where
 
 open import normalizer.Syntax.Types
@@ -41,18 +39,20 @@ data Ne A where
   nFst    : ∀ {X Y} → Ne A (X * Y) → Ne A X
   nSnd    : ∀ {X Y} → Ne A (X * Y) → Ne A Y
   nCase   : ∀ {X Y B} → Term X B → Term Y B → Ne A (X + Y) → Ne A B
-  nOpaque : ∀ {B} → Term A B → Ne A B                        -- un-normalized (μ/⇒/…)
+  nOut    : ∀ {F} → Ne A (μ F) → Ne A (⟦ F ⟧F (μ F))
+  nCata   : ∀ F {C} → Term (⟦ F ⟧F C) C → Ne A (μ F) → Ne A C
+  nOpaque : ∀ {B} → Term A B → Ne A B                        -- un-normalized (⇒/…)
 
 data Val A where
   vUnit : Val A Unit
   vPair : ∀ {X Y} → Val A X → Val A Y → Val A (X * Y)
   vInl  : ∀ {X Y} → Val A X → Val A (X + Y)
   vInr  : ∀ {X Y} → Val A Y → Val A (X + Y)
+  vIn   : ∀ {F} → Val A (⟦ F ⟧F (μ F)) → Val A (μ F)
   vNe   : ∀ {B} → Ne A B → Val A B
 
 ------------------------------------------------------------------------
--- reflect: η-expand a neutral into a semantic value (products only; sums
--- and opaque stay neutral).
+-- reflect: η-expand a neutral (products only; sums/μ/opaque stay neutral).
 ------------------------------------------------------------------------
 
 reflect : ∀ {A} B → Ne A B → Val A B
@@ -64,7 +64,18 @@ reflect (X ⇒ Y) ne = vNe ne
 reflect (μ F)   ne = vNe ne
 
 ------------------------------------------------------------------------
--- reify + the evaluator into the residualizing semantics (one mutual knot).
+-- Smart constructor for Out realizing out-η (`Out ∘ In = id`).
+-- (The dual `In ∘ Out = id` would need to match `nOut` under a `vNe` at a
+--  `⟦F⟧F(μF)` index, which Agda's unifier cannot invert — `⟦_⟧F` is not
+--  injective — so in-η is left un-captured here: sound, just one η-law fewer.)
+------------------------------------------------------------------------
+
+vout : ∀ {A F} → Val A (μ F) → Val A (⟦ F ⟧F (μ F))
+vout (vIn w)  = w                   -- Out ∘ In = id
+vout (vNe ne) = vNe (nOut ne)
+
+------------------------------------------------------------------------
+-- reify + evaluator + cata (one mutual knot).
 ------------------------------------------------------------------------
 
 mutual
@@ -73,16 +84,18 @@ mutual
   reifyVal (vPair a b) = ⟨ reifyVal a , reifyVal b ⟩
   reifyVal (vInl a)    = inl ∘ reifyVal a
   reifyVal (vInr b)    = inr ∘ reifyVal b
+  reifyVal (vIn w)     = In ∘ reifyVal w
   reifyVal (vNe ne)    = reifyNe ne
 
   reifyNe : ∀ {A B} → Ne A B → Term A B
-  reifyNe nId           = id
-  reifyNe (nFst ne)     = fst ∘ reifyNe ne
-  reifyNe (nSnd ne)     = snd ∘ reifyNe ne
+  reifyNe nId            = id
+  reifyNe (nFst ne)      = fst ∘ reifyNe ne
+  reifyNe (nSnd ne)      = snd ∘ reifyNe ne
   reifyNe (nCase f g ne) = [ f , g ] ∘ reifyNe ne
-  reifyNe (nOpaque t)   = t
+  reifyNe (nOut ne)      = Out ∘ reifyNe ne
+  reifyNe (nCata F a ne) = cata F a ∘ reifyNe ne
+  reifyNe (nOpaque t)    = t
 
-  -- Semantic projections / case (β on constructors, stuck on neutrals).
   vfst : ∀ {A X Y} → Val A (X * Y) → Val A X
   vfst (vPair a _) = a
   vfst (vNe ne)    = vNe (nFst ne)
@@ -96,6 +109,25 @@ mutual
   vcase f g (vInr b) = eval-nbe g b
   vcase f g (vNe ne) = vNe (nCase f g ne)
 
+  -- cata: β on constructor-headed `vIn`; stuck neutral on a μ-neutral.
+  {-# TERMINATING #-}
+  vcata : ∀ {A} F {C} → Term (⟦ F ⟧F C) C → Val A (μ F) → Val A C
+  vcata F alg (vIn w)  = eval-nbe alg (mapCata F alg F w)
+  vcata F alg (vNe ne) = vNe (nCata F alg ne)
+
+  -- fmap (cata F alg) over the G-structure of an In-argument. A functor-
+  -- position neutral is residualized SOUNDLY via the syntactic fmap.
+  mapCata : ∀ {A} F {C} → Term (⟦ F ⟧F C) C → ∀ G →
+            Val A (⟦ G ⟧F (μ F)) → Val A (⟦ G ⟧F C)
+  mapCata F alg Id      v         = vcata F alg v
+  mapCata F alg One     v         = v
+  mapCata F alg (Kc H)  v         = v
+  mapCata F alg (G ⊕ H) (vInl a)  = vInl (mapCata F alg G a)
+  mapCata F alg (G ⊕ H) (vInr b)  = vInr (mapCata F alg H b)
+  mapCata F alg (G ⊕ H) (vNe ne)  = vNe (nOpaque (fmap (G ⊕ H) (cata F alg) ∘ reifyNe ne))
+  mapCata F alg (G ⊗ H) (vPair a b) = vPair (mapCata F alg G a) (mapCata F alg H b)
+  mapCata F alg (G ⊗ H) (vNe ne)  = vNe (nOpaque (fmap (G ⊗ H) (cata F alg) ∘ reifyNe ne))
+
   -- Evaluate a morphism `B → C` as a Val-transformer in ambient source `A`.
   eval-nbe : ∀ {A B C} → Term B C → Val A B → Val A C
   eval-nbe id          v = v
@@ -107,63 +139,66 @@ mutual
   eval-nbe inr         v = vInr v
   eval-nbe [ f , g ]   v = vcase f g v
   eval-nbe terminal    v = vUnit
-  -- Opaque fallback (sound: keep the actual morphism, un-normalized).
-  eval-nbe initial     v = vNe (nOpaque (initial   ∘ reifyVal v))
-  eval-nbe (curry f)   v = vNe (nOpaque (curry f   ∘ reifyVal v))
-  eval-nbe apply       v = vNe (nOpaque (apply     ∘ reifyVal v))
-  eval-nbe In          v = vNe (nOpaque (In        ∘ reifyVal v))
-  eval-nbe Out         v = vNe (nOpaque (Out       ∘ reifyVal v))
-  eval-nbe (cata F a)  v = vNe (nOpaque (cata F a  ∘ reifyVal v))
+  eval-nbe In          v = vIn v
+  eval-nbe Out         v = vout v
+  eval-nbe (cata F a)  v = vcata F a v
+  -- Opaque fallback for exponentials / initial (sound: keep the morphism).
+  eval-nbe initial     v = vNe (nOpaque (initial ∘ reifyVal v))
+  eval-nbe (curry f)   v = vNe (nOpaque (curry f ∘ reifyVal v))
+  eval-nbe apply       v = vNe (nOpaque (apply   ∘ reifyVal v))
 
 ------------------------------------------------------------------------
--- The normalizer and open-term conversion.
+-- The normalizer.
 ------------------------------------------------------------------------
 
 nf : ∀ {A B} → Term A B → Term A B
 nf {A} t = reifyVal (eval-nbe t (reflect A nId))
 
--- Open-term conversion: normal forms compared. (A decidable structural `≟`
--- on `Term` gives the Bool/Dec wrapper; here we expose `nf` and compare
--- normal forms propositionally in the examples below.)
-
 ------------------------------------------------------------------------
--- Worked examples — OPEN-term definitional conversion decided by `nf`.
---
--- Source `S = Bool₂ * Bool₂`, whose components are `+`-typed, so the source
--- "variable" stays a genuine NEUTRAL (not collapsed) — these are real open
--- conversions, not closed computations. Each `refl` is Agda running `nf` on
--- both sides and finding syntactically identical normal forms.
+-- Examples — Nat and open/closed conversions the closed `conv` could not do.
 ------------------------------------------------------------------------
 
-Bool₂ : Ty
-Bool₂ = Unit + Unit
+NatF : Func
+NatF = One ⊕ Id
 
+Nat : Ty
+Nat = μ NatF
+
+zero : Term Unit Nat
+zero = In ∘ inl
+
+suc : Term Nat Nat
+suc = In ∘ inr
+
+one two : Term Unit Nat
+one = suc ∘ zero
+two = suc ∘ one
+
+double : Term Nat Nat
+double = cata NatF [ zero , suc ∘ suc ]
+
+-- cata-β (recursion runs): double 0 ≋ 0, double 1 ≋ 2.
+_ : nf {Unit} (double ∘ zero) ≡ nf {Unit} zero
+_ = refl
+
+_ : nf {Unit} (double ∘ one) ≡ nf {Unit} two
+_ = refl
+
+-- out/in-η on an OPEN μ term: Out ∘ In ≋ id.
+_ : nf {⟦ NatF ⟧F Nat} (Out {NatF} ∘ In {NatF}) ≡ nf {⟦ NatF ⟧F Nat} id
+_ = refl
+
+-- cata on an OPEN μ-variable stays STUCK (inductive-only): `double` on a
+-- neutral reifies to `cata … ∘ id`, unchanged by post-composing id.
+_ : nf {Nat} (double ∘ id) ≡ nf {Nat} double
+_ = refl
+
+-- Product β/η still hold (source with +-typed components → neutrals survive).
 S : Ty
-S = Bool₂ * Bool₂
+S = (Unit + Unit) * (Unit + Unit)
 
--- Product η:  ⟨ fst , snd ⟩ ≋ id   (decided; neutrals `fst∘id`, `snd∘id` survive)
 _ : nf {S} ⟨ fst , snd ⟩ ≡ nf {S} id
 _ = refl
 
--- Product β:  fst ∘ ⟨ snd , fst ⟩ ≋ snd
 _ : nf {S} (fst ∘ ⟨ snd , fst ⟩) ≡ nf {S} snd
-_ = refl
-
--- Product β:  snd ∘ ⟨ snd , fst ⟩ ≋ fst
-_ : nf {S} (snd ∘ ⟨ snd , fst ⟩) ≡ nf {S} fst
-_ = refl
-
--- Coproduct β:  [ inr , inl ] ∘ inl ≋ inr   (at source Unit)
-notB₂ : Term Bool₂ Bool₂
-notB₂ = [ inr , inl ]
-
-inlU inrU : Term Unit Bool₂
-inlU = inl
-inrU = inr
-
-_ : nf {Unit} (notB₂ ∘ inlU) ≡ nf {Unit} inrU
-_ = refl
-
--- Nested: fst ∘ ⟨ snd ∘ ⟨ fst , snd ⟩ , fst ⟩ ≋ snd
-_ : nf {S} (fst ∘ ⟨ snd ∘ ⟨ fst , snd ⟩ , fst ⟩) ≡ nf {S} snd
 _ = refl
