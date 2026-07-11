@@ -79,11 +79,11 @@ vout-nat w (vNe ne) = reflect-nat _ w (nOut ne)
 
 vcase-nat w f g (vInl a) = eval-nat w f a
 vcase-nat w f g (vInr b) = eval-nat w g b
-vcase-nat w f g (vNe ne) = reflect-nat _ w (nCase (emb f) (emb g) ne)
+vcase-nat w f g (vNe ne) = reflect-nat _ w (nCase (nf f) (nf g) ne)
 
 vcata-nat F w a (vIn x)  = trans (eval-nat w a (mapCata F a F x))
                                  (cong (eval a) (mapCata-nat F w a F x))
-vcata-nat F w a (vNe ne) = reflect-nat _ w (nCata F (emb a) ne)
+vcata-nat F w a (vNe ne) = reflect-nat _ w (nCata F (nf a) ne)
 
 mapCata-nat F w a Id      v          = vcata-nat F w a v
 mapCata-nat F w a One     v          = refl
