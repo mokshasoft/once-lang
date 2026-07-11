@@ -70,6 +70,14 @@ reflect-≈V Void    eq = rNe eq
 -- are unconditional and reused throughout the fundamental theorem.)
 ------------------------------------------------------------------------
 
+≈V-refl : ∀ {A B} (v : Val A B) → ≈V B v v
+≈V-refl vUnit       = rUnit
+≈V-refl (vPair a b) = rPair (≈V-refl a) (≈V-refl b)
+≈V-refl (vInl a)    = rInl (≈V-refl a)
+≈V-refl (vInr b)    = rInr (≈V-refl b)
+≈V-refl (vIn x)     = rIn (≈V-refl x)
+≈V-refl (vNe ne)    = rNe refl
+
 ≈V-sym : ∀ {A B} {v v′ : Val A B} → ≈V B v v′ → ≈V B v′ v
 ≈V-sym rUnit       = rUnit
 ≈V-sym (rPair p q) = rPair (≈V-sym p) (≈V-sym q)
