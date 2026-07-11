@@ -512,6 +512,18 @@ of it (`_≈_ ⊆ _≋_`, via eval-soundness). Deciding `≋` on **open / higher
 (where the `∀ x` no longer collapses to one point) is exactly where residualizing NbE
 / neutrals re-enter — POC-0b, the §5 "open terms / neutrals" extension.
 
+**POC-0b(i) sharpens the boundary (proven, `Finite.agda`).** Extending the domain
+from `Unit` to any *finite* first-order type by **enumeration** — check the equation
+at every inhabitant — gives a sound + complete `conv-fin` with **zero postulates**
+(e.g. it decides `not ∘ not ≋ id` on `Bool`). The point is where it *stops*: the
+finite-first-order types are exactly Void/Unit/×/+, and enumeration reaches all of
+them. The two type-formers it cannot enumerate are **`μ`** (infinite — `Nat`) and
+**`⇒`** (function). So the boundary is crisp: **evaluation-at-points decides
+conversion iff the domain is finite; `μ` and `⇒` are precisely the frontier that
+forces neutrals/NbE** — evaluate at one *generic* input and compare symbolically. This
+is the same inductive-only discipline (§2): `cata` on a neutral stays stuck (fine,
+terminating); `ν` must stay out.
+
 ### Rung 1 — one universe + type-level functions
 
 Add `Type₀` and let `Cata` compute over *types* (the λω̲ corner: types→types, no

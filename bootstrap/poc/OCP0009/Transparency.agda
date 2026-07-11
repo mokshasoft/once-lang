@@ -33,3 +33,8 @@ open import poc.OCP0009.Complete public
 open import poc.OCP0009.Sound public
   using (_≋_; ≋-refl; ≋-sym; ≋-trans; ≋-∘; ≋-⟨,⟩; ⟶⊆≋; ≈⊆≋;
          eq-val-sound; conv-sound; conv-complete; conv-decides)
+-- POC-0b(i): conversion on any FINITE first-order domain (not just `Unit`),
+-- by enumeration. Fully proven, zero postulates. Maps the boundary: `μ`/`⇒`
+-- domains are exactly what enumeration cannot reach — the NbE frontier.
+open import poc.OCP0009.Finite public
+  using (FiniteFO; conv-fin; conv-fin-sound; conv-fin-complete; conv-fin-decides)
