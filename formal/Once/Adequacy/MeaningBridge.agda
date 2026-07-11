@@ -28,14 +28,16 @@ open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; trans; sym)
 
 open import Once.Type using (Type; Purity; mk-kind; Many; _⇒[_]_; _+_; _*_; μ-type; ⟦_⟧T; Functor; Int; Unit)
-open import Once.Functor.Translate using (WellFormedF)
+open import Once.Functor.Translate using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod;
+  IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Str; base-Buffer; base-Prod; base-Sum)
 open import Once.Functor.Decide using (wellFormedF?)
+open import Once.Semantics.Machine using (sem-In; coerce-functor)
 open import Once.Surface.Context using (Ctx; ∅; _,_^_; lookup; svar; SVar)
   renaming (⟦_⟧ᶜ to ⟦_⟧ᶜᵗ)
 open import Once.Surface.Syntax using (sigOp; poly)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ)
 open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_; projTrace; valueT)
-open import Once.Denotation.DenotTrace using (evalᴰ)
+open import Once.Denotation.DenotTrace using (evalᴰ; forget)
 open import Once.TypeCheck.Classify using (NamedCtx)
 open import Once.TypeCheck.Raw using (BinOp;
   OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
@@ -101,12 +103,6 @@ postulate
   -- definitionally; the remaining content is `RelV`-reflexivity at `T`).
   poly-ref-bridge : ∀ {n} {Γ : Ctx n} (name : String) (T : Type) (dγ : ⟦ ⟦ Γ ⟧ᶜᵗ ⟧ᴰ)
                   → RelT T (sigOpValᴰ (value-info {Unit} {T} (bare name))) (SD.⟦ poly {Γ = Γ} name T ⟧ˢ dγ)
-  -- t-In-app-check: the μ-introduction constructor `In` at the value level.
-  -- `in-value` (LHS) vs `evalᴰ (IR.In wfF Heap)` (RHS) — both pure (empty
-  -- trace), agreeing on the value by `eval (In)`/`inject`/`forget`.
-  in-app-bridge : ∀ {F : Functor} {wfF : WellFormedF F} {vᴸ vᴿ : ⟦ ⟦ F ⟧T (μ-type F) ⟧ᴰ}
-                → RelV (⟦ F ⟧T (μ-type F)) vᴸ vᴿ
-                → RelT (μ-type F) (returnT (in-value vᴸ)) (evalᴰ (IR.In wfF IR.Heap) vᴿ)
   -- m-named / m-named-resolved: a sigop preserves the relation. Its event drops
   -- non-`Int` (non-`FitsInReg`) args (`mkEvent`), and for `FitsInReg` domains
   -- `RelV = ≡` gives `forget`-equality by `cong` — funext-free (see plan 0.58).
@@ -119,11 +115,50 @@ postulate
                 (dalg : ⟦ ⟦ F ⟧T A' ⟧ᴰ → T ⟦ A' ⟧ᴰ) (mir : IR.IR (⟦ F ⟧T A') A')
                 {a b : ⟦ μ-type F ⟧ᴰ} → RelV (μ-type F) a b
               → RelT A' (cata-sem wfF dalg a) (evalᴰ (IR.Cata wfF mir) b)
-  -- Leaf `evalᴰ`-reduction fact for the `In` initial-algebra global point.
-  in-bridge : ∀ {ctx arg} {F : Functor} {X : Type} {wfF : WellFormedF F}
-              (dec : wellFormedF? F ≡ just wfF) (garg : ctx ⊢ᵍ arg ∶ (⟦ F ⟧T (μ-type F))) (y : ⟦ X ⟧ᴰ)
-            → RelT (μ-type F) (returnT ⟦ g-In {wfF = wfF} dec garg ⟧ᵍ)
-                             (evalᴰ (realize-global {X = X} (g-In {wfF = wfF} dec garg)) y)
+
+------------------------------------------------------------------------
+-- `RelV → ≡` at ARROW-FREE types — the tool for the `In` value cases. A
+-- WELL-FORMED functor layer `⟦ F ⟧T X` is polynomial (`WellFormedF`'s `K`
+-- holds only `IsBaseType`), so `RelV` there collapses to propositional
+-- equality (no funext) provided the recursive slot `X` is itself first-order.
+------------------------------------------------------------------------
+
+base-rel→eq : ∀ {A} (ib : IsBaseType A) {a b : ⟦ A ⟧ᴰ} → RelV A a b → a ≡ b
+base-rel→eq base-Unit           _  = refl
+base-rel→eq base-Void {a = ()}
+base-rel→eq base-Int            rv = rv
+base-rel→eq base-Float          rv = rv
+base-rel→eq base-Str            rv = rv
+base-rel→eq base-Buffer         rv = rv
+base-rel→eq (base-Prod ibA ibB) {a₁ , b₁} {a₂ , b₂} rv =
+  cong₂ _,_ (base-rel→eq ibA (proj₁ rv)) (base-rel→eq ibB (proj₂ rv))
+base-rel→eq (base-Sum ibA ibB) {inj₁ a} {inj₁ a'} rv = cong inj₁ (base-rel→eq ibA rv)
+base-rel→eq (base-Sum ibA ibB) {inj₂ b} {inj₂ b'} rv = cong inj₂ (base-rel→eq ibB rv)
+base-rel→eq (base-Sum ibA ibB) {inj₁ a} {inj₂ b'} ()
+base-rel→eq (base-Sum ibA ibB) {inj₂ b} {inj₁ a'} ()
+
+wfF-layer-eq : ∀ {F} (wfF : WellFormedF F) {X : Type}
+             → (∀ {x y : ⟦ X ⟧ᴰ} → RelV X x y → x ≡ y)
+             → {a b : ⟦ ⟦ F ⟧T X ⟧ᴰ} → RelV (⟦ F ⟧T X) a b → a ≡ b
+wfF-layer-eq (wf-K ib)       xeq rv = base-rel→eq ib rv
+wfF-layer-eq wf-Id           xeq rv = xeq rv
+wfF-layer-eq (wf-Sum wfF wfG) xeq {inj₁ a} {inj₁ a'} rv = cong inj₁ (wfF-layer-eq wfF xeq rv)
+wfF-layer-eq (wf-Sum wfF wfG) xeq {inj₂ b} {inj₂ b'} rv = cong inj₂ (wfF-layer-eq wfG xeq rv)
+wfF-layer-eq (wf-Sum wfF wfG) xeq {inj₁ a} {inj₂ b'} ()
+wfF-layer-eq (wf-Sum wfF wfG) xeq {inj₂ b} {inj₁ a'} ()
+wfF-layer-eq (wf-Prod wfF wfG) xeq {a₁ , b₁} {a₂ , b₂} rv =
+  cong₂ _,_ (wfF-layer-eq wfF xeq (proj₁ rv)) (wfF-layer-eq wfG xeq (proj₂ rv))
+
+-- `in-app-bridge` DISCHARGED (t-In-app-check): both sides are the pure `In`
+-- constructor (`sem-In ∘ coerce-functor ∘ forget`, `inject{μ}=id`, empty trace);
+-- the argument's `RelV` collapses to `≡` via `wfF-layer-eq` (`RelV(μ)=≡` at the
+-- recursive slot), so a `cong` finishes — no funext.
+in-app-bridge : ∀ {F : Functor} {wfF : WellFormedF F} {vᴸ vᴿ : ⟦ ⟦ F ⟧T (μ-type F) ⟧ᴰ}
+              → RelV (⟦ F ⟧T (μ-type F)) vᴸ vᴿ
+              → RelT (μ-type F) (returnT (in-value vᴸ)) (evalᴰ (IR.In wfF IR.Heap) vᴿ)
+in-app-bridge {F} {wfF} rv k =
+    refl
+  , cong (λ v → sem-In F (coerce-functor F (μ-type F) (forget v))) (wfF-layer-eq wfF (λ r → r) rv)
 
 -- `int-bridge` DISCHARGED: `realize-global (g-int n) = const fits-int ∣n∣ ∘ terminal`,
 -- whose `evalᴰ` reduces (via the catch-all + `eval (const …) = ∣n∣`, `inject{Int}=id`,
@@ -147,7 +182,14 @@ bridge-g (g-pair ga gb) y n =
   , (proj₂ (bridge-g ga y n) , proj₂ (bridge-g gb y n))
 bridge-g (g-inl ga) y n = cong (_++ []) (proj₁ (bridge-g ga y n)) , proj₂ (bridge-g ga y n)
 bridge-g (g-inr gb) y n = cong (_++ []) (proj₁ (bridge-g gb y n)) , proj₂ (bridge-g gb y n)
-bridge-g (g-In dec garg) y = in-bridge dec garg y
+-- g-In: `realize-global (g-In dec garg) = In wfF Heap ∘ realize-global garg`,
+-- so the RHS binds the (recursively bridged) `garg` then applies the pure `In`.
+-- Value via `wfF-layer-eq`+`cong` (as `in-app-bridge`); trace = the sub-trace
+-- (`In` adds none) modulo `++ []`.
+bridge-g (g-In {F = F} {wfF = wfF} dec garg) y k =
+    trans (proj₁ (bridge-g garg y k)) (sym (++-identityʳ _))
+  , cong (λ v → sem-In F (coerce-functor F (μ-type F) (forget v)))
+         (wfF-layer-eq wfF (λ r → r) (proj₂ (bridge-g garg y k)))
 
 ------------------------------------------------------------------------
 -- The MORPHISM realm, DISCHARGED — structural (`RelT-return`/`RelT-bind` +
