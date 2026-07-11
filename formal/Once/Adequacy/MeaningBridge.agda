@@ -29,7 +29,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong
 
 open import Once.Type using (Type; Purity; mk-kind; Many; _⇒[_]_; _+_; _*_; μ-type; ⟦_⟧T; Functor; Int; Unit)
 open import Once.Functor.Translate using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod;
-  IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Str; base-Buffer; base-Prod; base-Sum)
+  IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Str; base-Buffer; base-Prod; base-Sum;
+  IsConcrete; con-base; con-fun)
 open import Once.Functor.Decide using (wellFormedF?)
 open import Once.Semantics.Machine using (sem-In; coerce-functor)
 open import Once.Surface.Context using (Ctx; ∅; _,_^_; lookup; svar; SVar)
@@ -96,19 +97,19 @@ postulate
   -- non-arrow `A` the two coincide definitionally; at an arrow the closed
   -- `value-info` value and SD's `arrow-info` closure agree by the same
   -- β/uncurry ABI iso as `sigop-bridge` (funext-free via `FitsInReg`).
-  sigop-ref-bridge : ∀ {n} {Γ : Ctx n} {A : Type} (cn : CanonicalName) (dγ : ⟦ ⟦ Γ ⟧ᶜᵗ ⟧ᴰ)
-                   → RelT A (sigOpValᴰ (value-info {Unit} {A} cn)) (SD.⟦ sigOp {Γ = Γ} {A = A} cn ⟧ˢ dγ)
+  sigop-ref-bridge : ∀ {n} {Γ : Ctx n} {A : Type} (cn : CanonicalName) (conc : IsConcrete A) (dγ : ⟦ ⟦ Γ ⟧ᶜᵗ ⟧ᴰ)
+                   → RelT A (sigOpValᴰ (value-info {Unit} {A} cn base-Unit conc)) (SD.⟦ sigOp {Γ = Γ} {A = A} cn conc ⟧ˢ dγ)
   -- t-var-poly-instantiate: same as `sigop-ref-bridge` but RHS is `poly x T`
   -- (SD's `poly` clause is the un-dispatched `value-info` form ⇒ LHS ≡ RHS
   -- definitionally; the remaining content is `RelV`-reflexivity at `T`).
-  poly-ref-bridge : ∀ {n} {Γ : Ctx n} (name : String) (T : Type) (dγ : ⟦ ⟦ Γ ⟧ᶜᵗ ⟧ᴰ)
-                  → RelT T (sigOpValᴰ (value-info {Unit} {T} (bare name))) (SD.⟦ poly {Γ = Γ} name T ⟧ˢ dγ)
+  poly-ref-bridge : ∀ {n} {Γ : Ctx n} (name : String) (T : Type) (conc : IsConcrete T) (dγ : ⟦ ⟦ Γ ⟧ᶜᵗ ⟧ᴰ)
+                  → RelT T (sigOpValᴰ (value-info {Unit} {T} (bare name) base-Unit conc)) (SD.⟦ poly {Γ = Γ} name T conc ⟧ˢ dγ)
   -- m-named / m-named-resolved: a sigop preserves the relation. Its event drops
   -- non-`Int` (non-`FitsInReg`) args (`mkEvent`), and for `FitsInReg` domains
   -- `RelV = ≡` gives `forget`-equality by `cong` — funext-free (see plan 0.58).
-  sigop-bridge : ∀ {A B} {cn : CanonicalName} {a b : ⟦ A ⟧ᴰ} → RelV A a b
-               → RelT B (evalᴰ (IR.SigOp (value-info {A} {B} cn)) a)
-                        (evalᴰ (IR.SigOp (value-info {A} {B} cn)) b)
+  sigop-bridge : ∀ {A B} {cn : CanonicalName} (bA : IsBaseType A) (cB : IsConcrete B) {a b : ⟦ A ⟧ᴰ} → RelV A a b
+               → RelT B (evalᴰ (IR.SigOp (value-info {A} {B} cn bA cB)) a)
+                        (evalᴰ (IR.SigOp (value-info {A} {B} cn bA cB)) b)
   -- m-cata: the fold preserves the relation (`sem-cata` congruence over the
   -- direct algebra `cata-ev-algᴰ-D`, using the recursive `bridge-m` on `alg`).
   cata-bridge : ∀ {F} {A'} {wfF : WellFormedF F}
@@ -220,10 +221,10 @@ bridge-m (m-curry df)        rv n = refl , (λ rb → bridge-m df (rv , rb))
 bridge-m (m-const gd) {b = b} _ = bridge-g gd b
 bridge-m (m-cata {wfF = wfF} _ alg) {a = a} {b = b} rv =
   cata-bridge {wfF = wfF} ⟦ alg ⟧ᵐ (realize-morph alg) {a = a} {b = b} rv
-bridge-m {A = A} {B = B} (m-named {x = x} _ _ _) {a = a} {b = b} rv =
-  sigop-bridge {A = A} {B = B} {cn = bare x} {a = a} {b = b} rv
-bridge-m {A = A} {B = B} (m-named-resolved {cn = cn} _) {a = a} {b = b} rv =
-  sigop-bridge {A = A} {B = B} {cn = cn} {a = a} {b = b} rv
+bridge-m {A = A} {B = B} (m-named {x = x} _ _ _ bA cB) {a = a} {b = b} rv =
+  sigop-bridge {A = A} {B = B} {cn = bare x} bA cB {a = a} {b = b} rv
+bridge-m {A = A} {B = B} (m-named-resolved {cn = cn} _ bA cB) {a = a} {b = b} rv =
+  sigop-bridge {A = A} {B = B} {cn = cn} bA cB {a = a} {b = b} rv
 
 ------------------------------------------------------------------------
 -- The CHECK / INFER realms, DISCHARGED — mutual structural induction on the
@@ -256,9 +257,9 @@ bridge-i t-unit-var  re k = refl , tt
 bridge-i (t-var-local {eV = svar i} _ _) re k = refl , rel-lookup _ i re
 
 -- Named value references — the sigop-reference leaf (dispatch on result type).
-bridge-i {ctx = ctx} (t-var-qualified {T = A} _)   {dγ₂ = dγ₂} re = sigop-ref-bridge {Γ = NamedCtx.debruijn ctx} {A = A} _ dγ₂
-bridge-i {ctx = ctx} (t-var-resolved {T = A} _)    {dγ₂ = dγ₂} re = sigop-ref-bridge {Γ = NamedCtx.debruijn ctx} {A = A} _ dγ₂
-bridge-i {ctx = ctx} (t-var-import {T = A} _ _ _)  {dγ₂ = dγ₂} re = sigop-ref-bridge {Γ = NamedCtx.debruijn ctx} {A = A} _ dγ₂
+bridge-i {ctx = ctx} (t-var-qualified {T = A} _ conc)   {dγ₂ = dγ₂} re = sigop-ref-bridge {Γ = NamedCtx.debruijn ctx} {A = A} _ conc dγ₂
+bridge-i {ctx = ctx} (t-var-resolved {T = A} _ conc)    {dγ₂ = dγ₂} re = sigop-ref-bridge {Γ = NamedCtx.debruijn ctx} {A = A} _ conc dγ₂
+bridge-i {ctx = ctx} (t-var-import {T = A} _ _ _ conc)  {dγ₂ = dγ₂} re = sigop-ref-bridge {Γ = NamedCtx.debruijn ctx} {A = A} _ conc dγ₂
 
 -- Annotation switches to check mode.
 bridge-i (t-annot d) re = bridge-c d re
@@ -394,4 +395,4 @@ bridge-c (t-arg-driven-app-check _ darg df) re k =
       bx = bridge-i darg re k
       inner = proj₂ bf (proj₂ bx) k
   in cong₂ _++_ (proj₁ bf) (cong₂ _++_ (proj₁ bx) (proj₁ inner)) , proj₂ inner
-bridge-c {ctx = ctx} (t-var-poly-instantiate {x = x} {T = T} _ _ _ _ _ _) {dγ₂ = dγ₂} re = poly-ref-bridge {Γ = NamedCtx.debruijn ctx} x T dγ₂
+bridge-c {ctx = ctx} (t-var-poly-instantiate {x = x} {T = T} _ _ _ _ _ _ conc) {dγ₂ = dγ₂} re = poly-ref-bridge {Γ = NamedCtx.debruijn ctx} x T conc dγ₂
