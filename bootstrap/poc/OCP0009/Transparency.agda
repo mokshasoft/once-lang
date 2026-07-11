@@ -49,3 +49,7 @@ open import poc.OCP0009.Higher public
 -- index terms; `+` is a real `cata` in the IR. Same evaluator, no new engine.
 open import poc.OCP0009.Dependent public
   using (add; plus; VecConv; Vec-0+3≡Vec-3; Vec-3+0≡Vec-3)
+-- POC-1b: extend Code with a universe carrying Π/Σ formers; type conversion
+-- IS the proven `conv`, and the CwF congruence laws are proven from `_≋_`.
+open import poc.OCP0009.Universe public
+  using (U; ⌜nat⌝; Π[_,_]; Σ[_,_]; TyConv; TyConv-decides; Π-cong; Σ-cong)

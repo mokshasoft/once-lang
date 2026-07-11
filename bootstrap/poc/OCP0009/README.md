@@ -52,15 +52,18 @@ retargeting to `_≋_` both fixes that and closes the proof.)
 | `Sound.agda` | **postulate-free** | `_≋_` (+ equivalence/congruence), `eq-val-sound`, and the finalized **`conv-sound` / `conv-complete` / `conv-decides`** |
 | `Finite.agda` | **postulate-free** | `FiniteFO`, `AllEq`, and **`conv-fin` / `conv-fin-decides`** — conversion on any finite first-order domain (POC-0b(i)) |
 | `Decidable.agda` | **postulate-free** | **`≋-dec : … → Dec (t ≋ u)`** — the proof-carrying decidable-conversion capstone |
+| `Higher.agda` | funext only | `Checkable`, **`conv-h`** — higher-order codomains (functions with finite args) (POC-0b(ii)) |
+| `Dependent.agda` | funext only | `add`/`plus` (`cata`), **`VecConv`** — dependent-index conversion `Vec m ≡ Vec n` (POC-1) |
+| `Universe.agda` | funext only | universe `U` with **`Π`/`Σ` formers** on the IR, **`TyConv`** + `Π-cong`/`Σ-cong` (POC-1b) |
 | `Transparency.agda` | (re-export) | status board |
 
 ## Check
 
 ```bash
-for m in Conv Complete Sound Finite Decidable Higher Dependent Transparency; do bootstrap/check.sh poc/OCP0009/$m.agda; done
+for m in Conv Complete Sound Finite Decidable Higher Dependent Universe Transparency; do bootstrap/check.sh poc/OCP0009/$m.agda; done
 ```
 
-All eight exit 0. `Conv.agda`'s example block is the POC *executing*: e.g.
+All nine exit 0. `Conv.agda`'s example block is the POC *executing*: e.g.
 `conv fo-Nat (fst ∘ ⟨ zero , one ⟩) zero ≡ true` is proved by `refl`, i.e. Agda
 evaluated the conversion and got `true` — the product-β equation decided purely by
 running both sides, never by orienting a rewrite.
@@ -154,6 +157,26 @@ transports along), via `conv-sound`. Scope: **closed** indices. The general
 `∀ n. Vec (0+n) ≡ Vec n` (n a free variable) is open conversion on a `Nat` domain —
 the `μ`-domain neutrals frontier — but the *mechanism* is identical: the checker
 calls the same `conv` on indices.
+
+## POC-1b — extend Code with a Π/Σ universe; prove type conversion (`Universe.agda`)
+
+"Extend Code with CwF constructors and prove conversion", done as a **conservative
+extension of the one IR** (not a parallel model). The CwF's *type* layer is a
+Tarski-style universe `U = μ UF` built from the **existing** `Func` grammar, so
+type-codes are ordinary IR data:
+
+- **`Π`/`Σ` are IR constructors** — `piC`, `sigmaC : Term (U * U) U`, with sugar
+  `Π[ A , B ]`, `Σ[ A , B ]`.
+- **Type conversion is the proven `conv`** — `TyConv = conv fo-U`, inheriting
+  soundness + completeness (`TyConv-decides`) with no new engine and no new axiom.
+- **CwF congruence laws proven** — `Π-cong` / `Σ-cong` (formers respect conversion)
+  from the already-proven `_≋_` congruences (`≋-∘`, `≋-⟨,⟩`).
+
+Executing checks: `Π (Nat,Nat) ≡ Π (Nat,Nat)` ✓, `Π (Nat,Nat) ≢ Σ (Nat,Nat)`,
+`Π (Nat,Nat) ≢ Π (Unit,Nat)`, plus a proof object `Π-nat-nat-refl`. Scope: **closed**
+type-codes; a dependent *context* (a later code mentioning an earlier variable) is an
+open `U`-valued morphism of `μ`-domain — the neutrals frontier. Type formation +
+type conversion are here and proven; dependency-through-contexts awaits NbE.
 
 ## Next
 
