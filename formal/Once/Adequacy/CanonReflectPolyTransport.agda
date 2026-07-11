@@ -83,9 +83,9 @@ mutual
   polys-reflect-ᵢ b p pib ac t-unit     = t-unit
   polys-reflect-ᵢ b p pib ac t-unit-var = t-unit-var
   polys-reflect-ᵢ b p pib ac (t-var-local ¬u lk) = t-var-local ¬u lk
-  polys-reflect-ᵢ b p pib ac (t-var-qualified imp) = t-var-qualified imp
-  polys-reflect-ᵢ b p pib ac (t-var-resolved imp) = t-var-resolved imp
-  polys-reflect-ᵢ b p pib ac (t-var-import ¬u lkn imp) = t-var-import ¬u lkn imp
+  polys-reflect-ᵢ b p pib ac (t-var-qualified imp conc) = t-var-qualified imp conc
+  polys-reflect-ᵢ b p pib ac (t-var-resolved imp conc) = t-var-resolved imp conc
+  polys-reflect-ᵢ b p pib ac (t-var-import ¬u lkn imp conc) = t-var-import ¬u lkn imp conc
   polys-reflect-ᵢ b p pib ac (t-annot d) = t-annot (polys-reflect-ᶜ b p pib ac d)
   polys-reflect-ᵢ b p pib ac (t-pair d₁ d₂) = t-pair (polys-reflect-ᵢ b p pib ac d₁) (polys-reflect-ᵢ b p pib ac d₂)
   polys-reflect-ᵢ b p pib ac (t-neg d) = t-neg (polys-reflect-ᵢ b p pib ac d)
@@ -121,8 +121,8 @@ mutual
   polys-reflect-ᵐ b p pib ac (m-curry df) = m-curry (polys-reflect-ᵐ b p pib ac df)
   polys-reflect-ᵐ b p pib ac (m-cata wf d) = m-cata wf (polys-reflect-ᵐ b p pib ac d)
   polys-reflect-ᵐ b p pib ac (m-const d) = m-const (polys-reflect-ᵍ b p d)
-  polys-reflect-ᵐ b p pib ac (m-named ¬u lln imp) = m-named ¬u lln imp
-  polys-reflect-ᵐ b p pib ac (m-named-resolved imp) = m-named-resolved imp
+  polys-reflect-ᵐ b p pib ac (m-named ¬u lln imp bA cB) = m-named ¬u lln imp bA cB
+  polys-reflect-ᵐ b p pib ac (m-named-resolved imp bA cB) = m-named-resolved imp bA cB
 
   polys-reflect-ᶜ : ∀ (b : List String) {n Γ Δ f i s} (p : PolyCtx) → PInB p b → Acc _<_ (length p) → ∀ {e A Ψ}
     → mkCtx n Γ Δ f i (canonPolysCtx b p) s ⊢ᶜ e ∶ A ⨾ Ψ
@@ -140,11 +140,11 @@ mutual
   polys-reflect-ᶜ b p pib ac (t-initial-app-check d) = t-initial-app-check (polys-reflect-ᶜ b p pib ac d)
   polys-reflect-ᶜ b p pib ac (t-arg-driven-app-check cls darg df) =
     t-arg-driven-app-check cls (polys-reflect-ᵢ b p pib ac darg) (polys-reflect-ᶜ b p pib ac df)
-  polys-reflect-ᶜ b {i = i} p pib (acc rec) (t-var-poly-instantiate {x = x} {T = T} {schema = schema} {body = bodyC} cb ¬u lln lin lpC dC)
+  polys-reflect-ᶜ b {i = i} p pib (acc rec) (t-var-poly-instantiate {x = x} {T = T} {schema = schema} {body = bodyC} cb ¬u lln lin lpC dC conc)
     with lookupPoly p x in eqLP | lookupPoly-canon b p x
   ... | nothing | lc = ⊥-elim (n≢j (trans (sym lc) lpC))
   ... | just (schema′ , bodyP) | lc =
-        t-var-poly-instantiate cb ¬u lln lin lp-rec d-rec
+        t-var-poly-instantiate cb ¬u lln lin lp-rec d-rec conc
     where
       -- mapMaybe (canon-entry b) (just (schema′ , bodyP)) ≡ just (schema , bodyC)
       eqJ : (schema′ , canonExpr b [] [] bodyP) ≡ (schema , bodyC)

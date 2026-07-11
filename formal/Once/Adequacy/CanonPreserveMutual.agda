@@ -91,12 +91,12 @@ mutual
   canon-pres-ᵢ {ctx} bound sub pib (t-var-local {x = x} ¬u lk)
     rewrite canon-RVar-keep bound x (or-l (sub x (lookup-just→elem ctx x lk))) =
       t-var-local ¬u lk
-  canon-pres-ᵢ bound sub pib (t-var-qualified imp) = t-var-qualified imp
-  canon-pres-ᵢ bound sub pib (t-var-resolved imp) = t-var-resolved imp
-  canon-pres-ᵢ bound sub pib (t-var-import {x = x} ¬u lkn imp)
+  canon-pres-ᵢ bound sub pib (t-var-qualified imp conc) = t-var-qualified imp conc
+  canon-pres-ᵢ bound sub pib (t-var-resolved imp conc) = t-var-resolved imp conc
+  canon-pres-ᵢ bound sub pib (t-var-import {x = x} ¬u lkn imp conc)
     with elemStr x bound ∨ isBuiltinName x in eb
-  ... | true  rewrite canon-RVar-keep    bound x eb = t-var-import ¬u lkn imp
-  ... | false rewrite canon-RVar-resolve bound x eb = t-var-resolved imp
+  ... | true  rewrite canon-RVar-keep    bound x eb = t-var-import ¬u lkn imp conc
+  ... | false rewrite canon-RVar-resolve bound x eb = t-var-resolved imp conc
   canon-pres-ᵢ bound sub pib (t-annot d) = t-annot (canon-pres-ᶜ bound sub pib d)
   canon-pres-ᵢ bound sub pib (t-pair d₁ d₂) =
     t-pair (canon-pres-ᵢ bound sub pib d₁) (canon-pres-ᵢ bound sub pib d₂)
@@ -162,11 +162,11 @@ mutual
     rewrite canon-builtin bound "cata" refl =
       m-cata wf (canon-pres-ᵐ bound (⊆ᵇ-nil {bound}) (mkPIB (λ {x'} h → app pib {x'} h)) d)
   canon-pres-ᵐ bound sub pib (m-const d) = m-const (pres-ᵍ bound d)
-  canon-pres-ᵐ bound sub pib (m-named {x = x} ¬u lln imp)
+  canon-pres-ᵐ bound sub pib (m-named {x = x} ¬u lln imp bA cB)
     with elemStr x bound ∨ isBuiltinName x in eb
-  ... | true  rewrite canon-RVar-keep    bound x eb = m-named ¬u lln imp
-  ... | false rewrite canon-RVar-resolve bound x eb = m-named-resolved imp
-  canon-pres-ᵐ bound sub pib (m-named-resolved imp) = m-named-resolved imp
+  ... | true  rewrite canon-RVar-keep    bound x eb = m-named ¬u lln imp bA cB
+  ... | false rewrite canon-RVar-resolve bound x eb = m-named-resolved imp bA cB
+  canon-pres-ᵐ bound sub pib (m-named-resolved imp bA cB) = m-named-resolved imp bA cB
 
   canon-pres-ᶜ : ∀ {ctx e A Ψ} (bound : List String)
     → Names⊆ ctx bound → PolyInB ctx bound
@@ -192,6 +192,6 @@ mutual
   canon-pres-ᶜ bound sub pib (t-arg-driven-app-check {f = f} cls darg df) =
     t-arg-driven-app-check (classify-canon bound f cls)
                            (canon-pres-ᵢ bound sub pib darg) (canon-pres-ᶜ bound sub pib df)
-  canon-pres-ᶜ bound sub pib (t-var-poly-instantiate {x = x} cb ¬u lln lin lp d)
+  canon-pres-ᶜ bound sub pib (t-var-poly-instantiate {x = x} cb ¬u lln lin lp d conc)
     rewrite canon-RVar-keep bound x (or-l (app pib lp)) =
-      t-var-poly-instantiate cb ¬u lln lin lp d
+      t-var-poly-instantiate cb ¬u lln lin lp d conc

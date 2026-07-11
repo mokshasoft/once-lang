@@ -187,8 +187,8 @@ composeArgB-polys-canon b ctx A (m-const (g-pair _ _))    = refl
 composeArgB-polys-canon b ctx A (m-const (g-inl _))       = refl
 composeArgB-polys-canon b ctx A (m-const (g-inr _))       = refl
 composeArgB-polys-canon b ctx A (m-const (g-In _ _))      = refl
-composeArgB-polys-canon b ctx A (m-named {x = x} _ _ _)   = composeArgB-rvar-polys-canon b ctx x A
-composeArgB-polys-canon b ctx A (m-named-resolved {cn = cn} _) = composeArgB-lookup-polys-canon b ctx (showCanonical cn) A
+composeArgB-polys-canon b ctx A (m-named {x = x} _ _ _ _ _)   = composeArgB-rvar-polys-canon b ctx x A
+composeArgB-polys-canon b ctx A (m-named-resolved {cn = cn} _ _ _) = composeArgB-lookup-polys-canon b ctx (showCanonical cn) A
 
 domainOfHead-polys-canon : ∀ (b : List String) (ctx : NamedCtx) {fa A′ π B′}
   → ctx ⊢ᵐ fa ∶ A′ ⇨[ π ] B′
@@ -211,8 +211,8 @@ domainOfHead-polys-canon b ctx (m-const (g-pair _ _))     = refl
 domainOfHead-polys-canon b ctx (m-const (g-inl _))        = refl
 domainOfHead-polys-canon b ctx (m-const (g-inr _))        = refl
 domainOfHead-polys-canon b ctx (m-const (g-In _ _))       = refl
-domainOfHead-polys-canon b ctx (m-named _ _ _)            = refl
-domainOfHead-polys-canon b ctx (m-named-resolved _)       = refl
+domainOfHead-polys-canon b ctx (m-named _ _ _ _ _)            = refl
+domainOfHead-polys-canon b ctx (m-named-resolved _ _ _)       = refl
 
 composeMid-polys-canon : ∀ (b : List String) (ctx : NamedCtx) {fa g A′ π B′ A″ π′ B″} {A B}
   → ctx ⊢ᵐ fa ∶ A″ ⇨[ π′ ] B″
@@ -250,9 +250,9 @@ mutual
   polys-transport-ᵢ b p pib ac t-unit     = t-unit
   polys-transport-ᵢ b p pib ac t-unit-var = t-unit-var
   polys-transport-ᵢ b p pib ac (t-var-local ¬u lk) = t-var-local ¬u lk
-  polys-transport-ᵢ b p pib ac (t-var-qualified imp) = t-var-qualified imp
-  polys-transport-ᵢ b p pib ac (t-var-resolved imp) = t-var-resolved imp
-  polys-transport-ᵢ b p pib ac (t-var-import ¬u lkn imp) = t-var-import ¬u lkn imp
+  polys-transport-ᵢ b p pib ac (t-var-qualified imp conc) = t-var-qualified imp conc
+  polys-transport-ᵢ b p pib ac (t-var-resolved imp conc) = t-var-resolved imp conc
+  polys-transport-ᵢ b p pib ac (t-var-import ¬u lkn imp conc) = t-var-import ¬u lkn imp conc
   polys-transport-ᵢ b p pib ac (t-annot d) = t-annot (polys-transport-ᶜ b p pib ac d)
   polys-transport-ᵢ b p pib ac (t-pair d₁ d₂) = t-pair (polys-transport-ᵢ b p pib ac d₁) (polys-transport-ᵢ b p pib ac d₂)
   polys-transport-ᵢ b p pib ac (t-neg d) = t-neg (polys-transport-ᵢ b p pib ac d)
@@ -288,8 +288,8 @@ mutual
   polys-transport-ᵐ b p pib ac (m-curry df) = m-curry (polys-transport-ᵐ b p pib ac df)
   polys-transport-ᵐ b p pib ac (m-cata wf d) = m-cata wf (polys-transport-ᵐ b p pib ac d)
   polys-transport-ᵐ b p pib ac (m-const d) = m-const (polys-transport-ᵍ b p d)
-  polys-transport-ᵐ b p pib ac (m-named ¬u lln imp) = m-named ¬u lln imp
-  polys-transport-ᵐ b p pib ac (m-named-resolved imp) = m-named-resolved imp
+  polys-transport-ᵐ b p pib ac (m-named ¬u lln imp bA cB) = m-named ¬u lln imp bA cB
+  polys-transport-ᵐ b p pib ac (m-named-resolved imp bA cB) = m-named-resolved imp bA cB
 
   polys-transport-ᶜ : ∀ (b : List String) {n Γ Δ f i s} (p : PolyCtx) → PInB p b → Acc _<_ (length p) → ∀ {e A Ψ}
     → mkCtx n Γ Δ f i p s ⊢ᶜ e ∶ A ⨾ Ψ
@@ -309,11 +309,11 @@ mutual
     t-arg-driven-app-check cls (polys-transport-ᵢ b p pib ac darg) (polys-transport-ᶜ b p pib ac df)
   -- The one NON-structural recursion: the poly context shrinks (removePoly), so pass
   -- the strictly-smaller accessibility `rec (removePoly-decreases x p lp)`.
-  polys-transport-ᶜ b {i = i} p pib (acc rec) (t-var-poly-instantiate {x = x} {T = T} {body = body} cb ¬u lln lin lp d) =
+  polys-transport-ᶜ b {i = i} p pib (acc rec) (t-var-poly-instantiate {x = x} {T = T} {body = body} cb ¬u lln lin lp d conc) =
     t-var-poly-instantiate cb ¬u lln lin (lookupPoly-canon-just b p x lp)
       (subst (λ q → ctxWithImportsAndPolys i q ⊢ᶜ canonExpr b [] [] body ∶ T ⨾ zeroUsage)
              (removePoly-canon b x p)
              (polys-transport-ᶜ b (removePoly x p) (removePoly-PInB {p} {b} x pib)
                 (rec (removePoly-decreases x p lp))
                 (canon-pres-ᶜ {ctx = ctxWithImportsAndPolys i (removePoly x p)} b
-                  (⊆ᵇ-nil {b}) (mkPIB (removePoly-PInB {p} {b} x pib)) d)))
+                  (⊆ᵇ-nil {b}) (mkPIB (removePoly-PInB {p} {b} x pib)) d))) conc

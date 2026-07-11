@@ -61,11 +61,11 @@ domainOfHead-canon bound (m-const (g-pair _ _))   = refl
 domainOfHead-canon bound (m-const (g-inl _))      rewrite canon-builtin bound "inl" refl = refl
 domainOfHead-canon bound (m-const (g-inr _))      rewrite canon-builtin bound "inr" refl = refl
 domainOfHead-canon bound (m-const (g-In _ _))     rewrite canon-builtin bound "In" refl = refl
-domainOfHead-canon bound (m-named {x = x} _ _ _)
+domainOfHead-canon bound (m-named {x = x} _ _ _ _ _)
   with elemStr x bound ∨ isBuiltinName x in eb
 ... | true  rewrite canon-RVar-keep    bound x eb = refl
 ... | false rewrite canon-RVar-resolve bound x eb = refl
-domainOfHead-canon bound (m-named-resolved _) = refl
+domainOfHead-canon bound (m-named-resolved _ _ _) = refl
 
 ------------------------------------------------------------------------
 -- composeArgB is canonExpr-invariant on a well-typed morphism arm.
@@ -117,7 +117,7 @@ composeArgB-canon bound A (m-const (g-pair _ _))    = refl
 composeArgB-canon bound A (m-const (g-inl _))       rewrite canon-builtin bound "inl" refl = refl
 composeArgB-canon bound A (m-const (g-inr _))       rewrite canon-builtin bound "inr" refl = refl
 composeArgB-canon bound A (m-const (g-In _ _))      rewrite canon-builtin bound "In" refl = refl
-composeArgB-canon {ctx = ctx} bound A (m-named {x = x} _ _ _)
+composeArgB-canon {ctx = ctx} bound A (m-named {x = x} _ _ _ _ _)
   with elemStr x bound ∨ isBuiltinName x in eb
 ... | true  rewrite canon-RVar-keep    bound x eb = refl
 ... | false rewrite canon-RVar-resolve bound x eb =
@@ -125,7 +125,7 @@ composeArgB-canon {ctx = ctx} bound A (m-named {x = x} _ _ _)
   where ∨-false-r : ∀ {a} → (a ∨ isBuiltinName x) ≡ false → isBuiltinName x ≡ false
         ∨-false-r {false} e = e
         ∨-false-r {true}  ()
-composeArgB-canon bound A (m-named-resolved _) = refl
+composeArgB-canon bound A (m-named-resolved _ _ _) = refl
 
 ------------------------------------------------------------------------
 -- composeMid-canon: both components are canonExpr-invariant.

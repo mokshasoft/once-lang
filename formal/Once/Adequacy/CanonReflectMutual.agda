@@ -267,17 +267,17 @@ reflect-var-ᵢ : ∀ {ctx A Ψ} (b : Bool) (bound : List String) (x : String)
   → Names⊆ ctx bound → (elemStr x bound ∨ isBuiltinName x) ≡ b
   → ctx ⊢ᵢ canonVar b nothing x ∶ A ⨾ Ψ → ctx ⊢ᵢ Raw.RVar x ∶ A ⨾ Ψ
 reflect-var-ᵢ true  bound x sub eb D = D
-reflect-var-ᵢ {ctx} false bound x sub eb (t-var-resolved imp) =
+reflect-var-ᵢ {ctx} false bound x sub eb (t-var-resolved imp conc) =
   t-var-import (¬unit-from-false {x} {bound} eb)
-               (not-local {ctx} {x} {bound} sub (∨-false-l eb)) imp
+               (not-local {ctx} {x} {bound} sub (∨-false-l eb)) imp conc
 
 reflect-var-ᵐ : ∀ {ctx A π B} (b : Bool) (bound : List String) (x : String)
   → Names⊆ ctx bound → (elemStr x bound ∨ isBuiltinName x) ≡ b
   → ctx ⊢ᵐ canonVar b nothing x ∶ A ⇨[ π ] B → ctx ⊢ᵐ Raw.RVar x ∶ A ⇨[ π ] B
 reflect-var-ᵐ true  bound x sub eb D = D
-reflect-var-ᵐ {ctx} false bound x sub eb (m-named-resolved imp) =
+reflect-var-ᵐ {ctx} false bound x sub eb (m-named-resolved imp bA cB) =
   m-named (¬unit-from-false {x} {bound} eb)
-          (not-local {ctx} {x} {bound} sub (∨-false-l eb)) imp
+          (not-local {ctx} {x} {bound} sub (∨-false-l eb)) imp bA cB
 
 ------------------------------------------------------------------------
 -- Bare-variable reflection for `⊢ᶜ` (non-recursive). The kept branch returns the
@@ -368,7 +368,7 @@ mutual
     reflect-app-var-ᵐ (elemStr y bound ∨ isBuiltinName y) bound y X sub refl D
   canon-reflects-ᵐ bound (Raw.RApp (Raw.RApp (Raw.RVar z) f) g) sub D =
     reflect-app2-var-ᵐ (elemStr z bound ∨ isBuiltinName z) bound z f g sub refl D
-  canon-reflects-ᵐ bound (Raw.RResolved cn) sub (m-named-resolved imp) = m-named-resolved imp
+  canon-reflects-ᵐ bound (Raw.RResolved cn) sub (m-named-resolved imp bA cB) = m-named-resolved imp bA cB
   canon-reflects-ᵐ bound e sub (m-const dg) = m-const (canon-reflects-ᵍ bound e dg)
 
   reflect-app-var-ᵐ : ∀ {ctx A π B} (b : Bool) (bound : List String) (y : String) (X : RawExpr)
