@@ -95,11 +95,11 @@ mutual
   vcase : ∀ {A X Y D} → Tm X D → Tm Y D → Val A (X + Y) → Val A D
   vcase f g (vInl a)         = eval f a
   vcase f g (vInr b)         = eval g b
-  vcase {D = D} f g (vNe ne) = reflect D (nCase (emb f) (emb g) ne)
+  vcase {D = D} f g (vNe ne) = reflect D (nCase (nf f) (nf g) ne)
 
   vcata : ∀ {A} F {D} → Tm (⟦ F ⟧F D) D → Val A (μ F) → Val A D
   vcata F a (vIn w)          = eval a (mapCata F a F w)
-  vcata F {D = D} a (vNe ne) = reflect D (nCata F (emb a) ne)
+  vcata F {D = D} a (vNe ne) = reflect D (nCata F (nf a) ne)
 
   mapCata : ∀ {A} F {D} → Tm (⟦ F ⟧F D) D → ∀ G →
             Val A (⟦ G ⟧F (μ F)) → Val A (⟦ G ⟧F D)
@@ -108,16 +108,16 @@ mutual
   mapCata F a (Kc H)  v          = v
   mapCata F a (G ⊕ H) (vInl x)   = vInl (mapCata F a G x)
   mapCata F a (G ⊕ H) (vInr y)   = vInr (mapCata F a H y)
-  mapCata F a (G ⊕ H) (vNe ne)   = vNe (nMap F (G ⊕ H) (emb a) ne)
+  mapCata F a (G ⊕ H) (vNe ne)   = vNe (nMap F (G ⊕ H) (nf a) ne)
   mapCata F a (G ⊗ H) (vPair x y) = vPair (mapCata F a G x) (mapCata F a H y)
-  mapCata F a (G ⊗ H) (vNe ne)   = vNe (nMap F (G ⊗ H) (emb a) ne)
+  mapCata F a (G ⊗ H) (vNe ne)   = vNe (nMap F (G ⊗ H) (nf a) ne)
+
+  nf : ∀ {A B} → Tm A B → C.Term A B
+  nf {A} t = reifyVal (eval t (reflect A (nThin ≼-refl)))
 
 ------------------------------------------------------------------------
 -- The principled normalizer.
 ------------------------------------------------------------------------
-
-nf : ∀ {A B} → Tm A B → C.Term A B
-nf {A} t = reifyVal (eval t (reflect A (nThin ≼-refl)))
 
 ------------------------------------------------------------------------
 -- Examples — recursion normalizes (cata-β) on the principled engine.
