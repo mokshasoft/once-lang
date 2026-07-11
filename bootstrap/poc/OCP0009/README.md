@@ -50,6 +50,8 @@ retargeting to `_≋_` both fixes that and closes the proof.)
 | `Conv.agda` | `--safe`, **postulate-free** | `FirstOrder`, `eq-val`/`eq-Fix`, `conv`, and worked examples whose `refl` proofs **force `conv` to run at type-check time** |
 | `Complete.agda` | funext only | `eval-sound : t ⟶ u → ∀ x. eval t x ≡ eval u x` (eval respects every rule) + `eq-val-refl`; `≈→conv` |
 | `Sound.agda` | **postulate-free** | `_≋_` (+ equivalence/congruence), `eq-val-sound`, and the finalized **`conv-sound` / `conv-complete` / `conv-decides`** |
+| `Finite.agda` | **postulate-free** | `FiniteFO`, `AllEq`, and **`conv-fin` / `conv-fin-decides`** — conversion on any finite first-order domain (POC-0b(i)) |
+| `Decidable.agda` | **postulate-free** | **`≋-dec : … → Dec (t ≋ u)`** — the proof-carrying decidable-conversion capstone |
 | `Transparency.agda` | (re-export) | status board |
 
 ## Check
@@ -89,15 +91,6 @@ result `conv-decides` is **funext-free**.
 Closed morphisms (`Unit` domain — one point, so `∀ x` collapses to a single
 evaluation) with first-order codomain (so value-equality is decidable without
 reification). Lifting either restriction is POC-0b.
-
-## Scope (honest)
-
-`conv` is defined for closed morphisms `Term Unit C` with **first-order** codomain
-`C` (`Void`/`Unit`/`×`/`+`/`μ` — no `⇒`). This is the type-level-conversion case
-Once's checker needs most: indices like `Vec n` are first-order data. Comparing
-**function-valued** morphisms (`C = A ⇒ B`) needs NbE reification against a
-neutral/generic argument — the one place the closed-term evaluator genuinely
-extends (OCP-0009 §5, "open terms / neutrals").
 
 ## POC-0b(i) — finite domains, by enumeration (`Finite.agda`, proven)
 
