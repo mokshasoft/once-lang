@@ -91,6 +91,63 @@ the value level tames type-level computation at no extra cost. This is why
 Agda/Coq/Lean/Idris-total all enforce termination; Once already enforces it
 structurally (OCP-0003), so the groundwork is done.
 
+### The property, stated at the right altitude — and the route Once actually takes
+
+The chain above is *a* sufficient route, not *the* property. Stated at the right
+altitude, what a dependent type-checker needs is a **sound + complete +
+terminating decision procedure for the chosen definitional congruence** — nothing
+more, nothing less:
+
+- **Sound** — it only equates terms that are semantically equal (else the logic is
+  inconsistent).
+- **Complete** — it equates *everything the chosen definitional theory calls equal*
+  — and "chosen" is load-bearing: completeness is relative to a theory you *pick*
+  (intensional / OTT / cubical / graded), **not** to propositional/semantic truth.
+  Demanding completeness w.r.t. truth is exactly extensional TT, which is
+  undecidable (FAQ Q11).
+- **Terminating** — the procedure halts on all inputs (this *is* the decidability).
+
+This scorecard is not merely a description; it is the **boundary of the achievable
+maximum** (Impact → Expressivity) and, read as a checklist, it *names every
+historical mistake* — each break is the loss of exactly one property:
+
+| Property lost | Historical break |
+|---|---|
+| **Soundness** | Coq's original `CoFixpoint` — lost subject reduction, admitted `False` |
+| **Termination** | general recursion / `Type : Type` in the conversion fragment — diverging checker |
+| **Completeness overreached past decidability** | extensional TT reflecting `Id` — undecidable conversion |
+
+`SN + confluence ⟹ decidable conversion` is one way to *supply* this scorecard — the
+classical rewriting route. **Once cannot take it, and has proven so.** Full βη CCC
+rewriting is **non-confluent** — mechanised, zero-postulate, in
+`formal/Theory/Syntax/StrongCCL/CCT1/NonConfluenceWitness.agda`: the term
+`curry (apply ∘ ⟨fst ∘ fst , snd⟩) ∘ snd` has two distinct βη-normal forms that
+cannot be joined, because `assoc` is one-directional while `curry-η` demands a rigid
+association. Each rewriting attempt sacrifices one of {confluence, SN} and postulates
+it back (two-way `assoc` ⟹ SN fails, mechanised `weak-normalization-fails`; one-way
+`assoc` ⟹ confluence fails).
+
+So Once supplies the scorecard the **other** way — the route the bootstrap already
+committed to (`bootstrap/theory/normalizer-vs-compiler-path.md`):
+
+> **determinism + totality of a big-step evaluator to canonical values.**
+
+A function has one output, so **determinism replaces confluence** (uniqueness of the
+canonical form is free); **totality** (SN, which Once has by construction) makes the
+evaluator defined on every input. Conversion is then decided by
+
+```
+conv(a, b)  =  ⌜eval a⌝ ≟ ⌜eval b⌝
+```
+
+— evaluate both sides to a canonical value, then decide **structural** equality on
+the results (`_≟_`, zero-postulate, in `.../StrongCCL/CCT1/DecidableEquality.agda`).
+This is **NbE**, not term rewriting. Wherever this document says "normalize both
+sides, compare normal forms," read it in this evaluator sense: the confluence half of
+the classical chain is *deliberately abandoned* — it is provably unavailable, and
+determinism supplies uniqueness without it. (§5 → "The two pillars" ties this to
+OCP-0004; FAQ Q10 states it compactly.)
+
 ### The caveat OCP-0003 gets subtly wrong
 
 A tempting but imprecise framing is: "we can't just admit *total* functions,
@@ -337,6 +394,67 @@ to *build* and hard to *trust* — termination/sizing, guardedness,
 capture-avoiding substitution, dependent-match unification. The one genuine bill
 is structural (CCC → CwF), plus the untouched universe hierarchy.
 
+### The two pillars: structure (CwF) and decidability (the evaluator) are *both* required
+
+It is tempting to call the CwF/fibration core the single unifying answer — the
+"silver bullet" that both this OCP and OCP-0004 stand on. That framing is a trap, and
+naming why keeps the whole design honest:
+
+> **A fibration unifies what the theories *mean*, not how to *decide* them.**
+
+There are **two pillars**, and the CwF is only one:
+
+1. **CwF / fibration — the *structural* pillar.** What to add, how axes compose, why
+   dependency is prior and grades ride on top (Appendix A.4b). The shared object DT
+   elaborates into.
+2. **Deterministic total evaluator at CCT3 — the *algorithmic* pillar.** How each
+   addition stays sound + complete + terminating and TCB0-inspectable. This is
+   OCP-0004's actual finding (the evaluator route; determinism replaces confluence —
+   Motivation → "The property, stated at the right altitude").
+
+**Neither substitutes for the other.** A CwF *without* the evaluator is gorgeous
+semantics with **no decidable checker** — precisely the modal/directed frontier's
+disease (Appendix A.2b: meaning unified, conversion algorithm absent). The evaluator
+*without* the CwF is a decidable engine with **no dependency** — that is OCP-0004
+*today* (simply-typed BCCR, a plain CCC). DT is where the two meet.
+
+**Relation to OCP-0004, made precise.** OCP-0004's BCCR core (CCT4) is the fibration's
+**base fiber** — the simply-typed slice, no dependency. The DT layer (Rungs 2–4) adds
+the *reindexing* that turns that fiber into a fibration (context extension,
+`Σ ⊣ wk ⊣ Π`). So OCP-0004 is not a separate development to reconcile with; it is the
+**ground floor** this OCP builds the CwF on, and its evaluator finding is the
+**per-axis decidability engine** for everything above:
+
+- Every enrichment (dependency, then each Appendix-A axis) is discharged by
+  **extending the one deterministic evaluator with eval-cases**, never by a per-axis
+  checker — this is what keeps OCP-0004's TCB0 = *one inspectable VM* intact as
+  expressiveness climbs.
+- The non-confluence lesson dictates *how* an axis may be added: as **structure the
+  evaluator computes with** (a composable modality, Appendix A.1), **never** as a new
+  directed rewrite rule or side-condition pass — new rules mint new critical pairs and
+  re-open the non-confluence the evaluator route exists to sidestep. A.1's "modality,
+  not pass" is thus not aesthetics: OCP-0004 is the *mechanical proof* that bolt-on
+  passes break the determinism decidability rests on.
+- **Grades (QTT) are minimal-touch at both levels** — they ride on the fibration
+  (A.4b) *and* do not perturb the evaluator's computation or the TCB0 fixpoint check.
+  Confirmed twice over.
+- The shared invariant: OCP-0004's evaluator lives at **CCT3** (inductive, finite,
+  SN). Every axis's *conversion fragment* must stay at CCT3; `ν`/CCT4 and true
+  coinduction stay downstream (§2–3). That single boundary is where "add orthogonal
+  enrichments freely" meets "one deterministic total VM."
+
+**The artifact that is *both* pillars at once: NbE.** Normalization-by-evaluation's
+reify/reflect *is simultaneously* (a) the decidable-conversion algorithm this OCP
+needs and (b) OCP-0004's deterministic evaluator. Build NbE for the core and you have
+the core **and** its checker in one object. This is also how you *find* the core
+rather than guess it: fix the CwF combinators (a **known** object — λσ explicit
+substitutions / CwF-as-GAT / SOGAT / natural models over polynomial functors, A.4),
+then **grow** it by elaborating one surface feature at a time, extending the core
+*only* when a feature provably cannot be expressed with existing combinators —
+re-running the three-property scorecard on the shared evaluator each time. The first
+feature that *cannot* elaborate in (predicted: induction-recursion, FAQ Q9) is the
+honest ceiling, found empirically rather than argued.
+
 ---
 
 ## 6. Staged introduction (Rungs 0–6)
@@ -358,6 +476,23 @@ itself, at zero runtime cost.**
 Total, simply-typed Once: CCC/arrows, structured recursion, reified functors,
 self-hosting compiler with a reified IR. Programs run; nothing is proved *inside*
 the language.
+
+**The load-bearing POC (prerequisite to everything above Rung 0).** Before any
+dependency, build **NbE for the existing simply-typed core** and decide conversion by
+`⌜eval a⌝ ≟ ⌜eval b⌝` (§5 → "The two pillars"). This is not throat-clearing: it
+**discharges OCP-0004's two still-open obligations** — a *real* normalizer algebra
+(the mechanised witness `cata TermF In` is denotationally the identity and passes
+degenerately) and **transparency / NbE adequacy** (the `fixpoint ⟹ correct-on-all-
+inputs` step) — that `bootstrap/theory/normalizer-vs-compiler-path.md` names as the
+honest next step. It is mostly *assembly of existing assets*: `bootstrap/normalizer`
+(evaluator + 15-way dispatch), `StrongCCL3` (`encode`, `encode-is-nf`), and
+`DecidableEquality` (`_≟_`), and it operates **on the reified IR (`Code = μ TermF`),
+not by touching the compiler front-end** — the POC is a separate IR→IR consumer, and
+elaboration stays an endo-rewrite on `Code` (the "conservative sugar over `Code`"
+condition of `normalizer-vs-compiler-path.md`). If this round-trip does not close over
+plain BCCR, nothing above it stands — so the POC order is the risk order: prove the
+hardest, most load-bearing thing (evaluator adequacy at CCT3) first, on the smallest
+system, *before* adding Π/Σ.
 
 ### Rung 1 — one universe + type-level functions
 
@@ -804,6 +939,39 @@ The headline: for ordinary total programs and proofs, proposed Once matches a
 real proof assistant's ceiling (both total, same diagonal limit); the losses are
 codata-in-conversion (deliberate) and the intensional start (revisitable), and
 the single unresolved expressiveness gap is IR/II.
+
+### Q10. Isn't "decidable conversion" just strong normalization + confluence?
+
+No — that is one *sufficient* route, and the one Once **cannot** take. The property at
+the right altitude is a **sound + complete + terminating decision procedure for the
+chosen definitional congruence** (Motivation → "The property, stated at the right
+altitude"). Confluence + SN is the classical way to *supply* it, but full βη CCC
+rewriting is **provably non-confluent** (mechanised `NonConfluenceWitness`, zero
+postulates). Once supplies the scorecard the other way: **determinism + totality of a
+big-step evaluator** — a function has one output, so determinism replaces confluence,
+and conversion is `⌜eval a⌝ ≟ ⌜eval b⌝` (NbE), not rewriting. Two consequences worth
+holding: (a) "complete" is always relative to a *chosen* theory, never to
+propositional truth (that overreach is ETT — Q11); (b) each of the three properties,
+if lost, is a named historical disaster — soundness → Coq `CoFixpoint`, termination →
+general recursion / `Type:Type`, completeness-overreach → ETT. The scorecard is thus
+both the design target *and* the checklist of traps to bypass cleanly.
+
+### Q11. Extensional TT reflects propositional equality into conversion — isn't it *more expressible*?
+
+Not in the sense that matters. By **Hofmann's conservativity theorem**, ETT is
+conservative over **ITT + funext + UIP**: it proves **no new propositions** — same
+logical strength, same definable functions. What ETT adds is a *bigger definitional
+equality* (it absorbs propositional equality), i.e. **shorter proofs**, and that
+convenience is *exactly* what costs decidable conversion. So the trade is
+decidability-for-ergonomics, not decidability-for-power — a bad trade for a checker,
+because the ergonomics are recoverable inside a *decidable* system by adding
+funext + UIP (or, better, OTT/cubical, which make funext **compute** while keeping
+conversion decidable — Q8). The genuinely-more-expressible frontier is therefore
+**not** ETT (it collapses under conservativity) but the **orthogonal axes** — IR/II,
+impredicativity, univalence, modal/graded/directed (Appendix A) — where the gain is
+real but the decidable-conversion algorithm is, for the frontier corners, still open
+(A.2b). This is why "drop decidability to gain power" is a false economy, and Once
+never entertains it.
 
 ---
 
