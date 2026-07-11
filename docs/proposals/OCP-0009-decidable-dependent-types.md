@@ -540,6 +540,20 @@ exactly as Rung 2 promises. Scope: **closed** indices; the general
 `∀ n. Vec (0+n) ≡ Vec n` (open, `n` a variable) is the `μ`-domain neutrals frontier
 above — same mechanism, awaiting NbE.
 
+**The neutrals frontier, correctly framed (proven, `Open.agda`).** A correction worth
+recording, because it fixes what NbE should even *decide*: on **open** terms, model
+equality `_≋_` (`∀ x. eval t x ≡ eval u x`) **strictly exceeds definitional equality**
+— on the infinite `Nat` domain it is the whole first-order theory of the model
+(`n+0=n`, commutativity, …) and is therefore **undecidable**. A checker's conversion
+is the **definitional fragment** (what reduces); NbE decides that *proper subset*, and
+the residual is **propositional** (proved with induction / `J`, not conversion). The
+split is proven on the smallest witness: `0+n ≋ n` is **definitional** (`λ n → refl` —
+evaluation already decides this open conversion, since `+` recurses on its first
+argument) while `n+0 = n` is **propositional** (`+F-runit`, by induction — not `refl`,
+so not a conversion). So `_≋_` is *not* the NbE target on open terms; the decidable
+definitional subset is — which also shows why full "prove Once in Once" needs the
+propositional layer (`Id`/`J`, Rung 3), not conversion alone.
+
 ### Rung 1 — one universe + type-level functions
 
 Add `Type₀` and let `Cata` compute over *types* (the λω̲ corner: types→types, no

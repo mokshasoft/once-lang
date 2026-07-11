@@ -53,3 +53,8 @@ open import poc.OCP0009.Dependent public
 -- IS the proven `conv`, and the CwF congruence laws are proven from `_≋_`.
 open import poc.OCP0009.Universe public
   using (U; ⌜nat⌝; Π[_,_]; Σ[_,_]; TyConv; TyConv-decides; Π-cong; Σ-cong)
+-- The neutrals frontier, correctly framed: on OPEN terms, `_≋_` exceeds
+-- definitional equality. Proven split — `0+n≋n` (definitional, decided by
+-- evaluation) vs `+F-runit`/`n+0=n` (propositional, needs induction).
+open import poc.OCP0009.Open public
+  using (plus0; 0+n≋n; _+F_; +F-lunit; +F-runit)

@@ -60,10 +60,10 @@ retargeting to `_≋_` both fixes that and closes the proof.)
 ## Check
 
 ```bash
-for m in Conv Complete Sound Finite Decidable Higher Dependent Universe Transparency; do bootstrap/check.sh poc/OCP0009/$m.agda; done
+for m in Conv Complete Sound Finite Decidable Higher Dependent Universe Open Transparency; do bootstrap/check.sh poc/OCP0009/$m.agda; done
 ```
 
-All nine exit 0. `Conv.agda`'s example block is the POC *executing*: e.g.
+All ten exit 0. `Conv.agda`'s example block is the POC *executing*: e.g.
 `conv fo-Nat (fst ∘ ⟨ zero , one ⟩) zero ≡ true` is proved by `refl`, i.e. Agda
 evaluated the conversion and got `true` — the product-β equation decided purely by
 running both sides, never by orienting a rewrite.
@@ -178,16 +178,42 @@ type-codes; a dependent *context* (a later code mentioning an earlier variable) 
 open `U`-valued morphism of `μ`-domain — the neutrals frontier. Type formation +
 type conversion are here and proven; dependency-through-contexts awaits NbE.
 
+## The neutrals frontier, correctly framed (`Open.agda`, proven)
+
+Before building NbE, one fact must be pinned — it corrects a tempting overclaim and
+fixes the engine's target:
+
+> On **open** terms, observational equality `_≋_` (`∀ x. eval t x ≡ eval u x`)
+> **strictly exceeds** definitional equality. `_≋_` on the infinite `Nat` domain is
+> the whole first-order theory of the model — it contains every inductive theorem
+> (`n+0=n`, commutativity, …) and is therefore **undecidable**. A checker's
+> conversion is the **definitional fragment** (what reduces); NbE decides *that*, a
+> proper subset. The residual is **propositional** — proven with induction / `J`,
+> deliberately not by conversion.
+
+Proven split on the smallest witness:
+
+- `0+n≋n : plus0 ≋ id` — **definitional**, proved by `λ n → refl`. An *open*
+  (`Nat`-domain) conversion that evaluation already decides (`add 0` reduces to the
+  identity, so `0+n` computes to `n` under a variable `n`).
+- `+F-runit : ∀ n → n +F zeroF ≡ n` — **propositional**, proved by *induction*; not
+  `refl`, so no conversion checker / NbE decides it. (`+F-lunit : 0+m=m` is `refl` —
+  definitional — showing the reduce-vs-induct asymmetry is `+`'s recursion argument.)
+
+So evaluation genuinely reaches *some* open conversions, and the decidable target is
+exactly the reduce-vs-induct line. The NbE **engine** (reify open terms to normal
+form so the definitional subset becomes a `Bool`/`Dec` decision, not a hand-written
+`refl`) is the remaining engineering — now with its correct target fixed.
+
 ## Next
 
-1. **Neutrals / NbE (the `μ`-domain frontier).** For infinite input positions
-   (domain `Nat`, argument `Nat ⇒ B`) evaluate at a single **generic (neutral)**
-   input and compare symbolically — residualizing NbE. This is what makes the *open*
-   `∀ n. Vec (0+n) ≡ Vec n` decidable. Standard for the simply-typed core (terminates
-   by construction); known-hard sub-case is sums; recursion stays inductive-only
+1. **The NbE engine.** Residualizing reify/reflect so the definitional subset above
+   is *decided* for arbitrary open terms (turn the meta-level `refl` into an
+   object-level decision). Standard for the simply-typed core (terminates by
+   construction); known-hard sub-case is sums; recursion stays inductive-only
    (OCP-0009 §2). Same pillar: `reify`/`reflect`/`nf` deterministic, no confluence.
-2. **CwF layer proper (Rung 2).** Add `Π`/`Σ` + context extension as IR constructors
-   over the *same* evaluator; elaborate a named surface into the nameless core.
+2. **CwF contexts (Rung 2 proper).** Context extension + reindexing so type-codes may
+   mention earlier variables — dependent contexts, riding on the engine above.
 
 The through-line: each step extends *one* evaluator and re-confirms the three-
 property scorecard — never a second checker (OCP-0009 §5, "The two pillars";
