@@ -55,15 +55,17 @@ retargeting to `_≋_` both fixes that and closes the proof.)
 | `Higher.agda` | funext only | `Checkable`, **`conv-h`** — higher-order codomains (functions with finite args) (POC-0b(ii)) |
 | `Dependent.agda` | funext only | `add`/`plus` (`cata`), **`VecConv`** — dependent-index conversion `Vec m ≡ Vec n` (POC-1) |
 | `Universe.agda` | funext only | universe `U` with **`Π`/`Σ` formers** on the IR, **`TyConv`** + `Π-cong`/`Σ-cong` (POC-1b) |
+| `NbE.agda` / `NbEConv.agda` | prototype | ad-hoc engine + decider ({Unit,×,+,μ}), demonstrated |
+| `NbEK.agda` | **postulate-free** | **principled** NbE foundation — thinnings `_≼_`, presheaf weakening, **proven functor laws** (`wkVal-id`/`wkVal-comp`), reflect/reify |
 | `Transparency.agda` | (re-export) | status board |
 
 ## Check
 
 ```bash
-for m in Conv Complete Sound Finite Decidable Higher Dependent Universe Open NbE NbEConv Transparency; do bootstrap/check.sh poc/OCP0009/$m.agda; done
+for m in Conv Complete Sound Finite Decidable Higher Dependent Universe Open NbE NbEConv NbEK Transparency; do bootstrap/check.sh poc/OCP0009/$m.agda; done
 ```
 
-All twelve exit 0. `Conv.agda`'s example block is the POC *executing*: e.g.
+All thirteen exit 0. `Conv.agda`'s example block is the POC *executing*: e.g.
 `conv fo-Nat (fst ∘ ⟨ zero , one ⟩) zero ≡ true` is proved by `refl`, i.e. Agda
 evaluated the conversion and got `true` — the product-β equation decided purely by
 running both sides, never by orienting a rewrite.
