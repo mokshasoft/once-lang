@@ -13,6 +13,7 @@
 module Once.Surface.IR where
 
 open import Once.Type
+open import Once.Functor.Translate using (IsBaseType; IsConcrete)
 
 open import Data.String using (String)
 
@@ -81,7 +82,7 @@ data SurfaceIR : Type → Type → Set where
   --
   -- Examples: syscalls, arithmetic, string operations
   --
-  SigOp    : ∀ {A B} → String → SurfaceIR A B
+  SigOp    : ∀ {A B} → String → IsBaseType A → IsConcrete B → SurfaceIR A B
 
 infixr 9 _∘_
 infixr 4 ⟨_,_⟩

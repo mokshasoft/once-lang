@@ -40,7 +40,7 @@ import Once.Type
 open Once.Type using (Type; Unit; Int; Str; Void; Float; Buffer;
                       _*_; _+_; _⇒_; _⇒[_]_; Quantity;
                       Functor; μ-type; ⟦_⟧T)
-open import Once.Functor.Translate using (WellFormedF)
+open import Once.Functor.Translate using (WellFormedF; IsBaseType; IsConcrete; con-fun)
 open import Once.Functor.Decide using (wellFormedF?)
 open import Once.IR using (IR)
 open import Once.TypeCheck.Morph using (MorphRaw; morphRaw?; morphToIR)
@@ -108,6 +108,7 @@ mutual
 
     t-var-qualified : ∀ {ctx : NamedCtx} {name alias : String} {T : Type}
                     → lookupImport (NamedCtx.imports ctx) (alias ++ "." ++ name) ≡ just T
+                    → IsConcrete T  -- Plan 0.58: FFI value reference is concrete
                     → ctx ⊢ᵢ RQualified name alias ∶ T ⨾ zeroUsage
 
     -- Plan 0.50: a qualified ref RESOLVED to its canonical identity. `canon`
@@ -118,12 +119,14 @@ mutual
     -- construction, not by two String renders coinciding.
     t-var-resolved : ∀ {ctx : NamedCtx} {cn : CanonicalName} {T : Type}
                    → lookupImport (NamedCtx.imports ctx) (showCanonical cn) ≡ just T
+                   → IsConcrete T  -- Plan 0.58: FFI value reference is concrete
                    → ctx ⊢ᵢ RResolved cn ∶ T ⨾ zeroUsage
 
     t-var-import : ∀ {ctx : NamedCtx} {x : String} {T : Type}
                  → ¬ (x ≡ "unit")
                  → lookupLocal ctx x ≡ nothing
                  → lookupImport (NamedCtx.imports ctx) x ≡ just T
+                 → IsConcrete T  -- Plan 0.58: FFI value reference is concrete
                  → ctx ⊢ᵢ RVar x ∶ T ⨾ zeroUsage
 
     ----------------------------------------------------------------
@@ -439,6 +442,7 @@ mutual
             → lookupLocal ctx x ≡ nothing
             → lookupImport (NamedCtx.imports ctx) x
                 ≡ just (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B)
+            → IsBaseType A → IsConcrete B  -- Plan 0.58: FFI SigOp is concrete
             → ctx ⊢ᵐ RVar x ∶ A ⇨[ π ] B
 
     -- Plan 0.50 Stage 2 (D064): the RESOLVED-name morphism, the `⊢ᵐ` analog of
@@ -448,6 +452,7 @@ mutual
     m-named-resolved : ∀ {ctx : NamedCtx} {cn : CanonicalName} {A B : Type} {π : Once.Type.Purity}
                      → lookupImport (NamedCtx.imports ctx) (showCanonical cn)
                          ≡ just (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B)
+                     → IsBaseType A → IsConcrete B  -- Plan 0.58: FFI SigOp is concrete
                      → ctx ⊢ᵐ RResolved cn ∶ A ⇨[ π ] B
 
     -- (D066: `m-lam` dropped — a closed lambda as a morphism is unreachable via
@@ -605,6 +610,7 @@ mutual
       → (ctxWithImportsAndPolys (NamedCtx.imports ctx)
                                  (removePoly x (NamedCtx.polys ctx)))
           ⊢ᶜ body ∶ T ⨾ Surface.zeroUsage
+      → IsConcrete T  -- Plan 0.58: FFI value reference is concrete
       → ctx ⊢ᶜ RVar x ∶ T ⨾ Surface.zeroUsage
 
 ------------------------------------------------------------------------
@@ -650,6 +656,6 @@ extractMorphWitness : ∀ {ctx : NamedCtx} {e : RawExpr} {A B : Type}
 
 extractMorphWitness (t-morph-lift mF)                  = just mF
 extractMorphWitness (t-value-lift g)                   = just (m-const g)
-extractMorphWitness (t-embed (t-var-import ¬u eqL eqI)) = just (m-named ¬u eqL eqI)
-extractMorphWitness (t-embed (t-var-resolved eq))       = just (m-named-resolved eq)
+extractMorphWitness (t-embed (t-var-import ¬u eqL eqI (con-fun bA cB))) = just (m-named ¬u eqL eqI bA cB)
+extractMorphWitness (t-embed (t-var-resolved eq (con-fun bA cB)))       = just (m-named-resolved eq bA cB)
 extractMorphWitness _                                  = nothing

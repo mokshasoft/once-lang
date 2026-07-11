@@ -41,7 +41,7 @@ open import Once.Denotation.TraceDenote using (events-F)
 open import Once.Denotation.Trace using (SigOpEvent)
 open import Once.IR using (IR)
 open import Once.CCC.Eval as Val using ()
-open import Once.Functor.Translate using (WellFormedF)
+open import Once.Functor.Translate using (WellFormedF; con-fun; base-Unit)
 open import Once.Semantics.Machine
   using (sem-cata; sem-ana; sem-fmap; coerce-functor; coerce-functor⁻¹; ⟦_⟧F)
 open import Once.SigOp.Info using (semM)
@@ -181,14 +181,14 @@ ana-eventsˢ {F} {A} coalgComp a (suc m) =
 -- DISPATCHES ON RESULT-TYPE SHAPE (matching elaborate): at an arrow it is a
 -- CLOSURE applying the SigOp to its arg (so the effect fires at apply, not at
 -- pair-build); at non-arrow it runs on terminal `tt`. closure/poly never wrap.
-⟦ sigOp {A = (Dom ⇒[ k ] Cod)} name ⟧ˢ dγ =
-  returnT (λ arg → λ n → ( emit-D (arrow-info {Dom} {Cod} k name) (forget arg)
-                         , inject (semM (arrow-info {Dom} {Cod} k name) (forget arg)) ))
+⟦ sigOp {A = (Dom ⇒[ k ] Cod)} name (con-fun bDom cCod) ⟧ˢ dγ =
+  returnT (λ arg → λ n → ( emit-D (arrow-info {Dom} {Cod} k name bDom cCod) (forget arg)
+                         , inject (semM (arrow-info {Dom} {Cod} k name bDom cCod) (forget arg)) ))
 -- VALUE-position references (non-arrow sigOp, closure, poly): `Pure` via
 -- `value-info` (effects live on arrows, fire on application — D018), so they
 -- emit `[]` at build. This is what makes `build-pure` hold for these leaves;
 -- interpretation-agnostic (no `classify-name`). Matches elaborate's
 -- `SigOp (value-info name) ∘ terminal` ⇒ `faithful` stays `refl`.
-⟦ sigOp {A = A} name ⟧ˢ   dγ = λ n → (emit-D (value-info {Unit} {A} name) tt , inject (semM (value-info {Unit} {A} name) tt))
-⟦ closure {A = A} name ⟧ˢ dγ = λ n → (emit-D (value-info {Unit} {A} (bare name)) tt , inject (semM (value-info {Unit} {A} (bare name)) tt))
-⟦ poly name PT ⟧ˢ         dγ = λ n → (emit-D (value-info {Unit} {PT} (bare name)) tt , inject (semM (value-info {Unit} {PT} (bare name)) tt))
+⟦ sigOp {A = A} name conc ⟧ˢ   dγ = λ n → (emit-D (value-info {Unit} {A} name base-Unit conc) tt , inject (semM (value-info {Unit} {A} name base-Unit conc) tt))
+⟦ closure {A = A} name conc ⟧ˢ dγ = λ n → (emit-D (value-info {Unit} {A} (bare name) base-Unit conc) tt , inject (semM (value-info {Unit} {A} (bare name) base-Unit conc) tt))
+⟦ poly name PT conc ⟧ˢ         dγ = λ n → (emit-D (value-info {Unit} {PT} (bare name) base-Unit conc) tt , inject (semM (value-info {Unit} {PT} (bare name) base-Unit conc) tt))

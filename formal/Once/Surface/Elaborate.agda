@@ -41,6 +41,7 @@ open import Once.CanonicalName using (bare)
   using (str-lit-info; add-info; sub-info; mul-info; div-info; mod-info;
          neg-info; lt-info; le-info; gt-info; ge-info; eq-info; ne-info;
          generic-info; value-info; arrow-info)
+open import Once.Functor.Translate using (IsConcrete; con-base; con-fun; base-Unit)
 
 -- Literals: constant morphisms that ignore input environment.
 --
@@ -264,9 +265,9 @@ elaborate m (arr' f) = arr ∘ elaborate m f
 -- The arrow case is structurally identical to how a user-defined
 -- `λ x → f x` would elaborate, so SigOps and user closures are
 -- now value-equivalent under apply.
-elaborate m (sigOp {A = (Dom ⇒[ k ] Cod)} name) =
-  curry {k = k} (SigOp (arrow-info k name) ∘ snd) m
-elaborate m (sigOp name) = SigOp (value-info name) ∘ terminal
+elaborate m (sigOp {A = (Dom ⇒[ k ] Cod)} name (con-fun bDom cCod)) =
+  curry {k = k} (SigOp (arrow-info k name bDom cCod) ∘ snd) m
+elaborate m (sigOp name conc) = SigOp (value-info name base-Unit conc) ∘ terminal
 -- Plan 0.19: user-defined closure reference.
 --
 -- Unlike `sigOp`, `closure name` does NOT curry-wrap at arrow type.
@@ -280,13 +281,13 @@ elaborate m (sigOp name) = SigOp (value-info name) ∘ terminal
 -- This is the same shape as `sigOp` at non-arrow type. The split
 -- exists so the elaborator never silently wraps a user-defined
 -- entry in a curry that mismatches its asm signature.
-elaborate m (closure name) = SigOp (value-info (bare name)) ∘ terminal
+elaborate m (closure name conc) = SigOp (value-info (bare name) base-Unit conc) ∘ terminal
 -- Unresolved polymorphic placeholder. A well-formed Surface Expr
 -- reaching elaborate has been through `resolveExpr`, so `poly` nodes
 -- only survive when resolution failed (e.g. cycle). Treat as an
 -- external SigOp with the unqualified name — matches evalSurface for
 -- the correctness theorem, and codegen will catch it as unresolved.
-elaborate m (poly name _) = SigOp (value-info (bare name)) ∘ terminal
+elaborate m (poly name _ conc) = SigOp (value-info (bare name) base-Unit conc) ∘ terminal
 
 -- Plan 0.2.4.5 D2: morphism realm.
 -- A `lift-morphism morph` used as a value (e.g. assigned to a variable

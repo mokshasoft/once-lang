@@ -35,7 +35,7 @@ open import Once.CanonicalName using (CanonicalName; showCanonical; bare)
 open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_; valueT; projTrace)
 open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ; emit-D; inject; forget)
 open import Once.Semantics.Machine using (sem-In; coerce-functor; sem-cata; sem-fmap; coerce-functor⁻¹; ⟦_⟧F)
-open import Once.Functor.Translate using (WellFormedF)
+open import Once.Functor.Translate using (WellFormedF; IsBaseType; IsConcrete; base-Unit)
 open import Once.Denotation.Trace using (SigOpEvent)
 open import Once.Denotation.TraceDenote using (events-F)
 open import Once.CCC.Eval as Val using ()
@@ -94,9 +94,9 @@ in-value {F} x = sem-In F (coerce-functor F (μ-type F) (forget x))
 -- m-named / m-named-resolved: the named arrow's meaning, IR-free. This is
 -- DEFINITIONALLY `evalᴰ (SigOp (value-info cn))` (same RHS), so the `bridgeᵈ`
 -- case for a named morphism is `refl`.
-named-sem : ∀ {A B : Type} → CanonicalName → ⟦ A ⟧ᴰ → T ⟦ B ⟧ᴰ
-named-sem {A} {B} cn a =
-  λ _ → (emit-D (value-info {A} {B} cn) (forget a) , inject (semM (value-info {A} {B} cn) (forget a)))
+named-sem : ∀ {A B : Type} → CanonicalName → IsBaseType A → IsConcrete B → ⟦ A ⟧ᴰ → T ⟦ B ⟧ᴰ
+named-sem {A} {B} cn bA cB a =
+  λ _ → (emit-D (value-info {A} {B} cn bA cB) (forget a) , inject (semM (value-info {A} {B} cn bA cB) (forget a)))
 
 ------------------------------------------------------------------------
 -- The VALUE realm `⊢ᵍ` — a closed global element denotes a value `⟦A⟧ᴰ`.
@@ -129,8 +129,8 @@ named-sem {A} {B} cn a =
 ⟦ m-curry f       ⟧ᵐ = λ a  → returnT (λ b → ⟦ f ⟧ᵐ (a , b))
 ⟦ m-const gv      ⟧ᵐ = λ _  → returnT ⟦ gv ⟧ᵍ
 ⟦ m-cata {wfF = wfF} _ alg ⟧ᵐ = cata-sem wfF ⟦ alg ⟧ᵐ
-⟦_⟧ᵐ {A = A} {B = B} (m-named {x = x} _ _ _)        = named-sem {A} {B} (bare x)
-⟦_⟧ᵐ {A = A} {B = B} (m-named-resolved {cn = cn} _) = named-sem {A} {B} cn
+⟦_⟧ᵐ {A = A} {B = B} (m-named {x = x} _ _ _ bA cB)        = named-sem {A} {B} (bare x) bA cB
+⟦_⟧ᵐ {A = A} {B = B} (m-named-resolved {cn = cn} _ bA cB) = named-sem {A} {B} cn bA cB
 
 ------------------------------------------------------------------------
 -- (P3) The env — IR-free positional lookup into `⟦ ⟦ Γ ⟧ᶜ ⟧ᴰ`.
@@ -170,16 +170,16 @@ Env ctx = ⟦ ⟦ NamedCtx.debruijn ctx ⟧ᶜᵗ ⟧ᴰ
 ⟦ t-initial-app-check d ⟧ᶜ  dγ = ⟦ d ⟧ᶜ dγ >>=T λ v → ⊥-elim v
 ⟦ t-subsume d ⟧ᶜ            dγ = ⟦ d ⟧ᶜ dγ
 ⟦ t-arg-driven-app-check _ darg df ⟧ᶜ dγ = ⟦ df ⟧ᶜ dγ >>=T λ vf → ⟦ darg ⟧ᵢ dγ >>=T λ vx → vf vx
-⟦_⟧ᶜ {A = A} (t-var-poly-instantiate {x = x} _ _ _ _ _ _) dγ = sigOpValᴰ (value-info {Unit} {A} (bare x))
+⟦_⟧ᶜ {A = A} (t-var-poly-instantiate {x = x} _ _ _ _ _ _ conc) dγ = sigOpValᴰ (value-info {Unit} {A} (bare x) base-Unit conc)
 
 ⟦ t-int n ⟧ᵢ                dγ = returnT (absℤ n)
 ⟦ t-str s ⟧ᵢ                dγ = returnT (semM (str-lit-info s) tt)
 ⟦ t-unit ⟧ᵢ                 dγ = returnT tt
 ⟦ t-unit-var ⟧ᵢ             dγ = returnT tt
 ⟦ t-var-local {eV = eV} _ _ ⟧ᵢ dγ = returnT (svarᴰ eV dγ)
-⟦_⟧ᵢ {A = A} (t-var-qualified {name = name} {alias = alias} _) dγ = sigOpValᴰ (value-info {Unit} {A} (bare (alias ++ "." ++ name)))
-⟦_⟧ᵢ {A = A} (t-var-resolved {cn = cn} _) dγ = sigOpValᴰ (value-info {Unit} {A} cn)
-⟦_⟧ᵢ {A = A} (t-var-import {x = x} _ _ _) dγ = sigOpValᴰ (value-info {Unit} {A} (bare x))
+⟦_⟧ᵢ {A = A} (t-var-qualified {name = name} {alias = alias} _ conc) dγ = sigOpValᴰ (value-info {Unit} {A} (bare (alias ++ "." ++ name)) base-Unit conc)
+⟦_⟧ᵢ {A = A} (t-var-resolved {cn = cn} _ conc) dγ = sigOpValᴰ (value-info {Unit} {A} cn base-Unit conc)
+⟦_⟧ᵢ {A = A} (t-var-import {x = x} _ _ _ conc) dγ = sigOpValᴰ (value-info {Unit} {A} (bare x) base-Unit conc)
 ⟦ t-annot d ⟧ᵢ              dγ = ⟦ d ⟧ᶜ dγ
 ⟦ t-pair da db ⟧ᵢ           dγ = ⟦ da ⟧ᵢ dγ >>=T λ a → ⟦ db ⟧ᵢ dγ >>=T λ b → returnT (a , b)
 ⟦ t-neg d ⟧ᵢ                dγ = ⟦ d ⟧ᵢ dγ >>=T λ v → returnT (semM neg-info v)

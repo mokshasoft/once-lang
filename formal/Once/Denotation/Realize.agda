@@ -123,8 +123,8 @@ realize-morph (m-curry df)      = IR.curry (realize-morph df) IR.Heap
 -- categorical IR; no `elaborate` round-trip, uniform with the other combinators.
 realize-morph (m-cata {wfF = wfF} _ dalg) = IR.Cata wfF (realize-morph dalg)
 realize-morph (m-const gd)      = realize-global gd
-realize-morph (m-named {x = x} _ _ _) = IR.SigOp (value-info (bare x))
-realize-morph (m-named-resolved {cn = cn} _) = IR.SigOp (value-info cn)
+realize-morph (m-named {x = x} _ _ _ bA cB) = IR.SigOp (value-info (bare x) bA cB)
+realize-morph (m-named-resolved {cn = cn} _ bA cB) = IR.SigOp (value-info cn bA cB)
 
 ------------------------------------------------------------------------
 -- realize (⊢ᶜ) — check-mode reference elaboration.
@@ -144,7 +144,7 @@ realize (t-inr-app-check d)     = morph-app (IR.inr IR.Heap) (realize d)
 realize (t-initial-app-check d) = morph-app IR.initial (realize d)
 realize (t-subsume d)           = arr' (realize d)
 realize (t-arg-driven-app-check _ darg df) = app (realize df) (realize-infer darg)
-realize (t-var-poly-instantiate {x = x} {T = T} _ _ _ _ _ _) = poly x T
+realize (t-var-poly-instantiate {x = x} {T = T} _ _ _ _ _ _ conc) = poly x T conc
 
 ------------------------------------------------------------------------
 -- realize-infer (⊢ᵢ) — infer-mode reference elaboration.
@@ -154,12 +154,12 @@ realize-infer (t-str s)         = str s
 realize-infer t-unit            = unit
 realize-infer t-unit-var        = unit
 realize-infer (t-var-local {eV = eV} _ _) = svar→expr eV
-realize-infer (t-var-qualified {name = name} {alias = alias} _) = sigOp (bare (alias ++ "." ++ name))
+realize-infer (t-var-qualified {name = name} {alias = alias} _ conc) = sigOp (bare (alias ++ "." ++ name)) conc
 -- Plan 0.50: a resolved ref carries its canonical identity directly — the
 -- reference elaboration reads it with NO String render, so it agrees with
 -- the elaborator's `SigOpInfo.name` by construction.
-realize-infer (t-var-resolved {cn = cn} _) = sigOp cn
-realize-infer (t-var-import {x = x} _ _ _) = sigOp (bare x)
+realize-infer (t-var-resolved {cn = cn} _ conc) = sigOp cn conc
+realize-infer (t-var-import {x = x} _ _ _ conc) = sigOp (bare x) conc
 realize-infer (t-annot d)       = realize d
 realize-infer (t-pair da db)    = pair (realize-infer da) (realize-infer db)
 realize-infer (t-neg d)         = neg (realize-infer d)

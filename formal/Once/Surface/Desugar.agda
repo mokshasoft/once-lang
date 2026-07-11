@@ -16,6 +16,7 @@ open import Once.Type
 open import Once.Surface.IR as S using (SurfaceIR; Let; SigOp)
 open import Once.IR as C
 open import Once.Arith.SigOp.Builders using (generic-info)
+open import Once.Functor.Translate using (IsBaseType; IsConcrete)
 open import Once.CanonicalName using (bare)
 
 open import Data.String using (String)
@@ -36,8 +37,8 @@ open import Data.String using (String)
 --   3. optimize cases in Once.Optimize (pass through unchanged)
 --   4. proof cases in Once.Optimize.Correct (all trivial refl)
 --
-sigOp-desugar : ∀ {A B} → String → C.IR A B
-sigOp-desugar name = C.SigOp (generic-info (bare name))
+sigOp-desugar : ∀ {A B} → IsBaseType A → IsConcrete B → String → C.IR A B
+sigOp-desugar bA cB name = C.SigOp (generic-info (bare name) bA cB)
 
 ------------------------------------------------------------------------
 -- Desugar transformation
@@ -100,7 +101,7 @@ desugar m (Let e1 e2) = desugar m e2 C.∘ C.⟨ C.id , desugar m e1 ⟩ m
 -- | Primitive passthrough
 --
 -- Primitives are opaque - just convert to Core's SigOp constructor
-desugar m (SigOp name) = sigOp-desugar name
+desugar m (SigOp name bA cB) = sigOp-desugar bA cB name
 
 -- | Historical default: Heap allocation. Preserves pre-Plan-0.14
 -- behavior for callers that don't thread an AllocMode.
