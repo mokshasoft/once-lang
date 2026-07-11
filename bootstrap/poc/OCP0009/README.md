@@ -60,10 +60,10 @@ retargeting to `_≋_` both fixes that and closes the proof.)
 ## Check
 
 ```bash
-for m in Conv Complete Sound Finite Decidable Higher Dependent Universe Open NbE Transparency; do bootstrap/check.sh poc/OCP0009/$m.agda; done
+for m in Conv Complete Sound Finite Decidable Higher Dependent Universe Open NbE NbEConv Transparency; do bootstrap/check.sh poc/OCP0009/$m.agda; done
 ```
 
-All eleven exit 0. `Conv.agda`'s example block is the POC *executing*: e.g.
+All twelve exit 0. `Conv.agda`'s example block is the POC *executing*: e.g.
 `conv fo-Nat (fst ∘ ⟨ zero , one ⟩) zero ≡ true` is proved by `refl`, i.e. Agda
 evaluated the conversion and got `true` — the product-β equation decided purely by
 running both sides, never by orienting a rewrite.
@@ -249,12 +249,32 @@ demonstrated, not postulated**. `NbE.agda` now carries a `TERMINATING` pragma (t
 `eval-nbe`/`vcata`/`mapCata` knot terminates by the standard NbE argument, not
 Agda-structurally), so it is no longer `--safe`.
 
+## The engine as a decision procedure (`NbEConv.agda`)
+
+`nf` produces normal forms; `NbEConv` compares them into an actual Bool decision —
+what a type-checker calls:
+
+```
+conv-nbe : Term A B → Term A B → Bool     -- = eqTree (erase (nf t)) (erase (nf u))
+```
+
+An **open-term conversion decider** for `{Unit, ×, +, μ}`: it accepts definitional
+equals *and* **rejects** non-equals (impossible to show with `refl`). Executing:
+
+```
+conv-nbe (double ∘ zero) zero ≡ true      conv-nbe (double ∘ zero) two ≡ false
+conv-nbe (double ∘ one)  two  ≡ true      conv-nbe one zero            ≡ false
+conv-nbe ⟨fst,snd⟩ id ≡ true              conv-nbe (fst ∘ ⟨snd,fst⟩) fst ≡ false
+```
+
+Comparison is on an untyped erasure (structure only) — faithful for same-typed normal
+forms; a fully type-faithful `Dec (t ≡ u)` via `_≟Ty_`/`_≟Func_` is the refinement.
+
 ## Next
 
-1. **`μ` in the engine.** Real `vIn` values + cata-β + the neutral-under-functor case,
-   so recursion (e.g. `double`, `0+n`) normalizes and open `∀ n. Vec (0+n) ≡ Vec n`
-   becomes an object-level decision. Recursion stays inductive-only (OCP-0009 §2).
-2. **`⇒` in the engine** (Kripke reify) + **full adequacy** (the logical relation).
+1. **`⇒` in the engine** (Kripke reify — the remaining fragment) + **in-η**.
+2. **Full adequacy** — the logical relation (`nf` sound + complete + stable), which
+   turns the demonstrated soundness into a theorem.
 3. **CwF contexts (Rung 2 proper).** Context extension + reindexing so type-codes may
    mention earlier variables — dependent contexts, riding on the engine above.
 

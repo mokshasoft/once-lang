@@ -58,8 +58,11 @@ open import poc.OCP0009.Universe public
 -- evaluation) vs `+F-runit`/`n+0=n` (propositional, needs induction).
 open import poc.OCP0009.Open public
   using (plus0; 0+n≋n; _+F_; +F-lunit; +F-runit)
--- The NbE engine (sound core, --safe): residualizing reify/reflect that
--- normalizes OPEN terms and decides definitional conversion for the
--- {Unit,×,+} fragment (μ/⇒ opaque — the staged extensions).
+-- The NbE engine: residualizing reify/reflect that normalizes OPEN terms
+-- (products, sums, AND inductive types via cata-β/out-η/stuck-on-neutral).
 open import poc.OCP0009.NbE public
   using (Val; Ne; reflect; reifyVal; eval-nbe; nf)
+-- The engine as an open-term conversion DECIDER for {Unit,×,+,μ}: accepts
+-- definitional equals, rejects the rest.
+open import poc.OCP0009.NbEConv public
+  using (conv-nbe; erase; eqTree)
