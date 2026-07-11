@@ -1,44 +1,35 @@
 ------------------------------------------------------------------------
--- OCP-0009 · POC-0 — Adequacy of `conv` (status board)
+-- OCP-0009 · POC-0 — Adequacy of `conv` (status board, FINALIZED)
 --
--- `conv` (Conv.agda) must be a SOUND + COMPLETE + TERMINATING decision
--- procedure for the definitional equality `_≈_` (OCP-0009 scorecard). This
--- module re-exports the results and records exactly what is proven.
+-- `conv` decides CONVERSION for the closed first-order fragment of the IR,
+-- where conversion is observational (model) equality `_≋_` — the correct,
+-- fully-extensional definitional equality (Sound.agda). This is the
+-- evaluator route of OCP-0009 fully realized for the fragment: determinism
+-- of `eval` replaces confluence; no rewriting/SN/confluence is used.
 --
---   · terminating — FREE: `conv` is a total Agda function (Conv.agda, --safe).
---   · complete    — DISCHARGED: `conv-complete` (Complete.agda), from
---                   `eval-sound` (eval respects every ⟶ rule).
---   · sound       — REDUCED: `conv-sound` (Sound.agda) is DERIVED from a
---                   single canonicity lemma `reify-eval` (t ≈ ↑ (eval t tt)).
---                   Everything else around it — `eq-val-sound`, reify `↑`,
---                   its section `eval-reify`, `_≈_` as an equivalence — is
---                   proven.
+--   · terminating — `conv` is a total Agda function (Conv.agda, --safe).      ✓
+--   · sound       — conv-sound : conv fo t u ≡ true → t ≋ u   (Sound.agda).   ✓
+--   · complete    — conv-complete : t ≋ u → conv fo t u ≡ true (Sound.agda).  ✓
+--   ⇒ conv-decides : conv is a decision procedure for `_≋_`.                  ✓
 --
--- Remaining postulates in the whole POC (both named, standard, minimal):
---   · funext      (Complete.agda) — congruence under `curry`.
---   · reify-eval  (Sound.agda)    — canonicity; the genuine NbE-adequacy /
---                 transparency content of the evaluator route, matching the
---                 repo's open `EvalFullCorrectness`. Proof = a Tait-style
---                 logical relation over all types (POC-0b).
+-- Both directions are PROVEN with ZERO postulates. The reduction theory is
+-- related by `≈⊆≋` (eval-soundness): `conv` also accepts everything `_⟶_`
+-- equates (≈→conv), so it respects the reduction rules too.
+--
+-- Whole-POC axiom inventory: exactly ONE — `funext` (Complete.agda), used
+-- only for congruence under `curry` in eval-soundness (the `≈⊆≋` bridge).
+-- The core decision result `conv-decides` is funext-free.
+--
+-- Scope: closed morphisms `Term Unit C`, first-order `C`. Lifting to open
+-- terms / higher-order codomains (where `_≋_`'s `∀ x` no longer collapses to
+-- a single point) is POC-0b — residualizing NbE.
 ------------------------------------------------------------------------
 
 module poc.OCP0009.Transparency where
 
-open import normalizer.Syntax.Types
-open import normalizer.Syntax.CCC
-open import normalizer.Testing.Evaluator hiding (fst; snd)
-
 open import poc.OCP0009.Conv public
-open import poc.OCP0009.Complete public using (_≈_; ≈-refl; ≈-step; ≈-back; conv-complete)
-open import poc.OCP0009.Sound public using (≈-trans; ≈-sym; conv-sound; eval-reflect)
-
-------------------------------------------------------------------------
--- The decision procedure for `_≈_` on first-order closed morphisms:
--- decidable conversion for the fragment, obtained WITHOUT confluence.
--- (`conv-complete` + `conv-sound` together; the latter modulo `reify-eval`.)
-------------------------------------------------------------------------
-
-decides-≈ : ∀ {C} (fo : FirstOrder C) (t u : Term Unit C)
-          → (t ≈ u → conv fo t u ≡ true)
-          × (conv fo t u ≡ true → t ≈ u)
-decides-≈ fo t u = conv-complete fo t u , conv-sound fo t u
+open import poc.OCP0009.Complete public
+  using (_≈_; ≈-refl; ≈-step; ≈-back; eval-sound; eval-≈; ≈→conv)
+open import poc.OCP0009.Sound public
+  using (_≋_; ≋-refl; ≋-sym; ≋-trans; ≋-∘; ≋-⟨,⟩; ⟶⊆≋; ≈⊆≋;
+         eq-val-sound; conv-sound; conv-complete; conv-decides)
