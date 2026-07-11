@@ -65,6 +65,7 @@ open import Once.Denotation.Realize using (realize; realize-infer; realize-morph
 import Once.Denotation.SourceDenote as SD
 open import Once.Adequacy.MeaningRelation
   using (RelV; RelT; RelT-return; RelT-bind)
+open import Once.Adequacy.CataBridge using (cata-bridge)
 
 ------------------------------------------------------------------------
 -- Related environments — pointwise `RelV` down the context.
@@ -87,20 +88,12 @@ rel-lookup (Γ , A ^ q) (suc i) {dγ₁ , a₁} {dγ₂ , a₂} (re , _)  = rel-
 ------------------------------------------------------------------------
 -- The fundamental lemma — four mutually-recursive realms. STATED here;
 -- discharged case-by-case (structural: `RelT-bind`/`RelT-return` + IH).
--- Only TWO leaves remain postulated (Plan 0.58): `sigop-ref-arrow-bridge`
--- (the arrow-typed value-ref ABI iso, needing a `generic-semM` coherence
--- fact) and `cata-bridge` (the fold congruence, independent of this
--- migration). `sigop-bridge`, `poly-ref-bridge`, and the `con-base` cases
--- of `sigop-ref-bridge` are DISCHARGED below via `concrete-rel→refl`.
+-- ALL leaves are now DISCHARGED (Plan 0.58): `sigop-bridge`, `poly-ref-bridge`,
+-- and every `sigop-ref-bridge` case via `concrete-rel→refl`/`RelT-refl` (the
+-- arrow corner routes through the correctly-dispatching `sigOpRefᴰ`); and
+-- `cata-bridge` (the fold congruence) in `Once.Adequacy.CataBridge`, applied at
+-- the `m-cata` case via the recursive `bridge-m alg`. This module is POSTULATE-FREE.
 ------------------------------------------------------------------------
-
-postulate
-  -- m-cata: the fold preserves the relation (`sem-cata` congruence over the
-  -- direct algebra `cata-ev-algᴰ-D`, using the recursive `bridge-m` on `alg`).
-  cata-bridge : ∀ {F} {A'} {wfF : WellFormedF F}
-                (dalg : ⟦ ⟦ F ⟧T A' ⟧ᴰ → T ⟦ A' ⟧ᴰ) (mir : IR.IR (⟦ F ⟧T A') A')
-                {a b : ⟦ μ-type F ⟧ᴰ} → RelV (μ-type F) a b
-              → RelT A' (cata-sem wfF dalg a) (evalᴰ (IR.Cata wfF mir) b)
 
 ------------------------------------------------------------------------
 -- `RelV → ≡` at ARROW-FREE types — the tool for the `In` value cases. A
@@ -171,8 +164,8 @@ sigop-bridge bA cB rv n rewrite base-rel→eq bA rv = refl , concrete-rel→refl
 -- Value-position named reference. SD's `sigOp` dispatches on `A`'s shape: at a
 -- base (`con-base`) type the arrow clause can't fire, so SD's catch-all IS the
 -- closed `value-info` form ⇒ LHS ≡ RHS definitionally and the relation is
--- reflexivity (`RelT-refl`). The arrow (`con-fun`) corner routes to the ABI-iso
--- postulate above.
+-- reflexivity (`RelT-refl`). The arrow (`con-fun`) corner is likewise reflexivity
+-- on the correctly-dispatching `sigOpRefᴰ`.
 -- At a base (non-arrow) type SD's `sigOp` catch-all IS the closed `value-info`
 -- form; casing the witness exposes the shape so each clause is `refl`.
 sd-sigOp-base≡ : ∀ {n} {Γ : Ctx n} {A : Type} (cn : CanonicalName) (ib : IsBaseType A) (dγ : ⟦ ⟦ Γ ⟧ᶜᵗ ⟧ᴰ)
@@ -277,7 +270,7 @@ bridge-m (m-pair df dg)      rv n =
 bridge-m (m-curry df)        rv n = refl , (λ rb → bridge-m df (rv , rb))
 bridge-m (m-const gd) {b = b} _ = bridge-g gd b
 bridge-m (m-cata {wfF = wfF} _ alg) {a = a} {b = b} rv =
-  cata-bridge {wfF = wfF} ⟦ alg ⟧ᵐ (realize-morph alg) {a = a} {b = b} rv
+  cata-bridge {wfF = wfF} ⟦ alg ⟧ᵐ (realize-morph alg) (bridge-m alg) {a = a} {b = b} rv
 bridge-m {A = A} {B = B} (m-named {x = x} _ _ _ bA cB) {a = a} {b = b} rv =
   sigop-bridge {A = A} {B = B} {cn = bare x} bA cB {a = a} {b = b} rv
 bridge-m {A = A} {B = B} (m-named-resolved {cn = cn} _ bA cB) {a = a} {b = b} rv =
@@ -288,7 +281,7 @@ bridge-m {A = A} {B = B} (m-named-resolved {cn = cn} _ bA cB) {a = a} {b = b} rv
 -- derivation, mirroring `Meaning.⟦_⟧ᵢ`/`⟦_⟧ᶜ` (LHS) vs `SD.⟦ realize(-infer) _ ⟧ˢ`
 -- (RHS) clause-for-clause. Same technique as `bridge-g`/`bridge-m`: inline the
 -- `∀ n`, `cong`/`cong₂` on the `++`-traces, project the value half. Genuinely
--- higher-order leaves route to the narrow postulates above.
+-- higher-order leaves route to the discharged reflexivity/`cata-bridge` lemmas above.
 ------------------------------------------------------------------------
 
 -- Propositional equality of a comparison result (`Unit + Unit`) lifts to `RelV`.
