@@ -25,7 +25,7 @@ open import Data.Empty using (⊥-elim)
 open import Data.List using ([]; _++_)
 open import Data.List.Properties using (++-identityʳ)
 open import Data.String using (String)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; trans; sym)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; trans; sym; subst)
 
 open import Once.Type using (Type; Purity; mk-kind; Many; _⇒[_]_; _+_; _*_; μ-type; ⟦_⟧T; Functor; Int; Unit)
 open import Once.Functor.Translate using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod;
@@ -87,29 +87,27 @@ rel-lookup (Γ , A ^ q) (suc i) {dγ₁ , a₁} {dγ₂ , a₂} (re , _)  = rel-
 ------------------------------------------------------------------------
 -- The fundamental lemma — four mutually-recursive realms. STATED here;
 -- discharged case-by-case (structural: `RelT-bind`/`RelT-return` + IH).
--- SCAFFOLD: bodies are `postulate` pending the case discharges.
+-- Only TWO leaves remain postulated (Plan 0.58): `sigop-ref-arrow-bridge`
+-- (the arrow-typed value-ref ABI iso, needing a `generic-semM` coherence
+-- fact) and `cata-bridge` (the fold congruence, independent of this
+-- migration). `sigop-bridge`, `poly-ref-bridge`, and the `con-base` cases
+-- of `sigop-ref-bridge` are DISCHARGED below via `concrete-rel→refl`.
 ------------------------------------------------------------------------
 
 postulate
-  -- t-var-qualified / t-var-resolved / t-var-import: a value-position named
-  -- reference. LHS is the closed `value-info` sigop (`sigOpValᴰ`); RHS is
-  -- `SD.⟦ sigOp cn ⟧ˢ`, which dispatches on whether `A` is an arrow. At a
-  -- non-arrow `A` the two coincide definitionally; at an arrow the closed
-  -- `value-info` value and SD's `arrow-info` closure agree by the same
-  -- β/uncurry ABI iso as `sigop-bridge` (funext-free via `FitsInReg`).
-  sigop-ref-bridge : ∀ {n} {Γ : Ctx n} {A : Type} (cn : CanonicalName) (conc : IsConcrete A) (dγ : ⟦ ⟦ Γ ⟧ᶜᵗ ⟧ᴰ)
-                   → RelT A (sigOpValᴰ (value-info {Unit} {A} cn base-Unit conc)) (SD.⟦ sigOp {Γ = Γ} {A = A} cn conc ⟧ˢ dγ)
-  -- t-var-poly-instantiate: same as `sigop-ref-bridge` but RHS is `poly x T`
-  -- (SD's `poly` clause is the un-dispatched `value-info` form ⇒ LHS ≡ RHS
-  -- definitionally; the remaining content is `RelV`-reflexivity at `T`).
-  poly-ref-bridge : ∀ {n} {Γ : Ctx n} (name : String) (T : Type) (conc : IsConcrete T) (dγ : ⟦ ⟦ Γ ⟧ᶜᵗ ⟧ᴰ)
-                  → RelT T (sigOpValᴰ (value-info {Unit} {T} (bare name) base-Unit conc)) (SD.⟦ poly {Γ = Γ} name T conc ⟧ˢ dγ)
-  -- m-named / m-named-resolved: a sigop preserves the relation. Its event drops
-  -- non-`Int` (non-`FitsInReg`) args (`mkEvent`), and for `FitsInReg` domains
-  -- `RelV = ≡` gives `forget`-equality by `cong` — funext-free (see plan 0.58).
-  sigop-bridge : ∀ {A B} {cn : CanonicalName} (bA : IsBaseType A) (cB : IsConcrete B) {a b : ⟦ A ⟧ᴰ} → RelV A a b
-               → RelT B (evalᴰ (IR.SigOp (value-info {A} {B} cn bA cB)) a)
-                        (evalᴰ (IR.SigOp (value-info {A} {B} cn bA cB)) b)
+  -- t-var-* at an ARROW-typed value reference (`con-fun`): the ONLY remaining
+  -- sigop leaf. LHS is the closed `value-info` value (`sigOpValᴰ`, a curried
+  -- machine function); RHS is SD's `sigOp` ARROW clause (an `arrow-info`
+  -- closure firing the SigOp at apply). They agree by the β/uncurry ABI iso,
+  -- which needs a coherence fact about `generic-semM` (itself abstract) — a
+  -- separate obligation from this concreteness migration. The `con-base`
+  -- (non-arrow) cases and the whole `poly` case are DISCHARGED below.
+  sigop-ref-arrow-bridge : ∀ {n} {Γ : Ctx n} {Dom Cod : Type} {k}
+                (cn : CanonicalName) (bDom : IsBaseType Dom) (cCod : IsConcrete Cod)
+                (dγ : ⟦ ⟦ Γ ⟧ᶜᵗ ⟧ᴰ)
+              → RelT (Dom ⇒[ k ] Cod)
+                     (sigOpValᴰ (value-info {Unit} {Dom ⇒[ k ] Cod} cn base-Unit (con-fun bDom cCod)))
+                     (SD.⟦ sigOp {Γ = Γ} {A = Dom ⇒[ k ] Cod} cn (con-fun bDom cCod) ⟧ˢ dγ)
   -- m-cata: the fold preserves the relation (`sem-cata` congruence over the
   -- direct algebra `cata-ev-algᴰ-D`, using the recursive `bridge-m` on `alg`).
   cata-bridge : ∀ {F} {A'} {wfF : WellFormedF F}
@@ -149,6 +147,73 @@ wfF-layer-eq (wf-Sum wfF wfG) xeq {inj₁ a} {inj₂ b'} ()
 wfF-layer-eq (wf-Sum wfF wfG) xeq {inj₂ b} {inj₁ a'} ()
 wfF-layer-eq (wf-Prod wfF wfG) xeq {a₁ , b₁} {a₂ , b₂} rv =
   cong₂ _,_ (wfF-layer-eq wfF xeq (proj₁ rv)) (wfF-layer-eq wfG xeq (proj₂ rv))
+
+-- Plan 0.58: reflexivity of the relation at CONCRETE types. A concrete type is
+-- a base scalar or a first-order function pointer (base domain), so `RelV`
+-- collapses to `≡` at the (base) domain, and the reflexive value/computation
+-- relation is inhabited funext-free (the arrow case eats the domain `≡`).
+base-rel→refl : ∀ {A} (ib : IsBaseType A) (v : ⟦ A ⟧ᴰ) → RelV A v v
+base-rel→refl base-Unit   v = tt
+base-rel→refl base-Void   ()
+base-rel→refl base-Int    v = refl
+base-rel→refl base-Float  v = refl
+base-rel→refl base-Str    v = refl
+base-rel→refl base-Buffer v = refl
+base-rel→refl (base-Prod ibA ibB) (a , b) = base-rel→refl ibA a , base-rel→refl ibB b
+base-rel→refl (base-Sum ibA ibB) (inj₁ a) = base-rel→refl ibA a
+base-rel→refl (base-Sum ibA ibB) (inj₂ b) = base-rel→refl ibB b
+
+mutual
+  concrete-rel→refl : ∀ {A} (c : IsConcrete A) (v : ⟦ A ⟧ᴰ) → RelV A v v
+  concrete-rel→refl (con-base ib) v = base-rel→refl ib v
+  concrete-rel→refl (con-fun bA cB) v {a} {b} rv
+    rewrite base-rel→eq bA rv = RelT-refl cB (v b)
+
+  RelT-refl : ∀ {A} (c : IsConcrete A) (t : T ⟦ A ⟧ᴰ) → RelT A t t
+  RelT-refl c t n = refl , concrete-rel→refl c (valueT t n)
+
+-- m-named / m-named-resolved: a sigop preserves the relation. The SigOp domain
+-- is a base type (`bA`), so `base-rel→eq` collapses the arg `RelV` to `a ≡ b`;
+-- both event and value are then EQUAL by `cong`, and the result relation is
+-- `concrete-rel→refl` (result is concrete). Funext-free.
+sigop-bridge : ∀ {A B} {cn : CanonicalName} (bA : IsBaseType A) (cB : IsConcrete B) {a b : ⟦ A ⟧ᴰ} → RelV A a b
+             → RelT B (evalᴰ (IR.SigOp (value-info {A} {B} cn bA cB)) a)
+                      (evalᴰ (IR.SigOp (value-info {A} {B} cn bA cB)) b)
+sigop-bridge bA cB rv n rewrite base-rel→eq bA rv = refl , concrete-rel→refl cB _
+
+-- Value-position named reference. SD's `sigOp` dispatches on `A`'s shape: at a
+-- base (`con-base`) type the arrow clause can't fire, so SD's catch-all IS the
+-- closed `value-info` form ⇒ LHS ≡ RHS definitionally and the relation is
+-- reflexivity (`RelT-refl`). The arrow (`con-fun`) corner routes to the ABI-iso
+-- postulate above.
+-- At a base (non-arrow) type SD's `sigOp` catch-all IS the closed `value-info`
+-- form; casing the witness exposes the shape so each clause is `refl`.
+sd-sigOp-base≡ : ∀ {n} {Γ : Ctx n} {A : Type} (cn : CanonicalName) (ib : IsBaseType A) (dγ : ⟦ ⟦ Γ ⟧ᶜᵗ ⟧ᴰ)
+               → SD.⟦ sigOp {Γ = Γ} {A = A} cn (con-base ib) ⟧ˢ dγ ≡ sigOpValᴰ (value-info {Unit} {A} cn base-Unit (con-base ib))
+sd-sigOp-base≡ cn base-Unit          dγ = refl
+sd-sigOp-base≡ cn base-Void          dγ = refl
+sd-sigOp-base≡ cn base-Int           dγ = refl
+sd-sigOp-base≡ cn base-Float         dγ = refl
+sd-sigOp-base≡ cn base-Str           dγ = refl
+sd-sigOp-base≡ cn base-Buffer        dγ = refl
+sd-sigOp-base≡ cn (base-Prod ibA ibB) dγ = refl
+sd-sigOp-base≡ cn (base-Sum ibA ibB)  dγ = refl
+
+sigop-ref-bridge : ∀ {n} {Γ : Ctx n} {A : Type} (cn : CanonicalName) (conc : IsConcrete A) (dγ : ⟦ ⟦ Γ ⟧ᶜᵗ ⟧ᴰ)
+                 → RelT A (sigOpValᴰ (value-info {Unit} {A} cn base-Unit conc)) (SD.⟦ sigOp {Γ = Γ} {A = A} cn conc ⟧ˢ dγ)
+sigop-ref-bridge {A = A} cn (con-base ib) dγ =
+  subst (λ z → RelT A (sigOpValᴰ (value-info {Unit} {A} cn base-Unit (con-base ib))) z)
+        (sym (sd-sigOp-base≡ cn ib dγ))
+        (RelT-refl (con-base ib) (sigOpValᴰ (value-info {Unit} {A} cn base-Unit (con-base ib))))
+sigop-ref-bridge {n = n} {Γ = Γ} {A = Dom ⇒[ k ] Cod} cn (con-fun bDom cCod) dγ =
+  sigop-ref-arrow-bridge {n = n} {Γ = Γ} {Dom = Dom} {Cod = Cod} {k = k} cn bDom cCod dγ
+
+-- Poly placeholder reference. SD's `poly` clause is UN-dispatched (always the
+-- closed `value-info` form) ⇒ LHS ≡ RHS definitionally for ANY `T`; the relation
+-- is reflexivity at the (concrete) `T`.
+poly-ref-bridge : ∀ {n} {Γ : Ctx n} (name : String) (T : Type) (conc : IsConcrete T) (dγ : ⟦ ⟦ Γ ⟧ᶜᵗ ⟧ᴰ)
+                → RelT T (sigOpValᴰ (value-info {Unit} {T} (bare name) base-Unit conc)) (SD.⟦ poly {Γ = Γ} name T conc ⟧ˢ dγ)
+poly-ref-bridge name T conc dγ = RelT-refl conc _
 
 -- `in-app-bridge` DISCHARGED (t-In-app-check): both sides are the pure `In`
 -- constructor (`sem-In ∘ coerce-functor ∘ forget`, `inject{μ}=id`, empty trace);
