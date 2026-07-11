@@ -57,8 +57,8 @@ open Surface.Usage using () renaming (_∷_ to _∷ᵘ_)
 open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ)
 import Once.Denotation.SourceDenote as SD
 open import Once.CanonicalName using (CanonicalName; showCanonical; bare)
-open import Once.Functor.Translate using (WellFormedF)
-open import Once.Functor.Decide using (wellFormedF?)
+open import Once.Functor.Translate using (WellFormedF; IsBaseType; IsConcrete; con-base; con-fun; base-Unit)
+open import Once.Functor.Decide using (wellFormedF?; isBaseType?; isConcrete?)
 
 private
   Env : NamedCtx → Set
@@ -459,21 +459,23 @@ agree-RLet (failure _ , _) () e₁IH e₂IH
 -- `semM` collapses to `tt`. `pure` → both `value-info`; `eff` → one `isUnit?`
 -- case-split, the `Unit` branch one `lookupSigEffect` split, every leaf `refl`.
 masq : ∀ {ctx : NamedCtx} {Dom Cod : Type} (cn : CanonicalName) (π : Purity)
+       (bDom : IsBaseType Dom) (cCod : IsConcrete Cod)
        (dγ : Env ctx) (k : ℕ)
-     → SD.⟦ lift-morphism {Γ = NamedCtx.debruijn ctx} {π = π} (IR.SigOp (E.ext-resolved-info {Dom} {Cod} ctx cn π)) ⟧ˢ dγ k
-      ≡ SD.⟦ sigOp {Γ = NamedCtx.debruijn ctx} {A = Dom ⇒[ mk-kind Many π ] Cod} cn ⟧ˢ dγ k
+     → SD.⟦ lift-morphism {Γ = NamedCtx.debruijn ctx} {π = π} (IR.SigOp (E.ext-resolved-info {Dom} {Cod} ctx cn π bDom cCod)) ⟧ˢ dγ k
+      ≡ SD.⟦ sigOp {Γ = NamedCtx.debruijn ctx} {A = Dom ⇒[ mk-kind Many π ] Cod} cn (con-fun bDom cCod) ⟧ˢ dγ k
 -- `Cod ≡ Unit` branch: the arrow is an effect contract. `emit-D` collapses
 -- `Emits`/`Halts` to the same event (it reads only `name = cn`), so every
 -- `lookupSigEffect` outcome — `se-halts`, `se-emits`, `nothing` — denotes the
 -- same thing as `realize`'s `sigOp cn` (whose `arrow-info-eff cn (isUnit? Unit)`
 -- = `emitsV`). All three leaves are `refl`. No `with` (mse is an explicit arg).
 masq-unit : ∀ {ctx : NamedCtx} {Dom : Type} (cn : CanonicalName) (mse : Maybe SigEffect)
+            (bDom : IsBaseType Dom) (cCod : IsConcrete Unit)
             (dγ : Env ctx) (k : ℕ)
-          → SD.⟦ lift-morphism {Γ = NamedCtx.debruijn ctx} {π = eff} (IR.SigOp (E.ext-resolved-info-aux {Dom} {Unit} cn eff (yes refl) mse)) ⟧ˢ dγ k
-           ≡ SD.⟦ sigOp {Γ = NamedCtx.debruijn ctx} {A = Dom ⇒[ mk-kind Many eff ] Unit} cn ⟧ˢ dγ k
-masq-unit cn (just se-halts) dγ k = refl
-masq-unit cn (just se-emits) dγ k = refl
-masq-unit cn nothing         dγ k = refl
+          → SD.⟦ lift-morphism {Γ = NamedCtx.debruijn ctx} {π = eff} (IR.SigOp (E.ext-resolved-info-aux {Dom} {Unit} cn eff (yes refl) mse bDom cCod)) ⟧ˢ dγ k
+           ≡ SD.⟦ sigOp {Γ = NamedCtx.debruijn ctx} {A = Dom ⇒[ mk-kind Many eff ] Unit} cn (con-fun bDom cCod) ⟧ˢ dγ k
+masq-unit cn (just se-halts) bDom cCod dγ k = refl
+masq-unit cn (just se-emits) bDom cCod dγ k = refl
+masq-unit cn nothing         bDom cCod dγ k = refl
 
 -- The outer dispatch on `isUnit? Cod` is a `with` (NOT a Dec-arg helper): the
 -- scrutinee appears in the GOAL via `⟦ sigOp … ⟧ˢ` (which computes `isUnit? Cod`
@@ -482,10 +484,10 @@ masq-unit cn nothing         dγ k = refl
 -- `isUnit? Cod` stuck. `masq` is a leaf equality lemma — opaque downstream — so
 -- the `with` blocks no later proof's reduction. The inner mse split lives in the
 -- with-free `masq-unit`, keeping this a single, flat `with`.
-masq {ctx} {Dom} {Cod} cn pure dγ k = refl
-masq {ctx} {Dom} {Cod} cn eff dγ k with isUnit? Cod
+masq {ctx} {Dom} {Cod} cn pure bDom cCod dγ k = refl
+masq {ctx} {Dom} {Cod} cn eff bDom cCod dγ k with isUnit? Cod
 ... | no _ = refl
-... | yes refl = masq-unit {ctx} {Dom} cn (lookupSigEffect (NamedCtx.sigEffects ctx) (showCanonical cn)) dγ k
+... | yes refl = masq-unit {ctx} {Dom} cn (lookupSigEffect (NamedCtx.sigEffects ctx) (showCanonical cn)) bDom cCod dγ k
 
 -- The RQualified analogue of `masq`. `ext-arrow-info` decides its Unit-codomain
 -- via `E._≟T_ Unit` (NOT the `isUnit?` realize's `sigOp` uses), so the bridge
@@ -496,16 +498,17 @@ masq {ctx} {Dom} {Cod} cn eff dγ k with isUnit? Cod
 -- both sides `pureV` once `isUnit? Cod` is forced to `no` (its `yes` corner
 -- contradicts ¬p).
 masq-arrow : ∀ {ctx : NamedCtx} {Dom Cod : Type} (alias name : String) (π : Purity)
+       (bDom : IsBaseType Dom) (cCod : IsConcrete Cod)
        (dγ : Env ctx) (k : ℕ)
-     → SD.⟦ lift-morphism {Γ = NamedCtx.debruijn ctx} {π = π} (IR.SigOp (E.ext-arrow-info {Dom} {Cod} ctx alias name π)) ⟧ˢ dγ k
-      ≡ SD.⟦ sigOp {Γ = NamedCtx.debruijn ctx} {A = Dom ⇒[ mk-kind Many π ] Cod} (bare (alias ++ "." ++ name)) ⟧ˢ dγ k
-masq-arrow {ctx} {Dom} {Cod} alias name pure dγ k = refl
-masq-arrow {ctx} {Dom} {Cod} alias name eff dγ k with Cod E.≟T Unit
+     → SD.⟦ lift-morphism {Γ = NamedCtx.debruijn ctx} {π = π} (IR.SigOp (E.ext-arrow-info {Dom} {Cod} ctx alias name π bDom cCod)) ⟧ˢ dγ k
+      ≡ SD.⟦ sigOp {Γ = NamedCtx.debruijn ctx} {A = Dom ⇒[ mk-kind Many π ] Cod} (bare (alias ++ "." ++ name)) (con-fun bDom cCod) ⟧ˢ dγ k
+masq-arrow {ctx} {Dom} {Cod} alias name pure bDom cCod dγ k = refl
+masq-arrow {ctx} {Dom} {Cod} alias name eff bDom cCod dγ k with Cod E.≟T Unit
 ... | yes refl with lookupSigEffect (NamedCtx.sigEffects ctx) (alias ++ "." ++ name)
 ...   | just se-halts = refl
 ...   | just se-emits = refl
 ...   | nothing       = refl
-masq-arrow {ctx} {Dom} {Cod} alias name eff dγ k | no ¬p with isUnit? Cod
+masq-arrow {ctx} {Dom} {Cod} alias name eff bDom cCod dγ k | no ¬p with isUnit? Cod
 ... | no _     = refl
 ... | yes refl = ⊥-elim (¬p refl)
 
@@ -525,30 +528,67 @@ fail≢succ : ∀ {n} {Δ : Surface.Ctx n} {te} {A} {Ψ} {se : Surface.Expr Δ �
           → failure {Δ = Δ} te ≡ success A Ψ se d f → ⊥
 fail≢succ ()
 
+-- Plan 0.58 de-with drivers: pattern-match the concreteness decision GENUINELY
+-- (as helper params), so the arrow/value aux commits to a `success`/`failure`
+-- clause. The caller passes `(isBaseType? A) refl`/`(isConcrete? ty) refl`; the
+-- application stays well-typed at the goal even when those are stuck.
+agree-RResolved-arrowᴴ : ∀ (ctx : NamedCtx) (cn : CanonicalName) {A B : Type} (π : Purity)
+  (lkup : lookupImport (NamedCtx.imports ctx) (showCanonical cn) ≡ just (A ⇒[ mk-kind Many π ] B))
+  (mbA : Maybe (IsBaseType A)) (eqbA : isBaseType? A ≡ mbA)
+  (mcB : Maybe (IsConcrete B)) (eqcB : isConcrete? B ≡ mcB)
+  {A' Ψ se d f w}
+  → E.inferElabV-RResolved-arrow-aux ctx cn lkup mbA eqbA mcB eqcB ≡ (success A' Ψ se d f , w)
+  → ∀ (dγ : Env ctx) (k : ℕ) → SD.⟦ se ⟧ˢ dγ k ≡ SD.⟦ realize-infer w ⟧ˢ dγ k
+agree-RResolved-arrowᴴ ctx cn {A} {B} π lkup (just bA) eqbA (just cB) eqcB refl dγ k = masq {ctx} {A} {B} cn π bA cB dγ k
+agree-RResolved-arrowᴴ ctx cn π lkup nothing eqbA _ eqcB eqS dγ k = ⊥-elim (fail≢succ (cong proj₁ eqS))
+agree-RResolved-arrowᴴ ctx cn π lkup (just _) eqbA nothing eqcB eqS dγ k = ⊥-elim (fail≢succ (cong proj₁ eqS))
+
+agree-RResolved-valueᴴ : ∀ (ctx : NamedCtx) (cn : CanonicalName) (ty : Type)
+  (lkup : lookupImport (NamedCtx.imports ctx) (showCanonical cn) ≡ just ty)
+  (mc : Maybe (IsConcrete ty)) (eqc : isConcrete? ty ≡ mc)
+  {A' Ψ se d f w}
+  → E.inferElabV-RResolved-value-aux ctx cn ty lkup mc eqc ≡ (success A' Ψ se d f , w)
+  → ∀ (dγ : Env ctx) (k : ℕ) → SD.⟦ se ⟧ˢ dγ k ≡ SD.⟦ realize-infer w ⟧ˢ dγ k
+agree-RResolved-valueᴴ ctx cn ty lkup (just conc) eqc refl dγ k = refl
+agree-RResolved-valueᴴ ctx cn ty lkup nothing eqc eqS dγ k = ⊥-elim (fail≢succ (cong proj₁ eqS))
+
 agree-RResolved : ∀ (ctx : NamedCtx) (cn : CanonicalName) (lhs : Maybe Type)
   (lkup : lookupImport (NamedCtx.imports ctx) (showCanonical cn) ≡ lhs)
   {A Ψ se d f w}
   → E.inferElabV-RResolved-aux ctx cn lhs lkup ≡ (success A Ψ se d f , w)
   → ∀ (dγ : Env ctx) (k : ℕ) → SD.⟦ se ⟧ˢ dγ k ≡ SD.⟦ realize-infer w ⟧ˢ dγ k
-agree-RResolved ctx cn (just (A ⇒[ mk-kind Many π ] B)) lkup refl dγ k = masq {ctx} {A} {B} cn π dγ k
-agree-RResolved ctx cn (just (A ⇒[ mk-kind One  π ] B)) lkup refl dγ k = refl
-agree-RResolved ctx cn (just (A ⇒[ mk-kind Zero π ] B)) lkup refl dγ k = refl
-agree-RResolved ctx cn (just Unit)        lkup refl dγ k = refl
-agree-RResolved ctx cn (just Void)        lkup refl dγ k = refl
-agree-RResolved ctx cn (just Int)         lkup refl dγ k = refl
-agree-RResolved ctx cn (just Float)       lkup refl dγ k = refl
-agree-RResolved ctx cn (just Str)         lkup refl dγ k = refl
-agree-RResolved ctx cn (just Buffer)      lkup refl dγ k = refl
-agree-RResolved ctx cn (just (A * B))     lkup refl dγ k = refl
-agree-RResolved ctx cn (just (A + B))     lkup refl dγ k = refl
-agree-RResolved ctx cn (just (μ-type F))  lkup refl dγ k = refl
-agree-RResolved ctx cn (just (ν-type F))  lkup refl dγ k = refl
+agree-RResolved ctx cn (just (A ⇒[ mk-kind Many π ] B)) lkup eqS dγ k =
+  agree-RResolved-arrowᴴ ctx cn π lkup (isBaseType? A) refl (isConcrete? B) refl eqS dγ k
+agree-RResolved ctx cn (just (A ⇒[ mk-kind One  π ] B)) lkup eqS dγ k =
+  agree-RResolved-valueᴴ ctx cn (A ⇒[ mk-kind One π ] B) lkup (isConcrete? (A ⇒[ mk-kind One π ] B)) refl eqS dγ k
+agree-RResolved ctx cn (just (A ⇒[ mk-kind Zero π ] B)) lkup eqS dγ k =
+  agree-RResolved-valueᴴ ctx cn (A ⇒[ mk-kind Zero π ] B) lkup (isConcrete? (A ⇒[ mk-kind Zero π ] B)) refl eqS dγ k
+agree-RResolved ctx cn (just Unit)        lkup eqS dγ k = agree-RResolved-valueᴴ ctx cn Unit   lkup (isConcrete? Unit)   refl eqS dγ k
+agree-RResolved ctx cn (just Void)        lkup eqS dγ k = agree-RResolved-valueᴴ ctx cn Void   lkup (isConcrete? Void)   refl eqS dγ k
+agree-RResolved ctx cn (just Int)         lkup eqS dγ k = agree-RResolved-valueᴴ ctx cn Int    lkup (isConcrete? Int)    refl eqS dγ k
+agree-RResolved ctx cn (just Float)       lkup eqS dγ k = agree-RResolved-valueᴴ ctx cn Float  lkup (isConcrete? Float)  refl eqS dγ k
+agree-RResolved ctx cn (just Str)         lkup eqS dγ k = agree-RResolved-valueᴴ ctx cn Str    lkup (isConcrete? Str)    refl eqS dγ k
+agree-RResolved ctx cn (just Buffer)      lkup eqS dγ k = agree-RResolved-valueᴴ ctx cn Buffer lkup (isConcrete? Buffer) refl eqS dγ k
+agree-RResolved ctx cn (just (A * B))     lkup eqS dγ k = agree-RResolved-valueᴴ ctx cn (A * B) lkup (isConcrete? (A * B)) refl eqS dγ k
+agree-RResolved ctx cn (just (A + B))     lkup eqS dγ k = agree-RResolved-valueᴴ ctx cn (A + B) lkup (isConcrete? (A + B)) refl eqS dγ k
+agree-RResolved ctx cn (just (μ-type F))  lkup eqS dγ k = agree-RResolved-valueᴴ ctx cn (μ-type F) lkup (isConcrete? (μ-type F)) refl eqS dγ k
+agree-RResolved ctx cn (just (ν-type F))  lkup eqS dγ k = agree-RResolved-valueᴴ ctx cn (ν-type F) lkup (isConcrete? (ν-type F)) refl eqS dγ k
 agree-RResolved ctx cn nothing lkup eq dγ k = ⊥-elim (fail≢succ (cong proj₁ eq))
 
 -- RVar (non-unit): cases the lookup-aux. Local → the bound SExpr IS realize's
 -- `eE`; import → both elaborator and `realize-infer` emit `sigOp (bare x)`;
 -- neither-found → the success equation is absurd. No `masq` (unlike RResolved,
 -- whose aux emits a `lift-morphism` for arrows).
+agree-RVar-importᴴ : ∀ (ctx : NamedCtx) (x : String) (¬u : ¬ (x ≡ "unit"))
+  (eq-loc : lookupLocal ctx x ≡ nothing) (ty : Type)
+  (eq-imp : lookupImport (NamedCtx.imports ctx) x ≡ just ty)
+  (mc : Maybe (IsConcrete ty)) (eqc : isConcrete? ty ≡ mc)
+  {A' Ψ se d f w}
+  → E.inferElabV-RVar-import-value-aux ctx x ¬u eq-loc ty eq-imp mc eqc ≡ (success A' Ψ se d f , w)
+  → ∀ (dγ : Env ctx) (k : ℕ) → SD.⟦ se ⟧ˢ dγ k ≡ SD.⟦ realize-infer w ⟧ˢ dγ k
+agree-RVar-importᴴ ctx x ¬u eq-loc ty eq-imp (just conc) eqc refl dγ k = refl
+agree-RVar-importᴴ ctx x ¬u eq-loc ty eq-imp nothing eqc eqS dγ k = ⊥-elim (fail≢succ (cong proj₁ eqS))
+
 agree-RVar : ∀ (ctx : NamedCtx) (x : String) (¬u : ¬ (x ≡ "unit"))
   (locLhs : Maybe (∃[ A ] ∃[ Ψ ] (Surface.SVar (NamedCtx.debruijn ctx) Ψ A)))
   (eq-loc : lookupLocal ctx x ≡ locLhs)
@@ -557,7 +597,8 @@ agree-RVar : ∀ (ctx : NamedCtx) (x : String) (¬u : ¬ (x ≡ "unit"))
   → E.inferElabV-RVar-lookup-aux ctx x ¬u locLhs eq-loc impLhs eq-imp ≡ (success A Ψ se d f , w)
   → ∀ (dγ : Env ctx) (k : ℕ) → SD.⟦ se ⟧ˢ dγ k ≡ SD.⟦ realize-infer w ⟧ˢ dγ k
 agree-RVar ctx x ¬u (just (A , Ψ , se)) eq-loc impLhs eq-imp refl dγ k = refl
-agree-RVar ctx x ¬u nothing eq-loc (just ty) eq-imp refl dγ k = refl
+agree-RVar ctx x ¬u nothing eq-loc (just ty) eq-imp eqS dγ k =
+  agree-RVar-importᴴ ctx x ¬u eq-loc ty eq-imp (isConcrete? ty) refl eqS dγ k
 agree-RVar ctx x ¬u nothing eq-loc nothing eq-imp eq dγ k = ⊥-elim (fail≢succ (cong proj₁ eq))
 
 -- RQualified agreement, dispatched on the import-lookup of the dotted path,
@@ -566,24 +607,47 @@ agree-RVar ctx x ¬u nothing eq-loc nothing eq-imp eq dγ k = ⊥-elim (fail≢s
 -- realize's `sigOp (bare (alias.name))` is `masq-arrow`; every other type
 -- resolves to that same `sigOp` directly (= realize) so agreement is `refl`.
 -- `nothing` ⇒ the aux fails, so the success-eq is absurd.
+agree-RQualified-arrowᴴ : ∀ (ctx : NamedCtx) (name alias : String) {A B : Type} (π : Purity)
+  (lkup : lookupImport (NamedCtx.imports ctx) (alias ++ "." ++ name) ≡ just (A ⇒[ mk-kind Many π ] B))
+  (mbA : Maybe (IsBaseType A)) (eqbA : isBaseType? A ≡ mbA)
+  (mcB : Maybe (IsConcrete B)) (eqcB : isConcrete? B ≡ mcB)
+  {A' Ψ se d f w}
+  → E.inferElabV-RQualified-arrow-aux ctx name alias lkup mbA eqbA mcB eqcB ≡ (success A' Ψ se d f , w)
+  → ∀ (dγ : Env ctx) (k : ℕ) → SD.⟦ se ⟧ˢ dγ k ≡ SD.⟦ realize-infer w ⟧ˢ dγ k
+agree-RQualified-arrowᴴ ctx name alias {A} {B} π lkup (just bA) eqbA (just cB) eqcB refl dγ k = masq-arrow {ctx} {A} {B} alias name π bA cB dγ k
+agree-RQualified-arrowᴴ ctx name alias π lkup nothing eqbA _ eqcB eqS dγ k = ⊥-elim (fail≢succ (cong proj₁ eqS))
+agree-RQualified-arrowᴴ ctx name alias π lkup (just _) eqbA nothing eqcB eqS dγ k = ⊥-elim (fail≢succ (cong proj₁ eqS))
+
+agree-RQualified-valueᴴ : ∀ (ctx : NamedCtx) (name alias : String) (ty : Type)
+  (lkup : lookupImport (NamedCtx.imports ctx) (alias ++ "." ++ name) ≡ just ty)
+  (mc : Maybe (IsConcrete ty)) (eqc : isConcrete? ty ≡ mc)
+  {A' Ψ se d f w}
+  → E.inferElabV-RQualified-value-aux ctx name alias ty lkup mc eqc ≡ (success A' Ψ se d f , w)
+  → ∀ (dγ : Env ctx) (k : ℕ) → SD.⟦ se ⟧ˢ dγ k ≡ SD.⟦ realize-infer w ⟧ˢ dγ k
+agree-RQualified-valueᴴ ctx name alias ty lkup (just conc) eqc refl dγ k = refl
+agree-RQualified-valueᴴ ctx name alias ty lkup nothing eqc eqS dγ k = ⊥-elim (fail≢succ (cong proj₁ eqS))
+
 agree-RQualified : ∀ (ctx : NamedCtx) (name alias : String) (lhs : Maybe Type)
   (lkup : lookupImport (NamedCtx.imports ctx) (alias ++ "." ++ name) ≡ lhs)
   {A Ψ se d f w}
   → E.inferElabV-RQualified-aux ctx name alias lhs lkup ≡ (success A Ψ se d f , w)
   → ∀ (dγ : Env ctx) (k : ℕ) → SD.⟦ se ⟧ˢ dγ k ≡ SD.⟦ realize-infer w ⟧ˢ dγ k
-agree-RQualified ctx name alias (just (A ⇒[ mk-kind Many π ] B)) lkup refl dγ k = masq-arrow {ctx} {A} {B} alias name π dγ k
-agree-RQualified ctx name alias (just (A ⇒[ mk-kind One  π ] B)) lkup refl dγ k = refl
-agree-RQualified ctx name alias (just (A ⇒[ mk-kind Zero π ] B)) lkup refl dγ k = refl
-agree-RQualified ctx name alias (just Unit)        lkup refl dγ k = refl
-agree-RQualified ctx name alias (just Void)        lkup refl dγ k = refl
-agree-RQualified ctx name alias (just Int)         lkup refl dγ k = refl
-agree-RQualified ctx name alias (just Float)       lkup refl dγ k = refl
-agree-RQualified ctx name alias (just Str)         lkup refl dγ k = refl
-agree-RQualified ctx name alias (just Buffer)      lkup refl dγ k = refl
-agree-RQualified ctx name alias (just (A * B))     lkup refl dγ k = refl
-agree-RQualified ctx name alias (just (A + B))     lkup refl dγ k = refl
-agree-RQualified ctx name alias (just (μ-type F))  lkup refl dγ k = refl
-agree-RQualified ctx name alias (just (ν-type F))  lkup refl dγ k = refl
+agree-RQualified ctx name alias (just (A ⇒[ mk-kind Many π ] B)) lkup eqS dγ k =
+  agree-RQualified-arrowᴴ ctx name alias π lkup (isBaseType? A) refl (isConcrete? B) refl eqS dγ k
+agree-RQualified ctx name alias (just (A ⇒[ mk-kind One  π ] B)) lkup eqS dγ k =
+  agree-RQualified-valueᴴ ctx name alias (A ⇒[ mk-kind One π ] B) lkup (isConcrete? (A ⇒[ mk-kind One π ] B)) refl eqS dγ k
+agree-RQualified ctx name alias (just (A ⇒[ mk-kind Zero π ] B)) lkup eqS dγ k =
+  agree-RQualified-valueᴴ ctx name alias (A ⇒[ mk-kind Zero π ] B) lkup (isConcrete? (A ⇒[ mk-kind Zero π ] B)) refl eqS dγ k
+agree-RQualified ctx name alias (just Unit)        lkup eqS dγ k = agree-RQualified-valueᴴ ctx name alias Unit   lkup (isConcrete? Unit)   refl eqS dγ k
+agree-RQualified ctx name alias (just Void)        lkup eqS dγ k = agree-RQualified-valueᴴ ctx name alias Void   lkup (isConcrete? Void)   refl eqS dγ k
+agree-RQualified ctx name alias (just Int)         lkup eqS dγ k = agree-RQualified-valueᴴ ctx name alias Int    lkup (isConcrete? Int)    refl eqS dγ k
+agree-RQualified ctx name alias (just Float)       lkup eqS dγ k = agree-RQualified-valueᴴ ctx name alias Float  lkup (isConcrete? Float)  refl eqS dγ k
+agree-RQualified ctx name alias (just Str)         lkup eqS dγ k = agree-RQualified-valueᴴ ctx name alias Str    lkup (isConcrete? Str)    refl eqS dγ k
+agree-RQualified ctx name alias (just Buffer)      lkup eqS dγ k = agree-RQualified-valueᴴ ctx name alias Buffer lkup (isConcrete? Buffer) refl eqS dγ k
+agree-RQualified ctx name alias (just (A * B))     lkup eqS dγ k = agree-RQualified-valueᴴ ctx name alias (A * B) lkup (isConcrete? (A * B)) refl eqS dγ k
+agree-RQualified ctx name alias (just (A + B))     lkup eqS dγ k = agree-RQualified-valueᴴ ctx name alias (A + B) lkup (isConcrete? (A + B)) refl eqS dγ k
+agree-RQualified ctx name alias (just (μ-type F))  lkup eqS dγ k = agree-RQualified-valueᴴ ctx name alias (μ-type F) lkup (isConcrete? (μ-type F)) refl eqS dγ k
+agree-RQualified ctx name alias (just (ν-type F))  lkup eqS dγ k = agree-RQualified-valueᴴ ctx name alias (ν-type F) lkup (isConcrete? (ν-type F)) refl eqS dγ k
 agree-RQualified ctx name alias nothing lkup eq dγ k = ⊥-elim (fail≢succ (cong proj₁ eq))
 
 -- RApp agreement, dispatched on the app-head VIEW (a parameter of

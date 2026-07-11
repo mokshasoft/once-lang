@@ -37,6 +37,7 @@ open import Data.List.Properties using (++-identityʳ; ++-assoc)
 open import Once.Denotation.Trace using (SigOpEvent)
 
 open import Once.Type using (Type; Unit; Void; Int; Str; Float; Buffer; _*_; _+_; _⇒[_]_; μ-type; ν-type)
+open import Once.Functor.Translate using (con-base; con-fun)
 open import Once.Surface.Syntax using (Expr; Ctx; Usage; lookup; _,_^_; ⟦_⟧ᶜ)
 open import Once.Surface.Elaborate using (elaborate; proj)
 open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_)
@@ -167,23 +168,23 @@ faithful (let' e1 e2) dγ n
 -- Effect primitives: ⟦_⟧ˢ denotes them through generic-info/emit-D/semM exactly
 -- as elaborate's `SigOp(generic-info name)∘terminal` (non-arrow) / `curry(SigOp∘
 -- snd)` (arrow) reduce ([]++X, returnT, eta) ⇒ refl.
-faithful (sigOp {A = (Dom ⇒[ kk ] Cod)} name) dγ k = refl
-faithful (closure name) dγ k = refl
-faithful (poly name PT) dγ k = refl
+faithful (sigOp {A = (Dom ⇒[ kk ] Cod)} name (con-fun bDom cCod)) dγ k = refl
+faithful (closure name conc) dγ k = refl
+faithful (poly name PT conc) dγ k = refl
 -- NON-ARROW `sigOp`: `elaborate`/`⟦_⟧ˢ` dispatch on `A`'s shape (it stays stuck for
 -- ABSTRACT `A`), so case-split the non-arrow type constructors — each is the pure
 -- `SigOp(generic-info name)∘terminal` shape ⇒ refl. No SigOp purity semantics added;
 -- effect lives in the (absent here) arrow kind, so non-arrow is pure by absence.
-faithful (sigOp {A = Unit}     name) dγ k = refl
-faithful (sigOp {A = Void}     name) dγ k = refl
-faithful (sigOp {A = Int}      name) dγ k = refl
-faithful (sigOp {A = Str}      name) dγ k = refl
-faithful (sigOp {A = Float}    name) dγ k = refl
-faithful (sigOp {A = Buffer}   name) dγ k = refl
-faithful (sigOp {A = _ * _}    name) dγ k = refl
-faithful (sigOp {A = _ + _}    name) dγ k = refl
-faithful (sigOp {A = μ-type _} name) dγ k = refl
-faithful (sigOp {A = ν-type _} name) dγ k = refl
+faithful (sigOp {A = Unit}     name conc) dγ k = refl
+faithful (sigOp {A = Void}     name conc) dγ k = refl
+faithful (sigOp {A = Int}      name conc) dγ k = refl
+faithful (sigOp {A = Str}      name conc) dγ k = refl
+faithful (sigOp {A = Float}    name conc) dγ k = refl
+faithful (sigOp {A = Buffer}   name conc) dγ k = refl
+faithful (sigOp {A = _ * _}    name conc) dγ k = refl
+faithful (sigOp {A = _ + _}    name conc) dγ k = refl
+faithful (sigOp {A = μ-type _} name conc) dγ k = refl
+faithful (sigOp {A = ν-type _} name conc) dγ k = refl
 faithful (case' s l r) dγ n rewrite faithful s dγ n with proj₂ (SD.⟦ s ⟧ˢ dγ n)
 ... | inj₁ a rewrite faithful l (dγ , a) n =
         cong₂ _,_ (case-trace (proj₁ (SD.⟦ s ⟧ˢ dγ n)) (proj₁ (SD.⟦ l ⟧ˢ (dγ , a) n))) refl

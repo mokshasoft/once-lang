@@ -57,7 +57,7 @@ open import Once.TypeCheck.Error using (TypeError; renderError;
   ApplicationTypeMismatch; TypeMismatch; NotFunction;
   UsageViolation; BuiltinTypeMismatch;
   BinOpLeftError; BinOpRightError;
-  UnboundVariable; UnboundQualified) public
+  UnboundVariable; UnboundQualified; NonConcreteSigOpType) public
 open import Once.TypeCheck.Context using (Ctx; ∅; name)
 open import Once.TypeCheck.Context as Context using () renaming (_,_∷_ to extendCtx)
 open import Once.Surface.Syntax as Surface using (lookupUsage; tailUsage; _+ᵘ_)
@@ -69,7 +69,9 @@ open import Once.Surface.Elaborate as Elab using (elaborate; intLit; strLit)
 
 open import Once.TypeCheck.Classify public
 import Once.Functor.Translate
-open import Once.Functor.Decide using (wellFormedF?)
+open import Once.Functor.Translate using (IsConcrete; con-base; con-fun; IsBaseType)
+open import Once.Functor.Decide using (wellFormedF?; isConcrete?; isBaseType?;
+  isConcrete?-complete; isBaseType?-complete)
 open import Once.TypeCheck.Morph using (MorphRaw; morphRaw?; morphToIR)
 open import Once.TypeCheck.Judgment
 
@@ -905,6 +907,7 @@ postulate
   -- Witness for the `bbc-other` poly-instantiate case (Phase 2 gap).
   bbc-other-poly-witness :
     ∀ (ctx : NamedCtx) (x : String) (T : Type)
+    → IsConcrete T
     → ctx ⊢ᶜ Raw.RVar x ∶ T ⨾ Surface.zeroUsage
 
 
@@ -1051,12 +1054,48 @@ mutual
     ∀ (ctx : NamedCtx) (cn : CanonicalName) (lhs : Maybe Type)
     → lookupImport (NamedCtx.imports ctx) (showCanonical cn) ≡ lhs
     → VerifiedInferResult ctx (Raw.RResolved cn)
+  -- Plan 0.58: the arrow-value case DE-WITHES the concreteness decision
+  -- (`isBaseType? A`/`isConcrete? B`) into explicit Maybe args + equations, so
+  -- the Completeness proof can drive it to the `success` branch (mirroring the
+  -- lookup de-with above). Without this the `with` is opaque to external proofs.
+  inferElabV-RQualified-arrow-aux :
+    ∀ (ctx : NamedCtx) (name alias : String) {A B : Type} {π : Once.Type.Purity}
+    → lookupImport (NamedCtx.imports ctx) (alias ++ "." ++ name)
+        ≡ just (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B)
+    → (mbA : Maybe (IsBaseType A)) → isBaseType? A ≡ mbA
+    → (mcB : Maybe (IsConcrete B)) → isConcrete? B ≡ mcB
+    → VerifiedInferResult ctx (Raw.RQualified name alias)
+  inferElabV-RResolved-arrow-aux :
+    ∀ (ctx : NamedCtx) (cn : CanonicalName) {A B : Type} {π : Once.Type.Purity}
+    → lookupImport (NamedCtx.imports ctx) (showCanonical cn)
+        ≡ just (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B)
+    → (mbA : Maybe (IsBaseType A)) → isBaseType? A ≡ mbA
+    → (mcB : Maybe (IsConcrete B)) → isConcrete? B ≡ mcB
+    → VerifiedInferResult ctx (Raw.RResolved cn)
+  -- Non-arrow-Many value refs: DE-WITH the single `isConcrete? ty` decision.
+  inferElabV-RQualified-value-aux :
+    ∀ (ctx : NamedCtx) (name alias : String) (ty : Type)
+    → lookupImport (NamedCtx.imports ctx) (alias ++ "." ++ name) ≡ just ty
+    → (mc : Maybe (IsConcrete ty)) → isConcrete? ty ≡ mc
+    → VerifiedInferResult ctx (Raw.RQualified name alias)
+  inferElabV-RResolved-value-aux :
+    ∀ (ctx : NamedCtx) (cn : CanonicalName) (ty : Type)
+    → lookupImport (NamedCtx.imports ctx) (showCanonical cn) ≡ just ty
+    → (mc : Maybe (IsConcrete ty)) → isConcrete? ty ≡ mc
+    → VerifiedInferResult ctx (Raw.RResolved cn)
   inferElabV-RVar-lookup-aux :
     ∀ (ctx : NamedCtx) (x : String) → ¬ (x ≡ "unit")
     → (locLhs : Maybe (∃[ A ] ∃[ Ψ ] (Surface.SVar (NamedCtx.debruijn ctx) Ψ A)))
     → lookupLocal ctx x ≡ locLhs
     → (impLhs : Maybe Type)
     → lookupImport (NamedCtx.imports ctx) x ≡ impLhs
+    → VerifiedInferResult ctx (Raw.RVar x)
+  -- Plan 0.58: DE-WITH the import-value concreteness decision.
+  inferElabV-RVar-import-value-aux :
+    ∀ (ctx : NamedCtx) (x : String) → ¬ (x ≡ "unit")
+    → lookupLocal ctx x ≡ nothing
+    → (ty : Type) → lookupImport (NamedCtx.imports ctx) x ≡ just ty
+    → (mc : Maybe (IsConcrete ty)) → isConcrete? ty ≡ mc
     → VerifiedInferResult ctx (Raw.RVar x)
   inferElabV-RApp-other-aux :
     ∀ (ctx : NamedCtx) (f x : RawExpr) (lhs : Maybe PolyBuiltinApp)
@@ -1214,15 +1253,16 @@ mutual
   ...   | success T' Ψ eE d f with T ≟T T'
   ...     | yes refl = success _ eE d f
   ...     | no _ = failure (TypeMismatch T T')
-  checkElab-RVar ctx x T | bbc-other | failure err with lookupPoly (NamedCtx.polys ctx) x
-  ... | nothing = failure err
+  checkElab-RVar ctx x T | bbc-other | failure err with lookupPoly (NamedCtx.polys ctx) x | isConcrete? T
+  ... | nothing | _        = failure err
   -- Plan 0.6.2 Phase 4: emit a proper `poly` placeholder constructor.
   -- Phase 2's `resolveExpr` pattern-matches on this constructor directly
   -- — no string encoding, no prefix check. Keeps Phase 1 structural (no
   -- TERMINATING pragma) and gives downstream consumers type-level
   -- visibility: an Expr with `poly` nodes hasn't been through Phase 2.
-  ... | just _ = success Surface.zeroUsage (Surface.poly x T)
+  ... | just _ | just conc = success Surface.zeroUsage (Surface.poly x T conc)
                          0 (NamedCtx.freshCounter ctx)
+  ... | just _ | nothing   = failure (NonConcreteSigOpType x T)
   -- id : T → T
   checkElab-RVar ctx _ T | bbc-id with inferElab ctx (Raw.RVar "id")
   ... | success T' Ψ eE d f with T ≟T T'
@@ -1763,14 +1803,15 @@ mutual
   -- codomain is not `Unit` (the deferred data-returning-syscall
   -- boundary), falls back to a `pureV` value (the `closure`/`poly`-style
   -- function-linking opacity, a separate axis from the syscall contract).
-  ext-arrow-info : ∀ {A B} → NamedCtx → (alias name : String) → Purity → SigOpInfo A B
-  ext-arrow-info ctx alias name pure = mk-info' (bare (alias ++ "." ++ name)) (pureV (generic-semM (alias ++ "." ++ name)))
-  ext-arrow-info {A} {B} ctx alias name eff with B ≟T Unit
-  ... | no _ = mk-info' (bare (alias ++ "." ++ name)) (pureV (generic-semM (alias ++ "." ++ name)))
+  ext-arrow-info : ∀ {A B} → NamedCtx → (alias name : String) → Purity
+                 → IsBaseType A → IsConcrete B → SigOpInfo A B
+  ext-arrow-info ctx alias name pure bA cB = mk-info' (bare (alias ++ "." ++ name)) (pureV (generic-semM (alias ++ "." ++ name))) bA cB
+  ext-arrow-info {A} {B} ctx alias name eff bA cB with B ≟T Unit
+  ... | no _ = mk-info' (bare (alias ++ "." ++ name)) (pureV (generic-semM (alias ++ "." ++ name))) bA cB
   ... | yes refl with lookupSigEffect (NamedCtx.sigEffects ctx) (alias ++ "." ++ name)
-  ...   | just se-halts = mk-info' (bare (alias ++ "." ++ name)) (haltsV refl)
-  ...   | just se-emits = mk-info' (bare (alias ++ "." ++ name)) (emitsV refl)
-  ...   | nothing       = mk-info' (bare (alias ++ "." ++ name)) (emitsV refl)
+  ...   | just se-halts = mk-info' (bare (alias ++ "." ++ name)) (haltsV refl) bA cB
+  ...   | just se-emits = mk-info' (bare (alias ++ "." ++ name)) (emitsV refl) bA cB
+  ...   | nothing       = mk-info' (bare (alias ++ "." ++ name)) (emitsV refl) bA cB
 
   -- Aux helper bodies (placed after all main mutual members so that the
   -- `... | pat` continuations of inferElabV/checkElabV clauses don't
@@ -1785,14 +1826,30 @@ mutual
   -- externals become `lift-morphism (SigOp …)`.
   inferElabV-RQualified-aux ctx name alias
     (just (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B)) eq =
-    success (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B) _
-      (Surface.lift-morphism {π = π} (IR.SigOp (ext-arrow-info ctx alias name π)))
-      0 (NamedCtx.freshCounter ctx)
-    , t-var-qualified eq
+    inferElabV-RQualified-arrow-aux ctx name alias eq (isBaseType? A) refl (isConcrete? B) refl
   inferElabV-RQualified-aux ctx name alias (just ty) eq =
-    success ty _ (Surface.sigOp (bare (alias ++ "." ++ name))) 0 (NamedCtx.freshCounter ctx) , t-var-qualified eq
+    inferElabV-RQualified-value-aux ctx name alias ty eq (isConcrete? ty) refl
   inferElabV-RQualified-aux ctx name alias nothing _ =
     failure (UnboundQualified name alias) , tt
+
+  -- Concreteness-driven arrow value emission (de-withed for Completeness).
+  inferElabV-RQualified-arrow-aux ctx name alias {A} {B} {π} eq (just bA) _ (just cB) _ =
+    success (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B) _
+      (Surface.lift-morphism {π = π} (IR.SigOp (ext-arrow-info ctx alias name π bA cB)))
+      0 (NamedCtx.freshCounter ctx)
+    , t-var-qualified eq (con-fun bA cB)
+  inferElabV-RQualified-arrow-aux ctx name alias {A} {B} {π} eq nothing _ _ _ =
+    failure (NonConcreteSigOpType (alias ++ "." ++ name)
+              (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B)) , tt
+  inferElabV-RQualified-arrow-aux ctx name alias {A} {B} {π} eq (just _) _ nothing _ =
+    failure (NonConcreteSigOpType (alias ++ "." ++ name)
+              (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B)) , tt
+
+  inferElabV-RQualified-value-aux ctx name alias ty eq (just conc) _ =
+    success ty _ (Surface.sigOp (bare (alias ++ "." ++ name)) conc) 0 (NamedCtx.freshCounter ctx)
+    , t-var-qualified eq conc
+  inferElabV-RQualified-value-aux ctx name alias ty eq nothing _ =
+    failure (NonConcreteSigOpType (alias ++ "." ++ name) ty) , tt
 
   -- Plan 0.50: resolved external ref. The canonical name `cn` is carried
   -- straight into the `SigOpInfo` (NO `bare`, NO String render) — so the
@@ -1801,29 +1858,46 @@ mutual
   -- De-withed (so the realize-agrees masquerade can fold it): the `B ≟T Unit`
   -- decision + the `lookupSigEffect` result are explicit args.
   ext-resolved-info-aux : ∀ {A B} → CanonicalName → Purity
-                        → Dec (B ≡ Unit) → Maybe SigEffect → SigOpInfo A B
-  ext-resolved-info-aux cn pure _ _ = mk-info' cn (pureV (generic-semM (showCanonical cn)))
-  ext-resolved-info-aux cn eff (no _) _ = mk-info' cn (pureV (generic-semM (showCanonical cn)))
-  ext-resolved-info-aux cn eff (yes refl) (just se-halts) = mk-info' cn (haltsV refl)
-  ext-resolved-info-aux cn eff (yes refl) (just se-emits) = mk-info' cn (emitsV refl)
-  ext-resolved-info-aux cn eff (yes refl) nothing         = mk-info' cn (emitsV refl)
+                        → Dec (B ≡ Unit) → Maybe SigEffect
+                        → IsBaseType A → IsConcrete B → SigOpInfo A B
+  ext-resolved-info-aux cn pure _ _ bA cB = mk-info' cn (pureV (generic-semM (showCanonical cn))) bA cB
+  ext-resolved-info-aux cn eff (no _) _ bA cB = mk-info' cn (pureV (generic-semM (showCanonical cn))) bA cB
+  ext-resolved-info-aux cn eff (yes refl) (just se-halts) bA cB = mk-info' cn (haltsV refl) bA cB
+  ext-resolved-info-aux cn eff (yes refl) (just se-emits) bA cB = mk-info' cn (emitsV refl) bA cB
+  ext-resolved-info-aux cn eff (yes refl) nothing         bA cB = mk-info' cn (emitsV refl) bA cB
 
-  ext-resolved-info : ∀ {A B} → NamedCtx → CanonicalName → Purity → SigOpInfo A B
-  ext-resolved-info {A} {B} ctx cn π =
+  ext-resolved-info : ∀ {A B} → NamedCtx → CanonicalName → Purity
+                    → IsBaseType A → IsConcrete B → SigOpInfo A B
+  ext-resolved-info {A} {B} ctx cn π bA cB =
     -- Use the SHARED low `isUnit?` (same decision SD's `arrow-info` uses), so
     -- the realize-agrees masquerade folds both with one case-split.
-    ext-resolved-info-aux cn π (Once.Type.isUnit? B) (lookupSigEffect (NamedCtx.sigEffects ctx) (showCanonical cn))
+    ext-resolved-info-aux cn π (Once.Type.isUnit? B) (lookupSigEffect (NamedCtx.sigEffects ctx) (showCanonical cn)) bA cB
 
   inferElabV-RResolved-aux ctx cn
     (just (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B)) eq =
-    success (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B) _
-      (Surface.lift-morphism {π = π} (IR.SigOp (ext-resolved-info ctx cn π)))
-      0 (NamedCtx.freshCounter ctx)
-    , t-var-resolved eq
+    inferElabV-RResolved-arrow-aux ctx cn eq (isBaseType? A) refl (isConcrete? B) refl
   inferElabV-RResolved-aux ctx cn (just ty) eq =
-    success ty _ (Surface.sigOp cn) 0 (NamedCtx.freshCounter ctx) , t-var-resolved eq
+    inferElabV-RResolved-value-aux ctx cn ty eq (isConcrete? ty) refl
   inferElabV-RResolved-aux ctx cn nothing _ =
     failure (UnboundVariable (showCanonical cn)) , tt
+
+  -- Concreteness-driven arrow value emission (de-withed for Completeness).
+  inferElabV-RResolved-arrow-aux ctx cn {A} {B} {π} eq (just bA) _ (just cB) _ =
+    success (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B) _
+      (Surface.lift-morphism {π = π} (IR.SigOp (ext-resolved-info ctx cn π bA cB)))
+      0 (NamedCtx.freshCounter ctx)
+    , t-var-resolved eq (con-fun bA cB)
+  inferElabV-RResolved-arrow-aux ctx cn {A} {B} {π} eq nothing _ _ _ =
+    failure (NonConcreteSigOpType (showCanonical cn)
+              (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B)) , tt
+  inferElabV-RResolved-arrow-aux ctx cn {A} {B} {π} eq (just _) _ nothing _ =
+    failure (NonConcreteSigOpType (showCanonical cn)
+              (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B)) , tt
+
+  inferElabV-RResolved-value-aux ctx cn ty eq (just conc) _ =
+    success ty _ (Surface.sigOp cn conc) 0 (NamedCtx.freshCounter ctx) , t-var-resolved eq conc
+  inferElabV-RResolved-value-aux ctx cn ty eq nothing _ =
+    failure (NonConcreteSigOpType (showCanonical cn) ty) , tt
 
   -- RPair: pair the two sub-results (a-failure short-circuits without forcing
   -- b's result, matching the old left-to-right `with`).
@@ -1921,9 +1995,14 @@ mutual
   inferElabV-RVar-lookup-aux ctx x ¬unit (just (A , Ψ , eV)) eq-loc _ _ =
     success A Ψ (Surface.svar→expr eV) 0 (NamedCtx.freshCounter ctx) , t-var-local ¬unit eq-loc
   inferElabV-RVar-lookup-aux ctx x ¬unit nothing eq-loc (just ty) eq-imp =
-    success ty _ (Surface.sigOp (bare x)) 0 (NamedCtx.freshCounter ctx) , t-var-import ¬unit eq-loc eq-imp
+    inferElabV-RVar-import-value-aux ctx x ¬unit eq-loc ty eq-imp (isConcrete? ty) refl
   inferElabV-RVar-lookup-aux ctx x ¬unit nothing eq-loc nothing eq-imp =
     failure (UnboundVariable x) , tt
+
+  inferElabV-RVar-import-value-aux ctx x ¬unit eq-loc ty eq-imp (just conc) _ =
+    success ty _ (Surface.sigOp (bare x) conc) 0 (NamedCtx.freshCounter ctx) , t-var-import ¬unit eq-loc eq-imp conc
+  inferElabV-RVar-import-value-aux ctx x ¬unit eq-loc ty eq-imp nothing _ =
+    failure (NonConcreteSigOpType x ty) , tt
 
   inferElabV-RApp-other-aux ctx f x (just _) _ =
     failure (BuiltinTypeMismatch "unreachable: ahv-other ⇒ classifyAppHead nothing") , tt
@@ -2407,9 +2486,10 @@ mutual
   -- bbc-other: success-via-infer mirrors the others; failure goes
   -- through lookupPoly fallback (still postulate-witnessed).
   checkElabV-RVar-bbc-other-aux ctx x T r@(success _ _ _ _ _ , _) = embedOrSubsume ctx (Raw.RVar x) T r
-  checkElabV-RVar-bbc-other-aux ctx x T (failure err , _) with lookupPoly (NamedCtx.polys ctx) x
-  ... | nothing = failure err , tt
-  ... | just _  = success Surface.zeroUsage (Surface.poly x T) 0 (NamedCtx.freshCounter ctx) , bbc-other-poly-witness ctx x T
+  checkElabV-RVar-bbc-other-aux ctx x T (failure err , _) with lookupPoly (NamedCtx.polys ctx) x | isConcrete? T
+  ... | nothing | _        = failure err , tt
+  ... | just _  | just conc = success Surface.zeroUsage (Surface.poly x T conc) 0 (NamedCtx.freshCounter ctx) , bbc-other-poly-witness ctx x T conc
+  ... | just _  | nothing   = failure (NonConcreteSigOpType x T) , tt
 
 ------------------------------------------------------------------------
 -- Plan 0.4 T0 Option B — projection wrappers.
@@ -2879,12 +2959,14 @@ resolveExprWF : ∀ {n} {Γ : Surface.Ctx n} {Ψ : Surface.Usage n} {A}
 resolvePolyCase : ∀ {n} {Γ : Surface.Ctx n}
                 → (polys : PolyCtx) → Acc _<_ (length polys)
                 → Imports → Imports → ℕ → (x : String) (A : Type)
+                → IsConcrete A
                 → (look : Maybe (PolyType × RawExpr))
                 → lookupPoly polys x ≡ look
                 → Surface.Expr Γ Surface.zeroUsage A
 applySplice : ∀ {n} {Γ : Surface.Ctx n}
             → (polys : PolyCtx) → Acc _<_ (length polys)
             → Imports → Imports → ℕ → (x : String) (A : Type)
+            → IsConcrete A
             → {schema : PolyType} {body : RawExpr}
             → lookupPoly polys x ≡ just (schema , body)
             → CheckElabResult S∅ A
@@ -2946,11 +3028,11 @@ resolveExprWF polys pAcc imps userFns fresh (Surface.arr' e) = Surface.arr' (res
 -- Semantic preservation: `evalSurface (sigOp x) ≡ evalSurface (closure x)`
 -- by construction (both go through `generic-semI`); the rewrite is a
 -- no-op in the denotation.
-resolveExprWF polys _ imps userFns _ (Surface.sigOp s) with lookupImport userFns (showCanonical s)
-... | just _  = Surface.closure (showCanonical s)
-... | nothing = Surface.sigOp s
+resolveExprWF polys _ imps userFns _ (Surface.sigOp s conc) with lookupImport userFns (showCanonical s)
+... | just _  = Surface.closure (showCanonical s) conc
+... | nothing = Surface.sigOp s conc
 -- Plan 0.19: closure already classified. Pass through unchanged.
-resolveExprWF polys _ imps userFns _ (Surface.closure s) = Surface.closure s
+resolveExprWF polys _ imps userFns _ (Surface.closure s conc) = Surface.closure s conc
 -- Plan 0.2.4.5 D2: morphism-realm forms carry CCC IR directly (no
 -- polymorphic-def references to splice in). Pass through unchanged.
 resolveExprWF polys _ imps userFns _ (Surface.lift-morphism m) = Surface.lift-morphism m
@@ -2967,16 +3049,16 @@ resolveExprWF polys pAcc imps userFns fresh (Surface.ana wfF coalg) =
 -- Poly = unresolved placeholder from Phase 1. Delegate to helper that
 -- takes the lookup result + equation explicitly, so external proofs
 -- about the sigOp case can `rewrite` the premise cleanly.
-resolveExprWF {A = A} polys pAcc imps userFns fresh (Surface.poly x _) =
-  resolvePolyCase polys pAcc imps userFns fresh x A (lookupPoly polys x) refl
+resolveExprWF {A = A} polys pAcc imps userFns fresh (Surface.poly x _ conc) =
+  resolvePolyCase polys pAcc imps userFns fresh x A conc (lookupPoly polys x) refl
 
-resolvePolyCase polys _ imps userFns _ x A nothing _ = Surface.poly x A
-resolvePolyCase polys pAcc imps userFns fresh x A (just (_ , body)) polyEq =
-  applySplice polys pAcc imps userFns fresh x A polyEq
+resolvePolyCase polys _ imps userFns _ x A conc nothing _ = Surface.poly x A conc
+resolvePolyCase polys pAcc imps userFns fresh x A conc (just (_ , body)) polyEq =
+  applySplice polys pAcc imps userFns fresh x A conc polyEq
               (checkElab (ctxWithImportsAndPolys imps (removePoly x polys)) body A)
 
-applySplice polys _ imps userFns _ x A _ (failure _) = Surface.poly x A
-applySplice polys (acc rec) imps userFns fresh x A polyEq (success Surface.[] eE _ _) =
+applySplice polys _ imps userFns _ x A conc _ (failure _) = Surface.poly x A conc
+applySplice polys (acc rec) imps userFns fresh x A conc polyEq (success Surface.[] eE _ _) =
   resolveExprWF (removePoly x polys)
                 (rec (removePoly-decreases x polys polyEq))
                 imps userFns fresh (weakenFromEmpty eE)
@@ -3246,10 +3328,11 @@ resolveExpr-arr' _ _ _ _ _ = refl
 resolveExpr-sigOp-extern :
   ∀ {n} {Γ : Surface.Ctx n} {A}
     (polys : PolyCtx) (imps userFns : Imports) (fresh : ℕ) (s : CanonicalName)
+    (conc : IsConcrete A)
   → lookupImport userFns (showCanonical s) ≡ nothing
-  → resolveExpr {Γ = Γ} polys imps userFns fresh (Surface.sigOp {A = A} s)
-      ≡ Surface.sigOp s
-resolveExpr-sigOp-extern _ _ _ _ _ eq rewrite eq = refl
+  → resolveExpr {Γ = Γ} polys imps userFns fresh (Surface.sigOp {A = A} s conc)
+      ≡ Surface.sigOp s conc
+resolveExpr-sigOp-extern _ _ _ _ _ conc eq rewrite eq = refl
 
 -- ─── Gap 1 (positive direction): resolver correctly splices the body
 -- at a matched poly placeholder ────────────────────────────────────────
@@ -3289,13 +3372,14 @@ applySplice-eq-irrel :
   ∀ {n} {Γ : Surface.Ctx n}
     (polys : PolyCtx) (pAcc : Acc _<_ (length polys))
     (imps userFns : Imports) (fresh : ℕ) (x : String) (A : Type)
+    (conc : IsConcrete A)
     {schema : PolyType} {body : RawExpr}
   → (eq1 eq2 : lookupPoly polys x ≡ just (schema , body))
   → (chkRes : CheckElabResult S∅ A)
-  → applySplice {Γ = Γ} polys pAcc imps userFns fresh x A eq1 chkRes
-      ≡ applySplice polys pAcc imps userFns fresh x A eq2 chkRes
-applySplice-eq-irrel polys _ imps userFns _ x A _ _ (failure _) = refl
-applySplice-eq-irrel polys (acc rec) imps userFns fresh x A eq1 eq2 (success Surface.[] eE _ _) =
+  → applySplice {Γ = Γ} polys pAcc imps userFns fresh x A conc eq1 chkRes
+      ≡ applySplice polys pAcc imps userFns fresh x A conc eq2 chkRes
+applySplice-eq-irrel polys _ imps userFns _ x A conc _ _ (failure _) = refl
+applySplice-eq-irrel polys (acc rec) imps userFns fresh x A conc eq1 eq2 (success Surface.[] eE _ _) =
   cong (λ pr → resolveExprWF (removePoly x polys) (rec pr) imps userFns fresh (weakenFromEmpty eE))
        (<-irrelevant (removePoly-decreases x polys eq1) (removePoly-decreases x polys eq2))
   where open import Data.Nat.Properties using (<-irrelevant)
@@ -3306,16 +3390,17 @@ resolveExpr-poly-match :
     (polys : PolyCtx) (pAcc : Acc _<_ (length polys))
     (imps userFns : Imports) (fresh : ℕ)
     (x : String) (T : Type)
+    (conc : IsConcrete T)
     {schema : PolyType} {body : RawExpr}
     {eE : SExpr S∅ Surface.zeroUsage T} {d f : ℕ}
   → (polyEq : lookupPoly polys x ≡ just (schema , body))
   → checkElab (ctxWithImportsAndPolys imps (removePoly x polys)) body T
       ≡ success Surface.[] eE d f
-  → applySplice {Γ = Γ} polys pAcc imps userFns fresh x T polyEq
+  → applySplice {Γ = Γ} polys pAcc imps userFns fresh x T conc polyEq
                 (checkElab (ctxWithImportsAndPolys imps (removePoly x polys)) body T)
-      ≡ applySplice polys pAcc imps userFns fresh x T polyEq
+      ≡ applySplice polys pAcc imps userFns fresh x T conc polyEq
                     (success Surface.[] eE d f)
-resolveExpr-poly-match polys pAcc imps userFns fresh x T polyEq bodyEq
+resolveExpr-poly-match polys pAcc imps userFns fresh x T conc polyEq bodyEq
     rewrite bodyEq = refl
 
 -- Plan 0.6.2 Phase 4: polymorphic schema-instantiation.
@@ -3324,6 +3409,7 @@ resolveExpr-poly-match polys pAcc imps userFns fresh x T polyEq bodyEq
 -- body. Existential witnesses are satisfied by the `poly x T` placeholder.
 checkElab-fallback-RVar-poly :
   ∀ {ctx : NamedCtx} (x : String) (T : Type)
+    (conc : IsConcrete T)
     {schema : PolyType} {body : RawExpr}
     {eE_body : SExpr S∅ Surface.zeroUsage T}
     {d_body f_body : ℕ}
@@ -3339,13 +3425,13 @@ checkElab-fallback-RVar-poly :
   → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ fr →
       checkElab ctx (Raw.RVar x) T
         ≡ success Surface.zeroUsage eE d fr)))
-checkElab-fallback-RVar-poly {ctx} x T eqCls ¬unit eqLoc eqImp eqPoly _
+checkElab-fallback-RVar-poly {ctx} x T conc eqCls ¬unit eqLoc eqImp eqPoly _
   with inferElabV ctx (Raw.RVar x) | inferElabV-RVar-fail-bridge ctx x ¬unit eqLoc eqImp
 ... | (failure _ , _) | refl
   with classifyBareBuiltin x | eqCls
 ... | bbc-other | refl
-  with lookupPoly (NamedCtx.polys ctx) x | eqPoly
-... | just _ | refl = _ , _ , _ , refl
+  with lookupPoly (NamedCtx.polys ctx) x | eqPoly | isConcrete? T | isConcrete?-complete conc
+... | just _ | refl | just _ | (_ , refl) = _ , _ , _ , refl
 checkElab-fallback-RApp-id :
   ∀ {ctx : NamedCtx} (arg : RawExpr) (T : Type)
     {Ψ : Surface.Usage (NamedCtx.size ctx)}

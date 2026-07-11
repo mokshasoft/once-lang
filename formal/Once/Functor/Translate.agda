@@ -186,6 +186,19 @@ IsBaseType-irrelevant (base-Prod ibA₁ ibB₁) (base-Prod ibA₂ ibB₂) =
 IsBaseType-irrelevant (base-Sum ibA₁ ibB₁) (base-Sum ibA₂ ibB₂) =
   cong₂ base-Sum (IsBaseType-irrelevant ibA₁ ibA₂) (IsBaseType-irrelevant ibB₁ ibB₂)
 
+-- | IsConcrete is proof-irrelevant
+--
+-- At an arrow type only `con-fun` is inhabited (an arrow is not a base type,
+-- so `con-base` would need `IsBaseType (A ⇒[ k ] B)`, which is empty); at any
+-- other type only `con-base`. Hence the mixed cases are absurd.
+IsConcrete-irrelevant : ∀ {A} (c₁ c₂ : IsConcrete A) → c₁ ≡ c₂
+IsConcrete-irrelevant (con-base ib₁) (con-base ib₂) =
+  cong con-base (IsBaseType-irrelevant ib₁ ib₂)
+IsConcrete-irrelevant (con-fun bA₁ cB₁) (con-fun bA₂ cB₂) =
+  cong₂ (λ b c → con-fun b c) (IsBaseType-irrelevant bA₁ bA₂) (IsConcrete-irrelevant cB₁ cB₂)
+IsConcrete-irrelevant (con-base ()) (con-fun bA cB)
+IsConcrete-irrelevant (con-fun bA cB) (con-base ())
+
 -- | WellFormedF is proof-irrelevant
 WellFormedF-irrelevant : ∀ {F} (wf₁ wf₂ : WellFormedF F) → wf₁ ≡ wf₂
 WellFormedF-irrelevant (wf-K ib₁) (wf-K ib₂) = cong wf-K (IsBaseType-irrelevant ib₁ ib₂)

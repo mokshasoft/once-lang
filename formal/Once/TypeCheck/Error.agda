@@ -60,6 +60,10 @@ data TypeError : Set where
   UnboundVariable         : String → TypeError
   UnboundQualified        : (name alias : String) → TypeError
 
+  -- Plan 0.58: a SigOp/FFI reference whose type is not concrete (not a base
+  -- type nor a first-order function pointer) cannot cross the register ABI.
+  NonConcreteSigOpType    : (name : String) (T : Type) → TypeError
+
   -- Mode-specific rejections
   LambdaInInferMode         : TypeError
   LambdaRequiresFunctionType : TypeError
@@ -121,6 +125,9 @@ renderError (UnboundVariable x) =
     ++ " (polymorphic builtins must appear applied or in check mode)"
 renderError (UnboundQualified name alias) =
   "Unbound qualified variable: " ++ name ++ "@" ++ alias
+renderError (NonConcreteSigOpType name T) =
+  "Reference '" ++ name ++ "' has non-concrete type " ++ showType T
+    ++ " (FFI/SigOp references must be base types or first-order function pointers)"
 renderError LambdaInInferMode =
   "Lambda without type annotation not supported in inference mode."
 renderError LambdaRequiresFunctionType =
