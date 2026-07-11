@@ -83,6 +83,36 @@ conv-nbe : ∀ {A B} → Term A B → Term A B → Bool
 conv-nbe t u = eqTree (erase (nf t)) (erase (nf u))
 
 ------------------------------------------------------------------------
+-- A universal property (holds for ALL terms, not just the examples):
+-- the decider is reflexive — `eqTree` is reflexive, so `conv-nbe t t` is
+-- always `true`. (`nf` is a function, so equal inputs give equal normal
+-- forms; this makes that an object-level fact.)
+------------------------------------------------------------------------
+
+and-true : ∀ {a b} → a ≡ true → b ≡ true → (a and b) ≡ true
+and-true refl refl = refl
+
+eqTree-refl : ∀ t → eqTree t t ≡ true
+eqTree-refl tId    = refl
+eqTree-refl tFst   = refl
+eqTree-refl tSnd   = refl
+eqTree-refl tInl   = refl
+eqTree-refl tInr   = refl
+eqTree-refl tTerm  = refl
+eqTree-refl tInit  = refl
+eqTree-refl tApp   = refl
+eqTree-refl tIn    = refl
+eqTree-refl tOut   = refl
+eqTree-refl (tComp a b) = and-true (eqTree-refl a) (eqTree-refl b)
+eqTree-refl (tPair a b) = and-true (eqTree-refl a) (eqTree-refl b)
+eqTree-refl (tCase a b) = and-true (eqTree-refl a) (eqTree-refl b)
+eqTree-refl (tCurry a)  = eqTree-refl a
+eqTree-refl (tCata a)   = eqTree-refl a
+
+conv-nbe-refl : ∀ {A B} (t : Term A B) → conv-nbe t t ≡ true
+conv-nbe-refl t = eqTree-refl (erase (nf t))
+
+------------------------------------------------------------------------
 -- Examples: the decider ACCEPTS definitional equals and REJECTS the rest.
 ------------------------------------------------------------------------
 
