@@ -54,7 +54,8 @@ open import Once.Denotation.Realize using (realize; realize-infer; realize-globa
 open import Once.TypeCheck.Soundness using (check-sound)
 open import Once.Surface.Syntax as Surface using (Expr; Usage; ⟦_⟧ᶜ; pair; neg; let'; sigOp; lift-morphism)
 open Surface.Usage using () renaming (_∷_ to _∷ᵘ_)
-open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ)
+open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ; evalᴰ)
+open import Once.Adequacy.CataFold using (cata-fold-eq)
 import Once.Denotation.SourceDenote as SD
 open import Once.CanonicalName using (CanonicalName; showCanonical; bare)
 open import Once.Functor.Translate using (WellFormedF; IsBaseType; IsConcrete; con-base; con-fun; base-Unit)
