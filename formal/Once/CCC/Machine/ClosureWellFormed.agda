@@ -890,6 +890,23 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
   -- No global invariants needed - capacity is threaded dynamically per closure.
   ------------------------------------------------------------------------
 
+  -- Plan 0.58 (2026-07-11): InputPlace — the physical placement of an IR's
+  -- Input1 value, the DUAL of `ResultPlace`'s `at-loc`/`at-reg` split on the
+  -- OUTPUT side. `in-ptr`: Input1 holds a pointer to `input-loc` (the classic
+  -- boxed convention, used by every pointer-consuming IR: fst/snd/case/apply/
+  -- pair). `in-reg`: Input1 holds the register sentinel (a preceding Pure SigOp
+  -- left its Int/Float result in-register — `at-reg` on its output side). This
+  -- is what lets `run-compose` thread an `at-reg` intermediate `f`'s result into
+  -- a downstream `g` WITHOUT a spill: the hand-off moves whatever `Output` holds
+  -- (pointer or sentinel) into Input1 verbatim, exactly as the codegen's single
+  -- `mov-to-input` does (`IRToTrace.agda:450`). Type-directed refinement (in-reg
+  -- only for `FitsInReg`) is added when the leaves must refute it; here the
+  -- consumer is the abstract `rec-wf`, so the plain sum suffices.
+  data InputPlace {A : Type} (x : ⟦ A ⟧) (input-loc : ValueLocation FS)
+                  (s : LocState FS) : Set where
+    in-ptr : readReg (regs s) Input1 ≡ SV-Ptr input-loc → InputPlace x input-loc s
+    in-reg : readReg (regs s) Input1 ≡ unit-storedvalue → InputPlace x input-loc s
+
   -- Note: capacity precondition removed in Phase 3 (frame-capacity removed)
   RecDispatcherWF : ℕ → Set
   RecDispatcherWF bound = ∀ {A B} (mIn : AllocMode) (ir : IR A B) →
@@ -899,7 +916,9 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     ValidAtWF mIn alloc x input-loc s →
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
-    readReg (regs s) Input1 ≡ SV-Ptr input-loc →
+    -- Plan 0.58: was `readReg (regs s) Input1 ≡ SV-Ptr input-loc` (pointer-only);
+    -- now `InputPlace` admits an `at-reg` (register-resident) intermediate too.
+    InputPlace x input-loc s →
     ∃[ mOut ] IRResultAWF mOut ir x s alloc
 
   ------------------------------------------------------------------------
