@@ -60,10 +60,10 @@ retargeting to `_≋_` both fixes that and closes the proof.)
 ## Check
 
 ```bash
-for m in Conv Complete Sound Finite Decidable Higher Dependent Universe Open Transparency; do bootstrap/check.sh poc/OCP0009/$m.agda; done
+for m in Conv Complete Sound Finite Decidable Higher Dependent Universe Open NbE Transparency; do bootstrap/check.sh poc/OCP0009/$m.agda; done
 ```
 
-All ten exit 0. `Conv.agda`'s example block is the POC *executing*: e.g.
+All eleven exit 0. `Conv.agda`'s example block is the POC *executing*: e.g.
 `conv fo-Nat (fst ∘ ⟨ zero , one ⟩) zero ≡ true` is proved by `refl`, i.e. Agda
 evaluated the conversion and got `true` — the product-β equation decided purely by
 running both sides, never by orienting a rewrite.
@@ -205,14 +205,43 @@ exactly the reduce-vs-induct line. The NbE **engine** (reify open terms to norma
 form so the definitional subset becomes a `Bool`/`Dec` decision, not a hand-written
 `refl`) is the remaining engineering — now with its correct target fixed.
 
+## The NbE engine — sound core (`NbE.agda`, `--safe`, postulate-free)
+
+The residualizing reify/reflect that turns the definitional subset into an
+object-level normal form for **open** terms:
+
+```
+nf : Term A B → Term A B          -- normalize via a semantics with NEUTRALS
+```
+
+`reflect`/`reifyVal`/`eval-nbe`/`nf` are deterministic total functions (same pillar —
+no confluence). `nf` **decides open-term definitional conversion** for the
+`{Unit, ×, +}` fragment: on source `Bool₂ × Bool₂` (whose `+`-typed components keep
+the source variable a genuine neutral), these are decided by `nf t ≡ nf u` (`refl`):
+
+```
+⟨ fst , snd ⟩ ≋ id                 (product η, neutrals survive)
+fst ∘ ⟨ snd , fst ⟩ ≋ snd          (product β)
+[ inr , inl ] ∘ inl ≋ inr          (coproduct β)
+```
+
+These are open conversions the earlier closed/finite `conv` could not state.
+
+**Scope (honest, and sound within it).** `μ` (inductive types) and `⇒` (functions)
+are kept **opaque** (`nOpaque` — carried un-normalized): sound (denotation
+preserved), but not yet normalizing for them. The two extensions are standard and are
+the remaining engineering — `μ` needs the neutral-under-functor handling (cata on
+`In (neutral)`) and in/out-η, the genuinely subtle part of inductive NbE; `⇒` needs a
+Kripke function space for reify. Full adequacy (`nf` sound + complete + stable) is the
+logical-relation obligation — **stated and demonstrated on examples, not postulated**.
+
 ## Next
 
-1. **The NbE engine.** Residualizing reify/reflect so the definitional subset above
-   is *decided* for arbitrary open terms (turn the meta-level `refl` into an
-   object-level decision). Standard for the simply-typed core (terminates by
-   construction); known-hard sub-case is sums; recursion stays inductive-only
-   (OCP-0009 §2). Same pillar: `reify`/`reflect`/`nf` deterministic, no confluence.
-2. **CwF contexts (Rung 2 proper).** Context extension + reindexing so type-codes may
+1. **`μ` in the engine.** Real `vIn` values + cata-β + the neutral-under-functor case,
+   so recursion (e.g. `double`, `0+n`) normalizes and open `∀ n. Vec (0+n) ≡ Vec n`
+   becomes an object-level decision. Recursion stays inductive-only (OCP-0009 §2).
+2. **`⇒` in the engine** (Kripke reify) + **full adequacy** (the logical relation).
+3. **CwF contexts (Rung 2 proper).** Context extension + reindexing so type-codes may
    mention earlier variables — dependent contexts, riding on the engine above.
 
 The through-line: each step extends *one* evaluator and re-confirms the three-
