@@ -41,3 +41,11 @@ open import poc.OCP0009.Finite public
 -- The capstone: conversion is DECIDABLE (proof-carrying `Dec`), the literal
 -- "decidable dependent-type conversion" for the fragment. Zero new postulates.
 open import poc.OCP0009.Decidable public using (≋-dec; ≋-dec₀)
+-- POC-0b(ii): higher-order codomains (functions with finite arguments),
+-- compared by enumerating the argument. Proven; funext only.
+open import poc.OCP0009.Higher public
+  using (Checkable; check-eq; conv-h; conv-h-sound; conv-h-complete)
+-- POC-1: dependent-index conversion. `Vec m ≡ Vec n` reduces to `conv` on the
+-- index terms; `+` is a real `cata` in the IR. Same evaluator, no new engine.
+open import poc.OCP0009.Dependent public
+  using (add; plus; VecConv; Vec-0+3≡Vec-3; Vec-3+0≡Vec-3)
