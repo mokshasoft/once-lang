@@ -41,6 +41,10 @@ open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
 
 open import Once.Type using (Type; Unit)
+-- Plan 0.58 (OCP-0006): a SigOp is an FFI/register-ABI boundary, so its argument
+-- and result types must be CONCRETE (`IsBaseType` — no arrows, no `μ`/`ν`). This is
+-- enforced BY CONSTRUCTION here: a `SigOpInfo` cannot be built at a non-base type.
+open import Once.Functor.Translate using (IsBaseType; IsConcrete)
 
 -- | Frontend / proof-level interpretation (Int ≡ ℤ).
 -- (Core ℤ `as I` removed: semI deleted — the machine `semM` is the meaning.)
@@ -131,6 +135,11 @@ record SigOpInfo (A B : Type) : Set where
   field
     name : CanonicalName            -- Plan 0.50: the resolved [path…, name] identity
     sem  : SigOpSem A B              -- proven value (internal) OR effect contract (external)
+    -- Plan 0.58: the FFI concreteness witnesses. The ARGUMENT is a base type
+    -- (a register/ABI scalar — a higher-order callback arg is out of scope); the
+    -- RESULT is CONCRETE (base, or a first-order function pointer). Proof-irrelevant.
+    baseA : IsBaseType A
+    conB  : IsConcrete B
 
 open SigOpInfo public
 
@@ -168,10 +177,11 @@ effect si = go (sem si)
 -- laundering unrepresentable. `Pure` keeps its value as `pureV`.
 ------------------------------------------------------------------------
 
-mk-info : ∀ {A B} → CanonicalName → (M.⟦ A ⟧ → M.⟦ B ⟧) → EffectShape B → SigOpInfo A B
-mk-info nm f Pure      = mk-info' nm (pureV f)
-mk-info nm f (Emits e) = mk-info' nm (emitsV e)
-mk-info nm f (Halts e) = mk-info' nm (haltsV e)
+mk-info : ∀ {A B} → CanonicalName → (M.⟦ A ⟧ → M.⟦ B ⟧) → EffectShape B
+        → IsBaseType A → IsConcrete B → SigOpInfo A B
+mk-info nm f Pure      bA cB = mk-info' nm (pureV f)     bA cB
+mk-info nm f (Emits e) bA cB = mk-info' nm (emitsV e)    bA cB
+mk-info nm f (Halts e) bA cB = mk-info' nm (haltsV e)    bA cB
 
 ------------------------------------------------------------------------
 -- Name-only equality

@@ -34,6 +34,8 @@ open import Once.Type using (Type; Unit; Int; Str; _*_; _+_;
                               ArrowKind; mk-kind; Purity; pure; eff; isUnit?)
 open import Relation.Nullary using (Dec; yes; no)
 open import Once.SigOp.Info using (SigOpInfo; mk-info; mk-info'; emitsV; EffectShape; Pure; Halts)
+open import Once.Functor.Translate using (IsBaseType; IsConcrete; con-base;
+  base-Unit; base-Int; base-Str; base-Prod; base-Sum)
 open import Once.CanonicalName using (CanonicalName; bare; showCanonical)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
@@ -97,48 +99,57 @@ str-lit-semM s _ = s
 -- SigOpInfo builders
 ------------------------------------------------------------------------
 
+-- Concreteness witnesses for the internal arith SigOp types (all base). The
+-- domain is `IsBaseType`; the codomain is `IsConcrete` (here always `con-base`).
+base-I×I : IsBaseType (Int * Int)
+base-I×I = base-Prod base-Int base-Int
+con-Int : IsConcrete Int
+con-Int = con-base base-Int
+con-U+U : IsConcrete (Unit + Unit)
+con-U+U = con-base (base-Sum base-Unit base-Unit)
+
 -- Binary arithmetic
 add-info : SigOpInfo (Int * Int) Int
-add-info = mk-info (bare "arith.add.int") add-semM Pure
+add-info = mk-info (bare "arith.add.int") add-semM Pure base-I×I con-Int
 
 sub-info : SigOpInfo (Int * Int) Int
-sub-info = mk-info (bare "arith.sub.int") sub-semM Pure
+sub-info = mk-info (bare "arith.sub.int") sub-semM Pure base-I×I con-Int
 
 mul-info : SigOpInfo (Int * Int) Int
-mul-info = mk-info (bare "arith.mul.int") mul-semM Pure
+mul-info = mk-info (bare "arith.mul.int") mul-semM Pure base-I×I con-Int
 
 div-info : SigOpInfo (Int * Int) Int
-div-info = mk-info (bare "arith.div.int") div-semM Pure
+div-info = mk-info (bare "arith.div.int") div-semM Pure base-I×I con-Int
 
 mod-info : SigOpInfo (Int * Int) Int
-mod-info = mk-info (bare "arith.mod.int") mod-semM Pure
+mod-info = mk-info (bare "arith.mod.int") mod-semM Pure base-I×I con-Int
 
 -- Unary arithmetic
 neg-info : SigOpInfo Int Int
-neg-info = mk-info (bare "arith.neg.int") neg-semM Pure
+neg-info = mk-info (bare "arith.neg.int") neg-semM Pure base-Int con-Int
 
 -- Comparisons
 lt-info : SigOpInfo (Int * Int) (Unit + Unit)
-lt-info = mk-info (bare "arith.lt.int") lt-semM Pure
+lt-info = mk-info (bare "arith.lt.int") lt-semM Pure base-I×I con-U+U
 
 le-info : SigOpInfo (Int * Int) (Unit + Unit)
-le-info = mk-info (bare "arith.le.int") le-semM Pure
+le-info = mk-info (bare "arith.le.int") le-semM Pure base-I×I con-U+U
 
 gt-info : SigOpInfo (Int * Int) (Unit + Unit)
-gt-info = mk-info (bare "arith.gt.int") gt-semM Pure
+gt-info = mk-info (bare "arith.gt.int") gt-semM Pure base-I×I con-U+U
 
 ge-info : SigOpInfo (Int * Int) (Unit + Unit)
-ge-info = mk-info (bare "arith.ge.int") ge-semM Pure
+ge-info = mk-info (bare "arith.ge.int") ge-semM Pure base-I×I con-U+U
 
 eq-info : SigOpInfo (Int * Int) (Unit + Unit)
-eq-info = mk-info (bare "arith.eq.int") eq-semM Pure
+eq-info = mk-info (bare "arith.eq.int") eq-semM Pure base-I×I con-U+U
 
 ne-info : SigOpInfo (Int * Int) (Unit + Unit)
-ne-info = mk-info (bare "arith.ne.int") ne-semM Pure
+ne-info = mk-info (bare "arith.ne.int") ne-semM Pure base-I×I con-U+U
 
 -- String literal family
 str-lit-info : String → SigOpInfo Unit Str
-str-lit-info s = mk-info (bare ("lit.str." ++ s)) (str-lit-semM s) Pure
+str-lit-info s = mk-info (bare ("lit.str." ++ s)) (str-lit-semM s) Pure base-Unit (con-base base-Str)
 
 ------------------------------------------------------------------------
 -- Generic placeholder for unresolved / user-imported SigOps
@@ -167,8 +178,8 @@ postulate
 -- exit-syscall → Halts string match) is RETIRED; an external arrow's effect
 -- now comes from its DECLARED `! <shape>`, built at the elaborate site
 -- (`ext-arrow-info` in `TypeCheck.Elaborate`).
-value-info : ∀ {A B} → CanonicalName → SigOpInfo A B
-value-info name = mk-info name (generic-semM (showCanonical name)) Pure
+value-info : ∀ {A B} → CanonicalName → IsBaseType A → IsConcrete B → SigOpInfo A B
+value-info name bA cB = mk-info name (generic-semM (showCanonical name)) Pure bA cB
 
 -- | Compat shims for the surface/meaning sites (`Surface.Desugar`,
 -- `Surface.Elaborate`, `Denotation.SourceDenote`) that still name these.
@@ -179,7 +190,7 @@ value-info name = mk-info name (generic-semM (showCanonical name)) Pure
 -- Keeping the names (vs. inlining) avoids churning those three modules and
 -- keeps `faithful` definitionally `refl` (both presentations use the same
 -- shim).
-generic-info : ∀ {A B} → CanonicalName → SigOpInfo A B
+generic-info : ∀ {A B} → CanonicalName → IsBaseType A → IsConcrete B → SigOpInfo A B
 generic-info = value-info
 
 -- The effect is a LEAF annotation read off the arrow's `Purity` (the only
@@ -194,10 +205,10 @@ generic-info = value-info
 -- top-level aux on the `Dec`, NOT a pattern-match on `B` — so it reduces given
 -- the decision, and the masquerade proof folds it via the SAME `isUnit? B`
 -- the elaborator's `ext-resolved-info` uses).
-arrow-info-eff : ∀ {A B} → CanonicalName → Dec (B ≡ Unit) → SigOpInfo A B
-arrow-info-eff name (yes refl) = mk-info' name (emitsV refl)
-arrow-info-eff name (no _)     = value-info name
+arrow-info-eff : ∀ {A B} → CanonicalName → Dec (B ≡ Unit) → IsBaseType A → IsConcrete B → SigOpInfo A B
+arrow-info-eff name (yes refl) bA cB = mk-info' name (emitsV refl) bA cB
+arrow-info-eff name (no _)     bA cB = value-info name bA cB
 
-arrow-info : ∀ {A B} → ArrowKind → CanonicalName → SigOpInfo A B
-arrow-info (mk-kind _ pure) name = value-info name
-arrow-info {A} {B} (mk-kind _ eff) name = arrow-info-eff name (isUnit? B)
+arrow-info : ∀ {A B} → ArrowKind → CanonicalName → IsBaseType A → IsConcrete B → SigOpInfo A B
+arrow-info (mk-kind _ pure) name bA cB = value-info name bA cB
+arrow-info {A} {B} (mk-kind _ eff) name bA cB = arrow-info-eff name (isUnit? B) bA cB

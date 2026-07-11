@@ -35,6 +35,7 @@ open import Data.Maybe using (Maybe; just; nothing)
 
 open import Once.Type using (Type; Int)
 open import Once.SigOp.Info using (SigOpInfo; mk-info; name; Pure)
+open import Once.Functor.Translate using (IsBaseType; base-Unit; base-Int; base-Prod; con-base)
 open import Once.CanonicalName using (bare)
 
 open import Once.Arith.Machine.AbsState
@@ -151,8 +152,15 @@ block-semM (aneg a)        inp = W.⊝ block-semM a inp
 -- so any downstream evaluator that reduces through proof-level
 -- semantics gets the arith result directly. `semM` is the
 -- definitional modular-`Word` evaluator (`block-semM`).
+-- A block's input shape is a tuple of `Unit`/`Int` ⇒ its `shape-as-type` is base.
+shape-as-type-base : ∀ (sh : InputShape) → IsBaseType (shape-as-type sh)
+shape-as-type-base shape-unit       = base-Unit
+shape-as-type-base shape-int        = base-Int
+shape-as-type-base (shape-pair l r) = base-Prod (shape-as-type-base l) (shape-as-type-base r)
+
 block-info : ∀ {sh} → MArithIR sh → SigOpInfo (shape-as-type sh) Int
 block-info {sh} e = mk-info
   (bare (block-name e))
   (block-semM e)
   Pure  -- arith blocks are observably pure (no event, no halt)
+  (shape-as-type-base sh) (con-base base-Int)

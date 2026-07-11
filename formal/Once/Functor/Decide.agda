@@ -24,6 +24,7 @@ open import Once.Type using (Type; Unit; Void; Int; Float; Str; Buffer;
 open import Once.Functor.Translate
   using (IsBaseType; base-Unit; base-Void; base-Int; base-Float;
          base-Str; base-Buffer; base-Prod; base-Sum;
+         IsConcrete; con-base; con-fun;
          WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod)
 
 -- | Decide whether a type is a base type (no functions / μ / ν).
@@ -43,6 +44,16 @@ isBaseType? (A + B) with isBaseType? A | isBaseType? B
 isBaseType? (_ ⇒[ _ ] _) = nothing
 isBaseType? (μ-type _) = nothing
 isBaseType? (ν-type _) = nothing
+
+-- | Decide whether a type is CONCRETE / FFI-representable (Plan 0.58): a base
+-- type, or a first-order function pointer (base argument, concrete result).
+isConcrete? : (A : Type) → Maybe (IsConcrete A)
+isConcrete? (A ⇒[ _ ] B) with isBaseType? A | isConcrete? B
+... | just bA | just cB = just (con-fun bA cB)
+... | _       | _       = nothing
+isConcrete? A with isBaseType? A
+... | just bA = just (con-base bA)
+... | nothing = nothing
 
 -- | Decide whether a functor is well-formed (K positions are base types).
 wellFormedF? : (F : Functor) → Maybe (WellFormedF F)

@@ -144,6 +144,17 @@ data IsBaseType : Type → Set where
   base-Prod   : ∀ {A B} → IsBaseType A → IsBaseType B → IsBaseType (A * B)
   base-Sum    : ∀ {A B} → IsBaseType A → IsBaseType B → IsBaseType (A + B)
 
+-- | Concrete / FFI-representable type (Plan 0.58, OCP-0006): a SigOp is an
+-- FFI/register-ABI boundary. A CONCRETE type is a base type, or a FIRST-ORDER
+-- function pointer — one whose ARGUMENT is base and whose RESULT is again
+-- concrete (`Int→Int`, `Int→Int→Int`, `Int→(Int×Int)`, …). This admits
+-- first-class references to first-order functions (a linked function pointer)
+-- while EXCLUDING higher-order arguments (callbacks) and `μ`/`ν` — the cases a
+-- register ABI cannot pass and the observational bridge cannot relate funext-free.
+data IsConcrete : Type → Set where
+  con-base : ∀ {A} → IsBaseType A → IsConcrete A
+  con-fun  : ∀ {A B k} → IsBaseType A → IsConcrete B → IsConcrete (A ⇒[ k ] B)
+
 -- | Well-formed functor predicate
 --
 -- K positions only contain base types.
