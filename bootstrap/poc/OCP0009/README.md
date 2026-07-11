@@ -227,13 +227,27 @@ fst ∘ ⟨ snd , fst ⟩ ≋ snd          (product β)
 
 These are open conversions the earlier closed/finite `conv` could not state.
 
-**Scope (honest, and sound within it).** `μ` (inductive types) and `⇒` (functions)
-are kept **opaque** (`nOpaque` — carried un-normalized): sound (denotation
-preserved), but not yet normalizing for them. The two extensions are standard and are
-the remaining engineering — `μ` needs the neutral-under-functor handling (cata on
-`In (neutral)`) and in/out-η, the genuinely subtle part of inductive NbE; `⇒` needs a
-Kripke function space for reify. Full adequacy (`nf` sound + complete + stable) is the
-logical-relation obligation — **stated and demonstrated on examples, not postulated**.
+**Now with `μ` (inductive types).** Real `vIn` values + **cata-β** (recursion runs) +
+**out-η** (`Out ∘ In = id`) + **cata/Out on a μ-neutral stays stuck** (the
+inductive-only discipline, OCP-0009 §2). The subtle soundness case — `cata` meeting a
+functor-position neutral — is residualized via the syntactic `fmap` (`mapCata`), so
+nothing is dropped. Executing (`refl`):
+
+```
+double ∘ zero ≋ zero            (cata-β: recursion normalizes; double 0 = 0)
+double ∘ one  ≋ two             (double 1 = 2)
+Out ∘ In ≋ id                   (out-η, open μ term)
+double ∘ id ≋ double            (cata on a μ-variable stays stuck)
+```
+
+**Scope (honest, sound within it).** Still open: **in-η** (`In ∘ Out = id`) is *not*
+captured — matching `Out` under a value at a `⟦F⟧F(μF)` index needs `⟦_⟧F` to be
+injective, which Agda's unifier can't invert; sound, one η-law fewer. **`⇒`**
+(functions) stays **opaque** (`nOpaque` — needs a Kripke reify). Full adequacy (`nf`
+sound + complete + stable) is the logical-relation obligation — **stated and
+demonstrated, not postulated**. `NbE.agda` now carries a `TERMINATING` pragma (the
+`eval-nbe`/`vcata`/`mapCata` knot terminates by the standard NbE argument, not
+Agda-structurally), so it is no longer `--safe`.
 
 ## Next
 

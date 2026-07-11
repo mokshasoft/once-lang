@@ -560,11 +560,15 @@ normalizes *open* terms and decides open-term definitional conversion for the
 `{Unit, ×, +}` fragment — product β/η and coproduct β, with the source variable
 surviving as a genuine neutral (decided by `nf t ≡ nf u`, `refl`). `reflect`/`reify`/
 `eval-nbe`/`nf` are deterministic total functions — the same evaluator pillar, no
-confluence. `μ` (inductive types) and `⇒` (functions) are carried **opaquely**
-(sound, un-normalized); normalizing them is the remaining engineering — `μ` needs the
-neutral-under-functor case (`cata` on `In (neutral)`) + in/out-η (the subtle part of
-inductive NbE), `⇒` needs a Kripke reify. Full adequacy (`nf` sound + complete +
-stable) is the logical-relation obligation — stated and demonstrated, not postulated.
+confluence. `μ` (inductive types) is now IN the engine: real `vIn` values +
+**cata-β** (recursion normalizes — `double 0 ≋ 0`, `double 1 ≋ 2`), **out-η**
+(`Out ∘ In = id`), and **cata/Out on a μ-neutral stays stuck** (the inductive-only
+discipline, §2, operational). The subtle soundness case — `cata` meeting a
+functor-position neutral — is residualized via the syntactic `fmap` (`mapCata`), so
+nothing is dropped. Still open: **in-η** (`In ∘ Out = id`; blocked by `⟦_⟧F`
+non-injectivity in Agda's unifier — sound, one η-law fewer) and **`⇒`** (opaque; needs
+a Kripke reify). Full adequacy (`nf` sound + complete + stable) is the logical-relation
+obligation — stated and demonstrated, not postulated.
 
 ### Rung 1 — one universe + type-level functions
 
