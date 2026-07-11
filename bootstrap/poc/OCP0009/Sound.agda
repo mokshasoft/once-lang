@@ -1,25 +1,31 @@
 ------------------------------------------------------------------------
--- OCP-0009 · POC-0 — Discharging `conv-sound` down to canonicity
+-- OCP-0009 · POC-0 — `conv` decides observational equality (finalized)
 --
--- `conv-sound : conv fo t u ≡ true → t ≈ u` is the hard (NbE-adequacy)
--- direction. This module discharges EVERYTHING around the genuine content
--- and pins the remaining hole to a single, standard, minimal lemma:
+-- The definitional equality a type-checker actually needs is CONVERSION —
+-- the equality the model induces, i.e. "same denotation". Here that is
+-- observational (model) equality of IR morphisms:
 --
---   reify-eval (canonicity) : every closed first-order morphism is
---     convertible to the canonical morphism of its value:
---         t  ≈  ↑ (eval t tt).
+--     t ≋ u   :=   ∀ x. eval t x ≡ eval u x
 --
--- Proven here (postulate-free except funext, inherited via Complete):
---   · eq-val-sound   — structural value-equality reflects `_≡_`
---   · ↑ (reify)       — canonical morphism of a first-order value
---   · eval-reify      — reify is a section: eval (↑ v) tt ≡ v
---   · ≈-trans, ≈-sym  — `_≈_` is an equivalence
---   · eval-reflect, conv-sound — DERIVED from `reify-eval` + the above
+-- This is the MAXIMAL sound definitional equality: it validates every βη
+-- law AND terminal-η (a CCC's terminal object is unique), and is sound by
+-- construction (equal denotations). It is strictly COARSER than the
+-- reduction convertibility `_≈_` (Complete.agda), whose rule set has no
+-- terminal-η — e.g. `id{Unit} ≋ terminal` but NOT `id{Unit} ≈ terminal`.
+-- So `conv` (which compares denotations) decides `_≋_`, not `_≈_`.
 --
--- So the entire `conv-sound` obligation is reduced to `reify-eval`, which is
--- exactly the canonicity / transparency content of the repo's open
--- `EvalFullCorrectness` (normalizer-vs-compiler-path.md). Proving it is a
--- Tait-style logical relation over all types — POC-0b.
+-- MAIN RESULT (this module, ZERO postulates): on closed morphisms
+-- `Term Unit C` with FIRST-ORDER codomain `C`, `conv` is a SOUND and
+-- COMPLETE decision procedure for `_≋_`:
+--
+--     conv-decides : (t ≋ u → conv fo t u ≡ true)
+--                  × (conv fo t u ≡ true → t ≋ u)
+--
+-- The domain being `Unit` (a single point) is what makes the `∀ x` collapse
+-- to one evaluation; first-order `C` is what makes value-equality decidable
+-- without reification. Lifting either restriction (open terms / higher-order
+-- codomains) is POC-0b (residualizing NbE). The reduction theory is related
+-- by `_≈_ ⊆ _≋_` (`≈⊆≋`, = eval-soundness), so `conv` also respects `_⟶_`.
 ------------------------------------------------------------------------
 
 module poc.OCP0009.Sound where
@@ -28,24 +34,45 @@ open import normalizer.Syntax.Types
 open import normalizer.Syntax.CCC
 open import normalizer.Testing.Evaluator hiding (fst; snd)
 open import poc.OCP0009.Conv
-open import poc.OCP0009.Complete using (_≈_; ≈-refl; ≈-step; ≈-back)
+open import poc.OCP0009.Complete using (_≈_; eval-sound; eval-≈)
 
 ------------------------------------------------------------------------
--- `_≈_` is an equivalence.
+-- Observational (model) equality — the conversion `conv` decides.
 ------------------------------------------------------------------------
 
-≈-trans : ∀ {A B} {t u v : Term A B} → t ≈ u → u ≈ v → t ≈ v
-≈-trans ≈-refl        q = q
-≈-trans (≈-step r e)  q = ≈-step r (≈-trans e q)
-≈-trans (≈-back r e)  q = ≈-back r (≈-trans e q)
+_≋_ : ∀ {A B} → Term A B → Term A B → Set
+_≋_ {A} t u = (x : ⟦ A ⟧T) → eval t x ≡ eval u x
 
-≈-sym : ∀ {A B} {t u : Term A B} → t ≈ u → u ≈ t
-≈-sym ≈-refl       = ≈-refl
-≈-sym (≈-step r e) = ≈-trans (≈-sym e) (≈-back r ≈-refl)
-≈-sym (≈-back r e) = ≈-trans (≈-sym e) (≈-step r ≈-refl)
+-- Equivalence.
+≋-refl  : ∀ {A B} (t : Term A B) → t ≋ t
+≋-refl  t x = refl
 
-≡→≈ : ∀ {A B} {t u : Term A B} → t ≡ u → t ≈ u
-≡→≈ refl = ≈-refl
+≋-sym   : ∀ {A B} {t u : Term A B} → t ≋ u → u ≋ t
+≋-sym   e x = sym (e x)
+
+≋-trans : ∀ {A B} {t u v : Term A B} → t ≋ u → u ≋ v → t ≋ v
+≋-trans e₁ e₂ x = trans (e₁ x) (e₂ x)
+
+-- Congruence (a sample — enough to certify `_≋_` is a real conversion, not
+-- just a relation). `eval` is compositional, so these are immediate.
+≋-∘ : ∀ {A B C} {f f' : Term B C} {g g' : Term A B} →
+      f ≋ f' → g ≋ g' → (f ∘ g) ≋ (f' ∘ g')
+≋-∘ {f = f} {g' = g'} ef eg x = trans (cong (eval f) (eg x)) (ef (eval g' x))
+
+≋-⟨,⟩ : ∀ {A B C} {f f' : Term C A} {g g' : Term C B} →
+        f ≋ f' → g ≋ g' → ⟨ f , g ⟩ ≋ ⟨ f' , g' ⟩
+≋-⟨,⟩ ef eg x = cong₂ _,_ (ef x) (eg x)
+
+------------------------------------------------------------------------
+-- The reduction theory is sound for `_≋_`:  _⟶_ ⊆ _≈_ ⊆ _≋_.
+-- (So `conv`, deciding `_≋_`, also accepts everything `_⟶_`/`_≈_` equate.)
+------------------------------------------------------------------------
+
+⟶⊆≋ : ∀ {A B} {t u : Term A B} → t ⟶ u → t ≋ u
+⟶⊆≋ r = eval-sound r
+
+≈⊆≋ : ∀ {A B} {t u : Term A B} → t ≈ u → t ≋ u
+≈⊆≋ e = eval-≈ e
 
 ------------------------------------------------------------------------
 -- Structural value-equality reflects propositional equality.
@@ -89,83 +116,30 @@ eq-val-sound (A + B) (fo-+ fa fb) (inj₁ a) (inj₂ d) ()
 eq-val-sound (A + B) (fo-+ fa fb) (inj₂ b) (inj₁ c) ()
 eq-val-sound (μ F)   fo-μ         v        w        p = eq-Fix-sound F v w p
 
-------------------------------------------------------------------------
--- Reify: the canonical morphism of a first-order value.
-------------------------------------------------------------------------
-
-mutual
-  {-# TERMINATING #-}
-  ↑Fix : ∀ F → Fix F → Term Unit (μ F)
-  ↑Fix F (fix x) = In ∘ ↑layer F F x
-
-  ↑layer : ∀ F G → ⟦ G ⟧FS (Fix F) → Term Unit (⟦ G ⟧F (μ F))
-  ↑layer F Id      x        = ↑Fix F x
-  ↑layer F One     _        = terminal
-  ↑layer F (Kc H)  x        = ↑Fix H x
-  ↑layer F (G ⊕ H) (inj₁ x) = inl ∘ ↑layer F G x
-  ↑layer F (G ⊕ H) (inj₂ y) = inr ∘ ↑layer F H y
-  ↑layer F (G ⊗ H) (x , y)  = ⟨ ↑layer F G x , ↑layer F H y ⟩
-
-↑ : ∀ C → FirstOrder C → ⟦ C ⟧T → Term Unit C
-↑ Void    fo-void      v        = ⊥-elim v
-↑ Unit    fo-unit      _        = terminal
-↑ (A * B) (fo-* fa fb) (a , b)  = ⟨ ↑ A fa a , ↑ B fb b ⟩
-↑ (A + B) (fo-+ fa fb) (inj₁ a) = inl ∘ ↑ A fa a
-↑ (A + B) (fo-+ fa fb) (inj₂ b) = inr ∘ ↑ B fb b
-↑ (μ F)   fo-μ         v        = ↑Fix F v
+-- Converse (reflexivity of the check on equal values), imported shape.
+open import poc.OCP0009.Complete using (eq-val-refl)
 
 ------------------------------------------------------------------------
--- Reify is a section of eval: eval (↑ v) tt ≡ v.
+-- MAIN: `conv` is a sound and complete decision procedure for `_≋_`
+-- on closed morphisms with first-order codomain. ZERO postulates.
 ------------------------------------------------------------------------
 
-mutual
-  {-# TERMINATING #-}
-  eval-reify-Fix : ∀ F (v : Fix F) → eval (↑Fix F v) tt ≡ v
-  eval-reify-Fix F (fix x) = cong fix (eval-reify-layer F F x)
+-- Completeness: observationally-equal morphisms are accepted.
+conv-complete : ∀ {C} (fo : FirstOrder C) (t u : Term Unit C)
+              → t ≋ u → conv fo t u ≡ true
+conv-complete {C} fo t u e =
+  subst (λ z → eq-val C fo (eval t tt) z ≡ true)
+        (e tt)
+        (eq-val-refl C fo (eval t tt))
 
-  eval-reify-layer : ∀ F G (x : ⟦ G ⟧FS (Fix F)) →
-                     coherence G (μ F) (eval (↑layer F G x) tt) ≡ x
-  eval-reify-layer F Id      x        = eval-reify-Fix F x
-  eval-reify-layer F One     _        = refl
-  eval-reify-layer F (Kc H)  x        = eval-reify-Fix H x
-  eval-reify-layer F (G ⊕ H) (inj₁ x) = cong inj₁ (eval-reify-layer F G x)
-  eval-reify-layer F (G ⊕ H) (inj₂ y) = cong inj₂ (eval-reify-layer F H y)
-  eval-reify-layer F (G ⊗ H) (x , y)  = cong₂ _,_ (eval-reify-layer F G x)
-                                                  (eval-reify-layer F H y)
-
-eval-reify : ∀ C (fo : FirstOrder C) (v : ⟦ C ⟧T) → eval (↑ C fo v) tt ≡ v
-eval-reify Void    fo-void      v        = ⊥-elim v
-eval-reify Unit    fo-unit      _        = refl
-eval-reify (A * B) (fo-* fa fb) (a , b)  = cong₂ _,_ (eval-reify A fa a) (eval-reify B fb b)
-eval-reify (A + B) (fo-+ fa fb) (inj₁ a) = cong inj₁ (eval-reify A fa a)
-eval-reify (A + B) (fo-+ fa fb) (inj₂ b) = cong inj₂ (eval-reify B fb b)
-eval-reify (μ F)   fo-μ         v        = eval-reify-Fix F v
-
-------------------------------------------------------------------------
--- The single remaining hole: canonicity.
---
--- Every closed first-order morphism reduces (is convertible) to the
--- canonical morphism of its value. This is the genuine NbE-adequacy /
--- transparency lemma (OCP-0009 Motivation; §6; EvalFullCorrectness).
--- Proof route: a Tait-style logical relation over all types (POC-0b).
-------------------------------------------------------------------------
-
-postulate
-  reify-eval : ∀ {C} (fo : FirstOrder C) (t : Term Unit C) → t ≈ ↑ C fo (eval t tt)
-
-------------------------------------------------------------------------
--- Everything else is DERIVED from `reify-eval`.
-------------------------------------------------------------------------
-
--- Reflection: the evaluator reflects equality on first-order codomains.
-eval-reflect : ∀ {C} (fo : FirstOrder C) (t u : Term Unit C)
-             → eval t tt ≡ eval u tt → t ≈ u
-eval-reflect {C} fo t u e =
-  ≈-trans (reify-eval fo t)
-          (≈-trans (≡→≈ (cong (↑ C fo) e))
-                   (≈-sym (reify-eval fo u)))
-
--- Soundness of `conv`: what `conv` identifies is definitionally equal.
+-- Soundness: accepted morphisms are observationally equal. The domain is
+-- `Unit`, so any `x : ⟦Unit⟧T` is definitionally `tt`; hence one evaluation
+-- suffices for all `x`.
 conv-sound : ∀ {C} (fo : FirstOrder C) (t u : Term Unit C)
-           → conv fo t u ≡ true → t ≈ u
-conv-sound {C} fo t u p = eval-reflect fo t u (eq-val-sound C fo (eval t tt) (eval u tt) p)
+           → conv fo t u ≡ true → t ≋ u
+conv-sound {C} fo t u p _ = eq-val-sound C fo (eval t tt) (eval u tt) p
+
+-- `conv` DECIDES `_≋_`.
+conv-decides : ∀ {C} (fo : FirstOrder C) (t u : Term Unit C)
+             → (t ≋ u → conv fo t u ≡ true) × (conv fo t u ≡ true → t ≋ u)
+conv-decides fo t u = conv-complete fo t u , conv-sound fo t u

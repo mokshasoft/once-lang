@@ -27,14 +27,30 @@ POC-0 adds only a generic structural equality on canonical values
 OCP-0009 §6 ("operates on the reified IR … not by touching the compiler
 front-end").
 
+## What conversion means here
+
+The definitional equality `conv` decides is **observational (model) equality**:
+
+```
+t ≋ u   :=   ∀ x. eval t x ≡ eval u x
+```
+
+This is the *correct*, maximal, sound conversion: it validates all βη laws **and**
+terminal-η (a CCC's terminal object is unique), by construction. It is strictly
+**coarser** than the reduction convertibility `_≈_` (RST-closure of `_⟶_`), whose
+rule set has no terminal-η — e.g. `id{Unit} ≋ terminal` but **not** `id{Unit} ≈
+terminal`. So `conv`, which compares denotations, decides `_≋_`, not `_≈_`. (An
+earlier draft mistakenly targeted `_≈_` and postulated a *false* canonicity lemma;
+retargeting to `_≋_` both fixes that and closes the proof.)
+
 ## Files
 
 | File | Flags | Contents |
 |---|---|---|
 | `Conv.agda` | `--safe`, **postulate-free** | `FirstOrder`, `eq-val`/`eq-Fix`, `conv`, and worked examples whose `refl` proofs **force `conv` to run at type-check time** |
-| `Complete.agda` | funext only | `eval-sound` (eval respects every `⟶` rule) → **`conv-complete` proven** |
-| `Sound.agda` | funext + `reify-eval` | `eq-val-sound`, reify `↑`, its section `eval-reify`, `_≈_` equivalence → **`conv-sound` derived** from the single canonicity hole |
-| `Transparency.agda` | (re-export) | status board; `decides-≈` = complete + sound together |
+| `Complete.agda` | funext only | `eval-sound : t ⟶ u → ∀ x. eval t x ≡ eval u x` (eval respects every rule) + `eq-val-refl`; `≈→conv` |
+| `Sound.agda` | **postulate-free** | `_≋_` (+ equivalence/congruence), `eq-val-sound`, and the finalized **`conv-sound` / `conv-complete` / `conv-decides`** |
+| `Transparency.agda` | (re-export) | status board |
 
 ## Check
 
@@ -47,32 +63,32 @@ All four exit 0. `Conv.agda`'s example block is the POC *executing*: e.g.
 evaluated the conversion and got `true` — the product-β equation decided purely by
 running both sides, never by orienting a rewrite.
 
-## Status against the scorecard (OCP-0009)
+## Status against the scorecard (OCP-0009) — FINALIZED
 
-`conv` must be a **sound + complete + terminating** decision procedure for the
-chosen congruence `_≈_` (the RST-closure of `_⟶_`).
+`conv` is a **sound + complete + terminating** decision procedure for conversion
+`_≋_`, on closed morphisms `Term Unit C` with first-order codomain `C`:
 
-- **Terminating** — ✅ free: `conv` is a total Agda function (`Conv.agda` is `--safe`).
-- **Complete** — ✅ **discharged**: `conv-complete` (`Complete.agda`), from
-  `eval-sound : t ⟶ u → ∀ x. eval t x ≡ eval u x` (eval validates every reduction
-  rule as a model equation), lifted to `_≈_`.
-- **Sound** — ◑ **reduced to one lemma**: `conv-sound` (`Sound.agda`) is *derived*
-  from canonicity `reify-eval : t ≈ ↑ (eval t tt)`. Everything else — `eq-val-sound`
-  (structural equality reflects `≡`), reify `↑`, its section `eval-reify`, `_≈_` as
-  an equivalence — is proven.
+- **Terminating** — ✅ `conv` is a total Agda function (`Conv.agda`, `--safe`).
+- **Sound** — ✅ `conv-sound : conv fo t u ≡ true → t ≋ u` (`Sound.agda`).
+- **Complete** — ✅ `conv-complete : t ≋ u → conv fo t u ≡ true` (`Sound.agda`).
+- ⇒ **`conv-decides`** — ✅ `conv` decides `_≋_`.
 
-### Remaining postulates (whole POC)
+Both directions are proven with **zero postulates**. The reduction theory is related
+by `≈⊆≋` (= eval-soundness), so `conv` also accepts everything `_⟶_`/`_≈_` equate
+(`≈→conv`).
 
-Exactly two, both named and standard:
+### Axiom inventory (whole POC)
 
-- **`funext`** (`Complete.agda`) — function extensionality; used only for congruence
-  under `curry`. Consistent; far milder than the *false* confluence/SN postulates the
-  rewriting track needs.
-- **`reify-eval`** (`Sound.agda`) — canonicity: every closed first-order morphism is
-  convertible to the canonical morphism of its value. This is the genuine
-  NbE-adequacy / transparency content of the evaluator route, identical to the repo's
-  open `EvalFullCorrectness` (`normalizer-vs-compiler-path.md`). Proof = a Tait-style
-  logical relation over all types.
+Exactly **one**: `funext` (`Complete.agda`), used only for congruence under `curry`
+in eval-soundness (the `≈⊆≋` bridge). Consistent, standard; far milder than the
+*false* confluence/SN postulates the rewriting track rests on. The core decision
+result `conv-decides` is **funext-free**.
+
+### Scope (honest)
+
+Closed morphisms (`Unit` domain — one point, so `∀ x` collapses to a single
+evaluation) with first-order codomain (so value-equality is decidable without
+reification). Lifting either restriction is POC-0b.
 
 ## Scope (honest)
 
@@ -85,15 +101,12 @@ extends (OCP-0009 §5, "open terms / neutrals").
 
 ## Next
 
-1. **Close `reify-eval` (canonicity).** The one remaining hole. A Tait-style logical
-   relation over all types relating a closed morphism to its value; the μ-case uses
-   the initial-algebra induction principle. This also discharges OCP-0004's open
-   `EvalFullCorrectness` transparency obligation for this fragment. *(Paper-length;
-   its own work item.)*
-2. **POC-0b — neutrals.** Extend `eval`→reify to a residualizing (NbE) semantics so
-   `conv` covers function-valued codomains and open terms. Removes the `FirstOrder`
-   restriction.
-3. **POC-1 — CwF layer (Rung 2).** Add `Π`/`Σ` + context extension as new IR
+POC-0 is complete for its fragment. Beyond it:
+
+1. **POC-0b — open terms / neutrals.** Extend `eval`→reify to a residualizing (NbE)
+   semantics so `conv` covers function-valued codomains and open terms — i.e. decide
+   `_≋_`'s `∀ x` without a single-point domain. Removes both scope restrictions.
+2. **POC-1 — CwF layer (Rung 2).** Add `Π`/`Σ` + context extension as new IR
    constructors over the *same* evaluator; elaborate a named surface into the
    nameless core; decide `Vec (0+n) ≡ Vec n` by this same `conv`.
 

@@ -15,7 +15,13 @@
 -- — far milder than the FALSE confluence/SN postulates the rewriting
 -- developments rest on (OCP-0009 Motivation).
 --
--- Result: `conv-complete` is PROVEN here (no longer postulated).
+-- Result: `≈→conv` is PROVEN here — reduction-equal morphisms are accepted
+-- by `conv`. (This is soundness of the reduction theory for `conv`; the
+-- full sound+complete decision result is against observational equality
+-- `_≋_` in Sound.agda, since `conv` decides a COARSER, fully-extensional
+-- equality than the reduction `_≈_` — e.g. it equates `id{Unit}` and
+-- `terminal`, which `_≈_` does not, the reduction system having no
+-- terminal-η rule.)
 ------------------------------------------------------------------------
 
 module poc.OCP0009.Complete where
@@ -192,12 +198,13 @@ eq-val-refl (A + B) (fo-+ fa fb) (inj₂ b) = eq-val-refl B fb b
 eq-val-refl (μ F)   fo-μ         v        = eq-Fix-refl F v
 
 ------------------------------------------------------------------------
--- conv-complete: definitional equality is identified by `conv`.
+-- ≈→conv: reduction-equal morphisms are accepted by `conv`.
+-- (Soundness of the reduction theory `_≈_` for `conv`, via eval-soundness.)
 ------------------------------------------------------------------------
 
-conv-complete : ∀ {C} (fo : FirstOrder C) (t u : Term Unit C)
-              → t ≈ u → conv fo t u ≡ true
-conv-complete {C} fo t u e =
+≈→conv : ∀ {C} (fo : FirstOrder C) (t u : Term Unit C)
+       → t ≈ u → conv fo t u ≡ true
+≈→conv {C} fo t u e =
   subst (λ z → eq-val C fo (eval t tt) z ≡ true)
         (eval-≈ e tt)
         (eq-val-refl C fo (eval t tt))
