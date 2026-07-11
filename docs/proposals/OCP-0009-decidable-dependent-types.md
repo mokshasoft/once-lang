@@ -494,6 +494,24 @@ plain BCCR, nothing above it stands — so the POC order is the risk order: prov
 hardest, most load-bearing thing (evaluator adequacy at CCT3) first, on the smallest
 system, *before* adding Π/Σ.
 
+**Status — realized (`bootstrap/poc/OCP0009/`).** `conv(a,b) = eq-val (eval a)(eval
+b)` over the real IR + evaluator (compiler untouched), proven a **sound + complete**
+decision procedure (`conv-decides`) on closed first-order-codomain morphisms, with
+**one axiom** (funext, for `curry`-congruence; the core result is funext-free).
+
+**The finding worth keeping.** The evaluator decides the **model / observational
+equality** `t ≋ u := ∀ x. eval t x ≡ eval u x`, which is the *maximal sound*
+conversion — it validates every βη law **and** terminal-η by construction. This is
+strictly **coarser** than the reduction convertibility `_≈_` (RST-closure of the IR's
+`_⟶_`), whose rule set lacks terminal-η (so `id{Unit} ≋ terminal` but *not*
+`id{Unit} ≈ terminal`). Two consequences: (i) the evaluator route buys **full
+extensionality for free** — exactly the OTT/observational target — rather than only
+the reduction theory's equations; (ii) "decide conversion by evaluation" must mean
+*decide the model equality* (`≋`), with the reduction system an *under-approximation*
+of it (`_≈_ ⊆ _≋_`, via eval-soundness). Deciding `≋` on **open / higher-order** terms
+(where the `∀ x` no longer collapses to one point) is exactly where residualizing NbE
+/ neutrals re-enter — POC-0b, the §5 "open terms / neutrals" extension.
+
 ### Rung 1 — one universe + type-level functions
 
 Add `Type₀` and let `Cata` compute over *types* (the λω̲ corner: types→types, no
