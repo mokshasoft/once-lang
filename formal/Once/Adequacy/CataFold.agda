@@ -51,7 +51,7 @@ cata-fold-eq : ∀ {n} {Γ : Ctx n} {F : Functor} {A : Type} {π : Purity}
       ≡ SD.⟦ Srf.lift-morphism {Γ = Γ} {π = π} (IR.Cata wfF m-alg) ⟧ˢ dγ k
 cata-fold-eq {F = F} {A = A} wfF algE m-alg feq dγ k =
   cong ([] ,_) (extensionality λ x → extensionality λ n →
-    cong (λ alg → let r = sem-cata wfF alg x in (proj₁ r , inject (proj₂ r)))
+    cong (λ alg → let r = sem-cata wfF alg x in (proj₁ r , proj₂ r))
       (extensionality λ fc → alg-eq n fc))
   where
     alg-eq : ∀ n fc

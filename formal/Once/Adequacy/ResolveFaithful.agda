@@ -164,7 +164,7 @@ resolveExpr-faithful polys imps userFns fresh (Srf.effApp f x) dγ k =
 -- T-value by funext over fuel); the fold structure is otherwise identical.
 resolveExpr-faithful polys imps userFns fresh (Srf.cata {F = F} {A = A} wf alg) dγ k =
   cong (λ ac → [] , (λ x → λ n →
-         let r = sem-cata wf (SD.cata-ev-algˢ {F} {A} n ac) x in (proj₁ r , inject (proj₂ r))))
+         let r = sem-cata wf (SD.cata-ev-algˢ {F} {A} n ac) x in (proj₁ r , proj₂ r)))
        (extensionality (λ j → resolveExpr-faithful polys imps userFns fresh alg tt j))
 -- ana: dual of cata — a closure over the CLOSED coalgebra `⟦coalg⟧ˢ tt` (appears
 -- in both `ana-eventsˢ` and `sem-ana`). One `cong` over the coalgebra denotation.

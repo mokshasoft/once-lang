@@ -36,7 +36,7 @@ open import Once.Type
   using (Type; Unit; Void; Int; Str; _*_; _+_; _⇒[_]_; Functor; ⟦_⟧T; μ-type)
 open import Once.Surface.Syntax using (Expr; Ctx; Usage; lookup; _,_^_; ∅; ⟦_⟧ᶜ)
 open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_; projTrace; valueT)
-open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ; evalᴰ; forget; inject; emit-D)
+open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ; evalᴰ; forget; inject; emit-D; coerce-functor⁻¹-D)
 open import Once.Denotation.TraceDenote using (events-F)
 open import Once.Denotation.Trace using (SigOpEvent)
 open import Once.IR using (IR)
@@ -80,12 +80,12 @@ lookupᴰ (Γ , A ^ q) (fsuc i) dγ = lookupᴰ Γ i (proj₁ dγ)
 -- handles an effectful build correctly — the trace agrees per layer on both
 -- sides.)
 cata-ev-algˢ : ∀ {F C} → ℕ → T (⟦ ⟦ F ⟧T C ⟧ᴰ → T ⟦ C ⟧ᴰ)
-             → ⟦ F ⟧F (List SigOpEvent × Val.⟦ C ⟧) → List SigOpEvent × Val.⟦ C ⟧
+             → ⟦ F ⟧F (List SigOpEvent × ⟦ C ⟧ᴰ) → List SigOpEvent × ⟦ C ⟧ᴰ
 cata-ev-algˢ {F} {C} n algComp fc =
   ( events-F F proj₁ fc ++ projTrace step n
-  , forget (valueT step n) )
-  where z    = coerce-functor⁻¹ F C (sem-fmap F proj₂ fc)
-        step = algComp >>=T λ algClo → algClo (inject z)
+  , valueT step n )
+  where z    = coerce-functor⁻¹-D F C (sem-fmap F proj₂ fc)
+        step = algComp >>=T λ algClo → algClo z
 
 ------------------------------------------------------------------------
 -- The `Ana` depth-bounded unfold TRACE over a ⟦_⟧ˢ coalgebra CLOSURE — the
@@ -166,7 +166,7 @@ ana-eventsˢ {F} {A} coalgComp a (suc m) =
 ⟦ cata {F = F} {A = A} wf alg ⟧ˢ dγ =
   returnT (λ x → λ n →
     let r = sem-cata wf (cata-ev-algˢ {F} {A} n (⟦ alg ⟧ˢ tt)) x
-    in (proj₁ r , inject (proj₂ r)))
+    in (proj₁ r , proj₂ r))
 -- Ana: the productive unfold. Coalgebra CLOSED (∅) → `⟦coalg⟧ˢ tt` is the
 -- closure. TRACE via `ana-eventsˢ` (depth-bounded prefix, the SOLE T-ℕ consumer);
 -- VALUE via `sem-ana` (the codata), mirroring `eval (Ana …)` but elaborate-free.

@@ -36,7 +36,7 @@ open import Data.Sum using (_⊎_; inj₁; inj₂)
 
 open import Once.Type
   using (Type; Unit; Void; _*_; _+_; _⇒[_]_; μ-type; ν-type;
-         Int; Float; Str; Buffer; Functor; ⟦_⟧T)
+         Int; Float; Str; Buffer; Functor; K; Id; _⊕_; _⊗_; ⟦_⟧T)
 open import Once.IR
   using (IR; id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal;
          initial; curry; apply; arr; SigOp; Cata; In; Out; Ana;
@@ -85,6 +85,21 @@ open import Once.Denotation.ValueDomain public
 ------------------------------------------------------------------------
 
 ------------------------------------------------------------------------
+-- Plan 0.58: the `⟦_⟧ᴰ`-level functor coercion — the trace-preserving mirror
+-- of `coerce-functor⁻¹`. The recursion-scheme fold must carry `⟦C⟧ᴰ` (NOT the
+-- forgotten `Val.⟦C⟧`) so an EFFECTFUL-arrow carrier keeps its apply-time
+-- effects (the `Val`-fold's `forget`-per-layer silently dropped them). Purely
+-- structural: `Id`→carrier, `⊕`/`⊗`→structural, `K A`→`inject` (a `K` value is
+-- `Val.⟦A⟧`; `inject` lifts it to `⟦A⟧ᴰ`, the identity at the base types `K`
+-- holds for a `WellFormedF`).
+coerce-functor⁻¹-D : ∀ F C → ⟦ F ⟧F ⟦ C ⟧ᴰ → ⟦ ⟦ F ⟧T C ⟧ᴰ
+coerce-functor⁻¹-D (K A)    C x        = inject x
+coerce-functor⁻¹-D Id       C x        = x
+coerce-functor⁻¹-D (F ⊕ G)  C (inj₁ x) = inj₁ (coerce-functor⁻¹-D F C x)
+coerce-functor⁻¹-D (F ⊕ G)  C (inj₂ y) = inj₂ (coerce-functor⁻¹-D G C y)
+coerce-functor⁻¹-D (F ⊗ G)  C (x , y)  = (coerce-functor⁻¹-D F C x , coerce-functor⁻¹-D G C y)
+
+------------------------------------------------------------------------
 -- `evalᴰ` — the monadic IR interpretation (the source observable). The
 -- structural cases are NATIVE (so `curry`/`apply` build/run genuine
 -- Kleisli closures, closing the closure-effect gap fuel-free); `SigOp`
@@ -95,10 +110,11 @@ open import Once.Denotation.ValueDomain public
 evalᴰ        : ∀ {A B} → IR A B → ⟦ A ⟧ᴰ → T ⟦ B ⟧ᴰ
 rec-trace-D  : ∀ {A B} → IR A B → Val.⟦ A ⟧ → ℕ → List SigOpEvent
 -- The events algebra for the `Cata` fold: children's events (`events-F`)
--- followed by this layer's algebra events (`evalᴰ alg` on the rebuilt,
--- injected functor layer). Value carried in the pure domain (via `eval`).
+-- followed by this layer's algebra events (`evalᴰ alg` on the rebuilt functor
+-- layer). Plan 0.58: value carried in the MONADIC domain `⟦C⟧ᴰ` (NOT forgotten
+-- to `Val.⟦C⟧`) so an effectful-arrow carrier keeps its apply-time effects.
 cata-ev-algᴰ : ∀ {F C} → ℕ → IR (⟦ F ⟧T C) C
-             → ⟦ F ⟧F (List SigOpEvent × Val.⟦ C ⟧) → List SigOpEvent × Val.⟦ C ⟧
+             → ⟦ F ⟧F (List SigOpEvent × ⟦ C ⟧ᴰ) → List SigOpEvent × ⟦ C ⟧ᴰ
 -- `Para`'s trace algebra. `sem-para`'s algebra sees `⟦F⟧F (μF × A)` (each
 -- child: its substructure `μF` + its folded result `A`); we fold into
 -- `A = List × value`, applying the para-algebra `alg` to the `(μF , value)`
@@ -134,7 +150,7 @@ evalᴰ (SigOp si)    a        = λ n → (emit-D si (forget a) , inject (semM s
 -- coalgebra's OWN (forgotten) trace-value. Structurally identical to `⟦_⟧ˢ`.
 evalᴰ (Cata {F} wf {C} alg)  a = λ n →
   let r = sem-cata wf (cata-ev-algᴰ {F} {C} n alg) (forget a)
-  in (proj₁ r , inject (proj₂ r))
+  in (proj₁ r , proj₂ r)
 evalᴰ (Ana {F} wf {A} coalg) a = λ n →
   ( ana-events {F} {A} coalg (forget a) n
   , inject (sem-ana F (λ a' → coerce-functor F _
@@ -180,9 +196,9 @@ rec-trace-D (const f v)         x n = []
 rec-trace-D _                       x n = []
 
 cata-ev-algᴰ {F} {C} n alg fc =
-  ( events-F F proj₁ fc ++ projTrace (evalᴰ alg (inject z)) n
-  , forget (valueT (evalᴰ alg (inject z)) n) )
-  where z = coerce-functor⁻¹ F C (sem-fmap F proj₂ fc)
+  ( events-F F proj₁ fc ++ projTrace (evalᴰ alg z) n
+  , valueT (evalᴰ alg z) n )
+  where z = coerce-functor⁻¹-D F C (sem-fmap F proj₂ fc)
 
 -- `Para`'s fold. Children events come from each child's `List` part
 -- (`proj₁ ∘ proj₂`); the algebra runs on the `(μF , value)` layer

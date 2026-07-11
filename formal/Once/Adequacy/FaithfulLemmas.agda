@@ -36,7 +36,7 @@ open import Once.Surface.Elaborate using (elaborate)
 import Once.Compile as C
 open import Once.Denotation.Trace using (SigOpEvent)
 open import Once.Denotation.TraceMonad using (T; returnT; valueT; projTrace; _>>=T_)
-open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ; evalᴰ; cata-ev-algᴰ; ana-events; forget; inject)
+open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ; evalᴰ; cata-ev-algᴰ; ana-events; forget; inject; coerce-functor⁻¹-D)
 open import Once.Denotation.TraceDenote using (events-F)
 import Once.Denotation.SourceDenote as SD
 open import Once.Postulates using (extensionality)
@@ -116,7 +116,7 @@ cata-body : ∀ {m} {Γ : Ctx m} {F : Functor} {A} {π : Purity}
               ≡ SD.⟦ cata {Γ = Γ} wf alg ⟧ˢ dγ k
 cata-body {Γ = Γ} {F = F} {A = A} wf alg ih dγ k =
   cong (_,_ []) (extensionality (λ b → extensionality (λ n →
-    cong (λ r → (proj₁ r , inject (proj₂ r)))
+    cong (λ r → (proj₁ r , proj₂ r))
       (cong (λ a → sem-cata wf a b) (alg-eq n)))))
   where
     algIR : IR (⟦ F ⟧T A) A
@@ -127,8 +127,8 @@ cata-body {Γ = Γ} {F = F} {A = A} wf alg ih dγ k =
            → cata-ev-algᴰ {F} {A} n algIR
              ≡ SD.cata-ev-algˢ {F} {A} n (SD.⟦ alg ⟧ˢ tt)
     alg-eq n = extensionality (λ fc →
-      cong (λ s → (events-F F proj₁ fc ++ projTrace s n , forget (valueT s n)))
-           (morph-app-bridge-fun alg ih (inject (coerce-functor⁻¹ F A (sem-fmap F proj₂ fc)))))
+      cong (λ s → (events-F F proj₁ fc ++ projTrace s n , valueT s n))
+           (morph-app-bridge-fun alg ih (coerce-functor⁻¹-D F A (sem-fmap F proj₂ fc))))
 
 ------------------------------------------------------------------------
 -- `ana`-faithfulness. Dual of `cata`. The TRACE side bridges

@@ -33,7 +33,7 @@ open import Once.Type
   using (Type; Unit; Void; Int; _*_; _+_; _⇒[_]_; μ-type; Functor; ⟦_⟧T; Purity)
 open import Once.CanonicalName using (CanonicalName; showCanonical; bare)
 open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_; valueT; projTrace)
-open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ; emit-D; inject; forget)
+open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ; emit-D; inject; forget; coerce-functor⁻¹-D)
 open import Once.Semantics.Machine using (sem-In; coerce-functor; sem-cata; sem-fmap; coerce-functor⁻¹; ⟦_⟧F)
 open import Once.Functor.Translate using (WellFormedF; IsBaseType; IsConcrete; base-Unit; con-base; con-fun)
 open import Once.Denotation.Trace using (SigOpEvent)
@@ -73,17 +73,17 @@ open import Once.TypeCheck.Judgment
 -- DEFINITIONALLY matches `evalᴰ (Cata wf alg)` when `dalg = evalᴰ alg`, so the
 -- `bridgeᵈ` cata case reduces to the (recursive) morphism bridge.
 cata-ev-algᴰ-D : ∀ {F : Functor} {A : Type} → ℕ → (⟦ ⟦ F ⟧T A ⟧ᴰ → T ⟦ A ⟧ᴰ)
-               → ⟦ F ⟧F (List SigOpEvent × Val.⟦ A ⟧) → List SigOpEvent × Val.⟦ A ⟧
+               → ⟦ F ⟧F (List SigOpEvent × ⟦ A ⟧ᴰ) → List SigOpEvent × ⟦ A ⟧ᴰ
 cata-ev-algᴰ-D {F} {A} n dalg fc =
-  ( events-F F proj₁ fc ++ₗ projTrace (dalg (inject z)) n
-  , forget (valueT (dalg (inject z)) n) )
-  where z = coerce-functor⁻¹ F A (sem-fmap F proj₂ fc)
+  ( events-F F proj₁ fc ++ₗ projTrace (dalg z) n
+  , valueT (dalg z) n )
+  where z = coerce-functor⁻¹-D F A (sem-fmap F proj₂ fc)
 
 cata-sem : ∀ {F : Functor} {A : Type} → WellFormedF F
          → (⟦ ⟦ F ⟧T A ⟧ᴰ → T ⟦ A ⟧ᴰ) → ⟦ μ-type F ⟧ᴰ → T ⟦ A ⟧ᴰ
 cata-sem {F} {A} wf dalg v = λ n →
   let r = sem-cata wf (cata-ev-algᴰ-D {F} {A} n dalg) (forget v)
-  in (proj₁ r , inject (proj₂ r))
+  in (proj₁ r , proj₂ r)
 
 -- g-In: the initial-algebra constructor `⟦F⟧T (μF) → μF` at the value level.
 -- DEFINITIONALLY `eval (In wf Heap) ∘ forget` (first-order data is pure), so the
