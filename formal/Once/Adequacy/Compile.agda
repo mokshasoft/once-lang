@@ -65,6 +65,7 @@ import Once.Adequacy.MainExtract as ME
 -- completeness; `moduleToIR-sound` produces the predicate for soundness.
 import Once.Adequacy.ModuleComplete as MC
 import Once.Denotation.MainMeaning as MM     -- Plan 0.58: the direct IR-free meaning
+import Once.Adequacy.MainMeaningBridge as MMB -- Plan 0.58: the selection lemma (⟦_⟧ˢ ≈ ⟦_⟧ᵈ)
 open import Data.Product using (_×_; _,_; Σ-syntax; proj₁; proj₂)
 open import Data.Maybe.Properties using (just-injective)
 open import Data.Empty using (⊥-elim)
@@ -668,9 +669,13 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   -- mirrors `mainRealized` with `⟦_⟧ᶜ` instead of `realize`).
   ⟦_⟧ᵈ : Typed → Behavior
   ⟦ (m , mt , hvm) ⟧ᵈ = MM.meaningᵈ m mt hvm
-  -- `bridgeᵈ` (the observational `⟦_⟧ᵈ ≈ SD∘realize`) is the last temp scaffold.
-  postulate
-    bridgeᵈ : ∀ (tp : Typed) (n : ℕ) → ⟦ tp ⟧ˢ n ≡ ⟦ tp ⟧ᵈ n
+  -- `bridgeᵈ` (the observational `⟦_⟧ᵈ ≈ SD∘realize`) — Plan 0.58 part 7:
+  -- DISCHARGED via the selection lemma `MMB.main-bridge`, which parallel-inducts
+  -- over the shared `mainRealized`/`mainMeaningᵈ` dispatch and bottoms in
+  -- `bridge-c` at `main : EffUU` (env `∅`, thunk `tt`). The residual content is
+  -- the seven narrow leaf postulates in `Once.Adequacy.MeaningBridge`.
+  bridgeᵈ : ∀ (tp : Typed) (n : ℕ) → ⟦ tp ⟧ˢ n ≡ ⟦ tp ⟧ᵈ n
+  bridgeᵈ (m , mt , hvm) n = MMB.main-bridge m mt hvm n
 
   correctᵈ : ∀ (arch : Arch) (doOpt : Bool) (src : Source) →
     ( ∀ bytes → compile arch doOpt src ≡ just bytes →
