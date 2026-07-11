@@ -55,10 +55,10 @@ retargeting to `_≋_` both fixes that and closes the proof.)
 ## Check
 
 ```bash
-for m in Conv Complete Sound Transparency; do bootstrap/check.sh poc/OCP0009/$m.agda; done
+for m in Conv Complete Sound Finite Transparency; do bootstrap/check.sh poc/OCP0009/$m.agda; done
 ```
 
-All four exit 0. `Conv.agda`'s example block is the POC *executing*: e.g.
+All five exit 0. `Conv.agda`'s example block is the POC *executing*: e.g.
 `conv fo-Nat (fst ∘ ⟨ zero , one ⟩) zero ≡ true` is proved by `refl`, i.e. Agda
 evaluated the conversion and got `true` — the product-β equation decided purely by
 running both sides, never by orienting a rewrite.
@@ -99,13 +99,36 @@ Once's checker needs most: indices like `Vec n` are first-order data. Comparing
 neutral/generic argument — the one place the closed-term evaluator genuinely
 extends (OCP-0009 §5, "open terms / neutrals").
 
+## POC-0b(i) — finite domains, by enumeration (`Finite.agda`, proven)
+
+Lifts the domain from `Unit` to **any finite first-order type** (`FiniteFO`:
+Void/Unit/×/+ — no `μ`, no `⇒`), still **sound + complete, zero postulates**:
+
+```
+conv-fin : FiniteFO A → FirstOrder C → Term A C → Term A C → Bool
+conv-fin-decides : conv-fin decides _≋_ on such morphisms.
+```
+
+`conv-fin` enumerates all inhabitants of the domain and checks the equation at each.
+Worked example (executes at type-check via `refl`): on `Bool₂ = Unit + Unit`,
+`conv-fin … (notB ∘ notB) id ≡ true` — involutivity decided across *both* points, a
+conversion POC-0's `Unit`-only `conv` could not even state.
+
+**This maps the boundary of pure evaluation precisely:**
+
+> Evaluation-at-points decides conversion **iff the domain is finite**. `FiniteFO`
+> excludes exactly `μ` (infinite — `Nat`) and `⇒` (function) — the two cases whose
+> input set is not enumerable, and therefore *precisely* where residualizing NbE /
+> neutrals become necessary.
+
 ## Next
 
-POC-0 is complete for its fragment. Beyond it:
-
-1. **POC-0b — open terms / neutrals.** Extend `eval`→reify to a residualizing (NbE)
-   semantics so `conv` covers function-valued codomains and open terms — i.e. decide
-   `_≋_`'s `∀ x` without a single-point domain. Removes both scope restrictions.
+1. **POC-0b(ii) — neutrals / NbE.** For `μ`/`⇒` domains (infinite / higher-order),
+   evaluate at a single **generic (neutral)** input and compare symbolically —
+   residualizing NbE (reify/reflect). Standard for the simply-typed core (terminates
+   by construction); the known-hard sub-case is sums, and recursion must stay
+   inductive-only (OCP-0009 §2). Same pillar: `reify`/`reflect`/`nf` are deterministic
+   total functions, no confluence.
 2. **POC-1 — CwF layer (Rung 2).** Add `Π`/`Σ` + context extension as new IR
    constructors over the *same* evaluator; elaborate a named surface into the
    nameless core; decide `Vec (0+n) ≡ Vec n` by this same `conv`.
