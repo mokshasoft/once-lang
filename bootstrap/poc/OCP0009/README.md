@@ -32,16 +32,17 @@ front-end").
 | File | Flags | Contents |
 |---|---|---|
 | `Conv.agda` | `--safe`, **postulate-free** | `FirstOrder`, `eq-val`/`eq-Fix`, `conv`, and worked examples whose `refl` proofs **force `conv` to run at type-check time** |
-| `Transparency.agda` | postulates | the two adequacy obligations (`conv-complete`, `conv-sound`) stated as the explicit named holes |
+| `Complete.agda` | funext only | `eval-sound` (eval respects every `⟶` rule) → **`conv-complete` proven** |
+| `Sound.agda` | funext + `reify-eval` | `eq-val-sound`, reify `↑`, its section `eval-reify`, `_≈_` equivalence → **`conv-sound` derived** from the single canonicity hole |
+| `Transparency.agda` | (re-export) | status board; `decides-≈` = complete + sound together |
 
 ## Check
 
 ```bash
-bootstrap/check.sh poc/OCP0009/Conv.agda          # --safe, postulate-free, runs the examples
-bootstrap/check.sh poc/OCP0009/Transparency.agda  # states the two holes
+for m in Conv Complete Sound Transparency; do bootstrap/check.sh poc/OCP0009/$m.agda; done
 ```
 
-Both currently exit 0. `Conv.agda`'s example block is the POC *executing*: e.g.
+All four exit 0. `Conv.agda`'s example block is the POC *executing*: e.g.
 `conv fo-Nat (fst ∘ ⟨ zero , one ⟩) zero ≡ true` is proved by `refl`, i.e. Agda
 evaluated the conversion and got `true` — the product-β equation decided purely by
 running both sides, never by orienting a rewrite.
@@ -52,8 +53,26 @@ running both sides, never by orienting a rewrite.
 chosen congruence `_≈_` (the RST-closure of `_⟶_`).
 
 - **Terminating** — ✅ free: `conv` is a total Agda function (`Conv.agda` is `--safe`).
-- **Sound / Complete** — ⏳ stated as `conv-sound` / `conv-complete` in
-  `Transparency.agda`; the NbE-adequacy content, still to prove.
+- **Complete** — ✅ **discharged**: `conv-complete` (`Complete.agda`), from
+  `eval-sound : t ⟶ u → ∀ x. eval t x ≡ eval u x` (eval validates every reduction
+  rule as a model equation), lifted to `_≈_`.
+- **Sound** — ◑ **reduced to one lemma**: `conv-sound` (`Sound.agda`) is *derived*
+  from canonicity `reify-eval : t ≈ ↑ (eval t tt)`. Everything else — `eq-val-sound`
+  (structural equality reflects `≡`), reify `↑`, its section `eval-reify`, `_≈_` as
+  an equivalence — is proven.
+
+### Remaining postulates (whole POC)
+
+Exactly two, both named and standard:
+
+- **`funext`** (`Complete.agda`) — function extensionality; used only for congruence
+  under `curry`. Consistent; far milder than the *false* confluence/SN postulates the
+  rewriting track needs.
+- **`reify-eval`** (`Sound.agda`) — canonicity: every closed first-order morphism is
+  convertible to the canonical morphism of its value. This is the genuine
+  NbE-adequacy / transparency content of the evaluator route, identical to the repo's
+  open `EvalFullCorrectness` (`normalizer-vs-compiler-path.md`). Proof = a Tait-style
+  logical relation over all types.
 
 ## Scope (honest)
 
@@ -66,10 +85,11 @@ extends (OCP-0009 §5, "open terms / neutrals").
 
 ## Next
 
-1. **POC-0 proof half.** Discharge `conv-complete` (induction on `_≈_`, one lemma
-   per `_⟶_` rule — the tractable direction) then `conv-sound` (a logical relation
-   between syntax and the value domain — the genuine transparency lemma). This also
-   discharges OCP-0004's two open evaluator obligations for this fragment.
+1. **Close `reify-eval` (canonicity).** The one remaining hole. A Tait-style logical
+   relation over all types relating a closed morphism to its value; the μ-case uses
+   the initial-algebra induction principle. This also discharges OCP-0004's open
+   `EvalFullCorrectness` transparency obligation for this fragment. *(Paper-length;
+   its own work item.)*
 2. **POC-0b — neutrals.** Extend `eval`→reify to a residualizing (NbE) semantics so
    `conv` covers function-valued codomains and open terms. Removes the `FirstOrder`
    restriction.
