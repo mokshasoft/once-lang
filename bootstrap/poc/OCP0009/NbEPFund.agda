@@ -54,18 +54,18 @@ eval-cong OutT       p = vout-cong p
 eval-cong (cataT F a) p = vcata-cong F a p
 
 vfst-cong (rPair p q) = p
-vfst-cong (rNe eq)    = rNe (cong (C.fst C.∘_) eq)
+vfst-cong (rNe eq)    = reflect-≈V _ (cong (C.fst C.∘_) eq)
 vsnd-cong (rPair p q) = q
-vsnd-cong (rNe eq)    = rNe (cong (C.snd C.∘_) eq)
+vsnd-cong (rNe eq)    = reflect-≈V _ (cong (C.snd C.∘_) eq)
 vout-cong (rIn p)  = p
-vout-cong (rNe eq) = rNe (cong (C.Out C.∘_) eq)
+vout-cong (rNe eq) = reflect-≈V _ (cong (C.Out C.∘_) eq)
 
 vcase-cong f g (rInl p) = eval-cong f p
 vcase-cong f g (rInr q) = eval-cong g q
-vcase-cong f g (rNe eq) = rNe (cong (C.[ emb f , emb g ] C.∘_) eq)
+vcase-cong f g (rNe eq) = reflect-≈V _ (cong (C.[ emb f , emb g ] C.∘_) eq)
 
 vcata-cong F a (rIn p)  = eval-cong a (mapCata-cong F a F p)
-vcata-cong F a (rNe eq) = rNe (cong (C.cata F (emb a) C.∘_) eq)
+vcata-cong F a (rNe eq) = reflect-≈V _ (cong (C.cata F (emb a) C.∘_) eq)
 
 mapCata-cong F a Id      p          = vcata-cong F a p
 mapCata-cong F a One     p          = p

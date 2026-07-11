@@ -78,26 +78,28 @@ mutual
   eval OutT       v = vout v
   eval (cataT F a) v = vcata F a v
 
+  -- η-long: reflect at the result type of every neutral-producing eliminator,
+  -- so a product-typed result is η-expanded (making `nf` η-complete).
   vfst : ∀ {A X Y} → Val A (X * Y) → Val A X
-  vfst (vPair a _) = a
-  vfst (vNe ne)    = vNe (nFst ne)
+  vfst (vPair a _)     = a
+  vfst {X = X} (vNe ne) = reflect X (nFst ne)
 
   vsnd : ∀ {A X Y} → Val A (X * Y) → Val A Y
-  vsnd (vPair _ b) = b
-  vsnd (vNe ne)    = vNe (nSnd ne)
+  vsnd (vPair _ b)     = b
+  vsnd {Y = Y} (vNe ne) = reflect Y (nSnd ne)
 
   vout : ∀ {A F} → Val A (μ F) → Val A (⟦ F ⟧F (μ F))
-  vout (vIn w)  = w
-  vout (vNe ne) = vNe (nOut ne)
+  vout (vIn w)          = w
+  vout {F = F} (vNe ne) = reflect (⟦ F ⟧F (μ F)) (nOut ne)
 
   vcase : ∀ {A X Y D} → Tm X D → Tm Y D → Val A (X + Y) → Val A D
-  vcase f g (vInl a) = eval f a
-  vcase f g (vInr b) = eval g b
-  vcase f g (vNe ne) = vNe (nCase (emb f) (emb g) ne)
+  vcase f g (vInl a)         = eval f a
+  vcase f g (vInr b)         = eval g b
+  vcase {D = D} f g (vNe ne) = reflect D (nCase (emb f) (emb g) ne)
 
   vcata : ∀ {A} F {D} → Tm (⟦ F ⟧F D) D → Val A (μ F) → Val A D
-  vcata F a (vIn w)  = eval a (mapCata F a F w)
-  vcata F a (vNe ne) = vNe (nCata F (emb a) ne)
+  vcata F a (vIn w)          = eval a (mapCata F a F w)
+  vcata F {D = D} a (vNe ne) = reflect D (nCata F (emb a) ne)
 
   mapCata : ∀ {A} F {D} → Tm (⟦ F ⟧F D) D → ∀ G →
             Val A (⟦ G ⟧F (μ F)) → Val A (⟦ G ⟧F D)
@@ -154,4 +156,16 @@ _ : nf {Sᵖ} (pair fstT sndT) ≡ nf {Sᵖ} idT
 _ = refl
 
 _ : nf {Sᵖ} (fstT ⊙ pair sndT fstT) ≡ nf {Sᵖ} sndT
+_ = refl
+
+-- η-pair on a NEUTRAL-produced product (the case the η-long correction fixes):
+-- `Out` on a variable of `μ(Id⊗Id)` yields a product-typed neutral, and
+-- `⟨fst,snd⟩ ∘ Out ≋ Out` now holds — before η-long reflection it did not.
+PF : Func
+PF = Id ⊗ Id
+
+P : Ty
+P = μ PF
+
+_ : nf {P} (pair (fstT ⊙ OutT) (sndT ⊙ OutT)) ≡ nf {P} OutT
 _ = refl

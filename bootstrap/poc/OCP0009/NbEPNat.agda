@@ -22,8 +22,23 @@
 module poc.OCP0009.NbEPNat where
 
 open import normalizer.Syntax.Types
-open import poc.OCP0009.NbEK using (Val; vUnit; vPair; vInl; vInr; vIn; vNe; _≼_; wkVal)
+open import poc.OCP0009.NbEK
+  using (Val; Ne; vUnit; vPair; vInl; vInr; vIn; vNe; _≼_; wkVal; wkNe;
+         reflect; nFst; nSnd; nOut; nCase; nCata)
 open import poc.OCP0009.NbEP
+
+------------------------------------------------------------------------
+-- reflect commutes with weakening (needed by the η-long neutral cases).
+------------------------------------------------------------------------
+
+reflect-nat : ∀ {A₁ A : Ty} B (w : A₁ ≼ A) (ne : Ne A B) →
+              wkVal w (reflect B ne) ≡ reflect B (wkNe w ne)
+reflect-nat Unit    w ne = refl
+reflect-nat (X * Y) w ne = cong₂ vPair (reflect-nat X w (nFst ne)) (reflect-nat Y w (nSnd ne))
+reflect-nat (X + Y) w ne = refl
+reflect-nat (X ⇒ Y) w ne = refl
+reflect-nat (μ F)   w ne = refl
+reflect-nat Void    w ne = refl
 
 {-# TERMINATING #-}
 eval-nat  : ∀ {A₁ A B D : Ty} (w : A₁ ≼ A) (t : Tm B D) (v : Val A B) →
@@ -56,19 +71,19 @@ eval-nat w OutT       v = vout-nat w v
 eval-nat w (cataT F a) v = vcata-nat F w a v
 
 vfst-nat w (vPair a b) = refl
-vfst-nat w (vNe ne)    = refl
+vfst-nat w (vNe ne)    = reflect-nat _ w (nFst ne)
 vsnd-nat w (vPair a b) = refl
-vsnd-nat w (vNe ne)    = refl
+vsnd-nat w (vNe ne)    = reflect-nat _ w (nSnd ne)
 vout-nat w (vIn x)  = refl
-vout-nat w (vNe ne) = refl
+vout-nat w (vNe ne) = reflect-nat _ w (nOut ne)
 
 vcase-nat w f g (vInl a) = eval-nat w f a
 vcase-nat w f g (vInr b) = eval-nat w g b
-vcase-nat w f g (vNe ne) = refl
+vcase-nat w f g (vNe ne) = reflect-nat _ w (nCase (emb f) (emb g) ne)
 
 vcata-nat F w a (vIn x)  = trans (eval-nat w a (mapCata F a F x))
                                  (cong (eval a) (mapCata-nat F w a F x))
-vcata-nat F w a (vNe ne) = refl
+vcata-nat F w a (vNe ne) = reflect-nat _ w (nCata F (emb a) ne)
 
 mapCata-nat F w a Id      v          = vcata-nat F w a v
 mapCata-nat F w a One     v          = refl
