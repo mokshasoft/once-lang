@@ -57,10 +57,10 @@ retargeting to `_≋_` both fixes that and closes the proof.)
 ## Check
 
 ```bash
-for m in Conv Complete Sound Finite Decidable Transparency; do bootstrap/check.sh poc/OCP0009/$m.agda; done
+for m in Conv Complete Sound Finite Decidable Higher Dependent Transparency; do bootstrap/check.sh poc/OCP0009/$m.agda; done
 ```
 
-All six exit 0. `Conv.agda`'s example block is the POC *executing*: e.g.
+All eight exit 0. `Conv.agda`'s example block is the POC *executing*: e.g.
 `conv fo-Nat (fst ∘ ⟨ zero , one ⟩) zero ≡ true` is proved by `refl`, i.e. Agda
 evaluated the conversion and got `true` — the product-β equation decided purely by
 running both sides, never by orienting a rewrite.
@@ -125,17 +125,46 @@ literally "decidable conversion" for the fragment (the OCP title, made concrete)
 Zero new postulates. The closed case (POC-0) is the instance `≋-dec₀ = ≋-dec
 ffo-unit`.
 
+## POC-0b(ii) — higher-order codomains (`Higher.agda`, proven)
+
+Lifts the *codomain* restriction: a function-valued morphism `Term A (X ⇒ Y)` is
+comparable when the argument `X` is finite — check the two functions agree at every
+input (`Checkable`, `conv-h`, sound+complete via **funext**). Example: two
+function-valued terms `idFun ≋ negneg` (both the identity on `Bool₂`) decided by
+enumerating the argument; `idFun ≢ negFun` rejected. Completes the "how far pure
+evaluation reaches" story: every *hereditarily finite* type is decidable; `μ` in an
+argument/domain position (an infinite input set) is the true neutrals/NbE frontier.
+
+## POC-1 — dependent-index conversion (`Dependent.agda`, proven)
+
+Cashes the motivating example. Addition `+` is a **real `cata`** over `Nat` in the
+point-free IR (`add : Term Nat (Nat ⇒ Nat)`), and type equality `Vec m ≡ Vec n`
+reduces to **the same `conv`** on the index terms — no new decision engine, exactly
+OCP-0009 Rung 2's claim. Executing checks:
+
+```
+VecConv (0 + 3) 3 ≡ true    -- Vec (0+3) ≡ Vec 3   (left unit, definitional)
+VecConv (3 + 0) 3 ≡ true    -- Vec (3+0) ≡ Vec 3   (right unit, cata runs)
+VecConv (1 + 2) 3 ≡ true
+VecConv (1 + 1) 3 ≡ false   -- correctly rejected
+```
+
+and actual conversion *proofs* `Vec-0+3≡Vec-3 : (0 + 3) ≋ 3` (the object a checker
+transports along), via `conv-sound`. Scope: **closed** indices. The general
+`∀ n. Vec (0+n) ≡ Vec n` (n a free variable) is open conversion on a `Nat` domain —
+the `μ`-domain neutrals frontier — but the *mechanism* is identical: the checker
+calls the same `conv` on indices.
+
 ## Next
 
-1. **POC-0b(ii) — neutrals / NbE.** For `μ`/`⇒` domains (infinite / higher-order),
-   evaluate at a single **generic (neutral)** input and compare symbolically —
-   residualizing NbE (reify/reflect). Standard for the simply-typed core (terminates
-   by construction); the known-hard sub-case is sums, and recursion must stay
-   inductive-only (OCP-0009 §2). Same pillar: `reify`/`reflect`/`nf` are deterministic
-   total functions, no confluence.
-2. **POC-1 — CwF layer (Rung 2).** Add `Π`/`Σ` + context extension as new IR
-   constructors over the *same* evaluator; elaborate a named surface into the
-   nameless core; decide `Vec (0+n) ≡ Vec n` by this same `conv`.
+1. **Neutrals / NbE (the `μ`-domain frontier).** For infinite input positions
+   (domain `Nat`, argument `Nat ⇒ B`) evaluate at a single **generic (neutral)**
+   input and compare symbolically — residualizing NbE. This is what makes the *open*
+   `∀ n. Vec (0+n) ≡ Vec n` decidable. Standard for the simply-typed core (terminates
+   by construction); known-hard sub-case is sums; recursion stays inductive-only
+   (OCP-0009 §2). Same pillar: `reify`/`reflect`/`nf` deterministic, no confluence.
+2. **CwF layer proper (Rung 2).** Add `Π`/`Σ` + context extension as IR constructors
+   over the *same* evaluator; elaborate a named surface into the nameless core.
 
 The through-line: each step extends *one* evaluator and re-confirms the three-
 property scorecard — never a second checker (OCP-0009 §5, "The two pillars";

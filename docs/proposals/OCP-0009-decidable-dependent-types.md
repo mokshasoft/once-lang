@@ -524,6 +524,22 @@ forces neutrals/NbE** — evaluate at one *generic* input and compare symbolical
 is the same inductive-only discipline (§2): `cata` on a neutral stays stuck (fine,
 terminating); `ν` must stay out.
 
+**POC-0b(ii) — higher-order codomains (proven).** A function-valued morphism
+`Term A (X ⇒ Y)` is comparable when the argument `X` is finite: check the two
+functions agree at every input (`Checkable`/`conv-h`, sound+complete via funext). So
+*every hereditarily-finite type* is decidable by evaluation+enumeration; `μ` in an
+argument position (infinite input set) is the sole remaining frontier.
+
+**POC-1 — dependent-index conversion (proven, `Dependent.agda`).** The Rung-2 claim
+cashed on the motivating example: addition `+` is a real `cata` over `Nat` in the
+point-free IR, and type equality `Vec m ≡ Vec n` is decided by **the same `conv`** on
+the index terms — `Vec (0+3) ≡ Vec 3`, `Vec (3+0) ≡ Vec 3`, `Vec (1+2) ≡ Vec 3` all
+check, `Vec (1+1) ≡ Vec 3` is rejected, and real `≋` proof objects are produced. No
+new decision engine — dependency adds only the discipline of comparing indices,
+exactly as Rung 2 promises. Scope: **closed** indices; the general
+`∀ n. Vec (0+n) ≡ Vec n` (open, `n` a variable) is the `μ`-domain neutrals frontier
+above — same mechanism, awaiting NbE.
+
 ### Rung 1 — one universe + type-level functions
 
 Add `Type₀` and let `Cata` compute over *types* (the λω̲ corner: types→types, no
