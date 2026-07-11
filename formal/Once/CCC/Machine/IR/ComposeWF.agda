@@ -60,7 +60,8 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
            valid-unit-wf; mk-IRResultAWF-via-bump;
            RecDispatcherWF; validityWF-mem-only;
            validityWF-frontier-advance; validityWF-mem-preserved;
-           validityWF-with-bf-transfer; mem-preserved-from-tnhw)
+           validityWF-with-bf-transfer; mem-preserved-from-tnhw;
+           mem-preserved-compose)
 
   open import Once.CCC.Machine.TraceEvaluator
   open TraceEvaluatorDef {FS}
@@ -180,7 +181,19 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       compose-trace
       compose-bump
       compose-bump-eq
-      SMP.!!  -- trace-is-ir-to-trace
+      -- Plan 0.58: f-HALF DISCHARGED via `cong₂` (`result-f.trace-is-ir-to-trace`).
+      -- Residual (the sole remaining `!!` in run-compose):
+      --   g-trace ≡ proj-trace (ir-to-trace' n1 l1 g)
+      -- where n1 = (ir-to-trace' (next-slot alloc) 0 f).proj₁ (codegen slot-frontier
+      -- after f) and l1 the threaded label. `result-g.trace-is-ir-to-trace` gives
+      -- g-trace ≡ proj-trace (ir-to-trace' (next-slot alloc₁) 0 g), so this needs:
+      --  (A) SLOT: n1 ≡ next-slot alloc₁ — NOT derivable here (result-f is opaque;
+      --      no IRResultBase field ties the codegen slot-frontier to the declared
+      --      bump). Needs an interface addition, discharged by every producer.
+      --  (B) LABEL: proj-trace indep. of l1 — false in general (`curry` emits
+      --      `instr-load-code-addr l`), true for the curry-free fragment.
+      -- Tracked as N2b-hard; see plan. Everything else in run-compose is now `!!`-free.
+      (cong₂ (λ a b → a ++ mov-to-input ∷ b) (IRResultAWF.trace-is-ir-to-trace result-f) SMP.!!)
       refl
       (TraceEvaluator.exec-alloc-eq trace-eval)
       (let result-place-at-alloc₁ : ResultPlace _ mOut alloc₂
@@ -240,7 +253,7 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; max-heap-ref-written = IRResultAWF.max-heap-ref-written result-g
         ; bump-fits-heap-budget = compose-bump-fits-heap-budget
         ; max-heap-ref-geq-final = compose-max-heap-ref-geq-final-bump
-        ; max-heap-usage-bound = SMP.!!
+        ; max-heap-usage-bound = compose-max-heap-usage-bound
         })
     where
       -- Plan 0.2.4.5 D1 task #30: dynamic stack-budget composition.
@@ -535,21 +548,51 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
       f-tph : TraceWF s alloc f-trace
       f-tph = IRResultAWF.trace-twf result-f
-      -- TODO: g-tph runs at a runtime state different from g's construction
-      -- state; same shape as PairStackWF's g-tph-runtime. Postulate for the
-      -- scaffold pass, discharge in follow-up.
-      g-tph : TraceWF (proj₁ (exec-trace (f-trace ++ mov-to-input ∷ []) s alloc))
-                      (proj₂ (exec-trace (f-trace ++ mov-to-input ∷ []) s alloc))
-                      g-trace
-      g-tph = SMP.!!  -- TODO: bridge from result-g's trace-twf
+      -- Plan 0.58: discharged. `twf-++` splits `f-trace ++ mov ∷ g-trace` at f's
+      -- post-state; the tail `mov-to-input ∷ g-trace` is `twf-∷ tt …` since
+      -- `InstrWF _ _ mov-to-input = ⊤` and `exec-abstract mov-to-input s₁ alloc₁`
+      -- = `(s₁', alloc₁)` DEFINITIONALLY (SMCore:1410, unconditional) — so the
+      -- tail's TraceWF is exactly `result-g.trace-twf : TraceWF s₁' alloc₁ g-trace`.
+      -- Transport the post-f state/alloc via f's trace-correct / alloc-correct.
+      mov-g-twf : TraceWF s₁ alloc₁ (mov-to-input ∷ g-trace)
+      mov-g-twf = twf-∷ tt (IRResultAWF.trace-twf result-g)
+
       compose-trace-twf : TraceWF s alloc compose-trace
-      compose-trace-twf = SMP.!!  -- TODO: twf-++ f-tph (twf-∷ tt g-tph) with state-threading
+      compose-trace-twf =
+        twf-++ not-halted f-tph
+          (subst (λ st → TraceWF st (proj₂ (exec-trace f-trace s alloc)) (mov-to-input ∷ g-trace))
+                 (sym (IRResultAWF.trace-correct result-f))
+                 (subst (λ al → TraceWF s₁ al (mov-to-input ∷ g-trace))
+                        (sym (IRResultAWF.alloc-correct result-f))
+                        mov-g-twf))
+
+      -- Plan 0.58: discharged. `mem-preserved-compose` chains f's and g's
+      -- preservation (g's alloc₁-view widened from alloc's via before-frontier
+      -- monotonicity through the bump). The `mov-to-input` step is memory-inert
+      -- (`readLoc` reads stackMem/heapMem, not regs), so g's `readLoc s₂ ≡
+      -- readLoc s₁'` becomes `readLoc s₂ ≡ readLoc s₁` via `readLoc-mov`. Finally
+      -- `s-final ≡ s₂` (`s-final-eq`) rewrites the head.
+      readLoc-mov : ∀ (l : ValueLocation FS) → readLoc s₁' l ≡ readLoc s₁ l
+      readLoc-mov (AtStack f k) = refl
+      readLoc-mov (AtDynamic hl) = refl
+
+      compose-mem-preserved : ∀ (loc : ValueLocation FS) → BeforeFrontier alloc loc →
+                              readLoc s-final loc ≡ readLoc s loc
+      compose-mem-preserved loc bf =
+        trans (cong (λ st → readLoc st loc) s-final-eq)
+              (mem-preserved-compose alloc alloc₁ s s₁ s₂
+                (sym (IRResultAWF.frame-preserved result-f))
+                (IRResultAWF.slot-monotone result-f)
+                (IRResultAWF.heap-monotone result-f)
+                (IRResultAWF.mem-preserved-before result-f)
+                (λ l bfl → trans (IRResultAWF.mem-preserved-before result-g l bfl)
+                                 (readLoc-mov l))
+                loc bf)
 
       ------------------------------------------------------------------
       -- Plan 0.16 TraceEvaluator: routes alloc-correct, trace-twf and
       -- mem-preserved-before through a single bundle. `exec-alloc-eq`
-      -- reuses `alloc-correct-compose`; `trace-wf` and
-      -- `mem-preserved-before` remain scaffolded.
+      -- reuses `alloc-correct-compose`.
       ------------------------------------------------------------------
       trace-eval : TraceEvaluator compose-trace s alloc
       trace-eval = mk-trace-evaluator
@@ -558,162 +601,7 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         compose-trace-twf            -- trace-wf
         refl                         -- exec-state-eq (definitional)
         alloc-correct-compose        -- exec-alloc-eq
-        (λ _ _ → SMP.!!)             -- mem-preserved-before
-
-      ------------------------------------------------------------------------
-      -- Frontier slot stability
-      --
-      -- Returns a sum type:
-      --   inj₁: compose doesn't allocate (next-slot alloc = next-slot alloc₂)
-      --   inj₂: slot is preserved
-      --
-      -- Proof strategy using trace bounds directly:
-      --   1. f-trace preserves slot (by f's frontier-slot-stable or trace bounds)
-      --   2. mov-to-input doesn't write memory (preserves slot)
-      --   3. g-trace writes at slots in [reclaim-f, next-slot alloc₂):
-      --      - Case A: next-slot alloc < reclaim-f → inj₂ (preserved by trace bounds)
-      --      - Case B1: next-slot = reclaim-f < next-slot alloc₂ → inj₂ (inj₂ tt) (uncertain)
-      --      - Case B2: next-slot = reclaim-f = next-slot alloc₂ → inj₁ (no allocation)
-      ------------------------------------------------------------------------
-      compose-frontier-stable : ∀ (s' : LocState FS) (input-loc' : ValueLocation FS) →
-        halted s' ≡ false →
-        readReg (regs s') Input1 ≡ SV-Ptr input-loc' →
-        readLoc s' (AtStack (current-frame alloc) (next-slot alloc)) ≡ just (SV-Ptr input-loc') →
-        (next-slot alloc ≡ next-slot alloc₂) ⊎
-        ((readLoc (proj₁ (exec-trace compose-trace s' alloc))
-                 (AtStack (current-frame alloc) (next-slot alloc)) ≡ just (SV-Ptr input-loc')) ⊎ ⊤)
-      compose-frontier-stable s' input-loc' not-halted' rdi-eq' slot-eq' = result
-        where
-          -- Step 1: Decompose trace using exec-trace-append-state
-          s-after-f = proj₁ (exec-trace f-trace s' alloc)
-          alloc-after-f = proj₂ (exec-trace f-trace s' alloc)
-
-          -- f's trace bounds for slot preservation when f doesn't allocate
-          f-twa : TraceWritesAbove (next-slot alloc) f-trace
-          f-twa = IRResultAWF.trace-writes-above result-f
-
-          f-twb : TraceWritesBelow max-slot-f f-trace
-          f-twb = IRResultAWF.trace-writes-below result-f
-
-          f-tnhw : TraceNoHeapWrites f-trace
-          f-tnhw = SMP.!!  -- TODO: stack-only sub-IR derivation (post Plan 0.14 follow-up)
-
-          -- Step 2: mov-to-input preserves memory (only modifies registers)
-          not-halted-after-f : halted s-after-f ≡ false
-          not-halted-after-f = SMP.!!  -- TODO: result-f.trace-preserves-halted at s' state
-
-          s-after-mov = proj₁ (exec-abstract mov-to-input s-after-f alloc-after-f)
-          alloc-after-mov = proj₂ (exec-abstract mov-to-input s-after-f alloc-after-f)
-
-          -- g-trace bounds
-          g-twa : TraceWritesAbove reclaim-f g-trace
-          g-twa = IRResultAWF.trace-writes-above result-g
-
-          g-twb : TraceWritesBelow max-slot-g g-trace
-          g-twb = IRResultAWF.trace-writes-below result-g
-
-          g-tnhw : TraceNoHeapWrites g-trace
-          g-tnhw = SMP.!!  -- TODO: stack-only sub-IR derivation (post Plan 0.14 follow-up)
-
-          -- We have: next-slot alloc ≤ reclaim-f (by f's slot-monotone, since reclaim-f = next-slot alloc₁)
-          reclaim-f-mono : next-slot alloc ≤ reclaim-f
-          reclaim-f-mono = IRResultAWF.slot-monotone result-f
-
-          -- Frame equivalence
-          frame-after-mov : current-frame alloc-after-mov ≡ current-frame alloc
-          frame-after-mov = trans (exec-abstract-preserves-frame mov-to-input s-after-f alloc-after-f)
-                                  (exec-trace-preserves-frame f-trace s' alloc)
-
-          frame-equiv : current-frame alloc-after-mov ≡ current-frame alloc₁
-          frame-equiv = trans frame-after-mov (sym (IRResultAWF.frame-preserved result-f))
-
-          -- Step 3: Case analysis based on f's frontier-slot-stable result
-          -- New 3-way return: inj₁ (no-alloc) | inj₂ (inj₁ preserved) | inj₂ (inj₂ tt) (uncertain)
-          result : (next-slot alloc ≡ next-slot alloc₂) ⊎
-                   ((readLoc (proj₁ (exec-trace compose-trace s' alloc))
-                            (AtStack (current-frame alloc) (next-slot alloc)) ≡ just (SV-Ptr input-loc')) ⊎ ⊤)
-          result with IRResultAWF.frontier-slot-stable result-f s' input-loc' not-halted' rdi-eq' slot-eq'
-          -- If f is uncertain, compose is also uncertain
-          ... | inj₂ (inj₂ tt) = inj₂ (inj₂ tt)
-          -- If f preserves the slot
-          ... | inj₂ (inj₁ f-preserved) = result-with-slot-after-f f-preserved
-            where
-              slot-after-f : readLoc s-after-f (AtStack (current-frame alloc) (next-slot alloc)) ≡ just (SV-Ptr input-loc')
-              slot-after-f = f-preserved
-
-              slot-after-mov : readLoc s-after-mov (AtStack (current-frame alloc) (next-slot alloc)) ≡ just (SV-Ptr input-loc')
-              slot-after-mov = trans (sym (exec-abstract-preserves-stack-slot mov-to-input s-after-f alloc-after-f
-                                             (current-frame alloc) (next-slot alloc) nhw-mov-to-input refl))
-                                     slot-after-f
-
-              -- Case A: f allocates, use trace bounds for g
-              -- exec-trace-preserves-slot-below reads at current-frame alloc₁;
-              -- bridge to current-frame alloc via frame-preserved.
-              slot-after-g : next-slot alloc < reclaim-f →
-                             readLoc (proj₁ (exec-trace g-trace s-after-mov alloc₁))
-                                     (AtStack (current-frame alloc) (next-slot alloc)) ≡ just (SV-Ptr input-loc')
-              slot-after-g slot<reclaim-f =
-                let preserved-at-f-frame = exec-trace-preserves-slot-below g-trace s-after-mov alloc₁
-                                  reclaim-f (next-slot alloc) g-twa g-tnhw slot<reclaim-f
-                    preserved : readLoc (proj₁ (exec-trace g-trace s-after-mov alloc₁))
-                                        (AtStack (current-frame alloc) (next-slot alloc))
-                                ≡ readLoc s-after-mov (AtStack (current-frame alloc) (next-slot alloc))
-                    preserved = subst (λ fr → readLoc (proj₁ (exec-trace g-trace s-after-mov alloc₁))
-                                                       (AtStack fr (next-slot alloc))
-                                              ≡ readLoc s-after-mov (AtStack fr (next-slot alloc)))
-                                      (IRResultAWF.frame-preserved result-f)
-                                      preserved-at-f-frame
-                in trans preserved slot-after-mov
-
-              split1 : proj₁ (exec-trace compose-trace s' alloc) ≡
-                       proj₁ (exec-trace (mov-to-input ∷ g-trace) s-after-f alloc-after-f)
-              split1 = exec-trace-append-state f-trace (mov-to-input ∷ g-trace) s' alloc
-
-              split2 : exec-trace (mov-to-input ∷ g-trace) s-after-f alloc-after-f ≡
-                       exec-trace g-trace s-after-mov alloc-after-mov
-              split2 = exec-trace-cons mov-to-input g-trace s-after-f alloc-after-f not-halted-after-f
-
-              frame-g-result : proj₁ (exec-trace g-trace s-after-mov alloc-after-mov) ≡
-                               proj₁ (exec-trace g-trace s-after-mov alloc₁)
-              frame-g-result = exec-trace-same-frame g-trace s-after-mov alloc-after-mov alloc₁ frame-equiv
-
-              build-preserved : next-slot alloc < reclaim-f →
-                                readLoc (proj₁ (exec-trace compose-trace s' alloc))
-                                        (AtStack (current-frame alloc) (next-slot alloc)) ≡ just (SV-Ptr input-loc')
-              build-preserved slot<reclaim-f =
-                trans (cong (λ st → readLoc st (AtStack (current-frame alloc) (next-slot alloc)))
-                            (trans split1 (trans (cong proj₁ split2) frame-g-result)))
-                      (slot-after-g slot<reclaim-f)
-
-              result-with-slot-after-f : readLoc s-after-f (AtStack (current-frame alloc) (next-slot alloc)) ≡ just (SV-Ptr input-loc') →
-                                         (next-slot alloc ≡ next-slot alloc₂) ⊎
-                                         ((readLoc (proj₁ (exec-trace compose-trace s' alloc))
-                                                  (AtStack (current-frame alloc) (next-slot alloc)) ≡ just (SV-Ptr input-loc')) ⊎ ⊤)
-              result-with-slot-after-f _ with m≤n⇒m<n∨m≡n reclaim-f-mono
-              -- Case A: f allocates (next-slot < reclaim-f)
-              ... | inj₁ slot<reclaim-f = inj₂ (inj₁ (build-preserved slot<reclaim-f))
-              -- Case B: f doesn't allocate (next-slot = reclaim-f), but f returned inj₂ (inj₁ preserved)
-              -- This shouldn't happen for well-behaved IRs, but handle it anyway
-              ... | inj₂ slot≡reclaim-f with m≤n⇒m<n∨m≡n (IRResultAWF.slot-monotone result-g)
-              -- B1: g allocates - uncertain (f preserved but might be overwritten by g)
-              ... | inj₁ reclaim-f<alloc₂ = inj₂ (inj₂ tt)
-              -- B2: neither allocates
-              ... | inj₂ reclaim-f≡alloc₂ = inj₁ (trans slot≡reclaim-f reclaim-f≡alloc₂)
-
-          -- If f doesn't allocate (inj₁)
-          -- With max-slot-written bounds, we can't easily prove slot preservation in this case
-          -- (max-slot-f might be larger than reclaim-f even when f doesn't grow next-slot).
-          -- We return uncertain since this is a rare edge case.
-          ... | inj₁ f-no-alloc = result-f-no-alloc
-            where
-              result-f-no-alloc : (next-slot alloc ≡ next-slot alloc₂) ⊎
-                                  ((readLoc (proj₁ (exec-trace compose-trace s' alloc))
-                                           (AtStack (current-frame alloc) (next-slot alloc)) ≡ just (SV-Ptr input-loc')) ⊎ ⊤)
-              result-f-no-alloc with m≤n⇒m<n∨m≡n (IRResultAWF.slot-monotone result-g)
-              -- Case B1: g allocates at frontier - uncertain
-              ... | inj₁ reclaim-f<alloc₂ = inj₂ (inj₂ tt)
-              -- Case B2: neither allocates - return no-alloc proof
-              ... | inj₂ reclaim-f≡alloc₂ = inj₁ (trans f-no-alloc reclaim-f≡alloc₂)
+        compose-mem-preserved        -- mem-preserved-before
 
       ------------------------------------------------------------------------
       -- Trace write/read bounds
@@ -863,3 +751,25 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         subst (λ a → next-heap-ref a ≤ IRResultAWF.max-heap-ref-written result-g)
               compose-bump-eq
               (IRResultAWF.max-heap-ref-geq-final result-g)
+
+      -- Plan 0.58: discharged. `result-g.max-heap-usage-bound` bounds g's peak by
+      -- `next-heap-ref alloc₁ + hbg`; `alloc₁ = apply-bump (bump f) alloc` reduces
+      -- `next-heap-ref alloc₁` to `df + next-heap-ref alloc` (df = f's heap delta),
+      -- and `result-f.bump-fits-heap-budget : df ≤ hbf` closes the arithmetic.
+      compose-max-heap-usage-bound :
+        IRResultAWF.max-heap-ref-written result-g
+        ≤ next-heap-ref alloc
+          +ℕ (IRResultAWF.heap-budget result-f +ℕ IRResultAWF.heap-budget result-g)
+      compose-max-heap-usage-bound =
+        ≤-trans (IRResultAWF.max-heap-usage-bound result-g)
+                (≤-trans (≤-reflexive step1)
+                         (+-monoʳ-≤ ha (+-monoˡ-≤ hbg
+                           (IRResultAWF.bump-fits-heap-budget result-f))))
+        where
+          df  = next-heap-ref-delta (IRResultAWF.bump result-f)
+          ha  = next-heap-ref alloc
+          hbf = IRResultAWF.heap-budget result-f
+          hbg = IRResultAWF.heap-budget result-g
+          -- next-heap-ref alloc₁ ≡ df + ha (definitional via final-alloc/apply-bump)
+          step1 : (df +ℕ ha) +ℕ hbg ≡ ha +ℕ (df +ℕ hbg)
+          step1 = trans (cong (_+ℕ hbg) (+-comm df ha)) (+-assoc ha df hbg)
