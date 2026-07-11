@@ -38,3 +38,6 @@ open import poc.OCP0009.Sound public
 -- domains are exactly what enumeration cannot reach — the NbE frontier.
 open import poc.OCP0009.Finite public
   using (FiniteFO; conv-fin; conv-fin-sound; conv-fin-complete; conv-fin-decides)
+-- The capstone: conversion is DECIDABLE (proof-carrying `Dec`), the literal
+-- "decidable dependent-type conversion" for the fragment. Zero new postulates.
+open import poc.OCP0009.Decidable public using (≋-dec; ≋-dec₀)
