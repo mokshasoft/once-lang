@@ -119,15 +119,18 @@ postulate
                 (dalg : ⟦ ⟦ F ⟧T A' ⟧ᴰ → T ⟦ A' ⟧ᴰ) (mir : IR.IR (⟦ F ⟧T A') A')
                 {a b : ⟦ μ-type F ⟧ᴰ} → RelV (μ-type F) a b
               → RelT A' (cata-sem wfF dalg a) (evalᴰ (IR.Cata wfF mir) b)
-  -- Leaf `evalᴰ`-reduction facts (the `intLit` / `In` reductions of a global
-  -- point). NOT the funext concern — plain equational leaves, discharged with
-  -- the other leaves.
-  int-bridge : ∀ {ctx : NamedCtx} {X : Type} (n : ℤ) (y : ⟦ X ⟧ᴰ)
-             → RelT Int (returnT ⟦ g-int {ctx} n ⟧ᵍ) (evalᴰ (realize-global {X = X} (g-int {ctx} n)) y)
+  -- Leaf `evalᴰ`-reduction fact for the `In` initial-algebra global point.
   in-bridge : ∀ {ctx arg} {F : Functor} {X : Type} {wfF : WellFormedF F}
               (dec : wellFormedF? F ≡ just wfF) (garg : ctx ⊢ᵍ arg ∶ (⟦ F ⟧T (μ-type F))) (y : ⟦ X ⟧ᴰ)
             → RelT (μ-type F) (returnT ⟦ g-In {wfF = wfF} dec garg ⟧ᵍ)
                              (evalᴰ (realize-global {X = X} (g-In {wfF = wfF} dec garg)) y)
+
+-- `int-bridge` DISCHARGED: `realize-global (g-int n) = const fits-int ∣n∣ ∘ terminal`,
+-- whose `evalᴰ` reduces (via the catch-all + `eval (const …) = ∣n∣`, `inject{Int}=id`,
+-- `[]++[]=[]`) to `λ _ → ([] , ∣n∣) = returnT (absℤ n)` — definitionally the LHS.
+int-bridge : ∀ {ctx : NamedCtx} {X : Type} (n : ℤ) (y : ⟦ X ⟧ᴰ)
+           → RelT Int (returnT ⟦ g-int {ctx} n ⟧ᵍ) (evalᴰ (realize-global {X = X} (g-int {ctx} n)) y)
+int-bridge n y k = refl , refl
 
 -- The VALUE realm, DISCHARGED — structural (`RelT-bind`/`RelT-return`, using
 -- `returnT x >>=T f ≡ f x` definitionally) + the two leaf facts above.
