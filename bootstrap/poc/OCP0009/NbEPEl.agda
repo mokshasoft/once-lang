@@ -42,12 +42,12 @@ open import normalizer.Syntax.Types
 open import poc.OCP0009.NbEK
   using ( Val; vUnit; vPair; vInl; vInr; vIn )
 open import poc.OCP0009.NbEP
-  using ( Tm; _⊙_; sndT; idT; case; cataT; nf; eval
+  using ( Tm; _⊙_; idT; fstT; sndT; pair; case; cataT; nf; eval
         ; NatF; zero; suc; one; two; double )
 open import poc.OCP0009.NbEPCwF
   using ( U; UF; Nat
         ; ⌜unit⌝; ⌜nat⌝; Π[_,_]; Σ[_,_]; _⇒C_; _×C_
-        ; Ctx; ∙; _▷_; ⟦_⟧C )
+        ; Ctx; ∙; _▷_; ⟦_⟧C; Sub )
 
 ------------------------------------------------------------------------
 -- The first-order Tarski universe of type-codes.
@@ -166,6 +166,52 @@ Tmᵗ Γ A = Tm ⟦ Γ ⟧C (El A)
 -- The context variable, as a genuine term of its type (second projection).
 varᶜ : ∀ {Γ A} → Tmᵗ (Γ ▷ᶜ A) A
 varᶜ = sndT
+
+------------------------------------------------------------------------
+-- The CwF TERM LAYER — substitution + comprehension, and its laws.
+--
+-- Terms substitute by precomposition; the extended-context substitution
+-- `⟨σ, t⟩` and the display map `p` give the COMPREHENSION structure. The three
+-- CwF comprehension laws are exactly the base category's product β/η — and,
+-- thanks to the η-long NbE, each holds DEFINITIONALLY under `nf` (`refl`).
+-- (Term types are closed codes, so substitution is non-dependent — the honest
+-- shape until `El` decodes an OPEN code into the context; see the ceiling in
+-- the header.)
+------------------------------------------------------------------------
+
+-- Term substitution (precomposition; the closed type `A` is unchanged).
+infix 8 _[_]ᵗ
+_[_]ᵗ : ∀ {Δ Γ A} → Tmᵗ Γ A → Sub Δ Γ → Tmᵗ Δ A
+t [ σ ]ᵗ = t ⊙ σ
+
+-- Comprehension: extend a substitution by a term (`⟨σ, t⟩ : Sub Δ (Γ ▷ᶜ A)`).
+infixl 5 _,ₛ_
+_,ₛ_ : ∀ {Δ Γ A} → Sub Δ Γ → Tmᵗ Δ A → Sub Δ (Γ ▷ᶜ A)
+σ ,ₛ t = pair σ t
+
+-- The display map / weakening substitution `p : Sub (Γ ▷ᶜ A) Γ`.
+pₛ : ∀ {Γ A} → Sub (Γ ▷ᶜ A) Γ
+pₛ = fstT
+
+-- Comprehension law β (variable): `q [ σ , t ] ≡ t`.
+Cons-β-var : ∀ {Δ Γ A} (σ : Sub Δ Γ) (t : Tmᵗ Δ A) → nf (varᶜ [ σ ,ₛ t ]ᵗ) ≡ nf t
+Cons-β-var σ t = refl
+
+-- Comprehension law β (weakening): `p ∘ (σ , t) ≡ σ`.
+Cons-β-p : ∀ {Δ Γ A} (σ : Sub Δ Γ) (t : Tmᵗ Δ A) → nf (pₛ ⊙ (σ ,ₛ t)) ≡ nf σ
+Cons-β-p σ t = refl
+
+-- Comprehension law η (surjective pairing): `(p , q) ≡ id`.
+Cons-η : ∀ {Γ A} → nf (pₛ {Γ} {A} ,ₛ varᶜ) ≡ nf (idT {⟦ Γ ▷ᶜ A ⟧C})
+Cons-η = refl
+
+-- Term substitution is functorial: identity and composition, under `nf`.
+[]ᵗ-id : ∀ {Γ A} (t : Tmᵗ Γ A) → nf (t [ idT ]ᵗ) ≡ nf t
+[]ᵗ-id t = refl
+
+[]ᵗ-comp : ∀ {Θ Δ Γ A} (t : Tmᵗ Γ A) (σ : Sub Δ Γ) (τ : Sub Θ Δ)
+         → nf (t [ σ ]ᵗ [ τ ]ᵗ) ≡ nf (t [ σ ⊙ τ ]ᵗ)
+[]ᵗ-comp t σ τ = refl
 
 ------------------------------------------------------------------------
 -- Examples — each `refl` runs the decoder / a decision at type-check time.
