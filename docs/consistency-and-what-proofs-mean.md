@@ -223,6 +223,32 @@ Being explicit about every place the mechanization *trusts* rather than *proves*
    `NbEPOTT.eq-irrel` takes funext as an explicit parameter rather than postulating
    it).
 
+### `--safe`-verified (machine-checked "uses no unsafe features")
+
+Agda's `--safe` flag *rejects* every unsafe escape hatch — `TERMINATING`,
+`NO_POSITIVITY_CHECK`, `type-in-type`, meaning-affecting postulates — and a
+`--safe` module may only import `--safe` modules. So a green build under `--safe`
+is a **machine-checked certificate** that a module (and its whole import closure)
+introduces none of them.
+
+**The entire standalone expressibility tower now compiles under `--safe`** (10
+modules, verified 2026-07-12):
+
+| `--safe` | modules |
+|---|---|
+| IR universe + hierarchy | `NbEPUniv`, `NbEPUnivDec`, `NbEPUnivH` — **confirms induction-recursion is `--safe`-compatible** (a sound core feature, not an unsafe flag) |
+| indexed inductive families | `NbEPIndexed` |
+| OTT (equality, quotients, μ) | `NbEPOTT`, `NbEPOTTQ`, `NbEPOTTMu` |
+| coinduction (guarded) | `NbEPCoind`, `NbEPOTTCoind` (`--safe --guardedness`) |
+| verified compiler in-theory | `NbEPSummit` |
+
+What **cannot** yet go `--safe` is *exactly* the set of modules importing the NbE
+core (`NbEP`, `NbEPComplete`, …, and hence `NbEPCwF`/`NbEPEl`/`NbEPId`/`NbEPQTT*`),
+because that core carries the `TERMINATING` pragmas. So `--safe` now draws the
+consistency line **mechanically**: the dependent-types *features* are certified
+unsafe-feature-free; the residual risk is confined to the NbE core's termination
+assertions, precisely as this ledger claims.
+
 ### Verdict
 
 - **The design is very likely consistent.** Every construction is a standard,
@@ -242,9 +268,16 @@ Being explicit about every place the mechanization *trusts* rather than *proves*
 
 To upgrade the mechanization's own consistency guarantee:
 
-1. **Discharge the `TERMINATING` pragmas** — prove `eval`/`nf` terminate via the
-   SN / logical-relation argument (tedious, not deep; the argument is standard and
-   already sketched in the NbE adequacy modules).
+0. **[DONE] Certify the standalone tower with `--safe`** — the 10 modules above
+   now build under `--safe`, mechanically proving the dependent-types features use
+   no unsafe escape hatches. This isolates the residual risk to the NbE core.
+1. **Discharge the `TERMINATING` pragmas** in the NbE core — prove `eval`/`nf`
+   terminate via the SN / logical-relation argument (tedious, not deep; the
+   argument is standard and already sketched in the NbE adequacy modules). This is
+   what would let the *conversion / CwF* track go `--safe` too. (A cheaper partial
+   step: split `NbEP`'s pure `Tm` datatype into its own `--safe` module so the
+   graded-judgment / elaboration modules that never touch `eval` can go `--safe`
+   without waiting for the full termination proof.)
 2. **Discharge or defunctionalize the `NO_POSITIVITY_CHECK`** — replace the Kripke
    `⇒` closure with a strictly-positive presentation.
 3. **Keep funext out of the load-bearing path** — already true for the principled
