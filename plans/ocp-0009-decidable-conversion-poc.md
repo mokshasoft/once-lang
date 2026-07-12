@@ -156,11 +156,10 @@ exactly on this line.
   and NO IR (`Fib`/`VecNat`, `Vec (double 1) ≅ Vec 2`); CwF term/comprehension
   layer with all laws `refl` under `nf`. This is exactly the "standard
   construction on solved conversion" this bullet predicted, now delivered.
+  **Base CwF has NO unproven gap:** `faithful` (`nf ⌜c⌝ ≡ nf ⌜d⌝ → c ≡ d`, the
+  reflection is injective) closes the former `reifyVal`-injectivity caveat, so
+  `El-weld-nf` welds `El` to the checker's actual `nf` decision.
   **What remains on this axis (post-base):**
-  - **`reifyVal`-injectivity on code-values** — lifts `El-weld` from equal
-    code-VALUES to the surface `nf ⌜c⌝ ≡ nf ⌜d⌝`. True/structural (each Val
-    constructor reifies to a distinct `Term` head); a ~36-case induction, noted
-    not proven. The one honest gap left inside base CwF.
   - **Identity type `Id` + `J`** (Rung 3) — turns indexing into a logic; a
     former *on top* of base CwF, the natural next rung.
   - Π/Σ as **adjoints** (the categorical universal-property presentation) and
@@ -195,8 +194,8 @@ CwF term/comprehension layer. See §3.B.
 
 1. **Identity type `Id` + `J`** (Rung 3) — the natural next rung: turns indexing
    into a logic (state and prove equalities). A former on top of base CwF. Pick
-   intensional first. *(Or first close the `reifyVal`-injectivity gap in §3.B to
-   fully weld `El-weld` to surface `nf` — smaller, tidies base CwF.)*
+   intensional first. *(Base CwF's `reifyVal`-injectivity gap is now CLOSED via
+   `faithful`/`El-weld-nf`.)*
 2. **Wire to the real IR / OCP-0004 transparency** — run the decision on the actual
    `Code` normalizer, connect to `EvalFullCorrectness`. Closes "engine matches the
    real compiler."
