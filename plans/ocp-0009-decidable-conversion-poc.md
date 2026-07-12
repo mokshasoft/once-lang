@@ -19,7 +19,7 @@ separate IR→IR consumer over `normalizer.Syntax.CCC`.
 The **conversion problem** — decidable equality, the heart of OCP-0009 — is
 **solved and machine-checked for the fragment**. The principled NbE decides the
 β-theory + every congruence + **product-η**, open terms included, **funext-free**.
-All 34 `poc/OCP0009/*.agda` modules build green
+All 35 `poc/OCP0009/*.agda` modules build green
 (`bootstrap/check.sh poc/OCP0009/<M>.agda` → EXIT 0), including `NbEPCwF` (CwF /
 dependent layer, Rung 2), `NbEPEl` (Tarski decoder + base CwF), `NbEPId`
 (identity type `Id` + `J`, Rung 3), `NbEPQTT` (QTT: multiplicity semiring +
@@ -96,6 +96,15 @@ OCP-0009 contribution and it shares the OCP-0004 normalizer discipline.
   **This is the step that leaves the small-core discipline by design** — IR
   enlarges the TCB/metatheory; conversion is Agda's kernel here, not the
   container NbE. Predicative (no `` `U : U ``); hierarchy noted, not built.
+- `NbEPSummit` — **the summit in miniature: verified compiler correctness
+  in-theory**. The OCP's north star on the canonical example — a tiny expression
+  language (`lit`/`add`), a direct evaluator (spec), a compiler to a stack
+  machine, and the machine-checked theorem `compile-correct : ∀ e s →
+  exec (compile e) s ≡ (eval e ∷ s)` by structural induction (`exec-++` lemma);
+  concrete run `(1+2)+4 → 7`. The honest shape of Rung 6: correct for REPRESENTED
+  programs (structural induction over a given `e`); a total self-interpreter is
+  the fuel-bounded ceiling. The same theorem the real Once compiler proves in the
+  large (`Once.Adequacy.*` on `origin/ocp-0006-once-spec`), here in one file.
 - `NbEPCoind` — **coinduction (the contested §5 row)**. Streams as a coinductive
   record; corecursion GUARDED by copatterns — productive, SOUND, **no sized
   types** (the feature behind Agda's unsoundness history): `repeat`/`unfold`/
@@ -336,12 +345,12 @@ proof-theoretic strength. "Built" = machine-checked in `poc/OCP0009/`.
 | **Inductive types** | ✅ strictly-positive containers (μ = W-types) | ✅ | ✅ | ✅ | ✅ |
 | **Indexed inductive families** | ✅ **native** (`NbEPIndexed`, indexed containers: Vec + relations-as-datatypes) | ✅ | ✅ | ✅ | ✅ |
 | **Universe structure** | ✅ IR universe + **hierarchy `U₀⊂U₁`** (`NbEPUnivH`, predicative, polymorphism, cumulative) | ✅ ∞ + poly | ✅ ∞ + impred. Prop | ✅ ∞ + poly | ✅ cumulative |
-| **Identity type** | ⚠️ *definitional* `Id`+`J` (= decidable conversion) | ✅ intensional (+cubical) | ✅ intensional | ✅ + quotients→funext | ✅ intensional |
+| **Identity type** | ✅ `Id`+`J` (`NbEPId`) **and OTT**: funext-by-definition + proof-irrelevance + quotients (`NbEPOTT`/`Mu`/`Q`) | ✅ intensional (+cubical) | ✅ intensional | ✅ + quotients→funext | ✅ intensional |
 | **Conversion** | ✅ βη **+ product-η + terminal-η, funext-free** (NbE) | βη, partial η | βη, partial η | βη + defeq proof irrel. | βη |
 | **IR / II** | ✅ **IR prototyped** (`NbEPUniv` U/El mutual; `NbEPUnivDec` defunctionalized + native decidable eq) | ✅ | ❌ | ❌ | ❌ |
 | **Coinduction** | ✅ **guarded/copatterns, no sized types** (`NbEPCoind`); bisim propositional | ✅ | ✅ | ✅ | ✅ |
 | **Totality** | ✅ total-only (SN core) | ✅ | ✅ | ✅ | ⚠️ total *or* partial |
-| **Erasure / quantities** | 🔜 Rung 5 (QTT, by-design) | ✅ irrelevance | ⚠️ extraction | ✅ Prop-erasure | ✅ QTT native |
+| **Erasure / quantities** | ✅ **QTT** (`NbEPQTT` semiring+erasure; `NbEPQTTJ` graded judgment+elaboration) | ✅ irrelevance | ⚠️ extraction | ✅ Prop-erasure | ✅ QTT native |
 | **Self-hosting / reflected IR** | ✅ **distinctive** (prove-Once-in-Once) | ❌ | ❌ | ❌ | ❌ |
 | **Kernel / TCB size** | ✅ **minimal by thesis** | large | large (CIC) | smallish CIC | medium |
 
@@ -416,8 +425,12 @@ were correct only for the minimal-core thesis.
 4. **Native indexed inductives — DONE (`NbEPIndexed`):** indexed containers,
    `Vec`, relations-as-datatypes (`_≤_`). **Coinduction — DONE (`NbEPCoind`):**
    guarded copatterns, bisimilarity propositional (the contested row, best
-   principled tradeoff). Then the summit (prove Once in Once) — the one §5-adjacent
-   row still open, and the concrete goal the whole OCP motivates.
+   principled tradeoff). **Summit SHAPE demonstrated (`NbEPSummit`):** verified
+   compiler correctness in-theory (`compile-correct`, the canonical example) —
+   the honest form of Rung 6 (correct for represented programs; total
+   self-interpreter is the fuel-bounded ceiling). The remaining full-summit work
+   is reflecting the *actual* Once IR and proving *its* compiler correct — the
+   OCP-0006 `Once.Adequacy.*` obligation, internalized.
 
 ### Honesty on "dominate every line"
 

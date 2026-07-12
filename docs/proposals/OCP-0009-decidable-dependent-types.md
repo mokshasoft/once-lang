@@ -760,6 +760,17 @@ argument is inferred `𝟘` (erased). Remaining for this rung: elaborate
 `𝟘`-graded arguments — the compiler's Surface→IR pass, connecting to the IR-level
 `erase-irrelevant` soundness.
 
+**Status — summit SHAPE demonstrated (`bootstrap/poc/OCP0009/NbEPSummit.agda`,
+2026-07-12).** On the canonical verified-compiler example: a tiny expression
+language + evaluator (spec) + compiler to a stack machine + the machine-checked
+`compile-correct : ∀ e s → exec (compile e) s ≡ (eval e ∷ s)`, by structural
+induction (`Cata` shape) with the `exec`-distributes-over-`++` lemma. This is the
+honest form of Rung 6 — correct for REPRESENTED programs (structural induction
+over a given `e`); a total self-interpreter is the fuel-bounded diagonalization
+ceiling. It is the same theorem the real Once compiler proves in the large
+(`Once.Adequacy.*`), here in one file; the remaining full-summit work is
+reflecting the actual Once IR and proving *its* compiler correct.
+
 ### Rung 6 — the summit: reflect Once into Once and prove
 
 All pieces now present: (a) Once's IR *already* exists as data (self-hosting);
