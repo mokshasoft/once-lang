@@ -859,6 +859,107 @@ Q9, Open Questions → *Induction-recursion*).
 
 ---
 
+## Consistency & the trust story
+
+The single most important property of a proof system is **consistency**: that it
+cannot prove both `P` and `¬P` (an inconsistent system proves *everything* and is
+worthless). This section says what "consistent" can and cannot mean, why Once's
+core design choices are consistency constraints, and how Once compares to the
+mainstream proof assistants — because a dependent type theory is only as valuable
+as the trust you can place in it.
+
+### Two senses of "consistent" — keep them apart
+
+1. **Is the formal THEORY consistent?** A metamathematical question, settled by
+   *model constructions* (build a model; a model witnesses consistency).
+2. **Does the IMPLEMENTATION faithfully check that theory?** A *software*
+   question — a kernel bug can accept an ill-typed term and let you prove `False`
+   even when the theory is impeccable.
+
+Real-world soundness needs **both**, and across every system the implementation
+is the weaker link: it is almost always **trusted, not verified**.
+
+### Can we prove consistency? Only *relatively* (Gödel's wall)
+
+Gödel's second incompleteness theorem: no consistent system strong enough for
+arithmetic can prove **its own** consistency. So no system — Coq, Agda, Once —
+proves `Con(itself)`. What we *can* do is prove consistency in a **stronger
+metatheory**: `Con(PA)` via ε₀-induction (Gentzen); `Con(CIC)` (Coq's core) via a
+set model relative to **ZFC + inaccessible cardinals** (Werner); `Con(MLTT)` /
+`Con(cubical)` via set / cubical-set models. Consistency proofs therefore always
+bottom out in a metatheory one chooses to trust — *turtles*, never an absolute,
+self-contained proof. The reassurance is that the metatheory required for these
+type theories is modest and well-studied: breaking it would require an
+inconsistency in *set theory*.
+
+### Genuine paradox vs. counterintuitive theorem
+
+Distinguish two things called "paradox":
+- **Inconsistency — a real paradox.** Russell (naive set theory),
+  **Girard (`Type : Type`)**, Reynolds (naive polymorphism + strong sums). A
+  system with one of these is simply *broken*. Here systems are objectively
+  rankable and **avoiding these traps is a hard correctness constraint**.
+- **Counterintuitive-but-consistent theorems.** Banach–Tarski (a *theorem* of
+  ZFC+Choice), the Continuum Hypothesis (independent of ZFC). These are **not**
+  inconsistencies — they are choices of mathematical universe. No system is "more
+  correct" for them.
+
+### Once's design choices ARE consistency constraints
+
+Everything in this proposal that looks like a restriction is really a guardrail
+against the *genuine* paradoxes, and each is exercised concretely in the POC:
+- **Totality / SN** — no `Ω`-style non-termination collapsing the logic (OCP-0003).
+- **Predicative universe stratification** — no Girard; realized as the hierarchy
+  `U₀ ⊂ U₁` with no `` `U : U `` (`NbEPUnivH.agda`).
+- **Strict positivity** — no Reynolds; the (indexed) containers are strictly
+  positive by construction (`NbEPIndexed.agda`, no pragma).
+- **Guarded (not sized) coinduction** — avoids the feature behind Agda's
+  sized-types unsoundness (`NbEPCoind.agda`, copatterns).
+
+### Comparison — where the systems stand on consistency & trust
+
+| System | Theory consistent? | Implementation verified? | Known soundness history | Trust posture |
+|---|---|---|---|---|
+| **Coq / Rocq** | ✅ core CIC (rel. ZFC + inaccessibles, Werner) | ❌ trusted kernel; **MetaCoq** verifies a checker for PCUIC *in Coq* (partial) | soundness bugs *have* occurred (guard condition, universes, VM) — all fixed fast; subject reduction fails for coinduction | mature, battle-tested, large kernel |
+| **Agda** | ✅ core (rel. models) | ❌; some features **known unsafe** | `--type-in-type` (Girard) as a flag; **sized types had real unsoundness**; termination/universe bugs | research vehicle; **`--safe`** carves out a trustworthy subset |
+| **Idris 2** | ✅ *total fragment* (QTT) | ❌; less scrutiny | totality is **optional** — partial by default, so unsound as a logic unless restricted | programming-first; proof-use only in the total fragment |
+| **Lean 4** | ✅ (rel. models) | ❌ but **small kernel + independent re-checkers** | soundness bugs have occurred; heavy adversarial exposure via Mathlib | small TCB is the trust win |
+| **Once** (aim) | designed for it — total, predicative, strictly-positive core | **the goal**: minimal *auditable* TCB + eventual self-verification | n/a (research) | **de Bruijn criterion**: shrink the trusted base to something you can read |
+
+### Once's distinctive bet — and its honest limit
+
+Every mainstream system trusts a kernel it has not verified. Once attacks exactly
+that gap two ways, both visible on `origin/ocp-0006-once-spec`:
+- **A minimal auditable TCB** (the *de Bruijn criterion*): the trusted core is the
+  ~212-line human-verified `tcb/scheme.c` + `verifier.scm`, which checks reduction
+  *traces* against the CCC laws; the powerful normalizer is **untrusted** and
+  merely emits certificates the tiny checker validates.
+- **Self-verification** (Rung 6): the aspiration to a *verified* rather than
+  merely-trusted core — prove the Once compiler correct in Once.
+
+The honest limit (Gödel, again): self-verification **relocates** trust, it does
+not eliminate it — verifying the verifier still needs *some* trusted base (the
+tiny checker, and the metatheory doing the verifying). The win is not "trust
+nothing"; it is **"shrink the trusted base to something a human can audit, and
+make everything above it checkable."** That is a principled, low-risk point on the
+power-vs-trust spectrum — the same discipline as the decidable, total core this
+whole proposal is built on.
+
+### Why this matters for the theorems Once actually cares about
+
+Consistency and the choice of system are *most* consequential for **structural**
+statements (UIP vs univalence — where systems genuinely disagree). But Once's
+target theorems — **compiler correctness, program properties** — are *concrete /
+arithmetic* statements, and there the systems **cannot disagree**: arithmetic
+soundness means no two sound systems prove a concrete `P` and its negation, and
+conservativity/interpretability results transfer such theorems uniformly (funext
+is conservative over MLTT via the setoid model). So a verified-compiler theorem in
+Once means the same thing it would in Coq, Agda, or cubical — *provided* the
+implementation is trustworthy, which is precisely the link Once's minimal-TCB
+program is built to strengthen.
+
+---
+
 ## Trade-offs
 
 **Gained:**
