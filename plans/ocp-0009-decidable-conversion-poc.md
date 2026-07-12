@@ -19,12 +19,13 @@ separate IR→IR consumer over `normalizer.Syntax.CCC`.
 The **conversion problem** — decidable equality, the heart of OCP-0009 — is
 **solved and machine-checked for the fragment**. The principled NbE decides the
 β-theory + every congruence + **product-η**, open terms included, **funext-free**.
-All 26 `poc/OCP0009/*.agda` modules build green
+All 28 `poc/OCP0009/*.agda` modules build green
 (`bootstrap/check.sh poc/OCP0009/<M>.agda` → EXIT 0), including `NbEPCwF` (CwF /
 dependent layer, Rung 2), `NbEPEl` (Tarski decoder + base CwF), `NbEPId`
 (identity type `Id` + `J`, Rung 3), `NbEPQTT` (QTT: multiplicity semiring +
 erasure), `NbEPQTTJ` (QTT graded typing judgment + elaboration, route (b)), and
-`NbEPOTT` (Observational Type Theory equality foundation, §6 step 2).
+the OTT equality foundation (§6 step 2) across `NbEPOTT` (value + type equality,
+funext, proof-irrelevance), `NbEPOTTMu` (μ via Fix), and `NbEPOTTQ` (quotients).
 
 **There is no remaining research wall in the conversion core.** What is left is a
 dependent/CwF layer (standard now that conversion is solved), IR wiring, and — on
@@ -68,16 +69,23 @@ OCP-0009 contribution and it shares the OCP-0004 normalizer discipline.
   `eval-normal` (eval preserves normality).
 - `NbEPComplete` — **the theorem**: `≈β-complete : t ≈β u → nf t ≡ nf u`, where
   `_≈β_` = β + ⊙/pair/case/cata congruence + **`η-pair` (`⟨fst,snd⟩ ≈ id`)**.
-- `NbEPOTT` — **Observational Type Theory equality foundation (§6 step 2)**.
-  Observational value equality `eq A` defined by RECURSION ON THE TYPE for the
-  `{Void,Unit,×,+,⇒}` fragment. **funext holds by definition** — `eq (A⇒B) f g =
-  ∀ x. eq B (f x)(g x)`, transport (`funext`/`happly`) is the identity — so
-  extensional function equality is PROVABLE funext-free (`notnot=id` decides
-  `not∘not ≡ id` pointwise). `eq` is an equivalence (refl/sym/trans). Chosen over
-  cubical: fits the deterministic NbE, and proof-irrelevant equality erases
-  cleanly at QTT `𝟘`. Deferred (named): proof-IRRELEVANCE (`⇒` case needs the
-  internal funext this provides), observational TYPE equality `Eq` + `coe`, and
-  the `μ` case (needs the `Fix` value model).
+- **OTT equality foundation (§6 step 2) — COMPLETE across 3 modules:**
+  - `NbEPOTT` — observational VALUE equality `eq A` by recursion on the type
+    (`{Void,Unit,×,+,⇒}`). **funext by definition** (`eq (A⇒B) f g = ∀x. eq B
+    (f x)(g x)`, transport = identity) ⇒ extensional function equality provable
+    funext-free (`notnot=id`); `eq` an equivalence. Observational TYPE equality
+    `Eq` (inductive) + coercion `coe` (function case coerces backwards via
+    `Eq-sym`) + coherence. **Proof-IRRELEVANCE** `eq-irrel` (`⇒` case discharged
+    by the internal funext, taken as an explicit `Funext` param — postulate-free).
+  - `NbEPOTTMu` — `eq` extended to inductive types (`μ`) on the `Fix` value model
+    (`Testing.Evaluator`): `eq (μ F)(fix x)(fix y) = eqF F F x y`, reflexive,
+    structural termination (no pragma). `eq Nat 2 2` by refl; distinct
+    constructors compute to `⊥`.
+  - `NbEPOTTQ` — QUOTIENT types the setoid/observational way: `A / R` with
+    `eqQ R [a][b] = a≈b`, `elim` + `elim-resp` (the well-definedness obligation).
+    Covers Once's univalence-adjacent needs without HITs.
+  Chosen over cubical: fits the deterministic NbE, and proof-irrelevant equality
+  erases cleanly at QTT `𝟘`.
 - `NbEPQTTJ` — **QTT graded typing judgment (route (b), plan §7)**. Variable-based
   graded λ-calculus matching the compiler's `Surface/Context` usage vectors:
   usage vectors `Use Γ` with module structure over `Mult` (`0ᵘ`/`+ᵘ`/`·ᵘ`, laws);
@@ -331,10 +339,11 @@ were correct only for the minimal-core thesis.
 2. **Equality foundation = OTT** (+ quotient types), *not* classical cubical.
    Chosen for (a) architectural fit with the deterministic NbE, and (b)
    QTT-erasability. Replaces the definitional-`Id` stopgap (`NbEPId`) as the
-   principled target. **STARTED (`NbEPOTT`):** observational value equality by
-   recursion on types for `{Void,Unit,×,+,⇒}` — funext by definition, extensional
-   function equality funext-free, equivalence laws. Remaining: proof-irrelevance,
-   observational TYPE equality `Eq` + `coe`/coherence, `μ` (Fix model), quotients.
+   principled target. **COMPLETE** (`NbEPOTT` value+type equality, funext,
+   proof-irrelevance; `NbEPOTTMu` μ via Fix; `NbEPOTTQ` quotients). All four
+   layers landed: funext by definition, `Eq`+`coe`, proof-irrelevance, μ, and
+   quotients. Remaining refinement: wire OTT `Eq`/`coe` to the dependent layer
+   (`NbEPEl` indexed families) so `Eq (Vec m)(Vec n)` follows from `m ≡ n`.
 3. **Universe-as-IR** — the single mechanism for the universe + IR/II rows.
 4. Native indexed inductives, coinduction (the genuinely-hard/contested row),
    then the summit (prove Once in Once).
