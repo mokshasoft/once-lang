@@ -4978,3 +4978,68 @@ bracket abstraction:
   `⊢ᵍ`/`⊢ᵐ`/`⊢ᶜ`), D032 (compose/case/cata grade-poly), Curry–Howard–Lambek
   correspondence (CCC ≅ typed λ-calculus), Plan 0.52 M1 (`const-morph-strong`
   discharged; `cata-morph-strong` the remaining leaf this enables).
+
+## D071: SigOp Is FFI-Only; Internal Definition References Are Context Projections (DTT-Aligned)
+
+**Date**: 2026-07-12
+**Status**: Accepted (design); implementation IN PROGRESS (Plan 0.58)
+**Implements**: Plan 0.58 (`0.58-once-spec-language-definition.md`), branch `ocp-0006-once-spec`
+**Corrects**: the Plan-0.58 SigOp-concreteness migration (2026-07-11), which made `poly`/`closure`
+references ride the FFI `SigOp` placeholder
+**Relates to**: D047 (Prim→SigOp), D061 (SigOp contract = its interpretation; core is
+interpretation-agnostic), D064 (named definitions are morphisms — direct-call ABI), D045
+(polymorphic schema instantiation), D030 (FunRef — function references as pointers),
+D057 (correctness anchored at a source-level *reference* semantics)
+
+### Context
+
+The 2026-07-11 concreteness migration (Plan 0.58) required a SigOp's types to be `IsConcrete`
+(an FFI/register-ABI boundary genuinely only passes concrete values — a legitimate spec
+constraint, per D047/D061: a SigOp is an *interpretation* boundary). But it also baked
+`IsConcrete` into the surface `poly` (same-module polymorphic-def reference) and `closure`
+(user-fn-as-value reference) nodes, which elaborate to `SigOp (value-info …)`. That made
+**internal definition references masquerade as FFI values** — so `cata`/closure programs at
+non-concrete types (`μNat → Int`) became untypable/rejected (13 exit-tests failed).
+
+The root confusion: `poly`/`closure` are **references to internal definitions** (D064: named
+defs are morphisms with a direct-call ABI), NOT FFI operations. Forcing them through the
+concrete `SigOp` placeholder hit a totality wall — a reference of *arbitrary* type needs a total
+value (impossible for `Void`), which SigOp faked with an opaque postulated value. Two
+elaboration attempts (inline δ-reduction with well-founded `Acc` threading) foundered on an
+all-or-nothing ~25-member termination cascade.
+
+Stepping back to the mathematics: this is ordinary **parametric polymorphism** with two standard
+solutions — monomorphization (Rust/C++/MLton; inline per use) vs. **polymorphic values in a
+context + type application** (Haskell Core/System F, Idris2). Only the latter aligns with
+**dependent types** (Agda/Idris/Coq/Lean): definitions live in a context Γ, a reference is a
+NAME that **δ-reduces to its body on demand**, `⟦x⟧Γ = Γ(x)`. Monomorphization cannot align
+with DTT (types depend on terms ⇒ can't pre-instantiate; instantiations may be unbounded;
+conversion needs shared references, not copies).
+
+### Decision
+
+**SigOp stays exactly for what it is — an FFI/interpretation boundary (D061), with its
+`IsConcrete` constraint intact.** Internal definition references (`poly`, `closure`) STOP riding
+SigOp. Instead, adopt **Option C**: a reference is a **projection from the definition-context Γ**.
+
+- **Γ = the definition-context** — the ordered telescope of top-level defs AS MEANINGS (the DTT
+  global signature). Its *syntax* is the acyclic telescope already landed (commit `5b4c25ac`,
+  which made acyclicity manifest); D071 adds its *semantics*.
+- **A reference is a NAME/index into Γ** — no `IsConcrete`, no carried body. `poly` = a value
+  reference; `closure` = a first-class-function reference (D064's named-def morphism), refined
+  from D030's `FunRef` to be a context projection rather than a bare pointer.
+- **The meaning carries Γ** — `⟦_⟧ᵈ`/`SD.⟦_⟧ˢ`/`evalᴰ` become Γ-aware (cleanest as an Agda module
+  parameter, threaded once per module); `⟦ ref x ⟧Γ = Γ(x)` IS δ-reduction. Totality comes from
+  Γ being well-formed (no `Void` wall); references are O(1) projections (no termination threading).
+- **Codegen** compiles `ref x` to internal-linkage call/load of the def's symbol (D064 direct-call
+  ABI) — never an FFI SigOp; no concreteness gate.
+
+### Consequences
+
+- The 13 non-concrete `cata`/closure exit-tests become typable/compilable.
+- Both blockers of the inline approach dissolve (no totality wall, no `Acc` threading).
+- The source-level reference semantics (D057) becomes the DTT global-context/δ-reduction model,
+  so **OCP-9 (dependent types) inherits the right structure and need not redo it**.
+- Cost: the largest structural change in 0.58 — Γ threads through the meaning functions and the
+  adequacy relates the machine's *linked* def-code to Γ. Executed top-down (C is the authority;
+  SD/evalᴰ/adequacy are rewritten to conform, not preserved).
