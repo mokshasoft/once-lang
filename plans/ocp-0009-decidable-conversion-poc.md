@@ -202,18 +202,63 @@ substitution-naturality. ~~Tarski decoder~~ + ~~base CwF~~ (`NbEPEl`): `El`
 welded to NbE conversion, indexed families (genuine term-dependency, no IR),
 CwF term/comprehension layer. See §3.B.
 
-1. **Identity type `Id` + `J`** (Rung 3) — the natural next rung: turns indexing
-   into a logic (state and prove equalities). A former on top of base CwF. Pick
-   intensional first. *(Base CwF's `reifyVal`-injectivity gap is now CLOSED via
-   `faithful`/`El-weld-nf`.)*
-2. **Wire to the real IR / OCP-0004 transparency** — run the decision on the actual
-   `Code` normalizer, connect to `EvalFullCorrectness`. Closes "engine matches the
-   real compiler."
-3. **IR/II** (§D) — the deliberate expressivity extension, taken as `Code`↔`El`
-   *mutual* (universe + decoder together). Leaves the small-core discipline by
-   design; do after base CwF is fully settled (this is the plan of record).
-4. **sum-η/μ-η as surface sugar** (NOT sheaf NbE) — elaborate the two positive-η
-   laws to explicit propositional proofs; keeps the core checker small.
+**DONE — Rung 3.** ~~Identity type `Id` + `J`~~ landed as `NbEPId`: value-indexed
+`Id` + genuine dependent `J`; `Id-tm` reflects (decidable) conversion as a
+`J`-computing propositional equality. Base CwF's `reifyVal`-injectivity gap is
+CLOSED (`faithful`/`El-weld-nf`). Remaining next steps:
+
+1. **Proof-relevant intensional `Id`** — the current `Id` = decidable conversion;
+   proving `n+0=n`-by-induction (the `Open.agda` residual) needs `Id` as a
+   primitive NbE type-former with an inductive eliminator, or an axiom (funext).
+2. **Native indexed inductive families** (Rung 4) — the typing relation `⊢` etc.
+   as datatypes; unlocks "phrase compiler correctness as a type." (Current
+   Vec-via-open-codes is genuine but ad hoc.)
+3. **Universe hierarchy** — one first-order universe today; a tower unlocks
+   polymorphism + large elimination.
+4. **Wire to the real IR / OCP-0004 transparency** — run the decision on the actual
+   `Code` normalizer, connect to `EvalFullCorrectness`.
+5. **IR/II** (§D) — the deliberate expressivity extension, `Code`↔`El` *mutual*.
+   Leaves the small-core discipline by design; after base CwF is fully settled.
+6. **sum-η/μ-η as surface sugar** (NOT sheaf NbE) — the two positive-η laws to
+   explicit propositional proofs.
 
 Both refinements are DONE (case/cata congruence + η-pair). The proposal doc
 `docs/proposals/OCP-0009-decidable-dependent-types.md` §6 records each milestone.
+
+---
+
+## 5. Expressibility positioning vs Agda / Coq / Lean / Idris
+
+**One-line:** Once-with-OCP-0009 sits at ≈ **λP + a single first-order (Tarski)
+universe + indexed families + a *definitional* identity type** — a *minimal*
+dependently-typed core. Below Agda/Coq/Lean/Idris2 *as proof assistants*, but
+optimizing a different objective (small decidable core + self-hosting), not
+proof-theoretic strength. "Built" = machine-checked in `poc/OCP0009/`.
+
+| Axis | Once (OCP-0009, built) | Agda | Coq | Lean 4 | Idris 2 |
+|---|---|---|---|---|---|
+| **Dependent Π/Σ** | ✅ Rung 2, decidable via NbE | ✅ | ✅ | ✅ | ✅ |
+| **Inductive types** | ✅ strictly-positive containers (μ = W-types) | ✅ | ✅ | ✅ | ✅ |
+| **Indexed inductive families** | ⚠️ ad hoc — Vec via open-code decoding; native = Rung 4, unbuilt | ✅ | ✅ | ✅ | ✅ |
+| **Universe structure** | ⚠️ one first-order Tarski `U`; no hierarchy/poly | ✅ ∞ + poly | ✅ ∞ + impred. Prop | ✅ ∞ + poly | ✅ cumulative |
+| **Identity type** | ⚠️ *definitional* `Id`+`J` (= decidable conversion) | ✅ intensional (+cubical) | ✅ intensional | ✅ + quotients→funext | ✅ intensional |
+| **Conversion** | ✅ βη **+ product-η + terminal-η, funext-free** (NbE) | βη, partial η | βη, partial η | βη + defeq proof irrel. | βη |
+| **IR / II** | ❌ deferred (§D) | ✅ **the standout** | ❌ | ❌ | ❌ |
+| **Coinduction** | ❌ inductive-only core (ν → propositional side) | ✅ | ✅ | ✅ | ✅ |
+| **Totality** | ✅ total-only (SN core) | ✅ | ✅ | ✅ | ⚠️ total *or* partial |
+| **Erasure / quantities** | 🔜 Rung 5 (QTT, by-design) | ✅ irrelevance | ⚠️ extraction | ✅ Prop-erasure | ✅ QTT native |
+| **Self-hosting / reflected IR** | ✅ **distinctive** (prove-Once-in-Once) | ❌ | ❌ | ❌ | ❌ |
+| **Kernel / TCB size** | ✅ **minimal by thesis** | large | large (CIC) | smallish CIC | medium |
+
+**Honest gaps, biggest first:** (1) **IR/II** — the largest gap, and only vs
+Agda (Coq/Lean/Idris lack it too); deliberately deferred. (2) **Universe
+hierarchy** — one universe, not a tower. (3) **Native indexed inductives**
+(Rung 4) — the Vec-via-open-codes trick is genuine but ad hoc. (4)
+**Proof-relevant intensional `Id`** — the built `Id` = decidable conversion; the
+big assistants' `Id` proves strictly more (`n+0=n` by induction).
+
+**Where Once is genuinely different / ahead:** conversion is *more extensional*
+than Coq/Agda's (product-η + terminal-η, funext-free); **self-hosting with a
+reflected IR** (none of the four are); a **minimal decidable core** with no
+confluence/SN debt (deterministic NbE shared with the compiler normalizer). A
+different point on the design manifold — not strictly dominated.
