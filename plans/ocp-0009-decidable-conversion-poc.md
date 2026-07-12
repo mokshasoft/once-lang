@@ -19,7 +19,7 @@ separate IR→IR consumer over `normalizer.Syntax.CCC`.
 The **conversion problem** — decidable equality, the heart of OCP-0009 — is
 **solved and machine-checked for the fragment**. The principled NbE decides the
 β-theory + every congruence + **product-η**, open terms included, **funext-free**.
-All 33 `poc/OCP0009/*.agda` modules build green
+All 34 `poc/OCP0009/*.agda` modules build green
 (`bootstrap/check.sh poc/OCP0009/<M>.agda` → EXIT 0), including `NbEPCwF` (CwF /
 dependent layer, Rung 2), `NbEPEl` (Tarski decoder + base CwF), `NbEPId`
 (identity type `Id` + `J`, Rung 3), `NbEPQTT` (QTT: multiplicity semiring +
@@ -96,6 +96,14 @@ OCP-0009 contribution and it shares the OCP-0004 normalizer discipline.
   **This is the step that leaves the small-core discipline by design** — IR
   enlarges the TCB/metatheory; conversion is Agda's kernel here, not the
   container NbE. Predicative (no `` `U : U ``); hierarchy noted, not built.
+- `NbEPCoind` — **coinduction (the contested §5 row)**. Streams as a coinductive
+  record; corecursion GUARDED by copatterns — productive, SOUND, **no sized
+  types** (the feature behind Agda's unsoundness history): `repeat`/`unfold`/
+  `map`/`nats`. Bisimilarity `_≈_` as the PROPOSITIONAL (coinductive) equality —
+  an equivalence, with coinductive proofs (`map-id`, `map-fuse`). Matches Once's
+  inductive-only discipline: `ν` stays OUT of definitional conversion; bisimulation
+  is propositional (and not decidable in general — the honest frontier). Best
+  principled tradeoff, not a strict win.
 - `NbEPIndexed` — **native indexed inductive families (Rung 4)**. Generalizes the
   container core to INDEXED containers (Altenkirch–Morris): `IxCon` (Op/Ar/ix),
   extension `⟦_⟧ix`, indexed fixpoint `μix`, generic indexed induction `elim` (=
@@ -331,7 +339,7 @@ proof-theoretic strength. "Built" = machine-checked in `poc/OCP0009/`.
 | **Identity type** | ⚠️ *definitional* `Id`+`J` (= decidable conversion) | ✅ intensional (+cubical) | ✅ intensional | ✅ + quotients→funext | ✅ intensional |
 | **Conversion** | ✅ βη **+ product-η + terminal-η, funext-free** (NbE) | βη, partial η | βη, partial η | βη + defeq proof irrel. | βη |
 | **IR / II** | ✅ **IR prototyped** (`NbEPUniv` U/El mutual; `NbEPUnivDec` defunctionalized + native decidable eq) | ✅ | ❌ | ❌ | ❌ |
-| **Coinduction** | ❌ inductive-only core (ν → propositional side) | ✅ | ✅ | ✅ | ✅ |
+| **Coinduction** | ✅ **guarded/copatterns, no sized types** (`NbEPCoind`); bisim propositional | ✅ | ✅ | ✅ | ✅ |
 | **Totality** | ✅ total-only (SN core) | ✅ | ✅ | ✅ | ⚠️ total *or* partial |
 | **Erasure / quantities** | 🔜 Rung 5 (QTT, by-design) | ✅ irrelevance | ⚠️ extraction | ✅ Prop-erasure | ✅ QTT native |
 | **Self-hosting / reflected IR** | ✅ **distinctive** (prove-Once-in-Once) | ❌ | ❌ | ❌ | ❌ |
@@ -406,8 +414,10 @@ were correct only for the minimal-core thesis.
    with type-level redexes / arbitrary large elimination) via a native NbE, and a
    defunctionalized/decidable hierarchy — the frontier.
 4. **Native indexed inductives — DONE (`NbEPIndexed`):** indexed containers,
-   `Vec`, relations-as-datatypes (`_≤_`). Then coinduction (the
-   genuinely-hard/contested row), then the summit (prove Once in Once).
+   `Vec`, relations-as-datatypes (`_≤_`). **Coinduction — DONE (`NbEPCoind`):**
+   guarded copatterns, bisimilarity propositional (the contested row, best
+   principled tradeoff). Then the summit (prove Once in Once) — the one §5-adjacent
+   row still open, and the concrete goal the whole OCP motivates.
 
 ### Honesty on "dominate every line"
 
