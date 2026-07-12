@@ -4,7 +4,8 @@
 core), and its shared decidability core with OCP-0004.
 **Status:** conversion core PROVEN for the fragment (2026-07-11); **CwF /
 dependent layer (Rung 2) landed** — Π/Σ over the total core, open type-code
-conversion decided by the principled NbE (2026-07-12).
+conversion decided by the principled NbE (2026-07-12); **Tarski decoder
+`El : Code → Ty`** + code-driven context extension / terms-of-type (2026-07-12).
 **Branch:** `ocp-0009-poc0-nbe`, head `2326d72b`, pushed to origin.
 **Vehicle:** Agda 2.8.0, IR-only. The compiler is NOT touched — this is a
 separate IR→IR consumer over `normalizer.Syntax.CCC`.
@@ -16,9 +17,9 @@ separate IR→IR consumer over `normalizer.Syntax.CCC`.
 The **conversion problem** — decidable equality, the heart of OCP-0009 — is
 **solved and machine-checked for the fragment**. The principled NbE decides the
 β-theory + every congruence + **product-η**, open terms included, **funext-free**.
-All 21 `poc/OCP0009/*.agda` modules build green
+All 22 `poc/OCP0009/*.agda` modules build green
 (`bootstrap/check.sh poc/OCP0009/<M>.agda` → EXIT 0), including the new
-`NbEPCwF` (CwF / dependent layer, Rung 2).
+`NbEPCwF` (CwF / dependent layer, Rung 2) and `NbEPEl` (Tarski decoder).
 
 **There is no remaining research wall in the conversion core.** What is left is a
 dependent/CwF layer (standard now that conversion is solved), IR wiring, and — on
@@ -62,6 +63,15 @@ OCP-0009 contribution and it shares the OCP-0004 normalizer discipline.
   `eval-normal` (eval preserves normality).
 - `NbEPComplete` — **the theorem**: `≈β-complete : t ≈β u → nf t ≡ nf u`, where
   `_≈β_` = β + ⊙/pair/case/cata congruence + **`η-pair` (`⟨fst,snd⟩ ≈ id`)**.
+- `NbEPEl` — **the Tarski decoder**. `Code` (the first-order type-code family)
+  + `El : Code → Ty` decoding each code to the `Ty` it denotes; the reflection
+  `⌜_⌝ : Code → Tm Unit U` lands codes as IR `U`-data agreeing with `NbEPCwF`'s
+  smart constructors (self-hosting bridge). Unlocks **code-driven context
+  extension** (`Γ ▷ᶜ A = Γ ▷ El A`) and **terms-of-type** (`Tmᵗ Γ A =
+  Tm ⟦Γ⟧C (El A)`, with the variable `varᶜ = sndT`). Honest ceiling, proven as
+  `refl`: first-order `Π`/`Σ` decode NON-dependently (`El (a `Π b) = El a ⇒ El b`)
+  — the correct meaning when the codomain code is closed; a code whose codomain
+  depends on the domain variable needs induction-recursion (§D, out of scope).
 - `NbEPCwF` — **the CwF / dependent layer (Rung 2)**. The universe of type-codes
   `U = μ UF` lives inside the `{Unit,×,+,μ}` fragment, so Π/Σ/⇒/× are fragment
   morphisms `Tm _ U` and **type conversion IS the principled `nf`**. Delivers:
@@ -128,12 +138,20 @@ exactly on this line.
   telescopes, Π/Σ formers, dependent conversion *under a context with variables*
   (open type-codes, computation under the context) — all decided by the
   principled NbE, exactly the "standard construction on solved conversion" this
-  bullet predicted. **What remains on this axis:**
-  - a **Tarski decoder `El : U → Ty`** — the bridge that lets a type-*code*
-    (not just a closed `Ty`) EXTEND a context, and that gives *terms-of-type*
-    `Tm Γ A` for `A : Typ Γ`. This is the self-hosting/IR piece (§B-wiring).
+  bullet predicted. **Tarski decoder DONE (`NbEPEl`, 2026-07-12):** `El : Code →
+  Ty` + reflection into `U` + code-driven context extension + terms-of-type.
+  **What remains on this axis:**
+  - **Decode OPEN codes** `Tm I U` pointwise → genuinely INDEXED families
+    (`Vec n`-style) whose fibres are decided by NbE on the index. Real
+    dependency WITHOUT IR (the `Dependent.agda` result, now flowing through
+    `El`) — the natural next increment.
+  - **Reflection faithfulness** (`El`/`⌜_⌝` injectivity): distinct codes reflect
+    to distinct `nf` — a routine discrimination induction, currently noted not
+    proven in `NbEPEl`.
   - Π/Σ as **adjoints** (the categorical universal-property presentation) and
     the remaining CwF equations beyond congruence + substitution-naturality.
+  - **Dependent `Π`/`Σ` at the code level** (codomain depending on the domain
+    variable) = induction-recursion — §D, a separate bill, not this axis.
 - **Wire the principled NbE to the real bootstrap `Code`/`Term` IR** + the
   **OCP-0004 transparency / `EvalFullCorrectness`** obligation. Engine is proven
   over `Tm` (linked to `Term` via `emb`); connecting the *decision* to the real
@@ -156,12 +174,15 @@ exactly on this line.
 
 **DONE:** ~~CwF/dependent layer~~ — the **type layer** landed as `NbEPCwF`
 (Rung 2): contexts, Π/Σ formers, open-type-code conversion under a context
-routed through NbE `nf`, congruence, substitution-naturality. See §3.B.
+routed through NbE `nf`, congruence, substitution-naturality. **~~Tarski
+decoder~~** landed as `NbEPEl`: `El : Code → Ty`, reflection into `U`,
+code-driven context extension + terms-of-type. See §3.B.
 
-1. **Tarski decoder `El : U → Ty`** (the natural continuation of `NbEPCwF`).
-   Decoding type-codes to actual types unlocks (a) context extension by a
-   *dependent code* (not just a closed `Ty`), and (b) *terms-of-type* `Tm Γ A`.
-   This is where the CwF becomes fully dependent AND touches the self-hosting IR.
+1. **Decode OPEN codes → genuinely indexed families** (the natural continuation
+   of `NbEPEl`). A family over index `I` is an open code `Tm I U`; its fibre at
+   `i` is `El`-of-the-decoded-`nf`, and `Vec m ≅ Vec n` reduces to index
+   conversion via NbE — real dependency with NO induction-recursion. Optionally
+   add the reflection-faithfulness (`⌜_⌝` injectivity) discrimination lemma.
 2. **Wire to the real IR / OCP-0004 transparency** — run the decision on the actual
    `Code` normalizer, connect to `EvalFullCorrectness`. Closes "engine matches the
    real compiler."
