@@ -28,7 +28,11 @@
 
 module poc.OCP0009.NbEPQTTJ where
 
-open import normalizer.Syntax.Types using ( _≡_; refl; cong; cong₂; trans )
+open import normalizer.Syntax.Types
+  using ( _≡_; refl; cong; cong₂; trans
+        ; Ty; Unit; _*_; _⇒_; μ_; Func; One; _⊕_ )
+open import normalizer.Syntax.CCC
+  using ( Term; _∘_; fst; snd; ⟨_,_⟩; curry; apply )
 open import poc.OCP0009.NbEPQTT
   using ( Mult; 𝟘; 𝟙; ω; _+ᵐ_; _·ᵐ_
         ; +-idˡ; +-idʳ; +-comm; ·-zeroˡ )
@@ -150,3 +154,68 @@ K = lam (lam (var (vs vz)))
 -- A linear pairing uses each of two variables once.
 dupPair : (∅ , ι , ι) ⊢[ ([] ∷ 𝟙) ∷ 𝟙 ] (ι ×q ι)
 dupPair = pair (var (vs vz)) (var vz)
+
+------------------------------------------------------------------------
+-- ELABORATION to the CCC IR (the compiler's Surface → IR pass).
+--
+-- The standard point-free reading: a context is a product environment, a term
+-- is a morphism out of it, `var → projection`, `lam → curry`, `app → apply`,
+-- `pair → ⟨_,_⟩`. This is the FULL elaboration (keeps every argument).
+------------------------------------------------------------------------
+
+ιT : Ty                         -- the base type ι elaborates to (Bool = μ(1+1))
+ιT = μ (One ⊕ One)
+
+⟦_⟧ᵗ : Tyq → Ty
+⟦ ι ⟧ᵗ         = ιT
+⟦ A ×q B ⟧ᵗ    = ⟦ A ⟧ᵗ * ⟦ B ⟧ᵗ
+⟦ A ⇒[ _ ] B ⟧ᵗ = ⟦ A ⟧ᵗ ⇒ ⟦ B ⟧ᵗ
+
+⟦_⟧ᶜ : Con → Ty
+⟦ ∅ ⟧ᶜ     = Unit
+⟦ Γ , A ⟧ᶜ = ⟦ Γ ⟧ᶜ * ⟦ A ⟧ᵗ
+
+⟦var_⟧ : ∀ {Γ A} → Γ ∋ A → Term ⟦ Γ ⟧ᶜ ⟦ A ⟧ᵗ
+⟦var vz ⟧     = snd
+⟦var vs x ⟧   = ⟦var x ⟧ ∘ fst
+
+⟦_⟧ : ∀ {Γ ρ A} → Γ ⊢[ ρ ] A → Term ⟦ Γ ⟧ᶜ ⟦ A ⟧ᵗ
+⟦ var x ⟧    = ⟦var x ⟧
+⟦ lam t ⟧    = curry ⟦ t ⟧
+⟦ app f a ⟧  = apply ∘ ⟨ ⟦ f ⟧ , ⟦ a ⟧ ⟩
+⟦ pair a b ⟧ = ⟨ ⟦ a ⟧ , ⟦ b ⟧ ⟩
+
+-- Sanity: the identity elaborates to `curry snd`, the constant to
+-- `curry (curry (snd ∘ fst))`.
+_ : ⟦ idₗ ⟧ ≡ curry snd
+_ = refl
+
+_ : ⟦ K ⟧ ≡ curry (curry (snd ∘ fst))
+_ = refl
+
+------------------------------------------------------------------------
+-- ERASED (runtime) type elaboration — a `𝟘`-argument function has NO runtime
+-- argument: `⌊ A ⇒[𝟘] B ⌋ = ⌊ B ⌋`. This is the type-level face of erasure.
+------------------------------------------------------------------------
+
+⌊_⌋ᵗ : Tyq → Ty
+⌊ ι ⌋ᵗ          = ιT
+⌊ A ×q B ⌋ᵗ     = ⌊ A ⌋ᵗ * ⌊ B ⌋ᵗ
+⌊ A ⇒[ 𝟘 ] B ⌋ᵗ = ⌊ B ⌋ᵗ              -- erased argument: the arrow vanishes
+⌊ A ⇒[ 𝟙 ] B ⌋ᵗ = ⌊ A ⌋ᵗ ⇒ ⌊ B ⌋ᵗ
+⌊ A ⇒[ ω ] B ⌋ᵗ = ⌊ A ⌋ᵗ ⇒ ⌊ B ⌋ᵗ
+
+-- The constant `K : ι ⇒[𝟙] (ι ⇒[𝟘] ι)`: its FULL runtime type is a two-argument
+-- `ι ⇒ ι ⇒ ι`, but its ERASED type drops the `𝟘` argument to `ι ⇒ ι` — a
+-- one-argument function. Erasure witnessed at the type level, by `refl`.
+_ : ⟦ ι ⇒[ 𝟙 ] (ι ⇒[ 𝟘 ] ι) ⟧ᵗ ≡ (ιT ⇒ (ιT ⇒ ιT))
+_ = refl
+
+_ : ⌊ ι ⇒[ 𝟙 ] (ι ⇒[ 𝟘 ] ι) ⌋ᵗ ≡ (ιT ⇒ ιT)
+_ = refl
+
+-- Next (documented): the ERASING TERM elaboration — drop the `𝟘`-bound variable
+-- from the runtime closure (a `𝟘`-usage STRENGTHENING lemma), landing in
+-- `Term ⌊Γ⌋ᶜ ⌊A⌋ᵗ`, so the elaborated morphism factors through the runtime
+-- environment — the graded analogue of `NbEPQTT.erase-irrelevant`. (Its
+-- semantic check needs the Kripke `⇒` NbE, since `NbEP.nf` omits `⇒`.)
