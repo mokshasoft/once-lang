@@ -664,8 +664,11 @@ equality defined by RECURSION ON THE TYPE. Realized for `{Void,Unit,×,+,⇒}`:
 identity), so extensional facts like `not ∘ not ≡ id` are provable funext-free,
 and `eq` is a structural equivalence. OTT is chosen over cubical because it fits
 the deterministic NbE and — being proof-irrelevant — erases cleanly at QTT `𝟘`.
-Remaining OTT layers: proof-irrelevance, observational TYPE equality + `coe`,
-`μ` (Fix model), quotients.
+All four OTT layers are now realized: value + type equality `Eq` with coercion
+`coe`, **proof-irrelevance** (`NbEPOTT`), observational equality for inductive
+types via the `Fix` model (`NbEPOTTMu`), and **quotient types** the
+setoid/observational way (`NbEPOTTQ`). Remaining refinement: wire `Eq`/`coe` to
+the dependent indexed-family layer so `Eq (Vec m)(Vec n)` follows from `m ≡ n`.
 
 ### Rung 4 — indexed inductive families
 
