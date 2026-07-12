@@ -42,7 +42,8 @@ open import normalizer.Syntax.Types
 open import poc.OCP0009.NbEK
   using ( Val; vUnit; vPair; vInl; vInr; vIn )
 open import poc.OCP0009.NbEP
-  using ( Tm; _⊙_; sndT; nf; eval )
+  using ( Tm; _⊙_; sndT; idT; case; cataT; nf; eval
+        ; NatF; zero; suc; one; two; double )
 open import poc.OCP0009.NbEPCwF
   using ( U; UF; Nat
         ; ⌜unit⌝; ⌜nat⌝; Π[_,_]; Σ[_,_]; _⇒C_; _×C_
@@ -200,3 +201,52 @@ _ = varᶜ {∙} {`nat}
 --     so the code `A` is passed explicitly rather than inferred through `El`.)
 _ : Tmᵗ (∙ ▷ᶜ (`nat `× `unit)) (`nat `× `unit)
 _ = varᶜ {∙} {`nat `× `unit}
+
+------------------------------------------------------------------------
+-- INDEXED FAMILIES — genuine term-dependency, WITHOUT induction-recursion.
+--
+-- A dependent type over an index type `I` is an OPEN code `Tm I U` — a
+-- type-code with a free variable of type `I`. Its FIBRE at a closed index
+-- `i : Tm Unit I` is `El`-of-`(F ⊙ i)`, read off the NbE value:
+--
+--   Fib F i = decodeV (eval (F ⊙ i) vUnit).
+--
+-- Because `eval (F ⊙ i) = eval F ∘ eval i`, the fibre depends on the index
+-- ONLY through its NbE value — so convertible indices give EQUAL fibres
+-- (`Fib-cong`). This is `Vec m ≅ Vec n` reduced to conversion on the index —
+-- real dependency, decided by the principled NbE, with NO IR: the family is
+-- an ordinary open code, not a code-valued function.
+------------------------------------------------------------------------
+
+Fam : Ty → Set
+Fam I = Tm I U
+
+Fib : ∀ {I} → Fam I → Tm Unit I → Ty
+Fib F i = decodeV (eval (F ⊙ i) vUnit)
+
+-- Conversion on the index (equal NbE values) ⇒ equal dependent-type fibres.
+Fib-cong : ∀ {I} (F : Fam I) {i j : Tm Unit I}
+         → eval i vUnit ≡ eval j vUnit → Fib F i ≡ Fib F j
+Fib-cong F p = cong (λ v → decodeV (eval F v)) p
+
+-- `Vec` OF `Nat` as a TYPE-LEVEL cata over the index: fold the `Nat` index
+-- into a code — `0 ↦ unit`, `suc k ↦ nat × (Vec k)` — i.e. the n-fold product
+-- `Natⁿ`. Genuine type-level computation landing in the universe.
+VecNat : Fam (μ NatF)
+VecNat = cataT NatF (case ⌜unit⌝ (⌜nat⌝ ×C idT))
+
+-- Fibres computed by NbE (each `refl` runs the type-level fold + decoder):
+_ : Fib VecNat zero ≡ Unit
+_ = refl
+
+_ : Fib VecNat one ≡ (El `nat * Unit)
+_ = refl
+
+_ : Fib VecNat two ≡ (El `nat * (El `nat * Unit))
+_ = refl
+
+-- THE DEPENDENCY DECIDED BY NbE: the index terms `double 1` and `2` differ
+-- syntactically, but `double 1` COMPUTES to `2` under the type-level fold, so
+-- the fibres are equal — `Vec (double 1) ≅ Vec 2`, decided by `refl`.
+_ : Fib VecNat (double ⊙ one) ≡ Fib VecNat two
+_ = refl
