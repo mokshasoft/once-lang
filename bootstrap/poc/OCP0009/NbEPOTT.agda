@@ -24,6 +24,7 @@
 -- a labelled placeholder here so `⟦_⟧` stays total.
 ------------------------------------------------------------------------
 
+{-# OPTIONS --safe #-}
 module poc.OCP0009.NbEPOTT where
 
 open import normalizer.Syntax.Types

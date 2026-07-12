@@ -21,6 +21,7 @@
 -- (`Once.Adequacy.*` on `origin/ocp-0006-once-spec`) — here in one file.
 ------------------------------------------------------------------------
 
+{-# OPTIONS --safe #-}
 module poc.OCP0009.NbEPSummit where
 
 open import normalizer.Syntax.Types using ( _≡_; refl; cong; trans )
