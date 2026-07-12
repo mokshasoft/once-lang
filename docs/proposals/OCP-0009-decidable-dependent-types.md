@@ -641,6 +641,21 @@ types but cannot *state a proof obligation*.
 - **Obligation:** pick intensional first (revisit for funext/OTT/cubical later —
   see Open Questions).
 
+**Status — definitional `Id` + `J` realized (`bootstrap/poc/OCP0009/NbEPId.agda`,
+2026-07-12).** A value-indexed identity type `Id {A} (u v : Val Unit A)` with
+`Refl` and the **full dependent eliminator `J`** (genuine, by pattern matching —
+not a `subst` surrogate); `transp`/`Id-sym`/`Id-trans` derive from `J`. On terms,
+`Id-tm a b = Id ⟦a⟧ ⟦b⟧` is inhabited by `Refl` EXACTLY when `a,b` are
+convertible (share the NbE value), so **conversion is reflected as a
+`J`-computing propositional equality**: `Id (double 1) 2` holds by `Refl`, also
+at a decoded code type (`IdTy`); `Id→conv` shows `Id` entails `nf`-convertibility
+(sound). Honest scope: here `Id`-equality COINCIDES with the (decidable)
+conversion — this is the *definitional* identity. A proof-relevant intensional
+`Id` proving strictly more — e.g. `n + 0 ≡ n` for a VARIABLE `n`
+(propositional-but-not-definitional, the `Open.agda` residual, needing induction
+on `n`) — is not this type; it needs `Id` as a primitive NbE type-FORMER with an
+eliminator carrying the induction, or an axiom (funext). Named, not built.
+
 ### Rung 4 — indexed inductive families
 
 Generalize reified functors to *indexed* polynomial functors / containers, so you
