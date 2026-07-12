@@ -599,10 +599,23 @@ The advance over the closed-code `Universe.agda` (which explicitly deferred "a
 type-code mentioning an earlier variable … awaits NbE") is exactly the frontier
 it named: **OPEN type-codes that mention the context variable, with computation
 UNDER the context** (a `fst∘⟨-,-⟩` redex on the variable normalized away),
-decided by `nf`. Deferred to the next increment: a Tarski decoder `El : U → Ty`
-— required to extend a context by a *decoded dependent code* (vs a closed `Ty`)
-and to give *terms-of-type* `Tm Γ A`; this is where Rung 2 meets the
-self-hosting IR bridge.
+decided by `nf`.
+
+**Status — Tarski decoder realized (`bootstrap/poc/OCP0009/NbEPEl.agda`,
+2026-07-12).** `El : Code → Ty` decodes the first-order type-code family to the
+`Ty` it denotes; the reflection `⌜_⌝ : Code → Tm Unit U` lands codes as IR
+`U`-data agreeing with the `NbEPCwF` smart constructors (the self-hosting
+bridge). This unlocks the two pieces Rung 2 needs: **code-driven context
+extension** (`Γ ▷ᶜ A = Γ ▷ El A`) and **terms-of-type** (`Tmᵗ Γ A =
+Tm ⟦Γ⟧C (El A)`, with the context variable `varᶜ = sndT` a genuine term). The
+honest ceiling is proven as `refl`: first-order `Π`/`Σ` decode NON-dependently
+(`El (a `Π b) = El a ⇒ El b`) — the correct denotation when the codomain code
+is closed; a codomain that depends on the domain variable would need `U`
+defined mutually with `El` (induction-recursion, the FAQ Q9 / Rung 4 ceiling,
+out of scope). Deferred to the next increment: **decoding OPEN codes** `Tm I U`
+pointwise, giving genuinely INDEXED families (`Vec n`-style) whose fibres are
+decided by NbE on the index — real dependency without IR (the `Dependent.agda`
+result, now flowing through `El`).
 
 ### Rung 3 — the identity type `Id (a ≡ b)` + `J`
 
