@@ -691,6 +691,17 @@ indexed families.
   a type*.
 - **Obligation:** strict positivity for the families (respected by the existing WF
   machinery).
+
+**Status — native indexed families realized (`bootstrap/poc/OCP0009/NbEPIndexed.agda`,
+2026-07-12).** The container core is generalized to INDEXED containers
+(Altenkirch–Morris): `IxCon` (Op/Ar/ix), extension `⟦_⟧ix`, the indexed fixpoint
+`μix`, and generic indexed induction `elim` (= `Cata` over an indexed family) —
+strictly positive, no pragma. `Vec` is a genuine indexed family (`nil`/`cons`,
+`vec2 : Vec ℕ 2`, index tracked by construction), and — the headline —
+**relations are datatypes**: `_≤_` as an indexed inductive, `1 ≤ 3` inhabited by
+evidence, `≤-refl`/`≤-trans` by induction. This is the shape every correctness
+property takes; it is the concrete prerequisite for "phrase compiler correctness
+as a type" (the summit).
 - **Ceiling (honesty):** this rung stops at *ordinary* indexed families —
   **induction-recursion / induction-induction are out of scope** and are not known
   to elaborate into the container / polynomial-functor core (§A.4). IR/II are
