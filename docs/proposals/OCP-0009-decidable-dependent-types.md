@@ -586,6 +586,24 @@ The first genuinely dependent step (λP). Types may now mention *terms* (`Vec n`
   (normalize-compare terminates because the core is SN). Keep equality
   **intensional** (smallest decidable choice).
 
+**Status — type layer realized (`bootstrap/poc/OCP0009/NbEPCwF.agda`, 2026-07-12).**
+The universe of type-codes `U = μ UF` (Tarski-style, as `Universe.agda`) lives
+entirely inside the principled NbE's `{Unit,×,+,μ}` fragment, so `Π`/`Σ`/`⇒`/`×`
+are fragment morphisms `Tm _ U` and **type conversion IS the principled `nf`** —
+the same funext-free decision procedure, no new engine or axiom. Delivered:
+contexts as telescopes (`Ctx`/`⟦_⟧C`), a type-in-context `Typ Γ = Tm ⟦Γ⟧C U`,
+dependent-type conversion under a context `Γ ⊢ A ≅ B := nf A ≡ nf B`, Π/Σ
+congruence (from the banked `≈β` + `≈β-complete`), and the type-substitution
+laws `Π[A,B][σ] ≡ Π[A[σ],B[σ]]` holding **definitionally under `nf`** (`refl`).
+The advance over the closed-code `Universe.agda` (which explicitly deferred "a
+type-code mentioning an earlier variable … awaits NbE") is exactly the frontier
+it named: **OPEN type-codes that mention the context variable, with computation
+UNDER the context** (a `fst∘⟨-,-⟩` redex on the variable normalized away),
+decided by `nf`. Deferred to the next increment: a Tarski decoder `El : U → Ty`
+— required to extend a context by a *decoded dependent code* (vs a closed `Ty`)
+and to give *terms-of-type* `Tm Γ A`; this is where Rung 2 meets the
+self-hosting IR bridge.
+
 ### Rung 3 — the identity type `Id (a ≡ b)` + `J`
 
 The rung that turns "dependent types" into "a logic." Without it you can *index*

@@ -2,7 +2,9 @@
 
 **Target:** OCP-0009 (most-expressible-yet-provable dependent types via a small
 core), and its shared decidability core with OCP-0004.
-**Status:** conversion core PROVEN for the fragment (2026-07-11).
+**Status:** conversion core PROVEN for the fragment (2026-07-11); **CwF /
+dependent layer (Rung 2) landed** — Π/Σ over the total core, open type-code
+conversion decided by the principled NbE (2026-07-12).
 **Branch:** `ocp-0009-poc0-nbe`, head `2326d72b`, pushed to origin.
 **Vehicle:** Agda 2.8.0, IR-only. The compiler is NOT touched — this is a
 separate IR→IR consumer over `normalizer.Syntax.CCC`.
@@ -14,8 +16,9 @@ separate IR→IR consumer over `normalizer.Syntax.CCC`.
 The **conversion problem** — decidable equality, the heart of OCP-0009 — is
 **solved and machine-checked for the fragment**. The principled NbE decides the
 β-theory + every congruence + **product-η**, open terms included, **funext-free**.
-All 20 `poc/OCP0009/*.agda` modules build green
-(`bootstrap/check.sh poc/OCP0009/<M>.agda` → EXIT 0).
+All 21 `poc/OCP0009/*.agda` modules build green
+(`bootstrap/check.sh poc/OCP0009/<M>.agda` → EXIT 0), including the new
+`NbEPCwF` (CwF / dependent layer, Rung 2).
 
 **There is no remaining research wall in the conversion core.** What is left is a
 dependent/CwF layer (standard now that conversion is solved), IR wiring, and — on
@@ -59,6 +62,16 @@ OCP-0009 contribution and it shares the OCP-0004 normalizer discipline.
   `eval-normal` (eval preserves normality).
 - `NbEPComplete` — **the theorem**: `≈β-complete : t ≈β u → nf t ≡ nf u`, where
   `_≈β_` = β + ⊙/pair/case/cata congruence + **`η-pair` (`⟨fst,snd⟩ ≈ id`)**.
+- `NbEPCwF` — **the CwF / dependent layer (Rung 2)**. The universe of type-codes
+  `U = μ UF` lives inside the `{Unit,×,+,μ}` fragment, so Π/Σ/⇒/× are fragment
+  morphisms `Tm _ U` and **type conversion IS the principled `nf`**. Delivers:
+  contexts as telescopes (`Ctx`, `⟦_⟧C`), types-in-context `Typ Γ = Tm ⟦Γ⟧C U`,
+  dependent conversion `Γ ⊢ A ≅ B := nf A ≡ nf B`, Π/Σ-congruence (from `≈β` +
+  `≈β-complete`), and the type-substitution laws `Π[A,B][σ] ≡ Π[A[σ],B[σ]]`
+  (`refl` — types are presheaves). **The new capability over `Universe.agda`
+  (closed codes only): OPEN type-codes that mention the context variable, with
+  computation UNDER the context** (β-redex on the variable normalized away),
+  decided by `nf`. Postulate-free (reuses `NbEP`/`NbEPComplete`).
 - `Transparency` — status-board re-export.
 
 ### Escape inventory (honest)
@@ -111,11 +124,16 @@ exactly on this line.
   transport clutter in terms, which is the *right* price for a minimal TCB.
 
 ### B. Large but KNOWN engineering (the real path forward)
-- **CwF / dependent layer proper** — contexts (telescopes), Π/Σ as adjoints,
-  reindexing, dependent conversion *under a context with variables*. Main piece
-  toward actual decidable *dependent* types. Its historically-hard sub-part
-  (open-term conversion) **IS the principled NbE** → standard construction on
-  solved conversion, not a frontier.
+- **CwF / dependent layer — type layer DONE (`NbEPCwF`, Rung 2).** Contexts as
+  telescopes, Π/Σ formers, dependent conversion *under a context with variables*
+  (open type-codes, computation under the context) — all decided by the
+  principled NbE, exactly the "standard construction on solved conversion" this
+  bullet predicted. **What remains on this axis:**
+  - a **Tarski decoder `El : U → Ty`** — the bridge that lets a type-*code*
+    (not just a closed `Ty`) EXTEND a context, and that gives *terms-of-type*
+    `Tm Γ A` for `A : Typ Γ`. This is the self-hosting/IR piece (§B-wiring).
+  - Π/Σ as **adjoints** (the categorical universal-property presentation) and
+    the remaining CwF equations beyond congruence + substitution-naturality.
 - **Wire the principled NbE to the real bootstrap `Code`/`Term` IR** + the
   **OCP-0004 transparency / `EvalFullCorrectness`** obligation. Engine is proven
   over `Tm` (linked to `Term` via `emb`); connecting the *decision* to the real
@@ -136,9 +154,14 @@ exactly on this line.
 
 ## 4. Suggested next step (pick one)
 
-1. **CwF/dependent layer** (highest value — conversion is solved). Start minimal:
-   contexts as telescopes, Π/Σ formers, dependent conversion routed through NbE
-   `nf`. New module `NbEPCwF` on `NbEP`/`NbEPComplete`.
+**DONE:** ~~CwF/dependent layer~~ — the **type layer** landed as `NbEPCwF`
+(Rung 2): contexts, Π/Σ formers, open-type-code conversion under a context
+routed through NbE `nf`, congruence, substitution-naturality. See §3.B.
+
+1. **Tarski decoder `El : U → Ty`** (the natural continuation of `NbEPCwF`).
+   Decoding type-codes to actual types unlocks (a) context extension by a
+   *dependent code* (not just a closed `Ty`), and (b) *terms-of-type* `Tm Γ A`.
+   This is where the CwF becomes fully dependent AND touches the self-hosting IR.
 2. **Wire to the real IR / OCP-0004 transparency** — run the decision on the actual
    `Code` normalizer, connect to `EvalFullCorrectness`. Closes "engine matches the
    real compiler."
