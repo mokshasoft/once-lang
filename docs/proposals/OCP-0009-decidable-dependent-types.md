@@ -578,6 +578,16 @@ term-dependency yet).
 - **Obligation:** none hard — no term-in-type conversion yet.
 - **Cheap** because Once already reifies functors; this just types that level.
 
+**Status — universe HIERARCHY realized (`bootstrap/poc/OCP0009/NbEPUnivH.agda`,
+2026-07-12).** Beyond one universe: a predicative two-level tower `U₀ ⊂ U₁`. A
+single universe cannot hold a code for itself (`Type : Type` = Girard's paradox),
+so `U₀`'s code lives one level up — `` `U₀ : U₁ `` with `El₁ `U₀ = U₀` and a
+cumulative lift `` `⇑ `` (`El₁ (`⇑ a) = El₀ a`). Stratified (each `El` references
+only the level below) ⇒ predicative, consistent. Because `U₀` is now a
+first-class type, **polymorphism over it** is expressible — `(A : U₀) → El₀ A →
+El₀ A` as an honest code, inhabited by the real polymorphic identity (System-F in
+the tower). Extends to `Uₙ` by the same pattern.
+
 ### Rung 2 — Π and Σ over the total core
 
 The first genuinely dependent step (λP). Types may now mention *terms* (`Vec n`).

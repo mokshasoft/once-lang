@@ -19,7 +19,7 @@ separate IR→IR consumer over `normalizer.Syntax.CCC`.
 The **conversion problem** — decidable equality, the heart of OCP-0009 — is
 **solved and machine-checked for the fragment**. The principled NbE decides the
 β-theory + every congruence + **product-η**, open terms included, **funext-free**.
-All 31 `poc/OCP0009/*.agda` modules build green
+All 32 `poc/OCP0009/*.agda` modules build green
 (`bootstrap/check.sh poc/OCP0009/<M>.agda` → EXIT 0), including `NbEPCwF` (CwF /
 dependent layer, Rung 2), `NbEPEl` (Tarski decoder + base CwF), `NbEPId`
 (identity type `Id` + `J`, Rung 3), `NbEPQTT` (QTT: multiplicity semiring +
@@ -96,6 +96,15 @@ OCP-0009 contribution and it shares the OCP-0004 normalizer discipline.
   **This is the step that leaves the small-core discipline by design** — IR
   enlarges the TCB/metatheory; conversion is Agda's kernel here, not the
   container NbE. Predicative (no `` `U : U ``); hierarchy noted, not built.
+- `NbEPUnivH` — **universe HIERARCHY `U₀ ⊂ U₁` (predicative)**. A single universe
+  can't hold a code for itself (`Type:Type` = Girard), so `U₀`'s code lives one
+  level up: `` `U₀ : U₁ `` with `El₁ `U₀ = U₀`, plus a cumulative lift `` `⇑ ``
+  (`El₁ (`⇑ a) = El₀ a`). Stratified (each `El` references only the level below)
+  ⇒ predicative, no `` `U:U ``. **Headline:** because `U₀` is now a first-class
+  type, we can QUANTIFY over it — System-F polymorphism `(A : U₀) → El₀ A → El₀ A`
+  is an honest code (`` `Π₁ `U₀ … ``), decoded and inhabited by the real
+  polymorphic identity `polyId`, which computes at `` `nat₀ `` (`: ℕ → ℕ`).
+  Extends to `Uₙ` by the same pattern.
 - `NbEPUnivDec` — **hardening the IR universe: native decidable equality**. The
   `NbEPUniv` codes stored OPAQUE Agda functions (`El a → U`), uncomparable — so
   its conversion borrowed Agda's kernel. This DEFUNCTIONALIZES the codomain family
@@ -310,7 +319,7 @@ proof-theoretic strength. "Built" = machine-checked in `poc/OCP0009/`.
 | **Dependent Π/Σ** | ✅ Rung 2, decidable via NbE | ✅ | ✅ | ✅ | ✅ |
 | **Inductive types** | ✅ strictly-positive containers (μ = W-types) | ✅ | ✅ | ✅ | ✅ |
 | **Indexed inductive families** | ⚠️ ad hoc — Vec via open-code decoding; native = Rung 4, unbuilt | ✅ | ✅ | ✅ | ✅ |
-| **Universe structure** | ⚠️ one first-order Tarski `U`; no hierarchy/poly | ✅ ∞ + poly | ✅ ∞ + impred. Prop | ✅ ∞ + poly | ✅ cumulative |
+| **Universe structure** | ✅ IR universe + **hierarchy `U₀⊂U₁`** (`NbEPUnivH`, predicative, polymorphism, cumulative) | ✅ ∞ + poly | ✅ ∞ + impred. Prop | ✅ ∞ + poly | ✅ cumulative |
 | **Identity type** | ⚠️ *definitional* `Id`+`J` (= decidable conversion) | ✅ intensional (+cubical) | ✅ intensional | ✅ + quotients→funext | ✅ intensional |
 | **Conversion** | ✅ βη **+ product-η + terminal-η, funext-free** (NbE) | βη, partial η | βη, partial η | βη + defeq proof irrel. | βη |
 | **IR / II** | ✅ **IR prototyped** (`NbEPUniv` U/El mutual; `NbEPUnivDec` defunctionalized + native decidable eq) | ✅ | ❌ | ❌ | ❌ |
@@ -383,10 +392,11 @@ were correct only for the minimal-core thesis.
    code-level Π/Σ, large elimination. Wins the IR/II row (only Agda had it). This
    is where the small-core discipline ends by design. **Hardened (`NbEPUnivDec`):**
    defunctionalized first-order codes + a NATIVE decidable equality (no longer
-   Agda's kernel) for the fragment, preserving genuine dependency. Remaining
-   refinement: a universe HIERARCHY (a code for `U` one level up), and full
-   up-to-computation CONVERSION (codes with type-level redexes / arbitrary large
-   elimination) via a native NbE — the frontier.
+   Agda's kernel) for the fragment, preserving genuine dependency. **Hierarchy
+   DONE (`NbEPUnivH`):** predicative `U₀ ⊂ U₁` with polymorphism over `U₀` and
+   cumulativity. Remaining refinement: full up-to-computation CONVERSION (codes
+   with type-level redexes / arbitrary large elimination) via a native NbE, and a
+   defunctionalized/decidable hierarchy — the frontier.
 4. Native indexed inductives, coinduction (the genuinely-hard/contested row),
    then the summit (prove Once in Once).
 
