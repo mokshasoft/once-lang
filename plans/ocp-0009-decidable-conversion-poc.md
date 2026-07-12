@@ -19,7 +19,7 @@ separate IR→IR consumer over `normalizer.Syntax.CCC`.
 The **conversion problem** — decidable equality, the heart of OCP-0009 — is
 **solved and machine-checked for the fragment**. The principled NbE decides the
 β-theory + every congruence + **product-η**, open terms included, **funext-free**.
-All 29 `poc/OCP0009/*.agda` modules build green
+All 30 `poc/OCP0009/*.agda` modules build green
 (`bootstrap/check.sh poc/OCP0009/<M>.agda` → EXIT 0), including `NbEPCwF` (CwF /
 dependent layer, Rung 2), `NbEPEl` (Tarski decoder + base CwF), `NbEPId`
 (identity type `Id` + `J`, Rung 3), `NbEPQTT` (QTT: multiplicity semiring +
@@ -86,6 +86,16 @@ OCP-0009 contribution and it shares the OCP-0004 normalizer discipline.
     Covers Once's univalence-adjacent needs without HITs.
   Chosen over cubical: fits the deterministic NbE, and proof-irrelevant equality
   erases cleanly at QTT `𝟘`.
+- `NbEPUniv` — **the inductive-recursive universe (§6 step 3, the IR/II row)**.
+  `U` and `El` defined MUTUALLY (Dybjer–Setzer IR): the `Π`/`Σ` codes store a
+  genuine codomain family `El a → U`, so `El (`Π a b) = (x : El a) → El (b x)` —
+  a genuinely DEPENDENT function type, the power the first-order `NbEPEl`
+  structurally could not express. Headline: `vecC : ℕ → U` (Vec as a code-valued
+  function / large elimination); `` `allVec = `Π `nat vecC `` decodes to
+  `(n : ℕ) → El (vecC n)` inhabited by `zeros`; `isEmpty` is large elimination.
+  **This is the step that leaves the small-core discipline by design** — IR
+  enlarges the TCB/metatheory; conversion is Agda's kernel here, not the
+  container NbE. Predicative (no `` `U : U ``); hierarchy noted, not built.
 - `NbEPElOTT` — **OTT ↔ dependent-layer wiring**. `≡→Eq` (Agda `≡` → OTT `Eq`);
   `Fib-Eq` (index conversion ⇒ OTT type-equality of the fibres); `transport-fib`
   (move a fibre element over the `Fix` denotation, justified by the index
@@ -233,9 +243,13 @@ exactly on this line.
 ### D. Expressiveness frontier (DIFFERENT axis — this is the one that adds power)
 - **IR/II** (induction-recursion / -induction) — genuinely *more expressivity*
   (universes-as-data, internal Tarski universe, higher proof-theoretic strength):
-  new definitions/theorems, not new equations. May not elaborate into the simple
-  container core (OCP-9 FAQ Q9's open ceiling). Do this **if you need**
-  universes-as-data. Unlike §A, sugar cannot supply this — it is real power.
+  new definitions/theorems, not new equations. **PROTOTYPED (`NbEPUniv`, §6
+  step 3):** the inductive-recursive Tarski universe with genuinely dependent
+  code-level Π/Σ and large elimination — the one row only Agda had. Unlike §A,
+  sugar cannot supply this — it is real power, and building it **ends the
+  small-core discipline by design** (IR enlarges the TCB). Open: decidable
+  conversion for the IR universe *within Once's own NbE* (the POC rests on Agda's
+  kernel); a universe hierarchy; II (induction-induction).
 
 ---
 
@@ -288,7 +302,7 @@ proof-theoretic strength. "Built" = machine-checked in `poc/OCP0009/`.
 | **Universe structure** | ⚠️ one first-order Tarski `U`; no hierarchy/poly | ✅ ∞ + poly | ✅ ∞ + impred. Prop | ✅ ∞ + poly | ✅ cumulative |
 | **Identity type** | ⚠️ *definitional* `Id`+`J` (= decidable conversion) | ✅ intensional (+cubical) | ✅ intensional | ✅ + quotients→funext | ✅ intensional |
 | **Conversion** | ✅ βη **+ product-η + terminal-η, funext-free** (NbE) | βη, partial η | βη, partial η | βη + defeq proof irrel. | βη |
-| **IR / II** | ❌ deferred (§D) | ✅ **the standout** | ❌ | ❌ | ❌ |
+| **IR / II** | ✅ **IR prototyped** (`NbEPUniv`, U/El mutual) | ✅ | ❌ | ❌ | ❌ |
 | **Coinduction** | ❌ inductive-only core (ν → propositional side) | ✅ | ✅ | ✅ | ✅ |
 | **Totality** | ✅ total-only (SN core) | ✅ | ✅ | ✅ | ⚠️ total *or* partial |
 | **Erasure / quantities** | 🔜 Rung 5 (QTT, by-design) | ✅ irrelevance | ⚠️ extraction | ✅ Prop-erasure | ✅ QTT native |
@@ -354,6 +368,12 @@ were correct only for the minimal-core thesis.
    denotation (`Vec 2 ≅ Vec (double 1)`, transport demo). `coe`/transport is now
    load-bearing for dependent types.
 3. **Universe-as-IR** — the single mechanism for the universe + IR/II rows.
+   **DONE (`NbEPUniv`):** inductive-recursive `U`/`El`, genuinely dependent
+   code-level Π/Σ, large elimination. Wins the IR/II row (only Agda had it). This
+   is where the small-core discipline ends by design. Remaining refinement: a
+   universe HIERARCHY (a code for `U` one level up), and — the honest open
+   question — decidable CONVERSION for the IR universe *within Once's own NbE*
+   (here it rests on Agda's kernel; a native decision procedure is future work).
 4. Native indexed inductives, coinduction (the genuinely-hard/contested row),
    then the summit (prove Once in Once).
 

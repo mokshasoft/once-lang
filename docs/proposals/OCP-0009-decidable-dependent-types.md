@@ -689,6 +689,18 @@ indexed families.
   separate, unresolved bill — not a free extension of this rung (FAQ Q9, Open
   Questions → *Induction-recursion*).
 
+  **Status — IR universe PROTOTYPED (`bootstrap/poc/OCP0009/NbEPUniv.agda`,
+  2026-07-12).** Per the plan's §6 foundations-first reframing (which merges the
+  universe row with this IR/II row), the inductive-recursive Tarski universe is
+  built: `U` and `El` MUTUAL (Dybjer–Setzer), the `Π`/`Σ` codes storing a genuine
+  codomain family `El a → U`, so `El (Π a b) = (x : El a) → El (b x)` — a
+  genuinely dependent code-level function type (`(n : ℕ) → Vec n` as a code,
+  decoded and inhabited), plus large elimination (`isEmpty`). This is the "IR
+  bill" made concrete: it **enlarges the trusted core by design** (the small-core
+  + desugar discipline ends here), and its conversion in the POC rests on Agda's
+  kernel rather than the container NbE — a native decision procedure for the IR
+  universe is the honest open item.
+
 ### Rung 5 — the erasure invariant
 
 Impose the multiplicity discipline (QTT — see Open Questions / Trade-offs) so that
