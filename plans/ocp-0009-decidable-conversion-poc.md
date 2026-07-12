@@ -19,9 +19,10 @@ separate IR→IR consumer over `normalizer.Syntax.CCC`.
 The **conversion problem** — decidable equality, the heart of OCP-0009 — is
 **solved and machine-checked for the fragment**. The principled NbE decides the
 β-theory + every congruence + **product-η**, open terms included, **funext-free**.
-All 22 `poc/OCP0009/*.agda` modules build green
-(`bootstrap/check.sh poc/OCP0009/<M>.agda` → EXIT 0), including the new
-`NbEPCwF` (CwF / dependent layer, Rung 2) and `NbEPEl` (Tarski decoder).
+All 23 `poc/OCP0009/*.agda` modules build green
+(`bootstrap/check.sh poc/OCP0009/<M>.agda` → EXIT 0), including `NbEPCwF` (CwF /
+dependent layer, Rung 2), `NbEPEl` (Tarski decoder + base CwF), and `NbEPId`
+(identity type `Id` + `J`, Rung 3).
 
 **There is no remaining research wall in the conversion core.** What is left is a
 dependent/CwF layer (standard now that conversion is solved), IR wiring, and — on
@@ -65,6 +66,15 @@ OCP-0009 contribution and it shares the OCP-0004 normalizer discipline.
   `eval-normal` (eval preserves normality).
 - `NbEPComplete` — **the theorem**: `≈β-complete : t ≈β u → nf t ≡ nf u`, where
   `_≈β_` = β + ⊙/pair/case/cata congruence + **`η-pair` (`⟨fst,snd⟩ ≈ id`)**.
+- `NbEPId` — **the identity type `Id` + `J` (Rung 3)**. Value-indexed `Id {A}
+  (u v : Val Unit A)` with `Refl` and the FULL dependent eliminator `J` (real,
+  by pattern matching); `transp`/`Id-sym`/`Id-trans` from `J`. Term-level
+  `Id-tm a b` is inhabited by `Refl` exactly when `a,b` convert (share the NbE
+  value) — conversion reflected as a `J`-computing propositional equality
+  (`Id (double 1) 2` by `Refl`, also at a code type `IdTy`); `Id→conv` sound.
+  Honest boundary: `Id` = decidable conversion here; a proof-relevant
+  intensional `Id` (proving `n+0=n` by induction) needs `Id` as a primitive
+  NbE former or an axiom — named, not built.
 - `NbEPEl` — **the Tarski decoder + the rest of base CwF**. `Code` (first-order
   type-code family) + `El : Code → Ty`; reflection `⌜_⌝ : Code → Tm Unit U`
   lands codes as IR `U`-data agreeing with `NbEPCwF`'s smart constructors
