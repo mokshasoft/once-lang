@@ -19,10 +19,11 @@ separate IR→IR consumer over `normalizer.Syntax.CCC`.
 The **conversion problem** — decidable equality, the heart of OCP-0009 — is
 **solved and machine-checked for the fragment**. The principled NbE decides the
 β-theory + every congruence + **product-η**, open terms included, **funext-free**.
-All 23 `poc/OCP0009/*.agda` modules build green
+All 24 `poc/OCP0009/*.agda` modules build green
 (`bootstrap/check.sh poc/OCP0009/<M>.agda` → EXIT 0), including `NbEPCwF` (CwF /
-dependent layer, Rung 2), `NbEPEl` (Tarski decoder + base CwF), and `NbEPId`
-(identity type `Id` + `J`, Rung 3).
+dependent layer, Rung 2), `NbEPEl` (Tarski decoder + base CwF), `NbEPId`
+(identity type `Id` + `J`, Rung 3), and `NbEPQTT` (QTT: multiplicity semiring +
+erasure).
 
 **There is no remaining research wall in the conversion core.** What is left is a
 dependent/CwF layer (standard now that conversion is solved), IR wiring, and — on
@@ -66,6 +67,14 @@ OCP-0009 contribution and it shares the OCP-0004 normalizer discipline.
   `eval-normal` (eval preserves normality).
 - `NbEPComplete` — **the theorem**: `≈β-complete : t ≈β u → nf t ≡ nf u`, where
   `_≈β_` = β + ⊙/pair/case/cata congruence + **`η-pair` (`⟨fst,snd⟩ ≈ id`)**.
+- `NbEPQTT` — **Quantitative Type Theory foundation (plan §6, step 1)**. The
+  multiplicity semiring `Mult = {𝟘,𝟙,ω}` with `+ᵐ`/`·ᵐ` and the full
+  ordered-semiring laws (Atkey's resource semiring); graded contexts `Ctxq`; the
+  PHASE DISTINCTION — `⟦_⟧full` keeps every entry, `⟦_⟧run` drops the `𝟘`-graded
+  (index/proof) entries, `erase : Tm ⟦Γ⟧full ⟦Γ⟧run` witnesses it. **Erasure
+  soundness** (`erase-irrelevant`): a `𝟘`-graded index cannot influence the
+  runtime `nf` — evaluation factors through the runtime environment. Next:
+  graded typing judgment (usage tracked through formers).
 - `NbEPId` — **the identity type `Id` + `J` (Rung 3)**. Value-indexed `Id {A}
   (u v : Val Unit A)` with `Refl` and the FULL dependent eliminator `J` (real,
   by pattern matching); `transp`/`Id-sym`/`Id-trans` from `J`. Term-level
@@ -291,12 +300,13 @@ The rows are not independent — they cluster:
 This **inverts** the old "defer IR / definitional-`Id` stopgap" choices, which
 were correct only for the minimal-core thesis.
 
-1. **QTT (quantitative type theory) — NEXT.** Multiplicities `0/1/ω` (erasure +
-   linearity) on the settled Π/Σ/μ core. Aligns with "impose erasure from Rung 2
-   onward as a design invariant" (§6-of-proposal / old Rung 5). Lower-risk,
-   independently valuable, and — key — it makes the later equality/universe work
-   **erasure-aware by construction**. It also *informs* the equality choice: QTT
-   wants **erasable** equality (see the OTT-vs-cubical note below).
+1. **QTT (quantitative type theory) — SUBSTRATE DONE (`NbEPQTT`).** Multiplicity
+   semiring `{𝟘,𝟙,ω}` + laws, graded contexts, erasure phase distinction +
+   erasure soundness (`𝟘`-index cannot influence runtime `nf`). Aligns with
+   "impose erasure from Rung 2 onward as a design invariant." **Remaining:** a
+   graded *typing judgment* (usage tracked through the formers) + the general
+   erasure-preserves-evaluation theorem over well-graded terms. It also *informs*
+   the equality choice: QTT wants **erasable** equality (OTT-vs-cubical note).
 2. **Equality foundation = OTT** (+ quotient types), *not* classical cubical.
    Chosen for (a) architectural fit with the deterministic NbE, and (b)
    QTT-erasability. Replaces the definitional-`Id` stopgap (`NbEPId`) as the

@@ -684,6 +684,20 @@ Rung 2 onward**, so the dependent layer is erasable-by-construction rather than
 retrofitted. Multiplicity `0` = erased proof/index; `1` = linear resource (folds
 Once's resource-control work into the same mechanism); `ω` = unrestricted.
 
+**Status — QTT substrate realized (`bootstrap/poc/OCP0009/NbEPQTT.agda`,
+2026-07-12).** The multiplicity semiring `Mult = {𝟘,𝟙,ω}` with `+ᵐ`/`·ᵐ` and the
+full ordered-semiring laws (Atkey's resource semiring), machine-checked. Graded
+contexts `Ctxq` (per-entry multiplicity) with the **phase distinction**: a full
+(type-level) interpretation keeping every entry, a runtime interpretation
+DROPPING the `𝟘`-graded (index/proof) entries, and an `erase` projection
+`Tm ⟦Γ⟧full ⟦Γ⟧run` between them. **Erasure soundness** (`erase-irrelevant`,
+tied to the NbE): a `𝟘`-graded index cannot influence the runtime `nf` —
+evaluation factors through the runtime environment. Per the plan §6 reframing,
+QTT is done FIRST (before the equality foundation and the universe-as-IR), so
+those are erasure-aware by construction. Remaining for this rung: a graded
+*typing judgment* (usage tracked through the formers) + the general
+erasure-preserves-evaluation theorem over well-graded terms.
+
 ### Rung 6 — the summit: reflect Once into Once and prove
 
 All pieces now present: (a) Once's IR *already* exists as data (self-hosting);
