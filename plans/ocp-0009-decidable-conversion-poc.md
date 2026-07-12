@@ -19,7 +19,7 @@ separate IR→IR consumer over `normalizer.Syntax.CCC`.
 The **conversion problem** — decidable equality, the heart of OCP-0009 — is
 **solved and machine-checked for the fragment**. The principled NbE decides the
 β-theory + every congruence + **product-η**, open terms included, **funext-free**.
-All 35 `poc/OCP0009/*.agda` modules build green
+All 36 `poc/OCP0009/*.agda` modules build green
 (`bootstrap/check.sh poc/OCP0009/<M>.agda` → EXIT 0), including `NbEPCwF` (CwF /
 dependent layer, Rung 2), `NbEPEl` (Tarski decoder + base CwF), `NbEPId`
 (identity type `Id` + `J`, Rung 3), `NbEPQTT` (QTT: multiplicity semiring +
@@ -105,6 +105,14 @@ OCP-0009 contribution and it shares the OCP-0004 normalizer discipline.
   programs (structural induction over a given `e`); a total self-interpreter is
   the fuel-bounded ceiling. The same theorem the real Once compiler proves in the
   large (`Once.Adequacy.*` on `origin/ocp-0006-once-spec`), here in one file.
+- `NbEPOTTCoind` — **OTT equality at `ν` = bisimulation (the dual of funext)**.
+  OTT defines equality by the type's structure: pointwise at `⇒` (funext),
+  co-recursively at a coinductive type = BISIMULATION. So `_≈_` IS the OTT
+  propositional equality on streams, making "bisimilar ⇒ equal" DEFINITIONAL —
+  the coinductive twin of `funext = λ h → h` (a `Path` theorem in cubical; here
+  the definition of equality at `ν`). Shown an EQUIVALENCE + CONGRUENCE
+  (`map-cong`, substitutive). Honest: OTT equality, not Agda's `≡`; `≈ → ≡` is
+  cubical's `Path` bridge, not claimed.
 - `NbEPCoind` — **coinduction (the contested §5 row)**. Streams as a coinductive
   record; corecursion GUARDED by copatterns — productive, SOUND, **no sized
   types** (the feature behind Agda's unsoundness history): `repeat`/`unfold`/
