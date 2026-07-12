@@ -697,9 +697,13 @@ indexed families.
   genuinely dependent code-level function type (`(n : ℕ) → Vec n` as a code,
   decoded and inhabited), plus large elimination (`isEmpty`). This is the "IR
   bill" made concrete: it **enlarges the trusted core by design** (the small-core
-  + desugar discipline ends here), and its conversion in the POC rests on Agda's
-  kernel rather than the container NbE — a native decision procedure for the IR
-  universe is the honest open item.
+  + desugar discipline ends here). **Hardened (`NbEPUnivDec.agda`):** the opaque
+  Agda-function families are DEFUNCTIONALIZED into first-order data (`Code0` +
+  `Code1`), so the universe admits a NATIVE decidable equality `_≟0_`/`_≟1_` (not
+  Agda's kernel) while still decoding to genuine dependent types
+  (`(n : ℕ) → Vec n`). This closes the "conversion is Agda's kernel" caveat for
+  the fragment; general up-to-computation conversion (type-level redexes,
+  arbitrary large elimination) and a universe hierarchy remain the NbE frontier.
 
 ### Rung 5 — the erasure invariant
 

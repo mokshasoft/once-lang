@@ -19,7 +19,7 @@ separate IR→IR consumer over `normalizer.Syntax.CCC`.
 The **conversion problem** — decidable equality, the heart of OCP-0009 — is
 **solved and machine-checked for the fragment**. The principled NbE decides the
 β-theory + every congruence + **product-η**, open terms included, **funext-free**.
-All 30 `poc/OCP0009/*.agda` modules build green
+All 31 `poc/OCP0009/*.agda` modules build green
 (`bootstrap/check.sh poc/OCP0009/<M>.agda` → EXIT 0), including `NbEPCwF` (CwF /
 dependent layer, Rung 2), `NbEPEl` (Tarski decoder + base CwF), `NbEPId`
 (identity type `Id` + `J`, Rung 3), `NbEPQTT` (QTT: multiplicity semiring +
@@ -96,6 +96,17 @@ OCP-0009 contribution and it shares the OCP-0004 normalizer discipline.
   **This is the step that leaves the small-core discipline by design** — IR
   enlarges the TCB/metatheory; conversion is Agda's kernel here, not the
   container NbE. Predicative (no `` `U : U ``); hierarchy noted, not built.
+- `NbEPUnivDec` — **hardening the IR universe: native decidable equality**. The
+  `NbEPUniv` codes stored OPAQUE Agda functions (`El a → U`), uncomparable — so
+  its conversion borrowed Agda's kernel. This DEFUNCTIONALIZES the codomain family
+  into first-order DATA: `Code0` (closed) + `Code1` (one free `ℕ`-index), `El`
+  decoding to genuine dependent types (`(n : ℕ) → Vec n`, inhabited by `zeros`),
+  and a **native decidable equality** `_≟0_`/`_≟1_` (structural, self-contained —
+  no Agda-kernel conversion). `⌊ allVec ≟0 allVec ⌋ ≡ true` runs at type-check.
+  Closes the §6-step-3 caveat for this fragment. Honest boundary: decides
+  STRUCTURAL code equality (codes are normal-form-like ⇒ structural =
+  definitional here); general up-to-computation conversion + a hierarchy remain
+  the NbE frontier.
 - `NbEPElOTT` — **OTT ↔ dependent-layer wiring**. `≡→Eq` (Agda `≡` → OTT `Eq`);
   `Fib-Eq` (index conversion ⇒ OTT type-equality of the fibres); `transport-fib`
   (move a fibre element over the `Fix` denotation, justified by the index
@@ -302,7 +313,7 @@ proof-theoretic strength. "Built" = machine-checked in `poc/OCP0009/`.
 | **Universe structure** | ⚠️ one first-order Tarski `U`; no hierarchy/poly | ✅ ∞ + poly | ✅ ∞ + impred. Prop | ✅ ∞ + poly | ✅ cumulative |
 | **Identity type** | ⚠️ *definitional* `Id`+`J` (= decidable conversion) | ✅ intensional (+cubical) | ✅ intensional | ✅ + quotients→funext | ✅ intensional |
 | **Conversion** | ✅ βη **+ product-η + terminal-η, funext-free** (NbE) | βη, partial η | βη, partial η | βη + defeq proof irrel. | βη |
-| **IR / II** | ✅ **IR prototyped** (`NbEPUniv`, U/El mutual) | ✅ | ❌ | ❌ | ❌ |
+| **IR / II** | ✅ **IR prototyped** (`NbEPUniv` U/El mutual; `NbEPUnivDec` defunctionalized + native decidable eq) | ✅ | ❌ | ❌ | ❌ |
 | **Coinduction** | ❌ inductive-only core (ν → propositional side) | ✅ | ✅ | ✅ | ✅ |
 | **Totality** | ✅ total-only (SN core) | ✅ | ✅ | ✅ | ⚠️ total *or* partial |
 | **Erasure / quantities** | 🔜 Rung 5 (QTT, by-design) | ✅ irrelevance | ⚠️ extraction | ✅ Prop-erasure | ✅ QTT native |
@@ -370,10 +381,12 @@ were correct only for the minimal-core thesis.
 3. **Universe-as-IR** — the single mechanism for the universe + IR/II rows.
    **DONE (`NbEPUniv`):** inductive-recursive `U`/`El`, genuinely dependent
    code-level Π/Σ, large elimination. Wins the IR/II row (only Agda had it). This
-   is where the small-core discipline ends by design. Remaining refinement: a
-   universe HIERARCHY (a code for `U` one level up), and — the honest open
-   question — decidable CONVERSION for the IR universe *within Once's own NbE*
-   (here it rests on Agda's kernel; a native decision procedure is future work).
+   is where the small-core discipline ends by design. **Hardened (`NbEPUnivDec`):**
+   defunctionalized first-order codes + a NATIVE decidable equality (no longer
+   Agda's kernel) for the fragment, preserving genuine dependency. Remaining
+   refinement: a universe HIERARCHY (a code for `U` one level up), and full
+   up-to-computation CONVERSION (codes with type-level redexes / arbitrary large
+   elimination) via a native NbE — the frontier.
 4. Native indexed inductives, coinduction (the genuinely-hard/contested row),
    then the summit (prove Once in Once).
 
