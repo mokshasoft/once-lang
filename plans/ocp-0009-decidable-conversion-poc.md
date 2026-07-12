@@ -352,3 +352,62 @@ Recorded so it can be picked up when the equality foundation is built:
   an *observational*, computational, decidability-friendly style — NOT classical
   cubical. Caveat: recent, not battle-tested at scale. This is the "dominate the
   univalence row *cleanly*" bet, to evaluate when equality is on the table.
+
+---
+
+## 7. Relationship to the OCP-0006 compiler branch (`origin/ocp-0006-once-spec`)
+
+Analyzed 2026-07-12. That branch is the **real Once compiler**: written in Agda,
+machine-verified under `--safe`, **extracted to Haskell via MAlonzo**
+(`make -C formal certified` → `make malonzo` copies `_build/malonzo/MAlonzo/Code/
+Once/*` into `compiler/src/`; `nix build` compiles it). Hand-written Haskell is a
+thin CLI/OS driver + `compiler/src/Once/Compile/Bridge.hs` (a façade over
+MAlonzo's numeric-suffixed names — the only file to re-sync on re-extraction).
+Architecture: 4 tiers (Kernel / Denotation-spec / Operational-impl / Adequacy),
+a 7-stage pipeline, apex `Once.Certified.CertifiedBuild` = `CorrectCompiler` ∧
+`VerifiedTypeChecker`; the language definition is `Once/Spec.agda` (OCP-0006).
+The compile function is **parameterized over its environment** (machine model,
+SigOp set, allocator) so the trust surface is explicit in the top signature.
+
+**OCP-0009 is NOT on that branch** — `bootstrap/poc/OCP0009/` is only on
+`ocp-0009-poc0-nbe`; the relationship is (for now) conceptual. But it is
+concrete and strategic — OCP-0009 attacks **two real postulate clusters** of the
+verified compiler:
+
+1. **Normalization / conversion is POSTULATED** on the real compiler
+   (`formal/Once/Optimizer/Normal.agda` — 6 of the branch's 59 postulates;
+   `CCC/Codegen/IRTraceCorrect.agda` +3). OCP-0009's **decidable-conversion NbE
+   is exactly the machinery to discharge these** — this is what our §3.B "wire to
+   the real IR / OCP-0004 transparency" step concretely means: replace postulated
+   normal-form/conversion reasoning with the proven decision procedure.
+2. **QTT enforcement is "Not started"** on the compiler
+   (`docs/formal/core/what-is-proven.md`), even though the *infrastructure*
+   exists: `Quantity = Zero|One|Many` semiring (`formal/Once/Type.agda`) + **usage
+   vectors** on contexts (`formal/Once/Surface/Context.agda`, `_+ᵘ_`/`_*ᵘ_`),
+   tracked during **Surface elaboration**. Our `NbEPQTT` `Mult = {𝟘,𝟙,ω}` is the
+   *same* semiring; the graded-judgment increment is a candidate to feed the
+   compiler's unstarted enforcement.
+
+Same substrate throughout: the compiler IR and our bootstrap NbE are both the
+categorical **12-generator CCC core** (`formal/Once/IR.agda`), so OCP-0009's CwF /
+dependent layer genuinely extends the *same* object language.
+
+### This settles the QTT graded-judgment fork: choose (b), variable-based
+
+The compiler ALREADY does QTT the variable-based way — **usage vectors on the
+Surface context, tracked during `Surface → IR` elaboration** (the point-free IR
+itself is *ungraded*; grading lives at the surface). So:
+
+- **(b) variable-based graded judgment** — a small graded λ-calculus with usage
+  vectors that elaborates to the IR — **matches the real compiler exactly**, is
+  standard QTT (Atkey/McBride), lower-risk, and — since compiler QTT enforcement
+  is unstarted — is a candidate to *become* that enforcement. It layers cleanly
+  on the IR-level `erase-irrelevant` soundness already proven. **← chosen.**
+- **(a) graded point-free category** is more elegant/native but semantically
+  subtle: the IR is **cartesian** (free duplication Δ and discard `terminal`), and
+  grading a cartesian category is the coeffect/graded-comonad research path; the
+  *clean* version of (a) would push the core toward **linear/monoidal** (replacing
+  the cartesian pair/fst/snd generators) — a foundational core-redesign, not the
+  next increment. Park it with the OTT / universe-as-IR foundational work: if
+  Once wants best-in-class *linearity* (README: "linear code needs no GC"), a
+  graded/linear IR is the honest long-term expression — evaluate then, not now.
