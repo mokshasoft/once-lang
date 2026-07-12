@@ -19,11 +19,11 @@ separate IR→IR consumer over `normalizer.Syntax.CCC`.
 The **conversion problem** — decidable equality, the heart of OCP-0009 — is
 **solved and machine-checked for the fragment**. The principled NbE decides the
 β-theory + every congruence + **product-η**, open terms included, **funext-free**.
-All 24 `poc/OCP0009/*.agda` modules build green
+All 25 `poc/OCP0009/*.agda` modules build green
 (`bootstrap/check.sh poc/OCP0009/<M>.agda` → EXIT 0), including `NbEPCwF` (CwF /
 dependent layer, Rung 2), `NbEPEl` (Tarski decoder + base CwF), `NbEPId`
-(identity type `Id` + `J`, Rung 3), and `NbEPQTT` (QTT: multiplicity semiring +
-erasure).
+(identity type `Id` + `J`, Rung 3), `NbEPQTT` (QTT: multiplicity semiring +
+erasure), and `NbEPQTTJ` (QTT graded typing judgment, route (b)).
 
 **There is no remaining research wall in the conversion core.** What is left is a
 dependent/CwF layer (standard now that conversion is solved), IR wiring, and — on
@@ -67,6 +67,16 @@ OCP-0009 contribution and it shares the OCP-0004 normalizer discipline.
   `eval-normal` (eval preserves normality).
 - `NbEPComplete` — **the theorem**: `≈β-complete : t ≈β u → nf t ≡ nf u`, where
   `_≈β_` = β + ⊙/pair/case/cata congruence + **`η-pair` (`⟨fst,snd⟩ ≈ id`)**.
+- `NbEPQTTJ` — **QTT graded typing judgment (route (b), plan §7)**. Variable-based
+  graded λ-calculus matching the compiler's `Surface/Context` usage vectors:
+  usage vectors `Use Γ` with module structure over `Mult` (`0ᵘ`/`+ᵘ`/`·ᵘ`, laws);
+  intrinsic judgment `Γ ⊢[ ρ ] A` with the usage `ρ` a JUDGMENT INDEX (well-typed
+  ⇒ well-resourced by construction); `app` scales arg usage by the function
+  multiplicity, `lam` moves bound-var usage into `⇒[π]`. Erasure theorem
+  `erase-arg` (a `𝟘`-argument consumes no resources). Enforcement by construction:
+  `idₗ` forced `⇒[𝟙]`; constant `K : ι⇒[𝟙](ι⇒[𝟘]ι)` with the ignored arg inferred
+  `𝟘`. Next: elaborate `Γ ⊢[ρ] A` to the CCC IR (var→projection, lam→curry,
+  app→apply), erasing `𝟘`-args.
 - `NbEPQTT` — **Quantitative Type Theory foundation (plan §6, step 1)**. The
   multiplicity semiring `Mult = {𝟘,𝟙,ω}` with `+ᵐ`/`·ᵐ` and the full
   ordered-semiring laws (Atkey's resource semiring); graded contexts `Ctxq`; the
@@ -402,7 +412,10 @@ itself is *ungraded*; grading lives at the surface). So:
   vectors that elaborates to the IR — **matches the real compiler exactly**, is
   standard QTT (Atkey/McBride), lower-risk, and — since compiler QTT enforcement
   is unstarted — is a candidate to *become* that enforcement. It layers cleanly
-  on the IR-level `erase-irrelevant` soundness already proven. **← chosen.**
+  on the IR-level `erase-irrelevant` soundness already proven. **← chosen; BUILT
+  as `NbEPQTTJ`** (usage-vector module, intrinsic graded judgment, `erase-arg`).
+  Remaining: elaborate `Γ ⊢[ρ] A` to the CCC IR, erasing `𝟘`-args (= the
+  compiler's Surface→IR pass, connecting to `erase-irrelevant`).
 - **(a) graded point-free category** is more elegant/native but semantically
   subtle: the IR is **cartesian** (free duplication Δ and discard `terminal`), and
   grading a cartesian category is the coeffect/graded-comonad research path; the

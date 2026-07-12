@@ -694,9 +694,20 @@ DROPPING the `𝟘`-graded (index/proof) entries, and an `erase` projection
 tied to the NbE): a `𝟘`-graded index cannot influence the runtime `nf` —
 evaluation factors through the runtime environment. Per the plan §6 reframing,
 QTT is done FIRST (before the equality foundation and the universe-as-IR), so
-those are erasure-aware by construction. Remaining for this rung: a graded
-*typing judgment* (usage tracked through the formers) + the general
-erasure-preserves-evaluation theorem over well-graded terms.
+those are erasure-aware by construction.
+
+The graded *typing judgment* is now realized too (`NbEPQTTJ.agda`), variable-based
+to match the compiler's `Surface/Context` usage vectors: usage vectors `Use Γ`
+with module structure over `Mult`; an intrinsically-typed graded calculus
+`Γ ⊢[ ρ ] A` where the usage `ρ` is a JUDGMENT INDEX (well-typed ⇒ well-resourced
+by construction); `app` scales the argument usage by the function multiplicity,
+`lam` moves the bound-variable usage into `⇒[ π ]`; and the judgment-level erasure
+theorem `erase-arg` (a `𝟘`-argument consumes no resources). Enforcement is by
+construction — the identity is forced `⇒[𝟙]`, the constant function's ignored
+argument is inferred `𝟘` (erased). Remaining for this rung: elaborate
+`Γ ⊢[ ρ ] A` to the CCC IR (var→projection, lam→curry, app→apply) erasing the
+`𝟘`-graded arguments — the compiler's Surface→IR pass, connecting to the IR-level
+`erase-irrelevant` soundness.
 
 ### Rung 6 — the summit: reflect Once into Once and prove
 
