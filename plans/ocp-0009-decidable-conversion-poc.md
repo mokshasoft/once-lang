@@ -19,7 +19,7 @@ separate IR→IR consumer over `normalizer.Syntax.CCC`.
 The **conversion problem** — decidable equality, the heart of OCP-0009 — is
 **solved and machine-checked for the fragment**. The principled NbE decides the
 β-theory + every congruence + **product-η**, open terms included, **funext-free**.
-All 28 `poc/OCP0009/*.agda` modules build green
+All 29 `poc/OCP0009/*.agda` modules build green
 (`bootstrap/check.sh poc/OCP0009/<M>.agda` → EXIT 0), including `NbEPCwF` (CwF /
 dependent layer, Rung 2), `NbEPEl` (Tarski decoder + base CwF), `NbEPId`
 (identity type `Id` + `J`, Rung 3), `NbEPQTT` (QTT: multiplicity semiring +
@@ -86,6 +86,13 @@ OCP-0009 contribution and it shares the OCP-0004 normalizer discipline.
     Covers Once's univalence-adjacent needs without HITs.
   Chosen over cubical: fits the deterministic NbE, and proof-irrelevant equality
   erases cleanly at QTT `𝟘`.
+- `NbEPElOTT` — **OTT ↔ dependent-layer wiring**. `≡→Eq` (Agda `≡` → OTT `Eq`);
+  `Fib-Eq` (index conversion ⇒ OTT type-equality of the fibres); `transport-fib`
+  (move a fibre element over the `Fix` denotation, justified by the index
+  conversion). Demo: `Vec 2` and `Vec (double 1)` are OTT-equal and a length-2
+  vector transports between them. Makes `coe`/transport load-bearing for
+  dependent types. (Closed convertible indices ⇒ identity transport; nontrivial
+  transport is the propositional/open-index frontier.)
 - `NbEPQTTJ` — **QTT graded typing judgment (route (b), plan §7)**. Variable-based
   graded λ-calculus matching the compiler's `Surface/Context` usage vectors:
   usage vectors `Use Γ` with module structure over `Mult` (`0ᵘ`/`+ᵘ`/`·ᵘ`, laws);
@@ -342,8 +349,10 @@ were correct only for the minimal-core thesis.
    principled target. **COMPLETE** (`NbEPOTT` value+type equality, funext,
    proof-irrelevance; `NbEPOTTMu` μ via Fix; `NbEPOTTQ` quotients). All four
    layers landed: funext by definition, `Eq`+`coe`, proof-irrelevance, μ, and
-   quotients. Remaining refinement: wire OTT `Eq`/`coe` to the dependent layer
-   (`NbEPEl` indexed families) so `Eq (Vec m)(Vec n)` follows from `m ≡ n`.
+   quotients. **Wired to the dependent layer (`NbEPElOTT`):** `Eq (Vec m)(Vec n)`
+   follows from index conversion, with transport of fibre elements over the `Fix`
+   denotation (`Vec 2 ≅ Vec (double 1)`, transport demo). `coe`/transport is now
+   load-bearing for dependent types.
 3. **Universe-as-IR** — the single mechanism for the universe + IR/II rows.
 4. Native indexed inductives, coinduction (the genuinely-hard/contested row),
    then the summit (prove Once in Once).
