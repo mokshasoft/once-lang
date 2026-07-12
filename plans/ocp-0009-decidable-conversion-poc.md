@@ -262,3 +262,83 @@ than Coq/Agda's (product-η + terminal-η, funext-free); **self-hosting with a
 reflected IR** (none of the four are); a **minimal decidable core** with no
 confluence/SN debt (deterministic NbE shared with the compiler normalizer). A
 different point on the design manifold — not strictly dominated.
+
+---
+
+## 6. Strategic reframing — foundations-first, to lead on every axis
+
+**Goal (raised):** not "a minimal core + desugar," but **best-in-class on every
+row of §5's table**, won through *principledness + cleanness* rather than
+feature-accretion. The big systems earned their rows by bolting features onto a
+growing kernel over years (Agda: IR, then sized types, then cubical as a
+*separate* mode; Coq: coinduction, universe poly, SProp) — which is *why* they
+are not clean. To lead on principledness we do the opposite: **find the few
+foundational mechanisms from which many rows fall out at once.**
+
+The rows are not independent — they cluster:
+- **Universes + IR + large-elimination are ONE mechanism** (Dybjer–Setzer: IR
+  *is* defining a universe). So the universe row and the IR/II row (§3.D) MERGE:
+  do the inductive-recursive Tarski universe *properly*, and win both. This
+  **inverts** the earlier "stratify to avoid IR" advice — that was right for the
+  minimal-core thesis, wrong for the domination goal.
+- **Identity + funext + quotients + indexed families cluster in the equality
+  mechanism.** Once already holds an asset here: the NbE decides βη + product-η +
+  terminal-η **funext-free** — a running start toward **Observational Type Theory
+  (OTT)**.
+
+### The revised order (foundations-first)
+
+This **inverts** the old "defer IR / definitional-`Id` stopgap" choices, which
+were correct only for the minimal-core thesis.
+
+1. **QTT (quantitative type theory) — NEXT.** Multiplicities `0/1/ω` (erasure +
+   linearity) on the settled Π/Σ/μ core. Aligns with "impose erasure from Rung 2
+   onward as a design invariant" (§6-of-proposal / old Rung 5). Lower-risk,
+   independently valuable, and — key — it makes the later equality/universe work
+   **erasure-aware by construction**. It also *informs* the equality choice: QTT
+   wants **erasable** equality (see the OTT-vs-cubical note below).
+2. **Equality foundation = OTT** (+ quotient types), *not* classical cubical.
+   Chosen for (a) architectural fit with the deterministic NbE, and (b)
+   QTT-erasability. Replaces the definitional-`Id` stopgap (`NbEPId`) as the
+   principled target.
+3. **Universe-as-IR** — the single mechanism for the universe + IR/II rows.
+4. Native indexed inductives, coinduction (the genuinely-hard/contested row),
+   then the summit (prove Once in Once).
+
+### Honesty on "dominate every line"
+
+- **Genuinely winnable:** kernel/TCB, self-hosting/reflected IR (already unique),
+  conversion/η (already ahead), **identity via OTT** (the NbE asset makes this a
+  real shot at best-in-class), **universe+IR via a clean IR-universe**.
+- **Contested — nobody has solved these cleanly, so "dominate" = best tradeoff,
+  exceptionally clean, not "strictly beat":** **coinduction** (Agda sized-types
+  soundness history; Coq guardedness brittle) and the **equality wars**
+  (HoTT/cubical vs OTT vs setoid is *live research*).
+- **TCB caveat (why size is less decisive for Once):** the summit is
+  self-verification, so a *verified* larger kernel can out-trust an unverified
+  small one. But self-verification **relocates** the TCB, not eliminates it
+  (Gödel: a stronger kernel needs a stronger metatheory to verify; bounded by the
+  diagonalization ceiling). So kernel size still matters, just less absolutely.
+
+### Note for later — HOTT vs cubical (the univalence question)
+
+Recorded so it can be picked up when the equality foundation is built:
+
+- **The real objection to classical cubical for Once is COMPUTATIONAL, not TCB
+  size.** Cubical's Kan-composition / `transport` normalization is intricate and
+  stresses exactly the *deterministic NbE shared with the compiler* (OCP-0004)
+  that Once's other wins depend on. OTT fits that architecture; cubical fights it.
+- **QTT × cubical friction:** cubical **paths are computationally relevant**
+  (`transport`/HIT eliminators compute), so they **resist erasure** — fighting
+  QTT. **OTT equality proofs are proof-irrelevant → erase cleanly at
+  multiplicity 0.** Committing to QTT is thus itself an argument for OTT.
+- **Does Once NEED univalence?** For compiler-correctness + program-property
+  proofs (the summit), you need funext + good propositional equality + quotients
+  + indexed inductives. **Univalence is a flex, not load-bearing; HITs/quotients
+  ARE useful** and OTT extends with quotient types cleanly. Match the choice to
+  the summit's actual needs.
+- **If univalence turns out load-bearing:** the frontier target is **Higher
+  Observational Type Theory (HOTT)** (Shulman, Altenkirch, et al.) — univalence in
+  an *observational*, computational, decidability-friendly style — NOT classical
+  cubical. Caveat: recent, not battle-tested at scale. This is the "dominate the
+  univalence row *cleanly*" bet, to evaluate when equality is on the table.
