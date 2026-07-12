@@ -48,19 +48,29 @@ open import Once.TypeCheck.Judgment
          t-embed; t-lam; t-value-lift; t-morph-lift; t-pair-lit-check; t-In-app-check;
          t-apply-check; t-inl-app-check; t-inr-app-check; t-initial-app-check;
          t-subsume; t-arg-driven-app-check; t-var-poly-instantiate)
-open import Once.Surface.Syntax using (Expr; Usage; var; svar; svar→expr;
+open import Once.Surface.Syntax using (Expr; Usage; zeroUsage; var; svar; svar→expr;
   lam; app; effApp; pair; neg; let'; case'; int; str; unit;
   add; sub; mul; div; mod'; lt; le; gt; ge; eq; ne; arr'; sigOp; poly;
   lift-morphism; morph-app)
 open import Once.Surface.Elaborate using (intLit; elaborate)
 open import Once.Arith.SigOp.Builders using (value-info)
 open import Once.CanonicalName using (bare)
+open import Once.Surface.Syntax using (_+ᵘ_; _*ᵘ_)
+open import Once.Surface.Properties using (+ᵘ-identityˡ; *ᵘ-zeroʳ)
+open import Relation.Binary.PropositionalEquality using (_≡_; subst; trans; cong)
 
 -- The reference elaboration (D063): a mutual block
 --   realize       (⊢ᶜ → SExpr)   -- check-mode
 --   realize-infer (⊢ᵢ → SExpr)   -- infer-mode
 --   realize-morph (⊢ᵐ → IR)      -- morphism realm (below)
 --   realize-global(⊢ᵍ → IR)      -- value realm (below)
+-- Plan 0.58 (telescope): morph-app inflates the usage to
+-- `zeroUsage +ᵘ Many *ᵘ zeroUsage`; a reference uses no local variables, so
+-- this coerces it back to `zeroUsage`. TOP-LEVEL (not a `where`) so the bridge
+-- can name it to see through `realize`'s poly `subst`.
+poly-usage-eq : ∀ {n} → (zeroUsage {n}) +ᵘ (IR.Many *ᵘ zeroUsage) ≡ zeroUsage
+poly-usage-eq = trans (cong (zeroUsage +ᵘ_) (*ᵘ-zeroʳ IR.Many)) (+ᵘ-identityˡ zeroUsage)
+
 -- Forward signatures first (mutual recursion, no `mutual` keyword needed).
 realize : ∀ {ctx : NamedCtx} {e : RawExpr} {A : Type}
             {Ψ : Usage (NamedCtx.size ctx)}
@@ -144,7 +154,13 @@ realize (t-inr-app-check d)     = morph-app (IR.inr IR.Heap) (realize d)
 realize (t-initial-app-check d) = morph-app IR.initial (realize d)
 realize (t-subsume d)           = arr' (realize d)
 realize (t-arg-driven-app-check _ darg df) = app (realize df) (realize-infer darg)
-realize (t-var-poly-instantiate {x = x} {T = T} _ _ _ _ _ _ conc) = poly x T conc
+-- Plan 0.58 (telescope / E1): a same-module def reference realizes to its
+-- closed body's IR, wrapped as a closed morphism applied to `unit` — so its
+-- denotation is env-independent BY DEFINITION (`⟦ morph-app ir unit ⟧ˢ dγ =
+-- evalᴰ ir tt`), reusing existing combinators. No `poly` surface node (E1).
+realize {ctx = ctx} {A = A} (t-var-poly-instantiate _ _ _ _ _ bodyD _) =
+  subst (λ u → Expr (NamedCtx.debruijn ctx) u A) poly-usage-eq
+        (morph-app {Ψ = zeroUsage} (elaborate IR.Heap (realize bodyD)) unit)
 
 ------------------------------------------------------------------------
 -- realize-infer (⊢ᵢ) — infer-mode reference elaboration.

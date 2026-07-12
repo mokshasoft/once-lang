@@ -30,7 +30,8 @@ open import Once.Type using (Type; PolyType; Unit; Void; _*_; _+_; _⇒[_]_; μ-
 open import Once.CanonicalName using (showCanonical)
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.Parser.Module.Resolve using (canonExpr; elemStr)
-open import Once.TypeCheck.Classify using (PolyCtx; lookupPoly; removePoly; removePoly-decreases)
+open import Once.TypeCheck.Classify using (PolyCtx; lookupPoly; removePoly; removePoly-decreases;
+  lookupPolyPrefix; lookupPolyPrefix-decreases)
 
 ------------------------------------------------------------------------
 -- canonExpr a poly context's bodies.
@@ -93,6 +94,51 @@ lookupPoly-removePoly-mono x y ((n , s , b) ∷ rest) lp | no _ with StrProp._�
 
 removePoly-PInB : ∀ {p b} (x : String) → PInB p b → PInB (removePoly x p) b
 removePoly-PInB {p} x pib {y} lp with lookupPoly-removePoly-mono x y p lp
+... | _ , lp' = pib lp'
+
+------------------------------------------------------------------------
+-- Plan 0.58 (telescope): the corresponding commutes for `lookupPolyPrefix`.
+-- The prefix IS the canonicalized tail, so ONE commute subsumes both
+-- `lookupPoly-canon` and `removePoly-canon`.
+------------------------------------------------------------------------
+
+canon-prefix-entry : List String → (PolyType × RawExpr × PolyCtx) → (PolyType × RawExpr × PolyCtx)
+canon-prefix-entry b (s , body , prefix) = (s , canonExpr b [] [] body , canonPolysCtx b prefix)
+
+lookupPolyPrefix-canon : ∀ (b : List String) (p : PolyCtx) (x : String)
+  → lookupPolyPrefix (canonPolysCtx b p) x ≡ mapMaybe (canon-prefix-entry b) (lookupPolyPrefix p x)
+lookupPolyPrefix-canon b [] x = refl
+lookupPolyPrefix-canon b ((n , s , body) ∷ rest) x with StrProp._≟_ n x
+... | yes _ = refl
+... | no  _ = lookupPolyPrefix-canon b rest x
+
+lookupPolyPrefix-canon-just : ∀ (b : List String) (p : PolyCtx) (x : String) {s body prefix}
+  → lookupPolyPrefix p x ≡ just (s , body , prefix)
+  → lookupPolyPrefix (canonPolysCtx b p) x ≡ just (s , canonExpr b [] [] body , canonPolysCtx b prefix)
+lookupPolyPrefix-canon-just b p x {s} {body} {prefix} lp
+  rewrite lookupPolyPrefix-canon b p x rewrite lp = refl
+
+-- A name found in the prefix (a tail of `p`) is found in `p` — so PInB descends.
+lookupPolyPrefix-mono : ∀ (x y : String) (p : PolyCtx) {s body prefix r}
+  → lookupPolyPrefix p x ≡ just (s , body , prefix)
+  → lookupPoly prefix y ≡ just r → Σ-syntax _ (λ r' → lookupPoly p y ≡ just r')
+lookupPolyPrefix-mono x y [] () lpre
+lookupPolyPrefix-mono x y ((n , s , b) ∷ rest) lp lpre with StrProp._≟_ n x
+... | yes _ = aux lp lpre
+  where
+    aux : ∀ {s' b' prefix r} → just (s , b , rest) ≡ just (s' , b' , prefix)
+        → lookupPoly prefix y ≡ just r → Σ-syntax _ (λ r' → lookupPoly ((n , s , b) ∷ rest) y ≡ just r')
+    aux refl lpre' with StrProp._≟_ n y
+    ... | yes _ = _ , refl
+    ... | no  _ = _ , lpre'
+... | no  _ with lookupPolyPrefix-mono x y rest lp lpre
+...   | _ , lp' with StrProp._≟_ n y
+...     | yes _ = _ , refl
+...     | no  _ = _ , lp'
+
+lookupPolyPrefix-PInB : ∀ {p b} (x : String) {s body prefix}
+  → lookupPolyPrefix p x ≡ just (s , body , prefix) → PInB p b → PInB prefix b
+lookupPolyPrefix-PInB {p} x lp pib {y} lpre with lookupPolyPrefix-mono x y p lp lpre
 ... | _ , lp' = pib lp'
 
 ------------------------------------------------------------------------
@@ -307,13 +353,14 @@ mutual
   polys-transport-ᶜ b p pib ac (t-initial-app-check d) = t-initial-app-check (polys-transport-ᶜ b p pib ac d)
   polys-transport-ᶜ b p pib ac (t-arg-driven-app-check cls darg df) =
     t-arg-driven-app-check cls (polys-transport-ᵢ b p pib ac darg) (polys-transport-ᶜ b p pib ac df)
-  -- The one NON-structural recursion: the poly context shrinks (removePoly), so pass
-  -- the strictly-smaller accessibility `rec (removePoly-decreases x p lp)`.
-  polys-transport-ᶜ b {i = i} p pib (acc rec) (t-var-poly-instantiate {x = x} {T = T} {body = body} cb ¬u lln lin lp d conc) =
-    t-var-poly-instantiate cb ¬u lln lin (lookupPoly-canon-just b p x lp)
-      (subst (λ q → ctxWithImportsAndPolys i q ⊢ᶜ canonExpr b [] [] body ∶ T ⨾ zeroUsage)
-             (removePoly-canon b x p)
-             (polys-transport-ᶜ b (removePoly x p) (removePoly-PInB {p} {b} x pib)
-                (rec (removePoly-decreases x p lp))
-                (canon-pres-ᶜ {ctx = ctxWithImportsAndPolys i (removePoly x p)} b
-                  (⊆ᵇ-nil {b}) (mkPIB (removePoly-PInB {p} {b} x pib)) d))) conc
+  -- The one NON-structural recursion: the poly context shrinks to the PREFIX
+  -- (Plan 0.58 telescope), so pass the strictly-smaller accessibility
+  -- `rec (lookupPolyPrefix-decreases x p lp)`. The commute is baked into
+  -- `lookupPolyPrefix-canon-just` (prefix = canonicalized tail), so — unlike the
+  -- old `removePoly` version — NO `subst` is needed.
+  polys-transport-ᶜ b {i = i} p pib (acc rec) (t-var-poly-instantiate {x = x} {T = T} {body = body} {prefix = prefix} cb ¬u lln lin lp d conc) =
+    t-var-poly-instantiate cb ¬u lln lin (lookupPolyPrefix-canon-just b p x lp)
+      (polys-transport-ᶜ b prefix (lookupPolyPrefix-PInB {p} {b} x lp pib)
+         (rec (lookupPolyPrefix-decreases x p lp))
+         (canon-pres-ᶜ {ctx = ctxWithImportsAndPolys i prefix} b
+           (⊆ᵇ-nil {b}) (mkPIB (lookupPolyPrefix-PInB {p} {b} x lp pib)) d)) conc

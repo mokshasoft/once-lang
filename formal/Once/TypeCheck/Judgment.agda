@@ -52,7 +52,8 @@ open import Once.TypeCheck.Raw as Raw
          BinOp; isArithmeticOp; isComparisonOp)
 open import Once.CanonicalName using (CanonicalName; showCanonical)
 open import Once.TypeCheck.Classify
-  using (NamedCtx; lookupLocal; lookupImport; lookupPoly; removePoly;
+  using (NamedCtx; lookupLocal; lookupImport; lookupPoly; lookupPolyPrefix;
+         removePoly;
          ctxWithImportsAndPolys; extendNamedCtx; classifyAppHead;
          composeArgB; composeMid)
 
@@ -597,20 +598,27 @@ mutual
     -- `t-id-check`/`t-fst-check`/... rules because the name isn't a
     -- reserved builtin (checked by `lookupPoly` returning `just`).
     -- The nested check-mode derivation premise threads the body's
-    -- typecheck at the ground expected type `T`; the `removePoly x`
-    -- in the nested ctx prevents the body from re-triggering this
-    -- rule on the same name (cycle prevention).
+    -- typecheck at the ground expected type `T`, in the PREFIX
+    -- environment (the defs declared before `x`) — Plan 0.58 telescope:
+    -- a reference reaches only EARLIER defs, so cycles (self OR mutual)
+    -- are unrepresentable and acyclicity is manifest in the rule.
     t-var-poly-instantiate :
       ∀ {ctx : NamedCtx} {x : String} {T : Type} {schema : Once.Type.PolyType} {body : RawExpr}
+        {prefix : Once.TypeCheck.Classify.PolyCtx}
       → Once.TypeCheck.Classify.classifyBareBuiltin x ≡ Once.TypeCheck.Classify.bbc-other
       → ¬ (x ≡ "unit")
       → lookupLocal ctx x ≡ nothing
       → lookupImport (NamedCtx.imports ctx) x ≡ nothing
-      → lookupPoly (NamedCtx.polys ctx) x ≡ just (schema , body)
-      → (ctxWithImportsAndPolys (NamedCtx.imports ctx)
-                                 (removePoly x (NamedCtx.polys ctx)))
+      -- Plan 0.58 (telescope): the lookup returns the def's PREFIX (a
+      -- structural sub-list); the body is typed there. No `removePoly` — a
+      -- reference reaches only EARLIER defs, so acyclicity is manifest.
+      → lookupPolyPrefix (NamedCtx.polys ctx) x ≡ just (schema , body , prefix)
+      → (ctxWithImportsAndPolys (NamedCtx.imports ctx) prefix)
           ⊢ᶜ body ∶ T ⨾ Surface.zeroUsage
-      → IsConcrete T  -- Plan 0.58: FFI value reference is concrete
+      -- Plan 0.58: `IsConcrete T` is KEPT for now (deferred bug fix — E1-full
+      -- removes it; a same-module def ref is not truly an FFI boundary). This
+      -- lets the telescope spec win land decoupled from the concreteness change.
+      → IsConcrete T
       → ctx ⊢ᶜ RVar x ∶ T ⨾ Surface.zeroUsage
 
 ------------------------------------------------------------------------

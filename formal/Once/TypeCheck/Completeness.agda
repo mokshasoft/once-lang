@@ -75,7 +75,7 @@ open import Once.IR using (IR; Heap)
 open import Once.Denotation.Realize using (realize-morph; realize-global)
 open import Once.Surface.Syntax as Srf using (Expr; lift-morphism)
 open import Once.Type using (Functor; μ-type; ⟦_⟧T)
-open import Once.TypeCheck.Classify using (lookupLocal; lookupImport;
+open import Once.TypeCheck.Classify using (lookupLocal; lookupImport; lookupPolyPrefix⇒lookupPoly;
   inspectLookupLocal; inspectLookupImport; llv-found; llv-not-found; liv-found; liv-not-found)
 open import Once.TypeCheck.Elaborate using (extract-morph-eff; extractMorphWitness;
   checkComposeGo; checkCaseGo; VerifiedCheckResult; inferElabV-RVar-fail-bridge;
@@ -1863,7 +1863,8 @@ mutual
   check-complete {ctx}
     (t-var-poly-instantiate {x = x} {T = T} bbcOther x≢unit localN importN polyE bodyD conc) =
     let (_ , _ , _ , eqBody) = check-complete bodyD
-    in checkElab-fallback-RVar-poly {ctx} x T conc bbcOther x≢unit localN importN polyE eqBody
+    in checkElab-fallback-RVar-poly {ctx} x T conc bbcOther x≢unit localN importN
+         (lookupPolyPrefix⇒lookupPoly (NamedCtx.polys ctx) x polyE) eqBody
 
   -- pure-arrow derivation ⇒ the eff-arrow checkElab also succeeds (same usage).
   -- BY INDUCTION ON THE DERIVATION (OCP-0008): morphisms regrade to eff and go
@@ -1934,7 +1935,8 @@ mutual
     (t-var-poly-instantiate {x = x} bbcOther x≢unit localN importN polyE bodyD (con-fun bA cB)) =
     let (_ , _ , _ , eqBodyEff) = subsume-complete bodyD
     in checkElab-fallback-RVar-poly {ctx} x (A T.⇒[ T.mk-kind T.Many T.eff ] B)
-         (con-fun bA cB) bbcOther x≢unit localN importN polyE eqBodyEff
+         (con-fun bA cB) bbcOther x≢unit localN importN
+         (lookupPolyPrefix⇒lookupPoly (NamedCtx.polys ctx) x polyE) eqBodyEff
 
 -- STRONG check-complete: a trivial VIEW of the weak `check-complete`, not a
 -- per-case rewrite. Abstract `checkElabV`, take the weak proj₁ equation, and

@@ -35,7 +35,7 @@ open import Once.Functor.Decide using (wellFormedF?)
 open import Once.Semantics.Machine using (sem-In; coerce-functor)
 open import Once.Surface.Context using (Ctx; ∅; _,_^_; lookup; svar; SVar)
   renaming (⟦_⟧ᶜ to ⟦_⟧ᶜᵗ)
-open import Once.Surface.Syntax using (sigOp; poly)
+open import Once.Surface.Syntax using (sigOp; poly; Expr; Usage; morph-app; unit)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ)
 open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_; projTrace; valueT)
 open import Once.Denotation.DenotTrace using (evalᴰ; forget)
@@ -61,7 +61,9 @@ open import Once.Arith.SigOp.Builders using (value-info;
   add-info; sub-info; mul-info; div-info; mod-info; neg-info;
   lt-info; le-info; gt-info; ge-info; eq-info; ne-info)
 open import Once.CanonicalName using (CanonicalName; bare)
-open import Once.Denotation.Realize using (realize; realize-infer; realize-morph; realize-global)
+open import Once.Denotation.Realize using (realize; realize-infer; realize-morph; realize-global; poly-usage-eq)
+open import Once.Adequacy.SourceFaithful using (faithful)
+open import Once.Surface.Elaborate using (elaborate)
 import Once.Denotation.SourceDenote as SD
 open import Once.Adequacy.MeaningRelation
   using (RelV; RelT; RelT-return; RelT-bind)
@@ -289,6 +291,14 @@ bridge-m {A = A} {B = B} (m-named-resolved {cn = cn} _ bA cB) {a = a} {b = b} rv
 ≡→RelV-⊎⊤ {inj₁ _} refl = tt
 ≡→RelV-⊎⊤ {inj₂ _} refl = tt
 
+-- `SD.⟦_⟧ˢ` ignores the usage index, so a usage-coercing `subst` (as in
+-- `realize`'s telescope poly clause) is invisible to the denotation. Lets the
+-- poly bridge case see through `realize`'s `subst uEq (morph-app …)`.
+SD-subst-usage : ∀ {n} {Γ : Ctx n} {A} {Ψ Ψ' : Usage n} {eq : Ψ ≡ Ψ'}
+                   {e : Expr Γ Ψ A} {dγ}
+  → SD.⟦ subst (λ u → Expr Γ u A) eq e ⟧ˢ dγ ≡ SD.⟦ e ⟧ˢ dγ
+SD-subst-usage {eq = refl} = refl
+
 bridge-i : ∀ {ctx : NamedCtx} {e A Ψ} (d : ctx ⊢ᵢ e ∶ A ⨾ Ψ)
            {dγ₁ dγ₂ : Env ctx} (re : RelEnv (NamedCtx.debruijn ctx) dγ₁ dγ₂)
          → RelT A (⟦ d ⟧ᵢ dγ₁) (SD.⟦ realize-infer d ⟧ˢ dγ₂)
@@ -445,4 +455,11 @@ bridge-c (t-arg-driven-app-check _ darg df) re k =
       bx = bridge-i darg re k
       inner = proj₂ bf (proj₂ bx) k
   in cong₂ _++_ (proj₁ bf) (cong₂ _++_ (proj₁ bx) (proj₁ inner)) , proj₂ inner
-bridge-c {ctx = ctx} (t-var-poly-instantiate {x = x} {T = T} _ _ _ _ _ _ conc) {dγ₂ = dγ₂} re = poly-ref-bridge {Γ = NamedCtx.debruijn ctx} x T conc dγ₂
+-- Plan 0.58 (telescope): ⟦ t-var-poly ⟧ᶜ dγ₁ = ⟦ bodyD ⟧ᶜ tt and
+-- SD.⟦ realize d ⟧ˢ dγ₂ = evalᴰ (elaborate Heap (realize bodyD)) tt (morph-app+unit,
+-- env-independent by def). So the bridge RECURSES on the body (bodyD is closed ⇒
+-- empty RelEnv `tt`); `faithful (realize bodyD)` closes the evalᴰ↔SD gap.
+bridge-c {ctx = ctx} (t-var-poly-instantiate _ _ _ _ _ bodyD _) {dγ₂ = dγ₂} re k
+  rewrite SD-subst-usage {Γ = NamedCtx.debruijn ctx} {eq = poly-usage-eq}
+                         {e = morph-app (elaborate IR.Heap (realize bodyD)) unit} {dγ = dγ₂}
+  rewrite faithful (realize bodyD) tt k = bridge-c bodyD {dγ₁ = tt} {dγ₂ = tt} tt k

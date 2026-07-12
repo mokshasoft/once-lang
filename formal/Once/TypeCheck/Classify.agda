@@ -27,7 +27,7 @@ open import Data.String using (String; _++_)
 open import Data.String.Properties as StrProp using (_≟_)
 import Data.String
 open import Data.Nat using (ℕ; zero; suc; _<_; s≤s)
-open import Data.Nat.Properties using (≤-refl)
+open import Data.Nat.Properties using (≤-refl; m≤n⇒m≤1+n)
 open import Data.Nat.Show renaming (show to showℕ)
 open import Data.Fin using (Fin; zero; suc)
 open import Data.Maybe using (Maybe; just; nothing)
@@ -127,6 +127,53 @@ removePoly-decreases x [] ()
 removePoly-decreases x ((n , s , b) ∷ rest) eq with StrProp._≟_ n x
 ... | yes _ = s≤s ≤-refl
 ... | no  _ = s≤s (removePoly-decreases x rest eq)
+
+-- | Plan 0.58 (telescope redesign): look up a poly def AND return its
+-- PREFIX (the tail after the matched entry). The `PolyCtx` is now read as
+-- an ORDERED telescope — head = most-recently-declared def, tail = the
+-- definitions it is allowed to reference (its prefix). A def's body is
+-- typed in that prefix, so a reference can only reach EARLIER defs:
+-- acyclicity is manifest in the structure (no `removePoly`), and because
+-- the returned prefix is a structural sub-list, the elaborator's inline
+-- reference resolution terminates structurally (POC-A) with no `Acc`.
+-- (The topological sort at the module boundary — Plan 0.58 T3 — arranges
+-- the defs so this order is a valid dependency order; a cycle is rejected.)
+lookupPolyPrefix : PolyCtx → String → Maybe (PolyType × RawExpr × PolyCtx)
+lookupPolyPrefix [] _ = nothing
+lookupPolyPrefix ((n , s , b) ∷ rest) x with StrProp._≟_ n x
+... | yes _ = just (s , b , rest)
+... | no  _ = lookupPolyPrefix rest x
+
+-- | The returned prefix is STRICTLY shorter than the input telescope —
+-- the well-founded measure for the elaborator's inline reference
+-- resolution (Plan 0.58 E1: `checkElab` re-elaborates a def's body in
+-- its prefix, terminating because the prefix strictly shrinks).
+lookupPolyPrefix-decreases :
+  ∀ (x : String) (polys : PolyCtx) {s : PolyType} {b : RawExpr} {prefix : PolyCtx}
+  → lookupPolyPrefix polys x ≡ just (s , b , prefix)
+  → length prefix < length polys
+lookupPolyPrefix-decreases x [] ()
+lookupPolyPrefix-decreases x ((n , s' , b') ∷ rest) eq with StrProp._≟_ n x
+... | yes _ = aux eq
+  where
+    aux : ∀ {s b prefix} → just (s' , b' , rest) ≡ just (s , b , prefix)
+        → length prefix < length ((n , s' , b') ∷ rest)
+    aux refl = ≤-refl
+... | no  _ = m≤n⇒m≤1+n (lookupPolyPrefix-decreases x rest eq)
+
+-- | `lookupPolyPrefix` and `lookupPoly` find the SAME entry (same head-first
+-- search) — so a prefix lookup yields the corresponding plain lookup. Lets the
+-- canon/preserve proofs reuse their `lookupPoly`-based `PolyInB` witnesses.
+lookupPolyPrefix⇒lookupPoly : ∀ (p : PolyCtx) (x : String) {s body prefix}
+  → lookupPolyPrefix p x ≡ just (s , body , prefix) → lookupPoly p x ≡ just (s , body)
+lookupPolyPrefix⇒lookupPoly [] x ()
+lookupPolyPrefix⇒lookupPoly ((n , s' , b') ∷ rest) x lp with StrProp._≟_ n x
+... | yes _ = aux lp
+  where
+    aux : ∀ {s body prefix} → just (s' , b' , rest) ≡ just (s , body , prefix)
+        → just (s' , b') ≡ just (s , body)
+    aux refl = refl
+... | no  _ = lookupPolyPrefix⇒lookupPoly rest x lp
 
 -- | A named context paired with its de Bruijn representation
 -- Includes a fresh counter for generating unique type variables during instantiation

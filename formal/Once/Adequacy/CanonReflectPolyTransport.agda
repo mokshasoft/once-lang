@@ -27,12 +27,14 @@ open import Once.Surface.Syntax as Surface using (zeroUsage)
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.Parser.Module.Resolve using (canonExpr)
 open import Once.TypeCheck.Classify
-  using (PolyCtx; NamedCtx; mkCtx; lookupPoly; removePoly; removePoly-decreases; ctxWithImportsAndPolys; composeMid)
+  using (PolyCtx; NamedCtx; mkCtx; lookupPoly; removePoly; removePoly-decreases;
+         lookupPolyPrefix; lookupPolyPrefix-decreases; ctxWithImportsAndPolys; composeMid)
 open import Once.TypeCheck.Judgment
 open import Once.Adequacy.CanonPreserve using (⊆ᵇ-nil)
 open import Once.Adequacy.CanonPolyTransport
   using (canonPolysCtx; canon-entry; cpc; PInB; lookupPoly-canon; removePoly-canon;
-         removePoly-PInB; composeArgB-polys-canon; domainOfHead-polys-canon)
+         removePoly-PInB; composeArgB-polys-canon; domainOfHead-polys-canon;
+         canon-prefix-entry; lookupPolyPrefix-canon; lookupPolyPrefix-PInB)
 open import Once.Adequacy.CanonReflectMutual using (canon-reflects-ᶜ)
 
 ------------------------------------------------------------------------
@@ -140,25 +142,27 @@ mutual
   polys-reflect-ᶜ b p pib ac (t-initial-app-check d) = t-initial-app-check (polys-reflect-ᶜ b p pib ac d)
   polys-reflect-ᶜ b p pib ac (t-arg-driven-app-check cls darg df) =
     t-arg-driven-app-check cls (polys-reflect-ᵢ b p pib ac darg) (polys-reflect-ᶜ b p pib ac df)
-  polys-reflect-ᶜ b {i = i} p pib (acc rec) (t-var-poly-instantiate {x = x} {T = T} {schema = schema} {body = bodyC} cb ¬u lln lin lpC dC conc)
-    with lookupPoly p x in eqLP | lookupPoly-canon b p x
+  polys-reflect-ᶜ b {i = i} p pib (acc rec) (t-var-poly-instantiate {x = x} {T = T} {schema = schema} {body = bodyC} {prefix = prefixC} cb ¬u lln lin lpC dC conc)
+    with lookupPolyPrefix p x in eqLP | lookupPolyPrefix-canon b p x
   ... | nothing | lc = ⊥-elim (n≢j (trans (sym lc) lpC))
-  ... | just (schema′ , bodyP) | lc =
+  ... | just (schema′ , bodyP , prefixP) | lc =
         t-var-poly-instantiate cb ¬u lln lin lp-rec d-rec conc
     where
-      -- mapMaybe (canon-entry b) (just (schema′ , bodyP)) ≡ just (schema , bodyC)
-      eqJ : (schema′ , canonExpr b [] [] bodyP) ≡ (schema , bodyC)
+      -- mapMaybe (canon-prefix-entry b) (just (schema′,bodyP,prefixP))
+      --   ≡ just (schema , bodyC , prefixC)
+      eqJ : (schema′ , canonExpr b [] [] bodyP , canonPolysCtx b prefixP) ≡ (schema , bodyC , prefixC)
       eqJ = just-inj (trans (sym lc) lpC)
-      lp-rec : lookupPoly p x ≡ just (schema , bodyP)
-      lp-rec = subst (λ sc → lookupPoly p x ≡ just (sc , bodyP)) (cong proj₁ eqJ) eqLP
-      -- transport dC : ctx[removePoly x (canonPolysCtx b p)] ⊢ᶜ bodyC  to  bodyP at ctx[removePoly x p]
-      dC1 : ctxWithImportsAndPolys i (canonPolysCtx b (removePoly x p)) ⊢ᶜ bodyC ∶ T ⨾ zeroUsage
+      lp-rec : lookupPolyPrefix p x ≡ just (schema , bodyP , prefixP)
+      lp-rec = subst (λ sc → lookupPolyPrefix p x ≡ just (sc , bodyP , prefixP)) (cong proj₁ eqJ) eqLP
+      -- reflect dC : ctx[prefixC] ⊢ᶜ bodyC  to  bodyP at ctx[prefixP].
+      -- prefixC ≡ canon prefixP and bodyC ≡ canon bodyP (both from eqJ).
+      dC1 : ctxWithImportsAndPolys i (canonPolysCtx b prefixP) ⊢ᶜ bodyC ∶ T ⨾ zeroUsage
       dC1 = subst (λ q → ctxWithImportsAndPolys i q ⊢ᶜ bodyC ∶ T ⨾ zeroUsage)
-                  (sym (removePoly-canon b x p)) dC
-      dC2 : ctxWithImportsAndPolys i (canonPolysCtx b (removePoly x p)) ⊢ᶜ canonExpr b [] [] bodyP ∶ T ⨾ zeroUsage
-      dC2 = subst (λ e → ctxWithImportsAndPolys i (canonPolysCtx b (removePoly x p)) ⊢ᶜ e ∶ T ⨾ zeroUsage)
-                  (sym (cong proj₂ eqJ)) dC1
-      d-rec : ctxWithImportsAndPolys i (removePoly x p) ⊢ᶜ bodyP ∶ T ⨾ zeroUsage
+                  (sym (cong (λ r → proj₂ (proj₂ r)) eqJ)) dC
+      dC2 : ctxWithImportsAndPolys i (canonPolysCtx b prefixP) ⊢ᶜ canonExpr b [] [] bodyP ∶ T ⨾ zeroUsage
+      dC2 = subst (λ e → ctxWithImportsAndPolys i (canonPolysCtx b prefixP) ⊢ᶜ e ∶ T ⨾ zeroUsage)
+                  (sym (cong (λ r → proj₁ (proj₂ r)) eqJ)) dC1
+      d-rec : ctxWithImportsAndPolys i prefixP ⊢ᶜ bodyP ∶ T ⨾ zeroUsage
       d-rec = canon-reflects-ᶜ b bodyP (⊆ᵇ-nil {b})
-                (polys-reflect-ᶜ b (removePoly x p) (removePoly-PInB {p} {b} x pib)
-                  (rec (removePoly-decreases x p lp-rec)) dC2)
+                (polys-reflect-ᶜ b prefixP (lookupPolyPrefix-PInB {p} {b} x lp-rec pib)
+                  (rec (lookupPolyPrefix-decreases x p lp-rec)) dC2)

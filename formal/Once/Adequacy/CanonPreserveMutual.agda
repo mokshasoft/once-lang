@@ -31,7 +31,7 @@ open import Once.Type using (Type)
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.Parser.Module.Resolve using (canonExpr; isBuiltinName; elemStr)
 open import Once.TypeCheck.Classify
-  using (NamedCtx; composeMid; lookupPoly; extendNamedCtx; ctxWithImportsAndPolys)
+  using (NamedCtx; composeMid; lookupPoly; lookupPolyPrefix⇒lookupPoly; extendNamedCtx; ctxWithImportsAndPolys)
 open import Once.TypeCheck.Context using (names)
 open import Once.TypeCheck.Judgment
 open import Once.Adequacy.CanonPreserve
@@ -192,6 +192,6 @@ mutual
   canon-pres-ᶜ bound sub pib (t-arg-driven-app-check {f = f} cls darg df) =
     t-arg-driven-app-check (classify-canon bound f cls)
                            (canon-pres-ᵢ bound sub pib darg) (canon-pres-ᶜ bound sub pib df)
-  canon-pres-ᶜ bound sub pib (t-var-poly-instantiate {x = x} cb ¬u lln lin lp d conc)
-    rewrite canon-RVar-keep bound x (or-l (app pib lp)) =
+  canon-pres-ᶜ {ctx = ctx} bound sub pib (t-var-poly-instantiate {x = x} cb ¬u lln lin lp d conc)
+    rewrite canon-RVar-keep bound x (or-l (app pib (lookupPolyPrefix⇒lookupPoly (NamedCtx.polys ctx) x lp))) =
       t-var-poly-instantiate cb ¬u lln lin lp d conc

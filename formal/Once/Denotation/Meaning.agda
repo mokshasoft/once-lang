@@ -186,7 +186,11 @@ Env ctx = ⟦ ⟦ NamedCtx.debruijn ctx ⟧ᶜᵗ ⟧ᴰ
 ⟦ t-initial-app-check d ⟧ᶜ  dγ = ⟦ d ⟧ᶜ dγ >>=T λ v → ⊥-elim v
 ⟦ t-subsume d ⟧ᶜ            dγ = ⟦ d ⟧ᶜ dγ
 ⟦ t-arg-driven-app-check _ darg df ⟧ᶜ dγ = ⟦ df ⟧ᶜ dγ >>=T λ vf → ⟦ darg ⟧ᵢ dγ >>=T λ vx → vf vx
-⟦_⟧ᶜ {A = A} (t-var-poly-instantiate {x = x} _ _ _ _ _ _ conc) dγ = sigOpValᴰ (value-info {Unit} {A} (bare x) base-Unit conc)
+-- Plan 0.58 (telescope): a same-module def reference MEANS its closed body
+-- (the body derivation is the rule's premise). Env-independent — the body is
+-- typed in the empty local context (the prefix env), so discard `dγ` and feed
+-- `tt`. Structural recursion (bodyD is a premise ⇒ a subterm).
+⟦ t-var-poly-instantiate _ _ _ _ _ bodyD _ ⟧ᶜ dγ = ⟦ bodyD ⟧ᶜ tt
 
 ⟦ t-int n ⟧ᵢ                dγ = returnT (absℤ n)
 ⟦ t-str s ⟧ᵢ                dγ = returnT (semM (str-lit-info s) tt)

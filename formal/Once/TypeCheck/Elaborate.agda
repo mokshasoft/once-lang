@@ -3410,16 +3410,18 @@ resolveExpr-poly-match polys pAcc imps userFns fresh x T conc polyEq bodyEq
 checkElab-fallback-RVar-poly :
   ∀ {ctx : NamedCtx} (x : String) (T : Type)
     (conc : IsConcrete T)
-    {schema : PolyType} {body : RawExpr}
+    {schema : PolyType} {body : RawExpr} {prefix : PolyCtx}
     {eE_body : SExpr S∅ Surface.zeroUsage T}
     {d_body f_body : ℕ}
   → classifyBareBuiltin x ≡ bbc-other
   → ¬ (x ≡ "unit")
   → lookupLocal ctx x ≡ nothing
   → lookupImport (NamedCtx.imports ctx) x ≡ nothing
+  -- The poly-node emission depends only on `lookupPoly` succeeding (checkElab
+  -- is unchanged — E1-full deferred); the body-elaboration premise (at the
+  -- telescope PREFIX) is threaded for the caller but not read here.
   → lookupPoly (NamedCtx.polys ctx) x ≡ just (schema , body)
-  → checkElab (ctxWithImportsAndPolys (NamedCtx.imports ctx)
-                                       (removePoly x (NamedCtx.polys ctx)))
+  → checkElab (ctxWithImportsAndPolys (NamedCtx.imports ctx) prefix)
               body T
       ≡ success Surface.zeroUsage eE_body d_body f_body
   → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ fr →
