@@ -17,7 +17,7 @@
 -- propositional rather than folded into definitional conversion.
 ------------------------------------------------------------------------
 
-{-# OPTIONS --guardedness #-}
+{-# OPTIONS --safe --guardedness #-}
 module poc.OCP0009.NbEPCoind where
 
 open import normalizer.Syntax.Types using ( _≡_; refl; cong )

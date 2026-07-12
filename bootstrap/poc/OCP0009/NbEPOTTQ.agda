@@ -14,6 +14,7 @@
 --     does (`elim-resp`) — the well-definedness obligation, made explicit.
 ------------------------------------------------------------------------
 
+{-# OPTIONS --safe #-}
 module poc.OCP0009.NbEPOTTQ where
 
 open import normalizer.Syntax.Types

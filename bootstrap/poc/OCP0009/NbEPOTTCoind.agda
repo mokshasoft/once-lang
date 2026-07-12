@@ -17,7 +17,7 @@
 -- in Once, `_≈_` simply IS the (intended) propositional equality at `ν`.
 ------------------------------------------------------------------------
 
-{-# OPTIONS --guardedness #-}
+{-# OPTIONS --safe --guardedness #-}
 module poc.OCP0009.NbEPOTTCoind where
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong )

@@ -21,6 +21,7 @@
 -- boundary as the container fragment.
 ------------------------------------------------------------------------
 
+{-# OPTIONS --safe #-}
 module poc.OCP0009.NbEPUnivDec where
 
 open import normalizer.Syntax.Types

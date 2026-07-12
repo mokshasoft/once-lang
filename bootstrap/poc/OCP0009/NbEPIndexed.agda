@@ -15,6 +15,7 @@
 -- positive (the fixpoint occurs only in a function CODOMAIN), no pragma.
 ------------------------------------------------------------------------
 
+{-# OPTIONS --safe #-}
 module poc.OCP0009.NbEPIndexed where
 
 open import normalizer.Syntax.Types using ( Σ; _,_; ⊤; tt; ⊥ )

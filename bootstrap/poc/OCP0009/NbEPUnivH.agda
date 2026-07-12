@@ -23,6 +23,7 @@
 -- `NbEPUnivDec`.)
 ------------------------------------------------------------------------
 
+{-# OPTIONS --safe #-}
 module poc.OCP0009.NbEPUnivH where
 
 open import normalizer.Syntax.Types using ( ⊤; tt )

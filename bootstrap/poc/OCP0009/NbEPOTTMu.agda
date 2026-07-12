@@ -14,6 +14,7 @@
 -- over the whole type language.
 ------------------------------------------------------------------------
 
+{-# OPTIONS --safe #-}
 module poc.OCP0009.NbEPOTTMu where
 
 open import normalizer.Syntax.Types

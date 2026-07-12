@@ -25,6 +25,7 @@
 -- `U` one level up (noted, not built).
 ------------------------------------------------------------------------
 
+{-# OPTIONS --safe #-}
 module poc.OCP0009.NbEPUniv where
 
 open import normalizer.Syntax.Types
