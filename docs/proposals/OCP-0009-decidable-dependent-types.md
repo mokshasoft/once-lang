@@ -618,8 +618,9 @@ conversion** — a left-inverse decoder `decodeV : Val Unit U → Ty` round-trip
 `El`, so equal code-values give equal decoded types (`El-weld`); the decoder
 must live on the `Val` domain because the point-free `Term` cannot be
 pattern-matched (a `terminal : Unit` position sends coverage into the
-`⟦F⟧F(μF) ≟ Unit` stuck state, `⟦One⟧F X = Unit`), leaving one honest gap —
-`reifyVal`-injectivity on code-values, true and structural but unproven.
+`⟦F⟧F(μF) ≟ Unit` stuck state, `⟦One⟧F X = Unit`). The lift to the checker's
+SURFACE `nf` decision is proven (`faithful : nf ⌜c⌝ ≡ nf ⌜d⌝ → c ≡ d`, the
+reflection is injective; `El-weld-nf` follows) — no gap remains.
 (2) **Indexed families** — a dependent type over index `I` is an OPEN code
 `Tm I U`, fibre `Fib F i = decodeV (eval (F ⊙ i) vUnit)`; convertible indices
 give equal fibres (`Fib-cong`), and `VecNat` (a **type-level cata** over the
