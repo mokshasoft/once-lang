@@ -656,6 +656,17 @@ conversion — this is the *definitional* identity. A proof-relevant intensional
 on `n`) — is not this type; it needs `Id` as a primitive NbE type-FORMER with an
 eliminator carrying the induction, or an axiom (funext). Named, not built.
 
+**The principled successor — Observational Type Theory (`NbEPOTT.agda`,
+2026-07-12).** Rather than take funext as an axiom, the equality foundation is
+being moved to OTT (see the plan's §6 foundations-first reframing): propositional
+equality defined by RECURSION ON THE TYPE. Realized for `{Void,Unit,×,+,⇒}`:
+**funext holds by definition** (function equality is pointwise, transport is the
+identity), so extensional facts like `not ∘ not ≡ id` are provable funext-free,
+and `eq` is a structural equivalence. OTT is chosen over cubical because it fits
+the deterministic NbE and — being proof-irrelevant — erases cleanly at QTT `𝟘`.
+Remaining OTT layers: proof-irrelevance, observational TYPE equality + `coe`,
+`μ` (Fix model), quotients.
+
 ### Rung 4 — indexed inductive families
 
 Generalize reified functors to *indexed* polynomial functors / containers, so you

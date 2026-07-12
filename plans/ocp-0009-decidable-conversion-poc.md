@@ -19,11 +19,12 @@ separate IR→IR consumer over `normalizer.Syntax.CCC`.
 The **conversion problem** — decidable equality, the heart of OCP-0009 — is
 **solved and machine-checked for the fragment**. The principled NbE decides the
 β-theory + every congruence + **product-η**, open terms included, **funext-free**.
-All 25 `poc/OCP0009/*.agda` modules build green
+All 26 `poc/OCP0009/*.agda` modules build green
 (`bootstrap/check.sh poc/OCP0009/<M>.agda` → EXIT 0), including `NbEPCwF` (CwF /
 dependent layer, Rung 2), `NbEPEl` (Tarski decoder + base CwF), `NbEPId`
 (identity type `Id` + `J`, Rung 3), `NbEPQTT` (QTT: multiplicity semiring +
-erasure), and `NbEPQTTJ` (QTT graded typing judgment, route (b)).
+erasure), `NbEPQTTJ` (QTT graded typing judgment + elaboration, route (b)), and
+`NbEPOTT` (Observational Type Theory equality foundation, §6 step 2).
 
 **There is no remaining research wall in the conversion core.** What is left is a
 dependent/CwF layer (standard now that conversion is solved), IR wiring, and — on
@@ -67,6 +68,16 @@ OCP-0009 contribution and it shares the OCP-0004 normalizer discipline.
   `eval-normal` (eval preserves normality).
 - `NbEPComplete` — **the theorem**: `≈β-complete : t ≈β u → nf t ≡ nf u`, where
   `_≈β_` = β + ⊙/pair/case/cata congruence + **`η-pair` (`⟨fst,snd⟩ ≈ id`)**.
+- `NbEPOTT` — **Observational Type Theory equality foundation (§6 step 2)**.
+  Observational value equality `eq A` defined by RECURSION ON THE TYPE for the
+  `{Void,Unit,×,+,⇒}` fragment. **funext holds by definition** — `eq (A⇒B) f g =
+  ∀ x. eq B (f x)(g x)`, transport (`funext`/`happly`) is the identity — so
+  extensional function equality is PROVABLE funext-free (`notnot=id` decides
+  `not∘not ≡ id` pointwise). `eq` is an equivalence (refl/sym/trans). Chosen over
+  cubical: fits the deterministic NbE, and proof-irrelevant equality erases
+  cleanly at QTT `𝟘`. Deferred (named): proof-IRRELEVANCE (`⇒` case needs the
+  internal funext this provides), observational TYPE equality `Eq` + `coe`, and
+  the `μ` case (needs the `Fix` value model).
 - `NbEPQTTJ` — **QTT graded typing judgment (route (b), plan §7)**. Variable-based
   graded λ-calculus matching the compiler's `Surface/Context` usage vectors:
   usage vectors `Use Γ` with module structure over `Mult` (`0ᵘ`/`+ᵘ`/`·ᵘ`, laws);
@@ -320,7 +331,10 @@ were correct only for the minimal-core thesis.
 2. **Equality foundation = OTT** (+ quotient types), *not* classical cubical.
    Chosen for (a) architectural fit with the deterministic NbE, and (b)
    QTT-erasability. Replaces the definitional-`Id` stopgap (`NbEPId`) as the
-   principled target.
+   principled target. **STARTED (`NbEPOTT`):** observational value equality by
+   recursion on types for `{Void,Unit,×,+,⇒}` — funext by definition, extensional
+   function equality funext-free, equivalence laws. Remaining: proof-irrelevance,
+   observational TYPE equality `Eq` + `coe`/coherence, `μ` (Fix model), quotients.
 3. **Universe-as-IR** — the single mechanism for the universe + IR/II rows.
 4. Native indexed inductives, coinduction (the genuinely-hard/contested row),
    then the summit (prove Once in Once).
@@ -413,9 +427,11 @@ itself is *ungraded*; grading lives at the surface). So:
   standard QTT (Atkey/McBride), lower-risk, and — since compiler QTT enforcement
   is unstarted — is a candidate to *become* that enforcement. It layers cleanly
   on the IR-level `erase-irrelevant` soundness already proven. **← chosen; BUILT
-  as `NbEPQTTJ`** (usage-vector module, intrinsic graded judgment, `erase-arg`).
-  Remaining: elaborate `Γ ⊢[ρ] A` to the CCC IR, erasing `𝟘`-args (= the
-  compiler's Surface→IR pass, connecting to `erase-irrelevant`).
+  as `NbEPQTTJ`** (usage-vector module, intrinsic graded judgment, `erase-arg`,
+  **elaboration to the CCC IR** var→projection/lam→curry/app→apply, and the
+  type-level erasure `⌊A⇒[𝟘]B⌋=⌊B⌋`). Remaining: the erasing TERM elaboration
+  (drop `𝟘`-bound vars via a `𝟘`-usage strengthening lemma), whose semantic check
+  needs the Kripke `⇒` NbE.
 - **(a) graded point-free category** is more elegant/native but semantically
   subtle: the IR is **cartesian** (free duplication Δ and discard `terminal`), and
   grading a cartesian category is the coeffect/graded-comonad research path; the
