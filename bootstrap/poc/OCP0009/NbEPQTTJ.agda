@@ -26,6 +26,7 @@
 -- the `𝟘`-graded arguments (the compiler's Surface→IR pass).
 ------------------------------------------------------------------------
 
+{-# OPTIONS --safe #-}
 module poc.OCP0009.NbEPQTTJ where
 
 open import normalizer.Syntax.Types
