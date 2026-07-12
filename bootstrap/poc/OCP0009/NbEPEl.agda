@@ -24,6 +24,10 @@
 --   * the reflection `⌜_⌝ : Code → Tm Unit U` lands codes as IR `U`-data,
 --     agreeing with `NbEPCwF`'s smart constructors (self-hosting bridge);
 --   * `El` and the reflection RESPECT code identity (well-defined on codes);
+--   * **`El` WELDED to the NbE-decided conversion** (`El-weld`): equal
+--     code-VALUES give equal decoded types, via a left-inverse decoder
+--     `decodeV` that round-trips `El` (see its section for the one honest gap
+--     — `reifyVal`-injectivity — between value equality and surface `nf`);
 --   * code-driven context extension + terms-of-type, with the context
 --     variable as a real term `varᶜ`.
 --
@@ -35,10 +39,12 @@
 module poc.OCP0009.NbEPEl where
 
 open import normalizer.Syntax.Types
+open import poc.OCP0009.NbEK
+  using ( Val; vUnit; vPair; vInl; vInr; vIn )
 open import poc.OCP0009.NbEP
-  using ( Tm; _⊙_; sndT; nf )
+  using ( Tm; _⊙_; sndT; nf; eval )
 open import poc.OCP0009.NbEPCwF
-  using ( U; Nat
+  using ( U; UF; Nat
         ; ⌜unit⌝; ⌜nat⌝; Π[_,_]; Σ[_,_]; _⇒C_; _×C_
         ; Ctx; ∙; _▷_; ⟦_⟧C )
 
@@ -83,10 +89,6 @@ El (a `Σ b) = El a * El b
 
 ------------------------------------------------------------------------
 -- Well-definedness: both `El` and the reflection respect code identity.
--- (A checker deciding code-conversion by `nf ⌜c⌝ ≡ nf ⌜d⌝` may substitute
--- `El c` for `El d`; the ← direction — reflection is FAITHFUL, distinct
--- codes reflect to distinct `nf` — is the injectivity obligation, a routine
--- discrimination induction, noted here.)
 ------------------------------------------------------------------------
 
 El-cong : ∀ {c d} → c ≡ d → El c ≡ El d
@@ -94,6 +96,59 @@ El-cong refl = refl
 
 reflect-cong : ∀ {c d} → c ≡ d → nf ⌜ c ⌝ ≡ nf ⌜ d ⌝
 reflect-cong refl = refl
+
+------------------------------------------------------------------------
+-- WELDING `El` TO THE NbE-DECIDED CONVERSION (the load-bearing direction).
+--
+-- A checker decides code-conversion by NbE; to transport along it, it needs
+-- `El c ≡ El d`. We prove exactly that, keyed on the NbE VALUE of the code.
+--
+-- The route is a LEFT INVERSE of evaluation on code-values: `decodeV` reads
+-- the `Ty` straight off the semantic value `eval ⌜c⌝` (a rigid
+-- `vIn ∘ vInⁿ ∘ vPair` skeleton), and round-trips `El`. Then
+-- `El c ≡ decodeV ⟦c⟧ ≡ decodeV ⟦d⟧ ≡ El d`, with `cong` doing the middle
+-- step — no per-former discrimination.
+--
+-- Why the VALUE and not the reified `Term`: a decoder on the point-free
+-- `Term` cannot be defined by pattern matching — a `terminal` (type `Unit`)
+-- position sends Agda's coverage checker into the well-known `⟦F⟧F(μF) ≟ Unit`
+-- stuck state (since `⟦One⟧F X = Unit`, `In` cannot be ruled out). `Val`'s
+-- indices are plain `Ty`, so the decoder splits cleanly there. The one honest
+-- gap this leaves: the checker's surface decision is `nf ⌜c⌝ ≡ nf ⌜d⌝` (reified
+-- `Term`s); lifting THAT to the value equality below is `reifyVal`-injectivity
+-- on code-values (true and structural — every constructor reifies to a
+-- distinct `Term` head — but not proven here).
+------------------------------------------------------------------------
+
+-- The NbE value of a (closed) code — what `nf` reifies.
+⟦_⟧v : Code → Val Unit U
+⟦ c ⟧v = eval ⌜ c ⌝ vUnit
+
+-- Left inverse: decode a code-VALUE back to the `Ty` it denotes.
+-- (Total: non-code values fall through to `Void`; unreachable for `⟦_⟧v`.)
+decodeV : Val Unit U → Ty
+decodeV (vIn (vInl vUnit))                                    = Unit
+decodeV (vIn (vInr (vInl vUnit)))                             = Nat
+decodeV (vIn (vInr (vInr (vInl (vPair x y)))))               = decodeV x * decodeV y
+decodeV (vIn (vInr (vInr (vInr (vInl (vPair x y))))))        = decodeV x ⇒ decodeV y
+decodeV (vIn (vInr (vInr (vInr (vInr (vInl (vPair x y))))))) = decodeV x ⇒ decodeV y
+decodeV (vIn (vInr (vInr (vInr (vInr (vInr (vPair x y))))))) = decodeV x * decodeV y
+decodeV _                                                     = Void
+
+-- Evaluation round-trips `El` — by induction on the code (6 cases).
+decode-nfV : ∀ c → decodeV ⟦ c ⟧v ≡ El c
+decode-nfV `unit    = refl
+decode-nfV `nat     = refl
+decode-nfV (a `× b) = cong₂ _*_ (decode-nfV a) (decode-nfV b)
+decode-nfV (a `⇒ b) = cong₂ _⇒_ (decode-nfV a) (decode-nfV b)
+decode-nfV (a `Π b) = cong₂ _⇒_ (decode-nfV a) (decode-nfV b)
+decode-nfV (a `Σ b) = cong₂ _*_ (decode-nfV a) (decode-nfV b)
+
+-- The weld: NbE-decided conversion (equal code-values) determines the decoded
+-- type. `El` is therefore well-defined on conversion classes — a checker may
+-- transport `El c` to `El d` whenever NbE identifies the codes.
+El-weld : ∀ {c d} → ⟦ c ⟧v ≡ ⟦ d ⟧v → El c ≡ El d
+El-weld {c} {d} p = trans (sym (decode-nfV c)) (trans (cong decodeV p) (decode-nfV d))
 
 ------------------------------------------------------------------------
 -- Code-driven context extension + terms-of-type (the payoff the plan named).
