@@ -23,40 +23,9 @@ module poc.OCP0009.NbEP where
 open import normalizer.Syntax.Types
 open import normalizer.Syntax.CCC as C using ()
 open import poc.OCP0009.NbEK
-
-------------------------------------------------------------------------
--- Fragment syntax `{Unit, ×, +, μ}` (no `⇒`).
-------------------------------------------------------------------------
-
-infixr 30 _⊙_
-data Tm : Ty → Ty → Set where
-  idT   : ∀ {A} → Tm A A
-  _⊙_   : ∀ {A B D} → Tm B D → Tm A B → Tm A D
-  fstT  : ∀ {A B} → Tm (A * B) A
-  sndT  : ∀ {A B} → Tm (A * B) B
-  pair  : ∀ {A B D} → Tm D A → Tm D B → Tm D (A * B)
-  inlT  : ∀ {A B} → Tm A (A + B)
-  inrT  : ∀ {A B} → Tm B (A + B)
-  case  : ∀ {A B D} → Tm A D → Tm B D → Tm (A + B) D
-  termT : ∀ {A} → Tm A Unit
-  InT   : ∀ {F} → Tm (⟦ F ⟧F (μ F)) (μ F)
-  OutT  : ∀ {F} → Tm (μ F) (⟦ F ⟧F (μ F))
-  cataT : ∀ F {A} → Tm (⟦ F ⟧F A) A → Tm (μ F) A
-
--- Embedding into the bootstrap IR (for the neutral carriers / reified NF).
-emb : ∀ {A B} → Tm A B → C.Term A B
-emb idT        = C.id
-emb (f ⊙ g)    = emb f C.∘ emb g
-emb fstT       = C.fst
-emb sndT       = C.snd
-emb (pair f g) = C.⟨ emb f , emb g ⟩
-emb inlT       = C.inl
-emb inrT       = C.inr
-emb (case f g) = C.[ emb f , emb g ]
-emb termT      = C.terminal
-emb InT        = C.In
-emb OutT       = C.Out
-emb (cataT F a) = C.cata F (emb a)
+-- The pure fragment syntax `Tm` (+ `emb`, `Nat` numerals) lives in the `--safe`
+-- module `NbEPTm`; re-export it so existing `NbEP using (Tm; …)` imports work.
+open import poc.OCP0009.NbEPTm public
 
 ------------------------------------------------------------------------
 -- Evaluation into the presheaf.
@@ -121,26 +90,8 @@ mutual
 
 ------------------------------------------------------------------------
 -- Examples — recursion normalizes (cata-β) on the principled engine.
+-- (`NatF`/`Nat`/`zero`/`suc`/`one`/`two`/`double` come from `NbEPTm`.)
 ------------------------------------------------------------------------
-
-NatF : Func
-NatF = One ⊕ Id
-
-Nat : Ty
-Nat = μ NatF
-
-zero : Tm Unit Nat
-zero = InT ⊙ inlT
-
-suc : Tm Nat Nat
-suc = InT ⊙ inrT
-
-one two : Tm Unit Nat
-one = suc ⊙ zero
-two = suc ⊙ one
-
-double : Tm Nat Nat
-double = cataT NatF (case zero (suc ⊙ suc))
 
 _ : nf (double ⊙ zero) ≡ nf zero
 _ = refl
