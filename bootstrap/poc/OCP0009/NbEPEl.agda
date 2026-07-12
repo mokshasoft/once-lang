@@ -24,10 +24,10 @@
 --   * the reflection `⌜_⌝ : Code → Tm Unit U` lands codes as IR `U`-data,
 --     agreeing with `NbEPCwF`'s smart constructors (self-hosting bridge);
 --   * `El` and the reflection RESPECT code identity (well-defined on codes);
---   * **`El` WELDED to the NbE-decided conversion** (`El-weld`): equal
---     code-VALUES give equal decoded types, via a left-inverse decoder
---     `decodeV` that round-trips `El` (see its section for the one honest gap
---     — `reifyVal`-injectivity — between value equality and surface `nf`);
+--   * **`El` WELDED to the NbE-decided conversion**: a value-level `El-weld`
+--     (equal code-VALUES ⇒ equal decoded types, via a left-inverse decoder
+--     `decodeV`) AND the surface `El-weld-nf` (equal `nf ⌜_⌝` ⇒ equal `El`),
+--     the latter from `faithful` (the reflection is injective) — no gap;
 --   * code-driven context extension + terms-of-type, with the context
 --     variable as a real term `varᶜ`.
 --
@@ -39,6 +39,8 @@
 module poc.OCP0009.NbEPEl where
 
 open import normalizer.Syntax.Types
+open import normalizer.Syntax.CCC
+  using ( Term; _∘_; ⟨_,_⟩ )
 open import poc.OCP0009.NbEK
   using ( Val; vUnit; vPair; vInl; vInr; vIn )
 open import poc.OCP0009.NbEP
@@ -114,11 +116,9 @@ reflect-cong refl = refl
 -- `Term` cannot be defined by pattern matching — a `terminal` (type `Unit`)
 -- position sends Agda's coverage checker into the well-known `⟦F⟧F(μF) ≟ Unit`
 -- stuck state (since `⟦One⟧F X = Unit`, `In` cannot be ruled out). `Val`'s
--- indices are plain `Ty`, so the decoder splits cleanly there. The one honest
--- gap this leaves: the checker's surface decision is `nf ⌜c⌝ ≡ nf ⌜d⌝` (reified
--- `Term`s); lifting THAT to the value equality below is `reifyVal`-injectivity
--- on code-values (true and structural — every constructor reifies to a
--- distinct `Term` head — but not proven here).
+-- indices are plain `Ty`, so the decoder splits cleanly there. (The lift from
+-- this value weld to the checker's SURFACE decision `nf ⌜c⌝ ≡ nf ⌜d⌝` is closed
+-- below by `faithful`/`El-weld-nf` — no `reifyVal`-injectivity gap remains.)
 ------------------------------------------------------------------------
 
 -- The NbE value of a (closed) code — what `nf` reifies.
@@ -150,6 +150,79 @@ decode-nfV (a `Σ b) = cong₂ _*_ (decode-nfV a) (decode-nfV b)
 -- transport `El c` to `El d` whenever NbE identifies the codes.
 El-weld : ∀ {c d} → ⟦ c ⟧v ≡ ⟦ d ⟧v → El c ≡ El d
 El-weld {c} {d} p = trans (sym (decode-nfV c)) (trans (cong decodeV p) (decode-nfV d))
+
+------------------------------------------------------------------------
+-- FAITHFULNESS — the surface `nf`-level weld, gap CLOSED.
+--
+-- The value-level `El-weld` above is keyed on equal code-VALUES; a checker's
+-- surface decision is `nf ⌜c⌝ ≡ nf ⌜d⌝` (reified `Term`s). We now close that
+-- link directly and more strongly: the reflection is FAITHFUL — `nf`
+-- identifies two codes ONLY if they are the same code. Each former reifies to
+-- a rigid `In ∘ inⁿ ∘ ⟨_,_⟩` skeleton, so equal `nf`s peel (constructor
+-- injectivity) to equal sub-`nf`s and recurse; different head tags give a
+-- constructor clash, hence absurd. `El` then follows by `El-cong` — no
+-- `reifyVal`-injectivity assumption remains.
+------------------------------------------------------------------------
+
+-- Constructor-injectivity for the reified `Term` skeleton.
+∘-injᵣ : ∀ {A B C} {f : Term B C} {g g' : Term A B} → (f ∘ g) ≡ (f ∘ g') → g ≡ g'
+∘-injᵣ refl = refl
+pair-injₗ : ∀ {A B C} {a a' : Term C A} {b b' : Term C B} → ⟨ a , b ⟩ ≡ ⟨ a' , b' ⟩ → a ≡ a'
+pair-injₗ refl = refl
+pair-injᵣ : ∀ {A B C} {a a' : Term C A} {b b' : Term C B} → ⟨ a , b ⟩ ≡ ⟨ a' , b' ⟩ → b ≡ b'
+pair-injᵣ refl = refl
+
+-- The reflection is faithful: `nf` identifies codes only up to equality.
+faithful : ∀ c d → nf ⌜ c ⌝ ≡ nf ⌜ d ⌝ → c ≡ d
+faithful `unit     `unit      _ = refl
+faithful `nat      `nat       _ = refl
+faithful (a `× b)  (a' `× b') p =
+  cong₂ _`×_ (faithful a a' (pair-injₗ q)) (faithful b b' (pair-injᵣ q))
+  where q = ∘-injᵣ (∘-injᵣ (∘-injᵣ (∘-injᵣ p)))
+faithful (a `⇒ b)  (a' `⇒ b') p =
+  cong₂ _`⇒_ (faithful a a' (pair-injₗ q)) (faithful b b' (pair-injᵣ q))
+  where q = ∘-injᵣ (∘-injᵣ (∘-injᵣ (∘-injᵣ (∘-injᵣ p))))
+faithful (a `Π b)  (a' `Π b') p =
+  cong₂ _`Π_ (faithful a a' (pair-injₗ q)) (faithful b b' (pair-injᵣ q))
+  where q = ∘-injᵣ (∘-injᵣ (∘-injᵣ (∘-injᵣ (∘-injᵣ (∘-injᵣ p)))))
+faithful (a `Σ b)  (a' `Σ b') p =
+  cong₂ _`Σ_ (faithful a a' (pair-injₗ q)) (faithful b b' (pair-injᵣ q))
+  where q = ∘-injᵣ (∘-injᵣ (∘-injᵣ (∘-injᵣ (∘-injᵣ (∘-injᵣ p)))))
+-- different head tag ⇒ `nf` skeletons clash ⇒ absurd.
+faithful `unit     `nat       ()
+faithful `unit     (_ `× _)   ()
+faithful `unit     (_ `⇒ _)   ()
+faithful `unit     (_ `Π _)   ()
+faithful `unit     (_ `Σ _)   ()
+faithful `nat      `unit      ()
+faithful `nat      (_ `× _)   ()
+faithful `nat      (_ `⇒ _)   ()
+faithful `nat      (_ `Π _)   ()
+faithful `nat      (_ `Σ _)   ()
+faithful (_ `× _)  `unit      ()
+faithful (_ `× _)  `nat       ()
+faithful (_ `× _)  (_ `⇒ _)   ()
+faithful (_ `× _)  (_ `Π _)   ()
+faithful (_ `× _)  (_ `Σ _)   ()
+faithful (_ `⇒ _)  `unit      ()
+faithful (_ `⇒ _)  `nat       ()
+faithful (_ `⇒ _)  (_ `× _)   ()
+faithful (_ `⇒ _)  (_ `Π _)   ()
+faithful (_ `⇒ _)  (_ `Σ _)   ()
+faithful (_ `Π _)  `unit      ()
+faithful (_ `Π _)  `nat       ()
+faithful (_ `Π _)  (_ `× _)   ()
+faithful (_ `Π _)  (_ `⇒ _)   ()
+faithful (_ `Π _)  (_ `Σ _)   ()
+faithful (_ `Σ _)  `unit      ()
+faithful (_ `Σ _)  `nat       ()
+faithful (_ `Σ _)  (_ `× _)   ()
+faithful (_ `Σ _)  (_ `⇒ _)   ()
+faithful (_ `Σ _)  (_ `Π _)   ()
+
+-- The surface weld: the checker's `nf` decision determines the decoded type.
+El-weld-nf : ∀ {c d} → nf ⌜ c ⌝ ≡ nf ⌜ d ⌝ → El c ≡ El d
+El-weld-nf {c} {d} p = El-cong (faithful c d p)
 
 ------------------------------------------------------------------------
 -- Code-driven context extension + terms-of-type (the payoff the plan named).
