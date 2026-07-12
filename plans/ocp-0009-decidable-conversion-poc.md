@@ -5,7 +5,9 @@ core), and its shared decidability core with OCP-0004.
 **Status:** conversion core PROVEN for the fragment (2026-07-11); **CwF /
 dependent layer (Rung 2) landed** — Π/Σ over the total core, open type-code
 conversion decided by the principled NbE (2026-07-12); **Tarski decoder
-`El : Code → Ty`** + code-driven context extension / terms-of-type (2026-07-12).
+`El : Code → Ty`** + code-driven context extension / terms-of-type (2026-07-12);
+**base CwF FINISHED** — El welded to NbE conversion, indexed families (genuine
+term-dependency, no IR), and the CwF term/comprehension layer (2026-07-12).
 **Branch:** `ocp-0009-poc0-nbe`, head `2326d72b`, pushed to origin.
 **Vehicle:** Agda 2.8.0, IR-only. The compiler is NOT touched — this is a
 separate IR→IR consumer over `normalizer.Syntax.CCC`.
@@ -63,15 +65,28 @@ OCP-0009 contribution and it shares the OCP-0004 normalizer discipline.
   `eval-normal` (eval preserves normality).
 - `NbEPComplete` — **the theorem**: `≈β-complete : t ≈β u → nf t ≡ nf u`, where
   `_≈β_` = β + ⊙/pair/case/cata congruence + **`η-pair` (`⟨fst,snd⟩ ≈ id`)**.
-- `NbEPEl` — **the Tarski decoder**. `Code` (the first-order type-code family)
-  + `El : Code → Ty` decoding each code to the `Ty` it denotes; the reflection
-  `⌜_⌝ : Code → Tm Unit U` lands codes as IR `U`-data agreeing with `NbEPCwF`'s
-  smart constructors (self-hosting bridge). Unlocks **code-driven context
-  extension** (`Γ ▷ᶜ A = Γ ▷ El A`) and **terms-of-type** (`Tmᵗ Γ A =
-  Tm ⟦Γ⟧C (El A)`, with the variable `varᶜ = sndT`). Honest ceiling, proven as
-  `refl`: first-order `Π`/`Σ` decode NON-dependently (`El (a `Π b) = El a ⇒ El b`)
-  — the correct meaning when the codomain code is closed; a code whose codomain
-  depends on the domain variable needs induction-recursion (§D, out of scope).
+- `NbEPEl` — **the Tarski decoder + the rest of base CwF**. `Code` (first-order
+  type-code family) + `El : Code → Ty`; reflection `⌜_⌝ : Code → Tm Unit U`
+  lands codes as IR `U`-data agreeing with `NbEPCwF`'s smart constructors
+  (self-hosting bridge). **Base CwF finished here:**
+  - **`El-weld`** — El welded to NbE conversion: equal code-VALUES ⇒ equal
+    decoded types, via a left-inverse decoder `decodeV : Val Unit U → Ty` that
+    round-trips `El` (`decode-nfV`). Decoder lives on `Val` (the point-free
+    `Term` can't be pattern-matched — `⟦One⟧F X = Unit` sends coverage into the
+    `⟦F⟧F(μF) ≟ Unit` stuck state). Gap noted: value↔surface-`nf` link is
+    `reifyVal`-injectivity on code-values (true, structural, unproven).
+  - **Indexed families** (`Fam`/`Fib`/`Fib-cong`) — a dependent type over index
+    `I` is an open code `Tm I U`; fibre `Fib F i = decodeV (eval (F⊙i) vUnit)`;
+    convertible indices ⇒ equal fibres. `VecNat` = a **type-level cata** over the
+    index (Natⁿ); `Vec (double 1) ≅ Vec 2` by `refl`. **Genuine term-dependency,
+    NO induction-recursion.**
+  - **CwF term layer** — `Tmᵗ`/`varᶜ`, term subst `_[_]ᵗ`, comprehension `_,ₛ_`,
+    display map `pₛ`; comprehension laws `Cons-β-var`/`Cons-β-p`/`Cons-η` and
+    `[]ᵗ-id`/`[]ᵗ-comp` all hold **definitionally under `nf`** (`refl`).
+  - Code-driven context extension `Γ ▷ᶜ A = Γ ▷ El A`.
+  - Honest ceiling, proven as `refl`: first-order `Π`/`Σ` decode NON-dependently
+    (`El (a `Π b) = El a ⇒ El b`) — correct for a closed codomain; a codomain
+    depending on the domain variable needs induction-recursion (§D, out of scope).
 - `NbEPCwF` — **the CwF / dependent layer (Rung 2)**. The universe of type-codes
   `U = μ UF` lives inside the `{Unit,×,+,μ}` fragment, so Π/Σ/⇒/× are fragment
   morphisms `Tm _ U` and **type conversion IS the principled `nf`**. Delivers:
@@ -134,20 +149,20 @@ exactly on this line.
   transport clutter in terms, which is the *right* price for a minimal TCB.
 
 ### B. Large but KNOWN engineering (the real path forward)
-- **CwF / dependent layer — type layer DONE (`NbEPCwF`, Rung 2).** Contexts as
-  telescopes, Π/Σ formers, dependent conversion *under a context with variables*
-  (open type-codes, computation under the context) — all decided by the
-  principled NbE, exactly the "standard construction on solved conversion" this
-  bullet predicted. **Tarski decoder DONE (`NbEPEl`, 2026-07-12):** `El : Code →
-  Ty` + reflection into `U` + code-driven context extension + terms-of-type.
-  **What remains on this axis:**
-  - **Decode OPEN codes** `Tm I U` pointwise → genuinely INDEXED families
-    (`Vec n`-style) whose fibres are decided by NbE on the index. Real
-    dependency WITHOUT IR (the `Dependent.agda` result, now flowing through
-    `El`) — the natural next increment.
-  - **Reflection faithfulness** (`El`/`⌜_⌝` injectivity): distinct codes reflect
-    to distinct `nf` — a routine discrimination induction, currently noted not
-    proven in `NbEPEl`.
+- **CwF / dependent layer — BASE CwF DONE (`NbEPCwF` + `NbEPEl`, Rung 2).**
+  Contexts as telescopes, Π/Σ formers, dependent conversion under a context
+  (open type-codes, computation under the context); Tarski decoder `El` welded
+  to NbE conversion (`El-weld`); indexed families with genuine term-dependency
+  and NO IR (`Fib`/`VecNat`, `Vec (double 1) ≅ Vec 2`); CwF term/comprehension
+  layer with all laws `refl` under `nf`. This is exactly the "standard
+  construction on solved conversion" this bullet predicted, now delivered.
+  **What remains on this axis (post-base):**
+  - **`reifyVal`-injectivity on code-values** — lifts `El-weld` from equal
+    code-VALUES to the surface `nf ⌜c⌝ ≡ nf ⌜d⌝`. True/structural (each Val
+    constructor reifies to a distinct `Term` head); a ~36-case induction, noted
+    not proven. The one honest gap left inside base CwF.
+  - **Identity type `Id` + `J`** (Rung 3) — turns indexing into a logic; a
+    former *on top* of base CwF, the natural next rung.
   - Π/Σ as **adjoints** (the categorical universal-property presentation) and
     the remaining CwF equations beyond congruence + substitution-naturality.
   - **Dependent `Π`/`Σ` at the code level** (codomain depending on the domain
@@ -172,23 +187,24 @@ exactly on this line.
 
 ## 4. Suggested next step (pick one)
 
-**DONE:** ~~CwF/dependent layer~~ — the **type layer** landed as `NbEPCwF`
-(Rung 2): contexts, Π/Σ formers, open-type-code conversion under a context
-routed through NbE `nf`, congruence, substitution-naturality. **~~Tarski
-decoder~~** landed as `NbEPEl`: `El : Code → Ty`, reflection into `U`,
-code-driven context extension + terms-of-type. See §3.B.
+**DONE — BASE CwF COMPLETE.** ~~CwF/dependent layer~~ (`NbEPCwF`, Rung 2):
+contexts, Π/Σ formers, open-type-code conversion under a context, congruence,
+substitution-naturality. ~~Tarski decoder~~ + ~~base CwF~~ (`NbEPEl`): `El`
+welded to NbE conversion, indexed families (genuine term-dependency, no IR),
+CwF term/comprehension layer. See §3.B.
 
-1. **Decode OPEN codes → genuinely indexed families** (the natural continuation
-   of `NbEPEl`). A family over index `I` is an open code `Tm I U`; its fibre at
-   `i` is `El`-of-the-decoded-`nf`, and `Vec m ≅ Vec n` reduces to index
-   conversion via NbE — real dependency with NO induction-recursion. Optionally
-   add the reflection-faithfulness (`⌜_⌝` injectivity) discrimination lemma.
+1. **Identity type `Id` + `J`** (Rung 3) — the natural next rung: turns indexing
+   into a logic (state and prove equalities). A former on top of base CwF. Pick
+   intensional first. *(Or first close the `reifyVal`-injectivity gap in §3.B to
+   fully weld `El-weld` to surface `nf` — smaller, tidies base CwF.)*
 2. **Wire to the real IR / OCP-0004 transparency** — run the decision on the actual
    `Code` normalizer, connect to `EvalFullCorrectness`. Closes "engine matches the
    real compiler."
-3. **sum-η/μ-η as surface sugar** (NOT sheaf NbE) — elaborate the two positive-η
-   laws to explicit propositional proofs; keeps the core checker small. The
-   principled alternative to the research-grade sheaf-NbE investment.
+3. **IR/II** (§D) — the deliberate expressivity extension, taken as `Code`↔`El`
+   *mutual* (universe + decoder together). Leaves the small-core discipline by
+   design; do after base CwF is fully settled (this is the plan of record).
+4. **sum-η/μ-η as surface sugar** (NOT sheaf NbE) — elaborate the two positive-η
+   laws to explicit propositional proofs; keeps the core checker small.
 
 Both refinements are DONE (case/cata congruence + η-pair). The proposal doc
 `docs/proposals/OCP-0009-decidable-dependent-types.md` §6 records each milestone.
