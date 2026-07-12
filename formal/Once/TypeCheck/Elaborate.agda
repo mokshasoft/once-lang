@@ -988,6 +988,13 @@ mutual
   -- Plan 0.4 T0 Option B — verified elaborator declarations.
   inferElabV : (ctx : NamedCtx) (e : RawExpr) → VerifiedInferResult ctx e
   checkElabV : (ctx : NamedCtx) (e : RawExpr) (T : Type) → VerifiedCheckResult ctx e T
+  -- Plan 0.58 E1-full: the WORKER carries a well-founded `Acc` on `length polys`
+  -- so the poly-reference case can resolve INLINE (re-elaborate the def body in its
+  -- strictly-smaller prefix). Non-poly recursion goes through the Acc-free wrapper
+  -- `checkElabV` (which re-derives a FRESH `<-wellFounded` — sound per POC-B), so the
+  -- ~300 existing call sites are unchanged.
+  checkElabV-wf : (ctx : NamedCtx) → Acc _<_ (length (NamedCtx.polys ctx))
+                → (e : RawExpr) (T : Type) → VerifiedCheckResult ctx e T
   -- compose check-mode helper, threading the inner checkElabV results
   -- as explicit arguments + (unused) equations. The eqs are unused in
   -- the body (they're just placeholders for the J-style bridge in
@@ -1711,24 +1718,24 @@ mutual
   -- witness postulates above.
   ----------------------------------------------------------------------
 
-  checkElabV ctx (Raw.RApp f arg) T =
+  checkElabV-wf ctx ac (Raw.RApp f arg) T =
     checkElabV-RApp-dispatch ctx f arg T _ refl
 
   -- RLam check-mode: only well-typed at a pure arrow type.
-  checkElabV ctx (Raw.RLam x body) (A Once.Type.⇒[ Once.Type.mk-kind q Once.Type.pure ] B) with checkElabV (extendNamedCtx ctx x A) body B
+  checkElabV-wf ctx ac (Raw.RLam x body) (A Once.Type.⇒[ Once.Type.mk-kind q Once.Type.pure ] B) with checkElabV (extendNamedCtx ctx x A) body B
   ... | failure err , _ = failure err , tt
   ... | success (q' ∷ᵘ Ψ) bodyE d fr , wBody with decideLeq q' q
   ...   | just eq = success _ (Surface.lam q eq bodyE) (suc d) fr , t-lam eq wBody
   ...   | nothing = failure (UsageViolation x q q') , tt
   -- Eff arrow: pure ⊑ eff SUBSUMPTION (Plan 0.52 M1) — a lambda checks at the
   -- corresponding pure arrow and is lifted by `t-subsume` (no `arr` needed).
-  checkElabV ctx (Raw.RLam x body) (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B) with checkElabV (extendNamedCtx ctx x A) body B
+  checkElabV-wf ctx ac (Raw.RLam x body) (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B) with checkElabV (extendNamedCtx ctx x A) body B
   ... | failure err , _ = failure err , tt
   ... | success (q' ∷ᵘ Ψ) bodyE d fr , wBody with decideLeq q' Once.Type.Many
   ...   | just eq = success _ (Surface.arr' (Surface.lam Once.Type.Many eq bodyE)) (suc d) fr , t-subsume (t-lam eq wBody)
   ...   | nothing = failure (UsageViolation x Once.Type.Many q') , tt
   -- Non-arrow T: lambda's only check-mode rules are t-lam (pure) / t-subsume (eff).
-  checkElabV ctx (Raw.RLam _ _) _ = failure LambdaRequiresFunctionType , tt
+  checkElabV-wf ctx ac (Raw.RLam _ _) _ = failure LambdaRequiresFunctionType , tt
 
   ----------------------------------------------------------------------
   -- Phase E — `checkElab` `RVar` migration via `classifyBareBuiltin`
@@ -1746,7 +1753,7 @@ mutual
   -- Plan 0.52 (OCP-0008): route the infer-SUCCESS path through the NAMED
   -- embedOrSubsume (uniform, x-agnostic); only the infer-FAILURE path needs the
   -- per-builtin failure-aux dispatch (and bbc-other's lookupPoly fallback).
-  checkElabV ctx (Raw.RVar x) T with inferElabV ctx (Raw.RVar x)
+  checkElabV-wf ctx ac (Raw.RVar x) T with inferElabV ctx (Raw.RVar x)
   ... | rInfV@(success _ _ _ _ _ , _) = embedOrSubsume ctx (Raw.RVar x) T rInfV
   ... | rInfV@(failure _ , _) with classifyBareBuiltin x
   ...   | bbc-id       = checkElabV-RVar-bbc-id-aux ctx T rInfV
@@ -1762,7 +1769,7 @@ mutual
   -- type — check components bidirectionally so check-only constructs
   -- (notably `In`) work in pair slots (`In (inr (x , tail))`). Falls to
   -- the generic clause below for non-product target types.
-  checkElabV ctx (Raw.RPair a b) T = checkElabV-RPair-aux ctx a b T (classifyRPairTarget T)
+  checkElabV-wf ctx ac (Raw.RPair a b) T = checkElabV-RPair-aux ctx a b T (classifyRPairTarget T)
 
   -- Plan 0.41 / D018 leaf: an integer literal at a pure-arrow position is its
   -- constant morphism (global element `const n ∘ terminal`, via `intLit`),
@@ -1770,7 +1777,7 @@ mutual
   -- infer-and-match. Routed through ONE scrutinee (`isRIntVliftTarget? T`) so
   -- the two outcomes don't overlap (no stuck `checkElabV (RInt n) T` for
   -- variable `T`). Behaviour is unchanged; the dispatch is now analysable.
-  checkElabV ctx (Raw.RInt n) T = checkElabV-RInt-aux ctx n T (isRIntVliftTarget? T)
+  checkElabV-wf ctx ac (Raw.RInt n) T = checkElabV-RInt-aux ctx n T (isRIntVliftTarget? T)
 
   -- Generic infer-and-match fallback — covers RInt, RStringLit, RUnit,
   -- RPair, RBinOp, RUnaryOp, RLet, RDestruct, RAnnot, RQualified, RResolved.
@@ -1778,7 +1785,12 @@ mutual
   -- mutual `checkElab`↔`inferElab` same-size call (`checkElab e → inferElab e`)
   -- is accepted by the foetus checker only as a `with`-scrutinee; extracting it
   -- to an explicit-arg aux breaks termination. NOT every `with` is removable.
-  checkElabV ctx e T = embedOrSubsume ctx e T (inferElabV ctx e)
+  checkElabV-wf ctx ac e T = embedOrSubsume ctx e T (inferElabV ctx e)
+
+  -- Acc-free wrapper (Plan 0.58 E1-full): re-derive a fresh well-founded Acc.
+  -- Sound per POC-B — the poly-resolution recursion uses the RECEIVED Acc's `rec`;
+  -- non-poly recursion (through this wrapper) resets to fresh, which foetus accepts.
+  checkElabV ctx e T = checkElabV-wf ctx (<-wellFounded (length (NamedCtx.polys ctx))) e T
 
   ----------------------------------------------------------------------
   -- `inferElabV-RApp-other` body — verified counterpart of
