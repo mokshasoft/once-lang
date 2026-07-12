@@ -190,3 +190,30 @@ _ = refl
 
 _ : coe (Eq-refl (Bool₂ * Bool₂)) (trueᵥ , falseᵥ) ≡ (trueᵥ , falseᵥ)
 _ = refl
+
+------------------------------------------------------------------------
+-- OTT step 2 — PROOF-IRRELEVANCE: `eq` is a mere proposition.
+--
+-- The first-order cases (`Void/Unit/×/+/μ`) need nothing. The `⇒` case needs
+-- meta-level function extensionality — which is EXACTLY the internal funext this
+-- very construction provides. To keep the module postulate-free and the
+-- dependence explicit, we take `Funext` (Agda-level) as a parameter: `eq` is a
+-- strict prop in the intended (OTT) model; in this Agda MODEL the `⇒` witness is
+-- discharged by the ambient funext, consistent with OTT.
+------------------------------------------------------------------------
+
+Funext : Set₁
+Funext = ∀ {A : Set} {B : A → Set} {f g : (x : A) → B x}
+       → (∀ x → f x ≡ g x) → f ≡ g
+
+eq-irrel : Funext → (A : Ty) (a a' : ⟦ A ⟧) (p q : eq A a a') → p ≡ q
+eq-irrel fe Void ()
+eq-irrel fe Unit _ _ _ _ = refl
+eq-irrel fe (A * B) (a , b) (a' , b') (p₁ , p₂) (q₁ , q₂) =
+  cong₂ _,_ (eq-irrel fe A a a' p₁ q₁) (eq-irrel fe B b b' p₂ q₂)
+eq-irrel fe (A + B) (inj₁ a) (inj₁ a') p q = eq-irrel fe A a a' p q
+eq-irrel fe (A + B) (inj₁ _) (inj₂ _) ()
+eq-irrel fe (A + B) (inj₂ _) (inj₁ _) ()
+eq-irrel fe (A + B) (inj₂ b) (inj₂ b') p q = eq-irrel fe B b b' p q
+eq-irrel fe (A ⇒ B) f g p q = fe (λ x → eq-irrel fe B (f x) (g x) (p x) (q x))
+eq-irrel fe (μ F) _ _ _ _ = refl
