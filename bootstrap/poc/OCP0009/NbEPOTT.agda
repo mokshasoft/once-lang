@@ -124,3 +124,69 @@ notnot=id (inj₂ _) = tt
 -- …and the same fact routed through `funext` (definitionally the identity).
 notnot=id′ : eq (Bool₂ ⇒ Bool₂) (λ x → notᵥ (notᵥ x)) (λ x → x)
 notnot=id′ = funext Bool₂ Bool₂ (λ x → notᵥ (notᵥ x)) (λ x → x) notnot=id
+
+------------------------------------------------------------------------
+-- OTT step 1 — observational TYPE equality `Eq` + coercion `coe`.
+--
+-- `Eq A B` is the type-level counterpart of `eq`. Modelling it as an INDUCTIVE
+-- family (one constructor per matching head) keeps `coe` total from the
+-- constructors alone — mismatched types simply have no proof, so no off-diagonal
+-- cases. `Eq` is an equivalence; `coe : Eq A B → ⟦A⟧ → ⟦B⟧` transports, with the
+-- function case coercing its argument BACKWARDS along `Eq-sym`.
+------------------------------------------------------------------------
+
+data Eq : Ty → Ty → Set where
+  eVoid : Eq Void Void
+  eUnit : Eq Unit Unit
+  ePair : ∀ {A B A' B'} → Eq A A' → Eq B B' → Eq (A * B) (A' * B')
+  eSum  : ∀ {A B A' B'} → Eq A A' → Eq B B' → Eq (A + B) (A' + B')
+  eArr  : ∀ {A B A' B'} → Eq A A' → Eq B B' → Eq (A ⇒ B) (A' ⇒ B')
+  eMu   : ∀ {F G} → Eq (μ F) (μ G)     -- deferred (Fix), permissive placeholder
+
+Eq-refl : (A : Ty) → Eq A A
+Eq-refl Void    = eVoid
+Eq-refl Unit    = eUnit
+Eq-refl (A * B) = ePair (Eq-refl A) (Eq-refl B)
+Eq-refl (A + B) = eSum (Eq-refl A) (Eq-refl B)
+Eq-refl (A ⇒ B) = eArr (Eq-refl A) (Eq-refl B)
+Eq-refl (μ F)   = eMu
+
+Eq-sym : ∀ {A B} → Eq A B → Eq B A
+Eq-sym eVoid       = eVoid
+Eq-sym eUnit       = eUnit
+Eq-sym (ePair p q) = ePair (Eq-sym p) (Eq-sym q)
+Eq-sym (eSum p q)  = eSum (Eq-sym p) (Eq-sym q)
+Eq-sym (eArr p q)  = eArr (Eq-sym p) (Eq-sym q)
+Eq-sym eMu         = eMu
+
+Eq-trans : ∀ {A B C} → Eq A B → Eq B C → Eq A C
+Eq-trans eVoid       eVoid       = eVoid
+Eq-trans eUnit       eUnit       = eUnit
+Eq-trans (ePair p q) (ePair r s) = ePair (Eq-trans p r) (Eq-trans q s)
+Eq-trans (eSum p q)  (eSum r s)  = eSum (Eq-trans p r) (Eq-trans q s)
+Eq-trans (eArr p q)  (eArr r s)  = eArr (Eq-trans p r) (Eq-trans q s)
+Eq-trans eMu         eMu         = eMu
+
+-- Coercion — transport a value along a type equality. Total from the six
+-- constructors; the function case coerces the argument backwards (`Eq-sym`).
+coe : ∀ {A B} → Eq A B → ⟦ A ⟧ → ⟦ B ⟧
+coe eVoid       ()
+coe eUnit       _        = tt
+coe (ePair p q) (a , b)  = coe p a , coe q b
+coe (eSum p q)  (inj₁ a) = inj₁ (coe p a)
+coe (eSum p q)  (inj₂ b) = inj₂ (coe q b)
+coe (eArr p q)  f        = λ x' → coe q (f (coe (Eq-sym p) x'))
+coe eMu         _        = tt
+
+-- Coherence, first-order fragment: coercing along reflexivity is the identity
+-- (here, definitionally — each `refl` runs `coe`). (`Eq` is structural, so it
+-- relates only identical types; nontrivial `coe` arrives with the index /
+-- quotient layers, where `Eq (Vec m) (Vec n)` follows from `m ≡ n`.)
+_ : coe (Eq-refl Bool₂) trueᵥ ≡ trueᵥ
+_ = refl
+
+_ : coe (Eq-refl Bool₂) falseᵥ ≡ falseᵥ
+_ = refl
+
+_ : coe (Eq-refl (Bool₂ * Bool₂)) (trueᵥ , falseᵥ) ≡ (trueᵥ , falseᵥ)
+_ = refl
