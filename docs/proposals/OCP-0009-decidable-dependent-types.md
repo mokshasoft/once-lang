@@ -612,10 +612,25 @@ honest ceiling is proven as `refl`: first-order `Π`/`Σ` decode NON-dependently
 (`El (a `Π b) = El a ⇒ El b`) — the correct denotation when the codomain code
 is closed; a codomain that depends on the domain variable would need `U`
 defined mutually with `El` (induction-recursion, the FAQ Q9 / Rung 4 ceiling,
-out of scope). Deferred to the next increment: **decoding OPEN codes** `Tm I U`
-pointwise, giving genuinely INDEXED families (`Vec n`-style) whose fibres are
-decided by NbE on the index — real dependency without IR (the `Dependent.agda`
-result, now flowing through `El`).
+out of scope). **Status — base CwF finished (`NbEPEl`, 2026-07-12).** Three further pieces
+complete the base CwF on top of the decoder: (1) **`El` welded to NbE
+conversion** — a left-inverse decoder `decodeV : Val Unit U → Ty` round-trips
+`El`, so equal code-values give equal decoded types (`El-weld`); the decoder
+must live on the `Val` domain because the point-free `Term` cannot be
+pattern-matched (a `terminal : Unit` position sends coverage into the
+`⟦F⟧F(μF) ≟ Unit` stuck state, `⟦One⟧F X = Unit`), leaving one honest gap —
+`reifyVal`-injectivity on code-values, true and structural but unproven.
+(2) **Indexed families** — a dependent type over index `I` is an OPEN code
+`Tm I U`, fibre `Fib F i = decodeV (eval (F ⊙ i) vUnit)`; convertible indices
+give equal fibres (`Fib-cong`), and `VecNat` (a **type-level cata** over the
+Nat index, the n-fold product) gives `Vec (double 1) ≅ Vec 2` by `refl` —
+**genuine term-dependency with NO induction-recursion**, the `Dependent.agda`
+result now flowing through `El`. (3) **The CwF term layer** — terms-of-type,
+term substitution, comprehension (`_,ₛ_`, display map `pₛ`); the three
+comprehension laws are the base category's product β/η and hold definitionally
+under `nf` (`refl`). This realizes Rung 2 in full for the container core; Rung 3
+(`Id`/`J`) is the next rung, and genuinely dependent code-level `Π`/`Σ` remains
+the induction-recursion bill (out of scope).
 
 ### Rung 3 — the identity type `Id (a ≡ b)` + `J`
 
