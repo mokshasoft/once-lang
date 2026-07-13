@@ -215,8 +215,8 @@ _ = refl
 _ : ⌊ ι ⇒[ 𝟙 ] (ι ⇒[ 𝟘 ] ι) ⌋ᵗ ≡ (ιT ⇒ ιT)
 _ = refl
 
--- Next (documented): the ERASING TERM elaboration — drop the `𝟘`-bound variable
--- from the runtime closure (a `𝟘`-usage STRENGTHENING lemma), landing in
--- `Term ⌊Γ⌋ᶜ ⌊A⌋ᵗ`, so the elaborated morphism factors through the runtime
--- environment — the graded analogue of `NbEPQTT.erase-irrelevant`. (Its
--- semantic check needs the Kripke `⇒` NbE, since `NbEP.nf` omits `⇒`.)
+-- DONE (`NbEPQTTEraseTm`): the ERASING TERM elaboration `⌊_⌋` — the runtime
+-- context is usage-MASKED (`𝟘` slots dropped), which makes the anticipated
+-- `𝟘`-usage strengthening lemma definitional; `𝟘`-graded arguments are dropped
+-- at `app`. Its semantic check (erased-argument irrelevance on OPEN terms,
+-- decided by `nf`) runs on the full-fragment `{Unit,×,+,μ,⇒}` NbE (`NbEPF`).

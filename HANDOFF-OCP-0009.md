@@ -6,7 +6,7 @@
 
 ## TL;DR of state
 
-- **41 modules, all green** (32 of them `--safe`). The full expressibility tower is built and
+- **43 modules, all green** (34 of them `--safe`). The full expressibility tower is built and
   machine-checked: decidable conversion (NbE) → CwF/dependent layer → `Id`+`J` →
   **QTT** (semiring + graded judgment + IR elaboration) → **OTT** (funext-by-def,
   proof-irrelevance, `Eq`/`coe`, μ, quotients, bisim-at-ν) → **IR universe**
@@ -19,6 +19,16 @@
   non-safe modules are exactly the superseded older conversion track, tainted
   by `Complete`'s `funext` postulate (kept as historical record; nothing
   load-bearing imports them).
+- **The FULL-fragment NbE + erasing QTT elaboration are BUILT (2026-07-13):**
+  `NbEPF` — ONE engine for `{Unit,×,+,μ,⇒}` (`NbEP`+`NbEKF` merged; possible
+  precisely because §2 excludes positive η; η-long products became a datatype
+  shape — no `Normal` predicate; recursion-inside-a-closure decided by `nf`),
+  and `NbEPQTTEraseTm` — the erasing TERM elaboration (usage-masked runtime
+  context makes the `𝟘`-strengthening lemma definitional; `⌊K⌋ ≡ curry snd ≡
+  ⌊idₗ⌋`; erased-argument irrelevance on OPEN terms decided by `NbEPF.nf`).
+  Both `--safe`. This closes `NbEPQTTJ`'s documented "Next" and §5's QTT row
+  end-to-end. **Remaining research gap: OTT internalization / proof-relevant
+  `Id` (plan §4.1) — plus optional II, ℕ-tower, IR-conversion-in-Once.**
 - **The consistency ladder is BUILT (2026-07-13, plan §8):** `NbEPCon0`
   (`¬ Term Unit Void` + non-degeneracy, via the `--safe` Set-model),
   `NbEPCon1` (graded QTT calculus proves nothing about an abstract base:

@@ -240,7 +240,7 @@ Agda's `--safe` flag *rejects* every unsafe escape hatch — `TERMINATING`,
 is a **machine-checked certificate** that a module (and its whole import closure)
 introduces none of them.
 
-**29 of the 38 modules now compile under `--safe`** (verified 2026-07-13): the
+**34 of the 43 modules now compile under `--safe`** (verified 2026-07-13): the
 standalone expressibility tower (10 modules, 2026-07-12), the QTT stack (step 1,
 2026-07-12), the presheaf/Kripke NbE foundation (step 2, 2026-07-13), and —
 after the `TERMINATING` pragmas proved unnecessary (step 3, 2026-07-13) — the
@@ -249,9 +249,9 @@ track on top of it**:
 
 | `--safe` | modules |
 |---|---|
-| NbE core + adequacy | `NbEK`, `NbEKF`, `NbEP`, `NbEPTm`, `NbEPNat`, `NbEPRel`, `NbEPFund`, `NbEPNormal`, `NbEPComplete` (+ prototype `NbE`, `NbEConv`) |
+| NbE core + adequacy | `NbEK`, `NbEKF`, `NbEP`, `NbEPF` (one engine, full `{Unit,×,+,μ,⇒}` fragment), `NbEPTm`, `NbEPNat`, `NbEPRel`, `NbEPFund`, `NbEPNormal`, `NbEPComplete` (+ prototype `NbE`, `NbEConv`) |
 | CwF / dependent layer + `Id`+`J` | `NbEPCwF`, `NbEPEl`, `NbEPId`, `NbEPElOTT` |
-| QTT (syntax, semiring, judgment, erasure) | `NbEPQTT`, `NbEPQTTJ`, `NbEPQTTErase` |
+| QTT (syntax, semiring, judgment, erasure) | `NbEPQTT`, `NbEPQTTJ`, `NbEPQTTErase`, `NbEPQTTEraseTm` (erasing term elaboration) |
 | OTT (equality, quotients, μ) | `NbEPOTT`, `NbEPOTTQ`, `NbEPOTTMu` |
 | IR universe + hierarchy | `NbEPUniv`, `NbEPUnivDec`, `NbEPUnivH` — **confirms induction-recursion is `--safe`-compatible** (a sound core feature, not an unsafe flag) |
 | indexed inductive families | `NbEPIndexed` |

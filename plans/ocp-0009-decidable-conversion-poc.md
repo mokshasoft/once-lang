@@ -19,7 +19,7 @@ separate IR→IR consumer over `normalizer.Syntax.CCC`.
 The **conversion problem** — decidable equality, the heart of OCP-0009 — is
 **solved and machine-checked for the fragment**. The principled NbE decides the
 β-theory + every congruence + **product-η**, open terms included, **funext-free**.
-All 41 `poc/OCP0009/*.agda` modules build green
+All 43 `poc/OCP0009/*.agda` modules build green
 (`bootstrap/check.sh poc/OCP0009/<M>.agda` → EXIT 0), including `NbEPCwF` (CwF /
 dependent layer, Rung 2), `NbEPEl` (Tarski decoder + base CwF), `NbEPId`
 (identity type `Id` + `J`, Rung 3), `NbEPQTT` (QTT: multiplicity semiring +
@@ -66,6 +66,14 @@ OCP-0009 contribution and it shares the OCP-0004 normalizer discipline.
 - `NbEKF` — Kripke `⇒` for `{Unit,×,⇒}`; the domain is defined by **recursion on
   the type** (Tarski-style), so the Kripke closure raises no positivity question
   and `eval` is structural. **Pragma-free, `--safe`.**
+- `NbEPF` — **ONE engine for the FULL fragment `{Unit,×,+,μ,⇒}`** (`NbEP` +
+  `NbEKF` merged). The classically hard sums+functions combination is hard only
+  for positive η, which §2 excludes — so the β + negative-η theory merges
+  cleanly. Type-recursive Kripke domain + a two-layer inductive `μ`-domain
+  (`MuVal`/`ValF`, plain mutual inductives); η-long products are DEFINITIONAL in
+  `ValF` (`⊗` has no neutral constructor — `NbEP`'s `Normal` predicate became a
+  datatype shape). Recursion-inside-a-closure and closure-applied-to-an-open-
+  μ-neutral decided by `nf` (`refl`). **Pragma-free, `--safe`.**
 - `NbEPNat` — `eval-nat` (eval natural w.r.t. weakening) + `reflect-nat`.
 - `NbEPRel` — inductive logical relation `≈V` + reify/reflect-`≈V` + equivalence. **Postulate-free.**
 - `NbEPFund` — `eval-cong` (fundamental theorem core) + all eliminator congruences.
@@ -377,20 +385,21 @@ proof-theoretic strength. "Built" = machine-checked in `poc/OCP0009/`.
 | **Indexed inductive families** | ✅ **native** (`NbEPIndexed`, indexed containers: Vec + relations-as-datatypes) | ✅ | ✅ | ✅ | ✅ |
 | **Universe structure** | ✅ IR universe + **hierarchy `U₀⊂U₁`** (`NbEPUnivH`, predicative, polymorphism, cumulative) | ✅ ∞ + poly | ✅ ∞ + impred. Prop | ✅ ∞ + poly | ✅ cumulative |
 | **Identity type** | ✅ `Id`+`J` (`NbEPId`) **and OTT**: funext-by-definition + proof-irrelevance + quotients (`NbEPOTT`/`Mu`/`Q`) | ✅ intensional (+cubical) | ✅ intensional | ✅ + quotients→funext | ✅ intensional |
-| **Conversion** | ✅ βη **+ product-η + terminal-η, funext-free** (NbE) | βη, partial η | βη, partial η | βη + defeq proof irrel. | βη |
+| **Conversion** | ✅ βη **+ product-η + terminal-η + function-η, funext-free**, ONE engine for the full `{Unit,×,+,μ,⇒}` fragment (`NbEPF`) | βη, partial η | βη, partial η | βη + defeq proof irrel. | βη |
 | **IR / II** | ✅ **IR prototyped** (`NbEPUniv` U/El mutual; `NbEPUnivDec` defunctionalized + native decidable eq) | ✅ | ❌ | ❌ | ❌ |
 | **Coinduction** | ✅ **guarded/copatterns, no sized types** (`NbEPCoind`); bisim propositional | ✅ | ✅ | ✅ | ✅ |
 | **Totality** | ✅ total-only (SN core) | ✅ | ✅ | ✅ | ⚠️ total *or* partial |
-| **Erasure / quantities** | ✅ **QTT** (`NbEPQTT` semiring+erasure; `NbEPQTTJ` graded judgment+elaboration) | ✅ irrelevance | ⚠️ extraction | ✅ Prop-erasure | ✅ QTT native |
+| **Erasure / quantities** | ✅ **QTT, end-to-end** (`NbEPQTT` semiring+erasure; `NbEPQTTJ` graded judgment+elaboration; `NbEPQTTEraseTm` **erasing term elaboration** — `𝟘`-arguments dropped from the runtime term, irrelevance decided by `nf` on open terms) | ✅ irrelevance | ⚠️ extraction | ✅ Prop-erasure | ✅ QTT native |
 | **Self-hosting / reflected IR** | ✅ **distinctive** (prove-Once-in-Once) | ❌ | ❌ | ❌ | ❌ |
 | **Kernel / TCB size** | ✅ **minimal by thesis** | large | large (CIC) | smallish CIC | medium |
 
-**Honest gaps, biggest first:** (1) **IR/II** — the largest gap, and only vs
-Agda (Coq/Lean/Idris lack it too); deliberately deferred. (2) **Universe
-hierarchy** — one universe, not a tower. (3) **Native indexed inductives**
-(Rung 4) — the Vec-via-open-codes trick is genuine but ad hoc. (4)
-**Proof-relevant intensional `Id`** — the built `Id` = decidable conversion; the
-big assistants' `Id` proves strictly more (`n+0=n` by induction).
+**Honest gaps, biggest first:** (1) **II** (induction-induction) — the one
+remaining expressivity row, and only vs Agda (Coq/Lean/Idris lack it too); IR
+itself is prototyped. (2) **Universe hierarchy** — two levels (`U₀⊂U₁`), not
+an ℕ-indexed tower. (3) **Proof-relevant intensional `Id`** — the built `Id` =
+decidable conversion; the big assistants' `Id` proves strictly more (`n+0=n`
+by induction). This is the OTT-internalization item (§4.1) — the last
+research-flavored gap.
 
 **Where Once is genuinely different / ahead:** conversion is *more extensional*
 than Coq/Agda's (product-η + terminal-η, funext-free); **self-hosting with a
@@ -553,9 +562,12 @@ itself is *ungraded*; grading lives at the surface). So:
   on the IR-level `erase-irrelevant` soundness already proven. **← chosen; BUILT
   as `NbEPQTTJ`** (usage-vector module, intrinsic graded judgment, `erase-arg`,
   **elaboration to the CCC IR** var→projection/lam→curry/app→apply, and the
-  type-level erasure `⌊A⇒[𝟘]B⌋=⌊B⌋`). Remaining: the erasing TERM elaboration
-  (drop `𝟘`-bound vars via a `𝟘`-usage strengthening lemma), whose semantic check
-  needs the Kripke `⇒` NbE.
+  type-level erasure `⌊A⇒[𝟘]B⌋=⌊B⌋`). **The erasing TERM elaboration is DONE
+  (`NbEPQTTEraseTm`)**: the runtime context is usage-MASKED (`𝟘` slots
+  dropped), which turns the anticipated `𝟘`-usage strengthening lemma into a
+  definitional equality; `𝟘`-arguments are dropped at `app`; headline
+  `⌊K⌋ ≡ curry snd ≡ ⌊idₗ⌋`; erased-argument irrelevance on OPEN terms decided
+  by `nf` on the full-fragment engine (`NbEPF`).
 - **(a) graded point-free category** is more elegant/native but semantically
   subtle: the IR is **cartesian** (free duplication Δ and discard `terminal`), and
   grading a cartesian category is the coeffect/graded-comonad research path; the
