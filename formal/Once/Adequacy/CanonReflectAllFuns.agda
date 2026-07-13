@@ -26,24 +26,33 @@ open import Data.Nat.Induction using (<-wellFounded)
 open import Data.Maybe using (just; nothing)
 open import Data.Product using (_,_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Data.String using (String)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst)
+open import Data.String using (String; _++_)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 
 open import Once.Type using (Type)
 open import Once.Parser using (FunInfo; PolyFunInfo)
 open Once.Parser.FunInfo using (funName; funType; funBody; funIsPrimitive)
 import Once.Compile as C
 open import Once.TypeCheck.Classify
-  using (PolyCtx; NamedCtx; mkCtx; ctxWithImportsAndSelfAndPolys)
+  using (PolyCtx; NamedCtx; mkCtx; ctxWithImportsAndSelfAndPolys; ctxWithImportsAndPolys)
+open import Once.TypeCheck.Elaborate
+  using (inferElab; InferElabResult; checkElab; success; failure)
+open import Once.TypeCheck.Error using (renderError)
 open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_)
-open import Once.TypeCheck.Soundness using (infer-sound)
-open import Once.TypeCheck.Completeness using (infer-complete)
+open import Once.TypeCheck.Soundness using (infer-sound; check-sound)
+open import Once.TypeCheck.Completeness using (infer-complete; check-complete)
 open import Once.Parser.Module.Resolve using (canonExpr)
 import Once.Adequacy.AcceptSound as AS
 open import Once.Adequacy.CanonPreserve using (⊆ᵇ-nil)
-open import Once.Adequacy.CanonPolyTransport using (canonPolysCtx; PInB)
 open import Once.Adequacy.CanonExtract using (canonFI; canonFuns; canonPolys)
-open import Once.Adequacy.CanonAllFuns using (buildPolyCtx-canon; inferType→inferElab; inferElab→inferType)
+open import Once.Adequacy.CanonAllFuns
+  using (buildPolyCtx-canon; inferElab→inferType;
+         inferType-inv; InferTypeInv; via-elab; via-oracle; itv-intro)
+open import Once.Adequacy.CanonPreserveMutual using (canon-pres-ᶜ; canon-pres-ᵢ; mkPIB)
+open import Once.Adequacy.CanonPolyTransport
+  using (canonPolysCtx; PInB; polys-transport-ᶜ; polys-transport-ᵢ)
+import Once.TypeCheck.Principal as Principal
+open import Once.Adequacy.CanonPrincipal using (principalGround-canon; principalGround-polys)
 open import Once.Adequacy.CanonReflectMutual using (canon-reflects-ᶜ; canon-reflects-ᵢ)
 open import Once.Adequacy.CanonReflectPolyTransport using (polys-reflect-ᶜ; polys-reflect-ᵢ)
 open import Once.Adequacy.ModuleComplete using (AllMainEffUU; MainExists)
@@ -55,28 +64,99 @@ open import Once.Adequacy.ModuleComplete using (AllMainEffUU; MainExists)
 -- bridge helpers (inferType→inferElab / inferElab→inferType).
 ------------------------------------------------------------------------
 
+-- D072 oracle-branch reflect helpers (mirrors of
+-- CanonAllFuns.oracle-transport-*; hoisted for the same where-scope
+-- reason).
+module _ (ctx : C.FunCtx) (polysU : List PolyFunInfo) (b : List String)
+         (pib : PInB (C.buildPolyCtx polysU) b) (fi : FunInfo) (ty : Type) where
+
+  private
+    polysB = C.buildPolyCtx polysU
+    polysC = canonPolysCtx b polysB
+    nctxS = ctxWithImportsAndPolys ctx polysB
+    nctxC = ctxWithImportsAndPolys ctx polysC
+    wf = <-wellFounded (length polysB)
+
+    clashC : ∀ (body : _) {A Ψ₁ eE₁ d₁ f₁ err} {Z : Set}
+      → inferElab nctxC body ≡ success A Ψ₁ eE₁ d₁ f₁
+      → inferElab nctxC body ≡ failure err → Z
+    clashC body eqS eqF with trans (sym eqS) eqF
+    ... | ()
+
+  oracle-reflect-prim : ∀ {err Ψ eE d f}
+    → inferElab nctxC (funBody fi) ≡ failure err
+    → Principal.principalGround nctxC (funBody fi) ≡ just ty
+    → checkElab nctxC (funBody fi) ty ≡ success Ψ eE d f
+    → C.inferType ctx polysB (funBody fi) ≡ inj₂ ty
+  oracle-reflect-prim eqF eqO eqC with inferElab nctxS (funBody fi) in eqI'
+  ... | success A Ψ' eE' d' f' =
+        clashC (funBody fi)
+          (let _ , _ , _ , eqR = infer-complete
+                 (polys-transport-ᵢ b polysB pib wf
+                   (infer-sound _ (funBody fi) eqI'))
+           in eqR) eqF
+  ... | failure err' =
+        trans
+          (cong (C.inferType-validate nctxS (funBody fi)
+                  ("Cannot infer type: " ++ renderError err'))
+            (trans (sym (principalGround-polys ctx polysB b (funBody fi))) eqO))
+          (itv-intro nctxS (funBody fi) _ ty
+            (let _ , _ , _ , eqC' = check-complete
+                   (polys-reflect-ᶜ b polysB pib wf
+                     (check-sound nctxC (funBody fi) ty eqC))
+             in eqC'))
+
+  oracle-reflect-user : ∀ {err Ψ eE d f}
+    → inferElab nctxC (canonExpr b [] [] (funBody fi)) ≡ failure err
+    → Principal.principalGround nctxC (canonExpr b [] [] (funBody fi)) ≡ just ty
+    → checkElab nctxC (canonExpr b [] [] (funBody fi)) ty ≡ success Ψ eE d f
+    → C.inferType ctx polysB (funBody fi) ≡ inj₂ ty
+  oracle-reflect-user eqF eqO eqC with inferElab nctxS (funBody fi) in eqI'
+  ... | success A Ψ' eE' d' f' =
+        clashC (canonExpr b [] [] (funBody fi))
+          (let _ , _ , _ , eqR = infer-complete
+                 (polys-transport-ᵢ b polysB pib wf
+                   (canon-pres-ᵢ b (⊆ᵇ-nil {b}) (mkPIB pib)
+                     (infer-sound _ (funBody fi) eqI')))
+           in eqR) eqF
+  ... | failure err' =
+        trans
+          (cong (C.inferType-validate nctxS (funBody fi)
+                  ("Cannot infer type: " ++ renderError err'))
+            (trans (sym (principalGround-canon ctx polysB b (funBody fi))) eqO))
+          (itv-intro nctxS (funBody fi) _ ty
+            (let _ , _ , _ , eqC' = check-complete
+                   (canon-reflects-ᶜ b (funBody fi) (⊆ᵇ-nil {b})
+                     (polys-reflect-ᶜ b polysB pib wf
+                       (check-sound nctxC (canonExpr b [] [] (funBody fi)) ty eqC)))
+             in eqC'))
+
 inferType-reflect : ∀ (ctx : C.FunCtx) (polysU : List PolyFunInfo) (b : List String)
   → PInB (C.buildPolyCtx polysU) b → (fi : FunInfo) (ty : Type)
   → C.inferType ctx (C.buildPolyCtx (canonPolys b polysU)) (funBody (canonFI b fi)) ≡ inj₂ ty
   → C.inferType ctx (C.buildPolyCtx polysU) (funBody fi) ≡ inj₂ ty
 inferType-reflect ctx polysU b pib fi ty eq
   with funIsPrimitive fi
-     | inferType→inferElab ctx (canonPolysCtx b (C.buildPolyCtx polysU)) (funBody (canonFI b fi)) ty
+     | inferType-inv ctx (canonPolysCtx b (C.buildPolyCtx polysU)) (funBody (canonFI b fi)) ty
          (subst (λ P → C.inferType ctx P (funBody (canonFI b fi)) ≡ inj₂ ty) (buildPolyCtx-canon b polysU) eq)
-... | true  | _ , _ , _ , _ , eqC =
+... | true  | via-elab eqCS =
         inferElab→inferType ctx (C.buildPolyCtx polysU) (funBody fi) ty
           (let _ , _ , _ , eqU = infer-complete
                  (polys-reflect-ᵢ b (C.buildPolyCtx polysU) pib
-                   (<-wellFounded (length (C.buildPolyCtx polysU))) (infer-sound _ (funBody fi) eqC))
+                   (<-wellFounded (length (C.buildPolyCtx polysU))) (infer-sound _ (funBody fi) eqCS))
            in eqU)
-... | false | _ , _ , _ , _ , eqC =
+... | false | via-elab eqCS =
         inferElab→inferType ctx (C.buildPolyCtx polysU) (funBody fi) ty
           (let _ , _ , _ , eqU = infer-complete
                  (canon-reflects-ᵢ b (funBody fi) (⊆ᵇ-nil {b})
                    (polys-reflect-ᵢ b (C.buildPolyCtx polysU) pib
                      (<-wellFounded (length (C.buildPolyCtx polysU)))
-                     (infer-sound _ (canonExpr b [] [] (funBody fi)) eqC)))
+                     (infer-sound _ (canonExpr b [] [] (funBody fi)) eqCS)))
            in eqU)
+... | true  | via-oracle eqF eqO eqC =
+        oracle-reflect-prim ctx polysU b pib fi ty eqF eqO eqC
+... | false | via-oracle eqF eqO eqC =
+        oracle-reflect-user ctx polysU b pib fi ty eqF eqO eqC
 
 ------------------------------------------------------------------------
 -- resolveFunType / body reflect (mirror of the forward transports).
