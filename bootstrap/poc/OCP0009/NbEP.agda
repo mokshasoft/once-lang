@@ -14,10 +14,13 @@
 --
 -- `⇒` is the next step (step 2, Kripke). Adequacy (step 3) is the logical
 -- relation over `NbEK._≼_`, using the proven functor laws. `eval`/`vcata`/
--- `mapCata` recurse over Term+Val together, so termination is the standard
--- NbE argument (a `TERMINATING` pragma here; a theorem via adequacy later).
+-- `mapCata` recurse over Term+Val together; Agda's size-change termination
+-- checker accepts the lexicographic (Tm, Val) descent (every cycle either
+-- shrinks the term, or keeps it and shrinks the value), so the block is
+-- pragma-free and the module compiles under `--safe`.
 ------------------------------------------------------------------------
 
+{-# OPTIONS --safe #-}
 module poc.OCP0009.NbEP where
 
 open import normalizer.Syntax.Types
@@ -32,7 +35,6 @@ open import poc.OCP0009.NbEPTm public
 ------------------------------------------------------------------------
 
 mutual
-  {-# TERMINATING #-}
   eval : ∀ {A B D} → Tm B D → Val A B → Val A D
   eval idT        v = v
   eval (f ⊙ g)    v = eval f (eval g v)

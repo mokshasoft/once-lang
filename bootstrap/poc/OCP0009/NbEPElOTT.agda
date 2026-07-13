@@ -19,6 +19,7 @@
 -- `Vec n`), the neutrals frontier.
 ------------------------------------------------------------------------
 
+{-# OPTIONS --safe #-}
 module poc.OCP0009.NbEPElOTT where
 
 open import normalizer.Syntax.Types using ( _≡_; refl; subst; Ty; Unit )

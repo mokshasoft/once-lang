@@ -1,10 +1,11 @@
 ------------------------------------------------------------------------
 -- OCP-0009 · QTT erasure SOUNDNESS (the `nf`-tied theorem)
 --
--- Split out of `NbEPQTT` because it references `nf` (the NbE normalizer, which
--- carries a `TERMINATING` pragma and so is not `--safe`). Keeping this one
--- theorem here lets the QTT semiring + graded-context algebra (`NbEPQTT`) and
--- the graded typing judgment (`NbEPQTTJ`) stay `--safe`.
+-- Split out of `NbEPQTT` because it references `nf` (the NbE normalizer),
+-- keeping the QTT semiring + graded-context algebra (`NbEPQTT`) and the graded
+-- typing judgment (`NbEPQTTJ`) free of any dependency on the evaluator. (All
+-- three are `--safe`; `NbEP` itself is too, now that its `TERMINATING` pragma
+-- proved unnecessary.)
 --
 -- The result: an erased (`𝟘`) index cannot influence the runtime result. For the
 -- single erased slot `Γ = R ▷[𝟘] I` (where `erase Γ = fst`), a runtime
@@ -14,6 +15,7 @@
 -- environment). The general multi-slot statement is the same idea.
 ------------------------------------------------------------------------
 
+{-# OPTIONS --safe #-}
 module poc.OCP0009.NbEPQTTErase where
 
 open import normalizer.Syntax.Types using ( _≡_; refl; Unit )

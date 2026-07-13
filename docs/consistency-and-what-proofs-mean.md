@@ -191,8 +191,8 @@ caveats frame the whole ledger:
 
 | Feature | Modules | Consistency effect | Risk |
 |---|---|---|---|
-| **Decidable conversion (NbE)** | `NbEK`, `NbEP`, `NbEPNat`, `NbEPRel`, `NbEPFund`, `NbEPNormal`, `NbEPComplete` (+ older `Conv`/`Sound`/`Finite`/`Decidable`/`Open`) | No new logical strength — a normalizer + its adequacy proof. | **The main residual risk lives here**: `eval`/`nf` carry `TERMINATING` pragmas (asserted, not proven; see below). |
-| **CwF / dependent layer (Rung 2)** | `NbEPCwF`, `NbEPEl`, `NbEPElOTT` | Standard CwF over a total core; no new strength. Inherits the NbE's `TERMINATING` transitively (via `nf`). | Low (inherits NbE risk). |
+| **Decidable conversion (NbE)** | `NbEK`, `NbEP`, `NbEPNat`, `NbEPRel`, `NbEPFund`, `NbEPNormal`, `NbEPComplete` (+ older `Conv`/`Sound`/`Finite`/`Decidable`/`Open`) | No new logical strength — a normalizer + its adequacy proof. | ~~`eval`/`nf` carried `TERMINATING` pragmas~~ **discharged 2026-07-13**: the pragmas were unnecessary — Agda's size-change checker accepts the lexicographic (Tm, Val) recursion. The whole principled track is `--safe`. |
+| **CwF / dependent layer (Rung 2)** | `NbEPCwF`, `NbEPEl`, `NbEPElOTT` | Standard CwF over a total core; no new strength. | None (`--safe` since 2026-07-13). |
 | **Identity type `Id` + `J` (Rung 3)** | `NbEPId` | Definitional identity = decided conversion; no new strength. | Low. |
 | **QTT (erasure / multiplicities)** | `NbEPQTT`, `NbEPQTTJ` | A *resource discipline* on the type system — **no logical strength added**. | None (semiring + intrinsic judgment; no pragmas). |
 | **OTT (observational equality)** | `NbEPOTT`, `NbEPOTTMu`, `NbEPOTTQ`, `NbEPOTTCoind` | Adds funext + proof-irrelevance/**UIP (K)** — consistent with MLTT (setoid model), near-conservative; **incompatible with univalence** (a *choice*, not a risk). | Low. `funext` is taken as an explicit *parameter*, **not postulated** — no axiom introduced. |
@@ -206,14 +206,17 @@ caveats frame the whole ledger:
 
 Being explicit about every place the mechanization *trusts* rather than *proves*:
 
-1. **`TERMINATING` pragmas** on the `eval` / `nf` / `mapCata` recursion
-   (`NbEP`, `NbEPComplete`, `NbEPFund`, `NbEPNormal`, `NbEPNat`, `NbE`).
-   These disable Agda's termination checker for those functions. *If* one did not
-   actually terminate, that would be an inconsistency (a non-terminating "total"
-   function lets you build a loop and prove `False`). They mirror the structural
-   NbE recursion and are discharged *in principle* by the standard SN /
-   logical-relation argument — **low risk, but a trusted assertion, not a proof.**
-   This is the single most important thing to eventually discharge.
+1. **[DISCHARGED 2026-07-13] `TERMINATING` pragmas** on the `eval` / `nf` /
+   `mapCata` recursion (`NbEP`, `NbEPComplete`, `NbEPFund`, `NbEPNormal`,
+   `NbEPNat`, `NbE`, `Complete`). These turned out to be **unnecessary**: removing
+   every one of them typechecks. Agda's size-change termination checker accepts
+   the mutual block's lexicographic (Tm, Val) descent — every call cycle either
+   strictly shrinks the term (`eval → vcata → eval alg`, since `alg` is a subterm
+   of `cataT F alg`) or keeps it and strictly shrinks the value
+   (`vcata → mapCata → vcata`). The anticipated SN / logical-relation obligation
+   never existed for this first-order fragment; the pragmas were conservatism
+   from an earlier shape of the code. Termination of the whole NbE core is now
+   **machine-checked**, not asserted.
 2. **[DISCHARGED 2026-07-13] `NO_POSITIVITY_CHECK`** — the Kripke `⇒` domain in
    `NbEKF` used to be an inductive datatype whose closure field puts `Val`
    negatively. It is now defined by **recursion on the type** (a Tarski-style
@@ -221,11 +224,13 @@ Being explicit about every place the mechanization *trusts* rather than *proves*
    as a `Set`-valued function), so there is no positivity question at all — and
    `eval` became structurally recursive as a bonus, so `NbEKF` compiles under
    `--safe`. **No positivity escape remains anywhere in the POC.**
-3. **`funext` axiom** — used in the *older* conversion track (`Complete`, `Higher`,
-   `Dependent`, `Universe`) as `--safe`-compatible postulate. The *principled* NbE
-   and the OTT layer do **not** rely on it (OTT proves funext *definitionally*;
-   `NbEPOTT.eq-irrel` takes funext as an explicit parameter rather than postulating
-   it).
+3. **`funext` axiom** — postulated in the *older* conversion track (`Complete`,
+   and transitively `Sound`/`Finite`/`Decidable`/`Open`/`Higher`/`Dependent`/
+   `Universe`/`Transparency`). The *principled* NbE and the OTT layer do **not**
+   rely on it (OTT proves funext *definitionally*; `NbEPOTT.eq-irrel` takes
+   funext as an explicit parameter rather than postulating it). **As of
+   2026-07-13 this is the ONLY escape hatch left anywhere in the POC**, and it
+   is confined to the superseded track.
 
 ### `--safe`-verified (machine-checked "uses no unsafe features")
 
@@ -235,30 +240,32 @@ Agda's `--safe` flag *rejects* every unsafe escape hatch — `TERMINATING`,
 is a **machine-checked certificate** that a module (and its whole import closure)
 introduces none of them.
 
-**16 modules now compile under `--safe`** (verified 2026-07-13): the entire
-standalone expressibility tower (10 modules, 2026-07-12), plus the QTT stack
-minus its one `nf`-tied theorem (step 1, 2026-07-12), plus the presheaf/Kripke
-NbE foundation (step 2, 2026-07-13):
+**29 of the 38 modules now compile under `--safe`** (verified 2026-07-13): the
+standalone expressibility tower (10 modules, 2026-07-12), the QTT stack (step 1,
+2026-07-12), the presheaf/Kripke NbE foundation (step 2, 2026-07-13), and —
+after the `TERMINATING` pragmas proved unnecessary (step 3, 2026-07-13) — the
+**entire principled NbE core, its adequacy proofs, and the whole dependent-types
+track on top of it**:
 
 | `--safe` | modules |
 |---|---|
+| NbE core + adequacy | `NbEK`, `NbEKF`, `NbEP`, `NbEPTm`, `NbEPNat`, `NbEPRel`, `NbEPFund`, `NbEPNormal`, `NbEPComplete` (+ prototype `NbE`, `NbEConv`) |
+| CwF / dependent layer + `Id`+`J` | `NbEPCwF`, `NbEPEl`, `NbEPId`, `NbEPElOTT` |
+| QTT (syntax, semiring, judgment, erasure) | `NbEPQTT`, `NbEPQTTJ`, `NbEPQTTErase` |
+| OTT (equality, quotients, μ) | `NbEPOTT`, `NbEPOTTQ`, `NbEPOTTMu` |
 | IR universe + hierarchy | `NbEPUniv`, `NbEPUnivDec`, `NbEPUnivH` — **confirms induction-recursion is `--safe`-compatible** (a sound core feature, not an unsafe flag) |
 | indexed inductive families | `NbEPIndexed` |
-| OTT (equality, quotients, μ) | `NbEPOTT`, `NbEPOTTQ`, `NbEPOTTMu` |
 | coinduction (guarded) | `NbEPCoind`, `NbEPOTTCoind` (`--safe --guardedness`) |
 | verified compiler in-theory | `NbEPSummit` |
-| QTT (syntax, semiring, graded judgment) | `NbEPTm` (pure `Tm` syntax split out of `NbEP`), `NbEPQTT`, `NbEPQTTJ` — only the `nf`-tied erasure theorem (`NbEPQTTErase`) stays non-safe |
-| presheaf + Kripke `⇒` NbE | `NbEK` (was already pragma-free), `NbEKF` (positivity escape discharged by a type-recursive domain, see above) |
 | decidability scaffolding | `Conv` |
 
-What **cannot** yet go `--safe` is *exactly* the set of modules carrying (or
-importing) the NbE core's `TERMINATING` pragmas — `NbEP`, `NbEPNat`, `NbEPFund`,
-`NbEPNormal`, `NbEPComplete`, `NbE` (+ older `Complete`), and hence
-`NbEPCwF`/`NbEPEl`/`NbEPId`/`NbEPElOTT`/`NbEPQTTErase`. So `--safe` now draws the
-consistency line **mechanically**: the dependent-types *features* are certified
-unsafe-feature-free; the residual risk is confined to the NbE core's termination
-assertions — now the *only* kind of escape hatch left — precisely as this ledger
-claims.
+The 9 modules that **cannot** go `--safe` are exactly the *superseded older
+conversion track* — `Complete` (which postulates `funext`) and its importers
+`Sound`, `Finite`, `Decidable`, `Open`, `Higher`, `Dependent`, `Universe`,
+`Transparency`. Nothing on the principled path depends on them. So `--safe` now
+draws the consistency line **mechanically**: everything load-bearing is
+certified escape-hatch-free; the one remaining trusted assertion (`funext`) is
+confined to legacy modules kept for the historical record.
 
 ### Verdict
 
@@ -272,8 +279,12 @@ claims.
   flagged from the start as "the step that leaves the small-core discipline by
   design." It raises the consistency-strength requirement but is not a soundness
   *risk* in our modest instance.
-- **The residual asserted-not-proven risk is the `TERMINATING` / positivity
-  pragmas**, not the dependent-types features.
+- **[UPDATE 2026-07-13] The `TERMINATING` / positivity pragmas are gone.** The
+  positivity escape was discharged by a type-recursive Kripke domain, and the
+  termination pragmas turned out to be unnecessary (Agda proves the descent
+  itself). The only asserted-not-proven artifact left is the `funext` postulate
+  in the superseded older conversion track; **everything load-bearing is
+  `--safe`**.
 
 ### Path from "very likely" to "machine-checked"
 
@@ -282,13 +293,13 @@ To upgrade the mechanization's own consistency guarantee:
 0. **[DONE] Certify the standalone tower with `--safe`** — the 10 modules above
    now build under `--safe`, mechanically proving the dependent-types features use
    no unsafe escape hatches. This isolates the residual risk to the NbE core.
-1. **Discharge the `TERMINATING` pragmas** in the NbE core — prove `eval`/`nf`
-   terminate via the SN / logical-relation argument (tedious, not deep; the
-   argument is standard and already sketched in the NbE adequacy modules). This is
-   what would let the *conversion / CwF* track go `--safe` too. (The cheaper
-   partial step is **[DONE 2026-07-12]**: `NbEP`'s pure `Tm` datatype now lives in
-   its own `--safe` module `NbEPTm`, which took `NbEPQTT`/`NbEPQTTJ` `--safe`
-   without waiting for the full termination proof.)
+1. **[DONE 2026-07-13] Discharge the `TERMINATING` pragmas** in the NbE core —
+   this dissolved rather than being proven: removing every pragma typechecks, as
+   Agda's size-change checker accepts the lexicographic (Tm, Val) recursion.
+   The anticipated SN / logical-relation obligation does not arise for this
+   first-order fragment. The conversion / CwF / `Id` / QTT-erasure track is now
+   `--safe`. (The step-1 partial — splitting `Tm` into `--safe` `NbEPTm` — had
+   already landed 2026-07-12.)
 2. **[DONE 2026-07-13] Discharge the `NO_POSITIVITY_CHECK`** — the Kripke `⇒`
    domain in `NbEKF` is now defined by recursion on the type instead of as an
    inductive datatype; both of `NbEKF`'s pragmas fell away and it compiles under

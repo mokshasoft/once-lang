@@ -9,11 +9,13 @@
 -- this gives: `nf t` is well-defined and stable under related inputs, and it
 -- is the engine of completeness (piece 3b, source conversion, layers on top).
 --
--- Closes by induction mirroring `eval`, ESCAPE-FREE beyond the `TERMINATING`
--- that mirrors `eval` (no funext — `{Unit,×,+,μ}`). Every former contributes
--- exactly one clause, riding on the relation from piece 2.
+-- Closes by induction mirroring `eval`, ESCAPE-FREE (the induction, like
+-- `eval` itself, passes the termination checker; no funext — `{Unit,×,+,μ}`).
+-- Every former contributes exactly one clause, riding on the relation from
+-- piece 2.
 ------------------------------------------------------------------------
 
+{-# OPTIONS --safe #-}
 module poc.OCP0009.NbEPFund where
 
 open import normalizer.Syntax.Types
@@ -23,7 +25,6 @@ open import poc.OCP0009.NbEK
 open import poc.OCP0009.NbEP
 open import poc.OCP0009.NbEPRel
 
-{-# TERMINATING #-}
 eval-cong : ∀ {A B D : Ty} (t : Tm B D) {v v′ : Val A B} →
             ≈V B v v′ → ≈V D (eval t v) (eval t v′)
 vfst-cong : ∀ {A X Y : Ty} {v v′ : Val A (X * Y)} →

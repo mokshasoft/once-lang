@@ -78,7 +78,6 @@ coh-rt (F ⊗ G) A (x , y)  = cong₂ _,_ (coh-rt F A x) (coh-rt G A y)
 ------------------------------------------------------------------------
 
 mutual
-  {-# TERMINATING #-}
   cata-Set-cong : ∀ F {A} {a a' : ⟦ F ⟧FS A → A} → (∀ z → a z ≡ a' z) →
                   (y : Fix F) → cata-Set F a y ≡ cata-Set F a' y
   cata-Set-cong F {a = a} e (fix x) =

@@ -3,12 +3,13 @@
 --
 -- The fragment term syntax `Tm` (`{Unit, ×, +, μ}`, no `⇒`), its embedding into
 -- the bootstrap IR (`emb`), and the `Nat` term examples. This is split out of
--- `NbEP` so that the pure syntax — which uses NO unsafe features — can live in a
--- `--safe` module: downstream consumers that only manipulate `Tm` (the graded
--- QTT judgment, elaboration, …) can then be `--safe` too, without waiting on the
--- `eval`/`nf` termination proof (which needs a `TERMINATING` pragma and hence
--- keeps `NbEP` itself out of `--safe`). `NbEP` re-exports this module publicly, so
--- existing `open import … NbEP using (Tm; …)` imports are unchanged.
+-- `NbEP` so that the pure syntax can live in a minimal `--safe` module:
+-- downstream consumers that only manipulate `Tm` (the graded QTT judgment,
+-- elaboration, …) need not depend on the evaluator at all. (Historically this
+-- split unblocked `--safe` for the QTT stack while `NbEP` still carried a
+-- `TERMINATING` pragma; that pragma turned out to be unnecessary and `NbEP` is
+-- now `--safe` too.) `NbEP` re-exports this module publicly, so existing
+-- `open import … NbEP using (Tm; …)` imports are unchanged.
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}

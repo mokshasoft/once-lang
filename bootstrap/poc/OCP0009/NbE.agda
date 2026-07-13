@@ -17,11 +17,12 @@
 -- reify — the remaining piece). Full adequacy is the logical-relation
 -- obligation, demonstrated on examples, not postulated.
 --
--- Not `--safe`: `vcata`/`mapCata`/`eval-nbe` recurse together over both the
--- Term and the Val structure; termination is the standard NbE argument, not
--- Agda-structural, so it carries a `TERMINATING` pragma.
+-- `--safe`: `vcata`/`mapCata`/`eval-nbe` recurse together over both the
+-- Term and the Val structure, but Agda's size-change checker accepts the
+-- lexicographic (Term, Val) descent — no pragma needed.
 ------------------------------------------------------------------------
 
+{-# OPTIONS --safe #-}
 module poc.OCP0009.NbE where
 
 open import normalizer.Syntax.Types
@@ -110,7 +111,6 @@ mutual
   vcase f g (vNe ne) = vNe (nCase f g ne)
 
   -- cata: β on constructor-headed `vIn`; stuck neutral on a μ-neutral.
-  {-# TERMINATING #-}
   vcata : ∀ {A} F {C} → Term (⟦ F ⟧F C) C → Val A (μ F) → Val A C
   vcata F alg (vIn w)  = eval-nbe alg (mapCata F alg F w)
   vcata F alg (vNe ne) = vNe (nCata F alg ne)

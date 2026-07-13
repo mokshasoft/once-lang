@@ -1,6 +1,6 @@
 # HANDOFF — OCP-0009 dependent-types POC
 
-**Branch:** `ocp-0009-poc0-nbe`  **Last commit:** `06c88010`  **Working tree:** clean.
+**Branch:** `ocp-0009-poc0-nbe`  **Working tree:** clean.
 **Vehicle:** Agda, IR-only, under `bootstrap/poc/OCP0009/`. Compiler untouched.
 **Build one module:** `bootstrap/check.sh poc/OCP0009/<Module>.agda` (→ EXIT 0).
 
@@ -13,19 +13,25 @@
   (+ hardened decidable eq + hierarchy `U₀⊂U₁`) → **native indexed inductives** →
   **coinduction** (guarded) → **summit** (verified compiler in-theory).
 - **Every §5-table row is now demonstrated** (see `plans/…-poc.md` §5).
+- **The `--safe` campaign is COMPLETE (2026-07-13): 29 of 38 modules compile
+  under `--safe`** — the entire principled NbE core + adequacy + CwF + `Id` +
+  QTT + OTT + IR + indexed + coinduction + summit. Zero `TERMINATING`, zero
+  `NO_POSITIVITY_CHECK` anywhere. The 9 non-safe modules are exactly the
+  superseded older conversion track, tainted by `Complete`'s `funext` postulate
+  (kept as historical record; nothing load-bearing imports them).
 - **Docs are current:** `plans/ocp-0009-decidable-conversion-poc.md` (module map §1,
   reframing §6, OCP-0006 relationship §7), `docs/proposals/OCP-0009-…md`
   (Rung status notes + "Consistency & the trust story" section + systems table),
   and `docs/consistency-and-what-proofs-mean.md` (foundations + POC consistency
   ledger + `--safe` status).
 
-## THE IMMEDIATE IN-PROGRESS TASK: get everything under `--safe`
+## THE `--safe` TASK: **DONE** (steps 1 → 2 → 3 all complete)
 
-Goal: strengthen the consistency guarantee by compiling under `--safe` (which
+Goal was: strengthen the consistency guarantee by compiling under `--safe` (which
 rejects every unsafe escape hatch: `TERMINATING`, `NO_POSITIVITY_CHECK`,
 `type-in-type`, meaning-affecting postulates). A `--safe` module may only import
-`--safe` modules. Doing steps **1 → 2 → 3 in order** (user's plan). Steps 1 and 2
-are done; **step 3 is what remains.**
+`--safe` modules. All three steps of the user's plan are done; **the next work is
+the "Other open items" section below.**
 
 ### Step 1 — DONE (commits `d00790ee`, `06c88010`)
 - Flipped the 10 standalone tower modules to `--safe` (they never touch the NbE
@@ -35,13 +41,6 @@ are done; **step 3 is what remains.**
   (`NbEP` re-exports it publicly → all downstream imports unchanged). This let the
   QTT stack go `--safe`: **`NbEPTm`, `NbEPQTT`, `NbEPQTTJ`** are now `--safe`; the
   one `nf`-tied theorem was split into **`NbEPQTTErase`** (stays non-safe).
-- **Currently `--safe` (16):** `Conv`, `NbEK`, `NbEKF`, `NbEPTm`, `NbEPUniv`,
-  `NbEPUnivDec`, `NbEPUnivH`, `NbEPIndexed`, `NbEPOTT`, `NbEPOTTQ`, `NbEPOTTMu`,
-  `NbEPOTTCoind`, `NbEPCoind`, `NbEPSummit`, `NbEPQTT`, `NbEPQTTJ`.
-- **Modules with REAL unsafe pragmas** (the blockers): `NbEP`, `NbEPComplete`,
-  `NbEPFund`, `NbEPNormal`, `NbEPNat`, `NbE`, `Complete` (all `TERMINATING` on
-  `eval`/`nf`-style recursion).
-  (`NbEPTm`/`NbEPQTTErase` only MENTION "TERMINATING" in comments — they're clean.)
 
 ### Step 2 — DONE (2026-07-13): `NO_POSITIVITY_CHECK` discharged, `NbEKF` is `--safe`
 - The handoff plan suggested defunctionalizing the Kripke closure into a code+env
@@ -58,32 +57,31 @@ are done; **step 3 is what remains.**
 - **`NO_POSITIVITY_CHECK` no longer occurs anywhere in the POC.** The only
   remaining escape hatch, everywhere, is `TERMINATING` (step 3's target).
 
-### Step 3 — TODO (THE PRIZE): discharge the `TERMINATING` pragmas on `eval`/`nf`
-- The `TERMINATING` pragma sits on the mutual `eval/vcase/vcata/mapCata/nf` block
-  in `NbEP.agda` (and is mirrored in `NbEPComplete`, `NbEPFund`, `NbEPNormal`,
-  `NbEPNat`, `NbE`, `Complete` — each re-does an eval-shaped recursion).
-- Agda can't see structural termination because the recursion is over
-  `Tm` + `Val` together and `mapCata`/`vcata` recurse on the functor `F` and the
-  value simultaneously. **This is the standard NbE termination obligation** =
-  Strong Normalization / a logical-relation (reducibility) argument. The plan calls
-  it "tedious, not deep"; the adequacy scaffolding already exists in `NbEPRel`
-  (the inductive logical relation `≈V`), `NbEPFund` (`eval-cong` fundamental
-  theorem), `NbEPNormal` (the `Normal` η-long predicate). The proof strategy:
-  define a well-founded measure or a reducibility predicate that eval respects, and
-  turn each `TERMINATING` function into a structurally/well-founded-recursive one
-  (e.g. via a fuel-free accessibility argument or a sized-types-free
-  logical-relation `eval` that returns a proof of reducibility).
-- This is the genuine research-grade chunk. Completing it (a) removes the last
-  unsafe escape hatch, bringing the **entire conversion + CwF + Id + QTT-erasure
-  track under `--safe`**, and (b) turns "very likely consistent" into
-  "machine-checked, escape-hatch-free" for the whole POC.
-- Cheaper partial credit along the way: any module that imports the NbE core only
-  for `Tm`-data (not `eval`/`nf`) can already be re-pointed at `NbEPTm` and go
-  `--safe` (that's exactly how the QTT split worked in step 1). Audit
-  `NbEPCwF`/`NbEPEl`/`NbEPId`/`NbEPElOTT` — they genuinely use `nf`, so they need
-  step 3, but double-check.
+### Step 3 — DONE (2026-07-13): the `TERMINATING` pragmas were UNNECESSARY
+- The anticipated research-grade SN proof **dissolved**: removing every
+  `TERMINATING` pragma (`NbEP`, `NbEPNat`, `NbEPFund`, `NbEPNormal`,
+  `NbEPComplete`, `NbE`, `Complete`) simply **typechecks**. Agda's size-change
+  termination checker accepts the mutual `eval/vcase/vcata/mapCata/nf` block's
+  lexicographic (Tm, Val) descent: every call cycle either strictly shrinks the
+  term (`eval (cataT F a) → vcata → eval a` — `a` is a subterm) or keeps the
+  term and strictly shrinks the value (`vcata (vIn w) → mapCata w → vcata w′`,
+  `w′ ⊆ w`). The pragmas were conservatism from an earlier shape of the code,
+  never re-tried. (Lesson recorded: before proving termination, try deleting
+  the pragma.)
+- With the pragmas gone, 13 more modules were flagged `--safe` and all pass:
+  `NbEP`, `NbEPNat`, `NbEPRel`, `NbEPFund`, `NbEPNormal`, `NbEPComplete`,
+  `NbEPCwF`, `NbEPEl`, `NbEPId`, `NbEPElOTT`, `NbEPQTTErase`, `NbE`, `NbEConv`.
+- The audit the old note asked for was done first: `NbEPCwF`/`NbEPEl`/`NbEPId`
+  genuinely use `nf` (15/27/5 uses) and `NbEPElOTT` uses `eval` — no cheap
+  re-pointing was possible; it just turned out not to be needed.
+- **Remaining non-safe (9, all by design):** `Complete` (real `funext`
+  postulate) and its importers `Sound`, `Finite`, `Decidable`, `Open`,
+  `Higher`, `Dependent`, `Universe`, `Transparency` — the superseded older
+  conversion track. Making these `--safe` would mean rebuilding them on the
+  principled track (or on OTT's definitional funext); of questionable value
+  since they're kept as historical record.
 
-## Other open items (post-`--safe`), from plan §4/§6
+## Other open items (now THE open items), from plan §4/§6
 
 1. **OTT internalization** — OTT `eq` is currently a model-level construction over
    the denotational `⟦_⟧`; wire it in as Once's *object-language* identity type
@@ -108,8 +106,8 @@ are done; **step 3 is what remains.**
   status notes; "Consistency & the trust story").
 - **Consistency/trust reference + POC ledger:**
   `docs/consistency-and-what-proofs-mean.md`.
-- **The NbE core (step-3 target):** `NbEP` (eval/nf), `NbEPRel`/`NbEPFund`/
-  `NbEPNormal` (adequacy scaffolding for the SN proof).
+- **The NbE core:** `NbEP` (eval/nf), `NbEPRel`/`NbEPFund`/`NbEPNormal`
+  (adequacy scaffolding) — all `--safe`.
 
 ## Verify everything still green (sweep)
 

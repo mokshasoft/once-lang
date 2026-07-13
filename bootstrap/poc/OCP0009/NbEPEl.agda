@@ -36,6 +36,7 @@
 -- fibres are decided by NbE on the index — real dependency WITHOUT IR.
 ------------------------------------------------------------------------
 
+{-# OPTIONS --safe #-}
 module poc.OCP0009.NbEPEl where
 
 open import normalizer.Syntax.Types
