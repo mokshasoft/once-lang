@@ -99,7 +99,9 @@ open import Once.TypeCheck.Elaborate as TE using (CheckElabResult)
 import Once.Surface.Syntax as Srf
 open import Relation.Binary.PropositionalEquality using (subst)
 -- D007 inference: the self-less context for inferring a sig-less def's type.
-open import Once.TypeCheck.Classify using (ctxWithImportsAndPolys; SigEffectCtx; emptySigEffects; lookupSigEffect)
+open import Once.TypeCheck.Classify using (ctxWithImportsAndPolys; SigEffectCtx; emptySigEffects; lookupSigEffect; NamedCtx)
+-- D072: the untrusted principal-type oracle (validated by checkElab).
+import Once.TypeCheck.Principal as Principal
 open import Once.SigEffect using (SigEffect)
 
 -- Surface → IR elaboration
@@ -274,10 +276,26 @@ buildPolyCtx (pfi ∷ rest) =
 -- type fully determined by the composition of its body (no specialization,
 -- no ambiguity — D007). Inferred in a SELF-LESS context (Once has no
 -- recursion). `inferElab`'s `success` carries the inferred type `A`.
+-- | D072: validate an untrusted oracle answer with the verified
+-- `checkElab` before adopting it (check-after-infer is the trust
+-- boundary — a wrong oracle answer is a rejected program, never an
+-- unsound one). Top-level aux (not a `with`) so proofs can match the
+-- `Maybe Type` scrutinee directly.
+inferType-validate : NamedCtx → RawExpr → String → Maybe Type → String ⊎ Type
+inferType-validate nctx body err nothing = inj₁ err
+inferType-validate nctx body err (just T) with checkElab nctx body T
+... | TE.success _ _ _ _ = inj₂ T
+... | TE.failure _       = inj₁ err
+
 inferType : FunCtx → PolyCtx → RawExpr → String ⊎ Type
 inferType ctx polys body with TE.inferElab (ctxWithImportsAndPolys ctx polys) body
 ... | TE.success A _ _ _ _ = inj₂ A
-... | TE.failure err       = inj₁ ("Cannot infer type: " ++ TE.renderError err)
+-- D072: bidirectional synthesis failed — ask the principal-type oracle
+-- (ground answers only here; schema answers route via the telescope, M3).
+... | TE.failure err       =
+      inferType-validate (ctxWithImportsAndPolys ctx polys) body
+        ("Cannot infer type: " ++ TE.renderError err)
+        (Principal.principalGround (ctxWithImportsAndPolys ctx polys) body)
 
 -- | The explicit signature if given, otherwise the inferred type (D007).
 resolveFunType : FunCtx → PolyCtx → Maybe Type → RawExpr → String ⊎ Type

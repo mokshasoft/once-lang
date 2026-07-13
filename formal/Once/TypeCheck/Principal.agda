@@ -40,6 +40,7 @@ open import Data.List using (List; []; _∷_)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Relation.Nullary using (yes; no)
+import Relation.Nullary
 
 open import Once.Type
 open import Once.CanonicalName using (CanonicalName; showCanonical)
@@ -51,6 +52,10 @@ open import Once.TypeCheck.Classify
 ------------------------------------------------------------------------
 -- Small helpers
 ------------------------------------------------------------------------
+
+isYes : ∀ {a} {P : Set a} → Relation.Nullary.Dec P → Bool
+isYes (yes _) = true
+isYes (no _)  = false
 
 eqQuantity : Quantity → Quantity → Bool
 eqQuantity Zero Zero = true
@@ -364,16 +369,33 @@ retTy : PolyType → ℕ → Maybe PSubst → Result
 retTy t n (just s) = just (t , n , s)
 retTy _ _ nothing  = nothing
 
+-- | The oracle's context view: the import table plus poly SCHEMAS
+-- only. `pInfer` cannot depend on poly BODIES *by type* — which is what
+-- makes canon-invariance over `canonPolysCtx` (bodies-only) a plain
+-- congruence (CanonPrincipal).
+SchemaCtx : Set
+SchemaCtx = List (String × PolyType)
+
+projSchemas : PolyCtx → SchemaCtx
+projSchemas [] = []
+projSchemas ((nm , sc , _) ∷ rest) = (nm , sc) ∷ projSchemas rest
+
+lookupSchema : SchemaCtx → String → Maybe PolyType
+lookupSchema [] _ = nothing
+lookupSchema ((y , sc) ∷ rest) x with x ≟ y
+... | yes _ = just sc
+... | no _  = lookupSchema rest x
+
 -- | Name-keyed leaf lookup, shared by `RVar` and `RResolved` so the two
 -- coincide (canon-invariance by construction). Order matches the
 -- kernel's dispatch: builtin, then user poly def, then import.
-lookupName : NamedCtx → String → ℕ → Maybe (PolyType × ℕ)
-lookupName ctx name n with builtinSchema name n
+lookupName : Imports → SchemaCtx → String → ℕ → Maybe (PolyType × ℕ)
+lookupName imps sch name n with builtinSchema name n
 ... | just r = just r
-... | nothing with lookupPoly (NamedCtx.polys ctx) name
-...   | just (schema , _) =
+... | nothing with lookupSchema sch name
+...   | just schema =
         let (t , n' , _) = freshen schema n [] in just (t , n')
-...   | nothing with lookupImport (NamedCtx.imports ctx) name
+...   | nothing with lookupImport imps name
 ...     | nothing = nothing
 ...     | just T with typeToPoly T
 ...       | just t  = just (t , n)
@@ -417,64 +439,88 @@ composeFinish tf tg n s with arrowParts s tf n
 ...     | just s₃ =
           just ((if ef ∨ eg then PEff ag cf else (ag P⇒[ Many ] cf)) , n₂ , s₃)
 
-pInfer : NamedCtx → Env → RawExpr → ℕ → PSubst → Result
-pInfer ctx env (Raw.RVar x) n s with lookupEnv x env
-... | just t  = just (t , n , s)
-... | nothing = liftName (lookupName ctx x n) s
-pInfer ctx env (Raw.RResolved cn) n s =
-  liftName (lookupName ctx (showCanonical cn) n) s
-pInfer ctx env (Raw.RApp (Raw.RApp (Raw.RVar "compose") f) g) n s =
-  pInfer ctx env f n s >>=R λ { (tf , n₁ , s₁) →
-  pInfer ctx env g n₁ s₁ >>=R λ { (tg , n₂ , s₂) →
-  composeFinish tf tg n₂ s₂ } }
-pInfer ctx env (Raw.RApp f x) n s =
-  pInfer ctx env f n s >>=R λ { (tf , n₁ , s₁) →
-  pInfer ctx env x n₁ s₁ >>=R λ { (tx , n₂ , s₂) →
-  appFinish tf tx n₂ s₂ } }
-pInfer ctx env (Raw.RLam x body) n s =
-  pInfer ctx ((x , PTVar (mv n)) ∷ env) body (suc n) s >>=R λ { (tb , n₁ , s₁) →
-  just ((PTVar (mv n) P⇒[ Many ] tb) , n₁ , s₁) }
-pInfer ctx env (Raw.RLet x e₁ e₂) n s =
-  pInfer ctx env e₁ n s >>=R λ { (t₁ , n₁ , s₁) →
-  pInfer ctx ((x , t₁) ∷ env) e₂ n₁ s₁ }
-pInfer ctx env (Raw.RPair a b) n s =
-  pInfer ctx env a n s >>=R λ { (ta , n₁ , s₁) →
-  pInfer ctx env b n₁ s₁ >>=R λ { (tb , n₂ , s₂) →
-  just ((ta P* tb) , n₂ , s₂) } }
-pInfer ctx env (Raw.RDestruct e x e₁ y e₂) n s =
-  pInfer ctx env e n s >>=R λ { (te , n₁ , s₁) →
-  destructFinish te n₁ s₁ }
-  where
-  destructFinish : PolyType → ℕ → PSubst → Result
-  destructFinish te n₁ s₁
+-- pInfer/destructFinish are a top-level mutual pair (NOT a where) so
+-- the canon-invariance proof (CanonPrincipal) can reason about
+-- destructFinish as a first-class function.
+mutual
+  pInfer : Imports → SchemaCtx → Env → RawExpr → ℕ → PSubst → Result
+  pInfer imps sch env (Raw.RVar x) n s with lookupEnv x env
+  ... | just t  = just (t , n , s)
+  ... | nothing = liftName (lookupName imps sch x n) s
+  pInfer imps sch env (Raw.RResolved cn) n s =
+    liftName (lookupName imps sch (showCanonical cn) n) s
+  pInfer imps sch env (Raw.RApp f x) n s = pInferApp imps sch env f x n s
+  pInfer imps sch env (Raw.RLam x body) n s =
+    pInfer imps sch ((x , PTVar (mv n)) ∷ env) body (suc n) s >>=R λ { (tb , n₁ , s₁) →
+    just ((PTVar (mv n) P⇒[ Many ] tb) , n₁ , s₁) }
+  pInfer imps sch env (Raw.RLet x e₁ e₂) n s =
+    pInfer imps sch env e₁ n s >>=R λ { (t₁ , n₁ , s₁) →
+    pInfer imps sch ((x , t₁) ∷ env) e₂ n₁ s₁ }
+  pInfer imps sch env (Raw.RPair a b) n s =
+    pInfer imps sch env a n s >>=R λ { (ta , n₁ , s₁) →
+    pInfer imps sch env b n₁ s₁ >>=R λ { (tb , n₂ , s₂) →
+    just ((ta P* tb) , n₂ , s₂) } }
+  pInfer imps sch env (Raw.RDestruct e x e₁ y e₂) n s =
+    pInfer imps sch env e n s >>=R λ { (te , n₁ , s₁) →
+    destructFinish imps sch env x e₁ y e₂ te n₁ s₁ }
+  pInfer imps sch env Raw.RUnit n s = just (PUnit , n , s)
+  pInfer imps sch env (Raw.RInt _) n s = just (PInt , n , s)
+  pInfer imps sch env (Raw.RStringLit _) n s = just (PStr , n , s)
+  pInfer imps sch env (Raw.RAnnot e T) n s with typeToPoly T
+  ... | nothing = nothing
+  ... | just tT =
+        pInfer imps sch env e n s >>=R λ { (te , n₁ , s₁) →
+        retTy tT n₁ (unify fuelD s₁ te tT) }
+  pInfer imps sch env (Raw.RBinOp op a b) n s =
+    pInfer imps sch env a n s >>=R λ { (ta , n₁ , s₁) →
+    retTy PInt n₁ (unify fuelD s₁ ta PInt) >>=R λ { (_ , _ , s₂) →
+    pInfer imps sch env b n₁ s₂ >>=R λ { (tb , n₂ , s₃) →
+    retTy (if isComparisonOp op then (PUnit P+ PUnit) else PInt) n₂
+          (unify fuelD s₃ tb PInt) } } }
+  pInfer imps sch env (Raw.RUnaryOp _ a) n s =
+    pInfer imps sch env a n s >>=R λ { (ta , n₁ , s₁) →
+    retTy PInt n₁ (unify fuelD s₁ ta PInt) }
+  -- Not covered in v1 (signature required): qualified-unresolved refs,
+  -- cata/In/ana (functor metavariables).
+  pInfer _ _ _ _ _ _ = nothing
+
+  -- | Application dispatch. `compose f g` is grade-polymorphic, so it
+  -- is special-cased — via an explicit `≟` on the head name (NOT a
+  -- string-literal pattern), so proofs can case on abstract head names
+  -- (the literal-pattern-opacity fix, same as `classifyAppHeadView`).
+  pInferApp : Imports → SchemaCtx → Env → RawExpr → RawExpr → ℕ → PSubst → Result
+  pInferApp imps sch env f@(Raw.RApp (Raw.RVar y) f') g n s =
+    pInferAppB imps sch env f f' g n s (isYes (y ≟ "compose"))
+  pInferApp imps sch env f x n s = pAppGen imps sch env f x n s
+
+  -- | Bool-dispatched continuation of `pInferApp` (with-free so the
+  -- termination checker sees only pattern variables, and proofs can
+  -- case on the Bool). `f` is the WHOLE head, `f'` compose's first arm.
+  pInferAppB : Imports → SchemaCtx → Env → RawExpr → RawExpr → RawExpr → ℕ → PSubst
+             → Bool → Result
+  pInferAppB imps sch env f f' g n s true =
+    pInfer imps sch env f' n s >>=R λ { (tf , n₁ , s₁) →
+    pInfer imps sch env g n₁ s₁ >>=R λ { (tg , n₂ , s₂) →
+    composeFinish tf tg n₂ s₂ } }
+  pInferAppB imps sch env f f' g n s false = pAppGen imps sch env f g n s
+
+  pAppGen : Imports → SchemaCtx → Env → RawExpr → RawExpr → ℕ → PSubst → Result
+  pAppGen imps sch env f x n s =
+    pInfer imps sch env f n s >>=R λ { (tf , n₁ , s₁) →
+    pInfer imps sch env x n₁ s₁ >>=R λ { (tx , n₂ , s₂) →
+    appFinish tf tx n₂ s₂ } }
+
+  destructFinish : Imports → SchemaCtx → Env → String → RawExpr → String → RawExpr
+                 → PolyType → ℕ → PSubst → Result
+  destructFinish imps sch env x e₁ y e₂ te n₁ s₁
     with unify fuelD s₁ te (PTVar (mv n₁) P+ PTVar (mv (suc n₁)))
   ... | nothing = nothing
   ... | just s₂ =
-        pInfer ctx ((x , PTVar (mv n₁)) ∷ env) e₁ (suc (suc n₁)) s₂ >>=R
+        pInfer imps sch ((x , PTVar (mv n₁)) ∷ env) e₁ (suc (suc n₁)) s₂ >>=R
           λ { (t₁ , n₂ , s₃) →
-        pInfer ctx ((y , PTVar (mv (suc n₁))) ∷ env) e₂ n₂ s₃ >>=R
+        pInfer imps sch ((y , PTVar (mv (suc n₁))) ∷ env) e₂ n₂ s₃ >>=R
           λ { (t₂ , n₃ , s₄) →
         retTy t₁ n₃ (unify fuelD s₄ t₁ t₂) } }
-pInfer ctx env Raw.RUnit n s = just (PUnit , n , s)
-pInfer ctx env (Raw.RInt _) n s = just (PInt , n , s)
-pInfer ctx env (Raw.RStringLit _) n s = just (PStr , n , s)
-pInfer ctx env (Raw.RAnnot e T) n s with typeToPoly T
-... | nothing = nothing
-... | just tT =
-      pInfer ctx env e n s >>=R λ { (te , n₁ , s₁) →
-      retTy tT n₁ (unify fuelD s₁ te tT) }
-pInfer ctx env (Raw.RBinOp op a b) n s =
-  pInfer ctx env a n s >>=R λ { (ta , n₁ , s₁) →
-  retTy PInt n₁ (unify fuelD s₁ ta PInt) >>=R λ { (_ , _ , s₂) →
-  pInfer ctx env b n₁ s₂ >>=R λ { (tb , n₂ , s₃) →
-  retTy (if isComparisonOp op then (PUnit P+ PUnit) else PInt) n₂
-        (unify fuelD s₃ tb PInt) } } }
-pInfer ctx env (Raw.RUnaryOp _ a) n s =
-  pInfer ctx env a n s >>=R λ { (ta , n₁ , s₁) →
-  retTy PInt n₁ (unify fuelD s₁ ta PInt) }
--- Not covered in v1 (signature required): qualified-unresolved refs,
--- cata/In/ana (functor metavariables).
-pInfer _ _ _ _ _ = nothing
 
 ------------------------------------------------------------------------
 -- Definition-boundary finalization
@@ -529,22 +575,31 @@ renameVars t = proj₁ (freshen' t 0 [])
           (G' , k₂ , acc₂) = freshenF' G k₁ acc₁
       in F' P⊗ G' , k₂ , acc₂
 
+-- | Ground-or-schema split of a zonked type (top-level, expr-free —
+-- the canon-invariance proof needs `principal` to be a composition of
+-- expr-independent finalizers around `pInfer`).
+groundOr : PolyType → Maybe (Type ⊎ PolyType)
+groundOr t' with isGround t'
+... | inj₁ g = just (inj₁ (extractGround t' g))
+... | inj₂ _ = just (inj₂ (renameVars t'))
+
+finishP : Result → Maybe (Type ⊎ PolyType)
+finishP nothing = nothing
+finishP (just (t , _ , s)) = groundOr (zonk fuelD s t)
+
 -- | THE oracle. `inj₁` = the body's principal type is ground; `inj₂` =
 -- it is a proper schema (generalize at the def boundary — route to the
 -- telescope). `nothing` = no type found (genuinely untypeable, or a v1
 -- coverage gap): ask for a signature.
 principal : NamedCtx → RawExpr → Maybe (Type ⊎ PolyType)
-principal ctx e with pInfer ctx [] e 0 []
-... | nothing = nothing
-... | just (t , _ , s) = finish (zonk fuelD s t)
-  where
-  finish : PolyType → Maybe (Type ⊎ PolyType)
-  finish t' with isGround t'
-  ... | inj₁ g = just (inj₁ (extractGround t' g))
-  ... | inj₂ _ = just (inj₂ (renameVars t'))
+principal ctx e =
+  finishP (pInfer (NamedCtx.imports ctx) (projSchemas (NamedCtx.polys ctx))
+             [] e 0 [])
+
+pgProj : Maybe (Type ⊎ PolyType) → Maybe Type
+pgProj (just (inj₁ T)) = just T
+pgProj _ = nothing
 
 -- | Ground-only projection (the M2 wiring point).
 principalGround : NamedCtx → RawExpr → Maybe Type
-principalGround ctx e with principal ctx e
-... | just (inj₁ T) = just T
-... | _ = nothing
+principalGround ctx e = pgProj (principal ctx e)
