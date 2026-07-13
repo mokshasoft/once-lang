@@ -211,7 +211,7 @@ d_'10214'_'10215'IR_56 v0
                   (coe
                      MAlonzo.Code.Once.Denotation.TraceMonad.du_projTrace_62
                      (coe
-                        MAlonzo.Code.Once.Denotation.DenotTrace.d_eval'7472'_52
+                        MAlonzo.Code.Once.Denotation.DenotTrace.d_eval'7472'_10
                         (coe MAlonzo.Code.Once.Type.C_Unit_122)
                         (coe MAlonzo.Code.Once.Type.C_Unit_122) (coe v1)
                         (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8))

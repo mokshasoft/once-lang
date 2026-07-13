@@ -423,7 +423,7 @@ du_bridge'45'm_546 v0 v1 v2 v3 v4 v5
                                       (coe
                                          MAlonzo.Code.Once.Denotation.TraceMonad.du_valueT_70
                                          (coe
-                                            MAlonzo.Code.Once.Denotation.DenotTrace.d_eval'7472'_52
+                                            MAlonzo.Code.Once.Denotation.DenotTrace.d_eval'7472'_10
                                             (coe v1) (coe v10)
                                             (coe
                                                MAlonzo.Code.Once.Denotation.Realize.du_realize'45'morph_66

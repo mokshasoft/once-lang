@@ -143,3 +143,36 @@ du_emit'45'D_128 v0 v1 v2
                    (coe v2))
                 (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
          _ -> MAlonzo.RTE.mazUnreachableError)
+-- Once.Denotation.ValueDomain.coerce-functor⁻¹-D
+d_coerce'45'functor'8315''185''45'D_154 ::
+  MAlonzo.Code.Once.Type.T_Functor_110 ->
+  MAlonzo.Code.Once.Type.T_Type_112 -> AgdaAny -> AgdaAny
+d_coerce'45'functor'8315''185''45'D_154 v0 ~v1 v2
+  = du_coerce'45'functor'8315''185''45'D_154 v0 v2
+du_coerce'45'functor'8315''185''45'D_154 ::
+  MAlonzo.Code.Once.Type.T_Functor_110 -> AgdaAny -> AgdaAny
+du_coerce'45'functor'8315''185''45'D_154 v0 v1
+  = case coe v0 of
+      MAlonzo.Code.Once.Type.C_K_114 v2
+        -> coe d_inject_30 (coe v2) (coe v1)
+      MAlonzo.Code.Once.Type.C_Id_116 -> coe v1
+      MAlonzo.Code.Once.Type.C__'8853'__118 v2 v3
+        -> case coe v1 of
+             MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v4
+               -> coe
+                    MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38
+                    (coe du_coerce'45'functor'8315''185''45'D_154 (coe v2) (coe v4))
+             MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v4
+               -> coe
+                    MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42
+                    (coe du_coerce'45'functor'8315''185''45'D_154 (coe v3) (coe v4))
+             _ -> MAlonzo.RTE.mazUnreachableError
+      MAlonzo.Code.Once.Type.C__'8855'__120 v2 v3
+        -> case coe v1 of
+             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v4 v5
+               -> coe
+                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                    (coe du_coerce'45'functor'8315''185''45'D_154 (coe v2) (coe v4))
+                    (coe du_coerce'45'functor'8315''185''45'D_154 (coe v3) (coe v5))
+             _ -> MAlonzo.RTE.mazUnreachableError
+      _ -> MAlonzo.RTE.mazUnreachableError

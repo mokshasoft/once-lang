@@ -27,7 +27,6 @@ import qualified MAlonzo.Code.Data.String.Base
 import qualified MAlonzo.Code.Data.Sum.Base
 import qualified MAlonzo.Code.Once.Arith.SigOp.Builders
 import qualified MAlonzo.Code.Once.CanonicalName
-import qualified MAlonzo.Code.Once.Denotation.DenotTrace
 import qualified MAlonzo.Code.Once.Denotation.TraceDenote
 import qualified MAlonzo.Code.Once.Denotation.TraceMonad
 import qualified MAlonzo.Code.Once.Denotation.ValueDomain
@@ -82,7 +81,7 @@ du_z_26 ::
   MAlonzo.Code.Once.Type.T_Functor_110 -> AgdaAny -> AgdaAny
 du_z_26 v0 v1
   = coe
-      MAlonzo.Code.Once.Denotation.DenotTrace.du_coerce'45'functor'8315''185''45'D_10
+      MAlonzo.Code.Once.Denotation.ValueDomain.du_coerce'45'functor'8315''185''45'D_154
       (coe v0)
       (coe
          MAlonzo.Code.Once.Semantics.Value.du_sem'45'fmap_418 (coe v0)

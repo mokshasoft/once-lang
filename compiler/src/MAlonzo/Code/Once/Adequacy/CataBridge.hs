@@ -117,7 +117,7 @@ du_cata'45'bridge_64 v0 v1 v2 v3 v4 v5 v6 v7
                     (coe
                        v3
                        (coe
-                          MAlonzo.Code.Once.Denotation.DenotTrace.du_coerce'45'functor'8315''185''45'D_10
+                          MAlonzo.Code.Once.Denotation.ValueDomain.du_coerce'45'functor'8315''185''45'D_154
                           (coe v0)
                           (coe
                              MAlonzo.Code.Once.Semantics.Value.du_sem'45'fmap_418 (coe v0)
@@ -149,11 +149,11 @@ du_cata'45'bridge_64 v0 v1 v2 v3 v4 v5 v6 v7
                  (coe
                     MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                     (coe
-                       MAlonzo.Code.Once.Denotation.DenotTrace.d_eval'7472'_52
+                       MAlonzo.Code.Once.Denotation.DenotTrace.d_eval'7472'_10
                        (MAlonzo.Code.Once.Type.d_'10214'_'10215'T_166 (coe v0) (coe v1))
                        v1 v4
                        (coe
-                          MAlonzo.Code.Once.Denotation.DenotTrace.du_coerce'45'functor'8315''185''45'D_10
+                          MAlonzo.Code.Once.Denotation.ValueDomain.du_coerce'45'functor'8315''185''45'D_154
                           (coe v0)
                           (coe
                              MAlonzo.Code.Once.Semantics.Value.du_sem'45'fmap_418 (coe v0)
@@ -165,7 +165,7 @@ du_cata'45'bridge_64 v0 v1 v2 v3 v4 v5 v6 v7
               (coe
                  MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                  (coe
-                    MAlonzo.Code.Once.Denotation.DenotTrace.d_cata'45'ev'45'alg'7472'_64
+                    MAlonzo.Code.Once.Denotation.DenotTrace.d_cata'45'ev'45'alg'7472'_22
                     (coe v0) (coe v1) (coe v7) (coe v4)
                     (coe
                        MAlonzo.Code.Once.Semantics.Value.du_coerce'45'μ'45'out_788
@@ -314,7 +314,7 @@ du_algR'45'full_158 v0 v1 v2 v3 v4 v5 v6
          (coe
             v2
             (coe
-               MAlonzo.Code.Once.Denotation.DenotTrace.du_coerce'45'functor'8315''185''45'D_10
+               MAlonzo.Code.Once.Denotation.ValueDomain.du_coerce'45'functor'8315''185''45'D_154
                (coe v0)
                (coe
                   MAlonzo.Code.Once.Semantics.Value.du_sem'45'fmap_418 (coe v0)
@@ -323,7 +323,7 @@ du_algR'45'full_158 v0 v1 v2 v3 v4 v5 v6
                      MAlonzo.Code.Once.Semantics.Value.du_coerce'45'μ'45'out_788
                      (coe v0) (coe v1) (coe v4))))
             (coe
-               MAlonzo.Code.Once.Denotation.DenotTrace.du_coerce'45'functor'8315''185''45'D_10
+               MAlonzo.Code.Once.Denotation.ValueDomain.du_coerce'45'functor'8315''185''45'D_154
                (coe v0)
                (coe
                   MAlonzo.Code.Once.Semantics.Value.du_sem'45'fmap_418 (coe v0)
