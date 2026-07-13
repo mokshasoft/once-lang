@@ -26,7 +26,7 @@
 {-# OPTIONS --safe #-}
 module poc.OCP0009.NbEPUnivH where
 
-open import normalizer.Syntax.Types using ( ⊤; tt )
+open import normalizer.Syntax.Types using ( ⊤; tt; ⊥ )
 
 data ℕ : Set where
   zero : ℕ
@@ -41,10 +41,11 @@ data _≡₁_ {A : Set₁} (x : A) : A → Set₁ where
 
 mutual
   data U₀ : Set where
-    `nat₀ `unit₀ : U₀
+    `⊥₀ `nat₀ `unit₀ : U₀
     `Π₀ : (a : U₀) → (El₀ a → U₀) → U₀
 
   El₀ : U₀ → Set
+  El₀ `⊥₀       = ⊥
   El₀ `nat₀     = ℕ
   El₀ `unit₀    = ⊤
   El₀ (`Π₀ a b) = (x : El₀ a) → El₀ (b x)
@@ -59,12 +60,13 @@ mutual
   data U₁ : Set where
     `U₀   : U₁                       -- the small universe, as a large type
     `⇑    : U₀ → U₁                  -- cumulative lift of a small code
-    `nat₁ `unit₁ : U₁
+    `⊥₁ `nat₁ `unit₁ : U₁
     `Π₁ : (a : U₁) → (El₁ a → U₁) → U₁
 
   El₁ : U₁ → Set
   El₁ `U₀       = U₀                 -- decode the small-universe code to `U₀`
   El₁ (`⇑ a)    = El₀ a             -- cumulativity: lifting preserves meaning
+  El₁ `⊥₁       = ⊥
   El₁ `nat₁     = ℕ
   El₁ `unit₁    = ⊤
   El₁ (`Π₁ a b) = (x : El₁ a) → El₁ (b x)

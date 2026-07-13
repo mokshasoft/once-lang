@@ -267,6 +267,31 @@ draws the consistency line **mechanically**: everything load-bearing is
 certified escape-hatch-free; the one remaining trusted assertion (`funext`) is
 confined to legacy modules kept for the historical record.
 
+### The consistency ladder (`NbEPCon0/1/2`, added 2026-07-13)
+
+Gödel II says no sufficiently expressive system proves its own `Con` — but each
+rung's `Con` can be a theorem *one level up*. The POC now demonstrates this
+ladder explicitly, all `--safe` (so each is a theorem of Agda):
+
+- **`NbEPCon0`** — rung 0 (CCC IR + fragment `Tm`): `¬ Term Unit Void`,
+  `¬ Tm Unit Void`, and model-separation of `inl`/`inr`. These rungs are *below*
+  the Gödel threshold (no internal propositions), so their consistency is
+  provable outright — one-liners through the `--safe` Set-model.
+- **`NbEPCon1`** — rung 1 (graded QTT calculus): `∀ ρ → ¬ (∅ ⊢[ρ] ι)` — the
+  free calculus proves nothing about an abstract base type (elaborate `ι ↦ Void`,
+  evaluate). Still sub-Gödel: grading is a resource discipline, not strength.
+- **`NbEPCon2`** — the universe rungs: (A) the first-order `Code` universe
+  cannot even *express* falsity (every code decodes to an inhabited type) — the
+  expressibility/Gödel trade-off made concrete; (B) **the internal ladder**: the
+  statement `` `Con₀ `` = "no uniform inhabitant of all small types" is a
+  *`U₁`-code* — expressible only one level up (there is deliberately no
+  `` `U₀ : U₀ ``) — and is proven at level 1 (`con₀ f = f `⊥₀`). Each level can
+  state and prove the non-degeneracy of the level below; none can for itself.
+- **The top** — `Con(full tower)` is a theorem of Agda `--safe` (every model in
+  this POC *is* such a proof) and — per Gödel — of nothing weaker. See §"Path
+  from very likely to machine-checked" and plan §8 for the Once-in-Once moral:
+  "Once+" is the same tower one universe level up, not a different language.
+
 ### Verdict
 
 - **The design is very likely consistent.** Every construction is a standard,

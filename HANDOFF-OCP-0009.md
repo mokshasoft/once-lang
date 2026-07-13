@@ -6,19 +6,28 @@
 
 ## TL;DR of state
 
-- **38 modules, all green.** The full expressibility tower is built and
+- **41 modules, all green** (32 of them `--safe`). The full expressibility tower is built and
   machine-checked: decidable conversion (NbE) → CwF/dependent layer → `Id`+`J` →
   **QTT** (semiring + graded judgment + IR elaboration) → **OTT** (funext-by-def,
   proof-irrelevance, `Eq`/`coe`, μ, quotients, bisim-at-ν) → **IR universe**
   (+ hardened decidable eq + hierarchy `U₀⊂U₁`) → **native indexed inductives** →
   **coinduction** (guarded) → **summit** (verified compiler in-theory).
 - **Every §5-table row is now demonstrated** (see `plans/…-poc.md` §5).
-- **The `--safe` campaign is COMPLETE (2026-07-13): 29 of 38 modules compile
-  under `--safe`** — the entire principled NbE core + adequacy + CwF + `Id` +
-  QTT + OTT + IR + indexed + coinduction + summit. Zero `TERMINATING`, zero
-  `NO_POSITIVITY_CHECK` anywhere. The 9 non-safe modules are exactly the
-  superseded older conversion track, tainted by `Complete`'s `funext` postulate
-  (kept as historical record; nothing load-bearing imports them).
+- **The `--safe` campaign is COMPLETE (2026-07-13)** — the entire principled
+  NbE core + adequacy + CwF + `Id` + QTT + OTT + IR + indexed + coinduction +
+  summit. Zero `TERMINATING`, zero `NO_POSITIVITY_CHECK` anywhere. The 9
+  non-safe modules are exactly the superseded older conversion track, tainted
+  by `Complete`'s `funext` postulate (kept as historical record; nothing
+  load-bearing imports them).
+- **The consistency ladder is BUILT (2026-07-13, plan §8):** `NbEPCon0`
+  (`¬ Term Unit Void` + non-degeneracy, via the `--safe` Set-model),
+  `NbEPCon1` (graded QTT calculus proves nothing about an abstract base:
+  elaborate `ι ↦ Void`), `NbEPCon2` (the first-order `Code` universe cannot
+  even express falsity; and the internal Gödel ladder at `NbEPUnivH`'s
+  `U₀ ⊂ U₁` — `` `Con₀ `` statable and provable only at level 1). All three
+  `--safe`. `NbEPUnivH` gained empty codes `` `⊥₀ ``/`` `⊥₁ ``. See the
+  consistency ledger's "The consistency ladder" section and plan §8 (incl. the
+  Once-in-Once moral: "Once+" = same tower, one universe level up).
 - **Docs are current:** `plans/ocp-0009-decidable-conversion-poc.md` (module map §1,
   reframing §6, OCP-0006 relationship §7), `docs/proposals/OCP-0009-…md`
   (Rung status notes + "Consistency & the trust story" section + systems table),
