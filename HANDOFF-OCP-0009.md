@@ -6,7 +6,7 @@
 
 ## TL;DR of state
 
-- **48 modules, all green** (39 of them `--safe`). The full expressibility tower is built and
+- **49 modules, all green** (40 of them `--safe`). The full expressibility tower is built and
   machine-checked: decidable conversion (NbE) → CwF/dependent layer → `Id`+`J` →
   **QTT** (semiring + graded judgment + IR elaboration) → **OTT** (funext-by-def,
   proof-irrelevance, `Eq`/`coe`, μ, quotients, bisim-at-ν) → **IR universe**
