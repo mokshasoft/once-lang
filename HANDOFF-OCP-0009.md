@@ -24,7 +24,8 @@
 Goal: strengthen the consistency guarantee by compiling under `--safe` (which
 rejects every unsafe escape hatch: `TERMINATING`, `NO_POSITIVITY_CHECK`,
 `type-in-type`, meaning-affecting postulates). A `--safe` module may only import
-`--safe` modules. Doing steps **1 → 2 → 3 in order** (user's plan).
+`--safe` modules. Doing steps **1 → 2 → 3 in order** (user's plan). Steps 1 and 2
+are done; **step 3 is what remains.**
 
 ### Step 1 — DONE (commits `d00790ee`, `06c88010`)
 - Flipped the 10 standalone tower modules to `--safe` (they never touch the NbE
@@ -34,25 +35,28 @@ rejects every unsafe escape hatch: `TERMINATING`, `NO_POSITIVITY_CHECK`,
   (`NbEP` re-exports it publicly → all downstream imports unchanged). This let the
   QTT stack go `--safe`: **`NbEPTm`, `NbEPQTT`, `NbEPQTTJ`** are now `--safe`; the
   one `nf`-tied theorem was split into **`NbEPQTTErase`** (stays non-safe).
-- **Currently `--safe` (14):** `Conv`, `NbEPTm`, `NbEPUniv`, `NbEPUnivDec`,
-  `NbEPUnivH`, `NbEPIndexed`, `NbEPOTT`, `NbEPOTTQ`, `NbEPOTTMu`, `NbEPOTTCoind`,
-  `NbEPCoind`, `NbEPSummit`, `NbEPQTT`, `NbEPQTTJ`.
+- **Currently `--safe` (16):** `Conv`, `NbEK`, `NbEKF`, `NbEPTm`, `NbEPUniv`,
+  `NbEPUnivDec`, `NbEPUnivH`, `NbEPIndexed`, `NbEPOTT`, `NbEPOTTQ`, `NbEPOTTMu`,
+  `NbEPOTTCoind`, `NbEPCoind`, `NbEPSummit`, `NbEPQTT`, `NbEPQTTJ`.
 - **Modules with REAL unsafe pragmas** (the blockers): `NbEP`, `NbEPComplete`,
   `NbEPFund`, `NbEPNormal`, `NbEPNat`, `NbE`, `Complete` (all `TERMINATING` on
-  `eval`/`nf`-style recursion) and **`NbEKF`** (also `NO_POSITIVITY_CHECK`).
+  `eval`/`nf`-style recursion).
   (`NbEPTm`/`NbEPQTTErase` only MENTION "TERMINATING" in comments — they're clean.)
 
-### Step 2 — TODO: the one `NO_POSITIVITY_CHECK` (in `NbEKF`)
-- `NbEKF.agda` is the Kripke `⇒` function space for `{Unit,×,⇒}`. It uses
-  `{-# NO_POSITIVITY_CHECK #-}` on the Kripke closure domain (a `Val` case that
-  stores a function into `Val`, which is non-strictly-positive as written).
-- **Fix:** defunctionalize the closure — replace the "semantic function" field
-  with a first-order DATA representation of closures (an env + a code), the
-  standard NbE-closure trick, so the datatype becomes strictly positive and the
-  pragma can be removed. (Same spirit as `NbEPUnivDec` defunctionalizing the IR
-  universe.) Then drop the pragma and confirm `--safe` builds.
-- Scope: `NbEKF` is somewhat standalone (Kripke `⇒`); check who imports it — it is
-  NOT on the main dependent-types path, so this is a contained fix.
+### Step 2 — DONE (2026-07-13): `NO_POSITIVITY_CHECK` discharged, `NbEKF` is `--safe`
+- The handoff plan suggested defunctionalizing the Kripke closure into a code+env
+  datatype; the fix that landed is strictly better: `Val` is now defined by
+  **recursion on the type** (Tarski-style presheaf semantics),
+  `Val A (X ⇒ Y) = ∀ {A'} → A' ≼ A → Val A' X → Val A' Y` as a `Set`-valued
+  function. No datatype → no positivity question at all — and unlike
+  defunctionalization (which would route `vapp` back through `eval`), `eval`
+  became structurally recursive on `Tm` and reflect/reify on the type, so the
+  `TERMINATING` pragma fell away too. `Ne` stays a first-order, strictly positive
+  datatype (`nApp` stores an already-reified `C.Term`).
+- `NbEK` (the presheaf foundation `NbEKF` imports) was already pragma-free; it
+  just got the `--safe` flag. Both β/η examples in `NbEKF` still hold by `refl`.
+- **`NO_POSITIVITY_CHECK` no longer occurs anywhere in the POC.** The only
+  remaining escape hatch, everywhere, is `TERMINATING` (step 3's target).
 
 ### Step 3 — TODO (THE PRIZE): discharge the `TERMINATING` pragmas on `eval`/`nf`
 - The `TERMINATING` pragma sits on the mutual `eval/vcase/vcata/mapCata/nf` block

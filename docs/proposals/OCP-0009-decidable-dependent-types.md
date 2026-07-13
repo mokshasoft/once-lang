@@ -554,7 +554,9 @@ so not a conversion). So `_≋_` is *not* the NbE target on open terms; the deci
 definitional subset is — which also shows why full "prove Once in Once" needs the
 propositional layer (`Id`/`J`, Rung 3), not conversion alone.
 
-**The NbE engine — sound core (`NbE.agda`, `--safe`, postulate-free).** A
+**The NbE engine — sound core (`NbE.agda`, postulate-free; `TERMINATING` on the
+`eval`/`cata` mutual block — see the escape inventory in the plan / consistency
+ledger).** A
 residualizing reify/reflect (`nf : Term A B → Term A B`) with **neutrals** that
 normalizes *open* terms and decides open-term definitional conversion for the
 `{Unit, ×, +}` fragment — product β/η and coproduct β, with the source variable
