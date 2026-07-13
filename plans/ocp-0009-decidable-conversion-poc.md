@@ -19,7 +19,7 @@ separate IR→IR consumer over `normalizer.Syntax.CCC`.
 The **conversion problem** — decidable equality, the heart of OCP-0009 — is
 **solved and machine-checked for the fragment**. The principled NbE decides the
 β-theory + every congruence + **product-η**, open terms included, **funext-free**.
-All 36 `poc/OCP0009/*.agda` modules build green
+All 41 `poc/OCP0009/*.agda` modules build green
 (`bootstrap/check.sh poc/OCP0009/<M>.agda` → EXIT 0), including `NbEPCwF` (CwF /
 dependent layer, Rung 2), `NbEPEl` (Tarski decoder + base CwF), `NbEPId`
 (identity type `Id` + `J`, Rung 3), `NbEPQTT` (QTT: multiplicity semiring +
@@ -234,6 +234,19 @@ OCP-0009 contribution and it shares the OCP-0004 normalizer discipline.
 - **NO_POSITIVITY_CHECK** — none left (discharged 2026-07-13: `NbEKF`'s Kripke
   closure domain is now defined by recursion on the type instead of as an
   inductive datatype, which also removed its `TERMINATING` — `NbEKF` is `--safe`).
+
+**Consistency ladder (Gödel II made concrete — see §8):**
+- `NbEPCon0` — rung 0: `¬ Term Unit Void` and `¬ Tm Unit Void` via the `--safe`
+  Set-model (`normalizer.Testing.Evaluator`), + model-separation of `inl`/`inr`
+  (non-degeneracy). One-liners; sub-Gödel, so consistency is free.
+- `NbEPCon1` — rung 1: the graded QTT calculus proves nothing about an abstract
+  base type: `∀ ρ → ¬ (∅ ⊢[ρ] ι)`, by a second elaboration `ι ↦ Void` composed
+  with the Set-model. `NbEPQTTJ` untouched.
+- `NbEPCon2` — the universe rungs: (A) the first-order `Code` universe cannot
+  even EXPRESS falsity (`point : ∀ c → ⟦El c⟧T`); (B) **the ladder**: `` `Con₀ ``
+  ("no uniform inhabitant of all small types") is a `U₁`-code — statable ONLY at
+  level 1, since no `` `U₀ : U₀ `` exists — and level 1 proves it
+  (`con₀ f = f `⊥₀`). `NbEPUnivH` gained empty codes `` `⊥₀ ``/`` `⊥₁ ``.
 
 ### The one key trick (don't re-derive it)
 The extensional-relation route to η **died** on `mapCata`-vs-projection commuting
@@ -551,3 +564,47 @@ itself is *ungraded*; grading lives at the surface). So:
   next increment. Park it with the OTT / universe-as-IR foundational work: if
   Once wants best-in-class *linearity* (README: "linear code needs no GC"), a
   graded/linear IR is the honest long-term expression — evaluate then, not now.
+
+---
+
+## 8. The consistency ladder (Gödel II, made concrete in the tower)
+
+**The problem.** Gödel's second incompleteness theorem: a consistent, recursively
+axiomatized system that interprets enough arithmetic (Robinson's Q to state it;
+the derivability conditions — PRA/Σ₁-strength — to prove it) cannot prove its own
+consistency. So `Con(system)` is never a theorem *of that system* — but it can be
+a theorem *one level up*. Consistency is not provable absolutely; it is
+**controlled** by an explicit ladder of relative-consistency theorems, each
+anchored in a strictly more expressive meta-level (Gentzen: PRA+ε₀ ⊢ Con(PA);
+type theory: MLTT with n+1 universes ⊢ Con(MLTT with n universes)).
+
+**Where our tower crosses the Gödel line.** The CCC fragment is *below* the
+threshold — it has no internal propositions, cannot even state `Con`, and its
+consistency is outright provable in the meta (`NbEPCon0`). Same for the simply
+typed graded calculus (`NbEPCon1`) and the first-order code universe, which
+cannot even express falsity (`NbEPCon2.point`). The line is crossed once a rung
+has `Void`-as-proposition + `Id` + `Nat` with *dependent elimination* (induction)
+— from there the rung interprets Heyting arithmetic and Gödel II applies: its
+`Con` must come from the rung above.
+
+**The ladder, demonstrated (all `--safe`):**
+
+| rung | module | statement | status |
+|---|---|---|---|
+| 0 · CCC IR + fragment `Tm` | `NbEPCon0` | `¬ Term Unit Void`, `¬ Tm Unit Void`, `inl ≇ inr` | proven (sub-Gödel: absolute rel. Agda) |
+| 1 · graded QTT calculus | `NbEPCon1` | `∀ ρ → ¬ (∅ ⊢[ρ] ι)` (free calculus proves nothing about a base) | proven (sub-Gödel) |
+| 2a · first-order `Code` universe | `NbEPCon2` (A) | every code inhabited — falsity inexpressible | proven (the expressibility/Gödel trade-off made visible) |
+| 2b · stratified `U₀ ⊂ U₁` | `NbEPCon2` (B) | `` `Con₀ : U₁ `` — "no uniform inhabitant of all small types", statable only at level 1, proven at level 1 | proven — **the internal Gödel ladder in miniature** |
+| top · full tower (IR universe etc.) | — | `Con(tower)` | a theorem of Agda `--safe` (every model we build IS the proof), never of the tower itself |
+
+**The moral for Once-in-Once.** Needing "Once+" to prove `Con(Once)` is not a
+deficiency of Once — Agda cannot prove `Con(Agda)` either; nothing honest can
+self-certify. The resolution is the ℕ-indexed universe hierarchy (§3.A's ∞-tower
+refinement): "Once+" is **the same language, one universe level up**. Level n+1
+states and proves `Con(level n)` (exactly the `NbEPCon2` pattern); a self-hosted
+Once compiler only ever *uses* finitely many levels, so full-Once proves the
+consistency of the fragment the compiler actually runs on. What remains forever
+external is `Con(full Once)` — anchored the same way Agda's is: a `--safe`-style
+discipline, models in an external system (Agda today; set models/ZFC behind it),
+and the standard proof-theoretic literature (Setzer's analyses for MLTT with
+universes; Dybjer–Setzer for IR).
