@@ -5110,3 +5110,104 @@ pass needed the *routing* and a missing *infer rule*:
 Post-change: `make certified` exit 0, re-extraction + capped cabal build clean,
 `tests/run-exit-tests.sh` **50 pass / 0 fail / 2 skip** (the 13 layer5 cata/closure regressions
 are green again).
+
+---
+
+## D072: Sig-less Definition Types via an Untrusted Principal-Type Oracle (Kernel Stays Bidirectional)
+
+**Date**: 2026-07-13
+**Status**: Accepted (design); implementation staged (Plan 0.58 D072 phase)
+**Completes**: D007 ("signatures are optional — the compiler can always infer the type")
+**Relates**: D063 (morphism realm), D071 (telescope references), the no-unification kernel
+discipline (`Classify.agda`: "the typing rule must be locally decidable in a no-unification
+bidirectional system")
+
+### Context
+
+D007 (2025-12-08) promises complete type inference: *"the expression alone determines the
+type"*, *"signatures are optional"* — and even works `foo = id` inferring `A -> A`. That promise
+is mathematically sound: Once's term language is first-order with fixed generator schemas, no
+higher-rank types, no type classes, and finite annotation lattices (purity, quantity) — exactly
+the hypotheses of Hindley's **principal type property**. Every typeable expression has a most
+general type, unique up to renaming, computable by first-order unification. (D007's rejection of
+signature specialization is only coherent *because* principal types exist.)
+
+The formal spec under-delivers on D007: the kernel judgment (`⊢ᵢ/⊢ᶜ/⊢ᵐ/⊢ᵍ`) is bidirectional and
+deliberately unification-free, so information flows only up (synthesis) or down (checking) the
+syntax tree. Any type determined only by a *system* of constraints spanning siblings — the
+`cod g = dom f` of a composition, a bare polymorphic name with no application, a sig-less lambda
+— is out of reach. Witnesses: the PENDING exit tests `infer-id.once` (`myId = id`) and
+`infer-compose.once` (`run = compose exit@S id`), and generally every sig-less def whose body is
+an introduction form. The classifier family (`composeMid`/`composeArgB`/`domainOfHead`) is a
+per-shape hand-computation of fragments of the most general unifier; the frontier never closes
+(per-shape witnesses aren't a theorem).
+
+### Options
+
+- **A — re-scope D007**: make "introduction-form defs require signatures" the official contract.
+  Retracts a mathematically valid documented promise to fit the proof technique. Rejected.
+- **B — untrusted principal-type oracle + verified kernel check**: the proof-assistant
+  architecture (Agda/Coq/Lean): an untrusted elaborator/unifier proposes, a small syntax-directed
+  kernel disposes. **Accepted.**
+- **C — keep accreting classifiers**: re-deriving Robinson's algorithm one syntax shape at a
+  time, three mirror proofs per shape, frontier never closes. Rejected as strategy (existing
+  classifiers stay — they serve check-mode rules).
+
+### Decision
+
+For **sig-less definitions only**, compute the body's principal type with an **oracle** — a
+fuel-bounded first-order unification (metavariables, occurs check) over the schema grammar, with
+generalization at the definition boundary — and then proceed exactly as if the user had written
+that type as a signature:
+
+- principal type **ground** → the existing `FunInfo` path: `resolveFunType`'s `nothing` branch
+  falls back to the oracle when `inferElab` fails; `compileFun` re-checks the body at the
+  oracle's answer with the verified `checkElab` (check-after-infer).
+- principal type **a schema** → the def routes to the telescope (`PolyFunInfo`) with the
+  computed schema, exactly like a signed poly def; uses instantiate through
+  `t-var-poly-instantiate(-infer)` as today.
+
+**The kernel judgment is unchanged**: no metavariables, no new rules, no new `Type` constructors.
+The oracle's output is **untrusted** — a wrong answer fails the kernel check and the program is
+rejected; nothing ill-typed can pass. Soundness of acceptance ("accepted ⇒ derivation ⇒
+meaning") is therefore preserved *by construction*, with zero growth of the trusted base.
+
+### The trust/proof structure
+
+- **Soundness**: free. `AllFunsTyped.tcons` keeps its two-premise shape — `resolveFunType ≡
+  inj₂ ty` (provenance now signature | inference | oracle) and `⊢ᶜ body ∶ ty` (from
+  `compileFun`'s verified check). `AcceptSound` does not care where `ty` came from.
+- **Completeness**: the genuinely new obligation, stated ONCE about the oracle — *if any type
+  (ground or schema, up to renaming) exists at which the body kernel-checks, the oracle returns
+  the principal one and the kernel check at it succeeds*. One theorem about one algorithm,
+  instead of a theorem per syntax shape. Staged: v1 ships with the oracle unverified (soundness
+  unconditional regardless); the completeness theorem is tracked as an explicit open obligation,
+  NOT hidden behind acceptance postulates.
+- **Failure = signature request**: since a correct oracle fails only on genuinely untypeable
+  bodies (unification clash), the error is principled; an incomplete v1 corner degrades to
+  "cannot infer — add a signature", never to unsoundness.
+
+### Design rules for the implementation
+
+1. **Fuel-bounded unification**: Agda totality via a fuel measure (problem size bound); fuel
+   exhaustion = inference failure (ask for a signature), never wrong output.
+2. **Canon-invariance by construction**: the oracle dispatches `RVar x` and `RResolved cn`
+   through the same `showCanonical`-keyed lookups (the `composeArgB-lookup` pattern) so the
+   canon transport proofs stay definitional.
+3. **Least-commitment annotations**: v1 emits `Many` quantities and infers purity structurally
+   (`PEff` where forced); the kernel check is the arbiter (t-subsume / q-ordering absorb slack).
+   Purity-polymorphic leftovers → failure (signature required) in v1.
+4. **Generalization only at the def boundary** (matching the telescope): leftover metas in a
+   def's principal type become schema `PTVar`s; no generalization inside terms (terms stay
+   simply typed — the kernel's ground-`Type` invariant is untouched).
+5. **OCP-9 continuity**: this is the kernel/elaborator split of the proof assistants; under
+   dependent types the oracle becomes partial (pattern unification) and the kernel keeps its
+   shape. Nothing built here is redone.
+
+### Consequences
+
+- `infer-id.once` and `infer-compose.once` flip (52-test suite); D007's contract becomes true.
+- New module `Once/TypeCheck/Principal.agda` (oracle; unverified v1); `inferType` fallback wiring
+  (`Compile.agda`); sig-less schema routing in `Parser`/`Resolve` + the 3 Canon mirror proofs.
+- Open obligation ledger gains: oracle completeness theorem (principality), replacing the
+  open-ended classifier frontier.
