@@ -6,7 +6,7 @@
 
 ## TL;DR of state
 
-- **43 modules, all green** (34 of them `--safe`). The full expressibility tower is built and
+- **46 modules, all green** (37 of them `--safe`). The full expressibility tower is built and
   machine-checked: decidable conversion (NbE) → CwF/dependent layer → `Id`+`J` →
   **QTT** (semiring + graded judgment + IR elaboration) → **OTT** (funext-by-def,
   proof-irrelevance, `Eq`/`coe`, μ, quotients, bisim-at-ν) → **IR universe**
@@ -27,8 +27,17 @@
   context makes the `𝟘`-strengthening lemma definitional; `⌊K⌋ ≡ curry snd ≡
   ⌊idₗ⌋`; erased-argument irrelevance on OPEN terms decided by `NbEPF.nf`).
   Both `--safe`. This closes `NbEPQTTJ`'s documented "Next" and §5's QTT row
-  end-to-end. **Remaining research gap: OTT internalization / proof-relevant
-  `Id` (plan §4.1) — plus optional II, ℕ-tower, IR-conversion-in-Once.**
+  end-to-end.
+- **The former §5 "honest gaps" are ALL CLOSED (2026-07-13):** `NbEPUnivT`
+  (ℕ-indexed universe tower via the universe-operator construction, + the
+  UNIFORM Gödel ladder `con : ∀ n → El (suc n) (`Con n)`), `NbEPII`
+  (induction-induction: intrinsic `Ctx`/`Ty` + standard model — the future
+  Spec/Kernel shape), `NbEPOTTU` (OTT INTERNALIZED: `` `eq `` as a universe
+  code with computed decoding; internal funext + proof-irrelevance
+  definitional; **the `Open.agda` residual `n+0=n` proven by induction as an
+  object-language `Id` inhabitant**). All three `--safe`. **Remaining depth
+  items: heterogeneous `coe`/`coh` for `NbEPOTTU` (dependent `Σ` codes),
+  conversion for the extended universes inside Once's own NbE.**
 - **The consistency ladder is BUILT (2026-07-13, plan §8):** `NbEPCon0`
   (`¬ Term Unit Void` + non-degeneracy, via the `--safe` Set-model),
   `NbEPCon1` (graded QTT calculus proves nothing about an abstract base:
