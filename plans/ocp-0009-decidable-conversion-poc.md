@@ -19,7 +19,7 @@ separate IR→IR consumer over `normalizer.Syntax.CCC`.
 The **conversion problem** — decidable equality, the heart of OCP-0009 — is
 **solved and machine-checked for the fragment**. The principled NbE decides the
 β-theory + every congruence + **product-η**, open terms included, **funext-free**.
-All 46 `poc/OCP0009/*.agda` modules build green
+All 47 `poc/OCP0009/*.agda` modules build green
 (`bootstrap/check.sh poc/OCP0009/<M>.agda` → EXIT 0), including `NbEPCwF` (CwF /
 dependent layer, Rung 2), `NbEPEl` (Tarski decoder + base CwF), `NbEPId`
 (identity type `Id` + `J`, Rung 3), `NbEPQTT` (QTT: multiplicity semiring +
@@ -317,6 +317,9 @@ exactly on this line.
   conservativity they add **no theorems** — pure ergonomics → **surface sugar**
   (elaborate to explicit η-proofs), NOT core conversion. Cost of leaving out =
   transport clutter in terms, which is the *right* price for a minimal TCB.
+  **The sugar's proof terms are BUILT (`NbEPEta`, 2026-07-13):** `sum-η-prop`/
+  `μ-η-prop` + composed forms, `--safe`, with the definitional-vs-propositional
+  demonstration pair.
 
 ### B. Large but KNOWN engineering (the real path forward)
 - **CwF / dependent layer — BASE CwF DONE (`NbEPCwF` + `NbEPEl`, Rung 2).**
@@ -386,8 +389,11 @@ CLOSED (`faithful`/`El-weld-nf`). Remaining next steps:
    `Code` normalizer, connect to `EvalFullCorrectness`.
 5. **IR/II** (§D) — the deliberate expressivity extension, `Code`↔`El` *mutual*.
    Leaves the small-core discipline by design; after base CwF is fully settled.
-6. **sum-η/μ-η as surface sugar** (NOT sheaf NbE) — the two positive-η laws to
-   explicit propositional proofs.
+6. **[DONE 2026-07-13] sum-η/μ-η as surface sugar** (NOT sheaf NbE) —
+   `NbEPEta`: the two positive-η laws as explicit propositional proofs of the
+   `--safe` Set-model (`sum-η-prop`, `μ-η-prop`, + the composed `∘ h` forms
+   the elaboration inserts), with the demonstration pair showing `nf`
+   deliberately NOT deciding the equation the proof closes.
 
 Both refinements are DONE (case/cata congruence + η-pair). The proposal doc
 `docs/proposals/OCP-0009-decidable-dependent-types.md` §6 records each milestone.
