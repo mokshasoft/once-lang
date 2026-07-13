@@ -484,3 +484,10 @@ principalGround-polys : ∀ (imps : Imports) (polys : PolyCtx)
 principalGround-polys imps polys b e =
   cong (λ sc → P.pgProj (P.finishP (P.pInfer imps sc [] e 0 [])))
     (projSchemas-canon b polys)
+
+-- The sig-less routing criterion (D072 M3) is canon-invariant — the
+-- empty-context instance of the invariance (no imports, no schemas).
+siglessSchema-canon : ∀ (b : List String) (e : RawExpr)
+  → P.siglessSchema (canonExpr b [] [] e) ≡ P.siglessSchema e
+siglessSchema-canon b e =
+  cong (λ r → P.pgSchema (P.finishP r)) (pInfer-canon-top [] [] b e)

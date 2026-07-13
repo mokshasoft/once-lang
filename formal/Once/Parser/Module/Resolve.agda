@@ -41,6 +41,8 @@ open import Relation.Nullary using (yes; no)
 open import Once.Parser.Module.Core
 open import Once.Type using (isGround; extractGround)
 open import Once.Functor.Decide using (isConcrete?)
+-- D072 M3: the oracle's sig-less schema criterion (shared with Parser).
+open import Once.TypeCheck.Principal using (siglessSchema)
 open import Once.CanonicalName using (CanonicalName; canonical)
 open import Once.TypeCheck.Raw
   using (RawExpr; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair;
@@ -181,19 +183,35 @@ elemStr x (y ∷ ys) with x ≟ y
 -- absent) → "unbound/unspecialized". So these names must stay bare `RVar` — they
 -- are threaded into `canonExpr`'s initial `bound`, kept by the SAME dispatch as
 -- local binders. See tests/poly-bare-ref.once.
-polyDefNames : List Decl → List String
-polyDefNames []                          = []
+-- D072 M3: `polyDefNames` now threads the same pending-signature state
+-- as `extractFunctions-go` so it can recognize SIG-LESS defs and apply
+-- the oracle's `siglessSchema` criterion to them — the keep-bare set
+-- and the FunInfo/PolyFunInfo routing must agree exactly.
+pdn-go : List Decl → Maybe String → List String
+pdn-go [] _ = []
 -- Plan 0.58 / D071: keep a def BARE (→ the poly telescope, δ-reduced to its
 -- body) unless it is ground AND concrete. A ground-but-non-concrete def (a cata
 -- at `μNat → Int`, …) is a context projection, not an FFI symbol, so it must
 -- NOT be canonicalized to `RResolved` (which would hit the concreteness gate).
 -- Uses the SAME nested `isGround`/`isConcrete?` split as `extractFunctions-go`.
-polyDefNames (DTypeSig name ty ∷ rest)   with isGround ty
-... | inj₂ _ = name ∷ polyDefNames rest                -- non-ground → keep bare
+pdn-go (DTypeSig name ty ∷ rest) _       with isGround ty
+... | inj₂ _ = name ∷ pdn-go rest (just name)          -- non-ground → keep bare
 ... | inj₁ g with isConcrete? (extractGround ty g)
-...   | just _  = polyDefNames rest                     -- ground + concrete → mono (resolved as usual)
-...   | nothing = name ∷ polyDefNames rest              -- ground + non-concrete → keep bare
-polyDefNames (_ ∷ rest)                  = polyDefNames rest
+...   | just _  = pdn-go rest (just name)               -- ground + concrete → mono (resolved as usual)
+...   | nothing = name ∷ pdn-go rest (just name)        -- ground + non-concrete → keep bare
+-- A DFunDef consumes (or drops, on name mismatch) the pending sig —
+-- mirroring `extractFunctions-go`. Sig-less + schema-shaped body
+-- (D072): keep bare (it routes to PolyFunInfo).
+pdn-go (DFunDef name alloc body ∷ rest) (just _) = pdn-go rest nothing
+pdn-go (DFunDef name alloc body ∷ rest) nothing with siglessSchema body
+... | just _  = name ∷ pdn-go rest nothing
+... | nothing = pdn-go rest nothing
+-- A DSignature resets the pending (mirror of `extractFunctions-go`).
+pdn-go (DSignature name owner ty se ∷ rest) _ = pdn-go rest nothing
+pdn-go (_ ∷ rest) pending                = pdn-go rest pending
+
+polyDefNames : List Decl → List String
+polyDefNames ds = pdn-go ds nothing
 
 -- | Plan 0.50 (D064): a bare `RVar x` that is NOT a local binder and NOT a
 -- builtin is a reference to a top-level definition (own-module or unaliased

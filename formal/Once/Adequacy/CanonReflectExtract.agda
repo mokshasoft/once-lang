@@ -32,6 +32,8 @@ open import Once.Parser
   using (FunInfo; mkFunInfo; PolyFunInfo; mkPolyFunInfo; projectSig; extractFunctions-go;
          guardDistinct; distinctOrErr; namesDistinct; allValidIdentB; emittedNames)
 open import Once.Parser.Module.Resolve using (canonDecl; polyDefNames)
+open import Once.TypeCheck.Principal using (siglessSchema)
+open import Once.Adequacy.CanonPrincipal using (siglessSchema-canon)
 import Once.Compile as C
 open import Once.Adequacy.CanonExtract using (canonFuns; canonPolys; extract-commute)
 open import Once.Adequacy.CanonModuleTyped using (canonModule; emittedNames-canon; extractAliases-canon)
@@ -61,9 +63,19 @@ extract-commute-inj₁ b al (DFunDef name alloc body ∷ rest) (just (sigName , 
 ...     | refl rewrite extract-commute-inj₁ b al rest nothing eq2 = refl
 extract-commute-inj₁ b al (DFunDef name alloc body ∷ rest) (just (sigName , inj₂ pty)) eq | no _ =
       extract-commute-inj₁ b al rest nothing eq
-extract-commute-inj₁ b al (DFunDef name alloc body ∷ rest) nothing eq with extractFunctions-go al rest nothing in eq2
+-- DFunDef, NO pending: D072 sig-less routing (canon-invariant criterion).
+extract-commute-inj₁ b al (DFunDef name alloc body ∷ rest) nothing eq
+  with siglessSchema body in eqS
+extract-commute-inj₁ b al (DFunDef name alloc body ∷ rest) nothing eq | just pty
+  with extractFunctions-go al rest nothing in eq2
 ... | inj₁ e with eq
-...   | refl rewrite extract-commute-inj₁ b al rest nothing eq2 = refl
+...   | refl rewrite siglessSchema-canon b body | eqS
+                   | extract-commute-inj₁ b al rest nothing eq2 = refl
+extract-commute-inj₁ b al (DFunDef name alloc body ∷ rest) nothing eq | nothing
+  with extractFunctions-go al rest nothing in eq2
+... | inj₁ e with eq
+...   | refl rewrite siglessSchema-canon b body | eqS
+                   | extract-commute-inj₁ b al rest nothing eq2 = refl
 extract-commute-inj₁ b al (DSignature name nothing ty se ∷ rest) pending eq with projectSig al name ty
 ... | inj₁ err = eq
 ... | inj₂ gty with extractFunctions-go al rest nothing in eq2

@@ -23,6 +23,8 @@ open import Relation.Nullary using (yes; no; does)
 open import Once.Type using (Type; PolyType; isGround; extractGround; showPolyType)
 open import Once.Functor.Decide using (isConcrete?)
 open import Once.TypeCheck.Raw using (RawExpr; RVar)
+-- D072 M3: the principal-type oracle's sig-less schema criterion.
+open import Once.TypeCheck.Principal using (siglessSchema)
 open import Once.Parser.Token
 open import Once.Parser.Lexer using (tokenizeString; isIdentStart; isIdentContinue)
 open import Once.Parser.Core using (Parser)
@@ -298,10 +300,20 @@ extractFunctions-go aliases (DFunDef name alloc body ∷ rest) (just (sigName , 
 extractFunctions-go aliases (DFunDef name alloc body ∷ rest) (just (sigName , inj₂ pty)) with sigName ≟ name
 ... | yes _ = extractFunctions-consPoly (extractFunctions-go aliases rest nothing) (mkPolyFunInfo name pty alloc body)
 ... | no  _ = extractFunctions-go aliases rest nothing
--- D007: NO explicit signature → KEEP the definition (was dropped). Its type
--- is `nothing` here and INFERRED from the body during compilation.
-extractFunctions-go aliases (DFunDef name alloc body ∷ rest) nothing =
-  extractFunctions-consFun (extractFunctions-go aliases rest nothing) (mkFunInfo name nothing alloc body false)
+-- D007: NO explicit signature → KEEP the definition (was dropped).
+-- D072 M3: if the body's principal type is a SCHEMA (`siglessSchema`),
+-- the def is a telescope entry (PolyFunInfo) with that schema — the
+-- oracle acting as an automatic signature-writer; uses instantiate via
+-- t-var-poly-instantiate and every instantiation is kernel-checked, so
+-- a wrong oracle schema is a rejected use, never unsoundness. Ground or
+-- unknown bodies keep the FunInfo path (type INFERRED during
+-- compilation — inferElab, or the oracle's ground answers via
+-- inferType, D072 M2). `polyDefNames` (Resolve) uses the SAME
+-- criterion, so the keep-bare set agrees.
+extractFunctions-go aliases (DFunDef name alloc body ∷ rest) nothing
+  with siglessSchema body
+... | just pty = extractFunctions-consPoly (extractFunctions-go aliases rest nothing) (mkPolyFunInfo name pty alloc body)
+... | nothing  = extractFunctions-consFun (extractFunctions-go aliases rest nothing) (mkFunInfo name nothing alloc body false)
 -- Primitives: use RVar as placeholder body (actual impl is external).
 -- Owned primitives (from resolved imports) get qualified names
 -- `alias.name` — same textual form that the typechecker's

@@ -47,7 +47,7 @@ open import Once.CanonicalName using (CanonicalName; showCanonical)
 open import Once.TypeCheck.Raw as Raw
   using (RawExpr; BinOp; UnaryOp; isComparisonOp)
 open import Once.TypeCheck.Classify
-  using (NamedCtx; Imports; PolyCtx; lookupImport; lookupPoly)
+  using (NamedCtx; Imports; PolyCtx; lookupImport; lookupPoly; emptyCtx)
 
 ------------------------------------------------------------------------
 -- Small helpers
@@ -603,3 +603,17 @@ pgProj _ = nothing
 -- | Ground-only projection (the M2 wiring point).
 principalGround : NamedCtx → RawExpr → Maybe Type
 principalGround ctx e = pgProj (principal ctx e)
+
+pgSchema : Maybe (Type ⊎ PolyType) → Maybe PolyType
+pgSchema (just (inj₂ pty)) = just pty
+pgSchema _ = nothing
+
+-- | The M3 routing criterion: a sig-less definition whose body has a
+-- NON-ground principal type in the EMPTY context (builtins + literals
+-- only — no imports, no earlier defs; those bodies are ground or
+-- unknown here and keep the FunInfo path). `just pty` ⇒ the def is a
+-- telescope entry with schema `pty`, exactly like a signed poly def.
+-- Used by BOTH `extractFunctions-go` (Parser) and `polyDefNames`
+-- (Resolve) so the two classifications agree definitionally.
+siglessSchema : RawExpr → Maybe PolyType
+siglessSchema body = pgSchema (principal emptyCtx body)

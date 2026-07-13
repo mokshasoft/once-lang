@@ -31,6 +31,9 @@ open import Once.Parser
 open Once.Parser.FunInfo using (funBody; funIsPrimitive)
 open Once.Parser.PolyFunInfo using (pfunBody)
 open import Once.Parser.Module.Resolve using (canonExpr; canonDecl)
+-- D072 M3: the sig-less routing criterion and its canon-invariance.
+open import Once.TypeCheck.Principal using (siglessSchema)
+open import Once.Adequacy.CanonPrincipal using (siglessSchema-canon)
 
 ------------------------------------------------------------------------
 -- Per-FunInfo / per-PolyFunInfo canonicalization (USER bodies only).
@@ -84,9 +87,21 @@ extract-commute b al (DFunDef name alloc body ∷ rest) (just (sigName , inj₂ 
 extract-commute b al (DFunDef name alloc body ∷ rest) (just (sigName , inj₂ pty)) eq | no _ =
       extract-commute b al rest nothing eq
 -- DFunDef, NO pending (D007 consFun).
-extract-commute b al (DFunDef name alloc body ∷ rest) nothing eq with extractFunctions-go al rest nothing in eq2
+-- DFunDef, NO pending: D072 routes by `siglessSchema`; the criterion is
+-- canon-invariant (CanonPrincipal.siglessSchema-canon), so both sides
+-- classify identically.
+extract-commute b al (DFunDef name alloc body ∷ rest) nothing eq
+  with siglessSchema body in eqS
+extract-commute b al (DFunDef name alloc body ∷ rest) nothing eq | just pty
+  with extractFunctions-go al rest nothing in eq2
 ... | inj₂ (gs , ps) with eq
-...   | refl rewrite extract-commute b al rest nothing eq2 = refl
+...   | refl rewrite siglessSchema-canon b body | eqS
+                   | extract-commute b al rest nothing eq2 = refl
+extract-commute b al (DFunDef name alloc body ∷ rest) nothing eq | nothing
+  with extractFunctions-go al rest nothing in eq2
+... | inj₂ (gs , ps) with eq
+...   | refl rewrite siglessSchema-canon b body | eqS
+                   | extract-commute b al rest nothing eq2 = refl
 -- DSignature: primitive (consFun, body RVar name — unchanged by canonFI since isPrim).
 extract-commute b al (DSignature name nothing ty se ∷ rest) pending eq with projectSig al name ty
 ... | inj₂ gty with extractFunctions-go al rest nothing in eq2

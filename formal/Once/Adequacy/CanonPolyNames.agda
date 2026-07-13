@@ -31,7 +31,8 @@ open import Once.Parser
         ; extractFunctions; extractFunctions-go; extractAliases; guardDistinct; distinctOrErr)
 open Once.Parser.PolyFunInfo using (pfunName)
 open Once.Parser.Module.Core.Module using (decls)
-open import Once.Parser.Module.Resolve using (polyDefNames; elemStr)
+open import Once.Parser.Module.Resolve using (polyDefNames; pdn-go; elemStr)
+open import Once.TypeCheck.Principal using (siglessSchema)
 open import Once.Compile using (buildPolyCtx)
 open import Once.TypeCheck.Classify using (lookupPoly)
 
@@ -81,6 +82,12 @@ pendingPoly : Maybe PendingSig → List String
 pendingPoly (just (n , inj₂ _)) = n ∷ []
 pendingPoly _                   = []
 
+-- D072 M3: `polyDefNames` threads the same pending state as
+-- `extractFunctions-go` (as `pdn-go`); this projects the tracked name.
+pendingName : Maybe PendingSig → Maybe String
+pendingName (just (n , _)) = just n
+pendingName nothing        = nothing
+
 -- non-ground DTypeSig keeps `name` in polyDefNames AND in the new pending; the
 -- `name`-prepend re-introduction used by the DTypeSig non-ground case.
 prepend-name : ∀ (x name : String) (rest : List String)
@@ -100,14 +107,14 @@ prepend-name x name rest e = ∨-cases e
 poly⊆ : ∀ (al : _) (ds : List Decl) (pending : Maybe PendingSig) {funs polys}
   → extractFunctions-go al ds pending ≡ inj₂ (funs , polys)
   → ∀ (x : String) → elemStr x (map pfunName polys) ≡ true
-  → (elemStr x (polyDefNames ds) ∨ elemStr x (pendingPoly pending)) ≡ true
+  → (elemStr x (pdn-go ds (pendingName pending)) ∨ elemStr x (pendingPoly pending)) ≡ true
 poly⊆ al [] pending refl x ()
 -- DTypeSig: overwrites pending; recurse, then re-attach `name` if non-ground.
 poly⊆ al (DTypeSig name ty ∷ rest) pending eq x h with isGround ty
-... | inj₂ _ = ∨-introˡ (prepend-name x name (polyDefNames rest) (poly⊆ al rest _ eq x h))
+... | inj₂ _ = ∨-introˡ (prepend-name x name (pdn-go rest (just name)) (poly⊆ al rest _ eq x h))
 ... | inj₁ g with isConcrete? (extractGround ty g)
 ...   | just _  = ∨-introˡ (drop-∨false (poly⊆ al rest _ eq x h))
-...   | nothing = ∨-introˡ (prepend-name x name (polyDefNames rest) (poly⊆ al rest _ eq x h))
+...   | nothing = ∨-introˡ (prepend-name x name (pdn-go rest (just name)) (poly⊆ al rest _ eq x h))
 -- DFunDef, GROUND pending: consFun (match) or direct recurse (mismatch).
 poly⊆ al (DFunDef name alloc body ∷ rest) (just (sigName , inj₁ gty)) eq x h with sigName ≟s name
 ... | yes _ with extractFunctions-go al rest nothing in eq2
@@ -124,8 +131,20 @@ poly⊆ al (DFunDef name alloc body ∷ rest) (just (sigName , inj₂ pty)) eq x
 ...       | inj₂ inps = ∨-introˡ (drop-∨false (poly⊆ al rest nothing eq2 x inps))
 poly⊆ al (DFunDef name alloc body ∷ rest) (just (sigName , inj₂ pty)) eq x h | no _ =
       ∨-introˡ (drop-∨false (poly⊆ al rest nothing eq x h))
--- DFunDef, NO pending (D007 consFun).
-poly⊆ al (DFunDef name alloc body ∷ rest) nothing eq x h with extractFunctions-go al rest nothing in eq2
+-- DFunDef, NO pending: D072 sig-less routing — schema-shaped bodies
+-- consPoly (name emitted, matched by pdn-go's identical split), others
+-- consFun (D007).
+poly⊆ al (DFunDef name alloc body ∷ rest) nothing eq x h with siglessSchema body
+poly⊆ al (DFunDef name alloc body ∷ rest) nothing eq x h | just pty
+  with extractFunctions-go al rest nothing in eq2
+... | inj₂ (gs , ps) with eq
+...   | refl with elemStr-cons-split x name (map pfunName ps) h
+...     | inj₁ refl = ∨-introˡ (elemStr-cons-head name (pdn-go rest nothing))
+...     | inj₂ inps =
+          ∨-introˡ (elemStr-cons-mono x name (pdn-go rest nothing)
+                     (drop-∨false (poly⊆ al rest nothing eq2 x inps)))
+poly⊆ al (DFunDef name alloc body ∷ rest) nothing eq x h | nothing
+  with extractFunctions-go al rest nothing in eq2
 ... | inj₂ (gs , ps) with eq
 ...   | refl = ∨-introˡ (drop-∨false (poly⊆ al rest nothing eq2 x h))
 -- DSignature: primitive (consFun) when projectSig succeeds.
