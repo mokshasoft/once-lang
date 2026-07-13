@@ -19,7 +19,7 @@ separate IR→IR consumer over `normalizer.Syntax.CCC`.
 The **conversion problem** — decidable equality, the heart of OCP-0009 — is
 **solved and machine-checked for the fragment**. The principled NbE decides the
 β-theory + every congruence + **product-η**, open terms included, **funext-free**.
-All 49 `poc/OCP0009/*.agda` modules build green
+All 51 `poc/OCP0009/*.agda` modules build green
 (`bootstrap/check.sh poc/OCP0009/<M>.agda` → EXIT 0), including `NbEPCwF` (CwF /
 dependent layer, Rung 2), `NbEPEl` (Tarski decoder + base CwF), `NbEPId`
 (identity type `Id` + `J`, Rung 3), `NbEPQTT` (QTT: multiplicity semiring +
@@ -289,6 +289,16 @@ OCP-0009 contribution and it shares the OCP-0004 normalizer discipline.
   OBJECT-language type former with decidable directed conversion) stays
   flagged — this rung demonstrates the reasoning shape on the reflected IR,
   as `Conv` once did for equality.
+- `NbEPDirU` — **directed rung 1: `Hom` as a universe CODE** (`` `prog ``/
+  `` `hom `` in an IR universe): directed statements are object-language
+  types; irreversibility as an internal `¬`-code inhabited by rung 0's
+  proof; quantification over programs. `--safe`.
+- `NbEPMon` — **directed rung 2a: the monoidal core, linearity as
+  semantics.** `no-diagonal` + `no-discard` (duplication/discard
+  INEXPRESSIBLE — resource-count invariance) and `no-undo` (in-core
+  irreversible transition — monotone weight): the three theorems the
+  cartesian core cannot have. Set-model validates structural laws by
+  `refl`. 2b (`⊸`, decidable free-SMC conversion) documented. `--safe`.
 
 **Consistency ladder (Gödel II made concrete — see §8):**
 - `NbEPCon0` — rung 0: `¬ Term Unit Void` and `¬ Tm Unit Void` via the `--safe`
@@ -447,7 +457,7 @@ proof-theoretic strength. "Built" = machine-checked in `poc/OCP0009/`.
 | **Totality** | ✅ total-only (SN core) | ✅ | ✅ | ✅ | ⚠️ total *or* partial |
 | **Erasure / quantities** | ✅ **QTT, end-to-end** (`NbEPQTT` semiring+erasure; `NbEPQTTJ` graded judgment+elaboration; `NbEPQTTEraseTm` **erasing term elaboration** — `𝟘`-arguments dropped from the runtime term, irrelevance decided by `nf` on open terms) | ✅ irrelevance | ⚠️ extraction | ✅ Prop-erasure | ✅ QTT native |
 | **Self-hosting / reflected IR** | ✅ **distinctive** (prove-Once-in-Once) | ❌ | ❌ | ❌ | ❌ |
-| **Directed homs (transformations as propositions)** | ⚠️ **rung 0** (`NbEPDir`: the IR's rewrite system as a proven Hom-category — irreversibility statable+proven; object-language directed types = flagged research) | ❌ | ❌ | ❌ | ❌ |
+| **Directed homs (transformations as propositions)** | ⚠️ **rungs 0–2a** (`NbEPDir`: the rewrite system as a proven Hom-category; `NbEPDirU`: `Hom` as a universe code, irreversibility internal; `NbEPMon`: monoidal core — duplication/discard/undo all PROVABLY inexpressible; full directed kernel = flagged research, §10) | ❌ | ❌ | ❌ | ❌ |
 | **Kernel / TCB size** | ✅ **minimal by thesis** | large | large (CIC) | smallish CIC | medium |
 
 **Honest gaps (2026-07-13: the former big three — II, the ℕ-tower, and
@@ -799,14 +809,25 @@ no system anywhere has directed type theory with a decidable kernel.
   an optimization-correctness statement (`NbEPDir`'s pipeline, internal).
 
 **Staging (the OCP-0009 ladder discipline, reapplied):**
-1. **Rung 1 — Hom as an indexed family in the tower** (NOT research: doable
-   with current tech): internalize `Hom` over REFLECTED programs as a code
-   in an indexed universe (the `NbEPOTTU` move, applied to `_⟶*_` instead
-   of `eq`) — directed reasoning about programs inside the object language,
-   still without directed types for arbitrary objects.
-2. **Rung 2 — the monoidal fragment `{I, ⊗, ⊸}` with proven NbE** — the
-   linear-core prerequisite (§7 route (a)); mirrors what `NbEK` did for the
-   cartesian core. Directed homs are the equality story OF that core.
+1. **[DONE 2026-07-13] Rung 1 — Hom as a universe code** (`NbEPDirU`): the
+   `NbEPOTTU` move applied to `_⟶*_` — the universe gains `` `prog A B ``
+   and `` `hom t u `` codes, so directed statements are object-language
+   types: internal identity/composition of transformations, quantification
+   over programs, and IRREVERSIBILITY as an internal proposition
+   (`` `π (`hom tgt src) (λ _ → `⊥) ``, inhabited by rung 0's proof).
+   Conversion = Agda's kernel, as with `NbEPUniv` (honest note in header).
+2. **Rung 2 — the monoidal fragment. [2a DONE 2026-07-13]** (`NbEPMon`):
+   the monoidal core `{ι₁,ι₂,I,⊗}` + structural morphisms + one
+   computational generator, with THREE theorems the cartesian core cannot
+   have — `no-diagonal` (duplication INEXPRESSIBLE, by resource-count
+   invariance; contrast `⟨id,id⟩` and the subterm-duplicating `pair-comp`),
+   `no-discard`, and `no-undo` (IN-CORE directedness: `gen : ι₁ → ι₂` has
+   no reverse morphism at all, by a monotone weight invariant — rung 0
+   proved "no rewrite back"; this is "empty hom-set back"). Set-model
+   validates the structural laws by `refl`. **Remaining 2b:** `⊸` (monoidal
+   closure) and decidable structural conversion (free-SMC coherence via
+   leaf-permutation normalization) — the monoidal analogue of the cartesian
+   NbE ladder.
 3. **Rung 3 — the open metatheory**: variance judgments, directed
    transport, directed univalence, decidable directed conversion. Literature
    anchors: Riehl–Shulman (synthetic ∞-categories / simplicial TT), Licata

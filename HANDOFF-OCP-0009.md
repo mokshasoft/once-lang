@@ -6,7 +6,7 @@
 
 ## TL;DR of state
 
-- **49 modules, all green** (40 of them `--safe`). The full expressibility tower is built and
+- **51 modules, all green** (42 of them `--safe`). The full expressibility tower is built and
   machine-checked: decidable conversion (NbE) → CwF/dependent layer → `Id`+`J` →
   **QTT** (semiring + graded judgment + IR elaboration) → **OTT** (funext-by-def,
   proof-irrelevance, `Eq`/`coe`, μ, quotients, bisim-at-ν) → **IR universe**
@@ -142,11 +142,12 @@ the "Other open items" section below.**
    internalization — `Hom` as an OBJECT-language type former with variance,
    directed transport, and decidable directed conversion (exists in no
    system; the make-or-break is decidability, as it was for equality).
-   Rung 0 is done (`NbEPDir`, meta-level); rung 1 (Hom-codes over reflected
-   programs, the `NbEPOTTU` move applied to `_⟶*_`) is cheap and can be done
-   opportunistically; rungs 2–3 (monoidal fragment NbE, directed metatheory)
-   are GATED on the linear/monoidal core decision (§7 route (a)) — do not
-   evaluate separately from it.
+   Rungs 0–2a are DONE (2026-07-13): `NbEPDir` (meta-level Hom-category),
+   `NbEPDirU` (Hom as a universe code, irreversibility internal), `NbEPMon`
+   (monoidal core — no-diagonal/no-discard/no-undo proven: linearity as
+   semantics, in-core directedness). Remaining: rung 2b (`⊸` + decidable
+   free-SMC conversion) and rung 3 (the open metatheory) — both GATED on
+   the linear/monoidal core decision (§7 route (a)).
 6. **At POC→real transition (intentions recorded in plan §9):** break the DT
    kernel out as a SPEC layer — `Spec/IR` (unoriented equations + one boring
    model) + `Spec/Kernel` (typing/equality judgments as pure data) + proven
