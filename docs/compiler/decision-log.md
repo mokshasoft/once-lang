@@ -4982,7 +4982,7 @@ bracket abstraction:
 ## D071: SigOp Is FFI-Only; Internal Definition References Are Context Projections (DTT-Aligned)
 
 **Date**: 2026-07-12
-**Status**: Accepted (design); implementation IN PROGRESS (Plan 0.58)
+**Status**: Accepted; **implemented + certified green** (Plan 0.58, 2026-07-12)
 **Implements**: Plan 0.58 (`0.58-once-spec-language-definition.md`), branch `ocp-0006-once-spec`
 **Corrects**: the Plan-0.58 SigOp-concreteness migration (2026-07-11), which made `poly`/`closure`
 references ride the FFI `SigOp` placeholder
@@ -5043,3 +5043,70 @@ SigOp. Instead, adopt **Option C**: a reference is a **projection from the defin
 - Cost: the largest structural change in 0.58 — Γ threads through the meaning functions and the
   adequacy relates the machine's *linked* def-code to Γ. Executed top-down (C is the authority;
   SD/evalᴰ/adequacy are rewritten to conform, not preserved).
+
+### Implementation (2026-07-12, certified green)
+
+The semantic side of Option C was already realized by commit `5b4c25ac` (the acyclic telescope):
+the `t-var-poly-instantiate` rule embeds the body's derivation `bodyD` as a premise (that IS Γ(x)
+materialized in the derivation tree), and `⟦ t-var-poly-instantiate … bodyD ⟧ᶜ = ⟦ bodyD ⟧ᶜ tt`,
+`realize` inlines to `morph-app (elaborate (realize bodyD)) unit`, and `bridge-c` recurses on
+`bodyD`. So the concreteness premise was **unused** on the spec side — its removal there is a
+mechanical drop.
+
+The remaining wall was structural, not semantic: the IR's named-op carrier `SigOpInfo A B`
+*required* an `IsConcrete B` field, so `poly`/`closure` could not build a `SigOp` at a non-concrete
+result type. Since that field is **write-only** (no proof ever reads `conB`/`baseA`), the fix was to
+relax it to a `Linkage B` tag — `ffi-concrete (IsConcrete B) | internal-ref` — recording the
+FFI-vs-internal distinction structurally instead of adding a whole new IR node:
+- FFI builders (`value-info`/`arrow-info`/`mk-info`/`ext-*-info`) still take `IsConcrete B` and wrap
+  it as `ffi-concrete` — the D061 concreteness discipline for real syscalls/intrinsics is intact.
+- A new `internal-info : CanonicalName → SigOpInfo Unit A` builds an `internal-ref` at ANY result
+  type (same `Pure`/`generic-semM` shape, so `faithful` stays `refl`). `elaborate`/`SD` of
+  `poly`/`closure` now emit `internal-info (bare name)`; codegen's `SigOp → once_<name>` call IS the
+  D064 internal-linkage ABI.
+- The Surface `poly`/`closure` nodes and the `t-var-poly-instantiate` rule drop their `IsConcrete`
+  field/premise; `checkElab-RVar`'s `NonConcreteSigOpType` gate for poly refs is deleted (a poly ref
+  is emitted at any `T`); `resolveExprWF`/`resolvePolyCase`/`applySplice` and the Canon transports
+  drop the now-absent witness; the dead `poly-ref-bridge` leaf is removed.
+
+`make certified` is exit 0 with these changes.
+
+### Implementation, part 2 (2026-07-12/13, certified green, 13 cata/closure exit tests fixed)
+
+The Linkage relaxation above unblocked the *carrier*; making the 13 regressed same-module tests
+pass needed the *routing* and a missing *infer rule*:
+
+- **Telescope routing**: ground-non-concrete own-module defs stop being resolved to `RResolved`
+  (the FFI path) and become telescope entries like poly defs. `Parser.agda`
+  `extractFunctions-go` and `Resolve.agda` `polyDefNames` split ground defs by
+  `isConcrete? (extractGround ty g)`: concrete → the old `RResolved`/SigOp path (FFI discipline
+  intact), non-concrete → `PolyFunInfo`/keep-bare (telescope). The three mirror proofs
+  (`CanonExtract`, `CanonReflectExtract`, `CanonPolyNames`) replicate the nested
+  `with isGround`/`with isConcrete?` clause structure verbatim (the clause trees must match).
+- **New infer rule `t-var-poly-instantiate-infer`** (⊢ᵢ): a *ground* telescope def infers at its
+  declared type. Same lookup premises as the check rule plus `isGround schema ≡ inj₁ g`, with the
+  generic-codomain trick (conclusion at generic `T` + premise `T ≡ extractGround schema g` — a
+  direct `extractGround` index makes downstream splits UnificationStuck). This rule is what makes
+  *applied* uses (`toInt three`) typable — the earlier "inline-resolution deadlock" was just this
+  rule missing. The CHECK rule `t-var-poly-instantiate` gains the complementary premise
+  `isGround schema ≡ inj₂ tt` (non-ground only), keeping the system syntax-directed and
+  completeness two-sided: check-mode uses of ground telescope defs go infer → `embedOrSubsume`,
+  exactly the pre-migration mono behavior.
+- **Semantics/adequacy**: `⟦ t-var-poly-instantiate-infer … bodyD ⟧ᵢ dγ = ⟦ bodyD ⟧ᶜ tt`
+  (Meaning); `realize-infer` inlines the body (Realize); `bridge-i` mirrors `bridge-c`'s poly
+  case (MeaningBridge); the Canon transports gain the mirrored -ᵢ cases (schema is
+  canon-invariant, so `ig`/`Teq` carry verbatim).
+- **Elaborator**: `inferElabV-RVar`'s nothing/nothing fallback now succeeds for ground poly names
+  (de-withed helper chain `inferElabV-RVar-poly-aux` → `-lookup-aux` → `-ground-aux`, enumerating
+  all `bbc` constructors — no catch-all); `Completeness` gains the `infer-complete` case and
+  threads `eqG`; `ErrorProofs`' `var-unbound-is-UnboundVariable` re-proved now that the fallback
+  can succeed (every *failure* leaf is still UnboundVariable).
+- **Residuals** (established Phase-2-gap pattern, dischargeable via the real rules): two
+  premise-erased witness postulates (`bbc-other-poly-witness`, `bbc-other-poly-infer-witness`)
+  and two RealizeAgrees agreement postulates (`check-agreeV-RVar-poly-todo`,
+  `infer-agreeV-RVar-poly-todo`). Cross-module (unaliased import) non-concrete defs still take
+  `RResolved` → still gated; the fixed tests are all same-module.
+
+Post-change: `make certified` exit 0, re-extraction + capped cabal build clean,
+`tests/run-exit-tests.sh` **50 pass / 0 fail / 2 skip** (the 13 layer5 cata/closure regressions
+are green again).
