@@ -518,6 +518,23 @@ Given Once's goals (systems programming, categorical semantics, linear types), I
 - If linear proofs become important → Directed HoTT
 - Avoid full cubical unless synthetic homotopy is needed
 
+**STATUS (2026-07-13, OCP-0009 POC):** the OTT branch of this fork has FIRED
+and been machine-checked — quotients did become important (`NbEPOTTQ`), and
+the `poc/OCP0009` tower built OTT through internalization (`NbEPOTTU`: `eq`
+as a universe code with computation) and the heterogeneous `coe`/`coh` layer
+(`NbEPOTTH`), all `--safe`. The deciding synergy is recorded in the plan
+(§6): OTT's proof-IRRELEVANT equality is exactly what QTT can grade `𝟘` and
+erase — cubical's proof-relevant paths cannot be. The DIRECTED branch stays
+parked, and its trigger is now sharper than "linear proofs become
+important": it is tied to the route-(a) linear/monoidal core redesign
+(OCP-0009 plan §7's QTT fork) — Once's IR is already a CATEGORY of
+morphisms, and directed hom-types are what equality becomes if the core
+goes linear/monoidal. OTT-vs-directed is NOT either/or (unlike
+OTT-vs-cubical): directed morphisms for resources can coexist with OTT
+equality on the pure fragment (Option 4b's sketch). Maturity note: directed
+TT still has no decidable-kernel implementation anywhere — it remains
+research-grade, evaluate at the linear-core decision, not before.
+
 ### Example: What Once Could Look Like (Phase 2)
 
 ```once
