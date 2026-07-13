@@ -608,3 +608,83 @@ external is `Con(full Once)` — anchored the same way Agda's is: a `--safe`-sty
 discipline, models in an external system (Agda today; set models/ZFC behind it),
 and the standard proof-theoretic literature (Setzer's analyses for MLTT with
 universes; Dybjer–Setzer for IR).
+
+---
+
+## 9. When POC → real: break the DT kernel out as a SPEC layer (intentions, recorded 2026-07-13)
+
+Captured from the consistency/TCB discussion so it survives the move out of
+POC territory. **None of this is POC work — it is the shape the landing must
+take.**
+
+**The trusted residue.** After every proof lands, what remains trusted is
+exactly: (1) the checker (Agda kernel, `--safe` semantics, the `check.sh`
+pipeline — later: the Once kernel), (2) the DEFINITIONS the theorems quantify
+over (syntax, judgments, equations), (3) the STATEMENTS of the top-level
+theorems, (4) the model, wherever a statement is phrased semantically.
+(2)–(4) cannot be proven, only read — so minimizing the TCB means minimizing
+what a skeptic must read. The Spec breakout is that minimization.
+
+**Two thin spec layers, not one.** The OCP-0006 Spec work specifies the IR
+(the CCC target — runtime meaning). The DT kernel is the type-level system
+ABOVE it. Keep them as sibling trusted layers with a proven bridge:
+
+- **`Spec/IR`** — `Ty`/`Func`/`Term` syntax; the equational theory as
+  UNORIENTED equations (β per eliminator∘introducer, η per negative former,
+  category laws, genuine naturality axioms like `pair-comp`); congruence
+  stated ONCE, generically — not the per-constructor congruence plumbing of
+  today's `_⟶_` (26 constructors, ~8 of which are plumbing, 2 redundant
+  `assoc` orientations); ONE blessed semantic anchor `⟦_⟧` (the boring
+  Set-model — trustworthy by dullness), other interpreters proven adequate
+  to it.
+- **`Spec/Kernel`** — the DT kernel AS DATA: type/term syntax, the typing
+  judgment `Γ ⊢ t : A`, the equality judgment `Γ ⊢ A ≈ B` (declarative
+  conversion, unoriented), and the conversion rule tying them. Pure inductive
+  definitions, zero algorithms, trivially `--safe`. The POC already has every
+  piece (`NbEPQTTJ` judgment, `NbEPCwF` formation, `NbEPId` J, `NbEPUniv`
+  universe rules) — scattered and entangled with models/demos; the breakout
+  is consolidation, not invention.
+- **The bridge** — elaboration DT → IR (prototyped by `NbEPQTTJ.⟦_⟧`,
+  `NbEPEl.El`) with its soundness theorem. Proven, not trusted.
+
+**Discipline for the rules (what makes the spec inspectable):**
+- One equation = one row in a canonical grid (former × {β, η}); deliberate
+  omissions (positive η — §2) visible as intentionally empty cells.
+- Every equation carries its one-line model-soundness lemma
+  (`eval lhs ≗ eval rhs`). Standing rule: **no eval-soundness lemma, no
+  merge** — after which the rule set drops out of the CONSISTENCY TCB
+  entirely and remains TCB only for the MEANING question ("are these the
+  equations we wanted?"), which the grid exists to answer.
+- The strength gradient becomes a module boundary: the IR-universe rules
+  (the one genuine consistency-strength increase — ledger) live in their own
+  clearly-marked spec module, so descending to a weaker kernel = deleting a
+  module, and "where the small-core discipline ends by design" is structure,
+  not prose.
+- Orientation, strategy, NbE, `nf`, bidirectional checking: all
+  IMPLEMENTATION, outside the spec, proven sound+complete against it
+  (`NbEPComplete` is the fragment prototype of exactly this). Kernel-as-spec
+  + checker-as-verified-implementation; today the POC's kernel is de facto
+  the algorithm — that inversion is the point of the breakout.
+
+**Consequences to cash in at landing time:**
+- Restate the consistency-ladder theorems SYNTACTICALLY over the spec'd
+  judgment: `¬ (∅ ⊢ t : Void)`, `¬ (inl ≈ inr)`, `Dec (t ≈ u)` — readable
+  from the Spec alone, model demoted to proof machinery. (`NbEPCon0`
+  currently states consistency THROUGH `eval` — a POC shortcut, flagged.)
+- Retire `normalizer/Axioms/*` (16 postulates asserting confluence-type
+  properties of `_⟶_`: StandardCCC 2, Confluence 1, CataAxioms 10,
+  EstablishedMath 3) via the evaluator route — determinism of `nf` is free,
+  `conv := nf t ≡ nf u`, the postulates become theorems or moot. Same move
+  as discharging the 6 `formal/Once/Optimizer/Normal.agda` postulates (§7).
+- End state, one sentence: *"Trust Agda's checker plus two small files of
+  rules; everything else — the checker algorithm, the elaboration,
+  decidability, consistency-one-level-up — is proven."*
+
+**Timing.** Do NOT freeze the spec while the DT design is still moving (OTT
+internalization §4, the IR-adoption decision §8/ledger). Trigger: OCP-0009
+graduating from POC toward acceptance — the Spec layer is then the
+deliverable, slotting into the structure OCP-0006 already anticipates.
+Cheap-and-clarifying earlier step: a DRAFT `Spec/Kernel`-shaped module as a
+POC artifact, since writing the rules down forces the core-vs-sugar-vs-
+strength-increasing decisions that are the open items anyway, and the Con
+theorems can be restated against it immediately.
