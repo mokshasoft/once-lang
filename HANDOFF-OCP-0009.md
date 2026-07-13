@@ -106,6 +106,13 @@ the "Other open items" section below.**
    the shipping core is a deliberate, TCB-raising commitment. Currently POC-only.
 4. **Optional refinements:** `⌜_⌝`-faithfulness note already closed; `sum-η`/`μ-η`
    as surface sugar (plan §3.A); universe hierarchy → ℕ-indexed ∞ tower.
+5. **At POC→real transition (intentions recorded in plan §9):** break the DT
+   kernel out as a SPEC layer — `Spec/IR` (unoriented equations + one boring
+   model) + `Spec/Kernel` (typing/equality judgments as pure data) + proven
+   elaboration bridge; restate the Con theorems syntactically over the spec'd
+   judgment; retire `normalizer/Axioms/*` (16 confluence-type postulates) via
+   the evaluator route. Do NOT freeze while OTT internalization / IR adoption
+   are open; a draft `Spec/Kernel` earlier is cheap and clarifying.
 
 ## Where to look
 
