@@ -1717,7 +1717,7 @@ data T_AbstractInstr_2048
     C_worklist'45'pop_2090 Integer | C_worklist'45'check_2092 Integer |
     C_instr'45'sigop_2098 MAlonzo.Code.Once.Type.T_Type_112
                           MAlonzo.Code.Once.Type.T_Type_112
-                          MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_150 |
+                          MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_160 |
     C_instr'45'load'45'const_2102 MAlonzo.Code.Once.Type.T_Type_112
                                   MAlonzo.Code.Once.Type.T_FitsInReg_196 AgdaAny |
     C_instr'45'load'45'code'45'addr_2104 Integer |
@@ -2336,7 +2336,7 @@ d_pure'45'sigop'45'output_2378 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
-  MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_150 ->
+  MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_160 ->
   T_LocState_456 -> T_StoredValue_66
 d_pure'45'sigop'45'output_2378 v0 v1 v2 v3 v4
   = let v5
@@ -2354,7 +2354,7 @@ d_exec'45'sigop'45'output'45'of_2412 ::
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.SigOp.Info.T_EffectShape_120 ->
-  MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_150 ->
+  MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_160 ->
   T_LocState_456 -> T_StoredValue_66
 d_exec'45'sigop'45'output'45'of_2412 v0 v1 v2 v3 v4 v5
   = case coe v3 of
@@ -2372,12 +2372,12 @@ d_exec'45'sigop'45'output_2422 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
-  MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_150 ->
+  MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_160 ->
   T_LocState_456 -> T_StoredValue_66
 d_exec'45'sigop'45'output_2422 v0 v1 v2 v3 v4
   = coe
       d_exec'45'sigop'45'output'45'of_2412 (coe v0) (coe v1) (coe v2)
-      (coe MAlonzo.Code.Once.SigOp.Info.du_effect_194 (coe v3)) (coe v3)
+      (coe MAlonzo.Code.Once.SigOp.Info.du_effect_212 (coe v3)) (coe v3)
       (coe v4)
 -- Once.CCC.Machine.SMCore.AbstractExec.exec-sigop-halts-of
 d_exec'45'sigop'45'halts'45'of_2432 ::
@@ -2385,7 +2385,7 @@ d_exec'45'sigop'45'halts'45'of_2432 ::
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.SigOp.Info.T_EffectShape_120 ->
-  MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_150 ->
+  MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_160 ->
   T_LocState_456 -> Bool
 d_exec'45'sigop'45'halts'45'of_2432 ~v0 ~v1 ~v2 v3 ~v4 ~v5
   = du_exec'45'sigop'45'halts'45'of_2432 v3
@@ -2403,16 +2403,16 @@ d_exec'45'sigop'45'halts_2438 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
-  MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_150 ->
+  MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_160 ->
   T_LocState_456 -> Bool
 d_exec'45'sigop'45'halts_2438 ~v0 ~v1 ~v2 v3 ~v4
   = du_exec'45'sigop'45'halts_2438 v3
 du_exec'45'sigop'45'halts_2438 ::
-  MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_150 -> Bool
+  MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_160 -> Bool
 du_exec'45'sigop'45'halts_2438 v0
   = coe
       du_exec'45'sigop'45'halts'45'of_2432
-      (coe MAlonzo.Code.Once.SigOp.Info.du_effect_194 (coe v0))
+      (coe MAlonzo.Code.Once.SigOp.Info.du_effect_212 (coe v0))
 -- Once.CCC.Machine.SMCore.AbstractExec.case-tag-at
 d_case'45'tag'45'at_2444 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->

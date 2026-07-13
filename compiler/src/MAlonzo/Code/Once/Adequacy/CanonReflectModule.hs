@@ -52,7 +52,7 @@ d_module'45'typed'45'and'45'valid'45'reflect_44 v0 v1 v2
   = coe
       du_go_60 (coe v0) (coe v1) (coe v2)
       (coe
-         MAlonzo.Code.Once.Parser.d_extractFunctions_490
+         MAlonzo.Code.Once.Parser.d_extractFunctions_514
          (coe
             MAlonzo.Code.Once.Parser.d_extractAliases_76
             (coe MAlonzo.Code.Once.Parser.Module.Core.C_mkModule_50 (coe v0)))

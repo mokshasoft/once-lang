@@ -20,6 +20,7 @@ import qualified Data.Text
 import qualified MAlonzo.Code.Agda.Builtin.Equality
 import qualified MAlonzo.Code.Agda.Builtin.String
 import qualified MAlonzo.Code.Data.Irrelevant
+import qualified MAlonzo.Code.Once.Functor.Translate
 import qualified MAlonzo.Code.Once.Type
 import qualified MAlonzo.Code.Once.TypeCheck.Classify
 import qualified MAlonzo.Code.Once.TypeCheck.Judgment
@@ -27,7 +28,7 @@ import qualified MAlonzo.Code.Once.TypeCheck.Raw
 
 -- Once.Adequacy.CanonComposeMid.domainOfHead-canon
 d_domainOfHead'45'canon_18 ::
-  MAlonzo.Code.Once.TypeCheck.Classify.T_NamedCtx_170 ->
+  MAlonzo.Code.Once.TypeCheck.Classify.T_NamedCtx_338 ->
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_Purity_32 ->
@@ -43,7 +44,7 @@ d_t'8802'f_150 ::
 d_t'8802'f_150 = erased
 -- Once.Adequacy.CanonComposeMid.composeArgB-RVar-resolved
 d_composeArgB'45'RVar'45'resolved_158 ::
-  MAlonzo.Code.Once.TypeCheck.Classify.T_NamedCtx_170 ->
+  MAlonzo.Code.Once.TypeCheck.Classify.T_NamedCtx_338 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
@@ -51,7 +52,7 @@ d_composeArgB'45'RVar'45'resolved_158 ::
 d_composeArgB'45'RVar'45'resolved_158 = erased
 -- Once.Adequacy.CanonComposeMid.composeArgB-canon
 d_composeArgB'45'canon_262 ::
-  MAlonzo.Code.Once.TypeCheck.Classify.T_NamedCtx_170 ->
+  MAlonzo.Code.Once.TypeCheck.Classify.T_NamedCtx_338 ->
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_Purity_32 ->
@@ -66,7 +67,7 @@ d_'8744''45'false'45'r_494 ::
   [MAlonzo.Code.Agda.Builtin.String.T_String_6] ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Once.TypeCheck.Classify.T_NamedCtx_170 ->
+  MAlonzo.Code.Once.TypeCheck.Classify.T_NamedCtx_338 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_Purity_32 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
@@ -75,13 +76,15 @@ d_'8744''45'false'45'r_494 ::
    MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20) ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Once.Functor.Translate.T_IsBaseType_148 ->
+  MAlonzo.Code.Once.Functor.Translate.T_IsConcrete_174 ->
   Bool ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_'8744''45'false'45'r_494 = erased
 -- Once.Adequacy.CanonComposeMid.composeMid-canon
 d_composeMid'45'canon_522 ::
-  MAlonzo.Code.Once.TypeCheck.Classify.T_NamedCtx_170 ->
+  MAlonzo.Code.Once.TypeCheck.Classify.T_NamedCtx_338 ->
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->

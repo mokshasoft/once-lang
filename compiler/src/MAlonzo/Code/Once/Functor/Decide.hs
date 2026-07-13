@@ -18,6 +18,7 @@ import MAlonzo.RTE (coe, erased, AgdaAny, addInt, subInt, mulInt,
 import qualified MAlonzo.RTE
 import qualified Data.Text
 import qualified MAlonzo.Code.Agda.Builtin.Maybe
+import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Once.Functor.Translate
 import qualified MAlonzo.Code.Once.Type
 
@@ -86,11 +87,206 @@ d_isBaseType'63'_8 v0
              MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
              (coe MAlonzo.Code.Once.Functor.Translate.C_base'45'Buffer_160)
       _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.Functor.Decide.isConcrete?
+d_isConcrete'63'_52 ::
+  MAlonzo.Code.Once.Type.T_Type_112 ->
+  Maybe MAlonzo.Code.Once.Functor.Translate.T_IsConcrete_174
+d_isConcrete'63'_52 v0
+  = let v1
+          = let v1 = d_isBaseType'63'_8 (coe v0) in
+            coe
+              (case coe v1 of
+                 MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v2
+                   -> coe
+                        MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                        (coe MAlonzo.Code.Once.Functor.Translate.C_con'45'base_178 v2)
+                 MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v1
+                 _ -> MAlonzo.RTE.mazUnreachableError) in
+    coe
+      (case coe v0 of
+         MAlonzo.Code.Once.Type.C__'8658''91'_'93'__130 v2 v3 v4
+           -> let v5 = d_isBaseType'63'_8 (coe v2) in
+              coe
+                (let v6 = d_isConcrete'63'_52 (coe v4) in
+                 coe
+                   (case coe v5 of
+                      MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v7
+                        -> case coe v6 of
+                             MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v8
+                               -> coe
+                                    MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                    (coe MAlonzo.Code.Once.Functor.Translate.C_con'45'fun_186 v7 v8)
+                             _ -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
+                      _ -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18))
+         _ -> coe v1)
+-- Once.Functor.Decide.isBaseType?-complete
+d_isBaseType'63''45'complete_90 ::
+  MAlonzo.Code.Once.Type.T_Type_112 ->
+  MAlonzo.Code.Once.Functor.Translate.T_IsBaseType_148 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
+d_isBaseType'63''45'complete_90 v0 v1
+  = case coe v1 of
+      MAlonzo.Code.Once.Functor.Translate.C_base'45'Unit_150
+        -> coe MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1) erased
+      MAlonzo.Code.Once.Functor.Translate.C_base'45'Void_152
+        -> coe MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1) erased
+      MAlonzo.Code.Once.Functor.Translate.C_base'45'Int_154
+        -> coe MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1) erased
+      MAlonzo.Code.Once.Functor.Translate.C_base'45'Float_156
+        -> coe MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1) erased
+      MAlonzo.Code.Once.Functor.Translate.C_base'45'Str_158
+        -> coe MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1) erased
+      MAlonzo.Code.Once.Functor.Translate.C_base'45'Buffer_160
+        -> coe MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1) erased
+      MAlonzo.Code.Once.Functor.Translate.C_base'45'Prod_166 v4 v5
+        -> case coe v0 of
+             MAlonzo.Code.Once.Type.C__'42'__126 v6 v7
+               -> let v8 = d_isBaseType'63''45'complete_90 (coe v6) (coe v4) in
+                  coe
+                    (let v9 = d_isBaseType'63''45'complete_90 (coe v7) (coe v5) in
+                     coe
+                       (case coe v8 of
+                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v10 v11
+                            -> case coe v9 of
+                                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v12 v13
+                                   -> coe
+                                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                        (coe
+                                           MAlonzo.Code.Once.Functor.Translate.C_base'45'Prod_166
+                                           v10 v12)
+                                        erased
+                                 _ -> MAlonzo.RTE.mazUnreachableError
+                          _ -> MAlonzo.RTE.mazUnreachableError))
+             _ -> MAlonzo.RTE.mazUnreachableError
+      MAlonzo.Code.Once.Functor.Translate.C_base'45'Sum_172 v4 v5
+        -> case coe v0 of
+             MAlonzo.Code.Once.Type.C__'43'__128 v6 v7
+               -> let v8 = d_isBaseType'63''45'complete_90 (coe v6) (coe v4) in
+                  coe
+                    (let v9 = d_isBaseType'63''45'complete_90 (coe v7) (coe v5) in
+                     coe
+                       (case coe v8 of
+                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v10 v11
+                            -> case coe v9 of
+                                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v12 v13
+                                   -> coe
+                                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                        (coe
+                                           MAlonzo.Code.Once.Functor.Translate.C_base'45'Sum_172 v10
+                                           v12)
+                                        erased
+                                 _ -> MAlonzo.RTE.mazUnreachableError
+                          _ -> MAlonzo.RTE.mazUnreachableError))
+             _ -> MAlonzo.RTE.mazUnreachableError
+      _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.Functor.Decide.isConcrete?-complete
+d_isConcrete'63''45'complete_152 ::
+  MAlonzo.Code.Once.Type.T_Type_112 ->
+  MAlonzo.Code.Once.Functor.Translate.T_IsConcrete_174 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
+d_isConcrete'63''45'complete_152 v0 v1
+  = case coe v1 of
+      MAlonzo.Code.Once.Functor.Translate.C_con'45'base_178 v3
+        -> case coe v3 of
+             MAlonzo.Code.Once.Functor.Translate.C_base'45'Unit_150
+               -> coe
+                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                    (coe MAlonzo.Code.Once.Functor.Translate.C_con'45'base_178 v3)
+                    erased
+             MAlonzo.Code.Once.Functor.Translate.C_base'45'Void_152
+               -> coe
+                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                    (coe MAlonzo.Code.Once.Functor.Translate.C_con'45'base_178 v3)
+                    erased
+             MAlonzo.Code.Once.Functor.Translate.C_base'45'Int_154
+               -> coe
+                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                    (coe MAlonzo.Code.Once.Functor.Translate.C_con'45'base_178 v3)
+                    erased
+             MAlonzo.Code.Once.Functor.Translate.C_base'45'Float_156
+               -> coe
+                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                    (coe MAlonzo.Code.Once.Functor.Translate.C_con'45'base_178 v3)
+                    erased
+             MAlonzo.Code.Once.Functor.Translate.C_base'45'Str_158
+               -> coe
+                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                    (coe MAlonzo.Code.Once.Functor.Translate.C_con'45'base_178 v3)
+                    erased
+             MAlonzo.Code.Once.Functor.Translate.C_base'45'Buffer_160
+               -> coe
+                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                    (coe MAlonzo.Code.Once.Functor.Translate.C_con'45'base_178 v3)
+                    erased
+             MAlonzo.Code.Once.Functor.Translate.C_base'45'Prod_166 v6 v7
+               -> case coe v0 of
+                    MAlonzo.Code.Once.Type.C__'42'__126 v8 v9
+                      -> let v10
+                               = MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
+                                   (coe d_isBaseType'63''45'complete_90 (coe v8) (coe v6)) in
+                         coe
+                           (let v11
+                                  = MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
+                                      (coe d_isBaseType'63''45'complete_90 (coe v9) (coe v7)) in
+                            coe
+                              (let v12
+                                     = coe
+                                         MAlonzo.Code.Once.Functor.Translate.C_base'45'Prod_166 v10
+                                         v11 in
+                               coe
+                                 (coe
+                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                    (coe MAlonzo.Code.Once.Functor.Translate.C_con'45'base_178 v12)
+                                    erased)))
+                    _ -> MAlonzo.RTE.mazUnreachableError
+             MAlonzo.Code.Once.Functor.Translate.C_base'45'Sum_172 v6 v7
+               -> case coe v0 of
+                    MAlonzo.Code.Once.Type.C__'43'__128 v8 v9
+                      -> let v10
+                               = MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
+                                   (coe d_isBaseType'63''45'complete_90 (coe v8) (coe v6)) in
+                         coe
+                           (let v11
+                                  = MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
+                                      (coe d_isBaseType'63''45'complete_90 (coe v9) (coe v7)) in
+                            coe
+                              (let v12
+                                     = coe
+                                         MAlonzo.Code.Once.Functor.Translate.C_base'45'Sum_172 v10
+                                         v11 in
+                               coe
+                                 (coe
+                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                    (coe MAlonzo.Code.Once.Functor.Translate.C_con'45'base_178 v12)
+                                    erased)))
+                    _ -> MAlonzo.RTE.mazUnreachableError
+             _ -> MAlonzo.RTE.mazUnreachableError
+      MAlonzo.Code.Once.Functor.Translate.C_con'45'fun_186 v5 v6
+        -> case coe v0 of
+             MAlonzo.Code.Once.Type.C__'8658''91'_'93'__130 v7 v8 v9
+               -> let v10 = d_isBaseType'63''45'complete_90 (coe v7) (coe v5) in
+                  coe
+                    (let v11 = d_isConcrete'63''45'complete_152 (coe v9) (coe v6) in
+                     coe
+                       (case coe v10 of
+                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v12 v13
+                            -> case coe v11 of
+                                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v14 v15
+                                   -> coe
+                                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                        (coe
+                                           MAlonzo.Code.Once.Functor.Translate.C_con'45'fun_186 v12
+                                           v14)
+                                        erased
+                                 _ -> MAlonzo.RTE.mazUnreachableError
+                          _ -> MAlonzo.RTE.mazUnreachableError))
+             _ -> MAlonzo.RTE.mazUnreachableError
+      _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Functor.Decide.wellFormedF?
-d_wellFormedF'63'_52 ::
+d_wellFormedF'63'_224 ::
   MAlonzo.Code.Once.Type.T_Functor_110 ->
-  Maybe MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174
-d_wellFormedF'63'_52 v0
+  Maybe MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_188
+d_wellFormedF'63'_224 v0
   = case coe v0 of
       MAlonzo.Code.Once.Type.C_K_114 v1
         -> let v2 = d_isBaseType'63'_8 (coe v1) in
@@ -99,17 +295,17 @@ d_wellFormedF'63'_52 v0
                 MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v3
                   -> coe
                        MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                       (coe MAlonzo.Code.Once.Functor.Translate.C_wf'45'K_178 v3)
+                       (coe MAlonzo.Code.Once.Functor.Translate.C_wf'45'K_192 v3)
                 MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v2
                 _ -> MAlonzo.RTE.mazUnreachableError)
       MAlonzo.Code.Once.Type.C_Id_116
         -> coe
              MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-             (coe MAlonzo.Code.Once.Functor.Translate.C_wf'45'Id_180)
+             (coe MAlonzo.Code.Once.Functor.Translate.C_wf'45'Id_194)
       MAlonzo.Code.Once.Type.C__'8853'__118 v1 v2
-        -> let v3 = d_wellFormedF'63'_52 (coe v1) in
+        -> let v3 = d_wellFormedF'63'_224 (coe v1) in
            coe
-             (let v4 = d_wellFormedF'63'_52 (coe v2) in
+             (let v4 = d_wellFormedF'63'_224 (coe v2) in
               coe
                 (case coe v3 of
                    MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v5
@@ -117,13 +313,13 @@ d_wellFormedF'63'_52 v0
                           MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v6
                             -> coe
                                  MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                                 (coe MAlonzo.Code.Once.Functor.Translate.C_wf'45'Sum_186 v5 v6)
+                                 (coe MAlonzo.Code.Once.Functor.Translate.C_wf'45'Sum_200 v5 v6)
                           _ -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                    _ -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18))
       MAlonzo.Code.Once.Type.C__'8855'__120 v1 v2
-        -> let v3 = d_wellFormedF'63'_52 (coe v1) in
+        -> let v3 = d_wellFormedF'63'_224 (coe v1) in
            coe
-             (let v4 = d_wellFormedF'63'_52 (coe v2) in
+             (let v4 = d_wellFormedF'63'_224 (coe v2) in
               coe
                 (case coe v3 of
                    MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v5
@@ -131,7 +327,7 @@ d_wellFormedF'63'_52 v0
                           MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v6
                             -> coe
                                  MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                                 (coe MAlonzo.Code.Once.Functor.Translate.C_wf'45'Prod_192 v5 v6)
+                                 (coe MAlonzo.Code.Once.Functor.Translate.C_wf'45'Prod_206 v5 v6)
                           _ -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                    _ -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18))
       _ -> MAlonzo.RTE.mazUnreachableError

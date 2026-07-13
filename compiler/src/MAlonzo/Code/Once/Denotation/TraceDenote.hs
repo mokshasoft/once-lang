@@ -74,20 +74,20 @@ d_sig1_46 v0 v1
 d_emit'45'eff_54 ::
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
-  MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_150 ->
+  MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_160 ->
   Integer ->
   AgdaAny -> [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_122]
 d_emit'45'eff_54 v0 ~v1 v2 v3 v4 = du_emit'45'eff_54 v0 v2 v3 v4
 du_emit'45'eff_54 ::
   MAlonzo.Code.Once.Type.T_Type_112 ->
-  MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_150 ->
+  MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_160 ->
   Integer ->
   AgdaAny -> [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_122]
 du_emit'45'eff_54 v0 v1 v2 v3
   = let v4
           = coe
-              MAlonzo.Code.Once.SigOp.Info.du_go_206
-              (coe MAlonzo.Code.Once.SigOp.Info.d_sem_162 (coe v1)) in
+              MAlonzo.Code.Once.SigOp.Info.du_go_224
+              (coe MAlonzo.Code.Once.SigOp.Info.d_sem_176 (coe v1)) in
     coe
       (case coe v4 of
          MAlonzo.Code.Once.SigOp.Info.C_Pure_124

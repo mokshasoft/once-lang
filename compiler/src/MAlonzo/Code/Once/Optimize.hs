@@ -2316,10 +2316,10 @@ du_'8799'IRH'45'diag_628 v0 v1 v2 v3 v4 v5
                             (coe MAlonzo.Code.Data.String.Properties.d__'8799'__54)
                             (coe
                                MAlonzo.Code.Once.CanonicalName.d_parts_8
-                               (coe MAlonzo.Code.Once.SigOp.Info.d_name_160 (coe v8)))
+                               (coe MAlonzo.Code.Once.SigOp.Info.d_name_174 (coe v8)))
                             (coe
                                MAlonzo.Code.Once.CanonicalName.d_parts_8
-                               (coe MAlonzo.Code.Once.SigOp.Info.d_name_160 (coe v11))) in
+                               (coe MAlonzo.Code.Once.SigOp.Info.d_name_174 (coe v11))) in
                   coe
                     (case coe v12 of
                        MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v13 v14
@@ -3416,10 +3416,10 @@ d_'8799'IRH'45'Hylo'45'inner_1330 ::
   MAlonzo.Code.Once.Type.T_Functor_110 ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
+  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_188 ->
+  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_188 ->
+  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_188 ->
+  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_188 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Once.IR.T_NatTr_18 ->
@@ -3477,10 +3477,10 @@ d_'8799'IRH'45'Fuse'45'inner_1390 ::
   MAlonzo.Code.Once.Type.T_Functor_110 ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
+  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_188 ->
+  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_188 ->
+  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_188 ->
+  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_188 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Once.IR.T_NatTr_18 ->

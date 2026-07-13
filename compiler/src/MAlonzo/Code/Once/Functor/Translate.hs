@@ -72,29 +72,41 @@ data T_IsBaseType_148
     C_base'45'Float_156 | C_base'45'Str_158 | C_base'45'Buffer_160 |
     C_base'45'Prod_166 T_IsBaseType_148 T_IsBaseType_148 |
     C_base'45'Sum_172 T_IsBaseType_148 T_IsBaseType_148
+-- Once.Functor.Translate.IsConcrete
+d_IsConcrete_174 a0 = ()
+data T_IsConcrete_174
+  = C_con'45'base_178 T_IsBaseType_148 |
+    C_con'45'fun_186 T_IsBaseType_148 T_IsConcrete_174
 -- Once.Functor.Translate.WellFormedF
-d_WellFormedF_174 a0 = ()
-data T_WellFormedF_174
-  = C_wf'45'K_178 T_IsBaseType_148 | C_wf'45'Id_180 |
-    C_wf'45'Sum_186 T_WellFormedF_174 T_WellFormedF_174 |
-    C_wf'45'Prod_192 T_WellFormedF_174 T_WellFormedF_174
+d_WellFormedF_188 a0 = ()
+data T_WellFormedF_188
+  = C_wf'45'K_192 T_IsBaseType_148 | C_wf'45'Id_194 |
+    C_wf'45'Sum_200 T_WellFormedF_188 T_WellFormedF_188 |
+    C_wf'45'Prod_206 T_WellFormedF_188 T_WellFormedF_188
 -- Once.Functor.Translate.IsBaseType-irrelevant
-d_IsBaseType'45'irrelevant_200 ::
+d_IsBaseType'45'irrelevant_214 ::
   MAlonzo.Code.Once.Type.T_Type_112 ->
   T_IsBaseType_148 ->
   T_IsBaseType_148 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_IsBaseType'45'irrelevant_200 = erased
--- Once.Functor.Translate.WellFormedF-irrelevant
-d_WellFormedF'45'irrelevant_224 ::
-  MAlonzo.Code.Once.Type.T_Functor_110 ->
-  T_WellFormedF_174 ->
-  T_WellFormedF_174 ->
+d_IsBaseType'45'irrelevant_214 = erased
+-- Once.Functor.Translate.IsConcrete-irrelevant
+d_IsConcrete'45'irrelevant_238 ::
+  MAlonzo.Code.Once.Type.T_Type_112 ->
+  T_IsConcrete_174 ->
+  T_IsConcrete_174 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_WellFormedF'45'irrelevant_224 = erased
+d_IsConcrete'45'irrelevant_238 = erased
+-- Once.Functor.Translate.WellFormedF-irrelevant
+d_WellFormedF'45'irrelevant_270 ::
+  MAlonzo.Code.Once.Type.T_Functor_110 ->
+  T_WellFormedF_188 ->
+  T_WellFormedF_188 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_WellFormedF'45'irrelevant_270 = erased
 -- Once.Functor.Translate.wf-NatF
-d_wf'45'NatF_246 :: T_WellFormedF_174
-d_wf'45'NatF_246
+d_wf'45'NatF_292 :: T_WellFormedF_188
+d_wf'45'NatF_292
   = coe
-      C_wf'45'Sum_186 (coe C_wf'45'K_178 (coe C_base'45'Unit_150))
-      (coe C_wf'45'Id_180)
+      C_wf'45'Sum_200 (coe C_wf'45'K_192 (coe C_base'45'Unit_150))
+      (coe C_wf'45'Id_194)

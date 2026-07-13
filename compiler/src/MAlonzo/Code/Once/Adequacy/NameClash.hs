@@ -351,7 +351,7 @@ d_program'45'no'45'clash_418 v0
   = case coe v0 of
       MAlonzo.Code.Once.Parser.Module.Core.C_mkModule_50 v1
         -> let v2
-                 = MAlonzo.Code.Once.Parser.d_guardDistinct_476
+                 = MAlonzo.Code.Once.Parser.d_guardDistinct_500
                      (coe
                         MAlonzo.Code.Once.Parser.d_extractFunctions'45'go_190
                         (coe MAlonzo.Code.Once.Parser.d_extractAliases_76 (coe v0))
@@ -380,15 +380,15 @@ d_program'45'no'45'clash_418 v0
                                  MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v7
                                    -> coe
                                         d_map'45'allpairs'45'own_150
-                                        (coe MAlonzo.Code.Once.Parser.d_emittedNames_466 (coe v4))
+                                        (coe MAlonzo.Code.Once.Parser.d_emittedNames_490 (coe v4))
                                         (coe
                                            du_namesDistinct'45'sound_110
                                            (coe
-                                              MAlonzo.Code.Once.Parser.d_emittedNames_466 (coe v4)))
+                                              MAlonzo.Code.Once.Parser.d_emittedNames_490 (coe v4)))
                                         (coe
                                            du_allValidIdentB'45'sound_58
                                            (coe
-                                              MAlonzo.Code.Once.Parser.d_emittedNames_466 (coe v4)))
+                                              MAlonzo.Code.Once.Parser.d_emittedNames_490 (coe v4)))
                                  _ -> MAlonzo.RTE.mazUnreachableError)
                        _ -> MAlonzo.RTE.mazUnreachableError
                 _ -> MAlonzo.RTE.mazUnreachableError)

@@ -29,7 +29,7 @@ import qualified MAlonzo.Code.Once.Compile
 import qualified MAlonzo.Code.Once.IR
 import qualified MAlonzo.Code.Once.Parser
 import qualified MAlonzo.Code.Once.Parser.Module.Core
-import qualified MAlonzo.Code.Once.Surface.Syntax
+import qualified MAlonzo.Code.Once.Surface.Context
 import qualified MAlonzo.Code.Once.Type
 import qualified MAlonzo.Code.Once.TypeCheck.Classify
 import qualified MAlonzo.Code.Once.TypeCheck.Elaborate
@@ -41,7 +41,7 @@ import qualified MAlonzo.Code.Relation.Nullary.Decidable.Core
 -- Once.Adequacy.AcceptSound.compileFunBody-aux-success
 d_compileFunBody'45'aux'45'success_34 ::
   Integer ->
-  MAlonzo.Code.Once.Surface.Syntax.T_Ctx_6 ->
+  MAlonzo.Code.Once.Surface.Context.T_Ctx_6 ->
   Bool ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
@@ -99,15 +99,15 @@ du_compileFunBody'45'sound_90 v0 v1 v2 v3 v4 v5
          (coe
             du_compileFunBody'45'aux'45'success_34
             (coe
-               MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElab_1506
+               MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElab_1598
                (coe
-                  MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndSelfAndPolys_222
+                  MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndSelfAndPolys_390
                   (coe v0) (coe v1) (coe v2) (coe v3) (coe v4))
                (coe v5) (coe v4))))
       (coe
          MAlonzo.Code.Once.TypeCheck.Soundness.du_check'45'sound_2532
          (coe
-            MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndSelfAndPolys_222
+            MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndSelfAndPolys_390
             (coe v0) (coe v1) (coe v2) (coe v3) (coe v4))
          (coe v5) (coe v4))
 -- Once.Adequacy.AcceptSound.AllFunsTyped
@@ -115,7 +115,7 @@ d_AllFunsTyped_124 a0 a1 a2 a3 = ()
 data T_AllFunsTyped_124
   = C_tnil_132 |
     C_tcons_144 MAlonzo.Code.Once.Type.T_Type_112
-                MAlonzo.Code.Once.Surface.Syntax.T_Usage_60
+                MAlonzo.Code.Once.Surface.Context.T_Usage_60
                 MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7580'_'8758'_'10814'__24
                 T_AllFunsTyped_124
 -- Once.Adequacy.AcceptSound.compileFun-main-aux-sound
@@ -419,7 +419,7 @@ du_crm'45'sound_586 v0 v1
   = coe
       du_crm'45'aux'45'sound_562 (coe v0) (coe v1)
       (coe
-         MAlonzo.Code.Once.Parser.d_extractFunctions_490
+         MAlonzo.Code.Once.Parser.d_extractFunctions_514
          (coe MAlonzo.Code.Once.Parser.d_extractAliases_76 (coe v1))
          (coe v1))
 -- Once.Adequacy.AcceptSound.moduleToIR-typed

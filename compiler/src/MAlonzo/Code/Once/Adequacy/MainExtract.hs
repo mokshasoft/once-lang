@@ -27,6 +27,7 @@ import qualified MAlonzo.Code.Once.Denotation.Trace
 import qualified MAlonzo.Code.Once.Denotation.TraceMonad
 import qualified MAlonzo.Code.Once.IR
 import qualified MAlonzo.Code.Once.Parser.Module.Core
+import qualified MAlonzo.Code.Once.Surface.Context
 import qualified MAlonzo.Code.Once.Surface.Syntax
 import qualified MAlonzo.Code.Once.Type
 
@@ -43,12 +44,12 @@ d_EffUU_6
       (coe MAlonzo.Code.Once.Type.C_Unit_122)
 -- Once.Adequacy.MainExtract.runMainˢ
 d_runMain'738'_10 ::
-  MAlonzo.Code.Once.Surface.Syntax.T_Usage_60 ->
-  MAlonzo.Code.Once.Surface.Syntax.T_Expr_184 ->
+  MAlonzo.Code.Once.Surface.Context.T_Usage_60 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   Integer -> [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_122]
 d_runMain'738'_10 ~v0 v1 v2 = du_runMain'738'_10 v1 v2
 du_runMain'738'_10 ::
-  MAlonzo.Code.Once.Surface.Syntax.T_Expr_184 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   Integer -> [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_122]
 du_runMain'738'_10 v0 v1
   = coe
@@ -59,7 +60,7 @@ du_runMain'738'_10 v0 v1
             MAlonzo.Code.Once.Denotation.TraceMonad.du__'62''62''61'T__20
             (coe
                MAlonzo.Code.Once.Denotation.SourceDenote.du_'10214'_'10215''738'_98
-               (coe MAlonzo.Code.Once.Surface.Syntax.C_'8709'_8) (coe d_EffUU_6)
+               (coe MAlonzo.Code.Once.Surface.Context.C_'8709'_8) (coe d_EffUU_6)
                (coe v0) (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8))
             (coe (\ v2 -> coe v2 (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8))))
          (coe v1))
@@ -99,8 +100,8 @@ du_source'45'meaning'7472''45'aux_52 v0
 -- Once.Adequacy.MainExtract._.bridge
 d_bridge_68 ::
   MAlonzo.Code.Once.IR.T_IR_16 ->
-  MAlonzo.Code.Once.Surface.Syntax.T_Usage_60 ->
-  MAlonzo.Code.Once.Surface.Syntax.T_Expr_184 ->
+  MAlonzo.Code.Once.Surface.Context.T_Usage_60 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12

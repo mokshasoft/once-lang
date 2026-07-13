@@ -28,7 +28,7 @@ import qualified MAlonzo.Code.Once.Adequacy.CanonReflectPolyTransport
 import qualified MAlonzo.Code.Once.Compile
 import qualified MAlonzo.Code.Once.Parser
 import qualified MAlonzo.Code.Once.Parser.Module.Resolve
-import qualified MAlonzo.Code.Once.Surface.Syntax
+import qualified MAlonzo.Code.Once.Surface.Context
 import qualified MAlonzo.Code.Once.Type
 import qualified MAlonzo.Code.Once.TypeCheck.Classify
 import qualified MAlonzo.Code.Once.TypeCheck.Judgment
@@ -77,7 +77,7 @@ d_body'45'reflect_152 ::
    MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
   MAlonzo.Code.Once.Parser.T_FunInfo_96 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
-  MAlonzo.Code.Once.Surface.Syntax.T_Usage_60 ->
+  MAlonzo.Code.Once.Surface.Context.T_Usage_60 ->
   MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7580'_'8758'_'10814'__24 ->
   MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7580'_'8758'_'10814'__24
 d_body'45'reflect_152 v0 v1 v2 v3 ~v4 v5 v6 v7 v8
@@ -89,7 +89,7 @@ du_body'45'reflect_152 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   MAlonzo.Code.Once.Parser.T_FunInfo_96 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
-  MAlonzo.Code.Once.Surface.Syntax.T_Usage_60 ->
+  MAlonzo.Code.Once.Surface.Context.T_Usage_60 ->
   MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7580'_'8758'_'10814'__24 ->
   MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7580'_'8758'_'10814'__24
 du_body'45'reflect_152 v0 v1 v2 v3 v4 v5 v6 v7
@@ -101,7 +101,7 @@ du_body'45'reflect_152 v0 v1 v2 v3 v4 v5 v6 v7
                 MAlonzo.Code.Once.Adequacy.CanonReflectPolyTransport.du_polys'45'reflect'45''7580'_202
                 (coe v0) (coe (0 :: Integer))
                 (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
-                (coe MAlonzo.Code.Once.Surface.Syntax.C_'8709'_8)
+                (coe MAlonzo.Code.Once.Surface.Context.C_'8709'_8)
                 (coe (0 :: Integer))
                 (coe
                    MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
@@ -114,12 +114,12 @@ du_body'45'reflect_152 v0 v1 v2 v3 v4 v5 v6 v7
                 (coe MAlonzo.Code.Once.Parser.d_funBody_114 (coe v4)) (coe v5)
                 (coe v6) (coe v7)
          else coe
-                MAlonzo.Code.Once.Adequacy.CanonReflectMutual.du_canon'45'reflects'45''7580'_1144
+                MAlonzo.Code.Once.Adequacy.CanonReflectMutual.du_canon'45'reflects'45''7580'_1150
                 (coe
-                   MAlonzo.Code.Once.TypeCheck.Classify.C_mkCtx_200
+                   MAlonzo.Code.Once.TypeCheck.Classify.C_mkCtx_368
                    (coe (0 :: Integer))
                    (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
-                   (coe MAlonzo.Code.Once.Surface.Syntax.C_'8709'_8)
+                   (coe MAlonzo.Code.Once.Surface.Context.C_'8709'_8)
                    (coe (0 :: Integer))
                    (coe
                       MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
@@ -135,7 +135,7 @@ du_body'45'reflect_152 v0 v1 v2 v3 v4 v5 v6 v7
                    MAlonzo.Code.Once.Adequacy.CanonReflectPolyTransport.du_polys'45'reflect'45''7580'_202
                    (coe v0) (coe (0 :: Integer))
                    (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
-                   (coe MAlonzo.Code.Once.Surface.Syntax.C_'8709'_8)
+                   (coe MAlonzo.Code.Once.Surface.Context.C_'8709'_8)
                    (coe (0 :: Integer))
                    (coe
                       MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
@@ -146,7 +146,7 @@ du_body'45'reflect_152 v0 v1 v2 v3 v4 v5 v6 v7
                    (coe v2)
                    (coe MAlonzo.Code.Once.Compile.d_buildPolyCtx_270 (coe v1))
                    (coe
-                      MAlonzo.Code.Once.Parser.Module.Resolve.d_canonExpr_272 (coe v0)
+                      MAlonzo.Code.Once.Parser.Module.Resolve.d_canonExpr_294 (coe v0)
                       (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
                       (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
                       (coe MAlonzo.Code.Once.Parser.d_funBody_114 (coe v4)))

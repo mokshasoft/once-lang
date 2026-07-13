@@ -40,7 +40,7 @@ d_canonModule_6 v0
       (coe
          MAlonzo.Code.Data.List.Base.du_map_22
          (coe
-            MAlonzo.Code.Once.Parser.Module.Resolve.d_canonDecl_448
+            MAlonzo.Code.Once.Parser.Module.Resolve.d_canonDecl_470
             (coe
                MAlonzo.Code.Once.Parser.Module.Resolve.d_polyDefNames_218
                (coe v0))
@@ -137,7 +137,7 @@ d_module'45'typed'45'canon_302 v0 v1
   = coe
       du_module'45'typed'45'canon'45'aux_274 (coe v0)
       (coe
-         MAlonzo.Code.Once.Parser.d_extractFunctions_490
+         MAlonzo.Code.Once.Parser.d_extractFunctions_514
          (coe
             MAlonzo.Code.Once.Parser.d_extractAliases_76
             (coe MAlonzo.Code.Once.Parser.Module.Core.C_mkModule_50 (coe v0)))
@@ -200,7 +200,7 @@ d_module'45'typed'45'and'45'valid_354 v0 v1 v2
   = coe
       du_module'45'typed'45'and'45'valid'45'aux_316 (coe v0)
       (coe
-         MAlonzo.Code.Once.Parser.d_extractFunctions_490
+         MAlonzo.Code.Once.Parser.d_extractFunctions_514
          (coe
             MAlonzo.Code.Once.Parser.d_extractAliases_76
             (coe MAlonzo.Code.Once.Parser.Module.Core.C_mkModule_50 (coe v0)))

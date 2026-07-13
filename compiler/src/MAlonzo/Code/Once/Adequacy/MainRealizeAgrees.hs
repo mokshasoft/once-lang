@@ -45,7 +45,7 @@ du_main'45'extract_46 v0
   = coe
       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
       (coe
-         MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndSelfAndPolys_222
+         MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndSelfAndPolys_390
          (coe
             MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
             (coe
@@ -198,7 +198,7 @@ du_main'45'extract_46 v0
                            (coe
                               MAlonzo.Code.Once.TypeCheck.Soundness.du_check'45'sound_2532
                               (coe
-                                 MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndSelfAndPolys_222
+                                 MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndSelfAndPolys_390
                                  (coe
                                     MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                                     (coe
@@ -354,7 +354,7 @@ du_main'45'checkElab'45'coherence_122 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_main'45'checkElab'45'coherence_122 v0
   = let v1
-          = MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndSelfAndPolys_222
+          = MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndSelfAndPolys_390
               (coe
                  MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                  (coe

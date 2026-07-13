@@ -503,24 +503,24 @@ du_coerce'45'μ'45'in_746 v0 v1
 d_coerce'45'μ'45'out_788 ::
   () ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
+  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_188 ->
   () -> AgdaAny -> AgdaAny
 d_coerce'45'μ'45'out_788 ~v0 v1 v2 ~v3 v4
   = du_coerce'45'μ'45'out_788 v1 v2 v4
 du_coerce'45'μ'45'out_788 ::
   MAlonzo.Code.Once.Type.T_Functor_110 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
+  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_188 ->
   AgdaAny -> AgdaAny
 du_coerce'45'μ'45'out_788 v0 v1 v2
   = case coe v1 of
-      MAlonzo.Code.Once.Functor.Translate.C_wf'45'K_178 v4
+      MAlonzo.Code.Once.Functor.Translate.C_wf'45'K_192 v4
         -> case coe v0 of
              MAlonzo.Code.Once.Type.C_K_114 v5
                -> coe
                     du_coerce'45'base'45'to'45'full_634 (coe v5) (coe v4) (coe v2)
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Functor.Translate.C_wf'45'Id_180 -> coe v2
-      MAlonzo.Code.Once.Functor.Translate.C_wf'45'Sum_186 v5 v6
+      MAlonzo.Code.Once.Functor.Translate.C_wf'45'Id_194 -> coe v2
+      MAlonzo.Code.Once.Functor.Translate.C_wf'45'Sum_200 v5 v6
         -> case coe v0 of
              MAlonzo.Code.Once.Type.C__'8853'__118 v7 v8
                -> case coe v2 of
@@ -534,7 +534,7 @@ du_coerce'45'μ'45'out_788 v0 v1 v2
                            (coe du_coerce'45'μ'45'out_788 (coe v8) (coe v6) (coe v9))
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Functor.Translate.C_wf'45'Prod_192 v5 v6
+      MAlonzo.Code.Once.Functor.Translate.C_wf'45'Prod_206 v5 v6
         -> case coe v0 of
              MAlonzo.Code.Once.Type.C__'8855'__120 v7 v8
                -> case coe v2 of
@@ -550,14 +550,14 @@ du_coerce'45'μ'45'out_788 v0 v1 v2
 d_coerce'45'μ'45'round'45'trip_834 ::
   () ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
+  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_188 ->
   () -> AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_coerce'45'μ'45'round'45'trip_834 = erased
 -- Once.Semantics.Value.coerce-μ⁻¹-round-trip
 d_coerce'45'μ'8315''185''45'round'45'trip_880 ::
   () ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
+  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_188 ->
   () -> AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_coerce'45'μ'8315''185''45'round'45'trip_880 = erased
 -- Once.Semantics.Value.sem-In
@@ -577,12 +577,12 @@ du_sem'45'In_920 v0 v1
 d_sem'45'Out_928 ::
   () ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
+  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_188 ->
   MAlonzo.Code.Once.Semantics.Functor.T_μS_182 -> AgdaAny
 d_sem'45'Out_928 ~v0 v1 v2 v3 = du_sem'45'Out_928 v1 v2 v3
 du_sem'45'Out_928 ::
   MAlonzo.Code.Once.Type.T_Functor_110 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
+  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_188 ->
   MAlonzo.Code.Once.Semantics.Functor.T_μS_182 -> AgdaAny
 du_sem'45'Out_928 v0 v1 v2
   = coe
@@ -592,14 +592,14 @@ du_sem'45'Out_928 v0 v1 v2
 d_sem'45'cata_940 ::
   () ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
+  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_188 ->
   () ->
   (AgdaAny -> AgdaAny) ->
   MAlonzo.Code.Once.Semantics.Functor.T_μS_182 -> AgdaAny
 d_sem'45'cata_940 ~v0 v1 v2 ~v3 v4 = du_sem'45'cata_940 v1 v2 v4
 du_sem'45'cata_940 ::
   MAlonzo.Code.Once.Type.T_Functor_110 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
+  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_188 ->
   (AgdaAny -> AgdaAny) ->
   MAlonzo.Code.Once.Semantics.Functor.T_μS_182 -> AgdaAny
 du_sem'45'cata_940 v0 v1 v2
@@ -613,7 +613,7 @@ du_sem'45'cata_940 v0 v1 v2
 d_sem'45'para_956 ::
   () ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
+  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_188 ->
   () ->
   (AgdaAny -> AgdaAny) ->
   MAlonzo.Code.Once.Semantics.Functor.T_μS_182 -> AgdaAny
@@ -621,7 +621,7 @@ d_sem'45'para_956 ~v0 v1 v2 ~v3 v4 v5
   = du_sem'45'para_956 v1 v2 v4 v5
 du_sem'45'para_956 ::
   MAlonzo.Code.Once.Type.T_Functor_110 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
+  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_188 ->
   (AgdaAny -> AgdaAny) ->
   MAlonzo.Code.Once.Semantics.Functor.T_μS_182 -> AgdaAny
 du_sem'45'para_956 v0 v1 v2 v3
@@ -633,7 +633,7 @@ du_sem'45'para_956 v0 v1 v2 v3
 d_alg''_972 ::
   () ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
+  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_188 ->
   () ->
   (AgdaAny -> AgdaAny) ->
   MAlonzo.Code.Once.Semantics.Functor.T_μS_182 ->
@@ -666,12 +666,12 @@ du_coerce'45'ν'45'in_980 v0 v1 v2
 d_coerce'45'ν'45'out_986 ::
   () ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
+  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_188 ->
   () -> AgdaAny -> AgdaAny
 d_coerce'45'ν'45'out_986 ~v0 v1 = du_coerce'45'ν'45'out_986 v1
 du_coerce'45'ν'45'out_986 ::
   MAlonzo.Code.Once.Type.T_Functor_110 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
+  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_188 ->
   () -> AgdaAny -> AgdaAny
 du_coerce'45'ν'45'out_986 v0 v1 v2 v3
   = coe du_coerce'45'μ'45'out_788 (coe v0) v1 v3
@@ -679,12 +679,12 @@ du_coerce'45'ν'45'out_986 v0 v1 v2 v3
 d_sem'45'CoOut_990 ::
   () ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
+  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_188 ->
   MAlonzo.Code.Once.Semantics.Functor.T_νS_198 -> AgdaAny
 d_sem'45'CoOut_990 ~v0 v1 v2 v3 = du_sem'45'CoOut_990 v1 v2 v3
 du_sem'45'CoOut_990 ::
   MAlonzo.Code.Once.Type.T_Functor_110 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
+  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_188 ->
   MAlonzo.Code.Once.Semantics.Functor.T_νS_198 -> AgdaAny
 du_sem'45'CoOut_990 v0 v1 v2
   = coe
@@ -707,7 +707,7 @@ du_sem'45'CoIn_1000 v0 v1
 d_sem'45'CoOut'45'CoIn_1012 ::
   () ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
+  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_188 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_sem'45'CoOut'45'CoIn_1012 = erased
 -- Once.Semantics.Value.sem-ana
@@ -780,8 +780,8 @@ d_sem'45'fuseNat_1154 ::
   () ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
+  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_188 ->
+  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_188 ->
   () ->
   (() -> AgdaAny -> AgdaAny) ->
   (AgdaAny -> AgdaAny) ->
@@ -791,8 +791,8 @@ d_sem'45'fuseNat_1154 ~v0 v1 v2 v3 v4 ~v5 v6 v7
 du_sem'45'fuseNat_1154 ::
   MAlonzo.Code.Once.Type.T_Functor_110 ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
+  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_188 ->
+  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_188 ->
   (() -> AgdaAny -> AgdaAny) ->
   (AgdaAny -> AgdaAny) ->
   MAlonzo.Code.Once.Semantics.Functor.T_μS_182 -> AgdaAny
@@ -815,8 +815,8 @@ d_sem'45'fuseNat'45'cong_1198 ::
   () ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
+  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_188 ->
+  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_188 ->
   () ->
   (() -> AgdaAny -> AgdaAny) ->
   (() -> AgdaAny -> AgdaAny) ->
@@ -833,8 +833,8 @@ d_Φ'45'eq_1230 ::
   () ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
+  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_188 ->
+  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_188 ->
   () ->
   (() -> AgdaAny -> AgdaAny) ->
   (() -> AgdaAny -> AgdaAny) ->
@@ -854,8 +854,8 @@ d_sem'45'fuseNat'45'events_1250 ::
   AgdaAny ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
+  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_188 ->
+  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_188 ->
   () ->
   (() -> AgdaAny -> AgdaAny) ->
   (AgdaAny -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14) ->
@@ -869,8 +869,8 @@ du_sem'45'fuseNat'45'events_1250 ::
   AgdaAny ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
+  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_188 ->
+  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_188 ->
   (() -> AgdaAny -> AgdaAny) ->
   (AgdaAny -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14) ->
   MAlonzo.Code.Once.Semantics.Functor.T_μS_182 ->
@@ -897,14 +897,14 @@ du_sem'45'fuseNat'45'events_1250 v0 v1 v2 v3 v4 v5 v6 v7
 d_sem'45'Out'45'In_1284 ::
   () ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
+  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_188 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_sem'45'Out'45'In_1284 = erased
 -- Once.Semantics.Value.sem-In-Out
 d_sem'45'In'45'Out_1296 ::
   () ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
+  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_188 ->
   MAlonzo.Code.Once.Semantics.Functor.T_μS_182 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_sem'45'In'45'Out_1296 = erased
@@ -921,7 +921,7 @@ d_fmap'45'coerce'45'μ'45'coherence_1312 = erased
 d_fmap'45'coerce'45'μ'45'coherence'8242'_1362 ::
   () ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
+  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_188 ->
   () ->
   () ->
   (AgdaAny -> AgdaAny) ->
@@ -931,7 +931,7 @@ d_fmap'45'coerce'45'μ'45'coherence'8242'_1362 = erased
 d_sem'45'cata'45'compute_1410 ::
   () ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 ->
+  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_188 ->
   () ->
   (AgdaAny -> AgdaAny) ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12

@@ -203,9 +203,9 @@ data T_ValidAtWF_522
                              MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_610
                              MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_610
                              T_ValidAtWF_522 |
-    C_valid'45'μ'45'wf_902 MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174
+    C_valid'45'μ'45'wf_902 MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_188
                            T_ValidAtWF_522 |
-    C_valid'45'ν'45'wf_918 MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174
+    C_valid'45'ν'45'wf_918 MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_188
                            T_ValidAtWF_522 |
     C_valid'45'int'45'wf_930 MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_610 |
     C_valid'45'float'45'wf_942 MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_610 |

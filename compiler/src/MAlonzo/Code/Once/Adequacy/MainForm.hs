@@ -29,6 +29,7 @@ import qualified MAlonzo.Code.Once.Compile
 import qualified MAlonzo.Code.Once.IR
 import qualified MAlonzo.Code.Once.Parser
 import qualified MAlonzo.Code.Once.Parser.Module.Core
+import qualified MAlonzo.Code.Once.Surface.Context
 import qualified MAlonzo.Code.Once.Surface.Syntax
 import qualified MAlonzo.Code.Once.Type
 import qualified MAlonzo.Code.Once.TypeCheck.Elaborate
@@ -46,8 +47,8 @@ d_EffUU_6
       (coe MAlonzo.Code.Once.Type.C_Unit_122)
 -- Once.Adequacy.MainForm.Payload
 d_Payload_10 ::
-  MAlonzo.Code.Once.Surface.Syntax.T_Usage_60 ->
-  MAlonzo.Code.Once.Surface.Syntax.T_Expr_184 -> ()
+  MAlonzo.Code.Once.Surface.Context.T_Usage_60 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 -> ()
 d_Payload_10 = erased
 -- Once.Adequacy.MainForm.Form
 d_Form_38 :: MAlonzo.Code.Once.IR.T_IR_16 -> ()
@@ -226,7 +227,7 @@ du_main'45'node'45'of_164 v0
   = coe
       du_mnf'45'ef_216 (coe v0)
       (coe
-         MAlonzo.Code.Once.Parser.d_extractFunctions_490
+         MAlonzo.Code.Once.Parser.d_extractFunctions_514
          (coe MAlonzo.Code.Once.Parser.d_extractAliases_76 (coe v0))
          (coe v0))
 -- Once.Adequacy.MainForm.mnf-caf
@@ -345,12 +346,12 @@ du_form_262 v0 v1
                                                                                                  (coe
                                                                                                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                     (coe
-                                                                                                       MAlonzo.Code.Once.TypeCheck.Elaborate.du_resolveExpr_12206
+                                                                                                       MAlonzo.Code.Once.TypeCheck.Elaborate.du_resolveExpr_12772
                                                                                                        (coe
                                                                                                           (0 ::
                                                                                                              Integer))
                                                                                                        (coe
-                                                                                                          MAlonzo.Code.Once.Surface.Syntax.C_'8709'_8)
+                                                                                                          MAlonzo.Code.Once.Surface.Context.C_'8709'_8)
                                                                                                        (coe
                                                                                                           d_EffUU_6)
                                                                                                        (coe

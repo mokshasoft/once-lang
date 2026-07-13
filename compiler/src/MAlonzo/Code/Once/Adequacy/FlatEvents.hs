@@ -159,14 +159,14 @@ d_machine'45'event_170 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
-  MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_150 ->
+  MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_160 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_StoredValue_66 ->
   MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_122
 d_machine'45'event_170 ~v0 v1 ~v2 v3 v4
   = du_machine'45'event_170 v1 v3 v4
 du_machine'45'event_170 ::
   MAlonzo.Code.Once.Type.T_Type_112 ->
-  MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_150 ->
+  MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_160 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_StoredValue_66 ->
   MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_122
 du_machine'45'event_170 v0 v1 v2
@@ -177,12 +177,12 @@ du_machine'45'event_170 v0 v1 v2
          MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v4
            -> coe
                 MAlonzo.Code.Once.Denotation.Trace.C_mk'45'event_132
-                (coe MAlonzo.Code.Once.SigOp.Info.d_name_160 (coe v1))
+                (coe MAlonzo.Code.Once.SigOp.Info.d_name_174 (coe v1))
                 (coe du_decode'45'ℕ_162 (coe v2))
          MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
            -> coe
                 MAlonzo.Code.Once.Denotation.Trace.C_mk'45'event_132
-                (coe MAlonzo.Code.Once.SigOp.Info.d_name_160 (coe v1)) (coe v3)
+                (coe MAlonzo.Code.Once.SigOp.Info.d_name_174 (coe v1)) (coe v3)
          _ -> MAlonzo.RTE.mazUnreachableError)
 -- Once.Adequacy.FlatEvents.FlatEventTrace.ev-of-loc
 d_ev'45'of'45'loc_194 ::
@@ -202,8 +202,8 @@ du_ev'45'of'45'loc_194 v0 v1
          MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'sigop_2098 v3 v4 v5
            -> let v6
                     = coe
-                        MAlonzo.Code.Once.SigOp.Info.du_go_206
-                        (coe MAlonzo.Code.Once.SigOp.Info.d_sem_162 (coe v5)) in
+                        MAlonzo.Code.Once.SigOp.Info.du_go_224
+                        (coe MAlonzo.Code.Once.SigOp.Info.d_sem_176 (coe v5)) in
               coe
                 (case coe v6 of
                    MAlonzo.Code.Once.SigOp.Info.C_Pure_124

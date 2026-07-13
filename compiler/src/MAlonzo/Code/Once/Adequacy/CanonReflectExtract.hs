@@ -36,50 +36,50 @@ d_extract'45'commute'45'inj'8321'_16 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_extract'45'commute'45'inj'8321'_16 = erased
 -- Once.Adequacy.CanonReflectExtract.distinctOrErr-inj₁-transfer-inj₂
-d_distinctOrErr'45'inj'8321''45'transfer'45'inj'8322'_622 ::
+d_distinctOrErr'45'inj'8321''45'transfer'45'inj'8322'_658 ::
   Bool ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_distinctOrErr'45'inj'8321''45'transfer'45'inj'8322'_622 = erased
+d_distinctOrErr'45'inj'8321''45'transfer'45'inj'8322'_658 = erased
 -- Once.Adequacy.CanonReflectExtract.extractFunctions-canon-inj₁
-d_extractFunctions'45'canon'45'inj'8321'_630 ::
+d_extractFunctions'45'canon'45'inj'8321'_666 ::
   [MAlonzo.Code.Once.Parser.Module.Core.T_Decl_32] ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_extractFunctions'45'canon'45'inj'8321'_630 = erased
+d_extractFunctions'45'canon'45'inj'8321'_666 = erased
 -- Once.Adequacy.CanonReflectExtract._.al
-d_al_642 ::
+d_al_678 ::
   [MAlonzo.Code.Once.Parser.Module.Core.T_Decl_32] ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14]
-d_al_642 v0 ~v1 ~v2 = du_al_642 v0
-du_al_642 ::
+d_al_678 v0 ~v1 ~v2 = du_al_678 v0
+du_al_678 ::
   [MAlonzo.Code.Once.Parser.Module.Core.T_Decl_32] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14]
-du_al_642 v0
+du_al_678 v0
   = coe
       MAlonzo.Code.Once.Parser.d_extractAliases_76
       (coe MAlonzo.Code.Once.Parser.Module.Core.C_mkModule_50 (coe v0))
 -- Once.Adequacy.CanonReflectExtract._.b
-d_b_644 ::
+d_b_680 ::
   [MAlonzo.Code.Once.Parser.Module.Core.T_Decl_32] ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   [MAlonzo.Code.Agda.Builtin.String.T_String_6]
-d_b_644 v0 ~v1 ~v2 = du_b_644 v0
-du_b_644 ::
+d_b_680 v0 ~v1 ~v2 = du_b_680 v0
+du_b_680 ::
   [MAlonzo.Code.Once.Parser.Module.Core.T_Decl_32] ->
   [MAlonzo.Code.Agda.Builtin.String.T_String_6]
-du_b_644 v0
+du_b_680 v0
   = coe
       MAlonzo.Code.Once.Parser.Module.Resolve.d_polyDefNames_218 (coe v0)
 -- Once.Adequacy.CanonReflectExtract._.aux
-d_aux_648 ::
+d_aux_684 ::
   [MAlonzo.Code.Once.Parser.Module.Core.T_Decl_32] ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
@@ -87,4 +87,4 @@ d_aux_648 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_aux_648 = erased
+d_aux_684 = erased

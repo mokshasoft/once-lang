@@ -18,6 +18,7 @@ import MAlonzo.RTE (coe, erased, AgdaAny, addInt, subInt, mulInt,
 import qualified MAlonzo.RTE
 import qualified Data.Text
 import qualified MAlonzo.Code.Agda.Builtin.String
+import qualified MAlonzo.Code.Once.Functor.Translate
 import qualified MAlonzo.Code.Once.Type
 
 -- Once.Surface.IR.SurfaceIR
@@ -34,3 +35,5 @@ data T_SurfaceIR_6
     C_Let_94 MAlonzo.Code.Once.Type.T_Type_112 T_SurfaceIR_6
              T_SurfaceIR_6 |
     C_SigOp_100 MAlonzo.Code.Agda.Builtin.String.T_String_6
+                MAlonzo.Code.Once.Functor.Translate.T_IsBaseType_148
+                MAlonzo.Code.Once.Functor.Translate.T_IsConcrete_174

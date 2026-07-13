@@ -175,38 +175,38 @@ d_poly'8838'_202 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_poly'8838'_202 = erased
 -- Once.Adequacy.CanonPolyNames.elemStr-head-eq
-d_elemStr'45'head'45'eq_874 ::
+d_elemStr'45'head'45'eq_914 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   [MAlonzo.Code.Agda.Builtin.String.T_String_6] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_elemStr'45'head'45'eq_874 = erased
+d_elemStr'45'head'45'eq_914 = erased
 -- Once.Adequacy.CanonPolyNames.lookupPoly-name
-d_lookupPoly'45'name_886 ::
+d_lookupPoly'45'name_926 ::
   [MAlonzo.Code.Once.Parser.T_PolyFunInfo_120] ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_lookupPoly'45'name_886 = erased
+d_lookupPoly'45'name_926 = erased
 -- Once.Adequacy.CanonPolyNames.distinctOrErr-inj₂
-d_distinctOrErr'45'inj'8322'_926 ::
+d_distinctOrErr'45'inj'8322'_966 ::
   Bool ->
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_distinctOrErr'45'inj'8322'_926 = erased
+d_distinctOrErr'45'inj'8322'_966 = erased
 -- Once.Adequacy.CanonPolyNames.guardDistinct-inj₂
-d_guardDistinct'45'inj'8322'_938 ::
+d_guardDistinct'45'inj'8322'_978 ::
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_guardDistinct'45'inj'8322'_938 = erased
+d_guardDistinct'45'inj'8322'_978 = erased
 -- Once.Adequacy.CanonPolyNames.polyInB-bridge
-d_polyInB'45'bridge_960 ::
+d_polyInB'45'bridge_1000 ::
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_44 ->
   [MAlonzo.Code.Once.Parser.T_FunInfo_96] ->
   [MAlonzo.Code.Once.Parser.T_PolyFunInfo_120] ->
@@ -216,4 +216,4 @@ d_polyInB'45'bridge_960 ::
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_polyInB'45'bridge_960 = erased
+d_polyInB'45'bridge_1000 = erased

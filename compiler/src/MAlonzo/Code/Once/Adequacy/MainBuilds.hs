@@ -34,8 +34,8 @@ import qualified MAlonzo.Code.Once.IR
 import qualified MAlonzo.Code.Once.Optimize
 import qualified MAlonzo.Code.Once.Parser
 import qualified MAlonzo.Code.Once.Parser.Module.Core
+import qualified MAlonzo.Code.Once.Surface.Context
 import qualified MAlonzo.Code.Once.Surface.Elaborate
-import qualified MAlonzo.Code.Once.Surface.Syntax
 import qualified MAlonzo.Code.Once.Target
 import qualified MAlonzo.Code.Once.Target.Arch
 import qualified MAlonzo.Code.Once.Type
@@ -47,7 +47,7 @@ import qualified MAlonzo.Code.Relation.Nullary.Decidable.Core
 -- Once.Adequacy.MainBuilds.cfb-aux-doOpt
 d_cfb'45'aux'45'doOpt_28 ::
   Integer ->
-  MAlonzo.Code.Once.Surface.Syntax.T_Ctx_6 ->
+  MAlonzo.Code.Once.Surface.Context.T_Ctx_6 ->
   Bool ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
@@ -62,7 +62,7 @@ d_cfb'45'aux'45'doOpt_28 v0 v1 v2 v3 v4 v5 v6 ~v7 v8 ~v9 ~v10
   = du_cfb'45'aux'45'doOpt_28 v0 v1 v2 v3 v4 v5 v6 v8
 du_cfb'45'aux'45'doOpt_28 ::
   Integer ->
-  MAlonzo.Code.Once.Surface.Syntax.T_Ctx_6 ->
+  MAlonzo.Code.Once.Surface.Context.T_Ctx_6 ->
   Bool ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
@@ -80,14 +80,14 @@ du_cfb'45'aux'45'doOpt_28 v0 v1 v2 v3 v4 v5 v6 v7
                 (coe
                    MAlonzo.Code.Once.Optimize.d_optimize_4128
                    (coe
-                      MAlonzo.Code.Once.Surface.Syntax.du_'10214'_'10215''7580'_38
+                      MAlonzo.Code.Once.Surface.Context.du_'10214'_'10215''7580'_38
                       (coe v1))
                    v6
                    (coe
                       MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_108 (coe v1)
                       (coe v6) (coe MAlonzo.Code.Once.IR.C_Heap_8)
                       (coe
-                         MAlonzo.Code.Once.TypeCheck.Elaborate.du_resolveExpr_12206 (coe v0)
+                         MAlonzo.Code.Once.TypeCheck.Elaborate.du_resolveExpr_12772 (coe v0)
                          (coe v1) (coe v6) (coe v4)
                          (coe
                             MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
@@ -102,7 +102,7 @@ du_cfb'45'aux'45'doOpt_28 v0 v1 v2 v3 v4 v5 v6 v7
                    MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_108 (coe v1)
                    (coe v6) (coe MAlonzo.Code.Once.IR.C_Heap_8)
                    (coe
-                      MAlonzo.Code.Once.TypeCheck.Elaborate.du_resolveExpr_12206 (coe v0)
+                      MAlonzo.Code.Once.TypeCheck.Elaborate.du_resolveExpr_12772 (coe v0)
                       (coe v1) (coe v6) (coe v4)
                       (coe
                          MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
@@ -141,12 +141,12 @@ du_cfb'45'doOpt_78 ::
 du_cfb'45'doOpt_78 v0 v1 v2 v3 v4 v5 v6
   = coe
       du_cfb'45'aux'45'doOpt_28 (coe (0 :: Integer))
-      (coe MAlonzo.Code.Once.Surface.Syntax.C_'8709'_8) (coe v0) (coe v1)
-      (coe v2) (coe v4) (coe v5)
+      (coe MAlonzo.Code.Once.Surface.Context.C_'8709'_8) (coe v0)
+      (coe v1) (coe v2) (coe v4) (coe v5)
       (coe
-         MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElab_1506
+         MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElab_1598
          (coe
-            MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndSelfAndPolys_222
+            MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndSelfAndPolys_390
             (coe v1) (coe v2) (coe v3) (coe v4) (coe v5))
          (coe v6) (coe v5))
 -- Once.Adequacy.MainBuilds.cfun-main-aux-doOpt
@@ -481,7 +481,7 @@ du_crm'45'doOpt_522 v0 v1
   = coe
       du_crm'45'aux'45'doOpt_496 (coe v0) (coe v1)
       (coe
-         MAlonzo.Code.Once.Parser.d_extractFunctions_490
+         MAlonzo.Code.Once.Parser.d_extractFunctions_514
          (coe MAlonzo.Code.Once.Parser.d_extractAliases_76 (coe v1))
          (coe v1))
 -- Once.Adequacy.MainBuilds.cfm-built-aux
@@ -535,7 +535,7 @@ du_cfm'45'built'45'from'45'crm_574 v0 v1 v2
   = coe
       du_cfm'45'built'45'aux_542 (coe v0)
       (coe
-         MAlonzo.Code.Once.Parser.d_extractFunctions_490
+         MAlonzo.Code.Once.Parser.d_extractFunctions_514
          (coe MAlonzo.Code.Once.Parser.d_extractAliases_76 (coe v1))
          (coe v1))
       (coe v2)

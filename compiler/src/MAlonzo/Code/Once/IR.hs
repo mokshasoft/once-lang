@@ -39,29 +39,29 @@ data T_IR_16
     C_inr_62 T_AllocMode_4 | C_case_70 T_IR_16 T_IR_16 |
     C_terminal_74 | C_initial_78 | C_curry_88 T_IR_16 T_AllocMode_4 |
     C_apply_96 | C_arr_104 |
-    C_In_108 MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174
+    C_In_108 MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_188
              T_AllocMode_4 |
-    C_out'45'μ_112 MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 |
-    C_Cata_118 MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174
+    C_out'45'μ_112 MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_188 |
+    C_Cata_118 MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_188
                T_IR_16 |
-    C_Para_124 MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174
+    C_Para_124 MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_188
                T_IR_16 |
-    C_Out_128 MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 |
-    C_in'45'ν_132 MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174
+    C_Out_128 MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_188 |
+    C_in'45'ν_132 MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_188
                   T_AllocMode_4 |
-    C_Ana_138 MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174
+    C_Ana_138 MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_188
               T_IR_16 |
     C_Hylo_146 MAlonzo.Code.Once.Type.T_Functor_110
-               MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174
-               MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 T_IR_16
+               MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_188
+               MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_188 T_IR_16
                T_NatTr_18 |
     C_Fuse_154 MAlonzo.Code.Once.Type.T_Functor_110
-               MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174
-               MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 T_IR_16
+               MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_188
+               MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_188 T_IR_16
                T_NatTr_18 |
     C_free'45'heap_156 MAlonzo.Code.Once.Memory.HeapAddress.T_HeapRef_8 |
     C_const_160 MAlonzo.Code.Once.Type.T_FitsInReg_196 AgdaAny |
-    C_SigOp_166 MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_150
+    C_SigOp_166 MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_160
 -- Once.IR.NatTr
 d_NatTr_18 a0 a1 = ()
 data T_NatTr_18

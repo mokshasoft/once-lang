@@ -211,7 +211,7 @@ d_'10214'_'10215'IR_56 v0
                   (coe
                      MAlonzo.Code.Once.Denotation.TraceMonad.du_projTrace_62
                      (coe
-                        MAlonzo.Code.Once.Denotation.DenotTrace.d_eval'7472'_154
+                        MAlonzo.Code.Once.Denotation.DenotTrace.d_eval'7472'_52
                         (coe MAlonzo.Code.Once.Type.C_Unit_122)
                         (coe MAlonzo.Code.Once.Type.C_Unit_122) (coe v1)
                         (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8))
@@ -241,7 +241,7 @@ d_srcToModule'45'aux_68 v0 v1
         -> coe
              d_eitherToMaybe_64
              (coe
-                MAlonzo.Code.Once.Parser.Module.Resolve.d_resolveImports_616
+                MAlonzo.Code.Once.Parser.Module.Resolve.d_resolveImports_638
                 (coe v0) (coe v2))
       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v1
       _ -> MAlonzo.RTE.mazUnreachableError
