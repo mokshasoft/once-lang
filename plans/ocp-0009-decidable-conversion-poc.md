@@ -19,7 +19,7 @@ separate IR→IR consumer over `normalizer.Syntax.CCC`.
 The **conversion problem** — decidable equality, the heart of OCP-0009 — is
 **solved and machine-checked for the fragment**. The principled NbE decides the
 β-theory + every congruence + **product-η**, open terms included, **funext-free**.
-All 51 `poc/OCP0009/*.agda` modules build green
+All 52 `poc/OCP0009/*.agda` modules build green
 (`bootstrap/check.sh poc/OCP0009/<M>.agda` → EXIT 0), including `NbEPCwF` (CwF /
 dependent layer, Rung 2), `NbEPEl` (Tarski decoder + base CwF), `NbEPId`
 (identity type `Id` + `J`, Rung 3), `NbEPQTT` (QTT: multiplicity semiring +
@@ -293,6 +293,11 @@ OCP-0009 contribution and it shares the OCP-0004 normalizer discipline.
   `` `hom `` in an IR universe): directed statements are object-language
   types; irreversibility as an internal `¬`-code inhabited by rung 0's
   proof; quantification over programs. `--safe`.
+- `NbEPDirJ` — **the directed identity type's ELIMINATOR**: J in three
+  forms (two-sided, target-based, source-based-via-`snoc`), `no-sym`
+  (refuted, with the J-route to `sym` blocked at step-inversion),
+  transport-costs-covariance + the Yoneda action, `J-U` (universe-valued
+  motives). `--safe`.
 - `NbEPMon` — **directed rung 2a: the monoidal core, linearity as
   semantics.** `no-diagonal` + `no-discard` (duplication/discard
   INEXPRESSIBLE — resource-count invariance) and `no-undo` (in-core
@@ -457,7 +462,7 @@ proof-theoretic strength. "Built" = machine-checked in `poc/OCP0009/`.
 | **Totality** | ✅ total-only (SN core) | ✅ | ✅ | ✅ | ⚠️ total *or* partial |
 | **Erasure / quantities** | ✅ **QTT, end-to-end** (`NbEPQTT` semiring+erasure; `NbEPQTTJ` graded judgment+elaboration; `NbEPQTTEraseTm` **erasing term elaboration** — `𝟘`-arguments dropped from the runtime term, irrelevance decided by `nf` on open terms) | ✅ irrelevance | ⚠️ extraction | ✅ Prop-erasure | ✅ QTT native |
 | **Self-hosting / reflected IR** | ✅ **distinctive** (prove-Once-in-Once) | ❌ | ❌ | ❌ | ❌ |
-| **Directed homs (transformations as propositions)** | ⚠️ **rungs 0–2a** (`NbEPDir`: the rewrite system as a proven Hom-category; `NbEPDirU`: `Hom` as a universe code, irreversibility internal; `NbEPMon`: monoidal core — duplication/discard/undo all PROVABLY inexpressible; full directed kernel = flagged research, §10) | ❌ | ❌ | ❌ | ❌ |
+| **Directed homs (transformations as propositions)** | ⚠️ **rungs 0–2a + the eliminator** (`NbEPDir`: rewrite system as a proven Hom-category; `NbEPDirU`: `Hom` as a universe code; `NbEPDirJ`: **`Hom` is a directed identity type — J in three forms, `sym` refuted, transport = J + covariance**; `NbEPMon`: monoidal core — duplication/discard/undo provably inexpressible; full directed kernel = flagged research, §10) | ❌ | ❌ | ❌ | ❌ |
 | **Kernel / TCB size** | ✅ **minimal by thesis** | large | large (CIC) | smallish CIC | medium |
 
 **Honest gaps (2026-07-13: the former big three — II, the ℕ-tower, and
@@ -816,6 +821,16 @@ no system anywhere has directed type theory with a decidable kernel.
    over programs, and IRREVERSIBILITY as an internal proposition
    (`` `π (`hom tgt src) (λ _ → `⊥) ``, inhabited by rung 0's proof).
    Conversion = Agda's kernel, as with `NbEPUniv` (honest note in header).
+   **[DONE 2026-07-13] Step 1.5 — the ELIMINATOR settled** (`NbEPDirJ`):
+   `Hom` is a DIRECTED IDENTITY TYPE — `refl = done`; J in three forms
+   (two-sided + target-based, both structural; source-based derived by
+   chain RE-ASSOCIATION, `snoc`, not symmetry — in `Id` the based J's
+   collapse via `sym`, here each exists on its own terms); `sym` REFUTED
+   (`no-sym`), with the classical J-derivation of `sym` blocked exactly at
+   step-inversion; directed transport costs STEP-COVARIANCE (symmetric
+   transport's freeness is a luxury of symmetry), with the covariant
+   Yoneda action as transport at the hom-family; and `J-U` — J with
+   universe-valued motives, so directed induction builds internal types.
 2. **Rung 2 — the monoidal fragment. [2a DONE 2026-07-13]** (`NbEPMon`):
    the monoidal core `{ι₁,ι₂,I,⊗}` + structural morphisms + one
    computational generator, with THREE theorems the cartesian core cannot
