@@ -190,5 +190,5 @@ ana-eventsˢ {F} {A} coalgComp a (suc m) =
 -- interpretation-agnostic (no `classify-name`). Matches elaborate's
 -- `SigOp (value-info name) ∘ terminal` ⇒ `faithful` stays `refl`.
 ⟦ sigOp {A = A} name conc ⟧ˢ   dγ = λ n → (emit-D (value-info {Unit} {A} name base-Unit conc) tt , inject (semM (value-info {Unit} {A} name base-Unit conc) tt))
-⟦ closure {A = A} name conc ⟧ˢ dγ = λ n → (emit-D (value-info {Unit} {A} (bare name) base-Unit conc) tt , inject (semM (value-info {Unit} {A} (bare name) base-Unit conc) tt))
-⟦ poly name PT conc ⟧ˢ         dγ = λ n → (emit-D (value-info {Unit} {PT} (bare name) base-Unit conc) tt , inject (semM (value-info {Unit} {PT} (bare name) base-Unit conc) tt))
+⟦ closure {A = A} name ⟧ˢ dγ = λ n → (emit-D (internal-info {A} (bare name)) tt , inject (semM (internal-info {A} (bare name)) tt))
+⟦ poly name PT ⟧ˢ         dγ = λ n → (emit-D (internal-info {PT} (bare name)) tt , inject (semM (internal-info {PT} (bare name)) tt))

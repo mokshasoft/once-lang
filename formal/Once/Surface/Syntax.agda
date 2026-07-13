@@ -171,7 +171,7 @@ data Expr : ∀ {n} → Ctx n → Usage n → Type → Set where
   -- 2026-05-23: `myid = id; main = exit@S (myid 42)` exited 80 because
   -- `sigOp` curry-wrap fed the closure ptr through apply as if it were
   -- the codomain Int).
-  closure  : ∀ {n} {Γ : Ctx n} {A} → String → IsConcrete A → Expr Γ zeroUsage A
+  closure  : ∀ {n} {Γ : Ctx n} {A} → String → Expr Γ zeroUsage A
 
   -- Unresolved polymorphic-def placeholder — Plan 0.6.2 Phase 2.
   -- Phase 1 (checkElab) emits `poly x T` when encountering a reference
@@ -179,7 +179,7 @@ data Expr : ∀ {n} → Ctx n → Usage n → Type → Set where
   -- with the specialized body's elaboration. A well-formed compiled
   -- Expr reaching IR emission / codegen contains no `poly` nodes —
   -- downstream consumers reject it as "resolver not run".
-  poly    : ∀ {n} {Γ : Ctx n} (name : String) (T : Type) → IsConcrete T → Expr Γ zeroUsage T
+  poly    : ∀ {n} {Γ : Ctx n} (name : String) (T : Type) → Expr Γ zeroUsage T
 
   -- Plan 0.2.4.5 D2: morphism realm.
   --

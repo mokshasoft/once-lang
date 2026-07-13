@@ -116,6 +116,32 @@ data SigOpSem (A B : Type) : Set where
   haltsV : B ≡ Unit → SigOpSem A B
 
 ------------------------------------------------------------------------
+-- Linkage — how a `SigOp`'s result type is provided (Plan 0.58 / D071).
+--
+-- A `SigOp` node is the IR's carrier for a NAMED morphism. D071 splits the
+-- two kinds a name can denote:
+--
+--   • `ffi-concrete` — a genuine FFI / register-ABI boundary (D061). Such a
+--     boundary passes CONCRETE values (base scalars or first-order function
+--     pointers), so it carries an `IsConcrete B` witness. This keeps the
+--     Plan-0.58 concreteness discipline intact for real syscalls/intrinsics.
+--
+--   • `internal-ref` — a same-module definition reference (`poly`/`closure`,
+--     D064). The linked value is a code/closure pointer produced by internal
+--     linkage (`once_<name>`), representable at ANY source type — so it needs
+--     NO concreteness witness. This is what dissolves the totality wall D071
+--     diagnosed: an internal reference of arbitrary type (`μNat → Int`, …) is
+--     a projection from the definition context Γ, not an FFI value.
+--
+-- The tag is proof-irrelevant carry-along (`conB` is never read); it records
+-- the FFI/internal distinction structurally rather than as a separate IR node.
+------------------------------------------------------------------------
+
+data Linkage (B : Type) : Set where
+  ffi-concrete : IsConcrete B → Linkage B
+  internal-ref : Linkage B
+
+------------------------------------------------------------------------
 -- SigOpInfo
 ------------------------------------------------------------------------
 
@@ -135,11 +161,13 @@ record SigOpInfo (A B : Type) : Set where
   field
     name : CanonicalName            -- Plan 0.50: the resolved [path…, name] identity
     sem  : SigOpSem A B              -- proven value (internal) OR effect contract (external)
-    -- Plan 0.58: the FFI concreteness witnesses. The ARGUMENT is a base type
-    -- (a register/ABI scalar — a higher-order callback arg is out of scope); the
-    -- RESULT is CONCRETE (base, or a first-order function pointer). Proof-irrelevant.
+    -- Plan 0.58: the ARGUMENT is a base type (a register/ABI scalar — a
+    -- higher-order callback arg is out of scope). Proof-irrelevant.
     baseA : IsBaseType A
-    conB  : IsConcrete B
+    -- Plan 0.58 / D071: the RESULT's linkage — an FFI boundary carries an
+    -- `IsConcrete B` witness; an internal definition reference carries none
+    -- (`internal-ref`). Proof-irrelevant carry-along (never read).
+    conB  : Linkage B
 
 open SigOpInfo public
 
@@ -179,9 +207,9 @@ effect si = go (sem si)
 
 mk-info : ∀ {A B} → CanonicalName → (M.⟦ A ⟧ → M.⟦ B ⟧) → EffectShape B
         → IsBaseType A → IsConcrete B → SigOpInfo A B
-mk-info nm f Pure      bA cB = mk-info' nm (pureV f)     bA cB
-mk-info nm f (Emits e) bA cB = mk-info' nm (emitsV e)    bA cB
-mk-info nm f (Halts e) bA cB = mk-info' nm (haltsV e)    bA cB
+mk-info nm f Pure      bA cB = mk-info' nm (pureV f)     bA (ffi-concrete cB)
+mk-info nm f (Emits e) bA cB = mk-info' nm (emitsV e)    bA (ffi-concrete cB)
+mk-info nm f (Halts e) bA cB = mk-info' nm (haltsV e)    bA (ffi-concrete cB)
 
 ------------------------------------------------------------------------
 -- Name-only equality

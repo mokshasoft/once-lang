@@ -60,17 +60,17 @@ postulate
   resolveExpr-sigOp-closure-faithful :
     ∀ {n} {Γ : Srf.Ctx n} {A : Type}
       (s : CanonicalName) (conc : IsConcrete A) (dγ : ⟦ ⟦ Γ ⟧ᶜ ⟧ᴰ) (k : ℕ)
-    → SD.⟦ Srf.closure {Γ = Γ} {A = A} (showCanonical s) conc ⟧ˢ dγ k
+    → SD.⟦ Srf.closure {Γ = Γ} {A = A} (showCanonical s) ⟧ˢ dγ k
         ≡ SD.⟦ Srf.sigOp {Γ = Γ} {A = A} s conc ⟧ˢ dγ k
 
   resolveExpr-poly-splice-faithful :
     ∀ {n} {Γ : Srf.Ctx n} {A : Type}
       (polys : PolyCtx) (pAcc : Acc _<_ (length polys)) (imps userFns : Imports) (fresh : ℕ)
-      (x : String) (conc : IsConcrete A) {schema : _} {body : _} {Ψ0 : _} {eE : _} {d f : ℕ}
+      (x : String) {schema : _} {body : _} {Ψ0 : _} {eE : _} {d f : ℕ}
       (polyEq : lookupPoly polys x ≡ just (schema , body))
       (dγ : ⟦ ⟦ Γ ⟧ᶜ ⟧ᴰ) (k : ℕ)
-    → SD.⟦ applySplice {Γ = Γ} polys pAcc imps userFns fresh x A conc polyEq (CheckElabResult.success Ψ0 eE d f) ⟧ˢ dγ k
-        ≡ SD.⟦ Srf.poly {Γ = Γ} x A conc ⟧ˢ dγ k
+    → SD.⟦ applySplice {Γ = Γ} polys pAcc imps userFns fresh x A polyEq (CheckElabResult.success Ψ0 eE d f) ⟧ˢ dγ k
+        ≡ SD.⟦ Srf.poly {Γ = Γ} x A ⟧ˢ dγ k
 
 -- The `poly` case, J-style over the `lookupPoly` outcome (`lp`/`eqLP` explicit) so
 -- `resolvePolyCase` reduces WITHOUT the documented `rewrite polyEq` with-abstraction
@@ -79,17 +79,17 @@ postulate
 resolveExpr-poly-faithful :
   ∀ {n} {Γ : Srf.Ctx n} {A : Type}
     (polys : PolyCtx) (pAcc : Acc _<_ (length polys)) (imps userFns : Imports) (fresh : ℕ)
-    (x : String) (conc : IsConcrete A)
+    (x : String)
     (lp : Maybe _) (eqLP : lookupPoly polys x ≡ lp)
     (dγ : ⟦ ⟦ Γ ⟧ᶜ ⟧ᴰ) (k : ℕ)
-  → SD.⟦ resolvePolyCase {Γ = Γ} polys pAcc imps userFns fresh x A conc lp eqLP ⟧ˢ dγ k
-      ≡ SD.⟦ Srf.poly {Γ = Γ} x A conc ⟧ˢ dγ k
-resolveExpr-poly-faithful polys pAcc imps userFns fresh x conc nothing eqLP dγ k = refl
-resolveExpr-poly-faithful {A = A} polys pAcc imps userFns fresh x conc (just (schema , body)) eqLP dγ k
+  → SD.⟦ resolvePolyCase {Γ = Γ} polys pAcc imps userFns fresh x A lp eqLP ⟧ˢ dγ k
+      ≡ SD.⟦ Srf.poly {Γ = Γ} x A ⟧ˢ dγ k
+resolveExpr-poly-faithful polys pAcc imps userFns fresh x nothing eqLP dγ k = refl
+resolveExpr-poly-faithful {A = A} polys pAcc imps userFns fresh x (just (schema , body)) eqLP dγ k
   with checkElab (ctxWithImportsAndPolys imps (removePoly x polys)) body A
 ... | CheckElabResult.failure _ = refl
 ... | CheckElabResult.success Ψ0 eE d f =
-      resolveExpr-poly-splice-faithful polys pAcc imps userFns fresh x conc eqLP dγ k
+      resolveExpr-poly-splice-faithful polys pAcc imps userFns fresh x eqLP dγ k
 
 -- Two-sided bind congruence at each fuel: `>>=T` at `j` consumes only `m j`
 -- (and the continuation at `proj₂ (m j)`), so pointwise equalities of BOTH the
@@ -113,7 +113,7 @@ resolveExpr-faithful polys imps userFns fresh (Srf.var i) dγ k = refl
 resolveExpr-faithful polys imps userFns fresh Srf.unit dγ k = refl
 resolveExpr-faithful polys imps userFns fresh (Srf.int z) dγ k = refl
 resolveExpr-faithful polys imps userFns fresh (Srf.str s) dγ k = refl
-resolveExpr-faithful polys imps userFns fresh (Srf.closure s conc) dγ k = refl
+resolveExpr-faithful polys imps userFns fresh (Srf.closure s) dγ k = refl
 resolveExpr-faithful polys imps userFns fresh (Srf.lift-morphism m) dγ k = refl
 -- Unary / binary (structural ⇒ rewrite the IHs).
 resolveExpr-faithful polys imps userFns fresh (Srf.fst' p) dγ k rewrite resolveExpr-faithful polys imps userFns fresh p dγ k = refl
@@ -181,6 +181,6 @@ resolveExpr-faithful {Γ = Γ} {A = A} polys imps userFns fresh (Srf.sigOp s con
 ... | just _  = resolveExpr-sigOp-closure-faithful {Γ = Γ} {A = A} s conc dγ k
 ... | nothing = refl
 -- poly: J-style aux over the `lookupPoly` outcome (dodges the with-abstraction trap).
-resolveExpr-faithful {Γ = Γ} {A = A} polys imps userFns fresh (Srf.poly x T conc) dγ k =
-  resolveExpr-poly-faithful {Γ = Γ} {A = A} polys (<-wellFounded (length polys)) imps userFns fresh x conc
+resolveExpr-faithful {Γ = Γ} {A = A} polys imps userFns fresh (Srf.poly x T) dγ k =
+  resolveExpr-poly-faithful {Γ = Γ} {A = A} polys (<-wellFounded (length polys)) imps userFns fresh x
     (lookupPoly polys x) refl dγ k

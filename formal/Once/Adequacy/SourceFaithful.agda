@@ -169,8 +169,8 @@ faithful (let' e1 e2) dγ n
 -- as elaborate's `SigOp(generic-info name)∘terminal` (non-arrow) / `curry(SigOp∘
 -- snd)` (arrow) reduce ([]++X, returnT, eta) ⇒ refl.
 faithful (sigOp {A = (Dom ⇒[ kk ] Cod)} name (con-fun bDom cCod)) dγ k = refl
-faithful (closure name conc) dγ k = refl
-faithful (poly name PT conc) dγ k = refl
+faithful (closure name) dγ k = refl
+faithful (poly name PT) dγ k = refl
 -- NON-ARROW `sigOp`: `elaborate`/`⟦_⟧ˢ` dispatch on `A`'s shape (it stays stuck for
 -- ABSTRACT `A`), so case-split the non-arrow type constructors — each is the pure
 -- `SigOp(generic-info name)∘terminal` shape ⇒ refl. No SigOp purity semantics added;
