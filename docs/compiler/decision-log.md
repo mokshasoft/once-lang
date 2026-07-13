@@ -5211,3 +5211,39 @@ meaning") is therefore preserved *by construction*, with zero growth of the trus
   (`Compile.agda`); sig-less schema routing in `Parser`/`Resolve` + the 3 Canon mirror proofs.
 - Open obligation ledger gains: oracle completeness theorem (principality), replacing the
   open-ended classifier frontier.
+
+### Implementation (2026-07-13, certified green, 55-test suite)
+
+Landed in four milestones, all `make certified` exit 0, zero new postulates:
+
+- **M1 — the oracle** (`Once/TypeCheck/Principal.agda`): `PTVar "?n"` metavariables,
+  occurs-checked fuel-bounded unification over `PolyType`/`PolyFunctor`, ground-`Type`
+  embedding, builtin schema table (`compose` special-cased — grade-polymorphic), schema
+  freshening for user poly defs, W-style structural traversal (`_>>=R_` chains, with-free
+  spine), def-boundary generalization. The traversal context is `(Imports, SchemaCtx)` — poly
+  BODIES are out of scope **by type**.
+- **M2 — ground wiring**: `inferType`'s failure branch falls back to `principalGround`,
+  validated by `checkElab` (`inferType-validate`). The canon transports were the predicted
+  ripple: `CanonPrincipal.agda` proves the oracle **pointwise canon-invariant** (possible,
+  unlike for `inferElab`, because the oracle was designed for it: one `showCanonical`-keyed
+  lookup, definitional singleton-canonical, schema-only context); `CanonAllFuns` /
+  `CanonReflectAllFuns` gain `inferType-inv` (via-elab | via-oracle) and transport the oracle
+  branch (opposite-side inferElab failure by reflection-contradiction, oracle answer by
+  invariance, validation through the `⊢ᶜ` bridges).
+- **M3 — schema routing**: `siglessSchema` (non-ground principal type in the EMPTY context)
+  routes sig-less defs to `PolyFunInfo`, shared by `extractFunctions-go` and the NEW
+  pending-threaded `pdn-go`/`polyDefNames` so routing and keep-bare agree exactly; mirror
+  proofs via `siglessSchema-canon` + `poly⊆` restated over `pdn-go`.
+- **M4 — validation**: `infer-id` (schema alias) and `infer-compose` (unification through a
+  composition) un-PENDed and green; new tests `infer-compose-chain` (nested compose + eff),
+  `infer-lambda` (sig-less lambda), `infer-poly-alias` (multi-variable schema alias).
+
+Proof-engineering notes (for the next oracle-adjacent change): keep the traversal `with`-free
+(`>>=R` chains make the invariance proof equational); dispatch builtins via explicit `≟`
+(never string-literal patterns — proof opacity); hoist recursive helpers out of `where`
+(lifting turns as-pattern subterms into reconstructions and breaks the termination checker).
+
+**Open (the D072 ledger)**: the oracle completeness theorem (principality); v1 coverage gaps
+(cata/In/ana bodies need functor metavariables; unresolved `RQualified` leaves; sig-less
+bodies referencing earlier USER defs use the empty-context criterion, so only builtin-built
+bodies generalize).
