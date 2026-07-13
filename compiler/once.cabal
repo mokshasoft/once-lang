@@ -402,6 +402,48 @@ library
       MAlonzo.Code.Once.Surface.Properties
       MAlonzo.Code.Once.Surface.Syntax
       MAlonzo.Code.Once.Surface.Thinning
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z32
+      MAlonzo.Code.Once.Adequacy.CanonAllFuns
+      MAlonzo.Code.Once.Adequacy.CanonComposeMid
+      MAlonzo.Code.Once.Adequacy.CanonExtract
+      MAlonzo.Code.Once.Adequacy.CanonModule
+      MAlonzo.Code.Once.Adequacy.CanonModuleTyped
+      MAlonzo.Code.Once.Adequacy.CanonPolyNames
+      MAlonzo.Code.Once.Adequacy.CanonPolyTransport
+      MAlonzo.Code.Once.Adequacy.CanonPreserve
+      MAlonzo.Code.Once.Adequacy.CanonPreserveMutual
+      MAlonzo.Code.Once.Adequacy.CanonReflectAllFuns
+      MAlonzo.Code.Once.Adequacy.CanonReflectExtract
+      MAlonzo.Code.Once.Adequacy.CanonReflectModule
+      MAlonzo.Code.Once.Adequacy.CanonReflectMutual
+      MAlonzo.Code.Once.Adequacy.CanonReflectPolyTransport
+      MAlonzo.Code.Once.Adequacy.CanonResolve
+      MAlonzo.Code.Once.Adequacy.CataBridge
+      MAlonzo.Code.Once.Adequacy.CataFold
+      MAlonzo.Code.Once.Adequacy.CataRel
+      MAlonzo.Code.Once.Adequacy.FunBundle
+      MAlonzo.Code.Once.Adequacy.MainForm
+      MAlonzo.Code.Once.Adequacy.MainMeaningBridge
+      MAlonzo.Code.Once.Adequacy.MeaningBridge
+      MAlonzo.Code.Once.Adequacy.MeaningRelation
+      MAlonzo.Code.Once.Adequacy.MtIndep
+      MAlonzo.Code.Once.Adequacy.RealizeInvariant
+      MAlonzo.Code.Once.Adequacy.ResolveFaithful
+      MAlonzo.Code.Once.Adequacy.ResolverTrace
+      MAlonzo.Code.Once.CCC.Target.RiscV64.FrameInstantiation
+      MAlonzo.Code.Once.CCC.Target.RiscV64.Layout
+      MAlonzo.Code.Once.CCC.Target.RiscV64.RuntimeParams
+      MAlonzo.Code.Once.CCC.Target.RiscV64.StackGrowth
+      MAlonzo.Code.Once.CCC.Target.X86Z45Z32.FrameInstantiation
+      MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Layout
+      MAlonzo.Code.Once.CCC.Target.X86Z45Z32.RuntimeParams
+      MAlonzo.Code.Once.CCC.Target.X86Z45Z32.StackGrowth
+      MAlonzo.Code.Once.Denotation.MainMeaning
+      MAlonzo.Code.Once.Denotation.Meaning
+      MAlonzo.Code.Once.Denotation.ValueDomain
+      MAlonzo.Code.Once.Surface.Context
       MAlonzo.Code.Once.Target
       MAlonzo.Code.Once.Target.Arch
       MAlonzo.Code.Once.Target.RegConvention
