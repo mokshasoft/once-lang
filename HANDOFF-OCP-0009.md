@@ -6,7 +6,7 @@
 
 ## TL;DR of state
 
-- **51 modules, all green** (42 of them `--safe`). The full expressibility tower is built and
+- **52 modules, all green** (43 of them `--safe`). The full expressibility tower is built and
   machine-checked: decidable conversion (NbE) → CwF/dependent layer → `Id`+`J` →
   **QTT** (semiring + graded judgment + IR elaboration) → **OTT** (funext-by-def,
   proof-irrelevance, `Eq`/`coe`, μ, quotients, bisim-at-ν) → **IR universe**
@@ -143,11 +143,15 @@ the "Other open items" section below.**
    directed transport, and decidable directed conversion (exists in no
    system; the make-or-break is decidability, as it was for equality).
    Rungs 0–2a are DONE (2026-07-13): `NbEPDir` (meta-level Hom-category),
-   `NbEPDirU` (Hom as a universe code, irreversibility internal), `NbEPMon`
-   (monoidal core — no-diagonal/no-discard/no-undo proven: linearity as
-   semantics, in-core directedness). Remaining: rung 2b (`⊸` + decidable
-   free-SMC conversion) and rung 3 (the open metatheory) — both GATED on
-   the linear/monoidal core decision (§7 route (a)).
+   `NbEPDirU` (Hom as a universe code, irreversibility internal), `NbEPDirJ`
+   (**the eliminator settled: Hom is a directed identity type — J in three
+   forms, sym refuted, transport = J + step-covariance, universe-valued
+   motives**), `NbEPMon` (monoidal core — no-diagonal/no-discard/no-undo
+   proven: linearity as semantics, in-core directedness). Remaining:
+   rung 2b (decidable free-SMC conversion via leaf-permutation coherence —
+   the NEXT THEOREM, staged in §10; then `⊸`) and rung 3 (the open
+   metatheory) — 2b/3 gated on the linear/monoidal core decision (§7
+   route (a)).
 6. **At POC→real transition (intentions recorded in plan §9):** break the DT
    kernel out as a SPEC layer — `Spec/IR` (unoriented equations + one boring
    model) + `Spec/Kernel` (typing/equality judgments as pure data) + proven
