@@ -365,12 +365,12 @@ d_program'45'no'45'clash_418 v0
                   -> case coe v3 of
                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v4 v5
                          -> let v6
-                                  = MAlonzo.Code.Once.Compile.d_compileAllFuns'45'go_336
+                                  = MAlonzo.Code.Once.Compile.d_compileAllFuns'45'go_372
                                       (coe MAlonzo.Code.Once.IR.C_Heap_8)
                                       (coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8)
                                       (coe MAlonzo.Code.Once.Compile.d_buildPolyCtx_270 (coe v5))
                                       (coe
-                                         MAlonzo.Code.Once.Compile.d_collectSigEffects_462 (coe v1))
+                                         MAlonzo.Code.Once.Compile.d_collectSigEffects_498 (coe v1))
                                       (coe v4) (coe MAlonzo.Code.Once.Compile.d_emptyFunCtx_48) in
                             coe
                               (case coe v6 of

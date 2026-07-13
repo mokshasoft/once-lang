@@ -82,13 +82,13 @@ du_go_60 v0 v1 v2 v3
                -> coe
                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                     (coe
-                       MAlonzo.Code.Once.Adequacy.CanonReflectAllFuns.du_AllFunsTyped'45'reflect_220
+                       MAlonzo.Code.Once.Adequacy.CanonReflectAllFuns.du_AllFunsTyped'45'reflect_424
                        (coe MAlonzo.Code.Once.Compile.d_emptyFunCtx_48)
                        (coe
                           MAlonzo.Code.Once.Parser.Module.Resolve.d_polyDefNames_218
                           (coe v0))
                        (coe v6)
-                       (coe MAlonzo.Code.Once.Compile.d_collectSigEffects_462 (coe v0))
+                       (coe MAlonzo.Code.Once.Compile.d_collectSigEffects_498 (coe v0))
                        (coe v5)
                        (coe
                           MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
@@ -97,7 +97,7 @@ du_go_60 v0 v1 v2 v3
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                        (coe
-                          MAlonzo.Code.Once.Adequacy.CanonReflectAllFuns.du_AllMainEffUU'45'reflect_266
+                          MAlonzo.Code.Once.Adequacy.CanonReflectAllFuns.du_AllMainEffUU'45'reflect_470
                           (coe v5)
                           (coe
                              MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
@@ -110,7 +110,7 @@ du_go_60 v0 v1 v2 v3
                                 (coe
                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1) (coe v2)))))
                        (coe
-                          MAlonzo.Code.Once.Adequacy.CanonReflectAllFuns.du_MainExists'45'reflect_314
+                          MAlonzo.Code.Once.Adequacy.CanonReflectAllFuns.du_MainExists'45'reflect_518
                           (coe v5)
                           (coe
                              MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28

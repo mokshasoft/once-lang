@@ -412,6 +412,7 @@ library
       MAlonzo.Code.Once.Adequacy.CanonModuleTyped
       MAlonzo.Code.Once.Adequacy.CanonPolyNames
       MAlonzo.Code.Once.Adequacy.CanonPolyTransport
+      MAlonzo.Code.Once.Adequacy.CanonPrincipal
       MAlonzo.Code.Once.Adequacy.CanonPreserve
       MAlonzo.Code.Once.Adequacy.CanonPreserveMutual
       MAlonzo.Code.Once.Adequacy.CanonReflectAllFuns
@@ -461,6 +462,7 @@ library
       MAlonzo.Code.Once.TypeCheck.Error
       MAlonzo.Code.Once.TypeCheck.Judgment
       MAlonzo.Code.Once.TypeCheck.Morph
+      MAlonzo.Code.Once.TypeCheck.Principal
       MAlonzo.Code.Once.TypeCheck.Raw
       MAlonzo.Code.Once.Adequacy
       MAlonzo.Code.Once.Adequacy.ArchCorrectness

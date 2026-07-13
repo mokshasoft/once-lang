@@ -290,7 +290,7 @@ du_caf'45'go'45'bundleP_326 v0 v1 v2 v3
         -> coe
              du_cgb'45'rf_342 (coe v0) (coe v1) (coe v4) (coe v5) (coe v3)
              (coe
-                MAlonzo.Code.Once.Compile.d_resolveFunType_304 (coe v3) (coe v0)
+                MAlonzo.Code.Once.Compile.d_resolveFunType_340 (coe v3) (coe v0)
                 (coe MAlonzo.Code.Once.Parser.d_funType_110 (coe v4))
                 (coe MAlonzo.Code.Once.Parser.d_funBody_114 (coe v4)))
       _ -> MAlonzo.RTE.mazUnreachableError
@@ -361,7 +361,7 @@ du_cgb'45'cf_360 v0 v1 v2 v3 v4 v5 v6
              du_cgb'45'rec_380 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
              (coe v5) (coe v7)
              (coe
-                MAlonzo.Code.Once.Compile.d_compileAllFuns'45'go_336
+                MAlonzo.Code.Once.Compile.d_compileAllFuns'45'go_372
                 (coe MAlonzo.Code.Once.IR.C_Heap_8)
                 (coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8) (coe v0) (coe v1)
                 (coe v3)

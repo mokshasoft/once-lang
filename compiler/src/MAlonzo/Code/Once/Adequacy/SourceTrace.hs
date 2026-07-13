@@ -194,7 +194,7 @@ d_moduleToIR_52 v0
   = coe
       d_moduleToIR'45'aux_48
       (coe
-         MAlonzo.Code.Once.Compile.d_compileResolvedModule_538
+         MAlonzo.Code.Once.Compile.d_compileResolvedModule_574
          (coe MAlonzo.Code.Once.IR.C_Heap_8)
          (coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8) (coe v0))
 -- Once.Adequacy.SourceTrace.⟦_⟧IR

@@ -271,7 +271,7 @@ du_caf'45'go'45'doOpt_254 v0 v1 v2 v3 v4
              du_caf'45'go'45'rf'45'doOpt_294 (coe v0) (coe v1) (coe v2) (coe v5)
              (coe v6) (coe v4)
              (coe
-                MAlonzo.Code.Once.Compile.d_resolveFunType_304 (coe v4) (coe v1)
+                MAlonzo.Code.Once.Compile.d_resolveFunType_340 (coe v4) (coe v1)
                 (coe MAlonzo.Code.Once.Parser.d_funType_110 (coe v5))
                 (coe MAlonzo.Code.Once.Parser.d_funBody_114 (coe v5)))
       _ -> MAlonzo.RTE.mazUnreachableError
@@ -328,7 +328,7 @@ du_caf'45'go'45'cf'45'doOpt_274 v0 v1 v2 v3 v4 v5 v6
          MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v8 -> erased
          MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v8
            -> let v9
-                    = MAlonzo.Code.Once.Compile.d_compileAllFuns'45'go_336
+                    = MAlonzo.Code.Once.Compile.d_compileAllFuns'45'go_372
                         (coe MAlonzo.Code.Once.IR.C_Heap_8)
                         (coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8) (coe v1) (coe v2)
                         (coe v4)
@@ -461,7 +461,7 @@ du_crm'45'aux'45'doOpt_496 v0 v1 v2
                     du_caf'45'doOpt_474 (coe v0) (coe v4)
                     (coe MAlonzo.Code.Once.Compile.d_buildPolyCtx_270 (coe v5))
                     (coe
-                       MAlonzo.Code.Once.Compile.d_collectSigEffects_462
+                       MAlonzo.Code.Once.Compile.d_collectSigEffects_498
                        (coe MAlonzo.Code.Once.Parser.Module.Core.d_decls_48 (coe v1)))
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
@@ -510,9 +510,9 @@ du_cfm'45'built'45'aux_542 v0 v1 v2
                 (coe
                    MAlonzo.Code.Data.String.Base.d__'43''43'__20
                    (MAlonzo.Code.Once.Target.d_asmHeader_40
-                      (coe MAlonzo.Code.Once.Compile.d_archTarget_606 (coe v0)))
-                   (MAlonzo.Code.Once.Compile.d_compileAllWithTarget_646
-                      (coe MAlonzo.Code.Once.Compile.d_archTarget_606 (coe v0))
+                      (coe MAlonzo.Code.Once.Compile.d_archTarget_642 (coe v0)))
+                   (MAlonzo.Code.Once.Compile.d_compileAllWithTarget_682
+                      (coe MAlonzo.Code.Once.Compile.d_archTarget_642 (coe v0))
                       (coe v2)))
                 erased)
       _ -> MAlonzo.RTE.mazUnreachableError
@@ -570,7 +570,7 @@ du_moduleToIR'45'inj'8322'_602 v0
   = coe
       du_mtir'45'aux'45'inj'8322'_590
       (coe
-         MAlonzo.Code.Once.Compile.d_compileResolvedModule_538
+         MAlonzo.Code.Once.Compile.d_compileResolvedModule_574
          (coe MAlonzo.Code.Once.IR.C_Heap_8)
          (coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8) (coe v0))
 -- Once.Adequacy.MainBuilds.main⇒built

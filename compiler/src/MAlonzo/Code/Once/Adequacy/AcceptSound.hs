@@ -236,7 +236,7 @@ du_caf'45'go'45'sound_302 v0 v1 v2 v3 v4
              du_caf'45'go'45'rf'45'sound_338 (coe v0) (coe v1) (coe v2) (coe v5)
              (coe v6) (coe v4)
              (coe
-                MAlonzo.Code.Once.Compile.d_resolveFunType_304 (coe v4) (coe v1)
+                MAlonzo.Code.Once.Compile.d_resolveFunType_340 (coe v4) (coe v1)
                 (coe MAlonzo.Code.Once.Parser.d_funType_110 (coe v5))
                 (coe MAlonzo.Code.Once.Parser.d_funBody_114 (coe v5)))
       _ -> MAlonzo.RTE.mazUnreachableError
@@ -292,7 +292,7 @@ du_caf'45'go'45'cf'45'sound_320 v0 v1 v2 v3 v4 v5 v6
          MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v8 -> erased
          MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v8
            -> let v9
-                    = MAlonzo.Code.Once.Compile.d_compileAllFuns'45'go_336
+                    = MAlonzo.Code.Once.Compile.d_compileAllFuns'45'go_372
                         (coe MAlonzo.Code.Once.IR.C_Heap_8) (coe v0) (coe v1) (coe v2)
                         (coe v4)
                         (coe
@@ -402,7 +402,7 @@ du_crm'45'aux'45'sound_562 v0 v1 v2
                     du_caf'45'sound_528 (coe v0) (coe v4)
                     (coe MAlonzo.Code.Once.Compile.d_buildPolyCtx_270 (coe v5))
                     (coe
-                       MAlonzo.Code.Once.Compile.d_collectSigEffects_462
+                       MAlonzo.Code.Once.Compile.d_collectSigEffects_498
                        (coe MAlonzo.Code.Once.Parser.Module.Core.d_decls_48 (coe v1)))
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError

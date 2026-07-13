@@ -71,7 +71,7 @@ du_main'45'extract_46 v0
                      MAlonzo.Code.Once.Adequacy.MainForm.du_main'45'node'45'of_164
                      (coe v0)))))
          (coe
-            MAlonzo.Code.Once.Compile.d_collectSigEffects_462
+            MAlonzo.Code.Once.Compile.d_collectSigEffects_498
             (coe MAlonzo.Code.Once.Parser.Module.Core.d_decls_48 (coe v0)))
          (coe ("main" :: Data.Text.Text))
          (coe MAlonzo.Code.Once.Adequacy.ModuleComplete.d_EffUU_6))
@@ -224,7 +224,7 @@ du_main'45'extract_46 v0
                                              MAlonzo.Code.Once.Adequacy.MainForm.du_main'45'node'45'of_164
                                              (coe v0)))))
                                  (coe
-                                    MAlonzo.Code.Once.Compile.d_collectSigEffects_462
+                                    MAlonzo.Code.Once.Compile.d_collectSigEffects_498
                                     (coe MAlonzo.Code.Once.Parser.Module.Core.d_decls_48 (coe v0)))
                                  (coe ("main" :: Data.Text.Text))
                                  (coe MAlonzo.Code.Once.Adequacy.ModuleComplete.d_EffUU_6))
@@ -380,7 +380,7 @@ du_main'45'checkElab'45'coherence_122 v0
                           MAlonzo.Code.Once.Adequacy.MainForm.du_main'45'node'45'of_164
                           (coe v0)))))
               (coe
-                 MAlonzo.Code.Once.Compile.d_collectSigEffects_462
+                 MAlonzo.Code.Once.Compile.d_collectSigEffects_498
                  (coe MAlonzo.Code.Once.Parser.Module.Core.d_decls_48 (coe v0)))
               (coe ("main" :: Data.Text.Text))
               (coe MAlonzo.Code.Once.Adequacy.ModuleComplete.d_EffUU_6) in

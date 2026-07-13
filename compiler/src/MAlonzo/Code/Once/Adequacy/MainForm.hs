@@ -83,7 +83,7 @@ du_build'45'node_96 v0 v1 v2
          MAlonzo.Code.Once.Adequacy.FunBundle.du_caf'45'go'45'bundle_558
          (coe MAlonzo.Code.Once.Compile.d_buildPolyCtx_270 (coe v2))
          (coe
-            MAlonzo.Code.Once.Compile.d_collectSigEffects_462
+            MAlonzo.Code.Once.Compile.d_collectSigEffects_498
             (coe MAlonzo.Code.Once.Parser.Module.Core.d_decls_48 (coe v0)))
          (coe v1) (coe MAlonzo.Code.Once.Compile.d_emptyFunCtx_48))
       (coe
@@ -93,21 +93,21 @@ du_build'45'node_96 v0 v1 v2
             MAlonzo.Code.Once.Adequacy.FunBundle.du_caf'45'go'45'bundle_558
             (coe MAlonzo.Code.Once.Compile.d_buildPolyCtx_270 (coe v2))
             (coe
-               MAlonzo.Code.Once.Compile.d_collectSigEffects_462
+               MAlonzo.Code.Once.Compile.d_collectSigEffects_498
                (coe MAlonzo.Code.Once.Parser.Module.Core.d_decls_48 (coe v0)))
             (coe v1) (coe MAlonzo.Code.Once.Compile.d_emptyFunCtx_48)))
       (coe
          MAlonzo.Code.Once.Adequacy.FunBundle.d_bundle'45'main'45'node_1562
          (coe MAlonzo.Code.Once.Compile.d_buildPolyCtx_270 (coe v2))
          (coe
-            MAlonzo.Code.Once.Compile.d_collectSigEffects_462
+            MAlonzo.Code.Once.Compile.d_collectSigEffects_498
             (coe MAlonzo.Code.Once.Parser.Module.Core.d_decls_48 (coe v0)))
          (coe v1) (coe MAlonzo.Code.Once.Compile.d_emptyFunCtx_48)
          (coe
             MAlonzo.Code.Once.Adequacy.FunBundle.du_caf'45'go'45'bundle_558
             (coe MAlonzo.Code.Once.Compile.d_buildPolyCtx_270 (coe v2))
             (coe
-               MAlonzo.Code.Once.Compile.d_collectSigEffects_462
+               MAlonzo.Code.Once.Compile.d_collectSigEffects_498
                (coe MAlonzo.Code.Once.Parser.Module.Core.d_decls_48 (coe v0)))
             (coe v1) (coe MAlonzo.Code.Once.Compile.d_emptyFunCtx_48))
          (coe
@@ -117,7 +117,7 @@ du_build'45'node_96 v0 v1 v2
                MAlonzo.Code.Once.Adequacy.FunBundle.du_caf'45'go'45'bundle_558
                (coe MAlonzo.Code.Once.Compile.d_buildPolyCtx_270 (coe v2))
                (coe
-                  MAlonzo.Code.Once.Compile.d_collectSigEffects_462
+                  MAlonzo.Code.Once.Compile.d_collectSigEffects_498
                   (coe MAlonzo.Code.Once.Parser.Module.Core.d_decls_48 (coe v0)))
                (coe v1) (coe MAlonzo.Code.Once.Compile.d_emptyFunCtx_48))))
 -- Once.Adequacy.MainForm._.node
@@ -277,12 +277,12 @@ du_mnf'45'ef_216 v0 v1
                -> coe
                     du_mnf'45'caf_176 (coe v0) (coe v3) (coe v4)
                     (coe
-                       MAlonzo.Code.Once.Compile.d_compileAllFuns'45'go_336
+                       MAlonzo.Code.Once.Compile.d_compileAllFuns'45'go_372
                        (coe MAlonzo.Code.Once.IR.C_Heap_8)
                        (coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8)
                        (coe MAlonzo.Code.Once.Compile.d_buildPolyCtx_270 (coe v4))
                        (coe
-                          MAlonzo.Code.Once.Compile.d_collectSigEffects_462
+                          MAlonzo.Code.Once.Compile.d_collectSigEffects_498
                           (coe MAlonzo.Code.Once.Parser.Module.Core.d_decls_48 (coe v0)))
                        (coe v3) (coe MAlonzo.Code.Once.Compile.d_emptyFunCtx_48))
              _ -> MAlonzo.RTE.mazUnreachableError
@@ -404,7 +404,7 @@ du_form_262 v0 v1
                                                                                                              (coe
                                                                                                                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                 (coe
-                                                                                                                   MAlonzo.Code.Once.Compile.d_collectSigEffects_462
+                                                                                                                   MAlonzo.Code.Once.Compile.d_collectSigEffects_498
                                                                                                                    (coe
                                                                                                                       MAlonzo.Code.Once.Parser.Module.Core.d_decls_48
                                                                                                                       (coe

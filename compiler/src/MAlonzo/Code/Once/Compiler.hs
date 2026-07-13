@@ -92,7 +92,7 @@ d_compile_20
 -- Once.Compiler.VC.compile-cr
 d_compile'45'cr_22 ::
   MAlonzo.Code.Once.Target.Arch.T_Arch_6 ->
-  MAlonzo.Code.Once.Compile.T_CompileResult_686 ->
+  MAlonzo.Code.Once.Compile.T_CompileResult_722 ->
   Maybe [MAlonzo.Code.Data.Fin.Base.T_Fin_10]
 d_compile'45'cr_22
   = coe
@@ -146,7 +146,7 @@ d_correct'45'cr_32 ::
   Bool ->
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_44 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
-  MAlonzo.Code.Once.Compile.T_CompileResult_686 ->
+  MAlonzo.Code.Once.Compile.T_CompileResult_722 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->

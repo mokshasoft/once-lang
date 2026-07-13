@@ -723,7 +723,7 @@ d_moduleToIR'45'complete_510 v0 v1 v2
                                   = d_caf'45'go'45'find'45'complete_286
                                       (coe MAlonzo.Code.Once.Compile.d_buildPolyCtx_270 (coe v8))
                                       (coe
-                                         MAlonzo.Code.Once.Compile.d_collectSigEffects_462
+                                         MAlonzo.Code.Once.Compile.d_collectSigEffects_498
                                          (coe
                                             MAlonzo.Code.Once.Parser.Module.Core.d_decls_48
                                             (coe v0)))
@@ -896,7 +896,7 @@ du_mainRealized'45'ef_654 v0 v1 v2 v3
                     d_mainRealized'45'go_572
                     (coe MAlonzo.Code.Once.Compile.d_buildPolyCtx_270 (coe v6))
                     (coe
-                       MAlonzo.Code.Once.Compile.d_collectSigEffects_462
+                       MAlonzo.Code.Once.Compile.d_collectSigEffects_498
                        (coe MAlonzo.Code.Once.Parser.Module.Core.d_decls_48 (coe v0)))
                     (coe v5) (coe MAlonzo.Code.Once.Compile.d_emptyFunCtx_48) (coe v2)
                     (coe v3)
@@ -1006,7 +1006,7 @@ du_go_730 v0 v1 v2 v3 v4 v5 v6
          MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v8 -> erased
          MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v8
            -> let v9
-                    = MAlonzo.Code.Once.Compile.d_compileAllFuns'45'go_336
+                    = MAlonzo.Code.Once.Compile.d_compileAllFuns'45'go_372
                         (coe MAlonzo.Code.Once.IR.C_Heap_8)
                         (coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8) (coe v0) (coe v1)
                         (coe v4)
@@ -1125,7 +1125,7 @@ du_go_846 v0 v1 v2 v3 v4 v5 v6 v7
          MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v9 -> erased
          MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v9
            -> let v10
-                    = MAlonzo.Code.Once.Compile.d_compileAllFuns'45'go_336
+                    = MAlonzo.Code.Once.Compile.d_compileAllFuns'45'go_372
                         (coe MAlonzo.Code.Once.IR.C_Heap_8)
                         (coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8) (coe v0) (coe v1)
                         (coe v4)
@@ -1373,12 +1373,12 @@ du_moduleToIR'45'sound_926 v0 v1 v2
            -> case coe v4 of
                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v5 v6
                   -> let v7
-                           = MAlonzo.Code.Once.Compile.d_compileAllFuns'45'go_336
+                           = MAlonzo.Code.Once.Compile.d_compileAllFuns'45'go_372
                                (coe MAlonzo.Code.Once.IR.C_Heap_8)
                                (coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8)
                                (coe MAlonzo.Code.Once.Compile.d_buildPolyCtx_270 (coe v6))
                                (coe
-                                  MAlonzo.Code.Once.Compile.d_collectSigEffects_462
+                                  MAlonzo.Code.Once.Compile.d_collectSigEffects_498
                                   (coe MAlonzo.Code.Once.Parser.Module.Core.d_decls_48 (coe v0)))
                                (coe v5) (coe MAlonzo.Code.Once.Compile.d_emptyFunCtx_48) in
                      coe
@@ -1390,14 +1390,14 @@ du_moduleToIR'45'sound_926 v0 v1 v2
                                 du_caf'45'go'45'mains_696
                                 (coe MAlonzo.Code.Once.Compile.d_buildPolyCtx_270 (coe v6))
                                 (coe
-                                   MAlonzo.Code.Once.Compile.d_collectSigEffects_462
+                                   MAlonzo.Code.Once.Compile.d_collectSigEffects_498
                                    (coe MAlonzo.Code.Once.Parser.Module.Core.d_decls_48 (coe v0)))
                                 (coe v5) (coe MAlonzo.Code.Once.Compile.d_emptyFunCtx_48) (coe v1))
                              (coe
                                 du_caf'45'go'45'mainexists_802
                                 (coe MAlonzo.Code.Once.Compile.d_buildPolyCtx_270 (coe v6))
                                 (coe
-                                   MAlonzo.Code.Once.Compile.d_collectSigEffects_462
+                                   MAlonzo.Code.Once.Compile.d_collectSigEffects_498
                                    (coe MAlonzo.Code.Once.Parser.Module.Core.d_decls_48 (coe v0)))
                                 (coe v5) (coe MAlonzo.Code.Once.Compile.d_emptyFunCtx_48) (coe v1)
                                 (coe v2))))

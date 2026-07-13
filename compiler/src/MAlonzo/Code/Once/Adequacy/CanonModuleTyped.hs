@@ -119,13 +119,13 @@ du_module'45'typed'45'canon'45'aux_274 v0 v1 v2
         -> case coe v3 of
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v4 v5
                -> coe
-                    MAlonzo.Code.Once.Adequacy.CanonAllFuns.du_AllFunsTyped'45'transport_424
+                    MAlonzo.Code.Once.Adequacy.CanonAllFuns.du_AllFunsTyped'45'transport_790
                     (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
                     (coe
                        MAlonzo.Code.Once.Parser.Module.Resolve.d_polyDefNames_218
                        (coe v0))
                     (coe v5)
-                    (coe MAlonzo.Code.Once.Compile.d_collectSigEffects_462 (coe v0))
+                    (coe MAlonzo.Code.Once.Compile.d_collectSigEffects_498 (coe v0))
                     (coe v4) (coe v2)
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
@@ -171,21 +171,21 @@ du_module'45'typed'45'and'45'valid'45'aux_316 v0 v1 v2 v3
                       -> coe
                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                            (coe
-                              MAlonzo.Code.Once.Adequacy.CanonAllFuns.du_AllFunsTyped'45'transport_424
+                              MAlonzo.Code.Once.Adequacy.CanonAllFuns.du_AllFunsTyped'45'transport_790
                               (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
                               (coe
                                  MAlonzo.Code.Once.Parser.Module.Resolve.d_polyDefNames_218
                                  (coe v0))
                               (coe v6)
-                              (coe MAlonzo.Code.Once.Compile.d_collectSigEffects_462 (coe v0))
+                              (coe MAlonzo.Code.Once.Compile.d_collectSigEffects_498 (coe v0))
                               (coe v5) (coe v2))
                            (coe
                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                               (coe
-                                 MAlonzo.Code.Once.Adequacy.CanonAllFuns.du_AllMainEffUU'45'transport_470
+                                 MAlonzo.Code.Once.Adequacy.CanonAllFuns.du_AllMainEffUU'45'transport_836
                                  (coe v5) (coe v2) (coe v7))
                               (coe
-                                 MAlonzo.Code.Once.Adequacy.CanonAllFuns.du_MainExists'45'transport_518
+                                 MAlonzo.Code.Once.Adequacy.CanonAllFuns.du_MainExists'45'transport_884
                                  (coe v5) (coe v2) (coe v8)))
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError

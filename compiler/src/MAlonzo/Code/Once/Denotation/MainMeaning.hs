@@ -204,7 +204,7 @@ du_mainMeaning'7496''45'ef_102 v0 v1 v2 v3
                     d_mainMeaning'7496''45'go_20
                     (coe MAlonzo.Code.Once.Compile.d_buildPolyCtx_270 (coe v6))
                     (coe
-                       MAlonzo.Code.Once.Compile.d_collectSigEffects_462
+                       MAlonzo.Code.Once.Compile.d_collectSigEffects_498
                        (coe MAlonzo.Code.Once.Parser.Module.Core.d_decls_48 (coe v0)))
                     (coe v5) (coe MAlonzo.Code.Once.Compile.d_emptyFunCtx_48) (coe v2)
                     (coe v3)
