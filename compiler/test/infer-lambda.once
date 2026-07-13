@@ -1,0 +1,16 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson and contributors
+
+-- Type inference (D007/D072): a sig-less LAMBDA definition. Lambdas are
+-- introduction forms (check-mode only in the bidirectional kernel), so
+-- `addOne` cannot synthesize — the oracle infers the ground principal
+-- type `Int -> Int` (the `+` pins the metavariable) and the verified
+-- elaborator re-checks the body against it.
+--
+-- Expected: exit code 5
+
+import I.Linux.Syscalls as S
+
+addOne x = x + 1
+
+main = exit@S (addOne 4)

@@ -85,14 +85,16 @@ inferenceTests = testGroup "type inference"
   ]
 
 ------------------------------------------------------------------------
--- Inference has limits: polymorphic builtins cannot be inferred bare
+-- D072: the former "inference limits" are lifted — the principal-type
+-- oracle infers a SCHEMA for bare/composed polymorphic builtins and
+-- routes the def to the telescope (each use is kernel-checked).
 ------------------------------------------------------------------------
 
 inferenceLimitTests :: TestTree
-inferenceLimitTests = testGroup "inference limits (bare polymorphic builtins)"
-  [ rejects "bare `id` cannot be inferred"      [ "f = id" ]
-  , rejects "bare `compose` cannot be inferred" [ "f = compose id id" ]
-  , rejects "bare `pair` cannot be inferred"    [ "f = pair id id" ]
+inferenceLimitTests = testGroup "inference schemas (D072: bare polymorphic builtins accepted)"
+  [ accepts "bare `id` is inferred (schema t0 -> t0)"       [ "f = id" ]
+  , accepts "bare `compose` chain is inferred"              [ "f = compose id id" ]
+  , accepts "`pair id id` is inferred"                      [ "f = pair id id" ]
   ]
 
 ------------------------------------------------------------------------

@@ -173,18 +173,24 @@ destructErrorTests = testGroup "destruct errors"
 -- Mode errors: check-only constructs used in inference position
 ------------------------------------------------------------------------
 
+-- D072: these four were rejection tests ("check-only constructs used in
+-- inference position"). The principal-type oracle now infers a SCHEMA
+-- for each (bare lambda `t0 -> t0`, `inl : t0 -> t0 + t1`, `inr`,
+-- `initial : Void -> t0`) and routes the def to the telescope, so they
+-- are ACCEPTED — each use site instantiates the schema and is
+-- kernel-checked.
 modeErrorTests :: TestTree
-modeErrorTests = testGroup "Inference-mode errors"
-  [ rejects "bare lambda without a type signature"
+modeErrorTests = testGroup "Inference-mode schemas (D072: accepted)"
+  [ accepts "bare lambda without a type signature"
       [ "f = \\x -> x"
       ]
-  , rejects "inl with no target sum type"
+  , accepts "inl with no target sum type"
       [ "g = inl"
       ]
-  , rejects "inr with no target sum type"
+  , accepts "inr with no target sum type"
       [ "g = inr"
       ]
-  , rejects "initial with no target type"
+  , accepts "initial with no target type"
       [ "g = initial"
       ]
   ]
@@ -232,3 +238,9 @@ rejects :: TestName -> [T.Text] -> TestTree
 rejects name sourceLines = testCase name $ do
   result <- typeCheckSource (T.unlines sourceLines)
   assertBool ("Should reject: " ++ name) (isLeft result)
+
+-- | Assert that a program is ACCEPTED by `once check` (D072 flips).
+accepts :: TestName -> [T.Text] -> TestTree
+accepts name sourceLines = testCase name $ do
+  result <- typeCheckSource (T.unlines sourceLines)
+  assertBool ("Should accept: " ++ name) (not (isLeft result))

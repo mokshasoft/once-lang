@@ -140,13 +140,15 @@ validSyntaxTests = testGroup "Valid syntax"
   -- `type` declarations — so there was nothing current to remodel it to.
 
   , testCase "inferred signature" $ do
-      -- A definition without a type signature is now accepted; the parser
-      -- reports the type as `<inferred>` (this was previously a parse error).
+      -- A definition without a type signature is accepted; since D072 the
+      -- principal-type oracle infers the SCHEMA of a sig-less polymorphic
+      -- definition (here `t0 \969\8594 t0`, i.e. `t0 \x3c9\x2192 t0`) instead of
+      -- the `<inferred>` placeholder.
       let source = T.unlines
             [ "f x = x"
             ]
       result <- parseSource source
-      assertParsed result ["f : <inferred>"]
+      assertParsed result ["f : (t0 \969\8594 t0)"]
   ]
 
 ------------------------------------------------------------------------

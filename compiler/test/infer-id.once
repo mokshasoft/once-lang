@@ -11,10 +11,10 @@
 --   `main`  : Eff Unit Unit   (inferred)
 --
 -- Expected: exit code 0
--- PENDING: needs sig-less POLYMORPHIC inference. `myId = id` is `A -> A`; the
--- elaborator requires polymorphic builtins applied or in check mode, so a bare
--- sig-less `id` can't be ground-inferred. D007 GROUND inference works (see
--- infer-literal / infer-applied); poly inference for sig-less defs is future work.
+-- D072: the principal-type oracle infers the SCHEMA `a -> a` for the
+-- sig-less `myId = id` and routes it to the telescope (PolyFunInfo);
+-- the use `myId 0` instantiates it at `Int -> Int` in check mode and
+-- the kernel validates the instantiation (check-after-infer).
 
 import I.Linux.Syscalls as S
 

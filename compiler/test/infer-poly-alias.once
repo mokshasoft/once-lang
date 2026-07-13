@@ -1,0 +1,15 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson and contributors
+
+-- Type inference (D007/D072): a sig-less alias of a polymorphic builtin
+-- with a MULTI-variable schema. `mySnd = snd` gets the inferred schema
+-- `a * b -> b` and routes to the telescope; the use site instantiates
+-- it at `Int * Int -> Int` in check mode.
+--
+-- Expected: exit code 9
+
+import I.Linux.Syscalls as S
+
+mySnd = snd
+
+main = exit@S (mySnd (1, 9))
