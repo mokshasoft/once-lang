@@ -853,11 +853,22 @@ no system anywhere has directed type theory with a decidable kernel.
    coherence axiom's soundness is a finite case split ending in `refl`);
    `≈m-sound`; `conv?` decidable; `conv-refutes` (a `no` is a
    machine-checked refutation of provable equality — usable today);
-   σ ≠ id at `ι₁ ⊗ ι₁` (positions, not labels). **Remaining 2b:**
-   COMPLETENESS (equal wiring ⇒ `≈m`, SMC coherence proper — the
-   `NbEPComplete`-sized climb; anchors: Beylin–Dybjer for monoidal via NbE
-   on the type monoid, Piceghello for symmetric groupoids) and `⊸`
-   (monoidal closure — Kelly–Mac Lane / proof-net territory).
+   σ ≠ id at `ι₁ ⊗ ι₁` (positions, not labels). **The COMPLETENESS climb
+   (equal wiring ⇒ `≈m`, SMC coherence proper) is STAGED and underway:**
+   - **[stage 1 DONE 2026-07-13, `NbEPMonN`] type normalization**: every
+     `MTy` is `≈m`-isomorphic to its right-nested leaf list; the
+     Beylin–Dybjer accumulator (`norm (A⊗B) R = norm A (norm B R)`) makes
+     bracketing and units DEFINITIONAL (`list ((A⊗B)⊗D) ≡ list (A⊗(B⊗D))`
+     by `refl`); flatten/rebuild (`nt`/`tn`) built in the syntax, proven
+     mutually inverse in `≈m` (`nt-tn`/`tn-nt`, with the reusable `cancel`
+     collapse lemma); top-level `ntop`/`topn` isos; wiring round-trip
+     checked via `≈m-sound`.
+   - stage 2 — canonical realizations: insertion-based permutations
+     between list types (`Ins`/`Perm`), realized by `σ`-built morphisms
+     (`insM`/`permM`), with `wire`-agreement.
+   - stage 3 — the key lemma `f ≈m topn ∘ permM (perm-of f) ∘ ntop` by
+     induction on `f` (+ representation uniqueness); completeness by
+     transitivity. Then `⊸` (Kelly–Mac Lane / proof nets).
 3. **Rung 3 — the open metatheory**: variance judgments, directed
    transport, directed univalence, decidable directed conversion. Literature
    anchors: Riehl–Shulman (synthetic ∞-categories / simplicial TT), Licata
