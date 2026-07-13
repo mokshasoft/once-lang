@@ -680,7 +680,7 @@ d_compileModule_516 v0 v1 v2
                        MAlonzo.Code.Once.Parser.Lexer.d_tokenizeString_832 (coe v2)))) in
     coe
       (let v4
-             = MAlonzo.Code.Once.Parser.d_extractFunctions_514
+             = MAlonzo.Code.Once.Parser.d_extractFunctions_540
                  (coe MAlonzo.Code.Once.Parser.d_extractAliases_76 (coe v3))
                  (coe v3) in
        coe
@@ -734,7 +734,7 @@ d_compileResolvedModule_574 v0 v1 v2
   = coe
       d_compileResolvedModule'45'aux_554 (coe v0) (coe v1) (coe v2)
       (coe
-         MAlonzo.Code.Once.Parser.d_extractFunctions_514
+         MAlonzo.Code.Once.Parser.d_extractFunctions_540
          (coe MAlonzo.Code.Once.Parser.d_extractAliases_76 (coe v2))
          (coe v2))
 -- Once.Compile.emittedSyms-cons
@@ -1274,7 +1274,7 @@ d_compile_766 v0 v1 v2 v3 v4
            -> coe C_Error_730 (coe v6)
          MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v6
            -> let v7
-                    = MAlonzo.Code.Once.Parser.d_extractFunctions_514
+                    = MAlonzo.Code.Once.Parser.d_extractFunctions_540
                         (coe MAlonzo.Code.Once.Parser.d_extractAliases_76 (coe v6))
                         (coe v6) in
               coe
@@ -1422,6 +1422,6 @@ d_compileFromModule_918 v0 v1 v2 v3 v4
   = coe
       d_cfm'45'ef'45'aux_890 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
       (coe
-         MAlonzo.Code.Once.Parser.d_extractFunctions_514
+         MAlonzo.Code.Once.Parser.d_extractFunctions_540
          (coe MAlonzo.Code.Once.Parser.d_extractAliases_76 (coe v4))
          (coe v4))

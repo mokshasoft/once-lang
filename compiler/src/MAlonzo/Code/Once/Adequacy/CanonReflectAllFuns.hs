@@ -321,7 +321,7 @@ du_body'45'reflect_356 v0 v1 v2 v3 v4 v5 v6 v7
                    (coe v2)
                    (coe MAlonzo.Code.Once.Compile.d_buildPolyCtx_270 (coe v1))
                    (coe
-                      MAlonzo.Code.Once.Parser.Module.Resolve.d_canonExpr_294 (coe v0)
+                      MAlonzo.Code.Once.Parser.Module.Resolve.d_canonExpr_346 (coe v0)
                       (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
                       (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
                       (coe MAlonzo.Code.Once.Parser.d_funBody_114 (coe v4)))

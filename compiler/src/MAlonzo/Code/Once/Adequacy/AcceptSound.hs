@@ -419,7 +419,7 @@ du_crm'45'sound_586 v0 v1
   = coe
       du_crm'45'aux'45'sound_562 (coe v0) (coe v1)
       (coe
-         MAlonzo.Code.Once.Parser.d_extractFunctions_514
+         MAlonzo.Code.Once.Parser.d_extractFunctions_540
          (coe MAlonzo.Code.Once.Parser.d_extractAliases_76 (coe v1))
          (coe v1))
 -- Once.Adequacy.AcceptSound.moduleToIR-typed

@@ -1066,3 +1066,9 @@ d_principalGround'45'polys_1714 ::
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_principalGround'45'polys_1714 = erased
+-- Once.Adequacy.CanonPrincipal.siglessSchema-canon
+d_siglessSchema'45'canon_1730 ::
+  [MAlonzo.Code.Agda.Builtin.String.T_String_6] ->
+  MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_siglessSchema'45'canon_1730 = erased

@@ -2844,3 +2844,27 @@ d_principalGround_2106 ::
   Maybe MAlonzo.Code.Once.Type.T_Type_112
 d_principalGround_2106 v0 v1
   = coe d_pgProj_2102 (coe d_principal_2096 (coe v0) (coe v1))
+-- Once.TypeCheck.Principal.pgSchema
+d_pgSchema_2112 ::
+  Maybe MAlonzo.Code.Data.Sum.Base.T__'8846'__30 ->
+  Maybe MAlonzo.Code.Once.Type.T_PolyType_244
+d_pgSchema_2112 v0
+  = let v1 = coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 in
+    coe
+      (case coe v0 of
+         MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v2
+           -> case coe v2 of
+                MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v3
+                  -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe v3)
+                _ -> coe v1
+         _ -> coe v1)
+-- Once.TypeCheck.Principal.siglessSchema
+d_siglessSchema_2116 ::
+  MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
+  Maybe MAlonzo.Code.Once.Type.T_PolyType_244
+d_siglessSchema_2116 v0
+  = coe
+      d_pgSchema_2112
+      (coe
+         d_principal_2096
+         (coe MAlonzo.Code.Once.TypeCheck.Classify.d_emptyCtx_370) (coe v0))

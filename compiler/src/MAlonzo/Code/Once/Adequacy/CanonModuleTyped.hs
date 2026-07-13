@@ -40,9 +40,9 @@ d_canonModule_6 v0
       (coe
          MAlonzo.Code.Data.List.Base.du_map_22
          (coe
-            MAlonzo.Code.Once.Parser.Module.Resolve.d_canonDecl_470
+            MAlonzo.Code.Once.Parser.Module.Resolve.d_canonDecl_522
             (coe
-               MAlonzo.Code.Once.Parser.Module.Resolve.d_polyDefNames_218
+               MAlonzo.Code.Once.Parser.Module.Resolve.d_polyDefNames_314
                (coe v0))
             (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
             (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16))
@@ -122,7 +122,7 @@ du_module'45'typed'45'canon'45'aux_274 v0 v1 v2
                     MAlonzo.Code.Once.Adequacy.CanonAllFuns.du_AllFunsTyped'45'transport_790
                     (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
                     (coe
-                       MAlonzo.Code.Once.Parser.Module.Resolve.d_polyDefNames_218
+                       MAlonzo.Code.Once.Parser.Module.Resolve.d_polyDefNames_314
                        (coe v0))
                     (coe v5)
                     (coe MAlonzo.Code.Once.Compile.d_collectSigEffects_498 (coe v0))
@@ -137,7 +137,7 @@ d_module'45'typed'45'canon_302 v0 v1
   = coe
       du_module'45'typed'45'canon'45'aux_274 (coe v0)
       (coe
-         MAlonzo.Code.Once.Parser.d_extractFunctions_514
+         MAlonzo.Code.Once.Parser.d_extractFunctions_540
          (coe
             MAlonzo.Code.Once.Parser.d_extractAliases_76
             (coe MAlonzo.Code.Once.Parser.Module.Core.C_mkModule_50 (coe v0)))
@@ -174,7 +174,7 @@ du_module'45'typed'45'and'45'valid'45'aux_316 v0 v1 v2 v3
                               MAlonzo.Code.Once.Adequacy.CanonAllFuns.du_AllFunsTyped'45'transport_790
                               (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
                               (coe
-                                 MAlonzo.Code.Once.Parser.Module.Resolve.d_polyDefNames_218
+                                 MAlonzo.Code.Once.Parser.Module.Resolve.d_polyDefNames_314
                                  (coe v0))
                               (coe v6)
                               (coe MAlonzo.Code.Once.Compile.d_collectSigEffects_498 (coe v0))
@@ -200,7 +200,7 @@ d_module'45'typed'45'and'45'valid_354 v0 v1 v2
   = coe
       du_module'45'typed'45'and'45'valid'45'aux_316 (coe v0)
       (coe
-         MAlonzo.Code.Once.Parser.d_extractFunctions_514
+         MAlonzo.Code.Once.Parser.d_extractFunctions_540
          (coe
             MAlonzo.Code.Once.Parser.d_extractAliases_76
             (coe MAlonzo.Code.Once.Parser.Module.Core.C_mkModule_50 (coe v0)))

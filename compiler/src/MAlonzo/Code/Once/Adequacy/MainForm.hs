@@ -227,7 +227,7 @@ du_main'45'node'45'of_164 v0
   = coe
       du_mnf'45'ef_216 (coe v0)
       (coe
-         MAlonzo.Code.Once.Parser.d_extractFunctions_514
+         MAlonzo.Code.Once.Parser.d_extractFunctions_540
          (coe MAlonzo.Code.Once.Parser.d_extractAliases_76 (coe v0))
          (coe v0))
 -- Once.Adequacy.MainForm.mnf-caf

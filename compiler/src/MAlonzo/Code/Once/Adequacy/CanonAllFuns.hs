@@ -555,7 +555,7 @@ du_body'45'transport_722 v0 v1 v2 v3 v4 v5 v6 v7
                    MAlonzo.Code.Data.Bool.Base.du_if_then_else__44 (coe v8)
                    (coe MAlonzo.Code.Once.Parser.d_funBody_114 (coe v4))
                    (coe
-                      MAlonzo.Code.Once.Parser.Module.Resolve.d_canonExpr_294 (coe v0)
+                      MAlonzo.Code.Once.Parser.Module.Resolve.d_canonExpr_346 (coe v0)
                       (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
                       (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
                       (coe MAlonzo.Code.Once.Parser.d_funBody_114 (coe v4))))
@@ -578,7 +578,7 @@ du_body'45'transport_722 v0 v1 v2 v3 v4 v5 v6 v7
                    MAlonzo.Code.Data.Bool.Base.du_if_then_else__44 (coe v8)
                    (coe MAlonzo.Code.Once.Parser.d_funBody_114 (coe v4))
                    (coe
-                      MAlonzo.Code.Once.Parser.Module.Resolve.d_canonExpr_294 (coe v0)
+                      MAlonzo.Code.Once.Parser.Module.Resolve.d_canonExpr_346 (coe v0)
                       (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
                       (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
                       (coe MAlonzo.Code.Once.Parser.d_funBody_114 (coe v4))))

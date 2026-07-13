@@ -848,7 +848,7 @@ du_compile'45'just'45'ir_630 v0
                  (coe MAlonzo.Code.Once.IR.C_Heap_8)
                  (coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8) (coe v0)
                  (coe
-                    MAlonzo.Code.Once.Parser.d_guardDistinct_500
+                    MAlonzo.Code.Once.Parser.d_guardDistinct_526
                     (coe
                        MAlonzo.Code.Once.Parser.d_extractFunctions'45'go_190
                        (coe MAlonzo.Code.Once.Parser.d_extractAliases_76 (coe v0))
@@ -1000,7 +1000,7 @@ du_correctR'45'sound_732 v0
                                   (coe MAlonzo.Code.Once.IR.C_Heap_8)
                                   (coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8) (coe v2)
                                   (coe
-                                     MAlonzo.Code.Once.Parser.d_guardDistinct_500
+                                     MAlonzo.Code.Once.Parser.d_guardDistinct_526
                                      (coe
                                         MAlonzo.Code.Once.Parser.d_extractFunctions'45'go_190
                                         (coe MAlonzo.Code.Once.Parser.d_extractAliases_76 (coe v2))
@@ -1290,7 +1290,7 @@ du_correctR'45'complete_878 v0 v1 v2 v3 v4
                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v14 v15
                                        -> let v16
                                                 = let v16
-                                                        = MAlonzo.Code.Once.Parser.d_guardDistinct_500
+                                                        = MAlonzo.Code.Once.Parser.d_guardDistinct_526
                                                             (coe
                                                                MAlonzo.Code.Once.Parser.d_extractFunctions'45'go_190
                                                                (coe
@@ -1356,7 +1356,7 @@ du_correctR'45'complete_878 v0 v1 v2 v3 v4
                                                           MAlonzo.Code.Once.Adequacy.MainBuilds.du_cfm'45'built'45'aux_542
                                                           (coe v1)
                                                           (coe
-                                                             MAlonzo.Code.Once.Parser.d_guardDistinct_500
+                                                             MAlonzo.Code.Once.Parser.d_guardDistinct_526
                                                              (coe
                                                                 MAlonzo.Code.Once.Parser.d_extractFunctions'45'go_190
                                                                 (coe

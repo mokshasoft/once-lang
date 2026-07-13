@@ -52,7 +52,7 @@ d_module'45'typed'45'and'45'valid'45'reflect_44 v0 v1 v2
   = coe
       du_go_60 (coe v0) (coe v1) (coe v2)
       (coe
-         MAlonzo.Code.Once.Parser.d_extractFunctions_514
+         MAlonzo.Code.Once.Parser.d_extractFunctions_540
          (coe
             MAlonzo.Code.Once.Parser.d_extractAliases_76
             (coe MAlonzo.Code.Once.Parser.Module.Core.C_mkModule_50 (coe v0)))
@@ -85,7 +85,7 @@ du_go_60 v0 v1 v2 v3
                        MAlonzo.Code.Once.Adequacy.CanonReflectAllFuns.du_AllFunsTyped'45'reflect_424
                        (coe MAlonzo.Code.Once.Compile.d_emptyFunCtx_48)
                        (coe
-                          MAlonzo.Code.Once.Parser.Module.Resolve.d_polyDefNames_218
+                          MAlonzo.Code.Once.Parser.Module.Resolve.d_polyDefNames_314
                           (coe v0))
                        (coe v6)
                        (coe MAlonzo.Code.Once.Compile.d_collectSigEffects_498 (coe v0))

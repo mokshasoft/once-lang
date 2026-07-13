@@ -53,7 +53,7 @@ d_canonPolysCtx_6 v0 v1
                               (coe
                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v6)
                                  (coe
-                                    MAlonzo.Code.Once.Parser.Module.Resolve.d_canonExpr_294 (coe v0)
+                                    MAlonzo.Code.Once.Parser.Module.Resolve.d_canonExpr_346 (coe v0)
                                     (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
                                     (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16) (coe v7))))
                            (coe d_canonPolysCtx_6 (coe v0) (coe v3))
@@ -71,7 +71,7 @@ d_canon'45'entry_20 v0 v1
         -> coe
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v2)
              (coe
-                MAlonzo.Code.Once.Parser.Module.Resolve.d_canonExpr_294 (coe v0)
+                MAlonzo.Code.Once.Parser.Module.Resolve.d_canonExpr_346 (coe v0)
                 (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
                 (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16) (coe v3))
       _ -> MAlonzo.RTE.mazUnreachableError
@@ -225,7 +225,7 @@ d_canon'45'prefix'45'entry_338 v0 v1
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                        (coe
-                          MAlonzo.Code.Once.Parser.Module.Resolve.d_canonExpr_294 (coe v0)
+                          MAlonzo.Code.Once.Parser.Module.Resolve.d_canonExpr_346 (coe v0)
                           (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
                           (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16) (coe v4))
                        (coe d_canonPolysCtx_6 (coe v0) (coe v5)))
@@ -646,7 +646,7 @@ du_polys'45'transport'45''7522'_1358 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
         -> coe
              MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'var'45'poly'45'instantiate'45'infer_98
              v15
-             (MAlonzo.Code.Once.Parser.Module.Resolve.d_canonExpr_294
+             (MAlonzo.Code.Once.Parser.Module.Resolve.d_canonExpr_346
                 (coe v0) (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
                 (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16) (coe v16))
              (d_canonPolysCtx_6 (coe v0) (coe v17)) v18
@@ -658,7 +658,7 @@ du_polys'45'transport'45''7522'_1358 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                 (coe MAlonzo.Code.Once.TypeCheck.Classify.d_emptySigEffects_12)
                 (coe v17)
                 (coe
-                   MAlonzo.Code.Once.Parser.Module.Resolve.d_canonExpr_294 (coe v0)
+                   MAlonzo.Code.Once.Parser.Module.Resolve.d_canonExpr_346 (coe v0)
                    (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
                    (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16) (coe v16))
                 (coe v9)
@@ -1275,7 +1275,7 @@ du_polys'45'transport'45''7580'_1408 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
         -> coe
              MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'var'45'poly'45'instantiate_692
              v15
-             (MAlonzo.Code.Once.Parser.Module.Resolve.d_canonExpr_294
+             (MAlonzo.Code.Once.Parser.Module.Resolve.d_canonExpr_346
                 (coe v0) (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
                 (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16) (coe v16))
              (d_canonPolysCtx_6 (coe v0) (coe v17))
@@ -1287,7 +1287,7 @@ du_polys'45'transport'45''7580'_1408 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                 (coe MAlonzo.Code.Once.TypeCheck.Classify.d_emptySigEffects_12)
                 (coe v17)
                 (coe
-                   MAlonzo.Code.Once.Parser.Module.Resolve.d_canonExpr_294 (coe v0)
+                   MAlonzo.Code.Once.Parser.Module.Resolve.d_canonExpr_346 (coe v0)
                    (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
                    (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16) (coe v16))
                 (coe v9)

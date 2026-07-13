@@ -708,7 +708,7 @@ d_moduleToIR'45'complete_510 v0 v1 v2
   = case coe v2 of
       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v3 v4
         -> let v5
-                 = MAlonzo.Code.Once.Parser.d_guardDistinct_500
+                 = MAlonzo.Code.Once.Parser.d_guardDistinct_526
                      (coe
                         MAlonzo.Code.Once.Parser.d_extractFunctions'45'go_190
                         (coe MAlonzo.Code.Once.Parser.d_extractAliases_76 (coe v0))
@@ -914,7 +914,7 @@ d_mainRealized_674 v0 v1 v2
         -> coe
              du_mainRealized'45'ef_654 (coe v0)
              (coe
-                MAlonzo.Code.Once.Parser.d_extractFunctions_514
+                MAlonzo.Code.Once.Parser.d_extractFunctions_540
                 (coe MAlonzo.Code.Once.Parser.d_extractAliases_76 (coe v0))
                 (coe v0))
              (coe v1) (coe v4)
@@ -1361,7 +1361,7 @@ du_moduleToIR'45'sound_926 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_moduleToIR'45'sound_926 v0 v1 v2
   = let v3
-          = MAlonzo.Code.Once.Parser.d_guardDistinct_500
+          = MAlonzo.Code.Once.Parser.d_guardDistinct_526
               (coe
                  MAlonzo.Code.Once.Parser.d_extractFunctions'45'go_190
                  (coe MAlonzo.Code.Once.Parser.d_extractAliases_76 (coe v0))

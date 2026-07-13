@@ -1090,7 +1090,7 @@ du_d'45'rec_438 v0 v1 v2 v3 v4 v5
          (coe MAlonzo.Code.Once.TypeCheck.Classify.d_emptySigEffects_12)
          (coe v2)
          (coe
-            MAlonzo.Code.Once.Parser.Module.Resolve.d_canonExpr_294 (coe v0)
+            MAlonzo.Code.Once.Parser.Module.Resolve.d_canonExpr_346 (coe v0)
             (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
             (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16) (coe v1))
          (coe v4)
@@ -1339,7 +1339,7 @@ du_d'45'rec_1072 v0 v1 v2 v3 v4 v5
          (coe MAlonzo.Code.Once.TypeCheck.Classify.d_emptySigEffects_12)
          (coe v2)
          (coe
-            MAlonzo.Code.Once.Parser.Module.Resolve.d_canonExpr_294 (coe v0)
+            MAlonzo.Code.Once.Parser.Module.Resolve.d_canonExpr_346 (coe v0)
             (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
             (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16) (coe v1))
          (coe v4)

@@ -39,7 +39,7 @@ d_canonBody_6 v0 v1
       (coe MAlonzo.Code.Once.Parser.d_funType_110 (coe v1))
       (coe MAlonzo.Code.Once.Parser.d_funAlloc_112 (coe v1))
       (coe
-         MAlonzo.Code.Once.Parser.Module.Resolve.d_canonExpr_294 (coe v0)
+         MAlonzo.Code.Once.Parser.Module.Resolve.d_canonExpr_346 (coe v0)
          (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
          (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
          (coe MAlonzo.Code.Once.Parser.d_funBody_114 (coe v1)))
@@ -60,7 +60,7 @@ d_canonFI_12 v0 v1
          (coe MAlonzo.Code.Once.Parser.d_funIsPrimitive_116 (coe v1))
          (coe MAlonzo.Code.Once.Parser.d_funBody_114 (coe v1))
          (coe
-            MAlonzo.Code.Once.Parser.Module.Resolve.d_canonExpr_294 (coe v0)
+            MAlonzo.Code.Once.Parser.Module.Resolve.d_canonExpr_346 (coe v0)
             (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
             (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
             (coe MAlonzo.Code.Once.Parser.d_funBody_114 (coe v1))))
@@ -85,7 +85,7 @@ d_canonPFI_22 v0 v1
       (coe MAlonzo.Code.Once.Parser.d_pfunType_132 (coe v1))
       (coe MAlonzo.Code.Once.Parser.d_pfunAlloc_134 (coe v1))
       (coe
-         MAlonzo.Code.Once.Parser.Module.Resolve.d_canonExpr_294 (coe v0)
+         MAlonzo.Code.Once.Parser.Module.Resolve.d_canonExpr_346 (coe v0)
          (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
          (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
          (coe MAlonzo.Code.Once.Parser.d_pfunBody_136 (coe v1)))

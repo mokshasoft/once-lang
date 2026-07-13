@@ -481,7 +481,7 @@ du_crm'45'doOpt_522 v0 v1
   = coe
       du_crm'45'aux'45'doOpt_496 (coe v0) (coe v1)
       (coe
-         MAlonzo.Code.Once.Parser.d_extractFunctions_514
+         MAlonzo.Code.Once.Parser.d_extractFunctions_540
          (coe MAlonzo.Code.Once.Parser.d_extractAliases_76 (coe v1))
          (coe v1))
 -- Once.Adequacy.MainBuilds.cfm-built-aux
@@ -535,7 +535,7 @@ du_cfm'45'built'45'from'45'crm_574 v0 v1 v2
   = coe
       du_cfm'45'built'45'aux_542 (coe v0)
       (coe
-         MAlonzo.Code.Once.Parser.d_extractFunctions_514
+         MAlonzo.Code.Once.Parser.d_extractFunctions_540
          (coe MAlonzo.Code.Once.Parser.d_extractAliases_76 (coe v1))
          (coe v1))
       (coe v2)
