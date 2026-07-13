@@ -35,6 +35,7 @@
 --     delivers the type layer, which is where dependency lives.
 ------------------------------------------------------------------------
 
+{-# OPTIONS --safe #-}
 module poc.OCP0009.NbEPCwF where
 
 open import normalizer.Syntax.Types

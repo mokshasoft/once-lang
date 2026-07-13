@@ -13,6 +13,7 @@
 -- pragma) — one constructor per former, the anti-debt organization.
 ------------------------------------------------------------------------
 
+{-# OPTIONS --safe #-}
 module poc.OCP0009.NbEPRel where
 
 open import normalizer.Syntax.Types

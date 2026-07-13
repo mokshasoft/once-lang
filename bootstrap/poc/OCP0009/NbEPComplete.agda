@@ -18,6 +18,7 @@
 -- hard sheaf-NbE part — not included.
 ------------------------------------------------------------------------
 
+{-# OPTIONS --safe #-}
 module poc.OCP0009.NbEPComplete where
 
 open import normalizer.Syntax.Types
@@ -68,7 +69,6 @@ data _≈β_ where
   -- refinement 2: η for products
   η-pair   : ∀ {X Y} → pair (fstT {A = X} {B = Y}) sndT ≈β idT
 
-{-# TERMINATING #-}
 ≈β-eval βrefl              v nv = ≈V-refl _
 ≈β-eval (βsym p)           v nv = ≈V-sym (≈β-eval p v nv)
 ≈β-eval (βtrans p q)       v nv = ≈V-trans (≈β-eval p v nv) (≈β-eval q v nv)

@@ -17,6 +17,7 @@
 -- and are the genuinely-hard sheaf-NbE part — not covered here.
 ------------------------------------------------------------------------
 
+{-# OPTIONS --safe #-}
 module poc.OCP0009.NbEPNormal where
 
 open import normalizer.Syntax.Types
@@ -52,7 +53,6 @@ reflect-normal (X ⇒ Y) ne = n-ne⇒
 -- eval preserves normality.
 ------------------------------------------------------------------------
 
-{-# TERMINATING #-}
 eval-normal : ∀ {A B D} (t : Tm B D) {v : Val A B} → Normal B v → Normal D (eval t v)
 vfst-normal : ∀ {A X Y} {v : Val A (X * Y)} → Normal (X * Y) v → Normal X (vfst v)
 vsnd-normal : ∀ {A X Y} {v : Val A (X * Y)} → Normal (X * Y) v → Normal Y (vsnd v)

@@ -15,10 +15,11 @@
 --
 -- Reusability, concretely: this is "one lemma, extended per former" — each
 -- former contributes one clause, riding on the presheaf structure, exactly
--- the anti-debt organization. (`TERMINATING` mirrors `eval`'s; a theorem once
--- the full adequacy relation lands.)
+-- the anti-debt organization. (The induction mirrors `eval`'s recursion and,
+-- like it, passes the termination checker — pragma-free, `--safe`.)
 ------------------------------------------------------------------------
 
+{-# OPTIONS --safe #-}
 module poc.OCP0009.NbEPNat where
 
 open import normalizer.Syntax.Types
@@ -40,7 +41,6 @@ reflect-nat (X ⇒ Y) w ne = refl
 reflect-nat (μ F)   w ne = refl
 reflect-nat Void    w ne = refl
 
-{-# TERMINATING #-}
 eval-nat  : ∀ {A₁ A B D : Ty} (w : A₁ ≼ A) (t : Tm B D) (v : Val A B) →
             wkVal w (eval t v) ≡ eval t (wkVal w v)
 vfst-nat  : ∀ {A₁ A X Y : Ty} (w : A₁ ≼ A) (v : Val A (X * Y)) →

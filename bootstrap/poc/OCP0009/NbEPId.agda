@@ -31,6 +31,7 @@
 -- extra-propositional layer is named, not built.
 ------------------------------------------------------------------------
 
+{-# OPTIONS --safe #-}
 module poc.OCP0009.NbEPId where
 
 open import normalizer.Syntax.Types hiding ( Id )   -- `Id` names our type, not the functor

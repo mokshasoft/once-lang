@@ -61,7 +61,8 @@ OCP-0009 contribution and it shares the OCP-0004 normalizer discipline.
   `wkNe`/`wkVal` + **functor laws proven**, reflect/reify. **Postulate- &
   pragma-free, `--safe`.**
 - `NbEP` — fragment syntax `Tm` (`{Unit,×,+,μ}`, no `⇒`), `emb : Tm→Term`, η-long
-  `eval`, principled `nf`.
+  `eval`, principled `nf`. **Pragma-free, `--safe`** (the `TERMINATING` pragma
+  proved unnecessary — Agda accepts the lexicographic (Tm, Val) descent).
 - `NbEKF` — Kripke `⇒` for `{Unit,×,⇒}`; the domain is defined by **recursion on
   the type** (Tarski-style), so the Kripke closure raises no positivity question
   and `eval` is structural. **Pragma-free, `--safe`.**
@@ -221,11 +222,15 @@ OCP-0009 contribution and it shares the OCP-0004 normalizer discipline.
 - `Transparency` — status-board re-export.
 
 ### Escape inventory (honest)
-- **funext** — `Complete`, `Higher`, `Dependent`, `Universe`. Standard axiom. NOT
-  used by the principled NbE relation (`NbEPRel` is inductive/funext-free).
-- **TERMINATING** — `NbE`, `NbEP`, `NbEPNat`, `NbEPFund`, `NbEPNormal`,
-  `NbEPComplete`; each mirrors `eval`'s recursion. Discharging = standard SN /
-  logical-relation argument (tedious, not deep).
+- **funext** — postulated in `Complete` (used by `Higher`/`Dependent`/`Universe`
+  and the rest of the older track). Standard axiom. NOT used by the principled
+  NbE relation (`NbEPRel` is inductive/funext-free). **The only escape left in
+  the POC** (2026-07-13), confined to the superseded track.
+- **TERMINATING** — none left (discharged 2026-07-13: every pragma was
+  unnecessary — Agda's size-change checker accepts the lexicographic (Tm, Val)
+  recursion of the `eval`/`vcata`/`mapCata`/`nf` block; the anticipated SN
+  obligation never arises for this first-order fragment). The whole principled
+  track incl. `NbE`/`NbEConv` is `--safe`.
 - **NO_POSITIVITY_CHECK** — none left (discharged 2026-07-13: `NbEKF`'s Kripke
   closure domain is now defined by recursion on the type instead of as an
   inductive datatype, which also removed its `TERMINATING` — `NbEKF` is `--safe`).

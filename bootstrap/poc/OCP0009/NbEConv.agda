@@ -19,6 +19,7 @@
 -- opaque — Kripke reify is the remaining engine piece.
 ------------------------------------------------------------------------
 
+{-# OPTIONS --safe #-}
 module poc.OCP0009.NbEConv where
 
 open import normalizer.Syntax.Types
