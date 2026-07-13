@@ -12,5 +12,6 @@
 
 module Once.Spec.Syntax where
 
+-- P5: `RawExpr` ONLY — what you may WRITE. The elaborated `Surface.Expr`
+-- family is elaborator OUTPUT (implementation), not spec.
 open import Once.TypeCheck.Raw    public
-open import Once.Surface.Syntax   public

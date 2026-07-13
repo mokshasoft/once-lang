@@ -84,20 +84,8 @@ open import Once.Denotation.ValueDomain public
 --     retires the `rec-trace-rest` postulate with no IR change.
 ------------------------------------------------------------------------
 
-------------------------------------------------------------------------
--- Plan 0.58: the `⟦_⟧ᴰ`-level functor coercion — the trace-preserving mirror
--- of `coerce-functor⁻¹`. The recursion-scheme fold must carry `⟦C⟧ᴰ` (NOT the
--- forgotten `Val.⟦C⟧`) so an EFFECTFUL-arrow carrier keeps its apply-time
--- effects (the `Val`-fold's `forget`-per-layer silently dropped them). Purely
--- structural: `Id`→carrier, `⊕`/`⊗`→structural, `K A`→`inject` (a `K` value is
--- `Val.⟦A⟧`; `inject` lifts it to `⟦A⟧ᴰ`, the identity at the base types `K`
--- holds for a `WellFormedF`).
-coerce-functor⁻¹-D : ∀ F C → ⟦ F ⟧F ⟦ C ⟧ᴰ → ⟦ ⟦ F ⟧T C ⟧ᴰ
-coerce-functor⁻¹-D (K A)    C x        = inject x
-coerce-functor⁻¹-D Id       C x        = x
-coerce-functor⁻¹-D (F ⊕ G)  C (inj₁ x) = inj₁ (coerce-functor⁻¹-D F C x)
-coerce-functor⁻¹-D (F ⊕ G)  C (inj₂ y) = inj₂ (coerce-functor⁻¹-D G C y)
-coerce-functor⁻¹-D (F ⊗ G)  C (x , y)  = (coerce-functor⁻¹-D F C x , coerce-functor⁻¹-D G C y)
+-- (P5: `coerce-functor⁻¹-D` moved to `Once.Denotation.ValueDomain` — it is
+-- pure value-domain vocabulary; re-exported here via the public import.)
 
 ------------------------------------------------------------------------
 -- `evalᴰ` — the monadic IR interpretation (the source observable). The

@@ -33,7 +33,9 @@ open import Once.Type
   using (Type; Unit; Void; Int; _*_; _+_; _⇒[_]_; μ-type; Functor; ⟦_⟧T; Purity)
 open import Once.CanonicalName using (CanonicalName; showCanonical; bare)
 open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_; valueT; projTrace)
-open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ; emit-D; inject; forget; coerce-functor⁻¹-D)
+-- P5: the value-domain vocabulary comes from the IR-free `ValueDomain`
+-- (NOT `DenotTrace`, whose `evalᴰ` is implementation).
+open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; emit-D; inject; forget; coerce-functor⁻¹-D)
 open import Once.Semantics.Machine using (sem-In; coerce-functor; sem-cata; sem-fmap; coerce-functor⁻¹; ⟦_⟧F)
 open import Once.Functor.Translate using (WellFormedF; IsBaseType; IsConcrete; base-Unit; con-base; con-fun)
 open import Once.Denotation.Trace using (SigOpEvent)

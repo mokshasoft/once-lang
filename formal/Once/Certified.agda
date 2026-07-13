@@ -31,7 +31,9 @@
 
 module Once.Certified where
 
-open import Once.Adequacy using (CorrectCompiler)
+-- P5 (OCP-0006): the correctness criterion is consumed THROUGH the spec
+-- door — `Once.Spec` is on the certified path, not an island.
+open import Once.Spec using (CorrectCompiler)
 open import Once.Compiler using (once-compiler)
 open import Once.TypeCheck.Verified using (VerifiedTypeChecker; verifiedTypeChecker)
 
