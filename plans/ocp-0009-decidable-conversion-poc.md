@@ -19,7 +19,7 @@ separate IR→IR consumer over `normalizer.Syntax.CCC`.
 The **conversion problem** — decidable equality, the heart of OCP-0009 — is
 **solved and machine-checked for the fragment**. The principled NbE decides the
 β-theory + every congruence + **product-η**, open terms included, **funext-free**.
-All 48 `poc/OCP0009/*.agda` modules build green
+All 49 `poc/OCP0009/*.agda` modules build green
 (`bootstrap/check.sh poc/OCP0009/<M>.agda` → EXIT 0), including `NbEPCwF` (CwF /
 dependent layer, Rung 2), `NbEPEl` (Tarski decoder + base CwF), `NbEPId`
 (identity type `Id` + `J`, Rung 3), `NbEPQTT` (QTT: multiplicity semiring +
@@ -277,6 +277,19 @@ OCP-0009 contribution and it shares the OCP-0004 normalizer discipline.
   object-language identity type; transport via first-order reflection at
   `` `nat `` (heterogeneous `coe` between codes = the remaining depth item).
 
+**Directed rung 0 (2026-07-13, from the design-doc Option 4b/5 discussion):**
+- `NbEPDir` — **Once's own rewrite system as a directed Hom-structure.**
+  `Hom t u = t ⟶* u`: category laws proven (identity, composition, unit,
+  associativity — the free category on the reduction graph); **genuine
+  directedness proven**: `fst ∘ ⟨id,id⟩ ⟶* id` with `¬ (id ⟶* fst ∘
+  ⟨id,id⟩)` (`id` is no rule's redex) — a proposition symmetric equality
+  cannot state, while the ENDPOINTS are model-equal (equality forgets
+  direction; Hom keeps it); property transport along Homs; optimization
+  pipelines as composable morphisms. `--safe`. The research row (Hom as an
+  OBJECT-language type former with decidable directed conversion) stays
+  flagged — this rung demonstrates the reasoning shape on the reflected IR,
+  as `Conv` once did for equality.
+
 **Consistency ladder (Gödel II made concrete — see §8):**
 - `NbEPCon0` — rung 0: `¬ Term Unit Void` and `¬ Tm Unit Void` via the `--safe`
   Set-model (`normalizer.Testing.Evaluator`), + model-separation of `inl`/`inr`
@@ -434,6 +447,7 @@ proof-theoretic strength. "Built" = machine-checked in `poc/OCP0009/`.
 | **Totality** | ✅ total-only (SN core) | ✅ | ✅ | ✅ | ⚠️ total *or* partial |
 | **Erasure / quantities** | ✅ **QTT, end-to-end** (`NbEPQTT` semiring+erasure; `NbEPQTTJ` graded judgment+elaboration; `NbEPQTTEraseTm` **erasing term elaboration** — `𝟘`-arguments dropped from the runtime term, irrelevance decided by `nf` on open terms) | ✅ irrelevance | ⚠️ extraction | ✅ Prop-erasure | ✅ QTT native |
 | **Self-hosting / reflected IR** | ✅ **distinctive** (prove-Once-in-Once) | ❌ | ❌ | ❌ | ❌ |
+| **Directed homs (transformations as propositions)** | ⚠️ **rung 0** (`NbEPDir`: the IR's rewrite system as a proven Hom-category — irreversibility statable+proven; object-language directed types = flagged research) | ❌ | ❌ | ❌ | ❌ |
 | **Kernel / TCB size** | ✅ **minimal by thesis** | large | large (CIC) | smallish CIC | medium |
 
 **Honest gaps (2026-07-13: the former big three — II, the ℕ-tower, and
